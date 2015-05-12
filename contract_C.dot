@@ -1,0 +1,38 @@
+digraph G 
+{
+	rankdir = LR;
+	edge [fontsize="12"];
+	node [fontsize="12"];
+	
+	U_in [label=" ", style=invisible];
+	
+	U [label="Abra✝"];
+	
+	C [label="C", shape="hexagon"]
+	
+	Aket [label="Aket"];
+	W [label="W", shape="box"];
+	Abra [label=" ", style=invisible];
+	
+	Cout [label=" ", style=invisible];
+	Cmid [label=" ", style=invisible];
+	
+	U_in -> U [label="Cnext.in=Abra✝.out"];
+	U -> C [label="C.in=Abra✝.in"];
+	U -> C [label="s"];
+	
+	// bug: same rank & label reverses direction
+	Aket -> W [label="s2"];
+	W -> Abra [label="s1"];
+	
+	C -> Aket [label="C.out=Aket.in"];
+	C -> W [label="C.mid=W.in"];
+	
+	Aket -> Cout [label="Cnext.out=Aket.out"];
+	W -> Cmid [label="Cnext.mid=W.mid"];
+	
+	{rank=same Abra}
+	{rank=same Abra W Aket}
+	{rank=same C}
+	{rank=same Cout Cmid}
+}

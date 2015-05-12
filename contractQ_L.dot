@@ -1,0 +1,33 @@
+digraph G
+{
+	rankdir = LR;
+	
+	Lold[label="Lold", shape="house"];
+	
+	Aket[label="Aket"];
+	Abra[label="Abra"];
+	W[label="W", shape="box"];
+	
+//	Lnew[label="Lnew"];
+	
+	Rin[label=" ", style=invisible];
+	Rout[label=" ", style=invisible];
+	Rmid[label=" ", style=invisible];
+	
+	Abra -> Lold [label="Lin"];
+	Lold -> W [label="Lmid"];
+	Lold -> Aket [label="Lout"];
+	
+	// bug: same rank & label reverses direction
+	Aket -> W [label="s2"];
+	W -> Abra [label="s1"];
+	
+	Rout -> Abra [label="Lnew.in"];
+	W -> Rmid [label="Lnew.mid"];
+	Aket -> Rin [label="Lnew.out"];
+	
+//	{rank=same Lnew}
+	{rank=same Lold}
+	{rank=same Abra W Aket}
+	{rank=same Rin Rmid Rout}
+}
