@@ -3,7 +3,16 @@
 
 #include <array>
 
-enum SPIN_INDEX {UP=false, DN=true, NOSPIN=2, UPDN=3};
+#ifndef SPIN_INDEX_ENUM
+#define SPIN_INDEX_ENUM
+	enum SPIN_INDEX {UP=false, DN=true, NOSPIN=2, UPDN=3};
+	SPIN_INDEX operator! (const SPIN_INDEX sigma)
+	{
+		assert(sigma==UP or sigma==DN);
+		return (sigma==UP) ? DN : UP;
+	}
+	//string spin_index_strings[] = {"UP","DN","NO","UPDN"};
+#endif
 
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>
