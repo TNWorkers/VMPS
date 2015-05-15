@@ -98,13 +98,13 @@ public:
 	MpoQ<2,1> Hsq();
 	
 	/**Real MpsQ for convenient reference (no need to specify D, Nq all the time).*/
-	typedef MpsQ<2,1,double>                     StateXd;
+	typedef MpsQ<2,1,double>                           StateXd;
 	/**Complex MpsQ for convenient reference (no need to specify D, Nq all the time).*/
-	typedef MpsQ<2,1,complex<double> >           StateXcd;
-	typedef DmrgSolverQ<2,1,HeisenbergModel>     Solver;
-	typedef MpsQCompressor<2,1,double>           CompressorXd;
-	typedef MpsQCompressor<2,1,complex<double> > CompressorXcd;
-	typedef MpoQ<2,1>                            Operator;
+	typedef MpsQ<2,1,complex<double> >                 StateXcd;
+	typedef DmrgSolverQ<2,1,HeisenbergModel>           Solver;
+	typedef MpsQCompressor<2,1,double,double>          CompressorXd;
+	typedef MpsQCompressor<2,1,complex<double>,double> CompressorXcd;
+	typedef MpoQ<2,1>                                  Operator;
 	
 private:
 	

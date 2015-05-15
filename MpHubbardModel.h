@@ -78,6 +78,9 @@ public:
 	*/
 	static const Eigen::Matrix<double,4,4,RowMajor> fsign;
 	
+	static const Eigen::Matrix<double,4,4,RowMajor> Sp;
+	static const Eigen::Matrix<double,4,4,RowMajor> Sz;
+	
 	static SuperMatrix<4> Generator (double U, double V=0.);
 	
 	MpoQ<4,2> Hsq();
@@ -88,13 +91,13 @@ public:
 	static const std::array<string,2> Nlabel;
 	
 	/**Real MpsQ for convenient reference (no need to specify D, Nq all the time).*/
-	typedef MpsQ<4,2,double>                     StateXd;
+	typedef MpsQ<4,2,double>                           StateXd;
 	/**Complex MpsQ for convenient reference (no need to specify D, Nq all the time).*/
-	typedef MpsQ<4,2,complex<double> >           StateXcd;
-	typedef DmrgSolverQ<4,2,HubbardModel>        Solver;
-	typedef MpsQCompressor<4,2,double>           CompressorXd;
-	typedef MpsQCompressor<4,2,complex<double> > CompressorXcd;
-	typedef MpoQ<4,2>                          Operator;
+	typedef MpsQ<4,2,complex<double> >                 StateXcd;
+	typedef DmrgSolverQ<4,2,HubbardModel>              Solver;
+	typedef MpsQCompressor<4,2,double,double>          CompressorXd;
+	typedef MpsQCompressor<4,2,complex<double>,double> CompressorXcd;
+	typedef MpoQ<4,2>                                  Operator;
 	
 	static MpoQ<4,2> Auger (size_t L, size_t loc);
 	static MpoQ<4,2> Aps (size_t L, size_t loc);
@@ -105,6 +108,8 @@ public:
 	static MpoQ<4,2> triplon (size_t L, size_t loc, SPIN_INDEX sigma);
 	static MpoQ<4,2> antitriplon (size_t L, size_t loc, SPIN_INDEX sigma);
 	static MpoQ<4,2> quadruplon (size_t L, size_t loc);
+	
+	class qarrayIterator;
 	
 private:
 	
@@ -146,12 +151,28 @@ static const double fsign_data[] =
 	0.,  0., -1., 0.,
 	0.,  0.,  0., 1.
 };
+static const double SpHub_data[] =
+{
+	0., 0., 0., 0.,
+	0., 0., 1., 0.,
+	0., 0., 0., 0.,
+	0., 0., 0., 0.
+};
+static const double SzHub_data[] =
+{
+	0., 0.,   0.,  0.,
+	0., 0.5,  0.,  0.,
+	0., 0.,  -0.5, 0.,
+	0., 0.,   0.,  0.
+};
 
 const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::cUP(cUP_data);
 const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::cDN(cDN_data);
 const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::nUP_nDN(nUP_nDN_data);
 const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::nUP_plus_nDN(nUP_plus_nDN_data);
 const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::fsign(fsign_data);
+const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::Sp(SpHub_data);
+const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::Sz(SzHub_data);
 
 const std::array<qarray<2>,4> HubbardModel::qloc {qarray<2>{0,0}, qarray<2>{1,0}, qarray<2>{0,1}, qarray<2>{1,1}};
 const std::array<string,2>    HubbardModel::Nlabel{"N↑","N↓"};
@@ -181,48 +202,8 @@ Generator (double U, double V)
 	if (V!=0.) {G(Daux-1,5) = V*(nUP_plus_nDN);}
 	G(Daux-1,Daux-1).setIdentity();
 	
-	// apply fermionic minus sign:
-//	for (size_t a2=1; a2<=4; ++a2)
-//	for (size_t s1=0; s1<4;  ++s1)
-//	for (size_t s2=1; s2<=2; ++s2)
-//	{
-//		G(5,a2)(s1,s2) *= -1;
-//	}
-	
-	// or like that:
-//	for (size_t a2=1; a2<=4; ++a2)
-//	for (size_t s2=0; s2<4;  ++s2)
-//	for (size_t s1=1; s1<=2; ++s1)
-//	{
-//		G(Daux-1,a2)(s1,s2) *= -1;
-//	}
-	
 	return G;
 }
-
-//SuperMatrix<4> HubbardModel::
-//TevolGenerator (double U)
-//{
-//	std::array<std::array<std::array<std::array<Matrix<Scalar>,D>,D>,D>,D> Hloc;
-//	std::array<std::array<std::array<std::array<Matrix<complex<double> >,D>,D>,D>,D> Hexp;
-//	SuperMatrix<4> Generator G(U);
-//	
-//	for (size_t s1=0; s1<D; ++s1)
-//	for (size_t s2=0; s2<D; ++s2)
-//	for (size_t r1=0; r1<D; ++r1)
-//	for (size_t r2=0; r2<D; ++r2)
-//	{
-//		Hloc[s1][s2][r1][r2] = TensorProduct(G(1,0),G(G.auxdim()-1,1));
-//		for (size_t a=2; a<G.auxdim()-1; ++a)
-//		{
-//			Hloc[s1][s2][r1][r2] += TensorProduct(G(a,0),G(G.auxdim()-1,a));
-//		}
-//		Hloc[s1][s2][r1][r2] += TensorProduct(G(G.auxdim()-1,0), Matrix<Scalar,D,D>::Identity());
-//		
-//		SelfadjointEigenSolver<Matrix<Scalar,D,D> > Eugen(Hloc[s1][s2][r1][r2]);
-//		Hloc[s1][s2][r1][r2] = Eugen.eigenvectors().adjoint() * (()*Eugen.eigenvalues().cwise().exp()) * Eugen.eigenvectors();
-//	}
-//}
 
 HubbardModel::
 HubbardModel (size_t L_input, double U_input, double V_input, bool CALC_SQUARE)
@@ -254,7 +235,7 @@ MpoQ<4,2> HubbardModel::
 Hsq()
 {
 	SuperMatrix<4> G = Generator(U,V);
-	MpoQ<4,2> Mout(this->N_sites, tensor_product(G,G), HubbardModel::qloc, {0,0}, HubbardModel::Nlabel, "HubbardModel^2");
+	MpoQ<4,2> Mout(this->N_sites, tensor_product(G,G), HubbardModel::qloc, {0,0}, HubbardModel::Nlabel, "HubbardModel H^2");
 	return Mout;
 }
 
@@ -456,6 +437,56 @@ n (size_t L, SPIN_INDEX sigma, size_t loc)
 	             Mout.setLocal(loc, HubbardModel::cDN.transpose()*HubbardModel::cDN);
 	return Mout;
 }
+
+class HubbardModel::qarrayIterator
+{
+public:
+	
+	qarrayIterator (std::array<qarray<2>,4> qloc_dummy, int L_input)
+	:N_sites(L_input)
+	{
+		for (int Nup=0; Nup<=N_sites; ++Nup)
+		for (int Ndn=0; Ndn<=N_sites; ++Ndn)
+		{
+			qarray<2> q = {Nup,Ndn};
+			qarraySet.insert(q);
+		}
+		
+		it = qarraySet.begin();
+	};
+	
+	qarray<2> operator*() {return value;}
+	
+	qarrayIterator& operator= (const qarray<2> a) {value=a;}
+	bool operator!=           (const qarray<2> a) {return value!=a;}
+	bool operator<=           (const qarray<2> a) {return value<=a;}
+	bool operator<            (const qarray<2> a) {return value< a;}
+	
+	qarray<2> begin()
+	{
+		return *(qarraySet.begin());
+	}
+	
+	qarray<2> end()
+	{
+		return *(qarraySet.end());
+	}
+	
+	void operator++()
+	{
+		++it;
+		value = *it;
+	}
+	
+private:
+	
+	qarray<2> value;
+	
+	set<qarray<2> > qarraySet;
+	set<qarray<2> >::iterator it;
+	
+	int N_sites;
+};
 
 }
 

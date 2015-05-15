@@ -23,13 +23,13 @@
 @describe_Nq
 @describe_Scalar*/
 template<size_t D, size_t Nq, typename Scalar>
-class MpsQ : public DmrgJanitor<PivotMatrixQ<D,Nq,double> >
+class MpsQ : public DmrgJanitor<PivotMatrixQ<D,Nq,Scalar> >
 {
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 
 // Note: Cannot partially specialize template friends (or anything else, really). That sucks.
 template<size_t D_, size_t Nq_, typename MpHamiltonian> friend class DmrgSolverQ;
-friend class MpsQCompressor<D,Nq,Scalar>;
+template<size_t D_, size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
 template<size_t D_, size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<D_,Nq_,S1> &H, const MpsQ<D_,Nq_,S2> &Vin, MpsQ<D_,Nq_,S2> &Vout);
 template<size_t D_, size_t Nq_, typename S1, typename S2> friend void OxV (const MpoQ<D_,Nq_,S1> &H, const MpsQ<D_,Nq_,S2> &Vin, MpsQ<D_,Nq_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 template<size_t D_, size_t Nq_, typename S_> friend class MpsQ; // in order to access data between real & complex MpsQ
@@ -39,16 +39,16 @@ public:
 	/**Does nothing.*/
 	MpsQ<D,Nq,Scalar>();
 	/** Construct by setting all the relevant parameters.
-	@param L_input : chain length
-	@param Dmax : size cutoff (per subspace)
-	@param qloc_input : local basis
-	@param Qtot_input : target quantum number*/
+	\param L_input : chain length
+	\param Dmax : size cutoff (per subspace)
+	\param qloc_input : local basis
+	\param Qtot_input : target quantum number*/
 	MpsQ<D,Nq,Scalar> (size_t L_input, size_t Dmax, std::array<qarray<Nq>,D> qloc_input, qarray<Nq> Qtot_input);
 	/** Construct by pulling info from an MpoQ.
-	@param H : chain length and local basis will be retrieved from this MpoQ (less importantly, the quantum number labels and the format function as well)
-	@param Dmax : size cutoff (per subspace)
-	@param Qtot_input : target quantum number*/
-	template<typename OtherScalar> MpsQ<D,Nq,Scalar> (const MpoQ<D,Nq,OtherScalar> &H, size_t Dmax, qarray<Nq> Qtot_input);
+	\param H : chain length and local basis will be retrieved from this MpoQ (less importantly, the quantum number labels and the format function as well)
+	\param Dmax : size cutoff (per subspace)
+	\param Qtot_input : target quantum number*/
+	template<typename Hamiltonian> MpsQ<D,Nq,Scalar> (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input);
 	
 	///@{
 	/**Sets all matrices to random using boost's uniform distribution from -1 to 1.
@@ -59,29 +59,29 @@ public:
 	/**Sets all matrices to zero.*/
 	void setZero();
 	/**Sweeps through the chain with DMRG::BROOM::QR, creating a canonical MpsQ.
-	@param DIR : If DMRG::DIRECTION::LEFT, the result is left-canonical. If DMRG::DIRECTION::RIGHT, the result is right-canonical.*/
+	\param DIR : If DMRG::DIRECTION::LEFT, the result is left-canonical. If DMRG::DIRECTION::RIGHT, the result is right-canonical.*/
 	void canonize (DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::LEFT);
 	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated.
-	@param L_input : chain length
-	@param qloc_input : local basis
-	@param Qtot_input : target quantum number*/
-	void outerResize (size_t L_input, std::array<qarray<Nq>,D> qloc_input, qarray<Nq> Qtot_input);
+	\param L_input : chain length
+	\param qloc_input : local basis
+	\param Qtot_input : target quantum number*/
+	template<typename qIterator=qarrayIterator<D,Nq> > void outerResize (size_t L_input, std::array<qarray<Nq>,D> qloc_input, qarray<Nq> Qtot_input);
 	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from an MpoQ.
-	@param H : chain length and local basis will be retrieved from this MpoQ (less importantly, the quantum number labels and the format function as well)
-	@param Qtot_input : target quantum number*/
-	template<typename OtherScalar> void outerResize (const MpoQ<D,Nq,OtherScalar> &H, qarray<Nq> Qtot_input);
+	\param H : chain length and local basis will be retrieved from this MpoQ (less importantly, the quantum number labels and the format function as well)
+	\param Qtot_input : target quantum number*/
+	template<typename Hamiltonian> void outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input);
 	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from another MpsQ.
-	@param V : chain length, local basis and target quantum number will be equal to this MpsQ (less importantly, the quantum number labels and the format function as well)*/
+	\param V : chain length, local basis and target quantum number will be equal to this MpsQ (less importantly, the quantum number labels and the format function as well)*/
 	template<typename OtherMatrixType> void outerResize (const MpsQ<D,Nq,OtherMatrixType> &V);
 	/**Resizes the block matrices.
-	@param Dmax : size cutoff (per subspace)*/
+	\param Dmax : size cutoff (per subspace)*/
 	void innerResize (size_t Dmax);
 	/**Performs a resize of the block matrices for MpsQCompressor.
-	@param Dmax : size cutoff (per subspace)
-	@param HOW_TO_RESIZE : If DMRG::RESIZE::CONSERV_INCR, then each block gains a zero row and a zero column, the bond dimension increases by \p Nqmax and \p Dmax has no meaning. If DMRG::RESIZE::DECR, all blocks are non-conservatively cut according to \p Dmax.*/
+	\param Dmax : size cutoff (per subspace)
+	\param HOW_TO_RESIZE : If DMRG::RESIZE::CONSERV_INCR, then each block gains a zero row and a zero column, the bond dimension increases by \p Nqmax and \p Dmax has no meaning. If DMRG::RESIZE::DECR, all blocks are non-conservatively cut according to \p Dmax.*/
 	void dynamicResize (DMRG::RESIZE::OPTION HOW_TO_RESIZE, size_t Dmax);
 	/**Sets the MpsQ from a product state configuration.
-	@param config : classical configuration, a vector of \p qarray*/
+	\param config : classical configuration, a vector of \p qarray*/
 	void setProductState (const vector<qarray<Nq> > &config);
 	/**Finds broken paths through the quantum number subspaces and mends them by resizing with appropriate zeros. The chain length and total quantum number are determined from \p config.
 	This is needed when applying an MpoQ which changes quantum numbers, making some paths impossible. For example, one can add a particle at the beginning or end of the chain with the same target particle number, but if an annihilator is applied in the middle, only the first path survives.*/
@@ -99,12 +99,12 @@ public:
 	/**Prints the sizes of the matrices for testing purposes.*/
 	string Asizes() const;
 	/**Checks if the sizes of the block matrices are consistent, so that they can be multiplied.
-	@param name : how to call the MpsQ in the output
+	\param name : how to call the MpsQ in the output
 	@returns : string with info*/
 	string validate (string name="MpsQ") const;
 	/**Writes the subspace connections as a directed graph into a file.
 	Run \verbatim dot filename.dot -Tpdf -o filename.pdf \endverbatim to create a shiny pdf.
-	@param filename : gets a ".dot" extension automatically*/
+	\param filename : gets a ".dot" extension automatically*/
 	void graph (string filename) const;
 	/**How to format the conserved quantum numbers in the output, e@.g@. fractions for \f$S=1/2\f$ Heisenberg.*/
 	string (*format)(qarray<Nq> qnum);
@@ -150,15 +150,15 @@ public:
 	
 	///@{
 	/**Performs a sweep step to the right.
-	@param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc+1
-	@param BROOM : choice of decomposition
-	@param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD*/
-	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<D,Nq,double> *H = NULL);
+	\param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc+1
+	\param BROOM : choice of decomposition
+	\param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD*/
+	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<D,Nq,Scalar> *H = NULL);
 	/**Performs a sweep step to the left.
-	@param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1
-	@param BROOM : choice of decomposition
-	@param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD*/
-	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<D,Nq,double> *H = NULL);
+	\param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1
+	\param BROOM : choice of decomposition
+	\param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD*/
+	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<D,Nq,Scalar> *H = NULL);
 	///@}
 	
 	///@{
@@ -191,12 +191,12 @@ private:
 	template<typename OtherScalar> void add_site (size_t loc, OtherScalar alpha, const MpsQ<D,Nq,Scalar> &Vin);
 	
 	// sweep stuff RDM
-	void calc_noise (PivotMatrixQ<D,Nq,double> *H, DMRG::DIRECTION::OPTION DIR, const std::array<std::array<Biped<Nq,MatrixType>,D>,D> rho, std::array<std::array<Biped<Nq,MatrixType>,D>,D> &rhoNoise);
+	void calc_noise (PivotMatrixQ<D,Nq,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const std::array<std::array<Biped<Nq,MatrixType>,D>,D> rho, std::array<std::array<Biped<Nq,MatrixType>,D>,D> &rhoNoise);
 	void press_rdm (std::array<std::array<Biped<Nq,MatrixType>,D>,D> rhoArray, qarray<Nq> qnum, DMRG::DIRECTION::OPTION DIR, MatrixType &rho);
 	
 	// sweep stuff RICH_SVD
-	void enrich_left  (size_t loc, PivotMatrixQ<D,Nq,double> *H);
-	void enrich_right (size_t loc, PivotMatrixQ<D,Nq,double> *H);
+	void enrich_left  (size_t loc, PivotMatrixQ<D,Nq,Scalar> *H);
+	void enrich_right (size_t loc, PivotMatrixQ<D,Nq,Scalar> *H);
 };
 
 template<size_t D, size_t Nq, typename Scalar>
@@ -253,7 +253,7 @@ Asizes() const
 template<size_t D, size_t Nq, typename Scalar>
 MpsQ<D,Nq,Scalar>::
 MpsQ()
-:DmrgJanitor<PivotMatrixQ<D,Nq,double> >()
+:DmrgJanitor<PivotMatrixQ<D,Nq,Scalar> >()
 {
 	format = noFormat;
 	qlabel = defaultQlabel<Nq>();
@@ -262,7 +262,7 @@ MpsQ()
 template<size_t D, size_t Nq, typename Scalar>
 MpsQ<D,Nq,Scalar>::
 MpsQ (size_t L_input, size_t Dmax, std::array<qarray<Nq>,D> qloc_input, qarray<Nq> Qtot_input)
-:DmrgJanitor<PivotMatrixQ<D,Nq,double> >()
+:DmrgJanitor<PivotMatrixQ<D,Nq,Scalar> >()
 {
 	format = noFormat;
 	qlabel = defaultQlabel<Nq>();
@@ -271,25 +271,25 @@ MpsQ (size_t L_input, size_t Dmax, std::array<qarray<Nq>,D> qloc_input, qarray<N
 }
 
 template<size_t D, size_t Nq, typename Scalar>
-template<typename OtherScalar>
+template<typename Hamiltonian>
 MpsQ<D,Nq,Scalar>::
-MpsQ (const MpoQ<D,Nq,OtherScalar> &H, size_t Dmax, qarray<Nq> Qtot_input)
-:DmrgJanitor<PivotMatrixQ<D,Nq,double> >()
+MpsQ (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
+:DmrgJanitor<PivotMatrixQ<D,Nq,Scalar> >()
 {
 	format = H.format;
 	qlabel = H.qlabel;
-	outerResize(H.length(), H.locBasis(), Qtot_input);
+	outerResize<typename Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
 	innerResize(Dmax);
 }
 
 template<size_t D, size_t Nq, typename Scalar>
-template<typename OtherScalar>
+template<typename Hamiltonian>
 void MpsQ<D,Nq,Scalar>::
-outerResize (const MpoQ<D,Nq,OtherScalar> &H, qarray<Nq> Qtot_input)
+outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input)
 {
 	format = H.format;
 	qlabel = H.qlabel;
-	outerResize(H.length(), H.locBasis(), Qtot_input);
+	outerResize<Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
 }
 
 template<size_t D, size_t Nq, typename Scalar>
@@ -324,6 +324,7 @@ outerResize (const MpsQ<D,Nq,OtherMatrixType> &V)
 }
 
 template<size_t D, size_t Nq, typename Scalar>
+template<typename qIterator>
 void MpsQ<D,Nq,Scalar>::
 outerResize (size_t L_input, std::array<qarray<Nq>,D> qloc_input, qarray<Nq> Qtot_input)
 {
@@ -351,8 +352,10 @@ outerResize (size_t L_input, std::array<qarray<Nq>,D> qloc_input, qarray<Nq> Qto
 		{
 			A[l][s].clear();
 			
-			qarrayIterator<D,Nq> ql(qloc,l);
-			qarrayIterator<D,Nq> qr(qloc,this->N_sites-l-1);
+//			qarrayIterator<D,Nq> ql(qloc,l);
+//			qarrayIterator<D,Nq> qr(qloc,this->N_sites-l-1);
+			qIterator ql(qloc,l);
+			qIterator qr(qloc,this->N_sites-l-1);
 			
 			set<qarray<Nq> > qrset;
 			for (qr=qr.begin(); qr<qr.end(); ++qr)
@@ -744,7 +747,7 @@ press_rdm (std::array<std::array<Biped<Nq,MatrixType>,D>,D> rhoArray, qarray<Nq>
 
 template<size_t D, size_t Nq, typename Scalar>
 void MpsQ<D,Nq,Scalar>::
-leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<D,Nq,double> *H)
+leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<D,Nq,Scalar> *H)
 {
 	std::array<std::array<Biped<Nq,MatrixType>,D>,D> rhoArray, rhoNoiseArray;
 	vector<MatrixType> deltaRho;
@@ -948,7 +951,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<D,Nq,double> *
 
 template<size_t D, size_t Nq, typename Scalar>
 void MpsQ<D,Nq,Scalar>::
-rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<D,Nq,double> *H)
+rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<D,Nq,Scalar> *H)
 {
 	std::array<std::array<Biped<Nq,MatrixType>,D>,D> rhoArray, rhoNoiseArray;
 	vector<MatrixType> deltaRho;
@@ -1155,7 +1158,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<D,Nq,double> 
 
 template<size_t D, size_t Nq, typename Scalar>
 void MpsQ<D,Nq,Scalar>::
-calc_noise (PivotMatrixQ<D,Nq,double> *H, DMRG::DIRECTION::OPTION DIR, const std::array<std::array<Biped<Nq,MatrixType>,D>,D> rho, std::array<std::array<Biped<Nq,MatrixType>,D>,D> &rhoNoise)
+calc_noise (PivotMatrixQ<D,Nq,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const std::array<std::array<Biped<Nq,MatrixType>,D>,D> rho, std::array<std::array<Biped<Nq,MatrixType>,D>,D> &rhoNoise)
 {
 	size_t dimB = (DIR==DMRG::DIRECTION::RIGHT)? H->L.dim : H->R.dim;
 	
@@ -1277,7 +1280,7 @@ calc_noise (PivotMatrixQ<D,Nq,double> *H, DMRG::DIRECTION::OPTION DIR, const std
 // works:
 //template<size_t D, size_t Nq, typename Scalar>
 //void MpsQ<D,Nq,Scalar>::
-//calc_noise (PivotMatrixQ<D,Nq,double> *H, DMRG::DIRECTION::OPTION DIR, const std::array<std::array<Biped<Nq,MatrixType>,D>,D> rho, std::array<std::array<Biped<Nq,MatrixType>,D>,D> &rhoNoise)
+//calc_noise (PivotMatrixQ<D,Nq,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const std::array<std::array<Biped<Nq,MatrixType>,D>,D> rho, std::array<std::array<Biped<Nq,MatrixType>,D>,D> &rhoNoise)
 //{
 //	size_t dimB = (DIR==DMRG::DIRECTION::RIGHT)? H->L.dim : H->R.dim;
 //	
@@ -1471,7 +1474,7 @@ calc_noise (PivotMatrixQ<D,Nq,double> *H, DMRG::DIRECTION::OPTION DIR, const std
 // seems to work now:
 //template<size_t D, size_t Nq, typename Scalar>
 //void MpsQ<D,Nq,Scalar>::
-//calc_noise (PivotMatrixQ<D,Nq,double> *H, DMRG::DIRECTION::OPTION DIR, const std::array<std::array<Biped<Nq,MatrixType>,D>,D> rho, std::array<std::array<Biped<Nq,MatrixType>,D>,D> &rhoNoise)
+//calc_noise (PivotMatrixQ<D,Nq,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const std::array<std::array<Biped<Nq,MatrixType>,D>,D> rho, std::array<std::array<Biped<Nq,MatrixType>,D>,D> &rhoNoise)
 //{
 //	size_t dimB = (DIR==DMRG::DIRECTION::RIGHT)? H->L.dim : H->R.dim;
 //	
@@ -1631,7 +1634,7 @@ calc_noise (PivotMatrixQ<D,Nq,double> *H, DMRG::DIRECTION::OPTION DIR, const std
 
 template<size_t D, size_t Nq, typename Scalar>
 void MpsQ<D,Nq,Scalar>::
-enrich_left (size_t loc, PivotMatrixQ<D,Nq,double> *H)
+enrich_left (size_t loc, PivotMatrixQ<D,Nq,Scalar> *H)
 {
 	if (this->eps_rsvd != 0.)
 	{
@@ -1728,7 +1731,7 @@ enrich_left (size_t loc, PivotMatrixQ<D,Nq,double> *H)
 
 template<size_t D, size_t Nq, typename Scalar>
 void MpsQ<D,Nq,Scalar>::
-enrich_right (size_t loc, PivotMatrixQ<D,Nq,double> *H)
+enrich_right (size_t loc, PivotMatrixQ<D,Nq,Scalar> *H)
 {
 	if (this->eps_rsvd != 0.)
 	{
