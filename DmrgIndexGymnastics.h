@@ -77,10 +77,10 @@ bool AWWA (qarray<Nq> Lin, qarray<Nq> Lout, qarray<Nq> Lbot, qarray<Nq> Ltop,
 
 /**Prepares a PivotMatrixQ by filling PivotMatrixQ::qlhs and PivotMatrixQ::qrhs with the corresponding subspace indices.
 Uses OpenMP.*/
-template<size_t D, size_t Nq, typename Scalar>
+template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
 void precalc_blockStructure (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L, 
                              const std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> &Abra, 
-                             const std::array<std::array<SparseMatrixXd,D>,D> &W, 
+                             const std::array<std::array<SparseMatrix<MpoScalar>,D>,D> &W, 
                              const std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> &Aket, 
                              const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &R, 
                              std::array<qarray<Nq>,D> qloc, 
@@ -110,7 +110,7 @@ void precalc_blockStructure (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L
 				bool ALL_BLOCKS_ARE_EMPTY = true;
 				
 				for (int k=0; k<W[s1][s2].outerSize(); ++k)
-				for (SparseMatrixXd::InnerIterator iW(W[s1][s2],k); iW; ++iW)
+				for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2],k); iW; ++iW)
 				{
 					if (L.block[qL][iW.row()][0].rows() != 0 and 
 						R.block[qR->second][iW.col()][0].rows() != 0)

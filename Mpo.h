@@ -1,8 +1,12 @@
 #ifndef VANILLA_MPO
 #define VANILLA_MPO
 
+enum PARITY {EVEN=0, ODD=1};
+
 #include "SuperMatrix.h"
 #include <unsupported/Eigen/KroneckerProduct>
+#include <Eigen/Eigenvalues>
+#include "LapackWrappers.h"
 
 template<size_t D, typename Scalar> class Mps;
 template<size_t D, typename Scalar> class MpsCompressor;
@@ -43,7 +47,7 @@ public:
 	inline const std::array<std::array<SparseMatrix<Scalar>,D>,D> &Wsq_at (size_t loc) const {return Wsq[loc];};
 	inline bool check_SQUARE() const {return GOT_SQUARE;}
 	
-protected:
+//protected:
 	
 	bool GOT_SQUARE;
 	
@@ -71,6 +75,7 @@ Mpo (size_t L_input)
 {
 	truncWeight.resize(N_sites);
 	truncWeight.setZero();
+	GOT_SQUARE = false;
 }
 
 template<size_t D, typename Scalar>
@@ -90,23 +95,30 @@ double Mpo<D,Scalar>::
 memory (MEMUNIT memunit) const
 {
 	double res = 0.;
-	for (size_t l=0; l<N_sites; ++l)
-	for (size_t s1=0; s1<D; ++s1)
-	for (size_t s2=0; s2<D; ++s2)
+	
+	if (W.size() > 0)
 	{
-		res += calc_memory(W[l][s1][s2],memunit);
-		if (GOT_SQUARE == true)
+		for (size_t l=0; l<N_sites; ++l)
+		for (size_t s1=0; s1<D; ++s1)
+		for (size_t s2=0; s2<D; ++s2)
 		{
-			res += calc_memory(Wsq[l][s1][s2],memunit);
+			res += calc_memory(W[l][s1][s2],memunit);
+			if (GOT_SQUARE == true)
+			{
+				res += calc_memory(Wsq[l][s1][s2],memunit);
+			}
 		}
 	}
 	
-	for (size_t l=0; l<N_sites; ++l)
+	if (Gvec.size() > 0)
 	{
-		res += Gvec[l].memory(memunit);
-		if (GOT_SQUARE == true)
+		for (size_t l=0; l<N_sites; ++l)
 		{
-			res += GvecSq[l].memory(memunit);
+			res += Gvec[l].memory(memunit);
+			if (GOT_SQUARE == true)
+			{
+				res += GvecSq[l].memory(memunit);
+			}
 		}
 	}
 	
@@ -405,7 +417,7 @@ ostream &operator<< (ostream& os, const Mpo<D,Scalar> &O)
 		for (size_t s2=0; s2<D; ++s2)
 		{
 			os << "[l=" << l << "]\t|" << s1 << "><" << s2 << "|:" << endl;
-			os << MatrixXd(O.W_at(l)[s1][s2]) << endl;
+			os << Matrix<Scalar,Dynamic,Dynamic>(O.W_at(l)[s1][s2]) << endl;
 		}
 		os << setfill('-') << setw(80) << "-" << setfill(' ');
 		if (l != O.length()-1) {os << endl;}

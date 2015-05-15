@@ -10,10 +10,10 @@
 \param qloc : local basis
 \param Lnew : new transfer matrix to be written to
 */
-template<size_t D, size_t Nq, typename MatrixType>
+template<size_t D, size_t Nq, typename MatrixType, typename MpoScalar>
 void contract_L (const Tripod<Nq,MatrixType> &Lold, 
                  const std::array<Biped<Nq,MatrixType>,D> &Abra, 
-                 const std::array<std::array<SparseMatrixXd,D>,D> &W, 
+                 const std::array<std::array<SparseMatrix<MpoScalar>,D>,D> &W, 
                  const std::array<Biped<Nq,MatrixType>,D> &Aket, 
                  const std::array<qarray<Nq>,D> &qloc, 
                  Tripod<Nq,MatrixType> &Lnew)
@@ -36,7 +36,7 @@ void contract_L (const Tripod<Nq,MatrixType> &Lold,
 			size_t qAket = get<2>(ix);
 			
 			for (int k=0; k<W[s1][s2].outerSize(); ++k)
-			for (SparseMatrixXd::InnerIterator iW(W[s1][s2],k); iW; ++iW)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2],k); iW; ++iW)
 			{
 				size_t a1 = iW.row();
 				size_t a2 = iW.col();
@@ -78,10 +78,10 @@ void contract_L (const Tripod<Nq,MatrixType> &Lold,
 \param qloc : local basis
 \param Rnew : new transfer matrix to be written to
 */
-template<size_t D, size_t Nq, typename MatrixType>
+template<size_t D, size_t Nq, typename MatrixType, typename MpoScalar>
 void contract_R (const Tripod<Nq,MatrixType> &Rold,
                  const std::array<Biped<Nq,MatrixType>,D> &Abra, 
-                 const std::array<std::array<SparseMatrixXd,D>,D> &W, 
+                 const std::array<std::array<SparseMatrix<MpoScalar>,D>,D> &W, 
                  const std::array<Biped<Nq,MatrixType>,D> &Aket, 
                  const std::array<qarray<Nq>,D> &qloc, 
                  Tripod<Nq,MatrixType> &Rnew)
@@ -108,7 +108,7 @@ void contract_R (const Tripod<Nq,MatrixType> &Rold,
 			qarray3<Nq> quple = {new_qin, new_qout, new_qmid};
 			
 			for (int k=0; k<W[s1][s2].outerSize(); ++k)
-			for (SparseMatrixXd::InnerIterator iW(W[s1][s2],k); iW; ++iW)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2],k); iW; ++iW)
 			{
 				size_t a1 = iW.row();
 				size_t a2 = iW.col();
@@ -391,11 +391,11 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 
 /**Calculates the contraction between a left transfer matrix \p Lold, two MpsQ tensors \p Abra, \p Aket and two MpoQ tensors \p Wbot, \p Wtop.
 Needed, for example, when calculating \f$\left<H^2\right>\f$ and no MpoQ represenation of \f$H^2\f$ is available.*/
-template<size_t D, size_t Nq, typename MatrixType>
+template<size_t D, size_t Nq, typename MatrixType, typename MpoScalar>
 void contract_L (const Multipede<4,Nq,MatrixType> &Lold, 
                  const std::array<Biped<Nq,MatrixType>,D> &Abra, 
-                 const std::array<std::array<SparseMatrixXd,D>,D> &Wbot, 
-                 const std::array<std::array<SparseMatrixXd,D>,D> &Wtop, 
+                 const std::array<std::array<SparseMatrix<MpoScalar>,D>,D> &Wbot, 
+                 const std::array<std::array<SparseMatrix<MpoScalar>,D>,D> &Wtop, 
                  const std::array<Biped<Nq,MatrixType>,D> &Aket, 
                  const std::array<qarray<Nq>,D> &qloc,
                  Multipede<4,Nq,MatrixType> &Lnew)
@@ -411,16 +411,16 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 		bool FOUND_MATCH = AWWA(Lold.in(qL), Lold.out(qL), Lold.bot(qL), Lold.top(qL), 
 		                        s1, s2, s3, qloc, Abra, Aket, ix);
 		auto   quple = get<0>(ix);
-		swap(quple[0], quple[1]);
+		swap(quple[0],quple[1]);
 		size_t qAbra = get<1>(ix);
 		size_t qAket = get<2>(ix);
 		
 		if (FOUND_MATCH == true)
 		{
 			for (int kbot=0; kbot<Wbot[s1][s2].outerSize(); ++kbot)
-			for (SparseMatrixXd::InnerIterator iWbot(Wbot[s1][s2],kbot); iWbot; ++iWbot)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iWbot(Wbot[s1][s2],kbot); iWbot; ++iWbot)
 			for (int ktop=0; ktop<Wtop[s2][s3].outerSize(); ++ktop)
-			for (SparseMatrixXd::InnerIterator iWtop(Wtop[s2][s3],ktop); iWtop; ++iWtop)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iWtop(Wtop[s2][s3],ktop); iWtop; ++iWtop)
 			{
 				size_t br = iWbot.row();
 				size_t bc = iWbot.col();
@@ -435,8 +435,10 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 					                   Aket[s3].block[qAket]);
 					
 					auto it = Lnew.dict.find(quple);
+//					cout << "searching: " << quple[0] << "\t" << quple[1] << "\t" << quple[2] << "\t" << quple[3] << endl;
 					if (it != Lnew.dict.end())
 					{
+//						cout << "found, adding!" << endl;
 						if (Lnew.block[it->second][bc][tc].rows() != Mtmp.rows() or 
 							Lnew.block[it->second][bc][tc].cols() != Mtmp.cols())
 						{
@@ -449,6 +451,7 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 					}
 					else
 					{
+//						cout << "not found, pushing!" << endl;
 						size_t bcols = Wbot[s1][s2].cols();
 						size_t tcols = Wtop[s2][s3].cols();
 						multi_array<MatrixType,LEGLIMIT> Mtmparray(extents[bcols][tcols]);

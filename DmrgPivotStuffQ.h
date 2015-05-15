@@ -6,12 +6,12 @@
 #include "Multipede.h"
 
 //-----------<definitions>-----------
-template<size_t D, size_t Nq, typename Scalar>
+template<size_t D, size_t Nq, typename Scalar, typename MpoScalar=double>
 struct PivotMatrixQ
 {
 	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > R;
-	std::array<std::array<SparseMatrixXd,D>,D> W;
+	std::array<std::array<SparseMatrix<MpoScalar>,D>,D> W;
 	
 	size_t dim;
 	
@@ -19,9 +19,9 @@ struct PivotMatrixQ
 	vector<vector<std::array<size_t,4> > > qrhs;
 };
 
-//template<size_t D, size_t Nq, typename Scalar> using PivotVectorQ<D,Nq,Scalar> = std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D>;
+//template<size_t D, size_t Nq, typename Scalar, typename MpoScalar> using PivotVectorQ<D,Nq,Scalar> = std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D>;
 
-//template<size_t D, size_t Nq, typename Scalar>
+//template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
 //std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D>& 
 //std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D>::operator*= (const double &alpha)
 //{
@@ -124,8 +124,8 @@ PivotVectorQ<D,Nq,Scalar> operator- (const PivotVectorQ<D,Nq,Scalar> &V1, const 
 //-----------</vector arithmetics>-----------
 
 //-----------<matrix*vector>-----------
-template<size_t D, size_t Nq, typename Scalar>
-void HxV (const PivotMatrixQ<D,Nq,Scalar> &H, const PivotVectorQ<D,Nq,Scalar> &Vin, PivotVectorQ<D,Nq,Scalar> &Vout)
+template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
+void HxV (const PivotMatrixQ<D,Nq,Scalar,MpoScalar> &H, const PivotVectorQ<D,Nq,Scalar> &Vin, PivotVectorQ<D,Nq,Scalar> &Vout)
 {
 	Vout = Vin;
 	for (size_t s=0; s<D; ++s) {Vout.A[s].setZero();}
@@ -146,7 +146,7 @@ void HxV (const PivotMatrixQ<D,Nq,Scalar> &H, const PivotVectorQ<D,Nq,Scalar> &V
 			size_t qR = (*irhs)[3];
 			
 			for (int k=0; k<H.W[s1][s2].outerSize(); ++k)
-			for (SparseMatrixXd::InnerIterator iW(H.W[s1][s2],k); iW; ++iW)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(H.W[s1][s2],k); iW; ++iW)
 			{
 				if (H.L.block[qL][iW.row()][0].rows() != 0 and 
 				    H.R.block[qR][iW.col()][0].rows() != 0)
@@ -172,8 +172,8 @@ void HxV (const PivotMatrixQ<D,Nq,Scalar> &H, const PivotVectorQ<D,Nq,Scalar> &V
 	}
 }
 
-//template<size_t D, size_t Nq, typename Scalar>
-//void careful_HxV (const PivotMatrixQ<D,Nq,Scalar> &H, const PivotVectorQ<D,Nq,Scalar> &Vin, PivotVectorQ<D,Nq,Scalar> &Vout, std::array<qarray<Nq>,D> qloc)
+//template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
+//void careful_HxV (const PivotMatrixQ<D,Nq,Scalar,MpoScalar> &H, const PivotVectorQ<D,Nq,Scalar> &Vin, PivotVectorQ<D,Nq,Scalar> &Vout, std::array<qarray<Nq>,D> qloc)
 //{
 //	Vout = Vin;
 //	for (size_t s=0; s<D; ++s) {Vout.A[s].setZero();}
@@ -256,8 +256,8 @@ void HxV (const PivotMatrixQ<D,Nq,Scalar> &H, const PivotVectorQ<D,Nq,Scalar> &V
 //	}
 //}
 
-template<size_t D, size_t Nq, typename Scalar>
-void HxV (const PivotMatrixQ<D,Nq,Scalar> &H, PivotVectorQ<D,Nq,Scalar> &Vinout)
+template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
+void HxV (const PivotMatrixQ<D,Nq,Scalar,MpoScalar> &H, PivotVectorQ<D,Nq,Scalar> &Vinout)
 {
 	PivotVectorQ<D,Nq,Scalar> Vtmp;
 	HxV(H,Vinout,Vtmp);
@@ -318,14 +318,14 @@ double infNorm (const PivotVectorQ<D,Nq,Scalar> &V1, const PivotVectorQ<D,Nq,Sca
 //-----------</dot & vector norms>-----------
 
 //-----------<miscellaneous>-----------
-template<size_t D, size_t Nq, typename Scalar>
-inline size_t dim (const PivotMatrixQ<D,Nq,Scalar> &H)
+template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
+inline size_t dim (const PivotMatrixQ<D,Nq,Scalar,MpoScalar> &H)
 {
 	return H.dim;
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-inline double norm (const PivotMatrixQ<D,Nq,Scalar> &H)
+template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
+inline double norm (const PivotMatrixQ<D,Nq,Scalar,MpoScalar> &H)
 {
 	return H.dim;
 }

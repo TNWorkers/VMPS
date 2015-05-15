@@ -135,6 +135,13 @@ Scalar avg (const MpsQ<D,Nq,Scalar> &Vbra,
 		}
 	}
 	
+//	cout << "B.dim=" << B.dim << endl;
+//	for (size_t q=0; q<B.dim; ++q)
+//	{
+//		cout << "q=" << B.in(q) << ", " << B.out(q) << ", " << B.mid(q) << endl 
+//		<< B.block[q][0][0] << endl;
+//	}
+	
 	assert(B.dim == 1 and 
 	       B.block[0][0][0].rows() == 1 and
 	       B.block[0][0][0].cols() == 1 and
@@ -200,27 +207,34 @@ Scalar avg (const MpsQ<D,Nq,Scalar> &Vbra,
 /**Calculates the expectation value \f$\left<\Psi_{bra}|O_{bra}O_{ket}|\Psi_{ket}\right>\f$
 Only a left-to-right contraction is implemented.
 \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
-\param Obra : input MpoQ
-\param Oket : input MpoQ
+\param O1 : input MpoQ
+\param O2 : input MpoQ
 \param Vket : input \f$\left|\Psi_{ket}\right>\f$
 */
 template<size_t D, size_t Nq, typename MpoScalar, typename Scalar>
 Scalar avg (const MpsQ<D,Nq,Scalar> &Vbra, 
-            const MpoQ<D,Nq,MpoScalar> &Obra,
-            const MpoQ<D,Nq,MpoScalar> &Oket, 
+            const MpoQ<D,Nq,MpoScalar> &O1,
+            const MpoQ<D,Nq,MpoScalar> &O2, 
             const MpsQ<D,Nq,Scalar> &Vket)
 {
 	Multipede<4,Nq,Matrix<Scalar,Dynamic,Dynamic> > B;
 	Multipede<4,Nq,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	
 	B.setVacuum();
-	for (size_t l=1; l<Oket.length()+1; ++l)
+	for (size_t l=1; l<O2.length()+1; ++l)
 	{
-		contract_L(B, Vbra.A_at(l-1), Obra.W_at(l-1), Oket.W_at(l-1), Vket.A_at(l-1), Oket.locBasis(), Bnext);
+		contract_L(B, Vbra.A_at(l-1), O1.W_at(l-1), O2.W_at(l-1), Vket.A_at(l-1), O2.locBasis(), Bnext);
 		B.clear();
 		B = Bnext;
 		Bnext.clear();
 	}
+	
+//	cout << "B.dim=" << B.dim << endl;
+//	for (size_t q=0; q<B.dim; ++q)
+//	{
+//		cout << "q=" << B.in(q) << ", " << B.out(q) << ", " << B.top(q) << ", " << B.bot(q) << endl 
+//		<< B.block[q][0][0] << endl;
+//	}
 	
 	assert(B.dim == 1 and 
 	       B.block[0][0][0].rows() == 1 and 
@@ -239,7 +253,7 @@ void HxV (const MpoQ<D,Nq,MpoScalar> &H, const MpsQ<D,Nq,Scalar> &Vin, MpsQ<D,Nq
 {
 	Stopwatch Chronos;
 	
-	MpsQCompressor<D,Nq,Scalar> Compadre(DMRG::VERBOSITY::STEPWISE);
+	MpsQCompressor<D,Nq,Scalar,MpoScalar> Compadre(DMRG::VERBOSITY::STEPWISE);
 	Compadre.varCompress(H,Vin, Vout, Vin.calc_Dmax(), 1e-8);
 	lout << Compadre.info() << endl;
 	
@@ -256,7 +270,7 @@ template<size_t D, size_t Nq, typename MpoScalar, typename Scalar>
 void chebIter (const MpoQ<D,Nq,MpoScalar> &H, const MpsQ<D,Nq,Scalar> &Vin1, const MpsQ<D,Nq,Scalar> &Vin2, MpsQ<D,Nq,Scalar> &Vout)
 {
 	Stopwatch Chronos;
-	MpsQCompressor<D,Nq,Scalar> Compadre(DMRG::VERBOSITY::STEPWISE);
+	MpsQCompressor<D,Nq,Scalar,MpoScalar> Compadre(DMRG::VERBOSITY::STEPWISE);
 	Compadre.chebCompress(H,Vin1,Vin2, Vout, Vin1.calc_Dmax());
 	lout << Compadre.info() << endl;
 	lout << Chronos.info("chebIter") << endl;
@@ -276,7 +290,7 @@ void addScale (const OtherScalar alpha, const MpsQ<D,Nq,Scalar> &Vin, MpsQ<D,Nq,
 {
 	Stopwatch Chronos;
 	
-	MpsQCompressor<D,Nq,Scalar> Compadre;
+	MpsQCompressor<D,Nq,Scalar,OtherScalar> Compadre;
 	size_t Dstart = Vout.calc_Dmax();
 	MpsQ<D,Nq,Scalar> Vtmp = Vout;
 	Vtmp.addScale(alpha,Vin,true);

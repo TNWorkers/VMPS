@@ -42,7 +42,7 @@ namespace VMPS{};
 template<size_t D, size_t Nq, typename MatrixType> class MpsQ;
 template<size_t D, size_t Nq, typename Scalar> class MpoQ;
 template<size_t D, size_t Nq, typename MpHamiltonian> class DmrgSolverQ;
-template<size_t D, size_t Nq, typename MatrixType> class MpsQCompressor;
+template<size_t D, size_t Nq, typename Scalar, typename MpoScalar> class MpsQCompressor;
 
 /**Matrix Product Operator with conserved quantum numbers (Abelian symmetries). Just adds a target quantum number and a bunch of labels on top of Mpo.
 @describe_D
@@ -50,8 +50,10 @@ template<size_t D, size_t Nq, typename MatrixType> class MpsQCompressor;
 template<size_t D, size_t Nq, typename Scalar=double>
 class MpoQ : public Mpo<D,Scalar>
 {
+typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
+
 template<size_t D_, size_t Nq_, typename MpHamiltonian> friend class DmrgSolverQ;
-template<size_t D_, size_t Nq_, typename S_> friend class MpsQCompressor;
+template<size_t D_, size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
 template<size_t D_, size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<D_,Nq_,S1> &H, const MpsQ<D_,Nq_,S2> &Vin, MpsQ<D_,Nq_,S2> &Vout);
 template<size_t D_, size_t Nq_, typename S1, typename S2> friend void OxV (const MpoQ<D_,Nq_,S1> &H, const MpsQ<D_,Nq_,S2> &Vin, MpsQ<D_,Nq_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 
@@ -100,6 +102,8 @@ public:
 	/**Returns the local basis.*/
 	inline std::array<qarray<Nq>,D> locBasis() const {return qloc;}
 	///@}
+	
+	MpoQ<D,Nq,complex<double> > bondsTevol (double dt, PARITY P);
 	
 private:
 	
@@ -178,6 +182,126 @@ inline double MpoQ<D,Nq,Scalar>::
 overhead (MEMUNIT memunit) const
 {
 	return 0.;
+}
+
+template<size_t D, size_t Nq, typename Scalar>
+MpoQ<D,Nq,complex<double> > MpoQ<D,Nq,Scalar>::
+bondsTevol (double dt, PARITY P)
+{
+	string TevolLabel = "exp("+label+"),";
+	TevolLabel += (P==EVEN)? "even" : "odd";
+	MpoQ<D,Nq,complex<double> > Mout(this->N_sites, qloc, qvacuum<Nq>(), qlabel, TevolLabel, format);
+	Mout.Daux = D*D;
+	Mout.W.resize(this->N_sites);
+	
+	if (P == ODD)
+	{
+		for (size_t l=0; l<this->N_sites; l+=this->N_sites-1)
+		for (size_t s1=0; s1<D; ++s1)
+		for (size_t s2=0; s2<D; ++s2)
+		{
+			Mout.W[l][s1][s2].resize(1,1);
+			if (s1 == s2)
+			{
+				Mout.W[l][s1][s2].coeffRef(0,0) = 1.;
+			}
+		}
+	}
+	
+	size_t l_frst = (P==EVEN)? 0 : 1;
+	size_t l_last = (P==EVEN)? this->N_sites-2 : this->N_sites-3;
+	
+	for (size_t l=l_frst; l<=l_last; l+=2)
+	{
+		MatrixType Hloc = kroneckerProduct(this->Gvec[1](1,0), this->Gvec[1](this->Daux-1,1));
+		for (size_t a=2; a<this->Daux-1; ++a)
+		{
+			Hloc += kroneckerProduct(this->Gvec[1](a,0), this->Gvec[1](this->Daux-1,a));
+		}
+		MatrixType Id(D,D); Id.setIdentity();
+		Hloc += kroneckerProduct(this->Gvec[1](this->Daux-1,0), Id);
+		
+//		MatrixType Hloc = kroneckerProduct(this->Gvec[1](this->Daux-1,0), Id);
+//		Hloc += kroneckerProduct(Id, this->Gvec[1](this->Daux-1,0));
+		
+		for (size_t s1=0; s1<D; ++s1)
+		for (size_t r1=0; r1<D; ++r1)
+		for (size_t s2=0; s2<D; ++s2)
+		for (size_t r2=0; r2<D; ++r2)
+		{
+			cout << s1 << ", " << r1 << ", " <<  s2 << ", " << r2 << " : " << Hloc(s1+r1*D,s2+r2*D) << endl;
+		}
+		
+		if (l==l_frst)
+		{
+			cout << Hloc << endl << endl;
+		}
+		
+		SelfAdjointEigenSolver<MatrixType> Eugen(Hloc);
+		Matrix<complex<double>,Dynamic,Dynamic> Hexp = Eugen.eigenvectors() * 
+		                                               (Eugen.eigenvalues()*complex<double>(0,-dt)).array().exp().matrix().asDiagonal() * 
+		                                               Eugen.eigenvectors().adjoint();
+		
+		#ifdef DONT_USE_LAPACK_SVD
+		JacobiSVD<MatrixXd> Jack;
+		#else
+		LapackSVD<complex<double> > Jack;
+		#endif
+		
+		#ifdef DONT_USE_LAPACK_SVD
+		Jack.compute(Hexp,ComputeThinU|ComputeThinV);
+		#else
+		Jack.compute(Hexp);
+		#endif
+		
+		MatrixXcd U1(D*D,D*D);
+		U1 = Jack.matrixU() * Jack.singularValues().cwiseSqrt().asDiagonal();
+		#ifdef DONT_USE_LAPACK_SVD
+		MatrixXcd U2(D*D,D*D);
+		U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixV().adjoint();
+		#else
+		MatrixXcd U2(D*D,D*D);
+		U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixVT();
+		#endif
+		
+		for (size_t s1=0; s1<D; ++s1)
+		for (size_t r1=0; r1<D; ++r1)
+		for (size_t s2=0; s2<D; ++s2)
+		for (size_t r2=0; r2<D; ++r2)
+		{
+			Mout.W[l][s1][r1].resize(1,D*D);
+			if (l != this->N_sites-1)
+			{
+				Mout.W[l+1][s1][r1].resize(D*D,1);
+			}
+			for (size_t k=0; k<D*D; ++k)
+			{
+				if (U1(s1+r1*D,k) != 0.)
+				{
+					Mout.W[l][s1][r1].coeffRef(0,k) = U1(s1+r1*D,k);
+				}
+				if (l != this->N_sites-1)
+				{
+					if (U2(k,s2+r2*D) != 0.)
+					{
+						Mout.W[l+1][s1][r1].coeffRef(k,0) = U2(k,s2+r2*D);
+					}
+				}
+			}
+		}
+	}
+	
+//	for (size_t l=0; l<this->N_sites; ++l)
+//	{
+//		cout << "l=" << l << endl;
+//		for (size_t s1=0; s1<D; ++s1)
+//		for (size_t r1=0; r1<D; ++r1)
+//		{
+//			cout << Mout.W[l][s1][r1].rows() << "\t" << Mout.W[l][s1][r1].cols() << endl;
+//		}
+//	}
+	
+	return Mout;
 }
 
 //template<size_t D, size_t Nq, typename Scalar>
@@ -382,7 +506,7 @@ ostream &operator<< (ostream& os, const MpoQ<D,Nq,Scalar> &O)
 		for (size_t s2=0; s2<D; ++s2)
 		{
 			os << "[l=" << l << "]\t|" << O.format(O.locBasis()[s1]) << "><" << O.format(O.locBasis()[s2]) << "|:" << endl;
-			os << MatrixXd(O.W_at(l)[s1][s2]) << endl;
+			os << Matrix<Scalar,Dynamic,Dynamic>(O.W_at(l)[s1][s2]) << endl;
 		}
 		os << setfill('-') << setw(80) << "-" << setfill(' ');
 		if (l != O.length()-1) {os << endl;}
