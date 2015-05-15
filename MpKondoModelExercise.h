@@ -4,9 +4,10 @@ namespace VMPS
 {
 /**MPO representation of \f$H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
                                 + J \sum_i \mathbf{s}_i\cdot\mathbf{S}_i\f$.*/
-	class KondoModell : public MpoQ<8,2,double>
+	class KondoModel : public MpoQ<8,2,double>
 	{
 	public:
+		
 		/**
 		   @param L_input : chain length
 		   @param J_input : \f$J\f$
@@ -33,11 +34,11 @@ namespace VMPS
 		   \f$ckondo_{\downarrow} = \left(
 		   \begin{array}{cccccccc}
 		   0 & 0 & 1 & 0 & 0 & 0 & 0 & 0\\
-		   0 & 0 & 0 & 1 & 0 & 0 & 0 & 0\\
+		   0 & 0 & 0 & -1 & 0 & 0 & 0 & 0\\
 		   0 & 0 & 0 & 0 & 0 & 0 & 0 & 0\\
 		   0 & 0 & 0 & 0 & 0 & 0 & 0 & 0\\
 		   0 & 0 & 0 & 0 & 0 & 0 & 1 & 0\\
-		   0 & 0 & 0 & 0 & 0 & 0 & 0 & 1\\
+		   0 & 0 & 0 & 0 & 0 & 0 & 0 & -1\\
 		   0 & 0 & 0 & 0 & 0 & 0 & 0 & 0\\
 		   0 & 0 & 0 & 0 & 0 & 0 & 0 & 0\\
 		   \end{array}
@@ -46,7 +47,7 @@ namespace VMPS
 		static const Eigen::Matrix<double,8,8,RowMajor> ckondo_DOWN;
 
 		/**
-		   \f$Skondo_{x} = \left(
+		   \f$Skondo_{z} = \left(
 		   \begin{array}{cccccccc}
 		   0.5 & 0 & 0 & 0 & 0 & 0 & 0 & 0\\
 		   0 & 0.5 & 0 & 0 & 0 & 0 & 0 & 0\\
@@ -93,5 +94,30 @@ namespace VMPS
 		*/
 		static const Eigen::Matrix<double,8,8,RowMajor> Skondo_x;
 
-	}
+	private:
+		double J_input;
+	};
+	
+	static const double ckondoUP_data[] =
+	{
+		0., 1., 0., 0., 0., 0., 0., 0.,
+		0., 0., 0., 0., 0., 0., 0., 0.,
+		0., 0., 0., 1., 0., 0., 0., 0.,
+		0., 0., 0., 0., 0., 0., 0., 0.,
+		0., 0., 0., 0., 0., 1., 0., 0.,
+		0., 0., 0., 0., 0., 0., 0., 0.,
+		0., 0., 0., 0., 0., 0., 0., 1.,
+		0., 0., 0., 0., 0., 0., 0., 0.,
+	};
+	static const double ckondoDOWN_data[] =
+	{
+		0., 0., 1., 0., 0., 0., 0., 0.,
+		0., 0., 0., -1., 0., 0., 0., 0.,
+		0., 0., 0., 0., 0., 0., 0., 0.,
+		0., 0., 0., 0., 0., 0., 0., 0.,
+		0., 0., 0., 0., 0., 0., 1., 0.,
+		0., 0., 0., 0., 0., 0., 0., -1.,
+		0., 0., 0., 0., 0., 0., 0., 0.,
+		0., 0., 0., 0., 0., 0., 0., 0.,
+	};
 }

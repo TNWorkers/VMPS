@@ -67,7 +67,7 @@ public:
 	static const Eigen::Matrix<double,4,4,RowMajor> nUP_plus_nDN;
 	
 	/**
-	\f$(1-n_{\uparrow})*(1-n_{\downarrow}) = \left(
+	\f$(1-2n_{\uparrow})*(1-2n_{\downarrow}) = \left(
 	\begin{array}{cccc}
 	1 & 0  & 0  & 0\\
 	0 & -1 & 0  & 0\\
