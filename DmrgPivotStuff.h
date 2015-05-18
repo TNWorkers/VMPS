@@ -204,7 +204,7 @@ void swap (PivotVector<D> &V1, PivotVector<D> &V2)
 	}
 }
 
-#include "LanczosWrappers.h"
+//#include "LanczosWrappers.h"
 #include "RandomVector.h"
 
 template<size_t D>

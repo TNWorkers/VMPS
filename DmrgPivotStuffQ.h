@@ -340,7 +340,7 @@ void swap (PivotVectorQ<D,Nq,Scalar> &V1, PivotVectorQ<D,Nq,Scalar> &V2)
 	}
 }
 
-#include "LanczosWrappers.h"
+//#include "LanczosWrappers.h"
 #include "RandomVector.h"
 
 template<size_t D, size_t Nq, typename Scalar>
