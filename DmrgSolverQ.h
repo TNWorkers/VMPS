@@ -134,11 +134,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<D,Nq,double> > &Vout, qarray<
 	
 	Stopwatch Aion;
 	Vout.state = MpsQ<D,Nq,double>(H, Dinit, Qtot_input);
-	Vout.state.graph("Mps");
 	Vout.state.setRandom();
-	cout << Vout.state.info() << endl;
-//	cout << Vout.state << endl;
-	cout << Vout.state.validate() << endl;
 	
 	// set edges
 	Heff.clear();
@@ -188,7 +184,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<D,Nq,double> > &Vout, qarray<
 	Vout.state.eps_rsvd = 1e-2;
 	print_eps();
 	
-	double Eold = numeric_limits<double>::infinity();
+	double Eold = numeric_limits<double>::quiet_NaN();
 	MpsQ<D,Nq,double> Vref;
 	if (TEST == LANCZOS::CONVTEST::NORM_TEST or
 	    TEST == LANCZOS::CONVTEST::COEFFWISE)
@@ -377,8 +373,8 @@ template<size_t D, size_t Nq, typename MpHamiltonian>
 void DmrgSolverQ<D,Nq,MpHamiltonian>::
 sweepStep (const MpHamiltonian &H, Eigenstate<MpsQ<D,Nq,double> > &Vout)
 {
-	Vout.state.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::RDM, &Heff[pivot]);
-//	Vout.state.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::RICH_SVD, &Heff[pivot]);
+//	Vout.state.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::RDM, &Heff[pivot]);
+	Vout.state.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::RICH_SVD, &Heff[pivot]);
 	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++pivot) : build_R(H,Vout,--pivot);
 }
 
