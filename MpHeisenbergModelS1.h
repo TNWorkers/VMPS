@@ -97,7 +97,7 @@ const Eigen::Matrix<double,3,3,RowMajor> HeisenbergModelS1::Sz(SzS1_data);
 const Eigen::Matrix<double,3,3,RowMajor> HeisenbergModelS1::Sp(SpS1_data);
 const Eigen::Matrix<double,3,3,RowMajor> HeisenbergModelS1::Sx(SxS1_data);
 
-const std::array<qarray<1>,3> HeisenbergModelS1::qloc {qarray<1>{+1}, qarray<1>{0}, qarray<1>{-1}};
+const std::array<qarray<1>,3> HeisenbergModelS1::qloc {qarray<1>{+2}, qarray<1>{0}, qarray<1>{-2}}; // Q=2*M
 
 HeisenbergModelS1::
 HeisenbergModelS1 (int L_input, double Jxy_input, double Jz_input, double hz_input, double hx_input, bool CALC_SQUARE)

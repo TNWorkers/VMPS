@@ -105,6 +105,8 @@ public:
 	
 	MpoQ<D,Nq,complex<double> > bondsTevol (double dt, PARITY P);
 	
+	class qarrayIterator;
+	
 private:
 	
 	qarray<Nq> Qtot;
@@ -490,6 +492,57 @@ bondsTevol (double dt, PARITY P)
 //		}
 //	}
 //}
+
+template<size_t D, size_t Nq, typename Scalar>
+class MpoQ<D,Nq,Scalar>::qarrayIterator
+{
+public:
+	
+	qarrayIterator (std::array<qarray<2>,4> qloc_dummy, int L_input)
+	:N_sites(L_input)
+	{
+		for (int Nup=0; Nup<=N_sites; ++Nup)
+		for (int Ndn=0; Ndn<=N_sites; ++Ndn)
+		{
+			qarray<2> q = {Nup,Ndn};
+			qarraySet.insert(q);
+		}
+		
+		it = qarraySet.begin();
+	};
+	
+	qarray<2> operator*() {return value;}
+	
+	qarrayIterator& operator= (const qarray<2> a) {value=a;}
+	bool operator!=           (const qarray<2> a) {return value!=a;}
+	bool operator<=           (const qarray<2> a) {return value<=a;}
+	bool operator<            (const qarray<2> a) {return value< a;}
+	
+	qarray<2> begin()
+	{
+		return *(qarraySet.begin());
+	}
+	
+	qarray<2> end()
+	{
+		return *(qarraySet.end());
+	}
+	
+	void operator++()
+	{
+		++it;
+		value = *it;
+	}
+	
+private:
+	
+	qarray<2> value;
+	
+	set<qarray<2> > qarraySet;
+	set<qarray<2> >::iterator it;
+	
+	int N_sites;
+};
 
 template<size_t D, size_t Nq, typename Scalar>
 ostream &operator<< (ostream& os, const MpoQ<D,Nq,Scalar> &O)

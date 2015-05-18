@@ -109,8 +109,6 @@ public:
 	static MpoQ<4,2> antitriplon (size_t L, size_t loc, SPIN_INDEX sigma);
 	static MpoQ<4,2> quadruplon (size_t L, size_t loc);
 	
-	class qarrayIterator;
-	
 private:
 	
 	double U, V;
@@ -437,56 +435,6 @@ n (size_t L, SPIN_INDEX sigma, size_t loc)
 	             Mout.setLocal(loc, HubbardModel::cDN.transpose()*HubbardModel::cDN);
 	return Mout;
 }
-
-class HubbardModel::qarrayIterator
-{
-public:
-	
-	qarrayIterator (std::array<qarray<2>,4> qloc_dummy, int L_input)
-	:N_sites(L_input)
-	{
-		for (int Nup=0; Nup<=N_sites; ++Nup)
-		for (int Ndn=0; Ndn<=N_sites; ++Ndn)
-		{
-			qarray<2> q = {Nup,Ndn};
-			qarraySet.insert(q);
-		}
-		
-		it = qarraySet.begin();
-	};
-	
-	qarray<2> operator*() {return value;}
-	
-	qarrayIterator& operator= (const qarray<2> a) {value=a;}
-	bool operator!=           (const qarray<2> a) {return value!=a;}
-	bool operator<=           (const qarray<2> a) {return value<=a;}
-	bool operator<            (const qarray<2> a) {return value< a;}
-	
-	qarray<2> begin()
-	{
-		return *(qarraySet.begin());
-	}
-	
-	qarray<2> end()
-	{
-		return *(qarraySet.end());
-	}
-	
-	void operator++()
-	{
-		++it;
-		value = *it;
-	}
-	
-private:
-	
-	qarray<2> value;
-	
-	set<qarray<2> > qarraySet;
-	set<qarray<2> >::iterator it;
-	
-	int N_sites;
-};
 
 }
 

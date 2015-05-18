@@ -6,7 +6,9 @@ enum PARITY {EVEN=0, ODD=1};
 #include "SuperMatrix.h"
 #include <unsupported/Eigen/KroneckerProduct>
 #include <Eigen/Eigenvalues>
-#include "LapackWrappers.h"
+#ifndef DONT_USE_LAPACK_SVD
+	#include "LapackWrappers.h"
+#endif
 
 template<size_t D, typename Scalar> class Mps;
 template<size_t D, typename Scalar> class MpsCompressor;
@@ -280,7 +282,6 @@ setProductSum (const MatrixType &Op1, const MatrixType &Op2)
 		M[l].setZero();
 		M[l](0,0).setIdentity();
 		M[l](1,0) = Op1;
-		M[l](2,0).setIdentity();
 		M[l](2,1) = Op2;
 		M[l](2,2).setIdentity();
 	}
