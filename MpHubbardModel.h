@@ -6,17 +6,19 @@
 namespace VMPS
 {
 
-/**MPO representation of \f$H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
-                                + U \sum_i n_{i\uparrow} n_{i\downarrow}\f$.*/
-class HubbardModel : public MpoQ<4,2,double>
+/**MPO representation of 
+\f$
+H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} + U \sum_i n_{i\uparrow} n_{i\downarrow}
+\f$.*/
+class HubbardModel : public MpoQ<2,double>
 {
 public:
 	
 	/**
-	@param L_input : chain length
-	@param U_input : \f$U\f$
-	@param V_input : \f$V\f$
-	@param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
+	\param L_input : chain length
+	\param U_input : \f$U\f$
+	\param V_input : \f$V\f$
+	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
 	HubbardModel (size_t L_input, double U_input, double V_input=0., bool CALC_SQUARE=true);
 	
@@ -31,6 +33,7 @@ public:
 	\right)\f$
 	*/
 	static const Eigen::Matrix<double,4,4,RowMajor> cUP;
+	
 	/**
 	\f$c_{\downarrow} = \left(
 	\begin{array}{cccc}
@@ -42,6 +45,7 @@ public:
 	\right)\f$
 	*/
 	static const Eigen::Matrix<double,4,4,RowMajor> cDN;
+	
 	/**
 	\f$d = \left(
 	\begin{array}{cccc}
@@ -78,36 +82,63 @@ public:
 	*/
 	static const Eigen::Matrix<double,4,4,RowMajor> fsign;
 	
+	/**
+	\f$s^+ = \left(
+	\begin{array}{cccc}
+	0 & 0 & 0 & 0\\
+	0 & 0 & 1 & 0\\
+	0 & 0 & 0 & 0\\
+	0 & 0 & 0 & 0\\
+	\end{array}
+	\right)\f$
+	*/
 	static const Eigen::Matrix<double,4,4,RowMajor> Sp;
+	
+	/**
+	\f$s^z = \left(
+	\begin{array}{cccc}
+	0 & 0 & 0 & 0\\
+	0 & 0.5 & 0 & 0\\
+	0 & 0 & -0.5 & 0\\
+	0 & 0 & 0 & 0\\
+	\end{array}
+	\right)\f$
+	*/
 	static const Eigen::Matrix<double,4,4,RowMajor> Sz;
 	
-	static SuperMatrix<4> Generator (double U, double V=0.);
+	static SuperMatrix<double> Generator (double U, double V=0.);
 	
-	MpoQ<4,2> Hsq();
+	MpoQ<2> Hsq();
 	
-	/**local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$*/
+	/**local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$.
+	The quantum numbers are \f$N_{\uparrow}\f$ and \f$N_{\downarrow}\f$. Used by default.*/
 	static const std::array<qarray<2>,4> qloc;
-	/**Labels the conserved quantum numbers as \f$N_\uparrow\f$, \f$N_\downarrow\f$*/
+	
+	/**local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$.
+	The quantum numbers are \f$N=N_{\uparrow}+N_{\downarrow}\f$ and \f$2M=N_{\uparrow}-N_{\downarrow}\f$. Used in combination with KondoModel.*/
+	static const std::array<qarray<2>,4> qlocNM;
+	
+	/**Labels the conserved quantum numbers as \f$N_\uparrow\f$, \f$N_\downarrow\f$.*/
 	static const std::array<string,2> Nlabel;
 	
 	/**Real MpsQ for convenient reference (no need to specify D, Nq all the time).*/
-	typedef MpsQ<4,2,double>                           StateXd;
+	typedef MpsQ<2,double>                           StateXd;
 	/**Complex MpsQ for convenient reference (no need to specify D, Nq all the time).*/
-	typedef MpsQ<4,2,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<4,2,HubbardModel>              Solver;
-	typedef MpsQCompressor<4,2,double,double>          CompressorXd;
-	typedef MpsQCompressor<4,2,complex<double>,double> CompressorXcd;
-	typedef MpoQ<4,2>                                  Operator;
+	typedef MpsQ<2,complex<double> >                 StateXcd;
+	typedef DmrgSolverQ<2,HubbardModel>              Solver;
+	typedef MpsQCompressor<2,double,double>          CompressorXd;
+	typedef MpsQCompressor<2,complex<double>,double> CompressorXcd;
+	typedef MpoQ<2>                                  Operator;
 	
-	static MpoQ<4,2> Auger (size_t L, size_t loc);
-	static MpoQ<4,2> Aps (size_t L, size_t loc);
-	static MpoQ<4,2> annihilator (size_t L, size_t loc, SPIN_INDEX sigma);
-	static MpoQ<4,2> creator     (size_t L, size_t loc, SPIN_INDEX sigma);
-	static MpoQ<4,2> d (size_t L, size_t loc); // double occupancy
-	static MpoQ<4,2> n (size_t L, SPIN_INDEX sigma, size_t loc);
-	static MpoQ<4,2> triplon (size_t L, size_t loc, SPIN_INDEX sigma);
-	static MpoQ<4,2> antitriplon (size_t L, size_t loc, SPIN_INDEX sigma);
-	static MpoQ<4,2> quadruplon (size_t L, size_t loc);
+	static MpoQ<2> Auger (size_t L, size_t loc);
+	static MpoQ<2> Aps (size_t L, size_t loc);
+	static MpoQ<2> annihilator (size_t L, size_t loc, SPIN_INDEX sigma);
+	static MpoQ<2> creator     (size_t L, size_t loc, SPIN_INDEX sigma);
+	static MpoQ<2> d (size_t L, size_t loc); // double occupancy
+	static MpoQ<2> n (size_t L, SPIN_INDEX sigma, size_t loc);
+	static MpoQ<2> triplon (size_t L, size_t loc, SPIN_INDEX sigma);
+	static MpoQ<2> antitriplon (size_t L, size_t loc, SPIN_INDEX sigma);
+	static MpoQ<2> quadruplon (size_t L, size_t loc);
 	
 private:
 	
@@ -173,14 +204,15 @@ const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::Sp(SpHub_data);
 const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::Sz(SzHub_data);
 
 const std::array<qarray<2>,4> HubbardModel::qloc {qarray<2>{0,0}, qarray<2>{1,0}, qarray<2>{0,1}, qarray<2>{1,1}};
+const std::array<qarray<2>,4> HubbardModel::qlocNM {qarray<2>{0,0}, qarray<2>{1,1}, qarray<2>{1,-1}, qarray<2>{2,0}};
 const std::array<string,2>    HubbardModel::Nlabel{"N↑","N↓"};
 
-SuperMatrix<4> HubbardModel::
+SuperMatrix<double> HubbardModel::
 Generator (double U, double V)
 {
-	SuperMatrix<4> G;
+	SuperMatrix<double> G;
 	size_t Daux = (V==0.)? 6 : 7;
-	G.setMatrix(Daux);
+	G.setMatrix(Daux,4);
 	G.setZero();
 	
 	G(0,0).setIdentity();
@@ -205,7 +237,7 @@ Generator (double U, double V)
 
 HubbardModel::
 HubbardModel (size_t L_input, double U_input, double V_input, bool CALC_SQUARE)
-:MpoQ<4,2> (L_input, HubbardModel::qloc, {0,0}, HubbardModel::Nlabel, "HubbardModel"),
+:MpoQ<2> (L_input, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
 U(U_input), V(V_input)
 {
 	stringstream ss;
@@ -215,7 +247,7 @@ U(U_input), V(V_input)
 	this->Daux = (V==0.)? 6 : 7;
 	this->N_sv = this->Daux;
 	
-	SuperMatrix<4> G = Generator(U,V);
+	SuperMatrix<double> G = Generator(U,V);
 	this->construct(G, this->W, this->Gvec);
 	
 	if (CALC_SQUARE == true)
@@ -229,37 +261,38 @@ U(U_input), V(V_input)
 	}
 }
 
-MpoQ<4,2> HubbardModel::
+MpoQ<2> HubbardModel::
 Hsq()
 {
-	SuperMatrix<4> G = Generator(U,V);
-	MpoQ<4,2> Mout(this->N_sites, tensor_product(G,G), HubbardModel::qloc, {0,0}, HubbardModel::Nlabel, "HubbardModel H^2");
+	SuperMatrix<double> G = Generator(U,V);
+	MpoQ<2> Mout(this->N_sites, tensor_product(G,G), vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), 
+	             {0,0}, HubbardModel::Nlabel, "HubbardModel H^2");
 	return Mout;
 }
 
-MpoQ<4,2> HubbardModel::
+MpoQ<2> HubbardModel::
 Auger (size_t L, size_t loc)
 {
 	assert(loc<L);
 	stringstream ss;
 	ss << "Auger(" << loc << ")";
-	MpoQ<4,2> Mout(L, HubbardModel::qloc, {-1,-1}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-1,-1}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(loc, cUP*cDN);
 	return Mout;
 }
 
-MpoQ<4,2> HubbardModel::
+MpoQ<2> HubbardModel::
 Aps (size_t L, size_t loc)
 {
 	assert(loc<L);
 	stringstream ss;
 	ss << "Aps(" << loc << ")";
-	MpoQ<4,2> Mout(L, HubbardModel::qloc, {+1,+1}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {+1,+1}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(loc, cDN.transpose()*cUP.transpose());
 	return Mout;
 }
 
-MpoQ<4,2> HubbardModel::
+MpoQ<2> HubbardModel::
 annihilator (size_t L, size_t loc, SPIN_INDEX sigma)
 {
 	assert(loc<L);
@@ -267,27 +300,25 @@ annihilator (size_t L, size_t loc, SPIN_INDEX sigma)
 	ss << "c(" << loc << ",σ=" << sigma << ")";
 	qarray<2> qdiff;
 	(sigma==UP) ? qdiff = {-1,0} : qdiff = {0,-1};
-//	MpoQ<4,2> Mout(L, HubbardModel::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 	
-	vector<SuperMatrix<4> > M(L);
+	vector<SuperMatrix<double> > M(L);
 	for (size_t l=0; l<loc; ++l)
 	{
-		M[l].setMatrix(1);
+		M[l].setMatrix(1,4);
 		M[l](0,0) = fsign;
 	}
-	M[loc].setMatrix(1);
+	M[loc].setMatrix(1,4);
 	M[loc](0,0) = (sigma==UP)? cUP : cDN;
 	for (size_t l=loc+1; l<L; ++l)
 	{
-		M[l].setMatrix(1);
+		M[l].setMatrix(1,4);
 		M[l](0,0).setIdentity();
 	}
 	
-//	Mout.construct(M, Mout.W, Mout.Gvec);
-	return MpoQ<4,2>(L, M, HubbardModel::qloc, qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
 }
 
-MpoQ<4,2> HubbardModel::
+MpoQ<2> HubbardModel::
 creator (size_t L, size_t loc, SPIN_INDEX sigma)
 {
 	assert(loc<L);
@@ -295,28 +326,25 @@ creator (size_t L, size_t loc, SPIN_INDEX sigma)
 	ss << "c†(" << loc << ",σ=" << sigma << ")";
 	qarray<2> qdiff;
 	(sigma==UP) ? qdiff = {+1,0} : qdiff = {0,+1};
-//	MpoQ<4,2> Mout(L, HubbardModel::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 	
-	vector<SuperMatrix<4> > M(L);
+	vector<SuperMatrix<double> > M(L);
 	for (size_t l=0; l<loc; ++l)
 	{
-		M[l].setMatrix(1);
+		M[l].setMatrix(1,4);
 		M[l](0,0) = fsign;
 	}
-	M[loc].setMatrix(1);
+	M[loc].setMatrix(1,4);
 	M[loc](0,0) = (sigma==UP)? cUP.transpose() : cDN.transpose();
 	for (size_t l=loc+1; l<L; ++l)
 	{
-		M[l].setMatrix(1);
+		M[l].setMatrix(1,4);
 		M[l](0,0).setIdentity();
 	}
 	
-//	Mout.construct(M, Mout.W, Mout.Gvec);
-//	return Mout;
-	return MpoQ<4,2>(L, M, HubbardModel::qloc, qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
 }
 
-MpoQ<4,2> HubbardModel::
+MpoQ<2> HubbardModel::
 triplon (size_t L, size_t loc, SPIN_INDEX sigma)
 {
 	assert(loc<L);
@@ -324,32 +352,29 @@ triplon (size_t L, size_t loc, SPIN_INDEX sigma)
 	ss << "triplon(" << loc << ")" << "c(" << loc+1 << ",σ=" << sigma << ")";
 	qarray<2> qdiff;
 	(sigma==UP) ? qdiff = {-2,-1} : qdiff = {-1,-2};
-//	MpoQ<4,2> Mout(L, HubbardModel::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 	
-	vector<SuperMatrix<4> > M(L);
+	vector<SuperMatrix<double> > M(L);
 	for (size_t l=0; l<loc; ++l)
 	{
-		M[l].setMatrix(1);
+		M[l].setMatrix(1,4);
 		M[l](0,0) = fsign;
 	}
 	// c(loc,UP)*c(loc,DN)
-	M[loc].setMatrix(1);
+	M[loc].setMatrix(1,4);
 	M[loc](0,0) = cUP*cDN;
 	// c(loc+1,UP|DN)
-	M[loc+1].setMatrix(1);
+	M[loc+1].setMatrix(1,4);
 	M[loc+1](0,0) = (sigma==UP)? cUP : cDN;
 	for (size_t l=loc+2; l<L; ++l)
 	{
-		M[l].setMatrix(1);
+		M[l].setMatrix(1,4);
 		M[l](0,0).setIdentity();
 	}
 	
-//	Mout.construct(M, Mout.W, Mout.Gvec);
-//	return Mout;
-	return MpoQ<4,2>(L, M, HubbardModel::qloc, qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
 }
 
-MpoQ<4,2> HubbardModel::
+MpoQ<2> HubbardModel::
 antitriplon (size_t L, size_t loc, SPIN_INDEX sigma)
 {
 	assert(loc<L);
@@ -357,80 +382,74 @@ antitriplon (size_t L, size_t loc, SPIN_INDEX sigma)
 	ss << "antitriplon(" << loc << ")" << "c(" << loc+1 << ",σ=" << sigma << ")";
 	qarray<2> qdiff;
 	(sigma==UP) ? qdiff = {+2,+1} : qdiff = {+1,+2};
-//	MpoQ<4,2> Mout(L, HubbardModel::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 	
-	vector<SuperMatrix<4> > M(L);
+	vector<SuperMatrix<double> > M(L);
 	for (size_t l=0; l<loc; ++l)
 	{
-		M[l].setMatrix(1);
+		M[l].setMatrix(1,4);
 		M[l](0,0) = fsign;
 	}
 	// c†(loc,DN)*c†(loc,UP)
-	M[loc].setMatrix(1);
+	M[loc].setMatrix(1,4);
 	M[loc](0,0) = cDN.transpose()*cUP.transpose();
 	// c†(loc+1,UP|DN)
-	M[loc+1].setMatrix(1);
+	M[loc+1].setMatrix(1,4);
 	M[loc+1](0,0) = (sigma==UP)? cUP.transpose() : cDN.transpose();
 	for (size_t l=loc+2; l<L; ++l)
 	{
-		M[l].setMatrix(1);
+		M[l].setMatrix(1,4);
 		M[l](0,0).setIdentity();
 	}
 	
-//	Mout.construct(M, Mout.W, Mout.Gvec);
-//	return Mout;
-	return MpoQ<4,2>(L, M, HubbardModel::qloc, qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
 }
 
-MpoQ<4,2> HubbardModel::
+MpoQ<2> HubbardModel::
 quadruplon (size_t L, size_t loc)
 {
 	assert(loc<L);
 	stringstream ss;
-	ss << "quadruplon(" << loc << ")" << "Auger(" << loc+1 << ")";
-//	MpoQ<4,2> Mout(L, HubbardModel::qloc, {-2,-2}, HubbardModel::Nlabel, ss.str());
+	ss << "Auger(" << loc << ")" << "Auger(" << loc+1 << ")";
 	
-	vector<SuperMatrix<4> > M(L);
+	vector<SuperMatrix<double> > M(L);
 	for (size_t l=0; l<loc; ++l)
 	{
-		M[l].setMatrix(1);
+		M[l].setMatrix(1,4);
 		M[l](0,0).setIdentity();
 	}
 	// c(loc,UP)*c(loc,DN)
-	M[loc].setMatrix(1);
+	M[loc].setMatrix(1,4);
 	M[loc](0,0) = cUP*cDN;
 	// c(loc+1,UP)*c(loc+1,DN)
-	M[loc+1].setMatrix(1);
+	M[loc+1].setMatrix(1,4);
 	M[loc+1](0,0) = cUP*cDN;
 	for (size_t l=loc+2; l<L; ++l)
 	{
-		M[l].setMatrix(1);
+		M[l].setMatrix(1,4);
 		M[l](0,0).setIdentity();
 	}
 	
-//	Mout.construct(M, Mout.W, Mout.Gvec);
-//	return Mout;
-	return MpoQ<4,2>(L, M, HubbardModel::qloc, {-2,-2}, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-2,-2}, HubbardModel::Nlabel, ss.str());
 }
 
-MpoQ<4,2> HubbardModel::
+MpoQ<2> HubbardModel::
 d (size_t L, size_t loc)
 {
 	assert(loc<L);
 	stringstream ss;
 	ss << "double_occ(" << loc << ")";
-	MpoQ<4,2> Mout(L, HubbardModel::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(loc, HubbardModel::nUP_nDN);
 	return Mout;
 }
 
-MpoQ<4,2> HubbardModel::
+MpoQ<2> HubbardModel::
 n (size_t L, SPIN_INDEX sigma, size_t loc)
 {
 	assert(loc<L);
 	stringstream ss;
 	ss << "n(" << loc << ",σ=" << sigma << ")";
-	MpoQ<4,2> Mout(L, HubbardModel::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
 	(sigma==UP)? Mout.setLocal(loc, HubbardModel::cUP.transpose()*HubbardModel::cUP):
 	             Mout.setLocal(loc, HubbardModel::cDN.transpose()*HubbardModel::cDN);
 	return Mout;

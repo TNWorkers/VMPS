@@ -11,23 +11,23 @@
 /**Calculates the scalar product \f$\left<\Psi_{bra}|\Psi_{ket}\right>\f$.
 \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
 \param Vket : input \f$\left|\Psi_{ket}\right>\f$*/
-template<size_t D, size_t Nq, typename Scalar>
-Scalar dot (const MpsQ<D,Nq,Scalar> &Vbra, const MpsQ<D,Nq,Scalar> &Vket)
+template<size_t Nq, typename Scalar>
+Scalar dot (const MpsQ<Nq,Scalar> &Vbra, const MpsQ<Nq,Scalar> &Vket)
 {
 	return Vbra.dot(Vket);
 }
 
 /**Swaps two MpsQ.*/
-template<size_t D, size_t Nq, typename Scalar> 
-void swap (MpsQ<D,Nq,Scalar> &V1, MpsQ<D,Nq,Scalar> &V2)
+template<size_t Nq, typename Scalar> 
+void swap (MpsQ<Nq,Scalar> &V1, MpsQ<Nq,Scalar> &V2)
 {
 	V1.swap(V2);
 }
 
-//template<size_t D, size_t Nq, typename Scalar>
-//Scalar avg_ (const MpsQ<D,Nq,Scalar> &Vbra, 
+//template<size_t Nq, typename Scalar>
+//Scalar avg_ (const MpsQ<Nq,Scalar> &Vbra, 
 //             const MpoQ<D,Nq> &O, 
-//             const MpsQ<D,Nq,Scalar> &Vket, 
+//             const MpsQ<Nq,Scalar> &Vket, 
 //             bool USE_SQUARE = false, 
 //             DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::RIGHT)
 //{
@@ -87,10 +87,10 @@ void swap (MpsQ<D,Nq,Scalar> &V1, MpsQ<D,Nq,Scalar> &V2)
 \param USE_SQUARE : If \p true, uses the square of \p O stored in \p O itself. Call MpoQ::check_SQUARE() first to see whether it was calculated.
 \param DIR : whether to contract going left or right (should obviously make no difference, useful for testing purposes)
 */
-template<size_t D, size_t Nq, typename MpoScalar, typename Scalar>
-Scalar avg (const MpsQ<D,Nq,Scalar> &Vbra, 
-            const MpoQ<D,Nq,MpoScalar> &O, 
-            const MpsQ<D,Nq,Scalar> &Vket, 
+template<size_t Nq, typename MpoScalar, typename Scalar>
+Scalar avg (const MpsQ<Nq,Scalar> &Vbra, 
+            const MpoQ<Nq,MpoScalar> &O, 
+            const MpsQ<Nq,Scalar> &Vket, 
             bool USE_SQUARE = false, 
             DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::RIGHT)
 {
@@ -104,11 +104,11 @@ Scalar avg (const MpsQ<D,Nq,Scalar> &Vbra,
 		{
 			if (USE_SQUARE == true)
 			{
-				contract_L(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(), Bnext);
+				contract_L(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), Bnext);
 			}
 			else
 			{
-				contract_L(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(), Bnext);
+				contract_L(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(l), Bnext);
 			}
 			B.clear();
 			B = Bnext;
@@ -123,11 +123,11 @@ Scalar avg (const MpsQ<D,Nq,Scalar> &Vbra,
 		{
 			if (USE_SQUARE == true)
 			{
-				contract_R(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(), Bnext);
+				contract_R(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), Bnext);
 			}
 			else
 			{
-				contract_R(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(), Bnext);
+				contract_R(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(l), Bnext);
 			}
 			B.clear();
 			B = Bnext;
@@ -211,19 +211,19 @@ Only a left-to-right contraction is implemented.
 \param O2 : input MpoQ
 \param Vket : input \f$\left|\Psi_{ket}\right>\f$
 */
-template<size_t D, size_t Nq, typename MpoScalar, typename Scalar>
-Scalar avg (const MpsQ<D,Nq,Scalar> &Vbra, 
-            const MpoQ<D,Nq,MpoScalar> &O1,
-            const MpoQ<D,Nq,MpoScalar> &O2, 
-            const MpsQ<D,Nq,Scalar> &Vket)
+template<size_t Nq, typename MpoScalar, typename Scalar>
+Scalar avg (const MpsQ<Nq,Scalar> &Vbra, 
+            const MpoQ<Nq,MpoScalar> &O1,
+            const MpoQ<Nq,MpoScalar> &O2, 
+            const MpsQ<Nq,Scalar> &Vket)
 {
 	Multipede<4,Nq,Matrix<Scalar,Dynamic,Dynamic> > B;
 	Multipede<4,Nq,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	
 	B.setVacuum();
-	for (size_t l=1; l<O2.length()+1; ++l)
+	for (size_t l=0; l<O2.length(); ++l)
 	{
-		contract_L(B, Vbra.A_at(l-1), O1.W_at(l-1), O2.W_at(l-1), Vket.A_at(l-1), O2.locBasis(), Bnext);
+		contract_L(B, Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), O2.locBasis(l), Bnext);
 		B.clear();
 		B = Bnext;
 		Bnext.clear();
@@ -248,12 +248,12 @@ Scalar avg (const MpsQ<D,Nq,Scalar> &Vbra,
 \param H : input Hamiltonian
 \param Vin : input \f$\left|\Psi_{in}\right>\f$
 \param Vout : output \f$\left|\Psi_{out}\right>\f$*/
-template<size_t D, size_t Nq, typename MpoScalar, typename Scalar>
-void HxV (const MpoQ<D,Nq,MpoScalar> &H, const MpsQ<D,Nq,Scalar> &Vin, MpsQ<D,Nq,Scalar> &Vout)
+template<size_t Nq, typename MpoScalar, typename Scalar>
+void HxV (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
 {
 	Stopwatch Chronos;
 	
-	MpsQCompressor<D,Nq,Scalar,MpoScalar> Compadre(DMRG::VERBOSITY::STEPWISE);
+	MpsQCompressor<Nq,Scalar,MpoScalar> Compadre(DMRG::VERBOSITY::STEPWISE);
 	Compadre.varCompress(H,Vin, Vout, Vin.calc_Dmax(), 1e-8);
 	lout << Compadre.info() << endl;
 	
@@ -266,33 +266,33 @@ void HxV (const MpoQ<D,Nq,MpoScalar> &H, const MpsQ<D,Nq,Scalar> &Vin, MpsQ<D,Nq
 \param Vin1 : input MpsQ \f$\left|T_{n-1}\right>\f$
 \param Vin2 : input MpsQ \f$\left|T_{n-2}\right>\f$
 \param Vout : output MpsQ \f$\left|T_{n}\right>\f$*/
-template<size_t D, size_t Nq, typename MpoScalar, typename Scalar>
-void chebIter (const MpoQ<D,Nq,MpoScalar> &H, const MpsQ<D,Nq,Scalar> &Vin1, const MpsQ<D,Nq,Scalar> &Vin2, MpsQ<D,Nq,Scalar> &Vout)
+template<size_t Nq, typename MpoScalar, typename Scalar>
+void chebIter (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout)
 {
 	Stopwatch Chronos;
-	MpsQCompressor<D,Nq,Scalar,MpoScalar> Compadre(DMRG::VERBOSITY::STEPWISE);
+	MpsQCompressor<Nq,Scalar,MpoScalar> Compadre(DMRG::VERBOSITY::STEPWISE);
 	Compadre.chebCompress(H,Vin1,Vin2, Vout, Vin1.calc_Dmax());
 	lout << Compadre.info() << endl;
 	lout << Chronos.info("chebIter") << endl;
 	lout << "Vout: " << Vout.info() << endl << endl;
 }
 
-template<size_t D, size_t Nq, typename MpoScalar, typename Scalar>
-void HxV (const MpoQ<D,Nq,MpoScalar> &H, MpsQ<D,Nq,Scalar> &Vinout)
+template<size_t Nq, typename MpoScalar, typename Scalar>
+void HxV (const MpoQ<Nq,MpoScalar> &H, MpsQ<Nq,Scalar> &Vinout)
 {
-	MpsQ<D,Nq,Scalar> Vtmp;
+	MpsQ<Nq,Scalar> Vtmp;
 	HxV(H,Vinout,Vtmp);
 	Vinout = Vtmp;
 }
 
-template<size_t D, size_t Nq, typename Scalar, typename OtherScalar>
-void addScale (const OtherScalar alpha, const MpsQ<D,Nq,Scalar> &Vin, MpsQ<D,Nq,Scalar> &Vout)
+template<size_t Nq, typename Scalar, typename OtherScalar>
+void addScale (const OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
 {
 	Stopwatch Chronos;
 	
-	MpsQCompressor<D,Nq,Scalar,OtherScalar> Compadre;
+	MpsQCompressor<Nq,Scalar,OtherScalar> Compadre;
 	size_t Dstart = Vout.calc_Dmax();
-	MpsQ<D,Nq,Scalar> Vtmp = Vout;
+	MpsQ<Nq,Scalar> Vtmp = Vout;
 	Vtmp.addScale(alpha,Vin,true);
 	Compadre.varCompress(Vtmp, Vout, Dstart, 1e-3);
 	
@@ -301,56 +301,56 @@ void addScale (const OtherScalar alpha, const MpsQ<D,Nq,Scalar> &Vin, MpsQ<D,Nq,
 	lout << "Vout: " << Vout.info() << endl << endl;
 }
 
-template<size_t D, size_t Nq, typename MpoScalar, typename Scalar>
-void OxV (const MpoQ<D,Nq,MpoScalar> &O, const MpsQ<D,Nq,Scalar> &Vin, MpsQ<D,Nq,Scalar> &Vout, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD)
+template<size_t Nq, typename MpoScalar, typename Scalar>
+void OxV (const MpoQ<Nq,MpoScalar> &O, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD)
 {
-	std::array<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> C;
-	std::array<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> Cnext;
-	
-	if (TOOL == DMRG::BROOM::QR)
-	{
-		assert(O.Qtarget() == qvacuum<Nq>() and 
-		       "Need a qnumber-conserving operator in OxV for QR option!");
-		Vout = Vin;
-	}
-	else
-	{
-		Vout.outerResize(O, Vin.Qtarget()+O.Qtarget());
-	}
-	
-	contract_C0(O.locBasis(), O.W_at(0), Vin.A[0], C);
-	Vout.set_A_from_C(0,C,TOOL);
-	
-	for (size_t l=1; l<Vin.length(); ++l)
-	{
-		contract_C(O.locBasis(), Vout.A[l-1], O.W_at(l), Vin.A[l], C, Cnext);
-		
-		for (size_t s1=0; s1<D; ++s1)
-		{
-			C[s1].clear();
-			C[s1] = Cnext[s1];
-			Cnext[s1].clear();
-		}
-		
-		Vout.set_A_from_C(l,C,TOOL);
-	}
-	
-	Vout.mend();
-	Vout.pivot = Vout.length()-1;
+//	std::array<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> C;
+//	std::array<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> Cnext;
+//	
+//	if (TOOL == DMRG::BROOM::QR)
+//	{
+//		assert(O.Qtarget() == qvacuum<Nq>() and 
+//		       "Need a qnumber-conserving operator in OxV for QR option!");
+//		Vout = Vin;
+//	}
+//	else
+//	{
+//		Vout.outerResize(O, Vin.Qtarget()+O.Qtarget());
+//	}
+//	
+//	contract_C0(O.locBasis(0), O.W_at(0), Vin.A[0], C);
+//	Vout.set_A_from_C(0,C,TOOL);
+//	
+//	for (size_t l=1; l<Vin.length(); ++l)
+//	{
+//		contract_C(O.locBasis(l), Vout.A[l-1], O.W_at(l), Vin.A[l], C, Cnext);
+//		
+//		for (size_t s1=0; s1<D; ++s1)
+//		{
+//			C[s1].clear();
+//			C[s1] = Cnext[s1];
+//			Cnext[s1].clear();
+//		}
+//		
+//		Vout.set_A_from_C(l,C,TOOL);
+//	}
+//	
+//	Vout.mend();
+//	Vout.pivot = Vout.length()-1;
 }
 
-template<size_t D, size_t Nq, typename MpoScalar, typename Scalar>
-void OxV (const MpoQ<D,Nq,MpoScalar> &O, MpsQ<D,Nq,Scalar> &Vinout)
+template<size_t Nq, typename MpoScalar, typename Scalar>
+void OxV (const MpoQ<Nq,MpoScalar> &O, MpsQ<Nq,Scalar> &Vinout)
 {
-	MpsQ<D,Nq,Scalar> Vtmp;
+	MpsQ<Nq,Scalar> Vtmp;
 	OxV(O,Vinout,Vtmp);
 	Vinout = Vtmp;
 }
 
-//template<size_t D, size_t Nq, typename Scalar>
-//void OxV_exact (const MpoQ<D,Nq> &O, const MpsQ<D,Nq,Scalar> &Vin, MpsQ<D,Nq,Scalar> &Vout)
+//template<size_t Nq, typename Scalar>
+//void OxV_exact (const MpoQ<D,Nq> &O, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
 //{
-//	Vout = MpsQ<D,Nq,Scalar>(Vin.length(), 1, Vin.locbasis(), Vout.Qtarget()+O.Qtarget());
+//	Vout = MpsQ<Nq,Scalar>(Vin.length(), 1, Vin.locbasis(), Vout.Qtarget()+O.Qtarget());
 //	
 //	for (size_t s1=0; s1<D; ++s1)
 //	for (size_t s2=0; s2<D; ++s2)

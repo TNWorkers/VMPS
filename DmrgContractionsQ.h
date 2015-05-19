@@ -7,22 +7,26 @@
 
 /**Contracts a left transfer matrix \p Lold with two MpsQ tensors \p Abra, \p Aket and an MpoQ tensor \p W as follows:
 \dotfile contractQ_L.dot
+\param Lold
+\param Abra
+\param W
+\param Aket
 \param qloc : local basis
 \param Lnew : new transfer matrix to be written to
 */
-template<size_t D, size_t Nq, typename MatrixType, typename MpoScalar>
+template<size_t Nq, typename MatrixType, typename MpoScalar>
 void contract_L (const Tripod<Nq,MatrixType> &Lold, 
-                 const std::array<Biped<Nq,MatrixType>,D> &Abra, 
-                 const std::array<std::array<SparseMatrix<MpoScalar>,D>,D> &W, 
-                 const std::array<Biped<Nq,MatrixType>,D> &Aket, 
-                 const std::array<qarray<Nq>,D> &qloc, 
+                 const vector<Biped<Nq,MatrixType> > &Abra, 
+                 const vector<vector<SparseMatrix<MpoScalar> > > &W, 
+                 const vector<Biped<Nq,MatrixType> > &Aket, 
+                 const vector<qarray<Nq> > &qloc, 
                  Tripod<Nq,MatrixType> &Lnew)
 {
 	Lnew.clear();
 	Lnew.setZero();
 	
-	for (size_t s1=0; s1<D; ++s1)
-	for (size_t s2=0; s2<D; ++s2)
+	for (size_t s1=0; s1<qloc.size(); ++s1)
+	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t qL=0; qL<Lold.dim; ++qL)
 	{
 		tuple<qarray3<Nq>,size_t,size_t> ix;
@@ -75,22 +79,26 @@ void contract_L (const Tripod<Nq,MatrixType> &Lold,
 
 /**Contracts a right transfer matrix \p Rold with two MpsQ tensors \p Abra, \p Aket and an MpoQ tensor \p W as follows:
 \dotfile contractQ_R.dot
+\param Rold
+\param Abra
+\param W
+\param Aket
 \param qloc : local basis
 \param Rnew : new transfer matrix to be written to
 */
-template<size_t D, size_t Nq, typename MatrixType, typename MpoScalar>
+template<size_t Nq, typename MatrixType, typename MpoScalar>
 void contract_R (const Tripod<Nq,MatrixType> &Rold,
-                 const std::array<Biped<Nq,MatrixType>,D> &Abra, 
-                 const std::array<std::array<SparseMatrix<MpoScalar>,D>,D> &W, 
-                 const std::array<Biped<Nq,MatrixType>,D> &Aket, 
-                 const std::array<qarray<Nq>,D> &qloc, 
+                 const vector<Biped<Nq,MatrixType> > &Abra, 
+                 const vector<vector<SparseMatrix<MpoScalar> > > &W, 
+                 const vector<Biped<Nq,MatrixType> > &Aket, 
+                 const vector<qarray<Nq> > &qloc, 
                  Tripod<Nq,MatrixType> &Rnew)
 {
 	Rnew.clear();
 	Rnew.setZero();
 	
-	for (size_t s1=0; s1<D; ++s1)
-	for (size_t s2=0; s2<D; ++s2)
+	for (size_t s1=0; s1<qloc.size(); ++s1)
+	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t qR=0; qR<Rold.dim; ++qR)
 	{
 		qarray2<Nq> cmp1 = {Rold.out(qR)-qloc[s1], Rold.out(qR)};
@@ -146,19 +154,25 @@ void contract_R (const Tripod<Nq,MatrixType> &Rold,
 }
 
 /**Calculates the contraction between a left transfer matrix \p L, two MpsQ tensors \p Abra, \p Aket, an MpoQ tensor \p W and a right transfer matrix \p R. Not really that much useful.
+\param L
+\param Abra
+\param W
+\param Aket
+\param R
+\param qloc : local basis
 \returns : result of contraction*/
-template<size_t D, size_t Nq, typename Scalar>
+template<size_t Nq, typename Scalar>
 Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
-                    const std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> &Abra, 
-                    const std::array<std::array<SparseMatrixXd,D>,D> &W, 
-                    const std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> &Aket, 
+                    const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                    const vector<vector<SparseMatrixXd> > &W, 
+                    const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
                     const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &R, 
-                    const std::array<qarray<Nq>,D> &qloc)
+                    const vector<qarray<Nq> > &qloc)
 {
 	Scalar res = 0.;
 	
-	for (size_t s1=0; s1<D; ++s1)
-	for (size_t s2=0; s2<D; ++s2)
+	for (size_t s1=0; s1<qloc.size(); ++s1)
+	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t qL=0; qL<L.dim; ++qL)
 	{
 		tuple<qarray3<Nq>,size_t,size_t> ix;
@@ -206,7 +220,7 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 	return res;
 }
 
-//template<size_t D, size_t Nq, typename MatrixType>
+//template<size_t Nq, typename MatrixType>
 //void contract_LR (const Tripod<Nq,MatrixType> &L,
 //                  const Tripod<Nq,MatrixType> &R, 
 //                  const std::array<qarray<Nq>,D> &qloc, 
@@ -262,11 +276,11 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 //	}
 //}
 
-//template<size_t D, size_t Nq, typename MatrixType>
+//template<size_t Nq, typename MatrixType>
 //void dryContract_L (const Tripod<Nq,MatrixType> &Lold, 
-//                    const std::array<Biped<Nq,MatrixType>,D> &Abra, 
+//                    const vector<Biped<Nq,MatrixType> > &Abra, 
 //                    const std::array<std::array<Biped<Nq,SparseMatrixXd>,D>,D> &W, 
-//                    const std::array<Biped<Nq,MatrixType>,D> &Aket, 
+//                    const vector<Biped<Nq,MatrixType> > &Aket, 
 //                    const std::array<qarray<Nq>,D> &qloc, 
 //                    Tripod<Nq,MatrixType> &Lnew, 
 //                    vector<tuple<qarray3<Nq>,std::array<size_t,8> > > &ix)
@@ -329,12 +343,12 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 //	}
 //}
 
-//template<size_t D, size_t Nq, typename MatrixType>
+//template<size_t Nq, typename MatrixType>
 //void contract_L (const Tripod<Nq,MatrixType> &Lold, 
 //                 const vector<tuple<qarray3<Nq>,std::array<size_t,8> > > ix, 
-//                 const std::array<Biped<Nq,MatrixType>,D> &Abra, 
+//                 const vector<Biped<Nq,MatrixType> > &Abra, 
 //                 const std::array<std::array<Biped<Nq,SparseMatrixXd>,D>,D> &W, 
-//                 const std::array<Biped<Nq,MatrixType>,D> &Aket, 
+//                 const vector<Biped<Nq,MatrixType> > &Aket, 
 //                 const std::array<qarray<Nq>,D> &qloc, 
 //                 Tripod<Nq,MatrixType> &Lnew)
 //{
@@ -391,20 +405,20 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 
 /**Calculates the contraction between a left transfer matrix \p Lold, two MpsQ tensors \p Abra, \p Aket and two MpoQ tensors \p Wbot, \p Wtop.
 Needed, for example, when calculating \f$\left<H^2\right>\f$ and no MpoQ represenation of \f$H^2\f$ is available.*/
-template<size_t D, size_t Nq, typename MatrixType, typename MpoScalar>
+template<size_t Nq, typename MatrixType, typename MpoScalar>
 void contract_L (const Multipede<4,Nq,MatrixType> &Lold, 
-                 const std::array<Biped<Nq,MatrixType>,D> &Abra, 
-                 const std::array<std::array<SparseMatrix<MpoScalar>,D>,D> &Wbot, 
-                 const std::array<std::array<SparseMatrix<MpoScalar>,D>,D> &Wtop, 
-                 const std::array<Biped<Nq,MatrixType>,D> &Aket, 
-                 const std::array<qarray<Nq>,D> &qloc,
+                 const vector<Biped<Nq,MatrixType> > &Abra, 
+                 const vector<vector<SparseMatrix<MpoScalar> > > &Wbot, 
+                 const vector<vector<SparseMatrix<MpoScalar> > > &Wtop, 
+                 const vector<Biped<Nq,MatrixType> > &Aket, 
+                 const vector<qarray<Nq> > &qloc,
                  Multipede<4,Nq,MatrixType> &Lnew)
 {
 	Lnew.setZero();
 	
-	for (size_t s1=0; s1<D; ++s1)
-	for (size_t s2=0; s2<D; ++s2)
-	for (size_t s3=0; s3<D; ++s3)
+	for (size_t s1=0; s1<qloc.size(); ++s1)
+	for (size_t s2=0; s2<qloc.size(); ++s2)
+	for (size_t s3=0; s3<qloc.size(); ++s3)
 	for (size_t qL=0; qL<Lold.dim; ++qL)
 	{
 		tuple<qarray4<Nq>,size_t,size_t> ix;
@@ -464,20 +478,20 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 	}
 }
 
-template<size_t D, size_t Nq, typename MatrixType>
-void contract_C0 (std::array<qarray<Nq>,D> qloc,
-                 const std::array<std::array<SparseMatrixXd,D>,D> &W, 
-                 const std::array<Biped<Nq,MatrixType>,D> &Aket, 
-                 std::array<Tripod<Nq,MatrixType>,D> &Cnext)
+template<size_t Nq, typename MatrixType>
+void contract_C0 (vector<qarray<Nq> > qloc,
+                  const vector<vector<SparseMatrixXd> > &W, 
+                  const vector<Biped<Nq,MatrixType> > &Aket, 
+                  vector<Tripod<Nq,MatrixType> > &Cnext)
 {
-	for (size_t s2=0; s2<D; ++s2)
+	for (size_t s2=0; s2<qloc.size(); ++s2)
 	{
 		qarray2<Nq> cmpA = {qvacuum<Nq>(), qvacuum<Nq>()+qloc[s2]};
 		auto qA = Aket[s2].dict.find(cmpA);
 		
 		if (qA != Aket[s2].dict.end())
 		{
-			for (size_t s1=0; s1<D; ++s1)
+			for (size_t s1=0; s1<qloc.size(); ++s1)
 			{
 				for (int k=0; k<W[s1][s2].outerSize(); ++k)
 				for (SparseMatrixXd::InnerIterator iW(W[s1][s2],k); iW; ++iW)
@@ -512,15 +526,15 @@ void contract_C0 (std::array<qarray<Nq>,D> qloc,
 
 /**For details see: Stoudenmire, White (2010)
 \dotfile contract_C.dot*/
-template<size_t D, size_t Nq, typename MatrixType>
-void contract_C (std::array<qarray<Nq>,D> qloc,
-                 const std::array<Biped<Nq,MatrixType>,D> &Abra, 
-                 const std::array<std::array<SparseMatrixXd,D>,D> &W, 
-                 const std::array<Biped<Nq,MatrixType>,D> &Aket, 
-                 const std::array<Tripod<Nq,MatrixType>,D> &C, 
-                 std::array<Tripod<Nq,MatrixType>,D> &Cnext)
+template<size_t Nq, typename MatrixType>
+void contract_C (vector<qarray<Nq> > qloc,
+                 const vector<Biped<Nq,MatrixType> > &Abra, 
+                 const vector<vector<SparseMatrixXd> > &W, 
+                 const vector<Biped<Nq,MatrixType> > &Aket, 
+                 const vector<Tripod<Nq,MatrixType> > &C, 
+                 vector<Tripod<Nq,MatrixType> > &Cnext)
 {
-	for (size_t s=0; s<D; ++s)
+	for (size_t s=0; s<qloc.size(); ++s)
 	for (size_t qC=0; qC<C[s].dim; ++qC)
 	{
 		qarray2<Nq> cmpU = {C[s].in(qC), C[s].in(qC)+qloc[s]};
@@ -528,8 +542,8 @@ void contract_C (std::array<qarray<Nq>,D> qloc,
 		
 		if (qU != Abra[s].dict.end())
 		{
-			for (size_t s1=0; s1<D; ++s1)
-			for (size_t s2=0; s2<D; ++s2)
+			for (size_t s1=0; s1<qloc.size(); ++s1)
+			for (size_t s2=0; s2<qloc.size(); ++s2)
 			{
 				qarray2<Nq> cmpA = {C[s].out(qC), C[s].out(qC)+qloc[s2]};
 				auto qA = Aket[s2].dict.find(cmpA);

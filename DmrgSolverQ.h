@@ -8,7 +8,7 @@
 #include "DmrgLinearAlgebraQ.h"
 #include "LanczosSolver.h"
 
-template<size_t D, size_t Nq, typename MpHamiltonian>
+template<size_t Nq, typename MpHamiltonian>
 class DmrgSolverQ
 {
 public:
@@ -22,7 +22,7 @@ public:
 	double memory   (MEMUNIT memunit=GB) const;
 	double overhead (MEMUNIT memunit=MB) const;
 	
-	void edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<D,Nq,double> > &Vout, qarray<Nq> Qtot_input, size_t Dinit=5, 
+	void edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> Qtot_input, size_t Dinit=5, 
 	                LANCZOS::EDGE::OPTION EDGE=LANCZOS::EDGE::GROUND,
 	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::NORM_TEST,
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-5, size_t max_halfsweeps=42, size_t min_halfsweeps=6);
@@ -38,39 +38,39 @@ private:
 	double tol_eigval, tol_state;
 	double totalTruncWeight;
 	
-	vector<PivotMatrixQ<D,Nq,double> > Heff;
+	vector<PivotMatrixQ<Nq,double> > Heff;
 	
 	int pivot;
 	DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
 	
-	void LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<D,Nq,double> > &Vout, LANCZOS::EDGE::OPTION EDGE);
-	void sweepStep (const MpHamiltonian &H, Eigenstate<MpsQ<D,Nq,double> > &Vout);
+	void LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, LANCZOS::EDGE::OPTION EDGE);
+	void sweepStep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout);
 	
 	/**Constructs the left transfer matrix at chain site \p loc (left environment of \p loc).*/
-	void build_L (const MpHamiltonian &H, const Eigenstate<MpsQ<D,Nq,double> > &Vout, size_t loc);
+	void build_L (const MpHamiltonian &H, const Eigenstate<MpsQ<Nq,double> > &Vout, size_t loc);
 	/**Constructs the right transfer matrix at chain site \p loc (right environment of \p loc).*/
-	void build_R (const MpHamiltonian &H, const Eigenstate<MpsQ<D,Nq,double> > &Vout, size_t loc);
+	void build_R (const MpHamiltonian &H, const Eigenstate<MpsQ<Nq,double> > &Vout, size_t loc);
 	
 	DMRG::VERBOSITY::OPTION   CHOSEN_VERBOSITY;
 	LANCZOS::CONVTEST::OPTION CHOSEN_CONVTEST;
 };
 
-template<size_t D, size_t Nq, typename MpHamiltonian>
-string DmrgSolverQ<D,Nq,MpHamiltonian>::
+template<size_t Nq, typename MpHamiltonian>
+string DmrgSolverQ<Nq,MpHamiltonian>::
 info() const
 {
 	stringstream ss;
 	ss << "DmrgSolverQ: ";
 	ss << "L=" << N_sites << ", ";
-	ss << "D=" << D << ", ";
+//	ss << "D=" << D << ", ";
 	ss << "Mmax=" << Mmax << ", Dmax=" << Dmax << ", " << "Nqmax=" << Nqmax << ", ";
 	ss << "trunc_weight=" << totalTruncWeight << ", ";
 	ss << eigeninfo();
 	return ss.str();
 }
 
-template<size_t D, size_t Nq, typename MpHamiltonian>
-string DmrgSolverQ<D,Nq,MpHamiltonian>::
+template<size_t Nq, typename MpHamiltonian>
+string DmrgSolverQ<Nq,MpHamiltonian>::
 eigeninfo() const
 {
 	stringstream ss;
@@ -90,8 +90,8 @@ eigeninfo() const
 	return ss.str();
 }
 
-template<size_t D, size_t Nq, typename MpHamiltonian>
-double DmrgSolverQ<D,Nq,MpHamiltonian>::
+template<size_t Nq, typename MpHamiltonian>
+double DmrgSolverQ<Nq,MpHamiltonian>::
 memory (MEMUNIT memunit) const
 {
 	double res = 0.;
@@ -99,8 +99,8 @@ memory (MEMUNIT memunit) const
 	{
 		res += Heff[l].L.memory(memunit);
 		res += Heff[l].R.memory(memunit);
-		for (size_t s1=0; s1<D; ++s1)
-		for (size_t s2=0; s2<D; ++s2)
+		for (size_t s1=0; s1<Heff[l].W.size(); ++s1)
+		for (size_t s2=0; s2<Heff[l].W[s1].size(); ++s2)
 		{
 			res += calc_memory(Heff[l].W[s1][s2],memunit);
 		}
@@ -108,8 +108,8 @@ memory (MEMUNIT memunit) const
 	return res;
 }
 
-template<size_t D, size_t Nq, typename MpHamiltonian>
-double DmrgSolverQ<D,Nq,MpHamiltonian>::
+template<size_t Nq, typename MpHamiltonian>
+double DmrgSolverQ<Nq,MpHamiltonian>::
 overhead (MEMUNIT memunit) const
 {
 	double res = 0.;
@@ -123,9 +123,9 @@ overhead (MEMUNIT memunit) const
 	return res;
 }
 
-template<size_t D, size_t Nq, typename MpHamiltonian>
-void DmrgSolverQ<D,Nq,MpHamiltonian>::
-edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<D,Nq,double> > &Vout, qarray<Nq> Qtot_input, size_t Dinit, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t max_halfsweeps, size_t min_halfsweeps)
+template<size_t Nq, typename MpHamiltonian>
+void DmrgSolverQ<Nq,MpHamiltonian>::
+edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> Qtot_input, size_t Dinit, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t max_halfsweeps, size_t min_halfsweeps)
 {
 	tol_eigval = tol_eigval_input;
 	tol_state  = tol_state_input;
@@ -133,7 +133,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<D,Nq,double> > &Vout, qarray<
 	N_sweepsteps = N_halfsweeps = 0;
 	
 	Stopwatch Aion;
-	Vout.state = MpsQ<D,Nq,double>(H, Dinit, Qtot_input);
+	Vout.state = MpsQ<Nq,double>(H, Dinit, Qtot_input);
 	Vout.state.setRandom();
 	
 	// set edges
@@ -185,7 +185,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<D,Nq,double> > &Vout, qarray<
 	print_eps();
 	
 	double Eold = numeric_limits<double>::quiet_NaN();
-	MpsQ<D,Nq,double> Vref;
+	MpsQ<Nq,double> Vref;
 	if (TEST == LANCZOS::CONVTEST::NORM_TEST or
 	    TEST == LANCZOS::CONVTEST::COEFFWISE)
 	{
@@ -369,37 +369,37 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<D,Nq,double> > &Vout, qarray<
 	}
 }
 
-template<size_t D, size_t Nq, typename MpHamiltonian>
-void DmrgSolverQ<D,Nq,MpHamiltonian>::
-sweepStep (const MpHamiltonian &H, Eigenstate<MpsQ<D,Nq,double> > &Vout)
+template<size_t Nq, typename MpHamiltonian>
+void DmrgSolverQ<Nq,MpHamiltonian>::
+sweepStep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout)
 {
 //	Vout.state.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::RDM, &Heff[pivot]);
 	Vout.state.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::RICH_SVD, &Heff[pivot]);
 	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++pivot) : build_R(H,Vout,--pivot);
 }
 
-template<size_t D, size_t Nq, typename MpHamiltonian>
-void DmrgSolverQ<D,Nq,MpHamiltonian>::
-LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<D,Nq,double> > &Vout, LANCZOS::EDGE::OPTION EDGE)
+template<size_t Nq, typename MpHamiltonian>
+void DmrgSolverQ<Nq,MpHamiltonian>::
+LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, LANCZOS::EDGE::OPTION EDGE)
 {
 	if (Heff[pivot].dim == 0)
 	{
 		Heff[pivot].W = H.W[pivot];
 		precalc_blockStructure (Heff[pivot].L, Vout.state.A[pivot], Heff[pivot].W, Vout.state.A[pivot], Heff[pivot].R, 
-		                        H.locBasis(), Heff[pivot].qlhs, Heff[pivot].qrhs);
+		                        H.locBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs);
 	}
 	
 	// reset dim
 	Heff[pivot].dim = 0;
-	for (size_t s=0; s<D; ++s)
+	for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
 	for (size_t q=0; q<Vout.state.A[pivot][s].dim; ++q)
 	{
 		Heff[pivot].dim += Vout.state.A[pivot][s].block[q].rows() * Vout.state.A[pivot][s].block[q].cols();
 	}
 	
-	Eigenstate<PivotVectorQ<D,Nq,double> > g;
+	Eigenstate<PivotVectorQ<Nq,double> > g;
 	g.state.A = Vout.state.A[pivot];
-	LanczosSolver<PivotMatrixQ<D,Nq,double>,PivotVectorQ<D,Nq,double>,double> Lutz(LANCZOS::REORTHO::FULL);
+	LanczosSolver<PivotMatrixQ<Nq,double>,PivotVectorQ<Nq,double>,double> Lutz(LANCZOS::REORTHO::FULL);
 	
 	Lutz.set_dimK(min(30ul, Heff[pivot].dim));
 //	Lutz.edgeState(Heff[pivot],g, EDGE, tol_eigval,tol_state, false);
@@ -416,18 +416,18 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<D,Nq,double> > &Vout, LANCZ
 }
 
 
-template<size_t D, size_t Nq, typename MpHamiltonian>
-inline void DmrgSolverQ<D,Nq,MpHamiltonian>::
-build_L (const MpHamiltonian &H, const Eigenstate<MpsQ<D,Nq,double> > &Vout, size_t loc)
+template<size_t Nq, typename MpHamiltonian>
+inline void DmrgSolverQ<Nq,MpHamiltonian>::
+build_L (const MpHamiltonian &H, const Eigenstate<MpsQ<Nq,double> > &Vout, size_t loc)
 {
-	contract_L(Heff[loc-1].L, Vout.state.A[loc-1], H.W[loc-1], Vout.state.A[loc-1], H.locBasis(), Heff[loc].L);
+	contract_L(Heff[loc-1].L, Vout.state.A[loc-1], H.W[loc-1], Vout.state.A[loc-1], H.locBasis(loc-1), Heff[loc].L);
 }
 
-template<size_t D, size_t Nq, typename MpHamiltonian>
-inline void DmrgSolverQ<D,Nq,MpHamiltonian>::
-build_R (const MpHamiltonian &H, const Eigenstate<MpsQ<D,Nq,double> > &Vout, size_t loc)
+template<size_t Nq, typename MpHamiltonian>
+inline void DmrgSolverQ<Nq,MpHamiltonian>::
+build_R (const MpHamiltonian &H, const Eigenstate<MpsQ<Nq,double> > &Vout, size_t loc)
 {
-	contract_R(Heff[loc+1].R, Vout.state.A[loc+1], H.W[loc+1], Vout.state.A[loc+1], H.locBasis(), Heff[loc].R);
+	contract_R(Heff[loc+1].R, Vout.state.A[loc+1], H.W[loc+1], Vout.state.A[loc+1], H.locBasis(loc+1), Heff[loc].R);
 }
 
 #endif

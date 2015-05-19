@@ -1,8 +1,6 @@
 #ifndef DMRGJANITOR
 #define DMRGJANITOR
 
-
-
 #include "DmrgPivotStuff.h"
 #include "DmrgPivotStuffQ.h"
 

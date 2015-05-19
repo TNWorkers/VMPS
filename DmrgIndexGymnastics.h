@@ -8,15 +8,22 @@
 #include "Multipede.h"
 
 /**Calculates the matching right indices when contracting a left transfer matrix with two MpsQ and an MpoQ.
-@dotfile AWA.dot
-@returns \p true if a match is found, \p false if not
-@param qloc : local basis
-@param result : tuple of: an array with \p Rin, \p Rout, \p Rmid; block index of \p Abra; block index of \p Aket
-@warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.*/
-template<size_t D, size_t Nq, typename MatrixType>
-bool AWA (qarray<Nq> Lin, qarray<Nq> Lout, qarray<Nq> Lmid, size_t s1, size_t s2, std::array<qarray<Nq>,D> qloc, 
-          const std::array<Biped<Nq,MatrixType>,D> &Abra, 
-          const std::array<Biped<Nq,MatrixType>,D> &Aket, 
+\dotfile AWA.dot
+\param Lin
+\param Lout
+\param Lmid
+\param s1
+\param s2
+\param qloc : local basis
+\param Abra
+\param Aket
+\param result : tuple of: an array with \p Rin, \p Rout, \p Rmid; block index of \p Abra; block index of \p Aket
+\returns \p true if a match is found, \p false if not
+\warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.*/
+template<size_t Nq, typename MatrixType>
+bool AWA (qarray<Nq> Lin, qarray<Nq> Lout, qarray<Nq> Lmid, size_t s1, size_t s2, vector<qarray<Nq> > qloc, 
+          const vector<Biped<Nq,MatrixType> > &Abra, 
+          const vector<Biped<Nq,MatrixType> > &Aket, 
           tuple<qarray3<Nq>,size_t,size_t> &result)
 {
 	qarray<Nq> qRout = Lin + qloc[s1];
@@ -41,16 +48,25 @@ bool AWA (qarray<Nq> Lin, qarray<Nq> Lout, qarray<Nq> Lmid, size_t s1, size_t s2
 }
 
 /**Calculates the matching right indices when contracting a left transfer matrix with two MpsQ and two MpoQ.
-@dotfile AWWA.dot
-@returns \p true if a match is found, \p false if not
-@param qloc : local basis
-@param result : tuple of: an array with \p Rin, \p Rout, \p Rbot, \p Rtop; block index of \p Abra; block index of \p Aket
-@warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.*/
-template<size_t D, size_t Nq, typename MatrixType>
+\dotfile AWWA.dot
+\param Lin
+\param Lout
+\param Lbot
+\param Ltop
+\param s1
+\param s2
+\param s3
+\param qloc : local basis
+\param Abra
+\param Aket
+\param result : tuple of: an array with \p Rin, \p Rout, \p Rbot, \p Rtop; block index of \p Abra; block index of \p Aket
+\returns \p true if a match is found, \p false if not
+\warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.*/
+template<size_t Nq, typename MatrixType>
 bool AWWA (qarray<Nq> Lin, qarray<Nq> Lout, qarray<Nq> Lbot, qarray<Nq> Ltop, 
-          size_t s1, size_t s2, size_t s3, std::array<qarray<Nq>,D> qloc, 
-          const std::array<Biped<Nq,MatrixType>,D> &Abra, 
-          const std::array<Biped<Nq,MatrixType>,D> &Aket, 
+          size_t s1, size_t s2, size_t s3, vector<qarray<Nq> > qloc, 
+          const vector<Biped<Nq,MatrixType> > &Abra, 
+          const vector<Biped<Nq,MatrixType> > &Aket, 
           tuple<qarray4<Nq>,size_t,size_t> &result)
 {
 	qarray<Nq> qRout = Lin + qloc[s1];
@@ -77,13 +93,13 @@ bool AWWA (qarray<Nq> Lin, qarray<Nq> Lout, qarray<Nq> Lbot, qarray<Nq> Ltop,
 
 /**Prepares a PivotMatrixQ by filling PivotMatrixQ::qlhs and PivotMatrixQ::qrhs with the corresponding subspace indices.
 Uses OpenMP.*/
-template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
+template<size_t Nq, typename Scalar, typename MpoScalar>
 void precalc_blockStructure (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L, 
-                             const std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> &Abra, 
-                             const std::array<std::array<SparseMatrix<MpoScalar>,D>,D> &W, 
-                             const std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> &Aket, 
+                             const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                             const vector<vector<SparseMatrix<MpoScalar> > > &W, 
+                             const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
                              const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &R, 
-                             std::array<qarray<Nq>,D> qloc, 
+                             vector<qarray<Nq> > qloc, 
                              vector<std::array<size_t,2> > &qlhs, 
                              vector<vector<std::array<size_t,4> > > &qrhs)
 {
@@ -94,8 +110,8 @@ void precalc_blockStructure (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L
 	#ifndef DMRG_DONT_USE_OPENMP
 	#pragma omp parallel for collapse(3)
 	#endif
-	for (size_t s1=0; s1<D; ++s1)
-	for (size_t s2=0; s2<D; ++s2)
+	for (size_t s1=0; s1<qloc.size(); ++s1)
+	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t qL=0; qL<L.dim; ++qL)
 	{
 		tuple<qarray3<Nq>,size_t,size_t> ix;

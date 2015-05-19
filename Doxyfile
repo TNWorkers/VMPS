@@ -229,25 +229,26 @@ TAB_SIZE               = 4
 # newlines.
 
 ALIASES                = "describe_D = \tparam D \n\
-                                       *- local (physical) dimension: \n\
-                                       *   - \p D=2: Heisenberg \n\
-                                       *   - \p D=3: t-J, S=1 Heisenberg \n\
-                                       *   - \p D=4: Hubbard \n\
-                                       *   - \p D=8: Kondo \n"\
+                                       local (physical) dimension: \n\
+                                          - \p D=2: S=1/2 Heisenberg \n\
+                                          - \p D=3: t-J, S=1 Heisenberg \n\
+                                          - \p D=4: Hubbard \n\
+                                          - \p D=8: KondoLattice \n"\
                          "describe_Daux = auxiliary dimension of an Mpo / MpoQ / SuperMatrix: \n\
-                                          *- \p Daux=1: local operator \n\
-                                          *- \p Daux=2: sum of local operators \n\
-                                          *- \p Daux=3: Ising \n\
-                                          *- \p Daux=4: XY \n\
-                                          *- \p Daux=5: Heisenberg, XXZ \n\
-                                          *- \p Daux=6: Hubbard, Kondo \n\
-                                          *- \p Daux=7: extended Hubbard \n"\
+                                          - \p Daux=1: local operator \n\
+                                          - \p Daux=2: sum of local operators \n\
+                                          - \p Daux=3: Ising \n\
+                                          - \p Daux=4: XY \n\
+                                          - \p Daux=5: Heisenberg, XXZ \n\
+                                          - \p Daux=6: Hubbard, Kondo \n\
+                                          - \p Daux=7: extended Hubbard \n"\
                          "describe_Nq = \tparam Nq \n\
-                                        *- amount of conserved quantum numbers: \n\
-                                        *    - \p Nq=1: Heisenberg (\f$S=1/2:2M\f$, \f$S=1:M\f$), \n\
-                                        *    - \p Nq=2: Hubbard (\f$N_{\uparrow}\f$,\f$N_{\downarrow}\f$), Kondo (\f$M_{tot}=2M_{s}+N_{\uparrow}-N_{\downarrow}\f$,\f$N=N_{\uparrow}+N_{\downarrow}\f$) \n" \
+                                        amount of conserved quantum numbers: \n\
+                                          - \p Nq=1: Heisenberg (\f$2M\f$) \n\
+                                          - \p Nq=2: Hubbard (\f$N_{\uparrow}\f$,\f$N_{\downarrow}\f$), Kondo (\f$M_{tot}=2M_{s}+N_{\uparrow}-N_{\downarrow}\f$,\f$N=N_{\uparrow}+N_{\downarrow}\f$) \n" \
                          "describe_MatrixType = \tparam MatrixType : \p MatrixXd or \p MatrixXcd" \
                          "describe_Scalar = \tparam Scalar : \p double or \p complex<double>" \
+                         "describe_MpoScalar = \tparam MpoScalar : \p double or \p complex<double>" \
                          "describe_memory = Calculates the (theoretically) allocated memory (note: by default in GB)." \
                          "describe_overhead = Calculates the (theoretical) additional memory associated with the subspace blocks (note: by default in MB)." \
                          "describe_pivot = The pivot site (also called \"orthogonality centre\", but \"pivot\" is so much better). All matrices to the left are left-canonical \f$\sum_s {A^s}^\dag A^s=I\f$, all matrices to the right are right-canonical \f$\sum_s B^s {B^s}^\dag=I\f$. If \p pivot==-1, there is no orthogonality. Can be tested with MpsQ::test_ortho()."\
