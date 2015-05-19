@@ -6,70 +6,56 @@
 #include "Multipede.h"
 
 //-----------<definitions>-----------
-template<size_t D, size_t Nq, typename Scalar, typename MpoScalar=double>
+template<size_t Nq, typename Scalar, typename MpoScalar=double>
 struct PivotMatrixQ
 {
 	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > R;
-	std::array<std::array<SparseMatrix<MpoScalar>,D>,D> W;
+	vector<vector<SparseMatrix<MpoScalar> > >  W;
 	
 	size_t dim;
 	
-	vector<std::array<size_t,2> > qlhs;
+	vector<std::array<size_t,2> >          qlhs;
 	vector<vector<std::array<size_t,4> > > qrhs;
 };
 
-//template<size_t D, size_t Nq, typename Scalar, typename MpoScalar> using PivotVectorQ<D,Nq,Scalar> = std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D>;
-
-//template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
-//std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D>& 
-//std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D>::operator*= (const double &alpha)
-//{
-////	for (size_t s=0; s<D; ++s)
-////	for (size_t q=0; q<A[s].dim; ++q)
-////	{
-////		this[s].block[q] *= alpha;
-////	}
-////	return *this;
-//}
-
-template<size_t D, size_t Nq, typename Scalar>
+template<size_t Nq, typename Scalar>
 struct PivotVectorQ
 {
-	std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> A;
+	vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > A;
 	
-	PivotVectorQ<D,Nq,Scalar>& operator+= (const PivotVectorQ<D,Nq,Scalar> &Vrhs);
-	PivotVectorQ<D,Nq,Scalar>& operator-= (const PivotVectorQ<D,Nq,Scalar> &Vrhs);
-	PivotVectorQ<D,Nq,Scalar>& operator*= (const double &alpha);
-	PivotVectorQ<D,Nq,Scalar>& operator/= (const double &alpha);
+	PivotVectorQ<Nq,Scalar>& operator+= (const PivotVectorQ<Nq,Scalar> &Vrhs);
+	PivotVectorQ<Nq,Scalar>& operator-= (const PivotVectorQ<Nq,Scalar> &Vrhs);
+	PivotVectorQ<Nq,Scalar>& operator*= (const double &alpha);
+	PivotVectorQ<Nq,Scalar>& operator/= (const double &alpha);
 };
 //-----------</definitions>-----------
 
 //-----------<vector arithmetics>-----------
-template<size_t D, size_t Nq, typename Scalar>
-PivotVectorQ<D,Nq,Scalar>& PivotVectorQ<D,Nq,Scalar>::operator+= (const PivotVectorQ<D,Nq,Scalar> &Vrhs)
+template<size_t Nq, typename Scalar>
+PivotVectorQ<Nq,Scalar>& PivotVectorQ<Nq,Scalar>::operator+= (const PivotVectorQ<Nq,Scalar> &Vrhs)
 {
-	for (size_t s=0; s<D; ++s)
+	for (size_t s=0; s<A.size(); ++s)
 	{
 		transform(A[s].block.begin(), A[s].block.end(), Vrhs.A[s].block.begin(), A[s].block.begin(), std::plus<MatrixXd>());
 	}
 	return *this;
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-PivotVectorQ<D,Nq,Scalar>& PivotVectorQ<D,Nq,Scalar>::operator-= (const PivotVectorQ<D,Nq,Scalar> &Vrhs)
+template<size_t Nq, typename Scalar>
+PivotVectorQ<Nq,Scalar>& PivotVectorQ<Nq,Scalar>::operator-= (const PivotVectorQ<Nq,Scalar> &Vrhs)
 {
-	for (size_t s=0; s<D; ++s)
+	for (size_t s=0; s<A.size(); ++s)
 	{
 		transform(A[s].block.begin(), A[s].block.end(), Vrhs.A[s].block.begin(), A[s].block.begin(), std::minus<MatrixXd>());
 	}
 	return *this;
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-PivotVectorQ<D,Nq,Scalar>& PivotVectorQ<D,Nq,Scalar>::operator*= (const double &alpha)
+template<size_t Nq, typename Scalar>
+PivotVectorQ<Nq,Scalar>& PivotVectorQ<Nq,Scalar>::operator*= (const double &alpha)
 {
-	for (size_t s=0; s<D; ++s)
+	for (size_t s=0; s<A.size(); ++s)
 	for (size_t q=0; q<A[s].dim; ++q)
 	{
 		A[s].block[q] *= alpha;
@@ -77,10 +63,10 @@ PivotVectorQ<D,Nq,Scalar>& PivotVectorQ<D,Nq,Scalar>::operator*= (const double &
 	return *this;
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-PivotVectorQ<D,Nq,Scalar>& PivotVectorQ<D,Nq,Scalar>::operator/= (const double &alpha)
+template<size_t Nq, typename Scalar>
+PivotVectorQ<Nq,Scalar>& PivotVectorQ<Nq,Scalar>::operator/= (const double &alpha)
 {
-	for (size_t s=0; s<D; ++s)
+	for (size_t s=0; s<A.size(); ++s)
 	for (size_t q=0; q<A[s].dim; ++q)
 	{
 		A[s].block[q] /= alpha;
@@ -88,47 +74,47 @@ PivotVectorQ<D,Nq,Scalar>& PivotVectorQ<D,Nq,Scalar>::operator/= (const double &
 	return *this;
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-PivotVectorQ<D,Nq,Scalar> operator* (double const &alpha, PivotVectorQ<D,Nq,Scalar> V)
+template<size_t Nq, typename Scalar>
+PivotVectorQ<Nq,Scalar> operator* (double const &alpha, PivotVectorQ<Nq,Scalar> V)
 {
 	return V *= alpha;
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-PivotVectorQ<D,Nq,Scalar> operator* (PivotVectorQ<D,Nq,Scalar> V, double const &alpha)
+template<size_t Nq, typename Scalar>
+PivotVectorQ<Nq,Scalar> operator* (PivotVectorQ<Nq,Scalar> V, double const &alpha)
 {
 	return V *= alpha;
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-PivotVectorQ<D,Nq,Scalar> operator/ (PivotVectorQ<D,Nq,Scalar> V, const double &alpha)
+template<size_t Nq, typename Scalar>
+PivotVectorQ<Nq,Scalar> operator/ (PivotVectorQ<Nq,Scalar> V, const double &alpha)
 {
 	return V /= alpha;
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-PivotVectorQ<D,Nq,Scalar> operator+ (const PivotVectorQ<D,Nq,Scalar> &V1, const PivotVectorQ<D,Nq,Scalar> &V2)
+template<size_t Nq, typename Scalar>
+PivotVectorQ<Nq,Scalar> operator+ (const PivotVectorQ<Nq,Scalar> &V1, const PivotVectorQ<Nq,Scalar> &V2)
 {
-	PivotVectorQ<D,Nq,Scalar> Vout = V1;
+	PivotVectorQ<Nq,Scalar> Vout = V1;
 	Vout += V2;
 	return Vout;
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-PivotVectorQ<D,Nq,Scalar> operator- (const PivotVectorQ<D,Nq,Scalar> &V1, const PivotVectorQ<D,Nq,Scalar> &V2)
+template<size_t Nq, typename Scalar>
+PivotVectorQ<Nq,Scalar> operator- (const PivotVectorQ<Nq,Scalar> &V1, const PivotVectorQ<Nq,Scalar> &V2)
 {
-	PivotVectorQ<D,Nq,Scalar> Vout = V1;
+	PivotVectorQ<Nq,Scalar> Vout = V1;
 	Vout -= V2;
 	return Vout;
 }
 //-----------</vector arithmetics>-----------
 
 //-----------<matrix*vector>-----------
-template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
-void HxV (const PivotMatrixQ<D,Nq,Scalar,MpoScalar> &H, const PivotVectorQ<D,Nq,Scalar> &Vin, PivotVectorQ<D,Nq,Scalar> &Vout)
+template<size_t Nq, typename Scalar, typename MpoScalar>
+void HxV (const PivotMatrixQ<Nq,Scalar,MpoScalar> &H, const PivotVectorQ<Nq,Scalar> &Vin, PivotVectorQ<Nq,Scalar> &Vout)
 {
 	Vout = Vin;
-	for (size_t s=0; s<D; ++s) {Vout.A[s].setZero();}
+	for (size_t s=0; s<Vout.A.size(); ++s) {Vout.A[s].setZero();}
 	
 	#ifndef DMRG_DONT_USE_OPENMP
 	#pragma omp parallel for schedule(dynamic)
@@ -172,8 +158,8 @@ void HxV (const PivotMatrixQ<D,Nq,Scalar,MpoScalar> &H, const PivotVectorQ<D,Nq,
 	}
 }
 
-//template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
-//void careful_HxV (const PivotMatrixQ<D,Nq,Scalar,MpoScalar> &H, const PivotVectorQ<D,Nq,Scalar> &Vin, PivotVectorQ<D,Nq,Scalar> &Vout, std::array<qarray<Nq>,D> qloc)
+//template<size_t Nq, typename Scalar, typename MpoScalar>
+//void careful_HxV (const PivotMatrixQ<Nq,Scalar,MpoScalar> &H, const PivotVectorQ<Nq,Scalar> &Vin, PivotVectorQ<Nq,Scalar> &Vout, std::array<qarray<Nq>,D> qloc)
 //{
 //	Vout = Vin;
 //	for (size_t s=0; s<D; ++s) {Vout.A[s].setZero();}
@@ -256,21 +242,21 @@ void HxV (const PivotMatrixQ<D,Nq,Scalar,MpoScalar> &H, const PivotVectorQ<D,Nq,
 //	}
 //}
 
-template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
-void HxV (const PivotMatrixQ<D,Nq,Scalar,MpoScalar> &H, PivotVectorQ<D,Nq,Scalar> &Vinout)
+template<size_t Nq, typename Scalar, typename MpoScalar>
+void HxV (const PivotMatrixQ<Nq,Scalar,MpoScalar> &H, PivotVectorQ<Nq,Scalar> &Vinout)
 {
-	PivotVectorQ<D,Nq,Scalar> Vtmp;
+	PivotVectorQ<Nq,Scalar> Vtmp;
 	HxV(H,Vinout,Vtmp);
 	Vinout = Vtmp;
 }
 //-----------</matrix*vector>-----------
 
 //-----------<dot & vector norms>-----------
-template<size_t D, size_t Nq, typename Scalar>
-double dot (const PivotVectorQ<D,Nq,Scalar> &V1, const PivotVectorQ<D,Nq,Scalar> &V2)
+template<size_t Nq, typename Scalar>
+double dot (const PivotVectorQ<Nq,Scalar> &V1, const PivotVectorQ<Nq,Scalar> &V2)
 {
 	double res = 0.;
-	for (size_t s=0; s<D; ++s)
+	for (size_t s=0; s<V2.A.size(); ++s)
 	for (size_t q=0; q<V2.A[s].dim; ++q)
 	for (size_t i=0; i<V2.A[s].block[q].cols(); ++i)
 	{
@@ -279,11 +265,11 @@ double dot (const PivotVectorQ<D,Nq,Scalar> &V1, const PivotVectorQ<D,Nq,Scalar>
 	return res;
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-double squaredNorm (const PivotVectorQ<D,Nq,Scalar> &V)
+template<size_t Nq, typename Scalar>
+double squaredNorm (const PivotVectorQ<Nq,Scalar> &V)
 {
 	double res = 0.;
-	for (size_t s=0; s<D; ++s)
+	for (size_t s=0; s<V.A.size(); ++s)
 	for (size_t q=0; q<V.A[s].dim; ++q)
 	{
 		res += V.A[s].block[q].colwise().squaredNorm().sum();
@@ -291,23 +277,23 @@ double squaredNorm (const PivotVectorQ<D,Nq,Scalar> &V)
 	return res;
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-inline double norm (const PivotVectorQ<D,Nq,Scalar> &V)
+template<size_t Nq, typename Scalar>
+inline double norm (const PivotVectorQ<Nq,Scalar> &V)
 {
 	return sqrt(squaredNorm(V));
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-inline void normalize (PivotVectorQ<D,Nq,Scalar> &V)
+template<size_t Nq, typename Scalar>
+inline void normalize (PivotVectorQ<Nq,Scalar> &V)
 {
 	V /= norm(V);
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-double infNorm (const PivotVectorQ<D,Nq,Scalar> &V1, const PivotVectorQ<D,Nq,Scalar> &V2)
+template<size_t Nq, typename Scalar>
+double infNorm (const PivotVectorQ<Nq,Scalar> &V1, const PivotVectorQ<Nq,Scalar> &V2)
 {
 	double res = 0.;
-	for (size_t s=0; s<D; ++s)
+	for (size_t s=0; s<V1.A.size(); ++s)
 	for (size_t q=0; q<V1.A[s].dim; ++q)
 	{
 		double tmp = (V1.A[s].block[q]-V2.A[s].block[q]).template lpNorm<Eigen::Infinity>();
@@ -318,37 +304,37 @@ double infNorm (const PivotVectorQ<D,Nq,Scalar> &V1, const PivotVectorQ<D,Nq,Sca
 //-----------</dot & vector norms>-----------
 
 //-----------<miscellaneous>-----------
-template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
-inline size_t dim (const PivotMatrixQ<D,Nq,Scalar,MpoScalar> &H)
+template<size_t Nq, typename Scalar, typename MpoScalar>
+inline size_t dim (const PivotMatrixQ<Nq,Scalar,MpoScalar> &H)
 {
 	return H.dim;
 }
 
-template<size_t D, size_t Nq, typename Scalar, typename MpoScalar>
-inline double norm (const PivotMatrixQ<D,Nq,Scalar,MpoScalar> &H)
+// How to calculate the Frobenius norm of this?
+template<size_t Nq, typename Scalar, typename MpoScalar>
+inline double norm (const PivotMatrixQ<Nq,Scalar,MpoScalar> &H)
 {
 	return H.dim;
 }
 
-template<size_t D, size_t Nq, typename Scalar>
-void swap (PivotVectorQ<D,Nq,Scalar> &V1, PivotVectorQ<D,Nq,Scalar> &V2)
+template<size_t Nq, typename Scalar>
+void swap (PivotVectorQ<Nq,Scalar> &V1, PivotVectorQ<Nq,Scalar> &V2)
 {
-	for (size_t s=0; s<D; ++s)
+	for (size_t s=0; s<V1.A.size(); ++s)
 	for (size_t q=0; q<V1.A[s].dim; ++q)
 	{
 		V1.A[s].block[q].swap(V2.A[s].block[q]);
 	}
 }
 
-#include "LanczosWrappers.h"
 #include "RandomVector.h"
 
-template<size_t D, size_t Nq, typename Scalar>
-struct GaussianRandomVector<PivotVectorQ<D,Nq,Scalar>,double>
+template<size_t Nq, typename Scalar>
+struct GaussianRandomVector<PivotVectorQ<Nq,Scalar>,double>
 {
-	static void fill (size_t N, PivotVectorQ<D,Nq,Scalar> &Vout)
+	static void fill (size_t N, PivotVectorQ<Nq,Scalar> &Vout)
 	{
-		for (size_t s=0; s<D; ++s)
+		for (size_t s=0; s<Vout.A.size(); ++s)
 		for (size_t q=0; q<Vout.A[s].dim; ++q)
 		for (size_t a1=0; a1<Vout.A[s].block[q].rows(); ++a1)
 		for (size_t a2=0; a2<Vout.A[s].block[q].cols(); ++a2)

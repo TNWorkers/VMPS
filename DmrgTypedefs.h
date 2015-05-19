@@ -14,6 +14,8 @@
 	//string spin_index_strings[] = {"UP","DN","NO","UPDN"};
 #endif
 
+enum PARITY {EVEN=0, ODD=1};
+
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>
 #ifndef EIGEN_DEFAULT_SPARSE_INDEX_TYPE
