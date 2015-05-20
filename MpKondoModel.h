@@ -169,10 +169,15 @@ KondoModel::
 KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, bool CALC_SQUARE)
 :MpoQ<2,double>(), J(J_input), imploc(imploc_input)
 {
-	// if Bzloc_input, set it to zero
+	// if Bzloc_input empty, set it to zero
 	if (Bzloc_input.size() == 0)
 	{
 		Bzloc.assign(imploc.size(),0.);
+	}
+	else
+	{
+		assert(imploc_input.size() == Bzloc_input.size());
+		Bzloc = Bzloc_input;
 	}
 	
 	// assign stuff

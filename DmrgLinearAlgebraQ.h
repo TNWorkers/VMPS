@@ -272,6 +272,7 @@ void chebIter (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin1, const M
 	Stopwatch Chronos;
 	MpsQCompressor<Nq,Scalar,MpoScalar> Compadre(DMRG::VERBOSITY::STEPWISE);
 	Compadre.chebCompress(H,Vin1,Vin2, Vout, Vin1.calc_Dmax());
+	
 	lout << Compadre.info() << endl;
 	lout << Chronos.info("chebIter") << endl;
 	lout << "Vout: " << Vout.info() << endl << endl;
@@ -289,15 +290,14 @@ template<size_t Nq, typename Scalar, typename OtherScalar>
 void addScale (const OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
 {
 	Stopwatch Chronos;
-	
 	MpsQCompressor<Nq,Scalar,OtherScalar> Compadre;
 	size_t Dstart = Vout.calc_Dmax();
 	MpsQ<Nq,Scalar> Vtmp = Vout;
-	Vtmp.addScale(alpha,Vin,true);
+	Vtmp.addScale(alpha,Vin,false);
 	Compadre.varCompress(Vtmp, Vout, Dstart, 1e-3);
 	
+	lout << Compadre.info() << endl;
 	lout << Chronos.info("V+V") << endl;
-	lout << "Vin: " << Vin.info() << endl;
 	lout << "Vout: " << Vout.info() << endl << endl;
 }
 
