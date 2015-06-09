@@ -116,7 +116,7 @@ public:
 		for (size_t i=0; i<N_rows; ++i)
 		for (size_t j=0; j<N_cols; ++j)
 		{
-			return out += calc_memory<double>(data[i][j], memunit);
+			return out += calc_memory<Scalar>(data[i][j], memunit);
 		}
 		return out;
 	}
@@ -176,7 +176,7 @@ SuperMatrix<Scalar> tensor_product (const SuperMatrix<Scalar> &M1, const SuperMa
 	for (size_t r2=0; r2<M2.rows(); ++r2)
 	for (size_t c2=0; c2<M2.cols(); ++c2)
 	{
-		Mout(r1*M2.rows()+r2, c1*M2.cols()+c2) = M1(r1,c1)*M2(r2,c2);
+		Mout(r1*M2.rows()+r2, c1*M2.cols()+c2) = M1(r1,c1) * M2(r2,c2);
 	}
 	
 	return Mout;

@@ -5,16 +5,18 @@
 typedef boost::rational<int> frac;
 
 #include "MpoQ.h"
+#include "SpinBase.h"
 
 namespace VMPS
 {
 
 /**MPO representation of 
 \f$
-H = - J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^z_iS^z_j - B_z \sum_i S^z_i - B_x \sum_i S^x_i 
+H = - J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^z_iS^z_j - B_z \sum_i S^z_i
 \f$.
-\note S=1/2 implicit
+\param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
 \note \f$J<0\f$ : antiferromagnetic*/
+template<size_t D=2>
 class HeisenbergModel : public MpoQ<1,double>
 {
 public:
@@ -24,45 +26,9 @@ public:
 	\param Jxy_input : \f$J_{xy}\f$, default \f$J_{xy}=-1\f$
 	\param Jz_input : \f$J_z\f$, default \f$J_{xy}=J_z\f$ (Heisenberg, otherwise XXZ)
 	\param Bz_input : external field in z-direction
-	\param Bx_input : external field in x-direction
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
-	HeisenbergModel (int L_input,
-	                 double Jxy_input=-1., double Jz_input=numeric_limits<double>::quiet_NaN(), 
-	                 double Bz_input=0., double Bx_input=0.,
-	                 bool CALC_SQUARE=true);
-	
-	///@{
-	/**
-	\f$S^z = \left(
-	\begin{array}{cc}
-	0.5 & 0 \\
-	0 & -0.5 \\
-	\end{array}
-	\right)\f$
-	*/
-	static const Eigen::Matrix<double,2,2,RowMajor> Sz;
-	
-	/**
-	\f$S^+ = \left(
-	\begin{array}{cc}
-	0 & 1 \\
-	0 & 0 \\
-	\end{array}
-	\right)\f$
-	*/
-	static const Eigen::Matrix<double,2,2,RowMajor> Sp;
-	
-	/**
-	\f$S^x = \left(
-	\begin{array}{cc}
-	0 & 0.5 \\
-	0.5 & 0 \\
-	\end{array}
-	\right)\f$
-	*/
-	static const Eigen::Matrix<double,2,2,RowMajor> Sx;
-	///@}
+	HeisenbergModel (int L_input, double Jxy_input=-1., double Jz_input=numeric_limits<double>::infinity(), double Bz_input=0., bool CALC_SQUARE=true);
 	
 	/**Creates the MPO generator matrix for the Heisenberg model (of any spin)
 	\f$G = \left(
@@ -75,27 +41,30 @@ public:
 	\end{array}
 	\right)\f$.
 	The fourth row and column are missing when \f$J_{xy}=0\f$. Uses the appropriate spin operators for a given \p S.*/
-	template<size_t D> static SuperMatrix<double> Generator (const Eigen::Matrix<double,D,D,RowMajor> &Sz, 
-	                                                         const Eigen::Matrix<double,D,D,RowMajor> &Sp, 
-	                                                         const Eigen::Matrix<double,D,D,RowMajor> &Sx, 
-	                                                         double Jxy, double Jz, double Bz, double Bx);
+	static SuperMatrix<double> Generator (double Jxy, double Jz, double Bz, double Bx);
 	
 	//---label stuff---
 	///@{
 	/**Creates a label for this MpoQ to have a nice output.
 	\param S : spin
 	\param Jz : \f$J_z\f$
-	\param Jxy : \f$J_{xy}\f$*/
-	static string create_label (frac S, double Jz, double Jxy)
+	\param Jxy : \f$J_{xy}\f$
+	\param Bz : \f$B_{z}\f$
+	\param Bx : \f$B_{x}\f$ (when called by GrandHeisenbergModel, otherwise 0)*/
+	static string create_label (frac S, double Jxy, double Jz, double Bz, double Bx)
 	{
 		stringstream ss;
-		if      (Jz == Jxy) {ss << "Heisenberg(S=" << S << ",J=" << Jz << ")";}
-		else if (Jz==0.)    {ss << "XY(S=" << S << ",J=" << Jxy << ")";}
-		else                {ss << "XXZ(S=" << S << ",Jxy=" << Jxy << ",Jz=" << Jz << ")";}
+		if      (Jz == Jxy) {ss << "Heisenberg(S=" << S << ",J=" << Jz;}
+		else if (Jxy == 0.) {ss << "Ising(S=" << S << ",J=" << Jz;}
+		else if (Jz == 0.)  {ss << "XX(S=" << S << ",J=" << Jxy;}
+		else                {ss << "XXZ(S=" << S << ",Jxy=" << Jxy << ",Jz=" << Jz;}
+		if (Bz != 0.) {ss << ",Bz=" << Bz;}
+		if (Bx != 0.) {ss << ",Bx=" << Bx;}
+		ss << ")";
 		return ss.str();
 	}
 	/**local basis: \f$\{ \left|\uparrow\right>, \left|\downarrow\right> \}\f$*/
-	static const std::array<qarray<1>,2> qloc;
+	static const std::array<qarray<1>,D> qloc;
 	/**Makes half-integers in the output.*/
 	static string halve (qarray<1> qnum);
 	/**Labels the conserved quantum number as "M".*/
@@ -114,62 +83,81 @@ public:
 	typedef MpoQ<1>                                  Operator;
 	///@}
 	
+	/**Calculates the necessary auxiliary dimension, detecting when \p Jxy or \p Jz are zero.*/
+	static size_t calc_Daux (double Jxy, double Jz)
+	{
+		size_t res = 2;
+		res += (Jxy!=0.)? 2 : 0;
+		res += (Jz !=0.)? 1 : 0;
+		return res;
+	}
+	
 private:
 	
 	double Jxy, Jz;
-	double Bz, Bx;
+	double Bz;
 };
 
-static const double Sz_data[] = {0.5, 0.,  0., -0.5};
-static const double Sp_data[] = {0.,  1.,  0.,  0.};
-static const double Sx_data[] = {0.,  0.5, 0.5, 0.};
+template<size_t D> const std::array<string,1> HeisenbergModel<D>::maglabel{"M"};
 
-const Eigen::Matrix<double,2,2,RowMajor> HeisenbergModel::Sz(Sz_data);
-const Eigen::Matrix<double,2,2,RowMajor> HeisenbergModel::Sp(Sp_data);
-const Eigen::Matrix<double,2,2,RowMajor> HeisenbergModel::Sx(Sx_data);
-
-const std::array<qarray<1>,2> HeisenbergModel::qloc {qarray<1>{+1}, qarray<1>{-1}};
-const std::array<string,1>    HeisenbergModel::maglabel{"M"};
+template<> const std::array<qarray<1>,2> HeisenbergModel<2>::qloc {qarray<1>{+1}, qarray<1>{-1}};
+template<> const std::array<qarray<1>,3> HeisenbergModel<3>::qloc {qarray<1>{+2}, qarray<1>{0}, qarray<1>{-2}};
 
 template<size_t D>
-SuperMatrix<double> HeisenbergModel::
-Generator (const Eigen::Matrix<double,D,D,RowMajor> &Sz, 
-           const Eigen::Matrix<double,D,D,RowMajor> &Sp, 
-           const Eigen::Matrix<double,D,D,RowMajor> &Sx, 
-           double Jxy, double Jz, double Bz, double Bx)
+SuperMatrix<double> HeisenbergModel<D>::
+Generator (double Jxy, double Jz, double Bz, double Bx)
 {
 	SuperMatrix<double> G;
-	size_t Daux = (Jz==0.)? 4 : 5;
+	size_t Daux = calc_Daux(Jxy,Jz);
 	G.setMatrix(Daux,D);
 	G.setZero();
 	
+	// left column
 	G(0,0).setIdentity();
-	G(1,0) = Sp;
-	G(2,0) = Sp.transpose();
-	if (Jz!=0.) {G(3,0) = Sz;}
+	if (Jxy != 0.)
+	{
+		G(1,0) = SpinBase<D>::Sp;
+		G(2,0) = SpinBase<D>::Sp.transpose();
+		if (Jz!=0.) {G(3,0) = SpinBase<D>::Sz;}
+	}
+	else
+	{
+		G(1,0) = SpinBase<D>::Sz;
+	}
 	
-	G(Daux-1,0) = -Bz*Sz -Bx*Sx;
+	// corner element
+	G(Daux-1,0) = -Bz*SpinBase<D>::Sz -Bx*SpinBase<D>::Sx;
 	
-	G(Daux-1,1) = -0.5*Jxy*Sp.transpose();
-	G(Daux-1,2) = -0.5*Jxy*Sp;
-	if (Jz!=0.) {G(Daux-1,3) = -Jz*Sz;}
+	// last row
+	if (Jxy != 0.)
+	{
+		G(Daux-1,1) = -0.5*Jxy*SpinBase<D>::Sp.transpose();
+		G(Daux-1,2) = -0.5*Jxy*SpinBase<D>::Sp;
+		if (Jz!=0.) {G(Daux-1,3) = -Jz*SpinBase<D>::Sz;}
+	}
+	else
+	{
+		G(Daux-1,1) = SpinBase<D>::Sz;
+	}
 	G(Daux-1,Daux-1).setIdentity();
 	
 	return G;
 }
 
-HeisenbergModel::
-HeisenbergModel (int L_input, double Jxy_input, double Jz_input, double Bz_input, double Bx_input, bool CALC_SQUARE)
-:MpoQ<1> (L_input, vector<qarray<1> >(begin(HeisenbergModel::qloc),end(HeisenbergModel::qloc)), {0}, HeisenbergModel::maglabel, "", HeisenbergModel::halve),
-Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input)
+template<size_t D>
+HeisenbergModel<D>::
+HeisenbergModel (int L_input, double Jxy_input, double Jz_input, double Bz_input, bool CALC_SQUARE)
+:MpoQ<1> (L_input, vector<qarray<1> >(begin(HeisenbergModel<D>::qloc),end(HeisenbergModel<D>::qloc)), {0}, HeisenbergModel::maglabel, "", HeisenbergModel::halve),
+Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input)
 {
-	if (Jz==numeric_limits<double>::quiet_NaN()) {Jz=Jxy;} // default: Jxy=Jz
-	this->label = create_label(frac(1,2),Jz,Jxy);
+	if (Jz==numeric_limits<double>::infinity()) {Jz=Jxy;} // default: Jxy=Jz
+	assert(Jxy != 0. or Jz != 0.);
+	this->label = create_label(frac(D-1,2),Jxy,Jz,Bz,0.);
 	
-	this->Daux = (Jz==0.)? 4 : 5;
+	this->Daux = calc_Daux(Jxy,Jz);
 	this->N_sv = this->Daux;
 	
-	SuperMatrix<double> G = Generator<2>(Sz,Sp,Sx, Jxy,Jz,Bz,Bx);
+	SuperMatrix<double> G = Generator(Jxy,Jz,Bz,0.);
 	this->construct(G, this->W, this->Gvec);
 	
 	if (CALC_SQUARE == true)
@@ -183,25 +171,27 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input)
 	}
 }
 
-// doesn't work that way if Bx!=0 (?)
-MpoQ<1> HeisenbergModel::
+template<size_t D>
+MpoQ<1> HeisenbergModel<D>::
 Hsq()
 {
-	SuperMatrix<double> W = Generator<2>(Sz,Sp,Sx, Jxy,Jz,Bz,Bx);
+	SuperMatrix<double> W = Generator(Jxy,Jz,Bz,0.);
 	MpoQ<1> Mout(this->N_sites, tensor_product(W,W), 
-	             vector<qarray<1> >(begin(HeisenbergModel::qloc),end(HeisenbergModel::qloc)), 
-	             {0}, HeisenbergModel::maglabel, "HeisenbergModel(S=1/2) H^2", HeisenbergModel::halve);
+	             vector<qarray<1> >(begin(HeisenbergModel<D>::qloc),end(HeisenbergModel<D>::qloc)), 
+	             {0}, HeisenbergModel::maglabel, "", HeisenbergModel::halve);
+	Mout.label = create_label(frac(D-1,2),Jxy,Jz,Bz,0.) + "H^2";
 	return Mout;
 }
 
-string HeisenbergModel::
+template<size_t D>
+string HeisenbergModel<D>::
 halve (qarray<1> qnum)
 {
 	stringstream ss;
 	ss << "(";
 	rational<int> m = rational<int>(qnum[0],2);
-	if (m.numerator()==0) {ss << 0;}
-	else if (m.denominator()==1) {ss << m.numerator();}
+	if      (m.numerator()   == 0) {ss << 0;}
+	else if (m.denominator() == 1) {ss << m.numerator();}
 	else {ss << m;}
 	ss << ")";
 	return ss.str();

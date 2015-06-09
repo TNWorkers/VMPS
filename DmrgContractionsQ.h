@@ -478,12 +478,16 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 	}
 }
 
+/**For details see: Stoudenmire, White (2010)*/
 template<size_t Nq, typename MatrixType>
 void contract_C0 (vector<qarray<Nq> > qloc,
                   const vector<vector<SparseMatrixXd> > &W, 
-                  const vector<Biped<Nq,MatrixType> > &Aket, 
-                  vector<Tripod<Nq,MatrixType> > &Cnext)
+                  const vector<Biped<Nq,MatrixType> >   &Aket, 
+                  vector<Tripod<Nq,MatrixType> >        &Cnext)
 {
+	Cnext.clear();
+	Cnext.resize(qloc.size());
+	
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	{
 		qarray2<Nq> cmpA = {qvacuum<Nq>(), qvacuum<Nq>()+qloc[s2]};
@@ -528,12 +532,15 @@ void contract_C0 (vector<qarray<Nq> > qloc,
 \dotfile contract_C.dot*/
 template<size_t Nq, typename MatrixType>
 void contract_C (vector<qarray<Nq> > qloc,
-                 const vector<Biped<Nq,MatrixType> > &Abra, 
+                 const vector<Biped<Nq,MatrixType> >   &Abra, 
                  const vector<vector<SparseMatrixXd> > &W, 
-                 const vector<Biped<Nq,MatrixType> > &Aket, 
-                 const vector<Tripod<Nq,MatrixType> > &C, 
-                 vector<Tripod<Nq,MatrixType> > &Cnext)
+                 const vector<Biped<Nq,MatrixType> >   &Aket, 
+                 const vector<Tripod<Nq,MatrixType> >  &C, 
+                 vector<Tripod<Nq,MatrixType> >        &Cnext)
 {
+	Cnext.clear();
+	Cnext.resize(qloc.size());
+	
 	for (size_t s=0; s<qloc.size(); ++s)
 	for (size_t qC=0; qC<C[s].dim; ++qC)
 	{

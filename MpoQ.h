@@ -14,27 +14,11 @@ using namespace Eigen;
 #include "DmrgPivotStuffQ.h"
 #include "Mpo.h"
 
-//map<size_t,size_t> homogGdict (size_t L)
-//{
-//	map<size_t,size_t> mout;
-//	mout.insert({0,0});
-//	for (size_t l=1; l<L-1; ++l)
-//	{
-//		mout.insert({l,1});
-//	}
-//	mout.insert({L-1,2});
-//	return mout;
-//}
-
-//map<size_t,size_t> trivialGdict (size_t L)
-//{
-//	map<size_t,size_t> mout;
-//	for (size_t l=0; l<L; ++l)
-//	{
-//		mout.insert({l,l});
-//	}
-//	return mout;
-//}
+/**Dummy for models without symmetries.*/
+const std::array<qarray<0>,2> qloc2dummy {qarray<0>{}, qarray<0>{}};
+const std::array<qarray<0>,3> qloc3dummy {qarray<0>{}, qarray<0>{}, qarray<0>{}};
+const std::array<qarray<0>,4> qloc4dummy {qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}};
+const std::array<string,0>    labeldummy{};
 
 /**Namespace VMPS to distinguish names from ED equivalents.*/
 namespace VMPS{};
@@ -109,11 +93,11 @@ public:
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
 	///\}
 	
-//	MpoQ<D,Nq,complex<double> > bondsTevol (double dt, PARITY P);
+	template<typename TimeScalar> MpoQ<Nq,TimeScalar> BondPropagator (TimeScalar dt, PARITY P);
 	
 	class qarrayIterator;
 	
-protected:
+//protected:
 	
 	vector<vector<qarray<Nq> > > qloc;
 	
@@ -232,35 +216,54 @@ overhead (MEMUNIT memunit) const
 	return 0.;
 }
 
-//template<size_t Nq, typename Scalar>
-//MpoQ<D,Nq,complex<double> > MpoQ<Nq,Scalar>::
-//bondsTevol (double dt, PARITY P)
-//{
-//	string TevolLabel = "exp("+label+"),";
-//	TevolLabel += (P==EVEN)? "even" : "odd";
-//	MpoQ<D,Nq,complex<double> > Mout(this->N_sites, qloc, qvacuum<Nq>(), qlabel, TevolLabel, format);
-//	Mout.Daux = D*D;
-//	Mout.W.resize(this->N_sites);
-//	
-//	if (P == ODD)
-//	{
-//		for (size_t l=0; l<this->N_sites; l+=this->N_sites-1)
-//		for (size_t s1=0; s1<D; ++s1)
-//		for (size_t s2=0; s2<D; ++s2)
-//		{
-//			Mout.W[l][s1][s2].resize(1,1);
-//			if (s1 == s2)
-//			{
-//				Mout.W[l][s1][s2].coeffRef(0,0) = 1.;
-//			}
-//		}
-//	}
-//	
-//	size_t l_frst = (P==EVEN)? 0 : 1;
-//	size_t l_last = (P==EVEN)? this->N_sites-2 : this->N_sites-3;
-//	
-//	for (size_t l=l_frst; l<=l_last; l+=2)
-//	{
+template<size_t Nq, typename Scalar>
+template<typename TimeScalar>
+MpoQ<Nq,TimeScalar> MpoQ<Nq,Scalar>::
+BondPropagator (TimeScalar dt, PARITY P)
+{
+	string TevolLabel = label;
+	stringstream ss;
+	ss << ",exp(" << dt << "*H),";
+	TevolLabel += ss.str();
+	TevolLabel += (P==EVEN)? "evn" : "odd";
+	
+	MpoQ<Nq,TimeScalar> Mout(this->N_sites, qloc[0], qvacuum<Nq>(), qlabel, TevolLabel, format);
+	Mout.qloc = qloc;
+	Mout.Daux = qloc[0].size()*qloc[0].size();
+	
+	Mout.W.resize(this->N_sites);
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		Mout.W[l].resize(qloc[l].size());
+		for (size_t q=0; q<qloc[l].size(); ++q)
+		{
+			Mout.W[l][q].resize(qloc[l].size());
+		}
+	}
+	
+	if (P == ODD)
+	{
+		for (size_t l=0; l<this->N_sites; l+=this->N_sites-1)
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		for (size_t r=0; r<qloc[l].size(); ++r)
+		{
+			Mout.W[l][s][r].resize(1,1);
+			
+			if (s == r)
+			{
+				Mout.W[l][s][r].coeffRef(0,0) = 1.;
+			}
+		}
+	}
+	
+	size_t l_frst = (P==EVEN)? 0 : 1;
+	size_t l_last = (P==EVEN)? this->N_sites-2 : this->N_sites-3;
+	
+	for (size_t l=l_frst; l<=l_last; l+=2)
+	{
+		size_t D1 = qloc[l].size();
+		size_t D2 = qloc[l+1].size();
+		
 //		MatrixType Hloc = kroneckerProduct(this->Gvec[1](1,0), this->Gvec[1](this->Daux-1,1));
 //		for (size_t a=2; a<this->Daux-1; ++a)
 //		{
@@ -268,89 +271,98 @@ overhead (MEMUNIT memunit) const
 //		}
 //		MatrixType Id(D,D); Id.setIdentity();
 //		Hloc += kroneckerProduct(this->Gvec[1](this->Daux-1,0), Id);
-//		
-////		MatrixType Hloc = kroneckerProduct(this->Gvec[1](this->Daux-1,0), Id);
-////		Hloc += kroneckerProduct(Id, this->Gvec[1](this->Daux-1,0));
-//		
-//		for (size_t s1=0; s1<D; ++s1)
-//		for (size_t r1=0; r1<D; ++r1)
-//		for (size_t s2=0; s2<D; ++s2)
-//		for (size_t r2=0; r2<D; ++r2)
-//		{
-//			cout << s1 << ", " << r1 << ", " <<  s2 << ", " << r2 << " : " << Hloc(s1+r1*D,s2+r2*D) << endl;
-//		}
-//		
-//		if (l==l_frst)
-//		{
-//			cout << Hloc << endl << endl;
-//		}
-//		
-//		SelfAdjointEigenSolver<MatrixType> Eugen(Hloc);
-//		Matrix<complex<double>,Dynamic,Dynamic> Hexp = Eugen.eigenvectors() * 
-//		                                               (Eugen.eigenvalues()*complex<double>(0,-dt)).array().exp().matrix().asDiagonal() * 
-//		                                               Eugen.eigenvectors().adjoint();
-//		
-//		#ifdef DONT_USE_LAPACK_SVD
-//		JacobiSVD<MatrixXd> Jack;
-//		#else
-//		LapackSVD<complex<double> > Jack;
-//		#endif
-//		
-//		#ifdef DONT_USE_LAPACK_SVD
-//		Jack.compute(Hexp,ComputeThinU|ComputeThinV);
-//		#else
-//		Jack.compute(Hexp);
-//		#endif
-//		
-//		MatrixXcd U1(D*D,D*D);
-//		U1 = Jack.matrixU() * Jack.singularValues().cwiseSqrt().asDiagonal();
-//		#ifdef DONT_USE_LAPACK_SVD
-//		MatrixXcd U2(D*D,D*D);
-//		U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixV().adjoint();
-//		#else
-//		MatrixXcd U2(D*D,D*D);
-//		U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixVT();
-//		#endif
-//		
-//		for (size_t s1=0; s1<D; ++s1)
-//		for (size_t r1=0; r1<D; ++r1)
-//		for (size_t s2=0; s2<D; ++s2)
-//		for (size_t r2=0; r2<D; ++r2)
-//		{
-//			Mout.W[l][s1][r1].resize(1,D*D);
-//			if (l != this->N_sites-1)
-//			{
-//				Mout.W[l+1][s1][r1].resize(D*D,1);
-//			}
-//			for (size_t k=0; k<D*D; ++k)
-//			{
-//				if (U1(s1+r1*D,k) != 0.)
-//				{
-//					Mout.W[l][s1][r1].coeffRef(0,k) = U1(s1+r1*D,k);
-//				}
-//				if (l != this->N_sites-1)
-//				{
-//					if (U2(k,s2+r2*D) != 0.)
-//					{
-//						Mout.W[l+1][s1][r1].coeffRef(k,0) = U2(k,s2+r2*D);
-//					}
-//				}
-//			}
-//		}
-//	}
-//	
-////	for (size_t l=0; l<this->N_sites; ++l)
-////	{
-////		cout << "l=" << l << endl;
-////		for (size_t s1=0; s1<D; ++s1)
-////		for (size_t r1=0; r1<D; ++r1)
-////		{
-////			cout << Mout.W[l][s1][r1].rows() << "\t" << Mout.W[l][s1][r1].cols() << endl;
-////		}
-////	}
-//	
-//	return Mout;
-//}
+		
+		size_t Grow = (l==0)? 0 : this->Daux-1;
+		size_t Gcol = 0;
+		
+		// local part
+		MatrixType Hbond = kroneckerProduct(this->Gvec[l](Grow,0),MatrixType::Identity(D2,D2));
+		Hbond += kroneckerProduct(MatrixType::Identity(D1,D1), this->Gvec[l+1](this->Daux-1,Gcol));
+		
+		// non-local part
+		for (size_t a=1; a<this->Daux-1; ++a)
+		{
+			Hbond += kroneckerProduct(this->Gvec[l](Grow,a), 
+			                          this->Gvec[l+1](a,Gcol));
+		}
+		
+		SelfAdjointEigenSolver<MatrixType> Eugen(Hbond);
+		cout << "l=" << l << endl << Eugen.eigenvalues() << endl << endl;
+		Matrix<TimeScalar,Dynamic,Dynamic> Hexp = Eugen.eigenvectors() * 
+		                                         (Eugen.eigenvalues()*dt).array().exp().matrix().asDiagonal() * 
+		                                          Eugen.eigenvectors().adjoint();
+		
+		Matrix<TimeScalar,Dynamic,Dynamic> HexpRe(D1*D1,D2*D2);
+		
+		for (size_t s1=0; s1<D1; ++s1)
+		for (size_t s2=0; s2<D2; ++s2)
+		for (size_t r1=0; r1<D1; ++r1)
+		for (size_t r2=0; r2<D2; ++r2)
+		{
+			size_t r = s1 + D1*s2;
+			size_t c = r1 + D1*r2;
+			size_t a = s1 + D1*r1;
+			size_t b = s2 + D2*r2;
+			
+			HexpRe(a,b) = Hexp(r,c);
+		}
+		
+		#ifdef DONT_USE_LAPACK_SVD
+		JacobiSVD<Matrix<TimeScalar,Dynamic,Dynamic> > Jack;
+		#else
+		LapackSVD<TimeScalar> Jack;
+		#endif
+		
+		#ifdef DONT_USE_LAPACK_SVD
+		Jack.compute(HexpRe,ComputeThinU|ComputeThinV);
+		#else
+		Jack.compute(HexpRe);
+		#endif
+		
+		// U:
+		Matrix<TimeScalar,Dynamic,Dynamic> U1 = Jack.matrixU() * Jack.singularValues().cwiseSqrt().asDiagonal();
+		// V^T:
+		#ifdef DONT_USE_LAPACK_SVD
+		Matrix<TimeScalar,Dynamic,Dynamic> U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixV().adjoint();
+		#else
+		Matrix<TimeScalar,Dynamic,Dynamic> U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixVT();
+		#endif
+		
+		for (size_t s1=0; s1<D1; ++s1)
+		for (size_t r1=0; r1<D1; ++r1)
+		{
+			Mout.W[l][s1][r1].resize(1,U1.cols());
+			
+			for (size_t k=0; k<U1.cols(); ++k)
+			{
+				if (U1(r1+s1*D1,k) != 0.)
+				{
+					Mout.W[l][s1][r1].coeffRef(0,k) = U1(r1+s1*D1,k);
+				}
+			}
+			
+			cout << Mout.W[l][s1][r1] << endl << endl;
+		}
+		
+		for (size_t s2=0; s2<D2; ++s2)
+		for (size_t r2=0; r2<D2; ++r2)
+		{
+			Mout.W[l+1][s2][r2].resize(U2.rows(),1);
+			
+			for (size_t k=0; k<U2.rows(); ++k)
+			{
+				if (U2(k,r2+s2*D2) != 0.)
+				{
+					Mout.W[l+1][s2][r2].coeffRef(k,0) = U2(k,r2+s2*D2);
+				}
+			}
+			
+			cout << Mout.W[l+1][s2][r2] << endl << endl;
+		}
+	}
+	
+	return Mout;
+}
 
 //template<size_t Nq, typename Scalar>
 //void MpoQ<Nq,Scalar>::

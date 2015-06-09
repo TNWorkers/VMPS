@@ -24,62 +24,6 @@ void swap (MpsQ<Nq,Scalar> &V1, MpsQ<Nq,Scalar> &V2)
 	V1.swap(V2);
 }
 
-//template<size_t Nq, typename Scalar>
-//Scalar avg_ (const MpsQ<Nq,Scalar> &Vbra, 
-//             const MpoQ<D,Nq> &O, 
-//             const MpsQ<Nq,Scalar> &Vket, 
-//             bool USE_SQUARE = false, 
-//             DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::RIGHT)
-//{
-//	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
-//	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > B;
-//	
-//	if (DIR == DMRG::DIRECTION::RIGHT)
-//	{
-//		B.setVacuum();
-//		for (size_t l=0; l<O.length(); ++l)
-//		{
-//			if (USE_SQUARE == true)
-//			{
-//				contract_L(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(), Bnext);
-//			}
-//			else
-//			{
-//				contract_L(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(), Bnext);
-//			}
-//			B.clear();
-//			B = Bnext;
-//			Bnext.clear();
-//		}
-//	}
-//	else
-//	{
-//		B.setTarget(qarray3<Nq>{Vket.Qtarget(), Vbra.Qtarget(), O.Qtarget()});
-////		for (int l=O.length()-1; l>=0; --l)
-//		for (size_t l=O.length()-1; l!=-1; --l)
-//		{
-//			if (USE_SQUARE == true)
-//			{
-//				contract_R(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(), Bnext);
-//			}
-//			else
-//			{
-//				contract_R(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(), Bnext);
-//			}
-//			B.clear();
-//			B = Bnext;
-//			Bnext.clear();
-//		}
-//	}
-//	
-//	assert(B.dim == 1 and 
-//	       B.block[0][0][0].rows() == 1 and 
-//	       B.block[0][0][0].cols() == 1 and
-//	       "Result of contraction in <φ|O|ψ> is not a scalar!");
-//	
-//	return B.block[0][0][0](0,0);
-//}
-
 /**Calculates the expectation value \f$\left<\Psi_{bra}|O|\Psi_{ket}\right>\f$
 \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
 \param O : input MpoQ
@@ -229,12 +173,12 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 		Bnext.clear();
 	}
 	
-//	cout << "B.dim=" << B.dim << endl;
-//	for (size_t q=0; q<B.dim; ++q)
-//	{
-//		cout << "q=" << B.in(q) << ", " << B.out(q) << ", " << B.top(q) << ", " << B.bot(q) << endl 
-//		<< B.block[q][0][0] << endl;
-//	}
+	cout << "B.dim=" << B.dim << endl;
+	for (size_t q=0; q<B.dim; ++q)
+	{
+		cout << "q=" << B.in(q) << ", " << B.out(q) << ", " << B.top(q) << ", " << B.bot(q) << endl 
+		<< B.block[q][0][0] << endl;
+	}
 	
 	assert(B.dim == 1 and 
 	       B.block[0][0][0].rows() == 1 and 
@@ -294,7 +238,7 @@ void addScale (const OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scal
 	size_t Dstart = Vout.calc_Dmax();
 	MpsQ<Nq,Scalar> Vtmp = Vout;
 	Vtmp.addScale(alpha,Vin,false);
-	Compadre.varCompress(Vtmp, Vout, Dstart, 1e-3);
+	Compadre.varCompress(Vtmp, Vout, Dstart, 1e-3, 100, 1, DMRG::COMPRESSION::RANDOM);
 	
 	lout << Compadre.info() << endl;
 	lout << Chronos.info("V+V") << endl;
@@ -304,6 +248,40 @@ void addScale (const OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scal
 template<size_t Nq, typename MpoScalar, typename Scalar>
 void OxV (const MpoQ<Nq,MpoScalar> &O, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD)
 {
+	vector<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > > C;
+	vector<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > > Cnext;
+	
+	if (TOOL == DMRG::BROOM::QR)
+	{
+		assert(O.Qtarget() == qvacuum<Nq>() and 
+		       "Need a qnumber-conserving operator in OxV for QR option!");
+		Vout = Vin;
+	}
+	else
+	{
+		Vout.outerResize(O, Vin.Qtarget()+O.Qtarget());
+	}
+	
+	contract_C0(O.locBasis(0), O.W_at(0), Vin.A[0], C);
+	Vout.set_A_from_C(0,C,TOOL);
+	
+	for (size_t l=1; l<Vin.length(); ++l)
+	{
+		contract_C(O.locBasis(l), Vout.A[l-1], O.W_at(l), Vin.A[l], C, Cnext);
+		
+		for (size_t s1=0; s1<O.locBasis(l).size(); ++s1)
+		{
+			C[s1].clear();
+			C[s1] = Cnext[s1];
+			Cnext[s1].clear();
+		}
+		
+		Vout.set_A_from_C(l,C,TOOL);
+	}
+	
+	Vout.mend();
+	Vout.pivot = Vout.length()-1;
+	
 //	std::array<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> C;
 //	std::array<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> Cnext;
 //	

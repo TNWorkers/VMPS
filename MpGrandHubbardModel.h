@@ -1,25 +1,23 @@
 #ifndef VANILLA_GRANDHUBBARDMODEL
 #define VANILLA_GRANDHUBBARDMODEL
 
-#include "Mpo.h"
 #include "MpHubbardModel.h"
-#include "MpsCompressor.h"
 
 namespace VMPS
 {
 
-class GrandHubbardModel : public Mpo<4>
+class GrandHubbardModel : public MpoQ<0,double>
 {
 public:
 	
 	GrandHubbardModel (size_t L_input, double U_input, double V_input=0., bool CALC_SQUARE=true);
 	
-	typedef Mps<4,double>                     StateXd;
-	typedef Mps<4,complex<double> >           StateXcd;
-	typedef DmrgSolver<4,GrandHubbardModel>   Solver;
-	typedef MpsCompressor<4,double>           CompressorXd;
-	typedef MpsCompressor<4,complex<double> > CompressorXcd;
-	typedef Mpo<4>                          Operator;
+	typedef MpsQ<0,double>                     StateXd;
+	typedef MpsQ<0,complex<double> >           StateXcd;
+	typedef DmrgSolverQ<0,GrandHubbardModel>   Solver;
+	typedef MpsQCompressor<0,double>           CompressorXd;
+	typedef MpsQCompressor<0,complex<double> > CompressorXcd;
+	typedef MpoQ<0>                            Operator;
 	
 private:
 	
@@ -28,12 +26,18 @@ private:
 
 GrandHubbardModel::
 GrandHubbardModel (size_t L_input, double U_input, double V_input, bool CALC_SQUARE)
-:Mpo<4>(L_input,6), U(U_input) V(V_input)
+:MpoQ<0> (L_input, vector<qarray<0> >(begin(qloc4dummy),end(qloc4dummy)), {}, labeldummy, "HubbardModel"),
+U(U_input), V(V_input)
 {
-	if (V!=0.) {Daux=7;}
-	SuperMatrix<4> G = HubbardModel::Generator(U,V);
+	stringstream ss;
+	ss << "(U=" << U << ",V=" << V << ")";
+	this->label += ss.str();
 	
-	construct(G, this->W, this->Gvec);
+	this->Daux = (V==0.)? 6 : 7;
+	this->N_sv = this->Daux;
+	
+	SuperMatrix<double> G = HubbardModel::Generator(U,V);
+	this->construct(G, this->W, this->Gvec);
 	
 	if (CALC_SQUARE == true)
 	{

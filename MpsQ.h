@@ -28,9 +28,9 @@ typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 // Note: Cannot partially specialize template friends (or anything else, really). That sucks.
 template<size_t Nq_, typename MpHamiltonian> friend class DmrgSolverQ;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
-template<size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<Nq,S1> &H, const MpsQ<Nq,S2> &Vin, MpsQ<Nq,S2> &Vout);
-template<size_t Nq_, typename S1, typename S2> friend void OxV (const MpoQ<Nq,S1> &H, const MpsQ<Nq,S2> &Vin, MpsQ<Nq,S2> &Vout, DMRG::BROOM::OPTION TOOL);
-template<size_t Nq_, typename S_> friend class MpsQ; // in order to access data between real & complex MpsQ
+template<size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout);
+template<size_t Nq_, typename S1, typename S2> friend void OxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
+template<size_t Nq_, typename S_> friend class MpsQ; // in order to exchange data between real & complex MpsQ
 
 public:
 	
@@ -139,7 +139,7 @@ public:
 	/**Calculates the scalar product with another MpsQ.*/
 	Scalar dot (const MpsQ<Nq,Scalar> &Vket) const;
 	/**Calculates the squared norm. Exploits the canonical form if possible, calculates the dot product with itself otherwise.*/
-	Scalar squaredNorm() const;
+	double squaredNorm() const;
 	/**Swaps with another MpsQ.*/
 	void swap (MpsQ<Nq,Scalar> &V);
 	/**Copies the control parameters from another MpsQ, i.e.\ all the cutoff tolerances specified in DmrgJanitor.*/
@@ -210,13 +210,20 @@ info() const
 	ss << "MpsQ: ";
 	ss << "L=" << this->N_sites << ", ";
 	
-	ss << "(";
-	for (size_t q=0; q<Nq; ++q)
+	if (Nq != 0)
 	{
-		ss << qlabel[q];
-		if (q!=Nq-1) {ss << ",";}
+		ss << "(";
+		for (size_t q=0; q<Nq; ++q)
+		{
+			ss << qlabel[q];
+			if (q!=Nq-1) {ss << ",";}
+		}
+		ss << ")=" << format(Qtot) << ", ";
 	}
-	ss << ")=" << format(Qtot) << ", ";
+	else
+	{
+		ss << "no symmetries, ";
+	}
 	
 	ss << "pivot=" << this->pivot << ", ";
 	
@@ -224,7 +231,10 @@ info() const
 	ss << "Mmax=" << calc_Mmax() << " (Dmax=" << calc_Dmax() << "), ";
 	ss << "Nqmax=" << calc_Nqmax() << ", ";
 	ss << "trunc_weight=" << truncWeight.sum() << ", ";
-	ss << "entropy(L/2)=" << entropy(this->N_sites/2) << ", ";
+	if (!std::isnan(entropy(this->N_sites/2)))
+	{
+		ss << "entropy(L/2)=" << entropy(this->N_sites/2) << ", ";
+	}
 	ss << "mem=" << round(memory(GB),3) << "GB, overhead=" << round(overhead(MB),3) << "MB";
 	
 //	ss << endl << " •ortho: " << test_ortho();
@@ -270,7 +280,7 @@ outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input)
 {
 	format = H.format;
 	qlabel = H.qlabel;
-	outerResize<Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
+	outerResize<typename Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
 }
 
 template<size_t Nq, typename Scalar>
@@ -329,61 +339,81 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
 	entropy.resize(this->N_sites); entropy.setConstant(numeric_limits<double>::quiet_NaN());
 	
-	#ifndef DMRG_DONT_USE_OPENMP
-	#pragma omp parallel for
-	#endif
-	for (size_t l=0; l<this->N_sites; ++l)
+	if (Nq == 0)
 	{
-		set<qarray<Nq> > intmp;
-		set<qarray<Nq> > outtmp;
-		
-		for (size_t s=0; s<qloc[l].size(); ++s)
+		for (size_t l=0; l<this->N_sites; ++l)
 		{
-			A[l][s].clear();
+			inset[l].push_back(qvacuum<Nq>());
+			outset[l].push_back(qvacuum<Nq>());
 			
-//			qarrayIterator<D,Nq> ql(qloc,l);
-//			qarrayIterator<D,Nq> qr(qloc,this->N_sites-l-1);
-			
-//			qIterator ql(qloc,l);
-//			qIterator qr(qloc,this->N_sites-l-1);
-			
-			int lprev = l-1;
-			int lnext = l+1;
-			qIterator ql(qloc, 0, lprev); // length=l
-			qIterator qr(qloc, lnext, this->N_sites-1); // length=L-l-1
-			
-			set<qarray<Nq> > qrset;
-			for (qr=qr.begin(); qr<qr.end(); ++qr)
+			for (size_t s=0; s<qloc[l].size(); ++s)
 			{
-				qrset.insert(*qr);
+				A[l][s].in.push_back(qvacuum<Nq>());
+				A[l][s].out.push_back(qvacuum<Nq>());
+				A[l][s].dict.insert({qarray2<Nq>{qvacuum<Nq>(),qvacuum<Nq>()}, A[l][s].dim});
+				++A[l][s].dim;
+				A[l][s].block.resize(1);
 			}
-			
-			for (ql=ql.begin(); ql<ql.end(); ++ql)
-			{
-				auto qr = Qtot-*ql-qloc[l][s];
-				auto itqr = qrset.find(qr);
-				
-				if (itqr != qrset.end())
-				{
-					auto qin  = *ql;
-					auto qout = *ql+qloc[l][s];
-					
-					intmp.insert(qin);
-					outtmp.insert(qout);
-					
-					A[l][s].in.push_back(qin);
-					A[l][s].out.push_back(qout);
-					A[l][s].dict.insert({qarray2<Nq>{qin,qout}, A[l][s].dim});
-					++A[l][s].dim;
-				}
-			}
-			A[l][s].block.resize(A[l][s].dim);
 		}
+	}
+	else
+	{
+		#ifndef DMRG_DONT_USE_OPENMP
+		#pragma omp parallel for
+		#endif
+		for (size_t l=0; l<this->N_sites; ++l)
+		{
+			set<qarray<Nq> > intmp;
+			set<qarray<Nq> > outtmp;
 		
-		inset[l].resize(intmp.size());
-		outset[l].resize(outtmp.size());
-		copy(intmp.begin(),  intmp.end(),  inset[l].begin());
-		copy(outtmp.begin(), outtmp.end(), outset[l].begin());
+			for (size_t s=0; s<qloc[l].size(); ++s)
+			{
+				A[l][s].clear();
+			
+	//			qarrayIterator<D,Nq> ql(qloc,l);
+	//			qarrayIterator<D,Nq> qr(qloc,this->N_sites-l-1);
+			
+	//			qIterator ql(qloc,l);
+	//			qIterator qr(qloc,this->N_sites-l-1);
+			
+				int lprev = l-1;
+				int lnext = l+1;
+				qIterator ql(qloc, 0, lprev); // length=l
+				qIterator qr(qloc, lnext, this->N_sites-1); // length=L-l-1
+			
+				set<qarray<Nq> > qrset;
+				for (qr=qr.begin(); qr<qr.end(); ++qr)
+				{
+					qrset.insert(*qr);
+				}
+			
+				for (ql=ql.begin(); ql<ql.end(); ++ql)
+				{
+					auto qr = Qtot-*ql-qloc[l][s];
+					auto itqr = qrset.find(qr);
+				
+					if (itqr != qrset.end())
+					{
+						auto qin  = *ql;
+						auto qout = *ql+qloc[l][s];
+					
+						intmp.insert(qin);
+						outtmp.insert(qout);
+					
+						A[l][s].in.push_back(qin);
+						A[l][s].out.push_back(qout);
+						A[l][s].dict.insert({qarray2<Nq>{qin,qout}, A[l][s].dim});
+						++A[l][s].dim;
+					}
+				}
+				A[l][s].block.resize(A[l][s].dim);
+			}
+		
+			inset[l].resize(intmp.size());
+			outset[l].resize(outtmp.size());
+			copy(intmp.begin(),  intmp.end(),  inset[l].begin());
+			copy(outtmp.begin(), outtmp.end(), outset[l].begin());
+		}
 	}
 }
 
@@ -391,86 +421,137 @@ template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
 innerResize (size_t Dmax)
 {
-	vector<map<qarray<Nq>,size_t> > fromL(this->N_sites+1);
-	vector<map<qarray<Nq>,size_t> > fromR(this->N_sites+1);
-	
-	fromL[0].insert({qvacuum<Nq>(),1});
-	for (size_t l=1; l<this->N_sites+1; ++l)
-	for (auto qout=outset[l-1].begin(); qout!=outset[l-1].end(); ++qout)
+	if (Nq == 0)
 	{
-		fromL[l].insert({*qout,0});
-		for (size_t s=0; s<qloc[l-1].size(); ++s)
-		for (size_t q=0; q<A[l-1][s].dim; ++q)
+		size_t Dl = qloc[0].size();
+		size_t Dr  = qloc[this->N_sites-1].size();
+		
+		for (size_t s=0; s<Dl; ++s)
 		{
-			if (A[l-1][s].out[q] == *qout)
+			A[0][s].block[0].resize(1,min(Dl,Dmax));
+		}
+		for (size_t s=0; s<Dr; ++s)
+		{
+			A[this->N_sites-1][s].block[0].resize(min(Dr,Dmax),1);
+		}
+		
+		for (size_t l=1; l<this->N_sites/2; ++l)
+		{
+			size_t Dl = qloc[l].size();
+			size_t Dr = qloc[this->N_sites-l-1].size();
+			
+			size_t Nlrows = min(Dmax, A[l-1][0].block[0].rows()*Dl);
+			size_t Nlcols = min(Dmax, A[l-1][0].block[0].cols()*Dl);
+			
+			size_t Nrrows = min(Dmax, A[l-1][0].block[0].rows()*Dr);
+			size_t Nrcols = min(Dmax, A[l-1][0].block[0].cols()*Dr);
+			
+			for (size_t s=0; s<Dl; ++s)
 			{
-				qarray<Nq> qin = A[l-1][s].in[q];
-				fromL[l][*qout] += fromL[l-1][qin];
+				A[l][s].block[0].resize(Nlrows,Nlcols);
+			}
+			for (size_t s=0; s<Dr; ++s)
+			{
+				A[this->N_sites-l-1][s].block[0].resize(Nrcols,Nrrows);
+			}
+		}
+		
+		// middle matrix for odd chain length:
+		if (this->N_sites%2==1)
+		{
+			size_t centre = this->N_sites/2;
+			int Nrows = A[centre-1][0].block[0].cols();
+			int Ncols = A[centre+1][0].block[0].rows();
+			
+			for (size_t s=0; s<qloc[centre].size(); ++s)
+			{
+				A[centre][s].block[0].resize(Nrows,Ncols);
 			}
 		}
 	}
-	
-//	cout << "LEFT: " << endl;
-//	for (int l=0; l<this->N_sites+1; ++l)
-//	{
-//		cout << "l=" << l << endl;
-//		for (auto it=fromL[l].begin(); it!=fromL[l].end(); ++it)
-//		{
-//			cout << "q=" << it->first << ": " << it->second << endl;
-//		}
-//	}
-//	cout << endl;
-	
-	fromR[this->N_sites].insert({Qtot,1});
-	for (size_t l=this->N_sites; l-->0;)
-	for (auto qin=inset[l].begin(); qin!=inset[l].end(); ++qin)
+	else
 	{
-		fromR[l].insert({*qin,0});
-		for (size_t s=0; s<qloc[l].size(); ++s)
-		for (size_t q=0; q<A[l][s].dim; ++q)
+		vector<map<qarray<Nq>,size_t> > fromL(this->N_sites+1);
+		vector<map<qarray<Nq>,size_t> > fromR(this->N_sites+1);
+	
+		fromL[0].insert({qvacuum<Nq>(),1});
+		for (size_t l=1; l<this->N_sites+1; ++l)
+		for (auto qout=outset[l-1].begin(); qout!=outset[l-1].end(); ++qout)
 		{
-			if (A[l][s].in[q] == *qin)
+			fromL[l].insert({*qout,0});
+			for (size_t s=0; s<qloc[l-1].size(); ++s)
+			for (size_t q=0; q<A[l-1][s].dim; ++q)
 			{
-				qarray<Nq> qout = A[l][s].out[q];
-				fromR[l][*qin] += fromR[l+1][qout];
+				if (A[l-1][s].out[q] == *qout)
+				{
+					qarray<Nq> qin = A[l-1][s].in[q];
+					fromL[l][*qout] += fromL[l-1][qin];
+				}
 			}
 		}
-	}
 	
-//	cout << "RIGHT: " << endl;
-//	for (size_t l=0; l<this->N_sites+1; ++l)
-//	{
-//		cout << "l=" << l << endl;
-//		for (auto it=fromR[l].begin(); it!=fromR[l].end(); ++it)
-//		{
-//			cout << "q=" << it->first << ": " << it->second << endl;
-//		}
-//	}
+	//	cout << "LEFT: " << endl;
+	//	for (int l=0; l<this->N_sites+1; ++l)
+	//	{
+	//		cout << "l=" << l << endl;
+	//		for (auto it=fromL[l].begin(); it!=fromL[l].end(); ++it)
+	//		{
+	//			cout << "q=" << it->first << ": " << it->second << endl;
+	//		}
+	//	}
+	//	cout << endl;
 	
-	vector<map<qarray<Nq>,size_t> > lrmin(this->N_sites+1);
-	for (size_t l=0; l<this->N_sites+1; ++l)
-	{
-		for (auto it=fromL[l].begin(); it!=fromL[l].end(); ++it)
+		fromR[this->N_sites].insert({Qtot,1});
+		for (size_t l=this->N_sites; l-->0;)
+		for (auto qin=inset[l].begin(); qin!=inset[l].end(); ++qin)
 		{
-			qarray<Nq> Qout = it->first;
-			size_t Nql = it->second;
-			size_t Nqr = fromR[l][Qout];
-			lrmin[l].insert({Qout,min(Nql,Nqr)});
+			fromR[l].insert({*qin,0});
+			for (size_t s=0; s<qloc[l].size(); ++s)
+			for (size_t q=0; q<A[l][s].dim; ++q)
+			{
+				if (A[l][s].in[q] == *qin)
+				{
+					qarray<Nq> qout = A[l][s].out[q];
+					fromR[l][*qin] += fromR[l+1][qout];
+				}
+			}
 		}
-	}
-	
-	for (size_t l=0; l<this->N_sites; ++l)
-	{
-		for (size_t s=0; s<qloc[l].size(); ++s)
-		for (size_t q=0; q<A[l][s].dim; ++q)
+		
+	//	cout << "RIGHT: " << endl;
+	//	for (size_t l=0; l<this->N_sites+1; ++l)
+	//	{
+	//		cout << "l=" << l << endl;
+	//		for (auto it=fromR[l].begin(); it!=fromR[l].end(); ++it)
+	//		{
+	//			cout << "q=" << it->first << ": " << it->second << endl;
+	//		}
+	//	}
+		
+		vector<map<qarray<Nq>,size_t> > lrmin(this->N_sites+1);
+		for (size_t l=0; l<this->N_sites+1; ++l)
 		{
-			qarray<Nq> Qin  = A[l][s].in[q];
-			qarray<Nq> Qout = A[l][s].out[q];
+			for (auto it=fromL[l].begin(); it!=fromL[l].end(); ++it)
+			{
+				qarray<Nq> Qout = it->first;
+				size_t Nql = it->second;
+				size_t Nqr = fromR[l][Qout];
+				lrmin[l].insert({Qout,min(Nql,Nqr)});
+			}
+		}
+		
+		for (size_t l=0; l<this->N_sites; ++l)
+		{
+			for (size_t s=0; s<qloc[l].size(); ++s)
+			for (size_t q=0; q<A[l][s].dim; ++q)
+			{
+				qarray<Nq> Qin  = A[l][s].in[q];
+				qarray<Nq> Qout = A[l][s].out[q];
 			
-			size_t Nrows = min(lrmin[l][Qin],    Dmax);
-			size_t Ncols = min(lrmin[l+1][Qout], Dmax);
+				size_t Nrows = min(lrmin[l][Qin],    Dmax);
+				size_t Ncols = min(lrmin[l+1][Qout], Dmax);
 			
-			A[l][s].block[q].resize(Nrows,Ncols);
+				A[l][s].block[q].resize(Nrows,Ncols);
+			}
 		}
 	}
 }
@@ -697,8 +778,8 @@ template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
 press_rdm (size_t loc, vector<vector<Biped<Nq,MatrixType> > > rhoArray, qarray<Nq> qnum, DMRG::DIRECTION::OPTION DIR, MatrixType &rho)
 {
-	MatrixType rows(qloc[loc].size(),qloc[loc].size()); rows.setZero();
-	MatrixType cols(qloc[loc].size(),qloc[loc].size()); cols.setZero();
+	MatrixXd rows(qloc[loc].size(),qloc[loc].size()); rows.setZero();
+	MatrixXd cols(qloc[loc].size(),qloc[loc].size()); cols.setZero();
 	
 	for (size_t s1=0; s1<qloc[loc].size(); ++s1)
 	for (size_t s2=0; s2<qloc[loc].size(); ++s2)
@@ -791,7 +872,6 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 	
 	ArrayXd truncWeightSub(inset[loc].size()); truncWeightSub.setZero();
 	ArrayXd entropySub(inset[loc].size()); entropySub.setZero();
-	ArrayXd lastSV(inset[loc].size());
 	
 	#ifndef DMRG_DONT_USE_OPENMP
 	#pragma omp parallel for
@@ -829,7 +909,13 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 		#else
 		LapackSVD<Scalar> Jack; // SVD
 		#endif
-		HouseholderQR<MatrixType> Quirinus; MatrixType Qmatrix, Rmatrix; // QR
+		
+		#ifdef DONT_USE_EIGEN_QR
+		LapackQR<Scalar> Quirinus; MatrixType Qmatrix, Rmatrix; // Lapack QR
+		#else
+		HouseholderQR<MatrixType> Quirinus; MatrixType Qmatrix, Rmatrix; // Eigen QR
+		#endif
+		
 		MatrixType rho; SelfAdjointEigenSolver<MatrixType> Eugen; // RDM
 		size_t Nret = Nrows; // retained states
 		
@@ -858,8 +944,13 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 		else if (TOOL == DMRG::BROOM::QR)
 		{
 			Quirinus.compute(Aclump.adjoint());
+			#ifdef DONT_USE_EIGEN_QR
+			Qmatrix = Quirinus.Qmatrix().adjoint();
+			Rmatrix = Quirinus.Rmatrix().adjoint();
+			#else
 			Qmatrix = (Quirinus.householderQ() * MatrixType::Identity(Aclump.cols(),Aclump.rows())).adjoint();
 			Rmatrix = (MatrixType::Identity(Aclump.rows(),Aclump.cols()) * Quirinus.matrixQR().template triangularView<Upper>()).adjoint();
+			#endif
 			entropySub(qin) = numeric_limits<double>::quiet_NaN();
 		}
 		else if (TOOL == DMRG::BROOM::RDM)
@@ -1002,7 +1093,6 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 	
 	ArrayXd truncWeightSub(outset[loc].size()); truncWeightSub.setZero();
 	ArrayXd entropySub(outset[loc].size()); entropySub.setZero();
-	ArrayXd lastSV(outset[loc].size());
 	
 	#ifndef DMRG_DONT_USE_OPENMP
 	#pragma omp parallel for
@@ -1028,6 +1118,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 		size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
 		
 		MatrixType Aclump(Nrows,Ncols);
+		Aclump.setZero();
 		size_t stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
 		{
@@ -1036,11 +1127,17 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 		}
 		
 		#ifdef DONT_USE_LAPACK_SVD
-		JacobiSVD<MatrixType> Jack; // SVD
+		JacobiSVD<MatrixType> Jack; // Eigen SVD
 		#else
-		LapackSVD<Scalar> Jack; // SVD
+		LapackSVD<Scalar> Jack; // Lapack SVD
 		#endif
-		HouseholderQR<MatrixType> Quirinus; MatrixType Qmatrix, Rmatrix; // QR
+		
+		#ifdef DONT_USE_EIGEN_QR
+		LapackQR<Scalar> Quirinus; MatrixType Qmatrix, Rmatrix; // Eigen QR
+		#else
+		HouseholderQR<MatrixType> Quirinus; MatrixType Qmatrix, Rmatrix; // Eigen QR
+		#endif
+		
 		MatrixType rho; SelfAdjointEigenSolver<MatrixType> Eugen; // RDM
 		size_t Nret = Ncols; // retained states
 		
@@ -1069,8 +1166,37 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 		else if (TOOL == DMRG::BROOM::QR)
 		{
 			Quirinus.compute(Aclump);
+			#ifdef DONT_USE_EIGEN_QR
+			Qmatrix = Quirinus.Qmatrix();
+			Rmatrix = Quirinus.Rmatrix();
+			#else
 			Qmatrix = Quirinus.householderQ() * MatrixType::Identity(Aclump.rows(),Aclump.cols());
 			Rmatrix = MatrixType::Identity(Aclump.cols(),Aclump.rows()) * Quirinus.matrixQR().template triangularView<Upper>();
+			#endif
+			
+//			cout << outset[loc][qout] << " Eigen : " << "\tQ:" << Qmatrix.norm() << "\tR:" << Rmatrix.norm() << "\tA:" << Aclump.norm() << endl;
+//			cout << outset[loc][qout] << " Lapack: " << "\tQ:" << Qmatrix_.norm() << "\tR:" << Rmatrix_.norm() << "\tA:" << Aclump.norm() << endl;
+//			cout << "diffnorms: " << (Qmatrix-Qmatrix_).norm() << "\t" << (Rmatrix-Rmatrix_).norm() << endl;
+			
+//			assert(!std::isnan(Qmatrix.norm()));
+			
+//			if (std::isnan(Qmatrix.norm()))
+//			{
+//				ofstream f("Aclump.dat");
+//				f << Aclump << endl;
+//				f.close();
+//				assert(!std::isnan(Qmatrix.norm()));
+////				cout << "Quirinus.matrixQR().norm()=" << Quirinus.matrixQR().norm() << endl;
+////				
+////				LapackQR<Scalar> Quirinus_; // QR
+////				Quirinus_.compute(Aclump);
+////				Qmatrix = Quirinus_.Qmatrix();
+////				Rmatrix = Quirinus_.Rmatrix();
+////				
+////				cout << outset[loc][qout] << " Eigen reset: " << "\tQ:" << Qmatrix.norm() << "\tR:" << Rmatrix.norm() << "\tA:" << Aclump.norm() << endl;
+////				cout << endl;
+//			}
+			
 			entropySub(qout) = numeric_limits<double>::quiet_NaN();
 		}
 		else if (TOOL == DMRG::BROOM::RDM)
@@ -1873,10 +1999,10 @@ dot (const MpsQ<Nq,Scalar> &Vket) const
 }
 
 template<size_t Nq, typename Scalar>
-Scalar MpsQ<Nq,Scalar>::
+double MpsQ<Nq,Scalar>::
 squaredNorm() const
 {
-	Scalar res = 0.;
+	double res = 0.;
 	// exploit canonical form:
 	if (this->pivot != -1)
 	{
@@ -1889,7 +2015,7 @@ squaredNorm() const
 	// use dot product otherwise:
 	else
 	{
-		res = dot(*this);
+		res = isReal(dot(*this));
 	}
 	return res;
 }
@@ -1995,6 +2121,7 @@ cast() const
 	Vout.eps_noise = this->eps_noise;
 	Vout.eps_rdm = this->eps_rdm;
 	Vout.eps_svd = this->eps_svd;
+	Vout.eps_rsvd = this->eps_rsvd;
 	Vout.N_sv = this->N_sv;
 	Vout.pivot = this->pivot;
 	Vout.truncWeight = truncWeight;
@@ -2031,7 +2158,7 @@ add_site (size_t loc, OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin)
 {
 	if (loc == 0)
 	{
-		for (size_t s=0; s<qloc[loc].size(); ++s)
+		for (size_t s=0; s<qloc[0].size(); ++s)
 		for (size_t q=0; q<A[0][s].dim; ++q)
 		{
 			qarray2<Nq> quple = {A[0][s].in[q], A[0][s].out[q]};
@@ -2041,7 +2168,7 @@ add_site (size_t loc, OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin)
 	}
 	else if (loc == this->N_sites-1)
 	{
-		for (size_t s=0; s<qloc[loc].size(); ++s)
+		for (size_t s=0; s<qloc[this->N_sites-1].size(); ++s)
 		for (size_t q=0; q<A[this->N_sites-1][s].dim; ++q)
 		{
 			qarray2<Nq> quple = {A[this->N_sites-1][s].in[q], A[this->N_sites-1][s].out[q]};
@@ -2068,6 +2195,7 @@ addScale (OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, bool SVD_COMPRESS)
 {
 	assert(Qtot == Vin.Qtarget() and 
 	       "Mismatched quantum numbers in addition of MpsQ!");
+	this->pivot = -1;
 	
 	if (&Vin.A == &A) // v+=α·v; results in v*=2·α;
 	{
@@ -2090,7 +2218,6 @@ addScale (OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, bool SVD_COMPRESS)
 			}
 		}
 	}
-	this->pivot = -1;
 }
 
 template<size_t Nq, typename Scalar>
@@ -2292,7 +2419,7 @@ mend()
 				bool GOT_A_MATCH = false;
 				while (GOT_A_MATCH == false and sm<qloc[l-1].size())
 				{
-					qarray2<Nq> cmpm = {A[l][s].in[q]-qloc[sm], A[l][s].in[q]};
+					qarray2<Nq> cmpm = {A[l][s].in[q]-qloc[l-1][sm], A[l][s].in[q]};
 					auto qm = A[l-1][sm].dict.find(cmpm);
 					if (qm != A[l-1][sm].dict.end())
 					{
@@ -2309,7 +2436,7 @@ mend()
 				bool GOT_A_MATCH = false;
 				while (GOT_A_MATCH == false and sp<qloc[l+1].size())
 				{
-					qarray2<Nq> cmpp = {A[l][s].out[q], A[l][s].out[q]+qloc[sp]};
+					qarray2<Nq> cmpp = {A[l][s].out[q], A[l][s].out[q]+qloc[l+1][sp]};
 					auto qp = A[l+1][sp].dict.find(cmpp);
 					if (qp != A[l+1][sp].dict.end())
 					{

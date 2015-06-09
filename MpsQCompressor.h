@@ -200,7 +200,7 @@ overhead (MEMUNIT memunit) const
 }
 
 //---------------------------compression of |Psi>---------------------------
-// |Vout> ≈ |Vin>, M(Vout)<M(Vin)
+// |Vout> ≈ |Vin>, M(Vout) < M(Vin)
 // convention in program: <Vout|Vin>
 
 template<size_t Nq, typename Scalar, typename MpoScalar>
@@ -209,7 +209,7 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 {
 	Stopwatch Chronos;
 	N_sites = Vin.length();
-	double sqnormVin = dot(Vin,Vin);
+	double sqnormVin = isReal(dot(Vin,Vin));
 	N_halfsweeps = 0;
 	N_sweepsteps = 0;
 	Dcutoff = Dcutoff_input;
@@ -220,6 +220,7 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 	R.resize(N_sites);
 	R[N_sites-1].setTarget(Vin.Qtot);
 	L[0].setVacuum();
+	bool RANDOMIZE = false;
 	
 	// set initial guess
 	if (START == DMRG::COMPRESSION::RANDOM or
@@ -227,7 +228,11 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 	{
 		Vout = Vin;
 		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
-		Vout.setRandom();
+		if (START == DMRG::COMPRESSION::RANDOM)
+		{
+			RANDOMIZE = true;
+			//Vout.setRandom();
+		}
 	}
 	else if (START == DMRG::COMPRESSION::BRUTAL_SVD or
 	         START == DMRG::COMPRESSION::RHS_SVD)
@@ -245,7 +250,7 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 	}
 	
 	Mmax = Vout.calc_Mmax();
-	prepSweep(Vin,Vout);
+	prepSweep(Vin,Vout,RANDOMIZE);
 	sqdist = 1.;
 	size_t halfSweepRange = N_sites;
 	
@@ -272,6 +277,7 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 		++N_halfsweeps;
 		
 		sqdist = abs(sqnormVin-Vout.squaredNorm());
+		assert(!std::isnan(sqdist));
 		// test with:
 		//MpsQ<Nq,Scalar> Vtmp = Vbig;
 		//Vtmp -= Vsmall;
@@ -368,7 +374,7 @@ template<size_t Nq, typename Scalar, typename MpoScalar>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
 optimizationStep (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
 {
-	for (size_t s=0; s<Vin.locBasis(pivot); ++s)
+	for (size_t s=0; s<Vin.locBasis(pivot).size(); ++s)
 	{
 		Vout.A[pivot][s] = L[pivot] * Vin.A[pivot][s] * R[pivot];
 	}
@@ -379,7 +385,7 @@ void MpsQCompressor<Nq,Scalar,MpoScalar>::
 build_L (size_t loc, const MpsQ<Nq,Scalar> &Vbra, const MpsQ<Nq,Scalar> &Vket)
 {
 	L[loc] = Vbra.A[loc-1][0].adjoint() * L[loc-1] * Vket.A[loc-1][0];
-	for (size_t s=1; s<Vbra.locBasis(loc-1); ++s)
+	for (size_t s=1; s<Vbra.locBasis(loc-1).size(); ++s)
 	{
 		L[loc] += Vbra.A[loc-1][s].adjoint() * L[loc-1] * Vket.A[loc-1][s];
 	}
@@ -390,7 +396,7 @@ void MpsQCompressor<Nq,Scalar,MpoScalar>::
 build_R (size_t loc, const MpsQ<Nq,Scalar> &Vbra, const MpsQ<Nq,Scalar> &Vket)
 {
 	R[loc] = Vket.A[loc+1][0] * R[loc+1] * Vbra.A[loc+1][0].adjoint();
-	for (size_t s=1; s<Vbra.locBasis(loc+1); ++s)
+	for (size_t s=1; s<Vbra.locBasis(loc+1).size(); ++s)
 	{
 		R[loc] += Vket.A[loc+1][s] * R[loc+1] * Vbra.A[loc+1][s].adjoint();
 	}
@@ -446,15 +452,11 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 	{
 		#pragma omp section
 		{
-			cout << "sqnormVin" << endl;
 			sqnormVin = (H.check_SQUARE()==true)? isReal(avg(Vin,H,Vin,true)) : isReal(avg(Vin,H,H,Vin));
-			cout << "sqnormVin done!" << endl;
 		}
 		#pragma omp section
 		{
-			cout << "prepSweep" << endl;
 			prepSweep(H,Vin,Vout);
-			cout << "prepSweep done!" << endl;
 		}
 	}
 	sqdist = 1.;
@@ -480,6 +482,7 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 		++N_halfsweeps;
 		
 		sqdist = abs(sqnormVin-Vout.squaredNorm());
+		assert(!std::isnan(sqdist));
 		
 		if (CURRENT_VERBOSITY<2)
 		{
@@ -550,7 +553,6 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vou
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, TOOL);
 			build_RW(l-1,Vout,H,Vin);
 		}
-//		Vout.leftSweepStep(0, DMRG::BROOM::QR); // last sweep to get rid of large numbers
 		CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
 	}
 	else if (Vout.pivot == 0)
@@ -565,7 +567,6 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vou
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, TOOL);
 			build_LW(l+1,Vout,H,Vin);
 		}
-//		Vout.rightSweepStep(N_sites-1, DMRG::BROOM::QR); // last sweep to get rid of large numbers
 		CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
 	}
 	pivot = Vout.pivot;
@@ -585,7 +586,7 @@ template<typename MpOperator>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
 optimizationStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
 {
-	for (size_t s=0; s<Vin.locBasis(pivot); ++s)
+	for (size_t s=0; s<Vin.locBasis(pivot).size(); ++s)
 	{
 		Vout.A[pivot][s].setZero();
 	}
@@ -594,7 +595,7 @@ optimizationStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scala
 	{
 		Heff[pivot].W = H.W[pivot];
 		precalc_blockStructure (Heff[pivot].L, Vout.A[pivot], Heff[pivot].W, Vin.A[pivot], Heff[pivot].R, 
-		                        H.locBasis(), Heff[pivot].qlhs, Heff[pivot].qrhs);
+		                        H.locBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs);
 	}
 	
 	// why doesn't this work?
@@ -637,7 +638,7 @@ template<typename MpOperator>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
 build_LW (size_t loc, const MpsQ<Nq,Scalar> &Vbra, const MpOperator &H, const MpsQ<Nq,Scalar> &Vket)
 {
-	contract_L(Heff[loc-1].L, Vbra.A[loc-1], H.W[loc-1], Vket.A[loc-1], H.locBasis(), Heff[loc].L);
+	contract_L(Heff[loc-1].L, Vbra.A[loc-1], H.W[loc-1], Vket.A[loc-1], H.locBasis(loc-1), Heff[loc].L);
 }
 
 template<size_t Nq, typename Scalar, typename MpoScalar>
@@ -645,7 +646,7 @@ template<typename MpOperator>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
 build_RW (size_t loc, const MpsQ<Nq,Scalar> &Vbra, const MpOperator &H, const MpsQ<Nq,Scalar> &Vket)
 {
-	contract_R(Heff[loc+1].R, Vbra.A[loc+1], H.W[loc+1], Vket.A[loc+1], H.locBasis(), Heff[loc].R);
+	contract_R(Heff[loc+1].R, Vbra.A[loc+1], H.W[loc+1], Vket.A[loc+1], H.locBasis(loc+1), Heff[loc].R);
 }
 
 template<size_t Nq, typename Scalar, typename MpoScalar>
@@ -655,11 +656,11 @@ energyTruncationStep (MpsQ<Nq,Scalar> &V, size_t dimK)
 	if (Heff[pivot].qlhs.size() == 0)
 	{
 		precalc_blockStructure (Heff[pivot].L, V.A[pivot], Heff[pivot].W, V.A[pivot], Heff[pivot].R, 
-		                        V.locBasis(), Heff[pivot].qlhs, Heff[pivot].qrhs);
+		                        V.locBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs);
 	}
 	
 	Heff[pivot].dim = 0;
-	for (size_t s=0; s<V.locBasis(pivot); ++s)
+	for (size_t s=0; s<V.locBasis(pivot).size(); ++s)
 	for (size_t q=0; q<V.A[pivot][s].dim; ++q)
 	{
 		Heff[pivot].dim += V.A[pivot][s].block[q].rows() * V.A[pivot][s].block[q].cols();
@@ -758,7 +759,7 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 			optimizationStep(Vin2,Vout);
 			auto Atmp = Vout.A[pivot];
 			optimizationStep(H,Vin1,Vout);
-			for (size_t s=0; s<H.locBasis(pivot); ++s)
+			for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
 			for (size_t q=0; q<Atmp[s].dim; ++q)
 			{
 				qarray2<Nq> quple = {Atmp[s].in[q], Atmp[s].out[q]};
@@ -775,6 +776,7 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 		++N_halfsweeps;
 		
 		sqdist = abs(sqnormV1+sqnormV2-Vout.squaredNorm()-2.*overlapV12);
+		assert(!std::isnan(sqdist));
 		
 		if (CURRENT_VERBOSITY<2)
 		{
