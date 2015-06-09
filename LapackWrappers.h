@@ -8,6 +8,7 @@ extern "C" void dgesdd_ (const char *JOBZ, const int *M, const int *N,
                          double *U, const int *LDU, 
                          double *VT, const int *LDVT, 
                          double *WORK, const int *LWORK, int *IWORK, int *INFO);
+
 // complex SVD:
 extern "C" void zgesdd_ (const char *JOBZ, const int *M, const int *N, 
                          complex<double> *A, const int *LDA, 
@@ -15,14 +16,21 @@ extern "C" void zgesdd_ (const char *JOBZ, const int *M, const int *N,
                          complex<double> *U, const int *LDU, 
                          complex<double> *VT, const int *LDVT, 
                          complex<double> *WORK, const int *LWORK, double *RWORK, int *IWORK, int *INFO);
+
 // real symmetrix eigenvalues & eigenvectors:
 extern "C" void dsyev_ (const char *JOBZ, const char *UPLO, const int *N, double *A, const int *LDA, double *W, double *WORK, const int *LWORK, int *INFO);
-// QR decomposition:
+
+// real QR decomposition:
 extern "C" void dgeqrf_ (const int *M, const int *N, double *A, const int *LDA, double *TAU, double *WORK, const int *LWORK, int *INFO);
 // QR with column pivoting:
 //extern "C" void dgeqp3_ (const int *M, const int *N, double *A, const int *LDA, int *JPVT, double *TAU, double *WORK, const int *LWORK, int *INFO);
 // apply reflections to get Q-matrix:
 extern "C" void dorgqr_ (const int *M, const int *N, const int *K, double *A, const int *LDA, double *TAU, double *WORK, const int *LWORK, int *INFO);
+
+// complex QR decomposition:
+extern "C" void zgeqrf_ (const int *M, const int *N, complex<double> *A, const int *LDA, complex<double> *TAU, complex<double> *WORK, const int *LWORK, int *INFO);
+// apply reflections to get Q-matrix:
+extern "C" void zungqr_ (const int *M, const int *N, const int *K, complex<double> *A, const int *LDA, complex<double> *TAU, complex<double> *WORK, const int *LWORK, int *INFO);
 
 // Lapack is 10-100 times faster than Eigen
 template<typename Scalar>
@@ -160,27 +168,65 @@ compute (const MatrixXd &A)
 }
 
 // Eigen is 1.25 times faster than Lapack
+//class LapackQR
+//{
+//public:
+//	
+//	void compute (const MatrixXd &A);
+//	
+//	inline MatrixXd Qmatrix() {return Q;}
+//	inline MatrixXd Rmatrix() {return R;}
+//	
+//private:
+//	
+//	MatrixXd Q;
+//	MatrixXd R;
+//};
+
+//void LapackQR::
+//compute (const MatrixXd &A)
+//{
+//	int Arows = A.rows();
+//	int Acols = A.cols();
+//	int minA  = min(Arows,Acols);
+//	R = A;
+//	int LWORK = 2*Acols;
+//	VectorXd WORK(LWORK);
+//	int INFO;
+//	VectorXd TAU(minA);
+//	
+//	dgeqrf_ (&Arows, &Acols, R.data(), &Arows, TAU.data(), WORK.data(), &LWORK, &INFO);
+//	Q = R;
+//	dorgqr_ (&Arows, &Acols, &minA, Q.data(), &Arows, TAU.data(), WORK.data(), &LWORK, &INFO);
+//	R = MatrixXd::Identity(Acols,Arows) * R.triangularView<Upper>();
+//}
+
+template<typename Scalar>
 class LapackQR
 {
+typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
+
 public:
 	
-	void compute (const MatrixXd &A);
+	void compute (const MatrixType &A);
 	
-	inline MatrixXd Qmatrix() {return Q;}
-	inline MatrixXd Rmatrix() {return R;}
+	inline MatrixType Qmatrix() {return Q;}
+	inline MatrixType Rmatrix() {return R;}
 	
 private:
 	
-	MatrixXd Q;
-	MatrixXd R;
+	MatrixType Q;
+	MatrixType R;
 };
 
-void LapackQR::
+template<>
+void LapackQR<double>::
 compute (const MatrixXd &A)
 {
 	int Arows = A.rows();
 	int Acols = A.cols();
 	int minA  = min(Arows,Acols);
+	
 	R = A;
 	int LWORK = 2*Acols;
 	VectorXd WORK(LWORK);
@@ -191,6 +237,30 @@ compute (const MatrixXd &A)
 	Q = R;
 	dorgqr_ (&Arows, &Acols, &minA, Q.data(), &Arows, TAU.data(), WORK.data(), &LWORK, &INFO);
 	R = MatrixXd::Identity(Acols,Arows) * R.triangularView<Upper>();
+	
+	if (Acols > Arows) {Q.rightCols(Acols-Arows).setZero();}
+}
+
+template<>
+void LapackQR<complex<double> >::
+compute (const MatrixXcd &A)
+{
+	int Arows = A.rows();
+	int Acols = A.cols();
+	int minA  = min(Arows,Acols);
+	
+	R = A;
+	int LWORK = 2*Acols;
+	VectorXcd WORK(LWORK);
+	int INFO;
+	VectorXcd TAU(minA);
+	
+	zgeqrf_ (&Arows, &Acols, R.data(), &Arows, TAU.data(), WORK.data(), &LWORK, &INFO);
+	Q = R;
+	zungqr_ (&Arows, &minA, &minA, Q.data(), &Arows, TAU.data(), WORK.data(), &LWORK, &INFO);
+	R = MatrixXcd::Identity(Acols,Arows) * R.triangularView<Upper>();
+	
+	if (Acols > Arows) {Q.rightCols(Acols-Arows).setZero();}
 }
 
 #endif

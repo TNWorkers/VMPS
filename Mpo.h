@@ -48,7 +48,7 @@ public:
 	inline const vector<vector<SparseMatrix<Scalar> > > &Wsq_at (size_t loc) const {return Wsq[loc];};
 	inline bool check_SQUARE() const {return GOT_SQUARE;}
 	
-protected:
+//protected:
 	
 	bool GOT_SQUARE;
 	
@@ -230,8 +230,8 @@ setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		M[l].setMatrix(Daux,qlocsize[l]);
-		if      (l==loc1) {M[l](0,0)=Op1;}
-		else if (l==loc2) {M[l](0,0)=Op2;}
+		if      (l==loc1) {M[l](0,0) = Op1;}
+		else if (l==loc2) {M[l](0,0) = Op2;}
 		else              {M[l](0,0).setIdentity();}
 	}
 	

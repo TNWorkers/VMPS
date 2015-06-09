@@ -3,6 +3,12 @@
 
 #include <array>
 
+#ifndef IS_REAL_FUNCTION
+#define IS_REAL_FUNCTION
+inline double isReal (double x) {return x;}
+inline double isReal (complex<double> x) {return x.real();}
+#endif
+
 #ifndef SPIN_INDEX_ENUM
 #define SPIN_INDEX_ENUM
 	enum SPIN_INDEX {UP=false, DN=true, NOSPIN=2, UPDN=3};
