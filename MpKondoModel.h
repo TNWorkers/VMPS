@@ -80,6 +80,15 @@ public:
 	bool validate (qarray<2> qnum) const;
 	
 	MpoQ<2> SzImp (size_t L, size_t loc);
+
+	/**MPO for \f$S^{z}_{i}S^{z}_{j}\f$ */
+	MpoQ<2> SzImpCorr (size_t L, size_t loc1, size_t loc2);
+
+	/**MPO for \f$S^{+}_{i}S^{-}_{j}\f$ */
+	MpoQ<2> SpmImpCorr (size_t L, size_t loc1, size_t loc2);
+
+	/**MPO for \f$S^{-}_{i}S^{+}_{j}\f$ */
+	MpoQ<2> SmpImpCorr (size_t L, size_t loc1, size_t loc2);
 	
 private:
 	
@@ -338,6 +347,45 @@ SzImp (size_t L, size_t loc)
 	Mout.qloc = this->qloc;
 	MatrixXd Id4(4,4); Id4.setIdentity();
 	Mout.setLocal(loc, kroneckerProduct(SpinBase<2>::Sz,Id4));
+	return Mout;
+}
+
+MpoQ<2> KondoModel::SzImpCorr (size_t L,size_t loc1, size_t loc2)
+{
+	assert(loc1<L);
+	assert(loc2<L);
+	stringstream ss;
+	ss << "SzImp correlation(" << loc1 << "," << loc2 << ")";
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(KondoModel::q),end(KondoModel::q)), {0,0}, KondoModel::NMlabel, ss.str());
+	Mout.qloc = this->qloc;
+	MatrixXd Id4(4,4); Id4.setIdentity();
+	Mout.setLocal(loc1, kroneckerProduct(SpinBase<2>::Sz,Id4), loc2, kroneckerProduct(SpinBase<2>::Sz,Id4));
+	return Mout;
+}
+
+MpoQ<2> KondoModel::SpmImpCorr (size_t L, size_t loc1, size_t loc2)
+{
+	assert(loc1<L);
+	assert(loc2<L);
+	stringstream ss;
+	ss << "SpmImp correlation(" << loc1 << "," << loc2 << ")";
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(KondoModel::q),end(KondoModel::q)), {0,0}, KondoModel::NMlabel, ss.str());
+	Mout.qloc = this->qloc;
+	MatrixXd Id4(4,4); Id4.setIdentity();
+	Mout.setLocal(loc1, kroneckerProduct(SpinBase<2>::Sp,Id4), loc2, kroneckerProduct((SpinBase<2>::Sp).transpose(),Id4));
+	return Mout;
+}
+
+MpoQ<2> KondoModel::SmpImpCorr (size_t L, size_t loc1, size_t loc2)
+{
+	assert(loc1<L);
+	assert(loc2<L);
+	stringstream ss;
+	ss << "SmpImp correlation(" << loc1 << "," << loc2 << ")";
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(KondoModel::q),end(KondoModel::q)), {0,0}, KondoModel::NMlabel, ss.str());
+	Mout.qloc = this->qloc;
+	MatrixXd Id4(4,4); Id4.setIdentity();
+	Mout.setLocal(loc1, kroneckerProduct((SpinBase<2>::Sp).transpose(),Id4), loc2, kroneckerProduct(SpinBase<2>::Sp,Id4));
 	return Mout;
 }
 
