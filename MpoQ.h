@@ -38,7 +38,7 @@ typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 
 template<size_t Nq_, typename MpHamiltonian> friend class DmrgSolverQ;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
-template<size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout);
+template<size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
 template<size_t Nq_, typename S1, typename S2> friend void OxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 
 public:
@@ -48,22 +48,30 @@ public:
 	/**Do nothing.*/
 	MpoQ (){};
 	
-	/**Construct with default values.
-	MpoQ<Nq,Scalar>::qlabel and MpoQ<Nq,Scalar>::qloc will also be set to default values. Doing it by default argument produces errors with g++.*/
-	MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, 
-	      string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat);
+//	/**Construct with default values.
+//	MpoQ<Nq,Scalar>::qlabel and MpoQ<Nq,Scalar>::qloc will also be set to default values. Doing it by default argument produces errors with g++.*/
+//	MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, 
+//	      string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat);
 	
-	/**Construct with all values.*/
+	/**Construct with all values and a homogeneous basis.*/
 	MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
-	      std::array<string,Nq> qlabel_input, string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat);
+	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
+	      bool UNITARY_input=false);
+	
+	/**Construct with all values and an arbitrary basis.*/
+	MpoQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
+	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
+	      bool UNITARY_input=false);
 	
 	/**Construct with all values and a SuperMatrix (useful when constructing an MpoQ by another MpoQ).*/
 	MpoQ (size_t L_input, const SuperMatrix<Scalar> &G, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
-	      std::array<string,Nq> qlabel_input, string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat);
+	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
+	      bool UNITARY_input=false);
 	
 	/**Construct with all values and a vector of SuperMatrices (useful when constructing an MpoQ by another MpoQ).*/
 	MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
-	      std::array<string,Nq> qlabel_input, string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat);
+	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
+	      bool UNITARY_input=false);
 	///\}
 	
 	//---info stuff---
@@ -88,42 +96,47 @@ public:
 	///\{
 	/**Returns the total change in quantum numbers induced by the MpoQ.*/
 	inline qarray<Nq> Qtarget() const {return Qtot;};
-	/**Returns the local basis.*/
+	/**Returns the local basis at \p loc.*/
 	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
+	/**Returns the full local basis.*/
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
+	inline bool IS_UNITARY() const {return UNITARY;};
 	///\}
 	
-	template<typename TimeScalar> MpoQ<Nq,TimeScalar> BondPropagator (TimeScalar dt, PARITY P);
+	template<typename TimeScalar> MpoQ<Nq,TimeScalar> BondPropagator (TimeScalar dt, PARITY P) const;
 	
 	class qarrayIterator;
 	
-//protected:
+protected:
 	
 	vector<vector<qarray<Nq> > > qloc;
 	
 	qarray<Nq> Qtot;
+	
+	bool UNITARY = false;
 };
 
-template<size_t Nq, typename Scalar>
-MpoQ<Nq,Scalar>::
-MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, 
-      string label_input, string (*format_input)(qarray<Nq> qnum))
-:Mpo<Scalar>(L_input), label(label_input), format(format_input)
-{
-	this->qlocsize.resize(this->N_sites);
-	for (size_t l=0; l<this->N_sites; ++l)
-	{
-		this->qlocsize[l] = qloc[l].size();
-	}
-	qlabel = defaultQlabel<Nq>();
-	Qtot = qvacuum<Nq>();
-}
+//template<size_t Nq, typename Scalar>
+//MpoQ<Nq,Scalar>::
+//MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, 
+//      string label_input, string (*format_input)(qarray<Nq> qnum))
+//:Mpo<Scalar>(L_input), label(label_input), format(format_input)
+//{
+//	this->qlocsize.resize(this->N_sites);
+//	for (size_t l=0; l<this->N_sites; ++l)
+//	{
+//		this->qlocsize[l] = qloc[l].size();
+//	}
+//	qlabel = defaultQlabel<Nq>();
+//	Qtot = qvacuum<Nq>();
+//}
 
 template<size_t Nq, typename Scalar>
 MpoQ<Nq,Scalar>::
 MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
-      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum))
-:Mpo<Scalar>(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input)
+      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
+      bool UNITARY_input)
+:Mpo<Scalar>(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	this->qlocsize.resize(this->N_sites);
 	qloc.resize(this->N_sites);
@@ -140,9 +153,25 @@ MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input,
 
 template<size_t Nq, typename Scalar>
 MpoQ<Nq,Scalar>::
+MpoQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
+      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
+      bool UNITARY_input)
+:Mpo<Scalar>(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+{
+	this->qlocsize.resize(this->N_sites);
+	qloc = qloc_input;
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		this->qlocsize[l] = qloc[l].size();
+	}
+}
+
+template<size_t Nq, typename Scalar>
+MpoQ<Nq,Scalar>::
 MpoQ (size_t L_input, const SuperMatrix<Scalar> &G, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
-      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum))
-:Mpo<Scalar>(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input)
+      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
+      bool UNITARY_input)
+:Mpo<Scalar>(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	this->qlocsize.resize(this->N_sites);
 	qloc.resize(this->N_sites);
@@ -163,8 +192,9 @@ MpoQ (size_t L_input, const SuperMatrix<Scalar> &G, vector<qarray<Nq> > qloc_inp
 template<size_t Nq, typename Scalar>
 MpoQ<Nq,Scalar>::
 MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
-      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum))
-:Mpo<Scalar>(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input)
+      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
+      bool UNITARY_input)
+:Mpo<Scalar>(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	this->qlocsize.resize(this->N_sites);
 	qloc.resize(this->N_sites);
@@ -216,10 +246,31 @@ overhead (MEMUNIT memunit) const
 	return 0.;
 }
 
+//template<typename Scalar>
+//Matrix<Scalar,Dynamic,Dynamic> tp (const Matrix<Scalar,Dynamic,Dynamic> &M1, const Matrix<Scalar,Dynamic,Dynamic> &M2)
+//{
+//	size_t D1 = M1.rows();
+//	size_t D2 = M2.rows();
+//	Matrix<Scalar,Dynamic,Dynamic> Mout(D1*D2,D1*D2);
+//	Mout.setZero();
+//	
+//	for (size_t s1=0; s1<D1; ++s1)
+//	for (size_t s2=0; s2<D2; ++s2)
+//	for (size_t r1=0; r1<D1; ++r1)
+//	for (size_t r2=0; r2<D2; ++r2)
+//	{
+//		size_t r = s1 + D1*s2;
+//		size_t c = r1 + D1*r2;
+//		Mout(r,c) = M1(s1,r1) * M2(s2,r2);
+//	}
+//	
+//	return Mout;
+//}
+
 template<size_t Nq, typename Scalar>
 template<typename TimeScalar>
 MpoQ<Nq,TimeScalar> MpoQ<Nq,Scalar>::
-BondPropagator (TimeScalar dt, PARITY P)
+BondPropagator (TimeScalar dt, PARITY P) const
 {
 	string TevolLabel = label;
 	stringstream ss;
@@ -227,9 +278,8 @@ BondPropagator (TimeScalar dt, PARITY P)
 	TevolLabel += ss.str();
 	TevolLabel += (P==EVEN)? "evn" : "odd";
 	
-	MpoQ<Nq,TimeScalar> Mout(this->N_sites, qloc[0], qvacuum<Nq>(), qlabel, TevolLabel, format);
-	Mout.qloc = qloc;
-	Mout.Daux = qloc[0].size()*qloc[0].size();
+	MpoQ<Nq,TimeScalar> Mout(this->N_sites, locBasis(), qvacuum<Nq>(), qlabel, TevolLabel, format, true);
+	Mout.Daux = this->Gvec[0].auxdim();
 	
 	Mout.W.resize(this->N_sites);
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -264,69 +314,72 @@ BondPropagator (TimeScalar dt, PARITY P)
 		size_t D1 = qloc[l].size();
 		size_t D2 = qloc[l+1].size();
 		
-//		MatrixType Hloc = kroneckerProduct(this->Gvec[1](1,0), this->Gvec[1](this->Daux-1,1));
-//		for (size_t a=2; a<this->Daux-1; ++a)
-//		{
-//			Hloc += kroneckerProduct(this->Gvec[1](a,0), this->Gvec[1](this->Daux-1,a));
-//		}
-//		MatrixType Id(D,D); Id.setIdentity();
-//		Hloc += kroneckerProduct(this->Gvec[1](this->Daux-1,0), Id);
+		size_t Grow = (l==0)? 0 : this->Daux-1; // last row
+		size_t Gcol = 0; // first column
 		
-		size_t Grow = (l==0)? 0 : this->Daux-1;
-		size_t Gcol = 0;
+		MatrixType Hbond(D1*D2,D1*D2);
+		Hbond.setZero();
 		
 		// local part
-		MatrixType Hbond = kroneckerProduct(this->Gvec[l](Grow,0),MatrixType::Identity(D2,D2));
-		Hbond += kroneckerProduct(MatrixType::Identity(D1,D1), this->Gvec[l+1](this->Daux-1,Gcol));
+		// variant 1: distribute local term evenly among the sites
+		double locFactor1 = (l==0)? 1. : 0.5;
+		double locFactor2 = (l+1==this->N_sites-1)? 1. : 0.5;
+		// variant 2: put local term on the left site of each bond
+//		double locFactor1 = 1.;
+//		double locFactor2 = (l+1==this->N_sites-1)? 1. : 0.;
+		Hbond += locFactor1 * kroneckerProduct(this->Gvec[l](Grow,0), MatrixType::Identity(D2,D2));
+		Hbond += locFactor2 * kroneckerProduct(MatrixType::Identity(D1,D1), this->Gvec[l+1](this->Daux-1,Gcol));
 		
-		// non-local part
+		// tight-binding part
 		for (size_t a=1; a<this->Daux-1; ++a)
 		{
-			Hbond += kroneckerProduct(this->Gvec[l](Grow,a), 
-			                          this->Gvec[l+1](a,Gcol));
+			Hbond += kroneckerProduct(this->Gvec[l](Grow,a), this->Gvec[l+1](a,Gcol));
 		}
 		
 		SelfAdjointEigenSolver<MatrixType> Eugen(Hbond);
-		cout << "l=" << l << endl << Eugen.eigenvalues() << endl << endl;
 		Matrix<TimeScalar,Dynamic,Dynamic> Hexp = Eugen.eigenvectors() * 
 		                                         (Eugen.eigenvalues()*dt).array().exp().matrix().asDiagonal() * 
 		                                          Eugen.eigenvectors().adjoint();
 		
-		Matrix<TimeScalar,Dynamic,Dynamic> HexpRe(D1*D1,D2*D2);
+		Matrix<TimeScalar,Dynamic,Dynamic> HexpPermuted(D1*D1,D2*D2);
 		
 		for (size_t s1=0; s1<D1; ++s1)
 		for (size_t s2=0; s2<D2; ++s2)
 		for (size_t r1=0; r1<D1; ++r1)
 		for (size_t r2=0; r2<D2; ++r2)
 		{
-			size_t r = s1 + D1*s2;
-			size_t c = r1 + D1*r2;
-			size_t a = s1 + D1*r1;
-			size_t b = s2 + D2*r2;
+			size_t r = s2 + D2*s1;
+			size_t c = r2 + D2*r1;
+			size_t a = r1 + D1*s1;
+			size_t b = r2 + D2*s2;
 			
-			HexpRe(a,b) = Hexp(r,c);
+			HexpPermuted(a,b) = Hexp(r,c);
 		}
 		
-		#ifdef DONT_USE_LAPACK_SVD
-		JacobiSVD<Matrix<TimeScalar,Dynamic,Dynamic> > Jack;
-		#else
-		LapackSVD<TimeScalar> Jack;
-		#endif
-		
-		#ifdef DONT_USE_LAPACK_SVD
-		Jack.compute(HexpRe,ComputeThinU|ComputeThinV);
-		#else
-		Jack.compute(HexpRe);
-		#endif
-		
-		// U:
+//		#ifdef DONT_USE_LAPACK_SVD
+//		JacobiSVD<Matrix<TimeScalar,Dynamic,Dynamic> > Jack;
+//		#else
+//		LapackSVD<TimeScalar> Jack;
+//		#endif
+//		
+//		#ifdef DONT_USE_LAPACK_SVD
+//		Jack.compute(HexpPermuted,ComputeThinU|ComputeThinV);
+//		#else
+//		Jack.compute(HexpPermuted);
+//		#endif
+		// always use Eigen for higher accuracy:
+		JacobiSVD<Matrix<TimeScalar,Dynamic,Dynamic> > Jack(HexpPermuted,ComputeThinU|ComputeThinV);
 		Matrix<TimeScalar,Dynamic,Dynamic> U1 = Jack.matrixU() * Jack.singularValues().cwiseSqrt().asDiagonal();
-		// V^T:
-		#ifdef DONT_USE_LAPACK_SVD
 		Matrix<TimeScalar,Dynamic,Dynamic> U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixV().adjoint();
-		#else
-		Matrix<TimeScalar,Dynamic,Dynamic> U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixVT();
-		#endif
+		
+//		// U:
+//		Matrix<TimeScalar,Dynamic,Dynamic> U1 = Jack.matrixU() * Jack.singularValues().cwiseSqrt().asDiagonal();
+//		// V^T:
+//		#ifdef DONT_USE_LAPACK_SVD
+//		Matrix<TimeScalar,Dynamic,Dynamic> U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixV().adjoint();
+//		#else
+//		Matrix<TimeScalar,Dynamic,Dynamic> U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixVT();
+//		#endif
 		
 		for (size_t s1=0; s1<D1; ++s1)
 		for (size_t r1=0; r1<D1; ++r1)
@@ -335,13 +388,11 @@ BondPropagator (TimeScalar dt, PARITY P)
 			
 			for (size_t k=0; k<U1.cols(); ++k)
 			{
-				if (U1(r1+s1*D1,k) != 0.)
+				if (abs(U1(r1+D1*s1,k)) > 1e-15)
 				{
-					Mout.W[l][s1][r1].coeffRef(0,k) = U1(r1+s1*D1,k);
+					Mout.W[l][s1][r1].coeffRef(0,k) = U1(r1+D1*s1,k);
 				}
 			}
-			
-			cout << Mout.W[l][s1][r1] << endl << endl;
 		}
 		
 		for (size_t s2=0; s2<D2; ++s2)
@@ -351,13 +402,11 @@ BondPropagator (TimeScalar dt, PARITY P)
 			
 			for (size_t k=0; k<U2.rows(); ++k)
 			{
-				if (U2(k,r2+s2*D2) != 0.)
+				if (abs(U2(k,r2+D2*s2)) > 1e-15)
 				{
-					Mout.W[l+1][s2][r2].coeffRef(k,0) = U2(k,r2+s2*D2);
+					Mout.W[l+1][s2][r2].coeffRef(k,0) = U2(k,r2+D2*s2);
 				}
 			}
-			
-			cout << Mout.W[l+1][s2][r2] << endl << endl;
 		}
 	}
 	

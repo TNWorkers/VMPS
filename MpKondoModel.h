@@ -23,7 +23,7 @@ public:
 	\param J_input : \f$J\f$
 	\param Bz_input : \f$B_z\f$
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$*/
-	KondoModel (size_t L_input, double J_input, double Bz_input=0., bool CALC_SQUARE=true);
+	KondoModel (size_t L_input, double J_input=-1., double Bz_input=0., bool CALC_SQUARE=true);
 	
 	/**Constructs a Kondo Impurity Model (aka a diluted Kondo Model) using initializer lists for the set of impurities.
 	\param L_input : chain length
@@ -41,7 +41,7 @@ public:
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$*/
 	KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, bool CALC_SQUARE=true);
 	
-	template<size_t D> static SuperMatrix<double> Generator (double J, double Bz);
+	template<size_t D> static SuperMatrix<double> Generator (double J, double Bz, double Bx);
 	
 	/**Makes half-integers in the output for the magnetization quantum number.*/
 	static string N_halveM (qarray<2> qnum);
@@ -79,7 +79,10 @@ public:
 	\returns \p true if valid, \p false if not*/
 	bool validate (qarray<2> qnum) const;
 	
+	///@{
 	MpoQ<2> SzImp (size_t L, size_t loc);
+
+	MpoQ<2> SzSub (size_t L, size_t loc);
 
 	/**MPO for \f$S^{z}_{i}S^{z}_{j}\f$ */
 	MpoQ<2> SzImpCorr (size_t L, size_t loc1, size_t loc2);
@@ -89,6 +92,7 @@ public:
 
 	/**MPO for \f$S^{-}_{i}S^{+}_{j}\f$ */
 	MpoQ<2> SmpImpCorr (size_t L, size_t loc1, size_t loc2);
+	///@}
 	
 private:
 	
@@ -115,7 +119,7 @@ const std::array<string,2> KondoModel::NMlabel{"N","M"};
 
 template<size_t D>
 SuperMatrix<double> KondoModel::
-Generator (double J, double Bz)
+Generator (double J, double Bz, double Bx)
 {
 	size_t Daux = 6;
 	SuperMatrix<double> G;
@@ -134,7 +138,8 @@ Generator (double J, double Bz)
 	G(5,0) = -0.5*J * kroneckerProduct(SpinBase<D>::Sp,             HubbardModel::Sp.transpose())
 	         -0.5*J * kroneckerProduct(SpinBase<D>::Sp.transpose(), HubbardModel::Sp)
 	         -J *     kroneckerProduct(SpinBase<D>::Sz,             HubbardModel::Sz)
-	         -Bz *    kroneckerProduct(SpinBase<D>::Sz,             Id4);
+	         -Bz *    kroneckerProduct(SpinBase<D>::Sz,             Id4)
+	         -Bx *    kroneckerProduct(SpinBase<D>::Sx,             Id4);
 	
 	// note: fsign takes care of the fermionic sign
 	G(5,1) = kroneckerProduct(IdSpins, HubbardModel::fsign * HubbardModel::cUP);
@@ -158,7 +163,7 @@ J(J_input), Bz(Bz_input)
 	this->Daux = 6;
 	this->N_sv = this->Daux;
 	
-	SuperMatrix<double> G = Generator<2>(J, Bz);
+	SuperMatrix<double> G = Generator<2>(J, Bz, 0.);
 	this->construct(G, this->W, this->Gvec);
 	
 	if (CALC_SQUARE == true)
@@ -237,7 +242,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			if (l==0)
 			{
 				G[l].setRowVector(6,8);
-				G[l] = Generator<2>(J,Bzloc[i]).row(5);
+				G[l] = Generator<2>(J,Bzloc[i],0.).row(5);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(6*6,8);
@@ -247,7 +252,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,8);
-				G[l] = Generator<2>(J,Bzloc[i]).col(0);
+				G[l] = Generator<2>(J,Bzloc[i],0.).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(6*6,8);
@@ -257,7 +262,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			else
 			{
 				G[l].setMatrix(6,8);
-				G[l] = Generator<2>(J,Bzloc[i]);
+				G[l] = Generator<2>(J,Bzloc[i],0.);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(6*6,8);
@@ -343,8 +348,7 @@ SzImp (size_t L, size_t loc)
 	assert(loc<L);
 	stringstream ss;
 	ss << "SzImp(" << loc << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(begin(KondoModel::q),end(KondoModel::q)), {0,0}, KondoModel::NMlabel, ss.str());
-	Mout.qloc = this->qloc;
+	MpoQ<2> Mout(L, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
 	MatrixXd Id4(4,4); Id4.setIdentity();
 	Mout.setLocal(loc, kroneckerProduct(SpinBase<2>::Sz,Id4));
 	return Mout;
@@ -387,7 +391,7 @@ MpoQ<2> KondoModel::SmpImpCorr (size_t L, size_t loc1, size_t loc2)
 	MatrixXd Id4(4,4); Id4.setIdentity();
 	Mout.setLocal(loc1, kroneckerProduct((SpinBase<2>::Sp).transpose(),Id4), loc2, kroneckerProduct(SpinBase<2>::Sp,Id4));
 	return Mout;
-}
+ }
 
 class KondoModel::qarrayIterator
 {

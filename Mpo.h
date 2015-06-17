@@ -207,7 +207,7 @@ setLocal (size_t loc, const MatrixType &Op)
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		M[l].setMatrix(Daux,qlocsize[loc]);
+		M[l].setMatrix(Daux,qlocsize[l]);
 		(l==loc)? M[l](0,0)=Op : M[l](0,0).setIdentity();
 	}
 	

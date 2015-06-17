@@ -23,7 +23,7 @@ public:
 	
 	//---constructor---
 	MpsQCompressor(DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
-	:CURRENT_VERBOSITY(VERBOSITY)
+	:CHOSEN_VERBOSITY(VERBOSITY)
 	{};
 	
 	//---compression schemes---
@@ -109,7 +109,7 @@ private:
 	void build_L (size_t loc, const MpsQ<Nq,Scalar> &Vbra, const MpsQ<Nq,Scalar> &Vket);
 	void build_R (size_t loc, const MpsQ<Nq,Scalar> &Vbra, const MpsQ<Nq,Scalar> &Vket);
 	
-	DMRG::VERBOSITY::OPTION CURRENT_VERBOSITY;
+	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
 	
 	// for |Vout> ≈ H*|Vin>
 	vector<PivotMatrixQ<Nq,Scalar,MpoScalar> > Heff;
@@ -254,7 +254,7 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 	sqdist = 1.;
 	size_t halfSweepRange = N_sites;
 	
-	if (CURRENT_VERBOSITY<2)
+	if (CHOSEN_VERBOSITY>=2)
 	{
 		lout << Chronos.info("preparation") << endl;
 	}
@@ -283,7 +283,7 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 		//Vtmp -= Vsmall;
 		//abs(dot(Vtmp,Vtmp))
 		
-		if (CURRENT_VERBOSITY<2)
+		if (CHOSEN_VERBOSITY>=2)
 		{
 			lout << Aion.info("half-sweep") << "\tdistance^2=" << sqdist << endl;
 		}
@@ -302,7 +302,7 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 			Vout.setRandom();
 			Mmax_new = Vout.calc_Mmax();
 			
-			if (CURRENT_VERBOSITY<2)
+			if (CHOSEN_VERBOSITY>=2)
 			{
 				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << endl;
 			}
@@ -452,7 +452,14 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 	{
 		#pragma omp section
 		{
-			sqnormVin = (H.check_SQUARE()==true)? isReal(avg(Vin,H,Vin,true)) : isReal(avg(Vin,H,H,Vin));
+			if (H.IS_UNITARY())
+			{
+				sqnormVin = Vin.squaredNorm();
+			}
+			else
+			{
+				sqnormVin = (H.check_SQUARE()==true)? isReal(avg(Vin,H,Vin,true)) : isReal(avg(Vin,H,H,Vin));
+			}
 		}
 		#pragma omp section
 		{
@@ -462,7 +469,7 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 	sqdist = 1.;
 	size_t halfSweepRange = N_sites;
 	
-	if (CURRENT_VERBOSITY<2)
+	if (CHOSEN_VERBOSITY>=2)
 	{
 		lout << Chronos.info("preparation") << endl;
 	}
@@ -484,7 +491,7 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 		sqdist = abs(sqnormVin-Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		
-		if (CURRENT_VERBOSITY<2)
+		if (CHOSEN_VERBOSITY>=2)
 		{
 			lout << Aion.info("half-sweep") << "\tdistance^2=" << sqdist << endl;
 		}
@@ -506,7 +513,7 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 			
 			Mmax_new = Vout.calc_Mmax();
 			
-			if (CURRENT_VERBOSITY<2)
+			if (CHOSEN_VERBOSITY>=2)
 			{
 				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << endl;
 			}
@@ -586,6 +593,8 @@ template<typename MpOperator>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
 optimizationStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
 {
+	Stopwatch Chronos;
+	
 	for (size_t s=0; s<Vin.locBasis(pivot).size(); ++s)
 	{
 		Vout.A[pivot][s].setZero();
@@ -630,6 +639,11 @@ optimizationStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scala
 				}
 			}
 		}
+	}
+	
+	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << "loc=" << Chronos.info(pivot) << endl;
 	}
 }
 
@@ -743,7 +757,7 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 	sqdist = 1.;
 	size_t halfSweepRange = N_sites;
 	
-	if (CURRENT_VERBOSITY<2)
+	if (CHOSEN_VERBOSITY>=2)
 	{
 		lout << Chronos.info("preparation") << endl;
 	}
@@ -778,7 +792,7 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 		sqdist = abs(sqnormV1+sqnormV2-Vout.squaredNorm()-2.*overlapV12);
 		assert(!std::isnan(sqdist));
 		
-		if (CURRENT_VERBOSITY<2)
+		if (CHOSEN_VERBOSITY>=2)
 		{
 			lout << Aion.info("half-sweep") << "\tdistance^2=" << sqdist << endl;
 		}
@@ -797,7 +811,7 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 			Vout.setRandom();
 			Mmax_new = Vout.calc_Mmax();
 			
-			if (CURRENT_VERBOSITY<2)
+			if (CHOSEN_VERBOSITY>=2)
 			{
 				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << endl;
 			}
@@ -861,7 +875,7 @@ mowSweeps (const MpOperator &H, MpsQ<Nq,Scalar> &Vout)
 //	}
 //	pivot = Vout.pivot;
 //	
-//	if (CURRENT_VERBOSITY<2)
+//	if (CHOSEN_VERBOSITY<2)
 //	{
 //		lout << Aion.info("mowing preparation") << endl;
 //	}
@@ -884,7 +898,7 @@ mowSweeps (const MpOperator &H, MpsQ<Nq,Scalar> &Vout)
 //		}
 //		halfSweepRange = N_sites-1;
 //		
-//		if (CURRENT_VERBOSITY<2)
+//		if (CHOSEN_VERBOSITY<2)
 //		{
 //			lout << Aion.info("half-mowsweep") << "\tmowed_weight=" << mowedWeight.sum() << endl;
 //		}

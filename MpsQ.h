@@ -28,7 +28,7 @@ typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 // Note: Cannot partially specialize template friends (or anything else, really). That sucks.
 template<size_t Nq_, typename MpHamiltonian> friend class DmrgSolverQ;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
-template<size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout);
+template<size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
 template<size_t Nq_, typename S1, typename S2> friend void OxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 template<size_t Nq_, typename S_> friend class MpsQ; // in order to exchange data between real & complex MpsQ
 
@@ -81,8 +81,9 @@ public:
 	\param HOW_TO_RESIZE : If DMRG::RESIZE::CONSERV_INCR, then each block gains a zero row and a zero column, the bond dimension increases by \p Nqmax and \p Dmax has no meaning. If DMRG::RESIZE::DECR, all blocks are non-conservatively cut according to \p Dmax.*/
 	void dynamicResize (DMRG::RESIZE::OPTION HOW_TO_RESIZE, size_t Dmax);
 	/**Sets the MpsQ from a product state configuration.
+	\param H : Hamiltonian, needed for MpsQ::outerResize
 	\param config : classical configuration, a vector of \p qarray*/
-	void setProductState (const vector<qarray<Nq> > &config);
+	template<typename Hamiltonian> void setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config);
 	/**Finds broken paths through the quantum number subspaces and mends them by resizing with appropriate zeros. The chain length and total quantum number are determined from \p config.
 	This is needed when applying an MpoQ which changes quantum numbers, making some paths impossible. For example, one can add a particle at the beginning or end of the chain with the same target particle number, but if an annihilator is applied in the middle, only the first path survives.*/
 	void mend();
@@ -140,6 +141,8 @@ public:
 	Scalar dot (const MpsQ<Nq,Scalar> &Vket) const;
 	/**Calculates the squared norm. Exploits the canonical form if possible, calculates the dot product with itself otherwise.*/
 	double squaredNorm() const;
+	/**Calculates the expectation value with a local operator.*/
+	template<typename MpoScalar> Scalar locAvg (const MpoQ<Nq,MpoScalar> &O) const;
 	/**Swaps with another MpsQ.*/
 	void swap (MpsQ<Nq,Scalar> &V);
 	/**Copies the control parameters from another MpsQ, i.e.\ all the cutoff tolerances specified in DmrgJanitor.*/
@@ -593,10 +596,11 @@ dynamicResize (DMRG::RESIZE::OPTION HOW_TO_RESIZE, size_t Dmax)
 }
 
 template<size_t Nq, typename Scalar>
+template<typename Hamiltonian>
 void MpsQ<Nq,Scalar>::
-setProductState (const vector<qarray<Nq> > &config)
+setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 {
-	outerResize(config.size(), qloc, accumulate(config.begin(),config.end(),qvacuum<Nq>()));
+	outerResize<typename Hamiltonian::qarrayIterator>(config.size(), qloc, accumulate(config.begin(),config.end(),qvacuum<Nq>()));
 	
 	for (size_t l=0; l<this->N_sites; ++l)
 	for (size_t s=0; s<qloc[l].size(); ++s)
@@ -1999,6 +2003,34 @@ dot (const MpsQ<Nq,Scalar> &Vket) const
 }
 
 template<size_t Nq, typename Scalar>
+template<typename MpoScalar>
+Scalar MpsQ<Nq,Scalar>::
+locAvg (const MpoQ<Nq,MpoScalar> &O) const
+{
+	assert(this->pivot != -1);
+	Scalar res = 0.;
+	
+	for (size_t s1=0; s1<qloc[this->pivot].size(); ++s1)
+	for (size_t s2=0; s2<qloc[this->pivot].size(); ++s2)
+	{
+		Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > Aprod = A[this->pivot][s1].adjoint() * A[this->pivot][s2];
+		Scalar trace = 0.;
+		for (size_t q=0; q<Aprod.dim; ++q)
+		{
+			trace += Aprod.block[q].trace();
+		}
+		
+		for (int k=0; k<O.W_at(this->pivot)[s1][s2].outerSize(); ++k)
+		for (typename SparseMatrix<MpoScalar>::InnerIterator iW(O.W_at(this->pivot)[s1][s2],k); iW; ++iW)
+		{
+			res += iW.value() * trace;
+		}
+	}
+	
+	return res;
+}
+
+template<size_t Nq, typename Scalar>
 double MpsQ<Nq,Scalar>::
 squaredNorm() const
 {
@@ -2285,6 +2317,7 @@ set_A_from_C (size_t loc, const vector<Tripod<Nq,MatrixType> > &C, DMRG::BROOM::
 				auto qA = A[loc][s].dict.find(cmpA);
 				
 				if (C[s].mid(q)+C[s].out(q) == outset[loc][qout])
+//				if (C[s].mid(q)+C[s].out(q) == outset[loc][qout] and qA != A[loc][s].dict.end())
 				{
 					tuple<size_t,size_t,size_t> key = make_tuple(s, qA->second, Omega[s][q].rows());
 					sqmap[key].push_back(q);
