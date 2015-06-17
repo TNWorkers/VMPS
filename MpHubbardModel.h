@@ -95,6 +95,30 @@ public:
 	static const Eigen::Matrix<double,4,4,RowMajor> Sp;
 	
 	/**
+	\f$s^x = \left(
+	\begin{array}{cccc}
+	0 & 0 & 0 & 0\\
+	0 & 0 & 0.5 & 0\\
+	0 & 0.5 & 0 & 0\\
+	0 & 0 & 0 & 0\\
+	\end{array}
+	\right)\f$
+	*/
+	static const Eigen::Matrix<double,4,4,RowMajor> Sx;
+	
+	/**
+	\f$is^y = \left(
+	\begin{array}{cccc}
+	0 & 0 & 0 & 0\\
+	0 & 0 & 0.5 & 0\\
+	0 & -0.5 & 0 & 0\\
+	0 & 0 & 0 & 0\\
+	\end{array}
+	\right)\f$
+	*/
+	static const Eigen::Matrix<double,4,4,RowMajor> iSy;
+	
+	/**
 	\f$s^z = \left(
 	\begin{array}{cccc}
 	0 & 0 & 0 & 0\\
@@ -136,6 +160,7 @@ public:
 	static MpoQ<2> creator     (size_t L, size_t loc, SPIN_INDEX sigma);
 	static MpoQ<2> d (size_t L, size_t loc); // double occupancy
 	static MpoQ<2> n (size_t L, SPIN_INDEX sigma, size_t loc);
+	static MpoQ<2> SzOp (size_t L, size_t loc);
 	static MpoQ<2> triplon (size_t L, size_t loc, SPIN_INDEX sigma);
 	static MpoQ<2> antitriplon (size_t L, size_t loc, SPIN_INDEX sigma);
 	static MpoQ<2> quadruplon (size_t L, size_t loc);
@@ -187,6 +212,20 @@ static const double SpHub_data[] =
 	0., 0., 0., 0.,
 	0., 0., 0., 0.
 };
+static const double SxHub_data[] =
+{
+	0., 0.,  0.,  0.,
+	0., 0.,  0.5, 0.,
+	0., 0.5, 0.,  0.,
+	0., 0.,  0.,  0.
+};
+static const double iSyHub_data[] =
+{
+	0., 0.,   0.,  0.,
+	0., 0.,   0.5,  0.,
+	0., -0.5, 0., 0.,
+	0., 0.,   0.,  0.
+};
 static const double SzHub_data[] =
 {
 	0., 0.,   0.,  0.,
@@ -200,8 +239,10 @@ const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::cDN(cDN_data);
 const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::nUP_nDN(nUP_nDN_data);
 const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::nUP_plus_nDN(nUP_plus_nDN_data);
 const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::fsign(fsign_data);
-const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::Sp(SpHub_data);
+const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::Sx(SxHub_data);
+const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::iSy(iSyHub_data);
 const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::Sz(SzHub_data);
+const Eigen::Matrix<double,4,4,RowMajor> HubbardModel::Sp(SpHub_data);
 
 const std::array<qarray<2>,4> HubbardModel::qloc {qarray<2>{0,0}, qarray<2>{1,0}, qarray<2>{0,1}, qarray<2>{1,1}};
 const std::array<qarray<2>,4> HubbardModel::qlocNM {qarray<2>{0,0}, qarray<2>{1,1}, qarray<2>{1,-1}, qarray<2>{2,0}};
@@ -452,6 +493,17 @@ n (size_t L, SPIN_INDEX sigma, size_t loc)
 	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
 	(sigma==UP)? Mout.setLocal(loc, HubbardModel::cUP.transpose()*HubbardModel::cUP):
 	             Mout.setLocal(loc, HubbardModel::cDN.transpose()*HubbardModel::cDN);
+	return Mout;
+}
+
+MpoQ<2> HubbardModel::
+SzOp (size_t L, size_t loc)
+{
+	assert(loc<L);
+	stringstream ss;
+	ss << "Sz(" << loc << ")";
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
+	Mout.setLocal(loc, HubbardModel::Sz);
 	return Mout;
 }
 

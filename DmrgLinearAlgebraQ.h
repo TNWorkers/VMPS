@@ -148,7 +148,7 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 //	}
 }
 
-/**Calculates the expectation value \f$\left<\Psi_{bra}|O_{bra}O_{ket}|\Psi_{ket}\right>\f$
+/**Calculates the expectation value \f$\left<\Psi_{bra}|O_{1}O_{2}|\Psi_{ket}\right>\f$
 Only a left-to-right contraction is implemented.
 \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
 \param O1 : input MpoQ
@@ -173,12 +173,12 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 		Bnext.clear();
 	}
 	
-	cout << "B.dim=" << B.dim << endl;
-	for (size_t q=0; q<B.dim; ++q)
-	{
-		cout << "q=" << B.in(q) << ", " << B.out(q) << ", " << B.top(q) << ", " << B.bot(q) << endl 
-		<< B.block[q][0][0] << endl;
-	}
+//	cout << "B.dim=" << B.dim << endl;
+//	for (size_t q=0; q<B.dim; ++q)
+//	{
+//		cout << "q=" << B.in(q) << ", " << B.out(q) << ", " << B.top(q) << ", " << B.bot(q) << endl 
+//		<< B.block[q][0][0] << endl;
+//	}
 	
 	assert(B.dim == 1 and 
 	       B.block[0][0][0].rows() == 1 and 
@@ -191,58 +191,74 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 /**Apply an MpoQ to an MpsQ \f$\left|\Psi_{out}\right> = H \left|\Psi_{in}\right>\f$ by using the zip-up algorithm (Stoudenmire, White 2010).
 \param H : input Hamiltonian
 \param Vin : input \f$\left|\Psi_{in}\right>\f$
-\param Vout : output \f$\left|\Psi_{out}\right>\f$*/
+\param Vout : output \f$\left|\Psi_{out}\right>\f$
+\param VERBOSITY : verbosity level*/
 template<size_t Nq, typename MpoScalar, typename Scalar>
-void HxV (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
+void HxV (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, 
+          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
 {
 	Stopwatch Chronos;
 	
-	MpsQCompressor<Nq,Scalar,MpoScalar> Compadre(DMRG::VERBOSITY::STEPWISE);
-	Compadre.varCompress(H,Vin, Vout, Vin.calc_Dmax(), 1e-8);
-	lout << Compadre.info() << endl;
+	MpsQCompressor<Nq,Scalar,MpoScalar> Compadre(VERBOSITY);
+	Compadre.varCompress(H,Vin, Vout, Vin.calc_Dmax());
 	
-	lout << Chronos.info("HxV") << endl;
-	lout << "Vout: " << Vout.info() << endl << endl;
+	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
+	{
+		lout << Compadre.info() << endl;
+		lout << Chronos.info("HxV") << endl;
+		lout << "Vout: " << Vout.info() << endl << endl;
+	}
 }
 
 /**Performs a Chebyshev iteration step \f$\left|\Psi_{out}\right> = 2 \cdot H \left|\Psi_{in,1}\right> - \left|\Psi_{in,2}\right> \f$.
 \param H : input Hamiltonian
 \param Vin1 : input MpsQ \f$\left|T_{n-1}\right>\f$
 \param Vin2 : input MpsQ \f$\left|T_{n-2}\right>\f$
-\param Vout : output MpsQ \f$\left|T_{n}\right>\f$*/
+\param Vout : output MpsQ \f$\left|T_{n}\right>\f$
+\param VERBOSITY : verbosity level*/
 template<size_t Nq, typename MpoScalar, typename Scalar>
-void chebIter (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout)
+void chebIter (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout, 
+               DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
 {
 	Stopwatch Chronos;
-	MpsQCompressor<Nq,Scalar,MpoScalar> Compadre(DMRG::VERBOSITY::STEPWISE);
+	MpsQCompressor<Nq,Scalar,MpoScalar> Compadre(VERBOSITY);
 	Compadre.chebCompress(H,Vin1,Vin2, Vout, Vin1.calc_Dmax());
 	
-	lout << Compadre.info() << endl;
-	lout << Chronos.info("chebIter") << endl;
-	lout << "Vout: " << Vout.info() << endl << endl;
+	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
+	{
+		lout << Compadre.info() << endl;
+		lout << Chronos.info("chebIter") << endl;
+		lout << "Vout: " << Vout.info() << endl << endl;
+	}
 }
 
 template<size_t Nq, typename MpoScalar, typename Scalar>
-void HxV (const MpoQ<Nq,MpoScalar> &H, MpsQ<Nq,Scalar> &Vinout)
+void HxV (const MpoQ<Nq,MpoScalar> &H, MpsQ<Nq,Scalar> &Vinout, 
+          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
 {
 	MpsQ<Nq,Scalar> Vtmp;
-	HxV(H,Vinout,Vtmp);
+	HxV(H,Vinout,Vtmp,VERBOSITY);
 	Vinout = Vtmp;
 }
 
 template<size_t Nq, typename Scalar, typename OtherScalar>
-void addScale (const OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
+void addScale (const OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, 
+               DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
 {
 	Stopwatch Chronos;
-	MpsQCompressor<Nq,Scalar,OtherScalar> Compadre;
+	MpsQCompressor<Nq,Scalar,OtherScalar> Compadre(VERBOSITY);
 	size_t Dstart = Vout.calc_Dmax();
 	MpsQ<Nq,Scalar> Vtmp = Vout;
 	Vtmp.addScale(alpha,Vin,false);
-	Compadre.varCompress(Vtmp, Vout, Dstart, 1e-3, 100, 1, DMRG::COMPRESSION::RANDOM);
+//	Compadre.varCompress(Vtmp, Vout, Dstart, 1e-3, 100, 1, DMRG::COMPRESSION::RANDOM);
+	Compadre.varCompress(Vtmp, Vout, Dstart);
 	
-	lout << Compadre.info() << endl;
-	lout << Chronos.info("V+V") << endl;
-	lout << "Vout: " << Vout.info() << endl << endl;
+	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
+	{
+		lout << Compadre.info() << endl;
+		lout << Chronos.info("V+V") << endl;
+		lout << "Vout: " << Vout.info() << endl << endl;
+	}
 }
 
 template<size_t Nq, typename MpoScalar, typename Scalar>

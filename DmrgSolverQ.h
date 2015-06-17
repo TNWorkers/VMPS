@@ -24,7 +24,7 @@ public:
 	
 	void edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> Qtot_input, size_t Dinit=5, 
 	                LANCZOS::EDGE::OPTION EDGE=LANCZOS::EDGE::GROUND,
-	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::NORM_TEST,
+	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST,
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-5, size_t max_halfsweeps=42, size_t min_halfsweeps=6);
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
@@ -162,7 +162,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 //	CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
 //	pivot = N_sites-1;
 	
-	if (CHOSEN_VERBOSITY<=1) {lout << Aion.info("initial state & sweep") << endl << endl;}
+	if (CHOSEN_VERBOSITY>=2) {lout << Aion.info("initial state & sweep") << endl << endl;}
 	
 	err_eigval = 1.;
 	err_state  = 1.;
@@ -170,7 +170,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 	// lambda function to print tolerances
 	auto print_eps = [this,&Vout] ()
 	{
-		if (CHOSEN_VERBOSITY<=1)
+		if (CHOSEN_VERBOSITY>=2)
 		{
 			lout << "ε_noise=" << Vout.state.eps_noise 
 			     << ", ε_rdm=" << Vout.state.eps_rdm 
@@ -226,7 +226,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 			Stopwatch Aion;
 			double avgHsq = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state)); 
 			err_state = fabs(avgHsq-pow(Vout.energy,2));
-			if (CHOSEN_VERBOSITY<=1)
+			if (CHOSEN_VERBOSITY>=2)
 			{
 				lout << Aion.info("<H^2>") << endl;
 			}
@@ -350,7 +350,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 		}
 		
 		// print stuff
-		if (CHOSEN_VERBOSITY<=1)
+		if (CHOSEN_VERBOSITY >= 2)
 		{
 			size_t standard_precision = cout.precision();
 			if (EDGE == LANCZOS::EDGE::GROUND)
@@ -366,6 +366,21 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 			lout << Chronos.info("half-sweep") << endl;
 			lout << endl;
 		}
+	}
+	
+	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::ON_EXIT)
+	{
+		size_t standard_precision = cout.precision();
+		if (EDGE == LANCZOS::EDGE::GROUND)
+		{
+			lout << "Emin=" << setprecision(13) << Vout.energy << " Emin/L=" << Vout.energy/N_sites << setprecision(standard_precision) << endl;
+		}
+		else
+		{
+			lout << "Emax=" << setprecision(13) << Vout.energy << " Emax/L=" << Vout.energy/N_sites << setprecision(standard_precision) << endl;
+		}
+		lout << "DmrgSolverQ: " << eigeninfo() << endl;
+		lout << "Vout: " << Vout.state.info() << endl;
 	}
 }
 

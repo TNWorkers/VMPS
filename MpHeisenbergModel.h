@@ -92,6 +92,9 @@ public:
 		return res;
 	}
 	
+	static MpoQ<1> Sz (size_t L, size_t loc);
+	static MpoQ<1> SzSz (size_t L, size_t loc1, size_t loc2);
+	
 private:
 	
 	double Jxy, Jz;
@@ -195,6 +198,32 @@ halve (qarray<1> qnum)
 	else {ss << m;}
 	ss << ")";
 	return ss.str();
+}
+
+template<size_t D>
+MpoQ<1> HeisenbergModel<D>::
+Sz (size_t L, size_t loc)
+{
+	assert(loc<L);
+	stringstream ss;
+	ss << "Sz(" << loc << ")";
+	MpoQ<1> Mout(L, vector<qarray<1> >(begin(HeisenbergModel<D>::qloc),end(HeisenbergModel<D>::qloc)), 
+	             {0}, HeisenbergModel::maglabel, ss.str(), HeisenbergModel::halve);
+	Mout.setLocal(loc, SpinBase<D>::Sz);
+	return Mout;
+}
+
+template<size_t D>
+MpoQ<1> HeisenbergModel<D>::
+SzSz (size_t L, size_t loc1, size_t loc2)
+{
+	assert(loc1<L and loc2<L);
+	stringstream ss;
+	ss << "Sz(" << loc1 << ")" <<  "Sz(" << loc2 << ")";
+	MpoQ<1> Mout(L, vector<qarray<1> >(begin(HeisenbergModel<D>::qloc),end(HeisenbergModel<D>::qloc)), 
+	             {0}, HeisenbergModel::maglabel, ss.str(), HeisenbergModel::halve);
+	Mout.setLocal(loc1, SpinBase<D>::Sz, loc2, SpinBase<D>::Sz);
+	return Mout;
 }
 
 }

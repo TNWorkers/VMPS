@@ -61,9 +61,10 @@ struct DMRG
 	{
 		enum OPTION
 		{
-			STEPWISE=0, /**<level 0, prints info every step*/
-			HALFSWEEPWISE=1, /**<level 1, prints info after every half-sweep*/
-			SILENT=2 /**<level 2, prints no info*/
+			SILENT=0, /**<level 0, prints no info*/
+			ON_EXIT=1, /**<level 1, prints summary upon finishing*/
+			HALFSWEEPWISE=2, /**<level 2, prints info every half-sweep or so*/
+			STEPWISE=3, /**<level 3, prints as much info as possible*/
 		};
 	};
 	
