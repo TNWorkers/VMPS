@@ -237,7 +237,7 @@ Generator (double U, double V)
 
 HubbardModel::
 HubbardModel (size_t L_input, double U_input, double V_input, bool CALC_SQUARE)
-:MpoQ<2> (L_input, vector<qarray<2> >(std::begin(HubbardModel::qloc),std::end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
+:MpoQ<2> (L_input, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
 U(U_input), V(V_input)
 {
 	stringstream ss;
@@ -265,7 +265,7 @@ MpoQ<2> HubbardModel::
 Hsq()
 {
 	SuperMatrix<double> G = Generator(U,V);
-	MpoQ<2> Mout(this->N_sites, tensor_product(G,G), vector<qarray<2> >(std::begin(HubbardModel::qloc),std::end(HubbardModel::qloc)), 
+	MpoQ<2> Mout(this->N_sites, tensor_product(G,G), vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), 
 	             {0,0}, HubbardModel::Nlabel, "HubbardModel H^2");
 	return Mout;
 }
@@ -276,7 +276,7 @@ Auger (size_t L, size_t loc)
 	assert(loc<L);
 	stringstream ss;
 	ss << "Auger(" << loc << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(std::begin(HubbardModel::qloc),std::end(HubbardModel::qloc)), {-1,-1}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-1,-1}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(loc, cUP*cDN);
 	return Mout;
 }
@@ -287,7 +287,7 @@ Aps (size_t L, size_t loc)
 	assert(loc<L);
 	stringstream ss;
 	ss << "Aps(" << loc << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(std::begin(HubbardModel::qloc),std::end(HubbardModel::qloc)), {+1,+1}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {+1,+1}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(loc, cDN.transpose()*cUP.transpose());
 	return Mout;
 }
@@ -315,7 +315,7 @@ annihilator (size_t L, size_t loc, SPIN_INDEX sigma)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(L, M, vector<qarray<2> >(std::begin(HubbardModel::qloc),std::end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -341,7 +341,7 @@ creator (size_t L, size_t loc, SPIN_INDEX sigma)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(L, M, vector<qarray<2> >(std::begin(HubbardModel::qloc),std::end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -371,7 +371,7 @@ triplon (size_t L, size_t loc, SPIN_INDEX sigma)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(L, M, vector<qarray<2> >(std::begin(HubbardModel::qloc),std::end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -401,7 +401,7 @@ antitriplon (size_t L, size_t loc, SPIN_INDEX sigma)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(L, M, vector<qarray<2> >(std::begin(HubbardModel::qloc),std::end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -429,7 +429,7 @@ quadruplon (size_t L, size_t loc)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(L, M, vector<qarray<2> >(std::begin(HubbardModel::qloc),std::end(HubbardModel::qloc)), {-2,-2}, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-2,-2}, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -438,7 +438,7 @@ d (size_t L, size_t loc)
 	assert(loc<L);
 	stringstream ss;
 	ss << "double_occ(" << loc << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(std::begin(HubbardModel::qloc),std::end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(loc, HubbardModel::nUP_nDN);
 	return Mout;
 }
@@ -449,7 +449,7 @@ n (size_t L, SPIN_INDEX sigma, size_t loc)
 	assert(loc<L);
 	stringstream ss;
 	ss << "n(" << loc << ",σ=" << sigma << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(std::begin(HubbardModel::qloc),std::end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
 	(sigma==UP)? Mout.setLocal(loc, HubbardModel::cUP.transpose()*HubbardModel::cUP):
 	             Mout.setLocal(loc, HubbardModel::cDN.transpose()*HubbardModel::cDN);
 	return Mout;
