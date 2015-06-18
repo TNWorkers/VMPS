@@ -195,4 +195,44 @@ template<> const Eigen::Matrix<double,3,3,Eigen::RowMajor> SpinBase<3>::iSy(iSy3
 template<> const Eigen::Matrix<double,3,3,Eigen::RowMajor> SpinBase<3>::Sz(Sz3_data);
 template<> const Eigen::Matrix<double,3,3,Eigen::RowMajor> SpinBase<3>::Sp(Sp3_data);
 
+//------------N=4------------
+
+#define M_SQRT3 1.7320508075688772935274463415058723669428052538104
+
+static const double Sx4_data[] = 
+{0.,          0.5*M_SQRT3, 0.,          0., 
+ 0.5*M_SQRT3, 0.,          1.,          0.,
+ 0.,          1.,          0.,          0.5*M_SQRT3,
+ 0.,          0.,          0.5*M_SQRT3, 0.};
+
+static const complex<double> Sy4_data[] = 
+{0.,                               complex<double>(0.,-0.5*M_SQRT3), 0.,                              0., 
+ complex<double>(0.,0.5*M_SQRT3),  0.,                               complex<double>(0.,-1.),         0.,
+ 0.,                               complex<double>(0.,1.),           0.,                              complex<double>(0.,-0.5*M_SQRT3),
+ 0.,                               0.,                               complex<double>(0.,0.5*M_SQRT3), 0.};
+ 
+static const double iSy4_data[] = 
+{0.,            0.5*M_SQRT3,  0.,          0., 
+ -0.5*M_SQRT3,  0.,           1.,          0.,
+ 0.,           -1.,           0.,          0.5*M_SQRT3,
+ 0.,            0.,          -0.5*M_SQRT3, 0.};
+
+static const double Sz4_data[] = 
+{1.5, 0.,   0.,  0., 
+ 0.,  0.5,  0.,  0.,
+ 0.,  0.,  -0.5, 0.,
+ 0.,  0.,   0., -1.5};
+
+static const double Sp4_data[] = 
+{0., M_SQRT3, 0., 0., 
+ 0., 0.,      2., 0.,
+ 0., 0.,      0., M_SQRT3,
+ 0., 0.,      0., 0.};
+
+template<> const Eigen::Matrix<double,4,4,Eigen::RowMajor> SpinBase<4>::Sx(Sx4_data);
+template<> const Eigen::Matrix<complex<double>,4,4,Eigen::RowMajor> SpinBase<4>::Sy(Sy4_data);
+template<> const Eigen::Matrix<double,4,4,Eigen::RowMajor> SpinBase<4>::iSy(iSy4_data);
+template<> const Eigen::Matrix<double,4,4,Eigen::RowMajor> SpinBase<4>::Sz(Sz4_data);
+template<> const Eigen::Matrix<double,4,4,Eigen::RowMajor> SpinBase<4>::Sp(Sp4_data);
+
 #endif
