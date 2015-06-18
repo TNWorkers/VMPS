@@ -13,6 +13,7 @@ H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} - J \sum_{i \in I} \mathb
 The set of impurities \f$I\f$ is completely free to choose.
 \note \f$J<0\f$ : antiferromagnetic
 \note The local magnetic fields act on the impurities only.*/
+template<size_t D=2>
 class TransverseKondoModel : public MpoQ<1,double>
 {
 public:
@@ -42,8 +43,8 @@ public:
 	/**Labels the conserved quantum numbers as "N", "M".*/
 	static const std::array<string,1> Nlabel;
 	
-	static const std::array<qarray<1>,4> qsub;
-	static const std::array<qarray<1>,8> qimp;
+	static const std::array<qarray<1>,4>   qsub;
+	static const std::array<qarray<1>,4*D> qimp;
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
@@ -70,20 +71,31 @@ private:
 	vector<size_t> imploc;
 };
 
-const std::array<string,1> TransverseKondoModel::Nlabel{"N"};
+template<size_t D> const std::array<string,1> TransverseKondoModel<D>::Nlabel{"N"};
 
-const std::array<qarray<1>,4> TransverseKondoModel::qsub
+template<size_t D>
+const std::array<qarray<1>,4> TransverseKondoModel<D>::qsub
 {
 	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2}
 };
 
-const std::array<qarray<1>,8> TransverseKondoModel::qimp
+template<>
+const std::array<qarray<1>,8> TransverseKondoModel<2>::qimp
 {
 	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2},
 	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2}
 };
 
-TransverseKondoModel::
+template<>
+const std::array<qarray<1>,12> TransverseKondoModel<3>::qimp
+{
+	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2},
+	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2},
+	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2}
+};
+
+template<size_t D>
+TransverseKondoModel<D>::
 TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, vector<double> Bxloc_input, bool CALC_SQUARE)
 :MpoQ<1,double>(), J(J_input), imploc(imploc_input)
 {
@@ -165,7 +177,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			if (l==0)
 			{
 				G[l].setRowVector(6,8);
-				G[l] = KondoModel::Generator<2>(J,Bzloc[i],Bxloc[i]).row(5);
+				G[l] = KondoModel<D>::Generator(J,Bzloc[i],Bxloc[i]).row(5);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(6*6,8);
@@ -175,7 +187,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,8);
-				G[l] = KondoModel::Generator<2>(J,Bzloc[i],Bxloc[i]).col(0);
+				G[l] = KondoModel<D>::Generator(J,Bzloc[i],Bxloc[i]).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(6*6,8);
@@ -185,7 +197,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else
 			{
 				G[l].setMatrix(6,8);
-				G[l] = KondoModel::Generator<2>(J,Bzloc[i],Bxloc[i]);
+				G[l] = KondoModel<D>::Generator(J,Bzloc[i],Bxloc[i]);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(6*6,8);
@@ -245,12 +257,14 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 	}
 }
 
-TransverseKondoModel::
+template<size_t D>
+TransverseKondoModel<D>::
 TransverseKondoModel (size_t L_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input, initializer_list<double> Bxloc_input, bool CALC_SQUARE)
 :TransverseKondoModel(L_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), vector<double>(begin(Bzloc_input),end(Bzloc_input)), vector<double>(begin(Bxloc_input),end(Bxloc_input)), CALC_SQUARE)
 {}
 
-MpoQ<1> TransverseKondoModel::
+template<size_t D>
+MpoQ<1> TransverseKondoModel<D>::
 Simp (size_t L, size_t loc, SPINOP_LABEL Sa)
 {
 	assert(loc<L);
@@ -258,22 +272,12 @@ Simp (size_t L, size_t loc, SPINOP_LABEL Sa)
 	ss << Sa << "Imp(" << loc << ")";
 	MpoQ<1> Mout(L, locBasis(), {0}, Nlabel, ss.str());
 	MatrixXd Id4(4,4); Id4.setIdentity();
-	if (Sa == SX)
-	{
-		Mout.setLocal(loc, kroneckerProduct(SpinBase<2>::Sx,Id4));
-	}
-	else if (Sa == iSY)
-	{
-		Mout.setLocal(loc, kroneckerProduct(SpinBase<2>::iSy,Id4));
-	}
-	else if (Sa == SZ)
-	{
-		Mout.setLocal(loc, kroneckerProduct(SpinBase<2>::Sz,Id4));
-	}
+	Mout.setLocal(loc, kroneckerProduct(SpinBase<D>::Scomp(Sa),Id4));
 	return Mout;
 }
 
-MpoQ<1> TransverseKondoModel::
+template<size_t D>
+MpoQ<1> TransverseKondoModel<D>::
 Ssub (size_t L, size_t loc, SPINOP_LABEL Sa)
 {
 	assert(loc<L);

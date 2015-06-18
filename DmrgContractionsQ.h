@@ -67,7 +67,7 @@ void contract_L (const Tripod<Nq,MatrixType> &Lold,
 					}
 					else
 					{
-						multi_array<MatrixType,LEGLIMIT> Mtmpvec(extents[W[s1][s2].cols()][1]);
+						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2].cols()][1]);
 						Mtmpvec[a2][0] = Mtmp;
 						Lnew.push_back(quple, Mtmpvec);
 					}
@@ -143,7 +143,7 @@ void contract_R (const Tripod<Nq,MatrixType> &Rold,
 					}
 					else
 					{
-						multi_array<MatrixType,LEGLIMIT> Mtmpvec(extents[W[s1][s2].rows()][1]);
+						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2].rows()][1]);
 						Mtmpvec[a1][0] = Mtmp;
 						Rnew.push_back(quple, Mtmpvec);
 					}
@@ -266,7 +266,7 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 ////						}
 ////						else
 ////						{
-////							multi_array<MatrixType,LEGLIMIT> Mtmpvec(extents[W[s1][s2].block[qW].cols()][1]);
+////							boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2].block[qW].cols()][1]);
 ////							Mtmpvec[a2][0] = Mtmp;
 ////							Bres.push_back(quple, Mtmpvec);
 ////							cout << "in:  " << quple[0] << ", out: " << quple[1] << ", mid: " << quple[2] << endl;
@@ -333,7 +333,7 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 //					}
 //					else
 //					{
-//						multi_array<MatrixType,LEGLIMIT> Mtmpvec(extents[Wcols][1]);
+//						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[Wcols][1]);
 //						Mtmpvec[a2][0] = Mtmp;
 //						Lnew.push_back(quple, Mtmpvec);
 //					}
@@ -394,7 +394,7 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 //				}
 //				else
 //				{
-//					multi_array<MatrixType,LEGLIMIT> Mtmpvec(extents[W[s1][s2].block[qW].cols()][1]);
+//					boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2].block[qW].cols()][1]);
 //					Mtmpvec[a2][0] = Mtmp;
 //					Lnew.push_back(quple, Mtmpvec);
 //				}
@@ -468,7 +468,7 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 //						cout << "not found, pushing!" << endl;
 						size_t bcols = Wbot[s1][s2].cols();
 						size_t tcols = Wtop[s2][s3].cols();
-						multi_array<MatrixType,LEGLIMIT> Mtmparray(extents[bcols][tcols]);
+						boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[bcols][tcols]);
 						Mtmparray[bc][tc] = Mtmp;
 						Lnew.push_back(quple, Mtmparray);
 					}
@@ -518,7 +518,7 @@ void contract_C0 (vector<qarray<Nq> > qloc,
 					}
 					else
 					{
-						multi_array<MatrixType,LEGLIMIT> Mtmpvec(extents[W[s1][s2].cols()][1]);
+						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2].cols()][1]);
 						Mtmpvec[iW.col()][0] = Mtmp;
 						Cnext[s1].push_back({qvacuum<Nq>(), Aket[s2].out[qA->second], qvacuum<Nq>()+qloc[s1]-qloc[s2]}, Mtmpvec);
 					}
@@ -582,7 +582,7 @@ void contract_C (vector<qarray<Nq> > qloc,
 							}
 							else
 							{
-								multi_array<MatrixType,LEGLIMIT> Mtmpvec(extents[W[s1][s2].cols()][1]);
+								boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2].cols()][1]);
 								Mtmpvec[iW.col()][0] = Mtmp;
 								Cnext[s1].push_back({Abra[s].out[qU->second], Aket[s2].out[qA->second], C[s].mid(qC)+qloc[s1]-qloc[s2]}, Mtmpvec);
 							}

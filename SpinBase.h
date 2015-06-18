@@ -32,6 +32,17 @@ struct SpinBase
 	/**\f$S^+\f$*/
 	static const Eigen::Matrix<double,D,D,Eigen::RowMajor> Sp;
 	///@}
+	
+	static const Eigen::Matrix<double,D,D,Eigen::RowMajor> Scomp (SPINOP_LABEL Sa)
+	{
+		assert(Sa != SY);
+		
+		if      (Sa==SX)  {return Sx;}
+		else if (Sa==iSY) {return iSy;}
+		else if (Sa==SZ)  {return Sz;}
+		else if (Sa==SP)  {return Sp;}
+		else if (Sa==SM)  {return Sp.transpose();}
+	}
 };
 
 //------------N=2------------

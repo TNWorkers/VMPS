@@ -14,6 +14,7 @@ H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} - J \sum_{i \in I} \mathb
 The set of impurities \f$I\f$ is completely free to choose.
 \note \f$J<0\f$ : antiferromagnetic
 \note The local magnetic fields act on the impurities only.*/
+template<size_t D=2>
 class KondoModel : public MpoQ<2,double>
 {
 public:
@@ -39,9 +40,9 @@ public:
 	\param imploc_input : list with locations of the impurities
 	\param Bzloc_input : list with locations of the local magnetic fields
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$*/
-	KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, bool CALC_SQUARE=true);
+	KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input={}, bool CALC_SQUARE=true);
 	
-	template<size_t D> static SuperMatrix<double> Generator (double J, double Bz, double Bx);
+	static SuperMatrix<double> Generator (double J, double Bz, double Bx);
 	
 	/**Makes half-integers in the output for the magnetization quantum number.*/
 	static string N_halveM (qarray<2> qnum);
@@ -61,7 +62,7 @@ public:
 	                   \}_{spins}
 	                \f$.
 	The quantum numbers are \f$N=N_{\uparrow}+N_{\downarrow}\f$ and \f$2M=2M_{spins}+N_{\uparrow}-N_{\downarrow}\f$.*/
-	static const std::array<qarray<2>,8> q;
+	static const std::array<qarray<2>,4*D> q;
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
@@ -81,17 +82,17 @@ public:
 	
 	///@{
 	MpoQ<2> SzImp (size_t L, size_t loc);
-
 	MpoQ<2> SzSub (size_t L, size_t loc);
+	MpoQ<2> SimpCorr (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
+	
+//	/**MPO for \f$S^{z}_{i}S^{z}_{j}\f$ */
+//	MpoQ<2> SzImpCorr (size_t L, size_t loc1, size_t loc2);
 
-	/**MPO for \f$S^{z}_{i}S^{z}_{j}\f$ */
-	MpoQ<2> SzImpCorr (size_t L, size_t loc1, size_t loc2);
+//	/**MPO for \f$S^{+}_{i}S^{-}_{j}\f$ */
+//	MpoQ<2> SpmImpCorr (size_t L, size_t loc1, size_t loc2);
 
-	/**MPO for \f$S^{+}_{i}S^{-}_{j}\f$ */
-	MpoQ<2> SpmImpCorr (size_t L, size_t loc1, size_t loc2);
-
-	/**MPO for \f$S^{-}_{i}S^{+}_{j}\f$ */
-	MpoQ<2> SmpImpCorr (size_t L, size_t loc1, size_t loc2);
+//	/**MPO for \f$S^{-}_{i}S^{+}_{j}\f$ */
+//	MpoQ<2> SmpImpCorr (size_t L, size_t loc1, size_t loc2);
 	///@}
 	
 private:
@@ -102,7 +103,8 @@ private:
 	vector<size_t> imploc;
 };
 
-const std::array<qarray<2>,8> KondoModel::q
+template<>
+const std::array<qarray<2>,8> KondoModel<2>::q
 {
 	qarray<2>{0,+1},
 	qarray<2>{1,+2},
@@ -115,10 +117,29 @@ const std::array<qarray<2>,8> KondoModel::q
 	qarray<2>{2,-1}
 };
 
-const std::array<string,2> KondoModel::NMlabel{"N","M"};
+template<>
+const std::array<qarray<2>,12> KondoModel<3>::q
+{
+	qarray<2>{0,+2},
+	qarray<2>{1,+3},
+	qarray<2>{1, 1},
+	qarray<2>{2,+2},
+	
+	qarray<2>{0, 0},
+	qarray<2>{1,+1},
+	qarray<2>{1,-1},
+	qarray<2>{2, 0},
+	
+	qarray<2>{0,-2},
+	qarray<2>{1,-1},
+	qarray<2>{1,-3},
+	qarray<2>{2,-2}
+};
+
+template<size_t D> const std::array<string,2> KondoModel<D>::NMlabel{"N","M"};
 
 template<size_t D>
-SuperMatrix<double> KondoModel::
+SuperMatrix<double> KondoModel<D>::
 Generator (double J, double Bz, double Bx)
 {
 	size_t Daux = 6;
@@ -151,9 +172,10 @@ Generator (double J, double Bz, double Bx)
 	return G;
 }
 
-KondoModel::
+template<size_t D>
+KondoModel<D>::
 KondoModel (size_t L_input, double J_input, double Bz_input, bool CALC_SQUARE)
-:MpoQ<2> (L_input, vector<qarray<2> >(begin(KondoModel::q),end(KondoModel::q)), {0,0}, KondoModel::NMlabel, "KondoModel", N_halveM),
+:MpoQ<2> (L_input, vector<qarray<2> >(begin(KondoModel<D>::q),end(KondoModel<D>::q)), {0,0}, KondoModel<D>::NMlabel, "KondoModel", N_halveM),
 J(J_input), Bz(Bz_input)
 {
 	stringstream ss;
@@ -163,7 +185,7 @@ J(J_input), Bz(Bz_input)
 	this->Daux = 6;
 	this->N_sv = this->Daux;
 	
-	SuperMatrix<double> G = Generator<2>(J, Bz, 0.);
+	SuperMatrix<double> G = Generator(J, Bz, 0.);
 	this->construct(G, this->W, this->Gvec);
 	
 	if (CALC_SQUARE == true)
@@ -177,7 +199,8 @@ J(J_input), Bz(Bz_input)
 	}
 }
 
-KondoModel::
+template<size_t D>
+KondoModel<D>::
 KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, bool CALC_SQUARE)
 :MpoQ<2,double>(), J(J_input), imploc(imploc_input)
 {
@@ -205,7 +228,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 	
 	// make a pretty label
 	stringstream ss;
-	ss << "(J=" << J << ",imps={";
+	ss << "(S=" << frac(D-1,2) << ",J=" << J << ",imps={";
 	for (auto i=0; i<imploc.size(); ++i)
 	{
 		ss << imploc[i];
@@ -242,7 +265,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			if (l==0)
 			{
 				G[l].setRowVector(6,8);
-				G[l] = Generator<2>(J,Bzloc[i],0.).row(5);
+				G[l] = Generator(J,Bzloc[i],0.).row(5);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(6*6,8);
@@ -252,7 +275,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,8);
-				G[l] = Generator<2>(J,Bzloc[i],0.).col(0);
+				G[l] = Generator(J,Bzloc[i],0.).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(6*6,8);
@@ -262,7 +285,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			else
 			{
 				G[l].setMatrix(6,8);
-				G[l] = Generator<2>(J,Bzloc[i],0.);
+				G[l] = Generator(J,Bzloc[i],0.);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(6*6,8);
@@ -322,12 +345,14 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 	}
 }
 
-KondoModel::
+template<size_t D>
+KondoModel<D>::
 KondoModel (size_t L_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input, bool CALC_SQUARE)
 :KondoModel(L_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), vector<double>(begin(Bzloc_input),end(Bzloc_input)), CALC_SQUARE)
 {}
 
-string KondoModel::
+template<size_t D>
+string KondoModel<D>::
 N_halveM (qarray<2> qnum)
 {
 	stringstream ss;
@@ -342,58 +367,86 @@ N_halveM (qarray<2> qnum)
 	return ss.str();
 }
 
-MpoQ<2> KondoModel::
+template<size_t D>
+MpoQ<2> KondoModel<D>::
 SzImp (size_t L, size_t loc)
 {
 	assert(loc<L);
 	stringstream ss;
 	ss << "SzImp(" << loc << ")";
-	MpoQ<2> Mout(L, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
+	MpoQ<2> Mout(L, locBasis(), {0,0}, KondoModel<D>::NMlabel, ss.str());
 	MatrixXd Id4(4,4); Id4.setIdentity();
-	Mout.setLocal(loc, kroneckerProduct(SpinBase<2>::Sz,Id4));
+	Mout.setLocal(loc, kroneckerProduct(SpinBase<D>::Sz,Id4));
 	return Mout;
 }
 
-MpoQ<2> KondoModel::SzImpCorr (size_t L,size_t loc1, size_t loc2)
+template<size_t D>
+MpoQ<2> KondoModel<D>::
+SzSub (size_t L, size_t loc)
 {
-	assert(loc1<L);
-	assert(loc2<L);
+	assert(loc<L);
 	stringstream ss;
-	ss << "SzImp correlation(" << loc1 << "," << loc2 << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(begin(KondoModel::q),end(KondoModel::q)), {0,0}, KondoModel::NMlabel, ss.str());
-	Mout.qloc = this->qloc;
-	MatrixXd Id4(4,4); Id4.setIdentity();
-	Mout.setLocal(loc1, kroneckerProduct(SpinBase<2>::Sz,Id4), loc2, kroneckerProduct(SpinBase<2>::Sz,Id4));
+	ss << "SzSub(" << loc << ")";
+	MpoQ<2> Mout(L, locBasis(), {0,0}, KondoModel<D>::NMlabel, ss.str());
+	MatrixXd IdImp(qlocsize[loc]/4, qlocsize[loc]/4); IdImp.setIdentity();
+	Mout.setLocal(loc, kroneckerProduct(IdImp, HubbardModel::Sz));
 	return Mout;
 }
 
-MpoQ<2> KondoModel::SpmImpCorr (size_t L, size_t loc1, size_t loc2)
+template<size_t D>
+MpoQ<2> KondoModel<D>::
+SimpCorr (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
 {
-	assert(loc1<L);
-	assert(loc2<L);
+	assert(loc1<L and loc2<L);
 	stringstream ss;
-	ss << "SpmImp correlation(" << loc1 << "," << loc2 << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(begin(KondoModel::q),end(KondoModel::q)), {0,0}, KondoModel::NMlabel, ss.str());
-	Mout.qloc = this->qloc;
+	ss << SOP1 << "(" << loc1 << ")" << SOP2 << "(" << loc2 << ")";
+	MpoQ<2> Mout(L, locBasis(), {0,0}, KondoModel<D>::NMlabel, ss.str());
 	MatrixXd Id4(4,4); Id4.setIdentity();
-	Mout.setLocal(loc1, kroneckerProduct(SpinBase<2>::Sp,Id4), loc2, kroneckerProduct((SpinBase<2>::Sp).transpose(),Id4));
+	Mout.setLocal(loc1, kroneckerProduct(SpinBase<D>::Scomp(SOP1),Id4), loc2, kroneckerProduct(SpinBase<D>::Scomp(SOP2),Id4));
 	return Mout;
 }
 
-MpoQ<2> KondoModel::SmpImpCorr (size_t L, size_t loc1, size_t loc2)
-{
-	assert(loc1<L);
-	assert(loc2<L);
-	stringstream ss;
-	ss << "SmpImp correlation(" << loc1 << "," << loc2 << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(begin(KondoModel::q),end(KondoModel::q)), {0,0}, KondoModel::NMlabel, ss.str());
-	Mout.qloc = this->qloc;
-	MatrixXd Id4(4,4); Id4.setIdentity();
-	Mout.setLocal(loc1, kroneckerProduct((SpinBase<2>::Sp).transpose(),Id4), loc2, kroneckerProduct(SpinBase<2>::Sp,Id4));
-	return Mout;
- }
+//MpoQ<2> KondoModel<D>::SzImpCorr (size_t L,size_t loc1, size_t loc2)
+//{
+//	assert(loc1<L);
+//	assert(loc2<L);
+//	stringstream ss;
+//	ss << "SzImp correlation(" << loc1 << "," << loc2 << ")";
+//	MpoQ<2> Mout(L, vector<qarray<2> >(begin(KondoModel<D>::q),end(KondoModel<D>::q)), {0,0}, KondoModel<D>::NMlabel, ss.str());
+//	Mout.qloc = this->qloc;
+//	MatrixXd Id4(4,4); Id4.setIdentity();
+//	Mout.setLocal(loc1, kroneckerProduct(SpinBase<2>::Sz,Id4), loc2, kroneckerProduct(SpinBase<2>::Sz,Id4));
+//	return Mout;
+//}
 
-class KondoModel::qarrayIterator
+//MpoQ<2> KondoModel<D>::SpmImpCorr (size_t L, size_t loc1, size_t loc2)
+//{
+//	assert(loc1<L);
+//	assert(loc2<L);
+//	stringstream ss;
+//	ss << "SpmImp correlation(" << loc1 << "," << loc2 << ")";
+//	MpoQ<2> Mout(L, vector<qarray<2> >(begin(KondoModel<D>::q),end(KondoModel<D>::q)), {0,0}, KondoModel<D>::NMlabel, ss.str());
+//	Mout.qloc = this->qloc;
+//	MatrixXd Id4(4,4); Id4.setIdentity();
+//	Mout.setLocal(loc1, kroneckerProduct(SpinBase<2>::Sp,Id4), loc2, kroneckerProduct((SpinBase<2>::Sp).transpose(),Id4));
+//	return Mout;
+//}
+
+//MpoQ<2> KondoModel<D>::SmpImpCorr (size_t L, size_t loc1, size_t loc2)
+//{
+//	assert(loc1<L);
+//	assert(loc2<L);
+//	stringstream ss;
+//	ss << "SmpImp correlation(" << loc1 << "," << loc2 << ")";
+//	MpoQ<2> Mout(L, vector<qarray<2> >(begin(KondoModel<D>::q),end(KondoModel<D>::q)), {0,0}, KondoModel<D>::NMlabel, ss.str());
+//	Mout.qloc = this->qloc;
+//	MatrixXd Id4(4,4); Id4.setIdentity();
+//	Mout.setLocal(loc1, kroneckerProduct((SpinBase<2>::Sp).transpose(),Id4), loc2, kroneckerProduct(SpinBase<2>::Sp,Id4));
+//	return Mout;
+// }
+
+template<size_t D>
+class KondoModel<D>::qarrayIterator
 {
 public:
 	
@@ -416,20 +469,23 @@ public:
 			// count the impurities between l_frst and l_last
 			for (size_t l=l_frst; l<=l_last; ++l)
 			{
-				if (qloc_input[l].size() == 8)
+				if (qloc_input[l].size() == 4*D)
 				{
 					++Nimps;
 				}
 			}
 		}
 		
-		for (int Sz=-Nimps; Sz<=Nimps; Sz+=2)
+		int Sx2 = static_cast<int>(D-1); // necessary because of size_t
+		for (int Sz=-Sx2*Nimps; Sz<=Sx2*Nimps; Sz+=2)
 		for (int Nup=0; Nup<=N_sites; ++Nup)
 		for (int Ndn=0; Ndn<=N_sites; ++Ndn)
 		{
 			qarray<2> q = {Nup+Ndn, Sz+Nup-Ndn};
 			qarraySet.insert(q);
+//			cout << q << endl;
 		}
+//		cout << endl;
 		
 		it = qarraySet.begin();
 	};
@@ -472,10 +528,12 @@ private:
 	int N_sites;
 };
 
-bool KondoModel::
+template<size_t D>
+bool KondoModel<D>::
 validate (qarray<2> qnum) const
 {
-	return (qnum[0]+imploc.size())%2 == qnum[1]%2;
+	int Sx2 = static_cast<int>(D-1); // necessary because of size_t
+	return (qnum[0]+Sx2*imploc.size())%2 == qnum[1]%2;
 }
 
 };

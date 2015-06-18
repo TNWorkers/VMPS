@@ -192,7 +192,7 @@ halve (qarray<1> qnum)
 {
 	stringstream ss;
 	ss << "(";
-	rational<int> m = rational<int>(qnum[0],2);
+	boost::rational<int> m = boost::rational<int>(qnum[0],2);
 	if      (m.numerator()   == 0) {ss << 0;}
 	else if (m.denominator() == 1) {ss << m.numerator();}
 	else {ss << m;}

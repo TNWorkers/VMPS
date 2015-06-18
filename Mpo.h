@@ -10,6 +10,7 @@
 
 template<typename Scalar> class Mps;
 template<typename Scalar> class MpsCompressor;
+template<size_t Nq, typename Scalar> class MpoQ;
 
 /**Matrix Product Operator.
 \describe_Scalar*/
@@ -21,6 +22,7 @@ typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 template<typename MpHamiltonian> friend class DmrgSolver;
 template<typename S_> friend class MpsCompressor;
 template<typename S1, typename S2> friend void HxV (const Mpo<S1> &H, const Mps<S2> &Vin, Mps<S2> &Vout);
+template<size_t Nq, typename S_> friend class MpoQ;
 
 public:
 	
@@ -48,7 +50,7 @@ public:
 	inline const vector<vector<SparseMatrix<Scalar> > > &Wsq_at (size_t loc) const {return Wsq[loc];};
 	inline bool check_SQUARE() const {return GOT_SQUARE;}
 	
-//protected:
+protected:
 	
 	bool GOT_SQUARE;
 	
