@@ -30,17 +30,17 @@ public:
 	\param L_input : chain length
 	\param J_input : \f$J\f$
 	\param imploc_input : list with locations of the impurities
-	\param Bzloc_input : list with locations of the local magnetic fields
+	\param Bzval_input : list with locations of the local magnetic fields
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$*/
-	KondoModel (size_t L_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input={}, bool CALC_SQUARE=true);
+	KondoModel (size_t L_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzval_input={}, bool CALC_SQUARE=true);
 	
 	/**Constructs a Kondo Impurity Model (aka a diluted Kondo Model) using vectors for the set of impurities.
 	\param L_input : chain length
 	\param J_input : \f$J\f$
 	\param imploc_input : list with locations of the impurities
-	\param Bzloc_input : list with locations of the local magnetic fields
+	\param Bzval_input : list with locations of the local magnetic fields
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$*/
-	KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input={}, bool CALC_SQUARE=true);
+	KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzval_input={}, bool CALC_SQUARE=true);
 	
 	static SuperMatrix<double> Generator (double J, double Bz, double Bx);
 	
@@ -99,18 +99,19 @@ private:
 	
 	double J, Bz;
 	
-	vector<double> Bzloc;
+	vector<double> Bzval;
 	vector<size_t> imploc;
 };
 
 template<>
 const std::array<qarray<2>,8> KondoModel<2>::q
 {
+	// Mimp = +1
 	qarray<2>{0,+1},
 	qarray<2>{1,+2},
 	qarray<2>{1, 0},
 	qarray<2>{2,+1},
-	
+	// Mimp = -1
 	qarray<2>{0,-1},
 	qarray<2>{1, 0},
 	qarray<2>{1,-2},
@@ -120,20 +121,46 @@ const std::array<qarray<2>,8> KondoModel<2>::q
 template<>
 const std::array<qarray<2>,12> KondoModel<3>::q
 {
+	// Mimp = +2
 	qarray<2>{0,+2},
 	qarray<2>{1,+3},
-	qarray<2>{1, 1},
+	qarray<2>{1,+1},
 	qarray<2>{2,+2},
-	
+	// Mimp = 0
 	qarray<2>{0, 0},
 	qarray<2>{1,+1},
 	qarray<2>{1,-1},
 	qarray<2>{2, 0},
-	
+	// Mimp = -2
 	qarray<2>{0,-2},
 	qarray<2>{1,-1},
 	qarray<2>{1,-3},
 	qarray<2>{2,-2}
+};
+
+template<>
+const std::array<qarray<2>,16> KondoModel<4>::q
+{
+	// Mimp = +3
+	qarray<2>{0,+3},
+	qarray<2>{1,+4},
+	qarray<2>{1,+2},
+	qarray<2>{2,+3},
+	// Mimp = +1
+	qarray<2>{0,+1},
+	qarray<2>{1,+2},
+	qarray<2>{1, 0},
+	qarray<2>{2,+1},
+	// Mimp = -1
+	qarray<2>{0,-1},
+	qarray<2>{1, 0},
+	qarray<2>{1,-2},
+	qarray<2>{2,-1},
+	// Mimp = -3
+	qarray<2>{0,-3},
+	qarray<2>{1,-2},
+	qarray<2>{1,-4},
+	qarray<2>{2,-3}
 };
 
 template<size_t D> const std::array<string,2> KondoModel<D>::NMlabel{"N","M"};
@@ -201,18 +228,18 @@ J(J_input), Bz(Bz_input)
 
 template<size_t D>
 KondoModel<D>::
-KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, bool CALC_SQUARE)
+KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzval_input, bool CALC_SQUARE)
 :MpoQ<2,double>(), J(J_input), imploc(imploc_input)
 {
-	// if Bzloc_input empty, set it to zero
-	if (Bzloc_input.size() == 0)
+	// if Bzval_input empty, set it to zero
+	if (Bzval_input.size() == 0)
 	{
-		Bzloc.assign(imploc.size(),0.);
+		Bzval.assign(imploc.size(),0.);
 	}
 	else
 	{
-		assert(imploc_input.size() == Bzloc_input.size());
-		Bzloc = Bzloc_input;
+		assert(imploc_input.size() == Bzval_input.size() and "Impurities and B-fields do not match!");
+		Bzval = Bzval_input;
 	}
 	
 	// assign stuff
@@ -231,15 +258,16 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 	ss << "(S=" << frac(D-1,2) << ",J=" << J << ",imps={";
 	for (auto i=0; i<imploc.size(); ++i)
 	{
+		assert(imploc[i] < this->N_sites and "Invalid impurity location!");
 		ss << imploc[i];
 		if (i!=imploc.size()-1) {ss << ",";}
 	}
 	ss << "}";
 	ss << ",Bz={";
-	for (auto i=0; i<Bzloc.size(); ++i)
+	for (auto i=0; i<Bzval.size(); ++i)
 	{
-		ss << Bzloc[i];
-		if (i!=Bzloc.size()-1) {ss << ",";}
+		ss << Bzval[i];
+		if (i!=Bzval.size()-1) {ss << ",";}
 	}
 	ss << "})";
 	this->label += ss.str();
@@ -265,7 +293,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			if (l==0)
 			{
 				G[l].setRowVector(6,8);
-				G[l] = Generator(J,Bzloc[i],0.).row(5);
+				G[l] = Generator(J,Bzval[i],0.).row(5);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(6*6,8);
@@ -275,7 +303,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,8);
-				G[l] = Generator(J,Bzloc[i],0.).col(0);
+				G[l] = Generator(J,Bzval[i],0.).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(6*6,8);
@@ -285,7 +313,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			else
 			{
 				G[l].setMatrix(6,8);
-				G[l] = Generator(J,Bzloc[i],0.);
+				G[l] = Generator(J,Bzval[i],0.);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(6*6,8);
@@ -347,8 +375,8 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 
 template<size_t D>
 KondoModel<D>::
-KondoModel (size_t L_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input, bool CALC_SQUARE)
-:KondoModel(L_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), vector<double>(begin(Bzloc_input),end(Bzloc_input)), CALC_SQUARE)
+KondoModel (size_t L_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzval_input, bool CALC_SQUARE)
+:KondoModel(L_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), vector<double>(begin(Bzval_input),end(Bzval_input)), CALC_SQUARE)
 {}
 
 template<size_t D>

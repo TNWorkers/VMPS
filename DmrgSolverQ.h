@@ -23,7 +23,7 @@ public:
 	double overhead (MEMUNIT memunit=MB) const;
 	
 	void edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> Qtot_input, size_t Dinit=5, 
-	                LANCZOS::EDGE::OPTION EDGE=LANCZOS::EDGE::GROUND,
+	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND,
 	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST,
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-5, size_t max_halfsweeps=42, size_t min_halfsweeps=6);
 	
