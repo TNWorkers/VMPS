@@ -368,7 +368,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 		}
 	}
 	
-	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::ON_EXIT)
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
 		size_t standard_precision = cout.precision();
 		if (EDGE == LANCZOS::EDGE::GROUND)
