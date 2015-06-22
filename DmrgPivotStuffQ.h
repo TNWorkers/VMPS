@@ -339,7 +339,7 @@ struct GaussianRandomVector<PivotVectorQ<Nq,Scalar>,double>
 		for (size_t a1=0; a1<Vout.A[s].block[q].rows(); ++a1)
 		for (size_t a2=0; a2<Vout.A[s].block[q].cols(); ++a2)
 		{
-			Vout.A[s].block[q](a1,a2) = NormDist(MtEngine);
+			Vout.A[s].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
 		}
 		normalize(Vout);
 	}

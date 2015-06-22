@@ -216,7 +216,7 @@ struct GaussianRandomVector<PivotVector<D>,double>
 		for (size_t a1=0; a1<Vout.A[s].rows(); ++a1)
 		for (size_t a2=0; a2<Vout.A[s].cols(); ++a2)
 		{
-			Vout.A[s](a1,a2) = NormDist(MtEngine);
+			Vout.A[s](a1,a2) = threadSafeRandUniform<double>(-1.,1.);
 		}
 		normalize(Vout);
 	}

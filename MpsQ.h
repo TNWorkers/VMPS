@@ -4,6 +4,7 @@
 #include <set>
 #include <numeric>
 #include <algorithm>
+#include <ctime>
 
 #include "Biped.h"
 #include "Multipede.h"
@@ -361,9 +362,6 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 	}
 	else
 	{
-		#ifndef DMRG_DONT_USE_OPENMP
-		#pragma omp parallel for
-		#endif
 		for (size_t l=0; l<this->N_sites; ++l)
 		{
 			set<qarray<Nq> > intmp;
@@ -640,35 +638,10 @@ setRandom()
 	for (size_t a1=0; a1<A[l][s].block[q].rows(); ++a1)
 	for (size_t a2=0; a2<A[l][s].block[q].cols(); ++a2)
 	{
-		A[l][s].block[q](a1,a2) = UniformDist0(MtEngine);
+		A[l][s].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
 	}
 	
-	// normalize to prevent overflow:
-//	for (size_t l=1; l<this->N_sites-1; ++l)
-//	for (size_t s=0; s<qloc[l].size(); ++s)
-//	for (size_t q=0; q<A[l][s].dim; ++q)
-//	{
-//		A[l][s].block[q] /= A[l][s].block[q].norm();
-//	}
-//	
 	this->pivot = -1;
-	
-	// further precautions for overflow:
-//	double norm = sqrt(squaredNorm());
-//	if (std::isinf(norm)) {norm = 1e300;}
-//	cout << "norm=" << norm << endl;
-//	
-//	for (size_t s=0; s<qloc[l].size(); ++s)
-//	for (size_t q=0; q<A[0][s].dim; ++q)
-//	{
-//		A[0][s].block[q] /= sqrt(norm);
-//	}
-//	
-//	for (size_t s=0; s<qloc[l].size(); ++s)
-//	for (size_t q=0; q<A[this->N_sites-1][s].dim; ++q)
-//	{
-//		A[this->N_sites-1][s].block[q] /= sqrt(norm);
-//	}
 }
 
 template<size_t Nq, typename Scalar>
@@ -680,7 +653,7 @@ setRandom (size_t loc)
 	for (size_t a1=0; a1<A[loc][s].block[q].rows(); ++a1)
 	for (size_t a2=0; a2<A[loc][s].block[q].cols(); ++a2)
 	{
-		A[loc][s].block[q](a1,a2) = UniformDist0(MtEngine);
+		A[loc][s].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
 	}
 }
 

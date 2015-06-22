@@ -428,17 +428,17 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
 		Vout.setRandom();
 	}
-//	else if (START == DMRG::COMPRESSION::RHS_SVD)
-//	{
-//		OxV(H,Vin,Vout,DMRG::BROOM::QR);
-//	}
-//	else if (START == DMRG::COMPRESSION::BRUTAL_SVD)
-//	{
-//		size_t tmp = Vout.N_sv;
-//		Vout.N_sv = Dcutoff;
-//		OxV(H,Vin,Vout,DMRG::BROOM::BRUTAL_SVD);
-//		Vout.N_sv = tmp;
-//	}
+	else if (START == DMRG::COMPRESSION::RHS_SVD)
+	{
+		OxV(H,Vin,Vout,DMRG::BROOM::QR);
+	}
+	else if (START == DMRG::COMPRESSION::BRUTAL_SVD)
+	{
+		size_t tmp = Vout.N_sv;
+		Vout.N_sv = Dcutoff;
+		OxV(H,Vin,Vout,DMRG::BROOM::BRUTAL_SVD);
+		Vout.N_sv = tmp;
+	}
 	
 	// prepare edges of LW & RW
 	Heff.clear();
@@ -448,9 +448,13 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 	
 	Mmax = Vout.calc_Mmax();
 	double sqnormVin;
+	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 	#pragma omp parallel sections
+	#endif
 	{
+		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			if (H.IS_UNITARY())
 			{
@@ -461,7 +465,9 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 				sqnormVin = (H.check_SQUARE()==true)? isReal(avg(Vin,H,Vin,true)) : isReal(avg(Vin,H,H,Vin));
 			}
 		}
+		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			prepSweep(H,Vin,Vout);
 		}
@@ -557,6 +563,7 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vou
 				Vout.setRandom(l);
 				if (l>0) {Vout.setRandom(l-1);}
 			}
+			Stopwatch Chronos;
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, TOOL);
 			build_RW(l-1,Vout,H,Vin);
 		}
@@ -571,6 +578,7 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vou
 				Vout.setRandom(l);
 				if (l<N_sites-1) {Vout.setRandom(l+1);}
 			}
+			Stopwatch Chronos;
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, TOOL);
 			build_LW(l+1,Vout,H,Vin);
 		}
@@ -613,7 +621,9 @@ optimizationStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scala
 //	HxV(Heff[pivot],Vtmp);
 //	Vout.A[pivot] = Vtmp.A;
 	
-	#pragma omp parallel for schedule(dynamic)
+	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
+	#pragma omp parallel for
+	#endif
 	for (size_t q=0; q<Heff[pivot].qlhs.size(); ++q)
 	{
 		size_t s1 = Heff[pivot].qlhs[q][0];
@@ -643,7 +653,7 @@ optimizationStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scala
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
-		lout << "loc=" << Chronos.info(pivot) << endl;
+		lout << "optimization loc=" << Chronos.info(pivot) << endl;
 	}
 }
 
@@ -739,17 +749,25 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 	Mmax = Vout.calc_Mmax();
 	double sqnormV1, sqnormV2, overlapV12;
 	sqnormV2 = Vin2.squaredNorm();
+	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 	#pragma omp parallel sections
+	#endif
 	{
+		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			sqnormV1 = (H.check_SQUARE()==true)? isReal(avg(Vin1,H,Vin1,true)) : isReal(avg(Vin1,H,H,Vin1));
 		}
+		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			overlapV12 = isReal(avg(Vin2,H,Vin1));
 		}
+		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			prepSweep(H,Vin1,Vin2,Vout);
 		}
@@ -803,6 +821,7 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 		    N_halfsweeps != max_halfsweeps and
 		    sqdist > tol)
 		{
+			Stopwatch ChronosResize;
 			size_t Dcutoff_old = Vout.calc_Dmax();
 			size_t Mmax_old = Vout.calc_Mmax();
 			
@@ -811,16 +830,16 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 			Vout.setRandom();
 			Mmax_new = Vout.calc_Mmax();
 			
-			if (CHOSEN_VERBOSITY>=2)
-			{
-				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << endl;
-			}
-			
 			Vout.pivot = -1;
 			prepSweep(H,Vin1,Vin2,Vout);
 			pivot = Vout.pivot;
 			halfSweepRange = N_sites;
 			RESIZED = true;
+			
+			if (CHOSEN_VERBOSITY>=2)
+			{
+				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << "\t" << ChronosResize.info() << endl;
+			}
 		}
 		
 		if ((sqdist > tol and 
@@ -928,13 +947,19 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Scala
 				if (l>0) {Vout.setRandom(l-1);}
 			}
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
+			#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 			#pragma omp parallel sections
+			#endif
 			{
+				#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 				#pragma omp section
+				#endif
 				{
 					build_RW(l-1,Vout,H,Vin1);
 				}
+				#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 				#pragma omp section
+				#endif
 				{
 					build_R (l-1,Vout,Vin2);
 				}
@@ -953,13 +978,19 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Scala
 				if (l<N_sites-1) {Vout.setRandom(l+1);}
 			}
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
+			#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 			#pragma omp parallel sections
+			#endif
 			{
+				#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 				#pragma omp section
+				#endif
 				{
 					build_LW(l+1,Vout,H,Vin1);
 				}
+				#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 				#pragma omp section
+				#endif
 				{
 					build_L (l+1,Vout,Vin2);
 				}
@@ -978,13 +1009,19 @@ sweepStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Scala
 {
 	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
 	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? ++pivot : --pivot;
+	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 	#pragma omp parallel sections
+	#endif
 	{
+		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_LW(pivot,Vout,H,Vin1) : build_RW(pivot,Vout,H,Vin1);
 		}
+		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L (pivot,Vout,Vin2)     : build_R(pivot,Vout,Vin2);
 		}
