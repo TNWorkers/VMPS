@@ -479,9 +479,9 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 }
 
 /**For details see: Stoudenmire, White (2010)*/
-template<size_t Nq, typename MatrixType>
+template<size_t Nq, typename MatrixType, typename MpoScalar>
 void contract_C0 (vector<qarray<Nq> > qloc,
-                  const vector<vector<SparseMatrixXd> > &W, 
+                  const vector<vector<SparseMatrix<MpoScalar> > > &W, 
                   const vector<Biped<Nq,MatrixType> >   &Aket, 
                   vector<Tripod<Nq,MatrixType> >        &Cnext)
 {
@@ -498,7 +498,7 @@ void contract_C0 (vector<qarray<Nq> > qloc,
 			for (size_t s1=0; s1<qloc.size(); ++s1)
 			{
 				for (int k=0; k<W[s1][s2].outerSize(); ++k)
-				for (SparseMatrixXd::InnerIterator iW(W[s1][s2],k); iW; ++iW)
+				for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2],k); iW; ++iW)
 				{
 					MatrixType Mtmp = iW.value() * Aket[s2].block[qA->second];
 					
@@ -530,10 +530,10 @@ void contract_C0 (vector<qarray<Nq> > qloc,
 
 /**For details see: Stoudenmire, White (2010)
 \dotfile contract_C.dot*/
-template<size_t Nq, typename MatrixType>
+template<size_t Nq, typename MatrixType, typename MpoScalar>
 void contract_C (vector<qarray<Nq> > qloc,
                  const vector<Biped<Nq,MatrixType> >   &Abra, 
-                 const vector<vector<SparseMatrixXd> > &W, 
+                 const vector<vector<SparseMatrix<MpoScalar> > > &W, 
                  const vector<Biped<Nq,MatrixType> >   &Aket, 
                  const vector<Tripod<Nq,MatrixType> >  &C, 
                  vector<Tripod<Nq,MatrixType> >        &Cnext)
@@ -558,7 +558,7 @@ void contract_C (vector<qarray<Nq> > qloc,
 				if (qA != Aket[s2].dict.end())
 				{
 					for (int k=0; k<W[s1][s2].outerSize(); ++k)
-					for (SparseMatrixXd::InnerIterator iW(W[s1][s2],k); iW; ++iW)
+					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2],k); iW; ++iW)
 					{
 						if (C[s].block[qC][iW.row()][0].rows() != 0)
 						{

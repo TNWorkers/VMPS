@@ -50,8 +50,7 @@ template<typename Hamiltonian, size_t Nq, typename TimeScalar, typename VectorTy
 void TEBDPropagator<Hamiltonian,Nq,TimeScalar,VectorType>::
 t_step (const Hamiltonian &H, const VectorType &Vin, VectorType &Vout, TimeScalar dt, double tol, int Nexp)
 {
-	assert(Nexp==2 or Nexp==3 or Nexp==5 or Nexp==9 or Nexp==11 and
-	       "Implemented orders: 2,3,5,9,11");
+	assert(Nexp==2 or Nexp==3 or Nexp==5 or Nexp==9 or Nexp==11 and "Implemented orders: 2,3,5,9,11");
 	
 	if (dt != tstep)
 	{
@@ -205,10 +204,11 @@ t_step (const Hamiltonian &H, const VectorType &Vin, VectorType &Vout, TimeScala
 		apply_gate(GateEvn1,Vtmp2,Vout, 10);
 	}
 	
-	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::ON_EXIT)
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
 		lout << Chronos.info("exp(-i*H*dt)*V") << endl;
-		lout << "Vout: " << Vout.info() << endl << endl;
+		lout << "Vout: " << Vout.info() << endl;
+		lout << endl;
 	}
 }
 

@@ -291,23 +291,55 @@ BondPropagator (TimeScalar dt, PARITY P) const
 		}
 	}
 	
-	if (P == ODD)
+	//----------<set non-bonds to identity>----------
+	vector<size_t> IdList;
+	size_t l_frst, l_last;
+	
+	if (this->N_sites%2 == 0)
 	{
-		for (size_t l=0; l<this->N_sites; l+=this->N_sites-1)
+		if (P == ODD)
+		{
+			IdList.push_back(0);
+			IdList.push_back(this->N_sites-1);
+			l_frst = 1;
+			l_last = this->N_sites-3;
+		}
+		else
+		{
+			l_frst = 0;
+			l_last = this->N_sites-2;
+		}
+	}
+	else
+	{
+		if (P == ODD)
+		{
+			IdList.push_back(0);
+			l_frst = 1;
+			l_last = this->N_sites-2;
+		}
+		else
+		{
+			IdList.push_back(this->N_sites-1);
+			l_frst = 0;
+			l_last = this->N_sites-3;
+		}
+	}
+	
+	for (size_t i=0; i<IdList.size(); ++i)
+	{
+		size_t l = IdList[i];
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		for (size_t r=0; r<qloc[l].size(); ++r)
 		{
 			Mout.W[l][s][r].resize(1,1);
-			
 			if (s == r)
 			{
 				Mout.W[l][s][r].coeffRef(0,0) = 1.;
 			}
 		}
 	}
-	
-	size_t l_frst = (P==EVEN)? 0 : 1;
-	size_t l_last = (P==EVEN)? this->N_sites-2 : this->N_sites-3;
+	//----------</set non-bonds to identity>----------
 	
 	for (size_t l=l_frst; l<=l_last; l+=2)
 	{
