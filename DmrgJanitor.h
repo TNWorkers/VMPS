@@ -1,9 +1,7 @@
 #ifndef DMRGJANITOR
 #define DMRGJANITOR
 
-#include "DmrgPivotStuff.h"
 #include "DmrgPivotStuffQ.h"
-
 
 /**\brief Flips the sweep direction when the edge is reached.*/
 void bring_her_about (int pivot, size_t L, DMRG::DIRECTION::OPTION &DIR)
@@ -51,7 +49,7 @@ public:
 	
 	///@{
 	/**Calls the next sweep step from site \p loc according to the direction \p DIR.
-	Switches from DMRG::BROOM::RDM to DMRG::BROOM::SVD if DmrgJanitor::eps_noise < 1e-15 or DmrgJanitor::eps_rsvd < 1e-15.*/
+	Switches from DMRG::BROOM::RDM to DMRG::BROOM::SVD if DmrgJanitor::alpha_noise < 1e-15 or DmrgJanitor::alpha_rsvd < 1e-15.*/
 	void sweepStep (DMRG::DIRECTION::OPTION DIR, size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H = NULL);
 	/**Core function for a sweep to the right. Just a virtual placeholder in DmrgJanitor, overwritten by MpsQ with the real code.
 	\param loc : Sweeps to the right from the site \p loc, updating the A-matrices at \p loc and \p loc+1, shifting the pivot to \p loc+1.
@@ -72,10 +70,12 @@ public:
 	
 	///@{
 	/**Cutoff criterion for DMRG::BROOM::OPTION.*/
-	double eps_noise, eps_rdm, eps_svd, eps_rsvd;
-	size_t N_sv;
+	double alpha_noise, eps_rdm, eps_svd, alpha_rsvd;
+	size_t N_sv, Dlimit;
 	size_t N_mow;
 	///@}
+	
+	void set_defaultCutoffs();
 	
 protected:
 	
@@ -90,8 +90,22 @@ protected:
 template<typename PivotMatrixType>
 DmrgJanitor<PivotMatrixType>::
 DmrgJanitor()
-:pivot(-1), eps_svd(1e-7), eps_rdm(1e-14), eps_noise(1e-10), eps_rsvd(1e-2), N_mow(0)
-{}
+:pivot(-1)
+{
+	set_defaultCutoffs();
+}
+
+template<typename PivotMatrixType>
+void DmrgJanitor<PivotMatrixType>::
+set_defaultCutoffs()
+{
+	eps_svd = 1e-6; //1e-7;
+	eps_rdm = 1e-14;
+	alpha_noise = 1e-10;
+	alpha_rsvd = 1e-2;
+	N_sv = 500;
+	N_mow = 0;
+}
 
 template<typename PivotMatrixType>
 void DmrgJanitor<PivotMatrixType>::
@@ -149,8 +163,8 @@ inline void DmrgJanitor<PivotMatrixType>::
 sweepStep (DMRG::DIRECTION::OPTION DIR, size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H)
 {
 	DMRG::BROOM::OPTION NEW_TOOL = TOOL;
-	if ((TOOL == DMRG::BROOM::RDM and eps_noise < 1e-15) or
-	    (TOOL == DMRG::BROOM::RICH_SVD and eps_rsvd < 1e-15))
+	if ((TOOL == DMRG::BROOM::RDM and alpha_noise < 1e-15) or
+	    (TOOL == DMRG::BROOM::RICH_SVD and alpha_rsvd < 1e-15))
 	{
 		NEW_TOOL = DMRG::BROOM::SVD;
 	}
