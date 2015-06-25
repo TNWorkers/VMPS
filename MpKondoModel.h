@@ -251,7 +251,6 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 	this->Daux = 6;
 	this->N_sv = this->Daux;
 	this->qloc.resize(this->N_sites);
-	this->qlocsize.resize(this->N_sites);
 	
 	// make a pretty label
 	stringstream ss;
@@ -287,7 +286,6 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 		if (it!=imploc.end())
 		{
 			this->qloc[l] = vector<qarray<2> >(begin(q),end(q));
-			this->qlocsize[l] = qloc[l].size();
 			
 			size_t i = it-imploc.begin();
 			if (l==0)
@@ -325,7 +323,6 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 		else
 		{
 			this->qloc[l] = vector<qarray<2> >(begin(HubbardModel::qlocNM),end(HubbardModel::qlocNM));
-			this->qlocsize[l] = qloc[l].size();
 			
 			if (l==0)
 			{
@@ -416,7 +413,7 @@ SzSub (size_t L, size_t loc)
 	stringstream ss;
 	ss << "SzSub(" << loc << ")";
 	MpoQ<2> Mout(L, locBasis(), {0,0}, KondoModel<D>::NMlabel, ss.str());
-	MatrixXd IdImp(qlocsize[loc]/4, qlocsize[loc]/4); IdImp.setIdentity();
+	MatrixXd IdImp(qloc[loc].size()/4, qloc[loc].size()/4); IdImp.setIdentity();
 	Mout.setLocal(loc, kroneckerProduct(IdImp, HubbardModel::Sz));
 	return Mout;
 }

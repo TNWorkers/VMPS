@@ -129,7 +129,6 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 	this->Daux = 6;
 	this->N_sv = this->Daux;
 	this->qloc.resize(this->N_sites);
-	this->qlocsize.resize(this->N_sites);
 	
 	// make a pretty label
 	stringstream ss;
@@ -171,7 +170,6 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 		if (it!=imploc.end())
 		{
 			this->qloc[l] = vector<qarray<1> >(begin(qimp),end(qimp));
-			this->qlocsize[l] = qloc[l].size();
 			
 			size_t i = it-imploc.begin();
 			if (l==0)
@@ -209,7 +207,6 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 		else
 		{
 			this->qloc[l] = vector<qarray<1> >(begin(qsub),end(qsub));
-			this->qlocsize[l] = qloc[l].size();
 			
 			if (l==0)
 			{
@@ -285,7 +282,7 @@ Ssub (size_t L, size_t loc, SPINOP_LABEL Sa)
 	ss << Sa << "Sub(" << loc << ")";
 	MpoQ<1> Mout(L, locBasis(), {0}, Nlabel, ss.str());
 	
-	MatrixXd IdImp(qlocsize[loc]/4, qlocsize[loc]/4); IdImp.setIdentity();
+	MatrixXd IdImp(qloc[loc].size()/4, qloc[loc].size()/4); IdImp.setIdentity();
 	
 	if (Sa == SX)
 	{

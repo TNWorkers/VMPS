@@ -12,7 +12,7 @@ using namespace Eigen;
 #include "qarray.h"
 #include "Biped.h"
 #include "DmrgPivotStuffQ.h"
-#include "Mpo.h"
+#include <unsupported/Eigen/KroneckerProduct>
 
 /**Dummy for models without symmetries.*/
 const std::array<qarray<0>,2> qloc2dummy {qarray<0>{}, qarray<0>{}};
@@ -32,12 +32,13 @@ template<size_t Nq, typename Scalar, typename MpoScalar> class MpsQCompressor;
 \describe_Nq
 \describe_Scalar*/
 template<size_t Nq, typename Scalar=double>
-class MpoQ : public Mpo<Scalar>
+class MpoQ
 {
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 
 template<size_t Nq_, typename MpHamiltonian> friend class DmrgSolverQ;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
+template<size_t Nq_, typename S_> friend class MpoQ;
 template<size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
 template<size_t Nq_, typename S1, typename S2> friend void OxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 
@@ -47,11 +48,6 @@ public:
 	///\{
 	/**Do nothing.*/
 	MpoQ (){};
-	
-//	/**Construct with default values.
-//	MpoQ<Nq,Scalar>::qlabel and MpoQ<Nq,Scalar>::qloc will also be set to default values. Doing it by default argument produces errors with g++.*/
-//	MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, 
-//	      string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat);
 	
 	/**Construct with all values and a homogeneous basis.*/
 	MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
@@ -64,22 +60,53 @@ public:
 	      bool UNITARY_input=false);
 	
 	/**Construct with all values and a SuperMatrix (useful when constructing an MpoQ by another MpoQ).*/
-	MpoQ (size_t L_input, const SuperMatrix<Scalar> &G, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+	MpoQ (size_t L_input, const SuperMatrix<Scalar> &G_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	
 	/**Construct with all values and a vector of SuperMatrices (useful when constructing an MpoQ by another MpoQ).*/
-	MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+	MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
+	///\}
+	
+	//---set special, modify---
+	///\{
+	/**Set to a local operator \f$O_i\f$
+	\param loc : site index
+	\param Op : the local operator in question
+	*/
+	void setLocal (size_t loc, const MatrixType &Op);
+	
+	/**Set to a product of local operators \f$O_i O_j\f$
+	\param loc1 : site index of first operator
+	\param Op1 : first local operator
+	\param loc2 : site index of second operator
+	\param Op2 : second local operator
+	*/
+	void setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2);
+	
+	/**Set to a sum of of local operators \f$\sum_i O_i\f$
+	\param Op : the local operator in question
+	*/
+	void setLocalSum (const MatrixType &Op);
+	
+	/**Set to a nearest-neighbour sum of a product of local operators \f$\sum_i O_i O_{i+1}\f$
+	\param Op1 : first local operator
+	\param Op2 : second local operator
+	*/
+	void setProductSum (const MatrixType &Op1, const MatrixType &Op2);
+	
+	/**Makes a linear transformation of the MpoQ: \f$H' = factor*H + offset\f$.*/
+	void scale (double factor=1., double offset=0.);
 	///\}
 	
 	//---info stuff---
 	///\{
 	/**\describe_info*/
 	string info() const;
-	/**\describe_overhead*/
-	double overhead (MEMUNIT memunit=MB) const;
+	/**\describe_memory*/
+	double memory (MEMUNIT memunit=GB) const;
 	///\}
 	
 	//---formatting stuff---
@@ -94,13 +121,24 @@ public:
 	
 	//---return stuff---
 	///\{
+	/**Returns the length of the chain.*/
+	inline size_t length() const {return N_sites;}
+	/**\describe_Daux*/
+	inline size_t auxdim() const {return Daux;}
 	/**Returns the total change in quantum numbers induced by the MpoQ.*/
 	inline qarray<Nq> Qtarget() const {return Qtot;};
 	/**Returns the local basis at \p loc.*/
 	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
 	/**Returns the full local basis.*/
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
+	/**Checks whether the MPO is a unitary operator.*/
 	inline bool IS_UNITARY() const {return UNITARY;};
+	/**Checks if the square of the MPO was calculated and stored.*/
+	inline bool check_SQUARE() const {return GOT_SQUARE;}
+	/**Returns the W-matrix at a given site by const reference.*/
+	inline const vector<vector<SparseMatrix<Scalar> > > &W_at   (size_t loc) const {return W[loc];};
+	/**Returns the W-matrix of the squared operator at a given site by const reference.*/
+	inline const vector<vector<SparseMatrix<Scalar> > > &Wsq_at (size_t loc) const {return Wsq[loc];};
 	///\}
 	
 	template<typename TimeScalar> MpoQ<Nq,TimeScalar> BondPropagator (TimeScalar dt, PARITY P) const;
@@ -114,40 +152,40 @@ protected:
 	qarray<Nq> Qtot;
 	
 	bool UNITARY = false;
+	bool GOT_SQUARE;
+	
+	size_t N_sites;
+	size_t Daux;
+	
+	size_t N_sv;
+	double eps_svd;
+//	ArrayXd truncWeight;
+	
+	void construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<SparseMatrix<Scalar> > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore);
+	void construct (const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<vector<SparseMatrix<Scalar> > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore);
+	
+	vector<SuperMatrix<Scalar> > Gvec;
+	vector<vector<vector<SparseMatrix<Scalar> > > > W;
+	
+	vector<SuperMatrix<Scalar> > GvecSq;
+	vector<vector<vector<SparseMatrix<Scalar> > > > Wsq;
 };
-
-//template<size_t Nq, typename Scalar>
-//MpoQ<Nq,Scalar>::
-//MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, 
-//      string label_input, string (*format_input)(qarray<Nq> qnum))
-//:Mpo<Scalar>(L_input), label(label_input), format(format_input)
-//{
-//	this->qlocsize.resize(this->N_sites);
-//	for (size_t l=0; l<this->N_sites; ++l)
-//	{
-//		this->qlocsize[l] = qloc[l].size();
-//	}
-//	qlabel = defaultQlabel<Nq>();
-//	Qtot = qvacuum<Nq>();
-//}
 
 template<size_t Nq, typename Scalar>
 MpoQ<Nq,Scalar>::
 MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
-:Mpo<Scalar>(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+:N_sites(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
-	this->qlocsize.resize(this->N_sites);
-	qloc.resize(this->N_sites);
-	for (size_t l=0; l<this->N_sites; ++l)
+	qloc.resize(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
 	{
 		qloc[l].resize(qloc_input.size());
 		for (size_t s=0; s<qloc_input.size(); ++s)
 		{
 			qloc[l][s] = qloc_input[s];
 		}
-		this->qlocsize[l] = qloc[l].size();
 	}
 }
 
@@ -156,60 +194,116 @@ MpoQ<Nq,Scalar>::
 MpoQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
-:Mpo<Scalar>(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+:N_sites(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
-	this->qlocsize.resize(this->N_sites);
 	qloc = qloc_input;
-	for (size_t l=0; l<this->N_sites; ++l)
-	{
-		this->qlocsize[l] = qloc[l].size();
-	}
 }
 
 template<size_t Nq, typename Scalar>
 MpoQ<Nq,Scalar>::
-MpoQ (size_t L_input, const SuperMatrix<Scalar> &G, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+MpoQ (size_t L_input, const SuperMatrix<Scalar> &G_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
-:Mpo<Scalar>(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+:N_sites(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
-	this->qlocsize.resize(this->N_sites);
-	qloc.resize(this->N_sites);
-	for (size_t l=0; l<this->N_sites; ++l)
+	qloc.resize(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
 	{
 		qloc[l].resize(qloc_input.size());
 		for (size_t s=0; s<qloc_input.size(); ++s)
 		{
 			qloc[l][s] = qloc_input[s];
 		}
-		this->qlocsize[l] = qloc[l].size();
 	}
-	this->Daux = G.auxdim();
-	this->N_sv = this->Daux;
-	this->construct(G, this->W, this->Gvec);
+	Daux = G_input.auxdim();
+	N_sv = Daux;
+	construct(G_input, W, Gvec);
 }
 
 template<size_t Nq, typename Scalar>
 MpoQ<Nq,Scalar>::
-MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
-:Mpo<Scalar>(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+:N_sites(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
-	this->qlocsize.resize(this->N_sites);
-	qloc.resize(this->N_sites);
-	for (size_t l=0; l<this->N_sites; ++l)
+	qloc.resize(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
 	{
 		qloc[l].resize(qloc_input.size());
 		for (size_t s=0; s<qloc_input.size(); ++s)
 		{
 			qloc[l][s] = qloc_input[s];
 		}
-		this->qlocsize[l] = qloc[l].size();
 	}
-	this->Daux = Gvec[0].auxdim();
-	this->N_sv = this->Daux;
-	this->construct(Gvec, this->W, this->Gvec);
+	Daux = Gvec_input[0].auxdim();
+	N_sv = Daux;
+	construct(Gvec_input, W, Gvec);
+}
+
+template<size_t Nq, typename Scalar>
+void MpoQ<Nq,Scalar>::
+construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<SparseMatrix<Scalar> > > >  &Wstore, vector<SuperMatrix<Scalar> > &Gstore)
+{
+	vector<SuperMatrix<Scalar> > Gvec(N_sites);
+	size_t D = G_input(0,0).rows();
+	
+//	make W^[0] from last row
+	Gvec[0].setRowVector(G_input.auxdim(),D);
+	for (size_t i=0; i<G_input.cols(); ++i)
+	{
+		Gvec[0](0,i) = G_input(G_input.rows()-1,i);
+	}
+	
+//	make W^[i], i=1,...,L-2
+	for (size_t l=1; l<N_sites-1; ++l)
+	{
+		Gvec[l].setMatrix(G_input.auxdim(),D);
+		Gvec[l] = G_input;
+	}
+	
+//	make W^[L-1] from first column
+	Gvec[N_sites-1].setColVector(G_input.auxdim(),D);
+	for (size_t i=0; i<G_input.rows(); ++i)
+	{
+		Gvec[N_sites-1](i,0) = G_input(i,0);
+	}
+	
+//	make Mpo
+	construct(Gvec,Wstore,Gstore);
+}
+
+template<size_t Nq, typename Scalar>
+void MpoQ<Nq,Scalar>::
+construct (const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<vector<SparseMatrix<Scalar> > > >  &Wstore, vector<SuperMatrix<Scalar> > &Gstore)
+{
+	Wstore.resize(N_sites);
+	Gstore = Gvec_input;
+	
+	for (size_t l=0; l<N_sites;  ++l)
+	{
+		Wstore[l].resize(qloc[l].size());
+		for (size_t s1=0; s1<qloc[l].size(); ++s1)
+		{
+			Wstore[l][s1].resize(qloc[l].size());
+		}
+		
+		for (size_t s1=0; s1<qloc[l].size(); ++s1)
+		for (size_t s2=0; s2<qloc[l].size(); ++s2)
+		{
+			Wstore[l][s1][s2].resize(Gstore[l].rows(), Gstore[l].cols());
+			
+			for (size_t a1=0; a1<Gstore[l].rows(); ++a1)
+			for (size_t a2=0; a2<Gstore[l].cols(); ++a2)
+			{
+				double val = Gstore[l](a1,a2)(s1,s2);
+				if (val != 0.)
+				{
+					Wstore[l][s1][s2].insert(a1,a2) = val;
+				}
+			}
+		}
+	}
 }
 
 template<size_t Nq, typename Scalar>
@@ -217,7 +311,7 @@ string MpoQ<Nq,Scalar>::
 info() const
 {
 	stringstream ss;
-	ss << label << ": " << "L=" << this->N_sites << ", ";
+	ss << label << ": " << "L=" << N_sites << ", ";
 	
 //	ss << "(";
 //	for (size_t q=0; q<Nq; ++q)
@@ -233,39 +327,276 @@ info() const
 //	}
 //	ss << "}, ";
 	
-	ss << "Daux=" << this->Daux << ", ";
-//	ss << "trunc_weight=" << this->truncWeight.sum() << ", ";
-	ss << "mem=" << round(this->memory(GB),3) << "GB, overhead=" << round(overhead(MB),3) << "MB";
+	ss << "Daux=" << Daux << ", ";
+//	ss << "trunc_weight=" << truncWeight.sum() << ", ";
+	ss << "mem=" << round(memory(GB),3) << "GB=";
 	return ss.str();
 }
 
 template<size_t Nq, typename Scalar>
-inline double MpoQ<Nq,Scalar>::
-overhead (MEMUNIT memunit) const
+double MpoQ<Nq,Scalar>::
+memory (MEMUNIT memunit) const
 {
-	return 0.;
+	double res = 0.;
+	
+	if (W.size() > 0)
+	{
+		for (size_t l=0; l<N_sites; ++l)
+		for (size_t s1=0; s1<qloc[l].size(); ++s1)
+		for (size_t s2=0; s2<qloc[l].size(); ++s2)
+		{
+			res += calc_memory(W[l][s1][s2],memunit);
+			if (GOT_SQUARE == true)
+			{
+				res += calc_memory(Wsq[l][s1][s2],memunit);
+			}
+		}
+	}
+	
+	if (Gvec.size() > 0)
+	{
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			res += Gvec[l].memory(memunit);
+			if (GOT_SQUARE == true)
+			{
+				res += GvecSq[l].memory(memunit);
+			}
+		}
+	}
+	
+	return res;
 }
 
-//template<typename Scalar>
-//Matrix<Scalar,Dynamic,Dynamic> tp (const Matrix<Scalar,Dynamic,Dynamic> &M1, const Matrix<Scalar,Dynamic,Dynamic> &M2)
-//{
-//	size_t D1 = M1.rows();
-//	size_t D2 = M2.rows();
-//	Matrix<Scalar,Dynamic,Dynamic> Mout(D1*D2,D1*D2);
-//	Mout.setZero();
-//	
-//	for (size_t s1=0; s1<D1; ++s1)
-//	for (size_t s2=0; s2<D2; ++s2)
-//	for (size_t r1=0; r1<D1; ++r1)
-//	for (size_t r2=0; r2<D2; ++r2)
-//	{
-//		size_t r = s1 + D1*s2;
-//		size_t c = r1 + D1*r2;
-//		Mout(r,c) = M1(s1,r1) * M2(s2,r2);
-//	}
-//	
-//	return Mout;
-//}
+// O(loc)
+template<size_t Nq, typename Scalar>
+void MpoQ<Nq,Scalar>::
+setLocal (size_t loc, const MatrixType &Op)
+{
+	assert(Op.rows() == qloc[loc].size() and Op.cols() == qloc[loc].size());
+	assert(loc < N_sites);
+	
+	Daux = 1;
+	N_sv = Daux;
+	vector<SuperMatrix<Scalar> > M(N_sites);
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		M[l].setMatrix(Daux,qloc[l].size());
+		(l==loc)? M[l](0,0)=Op : M[l](0,0).setIdentity();
+	}
+	
+	construct(M, W, Gvec);
+}
+
+// O1(loc1) * O2(loc2)
+template<size_t Nq, typename Scalar>
+void MpoQ<Nq,Scalar>::
+setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2)
+{
+	assert(Op1.rows() == qloc[loc1].size() and Op1.cols() == qloc[loc1].size() and 
+	       Op2.rows() == qloc[loc2].size() and Op2.cols() == qloc[loc2].size());
+	assert(loc1 < N_sites and loc2 < N_sites);
+	
+	Daux = 1;
+	N_sv = Daux;
+	vector<SuperMatrix<Scalar> > M(N_sites);
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		M[l].setMatrix(Daux,qloc[l].size());
+		if      (l==loc1) {M[l](0,0) = Op1;}
+		else if (l==loc2) {M[l](0,0) = Op2;}
+		else              {M[l](0,0).setIdentity();}
+	}
+	
+	construct(M, W, Gvec);
+}
+
+// O(1)+O(2)+...+O(L)
+template<size_t Nq, typename Scalar>
+void MpoQ<Nq,Scalar>::
+setLocalSum (const MatrixType &Op)
+{
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		assert(Op.rows() == qloc[l].size() and Op.cols() == qloc[l].size());
+	}
+	
+	Daux = 2;
+	N_sv = Daux;
+	vector<SuperMatrix<Scalar> > M(N_sites);
+	
+	M[0].setRowVector(Daux,qloc[0].size());
+	M[0](0,0) = Op;
+	M[0](0,1).setIdentity();
+	
+	for (size_t l=1; l<N_sites-1; ++l)
+	{
+		M[l].setMatrix(Daux,qloc[l].size());
+		M[l](0,0).setIdentity();
+		M[l](0,1).setZero();
+		M[l](1,0) = Op;
+		M[l](1,1).setIdentity();
+	}
+	
+	M[N_sites-1].setColVector(Daux,qloc[N_sites-1].size());
+	M[N_sites-1](0,0).setIdentity();
+	M[N_sites-1](1,0) = Op;
+	
+	construct(M, W, Gvec);
+}
+
+// O1(1)*O2(2)+O1(2)*O1(3)+...+O1(L-1)*O2(L)
+template<size_t Nq, typename Scalar>
+void MpoQ<Nq,Scalar>::
+setProductSum (const MatrixType &Op1, const MatrixType &Op2)
+{
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		assert(Op1.rows() == qloc[l].size() and Op1.cols() == qloc[l].size() and 
+		       Op2.rows() == qloc[l].size() and Op2.cols() == qloc[l].size());
+	}
+	
+	Daux = 3;
+	N_sv = Daux;
+	vector<SuperMatrix<Scalar> > M(N_sites);
+	
+	M[0].setRowVector(Daux,qloc[0].size());
+	M[0](0,0).setIdentity();
+	M[0](0,1) = Op1;
+	M[0](0,2).setIdentity();
+	
+	for (size_t l=1; l<N_sites-1; ++l)
+	{
+		M[l].setMatrix(Daux,qloc[l].size());
+		M[l].setZero();
+		M[l](0,0).setIdentity();
+		M[l](1,0) = Op1;
+		M[l](2,1) = Op2;
+		M[l](2,2).setIdentity();
+	}
+	
+	M[N_sites-1].setColVector(Daux,qloc[N_sites-1].size());
+	M[N_sites-1](0,0).setIdentity();
+	M[N_sites-1](1,0) = Op2;
+	M[N_sites-1](2,0).setIdentity();
+	
+	construct(M, W, Gvec);
+}
+
+template<size_t Nq, typename Scalar>
+void MpoQ<Nq,Scalar>::
+scale (double factor, double offset)
+{
+	/**Example for where to apply the scaling factor, 3-site Heisenberg:
+	\f$\left(-f \cdot B_x \cdot S^x_1, -f \cdot J \cdot S^z_1, I\right)
+	
+	\cdot 
+	
+	\left(
+	\begin{array}{lll}
+	I & 0 & 0 \\
+	S^z_2 & 0 & 0 \\
+	-f\cdot B_x\cdot S^x_2 & -f\cdot J\cdot S^z_2 & I
+	\end{array}
+	\right)
+	
+	\cdot
+	
+	\left(
+	\begin{array}{l}
+	I \\
+	S^z_3 \\
+	-f\cdot B_x \cdot S^x_3
+	\end{array}
+	\right)
+	
+	= -f \cdot B_x \cdot (S^x_1 + S^x_2 + S^x_3) - f \cdot J \cdot (S^z_1 \cdot S^z_2 + S^z_2 \cdot S^z_3)
+	= f \cdot H\f$*/
+	
+	// apply to Gvec
+	for (size_t l=0; l<N_sites-1; ++l)
+	{
+		size_t a1 = (l==0)? 0 : Daux-1;
+		for (size_t a2=0; a2<Daux-1; ++a2)
+		{
+			Gvec[l](a1,a2) *= factor;
+		}
+	}
+	Gvec[N_sites-1](Daux-1,0) *= factor;
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		size_t a1 = (l==0)? 0 : Daux-1;
+		MatrixType Id(Gvec[l](a1,0).rows(), Gvec[l](a1,0).cols());
+		Id.setIdentity();
+		Gvec[l](a1,0) += offset/N_sites * Id;
+	}
+	
+	// calc W from Gvec
+	if (factor != 1.)
+	{
+		for (size_t l=0; l<N_sites-1; ++l)
+		{
+			size_t a1 = (l==0)? 0 : Daux-1;
+			for (size_t s1=0; s1<qloc[l].size(); ++s1)
+			for (size_t s2=0; s2<qloc[l].size(); ++s2)
+			for (size_t a2=0; a2<Daux-1; ++a2)
+			{
+				W[l][s1][s2].coeffRef(a1,a2) *= factor;
+			}
+		}
+		
+		for (size_t s1=0; s1<qloc[N_sites-1].size(); ++s1)
+		for (size_t s2=0; s2<qloc[N_sites-1].size(); ++s2)
+		{
+			W[N_sites-1][s1][s2].coeffRef(Daux-1,0) *= factor;
+		}
+	}
+	if (offset != 0.)
+	{
+		// apply offset to local part:
+		// leftmost element on first site
+		// downmost element on last site
+		// down left corner element for the rest
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			size_t a1 = (l==0)? 0 : Daux-1;
+			for (size_t s=0; s<qloc[l].size(); ++s)
+			{
+				W[l][s][s].coeffRef(a1,0) += offset/N_sites;
+			}
+		}
+	}
+	
+	if (GOT_SQUARE == true)
+	{
+		// apply to GvecSq
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			GvecSq[l] = tensor_product(Gvec[l],Gvec[l]);
+		}
+		
+		// calc Wsq to GvecSq
+		for (size_t l=0; l<N_sites; ++l)
+		for (size_t s1=0; s1<qloc[l].size(); ++s1)
+		for (size_t s2=0; s2<qloc[l].size(); ++s2)
+		{
+			Wsq[l][s1][s2].resize(GvecSq[l].rows(), GvecSq[l].cols());
+			
+			for (size_t a1=0; a1<GvecSq[l].rows(); ++a1)
+			for (size_t a2=0; a2<GvecSq[l].cols(); ++a2)
+			{
+				double val = GvecSq[l](a1,a2)(s1,s2);
+				if (val != 0.)
+				{
+					Wsq[l][s1][s2].insert(a1,a2) = val;
+				}
+			}
+		}
+	}
+}
 
 template<size_t Nq, typename Scalar>
 template<typename TimeScalar>
@@ -278,11 +609,11 @@ BondPropagator (TimeScalar dt, PARITY P) const
 	TevolLabel += ss.str();
 	TevolLabel += (P==EVEN)? "evn" : "odd";
 	
-	MpoQ<Nq,TimeScalar> Mout(this->N_sites, locBasis(), qvacuum<Nq>(), qlabel, TevolLabel, format, true);
-	Mout.Daux = this->Gvec[0].auxdim();
+	MpoQ<Nq,TimeScalar> Mout(N_sites, locBasis(), qvacuum<Nq>(), qlabel, TevolLabel, format, true);
+	Mout.Daux = Gvec[0].auxdim();
 	
-	Mout.W.resize(this->N_sites);
-	for (size_t l=0; l<this->N_sites; ++l)
+	Mout.W.resize(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
 	{
 		Mout.W[l].resize(qloc[l].size());
 		for (size_t q=0; q<qloc[l].size(); ++q)
@@ -295,19 +626,19 @@ BondPropagator (TimeScalar dt, PARITY P) const
 	vector<size_t> IdList;
 	size_t l_frst, l_last;
 	
-	if (this->N_sites%2 == 0)
+	if (N_sites%2 == 0)
 	{
 		if (P == ODD)
 		{
 			IdList.push_back(0);
-			IdList.push_back(this->N_sites-1);
+			IdList.push_back(N_sites-1);
 			l_frst = 1;
-			l_last = this->N_sites-3;
+			l_last = N_sites-3;
 		}
 		else
 		{
 			l_frst = 0;
-			l_last = this->N_sites-2;
+			l_last = N_sites-2;
 		}
 	}
 	else
@@ -316,13 +647,13 @@ BondPropagator (TimeScalar dt, PARITY P) const
 		{
 			IdList.push_back(0);
 			l_frst = 1;
-			l_last = this->N_sites-2;
+			l_last = N_sites-2;
 		}
 		else
 		{
-			IdList.push_back(this->N_sites-1);
+			IdList.push_back(N_sites-1);
 			l_frst = 0;
-			l_last = this->N_sites-3;
+			l_last = N_sites-3;
 		}
 	}
 	
@@ -346,7 +677,7 @@ BondPropagator (TimeScalar dt, PARITY P) const
 		size_t D1 = qloc[l].size();
 		size_t D2 = qloc[l+1].size();
 		
-		size_t Grow = (l==0)? 0 : this->Daux-1; // last row
+		size_t Grow = (l==0)? 0 : Daux-1; // last row
 		size_t Gcol = 0; // first column
 		
 		MatrixType Hbond(D1*D2,D1*D2);
@@ -355,17 +686,17 @@ BondPropagator (TimeScalar dt, PARITY P) const
 		// local part
 		// variant 1: distribute local term evenly among the sites
 		double locFactor1 = (l==0)? 1. : 0.5;
-		double locFactor2 = (l+1==this->N_sites-1)? 1. : 0.5;
+		double locFactor2 = (l+1==N_sites-1)? 1. : 0.5;
 		// variant 2: put local term on the left site of each bond
 //		double locFactor1 = 1.;
-//		double locFactor2 = (l+1==this->N_sites-1)? 1. : 0.;
-		Hbond += locFactor1 * kroneckerProduct(this->Gvec[l](Grow,0), MatrixType::Identity(D2,D2));
-		Hbond += locFactor2 * kroneckerProduct(MatrixType::Identity(D1,D1), this->Gvec[l+1](this->Daux-1,Gcol));
+//		double locFactor2 = (l+1==N_sites-1)? 1. : 0.;
+		Hbond += locFactor1 * kroneckerProduct(Gvec[l](Grow,0), MatrixType::Identity(D2,D2));
+		Hbond += locFactor2 * kroneckerProduct(MatrixType::Identity(D1,D1), Gvec[l+1](Daux-1,Gcol));
 		
 		// tight-binding part
-		for (size_t a=1; a<this->Daux-1; ++a)
+		for (size_t a=1; a<Daux-1; ++a)
 		{
-			Hbond += kroneckerProduct(this->Gvec[l](Grow,a), this->Gvec[l+1](a,Gcol));
+			Hbond += kroneckerProduct(Gvec[l](Grow,a), Gvec[l+1](a,Gcol));
 		}
 		
 		SelfAdjointEigenSolver<MatrixType> Eugen(Hbond);
@@ -509,7 +840,7 @@ BondPropagator (TimeScalar dt, PARITY P) const
 //		}
 //		
 //		// update W[loc+1]
-//		if (loc != this->N_sites-1)
+//		if (loc != N_sites-1)
 //		{
 //			for (size_t s1=0; s1<D; ++s1)
 //			for (size_t s2=0; s2<D; ++s2)
@@ -526,7 +857,7 @@ BondPropagator (TimeScalar dt, PARITY P) const
 //	}
 //	
 //	truncWeight(loc) = truncWeightSub.sum();
-////	pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
+////	pivot = (loc==N_sites-1)? N_sites-1 : loc+1;
 //}
 
 //template<size_t Nq, typename Scalar>
@@ -609,7 +940,7 @@ BondPropagator (TimeScalar dt, PARITY P) const
 //	}
 //	
 //	truncWeight(loc) = truncWeightSub.sum();
-////	this->pivot = (loc==0)? 0 : loc-1;
+////	pivot = (loc==0)? 0 : loc-1;
 //}
 
 //template<size_t Nq, typename Scalar>

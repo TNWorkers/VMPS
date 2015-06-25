@@ -68,9 +68,12 @@ static const double Sx2_data[] =
 \end{array}
 \right)\f$
 */
+//static const complex<double> Sy2_data[] = 
+//{complex<double>(0.,0.),  complex<double>(0.,-0.5), 
+// complex<double>(0.,0.5), complex<double>(0.,0.)};
 static const complex<double> Sy2_data[] = 
-{complex<double>(0.,0.),  complex<double>(0.,-0.5), 
- complex<double>(0.,0.5), complex<double>(0.,0.)};
+{0.,   -0.5i, 
+ 0.5i, 0.};
 
 /**
 \f$S^x = \left(
@@ -141,11 +144,15 @@ i & 0 & -i \\
 \end{array}
 \right)\f$
 */
+//static const complex<double> Sy3_data[] = 
+//{complex<double>(0.,0.),         complex<double>(0.,-M_SQRT1_2), complex<double>(0.,0.), 
+// complex<double>(0.,+M_SQRT1_2), complex<double>(0.,0.),         complex<double>(0.,-M_SQRT1_2),
+// complex<double>(0.,0.),         complex<double>(0.,+M_SQRT1_2), complex<double>(0.,0.)};
 static const complex<double> Sy3_data[] = 
-{complex<double>(0.,0.),         complex<double>(0.,-M_SQRT1_2), complex<double>(0.,0.), 
- complex<double>(0.,+M_SQRT1_2), complex<double>(0.,0.),         complex<double>(0.,-M_SQRT1_2),
- complex<double>(0.,0.),         complex<double>(0.,+M_SQRT1_2), complex<double>(0.,0.)};
- 
+{0.,            -M_SQRT1_2*1.i, 0., 
+ M_SQRT1_2*1.i, 0.,             -M_SQRT1_2*1.i,
+ 0.,            M_SQRT1_2*1.i,  0.};
+
 /**
 \f$iS^y = \frac{1}{\sqrt{2}} \left(
 \begin{array}{ccc}
@@ -156,9 +163,9 @@ static const complex<double> Sy3_data[] =
 \right)\f$
 */
 static const double iSy3_data[] = 
-{0.,         M_SQRT1_2, 0., 
- -M_SQRT1_2, 0.,        M_SQRT1_2,
- 0.,         M_SQRT1_2, 0.};
+{0.,         M_SQRT1_2,  0., 
+ -M_SQRT1_2, 0.,         M_SQRT1_2,
+ 0.,         -M_SQRT1_2, 0.};
 
 /**
 \f$S^z = \left(
@@ -205,11 +212,16 @@ static const double Sx4_data[] =
  0.,          1.,          0.,          0.5*M_SQRT3,
  0.,          0.,          0.5*M_SQRT3, 0.};
 
+//static const complex<double> Sy4_data[] = 
+//{0.,                               complex<double>(0.,-0.5*M_SQRT3), 0.,                              0., 
+// complex<double>(0.,0.5*M_SQRT3),  0.,                               complex<double>(0.,-1.),         0.,
+// 0.,                               complex<double>(0.,1.),           0.,                              complex<double>(0.,-0.5*M_SQRT3),
+// 0.,                               0.,                               complex<double>(0.,0.5*M_SQRT3), 0.};
 static const complex<double> Sy4_data[] = 
-{0.,                               complex<double>(0.,-0.5*M_SQRT3), 0.,                              0., 
- complex<double>(0.,0.5*M_SQRT3),  0.,                               complex<double>(0.,-1.),         0.,
- 0.,                               complex<double>(0.,1.),           0.,                              complex<double>(0.,-0.5*M_SQRT3),
- 0.,                               0.,                               complex<double>(0.,0.5*M_SQRT3), 0.};
+{0.,            -0.5i*M_SQRT3, 0.,           0., 
+ 0.5i*M_SQRT3,  0.,            -1.i,         0.,
+ 0.,            1.i,           0.,           -0.5i*M_SQRT3,
+ 0.,            0.,            0.5i*M_SQRT3, 0.};
  
 static const double iSy4_data[] = 
 {0.,            0.5*M_SQRT3,  0.,          0., 
