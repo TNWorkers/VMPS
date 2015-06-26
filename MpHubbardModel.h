@@ -2,22 +2,9 @@
 #define STRAWBERRY_HUBBARDMODEL
 
 #include "MpoQ.h"
-
+#include "SpinBase.h"
 namespace VMPS
 {
-
-enum SPINSUB_LABEL {SsubX, SsubY, iSsubY, SsubZ, SsubP, SsubM};
-
-std::ostream& operator<< (std::ostream& s, SPINSUB_LABEL Sa)
-{
-	if      (Sa==SsubX)  {s << "Ssubx";}
-	else if (Sa==SsubY)  {s << "Ssuby";}
-	else if (Sa==iSsubY) {s << "iSsuby";}
-	else if (Sa==SsubZ)  {s << "Ssubz";}
-	else if (Sa==SsubP)  {s << "Ssub+";}
-	else if (Sa==SsubM)  {s << "Ssub-";}
-	return s;
-}
 
 /**MPO representation of 
 \f$
@@ -143,15 +130,15 @@ public:
 	*/
 	static const Eigen::Matrix<double,4,4,RowMajor> Sz;
 
-	static const Eigen::Matrix<double,4,4,Eigen::RowMajor> Scomp (SPINSUB_LABEL Sa)
+	static const Eigen::Matrix<double,4,4,Eigen::RowMajor> Scomp (SPINOP_LABEL Sa)
 	{
-		assert(Sa != SsubY);
+		assert(Sa != SY);
 		
-		if      (Sa==SsubX)  {return Sx;}
-		else if (Sa==iSsubY) {return iSy;}
-		else if (Sa==SsubZ)  {return Sz;}
-		else if (Sa==SsubP)  {return Sp;}
-		else if (Sa==SsubM)  {return Sp.transpose();}
+		if      (Sa==SX)  {return Sx;}
+		else if (Sa==iSY) {return iSy;}
+		else if (Sa==SZ)  {return Sz;}
+		else if (Sa==SP)  {return Sp;}
+		else if (Sa==SM)  {return Sp.transpose();}
 	}
 
 	static SuperMatrix<double> Generator (double U, double V=0.);
