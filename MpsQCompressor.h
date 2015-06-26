@@ -5,7 +5,7 @@
 
 #include "Biped.h"
 #include "Multipede.h"
-#include "LanczosSolver.h" // for isReal
+#include "LanczosSolver.h"
 #include "DmrgContractionsQ.h"
 #include "DmrgPivotStuffQ.h"
 #include "LanczosMower.h"
@@ -508,6 +508,7 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
+			Stopwatch ChronosResize;
 			size_t Dcutoff_old = Vout.calc_Dmax();
 			size_t Mmax_old = Vout.calc_Mmax();
 			
@@ -519,16 +520,16 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 			
 			Mmax_new = Vout.calc_Mmax();
 			
-			if (CHOSEN_VERBOSITY>=2)
-			{
-				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << endl;
-			}
-			
 			Vout.pivot = -1;
 			prepSweep(H,Vin,Vout);
 			pivot = Vout.pivot;
 			halfSweepRange = N_sites;
 			RESIZED = true;
+			
+			if (CHOSEN_VERBOSITY>=2)
+			{
+				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << "\t" << ChronosResize.info() << endl;
+			}
 		}
 		
 		if ((sqdist > tol and 

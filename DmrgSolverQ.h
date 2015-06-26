@@ -22,10 +22,12 @@ public:
 	double memory   (MEMUNIT memunit=GB) const;
 	double overhead (MEMUNIT memunit=MB) const;
 	
-	void edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> Qtot_input, size_t Dinit=5, 
+	void edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> Qtot_input, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND,
 	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST,
-	                double tol_eigval_input=1e-7, double tol_state_input=1e-5, size_t max_halfsweeps=42, size_t min_halfsweeps=6);
+	                double tol_eigval_input=1e-7, double tol_state_input=1e-5, 
+	                size_t Dinit=5, size_t Dlimit=500, 
+	                size_t max_halfsweeps=42, size_t min_halfsweeps=6);
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
@@ -125,15 +127,17 @@ overhead (MEMUNIT memunit) const
 
 template<size_t Nq, typename MpHamiltonian>
 void DmrgSolverQ<Nq,MpHamiltonian>::
-edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> Qtot_input, size_t Dinit, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t max_halfsweeps, size_t min_halfsweeps)
+edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t Dinit, size_t Dlimit, size_t max_halfsweeps, size_t min_halfsweeps)
 {
 	tol_eigval = tol_eigval_input;
 	tol_state  = tol_state_input;
 	N_sites = H.length();
 	N_sweepsteps = N_halfsweeps = 0;
 	
+	// resize Vout
 	Stopwatch Aion;
 	Vout.state = MpsQ<Nq,double>(H, Dinit, Qtot_input);
+	Vout.state.N_sv = Dlimit;
 	Vout.state.setRandom();
 	
 	// set edges
@@ -142,7 +146,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 	Heff[0].L.setVacuum();
 	Heff[N_sites-1].R.setTarget(qarray3<Nq>{Qtot_input, Qtot_input, qvacuum<Nq>()});
 	
-	// left-to-right:
+	// initial sweep, left-to-right:
 	for (size_t l=N_sites-1; l>0; --l)
 	{
 		Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
@@ -152,7 +156,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 	CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
 	pivot = 0;
 	
-	// right-to-left:
+	// initial sweep, right-to-left:
 //	for (size_t l=0; l<N_sites-1; ++l)
 //	{
 //		Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
@@ -164,36 +168,47 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 	
 	if (CHOSEN_VERBOSITY>=2) {lout << Aion.info("initial state & sweep") << endl << endl;}
 	
-	err_eigval = 1.;
-	err_state  = 1.;
+	// initial energy
+	Tripod<Nq,MatrixXd> Rtmp;
+	contract_R(Heff[0].R, Vout.state.A[0], H.W[0], Vout.state.A[0], H.locBasis(0), Rtmp);
+	assert(Rtmp.dim == 1 and 
+	       Rtmp.block[0][0][0].rows() == 1 and
+	       Rtmp.block[0][0][0].cols() == 1 and
+	       "Result of contraction in <φ|O|ψ> is not a scalar!");
+	double Eold = Rtmp.block[0][0][0](0,0);
 	
-	// lambda function to print tolerances
-	auto print_eps = [this,&Vout] ()
-	{
-		if (CHOSEN_VERBOSITY>=2)
-		{
-			lout << "ε_noise=" << Vout.state.eps_noise 
-			     << ", ε_rdm=" << Vout.state.eps_rdm 
-			     << ", ε_rsvd=" << Vout.state.eps_rsvd 
-			     << endl;
-		}
-	};
-	
-	Vout.state.eps_noise = 1e-7;
-	Vout.state.eps_rdm = 1e-11;
-	Vout.state.eps_rsvd = 1e-2;
-	print_eps();
-	
-	double Eold = numeric_limits<double>::quiet_NaN();
+	// save state for reference
 	MpsQ<Nq,double> Vref;
 	if (TEST == LANCZOS::CONVTEST::NORM_TEST or
 	    TEST == LANCZOS::CONVTEST::COEFFWISE)
 	{
 		Vref = Vout.state;
 	}
-	size_t halfSweepRange = N_sites;
 	
+	// initial cutoffs
 	double err_state_before_end_of_noise;
+	Vout.state.alpha_noise = 1e-7;
+	Vout.state.eps_rdm = 1e-11;
+	Vout.state.alpha_rsvd = 1e-2;
+	
+	// lambda function to print tolerances
+	auto print_alpha_eps = [this,&Vout] ()
+	{
+		if (CHOSEN_VERBOSITY>=2)
+		{
+			lout << "α_noise=" << Vout.state.alpha_noise 
+			     << ", ε_rdm=" << Vout.state.eps_rdm 
+			     << ", α_rsvd=" << Vout.state.alpha_rsvd 
+			     << ", ε_svd=" << Vout.state.eps_svd 
+			     << endl;
+		}
+	};
+	
+	print_alpha_eps();
+	
+	size_t halfSweepRange = N_sites;
+	err_eigval = 1.;
+	err_state  = 1.;
 	
 	while (((err_eigval >= tol_eigval or err_state >= tol_state) and N_halfsweeps < max_halfsweeps) or 
 	        N_halfsweeps < min_halfsweeps)
@@ -256,101 +271,101 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 //		// adjust noise parameter
 //		if (N_halfsweeps<6)
 //		{
-//			Vout.state.eps_noise = 1e-7;
+//			Vout.state.alpha_noise = 1e-7;
 //			Vout.state.eps_rdm = 1e-11;
 //		}
 //		else if (N_halfsweeps>=6 and N_halfsweeps<12)
 //		{
-//			Vout.state.eps_noise = 1e-8;
+//			Vout.state.alpha_noise = 1e-8;
 //			Vout.state.eps_rdm = 1e-12;
 //		}
 //		else if (N_halfsweeps>=12 and N_halfsweeps<18)
 //		{
-//			Vout.state.eps_noise = 1e-9;
+//			Vout.state.alpha_noise = 1e-9;
 //			Vout.state.eps_rdm = 1e-13;
 //		}
 //		else if (N_halfsweeps>=18 and N_halfsweeps<24)
 //		{
-//			Vout.state.eps_noise = 1e-10;
+//			Vout.state.alpha_noise = 1e-10;
 //			Vout.state.eps_rdm = 1e-14;
 //		}
 //		else if (N_halfsweeps>=24 and N_halfsweeps<30)
 //		{
-//			Vout.state.eps_noise = 0.;
+//			Vout.state.alpha_noise = 0.;
 //			Vout.state.eps_rdm = 0.;
 //		}
 //		else if (N_halfsweeps>=30 and N_halfsweeps<36)
 //		{
 //			// reshake if in local minimum
-//			Vout.state.eps_noise = 1e-7;
+//			Vout.state.alpha_noise = 1e-7;
 //			Vout.state.eps_rdm = 1e-11;
 //		}
 //		else
 //		{
-//			Vout.state.eps_noise = 0.;
+//			Vout.state.alpha_noise = 0.;
 //			Vout.state.eps_rdm = 0.;
 //		}
 		
 		// adjust noise parameter
 		if (N_halfsweeps == 6)
 		{
-			Vout.state.eps_noise = 1e-8;
+			Vout.state.alpha_noise = 1e-8;
 			Vout.state.eps_rdm = 1e-12;
-			Vout.state.eps_rsvd = 1e-2;
-			print_eps();
+			Vout.state.alpha_rsvd = 1e-2;
+			print_alpha_eps();
 		}
 		else if (N_halfsweeps == 12)
 		{
-			Vout.state.eps_noise = 1e-9;
+			Vout.state.alpha_noise = 1e-9;
 			Vout.state.eps_rdm = 1e-13;
-			Vout.state.eps_rsvd = 1e-2;
-			print_eps();
+			Vout.state.alpha_rsvd = 1e-2;
+			print_alpha_eps();
 		}
 		else if (N_halfsweeps == 18)
 		{
-			Vout.state.eps_noise = 1e-10;
+			Vout.state.alpha_noise = 1e-10;
 			Vout.state.eps_rdm = 1e-14;
-			Vout.state.eps_rsvd = 1e-3;
-			print_eps();
+			Vout.state.alpha_rsvd = 1e-3;
+			print_alpha_eps();
 		}
 		else if (N_halfsweeps == 24)
 		{
-			Vout.state.eps_noise = 0.;
+			Vout.state.alpha_noise = 0.;
 			Vout.state.eps_rdm = 0.;
-			Vout.state.eps_rsvd = 0.;
-			print_eps();
+			Vout.state.alpha_rsvd = 0.;
+			print_alpha_eps();
 		}
 		else if (N_halfsweeps == 30)
 		{
 			// reshake if in local minimum
 			if (err_state/err_state_before_end_of_noise >= 0.8)
 			{
-				Vout.state.eps_noise = 1e-7;
+				Vout.state.alpha_noise = 1e-7;
 				Vout.state.eps_rdm = 1e-11;
-				Vout.state.eps_rsvd = 1e-2;
+				Vout.state.alpha_rsvd = 1e-2;
 				if (CHOSEN_VERBOSITY != DMRG::VERBOSITY::SILENT)
 				{
 					lout << "local minimum detected, reshaking!" << endl;
 				}
-				print_eps();
+				print_alpha_eps();
 			}
 			else
 			{
-				Vout.state.eps_noise = 0.;
+				Vout.state.alpha_noise = 0.;
 				Vout.state.eps_rdm = 0.;
-				Vout.state.eps_rsvd = 0.;
+				Vout.state.alpha_rsvd = 0.;
 			}
 		}
 		else if (N_halfsweeps == 36)
 		{
-			Vout.state.eps_noise = 0.;
+			Vout.state.alpha_noise = 0.;
 			Vout.state.eps_rdm = 0.;
-			Vout.state.eps_rsvd = 0.;
-			print_eps();
+			Vout.state.alpha_rsvd = 0.;
+			print_alpha_eps();
 		}
 		
 		// print stuff
-		if (CHOSEN_VERBOSITY >= 2)
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
 			size_t standard_precision = cout.precision();
 			if (EDGE == LANCZOS::EDGE::GROUND)
@@ -367,6 +382,8 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 			lout << endl;
 		}
 	}
+	
+	Vout.state.set_defaultCutoffs();
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{

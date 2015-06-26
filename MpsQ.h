@@ -849,6 +849,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 	
 	ArrayXd truncWeightSub(inset[loc].size()); truncWeightSub.setZero();
 	ArrayXd entropySub(inset[loc].size()); entropySub.setZero();
+	ArrayXd lastSV(inset[loc].size()); lastSV.setZero();
 	
 	#ifndef DMRG_DONT_USE_OPENMP
 	#pragma omp parallel for
@@ -912,11 +913,13 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 				Nret = (Jack.singularValues().array() > this->eps_svd).count();
 			}
 			Nret = min(max(Nret,2ul),static_cast<size_t>(Jack.singularValues().rows()));
+			Nret = min(Nret, this->N_sv);
 			truncWeightSub(qin) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
 			
 			// calculate entropy
 			size_t Nnz = (Jack.singularValues().array() > 0.).count();
 			entropySub(qin) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
+			lastSV(qin) = Jack.singularValues()(Nret-1);
 		}
 		else if (TOOL == DMRG::BROOM::QR)
 		{
@@ -950,7 +953,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 				jstitch = 0;
 			}
 			
-			rho += this->eps_noise * deltaRho[qin];
+			rho += this->alpha_noise * deltaRho[qin];
 			Eugen.compute(rho);
 			
 			Nret = (Eugen.eigenvalues().array() > this->eps_rdm).count();
@@ -1016,6 +1019,10 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 	truncWeight(loc) = truncWeightSub.sum();
 	entropy(loc) = entropySub.sum();
 	this->pivot = (loc==0)? 0 : loc-1;
+	
+//	cout << "LEFT l=" << loc << endl;
+//	cout << lastSV.transpose() << endl;
+//	cout << endl;
 }
 
 template<size_t Nq, typename Scalar>
@@ -1070,6 +1077,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 	
 	ArrayXd truncWeightSub(outset[loc].size()); truncWeightSub.setZero();
 	ArrayXd entropySub(outset[loc].size()); entropySub.setZero();
+	ArrayXd lastSV(outset[loc].size()); lastSV.setZero();
 	
 	#ifndef DMRG_DONT_USE_OPENMP
 	#pragma omp parallel for
@@ -1134,11 +1142,13 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 				Nret = (Jack.singularValues().array() > this->eps_svd).count();
 			}
 			Nret = min(max(Nret,2ul),static_cast<size_t>(Jack.singularValues().rows()));
+			Nret = min(Nret, this->N_sv);
 			truncWeightSub(qout) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
 			
 			// calculate entropy
 			size_t Nnz = (Jack.singularValues().array() > 0.).count();
 			entropySub(qout) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
+			lastSV(qout) = Jack.singularValues()(Nret-1);
 		}
 		else if (TOOL == DMRG::BROOM::QR)
 		{
@@ -1194,7 +1204,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 				istitch += Nrowsvec[i];
 				jstitch = 0;
 			}
-			rho += this->eps_noise * deltaRho[qout];
+			rho += this->alpha_noise * deltaRho[qout];
 			Eugen.compute(rho);
 			
 			Nret = (Eugen.eigenvalues().array() > this->eps_rdm).count();
@@ -1265,6 +1275,10 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 	truncWeight(loc) = truncWeightSub.sum();
 	entropy(loc) = entropySub.sum();
 	this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
+	
+//	cout << "RIGHT l=" << loc << endl;
+//	cout << lastSV.transpose() << endl;
+//	cout << endl;
 }
 
 template<size_t Nq, typename Scalar>
@@ -1749,7 +1763,7 @@ template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
 enrich_left (size_t loc, PivotMatrixQ<Nq,Scalar> *H)
 {
-	if (this->eps_rsvd != 0.)
+	if (this->alpha_rsvd != 0.)
 	{
 		vector<Biped<Nq,MatrixType> > P(qloc[loc].size());
 		
@@ -1779,10 +1793,7 @@ enrich_left (size_t loc, PivotMatrixQ<Nq,Scalar> *H)
 					if (H->R.block[qR][b][0].rows() != 0 and 
 						H->R.block[qR][b][0].cols() != 0)
 					{
-//						cout << A[loc][s2].block[qA->second].rows() << "\t" << A[loc][s2].block[qA->second].cols() << endl;
-//						cout << H->R.block[qR][b][0].rows() << "\t" << H->R.block[qR][b][0].cols() << endl;
-//						cout << endl;
-						Mtmp.block(a*Arows,0, Arows,Pcols) = (this->eps_rsvd * iW.value()) * A[loc][s2].block[qA->second] * H->R.block[qR][b][0];
+						Mtmp.block(a*Arows,0, Arows,Pcols) = (this->alpha_rsvd * iW.value()) * A[loc][s2].block[qA->second] * H->R.block[qR][b][0];
 					}
 				
 					if (Mtmp.rows() != 0 and Mtmp.cols() != 0)
@@ -1846,7 +1857,7 @@ template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
 enrich_right (size_t loc, PivotMatrixQ<Nq,Scalar> *H)
 {
-	if (this->eps_rsvd != 0.)
+	if (this->alpha_rsvd != 0.)
 	{
 		vector<Biped<Nq,MatrixType> > P(qloc[loc].size());
 		
@@ -1876,10 +1887,7 @@ enrich_right (size_t loc, PivotMatrixQ<Nq,Scalar> *H)
 					if (H->L.block[qL][a][0].rows() != 0 and
 						H->L.block[qL][a][0].cols() != 0)
 					{
-//						cout << H->L.block[qL][a][0].rows() << "\t" << H->L.block[qL][a][0].cols() << endl;
-//						cout << A[loc][s2].block[qA->second].rows() << "\t" << A[loc][s2].block[qA->second].cols() << endl;
-//						cout << endl;
-						Mtmp.block(0,b*Acols, Prows,Acols) = (this->eps_rsvd * iW.value()) * H->L.block[qL][a][0] * A[loc][s2].block[qA->second];
+						Mtmp.block(0,b*Acols, Prows,Acols) = (this->alpha_rsvd * iW.value()) * H->L.block[qL][a][0] * A[loc][s2].block[qA->second];
 					}
 				
 					if (Mtmp.rows() != 0 and 
@@ -2038,7 +2046,7 @@ swap (MpsQ<Nq,Scalar> &V)
 	std::swap(this->pivot, V.pivot);
 	
 	std::swap(this->format, V.format);
-	std::swap(this->eps_noise, V.eps_noise);
+	std::swap(this->alpha_noise, V.alpha_noise);
 	std::swap(this->eps_rdm, V.eps_rdm);
 	std::swap(this->eps_svd, V.eps_svd);
 	std::swap(this->N_sv, V.N_sv);
@@ -2065,7 +2073,7 @@ void MpsQ<Nq,Scalar>::
 get_controlParams (const MpsQ<Nq,Scalar> &V)
 {
 	this->format = V.format;
-	this->eps_noise = V.eps_noise;
+	this->alpha_noise = V.alpha_noise;
 	this->eps_rdm = V.eps_rdm;
 	this->eps_svd = V.eps_svd;
 	this->N_sv = V.N_sv;
@@ -2123,10 +2131,10 @@ cast() const
 		Vout.A[l][s].block[q] = A[l][s].block[q].template cast<OtherScalar>();
 	}
 	
-	Vout.eps_noise = this->eps_noise;
+	Vout.alpha_noise = this->alpha_noise;
 	Vout.eps_rdm = this->eps_rdm;
 	Vout.eps_svd = this->eps_svd;
-	Vout.eps_rsvd = this->eps_rsvd;
+	Vout.alpha_rsvd = this->alpha_rsvd;
 	Vout.N_sv = this->N_sv;
 	Vout.pivot = this->pivot;
 	Vout.truncWeight = truncWeight;
