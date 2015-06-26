@@ -91,7 +91,7 @@ public:
 	*/
 	void setLocalSum (const MatrixType &Op);
 	
-	/**Set to a nearest-neighbour sum of a product of local operators \f$\sum_i O_i O_{i+1}\f$
+	/**Set to a sum of nearest-neighbour products of local operators \f$\sum_i O_i O_{i+1}\f$
 	\param Op1 : first local operator
 	\param Op2 : second local operator
 	*/
@@ -405,10 +405,11 @@ setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		M[l].setMatrix(Daux,qloc[l].size());
-		if      (l==loc1) {M[l](0,0) = Op1;}
-		else if (l==loc2) {M[l](0,0) = Op2;}
-		else              {M[l](0,0).setIdentity();}
+		M[l](0,0).setIdentity();
 	}
+	
+	M[loc1](0,0) = Op1;
+	M[loc2](0,0) = M[loc2](0,0) * Op2;
 	
 	construct(M, W, Gvec);
 }
