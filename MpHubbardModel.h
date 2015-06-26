@@ -6,6 +6,19 @@
 namespace VMPS
 {
 
+enum SPINSUB_LABEL {SsubX, SsubY, iSsubY, SsubZ, SsubP, SsubM};
+
+std::ostream& operator<< (std::ostream& s, SPINSUB_LABEL Sa)
+{
+	if      (Sa==SsubX)  {s << "Ssubx";}
+	else if (Sa==SsubY)  {s << "Ssuby";}
+	else if (Sa==iSsubY) {s << "iSsuby";}
+	else if (Sa==SsubZ)  {s << "Ssubz";}
+	else if (Sa==SsubP)  {s << "Ssub+";}
+	else if (Sa==SsubM)  {s << "Ssub-";}
+	return s;
+}
+
 /**MPO representation of 
 \f$
 H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} + U \sum_i n_{i\uparrow} n_{i\downarrow}
@@ -129,7 +142,18 @@ public:
 	\right)\f$
 	*/
 	static const Eigen::Matrix<double,4,4,RowMajor> Sz;
-	
+
+	static const Eigen::Matrix<double,4,4,Eigen::RowMajor> Scomp (SPINSUB_LABEL Sa)
+	{
+		assert(Sa != SsubY);
+		
+		if      (Sa==SsubX)  {return Sx;}
+		else if (Sa==iSsubY) {return iSy;}
+		else if (Sa==SsubZ)  {return Sz;}
+		else if (Sa==SsubP)  {return Sp;}
+		else if (Sa==SsubM)  {return Sp.transpose();}
+	}
+
 	static SuperMatrix<double> Generator (double U, double V=0.);
 	
 	MpoQ<2> Hsq();

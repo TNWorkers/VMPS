@@ -85,7 +85,17 @@ public:
 	\param Op2 : second local operator
 	*/
 	void setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2);
-	
+
+	/**Set to a product of local operators \f$O_i O_j O_k\f$
+	   \param loc1 : site index of first operator
+	   \param Op1 : first local operator
+	   \param loc2 : site index of second operator
+	   \param Op2 : second local operator
+	   \param loc3 : site index of third operator
+	   \param Op3 : third local operator
+	*/
+	void setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2, size_t loc3, const MatrixType &Op3);
+
 	/**Set to a sum of of local operators \f$\sum_i O_i\f$
 	\param Op : the local operator in question
 	*/
@@ -329,7 +339,7 @@ info() const
 	
 	ss << "Daux=" << Daux << ", ";
 //	ss << "trunc_weight=" << truncWeight.sum() << ", ";
-	ss << "mem=" << round(memory(GB),3) << "GB=";
+	ss << "mem=" << round(memory(GB),3) << "GB)";
 	return ss.str();
 }
 
@@ -401,13 +411,94 @@ setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2
 	Daux = 1;
 	N_sv = Daux;
 	vector<SuperMatrix<Scalar> > M(N_sites);
-	
-	for (size_t l=0; l<N_sites; ++l)
+
+	if (loc1 == loc2)
 	{
-		M[l].setMatrix(Daux,qloc[l].size());
-		if      (l==loc1) {M[l](0,0) = Op1;}
-		else if (l==loc2) {M[l](0,0) = Op2;}
-		else              {M[l](0,0).setIdentity();}
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			M[l].setMatrix(Daux,qloc[l].size());
+			if (l==loc1) {M[l](0,0) = Op1*Op2;}
+			else         {M[l](0,0).setIdentity();}
+		}
+	}
+	else
+	{
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			M[l].setMatrix(Daux,qloc[l].size());
+			if (l==loc1)      {M[l](0,0) = Op1;}
+			else if (l==loc2) {M[l](0,0) = Op2;}
+			else              {M[l](0,0).setIdentity();}
+		}	
+	}
+	
+	
+	construct(M, W, Gvec);
+}
+
+// O1(loc1) * O2(loc2) * O3(loc3)
+template<size_t Nq, typename Scalar>
+void MpoQ<Nq,Scalar>::
+setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2, size_t loc3, const MatrixType &Op3)
+{
+	assert(Op1.rows() == qloc[loc1].size() and Op1.cols() == qloc[loc1].size() and 
+	       Op2.rows() == qloc[loc2].size() and Op2.cols() == qloc[loc2].size() and
+		   Op3.rows() == qloc[loc3].size() and Op3.cols() == qloc[loc3].size());
+	assert(loc1 < N_sites and loc2 < N_sites and loc3 < N_sites);
+	
+	Daux = 1;
+	N_sv = Daux;
+	vector<SuperMatrix<Scalar> > M(N_sites);
+
+	if (loc1 == loc2 and loc1 == loc3)
+	{
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			M[l].setMatrix(Daux,qloc[l].size());
+			if (l==loc1) {M[l](0,0) = Op1*Op2*Op3;}
+			else         {M[l](0,0).setIdentity();}
+		}
+	}
+	else if (loc1 == loc2 and loc1 != loc3)
+	{
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			M[l].setMatrix(Daux,qloc[l].size());
+			if (l==loc1)      {M[l](0,0) = Op1*Op2;}
+			else if (l==loc2) {M[l](0,0) = Op3;}
+			else              {M[l](0,0).setIdentity();}
+		}	
+	}
+	else if (loc1 == loc3 and loc1 != loc2)
+	{
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			M[l].setMatrix(Daux,qloc[l].size());
+			if (l==loc1)      {M[l](0,0) = Op1*Op3;}
+			else if (l==loc2) {M[l](0,0) = Op2;}
+			else              {M[l](0,0).setIdentity();}
+		}	
+	}
+	else if (loc2 == loc3 and loc1 != loc2)
+	{
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			M[l].setMatrix(Daux,qloc[l].size());
+			if (l==loc1)      {M[l](0,0) = Op1;}
+			else if (l==loc2) {M[l](0,0) = Op2*Op3;}
+			else              {M[l](0,0).setIdentity();}
+		}	
+	}
+	else
+	{
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			M[l].setMatrix(Daux,qloc[l].size());
+			if (l==loc1)      {M[l](0,0) = Op1;}
+			else if (l==loc2) {M[l](0,0) = Op2;}
+			else if (l==loc3) {M[l](0,0) = Op3;}
+			else              {M[l](0,0).setIdentity();}
+		}			
 	}
 	
 	construct(M, W, Gvec);
