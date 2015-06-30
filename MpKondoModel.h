@@ -203,7 +203,6 @@ J(J_input), Bz(Bz_input)
 	this->label += ss.str();
 	
 	this->Daux = 6;
-	this->N_sv = this->Daux;
 	
 	SuperMatrix<double> G = Generator(J, Bz, 0.);
 	this->construct(G, this->W, this->Gvec);
@@ -242,7 +241,6 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 	this->label = "KondoModel";
 	this->format = N_halveM;
 	this->Daux = 6;
-	this->N_sv = this->Daux;
 	this->qloc.resize(this->N_sites);
 	
 	// make a pretty label

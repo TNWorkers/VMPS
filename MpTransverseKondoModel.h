@@ -127,7 +127,6 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 	this->label = "TransverseKondoModel";
 	this->format = noFormat;
 	this->Daux = 6;
-	this->N_sv = this->Daux;
 	this->qloc.resize(this->N_sites);
 	
 	// make a pretty label

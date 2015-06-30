@@ -5,6 +5,7 @@
 #include <numeric>
 #include <algorithm>
 #include <ctime>
+#include <type_traits>
 
 #include "Biped.h"
 #include "Multipede.h"
@@ -21,7 +22,7 @@
 /**Matrix Product State with conserved quantum numbers (Abelian symmetries).
 \describe_Nq
 \describe_Scalar*/
-template<size_t Nq, typename Scalar>
+template<size_t Nq, typename Scalar=double>
 class MpsQ : public DmrgJanitor<PivotMatrixQ<Nq,Scalar> >
 {
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
@@ -44,6 +45,7 @@ public:
 //	\param qloc_input : local basis
 //	\param Qtot_input : target quantum number
 //	MpsQ<Nq,Scalar> (size_t L_input, size_t Dmax, std::array<qarray<Nq>,D> qloc_input, qarray<Nq> Qtot_input);
+	MpsQ<Nq,Scalar> (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input);
 	
 	/** Construct by pulling info from an MpoQ.
 	\param H : chain length and local basis will be retrieved from this MpoQ (less importantly, the quantum number labels and the format function as well)
@@ -55,41 +57,54 @@ public:
 	/**Sets all matrices to random using boost's uniform distribution from -1 to 1.
 	\warning Watch for overflow in large chains where one gets exponentially large values when multiplying all the matrices! The safer way is to randomize while sweeping, using MpsQ::setRandom(size_t loc).*/
 	void setRandom();
+	
 	/**Sets all matrices at site \p loc to random using boost's uniform distribution from -1 to 1.*/
 	void setRandom (size_t loc);
+	
 	/**Sets all matrices to zero.*/
 	void setZero();
+	
 	/**Sweeps through the chain with DMRG::BROOM::QR, creating a canonical MpsQ.
 	\param DIR : If DMRG::DIRECTION::LEFT, the result is left-canonical. If DMRG::DIRECTION::RIGHT, the result is right-canonical.*/
 	void canonize (DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::LEFT);
+	
 	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated.
 	\param L_input : chain length
 	\param qloc_input : local basis
 	\param Qtot_input : target quantum number*/
 	template<typename qIterator> void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input);
+	
 	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from an MpoQ.
 	\param H : chain length and local basis will be retrieved from this MpoQ (less importantly, the quantum number labels and the format function as well)
 	\param Qtot_input : target quantum number*/
 	template<typename Hamiltonian> void outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input);
+	
 	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from another MpsQ.
 	\param V : chain length, local basis and target quantum number will be equal to this MpsQ (less importantly, the quantum number labels and the format function as well)*/
 	template<typename OtherMatrixType> void outerResize (const MpsQ<Nq,OtherMatrixType> &V);
+	
 	/**Resizes the block matrices.
 	\param Dmax : size cutoff (per subspace)*/
 	void innerResize (size_t Dmax);
+	
 	/**Performs a resize of the block matrices for MpsQCompressor.
 	\param Dmax : size cutoff (per subspace)
 	\param HOW_TO_RESIZE : If DMRG::RESIZE::CONSERV_INCR, then each block gains a zero row and a zero column, the bond dimension increases by \p Nqmax and \p Dmax has no meaning. If DMRG::RESIZE::DECR, all blocks are non-conservatively cut according to \p Dmax.*/
 	void dynamicResize (DMRG::RESIZE::OPTION HOW_TO_RESIZE, size_t Dmax);
+	
 	/**Sets the MpsQ from a product state configuration.
 	\param H : Hamiltonian, needed for MpsQ::outerResize
 	\param config : classical configuration, a vector of \p qarray*/
 	template<typename Hamiltonian> void setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config);
+	
 	/**Finds broken paths through the quantum number subspaces and mends them by resizing with appropriate zeros. The chain length and total quantum number are determined from \p config.
 	This is needed when applying an MpoQ which changes quantum numbers, making some paths impossible. For example, one can add a particle at the beginning or end of the chain with the same target particle number, but if an annihilator is applied in the middle, only the first path survives.*/
 	void mend();
+	
 	/**Sets the A-matrix at a given site by performing SVD on the C-tensor.*/
 	void set_A_from_C (size_t loc, const vector<Tripod<Nq,MatrixType> > &C, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD);
+	
+	template<size_t MpoNq> void setFlattenedMpoQ (const MpoQ<MpoNq,Scalar> &Op, bool USE_SQUARE=false);
 	///\}
 	
 	///\{
@@ -181,7 +196,7 @@ private:
 	
 	/**local basis.*/
 	vector<vector<qarray<Nq> > > qloc;
-	std::array<string,Nq> qlabel;
+	std::array<string,Nq> qlabel = {};
 	qarray<Nq> Qtot;
 	
 	vector<vector<Biped<Nq,MatrixType> > > A; // access: A[l][s].block[q]
@@ -191,6 +206,9 @@ private:
 	// sets of all unique incoming & outgoing indices for convenience
 	vector<vector<qarray<Nq> > > inset;
 	vector<vector<qarray<Nq> > > outset;
+	
+	void resize_arrays();
+	void outerResizeNoSymm();
 	
 	// adds one site at a time in addScale, conserving memory
 	template<typename OtherScalar> void add_site (size_t loc, OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin);
@@ -251,19 +269,17 @@ MpsQ()
 :DmrgJanitor<PivotMatrixQ<Nq,Scalar> >()
 {
 	format = noFormat;
-	qlabel = defaultQlabel<Nq>();
+//	qlabel = defaultQlabel<Nq>();
 }
 
-//template<size_t Nq, typename Scalar>
-//MpsQ<Nq,Scalar>::
-//MpsQ (size_t L_input, size_t Dmax, std::array<qarray<Nq>,D> qloc_input, qarray<Nq> Qtot_input)
-//:DmrgJanitor<PivotMatrixQ<Nq,Scalar> >()
-//{
-//	format = noFormat;
+template<size_t Nq, typename Scalar>
+MpsQ<Nq,Scalar>::
+MpsQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input)
+:DmrgJanitor<PivotMatrixQ<Nq,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input)
+{
+	format = noFormat;
 //	qlabel = defaultQlabel<Nq>();
-//	outerResize(L_input, qloc_input, Qtot_input);
-//	innerResize(Dmax);
-//}
+}
 
 template<size_t Nq, typename Scalar>
 template<typename Hamiltonian>
@@ -323,6 +339,21 @@ outerResize (const MpsQ<Nq,OtherMatrixType> &V)
 }
 
 template<size_t Nq, typename Scalar>
+void MpsQ<Nq,Scalar>::
+resize_arrays()
+{
+	A.resize(this->N_sites);
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		A[l].resize(qloc[l].size());
+	}
+	inset.resize(this->N_sites);
+	outset.resize(this->N_sites);
+	truncWeight.resize(this->N_sites); truncWeight.setZero();
+	entropy.resize(this->N_sites); entropy.setConstant(numeric_limits<double>::quiet_NaN());
+}
+
+template<size_t Nq, typename Scalar>
 template<typename qIterator>
 void MpsQ<Nq,Scalar>::
 outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input)
@@ -333,35 +364,14 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 	
 	this->pivot = -1;
 	
-	A.resize(this->N_sites);
-	for (size_t l=0; l<this->N_sites; ++l)
-	{
-		A[l].resize(qloc[l].size());
-	}
-	inset.resize(this->N_sites);
-	outset.resize(this->N_sites);
-	truncWeight.resize(this->N_sites); truncWeight.setZero();
-	entropy.resize(this->N_sites); entropy.setConstant(numeric_limits<double>::quiet_NaN());
-	
 	if (Nq == 0)
 	{
-		for (size_t l=0; l<this->N_sites; ++l)
-		{
-			inset[l].push_back(qvacuum<Nq>());
-			outset[l].push_back(qvacuum<Nq>());
-			
-			for (size_t s=0; s<qloc[l].size(); ++s)
-			{
-				A[l][s].in.push_back(qvacuum<Nq>());
-				A[l][s].out.push_back(qvacuum<Nq>());
-				A[l][s].dict.insert({qarray2<Nq>{qvacuum<Nq>(),qvacuum<Nq>()}, A[l][s].dim});
-				++A[l][s].dim;
-				A[l][s].block.resize(1);
-			}
-		}
+		outerResizeNoSymm();
 	}
 	else
 	{
+		resize_arrays();
+		
 		for (size_t l=0; l<this->N_sites; ++l)
 		{
 			set<qarray<Nq> > intmp;
@@ -409,11 +419,35 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 				}
 				A[l][s].block.resize(A[l][s].dim);
 			}
-		
+			
 			inset[l].resize(intmp.size());
 			outset[l].resize(outtmp.size());
 			copy(intmp.begin(),  intmp.end(),  inset[l].begin());
 			copy(outtmp.begin(), outtmp.end(), outset[l].begin());
+		}
+	}
+}
+
+template<size_t Nq, typename Scalar>
+void MpsQ<Nq,Scalar>::
+outerResizeNoSymm()
+{
+	assert (Nq == 0 and "Must have Nq=0 to call outerResizeNoSymm!");
+	
+	resize_arrays();
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		inset[l].push_back(qvacuum<Nq>());
+		outset[l].push_back(qvacuum<Nq>());
+		
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		{
+			A[l][s].in.push_back(qvacuum<Nq>());
+			A[l][s].out.push_back(qvacuum<Nq>());
+			A[l][s].dict.insert({qarray2<Nq>{qvacuum<Nq>(),qvacuum<Nq>()}, A[l][s].dim});
+			A[l][s].dim = 1;
+			A[l][s].block.resize(1);
 		}
 	}
 }
@@ -569,8 +603,9 @@ dynamicResize (DMRG::RESIZE::OPTION HOW_TO_RESIZE, size_t Dmax)
 		{
 			size_t Noldrows = A[l][s].block[q].rows();
 			size_t Noldcols = A[l][s].block[q].cols();
-			size_t Nnewrows = Noldrows+1;
-			size_t Nnewcols = Noldcols+1;
+			size_t incr = (Nq==0)? 10 : 1;
+			size_t Nnewrows = Noldrows+incr;
+			size_t Nnewcols = Noldcols+incr;
 			
 			if (l==0)                    {Nnewrows=1;}
 			else if (l==this->N_sites-1) {Nnewcols=1;}
@@ -586,9 +621,14 @@ dynamicResize (DMRG::RESIZE::OPTION HOW_TO_RESIZE, size_t Dmax)
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		for (size_t q=0; q<A[l][s].dim; ++q)
 		{
-			size_t Noldrows = A[l][s].block[q].rows();
-			size_t Noldcols = A[l][s].block[q].cols();
-			A[l][s].block[q].resize(min(Noldrows,Dmax), min(Noldcols,Dmax));
+//			size_t Noldrows = A[l][s].block[q].rows();
+//			size_t Noldcols = A[l][s].block[q].cols();
+//			A[l][s].block[q].resize(min(Noldrows,Dmax), min(Noldcols,Dmax));
+			size_t Nnewrows = Dmax;
+			size_t Nnewcols = Dmax;
+			if (l==0)                    {Nnewrows=1;}
+			else if (l==this->N_sites-1) {Nnewcols=1;}
+			A[l][s].block[q].resize(Nnewrows,Nnewcols);
 		}
 	}
 }
@@ -2556,6 +2596,54 @@ collapse()
 }
 
 template<size_t Nq, typename Scalar>
+template<size_t MpoNq>
+void MpsQ<Nq,Scalar>::
+setFlattenedMpoQ (const MpoQ<MpoNq,Scalar> &Op, bool USE_SQUARE)
+{
+	static_assert (Nq == 0, "A flattened MpoQ must have Nq=0!");
+	
+	this->N_sites = Op.length();
+	Qtot = qvacuum<0>();
+	this->set_defaultCutoffs();
+	
+	// set local basis
+	qloc.resize(this->N_sites);
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		size_t D = Op.locBasis(l).size();
+		qloc[l].resize(D*D);
+		
+		for (size_t s1=0; s1<D; ++s1)
+		for (size_t s2=0; s2<D; ++s2)
+		{
+			qloc[l][s2+D*s1] = qvacuum<0>();
+		}
+	}
+	
+	resize_arrays();
+	outerResizeNoSymm();
+	innerResize(1);
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		size_t D = Op.locBasis(l).size();
+		for (size_t s1=0; s1<D; ++s1)
+		for (size_t s2=0; s2<D; ++s2)
+		{
+			size_t s = s2 + D*s1;
+			if (USE_SQUARE)
+			{
+				A[l][s].block[0] = MatrixType(Op.Wsq_at(l)[s1][s2]);
+			}
+			else
+			{
+				A[l][s].block[0] = MatrixType(Op.W_at(l)[s1][s2]);
+			}
+		}
+	}
+}
+
+template<size_t Nq, typename Scalar>
 string MpsQ<Nq,Scalar>::
 validate (string name) const
 {
@@ -2630,16 +2718,13 @@ test_ortho() const
 		vector<double> A_infnorm(Test.dim);
 		for (size_t q=0; q<Test.dim; ++q)
 		{
-			MatrixType Id = MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
-			if (l == 0) {Id.bottomRows(Id.rows()-1).setZero();}
-			Test.block[q] -= Id;
+//			if (l == 0) {cout << "A l=" << l << ", Test.block[q]=" << endl << Test.block[q] << endl << endl;}
+//			MatrixType Id = MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
+//			if (l == 0) {Id.bottomRows(Id.rows()-1).setZero();}
+//			Test.block[q] -= Id;
+			Test.block[q] -= MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
 			A_CHECK[q] = Test.block[q].template lpNorm<Infinity>()<1e-10 ? true : false;
 			A_infnorm[q] = Test.block[q].template lpNorm<Infinity>();
-//			if (A_CHECK[q] == false and this->pivot!=l)
-//			{
-////				cout << "A, q=" << q << endl << Test.block[q] << endl;
-//				cout << "A infnorm=" << Test.block[q].template lpNorm<Infinity>() << endl;
-//			}
 		}
 		
 		// check for B
@@ -2654,36 +2739,20 @@ test_ortho() const
 		vector<double> B_infnorm(Test.dim);
 		for (size_t q=0; q<Test.dim; ++q)
 		{
-			MatrixType Id = MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
-			if (l == this->N_sites-1) {Id.bottomRows(Id.rows()-1).setZero();}
-			Test.block[q] -= Id;
+//			MatrixType Id = MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
+//			if (l == this->N_sites-1) {Id.bottomRows(Id.rows()-1).setZero();}
+//			Test.block[q] -= Id;
+//			cout << "B l=" << l << ", Test.block[q]=" << Test.block[q] << endl << endl;
+			Test.block[q] -=  MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
 			B_CHECK[q] = Test.block[q].template lpNorm<Infinity>()<1e-10 ? true : false;
 			B_infnorm[q] = Test.block[q].template lpNorm<Infinity>();
-//			if (B_CHECK[q] == false and this->pivot!=l)
-//			{
-////				cout << "B, q=" << q << endl << Test.block[q] << endl;
-//				cout << "B infnorm=" << Test.block[q].template lpNorm<Infinity>() << endl;
-//			}
 		}
-		
-//		cout << "l=" << l << endl;
-//		cout << "A: ";
-//		for (size_t q=0; q<Test.dim; ++q)
-//		{
-//			cout << A_infnorm[q] << " ";
-//		}
-//		cout << endl;
-//		cout << "B: ";
-//		for (size_t q=0; q<Test.dim; ++q)
-//		{
-//			cout << B_infnorm[q] << " ";
-//		}
-//		cout << endl << endl;
 		
 		// interpret result
 		if (all_of(A_CHECK.begin(),A_CHECK.end(),[](bool x){return x;}) and 
 		    all_of(B_CHECK.begin(),B_CHECK.end(),[](bool x){return x;}))
 		{
+			sout += TCOLOR(MAGENTA);
 			sout += (l==this->pivot) ? special_token[3] : normal_token[3]; // X
 		}
 		else if (all_of(A_CHECK.begin(),A_CHECK.end(),[](bool x){return x;}))

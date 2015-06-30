@@ -435,7 +435,8 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, LANCZOS
 	
 	Lutz.set_dimK(min(30ul, Heff[pivot].dim));
 //	Lutz.edgeState(Heff[pivot],g, EDGE, tol_eigval,tol_state, false);
-	Lutz.edgeState(Heff[pivot],g, EDGE, 1e-4,1e-3, false);
+//	Lutz.edgeState(Heff[pivot],g, EDGE, 1e-4,1e-3, false);
+	Lutz.edgeState(Heff[pivot],g, EDGE, 1e-7,1e-4, false);
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{

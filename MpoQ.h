@@ -13,6 +13,10 @@ using namespace Eigen;
 #include "Biped.h"
 #include "DmrgPivotStuffQ.h"
 #include <unsupported/Eigen/KroneckerProduct>
+#include "DmrgJanitor.h"
+#ifndef DONT_USE_LAPACK_SVD
+	#include "LapackWrappers.h"
+#endif
 
 /**Dummy for models without symmetries.*/
 const std::array<qarray<0>,2> qloc2dummy {qarray<0>{}, qarray<0>{}};
@@ -109,6 +113,12 @@ public:
 	
 	/**Makes a linear transformation of the MpoQ: \f$H' = factor*H + offset\f$.*/
 	void scale (double factor=1., double offset=0.);
+	
+	/**Resets the MpoQ from a dummy MpsQ which has been swept.*/
+	void setFromFlattenedMpoQ (const MpsQ<0,Scalar> &Op, bool USE_SQUARE=false);
+	
+	/**Sets the product of a left-side and right-side operator in the Heisenberg picture.*/
+	template<size_t OtherNq> void setHeisenbergProduct (const MpoQ<OtherNq,Scalar> Op1, const MpoQ<OtherNq,Scalar> Op2);
 	///\}
 	
 	//---info stuff---
@@ -117,6 +127,10 @@ public:
 	string info() const;
 	/**\describe_memory*/
 	double memory (MEMUNIT memunit=GB) const;
+	/**Calculates a measure of the sparsity of the given MpoQ.
+	\param USE_SQUARE : If \p true, apply it to the stored square.
+	\param PER_MATRIX : If \p true, calculate the amount of non-zeros per matrix. If \p false, calculate the fraction of non-zero elements.*/
+	double sparsity (bool USE_SQUARE=false, bool PER_MATRIX=true) const;
 	///\}
 	
 	//---formatting stuff---
@@ -149,11 +163,21 @@ public:
 	inline const vector<vector<SparseMatrix<Scalar> > > &W_at   (size_t loc) const {return W[loc];};
 	/**Returns the W-matrix of the squared operator at a given site by const reference.*/
 	inline const vector<vector<SparseMatrix<Scalar> > > &Wsq_at (size_t loc) const {return Wsq[loc];};
-	///\}
 	
 	template<typename TimeScalar> MpoQ<Nq,TimeScalar> BondPropagator (TimeScalar dt, PARITY P) const;
+	///\}
 	
 	class qarrayIterator;
+	
+	void SVDcompress (bool USE_SQUARE=false, double eps_svd=1e-7, size_t N_halfsweeps=2);
+	
+	// compression stuff
+//	string test_ortho() const;
+//	void init_compression();
+//	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H=NULL);
+//	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H=NULL);
+//	void flatten_to_MpsQ (MpsQ<0,Scalar> &V);
+//	vector<vector<vector<MatrixType> > > A;
 	
 protected:
 	
@@ -162,13 +186,11 @@ protected:
 	qarray<Nq> Qtot;
 	
 	bool UNITARY = false;
-	bool GOT_SQUARE;
+	bool GOT_SQUARE = false;
 	
 	size_t N_sites;
 	size_t Daux;
 	
-	size_t N_sv;
-	double eps_svd;
 //	ArrayXd truncWeight;
 	
 	void construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<SparseMatrix<Scalar> > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore);
@@ -197,6 +219,16 @@ MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input,
 			qloc[l][s] = qloc_input[s];
 		}
 	}
+	
+	W.resize(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		W[l].resize(qloc[l].size());
+		for (size_t q=0; q<qloc[l].size(); ++q)
+		{
+			W[l][q].resize(qloc[l].size());
+		}
+	}
 }
 
 template<size_t Nq, typename Scalar>
@@ -207,6 +239,16 @@ MpoQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_i
 :N_sites(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	qloc = qloc_input;
+	
+	W.resize(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		W[l].resize(qloc[l].size());
+		for (size_t q=0; q<qloc[l].size(); ++q)
+		{
+			W[l][q].resize(qloc[l].size());
+		}
+	}
 }
 
 template<size_t Nq, typename Scalar>
@@ -226,7 +268,6 @@ MpoQ (size_t L_input, const SuperMatrix<Scalar> &G_input, vector<qarray<Nq> > ql
 		}
 	}
 	Daux = G_input.auxdim();
-	N_sv = Daux;
 	construct(G_input, W, Gvec);
 }
 
@@ -247,7 +288,6 @@ MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<qar
 		}
 	}
 	Daux = Gvec_input[0].auxdim();
-	N_sv = Daux;
 	construct(Gvec_input, W, Gvec);
 }
 
@@ -339,7 +379,9 @@ info() const
 	
 	ss << "Daux=" << Daux << ", ";
 //	ss << "trunc_weight=" << truncWeight.sum() << ", ";
-	ss << "mem=" << round(memory(GB),3) << "GB)";
+	ss << "mem=" << round(memory(GB),3) << "GB";
+	ss << ", sparsity=" << sparsity();
+	if (GOT_SQUARE) {ss << ", sparsity(sq)=" << sparsity(true);}
 	return ss.str();
 }
 
@@ -356,7 +398,7 @@ memory (MEMUNIT memunit) const
 		for (size_t s2=0; s2<qloc[l].size(); ++s2)
 		{
 			res += calc_memory(W[l][s1][s2],memunit);
-			if (GOT_SQUARE == true)
+			if (GOT_SQUARE)
 			{
 				res += calc_memory(Wsq[l][s1][s2],memunit);
 			}
@@ -368,7 +410,7 @@ memory (MEMUNIT memunit) const
 		for (size_t l=0; l<N_sites; ++l)
 		{
 			res += Gvec[l].memory(memunit);
-			if (GOT_SQUARE == true)
+			if (GOT_SQUARE)
 			{
 				res += GvecSq[l].memory(memunit);
 			}
@@ -376,6 +418,32 @@ memory (MEMUNIT memunit) const
 	}
 	
 	return res;
+}
+
+template<size_t Nq, typename Scalar>
+double MpoQ<Nq,Scalar>::
+sparsity (bool USE_SQUARE, bool PER_MATRIX) const
+{
+	if (USE_SQUARE) {assert(GOT_SQUARE);}
+	double N_nonZeros = 0.;
+	double N_elements = 0.;
+	double N_matrices = 0.;
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		N_matrices += pow(qloc[l].size(),2);
+		
+		for (size_t s1=0; s1<qloc[l].size(); ++s1)
+		for (size_t s2=0; s2<qloc[l].size(); ++s2)
+		{
+			N_nonZeros += (USE_SQUARE)? Wsq[l][s1][s2].nonZeros() : W[l][s1][s2].nonZeros();
+			N_elements += (USE_SQUARE)? Wsq[l][s1][s2].rows() * Wsq[l][s1][s2].cols():
+				                        W[l][s1][s2].rows()   * W[l][s1][s2].cols();
+		
+		}
+	}
+	
+	return (PER_MATRIX)? N_nonZeros/N_matrices : N_nonZeros/N_elements;
 }
 
 // O(loc)
@@ -387,7 +455,6 @@ setLocal (size_t loc, const MatrixType &Op)
 	assert(loc < N_sites);
 	
 	Daux = 1;
-	N_sv = Daux;
 	vector<SuperMatrix<Scalar> > M(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -409,9 +476,8 @@ setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2
 	assert(loc1 < N_sites and loc2 < N_sites);
 	
 	Daux = 1;
-	N_sv = Daux;
 	vector<SuperMatrix<Scalar> > M(N_sites);
-
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		M[l].setMatrix(Daux,qloc[l].size());
@@ -435,9 +501,8 @@ setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2
 	assert(loc1 < N_sites and loc2 < N_sites and loc3 < N_sites);
 	
 	Daux = 1;
-	N_sv = Daux;
 	vector<SuperMatrix<Scalar> > M(N_sites);
-
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		M[l].setMatrix(Daux,qloc[l].size());
@@ -462,7 +527,6 @@ setLocalSum (const MatrixType &Op)
 	}
 	
 	Daux = 2;
-	N_sv = Daux;
 	vector<SuperMatrix<Scalar> > M(N_sites);
 	
 	M[0].setRowVector(Daux,qloc[0].size());
@@ -497,7 +561,6 @@ setProductSum (const MatrixType &Op1, const MatrixType &Op2)
 	}
 	
 	Daux = 3;
-	N_sv = Daux;
 	vector<SuperMatrix<Scalar> > M(N_sites);
 	
 	M[0].setRowVector(Daux,qloc[0].size());
@@ -816,190 +879,352 @@ BondPropagator (TimeScalar dt, PARITY P) const
 
 //template<size_t Nq, typename Scalar>
 //void MpoQ<Nq,Scalar>::
-//rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL)
+//init_compression()
 //{
-//	ArrayXd truncWeightSub(outset[loc].size());
-//	truncWeightSub.setZero();
-//	
-//	#ifndef DMRG_DONT_USE_OPENMP
-//	#pragma omp parallel for
-//	#endif
-//	for (size_t qout=0; qout<outset[loc].size(); ++qout)
+//	A.resize(N_sites);
+//	for (size_t l=0; l<N_sites; ++l)
 //	{
-//		// determine how many A's to glue together
-//		vector<size_t> qvec, Nrowsvec;
-//		vector<pair<size_t,size_t> > svec;
+//		size_t D = qloc[l].size();
+//		A[l].resize(D);
 //		for (size_t s1=0; s1<D; ++s1)
-//		for (size_t s2=0; s2<D; ++s2)
-//		for (size_t q=0; q<W[loc][s1][s2].dim; ++q)
 //		{
-//			if (W[loc][s1][s2].out[q] == outset[loc][qout])
-//			{
-//				svec.push_back({s1,s2});
-//				qvec.push_back(q);
-//				Nrowsvec.push_back(W[loc][s1][s2].block[q].rows());
-//			}
-//		}
-//		
-//		// do the glue
-//		size_t Ncols = W[loc][svec[0].first][svec[0].second].block[qvec[0]].cols();
-//		for (size_t i=1; i<svec.size(); ++i) {assert(W[loc][svec[i].first][svec[i].second].block[qvec[i]].cols() == Ncols);}
-//		size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
-//		
-//		MatrixXd Aclump(Nrows,Ncols);
-//		size_t stitch = 0;
-//		for (size_t i=0; i<svec.size(); ++i)
-//		{
-//			Aclump.block(stitch,0, Nrowsvec[i],Ncols) = W[loc][svec[i].first][svec[i].second].block[qvec[i]];
-//			stitch += Nrowsvec[i];
-//		}
-//		
-//		// do the decomposition
-//		JacobiSVD<MatrixXd> Jack;
-//		size_t Nret = Ncols; // retained states
-//		Jack.compute(Aclump,ComputeThinU|ComputeThinV);
-//		if (TOOL == DMRG::BROOM::SVD)
-//		{
-//			Nret = (Jack.singularValues().array() > eps_svd).count();
-//		}
-//		else if (TOOL == DMRG::BROOM::BRUTAL_SVD)
-//		{
-//			Nret = min(static_cast<size_t>(Jack.singularValues().rows()), N_sv);
-//		}
-//		Nret = max(Nret,1ul);
-//		truncWeightSub(qout) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
-//		
-//		// update W[loc]
-//		stitch = 0;
-//		for (size_t i=0; i<svec.size(); ++i)
-//		{
-//			W[loc][svec[i].first][svec[i].second].block[qvec[i]] = Jack.matrixU().block(stitch,0, Nrowsvec[i],Nret).sparseView(1.,1e-10);
-//			stitch += Nrowsvec[i];
-//		}
-//		
-//		// update W[loc+1]
-//		if (loc != N_sites-1)
-//		{
-//			for (size_t s1=0; s1<D; ++s1)
+//			A[l][s1].resize(D);
 //			for (size_t s2=0; s2<D; ++s2)
-//			for (size_t q=0; q<W[loc+1][s1][s2].dim; ++q)
 //			{
-//				if (W[loc+1][s1][s2].in[q] == outset[loc][qout])
-//				{
-//					W[loc+1][s1][s2].block[q] = (Jack.singularValues().head(Nret).asDiagonal() * 
-//					                            (Jack.matrixV().adjoint()).topRows(Nret) * 
-//					                             W[loc+1][s1][s2].block[q]).sparseView(1.,1e-10);
-//				}
+//				A[l][s1][s2] = MatrixType(W[l][s1][s2]);
 //			}
 //		}
 //	}
-//	
-//	truncWeight(loc) = truncWeightSub.sum();
-////	pivot = (loc==N_sites-1)? N_sites-1 : loc+1;
 //}
 
 //template<size_t Nq, typename Scalar>
 //void MpoQ<Nq,Scalar>::
-//leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL)
+//rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 //{
-//	ArrayXd truncWeightSub(inset[loc].size());
-//	truncWeightSub.setZero();
+//	size_t Nrows = A[loc][0][0].rows();
+//	size_t Ncols = A[loc][0][0].cols();
+//	size_t D = qloc[loc].size();
 //	
-//	#ifndef DMRG_DONT_USE_OPENMP
-//	#pragma omp parallel for
-//	#endif
-//	for (size_t qin=0; qin<inset[loc].size(); ++qin)
+//	MatrixType Aclump(D*D*Nrows,Ncols);
+//	for (size_t s1=0; s1<D; ++s1)
+//	for (size_t s2=0; s2<D; ++s2)
 //	{
-//		vector<size_t> qvec, Ncolsvec;
-//		vector<pair<size_t,size_t> > svec;
+//		size_t s = s2 + D*s1;
+//		Aclump.block(s*Nrows,0, Nrows,Ncols) = A[loc][s1][s2];
+//	}
+//	
+//	#ifdef DONT_USE_EIGEN_QR
+//	LapackQR<Scalar> Quirinus; MatrixType Qmatrix, Rmatrix; // Lapack QR
+//	#else
+//	HouseholderQR<MatrixType> Quirinus; MatrixType Qmatrix, Rmatrix; // Eigen QR
+//	#endif
+//	
+//	Quirinus.compute(Aclump);
+//	#ifdef DONT_USE_EIGEN_QR
+//	Qmatrix = Quirinus.Qmatrix();
+//	Rmatrix = Quirinus.Rmatrix();
+//	#else
+//	Qmatrix = Quirinus.householderQ() * MatrixType::Identity(Aclump.rows(),Aclump.cols());
+//	Rmatrix = MatrixType::Identity(Aclump.cols(),Aclump.rows()) * Quirinus.matrixQR().template triangularView<Upper>();
+//	#endif
+//	
+//	for (size_t s1=0; s1<D; ++s1)
+//	for (size_t s2=0; s2<D; ++s2)
+//	{
+//		size_t s = s2 + D*s1;
+//		A[loc][s1][s2] = Qmatrix.block(s*Nrows,0, Nrows,Ncols);
+//	}
+//	
+//	if (loc != N_sites-1)
+//	{
 //		for (size_t s1=0; s1<D; ++s1)
 //		for (size_t s2=0; s2<D; ++s2)
-//		for (size_t q=0; q<W[loc][s1][s2].dim; ++q)
 //		{
-//			if (W[loc][s1][s2].in[q] == inset[loc][qin])
-//			{
-//				svec.push_back({s1,s2});
-//				qvec.push_back(q);
-//				Ncolsvec.push_back(W[loc][s1][s2].block[q].cols());
-//			}
-//		}
-//		
-//		// do the glue
-//		size_t Nrows = W[loc][svec[0].first][svec[0].second].block[qvec[0]].rows();
-//		for (size_t i=1; i<svec.size(); ++i) {assert(W[loc][svec[i].first][svec[i].second].block[qvec[i]].rows() == Nrows);}
-//		size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
-//		
-//		MatrixXd Aclump(Nrows,Ncols);
-//		size_t stitch = 0;
-//		for (size_t i=0; i<svec.size(); ++i)
-//		{
-//			Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = W[loc][svec[i].first][svec[i].second].block[qvec[i]];
-//			stitch += Ncolsvec[i];
-//		}
-//		
-//		// do the decomposition
-//		size_t Nret = Nrows; // retained states
-//		JacobiSVD<MatrixXd> Jack(Aclump,ComputeThinU|ComputeThinV);
-//		
-//		if (TOOL == DMRG::BROOM::SVD)
-//		{
-//			Nret = (Jack.singularValues().array() > eps_svd).count();
-//		}
-//		else if (TOOL == DMRG::BROOM::BRUTAL_SVD)
-//		{
-//			Nret = min(static_cast<size_t>(Jack.singularValues().rows()), N_sv);
-//		}
-//		Nret = max(Nret,1ul);
-//		truncWeightSub(qin) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
-//		
-//		// update W[loc]
-//		stitch = 0;
-//		for (size_t i=0; i<svec.size(); ++i)
-//		{
-//			W[loc][svec[i].first][svec[i].second].block[qvec[i]] = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i]).sparseView(1.,1e-10);
-//			stitch += Ncolsvec[i];
-//		}
-//		
-//		// update W[loc-1]
-//		if (loc != 0)
-//		{
-//			for (size_t s1=0; s1<D; ++s1)
-//			for (size_t s2=0; s2<D; ++s2)
-//			for (size_t q=0; q<W[loc-1][s1][s2].dim; ++q)
-//			{
-//				if (W[loc-1][s1][s2].out[q] == inset[loc][qin])
-//				{
-//					W[loc-1][s1][s2].block[q] = (W[loc-1][s1][s2].block[q] * 
-//					                            Jack.matrixU().leftCols(Nret) * 
-//					                            Jack.singularValues().head(Nret).asDiagonal()).sparseView(1.,1e-10);
-//				}
-//			}
+//			A[loc+1][s1][s2] = Rmatrix * A[loc+1][s1][s2];
 //		}
 //	}
 //	
-//	truncWeight(loc) = truncWeightSub.sum();
-////	pivot = (loc==0)? 0 : loc-1;
+//	this->pivot = (loc==N_sites-1)? N_sites-1 : loc+1;
 //}
 
 //template<size_t Nq, typename Scalar>
 //void MpoQ<Nq,Scalar>::
-//compress (DMRG::BROOM::OPTION TOOL, DMRG::DIRECTION::OPTION DIR)
+//leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 //{
-//	if (DIR == DMRG::DIRECTION::RIGHT)
+//	size_t Nrows = A[loc][0][0].rows();
+//	size_t Ncols = A[loc][0][0].cols();
+//	size_t D = qloc[loc].size();
+//	
+//	MatrixType Aclump(Nrows, D*D*Ncols);
+//	
+//	for (size_t s1=0; s1<D; ++s1)
+//	for (size_t s2=0; s2<D; ++s2)
 //	{
-//		for (size_t l=0; l<N_sites-1; ++l)
+//		size_t s = s2 + D*s1;
+//		Aclump.block(0,s*Ncols, Nrows,Ncols) = A[loc][s1][s2];
+//	}
+//	
+//	#ifdef DONT_USE_EIGEN_QR
+//	LapackQR<Scalar> Quirinus; MatrixType Qmatrix, Rmatrix; // Lapack QR
+//	#else
+//	HouseholderQR<MatrixType> Quirinus; MatrixType Qmatrix, Rmatrix; // Eigen QR
+//	#endif
+//	
+//	Quirinus.compute(Aclump.adjoint());
+//	#ifdef DONT_USE_EIGEN_QR
+//	Qmatrix = Quirinus.Qmatrix().adjoint();
+//	Rmatrix = Quirinus.Rmatrix().adjoint();
+//	#else
+//	Qmatrix = (Quirinus.householderQ() * MatrixType::Identity(Aclump.cols(),Aclump.rows())).adjoint();
+//	Rmatrix = (MatrixType::Identity(Aclump.rows(),Aclump.cols()) * Quirinus.matrixQR().template triangularView<Upper>()).adjoint();
+//	#endif
+//	
+//	for (size_t s1=0; s1<D; ++s1)
+//	for (size_t s2=0; s2<D; ++s2)
+//	{
+//		size_t s = s2 + D*s1;
+//		A[loc][s1][s2] = Qmatrix.block(0,s*Ncols, Nrows,Ncols);
+//	}
+//	
+//	if (loc != 0)
+//	{
+//		for (size_t s1=0; s1<D; ++s1)
+//		for (size_t s2=0; s2<D; ++s2)
 //		{
-//			rightSweepStep(l,TOOL);
+//			A[loc-1][s1][s2] = A[loc-1][s1][s2] * Rmatrix;
 //		}
 //	}
-//	else
+//	
+//	this->pivot = (loc==0)? 0 : loc-1;
+//}
+
+//template<size_t Nq, typename Scalar>
+//string MpoQ<Nq,Scalar>::
+//test_ortho() const
+//{
+//	MatrixType Test;
+//	string sout = "";
+//	std::array<string,4> normal_token  = {"A","B","M","X"};
+//	std::array<string,4> special_token = {"\e[4mA\e[0m","\e[4mB\e[0m","\e[4mM\e[0m","\e[4mX\e[0m"};
+//	
+//	for (size_t l=0; l<N_sites; ++l)
 //	{
-//		for (size_t l=N_sites-1; l>0; --l)
+//		size_t D = qloc[l].size();
+//		
+//		Test.resize(A[l][0][0].cols(), A[l][0][0].cols());
+//		Test.setZero();
+//		for (size_t s1=0; s1<D; ++s1)
+//		for (size_t s2=0; s2<D; ++s2)
 //		{
-//			leftSweepStep(l,TOOL);
+//			Test += A[l][s1][s2].adjoint() * A[l][s1][s2];
+//		}
+//		Test -= Matrix<Scalar,Dynamic,Dynamic>::Identity(Test.rows(),Test.cols());
+////		cout << "A l=" << l << ", Test=" << Test << endl << endl;
+//		bool A_CHECK = Test.template lpNorm<Infinity>()<1e-10 ? true : false;
+//		
+//		Test.resize(A[l][0][0].rows(), A[l][0][0].rows());
+//		Test.setZero();
+//		for (size_t s1=0; s1<D; ++s1)
+//		for (size_t s2=0; s2<D; ++s2)
+//		{
+//			Test += A[l][s1][s2] * A[l][s1][s2].adjoint();
+//		}
+//		Test -= Matrix<Scalar,Dynamic,Dynamic>::Identity(Test.rows(),Test.cols());
+////		cout << "B l=" << l << ", Test=" << Test << endl << endl;
+//		bool B_CHECK = Test.template lpNorm<Infinity>()<1e-10 ? true : false;
+//		
+//		// interpret result
+//		if (A_CHECK and B_CHECK)
+//		{
+//			sout += TCOLOR(MAGENTA);
+//			sout += (l==this->pivot) ? special_token[3] : normal_token[3]; // X
+//		}
+//		else if (A_CHECK)
+//		{
+//			sout += TCOLOR(RED);
+//			sout += (l==this->pivot) ? special_token[0] : normal_token[0]; // A
+//		}
+//		else if (B_CHECK)
+//		{
+//			sout += TCOLOR(BLUE);
+//			sout += (l==this->pivot) ? special_token[1] : normal_token[1]; // B
+//		}
+//		else
+//		{
+//			sout += TCOLOR(GREEN);
+//			sout += (l==this->pivot) ? special_token[2] : normal_token[2]; // M
+//		}
+//	}
+//	
+//	sout += TCOLOR(BLACK);
+//	return sout;
+//}
+
+//template<size_t Nq, typename Scalar>
+//void MpoQ<Nq,Scalar>::
+//flatten_to_MpsQ (MpsQ<0,Scalar> &V)
+//{
+////	V.format = format;
+////	V.qlabel = qlabel;
+//	
+//	// extended basis 
+//	vector<vector<qarray<0> > > qext;
+//	qext.resize(N_sites);
+//	for (size_t l=0; l<N_sites; ++l)
+//	{
+//		size_t D = qloc[l].size();
+//		qext[l].resize(D*D);
+//		
+//		for (size_t s1=0; s1<D; ++s1)
+//		for (size_t s2=0; s2<D; ++s2)
+//		{
+//			qext[l][s2+D*s1] = qvacuum<0>();
+//		}
+//	}
+//	
+//	V = MpsQ<0,Scalar>(N_sites, qext, qvacuum<0>());
+//	
+//	// outer resize
+////	V.A.resize(N_sites);
+////	for (size_t l=0; l<N_sites; ++l)
+////	{
+////		V.A[l].resize(qext[l].size());
+////	}
+////	V.inset.resize(N_sites);
+////	V.outset.resize(N_sites);
+////	V.truncWeight.resize(N_sites); V.truncWeight.setZero();
+////	V.entropy.resize(N_sites); V.entropy.setConstant(numeric_limits<double>::quiet_NaN());
+//	V.outerResizeNoSymm();
+//	
+//	// inner resize
+//	for (size_t l=0; l<N_sites; ++l)
+//	{
+//		size_t D = qloc[l].size();
+//		
+//		V.inset[l].push_back(qvacuum<0>());
+//		V.outset[l].push_back(qvacuum<0>());
+//		
+//		for (size_t s=0; s<D*D; ++s)
+//		{
+//			V.A[l][s].in.push_back(qvacuum<0>());
+//			V.A[l][s].out.push_back(qvacuum<0>());
+//			V.A[l][s].dict.insert({qarray2<0>{qvacuum<0>(),qvacuum<0>()}, 0});
+//			V.A[l][s].dim = 1;
+//			V.A[l][s].block.resize(1);
+//		}
+//	}
+//	
+//	for (size_t l=0; l<N_sites; ++l)
+//	{
+//		size_t D = qloc[l].size();
+//		for (size_t s1=0; s1<D; ++s1)
+//		for (size_t s2=0; s2<D; ++s2)
+//		{
+//			size_t s = s2 + D*s1;
+//			V.A[l][s].block[0] = MatrixType(W[l][s1][s2]);
 //		}
 //	}
 //}
+
+template<size_t Nq, typename Scalar>
+template<size_t OtherNq>
+void MpoQ<Nq,Scalar>::
+setHeisenbergProduct (const MpoQ<OtherNq,Scalar> Op1, const MpoQ<OtherNq,Scalar> Op2)
+{
+	assert(Op1.length()   == Op2.length());
+	assert(Op1.locBasis() == Op2.locBasis());
+	
+	N_sites = Op1.length();
+	Qtot = qvacuum<0>(); 
+	UNITARY = true;
+	label = Op1.label + " ⊗ " + Op2.label;
+	
+	// extended basis 
+	qloc.resize(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		size_t D = Op1.locBasis(l).size();
+		qloc[l].resize(D*D);
+		
+		for (size_t s1=0; s1<D; ++s1)
+		for (size_t s2=0; s2<D; ++s2)
+		{
+			qloc[l][s2+D*s1] = qvacuum<0>();
+		}
+	}
+	
+	W.resize(N_sites);
+	for (size_t l=0; l<Op1.length(); ++l)
+	{
+		size_t D = Op1.locBasis(l).size();
+		W[l].resize(D*D);
+		
+		for (size_t s=0; s<D*D; ++s)
+		{
+			W[l][s].resize(D*D);
+		}
+	}
+	
+	for (size_t l=0; l<Op1.length(); ++l)
+	{
+		size_t D = Op1.locBasis(l).size();
+		
+		for (size_t s1=0; s1<D; ++s1)
+		for (size_t s2=0; s2<D; ++s2)
+		for (size_t s3=0; s3<D; ++s3)
+		for (size_t s4=0; s4<D; ++s4)
+		{
+			size_t r1 = s4 + D*s1;
+			size_t r2 = s3 + D*s2;
+			
+			W[l][r1][r2] = kroneckerProduct(Op1.W_at(l)[s1][s2], Op2.W_at(l)[s3][s4]);
+		}
+	}
+}
+
+template<size_t Nq, typename Scalar>
+void MpoQ<Nq,Scalar>::
+setFromFlattenedMpoQ (const MpsQ<0,Scalar> &Op, bool USE_SQUARE)
+{
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		size_t D = qloc[l].size();
+		for (size_t s1=0; s1<D; ++s1)
+		for (size_t s2=0; s2<D; ++s2)
+		{
+			size_t s = s2 + D*s1;
+			
+			if (USE_SQUARE)
+			{
+				Wsq[l][s1][s2] = Op.A_at(l)[s].block[0].sparseView(1e-15);
+			}
+			else
+			{
+				W[l][s1][s2] = Op.A_at(l)[s].block[0].sparseView(1e-15);
+			}
+		}
+	}
+}
+
+template<size_t Nq, typename Scalar>
+void MpoQ<Nq,Scalar>::
+SVDcompress (bool USE_SQUARE, double eps_svd, size_t N_halfsweeps)
+{
+	MpsQ<0,Scalar> PsiDummy;
+	PsiDummy.setFlattenedMpoQ(*this,USE_SQUARE);
+	PsiDummy.eps_svd = eps_svd;
+	
+	PsiDummy.sweep(0,DMRG::BROOM::SVD);
+	for (int i=0; i<N_halfsweeps-1; ++i)
+	{
+		PsiDummy.skim(DMRG::BROOM::SVD);
+	}
+	
+	lout << "SVD-W";
+	if (USE_SQUARE) {lout << "²";}
+	lout << ": " << label << ": " << PsiDummy.info() << endl;
+	setFromFlattenedMpoQ(PsiDummy,USE_SQUARE);
+}
 
 template<size_t Nq, typename Scalar>
 class MpoQ<Nq,Scalar>::qarrayIterator
@@ -1014,7 +1239,7 @@ public:
 	qarrayIterator (const vector<vector<qarray<Nq> > > &qloc_input, int l_frst, int l_last)
 	:qloc(qloc_input[0])
 	{
-		N_sites = (l_last < 0 or l_frst >= qloc_input.size())? 0 : l_last-l_frst+1;
+		size_t L = (l_last < 0 or l_frst >= qloc_input.size())? 0 : l_last-l_frst+1;
 		
 		// determine dq
 		for (size_t q=0; q<Nq; ++q)
@@ -1039,8 +1264,8 @@ public:
 		}
 		
 		// determine qmin, qmax
-		qmin = N_sites * (*min_element(qloc.begin(),qloc.end()));
-		qmax = N_sites * (*max_element(qloc.begin(),qloc.end()));
+		qmin = L * (*min_element(qloc.begin(),qloc.end()));
+		qmax = L * (*max_element(qloc.begin(),qloc.end()));
 		
 		// setup NestedLoopIterator
 		vector<size_t> ranges(Nq);
@@ -1101,7 +1326,6 @@ private:
 	
 	vector<qarray<Nq> > qloc;
 	qarray<Nq> dq;
-	size_t N_sites;
 };
 
 template<size_t Nq, typename Scalar>
@@ -1119,6 +1343,7 @@ ostream &operator<< (ostream& os, const MpoQ<Nq,Scalar> &O)
 		for (size_t s2=0; s2<O.locBasis(l).size(); ++s2)
 		{
 			os << "[l=" << l << "]\t|" << O.format(O.locBasis(l)[s1]) << "><" << O.format(O.locBasis(l)[s2]) << "|:" << endl;
+//			os << Matrix<Scalar,Dynamic,Dynamic>(O.W_at(l)[s1][s2]) << endl;
 			os << Matrix<Scalar,Dynamic,Dynamic>(O.W_at(l)[s1][s2]) << endl;
 		}
 		os << setfill('-') << setw(80) << "-" << setfill(' ');
