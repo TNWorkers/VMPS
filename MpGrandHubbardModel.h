@@ -34,7 +34,6 @@ U(U_input), V(V_input)
 	this->label += ss.str();
 	
 	this->Daux = (V==0.)? 6 : 7;
-	this->N_sv = this->Daux;
 	
 	SuperMatrix<double> G = HubbardModel::Generator(U,V);
 	this->construct(G, this->W, this->Gvec);

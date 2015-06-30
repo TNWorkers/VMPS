@@ -42,7 +42,7 @@ public:
 		- DMRG::COMPRESSION::RHS_SVD : makes no sense here, results in the same as above
 	*/
 	void varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, 
-	                  size_t Dcutoff_input, double tol=1e-6, size_t max_halfsweeps=100, size_t min_halfsweeps=1, 
+	                  size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=100, size_t min_halfsweeps=1, 
 	                  DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::BRUTAL_SVD);
 	
 	/**Compresses a matrix-vector product \f$\left|V_{out}\right> \approx H \left|V_{in}\right>\f$. Needs to calculate \f$\left<V_{in}\right|H^2\left|V_{in}\right>\f$. Works optimally with OpenMP and (at least) 2 threads. If convergence is not reached after 2 half-sweeps, the bond dimension of \p Vout is increased and it is set to random.
@@ -61,7 +61,7 @@ public:
 	*/
 	template<typename MpOperator>
 	void varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, 
-	                  size_t Dcutoff_input, double tol=1e-6, size_t max_halfsweeps=100, size_t min_halfsweeps=1, 
+	                  size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=100, size_t min_halfsweeps=1, 
 	                  DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RANDOM);
 	
 	/**Compresses a Chebyshev iteration step \f$V_{out} \approx 2H \cdot V_{in1} - V_{in2}\f$. Needs to calculate \f$\left<V_{in1}\right|H^2\left|V_{in1}\right>\f$, \f$\left<V_{in2}\right|H\left|V_{in1}\right>\f$ and \f$\big<V_{in2}\big|V_{in2}\big>\f$. Works optimally with OpenMP and (at least) 3 threads, as the last overlap is cheap to do in the mixed-canonical representation. If convergence is not reached after 2 half-sweeps, the bond dimension of \p Vout is increased and it is set to random.
@@ -212,8 +212,7 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 	double sqnormVin = isReal(dot(Vin,Vin));
 	N_halfsweeps = 0;
 	N_sweepsteps = 0;
-	Dcutoff = Dcutoff_input;
-	Dcutoff_new = Dcutoff_input;
+	Dcutoff = Dcutoff_new = Dcutoff_input;
 	
 	// set L&R edges
 	L.resize(N_sites);
@@ -227,7 +226,8 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 	    START == DMRG::COMPRESSION::RHS)
 	{
 		Vout = Vin;
-		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
+//		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
+		Vout.innerResize(Dcutoff);
 		if (START == DMRG::COMPRESSION::RANDOM)
 		{
 			RANDOMIZE = true;
@@ -259,7 +259,7 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 		lout << Chronos.info("preparation") << endl;
 	}
 	
-	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps half-sweeps
+	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
 	{
 		Stopwatch Aion;
@@ -415,8 +415,7 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 	Stopwatch Chronos;
 	N_halfsweeps = 0;
 	N_sweepsteps = 0;
-	Dcutoff = Dcutoff_input;
-	Dcutoff_new = Dcutoff_input;
+	Dcutoff = Dcutoff_new = Dcutoff_input;
 	
 	if (START == DMRG::COMPRESSION::RHS)
 	{
@@ -425,7 +424,8 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 	else if (START == DMRG::COMPRESSION::RANDOM)
 	{
 		Vout = Vin;
-		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
+//		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
+		Vout.innerResize(Dcutoff);
 		Vout.setRandom();
 	}
 	else if (START == DMRG::COMPRESSION::RHS_SVD)
@@ -480,7 +480,7 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 		lout << Chronos.info("preparation") << endl;
 	}
 	
-	// must achieve sqdist > tol or break off after max_halfsweeps, do at least 2 half-sweeps
+	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
 	{
 		Stopwatch Aion;
@@ -513,11 +513,8 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 			size_t Mmax_old = Vout.calc_Mmax();
 			
 			Dcutoff_new = Dcutoff_old+1;
-			auto Vtmp = Vout;
-			Vout.skim(DMRG::BROOM::SVD);
 			Vout.dynamicResize(DMRG::RESIZE::CONSERV_INCR, Dcutoff_new);
 			Vout.setRandom();
-			
 			Mmax_new = Vout.calc_Mmax();
 			
 			Vout.pivot = -1;
@@ -720,7 +717,8 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 	else if (START == DMRG::COMPRESSION::RANDOM)
 	{
 		Vout = Vin1;
-		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
+//		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
+		Vout.innerResize(Dcutoff);
 		Vout.setRandom();
 	}
 //	else if (START == DMRG::COMPRESSION::RHS_SVD)
@@ -781,7 +779,7 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 		lout << Chronos.info("preparation") << endl;
 	}
 	
-	// must achieve sqdist > tol or break off after max_halfsweeps, do at least 2 half-sweeps
+	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
 	{
 		Stopwatch Aion;

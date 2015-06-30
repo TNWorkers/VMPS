@@ -176,7 +176,8 @@ public:
 	typedef DmrgSolverQ<2,HubbardModel>              Solver;
 	typedef MpsQCompressor<2,double,double>          CompressorXd;
 	typedef MpsQCompressor<2,complex<double>,double> CompressorXcd;
-	typedef MpoQ<2>                                  Operator;
+	typedef MpoQ<2,double>                           OperatorXd;
+	typedef MpoQ<2,complex<double> >                 OperatorXcd;
 	
 	static MpoQ<2> Auger (size_t L, size_t loc);
 	static MpoQ<2> Aps (size_t L, size_t loc);
@@ -310,7 +311,6 @@ U(U_input), V(V_input)
 	this->label += ss.str();
 	
 	this->Daux = (V==0.)? 6 : 7;
-	this->N_sv = this->Daux;
 	
 	SuperMatrix<double> G = Generator(U,V);
 	this->construct(G, this->W, this->Gvec);

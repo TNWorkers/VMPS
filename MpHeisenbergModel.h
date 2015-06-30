@@ -158,7 +158,6 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input)
 	this->label = create_label(frac(D-1,2),Jxy,Jz,Bz,0.);
 	
 	this->Daux = calc_Daux(Jxy,Jz);
-	this->N_sv = this->Daux;
 	
 	SuperMatrix<double> G = Generator(Jxy,Jz,Bz,0.);
 	this->construct(G, this->W, this->Gvec);

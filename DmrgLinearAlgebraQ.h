@@ -285,7 +285,7 @@ void OxV (const MpoQ<Nq,MpoScalar> &O, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scala
 	{
 		Stopwatch Chronos;
 		contract_C(O.locBasis(l), Vout.A[l-1], O.W_at(l), Vin.A[l], C, Cnext);
-		lout << "l=" << l << ", " << Chronos.info("contract_C") << endl;
+//		lout << "l=" << l << ", " << Chronos.info("contract_C") << endl;
 		
 		for (size_t s1=0; s1<O.locBasis(l).size(); ++s1)
 		{
@@ -295,7 +295,7 @@ void OxV (const MpoQ<Nq,MpoScalar> &O, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scala
 		}
 		
 		Vout.set_A_from_C(l,C,TOOL);
-		lout << "l=" << l << ", " << Chronos.info("set_A_from_C") << endl;
+//		lout << "l=" << l << ", " << Chronos.info("set_A_from_C") << endl;
 	}
 	
 	Vout.mend();

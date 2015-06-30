@@ -27,6 +27,7 @@ class DmrgJanitor
 public:
 	
 	DmrgJanitor();
+	DmrgJanitor(size_t L_input);
 	
 	///@{
 	/**Sweeps from \p pivot to a specific site. Mainly useful for testing purposes.
@@ -81,7 +82,7 @@ protected:
 	
 	///@{
 	/**\describe_pivot*/
-	int pivot;
+	int pivot = -1;
 	/**Length of the chain.*/
 	size_t N_sites;
 	///@}
@@ -90,7 +91,14 @@ protected:
 template<typename PivotMatrixType>
 DmrgJanitor<PivotMatrixType>::
 DmrgJanitor()
-:pivot(-1)
+{
+	set_defaultCutoffs();
+}
+
+template<typename PivotMatrixType>
+DmrgJanitor<PivotMatrixType>::
+DmrgJanitor (size_t L_input)
+:N_sites(L_input)
 {
 	set_defaultCutoffs();
 }
@@ -99,7 +107,7 @@ template<typename PivotMatrixType>
 void DmrgJanitor<PivotMatrixType>::
 set_defaultCutoffs()
 {
-	eps_svd = 1e-6; //1e-7;
+	eps_svd = 1e-7;
 	eps_rdm = 1e-14;
 	alpha_noise = 1e-10;
 	alpha_rsvd = 1e-2;

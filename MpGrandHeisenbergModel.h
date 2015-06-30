@@ -50,7 +50,6 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input)
 	this->label = HeisenbergModel<D>::create_label(frac(D-1,2),Jxy,Jz,Bz,Bx);
 	
 	this->Daux = HeisenbergModel<D>::calc_Daux(Jxy,Jz);
-	this->N_sv = this->Daux;
 	
 	SuperMatrix<double> G = HeisenbergModel<D>::Generator(Jxy,Jz,Bz,Bx);
 	this->construct(G, this->W, this->Gvec);
