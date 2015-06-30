@@ -83,9 +83,9 @@ public:
 	///@{
 	MpoQ<2> Simp (size_t L, size_t loc, SPINOP_LABEL SOP);
 	MpoQ<2> Ssub (size_t L, size_t loc, SPINOP_LABEL SOP);
-	MpoQ<2> SimpCorr (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
-	MpoQ<2> SsubCorr (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
-	MpoQ<2> SimpsubCorr (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
+	MpoQ<2> SimpSimp (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
+	MpoQ<2> SsubSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
+	MpoQ<2> SimpSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
 	///@}
 	
 private:
@@ -411,20 +411,22 @@ Ssub (size_t L, size_t loc, SPINOP_LABEL SOP)
 
 template<size_t D>
 MpoQ<2> KondoModel<D>::
-SimpCorr (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
+SimpSimp (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
 {
 	assert(loc1<L and loc2<L);
 	stringstream ss;
 	ss << SOP1 << "(" << loc1 << ")" << SOP2 << "(" << loc2 << ")";
 	MpoQ<2> Mout(L, locBasis(), {0,0}, KondoModel<D>::NMlabel, ss.str());
 	MatrixXd Id4(4,4); Id4.setIdentity();
-	Mout.setLocal(loc1, kroneckerProduct(SpinBase<D>::Scomp(SOP1),Id4), loc2, kroneckerProduct(SpinBase<D>::Scomp(SOP2),Id4));
+	Mout.setLocal({loc1, loc2}, {kroneckerProduct(SpinBase<D>::Scomp(SOP1),Id4), 
+	                             kroneckerProduct(SpinBase<D>::Scomp(SOP2),Id4)}
+	             );
 	return Mout;
 }
 
 template<size_t D>
 MpoQ<2> KondoModel<D>::
-SsubCorr (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
+SsubSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
 {
 	assert(loc1<L and loc2<L);
 	stringstream ss;
@@ -432,13 +434,15 @@ SsubCorr (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP
 	MpoQ<2> Mout(L, locBasis(), {0,0}, KondoModel<D>::NMlabel, ss.str());
 	MatrixXd IdImp1(qloc[loc1].size()/4, qloc[loc1].size()/4); IdImp1.setIdentity();
 	MatrixXd IdImp2(qloc[loc2].size()/4, qloc[loc2].size()/4); IdImp2.setIdentity();
-	Mout.setLocal(loc1, kroneckerProduct(IdImp1,HubbardModel::Scomp(SOP1)), loc2, kroneckerProduct(IdImp2,HubbardModel::Scomp(SOP2)));
+	Mout.setLocal({loc1, loc2}, {kroneckerProduct(IdImp1,HubbardModel::Scomp(SOP1)), 
+	                             kroneckerProduct(IdImp2,HubbardModel::Scomp(SOP2))}
+	             );
 	return Mout;
 }
 
 template<size_t D>
 MpoQ<2> KondoModel<D>::
-SimpsubCorr (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
+SimpSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
 {
 	assert(loc1<L and loc2<L);
 	stringstream ss;
@@ -446,7 +450,9 @@ SimpsubCorr (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL 
 	MpoQ<2> Mout(L, locBasis(), {0,0}, KondoModel<D>::NMlabel, ss.str());
 	MatrixXd Id4(4,4); Id4.setIdentity();
 	MatrixXd IdImp(qloc[loc2].size()/4, qloc[loc2].size()/4); IdImp.setIdentity();
-	Mout.setLocal(loc1, kroneckerProduct(SpinBase<D>::Scomp(SOP1),Id4), loc2, kroneckerProduct(IdImp,HubbardModel::Scomp(SOP2)));
+	Mout.setLocal({loc1, loc2}, {kroneckerProduct(SpinBase<D>::Scomp(SOP1),Id4), 
+	                             kroneckerProduct(IdImp,HubbardModel::Scomp(SOP2))}
+	             );
 	return Mout;
 }
 
