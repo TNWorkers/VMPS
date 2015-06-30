@@ -82,10 +82,10 @@ public:
 	
 	///@{
 	MpoQ<2> Simp (size_t L, size_t loc, SPINOP_LABEL SOP);
-	MpoQ<2> Ssub (size_t L, size_t loc, SPINSUB_LABEL SOP);
+	MpoQ<2> Ssub (size_t L, size_t loc, SPINOP_LABEL SOP);
 	MpoQ<2> SimpSimp (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
-	MpoQ<2> SsubSsub (size_t L, size_t loc1, SPINSUB_LABEL SOP1, size_t loc2, SPINSUB_LABEL SOP2);
-	MpoQ<2> SimpSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINSUB_LABEL SOP2);
+	MpoQ<2> SsubSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
+	MpoQ<2> SimpSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
 	///@}
 	
 private:
@@ -398,7 +398,7 @@ Simp (size_t L, size_t loc, SPINOP_LABEL SOP)
 
 template<size_t D>
 MpoQ<2> KondoModel<D>::
-Ssub (size_t L, size_t loc, SPINSUB_LABEL SOP)
+Ssub (size_t L, size_t loc, SPINOP_LABEL SOP)
 {
 	assert(loc<L);
 	stringstream ss;
@@ -426,7 +426,7 @@ SimpSimp (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP
 
 template<size_t D>
 MpoQ<2> KondoModel<D>::
-SsubSsub (size_t L,size_t loc1, SPINSUB_LABEL SOP1, size_t loc2, SPINSUB_LABEL SOP2)
+SsubSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
 {
 	assert(loc1<L and loc2<L);
 	stringstream ss;
@@ -442,7 +442,7 @@ SsubSsub (size_t L,size_t loc1, SPINSUB_LABEL SOP1, size_t loc2, SPINSUB_LABEL S
 
 template<size_t D>
 MpoQ<2> KondoModel<D>::
-SimpSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINSUB_LABEL SOP2)
+SimpSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
 {
 	assert(loc1<L and loc2<L);
 	stringstream ss;
