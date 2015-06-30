@@ -221,7 +221,7 @@ SzSz (size_t L, size_t loc1, size_t loc2)
 	ss << "Sz(" << loc1 << ")" <<  "Sz(" << loc2 << ")";
 	MpoQ<1> Mout(L, vector<qarray<1> >(begin(HeisenbergModel<D>::qloc),end(HeisenbergModel<D>::qloc)), 
 	             {0}, HeisenbergModel::maglabel, ss.str(), HeisenbergModel::halve);
-	Mout.setLocal(loc1, SpinBase<D>::Sz, loc2, SpinBase<D>::Sz);
+	Mout.setLocal({loc1, loc2}, {SpinBase<D>::Sz, SpinBase<D>::Sz});
 	return Mout;
 }
 

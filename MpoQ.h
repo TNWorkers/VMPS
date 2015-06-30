@@ -81,31 +81,19 @@ public:
 	\param Op : the local operator in question
 	*/
 	void setLocal (size_t loc, const MatrixType &Op);
-	
-	/**Set to a product of local operators \f$O_i O_j\f$
-	\param loc1 : site index of first operator
-	\param Op1 : first local operator
-	\param loc2 : site index of second operator
-	\param Op2 : second local operator
-	*/
-	void setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2);
 
-	/**Set to a product of local operators \f$O_i O_j O_k\f$
-	   \param loc1 : site index of first operator
-	   \param Op1 : first local operator
-	   \param loc2 : site index of second operator
-	   \param Op2 : second local operator
-	   \param loc3 : site index of third operator
-	   \param Op3 : third local operator
+	/**Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$
+	\param loc : list of locations
+	\param Op : list of operators
 	*/
-	void setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2, size_t loc3, const MatrixType &Op3);
+	void setLocal (vector<size_t> loc, vector<MatrixType> Op);
 
 	/**Set to a sum of of local operators \f$\sum_i O_i\f$
 	\param Op : the local operator in question
 	*/
 	void setLocalSum (const MatrixType &Op);
 	
-	/**Set to a sum of nearest-neighbour products of local operators \f$\sum_i O_i O_{i+1}\f$
+	/**Set to a sum of nearest-neighbour products of local operators \f$\sum_i O^1_i O^2_{i+1}\f$
 	\param Op1 : first local operator
 	\param Op2 : second local operator
 	*/
@@ -446,7 +434,6 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 	return (PER_MATRIX)? N_nonZeros/N_matrices : N_nonZeros/N_elements;
 }
 
-// O(loc)
 template<size_t Nq, typename Scalar>
 void MpoQ<Nq,Scalar>::
 setLocal (size_t loc, const MatrixType &Op)
@@ -466,14 +453,11 @@ setLocal (size_t loc, const MatrixType &Op)
 	construct(M, W, Gvec);
 }
 
-// O1(loc1) * O2(loc2)
 template<size_t Nq, typename Scalar>
 void MpoQ<Nq,Scalar>::
-setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2)
+setLocal (vector<size_t> loc, vector<MatrixType> Op)
 {
-	assert(Op1.rows() == qloc[loc1].size() and Op1.cols() == qloc[loc1].size() and 
-	       Op2.rows() == qloc[loc2].size() and Op2.cols() == qloc[loc2].size());
-	assert(loc1 < N_sites and loc2 < N_sites);
+	assert(loc.size() >= 1 and Op.size() == loc.size());
 	
 	Daux = 1;
 	vector<SuperMatrix<Scalar> > M(N_sites);
@@ -484,34 +468,12 @@ setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2
 		M[l](0,0).setIdentity();
 	}
 	
-	M[loc1](0,0) = Op1;
-	M[loc2](0,0) = M[loc2](0,0) * Op2;
-	
-	construct(M, W, Gvec);
-}
-
-// O1(loc1) * O2(loc2) * O3(loc3)
-template<size_t Nq, typename Scalar>
-void MpoQ<Nq,Scalar>::
-setLocal (size_t loc1, const MatrixType &Op1, size_t loc2, const MatrixType &Op2, size_t loc3, const MatrixType &Op3)
-{
-	assert(Op1.rows() == qloc[loc1].size() and Op1.cols() == qloc[loc1].size() and 
-	       Op2.rows() == qloc[loc2].size() and Op2.cols() == qloc[loc2].size() and
-		   Op3.rows() == qloc[loc3].size() and Op3.cols() == qloc[loc3].size());
-	assert(loc1 < N_sites and loc2 < N_sites and loc3 < N_sites);
-	
-	Daux = 1;
-	vector<SuperMatrix<Scalar> > M(N_sites);
-	
-	for (size_t l=0; l<N_sites; ++l)
+	for (size_t i=0; i<loc.size(); ++i)
 	{
-		M[l].setMatrix(Daux,qloc[l].size());
-		M[l](0,0).setIdentity();
+		assert(loc[i] < N_sites);
+		assert(Op[i].rows() == qloc[i].size() and Op[i].cols() == qloc[i].size());
+		M[loc[i]](0,0) = M[loc[i]](0,0) * Op[i];
 	}
-	
-	M[loc1](0,0) = Op1;
-	M[loc2](0,0) = M[loc2](0,0) * Op2;
-	M[loc3](0,0) = M[loc3](0,0) * Op3;
 	
 	construct(M, W, Gvec);
 }
