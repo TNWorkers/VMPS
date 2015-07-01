@@ -407,7 +407,6 @@ HubbardModel (size_t L_input, double U_input, double V_input, double tPrime_inpu
 	{
 		this->Daux = (V==0.)? 14 : 15;		
 	}
-	this->N_sv = this->Daux;
 	
 	SuperMatrix<double> G = Generator(U,V,tPrime);
 	this->construct(G, this->W, this->Gvec);
