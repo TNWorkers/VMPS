@@ -8,8 +8,9 @@ namespace VMPS
 
 /**MPO representation of 
 \f$
-H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} + U \sum_i n_{i\uparrow} n_{i\downarrow}
-\f$.*/
+H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} + U \sum_i n_{i\uparrow} n_{i\downarrow}
+\f$.
+\note If nnn-hopping is positive, the GS-energy is lowered.*/
 class HubbardModel : public MpoQ<2,double>
 {
 public:
@@ -18,9 +19,10 @@ public:
 	\param L_input : chain length
 	\param U_input : \f$U\f$
 	\param V_input : \f$V\f$
+	\param tPrime_input : \f$t^{\prime}\f$ next nearest neighbour (nnn) hopping. \f$t^{\prime}>0\f$ is common sign.
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
-	HubbardModel (size_t L_input, double U_input, double V_input=0., bool CALC_SQUARE=true);
+	HubbardModel (size_t L_input, double U_input, double V_input=0., double tPrime_input=0., bool CALC_SQUARE=true);
 	
 	/**
 	\f$c_{\uparrow} = \left(
@@ -141,7 +143,7 @@ public:
 		else if (Sa==SM)  {return Sp.transpose();}
 	}
 
-	static SuperMatrix<double> Generator (double U, double V=0.);
+	static SuperMatrix<double> Generator (double U, double V=0., double tPrime=0.);
 	
 	MpoQ<2> Hsq();
 	
@@ -178,7 +180,7 @@ public:
 	
 private:
 	
-	double U, V;
+	double U, V, tPrime;
 };
 
 static const double cUP_data[] =
@@ -260,46 +262,152 @@ const std::array<qarray<2>,4> HubbardModel::qlocNM {qarray<2>{0,0}, qarray<2>{1,
 const std::array<string,2>    HubbardModel::Nlabel{"N↑","N↓"};
 
 SuperMatrix<double> HubbardModel::
-Generator (double U, double V)
+Generator (double U, double V, double tPrime)
 {
 	SuperMatrix<double> G;
-	size_t Daux = (V==0.)? 6 : 7;
-	G.setMatrix(Daux,4);
-	G.setZero();
+	if(V==0)
+	{
+		if(tPrime==0)
+		{
+			size_t Daux = 6;
+			G.setMatrix(Daux,4);
+			G.setZero();
+
+			G(0,0).setIdentity();
+			G(1,0) = cUP.transpose();
+			G(2,0) = cDN.transpose();
+			G(3,0) = cUP;
+			G(4,0) = cDN;
+
+			G(Daux-1,0) = U*nUP_nDN;
+
+			// note: fsign takes care of the fermionic sign
+			G(Daux-1,1) = fsign * cUP;
+			G(Daux-1,2) = fsign * cDN;
+			G(Daux-1,3) = -fsign * cUP.transpose();
+			G(Daux-1,4) = -fsign * cDN.transpose();
+
+			G(Daux-1,Daux-1).setIdentity();
+		}
+		else
+		{
+			size_t Daux = 14;
+			G.setMatrix(Daux,4);
+			G.setZero();
+
+			G(0,0).setIdentity();
+			G(1,0) = tPrime*cDN;
+			G(2,0) = tPrime*cUP;
+			G(3,0) = tPrime*cDN.transpose();
+			G(4,0) = tPrime*cUP.transpose();
+			G(5,0) = cUP.transpose();
+			G(6,0) = cDN.transpose();
+			G(7,0) = cUP;
+			G(8,0) = cDN;
+
+			G(13,0) = U*nUP_nDN;
+
+			G(13,5) = fsign * cUP;
+			G(13,6) = fsign * cDN;
+			G(13,7) = -fsign * cUP.transpose();
+			G(13,8) = -fsign * cDN.transpose();
+			G(13,9) = -fsign * cUP;
+			G(13,10) = -fsign * cDN;
+			G(13,11) = fsign * cUP.transpose();
+			G(13,12) = fsign * cDN.transpose();
+
+			G(9,4) = fsign;
+			G(10,3) = fsign;
+			G(11,2) = fsign;
+			G(12,1) = fsign;
+			G(13,13).setIdentity();
+		}
+	}
+
+	else
+	{
+		if(tPrime==0)
+		{
+			size_t Daux = 7;
+			G.setMatrix(Daux,4);
+			G.setZero();
 	
-	G(0,0).setIdentity();
-	G(1,0) = cUP.transpose();
-	G(2,0) = cDN.transpose();
-	G(3,0) = cUP;
-	G(4,0) = cDN;
-	if (V!=0.) {G(5,0) = nUP_plus_nDN;}
+			G(0,0).setIdentity();
+			G(1,0) = cUP.transpose();
+			G(2,0) = cDN.transpose();
+			G(3,0) = cUP;
+			G(4,0) = cDN;
+			G(5,0) = nUP_plus_nDN;
 	
-	G(Daux-1,0) = U*nUP_nDN;
+			G(Daux-1,0) = U*nUP_nDN;
 	
-	// note: fsign takes care of the fermionic sign
-	G(Daux-1,1) = fsign * cUP;
-	G(Daux-1,2) = fsign * cDN;
-	G(Daux-1,3) = -fsign * cUP.transpose();
-	G(Daux-1,4) = -fsign * cDN.transpose();
-	if (V!=0.) {G(Daux-1,5) = V*(nUP_plus_nDN);}
-	G(Daux-1,Daux-1).setIdentity();
-	
+			// note: fsign takes care of the fermionic sign
+			G(Daux-1,1) = fsign * cUP;
+			G(Daux-1,2) = fsign * cDN;
+			G(Daux-1,3) = -fsign * cUP.transpose();
+			G(Daux-1,4) = -fsign * cDN.transpose();
+			G(Daux-1,5) = V*(nUP_plus_nDN);
+			G(Daux-1,Daux-1).setIdentity();
+		}
+		else
+		{
+			size_t Daux = 15;
+			G.setMatrix(Daux,4);
+			G.setZero();
+
+			G(0,0).setIdentity();
+			G(1,0) = tPrime*cDN;
+			G(2,0) = tPrime*cUP;
+			G(3,0) = tPrime*cDN.transpose();
+			G(4,0) = tPrime*cUP.transpose();
+			G(5,0) = cUP.transpose();
+			G(6,0) = cDN.transpose();
+			G(7,0) = cUP;
+			G(8,0) = cDN;
+			G(9,0) = nUP_plus_nDN;
+			
+			G(14,0) = U*nUP_nDN;
+
+			G(14,5) = fsign * cUP;
+			G(14,6) = fsign * cDN;
+			G(14,7) = -fsign * cUP.transpose();
+			G(14,8) = -fsign * cDN.transpose();
+			G(14,9) = V*(nUP_plus_nDN);
+			G(14,10) = -fsign * cUP;
+			G(14,11) = -fsign * cDN;
+			G(14,12) = fsign * cUP.transpose();
+			G(14,13) = fsign * cDN.transpose();
+
+			G(10,4) = fsign;
+			G(11,3) = fsign;
+			G(12,2) = fsign;
+			G(13,1) = fsign;
+			G(14,14).setIdentity();
+		}
+	}
 	return G;
 }
 
 HubbardModel::
-HubbardModel (size_t L_input, double U_input, double V_input, bool CALC_SQUARE)
+HubbardModel (size_t L_input, double U_input, double V_input, double tPrime_input, bool CALC_SQUARE)
 :MpoQ<2> (L_input, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
-U(U_input), V(V_input)
+	U(U_input), V(V_input), tPrime(tPrime_input)
 {
 	stringstream ss;
-	ss << "(U=" << U << ",V=" << V << ")";
+	ss << "(U=" << U << ",V=" << V << ",tPrime=" << tPrime << ")";
 	this->label += ss.str();
-	
-	this->Daux = (V==0.)? 6 : 7;
+
+	if(tPrime == 0)
+	{
+		this->Daux = (V==0.)? 6 : 7;
+	}
+	else
+	{
+		this->Daux = (V==0.)? 14 : 15;		
+	}
 	this->N_sv = this->Daux;
 	
-	SuperMatrix<double> G = Generator(U,V);
+	SuperMatrix<double> G = Generator(U,V,tPrime);
 	this->construct(G, this->W, this->Gvec);
 	
 	if (CALC_SQUARE == true)
