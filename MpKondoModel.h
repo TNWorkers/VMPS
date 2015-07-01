@@ -264,7 +264,6 @@ KondoModel (size_t L_input, double J_input, double tPrime_input, double U_input,
 	this->label += ss.str();
 
 	this->Daux = (tPrime==0.)? 6 : 14;
-	this->N_sv = this->Daux;
 	
 	SuperMatrix<double> G = Generator(J, Bz, 0., -1., tPrime, U);
 	this->construct(G, this->W, this->Gvec);
@@ -437,7 +436,6 @@ KondoModel (size_t L_input, vector<double> Bzval_input, double J_input, double t
 	assert(L_input % 3 == 2 and "L mod 3 = 2 is required for PKS topology.");
 	// assign stuff
 	this->Daux = 14;
-	this->N_sv = this->Daux;
 
 	// initialize member variable imploc
 	this->imploc.resize(L_input);
