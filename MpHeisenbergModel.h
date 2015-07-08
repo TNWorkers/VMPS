@@ -103,8 +103,8 @@ private:
 
 template<size_t D> const std::array<string,1> HeisenbergModel<D>::maglabel{"M"};
 
-template<> const std::array<qarray<1>,2> HeisenbergModel<2>::qloc {qarray<1>{+1}, qarray<1>{-1}};
-template<> const std::array<qarray<1>,3> HeisenbergModel<3>::qloc {qarray<1>{+2}, qarray<1>{0}, qarray<1>{-2}};
+template<> const std::array<qarray<1>,2> HeisenbergModel<2>::qloc = {qarray<1>{+1}, qarray<1>{-1}};
+template<> const std::array<qarray<1>,3> HeisenbergModel<3>::qloc = {qarray<1>{+2}, qarray<1>{0}, qarray<1>{-2}};
 
 template<size_t D>
 SuperMatrix<double> HeisenbergModel<D>::
