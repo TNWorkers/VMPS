@@ -106,9 +106,10 @@ void precalc_blockStructure (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L
 //	Heff.W = W;
 	
 	unordered_map<std::array<size_t,2>, vector<std::array<size_t,4> > > lookup;
-	
+
+	// collapse(3)
 	#ifndef DMRG_DONT_USE_OPENMP
-	#pragma omp parallel for collapse(3)
+	#pragma omp parallel for
 	#endif
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)

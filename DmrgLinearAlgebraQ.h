@@ -85,7 +85,7 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 //		cout << "q=" << B.in(q) << ", " << B.out(q) << ", " << B.mid(q) << endl 
 //		<< B.block[q][0][0] << endl;
 //	}
-	
+
 	assert(B.dim == 1 and 
 	       B.block[0][0][0].rows() == 1 and
 	       B.block[0][0][0].cols() == 1 and

@@ -99,6 +99,7 @@ public:
 	MpoQ<2> SimpSimp (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
 	MpoQ<2> SsubSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
 	MpoQ<2> SimpSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
+	MpoQ<2> SimpSsubSimpSimp (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2, size_t loc3, SPINOP_LABEL SOP3, size_t loc4, SPINOP_LABEL SOP4);
 	///@}
 	
 private:
@@ -110,7 +111,7 @@ private:
 };
 
 template<>
-const std::array<qarray<2>,8> KondoModel<2>::q
+const std::array<qarray<2>,8> KondoModel<2>::q =
 {
 	// Mimp = +1
 	qarray<2>{0,+1},
@@ -125,7 +126,7 @@ const std::array<qarray<2>,8> KondoModel<2>::q
 };
 
 template<>
-const std::array<qarray<2>,12> KondoModel<3>::q
+const std::array<qarray<2>,12> KondoModel<3>::q =
 {
 	// Mimp = +2
 	qarray<2>{0,+2},
@@ -145,7 +146,7 @@ const std::array<qarray<2>,12> KondoModel<3>::q
 };
 
 template<>
-const std::array<qarray<2>,16> KondoModel<4>::q
+const std::array<qarray<2>,16> KondoModel<4>::q =
 {
 	// Mimp = +3
 	qarray<2>{0,+3},
@@ -609,6 +610,22 @@ SimpSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP
 	MatrixXd IdImp(qloc[loc2].size()/4, qloc[loc2].size()/4); IdImp.setIdentity();
 	Mout.setLocal({loc1, loc2}, {kroneckerProduct(SpinBase<D>::Scomp(SOP1),Id4), 
 	                             kroneckerProduct(IdImp,HubbardModel::Scomp(SOP2))}
+	             );
+	return Mout;
+}
+
+template<size_t D>
+MpoQ<2> KondoModel<D>::
+SimpSsubSimpSimp (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2, size_t loc3, SPINOP_LABEL SOP3, size_t loc4, SPINOP_LABEL SOP4)
+{
+	assert(loc1<L and loc2<L and loc3<L and loc4<L);
+	stringstream ss;
+	ss << SOP1 << "(" << loc1 << ")" << SOP2 << "(" << loc2 << ")" << SOP3 << "(" << loc3 << ")" << SOP4 << "(" << loc4 << ")";
+	MpoQ<2> Mout(L, locBasis(), {0,0}, KondoModel<D>::NMlabel, ss.str());
+	MatrixXd Id4(4,4); Id4.setIdentity();
+	MatrixXd IdImp(qloc[loc2].size()/4, qloc[loc2].size()/4); IdImp.setIdentity();
+	Mout.setLocal({loc1, loc2, loc3, loc4}, {kroneckerProduct(SpinBase<D>::Scomp(SOP1),Id4), 
+				kroneckerProduct(IdImp,HubbardModel::Scomp(SOP2)),kroneckerProduct(SpinBase<D>::Scomp(SOP3),Id4),kroneckerProduct(SpinBase<D>::Scomp(SOP4),Id4)}
 	             );
 	return Mout;
 }
