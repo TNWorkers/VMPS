@@ -853,16 +853,19 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 	if (TOOL == DMRG::BROOM::RDM)
 	{
 		// pre-calc rho
-		// collapse(2)
 		#ifndef DMRG_DONT_USE_OPENMP
+        #ifndef __INTEL_COMPILER
+        #pragma omp parallel for collapse(2)
+		#elif __INTEL_COMPILER
 		#pragma omp parallel for
 		#endif
+		#endif
 		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
-		for (size_t s2=0; s2<qloc[loc].size(); ++s2)
-		{
-			rhoArray[s1][s2] =  A[loc][s1].adjoint() * A[loc][s2];
-		}
-		
+			for (size_t s2=0; s2<qloc[loc].size(); ++s2)
+			{
+				rhoArray[s1][s2] =  A[loc][s1].adjoint() * A[loc][s2];
+			}
+
 		rhoNoiseArray = rhoArray;
 		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
 		for (size_t s2=0; s2<qloc[loc].size(); ++s2)
@@ -1082,9 +1085,12 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 	if (TOOL == DMRG::BROOM::RDM)
 	{
 		// pre-calc rho
-		//  collapse(2)
 		#ifndef DMRG_DONT_USE_OPENMP
+        #ifndef __INTEL_COMPILER
+        #pragma omp parallel for collapse(2)
+		#elif __INTEL_COMPILER
 		#pragma omp parallel for
+		#endif
 		#endif
 		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
 		for (size_t s2=0; s2<qloc[loc].size(); ++s2)
@@ -1345,11 +1351,15 @@ calc_noise (size_t loc, PivotMatrixQ<Nq,Scalar> *H, DMRG::DIRECTION::OPTION DIR,
 //	{
 //		cout << s1 << s2 << "\trho[s1][s2].dim=" << rho[s1][s2].dim << endl;
 //	}
-	// collapse(2)
+
 	// omp of the third loop leads to randomness in results (?)
-	#ifndef DMRG_DONT_USE_OPENMP
-	#pragma omp parallel for
-	#endif
+    #ifndef DMRG_DONT_USE_OPENMP
+    #ifndef __INTEL_COMPILER
+    #pragma omp parallel for collapse(2)
+    #elif __INTEL_COMPILER
+    #pragma omp parallel for
+    #endif
+    #endif
 	for (size_t s1=0; s1<qloc[loc].size(); ++s1)
 	for (size_t s2=0; s2<qloc[loc].size(); ++s2)
 	for (size_t q1=0; q1<dimB; ++q1)
