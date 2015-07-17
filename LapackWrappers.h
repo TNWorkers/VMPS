@@ -227,15 +227,39 @@ compute (const MatrixXd &A)
 	int Acols = A.cols();
 	int minA  = min(Arows,Acols);
 	
+//	R = A;
+//	int LWORK = 2*Acols;
+//	VectorXd WORK(LWORK);
+//	int INFO;
+//	VectorXd TAU(minA);
+//	
+//	dgeqrf_ (&Arows, &Acols, R.data(), &Arows, TAU.data(), WORK.data(), &LWORK, &INFO);
+//	Q = R;
+//	dorgqr_ (&Arows, &Acols, &minA, Q.data(), &Arows, TAU.data(), WORK.data(), &LWORK, &INFO);
+//	R = MatrixXd::Identity(Acols,Arows) * R.triangularView<Upper>();
+	
 	R = A;
-	int LWORK = 2*Acols;
-	VectorXd WORK(LWORK);
+	int LWORK = -1;
+	double * WORK = new double[1];
 	int INFO;
 	VectorXd TAU(minA);
 	
-	dgeqrf_ (&Arows, &Acols, R.data(), &Arows, TAU.data(), WORK.data(), &LWORK, &INFO);
+	dgeqrf_ (&Arows, &Acols, R.data(), &Arows, TAU.data(), WORK, &LWORK, &INFO);
+	LWORK = static_cast<int>(WORK[0]);
+	delete WORK;
+	WORK = new double[LWORK];
+	dgeqrf_ (&Arows, &Acols, R.data(), &Arows, TAU.data(), WORK, &LWORK, &INFO);
+	
 	Q = R;
-	dorgqr_ (&Arows, &Acols, &minA, Q.data(), &Arows, TAU.data(), WORK.data(), &LWORK, &INFO);
+	
+	LWORK = -1;
+	dorgqr_ (&Arows, &Acols, &minA, Q.data(), &Arows, TAU.data(), WORK, &LWORK, &INFO);
+	LWORK = static_cast<int>(WORK[0]);
+	delete WORK;
+	WORK = new double[LWORK];
+	dorgqr_ (&Arows, &Acols, &minA, Q.data(), &Arows, TAU.data(), WORK, &LWORK, &INFO);
+	delete WORK;
+	
 	R = MatrixXd::Identity(Acols,Arows) * R.triangularView<Upper>();
 	
 	if (Acols > Arows) {Q.rightCols(Acols-Arows).setZero();}
@@ -249,15 +273,39 @@ compute (const MatrixXcd &A)
 	int Acols = A.cols();
 	int minA  = min(Arows,Acols);
 	
+//	R = A;
+//	int LWORK = 2*Acols;
+//	VectorXcd WORK(LWORK);
+//	int INFO;
+//	VectorXcd TAU(minA);
+//	
+//	zgeqrf_ (&Arows, &Acols, R.data(), &Arows, TAU.data(), WORK.data(), &LWORK, &INFO);
+//	Q = R;
+//	zungqr_ (&Arows, &minA, &minA, Q.data(), &Arows, TAU.data(), WORK.data(), &LWORK, &INFO);
+//	R = MatrixXcd::Identity(Acols,Arows) * R.triangularView<Upper>();
+	
 	R = A;
-	int LWORK = 2*Acols;
-	VectorXcd WORK(LWORK);
+	int LWORK = -1;
+	complex<double> * WORK = new complex<double>[2];
 	int INFO;
 	VectorXcd TAU(minA);
 	
-	zgeqrf_ (&Arows, &Acols, R.data(), &Arows, TAU.data(), WORK.data(), &LWORK, &INFO);
+	zgeqrf_ (&Arows, &Acols, R.data(), &Arows, TAU.data(), WORK, &LWORK, &INFO);
+	LWORK = static_cast<int>(WORK[0].real());
+	delete WORK;
+	WORK = new complex<double>[LWORK];
+	zgeqrf_ (&Arows, &Acols, R.data(), &Arows, TAU.data(), WORK, &LWORK, &INFO);
+	
 	Q = R;
-	zungqr_ (&Arows, &minA, &minA, Q.data(), &Arows, TAU.data(), WORK.data(), &LWORK, &INFO);
+	
+	LWORK = -1;
+	zungqr_ (&Arows, &minA, &minA, Q.data(), &Arows, TAU.data(), WORK, &LWORK, &INFO);
+	LWORK = static_cast<int>(WORK[0].real());
+	delete WORK;
+	WORK = new complex<double>[LWORK];
+	zungqr_ (&Arows, &minA, &minA, Q.data(), &Arows, TAU.data(), WORK, &LWORK, &INFO);
+	delete WORK;
+	
 	R = MatrixXcd::Identity(Acols,Arows) * R.triangularView<Upper>();
 	
 	if (Acols > Arows) {Q.rightCols(Acols-Arows).setZero();}

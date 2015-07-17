@@ -25,7 +25,7 @@ public:
 	void edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> Qtot_input, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND,
 	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST,
-	                double tol_eigval_input=1e-7, double tol_state_input=1e-5, 
+	                double tol_eigval_input=1e-7, double tol_state_input=1e-6, 
 	                size_t Dinit=5, size_t Dlimit=500, 
 	                size_t max_halfsweeps=42, size_t min_halfsweeps=6);
 	
@@ -240,7 +240,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 		{
 			Stopwatch Aion;
 			double avgHsq = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state)); 
-			err_state = fabs(avgHsq-pow(Vout.energy,2));
+			err_state = fabs(avgHsq-pow(Vout.energy,2))/this->N_sites;
 			if (CHOSEN_VERBOSITY>=2)
 			{
 				lout << Aion.info("<H^2>") << endl;

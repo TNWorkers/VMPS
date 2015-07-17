@@ -579,22 +579,28 @@ scale (double factor, double offset)
 	= f \cdot H\f$*/
 	
 	// apply to Gvec
-	for (size_t l=0; l<N_sites-1; ++l)
+	if (factor != 1.)
 	{
-		size_t a1 = (l==0)? 0 : Daux-1;
-		for (size_t a2=0; a2<Daux-1; ++a2)
+		for (size_t l=0; l<N_sites-1; ++l)
 		{
-			Gvec[l](a1,a2) *= factor;
+			size_t a1 = (l==0)? 0 : Daux-1;
+			for (size_t a2=0; a2<Daux-1; ++a2)
+			{
+				Gvec[l](a1,a2) *= factor;
+			}
 		}
+		Gvec[N_sites-1](Daux-1,0) *= factor;
 	}
-	Gvec[N_sites-1](Daux-1,0) *= factor;
 	
-	for (size_t l=0; l<N_sites; ++l)
+	if (offset != 0.)
 	{
-		size_t a1 = (l==0)? 0 : Daux-1;
-		MatrixType Id(Gvec[l](a1,0).rows(), Gvec[l](a1,0).cols());
-		Id.setIdentity();
-		Gvec[l](a1,0) += offset/N_sites * Id;
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			size_t a1 = (l==0)? 0 : Daux-1;
+			MatrixType Id(Gvec[l](a1,0).rows(), Gvec[l](a1,0).cols());
+			Id.setIdentity();
+			Gvec[l](a1,0) += offset/N_sites * Id;
+		}
 	}
 	
 	// calc W from Gvec
@@ -633,7 +639,7 @@ scale (double factor, double offset)
 		}
 	}
 	
-	if (GOT_SQUARE == true)
+	if (GOT_SQUARE == true and (factor!=1. or offset!=0.))
 	{
 		// apply to GvecSq
 		for (size_t l=0; l<N_sites; ++l)

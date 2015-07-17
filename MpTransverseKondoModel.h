@@ -13,7 +13,6 @@ H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} - J \sum_{i \in I} \mathb
 The set of impurities \f$I\f$ is completely free to choose.
 \note \f$J<0\f$ : antiferromagnetic
 \note The local magnetic fields act on the impurities only.*/
-template<size_t D=2>
 class TransverseKondoModel : public MpoQ<1,double>
 {
 public:
@@ -24,10 +23,11 @@ public:
 	\param imploc_input : list with locations of the impurities
 	\param Bzloc_input : list with locations of the local magnetic fields in z-direction
 	\param Bxloc_input : list with locations of the local magnetic fields in x-direction
-	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$*/
+	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
+	\param D_input : \f$2S+1\f$ (impurity spin)*/
 	TransverseKondoModel (size_t L_input, double J_input, 
 	                      initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input={}, initializer_list<double> Bxloc_input={}, 
-	                      bool CALC_SQUARE=true);
+	                      bool CALC_SQUARE=true, size_t D_input=2);
 	
 	/**Constructs a Kondo Impurity Model (aka a diluted Kondo Model) using vectors for the set of impurities.
 	\param L_input : chain length
@@ -35,16 +35,28 @@ public:
 	\param imploc_input : list with locations of the impurities
 	\param Bzloc_input : list with locations of the local magnetic fields in z-direction
 	\param Bxloc_input : list with locations of the local magnetic fields in x-direction
-	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$*/
+	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
+	\param D_input : \f$2S+1\f$ (impurity spin)*/
 	TransverseKondoModel (size_t L_input, double J_input, 
 	                      vector<size_t> imploc_input, vector<double> Bzloc_input, vector<double> Bxloc_input, 
-	                      bool CALC_SQUARE=true);
+	                      bool CALC_SQUARE=true, size_t D_input=2);
 	
 	/**Labels the conserved quantum numbers as "N", "M".*/
 	static const std::array<string,1> Nlabel;
 	
-	static const std::array<qarray<1>,4>   qsub;
-	static const std::array<qarray<1>,4*D> qimp;
+	static const std::array<qarray<1>,4> qsub;
+	static const vector<qarray<1> > qimp (size_t D)
+	{
+		vector<qarray<1> > vout;
+		for (int i=0; i<D; ++i)
+		{
+			vout.push_back(qarray<1>{0});
+			vout.push_back(qarray<1>{1});
+			vout.push_back(qarray<1>{1});
+			vout.push_back(qarray<1>{2});
+		}
+		return vout;
+	};
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
@@ -65,39 +77,39 @@ public:
 	
 private:
 	
-	double J, Bz;
+	double J=-1.;
+	size_t D=2;
 	
 	vector<double> Bzloc, Bxloc;
 	vector<size_t> imploc;
 };
 
-template<size_t D> const std::array<string,1> TransverseKondoModel<D>::Nlabel{"N"};
+const std::array<string,1> TransverseKondoModel::Nlabel{"N"};
 
-template<size_t D>
-const std::array<qarray<1>,4> TransverseKondoModel<D>::qsub
+
+const std::array<qarray<1>,4> TransverseKondoModel::qsub
 {
 	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2}
 };
 
-template<>
-const std::array<qarray<1>,8> TransverseKondoModel<2>::qimp
-{
-	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2},
-	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2}
-};
+//template<>
+//const std::array<qarray<1>,8> TransverseKondoModel<2>::qimp
+//{
+//	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2},
+//	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2}
+//};
 
-template<>
-const std::array<qarray<1>,12> TransverseKondoModel<3>::qimp
-{
-	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2},
-	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2},
-	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2}
-};
+//template<>
+//const std::array<qarray<1>,12> TransverseKondoModel<3>::qimp
+//{
+//	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2},
+//	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2},
+//	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2}
+//};
 
-template<size_t D>
-TransverseKondoModel<D>::
-TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, vector<double> Bxloc_input, bool CALC_SQUARE)
-:MpoQ<1,double>(), J(J_input), imploc(imploc_input)
+TransverseKondoModel::
+TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, vector<double> Bxloc_input, bool CALC_SQUARE, size_t D_input)
+:MpoQ<1,double>(), J(J_input), imploc(imploc_input), D(D_input)
 {
 	// if Bzloc_input empty, set it to zero
 	if (Bzloc_input.size() == 0)
@@ -168,13 +180,13 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 		// got an impurity
 		if (it!=imploc.end())
 		{
-			this->qloc[l] = vector<qarray<1> >(begin(qimp),end(qimp));
+			this->qloc[l] = qimp(D);
 			
 			size_t i = it-imploc.begin();
 			if (l==0)
 			{
 				G[l].setRowVector(6,8);
-				G[l] = KondoModel<D>::Generator(J,Bzloc[i],Bxloc[i]).row(5);
+				G[l] = KondoModel::Generator(J,Bzloc[i],Bxloc[i],-1.,0.,0.,D).row(5);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(6*6,8);
@@ -184,7 +196,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,8);
-				G[l] = KondoModel<D>::Generator(J,Bzloc[i],Bxloc[i]).col(0);
+				G[l] = KondoModel::Generator(J,Bzloc[i],Bxloc[i],-1.,0.,0.,D).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(6*6,8);
@@ -194,7 +206,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else
 			{
 				G[l].setMatrix(6,8);
-				G[l] = KondoModel<D>::Generator(J,Bzloc[i],Bxloc[i]);
+				G[l] = KondoModel::Generator(J,Bzloc[i],Bxloc[i],-1.,0.,0.,D);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(6*6,8);
@@ -253,14 +265,12 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 	}
 }
 
-template<size_t D>
-TransverseKondoModel<D>::
-TransverseKondoModel (size_t L_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input, initializer_list<double> Bxloc_input, bool CALC_SQUARE)
-:TransverseKondoModel(L_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), vector<double>(begin(Bzloc_input),end(Bzloc_input)), vector<double>(begin(Bxloc_input),end(Bxloc_input)), CALC_SQUARE)
+TransverseKondoModel::
+TransverseKondoModel (size_t L_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input, initializer_list<double> Bxloc_input, bool CALC_SQUARE, size_t D_input)
+:TransverseKondoModel(L_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), vector<double>(begin(Bzloc_input),end(Bzloc_input)), vector<double>(begin(Bxloc_input),end(Bxloc_input)), CALC_SQUARE, D_input)
 {}
 
-template<size_t D>
-MpoQ<1> TransverseKondoModel<D>::
+MpoQ<1> TransverseKondoModel::
 Simp (size_t L, size_t loc, SPINOP_LABEL Sa)
 {
 	assert(loc<L);
@@ -268,12 +278,11 @@ Simp (size_t L, size_t loc, SPINOP_LABEL Sa)
 	ss << Sa << "Imp(" << loc << ")";
 	MpoQ<1> Mout(L, locBasis(), {0}, Nlabel, ss.str());
 	MatrixXd Id4(4,4); Id4.setIdentity();
-	Mout.setLocal(loc, kroneckerProduct(SpinBase<D>::Scomp(Sa),Id4));
+	Mout.setLocal(loc, kroneckerProduct(SpinBase::Scomp(Sa,D),Id4));
 	return Mout;
 }
 
-template<size_t D>
-MpoQ<1> TransverseKondoModel<D>::
+MpoQ<1> TransverseKondoModel::
 Ssub (size_t L, size_t loc, SPINOP_LABEL Sa)
 {
 	assert(loc<L);
@@ -285,15 +294,15 @@ Ssub (size_t L, size_t loc, SPINOP_LABEL Sa)
 	
 	if (Sa == SX)
 	{
-		Mout.setLocal(loc, kroneckerProduct(IdImp, HubbardModel::Sx));
+		Mout.setLocal(loc, kroneckerProduct(IdImp, FermionBase::Sx));
 	}
 	else if (Sa == iSY)
 	{
-		Mout.setLocal(loc, kroneckerProduct(IdImp,HubbardModel::iSy));
+		Mout.setLocal(loc, kroneckerProduct(IdImp, FermionBase::iSy));
 	}
 	else if (Sa == SZ)
 	{
-		Mout.setLocal(loc, kroneckerProduct(IdImp, HubbardModel::Sz));
+		Mout.setLocal(loc, kroneckerProduct(IdImp, FermionBase::Sz));
 	}
 	return Mout;
 }

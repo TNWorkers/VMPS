@@ -210,24 +210,26 @@ void HxV (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scala
 	}
 }
 
-/**Performs a Chebyshev iteration step \f$\left|\Psi_{out}\right> = 2 \cdot H \left|\Psi_{in,1}\right> - \left|\Psi_{in,2}\right> \f$.
+/**Performs an orthogonal polynomial iteration step \f$\left|\Psi_{out}\right> = \cdot H \left|\Psi_{in,1}\right> - B \left|\Psi_{in,2}\right>\f$ as needed in the polynomial recursion relation \f$P_n = (C_n x - A_n) P_{n-1} - B_n P_{n-2}\f$.
+\warning The Hamiltonian is assumed to be rescaled by \p C_n and \p A_n already.
 \param H : input Hamiltonian
 \param Vin1 : input MpsQ \f$\left|T_{n-1}\right>\f$
+\param polyB : the coefficient before the subtracted vector
 \param Vin2 : input MpsQ \f$\left|T_{n-2}\right>\f$
 \param Vout : output MpsQ \f$\left|T_{n}\right>\f$
 \param VERBOSITY : verbosity level*/
 template<size_t Nq, typename MpoScalar, typename Scalar>
-void chebIter (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout, 
-               DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
+void polyIter (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout, 
+               DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	Stopwatch Chronos;
 	MpsQCompressor<Nq,Scalar,MpoScalar> Compadre(VERBOSITY);
-	Compadre.chebCompress(H,Vin1,Vin2, Vout, Vin1.calc_Dmax());
+	Compadre.polyCompress(H,Vin1,polyB,Vin2, Vout, Vin1.calc_Dmax());
 	
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
 	{
 		lout << Compadre.info() << endl;
-		lout << Chronos.info("chebIter") << endl;
+		lout << Chronos.info(make_string("polyIter B=",polyB)) << endl;
 		lout << "Vout: " << Vout.info() << endl << endl;
 	}
 }

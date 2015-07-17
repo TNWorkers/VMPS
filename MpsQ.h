@@ -621,11 +621,11 @@ dynamicResize (DMRG::RESIZE::OPTION HOW_TO_RESIZE, size_t Dmax)
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		for (size_t q=0; q<A[l][s].dim; ++q)
 		{
-//			size_t Noldrows = A[l][s].block[q].rows();
-//			size_t Noldcols = A[l][s].block[q].cols();
+			size_t Noldrows = A[l][s].block[q].rows();
+			size_t Noldcols = A[l][s].block[q].cols();
 //			A[l][s].block[q].resize(min(Noldrows,Dmax), min(Noldcols,Dmax));
-			size_t Nnewrows = Dmax;
-			size_t Nnewcols = Dmax;
+			size_t Nnewrows = min(Noldrows,Dmax);
+			size_t Nnewcols = min(Noldcols,Dmax);
 			if (l==0)                    {Nnewrows=1;}
 			else if (l==this->N_sites-1) {Nnewcols=1;}
 			A[l][s].block[q].resize(Nnewrows,Nnewcols);

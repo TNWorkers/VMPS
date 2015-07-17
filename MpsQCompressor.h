@@ -64,10 +64,11 @@ public:
 	                  size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=100, size_t min_halfsweeps=1, 
 	                  DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RANDOM);
 	
-	/**Compresses a Chebyshev iteration step \f$V_{out} \approx 2H \cdot V_{in1} - V_{in2}\f$. Needs to calculate \f$\left<V_{in1}\right|H^2\left|V_{in1}\right>\f$, \f$\left<V_{in2}\right|H\left|V_{in1}\right>\f$ and \f$\big<V_{in2}\big|V_{in2}\big>\f$. Works optimally with OpenMP and (at least) 3 threads, as the last overlap is cheap to do in the mixed-canonical representation. If convergence is not reached after 2 half-sweeps, the bond dimension of \p Vout is increased and it is set to random.
-	\warning The Hamiltonian has to be rescaled by 2 already.
+	/**Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. Needs to calculate \f$\left<V_{in1}\right|H^2\left|V_{in1}\right>\f$, \f$\left<V_{in2}\right|H\left|V_{in1}\right>\f$ and \f$\big<V_{in2}\big|V_{in2}\big>\f$. Works optimally with OpenMP and (at least) 3 threads, as the last overlap is cheap to do in the mixed-canonical representation. If convergence is not reached after 4 half-sweeps, the bond dimension of \p Vout is increased and it is set to random.
+	\warning The Hamiltonian has to be rescaled by \p C_n and \p A_n already.
 	\param[in] H : Hamiltonian (an MpsQ with MpoQ::Qtarget() = qvacuum<Nq>()) rescaled by 2
 	\param[in] Vin1 : input state to be multiplied
+	\param[in] polyB : the coefficient before the subtracted vector
 	\param[in] Vin2 : input state to be subtracted
 	\param[out] Vout : compressed output state
 	\param[in] Dcutoff_input : matrix size cutoff per site and subspace for \p Vout
@@ -82,8 +83,8 @@ public:
 		- DMRG::COMPRESSION::RHS_SVD : not implemented
 	*/
 	template<typename MpOperator>
-	void chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout, 
-	                   size_t Dcutoff_input, double tol=1e-4, size_t max_halfsweeps=16, size_t min_halfsweeps=1, 
+	void polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout, 
+	                   size_t Dcutoff_input, double tol=1e-4, size_t max_halfsweeps=100, size_t min_halfsweeps=1, 
 	                   DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RHS);
 	///\}
 	
@@ -114,7 +115,7 @@ private:
 	// for |Vout> ≈ H*|Vin>
 	vector<PivotMatrixQ<Nq,Scalar,MpoScalar> > Heff;
 	template<typename MpOperator>
-	void prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, DMRG::BROOM::OPTION TOOL = DMRG::BROOM::QR, bool RANDOMIZE=true);
+	void prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, bool RANDOMIZE=true);
 	template<typename MpOperator>
 	void optimizationStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout);
 	template<typename MpOperator>
@@ -226,8 +227,7 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 	    START == DMRG::COMPRESSION::RHS)
 	{
 		Vout = Vin;
-//		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
-		Vout.innerResize(Dcutoff);
+		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
 		if (START == DMRG::COMPRESSION::RANDOM)
 		{
 			RANDOMIZE = true;
@@ -416,6 +416,7 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 	N_halfsweeps = 0;
 	N_sweepsteps = 0;
 	Dcutoff = Dcutoff_new = Dcutoff_input;
+	bool RANDOMIZE = false;
 	
 	if (START == DMRG::COMPRESSION::RHS)
 	{
@@ -424,9 +425,12 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 	else if (START == DMRG::COMPRESSION::RANDOM)
 	{
 		Vout = Vin;
-//		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
-		Vout.innerResize(Dcutoff);
-		Vout.setRandom();
+		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
+		if (START == DMRG::COMPRESSION::RANDOM)
+		{
+			RANDOMIZE = true;
+			//Vout.setRandom();
+		}
 	}
 	else if (START == DMRG::COMPRESSION::RHS_SVD)
 	{
@@ -469,7 +473,7 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 		#pragma omp section
 		#endif
 		{
-			prepSweep(H,Vin,Vout);
+			prepSweep(H,Vin,Vout,RANDOMIZE);
 		}
 	}
 	sqdist = 1.;
@@ -548,7 +552,7 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 template<size_t Nq, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
-prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, DMRG::BROOM::OPTION TOOL, bool RANDOMIZE)
+prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, bool RANDOMIZE)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
 	
@@ -562,7 +566,7 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vou
 				if (l>0) {Vout.setRandom(l-1);}
 			}
 			Stopwatch Chronos;
-			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, TOOL);
+			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
 			build_RW(l-1,Vout,H,Vin);
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
@@ -577,7 +581,7 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vou
 				if (l<N_sites-1) {Vout.setRandom(l+1);}
 			}
 			Stopwatch Chronos;
-			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, TOOL);
+			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
 			build_LW(l+1,Vout,H,Vin);
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
@@ -701,7 +705,7 @@ energyTruncationStep (MpsQ<Nq,Scalar> &V, size_t dimK)
 template<size_t Nq, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
-chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps, DMRG::COMPRESSION::INIT START)
+polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps, DMRG::COMPRESSION::INIT START)
 {
 	N_sites = Vin1.length();
 	Stopwatch Chronos;
@@ -717,8 +721,7 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 	else if (START == DMRG::COMPRESSION::RANDOM)
 	{
 		Vout = Vin1;
-//		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
-		Vout.innerResize(Dcutoff);
+		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
 		Vout.setRandom();
 	}
 //	else if (START == DMRG::COMPRESSION::RHS_SVD)
@@ -795,7 +798,7 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 			{
 				qarray2<Nq> quple = {Atmp[s].in[q], Atmp[s].out[q]};
 				auto it = Vout.A[pivot][s].dict.find(quple);
-				Vout.A[pivot][s].block[it->second] -= Atmp[s].block[q];
+				Vout.A[pivot][s].block[it->second] -= polyB * Atmp[s].block[q];
 			}
 			if (j != halfSweepRange)
 			{
@@ -806,7 +809,7 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-		sqdist = abs(sqnormV1+sqnormV2-Vout.squaredNorm()-2.*overlapV12);
+		sqdist = abs(sqnormV1 - Vout.squaredNorm() + polyB*polyB*sqnormV2 - 2.*polyB*overlapV12);
 		assert(!std::isnan(sqdist));
 		
 		if (CHOSEN_VERBOSITY>=2)
@@ -848,12 +851,6 @@ chebCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Sc
 		{
 			sweepStep(H,Vin1,Vin2,Vout);
 		}
-	}
-	
-	// mowing
-	if (Vout.N_mow > 0)
-	{
-		mowSweeps(H,Vout);
 	}
 }
 
