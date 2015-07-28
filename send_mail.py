@@ -6,7 +6,10 @@ from email.mime.text import MIMEText
 import os, sys
 from subprocess import check_output
 
-content = check_output(['git','log','-2'])
+if len(sys.argv) == 1:
+	content = check_output(['git','log','-2'])
+else:
+	content = check_output(['git','--git-dir',sys.argv[1]+'/.git','log','-2'])
 msg = MIMEText(content,'plain','utf-8')
 
 sender = 'git'
