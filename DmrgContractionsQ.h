@@ -47,10 +47,16 @@ void contract_L (const Tripod<Nq,MatrixType> &Lold,
 				
 				if (Lold.block[qL][a1][0].rows() != 0)
 				{
-					MatrixType Mtmp = iW.value() *
-					                  (Abra[s1].block[qAbra].adjoint() *
-					                   Lold.block[qL][a1][0] * 
-					                   Aket[s2].block[qAket]);
+//					MatrixType Mtmp = iW.value() *
+//					                  (Abra[s1].block[qAbra].adjoint() *
+//					                   Lold.block[qL][a1][0] * 
+//					                   Aket[s2].block[qAket]);
+					MatrixType Mtmp;
+					optimal_multiply(iW.value(),
+					                 Abra[s1].block[qAbra].adjoint(),
+					                 Lold.block[qL][a1][0],
+					                 Aket[s2].block[qAket],
+					                 Mtmp);
 					
 					auto it = Lnew.dict.find(quple);
 					if (it != Lnew.dict.end())
@@ -123,10 +129,16 @@ void contract_R (const Tripod<Nq,MatrixType> &Rold,
 				
 				if (Rold.block[qR][a2][0].rows() != 0)
 				{
-					MatrixType Mtmp = iW.value() *
-					                  (Aket[s2].block[q2->second] * 
-					                   Rold.block[qR][a2][0] * 
-					                   Abra[s1].block[q1->second].adjoint());
+//					MatrixType Mtmp = iW.value() *
+//					                  (Aket[s2].block[q2->second] * 
+//					                   Rold.block[qR][a2][0] * 
+//					                   Abra[s1].block[q1->second].adjoint());
+					MatrixType Mtmp;
+					optimal_multiply(iW.value(),
+					                 Aket[s2].block[q2->second],
+					                 Rold.block[qR][a2][0],
+					                 Abra[s1].block[q1->second].adjoint(),
+					                 Mtmp);
 					
 					auto it = Rnew.dict.find(quple);
 					if (it != Rnew.dict.end())
@@ -440,19 +452,24 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 				size_t bc = iWbot.col();
 				size_t tr = iWtop.row();
 				size_t tc = iWtop.col();
+				MpoScalar Wfactor = iWbot.value() * iWtop.value();
 				
 				if (Lold.block[qL][br][tr].rows() != 0)
 				{
-					MatrixType Mtmp = (iWbot.value() * iWtop.value()) * 
-					                  (Abra[s1].block[qAbra].adjoint() *
-					                   Lold.block[qL][br][tr] * 
-					                   Aket[s3].block[qAket]);
+//					MatrixType Mtmp = (iWbot.value() * iWtop.value()) * 
+//					                  (Abra[s1].block[qAbra].adjoint() *
+//					                   Lold.block[qL][br][tr] * 
+//					                   Aket[s3].block[qAket]);
+					MatrixType Mtmp;
+					optimal_multiply(Wfactor,
+					                 Abra[s1].block[qAbra].adjoint(),
+					                 Lold.block[qL][br][tr],
+					                 Aket[s3].block[qAket].adjoint(),
+					                 Mtmp);
 					
 					auto it = Lnew.dict.find(quple);
-//					cout << "searching: " << quple[0] << "\t" << quple[1] << "\t" << quple[2] << "\t" << quple[3] << endl;
 					if (it != Lnew.dict.end())
 					{
-//						cout << "found, adding!" << endl;
 						if (Lnew.block[it->second][bc][tc].rows() != Mtmp.rows() or 
 							Lnew.block[it->second][bc][tc].cols() != Mtmp.cols())
 						{
@@ -465,7 +482,6 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 					}
 					else
 					{
-//						cout << "not found, pushing!" << endl;
 						size_t bcols = Wbot[s1][s2].cols();
 						size_t tcols = Wtop[s2][s3].cols();
 						boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[bcols][tcols]);
@@ -562,9 +578,15 @@ void contract_C (vector<qarray<Nq> > qloc,
 					{
 						if (C[s].block[qC][iW.row()][0].rows() != 0)
 						{
-							MatrixType Mtmp = iW.value() * (Abra[s].block[qU->second].adjoint() * 
-							                                C[s].block[qC][iW.row()][0] * 
-							                                Aket[s2].block[qA->second]);
+//							MatrixType Mtmp = iW.value() * (Abra[s].block[qU->second].adjoint() * 
+//							                                C[s].block[qC][iW.row()][0] * 
+//							                                Aket[s2].block[qA->second]);
+							MatrixType Mtmp;
+							optimal_multiply(iW.value(),
+							                 Abra[s].block[qU->second].adjoint(),
+							                 C[s].block[qC][iW.row()][0],
+							                 Aket[s2].block[qA->second],
+							                 Mtmp);
 							
 							qarray3<Nq> cmpC = {Abra[s].out[qU->second], Aket[s2].out[qA->second], C[s].mid(qC)+qloc[s1]-qloc[s2]};
 							auto qCnext = Cnext[s1].dict.find(cmpC);

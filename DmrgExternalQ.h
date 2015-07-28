@@ -64,4 +64,103 @@ struct hash<std::array<size_t,2> >
 };
 }
 
+template<typename MatrixTypeA, typename MatrixTypeB>
+size_t mult_cost (const MatrixTypeA &A, const MatrixTypeB &B)
+{
+	return A.rows()*A.cols()*B.cols();
+}
+
+template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC, typename MatrixTypeD>
+vector<size_t> mult_cost (const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C, const MatrixTypeD &D)
+{
+	vector<size_t> out(5);
+	// (AB)(CD)
+	out[0] = mult_cost(A,B) + mult_cost(C,D) + A.rows()*B.cols()*C.cols();
+	
+	// ((AB)C)D
+	out[1] = mult_cost(A,B) + A.rows()*C.rows()*C.cols() + A.rows()*D.rows()*D.cols();
+	
+	// (A(BC))D
+	out[2] = mult_cost(B,C) + A.rows()*A.cols()*C.cols() + A.rows()*D.rows()*D.cols();
+	
+	// A((BC)D)
+	out[3] = mult_cost(B,C) + B.rows()*D.rows()*D.cols() + A.rows()*A.cols()*D.cols();
+	
+	// A(B(CD))
+	out[4] = mult_cost(C,D) + B.rows()*B.cols()*D.cols() + A.rows()*A.cols()*D.cols();
+	return out;
+}
+
+template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC>
+vector<size_t> mult_cost (const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C)
+{
+	vector<size_t> out(2);
+	// (AB)C
+	out[0] = mult_cost(A,B) + A.rows()*C.rows()*C.cols();
+	
+	// A(BC)
+	out[1] = mult_cost(B,C) + A.rows()*A.cols()*C.cols();
+	
+	return out;
+}
+
+template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC, typename MatrixTypeD, typename MatrixTypeR, typename Scalar>
+void optimal_multiply (Scalar alpha, const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C, const MatrixTypeD &D, 
+                       MatrixTypeR &result)
+{
+	vector<size_t> cost(5);
+	cost = mult_cost(A,B,C,D);
+	size_t opt_mult = min_element(cost.begin(),cost.end())- cost.begin();
+	
+	if (opt_mult == 0)
+	{
+		MatrixTypeR Mtmp1 = A * B;
+		MatrixTypeR Mtmp2 = C * D;
+		result = alpha * Mtmp1 * Mtmp2;
+	}
+	else if (opt_mult == 1)
+	{
+		MatrixTypeR Mtmp = A * B;
+		Mtmp = Mtmp * C;
+		result = alpha * Mtmp * D;
+	}
+	else if (opt_mult == 2)
+	{
+		MatrixTypeR Mtmp = B * C;
+		Mtmp = A * Mtmp;
+		result = alpha * Mtmp * D;
+	}
+	else if (opt_mult == 3)
+	{
+		MatrixTypeR Mtmp = B * C;
+		Mtmp = Mtmp * D;
+		result = alpha * A * Mtmp;
+	}
+	else if (opt_mult == 4)
+	{
+		MatrixTypeR Mtmp = C * D;
+		Mtmp = B * Mtmp;
+		result = alpha * A * Mtmp;
+	}
+}
+
+template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC, typename MatrixTypeR, typename Scalar>
+void optimal_multiply (Scalar alpha, const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C, MatrixTypeR &result)
+{
+	vector<size_t> cost(2);
+	cost = mult_cost(A,B,C);
+	size_t opt_mult = min_element(cost.begin(),cost.end())- cost.begin();
+	
+	if (opt_mult == 0)
+	{
+		MatrixTypeR Mtmp = A * B;
+		result.noalias() = alpha * Mtmp * C;
+	}
+	else if (opt_mult == 1)
+	{
+		MatrixTypeR Mtmp = B * C;
+		result.noalias() = alpha * A * Mtmp;
+	}
+}
+
 #endif

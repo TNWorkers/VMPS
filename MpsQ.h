@@ -172,22 +172,28 @@ public:
 	\param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc+1
 	\param BROOM : choice of decomposition
 	\param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD*/
-	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Nq,Scalar> *H = NULL);
+	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Nq,Scalar> *H = NULL, bool DISCARD_V=false);
+	
 	/**Performs a sweep step to the left.
 	\param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1
 	\param BROOM : choice of decomposition
 	\param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD*/
-	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Nq,Scalar> *H = NULL);
+	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Nq,Scalar> *H = NULL, bool DISCARD_U=false);
+	
+	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<Nq,MatrixType> > > &Apair);
 	///\}
 	
 	///\{
 	/**Returns the target quantum number.*/
 	inline qarray<Nq> Qtarget() const {return Qtot;};
+	
 	/**Returns the local basis.*/
 	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
+	
 	/**Const reference to the A-tensor at site \p loc.*/
 	const vector<Biped<Nq,MatrixType> > &A_at (size_t loc) const {return A[loc];};
+	
 	/**Returns the pivot position.*/
 	inline int get_pivot() const {return this->pivot;};
 	///\}
@@ -839,7 +845,7 @@ press_rdm (size_t loc, vector<vector<Biped<Nq,MatrixType> > > rhoArray, qarray<N
 
 template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
-leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
+leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H, bool DISCARD_U)
 {
 	vector<vector<Biped<Nq,MatrixType> > > rhoArray, rhoNoiseArray;
 	rhoArray.resize(qloc[loc].size());
@@ -956,7 +962,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 			{
 				Nret = (Jack.singularValues().array() > this->eps_svd).count();
 			}
-			Nret = min(max(Nret,2ul),static_cast<size_t>(Jack.singularValues().rows()));
+			Nret = min(max(Nret,1ul),static_cast<size_t>(Jack.singularValues().rows()));
 			Nret = min(Nret, this->N_sv);
 			truncWeightSub(qin) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
 			
@@ -1001,7 +1007,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 			Eugen.compute(rho);
 			
 			Nret = (Eugen.eigenvalues().array() > this->eps_rdm).count();
-			Nret = min(max(Nret,2ul),static_cast<size_t>(Eugen.eigenvalues().rows()));
+			Nret = min(max(Nret,1ul),static_cast<size_t>(Eugen.eigenvalues().rows()));
 			truncWeightSub(qin) = Eugen.eigenvalues().head(rho.rows()-Nret).sum();
 			
 			// calculate entropy
@@ -1033,7 +1039,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 		}
 		
 		// update A[loc-1]
-		if (loc != 0)
+		if (loc != 0 and DISCARD_U == false)
 		{
 			for (size_t s=0; s<qloc[loc-1].size(); ++s)
 			for (size_t q=0; q<A[loc-1][s].dim; ++q)
@@ -1071,7 +1077,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 
 template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
-rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
+rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H, bool DISCARD_V)
 {
 	vector<vector<Biped<Nq,MatrixType> > > rhoArray, rhoNoiseArray;
 	rhoArray.resize(qloc[loc].size());
@@ -1189,7 +1195,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 			{
 				Nret = (Jack.singularValues().array() > this->eps_svd).count();
 			}
-			Nret = min(max(Nret,2ul),static_cast<size_t>(Jack.singularValues().rows()));
+			Nret = min(max(Nret,1ul),static_cast<size_t>(Jack.singularValues().rows()));
 			Nret = min(Nret, this->N_sv);
 			truncWeightSub(qout) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
 			
@@ -1208,29 +1214,6 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 			Qmatrix = Quirinus.householderQ() * MatrixType::Identity(Aclump.rows(),Aclump.cols());
 			Rmatrix = MatrixType::Identity(Aclump.cols(),Aclump.rows()) * Quirinus.matrixQR().template triangularView<Upper>();
 			#endif
-			
-//			cout << outset[loc][qout] << " Eigen : " << "\tQ:" << Qmatrix.norm() << "\tR:" << Rmatrix.norm() << "\tA:" << Aclump.norm() << endl;
-//			cout << outset[loc][qout] << " Lapack: " << "\tQ:" << Qmatrix_.norm() << "\tR:" << Rmatrix_.norm() << "\tA:" << Aclump.norm() << endl;
-//			cout << "diffnorms: " << (Qmatrix-Qmatrix_).norm() << "\t" << (Rmatrix-Rmatrix_).norm() << endl;
-			
-//			assert(!std::isnan(Qmatrix.norm()));
-			
-//			if (std::isnan(Qmatrix.norm()))
-//			{
-//				ofstream f("Aclump.dat");
-//				f << Aclump << endl;
-//				f.close();
-//				assert(!std::isnan(Qmatrix.norm()));
-////				cout << "Quirinus.matrixQR().norm()=" << Quirinus.matrixQR().norm() << endl;
-////				
-////				LapackQR<Scalar> Quirinus_; // QR
-////				Quirinus_.compute(Aclump);
-////				Qmatrix = Quirinus_.Qmatrix();
-////				Rmatrix = Quirinus_.Rmatrix();
-////				
-////				cout << outset[loc][qout] << " Eigen reset: " << "\tQ:" << Qmatrix.norm() << "\tR:" << Rmatrix.norm() << "\tA:" << Aclump.norm() << endl;
-////				cout << endl;
-//			}
 			
 			entropySub(qout) = numeric_limits<double>::quiet_NaN();
 		}
@@ -1256,7 +1239,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 			Eugen.compute(rho);
 			
 			Nret = (Eugen.eigenvalues().array() > this->eps_rdm).count();
-			Nret = min(max(Nret,2ul),static_cast<size_t>(Eugen.eigenvalues().rows()));
+			Nret = min(max(Nret,1ul),static_cast<size_t>(Eugen.eigenvalues().rows()));
 			truncWeightSub(qout) = Eugen.eigenvalues().head(rho.rows()-Nret).sum();
 			
 			// calculate entropy
@@ -1287,7 +1270,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 		}
 		
 		// update A[loc+1]
-		if (loc != this->N_sites-1)
+		if (loc != this->N_sites-1 and DISCARD_V == false)
 		{
 			for (size_t s=0; s<qloc[loc+1].size(); ++s)
 			for (size_t q=0; q<A[loc+1][s].dim; ++q)
@@ -1327,6 +1310,149 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 //	cout << "RIGHT l=" << loc << endl;
 //	cout << lastSV.transpose() << endl;
 //	cout << endl;
+}
+
+template<size_t Nq, typename Scalar>
+void MpsQ<Nq,Scalar>::
+sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<Nq,MatrixType> > > &Apair)
+{
+	#ifndef DMRG_DONT_USE_OPENMP
+	#pragma omp parallel for
+	#endif
+	for (size_t qout=0; qout<outset[loc].size(); ++qout)
+	{
+		vector<size_t> s1vec, s3vec;
+		map<size_t,vector<size_t> > s13map;
+		map<pair<size_t,size_t>,size_t> s13qmap;
+		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
+		for (size_t s3=0; s3<qloc[loc+1].size(); ++s3)
+		for (size_t q13=0; q13<Apair[s1][s3].dim; ++q13)
+		{
+			if (Apair[s1][s3].in[q13] + qloc[loc][s1] == outset[loc][qout])
+			{
+				s1vec.push_back(s1);
+				s3vec.push_back(s3);
+				s13map[s1].push_back(s3);
+				s13qmap[make_pair(s1,s3)] = q13;
+			}
+		}
+		
+		if (s1vec.size() != 0)
+		{
+			vector<MatrixType> Aclumpvec(qloc[loc].size());
+			size_t istitch = 0;
+			size_t jstitch = 0;
+			vector<size_t> get_s3;
+			vector<size_t> get_Ncols;
+			bool COLS_ARE_KNOWN = false;
+			
+			for (size_t s1=0; s1<qloc[loc].size(); ++s1)
+			{
+				for (size_t s3=0; s3<qloc[loc+1].size(); ++s3)
+				{
+					auto s3block = find(s13map[s1].begin(), s13map[s1].end(), s3);
+					if (s3block != s13map[s1].end())
+					{
+						size_t q13 = s13qmap[make_pair(s1,s3)];
+						addRight(Apair[s1][s3].block[q13], Aclumpvec[s1]);
+						
+						if (COLS_ARE_KNOWN == false)
+						{
+							get_s3.push_back(s3);
+							get_Ncols.push_back(Apair[s1][s3].block[q13].cols());
+						}
+					}
+				}
+				if (get_s3.size() != 0) {COLS_ARE_KNOWN = true;}
+			}
+			
+			vector<size_t> get_s1;
+			vector<size_t> get_Nrows;
+			MatrixType Aclump;
+			for (size_t s1=0; s1<qloc[loc].size(); ++s1)
+			{
+				size_t Aclump_rows_old = Aclump.rows();
+				addBottom(Aclumpvec[s1], Aclump);
+				if (Aclump.rows() > Aclump_rows_old)
+				{
+					get_s1.push_back(s1);
+					get_Nrows.push_back(Aclump.rows()-Aclump_rows_old);
+				}
+			}
+			
+			#ifdef DONT_USE_LAPACK_SVD
+			JacobiSVD<MatrixType> Jack; // Eigen SVD
+			#else
+			LapackSVD<Scalar> Jack; // Lapack SVD
+			#endif
+			
+			#ifdef DONT_USE_LAPACK_SVD
+			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
+			#else
+			Jack.compute(Aclump);
+			#endif
+			
+			// retained states:
+			size_t Nret = Aclump.cols();
+			Nret = (Jack.singularValues().array().abs() > this->eps_svd).count();
+			Nret = min(max(Nret,1ul),static_cast<size_t>(Jack.singularValues().rows()));
+			Nret = min(Nret,this->N_sv);
+			
+			MatrixType Aleft, Aright;
+			if (DIR == DMRG::DIRECTION::RIGHT)
+			{
+				Aleft = Jack.matrixU().leftCols(Nret);
+				#ifdef DONT_USE_LAPACK_SVD
+				Aright = Jack.singularValues().head(Nret).asDiagonal() * Jack.matrixV().adjoint().topRows(Nret);
+				#else
+				Aright = Jack.singularValues().head(Nret).asDiagonal() * Jack.matrixVT().topRows(Nret);
+				#endif
+				
+				this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
+			}
+			else
+			{
+				Aleft = Jack.matrixU().leftCols(Nret) * Jack.singularValues().head(Nret).asDiagonal();
+				#ifdef DONT_USE_LAPACK_SVD
+				Aright = Jack.matrixV().adjoint().topRows(Nret);
+				#else
+				Aright = Jack.matrixVT().topRows(Nret);
+				#endif
+				
+				this->pivot = (loc==0)? 0 : loc;
+			}
+			
+			// update A[loc]
+			istitch = 0;
+			for (size_t i=0; i<get_s1.size(); ++i)
+			{
+				size_t s1 = get_s1[i];
+				size_t Nrows = get_Nrows[i];
+				qarray2<Nq> quple = {outset[loc][qout]-qloc[loc][s1], outset[loc][qout]};
+				auto q = A[loc][s1].dict.find(quple);
+				if (q != A[loc][s1].dict.end())
+				{
+					A[loc][s1].block[q->second] = Aleft.block(istitch,0, Nrows,Nret);
+				}
+				istitch += Nrows;
+			}
+			
+			// update A[loc+1]
+			jstitch = 0;
+			for (size_t i=0; i<get_s3.size(); ++i)
+			{
+				size_t s3 = get_s3[i];
+				size_t Ncols = get_Ncols[i];
+				qarray2<Nq> quple = {outset[loc][qout], outset[loc][qout]+qloc[loc+1][s3]};
+				auto q = A[loc+1][s3].dict.find(quple);
+				if (q != A[loc+1][s3].dict.end())
+				{
+					A[loc+1][s3].block[q->second] = Aright.block(0,jstitch, Nret,Ncols);
+				}
+				jstitch += Ncols;
+			}
+		}
+	}
 }
 
 template<size_t Nq, typename Scalar>
@@ -2337,9 +2463,9 @@ set_A_from_C (size_t loc, const vector<Tripod<Nq,MatrixType> > &C, DMRG::BROOM::
 		ArrayXd truncWeightSub(outset[loc].size());
 		truncWeightSub.setZero();
 		
-		#ifndef DMRG_DONT_USE_OPENMP
-		#pragma omp parallel for
-		#endif
+//		#ifndef DMRG_DONT_USE_OPENMP
+//		#pragma omp parallel for
+//		#endif
 		for (size_t qout=0; qout<outset[loc].size(); ++qout)
 		{
 			map<tuple<size_t,size_t,size_t>,vector<size_t> > sqmap; // map s,qA,rows -> q{mid}
@@ -2681,13 +2807,15 @@ validate (string name) const
 			if (A[l][s1].block[q1].cols()-A[l+1][s2].block[q2].rows() != 0)
 			{
 				ss << name << " has wrong dimensions at: l=" << l << "→" << l+1
-				<< ", qnum=" << A[l][s1].out[q1]  
+				<< ", qnum=" << A[l][s1].out[q1] 
+				<< ", s1=" << format(qloc[l][s1]) << ", s2=" << format(qloc[l+1][s1])
 				<< ", cols=" << A[l][s1].block[q1].cols() << " → rows=" << A[l+1][s2].block[q2].rows() << endl;
 			}
 			if (A[l][s1].block[q1].cols() == 0 or A[l+1][s2].block[q2].rows() == 0)
 			{
 				ss << name << " has zero dimensions at: l=" << l << "→" << l+1
-				<< ", qnum=" << A[l][s1].out[q1]  
+				<< ", qnum=" << A[l][s1].out[q1] 
+				<< ", s1=" << format(qloc[l][s1]) << ", s2=" << format(qloc[l+1][s1])
 				<< ", cols=" << A[l][s1].block[q1].cols() << " → rows=" << A[l+1][s2].block[q2].rows() << endl;
 			}
 		}

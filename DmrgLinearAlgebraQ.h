@@ -79,13 +79,6 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 		}
 	}
 	
-//	cout << "B.dim=" << B.dim << endl;
-//	for (size_t q=0; q<B.dim; ++q)
-//	{
-//		cout << "q=" << B.in(q) << ", " << B.out(q) << ", " << B.mid(q) << endl 
-//		<< B.block[q][0][0] << endl;
-//	}
-
 	assert(B.dim == 1 and 
 	       B.block[0][0][0].rows() == 1 and
 	       B.block[0][0][0].cols() == 1 and

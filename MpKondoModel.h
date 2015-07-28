@@ -524,7 +524,7 @@ Ssub (size_t L, size_t loc, SPINOP_LABEL SOP)
 }
 
 MpoQ<2> KondoModel::
-SimpSimp (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
+SimpSimp (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
 {
 	assert(loc1<L and loc2<L);
 	stringstream ss;
@@ -539,7 +539,7 @@ SimpSimp (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP
 
 
 MpoQ<2> KondoModel::
-SsubSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
+SsubSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
 {
 	assert(loc1<L and loc2<L);
 	stringstream ss;
@@ -554,7 +554,7 @@ SsubSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP
 }
 
 MpoQ<2> KondoModel::
-SimpSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
+SimpSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
 {
 	assert(loc1<L and loc2<L);
 	stringstream ss;

@@ -471,7 +471,7 @@ setLocal (vector<size_t> loc, vector<MatrixType> Op)
 	for (size_t i=0; i<loc.size(); ++i)
 	{
 		assert(loc[i] < N_sites);
-		assert(Op[i].rows() == qloc[i].size() and Op[i].cols() == qloc[i].size());
+		assert(Op[i].rows() == qloc[loc[i]].size() and Op[i].cols() == qloc[loc[i]].size());
 		M[loc[i]](0,0) = M[loc[i]](0,0) * Op[i];
 	}
 	

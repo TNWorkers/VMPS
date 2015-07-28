@@ -8,6 +8,7 @@
 #include "LanczosSolver.h"
 #include "DmrgContractionsQ.h"
 #include "DmrgPivotStuffQ.h"
+#include "DmrgPivotStuff2Q.h"
 #include "LanczosMower.h"
 
 /**Compressor of Matrix Product States with conserved quantum numbers.
@@ -105,7 +106,7 @@ private:
 	vector<Biped<Nq,MatrixType> > R;
 	void prepSweep (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, bool RANDOMIZE=true);
 	void optimizationStep (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout);
-//	void optimizationStep (const MpsQ<Nq,Scalar> &Vin, std::array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,D> &Aout);
+	void optimizationStep2 (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout);
 	void sweepStep (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout);
 	void build_L (size_t loc, const MpsQ<Nq,Scalar> &Vbra, const MpsQ<Nq,Scalar> &Vket);
 	void build_R (size_t loc, const MpsQ<Nq,Scalar> &Vbra, const MpsQ<Nq,Scalar> &Vket);
@@ -118,6 +119,8 @@ private:
 	void prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, bool RANDOMIZE=true);
 	template<typename MpOperator>
 	void optimizationStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout);
+	template<typename MpOperator>
+	void optimizationStep2 (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout);
 	template<typename MpOperator>
 	void sweepStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout);
 	template<typename MpOperator>
@@ -156,12 +159,21 @@ info() const
 	if (Dcutoff != Dcutoff_new)
 	{
 		ss << "→" << Dcutoff_new << ", ";
-		ss << "Mmax=" << Mmax << "→" << Mmax_new << ", ";
 	}
 	else
 	{
 		ss << " (not resized), ";
 	}
+	ss << "Mmax=" << Mmax;
+	if (Mmax != Mmax_new)
+	{
+		ss << "→" << Mmax_new << ", ";
+	}
+	else
+	{
+		ss << " (not changed), ";
+	}
+	
 	ss << "|Vlhs-Vrhs|^2=" << sqdist << ", ";
 	ss << "halfsweeps=" << N_halfsweeps << ", ";
 	ss << "mem=" << round(memory(GB),3) << "GB, overhead=" << round(overhead(MB),3) << "MB";
@@ -249,6 +261,7 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 		}
 	}
 	
+	Vout.N_sv = Dcutoff;
 	Mmax = Vout.calc_Mmax();
 	prepSweep(Vin,Vout,RANDOMIZE);
 	sqdist = 1.;
@@ -266,11 +279,22 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
 			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
-			optimizationStep(Vin,Vout);
-			if (j != halfSweepRange)
+//			optimizationStep(Vin,Vout);
+//			if (j != halfSweepRange)
+//			{
+//				sweepStep(Vin,Vout);
+//			}
+			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
 			{
-				sweepStep(Vin,Vout);
+				optimizationStep2(Vin,Vout);
 			}
+			else
+			{
+				optimizationStep(Vin,Vout);
+				Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
+				pivot = Vout.get_pivot();
+			}
+			sweepStep(Vin,Vout);
 			++N_sweepsteps;
 		}
 		halfSweepRange = N_sites-1;
@@ -294,34 +318,47 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
-			size_t Dcutoff_old = Vout.calc_Dmax();
-			size_t Mmax_old = Vout.calc_Mmax();
+//			size_t Dcutoff_old = Vout.calc_Dmax();
+//			size_t Mmax_old = Vout.calc_Mmax();
+//			
+//			Dcutoff_new = Dcutoff_old+1;
+//			Vout.dynamicResize(DMRG::RESIZE::CONSERV_INCR, Dcutoff_new);
+//			Vout.setRandom();
+//			Mmax_new = Vout.calc_Mmax();
+//			
+//			if (CHOSEN_VERBOSITY>=2)
+//			{
+//				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << endl;
+//			}
+//			
+//			Vout.pivot = -1;
+//			prepSweep(Vin,Vout);
+//			pivot = Vout.pivot;
+//			halfSweepRange = N_sites;
+//			RESIZED = true;
 			
-			Dcutoff_new = Dcutoff_old+1;
-			Vout.dynamicResize(DMRG::RESIZE::CONSERV_INCR, Dcutoff_new);
-			Vout.setRandom();
-			Mmax_new = Vout.calc_Mmax();
-			
-			if (CHOSEN_VERBOSITY>=2)
+			Vout.N_sv += 1;
+			Dcutoff_new = Vout.N_sv;
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
-				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << endl;
+				lout << "resize: " << Vout.N_sv-1 << "→" << Vout.N_sv << endl;
 			}
-			
-			Vout.pivot = -1;
-			prepSweep(Vin,Vout);
-			pivot = Vout.pivot;
-			halfSweepRange = N_sites;
-			RESIZED = true;
 		}
 		
-		if ((sqdist > tol and
-		    RESIZED == false and
-		    N_halfsweeps < max_halfsweeps) or
-		    N_halfsweeps < min_halfsweeps)
-		{
-			sweepStep(Vin,Vout);
-		}
+		Mmax_new = Vout.calc_Mmax();
+		
+//		if ((sqdist > tol and
+//		    RESIZED == false and
+//		    N_halfsweeps < max_halfsweeps) or
+//		    N_halfsweeps < min_halfsweeps)
+//		{
+//			sweepStep(Vin,Vout);
+//		}
 	}
+	
+	// last sweep
+	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
+	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
 }
 
 template<size_t Nq, typename Scalar, typename MpoScalar>
@@ -338,9 +375,9 @@ prepSweep (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, bool RANDOMIZE)
 			if (RANDOMIZE == true)
 			{
 				Vout.setRandom(l);
-				if (l>0) {Vout.setRandom(l-1);}
+//				if (l>0) {Vout.setRandom(l-1);}
 			}
-			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
+			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			build_R(l-1,Vout,Vin);
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
@@ -352,9 +389,9 @@ prepSweep (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, bool RANDOMIZE)
 			if (RANDOMIZE == true)
 			{
 				Vout.setRandom(l);
-				if (l<N_sites-1) {Vout.setRandom(l+1);}
+//				if (l<N_sites-1) {Vout.setRandom(l+1);}
 			}
-			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
+			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
 			build_L(l+1,Vout,Vin);
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
@@ -366,8 +403,9 @@ template<size_t Nq, typename Scalar, typename MpoScalar>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
 sweepStep (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
 {
-	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(++pivot,Vout,Vin) : build_R(--pivot,Vout,Vin);
+//	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
+//	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(++pivot,Vout,Vin) : build_R(--pivot,Vout,Vin);
+	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(pivot,Vout,Vin) : build_R(pivot,Vout,Vin);
 }
 
 template<size_t Nq, typename Scalar, typename MpoScalar>
@@ -378,6 +416,31 @@ optimizationStep (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
 	{
 		Vout.A[pivot][s] = L[pivot] * Vin.A[pivot][s] * R[pivot];
 	}
+}
+
+template<size_t Nq, typename Scalar, typename MpoScalar>
+void MpsQCompressor<Nq,Scalar,MpoScalar>::
+optimizationStep2 (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
+{
+	size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
+	size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
+	
+	vector<vector<Biped<Nq,MatrixType> > > Apair;
+	Apair.resize(Vin.locBasis(loc1).size());
+	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
+	{
+		Apair[s1].resize(Vin.locBasis(loc2).size());
+	}
+	
+	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
+	for (size_t s3=0; s3<Vin.locBasis(loc2).size(); ++s3)
+	{
+		Apair[s1][s3] = L[loc1] * Vin.A[loc1][s1] * Vin.A[loc2][s3] * R[loc2];
+	}
+	
+	Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
+	
+	pivot = Vout.get_pivot();
 }
 
 template<size_t Nq, typename Scalar, typename MpoScalar>
@@ -429,7 +492,6 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 		if (START == DMRG::COMPRESSION::RANDOM)
 		{
 			RANDOMIZE = true;
-			//Vout.setRandom();
 		}
 	}
 	else if (START == DMRG::COMPRESSION::RHS_SVD)
@@ -450,6 +512,7 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 	Heff[0].L.setVacuum();
 	Heff[N_sites-1].R.setTarget(qarray3<Nq>{Vin.Qtarget(), Vout.Qtarget(), qvacuum<Nq>()});
 	
+	Vout.N_sv = Dcutoff;
 	Mmax = Vout.calc_Mmax();
 	double sqnormVin;
 	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
@@ -491,8 +554,20 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
 			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
-			optimizationStep(H,Vin,Vout);
-			if (j != halfSweepRange) {sweepStep(H,Vin,Vout);}
+			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+			{
+//				lout << "switching to two-site algorithm for this half-sweep..." << endl;
+				optimizationStep2(H,Vin,Vout);
+			}
+			else
+			{
+				optimizationStep(H,Vin,Vout);
+				Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
+				pivot = Vout.get_pivot();
+			}
+			sweepStep(H,Vin,Vout);
+//			cout << Vout.test_ortho() << endl;
+//			if (j != halfSweepRange) {sweepStep(H,Vin,Vout);}
 			++N_sweepsteps;
 		}
 		halfSweepRange = N_sites-1;
@@ -512,34 +587,43 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
-			Stopwatch ChronosResize;
-			size_t Dcutoff_old = Vout.calc_Dmax();
-			size_t Mmax_old = Vout.calc_Mmax();
+//			Stopwatch ChronosResize;
+//			size_t Dcutoff_old = Vout.calc_Dmax();
+//			size_t Mmax_old = Vout.calc_Mmax();
+//			
+//			Dcutoff_new = Dcutoff_old+1;
+//			Vout.dynamicResize(DMRG::RESIZE::CONSERV_INCR, Dcutoff_new);
+//			Vout.setRandom();
+//			Mmax_new = Vout.calc_Mmax();
+//			
+//			Vout.pivot = -1;
+//			prepSweep(H,Vin,Vout);
+//			pivot = Vout.pivot;
+//			halfSweepRange = N_sites;
+//			RESIZED = true;
+//			
+//			if (CHOSEN_VERBOSITY>=2)
+//			{
+//				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << "\t" << ChronosResize.info() << endl;
+//			}
 			
-			Dcutoff_new = Dcutoff_old+1;
-			Vout.dynamicResize(DMRG::RESIZE::CONSERV_INCR, Dcutoff_new);
-			Vout.setRandom();
-			Mmax_new = Vout.calc_Mmax();
-			
-			Vout.pivot = -1;
-			prepSweep(H,Vin,Vout);
-			pivot = Vout.pivot;
-			halfSweepRange = N_sites;
-			RESIZED = true;
-			
-			if (CHOSEN_VERBOSITY>=2)
+			Vout.N_sv += 1;
+			Dcutoff_new = Vout.N_sv;
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
-				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << "\t" << ChronosResize.info() << endl;
+				lout << "resize: " << Vout.N_sv-1 << "→" << Vout.N_sv << endl;
 			}
 		}
 		
-		if ((sqdist > tol and 
-		    RESIZED == false and 
-		    N_halfsweeps < max_halfsweeps) or
-		    N_halfsweeps < min_halfsweeps)
-		{
-			sweepStep(H,Vin,Vout);
-		}
+		Mmax_new = Vout.calc_Mmax();
+		
+//		if ((sqdist > tol and 
+//		    RESIZED == false and 
+//		    N_halfsweeps < max_halfsweeps) or
+//		    N_halfsweeps < min_halfsweeps)
+//		{
+//			sweepStep(H,Vin,Vout);
+//		}
 	}
 	
 	// mowing
@@ -547,6 +631,10 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 	{
 		mowSweeps(H,Vout);
 	}
+	
+	// last sweep
+	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
+	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
 }
 
 template<size_t Nq, typename Scalar, typename MpoScalar>
@@ -563,10 +651,10 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vou
 			if (RANDOMIZE == true)
 			{
 				Vout.setRandom(l);
-				if (l>0) {Vout.setRandom(l-1);}
+//				if (l>0) {Vout.setRandom(l-1);}
 			}
 			Stopwatch Chronos;
-			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
+			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			build_RW(l-1,Vout,H,Vin);
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
@@ -578,10 +666,10 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vou
 			if (RANDOMIZE == true)
 			{
 				Vout.setRandom(l);
-				if (l<N_sites-1) {Vout.setRandom(l+1);}
+//				if (l<N_sites-1) {Vout.setRandom(l+1);}
 			}
 			Stopwatch Chronos;
-			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
+			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
 			build_LW(l+1,Vout,H,Vin);
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
@@ -594,8 +682,9 @@ template<typename MpOperator>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
 sweepStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
 {
-	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-	(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(++pivot,Vout,H,Vin) : build_RW(--pivot,Vout,H,Vin);
+//	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
+//	(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(++pivot,Vout,H,Vin) : build_RW(--pivot,Vout,H,Vin);
+	(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(pivot,Vout,H,Vin) : build_RW(pivot,Vout,H,Vin);
 }
 
 template<size_t Nq, typename Scalar, typename MpoScalar>
@@ -655,8 +744,115 @@ optimizationStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scala
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
-		lout << "optimization loc=" << Chronos.info(pivot) << endl;
+		lout << "optimization, loc=" << Chronos.info(pivot) << endl;
 	}
+}
+
+template<size_t Nq, typename Scalar, typename MpoScalar>
+template<typename MpOperator>
+void MpsQCompressor<Nq,Scalar,MpoScalar>::
+optimizationStep2 (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
+{
+	Stopwatch Chronos;
+	
+	size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
+	size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
+	
+	Heff[loc1].W = H.W[loc1];
+	Heff[loc2].W = H.W[loc2];
+	
+	vector<vector<Biped<Nq,MatrixType> > > Apair;
+	Apair.resize(Vin.locBasis(loc1).size());
+	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
+	{
+		Apair[s1].resize(Vin.locBasis(loc2).size());
+	}
+	
+	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
+	for (size_t s2=0; s2<Vin.locBasis(loc1).size(); ++s2)
+	for (size_t qL=0; qL<Heff[loc1].L.dim; ++qL)
+	{
+		tuple<qarray3<Nq>,size_t,size_t> ix12;
+		bool FOUND_MATCH12 = AWA(Heff[loc1].L.in(qL), Heff[loc1].L.out(qL), Heff[loc1].L.mid(qL), s1, s2, Vin.locBasis(loc1), Vout.A[loc1], Vin.A[loc1], ix12);
+		
+		if (FOUND_MATCH12)
+		{
+			qarray3<Nq> quple12 = get<0>(ix12);
+			swap(quple12[0], quple12[1]);
+			size_t qA12 = get<2>(ix12);
+			
+			for (size_t s3=0; s3<Vin.locBasis(loc2).size(); ++s3)
+			for (size_t s4=0; s4<Vin.locBasis(loc2).size(); ++s4)
+			{
+				tuple<qarray3<Nq>,size_t,size_t> ix34;
+				bool FOUND_MATCH34 = AWA(quple12[0], quple12[1], quple12[2], s3, s4, Vin.locBasis(loc2), Vout.A[loc2], Vin.A[loc2], ix34);
+				
+				if (FOUND_MATCH34)
+				{
+					qarray3<Nq> quple34 = get<0>(ix34);
+					size_t qA34 = get<2>(ix34);
+					auto qR = Heff[loc2].R.dict.find(quple34);
+					
+					if (qR != Heff[loc2].R.dict.end())
+					{
+						if (Heff[loc1].L.mid(qL) + Vin.locBasis(loc1)[s1] - Vin.locBasis(loc1)[s2] == 
+						    Heff[loc2].R.mid(qR->second) - Vin.locBasis(loc2)[s3] + Vin.locBasis(loc2)[s4])
+						{
+							for (int k12=0; k12<Heff[loc1].W[s1][s2].outerSize(); ++k12)
+							for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(Heff[loc1].W[s1][s2],k12); iW12; ++iW12)
+							for (int k34=0; k34<Heff[loc2].W[s3][s4].outerSize(); ++k34)
+							for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(Heff[loc2].W[s3][s4],k34); iW34; ++iW34)
+							{
+								MatrixType Mtmp;
+								MpoScalar Wfactor = iW12.value() * iW34.value();
+								
+								if (Heff[loc1].L.block[qL][iW12.row()][0].rows() != 0 and
+									Heff[loc2].R.block[qR->second][iW34.col()][0].rows() !=0 and
+									iW12.col() == iW34.row())
+								{
+//									Mtmp = Wfactor * 
+//									       (Heff[loc1].L.block[qL][iW12.row()][0] * 
+//									       Vin.A[loc1][s2].block[qA12] * 
+//									       Vin.A[loc2][s4].block[qA34] * 
+//									       Heff[loc2].R.block[qR->second][iW34.col()][0]);
+									optimal_multiply(Wfactor, 
+									                 Heff[loc1].L.block[qL][iW12.row()][0],
+									                 Vin.A[loc1][s2].block[qA12],
+									                 Vin.A[loc2][s4].block[qA34],
+									                 Heff[loc2].R.block[qR->second][iW34.col()][0],
+									                 Mtmp);
+								}
+								
+								if (Mtmp.rows() != 0)
+								{
+									qarray2<Nq> qupleApair = {Heff[loc1].L.in(qL), Heff[loc2].R.out(qR->second)};
+									auto qApair = Apair[s1][s3].dict.find(qupleApair);
+									
+									if (qApair != Apair[s1][s3].dict.end())
+									{
+										Apair[s1][s3].block[qApair->second] += Mtmp;
+									}
+									else
+									{
+										Apair[s1][s3].push_back(qupleApair, Mtmp);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
+	
+	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << "optimization & sweep step, 2-site, loc=" << Chronos.info(pivot) << endl;
+	}
+	
+	pivot = Vout.get_pivot();
 }
 
 template<size_t Nq, typename Scalar, typename MpoScalar>
@@ -748,7 +944,6 @@ polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, co
 	R[N_sites-1].setTarget(Vin2.Qtot);
 	L[0].setVacuum();
 	
-	Mmax = Vout.calc_Mmax();
 	double sqnormV1, sqnormV2, overlapV12;
 	sqnormV2 = Vin2.squaredNorm();
 	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
@@ -782,6 +977,9 @@ polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, co
 		lout << Chronos.info("preparation") << endl;
 	}
 	
+	Mmax = Vout.calc_Mmax();
+	Vout.N_sv = Dcutoff;
+	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
 	{
@@ -790,20 +988,89 @@ polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, co
 		{
 			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
 			Stopwatch Chronos;
-			optimizationStep(Vin2,Vout);
-			auto Atmp = Vout.A[pivot];
-			optimizationStep(H,Vin1,Vout);
-			for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
-			for (size_t q=0; q<Atmp[s].dim; ++q)
+			
+//			optimizationStep(Vin2,Vout);
+//			auto Atmp = Vout.A[pivot];
+//			optimizationStep(H,Vin1,Vout);
+//			for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
+//			for (size_t q=0; q<Atmp[s].dim; ++q)
+//			{
+//				qarray2<Nq> quple = {Atmp[s].in[q], Atmp[s].out[q]};
+//				auto it = Vout.A[pivot][s].dict.find(quple);
+//				Vout.A[pivot][s].block[it->second] -= polyB * Atmp[s].block[q];
+//			}
+			
+			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
 			{
-				qarray2<Nq> quple = {Atmp[s].in[q], Atmp[s].out[q]};
-				auto it = Vout.A[pivot][s].dict.find(quple);
-				Vout.A[pivot][s].block[it->second] -= polyB * Atmp[s].block[q];
+				size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
+				size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
+				
+				Heff[loc1].W = H.W[loc1];
+				Heff[loc2].W = H.W[loc2];
+				
+				// H*Vin1
+				vector<vector<Biped<Nq,MatrixType> > > Apair;
+				HxV(Heff[loc1],Heff[loc2], Vin1.A[loc1],Vin1.A[loc2], Vout.A[loc1],Vout.A[loc2], Vin1.locBasis(loc1),Vin1.locBasis(loc2), Apair);
+				
+				// Vin2
+				vector<vector<Biped<Nq,MatrixType> > > ApairVV;
+				ApairVV.resize(Vin1.locBasis(loc1).size());
+				for (size_t s1=0; s1<Vin1.locBasis(loc1).size(); ++s1)
+				{
+					ApairVV[s1].resize(Vin1.locBasis(loc2).size());
+				}
+				
+				for (size_t s1=0; s1<Vin2.locBasis(loc1).size(); ++s1)
+				for (size_t s3=0; s3<Vin2.locBasis(loc2).size(); ++s3)
+				{
+					ApairVV[s1][s3] = L[loc1] * Vin2.A[loc1][s1] * Vin2.A[loc2][s3] * R[loc2];
+				}
+				
+				// H*Vin1-B*Vin2
+				for (size_t s1=0; s1<H.locBasis(loc1).size(); ++s1)
+				for (size_t s3=0; s3<H.locBasis(loc2).size(); ++s3)
+				for (size_t q=0; q<Apair[s1][s3].dim; ++q)
+				{
+					qarray2<Nq> quple = {Apair[s1][s3].in[q], Apair[s1][s3].out[q]};
+					auto it = ApairVV[s1][s3].dict.find(quple);
+					
+					MatrixType Mtmp = Apair[s1][s3].block[q];
+					size_t rows = max(Apair[s1][s3].block[q].rows(), Apair[s1][s3].block[q].rows());
+					size_t cols = max(Apair[s1][s3].block[q].cols(), Apair[s1][s3].block[q].cols());
+					
+					Apair[s1][s3].block[q].resize(rows,cols);
+					Apair[s1][s3].block[q].setZero();
+					Apair[s1][s3].block[q].topLeftCorner(Mtmp.rows(),Mtmp.cols()) = Mtmp;
+					Apair[s1][s3].block[q].topLeftCorner(Apair[s1][s3].block[q].rows(),Apair[s1][s3].block[q].cols()) -= polyB * ApairVV[s1][s3].block[it->second];
+				}
+				
+				Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
+				pivot = Vout.get_pivot();
 			}
-			if (j != halfSweepRange)
+			else
 			{
-				sweepStep(H,Vin1,Vin2,Vout);
+				optimizationStep(Vin2,Vout);
+				auto Atmp = Vout.A[pivot];
+				
+				optimizationStep(H,Vin1,Vout);
+				
+				for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
+				for (size_t q=0; q<Atmp[s].dim; ++q)
+				{
+					qarray2<Nq> quple = {Atmp[s].in[q], Atmp[s].out[q]};
+					auto it = Vout.A[pivot][s].dict.find(quple);
+					Vout.A[pivot][s].block[it->second] -= polyB * Atmp[s].block[q];
+				}
+				
+				Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
+				pivot = Vout.get_pivot();
 			}
+			
+			sweepStep(H,Vin1,Vin2,Vout);
+//			if (j != halfSweepRange)
+//			{
+//				sweepStep(H,Vin1,Vin2,Vout);
+//			}
 			++N_sweepsteps;
 		}
 		halfSweepRange = N_sites-1;
@@ -823,35 +1090,48 @@ polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, co
 		    N_halfsweeps != max_halfsweeps and
 		    sqdist > tol)
 		{
-			Stopwatch ChronosResize;
-			size_t Dcutoff_old = Vout.calc_Dmax();
-			size_t Mmax_old = Vout.calc_Mmax();
+//			Stopwatch ChronosResize;
+//			size_t Dcutoff_old = Vout.calc_Dmax();
+//			size_t Mmax_old = Vout.calc_Mmax();
+//			
+//			Dcutoff_new = Dcutoff_old+1;
+//			Vout.dynamicResize(DMRG::RESIZE::CONSERV_INCR, Dcutoff_new);
+//			Vout.setRandom();
+//			Mmax_new = Vout.calc_Mmax();
+//			
+//			Vout.pivot = -1;
+//			prepSweep(H,Vin1,Vin2,Vout);
+//			pivot = Vout.pivot;
+//			halfSweepRange = N_sites;
+//			RESIZED = true;
+//			
+//			if (CHOSEN_VERBOSITY>=2)
+//			{
+//				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << "\t" << ChronosResize.info() << endl;
+//			}
 			
-			Dcutoff_new = Dcutoff_old+1;
-			Vout.dynamicResize(DMRG::RESIZE::CONSERV_INCR, Dcutoff_new);
-			Vout.setRandom();
-			Mmax_new = Vout.calc_Mmax();
-			
-			Vout.pivot = -1;
-			prepSweep(H,Vin1,Vin2,Vout);
-			pivot = Vout.pivot;
-			halfSweepRange = N_sites;
-			RESIZED = true;
-			
-			if (CHOSEN_VERBOSITY>=2)
+			Vout.N_sv += 1;
+			Dcutoff_new = Vout.N_sv;
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
-				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << "\t" << ChronosResize.info() << endl;
+				lout << "resize: " << Vout.N_sv-1 << "→" << Vout.N_sv << endl;
 			}
 		}
 		
-		if ((sqdist > tol and 
-		    RESIZED == false and
-		    N_halfsweeps < max_halfsweeps) or 
-		    N_halfsweeps < min_halfsweeps)
-		{
-			sweepStep(H,Vin1,Vin2,Vout);
-		}
+		Mmax_new = Vout.calc_Mmax();
+		
+//		if ((sqdist > tol and 
+//		    RESIZED == false and
+//		    N_halfsweeps < max_halfsweeps) or 
+//		    N_halfsweeps < min_halfsweeps)
+//		{
+//			sweepStep(H,Vin1,Vin2,Vout);
+//		}
 	}
+	
+	// last sweep
+	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
+	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
 }
 
 template<size_t Nq, typename Scalar, typename MpoScalar>
@@ -940,9 +1220,9 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Scala
 			if (RANDOMIZE == true)
 			{
 				Vout.setRandom(l);
-				if (l>0) {Vout.setRandom(l-1);}
+//				if (l>0) {Vout.setRandom(l-1);}
 			}
-			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
+			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 			#pragma omp parallel sections
 			#endif
@@ -971,9 +1251,9 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Scala
 			if (RANDOMIZE == true)
 			{
 				Vout.setRandom(l);
-				if (l<N_sites-1) {Vout.setRandom(l+1);}
+//				if (l<N_sites-1) {Vout.setRandom(l+1);}
 			}
-			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
+			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
 			#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 			#pragma omp parallel sections
 			#endif
@@ -1003,8 +1283,8 @@ template<typename MpOperator>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
 sweepStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout)
 {
-	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? ++pivot : --pivot;
+//	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
+//	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? ++pivot : --pivot;
 	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 	#pragma omp parallel sections
 	#endif

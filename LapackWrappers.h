@@ -253,11 +253,11 @@ compute (const MatrixXd &A)
 	Q = R;
 	
 	LWORK = -1;
-	dorgqr_ (&Arows, &Acols, &minA, Q.data(), &Arows, TAU.data(), WORK, &LWORK, &INFO);
+	dorgqr_ (&Arows, &minA, &minA, Q.data(), &Arows, TAU.data(), WORK, &LWORK, &INFO);
 	LWORK = static_cast<int>(WORK[0]);
 	delete WORK;
 	WORK = new double[LWORK];
-	dorgqr_ (&Arows, &Acols, &minA, Q.data(), &Arows, TAU.data(), WORK, &LWORK, &INFO);
+	dorgqr_ (&Arows, &minA, &minA, Q.data(), &Arows, TAU.data(), WORK, &LWORK, &INFO);
 	delete WORK;
 	
 	R = MatrixXd::Identity(Acols,Arows) * R.triangularView<Upper>();

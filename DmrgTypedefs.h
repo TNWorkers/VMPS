@@ -91,4 +91,11 @@ struct DMRG
 	};
 };
 
+std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
+{
+	if (DIR==DMRG::DIRECTION::LEFT) {s << "LEFT";}
+	else                            {s << "RIGHT";}
+	return s;
+}
+
 #endif

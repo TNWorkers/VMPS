@@ -53,19 +53,19 @@ public:
 	///@{
 	/**Calls the next sweep step from site \p loc according to the direction \p DIR.
 	Switches from DMRG::BROOM::RDM to DMRG::BROOM::SVD if DmrgJanitor::alpha_noise < 1e-15 or DmrgJanitor::alpha_rsvd < 1e-15.*/
-	void sweepStep (DMRG::DIRECTION::OPTION DIR, size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H = NULL);
+	void sweepStep (DMRG::DIRECTION::OPTION DIR, size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H = NULL, bool DISCARD_U_or_V=false);
 	
 	/**Core function for a sweep to the right. Just a virtual placeholder in DmrgJanitor, overwritten by MpsQ with the real code.
 	\param loc : Sweeps to the right from the site \p loc, updating the A-matrices at \p loc and \p loc+1, shifting the pivot to \p loc+1.
 	\param TOOL : with which broom to sweep, see DMRG::BROOM::OPTION
 	\param H : Non-local information for DMRG::BROOM::RDM and DMRG::BROOM::RICH_SVD enters thorugh here.*/
-	virtual void rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H = NULL){};
+	virtual void rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H = NULL, bool DISCARD_V=false){};
 	
 	/**Core function for a sweep to the left. Just a virtual placeholder in DmrgJanitor, overwritten by MpsQ with the real code.
 	\param loc : Sweeps to the left from the site \p loc, updating the A-matrices at \p loc and \p loc-1, shifting the pivot to \p loc-1.
 	\param TOOL : with which broom to sweep, see DMRG::BROOM::OPTION
 	\param H : Non-local information for DMRG::BROOM::RDM and DMRG::BROOM::RICH_SVD enters thorugh here.*/
-	virtual void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H = NULL){};
+	virtual void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H = NULL, bool DISCARD_U=false){};
 	///@}
 	
 	///@{
@@ -172,7 +172,7 @@ sweep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H)
 
 template<typename PivotMatrixType>
 inline void DmrgJanitor<PivotMatrixType>::
-sweepStep (DMRG::DIRECTION::OPTION DIR, size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H)
+sweepStep (DMRG::DIRECTION::OPTION DIR, size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H, bool DISCARD_U_or_V)
 {
 	DMRG::BROOM::OPTION NEW_TOOL = TOOL;
 	if ((TOOL == DMRG::BROOM::RDM and alpha_noise < 1e-15) or
@@ -180,7 +180,7 @@ sweepStep (DMRG::DIRECTION::OPTION DIR, size_t loc, DMRG::BROOM::OPTION TOOL, Pi
 	{
 		NEW_TOOL = DMRG::BROOM::SVD;
 	}
-	(DIR==DMRG::DIRECTION::LEFT)? leftSweepStep(loc,NEW_TOOL,H) : rightSweepStep(loc,NEW_TOOL,H);
+	(DIR==DMRG::DIRECTION::LEFT)? leftSweepStep(loc,NEW_TOOL,H,DISCARD_U_or_V) : rightSweepStep(loc,NEW_TOOL,H,DISCARD_U_or_V);
 }
 
 #endif

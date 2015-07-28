@@ -73,6 +73,7 @@ public:
 	MpoQ<1> Simp (size_t L, size_t loc, SPINOP_LABEL Sa);
 	/**Operator for the substrate spin.*/
 	MpoQ<1> Ssub (size_t L, size_t loc, SPINOP_LABEL Sa);
+	MpoQ<1> SimpSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
 	///@}
 	
 private:
@@ -91,21 +92,6 @@ const std::array<qarray<1>,4> TransverseKondoModel::qsub
 {
 	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2}
 };
-
-//template<>
-//const std::array<qarray<1>,8> TransverseKondoModel<2>::qimp
-//{
-//	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2},
-//	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2}
-//};
-
-//template<>
-//const std::array<qarray<1>,12> TransverseKondoModel<3>::qimp
-//{
-//	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2},
-//	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2},
-//	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2}
-//};
 
 TransverseKondoModel::
 TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, vector<double> Bxloc_input, bool CALC_SQUARE, size_t D_input)
@@ -275,7 +261,7 @@ Simp (size_t L, size_t loc, SPINOP_LABEL Sa)
 {
 	assert(loc<L);
 	stringstream ss;
-	ss << Sa << "Imp(" << loc << ")";
+	ss << Sa << "imp(" << loc << ")";
 	MpoQ<1> Mout(L, locBasis(), {0}, Nlabel, ss.str());
 	MatrixXd Id4(4,4); Id4.setIdentity();
 	Mout.setLocal(loc, kroneckerProduct(SpinBase::Scomp(Sa,D),Id4));
@@ -287,23 +273,25 @@ Ssub (size_t L, size_t loc, SPINOP_LABEL Sa)
 {
 	assert(loc<L);
 	stringstream ss;
-	ss << Sa << "Sub(" << loc << ")";
+	ss << Sa << "sub(" << loc << ")";
 	MpoQ<1> Mout(L, locBasis(), {0}, Nlabel, ss.str());
-	
 	MatrixXd IdImp(qloc[loc].size()/4, qloc[loc].size()/4); IdImp.setIdentity();
-	
-	if (Sa == SX)
-	{
-		Mout.setLocal(loc, kroneckerProduct(IdImp, FermionBase::Sx));
-	}
-	else if (Sa == iSY)
-	{
-		Mout.setLocal(loc, kroneckerProduct(IdImp, FermionBase::iSy));
-	}
-	else if (Sa == SZ)
-	{
-		Mout.setLocal(loc, kroneckerProduct(IdImp, FermionBase::Sz));
-	}
+	Mout.setLocal(loc, kroneckerProduct(IdImp, FermionBase::Scomp(Sa)));
+	return Mout;
+}
+
+MpoQ<1> TransverseKondoModel::
+SimpSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
+{
+	assert(loc1<L and loc2<L);
+	stringstream ss;
+	ss << SOP1 << "(" << loc1 << ")" << SOP2 << "(" << loc2 << ")";
+	MpoQ<1> Mout(L, locBasis(), {0}, Nlabel, ss.str());
+	MatrixXd Id4(4,4); Id4.setIdentity();
+	MatrixXd IdImp(MpoQ<1>::qloc[loc2].size()/4, MpoQ<1>::qloc[loc2].size()/4); IdImp.setIdentity();
+	Mout.setLocal({loc1, loc2}, {kroneckerProduct(SpinBase::Scomp(SOP1,D),Id4), 
+	                             kroneckerProduct(IdImp,FermionBase::Scomp(SOP2))}
+	             );
 	return Mout;
 }
 

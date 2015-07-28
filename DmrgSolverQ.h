@@ -135,6 +135,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 	N_sweepsteps = N_halfsweeps = 0;
 	
 	// resize Vout
+	Stopwatch Saturn;
 	Stopwatch Aion;
 	Vout.state = MpsQ<Nq,double>(H, Dinit, Qtot_input);
 	Vout.state.N_sv = Dlimit;
@@ -220,10 +221,11 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 		{
 			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
 			LanczosStep(H, Vout, EDGE);
-			if (j != halfSweepRange) // wait on the last sweep, could be end of algorithm
-			{
-				sweepStep(H,Vout);
-			}
+			sweepStep(H,Vout);
+//			if (j != halfSweepRange) // wait on the last sweep, could be end of algorithm
+//			{
+//				sweepStep(H,Vout);
+//			}
 			++N_sweepsteps;
 		}
 		halfSweepRange = N_sites-1; // one extra step on 1st iteration
@@ -262,11 +264,11 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 		totalTruncWeight = Vout.state.truncWeight.sum();
 		
 		// sweep one last time if not at the end of algorithm
-		if ((err_eigval >= tol_eigval or err_state >= tol_state) and 
-		    N_halfsweeps < max_halfsweeps)
-		{
-			sweepStep(H,Vout);
-		}
+//		if ((err_eigval >= tol_eigval or err_state >= tol_state) and 
+//		    N_halfsweeps < max_halfsweeps)
+//		{
+//			sweepStep(H,Vout);
+//		}
 		
 //		// adjust noise parameter
 //		if (N_halfsweeps<6)
@@ -378,10 +380,14 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 			}
 			lout << eigeninfo() << endl;
 			lout << Vout.state.info() << endl;
-			lout << Chronos.info("half-sweep") << endl;
+			lout << Chronos.info("half-sweep") << ", " << Saturn.info("total",false) << endl;
 			lout << endl;
 		}
 	}
+	
+	// last sweep
+	if      (pivot==1)         {Vout.state.sweep(0,DMRG::BROOM::QR);}
+	else if (pivot==N_sites-2) {Vout.state.sweep(N_sites-1,DMRG::BROOM::QR);}
 	
 	Vout.state.set_defaultCutoffs();
 	
@@ -390,13 +396,14 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 		size_t standard_precision = cout.precision();
 		if (EDGE == LANCZOS::EDGE::GROUND)
 		{
-			lout << "Emin=" << setprecision(13) << Vout.energy << " Emin/L=" << Vout.energy/N_sites << setprecision(standard_precision) << endl;
+			lout << "Emin=" << setprecision(13) << Vout.energy << ", Emin/L=" << Vout.energy/N_sites << setprecision(standard_precision);
 		}
 		else
 		{
-			lout << "Emax=" << setprecision(13) << Vout.energy << " Emax/L=" << Vout.energy/N_sites << setprecision(standard_precision) << endl;
+			lout << "Emax=" << setprecision(13) << Vout.energy << ", Emax/L=" << Vout.energy/N_sites << setprecision(standard_precision);
 		}
-		lout << "DmrgSolverQ: " << eigeninfo() << endl;
+		lout << ", " << Saturn.info("runtime",false) << endl;
+		lout << "DmrgSolverQ: " << eigeninfo() << ", " << Saturn.info("runtime",false) << endl;
 		lout << "Vout: " << Vout.state.info() << endl;
 	}
 }
