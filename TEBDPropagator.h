@@ -1,4 +1,3 @@
-
 #ifndef TEBD_PROPAGATOR
 #define TEBD_PROPAGATOR
 

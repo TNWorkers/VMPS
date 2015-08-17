@@ -1,8 +1,6 @@
 #ifndef STRAWBERRY_MPSCOMPRESSOR_WITH_Q
 #define STRAWBERRY_MPSCOMPRESSOR_WITH_Q
 
-#define COMPRESSOR_MAX_HALFSWEEPS 100
-
 #include "Biped.h"
 #include "Multipede.h"
 #include "LanczosSolver.h"
@@ -43,7 +41,7 @@ public:
 		- DMRG::COMPRESSION::RHS_SVD : makes no sense here, results in the same as above
 	*/
 	void varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, 
-	                  size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=100, size_t min_halfsweeps=1, 
+	                  size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1, 
 	                  DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::BRUTAL_SVD);
 	
 	/**Compresses a matrix-vector product \f$\left|V_{out}\right> \approx H \left|V_{in}\right>\f$. Needs to calculate \f$\left<V_{in}\right|H^2\left|V_{in}\right>\f$. Works optimally with OpenMP and (at least) 2 threads. If convergence is not reached after 2 half-sweeps, the bond dimension of \p Vout is increased and it is set to random.
@@ -62,7 +60,7 @@ public:
 	*/
 	template<typename MpOperator>
 	void varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, 
-	                  size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=100, size_t min_halfsweeps=1, 
+	                  size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1, 
 	                  DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RANDOM);
 	
 	/**Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. Needs to calculate \f$\left<V_{in1}\right|H^2\left|V_{in1}\right>\f$, \f$\left<V_{in2}\right|H\left|V_{in1}\right>\f$ and \f$\big<V_{in2}\big|V_{in2}\big>\f$. Works optimally with OpenMP and (at least) 3 threads, as the last overlap is cheap to do in the mixed-canonical representation. If convergence is not reached after 4 half-sweeps, the bond dimension of \p Vout is increased and it is set to random.
@@ -85,7 +83,7 @@ public:
 	*/
 	template<typename MpOperator>
 	void polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout, 
-	                   size_t Dcutoff_input, double tol=1e-4, size_t max_halfsweeps=100, size_t min_halfsweeps=1, 
+	                   size_t Dcutoff_input, double tol=1e-4, size_t max_halfsweeps=40, size_t min_halfsweeps=1, 
 	                   DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RHS);
 	///\}
 	

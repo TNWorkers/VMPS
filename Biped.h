@@ -21,10 +21,13 @@ struct Biped
 	/**Convenience access to the amount of blocks.
 	Equal to either of the following: \p in.size(), \p out.size(), \p block.size()*/
 	size_t dim;
+	
 	/**Vector of all incoming quantum numbers.*/
 	vector<qarray<Nq> > in;
+	
 	/**Vector of all outgoing quantum numbers.*/
 	vector<qarray<Nq> > out;
+	
 	/**Vector of quantum number blocks.
 	The matrix \p block[q] is characterized by the incoming quantum number \p in[q] and the outgoing quantum number \p out[q]*/
 	vector<MatrixType> block;
@@ -33,12 +36,16 @@ struct Biped
 	///@{
 	/**Dictionary allowing one to find the index of \p block for a given array of two quantum numbers \p qin, \p qout in \f$O(1)\f$ operations without looping over the blocks.*/
 	unordered_map<qarray2<Nq>,size_t> dict; // key format: {qin,qout}
+	
 	/**Prints the whole tensor, formatting the quantum numbers accoridng the function \p formatFunction.*/
 	string formatted (string (*formatFunction)(qarray<Nq>)=noFormat) const;
+	
 	/**Prints Biped<Nq,MatrixType>::dict into a string.*/
 	string print_dict() const;
+	
 	/**\describe_memory*/
 	double memory (MEMUNIT memunit=GB) const;
+	
 	/**\describe_overhead*/
 	double overhead (MEMUNIT memunit=MB) const;
 	///@}
@@ -46,21 +53,27 @@ struct Biped
 	///@{
 	/**Deletes the contents of \p in, \p out, \p block, \p dict.*/
 	void clear();
+	
 	/**Sets all matrices in Biped<Nq,MatrixType>::block to zero, preserving the rows and columns.*/
 	void setZero();
+	
 	/**Sets all matrices in Biped<Nq,MatrixType>::block to random values, preserving the rows and columns.*/
 	void setRandom();
+	
 	/**Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers to the vacuum (both \p in & \p out).
 	Needed in for the transfer matrix to the first site in overlap calculations.*/
+	
 	void setVacuum();
 	/**Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers to \p Qtot (both \p in & \p out).
 	Needed in for the transfer matrix from the last site in overlap calculations.*/
+	
 	void setTarget (qarray<Nq> Qtot);
 	///@}
 	
 	///@{
 	/**Returns the adjoint tensor where all the block matrices are adjoint and the quantum number arrows are flipped: \p in \f$\to\f$ \p out and vice versa.*/
 	Biped<Nq,MatrixType> adjoint() const;
+	
 	/**Adds another tensor to the current one. If quantum numbers match, the block is updated (block rows and columns must match), otherwise a new block is created.*/
 	Biped<Nq,MatrixType>& operator+= (const Biped<Nq,MatrixType> &Arhs);
 	///@}
@@ -69,6 +82,7 @@ struct Biped
 	/**Adds a new block to the tensor specified by the incoming quantum number \p qin and the outgoing quantum number \p qout.
 	\warning Does not check whether the block for these quantum numbers already exists.*/
 	void push_back (qarray<Nq> qin, qarray<Nq> qout, const MatrixType &M);
+	
 	/**Adds a new block to the tensor specified by the 2-array of quantum numbers \p quple.
 	The ordering convention is: \p in, \p out.
 	\warning Does not check whether the block for these quantum numbers already exists.*/

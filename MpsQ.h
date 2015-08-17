@@ -30,6 +30,7 @@ typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 // Note: Cannot partially specialize template friends (or anything else, really). That sucks.
 template<size_t Nq_, typename MpHamiltonian> friend class DmrgSolverQ;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
+template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
 template<size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
 template<size_t Nq_, typename S1, typename S2> friend void OxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 template<size_t Nq_, typename S_> friend class MpsQ; // in order to exchange data between real & complex MpsQ
@@ -111,28 +112,38 @@ public:
 	/**Tests the orthogonality of the MpsQ.
 	Returns a string with "A"=left-canonical (\f$\sum_s {A^s}^\dag A^s=I\f$), "B"=right-canonical (\f$\sum_s B^s {B^s}^\dag=I\f$), "X"=both, "M"=neither; with the pivot site underlined. The check is \f$\|\sum_s {A^s}^\dag A^s-I\|_{\infty} < 10^{-10}\f$.*/
 	string test_ortho() const;
+	
 	/**\describe_info*/
 	string info() const;
+	
 	/**Prints the sizes of the matrices for testing purposes.*/
 	string Asizes() const;
+	
 	/**Checks if the sizes of the block matrices are consistent, so that they can be multiplied.
 	\param name : how to call the MpsQ in the output
 	\returns : string with info*/
 	string validate (string name="MpsQ") const;
+	
 	/**Writes the subspace connections as a directed graph into a file.
 	Run \verbatim dot filename.dot -Tpdf -o filename.pdf \endverbatim to create a shiny pdf.
 	\param filename : gets a ".dot" extension automatically*/
 	void graph (string filename) const;
+	
 	/**How to format the conserved quantum numbers in the output, e\.g\. fractions for \f$S=1/2\f$ Heisenberg.*/
 	string (*format)(qarray<Nq> qnum);
+	
 	/**Determines the maximal bond dimension per site (sum of \p A.rows or \p A.cols over all subspaces).*/
 	size_t calc_Mmax() const;
+	
 	/**Determines the maximal amount of rows or columns per site and subspace.*/
 	size_t calc_Dmax() const;
+	
 	/**Determines the maximal amount of subspaces per site.*/
 	size_t calc_Nqmax() const;
+	
 	/**\describe_memory*/
 	double memory (MEMUNIT memunit=GB) const;
+	
 	/**\describe_overhead*/
 	double overhead (MEMUNIT=MB) const;
 	///\}
@@ -143,26 +154,37 @@ public:
 	\param Vin : MpsQ to be added
 	\param SVD_COMPRESS : If \p true, the resulting MpsQ is compressed using SVD. If \p false, the summation is exact (direct sum of the matrices).*/
 	template<typename OtherScalar> void addScale (OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, bool SVD_COMPRESS=false);
+	
 	/**Performs MpsQ::addScale with \p alpha = 1.*/
 	MpsQ<Nq,Scalar>& operator+= (const MpsQ<Nq,Scalar> &Vin);
+	
 	/**Performs MpsQ::addScale with \p alpha = -1.*/
 	MpsQ<Nq,Scalar>& operator-= (const MpsQ<Nq,Scalar> &Vin);
+	
 	/**Performs \f$ \mathrel{*}= \alpha\f$. Applies it to the first site.*/
 	template<typename OtherScalar> MpsQ<Nq,Scalar>& operator*= (const OtherScalar &alpha);
+	
 	/**Performs \f$ \mathrel{/}= \alpha\f$. Applies it to the first site.*/
 	template<typename OtherScalar> MpsQ<Nq,Scalar>& operator/= (const OtherScalar &alpha);
+	
 	/**Casts the matrices from \p Scalar to \p OtherScalar.*/
 	template<typename OtherScalar> MpsQ<Nq,OtherScalar> cast() const;
+	
 	/**Calculates the scalar product with another MpsQ.*/
 	Scalar dot (const MpsQ<Nq,Scalar> &Vket) const;
+	
 	/**Calculates the squared norm. Exploits the canonical form if possible, calculates the dot product with itself otherwise.*/
 	double squaredNorm() const;
+	
 	/**Calculates the expectation value with a local operator.*/
 	template<typename MpoScalar> Scalar locAvg (const MpoQ<Nq,MpoScalar> &O) const;
+	
 	/**Swaps with another MpsQ.*/
 	void swap (MpsQ<Nq,Scalar> &V);
+	
 	/**Copies the control parameters from another MpsQ, i.e.\ all the cutoff tolerances specified in DmrgJanitor.*/
 	void get_controlParams (const MpsQ<Nq,Scalar> &V);
+	
 	/**For METTS.*/
 	void collapse();
 	///\}
@@ -171,16 +193,31 @@ public:
 	/**Performs a sweep step to the right.
 	\param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc+1
 	\param BROOM : choice of decomposition
-	\param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD*/
+	\param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD
+	\param DISCARD_V : If \p true, don't multiply the V-matrix onto the next site*/
 	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Nq,Scalar> *H = NULL, bool DISCARD_V=false);
 	
 	/**Performs a sweep step to the left.
 	\param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1
 	\param BROOM : choice of decomposition
-	\param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD*/
+	\param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD
+	\param DISCARD_U : If \p true, don't multiply the U-matrix onto the next site*/
 	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Nq,Scalar> *H = NULL, bool DISCARD_U=false);
 	
+	/**Performs a two-site sweep.*/
 	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<Nq,MatrixType> > > &Apair);
+	
+	/**Performs an SVD split to the left and writes the zero-site tensor to \p C.*/
+	void leftSplitStep  (size_t loc, Biped<Nq,MatrixType> &C);
+	
+	/**Performs an SVD split to the right and writes the zero-site tensor to \p C.*/
+	void rightSplitStep (size_t loc, Biped<Nq,MatrixType> &C);
+	
+	/**Absorbs the zero-site tensor \p C (as obtained after an SVD split) into the MpsQ.
+	\param loc : site to do the absorption
+	\param DIR : specifies whether the absorption is on the left-sweep or right-sweep
+	\param C : the zero-site tensor to be absorbed*/
+	void absorb (size_t loc, DMRG::DIRECTION::OPTION DIR, const Biped<Nq,MatrixType> &C);
 	///\}
 	
 	///\{
@@ -196,6 +233,9 @@ public:
 	
 	/**Returns the pivot position.*/
 	inline int get_pivot() const {return this->pivot;};
+	
+	/**Returns the truncated weight per site (Eigen array).*/
+	inline ArrayXd get_truncWeight() const {return truncWeight;};
 	///\}
 	
 private:
@@ -899,7 +939,6 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H,
 	
 	ArrayXd truncWeightSub(inset[loc].size()); truncWeightSub.setZero();
 	ArrayXd entropySub(inset[loc].size()); entropySub.setZero();
-	ArrayXd lastSV(inset[loc].size()); lastSV.setZero();
 	
 	#ifndef DMRG_DONT_USE_OPENMP
 	#pragma omp parallel for
@@ -969,7 +1008,6 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H,
 			// calculate entropy
 			size_t Nnz = (Jack.singularValues().array() > 0.).count();
 			entropySub(qin) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
-			lastSV(qin) = Jack.singularValues()(Nret-1);
 		}
 		else if (TOOL == DMRG::BROOM::QR)
 		{
@@ -1069,10 +1107,6 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H,
 	truncWeight(loc) = truncWeightSub.sum();
 	entropy(loc) = entropySub.sum();
 	this->pivot = (loc==0)? 0 : loc-1;
-	
-//	cout << "LEFT l=" << loc << endl;
-//	cout << lastSV.transpose() << endl;
-//	cout << endl;
 }
 
 template<size_t Nq, typename Scalar>
@@ -1131,7 +1165,6 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 	
 	ArrayXd truncWeightSub(outset[loc].size()); truncWeightSub.setZero();
 	ArrayXd entropySub(outset[loc].size()); entropySub.setZero();
-	ArrayXd lastSV(outset[loc].size()); lastSV.setZero();
 	
 	#ifndef DMRG_DONT_USE_OPENMP
 	#pragma omp parallel for
@@ -1202,7 +1235,6 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 			// calculate entropy
 			size_t Nnz = (Jack.singularValues().array() > 0.).count();
 			entropySub(qout) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
-			lastSV(qout) = Jack.singularValues()(Nret-1);
 		}
 		else if (TOOL == DMRG::BROOM::QR)
 		{
@@ -1306,16 +1338,197 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 	truncWeight(loc) = truncWeightSub.sum();
 	entropy(loc) = entropySub.sum();
 	this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
+}
+
+template<size_t Nq, typename Scalar>
+void MpsQ<Nq,Scalar>::
+leftSplitStep (size_t loc, Biped<Nq,MatrixType> &C)
+{
+	#ifndef DMRG_DONT_USE_OPENMP
+	#pragma omp parallel for
+	#endif
+	for (size_t qin=0; qin<inset[loc].size(); ++qin)
+	{
+		// determine how many A's to glue together
+		vector<size_t> svec, qvec, Ncolsvec;
+		for (size_t s=0; s<qloc[loc].size(); ++s)
+		for (size_t q=0; q<A[loc][s].dim; ++q)
+		{
+			if (A[loc][s].in[q] == inset[loc][qin])
+			{
+				svec.push_back(s);
+				qvec.push_back(q);
+				Ncolsvec.push_back(A[loc][s].block[q].cols());
+			}
+		}
+		
+		// do the glue
+		size_t Nrows = A[loc][svec[0]].block[qvec[0]].rows();
+		for (size_t i=1; i<svec.size(); ++i) {assert(A[loc][svec[i]].block[qvec[i]].rows() == Nrows);}
+		size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
+		
+		MatrixType Aclump(Nrows,Ncols);
+		size_t stitch = 0;
+		for (size_t i=0; i<svec.size(); ++i)
+		{
+			Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]];
+			stitch += Ncolsvec[i];
+		}
+		
+		#ifdef DONT_USE_EIGEN_QR
+		LapackQR<Scalar> Quirinus; MatrixType Qmatrix, Rmatrix; // Lapack QR
+		#else
+		HouseholderQR<MatrixType> Quirinus; MatrixType Qmatrix, Rmatrix; // Eigen QR
+		#endif
+		
+		Quirinus.compute(Aclump.adjoint());
+		#ifdef DONT_USE_EIGEN_QR
+		Qmatrix = Quirinus.Qmatrix().adjoint();
+		Rmatrix = Quirinus.Rmatrix().adjoint();
+		#else
+		Qmatrix = (Quirinus.householderQ() * MatrixType::Identity(Aclump.cols(),Aclump.rows())).adjoint();
+		Rmatrix = (MatrixType::Identity(Aclump.rows(),Aclump.cols()) * Quirinus.matrixQR().template triangularView<Upper>()).adjoint();
+		#endif
+		
+		// update A[loc]
+		stitch = 0;
+		for (size_t i=0; i<svec.size(); ++i)
+		{
+			A[loc][svec[i]].block[qvec[i]] = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i]);
+			stitch += Ncolsvec[i];
+		}
+		
+		// write to C
+		qarray2<Nq> quple = {inset[loc][qin], inset[loc][qin]};
+		auto qC = C.dict.find(quple);
+		
+		if (qC != C.dict.end())
+		{
+			C.block[qC->second] += Rmatrix;
+		}
+		else
+		{
+			C.push_back(quple,Rmatrix);
+		}
+	}
 	
-//	cout << "RIGHT l=" << loc << endl;
-//	cout << lastSV.transpose() << endl;
-//	cout << endl;
+	this->pivot = (loc==0)? 0 : loc-1;
+}
+
+template<size_t Nq, typename Scalar>
+void MpsQ<Nq,Scalar>::
+rightSplitStep (size_t loc, Biped<Nq,MatrixType> &C)
+{
+	#ifndef DMRG_DONT_USE_OPENMP
+	#pragma omp parallel for
+	#endif
+	for (size_t qout=0; qout<outset[loc].size(); ++qout)
+	{
+		// determine how many A's to glue together
+		vector<size_t> svec, qvec, Nrowsvec;
+		for (size_t s=0; s<qloc[loc].size(); ++s)
+		for (size_t q=0; q<A[loc][s].dim; ++q)
+		{
+			if (A[loc][s].out[q] == outset[loc][qout])
+			{
+				svec.push_back(s);
+				qvec.push_back(q);
+				Nrowsvec.push_back(A[loc][s].block[q].rows());
+			}
+		}
+		
+		// do the glue
+		size_t Ncols = A[loc][svec[0]].block[qvec[0]].cols();
+		for (size_t i=1; i<svec.size(); ++i) {assert(A[loc][svec[i]].block[qvec[i]].cols() == Ncols);}
+		size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
+		
+		MatrixType Aclump(Nrows,Ncols);
+		Aclump.setZero();
+		size_t stitch = 0;
+		for (size_t i=0; i<svec.size(); ++i)
+		{
+			Aclump.block(stitch,0, Nrowsvec[i],Ncols) = A[loc][svec[i]].block[qvec[i]];
+			stitch += Nrowsvec[i];
+		}
+		
+		#ifdef DONT_USE_EIGEN_QR
+		LapackQR<Scalar> Quirinus; MatrixType Qmatrix, Rmatrix; // Eigen QR
+		#else
+		HouseholderQR<MatrixType> Quirinus; MatrixType Qmatrix, Rmatrix; // Eigen QR
+		#endif
+		
+		Quirinus.compute(Aclump);
+		#ifdef DONT_USE_EIGEN_QR
+		Qmatrix = Quirinus.Qmatrix();
+		Rmatrix = Quirinus.Rmatrix();
+		#else
+		Qmatrix = Quirinus.householderQ() * MatrixType::Identity(Aclump.rows(),Aclump.cols());
+		Rmatrix = MatrixType::Identity(Aclump.cols(),Aclump.rows()) * Quirinus.matrixQR().template triangularView<Upper>();
+		#endif
+		
+		// update A[loc]
+		stitch = 0;
+		for (size_t i=0; i<svec.size(); ++i)
+		{
+			A[loc][svec[i]].block[qvec[i]] = Qmatrix.block(stitch,0, Nrowsvec[i],Ncols);
+			stitch += Nrowsvec[i];
+		}
+		
+		// write to C
+		qarray2<Nq> quple = {outset[loc][qout], outset[loc][qout]};
+		auto qC = C.dict.find(quple);
+		
+		if (qC != C.dict.end())
+		{
+			C.block[qC->second] += Rmatrix;
+		}
+		else
+		{
+			C.push_back(quple,Rmatrix);
+		}
+	}
+	
+	this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
+}
+
+template<size_t Nq, typename Scalar>
+void MpsQ<Nq,Scalar>::
+absorb (size_t loc, DMRG::DIRECTION::OPTION DIR, const Biped<Nq,MatrixType> &C)
+{
+	for (size_t qC=0; qC<C.dim; ++qC)
+	{
+		if (DIR == DMRG::DIRECTION::RIGHT)
+		{
+			for (size_t s=0; s<qloc[loc].size(); ++s)
+			for (size_t q=0; q<A[loc][s].dim; ++q)
+			{
+				if (A[loc][s].in[q] == C.out[qC])
+				{
+					A[loc][s].block[q] = C.block[qC] * A[loc][s].block[q];
+				}
+			}
+		}
+		else
+		{
+			for (size_t s=0; s<qloc[loc].size(); ++s)
+			for (size_t q=0; q<A[loc][s].dim; ++q)
+			{
+				if (A[loc][s].out[q] == C.in[qC])
+				{
+					A[loc][s].block[q] = A[loc][s].block[q] * C.block[qC];
+				}
+			}
+		}
+	}
 }
 
 template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
 sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<Nq,MatrixType> > > &Apair)
 {
+	ArrayXd truncWeightSub(outset[loc].size()); truncWeightSub.setZero();
+	ArrayXd entropySub(outset[loc].size()); entropySub.setZero();
+	
 	#ifndef DMRG_DONT_USE_OPENMP
 	#pragma omp parallel for
 	#endif
@@ -1398,6 +1611,10 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<N
 			Nret = min(max(Nret,1ul),static_cast<size_t>(Jack.singularValues().rows()));
 			Nret = min(Nret,this->N_sv);
 			
+			truncWeightSub(qout) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
+			size_t Nnz = (Jack.singularValues().array() > 0.).count();
+			entropySub(qout) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
+			
 			MatrixType Aleft, Aright;
 			if (DIR == DMRG::DIRECTION::RIGHT)
 			{
@@ -1453,6 +1670,9 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<N
 			}
 		}
 	}
+	
+	truncWeight(loc) = truncWeightSub.sum();
+	entropy(loc) = entropySub.sum();
 }
 
 template<size_t Nq, typename Scalar>

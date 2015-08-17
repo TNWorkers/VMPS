@@ -17,6 +17,8 @@ struct PivotMatrixQ
 	
 	vector<std::array<size_t,2> >          qlhs;
 	vector<vector<std::array<size_t,4> > > qrhs;
+	
+//	vector<qarray<Nq> > qloc;
 };
 
 template<size_t Nq, typename Scalar>
@@ -26,8 +28,8 @@ struct PivotVectorQ
 	
 	PivotVectorQ<Nq,Scalar>& operator+= (const PivotVectorQ<Nq,Scalar> &Vrhs);
 	PivotVectorQ<Nq,Scalar>& operator-= (const PivotVectorQ<Nq,Scalar> &Vrhs);
-	PivotVectorQ<Nq,Scalar>& operator*= (const double &alpha);
-	PivotVectorQ<Nq,Scalar>& operator/= (const double &alpha);
+	template<typename OtherScalar> PivotVectorQ<Nq,Scalar>& operator*= (const OtherScalar &alpha);
+	template<typename OtherScalar> PivotVectorQ<Nq,Scalar>& operator/= (const OtherScalar &alpha);
 };
 //-----------</definitions>-----------
 
@@ -37,23 +39,30 @@ PivotVectorQ<Nq,Scalar>& PivotVectorQ<Nq,Scalar>::operator+= (const PivotVectorQ
 {
 	for (size_t s=0; s<A.size(); ++s)
 	{
-		transform(A[s].block.begin(), A[s].block.end(), Vrhs.A[s].block.begin(), A[s].block.begin(), std::plus<MatrixXd>());
+		transform(A[s].block.begin(), A[s].block.end(), 
+		          Vrhs.A[s].block.begin(), A[s].block.begin(), 
+		          std::plus<Matrix<Scalar,Dynamic,Dynamic> >());
 	}
 	return *this;
 }
 
 template<size_t Nq, typename Scalar>
-PivotVectorQ<Nq,Scalar>& PivotVectorQ<Nq,Scalar>::operator-= (const PivotVectorQ<Nq,Scalar> &Vrhs)
+PivotVectorQ<Nq,Scalar>& PivotVectorQ<Nq,Scalar>::
+operator-= (const PivotVectorQ<Nq,Scalar> &Vrhs)
 {
 	for (size_t s=0; s<A.size(); ++s)
 	{
-		transform(A[s].block.begin(), A[s].block.end(), Vrhs.A[s].block.begin(), A[s].block.begin(), std::minus<MatrixXd>());
+		transform(A[s].block.begin(), A[s].block.end(), 
+		          Vrhs.A[s].block.begin(), A[s].block.begin(), 
+		          std::minus<Matrix<Scalar,Dynamic,Dynamic> >());
 	}
 	return *this;
 }
 
 template<size_t Nq, typename Scalar>
-PivotVectorQ<Nq,Scalar>& PivotVectorQ<Nq,Scalar>::operator*= (const double &alpha)
+template<typename OtherScalar>
+PivotVectorQ<Nq,Scalar>& PivotVectorQ<Nq,Scalar>::
+operator*= (const OtherScalar &alpha)
 {
 	for (size_t s=0; s<A.size(); ++s)
 	for (size_t q=0; q<A[s].dim; ++q)
@@ -64,7 +73,9 @@ PivotVectorQ<Nq,Scalar>& PivotVectorQ<Nq,Scalar>::operator*= (const double &alph
 }
 
 template<size_t Nq, typename Scalar>
-PivotVectorQ<Nq,Scalar>& PivotVectorQ<Nq,Scalar>::operator/= (const double &alpha)
+template<typename OtherScalar>
+PivotVectorQ<Nq,Scalar>& PivotVectorQ<Nq,Scalar>::
+operator/= (const OtherScalar &alpha)
 {
 	for (size_t s=0; s<A.size(); ++s)
 	for (size_t q=0; q<A[s].dim; ++q)
@@ -74,20 +85,20 @@ PivotVectorQ<Nq,Scalar>& PivotVectorQ<Nq,Scalar>::operator/= (const double &alph
 	return *this;
 }
 
-template<size_t Nq, typename Scalar>
-PivotVectorQ<Nq,Scalar> operator* (double const &alpha, PivotVectorQ<Nq,Scalar> V)
+template<size_t Nq, typename Scalar, typename OtherScalar>
+PivotVectorQ<Nq,Scalar> operator* (const OtherScalar &alpha, PivotVectorQ<Nq,Scalar> V)
 {
 	return V *= alpha;
 }
 
-template<size_t Nq, typename Scalar>
-PivotVectorQ<Nq,Scalar> operator* (PivotVectorQ<Nq,Scalar> V, double const &alpha)
+template<size_t Nq, typename Scalar, typename OtherScalar>
+PivotVectorQ<Nq,Scalar> operator* (PivotVectorQ<Nq,Scalar> V, const OtherScalar &alpha)
 {
 	return V *= alpha;
 }
 
-template<size_t Nq, typename Scalar>
-PivotVectorQ<Nq,Scalar> operator/ (PivotVectorQ<Nq,Scalar> V, const double &alpha)
+template<size_t Nq, typename Scalar, typename OtherScalar>
+PivotVectorQ<Nq,Scalar> operator/ (PivotVectorQ<Nq,Scalar> V, const OtherScalar &alpha)
 {
 	return V /= alpha;
 }
@@ -253,9 +264,9 @@ void HxV (const PivotMatrixQ<Nq,Scalar,MpoScalar> &H, PivotVectorQ<Nq,Scalar> &V
 
 //-----------<dot & vector norms>-----------
 template<size_t Nq, typename Scalar>
-double dot (const PivotVectorQ<Nq,Scalar> &V1, const PivotVectorQ<Nq,Scalar> &V2)
+Scalar dot (const PivotVectorQ<Nq,Scalar> &V1, const PivotVectorQ<Nq,Scalar> &V2)
 {
-	double res = 0.;
+	Scalar res = 0.;
 	for (size_t s=0; s<V2.A.size(); ++s)
 	for (size_t q=0; q<V2.A[s].dim; ++q)
 	for (size_t i=0; i<V2.A[s].block[q].cols(); ++i)
@@ -330,7 +341,7 @@ void swap (PivotVectorQ<Nq,Scalar> &V1, PivotVectorQ<Nq,Scalar> &V2)
 #include "RandomVector.h"
 
 template<size_t Nq, typename Scalar>
-struct GaussianRandomVector<PivotVectorQ<Nq,Scalar>,double>
+struct GaussianRandomVector<PivotVectorQ<Nq,Scalar>,Scalar>
 {
 	static void fill (size_t N, PivotVectorQ<Nq,Scalar> &Vout)
 	{

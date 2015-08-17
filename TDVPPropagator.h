@@ -1,0 +1,300 @@
+#ifndef TDVP_PROPAGATOR
+#define TDVP_PROPAGATOR
+
+#include "DmrgContractionsQ.h"
+#include "LanczosPropagator.h"
+#include "DmrgPivotStuff0.h"
+
+template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
+class TDVPPropagator
+{
+public:
+	
+	TDVPPropagator (const Hamiltonian &H, VectorType &Vinout);
+	
+	string info() const;
+	double memory (MEMUNIT memunit=GB) const;
+	double overhead (MEMUNIT memunit=GB) const;
+	
+	void t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt);
+	void t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt);
+	
+private:
+	
+	vector<PivotMatrixQ<Nq,TimeScalar,MpoScalar> >  Heff;
+	
+	size_t N_sites;
+	int pivot;
+	DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
+	
+	void build_L (const Hamiltonian &H, const VectorType &Vinout, size_t loc);
+	void build_R (const Hamiltonian &H, const VectorType &Vinout, size_t loc);
+	
+	double dist_max=0.;
+	double dimK_max=0.;
+};
+
+template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
+string TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
+info() const
+{
+	stringstream ss;
+	ss << "TDVPPropagator: ";
+	ss << "max(dist)=" << dist_max << ", ";
+	ss << "max(dimK)=" << dimK_max << ", ";
+	ss << "mem=" << round(memory(GB),3) << "GB, overhead=" << round(overhead(MB),3) << "MB";
+	return ss.str();
+}
+
+template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
+double TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
+memory (MEMUNIT memunit) const
+{
+	double res = 0.;
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		res += Heff[l].L.memory(memunit);
+		res += Heff[l].R.memory(memunit);
+		for (size_t s1=0; s1<Heff[l].W.size(); ++s1)
+		for (size_t s2=0; s2<Heff[l].W[s1].size(); ++s2)
+		{
+			res += calc_memory(Heff[l].W[s1][s2],memunit);
+		}
+	}
+	return res;
+}
+
+template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
+double TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
+overhead (MEMUNIT memunit) const
+{
+	double res = 0.;
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		res += Heff[l].L.overhead(memunit);
+		res += Heff[l].R.overhead(memunit);
+		res += 2. * calc_memory<size_t>(Heff[l].qlhs.size(),memunit);
+		res += 4. * calc_memory<size_t>(Heff[l].qrhs.size(),memunit);
+	}
+	return res;
+}
+
+template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
+TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
+TDVPPropagator (const Hamiltonian &H, VectorType &Vinout)
+{
+	N_sites = H.length();
+	
+	// set edges
+	Heff.clear();
+	Heff.resize(N_sites);
+	Heff[0].L.setVacuum();
+	Heff[N_sites-1].R.setTarget(qarray3<Nq>{Vinout.Qtarget(), Vinout.Qtarget(), qvacuum<Nq>()});
+	
+//	Heff2.clear();
+//	Heff2.resize(N_sites-1);
+//	Heff2[0].L = Heff[0].L;
+//	Heff2[N_sites-2].R = Heff[N_sites-1].R;
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Heff[l].W = H.W[l];
+	}
+	
+//	for (size_t l=0; l<N_sites-1; ++l)
+//	{
+//		Heff2[l].W12 = H.W[l];
+//		Heff2[l].W34 = H.W[l+1];
+//		Heff2[l].qloc12 = H.locBasis(l);
+//		Heff2[l].qloc34 = H.locBasis(l+1);
+//	}
+	
+	// initial sweep, left-to-right:
+	for (size_t l=N_sites-1; l>0; --l)
+	{
+		Vinout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
+		build_R(H,Vinout,l-1);
+	}
+	CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
+	pivot = 0;
+	
+//	for (size_t l=0; l<N_sites-1; ++l)
+//	{
+//		Vinout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
+//		build_L(H,Vinout,l+1);
+//	}
+//	CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
+//	pivot = N_sites-1;
+}
+
+template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
+void TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
+t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt)
+{
+	dist_max = 0.;
+	dimK_max = 0.;
+	
+	for (size_t l=0; l<2*(N_sites-1); ++l)
+	{
+		bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
+		size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
+		size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
+		
+		// forwards
+		PivotVector2Q<Nq,TimeScalar> Apair;
+		contract_AA(Vinout.A[min(loc1,loc2)], Vinout.locBasis(min(loc1,loc2)), 
+		            Vinout.A[max(loc1,loc2)], Vinout.locBasis(max(loc1,loc2)), 
+		            Apair.A);
+		
+		PivotMatrix2Q<Nq,TimeScalar,MpoScalar> Heff2;
+		Heff2.L = Heff[min(loc1,loc2)].L;
+		Heff2.R = Heff[max(loc1,loc2)].R;
+		Heff2.W12 = H.W_at(min(loc1,loc2));
+		Heff2.W34 = H.W_at(max(loc1,loc2));
+		Heff2.qloc12 = H.locBasis(min(loc1,loc2));
+		Heff2.qloc34 = H.locBasis(max(loc1,loc2));
+		// reset dim
+		Heff2.dim = 0;
+		for (size_t s1=0; s1<H.locBasis(min(loc1,loc2)).size(); ++s1)
+		for (size_t s2=0; s2<H.locBasis(max(loc1,loc2)).size(); ++s2)
+		for (size_t q=0; q<Apair.A[s1][s2].dim; ++q)
+		{
+			Heff2.dim += Apair.A[s1][s2].block[q].rows() * Apair.A[s1][s2].block[q].cols();
+		}
+//		Heff2[min(loc1,loc2)].dim = 0;
+//		for (size_t s1=0; s1<H.locBasis(min(loc1,loc2)).size(); ++s1)
+//		for (size_t s2=0; s2<H.locBasis(max(loc1,loc2)).size(); ++s2)
+//		for (size_t q=0; q<Apair.A[s1][s2].dim; ++q)
+//		{
+//			Heff2[min(loc1,loc2)].dim += Apair.A[s1][s2].block[q].rows() * Apair.A[s1][s2].block[q].cols();
+//		}
+		
+		LanczosPropagator<PivotMatrix2Q<Nq,TimeScalar,MpoScalar>,PivotVector2Q<Nq,TimeScalar> > Lutz2(1e-5);
+//		Lutz2.t_step(Heff2[min(loc1,loc2)], Apair, -0.5*dt.imag());
+		Lutz2.t_step(Heff2, Apair, -0.5*dt.imag());
+		if (Lutz2.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
+		if (Lutz2.get_dimK() > dimK_max) {dimK_max = Lutz2.get_dimK();}
+		Vinout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair.A);
+		(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vinout,max(loc1,loc2)) : build_R(H,Vinout,min(loc1,loc2));
+		
+		pivot = Vinout.get_pivot();
+		
+		if ((CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT and pivot != N_sites-1) or
+		    (CURRENT_DIRECTION==DMRG::DIRECTION::LEFT and pivot != 0))
+		{
+	//		if (Heff[pivot].dim == 0)
+			{
+				precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
+			                            H.locBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs);
+			}
+			
+			// reset dim
+			Heff[pivot].dim = 0;
+			for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
+			for (size_t q=0; q<Vinout.A[pivot][s].dim; ++q)
+			{
+				Heff[pivot].dim += Vinout.A[pivot][s].block[q].rows() * Vinout.A[pivot][s].block[q].cols();
+			}
+			
+			PivotVectorQ<Nq,TimeScalar> Asingle;
+			Asingle.A = Vinout.A[pivot];
+			
+			LanczosPropagator<PivotMatrixQ<Nq,TimeScalar,MpoScalar>, PivotVectorQ<Nq,TimeScalar> > Lutz(1e-5);
+			Lutz.t_step(Heff[pivot], Asingle, +0.5*dt.imag());
+			if (Lutz.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
+			if (Lutz.get_dimK() > dimK_max) {dimK_max = Lutz2.get_dimK();}
+			Vinout.A[pivot] = Asingle.A;
+		}
+	}
+}
+
+template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
+void TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
+t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt)
+{
+	dist_max = 0.;
+	dimK_max = 0.;
+	
+	for (size_t l=0; l<2*N_sites; ++l)
+	{
+		bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
+		
+		// forwards
+		PivotVectorQ<Nq,TimeScalar> Asingle;
+		Asingle.A = Vinout.A[pivot];
+		
+//		if (Heff[pivot].dim == 0)
+		{
+			precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
+			                        H.locBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs);
+		}
+		
+		// reset dim
+		Heff[pivot].dim = 0;
+		for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
+		for (size_t q=0; q<Vinout.A[pivot][s].dim; ++q)
+		{
+			Heff[pivot].dim += Vinout.A[pivot][s].block[q].rows() * Vinout.A[pivot][s].block[q].cols();
+		}
+		
+		LanczosPropagator<PivotMatrixQ<Nq,TimeScalar,MpoScalar>, PivotVectorQ<Nq,TimeScalar> > Lutz(1e-5);
+		Lutz.t_step(Heff[pivot], Asingle, -0.5*dt.imag());
+		if (Lutz.get_dist() > dist_max) {dist_max = Lutz.get_dist();}
+		if (Lutz.get_dimK() > dimK_max) {dimK_max = Lutz.get_dimK();}
+		Vinout.A[pivot] = Asingle.A;
+		
+		if (l != N_sites-1 and l != 2*N_sites-1)
+		{
+			PivotVector0Q<Nq,TimeScalar> Azero;
+			int old_pivot = pivot;
+			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Vinout.rightSplitStep(pivot,Azero.A) : Vinout.leftSplitStep(pivot,Azero.A);
+			pivot = Vinout.get_pivot();
+			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vinout,pivot) : build_R(H,Vinout,pivot);
+			
+			LanczosPropagator<PivotMatrixQ<Nq,TimeScalar,MpoScalar>, PivotVector0Q<Nq,TimeScalar> > Lutz0(1e-5);
+			
+			// set Heff0
+			PivotMatrixQ<Nq,TimeScalar,MpoScalar> Heff0;
+			Heff0.L = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot+1].L : Heff[old_pivot].L;
+			Heff0.R = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot].R   : Heff[old_pivot-1].R;
+			Heff0.W = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot+1].W : Heff[old_pivot-1].W;
+			
+			// reset dim
+			Heff0.dim = 0;
+			for (size_t q=0; q<Azero.A.dim; ++q)
+			{
+				Heff0.dim += Azero.A.block[q].rows() * Azero.A.block[q].cols();
+			}
+			
+			Lutz0.t_step(Heff0, Azero, +0.5*dt.imag());
+			if (Lutz0.get_dist() > dist_max) {dist_max = Lutz0.get_dist();}
+			if (Lutz0.get_dimK() > dimK_max) {dimK_max = Lutz0.get_dimK();}
+			
+			Vinout.absorb(pivot,CURRENT_DIRECTION,Azero.A);
+		}
+	}
+}
+
+template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
+inline void TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
+build_L (const Hamiltonian &H, const VectorType &Vinout, size_t loc)
+{
+	if (loc != 0)
+	{
+		contract_L(Heff[loc-1].L, Vinout.A[loc-1], H.W[loc-1], Vinout.A[loc-1], H.locBasis(loc-1), Heff[loc].L);
+//		if (loc!=N_sites-1) {Heff2[loc].L = Heff[loc].L;}
+	}
+}
+
+template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
+inline void TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
+build_R (const Hamiltonian &H, const VectorType &Vinout, size_t loc)
+{
+	if (loc != N_sites-1)
+	{
+		contract_R(Heff[loc+1].R, Vinout.A[loc+1], H.W[loc+1], Vinout.A[loc+1], H.locBasis(loc+1), Heff[loc].R);
+//		if (loc!=0) {Heff2[loc-1].R = Heff[loc].R;}
+	}
+}
+
+#endif

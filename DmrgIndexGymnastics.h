@@ -47,6 +47,35 @@ bool AWA (qarray<Nq> Lin, qarray<Nq> Lout, qarray<Nq> Lmid, size_t s1, size_t s2
 	return false;
 }
 
+template<size_t Nq, typename MatrixType>
+bool AAWWAA (qarray<Nq> Lin, qarray<Nq> Lout, qarray<Nq> Lmid, 
+             size_t s1, size_t s2, vector<qarray<Nq> > qloc12, 
+             size_t s3, size_t s4, vector<qarray<Nq> > qloc34, 
+             const vector<vector<Biped<Nq,MatrixType> > > &AAbra, 
+             const vector<vector<Biped<Nq,MatrixType> > > &AAket, 
+             tuple<qarray3<Nq>,size_t,size_t> &result)
+{
+	qarray<Nq> qRout = Lin + qloc12[s1] + qloc34[s3];
+	qarray2<Nq> cmp1 = {Lin, qRout};
+	auto q13 = AAbra[s1][s3].dict.find(cmp1);
+	
+	if (q13 != AAbra[s1][s3].dict.end())
+	{
+		qarray<Nq> qRin = Lout + qloc12[s2] + qloc34[s4];
+		qarray2<Nq> cmp2 = {Lout, qRin};
+		auto q24 = AAket[s2][s4].dict.find(cmp2);
+		
+		if (q24 != AAket[s2][s4].dict.end())
+		{
+			qarray<Nq> qRmid = Lmid + qloc12[s1] + qloc34[s3] - qloc12[s2] - qloc34[s4];
+			
+			result = make_tuple(qarray3<Nq>{qRin,qRout,qRmid}, q13->second, q24->second);
+			return true;
+		}
+	}
+	return false;
+}
+
 /**Calculates the matching right indices when contracting a left transfer matrix with two MpsQ and two MpoQ.
 \dotfile AWWA.dot
 \param Lin

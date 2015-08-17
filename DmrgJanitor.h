@@ -58,13 +58,15 @@ public:
 	/**Core function for a sweep to the right. Just a virtual placeholder in DmrgJanitor, overwritten by MpsQ with the real code.
 	\param loc : Sweeps to the right from the site \p loc, updating the A-matrices at \p loc and \p loc+1, shifting the pivot to \p loc+1.
 	\param TOOL : with which broom to sweep, see DMRG::BROOM::OPTION
-	\param H : Non-local information for DMRG::BROOM::RDM and DMRG::BROOM::RICH_SVD enters thorugh here.*/
+	\param H : Non-local information for DMRG::BROOM::RDM and DMRG::BROOM::RICH_SVD enters thorugh here.
+	\param DISCARD_V: If \p true, don't multiply the V-matrix onto the next site*/
 	virtual void rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H = NULL, bool DISCARD_V=false){};
 	
 	/**Core function for a sweep to the left. Just a virtual placeholder in DmrgJanitor, overwritten by MpsQ with the real code.
 	\param loc : Sweeps to the left from the site \p loc, updating the A-matrices at \p loc and \p loc-1, shifting the pivot to \p loc-1.
 	\param TOOL : with which broom to sweep, see DMRG::BROOM::OPTION
-	\param H : Non-local information for DMRG::BROOM::RDM and DMRG::BROOM::RICH_SVD enters thorugh here.*/
+	\param H : Non-local information for DMRG::BROOM::RDM and DMRG::BROOM::RICH_SVD enters thorugh here.
+	\param DISCARD_U: If \p true, don't multiply the U-matrix onto the next site*/
 	virtual void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H = NULL, bool DISCARD_U=false){};
 	///@}
 	

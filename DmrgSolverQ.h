@@ -134,9 +134,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 	N_sites = H.length();
 	N_sweepsteps = N_halfsweeps = 0;
 	
-	// resize Vout
 	Stopwatch Saturn;
 	Stopwatch Aion;
+	
+	// resize Vout
 	Vout.state = MpsQ<Nq,double>(H, Dinit, Qtot_input);
 	Vout.state.N_sv = Dlimit;
 	Vout.state.setRandom();
