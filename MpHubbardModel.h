@@ -57,6 +57,7 @@ public:
 	static MpoQ<2> d (size_t L, size_t loc); // double occupancy
 	static MpoQ<2> n (size_t L, SPIN_INDEX sigma, size_t loc);
 	static MpoQ<2> Sz (size_t L, size_t loc);
+	static MpoQ<2> SzSz (size_t L, size_t loc1, size_t loc2);
 	static MpoQ<2> triplon (size_t L, size_t loc, SPIN_INDEX sigma);
 	static MpoQ<2> antitriplon (size_t L, size_t loc, SPIN_INDEX sigma);
 	static MpoQ<2> quadruplon (size_t L, size_t loc);
@@ -78,7 +79,7 @@ Generator (double U, double V, double tPrime)
 	SuperMatrix<double> G;
 	if (V==0)
 	{
-		if (tPrime==0)
+		if (tPrime == 0)
 		{
 			size_t Daux = 6;
 			G.setMatrix(Daux,4);
@@ -127,17 +128,18 @@ Generator (double U, double V, double tPrime)
 			G(13,11) = FermionBase::fsign * FermionBase::cUP.transpose();
 			G(13,12) = FermionBase::fsign * FermionBase::cDN.transpose();
 			
-			G(9,4) = FermionBase::fsign;
-			G(10,3) = FermionBase::fsign;
-			G(11,2) = FermionBase::fsign;
-			G(12,1) = FermionBase::fsign;
+//			G(9,4) = FermionBase::fsign;
+//			G(10,3) = FermionBase::fsign;
+//			G(11,2) = FermionBase::fsign;
+//			G(12,1) = FermionBase::fsign;
+			G.set_block_to_skewdiag(12,1, 4, FermionBase::fsign);
 			G(13,13).setIdentity();
 		}
 	}
 	
 	else
 	{
-		if (tPrime==0)
+		if (tPrime == 0)
 		{
 			size_t Daux = 7;
 			G.setMatrix(Daux,4);
@@ -189,10 +191,11 @@ Generator (double U, double V, double tPrime)
 			G(14,12) = FermionBase::fsign * FermionBase::cUP.transpose();
 			G(14,13) = FermionBase::fsign * FermionBase::cDN.transpose();
 			
-			G(10,4) = FermionBase::fsign;
-			G(11,3) = FermionBase::fsign;
-			G(12,2) = FermionBase::fsign;
-			G(13,1) = FermionBase::fsign;
+//			G(10,4) = FermionBase::fsign;
+//			G(11,3) = FermionBase::fsign;
+//			G(12,2) = FermionBase::fsign;
+//			G(13,1) = FermionBase::fsign;
+			G.set_block_to_skewdiag(13,1, 4, FermionBase::fsign);
 			G(14,14).setIdentity();
 		}
 	}
@@ -433,6 +436,17 @@ Sz (size_t L, size_t loc)
 	ss << "Sz(" << loc << ")";
 	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(loc, FermionBase::Sz);
+	return Mout;
+}
+
+MpoQ<2> HubbardModel::
+SzSz (size_t L, size_t loc1, size_t loc2)
+{
+	assert(loc1<L and loc2<L);
+	stringstream ss;
+	ss << "SzSz(" << loc1 << "," << loc2 << ")";
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
+	Mout.setLocal({loc1,loc2}, {FermionBase::Sz,FermionBase::Sz});
 	return Mout;
 }
 

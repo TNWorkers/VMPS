@@ -12,7 +12,7 @@ namespace VMPS
 
 /**MPO representation of 
 \f$
-H = - J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^z_iS^z_j - B_z \sum_i S^z_i
+H = -J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^z_iS^z_j -J' \sum_{<<ij>>} \left(\mathbf{S_i}\mathbf{S_j}\right) - B_z \sum_i S^z_i
 \f$.
 \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
 \note \f$J<0\f$ : antiferromagnetic*/
@@ -30,6 +30,15 @@ public:
 	*/
 	HeisenbergModel (int L_input, double Jxy_input=-1., double Jz_input=numeric_limits<double>::infinity(), double Bz_input=0., size_t D_input=2, bool CALC_SQUARE=true);
 	
+	/**
+	\param L_input : chain length
+	\param Jlist : list of next-/second-nearerst neighbour exchange interactions
+	\param Bz_input : external field in z-direction
+	\param D_input : \f$2S+1\f$
+	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
+	*/
+	HeisenbergModel (int L_input, array<double,2> Jlist, double Bz_input=0., size_t D_input=2, bool CALC_SQUARE=true);
+	
 	/**Creates the MPO generator matrix for the Heisenberg model (of any spin (\f$D=2S+1\f$))
 	\f$G = \left(
 	\begin{array}{ccccc}
@@ -43,15 +52,18 @@ public:
 	The fourth row and column are missing when \f$J_{xy}=0\f$. Uses the appropriate spin operators for a given \p S.*/
 	static SuperMatrix<double> Generator (double Jxy, double Jz, double Bz, double Bx, size_t D=2);
 	
+	SuperMatrix<double> GeneratorJ12 (double J, double Jprime, double Bz);
+	
 	//---label stuff---
 	///@{
 	/**Creates a label for this MpoQ to have a nice output.
 	\param D : \f$2S+1\f$
 	\param Jz : \f$J_z\f$
 	\param Jxy : \f$J_{xy}\f$
+	\param Jprime : \f$J'\f$
 	\param Bz : \f$B_{z}\f$
 	\param Bx : \f$B_{x}\f$ (when called by GrandHeisenbergModel, otherwise 0)*/
-	static string create_label (size_t D, double Jxy, double Jz, double Bz, double Bx)
+	static string create_label (size_t D, double Jxy, double Jz, double Jprime, double Bz, double Bx)
 	{
 		auto S = frac(D-1,2);
 		stringstream ss;
@@ -61,6 +73,7 @@ public:
 		else                {ss << "XXZ(S=" << S << ",Jxy=" << Jxy << ",Jz=" << Jz;}
 		if (Bz != 0.) {ss << ",Bz=" << Bz;}
 		if (Bx != 0.) {ss << ",Bx=" << Bx;}
+		if (Jprime != 0.) {ss << ",J'=" << Jprime;}
 		ss << ")";
 		return ss.str();
 	}
@@ -111,6 +124,7 @@ public:
 private:
 	
 	double Jxy=-1., Jz=-1., Bz=0.;
+	double Jprime=0.;
 	size_t D=2;
 };
 
@@ -159,6 +173,45 @@ Generator (double Jxy, double Jz, double Bz, double Bx, size_t D)
 	return G;
 }
 
+SuperMatrix<double> HeisenbergModel::
+GeneratorJ12 (double J, double Jprime, double Bz)
+{
+	SuperMatrix<double> G;
+	size_t Daux = 11;
+	G.setMatrix(Daux,D);
+	G.setZero();
+	
+	// left column
+	G(0,0).setIdentity();
+	
+	G(1,0) = SpinBase::Scomp(SP,D);
+	G(2,0) = SpinBase::Scomp(SM,D);
+	G(3,0) = SpinBase::Scomp(SZ,D);
+	
+	G(4,0) = SpinBase::Scomp(SP,D);
+	G(5,0) = SpinBase::Scomp(SM,D);
+	G(6,0) = SpinBase::Scomp(SZ,D);
+	
+	// corner element
+	G(Daux-1,0) = -Bz*SpinBase::Scomp(SZ,D);
+	
+	// last row
+	G(Daux-1,4) = -0.5*J*SpinBase::Scomp(SM,D);
+	G(Daux-1,5) = -0.5*J*SpinBase::Scomp(SP,D);
+	G(Daux-1,6) = -J*SpinBase::Scomp(SZ,D);
+	
+	G(Daux-1,7) = -0.5*Jprime*SpinBase::Scomp(SM,D);
+	G(Daux-1,8) = -0.5*Jprime*SpinBase::Scomp(SP,D);
+	G(Daux-1,9) = -Jprime*SpinBase::Scomp(SZ,D);
+	
+	// id-block for J':
+	G.set_block_to_skewdiag(9,1, 3, Eigen::MatrixXd::Identity(D,D));
+	
+	G(Daux-1,Daux-1).setIdentity();
+	
+	return G;
+}
+
 HeisenbergModel::
 HeisenbergModel (int L_input, double Jxy_input, double Jz_input, double Bz_input, size_t D_input, bool CALC_SQUARE)
 :MpoQ<1> (L_input, HeisenbergModel::qloc(D_input), {0}, HeisenbergModel::maglabel, "", HeisenbergModel::halve),
@@ -166,11 +219,33 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 {
 	if (Jz==numeric_limits<double>::infinity()) {Jz=Jxy;} // default: Jxy=Jz
 	assert(Jxy != 0. or Jz != 0.);
-	this->label = create_label(D,Jxy,Jz,Bz,0.);
+	this->label = create_label(D,Jxy,Jz,0,Bz,0);
 	
 	this->Daux = calc_Daux(Jxy,Jz);
 	
 	SuperMatrix<double> G = Generator(Jxy,Jz,Bz,0.,D);
+	this->construct(G, this->W, this->Gvec);
+	
+	if (CALC_SQUARE == true)
+	{
+		this->construct(tensor_product(G,G), this->Wsq, this->GvecSq);
+		this->GOT_SQUARE = true;
+	}
+	else
+	{
+		this->GOT_SQUARE = false;
+	}
+}
+
+HeisenbergModel::
+HeisenbergModel (int L_input, array<double,2> Jlist, double Bz_input, size_t D_input, bool CALC_SQUARE)
+:MpoQ<1> (L_input, HeisenbergModel::qloc(2), {0}, HeisenbergModel::maglabel, "", HeisenbergModel::halve),
+Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
+{
+	this->label = create_label(D,Jxy,Jz,Jprime,Bz,0.);
+	this->Daux = 11;
+	
+	SuperMatrix<double> G = GeneratorJ12(Jxy,Jprime,Bz);
 	this->construct(G, this->W, this->Gvec);
 	
 	if (CALC_SQUARE == true)
@@ -189,7 +264,7 @@ Hsq (size_t D)
 {
 	SuperMatrix<double> W = Generator(Jxy,Jz,Bz,0.,D);
 	MpoQ<1> Mout(this->N_sites, tensor_product(W,W), HeisenbergModel::qloc(D), {0}, HeisenbergModel::maglabel, "", HeisenbergModel::halve);
-	Mout.label = create_label(D,Jxy,Jz,Bz,0.) + "H^2";
+	Mout.label = create_label(D,Jxy,Jz,Jprime,Bz,0.) + "H^2";
 	return Mout;
 }
 

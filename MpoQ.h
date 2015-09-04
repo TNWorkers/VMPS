@@ -73,6 +73,10 @@ public:
 	MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
+	
+	MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
+	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
+	      bool UNITARY_input=false);
 	///\}
 	
 	//---set special, modify---
@@ -114,8 +118,10 @@ public:
 	///\{
 	/**\describe_info*/
 	string info() const;
+	
 	/**\describe_memory*/
 	double memory (MEMUNIT memunit=GB) const;
+	
 	/**Calculates a measure of the sparsity of the given MpoQ.
 	\param USE_SQUARE : If \p true, apply it to the stored square.
 	\param PER_MATRIX : If \p true, calculate the amount of non-zeros per matrix. If \p false, calculate the fraction of non-zero elements.*/
@@ -136,20 +142,28 @@ public:
 	///\{
 	/**Returns the length of the chain.*/
 	inline size_t length() const {return N_sites;}
+	
 	/**\describe_Daux*/
 	inline size_t auxdim() const {return Daux;}
+	
 	/**Returns the total change in quantum numbers induced by the MpoQ.*/
 	inline qarray<Nq> Qtarget() const {return Qtot;};
+	
 	/**Returns the local basis at \p loc.*/
 	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
+	
 	/**Returns the full local basis.*/
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
+	
 	/**Checks whether the MPO is a unitary operator.*/
 	inline bool IS_UNITARY() const {return UNITARY;};
+	
 	/**Checks if the square of the MPO was calculated and stored.*/
 	inline bool check_SQUARE() const {return GOT_SQUARE;}
+	
 	/**Returns the W-matrix at a given site by const reference.*/
 	inline const vector<vector<SparseMatrix<Scalar> > > &W_at   (size_t loc) const {return W[loc];};
+	
 	/**Returns the W-matrix of the squared operator at a given site by const reference.*/
 	inline const vector<vector<SparseMatrix<Scalar> > > &Wsq_at (size_t loc) const {return Wsq[loc];};
 	
@@ -276,6 +290,18 @@ MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<qar
 			qloc[l][s] = qloc_input[s];
 		}
 	}
+	Daux = Gvec_input[0].auxdim();
+	construct(Gvec_input, W, Gvec);
+}
+
+template<size_t Nq, typename Scalar>
+MpoQ<Nq,Scalar>::
+MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
+      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
+      bool UNITARY_input)
+:N_sites(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+{
+	qloc = qloc_input;
 	Daux = Gvec_input[0].auxdim();
 	construct(Gvec_input, W, Gvec);
 }

@@ -151,11 +151,11 @@ Generator (double J, double Bz, double Bx, double t, double tPrime, double U, si
 		G(4,0) = kroneckerProduct(IdSpins, t*FermionBase::cDN);
 		
 		G(5,0) = -0.5*J * kroneckerProduct(SpinBase::Scomp(SP,D), FermionBase::Sp.transpose())
-			     -0.5*J * kroneckerProduct(SpinBase::Scomp(SM,D), FermionBase::Sp)
-			     -J *     kroneckerProduct(SpinBase::Scomp(SZ,D), FermionBase::Sz)
-			     -Bz *    kroneckerProduct(SpinBase::Scomp(SZ,D), Id4)
-			     -Bx *    kroneckerProduct(SpinBase::Scomp(SX,D), Id4)
-			     +U * kroneckerProduct(IdSpins, FermionBase::d);
+		         -0.5*J * kroneckerProduct(SpinBase::Scomp(SM,D), FermionBase::Sp)
+		         -J *     kroneckerProduct(SpinBase::Scomp(SZ,D), FermionBase::Sz)
+		         -Bz *    kroneckerProduct(SpinBase::Scomp(SZ,D), Id4)
+		         -Bx *    kroneckerProduct(SpinBase::Scomp(SX,D), Id4)
+		         +U * kroneckerProduct(IdSpins, FermionBase::d);
 		
 		// note: fsign takes care of the fermionic sign
 		G(5,1) = kroneckerProduct(IdSpins,-FermionBase::fsign * FermionBase::cUP);

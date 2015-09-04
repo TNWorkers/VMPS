@@ -65,6 +65,26 @@ public:
 		innerResize(D);
 	}
 	
+	/**Sets the diagonal of a block to \p M.
+	\param i : starting row of block, from upper left
+	\param j : starting column of block, from upper left
+	\param N : size of diagonal
+	\param M : matrix to be set*/
+	void set_block_to_diag (size_t i, size_t j, size_t N, const MatrixType &M)
+	{
+		for (int k=0; k<N; ++k) {data[i+k][j+k] = M;}
+	}
+	
+	/**Sets the skew-diagonal of a block to \p M.
+	\param i : starting row of block, from lower left
+	\param j : starting column of block, from lower left
+	\param N : size of diagonal
+	\param M : matrix to be set*/
+	void set_block_to_skewdiag (size_t i, size_t j, size_t N, const MatrixType &M)
+	{
+		for (int k=0; k<N; ++k) {data[i-k][j+k] = M;}
+	}
+	
 	/**Returns the i-th row.*/
 	SuperMatrix<Scalar> row (size_t i)
 	{

@@ -71,9 +71,15 @@ public:
 	///@{
 	/**Operator for the impurity spin.*/
 	MpoQ<1> Simp (size_t L, size_t loc, SPINOP_LABEL Sa);
+	
 	/**Operator for the substrate spin.*/
 	MpoQ<1> Ssub (size_t L, size_t loc, SPINOP_LABEL Sa);
+	
+	/**Operator for the impurity-substrate correlation.*/
 	MpoQ<1> SimpSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
+	
+	/***/
+	MpoQ<1> hopping (size_t L, size_t loc);
 	///@}
 	
 private:
@@ -292,6 +298,81 @@ SimpSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP
 	Mout.setLocal({loc1, loc2}, {kroneckerProduct(SpinBase::Scomp(SOP1,D),Id4), 
 	                             kroneckerProduct(IdImp,FermionBase::Scomp(SOP2))}
 	             );
+	return Mout;
+}
+
+MpoQ<1> TransverseKondoModel::
+hopping (size_t L, size_t loc)
+{
+	assert(loc<L);
+	stringstream ss;
+	ss << "hopping" << "(" << loc << ")";
+	vector<SuperMatrix<double> > G(L);
+	for (size_t l=0; l<L; ++l)
+	{
+		auto Gloc = HubbardModel::Generator(0,0);
+		auto it = find(imploc.begin(),imploc.end(),l);
+		if (it != imploc.end())
+		{
+			Gloc = KondoModel::Generator(0,0,0,-1.,0,0,D);
+		}
+		
+		if (l==0)
+		{
+			G[l].setRowVector(6,Gloc.D());
+			if (l == loc or l==loc-1)
+			{
+				G[l] = Gloc.row(5);
+			}
+			else
+			{
+				G[l].setZero();
+				G[l](0,5).setIdentity();
+			}
+		}
+		else if (l == L-1)
+		{
+			G[l].setColVector(6,Gloc.D());
+			if (l == loc or l==loc+1)
+			{
+				G[l] = Gloc.col(0);
+			}
+			else
+			{
+				G[l].setZero();
+				G[l](0,0).setIdentity();
+			}
+		}
+		else
+		{
+			G[l].setMatrix(6,Gloc.D());
+			if (l==loc or l==loc-1 or l==loc+1)
+			{
+				G[l] = Gloc;
+				if (l == loc-1)
+				{
+					G[l](1,0).setZero();
+					G[l](2,0).setZero();
+					G[l](3,0).setZero();
+					G[l](4,0).setZero();
+				}
+				else if (l == loc+1)
+				{
+					G[l](5,1).setZero();
+					G[l](5,2).setZero();
+					G[l](5,3).setZero();
+					G[l](5,4).setZero();
+				}
+			}
+			else
+			{
+				G[l].setZero();
+				G[l](0,0).setIdentity();
+				G[l](5,5).setIdentity();
+			}
+		}
+	}
+	MpoQ<1> Mout(L, G, locBasis(), {0}, Nlabel, ss.str());
 	return Mout;
 }
 
