@@ -73,132 +73,227 @@ const std::array<qarray<2>,4> HubbardModel::qloc {qarray<2>{0,0}, qarray<2>{1,0}
 const std::array<qarray<2>,4> HubbardModel::qlocNM {qarray<2>{0,0}, qarray<2>{1,1}, qarray<2>{1,-1}, qarray<2>{2,0}};
 const std::array<string,2>    HubbardModel::Nlabel{"N↑","N↓"};
 
+//SuperMatrix<double> HubbardModel::
+//Generator (double U, double V, double tPrime)
+//{
+//	SuperMatrix<double> G;
+//	if (V==0)
+//	{
+//		if (tPrime == 0)
+//		{
+//			size_t Daux = 6;
+//			G.setMatrix(Daux,4);
+//			G.setZero();
+//			
+//			G(0,0).setIdentity();
+//			G(1,0) = FermionBase::cUP.transpose();
+//			G(2,0) = FermionBase::cDN.transpose();
+//			G(3,0) = FermionBase::cUP;
+//			G(4,0) = FermionBase::cDN;
+//			
+//			G(Daux-1,0) = U*FermionBase::d;
+//			
+//			// note: FermionBase::fsign takes care of the fermionic sign
+//			// old t=1:
+////			G(Daux-1,1) = FermionBase::fsign * FermionBase::cUP;
+////			G(Daux-1,2) = FermionBase::fsign * FermionBase::cDN;
+////			G(Daux-1,3) = -FermionBase::fsign * FermionBase::cUP.transpose();
+////			G(Daux-1,4) = -FermionBase::fsign * FermionBase::cDN.transpose();
+//			// new t=-1:
+//			G(Daux-1,1) = -FermionBase::fsign * FermionBase::cUP;
+//			G(Daux-1,2) = -FermionBase::fsign * FermionBase::cDN;
+//			G(Daux-1,3) = FermionBase::fsign * FermionBase::cUP.transpose();
+//			G(Daux-1,4) = FermionBase::fsign * FermionBase::cDN.transpose();
+//			
+//			G(Daux-1,Daux-1).setIdentity();
+//		}
+//		else
+//		{
+//			size_t Daux = 14;
+//			G.setMatrix(Daux,4);
+//			G.setZero();
+//			
+//			G(0,0).setIdentity();
+//			G(1,0) = tPrime*FermionBase::cDN;
+//			G(2,0) = tPrime*FermionBase::cUP;
+//			G(3,0) = tPrime*FermionBase::cDN.transpose();
+//			G(4,0) = tPrime*FermionBase::cUP.transpose();
+//			G(5,0) = FermionBase::cUP.transpose();
+//			G(6,0) = FermionBase::cDN.transpose();
+//			G(7,0) = FermionBase::cUP;
+//			G(8,0) = FermionBase::cDN;
+//			
+//			G(13,0) = U*FermionBase::d;
+//			
+//			G(13,5) = FermionBase::fsign * FermionBase::cUP;
+//			G(13,6) = FermionBase::fsign * FermionBase::cDN;
+//			G(13,7) = -FermionBase::fsign * FermionBase::cUP.transpose();
+//			G(13,8) = -FermionBase::fsign * FermionBase::cDN.transpose();
+//			G(13,9) = -FermionBase::fsign * FermionBase::cUP;
+//			G(13,10) = -FermionBase::fsign * FermionBase::cDN;
+//			G(13,11) = FermionBase::fsign * FermionBase::cUP.transpose();
+//			G(13,12) = FermionBase::fsign * FermionBase::cDN.transpose();
+//			
+////			G(9,4) = FermionBase::fsign;
+////			G(10,3) = FermionBase::fsign;
+////			G(11,2) = FermionBase::fsign;
+////			G(12,1) = FermionBase::fsign;
+//			G.set_block_to_skewdiag(12,1, 4, FermionBase::fsign);
+//			G(13,13).setIdentity();
+//		}
+//	}
+//	
+//	else
+//	{
+//		if (tPrime == 0)
+//		{
+//			size_t Daux = 7;
+//			G.setMatrix(Daux,4);
+//			G.setZero();
+//			
+//			G(0,0).setIdentity();
+//			G(1,0) = FermionBase::cUP.transpose();
+//			G(2,0) = FermionBase::cDN.transpose();
+//			G(3,0) = FermionBase::cUP;
+//			G(4,0) = FermionBase::cDN;
+//			G(5,0) = FermionBase::n;
+//			
+//			G(Daux-1,0) = U*FermionBase::d;
+//			
+//			// note: FermionBase::fsign takes care of the fermionic sign
+//			// old t=1
+////			G(Daux-1,1) = FermionBase::fsign * FermionBase::cUP;
+////			G(Daux-1,2) = FermionBase::fsign * FermionBase::cDN;
+////			G(Daux-1,3) = -FermionBase::fsign * FermionBase::cUP.transpose();
+////			G(Daux-1,4) = -FermionBase::fsign * FermionBase::cDN.transpose();
+//			// new t=-1:
+//			G(Daux-1,1) = -FermionBase::fsign * FermionBase::cUP;
+//			G(Daux-1,2) = -FermionBase::fsign * FermionBase::cDN;
+//			G(Daux-1,3) = FermionBase::fsign * FermionBase::cUP.transpose();
+//			G(Daux-1,4) = FermionBase::fsign * FermionBase::cDN.transpose();
+//			
+//			G(Daux-1,5) = V*FermionBase::n;
+//			G(Daux-1,Daux-1).setIdentity();
+//		}
+//		else
+//		{
+//			size_t Daux = 15;
+//			G.setMatrix(Daux,4);
+//			G.setZero();
+//			
+//			G(0,0).setIdentity();
+//			G(1,0) = tPrime*FermionBase::cDN;
+//			G(2,0) = tPrime*FermionBase::cUP;
+//			G(3,0) = tPrime*FermionBase::cDN.transpose();
+//			G(4,0) = tPrime*FermionBase::cUP.transpose();
+//			G(5,0) = FermionBase::cUP.transpose();
+//			G(6,0) = FermionBase::cDN.transpose();
+//			G(7,0) = FermionBase::cUP;
+//			G(8,0) = FermionBase::cDN;
+//			G(9,0) = FermionBase::n;
+//			
+//			G(14,0) = U*FermionBase::d;
+//			
+//			G(14,5) = FermionBase::fsign * FermionBase::cUP;
+//			G(14,6) = FermionBase::fsign * FermionBase::cDN;
+//			G(14,7) = -FermionBase::fsign * FermionBase::cUP.transpose();
+//			G(14,8) = -FermionBase::fsign * FermionBase::cDN.transpose();
+//			G(14,9) = V * FermionBase::n;
+//			G(14,10) = -FermionBase::fsign * FermionBase::cUP;
+//			G(14,11) = -FermionBase::fsign * FermionBase::cDN;
+//			G(14,12) = FermionBase::fsign * FermionBase::cUP.transpose();
+//			G(14,13) = FermionBase::fsign * FermionBase::cDN.transpose();
+//			
+////			G(10,4) = FermionBase::fsign;
+////			G(11,3) = FermionBase::fsign;
+////			G(12,2) = FermionBase::fsign;
+////			G(13,1) = FermionBase::fsign;
+//			G.set_block_to_skewdiag(13,1, 4, FermionBase::fsign);
+//			G(14,14).setIdentity();
+//		}
+//	}
+//	return G;
+//}
+
 SuperMatrix<double> HubbardModel::
 Generator (double U, double V, double tPrime)
 {
-	SuperMatrix<double> G;
-	if (V==0)
+	size_t Daux = 6;
+	if (V != 0.)      {Daux += 1;}
+	if (tPrime != 0.) {Daux += 8;}
+	
+	vector<MatrixXd> col;
+	vector<MatrixXd> row;
+	
+	// first col (except corner element)
+	col.push_back(MatrixXd::Identity(4,4));
+	if (tPrime != 0.)
 	{
-		if (tPrime == 0)
+		col.push_back(FermionBase::cDN);
+		col.push_back(FermionBase::cUP);
+		col.push_back(FermionBase::cDN.transpose());
+		col.push_back(FermionBase::cUP.transpose());
+	}
+	col.push_back(FermionBase::cUP.transpose());
+	col.push_back(FermionBase::cDN.transpose());
+	col.push_back(FermionBase::cUP);
+	col.push_back(FermionBase::cDN);
+	if (V != 0.)
+	{
+		col.push_back(FermionBase::n);
+	}
+	if (tPrime != 0.)
+	{
+		for (size_t i=0; i<4; ++i)
 		{
-			size_t Daux = 6;
-			G.setMatrix(Daux,4);
-			G.setZero();
-			
-			G(0,0).setIdentity();
-			G(1,0) = FermionBase::cUP.transpose();
-			G(2,0) = FermionBase::cDN.transpose();
-			G(3,0) = FermionBase::cUP;
-			G(4,0) = FermionBase::cDN;
-			
-			G(Daux-1,0) = U*FermionBase::d;
-			
-			// note: FermionBase::fsign takes care of the fermionic sign
-			G(Daux-1,1) = FermionBase::fsign * FermionBase::cUP;
-			G(Daux-1,2) = FermionBase::fsign * FermionBase::cDN;
-			G(Daux-1,3) = -FermionBase::fsign * FermionBase::cUP.transpose();
-			G(Daux-1,4) = -FermionBase::fsign * FermionBase::cDN.transpose();
-			
-			G(Daux-1,Daux-1).setIdentity();
-		}
-		else
-		{
-			size_t Daux = 14;
-			G.setMatrix(Daux,4);
-			G.setZero();
-			
-			G(0,0).setIdentity();
-			G(1,0) = tPrime*FermionBase::cDN;
-			G(2,0) = tPrime*FermionBase::cUP;
-			G(3,0) = tPrime*FermionBase::cDN.transpose();
-			G(4,0) = tPrime*FermionBase::cUP.transpose();
-			G(5,0) = FermionBase::cUP.transpose();
-			G(6,0) = FermionBase::cDN.transpose();
-			G(7,0) = FermionBase::cUP;
-			G(8,0) = FermionBase::cDN;
-			
-			G(13,0) = U*FermionBase::d;
-			
-			G(13,5) = FermionBase::fsign * FermionBase::cUP;
-			G(13,6) = FermionBase::fsign * FermionBase::cDN;
-			G(13,7) = -FermionBase::fsign * FermionBase::cUP.transpose();
-			G(13,8) = -FermionBase::fsign * FermionBase::cDN.transpose();
-			G(13,9) = -FermionBase::fsign * FermionBase::cUP;
-			G(13,10) = -FermionBase::fsign * FermionBase::cDN;
-			G(13,11) = FermionBase::fsign * FermionBase::cUP.transpose();
-			G(13,12) = FermionBase::fsign * FermionBase::cDN.transpose();
-			
-//			G(9,4) = FermionBase::fsign;
-//			G(10,3) = FermionBase::fsign;
-//			G(11,2) = FermionBase::fsign;
-//			G(12,1) = FermionBase::fsign;
-			G.set_block_to_skewdiag(12,1, 4, FermionBase::fsign);
-			G(13,13).setIdentity();
+			col.push_back(MatrixXd::Zero(4,4));
 		}
 	}
 	
-	else
+	// last row (except corner element)
+	if (tPrime != 0.)
 	{
-		if (tPrime == 0)
+		for (size_t i=0; i<4; ++i)
 		{
-			size_t Daux = 7;
-			G.setMatrix(Daux,4);
-			G.setZero();
-			
-			G(0,0).setIdentity();
-			G(1,0) = FermionBase::cUP.transpose();
-			G(2,0) = FermionBase::cDN.transpose();
-			G(3,0) = FermionBase::cUP;
-			G(4,0) = FermionBase::cDN;
-			G(5,0) = FermionBase::n;
-			
-			G(Daux-1,0) = U*FermionBase::d;
-			
-			// note: FermionBase::fsign takes care of the fermionic sign
-			G(Daux-1,1) = FermionBase::fsign * FermionBase::cUP;
-			G(Daux-1,2) = FermionBase::fsign * FermionBase::cDN;
-			G(Daux-1,3) = -FermionBase::fsign * FermionBase::cUP.transpose();
-			G(Daux-1,4) = -FermionBase::fsign * FermionBase::cDN.transpose();
-			G(Daux-1,5) = V*(FermionBase::n);
-			G(Daux-1,Daux-1).setIdentity();
-		}
-		else
-		{
-			size_t Daux = 15;
-			G.setMatrix(Daux,4);
-			G.setZero();
-			
-			G(0,0).setIdentity();
-			G(1,0) = tPrime*FermionBase::cDN;
-			G(2,0) = tPrime*FermionBase::cUP;
-			G(3,0) = tPrime*FermionBase::cDN.transpose();
-			G(4,0) = tPrime*FermionBase::cUP.transpose();
-			G(5,0) = FermionBase::cUP.transpose();
-			G(6,0) = FermionBase::cDN.transpose();
-			G(7,0) = FermionBase::cUP;
-			G(8,0) = FermionBase::cDN;
-			G(9,0) = FermionBase::n;
-			
-			G(14,0) = U*FermionBase::d;
-			
-			G(14,5) = FermionBase::fsign * FermionBase::cUP;
-			G(14,6) = FermionBase::fsign * FermionBase::cDN;
-			G(14,7) = -FermionBase::fsign * FermionBase::cUP.transpose();
-			G(14,8) = -FermionBase::fsign * FermionBase::cDN.transpose();
-			G(14,9) = V*(FermionBase::n);
-			G(14,10) = -FermionBase::fsign * FermionBase::cUP;
-			G(14,11) = -FermionBase::fsign * FermionBase::cDN;
-			G(14,12) = FermionBase::fsign * FermionBase::cUP.transpose();
-			G(14,13) = FermionBase::fsign * FermionBase::cDN.transpose();
-			
-//			G(10,4) = FermionBase::fsign;
-//			G(11,3) = FermionBase::fsign;
-//			G(12,2) = FermionBase::fsign;
-//			G(13,1) = FermionBase::fsign;
-			G.set_block_to_skewdiag(13,1, 4, FermionBase::fsign);
-			G(14,14).setIdentity();
+			row.push_back(MatrixXd::Zero(4,4));
 		}
 	}
+	row.push_back(-FermionBase::fsign * FermionBase::cUP);
+	row.push_back(-FermionBase::fsign * FermionBase::cDN);
+	row.push_back( FermionBase::fsign * FermionBase::cUP.transpose());
+	row.push_back( FermionBase::fsign * FermionBase::cDN.transpose());
+	if (V != 0.)
+	{
+		row.push_back(V * FermionBase::n);
+	}
+	if (tPrime != 0.)
+	{
+		row.push_back(-tPrime * FermionBase::fsign * FermionBase::cUP);
+		row.push_back(-tPrime * FermionBase::fsign * FermionBase::cDN);
+		row.push_back( tPrime * FermionBase::fsign * FermionBase::cUP.transpose());
+		row.push_back( tPrime * FermionBase::fsign * FermionBase::cDN.transpose());
+	}
+	row.push_back(MatrixXd::Identity(4,4));
+	
+	SuperMatrix<double> G;
+	G.setMatrix(Daux,4);
+	G.setZero();
+	
+	for (size_t i=0; i<Daux-1; ++i)
+	{
+		G(i,0)        = col[i];
+		G(Daux-1,i+1) = row[i];
+	}
+	
+	// corner element
+	G(Daux-1,0) = U * FermionBase::d;
+	
+	// nearest-neighbour transfer
+	if (tPrime != 0)
+	{
+		G.set_block_to_skewdiag(Daux-2,1, 4, FermionBase::fsign);
+	}
+	
 	return G;
 }
 
