@@ -26,8 +26,8 @@ public:
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND,
 	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST,
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-6, 
-	                size_t Dinit=5, size_t Dlimit=500, 
-	                size_t max_halfsweeps=42, size_t min_halfsweeps=6);
+	                size_t Dinit=4, size_t Dlimit=500, 
+	                size_t max_halfsweeps=50, size_t min_halfsweeps=6);
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
@@ -403,7 +403,9 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 	
 	// resize Vout
 	Vout.state = MpsQ<Nq,double>(H, Dinit, Qtot_input);
-	Vout.state.N_sv = Dlimit;
+//	Vout.state.N_sv = Dlimit;
+	Vout.state.N_sv = Dinit;
+	size_t Dmax_old = Dinit;
 	Vout.state.setRandom();
 	
 	// set edges
@@ -476,6 +478,14 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 	err_eigval = 1.;
 	err_state  = 1.;
 	
+	// average local dimension for bond dimension increase
+	size_t dimqlocAvg = 0;
+	for (size_t l=0; l<H.length(); ++l)
+	{
+		dimqlocAvg += H.locBasis(l).size();
+	}
+	dimqlocAvg /= H.length();
+	
 	while (((err_eigval >= tol_eigval or err_state >= tol_state) and N_halfsweeps < max_halfsweeps) or 
 	        N_halfsweeps < min_halfsweeps)
 	{
@@ -528,64 +538,71 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 		Nqmax = Vout.state.calc_Nqmax();
 		totalTruncWeight = Vout.state.truncWeight.sum();
 		
+		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
+		if (N_halfsweeps%2 == 0 and totalTruncWeight >= Vout.state.eps_svd)
+		{
+			Vout.state.N_sv = min(max(static_cast<size_t>(1.1*Vout.state.N_sv), Vout.state.N_sv+dimqlocAvg),Dlimit);
+		}
+		
 //		Vout.state.alpha_rsvd = 1.;
+		
 		// adjust noise parameter
-		if (N_halfsweeps == 6)
-		{
-			Vout.state.alpha_noise = 1e-8;
-			Vout.state.eps_rdm = 1e-12;
-			Vout.state.alpha_rsvd = 1e-1;
-			print_alpha_eps();
-		}
-		else if (N_halfsweeps == 12)
-		{
-			Vout.state.alpha_noise = 1e-9;
-			Vout.state.eps_rdm = 1e-13;
-			Vout.state.alpha_rsvd = 1e-1;
-			print_alpha_eps();
-		}
-		else if (N_halfsweeps == 18)
-		{
-			Vout.state.alpha_noise = 1e-10;
-			Vout.state.eps_rdm = 1e-14;
-			Vout.state.alpha_rsvd = 1e-2;
-			print_alpha_eps();
-		}
-		else if (N_halfsweeps == 24)
-		{
-			Vout.state.alpha_noise = 0.;
-			Vout.state.eps_rdm = 0.;
-			Vout.state.alpha_rsvd = 0.;
-			print_alpha_eps();
-		}
-		else if (N_halfsweeps == 30)
-		{
-			// reshake if in local minimum
-			if (err_state/err_state_before_end_of_noise >= 0.8)
-			{
-				Vout.state.alpha_noise = 1e-7;
-				Vout.state.eps_rdm = 1e-11;
-				Vout.state.alpha_rsvd = 1e-1;
-				if (CHOSEN_VERBOSITY != DMRG::VERBOSITY::SILENT)
-				{
-					lout << "local minimum detected, reshaking!" << endl;
-				}
-				print_alpha_eps();
-			}
-			else
-			{
-				Vout.state.alpha_noise = 0.;
-				Vout.state.eps_rdm = 0.;
-				Vout.state.alpha_rsvd = 0.;
-			}
-		}
-		else if (N_halfsweeps == 36)
-		{
-			Vout.state.alpha_noise = 0.;
-			Vout.state.eps_rdm = 0.;
-			Vout.state.alpha_rsvd = 0.;
-			print_alpha_eps();
-		}
+//		if (N_halfsweeps == 6)
+//		{
+//			Vout.state.alpha_noise = 1e-8;
+//			Vout.state.eps_rdm = 1e-12;
+//			Vout.state.alpha_rsvd = 1e-1;
+//			print_alpha_eps();
+//		}
+//		else if (N_halfsweeps == 12)
+//		{
+//			Vout.state.alpha_noise = 1e-9;
+//			Vout.state.eps_rdm = 1e-13;
+//			Vout.state.alpha_rsvd = 1e-1;
+//			print_alpha_eps();
+//		}
+//		else if (N_halfsweeps == 18)
+//		{
+//			Vout.state.alpha_noise = 1e-10;
+//			Vout.state.eps_rdm = 1e-14;
+//			Vout.state.alpha_rsvd = 1e-2;
+//			print_alpha_eps();
+//		}
+//		else if (N_halfsweeps == 24)
+//		{
+//			Vout.state.alpha_noise = 0.;
+//			Vout.state.eps_rdm = 0.;
+//			Vout.state.alpha_rsvd = 0.;
+//			print_alpha_eps();
+//		}
+//		else if (N_halfsweeps == 30)
+//		{
+//			// reshake if in local minimum
+//			if (err_state/err_state_before_end_of_noise >= 0.8)
+//			{
+//				Vout.state.alpha_noise = 1e-7;
+//				Vout.state.eps_rdm = 1e-11;
+//				Vout.state.alpha_rsvd = 1e-1;
+//				if (CHOSEN_VERBOSITY != DMRG::VERBOSITY::SILENT)
+//				{
+//					lout << "local minimum detected, reshaking!" << endl;
+//				}
+//				print_alpha_eps();
+//			}
+//			else
+//			{
+//				Vout.state.alpha_noise = 0.;
+//				Vout.state.eps_rdm = 0.;
+//				Vout.state.alpha_rsvd = 0.;
+//			}
+//		}
+//		else if (N_halfsweeps == 36)
+//		{
+//			Vout.state.alpha_noise = 0.;
+//			Vout.state.eps_rdm = 0.;
+//			Vout.state.alpha_rsvd = 0.;
+//			print_alpha_eps();
+//		}
 		
 		// print stuff
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -593,15 +610,20 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 			size_t standard_precision = cout.precision();
 			if (EDGE == LANCZOS::EDGE::GROUND)
 			{
-				lout << "Emin=" << setprecision(13) << Vout.energy << " Emin/L=" << Vout.energy/N_sites << setprecision(standard_precision) << endl;
+				lout << "Emin=" << setprecision(13) << Vout.energy << ", Emin/L=" << Vout.energy/N_sites << setprecision(standard_precision) << endl;
 			}
 			else
 			{
-				lout << "Emax=" << setprecision(13) << Vout.energy << " Emax/L=" << Vout.energy/N_sites << setprecision(standard_precision) << endl;
+				lout << "Emax=" << setprecision(13) << Vout.energy << ", Emax/L=" << Vout.energy/N_sites << setprecision(standard_precision) << endl;
 			}
 			lout << eigeninfo() << endl;
 			lout << Vout.state.info() << endl;
 			lout << Chronos.info("half-sweep") << ", " << Saturn.info("total",false) << endl;
+			if (Vout.state.N_sv != Dmax_old)
+			{
+				lout << "Dmax=" << Dmax_old << "→" << Vout.state.N_sv << endl;
+				Dmax_old = Vout.state.N_sv;
+			}
 			lout << endl;
 		}
 	}
@@ -669,7 +691,7 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, LANCZOS
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << "loc=" << pivot << "\t" << Lutz.info() << endl;
-//		lout << Vout.state.test_ortho() << endl;
+		lout << Vout.state.test_ortho() << endl;
 	}
 	
 	Vout.energy = g.energy;

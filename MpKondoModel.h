@@ -224,11 +224,8 @@ J(J_input), Bz(Bz_input), tPrime(tPrime_input), U(U_input), D(D_input)
 
 	this->Daux = (tPrime==0.)? 6 : 14;
 	
-	cout << "a " << D << endl;
 	SuperMatrix<double> G = Generator(J, Bz, 0., -1., tPrime, U, D);
-	cout << "b " << D << endl;
 	this->construct(G, this->W, this->Gvec);
-	cout << "c " << D << endl;
 	
 	if (CALC_SQUARE == true)
 	{

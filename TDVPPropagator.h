@@ -169,6 +169,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages)
 	
 	for (size_t l=0; l<N_stages*(N_sites-1); ++l)
 	{
+		Stopwatch Chronos;
 		bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
 		size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
 		size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;

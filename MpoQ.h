@@ -14,7 +14,7 @@ using namespace Eigen;
 #include "DmrgPivotStuffQ.h"
 #include <unsupported/Eigen/KroneckerProduct>
 #include "DmrgJanitor.h"
-#ifndef DONT_USE_LAPACK_SVD
+#if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
 	#include "LapackWrappers.h"
 #endif
 
@@ -95,8 +95,9 @@ public:
 
 	/**Set to a sum of of local operators \f$\sum_i O_i\f$
 	\param Op : the local operator in question
+	\param STAGGER : if \p true, do \f$\sum_i (-1)^i O_i\f$
 	*/
-	void setLocalSum (const MatrixType &Op);
+	void setLocalSum (const MatrixType &Op, bool STAGGER=false);
 	
 	/**Set to a sum of nearest-neighbour products of local operators \f$\sum_i O^1_i O^2_{i+1}\f$
 	\param Op1 : first local operator
@@ -508,7 +509,7 @@ setLocal (vector<size_t> loc, vector<MatrixType> Op)
 // O(1)+O(2)+...+O(L)
 template<size_t Nq, typename Scalar>
 void MpoQ<Nq,Scalar>::
-setLocalSum (const MatrixType &Op)
+setLocalSum (const MatrixType &Op, bool STAGGER)
 {
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -528,12 +529,14 @@ setLocalSum (const MatrixType &Op)
 		M[l](0,0).setIdentity();
 		M[l](0,1).setZero();
 		M[l](1,0) = Op;
+		if (STAGGER == true) {M[l](1,0) *= pow(-1,l);}
 		M[l](1,1).setIdentity();
 	}
 	
 	M[N_sites-1].setColVector(Daux,qloc[N_sites-1].size());
 	M[N_sites-1](0,0).setIdentity();
 	M[N_sites-1](1,0) = Op;
+	if (STAGGER == true) {M[N_sites-1](1,0) *= pow(-1,N_sites-1);}
 	
 	construct(M, W, Gvec);
 }
@@ -816,7 +819,7 @@ BondPropagator (TimeScalar dt, PARITY P) const
 		}
 		
 //		#ifdef DONT_USE_LAPACK_SVD
-//		JacobiSVD<Matrix<TimeScalar,Dynamic,Dynamic> > Jack;
+//		BDCSVD<Matrix<TimeScalar,Dynamic,Dynamic> > Jack;
 //		#else
 //		LapackSVD<TimeScalar> Jack;
 //		#endif
@@ -827,7 +830,7 @@ BondPropagator (TimeScalar dt, PARITY P) const
 //		Jack.compute(HexpPermuted);
 //		#endif
 		// always use Eigen for higher accuracy:
-		JacobiSVD<Matrix<TimeScalar,Dynamic,Dynamic> > Jack(HexpPermuted,ComputeThinU|ComputeThinV);
+		BDCSVD<Matrix<TimeScalar,Dynamic,Dynamic> > Jack(HexpPermuted,ComputeThinU|ComputeThinV);
 		Matrix<TimeScalar,Dynamic,Dynamic> U1 = Jack.matrixU() * Jack.singularValues().cwiseSqrt().asDiagonal();
 		Matrix<TimeScalar,Dynamic,Dynamic> U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixV().adjoint();
 		

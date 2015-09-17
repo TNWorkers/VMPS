@@ -60,7 +60,6 @@ compute (const MatrixXd &A)
 	int Arows = A.rows();
 	int Acols = A.cols();
 	int minA  = min(Arows,Acols);
-//	cout << "Arows=" << Arows << ", Acols=" << Acols << ", minA=" << minA << endl;
 	
 	U.resize(Arows,minA);
 	S.resize(minA);

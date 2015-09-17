@@ -13,7 +13,7 @@
 #include "MpoQ.h"
 #include "DmrgPivotStuffQ.h"
 #include "DmrgConglutinations.h"
-#ifndef DONT_USE_LAPACK_SVD
+#if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
 	#include "LapackWrappers.h"
 #endif
 #include "PolychromaticConsole.h"
@@ -911,7 +911,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H,
 			{
 				rhoArray[s1][s2] =  A[loc][s1].adjoint() * A[loc][s2];
 			}
-
+		
 		rhoNoiseArray = rhoArray;
 		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
 		for (size_t s2=0; s2<qloc[loc].size(); ++s2)
@@ -972,7 +972,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H,
 		}
 		
 		#ifdef DONT_USE_LAPACK_SVD
-		JacobiSVD<MatrixType> Jack; // SVD
+		BDCSVD<MatrixType> Jack; // SVD
 		#else
 		LapackSVD<Scalar> Jack; // SVD
 		#endif
@@ -1050,7 +1050,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H,
 			
 			// calculate entropy
 			size_t Nnz = (Eugen.eigenvalues().array() > 0.).count();
-			entropySub(qin) = -((Eugen.eigenvalues().tail(Nnz).array()) * (Eugen.eigenvalues().tail(Nnz).array()).log()).sum();
+			entropySub(qin) = -(Eugen.eigenvalues().tail(Nnz).array() * (Eugen.eigenvalues().tail(Nnz).array()).log()).sum();
 		}
 		
 		// update A[loc]
@@ -1086,9 +1086,11 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H,
 				{
 					if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 					{
-						A[loc-1][s].block[q] = A[loc-1][s].block[q] * 
-						                       Jack.matrixU().leftCols(Nret) * 
-						                       Jack.singularValues().head(Nret).asDiagonal();
+						MatrixType Mtmp = A[loc-1][s].block[q] * 
+						                  Jack.matrixU().leftCols(Nret) * 
+						                  Jack.singularValues().head(Nret).asDiagonal();
+						// without temporary crash in Eigen 3.3 alpha
+						A[loc-1][s].block[q] = Mtmp;
 					}
 					else if (TOOL == DMRG::BROOM::QR)
 					{
@@ -1106,6 +1108,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H,
 	
 	truncWeight(loc) = truncWeightSub.sum();
 	entropy(loc) = entropySub.sum();
+	if (entropy(loc) < 0.) {entropy(loc) = numeric_limits<double>::quiet_NaN();}
 	this->pivot = (loc==0)? 0 : loc-1;
 }
 
@@ -1199,7 +1202,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 		}
 		
 		#ifdef DONT_USE_LAPACK_SVD
-		JacobiSVD<MatrixType> Jack; // Eigen SVD
+		BDCSVD<MatrixType> Jack; // Eigen SVD
 		#else
 		LapackSVD<Scalar> Jack; // Lapack SVD
 		#endif
@@ -1337,6 +1340,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H
 	
 	truncWeight(loc) = truncWeightSub.sum();
 	entropy(loc) = entropySub.sum();
+	if (entropy(loc) < 0.) {entropy(loc) = numeric_limits<double>::quiet_NaN();}
 	this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
 }
 
@@ -1594,7 +1598,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<N
 			}
 			
 			#ifdef DONT_USE_LAPACK_SVD
-			JacobiSVD<MatrixType> Jack; // Eigen SVD
+			BDCSVD<MatrixType> Jack; // Eigen SVD
 			#else
 			LapackSVD<Scalar> Jack; // Lapack SVD
 			#endif
@@ -2776,7 +2780,7 @@ set_A_from_C (size_t loc, const vector<Tripod<Nq,MatrixType> > &C, DMRG::BROOM::
 //				cout << endl;
 				
 				#ifdef DONT_USE_LAPACK_SVD
-				JacobiSVD<MatrixType> Jack(Cclump,ComputeThinU);
+				BDCSVD<MatrixType> Jack(Cclump,ComputeThinU);
 				#else
 				LapackSVD<Scalar> Jack;
 				Jack.compute(Cclump);

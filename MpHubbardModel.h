@@ -51,6 +51,7 @@ public:
 	typedef MpoQ<2,complex<double> >                 OperatorXcd;
 	
 	static MpoQ<2> Auger (size_t L, size_t loc);
+	static MpoQ<2> eta (size_t L);
 	static MpoQ<2> Aps (size_t L, size_t loc);
 	static MpoQ<2> annihilator (size_t L, size_t loc, SPIN_INDEX sigma);
 	static MpoQ<2> creator     (size_t L, size_t loc, SPIN_INDEX sigma);
@@ -346,6 +347,16 @@ Auger (size_t L, size_t loc)
 	ss << "Auger(" << loc << ")";
 	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-1,-1}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(loc, FermionBase::cUP*FermionBase::cDN);
+	return Mout;
+}
+
+MpoQ<2> HubbardModel::
+eta (size_t L)
+{
+	stringstream ss;
+	ss << "eta";
+	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-1,-1}, HubbardModel::Nlabel, ss.str());
+	Mout.setLocalSum(FermionBase::cUP*FermionBase::cDN, true);
 	return Mout;
 }
 
