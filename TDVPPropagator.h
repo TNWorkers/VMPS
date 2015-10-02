@@ -16,8 +16,8 @@ public:
 	double memory (MEMUNIT memunit=GB) const;
 	double overhead (MEMUNIT memunit=GB) const;
 	
-	void t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages=2);
-	void t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages=2);
+	void t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages=1);
+	void t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages=1);
 	
 private:
 	
@@ -32,8 +32,9 @@ private:
 	void build_L (const Hamiltonian &H, const VectorType &Vinout, size_t loc);
 	void build_R (const Hamiltonian &H, const VectorType &Vinout, size_t loc);
 	
-	double dist_max=0.;
-	double dimK_max=0.;
+	double dist_max = 0.;
+	double dimK_max = 0.;
+	int N_stages_last = 0;
 };
 
 template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
@@ -44,6 +45,7 @@ info() const
 	ss << "TDVPPropagator: ";
 	ss << "max(dist)=" << dist_max << ", ";
 	ss << "max(dimK)=" << dimK_max << ", ";
+	ss << "N_stages=" << N_stages_last << ", ";
 	ss << "mem=" << round(memory(GB),3) << "GB, overhead=" << round(overhead(MB),3) << "MB";
 	return ss.str();
 }
@@ -135,25 +137,25 @@ x (int alg, size_t l, int N_stages)
 {
 	int N_updates = (alg==2)? N_sites-1 : N_sites;
 	
-	if (N_stages == 2)
+	if (N_stages == 1)
 	{
 		return 0.5;
 	}
-	else if (N_stages == 4)
+	else if (N_stages == 2)
 	{
 		if      (l<N_updates)                      {return 0.25;}
 		else if (l>=N_updates and l<2*N_updates)   {return 0.25;}
 		else if (l>=2*N_updates and l<3*N_updates) {return 0.25;}
 		else if (l>=3*N_updates)                   {return 0.25;}
 	}
-	else if (N_stages == 6)
+	else if (N_stages == 3)
 	{
-		double tripleJump1 = 0.5/(2.-pow(2.,1./3.));
-		double tripleJump2 = -0.5*pow(2.,1./3.)/(2.-pow(2.,1./3.));
+		double tripleJump1 = 1./(2.-pow(2.,1./3.));
+		double tripleJump2 = 1.-2.*tripleJump1;
 		
-		if      (l<2*N_updates)                    {return tripleJump1;}
-		else if (l>=2*N_updates and l<4*N_updates) {return tripleJump2;}
-		else if (l>=4*N_updates)                   {return tripleJump1;}
+		if      (l<2*N_updates)                    {return 0.5*tripleJump1;}
+		else if (l>=2*N_updates and l<4*N_updates) {return 0.5*tripleJump2;}
+		else if (l>=4*N_updates)                   {return 0.5*tripleJump1;}
 	}
 }
 
@@ -161,13 +163,14 @@ template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScala
 void TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
 t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages)
 {
-	assert(N_stages==2 or N_stages==4 or N_stages==6 and "Only N_stages=2,4,6 implemented for TDVPPropagator::t_step!");
+	assert(N_stages==1 or N_stages==2 or N_stages==3 and "Only N_stages=1,2,3 implemented for TDVPPropagator::t_step!");
 	dist_max = 0.;
 	dimK_max = 0.;
+	N_stages_last = N_stages;
 	
 //	VectorType Vref = Vinout;
 	
-	for (size_t l=0; l<N_stages*(N_sites-1); ++l)
+	for (size_t l=0; l<2*N_stages*(N_sites-1); ++l)
 	{
 		Stopwatch Chronos;
 		bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
@@ -252,10 +255,11 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages)
 {
 	dist_max = 0.;
 	dimK_max = 0.;
+	N_stages_last = N_stages;
 	
 //	VectorType Vref = Vinout;
 	
-	for (size_t l=0; l<N_stages*N_sites; ++l)
+	for (size_t l=0; l<2*N_stages*N_sites; ++l)
 	{
 		bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
 		
