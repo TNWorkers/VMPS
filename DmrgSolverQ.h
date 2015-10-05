@@ -1,6 +1,6 @@
 #ifndef STRAWBERRY_DMRGSOLVER_WITH_Q
 #define STRAWBERRY_DMRGSOLVER_WITH_Q
-//
+
 #include "MpoQ.h"
 #include "MpsQ.h"
 #include "DmrgPivotStuffQ.h"
