@@ -145,6 +145,7 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> 
 	
 	// resize Vout
 	Vout.state = MpsQ<Nq,double>(H, Dinit, Qtot_input);
+	Vout.state.N_sv = Dinit;
 	Vout.state.setRandom();
 	
 	// set edges
@@ -195,9 +196,9 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> 
 
 template<size_t Nq, typename MpHamiltonian>
 void DmrgSolverQ<Nq,MpHamiltonian>::
-halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, size_t Dinit, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST)
+halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, size_t Dlimit, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST)
 {
-	Vout.state.N_sv = Dinit; //Dlimit;
+	Vout.state.N_sv = Dlimit;
 	Stopwatch HalfsweepTimer;
 
 	// save state for reference
@@ -264,7 +265,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, size_t Di
 		}
 		lout << eigeninfo() << endl;
 		lout << Vout.state.info() << endl;
-//		lout << HalfsweepTimer.info("half-sweep") << ", " << Saturn.info("total",false) << endl;
+		lout << HalfsweepTimer.info("half-sweep") << endl; //", " << Saturn.info("total",false) << endl;
 		lout << endl;
 	}
 }
@@ -325,7 +326,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 	        N_halfsweeps < min_halfsweeps)
 	{
 		// sweep
-		halfsweep(H,Vout,Dinit,EDGE);
+		halfsweep(H,Vout);
 		
 		// adjust noise parameter
 		if (N_halfsweeps == 6)
