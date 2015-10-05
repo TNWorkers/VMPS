@@ -32,7 +32,7 @@ public:
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
 	void prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> Qtot_input, size_t Dinit=5);
-	void halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, size_t Dlimit=500, 
+	void halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND, 
 	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST);
 	void cleanup (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, 
@@ -50,6 +50,7 @@ private:
 	vector<PivotMatrixQ<Nq,double> > Heff;
 	
 	double Eold;
+	size_t Dmax_old;
 	
 	int pivot;
 	DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
@@ -146,6 +147,7 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> 
 	// resize Vout
 	Vout.state = MpsQ<Nq,double>(H, Dinit, Qtot_input);
 	Vout.state.N_sv = Dinit;
+	Dmax_old = Dinit;
 	Vout.state.setRandom();
 	
 	// set edges
@@ -196,11 +198,10 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq> 
 
 template<size_t Nq, typename MpHamiltonian>
 void DmrgSolverQ<Nq,MpHamiltonian>::
-halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, size_t Dlimit, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST)
+halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST)
 {
-	Vout.state.N_sv = Dlimit;
 	Stopwatch HalfsweepTimer;
-
+	
 	// save state for reference
 	MpsQ<Nq,double> Vref;
 	if (TEST == LANCZOS::CONVTEST::NORM_TEST or
@@ -218,7 +219,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, size_t Dl
 		++N_sweepsteps;
 	}
 	++N_halfsweeps;
-
+	
 	// calculate error
 	err_eigval = fabs(Eold-Vout.energy)/this->N_sites;
 	if (TEST == LANCZOS::CONVTEST::NORM_TEST or
@@ -266,7 +267,6 @@ halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, size_t Dl
 		lout << eigeninfo() << endl;
 		lout << Vout.state.info() << endl;
 		lout << HalfsweepTimer.info("half-sweep") << endl; //", " << Saturn.info("total",false) << endl;
-		lout << endl;
 	}
 }
 
@@ -279,20 +279,12 @@ cleanup (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, LANCZOS::ED
 	
 	Vout.state.set_defaultCutoffs();
 	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		size_t standard_precision = cout.precision();
-		if (EDGE == LANCZOS::EDGE::GROUND)
-		{
-			lout << "Emin=" << setprecision(13) << Vout.energy << ", Emin/L=" << Vout.energy/N_sites << setprecision(standard_precision);
-		}
-		else
-		{
-			lout << "Emax=" << setprecision(13) << Vout.energy << ", Emax/L=" << Vout.energy/N_sites << setprecision(standard_precision);
-		}
-//		lout << ", " << Saturn.info("runtime",false) << endl;
-//		lout << "DmrgSolverQ: " << eigeninfo() << ", " << Saturn.info("runtime",false) << endl;
-		lout << "Vout: " << Vout.state.info() << endl;
+		string Eedge = (EDGE == LANCZOS::EDGE::GROUND)? "Emin" : "Emax";
+		lout << Eedge << "=" << setprecision(13) << Vout.energy << ", " << Eedge << "/L=" << Vout.energy/N_sites << setprecision(standard_precision) << endl;
+		lout << Vout.state.info() << endl;
 	}
 }
 
@@ -305,7 +297,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 	
 	prepare(H,Vout,Qtot_input,Dinit);
 	Stopwatch Saturn;
-
+	
 	// lambda function to print tolerances
 	auto print_alpha_eps = [this,&Vout] ()
 	{
@@ -320,21 +312,39 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 	};
 	
 	print_alpha_eps();
-	cout << Vout.state.info() << endl;
-
+	
+ 	// average local dimension for bond dimension increase
+	size_t dimqlocAvg = 0;
+	for (size_t l=0; l<H.length(); ++l)
+	{
+		dimqlocAvg += H.locBasis(l).size();
+	}
+	dimqlocAvg /= H.length();
+	
 	while (((err_eigval >= tol_eigval or err_state >= tol_state) and N_halfsweeps < max_halfsweeps) or 
 		   N_halfsweeps < min_halfsweeps)
 	{
 		// sweep
 		halfsweep(H,Vout);
-
+		
+		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
 		if (N_halfsweeps%2 == 0 and totalTruncWeight >= Vout.state.eps_svd)
 		{
-			Vout.state.N_sv = min(max(static_cast<size_t>(1.1*Vout.state.N_sv), Vout.state.N_sv+dimqlocAvg),Dlimit);
+			Vout.state.N_sv = min(max(static_cast<size_t>(1.1*Vout.state.N_sv), Vout.state.N_sv+dimqlocAvg), Dlimit);
 		}
-
+		
+		if (Vout.state.N_sv != Dmax_old)
+		{
+			lout << "Dmax=" << Dmax_old << "→" << Vout.state.N_sv << endl;
+			Dmax_old = Vout.state.N_sv;
+		}
+		lout << endl;
 	}
 	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	{
+		lout << Saturn.info("total runtime") << endl;
+	}
 	cleanup(H,Vout,EDGE);
 }
 
