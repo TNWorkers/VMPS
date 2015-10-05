@@ -16,8 +16,8 @@ public:
 	double memory (MEMUNIT memunit=GB) const;
 	double overhead (MEMUNIT memunit=GB) const;
 	
-	void t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages=1);
-	void t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages=1);
+	void t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages=1, double tol_Lanczos=1e-8);
+	void t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages=1, double tol_Lanczos=1e-8);
 	
 private:
 	
@@ -161,7 +161,7 @@ x (int alg, size_t l, int N_stages)
 
 template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
 void TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
-t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages)
+t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, double tol_Lanczos)
 {
 	assert(N_stages==1 or N_stages==2 or N_stages==3 and "Only N_stages=1,2,3 implemented for TDVPPropagator::t_step!");
 	dist_max = 0.;
@@ -199,7 +199,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages)
 			Heff2.dim += Apair.A[s1][s2].block[q].rows() * Apair.A[s1][s2].block[q].cols();
 		}
 		
-		LanczosPropagator<PivotMatrix2Q<Nq,TimeScalar,MpoScalar>,PivotVector2Q<Nq,TimeScalar> > Lutz2(1e-5);
+		LanczosPropagator<PivotMatrix2Q<Nq,TimeScalar,MpoScalar>,PivotVector2Q<Nq,TimeScalar> > Lutz2(tol_Lanczos);
 //		Lutz2.t_step(Heff2, Apair, -0.5*dt.imag());
 		Lutz2.t_step(Heff2, Apair, -x(2,l,N_stages)*dt.imag());
 		if (Lutz2.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
@@ -229,7 +229,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages)
 			PivotVectorQ<Nq,TimeScalar> Asingle;
 			Asingle.A = Vinout.A[pivot];
 			
-			LanczosPropagator<PivotMatrixQ<Nq,TimeScalar,MpoScalar>, PivotVectorQ<Nq,TimeScalar> > Lutz(1e-5);
+			LanczosPropagator<PivotMatrixQ<Nq,TimeScalar,MpoScalar>, PivotVectorQ<Nq,TimeScalar> > Lutz(tol_Lanczos);
 //			Lutz.t_step(Heff[pivot], Asingle, +0.5*dt.imag());
 			Lutz.t_step(Heff[pivot], Asingle, +x(2,l,N_stages)*dt.imag());
 			if (Lutz.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
@@ -251,7 +251,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages)
 
 template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
 void TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
-t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages)
+t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, double tol_Lanczos)
 {
 	dist_max = 0.;
 	dimK_max = 0.;
@@ -281,7 +281,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages)
 			Heff[pivot].dim += Vinout.A[pivot][s].block[q].rows() * Vinout.A[pivot][s].block[q].cols();
 		}
 		
-		LanczosPropagator<PivotMatrixQ<Nq,TimeScalar,MpoScalar>, PivotVectorQ<Nq,TimeScalar> > Lutz(1e-5);
+		LanczosPropagator<PivotMatrixQ<Nq,TimeScalar,MpoScalar>, PivotVectorQ<Nq,TimeScalar> > Lutz(tol_Lanczos);
 //		Lutz.t_step(Heff[pivot], Asingle, -0.5*dt.imag());
 		Lutz.t_step(Heff[pivot], Asingle, -x(1,l,N_stages)*dt.imag());
 		if (Lutz.get_dist() > dist_max) {dist_max = Lutz.get_dist();}
@@ -297,7 +297,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages)
 			pivot = Vinout.get_pivot();
 			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vinout,pivot) : build_R(H,Vinout,pivot);
 			
-			LanczosPropagator<PivotMatrixQ<Nq,TimeScalar,MpoScalar>, PivotVector0Q<Nq,TimeScalar> > Lutz0(1e-5);
+			LanczosPropagator<PivotMatrixQ<Nq,TimeScalar,MpoScalar>, PivotVector0Q<Nq,TimeScalar> > Lutz0(tol_Lanczos);
 			
 			// set Heff0
 			PivotMatrixQ<Nq,TimeScalar,MpoScalar> Heff0;
