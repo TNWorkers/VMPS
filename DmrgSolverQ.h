@@ -323,68 +323,16 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,double> > &Vout, qarray<Nq
 	cout << Vout.state.info() << endl;
 
 	while (((err_eigval >= tol_eigval or err_state >= tol_state) and N_halfsweeps < max_halfsweeps) or 
-	        N_halfsweeps < min_halfsweeps)
+		   N_halfsweeps < min_halfsweeps)
 	{
 		// sweep
 		halfsweep(H,Vout);
-		
-		// adjust noise parameter
-		if (N_halfsweeps == 6)
+
+		if (N_halfsweeps%2 == 0 and totalTruncWeight >= Vout.state.eps_svd)
 		{
-			Vout.state.alpha_noise = 1e-8;
-			Vout.state.eps_rdm = 1e-12;
-			Vout.state.alpha_rsvd = 1e-1;
-			print_alpha_eps();
+			Vout.state.N_sv = min(max(static_cast<size_t>(1.1*Vout.state.N_sv), Vout.state.N_sv+dimqlocAvg),Dlimit);
 		}
-		else if (N_halfsweeps == 12)
-		{
-			Vout.state.alpha_noise = 1e-9;
-			Vout.state.eps_rdm = 1e-13;
-			Vout.state.alpha_rsvd = 1e-1;
-			print_alpha_eps();
-		}
-		else if (N_halfsweeps == 18)
-		{
-			Vout.state.alpha_noise = 1e-10;
-			Vout.state.eps_rdm = 1e-14;
-			Vout.state.alpha_rsvd = 1e-2;
-			print_alpha_eps();
-		}
-		else if (N_halfsweeps == 24)
-		{
-			Vout.state.alpha_noise = 0.;
-			Vout.state.eps_rdm = 0.;
-			Vout.state.alpha_rsvd = 0.;
-			print_alpha_eps();
-		}
-		else if (N_halfsweeps == 30)
-		{
-			// reshake if in local minimum
-			if (err_state/err_state_before_end_of_noise >= 0.8)
-			{
-				Vout.state.alpha_noise = 1e-7;
-				Vout.state.eps_rdm = 1e-11;
-				Vout.state.alpha_rsvd = 1e-1;
-				if (CHOSEN_VERBOSITY != DMRG::VERBOSITY::SILENT)
-				{
-					lout << "local minimum detected, reshaking!" << endl;
-				}
-				print_alpha_eps();
-			}
-			else
-			{
-				Vout.state.alpha_noise = 0.;
-				Vout.state.eps_rdm = 0.;
-				Vout.state.alpha_rsvd = 0.;
-			}
-		}
-		else if (N_halfsweeps == 36)
-		{
-			Vout.state.alpha_noise = 0.;
-			Vout.state.eps_rdm = 0.;
-			Vout.state.alpha_rsvd = 0.;
-			print_alpha_eps();
-		}
+
 	}
 	
 	cleanup(H,Vout,EDGE);
