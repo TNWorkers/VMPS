@@ -75,8 +75,11 @@ public:
 	/**Operator for the substrate spin.*/
 	MpoQ<1> Ssub (size_t L, size_t loc, SPINOP_LABEL Sa);
 	
-	/**Operator for the impurity-substrate correlation.*/
+	/**Operator for the impurity-substrate correlations.*/
 	MpoQ<1> SimpSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
+	
+	/**Operator for the impurity-impurity correlations.*/
+	MpoQ<1> SimpSimp (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
 	
 	/***/
 	MpoQ<1> hopping (size_t L, size_t loc);
@@ -297,6 +300,21 @@ SimpSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP
 	MatrixXd IdImp(MpoQ<1>::qloc[loc2].size()/4, MpoQ<1>::qloc[loc2].size()/4); IdImp.setIdentity();
 	Mout.setLocal({loc1, loc2}, {kroneckerProduct(SpinBase::Scomp(SOP1,D),Id4), 
 	                             kroneckerProduct(IdImp,FermionBase::Scomp(SOP2))}
+	             );
+	return Mout;
+}
+
+MpoQ<1> TransverseKondoModel::
+SimpSimp (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
+{
+	assert(loc1<L and loc2<L);
+	stringstream ss;
+	ss << SOP1 << "(" << loc1 << ")" << SOP2 << "(" << loc2 << ")";
+	MpoQ<1> Mout(L, locBasis(), {0}, Nlabel, ss.str());
+	MatrixXd Id4(4,4); Id4.setIdentity();
+	MatrixXd IdImp(MpoQ<1>::qloc[loc2].size()/4, MpoQ<1>::qloc[loc2].size()/4); IdImp.setIdentity();
+	Mout.setLocal({loc1, loc2}, {kroneckerProduct(SpinBase::Scomp(SOP1,D),Id4), 
+	                             kroneckerProduct(SpinBase::Scomp(SOP2,D),Id4)}
 	             );
 	return Mout;
 }
