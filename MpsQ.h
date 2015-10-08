@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <ctime>
 #include <type_traits>
+#include <iostream>
+#include <fstream>
 
 #include "Biped.h"
 #include "Multipede.h"
@@ -53,12 +55,12 @@ public:
 	\param Dmax : size cutoff (per subspace)
 	\param Qtot_input : target quantum number*/
 	template<typename Hamiltonian> MpsQ<Nq,Scalar> (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input);
-	
+
 	///\{
 	/**Sets all matrices to random using boost's uniform distribution from -1 to 1.
 	\warning Watch for overflow in large chains where one gets exponentially large values when multiplying all the matrices! The safer way is to randomize while sweeping, using MpsQ::setRandom(size_t loc).*/
 	void setRandom();
-	
+
 	/**Sets all matrices at site \p loc to random using boost's uniform distribution from -1 to 1.*/
 	void setRandom (size_t loc);
 	
@@ -68,7 +70,17 @@ public:
 	/**Sweeps through the chain with DMRG::BROOM::QR, creating a canonical MpsQ.
 	\param DIR : If DMRG::DIRECTION::LEFT, the result is left-canonical. If DMRG::DIRECTION::RIGHT, the result is right-canonical.*/
 	void canonize (DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::LEFT);
-	
+
+	///\{
+	/**Writes all matrices of the MPS to the file <FILENAME>.mps.
+	 \param filename : the format is fixed to .mps. Just enter the name without the format.*/
+	void writeToFile(string filename);
+
+	///\{
+	/**Reades all matrices of the MPS from the file <FILENAME>.mps.
+	   \param filename : the format is fixed to .mps. Just enter the name without the format.*/
+	void readFromFile(string filename);
+
 	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated.
 	\param L_input : chain length
 	\param qloc_input : local basis
@@ -769,6 +781,79 @@ canonize (DMRG::DIRECTION::OPTION DIR)
 		this->sweep(this->N_sites-1, DMRG::BROOM::QR);
 		rightSweepStep(this->N_sites-1, DMRG::BROOM::QR);
 	}
+}
+
+template<size_t Nq, typename Scalar>
+void MpsQ<Nq,Scalar>::
+writeToFile (string filename)
+{
+	ofstream File;
+	filename+=".mps";
+	File.open(filename);
+	
+	//First line is for information about the file format:
+	File << ".mps-file for storing Matrix Product States (MPS). Please open with MpsQ.h constructor." << endl;
+
+	//Lines 2-5 are for sizes of the MPS
+	File << this->N_sites << endl;
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		File << qloc[l].size() << " ";
+	}
+	File << endl;
+	for (size_t l=0; l<this->N_sites; ++l)	   
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		{
+			File << A[l][s].dim << " ";
+		}
+	File << endl;
+	for (size_t l=0; l<this->N_sites; ++l)
+		for (size_t s=0; s<qloc[l].size(); ++s)
+			for (size_t q=0; q<A[l][s].dim; ++q)
+			{
+				File << "(" << A[l][s].block[q].rows() << "." << A[l][s].block[q].cols() << ")" << " ";
+			}
+	File << endl;
+
+	//Since line 6: Matrixelements of the site-matrices
+	for (size_t l=0; l<this->N_sites; ++l)
+		for (size_t s=0; s<qloc[l].size(); ++s)
+			for (size_t q=0; q<A[l][s].dim; ++q)
+			{
+				for (size_t i1=0; i1<A[l][s].block[q].rows();++i1)
+				{								 
+					for (size_t i2=0; i2<A[l][s].block[q].cols();++i2)
+					{
+						File << A[l][s].block[q](i1,i2) << " ";
+					}
+				}
+				File << endl;
+			}
+	File.close();
+}
+
+template<size_t Nq, typename Scalar>
+void MpsQ<Nq,Scalar>::
+readFromFile (string filename)
+{
+	ifstream File;
+	string rubbish;
+	filename+=".mps";
+	File.open(filename);
+
+	for (size_t l=0; l<this->N_sites; ++l)
+		for (size_t s=0; s<qloc[l].size(); ++s)
+			for (size_t q=0; q<A[l][s].dim; ++q)
+			{
+				for (size_t i1=0; i1<A[l][s].block[q].rows();++i1)
+				{								 
+					for (size_t i2=0; i2<A[l][s].block[q].cols();++i2)
+					{
+						File >> A[l][s].block[q](i1,i2);
+					}
+				}
+			}
+
 }
 
 template<size_t Nq, typename Scalar>
