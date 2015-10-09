@@ -56,6 +56,10 @@ public:
 	\param Qtot_input : target quantum number*/
 	template<typename Hamiltonian> MpsQ<Nq,Scalar> (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input);
 
+	/** Construct by reading relevant informations from an .mps-file.
+		\param filename : the format is fixed to .mps. Just enter the name without the format.*/
+	template<typename Hamiltonian> MpsQ<Nq,Scalar> (string filename);
+
 	///\{
 	/**Sets all matrices to random using boost's uniform distribution from -1 to 1.
 	\warning Watch for overflow in large chains where one gets exponentially large values when multiplying all the matrices! The safer way is to randomize while sweeping, using MpsQ::setRandom(size_t loc).*/
@@ -343,12 +347,62 @@ template<size_t Nq, typename Scalar>
 template<typename Hamiltonian>
 MpsQ<Nq,Scalar>::
 MpsQ (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
-:DmrgJanitor<PivotMatrixQ<Nq,Scalar> >()
+	:DmrgJanitor<PivotMatrixQ<Nq,Scalar> >()
 {
 	format = H.format;
 	qlabel = H.qlabel;
 	outerResize<typename Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
 	innerResize(Dmax);
+}
+
+template<size_t Nq, typename Scalar>
+template<typename Hamiltonian>
+MpsQ<Nq,Scalar>::
+MpsQ (string filename)
+	:DmrgJanitor<PivotMatrixQ<Nq,Scalar> >()
+{
+	format = noFormat;
+	ifstream file;
+	filename+=".mps";
+	file.open(filename);
+	assert( file.good() and "I have tried to open the .mps file. But it is not there.");
+	file.seekg(121,file.beg);
+	
+	size_t Lcheck;
+	file >> Lcheck;
+	
+	vector<size_t> localDimCheck;
+	localDimCheck.resize(Lcheck);
+	for (size_t l=0;l<Lcheck;++l)
+	{
+		file >> localDimCheck[l];
+	}
+	
+	qarray<Nq> QtotCheck;
+	for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
+	{
+		file >> QtotCheck[NqLoop];
+	}
+	
+	size_t DmaxCheck;
+	file >> DmaxCheck;
+
+	vector <vector <qarray<Nq > > > qlocCheck;
+	qlocCheck.resize(Lcheck);
+	for (size_t l=0;l<Lcheck;++l)
+	{
+		qlocCheck[l].resize(localDimCheck[l]);
+	}
+	for (size_t l=0;l<Lcheck;++l)
+		for (size_t s=0;s<localDimCheck[l];++s)
+			for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
+			{
+				file >> qlocCheck[l][s][NqLoop];
+			}
+
+//	qlabel = H.qlabel;
+	outerResize<typename Hamiltonian::qarrayIterator>(Lcheck, qlocCheck, QtotCheck);
+	innerResize(DmaxCheck);
 }
 
 template<size_t Nq, typename Scalar>
@@ -787,35 +841,55 @@ template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
 writeToFile (string filename)
 {
-	ofstream File;
+	ofstream file;
+	ifstream checkFile;
 	filename+=".mps";
-	File.open(filename);
+	checkFile.open(filename);
+	size_t fileNameCounter=1;
+	while ( checkFile.good() )
+	{
+		lout << "I have tried to write the mps to a file. But the file already exists." << endl;
+		lout << "I'll try your filename with " << fileNameCounter << " at the end." << endl;
+		filename.insert((filename.size()-4),to_string(fileNameCounter));
+		checkFile.close();
+		checkFile.open(filename);
+		fileNameCounter+=1;
+	}
+	checkFile.close();
+	file.open(filename);
 	
 	//First line is for information about the file format:
-	File << ".mps-file for storing Matrix Product States (MPS). Please open with MpsQ.h constructor." << endl;
+	file << ".mps-file for storing Matrix Product States (MPS). Please with member function readFromFile(string filename) from MpsQ.h." << endl;
 
-	//Lines 2-5 are for sizes of the MPS
-	File << this->N_sites << endl;
+	//Lines 2-3 are for sizes of the MPS
+	file << this->N_sites << endl;
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
-		File << qloc[l].size() << " ";
+		file << qloc[l].size() << " ";
 	}
-	File << endl;
-	for (size_t l=0; l<this->N_sites; ++l)	   
-		for (size_t s=0; s<qloc[l].size(); ++s)
-		{
-			File << A[l][s].dim << " ";
-		}
-	File << endl;
-	for (size_t l=0; l<this->N_sites; ++l)
-		for (size_t s=0; s<qloc[l].size(); ++s)
-			for (size_t q=0; q<A[l][s].dim; ++q)
-			{
-				File << "(" << A[l][s].block[q].rows() << "." << A[l][s].block[q].cols() << ")" << " ";
-			}
-	File << endl;
+	file << endl;
 
-	//Since line 6: Matrixelements of the site-matrices
+	// Line for is for Dmax
+	file << this->calc_Dmax() << endl;
+	
+	//Lines 5-.. are for qloc of the MPS.
+	for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
+	{
+		file << Qtot[NqLoop] << " ";
+	}	
+	file << endl;
+	
+	for (size_t l=0; l<qloc.size();++l)
+		for (size_t s=0; s<qloc[l].size();++s)
+		{
+			for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
+			{
+				file << qloc[l][s][NqLoop] << " ";
+			}
+			file << endl;
+		}
+
+	//Since line ...: matrix-elements of the site-matrices
 	for (size_t l=0; l<this->N_sites; ++l)
 		for (size_t s=0; s<qloc[l].size(); ++s)
 			for (size_t q=0; q<A[l][s].dim; ++q)
@@ -824,23 +898,61 @@ writeToFile (string filename)
 				{								 
 					for (size_t i2=0; i2<A[l][s].block[q].cols();++i2)
 					{
-						File << A[l][s].block[q](i1,i2) << " ";
+						file << A[l][s].block[q](i1,i2) << " ";
 					}
 				}
-				File << endl;
+				file << endl;
 			}
-	File.close();
+	file.close();
 }
 
 template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
 readFromFile (string filename)
 {
-	ifstream File;
-	string rubbish;
+	ifstream file;
 	filename+=".mps";
-	File.open(filename);
+	file.open(filename);
+	assert( file.good() and "I have tried to open the .mps file. But it is not there.");
+	file.seekg(121,file.beg);
+	
+	size_t Lcheck;
+	file >> Lcheck;
+	assert( Lcheck == this->N_sites and "I have tried to load the mps from file. But the # of sites is incorrect.");
+	
+	vector<size_t> localDimCheck;
+	localDimCheck.resize(Lcheck);
+	for (size_t l=0;l<Lcheck;++l)
+	{
+		file >> localDimCheck[l];
+		assert( localDimCheck[l] == qloc[l].size() and "I have tried to load the mps from file. But the local dimensions are incorrect.");
+	}
 
+	qarray<Nq> QtotCheck;
+	for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
+	{
+		file >> QtotCheck[NqLoop];
+		assert( QtotCheck[NqLoop] == Qtot[NqLoop] and "I have tried to load the mps from file. But the target quantum numbers are incorrect.");
+	}
+
+	size_t DmaxCheck;
+	file >> DmaxCheck;
+	assert( DmaxCheck == this->calc_Dmax() and "I have tried to load the mps from file. But parameter Dmax is incorrect.");
+   
+	vector <vector <qarray<Nq > > > qlocCheck;
+	qlocCheck.resize(Lcheck);
+	for (size_t l=0;l<Lcheck;++l)
+	{
+		qlocCheck[l].resize(localDimCheck[l]);
+	}
+	for (size_t l=0;l<Lcheck;++l)
+		for (size_t s=0;s<localDimCheck[l];++s)
+			for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
+			{
+				file >> qlocCheck[l][s][NqLoop];
+				assert( qlocCheck[l][s][NqLoop] == qloc[l][s][NqLoop] and "I have tried to load the mps from file. But the local quantum numbers are incorrect.");
+			}
+	
 	for (size_t l=0; l<this->N_sites; ++l)
 		for (size_t s=0; s<qloc[l].size(); ++s)
 			for (size_t q=0; q<A[l][s].dim; ++q)
@@ -849,7 +961,7 @@ readFromFile (string filename)
 				{								 
 					for (size_t i2=0; i2<A[l][s].block[q].cols();++i2)
 					{
-						File >> A[l][s].block[q](i1,i2);
+						file >> A[l][s].block[q](i1,i2);
 					}
 				}
 			}
