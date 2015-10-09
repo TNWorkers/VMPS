@@ -928,16 +928,16 @@ readFromFile (string filename)
 		assert( localDimCheck[l] == qloc[l].size() and "I have tried to load the mps from file. But the local dimensions are incorrect.");
 	}
 
+	size_t DmaxCheck;
+	file >> DmaxCheck;
+	assert( DmaxCheck == this->calc_Dmax() and "I have tried to load the mps from file. But parameter Dmax is incorrect.");
+
 	qarray<Nq> QtotCheck;
 	for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
 	{
 		file >> QtotCheck[NqLoop];
 		assert( QtotCheck[NqLoop] == Qtot[NqLoop] and "I have tried to load the mps from file. But the target quantum numbers are incorrect.");
 	}
-
-	size_t DmaxCheck;
-	file >> DmaxCheck;
-	assert( DmaxCheck == this->calc_Dmax() and "I have tried to load the mps from file. But parameter Dmax is incorrect.");
    
 	vector <vector <qarray<Nq > > > qlocCheck;
 	qlocCheck.resize(Lcheck);
