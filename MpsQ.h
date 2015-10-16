@@ -25,12 +25,12 @@
 \describe_Nq
 \describe_Scalar*/
 template<size_t Nq, typename Scalar=double>
-class MpsQ : public DmrgJanitor<PivotMatrixQ<Nq,Scalar> >
+class MpsQ : public DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >
 {
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 
 // Note: Cannot partially specialize template friends (or anything else, really). That sucks.
-template<size_t Nq_, typename MpHamiltonian> friend class DmrgSolverQ;
+template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
 template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
 template<size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
@@ -211,14 +211,14 @@ public:
 	\param BROOM : choice of decomposition
 	\param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD
 	\param DISCARD_V : If \p true, don't multiply the V-matrix onto the next site*/
-	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Nq,Scalar> *H = NULL, bool DISCARD_V=false);
+	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Nq,Scalar,Scalar> *H = NULL, bool DISCARD_V=false);
 	
 	/**Performs a sweep step to the left.
 	\param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1
 	\param BROOM : choice of decomposition
 	\param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD
 	\param DISCARD_U : If \p true, don't multiply the U-matrix onto the next site*/
-	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Nq,Scalar> *H = NULL, bool DISCARD_U=false);
+	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Nq,Scalar,Scalar> *H = NULL, bool DISCARD_U=false);
 	
 	/**Performs a two-site sweep.*/
 	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<Nq,MatrixType> > > &Apair);
@@ -276,14 +276,14 @@ private:
 	template<typename OtherScalar> void add_site (size_t loc, OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin);
 	
 	// sweep stuff RDM
-	void calc_noise (size_t loc, PivotMatrixQ<Nq,Scalar> *H, DMRG::DIRECTION::OPTION DIR, 
+	void calc_noise (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, 
 	                 const vector<vector<Biped<Nq,MatrixType> > > rho, 
 	                 vector<vector<Biped<Nq,MatrixType> > > &rhoNoise);
 	void press_rdm (size_t loc, vector<vector<Biped<Nq,MatrixType> > > rhoArray, qarray<Nq> qnum, DMRG::DIRECTION::OPTION DIR, MatrixType &rho);
 	
 	// sweep stuff RICH_SVD
-	void enrich_left  (size_t loc, PivotMatrixQ<Nq,Scalar> *H);
-	void enrich_right (size_t loc, PivotMatrixQ<Nq,Scalar> *H);
+	void enrich_left  (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H);
+	void enrich_right (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H);
 };
 
 template<size_t Nq, typename Scalar>
@@ -328,7 +328,7 @@ info() const
 template<size_t Nq, typename Scalar>
 MpsQ<Nq,Scalar>::
 MpsQ()
-:DmrgJanitor<PivotMatrixQ<Nq,Scalar> >()
+:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >()
 {
 	format = noFormat;
 //	qlabel = defaultQlabel<Nq>();
@@ -337,7 +337,7 @@ MpsQ()
 template<size_t Nq, typename Scalar>
 MpsQ<Nq,Scalar>::
 MpsQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input)
-:DmrgJanitor<PivotMatrixQ<Nq,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input)
+:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input)
 {
 	format = noFormat;
 //	qlabel = defaultQlabel<Nq>();
@@ -347,7 +347,7 @@ template<size_t Nq, typename Scalar>
 template<typename Hamiltonian>
 MpsQ<Nq,Scalar>::
 MpsQ (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
-	:DmrgJanitor<PivotMatrixQ<Nq,Scalar> >()
+	:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >()
 {
 	format = H.format;
 	qlabel = H.qlabel;
@@ -359,7 +359,7 @@ template<size_t Nq, typename Scalar>
 template<typename Hamiltonian>
 MpsQ<Nq,Scalar>::
 MpsQ (string filename)
-	:DmrgJanitor<PivotMatrixQ<Nq,Scalar> >()
+	:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >()
 {
 	format = noFormat;
 	ifstream file;
@@ -1082,7 +1082,7 @@ press_rdm (size_t loc, vector<vector<Biped<Nq,MatrixType> > > rhoArray, qarray<N
 
 template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
-leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H, bool DISCARD_U)
+leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar,Scalar> *H, bool DISCARD_U)
 {
 	vector<vector<Biped<Nq,MatrixType> > > rhoArray, rhoNoiseArray;
 	rhoArray.resize(qloc[loc].size());
@@ -1311,7 +1311,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H,
 
 template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
-rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H, bool DISCARD_V)
+rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar,Scalar> *H, bool DISCARD_V)
 {
 	vector<vector<Biped<Nq,MatrixType> > > rhoArray, rhoNoiseArray;
 	rhoArray.resize(qloc[loc].size());
@@ -1878,7 +1878,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<N
 
 template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
-calc_noise (size_t loc, PivotMatrixQ<Nq,Scalar> *H, DMRG::DIRECTION::OPTION DIR, 
+calc_noise (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, 
             const vector<vector<Biped<Nq,MatrixType> > > rho, 
                   vector<vector<Biped<Nq,MatrixType> > > &rhoNoise)
 {
@@ -2006,7 +2006,7 @@ calc_noise (size_t loc, PivotMatrixQ<Nq,Scalar> *H, DMRG::DIRECTION::OPTION DIR,
 // works:
 //template<size_t Nq, typename Scalar>
 //void MpsQ<Nq,Scalar>::
-//calc_noise (PivotMatrixQ<Nq,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const vector<vector<Biped<Nq,MatrixType> > > rho, vector<vector<Biped<Nq,MatrixType> > > &rhoNoise)
+//calc_noise (PivotMatrixQ<Nq,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const vector<vector<Biped<Nq,MatrixType> > > rho, vector<vector<Biped<Nq,MatrixType> > > &rhoNoise)
 //{
 //	size_t dimB = (DIR==DMRG::DIRECTION::RIGHT)? H->L.dim : H->R.dim;
 //	
@@ -2200,7 +2200,7 @@ calc_noise (size_t loc, PivotMatrixQ<Nq,Scalar> *H, DMRG::DIRECTION::OPTION DIR,
 // seems to work now:
 //template<size_t Nq, typename Scalar>
 //void MpsQ<Nq,Scalar>::
-//calc_noise (PivotMatrixQ<Nq,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const vector<vector<Biped<Nq,MatrixType> > > rho, vector<vector<Biped<Nq,MatrixType> > > &rhoNoise)
+//calc_noise (PivotMatrixQ<Nq,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const vector<vector<Biped<Nq,MatrixType> > > rho, vector<vector<Biped<Nq,MatrixType> > > &rhoNoise)
 //{
 //	size_t dimB = (DIR==DMRG::DIRECTION::RIGHT)? H->L.dim : H->R.dim;
 //	
@@ -2360,7 +2360,7 @@ calc_noise (size_t loc, PivotMatrixQ<Nq,Scalar> *H, DMRG::DIRECTION::OPTION DIR,
 
 template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
-enrich_left (size_t loc, PivotMatrixQ<Nq,Scalar> *H)
+enrich_left (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H)
 {
 	if (this->alpha_rsvd != 0.)
 	{
@@ -2380,7 +2380,7 @@ enrich_left (size_t loc, PivotMatrixQ<Nq,Scalar> *H)
 			if (qA != A[loc][s2].dict.end())
 			{
 				for (int k=0; k<H->W[s1][s2].outerSize(); ++k)
-				for (SparseMatrixXd::InnerIterator iW(H->W[s1][s2],k); iW; ++iW)
+				for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2],k); iW; ++iW)
 				{
 					size_t a = iW.row();
 					size_t b = iW.col();
@@ -2454,7 +2454,7 @@ enrich_left (size_t loc, PivotMatrixQ<Nq,Scalar> *H)
 
 template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
-enrich_right (size_t loc, PivotMatrixQ<Nq,Scalar> *H)
+enrich_right (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H)
 {
 	if (this->alpha_rsvd != 0.)
 	{
@@ -2474,7 +2474,7 @@ enrich_right (size_t loc, PivotMatrixQ<Nq,Scalar> *H)
 			if (qA != A[loc][s2].dict.end())
 			{
 				for (int k=0; k<H->W[s1][s2].outerSize(); ++k)
-				for (SparseMatrixXd::InnerIterator iW(H->W[s1][s2],k); iW; ++iW)
+				for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2],k); iW; ++iW)
 				{
 					size_t a = iW.row();
 					size_t b = iW.col();

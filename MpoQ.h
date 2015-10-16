@@ -27,9 +27,9 @@ const std::array<string,0>    labeldummy{};
 /**Namespace VMPS to distinguish names from ED equivalents.*/
 namespace VMPS{};
 
-template<size_t Nq, typename MatrixType> class MpsQ;
+template<size_t Nq, typename Scalar> class MpsQ;
 template<size_t Nq, typename Scalar> class MpoQ;
-template<size_t Nq, typename MpHamiltonian> class DmrgSolverQ;
+template<size_t Nq, typename MpHamiltonian, typename Scalar> class DmrgSolverQ;
 template<size_t Nq, typename Scalar, typename MpoScalar> class MpsQCompressor;
 
 /**Matrix Product Operator with conserved quantum numbers (Abelian symmetries). Just adds a target quantum number and a bunch of labels on top of Mpo.
@@ -40,7 +40,7 @@ class MpoQ
 {
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 
-template<size_t Nq_, typename MpHamiltonian> friend class DmrgSolverQ;
+template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
 template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
 template<size_t Nq_, typename S_> friend class MpoQ;
@@ -362,7 +362,7 @@ construct (const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<vector<
 			for (size_t a1=0; a1<Gstore[l].rows(); ++a1)
 			for (size_t a2=0; a2<Gstore[l].cols(); ++a2)
 			{
-				double val = Gstore[l](a1,a2)(s1,s2);
+				Scalar val = Gstore[l](a1,a2)(s1,s2);
 				if (val != 0.)
 				{
 					Wstore[l][s1][s2].insert(a1,a2) = val;
@@ -687,7 +687,7 @@ scale (double factor, double offset)
 			for (size_t a1=0; a1<GvecSq[l].rows(); ++a1)
 			for (size_t a2=0; a2<GvecSq[l].cols(); ++a2)
 			{
-				double val = GvecSq[l](a1,a2)(s1,s2);
+				Scalar val = GvecSq[l](a1,a2)(s1,s2);
 				if (val != 0.)
 				{
 					Wsq[l][s1][s2].insert(a1,a2) = val;
@@ -830,7 +830,7 @@ BondPropagator (TimeScalar dt, PARITY P) const
 //		Jack.compute(HexpPermuted);
 //		#endif
 		// always use Eigen for higher accuracy:
-		BDCSVD<Matrix<TimeScalar,Dynamic,Dynamic> > Jack(HexpPermuted,ComputeThinU|ComputeThinV);
+		JacobiSVD<Matrix<TimeScalar,Dynamic,Dynamic> > Jack(HexpPermuted,ComputeThinU|ComputeThinV);
 		Matrix<TimeScalar,Dynamic,Dynamic> U1 = Jack.matrixU() * Jack.singularValues().cwiseSqrt().asDiagonal();
 		Matrix<TimeScalar,Dynamic,Dynamic> U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixV().adjoint();
 		

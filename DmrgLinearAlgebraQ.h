@@ -339,6 +339,7 @@ void OxV (const MpoQ<Nq,MpoScalar> &O, MpsQ<Nq,Scalar> &Vinout)
 	Vinout = Vtmp;
 }
 
+// unfinished:
 //template<size_t Nq, typename Scalar>
 //void OxV_exact (const MpoQ<D,Nq> &O, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
 //{
