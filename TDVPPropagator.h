@@ -4,6 +4,7 @@
 #include "DmrgContractionsQ.h"
 #include "LanczosPropagator.h"
 #include "DmrgPivotStuff0.h"
+#include "DmrgPivotStuff2Q.h"
 
 template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
 class TDVPPropagator
