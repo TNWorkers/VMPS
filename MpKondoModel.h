@@ -117,6 +117,9 @@ public:
 	MpoQ<2> SimpSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
 	MpoQ<2> SimpSsubSimpSimp (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2, 
 	                                    size_t loc3, SPINOP_LABEL SOP3, size_t loc4, SPINOP_LABEL SOP4);
+	MpoQ<2> SimpSsubSimpSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2, 
+	                                    size_t loc3, SPINOP_LABEL SOP3, size_t loc4, SPINOP_LABEL SOP4);
+
 	///@}
 	
 private:
@@ -390,7 +393,6 @@ KondoModel (size_t L_input, vector<double> Bzval_input, double J_input, double t
 :MpoQ<2,double>(L_input, KondoModel::qloc(D_input), {0,0}, KondoModel::NMlabel, "KondoModel (PKS geometry) ", N_halveM),
 J(J_input), t(t_input), tPrime(tPrime_input), U(U_input), D(D_input)
 {
-	assert(L_input % 3 == 2 and "L mod 3 = 2 is required for PKS topology.");
 	// assign stuff
 	this->Daux = 14;
 	
@@ -579,6 +581,23 @@ SimpSsubSimpSimp (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_
 	                                         kroneckerProduct(SpinBase::Scomp(SOP3,D),Id4),
 	                                         kroneckerProduct(SpinBase::Scomp(SOP4,D),Id4)}
 	             );
+	return Mout;
+}
+
+MpoQ<2> KondoModel::
+SimpSsubSimpSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2, size_t loc3, SPINOP_LABEL SOP3, size_t loc4, SPINOP_LABEL SOP4)
+{
+	assert(loc1<L and loc2<L and loc3<L and loc4<L);
+	stringstream ss;
+	ss << SOP1 << "(" << loc1 << ")" << SOP2 << "(" << loc2 << ")" << SOP3 << "(" << loc3 << ")" << SOP4 << "(" << loc4 << ")";
+	MpoQ<2> Mout(L, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
+	MatrixXd Id4(4,4); Id4.setIdentity();
+	MatrixXd IdImp(MpoQ<2>::qloc[loc2].size()/4, MpoQ<2>::qloc[loc2].size()/4); IdImp.setIdentity();
+	Mout.setLocal({loc1, loc2, loc3, loc4}, {kroneckerProduct(SpinBase::Scomp(SOP1,D),Id4), 
+				kroneckerProduct(IdImp,FermionBase::Scomp(SOP2)),
+				kroneckerProduct(SpinBase::Scomp(SOP3,D),Id4),
+				kroneckerProduct(IdImp,FermionBase::Scomp(SOP4))}
+		);
 	return Mout;
 }
 

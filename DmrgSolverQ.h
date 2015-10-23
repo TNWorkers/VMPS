@@ -31,26 +31,32 @@ public:
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
-	void prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, size_t Dinit=5);
+	void prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, size_t Dinit=5,
+				  double alpha_rsvd_input=1e-1, double eps_svd_input=1e-7);
 	void halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND, 
 	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST);
 	void cleanup (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, 
 	              LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND);
-	
+
+	/**Returns the current error of the eigenvalue while the sweep process.*/
+	inline double get_errEigval() const {return err_eigval;};
+	/**Returns the current error of the state while the sweep process.*/
+	inline double get_errState() const {return err_state;};
+
 private:
 	
 	size_t N_sites;
-	size_t N_sweepsteps, N_halfsweeps;
 	size_t Dmax, Mmax, Nqmax;
-	double err_eigval, err_state, err_state_before_end_of_noise;
 	double tol_eigval, tol_state;
 	double totalTruncWeight;
+	size_t Dmax_old;
+	size_t N_sweepsteps, N_halfsweeps;
+	double err_eigval, err_state, err_state_before_end_of_noise;
 	
 	vector<PivotMatrixQ<Nq,Scalar,Scalar> > Heff; // Scalar = MpoScalar for ground state
 	
 	double Eold;
-	size_t Dmax_old;
 	
 	int pivot;
 	DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
@@ -62,8 +68,8 @@ private:
 	void build_L (const MpHamiltonian &H, const Eigenstate<MpsQ<Nq,Scalar> > &Vout, size_t loc);
 	/**Constructs the right transfer matrix at chain site \p loc (right environment of \p loc).*/
 	void build_R (const MpHamiltonian &H, const Eigenstate<MpsQ<Nq,Scalar> > &Vout, size_t loc);
-	
-	DMRG::VERBOSITY::OPTION   CHOSEN_VERBOSITY;
+
+	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;	
 	LANCZOS::CONVTEST::OPTION CHOSEN_CONVTEST;
 };
 
@@ -137,7 +143,8 @@ overhead (MEMUNIT memunit) const
 
 template<size_t Nq, typename MpHamiltonian, typename Scalar>
 void DmrgSolverQ<Nq,MpHamiltonian,Scalar>::
-prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, size_t Dinit)
+prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, size_t Dinit,
+		 double alpha_rsvd_input, double eps_svd_input)
 {
 	N_sites = H.length();
 	N_sweepsteps = N_halfsweeps = 0;
@@ -188,9 +195,8 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> 
 	Eold = isReal(Rtmp.block[0][0][0](0,0));
 	
 	// initial cutoffs
-	Vout.state.alpha_noise = 1e-7;
-	Vout.state.eps_rdm = 1e-11;
-	Vout.state.alpha_rsvd = 1e-1;
+	Vout.state.eps_svd = eps_svd_input;
+	Vout.state.alpha_rsvd = alpha_rsvd_input;
 	
 	err_eigval = 1.;
 	err_state  = 1.;
@@ -214,7 +220,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
 		bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
-		LanczosStep(H, Vout, EDGE); //::::ERROR::::
+		LanczosStep(H, Vout, EDGE);
 		sweepStep(H,Vout);
 		++N_sweepsteps;
 	}
