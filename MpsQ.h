@@ -18,6 +18,9 @@
 #if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
 	#include "LapackWrappers.h"
 #endif
+#ifdef USE_HDF5_STORAGE
+    #include <HDF5Interface.h>
+#endif
 #include "PolychromaticConsole.h"
 #include "RandomVector.h"
 
@@ -58,7 +61,7 @@ public:
 
 	/** Construct by reading relevant informations from an .mps-file.
 		\param filename : the format is fixed to .mps. Just enter the name without the format.*/
-	template<typename Hamiltonian> MpsQ<Nq,Scalar> (string filename);
+//	template<typename Hamiltonian> MpsQ<Nq,Scalar> (string filename);
 
 	///\{
 	/**Sets all matrices to random using boost's uniform distribution from -1 to 1.
@@ -74,17 +77,29 @@ public:
 	/**Sweeps through the chain with DMRG::BROOM::QR, creating a canonical MpsQ.
 	\param DIR : If DMRG::DIRECTION::LEFT, the result is left-canonical. If DMRG::DIRECTION::RIGHT, the result is right-canonical.*/
 	void canonize (DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::LEFT);
+#ifdef USE_HDF5_STORAGE
+	///\{
+	/**Save all matrices of the MPS to the file <FILENAME>.h5.
+	   \param filename : the format is fixed to .h5. Just enter the name without the format.
+	   \param info : Additional information about the used model. Enter the info()-method of the used MPO here.
+	   \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/. Additionally eigen3-hdf5 is needed.
+	   See https://github.com/garrison/eigen3-hdf5 for information.
+	   \note For the filename you should use the info string of the current used Mpo.*/
+	void save(string filename,string info="none");
 
 	///\{
-	/**Writes all matrices of the MPS to the file <FILENAME>.mps.
-	 \param filename : the format is fixed to .mps. Just enter the name without the format.*/
-	void writeToFile(string filename);
+	/**Reades all matrices of the MPS from the file <FILENAME>.h5.
+	   \param filename : the format is fixed to .h5. Just enter the name without the format.
+	   \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/. Additionally eigen3-hdf5 is needed.
+	   See https://github.com/garrison/eigen3-hdf5 for information.*/
+	void load(string filename);
 
 	///\{
-	/**Reades all matrices of the MPS from the file <FILENAME>.mps.
-	   \param filename : the format is fixed to .mps. Just enter the name without the format.*/
-	void readFromFile(string filename);
-
+	/**Returns the maximal bond-dimension of an MPS stored in a file <FILENAME>.h5.
+	   \param filename : the format is fixed to .h5. Just enter the name without the format.
+	   \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.*/
+	size_t loadDmax(string filename);
+#endif	
 	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated.
 	\param L_input : chain length
 	\param qloc_input : local basis
@@ -355,55 +370,55 @@ MpsQ (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
 	innerResize(Dmax);
 }
 
-template<size_t Nq, typename Scalar>
-template<typename Hamiltonian>
-MpsQ<Nq,Scalar>::
-MpsQ (string filename)
-	:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >()
-{
-	format = noFormat;
-	ifstream file;
-	filename+=".mps";
-	file.open(filename);
-	assert( file.good() and "I have tried to open the .mps file. But it is not there.");
-	file.seekg(121,file.beg);
+// template<size_t Nq, typename Scalar>
+// template<typename Hamiltonian>
+// MpsQ<Nq,Scalar>::
+// MpsQ (string filename)
+// 	:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >()
+// {
+// 	format = noFormat;
+// 	ifstream file;
+// 	filename+=".mps";
+// 	file.open(filename);
+// 	assert( file.good() and "I have tried to open the .mps file. But it is not there.");
+// 	file.seekg(121,file.beg);
 	
-	size_t Lcheck;
-	file >> Lcheck;
+// 	size_t Lcheck;
+// 	file >> Lcheck;
 	
-	vector<size_t> localDimCheck;
-	localDimCheck.resize(Lcheck);
-	for (size_t l=0;l<Lcheck;++l)
-	{
-		file >> localDimCheck[l];
-	}
+// 	vector<size_t> localDimCheck;
+// 	localDimCheck.resize(Lcheck);
+// 	for (size_t l=0;l<Lcheck;++l)
+// 	{
+// 		file >> localDimCheck[l];
+// 	}
 	
-	qarray<Nq> QtotCheck;
-	for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
-	{
-		file >> QtotCheck[NqLoop];
-	}
+// 	qarray<Nq> QtotCheck;
+// 	for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
+// 	{
+// 		file >> QtotCheck[NqLoop];
+// 	}
 	
-	size_t DmaxCheck;
-	file >> DmaxCheck;
+// 	size_t DmaxCheck;
+// 	file >> DmaxCheck;
 
-	vector <vector <qarray<Nq > > > qlocCheck;
-	qlocCheck.resize(Lcheck);
-	for (size_t l=0;l<Lcheck;++l)
-	{
-		qlocCheck[l].resize(localDimCheck[l]);
-	}
-	for (size_t l=0;l<Lcheck;++l)
-		for (size_t s=0;s<localDimCheck[l];++s)
-			for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
-			{
-				file >> qlocCheck[l][s][NqLoop];
-			}
+// 	vector <vector <qarray<Nq > > > qlocCheck;
+// 	qlocCheck.resize(Lcheck);
+// 	for (size_t l=0;l<Lcheck;++l)
+// 	{
+// 		qlocCheck[l].resize(localDimCheck[l]);
+// 	}
+// 	for (size_t l=0;l<Lcheck;++l)
+// 		for (size_t s=0;s<localDimCheck[l];++s)
+// 			for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
+// 			{
+// 				file >> qlocCheck[l][s][NqLoop];
+// 			}
 
-//	qlabel = H.qlabel;
-	outerResize<typename Hamiltonian::qarrayIterator>(Lcheck, qlocCheck, QtotCheck);
-	innerResize(DmaxCheck);
-}
+// //	qlabel = H.qlabel;
+// 	outerResize<typename Hamiltonian::qarrayIterator>(Lcheck, qlocCheck, QtotCheck);
+// 	innerResize(DmaxCheck);
+// }
 
 template<size_t Nq, typename Scalar>
 template<typename Hamiltonian>
@@ -837,136 +852,74 @@ canonize (DMRG::DIRECTION::OPTION DIR)
 	}
 }
 
+#ifdef USE_HDF5_STORAGE
 template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
-writeToFile (string filename)
+save (string filename, string info)
 {
-	ofstream file;
-	ifstream checkFile;
-	filename+=".mps";
-	checkFile.open(filename);
-	size_t fileNameCounter=1;
-	while ( checkFile.good() )
-	{
-		lout << "I have tried to write the mps to a file. But the file already exists." << endl;
-		lout << "I'll try your filename with " << fileNameCounter << " at the end." << endl;
-		filename.insert((filename.size()-4),to_string(fileNameCounter));
-		checkFile.close();
-		checkFile.open(filename);
-		fileNameCounter+=1;
-	}
-	checkFile.close();
-	file.open(filename);
-	
-	//First line is for information about the file format:
-	file << ".mps-file for storing Matrix Product States (MPS). Please with member function readFromFile(string filename) from MpsQ.h." << endl;
+	filename+=".h5";
+	HDF5Interface target(filename, WRITE);
 
-	//Lines 2-3 are for sizes of the MPS
-	file << this->N_sites << endl;
-	for (size_t l=0; l<this->N_sites; ++l)
-	{
-		file << qloc[l].size() << " ";
-	}
-	file << endl;
-
-	// Line for is for Dmax
-	file << this->calc_Dmax() << endl;
+	string DmaxLabel = "Dmax";
+	string eps_svdLabel = "eps_svd";
+	string alpha_rsvdLabel = "alpha_rsvd";
+	string add_infoLabel = "add_info";
+	target.save_scalar(this->calc_Dmax(),DmaxLabel.c_str());
+	target.save_scalar(this->eps_svd,eps_svdLabel.c_str());
+	target.save_scalar(this->alpha_rsvd,alpha_rsvdLabel.c_str());
+	target.save_char(info,add_infoLabel.c_str());
 	
-	//Lines 5-.. are for qloc of the MPS.
-	for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
-	{
-		file << Qtot[NqLoop] << " ";
-	}	
-	file << endl;
-	
-	for (size_t l=0; l<qloc.size();++l)
-		for (size_t s=0; s<qloc[l].size();++s)
-		{
-			for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
-			{
-				file << qloc[l][s][NqLoop] << " ";
-			}
-			file << endl;
-		}
+	std::string label;
 
-	//Since line ...: matrix-elements of the site-matrices
 	for (size_t l=0; l<this->N_sites; ++l)
 		for (size_t s=0; s<qloc[l].size(); ++s)
 			for (size_t q=0; q<A[l][s].dim; ++q)
 			{
-				for (size_t i1=0; i1<A[l][s].block[q].rows();++i1)
-				{								 
-					for (size_t i2=0; i2<A[l][s].block[q].cols();++i2)
-					{
-						file << A[l][s].block[q](i1,i2) << " ";
-					}
-				}
-				file << endl;
+				std::stringstream ss;
+				ss << l << "_" << s << "_" << "(" << A[l][s].in[q] << "," << A[l][s].out[q] << ")";
+				label = ss.str();
+				target.save_matrix(&(A[l][s].block[q]),label);
 			}
-	file.close();
+}
+
+template<size_t Nq, typename Scalar>
+size_t MpsQ<Nq,Scalar>::
+loadDmax (string filename)
+{
+	filename+=".h5";
+	HDF5Interface source(filename, READ);
+
+	string DmaxLabel = "Dmax";
+	size_t Dmax;
+	source.load_scalar(DmaxLabel.c_str(),Dmax);
+	return Dmax;
 }
 
 template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
-readFromFile (string filename)
+load (string filename)
 {
-	ifstream file;
-	filename+=".mps";
-	file.open(filename);
-	assert( file.good() and "I have tried to open the .mps file. But it is not there.");
-	file.seekg(121,file.beg);
-	
-	size_t Lcheck;
-	file >> Lcheck;
-	assert( Lcheck == this->N_sites and "I have tried to load the mps from file. But the # of sites is incorrect.");
-	
-	vector<size_t> localDimCheck;
-	localDimCheck.resize(Lcheck);
-	for (size_t l=0;l<Lcheck;++l)
-	{
-		file >> localDimCheck[l];
-		assert( localDimCheck[l] == qloc[l].size() and "I have tried to load the mps from file. But the local dimensions are incorrect.");
-	}
+	filename+=".h5";
+	HDF5Interface source(filename, READ);
 
-	size_t DmaxCheck;
-	file >> DmaxCheck;
-	assert( DmaxCheck == this->calc_Dmax() and "I have tried to load the mps from file. But parameter Dmax is incorrect.");
-
-	qarray<Nq> QtotCheck;
-	for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
-	{
-		file >> QtotCheck[NqLoop];
-		assert( QtotCheck[NqLoop] == Qtot[NqLoop] and "I have tried to load the mps from file. But the target quantum numbers are incorrect.");
-	}
-   
-	vector <vector <qarray<Nq > > > qlocCheck;
-	qlocCheck.resize(Lcheck);
-	for (size_t l=0;l<Lcheck;++l)
-	{
-		qlocCheck[l].resize(localDimCheck[l]);
-	}
-	for (size_t l=0;l<Lcheck;++l)
-		for (size_t s=0;s<localDimCheck[l];++s)
-			for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
-			{
-				file >> qlocCheck[l][s][NqLoop];
-				assert( qlocCheck[l][s][NqLoop] == qloc[l][s][NqLoop] and "I have tried to load the mps from file. But the local quantum numbers are incorrect.");
-			}
+	string eps_svdLabel = "eps_svd";
+	string alpha_rsvdLabel = "alpha_rsvd";
+	source.load_scalar(eps_svdLabel.c_str(),this->eps_svd);
+	source.load_scalar(alpha_rsvdLabel.c_str(),this->alpha_rsvd);
 	
+	std::string label;
+
 	for (size_t l=0; l<this->N_sites; ++l)
 		for (size_t s=0; s<qloc[l].size(); ++s)
 			for (size_t q=0; q<A[l][s].dim; ++q)
 			{
-				for (size_t i1=0; i1<A[l][s].block[q].rows();++i1)
-				{								 
-					for (size_t i2=0; i2<A[l][s].block[q].cols();++i2)
-					{
-						file >> A[l][s].block[q](i1,i2);
-					}
-				}
+				std::stringstream ss;
+				ss << l << "_" << s << "_" << "(" << A[l][s].in[q] << "," << A[l][s].out[q] << ")";
+				label = ss.str();
+				source.load_matrix(&(A[l][s].block[q]), label);
 			}
-
 }
+#endif
 
 template<size_t Nq, typename Scalar>
 size_t MpsQ<Nq,Scalar>::

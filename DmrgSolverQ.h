@@ -26,13 +26,13 @@ public:
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND,
 	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST,
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-6, 
-	                size_t Dinit=4, size_t Dlimit=500, 
+	                size_t Dinit=4, size_t Dlimit=500,size_t savePeriod=0, 
 	                size_t max_halfsweeps=50, size_t min_halfsweeps=6);
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
-	void prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, size_t Dinit=5,
-				  double alpha_rsvd_input=1e-1, double eps_svd_input=1e-7);
+	void prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, bool useState=false, size_t Dinit=5,
+				  double alpha_rsvd_input=1, double eps_svd_input=1e-7);
 	void halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND, 
 	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST);
@@ -143,19 +143,22 @@ overhead (MEMUNIT memunit) const
 
 template<size_t Nq, typename MpHamiltonian, typename Scalar>
 void DmrgSolverQ<Nq,MpHamiltonian,Scalar>::
-prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, size_t Dinit,
+prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, bool useState, size_t Dinit,
 		 double alpha_rsvd_input, double eps_svd_input)
 {
 	N_sites = H.length();
 	N_sweepsteps = N_halfsweeps = 0;
 	
 	Stopwatch PrepTimer;
-	
-	// resize Vout
-	Vout.state = MpsQ<Nq,Scalar>(H, Dinit, Qtot_input);
-	Vout.state.N_sv = Dinit;
+
+	if (!useState)
+	{
+		// resize Vout
+		Vout.state = MpsQ<Nq,Scalar>(H, Dinit, Qtot_input);
+		Vout.state.N_sv = Dinit;
+		Vout.state.setRandom();
+	}
 	Dmax_old = Dinit;
-	Vout.state.setRandom();
 	
 	// set edges
 	Heff.clear();
@@ -207,7 +210,7 @@ void DmrgSolverQ<Nq,MpHamiltonian,Scalar>::
 halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST)
 {
 	Stopwatch HalfsweepTimer;
-	
+
 	// save state for reference
 	MpsQ<Nq,Scalar> Vref;
 	if (TEST == LANCZOS::CONVTEST::NORM_TEST or
@@ -215,7 +218,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::
 	{
 		Vref = Vout.state;
 	}
-	
+
 	size_t halfsweepRange = (N_halfsweeps==0)? N_sites : N_sites-1; // one extra step on 1st iteration
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
@@ -225,7 +228,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::
 		++N_sweepsteps;
 	}
 	++N_halfsweeps;
-	
+
 	// calculate error
 	err_eigval = fabs(Eold-Vout.energy)/this->N_sites;
 	if (TEST == LANCZOS::CONVTEST::NORM_TEST or
@@ -236,7 +239,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::
 	else if (TEST == LANCZOS::CONVTEST::SQ_TEST)
 	{
 		Stopwatch HsqTimer;
-		double avgHsq = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state)); 
+		double avgHsq = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state));
 		err_state = fabs(avgHsq-pow(Vout.energy,2))/this->N_sites;
 		if (CHOSEN_VERBOSITY>=2)
 		{
@@ -296,12 +299,13 @@ cleanup (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::ED
 
 template<size_t Nq, typename MpHamiltonian, typename Scalar>
 void DmrgSolverQ<Nq,MpHamiltonian,Scalar>::
-edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t Dinit, size_t Dlimit, size_t max_halfsweeps, size_t min_halfsweeps)
+edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t Dinit, size_t Dlimit, size_t savePeriod, size_t max_halfsweeps, size_t min_halfsweeps)
 {
 	tol_eigval = tol_eigval_input;
 	tol_state  = tol_state_input;
-	
-	prepare(H,Vout,Qtot_input,Dinit);
+
+	prepare(H,Vout,Qtot_input,false,Dinit);
+
 	Stopwatch Saturn;
 	
 	// lambda function to print tolerances
@@ -331,7 +335,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq
 		   N_halfsweeps < min_halfsweeps)
 	{
 		// sweep
-		halfsweep(H,Vout);
+		halfsweep(H,Vout,EDGE,TEST);
 		
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
 		if (N_halfsweeps%2 == 0 and totalTruncWeight >= Vout.state.eps_svd)
@@ -345,8 +349,16 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq
 			Dmax_old = Vout.state.N_sv;
 		}
 		lout << endl;
+
+#ifdef USE_HDF5_STORAGE
+		if (savePeriod != 0 and N_halfsweeps%savePeriod == 0)
+		{
+			Vout.state.save("mpsBackup");
+			cout << "Written to file. " << N_halfsweeps << endl;
+		}
+#endif
 	}
-	
+
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		lout << Saturn.info("total runtime") << endl;
@@ -651,7 +663,7 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS
 	Lutz.set_dimK(min(30ul, Heff[pivot].dim));
 //	Lutz.edgeState(Heff[pivot],g, EDGE, tol_eigval,tol_state, false);
 //	Lutz.edgeState(Heff[pivot],g, EDGE, 1e-4,1e-3, false);
-	Lutz.edgeState(Heff[pivot],g, EDGE, 1e-7,1e-4, false); //::::ERROR::::
+	Lutz.edgeState(Heff[pivot],g, EDGE, 1e-7,1e-4, false);
 
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
