@@ -32,7 +32,7 @@ public:
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
 	void prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, bool useState=false, size_t Dinit=5,
-				  double alpha_rsvd_input=1, double eps_svd_input=1e-7);
+				  double alpha_rsvd_input=1e-1, double eps_svd_input=1e-7);
 	void halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND, 
 	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST);
@@ -143,7 +143,7 @@ overhead (MEMUNIT memunit) const
 
 template<size_t Nq, typename MpHamiltonian, typename Scalar>
 void DmrgSolverQ<Nq,MpHamiltonian,Scalar>::
-prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, bool useState, size_t Dinit,
+prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, bool USE_STATE, size_t Dinit,
 		 double alpha_rsvd_input, double eps_svd_input)
 {
 	N_sites = H.length();
@@ -151,7 +151,7 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> 
 	
 	Stopwatch PrepTimer;
 
-	if (!useState)
+	if (!USE_STATE)
 	{
 		// resize Vout
 		Vout.state = MpsQ<Nq,Scalar>(H, Dinit, Qtot_input);
@@ -210,7 +210,7 @@ void DmrgSolverQ<Nq,MpHamiltonian,Scalar>::
 halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST)
 {
 	Stopwatch HalfsweepTimer;
-
+	
 	// save state for reference
 	MpsQ<Nq,Scalar> Vref;
 	if (TEST == LANCZOS::CONVTEST::NORM_TEST or
@@ -218,7 +218,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::
 	{
 		Vref = Vout.state;
 	}
-
+	
 	size_t halfsweepRange = (N_halfsweeps==0)? N_sites : N_sites-1; // one extra step on 1st iteration
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
@@ -228,7 +228,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::
 		++N_sweepsteps;
 	}
 	++N_halfsweeps;
-
+	
 	// calculate error
 	err_eigval = fabs(Eold-Vout.energy)/this->N_sites;
 	if (TEST == LANCZOS::CONVTEST::NORM_TEST or
@@ -354,11 +354,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq
 		if (savePeriod != 0 and N_halfsweeps%savePeriod == 0)
 		{
 			Vout.state.save("mpsBackup");
-			cout << "Written to file. " << N_halfsweeps << endl;
 		}
 #endif
 	}
-
+	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		lout << Saturn.info("total runtime") << endl;
