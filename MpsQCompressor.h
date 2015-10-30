@@ -8,6 +8,7 @@
 #include "DmrgPivotStuffQ.h"
 #include "DmrgPivotStuff2Q.h"
 #include "LanczosMower.h"
+#include "Stopwatch.h"
 
 /**Compressor of Matrix Product States with conserved quantum numbers.
 \describe_Nq

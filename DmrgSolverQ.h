@@ -331,7 +331,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq
 		   N_halfsweeps < min_halfsweeps)
 	{
 		// sweep
-		halfsweep(H,Vout);
+		halfsweep(H,Vout,EDGE,TEST);
 		
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
 		if (N_halfsweeps%2 == 0 and totalTruncWeight >= Vout.state.eps_svd)
@@ -339,12 +339,12 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq
 			Vout.state.N_sv = min(max(static_cast<size_t>(1.1*Vout.state.N_sv), Vout.state.N_sv+dimqlocAvg), Dlimit);
 		}
 		
-		if (Vout.state.N_sv != Dmax_old)
+		if (Vout.state.N_sv != Dmax_old and CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
 			lout << "Dmax=" << Dmax_old << "→" << Vout.state.N_sv << endl;
 			Dmax_old = Vout.state.N_sv;
 		}
-		lout << endl;
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) {lout << endl;}
 	}
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
