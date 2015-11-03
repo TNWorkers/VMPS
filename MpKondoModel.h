@@ -18,6 +18,8 @@ The set of impurities \f$I\f$ is completely free to choose.
 class KondoModel : public MpoQ<2,double>
 {
 public:
+	/**Does nothing.*/
+	KondoModel () {};
 	
 	/**Constructs a Kondo Lattice Model.
 	\param L_input : chain length
