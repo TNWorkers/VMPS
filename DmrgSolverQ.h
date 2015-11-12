@@ -26,8 +26,9 @@ public:
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND,
 	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST,
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-6, 
-	                size_t Dinit=4, size_t Dlimit=500,size_t savePeriod=0, 
-	                size_t max_halfsweeps=50, size_t min_halfsweeps=6);
+	                size_t Dinit=4, size_t Dlimit=500, 
+	                size_t max_halfsweeps=50, size_t min_halfsweeps=6, 
+	                size_t savePeriod=0);
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
@@ -299,7 +300,7 @@ cleanup (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::ED
 
 template<size_t Nq, typename MpHamiltonian, typename Scalar>
 void DmrgSolverQ<Nq,MpHamiltonian,Scalar>::
-edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t Dinit, size_t Dlimit, size_t savePeriod, size_t max_halfsweeps, size_t min_halfsweeps)
+edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t Dinit, size_t Dlimit, size_t max_halfsweeps, size_t min_halfsweeps, size_t savePeriod)
 {
 	tol_eigval = tol_eigval_input;
 	tol_state  = tol_state_input;

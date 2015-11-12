@@ -226,4 +226,73 @@ ostream &operator<< (ostream& os, const SuperMatrix<Scalar> &M)
 	return os;
 }
 
+template<typename Scalar>
+SuperMatrix<Scalar> Generator (const vector<tuple<Scalar,Matrix<Scalar,Dynamic,Dynamic> > >                                                               &Olocal,
+                               const vector<tuple<Scalar,Matrix<Scalar,Dynamic,Dynamic>,Matrix<Scalar,Dynamic,Dynamic> > >                                &Otight,
+                               const vector<tuple<Scalar,Matrix<Scalar,Dynamic,Dynamic>,Matrix<Scalar,Dynamic,Dynamic>,Matrix<Scalar,Dynamic,Dynamic> > > &Onextn)
+{
+	size_t Daux = 2 + Otight.size() + 2*Onextn.size();
+	
+	vector<Matrix<Scalar,Dynamic,Dynamic> > col;
+	vector<Matrix<Scalar,Dynamic,Dynamic> > row;
+	size_t locdim = (get<1>(Otight[0])).rows();
+	
+	// first col (except corner element)
+	col.push_back(Matrix<Scalar,Dynamic,Dynamic>::Identity(locdim,locdim));
+	for (int i=0; i<Onextn.size(); ++i)
+	{
+		col.push_back(get<1>(Onextn[i]));
+	}
+	for (int i=0; i<Otight.size(); ++i)
+	{
+		col.push_back(get<1>(Otight[i]));
+	}
+	for (size_t i=0; i<Onextn.size(); ++i)
+	{
+		col.push_back(Matrix<Scalar,Dynamic,Dynamic>::Zero(locdim,locdim));
+	}
+	
+	// last row (except corner element)
+	for (size_t i=0; i<Onextn.size(); ++i)
+	{
+		row.push_back(Matrix<Scalar,Dynamic,Dynamic>::Zero(locdim,locdim));
+	}
+	for (int i=0; i<Otight.size(); ++i)
+	{
+		row.push_back(get<0>(Otight[i]) * get<2>(Otight[i]));
+	}
+	for (int i=0; i<Onextn.size(); ++i)
+	{
+		row.push_back(get<0>(Onextn[i]) * get<2>(Onextn[i]));
+	}
+	row.push_back(Matrix<Scalar,Dynamic,Dynamic>::Identity(locdim,locdim));
+	
+	SuperMatrix<Scalar> G;
+	G.setMatrix(Daux,locdim);
+	G.setZero();
+	
+	for (size_t i=0; i<Daux-1; ++i)
+	{
+		G(i,0)        = col[i];
+		G(Daux-1,i+1) = row[i];
+	}
+	
+	// corner element : local interaction
+	for (int i=0; i<Olocal.size(); ++i)
+	{
+		G(Daux-1,0) += get<0>(Olocal[i]) * get<1>(Olocal[i]);
+	}
+	
+	// nearest-neighbour transfer
+	if (Onextn.size() != 0)
+	{
+		for (size_t i=0; i<Onextn.size(); ++i)
+		{
+			G(Daux-1-Onextn.size()+i,1+i) = get<3>(Onextn[i]);
+		}
+	}
+	
+	return G;
+}
+
 #endif

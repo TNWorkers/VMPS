@@ -185,6 +185,10 @@ public:
 	
 protected:
 	
+	vector<tuple<Scalar,MatrixType,MatrixType> >            Otight;
+	vector<tuple<Scalar,MatrixType,MatrixType,MatrixType> > Onextn;
+	vector<tuple<Scalar,MatrixType> >                       Olocal;
+	
 	vector<vector<qarray<Nq> > > qloc;
 	
 	qarray<Nq> Qtot;
