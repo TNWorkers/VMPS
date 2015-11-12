@@ -49,8 +49,11 @@ public:
 	\param D_input : \f$2S+1\f$ (impurity spin)*/
 	KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzval_input={}, bool CALC_SQUARE=true, size_t D_input=2);
 
-	static SuperMatrix<double> Generator (double J, double Bz, double Bx=0., double t=-1., double tPrime=0., double U=0., size_t D=2);
-	
+	/**Construct basic MPO stuff for derived models from the Kondo model.*/
+	KondoModel (size_t L_input, string modelDescription, size_t D_input=2);
+
+	void set_operators(double J, double Bz, double Bx, double t, double tPrime, double U, size_t D);
+
 	/**Makes half-integers in the output for the magnetization quantum number.*/
 	static string N_halveM (qarray<2> qnum);
 	
@@ -128,6 +131,11 @@ void KondoModel::set_operators(double J, double Bz, double Bx, double t, double 
 	Eigen::MatrixXd Id4(4,4); Id4.setIdentity();
 	Eigen::MatrixXd IdSpins(D,D); IdSpins.setIdentity();
 
+	//clear old values of operators
+	this->Olocal.resize(0);
+	this->Otight.resize(0);
+	this->Onextn.resize(0);
+
 	//set local interaction Olocal
 	this->Olocal.push_back(std::make_tuple(-0.5*J, kroneckerProduct(SpinBase::Scomp(SP,D), FermionBase::Sp.transpose())));
 	this->Olocal.push_back(std::make_tuple(-0.5*J, kroneckerProduct(SpinBase::Scomp(SM,D), FermionBase::Sp)));
@@ -150,8 +158,8 @@ void KondoModel::set_operators(double J, double Bz, double Bx, double t, double 
 	//set nearest neighbour term Otight
 	this->Otight.push_back(std::make_tuple(-t,kroneckerProduct(IdSpins, FermionBase::cUP.transpose()), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP)));
 	this->Otight.push_back(std::make_tuple(-t,kroneckerProduct(IdSpins, FermionBase::cDN.transpose()), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN)));
-	this->Otight.push_back(std::make_tuple(t,kroneckerProduct(IdSpins, FermionBase::cUP, kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP.transpose()))));
-	this->Otight.push_back(std::make_tuple(t,kroneckerProduct(IdSpins, FermionBase::cDN, kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN.transpose()))));
+	this->Otight.push_back(std::make_tuple(t,kroneckerProduct(IdSpins, FermionBase::cUP), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP.transpose())));
+	this->Otight.push_back(std::make_tuple(t,kroneckerProduct(IdSpins, FermionBase::cDN), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN.transpose())));
 
 	if (tPrime != 0.)
 	{
@@ -159,101 +167,27 @@ void KondoModel::set_operators(double J, double Bz, double Bx, double t, double 
 		this->Onextn.push_back(std::make_tuple(-tPrime,
 											   kroneckerProduct(IdSpins, FermionBase::cUP.transpose()),
 											   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP),
-											   kroneckerProduct(IsSpins, FermionBase::fsign)));
+											   kroneckerProduct(IdSpins, FermionBase::fsign)));
 		this->Onextn.push_back(std::make_tuple(-tPrime,
 											   kroneckerProduct(IdSpins, FermionBase::cDN.transpose()),
 											   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN),
-											   kroneckerProduct(IsSpins, FermionBase::fsign)));
+											   kroneckerProduct(IdSpins, FermionBase::fsign)));
 		this->Onextn.push_back(std::make_tuple(tPrime,
 											   kroneckerProduct(IdSpins, FermionBase::cUP),
 											   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP.transpose()),
-											   kroneckerProduct(IsSpins, FermionBase::fsign)));
+											   kroneckerProduct(IdSpins, FermionBase::fsign)));
 		this->Onextn.push_back(std::make_tuple(tPrime,
 											   kroneckerProduct(IdSpins, FermionBase::cDN),
 											   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN.transpose()),
-											   kroneckerProduct(IsSpins, FermionBase::fsign)));		
+											   kroneckerProduct(IdSpins, FermionBase::fsign)));		
 	}
 }
 
-SuperMatrix<double> KondoModel::
-Generator (double J, double Bz, double Bx, double t, double tPrime, double U, size_t D)
-{
-	SuperMatrix<double> G;
+KondoModel::
+KondoModel (size_t L_input, string modelDescription, size_t D_input)
+	:MpoQ<2> (L_input, KondoModel::qloc(D_input), {0,0}, KondoModel::NMlabel, modelDescription, N_halveM)
+{}
 	
-	if (tPrime == 0.)
-	{
-		size_t Daux = 6;
-		G.setMatrix(Daux,D*4);
-		G.setZero();
-		
-		MatrixXd Id4(4,4); Id4.setIdentity();
-		MatrixXd IdSpins(D,D); IdSpins.setIdentity();
-		
-		G(0,0).setIdentity();
-		G(1,0) = kroneckerProduct(IdSpins, t*FermionBase::cUP.transpose());
-		G(2,0) = kroneckerProduct(IdSpins, t*FermionBase::cDN.transpose());
-		G(3,0) = kroneckerProduct(IdSpins, t*FermionBase::cUP);
-		G(4,0) = kroneckerProduct(IdSpins, t*FermionBase::cDN);
-		
-		G(5,0) = -0.5*J * kroneckerProduct(SpinBase::Scomp(SP,D), FermionBase::Sp.transpose())
-		         -0.5*J * kroneckerProduct(SpinBase::Scomp(SM,D), FermionBase::Sp)
-		         -J *     kroneckerProduct(SpinBase::Scomp(SZ,D), FermionBase::Sz)
-		         -Bz *    kroneckerProduct(SpinBase::Scomp(SZ,D), Id4)
-		         -Bx *    kroneckerProduct(SpinBase::Scomp(SX,D), Id4)
-		         +U * kroneckerProduct(IdSpins, FermionBase::d);
-		
-		// note: fsign takes care of the fermionic sign
-		G(5,1) = kroneckerProduct(IdSpins,-FermionBase::fsign * FermionBase::cUP);
-		G(5,2) = kroneckerProduct(IdSpins,-FermionBase::fsign * FermionBase::cDN);
-		G(5,3) = kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP.transpose());
-		G(5,4) = kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN.transpose());
-		G(5,5).setIdentity();
-	}
-	else
-	{
-		size_t Daux = 14;
-		G.setMatrix(Daux,D*4);
-		G.setZero();
-		
-		MatrixXd Id4(4,4) ; Id4.setIdentity();
-		MatrixXd IdSpins(D,D); IdSpins.setIdentity();
-		
-		G(0,0).setIdentity();
-		G(1,0) = kroneckerProduct(IdSpins, tPrime*FermionBase::cDN);
-		G(2,0) = kroneckerProduct(IdSpins, tPrime*FermionBase::cUP);
-		G(3,0) = kroneckerProduct(IdSpins, tPrime*FermionBase::cDN.transpose());
-		G(4,0) = kroneckerProduct(IdSpins, tPrime*FermionBase::cUP.transpose());
-		G(5,0) = kroneckerProduct(IdSpins, t*FermionBase::cUP.transpose());
-		G(6,0) = kroneckerProduct(IdSpins, t*FermionBase::cDN.transpose());
-		G(7,0) = kroneckerProduct(IdSpins, t*FermionBase::cUP);
-		G(8,0) = kroneckerProduct(IdSpins, t*FermionBase::cDN);
-		
-		G(13,0) = -0.5*J * kroneckerProduct(SpinBase::Scomp(SP,D), FermionBase::Sm)
-			      -0.5*J * kroneckerProduct(SpinBase::Scomp(SM,D), FermionBase::Sp)
-			      -J *     kroneckerProduct(SpinBase::Scomp(SZ,D), FermionBase::Sz)
-			      -Bz *    kroneckerProduct(SpinBase::Scomp(SZ,D), Id4)
-			      -Bx *    kroneckerProduct(SpinBase::Scomp(SX,D), Id4)
-			      +U * kroneckerProduct(IdSpins, FermionBase::d);
-		
-		G(13,5)  = kroneckerProduct(IdSpins,-FermionBase::fsign * FermionBase::cUP);
-		G(13,6)  = kroneckerProduct(IdSpins,-FermionBase::fsign * FermionBase::cDN);
-		G(13,7)  = kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP.transpose());
-		G(13,8)  = kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN.transpose());
-		G(13,9)  = tPrime*kroneckerProduct(IdSpins, -FermionBase::fsign * FermionBase::cUP);
-		G(13,10) = tPrime*kroneckerProduct(IdSpins, -FermionBase::fsign * FermionBase::cDN);
-		G(13,11) = tPrime*kroneckerProduct(IdSpins,  FermionBase::fsign * FermionBase::cUP.transpose());
-		G(13,12) = tPrime*kroneckerProduct(IdSpins,  FermionBase::fsign * FermionBase::cDN.transpose());
-		
-		G(9,4)  = kroneckerProduct(IdSpins, FermionBase::fsign);
-		G(10,3) = kroneckerProduct(IdSpins, FermionBase::fsign);
-		G(11,2) = kroneckerProduct(IdSpins, FermionBase::fsign);
-		G(12,1) = kroneckerProduct(IdSpins, FermionBase::fsign);
-		G(13,13).setIdentity();
-	}
-	
-	return G;
-}
-
 KondoModel::
 KondoModel (size_t L_input, double J_input, double tPrime_input, double U_input, double Bz_input, bool CALC_SQUARE, size_t D_input)
 :MpoQ<2> (L_input, KondoModel::qloc(D_input), {0,0}, KondoModel::NMlabel, "KondoModel", N_halveM),
@@ -268,8 +202,9 @@ J(J_input), Bz(Bz_input), tPrime(tPrime_input), U(U_input), D(D_input)
 	this->label += ss.str();
 
 	this->Daux = (tPrime==0.)? 6 : 14;
-	
-	SuperMatrix<double> G = Generator(J, Bz, 0., -1., tPrime, U, D);
+
+	this->set_operators(J, Bz, 0., -1., tPrime, U, D);
+	SuperMatrix<double> G = ::Generator(Olocal, Otight, Onextn);
 	this->construct(G, this->W, this->Gvec);
 	
 	if (CALC_SQUARE == true)
@@ -304,7 +239,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 	this->qlabel = NMlabel;
 	this->label = "KondoModel";
 	this->format = N_halveM;
-	this->Daux = 6;
+
 	MpoQ<2,double>::qloc.resize(this->N_sites);
 	
 	// make a pretty label
@@ -346,7 +281,8 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			if (l==0)
 			{
 				G[l].setRowVector(6,8);
-				G[l] = Generator(J,Bzval[i],0.,-1.,0.,0.,D).row(5);
+				this->set_operators(J,Bzval[i],0.,-1.,0.,0.,D);
+				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(5);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(6*6,8);
@@ -356,7 +292,8 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,8);
-				G[l] = Generator(J,Bzval[i],0.,-1.,0.,0.,D).col(0);
+				this->set_operators(J,Bzval[i],0.,-1.,0.,0.,D);
+				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(6*6,8);
@@ -366,7 +303,8 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			else
 			{
 				G[l].setMatrix(6,8);
-				G[l] = Generator(J,Bzval[i],0.,-1.,0.,0.,D);
+				this->set_operators(J,Bzval[i],0.,-1.,0.,0.,D);
+				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(6*6,8);
@@ -382,7 +320,8 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			if (l==0)
 			{
 				G[l].setRowVector(6,4);
-				G[l] = HubbardModel::Generator(0,0).row(5);
+				HubbardModel::set_operators(0.);
+				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(5);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(6*6,4);
@@ -392,7 +331,8 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,4);
-				G[l] = HubbardModel::Generator(0,0).col(0);
+				HubbardModel::set_operators(0.);
+				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(6*6,4);
@@ -402,7 +342,8 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			else
 			{
 				G[l].setMatrix(6,4);
-				G[l] = HubbardModel::Generator(0,0);
+				HubbardModel::set_operators(0.);
+				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(6*6,4);
@@ -410,6 +351,11 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 				}
 			}
 		}
+
+		//clear old values of operators
+		this->Olocal.resize(0);
+		this->Otight.resize(0);
+		this->Onextn.resize(0);
 	}
 	
 	this->construct(G, this->W, this->Gvec);
