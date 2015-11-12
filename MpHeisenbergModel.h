@@ -123,6 +123,8 @@ public:
 	
 private:
 	
+	void set_operators (double Jxy, double Jz, double Bz, double Bx, size_t D=2, double Jprime=0.);
+	
 	double Jxy=-1., Jz=-1., Bz=0.;
 	double Jprime=0.;
 	size_t D=2;
@@ -212,6 +214,34 @@ GeneratorJ12 (double J, double Jprime, double Bz)
 	return G;
 }
 
+void HeisenbergModel::
+set_operators (double Jxy, double Jz, double Bz, double Bx, size_t D, double Jprime)
+{
+	if (Jxy != 0.)
+	{
+		this->Otight.push_back(make_tuple(-0.5*Jxy, SpinBase::Scomp(SP,D), SpinBase::Scomp(SM,D)));
+		this->Otight.push_back(make_tuple(-0.5*Jxy, SpinBase::Scomp(SM,D), SpinBase::Scomp(SP,D)));
+	}
+	if (Jz != 0.)
+	{
+		this->Otight.push_back(make_tuple(-Jz, SpinBase::Scomp(SZ,D), SpinBase::Scomp(SZ,D)));
+	}
+	if (Bz != 0.)
+	{
+		this->Olocal.push_back(make_tuple(-Bz, SpinBase::Scomp(SZ,D)));
+	}
+	if (Bx != 0.)
+	{
+		this->Olocal.push_back(make_tuple(-Bx, SpinBase::Scomp(SX,D)));
+	}
+	if (Jprime != 0.)
+	{
+		this->Onextn.push_back(make_tuple(-0.5*Jprime, SpinBase::Scomp(SP,D), SpinBase::Scomp(SM,D), MatrixXd::Identity(D,D)));
+		this->Onextn.push_back(make_tuple(-0.5*Jprime, SpinBase::Scomp(SM,D), SpinBase::Scomp(SP,D), MatrixXd::Identity(D,D)));
+		this->Onextn.push_back(make_tuple(-Jprime,     SpinBase::Scomp(SZ,D), SpinBase::Scomp(SZ,D), MatrixXd::Identity(D,D)));
+	}
+}
+
 HeisenbergModel::
 HeisenbergModel (int L_input, double Jxy_input, double Jz_input, double Bz_input, size_t D_input, bool CALC_SQUARE)
 :MpoQ<1> (L_input, HeisenbergModel::qloc(D_input), {0}, HeisenbergModel::maglabel, "", HeisenbergModel::halve),
@@ -221,9 +251,12 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 	assert(Jxy != 0. or Jz != 0.);
 	this->label = create_label(D,Jxy,Jz,0,Bz,0);
 	
-	this->Daux = calc_Daux(Jxy,Jz);
+//	this->Daux = calc_Daux(Jxy,Jz);
+//	SuperMatrix<double> G = Generator(Jxy,Jz,Bz,0.,D);
 	
-	SuperMatrix<double> G = Generator(Jxy,Jz,Bz,0.,D);
+	set_operators(Jxy,Jz,Bz,0.,D);
+	this->Daux = 2 + Otight.size() + 2*Onextn.size();
+	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
 	this->construct(G, this->W, this->Gvec);
 	
 	if (CALC_SQUARE == true)
@@ -243,9 +276,13 @@ HeisenbergModel (int L_input, array<double,2> Jlist, double Bz_input, size_t D_i
 Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 {
 	this->label = create_label(D,Jxy,Jz,Jprime,Bz,0.);
-	this->Daux = 11;
 	
-	SuperMatrix<double> G = GeneratorJ12(Jxy,Jprime,Bz);
+//	this->Daux = 11;
+//	SuperMatrix<double> G = GeneratorJ12(Jxy,Jprime,Bz);
+	
+	set_operators(Jxy,Jz,Bz,0.,D,Jprime);
+	this->Daux = 2 + Otight.size() + 2*Onextn.size();
+	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
 	this->construct(G, this->W, this->Gvec);
 	
 	if (CALC_SQUARE == true)

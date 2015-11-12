@@ -183,11 +183,14 @@ public:
 //	void flatten_to_MpsQ (MpsQ<0,Scalar> &V);
 //	vector<vector<vector<MatrixType> > > A;
 	
-protected:
+//protected:
 	
-	vector<tuple<Scalar,MatrixType,MatrixType> >            Otight;
-	vector<tuple<Scalar,MatrixType,MatrixType,MatrixType> > Onextn;
+	/**local terms of Hamiltonian, format: coupling, operator*/
 	vector<tuple<Scalar,MatrixType> >                       Olocal;
+	/**nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2*/
+	vector<tuple<Scalar,MatrixType,MatrixType> >            Otight;
+	/**next-nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2, transfer operator*/
+	vector<tuple<Scalar,MatrixType,MatrixType,MatrixType> > Onextn;
 	
 	vector<vector<qarray<Nq> > > qloc;
 	

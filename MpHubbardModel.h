@@ -27,6 +27,11 @@ public:
 	
 	static SuperMatrix<double> Generator (double U, double V=0., double tPrime=0.);
 	
+	static void set_operators (double U, double V, double tPrime, 
+	                           vector<tuple<double,MatrixXd> > &Olocal,
+	                           vector<tuple<double,MatrixXd,MatrixXd> > &Otight,
+	                           vector<tuple<double,MatrixXd,MatrixXd,MatrixXd> > &Onextn);
+	
 	MpoQ<2> Hsq();
 	
 	/**local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$.
@@ -65,11 +70,9 @@ public:
 	
 private:
 	
-	void set_operators (double U, double V, double tPrime);
-	
 	double U;
-	double V=0.;
-	double tPrime=0.;
+	double V = 0.;
+	double tPrime = 0.;
 };
 
 const std::array<qarray<2>,4> HubbardModel::qloc {qarray<2>{0,0}, qarray<2>{1,0}, qarray<2>{0,1}, qarray<2>{1,1}};
@@ -77,27 +80,30 @@ const std::array<qarray<2>,4> HubbardModel::qlocNM {qarray<2>{0,0}, qarray<2>{1,
 const std::array<string,2>    HubbardModel::Nlabel{"N↑","N↓"};
 
 void HubbardModel::
-set_operators (double U, double V=0., double tPrime=0.)
+set_operators (double U, double V, double tPrime,
+               vector<tuple<double,MatrixXd> > &Olocal,
+               vector<tuple<double,MatrixXd,MatrixXd> > &Otight,
+               vector<tuple<double,MatrixXd,MatrixXd,MatrixXd> > &Onextn)
 {
-	this->Otight.push_back(make_tuple(-1., FermionBase::cUP.transpose(), FermionBase::fsign * FermionBase::cUP));
-	this->Otight.push_back(make_tuple(-1., FermionBase::cDN.transpose(), FermionBase::fsign * FermionBase::cDN));
-	this->Otight.push_back(make_tuple(+1., FermionBase::cUP, FermionBase::fsign * FermionBase::cUP.transpose()));
-	this->Otight.push_back(make_tuple(+1., FermionBase::cDN, FermionBase::fsign * FermionBase::cDN.transpose()));
+	Otight.push_back(make_tuple(-1., FermionBase::cUP.transpose(), FermionBase::fsign * FermionBase::cUP));
+	Otight.push_back(make_tuple(-1., FermionBase::cDN.transpose(), FermionBase::fsign * FermionBase::cDN));
+	Otight.push_back(make_tuple(+1., FermionBase::cUP, FermionBase::fsign * FermionBase::cUP.transpose()));
+	Otight.push_back(make_tuple(+1., FermionBase::cDN, FermionBase::fsign * FermionBase::cDN.transpose()));
 	
 	if (V != 0.)
 	{
-		this->Otight.push_back(make_tuple(V, FermionBase::n, FermionBase::n));
+		Otight.push_back(make_tuple(V, FermionBase::n, FermionBase::n));
 	}
 	
 	if (tPrime != 0.)
 	{
-		this->Onextn.push_back(make_tuple(-tPrime, FermionBase::cUP.transpose(), FermionBase::fsign * FermionBase::cUP, FermionBase::fsign));
-		this->Onextn.push_back(make_tuple(-tPrime, FermionBase::cDN.transpose(), FermionBase::fsign * FermionBase::cDN, FermionBase::fsign));
-		this->Onextn.push_back(make_tuple(+tPrime, FermionBase::cUP, FermionBase::fsign * FermionBase::cUP.transpose(), FermionBase::fsign));
-		this->Onextn.push_back(make_tuple(+tPrime, FermionBase::cDN, FermionBase::fsign * FermionBase::cDN.transpose(), FermionBase::fsign));
+		Onextn.push_back(make_tuple(-tPrime, FermionBase::cUP.transpose(), FermionBase::fsign * FermionBase::cUP, FermionBase::fsign));
+		Onextn.push_back(make_tuple(-tPrime, FermionBase::cDN.transpose(), FermionBase::fsign * FermionBase::cDN, FermionBase::fsign));
+		Onextn.push_back(make_tuple(+tPrime, FermionBase::cUP, FermionBase::fsign * FermionBase::cUP.transpose(), FermionBase::fsign));
+		Onextn.push_back(make_tuple(+tPrime, FermionBase::cDN, FermionBase::fsign * FermionBase::cDN.transpose(), FermionBase::fsign));
 	}
 	
-	this->Olocal.push_back(make_tuple(U, FermionBase::d));
+	Olocal.push_back(make_tuple(U, FermionBase::d));
 }
 
 SuperMatrix<double> HubbardModel::
@@ -202,7 +208,7 @@ HubbardModel (size_t L_input, double U_input, double V_input, double tPrime_inpu
 	
 //	SuperMatrix<double> G = Generator(U,V,tPrime);
 	
-	set_operators(U,V,tPrime);
+	set_operators(U,V,tPrime, Olocal,Otight,Onextn);
 	this->Daux = 2 + Otight.size() + 2*Onextn.size();
 	
 	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
