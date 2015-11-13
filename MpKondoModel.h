@@ -52,7 +52,7 @@ public:
 	/**Construct basic MPO stuff for derived models from the Kondo model.*/
 	KondoModel (size_t L_input, string modelDescription, size_t D_input=2);
 
-	static void set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn,
+	static void set_operators (vector<tuple<double,Eigen::MatrixXd> > &Olocal, vector<tuple<double,Eigen::MatrixXd,Eigen::MatrixXd> > &Otight, vector<tuple<double,Eigen::MatrixXd,Eigen::MatrixXd,Eigen::MatrixXd> > &Onextn,
 							   double J, double Bz, double Bx=0., double t=-1., double tPrime=0., double U=0., size_t D=2);
 
 	/**Makes half-integers in the output for the magnetization quantum number.*/
@@ -127,7 +127,8 @@ private:
 
 const std::array<string,2> KondoModel::NMlabel{"N","M"};
 
-static void set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, double J, double Bz, double Bx, double t, double tPrime, double U, size_t D)
+void KondoModel::
+set_operators (vector<tuple<double,Eigen::MatrixXd> > &Olocal, vector<tuple<double,Eigen::MatrixXd,Eigen::MatrixXd> > &Otight, vector<tuple<double,Eigen::MatrixXd,Eigen::MatrixXd,Eigen::MatrixXd> > &Onextn, double J, double Bz, double Bx, double t, double tPrime, double U, size_t D)
 
 {
 	Eigen::MatrixXd Id4(4,4); Id4.setIdentity();
@@ -281,7 +282,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			if (l==0)
 			{
 				G[l].setRowVector(6,8);
-				KondoModel::set_operators(Olocal, Otight, Onextn, J,Bzval[i],0.,-1.,0.,0.,D);
+				set_operators(Olocal, Otight, Onextn, J,Bzval[i],0.,-1.,0.,0.,D);
 				this->Daux = 2 + Otight.size() + 2*Onextn.size();
 				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(5);
 				if (CALC_SQUARE == true)
@@ -293,7 +294,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,8);
-				KondoModel::set_operators(Olocal, Otight, Onextn, J,Bzval[i],0.,-1.,0.,0.,D);
+				set_operators(Olocal, Otight, Onextn, J,Bzval[i],0.,-1.,0.,0.,D);
 				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
 				if (CALC_SQUARE == true)
 				{
@@ -304,7 +305,7 @@ KondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<
 			else
 			{
 				G[l].setMatrix(6,8);
-				KondoModel::set_operators(Olocal, Otight, Onextn, J,Bzval[i],0.,-1.,0.,0.,D);
+				set_operators(Olocal, Otight, Onextn, J,Bzval[i],0.,-1.,0.,0.,D);
 				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
 				if (CALC_SQUARE == true)
 				{
