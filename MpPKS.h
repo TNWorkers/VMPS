@@ -6,10 +6,11 @@ namespace VMPS
 {
 /**MPO representation of 
 \f$
-H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i \in I} B_i^z S_i^z
+H = -t \sum_{(i,j)\in \mathcal{T},\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{(i,j)\in \mathcal{T^{\prime}},\sigma} c^\dagger_{i\sigma}c_{j\sigma} - J \sum_{i} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i} B_i^z S_i^z + \frac{U}{2} \sum_{i,\sigma}n_{i\sigma}n_{i-\sigma}
 \f$.
 \note \f$J<0\f$ : antiferromagnetic
 \note The local magnetic fields act on the impurities only.
+\note \f$\mathcal{T}\f$ and \f$\mathcal{T^{\prime}}\f$ defines the PKS geometry.
 \note The parameters \f$t\f$ and \f$t^{\prime}\f$ are for pinning the PKS phase.*/
 class PKS : public KondoModel
 {
@@ -32,7 +33,7 @@ public:
 
 	typedef DmrgSolverQ<2,PKS> Solver;
 
-	void set_operators(double J, double t, double tPrime, double Bzval, double U, size_t D);
+//	void set_operators(double J, double t, double tPrime, double Bzval, double U, size_t D);
 
 private:
 	double J=-1., Bz=0., t=-1., tPrime=0., U=0.;
@@ -94,7 +95,8 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 		if (l==0)
 		{
 			G[l].setRowVector(14,8);
-			this->set_operators(J,tVec[l],tPrimeVec[l],Bzval[l],U,D);
+			KondoModel::set_operators(Olocal,Otight,Onextn,J,Bzval[l],0.,tVec[l],tPrimeVec[l],U,D);
+			this->Daux = 2 + Otight.size() + 2*Onextn.size();
 			G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(13);
 			if (CALC_SQUARE == true)
 			{
@@ -105,7 +107,7 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 		else if (l==this->N_sites-1)
 		{
 			G[l].setColVector(14,8);
-			this->set_operators(J,tVec[l],tPrimeVec[l],Bzval[l],U,D);
+			KondoModel::set_operators(Olocal,Otight,Onextn,J,Bzval[l],0.,tVec[l],tPrimeVec[l],U,D);			
 			G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
 			if (CALC_SQUARE == true)
 			{
@@ -116,7 +118,7 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 		else
 		{
 			G[l].setMatrix(14,8);
-			this->set_operators(J,tVec[l],tPrimeVec[l],Bzval[l],U,D);
+			KondoModel::set_operators(Olocal,Otight,Onextn,J,Bzval[l],0.,tVec[l],tPrimeVec[l],U,D);			
 			G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
 			if (CALC_SQUARE == true)
 			{
@@ -143,55 +145,55 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 	this->Onextn.resize(0);
 }
 
-void PKS::
-set_operators (double J, double t, double tPrime, double Bz, double U, size_t D)
-{
-	Eigen::MatrixXd Id4(4,4); Id4.setIdentity();
-	Eigen::MatrixXd IdSpins(D,D); IdSpins.setIdentity();
+// void PKS::
+// set_operators (double J, double t, double tPrime, double Bz, double U, size_t D)
+// {
+// 	Eigen::MatrixXd Id4(4,4); Id4.setIdentity();
+// 	Eigen::MatrixXd IdSpins(D,D); IdSpins.setIdentity();
 
-	//clear old values of operators
-	this->Olocal.resize(0);
-	this->Otight.resize(0);
-	this->Onextn.resize(0);
+// 	//clear old values of operators
+// 	this->Olocal.resize(0);
+// 	this->Otight.resize(0);
+// 	this->Onextn.resize(0);
 	
-	//set local interaction Olocal
-	this->Olocal.push_back(std::make_tuple(-0.5*J, kroneckerProduct(SpinBase::Scomp(SP,D), FermionBase::Sp.transpose())));
-	this->Olocal.push_back(std::make_tuple(-0.5*J, kroneckerProduct(SpinBase::Scomp(SM,D), FermionBase::Sp)));
-	this->Olocal.push_back(std::make_tuple(-J, kroneckerProduct(SpinBase::Scomp(SZ,D), FermionBase::Sz)));
-	if (Bz != 0.)
-	{
-		this->Olocal.push_back(std::make_tuple(-Bz, kroneckerProduct(SpinBase::Scomp(SZ,D), Id4)));
-	}
+// 	//set local interaction Olocal
+// 	this->Olocal.push_back(std::make_tuple(-0.5*J, kroneckerProduct(SpinBase::Scomp(SP,D), FermionBase::Sp.transpose())));
+// 	this->Olocal.push_back(std::make_tuple(-0.5*J, kroneckerProduct(SpinBase::Scomp(SM,D), FermionBase::Sp)));
+// 	this->Olocal.push_back(std::make_tuple(-J, kroneckerProduct(SpinBase::Scomp(SZ,D), FermionBase::Sz)));
+// 	if (Bz != 0.)
+// 	{
+// 		this->Olocal.push_back(std::make_tuple(-Bz, kroneckerProduct(SpinBase::Scomp(SZ,D), Id4)));
+// 	}
 
-	if (Bz != 0.)
-	{
-		this->Olocal.push_back(std::make_tuple(U, kroneckerProduct(IdSpins, FermionBase::d)));
-	}
+// 	if (Bz != 0.)
+// 	{
+// 		this->Olocal.push_back(std::make_tuple(U, kroneckerProduct(IdSpins, FermionBase::d)));
+// 	}
 
-	//set nearest neighbour term Otight
-	this->Otight.push_back(std::make_tuple(-t,kroneckerProduct(IdSpins, FermionBase::cUP.transpose()), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP)));
-	this->Otight.push_back(std::make_tuple(-t,kroneckerProduct(IdSpins, FermionBase::cDN.transpose()), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN)));
-	this->Otight.push_back(std::make_tuple(t,kroneckerProduct(IdSpins, FermionBase::cUP), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP.transpose())));
-	this->Otight.push_back(std::make_tuple(t,kroneckerProduct(IdSpins, FermionBase::cDN), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN.transpose())));
+// 	//set nearest neighbour term Otight
+// 	this->Otight.push_back(std::make_tuple(-t,kroneckerProduct(IdSpins, FermionBase::cUP.transpose()), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP)));
+// 	this->Otight.push_back(std::make_tuple(-t,kroneckerProduct(IdSpins, FermionBase::cDN.transpose()), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN)));
+// 	this->Otight.push_back(std::make_tuple(t,kroneckerProduct(IdSpins, FermionBase::cUP), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP.transpose())));
+// 	this->Otight.push_back(std::make_tuple(t,kroneckerProduct(IdSpins, FermionBase::cDN), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN.transpose())));
 
-	//set next nearest neighbour term Onextn
-	this->Onextn.push_back(std::make_tuple(-tPrime,
-										   kroneckerProduct(IdSpins, FermionBase::cUP.transpose()),
-										   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP),
-										   kroneckerProduct(IdSpins, FermionBase::fsign)));
-	this->Onextn.push_back(std::make_tuple(-tPrime,
-										   kroneckerProduct(IdSpins, FermionBase::cDN.transpose()),
-										   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN),
-										   kroneckerProduct(IdSpins, FermionBase::fsign)));
-	this->Onextn.push_back(std::make_tuple(tPrime,
-										   kroneckerProduct(IdSpins, FermionBase::cUP),
-										   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP.transpose()),
-										   kroneckerProduct(IdSpins, FermionBase::fsign)));
-	this->Onextn.push_back(std::make_tuple(tPrime,
-										   kroneckerProduct(IdSpins, FermionBase::cDN),
-										   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN.transpose()),
-										   kroneckerProduct(IdSpins, FermionBase::fsign)));
-}
+// 	//set next nearest neighbour term Onextn
+// 	this->Onextn.push_back(std::make_tuple(-tPrime,
+// 										   kroneckerProduct(IdSpins, FermionBase::cUP.transpose()),
+// 										   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP),
+// 										   kroneckerProduct(IdSpins, FermionBase::fsign)));
+// 	this->Onextn.push_back(std::make_tuple(-tPrime,
+// 										   kroneckerProduct(IdSpins, FermionBase::cDN.transpose()),
+// 										   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN),
+// 										   kroneckerProduct(IdSpins, FermionBase::fsign)));
+// 	this->Onextn.push_back(std::make_tuple(tPrime,
+// 										   kroneckerProduct(IdSpins, FermionBase::cUP),
+// 										   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP.transpose()),
+// 										   kroneckerProduct(IdSpins, FermionBase::fsign)));
+// 	this->Onextn.push_back(std::make_tuple(tPrime,
+// 										   kroneckerProduct(IdSpins, FermionBase::cDN),
+// 										   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN.transpose()),
+// 										   kroneckerProduct(IdSpins, FermionBase::fsign)));
+// }
 
 }
 
