@@ -33,9 +33,10 @@ U(U_input), V(V_input)
 	ss << "(U=" << U << ",V=" << V << ")";
 	this->label += ss.str();
 	
-	this->Daux = (V==0.)? 6 : 7;
-	
-	SuperMatrix<double> G = HubbardModel::Generator(U,V);
+	HubbardModel::set_operators(Olocal,Otight,Onextn, U,V);
+	this->Daux = 2 + Otight.size() + 2*Onextn.size();
+
+	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
 	this->construct(G, this->W, this->Gvec);
 	
 	if (CALC_SQUARE == true)

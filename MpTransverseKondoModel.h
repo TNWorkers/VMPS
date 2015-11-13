@@ -133,7 +133,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 	this->qlabel = Nlabel;
 	this->label = "TransverseKondoModel";
 	this->format = noFormat;
-	this->Daux = 6;
+//	this->Daux = 6;
 	this->qloc.resize(this->N_sites);
 	
 	// make a pretty label
@@ -181,7 +181,9 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			if (l==0)
 			{
 				G[l].setRowVector(6,8);
-				G[l] = KondoModel::Generator(J,Bzloc[i],Bxloc[i],-1.,0.,0.,D).row(5);
+				KondoModel::set_operators(Olocal, Otight, Onextn, J,Bzval[i],Bxloc[i],-1.,0.,0.,D);
+				this->Daux = 2 + Otight.size() + 2*Onextn.size();
+				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(5);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(6*6,8);
@@ -191,7 +193,8 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,8);
-				G[l] = KondoModel::Generator(J,Bzloc[i],Bxloc[i],-1.,0.,0.,D).col(0);
+				KondoModel::set_operators(Olocal, Otight, Onextn, J,Bzval[i],Bxloc[i],-1.,0.,0.,D);
+				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(6*6,8);
@@ -201,7 +204,8 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else
 			{
 				G[l].setMatrix(6,8);
-				G[l] = KondoModel::Generator(J,Bzloc[i],Bxloc[i],-1.,0.,0.,D);
+				KondoModel::set_operators(Olocal, Otight, Onextn, J,Bzval[i],Bxloc[i],-1.,0.,0.,D);
+				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(6*6,8);
@@ -217,7 +221,8 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			if (l==0)
 			{
 				G[l].setRowVector(6,4);
-				G[l] = HubbardModel::Generator(0,0).row(5);
+				HubbardModel::set_operators(Olocal, Otight, Onextn, 0.);
+				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(5);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(6*6,4);
@@ -227,7 +232,8 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,4);
-				G[l] = HubbardModel::Generator(0,0).col(0);
+				HubbardModel::set_operators(Olocal, Otight, Onextn, 0.);
+				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(6*6,4);
@@ -237,7 +243,8 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else
 			{
 				G[l].setMatrix(6,4);
-				G[l] = HubbardModel::Generator(0,0);
+				HubbardModel::set_operators(Olocal, Otight, Onextn, 0.);
+				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(6*6,4);
@@ -333,6 +340,8 @@ hopping (size_t L, size_t loc)
 		if (it != imploc.end())
 		{
 			Gloc = KondoModel::Generator(0,0,0,-1.,0,0,D);
+			// KondoModel::set_operators(Olocal, Otight, Onextn, 0, 0, 0, -1., 0, 0, D);
+			// Gloc = ::Generator(Olocal, Otight, Onextn);
 		}
 		
 		if (l==0)

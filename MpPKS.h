@@ -33,8 +33,6 @@ public:
 
 	typedef DmrgSolverQ<2,PKS> Solver;
 
-//	void set_operators(double J, double t, double tPrime, double Bzval, double U, size_t D);
-
 private:
 	double J=-1., Bz=0., t=-1., tPrime=0., U=0.;
 	size_t D=2;
@@ -144,56 +142,6 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 	this->Otight.resize(0);
 	this->Onextn.resize(0);
 }
-
-// void PKS::
-// set_operators (double J, double t, double tPrime, double Bz, double U, size_t D)
-// {
-// 	Eigen::MatrixXd Id4(4,4); Id4.setIdentity();
-// 	Eigen::MatrixXd IdSpins(D,D); IdSpins.setIdentity();
-
-// 	//clear old values of operators
-// 	this->Olocal.resize(0);
-// 	this->Otight.resize(0);
-// 	this->Onextn.resize(0);
-	
-// 	//set local interaction Olocal
-// 	this->Olocal.push_back(std::make_tuple(-0.5*J, kroneckerProduct(SpinBase::Scomp(SP,D), FermionBase::Sp.transpose())));
-// 	this->Olocal.push_back(std::make_tuple(-0.5*J, kroneckerProduct(SpinBase::Scomp(SM,D), FermionBase::Sp)));
-// 	this->Olocal.push_back(std::make_tuple(-J, kroneckerProduct(SpinBase::Scomp(SZ,D), FermionBase::Sz)));
-// 	if (Bz != 0.)
-// 	{
-// 		this->Olocal.push_back(std::make_tuple(-Bz, kroneckerProduct(SpinBase::Scomp(SZ,D), Id4)));
-// 	}
-
-// 	if (Bz != 0.)
-// 	{
-// 		this->Olocal.push_back(std::make_tuple(U, kroneckerProduct(IdSpins, FermionBase::d)));
-// 	}
-
-// 	//set nearest neighbour term Otight
-// 	this->Otight.push_back(std::make_tuple(-t,kroneckerProduct(IdSpins, FermionBase::cUP.transpose()), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP)));
-// 	this->Otight.push_back(std::make_tuple(-t,kroneckerProduct(IdSpins, FermionBase::cDN.transpose()), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN)));
-// 	this->Otight.push_back(std::make_tuple(t,kroneckerProduct(IdSpins, FermionBase::cUP), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP.transpose())));
-// 	this->Otight.push_back(std::make_tuple(t,kroneckerProduct(IdSpins, FermionBase::cDN), kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN.transpose())));
-
-// 	//set next nearest neighbour term Onextn
-// 	this->Onextn.push_back(std::make_tuple(-tPrime,
-// 										   kroneckerProduct(IdSpins, FermionBase::cUP.transpose()),
-// 										   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP),
-// 										   kroneckerProduct(IdSpins, FermionBase::fsign)));
-// 	this->Onextn.push_back(std::make_tuple(-tPrime,
-// 										   kroneckerProduct(IdSpins, FermionBase::cDN.transpose()),
-// 										   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN),
-// 										   kroneckerProduct(IdSpins, FermionBase::fsign)));
-// 	this->Onextn.push_back(std::make_tuple(tPrime,
-// 										   kroneckerProduct(IdSpins, FermionBase::cUP),
-// 										   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cUP.transpose()),
-// 										   kroneckerProduct(IdSpins, FermionBase::fsign)));
-// 	this->Onextn.push_back(std::make_tuple(tPrime,
-// 										   kroneckerProduct(IdSpins, FermionBase::cDN),
-// 										   kroneckerProduct(IdSpins, FermionBase::fsign * FermionBase::cDN.transpose()),
-// 										   kroneckerProduct(IdSpins, FermionBase::fsign)));
-// }
 
 }
 
