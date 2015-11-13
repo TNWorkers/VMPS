@@ -98,4 +98,11 @@ std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
 	return s;
 }
 
+typedef vector<tuple<double,MatrixXd> > LocalTermsXd;
+typedef vector<tuple<double,MatrixXd,MatrixXd> > TightTermsXd;
+typedef vector<tuple<double,MatrixXd,MatrixXd,MatrixXd> > NextnTermsXd;
+typedef vector<tuple<complex<double>,MatrixXcd> > LocalTermsXcd;
+typedef vector<tuple<complex<double>,MatrixXcd,MatrixXcd> > TightTermsXcd;
+typedef vector<tuple<complex<double>,MatrixXcd,MatrixXcd,MatrixXcd> > NextnTermsXcd;
+
 #endif

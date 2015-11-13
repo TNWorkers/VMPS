@@ -27,10 +27,7 @@ public:
 	
 	static SuperMatrix<double> Generator (double U, double V=0., double tPrime=0.);
 	
-	static void set_operators (double U, double V, double tPrime, 
-	                           vector<tuple<double,MatrixXd> > &Olocal,
-	                           vector<tuple<double,MatrixXd,MatrixXd> > &Otight,
-	                           vector<tuple<double,MatrixXd,MatrixXd,MatrixXd> > &Onextn);
+	static void set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, double U, double V=0., double tPrime=0.);
 	
 	MpoQ<2> Hsq();
 	
@@ -80,10 +77,7 @@ const std::array<qarray<2>,4> HubbardModel::qlocNM {qarray<2>{0,0}, qarray<2>{1,
 const std::array<string,2>    HubbardModel::Nlabel{"N↑","N↓"};
 
 void HubbardModel::
-set_operators (double U, double V, double tPrime,
-               vector<tuple<double,MatrixXd> > &Olocal,
-               vector<tuple<double,MatrixXd,MatrixXd> > &Otight,
-               vector<tuple<double,MatrixXd,MatrixXd,MatrixXd> > &Onextn)
+set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, double U, double V, double tPrime)
 {
 	Otight.push_back(make_tuple(-1., FermionBase::cUP.transpose(), FermionBase::fsign * FermionBase::cUP));
 	Otight.push_back(make_tuple(-1., FermionBase::cDN.transpose(), FermionBase::fsign * FermionBase::cDN));
@@ -208,7 +202,7 @@ HubbardModel (size_t L_input, double U_input, double V_input, double tPrime_inpu
 	
 //	SuperMatrix<double> G = Generator(U,V,tPrime);
 	
-	set_operators(U,V,tPrime, Olocal,Otight,Onextn);
+	set_operators(Olocal,Otight,Onextn, U,V,tPrime);
 	this->Daux = 2 + Otight.size() + 2*Onextn.size();
 	
 	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);

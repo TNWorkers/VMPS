@@ -86,14 +86,20 @@ DmrgLaddermaker (const MpoQ<Nq,Scalar> &H, bool CALC_SQUARE)
 		                      );
 	}
 	// hopping along rungs -> local term in ladder
+	vector<tuple<Scalar,MatrixType,MatrixType> > O;
+	O.push_back(make_tuple(-1., FermionBase::cUP.transpose(), FermionBase::cUP));
+	O.push_back(make_tuple(-1., FermionBase::cDN.transpose(), FermionBase::cDN));
+	O.push_back(make_tuple(+1., FermionBase::cUP, FermionBase::cUP.transpose()));
+	O.push_back(make_tuple(+1., FermionBase::cDN, FermionBase::cDN.transpose()));
+	
 	for (int i=0; i<H.Otight.size(); ++i)
 	{
 		this->Olocal.push_back(make_tuple(get<0>(H.Otight[i]),
-		                                  kroneckerProduct(get<1>(H.Otight[i]), get<2>(H.Otight[i]))
+		                                  kroneckerProduct(get<1>(O[i]), get<2>(O[i]))
 		                                 )
 		                      );
 		this->Olocal.push_back(make_tuple(get<0>(H.Otight[i]),
-		                                  kroneckerProduct(get<2>(H.Otight[i]), get<1>(H.Otight[i]))
+		                                  kroneckerProduct(get<2>(O[i]), get<1>(O[i]))
 		                                 )
 		                      );
 	}
