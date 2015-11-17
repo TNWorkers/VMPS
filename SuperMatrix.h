@@ -245,7 +245,8 @@ SuperMatrix<Scalar> Generator (const vector<tuple<Scalar,Matrix<Scalar,Dynamic,D
 	}
 	for (int i=0; i<Otight.size(); ++i)
 	{
-		col.push_back(get<1>(Otight[i]));
+//		col.push_back(get<1>(Otight[i]));
+		col.push_back(get<2>(Otight[i]));
 	}
 	for (size_t i=0; i<Onextn.size(); ++i)
 	{
@@ -259,7 +260,8 @@ SuperMatrix<Scalar> Generator (const vector<tuple<Scalar,Matrix<Scalar,Dynamic,D
 	}
 	for (int i=0; i<Otight.size(); ++i)
 	{
-		row.push_back(get<0>(Otight[i]) * get<2>(Otight[i]));
+//		row.push_back(get<0>(Otight[i]) * get<2>(Otight[i]));
+		row.push_back(get<0>(Otight[i]) * get<1>(Otight[i]));
 	}
 	for (int i=0; i<Onextn.size(); ++i)
 	{
