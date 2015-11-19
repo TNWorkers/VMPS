@@ -23,11 +23,11 @@ public:
 	\param tPrime_input : \f$t^{\prime}\f$ next nearest neighbour (nnn) hopping. \f$t^{\prime}>0\f$ is common sign.
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
-	HubbardModel (size_t L_input, double U_input, double V_input=0., double tPrime_input=0., bool CALC_SQUARE=true);
+	HubbardModel (size_t Lx_input, double U_input, double V_input=0., double tPrime_input=0., size_t Ly_input=1, bool CALC_SQUARE=true);
 	
-	static SuperMatrix<double> Generator (double U, double V=0., double tPrime=0.);
+//	static SuperMatrix<double> Generator (double U, double V=0., double tPrime=0.);
 	
-	static void set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, double U, double V=0., double tPrime=0.);
+	static void set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, const FermionBase &F, double U, double V=0., double tPrime=0.);
 	
 	MpoQ<2> Hsq();
 	
@@ -52,24 +52,28 @@ public:
 	typedef MpoQ<2,double>                           OperatorXd;
 	typedef MpoQ<2,complex<double> >                 OperatorXcd;
 	
-	static MpoQ<2> Auger (size_t L, size_t loc);
-	static MpoQ<2> eta (size_t L);
-	static MpoQ<2> Aps (size_t L, size_t loc);
-	static MpoQ<2> annihilator (size_t L, size_t loc, SPIN_INDEX sigma);
-	static MpoQ<2> creator     (size_t L, size_t loc, SPIN_INDEX sigma);
-	static MpoQ<2> d (size_t L, size_t loc); // double occupancy
-	static MpoQ<2> n (size_t L, SPIN_INDEX sigma, size_t loc);
-	static MpoQ<2> Sz (size_t L, size_t loc);
-	static MpoQ<2> SzSz (size_t L, size_t loc1, size_t loc2);
-	static MpoQ<2> triplon (size_t L, size_t loc, SPIN_INDEX sigma);
-	static MpoQ<2> antitriplon (size_t L, size_t loc, SPIN_INDEX sigma);
-	static MpoQ<2> quadruplon (size_t L, size_t loc);
+	MpoQ<2> Auger (size_t locx, size_t locy=0);
+	MpoQ<2> eta();
+	MpoQ<2> Aps (size_t locx, size_t locy=0);
+	MpoQ<2> c (SPIN_INDEX sigma, size_t locx, size_t locy=0);
+	MpoQ<2> cdag (SPIN_INDEX sigma, size_t locx, size_t locy=0);
+	MpoQ<2> d (size_t locx, size_t locy=0);
+	MpoQ<2> n (SPIN_INDEX sigma, size_t locx, size_t locy=0);
+	MpoQ<2> Sz (size_t locx, size_t locy=0);
+	MpoQ<2> SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2);
+	MpoQ<2> triplon (SPIN_INDEX sigma, size_t locx, size_t locy=0);
+	MpoQ<2> antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy=0);
+	MpoQ<2> quadruplon (size_t locx, size_t locy=0);
 	
 private:
 	
 	double U;
 	double V = 0.;
 	double tPrime = 0.;
+	
+	size_t N_legs = 1;
+	
+	FermionBase F;
 };
 
 const std::array<qarray<2>,4> HubbardModel::qloc {qarray<2>{0,0}, qarray<2>{1,0}, qarray<2>{0,1}, qarray<2>{1,1}};
@@ -77,132 +81,148 @@ const std::array<qarray<2>,4> HubbardModel::qlocNM {qarray<2>{0,0}, qarray<2>{1,
 const std::array<string,2>    HubbardModel::Nlabel{"N↑","N↓"};
 
 void HubbardModel::
-set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, double U, double V, double tPrime)
+set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn,  const FermionBase &F, double U, double V, double tPrime)
 {
-	Otight.push_back(make_tuple(-1., FermionBase::cUP.transpose(), FermionBase::fsign * FermionBase::cUP));
-	Otight.push_back(make_tuple(-1., FermionBase::cDN.transpose(), FermionBase::fsign * FermionBase::cDN));
-	Otight.push_back(make_tuple(+1., FermionBase::cUP, FermionBase::fsign * FermionBase::cUP.transpose()));
-	Otight.push_back(make_tuple(+1., FermionBase::cDN, FermionBase::fsign * FermionBase::cDN.transpose()));
-	
-	if (V != 0.)
+	for (int leg=0; leg<F.orbitals(); ++leg)
 	{
-		Otight.push_back(make_tuple(V, FermionBase::n, FermionBase::n));
+		Otight.push_back(make_tuple(-1., F.cdag(UP,leg), F.sign() * F.c(UP,leg)));
+		Otight.push_back(make_tuple(-1., F.cdag(DN,leg), F.sign() * F.c(DN,leg)));
+		Otight.push_back(make_tuple(+1., F.c(UP,leg),    F.sign() * F.cdag(UP,leg)));
+		Otight.push_back(make_tuple(+1., F.c(DN,leg),    F.sign() * F.cdag(DN,leg)));
+		
+		if (V != 0.)
+		{
+			Otight.push_back(make_tuple(V, F.n(leg), F.n(leg)));
+		}
 	}
 	
 	if (tPrime != 0.)
 	{
-		Onextn.push_back(make_tuple(-tPrime, FermionBase::cUP.transpose(), FermionBase::fsign * FermionBase::cUP, FermionBase::fsign));
-		Onextn.push_back(make_tuple(-tPrime, FermionBase::cDN.transpose(), FermionBase::fsign * FermionBase::cDN, FermionBase::fsign));
-		Onextn.push_back(make_tuple(+tPrime, FermionBase::cUP, FermionBase::fsign * FermionBase::cUP.transpose(), FermionBase::fsign));
-		Onextn.push_back(make_tuple(+tPrime, FermionBase::cDN, FermionBase::fsign * FermionBase::cDN.transpose(), FermionBase::fsign));
+		Onextn.push_back(make_tuple(-tPrime, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
+		Onextn.push_back(make_tuple(-tPrime, F.cdag(DN), F.sign() * F.cdag(DN), F.sign()));
+		Onextn.push_back(make_tuple(+tPrime, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
+		Onextn.push_back(make_tuple(+tPrime, F.cdag(DN), F.sign() * F.cdag(DN), F.sign()));
 	}
 	
-	Olocal.push_back(make_tuple(U, FermionBase::d));
+	Olocal.push_back(make_tuple(1., F.HubbardHamiltonian(U,1.,V)));
 }
 
-SuperMatrix<double> HubbardModel::
-Generator (double U, double V, double tPrime)
-{
-	size_t Daux = 6;
-	if (V != 0.)      {Daux += 1;}
-	if (tPrime != 0.) {Daux += 8;}
-	
-	vector<MatrixXd> col;
-	vector<MatrixXd> row;
-	
-	// first col (except corner element)
-	col.push_back(MatrixXd::Identity(4,4));
-	if (tPrime != 0.)
-	{
-		col.push_back(FermionBase::cDN);
-		col.push_back(FermionBase::cUP);
-		col.push_back(FermionBase::cDN.transpose());
-		col.push_back(FermionBase::cUP.transpose());
-	}
-	col.push_back(FermionBase::cUP.transpose());
-	col.push_back(FermionBase::cDN.transpose());
-	col.push_back(FermionBase::cUP);
-	col.push_back(FermionBase::cDN);
-	if (V != 0.)
-	{
-		col.push_back(FermionBase::n);
-	}
-	if (tPrime != 0.)
-	{
-		for (size_t i=0; i<4; ++i)
-		{
-			col.push_back(MatrixXd::Zero(4,4));
-		}
-	}
-	
-	// last row (except corner element)
-	if (tPrime != 0.)
-	{
-		for (size_t i=0; i<4; ++i)
-		{
-			row.push_back(MatrixXd::Zero(4,4));
-		}
-	}
-	row.push_back(-FermionBase::fsign * FermionBase::cUP);
-	row.push_back(-FermionBase::fsign * FermionBase::cDN);
-	row.push_back( FermionBase::fsign * FermionBase::cUP.transpose());
-	row.push_back( FermionBase::fsign * FermionBase::cDN.transpose());
-	if (V != 0.)
-	{
-		row.push_back(V * FermionBase::n);
-	}
-	if (tPrime != 0.)
-	{
-		row.push_back(-tPrime * FermionBase::fsign * FermionBase::cUP);
-		row.push_back(-tPrime * FermionBase::fsign * FermionBase::cDN);
-		row.push_back( tPrime * FermionBase::fsign * FermionBase::cUP.transpose());
-		row.push_back( tPrime * FermionBase::fsign * FermionBase::cDN.transpose());
-	}
-	row.push_back(MatrixXd::Identity(4,4));
-	
-	SuperMatrix<double> G;
-	G.setMatrix(Daux,4);
-	G.setZero();
-	
-	for (size_t i=0; i<Daux-1; ++i)
-	{
-		G(i,0)        = col[i];
-		G(Daux-1,i+1) = row[i];
-	}
-	
-	// corner element
-	G(Daux-1,0) = U * FermionBase::d;
-	
-	// nearest-neighbour transfer
-	if (tPrime != 0)
-	{
-		G.set_block_to_skewdiag(Daux-2,1, 4, FermionBase::fsign);
-	}
-	
-	return G;
-}
+//SuperMatrix<double> HubbardModel::
+//Generator (double U, double V, double tPrime)
+//{
+//	size_t Daux = 6;
+//	if (V != 0.)      {Daux += 1;}
+//	if (tPrime != 0.) {Daux += 8;}
+//	
+//	vector<MatrixXd> col;
+//	vector<MatrixXd> row;
+//	
+//	// first col (except corner element)
+//	col.push_back(MatrixXd::Identity(4,4));
+//	if (tPrime != 0.)
+//	{
+//		col.push_back(FermionBase::cDN.sparseView());
+//		col.push_back(FermionBase::cUP.sparseView());
+//		col.push_back(FermionBase::cDN.transpose().sparseView());
+//		col.push_back(FermionBase::cUP.transpose().sparseView());
+//	}
+//	col.push_back(FermionBase::cUP.transpose().sparseView());
+//	col.push_back(FermionBase::cDN.transpose().sparseView());
+//	col.push_back(FermionBase::cUP.sparseView());
+//	col.push_back(FermionBase::cDN.sparseView());
+//	if (V != 0.)
+//	{
+//		col.push_back(FermionBase::n);
+//	}
+//	if (tPrime != 0.)
+//	{
+//		for (size_t i=0; i<4; ++i)
+//		{
+//			col.push_back(MatrixXd::Zero(4,4));
+//		}
+//	}
+//	
+//	// last row (except corner element)
+//	if (tPrime != 0.)
+//	{
+//		for (size_t i=0; i<4; ++i)
+//		{
+//			row.push_back(MatrixXd::Zero(4,4));
+//		}
+//	}
+//	row.push_back(-FermionBase::fsign.sparseView() * FermionBase::cUP.sparseView());
+//	row.push_back(-FermionBase::fsign.sparseView() * FermionBase::cDN.sparseView());
+//	row.push_back( FermionBase::fsign.sparseView() * FermionBase::cUP.transpose().sparseView());
+//	row.push_back( FermionBase::fsign.sparseView() * FermionBase::cDN.transpose().sparseView());
+//	if (V != 0.)
+//	{
+//		row.push_back(V * FermionBase::n);
+//	}
+//	if (tPrime != 0.)
+//	{
+//		row.push_back(-tPrime * FermionBase::fsign.sparseView() * FermionBase::cUP.sparseView());
+//		row.push_back(-tPrime * FermionBase::fsign.sparseView() * FermionBase::cDN.sparseView());
+//		row.push_back( tPrime * FermionBase::fsign.sparseView() * FermionBase::cUP.transpose().sparseView());
+//		row.push_back( tPrime * FermionBase::fsign.sparseView() * FermionBase::cDN.transpose().sparseView());
+//	}
+//	row.push_back(MatrixXd::Identity(4,4));
+//	
+//	SuperMatrix<double> G;
+//	G.setMatrix(Daux,4);
+//	G.setZero();
+//	
+//	for (size_t i=0; i<Daux-1; ++i)
+//	{
+//		G(i,0)        = col[i];
+//		G(Daux-1,i+1) = row[i];
+//	}
+//	
+//	// corner element
+//	G(Daux-1,0) = U * FermionBase::d.sparseView();
+//	
+//	// nearest-neighbour transfer
+//	if (tPrime != 0)
+//	{
+//		G.set_block_to_skewdiag(Daux-2,1, 4, FermionBase::fsign.sparseView());
+//	}
+//	
+//	return G;
+//}
 
 HubbardModel::
-HubbardModel (size_t L_input, double U_input, double V_input, double tPrime_input, bool CALC_SQUARE)
-:MpoQ<2> (L_input, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
-	U(U_input), V(V_input), tPrime(tPrime_input)
+HubbardModel (size_t Lx_input, double U_input, double V_input, double tPrime_input, size_t Ly_input, bool CALC_SQUARE)
+:MpoQ<2> (Lx_input, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
+U(U_input), V(V_input), tPrime(tPrime_input), N_legs(Ly_input)
 {
+	assert(N_legs>1 and tPrime==0. or N_legs==1 and "Cannot build a ladder with t'-hopping!");
 	stringstream ss;
 	ss << "(U=" << U << ",V=" << V << ",t'=" << tPrime << ")";
 	this->label += ss.str();
-
-//	if (tPrime == 0)
-//	{
-//		this->Daux = (V==0.)? 6 : 7;
-//	}
-//	else
-//	{
-//		this->Daux = (V==0.)? 14 : 15;
-//	}
 	
-//	SuperMatrix<double> G = Generator(U,V,tPrime);
+	if (N_legs > 1)
+	{
+		for (size_t l=0; l<this->N_sites; ++l)
+		{
+			MpoQ<2>::qloc[l].resize(pow(4,N_legs));
+			
+			NestedLoopIterator Nelly(N_legs,4);
+			for (Nelly=Nelly.begin(); Nelly!=Nelly.end(); ++Nelly)
+			{
+				MpoQ<2>::qloc[l][*Nelly] = qloc[Nelly(0)];
+				
+				for (int leg=1; leg<N_legs; ++leg)
+				for (int q=0; q<2; ++q)
+				{
+					MpoQ<2>::qloc[l][*Nelly][q] += qloc[Nelly(leg)][q];
+				}
+			}
+		}
+	}
 	
-	set_operators(Olocal,Otight,Onextn, U,V,tPrime);
+	F = FermionBase(N_legs);
+	
+	set_operators(Olocal,Otight,Onextn, F, U,V,tPrime);
+	
 	this->Daux = 2 + Otight.size() + 2*Onextn.size();
 	
 	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
@@ -223,226 +243,226 @@ HubbardModel (size_t L_input, double U_input, double V_input, double tPrime_inpu
 MpoQ<2> HubbardModel::
 Hsq()
 {
-	SuperMatrix<double> G = Generator(U,V);
+	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
 	MpoQ<2> Mout(this->N_sites, tensor_product(G,G), vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), 
 	             {0,0}, HubbardModel::Nlabel, "HubbardModel H^2");
 	return Mout;
 }
 
 MpoQ<2> HubbardModel::
-Auger (size_t L, size_t loc)
+Auger (size_t locx, size_t locy)
 {
-	assert(loc<L);
+	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
-	ss << "Auger(" << loc << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-1,-1}, HubbardModel::Nlabel, ss.str());
-	Mout.setLocal(loc, FermionBase::cUP*FermionBase::cDN);
+	ss << "Auger(" << locx << "," << locy << ")";
+	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-1,-1}, HubbardModel::Nlabel, ss.str());
+	Mout.setLocal(locx, F.c(UP,locy)*F.c(DN,locy));
 	return Mout;
 }
 
 MpoQ<2> HubbardModel::
-eta (size_t L)
+eta()
 {
 	stringstream ss;
 	ss << "eta";
-	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-1,-1}, HubbardModel::Nlabel, ss.str());
-	Mout.setLocalSum(FermionBase::cUP*FermionBase::cDN, true);
+	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-1,-1}, HubbardModel::Nlabel, ss.str());
+	Mout.setLocalSum(F.c(UP,0)*F.c(DN,0), true); // wrong, need sum_ly (-1)^ly c(ly,UP)*c(ly,DN)
 	return Mout;
 }
 
 MpoQ<2> HubbardModel::
-Aps (size_t L, size_t loc)
+Aps (size_t locx, size_t locy)
 {
-	assert(loc<L);
+	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
-	ss << "Aps(" << loc << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {+1,+1}, HubbardModel::Nlabel, ss.str());
-	Mout.setLocal(loc, FermionBase::cDN.transpose()*FermionBase::cUP.transpose());
+	ss << "Aps(" << locx << "," << locy << ")";
+	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {+1,+1}, HubbardModel::Nlabel, ss.str());
+	Mout.setLocal(locx, F.cdag(DN,locy)*F.cdag(UP,locy));
 	return Mout;
 }
 
 MpoQ<2> HubbardModel::
-annihilator (size_t L, size_t loc, SPIN_INDEX sigma)
+c (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
-	assert(loc<L);
+	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
-	ss << "c(" << loc << ",σ=" << sigma << ")";
+	ss << "c(" << locx << "," << locy << ",σ=" << sigma << ")";
 	qarray<2> qdiff;
 	(sigma==UP) ? qdiff = {-1,0} : qdiff = {0,-1};
 	
-	vector<SuperMatrix<double> > M(L);
-	for (size_t l=0; l<loc; ++l)
+	vector<SuperMatrix<double> > M(N_sites);
+	for (size_t l=0; l<locx; ++l)
 	{
-		M[l].setMatrix(1,4);
-		M[l](0,0) = FermionBase::fsign;
+		M[l].setMatrix(1,F.dim());
+		M[l](0,0) = F.sign();
 	}
-	M[loc].setMatrix(1,4);
-	M[loc](0,0) = (sigma==UP)? FermionBase::cUP : FermionBase::cDN;
-	for (size_t l=loc+1; l<L; ++l)
+	M[locx].setMatrix(1,F.dim());
+	M[locx](0,0) = (sigma==UP)? F.sign_local(locy)*F.c(UP,locy) : F.sign_local(locy)*F.c(DN,locy);
+	for (size_t l=locx+1; l<N_sites; ++l)
 	{
-		M[l].setMatrix(1,4);
+		M[l].setMatrix(1,F.dim());
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
-creator (size_t L, size_t loc, SPIN_INDEX sigma)
+cdag (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
-	assert(loc<L);
+	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
-	ss << "c†(" << loc << ",σ=" << sigma << ")";
+	ss << "c†(" << locx << "," << locy << ",σ=" << sigma << ")";
 	qarray<2> qdiff;
 	(sigma==UP) ? qdiff = {+1,0} : qdiff = {0,+1};
 	
-	vector<SuperMatrix<double> > M(L);
-	for (size_t l=0; l<loc; ++l)
+	vector<SuperMatrix<double> > M(N_sites);
+	for (size_t l=0; l<locx; ++l)
 	{
-		M[l].setMatrix(1,4);
-		M[l](0,0) = FermionBase::fsign;
+		M[l].setMatrix(1,F.dim());
+		M[l](0,0) = F.sign();
 	}
-	M[loc].setMatrix(1,4);
-	M[loc](0,0) = (sigma==UP)? FermionBase::cUP.transpose() : FermionBase::cDN.transpose();
-	for (size_t l=loc+1; l<L; ++l)
+	M[locx].setMatrix(1,F.dim());
+	M[locx](0,0) = (sigma==UP)? F.sign_local(locy)*F.cdag(UP,locy) : F.sign_local(locy)*F.cdag(DN,locy);
+	for (size_t l=locx+1; l<N_sites; ++l)
 	{
-		M[l].setMatrix(1,4);
+		M[l].setMatrix(1,F.dim());
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
-triplon (size_t L, size_t loc, SPIN_INDEX sigma)
+triplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
-	assert(loc<L);
+	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
-	ss << "triplon(" << loc << ")" << "c(" << loc+1 << ",σ=" << sigma << ")";
+	ss << "triplon(" << locx << ")" << "c(" << locx+1 << ",σ=" << sigma << ")";
 	qarray<2> qdiff;
 	(sigma==UP) ? qdiff = {-2,-1} : qdiff = {-1,-2};
 	
-	vector<SuperMatrix<double> > M(L);
-	for (size_t l=0; l<loc; ++l)
+	vector<SuperMatrix<double> > M(N_sites);
+	for (size_t l=0; l<locx; ++l)
 	{
-		M[l].setMatrix(1,4);
-		M[l](0,0) = FermionBase::fsign;
+		M[l].setMatrix(1,F.dim());
+		M[l](0,0) = F.sign();
 	}
-	// c(loc,UP)*c(loc,DN)
-	M[loc].setMatrix(1,4);
-	M[loc](0,0) = FermionBase::cUP*FermionBase::cDN;
-	// c(loc+1,UP|DN)
-	M[loc+1].setMatrix(1,4);
-	M[loc+1](0,0) = (sigma==UP)? FermionBase::cUP : FermionBase::cDN;
-	for (size_t l=loc+2; l<L; ++l)
+	// c(locx,UP)*c(locx,DN)
+	M[locx].setMatrix(1,F.dim());
+	M[locx](0,0) = F.c(UP,locy)*F.c(DN,locy);
+	// c(locx+1,UP|DN)
+	M[locx+1].setMatrix(1,F.dim());
+	M[locx+1](0,0) = (sigma==UP)? F.c(UP,locy) : F.c(DN,locy);
+	for (size_t l=locx+2; l<N_sites; ++l)
 	{
-		M[l].setMatrix(1,4);
+		M[l].setMatrix(1,F.dim());
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
-antitriplon (size_t L, size_t loc, SPIN_INDEX sigma)
+antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
-	assert(loc<L);
+	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
-	ss << "antitriplon(" << loc << ")" << "c(" << loc+1 << ",σ=" << sigma << ")";
+	ss << "antitriplon(" << locx << ")" << "c(" << locx+1 << ",σ=" << sigma << ")";
 	qarray<2> qdiff;
 	(sigma==UP) ? qdiff = {+2,+1} : qdiff = {+1,+2};
 	
-	vector<SuperMatrix<double> > M(L);
-	for (size_t l=0; l<loc; ++l)
+	vector<SuperMatrix<double> > M(N_sites);
+	for (size_t l=0; l<locx; ++l)
 	{
-		M[l].setMatrix(1,4);
-		M[l](0,0) = FermionBase::fsign;
+		M[l].setMatrix(1,F.dim());
+		M[l](0,0) = F.sign();
 	}
-	// c†(loc,DN)*c†(loc,UP)
-	M[loc].setMatrix(1,4);
-	M[loc](0,0) = FermionBase::cDN.transpose()*FermionBase::cUP.transpose();
-	// c†(loc+1,UP|DN)
-	M[loc+1].setMatrix(1,4);
-	M[loc+1](0,0) = (sigma==UP)? FermionBase::cUP.transpose() : FermionBase::cDN.transpose();
-	for (size_t l=loc+2; l<L; ++l)
+	// c†(locx,DN)*c†(locx,UP)
+	M[locx].setMatrix(1,F.dim());
+	M[locx](0,0) = F.cdag(DN,locy)*F.cdag(UP,locy);
+	// c†(locx+1,UP|DN)
+	M[locx+1].setMatrix(1,F.dim());
+	M[locx+1](0,0) = (sigma==UP)? F.cdag(UP,locy) : F.cdag(DN,locy);
+	for (size_t l=locx+2; l<N_sites; ++l)
 	{
-		M[l].setMatrix(1,4);
+		M[l].setMatrix(1,F.dim());
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
-quadruplon (size_t L, size_t loc)
+quadruplon (size_t locx, size_t locy)
 {
-	assert(loc<L);
+	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
-	ss << "Auger(" << loc << ")" << "Auger(" << loc+1 << ")";
+	ss << "Auger(" << locx << ")" << "Auger(" << locx+1 << ")";
 	
-	vector<SuperMatrix<double> > M(L);
-	for (size_t l=0; l<loc; ++l)
+	vector<SuperMatrix<double> > M(N_sites);
+	for (size_t l=0; l<locx; ++l)
 	{
-		M[l].setMatrix(1,4);
+		M[l].setMatrix(1,F.dim());
 		M[l](0,0).setIdentity();
 	}
 	// c(loc,UP)*c(loc,DN)
-	M[loc].setMatrix(1,4);
-	M[loc](0,0) = FermionBase::cUP*FermionBase::cDN;
+	M[locx].setMatrix(1,F.dim());
+	M[locx](0,0) = F.c(UP,locy)*F.c(DN,locy);
 	// c(loc+1,UP)*c(loc+1,DN)
-	M[loc+1].setMatrix(1,4);
-	M[loc+1](0,0) = FermionBase::cUP*FermionBase::cDN;
-	for (size_t l=loc+2; l<L; ++l)
+	M[locx+1].setMatrix(1,F.dim());
+	M[locx+1](0,0) = F.c(UP,locy)*F.c(DN,locy);
+	for (size_t l=locx+2; l<N_sites; ++l)
 	{
 		M[l].setMatrix(1,4);
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(L, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-2,-2}, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-2,-2}, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
-d (size_t L, size_t loc)
+d (size_t locx, size_t locy)
 {
-	assert(loc<L);
+	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
-	ss << "double_occ(" << loc << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
-	Mout.setLocal(loc, FermionBase::d);
+	ss << "double_occ(" << locx << "," << locy << ")";
+	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
+	Mout.setLocal(locx, F.d(locy));
 	return Mout;
 }
 
 MpoQ<2> HubbardModel::
-n (size_t L, SPIN_INDEX sigma, size_t loc)
+n (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
-	assert(loc<L);
+	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
-	ss << "n(" << loc << ",σ=" << sigma << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
-	(sigma==UP)? Mout.setLocal(loc, FermionBase::cUP.transpose()*FermionBase::cUP):
-	             Mout.setLocal(loc, FermionBase::cDN.transpose()*FermionBase::cDN);
+	ss << "n(" << locx << "," << locy << ",σ=" << sigma << ")";
+	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
+	(sigma==UP)? Mout.setLocal(locx, F.n(UP,locy)):
+	             Mout.setLocal(locx, F.n(DN,locy));
 	return Mout;
 }
 
 MpoQ<2> HubbardModel::
-Sz (size_t L, size_t loc)
+Sz (size_t locx, size_t locy)
 {
-	assert(loc<L);
+	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
-	ss << "Sz(" << loc << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
-	Mout.setLocal(loc, FermionBase::Sz);
+	ss << "Sz(" << locx << "," << locy << ")";
+	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
+	Mout.setLocal(locx, F.Sz(locy));
 	return Mout;
 }
 
 MpoQ<2> HubbardModel::
-SzSz (size_t L, size_t loc1, size_t loc2)
+SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
-	assert(loc1<L and loc2<L);
+	assert(locx1 < N_sites and locx2 < N_sites and locy1 < N_legs and locy2 < N_legs);
 	stringstream ss;
-	ss << "SzSz(" << loc1 << "," << loc2 << ")";
-	MpoQ<2> Mout(L, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
-	Mout.setLocal({loc1,loc2}, {FermionBase::Sz,FermionBase::Sz});
+	ss << "Sz(" << locx1 << "," << locy1 << ")" << "Sz(" << locx2 << "," << locy2 << ")";
+	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
+	Mout.setLocal({locx1,locx2}, {F.Sz(locy1),F.Sz(locy2)});
 	return Mout;
 }
 

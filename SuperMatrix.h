@@ -65,25 +65,25 @@ public:
 		innerResize(D);
 	}
 	
-	/**Sets the diagonal of a block to \p M.
-	\param i : starting row of block, from upper left
-	\param j : starting column of block, from upper left
-	\param N : size of diagonal
-	\param M : matrix to be set*/
-	void set_block_to_diag (size_t i, size_t j, size_t N, const MatrixType &M)
-	{
-		for (int k=0; k<N; ++k) {data[i+k][j+k] = M;}
-	}
-	
-	/**Sets the skew-diagonal of a block to \p M.
-	\param i : starting row of block, from lower left
-	\param j : starting column of block, from lower left
-	\param N : size of diagonal
-	\param M : matrix to be set*/
-	void set_block_to_skewdiag (size_t i, size_t j, size_t N, const MatrixType &M)
-	{
-		for (int k=0; k<N; ++k) {data[i-k][j+k] = M;}
-	}
+//	/**Sets the diagonal of a block to \p M.
+//	\param i : starting row of block, from upper left
+//	\param j : starting column of block, from upper left
+//	\param N : size of diagonal
+//	\param M : matrix to be set*/
+//	void set_block_to_diag (size_t i, size_t j, size_t N, const MatrixType &M)
+//	{
+//		for (int k=0; k<N; ++k) {data[i+k][j+k] = M;}
+//	}
+//	
+//	/**Sets the skew-diagonal of a block to \p M.
+//	\param i : starting row of block, from lower left
+//	\param j : starting column of block, from lower left
+//	\param N : size of diagonal
+//	\param M : matrix to be set*/
+//	void set_block_to_skewdiag (size_t i, size_t j, size_t N, const MatrixType &M)
+//	{
+//		for (int k=0; k<N; ++k) {data[i-k][j+k] = M;}
+//	}
 	
 	/**Returns the i-th row.*/
 	SuperMatrix<Scalar> row (size_t i)
@@ -227,47 +227,50 @@ ostream &operator<< (ostream& os, const SuperMatrix<Scalar> &M)
 }
 
 template<typename Scalar>
-SuperMatrix<Scalar> Generator (const vector<tuple<Scalar,Matrix<Scalar,Dynamic,Dynamic> > >                                                               &Olocal,
-                               const vector<tuple<Scalar,Matrix<Scalar,Dynamic,Dynamic>,Matrix<Scalar,Dynamic,Dynamic> > >                                &Otight,
-                               const vector<tuple<Scalar,Matrix<Scalar,Dynamic,Dynamic>,Matrix<Scalar,Dynamic,Dynamic>,Matrix<Scalar,Dynamic,Dynamic> > > &Onextn)
+SuperMatrix<Scalar> Generator (const LocalTerms<Scalar> &Olocal, const TightTerms<Scalar> &Otight, const NextnTerms<Scalar> &Onextn)
 {
 	size_t Daux = 2 + Otight.size() + 2*Onextn.size();
 	
-	vector<Matrix<Scalar,Dynamic,Dynamic> > col;
-	vector<Matrix<Scalar,Dynamic,Dynamic> > row;
+//	vector<Matrix<Scalar,Dynamic,Dynamic> > col;
+//	vector<Matrix<Scalar,Dynamic,Dynamic> > row;
+	vector<SparseMatrix<Scalar> > col;
+	vector<SparseMatrix<Scalar> > row;
 	size_t locdim = (get<1>(Otight[0])).rows();
-	
-	// first col (except corner element)
-	col.push_back(Matrix<Scalar,Dynamic,Dynamic>::Identity(locdim,locdim));
-	for (int i=0; i<Onextn.size(); ++i)
-	{
-		col.push_back(get<1>(Onextn[i]));
-	}
-	for (int i=0; i<Otight.size(); ++i)
-	{
-//		col.push_back(get<1>(Otight[i]));
-		col.push_back(get<2>(Otight[i]));
-	}
-	for (size_t i=0; i<Onextn.size(); ++i)
-	{
-		col.push_back(Matrix<Scalar,Dynamic,Dynamic>::Zero(locdim,locdim));
-	}
+	SparseMatrixXd Id = MatrixXd::Identity(locdim,locdim).sparseView();
 	
 	// last row (except corner element)
 	for (size_t i=0; i<Onextn.size(); ++i)
 	{
-		row.push_back(Matrix<Scalar,Dynamic,Dynamic>::Zero(locdim,locdim));
+//		row.push_back(Matrix<Scalar,Dynamic,Dynamic>::Zero(locdim,locdim));
+		row.push_back(SparseMatrix<Scalar>(locdim,locdim));
 	}
 	for (int i=0; i<Otight.size(); ++i)
 	{
-//		row.push_back(get<0>(Otight[i]) * get<2>(Otight[i]));
 		row.push_back(get<0>(Otight[i]) * get<1>(Otight[i]));
 	}
 	for (int i=0; i<Onextn.size(); ++i)
 	{
-		row.push_back(get<0>(Onextn[i]) * get<2>(Onextn[i]));
+		row.push_back(get<0>(Onextn[i]) * get<1>(Onextn[i]));
 	}
-	row.push_back(Matrix<Scalar,Dynamic,Dynamic>::Identity(locdim,locdim));
+//	row.push_back(Matrix<Scalar,Dynamic,Dynamic>::Identity(locdim,locdim));
+	row.push_back(Id);
+	
+	// first col (except corner element)
+//	col.push_back(Matrix<Scalar,Dynamic,Dynamic>::Identity(locdim,locdim));
+	col.push_back(Id);
+	for (int i=0; i<Onextn.size(); ++i)
+	{
+		col.push_back(get<2>(Onextn[i]));
+	}
+	for (int i=0; i<Otight.size(); ++i)
+	{
+		col.push_back(get<2>(Otight[i]));
+	}
+	for (size_t i=0; i<Onextn.size(); ++i)
+	{
+//		col.push_back(Matrix<Scalar,Dynamic,Dynamic>::Zero(locdim,locdim));
+		col.push_back(SparseMatrix<Scalar>(locdim,locdim));
+	}
 	
 	SuperMatrix<Scalar> G;
 	G.setMatrix(Daux,locdim);

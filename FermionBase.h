@@ -6,380 +6,440 @@
 #include <boost/dynamic_bitset.hpp>
 
 #include "SpinBase.h"
-#include "DmrgTypedefs.h"
 
-struct FermionBase
+//	static const Eigen::Matrix<double,4,4,Eigen::RowMajor> Scomp (SPINOP_LABEL Sa)
+//	{
+//		assert(Sa != SY);
+//		
+//		if      (Sa==SX)  {return Sx;}
+//		else if (Sa==iSY) {return iSy;}
+//		else if (Sa==SZ)  {return Sz;}
+//		else if (Sa==SP)  {return Sp;}
+//		else if (Sa==SM)  {return Sm;}
+//	}
+//	
+//	///@{
+//	/**
+//	\f$c_{\uparrow} = \left(
+//	\begin{array}{cccc}
+//	0 & 1 & 0 & 0\\
+//	0 & 0 & 0 & 0\\
+//	0 & 0 & 0 & 1\\
+//	0 & 0 & 0 & 0\\
+//	\end{array}
+//	\right)\f$
+//	*/
+//	static const Eigen::Matrix<double,4,4,RowMajor> cUP;
+//	
+//	/**
+//	\f$c_{\downarrow} = \left(
+//	\begin{array}{cccc}
+//	0 & 0 & 1 & 0\\
+//	0 & 0 & 0 & -1\\
+//	0 & 0 & 0 & 0\\
+//	0 & 0 & 0 & 0\\
+//	\end{array}
+//	\right)\f$
+//	*/
+//	static const Eigen::Matrix<double,4,4,RowMajor> cDN;
+//	
+//	/**
+//	\f$d = n_{\uparrow}n_{\downarrow} = \left(
+//	\begin{array}{cccc}
+//	0 & 0 & 0 & 0\\
+//	0 & 0 & 0 & 0\\
+//	0 & 0 & 0 & 0\\
+//	0 & 0 & 0 & 1\\
+//	\end{array}
+//	\right)\f$
+//	*/
+//	static const Eigen::Matrix<double,4,4,RowMajor> d;
+//	
+//	/**
+//	\f$n = n_{\uparrow}+n_{\downarrow} = \left(
+//	\begin{array}{cccc}
+//	0 & 0 & 0 & 0\\
+//	0 & 1 & 0 & 0\\
+//	0 & 0 & 1 & 0\\
+//	0 & 0 & 0 & 2\\
+//	\end{array}
+//	\right)\f$
+//	*/
+//	static const Eigen::Matrix<double,4,4,RowMajor> n;
+//	
+//	/**
+//	\f$(1-2n_{\uparrow})*(1-2n_{\downarrow}) = \left(
+//	\begin{array}{cccc}
+//	1 & 0  & 0  & 0\\
+//	0 & -1 & 0  & 0\\
+//	0 & 0  & -1 & 0\\
+//	0 & 0  & 0  & 1\\
+//	\end{array}
+//	\right)\f$
+//	*/
+//	static const Eigen::Matrix<double,4,4,RowMajor> fsign;
+//	
+//	/**
+//	\f$s^+ = \left(
+//	\begin{array}{cccc}
+//	0 & 0 & 0 & 0\\
+//	0 & 0 & 1 & 0\\
+//	0 & 0 & 0 & 0\\
+//	0 & 0 & 0 & 0\\
+//	\end{array}
+//	\right)\f$
+//	*/
+//	static const Eigen::Matrix<double,4,4,RowMajor> Sp;
+//	
+//	/**
+//	\f$s^+ = \left(
+//	\begin{array}{cccc}
+//	0 & 0 & 0 & 0\\
+//	0 & 0 & 0 & 0\\
+//	0 & 1 & 0 & 0\\
+//	0 & 0 & 0 & 0\\
+//	\end{array}
+//	\right)\f$
+//	*/
+//	static const Eigen::Matrix<double,4,4,RowMajor> Sm;
+//	
+//	/**
+//	\f$s^x = \left(
+//	\begin{array}{cccc}
+//	0 & 0 & 0 & 0\\
+//	0 & 0 & 0.5 & 0\\
+//	0 & 0.5 & 0 & 0\\
+//	0 & 0 & 0 & 0\\
+//	\end{array}
+//	\right)\f$
+//	*/
+//	static const Eigen::Matrix<double,4,4,RowMajor> Sx;
+//	
+//	/**
+//	\f$is^y = \left(
+//	\begin{array}{cccc}
+//	0 & 0 & 0 & 0\\
+//	0 & 0 & 0.5 & 0\\
+//	0 & -0.5 & 0 & 0\\
+//	0 & 0 & 0 & 0\\
+//	\end{array}
+//	\right)\f$
+//	*/
+//	static const Eigen::Matrix<double,4,4,RowMajor> iSy;
+//	
+//	/**
+//	\f$s^z = \left(
+//	\begin{array}{cccc}
+//	0 & 0 & 0 & 0\\
+//	0 & 0.5 & 0 & 0\\
+//	0 & 0 & -0.5 & 0\\
+//	0 & 0 & 0 & 0\\
+//	\end{array}
+//	\right)\f$
+//	*/
+//	static const Eigen::Matrix<double,4,4,RowMajor> Sz;
+//	///@}
+
+class FermionBase
 {
-	static const Eigen::Matrix<double,4,4,Eigen::RowMajor> Scomp (SPINOP_LABEL Sa)
-	{
-		assert(Sa != SY);
-		
-		if      (Sa==SX)  {return Sx;}
-		else if (Sa==iSY) {return iSy;}
-		else if (Sa==SZ)  {return Sz;}
-		else if (Sa==SP)  {return Sp;}
-		else if (Sa==SM)  {return Sm;}
-	}
+public:
 	
-	///@{
-	/**
-	\f$c_{\uparrow} = \left(
-	\begin{array}{cccc}
-	0 & 1 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 1\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	*/
-	static const Eigen::Matrix<double,4,4,RowMajor> cUP;
-	
-	/**
-	\f$c_{\downarrow} = \left(
-	\begin{array}{cccc}
-	0 & 0 & 1 & 0\\
-	0 & 0 & 0 & -1\\
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	*/
-	static const Eigen::Matrix<double,4,4,RowMajor> cDN;
-	
-	/**
-	\f$d = n_{\uparrow}n_{\downarrow} = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 1\\
-	\end{array}
-	\right)\f$
-	*/
-	static const Eigen::Matrix<double,4,4,RowMajor> d;
-	
-	/**
-	\f$n = n_{\uparrow}+n_{\downarrow} = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 1 & 0 & 0\\
-	0 & 0 & 1 & 0\\
-	0 & 0 & 0 & 2\\
-	\end{array}
-	\right)\f$
-	*/
-	static const Eigen::Matrix<double,4,4,RowMajor> n;
-	
-	/**
-	\f$(1-2n_{\uparrow})*(1-2n_{\downarrow}) = \left(
-	\begin{array}{cccc}
-	1 & 0  & 0  & 0\\
-	0 & -1 & 0  & 0\\
-	0 & 0  & -1 & 0\\
-	0 & 0  & 0  & 1\\
-	\end{array}
-	\right)\f$
-	*/
-	static const Eigen::Matrix<double,4,4,RowMajor> fsign;
-	
-	/**
-	\f$s^+ = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 0 & 1 & 0\\
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	*/
-	static const Eigen::Matrix<double,4,4,RowMajor> Sp;
-	
-	/**
-	\f$s^+ = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	0 & 1 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	*/
-	static const Eigen::Matrix<double,4,4,RowMajor> Sm;
-	
-	/**
-	\f$s^x = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0.5 & 0\\
-	0 & 0.5 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	*/
-	static const Eigen::Matrix<double,4,4,RowMajor> Sx;
-	
-	/**
-	\f$is^y = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0.5 & 0\\
-	0 & -0.5 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	*/
-	static const Eigen::Matrix<double,4,4,RowMajor> iSy;
-	
-	/**
-	\f$s^z = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 0.5 & 0 & 0\\
-	0 & 0 & -0.5 & 0\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	*/
-	static const Eigen::Matrix<double,4,4,RowMajor> Sz;
-	///@}
+	FermionBase(){};
 	
 	FermionBase (size_t L_input);
 	
-	inline size_t dim() {return N_states;}
+	inline size_t dim() const {return N_states;}
+	inline size_t orbitals() const  {return N_orbitals;}
 	
-	vector<boost::dynamic_bitset<unsigned char> > basis;
+	SparseMatrixXd c    (SPIN_INDEX sigma, int orbital=0) const;
+	SparseMatrixXd cdag (SPIN_INDEX sigma, int orbital=0) const;
+	SparseMatrixXd n (SPIN_INDEX sigma, int orbital=0) const;
+	SparseMatrixXd n (int orbital=0) const;
+	SparseMatrixXd d (int orbital=0) const;
+	
+	SparseMatrixXd Scomp (SPINOP_LABEL Sa, int orbital=0) const;
+	SparseMatrixXd Sz (int orbital=0) const;
+	SparseMatrixXd Sp (int orbital=0) const;
+	SparseMatrixXd Sm (int orbital=0) const;
+	SparseMatrixXd Sx (int orbital=0) const;
+	SparseMatrixXd iSy (int orbital=0) const;
+	
+	SparseMatrixXd sign (int orb1=0, int orb2=0) const;
+	SparseMatrixXd sign_local (int orb) const;
+	
+	SparseMatrixXd HubbardHamiltonian (double U, double t=1., double V=0.) const;
+	
+private:
 	
 	size_t N_orbitals;
 	size_t N_states;
 	
-	int parity (const boost::dynamic_bitset<unsigned char> &state, int i);
+	vector<boost::dynamic_bitset<unsigned char> > basis;
 	
-	MatrixXd c    (int orbital, SPIN_INDEX sigma);
-	MatrixXd cdag (int orbital, SPIN_INDEX sigma);
-	MatrixXd docc (int orbital);
-	// (1-2*n(i,UP))*(1-2*n(i,DN))
-	MatrixXd fsign_ (int orbital);
-	MatrixXd fsign_ (int orbital, SPIN_INDEX sigma);
-	
-	MatrixXd HubbardHamiltonian (double U);
+	double parity (const boost::dynamic_bitset<unsigned char> &state, int orbital) const;
 };
-
-//boost::dynamic_bitset<unsigned char> cast_to_bitset (const VectorXd &b)
-//{
-//	boost::dynamic_bitset<unsigned char> bout(b.rows());
-//	for (int i=0; i<b.rows(); ++i)
-//	{
-//		if (b(i) == 1.) {bout.flip(i);}
-//	}
-//	return bout;
-//}
 
 FermionBase::
 FermionBase (size_t L_input)
 :N_orbitals(L_input)
 {
+	assert(N_orbitals >= 1);
+	
 	N_states = pow(4,N_orbitals);
-//	basis.resize(16);
 	basis.resize(N_states);
 	
-//	vector<MatrixXd> OrbitalBase(4);
 	vector<int> nUP(4);
 	vector<int> nDN(4);
-//	OrbitalBase[0] = MatrixXd::Identity(4,4);
-//	OrbitalBase[1] = cUP.transpose();
-//	OrbitalBase[2] = cDN.cwiseAbs().transpose();
-//	OrbitalBase[3] = cUP.transpose()*cDN.cwiseAbs().transpose();
 	nUP[0] = 0; nDN[0] = 0;
 	nUP[1] = 1; nDN[1] = 0;
 	nUP[2] = 0; nDN[2] = 1;
 	nUP[3] = 1; nDN[3] = 1;
-//	VectorXd vac(16);
-//	vac.setZero();
-//	vac(0) = 1.;
 	
 	NestedLoopIterator Nelly(N_orbitals,4);
-//	for (int i1=0; i1<4; ++i1)
-//	for (int i2=0; i2<4; ++i2)
 	for (Nelly=Nelly.begin(); Nelly!=Nelly.end(); ++Nelly)
 	{
-//		basis[i2+4*i1] = cast_to_bitset(kroneckerProduct(OrbitalBase[i1],OrbitalBase[i2]) * vac);
-//		cout << (kroneckerProduct(OrbitalBase[i1],OrbitalBase[i2]) * vac).transpose() << endl;
-//		basis[i2+4*i1].resize(4);
-//		basis[i2+4*i1][0] = nUP[i1];
-//		basis[i2+4*i1][1] = nDN[i1];
-//		basis[i2+4*i1][2] = nUP[i2];
-//		basis[i2+4*i1][3] = nDN[i2];
 		basis[Nelly.index()].resize(2*N_orbitals);
 		for (int i=0; i<N_orbitals; ++i)
 		{
-			basis[Nelly.index()][2*i]   = nUP[Nelly(i)];
-			basis[Nelly.index()][2*i+1] = nDN[Nelly(i)];
+			basis[*Nelly][2*i]   = nUP[Nelly(i)];
+			basis[*Nelly][2*i+1] = nDN[Nelly(i)];
 		}
-//		cout << i2+4*i1 << "\t:" << nUP[i1] << "\t" << nDN[i1] << "\t" << nUP[i2] << "\t" << nDN[i2] << endl;
-	}
-	
-	for (int i=0; i<basis.size(); ++i)
-	{
-		cout << i << "\t" << basis[i] << endl;
 	}
 }
 
-int FermionBase::
-parity (const boost::dynamic_bitset<unsigned char> &b, int i)
+SparseMatrixXd FermionBase::
+c (SPIN_INDEX sigma, int orbital) const
 {
-	int out = 1;
-	for (int j=0; j<i; ++j)
-	{
-		if (b[j]) {out *= -1;} // switch sign for every particle found between 0 & i
-	}
-	return out;
-}
-
-MatrixXd FermionBase::
-c (int orbital, SPIN_INDEX sigma)
-{
-//	MatrixXd Mout(16,16);
-	MatrixXd Mout(N_states,N_states);
-	Mout.setZero();
+	SparseMatrixXd Mout(N_states,N_states);
+	int orbital_in_base = 2*orbital+static_cast<int>(sigma);
 	for (int j=0; j<basis.size(); ++j)
 	{
-		if (basis[j][2*orbital+static_cast<int>(sigma)]) // factor 2 because of ordering 1UP,1DN,2UP,2DN,...
+		if (basis[j][orbital_in_base]) // factor 2 because of ordering 1UP,1DN,2UP,2DN,...
 		{
 			boost::dynamic_bitset<unsigned char> b = basis[j];
-			b[2*orbital+static_cast<int>(sigma)].flip();
+			b[orbital_in_base].flip();
 			
 			auto it = find(basis.begin(), basis.end(), b);
 			int i = distance(basis.begin(), it);
 			
-			Mout(i,j) = 1. * parity(b, 2*orbital);
+			Mout.insert(i,j) = parity(b, orbital_in_base);
 		}
 	}
 	return Mout;
 }
 
-inline MatrixXd FermionBase::
-cdag (int orbital, SPIN_INDEX sigma)
+inline SparseMatrixXd FermionBase::
+cdag (SPIN_INDEX sigma, int orbital) const
 {
-	return c(orbital,sigma).transpose();
+	return c(sigma,orbital).transpose();
 }
 
-inline MatrixXd FermionBase::
-docc (int orbital)
+inline SparseMatrixXd FermionBase::
+n (SPIN_INDEX sigma, int orbital) const
 {
-	return cdag(orbital,UP)*c(orbital,UP) * cdag(orbital,DN)*c(orbital,DN);
-}
-
-inline MatrixXd FermionBase::
-fsign_ (int orbital)
-{
-	return (MatrixXd::Identity(N_states,N_states)-2.*cdag(orbital,UP)*c(orbital,UP))*
-	       (MatrixXd::Identity(N_states,N_states)-2.*cdag(orbital,DN)*c(orbital,DN));
-}
-
-inline MatrixXd FermionBase::
-fsign_ (int orbital, SPIN_INDEX sigma)
-{
-	return MatrixXd::Identity(N_states,N_states)-2.*cdag(orbital,sigma)*c(orbital,sigma);
-}
-
-MatrixXd FermionBase::
-HubbardHamiltonian (double U)
-{
-	MatrixXd Mout(N_states,N_states);
-	Mout.setZero();
-	
-	for (int i=0; i<N_orbitals-1; ++i) // for all bonds
+	SparseMatrixXd Mout(N_states,N_states);
+	for (int j=0; j<basis.size(); ++j)
 	{
-		MatrixXd T = cdag(i,UP)*c(i+1,UP) + cdag(i,DN)*c(i+1,DN);
-		Mout += -1.*(T+T.transpose());
-	}
-	for (int i=0; i<N_orbitals; ++i)
-	{
-		Mout += U*docc(i);
+		Mout.insert(j,j) = 1.*basis[j][2*orbital+static_cast<int>(sigma)];
 	}
 	return Mout;
 }
 
-static const double cUP_data[] =
+inline SparseMatrixXd FermionBase::
+n (int orbital) const
 {
-	0., 1., 0., 0.,
-	0., 0., 0., 0.,
-	0., 0., 0., 1.,
-	0., 0., 0., 0.
-};
-static const double cDN_data[] =
-{
-	0., 0., 1., 0.,
-	0., 0., 0., -1.,
-	0., 0., 0., 0.,
-	0., 0., 0., 0.
-};
-static const double d_data[] =
-{
-	0., 0., 0., 0.,
-	0., 0., 0., 0.,
-	0., 0., 0., 0.,
-	0., 0., 0., 1.
-};
-static const double n_data[] =
-{
-	0., 0., 0., 0.,
-	0., 1., 0., 0.,
-	0., 0., 1., 0.,
-	0., 0., 0., 2.
-};
-static const double fsign_data[] =
-{
-	1.,  0.,  0., 0.,
-	0., -1.,  0., 0.,
-	0.,  0., -1., 0.,
-	0.,  0.,  0., 1.
-};
-static const double SpHub_data[] =
-{
-	0., 0., 0., 0.,
-	0., 0., 1., 0.,
-	0., 0., 0., 0.,
-	0., 0., 0., 0.
-};
-static const double SmHub_data[] =
-{
-	0., 0., 0., 0.,
-	0., 0., 0., 0.,
-	0., 1., 0., 0.,
-	0., 0., 0., 0.
-};
-static const double SxHub_data[] =
-{
-	0., 0.,  0.,  0.,
-	0., 0.,  0.5, 0.,
-	0., 0.5, 0.,  0.,
-	0., 0.,  0.,  0.
-};
-static const double iSyHub_data[] =
-{
-	0., 0.,   0.,  0.,
-	0., 0.,   0.5,  0.,
-	0., -0.5, 0., 0.,
-	0., 0.,   0.,  0.
-};
-static const double SzHub_data[] =
-{
-	0., 0.,   0.,  0.,
-	0., 0.5,  0.,  0.,
-	0., 0.,  -0.5, 0.,
-	0., 0.,   0.,  0.
-};
+	SparseMatrixXd Mout(N_states,N_states);
+	for (int j=0; j<basis.size(); ++j)
+	{
+		Mout.insert(j,j) =1.*(basis[j][2*orbital] + basis[j][2*orbital+1]);
+	}
+	return Mout;
+}
 
-const Eigen::Matrix<double,4,4,RowMajor> FermionBase::cUP(cUP_data);
-const Eigen::Matrix<double,4,4,RowMajor> FermionBase::cDN(cDN_data);
-const Eigen::Matrix<double,4,4,RowMajor> FermionBase::d(d_data);
-const Eigen::Matrix<double,4,4,RowMajor> FermionBase::n(n_data);
-const Eigen::Matrix<double,4,4,RowMajor> FermionBase::fsign(fsign_data);
-const Eigen::Matrix<double,4,4,RowMajor> FermionBase::Sx(SxHub_data);
-const Eigen::Matrix<double,4,4,RowMajor> FermionBase::iSy(iSyHub_data);
-const Eigen::Matrix<double,4,4,RowMajor> FermionBase::Sz(SzHub_data);
-const Eigen::Matrix<double,4,4,RowMajor> FermionBase::Sp(SpHub_data);
-const Eigen::Matrix<double,4,4,RowMajor> FermionBase::Sm(SmHub_data);
+inline SparseMatrixXd FermionBase::
+d (int orbital) const
+{
+	return n(UP,orbital)*n(DN,orbital);
+}
+
+SparseMatrixXd FermionBase::
+Scomp (SPINOP_LABEL Sa, int orbital) const
+{
+	assert(Sa != SY);
+	if      (Sa==SX)  {return Sx(orbital);}
+	else if (Sa==iSY) {return iSy(orbital);}
+	else if (Sa==SZ)  {return Sz(orbital);}
+	else if (Sa==SP)  {return Sp(orbital);}
+	else if (Sa==SM)  {return Sm(orbital);}
+}
+
+inline SparseMatrixXd FermionBase::
+Sz (int orbital) const
+{
+	return 0.5*(n(UP,orbital)-n(DN,orbital));
+}
+
+inline SparseMatrixXd FermionBase::
+Sp (int orbital) const
+{
+	return c(UP,orbital)*c(DN,orbital);
+}
+
+inline SparseMatrixXd FermionBase::
+Sm (int orbital) const
+{
+	return c(DN,orbital)*c(UP,orbital);
+}
+
+inline SparseMatrixXd FermionBase::
+Sx (int orbital) const
+{
+	return 0.5*(Sp(orbital)+Sm(orbital));
+}
+
+inline SparseMatrixXd FermionBase::
+iSy (int orbital) const
+{
+	return 0.5*(Sp(orbital)-Sm(orbital));
+}
+
+inline SparseMatrixXd FermionBase::
+sign (int orb1, int orb2) const
+{
+	SparseMatrixXd Id = MatrixXd::Identity(N_states,N_states).sparseView();
+	SparseMatrixXd Mout = Id;
+	for (int i=orb1; i<N_orbitals; ++i)
+	{
+		Mout = Mout * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
+	}
+	for (int i=0; i<orb2; ++i)
+	{
+		Mout = Mout * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
+	}
+	return Mout;
+}
+
+inline SparseMatrixXd FermionBase::
+sign_local (int orb) const
+{
+	SparseMatrixXd Id = MatrixXd::Identity(N_states,N_states).sparseView();
+	SparseMatrixXd Mout = Id;
+	for (int i=0; i<orb; ++i)
+	{
+		Mout = Mout * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
+	}
+	return Mout;
+}
+
+SparseMatrixXd FermionBase::
+HubbardHamiltonian (double U, double t, double V) const
+{
+	SparseMatrixXd Mout(N_states,N_states);
+	
+	for (int i=0; i<N_orbitals-1; ++i) // for all bonds
+	{
+		SparseMatrixXd T = cdag(UP,i)*c(UP,i+1) + cdag(DN,i)*c(DN,i+1);
+		Mout += -t*(T+SparseMatrixXd(T.transpose()));
+		if (V != 0.) {Mout += V*n(i)*n(i+1);}
+	}
+	if (U != 0.)
+	{
+		for (int i=0; i<N_orbitals; ++i) {Mout += U*d(i);}
+	}
+	return Mout;
+}
+
+double FermionBase::
+parity (const boost::dynamic_bitset<unsigned char> &b, int i) const
+{
+	int out = 1.;
+	for (int j=0; j<i; ++j)
+	{
+		if (b[j]) {out *= -1.;} // switch sign for every particle found between 0 & i
+	}
+	return out;
+}
+
+//static const double cUP_data[] =
+//{
+//	0., 1., 0., 0.,
+//	0., 0., 0., 0.,
+//	0., 0., 0., 1.,
+//	0., 0., 0., 0.
+//};
+//static const double cDN_data[] =
+//{
+//	0., 0., 1., 0.,
+//	0., 0., 0., -1.,
+//	0., 0., 0., 0.,
+//	0., 0., 0., 0.
+//};
+//static const double d_data[] =
+//{
+//	0., 0., 0., 0.,
+//	0., 0., 0., 0.,
+//	0., 0., 0., 0.,
+//	0., 0., 0., 1.
+//};
+//static const double n_data[] =
+//{
+//	0., 0., 0., 0.,
+//	0., 1., 0., 0.,
+//	0., 0., 1., 0.,
+//	0., 0., 0., 2.
+//};
+//static const double fsign_data[] =
+//{
+//	1.,  0.,  0., 0.,
+//	0., -1.,  0., 0.,
+//	0.,  0., -1., 0.,
+//	0.,  0.,  0., 1.
+//};
+//static const double SpHub_data[] =
+//{
+//	0., 0., 0., 0.,
+//	0., 0., 1., 0.,
+//	0., 0., 0., 0.,
+//	0., 0., 0., 0.
+//};
+//static const double SmHub_data[] =
+//{
+//	0., 0., 0., 0.,
+//	0., 0., 0., 0.,
+//	0., 1., 0., 0.,
+//	0., 0., 0., 0.
+//};
+//static const double SxHub_data[] =
+//{
+//	0., 0.,  0.,  0.,
+//	0., 0.,  0.5, 0.,
+//	0., 0.5, 0.,  0.,
+//	0., 0.,  0.,  0.
+//};
+//static const double iSyHub_data[] =
+//{
+//	0., 0.,   0.,  0.,
+//	0., 0.,   0.5,  0.,
+//	0., -0.5, 0., 0.,
+//	0., 0.,   0.,  0.
+//};
+//static const double SzHub_data[] =
+//{
+//	0., 0.,   0.,  0.,
+//	0., 0.5,  0.,  0.,
+//	0., 0.,  -0.5, 0.,
+//	0., 0.,   0.,  0.
+//};
+
+//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::cUP(cUP_data);
+//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::cDN(cDN_data);
+//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::d(d_data);
+//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::n(n_data);
+//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::fsign(fsign_data);
+//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::Sx(SxHub_data);
+//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::iSy(iSyHub_data);
+//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::Sz(SzHub_data);
+//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::Sp(SpHub_data);
+//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::Sm(SmHub_data);
 
 #endif

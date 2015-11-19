@@ -38,7 +38,8 @@ template<size_t Nq, typename Scalar, typename MpoScalar> class MpsQCompressor;
 template<size_t Nq, typename Scalar=double>
 class MpoQ
 {
-typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
+//typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
+typedef SparseMatrixXd MatrixType;
 
 template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
@@ -796,8 +797,10 @@ BondPropagator (TimeScalar dt, PARITY P) const
 		// variant 2: put local term on the left site of each bond
 //		double locFactor1 = 1.;
 //		double locFactor2 = (l+1==N_sites-1)? 1. : 0.;
-		Hbond += locFactor1 * kroneckerProduct(Gvec[l](Grow,0), MatrixType::Identity(D2,D2));
-		Hbond += locFactor2 * kroneckerProduct(MatrixType::Identity(D1,D1), Gvec[l+1](Daux-1,Gcol));
+		SparseMatrixXd IdD1 = MatrixXd::Identity(D2,D2).sparseView();
+		SparseMatrixXd IdD2 = MatrixXd::Identity(D2,D2).sparseView();
+		Hbond += locFactor1 * kroneckerProduct(Gvec[l](Grow,0), IdD2);
+		Hbond += locFactor2 * kroneckerProduct(IdD1, Gvec[l+1](Daux-1,Gcol));
 		
 		// tight-binding part
 		for (size_t a=1; a<Daux-1; ++a)

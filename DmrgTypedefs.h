@@ -27,8 +27,9 @@ enum PARITY {EVEN=0, ODD=1};
 #ifndef EIGEN_DEFAULT_SPARSE_INDEX_TYPE
 #define EIGEN_DEFAULT_SPARSE_INDEX_TYPE int
 #endif
-typedef Eigen::SparseMatrix<double,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXd;
 using namespace Eigen;
+typedef SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXd;
+typedef SparseMatrix<complex<double>,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXcd;
 
 /**Namespace imitation for various enums.*/
 struct DMRG
@@ -98,11 +99,26 @@ std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
 	return s;
 }
 
-typedef vector<tuple<double,Eigen::MatrixXd> > LocalTermsXd;
-typedef vector<tuple<double,Eigen::MatrixXd,Eigen::MatrixXd> > TightTermsXd;
-typedef vector<tuple<double,Eigen::MatrixXd,Eigen::MatrixXd,Eigen::MatrixXd> > NextnTermsXd;
-typedef vector<tuple<complex<double>,Eigen::MatrixXcd> > LocalTermsXcd;
-typedef vector<tuple<complex<double>,Eigen::MatrixXcd,Eigen::MatrixXcd> > TightTermsXcd;
-typedef vector<tuple<complex<double>,Eigen::MatrixXcd,Eigen::MatrixXcd,Eigen::MatrixXcd> > NextnTermsXcd;
+//typedef vector<tuple<double,MatrixXd> > LocalTermsXd;
+//typedef vector<tuple<double,MatrixXd,MatrixXd> > TightTermsXd;
+//typedef vector<tuple<double,MatrixXd,MatrixXd,MatrixXd> > NextnTermsXd;
+//typedef vector<tuple<complex<double>,MatrixXcd> > LocalTermsXcd;
+//typedef vector<tuple<complex<double>,MatrixXcd,MatrixXcd> > TightTermsXcd;
+//typedef vector<tuple<complex<double>,MatrixXcd,MatrixXcd,MatrixXcd> > NextnTermsXcd;
+
+typedef vector<tuple<double,SparseMatrixXd> > LocalTermsXd;
+typedef vector<tuple<double,SparseMatrixXd,SparseMatrixXd> > TightTermsXd;
+typedef vector<tuple<double,SparseMatrixXd,SparseMatrixXd,SparseMatrixXd> > NextnTermsXd;
+
+typedef vector<tuple<complex<double>,SparseMatrixXcd> > LocalTermsXcd;
+typedef vector<tuple<complex<double>,SparseMatrixXcd,SparseMatrixXcd> > TightTermsXcd;
+typedef vector<tuple<complex<double>,SparseMatrixXcd,SparseMatrixXcd,SparseMatrixXcd> > NextnTermsXcd;
+
+template<typename Scalar> using LocalTerms = vector<tuple<Scalar,SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
+template<typename Scalar> using TightTerms = vector<tuple<Scalar,SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
+                                                                 SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
+template<typename Scalar> using NextnTerms = vector<tuple<double,SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
+                                                                 SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
+                                                                 SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
 
 #endif
