@@ -17,18 +17,29 @@ class HubbardModel : public MpoQ<2,double>
 public:
 	
 	/**
-	\param L_input : chain length
+	\param Lx_input : chain length
 	\param U_input : \f$U\f$
 	\param V_input : \f$V\f$
-	\param tPrime_input : \f$t^{\prime}\f$ next nearest neighbour (nnn) hopping. \f$t^{\prime}>0\f$ is common sign.
+	\param tPrime_input : \f$t^{\prime}\f$, next-nearest-neighbour (nnn) hopping. A minus sign in front of the hopping terms is assumed, so that \f$t^{\prime}>0\f$ is the usual choice.
+	\param Ly_input : amount of legs in ladder
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
 	HubbardModel (size_t Lx_input, double U_input, double V_input=0., double tPrime_input=0., size_t Ly_input=1, bool CALC_SQUARE=true);
 	
 //	static SuperMatrix<double> Generator (double U, double V=0., double tPrime=0.);
 	
+	/**Determines the operators of the Hamiltonian. Made static to be called from other classes, e.g. KondoModel.
+	\param Olocal : the local interaction terms
+	\param Otight : the tight-binding terms
+	\param Onextn : the next-nearest-neighbour terms
+	\param F : the FermionBase class where the operators are pulled from
+	\param U : \f$U\f$
+	\param V : \f$V\f$
+	\param tPrime : \f$t'\f$
+	*/
 	static void set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, const FermionBase &F, double U, double V=0., double tPrime=0.);
 	
+	/**Calculates and returns \f$H^2\f$ on the fly.*/
 	MpoQ<2> Hsq();
 	
 	/**local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$.
@@ -81,7 +92,7 @@ const std::array<qarray<2>,4> HubbardModel::qlocNM {qarray<2>{0,0}, qarray<2>{1,
 const std::array<string,2>    HubbardModel::Nlabel{"N↑","N↓"};
 
 void HubbardModel::
-set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn,  const FermionBase &F, double U, double V, double tPrime)
+set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, const FermionBase &F, double U, double V, double tPrime)
 {
 	for (int leg=0; leg<F.orbitals(); ++leg)
 	{
@@ -222,7 +233,6 @@ U(U_input), V(V_input), tPrime(tPrime_input), N_legs(Ly_input)
 	F = FermionBase(N_legs);
 	
 	set_operators(Olocal,Otight,Onextn, F, U,V,tPrime);
-	
 	this->Daux = 2 + Otight.size() + 2*Onextn.size();
 	
 	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
@@ -266,7 +276,9 @@ eta()
 	stringstream ss;
 	ss << "eta";
 	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-1,-1}, HubbardModel::Nlabel, ss.str());
-	Mout.setLocalSum(F.c(UP,0)*F.c(DN,0), true); // wrong, need sum_ly (-1)^ly c(ly,UP)*c(ly,DN)
+	SparseMatrixXd etaloc = MatrixXd::Id(F.dim(),F.dim());
+	for (int ly=0; ly<N_legs; ++ly) {etaloc = etaloc * pow(-1.,ly) * F.c(UP,ly)*F.c(DN,ly);}
+	Mout.setLocalSum(etaloc, true);
 	return Mout;
 }
 

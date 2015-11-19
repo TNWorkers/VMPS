@@ -7,8 +7,7 @@
 
 /**Calculating observables for given sets of lattice sites. 
 \describe_Nq
-\describe_Scalar
-\describe_Hamiltonian*/
+\describe_Scalar*/
 template <size_t Nq, typename Scalar, typename Hamiltonian> class Observables
 {
 public:

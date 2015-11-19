@@ -15,6 +15,7 @@ public:
 	\param L_input : chain length
 	\param U_input : \f$U\f$
 	\param Ucv_input : \f$U_{cv}\f$
+	\param Ec_input : \f$E_{c}\f$
 	\param V_input : \f$V\f$
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/

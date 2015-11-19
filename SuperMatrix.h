@@ -16,28 +16,6 @@ public:
 	MatrixType &operator() (size_t i, size_t j)       {return data[i][j];} // write
 	MatrixType  operator() (size_t i, size_t j) const {return data[i][j];} // read
 	
-//	template<typename OtherScalar>
-//	SuperMatrix<Scalar>& operator= (const SuperMatrix<OtherScalar> &M)
-//	{
-//		size_t Daux = M.auxdim();
-//		size_t D = M.D();
-//		if (M.rows() == 1)
-//		{
-//			setRowVector(Daux,D);
-//		}
-//		else if (M.rows() != 1 and M.cols() == 1)
-//		{
-//			setColVector(Daux,D);
-//		}
-//		else
-//		{
-//			setMatrix(Daux,D);
-//		}
-//		
-//		data = M.data;
-//		return *this;
-//	}
-	
 	/**Resizes to a row vector (1,Daux) for the first site.*/
 	void setRowVector (size_t Daux, size_t D)
 	{
@@ -64,26 +42,6 @@ public:
 		data.resize(boost::extents[N_rows][N_cols]);
 		innerResize(D);
 	}
-	
-//	/**Sets the diagonal of a block to \p M.
-//	\param i : starting row of block, from upper left
-//	\param j : starting column of block, from upper left
-//	\param N : size of diagonal
-//	\param M : matrix to be set*/
-//	void set_block_to_diag (size_t i, size_t j, size_t N, const MatrixType &M)
-//	{
-//		for (int k=0; k<N; ++k) {data[i+k][j+k] = M;}
-//	}
-//	
-//	/**Sets the skew-diagonal of a block to \p M.
-//	\param i : starting row of block, from lower left
-//	\param j : starting column of block, from lower left
-//	\param N : size of diagonal
-//	\param M : matrix to be set*/
-//	void set_block_to_skewdiag (size_t i, size_t j, size_t N, const MatrixType &M)
-//	{
-//		for (int k=0; k<N; ++k) {data[i-k][j+k] = M;}
-//	}
 	
 	/**Returns the i-th row.*/
 	SuperMatrix<Scalar> row (size_t i)
@@ -231,8 +189,6 @@ SuperMatrix<Scalar> Generator (const LocalTerms<Scalar> &Olocal, const TightTerm
 {
 	size_t Daux = 2 + Otight.size() + 2*Onextn.size();
 	
-//	vector<Matrix<Scalar,Dynamic,Dynamic> > col;
-//	vector<Matrix<Scalar,Dynamic,Dynamic> > row;
 	vector<SparseMatrix<Scalar> > col;
 	vector<SparseMatrix<Scalar> > row;
 	size_t locdim = (get<1>(Otight[0])).rows();
@@ -241,7 +197,6 @@ SuperMatrix<Scalar> Generator (const LocalTerms<Scalar> &Olocal, const TightTerm
 	// last row (except corner element)
 	for (size_t i=0; i<Onextn.size(); ++i)
 	{
-//		row.push_back(Matrix<Scalar,Dynamic,Dynamic>::Zero(locdim,locdim));
 		row.push_back(SparseMatrix<Scalar>(locdim,locdim));
 	}
 	for (int i=0; i<Otight.size(); ++i)
@@ -252,11 +207,9 @@ SuperMatrix<Scalar> Generator (const LocalTerms<Scalar> &Olocal, const TightTerm
 	{
 		row.push_back(get<0>(Onextn[i]) * get<1>(Onextn[i]));
 	}
-//	row.push_back(Matrix<Scalar,Dynamic,Dynamic>::Identity(locdim,locdim));
 	row.push_back(Id);
 	
 	// first col (except corner element)
-//	col.push_back(Matrix<Scalar,Dynamic,Dynamic>::Identity(locdim,locdim));
 	col.push_back(Id);
 	for (int i=0; i<Onextn.size(); ++i)
 	{
@@ -268,7 +221,6 @@ SuperMatrix<Scalar> Generator (const LocalTerms<Scalar> &Olocal, const TightTerm
 	}
 	for (size_t i=0; i<Onextn.size(); ++i)
 	{
-//		col.push_back(Matrix<Scalar,Dynamic,Dynamic>::Zero(locdim,locdim));
 		col.push_back(SparseMatrix<Scalar>(locdim,locdim));
 	}
 	

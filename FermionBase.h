@@ -7,166 +7,168 @@
 
 #include "SpinBase.h"
 
-//	static const Eigen::Matrix<double,4,4,Eigen::RowMajor> Scomp (SPINOP_LABEL Sa)
-//	{
-//		assert(Sa != SY);
-//		
-//		if      (Sa==SX)  {return Sx;}
-//		else if (Sa==iSY) {return iSy;}
-//		else if (Sa==SZ)  {return Sz;}
-//		else if (Sa==SP)  {return Sp;}
-//		else if (Sa==SM)  {return Sm;}
-//	}
-//	
-//	///@{
-//	/**
-//	\f$c_{\uparrow} = \left(
-//	\begin{array}{cccc}
-//	0 & 1 & 0 & 0\\
-//	0 & 0 & 0 & 0\\
-//	0 & 0 & 0 & 1\\
-//	0 & 0 & 0 & 0\\
-//	\end{array}
-//	\right)\f$
-//	*/
-//	static const Eigen::Matrix<double,4,4,RowMajor> cUP;
-//	
-//	/**
-//	\f$c_{\downarrow} = \left(
-//	\begin{array}{cccc}
-//	0 & 0 & 1 & 0\\
-//	0 & 0 & 0 & -1\\
-//	0 & 0 & 0 & 0\\
-//	0 & 0 & 0 & 0\\
-//	\end{array}
-//	\right)\f$
-//	*/
-//	static const Eigen::Matrix<double,4,4,RowMajor> cDN;
-//	
-//	/**
-//	\f$d = n_{\uparrow}n_{\downarrow} = \left(
-//	\begin{array}{cccc}
-//	0 & 0 & 0 & 0\\
-//	0 & 0 & 0 & 0\\
-//	0 & 0 & 0 & 0\\
-//	0 & 0 & 0 & 1\\
-//	\end{array}
-//	\right)\f$
-//	*/
-//	static const Eigen::Matrix<double,4,4,RowMajor> d;
-//	
-//	/**
-//	\f$n = n_{\uparrow}+n_{\downarrow} = \left(
-//	\begin{array}{cccc}
-//	0 & 0 & 0 & 0\\
-//	0 & 1 & 0 & 0\\
-//	0 & 0 & 1 & 0\\
-//	0 & 0 & 0 & 2\\
-//	\end{array}
-//	\right)\f$
-//	*/
-//	static const Eigen::Matrix<double,4,4,RowMajor> n;
-//	
-//	/**
-//	\f$(1-2n_{\uparrow})*(1-2n_{\downarrow}) = \left(
-//	\begin{array}{cccc}
-//	1 & 0  & 0  & 0\\
-//	0 & -1 & 0  & 0\\
-//	0 & 0  & -1 & 0\\
-//	0 & 0  & 0  & 1\\
-//	\end{array}
-//	\right)\f$
-//	*/
-//	static const Eigen::Matrix<double,4,4,RowMajor> fsign;
-//	
-//	/**
-//	\f$s^+ = \left(
-//	\begin{array}{cccc}
-//	0 & 0 & 0 & 0\\
-//	0 & 0 & 1 & 0\\
-//	0 & 0 & 0 & 0\\
-//	0 & 0 & 0 & 0\\
-//	\end{array}
-//	\right)\f$
-//	*/
-//	static const Eigen::Matrix<double,4,4,RowMajor> Sp;
-//	
-//	/**
-//	\f$s^+ = \left(
-//	\begin{array}{cccc}
-//	0 & 0 & 0 & 0\\
-//	0 & 0 & 0 & 0\\
-//	0 & 1 & 0 & 0\\
-//	0 & 0 & 0 & 0\\
-//	\end{array}
-//	\right)\f$
-//	*/
-//	static const Eigen::Matrix<double,4,4,RowMajor> Sm;
-//	
-//	/**
-//	\f$s^x = \left(
-//	\begin{array}{cccc}
-//	0 & 0 & 0 & 0\\
-//	0 & 0 & 0.5 & 0\\
-//	0 & 0.5 & 0 & 0\\
-//	0 & 0 & 0 & 0\\
-//	\end{array}
-//	\right)\f$
-//	*/
-//	static const Eigen::Matrix<double,4,4,RowMajor> Sx;
-//	
-//	/**
-//	\f$is^y = \left(
-//	\begin{array}{cccc}
-//	0 & 0 & 0 & 0\\
-//	0 & 0 & 0.5 & 0\\
-//	0 & -0.5 & 0 & 0\\
-//	0 & 0 & 0 & 0\\
-//	\end{array}
-//	\right)\f$
-//	*/
-//	static const Eigen::Matrix<double,4,4,RowMajor> iSy;
-//	
-//	/**
-//	\f$s^z = \left(
-//	\begin{array}{cccc}
-//	0 & 0 & 0 & 0\\
-//	0 & 0.5 & 0 & 0\\
-//	0 & 0 & -0.5 & 0\\
-//	0 & 0 & 0 & 0\\
-//	\end{array}
-//	\right)\f$
-//	*/
-//	static const Eigen::Matrix<double,4,4,RowMajor> Sz;
-//	///@}
-
+/**This basically just constructs the full Hubbard model on \p L_input lattice sites.*/
 class FermionBase
 {
 public:
 	
 	FermionBase(){};
 	
+	/**\param L_input : the amount of orbitals*/
 	FermionBase (size_t L_input);
 	
+	/**amount of states = \f$4^L\f$*/
 	inline size_t dim() const {return N_states;}
+	
+	/**amount of orbitals*/
 	inline size_t orbitals() const  {return N_orbitals;}
 	
-	SparseMatrixXd c    (SPIN_INDEX sigma, int orbital=0) const;
+	///\{
+	/**Annihilation operator, for \p N_orbitals=1, this is
+	\f$c_{\uparrow} = \left(
+	\begin{array}{cccc}
+	0 & 1 & 0 & 0\\
+	0 & 0 & 0 & 0\\
+	0 & 0 & 0 & 1\\
+	0 & 0 & 0 & 0\\
+	\end{array}
+	\right)\f$
+	or
+	\f$c_{\downarrow} = \left(
+	\begin{array}{cccc}
+	0 & 0 & 1 & 0\\
+	0 & 0 & 0 & -1\\
+	0 & 0 & 0 & 0\\
+	0 & 0 & 0 & 0\\
+	\end{array}
+	\right)\f$
+	\param sigma : spin index
+	\param orbital : orbital index*/
+	SparseMatrixXd c (SPIN_INDEX sigma, int orbital=0) const;
+	
+	/**Creation operator.
+	\param sigma : spin index
+	\param orbital : orbital index*/
 	SparseMatrixXd cdag (SPIN_INDEX sigma, int orbital=0) const;
+	
+	/**Occupation number operator
+	\param sigma : spin index
+	\param orbital : orbital index*/
 	SparseMatrixXd n (SPIN_INDEX sigma, int orbital=0) const;
+	
+	/**Total occupation number operator, for \p N_orbitals=1, this is
+	\f$n = n_{\uparrow}+n_{\downarrow} = \left(
+	\begin{array}{cccc}
+	0 & 0 & 0 & 0\\
+	0 & 1 & 0 & 0\\
+	0 & 0 & 1 & 0\\
+	0 & 0 & 0 & 2\\
+	\end{array}
+	\right)\f$
+	\param orbital : orbital index*/
 	SparseMatrixXd n (int orbital=0) const;
+	
+	/**Double occupation, for \p N_orbitals=1, this is
+	\f$d = n_{\uparrow}n_{\downarrow} = \left(
+	\begin{array}{cccc}
+	0 & 0 & 0 & 0\\
+	0 & 0 & 0 & 0\\
+	0 & 0 & 0 & 0\\
+	0 & 0 & 0 & 1\\
+	\end{array}
+	\right)\f$
+	*/
 	SparseMatrixXd d (int orbital=0) const;
+	///\}
 	
+	///\{
 	SparseMatrixXd Scomp (SPINOP_LABEL Sa, int orbital=0) const;
+	
+	/**For \p N_orbitals=1, this is
+	\f$s^z = \left(
+	\begin{array}{cccc}
+	0 & 0 & 0 & 0\\
+	0 & 0.5 & 0 & 0\\
+	0 & 0 & -0.5 & 0\\
+	0 & 0 & 0 & 0\\
+	\end{array}
+	\right)\f$
+	*/
 	SparseMatrixXd Sz (int orbital=0) const;
+	
+	/**For \p N_orbitals=1, this is
+	\f$s^+ = \left(
+	\begin{array}{cccc}
+	0 & 0 & 0 & 0\\
+	0 & 0 & 1 & 0\\
+	0 & 0 & 0 & 0\\
+	0 & 0 & 0 & 0\\
+	\end{array}
+	\right)\f$
+	*/
 	SparseMatrixXd Sp (int orbital=0) const;
+	
+	/**For \p N_orbitals=1, this is
+	\f$s^- = \left(
+	\begin{array}{cccc}
+	0 & 0 & 0 & 0\\
+	0 & 0 & 0 & 0\\
+	0 & 1 & 0 & 0\\
+	0 & 0 & 0 & 0\\
+	\end{array}
+	\right)\f$
+	*/
 	SparseMatrixXd Sm (int orbital=0) const;
+	
+	/**For \p N_orbitals=1, this is
+	\f$s^x = \left(
+	\begin{array}{cccc}
+	0 & 0 & 0 & 0\\
+	0 & 0 & 0.5 & 0\\
+	0 & 0.5 & 0 & 0\\
+	0 & 0 & 0 & 0\\
+	\end{array}
+	\right)\f$
+	*/
 	SparseMatrixXd Sx (int orbital=0) const;
+	
+	/**For \p N_orbitals=1, this is
+	\f$is^y = \left(
+	\begin{array}{cccc}
+	0 & 0 & 0 & 0\\
+	0 & 0 & 0.5 & 0\\
+	0 & -0.5 & 0 & 0\\
+	0 & 0 & 0 & 0\\
+	\end{array}
+	\right)\f$
+	*/
 	SparseMatrixXd iSy (int orbital=0) const;
+	///\}
 	
+	///\{
+	/**Fermionic sign for the hopping between two orbitals of nearest-neighbour supersites of a ladder. For \p N_orbitals=1, this is
+	\f$(1-2n_{\uparrow})*(1-2n_{\downarrow}) = \left(
+	\begin{array}{cccc}
+	1 & 0  & 0  & 0\\
+	0 & -1 & 0  & 0\\
+	0 & 0  & -1 & 0\\
+	0 & 0  & 0  & 1\\
+	\end{array}
+	\right)\f$
+	\param orb1 : orbital on supersite i
+	\param orb2 : orbital on supersite i+1
+	*/
 	SparseMatrixXd sign (int orb1=0, int orb2=0) const;
-	SparseMatrixXd sign_local (int orb) const;
 	
+	/**Fermionic sign for the transfer to a particular orbital, needed by HubbardModel::c and HubbardModel::cdag.
+	\param orbital : orbital on the supersite*/
+	SparseMatrixXd sign_local (int orbital) const;
+	///\}
+	
+	/**Creates the full Hubbard Hamiltonian on the supersite.
+	\param U : \f$U\f$
+	\param t : \f$t\f$
+	\param V : \f$V\f$*/
 	SparseMatrixXd HubbardHamiltonian (double U, double t=1., double V=0.) const;
 	
 private:
@@ -320,11 +322,11 @@ sign (int orb1, int orb2) const
 }
 
 inline SparseMatrixXd FermionBase::
-sign_local (int orb) const
+sign_local (int orbital) const
 {
 	SparseMatrixXd Id = MatrixXd::Identity(N_states,N_states).sparseView();
 	SparseMatrixXd Mout = Id;
-	for (int i=0; i<orb; ++i)
+	for (int i=0; i<orbital; ++i)
 	{
 		Mout = Mout * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
 	}
@@ -338,8 +340,11 @@ HubbardHamiltonian (double U, double t, double V) const
 	
 	for (int i=0; i<N_orbitals-1; ++i) // for all bonds
 	{
-		SparseMatrixXd T = cdag(UP,i)*c(UP,i+1) + cdag(DN,i)*c(DN,i+1);
-		Mout += -t*(T+SparseMatrixXd(T.transpose()));
+		if (t != 0.)
+		{
+			SparseMatrixXd T = cdag(UP,i)*c(UP,i+1) + cdag(DN,i)*c(DN,i+1);
+			Mout += -t*(T+SparseMatrixXd(T.transpose()));
+		}
 		if (V != 0.) {Mout += V*n(i)*n(i+1);}
 	}
 	if (U != 0.)

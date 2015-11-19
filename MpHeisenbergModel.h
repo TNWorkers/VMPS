@@ -52,7 +52,9 @@ public:
 	The fourth row and column are missing when \f$J_{xy}=0\f$. Uses the appropriate spin operators for a given \p S.*/
 	static SuperMatrix<double> Generator (double Jxy, double Jz, double Bz, double Bx, size_t D=2);
 	
-	SuperMatrix<double> GeneratorJ12 (double J, double Jprime, double Bz);
+//	SuperMatrix<double> GeneratorJ12 (double J, double Jprime, double Bz);
+	
+	void set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, double Jxy, double Jz, double Bz, double Bx, size_t D=2, double Jprime=0.);
 	
 	//---label stuff---
 	///@{
@@ -123,8 +125,6 @@ public:
 	
 private:
 	
-	void set_operators (double Jxy, double Jz, double Bz, double Bx, size_t D=2, double Jprime=0.);
-	
 	double Jxy=-1., Jz=-1., Bz=0.;
 	double Jprime=0.;
 	size_t D=2;
@@ -135,100 +135,100 @@ const std::array<string,1> HeisenbergModel::maglabel{"M"};
 //template<> const std::array<qarray<1>,2> HeisenbergModel<2>::qloc = {qarray<1>{+1}, qarray<1>{-1}};
 //template<> const std::array<qarray<1>,3> HeisenbergModel<3>::qloc = {qarray<1>{+2}, qarray<1>{0}, qarray<1>{-2}};
 
-SuperMatrix<double> HeisenbergModel::
-Generator (double Jxy, double Jz, double Bz, double Bx, size_t D)
-{
-	SuperMatrix<double> G;
-	size_t Daux = calc_Daux(Jxy,Jz);
-	G.setMatrix(Daux,D);
-	G.setZero();
-	
-	// left column
-	G(0,0).setIdentity();
-	if (Jxy != 0.)
-	{
-		G(1,0) = SpinBase::Scomp(SP,D);
-		G(2,0) = SpinBase::Scomp(SM,D);
-		if (Jz!=0.) {G(3,0) = SpinBase::Scomp(SZ,D);}
-	}
-	else
-	{
-		G(1,0) = SpinBase::Scomp(SZ,D);
-	}
-	
-	// corner element
-	G(Daux-1,0) = -Bz*SpinBase::Scomp(SZ,D) -Bx*SpinBase::Scomp(SX,D);
-	
-	// last row
-	if (Jxy != 0.)
-	{
-		G(Daux-1,1) = -0.5*Jxy*SpinBase::Scomp(SM,D);
-		G(Daux-1,2) = -0.5*Jxy*SpinBase::Scomp(SP,D);
-		if (Jz!=0.) {G(Daux-1,3) = -Jz*SpinBase::Scomp(SZ,D);}
-	}
-	else
-	{
-		G(Daux-1,1) = SpinBase::Scomp(SZ,D);
-	}
-	G(Daux-1,Daux-1).setIdentity();
-	
-	return G;
-}
+//SuperMatrix<double> HeisenbergModel::
+//Generator (double Jxy, double Jz, double Bz, double Bx, size_t D)
+//{
+//	SuperMatrix<double> G;
+//	size_t Daux = calc_Daux(Jxy,Jz);
+//	G.setMatrix(Daux,D);
+//	G.setZero();
+//	
+//	// left column
+//	G(0,0).setIdentity();
+//	if (Jxy != 0.)
+//	{
+//		G(1,0) = SpinBase::Scomp(SP,D);
+//		G(2,0) = SpinBase::Scomp(SM,D);
+//		if (Jz!=0.) {G(3,0) = SpinBase::Scomp(SZ,D);}
+//	}
+//	else
+//	{
+//		G(1,0) = SpinBase::Scomp(SZ,D);
+//	}
+//	
+//	// corner element
+//	G(Daux-1,0) = -Bz*SpinBase::Scomp(SZ,D) -Bx*SpinBase::Scomp(SX,D);
+//	
+//	// last row
+//	if (Jxy != 0.)
+//	{
+//		G(Daux-1,1) = -0.5*Jxy*SpinBase::Scomp(SM,D);
+//		G(Daux-1,2) = -0.5*Jxy*SpinBase::Scomp(SP,D);
+//		if (Jz!=0.) {G(Daux-1,3) = -Jz*SpinBase::Scomp(SZ,D);}
+//	}
+//	else
+//	{
+//		G(Daux-1,1) = SpinBase::Scomp(SZ,D);
+//	}
+//	G(Daux-1,Daux-1).setIdentity();
+//	
+//	return G;
+//}
 
-SuperMatrix<double> HeisenbergModel::
-GeneratorJ12 (double J, double Jprime, double Bz)
-{
-	SuperMatrix<double> G;
-	size_t Daux = 11;
-	G.setMatrix(Daux,D);
-	G.setZero();
-	
-	// left column
-	G(0,0).setIdentity();
-	
-	G(1,0) = SpinBase::Scomp(SP,D);
-	G(2,0) = SpinBase::Scomp(SM,D);
-	G(3,0) = SpinBase::Scomp(SZ,D);
-	
-	G(4,0) = SpinBase::Scomp(SP,D);
-	G(5,0) = SpinBase::Scomp(SM,D);
-	G(6,0) = SpinBase::Scomp(SZ,D);
-	
-	// corner element
-	G(Daux-1,0) = -Bz*SpinBase::Scomp(SZ,D);
-	
-	// last row
-	G(Daux-1,4) = -0.5*J*SpinBase::Scomp(SM,D);
-	G(Daux-1,5) = -0.5*J*SpinBase::Scomp(SP,D);
-	G(Daux-1,6) = -J*SpinBase::Scomp(SZ,D);
-	
-	G(Daux-1,7) = -0.5*Jprime*SpinBase::Scomp(SM,D);
-	G(Daux-1,8) = -0.5*Jprime*SpinBase::Scomp(SP,D);
-	G(Daux-1,9) = -Jprime*SpinBase::Scomp(SZ,D);
-	
-	// id-block for J':
-	G.set_block_to_skewdiag(9,1, 3, Eigen::MatrixXd::Identity(D,D));
-	
-	G(Daux-1,Daux-1).setIdentity();
-	
-	return G;
-}
+//SuperMatrix<double> HeisenbergModel::
+//GeneratorJ12 (double J, double Jprime, double Bz)
+//{
+//	SuperMatrix<double> G;
+//	size_t Daux = 11;
+//	G.setMatrix(Daux,D);
+//	G.setZero();
+//	
+//	// left column
+//	G(0,0).setIdentity();
+//	
+//	G(1,0) = SpinBase::Scomp(SP,D);
+//	G(2,0) = SpinBase::Scomp(SM,D);
+//	G(3,0) = SpinBase::Scomp(SZ,D);
+//	
+//	G(4,0) = SpinBase::Scomp(SP,D);
+//	G(5,0) = SpinBase::Scomp(SM,D);
+//	G(6,0) = SpinBase::Scomp(SZ,D);
+//	
+//	// corner element
+//	G(Daux-1,0) = -Bz*SpinBase::Scomp(SZ,D);
+//	
+//	// last row
+//	G(Daux-1,4) = -0.5*J*SpinBase::Scomp(SM,D);
+//	G(Daux-1,5) = -0.5*J*SpinBase::Scomp(SP,D);
+//	G(Daux-1,6) = -J*SpinBase::Scomp(SZ,D);
+//	
+//	G(Daux-1,7) = -0.5*Jprime*SpinBase::Scomp(SM,D);
+//	G(Daux-1,8) = -0.5*Jprime*SpinBase::Scomp(SP,D);
+//	G(Daux-1,9) = -Jprime*SpinBase::Scomp(SZ,D);
+//	
+//	// id-block for J':
+//	G.set_block_to_skewdiag(9,1, 3, Eigen::MatrixXd::Identity(D,D));
+//	
+//	G(Daux-1,Daux-1).setIdentity();
+//	
+//	return G;
+//}
 
 void HeisenbergModel::
-set_operators (double Jxy, double Jz, double Bz, double Bx, size_t D, double Jprime)
+set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, double Jxy, double Jz, double Bz, double Bx, size_t D, double Jprime)
 {
 	if (Jxy != 0.)
 	{
-		this->Otight.push_back(make_tuple(-0.5*Jxy, SpinBase::Scomp(SP,D), SpinBase::Scomp(SM,D)));
-		this->Otight.push_back(make_tuple(-0.5*Jxy, SpinBase::Scomp(SM,D), SpinBase::Scomp(SP,D)));
+		Otight.push_back(make_tuple(-0.5*Jxy, SpinBase::Scomp(SP,D), SpinBase::Scomp(SM,D)));
+		Otight.push_back(make_tuple(-0.5*Jxy, SpinBase::Scomp(SM,D), SpinBase::Scomp(SP,D)));
 	}
 	if (Jz != 0.)
 	{
-		this->Otight.push_back(make_tuple(-Jz, SpinBase::Scomp(SZ,D), SpinBase::Scomp(SZ,D)));
+		Otight.push_back(make_tuple(-Jz, SpinBase::Scomp(SZ,D), SpinBase::Scomp(SZ,D)));
 	}
 	if (Bz != 0.)
 	{
-		this->Olocal.push_back(make_tuple(-Bz, SpinBase::Scomp(SZ,D)));
+		Olocal.push_back(make_tuple(-Bz, SpinBase::Scomp(SZ,D)));
 	}
 	if (Bx != 0.)
 	{
@@ -236,9 +236,10 @@ set_operators (double Jxy, double Jz, double Bz, double Bx, size_t D, double Jpr
 	}
 	if (Jprime != 0.)
 	{
-		this->Onextn.push_back(make_tuple(-0.5*Jprime, SpinBase::Scomp(SP,D), SpinBase::Scomp(SM,D), MatrixXd::Identity(D,D)));
-		this->Onextn.push_back(make_tuple(-0.5*Jprime, SpinBase::Scomp(SM,D), SpinBase::Scomp(SP,D), MatrixXd::Identity(D,D)));
-		this->Onextn.push_back(make_tuple(-Jprime,     SpinBase::Scomp(SZ,D), SpinBase::Scomp(SZ,D), MatrixXd::Identity(D,D)));
+		SparseMatrixXd Id = MatrixXd::Identity(D,D).sparseView();
+		Onextn.push_back(make_tuple(-0.5*Jprime, SpinBase::Scomp(SP,D), SpinBase::Scomp(SM,D), Id));
+		Onextn.push_back(make_tuple(-0.5*Jprime, SpinBase::Scomp(SM,D), SpinBase::Scomp(SP,D), Id));
+		Onextn.push_back(make_tuple(-Jprime,     SpinBase::Scomp(SZ,D), SpinBase::Scomp(SZ,D), Id));
 	}
 }
 
@@ -251,11 +252,9 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 	assert(Jxy != 0. or Jz != 0.);
 	this->label = create_label(D,Jxy,Jz,0,Bz,0);
 	
-//	this->Daux = calc_Daux(Jxy,Jz);
-//	SuperMatrix<double> G = Generator(Jxy,Jz,Bz,0.,D);
-	
-	set_operators(Jxy,Jz,Bz,0.,D);
+	set_operators(Olocal,Otight,Onextn, Jxy,Jz,Bz,0.,D);
 	this->Daux = 2 + Otight.size() + 2*Onextn.size();
+	
 	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
 	this->construct(G, this->W, this->Gvec);
 	
@@ -277,11 +276,9 @@ Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 {
 	this->label = create_label(D,Jxy,Jz,Jprime,Bz,0.);
 	
-//	this->Daux = 11;
-//	SuperMatrix<double> G = GeneratorJ12(Jxy,Jprime,Bz);
-	
-	set_operators(Jxy,Jz,Bz,0.,D,Jprime);
+	set_operators(Olocal,Otight,Onextn, Jxy,Jz,Bz,0.,D,Jprime);
 	this->Daux = 2 + Otight.size() + 2*Onextn.size();
+	
 	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
 	this->construct(G, this->W, this->Gvec);
 	
@@ -299,8 +296,8 @@ Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 MpoQ<1> HeisenbergModel::
 Hsq (size_t D)
 {
-	SuperMatrix<double> W = Generator(Jxy,Jz,Bz,0.,D);
-	MpoQ<1> Mout(this->N_sites, tensor_product(W,W), HeisenbergModel::qloc(D), {0}, HeisenbergModel::maglabel, "", HeisenbergModel::halve);
+	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
+	MpoQ<1> Mout(this->N_sites, tensor_product(G,G), HeisenbergModel::qloc(D), {0}, HeisenbergModel::maglabel, "", HeisenbergModel::halve);
 	Mout.label = create_label(D,Jxy,Jz,Jprime,Bz,0.) + "H^2";
 	return Mout;
 }

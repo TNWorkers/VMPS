@@ -18,8 +18,8 @@ public:
 	/**
 	\param L_input : chain length
 	\param U_input : \f$U\f$
+	\param A_input : \f$A\f$
 	\param V_input : \f$V\f$
-	\param tPrime_input : \f$t^{\prime}\f$ next nearest neighbour (nnn) hopping. \f$t^{\prime}>0\f$ is common sign.
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
 	PeierlsSubstitution (size_t L_input, double U_input, double A_input=0., double V_input=0., bool CALC_SQUARE=true);
