@@ -92,6 +92,8 @@ private:
 	
 	vector<double> Bzloc, Bxloc;
 	vector<size_t> imploc;
+	
+	FermionBase F;
 };
 
 const std::array<string,1> TransverseKondoModel::Nlabel{"N"};
@@ -106,6 +108,8 @@ TransverseKondoModel::
 TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, vector<double> Bxloc_input, bool CALC_SQUARE, size_t D_input)
 :MpoQ<1,double>(), J(J_input), imploc(imploc_input), D(D_input)
 {
+	F = FermionBase(1);
+	
 	// if Bzloc_input empty, set it to zero
 	if (Bzloc_input.size() == 0)
 	{
@@ -117,6 +121,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 		Bzloc = Bzloc_input;
 	}
 	
+	// if Bxloc_input empty, set it to zero
 	if (Bxloc_input.size() == 0)
 	{
 		Bxloc.assign(imploc.size(),0.);
@@ -133,7 +138,6 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 	this->qlabel = Nlabel;
 	this->label = "TransverseKondoModel";
 	this->format = noFormat;
-//	this->Daux = 6;
 	this->qloc.resize(this->N_sites);
 	
 	// make a pretty label
@@ -181,8 +185,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			if (l==0)
 			{
 				G[l].setRowVector(6,8);
-				KondoModel::set_operators(Olocal, Otight, Onextn, J,Bzval[i],Bxloc[i],-1.,0.,0.,D);
-				this->Daux = 2 + Otight.size() + 2*Onextn.size();
+				KondoModel::set_operators(Olocal,Otight,Onextn, F, J,Bzval[i],Bxloc[i],-1.,0.,0.,D);
 				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(5);
 				if (CALC_SQUARE == true)
 				{
@@ -193,7 +196,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,8);
-				KondoModel::set_operators(Olocal, Otight, Onextn, J,Bzval[i],Bxloc[i],-1.,0.,0.,D);
+				KondoModel::set_operators(Olocal,Otight,Onextn, F, J,Bzval[i],Bxloc[i],-1.,0.,0.,D);
 				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
 				if (CALC_SQUARE == true)
 				{
@@ -204,7 +207,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else
 			{
 				G[l].setMatrix(6,8);
-				KondoModel::set_operators(Olocal, Otight, Onextn, J,Bzval[i],Bxloc[i],-1.,0.,0.,D);
+				KondoModel::set_operators(Olocal,Otight,Onextn, F, J,Bzval[i],Bxloc[i],-1.,0.,0.,D);
 				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
 				if (CALC_SQUARE == true)
 				{
@@ -221,7 +224,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			if (l==0)
 			{
 				G[l].setRowVector(6,4);
-				HubbardModel::set_operators(Olocal, Otight, Onextn, 0.);
+				HubbardModel::set_operators(Olocal,Otight,Onextn, F, 0.);
 				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(5);
 				if (CALC_SQUARE == true)
 				{
@@ -232,7 +235,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,4);
-				HubbardModel::set_operators(Olocal, Otight, Onextn, 0.);
+				HubbardModel::set_operators(Olocal,Otight,Onextn, F, 0.);
 				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
 				if (CALC_SQUARE == true)
 				{
@@ -243,7 +246,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else
 			{
 				G[l].setMatrix(6,4);
-				HubbardModel::set_operators(Olocal, Otight, Onextn, 0.);
+				HubbardModel::set_operators(Olocal,Otight,Onextn, F, 0.);
 				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
 				if (CALC_SQUARE == true)
 				{
@@ -253,6 +256,8 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			}
 		}
 	}
+	
+	this->Daux = 2 + Otight.size() + 2*Onextn.size();
 	
 	this->construct(G, this->W, this->Gvec);
 	
@@ -305,8 +310,8 @@ SimpSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP
 	MpoQ<1> Mout(L, locBasis(), {0}, Nlabel, ss.str());
 	MatrixXd Id4(4,4); Id4.setIdentity();
 	MatrixXd IdImp(MpoQ<1>::qloc[loc2].size()/4, MpoQ<1>::qloc[loc2].size()/4); IdImp.setIdentity();
-	Mout.setLocal({loc1, loc2}, {kroneckerProduct(SpinBase::Scomp(SOP1,D),Id4), 
-	                             kroneckerProduct(IdImp,FermionBase::Scomp(SOP2))}
+	Mout.setLocal({loc1,loc2}, {kroneckerProduct(SpinBase::Scomp(SOP1,D),Id4), 
+	                            kroneckerProduct(IdImp,FermionBase::Scomp(SOP2))}
 	             );
 	return Mout;
 }
@@ -320,8 +325,8 @@ SimpSimp (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP
 	MpoQ<1> Mout(L, locBasis(), {0}, Nlabel, ss.str());
 	MatrixXd Id4(4,4); Id4.setIdentity();
 	MatrixXd IdImp(MpoQ<1>::qloc[loc2].size()/4, MpoQ<1>::qloc[loc2].size()/4); IdImp.setIdentity();
-	Mout.setLocal({loc1, loc2}, {kroneckerProduct(SpinBase::Scomp(SOP1,D),Id4), 
-	                             kroneckerProduct(SpinBase::Scomp(SOP2,D),Id4)}
+	Mout.setLocal({loc1,loc2}, {kroneckerProduct(SpinBase::Scomp(SOP1,D),Id4), 
+	                            kroneckerProduct(SpinBase::Scomp(SOP2,D),Id4)}
 	             );
 	return Mout;
 }
@@ -335,14 +340,18 @@ hopping (size_t L, size_t loc)
 	vector<SuperMatrix<double> > G(L);
 	for (size_t l=0; l<L; ++l)
 	{
-		auto Gloc = HubbardModel::Generator(0,0);
+//		auto Gloc = HubbardModel::Generator(0,0);
 		auto it = find(imploc.begin(),imploc.end(),l);
 		if (it != imploc.end())
 		{
-			Gloc = KondoModel::Generator(0,0,0,-1.,0,0,D);
-			// KondoModel::set_operators(Olocal, Otight, Onextn, 0, 0, 0, -1., 0, 0, D);
-			// Gloc = ::Generator(Olocal, Otight, Onextn);
+//			Gloc = KondoModel::Generator(0,0,0,-1.,0,0,D);
+			KondoModel::set_operators(Olocal,Otight,Onextn, F, 0,0,0,-1.,0,0,D); // t=-1, rest zero
 		}
+		else
+		{
+			HubbardModel::set_operators(Olocal,Otight,Onextn, F, 0.);
+		}
+		auto Gloc = ::Generator(Olocal,Otight,Onextn);
 		
 		if (l==0)
 		{

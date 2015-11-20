@@ -137,7 +137,8 @@ public:
 	void set_A_from_C (size_t loc, const vector<Tripod<Nq,MatrixType> > &C, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD);
 	
 	/**
-	\param Op*/
+	\param Op : 
+	\param USE_SQUARE : */
 	template<size_t MpoNq> void setFlattenedMpoQ (const MpoQ<MpoNq,Scalar> &Op, bool USE_SQUARE=false);
 	///\}
 	

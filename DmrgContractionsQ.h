@@ -464,29 +464,32 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 					optimal_multiply(Wfactor,
 					                 Abra[s1].block[qAbra].adjoint(),
 					                 Lold.block[qL][br][tr],
-					                 Aket[s3].block[qAket].adjoint(),
+					                 Aket[s3].block[qAket],
 					                 Mtmp);
 					
-					auto it = Lnew.dict.find(quple);
-					if (it != Lnew.dict.end())
+					if (Mtmp.norm() != 0.)
 					{
-						if (Lnew.block[it->second][bc][tc].rows() != Mtmp.rows() or 
-							Lnew.block[it->second][bc][tc].cols() != Mtmp.cols())
+						auto it = Lnew.dict.find(quple);
+						if (it != Lnew.dict.end())
 						{
-							Lnew.block[it->second][bc][tc] = Mtmp;
+							if (Lnew.block[it->second][bc][tc].rows() != Mtmp.rows() or 
+								Lnew.block[it->second][bc][tc].cols() != Mtmp.cols())
+							{
+								Lnew.block[it->second][bc][tc] = Mtmp;
+							}
+							else
+							{
+								Lnew.block[it->second][bc][tc] += Mtmp;
+							}
 						}
 						else
 						{
-							Lnew.block[it->second][bc][tc] += Mtmp;
+							size_t bcols = Wbot[s1][s2].cols();
+							size_t tcols = Wtop[s2][s3].cols();
+							boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[bcols][tcols]);
+							Mtmparray[bc][tc] = Mtmp;
+							Lnew.push_back(quple, Mtmparray);
 						}
-					}
-					else
-					{
-						size_t bcols = Wbot[s1][s2].cols();
-						size_t tcols = Wtop[s2][s3].cols();
-						boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[bcols][tcols]);
-						Mtmparray[bc][tc] = Mtmp;
-						Lnew.push_back(quple, Mtmparray);
 					}
 				}
 			}

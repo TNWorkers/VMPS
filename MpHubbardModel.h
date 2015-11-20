@@ -94,6 +94,10 @@ const std::array<string,2>    HubbardModel::Nlabel{"N↑","N↓"};
 void HubbardModel::
 set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, const FermionBase &F, double U, double V, double tPrime)
 {
+	Olocal.clear();
+	Otight.clear();
+	Onextn.clear();
+	
 	for (int leg=0; leg<F.orbitals(); ++leg)
 	{
 		Otight.push_back(make_tuple(-1., F.cdag(UP,leg), F.sign() * F.c(UP,leg)));
@@ -214,17 +218,17 @@ U(U_input), V(V_input), tPrime(tPrime_input), N_legs(Ly_input)
 	{
 		for (size_t l=0; l<this->N_sites; ++l)
 		{
-			MpoQ<2>::qloc[l].resize(pow(4,N_legs));
+			this->MpoQ<2>::qloc[l].resize(pow(4,N_legs));
 			
 			NestedLoopIterator Nelly(N_legs,4);
 			for (Nelly=Nelly.begin(); Nelly!=Nelly.end(); ++Nelly)
 			{
-				MpoQ<2>::qloc[l][*Nelly] = qloc[Nelly(0)];
+				this->MpoQ<2>::qloc[l][*Nelly] = qloc[Nelly(0)];
 				
 				for (int leg=1; leg<N_legs; ++leg)
 				for (int q=0; q<2; ++q)
 				{
-					MpoQ<2>::qloc[l][*Nelly][q] += qloc[Nelly(leg)][q];
+					this->MpoQ<2>::qloc[l][*Nelly][q] += qloc[Nelly(leg)][q];
 				}
 			}
 		}
@@ -265,7 +269,7 @@ Auger (size_t locx, size_t locy)
 	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
 	ss << "Auger(" << locx << "," << locy << ")";
-	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-1,-1}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {-1,-1}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(locx, F.c(UP,locy)*F.c(DN,locy));
 	return Mout;
 }
@@ -275,8 +279,8 @@ eta()
 {
 	stringstream ss;
 	ss << "eta";
-	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-1,-1}, HubbardModel::Nlabel, ss.str());
-	SparseMatrixXd etaloc = MatrixXd::Id(F.dim(),F.dim());
+	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {-1,-1}, HubbardModel::Nlabel, ss.str());
+	SparseMatrixXd etaloc = MatrixXd::Identity(F.dim(),F.dim()).sparseView();
 	for (int ly=0; ly<N_legs; ++ly) {etaloc = etaloc * pow(-1.,ly) * F.c(UP,ly)*F.c(DN,ly);}
 	Mout.setLocalSum(etaloc, true);
 	return Mout;
@@ -288,7 +292,7 @@ Aps (size_t locx, size_t locy)
 	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
 	ss << "Aps(" << locx << "," << locy << ")";
-	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {+1,+1}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {+1,+1}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(locx, F.cdag(DN,locy)*F.cdag(UP,locy));
 	return Mout;
 }
@@ -316,7 +320,7 @@ c (SPIN_INDEX sigma, size_t locx, size_t locy)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(N_sites, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, M, MpoQ<2>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -342,7 +346,7 @@ cdag (SPIN_INDEX sigma, size_t locx, size_t locy)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(N_sites, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, M, MpoQ<2>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -372,7 +376,7 @@ triplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(N_sites, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, M, MpoQ<2>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -402,7 +406,7 @@ antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(N_sites, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, M, MpoQ<2>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -430,7 +434,7 @@ quadruplon (size_t locx, size_t locy)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(N_sites, M, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {-2,-2}, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, M, MpoQ<2>::qloc, {-2,-2}, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -439,7 +443,7 @@ d (size_t locx, size_t locy)
 	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
 	ss << "double_occ(" << locx << "," << locy << ")";
-	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(locx, F.d(locy));
 	return Mout;
 }
@@ -450,7 +454,7 @@ n (SPIN_INDEX sigma, size_t locx, size_t locy)
 	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
 	ss << "n(" << locx << "," << locy << ",σ=" << sigma << ")";
-	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
 	(sigma==UP)? Mout.setLocal(locx, F.n(UP,locy)):
 	             Mout.setLocal(locx, F.n(DN,locy));
 	return Mout;
@@ -462,7 +466,7 @@ Sz (size_t locx, size_t locy)
 	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx << "," << locy << ")";
-	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(locx, F.Sz(locy));
 	return Mout;
 }
@@ -473,7 +477,7 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	assert(locx1 < N_sites and locx2 < N_sites and locy1 < N_legs and locy2 < N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx1 << "," << locy1 << ")" << "Sz(" << locx2 << "," << locy2 << ")";
-	MpoQ<2> Mout(N_sites, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal({locx1,locx2}, {F.Sz(locy1),F.Sz(locy2)});
 	return Mout;
 }

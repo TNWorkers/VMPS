@@ -344,19 +344,22 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq
 			Vout.state.N_sv = min(max(static_cast<size_t>(1.1*Vout.state.N_sv), Vout.state.N_sv+dimqlocAvg), Dlimit);
 		}
 		
-		if (Vout.state.N_sv != Dmax_old)
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
-			lout << "Dmax=" << Dmax_old << "→" << Vout.state.N_sv << endl;
-			Dmax_old = Vout.state.N_sv;
+			if (Vout.state.N_sv != Dmax_old)
+			{
+				lout << "Dmax=" << Dmax_old << "→" << Vout.state.N_sv << endl;
+				Dmax_old = Vout.state.N_sv;
+			}
+			lout << endl;
 		}
-		lout << endl;
-
-#ifdef USE_HDF5_STORAGE
+		
+		#ifdef USE_HDF5_STORAGE
 		if (savePeriod != 0 and N_halfsweeps%savePeriod == 0)
 		{
 			Vout.state.save("mpsBackup");
 		}
-#endif
+		#endif
 	}
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
