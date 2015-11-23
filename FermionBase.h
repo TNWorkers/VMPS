@@ -6,7 +6,6 @@
 #include <boost/dynamic_bitset.hpp>
 
 #include "SpinBase.h"
-
 /**This basically just constructs the full Hubbard model on \p L_input lattice sites.*/
 class FermionBase
 {
@@ -170,7 +169,12 @@ public:
 	\param t : \f$t\f$
 	\param V : \f$V\f$*/
 	SparseMatrixXd HubbardHamiltonian (double U, double t=1., double V=0.) const;
-	
+
+	/**Returns the qarray for a given index of the basis
+	   \param index
+	   \param NM : if true, the format is (N,M), if false the format is (Nup,Ndn)*/ 
+	qarray<2> qNums(size_t index, bool NM=true);
+
 private:
 	
 	size_t N_orbitals;
@@ -207,6 +211,9 @@ FermionBase (size_t L_input)
 			basis[*Nelly][2*i+1] = nDN[Nelly(i)];
 		}
 	}
+	// cout << "basis:" << endl;
+	// for (size_t i=0; i<N_states; i++) {cout << basis[i] << endl;}
+	// cout << endl;
 }
 
 SparseMatrixXd FermionBase::
@@ -284,13 +291,13 @@ Sz (int orbital) const
 inline SparseMatrixXd FermionBase::
 Sp (int orbital) const
 {
-	return c(UP,orbital)*c(DN,orbital);
+	return cdag(UP,orbital)*c(DN,orbital);
 }
 
 inline SparseMatrixXd FermionBase::
 Sm (int orbital) const
 {
-	return c(DN,orbital)*c(UP,orbital);
+	return cdag(DN,orbital)*c(UP,orbital);
 }
 
 inline SparseMatrixXd FermionBase::
@@ -363,6 +370,26 @@ parity (const boost::dynamic_bitset<unsigned char> &b, int i) const
 		if (b[j]) {out *= -1.;} // switch sign for every particle found between 0 & i
 	}
 	return out;
+}
+
+qarray<2> FermionBase::
+qNums(size_t index, bool NM)
+{
+	int M=0; int N=0;
+	int Nup=0; int Ndn=0;
+	
+	for (size_t i=0; i<2*N_orbitals; i++)
+	{
+		if (basis[index][i])
+		{
+			N+=1;
+			if (i%2 == 0){M += 1; Nup +=1;}
+			else {M -= 1; Ndn +=1;}
+		}
+	}
+
+	if (NM) {return qarray<2>{N,M};}
+	else {return qarray<2>{Nup,Ndn};}
 }
 
 //static const double cUP_data[] =
