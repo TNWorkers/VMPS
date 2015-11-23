@@ -51,7 +51,7 @@ public:
 //	\param qloc_input : local basis
 //	\param Qtot_input : target quantum number
 //	MpsQ<Nq,Scalar> (size_t L_input, size_t Dmax, std::array<qarray<Nq>,D> qloc_input, qarray<Nq> Qtot_input);
-	MpsQ<Nq,Scalar> (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input);
+	MpsQ<Nq,Scalar> (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_legs_input=1);
 	
 	/** Construct by pulling info from an MpoQ.
 	\param H : chain length and local basis will be retrieved from this MpoQ (less importantly, the quantum number labels and the format function as well)
@@ -273,6 +273,7 @@ public:
 	///\}
 	
 private:
+	size_t N_legs;
 	
 	/**local basis.*/
 	vector<vector<qarray<Nq> > > qloc;
@@ -354,8 +355,8 @@ MpsQ()
 
 template<size_t Nq, typename Scalar>
 MpsQ<Nq,Scalar>::
-MpsQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input)
-:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input)
+MpsQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_legs_input)
+	:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_legs(N_legs_input)
 {
 	format = noFormat;
 //	qlabel = defaultQlabel<Nq>();
@@ -369,6 +370,7 @@ MpsQ (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
 {
 	format = H.format;
 	qlabel = H.qlabel;
+	N_legs = H.width();
 	outerResize<typename Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
 	innerResize(Dmax);
 }
@@ -519,8 +521,8 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 			
 				int lprev = l-1;
 				int lnext = l+1;
-				qIterator ql(qloc, 0, lprev); // length=l
-				qIterator qr(qloc, lnext, this->N_sites-1); // length=L-l-1
+				qIterator ql(qloc, 0, lprev, N_legs); // length=l
+				qIterator qr(qloc, lnext, this->N_sites-1, N_legs); // length=L-l-1
 			
 				set<qarray<Nq> > qrset;
 				for (qr=qr.begin(); qr<qr.end(); ++qr)

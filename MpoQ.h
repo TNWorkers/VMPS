@@ -56,26 +56,26 @@ public:
 	MpoQ (){};
 	
 	/**Construct with all values and a homogeneous basis.*/
-	MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+	MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	
 	/**Construct with all values and an arbitrary basis.*/
-	MpoQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
+	MpoQ (size_t Lx_input, size_t Ly_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	
 	/**Construct with all values and a SuperMatrix (useful when constructing an MpoQ by another MpoQ).*/
-	MpoQ (size_t L_input, const SuperMatrix<Scalar> &G_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+	MpoQ (size_t Lx_input, size_t Ly_input, const SuperMatrix<Scalar> &G_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	
 	/**Construct with all values and a vector of SuperMatrices (useful when constructing an MpoQ by another MpoQ).*/
-	MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+	MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	
-	MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
+	MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	///\}
@@ -144,7 +144,10 @@ public:
 	///\{
 	/**Returns the length of the chain.*/
 	inline size_t length() const {return N_sites;}
-	
+
+	/**Returns the width of the chain.*/
+	inline size_t width() const {return N_legs;}
+
 	/**\describe_Daux*/
 	inline size_t auxdim() const {return Daux;}
 	
@@ -200,7 +203,7 @@ public:
 	bool UNITARY = false;
 	bool GOT_SQUARE = false;
 	
-	size_t N_sites;
+	size_t N_sites; size_t N_legs;
 	size_t Daux;
 	
 //	ArrayXd truncWeight;
@@ -217,10 +220,10 @@ public:
 
 template<size_t Nq, typename Scalar>
 MpoQ<Nq,Scalar>::
-MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
-:N_sites(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+	:N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	qloc.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l)
@@ -245,10 +248,10 @@ MpoQ (size_t L_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input,
 
 template<size_t Nq, typename Scalar>
 MpoQ<Nq,Scalar>::
-MpoQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
+MpoQ (size_t Lx_input, size_t Ly_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
-:N_sites(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+:N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	qloc = qloc_input;
 	
@@ -265,10 +268,10 @@ MpoQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_i
 
 template<size_t Nq, typename Scalar>
 MpoQ<Nq,Scalar>::
-MpoQ (size_t L_input, const SuperMatrix<Scalar> &G_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+MpoQ (size_t Lx_input, size_t Ly_input, const SuperMatrix<Scalar> &G_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
-:N_sites(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+:N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	qloc.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l)
@@ -285,10 +288,10 @@ MpoQ (size_t L_input, const SuperMatrix<Scalar> &G_input, vector<qarray<Nq> > ql
 
 template<size_t Nq, typename Scalar>
 MpoQ<Nq,Scalar>::
-MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
-:N_sites(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+:N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	qloc.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l)
@@ -305,10 +308,10 @@ MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<qar
 
 template<size_t Nq, typename Scalar>
 MpoQ<Nq,Scalar>::
-MpoQ (size_t L_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
+MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
-:N_sites(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+:N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	qloc = qloc_input;
 	Daux = Gvec_input[0].auxdim();
@@ -385,7 +388,7 @@ string MpoQ<Nq,Scalar>::
 info() const
 {
 	stringstream ss;
-	ss << label << ": " << "L=" << N_sites << ", ";
+	ss << label << ": " << "L=" << N_sites << "N_legs=" << N_legs << ", ";
 	
 //	ss << "(";
 //	for (size_t q=0; q<Nq; ++q)
@@ -1244,7 +1247,7 @@ public:
 	\param l_frst : first site
 	\param l_last : last site
 	*/
-	qarrayIterator (const vector<vector<qarray<Nq> > > &qloc_input, int l_frst, int l_last)
+	qarrayIterator (const vector<vector<qarray<Nq> > > &qloc_input, int l_frst, int l_last, size_t N_legs=1)
 	:qloc(qloc_input[0])
 	{
 		size_t L = (l_last < 0 or l_frst >= qloc_input.size())? 0 : l_last-l_frst+1;
