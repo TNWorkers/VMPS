@@ -4,6 +4,8 @@
 #include <sstream>
 #include <array>
 #include <boost/functional/hash.hpp>
+#include <boost/rational.hpp>
+typedef boost::rational<int> frac;
 
 #include "qarray.h"
 
@@ -62,6 +64,19 @@ struct hash<std::array<size_t,2> >
 		return seed;
 	}
 };
+}
+
+/**Makes half-integers in the output.*/
+string halve (qarray<1> qnum)
+{
+	stringstream ss;
+	ss << "(";
+	boost::rational<int> m = boost::rational<int>(qnum[0],2);
+	if      (m.numerator()   == 0) {ss << 0;}
+	else if (m.denominator() == 1) {ss << m.numerator();}
+	else {ss << m;}
+	ss << ")";
+	return ss.str();
 }
 
 template<typename MatrixTypeA, typename MatrixTypeB>

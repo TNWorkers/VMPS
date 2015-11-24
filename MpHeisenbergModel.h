@@ -1,11 +1,9 @@
 #ifndef STRAWBERRY_HEISENBERGMODEL
 #define STRAWBERRY_HEISENBERGMODEL
 
-#include <boost/rational.hpp>
-typedef boost::rational<int> frac;
-
 #include "MpoQ.h"
 #include "SpinBase.h"
+#include "DmrgExternalQ.h"
 
 namespace VMPS
 {
@@ -56,8 +54,7 @@ public:
 //	SuperMatrix<double> GeneratorJ12 (double J, double Jprime, double Bz);
 	
 	static void set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, 
-	                           double Jxy, double Jz, double Bz, double Bx, size_t D=2, double Jprime=0.,
-	                           size_t N_legs=1);
+	                           const SpinBase &S, double Jxy, double Jz, double Bz=0., double Bx=0., double Jprime=0.);
 	
 	//---label stuff---
 	///@{
@@ -95,9 +92,6 @@ public:
 		return vout;
 	};
 	
-	/**Makes half-integers in the output.*/
-	static string halve (qarray<1> qnum);
-	
 	/**Labels the conserved quantum number as "M".*/
 	static const std::array<string,1> maglabel;
 	///@}
@@ -132,7 +126,7 @@ private:
 	double Jprime=0.;
 	size_t D=2;
 	
-	size_t N_legs = 1;
+	SpinBase S;
 };
 
 const std::array<string,1> HeisenbergModel::maglabel{"M"};
@@ -219,158 +213,129 @@ const std::array<string,1> HeisenbergModel::maglabel{"M"};
 //	return G;
 //}
 
-SparseMatrixXd embed (const SparseMatrixXd &M, size_t locy, size_t N_legs)
-{
-	assert(locy<N_legs);
-	
-	size_t D = M.rows();
-	size_t Nl = D*locy;
-	size_t Nr = D*(N_legs-locy-1);
-	
-	SparseMatrixXd Il = MatrixXd::Identity(Nl,Nl).sparseView();
-	SparseMatrixXd Ir = MatrixXd::Identity(Nr,Nr).sparseView();
-	
-	// all = 0
-	if (Nl == 0 and Nr == 0)
-	{
-		return M;
-	}
-	// one != 0
-	else if (Nl == 0 and Nr != 0)
-	{
-		return kroneckerProduct(M,Ir);
-	}
-	else if (Nl != 0 and Nr == 0)
-	{
-		return kroneckerProduct(Il,M);
-	}
-	// all != 0
-	else
-	{
-		return kroneckerProduct(Il,kroneckerProduct(M,Ir));
-	}
-}
+//SparseMatrixXd embed (const SparseMatrixXd &M, size_t locy, size_t N_legs)
+//{
+//	assert(locy<N_legs);
+//	
+//	size_t D = M.rows();
+//	size_t Nl = D*locy;
+//	size_t Nr = D*(N_legs-locy-1);
+//	
+//	SparseMatrixXd Il = MatrixXd::Identity(Nl,Nl).sparseView();
+//	SparseMatrixXd Ir = MatrixXd::Identity(Nr,Nr).sparseView();
+//	
+//	// all = 0
+//	if (Nl == 0 and Nr == 0)
+//	{
+//		return M;
+//	}
+//	// one != 0
+//	else if (Nl == 0 and Nr != 0)
+//	{
+//		return kroneckerProduct(M,Ir);
+//	}
+//	else if (Nl != 0 and Nr == 0)
+//	{
+//		return kroneckerProduct(Il,M);
+//	}
+//	// all != 0
+//	else
+//	{
+//		return kroneckerProduct(Il,kroneckerProduct(M,Ir));
+//	}
+//}
 
-SparseMatrixXd embed (const SparseMatrixXd &M1, size_t locy1, const SparseMatrixXd &M2, size_t locy2, size_t N_legs)
-{
-	assert(locy1<N_legs and locy2<N_legs);
-	assert(M1.rows() == M1.cols() and M2.rows() == M2.cols() and M1.rows() == M2.rows());
-	
-	size_t D = M1.rows();
-	size_t Nl = D*locy1;
-	size_t Nr = D*(N_legs-locy2-1);
-	size_t Nm = D*N_legs-Nl-Nr-2*D;
-	
-	SparseMatrixXd Il = MatrixXd::Identity(Nl,Nl).sparseView();
-	SparseMatrixXd Im = MatrixXd::Identity(Nm,Nm).sparseView();
-	SparseMatrixXd Ir = MatrixXd::Identity(Nr,Nr).sparseView();
-	
-	// all = 0
-	if (Nl == 0 and Nm == 0 and Nr == 0)
-	{
-		return kroneckerProduct(M1,M2);
-	}
-	// one != 0
-	else if (Nl != 0 and Nm == 0 and Nr == 0)
-	{
-		return kroneckerProduct(Il,kroneckerProduct(M1,M2));
-	}
-	else if (Nl == 0 and Nm == 0 and Nr != 0)
-	{
-		return kroneckerProduct(M1,kroneckerProduct(M2,Ir));
-	}
-	else if (Nl == 0 and Nm != 0 and Nr == 0)
-	{
-		return kroneckerProduct(M1,kroneckerProduct(Im,M2));
-	}
-	// two != 0
-	else if (Nl != 0 and Nm != 0 and Nr == 0)
-	{
-		return kroneckerProduct(Il,kroneckerProduct(M1,kroneckerProduct(Im,M2)));
-	}
-	else if (Nl != 0 and Nm == 0 and Nr != 0)
-	{
-		return kroneckerProduct(Il,kroneckerProduct(M1,kroneckerProduct(M2,Ir)));
-	}
-	else if (Nl == 0 and Nm != 0 and Nr != 0)
-	{
-		return kroneckerProduct(M1,kroneckerProduct(Im,kroneckerProduct(M2,Ir)));
-	}
-	// all != 0
-	else
-	{
-		return kroneckerProduct(Il,kroneckerProduct(M1,kroneckerProduct(Im,kroneckerProduct(M2,Ir))));
-	}
-}
+//SparseMatrixXd embed (const SparseMatrixXd &M1, size_t locy1, const SparseMatrixXd &M2, size_t locy2, size_t N_legs)
+//{
+//	assert(locy1<N_legs and locy2<N_legs);
+//	assert(M1.rows() == M1.cols() and M2.rows() == M2.cols() and M1.rows() == M2.rows());
+//	
+//	size_t D = M1.rows();
+//	size_t Nl = D*locy1;
+//	size_t Nr = D*(N_legs-locy2-1);
+//	size_t Nm = D*N_legs-Nl-Nr-2*D;
+//	
+//	SparseMatrixXd Il = MatrixXd::Identity(Nl,Nl).sparseView();
+//	SparseMatrixXd Im = MatrixXd::Identity(Nm,Nm).sparseView();
+//	SparseMatrixXd Ir = MatrixXd::Identity(Nr,Nr).sparseView();
+//	
+//	// all = 0
+//	if (Nl == 0 and Nm == 0 and Nr == 0)
+//	{
+//		return kroneckerProduct(M1,M2);
+//	}
+//	// one != 0
+//	else if (Nl != 0 and Nm == 0 and Nr == 0)
+//	{
+//		return kroneckerProduct(Il,kroneckerProduct(M1,M2));
+//	}
+//	else if (Nl == 0 and Nm == 0 and Nr != 0)
+//	{
+//		return kroneckerProduct(M1,kroneckerProduct(M2,Ir));
+//	}
+//	else if (Nl == 0 and Nm != 0 and Nr == 0)
+//	{
+//		return kroneckerProduct(M1,kroneckerProduct(Im,M2));
+//	}
+//	// two != 0
+//	else if (Nl != 0 and Nm != 0 and Nr == 0)
+//	{
+//		return kroneckerProduct(Il,kroneckerProduct(M1,kroneckerProduct(Im,M2)));
+//	}
+//	else if (Nl != 0 and Nm == 0 and Nr != 0)
+//	{
+//		return kroneckerProduct(Il,kroneckerProduct(M1,kroneckerProduct(M2,Ir)));
+//	}
+//	else if (Nl == 0 and Nm != 0 and Nr != 0)
+//	{
+//		return kroneckerProduct(M1,kroneckerProduct(Im,kroneckerProduct(M2,Ir)));
+//	}
+//	// all != 0
+//	else
+//	{
+//		return kroneckerProduct(Il,kroneckerProduct(M1,kroneckerProduct(Im,kroneckerProduct(M2,Ir))));
+//	}
+//}
 
 void HeisenbergModel::
-set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, double Jxy, double Jz, double Bz, double Bx, size_t D, double Jprime, size_t N_legs)
+set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, const SpinBase &S, double Jxy, double Jz, double Bz, double Bx, double Jprime)
 {
 	// interaction along legs
-	for (size_t leg=0; leg<N_legs; ++leg)
+	for (size_t leg=0; leg<S.orbitals(); ++leg)
 	{
 		if (Jxy != 0.)
 		{
-			SparseMatrixXd Sp = embed(SpinBase::Scomp(SP,D), leg, N_legs);
-			SparseMatrixXd Sm = embed(SpinBase::Scomp(SM,D), leg, N_legs);
-			Otight.push_back(make_tuple(-0.5*Jxy, Sp, Sm));
-			Otight.push_back(make_tuple(-0.5*Jxy, Sm, Sp));
+			Otight.push_back(make_tuple(-0.5*Jxy, S.Scomp(SP,leg), S.Scomp(SM,leg)));
+			Otight.push_back(make_tuple(-0.5*Jxy, S.Scomp(SM,leg), S.Scomp(SP,leg)));
 		}
 		if (Jz != 0.)
 		{
-			SparseMatrixXd Sz = embed(SpinBase::Scomp(SZ,D), leg, N_legs);
-			Otight.push_back(make_tuple(-Jz, Sz, Sz));
-		}
-		
-		// local B-terms
-		if (Bz != 0.)
-		{
-			SparseMatrixXd Sz = embed(SpinBase::Scomp(SZ,D), leg, N_legs);
-			Olocal.push_back(make_tuple(-Bz, Sz));
-		}
-		if (Bx != 0.)
-		{
-			SparseMatrixXd Sx = embed(SpinBase::Scomp(SX,D), leg, N_legs);
-			Olocal.push_back(make_tuple(-Bx, Sx));
-		}
-	}
-	
-	// interaction along rungs
-	for (size_t leg=0; leg<N_legs-1; ++leg)
-	{
-		if (Jxy != 0.)
-		{
-			SparseMatrixXd SpSm = embed(SpinBase::Scomp(SP,D), leg, SpinBase::Scomp(SM,D), leg+1, N_legs);
-			SparseMatrixXd SmSp = embed(SpinBase::Scomp(SM,D), leg, SpinBase::Scomp(SP,D), leg+1, N_legs);
-			Olocal.push_back(make_tuple(-0.5*Jxy, SpSm));
-			Olocal.push_back(make_tuple(-0.5*Jxy, SmSp));
-		}
-		if (Jz != 0.)
-		{
-			SparseMatrixXd SzSz = embed(SpinBase::Scomp(SZ,D), leg, SpinBase::Scomp(SZ,D), leg+1, N_legs);
-			Olocal.push_back(make_tuple(-Jz, SzSz));
+			Otight.push_back(make_tuple(-Jz, S.Scomp(SZ,leg), S.Scomp(SZ,leg)));
 		}
 	}
 	
 	if (Jprime != 0.)
 	{
-		SparseMatrixXd Id = MatrixXd::Identity(D,D).sparseView();
-		Onextn.push_back(make_tuple(-0.5*Jprime, SpinBase::Scomp(SP,D), SpinBase::Scomp(SM,D), Id));
-		Onextn.push_back(make_tuple(-0.5*Jprime, SpinBase::Scomp(SM,D), SpinBase::Scomp(SP,D), Id));
-		Onextn.push_back(make_tuple(-Jprime,     SpinBase::Scomp(SZ,D), SpinBase::Scomp(SZ,D), Id));
+		SparseMatrixXd Id = MatrixXd::Identity(S.get_D(),S.get_D()).sparseView();
+		Onextn.push_back(make_tuple(-0.5*Jprime, S.Scomp(SP), S.Scomp(SM), Id));
+		Onextn.push_back(make_tuple(-0.5*Jprime, S.Scomp(SM), S.Scomp(SP), Id));
+		Onextn.push_back(make_tuple(-Jprime,     S.Scomp(SZ), S.Scomp(SZ), Id));
 	}
+	
+	Olocal.push_back(make_tuple(1., S.HeisenbergHamiltonian(Jxy,Jz,Bz,Bx)));
 }
 
 HeisenbergModel::
 HeisenbergModel (int Lx_input, double Jxy_input, double Jz_input, double Bz_input, size_t D_input, size_t Ly_input, bool CALC_SQUARE)
-:MpoQ<1> (Lx_input, HeisenbergModel::qloc(D_input), {0}, HeisenbergModel::maglabel, "", HeisenbergModel::halve),
-Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input), N_legs(Ly_input)
+:MpoQ<1> (Lx_input, Ly_input, HeisenbergModel::qloc(D_input), {0}, HeisenbergModel::maglabel, "", halve),
+Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 {
 	if (Jz==numeric_limits<double>::infinity()) {Jz=Jxy;} // default: Jxy=Jz
 	assert(Jxy != 0. or Jz != 0.);
 	this->label = create_label(D,Jxy,Jz,0,Bz,0);
 	
-	set_operators(Olocal,Otight,Onextn, Jxy,Jz,Bz,0.,D, N_legs);
+	S = SpinBase(N_legs,D);
+	set_operators(Olocal,Otight,Onextn, S, Jxy,Jz,Bz,0.);
 	this->Daux = 2 + Otight.size() + 2*Onextn.size();
 	
 	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
@@ -389,12 +354,13 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input), N_legs(Ly_input)
 
 HeisenbergModel::
 HeisenbergModel (int L_input, array<double,2> Jlist, double Bz_input, size_t D_input, bool CALC_SQUARE)
-:MpoQ<1> (L_input, HeisenbergModel::qloc(2), {0}, HeisenbergModel::maglabel, "", HeisenbergModel::halve),
+:MpoQ<1> (L_input, 0, HeisenbergModel::qloc(2), {0}, HeisenbergModel::maglabel, "", halve),
 Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 {
 	this->label = create_label(D,Jxy,Jz,Jprime,Bz,0.);
 	
-	set_operators(Olocal,Otight,Onextn, Jxy,Jz,Bz,0.,D,Jprime);
+	S = SpinBase(N_legs,D);
+	set_operators(Olocal,Otight,Onextn, S, Jxy,Jz,Bz,0.,Jprime);
 	this->Daux = 2 + Otight.size() + 2*Onextn.size();
 	
 	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
@@ -415,22 +381,9 @@ MpoQ<1> HeisenbergModel::
 Hsq (size_t D)
 {
 	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
-	MpoQ<1> Mout(this->N_sites, tensor_product(G,G), HeisenbergModel::qloc(D), {0}, HeisenbergModel::maglabel, "", HeisenbergModel::halve);
+	MpoQ<1> Mout(this->N_sites, N_legs, tensor_product(G,G), HeisenbergModel::qloc(D), {0}, HeisenbergModel::maglabel, "", halve);
 	Mout.label = create_label(D,Jxy,Jz,Jprime,Bz,0.) + "H^2";
 	return Mout;
-}
-
-string HeisenbergModel::
-halve (qarray<1> qnum)
-{
-	stringstream ss;
-	ss << "(";
-	boost::rational<int> m = boost::rational<int>(qnum[0],2);
-	if      (m.numerator()   == 0) {ss << 0;}
-	else if (m.denominator() == 1) {ss << m.numerator();}
-	else {ss << m;}
-	ss << ")";
-	return ss.str();
 }
 
 MpoQ<1> HeisenbergModel::
@@ -439,8 +392,8 @@ Sz (size_t locx, size_t locy)
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx << "," << locy << ")";
-	MpoQ<1> Mout(N_sites, HeisenbergModel::qloc(D), {0}, HeisenbergModel::maglabel, ss.str(), HeisenbergModel::halve);
-	Mout.setLocal(locx, embed(SpinBase::Scomp(SZ,D),locy,N_legs));
+	MpoQ<1> Mout(N_sites, N_legs, HeisenbergModel::qloc(D), {0}, HeisenbergModel::maglabel, ss.str(), halve);
+	Mout.setLocal(locx, S.Scomp(SZ,locy));
 	return Mout;
 }
 
@@ -450,8 +403,8 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	assert(locx1<N_sites and locx2<N_sites and locy1<N_legs and locy2<N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx1 << "," << locy1 << ")" <<  "Sz(" << locx2 << "," << locy2 << ")";
-	MpoQ<1> Mout(N_sites, HeisenbergModel::qloc(D), {0}, HeisenbergModel::maglabel, ss.str(), HeisenbergModel::halve);
-	Mout.setLocal({locx1, locx2}, {embed(SpinBase::Scomp(SZ,D),locy1,N_legs), embed(SpinBase::Scomp(SZ,D),locy2,N_legs)});
+	MpoQ<1> Mout(N_sites, N_legs, HeisenbergModel::qloc(D), {0}, HeisenbergModel::maglabel, ss.str(), halve);
+	Mout.setLocal({locx1, locx2}, {S.Scomp(SZ,locy1), S.Scomp(SZ,locy2)});
 	return Mout;
 }
 

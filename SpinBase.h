@@ -1,9 +1,12 @@
 #ifndef SPINBASE
 #define SPINBASE
 
+#include <complex>
+
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
-#include <complex>
+#include <unsupported/Eigen/KroneckerProduct>
+
 #include "DmrgTypedefs.h"
 #include "qarray.h"
 #include "NestedLoopIterator.h"
@@ -43,7 +46,7 @@ public:
 	   \param Bz : \f$B_{z}\f$
 	   \param Bx : \f$B_{x}\f$
 	   \param Jprime : \f$J^{\prime}\f$ (next nearest neigbour interaction)*/
-	SparseMatrixXd HeisenbergHamiltonian (double J, double Bz=0., double Bx=0., double Jprime=0.) const;
+	SparseMatrixXd HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0.) const;
 
 	/**Returns the qarray for a given index of the basis
 	   \param index*/
@@ -52,7 +55,9 @@ public:
 	SparseMatrixXd ScompLocal (SPINOP_LABEL Sa) const;
 	SparseMatrixXd Sbase () const;
 	VectorXd Soffdiag () const;
-
+	
+	inline size_t get_D() const {return D;}
+	
 private:
 	
 	size_t N_orbitals;
@@ -63,9 +68,9 @@ private:
 
 SpinBase::
 SpinBase (size_t L_input, size_t D_input)
-	:N_orbitals(L_input),D(D_input)
+:N_orbitals(L_input),D(D_input)
 {
-	assert(N_orbitals >= 1);
+	assert(N_orbitals>=1 and D>=2);
 	
 	N_states = pow(D,N_orbitals);
 }
@@ -105,30 +110,34 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 }
 
 SparseMatrixXd SpinBase::
-HeisenbergHamiltonian (double J, double Bz, double Bx, double Jprime) const
+HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx) const
 {
 	SparseMatrixXd Mout(N_states,N_states);
 	
 	for (int i=0; i<N_orbitals-1; ++i) // for all bonds
 	{
-		if (J != 0.)
+		if (Jxy != 0.)
 		{
-			SparseMatrixXd Mout = -J* (Scomp(SZ,i)*Scomp(SZ,i+1) + 0.5* (Scomp(SP,i)*Scomp(SM,i+1) + Scomp(SM,i)*Scomp(SP,i+1)) );
+			Mout = -0.5*Jxy * (Scomp(SP,i)*Scomp(SM,i+1) + Scomp(SM,i)*Scomp(SP,i+1));
 		}
-		if (Jprime != 0. and i != N_orbitals-1)
+		if (Jz != 0.)
 		{
-			Mout += -Jprime* (Scomp(SZ,i)*Scomp(SZ,i+2) + 0.5* (Scomp(SP,i)*Scomp(SM,i+2) + Scomp(SM,i)*Scomp(SP,i+2)) );
+			Mout = -Jz * Scomp(SZ,i)*Scomp(SZ,i+1);
 		}
+//		if (Jprime != 0. and i != N_orbitals-1)
+//		{
+//			Mout += -Jprime* (Scomp(SZ,i)*Scomp(SZ,i+2) + 0.5* (Scomp(SP,i)*Scomp(SM,i+2) + Scomp(SM,i)*Scomp(SP,i+2)) );
+//		}
 	}
 	if (Bz != 0.)
 	{
-		for (int i=0; i<N_orbitals; ++i) {Mout += Bz*Scomp(SZ,i);}
+		for (int i=0; i<N_orbitals; ++i) {Mout += Bz * Scomp(SZ,i);}
 	}
-	if (Bz != 0.)
+	if (Bx != 0.)
 	{
-		for (int i=0; i<N_orbitals; ++i) {Mout += Bx*Scomp(SX,i);}
+		for (int i=0; i<N_orbitals; ++i) {Mout += Bx * Scomp(SX,i);}
 	}
-
+	
 	return Mout;
 }
 
@@ -148,8 +157,8 @@ qNums(size_t index)
 SparseMatrixXd SpinBase::
 ScompLocal (SPINOP_LABEL Sa) const
 {
-	assert(Sa != SY and D >= 2);
-		
+	assert(Sa != SY);
+	
 	if (Sa==SX)
 	{
 		return Sbase() + SparseMatrixXd(Sbase().transpose());
@@ -179,7 +188,7 @@ ScompLocal (SPINOP_LABEL Sa) const
 		return SparseMatrixXd(2.*Sbase().transpose());
 	}
 }
-	
+
 SparseMatrixXd SpinBase::
 Sbase () const
 {
@@ -190,7 +199,7 @@ Sbase () const
 	SparseMatrixXd Mout = Mtmp.sparseView();
 	return Mout;
 }
-	
+
 VectorXd SpinBase::
 Soffdiag () const
 {
@@ -204,7 +213,7 @@ Soffdiag () const
 	}
 	return Vout;
 }
-	
+
 //	static const MatrixXd Scomp (SPINOP_LABEL Sa, size_t D=2)
 //	{
 //		assert(Sa != SY and D >= 2);

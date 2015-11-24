@@ -82,8 +82,6 @@ private:
 	double V = 0.;
 	double tPrime = 0.;
 	
-	size_t N_legs = 1;
-	
 	FermionBase F;
 };
 
@@ -206,8 +204,8 @@ set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn,
 
 HubbardModel::
 HubbardModel (size_t Lx_input, double U_input, double V_input, double tPrime_input, size_t Ly_input, bool CALC_SQUARE)
-:MpoQ<2> (Lx_input, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
-U(U_input), V(V_input), tPrime(tPrime_input), N_legs(Ly_input)
+:MpoQ<2> (Lx_input, Ly_input, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
+U(U_input), V(V_input), tPrime(tPrime_input)
 {
 	assert(N_legs>1 and tPrime==0. or N_legs==1 and "Cannot build a ladder with t'-hopping!");
 	stringstream ss;
@@ -258,7 +256,7 @@ MpoQ<2> HubbardModel::
 Hsq()
 {
 	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
-	MpoQ<2> Mout(this->N_sites, tensor_product(G,G), vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), 
+	MpoQ<2> Mout(N_sites, N_legs, tensor_product(G,G), vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), 
 	             {0,0}, HubbardModel::Nlabel, "HubbardModel H^2");
 	return Mout;
 }
@@ -269,7 +267,7 @@ Auger (size_t locx, size_t locy)
 	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
 	ss << "Auger(" << locx << "," << locy << ")";
-	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {-1,-1}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {-1,-1}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(locx, F.c(UP,locy)*F.c(DN,locy));
 	return Mout;
 }
@@ -279,7 +277,7 @@ eta()
 {
 	stringstream ss;
 	ss << "eta";
-	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {-1,-1}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {-1,-1}, HubbardModel::Nlabel, ss.str());
 	SparseMatrixXd etaloc = MatrixXd::Identity(F.dim(),F.dim()).sparseView();
 	for (int ly=0; ly<N_legs; ++ly) {etaloc = etaloc * pow(-1.,ly) * F.c(UP,ly)*F.c(DN,ly);}
 	Mout.setLocalSum(etaloc, true);
@@ -292,7 +290,7 @@ Aps (size_t locx, size_t locy)
 	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
 	ss << "Aps(" << locx << "," << locy << ")";
-	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {+1,+1}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {+1,+1}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(locx, F.cdag(DN,locy)*F.cdag(UP,locy));
 	return Mout;
 }
@@ -320,7 +318,7 @@ c (SPIN_INDEX sigma, size_t locx, size_t locy)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(N_sites, M, MpoQ<2>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, N_legs, M, MpoQ<2>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -346,7 +344,7 @@ cdag (SPIN_INDEX sigma, size_t locx, size_t locy)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(N_sites, M, MpoQ<2>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, N_legs, M, MpoQ<2>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -376,7 +374,7 @@ triplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(N_sites, M, MpoQ<2>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, N_legs, M, MpoQ<2>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -406,7 +404,7 @@ antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(N_sites, M, MpoQ<2>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, N_legs, M, MpoQ<2>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -434,7 +432,7 @@ quadruplon (size_t locx, size_t locy)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<2>(N_sites, M, MpoQ<2>::qloc, {-2,-2}, HubbardModel::Nlabel, ss.str());
+	return MpoQ<2>(N_sites, N_legs, M, MpoQ<2>::qloc, {-2,-2}, HubbardModel::Nlabel, ss.str());
 }
 
 MpoQ<2> HubbardModel::
@@ -443,7 +441,7 @@ d (size_t locx, size_t locy)
 	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
 	ss << "double_occ(" << locx << "," << locy << ")";
-	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(locx, F.d(locy));
 	return Mout;
 }
@@ -454,7 +452,7 @@ n (SPIN_INDEX sigma, size_t locx, size_t locy)
 	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
 	ss << "n(" << locx << "," << locy << ",σ=" << sigma << ")";
-	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
 	(sigma==UP)? Mout.setLocal(locx, F.n(UP,locy)):
 	             Mout.setLocal(locx, F.n(DN,locy));
 	return Mout;
@@ -466,7 +464,7 @@ Sz (size_t locx, size_t locy)
 	assert(locx < N_sites and locy < N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx << "," << locy << ")";
-	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(locx, F.Sz(locy));
 	return Mout;
 }
@@ -477,7 +475,7 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	assert(locx1 < N_sites and locx2 < N_sites and locy1 < N_legs and locy2 < N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx1 << "," << locy1 << ")" << "Sz(" << locx2 << "," << locy2 << ")";
-	MpoQ<2> Mout(N_sites, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
+	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal({locx1,locx2}, {F.Sz(locy1),F.Sz(locy2)});
 	return Mout;
 }

@@ -388,7 +388,8 @@ string MpoQ<Nq,Scalar>::
 info() const
 {
 	stringstream ss;
-	ss << label << ": " << "L=" << N_sites << "N_legs=" << N_legs << ", ";
+	ss << label << ": " << "L=" << N_sites;
+	if (N_legs>1) {ss << "x" << N_legs << ", ";}
 	
 //	ss << "(";
 //	for (size_t q=0; q<Nq; ++q)
