@@ -168,7 +168,7 @@ public:
 	\param U : \f$U\f$
 	\param t : \f$t\f$
 	\param V : \f$V\f$*/
-	SparseMatrixXd HubbardHamiltonian (double U, double t=1., double V=0.) const;
+	SparseMatrixXd HubbardHamiltonian (double U, double t=1., double V=0., bool PERIODIC=false) const;
 
 	/**Returns the qarray for a given index of the basis
 	   \param index
@@ -341,7 +341,7 @@ sign_local (int orbital) const
 }
 
 SparseMatrixXd FermionBase::
-HubbardHamiltonian (double U, double t, double V) const
+HubbardHamiltonian (double U, double t, double V, bool PERIODIC) const
 {
 	SparseMatrixXd Mout(N_states,N_states);
 	
@@ -353,6 +353,15 @@ HubbardHamiltonian (double U, double t, double V) const
 			Mout += -t*(T+SparseMatrixXd(T.transpose()));
 		}
 		if (V != 0.) {Mout += V*n(i)*n(i+1);}
+	}
+	if (PERIODIC == true)
+	{
+		if (t != 0.)
+		{
+			SparseMatrixXd T = cdag(UP,0)*c(UP,N_orbitals-1) + cdag(DN,0)*c(DN,N_orbitals-1);
+			Mout += -t*(T+SparseMatrixXd(T.transpose()));
+		}
+		if (V != 0.) {Mout += V*n(0)*n(N_orbitals-1);}
 	}
 	if (U != 0.)
 	{

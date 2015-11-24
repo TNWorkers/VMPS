@@ -273,6 +273,7 @@ public:
 	///\}
 	
 private:
+	
 	size_t N_legs;
 	
 	/**local basis.*/
@@ -311,7 +312,9 @@ info() const
 {
 	stringstream ss;
 	ss << "MpsQ: ";
-	ss << "L=" << this->N_sites << ", ";
+	ss << "L=" << this->N_sites;
+	if (N_legs>1) {ss << "x" << N_legs;}
+	ss << ", ";
 	
 	if (Nq != 0)
 	{
@@ -330,7 +333,6 @@ info() const
 	
 	ss << "pivot=" << this->pivot << ", ";
 	
-//	ss << "D=" << D << ", ";
 	ss << "Mmax=" << calc_Mmax() << " (Dmax=" << calc_Dmax() << "), ";
 	ss << "Nqmax=" << calc_Nqmax() << ", ";
 	ss << "trunc_weight=" << truncWeight.sum() << ", ";

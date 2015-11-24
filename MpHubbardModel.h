@@ -42,13 +42,15 @@ public:
 	/**Calculates and returns \f$H^2\f$ on the fly.*/
 	MpoQ<2> Hsq();
 	
-	/**local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$.
+	/**single-site local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$.
 	The quantum numbers are \f$N_{\uparrow}\f$ and \f$N_{\downarrow}\f$. Used by default.*/
-	static const std::array<qarray<2>,4> qloc;
+	static const std::array<qarray<2>,4> qssUD;
 	
 	/**local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$.
 	The quantum numbers are \f$N=N_{\uparrow}+N_{\downarrow}\f$ and \f$2M=N_{\uparrow}-N_{\downarrow}\f$. Used in combination with KondoModel.*/
-	static const std::array<qarray<2>,4> qlocNM;
+	static const std::array<qarray<2>,4> qssNM;
+	
+	static const vector<qarray<2> > qloc (size_t N_legs);
 	
 	/**Labels the conserved quantum numbers as \f$N_\uparrow\f$, \f$N_\downarrow\f$.*/
 	static const std::array<string,2> Nlabel;
@@ -85,9 +87,29 @@ private:
 	FermionBase F;
 };
 
-const std::array<qarray<2>,4> HubbardModel::qloc {qarray<2>{0,0}, qarray<2>{1,0}, qarray<2>{0,1}, qarray<2>{1,1}};
-const std::array<qarray<2>,4> HubbardModel::qlocNM {qarray<2>{0,0}, qarray<2>{1,1}, qarray<2>{1,-1}, qarray<2>{2,0}};
+const std::array<qarray<2>,4> HubbardModel::qssUD {qarray<2>{0,0}, qarray<2>{1,0}, qarray<2>{0,1}, qarray<2>{1,1}};
+const std::array<qarray<2>,4> HubbardModel::qssNM {qarray<2>{0,0}, qarray<2>{1,1}, qarray<2>{1,-1}, qarray<2>{2,0}};
 const std::array<string,2>    HubbardModel::Nlabel{"N↑","N↓"};
+
+const vector<qarray<2> > HubbardModel::
+qloc (size_t N_legs)
+{
+	vector<qarray<2> > vout(pow(4,N_legs));
+	
+	NestedLoopIterator Nelly(N_legs,4);
+	for (Nelly=Nelly.begin(); Nelly!=Nelly.end(); ++Nelly)
+	{
+		vout[*Nelly] = HubbardModel::qssUD[Nelly(0)];
+		
+		for (int leg=1; leg<N_legs; ++leg)
+		for (int q=0; q<2; ++q)
+		{
+			vout[*Nelly][q] += HubbardModel::qssUD[Nelly(leg)][q];
+		}
+	}
+	
+	return vout;
+}
 
 void HubbardModel::
 set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, const FermionBase &F, double U, double V, double tPrime)
@@ -120,117 +142,15 @@ set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn,
 	Olocal.push_back(make_tuple(1., F.HubbardHamiltonian(U,1.,V)));
 }
 
-//SuperMatrix<double> HubbardModel::
-//Generator (double U, double V, double tPrime)
-//{
-//	size_t Daux = 6;
-//	if (V != 0.)      {Daux += 1;}
-//	if (tPrime != 0.) {Daux += 8;}
-//	
-//	vector<MatrixXd> col;
-//	vector<MatrixXd> row;
-//	
-//	// first col (except corner element)
-//	col.push_back(MatrixXd::Identity(4,4));
-//	if (tPrime != 0.)
-//	{
-//		col.push_back(FermionBase::cDN.sparseView());
-//		col.push_back(FermionBase::cUP.sparseView());
-//		col.push_back(FermionBase::cDN.transpose().sparseView());
-//		col.push_back(FermionBase::cUP.transpose().sparseView());
-//	}
-//	col.push_back(FermionBase::cUP.transpose().sparseView());
-//	col.push_back(FermionBase::cDN.transpose().sparseView());
-//	col.push_back(FermionBase::cUP.sparseView());
-//	col.push_back(FermionBase::cDN.sparseView());
-//	if (V != 0.)
-//	{
-//		col.push_back(FermionBase::n);
-//	}
-//	if (tPrime != 0.)
-//	{
-//		for (size_t i=0; i<4; ++i)
-//		{
-//			col.push_back(MatrixXd::Zero(4,4));
-//		}
-//	}
-//	
-//	// last row (except corner element)
-//	if (tPrime != 0.)
-//	{
-//		for (size_t i=0; i<4; ++i)
-//		{
-//			row.push_back(MatrixXd::Zero(4,4));
-//		}
-//	}
-//	row.push_back(-FermionBase::fsign.sparseView() * FermionBase::cUP.sparseView());
-//	row.push_back(-FermionBase::fsign.sparseView() * FermionBase::cDN.sparseView());
-//	row.push_back( FermionBase::fsign.sparseView() * FermionBase::cUP.transpose().sparseView());
-//	row.push_back( FermionBase::fsign.sparseView() * FermionBase::cDN.transpose().sparseView());
-//	if (V != 0.)
-//	{
-//		row.push_back(V * FermionBase::n);
-//	}
-//	if (tPrime != 0.)
-//	{
-//		row.push_back(-tPrime * FermionBase::fsign.sparseView() * FermionBase::cUP.sparseView());
-//		row.push_back(-tPrime * FermionBase::fsign.sparseView() * FermionBase::cDN.sparseView());
-//		row.push_back( tPrime * FermionBase::fsign.sparseView() * FermionBase::cUP.transpose().sparseView());
-//		row.push_back( tPrime * FermionBase::fsign.sparseView() * FermionBase::cDN.transpose().sparseView());
-//	}
-//	row.push_back(MatrixXd::Identity(4,4));
-//	
-//	SuperMatrix<double> G;
-//	G.setMatrix(Daux,4);
-//	G.setZero();
-//	
-//	for (size_t i=0; i<Daux-1; ++i)
-//	{
-//		G(i,0)        = col[i];
-//		G(Daux-1,i+1) = row[i];
-//	}
-//	
-//	// corner element
-//	G(Daux-1,0) = U * FermionBase::d.sparseView();
-//	
-//	// nearest-neighbour transfer
-//	if (tPrime != 0)
-//	{
-//		G.set_block_to_skewdiag(Daux-2,1, 4, FermionBase::fsign.sparseView());
-//	}
-//	
-//	return G;
-//}
-
 HubbardModel::
 HubbardModel (size_t Lx_input, double U_input, double V_input, double tPrime_input, size_t Ly_input, bool CALC_SQUARE)
-:MpoQ<2> (Lx_input, Ly_input, vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
+:MpoQ<2> (Lx_input, Ly_input, HubbardModel::qloc(Ly_input), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
 U(U_input), V(V_input), tPrime(tPrime_input)
 {
 	assert(N_legs>1 and tPrime==0. or N_legs==1 and "Cannot build a ladder with t'-hopping!");
 	stringstream ss;
 	ss << "(U=" << U << ",V=" << V << ",t'=" << tPrime << ")";
 	this->label += ss.str();
-	
-	if (N_legs > 1)
-	{
-		for (size_t l=0; l<this->N_sites; ++l)
-		{
-			this->MpoQ<2>::qloc[l].resize(pow(4,N_legs));
-			
-			NestedLoopIterator Nelly(N_legs,4);
-			for (Nelly=Nelly.begin(); Nelly!=Nelly.end(); ++Nelly)
-			{
-				this->MpoQ<2>::qloc[l][*Nelly] = qloc[Nelly(0)];
-				
-				for (int leg=1; leg<N_legs; ++leg)
-				for (int q=0; q<2; ++q)
-				{
-					this->MpoQ<2>::qloc[l][*Nelly][q] += qloc[Nelly(leg)][q];
-				}
-			}
-		}
-	}
 	
 	F = FermionBase(N_legs);
 	
@@ -256,8 +176,7 @@ MpoQ<2> HubbardModel::
 Hsq()
 {
 	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
-	MpoQ<2> Mout(N_sites, N_legs, tensor_product(G,G), vector<qarray<2> >(begin(HubbardModel::qloc),end(HubbardModel::qloc)), 
-	             {0,0}, HubbardModel::Nlabel, "HubbardModel H^2");
+	MpoQ<2> Mout(N_sites, N_legs, tensor_product(G,G), HubbardModel::qloc(N_legs), {0,0}, HubbardModel::Nlabel, "HubbardModel H^2");
 	return Mout;
 }
 
