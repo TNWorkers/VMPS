@@ -46,9 +46,9 @@ ImpSubCorr (vector<size_t> impLocs, vector<size_t> subLocs)
 	{
 		for (size_t j=0; j<subLocs.size(); ++j)
 		{
-			ImpSubCorr(i,j) = avg(*state, H->SimpSsub(H->length(),impLocs[i],SZ,subLocs[j],SZ), *state) +
-				0.5*(avg(*state , H->SimpSsub(H->length(),impLocs[i],SP,subLocs[j],SM), *state)
-					 + avg(*state , H->SimpSsub(H->length(),impLocs[i],SM,subLocs[j],SP), *state));
+			ImpSubCorr(i,j) = avg(*state, H->SimpSsub(impLocs[i],SZ,subLocs[j],SZ), *state) +
+				0.5*(avg(*state , H->SimpSsub(impLocs[i],SP,subLocs[j],SM), *state)
+					 + avg(*state , H->SimpSsub(impLocs[i],SM,subLocs[j],SP), *state));
 		}
 	}
 	return ImpSubCorr;
@@ -65,9 +65,9 @@ ImpCorr (vector<size_t> imp1Locs, vector<size_t> imp2Locs)
 	{
 		for (size_t j=0; j<imp2Locs.size(); ++j)
 		{
-			ImpCorr(i,j) = avg(*state, H->SimpSimp(H->length(),imp1Locs[i],SZ,imp2Locs[j],SZ), *state) +
-				0.5*(avg(*state , H->SimpSimp(H->length(),imp1Locs[i],SP,imp2Locs[j],SM), *state)
-					 + avg(*state , H->SimpSimp(H->length(),imp1Locs[i],SM,imp2Locs[j],SP), *state));
+			ImpCorr(i,j) = avg(*state, H->SimpSimp(imp1Locs[i],SZ,imp2Locs[j],SZ), *state) +
+				0.5*(avg(*state , H->SimpSimp(imp1Locs[i],SP,imp2Locs[j],SM), *state)
+					 + avg(*state , H->SimpSimp(imp1Locs[i],SM,imp2Locs[j],SP), *state));
 		}
 	}
 	return ImpCorr;
@@ -81,7 +81,7 @@ SizVal (vector<size_t> locs)
 	SizVal.setZero();
 	for (size_t i=0; i<locs.size(); i++)
 	{
-		SizVal(i) = avg(*state , H->Simp(H->length(),locs[i],SZ) , *state);
+		SizVal(i) = avg(*state , H->Simp(locs[i],SZ) , *state);
 	}
 
 	return SizVal;
@@ -98,15 +98,15 @@ localPksCorr (vector<size_t> locs1, vector<size_t> locs2)
 	{
 		for (size_t j=i+1; j<locs2.size(); j++)
 		{
-			localPksCorr(i,j) = avg(*state, H->SimpSsubSimpSsub(H->length(),locs1[i],SZ,locs1[i],SZ,locs2[j],SZ,locs2[j],SZ), *state)
-				+ 0.5*avg(*state, H->SimpSsubSimpSsub(H->length(),locs1[i],SZ,locs1[i],SZ,locs2[j],SP,locs2[j],SM), *state)
-				+ 0.5*avg(*state, H->SimpSsubSimpSsub(H->length(),locs1[i],SZ,locs1[i],SZ,locs2[j],SM,locs2[j],SP), *state)
-				+ 0.5*avg(*state, H->SimpSsubSimpSsub(H->length(),locs1[i],SP,locs1[i],SM,locs2[j],SZ,locs2[j],SZ), *state)
-				+ 0.25*avg(*state, H->SimpSsubSimpSsub(H->length(),locs1[i],SP,locs1[i],SM,locs2[j],SP,locs2[j],SM), *state)
-				+ 0.25*avg(*state, H->SimpSsubSimpSsub(H->length(),locs1[i],SP,locs1[i],SM,locs2[j],SM,locs2[j],SP), *state)
-				+ 0.5*avg(*state, H->SimpSsubSimpSsub(H->length(),locs1[i],SM,locs1[i],SP,locs2[j],SZ,locs2[j],SZ), *state)
-				+ 0.25*avg(*state, H->SimpSsubSimpSsub(H->length(),locs1[i],SM,locs1[i],SP,locs2[j],SP,locs2[j],SM), *state)
-				+ 0.25*avg(*state, H->SimpSsubSimpSsub(H->length(),locs1[i],SM,locs1[i],SP,locs2[j],SM,locs2[j],SP), *state);
+			localPksCorr(i,j) = avg(*state, H->SimpSsubSimpSsub(locs1[i],SZ,locs1[i],SZ,locs2[j],SZ,locs2[j],SZ), *state)
+				+ 0.5*avg(*state, H->SimpSsubSimpSsub(locs1[i],SZ,locs1[i],SZ,locs2[j],SP,locs2[j],SM), *state)
+				+ 0.5*avg(*state, H->SimpSsubSimpSsub(locs1[i],SZ,locs1[i],SZ,locs2[j],SM,locs2[j],SP), *state)
+				+ 0.5*avg(*state, H->SimpSsubSimpSsub(locs1[i],SP,locs1[i],SM,locs2[j],SZ,locs2[j],SZ), *state)
+				+ 0.25*avg(*state, H->SimpSsubSimpSsub(locs1[i],SP,locs1[i],SM,locs2[j],SP,locs2[j],SM), *state)
+				+ 0.25*avg(*state, H->SimpSsubSimpSsub(locs1[i],SP,locs1[i],SM,locs2[j],SM,locs2[j],SP), *state)
+				+ 0.5*avg(*state, H->SimpSsubSimpSsub(locs1[i],SM,locs1[i],SP,locs2[j],SZ,locs2[j],SZ), *state)
+				+ 0.25*avg(*state, H->SimpSsubSimpSsub(locs1[i],SM,locs1[i],SP,locs2[j],SP,locs2[j],SM), *state)
+				+ 0.25*avg(*state, H->SimpSsubSimpSsub(locs1[i],SM,locs1[i],SP,locs2[j],SM,locs2[j],SP), *state);
 		}
 	}
 	return localPksCorr;
@@ -146,15 +146,15 @@ PksCorr ()
 		triangle[1] = j;
 		triangle[2] = k;
 		do {
-			PksCorr(triangle[0],triangle[1],triangle[2]) = avg(*state, H->SimpSsubSimpSimp(L,triangle[0],SZ,triangle[0],SZ,triangle[1],SZ,triangle[2],SZ), *state)
-			+ 0.5*avg(*state, H->SimpSsubSimpSimp(L,triangle[0],SZ,triangle[0],SZ,triangle[1],SP,triangle[2],SM), *state)
-			+ 0.5*avg(*state, H->SimpSsubSimpSimp(L,triangle[0],SZ,triangle[0],SZ,triangle[1],SM,triangle[2],SP), *state)
-			+ 0.5*avg(*state, H->SimpSsubSimpSimp(L,triangle[0],SP,triangle[0],SM,triangle[1],SZ,triangle[2],SZ), *state)
-			+ 0.25*avg(*state, H->SimpSsubSimpSimp(L,triangle[0],SP,triangle[0],SM,triangle[1],SP,triangle[2],SM), *state)
-			+ 0.25*avg(*state, H->SimpSsubSimpSimp(L,triangle[0],SP,triangle[0],SM,triangle[1],SM,triangle[2],SP), *state)
-			+ 0.5*avg(*state, H->SimpSsubSimpSimp(L,triangle[0],SM,triangle[0],SP,triangle[1],SZ,triangle[2],SZ), *state)
-			+ 0.25*avg(*state, H->SimpSsubSimpSimp(L,triangle[0],SM,triangle[0],SP,triangle[1],SP,triangle[2],SM), *state)
-			+ 0.25*avg(*state, H->SimpSsubSimpSimp(L,triangle[0],SM,triangle[0],SP,triangle[1],SM,triangle[2],SP), *state);
+			PksCorr(triangle[0],triangle[1],triangle[2]) = avg(*state, H->SimpSsubSimpSimp(triangle[0],SZ,triangle[0],SZ,triangle[1],SZ,triangle[2],SZ), *state)
+			+ 0.5*avg(*state, H->SimpSsubSimpSimp(triangle[0],SZ,triangle[0],SZ,triangle[1],SP,triangle[2],SM), *state)
+			+ 0.5*avg(*state, H->SimpSsubSimpSimp(triangle[0],SZ,triangle[0],SZ,triangle[1],SM,triangle[2],SP), *state)
+			+ 0.5*avg(*state, H->SimpSsubSimpSimp(triangle[0],SP,triangle[0],SM,triangle[1],SZ,triangle[2],SZ), *state)
+			+ 0.25*avg(*state, H->SimpSsubSimpSimp(triangle[0],SP,triangle[0],SM,triangle[1],SP,triangle[2],SM), *state)
+			+ 0.25*avg(*state, H->SimpSsubSimpSimp(triangle[0],SP,triangle[0],SM,triangle[1],SM,triangle[2],SP), *state)
+			+ 0.5*avg(*state, H->SimpSsubSimpSimp(triangle[0],SM,triangle[0],SP,triangle[1],SZ,triangle[2],SZ), *state)
+			+ 0.25*avg(*state, H->SimpSsubSimpSimp(triangle[0],SM,triangle[0],SP,triangle[1],SP,triangle[2],SM), *state)
+			+ 0.25*avg(*state, H->SimpSsubSimpSimp(triangle[0],SM,triangle[0],SP,triangle[1],SM,triangle[2],SP), *state);
 		} while ( std::next_permutation(triangle,triangle+3) );
 	}
 	return PksCorr;

@@ -19,37 +19,57 @@ public:
 	/**Does nothing.*/
 	PKS () {};
 
-	/**Constructs a Kondo Lattice Model with partial Kondo screening (PKS) geometry.
-	\param L_input : chain length
-	\param Bzval_input : \f$B^z_i\f$ (site dependent magnetic field acting on the impurities)
-	\param J_input : \f$J\f$
-	\param t_input : First hopping \f$t\f$. \f$t>0\f$ is the common sign.
-	\param tPrime_input : Second hopping \f$t^{\prime}\f$ (\f$t^{\prime}>0\f$ is common sign).
-	\param U_input : \f$U\f$ (local Hubbard interaction)
-	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
-	\param D_input : \f$2S+1\f$ (impurity spin)*/
-	PKS (size_t L_input, double J_input=-1., double t_input=-1., double tPrime_input=-1.,
+	/**Constructs a Kondo Lattice Model with 1 dimensional partial Kondo screening (PKS) geometry. Uses nnn-hopping for the geometry.
+	   \param L_input : chain length
+	   \param J_input : \f$J\f$
+	   \param t_input : First hopping \f$t\f$. \f$t>0\f$ is the common sign.
+	   \param tPrime_input : Second hopping \f$t^{\prime}\f$ (\f$t^{\prime}>0\f$ is common sign).
+	   \param Bzval_input : \f$B^z_i\f$ (site dependent magnetic field acting on the impurities)
+	   \param U_input : \f$U\f$ (local Hubbard interaction)
+	   \param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
+	   \param D_input : \f$2S+1\f$ (impurity spin)*/
+	PKS (size_t L_input, double J_input=-1., double t_input=1., double tPrime_input=1.,
 	            vector<double> Bzval_input={}, double U_input=0., bool CALC_SQUARE=true, size_t D_input=2);
 
-	PKS (size_t Lx_input, size_t Ly_input=2, double J_input=-1., double t_input=-1., double tPrime_input=-1.,
+	/**Constructs a Kondo Lattice Model with 2 dimensional partial Kondo screening (PKS) geometry. Uses nnn-hopping for the geometry. (Ly=2 means 1D.)
+	   \param Lx_input : chain length
+	   \param Ly_input : chain width
+	   \param J_input : \f$J\f$
+	   \param t_input : First hopping \f$t\f$. \f$t>0\f$ is the common sign.
+	   \param tPrime_input : Second hopping \f$t^{\prime}\f$ (\f$t^{\prime}>0\f$ is common sign).
+	   \param Bzval_input : \f$B^z_i\f$ (site dependent magnetic field acting on the impurities)
+	   \param U_input : \f$U\f$ (local Hubbard interaction)
+	   \param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
+	   \param D_input : \f$2S+1\f$ (impurity spin)*/
+	PKS (size_t Lx_input, size_t Ly_input=2, double J_input=-1., double t_input=1., double tPrime_input=1.,
 		 vector<double> Bzval_input={}, double U_input=0., bool CALC_SQUARE=false, size_t D_input=2);
 
+	///@{
+	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
 	typedef DmrgSolverQ<2,PKS> Solver;
-
-private:
-	double J=-1., Bz=0., t=-1., tPrime=0., U=0.;
-	size_t D=2; size_t Ly=1;
-	
-	vector<double> Bzval;
-	vector<size_t> imploc;
+	typedef MpsQ<2,double> StateXd;
+	typedef MpoQ<2> Operator;
+	///@}
 
 };
 
 PKS::
 PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector<double> Bzval_input, double U_input, bool CALC_SQUARE, size_t D_input)
-	:KondoModel(L_input,"KondoModel (PKS geometry) ", 1, D_input ),
-	J(J_input), t(t_input), tPrime(tPrime_input), U(U_input), D(D_input)
-{	
+	:KondoModel()
+{
+	// assign stuff
+	this->N_sites = L_input;
+	this->N_legs = 1;
+	this->Qtot = {0,0};
+	this->qlabel = NMlabel;
+	this->label = "KondoModel (PKS geometry)";
+	this->format = N_halveM;
+	this->J = J_input;
+	this->t = t_input;
+	this->tPrime = tPrime_input;
+	this->U = U_input;
+	this->D = D_input;
+
 	// initialize member variable imploc
 	this->imploc.resize(L_input);
 	std::iota(this->imploc.begin(), this->imploc.end(), 0);
@@ -73,7 +93,6 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 	//construct PKS topology with t-tPrime structure
 	std::vector<Eigen::MatrixXd> tVec(this->N_sites);
 	std::vector<double> tPrimeVec(this->N_sites);
-	Eigen::MatrixXd Zero(1,1); Zero.setZero();
 
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
@@ -85,14 +104,14 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 
 	F = FermionBase(1);
 	S = SpinBase(1,D);
-
+	
+	MpoQ<2>::qloc.resize(N_sites);
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
 		MpoQ<2>::qloc[l].resize(F.dim()*S.dim());
 		for (size_t j=0; j<S.dim(); j++)
 			for (size_t i=0; i<F.dim(); i++)
 			{
-				MpoQ<2>::qloc[l][i+F.dim()*j] = ::qvacuum<2>();
 				MpoQ<2>::qloc[l][i+F.dim()*j] = F.qNums(i);
 				MpoQ<2>::qloc[l][i+F.dim()*j][1] += S.qNums(j)[0];
 			}
@@ -111,7 +130,7 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 		if (l==0)
 		{
 			G[l].setRowVector(14,8);
-			KondoModel::set_operators(Olocal,Otight,Onextn,F,S,J,Bzval[l],tVec[l],Zero,0.,tPrimeVec[l],U);
+			KondoModel::set_operators(Olocal,Otight,Onextn,F,S,J,Bzval[l],tVec[l],0.,0.,tPrimeVec[l],U);
 			this->Daux = 2 + Otight.size() + 2*Onextn.size();
 			G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(13);
 			if (CALC_SQUARE == true)
@@ -123,7 +142,7 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 		else if (l==this->N_sites-1)
 		{
 			G[l].setColVector(14,8);
-			KondoModel::set_operators(Olocal,Otight,Onextn,F,S,J,Bzval[l],tVec[l],Zero,0.,tPrimeVec[l],U);			
+			KondoModel::set_operators(Olocal,Otight,Onextn,F,S,J,Bzval[l],tVec[l],0.,0.,tPrimeVec[l],U);			
 			G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
 			if (CALC_SQUARE == true)
 			{
@@ -134,7 +153,7 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 		else
 		{
 			G[l].setMatrix(14,8);
-			KondoModel::set_operators(Olocal,Otight,Onextn,F,S,J,Bzval[l],tVec[l],Zero,0.,tPrimeVec[l],U);			
+			KondoModel::set_operators(Olocal,Otight,Onextn,F,S,J,Bzval[l],tVec[l],0.,0.,tPrimeVec[l],U);			
 			G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
 			if (CALC_SQUARE == true)
 			{
@@ -163,9 +182,21 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 
 PKS::
 PKS (size_t Lx_input, size_t Ly_input, double J_input, double t_input, double tPrime_input, vector<double> Bzval_input, double U_input, bool CALC_SQUARE, size_t D_input)
-	:KondoModel(Lx_input,"KondoModel (PKS geometry) ", Ly_input, D_input ),
-	J(J_input), t(t_input), tPrime(tPrime_input), U(U_input), D(D_input)
-{	
+	:KondoModel()
+{
+	// assign stuff
+	this->N_sites = Lx_input;
+	this->N_legs = Ly_input;
+	this->Qtot = {0,0};
+	this->qlabel = NMlabel;
+	this->label = "KondoModel (PKS geometry)";
+	this->format = N_halveM;
+	this->J = J_input;
+	this->t = t_input;
+	this->tPrime = tPrime_input;
+	this->U = U_input;
+	this->D = D_input;
+
 	// initialize member variable imploc
 	this->imploc.resize(N_sites);
 	std::iota(this->imploc.begin(), this->imploc.end(), 0);
@@ -187,59 +218,55 @@ PKS (size_t Lx_input, size_t Ly_input, double J_input, double t_input, double tP
 	this->label += ss.str();
 
 	//construct PKS topology with t-tPrime structure
-	std::vector<Eigen::MatrixXd> tIntra(this->N_sites);
+	std::vector<double> tIntra(this->N_sites);
 	std::vector<Eigen::MatrixXd> tInter(this->N_sites);
 
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
 		tInter[l].resize(N_legs,N_legs); tInter[l].setZero();
-		tIntra[l].resize(N_legs,N_legs);
 
 		if(((l) % 3 == 0))
 		{
-			tIntra[l].setZero();
+			tIntra[l] = tPrime;
 			for (size_t i=0; i<N_legs; i++)
 			{
 				if(i % 2 == 0 ) {tInter[l](i,i)=t;}
 				if(i % 2 == 1 ) {tInter[l](i,i)=tPrime;}
-				if(i < N_legs-1) {tIntra[l](i,i+1)=tPrime;}
 			}
 			for (size_t i=1; i<N_legs; i+=2)
 			{
 				tInter[l](i,i-1) = t;
-				if (i+1 < N_legs ) {tInter[l](i+1,i) = t;}
+				if (i+1 < N_legs ) {tInter[l](i,i+1) = t;}
 			}
 
 		}
 		if(((l) % 3 == 1))
 		{
-			tIntra[l].setZero();
+			tIntra[l] = t;
 			for (size_t i=0; i<N_legs; i++)
 			{
 				if(i % 2 == 0 ) {tInter[l](i,i)=t;}
 				if(i % 2 == 1 ) {tInter[l](i,i)=t;}
-				if(i < N_legs-1) {tIntra[l](i,i+1)=t;}
 			}
 			for (size_t i=1; i<N_legs; i+=2)
 			{
 				tInter[l](i,i-1) = t;
-				if (i+1 < N_legs ) {tInter[l](i+1,i) = tPrime;}
+				if (i+1 < N_legs ) {tInter[l](i,i+1) = tPrime;}
 			}
 			
 		}
 		if(((l) % 3 == 2))
 		{
-			tIntra[l].setZero();		
+			tIntra[l] = t;
 			for (size_t i=0; i<N_legs; i++)
 			{
 				if(i % 2 == 0 ) {tInter[l](i,i)=tPrime;}
 				if(i % 2 == 1 ) {tInter[l](i,i)=t;}
-				if(i < N_legs-1) {tIntra[l](i,i+1)=t;}				
 			}
 			for (size_t i=1; i<N_legs; i+=2)
 			{
 				tInter[l](i,i-1) = t;
-				if (i+1 < N_legs ) {tInter[l](i+1,i) = t;}
+				if (i+1 < N_legs ) {tInter[l](i,i+1) = t;}
 			}
 			
 		}
@@ -248,13 +275,13 @@ PKS (size_t Lx_input, size_t Ly_input, double J_input, double t_input, double tP
 	F = FermionBase(N_legs);
 	S = SpinBase(N_legs,D);
 
+	MpoQ<2>::qloc.resize(N_sites);	
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
 		MpoQ<2>::qloc[l].resize(F.dim()*S.dim());
 		for (size_t j=0; j<S.dim(); j++)
 			for (size_t i=0; i<F.dim(); i++)
 			{
-				MpoQ<2>::qloc[l][i+F.dim()*j] = ::qvacuum<2>();
 				MpoQ<2>::qloc[l][i+F.dim()*j] = F.qNums(i);
 				MpoQ<2>::qloc[l][i+F.dim()*j][1] += S.qNums(j)[0];
 			}
@@ -323,6 +350,5 @@ PKS (size_t Lx_input, size_t Ly_input, double J_input, double t_input, double tP
 	this->Otight.resize(0);
 	this->Onextn.resize(0);
 }
-	
 }
 
