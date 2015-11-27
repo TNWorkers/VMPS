@@ -26,21 +26,23 @@ public:
 	*/
 	HubbardModel (size_t Lx_input, double U_input, double V_input=0., double tPrime_input=0., size_t Ly_input=1, bool CALC_SQUARE=true);
 	
-//	static SuperMatrix<double> Generator (double U, double V=0., double tPrime=0.);
+	/**Constructor for Hubbard rings and cylinders.
+	\param BC_input : boundary condition, e.g. BC<RING>(10) for a 10-site ring (folded into 5x2), BC<CYLINDER>(10,2) for a 10x2 cylinder
+	\param U_input : \f$U\f$
+	\param V_input : \f$V\f$
+	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
+	*/
+	template<BC_CHOICE CHOICE> HubbardModel (BC<CHOICE> BC_input, double U_input, double V_input=0., bool CALC_SQUARE=true);
 	
 	/**Determines the operators of the Hamiltonian. Made static to be called from other classes, e.g. KondoModel.
-	\param Olocal : the local interaction terms
-	\param Otight : the tight-binding terms
-	\param Onextn : the next-nearest-neighbour terms
 	\param F : the FermionBase class where the operators are pulled from
 	\param U : \f$U\f$
 	\param V : \f$V\f$
 	\param tPrime : \f$t'\f$
+	\param tIntra : hopping within the rungs of ladder (or between legs)
+	\param PERIODIC : if \p true, makes periodic boundary conditions in y-direction, i.e. a cylinder
 	*/
-	static void set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, const FermionBase &F, double U, double V=0., double tPrime=0.);
-	
-	/**Calculates and returns \f$H^2\f$ on the fly.*/
-	MpoQ<2> Hsq();
+	static HamiltonianTermsXd set_operators (const FermionBase &F, double U, double V=0., double tPrime=0., double tIntra=1., bool PERIODIC=false);
 	
 	/**single-site local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$.
 	The quantum numbers are \f$N_{\uparrow}\f$ and \f$N_{\downarrow}\f$. Used by default.*/
@@ -87,7 +89,7 @@ private:
 	FermionBase F;
 };
 
-const std::array<qarray<2>,4> HubbardModel::qssUD {qarray<2>{0,0}, qarray<2>{1,0}, qarray<2>{0,1}, qarray<2>{1,1}};
+const std::array<qarray<2>,4> HubbardModel::qssUD {qarray<2>{0,0}, qarray<2>{1,0}, qarray<2>{0,1},  qarray<2>{1,1}};
 const std::array<qarray<2>,4> HubbardModel::qssNM {qarray<2>{0,0}, qarray<2>{1,1}, qarray<2>{1,-1}, qarray<2>{2,0}};
 const std::array<string,2>    HubbardModel::Nlabel{"N↑","N↓"};
 
@@ -111,35 +113,35 @@ qloc (size_t N_legs)
 	return vout;
 }
 
-void HubbardModel::
-set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, const FermionBase &F, double U, double V, double tPrime)
+HamiltonianTermsXd HubbardModel::
+set_operators (const FermionBase &F, double U, double V, double tPrime, double tIntra, bool PERIODIC)
 {
-	Olocal.clear();
-	Otight.clear();
-	Onextn.clear();
+	HamiltonianTermsXd Terms;
 	
 	for (int leg=0; leg<F.orbitals(); ++leg)
 	{
-		Otight.push_back(make_tuple(-1., F.cdag(UP,leg), F.sign() * F.c(UP,leg)));
-		Otight.push_back(make_tuple(-1., F.cdag(DN,leg), F.sign() * F.c(DN,leg)));
-		Otight.push_back(make_tuple(+1., F.c(UP,leg),    F.sign() * F.cdag(UP,leg)));
-		Otight.push_back(make_tuple(+1., F.c(DN,leg),    F.sign() * F.cdag(DN,leg)));
+		Terms.tight.push_back(make_tuple(-1., F.cdag(UP,leg), F.sign() * F.c(UP,leg)));
+		Terms.tight.push_back(make_tuple(-1., F.cdag(DN,leg), F.sign() * F.c(DN,leg)));
+		Terms.tight.push_back(make_tuple(+1., F.c(UP,leg),    F.sign() * F.cdag(UP,leg)));
+		Terms.tight.push_back(make_tuple(+1., F.c(DN,leg),    F.sign() * F.cdag(DN,leg)));
 		
 		if (V != 0.)
 		{
-			Otight.push_back(make_tuple(V, F.n(leg), F.n(leg)));
+			Terms.tight.push_back(make_tuple(V, F.n(leg), F.n(leg)));
 		}
 	}
 	
 	if (tPrime != 0.)
 	{
-		Onextn.push_back(make_tuple(-tPrime, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
-		Onextn.push_back(make_tuple(-tPrime, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
-		Onextn.push_back(make_tuple(+tPrime, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
-		Onextn.push_back(make_tuple(+tPrime, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
+		Terms.nextn.push_back(make_tuple(-tPrime, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
+		Terms.nextn.push_back(make_tuple(-tPrime, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
+		Terms.nextn.push_back(make_tuple(+tPrime, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
+		Terms.nextn.push_back(make_tuple(+tPrime, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
 	}
 	
-	Olocal.push_back(make_tuple(1., F.HubbardHamiltonian(U,1.,V)));
+	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(U,tIntra,V,PERIODIC)));
+	
+	return Terms;
 }
 
 HubbardModel::
@@ -154,10 +156,9 @@ U(U_input), V(V_input), tPrime(tPrime_input)
 	
 	F = FermionBase(N_legs);
 	
-	set_operators(Olocal,Otight,Onextn, F, U,V,tPrime);
-	this->Daux = 2 + Otight.size() + 2*Onextn.size();
-	
-	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
+	HamiltonianTermsXd Terms = set_operators(F, U,V,tPrime);
+	SuperMatrix<double> G = ::Generator(Terms);
+	this->Daux = Terms.auxdim();
 	
 	this->construct(G, this->W, this->Gvec);
 	
@@ -172,18 +173,93 @@ U(U_input), V(V_input), tPrime(tPrime_input)
 	}
 }
 
-MpoQ<2> HubbardModel::
-Hsq()
+template<BC_CHOICE CHOICE>
+HubbardModel::
+HubbardModel (BC<CHOICE> BC_input, double U_input, double V_input, bool CALC_SQUARE)
+:MpoQ<2> (BC_input.Lx, BC_input.Ly, HubbardModel::qloc(BC_input.Ly), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
+U(U_input), V(V_input)
 {
-	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
-	MpoQ<2> Mout(N_sites, N_legs, tensor_product(G,G), HubbardModel::qloc(N_legs), {0,0}, HubbardModel::Nlabel, "HubbardModel H^2");
-	return Mout;
+	stringstream ss;
+	ss << "(U=" << U << ",V=" << V << "," << BC_input.CHOICE << ")";
+	this->label += ss.str();
+	
+	F = FermionBase(N_legs);
+	
+	vector<SuperMatrix<double> > G(this->N_sites);
+	vector<SuperMatrix<double> > Gsq;
+	if (CALC_SQUARE == true)
+	{
+		Gsq.resize(this->N_sites);
+	}
+	
+	HamiltonianTermsXd Terms;
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		if (l==0)
+		{
+			if      (BC_input.CHOICE == RING)     {Terms = set_operators(F, U,V,0.,1.);}
+			else if (BC_input.CHOICE == CYLINDER) {Terms = set_operators(F, U,V,0.,1.,true);}
+			
+			this->Daux = Terms.auxdim();
+			G[l].setRowVector(Daux,F.dim());
+			G[l] = ::Generator(Terms).row(Daux-1);
+			
+			if (CALC_SQUARE == true)
+			{
+				Gsq[l].setRowVector(Daux*Daux,F.dim());
+				Gsq[l] = tensor_product(G[l],G[l]);
+			}
+		}
+		else if (l==this->N_sites-1)
+		{
+			if      (BC_input.CHOICE == RING)     {Terms = set_operators(F, U,V,0.,1.);}
+			else if (BC_input.CHOICE == CYLINDER) {Terms = set_operators(F, U,V,0.,1.,true);}
+			
+			this->Daux = Terms.auxdim();
+			G[l].setColVector(Daux,F.dim());
+			G[l] = ::Generator(Terms).col(0);
+			
+			if (CALC_SQUARE == true)
+			{
+				Gsq[l].setColVector(Daux*Daux,F.dim());
+				Gsq[l] = tensor_product(G[l],G[l]);
+			}
+		}
+		else
+		{
+			if      (BC_input.CHOICE == RING)     {Terms = set_operators(F, U,V,0.,0.);}
+			else if (BC_input.CHOICE == CYLINDER) {Terms = set_operators(F, U,V,0.,1.,true);}
+			
+			this->Daux = Terms.auxdim();
+			G[l].setMatrix(Daux,F.dim());
+			G[l] = ::Generator(Terms);
+			
+			if (CALC_SQUARE == true)
+			{
+				Gsq[l].setMatrix(Daux*Daux,F.dim());
+				Gsq[l] = tensor_product(G[l],G[l]);
+			}
+		}
+	}
+	
+	this->construct(G, this->W, this->Gvec);
+	
+	if (CALC_SQUARE == true)
+	{
+		this->construct(Gsq, this->Wsq, this->GvecSq);
+		this->GOT_SQUARE = true;
+	}
+	else
+	{
+		this->GOT_SQUARE = false;
+	}
 }
 
 MpoQ<2> HubbardModel::
 Auger (size_t locx, size_t locy)
 {
-	assert(locx < N_sites and locy < N_legs);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "Auger(" << locx << "," << locy << ")";
 	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {-1,-1}, HubbardModel::Nlabel, ss.str());
@@ -206,7 +282,7 @@ eta()
 MpoQ<2> HubbardModel::
 Aps (size_t locx, size_t locy)
 {
-	assert(locx < N_sites and locy < N_legs);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "Aps(" << locx << "," << locy << ")";
 	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {+1,+1}, HubbardModel::Nlabel, ss.str());
@@ -217,7 +293,7 @@ Aps (size_t locx, size_t locy)
 MpoQ<2> HubbardModel::
 c (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
-	assert(locx < N_sites and locy < N_legs);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "c(" << locx << "," << locy << ",σ=" << sigma << ")";
 	qarray<2> qdiff;
@@ -243,7 +319,7 @@ c (SPIN_INDEX sigma, size_t locx, size_t locy)
 MpoQ<2> HubbardModel::
 cdag (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
-	assert(locx < N_sites and locy < N_legs);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "c†(" << locx << "," << locy << ",σ=" << sigma << ")";
 	qarray<2> qdiff;
@@ -269,7 +345,7 @@ cdag (SPIN_INDEX sigma, size_t locx, size_t locy)
 MpoQ<2> HubbardModel::
 triplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
-	assert(locx < N_sites and locy < N_legs);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "triplon(" << locx << ")" << "c(" << locx+1 << ",σ=" << sigma << ")";
 	qarray<2> qdiff;
@@ -299,7 +375,7 @@ triplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 MpoQ<2> HubbardModel::
 antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
-	assert(locx < N_sites and locy < N_legs);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "antitriplon(" << locx << ")" << "c(" << locx+1 << ",σ=" << sigma << ")";
 	qarray<2> qdiff;
@@ -329,7 +405,7 @@ antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 MpoQ<2> HubbardModel::
 quadruplon (size_t locx, size_t locy)
 {
-	assert(locx < N_sites and locy < N_legs);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "Auger(" << locx << ")" << "Auger(" << locx+1 << ")";
 	
@@ -357,7 +433,7 @@ quadruplon (size_t locx, size_t locy)
 MpoQ<2> HubbardModel::
 d (size_t locx, size_t locy)
 {
-	assert(locx < N_sites and locy < N_legs);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "double_occ(" << locx << "," << locy << ")";
 	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
@@ -368,7 +444,7 @@ d (size_t locx, size_t locy)
 MpoQ<2> HubbardModel::
 n (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
-	assert(locx < N_sites and locy < N_legs);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "n(" << locx << "," << locy << ",σ=" << sigma << ")";
 	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
@@ -380,7 +456,7 @@ n (SPIN_INDEX sigma, size_t locx, size_t locy)
 MpoQ<2> HubbardModel::
 Sz (size_t locx, size_t locy)
 {
-	assert(locx < N_sites and locy < N_legs);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx << "," << locy << ")";
 	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());

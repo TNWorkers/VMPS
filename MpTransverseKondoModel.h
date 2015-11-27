@@ -2,6 +2,7 @@
 #define STRAWBERRY_TRANSVERSEKONDOMODEL
 
 #include "MpKondoModel.h"
+#include "MpHeisenbergModel.h"
 
 namespace VMPS
 {
@@ -27,7 +28,7 @@ public:
 	\param D_input : \f$2S+1\f$ (impurity spin)*/
 	TransverseKondoModel (size_t L_input, double J_input, 
 	                      initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input={}, initializer_list<double> Bxloc_input={}, 
-	                      bool CALC_SQUARE=true, size_t D_input=2);
+	                      size_t D_input=2, bool CALC_SQUARE=true);
 	
 	/**Constructs a Kondo Impurity Model (aka a diluted Kondo Model) using vectors for the set of impurities.
 	\param L_input : chain length
@@ -39,24 +40,15 @@ public:
 	\param D_input : \f$2S+1\f$ (impurity spin)*/
 	TransverseKondoModel (size_t L_input, double J_input, 
 	                      vector<size_t> imploc_input, vector<double> Bzloc_input, vector<double> Bxloc_input, 
-	                      bool CALC_SQUARE=true, size_t D_input=2);
+	                      size_t D_input=2, bool CALC_SQUARE=true);
 	
-	/**Labels the conserved quantum numbers as "N", "M".*/
+	/**Labels the conserved quantum number as "N".*/
 	static const std::array<string,1> Nlabel;
 	
-	static const std::array<qarray<1>,4> qsub;
-	static const vector<qarray<1> > qimp (size_t D)
-	{
-		vector<qarray<1> > vout;
-		for (int i=0; i<D; ++i)
-		{
-			vout.push_back(qarray<1>{0});
-			vout.push_back(qarray<1>{1});
-			vout.push_back(qarray<1>{1});
-			vout.push_back(qarray<1>{2});
-		}
-		return vout;
-	};
+	static const std::array<qarray<1>,4> qssN;
+	
+	vector<qarray<1> > qsub (size_t N_legs);
+	vector<qarray<1> > qimp (size_t N_legs, size_t D);
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
@@ -70,19 +62,19 @@ public:
 	
 	///@{
 	/**Operator for the impurity spin.*/
-	MpoQ<1> Simp (size_t L, size_t loc, SPINOP_LABEL Sa);
+	MpoQ<1> Simp (SPINOP_LABEL Sa, size_t locx, size_t locy=0);
 	
 	/**Operator for the substrate spin.*/
-	MpoQ<1> Ssub (size_t L, size_t loc, SPINOP_LABEL Sa);
+	MpoQ<1> Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy=0);
 	
 	/**Operator for the impurity-substrate correlations.*/
-	MpoQ<1> SimpSsub (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
+	MpoQ<1> SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	
 	/**Operator for the impurity-impurity correlations.*/
-	MpoQ<1> SimpSimp (size_t L, size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2);
+	MpoQ<1> SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	
 	/***/
-	MpoQ<1> hopping (size_t L, size_t loc);
+	MpoQ<1> hopping (size_t locx, size_t locy=0);
 	///@}
 	
 private:
@@ -94,21 +86,56 @@ private:
 	vector<size_t> imploc;
 	
 	FermionBase F;
+	SpinBase S;
 };
 
 const std::array<string,1> TransverseKondoModel::Nlabel{"N"};
+const std::array<qarray<1>,4> TransverseKondoModel::qssN {qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2}};
 
-
-const std::array<qarray<1>,4> TransverseKondoModel::qsub
+vector<qarray<1> > TransverseKondoModel::
+qsub (size_t N_legs)
 {
-	qarray<1>{0}, qarray<1>{1}, qarray<1>{1}, qarray<1>{2}
+	vector<qarray<1> > vout(pow(4,N_legs));
+	
+	NestedLoopIterator Nelly(N_legs,4);
+	for (Nelly=Nelly.begin(); Nelly!=Nelly.end(); ++Nelly)
+	{
+		vout[*Nelly][0] = qssN[Nelly(0)][0];
+		for (int leg=1; leg<N_legs; ++leg)
+		{
+			vout[*Nelly][0] += qssN[Nelly(leg)][0];
+		}
+	}
+	
+	return vout;
+}
+
+vector<qarray<1> > TransverseKondoModel::
+qimp (size_t N_legs, size_t D)
+{
+	size_t dimS = static_cast<size_t>(pow(2,N_legs));
+	size_t dimF = static_cast<size_t>(pow(4,N_legs));
+	
+	vector<qarray<1> > vout(dimS*dimF);
+	
+	vector<qarray<1> > vS = HeisenbergModel::qloc(N_legs,D);
+	vector<qarray<1> > vF = qsub(N_legs);
+	
+	NestedLoopIterator Nelly(2,{dimS,dimF});
+	for (Nelly=Nelly.begin(); Nelly!=Nelly.end(); ++Nelly)
+	{
+		vout[*Nelly] = vF[Nelly(1)]; // only count N
+	}
+	
+	return vout;
 };
 
 TransverseKondoModel::
-TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, vector<double> Bxloc_input, bool CALC_SQUARE, size_t D_input)
+TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, vector<double> Bxloc_input, size_t D_input, bool CALC_SQUARE)
 :MpoQ<1,double>(), J(J_input), imploc(imploc_input), D(D_input)
 {
 	F = FermionBase(1);
+	S = SpinBase(1,D);
 	
 	// if Bzloc_input empty, set it to zero
 	if (Bzloc_input.size() == 0)
@@ -134,6 +161,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 	
 	// assign stuff
 	this->N_sites = L_input;
+	this->N_legs = 1;
 	this->Qtot = {0};
 	this->qlabel = Nlabel;
 	this->label = "TransverseKondoModel";
@@ -175,18 +203,18 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 	
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
+		
 		auto it = find(imploc.begin(),imploc.end(),l);
 		// got an impurity
 		if (it!=imploc.end())
 		{
-			this->qloc[l] = qimp(D);
+			this->qloc[l] = qimp(N_legs,D);
 			
 			size_t i = it-imploc.begin();
 			if (l==0)
 			{
 				G[l].setRowVector(6,8);
-				KondoModel::set_operators(Olocal,Otight,Onextn, F, J,Bzval[i],Bxloc[i],-1.,0.,0.,D);
-				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(5);
+				G[l] = ::Generator(KondoModel::set_operators(F,S, J,Bzloc[i],MatrixXd::Identity(1,1),0.,Bxloc[i],0.,0.)).row(5);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(6*6,8);
@@ -196,8 +224,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,8);
-				KondoModel::set_operators(Olocal,Otight,Onextn, F, J,Bzval[i],Bxloc[i],-1.,0.,0.,D);
-				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
+				G[l] = ::Generator(KondoModel::set_operators(F,S, J,Bzloc[i],MatrixXd::Identity(1,1),0.,Bxloc[i],0.,0.)).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(6*6,8);
@@ -207,8 +234,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else
 			{
 				G[l].setMatrix(6,8);
-				KondoModel::set_operators(Olocal,Otight,Onextn, F, J,Bzval[i],Bxloc[i],-1.,0.,0.,D);
-				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
+				G[l] = ::Generator(KondoModel::set_operators(F,S, J,Bzloc[i],MatrixXd::Identity(1,1),0.,Bxloc[i],0.,0.));
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(6*6,8);
@@ -219,13 +245,12 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 		// no impurity
 		else
 		{
-			this->qloc[l] = vector<qarray<1> >(begin(qsub),end(qsub));
+			this->qloc[l] = qsub(N_legs);
 			
 			if (l==0)
 			{
 				G[l].setRowVector(6,4);
-				HubbardModel::set_operators(Olocal,Otight,Onextn, F, 0.);
-				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(5);
+				G[l] = ::Generator(HubbardModel::set_operators(F, 0.)).row(5);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(6*6,4);
@@ -235,8 +260,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,4);
-				HubbardModel::set_operators(Olocal,Otight,Onextn, F, 0.);
-				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
+				G[l] = ::Generator(HubbardModel::set_operators(F, 0.)).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(6*6,4);
@@ -246,8 +270,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else
 			{
 				G[l].setMatrix(6,4);
-				HubbardModel::set_operators(Olocal,Otight,Onextn, F, 0.);
-				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
+				G[l] = ::Generator(HubbardModel::set_operators(F, 0.));
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(6*6,4);
@@ -257,7 +280,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 		}
 	}
 	
-	this->Daux = 2 + Otight.size() + 2*Onextn.size();
+	this->Daux = 6;
 	
 	this->construct(G, this->W, this->Gvec);
 	
@@ -273,90 +296,93 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 }
 
 TransverseKondoModel::
-TransverseKondoModel (size_t L_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input, initializer_list<double> Bxloc_input, bool CALC_SQUARE, size_t D_input)
-:TransverseKondoModel(L_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), vector<double>(begin(Bzloc_input),end(Bzloc_input)), vector<double>(begin(Bxloc_input),end(Bxloc_input)), CALC_SQUARE, D_input)
+TransverseKondoModel (size_t L_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input, initializer_list<double> Bxloc_input, size_t D_input, bool CALC_SQUARE)
+:TransverseKondoModel(L_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), 
+                      vector<double>(begin(Bzloc_input),end(Bzloc_input)), 
+                      vector<double>(begin(Bxloc_input),end(Bxloc_input)), CALC_SQUARE, D_input)
 {}
 
 MpoQ<1> TransverseKondoModel::
-Simp (size_t L, size_t loc, SPINOP_LABEL Sa)
+Simp (SPINOP_LABEL Sa, size_t locx, size_t locy)
 {
-	assert(loc<L);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
-	ss << Sa << "imp(" << loc << ")";
-	MpoQ<1> Mout(L, locBasis(), {0}, Nlabel, ss.str());
-	MatrixXd Id4(4,4); Id4.setIdentity();
-	Mout.setLocal(loc, kroneckerProduct(SpinBase::Scomp(Sa,D),Id4));
+	ss << Sa << "imp(" << locx << "," << locy << ")";
+	MpoQ<1> Mout(N_sites, N_legs, locBasis(), {0}, Nlabel, ss.str());
+	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
+	Mout.setLocal(locx, kroneckerProduct(S.Scomp(Sa,locy),IdSub));
 	return Mout;
 }
 
 MpoQ<1> TransverseKondoModel::
-Ssub (size_t L, size_t loc, SPINOP_LABEL Sa)
+Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy)
 {
-	assert(loc<L);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
-	ss << Sa << "sub(" << loc << ")";
-	MpoQ<1> Mout(L, locBasis(), {0}, Nlabel, ss.str());
-	MatrixXd IdImp(qloc[loc].size()/4, qloc[loc].size()/4); IdImp.setIdentity();
-	Mout.setLocal(loc, kroneckerProduct(IdImp, FermionBase::Scomp(Sa)));
+	ss << Sa << "sub(" << locx << "," << locy << ")";
+	MpoQ<1> Mout(N_sites, N_legs, locBasis(), {0}, Nlabel, ss.str());
+	MatrixXd IdImp(qloc[locx].size()/F.dim(), qloc[locx].size()/F.dim()); IdImp.setIdentity();
+	Mout.setLocal(locx, kroneckerProduct(IdImp, F.Scomp(Sa,locy)));
 	return Mout;
 }
 
 MpoQ<1> TransverseKondoModel::
-SimpSsub (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
+SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
-	assert(loc1<L and loc2<L);
+	assert(locx1<N_sites and locx2<N_sites and locy1<N_legs and locy2<N_legs);
 	stringstream ss;
-	ss << SOP1 << "(" << loc1 << ")" << SOP2 << "(" << loc2 << ")";
-	MpoQ<1> Mout(L, locBasis(), {0}, Nlabel, ss.str());
-	MatrixXd Id4(4,4); Id4.setIdentity();
-	MatrixXd IdImp(MpoQ<1>::qloc[loc2].size()/4, MpoQ<1>::qloc[loc2].size()/4); IdImp.setIdentity();
-	Mout.setLocal({loc1,loc2}, {kroneckerProduct(SpinBase::Scomp(SOP1,D),Id4), 
-	                            kroneckerProduct(IdImp,FermionBase::Scomp(SOP2))}
+	ss << SOP1 << "(" << locx1 << "," << locy1 << ")" << SOP2 << "(" << locx2 << "," << locy2 << ")";
+	MpoQ<1> Mout(N_sites, N_legs, locBasis(), {0}, Nlabel, ss.str());
+	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
+	MatrixXd IdImp(MpoQ<1>::qloc[locx2].size()/F.dim(), MpoQ<1>::qloc[locx2].size()/F.dim()); IdImp.setIdentity();
+	Mout.setLocal({locx1,locx2}, {kroneckerProduct(S.Scomp(SOP1,locy1),IdSub), 
+	                              kroneckerProduct(IdImp,F.Scomp(SOP2,locy2))}
 	             );
 	return Mout;
 }
 
 MpoQ<1> TransverseKondoModel::
-SimpSimp (size_t L,size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2)
+SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
-	assert(loc1<L and loc2<L);
+	assert(locx1<N_sites and locx2<N_sites and locy1<N_legs and locy2<N_legs);
 	stringstream ss;
-	ss << SOP1 << "(" << loc1 << ")" << SOP2 << "(" << loc2 << ")";
-	MpoQ<1> Mout(L, locBasis(), {0}, Nlabel, ss.str());
-	MatrixXd Id4(4,4); Id4.setIdentity();
-	MatrixXd IdImp(MpoQ<1>::qloc[loc2].size()/4, MpoQ<1>::qloc[loc2].size()/4); IdImp.setIdentity();
-	Mout.setLocal({loc1,loc2}, {kroneckerProduct(SpinBase::Scomp(SOP1,D),Id4), 
-	                            kroneckerProduct(SpinBase::Scomp(SOP2,D),Id4)}
+	ss << SOP1 << "(" << locx1 << "," << locy1 << ")" << SOP2 << "(" << locx2 << "," << locy2 << ")";
+	MpoQ<1> Mout(N_sites, N_legs, locBasis(), {0}, Nlabel, ss.str());
+	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
+	MatrixXd IdImp(MpoQ<1>::qloc[locx2].size()/F.dim(), MpoQ<1>::qloc[locx2].size()/F.dim()); IdImp.setIdentity();
+	Mout.setLocal({locx1,locx2}, {kroneckerProduct(S.Scomp(SOP1,locy1),IdSub), 
+	                              kroneckerProduct(S.Scomp(SOP2,locy2),IdSub)}
 	             );
 	return Mout;
 }
 
 MpoQ<1> TransverseKondoModel::
-hopping (size_t L, size_t loc)
+hopping (size_t locx, size_t locy)
 {
-	assert(loc<L);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
-	ss << "hopping" << "(" << loc << ")";
-	vector<SuperMatrix<double> > G(L);
-	for (size_t l=0; l<L; ++l)
+	ss << "hopping" << "(" << locx << "," << locy << ")";
+	vector<SuperMatrix<double> > G(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
 	{
 //		auto Gloc = HubbardModel::Generator(0,0);
 		auto it = find(imploc.begin(),imploc.end(),l);
+		HamiltonianTermsXd Terms;
 		if (it != imploc.end())
 		{
 //			Gloc = KondoModel::Generator(0,0,0,-1.,0,0,D);
-			KondoModel::set_operators(Olocal,Otight,Onextn, F, 0,0,0,-1.,0,0,D); // t=-1, rest zero
+			Terms = KondoModel::set_operators(F,S, 0.,0.,MatrixXd::Identity(1,1),0.,0.,0.,0.);
 		}
 		else
 		{
-			HubbardModel::set_operators(Olocal,Otight,Onextn, F, 0.);
+			Terms = HubbardModel::set_operators(F, 0.);
 		}
-		auto Gloc = ::Generator(Olocal,Otight,Onextn);
+		auto Gloc = ::Generator(Terms);
 		
 		if (l==0)
 		{
 			G[l].setRowVector(6,Gloc.D());
-			if (l == loc or l==loc-1)
+			if (l == locx or l==locx-1)
 			{
 				G[l] = Gloc.row(5);
 			}
@@ -366,10 +392,10 @@ hopping (size_t L, size_t loc)
 				G[l](0,5).setIdentity();
 			}
 		}
-		else if (l == L-1)
+		else if (l == N_sites-1)
 		{
 			G[l].setColVector(6,Gloc.D());
-			if (l == loc or l==loc+1)
+			if (l == locx or l==locx+1)
 			{
 				G[l] = Gloc.col(0);
 			}
@@ -382,17 +408,17 @@ hopping (size_t L, size_t loc)
 		else
 		{
 			G[l].setMatrix(6,Gloc.D());
-			if (l==loc or l==loc-1 or l==loc+1)
+			if (l==locx or l==locx-1 or l==locx+1)
 			{
 				G[l] = Gloc;
-				if (l == loc-1)
+				if (l == locx-1)
 				{
 					G[l](1,0).setZero();
 					G[l](2,0).setZero();
 					G[l](3,0).setZero();
 					G[l](4,0).setZero();
 				}
-				else if (l == loc+1)
+				else if (l == locx+1)
 				{
 					G[l](5,1).setZero();
 					G[l](5,2).setZero();
@@ -408,7 +434,8 @@ hopping (size_t L, size_t loc)
 			}
 		}
 	}
-	MpoQ<1> Mout(L, G, locBasis(), {0}, Nlabel, ss.str());
+	MpoQ<1> Mout(N_sites, N_legs, G, locBasis(), {0}, Nlabel, ss.str());
+	
 	return Mout;
 }
 

@@ -31,8 +31,11 @@ public:
 	
 	SpinBase(){};
 	
-	SpinBase(size_t L_input, size_t D_input);
-
+	/**
+	\param L_input : amount of sites
+	\param D_input : \f$D=2S+1\f$*/
+	SpinBase (size_t L_input, size_t D_input);
+	
 	/**amount of states = \f$D^L\f$*/
 	inline size_t dim() const {return N_states;}
 	
@@ -41,16 +44,17 @@ public:
 	
 	/**amount of orbitals*/
 	inline size_t orbitals() const  {return N_orbitals;}
-
+	
 	SparseMatrixXd Scomp (SPINOP_LABEL Sa, int orbital=0) const;
-
+	
 	/**Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
 	\param Jxy : \f$J_{xy}\f$
 	\param Jz : \f$J_{z}\f$
 	\param Bz : \f$B_{z}\f$
-	\param Bx : \f$B_{x}\f$*/
+	\param Bx : \f$B_{x}\f$
+	\param PERIODIC: periodic boundary conditions if \p true*/
 	SparseMatrixXd HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., bool PERIODIC=false) const;
-
+	
 	/**Returns the qarray for a given index of the basis.
 	\param index*/
 	qarray<1> qNums (size_t index);
@@ -68,10 +72,9 @@ private:
 
 SpinBase::
 SpinBase (size_t L_input, size_t D_input)
-:N_orbitals(L_input),D(D_input)
+:N_orbitals(L_input), D(D_input)
 {
 	assert(N_orbitals>=1 and D>=2);
-	
 	N_states = pow(D,N_orbitals);
 }
 

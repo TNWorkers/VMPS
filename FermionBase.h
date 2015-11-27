@@ -167,7 +167,8 @@ public:
 	/**Creates the full Hubbard Hamiltonian on the supersite.
 	\param U : \f$U\f$
 	\param t : \f$t\f$
-	\param V : \f$V\f$*/
+	\param V : \f$V\f$
+	\param PERIODIC: periodic boundary conditions if \p true*/
 	SparseMatrixXd HubbardHamiltonian (double U, double t=1., double V=0., bool PERIODIC=false) const;
 
 	/**Returns the qarray for a given index of the basis

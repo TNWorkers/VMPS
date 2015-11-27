@@ -185,41 +185,41 @@ ostream &operator<< (ostream& os, const SuperMatrix<Scalar> &M)
 }
 
 template<typename Scalar>
-SuperMatrix<Scalar> Generator (const LocalTerms<Scalar> &Olocal, const TightTerms<Scalar> &Otight, const NextnTerms<Scalar> &Onextn)
+SuperMatrix<Scalar> Generator (const HamiltonianTerms<Scalar> &Terms)
 {
-	size_t Daux = 2 + Otight.size() + 2*Onextn.size();
+	size_t Daux = 2 + Terms.tight.size() + 2*Terms.nextn.size();
 	
 	vector<SparseMatrix<Scalar> > col;
 	vector<SparseMatrix<Scalar> > row;
-	size_t locdim = (get<1>(Otight[0])).rows();
+	size_t locdim = (get<1>(Terms.tight[0])).rows();
 	SparseMatrixXd Id = MatrixXd::Identity(locdim,locdim).sparseView();
 	
 	// last row (except corner element)
-	for (size_t i=0; i<Onextn.size(); ++i)
+	for (size_t i=0; i<Terms.nextn.size(); ++i)
 	{
 		row.push_back(SparseMatrix<Scalar>(locdim,locdim));
 	}
-	for (int i=0; i<Otight.size(); ++i)
+	for (int i=0; i<Terms.tight.size(); ++i)
 	{
-		row.push_back(get<0>(Otight[i]) * get<1>(Otight[i]));
+		row.push_back(get<0>(Terms.tight[i]) * get<1>(Terms.tight[i]));
 	}
-	for (int i=0; i<Onextn.size(); ++i)
+	for (int i=0; i<Terms.nextn.size(); ++i)
 	{
-		row.push_back(get<0>(Onextn[i]) * get<1>(Onextn[i]));
+		row.push_back(get<0>(Terms.nextn[i]) * get<1>(Terms.nextn[i]));
 	}
 	row.push_back(Id);
 	
 	// first col (except corner element)
 	col.push_back(Id);
-	for (int i=0; i<Onextn.size(); ++i)
+	for (int i=0; i<Terms.nextn.size(); ++i)
 	{
-		col.push_back(get<2>(Onextn[i]));
+		col.push_back(get<2>(Terms.nextn[i]));
 	}
-	for (int i=0; i<Otight.size(); ++i)
+	for (int i=0; i<Terms.tight.size(); ++i)
 	{
-		col.push_back(get<2>(Otight[i]));
+		col.push_back(get<2>(Terms.tight[i]));
 	}
-	for (size_t i=0; i<Onextn.size(); ++i)
+	for (size_t i=0; i<Terms.nextn.size(); ++i)
 	{
 		col.push_back(SparseMatrix<Scalar>(locdim,locdim));
 	}
@@ -235,17 +235,17 @@ SuperMatrix<Scalar> Generator (const LocalTerms<Scalar> &Olocal, const TightTerm
 	}
 	
 	// corner element : local interaction
-	for (int i=0; i<Olocal.size(); ++i)
+	for (int i=0; i<Terms.local.size(); ++i)
 	{
-		G(Daux-1,0) += get<0>(Olocal[i]) * get<1>(Olocal[i]);
+		G(Daux-1,0) += get<0>(Terms.local[i]) * get<1>(Terms.local[i]);
 	}
 	
 	// nearest-neighbour transfer
-	if (Onextn.size() != 0)
+	if (Terms.nextn.size() != 0)
 	{
-		for (size_t i=0; i<Onextn.size(); ++i)
+		for (size_t i=0; i<Terms.nextn.size(); ++i)
 		{
-			G(Daux-1-Onextn.size()+i,1+i) = get<3>(Onextn[i]);
+			G(Daux-1-Terms.nextn.size()+i,1+i) = get<3>(Terms.nextn[i]);
 		}
 	}
 	

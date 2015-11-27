@@ -22,6 +22,43 @@ inline double isReal (complex<double> x) {return x.real();}
 
 enum PARITY {EVEN=0, ODD=1};
 
+enum BC_CHOICE {RING, CYLINDER};
+
+std::ostream& operator<< (std::ostream& s, BC_CHOICE CHOICE)
+{
+	if (CHOICE==RING)          {s << "RING";}
+	else if (CHOICE==CYLINDER) {s << "CYLINDER";}
+	return s;
+}
+
+template<BC_CHOICE CHOICE> struct BC;
+
+template<>
+struct BC<RING>
+{
+	BC (size_t Lx_input)
+	:Lx(Lx_input/2), Ly(2), CHOICE(RING)
+	{
+		assert(Lx_input%2==0 and "L must be even for rings because of folding!");
+	}
+	
+	BC_CHOICE CHOICE;
+	size_t Lx;
+	size_t Ly;
+};
+
+template<>
+struct BC<CYLINDER>
+{
+	BC (size_t Lx_input, size_t Ly_input)
+	:Lx(Lx_input), Ly(Ly_input), CHOICE(CYLINDER)
+	{}
+	
+	BC_CHOICE CHOICE;
+	size_t Lx;
+	size_t Ly;
+};
+
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>
 #ifndef EIGEN_DEFAULT_SPARSE_INDEX_TYPE
@@ -99,26 +136,27 @@ std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
 	return s;
 }
 
-//typedef vector<tuple<double,MatrixXd> > LocalTermsXd;
-//typedef vector<tuple<double,MatrixXd,MatrixXd> > TightTermsXd;
-//typedef vector<tuple<double,MatrixXd,MatrixXd,MatrixXd> > NextnTermsXd;
-//typedef vector<tuple<complex<double>,MatrixXcd> > LocalTermsXcd;
-//typedef vector<tuple<complex<double>,MatrixXcd,MatrixXcd> > TightTermsXcd;
-//typedef vector<tuple<complex<double>,MatrixXcd,MatrixXcd,MatrixXcd> > NextnTermsXcd;
-
-typedef vector<tuple<double,SparseMatrixXd> > LocalTermsXd;
-typedef vector<tuple<double,SparseMatrixXd,SparseMatrixXd> > TightTermsXd;
-typedef vector<tuple<double,SparseMatrixXd,SparseMatrixXd,SparseMatrixXd> > NextnTermsXd;
-
-typedef vector<tuple<complex<double>,SparseMatrixXcd> > LocalTermsXcd;
-typedef vector<tuple<complex<double>,SparseMatrixXcd,SparseMatrixXcd> > TightTermsXcd;
-typedef vector<tuple<complex<double>,SparseMatrixXcd,SparseMatrixXcd,SparseMatrixXcd> > NextnTermsXcd;
-
 template<typename Scalar> using LocalTerms = vector<tuple<Scalar,SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
 template<typename Scalar> using TightTerms = vector<tuple<Scalar,SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
                                                                  SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
 template<typename Scalar> using NextnTerms = vector<tuple<double,SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
                                                                  SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
                                                                  SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
+
+template<typename Scalar>
+struct HamiltonianTerms
+{
+	/**local terms of Hamiltonian, format: coupling, operator*/
+	LocalTerms<Scalar> local;
+	/**nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2*/
+	TightTerms<Scalar> tight;
+	/**next-nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2, transfer operator*/
+	NextnTerms<Scalar> nextn;
+	
+	inline size_t auxdim() {return 2+tight.size()+nextn.size();}
+};
+
+typedef HamiltonianTerms<double>           HamiltonianTermsXd;
+typedef HamiltonianTerms<complex<double> > HamiltonianTermsXcd;
 
 #endif

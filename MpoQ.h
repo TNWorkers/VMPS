@@ -189,12 +189,12 @@ public:
 	
 protected:
 	
-	/**local terms of Hamiltonian, format: coupling, operator*/
-	vector<tuple<Scalar,MatrixType> >                       Olocal;
-	/**nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2*/
-	vector<tuple<Scalar,MatrixType,MatrixType> >            Otight;
-	/**next-nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2, transfer operator*/
-	vector<tuple<Scalar,MatrixType,MatrixType,MatrixType> > Onextn;
+//	/**local terms of Hamiltonian, format: coupling, operator*/
+//	vector<tuple<Scalar,MatrixType> >                       Olocal;
+//	/**nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2*/
+//	vector<tuple<Scalar,MatrixType,MatrixType> >            Otight;
+//	/**next-nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2, transfer operator*/
+//	vector<tuple<Scalar,MatrixType,MatrixType,MatrixType> > Onextn;
 	
 	vector<vector<qarray<Nq> > > qloc;
 	
@@ -1248,6 +1248,7 @@ public:
 	\param qloc_input : vector of local bases
 	\param l_frst : first site
 	\param l_last : last site
+	\param N_legs : amount of legs in ladder
 	*/
 	qarrayIterator (const vector<vector<qarray<Nq> > > &qloc_input, int l_frst, int l_last, size_t N_legs=1)
 	:qloc(qloc_input[0])

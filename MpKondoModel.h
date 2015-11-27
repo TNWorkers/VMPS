@@ -33,7 +33,7 @@ public:
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	\param D_input : \f$2S+1\f$ (impurity spin)*/
 	KondoModel (size_t Lx_input, double J_input=-1., size_t Ly_input=1, double tPrime_input=0.,
-				double U_input=0., double Bz_input=0., bool CALC_SQUARE=false, size_t D_input=2);
+	            double U_input=0., double Bz_input=0., bool CALC_SQUARE=false, size_t D_input=2);
 
 	/**Constructs a Kondo Impurity Model on a N-ladder (aka a diluted Kondo Model) using initializer lists for the set of impurities.
 	\param Lx_input : chain length
@@ -44,7 +44,7 @@ public:
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	\param D_input : \f$2S+1\f$ (impurity spin)*/
 	KondoModel (size_t Lx_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzval_input={},
-				size_t Ly_input=1, bool CALC_SQUARE=true, size_t D_input=2);
+	            size_t Ly_input=1, bool CALC_SQUARE=true, size_t D_input=2);
 
 	/**Constructs a Kondo Impurity Model on a N-ladder (aka a diluted Kondo Model) using vectors for the set of impurities.
 	\param Lx_input : chain length
@@ -55,31 +55,28 @@ public:
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	\param D_input : \f$2S+1\f$ (impurity spin)*/
 	KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector<double> Bzval_input={},
-				size_t Ly_input=1, bool CALC_SQUARE=true, size_t D_input=2);
+	            size_t Ly_input=1, bool CALC_SQUARE=true, size_t D_input=2);
 
 	/**Determines the operators of the Hamiltonian. Made static to be called from other classes, e.g. TransverseKondoModel.
-	   \param Olocal : the local interaction terms
-	   \param Otight : the tight-binding terms
-	   \param Onextn : the next-nearest-neighbour terms
-	   \param F : the FermionBase class where the local Fermion operators are pulled from
-	   \param S : the SpinBase class where the local Spin operators are pulled from
-	   \param J : \f$J\f$
-	   \param Bz : \f$B_{z}\f$
-	   \param tInter: Hopping Matrix for hopping from site \f$i\f$ to \f$i+1\f$ from orbital \f$m\f$ to \f$m^{\prime}\f$
-	   \param tIntra: Hopping inside the super site.
-	   \param Bx: \f$B_{x}\f$
-	   \param tPrime : \f$t'\f$
-	   \param U : \f$U\f$
+	\param F : the FermionBase class where the local Fermion operators are pulled from
+	\param S : the SpinBase class where the local Spin operators are pulled from
+	\param J : \f$J\f$
+	\param Bz : \f$B_{z}\f$
+	\param tInter: hopping matrix for hopping from site \f$i\f$ to \f$i+1\f$ from orbital \f$m\f$ to \f$m^{\prime}\f$
+	\param tIntra: hopping inside the super site.
+	\param Bx: \f$B_{x}\f$
+	\param tPrime : \f$t'\f$
+	\param U : \f$U\f$
 	*/
-	static void set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, const FermionBase &F, const SpinBase &S,
-							   double J, double Bz, Eigen::MatrixXd tInter, double tIntra, double Bx=0., double tPrime=0., double U=0.);
+	static HamiltonianTermsXd set_operators (const FermionBase &F, const SpinBase &S, 
+	                                         double J, double Bz, MatrixXd tInter, double tIntra, double Bx=0., double tPrime=0., double U=0.);
 	
 	/**Makes half-integers in the output for the magnetization quantum number.*/
 	static string N_halveM (qarray<2> qnum);
 	
 	/**Labels the conserved quantum numbers as "N", "M".*/
 	static const std::array<string,2> NMlabel;
-		
+	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
 	typedef MpsQ<2,double>                           StateXd;
@@ -103,11 +100,11 @@ public:
 	MpoQ<2> SsubSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y=0, size_t loc2y=0);
 	MpoQ<2> SimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y=0, size_t loc2y=0);
 	MpoQ<2> SimpSsubSimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, 
-							  size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
-							  size_t loc1y=0, size_t loc2y=0, size_t loc3y=0, size_t loc4y=0);
+	                          size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
+	                          size_t loc1y=0, size_t loc2y=0, size_t loc3y=0, size_t loc4y=0);
 	MpoQ<2> SimpSsubSimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, 
-							  size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
-							  size_t loc1y=0, size_t loc2y=0, size_t loc3y=0, size_t loc4y=0);
+	                          size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
+	                          size_t loc1y=0, size_t loc2y=0, size_t loc3y=0, size_t loc4y=0);
 	///@}
 	
 protected:
@@ -122,84 +119,81 @@ protected:
 
 const std::array<string,2> KondoModel::NMlabel{"N","M"};
 
-void KondoModel::
-set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn, const FermionBase &F, const SpinBase &S,
-			   double J, double Bz, Eigen::MatrixXd tInter, double tIntra, double Bx, double tPrime, double U)
-
+HamiltonianTermsXd KondoModel::
+set_operators (const FermionBase &F, const SpinBase &S, double J, double Bz, MatrixXd tInter, double tIntra, double Bx, double tPrime, double U)
 {
-	//clear old values of operators
-	Olocal.resize(0);
-	Otight.resize(0);
-	Onextn.resize(0);
-
-	SparseMatrixXd KondoHamiltonian(F.dim()*S.dim(),F.dim()*S.dim());
-	SparseMatrixXd H1(F.dim()*S.dim(),F.dim()*S.dim());
-	SparseMatrixXd H2(F.dim()*S.dim(),F.dim()*S.dim());
-	SparseMatrixXd H3(F.dim()*S.dim(),F.dim()*S.dim());
-	SparseMatrixXd H4(F.dim()*S.dim(),F.dim()*S.dim());
-	SparseMatrixXd H5(F.dim()*S.dim(),F.dim()*S.dim());
+	HamiltonianTermsXd Terms;
+	
+	SparseMatrixXd KondoHamiltonian(F.dim()*S.dim(), F.dim()*S.dim());
+	SparseMatrixXd H1(F.dim()*S.dim(), F.dim()*S.dim());
+	SparseMatrixXd H2(F.dim()*S.dim(), F.dim()*S.dim());
+	SparseMatrixXd H3(F.dim()*S.dim(), F.dim()*S.dim());
+	SparseMatrixXd H4(F.dim()*S.dim(), F.dim()*S.dim());
+	SparseMatrixXd H5(F.dim()*S.dim(), F.dim()*S.dim());
 	
 	SparseMatrixXd IdSpins(S.dim(),S.dim()); IdSpins.setIdentity();
-	SparseMatrixXd IdElectrons(F.dim(),F.dim()); IdSpins.setIdentity();
-
+	SparseMatrixXd IdElectrons(F.dim(),F.dim()); IdElectrons.setIdentity();
+	
 	//set Hubbard part of Kondo Hamiltonian
 	H1 = kroneckerProduct(IdSpins,F.HubbardHamiltonian(U,tIntra));
-
+	
 	//set Heisenberg part of Hamiltonian
-	H2 = kroneckerProduct(S.HeisenbergHamiltonian(0.,0.,Bz),IdElectrons);
-
+	H2 = kroneckerProduct(S.HeisenbergHamiltonian(0.,0.,Bz,Bx),IdElectrons);
+	
 	//set interaction part of Hamiltonian.
 	for (int i=0; i<F.orbitals(); ++i)
 	{
-		H3 += -J* kroneckerProduct(S.Scomp(SZ,i),F.Sz(i));
-		H4 += -0.5*J* kroneckerProduct(S.Scomp(SP,i),F.Sm(i));
-		H5 += -0.5*J* kroneckerProduct(S.Scomp(SM,i),F.Sp(i));	
+		H3 = -J* kroneckerProduct(S.Scomp(SZ,i),F.Sz(i));
+		H4 = -0.5*J* kroneckerProduct(S.Scomp(SP,i),F.Sm(i));
+		H5 = -0.5*J* kroneckerProduct(S.Scomp(SM,i),F.Sp(i));
 	}
-
+	
 	KondoHamiltonian = H1 + H2 + H3 + H4 + H5;
-
-	//set local interaction Olocal
-	Olocal.push_back(std::make_tuple(1.,KondoHamiltonian));
-
-	//set nearest neighbour term Otight
+	
+	//set local interaction
+	Terms.local.push_back(make_tuple(1.,KondoHamiltonian));
+	
+	//set nearest neighbour term
 	for (int legI=0; legI<F.orbitals(); ++legI)
-		for (int legJ=0; legJ<F.orbitals(); ++legJ)
+	for (int legJ=0; legJ<F.orbitals(); ++legJ)
+	{
+		if (tInter(legI,legJ) != 0 )
 		{
-			if (tInter(legI,legJ) != 0 )
-			{
-				Otight.push_back(std::make_tuple(-tInter(legI,legJ),kroneckerProduct(IdSpins, F.cdag(UP,legI)), kroneckerProduct(IdSpins,F.sign()* F.c(UP,legJ))));
-				Otight.push_back(std::make_tuple(-tInter(legI,legJ),kroneckerProduct(IdSpins, F.cdag(DN,legI)), kroneckerProduct(IdSpins,F.sign()* F.c(DN,legJ))));
-				Otight.push_back(std::make_tuple(tInter(legI,legJ),kroneckerProduct(IdSpins, F.c(UP,legI)), kroneckerProduct(IdSpins,F.sign()* F.cdag(UP,legJ))));
-				Otight.push_back(std::make_tuple(tInter(legI,legJ),kroneckerProduct(IdSpins, F.c(DN,legI)), kroneckerProduct(IdSpins,F.sign()* F.cdag(DN,legJ))));
-			}
-		}	
-
+			Terms.tight.push_back(make_tuple(-tInter(legI,legJ),kroneckerProduct(IdSpins, F.cdag(UP,legI)), kroneckerProduct(IdSpins,F.sign()* F.c(UP,legJ))));
+			Terms.tight.push_back(make_tuple(-tInter(legI,legJ),kroneckerProduct(IdSpins, F.cdag(DN,legI)), kroneckerProduct(IdSpins,F.sign()* F.c(DN,legJ))));
+			Terms.tight.push_back(make_tuple(tInter(legI,legJ),kroneckerProduct(IdSpins, F.c(UP,legI)), kroneckerProduct(IdSpins,F.sign()* F.cdag(UP,legJ))));
+			Terms.tight.push_back(make_tuple(tInter(legI,legJ),kroneckerProduct(IdSpins, F.c(DN,legI)), kroneckerProduct(IdSpins,F.sign()* F.cdag(DN,legJ))));
+		}
+	}
+	
 	if (tPrime != 0.)
 	{
-		//set next nearest neighbour term Onextn
-		Onextn.push_back(std::make_tuple(-tPrime,
-										 kroneckerProduct(IdSpins,F.cdag(UP,0)),
-										 kroneckerProduct(IdSpins,F.sign()* F.c(UP,0)),
-										 kroneckerProduct(IdSpins,F.sign())));
-		Onextn.push_back(std::make_tuple(-tPrime,
-										 kroneckerProduct(IdSpins,F.cdag(DN,0)),
-										 kroneckerProduct(IdSpins,F.sign()* F.c(DN,0)),
-										 kroneckerProduct(IdSpins,F.sign())));
-		Onextn.push_back(std::make_tuple(tPrime,
-										 kroneckerProduct(IdSpins,F.c(UP,0)),
-										 kroneckerProduct(IdSpins,F.sign()* F.cdag(UP,0)),
-										 kroneckerProduct(IdSpins,F.sign())));
-		Onextn.push_back(std::make_tuple(tPrime,
-										 kroneckerProduct(IdSpins,F.c(DN,0)),
-										 kroneckerProduct(IdSpins,F.sign()* F.cdag(DN,0)),
-										 kroneckerProduct(IdSpins,F.sign())));
-	}	
-}				
+		//set next nearest neighbour term
+		Terms.nextn.push_back(make_tuple(-tPrime,
+		                                      kroneckerProduct(IdSpins,F.cdag(UP,0)),
+		                                      kroneckerProduct(IdSpins,F.sign()* F.c(UP,0)),
+		                                      kroneckerProduct(IdSpins,F.sign())));
+		Terms.nextn.push_back(make_tuple(-tPrime,
+		                                      kroneckerProduct(IdSpins,F.cdag(DN,0)),
+		                                      kroneckerProduct(IdSpins,F.sign()* F.c(DN,0)),
+		                                      kroneckerProduct(IdSpins,F.sign())));
+		Terms.nextn.push_back(make_tuple(tPrime,
+		                                      kroneckerProduct(IdSpins,F.c(UP,0)),
+		                                      kroneckerProduct(IdSpins,F.sign()* F.cdag(UP,0)),
+		                                      kroneckerProduct(IdSpins,F.sign())));
+		Terms.nextn.push_back(make_tuple(tPrime,
+		                                      kroneckerProduct(IdSpins,F.c(DN,0)),
+		                                      kroneckerProduct(IdSpins,F.sign()* F.cdag(DN,0)),
+		                                      kroneckerProduct(IdSpins,F.sign())));
+	}
 	
+	return Terms;
+}
+
 KondoModel::
 KondoModel (size_t Lx_input, double J_input, size_t Ly_input, double tPrime_input, double U_input, double Bz_input, bool CALC_SQUARE, size_t D_input)
-	:MpoQ<2> (),
-	J(J_input), Bz(Bz_input), tPrime(tPrime_input), U(U_input), D(D_input)
+:MpoQ<2> (),
+J(J_input), Bz(Bz_input), tPrime(tPrime_input), U(U_input), D(D_input)
 {
 	// assign stuff
 	this->N_sites = Lx_input;
@@ -208,22 +202,22 @@ KondoModel (size_t Lx_input, double J_input, size_t Ly_input, double tPrime_inpu
 	this->qlabel = NMlabel;
 	this->label = "KondoModel";
 	this->format = N_halveM;
-
+	
 	assert(N_legs>1 and tPrime==0. or N_legs==1 and "Cannot build a ladder with t'-hopping!");
-
+	
 	// initialize member variable imploc
 	this->imploc.resize(Lx_input);
 	std::iota(this->imploc.begin(), this->imploc.end(), 0);
-
+	
 	stringstream ss;
 	ss << "(J=" << J << ",Bz=" << Bz << ",t'=" << tPrime << ",U=" << U << ")";
 	this->label += ss.str();
 	
 	F = FermionBase(N_legs);
 	S = SpinBase(N_legs,D);
-
-	Eigen::MatrixXd tInter(N_legs,N_legs); tInter.setIdentity();// tInter*=-1.;
-
+	
+	MatrixXd tInter(N_legs,N_legs); tInter.setIdentity(); // tInter*=-1.;
+	
 	MpoQ<2>::qloc.resize(N_sites);
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
@@ -236,10 +230,10 @@ KondoModel (size_t Lx_input, double J_input, size_t Ly_input, double tPrime_inpu
 			}
 	}
 	
-	set_operators(Olocal, Otight, Onextn, F, S, J, Bz, tInter, 1., 0., tPrime, U);
-	this->Daux = 2 + Otight.size() + 2*Onextn.size();
+	HamiltonianTermsXd Terms = set_operators(F,S, J,Bz,tInter,1.,0.,tPrime,U);
+	SuperMatrix<double> G = ::Generator(Terms);
+	this->Daux = Terms.auxdim();
 	
-	SuperMatrix<double> G = ::Generator(Olocal, Otight, Onextn);
 	this->construct(G, this->W, this->Gvec);
 	
 	if (CALC_SQUARE == true)
@@ -275,14 +269,14 @@ KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector
 	this->qlabel = NMlabel;
 	this->label = "KondoModel (impurity)";
 	this->format = N_halveM;
-
+	
 	F = FermionBase(N_legs);
 	S = SpinBase(N_legs,D);
-
-	Eigen::MatrixXd tInter(N_legs,N_legs); tInter.setIdentity();// tInter*=-1.;
-
+	
+	MatrixXd tInter(N_legs,N_legs); tInter.setIdentity();// tInter*=-1.;
+	
 	MpoQ<2,double>::qloc.resize(this->N_sites);
-
+	
 	// make a pretty label
 	stringstream ss;
 	ss << "(S=" << frac(D-1,2) << ",J=" << J << ",imps={";
@@ -318,19 +312,19 @@ KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector
 		{
 			MpoQ<2>::qloc[l].resize(F.dim()*S.dim());
 			for (size_t s1=0; s1<S.dim(); s1++)
-				for (size_t s2=0; s2<F.dim(); s2++)
-				{
-					MpoQ<2>::qloc[l][s2+F.dim()*s1] = F.qNums(s2);
-					MpoQ<2>::qloc[l][s2+F.dim()*s1][1] += S.qNums(s1)[0];
-				}
-
+			for (size_t s2=0; s2<F.dim(); s2++)
+			{
+				MpoQ<2>::qloc[l][s2+F.dim()*s1] = F.qNums(s2);
+				MpoQ<2>::qloc[l][s2+F.dim()*s1][1] += S.qNums(s1)[0];
+			}
+			
 			size_t i = it-imploc.begin();
 			if (l==0)
 			{
-				set_operators(Olocal, Otight, Onextn, F,S,J,Bzval[i],tInter,1.,0.,0.,0.);
-				this->Daux = 2 + Otight.size() + 2*Onextn.size();
+				HamiltonianTermsXd Terms = set_operators(F,S, J,Bzval[i],tInter,1.,0.,0.,0.);
+				this->Daux = Terms.auxdim();
 				G[l].setRowVector(Daux,F.dim()*S.dim());
-				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(Daux-1);
+				G[l] = ::Generator(Terms).row(Daux-1);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(Daux*Daux,F.dim()*S.dim());
@@ -339,10 +333,10 @@ KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector
 			}
 			else if (l==this->N_sites-1)
 			{
-				set_operators(Olocal, Otight, Onextn, F,S,J,Bzval[i],tInter,1.,0.,0.,0.);
-				this->Daux = 2 + Otight.size() + 2*Onextn.size();				
-				G[l].setColVector(Daux,F.dim()*S.dim());				
-				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
+				HamiltonianTermsXd Terms = set_operators(F,S, J,Bzval[i],tInter,1.,0.,0.,0.);
+				this->Daux = Terms.auxdim();
+				G[l].setColVector(Daux,F.dim()*S.dim());
+				G[l] = ::Generator(Terms).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(Daux*Daux,F.dim()*S.dim());
@@ -351,10 +345,10 @@ KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector
 			}
 			else
 			{
-				set_operators(Olocal, Otight, Onextn, F,S,J,Bzval[i],tInter,1.,0.,0.,0.);
-				this->Daux = 2 + Otight.size() + 2*Onextn.size();				
-				G[l].setMatrix(Daux,F.dim()*S.dim());				
-				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
+				HamiltonianTermsXd Terms = set_operators(F,S, J,Bzval[i],tInter,1.,0.,0.,0.);
+				this->Daux = Terms.auxdim();
+				G[l].setMatrix(Daux,F.dim()*S.dim());
+				G[l] = ::Generator(Terms);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(Daux*Daux,F.dim()*S.dim());
@@ -366,17 +360,17 @@ KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector
 		else
 		{
 			MpoQ<2>::qloc[l].resize(F.dim());
-			for (size_t s1=0; s1<F.dim(); s1++)
+			for (size_t s=0; s<F.dim(); s++)
 			{
-				MpoQ<2>::qloc[l][s1] = F.qNums(s1);
+				MpoQ<2>::qloc[l][s] = F.qNums(s);
 			}
-
+			
 			if (l==0)
 			{
-				HubbardModel::set_operators(Olocal, Otight, Onextn, F,0.);
-				this->Daux = 2 + Otight.size() + 2*Onextn.size();				
+				HamiltonianTermsXd Terms = HubbardModel::set_operators(F,0.);
+				this->Daux = Terms.auxdim();
 				G[l].setRowVector(Daux,F.dim());
-				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(Daux-1);
+				G[l] = ::Generator(Terms).row(Daux-1);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(Daux*Daux,F.dim());
@@ -385,10 +379,10 @@ KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector
 			}
 			else if (l==this->N_sites-1)
 			{
-				HubbardModel::set_operators(Olocal, Otight, Onextn, F,0.);
-				this->Daux = 2 + Otight.size() + 2*Onextn.size();				
-				G[l].setColVector(Daux,F.dim());				
-				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
+				HamiltonianTermsXd Terms = HubbardModel::set_operators(F,0.);
+				this->Daux = Terms.auxdim();
+				G[l].setColVector(Daux,F.dim());
+				G[l] = ::Generator(Terms).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(Daux*Daux,F.dim());
@@ -397,10 +391,10 @@ KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector
 			}
 			else
 			{
-				HubbardModel::set_operators(Olocal, Otight, Onextn, F,0.);
-				this->Daux = 2 + Otight.size() + 2*Onextn.size();				
-				G[l].setMatrix(Daux,F.dim());				
-				G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
+				HamiltonianTermsXd Terms = HubbardModel::set_operators(F,0.);
+				this->Daux = Terms.auxdim();
+				G[l].setMatrix(Daux,F.dim());
+				G[l] = ::Generator(Terms);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(Daux*Daux,F.dim());
@@ -408,11 +402,6 @@ KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector
 				}
 			}
 		}
-
-		//clear old values of operators
-		this->Olocal.resize(0);
-		this->Otight.resize(0);
-		this->Onextn.resize(0);
 	}
 	
 	this->construct(G, this->W, this->Gvec);
@@ -430,7 +419,7 @@ KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector
 
 KondoModel::
 KondoModel (size_t Lx_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzval_input, size_t Ly_input, bool CALC_SQUARE, size_t D_input)
-	:KondoModel(Lx_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), vector<double>(begin(Bzval_input),end(Bzval_input)), Ly_input, CALC_SQUARE, D_input)
+:KondoModel(Lx_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), vector<double>(begin(Bzval_input),end(Bzval_input)), Ly_input, CALC_SQUARE, D_input)
 {}
 
 string KondoModel::
@@ -455,8 +444,8 @@ Simp (size_t locx, SPINOP_LABEL SOP, size_t locy)
 	stringstream ss;
 	ss << SOP << "(" << locx << "," << locy << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd Id4(F.dim(),F.dim()); Id4.setIdentity();
-	Mout.setLocal(locx, kroneckerProduct(S.Scomp(SOP,locy),Id4));
+	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
+	Mout.setLocal(locx, kroneckerProduct(S.Scomp(SOP,locy),IdSub));
 	return Mout;
 }
 
@@ -467,7 +456,7 @@ Ssub (size_t locx, SPINOP_LABEL SOP, size_t locy)
 	stringstream ss;
 	ss << SOP << "(" << locx << "," << locy << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd IdImp(MpoQ<2,double>::qloc[locx].size()/4, MpoQ<2,double>::qloc[locx].size()/4); IdImp.setIdentity();
+	MatrixXd IdImp(MpoQ<2,double>::qloc[locx].size()/F.dim(), MpoQ<2,double>::qloc[locx].size()/F.dim()); IdImp.setIdentity();
 	Mout.setLocal(locx, kroneckerProduct(IdImp, F.Scomp(SOP,locy)));
 	return Mout;
 }
@@ -479,9 +468,9 @@ SimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size
 	stringstream ss;
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd Id4(F.dim(),F.dim()); Id4.setIdentity();
-	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),Id4), 
-	                             kroneckerProduct(S.Scomp(SOP2,loc2y),Id4)}
+	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
+	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
+	                               kroneckerProduct(S.Scomp(SOP2,loc2y),IdSub)}
 	             );
 	return Mout;
 }
@@ -494,10 +483,10 @@ SsubSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size
 	stringstream ss;
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd IdImp1(MpoQ<2>::qloc[loc1x].size()/4, MpoQ<2>::qloc[loc1x].size()/4); IdImp1.setIdentity();
-	MatrixXd IdImp2(MpoQ<2>::qloc[loc2x].size()/4, MpoQ<2>::qloc[loc2x].size()/4); IdImp2.setIdentity();
+	MatrixXd IdImp1(MpoQ<2>::qloc[loc1x].size()/F.dim(), MpoQ<2>::qloc[loc1x].size()/F.dim()); IdImp1.setIdentity();
+	MatrixXd IdImp2(MpoQ<2>::qloc[loc2x].size()/F.dim(), MpoQ<2>::qloc[loc2x].size()/F.dim()); IdImp2.setIdentity();
 	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(IdImp1,F.Scomp(SOP1,loc1y)), 
-				kroneckerProduct(IdImp2,F.Scomp(SOP2,loc2y))}
+	                               kroneckerProduct(IdImp2,F.Scomp(SOP2,loc2y))}
 	             );
 	return Mout;
 }
@@ -509,29 +498,29 @@ SimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size
 	stringstream ss;
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd Id4(F.dim(),F.dim()); Id4.setIdentity();
-	MatrixXd IdImp(MpoQ<2>::qloc[loc2x].size()/4, MpoQ<2>::qloc[loc2x].size()/4); IdImp.setIdentity();
-	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),Id4), 
-				kroneckerProduct(IdImp,F.Scomp(SOP2,loc2y))}
+	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
+	MatrixXd IdImp(MpoQ<2>::qloc[loc2x].size()/F.dim(), MpoQ<2>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
+	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
+	                               kroneckerProduct(IdImp,F.Scomp(SOP2,loc2y))}
 	             );
 	return Mout;
 }
 
 MpoQ<2> KondoModel::
 SimpSsubSimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
-				  size_t loc1y, size_t loc2y, size_t loc3y, size_t loc4y)
+                  size_t loc1y, size_t loc2y, size_t loc3y, size_t loc4y)
 {
 	assert(loc1x<this->N_sites and loc2x<this->N_sites and loc3x<this->N_sites and loc4x<this->N_sites);
 	stringstream ss;
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")" <<
-		SOP3 << "(" << loc3x << "," << loc3y << ")" << SOP4 << "(" << loc4x << "," << loc4y << ")";	
+	      SOP3 << "(" << loc3x << "," << loc3y << ")" << SOP4 << "(" << loc4x << "," << loc4y << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd Id4(F.dim(),F.dim()); Id4.setIdentity();
-	MatrixXd IdImp(MpoQ<2>::qloc[loc2x].size()/4, MpoQ<2>::qloc[loc2x].size()/4); IdImp.setIdentity();
-	Mout.setLocal({loc1x, loc2x, loc3x, loc4x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),Id4), 
-				kroneckerProduct(IdImp,F.Scomp(SOP2,loc2y)),
-				kroneckerProduct(S.Scomp(SOP3,loc3y),Id4),
-				kroneckerProduct(S.Scomp(SOP4,loc4y),Id4)});
+	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
+	MatrixXd IdImp(MpoQ<2>::qloc[loc2x].size()/F.dim(), MpoQ<2>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
+	Mout.setLocal({loc1x, loc2x, loc3x, loc4x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
+	                                             kroneckerProduct(IdImp,F.Scomp(SOP2,loc2y)),
+	                                             kroneckerProduct(S.Scomp(SOP3,loc3y),IdSub),
+	                                             kroneckerProduct(S.Scomp(SOP4,loc4y),IdSub)});
 	return Mout;
 }
 
@@ -542,14 +531,14 @@ SimpSsubSimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SO
 	assert(loc1x<this->N_sites and loc2x<this->N_sites and loc3x<this->N_sites and loc4x<this->N_sites);
 	stringstream ss;
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")" <<
-		SOP3 << "(" << loc3x << "," << loc3y << ")" << SOP4 << "(" << loc4x << "," << loc4y << ")";
+	      SOP3 << "(" << loc3x << "," << loc3y << ")" << SOP4 << "(" << loc4x << "," << loc4y << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd Id4(F.dim(),F.dim()); Id4.setIdentity();
-	MatrixXd IdImp(MpoQ<2>::qloc[loc2x].size()/4, MpoQ<2>::qloc[loc2x].size()/4); IdImp.setIdentity();
-	Mout.setLocal({loc1x, loc2x, loc3x, loc4x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),Id4), 
-				kroneckerProduct(IdImp,F.Scomp(SOP2,loc2y)),
-				kroneckerProduct(S.Scomp(SOP3,loc3y),Id4),
-				kroneckerProduct(IdImp,F.Scomp(SOP4,loc4y))}
+	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
+	MatrixXd IdImp(MpoQ<2>::qloc[loc2x].size()/F.dim(), MpoQ<2>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
+	Mout.setLocal({loc1x, loc2x, loc3x, loc4x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
+	                                             kroneckerProduct(IdImp,F.Scomp(SOP2,loc2y)),
+	                                             kroneckerProduct(S.Scomp(SOP3,loc3y),IdSub),
+	                                             kroneckerProduct(IdImp,F.Scomp(SOP4,loc4y))}
 		);
 	return Mout;
 }
@@ -589,7 +578,7 @@ public:
 		
 		int Sx2 = static_cast<int>(D-1); // necessary because of size_t		
 		int N_legsInt = static_cast<int>(N_legs); // necessary because of size_t
-
+		
 		for (int Sz=-Sx2*Nimps; Sz<=Sx2*Nimps; Sz+=2)
 		for (int Nup=0; Nup<=N_sites*N_legsInt; ++Nup)
 		for (int Ndn=0; Ndn<=N_sites*N_legsInt; ++Ndn)
