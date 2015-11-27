@@ -325,6 +325,7 @@ sign (int orb1, int orb2) const
 	{
 		Mout = Mout * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
 	}
+	if(orb1 != orb2) {cout << Mout << endl;}
 	return Mout;
 }
 
