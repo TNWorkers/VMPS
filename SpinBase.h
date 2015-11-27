@@ -81,31 +81,13 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 	assert(orbital<N_orbitals);
 	
 	size_t R = ScompSingleSite(Sa).rows();
-	size_t Nl = R*orbital;
-	size_t Nr = R*(N_orbitals-orbital-1);
+	size_t Nl = pow(R,orbital);
+	size_t Nr = pow(R,N_orbitals-orbital-1);
 	
 	SparseMatrixXd Il = MatrixXd::Identity(Nl,Nl).sparseView();
 	SparseMatrixXd Ir = MatrixXd::Identity(Nr,Nr).sparseView();
 	
-	// all = 0
-	if (Nl == 0 and Nr == 0)
-	{
-		return ScompSingleSite(Sa);
-	}
-	// one != 0
-	else if (Nl == 0 and Nr != 0)
-	{
-		return kroneckerProduct(ScompSingleSite(Sa),Ir);
-	}
-	else if (Nl != 0 and Nr == 0)
-	{
-		return kroneckerProduct(Il,ScompSingleSite(Sa));
-	}
-	// all != 0
-	else
-	{
-		return kroneckerProduct(Il,kroneckerProduct(ScompSingleSite(Sa),Ir));
-	}
+	return kroneckerProduct(Il,kroneckerProduct(ScompSingleSite(Sa),Ir));
 }
 
 SparseMatrixXd SpinBase::

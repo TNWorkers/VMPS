@@ -187,7 +187,7 @@ public:
 //	void flatten_to_MpsQ (MpsQ<0,Scalar> &V);
 //	vector<vector<vector<MatrixType> > > A;
 	
-//protected:
+protected:
 	
 	/**local terms of Hamiltonian, format: coupling, operator*/
 	vector<tuple<Scalar,MatrixType> >                       Olocal;
