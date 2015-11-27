@@ -274,7 +274,7 @@ public:
 	
 private:
 	
-	size_t N_legs;
+	size_t N_legs=1;
 	
 	/**local basis.*/
 	vector<vector<qarray<Nq> > > qloc;
@@ -434,6 +434,7 @@ outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input)
 {
 	format = H.format;
 	qlabel = H.qlabel;
+	N_legs = H.N_legs;
 	outerResize<typename Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
 }
 
@@ -445,6 +446,7 @@ outerResize (const MpsQ<Nq,OtherMatrixType> &V)
 	format = V.format;
 	qlabel = V.qlabel;
 	this->N_sites = V.N_sites;
+	N_legs = V.N_legs;
 	qloc = V.qloc;
 	Qtot = V.Qtot;
 	
@@ -2596,13 +2598,14 @@ template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
 swap (MpsQ<Nq,Scalar> &V)
 {
-	assert(Qtot == V.Qtarget() and 
-	       this->N_sites  == V.length());
+	assert(Qtot == V.Qtarget() and this->N_sites == V.length());
 	
 	inset.swap(V.inset);
 	outset.swap(V.outset);
 	truncWeight.swap(V.truncWeight);
 	std::swap(this->pivot, V.pivot);
+	std::swap(this->N_sites, V.N_sites);
+	std::swap(N_legs, V.N_legs);
 	
 	std::swap(this->format, V.format);
 	std::swap(this->alpha_noise, V.alpha_noise);

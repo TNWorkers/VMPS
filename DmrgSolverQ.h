@@ -167,7 +167,7 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> 
 	Heff[0].L.setVacuum();
 	Heff[N_sites-1].R.setTarget(qarray3<Nq>{Qtot_input, Qtot_input, qvacuum<Nq>()});
 	
-	// initial sweep, left-to-right:
+	// initial sweep, right-to-left:
 	for (size_t l=N_sites-1; l>0; --l)
 	{
 		Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
@@ -177,7 +177,7 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> 
 	CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
 	pivot = 0;
 	
-	// initial sweep, right-to-left:
+	// initial sweep, left-to-right:
 //	for (size_t l=0; l<N_sites-1; ++l)
 //	{
 //		Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
@@ -314,10 +314,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq
 	{
 		if (CHOSEN_VERBOSITY>=2)
 		{
-			lout << "α_noise=" << Vout.state.alpha_noise 
-			     << ", ε_rdm=" << Vout.state.eps_rdm 
-			     << ", α_rsvd=" << Vout.state.alpha_rsvd 
-			     << ", ε_svd=" << Vout.state.eps_svd 
+			lout //<< "α_noise=" << Vout.state.alpha_noise << ", "
+			     //<< "ε_rdm=" << Vout.state.eps_rdm << ", "
+			     << "α_rsvd=" << Vout.state.alpha_rsvd << ", "
+			     << "ε_svd=" << Vout.state.eps_svd 
 			     << endl;
 		}
 	};

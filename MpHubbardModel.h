@@ -134,9 +134,9 @@ set_operators (LocalTermsXd &Olocal, TightTermsXd &Otight, NextnTermsXd &Onextn,
 	if (tPrime != 0.)
 	{
 		Onextn.push_back(make_tuple(-tPrime, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
-		Onextn.push_back(make_tuple(-tPrime, F.cdag(DN), F.sign() * F.cdag(DN), F.sign()));
+		Onextn.push_back(make_tuple(-tPrime, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
 		Onextn.push_back(make_tuple(+tPrime, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
-		Onextn.push_back(make_tuple(+tPrime, F.cdag(DN), F.sign() * F.cdag(DN), F.sign()));
+		Onextn.push_back(make_tuple(+tPrime, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
 	}
 	
 	Olocal.push_back(make_tuple(1., F.HubbardHamiltonian(U,1.,V)));
