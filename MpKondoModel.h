@@ -143,9 +143,9 @@ set_operators (const FermionBase &F, const SpinBase &S, double J, double Bz, Mat
 	//set interaction part of Hamiltonian.
 	for (int i=0; i<F.orbitals(); ++i)
 	{
-		H3 = -J* kroneckerProduct(S.Scomp(SZ,i),F.Sz(i));
-		H4 = -0.5*J* kroneckerProduct(S.Scomp(SP,i),F.Sm(i));
-		H5 = -0.5*J* kroneckerProduct(S.Scomp(SM,i),F.Sp(i));
+		H3 += -J* kroneckerProduct(S.Scomp(SZ,i),F.Sz(i));
+		H4 += -0.5*J* kroneckerProduct(S.Scomp(SP,i),F.Sm(i));
+		H5 += -0.5*J* kroneckerProduct(S.Scomp(SM,i),F.Sp(i));
 	}
 	
 	KondoHamiltonian = H1 + H2 + H3 + H4 + H5;
