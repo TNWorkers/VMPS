@@ -153,7 +153,7 @@ struct HamiltonianTerms
 	/**next-nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2, transfer operator*/
 	NextnTerms<Scalar> nextn;
 	
-	inline size_t auxdim() {return 2+tight.size()+nextn.size();}
+	inline size_t auxdim() {return 2+tight.size()+2*nextn.size();}
 };
 
 typedef HamiltonianTerms<double>           HamiltonianTermsXd;

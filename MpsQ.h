@@ -59,10 +59,6 @@ public:
 	\param Qtot_input : target quantum number*/
 	template<typename Hamiltonian> MpsQ<Nq,Scalar> (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input);
 
-	/** Construct by reading relevant informations from an .mps-file.
-		\param filename : the format is fixed to .mps. Just enter the name without the format.*/
-//	template<typename Hamiltonian> MpsQ<Nq,Scalar> (string filename);
-
 	///\{
 	/**Sets all matrices to random using boost's uniform distribution from -1 to 1.
 	\warning Watch for overflow in large chains where one gets exponentially large values when multiplying all the matrices! The safer way is to randomize while sweeping, using MpsQ::setRandom(size_t loc).*/

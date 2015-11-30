@@ -130,9 +130,9 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 		if (l==0)
 		{
 			G[l].setRowVector(14,8);
-			KondoModel::set_operators(Olocal,Otight,Onextn,F,S,J,Bzval[l],tVec[l],0.,0.,tPrimeVec[l],U);
-			this->Daux = 2 + Otight.size() + 2*Onextn.size();
-			G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).row(13);
+			HamiltonianTermsXd Terms = KondoModel::set_operators(F,S,J,Bzval[l],tVec[l],0.,0.,tPrimeVec[l],U);
+			this->Daux = Terms.auxdim();
+			G[l] = ::Generator(Terms).row(13);
 			if (CALC_SQUARE == true)
 			{
 				Gsq[l].setRowVector(14*14,8);
@@ -142,8 +142,8 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 		else if (l==this->N_sites-1)
 		{
 			G[l].setColVector(14,8);
-			KondoModel::set_operators(Olocal,Otight,Onextn,F,S,J,Bzval[l],tVec[l],0.,0.,tPrimeVec[l],U);			
-			G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn).col(0);
+			HamiltonianTermsXd Terms = KondoModel::set_operators(F,S,J,Bzval[l],tVec[l],0.,0.,tPrimeVec[l],U);
+			G[l] = ::Generator(Terms).col(0);
 			if (CALC_SQUARE == true)
 			{
 				Gsq[l].setColVector(14*14,8);
@@ -153,8 +153,8 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 		else
 		{
 			G[l].setMatrix(14,8);
-			KondoModel::set_operators(Olocal,Otight,Onextn,F,S,J,Bzval[l],tVec[l],0.,0.,tPrimeVec[l],U);			
-			G[l] = ::Generator(this->Olocal,this->Otight,this->Onextn);
+			HamiltonianTermsXd Terms = KondoModel::set_operators(F,S,J,Bzval[l],tVec[l],0.,0.,tPrimeVec[l],U);
+			G[l] = ::Generator(Terms);
 			if (CALC_SQUARE == true)
 			{
 				Gsq[l].setMatrix(14*14,8);
@@ -173,11 +173,6 @@ PKS (size_t L_input, double J_input, double t_input, double tPrime_input, vector
 	{
 		this->GOT_SQUARE = false;
 	}
-
-	//clear old values of operators
-	this->Olocal.resize(0);
-	this->Otight.resize(0);
-	this->Onextn.resize(0);
 }
 
 PKS::
@@ -299,10 +294,10 @@ PKS (size_t Lx_input, size_t Ly_input, double J_input, double t_input, double tP
 	{
 		if (l==0)
 		{
-			KondoModel::set_operators(Olocal,Otight,Onextn,F,S,J,Bzval[l],tInter[l],tIntra[l],0.,U);
-			this->Daux = 2 + Otight.size() + 2*Onextn.size();
+			HamiltonianTermsXd Terms = KondoModel::set_operators(F,S,J,Bzval[l],tInter[l],tIntra[l],0.,0.,U);
+			this->Daux = Terms.auxdim();
 			G[l].setRowVector(Daux,F.dim()*S.dim());
-			G[l] = ::Generator(Olocal,Otight,Onextn).row(Daux-1);
+			G[l] = ::Generator(Terms).row(Daux-1);
 
 			if (CALC_SQUARE == true)
 			{
@@ -312,9 +307,9 @@ PKS (size_t Lx_input, size_t Ly_input, double J_input, double t_input, double tP
 		}
 		else if (l==this->N_sites-1)
 		{
-			KondoModel::set_operators(Olocal,Otight,Onextn,F,S,J,Bzval[l],tInter[l],tIntra[l],0.,U);
+			HamiltonianTermsXd Terms = KondoModel::set_operators(F,S,J,Bzval[l],tInter[l],tIntra[l],0.,0.,U);
 			G[l].setColVector(Daux,F.dim()*S.dim());			
-			G[l] = ::Generator(Olocal,Otight,Onextn).col(0);
+			G[l] = ::Generator(Terms).col(0);
 			if (CALC_SQUARE == true)
 			{
 				Gsq[l].setColVector(Daux*Daux,F.dim()*S.dim());
@@ -323,9 +318,9 @@ PKS (size_t Lx_input, size_t Ly_input, double J_input, double t_input, double tP
 		}
 		else
 		{
-			KondoModel::set_operators(Olocal,Otight,Onextn,F,S,J,Bzval[l],tInter[l],tIntra[l],0.,U);
+			HamiltonianTermsXd Terms = KondoModel::set_operators(F,S,J,Bzval[l],tInter[l],tIntra[l],0.,0.,U);
 			G[l].setMatrix(Daux,F.dim()*S.dim());			
-			G[l] = ::Generator(Olocal,Otight,Onextn);
+			G[l] = ::Generator(Terms);
 			if (CALC_SQUARE == true)
 			{
 				Gsq[l].setMatrix(Daux*Daux,F.dim()*S.dim());
@@ -344,11 +339,6 @@ PKS (size_t Lx_input, size_t Ly_input, double J_input, double t_input, double tP
 	{
 		this->GOT_SQUARE = false;
 	}
-
-	//clear old values of operators
-	this->Olocal.resize(0);
-	this->Otight.resize(0);
-	this->Onextn.resize(0);
 }
 }
 
