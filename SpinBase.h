@@ -113,7 +113,7 @@ HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, bool PERIODI
 //			Mout += -Jprime* (Scomp(SZ,i)*Scomp(SZ,i+2) + 0.5* (Scomp(SP,i)*Scomp(SM,i+2) + Scomp(SM,i)*Scomp(SP,i+2)) );
 //		}
 	}
-	if (PERIODIC == true)
+	if (PERIODIC == true and N_orbitals>2)
 	{
 		if (Jxy != 0.)
 		{

@@ -203,7 +203,8 @@ protected:
 	bool UNITARY = false;
 	bool GOT_SQUARE = false;
 	
-	size_t N_sites; size_t N_legs;
+	size_t N_sites;
+	size_t N_legs;
 	size_t Daux;
 	
 //	ArrayXd truncWeight;

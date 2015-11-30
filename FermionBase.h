@@ -356,7 +356,7 @@ HubbardHamiltonian (double U, double t, double V, bool PERIODIC) const
 		}
 		if (V != 0.) {Mout += V*n(i)*n(i+1);}
 	}
-	if (PERIODIC == true)
+	if (PERIODIC == true and N_orbitals>2)
 	{
 		if (t != 0.)
 		{
