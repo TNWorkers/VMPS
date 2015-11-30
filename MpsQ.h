@@ -430,7 +430,7 @@ outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input)
 {
 	format = H.format;
 	qlabel = H.qlabel;
-	N_legs = H.N_legs;
+	N_legs = H.width();
 	outerResize<typename Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
 }
 

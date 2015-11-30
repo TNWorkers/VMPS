@@ -18,6 +18,8 @@ class HeisenbergModel : public MpoQ<1,double>
 {
 public:
 	
+	HeisenbergModel(){};
+	
 	/**
 	\param Lx_input : chain length
 	\param Jxy_input : \f$J_{xy}\f$, default \f$J_{xy}=-1\f$
@@ -34,10 +36,11 @@ public:
 	\param L_input : chain length
 	\param Jlist : list containing \f$J\f$ and \f$J'\f$
 	\param Bz_input : external field in z-direction
+	\param Ly_input : number of legs
 	\param D_input : \f$2S+1\f$
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
-	HeisenbergModel (int L_input, array<double,2> Jlist, double Bz_input=0., size_t D_input=2, bool CALC_SQUARE=true);
+	HeisenbergModel (size_t Lx_input, array<double,2> Jlist, double Bz_input=0., size_t Ly_input=1, size_t D_input=2, bool CALC_SQUARE=true);
 	
 //	/**Creates the MPO generator matrix for the Heisenberg model (of any spin (\f$D=2S+1\f$))
 //	\f$G = \left(
@@ -52,7 +55,7 @@ public:
 //	The fourth row and column are missing when \f$J_{xy}=0\f$. Uses the appropriate spin operators for a given \p S.*/
 //	static SuperMatrix<double> Generator (double Jxy, double Jz, double Bz, double Bx, size_t D=2);
 	
-	static HamiltonianTermsXd set_operators (const SpinBase &S, double Jxy, double Jz, double Bz=0., double Bx=0., double Jprime=0.);
+	static HamiltonianTermsXd set_operators (const SpinBase &S, double Jxy, double Jz, double Bz=0., double Bx=0., double Jprime=0., double JxyIntra=0., double JzIntra=0.);
 	
 	//---label stuff---
 	///@{
@@ -144,7 +147,7 @@ qloc (size_t N_legs, size_t D)
 };
 
 HamiltonianTermsXd HeisenbergModel::
-set_operators (const SpinBase &S, double Jxy, double Jz, double Bz, double Bx, double Jprime)
+set_operators (const SpinBase &S, double Jxy, double Jz, double Bz, double Bx, double Jprime, double JxyIntra, double JzIntra)
 {
 	HamiltonianTermsXd Terms;
 	
@@ -169,7 +172,7 @@ set_operators (const SpinBase &S, double Jxy, double Jz, double Bz, double Bx, d
 		Terms.nextn.push_back(make_tuple(-Jprime,     S.Scomp(SZ), S.Scomp(SZ), Id));
 	}
 	
-	Terms.local.push_back(make_tuple(1., S.HeisenbergHamiltonian(Jxy,Jz,Bz,Bx)));
+	Terms.local.push_back(make_tuple(1., S.HeisenbergHamiltonian(JxyIntra,JzIntra,Bz,Bx)));
 	
 	return Terms;
 }
@@ -184,7 +187,6 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 	this->label = create_label(D,Jxy,Jz,0,Bz,0);
 	
 	S = SpinBase(N_legs,D);
-	
 	HamiltonianTermsXd Terms = set_operators(S, Jxy,Jz,Bz,0.);
 	SuperMatrix<double> G = ::Generator(Terms);
 	this->Daux = Terms.auxdim();
@@ -203,30 +205,27 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 }
 
 HeisenbergModel::
-HeisenbergModel (int L_input, array<double,2> Jlist, double Bz_input, size_t D_input, bool CALC_SQUARE)
-:MpoQ<1> (L_input, 1, HeisenbergModel::qloc(1,D_input), {0}, HeisenbergModel::maglabel, "", halve),
+HeisenbergModel (size_t Lx_input, array<double,2> Jlist, double Bz_input, size_t Ly_input, size_t D_input, bool CALC_SQUARE)
+:MpoQ<1> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), {0}, HeisenbergModel::maglabel, "", halve),
 Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 {
 	this->label = create_label(D,Jxy,Jz,Jprime,Bz,0.);
 	
 	S = SpinBase(N_legs,D);
-	HamiltonianTermsXd Terms = set_operators(S, Jxy,Jz,Bz,0.,Jprime);
+	HamiltonianTermsXd Terms;
+	if (Ly_input == 1)
+	{
+		Terms = set_operators(S, Jxy,Jz,Bz,0., Jprime);
+	}
+	else
+	{
+		Terms = set_operators(S, Jprime,Jprime,Bz,0., 0., Jxy,Jxy);
+		Terms.tight.push_back(make_tuple(-0.5*Jxy, S.Scomp(SP,1), S.Scomp(SM,0)));
+		Terms.tight.push_back(make_tuple(-0.5*Jxy, S.Scomp(SM,1), S.Scomp(SP,0)));
+		Terms.tight.push_back(make_tuple(-Jz, S.Scomp(SZ,1), S.Scomp(SZ,0)));
+	}
 	SuperMatrix<double> G = ::Generator(Terms);
 	this->Daux = Terms.auxdim();
-	
-//	for (size_t leg=0; leg<2; ++leg)
-//	{
-//		Otight.push_back(make_tuple(-0.5*Jprime, S.Scomp(SP,leg), S.Scomp(SM,leg)));
-//		Otight.push_back(make_tuple(-0.5*Jprime, S.Scomp(SM,leg), S.Scomp(SP,leg)));
-//		Otight.push_back(make_tuple(-Jprime,     S.Scomp(SZ,leg), S.Scomp(SZ,leg)));
-//	}
-//	
-//	Otight.push_back(make_tuple(-0.5*Jxy, S.Scomp(SP,1), S.Scomp(SM,0)));
-//	Otight.push_back(make_tuple(-0.5*Jxy, S.Scomp(SM,1), S.Scomp(SP,0)));
-//	Otight.push_back(make_tuple(-Jz,      S.Scomp(SZ,1), S.Scomp(SZ,0)));
-//	
-//	Olocal.push_back(make_tuple(1., S.HeisenbergHamiltonian(Jxy,Jz,Bz)));
-//	this->Daux = 2+3+3;
 	
 	this->construct(G, this->W, this->Gvec);
 	
