@@ -17,7 +17,7 @@ class PKS : public KondoModel
 public:
 
 	/**Does nothing.*/
-	PKS () {};
+	PKS ():KondoModel() {};
 
 	/**Constructs a Kondo Lattice Model with 1 dimensional partial Kondo screening (PKS) geometry. Uses nnn-hopping for the geometry.
 	   \param L_input : chain length
@@ -29,7 +29,7 @@ public:
 	   \param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	   \param D_input : \f$2S+1\f$ (impurity spin)*/
 	PKS (size_t L_input, double J_input=-1., double t_input=1., double tPrime_input=1.,
-	            vector<double> Bzval_input={}, double U_input=0., bool CALC_SQUARE=true, size_t D_input=2);
+	            vector<double> Bzval_input={}, double U_input=0., bool CALC_SQUARE=false, size_t D_input=2);
 
 	/**Constructs a Kondo Lattice Model with 2 dimensional partial Kondo screening (PKS) geometry. Uses nnn-hopping for the geometry. (Ly=2 means 1D.)
 	   \param Lx_input : chain length

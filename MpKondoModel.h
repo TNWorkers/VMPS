@@ -633,7 +633,7 @@ bool KondoModel::
 validate (qarray<2> qnum) const
 {
 	int Sx2 = static_cast<int>(D-1); // necessary because of size_t
-	return (qnum[0]+Sx2*imploc.size())%2 == qnum[1]%2;
+	return (qnum[0]+N_legs*Sx2*imploc.size())%2 == qnum[1]%2;
 }
 
 };
