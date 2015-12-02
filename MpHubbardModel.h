@@ -47,7 +47,7 @@ public:
 	*/
 	static HamiltonianTermsXd set_operators (const FermionBase &F, double U, double V=0., double tPrime=0., double tIntra=1., bool PERIODIC=false);
 	static HamiltonianTermsXd set_operators (const FermionBase &F, vector<double> U, MatrixXd tInter,
-											 double V=0., double tPrime=0., double tIntra=1., bool PERIODIC=false);
+	                                         double V=0., double tPrime=0., double tIntra=1., bool PERIODIC=false);
 	
 	/**single-site local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$.
 	The quantum numbers are \f$N_{\uparrow}\f$ and \f$N_{\downarrow}\f$. Used by default.*/
@@ -122,54 +122,60 @@ qloc (size_t N_legs, bool U_IS_INFINITE)
 HamiltonianTermsXd HubbardModel::
 set_operators (const FermionBase &F, double U, double V, double tPrime, double tIntra, bool PERIODIC)
 {
-	HamiltonianTermsXd Terms;
+//	HamiltonianTermsXd Terms;
+//	
+//	for (int leg=0; leg<F.orbitals(); ++leg)
+//	{
+//		Terms.tight.push_back(make_tuple(-1., F.cdag(UP,leg), F.sign() * F.c(UP,leg)));
+//		Terms.tight.push_back(make_tuple(-1., F.cdag(DN,leg), F.sign() * F.c(DN,leg)));
+//		Terms.tight.push_back(make_tuple(+1., F.c(UP,leg),    F.sign() * F.cdag(UP,leg)));
+//		Terms.tight.push_back(make_tuple(+1., F.c(DN,leg),    F.sign() * F.cdag(DN,leg)));
+//		
+//		if (V != 0.)
+//		{
+//			Terms.tight.push_back(make_tuple(V, F.n(leg), F.n(leg)));
+//		}
+//	}
+//	
+//	if (tPrime != 0.)
+//	{
+//		Terms.nextn.push_back(make_tuple(-tPrime, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
+//		Terms.nextn.push_back(make_tuple(-tPrime, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
+//		Terms.nextn.push_back(make_tuple(+tPrime, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
+//		Terms.nextn.push_back(make_tuple(+tPrime, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
+//	}
+//	
+//	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(U,tIntra,V,PERIODIC)));
+//	
+//	return Terms;
 	
-	for (int leg=0; leg<F.orbitals(); ++leg)
-	{
-		Terms.tight.push_back(make_tuple(-1., F.cdag(UP,leg), F.sign() * F.c(UP,leg)));
-		Terms.tight.push_back(make_tuple(-1., F.cdag(DN,leg), F.sign() * F.c(DN,leg)));
-		Terms.tight.push_back(make_tuple(+1., F.c(UP,leg),    F.sign() * F.cdag(UP,leg)));
-		Terms.tight.push_back(make_tuple(+1., F.c(DN,leg),    F.sign() * F.cdag(DN,leg)));
-		
-		if (V != 0.)
-		{
-			Terms.tight.push_back(make_tuple(V, F.n(leg), F.n(leg)));
-		}
-	}
+	vector<double> Uvec(F.orbitals());
+	fill(Uvec.begin(), Uvec.end(), U);
 	
-	if (tPrime != 0.)
-	{
-		Terms.nextn.push_back(make_tuple(-tPrime, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
-		Terms.nextn.push_back(make_tuple(-tPrime, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
-		Terms.nextn.push_back(make_tuple(+tPrime, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
-		Terms.nextn.push_back(make_tuple(+tPrime, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
-	}
-	
-	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(U,tIntra,V,PERIODIC)));
-	
-	return Terms;
+	return set_operators(F, Uvec, MatrixXd::Identity(F.orbitals(),F.orbitals()), V, tPrime, tIntra, PERIODIC);
 }
 
 HamiltonianTermsXd HubbardModel::
-set_operators (const FermionBase &F, vector<double> U, MatrixXd tInter, double V, double tPrime, double tIntra, bool PERIODIC)
+set_operators (const FermionBase &F, vector<double> Uvec, MatrixXd tInter, double V, double tPrime, double tIntra, bool PERIODIC)
 {
+	assert(Uvec.size() == F.orbitals());
 	HamiltonianTermsXd Terms;
 	
 	for (int legI=0; legI<F.orbitals(); ++legI)
-		for (int legJ=0; legJ<F.orbitals(); ++legJ)
+	for (int legJ=0; legJ<F.orbitals(); ++legJ)
+	{
+		if (tInter(legI,legJ) != 0.)
 		{
-			if (tInter(legI,legJ) != 0)
-			{					
-				Terms.tight.push_back(make_tuple(-tInter(legI,legJ), F.cdag(UP,legI), F.sign() * F.c(UP,legJ)));
-				Terms.tight.push_back(make_tuple(-tInter(legI,legJ), F.cdag(DN,legI), F.sign() * F.c(DN,legJ)));
-				Terms.tight.push_back(make_tuple(+tInter(legI,legJ), F.c(UP,legI),    F.sign() * F.cdag(UP,legJ)));
-				Terms.tight.push_back(make_tuple(+tInter(legI,legJ), F.c(DN,legI),    F.sign() * F.cdag(DN,legJ)));
-			}
-			if (V != 0. and legI == legJ)
-			{
-				Terms.tight.push_back(make_tuple(V, F.n(legI), F.n(legJ)));
-			}
+			Terms.tight.push_back(make_tuple(-tInter(legI,legJ), F.cdag(UP,legI), F.sign() * F.c(UP,legJ)));
+			Terms.tight.push_back(make_tuple(-tInter(legI,legJ), F.cdag(DN,legI), F.sign() * F.c(DN,legJ)));
+			Terms.tight.push_back(make_tuple(+tInter(legI,legJ), F.c(UP,legI),    F.sign() * F.cdag(UP,legJ)));
+			Terms.tight.push_back(make_tuple(+tInter(legI,legJ), F.c(DN,legI),    F.sign() * F.cdag(DN,legJ)));
 		}
+		if (V != 0. and legI == legJ)
+		{
+			Terms.tight.push_back(make_tuple(V, F.n(legI), F.n(legJ)));
+		}
+	}
 	
 	if (tPrime != 0.)
 	{
@@ -179,7 +185,7 @@ set_operators (const FermionBase &F, vector<double> U, MatrixXd tInter, double V
 		Terms.nextn.push_back(make_tuple(+tPrime, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
 	}
 	
-	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(U,tIntra,V,PERIODIC)));
+	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uvec,tIntra,V,PERIODIC)));
 	
 	return Terms;
 }
@@ -238,7 +244,7 @@ U(U_input), V(V_input)
 	{
 		if (l==0)
 		{
-			if      (BC_input.CHOICE == PAPERCLIP) {Terms = set_operators(F, U,V,0.,1.);}
+			if      (BC_input.CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,1.);}
 			else if (BC_input.CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,true);}
 			
 			this->Daux = Terms.auxdim();
@@ -253,7 +259,7 @@ U(U_input), V(V_input)
 		}
 		else if (l==this->N_sites-1)
 		{
-			if      (BC_input.CHOICE == PAPERCLIP) {Terms = set_operators(F, U,V,0.,1.);}
+			if      (BC_input.CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,1.);}
 			else if (BC_input.CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,true);}
 			
 			this->Daux = Terms.auxdim();
@@ -268,7 +274,7 @@ U(U_input), V(V_input)
 		}
 		else
 		{
-			if      (BC_input.CHOICE == PAPERCLIP) {Terms = set_operators(F, U,V,0.,0.);}
+			if      (BC_input.CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,0.);}
 			else if (BC_input.CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,true);}
 			
 			this->Daux = Terms.auxdim();

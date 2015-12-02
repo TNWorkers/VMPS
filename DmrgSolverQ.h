@@ -29,7 +29,7 @@ public:
 	                size_t Dinit=4, size_t Dlimit=500, 
 	                size_t max_halfsweeps=50, size_t min_halfsweeps=6, 
                     double alpha_rsvd_input=1e-1, double eps_svd_input=1e-7, 
-	                size_t savePeriod=0,);
+	                size_t savePeriod=0);
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
