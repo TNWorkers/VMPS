@@ -15,7 +15,10 @@ H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\
 class HubbardModel : public MpoQ<2,double>
 {
 public:
-	
+
+	/**Does nothing.*/
+	HubbardModel ():MpoQ() {};
+
 	/**
 	\param Lx_input : chain length
 	\param U_input : \f$U\f$
@@ -43,6 +46,8 @@ public:
 	\param PERIODIC : if \p true, makes periodic boundary conditions in y-direction, i.e. a cylinder
 	*/
 	static HamiltonianTermsXd set_operators (const FermionBase &F, double U, double V=0., double tPrime=0., double tIntra=1., bool PERIODIC=false);
+	static HamiltonianTermsXd set_operators (const FermionBase &F, vector<double> U, MatrixXd tInter,
+											 double V=0., double tPrime=0., double tIntra=1., bool PERIODIC=false);
 	
 	/**single-site local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$.
 	The quantum numbers are \f$N_{\uparrow}\f$ and \f$N_{\downarrow}\f$. Used by default.*/
@@ -80,7 +85,7 @@ public:
 	MpoQ<2> antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy=0);
 	MpoQ<2> quadruplon (size_t locx, size_t locy=0);
 	
-private:
+protected:
 	
 	double U;
 	double V = 0.;
@@ -145,6 +150,40 @@ set_operators (const FermionBase &F, double U, double V, double tPrime, double t
 	return Terms;
 }
 
+HamiltonianTermsXd HubbardModel::
+set_operators (const FermionBase &F, vector<double> U, MatrixXd tInter, double V, double tPrime, double tIntra, bool PERIODIC)
+{
+	HamiltonianTermsXd Terms;
+	
+	for (int legI=0; legI<F.orbitals(); ++legI)
+		for (int legJ=0; legJ<F.orbitals(); ++legJ)
+		{
+			if (tInter(legI,legJ) != 0)
+			{					
+				Terms.tight.push_back(make_tuple(-tInter(legI,legJ), F.cdag(UP,legI), F.sign() * F.c(UP,legJ)));
+				Terms.tight.push_back(make_tuple(-tInter(legI,legJ), F.cdag(DN,legI), F.sign() * F.c(DN,legJ)));
+				Terms.tight.push_back(make_tuple(+tInter(legI,legJ), F.c(UP,legI),    F.sign() * F.cdag(UP,legJ)));
+				Terms.tight.push_back(make_tuple(+tInter(legI,legJ), F.c(DN,legI),    F.sign() * F.cdag(DN,legJ)));
+			}
+			if (V != 0. and legI == legJ)
+			{
+				Terms.tight.push_back(make_tuple(V, F.n(legI), F.n(legJ)));
+			}
+		}
+	
+	if (tPrime != 0.)
+	{
+		Terms.nextn.push_back(make_tuple(-tPrime, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
+		Terms.nextn.push_back(make_tuple(-tPrime, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
+		Terms.nextn.push_back(make_tuple(+tPrime, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
+		Terms.nextn.push_back(make_tuple(+tPrime, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
+	}
+	
+	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(U,tIntra,V,PERIODIC)));
+	
+	return Terms;
+}
+	
 HubbardModel::
 HubbardModel (size_t Lx_input, double U_input, double V_input, double tPrime_input, size_t Ly_input, bool CALC_SQUARE)
 :MpoQ<2> (Lx_input, Ly_input, HubbardModel::qloc(Ly_input,!isfinite(U_input)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
