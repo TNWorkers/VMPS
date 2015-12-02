@@ -22,25 +22,38 @@ inline double isReal (complex<double> x) {return x.real();}
 
 enum PARITY {EVEN=0, ODD=1};
 
-enum BC_CHOICE {RING, CYLINDER};
+enum BC_CHOICE {RING, HAIRSLIDE, CYLINDER};
 
 std::ostream& operator<< (std::ostream& s, BC_CHOICE CHOICE)
 {
-	if (CHOICE==RING)          {s << "RING";}
-	else if (CHOICE==CYLINDER) {s << "CYLINDER";}
+	if      (CHOICE==RING)      {s << "RING";}
+	else if (CHOICE==CYLINDER)  {s << "CYLINDER";}
+	else if (CHOICE==HAIRSLIDE) {s << "HAIRSLIDE";}
 	return s;
 }
 
 template<BC_CHOICE CHOICE> struct BC;
 
 template<>
-struct BC<RING>
+struct BC<HAIRSLIDE>
 {
 	BC (size_t Lx_input)
-	:Lx(Lx_input/2), Ly(2), CHOICE(RING)
+	:Lx(Lx_input/2), Ly(2), CHOICE(HAIRSLIDE)
 	{
 		assert(Lx_input%2==0 and "L must be even for rings because of folding!");
 	}
+	
+	BC_CHOICE CHOICE;
+	size_t Lx;
+	size_t Ly;
+};
+
+template<>
+struct BC<RING>
+{
+	BC (size_t Lx_input)
+	:Lx(Lx_input), Ly(1), CHOICE(RING)
+	{}
 	
 	BC_CHOICE CHOICE;
 	size_t Lx;
@@ -148,8 +161,10 @@ struct HamiltonianTerms
 {
 	/**local terms of Hamiltonian, format: coupling, operator*/
 	LocalTerms<Scalar> local;
+	
 	/**nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2*/
 	TightTerms<Scalar> tight;
+	
 	/**next-nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2, transfer operator*/
 	NextnTerms<Scalar> nextn;
 	

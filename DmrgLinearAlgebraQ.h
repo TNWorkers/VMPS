@@ -188,7 +188,7 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 \param VERBOSITY : verbosity level*/
 template<size_t Nq, typename MpoScalar, typename Scalar>
 void HxV (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, 
-          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
+          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	Stopwatch Chronos;
 	
@@ -229,7 +229,7 @@ void polyIter (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin1, double 
 
 template<size_t Nq, typename MpoScalar, typename Scalar>
 void HxV (const MpoQ<Nq,MpoScalar> &H, MpsQ<Nq,Scalar> &Vinout, 
-          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
+          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	MpsQ<Nq,Scalar> Vtmp;
 	HxV(H,Vinout,Vtmp,VERBOSITY);

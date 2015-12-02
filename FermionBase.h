@@ -14,7 +14,7 @@ public:
 	FermionBase(){};
 	
 	/**\param L_input : the amount of orbitals*/
-	FermionBase (size_t L_input);
+	FermionBase (size_t L_input, bool U_IS_INFINITE=false);
 	
 	/**amount of states = \f$4^L\f$*/
 	inline size_t dim() const {return N_states;}
@@ -187,12 +187,13 @@ private:
 };
 
 FermionBase::
-FermionBase (size_t L_input)
+FermionBase (size_t L_input, bool U_IS_INFINITE)
 :N_orbitals(L_input)
 {
-	assert(N_orbitals >= 1);
+	assert(N_orbitals>=1);
 	
-	N_states = pow(4,N_orbitals);
+	size_t locdim = (U_IS_INFINITE)? 3 : 4;
+	N_states = pow(locdim,N_orbitals);
 	basis.resize(N_states);
 	
 	vector<int> nUP(4);
@@ -202,7 +203,7 @@ FermionBase (size_t L_input)
 	nUP[2] = 0; nDN[2] = 1;
 	nUP[3] = 1; nDN[3] = 1;
 	
-	NestedLoopIterator Nelly(N_orbitals,4);
+	NestedLoopIterator Nelly(N_orbitals,locdim);
 	for (Nelly=Nelly.begin(); Nelly!=Nelly.end(); ++Nelly)
 	{
 		basis[Nelly.index()].resize(2*N_orbitals);
@@ -212,9 +213,10 @@ FermionBase (size_t L_input)
 			basis[*Nelly][2*i+1] = nDN[Nelly(i)];
 		}
 	}
-	// cout << "basis:" << endl;
-	// for (size_t i=0; i<N_states; i++) {cout << basis[i] << endl;}
-	// cout << endl;
+	
+//	 cout << "basis:" << endl;
+//	 for (size_t i=0; i<N_states; i++) {cout << basis[i] << endl;}
+//	 cout << endl;
 }
 
 SparseMatrixXd FermionBase::
@@ -222,6 +224,7 @@ c (SPIN_INDEX sigma, int orbital) const
 {
 	SparseMatrixXd Mout(N_states,N_states);
 	int orbital_in_base = 2*orbital+static_cast<int>(sigma);
+	
 	for (int j=0; j<basis.size(); ++j)
 	{
 		if (basis[j][orbital_in_base]) // factor 2 because of ordering 1UP,1DN,2UP,2DN,...
@@ -230,11 +233,15 @@ c (SPIN_INDEX sigma, int orbital) const
 			b[orbital_in_base].flip();
 			
 			auto it = find(basis.begin(), basis.end(), b);
-			int i = distance(basis.begin(), it);
 			
-			Mout.insert(i,j) = parity(b, orbital_in_base);
+			if (it!=basis.end())
+			{
+				int i = distance(basis.begin(), it);
+				Mout.insert(i,j) = parity(b, orbital_in_base);
+			}
 		}
 	}
+	
 	return Mout;
 }
 
@@ -269,6 +276,7 @@ n (int orbital) const
 inline SparseMatrixXd FermionBase::
 d (int orbital) const
 {
+	SparseMatrixXd Mtmp = n(UP,orbital)*n(DN,orbital);
 	return n(UP,orbital)*n(DN,orbital);
 }
 
@@ -318,6 +326,7 @@ sign (int orb1, int orb2) const
 {
 	SparseMatrixXd Id = MatrixXd::Identity(N_states,N_states).sparseView();
 	SparseMatrixXd Mout = Id;
+	
 	for (int i=orb1; i<N_orbitals; ++i)
 	{
 		Mout = Mout * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
@@ -326,7 +335,8 @@ sign (int orb1, int orb2) const
 	{
 		Mout = Mout * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
 	}
-	if(orb1 != orb2) {cout << Mout << endl;}
+//	if (orb1 != orb2) {cout << Mout << endl;}
+	
 	return Mout;
 }
 
@@ -335,6 +345,7 @@ sign_local (int orbital) const
 {
 	SparseMatrixXd Id = MatrixXd::Identity(N_states,N_states).sparseView();
 	SparseMatrixXd Mout = Id;
+	
 	for (int i=0; i<orbital; ++i)
 	{
 		Mout = Mout * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
@@ -356,7 +367,7 @@ HubbardHamiltonian (double U, double t, double V, bool PERIODIC) const
 		}
 		if (V != 0.) {Mout += V*n(i)*n(i+1);}
 	}
-	if (PERIODIC == true and N_orbitals>2)
+	if (PERIODIC==true and N_orbitals>2)
 	{
 		if (t != 0.)
 		{
@@ -365,10 +376,11 @@ HubbardHamiltonian (double U, double t, double V, bool PERIODIC) const
 		}
 		if (V != 0.) {Mout += V*n(0)*n(N_orbitals-1);}
 	}
-	if (U != 0.)
+	if (U!=0. and U!=numeric_limits<double>::infinity())
 	{
 		for (int i=0; i<N_orbitals; ++i) {Mout += U*d(i);}
 	}
+	
 	return Mout;
 }
 
@@ -394,13 +406,13 @@ qNums(size_t index, bool NM)
 		if (basis[index][i])
 		{
 			N+=1;
-			if (i%2 == 0){M += 1; Nup +=1;}
-			else {M -= 1; Ndn +=1;}
+			if (i%2 == 0) {M += 1; Nup +=1;}
+			else          {M -= 1; Ndn +=1;}
 		}
 	}
 
 	if (NM) {return qarray<2>{N,M};}
-	else {return qarray<2>{Nup,Ndn};}
+	else    {return qarray<2>{Nup,Ndn};}
 }
 
 //static const double cUP_data[] =

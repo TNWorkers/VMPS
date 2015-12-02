@@ -17,30 +17,31 @@ public:
 	MatrixType  operator() (size_t i, size_t j) const {return data[i][j];} // read
 	
 	/**Resizes to a row vector (1,Daux) for the first site.*/
+	void set (size_t Daux1, size_t Daux2, size_t D)
+	{
+		N_rows = Daux1;
+		N_cols = Daux2;
+		data.resize(boost::extents[Daux1][Daux2]);
+		innerResize(D);
+		setZero();
+	}
+	
+	/**Resizes to a row vector (1,Daux) for the first site.*/
 	void setRowVector (size_t Daux, size_t D)
 	{
-		N_rows = 1;
-		N_cols = Daux;
-		data.resize(boost::extents[1][Daux]);
-		innerResize(D);
+		set(1,Daux,D);
 	}
 	
 	/**Resizes to a column vector (Daux,1) for the last site.*/
 	void setColVector (size_t Daux, size_t D)
 	{
-		N_rows = Daux;
-		N_cols = 1;
-		data.resize(boost::extents[Daux][1]);
-		innerResize(D);
+		set(Daux,1,D);
 	}
 	
 	/**Resizes to a matrix (Daux,Daux) for all sites save the first and the last.*/
 	void setMatrix (size_t Daux, size_t D)
 	{
-		N_rows = Daux;
-		N_cols = Daux;
-		data.resize(boost::extents[N_rows][N_cols]);
-		innerResize(D);
+		set(Daux,Daux,D);
 	}
 	
 	/**Returns the i-th row.*/
@@ -161,6 +162,47 @@ SuperMatrix<Scalar> tensor_product (const SuperMatrix<Scalar> &M1, const SuperMa
 }
 
 template<typename Scalar>
+SuperMatrix<Scalar> directSum (const SuperMatrix<Scalar> &M1, const SuperMatrix<Scalar> &M2)
+{
+	SuperMatrix<Scalar> Mout;
+	size_t R;
+	size_t C;
+	
+	if (M1.rows()==1 and M2.rows()==1)
+	{
+		Mout.setRowVector(M1.auxdim()+M2.auxdim(), M1.D());
+		R = 0;
+		C = M1.cols();
+	}
+	else if (M1.cols()==1 and M2.cols()==1)
+	{
+		Mout.setColVector(M1.auxdim()+M2.auxdim(), M1.D());
+		R = M1.rows();
+		C = 0;
+	}
+	else
+	{
+		Mout.setMatrix(M1.auxdim()+M2.auxdim(), M1.D());
+		R = M1.rows();
+		C = M1.cols();
+	}
+	
+	for (size_t r1=0; r1<M1.rows(); ++r1)
+	for (size_t c1=0; c1<M1.cols(); ++c1)
+	{
+		Mout(r1,c1) = M1(r1,c1);
+	}
+	
+	for (size_t r2=0; r2<M2.rows(); ++r2)
+	for (size_t c2=0; c2<M2.cols(); ++c2)
+	{
+		Mout(R+r2,C+c2) = M2(r2,c2);
+	}
+	
+	return Mout;
+}
+
+template<typename Scalar>
 ostream &operator<< (ostream& os, const SuperMatrix<Scalar> &M)
 {
 	os << showpos;
@@ -224,20 +266,20 @@ SuperMatrix<Scalar> Generator (const HamiltonianTerms<Scalar> &Terms)
 		col.push_back(SparseMatrix<Scalar>(locdim,locdim));
 	}
 	
-	SuperMatrix<Scalar> G;
-	G.setMatrix(Daux,locdim);
-	G.setZero();
+	SuperMatrix<Scalar> Gout;
+	Gout.setMatrix(Daux,locdim);
+	Gout.setZero();
 	
 	for (size_t i=0; i<Daux-1; ++i)
 	{
-		G(i,0)        = col[i];
-		G(Daux-1,i+1) = row[i];
+		Gout(i,0)        = col[i];
+		Gout(Daux-1,i+1) = row[i];
 	}
 	
 	// corner element : local interaction
 	for (int i=0; i<Terms.local.size(); ++i)
 	{
-		G(Daux-1,0) += get<0>(Terms.local[i]) * get<1>(Terms.local[i]);
+		Gout(Daux-1,0) += get<0>(Terms.local[i]) * get<1>(Terms.local[i]);
 	}
 	
 	// nearest-neighbour transfer
@@ -245,11 +287,11 @@ SuperMatrix<Scalar> Generator (const HamiltonianTerms<Scalar> &Terms)
 	{
 		for (size_t i=0; i<Terms.nextn.size(); ++i)
 		{
-			G(Daux-1-Terms.nextn.size()+i,1+i) = get<3>(Terms.nextn[i]);
+			Gout(Daux-1-Terms.nextn.size()+i,1+i) = get<3>(Terms.nextn[i]);
 		}
 	}
 	
-	return G;
+	return Gout;
 }
 
 #endif

@@ -46,13 +46,13 @@ public:
 	
 	/**single-site local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$.
 	The quantum numbers are \f$N_{\uparrow}\f$ and \f$N_{\downarrow}\f$. Used by default.*/
-	static const std::array<qarray<2>,4> qssUD;
+	static const std::array<qarray<2>,4> qssNupNdn;
 	
 	/**local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$.
 	The quantum numbers are \f$N=N_{\uparrow}+N_{\downarrow}\f$ and \f$2M=N_{\uparrow}-N_{\downarrow}\f$. Used in combination with KondoModel.*/
 	static const std::array<qarray<2>,4> qssNM;
 	
-	static const vector<qarray<2> > qloc (size_t N_legs);
+	static const vector<qarray<2> > qloc (size_t N_legs, bool U_IS_INFINITE=false);
 	
 	/**Labels the conserved quantum numbers as \f$N_\uparrow\f$, \f$N_\downarrow\f$.*/
 	static const std::array<string,2> Nlabel;
@@ -89,24 +89,25 @@ private:
 	FermionBase F;
 };
 
-const std::array<qarray<2>,4> HubbardModel::qssUD {qarray<2>{0,0}, qarray<2>{1,0}, qarray<2>{0,1},  qarray<2>{1,1}};
+const std::array<qarray<2>,4> HubbardModel::qssNupNdn {qarray<2>{0,0}, qarray<2>{1,0}, qarray<2>{0,1},  qarray<2>{1,1}};
 const std::array<qarray<2>,4> HubbardModel::qssNM {qarray<2>{0,0}, qarray<2>{1,1}, qarray<2>{1,-1}, qarray<2>{2,0}};
 const std::array<string,2>    HubbardModel::Nlabel{"N↑","N↓"};
 
 const vector<qarray<2> > HubbardModel::
-qloc (size_t N_legs)
+qloc (size_t N_legs, bool U_IS_INFINITE)
 {
-	vector<qarray<2> > vout(pow(4,N_legs));
+	size_t locdim = (U_IS_INFINITE)? 3 : 4;
+	vector<qarray<2> > vout(pow(locdim,N_legs));
 	
-	NestedLoopIterator Nelly(N_legs,4);
+	NestedLoopIterator Nelly(N_legs,locdim);
 	for (Nelly=Nelly.begin(); Nelly!=Nelly.end(); ++Nelly)
 	{
-		vout[*Nelly] = HubbardModel::qssUD[Nelly(0)];
+		vout[*Nelly] = HubbardModel::qssNupNdn[Nelly(0)];
 		
 		for (int leg=1; leg<N_legs; ++leg)
 		for (int q=0; q<2; ++q)
 		{
-			vout[*Nelly][q] += HubbardModel::qssUD[Nelly(leg)][q];
+			vout[*Nelly][q] += HubbardModel::qssNupNdn[Nelly(leg)][q];
 		}
 	}
 	
@@ -146,7 +147,7 @@ set_operators (const FermionBase &F, double U, double V, double tPrime, double t
 
 HubbardModel::
 HubbardModel (size_t Lx_input, double U_input, double V_input, double tPrime_input, size_t Ly_input, bool CALC_SQUARE)
-:MpoQ<2> (Lx_input, Ly_input, HubbardModel::qloc(Ly_input), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
+:MpoQ<2> (Lx_input, Ly_input, HubbardModel::qloc(Ly_input,!isfinite(U_input)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
 U(U_input), V(V_input), tPrime(tPrime_input)
 {
 	assert(N_legs>1 and tPrime==0. or N_legs==1 and "Cannot build a ladder with t'-hopping!");
@@ -154,10 +155,10 @@ U(U_input), V(V_input), tPrime(tPrime_input)
 	ss << "(U=" << U << ",V=" << V << ",t'=" << tPrime << ")";
 	this->label += ss.str();
 	
-	F = FermionBase(N_legs);
+	F = FermionBase(N_legs,!isfinite(U));
 	
 	HamiltonianTermsXd Terms = set_operators(F, U,V,tPrime);
-	SuperMatrix<double> G = ::Generator(Terms);
+	SuperMatrix<double> G = Generator(Terms);
 	this->Daux = Terms.auxdim();
 	
 	this->construct(G, this->W, this->Gvec);
@@ -176,14 +177,14 @@ U(U_input), V(V_input), tPrime(tPrime_input)
 template<BC_CHOICE CHOICE>
 HubbardModel::
 HubbardModel (BC<CHOICE> BC_input, double U_input, double V_input, bool CALC_SQUARE)
-:MpoQ<2> (BC_input.Lx, BC_input.Ly, HubbardModel::qloc(BC_input.Ly), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
+:MpoQ<2> (BC_input.Lx, BC_input.Ly, HubbardModel::qloc(BC_input.Ly,!isfinite(U_input)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
 U(U_input), V(V_input)
 {
 	stringstream ss;
 	ss << "(U=" << U << ",V=" << V << "," << BC_input.CHOICE << ")";
 	this->label += ss.str();
 	
-	F = FermionBase(N_legs);
+	F = FermionBase(N_legs,!isfinite(U));
 	
 	vector<SuperMatrix<double> > G(this->N_sites);
 	vector<SuperMatrix<double> > Gsq;
@@ -198,12 +199,12 @@ U(U_input), V(V_input)
 	{
 		if (l==0)
 		{
-			if      (BC_input.CHOICE == RING)     {Terms = set_operators(F, U,V,0.,1.);}
-			else if (BC_input.CHOICE == CYLINDER) {Terms = set_operators(F, U,V,0.,1.,true);}
+			if      (BC_input.CHOICE == PAPERCLIP) {Terms = set_operators(F, U,V,0.,1.);}
+			else if (BC_input.CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,true);}
 			
 			this->Daux = Terms.auxdim();
 			G[l].setRowVector(Daux,F.dim());
-			G[l] = ::Generator(Terms).row(Daux-1);
+			G[l] = Generator(Terms).row(Daux-1);
 			
 			if (CALC_SQUARE == true)
 			{
@@ -213,12 +214,12 @@ U(U_input), V(V_input)
 		}
 		else if (l==this->N_sites-1)
 		{
-			if      (BC_input.CHOICE == RING)     {Terms = set_operators(F, U,V,0.,1.);}
-			else if (BC_input.CHOICE == CYLINDER) {Terms = set_operators(F, U,V,0.,1.,true);}
+			if      (BC_input.CHOICE == PAPERCLIP) {Terms = set_operators(F, U,V,0.,1.);}
+			else if (BC_input.CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,true);}
 			
 			this->Daux = Terms.auxdim();
 			G[l].setColVector(Daux,F.dim());
-			G[l] = ::Generator(Terms).col(0);
+			G[l] = Generator(Terms).col(0);
 			
 			if (CALC_SQUARE == true)
 			{
@@ -228,12 +229,108 @@ U(U_input), V(V_input)
 		}
 		else
 		{
-			if      (BC_input.CHOICE == RING)     {Terms = set_operators(F, U,V,0.,0.);}
-			else if (BC_input.CHOICE == CYLINDER) {Terms = set_operators(F, U,V,0.,1.,true);}
+			if      (BC_input.CHOICE == PAPERCLIP) {Terms = set_operators(F, U,V,0.,0.);}
+			else if (BC_input.CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,true);}
 			
 			this->Daux = Terms.auxdim();
 			G[l].setMatrix(Daux,F.dim());
-			G[l] = ::Generator(Terms);
+			G[l] = Generator(Terms);
+			
+			if (CALC_SQUARE == true)
+			{
+				Gsq[l].setMatrix(Daux*Daux,F.dim());
+				Gsq[l] = tensor_product(G[l],G[l]);
+			}
+		}
+	}
+	
+	this->construct(G, this->W, this->Gvec);
+	
+	if (CALC_SQUARE == true)
+	{
+		this->construct(Gsq, this->Wsq, this->GvecSq);
+		this->GOT_SQUARE = true;
+	}
+	else
+	{
+		this->GOT_SQUARE = false;
+	}
+}
+
+template<>
+HubbardModel::
+HubbardModel (BC<RING> BC_input, double U_input, double V_input, bool CALC_SQUARE)
+:MpoQ<2> (BC_input.Lx, 1, HubbardModel::qloc(1,!isfinite(U_input)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
+U(U_input), V(V_input)
+{
+	stringstream ss;
+	ss << "(U=" << U << ",V=" << V << "," << BC_input.CHOICE << ")";
+	this->label += ss.str();
+	
+	F = FermionBase(N_legs,!isfinite(U));
+	
+	vector<SuperMatrix<double> > G(this->N_sites);
+	vector<SuperMatrix<double> > Gsq;
+	if (CALC_SQUARE == true)
+	{
+		Gsq.resize(this->N_sites);
+	}
+	
+	HamiltonianTermsXd Terms = set_operators(F, U,V);
+	this->Daux = Terms.auxdim()+Terms.tight.size();
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		if (l==0)
+		{
+			G[l].setRowVector(Daux,F.dim());
+			
+			SuperMatrix<double> G_PBC;
+			G_PBC.setRowVector(Terms.tight.size(),F.dim());
+			for (int i=0; i<Terms.tight.size(); ++i)
+			{
+				G_PBC(0,i) = get<0>(Terms.tight[i]) * get<1>(Terms.tight[i]);
+			}
+			
+			G[l] = directSum(Generator(Terms).row(Terms.auxdim()-1),G_PBC);
+			
+			if (CALC_SQUARE == true)
+			{
+				Gsq[l].setRowVector(Daux*Daux,F.dim());
+				Gsq[l] = tensor_product(G[l],G[l]);
+			}
+		}
+		else if (l==this->N_sites-1)
+		{
+			G[l].setColVector(Daux,F.dim());
+			
+			SuperMatrix<double> G_PBC;
+			G_PBC.setColVector(Terms.tight.size(),F.dim());
+			for (int i=0; i<Terms.tight.size(); ++i)
+			{
+				G_PBC(i,0) = get<2>(Terms.tight[i]);
+			}
+			
+			G[l] = directSum(Generator(Terms).col(0),G_PBC);
+			
+			if (CALC_SQUARE == true)
+			{
+				Gsq[l].setColVector(Daux*Daux,F.dim());
+				Gsq[l] = tensor_product(G[l],G[l]);
+			}
+		}
+		else
+		{
+			G[l].setMatrix(Daux,F.dim());
+			
+			SuperMatrix<double> G_PBC;
+			G_PBC.setMatrix(Terms.tight.size(),F.dim());
+			for (int i=0; i<Terms.tight.size(); ++i)
+			{
+				G_PBC(i,i) = F.sign();
+			}
+			
+			G[l] = directSum(Generator(Terms),G_PBC);
 			
 			if (CALC_SQUARE == true)
 			{

@@ -28,23 +28,24 @@ public:
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-6, 
 	                size_t Dinit=4, size_t Dlimit=500, 
 	                size_t max_halfsweeps=50, size_t min_halfsweeps=6, 
-	                size_t savePeriod=0);
+                    double alpha_rsvd_input=1e-1, double eps_svd_input=1e-7, 
+	                size_t savePeriod=0,);
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
 	void prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, bool useState=false, size_t Dinit=5,
-				  double alpha_rsvd_input=1e-1, double eps_svd_input=1e-7);
+	              double alpha_rsvd_input=10., double eps_svd_input=1e-7);
 	void halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND, 
 	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST);
 	void cleanup (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, 
 	              LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND);
-
+	
 	/**Returns the current error of the eigenvalue while the sweep process.*/
 	inline double get_errEigval() const {return err_eigval;};
 	/**Returns the current error of the state while the sweep process.*/
 	inline double get_errState() const {return err_state;};
-
+	
 private:
 	
 	size_t N_sites;
@@ -69,7 +70,7 @@ private:
 	void build_L (const MpHamiltonian &H, const Eigenstate<MpsQ<Nq,Scalar> > &Vout, size_t loc);
 	/**Constructs the right transfer matrix at chain site \p loc (right environment of \p loc).*/
 	void build_R (const MpHamiltonian &H, const Eigenstate<MpsQ<Nq,Scalar> > &Vout, size_t loc);
-
+	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;	
 	LANCZOS::CONVTEST::OPTION CHOSEN_CONVTEST;
 };
@@ -81,7 +82,6 @@ info() const
 	stringstream ss;
 	ss << "DmrgSolverQ: ";
 	ss << "L=" << N_sites << ", ";
-//	ss << "D=" << D << ", ";
 	ss << "Mmax=" << Mmax << ", Dmax=" << Dmax << ", " << "Nqmax=" << Nqmax << ", ";
 	ss << "trunc_weight=" << totalTruncWeight << ", ";
 	ss << eigeninfo();
@@ -145,13 +145,13 @@ overhead (MEMUNIT memunit) const
 template<size_t Nq, typename MpHamiltonian, typename Scalar>
 void DmrgSolverQ<Nq,MpHamiltonian,Scalar>::
 prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, bool USE_STATE, size_t Dinit,
-		 double alpha_rsvd_input, double eps_svd_input)
+         double alpha_rsvd_input, double eps_svd_input)
 {
 	N_sites = H.length();
 	N_sweepsteps = N_halfsweeps = 0;
 	
 	Stopwatch PrepTimer;
-
+	
 	if (!USE_STATE)
 	{
 		// resize Vout
@@ -195,7 +195,7 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> 
 	assert(Rtmp.dim == 1 and 
 	       Rtmp.block[0][0][0].rows() == 1 and
 	       Rtmp.block[0][0][0].cols() == 1 and
-	       "Result of contraction in <φ|O|ψ> is not a scalar!");
+	       "Result of contraction <ψ|H|ψ> in DmrgSolverQ::prepare is not a scalar!");
 	Eold = isReal(Rtmp.block[0][0][0](0,0));
 	
 	// initial cutoffs
@@ -300,13 +300,13 @@ cleanup (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::ED
 
 template<size_t Nq, typename MpHamiltonian, typename Scalar>
 void DmrgSolverQ<Nq,MpHamiltonian,Scalar>::
-edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t Dinit, size_t Dlimit, size_t max_halfsweeps, size_t min_halfsweeps, size_t savePeriod)
+edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t Dinit, size_t Dlimit, size_t max_halfsweeps, size_t min_halfsweeps, double alpha_rsvd_input, double eps_svd_input, size_t savePeriod)
 {
 	tol_eigval = tol_eigval_input;
 	tol_state  = tol_state_input;
-
-	prepare(H,Vout,Qtot_input,false,Dinit);
-
+	
+	prepare(H, Vout, Qtot_input, false, Dinit, alpha_rsvd_input, eps_svd_input);
+	
 	Stopwatch Saturn;
 	
 	// lambda function to print tolerances
