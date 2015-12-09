@@ -13,25 +13,25 @@ class AndersonModel : public HubbardModel
 public:
 
 	/**Does nothing.*/
-	AndersonModel ():HubbardModel() {};
+	AndersonModel() : HubbardModel(){};
 
 	/**Constructs an Anderson Lattice Model.
-	   \param L_input : chain length
-	   \param W_input : \f$W\f$ (Hybridization term)
-	   \param t_input : \f$t\f$. \f$t>0\f$ is the common sign.
-	   \param U_input : \f$U\f$ (local Hubbard interaction)
-	   \param tPrime_input : nnn hopping \f$t^{\prime}\f$ (\f$t^{\prime}>0\f$ is common sign).
-	   \param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$*/
+	\param L_input : chain length
+	\param Hyb_input : \f$V\f$ (hybridization term)
+	\param U_input : \f$U\f$ (local Hubbard interaction)
+	\param tPrime_input : nnn hopping \f$t^{\prime}\f$ (\f$t^{\prime}>0\f$ is common sign).
+	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$*/
 	AndersonModel (size_t L_input, double Hyb_input=-1., double U_input=0., double tPrime_input=1., bool CALC_SQUARE=false);
-
+	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
 	typedef DmrgSolverQ<2,AndersonModel> Solver;
 	typedef MpsQ<2,double> StateXd;
 	typedef MpoQ<2> Operator;
 	///@}
-
+	
 protected:
+	
 	double Hyb;
 	vector<double> Uvec;
 	MatrixXd tInter;

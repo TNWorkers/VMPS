@@ -33,7 +33,7 @@ public:
 	                 size_t Ly_input=1, bool CALC_SQUARE=true);
 	
 	/**
-	\param L_input : chain length
+	\param Lx_input : chain length
 	\param Jlist : list containing \f$J\f$ and \f$J'\f$
 	\param Bz_input : external field in z-direction
 	\param Ly_input : number of legs

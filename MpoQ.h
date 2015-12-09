@@ -175,7 +175,7 @@ public:
 	template<typename TimeScalar> MpoQ<Nq,TimeScalar> BondPropagator (TimeScalar dt, PARITY P) const;
 	///\}
 	
-	class qarrayIterator;
+//	class qarrayIterator;
 	
 	void SVDcompress (bool USE_SQUARE=false, double eps_svd=1e-7, size_t N_halfsweeps=2);
 	
@@ -1240,108 +1240,111 @@ SVDcompress (bool USE_SQUARE, double eps_svd, size_t N_halfsweeps)
 	setFromFlattenedMpoQ(PsiDummy,USE_SQUARE);
 }
 
-template<size_t Nq, typename Scalar>
-class MpoQ<Nq,Scalar>::qarrayIterator
-{
-public:
-	
-	/**
-	\param qloc_input : vector of local bases
-	\param l_frst : first site
-	\param l_last : last site
-	\param N_legs : amount of legs in ladder
-	*/
-	qarrayIterator (const vector<vector<qarray<Nq> > > &qloc_input, int l_frst, int l_last, size_t N_legs=1)
-	:qloc(qloc_input[0])
-	{
-		size_t L = (l_last < 0 or l_frst >= qloc_input.size())? 0 : l_last-l_frst+1;
-		
-		// determine dq
-		for (size_t q=0; q<Nq; ++q)
-		{
-			set<int> qset;
-			for (size_t s=0; s<qloc.size(); ++s) {qset.insert(qloc[s][q]);}
-			set<int> diffqset;
-			for (auto it=qset.begin(); it!=qset.end(); ++it)
-			{
-				int prev;
-				if (it==qset.begin()) {prev=*it;}
-				else
-				{
-					diffqset.insert(*it-prev);
-					prev = *it;
-				}
-			}
-		
-			assert(diffqset.size()==1 and 
-			       "Unable to understand quantum number increments!");
-			dq[q] = *diffqset.begin();
-		}
-		
-		// determine qmin, qmax
-		qmin = L * (*min_element(qloc.begin(),qloc.end()));
-		qmax = L * (*max_element(qloc.begin(),qloc.end()));
-		
-		// setup NestedLoopIterator
-		vector<size_t> ranges(Nq);
-		for (size_t q=0; q<Nq; ++q)
-		{
-			ranges[q] = (qmax[q]-qmin[q])/dq[q]+1;
-		}
-		Nelly = NestedLoopIterator(Nq,ranges);
-	};
-	
-	/**Returns the value of the quantum number.*/
-	qarray<Nq> operator*() {return value;}
-	
-	qarrayIterator& operator= (const qarray<Nq> a) {value=a;}
-	bool operator!= (const qarray<Nq> a) {return value!=a;}
-	bool operator<= (const qarray<Nq> a) {return value<=a;}
-	bool operator<  (const qarray<Nq> a) {return value< a;}
-	
-	qarray<Nq> begin()
-	{
-		Nelly = Nelly.begin();
-		return qmin;
-	}
-	
-	qarray<Nq> end()
-	{
-		qarray<Nq> qout = qmax;
-		qout[0] += dq[0];
-		return qout;
-	}
-	
-	void operator++()
-	{
-		++Nelly;
-		if (Nelly==Nelly.end())
-		{
-			value = qmax;
-			value[0] += dq[0];
-		}
-		else
-		{
-			value = qmin;
-			for (size_t q=0; q<Nq; ++q)
-			{
-				value[q] += Nelly(q)*dq[q];
-			}
-		}
-	}
-	
-private:
-	
-	qarray<Nq> value;
-	
-	NestedLoopIterator Nelly;
-	
-	qarray<Nq> qmin;
-	qarray<Nq> qmax;
-	
-	vector<qarray<Nq> > qloc;
-	qarray<Nq> dq;
-};
+//template<size_t Nq, typename Scalar>
+//class MpoQ<Nq,Scalar>::qarrayIterator
+//{
+//public:
+//	
+//	/*
+//	\param qloc_input : vector of local bases
+//	\param l_frst : first site
+//	\param l_last : last site
+//	\param N_legs : amount of legs in ladder
+//	*/
+//	qarrayIterator (const vector<vector<qarray<Nq> > > &qloc_input, int l_frst, int l_last, size_t N_legs=1)
+//	:qloc(qloc_input[0])
+//	{
+//		size_t L = (l_last < 0 or l_frst >= qloc_input.size())? 0 : l_last-l_frst+1;
+//		
+//		// determine dq
+//		for (size_t q=0; q<Nq; ++q)
+//		{
+//			set<int> qset;
+//			for (size_t s=0; s<qloc.size(); ++s) {qset.insert(qloc[s][q]);}
+//			set<int> diffqset;
+//			for (auto it=qset.begin(); it!=qset.end(); ++it)
+//			{
+//				int prev;
+//				if (it==qset.begin()) {prev=*it;}
+//				else
+//				{
+//					diffqset.insert(*it-prev);
+//					prev = *it;
+//				}
+//			}
+//		
+//			assert(diffqset.size()==1 and 
+//			       "Unable to understand quantum number increments!");
+//			dq[q] = *diffqset.begin();
+//		}
+//		
+//		// determine qmin, qmax
+//		qmin = L * (*min_element(qloc.begin(),qloc.end()));
+//		qmax = L * (*max_element(qloc.begin(),qloc.end()));
+//		
+//		// setup NestedLoopIterator
+//		vector<size_t> ranges(Nq);
+//		for (size_t q=0; q<Nq; ++q)
+//		{
+//			ranges[q] = (qmax[q]-qmin[q])/dq[q]+1;
+//		}
+//		Nelly = NestedLoopIterator(Nq,ranges);
+//	};
+//	
+//	/*Returns the value of the quantum number.*/
+//	qarray<Nq> operator*() {return value;}
+//	
+//	qarrayIterator& operator= (const qarray<Nq> a) {value=a;}
+//	bool operator!= (const qarray<Nq> a) {return value!=a;}
+//	bool operator<= (const qarray<Nq> a) {return value<=a;}
+//	bool operator<  (const qarray<Nq> a) {return value< a;}
+//	
+//	qarray<Nq> begin()
+//	{
+//		Nelly = Nelly.begin();
+//		return qmin;
+//	}
+//	
+//	qarray<Nq> end()
+//	{
+//		qarray<Nq> qout = qmax;
+//		qout[0] += dq[0];
+//		return qout;
+//	}
+//	
+//	void operator++()
+//	{
+//		++Nelly;
+//		if (Nelly==Nelly.end())
+//		{
+//			value = qmax;
+//			value[0] += dq[0];
+//		}
+//		else
+//		{
+//			value = qmin;
+//			for (size_t q=0; q<Nq; ++q)
+//			{
+//				value[q] += Nelly(q)*dq[q];
+//			}
+//		}
+//	}
+//	
+//private:
+//	
+//	qarray<Nq> value;
+//	
+//	NestedLoopIterator Nelly;
+//	
+//	qarray<Nq> qmin;
+//	qarray<Nq> qmax;
+//	
+//	vector<qarray<Nq> > qloc;
+//	qarray<Nq> dq;
+//	
+//	set<qarray<Nq> > qset;
+//	typename set<qarray<Nq> >::const_iterator qsetIt;
+//};
 
 template<size_t Nq, typename Scalar>
 ostream &operator<< (ostream& os, const MpoQ<Nq,Scalar> &O)
