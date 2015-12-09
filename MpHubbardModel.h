@@ -9,9 +9,14 @@ namespace VMPS
 
 /**MPO representation of 
 \f$
-H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} + U \sum_i n_{i\uparrow} n_{i\downarrow}
+H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
+    - t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
+    + U \sum_i n_{i\uparrow} n_{i\downarrow}
+    + V \sum_{<ij>} n_{i} n_{j}
+    + J \sum_{<ij>} \mathbf{S}_{i} \mathbf{S}_{j}
 \f$.
-\note If the nnn-hopping is positive, the ground state energy is lowered.*/
+\note If the nnn-hopping is positive, the ground state energy is lowered.
+\warning \f$J>0\f$ is antiferromagnetic*/
 class HubbardModel : public MpoQ<2,double>
 {
 public:
@@ -24,18 +29,20 @@ public:
 	\param U_input : \f$U\f$
 	\param V_input : \f$V\f$
 	\param tPrime_input : \f$t^{\prime}\f$, next-nearest-neighbour (nnn) hopping. A minus sign in front of the hopping terms is assumed, so that \f$t^{\prime}>0\f$ is the usual choice.
+	\param J_input: \f$J\f$
 	\param Ly_input : amount of legs in ladder
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
-	HubbardModel (size_t Lx_input, double U_input, double V_input=0., double tPrime_input=0., size_t Ly_input=1, bool CALC_SQUARE=true);
+	HubbardModel (size_t Lx_input, double U_input, double V_input=0., double tPrime_input=0., double J_input=0., size_t Ly_input=1, bool CALC_SQUARE=true);
 	
 	/**Constructor for Hubbard rings and cylinders.
 	\param BC_input : boundary condition, e.g. BC<RING>(10) for a 10-site ring (folded into 5x2), BC<CYLINDER>(10,2) for a 10x2 cylinder
 	\param U_input : \f$U\f$
 	\param V_input : \f$V\f$
+	\param J_input : \f$J\f$
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
-	template<BC_CHOICE CHOICE> HubbardModel (BC<CHOICE> BC_input, double U_input, double V_input=0., bool CALC_SQUARE=true);
+	template<BC_CHOICE CHOICE> HubbardModel (BC<CHOICE> BC_input, double U_input, double V_input=0., double J_input=0., bool CALC_SQUARE=true);
 	
 	/**Determines the operators of the Hamiltonian. Made static to be called from other classes, e.g. KondoModel.
 	\param F : the FermionBase class where the operators are pulled from
@@ -43,11 +50,12 @@ public:
 	\param V : \f$V\f$
 	\param tPrime : \f$t'\f$
 	\param tIntra : hopping within the rungs of ladder (or between legs)
+	\param J : \f$J\f$
 	\param PERIODIC : if \p true, makes periodic boundary conditions in y-direction, i.e. a cylinder
 	*/
-	static HamiltonianTermsXd set_operators (const FermionBase &F, double U, double V=0., double tPrime=0., double tIntra=1., bool PERIODIC=false);
+	static HamiltonianTermsXd set_operators (const FermionBase &F, double U, double V=0., double tPrime=0., double tIntra=1., double J=0., bool PERIODIC=false);
 	static HamiltonianTermsXd set_operators (const FermionBase &F, vector<double> U, MatrixXd tInter,
-	                                         double V=0., double tPrime=0., double tIntra=1., bool PERIODIC=false);
+	                                         double V=0., double tPrime=0., double tIntra=1., double J=0., bool PERIODIC=false);
 	
 	/**single-site local basis: \f$\{ \left|0,0\right>, \left|\uparrow,0\right>, \left|0,\downarrow\right>, \left|\uparrow\downarrow\right> \}\f$.
 	The quantum numbers are \f$N_{\uparrow}\f$ and \f$N_{\downarrow}\f$. Used by default.*/
@@ -90,6 +98,7 @@ protected:
 	double U;
 	double V = 0.;
 	double tPrime = 0.;
+	double J = 0.;
 	
 	FermionBase F;
 };
@@ -120,7 +129,7 @@ qloc (size_t N_legs, bool U_IS_INFINITE)
 }
 
 HamiltonianTermsXd HubbardModel::
-set_operators (const FermionBase &F, double U, double V, double tPrime, double tIntra, bool PERIODIC)
+set_operators (const FermionBase &F, double U, double V, double tPrime, double tIntra, double J, bool PERIODIC)
 {
 //	HamiltonianTermsXd Terms;
 //	
@@ -152,11 +161,11 @@ set_operators (const FermionBase &F, double U, double V, double tPrime, double t
 	vector<double> Uvec(F.orbitals());
 	fill(Uvec.begin(), Uvec.end(), U);
 	
-	return set_operators(F, Uvec, MatrixXd::Identity(F.orbitals(),F.orbitals()), V, tPrime, tIntra, PERIODIC);
+	return set_operators(F, Uvec, MatrixXd::Identity(F.orbitals(),F.orbitals()), V, tPrime, tIntra, J, PERIODIC);
 }
 
 HamiltonianTermsXd HubbardModel::
-set_operators (const FermionBase &F, vector<double> Uvec, MatrixXd tInter, double V, double tPrime, double tIntra, bool PERIODIC)
+set_operators (const FermionBase &F, vector<double> Uvec, MatrixXd tInter, double V, double tPrime, double tIntra, double J, bool PERIODIC)
 {
 	assert(Uvec.size() == F.orbitals());
 	HamiltonianTermsXd Terms;
@@ -175,6 +184,12 @@ set_operators (const FermionBase &F, vector<double> Uvec, MatrixXd tInter, doubl
 		{
 			Terms.tight.push_back(make_tuple(V, F.n(legI), F.n(legJ)));
 		}
+		if (J != 0. and legI == legJ)
+		{
+			Terms.tight.push_back(make_tuple(0.5*J, F.Sp(legI), F.Sm(legJ)));
+			Terms.tight.push_back(make_tuple(0.5*J, F.Sm(legI), F.Sp(legJ)));
+			Terms.tight.push_back(make_tuple(J,     F.Sz(legI), F.Sz(legJ)));
+		}
 	}
 	
 	if (tPrime != 0.)
@@ -185,24 +200,24 @@ set_operators (const FermionBase &F, vector<double> Uvec, MatrixXd tInter, doubl
 		Terms.nextn.push_back(make_tuple(+tPrime, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
 	}
 	
-	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uvec,tIntra,V,PERIODIC)));
+	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uvec,tIntra,V,J,PERIODIC)));
 	
 	return Terms;
 }
 	
 HubbardModel::
-HubbardModel (size_t Lx_input, double U_input, double V_input, double tPrime_input, size_t Ly_input, bool CALC_SQUARE)
+HubbardModel (size_t Lx_input, double U_input, double V_input, double tPrime_input, double J_input, size_t Ly_input, bool CALC_SQUARE)
 :MpoQ<2> (Lx_input, Ly_input, HubbardModel::qloc(Ly_input,!isfinite(U_input)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
-U(U_input), V(V_input), tPrime(tPrime_input)
+U(U_input), V(V_input), tPrime(tPrime_input), J(J_input)
 {
 	assert(N_legs>1 and tPrime==0. or N_legs==1 and "Cannot build a ladder with t'-hopping!");
 	stringstream ss;
-	ss << "(U=" << U << ",V=" << V << ",t'=" << tPrime << ")";
+	ss << "(U=" << U << ",V=" << V << ",t'=" << tPrime << ",J=" << J << ")";
 	this->label += ss.str();
 	
 	F = FermionBase(N_legs,!isfinite(U));
 	
-	HamiltonianTermsXd Terms = set_operators(F, U,V,tPrime);
+	HamiltonianTermsXd Terms = set_operators(F, U,V,tPrime,1.,J);
 	SuperMatrix<double> G = Generator(Terms);
 	this->Daux = Terms.auxdim();
 	
@@ -221,12 +236,12 @@ U(U_input), V(V_input), tPrime(tPrime_input)
 
 template<BC_CHOICE CHOICE>
 HubbardModel::
-HubbardModel (BC<CHOICE> BC_input, double U_input, double V_input, bool CALC_SQUARE)
+HubbardModel (BC<CHOICE> BC_input, double U_input, double V_input, double J_input, bool CALC_SQUARE)
 :MpoQ<2> (BC_input.Lx, BC_input.Ly, HubbardModel::qloc(BC_input.Ly,!isfinite(U_input)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
-U(U_input), V(V_input)
+U(U_input), V(V_input), J(J_input)
 {
 	stringstream ss;
-	ss << "(U=" << U << ",V=" << V << "," << BC_input.CHOICE << ")";
+	ss << "(U=" << U << ",V=" << V << ",J=" << J << BC_input.CHOICE << ")";
 	this->label += ss.str();
 	
 	F = FermionBase(N_legs,!isfinite(U));
@@ -244,8 +259,8 @@ U(U_input), V(V_input)
 	{
 		if (l==0)
 		{
-			if      (BC_input.CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,1.);}
-			else if (BC_input.CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,true);}
+			if      (BC_input.CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,1.,J);}
+			else if (BC_input.CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,J,true);}
 			
 			this->Daux = Terms.auxdim();
 			G[l].setRowVector(Daux,F.dim());
@@ -259,8 +274,8 @@ U(U_input), V(V_input)
 		}
 		else if (l==this->N_sites-1)
 		{
-			if      (BC_input.CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,1.);}
-			else if (BC_input.CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,true);}
+			if      (BC_input.CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,1.,J);}
+			else if (BC_input.CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,J,true);}
 			
 			this->Daux = Terms.auxdim();
 			G[l].setColVector(Daux,F.dim());
@@ -274,8 +289,8 @@ U(U_input), V(V_input)
 		}
 		else
 		{
-			if      (BC_input.CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,0.);}
-			else if (BC_input.CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,true);}
+			if      (BC_input.CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,0.,J);}
+			else if (BC_input.CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,J,true);}
 			
 			this->Daux = Terms.auxdim();
 			G[l].setMatrix(Daux,F.dim());
@@ -304,9 +319,9 @@ U(U_input), V(V_input)
 
 template<>
 HubbardModel::
-HubbardModel (BC<RING> BC_input, double U_input, double V_input, bool CALC_SQUARE)
+HubbardModel (BC<RING> BC_input, double U_input, double V_input, double J_input, bool CALC_SQUARE)
 :MpoQ<2> (BC_input.Lx, 1, HubbardModel::qloc(1,!isfinite(U_input)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
-U(U_input), V(V_input)
+U(U_input), V(V_input), J(J_input)
 {
 	stringstream ss;
 	ss << "(U=" << U << ",V=" << V << "," << BC_input.CHOICE << ")";
@@ -321,7 +336,7 @@ U(U_input), V(V_input)
 		Gsq.resize(this->N_sites);
 	}
 	
-	HamiltonianTermsXd Terms = set_operators(F, U,V);
+	HamiltonianTermsXd Terms = set_operators(F, U,V,0.,1.,J);
 	this->Daux = Terms.auxdim()+Terms.tight.size();
 	
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -590,8 +605,7 @@ n (SPIN_INDEX sigma, size_t locx, size_t locy)
 	stringstream ss;
 	ss << "n(" << locx << "," << locy << ",σ=" << sigma << ")";
 	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
-	(sigma==UP)? Mout.setLocal(locx, F.n(UP,locy)):
-	             Mout.setLocal(locx, F.n(DN,locy));
+	Mout.setLocal(locx, F.n(sigma,locy));
 	return Mout;
 }
 

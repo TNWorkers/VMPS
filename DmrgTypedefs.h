@@ -11,18 +11,39 @@ inline double isReal (complex<double> x) {return x.real();}
 
 #ifndef SPIN_INDEX_ENUM
 #define SPIN_INDEX_ENUM
-	enum SPIN_INDEX {UP=false, DN=true, NOSPIN=2, UPDN=3};
+	enum SPIN_INDEX
+	{
+		UP=false, /**<spin up*/
+		DN=true, /**<spin down*/
+		NOSPIN=2, /**<no spin (for consitency, also useful for iterations)*/
+		UPDN=3 /**<both up and down (for consitency)*/
+	};
+	
 	SPIN_INDEX operator! (const SPIN_INDEX sigma)
 	{
 		assert(sigma==UP or sigma==DN);
 		return (sigma==UP) ? DN : UP;
 	}
 	//string spin_index_strings[] = {"UP","DN","NO","UPDN"};
+	
+	std::ostream& operator<< (std::ostream& s, SPIN_INDEX sigma)
+	{
+		if      (sigma==UP)     {s << "↑";}
+		else if (sigma==DN)     {s << "↓";}
+		else if (sigma==NOSPIN) {s << "↯";}
+		else if (sigma==UPDN)   {s << "⇅";}
+		return s;
+	}
 #endif
 
 enum PARITY {EVEN=0, ODD=1};
 
-enum BC_CHOICE {RING, HAIRSLIDE, CYLINDER};
+enum BC_CHOICE
+{
+	RING, /**<Periodic boundary conditions implemented via an MPO with transfer between the first and the last site.*/
+	HAIRSLIDE, /**<Periodic boundary conditions implemented via chain folding.*/
+	CYLINDER /**<Periodic boundary conditions in y-direction by using the full Hilbert space.*/
+};
 
 std::ostream& operator<< (std::ostream& s, BC_CHOICE CHOICE)
 {

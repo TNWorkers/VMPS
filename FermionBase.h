@@ -13,7 +13,9 @@ public:
 	
 	FermionBase(){};
 	
-	/**\param L_input : the amount of orbitals*/
+	/**
+	\param L_input : the amount of orbitals
+	\param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis*/
 	FermionBase (size_t L_input, bool U_IS_INFINITE=false);
 	
 	/**amount of states = \f$4^L\f$*/
@@ -168,10 +170,18 @@ public:
 	\param U : \f$U\f$
 	\param t : \f$t\f$
 	\param V : \f$V\f$
+	\param J : \f$J\f$
 	\param PERIODIC: periodic boundary conditions if \p true*/
-	SparseMatrixXd HubbardHamiltonian (double U, double t=1., double V=0., bool PERIODIC=false) const;
-	SparseMatrixXd HubbardHamiltonian (std::vector<double> U, double t=1., double V=0., bool PERIODIC=false) const;
-
+	SparseMatrixXd HubbardHamiltonian (double U, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
+	
+	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
+	\param U : \f$U\f$ for each orbital
+	\param t : \f$t\f$
+	\param V : \f$V\f$
+	\param J : \f$J\f$
+	\param PERIODIC: periodic boundary conditions if \p true*/
+	SparseMatrixXd HubbardHamiltonian (std::vector<double> U, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
+	
 	/**Returns the qarray for a given index of the basis
 	   \param index
 	   \param NM : if true, the format is (N,M), if false the format is (Nup,Ndn)*/ 
@@ -355,7 +365,7 @@ sign_local (int orbital) const
 }
 
 SparseMatrixXd FermionBase::
-HubbardHamiltonian (double U, double t, double V, bool PERIODIC) const
+HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
 {
 	SparseMatrixXd Mout(N_states,N_states);
 	
@@ -367,6 +377,10 @@ HubbardHamiltonian (double U, double t, double V, bool PERIODIC) const
 			Mout += -t*(T+SparseMatrixXd(T.transpose()));
 		}
 		if (V != 0.) {Mout += V*n(i)*n(i+1);}
+		if (J != 0.)
+		{
+			Mout += J*(0.5*Sp(i)*Sm(i+1) + 0.5*Sm(i)*Sp(i+1) + Sz(i)*Sz(i+1));
+		}
 	}
 	if (PERIODIC==true and N_orbitals>2)
 	{
@@ -376,6 +390,10 @@ HubbardHamiltonian (double U, double t, double V, bool PERIODIC) const
 			Mout += -t*(T+SparseMatrixXd(T.transpose()));
 		}
 		if (V != 0.) {Mout += V*n(0)*n(N_orbitals-1);}
+		if (J != 0.)
+		{
+			Mout += J*(0.5*Sp(0)*Sm(N_orbitals-1) + 0.5*Sm(0)*Sp(N_orbitals-1) + Sz(0)*Sz(N_orbitals-1));
+		}
 	}
 	if (U != 0. and U != numeric_limits<double>::infinity())
 	{
@@ -386,9 +404,9 @@ HubbardHamiltonian (double U, double t, double V, bool PERIODIC) const
 }
 
 SparseMatrixXd FermionBase::
-HubbardHamiltonian (std::vector<double> U, double t, double V, bool PERIODIC) const
+HubbardHamiltonian (std::vector<double> U, double t, double V, double J, bool PERIODIC) const
 {
-	SparseMatrixXd Mout = HubbardHamiltonian(0,t,V,PERIODIC);
+	SparseMatrixXd Mout = HubbardHamiltonian(0,t,V,J,PERIODIC);
 	for (int i=0; i<N_orbitals; ++i)
 	{
 		if (U[i] != 0. and U[i] != numeric_limits<double>::infinity())

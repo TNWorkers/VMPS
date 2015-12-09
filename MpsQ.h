@@ -100,7 +100,8 @@ public:
 	\param L_input : chain length
 	\param qloc_input : local basis
 	\param Qtot_input : target quantum number*/
-	template<typename qIterator> void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input);
+	void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input);
+//	template<typename qIterator> void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input);
 	
 	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from an MpoQ.
 	\param H : chain length and local basis will be retrieved from this MpoQ (less importantly, the quantum number labels and the format function as well)
@@ -369,7 +370,8 @@ MpsQ (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
 	format = H.format;
 	qlabel = H.qlabel;
 	N_legs = H.width();
-	outerResize<typename Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
+//	outerResize<typename Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
+	outerResize(H.length(), H.locBasis(), Qtot_input);
 	innerResize(Dmax);
 }
 
@@ -431,7 +433,8 @@ outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input)
 	format = H.format;
 	qlabel = H.qlabel;
 	N_legs = H.width();
-	outerResize<typename Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
+//	outerResize<typename Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
+	outerResize(H.length(), H.locBasis(), Qtot_input);
 }
 
 template<size_t Nq, typename Scalar>
@@ -486,13 +489,46 @@ resize_arrays()
 }
 
 template<size_t Nq, typename Scalar>
-template<typename qIterator>
+//template<typename qIterator>
 void MpsQ<Nq,Scalar>::
 outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input)
 {
 	this->N_sites = L_input;
 	qloc = qloc_input;
 	Qtot = Qtot_input;
+	
+	auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> set<qarray<Nq> >
+	{
+		size_t L = (l_last < 0 or l_frst >= qloc.size())? 0 : l_last-l_frst+1;
+		set<qarray<Nq> > qset;
+		
+		if (L>0)
+		{
+			set<qarray<Nq> > qset_tmp;
+			for (size_t s=0; s<qloc[l_frst].size(); ++s)
+			{
+				qset_tmp.insert(qloc[l_frst][s]);
+			}
+			
+			for (size_t l=l_frst+1; l<=l_last; ++l)
+			{
+				for (size_t s=0; s<qloc[l_frst].size(); ++s)
+				for (auto it=qset_tmp.begin(); it!=qset_tmp.end(); ++it)
+				{
+					qset.insert(*it+qloc[l][s]);
+				}
+				std::swap(qset_tmp,qset);
+			}
+			
+			qset = qset_tmp;
+		}
+		else
+		{
+			qset.insert(qvacuum<Nq>());
+		}
+		
+		return qset;
+	};
 	
 	this->pivot = -1;
 	
@@ -512,43 +548,48 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 			for (size_t s=0; s<qloc[l].size(); ++s)
 			{
 				A[l][s].clear();
-			
+				
 	//			qarrayIterator<D,Nq> ql(qloc,l);
 	//			qarrayIterator<D,Nq> qr(qloc,this->N_sites-l-1);
-			
+				
 	//			qIterator ql(qloc,l);
 	//			qIterator qr(qloc,this->N_sites-l-1);
-			
+				
 				int lprev = l-1;
 				int lnext = l+1;
-				qIterator ql(qloc, 0, lprev, N_legs); // length=l
-				qIterator qr(qloc, lnext, this->N_sites-1, N_legs); // length=L-l-1
-			
-				set<qarray<Nq> > qrset;
-				for (qr=qr.begin(); qr<qr.end(); ++qr)
-				{
-					qrset.insert(*qr);
-				}
-			
-				for (ql=ql.begin(); ql<ql.end(); ++ql)
+//				qIterator ql(qloc, 0, lprev, N_legs); // length=l
+//				qIterator qr(qloc, lnext, this->N_sites-1, N_legs); // length=L-l-1
+//				
+//				set<qarray<Nq> > qrset = qr.qset;
+//				for (qr=qr.begin(); qr!=qr.end(); ++qr)
+//				{
+//					qrset.insert(*qr);
+//				}
+				
+				set<qarray<Nq> > qlset = calc_qnums_on_segment(0,lprev); // length=l
+				set<qarray<Nq> > qrset = calc_qnums_on_segment(lnext,this->N_sites-1); // length=L-l-1
+				
+//				for (ql=ql.begin(); ql!=ql.end(); ++ql)
+				for (auto ql=qlset.begin(); ql!=qlset.end(); ++ql)
 				{
 					auto qr = Qtot-*ql-qloc[l][s];
 					auto itqr = qrset.find(qr);
-				
+					
 					if (itqr != qrset.end())
 					{
 						auto qin  = *ql;
 						auto qout = *ql+qloc[l][s];
-					
+						
 						intmp.insert(qin);
 						outtmp.insert(qout);
-					
+						
 						A[l][s].in.push_back(qin);
 						A[l][s].out.push_back(qout);
 						A[l][s].dict.insert({qarray2<Nq>{qin,qout}, A[l][s].dim});
 						++A[l][s].dim;
 					}
 				}
+				
 				A[l][s].block.resize(A[l][s].dim);
 			}
 			
@@ -770,7 +811,8 @@ template<typename Hamiltonian>
 void MpsQ<Nq,Scalar>::
 setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 {
-	outerResize<typename Hamiltonian::qarrayIterator>(config.size(), qloc, accumulate(config.begin(),config.end(),qvacuum<Nq>()));
+//	outerResize<typename Hamiltonian::qarrayIterator>(config.size(), qloc, accumulate(config.begin(),config.end(),qvacuum<Nq>()));
+	outerResize(config.size(), qloc, accumulate(config.begin(),config.end(),qvacuum<Nq>()));
 	
 	for (size_t l=0; l<this->N_sites; ++l)
 	for (size_t s=0; s<qloc[l].size(); ++s)
