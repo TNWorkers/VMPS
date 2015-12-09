@@ -12,13 +12,12 @@ H = - J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^
 \f$.
 \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
 \note \f$J<0\f$ : antiferromagnetic*/
-template<size_t D=2>
 class GrandHeisenbergModel : public MpoQ<0,double>
 {
 public:
 	
 	GrandHeisenbergModel (int L_input, double Jxy_input=-1., double Jz_input=numeric_limits<double>::infinity(), 
-	                      double Bz_input=0., double Bx_input=0., bool CALC_SQUARE=true);
+	                      double Bz_input=0., double Bx_input=0., bool CALC_SQUARE=true, size_t D_input=2);
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
@@ -30,28 +29,31 @@ public:
 	typedef MpoQ<0>                                  Operator;
 	///@}
 	
-	static MpoQ<0> SzSz (size_t L, size_t loc1, size_t loc2);
-	static MpoQ<0> Sz   (size_t L, size_t loc);
+	MpoQ<0> SzSz (size_t loc1, size_t loc2);
+	MpoQ<0> Sz   (size_t loc);
 	
 private:
 	
 	double Jxy, Jz;
 	double Bz, Bx;
+	size_t D;
+	SpinBase S;
 };
 
-template<size_t D>
-GrandHeisenbergModel<D>::
-GrandHeisenbergModel (int L_input, double Jxy_input, double Jz_input, double Bz_input, double Bx_input, bool CALC_SQUARE)
-:MpoQ<0> (L_input, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, ""),
-Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input)
+GrandHeisenbergModel::
+GrandHeisenbergModel (int L_input, double Jxy_input, double Jz_input, double Bz_input, double Bx_input, bool CALC_SQUARE, size_t D_input)
+	:MpoQ<0> (L_input, 1, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, ""),
+	Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input), D(D_input)
 {
 	if (Jz==numeric_limits<double>::infinity()) {Jz=Jxy;} // default: Jxy=Jz
 	assert(Jxy != 0. or Jz != 0.);
-	this->label = HeisenbergModel<D>::create_label(frac(D-1,2),Jxy,Jz,Bz,Bx);
+	this->label = HeisenbergModel::create_label(D,Jxy,Jz,0.,Bz,Bx);
 	
-	this->Daux = HeisenbergModel<D>::calc_Daux(Jxy,Jz);
-	
-	SuperMatrix<double> G = HeisenbergModel<D>::Generator(Jxy,Jz,Bz,Bx);
+	S = SpinBase(1,D);
+	HamiltonianTermsXd Terms = HeisenbergModel::set_operators(S, Jxy,Jz,Bz,Bx);
+
+	SuperMatrix<double> G = ::Generator(Terms);
+	this->Daux = Terms.auxdim();
 	this->construct(G, this->W, this->Gvec);
 	
 	if (CALC_SQUARE == true)
@@ -65,27 +67,25 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input)
 	}
 }
 
-template<size_t D>
-MpoQ<0> GrandHeisenbergModel<D>::
-Sz (size_t L, size_t loc)
+MpoQ<0> GrandHeisenbergModel::
+Sz (size_t loc)
 {
-	assert(loc<L);
+	assert(loc<N_sites);
 	stringstream ss;
 	ss << "Sz(" << loc << ")";
-	MpoQ<0> Mout(L, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, "");
-	Mout.setLocal(loc, SpinBase<D>::Sz);
+	MpoQ<0> Mout(N_sites, 1, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, "");
+	Mout.setLocal(loc, S.Scomp(SZ));
 	return Mout;
 }
 
-template<size_t D>
-MpoQ<0> GrandHeisenbergModel<D>::
-SzSz (size_t L, size_t loc1, size_t loc2)
+MpoQ<0> GrandHeisenbergModel::
+SzSz (size_t loc1, size_t loc2)
 {
-	assert(loc1<L and loc2<L);
+	assert(loc1<N_sites and loc2<N_sites);
 	stringstream ss;
 	ss << "Sz(" << loc1 << ")" <<  "Sz(" << loc2 << ")";
-	MpoQ<0> Mout(L, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, "");
-	Mout.setLocal(loc1, SpinBase<D>::Sz, loc2, SpinBase<D>::Sz);
+	MpoQ<0> Mout(N_sites, 1, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, "");
+	Mout.setLocal({loc1, loc2}, {S.Scomp(SZ), S.Scomp(SZ)});
 	return Mout;
 }
 
