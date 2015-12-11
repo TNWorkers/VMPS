@@ -73,7 +73,8 @@ public:
 	/**Sweeps through the chain with DMRG::BROOM::QR, creating a canonical MpsQ.
 	\param DIR : If DMRG::DIRECTION::LEFT, the result is left-canonical. If DMRG::DIRECTION::RIGHT, the result is right-canonical.*/
 	void canonize (DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::LEFT);
-#ifdef USE_HDF5_STORAGE
+	
+	#ifdef USE_HDF5_STORAGE
 	///\{
 	/**Save all matrices of the MPS to the file <FILENAME>.h5.
 	   \param filename : the format is fixed to .h5. Just enter the name without the format.
@@ -95,7 +96,8 @@ public:
 	   \param filename : the format is fixed to .h5. Just enter the name without the format.
 	   \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.*/
 	size_t loadDmax(string filename);
-#endif	
+	#endif
+	
 	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated.
 	\param L_input : chain length
 	\param qloc_input : local basis
@@ -496,14 +498,16 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 	this->N_sites = L_input;
 	qloc = qloc_input;
 	Qtot = Qtot_input;
+	this->pivot = -1;
 	
 	auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> set<qarray<Nq> >
 	{
 		size_t L = (l_last < 0 or l_frst >= qloc.size())? 0 : l_last-l_frst+1;
 		set<qarray<Nq> > qset;
 		
-		if (L>0)
+		if (L > 0)
 		{
+			// add qnums of local basis on l_frst to qset_tmp
 			set<qarray<Nq> > qset_tmp;
 			for (size_t s=0; s<qloc[l_frst].size(); ++s)
 			{
@@ -512,11 +516,13 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 			
 			for (size_t l=l_frst+1; l<=l_last; ++l)
 			{
-				for (size_t s=0; s<qloc[l_frst].size(); ++s)
+				// add qnums of local basis at l and qset_tmp to qset
+				for (size_t s=0; s<qloc[l].size(); ++s)
 				for (auto it=qset_tmp.begin(); it!=qset_tmp.end(); ++it)
 				{
 					qset.insert(*it+qloc[l][s]);
 				}
+				// swap qset and qset_tmp to continue
 				std::swap(qset_tmp,qset);
 			}
 			
@@ -530,8 +536,6 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		return qset;
 	};
 	
-	this->pivot = -1;
-	
 	if (Nq == 0)
 	{
 		outerResizeNoSymm();
@@ -544,7 +548,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		{
 			set<qarray<Nq> > intmp;
 			set<qarray<Nq> > outtmp;
-		
+			
 			for (size_t s=0; s<qloc[l].size(); ++s)
 			{
 				A[l][s].clear();
@@ -632,7 +636,7 @@ innerResize (size_t Dmax)
 	if (Nq == 0)
 	{
 		size_t Dl = qloc[0].size();
-		size_t Dr  = qloc[this->N_sites-1].size();
+		size_t Dr = qloc[this->N_sites-1].size();
 		
 		for (size_t s=0; s<Dl; ++s)
 		{
@@ -648,11 +652,11 @@ innerResize (size_t Dmax)
 			size_t Dl = qloc[l].size();
 			size_t Dr = qloc[this->N_sites-l-1].size();
 			
-			size_t Nlrows = min(Dmax, A[l-1][0].block[0].rows()*Dl);
-			size_t Nlcols = min(Dmax, A[l-1][0].block[0].cols()*Dl);
+			size_t Nlrows = min(Dmax, (size_t)A[l-1][0].block[0].cols());
+			size_t Nlcols = min(Dmax, Nlrows*Dl);
 			
-			size_t Nrrows = min(Dmax, A[l-1][0].block[0].rows()*Dr);
-			size_t Nrcols = min(Dmax, A[l-1][0].block[0].cols()*Dr);
+			size_t Nrcols = min(Dmax, (size_t)A[this->N_sites-l][0].block[0].rows());
+			size_t Nrrows = min(Dmax, Nrcols*Dr);
 			
 			for (size_t s=0; s<Dl; ++s)
 			{
@@ -660,7 +664,7 @@ innerResize (size_t Dmax)
 			}
 			for (size_t s=0; s<Dr; ++s)
 			{
-				A[this->N_sites-l-1][s].block[0].resize(Nrcols,Nrrows);
+				A[this->N_sites-l-1][s].block[0].resize(Nrrows,Nrcols);
 			}
 		}
 		

@@ -18,7 +18,7 @@ using namespace Eigen;
 	#include "LapackWrappers.h"
 #endif
 
-/**Dummy for models without symmetries.*/
+/**Dummies for models without symmetries.*/
 const std::array<qarray<0>,2> qloc2dummy {qarray<0>{}, qarray<0>{}};
 const std::array<qarray<0>,3> qloc3dummy {qarray<0>{}, qarray<0>{}, qarray<0>{}};
 const std::array<qarray<0>,4> qloc4dummy {qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}};

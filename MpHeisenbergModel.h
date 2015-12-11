@@ -18,7 +18,7 @@ class HeisenbergModel : public MpoQ<1,double>
 {
 public:
 	
-	HeisenbergModel(){};
+	HeisenbergModel() : MpoQ<1>() {};
 	
 	/**
 	\param Lx_input : chain length
@@ -56,6 +56,9 @@ public:
 //	static SuperMatrix<double> Generator (double Jxy, double Jz, double Bz, double Bx, size_t D=2);
 	
 	static HamiltonianTermsXd set_operators (const SpinBase &S, double Jxy, double Jz, double Bz=0., double Bx=0., double Jprime=0., double JxyIntra=0., double JzIntra=0.);
+	
+	static HamiltonianTermsXd set_operators (const SpinBase &S, const MatrixXd &JxyInter, const MatrixXd &JzInter, 
+	                                         const VectorXd &Bz, const VectorXd &Bx, double Jprime=0., double JxyIntra=0., double JzIntra=0.);
 	
 	//---label stuff---
 	///@{
@@ -149,18 +152,34 @@ qloc (size_t N_legs, size_t D)
 HamiltonianTermsXd HeisenbergModel::
 set_operators (const SpinBase &S, double Jxy, double Jz, double Bz, double Bx, double Jprime, double JxyIntra, double JzIntra)
 {
+	MatrixXd JxyInter(S.orbitals(),S.orbitals()); JxyInter.setIdentity(); JxyInter *= Jxy;
+	MatrixXd JzInter (S.orbitals(),S.orbitals()); JzInter.setIdentity();  JzInter  *= Jz;
+	VectorXd Bzvec(S.orbitals()); Bzvec.setConstant(Bz);
+	VectorXd Bxvec(S.orbitals()); Bxvec.setConstant(Bx);
+	return set_operators(S, JxyInter, JzInter, Bzvec, Bxvec, Jprime, JxyIntra, JzIntra);
+}
+
+HamiltonianTermsXd HeisenbergModel::
+set_operators (const SpinBase &S, const MatrixXd &JxyInter, const MatrixXd &JzInter, const VectorXd &Bz, const VectorXd &Bx, double Jprime, double JxyIntra, double JzIntra)
+{
+	assert(S.orbitals() == JxyInter.rows() and 
+	       S.orbitals() == JxyInter.cols() and 
+	       S.orbitals() == JzInter.rows()  and 
+	       S.orbitals() == JzInter.cols());
+	
 	HamiltonianTermsXd Terms;
 	
-	for (size_t leg=0; leg<S.orbitals(); ++leg)
+	for (int leg1=0; leg1<S.orbitals(); ++leg1)
+	for (int leg2=0; leg2<S.orbitals(); ++leg2)
 	{
-		if (Jxy != 0.)
+		if (JxyInter(leg1,leg2) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-0.5*Jxy, S.Scomp(SP,leg), S.Scomp(SM,leg)));
-			Terms.tight.push_back(make_tuple(-0.5*Jxy, S.Scomp(SM,leg), S.Scomp(SP,leg)));
+			Terms.tight.push_back(make_tuple(-0.5*JxyInter(leg1,leg2), S.Scomp(SP,leg1), S.Scomp(SM,leg2)));
+			Terms.tight.push_back(make_tuple(-0.5*JxyInter(leg1,leg2), S.Scomp(SM,leg1), S.Scomp(SP,leg2)));
 		}
-		if (Jz != 0.)
+		if (JzInter(leg1,leg2) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-Jz, S.Scomp(SZ,leg), S.Scomp(SZ,leg)));
+			Terms.tight.push_back(make_tuple(-JxyInter(leg1,leg2), S.Scomp(SZ,leg1), S.Scomp(SZ,leg2)));
 		}
 	}
 	
@@ -188,7 +207,7 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 	
 	S = SpinBase(N_legs,D);
 	HamiltonianTermsXd Terms = set_operators(S, Jxy,Jz,Bz,0.);
-	SuperMatrix<double> G = ::Generator(Terms);
+	SuperMatrix<double> G = Generator(Terms);
 	this->Daux = Terms.auxdim();
 	
 	this->construct(G, this->W, this->Gvec);
@@ -224,7 +243,7 @@ Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 		Terms.tight.push_back(make_tuple(-0.5*Jxy, S.Scomp(SM,1), S.Scomp(SP,0)));
 		Terms.tight.push_back(make_tuple(-Jz, S.Scomp(SZ,1), S.Scomp(SZ,0)));
 	}
-	SuperMatrix<double> G = ::Generator(Terms);
+	SuperMatrix<double> G = Generator(Terms);
 	this->Daux = Terms.auxdim();
 	
 	this->construct(G, this->W, this->Gvec);

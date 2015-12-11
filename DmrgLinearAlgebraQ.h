@@ -79,12 +79,15 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 		}
 	}
 	
-	assert(B.dim == 1 and 
-	       B.block[0][0][0].rows() == 1 and
-	       B.block[0][0][0].cols() == 1 and
-	       "Result of contraction in <φ|O|ψ> is not a scalar!");
-	
-	return B.block[0][0][0](0,0);
+	if(B.dim == 1 and B.block[0][0][0].rows() == 1 and B.block[0][0][0].cols() == 1)
+	{
+		return B.block[0][0][0](0,0);
+	}
+	else
+	{
+		lout << "Warning: Result of contraction in <φ|O|ψ> is not a scalar, returning 0!" << endl;
+		return 0;
+	}
 	
 //	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > Lnext;
 //	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > L;
@@ -173,12 +176,15 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 //		<< B.block[q][0][0] << endl;
 //	}
 	
-	assert(B.dim == 1 and 
-	       B.block[0][0][0].rows() == 1 and 
-	       B.block[0][0][0].cols() == 1 and
-	       "Result of contraction in <φ|O1*O2|ψ> is not a scalar!");
-	
-	return B.block[0][0][0](0,0);
+	if (B.dim == 1 and B.block[0][0][0].rows() == 1 and B.block[0][0][0].cols() == 1)
+	{
+		return B.block[0][0][0](0,0);
+	}
+	else
+	{
+		lout << "Result of contraction in <φ|O1*O2|ψ> is not a scalar, returning 0!" << endl;
+		return 0;
+	}
 }
 
 /**Apply an MpoQ to an MpsQ \f$\left|\Psi_{out}\right> = H \left|\Psi_{in}\right>\f$ by using the zip-up algorithm (Stoudenmire, White 2010).

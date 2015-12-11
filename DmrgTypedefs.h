@@ -15,8 +15,8 @@ inline double isReal (complex<double> x) {return x.real();}
 	{
 		UP=false, /**<spin up*/
 		DN=true, /**<spin down*/
-		NOSPIN=2, /**<no spin (for consitency, also useful for iterations)*/
-		UPDN=3 /**<both up and down (for consitency)*/
+		NOSPIN=2, /**<no spin (for consistency, also useful for iterations)*/
+		UPDN=3 /**<both up and down (for consistency)*/
 	};
 	
 	SPIN_INDEX operator! (const SPIN_INDEX sigma)

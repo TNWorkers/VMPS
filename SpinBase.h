@@ -55,6 +55,8 @@ public:
 	\param PERIODIC: periodic boundary conditions if \p true*/
 	SparseMatrixXd HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., bool PERIODIC=false) const;
 	
+	SparseMatrixXd HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, bool PERIODIC=false) const;
+	
 	/**Returns the qarray for a given index of the basis.
 	\param index*/
 	qarray<1> qNums (size_t index);
@@ -94,8 +96,10 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 }
 
 SparseMatrixXd SpinBase::
-HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, bool PERIODIC) const
+HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, bool PERIODIC) const
 {
+	assert (Bz.rows() == N_orbitals and Bx.rows() == N_orbitals);
+	
 	SparseMatrixXd Mout(N_states,N_states);
 	
 	for (int i=0; i<N_orbitals-1; ++i) // for all bonds
@@ -108,10 +112,6 @@ HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, bool PERIODI
 		{
 			Mout += -Jz * Scomp(SZ,i)*Scomp(SZ,i+1);
 		}
-//		if (Jprime != 0. and i != N_orbitals-1)
-//		{
-//			Mout += -Jprime* (Scomp(SZ,i)*Scomp(SZ,i+2) + 0.5* (Scomp(SP,i)*Scomp(SM,i+2) + Scomp(SM,i)*Scomp(SP,i+2)) );
-//		}
 	}
 	if (PERIODIC == true and N_orbitals>2)
 	{
@@ -124,16 +124,24 @@ HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, bool PERIODI
 			Mout += -Jz * Scomp(SZ,0)*Scomp(SZ,N_orbitals-1);
 		}
 	}
-	if (Bz != 0.)
+	for (int i=0; i<N_orbitals; ++i)
 	{
-		for (int i=0; i<N_orbitals; ++i) {Mout += Bz * Scomp(SZ,i);}
+		if (Bz(i) != 0.) {Mout -= Bz(i) * Scomp(SZ,i);}
 	}
-	if (Bx != 0.)
+	for (int i=0; i<N_orbitals; ++i)
 	{
-		for (int i=0; i<N_orbitals; ++i) {Mout += Bx * Scomp(SX,i);}
+		if (Bx(i) != 0.) {Mout -= Bx(i) * Scomp(SX,i);}
 	}
 	
 	return Mout;
+}
+
+SparseMatrixXd SpinBase::
+HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, bool PERIODIC) const
+{
+	VectorXd Bzvec(N_orbitals); Bzvec.setConstant(Bz);
+	VectorXd Bxvec(N_orbitals); Bxvec.setConstant(Bx);
+	return HeisenbergHamiltonian(Jxy, Jz, Bz, Bx, PERIODIC);
 }
 
 qarray<1> SpinBase::
