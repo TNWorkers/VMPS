@@ -11,7 +11,7 @@ class TransverseKondoNecklaceModel : public MpoQ<0,double>
 public:
 	
 	TransverseKondoNecklaceModel (size_t Lx_input, double J_input, double txy_input=1., double tz_input=1., 
-	                              double Bz_input_input=0., double Bx=0., size_t D_input=2, bool CALC_SQUARE=true);
+	                              double Bz_input=0., double Bx_input=0., size_t D_input=2, bool CALC_SQUARE=true);
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
@@ -20,9 +20,7 @@ public:
 	typedef DmrgSolverQ<0,TransverseKondoNecklaceModel> Solver;
 	///@}
 	
-//	MpsQ<0> set_productState (double c1, double c2, MpsQ<0> &Vheis);
-	
-	// spin of the impurity
+	/**impurity spin*/
 	MpoQ<0> Simp (SPINOP_LABEL Sa);
 	
 private:
@@ -64,9 +62,7 @@ TransverseKondoNecklaceModel (size_t Lx_input, double J_input, double txy_input,
 		Gsq.resize(this->N_sites);
 	}
 	
-	MatrixXd T = MatrixXd::Identity(2,2);
-	T.setZero();
-	T(0,0) = 1.;
+	MatrixXd T(2,2); T.setZero(); T(0,0) = 1.;
 	Vector2d Bzvec; Bzvec << 0, Bz;
 	Vector2d Bxvec; Bxvec << 0, Bx;
 	HamiltonianTermsXd TermsImp = HeisenbergModel::set_operators(Bimp, txy*T,tz*T,Bzvec,Bxvec,0.,J,J);
