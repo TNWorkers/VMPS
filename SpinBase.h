@@ -101,7 +101,7 @@ HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd
 	assert (Bz.rows() == N_orbitals and Bx.rows() == N_orbitals);
 	
 	SparseMatrixXd Mout(N_states,N_states);
-	
+
 	for (int i=0; i<N_orbitals-1; ++i) // for all bonds
 	{
 		if (Jxy != 0.)
@@ -141,7 +141,7 @@ HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, bool PERIODI
 {
 	VectorXd Bzvec(N_orbitals); Bzvec.setConstant(Bz);
 	VectorXd Bxvec(N_orbitals); Bxvec.setConstant(Bx);
-	return HeisenbergHamiltonian(Jxy, Jz, Bz, Bx, PERIODIC);
+	return HeisenbergHamiltonian(Jxy, Jz, Bzvec, Bxvec, PERIODIC);
 }
 
 qarray<1> SpinBase::
