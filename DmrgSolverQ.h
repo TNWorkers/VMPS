@@ -289,7 +289,7 @@ cleanup (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::ED
 	
 	Vout.state.set_defaultCutoffs();
 	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
 		size_t standard_precision = cout.precision();
 		string Eedge = (EDGE == LANCZOS::EDGE::GROUND)? "Emin" : "Emax";

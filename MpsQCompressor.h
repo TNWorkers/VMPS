@@ -1,6 +1,18 @@
 #ifndef STRAWBERRY_MPSCOMPRESSOR_WITH_Q
 #define STRAWBERRY_MPSCOMPRESSOR_WITH_Q
 
+#ifndef DMRG_POLYCOMPRESS_TOL
+#define DMRG_POLYCOMPRESS_TOL 1e-4
+#endif
+
+#ifndef DMRG_POLYCOMPRESS_MIN
+#define DMRG_POLYCOMPRESS_MIN 1
+#endif
+
+#ifndef DMRG_POLYCOMPRESS_MAX
+#define DMRG_POLYCOMPRESS_MAX 16
+#endif
+
 #include "Biped.h"
 #include "Multipede.h"
 #include "LanczosSolver.h"
@@ -84,7 +96,7 @@ public:
 	*/
 	template<typename MpOperator>
 	void polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout, 
-	                   size_t Dcutoff_input, double tol=1e-4, size_t max_halfsweeps=40, size_t min_halfsweeps=1, 
+	                   size_t Dcutoff_input, double tol=DMRG_POLYCOMPRESS_TOL, size_t max_halfsweeps=DMRG_POLYCOMPRESS_MAX, size_t min_halfsweeps=DMRG_POLYCOMPRESS_MIN, 
 	                   DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RHS);
 	///\}
 	

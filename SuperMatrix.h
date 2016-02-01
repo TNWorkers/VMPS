@@ -233,7 +233,19 @@ SuperMatrix<Scalar> Generator (const HamiltonianTerms<Scalar> &Terms)
 	
 	vector<SparseMatrix<Scalar> > col;
 	vector<SparseMatrix<Scalar> > row;
-	size_t locdim = (get<1>(Terms.tight[0])).rows();
+	size_t locdim;
+	if (Terms.tight.size()>0)
+	{
+		locdim = get<1>(Terms.tight[0]).rows();
+	}
+	else if (Terms.nextn.size()>0)
+	{
+		locdim = get<1>(Terms.nextn[0]).rows();
+	}
+	else
+	{
+		locdim = get<1>(Terms.local[0]).rows();
+	}
 	SparseMatrixXd Id = MatrixXd::Identity(locdim,locdim).sparseView();
 	
 	// last row (except corner element)

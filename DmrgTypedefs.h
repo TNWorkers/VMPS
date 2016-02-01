@@ -42,7 +42,8 @@ enum BC_CHOICE
 {
 	RING, /**<Periodic boundary conditions implemented via an MPO with transfer between the first and the last site.*/
 	HAIRSLIDE, /**<Periodic boundary conditions implemented via chain folding.*/
-	CYLINDER /**<Periodic boundary conditions in y-direction by using the full Hilbert space.*/
+	CYLINDER, /**<Periodic boundary conditions in y-direction by using the full Hilbert space.*/
+	FLADDER /**<2-leg ladder flattened to chain with nnn-hopping.*/
 };
 
 std::ostream& operator<< (std::ostream& s, BC_CHOICE CHOICE)
@@ -50,6 +51,7 @@ std::ostream& operator<< (std::ostream& s, BC_CHOICE CHOICE)
 	if      (CHOICE==RING)      {s << "RING";}
 	else if (CHOICE==CYLINDER)  {s << "CYLINDER";}
 	else if (CHOICE==HAIRSLIDE) {s << "HAIRSLIDE";}
+	else if (CHOICE==FLADDER)   {s << "FLADDER";}
 	return s;
 }
 
@@ -86,6 +88,18 @@ struct BC<CYLINDER>
 {
 	BC (size_t Lx_input, size_t Ly_input)
 	:Lx(Lx_input), Ly(Ly_input), CHOICE(CYLINDER)
+	{}
+	
+	BC_CHOICE CHOICE;
+	size_t Lx;
+	size_t Ly;
+};
+
+template<>
+struct BC<FLADDER>
+{
+	BC (size_t Lx_input)
+	:Lx(2*Lx_input), Ly(1), CHOICE(FLADDER)
 	{}
 	
 	BC_CHOICE CHOICE;

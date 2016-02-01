@@ -54,7 +54,6 @@ public:
 //	\right)\f$.
 //	The fourth row and column are missing when \f$J_{xy}=0\f$. Uses the appropriate spin operators for a given \p S.*/
 //	static SuperMatrix<double> Generator (double Jxy, double Jz, double Bz, double Bx, size_t D=2);
-	
 	static HamiltonianTermsXd set_operators (const SpinBase &S, double Jxy, double Jz, double Bz=0., double Bx=0., double Jprime=0., double JxyIntra=0., double JzIntra=0.);
 	
 	static HamiltonianTermsXd set_operators (const SpinBase &S, const MatrixXd &JxyInter, const MatrixXd &JzInter, 
