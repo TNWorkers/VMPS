@@ -1,6 +1,7 @@
 #ifndef STRAWBERRY_HEISENBERGMODEL
 #define STRAWBERRY_HEISENBERGMODEL
 
+#include "array"
 #include "MpoQ.h"
 #include "SpinBase.h"
 #include "DmrgExternalQ.h"
@@ -40,7 +41,7 @@ public:
 	\param D_input : \f$2S+1\f$
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
-	HeisenbergModel (size_t Lx_input, array<double,2> Jlist, double Bz_input=0., size_t Ly_input=1, size_t D_input=2, bool CALC_SQUARE=true);
+	HeisenbergModel (size_t Lx_input, std::array<double,2> Jlist, double Bz_input=0., size_t Ly_input=1, size_t D_input=2, bool CALC_SQUARE=true);
 	
 //	/**Creates the MPO generator matrix for the Heisenberg model (of any spin (\f$D=2S+1\f$))
 //	\f$G = \left(
@@ -223,7 +224,7 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 }
 
 HeisenbergModel::
-HeisenbergModel (size_t Lx_input, array<double,2> Jlist, double Bz_input, size_t Ly_input, size_t D_input, bool CALC_SQUARE)
+HeisenbergModel (size_t Lx_input, std::array<double,2> Jlist, double Bz_input, size_t Ly_input, size_t D_input, bool CALC_SQUARE)
 :MpoQ<1> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), {0}, HeisenbergModel::maglabel, "", halve),
 Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 {
