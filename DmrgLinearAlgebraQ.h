@@ -79,7 +79,7 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 		}
 	}
 	
-	if(B.dim == 1 and B.block[0][0][0].rows() == 1 and B.block[0][0][0].cols() == 1)
+	if (B.dim == 1 and B.block[0][0][0].rows() == 1 and B.block[0][0][0].cols() == 1)
 	{
 		return B.block[0][0][0](0,0);
 	}
@@ -196,7 +196,7 @@ template<size_t Nq, typename MpoScalar, typename Scalar>
 void HxV (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, 
           DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
-	Stopwatch Chronos;
+	Stopwatch<> Chronos;
 	
 	MpsQCompressor<Nq,Scalar,MpoScalar> Compadre(VERBOSITY);
 	Compadre.varCompress(H,Vin, Vout, Vin.calc_Dmax());
@@ -221,7 +221,7 @@ template<size_t Nq, typename MpoScalar, typename Scalar>
 void polyIter (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout, 
                DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
-	Stopwatch Chronos;
+	Stopwatch<> Chronos;
 	MpsQCompressor<Nq,Scalar,MpoScalar> Compadre(VERBOSITY);
 	Compadre.polyCompress(H,Vin1,polyB,Vin2, Vout, Vin1.calc_Dmax());
 	
@@ -246,7 +246,7 @@ template<size_t Nq, typename Scalar, typename OtherScalar>
 void addScale (const OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, 
                DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
 {
-	Stopwatch Chronos;
+	Stopwatch<> Chronos;
 	MpsQCompressor<Nq,Scalar,OtherScalar> Compadre(VERBOSITY);
 	size_t Dstart = Vout.calc_Dmax();
 	MpsQ<Nq,Scalar> Vtmp = Vout;
@@ -284,7 +284,7 @@ void OxV (const MpoQ<Nq,MpoScalar> &O, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scala
 	
 	for (size_t l=1; l<Vin.length(); ++l)
 	{
-		Stopwatch Chronos;
+		Stopwatch<> Chronos;
 		contract_C(O.locBasis(l), Vout.A[l-1], O.W_at(l), Vin.A[l], C, Cnext);
 //		lout << "l=" << l << ", " << Chronos.info("contract_C") << endl;
 		

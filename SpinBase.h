@@ -76,7 +76,8 @@ SpinBase::
 SpinBase (size_t L_input, size_t D_input)
 :N_orbitals(L_input), D(D_input)
 {
-	assert(N_orbitals>=1 and D>=2);
+	assert(N_orbitals >= 1);
+	assert(D >= 2);
 	N_states = pow(D,N_orbitals);
 }
 

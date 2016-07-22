@@ -11,13 +11,16 @@ class TDVPPropagator
 {
 public:
 	
+	TDVPPropagator(){};
 	TDVPPropagator (const Hamiltonian &H, VectorType &Vinout);
 	
 	string info() const;
 	double memory (MEMUNIT memunit=GB) const;
 	double overhead (MEMUNIT memunit=GB) const;
 	
-	void t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages=1, double tol_Lanczos=1e-8);
+	void t_step  (const Hamiltonian &H, const VectorType &Vin, VectorType &Vout, TimeScalar dt, int N_stages=1, double tol_Lanczos=1e-8);
+	
+	void t_step  (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages=1, double tol_Lanczos=1e-8);
 	void t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages=1, double tol_Lanczos=1e-8);
 	
 private:
@@ -25,6 +28,8 @@ private:
 	vector<PivotMatrixQ<Nq,TimeScalar,MpoScalar> >  Heff;
 	
 	double x (int alg, size_t l, int N_stages);
+	
+	void set_blocks (const Hamiltonian &H, VectorType &Vinout);
 	
 	size_t N_sites;
 	int pivot;
@@ -87,6 +92,13 @@ overhead (MEMUNIT memunit) const
 template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
 TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
 TDVPPropagator (const Hamiltonian &H, VectorType &Vinout)
+{
+	set_blocks(H,Vinout);
+}
+
+template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
+void TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
+set_blocks (const Hamiltonian &H, VectorType &Vinout)
 {
 	N_sites = H.length();
 	
@@ -173,7 +185,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 	
 	for (size_t l=0; l<2*N_stages*(N_sites-1); ++l)
 	{
-		Stopwatch Chronos;
+		Stopwatch<> Chronos;
 		bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
 		size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
 		size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
@@ -202,7 +214,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		
 		LanczosPropagator<PivotMatrix2Q<Nq,TimeScalar,MpoScalar>,PivotVector2Q<Nq,TimeScalar> > Lutz2(tol_Lanczos);
 //		Lutz2.t_step(Heff2, Apair, -0.5*dt.imag());
-		Lutz2.t_step(Heff2, Apair, -x(2,l,N_stages)*dt.imag());
+		Lutz2.t_step(Heff2, Apair, -x(2,l,N_stages)*dt.imag()); // 2-site algorithm
 		if (Lutz2.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
 		if (Lutz2.get_dimK() > dimK_max) {dimK_max = Lutz2.get_dimK();}
 		Vinout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair.A);
@@ -232,7 +244,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 			
 			LanczosPropagator<PivotMatrixQ<Nq,TimeScalar,MpoScalar>, PivotVectorQ<Nq,TimeScalar> > Lutz(tol_Lanczos);
 //			Lutz.t_step(Heff[pivot], Asingle, +0.5*dt.imag());
-			Lutz.t_step(Heff[pivot], Asingle, +x(2,l,N_stages)*dt.imag());
+			Lutz.t_step(Heff[pivot], Asingle, +x(2,l,N_stages)*dt.imag()); // 2-site algorithm
 			if (Lutz.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
 			if (Lutz.get_dimK() > dimK_max) {dimK_max = Lutz2.get_dimK();}
 			Vinout.A[pivot] = Asingle.A;
@@ -284,7 +296,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 		
 		LanczosPropagator<PivotMatrixQ<Nq,TimeScalar,MpoScalar>, PivotVectorQ<Nq,TimeScalar> > Lutz(tol_Lanczos);
 //		Lutz.t_step(Heff[pivot], Asingle, -0.5*dt.imag());
-		Lutz.t_step(Heff[pivot], Asingle, -x(1,l,N_stages)*dt.imag());
+		Lutz.t_step(Heff[pivot], Asingle, -x(1,l,N_stages)*dt.imag()); // 1-site algorithm
 		if (Lutz.get_dist() > dist_max) {dist_max = Lutz.get_dist();}
 		if (Lutz.get_dimK() > dimK_max) {dimK_max = Lutz.get_dimK();}
 		Vinout.A[pivot] = Asingle.A;
@@ -314,7 +326,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 			}
 			
 //			Lutz0.t_step(Heff0, Azero, +0.5*dt.imag());
-			Lutz0.t_step(Heff0, Azero, +x(1,l,N_stages)*dt.imag());
+			Lutz0.t_step(Heff0, Azero, +x(1,l,N_stages)*dt.imag()); // 1-site algorithm
 			if (Lutz0.get_dist() > dist_max) {dist_max = Lutz0.get_dist();}
 			if (Lutz0.get_dimK() > dimK_max) {dimK_max = Lutz0.get_dimK();}
 			
@@ -331,6 +343,15 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 //	double avgHsq = avg(Vinout,H,Vinout,true).real();
 //	
 //	cout << "error: " << pow(avgH-avgHsq,2)-pow(eta,2) << endl;
+}
+
+template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>
+void TDVPPropagator<Hamiltonian,Nq,MpoScalar,TimeScalar,VectorType>::
+t_step (const Hamiltonian &H, const VectorType &Vin, VectorType &Vout, TimeScalar dt, int N_stages, double tol_Lanczos)
+{
+	Vout = Vin;
+	set_blocks(H,Vout);
+	t_step(H,Vout,dt,N_stages,tol_Lanczos);
 }
 
 template<typename Hamiltonian, size_t Nq, typename MpoScalar, typename TimeScalar, typename VectorType>

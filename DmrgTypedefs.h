@@ -43,7 +43,8 @@ enum BC_CHOICE
 	RING, /**<Periodic boundary conditions implemented via an MPO with transfer between the first and the last site.*/
 	HAIRSLIDE, /**<Periodic boundary conditions implemented via chain folding.*/
 	CYLINDER, /**<Periodic boundary conditions in y-direction by using the full Hilbert space.*/
-	FLADDER /**<2-leg ladder flattened to chain with nnn-hopping.*/
+	FLADDER, /**<2-leg ladder flattened to chain with nnn-hopping.*/
+	CHAIN /**Chain with open boundary conditions for consistency.*/
 };
 
 std::ostream& operator<< (std::ostream& s, BC_CHOICE CHOICE)
@@ -52,6 +53,7 @@ std::ostream& operator<< (std::ostream& s, BC_CHOICE CHOICE)
 	else if (CHOICE==CYLINDER)  {s << "CYLINDER";}
 	else if (CHOICE==HAIRSLIDE) {s << "HAIRSLIDE";}
 	else if (CHOICE==FLADDER)   {s << "FLADDER";}
+	else if (CHOICE==CHAIN)     {s << "CHAIN";}
 	return s;
 }
 
@@ -100,6 +102,18 @@ struct BC<FLADDER>
 {
 	BC (size_t Lx_input)
 	:Lx(2*Lx_input), Ly(1), CHOICE(FLADDER)
+	{}
+	
+	BC_CHOICE CHOICE;
+	size_t Lx;
+	size_t Ly;
+};
+
+template<>
+struct BC<CHAIN>
+{
+	BC (size_t Lx_input)
+	:Lx(Lx_input), Ly(1), CHOICE(CHAIN)
 	{}
 	
 	BC_CHOICE CHOICE;
@@ -184,12 +198,12 @@ std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
 	return s;
 }
 
-template<typename Scalar> using LocalTerms = vector<tuple<Scalar,SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
-template<typename Scalar> using TightTerms = vector<tuple<Scalar,SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
-                                                                 SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
-template<typename Scalar> using NextnTerms = vector<tuple<double,SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
-                                                                 SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
-                                                                 SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
+template<typename Scalar> using LocalTerms = vector<tuple<Scalar,SparseMatrix<Scalar,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
+template<typename Scalar> using TightTerms = vector<tuple<Scalar,SparseMatrix<Scalar,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
+                                                                 SparseMatrix<Scalar,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
+template<typename Scalar> using NextnTerms = vector<tuple<double,SparseMatrix<Scalar,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
+                                                                 SparseMatrix<Scalar,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
+                                                                 SparseMatrix<Scalar,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
 
 template<typename Scalar>
 struct HamiltonianTerms

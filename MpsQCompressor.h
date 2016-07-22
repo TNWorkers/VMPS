@@ -98,6 +98,11 @@ public:
 	void polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout, 
 	                   size_t Dcutoff_input, double tol=DMRG_POLYCOMPRESS_TOL, size_t max_halfsweeps=DMRG_POLYCOMPRESS_MAX, size_t min_halfsweeps=DMRG_POLYCOMPRESS_MIN, 
 	                   DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RHS);
+	
+//	template<typename MpOperator>
+//	void sumCompress (const vector<MpsQ<Nq,Scalar> > &Vin, const vector<double> &factor, MpsQ<Nq,Scalar> &Vout, 
+//	                  size_t Dcutoff_input, double tol=DMRG_POLYCOMPRESS_TOL, size_t max_halfsweeps=DMRG_POLYCOMPRESS_MAX, size_t min_halfsweeps=DMRG_POLYCOMPRESS_MIN, 
+//	                  DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RHS);
 	///\}
 	
 	//---info stuff---
@@ -231,7 +236,7 @@ template<size_t Nq, typename Scalar, typename MpoScalar>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
 varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps, DMRG::COMPRESSION::INIT START)
 {
-	Stopwatch Chronos;
+	Stopwatch<> Chronos;
 	N_sites = Vin.length();
 	double sqnormVin = isReal(dot(Vin,Vin));
 	N_halfsweeps = 0;
@@ -286,7 +291,7 @@ varCompress (const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_i
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
 	{
-		Stopwatch Aion;
+		Stopwatch<> Aion;
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
 			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
@@ -486,7 +491,7 @@ void MpsQCompressor<Nq,Scalar,MpoScalar>::
 varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps, DMRG::COMPRESSION::INIT START)
 {
 	N_sites = Vin.length();
-	Stopwatch Chronos;
+	Stopwatch<> Chronos;
 	N_halfsweeps = 0;
 	N_sweepsteps = 0;
 	Dcutoff = Dcutoff_new = Dcutoff_input;
@@ -561,7 +566,7 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
 	{
-		Stopwatch Aion;
+		Stopwatch<> Aion;
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
 			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
@@ -598,7 +603,7 @@ varCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &V
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
-//			Stopwatch ChronosResize;
+//			Stopwatch<> ChronosResize;
 //			size_t Dcutoff_old = Vout.calc_Dmax();
 //			size_t Mmax_old = Vout.calc_Mmax();
 //			
@@ -664,7 +669,7 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vou
 				Vout.setRandom(l);
 //				if (l>0) {Vout.setRandom(l-1);}
 			}
-			Stopwatch Chronos;
+			Stopwatch<> Chronos;
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			build_RW(l-1,Vout,H,Vin);
 		}
@@ -679,7 +684,7 @@ prepSweep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vou
 				Vout.setRandom(l);
 //				if (l<N_sites-1) {Vout.setRandom(l+1);}
 			}
-			Stopwatch Chronos;
+			Stopwatch<> Chronos;
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
 			build_LW(l+1,Vout,H,Vin);
 		}
@@ -703,7 +708,7 @@ template<typename MpOperator>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
 optimizationStep (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
 {
-	Stopwatch Chronos;
+	Stopwatch<> Chronos;
 	
 	for (size_t s=0; s<Vin.locBasis(pivot).size(); ++s)
 	{
@@ -764,7 +769,7 @@ template<typename MpOperator>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
 optimizationStep2 (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
 {
-	Stopwatch Chronos;
+	Stopwatch<> Chronos;
 	
 	size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
 	size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
@@ -915,7 +920,7 @@ void MpsQCompressor<Nq,Scalar,MpoScalar>::
 polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps, DMRG::COMPRESSION::INIT START)
 {
 	N_sites = Vin1.length();
-	Stopwatch Chronos;
+	Stopwatch<> Chronos;
 	N_halfsweeps = 0;
 	N_sweepsteps = 0;
 	Dcutoff = Dcutoff_input;
@@ -994,11 +999,11 @@ polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, co
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
 	{
-		Stopwatch Aion;
+		Stopwatch<> Aion;
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
 			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
-			Stopwatch Chronos;
+			Stopwatch<> Chronos;
 			
 //			optimizationStep(Vin2,Vout);
 //			auto Atmp = Vout.A[pivot];
@@ -1101,7 +1106,7 @@ polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, co
 		    N_halfsweeps != max_halfsweeps and
 		    sqdist > tol)
 		{
-//			Stopwatch ChronosResize;
+//			Stopwatch<> ChronosResize;
 //			size_t Dcutoff_old = Vout.calc_Dmax();
 //			size_t Mmax_old = Vout.calc_Mmax();
 //			
@@ -1145,6 +1150,182 @@ polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, co
 	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
 }
 
+//template<size_t Nq, typename Scalar, typename MpoScalar>
+//void MpsQCompressor<Nq,Scalar,MpoScalar>::
+//sumCompress (const vector<MpsQ<Nq,Scalar> > &Vin, const vector<double> &factor, MpsQ<Nq,Scalar> &Vout, 
+//size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps, DMRG::COMPRESSION::INIT START)
+//{
+//	N_sites = Vin1.length();
+//	Stopwatch<> Chronos;
+//	N_halfsweeps = 0;
+//	N_sweepsteps = 0;
+//	Dcutoff = Dcutoff_input;
+//	Dcutoff_new = Dcutoff_input;
+//	
+//	if (START == DMRG::COMPRESSION::RHS)
+//	{
+//		Vout = Vin[0];
+//	}
+//	else if (START == DMRG::COMPRESSION::RANDOM)
+//	{
+//		Vout = Vin[0];
+//		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
+//		Vout.setRandom();
+//	}
+//	
+//	// set L&R edges
+//	L.resize(N_sites);
+//	R.resize(N_sites);
+//	R[N_sites-1].setTarget(Vin2.Qtot);
+//	L[0].setVacuum();
+//	
+//	double sqnormV1, sqnormV2, overlapV12;
+//	sqnormV2 = Vin2.squaredNorm();
+//	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
+//	#pragma omp parallel sections
+//	#endif
+//	{
+//		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
+//		#pragma omp section
+//		#endif
+//		{
+//			sqnormV1 = (H.check_SQUARE()==true)? isReal(avg(Vin1,H,Vin1,true)) : isReal(avg(Vin1,H,H,Vin1));
+//		}
+//		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
+//		#pragma omp section
+//		#endif
+//		{
+//			overlapV12 = isReal(avg(Vin2,H,Vin1));
+//		}
+//		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
+//		#pragma omp section
+//		#endif
+//		{
+//			prepSweep(H,Vin1,Vin2,Vout);
+//		}
+//	}
+//	sqdist = 1.;
+//	size_t halfSweepRange = N_sites;
+//	
+//	if (CHOSEN_VERBOSITY>=2)
+//	{
+//		lout << Chronos.info("preparation") << endl;
+//	}
+//	
+//	Mmax = Vout.calc_Mmax();
+//	Vout.N_sv = Dcutoff;
+//	
+//	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
+//	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
+//	{
+//		Stopwatch<> Aion;
+//		for (size_t j=1; j<=halfSweepRange; ++j)
+//		{
+//			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
+//			Stopwatch<> Chronos;
+//			
+//			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+//			{
+//				size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
+//				size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
+//				
+//				Heff[loc1].W = H.W[loc1];
+//				Heff[loc2].W = H.W[loc2];
+//				
+//				// H*Vin1
+//				vector<vector<Biped<Nq,MatrixType> > > Apair;
+//				HxV(Heff[loc1],Heff[loc2], Vin1.A[loc1],Vin1.A[loc2], Vout.A[loc1],Vout.A[loc2], Vin1.locBasis(loc1),Vin1.locBasis(loc2), Apair);
+//				
+//				// Vin2
+//				vector<vector<Biped<Nq,MatrixType> > > ApairVV;
+//				ApairVV.resize(Vin1.locBasis(loc1).size());
+//				for (size_t s1=0; s1<Vin1.locBasis(loc1).size(); ++s1)
+//				{
+//					ApairVV[s1].resize(Vin1.locBasis(loc2).size());
+//				}
+//				
+//				for (size_t s1=0; s1<Vin2.locBasis(loc1).size(); ++s1)
+//				for (size_t s3=0; s3<Vin2.locBasis(loc2).size(); ++s3)
+//				{
+//					ApairVV[s1][s3] = L[loc1] * Vin2.A[loc1][s1] * Vin2.A[loc2][s3] * R[loc2];
+//				}
+//				
+//				// H*Vin1-B*Vin2
+//				for (size_t s1=0; s1<H.locBasis(loc1).size(); ++s1)
+//				for (size_t s3=0; s3<H.locBasis(loc2).size(); ++s3)
+//				for (size_t q=0; q<Apair[s1][s3].dim; ++q)
+//				{
+//					qarray2<Nq> quple = {Apair[s1][s3].in[q], Apair[s1][s3].out[q]};
+//					auto it = ApairVV[s1][s3].dict.find(quple);
+//					
+//					MatrixType Mtmp = Apair[s1][s3].block[q];
+//					size_t rows = max(Apair[s1][s3].block[q].rows(), Apair[s1][s3].block[q].rows());
+//					size_t cols = max(Apair[s1][s3].block[q].cols(), Apair[s1][s3].block[q].cols());
+//					
+//					Apair[s1][s3].block[q].resize(rows,cols);
+//					Apair[s1][s3].block[q].setZero();
+//					Apair[s1][s3].block[q].topLeftCorner(Mtmp.rows(),Mtmp.cols()) = Mtmp;
+//					Apair[s1][s3].block[q].topLeftCorner(Apair[s1][s3].block[q].rows(),Apair[s1][s3].block[q].cols()) -= polyB * ApairVV[s1][s3].block[it->second];
+//				}
+//				
+//				Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
+//				pivot = Vout.get_pivot();
+//			}
+//			else
+//			{
+//				optimizationStep(Vin2,Vout);
+//				auto Atmp = Vout.A[pivot];
+//				
+//				optimizationStep(H,Vin1,Vout);
+//				
+//				for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
+//				for (size_t q=0; q<Atmp[s].dim; ++q)
+//				{
+//					qarray2<Nq> quple = {Atmp[s].in[q], Atmp[s].out[q]};
+//					auto it = Vout.A[pivot][s].dict.find(quple);
+//					Vout.A[pivot][s].block[it->second] -= polyB * Atmp[s].block[q];
+//				}
+//				
+//				Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
+//				pivot = Vout.get_pivot();
+//			}
+//			
+//			sweepStep(H,Vin1,Vin2,Vout);
+//			++N_sweepsteps;
+//		}
+//		halfSweepRange = N_sites-1;
+//		++N_halfsweeps;
+//		
+//		sqdist = abs(sqnormV1 - Vout.squaredNorm() + polyB*polyB*sqnormV2 - 2.*polyB*overlapV12);
+//		assert(!std::isnan(sqdist));
+//		
+//		if (CHOSEN_VERBOSITY>=2)
+//		{
+//			lout << Aion.info("half-sweep") << "\tdistance^2=" << sqdist << endl;
+//		}
+//		
+//		bool RESIZED = false;
+//		if (N_halfsweeps%4 == 0 and 
+//		    N_halfsweeps > 0 and 
+//		    N_halfsweeps != max_halfsweeps and
+//		    sqdist > tol)
+//		{
+//			Vout.N_sv += 1;
+//			Dcutoff_new = Vout.N_sv;
+//			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+//			{
+//				lout << "resize: " << Vout.N_sv-1 << "→" << Vout.N_sv << endl;
+//			}
+//		}
+//		
+//		Mmax_new = Vout.calc_Mmax();
+//	}
+//	
+//	// last sweep
+//	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
+//	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
+//}
+
 template<size_t Nq, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsQCompressor<Nq,Scalar,MpoScalar>::
@@ -1159,7 +1340,7 @@ mowSweeps (const MpOperator &H, MpsQ<Nq,Scalar> &Vout)
 //	for (size_t l=0; l<N_sites; ++l) {Heff[l].W = H.W[l];}
 //	
 //	// preparation
-//	Stopwatch Aion;
+//	Stopwatch<> Aion;
 //	
 //	if (Vout.pivot == N_sites-1 or Vout.pivot == -1)
 //	{
@@ -1191,7 +1372,7 @@ mowSweeps (const MpOperator &H, MpsQ<Nq,Scalar> &Vout)
 //	for (size_t j=1; j<=Vout.N_mow; ++j)
 //	{
 //		mowedWeight.setZero();
-//		Stopwatch Aion;
+//		Stopwatch<> Aion;
 //		for (size_t l=1; l<=halfSweepRange; ++l)
 //		{
 //			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);

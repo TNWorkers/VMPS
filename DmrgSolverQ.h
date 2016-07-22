@@ -150,7 +150,7 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq> 
 	N_sites = H.length();
 	N_sweepsteps = N_halfsweeps = 0;
 	
-	Stopwatch PrepTimer;
+	Stopwatch<> PrepTimer;
 	
 	if (!USE_STATE)
 	{
@@ -210,7 +210,7 @@ template<size_t Nq, typename MpHamiltonian, typename Scalar>
 void DmrgSolverQ<Nq,MpHamiltonian,Scalar>::
 halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST)
 {
-	Stopwatch HalfsweepTimer;
+	Stopwatch<> HalfsweepTimer;
 	
 	// save state for reference
 	MpsQ<Nq,Scalar> Vref;
@@ -239,7 +239,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS::
 	}
 	else if (TEST == LANCZOS::CONVTEST::SQ_TEST)
 	{
-		Stopwatch HsqTimer;
+		Stopwatch<> HsqTimer;
 		double avgHsq = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state));
 		err_state = fabs(avgHsq-pow(Vout.energy,2))/this->N_sites;
 		if (CHOSEN_VERBOSITY>=2)
@@ -307,7 +307,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq
 	
 	prepare(H, Vout, Qtot_input, false, Dinit, alpha_rsvd_input, eps_svd_input);
 	
-	Stopwatch Saturn;
+	Stopwatch<> Saturn;
 	
 	// lambda function to print tolerances
 	auto print_alpha_eps = [this,&Vout] ()
@@ -378,8 +378,8 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq
 // 	N_sites = H.length();
 // 	N_sweepsteps = N_halfsweeps = 0;
 	
-// 	Stopwatch Saturn;
-// 	Stopwatch Aion;
+// 	Stopwatch<> Saturn;
+// 	Stopwatch<> Aion;
 	
 // 	// resize Vout
 // 	Vout.state = MpsQ<Nq,double>(H, Dinit, Qtot_input);
@@ -469,7 +469,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq
 // 	while (((err_eigval >= tol_eigval or err_state >= tol_state) and N_halfsweeps < max_halfsweeps) or 
 // 	        N_halfsweeps < min_halfsweeps)
 // 	{
-// 		Stopwatch Chronos;
+// 		Stopwatch<> Chronos;
 		
 // 		// sweep
 // 		for (size_t j=1; j<=halfSweepRange; ++j)
@@ -495,7 +495,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, qarray<Nq
 // 		}
 // 		else if (TEST == LANCZOS::CONVTEST::SQ_TEST)
 // 		{
-// 			Stopwatch Aion;
+// 			Stopwatch<> Aion;
 // 			double avgHsq = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state)); 
 // 			err_state = fabs(avgHsq-pow(Vout.energy,2))/this->N_sites;
 // 			if (CHOSEN_VERBOSITY>=2)

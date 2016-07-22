@@ -143,8 +143,10 @@ public:
 	
 	///\{
 	/**Tests the orthogonality of the MpsQ.
-	Returns a string with "A"=left-canonical (\f$\sum_s {A^s}^\dag A^s=I\f$), "B"=right-canonical (\f$\sum_s B^s {B^s}^\dag=I\f$), "X"=both, "M"=neither; with the pivot site underlined. The check is \f$\|\sum_s {A^s}^\dag A^s-I\|_{\infty} < 10^{-10}\f$.*/
-	string test_ortho() const;
+	Returns a string with "A"=left-canonical (\f$\sum_s {A^s}^\dag A^s=I\f$), "B"=right-canonical (\f$\sum_s B^s {B^s}^\dag=I\f$), "X"=both, "M"=neither; with the pivot site underlined.
+	\param tol The check is \f$\|\sum_s {A^s}^\dag A^s-I\|_{\infty} < tol\f$
+	*/
+	string test_ortho (double tol=1e-8) const;
 	
 	/**\describe_info*/
 	string info() const;
@@ -209,8 +211,11 @@ public:
 	/**Calculates the squared norm. Exploits the canonical form if possible, calculates the dot product with itself otherwise.*/
 	double squaredNorm() const;
 	
-	/**Calculates the expectation value with a local operator.*/
+	/**Calculates the expectation value with a local operator at the pivot site.*/
 	template<typename MpoScalar> Scalar locAvg (const MpoQ<Nq,MpoScalar> &O) const;
+	
+	/**Calculates the expectation value with a local operator at pivot and pivot+1.*/
+	template<typename MpoScalar> Scalar locAvg2 (const MpoQ<Nq,MpoScalar> &O) const;
 	
 	/**Swaps with another MpsQ.*/
 	void swap (MpsQ<Nq,Scalar> &V);
@@ -269,6 +274,9 @@ public:
 	
 	/**Returns the truncated weight per site (Eigen array).*/
 	inline ArrayXd get_truncWeight() const {return truncWeight;};
+	
+	/**Returns the entropy when cut at site (Eigen array).*/
+	ArrayXd get_entropy() const {return entropy;};
 	///\}
 	
 private:
@@ -335,9 +343,11 @@ info() const
 	ss << "Mmax=" << calc_Mmax() << " (Dmax=" << calc_Dmax() << "), ";
 	ss << "Nqmax=" << calc_Nqmax() << ", ";
 	ss << "trunc_weight=" << truncWeight.sum() << ", ";
-	if (!std::isnan(entropy(this->N_sites/2)))
+	int lSmax;
+	entropy.maxCoeff(&lSmax);
+	if (!std::isnan(entropy(lSmax)))
 	{
-		ss << "entropy(L/2)=" << entropy(this->N_sites/2) << ", ";
+		ss << "entropy(" << lSmax << ")=" << entropy(lSmax) << ", ";
 	}
 	ss << "mem=" << round(memory(GB),3) << "GB, overhead=" << round(overhead(MB),3) << "MB";
 	
@@ -458,7 +468,7 @@ outerResize (const MpsQ<Nq,OtherMatrixType> &V)
 	inset.resize(this->N_sites);
 	outset.resize(this->N_sites);
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
-	entropy.resize(this->N_sites); entropy.setConstant(numeric_limits<double>::quiet_NaN());
+	entropy.resize(this->N_sites-1); entropy.setConstant(numeric_limits<double>::quiet_NaN());
 	
 	for (size_t l=0; l<V.N_sites; ++l)
 	{
@@ -487,7 +497,7 @@ resize_arrays()
 	inset.resize(this->N_sites);
 	outset.resize(this->N_sites);
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
-	entropy.resize(this->N_sites); entropy.setConstant(numeric_limits<double>::quiet_NaN());
+	entropy.resize(this->N_sites-1); entropy.setConstant(numeric_limits<double>::quiet_NaN());
 }
 
 template<size_t Nq, typename Scalar>
@@ -1108,10 +1118,10 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar,Scal
 		#endif
 		#endif
 		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
-			for (size_t s2=0; s2<qloc[loc].size(); ++s2)
-			{
-				rhoArray[s1][s2] =  A[loc][s1].adjoint() * A[loc][s2];
-			}
+		for (size_t s2=0; s2<qloc[loc].size(); ++s2)
+		{
+			rhoArray[s1][s2] =  A[loc][s1].adjoint() * A[loc][s2];
+		}
 		
 		rhoNoiseArray = rhoArray;
 		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
@@ -1220,7 +1230,6 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar,Scal
 			Qmatrix = (Quirinus.householderQ() * MatrixType::Identity(Aclump.cols(),Aclump.rows())).adjoint();
 			Rmatrix = (MatrixType::Identity(Aclump.rows(),Aclump.cols()) * Quirinus.matrixQR().template triangularView<Upper>()).adjoint();
 			#endif
-			entropySub(qin) = numeric_limits<double>::quiet_NaN();
 		}
 		else if (TOOL == DMRG::BROOM::RDM)
 		{
@@ -1307,9 +1316,16 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar,Scal
 		}
 	}
 	
-	truncWeight(loc) = truncWeightSub.sum();
-	entropy(loc) = entropySub.sum();
-	if (entropy(loc) < 0.) {entropy(loc) = numeric_limits<double>::quiet_NaN();}
+	if (TOOL != DMRG::BROOM::QR)
+	{
+		truncWeight(loc) = truncWeightSub.sum();
+		int bond = (loc==0)? -1 : loc;
+		if (bond != -1)
+		{
+			entropy(loc-1) = entropySub.sum();
+			//if (entropy(loc) < 0.) {entropy(loc) = numeric_limits<double>::quiet_NaN();}
+		}
+	}
 	this->pivot = (loc==0)? 0 : loc-1;
 }
 
@@ -1450,8 +1466,6 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar,Sca
 			Qmatrix = Quirinus.householderQ() * MatrixType::Identity(Aclump.rows(),Aclump.cols());
 			Rmatrix = MatrixType::Identity(Aclump.cols(),Aclump.rows()) * Quirinus.matrixQR().template triangularView<Upper>();
 			#endif
-			
-			entropySub(qout) = numeric_limits<double>::quiet_NaN();
 		}
 		else if (TOOL == DMRG::BROOM::RDM)
 		{
@@ -1539,9 +1553,16 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar,Sca
 		}
 	}
 	
-	truncWeight(loc) = truncWeightSub.sum();
-	entropy(loc) = entropySub.sum();
-	if (entropy(loc) < 0.) {entropy(loc) = numeric_limits<double>::quiet_NaN();}
+	if (TOOL != DMRG::BROOM::QR)
+	{
+		truncWeight(loc) = truncWeightSub.sum();
+		int bond = (loc==this->N_sites-1)? -1 : loc;
+		if (bond != -1)
+		{
+			entropy(loc) = entropySub.sum();
+			//if (entropy(loc) < 0.) {entropy(loc) = numeric_limits<double>::quiet_NaN();}
+		}
+	}
 	this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
 }
 
@@ -1817,7 +1838,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<N
 			Nret = min(Nret,this->N_sv);
 			
 			truncWeightSub(qout) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
-			size_t Nnz = (Jack.singularValues().array() > 0.).count();
+			size_t Nnz = (Jack.singularValues().array() > 1e-9).count();
 			entropySub(qout) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
 			
 			MatrixType Aleft, Aright;
@@ -1877,7 +1898,23 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<N
 	}
 	
 	truncWeight(loc) = truncWeightSub.sum();
-	entropy(loc) = entropySub.sum();
+	
+	if (DIR == DMRG::DIRECTION::RIGHT)
+	{
+		int bond = (loc==this->N_sites-1)? -1 : loc;
+		if (bond != -1)
+		{
+			entropy(loc) = entropySub.sum();
+		}
+	}
+	else
+	{
+		int bond = (loc==0)? -1 : loc;
+		if (bond != -1)
+		{
+			entropy(loc-1) = entropySub.sum();
+		}
+	}
 }
 
 template<size_t Nq, typename Scalar>
@@ -2557,7 +2594,7 @@ dot (const MpsQ<Nq,Scalar> &Vket) const
 {
 	if (Qtot != Vket.Qtarget())
 	{
-		cout << "calculating <φ|ψ> with different quantum numbers" << endl;
+		lout << "calculating <φ|ψ> with different quantum numbers" << endl;
 		return 0.;
 	}
 	
@@ -2608,6 +2645,41 @@ locAvg (const MpoQ<Nq,MpoScalar> &O) const
 		for (typename SparseMatrix<MpoScalar>::InnerIterator iW(O.W_at(this->pivot)[s1][s2],k); iW; ++iW)
 		{
 			res += iW.value() * trace;
+		}
+	}
+	
+	return res;
+}
+
+template<size_t Nq, typename Scalar>
+template<typename MpoScalar>
+Scalar MpsQ<Nq,Scalar>::
+locAvg2 (const MpoQ<Nq,MpoScalar> &O) const
+{
+	assert(this->pivot != -1);
+	Scalar res = 0;
+	
+	for (size_t s1=0; s1<qloc[this->pivot].size(); ++s1)
+	for (size_t s2=0; s2<qloc[this->pivot].size(); ++s2)
+	for (size_t s3=0; s3<qloc[this->pivot+1].size(); ++s3)
+	for (size_t s4=0; s4<qloc[this->pivot+1].size(); ++s4)
+	{
+		for (int k12=0; k12<O.W_at(this->pivot)[s1][s2].outerSize(); ++k12)
+		for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(O.W_at(this->pivot)[s1][s2],k12); iW12; ++iW12)
+		for (int k34=0; k34<O.W_at(this->pivot+1)[s3][s4].outerSize(); ++k34)
+		for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(O.W_at(this->pivot+1)[s3][s4],k34); iW34; ++iW34)
+		{
+			Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > Aprod12 = A[this->pivot][s1].adjoint() * A[this->pivot][s2];
+			Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > Aprod123 = A[this->pivot+1][s3].adjoint() * Aprod12;
+			Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > Aprod1234 = Aprod123 * A[this->pivot+1][s4];
+			
+			Scalar trace = 0;
+			for (size_t q=0; q<Aprod1234.dim; ++q)
+			{
+				trace += Aprod1234.block[q].trace();
+			}
+			
+			res += iW12.value() * iW34.value() * trace;
 		}
 	}
 	
@@ -3265,7 +3337,7 @@ validate (string name) const
 
 template<size_t Nq, typename Scalar>
 string MpsQ<Nq,Scalar>::
-test_ortho() const
+test_ortho (double tol) const
 {
 	string sout = "";
 	std::array<string,4> normal_token  = {"A","B","M","X"};
@@ -3289,7 +3361,7 @@ test_ortho() const
 //			if (l == 0) {Id.bottomRows(Id.rows()-1).setZero();}
 //			Test.block[q] -= Id;
 			Test.block[q] -= MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
-			A_CHECK[q] = Test.block[q].template lpNorm<Infinity>()<1e-10 ? true : false;
+			A_CHECK[q] = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
 			A_infnorm[q] = Test.block[q].template lpNorm<Infinity>();
 		}
 		
@@ -3310,7 +3382,7 @@ test_ortho() const
 //			Test.block[q] -= Id;
 //			cout << "B l=" << l << ", Test.block[q]=" << Test.block[q] << endl << endl;
 			Test.block[q] -=  MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
-			B_CHECK[q] = Test.block[q].template lpNorm<Infinity>()<1e-10 ? true : false;
+			B_CHECK[q] = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
 			B_infnorm[q] = Test.block[q].template lpNorm<Infinity>();
 		}
 		

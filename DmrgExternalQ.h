@@ -79,6 +79,12 @@ string halve (qarray<1> qnum)
 	return ss.str();
 }
 
+/**Function to realize staggered fields.*/
+inline double stagger (int i)
+{
+	return pow(-1.,i);
+}
+
 template<typename MatrixTypeA, typename MatrixTypeB>
 size_t mult_cost (const MatrixTypeA &A, const MatrixTypeB &B)
 {
