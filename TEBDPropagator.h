@@ -152,7 +152,7 @@ t_step (const Hamiltonian &H, const VectorType &Vin, VectorType &Vout, TimeScala
 		}
 	}
 	
-	Stopwatch Chronos;
+	Stopwatch<> Chronos;
 	
 	MpsQCompressor<Nq,complex<double>,complex<double> > Compadre(CHOSEN_VERBOSITY);
 	VectorType Vtmp1, Vtmp2;

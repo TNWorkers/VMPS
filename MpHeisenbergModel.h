@@ -27,7 +27,7 @@ public:
 	\param Jz_input : \f$J_z\f$, default \f$J_{xy}=J_z\f$ (Heisenberg, otherwise XXZ)
 	\param Bz_input : external field in z-direction
 	\param D_input : \f$2S+1\f$
-	\param Ly_input : amount of legs in ladder$
+	\param Ly_input : amount of legs in ladder
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
 	HeisenbergModel (int Lx_input, double Jxy_input=-1., double Jz_input=numeric_limits<double>::infinity(), double Bz_input=0., size_t D_input=2, 
@@ -37,7 +37,7 @@ public:
 	\param Lx_input : chain length
 	\param Jlist : list containing \f$J\f$ and \f$J'\f$
 	\param Bz_input : external field in z-direction
-	\param Ly_input : number of legs
+	\param Ly_input : amount of legs in ladder
 	\param D_input : \f$2S+1\f$
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
@@ -112,8 +112,9 @@ public:
 	
 	MpoQ<1> Sz (size_t locx, size_t locy=0);
 	MpoQ<1> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	MpoQ<1,complex<double> > SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int));
 	
-private:
+protected:
 	
 	double Jxy=-1., Jz=-1., Bz=0.;
 	double Jprime=0.;
@@ -278,6 +279,21 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	ss << "Sz(" << locx1 << "," << locy1 << ")" <<  "Sz(" << locx2 << "," << locy2 << ")";
 	MpoQ<1> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {0}, HeisenbergModel::maglabel, ss.str(), halve);
 	Mout.setLocal({locx1, locx2}, {S.Scomp(SZ,locy1), S.Scomp(SZ,locy2)});
+	return Mout;
+}
+
+MpoQ<1,complex<double> > HeisenbergModel::
+SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int))
+{
+	assert(SOP==SP or SOP==SM or SOP==SZ);
+	stringstream ss;
+	ss << SOP << "Packet";
+	qarray<1> DeltaM;
+	if      (SOP==SP) {DeltaM={+2};}
+	else if (SOP==SM) {DeltaM={-2};}
+	else              {DeltaM={ 0};}
+	MpoQ<1,complex<double> > Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), DeltaM, HeisenbergModel::maglabel, ss.str(), halve);
+	Mout.setLocalSum(S.Scomp(SOP), f);
 	return Mout;
 }
 

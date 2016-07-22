@@ -83,7 +83,18 @@ public:
 	///\}
 	
 	///\{
+	/**
+	\param Sa
+	\param orbital
+	*/
 	SparseMatrixXd Scomp (SPINOP_LABEL Sa, int orbital=0) const;
+	
+	/**
+	The quantum number change which corresponds to the given spin operator.
+	\param Sa
+	\param NM : If \p true, the format is (N,M), if \p false the format is (Nup,Ndn)
+	*/
+	qarray<2> Deltaq (SPINOP_LABEL Sa, bool NM=false) const;
 	
 	/**For \p N_orbitals=1, this is
 	\f$s^z = \left(
@@ -173,7 +184,7 @@ public:
 	\param J : \f$J\f$
 	\param PERIODIC: periodic boundary conditions if \p true
 	\param Bz : \f$B_z\f$*/
-	SparseMatrixXd HubbardHamiltonian (double U, double t=1., double V=0., double J=0., double Bz=0., bool PERIODIC=false) const;
+	template<typename Scalar> SparseMatrix<Scalar> HubbardHamiltonian (double U, Scalar t=1., double V=0., double J=0., double Bz=0., bool PERIODIC=false) const;
 	
 	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
 	\param Uvec : \f$U\f$ for each orbital
@@ -182,19 +193,19 @@ public:
 	\param J : \f$J\f$
 	\param PERIODIC: periodic boundary conditions if \p true
 	\param Bz : \f$B_z\f$ for each orbital*/
-	SparseMatrixXd HubbardHamiltonian (vector<double> Uvec, double t=1., double V=0., double J=0., double Bz=0., bool PERIODIC=false) const;
+	template<typename Scalar> SparseMatrix<Scalar> HubbardHamiltonian (vector<double> Uvec, vector<double> onsite, Scalar t=1., double V=0., double J=0., double Bz=0., bool PERIODIC=false) const;
 	
 	/**Returns the qarray for a given index of the basis
-	   \param index
-	   \param NM : if true, the format is (N,M), if false the format is (Nup,Ndn)*/ 
-	qarray<2> qNums(size_t index, bool NM=true);
-
+	\param index
+	\param NM : If \p true, the format is (N,M), if \p false the format is (Nup,Ndn)*/ 
+	qarray<2> qNums (size_t index, bool NM=true);
+	
+	vector<boost::dynamic_bitset<unsigned char> > basis;
+	
 private:
 	
 	size_t N_orbitals;
 	size_t N_states;
-	
-	vector<boost::dynamic_bitset<unsigned char> > basis;
 	
 	double parity (const boost::dynamic_bitset<unsigned char> &state, int orbital) const;
 };
@@ -270,7 +281,14 @@ n (SPIN_INDEX sigma, int orbital) const
 	SparseMatrixXd Mout(N_states,N_states);
 	for (int j=0; j<basis.size(); ++j)
 	{
-		Mout.insert(j,j) = 1.*basis[j][2*orbital+static_cast<int>(sigma)];
+		if (sigma == UP or sigma == DN)
+		{
+			Mout.insert(j,j) = 1.*basis[j][2*orbital+static_cast<int>(sigma)];
+		}
+		else if (sigma == UPDN)
+		{
+			Mout.insert(j,j) = 1.*(basis[j][2*orbital] + basis[j][2*orbital+1]);
+		}
 	}
 	return Mout;
 }
@@ -278,12 +296,13 @@ n (SPIN_INDEX sigma, int orbital) const
 inline SparseMatrixXd FermionBase::
 n (int orbital) const
 {
-	SparseMatrixXd Mout(N_states,N_states);
-	for (int j=0; j<basis.size(); ++j)
-	{
-		Mout.insert(j,j) =1.*(basis[j][2*orbital] + basis[j][2*orbital+1]);
-	}
-	return Mout;
+//	SparseMatrixXd Mout(N_states,N_states);
+//	for (int j=0; j<basis.size(); ++j)
+//	{
+//		Mout.insert(j,j) = 1.*(basis[j][2*orbital] + basis[j][2*orbital+1]);
+//	}
+//	return Mout;
+	return n(UPDN,orbital);
 }
 
 inline SparseMatrixXd FermionBase::
@@ -302,6 +321,25 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 	else if (Sa==SZ)  {return Sz(orbital);}
 	else if (Sa==SP)  {return Sp(orbital);}
 	else if (Sa==SM)  {return Sm(orbital);}
+}
+
+qarray<2> FermionBase::
+Deltaq (SPINOP_LABEL Sa, bool NM) const
+{
+	assert(Sa != SX and Sa != iSY);
+	
+	if (Sa==SZ) {return qarray<2>({0,0});}
+	
+	if (NM)
+	{
+		if (Sa==SP) {return qarray<2>({0,+2});}
+		if (Sa==SM) {return qarray<2>({0,-2});}
+	}
+	else
+	{
+		if (Sa==SP) {return qarray<2>({+1,-1});}
+		if (Sa==SM) {return qarray<2>({-1,+1});}
+	}
 }
 
 inline SparseMatrixXd FermionBase::
@@ -366,58 +404,70 @@ sign_local (int orbital) const
 	return Mout;
 }
 
-SparseMatrixXd FermionBase::
-HubbardHamiltonian (double U, double t, double V, double J, double Bz, bool PERIODIC) const
+template<typename Scalar>
+SparseMatrix<Scalar> FermionBase::
+HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERIODIC) const
 {
-	SparseMatrixXd Mout(N_states,N_states);
+	SparseMatrix<Scalar> Mout(N_states,N_states);
 	
 	for (int i=0; i<N_orbitals-1; ++i) // for all bonds
 	{
 		if (t != 0.)
 		{
-			SparseMatrixXd T = cdag(UP,i)*c(UP,i+1) + cdag(DN,i)*c(DN,i+1);
-			Mout += -t*(T+SparseMatrixXd(T.transpose()));
+			SparseMatrix<Scalar> T = -t*(cdag(UP,i)*c(UP,i+1)+cdag(DN,i)*c(DN,i+1)).cast<Scalar>();
+			Mout += -(T+SparseMatrix<Scalar>(T.adjoint()));
 		}
-		if (V != 0.) {Mout += V*n(i)*n(i+1);}
+		if (V != 0.) {Mout += V*(n(i)*n(i+1)).cast<Scalar>();}
 		if (J != 0.)
 		{
-			Mout += J*(0.5*Sp(i)*Sm(i+1) + 0.5*Sm(i)*Sp(i+1) + Sz(i)*Sz(i+1));
+			Mout += J*(0.5*Sp(i)*Sm(i+1) + 0.5*Sm(i)*Sp(i+1) + Sz(i)*Sz(i+1)).cast<Scalar>();
 		}
 	}
 	if (PERIODIC==true and N_orbitals>2)
 	{
 		if (t != 0.)
 		{
-			SparseMatrixXd T = cdag(UP,0)*c(UP,N_orbitals-1) + cdag(DN,0)*c(DN,N_orbitals-1);
-			Mout += -t*(T+SparseMatrixXd(T.transpose()));
+			SparseMatrix<Scalar> T = -t*(cdag(UP,0)*c(UP,N_orbitals-1) + cdag(DN,0)*c(DN,N_orbitals-1)).cast<Scalar>();
+			Mout += -(T+SparseMatrix<Scalar>(T.adjoint()));
 		}
-		if (V != 0.) {Mout += V*n(0)*n(N_orbitals-1);}
+		if (V != 0.) {Mout += V*(n(0)*n(N_orbitals-1)).cast<Scalar>();}
 		if (J != 0.)
 		{
-			Mout += J*(0.5*Sp(0)*Sm(N_orbitals-1) + 0.5*Sm(0)*Sp(N_orbitals-1) + Sz(0)*Sz(N_orbitals-1));
+			Mout += J*(0.5*Sp(0)*Sm(N_orbitals-1) + 0.5*Sm(0)*Sp(N_orbitals-1) + Sz(0)*Sz(N_orbitals-1)).cast<Scalar>();
 		}
 	}
 	if (U != 0. and U != numeric_limits<double>::infinity())
 	{
-		for (int i=0; i<N_orbitals; ++i) {Mout += U*d(i);}
+		for (int i=0; i<N_orbitals; ++i) {Mout += U*d(i).cast<Scalar>();}
 	}
 	if (Bz != 0.)
 	{
-		for (int i=0; i<N_orbitals; ++i) {Mout -= Bz*Sz(i);}
+		for (int i=0; i<N_orbitals; ++i) {Mout -= Bz*Sz(i).cast<Scalar>();}
 	}
 	
 	return Mout;
 }
 
-SparseMatrixXd FermionBase::
-HubbardHamiltonian (vector<double> Uvec, double t, double V, double J, double Bz, bool PERIODIC) const
+template<typename Scalar>
+SparseMatrix<Scalar> FermionBase::
+HubbardHamiltonian (vector<double> Uvec, vector<double> onsite, Scalar t, double V, double J, double Bz, bool PERIODIC) const
 {
-	SparseMatrixXd Mout = HubbardHamiltonian(0,t,V,J,Bz,PERIODIC);
+	SparseMatrix<Scalar> Mout = HubbardHamiltonian(0,t,V,J,Bz,PERIODIC);
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (Uvec[i] != 0. and Uvec[i] != numeric_limits<double>::infinity())
+		if (Uvec.size() > 0)
 		{
-			Mout += Uvec[i] * d(i);
+			if (Uvec[i] != 0. and Uvec[i] != numeric_limits<double>::infinity())
+			{
+				Mout += Uvec[i] * d(i).cast<Scalar>();
+			}
+		}
+		if (onsite.size() > 0)
+		{
+			if (onsite[i] != 0.)
+			{
+				Mout += onsite[i] * n(i).cast<Scalar>();
+			}
 		}
 	}
 	return Mout;
@@ -445,95 +495,13 @@ qNums(size_t index, bool NM)
 		if (basis[index][i])
 		{
 			N+=1;
-			if (i%2 == 0) {M += 1; Nup +=1;}
-			else          {M -= 1; Ndn +=1;}
+			if (i%2 == 0) {M+=1; Nup+=1;}
+			else          {M-=1; Ndn+=1;}
 		}
 	}
 
 	if (NM) {return qarray<2>{N,M};}
 	else    {return qarray<2>{Nup,Ndn};}
 }
-
-//static const double cUP_data[] =
-//{
-//	0., 1., 0., 0.,
-//	0., 0., 0., 0.,
-//	0., 0., 0., 1.,
-//	0., 0., 0., 0.
-//};
-//static const double cDN_data[] =
-//{
-//	0., 0., 1., 0.,
-//	0., 0., 0., -1.,
-//	0., 0., 0., 0.,
-//	0., 0., 0., 0.
-//};
-//static const double d_data[] =
-//{
-//	0., 0., 0., 0.,
-//	0., 0., 0., 0.,
-//	0., 0., 0., 0.,
-//	0., 0., 0., 1.
-//};
-//static const double n_data[] =
-//{
-//	0., 0., 0., 0.,
-//	0., 1., 0., 0.,
-//	0., 0., 1., 0.,
-//	0., 0., 0., 2.
-//};
-//static const double fsign_data[] =
-//{
-//	1.,  0.,  0., 0.,
-//	0., -1.,  0., 0.,
-//	0.,  0., -1., 0.,
-//	0.,  0.,  0., 1.
-//};
-//static const double SpHub_data[] =
-//{
-//	0., 0., 0., 0.,
-//	0., 0., 1., 0.,
-//	0., 0., 0., 0.,
-//	0., 0., 0., 0.
-//};
-//static const double SmHub_data[] =
-//{
-//	0., 0., 0., 0.,
-//	0., 0., 0., 0.,
-//	0., 1., 0., 0.,
-//	0., 0., 0., 0.
-//};
-//static const double SxHub_data[] =
-//{
-//	0., 0.,  0.,  0.,
-//	0., 0.,  0.5, 0.,
-//	0., 0.5, 0.,  0.,
-//	0., 0.,  0.,  0.
-//};
-//static const double iSyHub_data[] =
-//{
-//	0., 0.,   0.,  0.,
-//	0., 0.,   0.5,  0.,
-//	0., -0.5, 0., 0.,
-//	0., 0.,   0.,  0.
-//};
-//static const double SzHub_data[] =
-//{
-//	0., 0.,   0.,  0.,
-//	0., 0.5,  0.,  0.,
-//	0., 0.,  -0.5, 0.,
-//	0., 0.,   0.,  0.
-//};
-
-//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::cUP(cUP_data);
-//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::cDN(cDN_data);
-//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::d(d_data);
-//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::n(n_data);
-//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::fsign(fsign_data);
-//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::Sx(SxHub_data);
-//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::iSy(iSyHub_data);
-//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::Sz(SzHub_data);
-//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::Sp(SpHub_data);
-//const Eigen::Matrix<double,4,4,RowMajor> FermionBase::Sm(SmHub_data);
 
 #endif

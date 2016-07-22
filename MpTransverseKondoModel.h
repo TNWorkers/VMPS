@@ -67,11 +67,14 @@ public:
 	/**Operator for the substrate spin.*/
 	MpoQ<1> Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy=0);
 	
-	/**Operator for the impurity-substrate correlations.*/
+	/**Operator for impurity-substrate correlations.*/
 	MpoQ<1> SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	
-	/**Operator for the impurity-impurity correlations.*/
+	/**Operator for impurity-impurity correlations.*/
 	MpoQ<1> SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	
+	/**Operator for substrate-substrate correlations.*/
+	MpoQ<1> SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	
 	/***/
 	MpoQ<1> hopping (size_t locx, size_t locy=0);
@@ -113,7 +116,7 @@ qsub (size_t N_legs)
 vector<qarray<1> > TransverseKondoModel::
 qimp (size_t N_legs, size_t D)
 {
-	size_t dimS = static_cast<size_t>(pow(2,N_legs));
+	size_t dimS = static_cast<size_t>(pow(D,N_legs));
 	size_t dimF = static_cast<size_t>(pow(4,N_legs));
 	
 	vector<qarray<1> > vout(dimS*dimF);
@@ -299,7 +302,7 @@ TransverseKondoModel::
 TransverseKondoModel (size_t L_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input, initializer_list<double> Bxloc_input, size_t D_input, bool CALC_SQUARE)
 :TransverseKondoModel(L_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), 
                       vector<double>(begin(Bzloc_input),end(Bzloc_input)), 
-                      vector<double>(begin(Bxloc_input),end(Bxloc_input)), CALC_SQUARE, D_input)
+                      vector<double>(begin(Bxloc_input),end(Bxloc_input)), D_input, CALC_SQUARE)
 {}
 
 MpoQ<1> TransverseKondoModel::
@@ -307,7 +310,7 @@ Simp (SPINOP_LABEL Sa, size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
-	ss << Sa << "imp(" << locx << "," << locy << ")";
+	ss << Sa << "_imp(" << locx << "," << locy << ")";
 	MpoQ<1> Mout(N_sites, N_legs, locBasis(), {0}, Nlabel, ss.str());
 	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
 	Mout.setLocal(locx, kroneckerProduct(S.Scomp(Sa,locy),IdSub));
@@ -319,7 +322,7 @@ Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
-	ss << Sa << "sub(" << locx << "," << locy << ")";
+	ss << Sa << "_sub(" << locx << "," << locy << ")";
 	MpoQ<1> Mout(N_sites, N_legs, locBasis(), {0}, Nlabel, ss.str());
 	MatrixXd IdImp(qloc[locx].size()/F.dim(), qloc[locx].size()/F.dim()); IdImp.setIdentity();
 	Mout.setLocal(locx, kroneckerProduct(IdImp, F.Scomp(Sa,locy)));
@@ -349,9 +352,23 @@ SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size
 	ss << SOP1 << "(" << locx1 << "," << locy1 << ")" << SOP2 << "(" << locx2 << "," << locy2 << ")";
 	MpoQ<1> Mout(N_sites, N_legs, locBasis(), {0}, Nlabel, ss.str());
 	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
-	MatrixXd IdImp(MpoQ<1>::qloc[locx2].size()/F.dim(), MpoQ<1>::qloc[locx2].size()/F.dim()); IdImp.setIdentity();
 	Mout.setLocal({locx1,locx2}, {kroneckerProduct(S.Scomp(SOP1,locy1),IdSub), 
 	                              kroneckerProduct(S.Scomp(SOP2,locy2),IdSub)}
+	             );
+	return Mout;
+}
+
+MpoQ<1> TransverseKondoModel::
+SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	assert(locx1<N_sites and locx2<N_sites and locy1<N_legs and locy2<N_legs);
+	stringstream ss;
+	ss << SOP1 << "(" << locx1 << "," << locy1 << ")" << SOP2 << "(" << locx2 << "," << locy2 << ")";
+	MpoQ<1> Mout(N_sites, N_legs, locBasis(), {0}, Nlabel, ss.str());
+	MatrixXd IdImp1(MpoQ<1>::qloc[locx1].size()/F.dim(), MpoQ<1>::qloc[locx1].size()/F.dim()); IdImp1.setIdentity();
+	MatrixXd IdImp2(MpoQ<1>::qloc[locx2].size()/F.dim(), MpoQ<1>::qloc[locx2].size()/F.dim()); IdImp2.setIdentity();
+	Mout.setLocal({locx1,locx2}, {kroneckerProduct(IdImp1,F.Scomp(SOP1,locy1)), 
+	                              kroneckerProduct(IdImp2,F.Scomp(SOP2,locy2))}
 	             );
 	return Mout;
 }

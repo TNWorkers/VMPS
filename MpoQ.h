@@ -92,13 +92,13 @@ public:
 	\param loc : list of locations
 	\param Op : list of operators
 	*/
-	void setLocal (vector<size_t> loc, vector<MatrixType> Op);
-
-	/**Set to a sum of of local operators \f$\sum_i O_i\f$
+	void setLocal (vector<size_t> loc, vector<MatrixType> Op);	
+	
+	/**Set to a sum of of local operators \f$\sum_i f(i) O_i\f$
 	\param Op : the local operator in question
-	\param STAGGER : if \p true, do \f$\sum_i (-1)^i O_i\f$
+	\param f : the function in question$
 	*/
-	void setLocalSum (const MatrixType &Op, bool STAGGER=false);
+	void setLocalSum (const MatrixType &Op, Scalar (*f)(int));
 	
 	/**Set to a sum of nearest-neighbour products of local operators \f$\sum_i O^1_i O^2_{i+1}\f$
 	\param Op1 : first local operator
@@ -187,7 +187,7 @@ public:
 //	void flatten_to_MpsQ (MpsQ<0,Scalar> &V);
 //	vector<vector<vector<MatrixType> > > A;
 	
-protected:
+//protected:
 	
 //	/**local terms of Hamiltonian, format: coupling, operator*/
 //	vector<tuple<Scalar,MatrixType> >                       Olocal;
@@ -520,10 +520,10 @@ setLocal (vector<size_t> loc, vector<MatrixType> Op)
 	construct(M, W, Gvec);
 }
 
-// O(1)+O(2)+...+O(L)
+// sum_i f(i)*O(i)
 template<size_t Nq, typename Scalar>
 void MpoQ<Nq,Scalar>::
-setLocalSum (const MatrixType &Op, bool STAGGER)
+setLocalSum (const MatrixType &Op, Scalar (*f)(int))
 {
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -534,7 +534,7 @@ setLocalSum (const MatrixType &Op, bool STAGGER)
 	vector<SuperMatrix<Scalar> > M(N_sites);
 	
 	M[0].setRowVector(Daux,qloc[0].size());
-	M[0](0,0) = Op;
+	M[0](0,0) = f(0) * Op;
 	M[0](0,1).setIdentity();
 	
 	for (size_t l=1; l<N_sites-1; ++l)
@@ -542,15 +542,13 @@ setLocalSum (const MatrixType &Op, bool STAGGER)
 		M[l].setMatrix(Daux,qloc[l].size());
 		M[l](0,0).setIdentity();
 		M[l](0,1).setZero();
-		M[l](1,0) = Op;
-		if (STAGGER == true) {M[l](1,0) *= pow(-1,l);}
+		M[l](1,0) = f(l) * Op;
 		M[l](1,1).setIdentity();
 	}
 	
 	M[N_sites-1].setColVector(Daux,qloc[N_sites-1].size());
 	M[N_sites-1](0,0).setIdentity();
-	M[N_sites-1](1,0) = Op;
-	if (STAGGER == true) {M[N_sites-1](1,0) *= pow(-1,N_sites-1);}
+	M[N_sites-1](1,0) = f(N_sites-1) * Op;
 	
 	construct(M, W, Gvec);
 }
@@ -722,7 +720,7 @@ BondPropagator (TimeScalar dt, PARITY P) const
 	TevolLabel += ss.str();
 	TevolLabel += (P==EVEN)? "evn" : "odd";
 	
-	MpoQ<Nq,TimeScalar> Mout(N_sites, locBasis(), qvacuum<Nq>(), qlabel, TevolLabel, format, true);
+	MpoQ<Nq,TimeScalar> Mout(N_sites, N_legs, locBasis(), qvacuum<Nq>(), qlabel, TevolLabel, format, true);
 	Mout.Daux = Gvec[0].auxdim();
 	
 	Mout.W.resize(N_sites);
@@ -793,7 +791,7 @@ BondPropagator (TimeScalar dt, PARITY P) const
 		size_t Grow = (l==0)? 0 : Daux-1; // last row
 		size_t Gcol = 0; // first column
 		
-		MatrixType Hbond(D1*D2,D1*D2);
+		Matrix<Scalar,Dynamic,Dynamic> Hbond(D1*D2,D1*D2);
 		Hbond.setZero();
 		
 		// local part
@@ -814,7 +812,7 @@ BondPropagator (TimeScalar dt, PARITY P) const
 			Hbond += kroneckerProduct(Gvec[l](Grow,a), Gvec[l+1](a,Gcol));
 		}
 		
-		SelfAdjointEigenSolver<MatrixType> Eugen(Hbond);
+		SelfAdjointEigenSolver<Matrix<Scalar,Dynamic,Dynamic> > Eugen(Hbond);
 		Matrix<TimeScalar,Dynamic,Dynamic> Hexp = Eugen.eigenvectors() * 
 		                                         (Eugen.eigenvalues()*dt).array().exp().matrix().asDiagonal() * 
 		                                          Eugen.eigenvectors().adjoint();
@@ -1368,6 +1366,38 @@ ostream &operator<< (ostream& os, const MpoQ<Nq,Scalar> &O)
 		if (l != O.length()-1) {os << endl;}
 	}
 	return os;
+}
+
+template<size_t Nq, typename Scalar1, typename Scalar2>
+void compare (const MpoQ<Nq,Scalar1> &O1, const MpoQ<Nq,Scalar2> &O2)
+{
+	assert (O1.format and "Empty pointer to format function in MpoQ!");
+	assert (O2.format and "Empty pointer to format function in MpoQ!");
+	
+	lout << setfill('-') << setw(30) << "-" << setfill(' ');
+	lout << "MpoQ: L=" << O1.length() << ", Daux=" << O1.auxdim();
+	lout << setfill('-') << setw(30) << "-" << endl << setfill(' ');
+	
+	for (size_t l=0; l<O1.length(); ++l)
+	{
+		for (size_t s1=0; s1<O1.locBasis(l).size(); ++s1)
+		for (size_t s2=0; s2<O1.locBasis(l).size(); ++s2)
+		{
+			lout << "[l=" << l << "]\t|" << O1.format(O1.locBasis(l)[s1]) << "><" << O1.format(O1.locBasis(l)[s2]) << "|:" << endl;
+			auto M1 = Matrix<Scalar1,Dynamic,Dynamic>(O1.W_at(l)[s1][s2]);
+			auto Mtmp = Matrix<Scalar2,Dynamic,Dynamic>(O2.W_at(l)[s1][s2]);
+			auto M2 = Mtmp.template cast<Scalar1>();
+			lout << "norm(diff)=" << (M1-M2).norm() << endl;
+			if ((M1-M2).norm() > 0.)
+			{
+				lout << "M1=" << endl << M1 << endl << endl;
+				lout << "M2=" << endl << Matrix<Scalar2,Dynamic,Dynamic>(O2.W_at(l)[s1][s2]) << endl << endl;
+			}
+		}
+		lout << setfill('-') << setw(80) << "-" << setfill(' ');
+		if (l != O1.length()-1) {lout << endl;}
+	}
+	lout << endl;
 }
 
 #endif

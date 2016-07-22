@@ -246,7 +246,7 @@ SuperMatrix<Scalar> Generator (const HamiltonianTerms<Scalar> &Terms)
 	{
 		locdim = get<1>(Terms.local[0]).rows();
 	}
-	SparseMatrixXd Id = MatrixXd::Identity(locdim,locdim).sparseView();
+	SparseMatrix<Scalar> Id = Matrix<Scalar,Dynamic,Dynamic>::Identity(locdim,locdim).sparseView();
 	
 	// last row (except corner element)
 	for (size_t i=0; i<Terms.nextn.size(); ++i)
