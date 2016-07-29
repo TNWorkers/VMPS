@@ -23,7 +23,10 @@ msg = MIMEText(content,'plain','utf-8')
 sender = 'git'
 recipients = ['rrausch@physnet.uni-hamburg.de','mpeschke@physnet.uni-hamburg.de']
 
-msg['Subject'] = 'git update'
+if len(sys.argv) >= 1:
+	msg['Subject'] = 'git update '+sys.argv[1]
+else:
+	msg['Subject'] = 'git update'
 msg['From'] = sender
 
 for recipient in recipients:
