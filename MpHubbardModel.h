@@ -97,6 +97,7 @@ public:
 	MpoQ<2> s (size_t locx, size_t locy=0);
 	MpoQ<2> n (SPIN_INDEX sigma, size_t locx, size_t locy=0);
 	MpoQ<2> nn (SPIN_INDEX sigma1, size_t locx1, SPIN_INDEX sigma2, size_t locx2, size_t locy1=0, size_t locy2=0);
+	MpoQ<2> hh (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	MpoQ<2> Sz (size_t locx, size_t locy=0);
 	MpoQ<2> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	MpoQ<2> SaSa (size_t locx1, SPINOP_LABEL SOP1, size_t locx2, SPINOP_LABEL SOP2, size_t locy1=0, size_t locy2=0);
@@ -913,6 +914,18 @@ n (SPIN_INDEX sigma, size_t locx, size_t locy)
 	ss << "n(" << locx << "," << locy << ",σ=" << sigma << ")";
 	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(locx, F.n(sigma,locy));
+	return Mout;
+}
+
+MpoQ<2> HubbardModel::
+hh (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	assert(locx1 < N_sites and locx2 < N_sites and locy1 < N_legs and locy2 < N_legs);
+	stringstream ss;
+	ss << "h(" << locx1 << "," << locy1 << ")h" << "(" << locx2 << "," << locy2 << ")";
+	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
+	SparseMatrixXd Id(F.dim(),F.dim()); Id.setIdentity();
+	Mout.setLocal({locx1,locx2}, {F.d(locy1)-F.n(locy1)+Id,F.d(locy2)-F.n(locy2)+Id});
 	return Mout;
 }
 
