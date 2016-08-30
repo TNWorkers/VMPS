@@ -17,7 +17,7 @@ elif len(sys.argv) == 2:
 # drittes Argument gibt den branch an:
 # git --git-dir <argv[1]>/.git -branch <argv[2]> log -2
 elif len(sys.argv) == 3:
-	content = check_output(['git','--git-dir',sys.argv[1]+'/.git','log','-2',sys.argv[2]])
+	content = check_output(['git','--git-dir',sys.argv[1]+'/.git','log','-2',sys.argv[2]],'--decorate')
 msg = MIMEText(content,'plain','utf-8')
 
 sender = 'git'
