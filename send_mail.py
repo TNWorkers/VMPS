@@ -21,7 +21,7 @@ elif len(sys.argv) == 3:
 msg = MIMEText(content,'plain','utf-8')
 
 sender = 'git'
-recipients = ['rrausch@physnet.uni-hamburg.de','mpeschke@physnet.uni-hamburg.de'
+recipients = ['rrausch@physnet.uni-hamburg.de','mpeschke@physnet.uni-hamburg.de']
 
 name = sys.argv[1].split('/')[-1]
 
