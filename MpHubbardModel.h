@@ -79,7 +79,7 @@ public:
 	typedef MpsQ<2,double>                           StateXd;
 	/**Complex MpsQ for convenient reference (no need to specify D, Nq all the time).*/
 	typedef MpsQ<2,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<2,HubbardModel>              Solver;
+	typedef DmrgSolverQ<2,HubbardModel,double>              Solver;
 	typedef MpsQCompressor<2,double,double>          CompressorXd;
 	typedef MpsQCompressor<2,complex<double>,double> CompressorXcd;
 	typedef MpoQ<2,double>                           OperatorXd;

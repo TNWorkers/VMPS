@@ -2,6 +2,7 @@
 #define DMRG_TYPEDEFS
 
 #include <array>
+#include <vector>
 
 #ifndef IS_REAL_FUNCTION
 #define IS_REAL_FUNCTION

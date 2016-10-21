@@ -194,7 +194,7 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 \param VERBOSITY : verbosity level*/
 template<size_t Nq, typename MpoScalar, typename Scalar>
 void HxV (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, 
-          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
+          DMRG::VERBOSITY::OPTION VERBOSITY) //=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	Stopwatch<> Chronos;
 	
@@ -263,7 +263,7 @@ void addScale (const OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scal
 }
 
 template<size_t Nq, typename MpoScalar, typename Scalar>
-void OxV (const MpoQ<Nq,MpoScalar> &O, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD)
+void OxV (const MpoQ<Nq,MpoScalar> &O, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, DMRG::BROOM::OPTION TOOL) //=DMRG::BROOM::SVD)
 {
 	vector<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > > C;
 	vector<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > > Cnext;

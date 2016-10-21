@@ -8,7 +8,7 @@
 #include "DmrgLinearAlgebraQ.h"
 #include "LanczosSolver.h"
 
-template<size_t Nq, typename MpHamiltonian, typename Scalar=double>
+template<size_t Nq, typename MpHamiltonian, typename Scalar = double>
 class DmrgSolverQ
 {
 public:
