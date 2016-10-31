@@ -1,9 +1,12 @@
-#include <MpsQ.h>
-#include <MpoQ.h>
-#include <MpKondoModel.h>
+#include <memory>
+
 #include <Eigen/Dense>
 #include <unsupported/Eigen/CXX11/Tensor>
-#include <memory>
+
+#include "MpsQ.h"
+#include "MpoQ.h"
+#include "MpKondoModel.h"
+#include "DmrgLinearAlgebraQ.h"
 
 /**Calculating observables for given sets of lattice sites. 
 \describe_Nq
@@ -17,10 +20,13 @@ public:
 	Eigen::MatrixXd ImpSubCorr (vector<size_t> impLocs, vector<size_t> subLocs);
 	Eigen::MatrixXd ImpCorr (vector<size_t> imp1Locs, vector<size_t> imp2Locs);
 	Eigen::MatrixXd SizVal (vector<size_t> locs);
+	Eigen::MatrixXd SixVal (vector<size_t> locs);
+	Eigen::MatrixXd DoubleOcc (vector<size_t> locs);
 	Eigen::MatrixXd localPksCorr (vector<size_t> locs1, vector<size_t> locs2);
 	Eigen::MatrixXd localPksCorrMF (vector<size_t> locs1, vector<size_t> locs2, Eigen::MatrixXd * ImpSubCorr);
 	Eigen::Tensor<double,3> PksCorr ();
 	Eigen::Tensor<double,3> PksCorrMF (Eigen::MatrixXd * ImpSubCorr, Eigen::MatrixXd * ImpCorr);
+	Eigen::MatrixXd Hopping (vector<size_t> sub1Locs, vector<size_t> sub2Locs, SPIN_INDEX sigma);
 
 private:
 	string info;
@@ -39,7 +45,7 @@ template <size_t Nq, typename Scalar, typename Hamiltonian>
 Eigen::MatrixXd Observables<Nq,Scalar,Hamiltonian>::
 ImpSubCorr (vector<size_t> impLocs, vector<size_t> subLocs)
 {
-	Eigen::MatrixXd ImpSubCorr(impLocs.size(),subLocs.size());
+	Eigen::Matrix<Scalar,Dynamic,Dynamic> ImpSubCorr(impLocs.size(),impLocs.size());
 	ImpSubCorr.setZero();
 	
 	for (size_t i=0; i<impLocs.size(); ++i)
@@ -51,15 +57,14 @@ ImpSubCorr (vector<size_t> impLocs, vector<size_t> subLocs)
 					 + avg(*state , H->SimpSsub(impLocs[i],SM,subLocs[j],SP), *state));
 		}
 	}
-	return ImpSubCorr;
+	return ImpSubCorr.real();
 }
 
 template <size_t Nq, typename Scalar, typename Hamiltonian>
 Eigen::MatrixXd Observables<Nq,Scalar,Hamiltonian>::
 ImpCorr (vector<size_t> imp1Locs, vector<size_t> imp2Locs)
 {
-	Eigen::MatrixXd ImpCorr(imp1Locs.size(),imp2Locs.size());
-	ImpCorr.setZero();
+	Eigen::Matrix<Scalar,Dynamic,Dynamic> ImpCorr(imp1Locs.size(),imp2Locs.size()); ImpCorr.setZero();
 
 	for (size_t i=0; i<imp1Locs.size(); ++i)
 	{
@@ -70,21 +75,66 @@ ImpCorr (vector<size_t> imp1Locs, vector<size_t> imp2Locs)
 					 + avg(*state , H->SimpSimp(imp1Locs[i],SM,imp2Locs[j],SP), *state));
 		}
 	}
-	return ImpCorr;
+	return ImpCorr.real();
 }
 
 template <size_t Nq, typename Scalar, typename Hamiltonian>
 Eigen::MatrixXd Observables<Nq,Scalar,Hamiltonian>::
 SizVal (vector<size_t> locs)
 {
-	Eigen::MatrixXd SizVal(locs.size(),1);
+	Eigen::Matrix<Scalar,Dynamic,1> SizVal(locs.size(),1);
 	SizVal.setZero();
 	for (size_t i=0; i<locs.size(); i++)
 	{
 		SizVal(i) = avg(*state , H->Simp(locs[i],SZ) , *state);
 	}
 
-	return SizVal;
+	return SizVal.real();
+}
+
+template <size_t Nq, typename Scalar, typename Hamiltonian>
+Eigen::MatrixXd Observables<Nq,Scalar,Hamiltonian>::
+SixVal (vector<size_t> locs)
+{
+	Eigen::Matrix<Scalar,Dynamic,1> SixVal(locs.size(),1);
+	SixVal.setZero();
+	for (size_t i=0; i<locs.size(); i++)
+	{
+		SixVal(i) = avg(*state , H->Simp(locs[i],SX) , *state);
+	}
+
+	return SixVal.real();
+}
+
+template <size_t Nq, typename Scalar, typename Hamiltonian>
+Eigen::MatrixXd Observables<Nq,Scalar,Hamiltonian>::
+DoubleOcc (vector<size_t> locs)
+{
+	Eigen::Matrix<Scalar,Dynamic,1> DoubleOcc(locs.size(),1);
+	DoubleOcc.setZero();
+	for (size_t i=0; i<locs.size(); i++)
+	{
+		DoubleOcc(i) = avg(*state , H->d(locs[i],0) , *state);
+	}
+
+	return DoubleOcc.real();
+}
+
+template <size_t Nq, typename Scalar, typename Hamiltonian>
+Eigen::MatrixXd Observables<Nq,Scalar,Hamiltonian>::
+Hopping (vector<size_t> subLocs1, vector<size_t> subLocs2, SPIN_INDEX sigma)
+{
+	Eigen::Matrix<Scalar,Dynamic,Dynamic> Hopping(subLocs1.size(),subLocs2.size());
+	Hopping.setZero();
+	
+	for (size_t i=0; i<subLocs1.size(); ++i)
+	{
+		for (size_t j=0; j<subLocs2.size(); ++j)
+		{
+			Hopping(i,j) = avg(*state, H->cdagc(sigma,i,j), *state);
+		}
+	}
+	return Hopping.real();
 }
 
 template <size_t Nq, typename Scalar, typename Hamiltonian>
