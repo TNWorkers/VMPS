@@ -939,7 +939,7 @@ save (string filename, string info)
 				std::stringstream ss;
 				ss << l << "_" << s << "_" << "(" << A[l][s].in[q] << "," << A[l][s].out[q] << ")";
 				label = ss.str();
-				target.save_matrix(&(A[l][s].block[q]),label);
+				target.save_matrix(A[l][s].block[q],label);
 			}
 }
 
@@ -977,7 +977,7 @@ load (string filename)
 				std::stringstream ss;
 				ss << l << "_" << s << "_" << "(" << A[l][s].in[q] << "," << A[l][s].out[q] << ")";
 				label = ss.str();
-				source.load_matrix(&(A[l][s].block[q]), label);
+				source.load_matrix(A[l][s].block[q], label);
 			}
 }
 #endif
