@@ -19,6 +19,7 @@ public:
 	
 	Eigen::MatrixXd ImpSubCorr (vector<size_t> impLocs, vector<size_t> subLocs);
 	Eigen::MatrixXd ImpCorr (vector<size_t> imp1Locs, vector<size_t> imp2Locs);
+	Eigen::MatrixXd SubCorr (vector<size_t> sub1Locs, vector<size_t> sub2Locs);
 	Eigen::MatrixXd SizVal (vector<size_t> locs);
 	Eigen::MatrixXd SixVal (vector<size_t> locs);
 	Eigen::MatrixXd DoubleOcc (vector<size_t> locs);
@@ -76,6 +77,25 @@ ImpCorr (vector<size_t> imp1Locs, vector<size_t> imp2Locs)
 		}
 	}
 	return ImpCorr.real();
+}
+
+template <size_t Nq, typename Scalar, typename Hamiltonian>
+Eigen::MatrixXd Observables<Nq,Scalar,Hamiltonian>::
+SubCorr (vector<size_t> sub1Locs, vector<size_t> sub2Locs)
+{
+        Eigen::Matrix<Scalar,Dynamic,Dynamic> SubCorr(sub1Locs.size(),sub2Locs.size());
+        SubCorr.setZero();
+
+        for (size_t i=0; i<sub1Locs.size(); ++i)
+        {
+                for (size_t j=0; j<sub2Locs.size(); ++j)
+                {
+                        SubCorr(i,j) = avg(*state, H->SsubSsub(sub1Locs[i],SZ,sub2Locs[j],SZ), *state) +
+                                0.5*(avg(*state , H->SsubSsub(sub1Locs[i],SP,sub2Locs[j],SM), *state)
+                                         + avg(*state , H->SsubSsub(sub1Locs[i],SM,sub2Locs[j],SP), *state));
+                }
+        }
+        return SubCorr.real();
 }
 
 template <size_t Nq, typename Scalar, typename Hamiltonian>
