@@ -32,7 +32,7 @@ public:
 	
 	void edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Nq> > &qloc_input, 
 	                Eigenstate<UmpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot_input, 
-	                double tol_eigval_input=1e-7, double tol_state_input=1e-6, 
+	                double tol_eigval_input=1e-7, double tol_var_input=1e-6, 
 	                size_t Dlimit=500, 
 	                size_t max_iterations=50, size_t min_iterations=6);
 	
@@ -52,7 +52,7 @@ public:
 private:
 	
 	size_t N_sites;
-	double tol_eigval, tol_state;
+	double tol_eigval, tol_var;
 	size_t N_iterations;
 	double err_eigval, err_var;
 	
@@ -136,8 +136,6 @@ prepare (const TwoSiteHamiltonian &h2site, const vector<qarray<Nq> > &qloc_input
 	Vout.state.setRandom();
 	Vout.state.svdDecompose(0);
 	
-	if (CHOSEN_VERBOSITY>=2) {lout << PrepTimer.info("initial state & sweep") << endl << endl;}
-	
 	// initial energy
 	eoldL = energy_L(Heff.h, Vout.state.A[GAUGE::L][0], Vout.state.C[0], Heff.qloc);
 	eoldR = energy_R(Heff.h, Vout.state.A[GAUGE::R][0], Vout.state.C[0], Heff.qloc);
@@ -172,9 +170,6 @@ iteration (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 		TR(r,c) += Vout.state.A[GAUGE::R][0][s].block[0](i,j) * Vout.state.A[GAUGE::R][0][s].block[0].adjoint()(k,l);
 	}
 	
-	MatrixType KetOne = MatrixType::Identity(M,M);
-	MatrixType BraOne = MatrixType::Identity(M,M);
-	
 	MatrixType Reigen = Vout.state.C[0].block[0] * Vout.state.C[0].block[0].adjoint();
 	MatrixType Leigen = Vout.state.C[0].block[0].adjoint() * Vout.state.C[0].block[0];
 	
@@ -184,36 +179,32 @@ iteration (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	eL = (Leigen * hR).trace();
 	eR = (hL * Reigen).trace();
 	
-	hR -= eL * KetOne;
-	hL -= eR * BraOne;
+	hR -= eL * MatrixType::Identity(M,M);
+	hL -= eR * MatrixType::Identity(M,M);
 	
-	MatrixType UxL(M*M,M*M), RxU(M*M,M*M);
+	MatrixType UxL(M*M,M*M); UxL.setZero();
+	MatrixType RxU(M*M,M*M); RxU.setZero();
 	
-	#pragma omp parallel for collapse(4)
 	for (size_t i=0; i<M; ++i)
-	for (size_t j=0; j<M; ++j)
 	for (size_t k=0; k<M; ++k)
 	for (size_t l=0; l<M; ++l)
 	{
-		size_t r = i + M*j;
+		size_t r = i + M*i;
 		size_t c = k + M*l;
-		UxL(r,c) = KetOne(i,j) * Leigen(k,l);
+		UxL(r,c) = Leigen(k,l);
 	}
 	
-	#pragma omp parallel for collapse(4)
 	for (size_t i=0; i<M; ++i)
 	for (size_t j=0; j<M; ++j)
 	for (size_t k=0; k<M; ++k)
-	for (size_t l=0; l<M; ++l)
 	{
 		size_t r = i + M*j;
-		size_t c = k + M*l;
-		RxU(r,c) = Reigen(i,j) * BraOne(k,l);
+		size_t c = k + M*k;
+		RxU(r,c) = Reigen(i,j);
 	}
 	
 	VectorType bL(M*M), bR(M*M);
 	
-	#pragma omp parallel for collapse(2)
 	for (size_t i=0; i<M; ++i)
 	for (size_t j=0; j<M; ++j)
 	{
@@ -221,7 +212,6 @@ iteration (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 		bR(r) = hR(i,j);
 	}
 	
-	#pragma omp parallel for collapse(2)
 	for (size_t i=0; i<M; ++i)
 	for (size_t j=0; j<M; ++j)
 	{
@@ -259,7 +249,6 @@ iteration (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	
 	MatrixType HR(M,M), HL(M,M);
 	
-	#pragma omp parallel for collapse(2)
 	for (size_t i=0; i<M; ++i)
 	for (size_t j=0; j<M; ++j)
 	{
@@ -267,7 +256,6 @@ iteration (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 		HR(i,j) = xR(r);
 	}
 	
-	#pragma omp parallel for collapse(2)
 	for (size_t i=0; i<M; ++i)
 	for (size_t j=0; j<M; ++j)
 	{
@@ -287,8 +275,8 @@ iteration (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	
 	Stopwatch<> LanczosTimer;
 	LanczosSolver<PivumpsMatrix<Nq,Scalar,Scalar>,PivotVectorQ<Nq,Scalar>,Scalar> Lutz1(LANCZOS::REORTHO::FULL);
-	Lutz1.set_dimK(min(30ul, Heff.dim));
-	Lutz1.edgeState(Heff,g1, LANCZOS::EDGE::GROUND, 1e-2*err_eigval,1e-2*err_var, false);
+	Lutz1.set_dimK(min(20ul, Heff.dim));
+	Lutz1.edgeState(Heff,g1, LANCZOS::EDGE::GROUND, 1e-7,1e-4, false);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
@@ -300,8 +288,8 @@ iteration (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	g0.state.C = Vout.state.C[0];
 	
 	LanczosSolver<PivumpsMatrix<Nq,Scalar,Scalar>,PivumpsVector0<Nq,Scalar>,Scalar> Lutz0(LANCZOS::REORTHO::FULL);
-	Lutz0.set_dimK(min(30ul, Heff.dim));
-	Lutz0.edgeState(Heff,g0, LANCZOS::EDGE::GROUND, 1e-2*err_eigval,1e-2*err_var, false);
+	Lutz0.set_dimK(min(20ul, Heff.dim));
+	Lutz0.edgeState(Heff,g0, LANCZOS::EDGE::GROUND, 1e-7,1e-4, false);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
@@ -310,8 +298,7 @@ iteration (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	
 	Vout.state.A[GAUGE::C][0] = g1.state.A;
 	Vout.state.C[0]           = g0.state.C;
-//	Vout.state.polarDecompose(0); // polar decompose doesn't work yet!
-	Vout.state.svdDecompose(0);
+	(err_var>0.1)? Vout.state.svdDecompose(0) : Vout.state.polarDecompose(0);
 	
 	double epsL, epsR;
 	Vout.state.calc_epsLR(0,epsL,epsR);
@@ -336,16 +323,16 @@ iteration (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 
 template<size_t Nq, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Nq,MpHamiltonian,Scalar>::
-edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Nq> > &qloc, Eigenstate<UmpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot, double tol_eigval_input, double tol_state_input, size_t M, size_t max_iterations, size_t min_iterations)
+edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Nq> > &qloc, Eigenstate<UmpsQ<Nq,Scalar> > &Vout, qarray<Nq> Qtot, double tol_eigval_input, double tol_var_input, size_t M, size_t max_iterations, size_t min_iterations)
 {
 	tol_eigval = tol_eigval_input;
-	tol_state  = tol_state_input;
+	tol_var = tol_var_input;
 	
 	prepare(h2site, qloc, Vout, M, Qtot);
 	
 	Stopwatch<> GlobalTimer;
 	
-	while (((err_eigval >= tol_eigval or err_var >= tol_state) and N_iterations < max_iterations) or N_iterations < min_iterations)
+	while (((err_eigval >= tol_eigval or err_var >= tol_var) and N_iterations < max_iterations) or N_iterations < min_iterations)
 	{
 		iteration(Vout);
 	}

@@ -14,63 +14,56 @@ struct GAUGE
 	enum OPTION {L=0, R=1, C=2};
 };
 
-template<typename MatrixType>
-void unique_QR (const MatrixType &M, MatrixType &Qmatrix, MatrixType &Rmatrix)
-{
-	#ifdef DONT_USE_EIGEN_QR
-	LapackQR<Scalar> Quirinus; // Lapack QR
-	#else
-	HouseholderQR<MatrixType> Quirinus; // Eigen QR
-	#endif
-	
-	Quirinus.compute(M);
-	
-	#ifdef DONT_USE_EIGEN_QR
-	Qmatrix = Quirinus.Qmatrix();
-	Rmatrix = Quirinus.Rmatrix();
-	#else
-	Qmatrix = Quirinus.householderQ() * MatrixType::Identity(M.rows(),M.cols());
-	Rmatrix = MatrixType::Identity(M.cols(),M.rows()) 
-	        * Quirinus.matrixQR().template triangularView<Upper>();
-	#endif
-	
-	// signs of the diagonal of Rmatrix in order to make the QR decomposition unique
-	VectorXd Signum = (Rmatrix.diagonal().array()/Rmatrix.diagonal().array().abs()).matrix();
-	Rmatrix = Signum.asDiagonal() * Rmatrix;
-	Qmatrix = Qmatrix * Signum.asDiagonal();
-}
+//template<typename MatrixType>
+//void unique_QR (const MatrixType &M, MatrixType &Qmatrix, MatrixType &Rmatrix)
+//{
+//	#ifdef DONT_USE_EIGEN_QR
+//	LapackQR<Scalar> Quirinus; // Lapack QR
+//	#else
+//	HouseholderQR<MatrixType> Quirinus; // Eigen QR
+//	#endif
+//	
+//	Quirinus.compute(M);
+//	
+//	#ifdef DONT_USE_EIGEN_QR
+//	Qmatrix = Quirinus.Qmatrix();
+//	Rmatrix = Quirinus.Rmatrix();
+//	#else
+//	Qmatrix = Quirinus.householderQ() * MatrixType::Identity(M.rows(),M.cols());
+//	Rmatrix = MatrixType::Identity(M.cols(),M.rows()) 
+//	        * Quirinus.matrixQR().template triangularView<Upper>();
+//	#endif
+//	
+//	// signs of the diagonal of Rmatrix in order to make the QR decomposition unique
+//	VectorXd Signum = (Rmatrix.diagonal().array()/Rmatrix.diagonal().array().abs()).matrix();
+//	Rmatrix = Signum.asDiagonal() * Rmatrix;
+//	Qmatrix = Qmatrix * Signum.asDiagonal();
+//}
 
-template<typename MatrixType>
-void unique_RQ (const MatrixType &M, MatrixType &Qmatrix, MatrixType &Rmatrix)
-{
-	#ifdef DONT_USE_EIGEN_QR
-	LapackQR<Scalar> Quirinus; // Lapack QR
-	#else
-	HouseholderQR<MatrixType> Quirinus; // Eigen QR
-	#endif
-	
-	Quirinus.compute(M.adjoint());
-	
-	#ifdef DONT_USE_EIGEN_QR
-	Qmatrix = Quirinus.Qmatrix().adjoint();
-	Rmatrix = Quirinus.Rmatrix().adjoint();
-	#else
-	Qmatrix = (Quirinus.householderQ() * MatrixType::Identity(M.cols(),M.rows())).adjoint();
-	Rmatrix = (MatrixType::Identity(M.rows(),M.cols()) 
-	        * Quirinus.matrixQR().template triangularView<Upper>()).adjoint();
-	#endif
-	
-	VectorXd Signum = (Rmatrix.diagonal().array()/Rmatrix.diagonal().array().abs()).matrix();
-	Rmatrix = Rmatrix * Signum.asDiagonal();
-	Qmatrix = Signum.asDiagonal() * Qmatrix;
-}
-
-template<typename MatrixType>
-void polarU (const MatrixType &M, MatrixType &Umatrix)
-{
-	BDCSVD<MatrixType> Jack(M,ComputeThinU|ComputeThinV);
-	Umatrix = Jack.matrixU() * Jack.matrixV().adjoint();
-}
+//template<typename MatrixType>
+//void unique_RQ (const MatrixType &M, MatrixType &Qmatrix, MatrixType &Rmatrix)
+//{
+//	#ifdef DONT_USE_EIGEN_QR
+//	LapackQR<Scalar> Quirinus; // Lapack QR
+//	#else
+//	HouseholderQR<MatrixType> Quirinus; // Eigen QR
+//	#endif
+//	
+//	Quirinus.compute(M.adjoint());
+//	
+//	#ifdef DONT_USE_EIGEN_QR
+//	Qmatrix = Quirinus.Qmatrix().adjoint();
+//	Rmatrix = Quirinus.Rmatrix().adjoint();
+//	#else
+//	Qmatrix = (Quirinus.householderQ() * MatrixType::Identity(M.cols(),M.rows())).adjoint();
+//	Rmatrix = (MatrixType::Identity(M.rows(),M.cols()) 
+//	        * Quirinus.matrixQR().template triangularView<Upper>()).adjoint();
+//	#endif
+//	
+//	VectorXd Signum = (Rmatrix.diagonal().array()/Rmatrix.diagonal().array().abs()).matrix();
+//	Rmatrix = Rmatrix * Signum.asDiagonal();
+//	Qmatrix = Signum.asDiagonal() * Qmatrix;
+//}
 
 #include "Biped.h"
 #include "Multipede.h"
@@ -457,19 +450,20 @@ template<size_t Nq, typename Scalar>
 void UmpsQ<Nq,Scalar>::
 polarDecompose (size_t loc)
 {
-	vector<MatrixType> UCl;
-	vector<MatrixType> UCr;
+	vector<MatrixType> UC;
+	BDCSVD<MatrixType> Jack;
 	
 	for (size_t q=0; q<C[loc].dim; ++q)
 	{
-		MatrixType Qmatrix, Rmatrix;
-//		unique_QR(C[loc].block[q],Qmatrix,Rmatrix);
-		polarU(C[loc].block[q],Qmatrix);
-		UCl.push_back(Qmatrix);
+		Jack.compute(C[loc].block[q],ComputeThinU|ComputeThinV);
+		UC.push_back(Jack.matrixU()*Jack.matrixV().adjoint());
 		
+//		MatrixType Qmatrix, Rmatrix;
+//		unique_QR(C[loc].block[q],Qmatrix,Rmatrix);
+//		UCl.push_back(Qmatrix);
+//		
 //		unique_RQ(C[loc].block[q],Qmatrix,Rmatrix);
-		polarU(C[loc].block[q],Qmatrix);
-		UCr.push_back(Qmatrix);
+//		UCr.push_back(Qmatrix);
 	}
 	
 	for (size_t qout=0; qout<outset[loc].size(); ++qout)
@@ -480,10 +474,10 @@ polarDecompose (size_t loc)
 		
 		// determine how many A's to glue together
 		vector<size_t> svec, qvec, Nrowsvec;
-		for (size_t s=0; s<qloc.size(); ++s)
+		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
 		{
-			if (A[GAUGE::C][loc][s].out[q] == outset[0][qout])
+			if (A[GAUGE::C][loc][s].out[q] == outset[loc][qout])
 			{
 				svec.push_back(s);
 				qvec.push_back(q);
@@ -506,15 +500,16 @@ polarDecompose (size_t loc)
 			stitch += Nrowsvec[i];
 		}
 		
-		MatrixType Qmatrix, Rmatrix;
-//		unique_QR(Aclump,Qmatrix,Rmatrix);
-		polarU(Aclump,Qmatrix);
+		Jack.compute(Aclump,ComputeThinU|ComputeThinV);
+		MatrixType UL = Jack.matrixU() * Jack.matrixV().adjoint();
+//		MatrixType UL, Rmatrix;
+//		unique_QR(Aclump, UL, Rmatrix);
 		
 		// update AL
 		stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
 		{
-			A[GAUGE::L][loc][svec[i]].block[qvec[i]] = Qmatrix.block(stitch,0, Nrowsvec[i],Ncols) * UCl[qC].adjoint();
+			A[GAUGE::L][loc][svec[i]].block[qvec[i]] = UL.block(stitch,0, Nrowsvec[i],Ncols) * UC[qC].adjoint();
 			stitch += Nrowsvec[i];
 		}
 	}
@@ -551,15 +546,16 @@ polarDecompose (size_t loc)
 			stitch += Ncolsvec[i];
 		}
 		
-		MatrixType Qmatrix, Rmatrix;
-//		unique_RQ(Aclump,Qmatrix,Rmatrix);
-		polarU(Aclump,Qmatrix);
+		Jack.compute(Aclump,ComputeThinU|ComputeThinV);
+		MatrixType UR = Jack.matrixU() * Jack.matrixV().adjoint();
+//		MatrixType UR, Rmatrix;
+//		unique_RQ(Aclump, UR, Rmatrix);
 		
 		// update AR
 		stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
 		{
-			A[GAUGE::R][loc][svec[i]].block[qvec[i]] = UCr[qC].adjoint() * Qmatrix.block(0,stitch, Nrows,Ncolsvec[i]);
+			A[GAUGE::R][loc][svec[i]].block[qvec[i]] = UC[qC].adjoint() * UR.block(0,stitch, Nrows,Ncolsvec[i]);
 			stitch += Ncolsvec[i];
 		}
 	}
