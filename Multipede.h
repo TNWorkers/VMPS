@@ -49,7 +49,7 @@ struct Multipede
 	/**\describe_overhead*/
 	double overhead (MEMUNIT memunit=MB) const;
 	/**Prints Multipede<Nlegs,Nq,MatrixType>::dict into a string.*/
-	string print_dict() const;
+	string dict_info() const;
 //	void rebuild_dict();
 	///@}
 	
@@ -64,6 +64,8 @@ struct Multipede
 	/**Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers according to the input \p Q.
 	Needed in for the transfer matrix from the last site in matrix element calculations.*/
 	void setTarget (std::array<qarray<Nq>,Nlegs> Q);
+	/***/
+	void setIdentity (size_t Drows, size_t Dcols, size_t amax=1, size_t bmax=1);
 	///@}
 	
 	///@{
@@ -92,7 +94,7 @@ template<size_t Nq, typename MatrixType> using Quadruped = Multipede<4,Nq,Matrix
 
 template<size_t Nlegs, size_t Nq, typename MatrixType>
 string Multipede<Nlegs,Nq,MatrixType>::
-print_dict() const
+dict_info() const
 {
 	stringstream ss;
 	for (auto it=dict.begin(); it!=dict.end(); ++it)
@@ -219,6 +221,27 @@ setTarget (std::array<qarray<Nq>,Nlegs> Q)
 	Mtmparray[0][0] = Mtmp;
 	
 	push_back(Q, Mtmparray);
+}
+
+template<size_t Nlegs, size_t Nq, typename MatrixType>
+void Multipede<Nlegs,Nq,MatrixType>::
+setIdentity (size_t Drows, size_t Dcols, size_t amax, size_t bmax)
+{
+	boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[amax][bmax]);
+	for (size_t a=0; a<amax; ++a)
+	for (size_t b=0; b<bmax; ++b)
+	{
+		MatrixType Mtmp(Drows,Dcols);
+		Mtmp.setIdentity();
+		Mtmparray[a][b] = Mtmp;
+	}
+	
+	std::array<qarray<Nq>,Nlegs> quple;
+	for (size_t leg=0; leg<Nlegs; ++leg)
+	{
+		quple[leg] = qvacuum<Nq>();
+	}
+	push_back(quple, Mtmparray);
 }
 
 #endif

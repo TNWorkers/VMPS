@@ -53,9 +53,9 @@ public:
 	\param Bz : \f$B_{z}\f$
 	\param Bx : \f$B_{x}\f$
 	\param PERIODIC: periodic boundary conditions if \p true*/
-	SparseMatrixXd HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., bool PERIODIC=false) const;
+	SparseMatrixXd HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., double K=0., bool PERIODIC=false) const;
 	
-	SparseMatrixXd HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, bool PERIODIC=false) const;
+	SparseMatrixXd HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, double K, bool PERIODIC=false) const;
 	
 	/**Returns the qarray for a given index of the basis.
 	\param index*/
@@ -63,7 +63,7 @@ public:
 	
 	SparseMatrixXd ScompSingleSite (SPINOP_LABEL Sa) const;
 	SparseMatrixXd Sbase () const;
-	VectorXd Soffdiag () const;
+	VectorXd       Soffdiag () const;
 	
 private:
 	
@@ -97,7 +97,7 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 }
 
 SparseMatrixXd SpinBase::
-HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, bool PERIODIC) const
+HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, double K, bool PERIODIC) const
 {
 	assert (Bz.rows() == N_orbitals and Bx.rows() == N_orbitals);
 	
@@ -133,16 +133,23 @@ HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd
 	{
 		if (Bx(i) != 0.) {Mout -= Bx(i) * Scomp(SX,i);}
 	}
+	if (K!=0.)
+	{
+		for (int i=0; i<N_orbitals; ++i)
+		{
+			Mout += K * Scomp(SZ,i) * Scomp(SZ,i);
+		}
+	}
 	
 	return Mout;
 }
 
 SparseMatrixXd SpinBase::
-HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, bool PERIODIC) const
+HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double K, bool PERIODIC) const
 {
 	VectorXd Bzvec(N_orbitals); Bzvec.setConstant(Bz);
 	VectorXd Bxvec(N_orbitals); Bxvec.setConstant(Bx);
-	return HeisenbergHamiltonian(Jxy, Jz, Bzvec, Bxvec, PERIODIC);
+	return HeisenbergHamiltonian(Jxy, Jz, Bzvec, Bxvec, K, PERIODIC);
 }
 
 qarray<1> SpinBase::

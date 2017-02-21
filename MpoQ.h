@@ -1,6 +1,8 @@
 #ifndef STRAWBERRY_MPO_WITH_Q
 #define STRAWBERRY_MPO_WITH_Q
 
+#include "boost/multi_array.hpp"
+
 #include <Eigen/SparseCore>
 #ifndef EIGEN_DEFAULT_SPARSE_INDEX_TYPE
 #define EIGEN_DEFAULT_SPARSE_INDEX_TYPE int
@@ -24,6 +26,12 @@ const std::array<qarray<0>,3> qloc3dummy {qarray<0>{}, qarray<0>{}, qarray<0>{}}
 const std::array<qarray<0>,4> qloc4dummy {qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}};
 const std::array<string,0>    labeldummy{};
 
+template<typename Scalar>
+Scalar localSumTrivial (int i)
+{
+	return 1.;
+}
+
 /**Namespace VMPS to distinguish names from ED equivalents.*/
 namespace VMPS{};
 
@@ -42,6 +50,7 @@ class MpoQ
 typedef SparseMatrixXd MatrixType;
 
 template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
+template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
 template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
 template<size_t Nq_, typename S_> friend class MpoQ;
@@ -87,18 +96,18 @@ public:
 	\param Op : the local operator in question
 	*/
 	void setLocal (size_t loc, const MatrixType &Op);
-
+	
 	/**Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$
 	\param loc : list of locations
 	\param Op : list of operators
 	*/
-	void setLocal (vector<size_t> loc, vector<MatrixType> Op);	
+	void setLocal (vector<size_t> loc, vector<MatrixType> Op);
 	
 	/**Set to a sum of of local operators \f$\sum_i f(i) O_i\f$
 	\param Op : the local operator in question
 	\param f : the function in question$
 	*/
-	void setLocalSum (const MatrixType &Op, Scalar (*f)(int));
+	void setLocalSum (const MatrixType &Op, Scalar (*f)(int)=localSumTrivial);
 	
 	/**Set to a sum of nearest-neighbour products of local operators \f$\sum_i O^1_i O^2_{i+1}\f$
 	\param Op1 : first local operator
@@ -144,10 +153,10 @@ public:
 	///\{
 	/**Returns the length of the chain.*/
 	inline size_t length() const {return N_sites;}
-
+	
 	/**Returns the width of the chain.*/
 	inline size_t width() const {return N_legs;}
-
+	
 	/**\describe_Daux*/
 	inline size_t auxdim() const {return Daux;}
 	
@@ -173,6 +182,8 @@ public:
 	inline const vector<vector<SparseMatrix<Scalar> > > &Wsq_at (size_t loc) const {return Wsq[loc];};
 	
 	template<typename TimeScalar> MpoQ<Nq,TimeScalar> BondPropagator (TimeScalar dt, PARITY P) const;
+	
+	boost::multi_array<Scalar,4> H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM=false) const;
 	///\}
 	
 //	class qarrayIterator;
@@ -187,7 +198,7 @@ public:
 //	void flatten_to_MpsQ (MpsQ<0,Scalar> &V);
 //	vector<vector<vector<MatrixType> > > A;
 	
-//protected:
+protected:
 	
 //	/**local terms of Hamiltonian, format: coupling, operator*/
 //	vector<tuple<Scalar,MatrixType> >                       Olocal;
@@ -209,7 +220,8 @@ public:
 	
 //	ArrayXd truncWeight;
 	
-	void construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<SparseMatrix<Scalar> > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore);
+	void construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<SparseMatrix<Scalar> > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore, 
+	                bool OPEN_BC=true);
 	void construct (const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<vector<SparseMatrix<Scalar> > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore);
 	
 	vector<SuperMatrix<Scalar> > Gvec;
@@ -321,33 +333,41 @@ MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec
 
 template<size_t Nq, typename Scalar>
 void MpoQ<Nq,Scalar>::
-construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<SparseMatrix<Scalar> > > >  &Wstore, vector<SuperMatrix<Scalar> > &Gstore)
+construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<SparseMatrix<Scalar> > > >  &Wstore, vector<SuperMatrix<Scalar> > &Gstore, bool OPEN_BC)
 {
 	vector<SuperMatrix<Scalar> > Gvec(N_sites);
 	size_t D = G_input(0,0).rows();
 	
 //	make W^[0] from last row
-	Gvec[0].setRowVector(G_input.auxdim(),D);
-	for (size_t i=0; i<G_input.cols(); ++i)
+	if (OPEN_BC)
 	{
-		Gvec[0](0,i) = G_input(G_input.rows()-1,i);
+		Gvec[0].setRowVector(G_input.auxdim(),D);
+		for (size_t i=0; i<G_input.cols(); ++i)
+		{
+			Gvec[0](0,i) = G_input(G_input.rows()-1,i);
+		}
 	}
 	
+	size_t l_frst = (OPEN_BC)? 1:0;
+	size_t l_last = (OPEN_BC)? N_sites-1:N_sites;
 //	make W^[i], i=1,...,L-2
-	for (size_t l=1; l<N_sites-1; ++l)
+	for (size_t l=l_frst; l<l_last; ++l)
 	{
 		Gvec[l].setMatrix(G_input.auxdim(),D);
 		Gvec[l] = G_input;
 	}
 	
 //	make W^[L-1] from first column
-	Gvec[N_sites-1].setColVector(G_input.auxdim(),D);
-	for (size_t i=0; i<G_input.rows(); ++i)
+	if (OPEN_BC)
 	{
-		Gvec[N_sites-1](i,0) = G_input(i,0);
+		Gvec[N_sites-1].setColVector(G_input.auxdim(),D);
+		for (size_t i=0; i<G_input.rows(); ++i)
+		{
+			Gvec[N_sites-1](i,0) = G_input(i,0);
+		}
 	}
 	
-//	make Mpo
+//	make MPO
 	construct(Gvec,Wstore,Gstore);
 }
 
@@ -801,7 +821,7 @@ BondPropagator (TimeScalar dt, PARITY P) const
 		// variant 2: put local term on the left site of each bond
 //		double locFactor1 = 1.;
 //		double locFactor2 = (l+1==N_sites-1)? 1. : 0.;
-		SparseMatrixXd IdD1 = MatrixXd::Identity(D2,D2).sparseView();
+		SparseMatrixXd IdD1 = MatrixXd::Identity(D1,D1).sparseView();
 		SparseMatrixXd IdD2 = MatrixXd::Identity(D2,D2).sparseView();
 		Hbond += locFactor1 * kroneckerProduct(Gvec[l](Grow,0), IdD2);
 		Hbond += locFactor2 * kroneckerProduct(IdD1, Gvec[l+1](Daux-1,Gcol));
@@ -884,6 +904,50 @@ BondPropagator (TimeScalar dt, PARITY P) const
 				}
 			}
 		}
+	}
+	
+	return Mout;
+}
+
+template<size_t Nq, typename Scalar>
+boost::multi_array<Scalar,4> MpoQ<Nq,Scalar>::
+H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
+{
+//	assert(loc!=0 and N_sites>1);
+	
+	size_t D1 = qloc[loc1].size();
+	size_t D2 = qloc[loc2].size();
+	
+	size_t Grow = Daux-1; // last row
+	size_t Gcol = 0;      // first column
+	
+	Matrix<Scalar,Dynamic,Dynamic> Hfull(D1*D2,D1*D2);
+	Hfull.setZero();
+	
+	// local part
+	SparseMatrixXd IdD1 = MatrixXd::Identity(D1,D1).sparseView();
+	SparseMatrixXd IdD2 = MatrixXd::Identity(D2,D2).sparseView();
+	double factor = (HALF_THE_LOCAL_TERM==true)? 0.5:1.;
+	Hfull += factor * kroneckerProduct(Gvec[loc1](Grow,0), IdD2);
+	Hfull += factor * kroneckerProduct(IdD1, Gvec[loc2](Daux-1,Gcol));
+	
+	// tight-binding part
+	for (size_t a=1; a<Daux-1; ++a)
+	{
+		Hfull += kroneckerProduct(Gvec[loc1](Grow,a), Gvec[loc2](a,Gcol));
+	}
+	
+	boost::multi_array<Scalar,4> Mout(boost::extents[D1][D1][D2][D2]);
+	
+	for (size_t s1=0; s1<D1; ++s1)
+	for (size_t s2=0; s2<D1; ++s2)
+	for (size_t s3=0; s3<D2; ++s3)
+	for (size_t s4=0; s4<D2; ++s4)
+	{
+		size_t r = s1 + D2*s3;
+		size_t c = s2 + D2*s4;
+		
+		Mout[s1][s2][s3][s4] = Hfull(r,c);
 	}
 	
 	return Mout;

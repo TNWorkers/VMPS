@@ -1042,7 +1042,7 @@ polyCompress (const MpOperator &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, co
 					ApairVV[s1][s3] = L[loc1] * Vin2.A[loc1][s1] * Vin2.A[loc2][s3] * R[loc2];
 				}
 				
-				// H*Vin1-B*Vin2
+				// H*Vin1-polyB*Vin2
 				for (size_t s1=0; s1<H.locBasis(loc1).size(); ++s1)
 				for (size_t s3=0; s3<H.locBasis(loc2).size(); ++s3)
 				for (size_t q=0; q<Apair[s1][s3].dim; ++q)

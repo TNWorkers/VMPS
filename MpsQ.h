@@ -19,7 +19,7 @@
 	#include "LapackWrappers.h"
 #endif
 #ifdef USE_HDF5_STORAGE
-    #include <HDF5Interface.h>
+	#include <HDF5Interface.h>
 #endif
 #include "PolychromaticConsole.h"
 #include "RandomVector.h"
@@ -34,6 +34,7 @@ typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 
 // Note: Cannot partially specialize template friends (or anything else, really). That sucks.
 template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
+template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
 template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
 template<size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
@@ -58,12 +59,12 @@ public:
 	\param Dmax : size cutoff (per subspace)
 	\param Qtot_input : target quantum number*/
 	template<typename Hamiltonian> MpsQ<Nq,Scalar> (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input);
-
+	
 	///\{
 	/**Sets all matrices to random using boost's uniform distribution from -1 to 1.
 	\warning Watch for overflow in large chains where one gets exponentially large values when multiplying all the matrices! The safer way is to randomize while sweeping, using MpsQ::setRandom(size_t loc).*/
 	void setRandom();
-
+	
 	/**Sets all matrices at site \p loc to random using boost's uniform distribution from -1 to 1.*/
 	void setRandom (size_t loc);
 	
@@ -83,14 +84,14 @@ public:
 	   See https://github.com/garrison/eigen3-hdf5 for information.
 	   \note For the filename you should use the info string of the current used Mpo.*/
 	void save(string filename,string info="none");
-
+	
 	///\{
 	/**Reades all matrices of the MPS from the file <FILENAME>.h5.
 	   \param filename : the format is fixed to .h5. Just enter the name without the format.
 	   \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/. Additionally eigen3-hdf5 is needed.
 	   See https://github.com/garrison/eigen3-hdf5 for information.*/
 	void load(string filename);
-
+	
 	///\{
 	/**Returns the maximal bond-dimension of an MPS stored in a file <FILENAME>.h5.
 	   \param filename : the format is fixed to .h5. Just enter the name without the format.
@@ -242,8 +243,9 @@ public:
 	\param DISCARD_U : If \p true, don't multiply the U-matrix onto the next site*/
 	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Nq,Scalar,Scalar> *H = NULL, bool DISCARD_U=false);
 	
-	/**Performs a two-site sweep.*/
-	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<Nq,MatrixType> > > &Apair);
+	/**Performs a two-site sweep.
+	\param DISCARD_SV: If \p true, the singular value matrix is discarded. Useful for iDMRG.*/
+	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<Nq,MatrixType> > > &Apair, bool DISCARD_SV=false);
 	
 	/**Performs an SVD split to the left and writes the zero-site tensor to \p C.*/
 	void leftSplitStep  (size_t loc, Biped<Nq,MatrixType> &C);
@@ -344,10 +346,13 @@ info() const
 	ss << "Nqmax=" << calc_Nqmax() << ", ";
 	ss << "trunc_weight=" << truncWeight.sum() << ", ";
 	int lSmax;
-	entropy.maxCoeff(&lSmax);
-	if (!std::isnan(entropy(lSmax)))
+	if (this->N_sites > 1)
 	{
-		ss << "entropy(" << lSmax << ")=" << entropy(lSmax) << ", ";
+		entropy.maxCoeff(&lSmax);
+		if (!std::isnan(entropy(lSmax)))
+		{
+			ss << "entropy(" << lSmax << ")=" << entropy(lSmax) << ", ";
+		}
 	}
 	ss << "mem=" << round(memory(GB),3) << "GB, overhead=" << round(overhead(MB),3) << "MB";
 	
@@ -367,7 +372,7 @@ MpsQ()
 template<size_t Nq, typename Scalar>
 MpsQ<Nq,Scalar>::
 MpsQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_legs_input)
-	:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_legs(N_legs_input)
+:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_legs(N_legs_input)
 {
 	format = noFormat;
 //	qlabel = defaultQlabel<Nq>();
@@ -377,7 +382,7 @@ template<size_t Nq, typename Scalar>
 template<typename Hamiltonian>
 MpsQ<Nq,Scalar>::
 MpsQ (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
-	:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >()
+:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >()
 {
 	format = H.format;
 	qlabel = H.qlabel;
@@ -684,7 +689,7 @@ innerResize (size_t Dmax)
 			size_t centre = this->N_sites/2;
 			int Nrows = A[centre-1][0].block[0].cols();
 			int Ncols = A[centre+1][0].block[0].rows();
-			
+		
 			for (size_t s=0; s<qloc[centre].size(); ++s)
 			{
 				A[centre][s].block[0].resize(Nrows,Ncols);
@@ -1342,6 +1347,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar,Sca
 		rhoNoiseArray[s1].resize(qloc[loc].size());
 	}
 	vector<MatrixType> deltaRho;
+	
 	if (TOOL == DMRG::BROOM::RDM)
 	{
 		// pre-calc rho
@@ -1750,7 +1756,7 @@ absorb (size_t loc, DMRG::DIRECTION::OPTION DIR, const Biped<Nq,MatrixType> &C)
 
 template<size_t Nq, typename Scalar>
 void MpsQ<Nq,Scalar>::
-sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<Nq,MatrixType> > > &Apair)
+sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<Nq,MatrixType> > > &Apair, bool DISCARD_SV)
 {
 	ArrayXd truncWeightSub(outset[loc].size()); truncWeightSub.setZero();
 	ArrayXd entropySub(outset[loc].size()); entropySub.setZero();
@@ -1846,9 +1852,23 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<N
 			{
 				Aleft = Jack.matrixU().leftCols(Nret);
 				#ifdef DONT_USE_LAPACK_SVD
-				Aright = Jack.singularValues().head(Nret).asDiagonal() * Jack.matrixV().adjoint().topRows(Nret);
+				if (DISCARD_SV)
+				{
+					Aright = Jack.matrixV().adjoint().topRows(Nret);
+				}
+				else
+				{
+					Aright = Jack.singularValues().head(Nret).asDiagonal() * Jack.matrixV().adjoint().topRows(Nret);
+				}
 				#else
-				Aright = Jack.singularValues().head(Nret).asDiagonal() * Jack.matrixVT().topRows(Nret);
+				if (DISCARD_SV)
+				{
+					Aright = Jack.matrixVT().topRows(Nret);
+				}
+				else
+				{
+					Aright = Jack.singularValues().head(Nret).asDiagonal() * Jack.matrixVT().topRows(Nret);
+				}
 				#endif
 				
 				this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
@@ -2615,12 +2635,13 @@ dot (const MpsQ<Nq,Scalar> &Vket) const
 		Mout = Mtmp;
 	}
 	
-	assert(Mout.dim == 1 and 
-	       Mout.block[0].rows() == 1 and 
-	       Mout.block[0].cols() == 1 and 
-	       "Result of contraction in <φ|ψ> is not a scalar!");
+//	assert(Mout.dim == 1 and 
+//	       Mout.block[0].rows() == 1 and 
+//	       Mout.block[0].cols() == 1 and 
+//	       "Result of contraction in <φ|ψ> is not a scalar!");
 	
-	return Mout.block[0](0,0);
+//	return Mout.block[0](0,0);
+	return Mout.block[0].trace();
 }
 
 template<size_t Nq, typename Scalar>

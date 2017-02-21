@@ -650,7 +650,7 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS
 		precalc_blockStructure (Heff[pivot].L, Vout.state.A[pivot], Heff[pivot].W, Vout.state.A[pivot], Heff[pivot].R, 
 		                        H.locBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs);
 	}
-
+	
 	// reset dim
 	Heff[pivot].dim = 0;
 	for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
@@ -658,16 +658,16 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<Nq,Scalar> > &Vout, LANCZOS
 	{
 		Heff[pivot].dim += Vout.state.A[pivot][s].block[q].rows() * Vout.state.A[pivot][s].block[q].cols();
 	}
-
+	
 	Eigenstate<PivotVectorQ<Nq,Scalar> > g;
 	g.state.A = Vout.state.A[pivot];
 	LanczosSolver<PivotMatrixQ<Nq,Scalar,Scalar>,PivotVectorQ<Nq,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
-
+	
 	Lutz.set_dimK(min(30ul, Heff[pivot].dim));
 //	Lutz.edgeState(Heff[pivot],g, EDGE, tol_eigval,tol_state, false);
 //	Lutz.edgeState(Heff[pivot],g, EDGE, 1e-4,1e-3, false);
 	Lutz.edgeState(Heff[pivot],g, EDGE, 1e-7,1e-4, false);
-
+	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << "loc=" << pivot << "\t" << Lutz.info() << endl;
