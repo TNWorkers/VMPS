@@ -39,13 +39,18 @@ public:
 	\param V_input : \f$V\f$
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
-	template<BC_CHOICE CHOICE> HubbardModel (BC<CHOICE> BC_input, double U_input, double V_input=0., bool CALC_SQUARE=true);
+	template<BC_CHOICE CHOICE> HubbardModel (BC<CHOICE> BC_input, double U_input, double tPerp=1., bool CALC_SQUARE=true);
+	
+	/**coupled plaquettes constructor*/
+	template<BC_CHOICE CHOICE> HubbardModel (BC<CHOICE> BC_input, double U_input, double t1, double t2, double tPrime, bool CALC_SQUARE=true);
 	
 	/**Constructor with an external B-field.*/
 	HubbardModel (size_t Lx_input, double U_input, vector<double> Bzvec, bool CALC_SQUARE=true);
 	
 	/**Constructor with onsite energies.*/
 	HubbardModel (size_t Lx_input, vector<double> Uvec, vector<double> onsite, bool CALC_SQUARE=true);
+	
+	HubbardModel (size_t Lx_input, pair<double,double> t12, pair<double,double> eps12, double U_input, bool CALC_SQUARE=true);
 	
 	/**Determines the operators of the Hamiltonian. Made static to be called from other classes, e.g. KondoModel.
 	\param F : the FermionBase class where the operators are pulled from
@@ -57,7 +62,8 @@ public:
 	\param Bz : \f$B_z\f$
 	\param PERIODIC : if \p true, makes periodic boundary conditions in y-direction, i.e. a cylinder
 	*/
-	static HamiltonianTermsXd set_operators (const FermionBase &F, double U, double V=0., double tPrime=0., double tIntra=1., double J=0., double Bz=0., bool PERIODIC=false);
+	static HamiltonianTermsXd set_operators (const FermionBase &F, double U, double V=0., double tPrime=0., double tIntra=1., double J=0., double Bz=0., 
+	                                         bool PERIODIC=false);
 	
 	static HamiltonianTermsXd set_operators (const FermionBase &F, vector<double> U, vector<double> onsite, MatrixXd tInter,
 	                                         double V=0., double tPrime=0., double tIntra=1., double J=0., double Bz=0., bool PERIODIC=false);
@@ -94,6 +100,7 @@ public:
 	MpoQ<2,complex<double> > electronPacket (complex<double> (*f)(int));
 	MpoQ<2,complex<double> > holePacket (complex<double> (*f)(int));
 	MpoQ<2> d (size_t locx, size_t locy=0);
+	MpoQ<2> dtot();
 	MpoQ<2> s (size_t locx, size_t locy=0);
 	MpoQ<2> n (SPIN_INDEX sigma, size_t locx, size_t locy=0);
 	MpoQ<2> nn (SPIN_INDEX sigma1, size_t locx1, SPIN_INDEX sigma2, size_t locx2, size_t locy1=0, size_t locy2=0);
@@ -152,7 +159,8 @@ set_operators (const FermionBase &F, double U, double V, double tPrime, double t
 }
 
 HamiltonianTermsXd HubbardModel::
-set_operators (const FermionBase &F, vector<double> Uvec, vector<double> onsite, MatrixXd tInter, double V, double tPrime, double tIntra, double J, double Bz, bool PERIODIC)
+set_operators (const FermionBase &F, vector<double> Uvec, vector<double> onsite, MatrixXd tInter, double V, double tPrime, double tIntra, 
+               double J, double Bz, bool PERIODIC)
 {
 	assert(Uvec.size() == F.orbitals());
 	HamiltonianTermsXd Terms;
@@ -197,6 +205,8 @@ set_operators (const FermionBase &F, vector<double> Uvec, vector<double> onsite,
 //	}
 	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uvec,onsite,tIntra,V,J,Bz,PERIODIC)));
 	
+//	cout << F.HubbardHamiltonian(Uvec,onsite,tIntra,V,J,Bz,PERIODIC) << endl;
+	
 	return Terms;
 }
 
@@ -231,12 +241,12 @@ U(U_input), V(V_input), tPrime(tPrime_input)
 
 template<BC_CHOICE CHOICE>
 HubbardModel::
-HubbardModel (BC<CHOICE> BC_input, double U_input, double V_input, bool CALC_SQUARE)
+HubbardModel (BC<CHOICE> BC_input, double U_input, double tPerp, bool CALC_SQUARE)
 :MpoQ<2> (BC_input.Lx, BC_input.Ly, HubbardModel::qloc(BC_input.Ly,!isfinite(U_input)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
-U(U_input), V(V_input)
+U(U_input), V(0.)
 {
 	stringstream ss;
-	ss << "(U=" << U << ",V=" << V << "," << CHOICE << ")";
+	ss << "(U=" << U << ",t⟂=" << tPerp << "," << CHOICE << ")";
 	this->label += ss.str();
 	
 	F = FermionBase(N_legs,!isfinite(U));
@@ -254,8 +264,11 @@ U(U_input), V(V_input)
 	{
 		if (l==0)
 		{
-			if      (CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,1.);} // t'=0, tIntra=1
-			else if (CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,0.,0.,true);} // t'=0, tIntra=1, J=0, Bz=0
+//			if      (CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,1.);} // t'=0, tIntra=1
+//			else if (CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,0.,0.,true);} // t'=0, tIntra=1, J=0, Bz=0
+//			else if (CHOICE == CHAIN)     {Terms = set_operators(F, U,V,0.,0.,0.,0.,true);} // t'=0, tIntra=0, J=0, Bz=0
+			if      (CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,tPerp);} // t'=0, tIntra=tPerp
+			else if (CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,tPerp,0.,0.,true);} // t'=0, tIntra=tPerp, J=0, Bz=0
 			else if (CHOICE == CHAIN)     {Terms = set_operators(F, U,V,0.,0.,0.,0.,true);} // t'=0, tIntra=0, J=0, Bz=0
 			
 			this->Daux = Terms.auxdim();
@@ -270,8 +283,11 @@ U(U_input), V(V_input)
 		}
 		else if (l==this->N_sites-1)
 		{
-			if      (CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,1.);}
-			else if (CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,0.,0.,true);}
+//			if      (CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,1.);}
+//			else if (CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,0.,0.,true);}
+//			else if (CHOICE == CHAIN)     {Terms = set_operators(F, U,V,0.,0.,0.,0.,true);}
+			if      (CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,tPerp);}
+			else if (CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,tPerp,0.,0.,true);}
 			else if (CHOICE == CHAIN)     {Terms = set_operators(F, U,V,0.,0.,0.,0.,true);}
 			
 			this->Daux = Terms.auxdim();
@@ -286,9 +302,146 @@ U(U_input), V(V_input)
 		}
 		else
 		{
+//			if      (CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,0.);}
+//			else if (CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,0.,0.,true);}
+//			else if (CHOICE == CHAIN)     {Terms = set_operators(F, U,V,0.,0.,0.,0.,true);}
 			if      (CHOICE == HAIRSLIDE) {Terms = set_operators(F, U,V,0.,0.);}
-			else if (CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,1.,0.,0.,true);}
+			else if (CHOICE == CYLINDER)  {Terms = set_operators(F, U,V,0.,tPerp,0.,0.,true);}
 			else if (CHOICE == CHAIN)     {Terms = set_operators(F, U,V,0.,0.,0.,0.,true);}
+			
+			this->Daux = Terms.auxdim();
+			G[l].setMatrix(Daux,F.dim());
+			G[l] = Generator(Terms);
+			
+			if (CALC_SQUARE == true)
+			{
+				Gsq[l].setMatrix(Daux*Daux,F.dim());
+				Gsq[l] = tensor_product(G[l],G[l]);
+			}
+		}
+	}
+	
+	this->construct(G, this->W, this->Gvec);
+	
+	if (CALC_SQUARE == true)
+	{
+		this->construct(Gsq, this->Wsq, this->GvecSq);
+		this->GOT_SQUARE = true;
+	}
+	else
+	{
+		this->GOT_SQUARE = false;
+	}
+}
+
+template<BC_CHOICE CHOICE>
+HubbardModel::
+HubbardModel (BC<CHOICE> BC_input, double U_input, double t1, double t2, double tPrime, bool CALC_SQUARE)
+:MpoQ<2> (BC_input.Lx, BC_input.Ly, HubbardModel::qloc(BC_input.Ly,!isfinite(U_input)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
+U(U_input), V(0.)
+{
+	assert (CHOICE == HAIRSLIDE);
+	assert (BC_input.Ly == 2);
+	
+	stringstream ss;
+	ss << "(U=" << U << ",t1=" << t1 << ",t2=" << t2 << ",t'=" << tPrime << "," << CHOICE << ")";
+	this->label += ss.str();
+	
+	F = FermionBase(N_legs,!isfinite(U));
+	
+	vector<SuperMatrix<double> > G(this->N_sites);
+	vector<SuperMatrix<double> > Gsq;
+	if (CALC_SQUARE == true)
+	{
+		Gsq.resize(this->N_sites);
+	}
+	
+	HamiltonianTermsXd Terms;
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		if (l==0)
+		{
+			vector<double> Uvec(2); Uvec[0] = U; Uvec[1] = U;
+			vector<double> onsite(2); onsite[0] = 0; onsite[1] = 0;
+			MatrixXd tInter(2,2); tInter.setZero();
+			if (l%2 == 0)
+			{
+				tInter(0,0) = (t1==0)? 1e-15:t1;
+				tInter(1,1) = (t1==0)? 1e-15:t1;
+				tInter(0,1) = (t2==0)? 1e-15:t2;
+				tInter(1,0) = (t2==0)? 1e-15:t2;
+			}
+			else
+			{
+				tInter(0,0) = (tPrime==0)? 1e-15:tPrime;
+				tInter(1,1) = (tPrime==0)? 1e-15:tPrime;
+				tInter(0,1) = 1e-15;
+				tInter(1,0) = 1e-15;
+			}
+			Terms = set_operators(F, Uvec,onsite,tInter,0.,0.,t1); // t'=0, tIntra=t1
+			
+			this->Daux = Terms.auxdim();
+			G[l].setRowVector(Daux,F.dim());
+			G[l] = Generator(Terms).row(Daux-1);
+			
+			if (CALC_SQUARE == true)
+			{
+				Gsq[l].setRowVector(Daux*Daux,F.dim());
+				Gsq[l] = tensor_product(G[l],G[l]);
+			}
+		}
+		else if (l==this->N_sites-1)
+		{
+			vector<double> Uvec(2); Uvec[0] = U; Uvec[1] = U;
+			vector<double> onsite(2); onsite[0] = 0; onsite[1] = 0;
+			MatrixXd tInter(2,2); tInter.setZero();
+			if (l%2 == 0)
+			{
+				tInter(0,0) = (t1==0)? 1e-15:t1;
+				tInter(1,1) = (t1==0)? 1e-15:t1;
+				tInter(0,1) = (t2==0)? 1e-15:t2;
+				tInter(1,0) = (t2==0)? 1e-15:t2;
+			}
+			else
+			{
+				tInter(0,0) = (tPrime==0)? 1e-15:tPrime;
+				tInter(1,1) = (tPrime==0)? 1e-15:tPrime;
+				tInter(0,1) = 1e-15;
+				tInter(1,0) = 1e-15;
+			}
+			Terms = set_operators(F, Uvec,onsite,tInter,0.,0.,t1); // t'=0, tIntra=t1
+			
+			this->Daux = Terms.auxdim();
+			G[l].setColVector(Daux,F.dim());
+			G[l] = Generator(Terms).col(0);
+			
+			if (CALC_SQUARE == true)
+			{
+				Gsq[l].setColVector(Daux*Daux,F.dim());
+				Gsq[l] = tensor_product(G[l],G[l]);
+			}
+		}
+		else
+		{
+			vector<double> Uvec(2); Uvec[0] = U; Uvec[1] = U;
+			vector<double> onsite(2); onsite[0] = 0; onsite[1] = 0;
+			MatrixXd tInter(2,2); tInter.setZero();
+			if (l%2 == 0)
+			{
+				tInter(0,0) = (t1==0)? 1e-15:t1;
+				tInter(1,1) = (t1==0)? 1e-15:t1;
+				tInter(0,1) = (t2==0)? 1e-15:t2;
+				tInter(1,0) = (t2==0)? 1e-15:t2;
+			}
+			else
+			{
+				tInter(0,0) = (tPrime==0)? 1e-15:tPrime;
+				tInter(1,1) = (tPrime==0)? 1e-15:tPrime;
+				tInter(0,1) = 1e-15;
+				tInter(1,0) = 1e-15;
+			}
+			Terms = set_operators(F, Uvec,onsite,tInter,0.,0.,t1); // t'=0, tIntra=t1
 			
 			this->Daux = Terms.auxdim();
 			G[l].setMatrix(Daux,F.dim());
@@ -413,12 +566,12 @@ U(U_input), V(V_input)
 
 template<>
 HubbardModel::
-HubbardModel (BC<FLADDER> BC_input, double U_input, double V_input, bool CALC_SQUARE)
+HubbardModel (BC<FLADDER> BC_input, double U_input, double tPerp, bool CALC_SQUARE)
 :MpoQ<2> (BC_input.Lx, 1, HubbardModel::qloc(1,!isfinite(U_input)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
-U(U_input), V(V_input)
+U(U_input), V(0.)
 {
 	stringstream ss;
-	ss << "(U=" << U << ",V=" << V << "," << FLADDER << ")";
+	ss << "(U=" << U << ",t⟂=" << tPerp << "," << FLADDER << ")";
 	this->label += ss.str();
 	
 	F = FermionBase(N_legs,!isfinite(U));
@@ -434,7 +587,12 @@ U(U_input), V(V_input)
 	{
 		if (l==0)
 		{
-			HamiltonianTermsXd Terms = set_operators(F, U,V,1.);
+//			HamiltonianTermsXd Terms = set_operators(F, U,V,1.);
+			vector<double> Uvec(1); Uvec[0] = U;
+			vector<double> onsite(1); onsite[0] = 0;
+			MatrixXd tInter(1,1);
+			tInter.setConstant(tPerp);
+			HamiltonianTermsXd Terms = set_operators(F, Uvec,onsite,tInter,V,1.);
 			
 			this->Daux = Terms.auxdim();
 			G[l].setRowVector(Daux,F.dim());
@@ -448,7 +606,12 @@ U(U_input), V(V_input)
 		}
 		else if (l==this->N_sites-1)
 		{
-			HamiltonianTermsXd Terms = set_operators(F, U,V,1.);
+//			HamiltonianTermsXd Terms = set_operators(F, U,V,1.);
+			vector<double> Uvec(1); Uvec[0] = U;
+			vector<double> onsite(1); onsite[0] = 0;
+			MatrixXd tInter(1,1);
+			(l%2==0)? tInter.setConstant(tPerp) : tInter.setConstant(1e-100);
+			HamiltonianTermsXd Terms = set_operators(F, Uvec,onsite,tInter,V,1.);
 			
 			this->Daux = Terms.auxdim();
 			G[l].setColVector(Daux,F.dim());
@@ -465,8 +628,9 @@ U(U_input), V(V_input)
 			vector<double> Uvec(1); Uvec[0] = U;
 			vector<double> onsite(1); onsite[0] = 0;
 			MatrixXd tInter(1,1);
-			(l%2==0)? tInter.setConstant(1.) : tInter.setConstant(1e-100);
-			HamiltonianTermsXd Terms = set_operators(F, Uvec,onsite,tInter,0.,1.);
+			(l%2==0)? tInter.setConstant(tPerp) : tInter.setConstant(1e-100);
+//			HamiltonianTermsXd Terms = set_operators(F, Uvec,onsite,tInter,0.,1.);
+			HamiltonianTermsXd Terms = set_operators(F, Uvec,onsite,tInter,V,1.);
 			
 			G[l].setMatrix(Daux,F.dim());
 			
@@ -516,6 +680,81 @@ U(U_input), V(0.), tPrime(0.)
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
 		HamiltonianTermsXd Terms = set_operators(F, U,V,tPrime,1.,0.,Bzvec[l]);
+		this->Daux = Terms.auxdim();
+		
+		if (l==0)
+		{
+			G[l].setRowVector(Daux,F.dim());
+			G[l] = Generator(Terms).row(Daux-1);
+			
+			if (CALC_SQUARE == true)
+			{
+				Gsq[l].setRowVector(Daux*Daux,F.dim());
+				Gsq[l] = tensor_product(G[l],G[l]);
+			}
+		}
+		else if (l==this->N_sites-1)
+		{
+			G[l].setColVector(Daux,F.dim());
+			G[l] = Generator(Terms).col(0);
+			
+			if (CALC_SQUARE == true)
+			{
+				Gsq[l].setColVector(Daux*Daux,F.dim());
+				Gsq[l] = tensor_product(G[l],G[l]);
+			}
+		}
+		else
+		{
+			G[l].setMatrix(Daux,F.dim());
+			G[l] = Generator(Terms);
+			
+			if (CALC_SQUARE == true)
+			{
+				Gsq[l].setMatrix(Daux*Daux,F.dim());
+				Gsq[l] = tensor_product(G[l],G[l]);
+			}
+		}
+	}
+	
+	this->construct(G, this->W, this->Gvec);
+	
+	if (CALC_SQUARE == true)
+	{
+		this->construct(Gsq, this->Wsq, this->GvecSq);
+		this->GOT_SQUARE = true;
+	}
+	else
+	{
+		this->GOT_SQUARE = false;
+	}
+}
+
+HubbardModel::
+HubbardModel (size_t Lx_input, pair<double,double> t12, pair<double,double> eps12, double U_input, bool CALC_SQUARE)
+:MpoQ<2> (Lx_input, 1, HubbardModel::qloc(1,!isfinite(U)), {0,0}, HubbardModel::Nlabel, "HubbardModel"),
+U(U_input), tPrime(0)
+{
+	stringstream ss;
+	ss << "(U=" << U << ",t_1=" << t12.first << ",t_2=" << t12.second << ")";
+	this->label += ss.str();
+	
+	F = FermionBase(1,!isfinite(U));
+	
+	vector<SuperMatrix<double> > G(this->N_sites);
+	vector<SuperMatrix<double> > Gsq;
+	if (CALC_SQUARE == true)
+	{
+		Gsq.resize(this->N_sites);
+	}
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		vector<double> Uvec(1); Uvec[0] = U;
+		vector<double> onsite(1); onsite[0] = (l%2==0)? eps12.first : eps12.second;
+		MatrixXd tInter(1,1); tInter(0,0) = (l%2==0)? t12.first : t12.second;
+//		cout << "l=" << l << ", tInter=" << tInter << endl;
+		HamiltonianTermsXd Terms = set_operators(F,Uvec,onsite,tInter);
 		this->Daux = Terms.auxdim();
 		
 		if (l==0)
@@ -892,6 +1131,16 @@ d (size_t locx, size_t locy)
 	ss << "double_occ(" << locx << "," << locy << ")";
 	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
 	Mout.setLocal(locx, F.d(locy));
+	return Mout;
+}
+
+MpoQ<2> HubbardModel::
+dtot()
+{
+	stringstream ss;
+	ss << "double_occ_total";
+	MpoQ<2> Mout(N_sites, N_legs, MpoQ<2>::qloc, {0,0}, HubbardModel::Nlabel, ss.str());
+	Mout.setLocalSum(F.d());
 	return Mout;
 }
 

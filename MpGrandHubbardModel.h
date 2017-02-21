@@ -10,34 +10,45 @@ class GrandHubbardModel : public MpoQ<0,double>
 {
 public:
 	
-	GrandHubbardModel (size_t L_input, double U_input, double V_input=0., bool CALC_SQUARE=true);
+	GrandHubbardModel (size_t L_input, double U_input, double mu_input, bool OPEN_BC=false, bool CALC_SQUARE=true);
 	
-	typedef MpsQ<0,double>                     StateXd;
-	typedef MpsQ<0,complex<double> >           StateXcd;
-	typedef DmrgSolverQ<0,GrandHubbardModel>   Solver;
-	typedef MpsQCompressor<0,double>           CompressorXd;
-	typedef MpsQCompressor<0,complex<double> > CompressorXcd;
-	typedef MpoQ<0>                            Operator;
+	typedef MpsQ<0,double>                           StateXd;
+	typedef MpsQ<0,complex<double> >                 StateXcd;
+	typedef DmrgSolverQ<0,GrandHubbardModel>         Solver;
+	typedef iDmrgSolver<0,GrandHubbardModel>         iSolver;
+	typedef VumpsSolver<0,GrandHubbardModel>         uSolver;
+	typedef MpsQCompressor<0,double,double>          CompressorXd;
+	typedef MpsQCompressor<0,complex<double>,double> CompressorXcd;
+	typedef MpoQ<0>                                  Operator;
+	
+	MpoQ<0> n (SPIN_INDEX sigma, size_t loc);
 	
 private:
 	
-	double U, V;
+	FermionBase F;
+	
+	double U, mu;
 };
 
 GrandHubbardModel::
-GrandHubbardModel (size_t L_input, double U_input, double V_input, bool CALC_SQUARE)
-:MpoQ<0> (L_input, vector<qarray<0> >(begin(qloc4dummy),end(qloc4dummy)), {}, labeldummy, "HubbardModel"),
-U(U_input), V(V_input)
+GrandHubbardModel (size_t L_input, double U_input, double mu_input, bool OPEN_BC, bool CALC_SQUARE)
+:MpoQ<0> (L_input, 1, vector<qarray<0> >(begin(qloc4dummy),end(qloc4dummy)), {}, labeldummy, "HubbardModel"),
+U(U_input), mu(mu_input)
 {
 	stringstream ss;
-	ss << "(U=" << U << ",V=" << V << ")";
+	ss << "(U=" << U << ",mu=" << mu << ")";
 	this->label += ss.str();
 	
-	HubbardModel::set_operators(Olocal,Otight,Onextn, U,V);
-	this->Daux = 2 + Otight.size() + 2*Onextn.size();
-
-	SuperMatrix<double> G = ::Generator(Olocal,Otight,Onextn);
-	this->construct(G, this->W, this->Gvec);
+	F = FermionBase(1,!isfinite(U));
+	
+	vector<double> Uvec(1); Uvec[0] = U;
+	vector<double> muvec(1); muvec[0] = -mu; // H=H_0-mu*N
+	MatrixXd tInter(1,1); tInter(0,0) = 1.;
+	HamiltonianTermsXd Terms = HubbardModel::set_operators(F,Uvec,muvec,tInter);
+	this->Daux = Terms.auxdim();
+	
+	SuperMatrix<double> G = ::Generator(Terms);
+	this->construct(G, this->W, this->Gvec, OPEN_BC);
 	
 	if (CALC_SQUARE == true)
 	{
@@ -48,6 +59,17 @@ U(U_input), V(V_input)
 	{
 		this->GOT_SQUARE = false;
 	}
+}
+
+MpoQ<0> GrandHubbardModel::
+n (SPIN_INDEX sigma, size_t loc)
+{
+	assert(loc<N_sites);
+	stringstream ss;
+	ss << "n(" << loc << ",σ=" << sigma << ")";
+	MpoQ<0> Mout(N_sites, 1, MpoQ<0>::qloc, {}, labeldummy, ss.str());
+	Mout.setLocal(loc, F.n(sigma));
+	return Mout;
 }
 
 }

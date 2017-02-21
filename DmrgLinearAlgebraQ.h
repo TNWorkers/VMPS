@@ -29,13 +29,14 @@ void swap (MpsQ<Nq,Scalar> &V1, MpsQ<Nq,Scalar> &V2)
 \param O : input MpoQ
 \param Vket : input \f$\left|\Psi_{ket}\right>\f$
 \param USE_SQUARE : If \p true, uses the square of \p O stored in \p O itself. Call MpoQ::check_SQUARE() first to see whether it was calculated.
+\param INFINITE_BC : If \p true, uses infinite boundary conditions (sets initial 3-leg tensor to identity instead of vacuum).
 \param DIR : whether to contract going left or right (should obviously make no difference, useful for testing purposes)
 */
 template<size_t Nq, typename MpoScalar, typename Scalar>
 Scalar avg (const MpsQ<Nq,Scalar> &Vbra, 
             const MpoQ<Nq,MpoScalar> &O, 
             const MpsQ<Nq,Scalar> &Vket, 
-            bool USE_SQUARE = false, 
+            bool USE_SQUARE = false,  
             DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::RIGHT)
 {
 	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
@@ -79,13 +80,15 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 		}
 	}
 	
-	if (B.dim == 1 and B.block[0][0][0].rows() == 1 and B.block[0][0][0].cols() == 1)
+	if (B.dim == 1)
 	{
-		return B.block[0][0][0](0,0);
+		return B.block[0][0][0].trace();
 	}
 	else
 	{
-		lout << "Warning: Result of contraction in <φ|O|ψ> is not a scalar, returning 0!" << endl;
+		lout << "Warning: Result of contraction in <φ|O|ψ> has several blocks, returning 0!" << endl;
+		lout << "MPS in question: " << Vket.info() << endl;
+		lout << "MPO in question: " << O.info() << endl;
 		return 0;
 	}
 	
@@ -176,13 +179,16 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 //		<< B.block[q][0][0] << endl;
 //	}
 	
-	if (B.dim == 1 and B.block[0][0][0].rows() == 1 and B.block[0][0][0].cols() == 1)
+	if (B.dim == 1)
 	{
-		return B.block[0][0][0](0,0);
+		return B.block[0][0][0].trace();
 	}
 	else
 	{
-		lout << "Result of contraction in <φ|O1*O2|ψ> is not a scalar, returning 0!" << endl;
+		lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has several blocks, returning 0!" << endl;
+		lout << "MPS in question: " << Vket.info() << endl;
+		lout << "MPO1 in question: " << O1.info() << endl;
+		lout << "MPO2 in question: " << O2.info() << endl;
 		return 0;
 	}
 }

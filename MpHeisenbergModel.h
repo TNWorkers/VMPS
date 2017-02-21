@@ -50,15 +50,20 @@ public:
 //	S^+ & 0 & 0 & 0 & 0 \\
 //	S^- & 0 & 0 & 0 & 0 \\
 //	S^z & 0 & 0 & 0 & 0 \\
-//	h_zS^z+h_xS^x & -\frac{J_{xy}}{2}S^- & -\frac{J_{xy}}{2}/2S^+ & -\frac{J_z}{2}S^z & 1
+//	h_zS^z+h_xS^x+K(S^z)^2 & -\frac{J_{xy}}{2}S^- & -\frac{J_{xy}}{2}/2S^+ & -\frac{J_z}{2}S^z & 1
 //	\end{array}
 //	\right)\f$.
 //	The fourth row and column are missing when \f$J_{xy}=0\f$. Uses the appropriate spin operators for a given \p S.*/
 //	static SuperMatrix<double> Generator (double Jxy, double Jz, double Bz, double Bx, size_t D=2);
-	static HamiltonianTermsXd set_operators (const SpinBase &S, double Jxy, double Jz, double Bz=0., double Bx=0., double Jprime=0., double JxyIntra=0., double JzIntra=0.);
+	static HamiltonianTermsXd set_operators (const SpinBase &B, double Jxy, double Jz, double Bz=0., double Bx=0., 
+	                                         double Jprime=0., double JxyIntra=0., double JzIntra=0., double K=0.);
 	
-	static HamiltonianTermsXd set_operators (const SpinBase &S, const MatrixXd &JxyInter, const MatrixXd &JzInter, 
-	                                         const VectorXd &Bz, const VectorXd &Bx, double Jprime=0., double JxyIntra=0., double JzIntra=0.);
+	static HamiltonianTermsXd set_operators (const SpinBase &B, const MatrixXd &JxyInter, const MatrixXd &JzInter, 
+	                                         const VectorXd &Bz, const VectorXd &Bx, 
+	                                         double Jprime=0., double JxyIntra=0., double JzIntra=0., double K=0.);
+	
+//	HeisenbergModel (size_t Lx_input, double J, double Bz0_input, double K, const vector<std::array<double,3> > &DM_input, 
+//	                 size_t D_input=2, bool CALC_SQUARE=true);
 	
 	//---label stuff---
 	///@{
@@ -71,7 +76,7 @@ public:
 	\param Bx : \f$B_{x}\f$ (when called by GrandHeisenbergModel, otherwise 0)*/
 	static string create_label (size_t D, double Jxy, double Jz, double Jprime, double Bz, double Bx)
 	{
-		auto S = frac(D-1,2);
+		frac S = frac(D-1,2);
 		stringstream ss;
 		if      (Jz == Jxy) {ss << "Heisenberg(S=" << S << ",J=" << Jz;}
 		else if (Jxy == 0.) {ss << "Ising(S=" << S << ",J=" << Jz;}
@@ -110,17 +115,18 @@ public:
 		return res;
 	}
 	
-	MpoQ<1> Sz (size_t locx, size_t locy=0);
-	MpoQ<1> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
-	MpoQ<1,complex<double> > SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int));
+	MpoQ<1> Sz (size_t locx, size_t locy=0) const;
+	MpoQ<1> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	MpoQ<1,complex<double> > SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int)) const;
 	
 protected:
 	
 	double Jxy=-1., Jz=-1., Bz=0.;
 	double Jprime=0.;
+	double K=0.;
 	size_t D=2;
 	
-	SpinBase S;
+	SpinBase B;
 };
 
 const std::array<string,1> HeisenbergModel::maglabel{"M"};
@@ -151,48 +157,49 @@ qloc (size_t N_legs, size_t D)
 };
 
 HamiltonianTermsXd HeisenbergModel::
-set_operators (const SpinBase &S, double Jxy, double Jz, double Bz, double Bx, double Jprime, double JxyIntra, double JzIntra)
+set_operators (const SpinBase &B, double Jxy, double Jz, double Bz, double Bx, double Jprime, double JxyIntra, double JzIntra, double K)
 {
-	MatrixXd JxyInter(S.orbitals(),S.orbitals()); JxyInter.setIdentity(); JxyInter *= Jxy;
-	MatrixXd JzInter (S.orbitals(),S.orbitals()); JzInter.setIdentity();  JzInter  *= Jz;
-	VectorXd Bzvec(S.orbitals()); Bzvec.setConstant(Bz);
-	VectorXd Bxvec(S.orbitals()); Bxvec.setConstant(Bx);
-	return set_operators(S, JxyInter, JzInter, Bzvec, Bxvec, Jprime, JxyIntra, JzIntra);
+	MatrixXd JxyInter(B.orbitals(),B.orbitals()); JxyInter.setIdentity(); JxyInter *= Jxy;
+	MatrixXd JzInter (B.orbitals(),B.orbitals()); JzInter.setIdentity();  JzInter  *= Jz;
+	VectorXd Bzvec(B.orbitals()); Bzvec.setConstant(Bz);
+	VectorXd Bxvec(B.orbitals()); Bxvec.setConstant(Bx);
+	return set_operators(B, JxyInter, JzInter, Bzvec, Bxvec, Jprime, JxyIntra, JzIntra, K);
 }
 
 HamiltonianTermsXd HeisenbergModel::
-set_operators (const SpinBase &S, const MatrixXd &JxyInter, const MatrixXd &JzInter, const VectorXd &Bz, const VectorXd &Bx, double Jprime, double JxyIntra, double JzIntra)
+set_operators (const SpinBase &B, const MatrixXd &JxyInter, const MatrixXd &JzInter, const VectorXd &Bz, const VectorXd &Bx, 
+               double Jprime, double JxyIntra, double JzIntra, double K)
 {
-	assert(S.orbitals() == JxyInter.rows() and 
-	       S.orbitals() == JxyInter.cols() and 
-	       S.orbitals() == JzInter.rows()  and 
-	       S.orbitals() == JzInter.cols());
+	assert(B.orbitals() == JxyInter.rows() and 
+	       B.orbitals() == JxyInter.cols() and 
+	       B.orbitals() == JzInter.rows()  and 
+	       B.orbitals() == JzInter.cols());
 	
 	HamiltonianTermsXd Terms;
 	
-	for (int leg1=0; leg1<S.orbitals(); ++leg1)
-	for (int leg2=0; leg2<S.orbitals(); ++leg2)
+	for (int leg1=0; leg1<B.orbitals(); ++leg1)
+	for (int leg2=0; leg2<B.orbitals(); ++leg2)
 	{
 		if (JxyInter(leg1,leg2) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-0.5*JxyInter(leg1,leg2), S.Scomp(SP,leg1), S.Scomp(SM,leg2)));
-			Terms.tight.push_back(make_tuple(-0.5*JxyInter(leg1,leg2), S.Scomp(SM,leg1), S.Scomp(SP,leg2)));
+			Terms.tight.push_back(make_tuple(-0.5*JxyInter(leg1,leg2), B.Scomp(SP,leg1), B.Scomp(SM,leg2)));
+			Terms.tight.push_back(make_tuple(-0.5*JxyInter(leg1,leg2), B.Scomp(SM,leg1), B.Scomp(SP,leg2)));
 		}
 		if (JzInter(leg1,leg2) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-JxyInter(leg1,leg2), S.Scomp(SZ,leg1), S.Scomp(SZ,leg2)));
+			Terms.tight.push_back(make_tuple(-JzInter(leg1,leg2), B.Scomp(SZ,leg1), B.Scomp(SZ,leg2)));
 		}
 	}
 	
 	if (Jprime != 0.)
 	{
-		SparseMatrixXd Id = MatrixXd::Identity(S.get_D(),S.get_D()).sparseView();
-		Terms.nextn.push_back(make_tuple(-0.5*Jprime, S.Scomp(SP), S.Scomp(SM), Id));
-		Terms.nextn.push_back(make_tuple(-0.5*Jprime, S.Scomp(SM), S.Scomp(SP), Id));
-		Terms.nextn.push_back(make_tuple(-Jprime,     S.Scomp(SZ), S.Scomp(SZ), Id));
+		SparseMatrixXd Id = MatrixXd::Identity(B.get_D(),B.get_D()).sparseView();
+		Terms.nextn.push_back(make_tuple(-0.5*Jprime, B.Scomp(SP), B.Scomp(SM), Id));
+		Terms.nextn.push_back(make_tuple(-0.5*Jprime, B.Scomp(SM), B.Scomp(SP), Id));
+		Terms.nextn.push_back(make_tuple(-Jprime,     B.Scomp(SZ), B.Scomp(SZ), Id));
 	}
 	
-	Terms.local.push_back(make_tuple(1., S.HeisenbergHamiltonian(JxyIntra,JzIntra,Bz,Bx)));
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(JxyIntra,JzIntra,Bz,Bx,K)));
 	
 	return Terms;
 }
@@ -206,8 +213,8 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 	assert(Jxy != 0. or Jz != 0.);
 	this->label = create_label(D,Jxy,Jz,0,Bz,0);
 	
-	S = SpinBase(N_legs,D);
-	HamiltonianTermsXd Terms = set_operators(S, Jxy,Jz,Bz,0.);
+	B = SpinBase(N_legs,D);
+	HamiltonianTermsXd Terms = set_operators(B, Jxy,Jz,Bz,0.);
 	SuperMatrix<double> G = Generator(Terms);
 	this->Daux = Terms.auxdim();
 	
@@ -231,18 +238,18 @@ Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 {
 	this->label = create_label(D,Jxy,Jz,Jprime,Bz,0.);
 	
-	S = SpinBase(N_legs,D);
+	B = SpinBase(N_legs,D);
 	HamiltonianTermsXd Terms;
 	if (Ly_input == 1)
 	{
-		Terms = set_operators(S, Jxy,Jz,Bz,0., Jprime);
+		Terms = set_operators(B, Jxy,Jz,Bz,0., Jprime);
 	}
 	else
 	{
-		Terms = set_operators(S, Jprime,Jprime,Bz,0., 0., Jxy,Jxy);
-		Terms.tight.push_back(make_tuple(-0.5*Jxy, S.Scomp(SP,1), S.Scomp(SM,0)));
-		Terms.tight.push_back(make_tuple(-0.5*Jxy, S.Scomp(SM,1), S.Scomp(SP,0)));
-		Terms.tight.push_back(make_tuple(-Jz, S.Scomp(SZ,1), S.Scomp(SZ,0)));
+		Terms = set_operators(B, Jprime,Jprime,Bz,0., 0., Jxy,Jxy);
+		Terms.tight.push_back(make_tuple(-0.5*Jxy, B.Scomp(SP,1), B.Scomp(SM,0)));
+		Terms.tight.push_back(make_tuple(-0.5*Jxy, B.Scomp(SM,1), B.Scomp(SP,0)));
+		Terms.tight.push_back(make_tuple(-Jz, B.Scomp(SZ,1), B.Scomp(SZ,0)));
 	}
 	SuperMatrix<double> G = Generator(Terms);
 	this->Daux = Terms.auxdim();
@@ -260,30 +267,102 @@ Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 	}
 }
 
+//HeisenbergModel::
+//HeisenbergModel(size_t Lx_input, double J, double Bz0_input, double K, const vector<std::array<double,3> > &DM_input, size_t D_input, bool CALC_SQUARE)
+//:MpoQ<1> (Lx_input, 1, HeisenbergModel::qloc(Ly_input,D_input), {0}, HeisenbergModel::maglabel, "", halve),
+//Jxy(J), Jz(J), Bz(Bz0_input), K(K_input), DM(DM_input), D(D_input)
+//{
+//	this->label = create_label(D,Jxy,Jz,0,Bz,0);
+//	
+//	B = SpinBase(N_legs,D);
+//	
+//	HamiltonianTermsXcd Terms_first = set_operators(B, J,Bz,K,DM);
+//	HamiltonianTermsXcd Terms_rest  = set_operators(B, J,0.,K,DM);
+//	
+//	vector<SuperMatrix<double> > G(this->N_sites);
+//	vector<SuperMatrix<double> > Gsq;
+//	if (CALC_SQUARE == true)
+//	{
+//		Gsq.resize(this->N_sites);
+//	}
+//	
+//	for (size_t l=0; l<this->N_sites; ++l)
+//	{
+//		if (l==0)
+//		{
+//			this->Daux = Terms_first.auxdim();
+//			G[l].setRowVector(Daux,F.dim());
+//			G[l] = Generator(Terms_first).row(Daux-1);
+//			
+//			if (CALC_SQUARE == true)
+//			{
+//				Gsq[l].setRowVector(Daux*Daux,F.dim());
+//				Gsq[l] = tensor_product(G[l],G[l]);
+//			}
+//		}
+//		else if (l==this->N_sites-1)
+//		{
+//			this->Daux = Terms_rest.auxdim();
+//			G[l].setColVector(Daux,F.dim());
+//			G[l] = Generator(Terms_rest).col(0);
+//			
+//			if (CALC_SQUARE == true)
+//			{
+//				Gsq[l].setColVector(Daux*Daux,F.dim());
+//				Gsq[l] = tensor_product(G[l],G[l]);
+//			}
+//		}
+//		else
+//		{
+//			this->Daux = Terms_rest.auxdim();
+//			G[l].setMatrix(Daux,F.dim());
+//			G[l] = Generator(Terms_rest);
+//			
+//			if (CALC_SQUARE == true)
+//			{
+//				Gsq[l].setMatrix(Daux*Daux,F.dim());
+//				Gsq[l] = tensor_product(G[l],G[l]);
+//			}
+//		}
+//	}
+//	
+//	this->construct(G, this->W, this->Gvec);
+//	
+//	if (CALC_SQUARE == true)
+//	{
+//		this->construct(Gsq, this->Wsq, this->GvecSq);
+//		this->GOT_SQUARE = true;
+//	}
+//	else
+//	{
+//		this->GOT_SQUARE = false;
+//	}
+//}
+
 MpoQ<1> HeisenbergModel::
-Sz (size_t locx, size_t locy)
+Sz (size_t locx, size_t locy) const
 {
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx << "," << locy << ")";
 	MpoQ<1> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {0}, HeisenbergModel::maglabel, ss.str(), halve);
-	Mout.setLocal(locx, S.Scomp(SZ,locy));
+	Mout.setLocal(locx, B.Scomp(SZ,locy));
 	return Mout;
 }
 
 MpoQ<1> HeisenbergModel::
-SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	assert(locx1<N_sites and locx2<N_sites and locy1<N_legs and locy2<N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx1 << "," << locy1 << ")" <<  "Sz(" << locx2 << "," << locy2 << ")";
 	MpoQ<1> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {0}, HeisenbergModel::maglabel, ss.str(), halve);
-	Mout.setLocal({locx1, locx2}, {S.Scomp(SZ,locy1), S.Scomp(SZ,locy2)});
+	Mout.setLocal({locx1, locx2}, {B.Scomp(SZ,locy1), B.Scomp(SZ,locy2)});
 	return Mout;
 }
 
 MpoQ<1,complex<double> > HeisenbergModel::
-SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int))
+SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int)) const
 {
 	assert(SOP==SP or SOP==SM or SOP==SZ);
 	stringstream ss;
@@ -293,7 +372,7 @@ SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int))
 	else if (SOP==SM) {DeltaM={-2};}
 	else              {DeltaM={ 0};}
 	MpoQ<1,complex<double> > Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), DeltaM, HeisenbergModel::maglabel, ss.str(), halve);
-	Mout.setLocalSum(S.Scomp(SOP), f);
+	Mout.setLocalSum(B.Scomp(SOP), f);
 	return Mout;
 }
 

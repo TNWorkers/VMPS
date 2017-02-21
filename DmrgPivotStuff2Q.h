@@ -157,6 +157,11 @@ void HxV (const PivotMatrix2Q<Nq,Scalar,MpoScalar> &H, const PivotVector2Q<Nq,Sc
 					Matrix<Scalar,Dynamic,Dynamic> Mtmp;
 					MpoScalar Wfactor = iW12.value() * iW34.value();
 					
+//					cout << H.L.block[qL][iW12.row()][0].rows() << "\t" << H.L.block[qL][iW12.row()][0].cols() << endl;
+//					cout << Vin.A[s2][s4].block[qA24].rows() << "\t" << Vin.A[s2][s4].block[qA24].cols() << endl;
+//					cout << H.R.block[qR->second][iW34.col()][0].rows() << "\t" << H.R.block[qR->second][iW34.col()][0].cols() << endl;
+//					cout << endl;
+					
 					if (H.L.block[qL][iW12.row()][0].rows() != 0 and
 						H.R.block[qR->second][iW34.col()][0].rows() !=0 and
 						iW12.col() == iW34.row())
