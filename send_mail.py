@@ -6,27 +6,32 @@ from email.mime.text import MIMEText
 import os, sys
 from subprocess import check_output
 
+# hook-Name: post-receive
+# Inhalt: 
+##!/bin/sh
+#/afs/physnet.uni-hamburg.de/groups/group-th1_po/VMPS++/DMRG/send_mail.py /afs/physnet.uni-hamburg.de/groups/group-th1_po/VMPS++/DMRG/
+#exit 0
+
 # ohne Argumente: 
-#git log -2
+# git log -2
 if len(sys.argv) == 1:
 	content = check_output(['git','log','-2','--decorate'])
-# erstes Argument gibt git-Ordner an: 
-#git --git-dir <argv[1]>/.git log -2
+# erstes Argument gibt git-Ordner an
+# Der branch wird automatisch ermittelt als der letzte gepushte
 elif len(sys.argv) == 2:
-	content = check_output(['git','--git-dir',sys.argv[1]+'/.git','log','-2','--decorate'])
-# drittes Argument gibt den branch an:
-# git --git-dir <argv[1]>/.git -branch <argv[2]> log -2
-elif len(sys.argv) == 3:
-	content = check_output(['git','--git-dir',sys.argv[1]+'/.git','log','-2','--decorate',sys.argv[2]])
+	branch = check_output(['git','log','--pretty=oneline','--abbrev-commit','--decorate','-1','--all']) # finde den branch-Namen
+	branch = branch.split(' ') # splitte string zu array
+	branch = branch[1] # branch-Name ist an dieser Stelle
+	branch = branch.replace('(','') # Klammer löschen
+	branch = branch.replace(')','') # Klammer löschen
+	content = check_output(['git','--git-dir',sys.argv[1]+'/.git','log','-2','--decorate','--branches',branch])
 msg = MIMEText(content,'plain','utf-8')
 
 sender = 'git'
 recipients = ['rrausch@physnet.uni-hamburg.de','mpeschke@physnet.uni-hamburg.de']
 
-name = sys.argv[1].split('/')[-1]
-
 if len(sys.argv) >= 1:
-	msg['Subject'] = 'git update '+name
+	msg['Subject'] = 'git update '+branch
 else:
 	msg['Subject'] = 'git update'
 msg['From'] = sender
