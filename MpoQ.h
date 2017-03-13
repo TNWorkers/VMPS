@@ -46,11 +46,12 @@ template<size_t Nq, typename Scalar, typename MpoScalar> class MpsQCompressor;
 template<size_t Nq, typename Scalar=double>
 class MpoQ
 {
-//typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
-typedef SparseMatrixXd MatrixType;
+typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
+//typedef SparseMatrixXd MatrixType;
 
 template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
 template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
+template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
 template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
 template<size_t Nq_, typename S_> friend class MpoQ;

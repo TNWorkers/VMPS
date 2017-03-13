@@ -172,11 +172,11 @@ ScompSingleSite (SPINOP_LABEL Sa) const
 	
 	if (Sa==SX)
 	{
-		return Sbase() + SparseMatrixXd(Sbase().transpose());
+		return Sbase()+SparseMatrixXd(Sbase().transpose());
 	}
 	else if (Sa==iSY)
 	{
-		return -Sbase() + SparseMatrixXd(Sbase().transpose());
+		return Sbase()-SparseMatrixXd(Sbase().transpose());
 	}
 	else if (Sa==SZ) 
 	{

@@ -19,12 +19,12 @@ public:
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
-//	typedef MpsQ<0,double>                           StateXd;
-	typedef MpsQ<0,complex<double> >                 StateXcd;
+	typedef MpsQ<0,complex<double> >                                 StateXcd;
 	typedef DmrgSolverQ<0,DzyaloshinskyMoriyaModel,complex<double> > Solver;
 	///@}
 	
-	MpoQ<0> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0);
+	MpoQ<0>                  Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	MpoQ<0,complex<double> > Sy    (size_t locx, size_t locy=0) const;
 	
 private:
 	
@@ -69,7 +69,7 @@ set_operators (const SpinBase &S, double J, double Bz, double K, const std::arra
 		Terms.nextn.push_back(make_tuple(-Jprime, Sz, Sz, Id));
 	}
 	
-	// Dzialozhinsky-Moriya part
+	// Dzyaloshinsky-Moriya part
 	double DMx = DM[0];
 	double DMy = DM[1];
 	double DMz = DM[2];
@@ -206,13 +206,25 @@ DzyaloshinskyMoriyaModel (size_t Lx_input, double J_input, vector<double> Bz_inp
 }
 
 MpoQ<0> DzyaloshinskyMoriyaModel::
-Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy)
+Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 {
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << Sa << "(" << locx << "," << locy << ")";
 	MpoQ<0> Mout(N_sites, N_legs, MpoQ<0,complex<double> >::qloc, {}, labeldummy, ss.str());
 	Mout.setLocal(locx, B.Scomp(Sa,locy));
+	return Mout;
+}
+
+MpoQ<0,complex<double> > DzyaloshinskyMoriyaModel::
+Sy (size_t locx, size_t locy) const
+{
+	assert(locx<N_sites and locy<N_legs);
+	stringstream ss;
+	ss << "Sy(" << locx << "," << locy << ")";
+	MpoQ<0,complex<double> > Mout(N_sites, N_legs, MpoQ<0,complex<double> >::qloc, {}, labeldummy, ss.str());
+	SparseMatrixXcd SyOp = -1.i*B.Scomp(iSY,locy);
+	Mout.setLocal(locx,SyOp);
 	return Mout;
 }
 

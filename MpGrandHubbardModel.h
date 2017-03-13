@@ -15,7 +15,6 @@ public:
 	typedef MpsQ<0,double>                           StateXd;
 	typedef MpsQ<0,complex<double> >                 StateXcd;
 	typedef DmrgSolverQ<0,GrandHubbardModel>         Solver;
-	typedef iDmrgSolver<0,GrandHubbardModel>         iSolver;
 	typedef VumpsSolver<0,GrandHubbardModel>         uSolver;
 	typedef MpsQCompressor<0,double,double>          CompressorXd;
 	typedef MpsQCompressor<0,complex<double>,double> CompressorXcd;

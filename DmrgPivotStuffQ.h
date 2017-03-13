@@ -18,7 +18,12 @@ struct PivotMatrixQ
 	vector<std::array<size_t,2> >          qlhs;
 	vector<vector<std::array<size_t,4> > > qrhs;
 	
-//	vector<qarray<Nq> > qloc;
+	vector<qarray<Nq> > qloc;
+	
+	vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > PL; // PL[n]
+	vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > PR; // PL[n]
+	vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > A0; // A0[n][s]
+	double Epenalty = 0;
 };
 
 template<size_t Nq, typename Scalar>
@@ -166,6 +171,40 @@ void HxV (const PivotMatrixQ<Nq,Scalar,MpoScalar> &H, const PivotVectorQ<Nq,Scal
 				}
 			}
 		}
+	}
+	
+	// project out unwanted states (e.g. to get lower spectrum)
+	for (size_t n=0; n<H.A0.size(); ++n)
+	{
+		Scalar overlap = 0;
+		
+		for (size_t s=0; s<Vout.A.size(); ++s)
+		{
+			overlap += (H.PL[n].adjoint() * Vin.A[s] * H.PR[n].adjoint() * H.A0[n][s].adjoint()).block[0].trace();
+		}
+		
+		for (size_t s=0; s<Vout.A.size(); ++s)
+		for (size_t qPL=0; qPL<H.PL[n].dim; ++qPL)
+		for (size_t qPR=0; qPR<H.PR[n].dim; ++qPR)
+		{
+			qarray2<Nq> qupleA = {H.PL[n].in[qPL], H.PR[n].out[qPR]};
+			auto qA = Vout.A[s].dict.find(qupleA);
+		
+			qarray2<Nq> qupleA0 = {H.PL[n].out[qPL], H.PR[n].in[qPR]};
+			auto qA0 = H.A0[n][s].dict.find(qupleA0);
+		
+			if (H.PL[n].out[qPL] + H.qloc[s] == H.PR[n].in[qPR] and
+				qA0 != H.A0[n][s].dict.end() and
+				qA != Vout.A[s].dict.end())
+			{
+				Vout.A[s].block[qA->second] += overlap * H.Epenalty * H.PL[n].block[qPL] * H.A0[n][s].block[qA0->second] * H.PR[n].block[qPR];
+			}
+		}
+		
+//		for (size_t s=0; s<Vout.A.size(); ++s)
+//		{
+//			Vout.A[s] += overlap * H.Epenalty * H.PL[n] *  H.A0[n][s] * H.PR[n];
+//		}
 	}
 }
 
