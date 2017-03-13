@@ -437,10 +437,6 @@ test_ortho (double tol) const
 		}
 	}
 	
-	double epsL, epsR;
-	calc_epsLR(0,epsL,epsR);
-	cout << "epsL=" << epsL << ", epsR=" << epsR << endl;
-	
 	sout += TCOLOR(BLACK);
 	return sout;
 }
@@ -517,7 +513,8 @@ polarDecompose (size_t loc)
 	for (size_t qin=0; qin<inset[loc].size(); ++qin)
 	{
 		qarray2<Nq> quple = {inset[loc][qin], inset[loc][qin]};
-		auto it = C[loc].dict.find(quple);
+		size_t locC = (N_sites==1)? 0 : (loc-1)%2;
+		auto it = C[locC].dict.find(quple);
 		size_t qC = it->second;
 		
 		// determine how many A's to glue together
@@ -606,7 +603,8 @@ calc_epsLR (size_t loc, double &epsL, double &epsR)
 	for (size_t qin=0; qin<inset[loc].size(); ++qin)
 	{
 		qarray2<Nq> quple = {inset[loc][qin], inset[loc][qin]};
-		auto it = C[loc].dict.find(quple);
+		size_t locC = (N_sites==1)? 0 : (loc-1)%2;
+		auto it = C[locC].dict.find(quple);
 		size_t qC = it->second;
 		
 		// determine how many A's to glue together
@@ -637,7 +635,7 @@ calc_epsLR (size_t loc, double &epsL, double &epsR)
 			stitch += Ncolsvec[i];
 		}
 		
-		epsR = (Aclump-C[loc].block[qC]*Acmp).norm();
+		epsR = (Aclump-C[locC].block[qC]*Acmp).norm();
 	}
 }
 
@@ -696,7 +694,8 @@ svdDecompose (size_t loc)
 	for (size_t qin=0; qin<inset[loc].size(); ++qin)
 	{
 		qarray2<Nq> quple = {inset[loc][qin], inset[loc][qin]};
-		auto it = C[loc].dict.find(quple);
+		size_t locC = (N_sites==1)? 0 : (loc-1)%2;
+		auto it = C[locC].dict.find(quple);
 		size_t qC = it->second;
 		
 		// determine how many A's to glue together
@@ -726,7 +725,7 @@ svdDecompose (size_t loc)
 			stitch += Ncolsvec[i];
 		}
 		
-		Aclump = C[loc].block[qC].adjoint() * Aclump;
+		Aclump = C[locC].block[qC].adjoint() * Aclump;
 		
 		BDCSVD<MatrixType> Jack(Aclump,ComputeThinU|ComputeThinV);
 		size_t Nret = Jack.singularValues().rows();

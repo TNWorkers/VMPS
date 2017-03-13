@@ -29,15 +29,18 @@ struct Multipede
 	/**Convenience access to the amount of blocks.
 	Equal to either of the following: \p index.size(), \p block.size()*/
 	size_t dim;
+	
 	/**Vector of all incoming quantum numbers.
 	The entries are arrays of size \p Nlegs. The sorting is according to the following convention:
 	1. incoming 2. outgoing 3. middle (\p Nlegs=3)
 	1. incoming 2. outgoing 3. bottom 4. top (\p Nlegs=4)
 	The middle, bottom and top quantum numbers are always outgoing for the left transfer matrix and incoming for the right transfer matrix in matrix element calculations.*/
 	vector<std::array<qarray<Nq>,Nlegs> > index;
+	
 	/**Vector of quantum number blocks.
 	The matrix \p block[q] is characterized by the quantum number array \p index[q]. Since the handling of template-sized arrays is no fun at all, the implementation is done in the following way: \p block[q] is always a boost \p multi_array of dimension \p LEGLIMIT which is set = 2. Tripods need only one dimension (two are already absorbed into \p MatrixType), therefore the rest needs to be set to 1 and the access goes by \p T.block[q][a][0]. \p LEGLIMIT can be increased and some code adjustment can be made (filling in dummy "[0]") if bigger tensors are required.*/
 	vector<boost::multi_array<MatrixType,LEGLIMIT> > block;
+	
 	/**Dictionary allowing one to find the index of \p block for a given array of \p Nlegs quantum numbers in \f$O(1)\f$ operations without looping over the blocks.
 	For the ordering convention see Multipede::index.*/
 	unordered_map<std::array<qarray<Nq>,Nlegs>,size_t> dict; // key format: {qin,qout,qmid}
@@ -46,24 +49,31 @@ struct Multipede
 	///@{
 	/**\describe_memory*/
 	double memory (MEMUNIT memunit=GB) const;
+	
 	/**\describe_overhead*/
 	double overhead (MEMUNIT memunit=MB) const;
+	
 	/**Prints Multipede<Nlegs,Nq,MatrixType>::dict into a string.*/
 	string dict_info() const;
+	
 //	void rebuild_dict();
 	///@}
 	
 	///@{
 	/**Deletes the contents of \p index, \p block, \p dict.*/
 	void clear();
+	
 	/**Sets all matrices in Multipede<Nlegs,Nq,MatrixType>::block to zero, preserving the rows and columns.*/
 	void setZero();
+	
 	/**Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers to the vacuum (all of them).
 	Needed in for the transfer matrix to the first site in matrix element calculations.*/
 	void setVacuum();
+	
 	/**Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers according to the input \p Q.
 	Needed in for the transfer matrix from the last site in matrix element calculations.*/
 	void setTarget (std::array<qarray<Nq>,Nlegs> Q);
+	
 	/***/
 	void setIdentity (size_t Drows, size_t Dcols, size_t amax=1, size_t bmax=1);
 	///@}
@@ -82,6 +92,7 @@ struct Multipede
 	/**Adds a new block to the tensor specified by the incoming quantum numbers \p quple.
 	\warning Does not check whether the block for these quantum numbers already exists.*/
 	void push_back (std::array<qarray<Nq>,Nlegs> quple, const boost::multi_array<MatrixType,LEGLIMIT> &M);
+	
 	/**Adds a new block to the tensor specified by the initializer list \p qlist (must be of size \p Nlegs).
 	For the ordering convention see Multipede::index.
 	\warning Does not check whether the block for these quantum numbers already exists.*/

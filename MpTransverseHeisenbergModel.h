@@ -18,7 +18,6 @@ public:
 	typedef MpsQ<0,double>                           StateXd;
 	typedef MpsQ<0,complex<double> >                 StateXcd;
 	typedef DmrgSolverQ<0,TransverseHeisenbergModel> Solver;
-	typedef iDmrgSolver<0,TransverseHeisenbergModel> iSolver;
 	typedef VumpsSolver<0,TransverseHeisenbergModel> uSolver;
 	///@}
 	
