@@ -22,6 +22,7 @@ public:
 	///@}
 	
 	MpoQ<0> Scomp (SPINOP_LABEL Sa, size_t loc) const;
+	MpoQ<0> Sz (size_t loc) const;
 	MpoQ<0> SaSa (size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2) const;
 	MpoQ<0> SzSz (size_t loc1, size_t loc2) const;
 	
@@ -43,6 +44,8 @@ TransverseHeisenbergModel (size_t Lx_input, double Jxy_input, double Jz_input, v
 	B = SpinBase(1,D);
 	
 	this->N_sites = Lx_input;
+	assert(Bz.size() == this->N_sites);
+	assert(Bx.size() == this->N_sites);
 	this->N_legs = 1;
 	this->Qtot = {};
 	this->qlabel = labeldummy;
@@ -133,6 +136,17 @@ Scomp (SPINOP_LABEL Sa, size_t loc) const
 	ss << Sa;
 	MpoQ<0> Mout(N_sites, 1, MpoQ<0>::qloc, {}, labeldummy, ss.str());
 	Mout.setLocal(loc, B.Scomp(Sa));
+	return Mout;
+}
+
+MpoQ<0> TransverseHeisenbergModel::
+Sz (size_t loc) const
+{
+	assert(loc<N_sites);
+	stringstream ss;
+	ss << SZ;
+	MpoQ<0> Mout(N_sites, 1, MpoQ<0>::qloc, {}, labeldummy, ss.str());
+	Mout.setLocal(loc, B.Scomp(SZ));
 	return Mout;
 }
 

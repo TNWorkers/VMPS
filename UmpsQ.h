@@ -167,6 +167,7 @@ info() const
 		ss << "no symmetries, ";
 //	}
 	
+	ss << "Lcell=" << N_sites << ", ";
 	ss << "Mmax=" << calc_Mmax() << " (Dmax=" << calc_Dmax() << "), ";
 //	ss << "Nqmax=" << calc_Nqmax() << ", ";
 	ss << "trunc_weight=" << truncWeight.sum() << ", ";

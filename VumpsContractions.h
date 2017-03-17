@@ -82,7 +82,7 @@ MatrixType make_YL (size_t b,
 	{
 		size_t a = iW.row();
 		
-		if (a>b and b==iW.col() and iW.value() != 0.)
+		if (a>b and b==iW.col() and iW.value()!=0.)
 		{
 			Mout += iW.value() * AL[s1].block[0].adjoint() * L[a][0] * AL[s2].block[0];
 		}
@@ -113,9 +113,99 @@ MatrixType make_YR (size_t a,
 	{
 		size_t b = iW.col();
 		
-		if (a>b and a==iW.row() and iW.value() != 0.)
+		if (a>b and a==iW.row() and iW.value()!=0.)
 		{
-			Mout += iW.value() * AR[s1].block[0] * R[b][0] * AR[s2].block[0].adjoint();
+			Mout += iW.value() * AR[s2].block[0] * R[b][0] * AR[s1].block[0].adjoint();
+		}
+	}
+	
+	return Mout;
+}
+
+template<size_t Nq, typename MatrixType, typename MpoScalar>
+MatrixType make_YL (size_t b,
+                    const vector<vector<SparseMatrix<MpoScalar> > > &W12,
+                    const vector<vector<SparseMatrix<MpoScalar> > > &W34,
+                    const boost::multi_array<MatrixType,LEGLIMIT> &L,
+                    const vector<Biped<Nq,MatrixType> > &AL1,
+                    const vector<Biped<Nq,MatrixType> > &AL2,
+                    const vector<qarray<Nq> > &qloc)
+{
+	size_t D  = qloc.size();
+	size_t dW = W12.size();
+	size_t M  = AL1[0].block[0].cols();
+	
+	MatrixType Mout;
+	Mout.resize(M,M);
+	Mout.setZero();
+	
+	for (size_t s1=0; s1<D; ++s1)
+	for (size_t s2=0; s2<D; ++s2)
+	for (int k12=0; k12<W12[s1][s2].outerSize(); ++k12)
+	for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(W12[s1][s2],k12); iW12; ++iW12)
+	for (size_t s3=0; s3<D; ++s3)
+	for (size_t s4=0; s4<D; ++s4)
+	for (int k34=0; k34<W34[s3][s4].outerSize(); ++k34)
+	for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(W34[s3][s4],k34); iW34; ++iW34)
+	{
+		if (iW12.col()==iW34.row())
+		{
+			size_t a = iW12.row();
+			
+			if (a>b and b==iW34.col() and iW12.value()!=0. and iW34.value()!=0.)
+			{
+				Mout += iW12.value() * iW34.value() *
+				        AL2[s3].block[0].adjoint() *
+				        AL1[s1].block[0].adjoint() *
+				        L[a][0] *
+				        AL1[s2].block[0] *
+				        AL2[s4].block[0];
+			}
+		}
+	}
+	
+	return Mout;
+}
+
+template<size_t Nq, typename MatrixType, typename MpoScalar>
+MatrixType make_YR (size_t a,
+                    const vector<vector<SparseMatrix<MpoScalar> > > &W12,
+                    const vector<vector<SparseMatrix<MpoScalar> > > &W34,
+                    const boost::multi_array<MatrixType,LEGLIMIT> &R,
+                    const vector<Biped<Nq,MatrixType> > &AR1,
+                    const vector<Biped<Nq,MatrixType> > &AR2,
+                    const vector<qarray<Nq> > &qloc)
+{
+	size_t D  = qloc.size();
+	size_t dW = W12.size();
+	size_t M  = AR1[0].block[0].cols();
+	
+	MatrixType Mout;
+	Mout.resize(M,M);
+	Mout.setZero();
+	
+	for (size_t s1=0; s1<D; ++s1)
+	for (size_t s2=0; s2<D; ++s2)
+	for (int k12=0; k12<W12[s1][s2].outerSize(); ++k12)
+	for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(W12[s1][s2],k12); iW12; ++iW12)
+	for (size_t s3=0; s3<D; ++s3)
+	for (size_t s4=0; s4<D; ++s4)
+	for (int k34=0; k34<W34[s3][s4].outerSize(); ++k34)
+	for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(W34[s3][s4],k34); iW34; ++iW34)
+	{
+		if (iW12.col()==iW34.row())
+		{
+			size_t b = iW34.col();
+			
+			if (a>b and a==iW12.row() and iW12.value()!=0. and iW34.value()!=0.)
+			{
+				Mout += iW12.value() * iW34.value() *
+				        AR1[s2].block[0] *
+				        AR2[s4].block[0] *
+				        R[b][0] *
+				        AR2[s3].block[0].adjoint() *
+				        AR1[s1].block[0].adjoint();
+			}
 		}
 	}
 	
@@ -535,7 +625,7 @@ Scalar avg (const UmpsQ<Nq,Scalar> &Vbra,
 	for (size_t l=0; l<O.length(); ++l)
 	{
 		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
-		contract_L(B, Vbra.A[g][0], O.W_at(l), Vket.A[g][0], O.locBasis(l), Bnext);
+		contract_L(B, Vbra.A[g][l%Vket.length()], O.W_at(l), Vket.A[g][l%Vket.length()], O.locBasis(l), Bnext);
 		
 		B.clear();
 		B = Bnext;
