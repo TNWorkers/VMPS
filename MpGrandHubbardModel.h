@@ -20,7 +20,8 @@ public:
 	typedef MpsQCompressor<0,complex<double>,double> CompressorXcd;
 	typedef MpoQ<0>                                  Operator;
 	
-	MpoQ<0> n (SPIN_INDEX sigma, size_t loc);
+	MpoQ<0> n (SPIN_INDEX sigma, size_t loc) const;
+	MpoQ<0> Sz (size_t loc) const;
 	
 private:
 	
@@ -61,13 +62,24 @@ U(U_input), mu(mu_input)
 }
 
 MpoQ<0> GrandHubbardModel::
-n (SPIN_INDEX sigma, size_t loc)
+n (SPIN_INDEX sigma, size_t loc) const
 {
 	assert(loc<N_sites);
 	stringstream ss;
 	ss << "n(" << loc << ",σ=" << sigma << ")";
 	MpoQ<0> Mout(N_sites, 1, MpoQ<0>::qloc, {}, labeldummy, ss.str());
 	Mout.setLocal(loc, F.n(sigma));
+	return Mout;
+}
+
+MpoQ<0> GrandHubbardModel::
+Sz (size_t loc) const
+{
+	assert(loc<N_sites);
+	stringstream ss;
+	ss << "Sz(" << loc << ")";
+	MpoQ<0> Mout(N_sites, 1, MpoQ<0>::qloc, {}, labeldummy, ss.str());
+	Mout.setLocal(loc, F.Sz());
 	return Mout;
 }
 
