@@ -212,55 +212,55 @@ MatrixType make_YR (size_t a,
 	return Mout;
 }
 
-template<size_t Nq, typename MatrixType, typename MpoScalar>
-double energy_L (const boost::multi_array<MpoScalar,4> &H2site, 
-                 const vector<Biped<Nq,MatrixType> > &AL, 
-                 const Biped<Nq,MatrixType> &C,
-                 const vector<qarray<Nq> > &qloc)
-{
-	size_t D = qloc.size();
-	double res = 0;
-	
-	for (size_t s1=0; s1<D; ++s1)
-	for (size_t s2=0; s2<D; ++s2)
-	for (size_t s3=0; s3<D; ++s3)
-	for (size_t s4=0; s4<D; ++s4)
-	{
-		res += H2site[s1][s2][s3][s4] * (AL[s2].block[0] * 
-		                                 AL[s4].block[0] * 
-		                                 C.block[0] * 
-		                                 C.block[0].adjoint() * 
-		                                 AL[s3].block[0].adjoint() * 
-		                                 AL[s1].block[0].adjoint()
-		                                ).trace();
-	}
-	return res;
-}
+//template<size_t Nq, typename MatrixType, typename MpoScalar>
+//double energy_L (const boost::multi_array<MpoScalar,4> &H2site, 
+//                 const vector<Biped<Nq,MatrixType> > &AL, 
+//                 const Biped<Nq,MatrixType> &C,
+//                 const vector<qarray<Nq> > &qloc)
+//{
+//	size_t D = qloc.size();
+//	double res = 0;
+//	
+//	for (size_t s1=0; s1<D; ++s1)
+//	for (size_t s2=0; s2<D; ++s2)
+//	for (size_t s3=0; s3<D; ++s3)
+//	for (size_t s4=0; s4<D; ++s4)
+//	{
+//		res += H2site[s1][s2][s3][s4] * (AL[s2].block[0] * 
+//		                                 AL[s4].block[0] * 
+//		                                 C.block[0] * 
+//		                                 C.block[0].adjoint() * 
+//		                                 AL[s3].block[0].adjoint() * 
+//		                                 AL[s1].block[0].adjoint()
+//		                                ).trace();
+//	}
+//	return res;
+//}
 
-template<size_t Nq, typename MatrixType, typename MpoScalar>
-double energy_R (const boost::multi_array<MpoScalar,4> &H2site, 
-                 const vector<Biped<Nq,MatrixType> > &AR, 
-                 const Biped<Nq,MatrixType> &C,
-                 const vector<qarray<Nq> > &qloc)
-{
-	size_t D = qloc.size();
-	double res = 0;
-	
-	for (size_t s1=0; s1<D; ++s1)
-	for (size_t s2=0; s2<D; ++s2)
-	for (size_t s3=0; s3<D; ++s3)
-	for (size_t s4=0; s4<D; ++s4)
-	{
-		res += H2site[s1][s2][s3][s4] * (AR[s2].block[0] * 
-		                                 AR[s4].block[0] * 
-		                                 AR[s3].block[0].adjoint() * 
-		                                 AR[s1].block[0].adjoint() * 
-		                                 C.block[0] * 
-		                                 C.block[0].adjoint()
-		                                ).trace();
-	}
-	return res;
-}
+//template<size_t Nq, typename MatrixType, typename MpoScalar>
+//double energy_R (const boost::multi_array<MpoScalar,4> &H2site, 
+//                 const vector<Biped<Nq,MatrixType> > &AR, 
+//                 const Biped<Nq,MatrixType> &C,
+//                 const vector<qarray<Nq> > &qloc)
+//{
+//	size_t D = qloc.size();
+//	double res = 0;
+//	
+//	for (size_t s1=0; s1<D; ++s1)
+//	for (size_t s2=0; s2<D; ++s2)
+//	for (size_t s3=0; s3<D; ++s3)
+//	for (size_t s4=0; s4<D; ++s4)
+//	{
+//		res += H2site[s1][s2][s3][s4] * (AR[s2].block[0] * 
+//		                                 AR[s4].block[0] * 
+//		                                 AR[s3].block[0].adjoint() * 
+//		                                 AR[s1].block[0].adjoint() * 
+//		                                 C.block[0] * 
+//		                                 C.block[0].adjoint()
+//		                                ).trace();
+//	}
+//	return res;
+//}
 
 template<size_t Nq, typename MatrixType, typename MpoScalar>
 MatrixType make_hL (const boost::multi_array<MpoScalar,4> &H2site,
@@ -318,37 +318,37 @@ MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
 	return Mout;
 }
 
-template<size_t Nq, typename MatrixType>
-void shift_L (MatrixType &M,
-              const vector<Biped<Nq,MatrixType> > &AL,
-              const vector<qarray<Nq> > &qloc)
-{
-	size_t D = qloc.size();
-	MatrixType Mtmp(D,D); Mtmp.setZero();
-	
-	for (size_t s=0; s<D; ++s)
-	{
-		Mtmp += AL[s].block[0].adjoint() * M * AL[s].block[0];
-	}
-	
-	M = Mtmp;
-}
+//template<size_t Nq, typename MatrixType>
+//void shift_L (MatrixType &M,
+//              const vector<Biped<Nq,MatrixType> > &AL,
+//              const vector<qarray<Nq> > &qloc)
+//{
+//	size_t D = qloc.size();
+//	MatrixType Mtmp(D,D); Mtmp.setZero();
+//	
+//	for (size_t s=0; s<D; ++s)
+//	{
+//		Mtmp += AL[s].block[0].adjoint() * M * AL[s].block[0];
+//	}
+//	
+//	M = Mtmp;
+//}
 
-template<size_t Nq, typename MatrixType>
-void shift_R (MatrixType &M,
-              const vector<Biped<Nq,MatrixType> > &AR,
-              const vector<qarray<Nq> > &qloc)
-{
-	size_t D = qloc.size();
-	MatrixType Mtmp(D,D); Mtmp.setZero();
-	
-	for (size_t s=0; s<D; ++s)
-	{
-		Mtmp += AR[s].block[0] * M * AR[s].block[0].adjoint();
-	}
-	
-	M = Mtmp;
-}
+//template<size_t Nq, typename MatrixType>
+//void shift_R (MatrixType &M,
+//              const vector<Biped<Nq,MatrixType> > &AR,
+//              const vector<qarray<Nq> > &qloc)
+//{
+//	size_t D = qloc.size();
+//	MatrixType Mtmp(D,D); Mtmp.setZero();
+//	
+//	for (size_t s=0; s<D; ++s)
+//	{
+//		Mtmp += AR[s].block[0] * M * AR[s].block[0].adjoint();
+//	}
+//	
+//	M = Mtmp;
+//}
 
 //-----------<definitions>-----------
 template<size_t Nq, typename Scalar, typename MpoScalar=double>
@@ -643,6 +643,92 @@ Scalar avg (const UmpsQ<Nq,Scalar> &Vbra,
 		lout << "MPO in question: " << O.info() << endl;
 		return 0;
 	}
+}
+
+template<size_t Nq, typename Scalar>
+struct TransferMatrix
+{
+	TransferMatrix (GAUGE::OPTION gauge_input, 
+	                const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > A_input, 
+	                const Matrix<Scalar,Dynamic,Dynamic> & LReigen_input, 
+	                vector<Scalar> Wval_input)
+	:A(A_input), gauge(gauge_input), LReigen(LReigen_input), Wval(Wval_input)
+	{
+		if (Wval.size() == 0)
+		{
+			Wval.resize(A.size());
+			for (size_t s=0; s<A.size(); ++s)
+			{
+				Wval[s] = 1.;
+			}
+		}
+	}
+	
+//	TransferMatrix (GAUGE::OPTION gauge_input, 
+//	                const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > A_input, 
+//	                const Matrix<Scalar,Dynamic,Dynamic> & LReigen_input)
+//	:A(A_input), gauge(gauge_input), LReigen(LReigen_input)
+//	{
+//		Wval.resize(A.size());
+//		
+//		for (size_t s=0; s<A.size(); ++s)
+//		{
+//			Wval[s] = 1.;
+//		}
+//	}
+	
+	GAUGE::OPTION gauge;
+	vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > A;
+	
+	vector<Scalar> Wval;
+	Matrix<Scalar,Dynamic,Dynamic> LReigen;
+};
+
+template<size_t Nq, typename Scalar>
+void HxV (const TransferMatrix<Nq,Scalar> &H, const Matrix<Scalar,Dynamic,Dynamic> &Vin, Matrix<Scalar,Dynamic,Dynamic> &Vout)
+{
+	Vout = Vin;
+	
+	if (H.gauge == GAUGE::R)
+	{
+		for (size_t s=0; s<H.A.size(); ++s)
+		{
+			Vout -= H.Wval[s] * H.A[s].block[0] * Vin * H.A[s].block[0].adjoint();
+		}
+	}
+	else if (H.gauge == GAUGE::L)
+	{
+		for (size_t s=0; s<H.A.size(); ++s)
+		{
+			Vout -= H.Wval[s] * H.A[s].block[0].adjoint() * Vin * H.A[s].block[0];
+		}
+	}
+	
+	Vout += (H.LReigen * Vin).trace() * Matrix<Scalar,Dynamic,Dynamic>::Identity(Vin.rows(),Vin.cols());
+}
+
+template<size_t Nq, typename Scalar>
+inline size_t dim (const TransferMatrix<Nq,Scalar> &H)
+{
+	return H.A[0].block[0].rows() * H.A[0].block[0].cols();
+}
+
+template<typename Scalar>
+Scalar norm (const Matrix<Scalar,Dynamic,Dynamic> &V)
+{
+	return sqrt((V.adjoint() * V).trace());
+}
+
+template<typename Scalar>
+Scalar dot (const Matrix<Scalar,Dynamic,Dynamic> &V1, const Matrix<Scalar,Dynamic,Dynamic> &V2)
+{
+	return (V1.adjoint() * V2).trace();
+}
+
+template<typename Scalar>
+void setZero (Matrix<Scalar,Dynamic,Dynamic> &M)
+{
+	M.setZero();
 }
 
 #endif
