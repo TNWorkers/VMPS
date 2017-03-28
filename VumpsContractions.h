@@ -651,17 +651,28 @@ struct TransferMatrix
 	TransferMatrix (GAUGE::OPTION gauge_input, 
 	                const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > A_input, 
 	                const Matrix<Scalar,Dynamic,Dynamic> & LReigen_input, 
-	                vector<Scalar> Wval_input)
-	:A(A_input), gauge(gauge_input), LReigen(LReigen_input), Wval(Wval_input)
+	                vector<Scalar> Wvec_input)
+	:A(A_input), gauge(gauge_input), LReigen(LReigen_input), Wvec(Wvec_input)
 	{
-		if (Wval.size() == 0)
+		if (Wvec.size() == 0)
 		{
-			Wval.resize(A.size());
+			Wvec.resize(A.size());
 			for (size_t s=0; s<A.size(); ++s)
 			{
-				Wval[s] = 1.;
+				Wvec[s] = 1.;
 			}
 		}
+	}
+	
+	TransferMatrix (GAUGE::OPTION gauge_input, 
+	                const vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > Apair_input, 
+	                const Matrix<Scalar,Dynamic,Dynamic> & LReigen_input, 
+	                boost::multi_array<double,4> Warray_input,
+	                std::array<size_t,2> D_input)
+	:Apair(Apair_input), gauge(gauge_input), LReigen(LReigen_input), D(D_input)
+	{
+		Warray.resize(boost::extents[D[0]][D[0]][D[1]][D[1]]);
+		Warray = Warray_input;
 	}
 	
 //	TransferMatrix (GAUGE::OPTION gauge_input, 
@@ -669,18 +680,23 @@ struct TransferMatrix
 //	                const Matrix<Scalar,Dynamic,Dynamic> & LReigen_input)
 //	:A(A_input), gauge(gauge_input), LReigen(LReigen_input)
 //	{
-//		Wval.resize(A.size());
+//		Wvec.resize(A.size());
 //		
 //		for (size_t s=0; s<A.size(); ++s)
 //		{
-//			Wval[s] = 1.;
+//			Wvec[s] = 1.;
 //		}
 //	}
 	
 	GAUGE::OPTION gauge;
-	vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > A;
 	
-	vector<Scalar> Wval;
+	vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > A;
+	vector<Scalar> Wvec;
+	
+	vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > Apair;
+	boost::multi_array<double,4> Warray;
+	std::array<size_t,2> D;
+	
 	Matrix<Scalar,Dynamic,Dynamic> LReigen;
 };
 
@@ -689,18 +705,50 @@ void HxV (const TransferMatrix<Nq,Scalar> &H, const Matrix<Scalar,Dynamic,Dynami
 {
 	Vout = Vin;
 	
-	if (H.gauge == GAUGE::R)
+	if (H.A.size() != 0)
 	{
-		for (size_t s=0; s<H.A.size(); ++s)
+		if (H.gauge == GAUGE::R)
 		{
-			Vout -= H.Wval[s] * H.A[s].block[0] * Vin * H.A[s].block[0].adjoint();
+			for (size_t s=0; s<H.A.size(); ++s)
+			{
+				Vout -= H.Wvec[s] * H.A[s].block[0] * Vin * H.A[s].block[0].adjoint();
+			}
+		}
+		else if (H.gauge == GAUGE::L)
+		{
+			for (size_t s=0; s<H.A.size(); ++s)
+			{
+				Vout -= H.Wvec[s] * H.A[s].block[0].adjoint() * Vin * H.A[s].block[0];
+			}
 		}
 	}
-	else if (H.gauge == GAUGE::L)
+	else if (H.Apair.size() != 0)
 	{
-		for (size_t s=0; s<H.A.size(); ++s)
+		if (H.gauge == GAUGE::R)
 		{
-			Vout -= H.Wval[s] * H.A[s].block[0].adjoint() * Vin * H.A[s].block[0];
+			for (size_t s1=0; s1<H.D[0]; ++s1)
+			for (size_t s2=0; s2<H.D[0]; ++s2)
+			for (size_t s3=0; s3<H.D[1]; ++s3)
+			for (size_t s4=0; s4<H.D[1]; ++s4)
+			{
+				if (H.Warray[s1][s2][s3][s4] != 0.)
+				{
+					Vout -= H.Warray[s1][s2][s3][s4] * H.Apair[s2][s4].block[0] * Vin * H.Apair[s1][s3].block[0].adjoint();
+				}
+			}
+		}
+		else if (H.gauge == GAUGE::L)
+		{
+			for (size_t s1=0; s1<H.D[0]; ++s1)
+			for (size_t s2=0; s2<H.D[0]; ++s2)
+			for (size_t s3=0; s3<H.D[1]; ++s3)
+			for (size_t s4=0; s4<H.D[1]; ++s4)
+			{
+				if (H.Warray[s1][s2][s3][s4] != 0.)
+				{
+					Vout -= H.Warray[s1][s2][s3][s4] * H.Apair[s1][s3].block[0].adjoint() * Vin * H.Apair[s2][s4].block[0];
+				}
+			}
 		}
 	}
 	
@@ -710,7 +758,14 @@ void HxV (const TransferMatrix<Nq,Scalar> &H, const Matrix<Scalar,Dynamic,Dynami
 template<size_t Nq, typename Scalar>
 inline size_t dim (const TransferMatrix<Nq,Scalar> &H)
 {
-	return H.A[0].block[0].rows() * H.A[0].block[0].cols();
+	if (H.A.size() != 0)
+	{
+		return H.A[0].block[0].rows() * H.A[0].block[0].cols();
+	}
+	else if (H.Apair.size() != 0)
+	{
+		return H.Apair[0][0].block[0].rows() * H.Apair[0][0].block[0].cols();
+	}
 }
 
 template<typename Scalar>
