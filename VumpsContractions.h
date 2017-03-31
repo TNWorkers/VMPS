@@ -769,19 +769,19 @@ inline size_t dim (const TransferMatrix<Nq,Scalar> &H)
 }
 
 template<typename Scalar>
-Scalar norm (const Matrix<Scalar,Dynamic,Dynamic> &V)
+inline Scalar norm (const Matrix<Scalar,Dynamic,Dynamic> &V)
 {
-	return sqrt((V.adjoint() * V).trace());
+	return V.norm();
 }
 
 template<typename Scalar>
-Scalar dot (const Matrix<Scalar,Dynamic,Dynamic> &V1, const Matrix<Scalar,Dynamic,Dynamic> &V2)
+inline Scalar dot (const Matrix<Scalar,Dynamic,Dynamic> &V1, const Matrix<Scalar,Dynamic,Dynamic> &V2)
 {
 	return (V1.adjoint() * V2).trace();
 }
 
 template<typename Scalar>
-void setZero (Matrix<Scalar,Dynamic,Dynamic> &M)
+inline void setZero (Matrix<Scalar,Dynamic,Dynamic> &M)
 {
 	M.setZero();
 }

@@ -105,6 +105,11 @@ public:
 	
 	void decompose (size_t loc, const vector<vector<Biped<Nq,MatrixType> > > &Apair);
 	void svdDecompose (size_t loc);
+	void polarDecompose (size_t loc);
+	
+	void calc_SchmidtSpectrum();
+	VectorXd SchmidtSpectrum (size_t loc);
+	double entropy (size_t loc);
 	
 	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
@@ -122,8 +127,6 @@ public:
 	size_t calc_Dmax() const;
 	size_t calc_Mmax() const;
 	double memory (MEMUNIT memunit) const;
-	
-	void polarDecompose (size_t loc);
 	
 	size_t N_sites;
 	size_t Dmax;
@@ -143,6 +146,10 @@ public:
 	std::array<vector<vector<Biped<Nq,MatrixType> > >,3> A; // A[L/R/C][l][s].block[q]
 	vector<Biped<Nq,MatrixType> > C; // zero-site part C[l]
 	vector<vector<VectorType> > Sigma;
+	
+	bool SCHMIDT_SPECTRUM_CALCULATED = false;
+	vector<VectorXd> Csingular;
+	vector<double> S;
 };
 
 template<size_t Nq, typename Scalar>
@@ -442,32 +449,69 @@ test_ortho (double tol) const
 	return sout;
 }
 
+template<size_t Nq, typename Scalar>
+void UmpsQ<Nq,Scalar>::
+calc_SchmidtSpectrum()
+{
+	Csingular.clear();
+	Csingular.resize(N_sites);
+	S.clear();
+	S.resize(N_sites);
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		BDCSVD<MatrixType> Jack(C[l].block[0]);
+		Csingular[l] = Jack.singularValues();
+		S[l] = -(Csingular[l].array().square() * Csingular[l].array().square().log()).sum();
+	}
+	
+	SCHMIDT_SPECTRUM_CALCULATED = true;
+}
+
+template<size_t Nq, typename Scalar>
+VectorXd UmpsQ<Nq,Scalar>::
+SchmidtSpectrum (size_t loc)
+{
+	assert(loc<N_sites);
+	
+	if (SCHMIDT_SPECTRUM_CALCULATED)
+	{
+		return Csingular[loc];
+	}
+	else
+	{
+		calc_SchmidtSpectrum();
+		return Csingular[loc];
+	}
+}
+
+template<size_t Nq, typename Scalar>
+double UmpsQ<Nq,Scalar>::
+entropy (size_t loc)
+{
+	assert(loc<N_sites);
+	
+	if (SCHMIDT_SPECTRUM_CALCULATED)
+	{
+		return S[loc];
+	}
+	else
+	{
+		calc_SchmidtSpectrum();
+		return S[loc];
+	}
+}
+
 // creates AL, AR from AC, C
 template<size_t Nq, typename Scalar>
 void UmpsQ<Nq,Scalar>::
 polarDecompose (size_t loc)
 {
-	vector<MatrixType> UC;
 	BDCSVD<MatrixType> Jack;
-	
-	for (size_t q=0; q<C[loc].dim; ++q)
-	{
-		Jack.compute(C[loc].block[q],ComputeThinU|ComputeThinV);
-		UC.push_back(Jack.matrixU()*Jack.matrixV().adjoint());
-		
-//		MatrixType Qmatrix, Rmatrix;
-//		unique_QR(C[loc].block[q],Qmatrix,Rmatrix);
-//		UCl.push_back(Qmatrix);
-//		
-//		unique_RQ(C[loc].block[q],Qmatrix,Rmatrix);
-//		UCr.push_back(Qmatrix);
-	}
 	
 	for (size_t qout=0; qout<outset[loc].size(); ++qout)
 	{
 		qarray2<Nq> quple = {outset[loc][qout], outset[loc][qout]};
-		auto it = C[loc].dict.find(quple);
-		size_t qC = it->second;
 		
 		// determine how many A's to glue together
 		vector<size_t> svec, qvec, Nrowsvec;
@@ -502,6 +546,17 @@ polarDecompose (size_t loc)
 //		MatrixType UL, Rmatrix;
 //		unique_QR(Aclump, UL, Rmatrix);
 		
+		auto it = C[loc].dict.find(quple);
+		size_t qC = it->second;
+		
+		vector<MatrixType> UC;
+		
+		for (size_t q=0; q<C[loc].dim; ++q)
+		{
+			Jack.compute(C[loc].block[q],ComputeThinU|ComputeThinV);
+			UC.push_back(Jack.matrixU()*Jack.matrixV().adjoint());
+		}
+		
 		// update AL
 		stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
@@ -514,9 +569,6 @@ polarDecompose (size_t loc)
 	for (size_t qin=0; qin<inset[loc].size(); ++qin)
 	{
 		qarray2<Nq> quple = {inset[loc][qin], inset[loc][qin]};
-		size_t locC = (N_sites==1)? 0 : (loc-1)%2;
-		auto it = C[locC].dict.find(quple);
-		size_t qC = it->second;
 		
 		// determine how many A's to glue together
 		vector<size_t> svec, qvec, Ncolsvec;
@@ -548,6 +600,18 @@ polarDecompose (size_t loc)
 		MatrixType UR = Jack.matrixU() * Jack.matrixV().adjoint();
 //		MatrixType UR, Rmatrix;
 //		unique_RQ(Aclump, UR, Rmatrix);
+		
+		size_t locC = (N_sites==1)? 0 : (loc-1)%2;
+		auto it = C[locC].dict.find(quple);
+		size_t qC = it->second;
+		
+		vector<MatrixType> UC;
+		
+		for (size_t q=0; q<C[locC].dim; ++q)
+		{
+			Jack.compute(C[locC].block[q],ComputeThinU|ComputeThinV);
+			UC.push_back(Jack.matrixU()*Jack.matrixV().adjoint());
+		}
 		
 		// update AR
 		stitch = 0;

@@ -231,8 +231,8 @@ iteration1 (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	MatrixType hR = make_hR(Heff[0].h[0], Vout.state.A[GAUGE::R][0], Heff[0].qloc);
 	MatrixType hL = make_hL(Heff[0].h[0], Vout.state.A[GAUGE::L][0], Heff[0].qloc);
 	
-	eL = (Leigen * hR).trace();
-	eR = (hL * Reigen).trace();
+	eL = (Leigen*hR).trace();
+	eR = (hL*Reigen).trace();
 	
 	MatrixType HR(M,M), HL(M,M);
 	
@@ -423,7 +423,7 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 		else
 		{
 //			L[b][0] = linearL(YL[b], TL[b][b], Reigen, (YL[b] * Reigen).trace());
-			solve_linear(GAUGE::L, Vout.state.A[GAUGE::L][0], YL[b], Reigen, Wval, (YL[b] * Reigen).trace(), L[b][0]);
+			solve_linear(GAUGE::L, Vout.state.A[GAUGE::L][0], YL[b], Reigen, Wval, (YL[b]*Reigen).trace(), L[b][0]);
 		}
 	}
 	R[0][0].resize(M,M);
@@ -447,7 +447,7 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 		else
 		{
 //			R[a][0] = linearR(YR[a], TR[a][a], Leigen, (Leigen * YR[a]).trace());
-			solve_linear(GAUGE::R, Vout.state.A[GAUGE::R][0], YR[a], Leigen, Wval, (YR[a] * Leigen).trace(), R[a][0]);
+			solve_linear(GAUGE::R, Vout.state.A[GAUGE::R][0], YR[a], Leigen, Wval, (YR[a]*Leigen).trace(), R[a][0]);
 		}
 	}
 	
@@ -509,8 +509,8 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 		lout << "e0(C)=" << setprecision(13) << gC.energy << ", time" << LanczosTimer.info() << ", " << Lucy.info() << endl;
 	}
 	
-	eL = (YL[0] * Reigen).trace();
-	eR = (Leigen * YR[dW-1]).trace();
+	eL = (YL[0]*Reigen).trace();
+	eR = (Leigen*YR[dW-1]).trace();
 	
 	Vout.state.A[GAUGE::C][0] = gAC.state.A;
 	Vout.state.C[0]           = gC.state.A;
@@ -683,7 +683,7 @@ iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 		}
 		else
 		{
-			double e = (YL[b] * Reigen).trace();
+			double e = (YL[b]*Reigen).trace();
 //			L[b][0] = linearL(YL[b], TL[b][b], Reigen, e);
 			solve_linear(GAUGE::L, ApairL, YL[b], Reigen, Warray, e, L[b][0]);
 		}
@@ -715,7 +715,7 @@ iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 		}
 		else
 		{
-			double e = (Leigen * YR[a]).trace();
+			double e = (Leigen*YR[a]).trace();
 //			R[a][0] = linearR(YR[a], TR[a][a], Leigen, e);
 			solve_linear(GAUGE::R, ApairR, YR[a], Leigen, Warray, e, R[a][0]);
 		}
@@ -876,12 +876,11 @@ iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-//		(err_var>0.1)? Vout.state.svdDecompose(l) : Vout.state.polarDecompose(l);
-		Vout.state.svdDecompose(l);
+		(err_var>0.1)? Vout.state.svdDecompose(l) : Vout.state.polarDecompose(l);
 	}
 	
-	eL = (YL[0] * Reigen).trace() / N_sites;
-	eR = (Leigen * YR[dW-1]).trace() / N_sites;
+	eL = (YL[0]*Reigen).trace()/N_sites;
+	eR = (Leigen*YR[dW-1]).trace()/N_sites;
 	
 	double epsL0, epsR0;
 	Vout.state.calc_epsLR(0,epsL0,epsR0);
