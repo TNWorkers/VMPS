@@ -952,6 +952,11 @@ edgeState (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout, qarray<N
 	while (((err_eigval >= tol_eigval or err_var >= tol_var) and N_iterations < max_iterations) or N_iterations < min_iterations)
 	{
 		(N_sites==1)? iteration1(H,Vout): iteration2(H,Vout);
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			Vout.state.calc_SchmidtSpectrum();
+			lout << "Entropy S=" << Vout.state.entropy() << endl;
+		}
 //		iteration1(H,Vout);
 	}
 	

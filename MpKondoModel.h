@@ -69,7 +69,7 @@ public:
 	\param U : \f$U\f$
 	*/
 	static HamiltonianTermsXd set_operators (const FermionBase &F, const SpinBase &S, 
-	                                         double J, double Bz, MatrixXd tInter, double tIntra, double Bx=0., double tPrime=0., double U=0.);
+	                                         double J, double Bz, MatrixXd tInter, double tIntra, double Bx=0., double tPrime=0., double U=0., double mu=0.);
 	
 	/**Makes half-integers in the output for the magnetization quantum number.*/
 	static string N_halveM (qarray<2> qnum);
@@ -124,7 +124,7 @@ protected:
 const std::array<string,2> KondoModel::NMlabel{"N","M"};
 
 HamiltonianTermsXd KondoModel::
-set_operators (const FermionBase &F, const SpinBase &S, double J, double Bz, MatrixXd tInter, double tIntra, double Bx, double tPrime, double U)
+set_operators (const FermionBase &F, const SpinBase &S, double J, double Bz, MatrixXd tInter, double tIntra, double Bx, double tPrime, double U, double mu)
 {
 	HamiltonianTermsXd Terms;
 	
@@ -139,7 +139,9 @@ set_operators (const FermionBase &F, const SpinBase &S, double J, double Bz, Mat
 	SparseMatrixXd IdElectrons(F.dim(),F.dim()); IdElectrons.setIdentity();
 	
 	//set Hubbard part of Kondo Hamiltonian
-	H1 = kroneckerProduct(IdSpins,F.HubbardHamiltonian(U,tIntra));
+	std::vector<double> Uvec(F.orbitals()); fill(Uvec.begin(),Uvec.end(),U);
+	std::vector<double> muvec(F.orbitals()); fill(muvec.begin(),muvec.end(),-mu);
+	H1 = kroneckerProduct(IdSpins,F.HubbardHamiltonian(Uvec,muvec,tIntra));
 	
 	//set Heisenberg part of Hamiltonian
 	H2 = kroneckerProduct(S.HeisenbergHamiltonian(0.,0.,Bz,Bx),IdElectrons);
@@ -448,7 +450,7 @@ Simp (size_t locx, SPINOP_LABEL SOP, size_t locy)
 	stringstream ss;
 	ss << SOP << "(" << locx << "," << locy << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
+	SparseMatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
 	Mout.setLocal(locx, kroneckerProduct(S.Scomp(SOP,locy),IdSub));
 	return Mout;
 }
@@ -460,7 +462,7 @@ Ssub (size_t locx, SPINOP_LABEL SOP, size_t locy)
 	stringstream ss;
 	ss << SOP << "(" << locx << "," << locy << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd IdImp(MpoQ<2,double>::qloc[locx].size()/F.dim(), MpoQ<2,double>::qloc[locx].size()/F.dim()); IdImp.setIdentity();
+	SparseMatrixXd IdImp(MpoQ<2,double>::qloc[locx].size()/F.dim(), MpoQ<2,double>::qloc[locx].size()/F.dim()); IdImp.setIdentity();
 	Mout.setLocal(locx, kroneckerProduct(IdImp, F.Scomp(SOP,locy)));
 	return Mout;
 }
@@ -472,7 +474,7 @@ SimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size
 	stringstream ss;
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
+	SparseMatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
 	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
 	                               kroneckerProduct(S.Scomp(SOP2,loc2y),IdSub)}
 	             );
@@ -487,8 +489,8 @@ SsubSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size
 	stringstream ss;
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd IdImp1(MpoQ<2>::qloc[loc1x].size()/F.dim(), MpoQ<2>::qloc[loc1x].size()/F.dim()); IdImp1.setIdentity();
-	MatrixXd IdImp2(MpoQ<2>::qloc[loc2x].size()/F.dim(), MpoQ<2>::qloc[loc2x].size()/F.dim()); IdImp2.setIdentity();
+	SparseMatrixXd IdImp1(MpoQ<2>::qloc[loc1x].size()/F.dim(), MpoQ<2>::qloc[loc1x].size()/F.dim()); IdImp1.setIdentity();
+	SparseMatrixXd IdImp2(MpoQ<2>::qloc[loc2x].size()/F.dim(), MpoQ<2>::qloc[loc2x].size()/F.dim()); IdImp2.setIdentity();
 	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(IdImp1,F.Scomp(SOP1,loc1y)), 
 	                               kroneckerProduct(IdImp2,F.Scomp(SOP2,loc2y))}
 	             );
@@ -502,8 +504,8 @@ SimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size
 	stringstream ss;
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
-	MatrixXd IdImp(MpoQ<2>::qloc[loc2x].size()/F.dim(), MpoQ<2>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
+	SparseMatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
+	SparseMatrixXd IdImp(MpoQ<2>::qloc[loc2x].size()/F.dim(), MpoQ<2>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
 	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
 	                               kroneckerProduct(IdImp,F.Scomp(SOP2,loc2y))}
 	             );
@@ -519,8 +521,8 @@ SimpSsubSimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SO
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")" <<
 	      SOP3 << "(" << loc3x << "," << loc3y << ")" << SOP4 << "(" << loc4x << "," << loc4y << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
-	MatrixXd IdImp(MpoQ<2>::qloc[loc2x].size()/F.dim(), MpoQ<2>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
+	SparseMatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
+	SparseMatrixXd IdImp(MpoQ<2>::qloc[loc2x].size()/F.dim(), MpoQ<2>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
 	Mout.setLocal({loc1x, loc2x, loc3x, loc4x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
 	                                             kroneckerProduct(IdImp,F.Scomp(SOP2,loc2y)),
 	                                             kroneckerProduct(S.Scomp(SOP3,loc3y),IdSub),
@@ -537,8 +539,8 @@ SimpSsubSimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SO
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")" <<
 	      SOP3 << "(" << loc3x << "," << loc3y << ")" << SOP4 << "(" << loc4x << "," << loc4y << ")";
 	MpoQ<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
-	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
-	MatrixXd IdImp(MpoQ<2>::qloc[loc2x].size()/F.dim(), MpoQ<2>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
+	SparseMatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
+	SparseMatrixXd IdImp(MpoQ<2>::qloc[loc2x].size()/F.dim(), MpoQ<2>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
 	Mout.setLocal({loc1x, loc2x, loc3x, loc4x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
 	                                             kroneckerProduct(IdImp,F.Scomp(SOP2,loc2y)),
 	                                             kroneckerProduct(S.Scomp(SOP3,loc3y),IdSub),

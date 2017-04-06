@@ -24,6 +24,7 @@ using namespace Eigen;
 const std::array<qarray<0>,2> qloc2dummy {qarray<0>{}, qarray<0>{}};
 const std::array<qarray<0>,3> qloc3dummy {qarray<0>{}, qarray<0>{}, qarray<0>{}};
 const std::array<qarray<0>,4> qloc4dummy {qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}};
+const std::array<qarray<0>,8> qloc8dummy {qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}};
 const std::array<string,0>    labeldummy{};
 
 template<typename Scalar>
@@ -47,7 +48,7 @@ template<size_t Nq, typename Scalar=double>
 class MpoQ
 {
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
-//typedef SparseMatrixXd MatrixType;
+typedef SparseMatrixXd SparseMatrixType;
 
 template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
 template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
@@ -96,25 +97,25 @@ public:
 	\param loc : site index
 	\param Op : the local operator in question
 	*/
-	void setLocal (size_t loc, const MatrixType &Op);
+	void setLocal (size_t loc, const SparseMatrixType &Op);
 	
 	/**Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$
 	\param loc : list of locations
 	\param Op : list of operators
 	*/
-	void setLocal (vector<size_t> loc, vector<MatrixType> Op);
+	void setLocal (vector<size_t> loc, const vector<SparseMatrixType> &Op);
 	
 	/**Set to a sum of of local operators \f$\sum_i f(i) O_i\f$
 	\param Op : the local operator in question
 	\param f : the function in question$
 	*/
-	void setLocalSum (const MatrixType &Op, Scalar (*f)(int)=localSumTrivial);
+	void setLocalSum (const SparseMatrixType &Op, Scalar (*f)(int)=localSumTrivial);
 	
 	/**Set to a sum of nearest-neighbour products of local operators \f$\sum_i O^1_i O^2_{i+1}\f$
 	\param Op1 : first local operator
 	\param Op2 : second local operator
 	*/
-	void setProductSum (const MatrixType &Op1, const MatrixType &Op2);
+	void setProductSum (const SparseMatrixType &Op1, const SparseMatrixType &Op2);
 	
 	/**Makes a linear transformation of the MpoQ: \f$H' = factor*H + offset\f$.*/
 	void scale (double factor=1., double offset=0.);
@@ -499,7 +500,7 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 
 template<size_t Nq, typename Scalar>
 void MpoQ<Nq,Scalar>::
-setLocal (size_t loc, const MatrixType &Op)
+setLocal (size_t loc, const SparseMatrixType &Op)
 {
 	assert(Op.rows() == qloc[loc].size() and Op.cols() == qloc[loc].size());
 	assert(loc < N_sites);
@@ -518,7 +519,7 @@ setLocal (size_t loc, const MatrixType &Op)
 
 template<size_t Nq, typename Scalar>
 void MpoQ<Nq,Scalar>::
-setLocal (vector<size_t> loc, vector<MatrixType> Op)
+setLocal (vector<size_t> loc, const vector<SparseMatrixType> &Op)
 {
 	assert(loc.size() >= 1 and Op.size() == loc.size());
 	
@@ -544,7 +545,7 @@ setLocal (vector<size_t> loc, vector<MatrixType> Op)
 // sum_i f(i)*O(i)
 template<size_t Nq, typename Scalar>
 void MpoQ<Nq,Scalar>::
-setLocalSum (const MatrixType &Op, Scalar (*f)(int))
+setLocalSum (const SparseMatrixType &Op, Scalar (*f)(int))
 {
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -577,7 +578,7 @@ setLocalSum (const MatrixType &Op, Scalar (*f)(int))
 // O1(1)*O2(2)+O1(2)*O1(3)+...+O1(L-1)*O2(L)
 template<size_t Nq, typename Scalar>
 void MpoQ<Nq,Scalar>::
-setProductSum (const MatrixType &Op1, const MatrixType &Op2)
+setProductSum (const SparseMatrixType &Op1, const SparseMatrixType &Op2)
 {
 	for (size_t l=0; l<N_sites; ++l)
 	{

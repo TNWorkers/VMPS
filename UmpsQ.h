@@ -109,7 +109,7 @@ public:
 	
 	void calc_SchmidtSpectrum();
 	VectorXd SchmidtSpectrum (size_t loc);
-	double entropy (size_t loc);
+	double entropy (size_t loc=0);
 	
 	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
