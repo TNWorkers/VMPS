@@ -13,6 +13,7 @@
 #include "LanczosSolver.h"
 #include "VumpsContractions.h"
 #include "GMResSolver.h"
+#include "VumpsTransferMatrix.h"
 
 template<size_t Nq, typename MpHamiltonian, typename Scalar=double>
 class VumpsSolver
@@ -20,7 +21,7 @@ class VumpsSolver
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 typedef Matrix<Scalar,Dynamic,1>       VectorType;
 typedef boost::multi_array<Scalar,4> TwoSiteHamiltonian;
-
+	
 public:
 	
 	VumpsSolver (DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
@@ -61,6 +62,8 @@ public:
 	
 	/**Returns the current error of the state while the sweep process.*/
 	inline double get_errState() const {return err_var;};
+	
+	void make_explicitT (const UmpsQ<Nq,Scalar> &Vbra, const UmpsQ<Nq,Scalar> &Vket, MatrixType &TL, MatrixType &TR);
 	
 private:
 	
@@ -205,26 +208,6 @@ iteration1 (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 {
 	Stopwatch<> IterationTimer;
 	
-//	MatrixType TL(M*M,M*M); TL.setZero();
-//	MatrixType TR(M*M,M*M); TR.setZero();
-////	for (size_t s=0; s<D; ++s)
-////	{
-////		// only for real:
-////		TL += kroneckerProduct(Vout.state.A[GAUGE::L][0][s].block[0], Vout.state.A[GAUGE::L][0][s].block[0]); 
-////		TR += kroneckerProduct(Vout.state.A[GAUGE::R][0][s].block[0], Vout.state.A[GAUGE::R][0][s].block[0]);
-////	}
-//	for (size_t s=0; s<D; ++s)
-//	for (size_t i=0; i<M; ++i)
-//	for (size_t j=0; j<M; ++j)
-//	for (size_t k=0; k<M; ++k)
-//	for (size_t l=0; l<M; ++l)
-//	{
-//		size_t r = i + M*l; // note: rows of A & cols of A† (= rows of A*) become new rows of T
-//		size_t c = j + M*k; // note: cols of A & rows of A† (= cols of A*) become new cols of T
-//		TL(r,c) += Vout.state.A[GAUGE::L][0][s].block[0](i,j) * Vout.state.A[GAUGE::L][0][s].block[0].adjoint()(k,l);
-//		TR(r,c) += Vout.state.A[GAUGE::R][0][s].block[0](i,j) * Vout.state.A[GAUGE::R][0][s].block[0].adjoint()(k,l);
-//	}
-	
 	MatrixType Reigen = Vout.state.C[0].block[0] * Vout.state.C[0].block[0].adjoint();
 	MatrixType Leigen = Vout.state.C[0].block[0].adjoint() * Vout.state.C[0].block[0];
 	
@@ -347,10 +330,8 @@ prepare (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout, size_t M_i
 
 template<size_t Nq, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Nq,MpHamiltonian,Scalar>::
-iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
+make_explicitT (const UmpsQ<Nq,Scalar> &Vbra, const UmpsQ<Nq,Scalar> &Vket, MatrixType &TL, MatrixType &TR)
 {
-	Stopwatch<> IterationTimer;
-	
 //	vector<vector<MatrixType> > TL(H.auxdim());
 //	vector<vector<MatrixType> > TR(H.auxdim());
 //	
@@ -385,6 +366,33 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 //		TL[a][b](r,c) += iW.value() * Vout.state.A[GAUGE::L][0][s2].block[0](i,j) * Vout.state.A[GAUGE::L][0][s1].block[0].adjoint()(k,l);
 //		TR[a][b](r,c) += iW.value() * Vout.state.A[GAUGE::R][0][s2].block[0](i,j) * Vout.state.A[GAUGE::R][0][s1].block[0].adjoint()(k,l);
 //	}
+	
+	TL.resize(M*M,M*M); TL.setZero();
+	TR.resize(M*M,M*M); TR.setZero();
+//	for (size_t s=0; s<D; ++s)
+//	{
+//		// only for real:
+//		TL += kroneckerProduct(Vout.state.A[GAUGE::L][0][s].block[0], Vout.state.A[GAUGE::L][0][s].block[0]); 
+//		TR += kroneckerProduct(Vout.state.A[GAUGE::R][0][s].block[0], Vout.state.A[GAUGE::R][0][s].block[0]);
+//	}
+	for (size_t s=0; s<D; ++s)
+	for (size_t i=0; i<M; ++i)
+	for (size_t j=0; j<M; ++j)
+	for (size_t k=0; k<M; ++k)
+	for (size_t l=0; l<M; ++l)
+	{
+		size_t r = i + M*l; // note: rows of A & cols of A† (= rows of A*) become new rows of T
+		size_t c = j + M*k; // note: cols of A & rows of A† (= cols of A*) become new cols of T
+		TL(r,c) += Vket.A[GAUGE::L][0][s].block[0](i,j) * Vbra.A[GAUGE::L][0][s].block[0].adjoint()(k,l);
+		TR(r,c) += Vket.A[GAUGE::R][0][s].block[0](i,j) * Vbra.A[GAUGE::R][0][s].block[0].adjoint()(k,l);
+	}
+}
+
+template<size_t Nq, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Nq,MpHamiltonian,Scalar>::
+iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
+{
+	Stopwatch<> IterationTimer;
 	
 	MatrixType Reigen = Vout.state.C[0].block[0] * Vout.state.C[0].block[0].adjoint();
 	MatrixType Leigen = Vout.state.C[0].block[0].adjoint() * Vout.state.C[0].block[0];
@@ -504,6 +512,22 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	LanczosSolver<PivotMatrixQ<Nq,Scalar,Scalar>,PivotVector0Q<Nq,Scalar>,Scalar> Lucy(LANCZOS::REORTHO::FULL);
 	Lucy.set_dimK(min(30ul, HeffMPO.dim));
 	Lucy.edgeState(HeffMPO,gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, true);
+	
+//	cout << "gC.state.A=" << endl << gC.state.A.block[0].adjoint() * gC.state.A.block[0] << endl << endl;
+//	EigenSolver<MatrixType> Eugen(gC.state.A.block[0]);
+//	cout << Eugen.eigenvalues().cwiseAbs().transpose() << endl << endl;
+//	cout << Eugen.eigenvectors() << endl << endl;
+	
+	for (size_t i=0; i<M; ++i)
+	{
+		if (gC.state.A.block[0](0,i) < 0.)
+		{
+			gC.state.A.block[0].col(i) *= -1.;
+		}
+	}
+	
+//	cout << "gAC.state.A=" << endl << gAC.state.A[0].block[0] << endl << endl;
+	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		lout << "e0(C)=" << setprecision(13) << gC.energy << ", time" << LanczosTimer.info() << ", " << Lucy.info() << endl;
@@ -514,7 +538,8 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	
 	Vout.state.A[GAUGE::C][0] = gAC.state.A;
 	Vout.state.C[0]           = gC.state.A;
-	(err_var>0.1)? Vout.state.svdDecompose(0) : Vout.state.polarDecompose(0);
+//	(err_var>0.1)? Vout.state.svdDecompose(0) : Vout.state.polarDecompose(0);
+	Vout.state.svdDecompose(0);
 	
 	double epsL, epsR;
 	Vout.state.calc_epsLR(0,epsL,epsR);
@@ -660,64 +685,73 @@ iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	L[dW-1][0].setIdentity();
 	
 	Stopwatch<> GMresTimer;
-	for (int b=dW-2; b>=0; --b)
-	{
-		YL[b] = make_YL(b, H.W[0], H.W[1], L, Vout.state.A[GAUGE::L][0], Vout.state.A[GAUGE::L][1], HeffMPO.qloc);
-		
-		boost::multi_array<Scalar,4> Warray = make_Warray(b,H);
-		
-		Scalar Wsum = 0;
-		for (size_t s1=0; s1<D; ++s1)
-		for (size_t s2=0; s2<D; ++s2)
-		for (size_t s3=0; s3<D; ++s3)
-		for (size_t s4=0; s4<D; ++s4)
-		{
-			Wsum += Warray[s1][s2][s3][s4];
-		}
-		
-//		if (TL[b][b].norm() == 0.)
-//		if (accumulate(Warray.begin(),Warray.end(),0) == 0.)
-		if (Wsum == 0.)
-		{
-			L[b][0] = YL[b];
-		}
-		else
-		{
-			double e = (YL[b]*Reigen).trace();
-//			L[b][0] = linearL(YL[b], TL[b][b], Reigen, e);
-			solve_linear(GAUGE::L, ApairL, YL[b], Reigen, Warray, e, L[b][0]);
-		}
-	}
 	
-	R[0][0].resize(M,M);
-	R[0][0].setIdentity();
-	
-	for (int a=1; a<dW; ++a)
+//	#pragma omp parallel sections
 	{
-		YR[a] = make_YR(a, H.W[0], H.W[1], R, Vout.state.A[GAUGE::R][0], Vout.state.A[GAUGE::R][1], HeffMPO.qloc);
-		
-		boost::multi_array<Scalar,4> Warray = make_Warray(a,H);
-		
-		Scalar Wsum = 0;
-		for (size_t s1=0; s1<D; ++s1)
-		for (size_t s2=0; s2<D; ++s2)
-		for (size_t s3=0; s3<D; ++s3)
-		for (size_t s4=0; s4<D; ++s4)
+//		#pragma omp section
 		{
-			Wsum += Warray[s1][s2][s3][s4];
+			for (int b=dW-2; b>=0; --b)
+			{
+				YL[b] = make_YL(b, H.W[0], H.W[1], L, Vout.state.A[GAUGE::L][0], Vout.state.A[GAUGE::L][1], HeffMPO.qloc);
+				
+				boost::multi_array<Scalar,4> Warray = make_Warray(b,H);
+				
+				Scalar Wsum = 0;
+				for (size_t s1=0; s1<D; ++s1)
+				for (size_t s2=0; s2<D; ++s2)
+				for (size_t s3=0; s3<D; ++s3)
+				for (size_t s4=0; s4<D; ++s4)
+				{
+					Wsum += Warray[s1][s2][s3][s4];
+				}
+				
+		//		if (TL[b][b].norm() == 0.)
+		//		if (accumulate(Warray.begin(),Warray.end(),0) == 0.)
+				if (Wsum == 0.)
+				{
+					L[b][0] = YL[b];
+				}
+				else
+				{
+					double e = (YL[b]*Reigen).trace();
+		//			L[b][0] = linearL(YL[b], TL[b][b], Reigen, e);
+					solve_linear(GAUGE::L, ApairL, YL[b], Reigen, Warray, e, L[b][0]);
+				}
+			}
 		}
-		
-//		if (TR[a][a].norm() == 0.)
-//		if (accumulate(Warray.begin(),Warray.end(),0) == 0.)
-		if (Wsum == 0.)
+//		#pragma omp section
 		{
-			R[a][0] = YR[a];
-		}
-		else
-		{
-			double e = (Leigen*YR[a]).trace();
-//			R[a][0] = linearR(YR[a], TR[a][a], Leigen, e);
-			solve_linear(GAUGE::R, ApairR, YR[a], Leigen, Warray, e, R[a][0]);
+			R[0][0].resize(M,M);
+			R[0][0].setIdentity();
+			
+			for (int a=1; a<dW; ++a)
+			{
+				YR[a] = make_YR(a, H.W[0], H.W[1], R, Vout.state.A[GAUGE::R][0], Vout.state.A[GAUGE::R][1], HeffMPO.qloc);
+				
+				boost::multi_array<Scalar,4> Warray = make_Warray(a,H);
+				
+				Scalar Wsum = 0;
+				for (size_t s1=0; s1<D; ++s1)
+				for (size_t s2=0; s2<D; ++s2)
+				for (size_t s3=0; s3<D; ++s3)
+				for (size_t s4=0; s4<D; ++s4)
+				{
+					Wsum += Warray[s1][s2][s3][s4];
+				}
+				
+		//		if (TR[a][a].norm() == 0.)
+		//		if (accumulate(Warray.begin(),Warray.end(),0) == 0.)
+				if (Wsum == 0.)
+				{
+					R[a][0] = YR[a];
+				}
+				else
+				{
+					double e = (Leigen*YR[a]).trace();
+		//			R[a][0] = linearR(YR[a], TR[a][a], Leigen, e);
+					solve_linear(GAUGE::R, ApairR, YR[a], Leigen, Warray, e, R[a][0]);
+				}
+			}
 		}
 	}
 	
@@ -975,14 +1009,14 @@ solve_linear (GAUGE::OPTION gauge, const vector<Biped<Nq,Matrix<Scalar,Dynamic,D
               const MatrixType &hLR, const MatrixType &LReigen, 
               vector<Scalar> Wvec, double e, MatrixType &Hres)
 {
-	TransferMatrix<Nq,Scalar> T(gauge, A, LReigen, Wvec);
+	TransferMatrix<Nq,Scalar> T(gauge, A, A, LReigen, Wvec);
 	
 	MatrixType bvec = hLR;
 	bvec -= e * MatrixType::Identity(bvec.rows(),bvec.cols());
 	
 	GMResSolver<TransferMatrix<Nq,Scalar>,MatrixType> Gimli;
 	Gimli.set_dimK(min(100ul,M));
-	Gimli.compute(T,bvec,Hres);
+	Gimli.solve_linear(T,bvec,Hres);
 }
 
 template<size_t Nq, typename MpHamiltonian, typename Scalar>
@@ -991,14 +1025,14 @@ solve_linear (GAUGE::OPTION gauge, const vector<vector<Biped<Nq,Matrix<Scalar,Dy
               const MatrixType &hLR, const MatrixType &LReigen, 
               boost::multi_array<Scalar,4> Warray, double e, MatrixType &Hres)
 {
-	TransferMatrix<Nq,Scalar> T(gauge, A, LReigen, Warray, {D,D});
+	TransferMatrix<Nq,Scalar> T(gauge, A, A, LReigen, Warray, {D,D});
 	
 	MatrixType bvec = hLR;
 	bvec -= e * MatrixType::Identity(bvec.rows(),bvec.cols());
 	
 	GMResSolver<TransferMatrix<Nq,Scalar>,MatrixType> Gimli;
 	Gimli.set_dimK(min(100ul,M));
-	Gimli.compute(T,bvec,Hres);
+	Gimli.solve_linear(T,bvec,Hres);
 }
 
 //template<size_t Nq, typename MpHamiltonian, typename Scalar>

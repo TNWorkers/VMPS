@@ -14,6 +14,10 @@ struct GAUGE
 	enum OPTION {L=0, R=1, C=2};
 };
 
+#include "VumpsTransferMatrix.h"
+#include "LanczosSolver.h"
+#include "ArnoldiSolver.h"
+
 //template<typename MatrixType>
 //void unique_QR (const MatrixType &M, MatrixType &Qmatrix, MatrixType &Rmatrix)
 //{
@@ -82,6 +86,7 @@ template<size_t Nq, typename Scalar=double>
 class UmpsQ
 {
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
+typedef Matrix<complex<double>,Dynamic,Dynamic> CMatrixType;
 typedef Matrix<Scalar,Dynamic,1>       VectorType;
 	
 public:
@@ -107,9 +112,8 @@ public:
 	void svdDecompose (size_t loc);
 	void polarDecompose (size_t loc);
 	
-	void calc_SchmidtSpectrum();
-	VectorXd SchmidtSpectrum (size_t loc);
-	double entropy (size_t loc);
+	VectorXd singularValues (size_t loc=0);
+	double entropy (size_t loc=0);
 	
 	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
@@ -128,12 +132,16 @@ public:
 	size_t calc_Mmax() const;
 	double memory (MEMUNIT memunit) const;
 	
+	complex<double> dot (const UmpsQ<Nq,Scalar> &Vket) const;
+	
+//private:
+	
 	size_t N_sites;
 	size_t Dmax;
 	double eps_svd = 1e-7;
 	size_t N_sv;
 	
-	ArrayXd truncWeight;
+	void calc_singularValues (size_t loc=0);
 	
 	// sets of all unique incoming & outgoing indices for convenience
 	vector<vector<qarray<Nq> > > inset;
@@ -144,12 +152,11 @@ public:
 	qarray<Nq> Qtot;
 	
 	std::array<vector<vector<Biped<Nq,MatrixType> > >,3> A; // A[L/R/C][l][s].block[q]
-	vector<Biped<Nq,MatrixType> > C; // zero-site part C[l]
-	vector<vector<VectorType> > Sigma;
+	vector<Biped<Nq,MatrixType> >                        C; // zero-site part C[l]
+	vector<vector<VectorType> >                          Sigma;
 	
-	bool SCHMIDT_SPECTRUM_CALCULATED = false;
 	vector<VectorXd> Csingular;
-	vector<double> S;
+	VectorXd S;
 };
 
 template<size_t Nq, typename Scalar>
@@ -177,7 +184,8 @@ info() const
 	ss << "Lcell=" << N_sites << ", ";
 	ss << "Mmax=" << calc_Mmax() << " (Dmax=" << calc_Dmax() << "), ";
 //	ss << "Nqmax=" << calc_Nqmax() << ", ";
-	ss << "trunc_weight=" << truncWeight.sum() << ", ";
+//	ss << "trunc_weight=" << truncWeight.sum() << ", ";
+	ss << "S=" << S.transpose() << ", ";
 	ss << "mem=" << round(memory(GB),3) << "GB";
 //	"overhead=" << round(overhead(MB),3) << "MB";
 	
@@ -284,9 +292,6 @@ resize (size_t Dmax_input)
 	inset.resize(N_sites);
 	outset.resize(N_sites);
 	
-	truncWeight.resize(N_sites); truncWeight.setZero();
-//	entropy.resize(N_sites-1); entropy.setConstant(numeric_limits<double>::quiet_NaN());
-	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		inset[l].push_back(qvacuum<Nq>());
@@ -321,6 +326,10 @@ resize (size_t Dmax_input)
 		C[l].block.resize(1);
 		C[l].block[0].resize(Dmax,Dmax);
 	}
+	
+	Csingular.clear();
+	Csingular.resize(N_sites);
+	S.resize(N_sites);
 }
 
 template<size_t Nq, typename Scalar>
@@ -362,6 +371,8 @@ setRandom()
 	{
 		A[GAUGE::C][l][s].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
 	}
+	
+	calc_singularValues();
 }
 
 template<size_t Nq, typename Scalar>
@@ -450,39 +461,41 @@ test_ortho (double tol) const
 }
 
 template<size_t Nq, typename Scalar>
-void UmpsQ<Nq,Scalar>::
-calc_SchmidtSpectrum()
+complex<double> UmpsQ<Nq,Scalar>::
+dot (const UmpsQ<Nq,Scalar> &Vket) const
 {
-	Csingular.clear();
-	Csingular.resize(N_sites);
-	S.clear();
-	S.resize(N_sites);
+	MatrixType LRdummy;
+	size_t Mbra = A[GAUGE::R][0][0].block[0].rows();
+	size_t Mket = Vket.A[GAUGE::R][0][0].block[0].rows();
 	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		BDCSVD<MatrixType> Jack(C[l].block[0]);
-		Csingular[l] = Jack.singularValues();
-		S[l] = -(Csingular[l].array().square() * Csingular[l].array().square().log()).sum();
-	}
+	TransferMatrix<Nq,double> TR(GAUGE::R, A[GAUGE::R][0], Vket.A[GAUGE::R][0], LRdummy, {});
+	CMatrixType Reigen(Mket,Mbra);
 	
-	SCHMIDT_SPECTRUM_CALCULATED = true;
+	ArnoldiSolver<TransferMatrix<Nq,double>,CMatrixType> Arnie;
+	Arnie.set_dimK(min(100ul,Mbra*Mket));
+	complex<double> lambda;
+	
+	Arnie.calc_dominant(TR,Reigen,lambda);
+	
+	return lambda;
+}
+
+template<size_t Nq, typename Scalar>
+void UmpsQ<Nq,Scalar>::
+calc_singularValues (size_t loc)
+{
+	BDCSVD<MatrixType> Jack(C[loc].block[0]);
+	Csingular[loc] = Jack.singularValues();
+	size_t Nnz = (Jack.singularValues().array() > 0.).count();
+	S(loc) = -(Csingular[loc].head(Nnz).array().square() * Csingular[loc].head(Nnz).array().square().log()).sum();
 }
 
 template<size_t Nq, typename Scalar>
 VectorXd UmpsQ<Nq,Scalar>::
-SchmidtSpectrum (size_t loc)
+singularValues (size_t loc)
 {
 	assert(loc<N_sites);
-	
-	if (SCHMIDT_SPECTRUM_CALCULATED)
-	{
-		return Csingular[loc];
-	}
-	else
-	{
-		calc_SchmidtSpectrum();
-		return Csingular[loc];
-	}
+	return Csingular[loc];
 }
 
 template<size_t Nq, typename Scalar>
@@ -490,16 +503,7 @@ double UmpsQ<Nq,Scalar>::
 entropy (size_t loc)
 {
 	assert(loc<N_sites);
-	
-	if (SCHMIDT_SPECTRUM_CALCULATED)
-	{
-		return S[loc];
-	}
-	else
-	{
-		calc_SchmidtSpectrum();
-		return S[loc];
-	}
+	return S(loc);
 }
 
 // creates AL, AR from AC, C
@@ -555,6 +559,11 @@ polarDecompose (size_t loc)
 		{
 			Jack.compute(C[loc].block[q],ComputeThinU|ComputeThinV);
 			UC.push_back(Jack.matrixU()*Jack.matrixV().adjoint());
+			
+			// get the singular values and the entropy while at it (C[loc].dim=1 assumed):
+			Csingular[loc] = Jack.singularValues();
+			size_t Nnz = (Jack.singularValues().array() > 0.).count();
+			S(loc) = -(Csingular[loc].head(Nnz).array().square() * Csingular[loc].head(Nnz).array().square().log()).sum();
 		}
 		
 		// update AL
@@ -611,6 +620,11 @@ polarDecompose (size_t loc)
 		{
 			Jack.compute(C[locC].block[q],ComputeThinU|ComputeThinV);
 			UC.push_back(Jack.matrixU()*Jack.matrixV().adjoint());
+			
+			// get the singular values and the entropy while at it (C[loc].dim=1 assumed):
+			Csingular[loc] = Jack.singularValues();
+			size_t Nnz = (Jack.singularValues().array() > 0.).count();
+			S(loc) = -(Csingular[loc].head(Nnz).array().square() * Csingular[loc].head(Nnz).array().square().log()).sum();
 		}
 		
 		// update AR
@@ -751,7 +765,8 @@ svdDecompose (size_t loc)
 		stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
 		{
-			A[GAUGE::L][loc][svec[i]].block[qvec[i]] = Jack.matrixU().block(stitch,0, Nrowsvec[i],Nret) * Jack.matrixV().adjoint().topRows(Nret);
+			A[GAUGE::L][loc][svec[i]].block[qvec[i]] = Jack.matrixU().block(stitch,0, Nrowsvec[i],Nret) * 
+			                                           Jack.matrixV().adjoint().topRows(Nret);
 			stitch += Nrowsvec[i];
 		}
 	}
@@ -799,10 +814,13 @@ svdDecompose (size_t loc)
 		stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
 		{
-			A[GAUGE::R][loc][svec[i]].block[qvec[i]] = Jack.matrixU().leftCols(Nret) * Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i]);
+			A[GAUGE::R][loc][svec[i]].block[qvec[i]] = Jack.matrixU().leftCols(Nret) * 
+			                                           Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i]);
 			stitch += Ncolsvec[i];
 		}
 	}
+	
+	calc_singularValues(loc);
 }
 
 template<size_t Nq, typename Scalar>
@@ -944,7 +962,7 @@ decompose (size_t loc, const vector<vector<Biped<Nq,MatrixType> > > &Apair)
 		}
 	}
 	
-	truncWeight(loc) = truncWeightSub.sum();
+//	truncWeight(loc) = truncWeightSub.sum();
 }
 
 #endif
