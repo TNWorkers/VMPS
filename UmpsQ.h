@@ -190,7 +190,7 @@ info() const
 	ss << "Mmax=" << calc_Mmax() << " (Dmax=" << calc_Dmax() << "), ";
 //	ss << "Nqmax=" << calc_Nqmax() << ", ";
 //	ss << "trunc_weight=" << truncWeight.sum() << ", ";
-	ss << "S=" << S.transpose() << ", ";
+	ss << "S=(" << S.transpose() << "), ";
 	ss << "mem=" << round(memory(GB),3) << "GB";
 //	"overhead=" << round(overhead(MB),3) << "MB";
 	
@@ -469,11 +469,40 @@ template<size_t Nq, typename Scalar>
 complex<double> UmpsQ<Nq,Scalar>::
 dot (const UmpsQ<Nq,Scalar> &Vket) const
 {
+	assert(N_sites == Vket.length());
+	
 	MatrixType LRdummy;
 	size_t Mbra = A[GAUGE::R][0][0].block[0].rows();
 	size_t Mket = Vket.A[GAUGE::R][0][0].block[0].rows();
 	
-	TransferMatrix<Nq,double> TR(GAUGE::R, A[GAUGE::R][0], Vket.A[GAUGE::R][0], LRdummy, {});
+	TransferMatrix<Nq,double> TR;
+	
+	if (N_sites == 1)
+	{
+		TR = TransferMatrix<Nq,double>(GAUGE::R, A[GAUGE::R][0], Vket.A[GAUGE::R][0], LRdummy, {});
+	}
+	else if (N_sites == 2)
+	{
+		vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > ApairR;
+		contract_AA(A[GAUGE::R][0], qloc[0], A[GAUGE::R][1], qloc[1], ApairR);
+		
+		vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > ApairKetR;
+		contract_AA(Vket.A[GAUGE::R][0], qloc[0], Vket.A[GAUGE::R][1], qloc[1], ApairKetR);
+		
+		size_t D0 = qloc[0].size();
+		size_t D1 = qloc[1].size();
+		boost::multi_array<double,4> WarrayDummy(boost::extents[D0][D0][D1][D1]);
+		for (size_t s1=0; s1<D0; ++s1)
+		for (size_t s2=0; s2<D0; ++s2)
+		for (size_t s3=0; s3<D1; ++s3)
+		for (size_t s4=0; s4<D1; ++s4)
+		{
+			WarrayDummy[s1][s2][s3][s4] = (s1==s2 and s3==s4)? 1.:0.;
+		}
+		
+		TR.Warray.resize(boost::extents[D0][D0][D1][D1]); // This resize is necessary. I hate boost::multi_array. :-(
+		TR = TransferMatrix<Nq,double>(GAUGE::R, ApairR, ApairKetR, LRdummy, WarrayDummy, {D0,D1});
+	}
 	CMatrixType Reigen(Mket,Mbra);
 	
 	ArnoldiSolver<TransferMatrix<Nq,double>,CMatrixType> Arnie;

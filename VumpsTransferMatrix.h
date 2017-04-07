@@ -63,7 +63,7 @@ inline void setZero (Matrix<Scalar,Dynamic,Dynamic> &M)
 // if H.LReigen.rows()!=0, 1-T+|1><LReigen| is used
 template<size_t Nq, typename Scalar1, typename Scalar2>
 void HxV (const TransferMatrix<Nq,Scalar1> &H, const Matrix<Scalar2,Dynamic,Dynamic> &Vin, Matrix<Scalar2,Dynamic,Dynamic> &Vout)
-{ 
+{
 	Vout = Vin;
 	
 	if (H.LReigen.rows() == 0)

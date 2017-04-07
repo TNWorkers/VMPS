@@ -526,21 +526,6 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	Lucy.set_dimK(min(30ul, HeffMPO.dim));
 	Lucy.edgeState(HeffMPO,gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, true);
 	
-//	cout << "gC.state.A=" << endl << gC.state.A.block[0].adjoint() * gC.state.A.block[0] << endl << endl;
-//	EigenSolver<MatrixType> Eugen(gC.state.A.block[0]);
-//	cout << Eugen.eigenvalues().cwiseAbs().transpose() << endl << endl;
-//	cout << Eugen.eigenvectors() << endl << endl;
-	
-	for (size_t i=0; i<M; ++i)
-	{
-		if (gC.state.A.block[0](0,i) < 0.)
-		{
-			gC.state.A.block[0].col(i) *= -1.;
-		}
-	}
-	
-//	cout << "gAC.state.A=" << endl << gAC.state.A[0].block[0] << endl << endl;
-	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		lout << "time" << LanczosTimer.info() << ", " << Lucy.info() << endl;
@@ -555,8 +540,7 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	
 	Vout.state.A[GAUGE::C][0] = gAC.state.A;
 	Vout.state.C[0]           = gC.state.A;
-//	(err_var>0.1)? Vout.state.svdDecompose(0) : Vout.state.polarDecompose(0);
-	Vout.state.svdDecompose(0);
+	(err_var>0.1)? Vout.state.svdDecompose(0) : Vout.state.polarDecompose(0);
 	
 	double epsL, epsR;
 	Vout.state.calc_epsLR(0,epsL,epsR);
@@ -961,7 +945,7 @@ iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		size_t standard_precision = cout.precision();
-		lout << "S=" << Vout.state.entropy(0) << "," << Vout.state.entropy(1) << endl;
+		lout << "S=" << Vout.state.entropy(0) << ", " << Vout.state.entropy(1) << endl;
 		lout << eigeninfo() << endl;
 		lout << IterationTimer.info("full iteration") << endl;
 		lout << endl;
