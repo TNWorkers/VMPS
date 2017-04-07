@@ -88,7 +88,9 @@ class UmpsQ
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 typedef Matrix<complex<double>,Dynamic,Dynamic> CMatrixType;
 typedef Matrix<Scalar,Dynamic,1>       VectorType;
-	
+
+template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
+
 public:
 	
 	/**Does nothing.*/
@@ -134,7 +136,9 @@ public:
 	
 	complex<double> dot (const UmpsQ<Nq,Scalar> &Vket) const;
 	
-//private:
+	const vector<Biped<Nq,MatrixType> > &A_at (GAUGE::OPTION g, size_t loc) const {return A[g][loc];};
+	
+private:
 	
 	size_t N_sites;
 	size_t Dmax;

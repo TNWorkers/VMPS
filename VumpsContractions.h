@@ -625,7 +625,7 @@ Scalar avg (const UmpsQ<Nq,Scalar> &Vbra,
 	for (size_t l=0; l<O.length(); ++l)
 	{
 		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
-		contract_L(B, Vbra.A[g][l%Vket.length()], O.W_at(l), Vket.A[g][l%Vket.length()], O.locBasis(l), Bnext);
+		contract_L(B, Vbra.A_at(g,l%Vket.length()), O.W_at(l), Vket.A_at(g,l%Vket.length()), O.locBasis(l), Bnext);
 		
 		B.clear();
 		B = Bnext;

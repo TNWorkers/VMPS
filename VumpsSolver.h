@@ -21,7 +21,7 @@ class VumpsSolver
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 typedef Matrix<Scalar,Dynamic,1>       VectorType;
 typedef boost::multi_array<Scalar,4> TwoSiteHamiltonian;
-	
+
 public:
 	
 	VumpsSolver (DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
@@ -253,7 +253,11 @@ iteration1 (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
-		lout << "e0(AC)=" << setprecision(13) << g1.energy << ", time" << LanczosTimer.info() << ", " << Lutz1.info() << endl;
+		lout << "time" << LanczosTimer.info() << ", " << Lutz1.info() << endl;
+	}
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << "e0(AC)=" << setprecision(13) << g1.energy << endl;
 	}
 	
 	Heff[0].dim = M*M;
@@ -266,7 +270,11 @@ iteration1 (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
-		lout << "e0(C)=" << setprecision(13) << g0.energy << ", time" << LanczosTimer.info() << ", " << Lutz0.info() << endl;
+		lout << "time" << LanczosTimer.info() << ", " << Lutz0.info() << endl;
+	}
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << "e0(C)=" << setprecision(13) << g0.energy << endl;
 	}
 	
 	Vout.state.A[GAUGE::C][0] = g1.state.A;
@@ -288,6 +296,7 @@ iteration1 (Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		size_t standard_precision = cout.precision();
+		lout << "S=" << Vout.state.entropy(0) << endl;
 		lout << eigeninfo() << endl;
 		lout << IterationTimer.info("full iteration") << endl;
 		lout << endl;
@@ -497,7 +506,11 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	Lutz.edgeState(HeffMPO,gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, true);
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
-		lout << "e0(AC)=" << setprecision(13) << gAC.energy << ", time" << LanczosTimer.info() << ", " << Lutz.info() << endl;
+		lout << "time" << LanczosTimer.info() << ", " << Lutz.info() << endl;
+	}
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << "e0(AC)=" << setprecision(13) << gAC.energy << endl;
 	}
 	
 	Eigenstate<PivotVector0Q<Nq,Scalar> > gC;
@@ -530,7 +543,11 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
-		lout << "e0(C)=" << setprecision(13) << gC.energy << ", time" << LanczosTimer.info() << ", " << Lucy.info() << endl;
+		lout << "time" << LanczosTimer.info() << ", " << Lucy.info() << endl;
+	}
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << "e0(C)=" << setprecision(13) << gC.energy << endl;
 	}
 	
 	eL = (YL[0]*Reigen).trace();
@@ -556,6 +573,7 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		size_t standard_precision = cout.precision();
+		lout << "S=" << Vout.state.entropy(0) << endl;
 		lout << eigeninfo() << endl;
 		lout << IterationTimer.info("full iteration") << endl;
 		lout << endl;
@@ -870,7 +888,11 @@ iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 		Lutz.edgeState(HeffMPO,gAC[l], LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
-			lout << "l=" << l << ", e0(AC)=" << setprecision(13) << gAC[l].energy << ", time" << LanczosTimer.info() << ", " << Lutz.info() << endl;
+			lout << "l=" << l << ", time" << LanczosTimer.info() << ", " << Lutz.info() << endl;
+		}
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+		{
+			lout << "e0(AC)=" << setprecision(13) << gAC[l].energy << endl;
 		}
 		
 		if (l==0)
@@ -898,7 +920,11 @@ iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 		Lucy.edgeState(HeffMPO,gC[l], LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
-			lout << "l=" << l << ", e0(C)=" << setprecision(13) << gC[l].energy << ", time" << LanczosTimer.info() << ", " << Lucy.info() << endl;
+			lout << "l=" << l << ", time" << LanczosTimer.info() << ", " << Lucy.info() << endl;
+		}
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+		{
+			lout << "e0(C)=" << setprecision(13) << gC[l].energy << endl;
 		}
 	}
 	
@@ -935,6 +961,7 @@ iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		size_t standard_precision = cout.precision();
+		lout << "S=" << Vout.state.entropy(0) << "," << Vout.state.entropy(1) << endl;
 		lout << eigeninfo() << endl;
 		lout << IterationTimer.info("full iteration") << endl;
 		lout << endl;
@@ -986,12 +1013,6 @@ edgeState (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout, qarray<N
 	while (((err_eigval >= tol_eigval or err_var >= tol_var) and N_iterations < max_iterations) or N_iterations < min_iterations)
 	{
 		(N_sites==1)? iteration1(H,Vout): iteration2(H,Vout);
-		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-		{
-			Vout.state.calc_SchmidtSpectrum();
-			lout << "Entropy S=" << Vout.state.entropy() << endl;
-		}
-//		iteration1(H,Vout);
 	}
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
