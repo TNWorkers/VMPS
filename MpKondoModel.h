@@ -69,7 +69,8 @@ public:
 	\param U : \f$U\f$
 	*/
 	static HamiltonianTermsXd set_operators (const FermionBase &F, const SpinBase &S, 
-	                                         double J, double Bz, MatrixXd tInter, double tIntra, double Bx=0., double tPrime=0., double U=0., double mu=0.);
+	                                         double J, double Bz, MatrixXd tInter, double tIntra, double Bx=0., double tPrime=0., 
+	                                         double U=0., double mu=0., double K=0.);
 	
 	/**Makes half-integers in the output for the magnetization quantum number.*/
 	static string N_halveM (qarray<2> qnum);
@@ -124,7 +125,7 @@ protected:
 const std::array<string,2> KondoModel::NMlabel{"N","M"};
 
 HamiltonianTermsXd KondoModel::
-set_operators (const FermionBase &F, const SpinBase &S, double J, double Bz, MatrixXd tInter, double tIntra, double Bx, double tPrime, double U, double mu)
+set_operators (const FermionBase &F, const SpinBase &S, double J, double Bz, MatrixXd tInter, double tIntra, double Bx, double tPrime, double U, double mu, double K)
 {
 	HamiltonianTermsXd Terms;
 	
@@ -144,7 +145,7 @@ set_operators (const FermionBase &F, const SpinBase &S, double J, double Bz, Mat
 	H1 = kroneckerProduct(IdSpins,F.HubbardHamiltonian(Uvec,muvec,tIntra));
 	
 	//set Heisenberg part of Hamiltonian
-	H2 = kroneckerProduct(S.HeisenbergHamiltonian(0.,0.,Bz,Bx),IdElectrons);
+	H2 = kroneckerProduct(S.HeisenbergHamiltonian(0.,0.,Bz,Bx,K),IdElectrons);
 	
 	//set interaction part of Hamiltonian.
 	for (int i=0; i<F.orbitals(); ++i)

@@ -28,7 +28,7 @@ public:
 	\param D_input : \f$2S+1\f$ (impurity spin)*/
 	TransverseKondoModel (size_t L_input, double J_input, 
 	                      initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input={}, initializer_list<double> Bxloc_input={}, 
-	                      size_t D_input=2, bool CALC_SQUARE=true);
+	                      double K_input=0., size_t D_input=2, bool CALC_SQUARE=true);
 	
 	/**Constructs a Kondo Impurity Model (aka a diluted Kondo Model) using vectors for the set of impurities.
 	\param L_input : chain length
@@ -40,7 +40,7 @@ public:
 	\param D_input : \f$2S+1\f$ (impurity spin)*/
 	TransverseKondoModel (size_t L_input, double J_input, 
 	                      vector<size_t> imploc_input, vector<double> Bzloc_input, vector<double> Bxloc_input, 
-	                      size_t D_input=2, bool CALC_SQUARE=true);
+	                      double K_input=0., size_t D_input=2, bool CALC_SQUARE=true);
 	
 	/**Labels the conserved quantum number as "N".*/
 	static const std::array<string,1> Nlabel;
@@ -84,6 +84,7 @@ private:
 	
 	double J=-1.;
 	size_t D=2;
+	double K=0;
 	
 	vector<double> Bzloc, Bxloc;
 	vector<size_t> imploc;
@@ -134,8 +135,8 @@ qimp (size_t N_legs, size_t D)
 };
 
 TransverseKondoModel::
-TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, vector<double> Bxloc_input, size_t D_input, bool CALC_SQUARE)
-:MpoQ<1,double>(), J(J_input), imploc(imploc_input), D(D_input)
+TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_input, vector<double> Bzloc_input, vector<double> Bxloc_input, double K_input, size_t D_input, bool CALC_SQUARE)
+:MpoQ<1,double>(), J(J_input), imploc(imploc_input), D(D_input), K(K_input)
 {
 	F = FermionBase(1);
 	S = SpinBase(1,D);
@@ -173,7 +174,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 	
 	// make a pretty label
 	stringstream ss;
-	ss << "(J=" << J << ",imps={";
+	ss << "(J=" << J << ",K=" << K << ",imps={";
 	for (auto i=0; i<imploc.size(); ++i)
 	{
 		ss << imploc[i];
@@ -217,7 +218,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			if (l==0)
 			{
 				G[l].setRowVector(6,8);
-				G[l] = ::Generator(KondoModel::set_operators(F,S, J,Bzloc[i],MatrixXd::Identity(1,1),0.,Bxloc[i],0.,0.)).row(5);
+				G[l] = ::Generator(KondoModel::set_operators(F,S, J,Bzloc[i],MatrixXd::Identity(1,1),0.,Bxloc[i],0.,0.,0.,K)).row(5);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setRowVector(6*6,8);
@@ -227,7 +228,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else if (l==this->N_sites-1)
 			{
 				G[l].setColVector(6,8);
-				G[l] = ::Generator(KondoModel::set_operators(F,S, J,Bzloc[i],MatrixXd::Identity(1,1),0.,Bxloc[i],0.,0.)).col(0);
+				G[l] = ::Generator(KondoModel::set_operators(F,S, J,Bzloc[i],MatrixXd::Identity(1,1),0.,Bxloc[i],0.,0.,0.,K)).col(0);
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setColVector(6*6,8);
@@ -237,7 +238,7 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 			else
 			{
 				G[l].setMatrix(6,8);
-				G[l] = ::Generator(KondoModel::set_operators(F,S, J,Bzloc[i],MatrixXd::Identity(1,1),0.,Bxloc[i],0.,0.));
+				G[l] = ::Generator(KondoModel::set_operators(F,S, J,Bzloc[i],MatrixXd::Identity(1,1),0.,Bxloc[i],0.,0.,0.,K));
 				if (CALC_SQUARE == true)
 				{
 					Gsq[l].setMatrix(6*6,8);
@@ -299,10 +300,10 @@ TransverseKondoModel (size_t L_input, double J_input, vector<size_t> imploc_inpu
 }
 
 TransverseKondoModel::
-TransverseKondoModel (size_t L_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input, initializer_list<double> Bxloc_input, size_t D_input, bool CALC_SQUARE)
+TransverseKondoModel (size_t L_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzloc_input, initializer_list<double> Bxloc_input, double K_input, size_t D_input, bool CALC_SQUARE)
 :TransverseKondoModel(L_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), 
                       vector<double>(begin(Bzloc_input),end(Bzloc_input)), 
-                      vector<double>(begin(Bxloc_input),end(Bxloc_input)), D_input, CALC_SQUARE)
+                      vector<double>(begin(Bxloc_input),end(Bxloc_input)), K_input, D_input, CALC_SQUARE)
 {}
 
 MpoQ<1> TransverseKondoModel::

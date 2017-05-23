@@ -132,7 +132,6 @@ MatrixType make_YL (size_t b,
                     const vector<qarray<Nq> > &qloc)
 {
 	size_t D  = qloc.size();
-	size_t dW = W12.size();
 	size_t M  = AL1[0].block[0].cols();
 	
 	MatrixType Mout;
@@ -177,7 +176,6 @@ MatrixType make_YR (size_t a,
                     const vector<qarray<Nq> > &qloc)
 {
 	size_t D  = qloc.size();
-	size_t dW = W12.size();
 	size_t M  = AR1[0].block[0].cols();
 	
 	MatrixType Mout;
@@ -211,6 +209,255 @@ MatrixType make_YR (size_t a,
 	
 	return Mout;
 }
+
+template<size_t Nq, typename MatrixType, typename Scalar, typename MpoScalar>
+MatrixType make_YL (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
+                    const boost::multi_array<MatrixType,LEGLIMIT> &L,
+                    const vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > &Apair,
+                    const vector<qarray<Nq> > &qloc)
+{
+	size_t D  = qloc.size();
+	size_t M  = Apair[0][0].block[0].cols();
+	
+	MatrixType Mout;
+	Mout.resize(M,M);
+	Mout.setZero();
+	
+	for (size_t i=0; i<W.size(); ++i)
+	{
+		size_t a = get<0>(W[i]);
+		size_t s1 = get<1>(W[i]);
+		size_t s2 = get<2>(W[i]);
+		size_t s3 = get<3>(W[i]);
+		size_t s4 = get<4>(W[i]);
+		
+		Mout += get<5>(W[i]) * Apair[s1][s3].block[0].adjoint() * L[a][0] * Apair[s2][s4].block[0];
+	}
+	
+	return Mout;
+}
+
+template<size_t Nq, typename MatrixType, typename Scalar, typename MpoScalar>
+MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
+                    const boost::multi_array<MatrixType,LEGLIMIT> &R,
+                    const vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > &Apair,
+                    const vector<qarray<Nq> > &qloc)
+{
+	size_t D  = qloc.size();
+	size_t M  = Apair[0][0].block[0].cols();
+	
+	MatrixType Mout;
+	Mout.resize(M,M);
+	Mout.setZero();
+	
+	for (size_t i=0; i<W.size(); ++i)
+	{
+		size_t b = get<0>(W[i]);
+		size_t s1 = get<1>(W[i]);
+		size_t s2 = get<2>(W[i]);
+		size_t s3 = get<3>(W[i]);
+		size_t s4 = get<4>(W[i]);
+		
+		Mout += get<5>(W[i]) * Apair[s2][s4].block[0] * R[b][0] * Apair[s1][s3].block[0].adjoint();
+	}
+	
+	return Mout;
+}
+
+template<size_t Nq, typename MatrixType, typename Scalar, typename MpoScalar>
+MatrixType make_YL (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
+                    const boost::multi_array<MatrixType,LEGLIMIT> &L,
+                    const boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett, 
+                    const vector<qarray<Nq> > &qloc)
+{
+	size_t D  = qloc.size();
+	size_t M = Aquartett[0][0][0][0].block[0].cols();
+	
+	MatrixType Mout;
+	Mout.resize(M,M);
+	Mout.setZero();
+	
+	for (size_t i=0; i<W.size(); ++i)
+	{
+		size_t a = get<0>(W[i]);
+		size_t s1 = get<1>(W[i]);
+		size_t s2 = get<2>(W[i]);
+		size_t s3 = get<3>(W[i]);
+		size_t s4 = get<4>(W[i]);
+		size_t s5 = get<5>(W[i]);
+		size_t s6 = get<6>(W[i]);
+		size_t s7 = get<7>(W[i]);
+		size_t s8 = get<8>(W[i]);
+		
+		Mout += get<9>(W[i]) * Aquartett[s1][s3][s5][s7].block[0].adjoint() * L[a][0] * Aquartett[s2][s4][s6][s8].block[0];
+	}
+	
+	return Mout;
+}
+
+template<size_t Nq, typename MatrixType, typename Scalar, typename MpoScalar>
+MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
+                    const boost::multi_array<MatrixType,LEGLIMIT> &R,
+                    const boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett, 
+                    const vector<qarray<Nq> > &qloc)
+{
+	size_t D  = qloc.size();
+	size_t M = Aquartett[0][0][0][0].block[0].cols();
+	
+	MatrixType Mout;
+	Mout.resize(M,M);
+	Mout.setZero();
+	
+	for (size_t i=0; i<W.size(); ++i)
+	{
+		size_t b = get<0>(W[i]);
+		size_t s1 = get<1>(W[i]);
+		size_t s2 = get<2>(W[i]);
+		size_t s3 = get<3>(W[i]);
+		size_t s4 = get<4>(W[i]);
+		size_t s5 = get<5>(W[i]);
+		size_t s6 = get<6>(W[i]);
+		size_t s7 = get<7>(W[i]);
+		size_t s8 = get<8>(W[i]);
+		
+		Mout += get<9>(W[i]) * Aquartett[s2][s4][s6][s8].block[0] * R[b][0] * Aquartett[s1][s3][s5][s7].block[0].adjoint();
+	}
+	
+	return Mout;
+}
+
+//template<size_t Nq, typename MatrixType, typename Scalar, typename MpoScalar>
+//MatrixType make_YL (size_t b,
+//                    const vector<vector<SparseMatrix<MpoScalar> > > &W12,
+//                    const vector<vector<SparseMatrix<MpoScalar> > > &W34,
+//                    const vector<vector<SparseMatrix<MpoScalar> > > &W56,
+//                    const vector<vector<SparseMatrix<MpoScalar> > > &W78,
+//                    const boost::multi_array<MatrixType,LEGLIMIT> &L,
+//                    const boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett, 
+//                    const vector<qarray<Nq> > &qloc)
+//{
+//	size_t D  = qloc.size();
+////	size_t M  = AL1[0].block[0].cols();
+//	size_t M = Aquartett[0][0][0][0].block[0].cols();
+//	
+//	MatrixType Mout;
+//	Mout.resize(M,M);
+//	Mout.setZero();
+//	
+//	for (size_t s1=0; s1<D; ++s1)
+//	for (size_t s2=0; s2<D; ++s2)
+//	for (int k12=0; k12<W12[s1][s2].outerSize(); ++k12)
+//	for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(W12[s1][s2],k12); iW12; ++iW12)
+//	for (size_t s3=0; s3<D; ++s3)
+//	for (size_t s4=0; s4<D; ++s4)
+//	for (int k34=0; k34<W34[s3][s4].outerSize(); ++k34)
+//	for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(W34[s3][s4],k34); iW34; ++iW34)
+//	for (size_t s5=0; s5<D; ++s5)
+//	for (size_t s6=0; s6<D; ++s6)
+//	for (int k56=0; k56<W56[s5][s6].outerSize(); ++k56)
+//	for (typename SparseMatrix<MpoScalar>::InnerIterator iW56(W56[s5][s6],k56); iW56; ++iW56)
+//	for (size_t s7=0; s7<D; ++s7)
+//	for (size_t s8=0; s8<D; ++s8)
+//	for (int k78=0; k78<W78[s7][s8].outerSize(); ++k78)
+//	for (typename SparseMatrix<MpoScalar>::InnerIterator iW78(W78[s7][s8],k78); iW78; ++iW78)
+//	{
+//		if (iW12.col()==iW34.row() and 
+//		    iW34.col()==iW56.row() and 
+//		    iW56.col()==iW78.row())
+//		{
+//			size_t a = iW12.row();
+//			
+//			if (a>b and b==iW78.col() and abs(iW12.value())>1e-15 and abs(iW34.value())>1e-15 
+//			                          and abs(iW56.value())>1e-15 and abs(iW78.value())>1e-15)
+//			{
+////				Mout += iW12.value() * iW34.value() *
+////				        iW56.value() * iW78.value() *
+////				        AL4[s7].block[0].adjoint() *
+////				        AL3[s5].block[0].adjoint() *
+////				        AL2[s3].block[0].adjoint() *
+////				        AL1[s1].block[0].adjoint() *
+////				        L[a][0] *
+////				        AL1[s2].block[0] *
+////				        AL2[s4].block[0] *
+////				        AL3[s6].block[0] *
+////				        AL4[s8].block[0];
+//				Mout += iW12.value() * iW34.value() *
+//				        iW56.value() * iW78.value() *
+//				        Aquartett[s1][s3][s5][s7].block[0].adjoint() * 
+//				        L[a][0] *
+//				        Aquartett[s2][s4][s6][s8].block[0];
+//			}
+//		}
+//	}
+//	
+//	return Mout;
+//}
+
+//template<size_t Nq, typename MatrixType, typename Scalar, typename MpoScalar>
+//MatrixType make_YR (size_t a,
+//                    const vector<vector<SparseMatrix<MpoScalar> > > &W12,
+//                    const vector<vector<SparseMatrix<MpoScalar> > > &W34,
+//                    const vector<vector<SparseMatrix<MpoScalar> > > &W56,
+//                    const vector<vector<SparseMatrix<MpoScalar> > > &W78,
+//                    const boost::multi_array<MatrixType,LEGLIMIT> &R,
+//                    const boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett, 
+//                    const vector<qarray<Nq> > &qloc)
+//{
+//	size_t D  = qloc.size();
+//	size_t M = Aquartett[0][0][0][0].block[0].cols();
+//	
+//	MatrixType Mout;
+//	Mout.resize(M,M);
+//	Mout.setZero();
+//	
+//	for (size_t s1=0; s1<D; ++s1)
+//	for (size_t s2=0; s2<D; ++s2)
+//	for (int k12=0; k12<W12[s1][s2].outerSize(); ++k12)
+//	for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(W12[s1][s2],k12); iW12; ++iW12)
+//	for (size_t s3=0; s3<D; ++s3)
+//	for (size_t s4=0; s4<D; ++s4)
+//	for (int k34=0; k34<W34[s3][s4].outerSize(); ++k34)
+//	for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(W34[s3][s4],k34); iW34; ++iW34)
+//	for (size_t s5=0; s5<D; ++s5)
+//	for (size_t s6=0; s6<D; ++s6)
+//	for (int k56=0; k56<W56[s5][s6].outerSize(); ++k56)
+//	for (typename SparseMatrix<MpoScalar>::InnerIterator iW56(W56[s5][s6],k56); iW56; ++iW56)
+//	for (size_t s7=0; s7<D; ++s7)
+//	for (size_t s8=0; s8<D; ++s8)
+//	for (int k78=0; k78<W78[s7][s8].outerSize(); ++k78)
+//	for (typename SparseMatrix<MpoScalar>::InnerIterator iW78(W78[s7][s8],k78); iW78; ++iW78)
+//	{
+//		if (iW12.col()==iW34.row() and
+//		    iW34.col()==iW56.row() and 
+//		    iW56.col()==iW78.row())
+//		{
+//			size_t b = iW78.col();
+//			
+//			if (a>b and a==iW12.row() and abs(iW12.value())>1e-15 and abs(iW34.value())>1e-15 
+//			                          and abs(iW56.value())>1e-15 and abs(iW78.value())>1e-15)
+//			{
+////				Mout += iW12.value() * iW34.value() *
+////				        iW56.value() * iW78.value() *
+////				        AR1[s2].block[0] *
+////				        AR2[s4].block[0] *
+////				        AR3[s6].block[0] *
+////				        AR4[s8].block[0] *
+////				        R[b][0] *
+////				        AR4[s7].block[0].adjoint() *
+////				        AR3[s5].block[0].adjoint() *
+////				        AR2[s3].block[0].adjoint() *
+////				        AR1[s1].block[0].adjoint();
+//				Mout += iW12.value() * iW34.value() *
+//				        iW56.value() * iW78.value() *
+//				        Aquartett[s2][s4][s6][s8].block[0] * 
+//				        R[b][0] *
+//				        Aquartett[s1][s3][s5][s7].block[0].adjoint();
+//			}
+//		}
+//	}
+//	
+//	return Mout;
+//}
 
 //template<size_t Nq, typename MatrixType, typename MpoScalar>
 //double energy_L (const boost::multi_array<MpoScalar,4> &H2site, 

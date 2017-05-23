@@ -10,8 +10,9 @@ struct TransferMatrix
 	                const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Abra_input, 
 	                const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Aket_input, 
 	                const Matrix<Scalar,Dynamic,Dynamic> &LReigen_input, 
-	                vector<Scalar> Wvec_input)
-	:Abra(Abra_input), Aket(Aket_input), gauge(gauge_input), LReigen(LReigen_input), Wvec(Wvec_input)
+	                vector<Scalar> Wvec_input,
+	                vector<size_t> D_input)
+	:Abra(Abra_input), Aket(Aket_input), gauge(gauge_input), LReigen(LReigen_input), Wvec(Wvec_input), D(D_input)
 	{
 		assert(Aket.size() == Abra.size());
 		
@@ -30,15 +31,32 @@ struct TransferMatrix
 	                const vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > &ApairKet_input, 
 	                const Matrix<Scalar,Dynamic,Dynamic> &LReigen_input, 
 	                boost::multi_array<double,4> Warray_input,
-	                std::array<size_t,2> D_input)
+	                vector<size_t> D_input)
 	:ApairBra(ApairBra_input), ApairKet(ApairKet_input), gauge(gauge_input), LReigen(LReigen_input), D(D_input)
 	{
 		assert(ApairKet.size() == ApairBra.size());
+		assert(D_input.size() == 2);
+		
 		Warray.resize(boost::extents[D[0]][D[0]][D[1]][D[1]]);
 		Warray = Warray_input;
 	}
 	
+	TransferMatrix (GAUGE::OPTION gauge_input, 
+	                const boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> &AquartettBra_input, 
+	                const boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> &AquartettKet_input, 
+	                const Matrix<Scalar,Dynamic,Dynamic> &LReigen_input, 
+	                boost::multi_array<double,8> Warray4_input,
+	                vector<size_t> D_input)
+	:AquartettBra(AquartettBra_input), AquartettKet(AquartettKet_input), gauge(gauge_input), LReigen(LReigen_input), D(D_input)
+	{
+		assert(ApairKet.size() == ApairBra.size());
+		assert(D_input.size() == 4);
+		Warray4.resize(boost::extents[D[0]][D[0]][D[1]][D[1]][D[2]][D[2]][D[3]][D[3]]);
+		Warray4 = Warray4_input;
+	}
+	
 	GAUGE::OPTION gauge;
+	vector<size_t> D;
 	
 	vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > Aket;
 	vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > Abra;
@@ -47,7 +65,10 @@ struct TransferMatrix
 	vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > ApairKet;
 	vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > ApairBra;
 	boost::multi_array<double,4> Warray;
-	std::array<size_t,2> D;
+	
+	boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> AquartettKet;
+	boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> AquartettBra;
+	boost::multi_array<double,8> Warray4;
 	
 	Matrix<Scalar,Dynamic,Dynamic> LReigen;
 };
@@ -119,6 +140,45 @@ void HxV (const TransferMatrix<Nq,Scalar1> &H, const Matrix<Scalar2,Dynamic,Dyna
 			}
 		}
 	}
+	else if (H.AquartettKet.size() != 0)
+	{
+		if (H.gauge == GAUGE::R)
+		{
+			for (size_t s1=0; s1<H.D[0]; ++s1)
+			for (size_t s2=0; s2<H.D[0]; ++s2)
+			for (size_t s3=0; s3<H.D[1]; ++s3)
+			for (size_t s4=0; s4<H.D[1]; ++s4)
+			for (size_t s5=0; s5<H.D[2]; ++s5)
+			for (size_t s6=0; s6<H.D[2]; ++s6)
+			for (size_t s7=0; s7<H.D[3]; ++s7)
+			for (size_t s8=0; s8<H.D[3]; ++s8)
+			{
+				if (H.Warray4[s1][s2][s3][s4][s5][s6][s7][s8] != 0.)
+				{
+					Vout += factor * H.Warray4[s1][s2][s3][s4][s5][s6][s7][s8] * 
+					        H.AquartettKet[s2][s4][s6][s8].block[0] * Vin * H.AquartettBra[s1][s3][s5][s7].block[0].adjoint();
+				}
+			}
+		}
+		else if (H.gauge == GAUGE::L)
+		{
+			for (size_t s1=0; s1<H.D[0]; ++s1)
+			for (size_t s2=0; s2<H.D[0]; ++s2)
+			for (size_t s3=0; s3<H.D[1]; ++s3)
+			for (size_t s4=0; s4<H.D[1]; ++s4)
+			for (size_t s5=0; s5<H.D[2]; ++s5)
+			for (size_t s6=0; s6<H.D[2]; ++s6)
+			for (size_t s7=0; s7<H.D[3]; ++s7)
+			for (size_t s8=0; s8<H.D[3]; ++s8)
+			{
+				if (H.Warray4[s1][s2][s3][s4][s5][s6][s7][s8] != 0.)
+				{
+					Vout += factor * H.Warray4[s1][s2][s3][s4][s5][s6][s7][s8] * 
+					        H.AquartettBra[s1][s3][s5][s7].block[0].adjoint() * Vin * H.AquartettKet[s2][s4][s6][s8].block[0];
+				}
+			}
+		}
+	}
 	
 	if (H.LReigen.rows() != 0)
 	{
@@ -144,6 +204,10 @@ inline size_t dim (const TransferMatrix<Nq,Scalar> &H)
 	else if (H.ApairKet.size() != 0)
 	{
 		return H.ApairKet[0][0].block[0].cols() * H.ApairBra[0][0].block[0].rows();
+	}
+	else if (H.AquartettKet.size() != 0)
+	{
+		return H.AquartettKet[0][0][0][0].block[0].cols() * H.AquartettBra[0][0][0][0].block[0].rows();
 	}
 }
 

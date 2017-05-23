@@ -128,7 +128,7 @@ public:
 	
 	size_t length() const {return N_sites;}
 	
-	void calc_epsLR (size_t loc, double &epsL, double &epsR);
+	void calc_epsLRsq (size_t loc, double &epsL, double &epsR);
 	
 	size_t calc_Dmax() const;
 	size_t calc_Mmax() const;
@@ -158,6 +158,8 @@ private:
 	std::array<vector<vector<Biped<Nq,MatrixType> > >,3> A; // A[L/R/C][l][s].block[q]
 	vector<Biped<Nq,MatrixType> >                        C; // zero-site part C[l]
 	vector<vector<VectorType> >                          Sigma;
+	
+	std::array<vector<vector<Biped<Nq,MatrixType> > >,3> N; // A[L/R/C][l][s].block[q]
 	
 	bool SCHMIDT_SPECTRUM_CALCULATED = false;
 	vector<VectorXd> Csingular;
@@ -291,6 +293,12 @@ resize (size_t Dmax_input)
 		{
 			A[g][l].resize(qloc[l].size());
 		}
+		
+		N[g].resize(N_sites);
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			N[g][l].resize(qloc[l].size());
+		}
 	}
 	C.resize(N_sites);
 	Sigma.resize(N_sites);
@@ -313,6 +321,12 @@ resize (size_t Dmax_input)
 		A[g][l][s].dict.insert({qarray2<Nq>{qvacuum<Nq>(),qvacuum<Nq>()}, A[g][l][s].dim});
 		A[g][l][s].dim = 1;
 		A[g][l][s].block.resize(1);
+		
+		N[g][l][s].in.push_back(qvacuum<Nq>());
+		N[g][l][s].out.push_back(qvacuum<Nq>());
+		N[g][l][s].dict.insert({qarray2<Nq>{qvacuum<Nq>(),qvacuum<Nq>()}, A[g][l][s].dim});
+		N[g][l][s].dim = 1;
+		N[g][l][s].block.resize(1);
 	}
 	
 	for (size_t g=0; g<3; ++g)
@@ -428,7 +442,6 @@ test_ortho (double tol) const
 		for (size_t q=0; q<C[l].dim; ++q)
 		{
 			norms[q] = (C[l].block[q] * C[l].block[q].adjoint()).trace();
-			cout << "q=" << q << ", norm=" << norms[q] << endl;
 		}
 		
 		// interpret result
@@ -474,12 +487,13 @@ dot (const UmpsQ<Nq,Scalar> &Vket) const
 	MatrixType LRdummy;
 	size_t Mbra = A[GAUGE::R][0][0].block[0].rows();
 	size_t Mket = Vket.A[GAUGE::R][0][0].block[0].rows();
+	size_t D0 = qloc[0].size();
 	
 	TransferMatrix<Nq,double> TR;
 	
 	if (N_sites == 1)
 	{
-		TR = TransferMatrix<Nq,double>(GAUGE::R, A[GAUGE::R][0], Vket.A[GAUGE::R][0], LRdummy, {});
+		TR = TransferMatrix<Nq,double>(GAUGE::R, A[GAUGE::R][0], Vket.A[GAUGE::R][0], LRdummy, {}, {D0});
 	}
 	else if (N_sites == 2)
 	{
@@ -489,7 +503,6 @@ dot (const UmpsQ<Nq,Scalar> &Vket) const
 		vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > ApairKetR;
 		contract_AA(Vket.A[GAUGE::R][0], qloc[0], Vket.A[GAUGE::R][1], qloc[1], ApairKetR);
 		
-		size_t D0 = qloc[0].size();
 		size_t D1 = qloc[1].size();
 		boost::multi_array<double,4> WarrayDummy(boost::extents[D0][D0][D1][D1]);
 		for (size_t s1=0; s1<D0; ++s1)
@@ -520,7 +533,7 @@ calc_singularValues (size_t loc)
 {
 	BDCSVD<MatrixType> Jack(C[loc].block[0]);
 	Csingular[loc] = Jack.singularValues();
-	size_t Nnz = (Jack.singularValues().array() > 0.).count();
+	size_t Nnz = (Jack.singularValues().array() > 0).count();
 	S(loc) = -(Csingular[loc].head(Nnz).array().square() * Csingular[loc].head(Nnz).array().square().log()).sum();
 }
 
@@ -596,7 +609,7 @@ polarDecompose (size_t loc)
 			
 			// get the singular values and the entropy while at it (C[loc].dim=1 assumed):
 			Csingular[loc] = Jack.singularValues();
-			size_t Nnz = (Jack.singularValues().array() > 0.).count();
+			size_t Nnz = (Jack.singularValues().array() > 0).count();
 			S(loc) = -(Csingular[loc].head(Nnz).array().square() * Csingular[loc].head(Nnz).array().square().log()).sum();
 		}
 		
@@ -644,7 +657,7 @@ polarDecompose (size_t loc)
 //		MatrixType UR, Rmatrix;
 //		unique_RQ(Aclump, UR, Rmatrix);
 		
-		size_t locC = (N_sites==1)? 0 : (loc-1)%2;
+		size_t locC = (N_sites==1)? 0 : (loc-1)%N_sites;
 		auto it = C[locC].dict.find(quple);
 		size_t qC = it->second;
 		
@@ -655,10 +668,10 @@ polarDecompose (size_t loc)
 			Jack.compute(C[locC].block[q],ComputeThinU|ComputeThinV);
 			UC.push_back(Jack.matrixU()*Jack.matrixV().adjoint());
 			
-			// get the singular values and the entropy while at it (C[loc].dim=1 assumed):
-			Csingular[loc] = Jack.singularValues();
-			size_t Nnz = (Jack.singularValues().array() > 0.).count();
-			S(loc) = -(Csingular[loc].head(Nnz).array().square() * Csingular[loc].head(Nnz).array().square().log()).sum();
+//			// get the singular values and the entropy while at it (C[loc].dim=1 assumed):
+//			Csingular[locC] = Jack.singularValues();
+//			size_t Nnz = (Jack.singularValues().array() > 0.).count();
+//			S(locC) = -(Csingular[locC].head(Nnz).array().square() * Csingular[locC].head(Nnz).array().square().log()).sum();
 		}
 		
 		// update AR
@@ -673,7 +686,7 @@ polarDecompose (size_t loc)
 
 template<size_t Nq, typename Scalar>
 void UmpsQ<Nq,Scalar>::
-calc_epsLR (size_t loc, double &epsL, double &epsR)
+calc_epsLRsq (size_t loc, double &epsLsq, double &epsRsq)
 {
 	for (size_t qout=0; qout<outset[loc].size(); ++qout)
 	{
@@ -683,10 +696,10 @@ calc_epsLR (size_t loc, double &epsL, double &epsR)
 		
 		// determine how many A's to glue together
 		vector<size_t> svec, qvec, Nrowsvec;
-		for (size_t s=0; s<qloc.size(); ++s)
+		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
 		{
-			if (A[GAUGE::C][loc][s].out[q] == outset[0][qout])
+			if (A[GAUGE::C][loc][s].out[q] == outset[loc][qout])
 			{
 				svec.push_back(s);
 				qvec.push_back(q);
@@ -706,17 +719,80 @@ calc_epsLR (size_t loc, double &epsL, double &epsR)
 		for (size_t i=0; i<svec.size(); ++i)
 		{
 			Aclump.block(stitch,0, Nrowsvec[i],Ncols) = A[GAUGE::C][loc][svec[i]].block[qvec[i]];
-			Acmp.block(stitch,0, Nrowsvec[i],Ncols)   = A[GAUGE::L][loc][svec[i]].block[qvec[i]];
+			Acmp.block  (stitch,0, Nrowsvec[i],Ncols) = A[GAUGE::L][loc][svec[i]].block[qvec[i]];
 			stitch += Nrowsvec[i];
 		}
 		
-		epsL = (Aclump-Acmp*C[loc].block[qC]).norm();
+		epsLsq = (Aclump-Acmp*C[loc].block[qC]).squaredNorm();
+		
+		BDCSVD<MatrixType> Jack;
+		Jack.compute(Acmp.adjoint(),ComputeFullU|ComputeFullV);
+		MatrixType NullSpace = Jack.matrixV().rightCols((qloc[loc].size()-1) * A[GAUGE::C][loc][0].block[0].rows());
+//		
+//		double epsL_ = (NullSpace.adjoint() * Aclump).norm();
+////		double epsL__ = sqrt(Aclump.squaredNorm() - (Acmp*C[loc].block[qC]).squaredNorm());
+//		
+//		MatrixType B = Aclump-Acmp*C[loc].block[qC];
+//		size_t D = qloc[loc].size();
+//		size_t M = A[GAUGE::C][loc][0].block[0].rows();
+//		
+////		double epsL___ = 0;
+////		for (size_t s=0; s<qloc[loc].size(); ++s)
+////		{
+////			epsL___ += (A[GAUGE::C][loc][s].block[0] - A[GAUGE::L][loc][s].block[0] * C[loc].block[0]).squaredNorm();
+////		}
+////		epsL___ = sqrt(epsL___);
+//		
+//		cout << "nullspace test: " << (Acmp.adjoint() * NullSpace).norm() << endl;
+//		cout << "ortho test: " << (NullSpace.adjoint() * NullSpace - MatrixType::Identity(NullSpace.cols(),NullSpace.cols())).norm() << endl;
+//		cout << "norm(NullSpace)=" << NullSpace.norm() << endl;
+//		
+		stitch = 0;
+		for (size_t i=0; i<svec.size(); ++i)
+		{
+			N[GAUGE::L][loc][svec[i]].block[0] = NullSpace.block(stitch,0, Nrowsvec[i],NullSpace.cols());
+			stitch += Nrowsvec[i];
+		}
+		
+//		MatrixType Ntest = N[GAUGE::L][loc][0].block[0].adjoint() * N[GAUGE::L][loc][0].block[0];
+//		for (size_t s=1; s<qloc[loc].size(); ++s)
+//		{
+//			Ntest += N[GAUGE::L][loc][s].block[0].adjoint() * N[GAUGE::L][loc][s].block[0];
+//		}
+//		cout << "NtestL1=" << (Ntest-MatrixType::Identity(Ntest.rows(),Ntest.cols())).norm() << endl;
+//		
+//		Ntest = N[GAUGE::L][loc][0].block[0].adjoint() * A[GAUGE::L][loc][0].block[0];
+//		for (size_t s=1; s<qloc[loc].size(); ++s)
+//		{
+//			Ntest += N[GAUGE::L][loc][s].block[0].adjoint() * A[GAUGE::L][loc][s].block[0];
+//		}
+//		cout << "NtestL2=" << Ntest.norm() << endl;
+//		
+//		MatrixType U(D*M,D*M);
+//		U.leftCols(M) = Acmp;
+//		U.rightCols((D-1)*M) = NullSpace;
+//		
+//		cout << "Utest1=" << (U.adjoint() * U - MatrixType::Identity(D*M,D*M)).norm() << endl;
+//		cout << "Utest2=" << (U * U.adjoint() - MatrixType::Identity(D*M,D*M)).norm() << endl;
+//		cout << "Bnorm=" << B.norm() << endl;
+//		cout << "UBnorm=" << (U.adjoint()*B).norm() << "\t" << (U*B).norm() << endl;
+//		cout << (Acmp.adjoint()*B).norm() << endl;
+//		cout << (NullSpace.adjoint() * B).norm() << endl;
+//		
+//		MatrixType Cprime = A[GAUGE::L][loc][0].block[0].adjoint() * A[GAUGE::C][loc][0].block[0];
+//		for (size_t s=1; s<D; ++s)
+//		{
+//			Cprime += A[GAUGE::L][loc][s].block[0].adjoint() * A[GAUGE::C][loc][s].block[0];
+//		}
+//		cout << "Ctest=" << (Cprime-C[loc].block[0]).norm() << endl;
+//		
+//		cout << endl << "epsL = " << sqrt(epsLsq) << "\t" << epsL_ << endl << endl;
 	}
 	
 	for (size_t qin=0; qin<inset[loc].size(); ++qin)
 	{
 		qarray2<Nq> quple = {inset[loc][qin], inset[loc][qin]};
-		size_t locC = (N_sites==1)? 0 : (loc-1)%2;
+		size_t locC = (N_sites==1)? 0 : (loc-1)%N_sites;
 		auto it = C[locC].dict.find(quple);
 		size_t qC = it->second;
 		
@@ -748,7 +824,32 @@ calc_epsLR (size_t loc, double &epsL, double &epsR)
 			stitch += Ncolsvec[i];
 		}
 		
-		epsR = (Aclump-C[locC].block[qC]*Acmp).norm();
+		epsRsq = (Aclump-C[locC].block[qC]*Acmp).squaredNorm();
+		
+		BDCSVD<MatrixType> Jack;
+		Jack.compute(Acmp.adjoint(),ComputeFullU|ComputeFullV);
+		MatrixType NullSpace = Jack.matrixU().adjoint().bottomRows((qloc[loc].size()-1) * A[GAUGE::C][loc][0].block[0].rows());
+		
+		stitch = 0;
+		for (size_t i=0; i<svec.size(); ++i)
+		{
+			N[GAUGE::R][loc][svec[i]].block[0] = NullSpace.block(0,stitch, NullSpace.rows(),Ncolsvec[i]);
+			stitch += Ncolsvec[i];
+		}
+		
+//		MatrixType Ntest = N[GAUGE::R][loc][0].block[0] * N[GAUGE::R][loc][0].block[0].adjoint();
+//		for (size_t s=1; s<qloc[loc].size(); ++s)
+//		{
+//			Ntest += N[GAUGE::R][loc][s].block[0] * N[GAUGE::R][loc][s].block[0].adjoint();
+//		}
+//		cout << "NtestR1=" << (Ntest-MatrixType::Identity(Ntest.rows(),Ntest.cols())).norm() << endl;
+//		
+//		Ntest = A[GAUGE::R][loc][0].block[0] * N[GAUGE::R][loc][0].block[0].adjoint();
+//		for (size_t s=1; s<qloc[loc].size(); ++s)
+//		{
+//			Ntest += A[GAUGE::R][loc][s].block[0] * N[GAUGE::R][loc][s].block[0].adjoint();
+//		}
+//		cout << "NtestR2=" << Ntest.norm() << endl;
 	}
 }
 
@@ -808,7 +909,7 @@ svdDecompose (size_t loc)
 	for (size_t qin=0; qin<inset[loc].size(); ++qin)
 	{
 		qarray2<Nq> quple = {inset[loc][qin], inset[loc][qin]};
-		size_t locC = (N_sites==1)? 0 : (loc-1)%2;
+		size_t locC = (N_sites==1)? 0 : (loc-1)%N_sites;
 		auto it = C[locC].dict.find(quple);
 		size_t qC = it->second;
 		
