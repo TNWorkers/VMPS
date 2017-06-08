@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 
+#include "qbasis.h"
 #include "Biped.h"
 #include "Multipede.h"
 #include "DmrgJanitor.h"
@@ -27,38 +28,40 @@
 /**Matrix Product State with conserved quantum numbers (Abelian symmetries).
 \describe_Nq
 \describe_Scalar*/
-template<size_t Nq, typename Scalar=double>
-class MpsQ : public DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >
+template<typename Symmetry, typename Scalar=double>
+class MpsQ : public DmrgJanitor<PivotMatrixQ<Symmetry::Nq,Scalar,Scalar> >
 {
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
-
+typedef Symmetry::Nq Nq;
+	
 // Note: Cannot partially specialize template friends (or anything else, really). That sucks.
-template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
-template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
-template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
-template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
-template<size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
-template<size_t Nq_, typename S1, typename S2> friend void OxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
-template<size_t Nq_, typename S_> friend class MpsQ; // in order to exchange data between real & complex MpsQ
+template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
+template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
+template<typename Symmetry_, typename S1, typename S2> friend class MpsQCompressor;
+template<typename H, typename Symmetry_, typename S1, typename S2, typename V> friend class TDVPPropagator;
+template<typename Symmetry_, typename S1, typename S2> friend void HxV (const MpoQ<Symmetry_,S1> &H, const MpsQ<Symmetry_,S2> &Vin, MpsQ<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
+template<typename Symmetry_, typename S1, typename S2> friend void OxV (const MpoQ<Symmetry_,S1> &H, const MpsQ<Symmetry_,S2> &Vin, MpsQ<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
+template<typename Symmetry_, typename S_> friend class MpsQ; // in order to exchange data between real & complex MpsQ
 
 public:
 	
 	/**Does nothing.*/
-	MpsQ<Nq,Scalar>();
+	MpsQ<Symmetry,Scalar>();
 	
 //	Construct by setting all the relevant parameters.
 //	\param L_input : chain length
 //	\param Dmax : size cutoff (per subspace)
 //	\param qloc_input : local basis
 //	\param Qtot_input : target quantum number
-//	MpsQ<Nq,Scalar> (size_t L_input, size_t Dmax, std::array<qarray<Nq>,D> qloc_input, qarray<Nq> Qtot_input);
-	MpsQ<Nq,Scalar> (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_legs_input=1);
+//	MpsQ<Symmetry,Scalar> (size_t L_input, size_t Dmax, std::array<qarray<Nq>,D> qloc_input, qarray<Nq> Qtot_input);
+	MpsQ<Symmetry,Scalar> (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_legs_input=1);
+	MpsQ<Symmetry,Scalar> (size_t L_input, vector<Qbasis<Symmetry> > qloc_input, qarray<Nq> Qtot_input, size_t N_legs_input=1);
 	
 	/** Construct by pulling info from an MpoQ.
 	\param H : chain length and local basis will be retrieved from this MpoQ (less importantly, the quantum number labels and the format function as well)
 	\param Dmax : size cutoff (per subspace)
 	\param Qtot_input : target quantum number*/
-	template<typename Hamiltonian> MpsQ<Nq,Scalar> (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input);
+	template<typename Hamiltonian> MpsQ<Symmetry,Scalar> (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input);
 	
 	///\{
 	/**Sets all matrices to random using boost's uniform distribution from -1 to 1.
@@ -113,7 +116,7 @@ public:
 	
 	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from another MpsQ.
 	\param V : chain length, local basis and target quantum number will be equal to this MpsQ (less importantly, the quantum number labels and the format function as well)*/
-	template<typename OtherMatrixType> void outerResize (const MpsQ<Nq,OtherMatrixType> &V);
+	template<typename OtherMatrixType> void outerResize (const MpsQ<Symmetry,OtherMatrixType> &V);
 	
 	/**Resizes the block matrices.
 	\param Dmax : size cutoff (per subspace)*/
@@ -189,25 +192,25 @@ public:
 	\param alpha : scalar for scaling
 	\param Vin : MpsQ to be added
 	\param SVD_COMPRESS : If \p true, the resulting MpsQ is compressed using SVD. If \p false, the summation is exact (direct sum of the matrices).*/
-	template<typename OtherScalar> void addScale (OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, bool SVD_COMPRESS=false);
+	template<typename OtherScalar> void addScale (OtherScalar alpha, const MpsQ<Symmetry,Scalar> &Vin, bool SVD_COMPRESS=false);
 	
 	/**Performs MpsQ::addScale with \p alpha = 1.*/
-	MpsQ<Nq,Scalar>& operator+= (const MpsQ<Nq,Scalar> &Vin);
+	MpsQ<Symmetry,Scalar>& operator+= (const MpsQ<Symmetry,Scalar> &Vin);
 	
 	/**Performs MpsQ::addScale with \p alpha = -1.*/
-	MpsQ<Nq,Scalar>& operator-= (const MpsQ<Nq,Scalar> &Vin);
+	MpsQ<Symmetry,Scalar>& operator-= (const MpsQ<Symmetry,Scalar> &Vin);
 	
 	/**Performs \f$ \mathrel{*}= \alpha\f$. Applies it to the first site.*/
-	template<typename OtherScalar> MpsQ<Nq,Scalar>& operator*= (const OtherScalar &alpha);
+	template<typename OtherScalar> MpsQ<Symmetry,Scalar>& operator*= (const OtherScalar &alpha);
 	
 	/**Performs \f$ \mathrel{/}= \alpha\f$. Applies it to the first site.*/
-	template<typename OtherScalar> MpsQ<Nq,Scalar>& operator/= (const OtherScalar &alpha);
+	template<typename OtherScalar> MpsQ<Symmetry,Scalar>& operator/= (const OtherScalar &alpha);
 	
 	/**Casts the matrices from \p Scalar to \p OtherScalar.*/
-	template<typename OtherScalar> MpsQ<Nq,OtherScalar> cast() const;
+	template<typename OtherScalar> MpsQ<Symmetry,OtherScalar> cast() const;
 	
 	/**Calculates the scalar product with another MpsQ.*/
-	Scalar dot (const MpsQ<Nq,Scalar> &Vket) const;
+	Scalar dot (const MpsQ<Symmetry,Scalar> &Vket) const;
 	
 	/**Calculates the squared norm. Exploits the canonical form if possible, calculates the dot product with itself otherwise.*/
 	double squaredNorm() const;
@@ -219,10 +222,10 @@ public:
 	template<typename MpoScalar> Scalar locAvg2 (const MpoQ<Nq,MpoScalar> &O) const;
 	
 	/**Swaps with another MpsQ.*/
-	void swap (MpsQ<Nq,Scalar> &V);
+	void swap (MpsQ<Symmetry,Scalar> &V);
 	
 	/**Copies the control parameters from another MpsQ, i.e.\ all the cutoff tolerances specified in DmrgJanitor.*/
-	void get_controlParams (const MpsQ<Nq,Scalar> &V);
+	void get_controlParams (const MpsQ<Symmetry,Scalar> &V);
 	
 	/**For METTS.*/
 	void collapse();
@@ -287,6 +290,8 @@ private:
 	
 	/**local basis.*/
 	vector<vector<qarray<Nq> > > qloc;
+	vector<Qbasis<Symmetry> > qloc__;
+
 	std::array<string,Nq> qlabel = {};
 	qarray<Nq> Qtot;
 	
@@ -302,7 +307,7 @@ private:
 	void outerResizeNoSymm();
 	
 	// adds one site at a time in addScale, conserving memory
-	template<typename OtherScalar> void add_site (size_t loc, OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin);
+	template<typename OtherScalar> void add_site (size_t loc, OtherScalar alpha, const MpsQ<Symmetry,Scalar> &Vin);
 	
 	// sweep stuff RDM
 	void calc_noise (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, 
@@ -315,8 +320,8 @@ private:
 	void enrich_right (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H);
 };
 
-template<size_t Nq, typename Scalar>
-string MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+string MpsQ<Symmetry,Scalar>::
 info() const
 {
 	stringstream ss;
@@ -360,27 +365,27 @@ info() const
 	return ss.str();
 }
 
-template<size_t Nq, typename Scalar>
-MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+MpsQ<Symmetry,Scalar>::
 MpsQ()
-:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >()
+:DmrgJanitor<PivotMatrixQ<Symmetry::Nq,Scalar,Scalar> >()
 {
 	format = noFormat;
 //	qlabel = defaultQlabel<Nq>();
 }
 
-template<size_t Nq, typename Scalar>
-MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+MpsQ<Symmetry,Scalar>::
 MpsQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_legs_input)
-:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_legs(N_legs_input)
+:DmrgJanitor<PivotMatrixQ<Symmetry::Nq,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_legs(N_legs_input)
 {
 	format = noFormat;
 //	qlabel = defaultQlabel<Nq>();
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
-MpsQ<Nq,Scalar>::
+MpsQ<Symmetry,Scalar>::
 MpsQ (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
 :DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >()
 {
@@ -392,9 +397,9 @@ MpsQ (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
 	innerResize(Dmax);
 }
 
-// template<size_t Nq, typename Scalar>
+// template<typename Symmetry, typename Scalar>
 // template<typename Hamiltonian>
-// MpsQ<Nq,Scalar>::
+// MpsQ<Symmetry,Scalar>::
 // MpsQ (string filename)
 // 	:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >()
 // {
@@ -442,9 +447,9 @@ MpsQ (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
 // 	innerResize(DmaxCheck);
 // }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
-void MpsQ<Nq,Scalar>::
+void MpsQ<Symmetry,Scalar>::
 outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input)
 {
 	format = H.format;
@@ -454,10 +459,10 @@ outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input)
 	outerResize(H.length(), H.locBasis(), Qtot_input);
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename OtherMatrixType> 
-void MpsQ<Nq,Scalar>::
-outerResize (const MpsQ<Nq,OtherMatrixType> &V)
+void MpsQ<Symmetry,Scalar>::
+outerResize (const MpsQ<Symmetry,OtherMatrixType> &V)
 {
 	format = V.format;
 	qlabel = V.qlabel;
@@ -490,8 +495,8 @@ outerResize (const MpsQ<Nq,OtherMatrixType> &V)
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 resize_arrays()
 {
 	A.resize(this->N_sites);
@@ -505,9 +510,9 @@ resize_arrays()
 	entropy.resize(this->N_sites-1); entropy.setConstant(numeric_limits<double>::quiet_NaN());
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 //template<typename qIterator>
-void MpsQ<Nq,Scalar>::
+void MpsQ<Symmetry,Scalar>::
 outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input)
 {
 	this->N_sites = L_input;
@@ -620,8 +625,8 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 outerResizeNoSymm()
 {
 	assert (Nq == 0 and "Must have Nq=0 to call outerResizeNoSymm!");
@@ -644,8 +649,8 @@ outerResizeNoSymm()
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 innerResize (size_t Dmax)
 {
 	if (Nq == 0)
@@ -783,8 +788,8 @@ innerResize (size_t Dmax)
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 dynamicResize (DMRG::RESIZE::OPTION HOW_TO_RESIZE, size_t Dmax)
 {
 	if (HOW_TO_RESIZE == DMRG::RESIZE::CONSERV_INCR)
@@ -825,9 +830,9 @@ dynamicResize (DMRG::RESIZE::OPTION HOW_TO_RESIZE, size_t Dmax)
 	}
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
-void MpsQ<Nq,Scalar>::
+void MpsQ<Symmetry,Scalar>::
 setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 {
 //	outerResize<typename Hamiltonian::qarrayIterator>(config.size(), qloc, accumulate(config.begin(),config.end(),qvacuum<Nq>()));
@@ -861,8 +866,8 @@ setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 setRandom()
 {
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -877,8 +882,8 @@ setRandom()
 	this->pivot = -1;
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 setRandom (size_t loc)
 {
 	for (size_t s=0; s<qloc[loc].size(); ++s)
@@ -890,8 +895,8 @@ setRandom (size_t loc)
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 setZero()
 {
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -902,8 +907,8 @@ setZero()
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 canonize (DMRG::DIRECTION::OPTION DIR)
 {
 	if (DIR == DMRG::DIRECTION::LEFT)
@@ -919,8 +924,8 @@ canonize (DMRG::DIRECTION::OPTION DIR)
 }
 
 #ifdef USE_HDF5_STORAGE
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 save (string filename, string info)
 {
 	filename+=".h5";
@@ -948,8 +953,8 @@ save (string filename, string info)
 			}
 }
 
-template<size_t Nq, typename Scalar>
-size_t MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+size_t MpsQ<Symmetry,Scalar>::
 loadDmax (string filename)
 {
 	filename+=".h5";
@@ -961,8 +966,8 @@ loadDmax (string filename)
 	return Dmax;
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 load (string filename)
 {
 	filename+=".h5";
@@ -987,8 +992,8 @@ load (string filename)
 }
 #endif
 
-template<size_t Nq, typename Scalar>
-size_t MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+size_t MpsQ<Symmetry,Scalar>::
 calc_Mmax() const
 {
 //	size_t res = 0;
@@ -1021,8 +1026,8 @@ calc_Mmax() const
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
-size_t MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+size_t MpsQ<Symmetry,Scalar>::
 calc_Dmax() const
 {
 	size_t res = 0;
@@ -1038,8 +1043,8 @@ calc_Dmax() const
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
-size_t MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+size_t MpsQ<Symmetry,Scalar>::
 calc_Nqmax() const
 {
 	size_t res = 0;
@@ -1053,8 +1058,8 @@ calc_Nqmax() const
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 press_rdm (size_t loc, vector<vector<Biped<Nq,MatrixType> > > rhoArray, qarray<Nq> qnum, DMRG::DIRECTION::OPTION DIR, MatrixType &rho)
 {
 	MatrixXd rows(qloc[loc].size(),qloc[loc].size()); rows.setZero();
@@ -1099,8 +1104,8 @@ press_rdm (size_t loc, vector<vector<Biped<Nq,MatrixType> > > rhoArray, qarray<N
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar,Scalar> *H, bool DISCARD_U)
 {
 	vector<vector<Biped<Nq,MatrixType> > > rhoArray, rhoNoiseArray;
@@ -1334,8 +1339,8 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar,Scal
 	this->pivot = (loc==0)? 0 : loc-1;
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar,Scalar> *H, bool DISCARD_V)
 {
 	vector<vector<Biped<Nq,MatrixType> > > rhoArray, rhoNoiseArray;
@@ -1572,8 +1577,8 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar,Sca
 	this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 leftSplitStep (size_t loc, Biped<Nq,MatrixType> &C)
 {
 	#ifndef DMRG_DONT_USE_OPENMP
@@ -1647,8 +1652,8 @@ leftSplitStep (size_t loc, Biped<Nq,MatrixType> &C)
 	this->pivot = (loc==0)? 0 : loc-1;
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 rightSplitStep (size_t loc, Biped<Nq,MatrixType> &C)
 {
 	#ifndef DMRG_DONT_USE_OPENMP
@@ -1723,8 +1728,8 @@ rightSplitStep (size_t loc, Biped<Nq,MatrixType> &C)
 	this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 absorb (size_t loc, DMRG::DIRECTION::OPTION DIR, const Biped<Nq,MatrixType> &C)
 {
 	for (size_t qC=0; qC<C.dim; ++qC)
@@ -1754,8 +1759,8 @@ absorb (size_t loc, DMRG::DIRECTION::OPTION DIR, const Biped<Nq,MatrixType> &C)
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<Nq,MatrixType> > > &Apair, bool DISCARD_SV)
 {
 	ArrayXd truncWeightSub(outset[loc].size()); truncWeightSub.setZero();
@@ -1937,8 +1942,8 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<N
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 calc_noise (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, 
             const vector<vector<Biped<Nq,MatrixType> > > rho, 
                   vector<vector<Biped<Nq,MatrixType> > > &rhoNoise)
@@ -2065,8 +2070,8 @@ calc_noise (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H, DMRG::DIRECTION::OPTI
 }
 
 // works:
-//template<size_t Nq, typename Scalar>
-//void MpsQ<Nq,Scalar>::
+//template<typename Symmetry, typename Scalar>
+//void MpsQ<Symmetry,Scalar>::
 //calc_noise (PivotMatrixQ<Nq,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const vector<vector<Biped<Nq,MatrixType> > > rho, vector<vector<Biped<Nq,MatrixType> > > &rhoNoise)
 //{
 //	size_t dimB = (DIR==DMRG::DIRECTION::RIGHT)? H->L.dim : H->R.dim;
@@ -2259,8 +2264,8 @@ calc_noise (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H, DMRG::DIRECTION::OPTI
 //}
 
 // seems to work now:
-//template<size_t Nq, typename Scalar>
-//void MpsQ<Nq,Scalar>::
+//template<typename Symmetry, typename Scalar>
+//void MpsQ<Symmetry,Scalar>::
 //calc_noise (PivotMatrixQ<Nq,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const vector<vector<Biped<Nq,MatrixType> > > rho, vector<vector<Biped<Nq,MatrixType> > > &rhoNoise)
 //{
 //	size_t dimB = (DIR==DMRG::DIRECTION::RIGHT)? H->L.dim : H->R.dim;
@@ -2419,8 +2424,8 @@ calc_noise (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H, DMRG::DIRECTION::OPTI
 //	}
 //}
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 enrich_left (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H)
 {
 	if (this->alpha_rsvd != 0.)
@@ -2513,8 +2518,8 @@ enrich_left (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H)
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 enrich_right (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H)
 {
 	if (this->alpha_rsvd != 0.)
@@ -2608,9 +2613,9 @@ enrich_right (size_t loc, PivotMatrixQ<Nq,Scalar,Scalar> *H)
 	}
 }
 
-template<size_t Nq, typename Scalar>
-Scalar MpsQ<Nq,Scalar>::
-dot (const MpsQ<Nq,Scalar> &Vket) const
+template<typename Symmetry, typename Scalar>
+Scalar MpsQ<Symmetry,Scalar>::
+dot (const MpsQ<Symmetry,Scalar> &Vket) const
 {
 	if (Qtot != Vket.Qtarget())
 	{
@@ -2644,9 +2649,9 @@ dot (const MpsQ<Nq,Scalar> &Vket) const
 	return Mout.block[0].trace();
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename MpoScalar>
-Scalar MpsQ<Nq,Scalar>::
+Scalar MpsQ<Symmetry,Scalar>::
 locAvg (const MpoQ<Nq,MpoScalar> &O) const
 {
 	assert(this->pivot != -1);
@@ -2672,9 +2677,9 @@ locAvg (const MpoQ<Nq,MpoScalar> &O) const
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename MpoScalar>
-Scalar MpsQ<Nq,Scalar>::
+Scalar MpsQ<Symmetry,Scalar>::
 locAvg2 (const MpoQ<Nq,MpoScalar> &O) const
 {
 	assert(this->pivot != -1);
@@ -2707,8 +2712,8 @@ locAvg2 (const MpoQ<Nq,MpoScalar> &O) const
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
-double MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+double MpsQ<Symmetry,Scalar>::
 squaredNorm() const
 {
 	double res = 0.;
@@ -2729,9 +2734,9 @@ squaredNorm() const
 	return res;
 }
 
-template<size_t Nq, typename Scalar> 
-void MpsQ<Nq,Scalar>::
-swap (MpsQ<Nq,Scalar> &V)
+template<typename Symmetry, typename Scalar> 
+void MpsQ<Symmetry,Scalar>::
+swap (MpsQ<Symmetry,Scalar> &V)
 {
 	assert(Qtot == V.Qtarget() and this->N_sites == V.length());
 	
@@ -2765,9 +2770,9 @@ swap (MpsQ<Nq,Scalar> &V)
 	}
 }
 
-template<size_t Nq, typename Scalar> 
-void MpsQ<Nq,Scalar>::
-get_controlParams (const MpsQ<Nq,Scalar> &V)
+template<typename Symmetry, typename Scalar> 
+void MpsQ<Symmetry,Scalar>::
+get_controlParams (const MpsQ<Symmetry,Scalar> &V)
 {
 	this->format = V.format;
 	this->alpha_noise = V.alpha_noise;
@@ -2777,9 +2782,9 @@ get_controlParams (const MpsQ<Nq,Scalar> &V)
 	this->N_mow = V.N_mow;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename OtherScalar>
-MpsQ<Nq,Scalar>& MpsQ<Nq,Scalar>::
+MpsQ<Symmetry,Scalar>& MpsQ<Symmetry,Scalar>::
 operator*= (const OtherScalar &alpha)
 {
 	// scale the pivot site, if available; otherwise the first site
@@ -2791,9 +2796,9 @@ operator*= (const OtherScalar &alpha)
 	}
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename OtherScalar>
-MpsQ<Nq,Scalar>& MpsQ<Nq,Scalar>::
+MpsQ<Symmetry,Scalar>& MpsQ<Symmetry,Scalar>::
 operator/= (const OtherScalar &alpha)
 {
 	// scale the pivot site, if available; otherwise the first site
@@ -2806,19 +2811,19 @@ operator/= (const OtherScalar &alpha)
 }
 
 template<size_t D, size_t Nq, typename Scalar, typename OtherScalar>
-MpsQ<Nq,OtherScalar> operator* (const OtherScalar &alpha, const MpsQ<Nq,Scalar> &Vin)
+MpsQ<Symmetry,OtherScalar> operator* (const OtherScalar &alpha, const MpsQ<Symmetry,Scalar> &Vin)
 {
-	MpsQ<Nq,OtherScalar> Vout = Vin.template cast<OtherScalar>();
+	MpsQ<Symmetry,OtherScalar> Vout = Vin.template cast<OtherScalar>();
 	Vout *= alpha;
 	return Vout;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename OtherScalar>
-MpsQ<Nq,OtherScalar> MpsQ<Nq,Scalar>::
+MpsQ<Symmetry,OtherScalar> MpsQ<Symmetry,Scalar>::
 cast() const
 {
-	MpsQ<Nq,OtherScalar> Vout;
+	MpsQ<Symmetry,OtherScalar> Vout;
 	Vout.outerResize(*this);
 	
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -2847,24 +2852,24 @@ cast() const
 //	return Vout;
 //}
 
-template<size_t Nq, typename Scalar>
-MpsQ<Nq,Scalar>& MpsQ<Nq,Scalar>::
-operator+= (const MpsQ<Nq,Scalar> &Vin)
+template<typename Symmetry, typename Scalar>
+MpsQ<Symmetry,Scalar>& MpsQ<Symmetry,Scalar>::
+operator+= (const MpsQ<Symmetry,Scalar> &Vin)
 {
 	addScale(+1.,Vin);
 }
 
-template<size_t Nq, typename Scalar>
-MpsQ<Nq,Scalar>& MpsQ<Nq,Scalar>::
-operator-= (const MpsQ<Nq,Scalar> &Vin)
+template<typename Symmetry, typename Scalar>
+MpsQ<Symmetry,Scalar>& MpsQ<Symmetry,Scalar>::
+operator-= (const MpsQ<Symmetry,Scalar> &Vin)
 {
 	addScale(-1.,Vin);
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename OtherScalar>
-void MpsQ<Nq,Scalar>::
-add_site (size_t loc, OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin)
+void MpsQ<Symmetry,Scalar>::
+add_site (size_t loc, OtherScalar alpha, const MpsQ<Symmetry,Scalar> &Vin)
 {
 	if (loc == 0)
 	{
@@ -2898,10 +2903,10 @@ add_site (size_t loc, OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin)
 	}
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename OtherScalar>
-void MpsQ<Nq,Scalar>::
-addScale (OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, bool SVD_COMPRESS)
+void MpsQ<Symmetry,Scalar>::
+addScale (OtherScalar alpha, const MpsQ<Symmetry,Scalar> &Vin, bool SVD_COMPRESS)
 {
 	assert(Qtot == Vin.Qtarget() and 
 	       "Mismatched quantum numbers in addition of MpsQ!");
@@ -2930,8 +2935,8 @@ addScale (OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, bool SVD_COMPRESS)
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 set_A_from_C (size_t loc, const vector<Tripod<Nq,MatrixType> > &C, DMRG::BROOM::OPTION TOOL)
 {
 	if (loc == this->N_sites-1)
@@ -3111,8 +3116,8 @@ set_A_from_C (size_t loc, const vector<Tripod<Nq,MatrixType> > &C, DMRG::BROOM::
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 mend()
 {
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -3164,8 +3169,8 @@ mend()
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 collapse()
 {
 //	vector<qarray<Nq> > conf(this->N_sites);
@@ -3252,9 +3257,9 @@ collapse()
 ////	}
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<size_t MpoNq>
-void MpsQ<Nq,Scalar>::
+void MpsQ<Symmetry,Scalar>::
 setFlattenedMpoQ (const MpoQ<MpoNq,Scalar> &Op, bool USE_SQUARE)
 {
 	static_assert (Nq == 0, "A flattened MpoQ must have Nq=0!");
@@ -3300,8 +3305,8 @@ setFlattenedMpoQ (const MpoQ<MpoNq,Scalar> &Op, bool USE_SQUARE)
 	}
 }
 
-template<size_t Nq, typename Scalar>
-string MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+string MpsQ<Symmetry,Scalar>::
 validate (string name) const
 {
 	stringstream ss;
@@ -3356,8 +3361,8 @@ validate (string name) const
 	return ss.str();
 }
 
-template<size_t Nq, typename Scalar>
-string MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+string MpsQ<Symmetry,Scalar>::
 test_ortho (double tol) const
 {
 	string sout = "";
@@ -3435,8 +3440,8 @@ test_ortho (double tol) const
 	return sout;
 }
 
-template<size_t Nq, typename Scalar>
-void MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpsQ<Symmetry,Scalar>::
 graph (string filename) const
 {
 	stringstream ss;
@@ -3503,8 +3508,8 @@ graph (string filename) const
 	f.close();
 }
 
-template<size_t Nq, typename Scalar>
-string MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+string MpsQ<Symmetry,Scalar>::
 Asizes() const
 {
 	stringstream ss;
@@ -3525,8 +3530,8 @@ Asizes() const
 	return ss.str();
 }
 
-template<size_t Nq, typename Scalar>
-double MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+double MpsQ<Symmetry,Scalar>::
 memory (MEMUNIT memunit) const
 {
 	double res = 0.;
@@ -3538,8 +3543,8 @@ memory (MEMUNIT memunit) const
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
-double MpsQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+double MpsQ<Symmetry,Scalar>::
 overhead (MEMUNIT memunit) const
 {
 	double res = 0.;
@@ -3553,8 +3558,8 @@ overhead (MEMUNIT memunit) const
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
-ostream &operator<< (ostream& os, const MpsQ<Nq,Scalar> &V)
+template<typename Symmetry, typename Scalar>
+ostream &operator<< (ostream& os, const MpsQ<Symmetry,Scalar> &V)
 {
 	assert(V.format and "Empty pointer to format function in MpsQ!");
 	
