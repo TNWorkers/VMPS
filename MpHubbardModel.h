@@ -1,6 +1,7 @@
 #ifndef STRAWBERRY_HUBBARDMODEL
 #define STRAWBERRY_HUBBARDMODEL
 
+#include "symmetry/U1xU1.h"
 #include "MpoQ.h"
 #include "FermionBase.h"
 
@@ -16,10 +17,11 @@ H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma}
 \f$.
 \note If the nnn-hopping is positive, the ground state energy is lowered.
 \warning \f$J>0\f$ is antiferromagnetic*/
-class HubbardModel : public MpoQ<2,double>
+class HubbardModel : public MpoQ<Sym::U1xU1<double>,double>
 {
 public:
-
+	typedef Sym::U1xU1<double> Symmetry;
+	
 	/**Does nothing.*/
 	HubbardModel() : MpoQ(){};
 	
@@ -82,14 +84,14 @@ public:
 	static const std::array<string,2> Nlabel;
 	
 	/**Real MpsQ for convenient reference (no need to specify D, Nq all the time).*/
-	typedef MpsQ<2,double>                           StateXd;
+	typedef MpsQ<Symmetry,double>                           StateXd;
 	/**Complex MpsQ for convenient reference (no need to specify D, Nq all the time).*/
-	typedef MpsQ<2,complex<double> >                 StateXcd;
+	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
 	typedef DmrgSolverQ<2,HubbardModel,double>              Solver;
 	typedef MpsQCompressor<2,double,double>          CompressorXd;
 	typedef MpsQCompressor<2,complex<double>,double> CompressorXcd;
-	typedef MpoQ<2,double>                           OperatorXd;
-	typedef MpoQ<2,complex<double> >                 OperatorXcd;
+	typedef MpoQ<Symmetry,double>                           OperatorXd;
+	typedef MpoQ<Symmetry,complex<double> >                 OperatorXcd;
 	
 	MpoQ<2> Auger (size_t locx, size_t locy=0);
 	MpoQ<2,complex<double> > doublonPacket (complex<double> (*f)(int));

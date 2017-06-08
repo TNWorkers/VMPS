@@ -17,14 +17,14 @@ template<typename Scalar>
 class U1xU1 // : SymmetryBase<SymSUN<N,Scalar> >
 {
 public:
-	typedef std::array<int,2> qType;
-
-	U1xU1() {};
-
 	static constexpr bool HAS_CGC = false;
 	static constexpr std::size_t Nq=2;
 	static constexpr bool SPECIAL = false;
-	
+
+	typedef qarray<Nq> qType;
+
+	U1xU1() {};
+
 	inline static qType qvacuum() { return {0,0}; }
 
 	inline static std::string name() { return "U(1)⊗U(1)"; }
@@ -241,10 +241,10 @@ validate ( const std::array<U1xU1<Scalar>::qType,M>& qs )
 
 } //end namespace Sym
 
-std::ostream& operator<< (std::ostream& os, const  U1xU1<double>::qType &q)
-{
-	os << "[" << q[0] << "," << q[1] << "]";
-	return os;
-}
+// std::ostream& operator<< (std::ostream& os, const  U1xU1<double>::qType &q)
+// {
+// 	os << "[" << q[0] << "," << q[1] << "]";
+// 	return os;
+// }
 
 #endif

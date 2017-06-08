@@ -1,7 +1,8 @@
 #ifndef DMRGJANITOR
 #define DMRGJANITOR
 
-#include "DmrgPivotStuffQ.h"
+// #include "DmrgPivotStuffQ.h"
+#include "DmrgTypedefs.h"
 
 /**\brief Flips the sweep direction when the edge is reached.*/
 void bring_her_about (int pivot, size_t L, DMRG::DIRECTION::OPTION &DIR)

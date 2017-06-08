@@ -11,15 +11,15 @@
 /**Calculates the scalar product \f$\left<\Psi_{bra}|\Psi_{ket}\right>\f$.
 \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
 \param Vket : input \f$\left|\Psi_{ket}\right>\f$*/
-template<size_t Nq, typename Scalar>
-Scalar dot (const MpsQ<Nq,Scalar> &Vbra, const MpsQ<Nq,Scalar> &Vket)
+template<typename Symmetry, typename Scalar>
+Scalar dot (const MpsQ<Symmetry,Scalar> &Vbra, const MpsQ<Symmetry,Scalar> &Vket)
 {
 	return Vbra.dot(Vket);
 }
 
 /**Swaps two MpsQ.*/
-template<size_t Nq, typename Scalar> 
-void swap (MpsQ<Nq,Scalar> &V1, MpsQ<Nq,Scalar> &V2)
+template<typename Symmetry, typename Scalar> 
+void swap (MpsQ<Symmetry,Scalar> &V1, MpsQ<Symmetry,Scalar> &V2)
 {
 	V1.swap(V2);
 }
@@ -32,15 +32,15 @@ void swap (MpsQ<Nq,Scalar> &V1, MpsQ<Nq,Scalar> &V2)
 \param INFINITE_BC : If \p true, uses infinite boundary conditions (sets initial 3-leg tensor to identity instead of vacuum).
 \param DIR : whether to contract going left or right (should obviously make no difference, useful for testing purposes)
 */
-template<size_t Nq, typename MpoScalar, typename Scalar>
-Scalar avg (const MpsQ<Nq,Scalar> &Vbra, 
-            const MpoQ<Nq,MpoScalar> &O, 
-            const MpsQ<Nq,Scalar> &Vket, 
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra, 
+            const MpoQ<Symmetry,MpoScalar> &O, 
+            const MpsQ<Symmetry,Scalar> &Vket, 
             bool USE_SQUARE = false,  
             DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::RIGHT)
 {
-	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
-	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > B;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
 	
 	if (DIR == DMRG::DIRECTION::RIGHT)
 	{
@@ -62,7 +62,7 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 	}
 	else
 	{
-		B.setTarget(qarray3<Nq>{Vket.Qtarget(), Vbra.Qtarget(), O.Qtarget()});
+		B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), O.Qtarget()});
 //		for (int l=O.length()-1; l>=0; --l)
 		for (size_t l=O.length()-1; l!=-1; --l)
 		{

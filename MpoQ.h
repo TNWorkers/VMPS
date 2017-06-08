@@ -10,9 +10,11 @@
 typedef Eigen::SparseMatrix<double,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXd;
 using namespace Eigen;
 
+#include "symmetry/U0.h"
 #include "SuperMatrix.h"
 #include "qarray.h"
 #include "Biped.h"
+#include "MultipedeQ.h"
 #include "DmrgPivotStuffQ.h"
 #include <unsupported/Eigen/KroneckerProduct>
 #include "DmrgJanitor.h"
@@ -37,27 +39,32 @@ Scalar localSumTrivial (int i)
 namespace VMPS{};
 
 template<typename Symmetry, typename Scalar> class MpsQ;
-template<size_t Nq, typename Scalar> class MpoQ;
+template<typename Symmetry, typename Scalar> class MpoQ;
 template<size_t Nq, typename MpHamiltonian, typename Scalar> class DmrgSolverQ;
 template<size_t Nq, typename Scalar, typename MpoScalar> class MpsQCompressor;
 
 /**Matrix Product Operator with conserved quantum numbers (Abelian symmetries). Just adds a target quantum number and a bunch of labels on top of Mpo.
 \describe_Nq
 \describe_Scalar*/
-template<size_t Nq, typename Scalar=double>
+template<typename Symmetry, typename Scalar=double>
 class MpoQ
 {
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
+template<Index Rank> using TensorType = Eigen::Tensor<Scalar,Rank,Eigen::ColMajor,Index>;
 typedef SparseMatrixXd SparseMatrixType;
-
+static constexpr size_t Nq = Symmetry::Nq;
+typedef typename Symmetry::qType qType;
+	
 template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
 template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
 template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
 template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
-template<size_t Nq_, typename S_> friend class MpoQ;
-template<size_t Nq_, typename S1, typename S2> friend void HxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
-template<size_t Nq_, typename S1, typename S2> friend void OxV (const MpoQ<Nq_,S1> &H, const MpsQ<Nq_,S2> &Vin, MpsQ<Nq_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
+template<typename Symmetry_, typename S_> friend class MpoQ;
+template<typename Symmetry_, typename S1, typename S2> friend void HxV (const MpoQ<Symmetry_,S1> &H, const MpsQ<Symmetry_,S2> &Vin,
+																		MpsQ<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
+template<typename Symmetry_, typename S1, typename S2> friend void OxV (const MpoQ<Symmetry_,S1> &H, const MpsQ<Symmetry_,S2> &Vin,
+																		MpsQ<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 
 public:
 	
@@ -121,10 +128,10 @@ public:
 	void scale (double factor=1., double offset=0.);
 	
 	/**Resets the MpoQ from a dummy MpsQ which has been swept.*/
-	void setFromFlattenedMpoQ (const MpsQ<0,Scalar> &Op, bool USE_SQUARE=false);
+	void setFromFlattenedMpoQ (const MpsQ<Sym::U0,Scalar> &Op, bool USE_SQUARE=false);
 	
 	/**Sets the product of a left-side and right-side operator in the Heisenberg picture.*/
-	template<size_t OtherNq> void setHeisenbergProduct (const MpoQ<OtherNq,Scalar> Op1, const MpoQ<OtherNq,Scalar> Op2);
+	template<typename OtherSymmetry> void setHeisenbergProduct (const MpoQ<OtherSymmetry,Scalar> Op1, const MpoQ<OtherSymmetry,Scalar> Op2);
 	///\}
 	
 	//---info stuff---
@@ -167,10 +174,16 @@ public:
 	
 	/**Returns the local basis at \p loc.*/
 	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
-	
+
+	/**Returns the operator basis at \p loc.*/
+	inline vector<qarray<Nq> > opBasis (size_t loc) const {return qOp[loc];}
+
 	/**Returns the full local basis.*/
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
-	
+
+	/**Returns the full operator basis.*/
+	inline vector<vector<qarray<Nq> > > opBasis()   const {return qOp;}
+
 	/**Checks whether the MPO is a unitary operator.*/
 	inline bool IS_UNITARY() const {return UNITARY;};
 	
@@ -178,12 +191,12 @@ public:
 	inline bool check_SQUARE() const {return GOT_SQUARE;}
 	
 	/**Returns the W-matrix at a given site by const reference.*/
-	inline const vector<vector<SparseMatrix<Scalar> > > &W_at   (size_t loc) const {return W[loc];};
+	inline const vector<vector<vector<SparseMatrix<Scalar> > > > &W_at   (size_t loc) const {return W[loc];};
 	
 	/**Returns the W-matrix of the squared operator at a given site by const reference.*/
-	inline const vector<vector<SparseMatrix<Scalar> > > &Wsq_at (size_t loc) const {return Wsq[loc];};
+	inline const vector<vector<vector<SparseMatrix<Scalar> > > > &Wsq_at (size_t loc) const {return Wsq[loc];};
 	
-	template<typename TimeScalar> MpoQ<Nq,TimeScalar> BondPropagator (TimeScalar dt, PARITY P) const;
+	template<typename TimeScalar> MpoQ<Symmetry,TimeScalar> BondPropagator (TimeScalar dt, PARITY P) const;
 	
 	boost::multi_array<Scalar,4> H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM=false) const;
 	///\}
@@ -209,8 +222,9 @@ protected:
 //	/**next-nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2, transfer operator*/
 //	vector<tuple<Scalar,MatrixType,MatrixType,MatrixType> > Onextn;
 	
-	vector<vector<qarray<Nq> > > qloc;
-	
+	vector<vector<qarray<Nq> > > qloc, qOp;
+	vector<Qbasis<Symmetry> > qloc__;
+
 	qarray<Nq> Qtot;
 	
 	bool UNITARY = false;
@@ -222,27 +236,34 @@ protected:
 	
 //	ArrayXd truncWeight;
 	
-	void construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<SparseMatrix<Scalar> > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore, 
+	void construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore, 
 	                bool OPEN_BC=true);
-	void construct (const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<vector<SparseMatrix<Scalar> > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore);
+	void construct (const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore);
 	
+	void construct (const MultipedeQ<4,Symmetry,Scalar,-2> &G_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+					vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gstore);
+	void construct (const vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gvec_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+					vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gstore);	
+
 	vector<SuperMatrix<Scalar> > Gvec;
-	vector<vector<vector<SparseMatrix<Scalar> > > > W;
+	vector<vector<vector<vector<SparseMatrix<Scalar> > > > > W;
 	
 	vector<SuperMatrix<Scalar> > GvecSq;
-	vector<vector<vector<SparseMatrix<Scalar> > > > Wsq;
+	vector<vector<vector<vector<SparseMatrix<Scalar> > > > > Wsq;
 };
 
-template<size_t Nq, typename Scalar>
-MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+MpoQ<Symmetry,Scalar>::
 MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
 	:N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
+	qOp.resize(N_sites);
 	qloc.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l)
 	{
+		qOp[l].resize(1); qOp[l][0] = Symmetry::qvacuum();
 		qloc[l].resize(qloc_input.size());
 		for (size_t s=0; s<qloc_input.size(); ++s)
 		{
@@ -254,35 +275,45 @@ MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, qarray<N
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		W[l].resize(qloc[l].size());
-		for (size_t q=0; q<qloc[l].size(); ++q)
+		for (size_t s1=0; s1<qloc[l].size(); ++s1)
 		{
-			W[l][q].resize(qloc[l].size());
+			W[l][s1].resize(qloc[l].size());
+			for (size_t s2=0; s2<qloc[l].size(); ++s2)
+			{
+				W[l][s1][s2].resize(1);				
+			}
 		}
 	}
 }
 
-template<size_t Nq, typename Scalar>
-MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+MpoQ<Symmetry,Scalar>::
 MpoQ (size_t Lx_input, size_t Ly_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
 :N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	qloc = qloc_input;
+	qOp.resize(N_sites);
+	for (size_t l=0; l<N_sites; ++l) {qOp[l].resize(1); qOp[l][0] = Symmetry::qvacuum();}
 	
 	W.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		W[l].resize(qloc[l].size());
-		for (size_t q=0; q<qloc[l].size(); ++q)
+		for (size_t s1=0; s1<qloc[l].size(); ++s1)
 		{
-			W[l][q].resize(qloc[l].size());
+			W[l][s1].resize(qloc[l].size());
+			for (size_t s2=0; s2<qloc[l].size(); ++s2)
+			{
+				W[l][s1][s2].resize(1);				
+			}
 		}
 	}
 }
 
-template<size_t Nq, typename Scalar>
-MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+MpoQ<Symmetry,Scalar>::
 MpoQ (size_t Lx_input, size_t Ly_input, const SuperMatrix<Scalar> &G_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
@@ -301,8 +332,8 @@ MpoQ (size_t Lx_input, size_t Ly_input, const SuperMatrix<Scalar> &G_input, vect
 	construct(G_input, W, Gvec);
 }
 
-template<size_t Nq, typename Scalar>
-MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+MpoQ<Symmetry,Scalar>::
 MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
@@ -321,8 +352,8 @@ MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec
 	construct(Gvec_input, W, Gvec);
 }
 
-template<size_t Nq, typename Scalar>
-MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+MpoQ<Symmetry,Scalar>::
 MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
@@ -333,9 +364,9 @@ MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec
 	construct(Gvec_input, W, Gvec);
 }
 
-template<size_t Nq, typename Scalar>
-void MpoQ<Nq,Scalar>::
-construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<SparseMatrix<Scalar> > > >  &Wstore, vector<SuperMatrix<Scalar> > &Gstore, bool OPEN_BC)
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
+construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore, bool OPEN_BC)
 {
 	vector<SuperMatrix<Scalar> > Gvec(N_sites);
 	size_t D = G_input(0,0).rows();
@@ -373,9 +404,9 @@ construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<SparseMatrix
 	construct(Gvec,Wstore,Gstore);
 }
 
-template<size_t Nq, typename Scalar>
-void MpoQ<Nq,Scalar>::
-construct (const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<vector<SparseMatrix<Scalar> > > >  &Wstore, vector<SuperMatrix<Scalar> > &Gstore)
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
+construct (const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore, vector<SuperMatrix<Scalar> > &Gstore)
 {
 	Wstore.resize(N_sites);
 	Gstore = Gvec_input;
@@ -391,23 +422,123 @@ construct (const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<vector<
 		for (size_t s1=0; s1<qloc[l].size(); ++s1)
 		for (size_t s2=0; s2<qloc[l].size(); ++s2)
 		{
-			Wstore[l][s1][s2].resize(Gstore[l].rows(), Gstore[l].cols());
+			Wstore[l][s1][s2].resize(1);
+			Wstore[l][s1][s2][0].resize(Gstore[l].rows(), Gstore[l].cols());
 			
-			for (size_t a1=0; a1<Gstore[l].rows(); ++a1)
-			for (size_t a2=0; a2<Gstore[l].cols(); ++a2)
-			{
-				Scalar val = Gstore[l](a1,a2)(s1,s2);
-				if (val != 0.)
-				{
-					Wstore[l][s1][s2].insert(a1,a2) = val;
-				}
-			}
+				for (size_t a1=0; a1<Gstore[l].rows(); ++a1)
+					for (size_t a2=0; a2<Gstore[l].cols(); ++a2)
+					{
+						Scalar val = Gstore[l](a1,a2)(s1,s2);
+						if (val != 0.)
+						{
+							Wstore[l][s1][s2][0].insert(a1,a2) = val;
+						}
+					}
 		}
 	}
 }
 
-template<size_t Nq, typename Scalar>
-string MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
+construct (const MultipedeQ<4,Symmetry,Scalar,-2> &G_input,vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
+			std::vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gstore)
+{
+	std::vector<MultipedeQ<4,Symmetry,Scalar,-2> > Gvec(N_sites);
+	
+//	make W^[0] from last row
+	for (std::size_t nu=0; nu<G_input.size(); nu++)
+	{
+		std::array<Index, 4> offsets = {G_input.block[nu].dimension(0)-1, 0, 0, 0};
+		std::array<Index, 4> extents = {1, G_input.block[nu].dimension(1), G_input.block[nu].dimension(2), G_input.block[nu].dimension(3)};
+		TensorType<4> A = G_input.block[nu].slice(offsets,extents);
+		if constexpr ( Symmetry::HAS_CGC )
+			{
+				TensorType<4> T;
+				Gvec[0].push_back(G_input.index[nu],A,T);
+			}
+		else
+		{
+			Gvec[0].push_back(G_input.index[nu],A);
+		}
+	}
+
+//	make W^[i], i=1,...,L-2
+	for (std::size_t l=1; l<N_sites-1; ++l)
+	{
+		Gvec[l] = G_input;
+	}
+
+//	make W^[L-1] from first column
+	for (std::size_t nu=0; nu<G_input.size(); nu++)
+	{
+		std::array<Index, 4> offsets = {0, 0, 0, 0};
+		std::array<Index, 4> extents = {G_input.block[nu].dimension(0), 1, G_input.block[nu].dimension(2), G_input.block[nu].dimension(3)};
+		TensorType<4> A = G_input.block[nu].slice(offsets,extents);
+		if constexpr ( Symmetry::HAS_CGC )
+			{
+				TensorType<4> T;
+				Gvec[N_sites-1].push_back(G_input.index[nu],A,T);
+			}
+		else
+		{
+			Gvec[N_sites-1].push_back(G_input.index[nu],A);
+		}
+	}
+	
+//	make Mpo
+	construct(Gvec,Wstore,Gstore);
+}
+
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
+construct ( const std::vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gvec_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
+			std::vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gstore)
+{
+	Wstore.resize(this->N_sites);
+	Gstore = Gvec_input;
+	for (std::size_t l=0; l<this->N_sites; ++l)
+	{
+		Wstore[l].clear();
+		Wstore[l].resize(qloc[l].size());
+		for (std::size_t s1=0; s1<qloc[l].size(); s1++)
+		{
+			Wstore[l][s1].resize(qloc[l].size());
+			for (std::size_t s2=0; s2<qloc[l].size(); s2++)
+			{
+				// for (const auto& q_op : qOp[l])
+				Wstore[l][s1][s2].resize(qOp[l].size());
+				for (std::size_t k=0; k<qOp[l].size(); k++)
+				{
+					std::array<qType,3> qSearch3 = {qloc[l][s1],qloc[l][s2],qOp[l][k]};
+					std::array<Index,3> dummy_legs3; std::iota(dummy_legs3.begin(),dummy_legs3.end(),Index(0));
+					auto it = Gvec_input[l].dict.find(qSearch3,dummy_legs3);
+					
+					if (it != Gvec_input[l].dict.end(dummy_legs3))
+					{
+						std::array<Index, 4> offsets = {0, 0, qloc__[l].inner_num(s1), qloc__[l].inner_num(s2)};//5-1-1+
+						std::array<Index, 4> extents = {Gvec_input[l].block[it->second].dimension(0), Gvec_input[l].block[it->second].dimension(1), 1, 1};
+						std::array<Index, 2> new_dims = {Gvec_input[l].block[it->second].dimension(0), Gvec_input[l].block[it->second].dimension(1)};
+						TensorType<2> A = Gvec_input[l].block[it->second].slice(offsets,extents).reshape(new_dims);
+						MatrixType Mtmp;
+						Mtmp = Eigen::Map<MatrixType>(A.data(), A.dimension(0), A.dimension(1));
+						
+						if (Wstore[l][s1][s2][k].size() == 0)
+						{
+							Wstore[l][s1][s2][k] = Mtmp.sparseView();
+						}
+						else
+						{
+							Wstore[l][s1][s2][k] += Mtmp.sparseView();
+						}
+					}
+				}
+			}	
+		}
+	}
+}
+
+template<typename Symmetry, typename Scalar>
+string MpoQ<Symmetry,Scalar>::
 info() const
 {
 	stringstream ss;
@@ -437,8 +568,8 @@ info() const
 	return ss.str();
 }
 
-template<size_t Nq, typename Scalar>
-double MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+double MpoQ<Symmetry,Scalar>::
 memory (MEMUNIT memunit) const
 {
 	double res = 0.;
@@ -448,11 +579,12 @@ memory (MEMUNIT memunit) const
 		for (size_t l=0; l<N_sites; ++l)
 		for (size_t s1=0; s1<qloc[l].size(); ++s1)
 		for (size_t s2=0; s2<qloc[l].size(); ++s2)
+		for (size_t k=0; k<qOp[l].size(); ++k)
 		{
-			res += calc_memory(W[l][s1][s2],memunit);
+			res += calc_memory(W[l][s1][s2][k],memunit);
 			if (GOT_SQUARE)
 			{
-				res += calc_memory(Wsq[l][s1][s2],memunit);
+				res += calc_memory(Wsq[l][s1][s2][k],memunit);
 			}
 		}
 	}
@@ -472,8 +604,8 @@ memory (MEMUNIT memunit) const
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
-double MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+double MpoQ<Symmetry,Scalar>::
 sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 {
 	if (USE_SQUARE) {assert(GOT_SQUARE);}
@@ -487,19 +619,19 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 		
 		for (size_t s1=0; s1<qloc[l].size(); ++s1)
 		for (size_t s2=0; s2<qloc[l].size(); ++s2)
+		for (size_t k=0; k<qOp[l].size(); ++k)
 		{
-			N_nonZeros += (USE_SQUARE)? Wsq[l][s1][s2].nonZeros() : W[l][s1][s2].nonZeros();
-			N_elements += (USE_SQUARE)? Wsq[l][s1][s2].rows() * Wsq[l][s1][s2].cols():
-				                        W[l][s1][s2].rows()   * W[l][s1][s2].cols();
-		
+			N_nonZeros += (USE_SQUARE)? Wsq[l][s1][s2][k].nonZeros() : W[l][s1][s2][k].nonZeros();
+			N_elements += (USE_SQUARE)? Wsq[l][s1][s2][k].rows() * Wsq[l][s1][s2][k].cols():
+				                        W[l][s1][s2][k].rows()   * W[l][s1][s2][k].cols();
 		}
 	}
 	
 	return (PER_MATRIX)? N_nonZeros/N_matrices : N_nonZeros/N_elements;
 }
 
-template<size_t Nq, typename Scalar>
-void MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
 setLocal (size_t loc, const SparseMatrixType &Op)
 {
 	assert(Op.rows() == qloc[loc].size() and Op.cols() == qloc[loc].size());
@@ -517,8 +649,8 @@ setLocal (size_t loc, const SparseMatrixType &Op)
 	construct(M, W, Gvec);
 }
 
-template<size_t Nq, typename Scalar>
-void MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
 setLocal (vector<size_t> loc, const vector<SparseMatrixType> &Op)
 {
 	assert(loc.size() >= 1 and Op.size() == loc.size());
@@ -543,8 +675,8 @@ setLocal (vector<size_t> loc, const vector<SparseMatrixType> &Op)
 }
 
 // sum_i f(i)*O(i)
-template<size_t Nq, typename Scalar>
-void MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
 setLocalSum (const SparseMatrixType &Op, Scalar (*f)(int))
 {
 	for (size_t l=0; l<N_sites; ++l)
@@ -576,8 +708,8 @@ setLocalSum (const SparseMatrixType &Op, Scalar (*f)(int))
 }
 
 // O1(1)*O2(2)+O1(2)*O1(3)+...+O1(L-1)*O2(L)
-template<size_t Nq, typename Scalar>
-void MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
 setProductSum (const SparseMatrixType &Op1, const SparseMatrixType &Op2)
 {
 	for (size_t l=0; l<N_sites; ++l)
@@ -612,8 +744,8 @@ setProductSum (const SparseMatrixType &Op1, const SparseMatrixType &Op2)
 	construct(M, W, Gvec);
 }
 
-template<size_t Nq, typename Scalar>
-void MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
 scale (double factor, double offset)
 {
 	/**Example for where to apply the scaling factor, 3-site Heisenberg:
@@ -731,9 +863,9 @@ scale (double factor, double offset)
 	}
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename TimeScalar>
-MpoQ<Nq,TimeScalar> MpoQ<Nq,Scalar>::
+MpoQ<Symmetry,TimeScalar> MpoQ<Symmetry,Scalar>::
 BondPropagator (TimeScalar dt, PARITY P) const
 {
 	string TevolLabel = label;
@@ -742,7 +874,7 @@ BondPropagator (TimeScalar dt, PARITY P) const
 	TevolLabel += ss.str();
 	TevolLabel += (P==EVEN)? "evn" : "odd";
 	
-	MpoQ<Nq,TimeScalar> Mout(N_sites, N_legs, locBasis(), qvacuum<Nq>(), qlabel, TevolLabel, format, true);
+	MpoQ<Symmetry,TimeScalar> Mout(N_sites, N_legs, locBasis(), qvacuum<Nq>(), qlabel, TevolLabel, format, true);
 	Mout.Daux = Gvec[0].auxdim();
 	
 	Mout.W.resize(N_sites);
@@ -911,8 +1043,8 @@ BondPropagator (TimeScalar dt, PARITY P) const
 	return Mout;
 }
 
-template<size_t Nq, typename Scalar>
-boost::multi_array<Scalar,4> MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+boost::multi_array<Scalar,4> MpoQ<Symmetry,Scalar>::
 H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 {
 //	assert(loc!=0 and N_sites>1);
@@ -955,8 +1087,8 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 	return Mout;
 }
 
-//template<size_t Nq, typename Scalar>
-//void MpoQ<Nq,Scalar>::
+//template<typename Symmetry, typename Scalar>
+//void MpoQ<Symmetry,Scalar>::
 //init_compression()
 //{
 //	A.resize(N_sites);
@@ -975,8 +1107,8 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 //	}
 //}
 
-//template<size_t Nq, typename Scalar>
-//void MpoQ<Nq,Scalar>::
+//template<typename Symmetry, typename Scalar>
+//void MpoQ<Symmetry,Scalar>::
 //rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 //{
 //	size_t Nrows = A[loc][0][0].rows();
@@ -1025,8 +1157,8 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 //	this->pivot = (loc==N_sites-1)? N_sites-1 : loc+1;
 //}
 
-//template<size_t Nq, typename Scalar>
-//void MpoQ<Nq,Scalar>::
+//template<typename Symmetry, typename Scalar>
+//void MpoQ<Symmetry,Scalar>::
 //leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
 //{
 //	size_t Nrows = A[loc][0][0].rows();
@@ -1076,8 +1208,8 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 //	this->pivot = (loc==0)? 0 : loc-1;
 //}
 
-//template<size_t Nq, typename Scalar>
-//string MpoQ<Nq,Scalar>::
+//template<typename Symmetry, typename Scalar>
+//string MpoQ<Symmetry,Scalar>::
 //test_ortho() const
 //{
 //	MatrixType Test;
@@ -1138,8 +1270,8 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 //	return sout;
 //}
 
-//template<size_t Nq, typename Scalar>
-//void MpoQ<Nq,Scalar>::
+//template<typename Symmetry, typename Scalar>
+//void MpoQ<Symmetry,Scalar>::
 //flatten_to_MpsQ (MpsQ<0,Scalar> &V)
 //{
 ////	V.format = format;
@@ -1204,10 +1336,10 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 //	}
 //}
 
-template<size_t Nq, typename Scalar>
-template<size_t OtherNq>
-void MpoQ<Nq,Scalar>::
-setHeisenbergProduct (const MpoQ<OtherNq,Scalar> Op1, const MpoQ<OtherNq,Scalar> Op2)
+template<typename Symmetry, typename Scalar>
+template<typename OtherSymmetry>
+void MpoQ<Symmetry,Scalar>::
+setHeisenbergProduct (const MpoQ<OtherSymmetry,Scalar> Op1, const MpoQ<OtherSymmetry,Scalar> Op2)
 {
 	assert(Op1.length()   == Op2.length());
 	assert(Op1.locBasis() == Op2.locBasis());
@@ -1260,9 +1392,9 @@ setHeisenbergProduct (const MpoQ<OtherNq,Scalar> Op1, const MpoQ<OtherNq,Scalar>
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpoQ<Nq,Scalar>::
-setFromFlattenedMpoQ (const MpsQ<0,Scalar> &Op, bool USE_SQUARE)
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
+setFromFlattenedMpoQ (const MpsQ<Sym::U0,Scalar> &Op, bool USE_SQUARE)
 {
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
@@ -1284,11 +1416,11 @@ setFromFlattenedMpoQ (const MpsQ<0,Scalar> &Op, bool USE_SQUARE)
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void MpoQ<Nq,Scalar>::
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
 SVDcompress (bool USE_SQUARE, double eps_svd, size_t N_halfsweeps)
 {
-	MpsQ<0,Scalar> PsiDummy;
+	MpsQ<Sym::U0,Scalar> PsiDummy;
 	PsiDummy.setFlattenedMpoQ(*this,USE_SQUARE);
 	PsiDummy.eps_svd = eps_svd;
 	
@@ -1304,8 +1436,8 @@ SVDcompress (bool USE_SQUARE, double eps_svd, size_t N_halfsweeps)
 	setFromFlattenedMpoQ(PsiDummy,USE_SQUARE);
 }
 
-//template<size_t Nq, typename Scalar>
-//class MpoQ<Nq,Scalar>::qarrayIterator
+//template<typename Symmetry, typename Scalar>
+//class MpoQ<Symmetry,Scalar>::qarrayIterator
 //{
 //public:
 //	
@@ -1410,8 +1542,8 @@ SVDcompress (bool USE_SQUARE, double eps_svd, size_t N_halfsweeps)
 //	typename set<qarray<Nq> >::const_iterator qsetIt;
 //};
 
-template<size_t Nq, typename Scalar>
-ostream &operator<< (ostream& os, const MpoQ<Nq,Scalar> &O)
+template<typename Symmetry, typename Scalar>
+ostream &operator<< (ostream& os, const MpoQ<Symmetry,Scalar> &O)
 {
 	assert (O.format and "Empty pointer to format function in MpoQ!");
 	
@@ -1423,10 +1555,11 @@ ostream &operator<< (ostream& os, const MpoQ<Nq,Scalar> &O)
 	{
 		for (size_t s1=0; s1<O.locBasis(l).size(); ++s1)
 		for (size_t s2=0; s2<O.locBasis(l).size(); ++s2)
+		for (size_t k=0; k<O.opBasis(l).size(); ++k)
 		{
 			os << "[l=" << l << "]\t|" << O.format(O.locBasis(l)[s1]) << "><" << O.format(O.locBasis(l)[s2]) << "|:" << endl;
 //			os << Matrix<Scalar,Dynamic,Dynamic>(O.W_at(l)[s1][s2]) << endl;
-			os << Matrix<Scalar,Dynamic,Dynamic>(O.W_at(l)[s1][s2]) << endl;
+			os << Matrix<Scalar,Dynamic,Dynamic>(O.W_at(l)[s1][s2][k]) << endl;
 		}
 		os << setfill('-') << setw(80) << "-" << setfill(' ');
 		if (l != O.length()-1) {os << endl;}
@@ -1434,8 +1567,8 @@ ostream &operator<< (ostream& os, const MpoQ<Nq,Scalar> &O)
 	return os;
 }
 
-template<size_t Nq, typename Scalar1, typename Scalar2>
-void compare (const MpoQ<Nq,Scalar1> &O1, const MpoQ<Nq,Scalar2> &O2)
+template<typename Symmetry, typename Scalar1, typename Scalar2>
+void compare (const MpoQ<Symmetry,Scalar1> &O1, const MpoQ<Symmetry,Scalar2> &O2)
 {
 	assert (O1.format and "Empty pointer to format function in MpoQ!");
 	assert (O2.format and "Empty pointer to format function in MpoQ!");
@@ -1448,16 +1581,17 @@ void compare (const MpoQ<Nq,Scalar1> &O1, const MpoQ<Nq,Scalar2> &O2)
 	{
 		for (size_t s1=0; s1<O1.locBasis(l).size(); ++s1)
 		for (size_t s2=0; s2<O1.locBasis(l).size(); ++s2)
+		for (size_t k=0; k<O1.opBasis(l).size(); ++k)
 		{
 			lout << "[l=" << l << "]\t|" << O1.format(O1.locBasis(l)[s1]) << "><" << O1.format(O1.locBasis(l)[s2]) << "|:" << endl;
-			auto M1 = Matrix<Scalar1,Dynamic,Dynamic>(O1.W_at(l)[s1][s2]);
-			auto Mtmp = Matrix<Scalar2,Dynamic,Dynamic>(O2.W_at(l)[s1][s2]);
+			auto M1 = Matrix<Scalar1,Dynamic,Dynamic>(O1.W_at(l)[s1][s2][k]);
+			auto Mtmp = Matrix<Scalar2,Dynamic,Dynamic>(O2.W_at(l)[s1][s2][k]);
 			auto M2 = Mtmp.template cast<Scalar1>();
 			lout << "norm(diff)=" << (M1-M2).norm() << endl;
 			if ((M1-M2).norm() > 0.)
 			{
 				lout << "M1=" << endl << M1 << endl << endl;
-				lout << "M2=" << endl << Matrix<Scalar2,Dynamic,Dynamic>(O2.W_at(l)[s1][s2]) << endl << endl;
+				lout << "M2=" << endl << Matrix<Scalar2,Dynamic,Dynamic>(O2.W_at(l)[s1][s2][k]) << endl << endl;
 			}
 		}
 		lout << setfill('-') << setw(80) << "-" << setfill(' ');

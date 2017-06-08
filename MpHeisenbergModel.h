@@ -1,6 +1,7 @@
 #ifndef STRAWBERRY_HEISENBERGMODEL
 #define STRAWBERRY_HEISENBERGMODEL
 
+#include "symmetry/U1.h"
 #include "array"
 #include "MpoQ.h"
 #include "SpinBase.h"
@@ -15,11 +16,11 @@ H = -J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^z
 \f$.
 \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
 \note \f$J<0\f$ : antiferromagnetic*/
-class HeisenbergModel : public MpoQ<1,double>
+class HeisenbergModel : public MpoQ<Sym::U1<double>,double>
 {
 public:
-	
-	HeisenbergModel() : MpoQ<1>() {};
+	typedef Sym::U1<double> Symmetry;
+	HeisenbergModel() : MpoQ<Symmetry>() {};
 	
 	/**
 	\param Lx_input : chain length
@@ -98,12 +99,12 @@ public:
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
-	typedef MpsQ<1,double>                           StateXd;
-	typedef MpsQ<1,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<1,HeisenbergModel>           Solver;
+	typedef MpsQ<Symmetry,double>                           StateXd;
+	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
+	typedef DmrgSolverQ<1,HeisenbergModel,double>           Solver;
 	typedef MpsQCompressor<1,double,double>          CompressorXd;
 	typedef MpsQCompressor<1,complex<double>,double> CompressorXcd;
-	typedef MpoQ<1>                                  Operator;
+	typedef MpoQ<Symmetry>                                  Operator;
 	///@}
 	
 	/**Calculates the necessary auxiliary dimension, detecting when \p Jxy or \p Jz are zero.*/
@@ -115,9 +116,9 @@ public:
 		return res;
 	}
 	
-	MpoQ<1> Sz (size_t locx, size_t locy=0) const;
-	MpoQ<1> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	MpoQ<1,complex<double> > SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int)) const;
+	MpoQ<Symmetry> Sz (size_t locx, size_t locy=0) const;
+	MpoQ<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	MpoQ<Symmetry,complex<double> > SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int)) const;
 	
 protected:
 	
@@ -206,7 +207,7 @@ set_operators (const SpinBase &B, const MatrixXd &JxyInter, const MatrixXd &JzIn
 
 HeisenbergModel::
 HeisenbergModel (int Lx_input, double Jxy_input, double Jz_input, double Bz_input, size_t D_input, size_t Ly_input, bool CALC_SQUARE)
-:MpoQ<1> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), {0}, HeisenbergModel::maglabel, "", halve),
+:MpoQ<Symmetry> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), {0}, HeisenbergModel::maglabel, "", halve),
 Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 {
 	if (Jz==numeric_limits<double>::infinity()) {Jz=Jxy;} // default: Jxy=Jz
@@ -233,7 +234,7 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 
 HeisenbergModel::
 HeisenbergModel (size_t Lx_input, std::array<double,2> Jlist, double Bz_input, size_t Ly_input, size_t D_input, bool CALC_SQUARE)
-:MpoQ<1> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), {0}, HeisenbergModel::maglabel, "", halve),
+:MpoQ<Symmetry> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), {0}, HeisenbergModel::maglabel, "", halve),
 Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 {
 	this->label = create_label(D,Jxy,Jz,Jprime,Bz,0.);
@@ -269,7 +270,7 @@ Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 
 //HeisenbergModel::
 //HeisenbergModel(size_t Lx_input, double J, double Bz0_input, double K, const vector<std::array<double,3> > &DM_input, size_t D_input, bool CALC_SQUARE)
-//:MpoQ<1> (Lx_input, 1, HeisenbergModel::qloc(Ly_input,D_input), {0}, HeisenbergModel::maglabel, "", halve),
+//:MpoQ<Symmetry> (Lx_input, 1, HeisenbergModel::qloc(Ly_input,D_input), {0}, HeisenbergModel::maglabel, "", halve),
 //Jxy(J), Jz(J), Bz(Bz0_input), K(K_input), DM(DM_input), D(D_input)
 //{
 //	this->label = create_label(D,Jxy,Jz,0,Bz,0);
@@ -339,29 +340,29 @@ Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 //	}
 //}
 
-MpoQ<1> HeisenbergModel::
+MpoQ<Sym::U1<double> > HeisenbergModel::
 Sz (size_t locx, size_t locy) const
 {
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx << "," << locy << ")";
-	MpoQ<1> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {0}, HeisenbergModel::maglabel, ss.str(), halve);
+	MpoQ<Symmetry> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {0}, HeisenbergModel::maglabel, ss.str(), halve);
 	Mout.setLocal(locx, B.Scomp(SZ,locy));
 	return Mout;
 }
 
-MpoQ<1> HeisenbergModel::
+MpoQ<Sym::U1<double> > HeisenbergModel::
 SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	assert(locx1<N_sites and locx2<N_sites and locy1<N_legs and locy2<N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx1 << "," << locy1 << ")" <<  "Sz(" << locx2 << "," << locy2 << ")";
-	MpoQ<1> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {0}, HeisenbergModel::maglabel, ss.str(), halve);
+	MpoQ<Symmetry> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {0}, HeisenbergModel::maglabel, ss.str(), halve);
 	Mout.setLocal({locx1, locx2}, {B.Scomp(SZ,locy1), B.Scomp(SZ,locy2)});
 	return Mout;
 }
 
-MpoQ<1,complex<double> > HeisenbergModel::
+MpoQ<Sym::U1<double>,complex<double> > HeisenbergModel::
 SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int)) const
 {
 	assert(SOP==SP or SOP==SM or SOP==SZ);
@@ -371,7 +372,7 @@ SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int)) const
 	if      (SOP==SP) {DeltaM={+2};}
 	else if (SOP==SM) {DeltaM={-2};}
 	else              {DeltaM={ 0};}
-	MpoQ<1,complex<double> > Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), DeltaM, HeisenbergModel::maglabel, ss.str(), halve);
+	MpoQ<Sym::U1<double>,complex<double> > Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), DeltaM, HeisenbergModel::maglabel, ss.str(), halve);
 	Mout.setLocalSum(B.Scomp(SOP), f);
 	return Mout;
 }
