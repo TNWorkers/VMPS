@@ -64,6 +64,22 @@ struct hash<std::array<size_t,2> >
 		return seed;
 	}
 };
+	
+/**Hashes one qarray using boost's \p hash_combine.
+Needed in class \ref Qbasis.*/
+template<size_t Nq>
+struct hash<qarray<Nq> >
+{
+	inline size_t operator()(const qarray<Nq> &ix) const
+	{
+		size_t seed = 0;
+		for (size_t q=0; q<Nq; ++q)
+		{
+			boost::hash_combine(seed, ix[q]);
+		}
+		return seed;
+	}
+};
 }
 
 /**Makes half-integers in the output.*/

@@ -4,7 +4,6 @@
 #include <unordered_map>
 
 #include "macros.h"
-#include "MultipedeQ.h"
 
 /** \class Basis
   *
@@ -95,8 +94,8 @@ public:
 	void push_back( const qType& q_number, const Eigen::Index& inner_dim);
 	void push_back( const qType& q_number, const Eigen::Index& inner_dim, const std::vector<std::string>& idents);
 
-	template<Eigen::Index Nlegs, typename Scalar, Eigen::Index Nextra>
-	void pullData( const MultipedeQ<Nlegs,Symmetry,Scalar,Nextra>& M, const Eigen::Index& leg );
+	// template<Eigen::Index Nlegs, typename Scalar, Eigen::Index Nextra>
+	// void pullData( const MultipedeQ<Nlegs,Symmetry,Scalar,Nextra>& M, const Eigen::Index& leg );
 
 	Qbasis<Symmetry> combine( const Qbasis<Symmetry>& other ) const;
 
@@ -268,24 +267,24 @@ leftAmount(const qType& qnew, const std::array<qType,2>& qold) const
 	return out;
 }
 
-template<typename Symmetry>
-template<Eigen::Index Nlegs, typename Scalar, Eigen::Index Nextra> 
-void Qbasis<Symmetry>::
-pullData(const MultipedeQ<Nlegs,Symmetry,Scalar,Nextra>& M, const Eigen::Index& leg)
-{
-	std::unordered_set<qType> unique_controller;
-	for (std::size_t nu=0; nu<M.size(); nu++)
-	{
-		auto it = unique_controller.find(M.index[nu][leg]);
-		if( it==unique_controller.end() )
-		{
-			qType q_number = M.index[nu][leg];
-			Eigen::Index inner_dim = M.block[nu].dimension(leg);
-			push_back(q_number,inner_dim);
-			unique_controller.insert(q_number);			
-		}
-	}
-}
+// template<typename Symmetry>
+// template<Eigen::Index Nlegs, typename Scalar, Eigen::Index Nextra> 
+// void Qbasis<Symmetry>::
+// pullData(const MultipedeQ<Nlegs,Symmetry,Scalar,Nextra>& M, const Eigen::Index& leg)
+// {
+// 	std::unordered_set<qType> unique_controller;
+// 	for (std::size_t nu=0; nu<M.size(); nu++)
+// 	{
+// 		auto it = unique_controller.find(M.index[nu][leg]);
+// 		if( it==unique_controller.end() )
+// 		{
+// 			qType q_number = M.index[nu][leg];
+// 			Eigen::Index inner_dim = M.block[nu].dimension(leg);
+// 			push_back(q_number,inner_dim);
+// 			unique_controller.insert(q_number);			
+// 		}
+// 	}
+// }
 
 template<typename Symmetry>
 bool Qbasis<Symmetry>::

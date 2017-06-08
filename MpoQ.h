@@ -36,7 +36,7 @@ Scalar localSumTrivial (int i)
 /**Namespace VMPS to distinguish names from ED equivalents.*/
 namespace VMPS{};
 
-template<size_t Nq, typename Scalar> class MpsQ;
+template<typename Symmetry, typename Scalar> class MpsQ;
 template<size_t Nq, typename Scalar> class MpoQ;
 template<size_t Nq, typename MpHamiltonian, typename Scalar> class DmrgSolverQ;
 template<size_t Nq, typename Scalar, typename MpoScalar> class MpsQCompressor;

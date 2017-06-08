@@ -20,7 +20,7 @@ class U1 // : SymmetryBase<SymSUN<N,Scalar> >
 {
 public:
 	static constexpr bool HAS_CGC = false;
-	static constexpr std::size_t Nq=1;
+	static constexpr size_t Nq=1;
 	static constexpr bool SPECIAL = false;
 
 	// typedef std::array<int,1> qType;

@@ -13,7 +13,7 @@
 #include "Biped.h"
 #include "Multipede.h"
 #include "DmrgJanitor.h"
-#include "MpoQ.h"
+// #include "MpoQ.h"
 #include "DmrgPivotStuffQ.h"
 #include "DmrgConglutinations.h"
 #if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
@@ -26,21 +26,21 @@
 #include "RandomVector.h"
 
 /**Matrix Product State with conserved quantum numbers (Abelian symmetries).
-\describe_Nq
+\describe_Symmetry
 \describe_Scalar*/
 template<typename Symmetry, typename Scalar=double>
 class MpsQ : public DmrgJanitor<PivotMatrixQ<Symmetry::Nq,Scalar,Scalar> >
 {
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
-typedef Symmetry::Nq Nq;
+	static constexpr std::size_t Nq = Symmetry::Nq;
 	
 // Note: Cannot partially specialize template friends (or anything else, really). That sucks.
-template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
-template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
-template<typename Symmetry_, typename S1, typename S2> friend class MpsQCompressor;
-template<typename H, typename Symmetry_, typename S1, typename S2, typename V> friend class TDVPPropagator;
-template<typename Symmetry_, typename S1, typename S2> friend void HxV (const MpoQ<Symmetry_,S1> &H, const MpsQ<Symmetry_,S2> &Vin, MpsQ<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
-template<typename Symmetry_, typename S1, typename S2> friend void OxV (const MpoQ<Symmetry_,S1> &H, const MpsQ<Symmetry_,S2> &Vin, MpsQ<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
+	template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
+	template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
+	template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
+template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
+	// template<typename Symmetry_, typename S1, typename S2> friend void HxV (const MpoQ<Symmetry_::Nq,S1> &H, const MpsQ<Symmetry_,S2> &Vin, MpsQ<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
+	// template<typename Symmetry_, typename S1, typename S2> friend void OxV (const MpoQ<Symmetry_::Nq,S1> &H, const MpsQ<Symmetry_,S2> &Vin, MpsQ<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 template<typename Symmetry_, typename S_> friend class MpsQ; // in order to exchange data between real & complex MpsQ
 
 public:
@@ -142,7 +142,7 @@ public:
 	/**
 	\param Op : 
 	\param USE_SQUARE : */
-	template<size_t MpoNq> void setFlattenedMpoQ (const MpoQ<MpoNq,Scalar> &Op, bool USE_SQUARE=false);
+	// template<size_t MpoNq> void setFlattenedMpoQ (const MpoQ<MpoNq,Scalar> &Op, bool USE_SQUARE=false);
 	///\}
 	
 	///\{
@@ -216,10 +216,10 @@ public:
 	double squaredNorm() const;
 	
 	/**Calculates the expectation value with a local operator at the pivot site.*/
-	template<typename MpoScalar> Scalar locAvg (const MpoQ<Nq,MpoScalar> &O) const;
+	// template<typename MpoScalar> Scalar locAvg (const MpoQ<Nq,MpoScalar> &O) const;
 	
 	/**Calculates the expectation value with a local operator at pivot and pivot+1.*/
-	template<typename MpoScalar> Scalar locAvg2 (const MpoQ<Nq,MpoScalar> &O) const;
+	// template<typename MpoScalar> Scalar locAvg2 (const MpoQ<Nq,MpoScalar> &O) const;
 	
 	/**Swaps with another MpsQ.*/
 	void swap (MpsQ<Symmetry,Scalar> &V);
@@ -380,6 +380,10 @@ MpsQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_i
 :DmrgJanitor<PivotMatrixQ<Symmetry::Nq,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_legs(N_legs_input)
 {
 	format = noFormat;
+	// for(std::size_t l=0; l<this->N_sites; l++) {qloc[l] = qloc__[l].qloc();}
+	// format = ::noFormat<Symmetry>;
+	outerResize(L_input, qloc_input, Qtot_input);
+
 //	qlabel = defaultQlabel<Nq>();
 }
 
@@ -2649,68 +2653,68 @@ dot (const MpsQ<Symmetry,Scalar> &Vket) const
 	return Mout.block[0].trace();
 }
 
-template<typename Symmetry, typename Scalar>
-template<typename MpoScalar>
-Scalar MpsQ<Symmetry,Scalar>::
-locAvg (const MpoQ<Nq,MpoScalar> &O) const
-{
-	assert(this->pivot != -1);
-	Scalar res = 0.;
+// template<typename Symmetry, typename Scalar>
+// template<typename MpoScalar>
+// Scalar MpsQ<Symmetry,Scalar>::
+// locAvg (const MpoQ<Nq,MpoScalar> &O) const
+// {
+// 	assert(this->pivot != -1);
+// 	Scalar res = 0.;
 	
-	for (size_t s1=0; s1<qloc[this->pivot].size(); ++s1)
-	for (size_t s2=0; s2<qloc[this->pivot].size(); ++s2)
-	{
-		Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > Aprod = A[this->pivot][s1].adjoint() * A[this->pivot][s2];
-		Scalar trace = 0.;
-		for (size_t q=0; q<Aprod.dim; ++q)
-		{
-			trace += Aprod.block[q].trace();
-		}
+// 	for (size_t s1=0; s1<qloc[this->pivot].size(); ++s1)
+// 	for (size_t s2=0; s2<qloc[this->pivot].size(); ++s2)
+// 	{
+// 		Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > Aprod = A[this->pivot][s1].adjoint() * A[this->pivot][s2];
+// 		Scalar trace = 0.;
+// 		for (size_t q=0; q<Aprod.dim; ++q)
+// 		{
+// 			trace += Aprod.block[q].trace();
+// 		}
 		
-		for (int k=0; k<O.W_at(this->pivot)[s1][s2].outerSize(); ++k)
-		for (typename SparseMatrix<MpoScalar>::InnerIterator iW(O.W_at(this->pivot)[s1][s2],k); iW; ++iW)
-		{
-			res += iW.value() * trace;
-		}
-	}
+// 		for (int k=0; k<O.W_at(this->pivot)[s1][s2].outerSize(); ++k)
+// 		for (typename SparseMatrix<MpoScalar>::InnerIterator iW(O.W_at(this->pivot)[s1][s2],k); iW; ++iW)
+// 		{
+// 			res += iW.value() * trace;
+// 		}
+// 	}
 	
-	return res;
-}
+// 	return res;
+// }
 
-template<typename Symmetry, typename Scalar>
-template<typename MpoScalar>
-Scalar MpsQ<Symmetry,Scalar>::
-locAvg2 (const MpoQ<Nq,MpoScalar> &O) const
-{
-	assert(this->pivot != -1);
-	Scalar res = 0;
+// template<typename Symmetry, typename Scalar>
+// template<typename MpoScalar>
+// Scalar MpsQ<Symmetry,Scalar>::
+// locAvg2 (const MpoQ<Nq,MpoScalar> &O) const
+// {
+// 	assert(this->pivot != -1);
+// 	Scalar res = 0;
 	
-	for (size_t s1=0; s1<qloc[this->pivot].size(); ++s1)
-	for (size_t s2=0; s2<qloc[this->pivot].size(); ++s2)
-	for (size_t s3=0; s3<qloc[this->pivot+1].size(); ++s3)
-	for (size_t s4=0; s4<qloc[this->pivot+1].size(); ++s4)
-	{
-		for (int k12=0; k12<O.W_at(this->pivot)[s1][s2].outerSize(); ++k12)
-		for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(O.W_at(this->pivot)[s1][s2],k12); iW12; ++iW12)
-		for (int k34=0; k34<O.W_at(this->pivot+1)[s3][s4].outerSize(); ++k34)
-		for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(O.W_at(this->pivot+1)[s3][s4],k34); iW34; ++iW34)
-		{
-			Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > Aprod12 = A[this->pivot][s1].adjoint() * A[this->pivot][s2];
-			Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > Aprod123 = A[this->pivot+1][s3].adjoint() * Aprod12;
-			Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > Aprod1234 = Aprod123 * A[this->pivot+1][s4];
+// 	for (size_t s1=0; s1<qloc[this->pivot].size(); ++s1)
+// 	for (size_t s2=0; s2<qloc[this->pivot].size(); ++s2)
+// 	for (size_t s3=0; s3<qloc[this->pivot+1].size(); ++s3)
+// 	for (size_t s4=0; s4<qloc[this->pivot+1].size(); ++s4)
+// 	{
+// 		for (int k12=0; k12<O.W_at(this->pivot)[s1][s2].outerSize(); ++k12)
+// 		for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(O.W_at(this->pivot)[s1][s2],k12); iW12; ++iW12)
+// 		for (int k34=0; k34<O.W_at(this->pivot+1)[s3][s4].outerSize(); ++k34)
+// 		for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(O.W_at(this->pivot+1)[s3][s4],k34); iW34; ++iW34)
+// 		{
+// 			Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > Aprod12 = A[this->pivot][s1].adjoint() * A[this->pivot][s2];
+// 			Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > Aprod123 = A[this->pivot+1][s3].adjoint() * Aprod12;
+// 			Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > Aprod1234 = Aprod123 * A[this->pivot+1][s4];
 			
-			Scalar trace = 0;
-			for (size_t q=0; q<Aprod1234.dim; ++q)
-			{
-				trace += Aprod1234.block[q].trace();
-			}
+// 			Scalar trace = 0;
+// 			for (size_t q=0; q<Aprod1234.dim; ++q)
+// 			{
+// 				trace += Aprod1234.block[q].trace();
+// 			}
 			
-			res += iW12.value() * iW34.value() * trace;
-		}
-	}
+// 			res += iW12.value() * iW34.value() * trace;
+// 		}
+// 	}
 	
-	return res;
-}
+// 	return res;
+// }
 
 template<typename Symmetry, typename Scalar>
 double MpsQ<Symmetry,Scalar>::
@@ -2810,7 +2814,7 @@ operator/= (const OtherScalar &alpha)
 	}
 }
 
-template<size_t D, size_t Nq, typename Scalar, typename OtherScalar>
+template<typename Symmetry, typename Scalar, typename OtherScalar>
 MpsQ<Symmetry,OtherScalar> operator* (const OtherScalar &alpha, const MpsQ<Symmetry,Scalar> &Vin)
 {
 	MpsQ<Symmetry,OtherScalar> Vout = Vin.template cast<OtherScalar>();
@@ -3257,53 +3261,53 @@ collapse()
 ////	}
 }
 
-template<typename Symmetry, typename Scalar>
-template<size_t MpoNq>
-void MpsQ<Symmetry,Scalar>::
-setFlattenedMpoQ (const MpoQ<MpoNq,Scalar> &Op, bool USE_SQUARE)
-{
-	static_assert (Nq == 0, "A flattened MpoQ must have Nq=0!");
+// template<typename Symmetry, typename Scalar>
+// template<size_t MpoNq>
+// void MpsQ<Symmetry,Scalar>::
+// setFlattenedMpoQ (const MpoQ<MpoNq,Scalar> &Op, bool USE_SQUARE)
+// {
+// 	static_assert (Nq == 0, "A flattened MpoQ must have Nq=0!");
 	
-	this->N_sites = Op.length();
-	Qtot = qvacuum<0>();
-	this->set_defaultCutoffs();
+// 	this->N_sites = Op.length();
+// 	Qtot = qvacuum<0>();
+// 	this->set_defaultCutoffs();
 	
-	// set local basis
-	qloc.resize(this->N_sites);
-	for (size_t l=0; l<this->N_sites; ++l)
-	{
-		size_t D = Op.locBasis(l).size();
-		qloc[l].resize(D*D);
+// 	// set local basis
+// 	qloc.resize(this->N_sites);
+// 	for (size_t l=0; l<this->N_sites; ++l)
+// 	{
+// 		size_t D = Op.locBasis(l).size();
+// 		qloc[l].resize(D*D);
 		
-		for (size_t s1=0; s1<D; ++s1)
-		for (size_t s2=0; s2<D; ++s2)
-		{
-			qloc[l][s2+D*s1] = qvacuum<0>();
-		}
-	}
+// 		for (size_t s1=0; s1<D; ++s1)
+// 		for (size_t s2=0; s2<D; ++s2)
+// 		{
+// 			qloc[l][s2+D*s1] = qvacuum<0>();
+// 		}
+// 	}
 	
-	resize_arrays();
-	outerResizeNoSymm();
-	innerResize(1);
+// 	resize_arrays();
+// 	outerResizeNoSymm();
+// 	innerResize(1);
 	
-	for (size_t l=0; l<this->N_sites; ++l)
-	{
-		size_t D = Op.locBasis(l).size();
-		for (size_t s1=0; s1<D; ++s1)
-		for (size_t s2=0; s2<D; ++s2)
-		{
-			size_t s = s2 + D*s1;
-			if (USE_SQUARE)
-			{
-				A[l][s].block[0] = MatrixType(Op.Wsq_at(l)[s1][s2]);
-			}
-			else
-			{
-				A[l][s].block[0] = MatrixType(Op.W_at(l)[s1][s2]);
-			}
-		}
-	}
-}
+// 	for (size_t l=0; l<this->N_sites; ++l)
+// 	{
+// 		size_t D = Op.locBasis(l).size();
+// 		for (size_t s1=0; s1<D; ++s1)
+// 		for (size_t s2=0; s2<D; ++s2)
+// 		{
+// 			size_t s = s2 + D*s1;
+// 			if (USE_SQUARE)
+// 			{
+// 				A[l][s].block[0] = MatrixType(Op.Wsq_at(l)[s1][s2]);
+// 			}
+// 			else
+// 			{
+// 				A[l][s].block[0] = MatrixType(Op.W_at(l)[s1][s2]);
+// 			}
+// 		}
+// 	}
+// }
 
 template<typename Symmetry, typename Scalar>
 string MpsQ<Symmetry,Scalar>::
