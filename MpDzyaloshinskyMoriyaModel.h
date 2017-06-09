@@ -1,13 +1,16 @@
 #ifndef VANILLA_DZYALOSHINSKIMORIYAMODEL
 #define VANILLA_DZYALOSHINSKIMORIYAMODEL
 
+#include "symmetry/U0.h"
 #include "MpHeisenbergModel.h"
 
 namespace VMPS
 {
 
-class DzyaloshinskyMoriyaModel : public MpoQ<0,complex<double> >
+class DzyaloshinskyMoriyaModel : public MpoQ<Sym::U0,complex<double> >
 {
+typedef Sym::U0 Symmetry;
+
 public:
 	
 	DzyaloshinskyMoriyaModel (size_t Lx_input, double J_input, vector<double> Bz_input, double K_input, const std::array<double,3> &DM_input, 
@@ -18,13 +21,13 @@ public:
 	                                          double Jprime=0., const std::array<double,3> &DMprime={0.,0.,0.});
 	
 	///@{
-	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
-	typedef MpsQ<0,complex<double> >                                 StateXcd;
-	typedef DmrgSolverQ<0,DzyaloshinskyMoriyaModel,complex<double> > Solver;
+	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
+	typedef MpsQ<Symmetry,complex<double> >                                 StateXcd;
+	typedef DmrgSolverQ<Symmetry,DzyaloshinskyMoriyaModel,complex<double> > Solver;
 	///@}
 	
-	MpoQ<0>                  Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
-	MpoQ<0,complex<double> > Sy    (size_t locx, size_t locy=0) const;
+	MpoQ<Symmetry>                  Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	MpoQ<Symmetry,complex<double> > Sy    (size_t locx, size_t locy=0) const;
 	
 private:
 	
@@ -110,7 +113,7 @@ DzyaloshinskyMoriyaModel::
 DzyaloshinskyMoriyaModel (size_t Lx_input, double J_input, vector<double> Bz_input, double K_input, const std::array<double,3> &DM_input, 
                           double Jprime_input, const std::array<double,3> &DMprime_input, 
                           size_t D_input, bool CALC_SQUARE)
-:MpoQ<0,complex<double> >(), J(J_input), Bz(Bz_input), K(K_input), DM(DM_input), Jprime(Jprime_input), DMprime(DMprime_input), D(D_input)
+:MpoQ<Symmetry,complex<double> >(), J(J_input), Bz(Bz_input), K(K_input), DM(DM_input), Jprime(Jprime_input), DMprime(DMprime_input), D(D_input)
 {
 	B = SpinBase(1,D);
 	
@@ -205,24 +208,24 @@ DzyaloshinskyMoriyaModel (size_t Lx_input, double J_input, vector<double> Bz_inp
 	}
 }
 
-MpoQ<0> DzyaloshinskyMoriyaModel::
+MpoQ<Sym::U1> DzyaloshinskyMoriyaModel::
 Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 {
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << Sa << "(" << locx << "," << locy << ")";
-	MpoQ<0> Mout(N_sites, N_legs, MpoQ<0,complex<double> >::qloc, {}, labeldummy, ss.str());
+	MpoQ<Symmetry> Mout(N_sites, N_legs, MpoQ<Symmetry,complex<double> >::qloc, {}, labeldummy, ss.str());
 	Mout.setLocal(locx, B.Scomp(Sa,locy));
 	return Mout;
 }
 
-MpoQ<0,complex<double> > DzyaloshinskyMoriyaModel::
+MpoQ<Sym::U1,complex<double> > DzyaloshinskyMoriyaModel::
 Sy (size_t locx, size_t locy) const
 {
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "Sy(" << locx << "," << locy << ")";
-	MpoQ<0,complex<double> > Mout(N_sites, N_legs, MpoQ<0,complex<double> >::qloc, {}, labeldummy, ss.str());
+	MpoQ<Symmetry,complex<double> > Mout(N_sites, N_legs, MpoQ<Symmetry,complex<double> >::qloc, {}, labeldummy, ss.str());
 	SparseMatrixXcd SyOp = -1.i*B.Scomp(iSY,locy);
 	Mout.setLocal(locx,SyOp);
 	return Mout;

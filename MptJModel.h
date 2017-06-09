@@ -15,6 +15,8 @@ namespace VMPS
 \warning \f$J>0\f$ is antiferromagnetic*/
 class tJModel : public HubbardModel
 {
+typedef Sym::U1xU1<double> Symmetry;
+
 public:
 	
 	/**
@@ -32,9 +34,9 @@ public:
 //	class qarrayIterator;
 	
 	///@{
-	typedef MpsQ<2,double>           StateXd;
-	typedef MpsQ<2,complex<double> > StateXcd;
-	typedef DmrgSolverQ<2,tJModel>   Solver;
+	typedef MpsQ<Symmetry,double>           StateXd;
+	typedef MpsQ<Symmetry,complex<double> > StateXcd;
+	typedef DmrgSolverQ<Symmetry,tJModel>   Solver;
 	///@}
 	
 private:

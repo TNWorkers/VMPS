@@ -759,14 +759,21 @@ calc_epsLRsq (size_t loc, double &epsLsq, double &epsRsq)
 //		{
 //			Ntest += N[GAUGE::L][loc][s].block[0].adjoint() * N[GAUGE::L][loc][s].block[0];
 //		}
-//		cout << "NtestL1=" << (Ntest-MatrixType::Identity(Ntest.rows(),Ntest.cols())).norm() << endl;
+//		cout << "NLdag*NL test=" << (Ntest-MatrixType::Identity(Ntest.rows(),Ntest.cols())).norm() << endl;
 //		
 //		Ntest = N[GAUGE::L][loc][0].block[0].adjoint() * A[GAUGE::L][loc][0].block[0];
 //		for (size_t s=1; s<qloc[loc].size(); ++s)
 //		{
 //			Ntest += N[GAUGE::L][loc][s].block[0].adjoint() * A[GAUGE::L][loc][s].block[0];
 //		}
-//		cout << "NtestL2=" << Ntest.norm() << endl;
+//		cout << "NLdag*AL test=" << Ntest.norm() << endl;
+//		
+//		Ntest = N[GAUGE::L][loc][0].block[0].adjoint() * A[GAUGE::C][loc][0].block[0];
+//		for (size_t s=1; s<qloc[loc].size(); ++s)
+//		{
+//			Ntest += N[GAUGE::L][loc][s].block[0].adjoint() * A[GAUGE::C][loc][s].block[0];
+//		}
+//		cout << "NLdag*AC test=" << Ntest.norm() << endl;
 //		
 //		MatrixType U(D*M,D*M);
 //		U.leftCols(M) = Acmp;

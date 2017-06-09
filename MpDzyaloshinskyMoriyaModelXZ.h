@@ -6,8 +6,10 @@
 namespace VMPS
 {
 
-class DzyaloshinskyMoriyaModelXZ : public MpoQ<0,double>
+class DzyaloshinskyMoriyaModelXZ : public MpoQ<Sym::U0,double>
 {
+typedef Sym::U0 Symmetry;
+
 public:
 	
 	DzyaloshinskyMoriyaModelXZ (size_t Lx_input, double J_input, vector<double> Bz_input, double K_input, double DMy_input, 
@@ -17,12 +19,12 @@ public:
 	static HamiltonianTermsXd set_operators (const SpinBase &S, double J, double Bz, double K, double DMy, double Jprime=0, double DMyprime=0);
 	
 	///@{
-	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
-	typedef MpsQ<0,double>                                 StateXd;
-	typedef DmrgSolverQ<0,DzyaloshinskyMoriyaModelXZ,double> Solver;
+	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
+	typedef MpsQ<Symmetry,double>                                   StateXd;
+	typedef DmrgSolverQ<Symmetry,DzyaloshinskyMoriyaModelXZ,double> Solver;
 	///@}
 	
-	MpoQ<0> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	MpoQ<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
 	
 private:
 	
@@ -84,7 +86,7 @@ set_operators (const SpinBase &S, double J, double Bz, double K, double DMy, dou
 
 DzyaloshinskyMoriyaModelXZ::
 DzyaloshinskyMoriyaModelXZ (size_t Lx_input, double J_input, vector<double> Bz_input, double K_input, double DMy_input,  double Jprime_input, double DMyprime_input, size_t D_input, bool CALC_SQUARE)
-:MpoQ<0,double>(), J(J_input), Bz(Bz_input), K(K_input), DMy(DMy_input), Jprime(Jprime_input), DMyprime(DMyprime_input), D(D_input)
+:MpoQ<Symmetry,double>(), J(J_input), Bz(Bz_input), K(K_input), DMy(DMy_input), Jprime(Jprime_input), DMyprime(DMyprime_input), D(D_input)
 {
 	B = SpinBase(1,D);
 	
@@ -179,13 +181,13 @@ DzyaloshinskyMoriyaModelXZ (size_t Lx_input, double J_input, vector<double> Bz_i
 	}
 }
 
-MpoQ<0> DzyaloshinskyMoriyaModelXZ::
+MpoQ<Sym::U0> DzyaloshinskyMoriyaModelXZ::
 Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 {
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << Sa << "(" << locx << "," << locy << ")";
-	MpoQ<0> Mout(N_sites, N_legs, MpoQ<0,double>::qloc, {}, labeldummy, ss.str());
+	MpoQ<Symmetry> Mout(N_sites, N_legs, MpoQ<Symmetry,double>::qloc, {}, labeldummy, ss.str());
 	Mout.setLocal(locx, B.Scomp(Sa,locy));
 	return Mout;
 }

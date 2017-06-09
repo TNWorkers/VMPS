@@ -5,8 +5,9 @@
 
 namespace VMPS
 {
+typedef Sym::U0 Symmetry;
 
-class TransverseHeisenbergModel : public MpoQ<0,double>
+class TransverseHeisenbergModel : public MpoQ<Sym::U0,double>
 {
 public:
 	
@@ -14,17 +15,17 @@ public:
 	                           bool OPEN_BC=false, bool CALC_SQUARE=true);
 	
 	///@{
-	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
-	typedef MpsQ<0,double>                           StateXd;
-	typedef MpsQ<0,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<0,TransverseHeisenbergModel> Solver;
-	typedef VumpsSolver<0,TransverseHeisenbergModel> uSolver;
+	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
+	typedef MpsQ<Symmetry,double>                           StateXd;
+	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
+	typedef DmrgSolverQ<Symmetry,TransverseHeisenbergModel> Solver;
+	typedef VumpsSolver<Symmetry,TransverseHeisenbergModel> uSolver;
 	///@}
 	
-	MpoQ<0> Scomp (SPINOP_LABEL Sa, size_t loc) const;
-	MpoQ<0> Sz (size_t loc) const;
-	MpoQ<0> SaSa (size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2) const;
-	MpoQ<0> SzSz (size_t loc1, size_t loc2) const;
+	MpoQ<Symmetry> Scomp (SPINOP_LABEL Sa, size_t loc) const;
+	MpoQ<Symmetry> Sz (size_t loc) const;
+	MpoQ<Symmetry> SaSa (size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2) const;
+	MpoQ<Symmetry> SzSz (size_t loc1, size_t loc2) const;
 	
 private:
 	
@@ -39,7 +40,7 @@ private:
 
 TransverseHeisenbergModel::
 TransverseHeisenbergModel (size_t Lx_input, double Jxy_input, double Jz_input, vector<double> Bz_input, vector<double> Bx_input, size_t D_input, bool OPEN_BC, bool CALC_SQUARE)
-:MpoQ<0>(), Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input), D(D_input)
+:MpoQ<Symmetry>(), Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input), D(D_input)
 {
 	B = SpinBase(1,D);
 	
@@ -128,46 +129,46 @@ TransverseHeisenbergModel (size_t Lx_input, double Jxy_input, double Jz_input, v
 	}
 }
 
-MpoQ<0> TransverseHeisenbergModel::
+MpoQ<Sym::U0> TransverseHeisenbergModel::
 Scomp (SPINOP_LABEL Sa, size_t loc) const
 {
 	assert(loc<N_sites);
 	stringstream ss;
 	ss << Sa;
-	MpoQ<0> Mout(N_sites, 1, MpoQ<0>::qloc, {}, labeldummy, ss.str());
+	MpoQ<Symmetry> Mout(N_sites, 1, MpoQ<Symmetry>::qloc, {}, labeldummy, ss.str());
 	Mout.setLocal(loc, B.Scomp(Sa));
 	return Mout;
 }
 
-MpoQ<0> TransverseHeisenbergModel::
+MpoQ<Sym::U0> TransverseHeisenbergModel::
 Sz (size_t loc) const
 {
 	assert(loc<N_sites);
 	stringstream ss;
 	ss << SZ;
-	MpoQ<0> Mout(N_sites, 1, MpoQ<0>::qloc, {}, labeldummy, ss.str());
+	MpoQ<Symmetry> Mout(N_sites, 1, MpoQ<Symmetry>::qloc, {}, labeldummy, ss.str());
 	Mout.setLocal(loc, B.Scomp(SZ));
 	return Mout;
 }
 
-MpoQ<0> TransverseHeisenbergModel::
+MpoQ<Sym::U0> TransverseHeisenbergModel::
 SzSz (size_t loc1, size_t loc2) const
 {
 	assert(loc1<N_sites and loc2<N_sites);
 	stringstream ss;
 	ss << "SzSz";
-	MpoQ<0> Mout(N_sites, 1, MpoQ<0>::qloc, {}, labeldummy, ss.str());
+	MpoQ<Symmetry> Mout(N_sites, 1, MpoQ<Symmetry>::qloc, {}, labeldummy, ss.str());
 	Mout.setLocal({loc1, loc2}, {B.Scomp(SZ), B.Scomp(SZ)});
 	return Mout;
 }
 
-MpoQ<0> TransverseHeisenbergModel::
+MpoQ<Sym::U0>TransverseHeisenbergModel::
 SaSa (size_t loc1, SPINOP_LABEL SOP1, size_t loc2, SPINOP_LABEL SOP2) const
 {
 	assert(loc1<N_sites and loc2<N_sites);
 	stringstream ss;
 	ss << SOP1 << "(" << loc1 << ")" << SOP2 << "(" << loc2 << ")";
-	MpoQ<0> Mout(N_sites, 1, MpoQ<0>::qloc, {}, labeldummy, ss.str());
+	MpoQ<Symmetry> Mout(N_sites, 1, MpoQ<Symmetry>::qloc, {}, labeldummy, ss.str());
 	Mout.setLocal({loc1, loc2}, {B.Scomp(SOP1), B.Scomp(SOP2)});
 	return Mout;
 }

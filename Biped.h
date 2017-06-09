@@ -16,7 +16,7 @@ using namespace std;
 /**
 Tensor with two legs and quantum number blocks.
 One could have used a general tensor, but the special case of two legs is hardcoded to preserve the sanity of the programmer. For the general tensor see Multipede.
-@describe_Nq
+@describe_Symmetry
 @describe_MatrixType*/
 template<typename Symmetry, typename MatrixType_>
 struct Biped
@@ -28,7 +28,9 @@ public:
 	typedef MatrixType_ MatrixType;
 private:
 	typedef typename MatrixType::Scalar Scalar;
+	
 public:
+	
 	Biped(){dim=0;}
 	
 	///@{
@@ -37,7 +39,7 @@ public:
 	std::size_t dim;
 	inline std::size_t size() const {return dim;}
 	inline void plusplus() {++dim;}
-
+	
 	/**Vector of all incoming quantum numbers.*/
 	std::vector<qType> in;
 	
@@ -52,7 +54,7 @@ public:
 	///@{
 	/**Dictionary allowing one to find the index of \p block for a given array of two quantum numbers \p qin, \p qout in \f$O(1)\f$ operations without looping over the blocks.*/
 	std::unordered_map<std::array<qType,2>,std::size_t> dict; // key format: {qin,qout}
-
+	
 	///@{
 	/**Returns an Eigen vector of size \p dim containing all Matrix rows for every block nu.*/
 	Eigen::VectorXi rows () const;
@@ -67,8 +69,8 @@ public:
 	\param SHOW_MATRICES : if true, all the block-matrices are printed.
 	\param precision : precision for the \p Scalar tensor components*/
 	std::string print ( const bool SHOW_MATRICES=false , const std::size_t precision=3 ) const;
-
-	/**Prints Biped<Nq,MatrixType>::dict into a string.*/
+	
+	/**Prints Biped<Symmetry,MatrixType>::dict into a string.*/
 	std::string print_dict() const;
 	
 	/**\describe_memory*/
@@ -82,10 +84,10 @@ public:
 	/**Deletes the contents of \p in, \p out, \p block, \p dict.*/
 	void clear();
 	
-	/**Sets all matrices in Biped<Nq,MatrixType>::block to zero, preserving the rows and columns.*/
+	/**Sets all matrices in Biped<Symmetry,MatrixType>::block to zero, preserving the rows and columns.*/
 	void setZero();
 	
-	/**Sets all matrices in Biped<Nq,MatrixType>::block to random values, preserving the rows and columns.*/
+	/**Sets all matrices in Biped<Symmetry,MatrixType>::block to random values, preserving the rows and columns.*/
 	void setRandom();
 	
 	/**Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers to the vacuum (both \p in & \p out).
@@ -110,7 +112,7 @@ public:
 	   \param MODE : */
 	Biped<Symmetry,MatrixType_> contract(const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE = contract::MODE::UNITY) const;
 	///@}
-
+	
 	/**Takes the trace of the Biped. Only useful if this Biped is really a matrix from symmetry perspektive (q_in = q_out in all blocks).*/
 	Scalar trace() const;
 	
@@ -283,7 +285,7 @@ contract(const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE) const
 			{
 				if (this->in[q1] == A.out[q2])
 				{
-					if (this->block[q1].rows() != 0 and A.block[q2].rows() != 0)				
+					if (this->block[q1].rows() != 0 and A.block[q2].rows() != 0)
 					{
 						factor_cgc = Scalar(1);
 						if ( MODE == contract::MODE::OORR )
@@ -306,7 +308,7 @@ contract(const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE) const
 				}
 			}
 		}
-	return Ares;	
+	return Ares;
 }
 
 template<typename Symmetry, typename MatrixType_>
@@ -318,7 +320,7 @@ Biped<Symmetry,MatrixType_> operator* (const Biped<Symmetry,MatrixType_> &A1, co
 		{
 			if (A1.out[q1] == A2.in[q2])
 			{
-				if (A1.block[q1].rows() != 0 and A2.block[q2].rows() != 0)				
+				if (A1.block[q1].rows() != 0 and A2.block[q2].rows() != 0)
 				{
 					Ares.push_back(A1.in[q1], A2.out[q2], A1.block[q1]*A2.block[q2]);
 				}
@@ -441,9 +443,9 @@ print ( const bool SHOW_MATRICES, const std::size_t precision ) const
 template<typename Symmetry, typename MatrixType_>
 Biped<Symmetry,MatrixType_> operator+ (const Biped<Symmetry,MatrixType_> &M1, const Biped<Symmetry,MatrixType_> &M2)
 {
-	if ( M1.size() < M2.size() ) { return M2+M1; }
+	if (M1.size() < M2.size()) {return M2+M1;}
 	std::vector<std::size_t> blocks_in_2nd_biped;
-
+	
 	Biped<Symmetry,MatrixType_> Mout;
 	MatrixType_ Mtmp;
 	for (std::size_t nu=0; nu<M1.size(); nu++)
@@ -460,7 +462,7 @@ Biped<Symmetry,MatrixType_> operator+ (const Biped<Symmetry,MatrixType_> &M1, co
 		}
 		Mout.push_back({{M1.in[nu],M1.out[nu]}},Mtmp);
 	}
-	if(blocks_in_2nd_biped.size() != M2.size())
+	if (blocks_in_2nd_biped.size() != M2.size())
 	{
 		for(std::size_t nu=0; nu<M2.size(); nu++)
 		{
@@ -496,7 +498,7 @@ Biped<Symmetry,MatrixType_> operator- (const Biped<Symmetry,MatrixType_> &M1, co
 		}
 		Mout.push_back({{M1.in[nu],M1.out[nu]}},Mtmp);
 	}
-	if(blocks_in_2nd_biped.size() != M2.size())
+	if (blocks_in_2nd_biped.size() != M2.size())
 	{
 		for(std::size_t nu=0; nu<M2.size(); nu++)
 		{

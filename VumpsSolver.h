@@ -473,7 +473,7 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 	
 	// dynamic Lanczos error: at least 1e-7, can go down further if err_eigval is smaller, but not below 1e-14
 	double tolLanczosEigval = max(min(0.01*err_eigval,1e-7),1e-14); // 1e-7
-	double tolLanczosState  = max(min(0.01*err_var,1e-4),   1e-10); // 1e-4
+	double tolLanczosState  = max(min(0.01*err_var,1e-4),  1e-10); // 1e-4
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << "current Lanczos tolerances: " << tolLanczosEigval << ", " << tolLanczosState << endl;
@@ -569,8 +569,6 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Nq,Scalar> > &Vout)
 		lout << IterationTimer.info("full iteration") << endl;
 		lout << endl;
 	}
-	
-	//--
 	
 //	if (N_iterations%4 == 0)
 	if (err_var < 1e-4)

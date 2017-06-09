@@ -18,8 +18,10 @@ H = -J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^z
 \note \f$J<0\f$ : antiferromagnetic*/
 class HeisenbergModel : public MpoQ<Sym::U1<double>,double>
 {
+typedef Sym::U1<double> Symmetry;
+
 public:
-	typedef Sym::U1<double> Symmetry;
+	
 	HeisenbergModel() : MpoQ<Symmetry>() {};
 	
 	/**
@@ -98,12 +100,12 @@ public:
 	///@}
 	
 	///@{
-	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
+	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
 	typedef MpsQ<Symmetry,double>                           StateXd;
 	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<1,HeisenbergModel,double>           Solver;
-	typedef MpsQCompressor<1,double,double>          CompressorXd;
-	typedef MpsQCompressor<1,complex<double>,double> CompressorXcd;
+	typedef DmrgSolverQ<Symmetry,HeisenbergModel,double>           Solver;
+	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
+	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
 	typedef MpoQ<Symmetry>                                  Operator;
 	///@}
 	

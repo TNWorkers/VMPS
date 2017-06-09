@@ -5,8 +5,9 @@
 
 namespace VMPS
 {
+typedef Sym::U0 Symmetry;
 
-class GrandHubbardModel : public MpoQ<0,double>
+class GrandHubbardModel : public MpoQ<Sym::U0,double>
 {
 public:
 	
@@ -14,16 +15,16 @@ public:
 	
 	GrandHubbardModel (size_t L_input, std::array<double,2> t_input, double U_input, double mu_input, bool OPEN_BC=false, bool CALC_SQUARE=true);
 	
-	typedef MpsQ<0,double>                           StateXd;
-	typedef MpsQ<0,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<0,GrandHubbardModel>         Solver;
-	typedef VumpsSolver<0,GrandHubbardModel>         uSolver;
-	typedef MpsQCompressor<0,double,double>          CompressorXd;
-	typedef MpsQCompressor<0,complex<double>,double> CompressorXcd;
-	typedef MpoQ<0>                                  Operator;
+	typedef MpsQ<Symmetry,double>                           StateXd;
+	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
+	typedef DmrgSolverQ<Symmetry,GrandHubbardModel>         Solver;
+	typedef VumpsSolver<Symmetry,GrandHubbardModel>         uSolver;
+	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
+	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
+	typedef MpoQ<Symmetry>                                  Operator;
 	
-	MpoQ<0> n (SPIN_INDEX sigma, size_t loc) const;
-	MpoQ<0> Sz (size_t loc) const;
+	MpoQ<Symmetry> n (SPIN_INDEX sigma, size_t loc) const;
+	MpoQ<Symmetry> Sz (size_t loc) const;
 	
 private:
 	
@@ -35,7 +36,7 @@ private:
 
 GrandHubbardModel::
 GrandHubbardModel (size_t L_input, double U_input, double mu_input, bool OPEN_BC, bool CALC_SQUARE)
-:MpoQ<0> (L_input, 1, vector<qarray<0> >(begin(qloc4dummy),end(qloc4dummy)), {}, labeldummy, "HubbardModel"),
+:MpoQ<Symmetry> (L_input, 1, vector<qarray<0> >(begin(qloc4dummy),end(qloc4dummy)), {}, labeldummy, "HubbardModel"),
 U(U_input), mu(mu_input)
 {
 	stringstream ss;
@@ -119,24 +120,24 @@ U(U_input), mu(mu_input), t(t_input)
 	}
 }
 
-MpoQ<0> GrandHubbardModel::
+MpoQ<Sym::U0> GrandHubbardModel::
 n (SPIN_INDEX sigma, size_t loc) const
 {
 	assert(loc<N_sites);
 	stringstream ss;
 	ss << "n(" << loc << ",σ=" << sigma << ")";
-	MpoQ<0> Mout(N_sites, 1, MpoQ<0>::qloc, {}, labeldummy, ss.str());
+	MpoQ<Symmetry> Mout(N_sites, 1, MpoQ<Symmetry>::qloc, {}, labeldummy, ss.str());
 	Mout.setLocal(loc, F.n(sigma));
 	return Mout;
 }
 
-MpoQ<0> GrandHubbardModel::
+MpoQ<Sym::U0> GrandHubbardModel::
 Sz (size_t loc) const
 {
 	assert(loc<N_sites);
 	stringstream ss;
 	ss << "Sz(" << loc << ")";
-	MpoQ<0> Mout(N_sites, 1, MpoQ<0>::qloc, {}, labeldummy, ss.str());
+	MpoQ<Symmetry> Mout(N_sites, 1, MpoQ<Symmetry>::qloc, {}, labeldummy, ss.str());
 	Mout.setLocal(loc, F.Sz());
 	return Mout;
 }
