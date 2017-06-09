@@ -123,13 +123,13 @@ bool validate( const Eigen::Tensor<Scalar,Rank> &M )
 	}
 	return out;
 }
-template<>
-bool validate( const Eigen::Tensor<double,0> &M )
-{
-	bool out=true;
-	if( std::abs(M()) > ::numeric_limits<double>::infinity() ) { out=false; return out; }
-	return out;
-}
+//template<>
+//bool validate( const Eigen::Tensor<double,0> &M )
+//{
+//	bool out=true;
+//	if( std::abs(M()) > ::numeric_limits<double>::infinity() ) { out=false; return out; }
+//	return out;
+//}
 
 // template<int Dim1, int Dim2>
 // Eigen::Tensor<double,Dim1+Dim2> product (const Eigen::Tensor<double,Dim1> &T1, const Eigen::Tensor<double,Dim2> &T2)

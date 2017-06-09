@@ -87,9 +87,9 @@ public:
 	typedef MpsQ<Symmetry,double>                           StateXd;
 	/**Complex MpsQ for convenient reference (no need to specify D, Symmetry all the time).*/
 	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<Symmetry,HubbardModel,double>              Solver;
-	typedef MpsQCompressor<Symmetry::Nq,double,double>          CompressorXd;
-	typedef MpsQCompressor<Symmetry::Nq,complex<double>,double> CompressorXcd;
+	typedef DmrgSolverQ<Symmetry,HubbardModel,double>       Solver;
+	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
+	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
 	typedef MpoQ<Symmetry,double>                           OperatorXd;
 	typedef MpoQ<Symmetry,complex<double> >                 OperatorXcd;
 	

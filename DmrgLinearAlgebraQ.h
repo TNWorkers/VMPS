@@ -200,11 +200,11 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 \param VERBOSITY : verbosity level*/
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void HxV (const MpoQ<Symmetry,MpoScalar> &H, const MpsQ<Symmetry,Scalar> &Vin, MpsQ<Symmetry,Scalar> &Vout, 
-          DMRG::VERBOSITY::OPTION VERBOSITY) //=DMRG::VERBOSITY::HALFSWEEPWISE)
+          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	Stopwatch<> Chronos;
 	
-	MpsQCompressor<Symmetry::Nq,Scalar,MpoScalar> Compadre(VERBOSITY);
+	MpsQCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 	Compadre.varCompress(H,Vin, Vout, Vin.calc_Dmax());
 	
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
@@ -224,11 +224,12 @@ void HxV (const MpoQ<Symmetry,MpoScalar> &H, const MpsQ<Symmetry,Scalar> &Vin, M
 \param Vout : output MpsQ \f$\left|T_{n}\right>\f$
 \param VERBOSITY : verbosity level*/
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void polyIter (const MpoQ<Symmetry,MpoScalar> &H, const MpsQ<Symmetry,Scalar> &Vin1, double polyB, const MpsQ<Symmetry,Scalar> &Vin2, MpsQ<Symmetry,Scalar> &Vout, 
+void polyIter (const MpoQ<Symmetry,MpoScalar> &H, const MpsQ<Symmetry,Scalar> &Vin1, double polyB, 
+               const MpsQ<Symmetry,Scalar> &Vin2, MpsQ<Symmetry,Scalar> &Vout, 
                DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	Stopwatch<> Chronos;
-	MpsQCompressor<Symmetry::Nq,Scalar,MpoScalar> Compadre(VERBOSITY);
+	MpsQCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 	Compadre.polyCompress(H,Vin1,polyB,Vin2, Vout, Vin1.calc_Dmax());
 	
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
@@ -253,7 +254,7 @@ void addScale (const OtherScalar alpha, const MpsQ<Symmetry,Scalar> &Vin, MpsQ<S
                DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
 {
 	Stopwatch<> Chronos;
-	MpsQCompressor<Symmetry::Nq,Scalar,OtherScalar> Compadre(VERBOSITY);
+	MpsQCompressor<Symmetry,Scalar,OtherScalar> Compadre(VERBOSITY);
 	size_t Dstart = Vout.calc_Dmax();
 	MpsQ<Symmetry,Scalar> Vtmp = Vout;
 	Vtmp.addScale(alpha,Vin,false);

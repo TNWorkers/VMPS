@@ -38,10 +38,10 @@ typedef typename Symmetry::qType qType;
 // Note: Cannot partially specialize template friends (or anything else, really). That sucks.
 template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
 // template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
-template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
+template<typename Symmetry_, typename S1, typename S2> friend class MpsQCompressor;
 template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
-	// template<typename Symmetry_, typename S1, typename S2> friend void HxV (const MpoQ<Symmetry_::Nq,S1> &H, const MpsQ<Symmetry_,S2> &Vin, MpsQ<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
-	// template<typename Symmetry_, typename S1, typename S2> friend void OxV (const MpoQ<Symmetry_::Nq,S1> &H, const MpsQ<Symmetry_,S2> &Vin, MpsQ<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
+template<typename Symmetry_, typename S1, typename S2> friend void HxV (const MpoQ<Symmetry_,S1> &H, const MpsQ<Symmetry_,S2> &Vin, MpsQ<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
+template<typename Symmetry_, typename S1, typename S2> friend void OxV (const MpoQ<Symmetry_,S1> &H, const MpsQ<Symmetry_,S2> &Vin, MpsQ<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 template<typename Symmetry_, typename S_> friend class MpsQ; // in order to exchange data between real & complex MpsQ
 
 public:
@@ -2771,18 +2771,18 @@ dot (const MpsQ<Symmetry,Scalar> &Vket) const
 		return 0.;
 	}
 	
-	if (this->pivot != -1 and this->pivot == Vket.pivot)
-	{
-		Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out = A[this->pivot][0].adjoint().contract(Vket.A[Vket.pivot][0]);
-		for (std::size_t s=1; s<qloc[this->pivot].size(); s++)
-		{
-			out += A[this->pivot][s].adjoint().contract(Vket.A[Vket.pivot][s]);
-		}
-		Scalar res = out.trace();
-		return res;
-	}
-	else
-	{
+//	if (this->pivot != -1 and this->pivot == Vket.pivot and false)
+//	{
+//		Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out = A[this->pivot][0].adjoint().contract(Vket.A[Vket.pivot][0]);
+//		for (std::size_t s=1; s<qloc[this->pivot].size(); s++)
+//		{
+//			out += A[this->pivot][s].adjoint().contract(Vket.A[Vket.pivot][s]);
+//		}
+//		Scalar res = out.trace();
+//		return res;
+//	}
+//	else
+//	{
 		Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > Mtmp = A[0][0].adjoint().contract(Vket.A[0][0]);
 		for (std::size_t s=1; s<qloc[0].size(); ++s)
 		{
@@ -2807,7 +2807,7 @@ dot (const MpsQ<Symmetry,Scalar> &Vket) const
 		Scalar out = Mtmp.block[0](0,0);
 		out *= Symmetry::coeff_dot(Qtot);
 		return out;
-	}
+//	}
 	
 //	assert(Mout.dim == 1 and 
 //	       Mout.block[0].rows() == 1 and 

@@ -2,37 +2,35 @@
 #define STRAWBERRY_DMRG_HEFF_STUFF_2SITE_WITH_Q
 
 //-----------<definitions>-----------
-template<size_t Nq, typename Scalar, typename MpoScalar=double>
+template<typename Symmetry, typename Scalar, typename MpoScalar=double>
 struct PivotMatrix2Q
 {
-//	shared_ptr<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > > L;
-//	shared_ptr<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > > R;
-	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > L;
-	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > R;
-	vector<vector<SparseMatrix<MpoScalar> > >  W12;
-	vector<vector<SparseMatrix<MpoScalar> > >  W34;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
+	vector<vector<vector<SparseMatrix<MpoScalar> > > > W12;
+	vector<vector<vector<SparseMatrix<MpoScalar> > > > W34;
 	
-	vector<qarray<Nq> > qloc12;
-	vector<qarray<Nq> > qloc34;
+	vector<qarray<Symmetry::Nq> > qloc12;
+	vector<qarray<Symmetry::Nq> > qloc34;
 	
 	size_t dim;
 };
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 struct PivotVector2Q
 {
-	vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > A;
+	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A;
 	
-	PivotVector2Q<Nq,Scalar>& operator+= (const PivotVector2Q<Nq,Scalar> &Vrhs);
-	PivotVector2Q<Nq,Scalar>& operator-= (const PivotVector2Q<Nq,Scalar> &Vrhs);
-	template<typename OtherScalar> PivotVector2Q<Nq,Scalar>& operator*= (const OtherScalar &alpha);
-	template<typename OtherScalar> PivotVector2Q<Nq,Scalar>& operator/= (const OtherScalar &alpha);
+	PivotVector2Q<Symmetry,Scalar>& operator+= (const PivotVector2Q<Symmetry,Scalar> &Vrhs);
+	PivotVector2Q<Symmetry,Scalar>& operator-= (const PivotVector2Q<Symmetry,Scalar> &Vrhs);
+	template<typename OtherScalar> PivotVector2Q<Symmetry,Scalar>& operator*= (const OtherScalar &alpha);
+	template<typename OtherScalar> PivotVector2Q<Symmetry,Scalar>& operator/= (const OtherScalar &alpha);
 };
 //-----------</definitions>-----------
 
 //-----------<vector arithmetics>-----------
-template<size_t Nq, typename Scalar>
-PivotVector2Q<Nq,Scalar>& PivotVector2Q<Nq,Scalar>::operator+= (const PivotVector2Q<Nq,Scalar> &Vrhs)
+template<typename Symmetry, typename Scalar>
+PivotVector2Q<Symmetry,Scalar>& PivotVector2Q<Symmetry,Scalar>::operator+= (const PivotVector2Q<Symmetry,Scalar> &Vrhs)
 {
 	for (size_t s1=0; s1<A.size(); ++s1)
 	for (size_t s3=0; s3<A[s1].size(); ++s3)
@@ -44,9 +42,9 @@ PivotVector2Q<Nq,Scalar>& PivotVector2Q<Nq,Scalar>::operator+= (const PivotVecto
 	return *this;
 }
 
-template<size_t Nq, typename Scalar>
-PivotVector2Q<Nq,Scalar>& PivotVector2Q<Nq,Scalar>::
-operator-= (const PivotVector2Q<Nq,Scalar> &Vrhs)
+template<typename Symmetry, typename Scalar>
+PivotVector2Q<Symmetry,Scalar>& PivotVector2Q<Symmetry,Scalar>::
+operator-= (const PivotVector2Q<Symmetry,Scalar> &Vrhs)
 {
 	for (size_t s1=0; s1<A.size(); ++s1)
 	for (size_t s3=0; s3<A[s1].size(); ++s3)
@@ -58,9 +56,9 @@ operator-= (const PivotVector2Q<Nq,Scalar> &Vrhs)
 	return *this;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename OtherScalar>
-PivotVector2Q<Nq,Scalar>& PivotVector2Q<Nq,Scalar>::
+PivotVector2Q<Symmetry,Scalar>& PivotVector2Q<Symmetry,Scalar>::
 operator*= (const OtherScalar &alpha)
 {
 	for (size_t s1=0; s1<A.size(); ++s1)
@@ -72,9 +70,9 @@ operator*= (const OtherScalar &alpha)
 	return *this;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename OtherScalar>
-PivotVector2Q<Nq,Scalar>& PivotVector2Q<Nq,Scalar>::
+PivotVector2Q<Symmetry,Scalar>& PivotVector2Q<Symmetry,Scalar>::
 operator/= (const OtherScalar &alpha)
 {
 	for (size_t s1=0; s1<A.size(); ++s1)
@@ -86,44 +84,44 @@ operator/= (const OtherScalar &alpha)
 	return *this;
 }
 
-template<size_t Nq, typename Scalar, typename OtherScalar>
-PivotVector2Q<Nq,Scalar> operator* (const OtherScalar &alpha, PivotVector2Q<Nq,Scalar> V)
+template<typename Symmetry, typename Scalar, typename OtherScalar>
+PivotVector2Q<Symmetry,Scalar> operator* (const OtherScalar &alpha, PivotVector2Q<Symmetry,Scalar> V)
 {
 	return V *= alpha;
 }
 
-template<size_t Nq, typename Scalar, typename OtherScalar>
-PivotVector2Q<Nq,Scalar> operator* (PivotVector2Q<Nq,Scalar> V, const OtherScalar &alpha)
+template<typename Symmetry, typename Scalar, typename OtherScalar>
+PivotVector2Q<Symmetry,Scalar> operator* (PivotVector2Q<Symmetry,Scalar> V, const OtherScalar &alpha)
 {
 	return V *= alpha;
 }
 
-template<size_t Nq, typename Scalar, typename OtherScalar>
-PivotVector2Q<Nq,Scalar> operator/ (PivotVector2Q<Nq,Scalar> V, const OtherScalar &alpha)
+template<typename Symmetry, typename Scalar, typename OtherScalar>
+PivotVector2Q<Symmetry,Scalar> operator/ (PivotVector2Q<Symmetry,Scalar> V, const OtherScalar &alpha)
 {
 	return V /= alpha;
 }
 
-template<size_t Nq, typename Scalar>
-PivotVector2Q<Nq,Scalar> operator+ (const PivotVector2Q<Nq,Scalar> &V1, const PivotVector2Q<Nq,Scalar> &V2)
+template<typename Symmetry, typename Scalar>
+PivotVector2Q<Symmetry,Scalar> operator+ (const PivotVector2Q<Symmetry,Scalar> &V1, const PivotVector2Q<Symmetry,Scalar> &V2)
 {
-	PivotVector2Q<Nq,Scalar> Vout = V1;
+	PivotVector2Q<Symmetry,Scalar> Vout = V1;
 	Vout += V2;
 	return Vout;
 }
 
-template<size_t Nq, typename Scalar>
-PivotVector2Q<Nq,Scalar> operator- (const PivotVector2Q<Nq,Scalar> &V1, const PivotVector2Q<Nq,Scalar> &V2)
+template<typename Symmetry, typename Scalar>
+PivotVector2Q<Symmetry,Scalar> operator- (const PivotVector2Q<Symmetry,Scalar> &V1, const PivotVector2Q<Symmetry,Scalar> &V2)
 {
-	PivotVector2Q<Nq,Scalar> Vout = V1;
+	PivotVector2Q<Symmetry,Scalar> Vout = V1;
 	Vout -= V2;
 	return Vout;
 }
 //-----------</vector arithmetics>-----------
 
 //-----------<matrix*vector>-----------
-template<size_t Nq, typename Scalar, typename MpoScalar>
-void HxV (const PivotMatrix2Q<Nq,Scalar,MpoScalar> &H, const PivotVector2Q<Nq,Scalar> &Vin, PivotVector2Q<Nq,Scalar> &Vout)
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void HxV (const PivotMatrix2Q<Symmetry,Scalar,MpoScalar> &H, const PivotVector2Q<Symmetry,Scalar> &Vin, PivotVector2Q<Symmetry,Scalar> &Vout)
 {
 	Vout = Vin;
 	for (size_t s1=0; s1<Vout.A.size(); ++s1)
@@ -138,7 +136,7 @@ void HxV (const PivotMatrix2Q<Nq,Scalar,MpoScalar> &H, const PivotVector2Q<Nq,Sc
 	for (size_t s4=0; s4<H.qloc34.size(); ++s4)
 	for (size_t qL=0; qL<H.L.dim; ++qL)
 	{
-		tuple<qarray3<Nq>,size_t,size_t> ix;
+		tuple<qarray3<Symmetry::Nq>,size_t,size_t> ix;
 		bool FOUND_MATCH = AAWWAA(H.L.in(qL), H.L.out(qL), H.L.mid(qL), s1, s2, H.qloc12, s3, s4, H.qloc34, Vout.A, Vin.A, ix);
 		
 		if (FOUND_MATCH)
@@ -149,10 +147,10 @@ void HxV (const PivotMatrix2Q<Nq,Scalar,MpoScalar> &H, const PivotVector2Q<Nq,Sc
 			
 			if (qR != H.R.dict.end())
 			{
-				for (int k12=0; k12<H.W12[s1][s2].outerSize(); ++k12)
-				for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.W12[s1][s2],k12); iW12; ++iW12)
-				for (int k34=0; k34<H.W34[s3][s4].outerSize(); ++k34)
-				for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H.W34[s3][s4],k34); iW34; ++iW34)
+				for (int k12=0; k12<H.W12[s1][s2][0].outerSize(); ++k12)
+				for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.W12[s1][s2][0],k12); iW12; ++iW12)
+				for (int k34=0; k34<H.W34[s3][s4][0].outerSize(); ++k34)
+				for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H.W34[s3][s4][0],k34); iW34; ++iW34)
 				{
 					Matrix<Scalar,Dynamic,Dynamic> Mtmp;
 					MpoScalar Wfactor = iW12.value() * iW34.value();
@@ -183,18 +181,18 @@ void HxV (const PivotMatrix2Q<Nq,Scalar,MpoScalar> &H, const PivotVector2Q<Nq,Sc
 	}
 }
 
-template<size_t Nq, typename Scalar, typename MpoScalar>
-void HxV (const PivotMatrix2Q<Nq,Scalar,MpoScalar> &H, PivotVector2Q<Nq,Scalar> &Vinout)
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void HxV (const PivotMatrix2Q<Symmetry,Scalar,MpoScalar> &H, PivotVector2Q<Symmetry,Scalar> &Vinout)
 {
-	PivotVector2Q<Nq,Scalar> Vtmp;
+	PivotVector2Q<Symmetry,Scalar> Vtmp;
 	HxV(H,Vinout,Vtmp);
 	Vinout = Vtmp;
 }
 //-----------</matrix*vector>-----------
 
 //-----------<dot & vector norms>-----------
-template<size_t Nq, typename Scalar>
-Scalar dot (const PivotVector2Q<Nq,Scalar> &V1, const PivotVector2Q<Nq,Scalar> &V2)
+template<typename Symmetry, typename Scalar>
+Scalar dot (const PivotVector2Q<Symmetry,Scalar> &V1, const PivotVector2Q<Symmetry,Scalar> &V2)
 {
 	Scalar res = 0.;
 	for (size_t s1=0; s1<V2.A.size(); ++s1)
@@ -207,8 +205,8 @@ Scalar dot (const PivotVector2Q<Nq,Scalar> &V1, const PivotVector2Q<Nq,Scalar> &
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
-double squaredNorm (const PivotVector2Q<Nq,Scalar> &V)
+template<typename Symmetry, typename Scalar>
+double squaredNorm (const PivotVector2Q<Symmetry,Scalar> &V)
 {
 	double res = 0.;
 	for (size_t s1=0; s1<V.A.size(); ++s1)
@@ -220,20 +218,20 @@ double squaredNorm (const PivotVector2Q<Nq,Scalar> &V)
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
-inline double norm (const PivotVector2Q<Nq,Scalar> &V)
+template<typename Symmetry, typename Scalar>
+inline double norm (const PivotVector2Q<Symmetry,Scalar> &V)
 {
 	return sqrt(squaredNorm(V));
 }
 
-template<size_t Nq, typename Scalar>
-inline void normalize (PivotVector2Q<Nq,Scalar> &V)
+template<typename Symmetry, typename Scalar>
+inline void normalize (PivotVector2Q<Symmetry,Scalar> &V)
 {
 	V /= norm(V);
 }
 
-template<size_t Nq, typename Scalar>
-double infNorm (const PivotVector2Q<Nq,Scalar> &V1, const PivotVector2Q<Nq,Scalar> &V2)
+template<typename Symmetry, typename Scalar>
+double infNorm (const PivotVector2Q<Symmetry,Scalar> &V1, const PivotVector2Q<Symmetry,Scalar> &V2)
 {
 	double res = 0.;
 	for (size_t s1=0; s1<V2.A.size(); ++s1)
@@ -248,21 +246,21 @@ double infNorm (const PivotVector2Q<Nq,Scalar> &V1, const PivotVector2Q<Nq,Scala
 //-----------</dot & vector norms>-----------
 
 //-----------<miscellaneous>-----------
-template<size_t Nq, typename Scalar, typename MpoScalar>
-inline size_t dim (const PivotMatrix2Q<Nq,Scalar,MpoScalar> &H)
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+inline size_t dim (const PivotMatrix2Q<Symmetry,Scalar,MpoScalar> &H)
 {
 	return H.dim;
 }
 
 // How to calculate the Frobenius norm of this?
-template<size_t Nq, typename Scalar, typename MpoScalar>
-inline double norm (const PivotMatrix2Q<Nq,Scalar,MpoScalar> &H)
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+inline double norm (const PivotMatrix2Q<Symmetry,Scalar,MpoScalar> &H)
 {
 	return H.dim;
 }
 
-template<size_t Nq, typename Scalar>
-void swap (PivotVector2Q<Nq,Scalar> &V1, PivotVector2Q<Nq,Scalar> &V2)
+template<typename Symmetry, typename Scalar>
+void swap (PivotVector2Q<Symmetry,Scalar> &V1, PivotVector2Q<Symmetry,Scalar> &V2)
 {
 	for (size_t s1=0; s1<V2.A.size(); ++s1)
 	for (size_t s3=0; s3<V2.A[s1].size(); ++s3)
@@ -274,10 +272,10 @@ void swap (PivotVector2Q<Nq,Scalar> &V1, PivotVector2Q<Nq,Scalar> &V2)
 
 #include "RandomVector.h"
 
-template<size_t Nq, typename Scalar>
-struct GaussianRandomVector<PivotVector2Q<Nq,Scalar>,Scalar>
+template<typename Symmetry, typename Scalar>
+struct GaussianRandomVector<PivotVector2Q<Symmetry,Scalar>,Scalar>
 {
-	static void fill (size_t N, PivotVector2Q<Nq,Scalar> &Vout)
+	static void fill (size_t N, PivotVector2Q<Symmetry,Scalar> &Vout)
 	{
 		for (size_t s1=0; s1<Vout.A.size(); ++s1)
 		for (size_t s3=0; s3<Vout.A[s1].size(); ++s3)
@@ -292,12 +290,12 @@ struct GaussianRandomVector<PivotVector2Q<Nq,Scalar>,Scalar>
 };
 //-----------</miscellaneous>-----------
 
-template<size_t Nq, typename Scalar>
-void contract_AA (const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
-                  vector<qarray<Nq> > qloc1, 
-                  const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
-                  vector<qarray<Nq> > qloc2, 
-                  vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > &Apair)
+template<typename Symmetry, typename Scalar>
+void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
+                  vector<qarray<Symmetry::Nq> > qloc1, 
+                  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
+                  vector<qarray<Symmetry::Nq> > qloc2, 
+                  vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Apair)
 {
 	Apair.resize(qloc1.size());
 	for (size_t s1=0; s1<qloc1.size(); ++s1) {Apair[s1].resize(qloc2.size());}
@@ -306,14 +304,14 @@ void contract_AA (const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &A1,
 	for (size_t s2=0; s2<qloc2.size(); ++s2)
 	for (size_t q1=0; q1<A1[s1].dim; ++q1)
 	{
-		qarray2<Nq> quple = {A1[s1].out[q1], A1[s1].out[q1]+qloc2[s2]};
+		qarray2<Symmetry::Nq> quple = {A1[s1].out[q1], A1[s1].out[q1]+qloc2[s2]};
 		auto q2 = A2[s2].dict.find(quple);
 		
 		if (q2 != A2[s2].dict.end())
 		{
 			Matrix<Scalar,Dynamic,Dynamic> Mtmp = A1[s1].block[q1] * A2[s2].block[q2->second];
 			
-			qarray2<Nq> qupleApair = {A1[s1].in[q1], A2[s2].out[q2->second]};
+			qarray2<Symmetry::Nq> qupleApair = {A1[s1].in[q1], A2[s2].out[q2->second]};
 			auto qApair = Apair[s1][s2].dict.find(qupleApair);
 			
 			if (qApair != Apair[s1][s2].dict.end())
@@ -328,16 +326,16 @@ void contract_AA (const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &A1,
 	}
 }
 
-template<size_t Nq, typename Scalar>
-void contract_AAAA (const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
-                    vector<qarray<Nq> > qloc1, 
-                    const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
-                    vector<qarray<Nq> > qloc2, 
-                    const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &A3, 
-                    vector<qarray<Nq> > qloc3, 
-                    const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &A4, 
-                    vector<qarray<Nq> > qloc4, 
-                    boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett)
+template<typename Symmetry, typename Scalar>
+void contract_AAAA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
+                    vector<qarray<Symmetry::Nq> > qloc1, 
+                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
+                    vector<qarray<Symmetry::Nq> > qloc2, 
+                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A3, 
+                    vector<qarray<Symmetry::Nq> > qloc3, 
+                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A4, 
+                    vector<qarray<Symmetry::Nq> > qloc4, 
+                    boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett)
 {
 	Aquartett.resize(boost::extents[qloc1.size()][qloc2.size()][qloc3.size()][qloc4.size()]);
 	
@@ -347,17 +345,17 @@ void contract_AAAA (const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &A1
 	for (size_t s4=0; s4<qloc4.size(); ++s4)
 	for (size_t q1=0; q1<A1[s1].dim; ++q1)
 	{
-		qarray2<Nq> quple2 = {A1[s1].out[q1], A1[s1].out[q1]+qloc2[s2]};
+		qarray2<Symmetry::Nq> quple2 = {A1[s1].out[q1], A1[s1].out[q1]+qloc2[s2]};
 		auto q2 = A2[s2].dict.find(quple2);
 		
 		if (q2 != A2[s2].dict.end())
 		{
-			qarray2<Nq> quple3 = {A2[s2].out[q2->second], A2[s2].out[q2->second]+qloc3[s3]};
+			qarray2<Symmetry::Nq> quple3 = {A2[s2].out[q2->second], A2[s2].out[q2->second]+qloc3[s3]};
 			auto q3 = A3[s3].dict.find(quple3);
 			
 			if (q3 != A3[s3].dict.end())
 			{
-				qarray2<Nq> quple4 = {A3[s3].out[q3->second], A3[s3].out[q3->second]+qloc4[s4]};
+				qarray2<Symmetry::Nq> quple4 = {A3[s3].out[q3->second], A3[s3].out[q3->second]+qloc4[s4]};
 				auto q4 = A4[s4].dict.find(quple4);
 				
 				if (q4 != A4[s4].dict.end())
@@ -367,7 +365,7 @@ void contract_AAAA (const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &A1
 					                                      A3[s3].block[q3->second] * 
 					                                      A4[s4].block[q4->second];
 					
-					qarray2<Nq> qupleAquartett = {A1[s1].in[q1], A4[s4].out[q4->second]};
+					qarray2<Symmetry::Nq> qupleAquartett = {A1[s1].in[q1], A4[s4].out[q4->second]};
 					auto qAquartett = Aquartett[s1][s2][s3][s4].dict.find(qupleAquartett);
 					
 					if (qAquartett != Aquartett[s1][s2][s3][s4].dict.end())
@@ -384,15 +382,15 @@ void contract_AAAA (const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &A1
 	}
 }
 
-template<size_t Nq, typename Scalar, typename MpoScalar>
-void HxV (const PivotMatrixQ<Nq,Scalar,MpoScalar> &H1, 
-          const PivotMatrixQ<Nq,Scalar,MpoScalar> &H2, 
-          const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Aket1, 
-          const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Aket2, 
-          const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Abra1, 
-          const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Abra2, 
-          const vector<qarray<Nq> > &qloc1, const vector<qarray<Nq> > &qloc2, 
-          vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > &Apair)
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void HxV (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H1, 
+          const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H2, 
+          const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket1, 
+          const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket2, 
+          const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra1, 
+          const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra2, 
+          const vector<qarray<Symmetry::Nq> > &qloc1, const vector<qarray<Symmetry::Nq> > &qloc2, 
+          vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Apair)
 {
 	Apair.resize(qloc1.size());
 	for (size_t s1=0; s1<qloc1.size(); ++s1)
@@ -404,24 +402,24 @@ void HxV (const PivotMatrixQ<Nq,Scalar,MpoScalar> &H1,
 	for (size_t s2=0; s2<qloc1.size(); ++s2)
 	for (size_t qL=0; qL<H1.L.dim; ++qL)
 	{
-		tuple<qarray3<Nq>,size_t,size_t> ix12;
+		tuple<qarray3<Symmetry::Nq>,size_t,size_t> ix12;
 		bool FOUND_MATCH12 = AWA(H1.L.in(qL), H1.L.out(qL), H1.L.mid(qL), s1, s2, qloc1, Abra1, Aket1, ix12);
 		
 		if (FOUND_MATCH12)
 		{
-			qarray3<Nq> quple12 = get<0>(ix12);
+			qarray3<Symmetry::Nq> quple12 = get<0>(ix12);
 			swap(quple12[0], quple12[1]);
 			size_t qA12 = get<2>(ix12);
 			
 			for (size_t s3=0; s3<qloc2.size(); ++s3)
 			for (size_t s4=0; s4<qloc2.size(); ++s4)
 			{
-				tuple<qarray3<Nq>,size_t,size_t> ix34;
+				tuple<qarray3<Symmetry::Nq>,size_t,size_t> ix34;
 				bool FOUND_MATCH34 = AWA(quple12[0], quple12[1], quple12[2], s3, s4, qloc2, Abra2, Aket2, ix34);
 				
 				if (FOUND_MATCH34)
 				{
-					qarray3<Nq> quple34 = get<0>(ix34);
+					qarray3<Symmetry::Nq> quple34 = get<0>(ix34);
 					size_t qA34 = get<2>(ix34);
 					auto qR = H2.R.dict.find(quple34);
 					
@@ -430,10 +428,10 @@ void HxV (const PivotMatrixQ<Nq,Scalar,MpoScalar> &H1,
 						if (H1.L.mid(qL) + qloc1[s1] - qloc1[s2] == 
 						    H2.R.mid(qR->second) - qloc2[s3] + qloc2[s4])
 						{
-							for (int k12=0; k12<H1.W[s1][s2].outerSize(); ++k12)
-							for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H1.W[s1][s2],k12); iW12; ++iW12)
-							for (int k34=0; k34<H2.W[s3][s4].outerSize(); ++k34)
-							for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H2.W[s3][s4],k34); iW34; ++iW34)
+							for (int k12=0; k12<H1.W[s1][s2][0].outerSize(); ++k12)
+							for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H1.W[s1][s2][0],k12); iW12; ++iW12)
+							for (int k34=0; k34<H2.W[s3][s4][0].outerSize(); ++k34)
+							for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H2.W[s3][s4][0],k34); iW34; ++iW34)
 							{
 								Matrix<Scalar,Dynamic,Dynamic> Mtmp;
 								MpoScalar Wfactor = iW12.value() * iW34.value();
@@ -457,7 +455,7 @@ void HxV (const PivotMatrixQ<Nq,Scalar,MpoScalar> &H1,
 								
 								if (Mtmp.rows() != 0)
 								{
-									qarray2<Nq> qupleApair = {H1.L.in(qL), H2.R.out(qR->second)};
+									qarray2<Symmetry::Nq> qupleApair = {H1.L.in(qL), H2.R.out(qR->second)};
 									auto qApair = Apair[s1][s3].dict.find(qupleApair);
 									
 									if (qApair != Apair[s1][s3].dict.end())

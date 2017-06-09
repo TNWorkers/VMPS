@@ -13,6 +13,7 @@ using namespace Eigen;
 #include "symmetry/U0.h"
 #include "SuperMatrix.h"
 #include "qarray.h"
+#include "qbasis.h"
 #include "Biped.h"
 #include "MultipedeQ.h"
 #include "DmrgPivotStuffQ.h"
@@ -41,7 +42,7 @@ namespace VMPS{};
 template<typename Symmetry, typename Scalar> class MpsQ;
 template<typename Symmetry, typename Scalar> class MpoQ;
 template<typename Symmetry, typename MpHamiltonian, typename Scalar> class DmrgSolverQ;
-template<size_t Nq, typename Scalar, typename MpoScalar> class MpsQCompressor;
+template<typename Symmetry, typename Scalar, typename MpoScalar> class MpsQCompressor;
 
 /**Matrix Product Operator with conserved quantum numbers (Abelian symmetries). Just adds a target quantum number and a bunch of labels on top of Mpo.
 \describe_Nq
@@ -58,7 +59,7 @@ typedef typename Symmetry::qType qType;
 template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
 // template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
 template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
-template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
+template<typename Symmetry_, typename S1, typename S2> friend class MpsQCompressor;
 template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
 template<typename Symmetry_, typename S_> friend class MpoQ;
 template<typename Symmetry_, typename S1, typename S2> friend void HxV (const MpoQ<Symmetry_,S1> &H, const MpsQ<Symmetry_,S2> &Vin,
