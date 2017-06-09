@@ -102,8 +102,8 @@ typedef typename Symmetry::qType qType;
 	///@}
 };
 
-template<typename Symmetry, typename MatrixType> using Tripod    = Multipede<3,qType,MatrixType>;
-template<typename Symmetry, typename MatrixType> using Quadruped = Multipede<4,qType,MatrixType>;
+template<typename Symmetry, typename MatrixType> using Tripod    = Multipede<3,Symmetry,MatrixType>;
+template<typename Symmetry, typename MatrixType> using Quadruped = Multipede<4,Symmetry,MatrixType>;
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
 string Multipede<Nlegs,Symmetry,MatrixType>::
@@ -219,7 +219,7 @@ setVacuum()
 	std::array<qType,Nlegs> quple;
 	for (size_t leg=0; leg<Nlegs; ++leg)
 	{
-		quple[leg] = Sym::qvacuum();
+		quple[leg] = Symmetry::qvacuum();
 	}
 	
 	push_back(quple, Mtmparray);
@@ -252,7 +252,7 @@ setIdentity (size_t Drows, size_t Dcols, size_t amax, size_t bmax)
 	std::array<qType,Nlegs> quple;
 	for (size_t leg=0; leg<Nlegs; ++leg)
 	{
-		quple[leg] = Sym::qvacuum();
+		quple[leg] = Symmetry::qvacuum();
 	}
 	push_back(quple, Mtmparray);
 }

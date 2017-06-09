@@ -88,8 +88,8 @@ public:
 	/**Complex MpsQ for convenient reference (no need to specify D, Symmetry all the time).*/
 	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
 	typedef DmrgSolverQ<Symmetry,HubbardModel,double>              Solver;
-	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
-	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
+	typedef MpsQCompressor<Symmetry::Nq,double,double>          CompressorXd;
+	typedef MpsQCompressor<Symmetry::Nq,complex<double>,double> CompressorXcd;
 	typedef MpoQ<Symmetry,double>                           OperatorXd;
 	typedef MpoQ<Symmetry,complex<double> >                 OperatorXcd;
 	
@@ -891,7 +891,7 @@ Auger (size_t locx, size_t locy)
 	return Mout;
 }
 
-MpoQ<Symmetry,complex<double> > HubbardModel::
+MpoQ<Sym::U1xU1<double>,complex<double> > HubbardModel::
 doublonPacket (complex<double> (*f)(int))
 {
 	stringstream ss;
@@ -977,7 +977,7 @@ cdag (SPIN_INDEX sigma, size_t locx, size_t locy)
 	return MpoQ<Symmetry>(N_sites, N_legs, M, MpoQ<Symmetry>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 }
 
-MpoQ<Symmetry,complex<double> > HubbardModel::
+MpoQ<Sym::U1xU1<double>,complex<double> > HubbardModel::
 electronPacket (complex<double> (*f)(int))
 {
 	assert(N_legs==1);
@@ -1007,7 +1007,7 @@ electronPacket (complex<double> (*f)(int))
 	return MpoQ<Symmetry,complex<double> >(N_sites, N_legs, M, MpoQ<Symmetry>::qloc, qdiff, HubbardModel::Nlabel, ss.str());
 }
 
-MpoQ<Symmetry,complex<double> > HubbardModel::
+MpoQ<Sym::U1xU1<double>,complex<double> > HubbardModel::
 holePacket (complex<double> (*f)(int))
 {
 	assert(N_legs==1);

@@ -104,8 +104,8 @@ public:
 	typedef MpsQ<Symmetry,double>                           StateXd;
 	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
 	typedef DmrgSolverQ<Symmetry,HeisenbergModel,double>           Solver;
-	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
-	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
+	typedef MpsQCompressor<Symmetry::Nq,double,double>          CompressorXd;
+	typedef MpsQCompressor<Symmetry::Nq,complex<double>,double> CompressorXcd;
 	typedef MpoQ<Symmetry>                                  Operator;
 	///@}
 	

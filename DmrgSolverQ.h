@@ -138,8 +138,9 @@ memory (MEMUNIT memunit) const
 		res += Heff[l].R.memory(memunit);
 		for (size_t s1=0; s1<Heff[l].W.size(); ++s1)
 		for (size_t s2=0; s2<Heff[l].W[s1].size(); ++s2)
+		for (size_t k=0; k<Heff[l].W[s1][s2].size(); ++k)
 		{
-			res += calc_memory(Heff[l].W[s1][s2],memunit);
+			res += calc_memory(Heff[l].W[s1][s2][k],memunit);
 		}
 	}
 	return res;
@@ -458,9 +459,9 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, L
 		Heff[pivot].dim += Vout.state.A[pivot][s].block[q].rows() * Vout.state.A[pivot][s].block[q].cols();
 	}
 	
-	Eigenstate<PivotVectorQ<Nq,Scalar> > g;
+	Eigenstate<PivotVectorQ<Symmetry,Scalar> > g;
 	g.state.A = Vout.state.A[pivot];
-	LanczosSolver<PivotMatrixQ<Nq,Scalar,Scalar>,PivotVectorQ<Nq,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
+	LanczosSolver<PivotMatrixQ<Symmetry,Scalar,Scalar>,PivotVectorQ<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
 	
 	Lutz.set_dimK(min(30ul, Heff[pivot].dim));
 	Lutz.edgeState(Heff[pivot],g, EDGE, 1e-7,1e-4, false);

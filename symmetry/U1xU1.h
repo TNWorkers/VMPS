@@ -39,6 +39,8 @@ public:
 	inline static Scalar coeff_dot(const qType& q1);
 	inline static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
 	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3);
+	inline static Scalar coeff_sign(const qType& q1, const qType& q2, const qType& q3);
+	inline static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
 
 	inline static Scalar coeff_6j(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6);
@@ -120,6 +122,22 @@ coeff_rightOrtho(const qType& q1, const qType& q2)
 template<typename Scalar>
 Scalar U1xU1<Scalar>::
 coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Scalar>
+Scalar U1xU1<Scalar>::
+coeff_sign(const qType& q1, const qType& q2, const qType& q3)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Scalar>
+Scalar U1xU1<Scalar>::
+coeff_adjoint(const qType& q1, const qType& q2, const qType& q3)
 {
 	Scalar out = Scalar(1.);
 	return out;

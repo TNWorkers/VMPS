@@ -12,7 +12,7 @@ struct PivotMatrixQ
 	static constexpr std::size_t Nq = Symmetry::Nq;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
-	vector<vector<SparseMatrix<MpoScalar> > >  W;
+	vector<vector<vector<SparseMatrix<MpoScalar> > > > W;
 	
 	size_t dim;
 	
@@ -149,8 +149,8 @@ void HxV (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H, const PivotVectorQ<S
 			size_t qL = (*irhs)[2];
 			size_t qR = (*irhs)[3];
 			
-			for (int k=0; k<H.W[s1][s2].outerSize(); ++k)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(H.W[s1][s2],k); iW; ++iW)
+			for (int k=0; k<H.W[s1][s2][0].outerSize(); ++k)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(H.W[s1][s2][0],k); iW; ++iW)
 			{
 //				cout << H.L.block[qL][iW.row()][0].rows() << "\t" << H.L.block[qL][iW.row()][0].cols() << endl;
 //				cout << Vin.A[s2].block[q2].rows() << "\t" << Vin.A[s2].block[q2].cols() << endl;

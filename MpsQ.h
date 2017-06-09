@@ -36,8 +36,8 @@ static constexpr std::size_t Nq = Symmetry::Nq;
 typedef typename Symmetry::qType qType;
 	
 // Note: Cannot partially specialize template friends (or anything else, really). That sucks.
-template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
-template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
+template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
+// template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
 template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
 	// template<typename Symmetry_, typename S1, typename S2> friend void HxV (const MpoQ<Symmetry_::Nq,S1> &H, const MpsQ<Symmetry_,S2> &Vin, MpsQ<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
@@ -140,7 +140,7 @@ public:
 	void mend();
 	
 	/**Sets the A-matrix at a given site by performing SVD on the C-tensor.*/
-	void set_A_from_C (size_t loc, const vector<Tripod<Nq,MatrixType> > &C, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD);
+	void set_A_from_C (size_t loc, const vector<Tripod<Symmetry,MatrixType> > &C, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD);
 	
 	/**
 	\param Op : 
@@ -2593,14 +2593,14 @@ enrich_left (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H)
 		
 			if (qA != A[loc][s2].dict.end())
 			{
-				for (int k=0; k<H->W[s1][s2].outerSize(); ++k)
-				for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2],k); iW; ++iW)
+				for (int k=0; k<H->W[s1][s2][0].outerSize(); ++k)
+				for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][0],k); iW; ++iW)
 				{
 					size_t a = iW.row();
 					size_t b = iW.col();
 					size_t Arows = A[loc][s2].block[qA->second].rows();
 					size_t Pcols = H->R.block[qR][b][0].cols();
-					MatrixType Mtmp(Arows*H->W[s1][s2].rows(), Pcols);
+					MatrixType Mtmp(Arows*H->W[s1][s2][0].rows(), Pcols);
 					Mtmp.setZero();
 				
 					if (H->R.block[qR][b][0].rows() != 0 and 
@@ -2687,14 +2687,14 @@ enrich_right (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H)
 		
 			if (qA != A[loc][s2].dict.end())
 			{
-				for (int k=0; k<H->W[s1][s2].outerSize(); ++k)
-				for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2],k); iW; ++iW)
+				for (int k=0; k<H->W[s1][s2][0].outerSize(); ++k)
+				for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][0],k); iW; ++iW)
 				{
 					size_t a = iW.row();
 					size_t b = iW.col();
 					size_t Prows = H->L.block[qL][a][0].rows();
 					size_t Acols = A[loc][s2].block[qA->second].cols();
-					MatrixType Mtmp(Prows, Acols*H->W[s1][s2].cols());
+					MatrixType Mtmp(Prows, Acols*H->W[s1][s2][0].cols());
 					Mtmp.setZero();
 				
 					if (H->L.block[qL][a][0].rows() != 0 and
@@ -3108,7 +3108,7 @@ addScale (OtherScalar alpha, const MpsQ<Symmetry,Scalar> &Vin, bool SVD_COMPRESS
 
 template<typename Symmetry, typename Scalar>
 void MpsQ<Symmetry,Scalar>::
-set_A_from_C (size_t loc, const vector<Tripod<Nq,MatrixType> > &C, DMRG::BROOM::OPTION TOOL)
+set_A_from_C (size_t loc, const vector<Tripod<Symmetry,MatrixType> > &C, DMRG::BROOM::OPTION TOOL)
 {
 	if (loc == this->N_sites-1)
 	{

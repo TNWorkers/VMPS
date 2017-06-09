@@ -14,13 +14,13 @@
 \param qloc : local basis
 \param Lnew : new transfer matrix to be written to
 */
-template<size_t Nq, typename MatrixType, typename MpoScalar>
-void contract_L (const Tripod<Nq,MatrixType> &Lold, 
-                 const vector<Biped<Nq,MatrixType> > &Abra, 
-                 const vector<vector<SparseMatrix<MpoScalar> > > &W, 
-                 const vector<Biped<Nq,MatrixType> > &Aket, 
-                 const vector<qarray<Nq> > &qloc, 
-                 Tripod<Nq,MatrixType> &Lnew)
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
+void contract_L (const Tripod<Symmetry,MatrixType> &Lold, 
+                 const vector<Biped<Symmetry,MatrixType> > &Abra, 
+                 const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
+                 const vector<Biped<Symmetry,MatrixType> > &Aket, 
+                 const vector<qarray<Symmetry::Nq> > &qloc, 
+                 Tripod<Symmetry,MatrixType> &Lnew)
 {
 	Lnew.clear();
 	Lnew.setZero();
@@ -29,18 +29,18 @@ void contract_L (const Tripod<Nq,MatrixType> &Lold,
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t qL=0; qL<Lold.dim; ++qL)
 	{
-		tuple<qarray3<Nq>,size_t,size_t> ix;
+		tuple<qarray3<Symmetry::Nq>,size_t,size_t> ix;
 		bool FOUND_MATCH = AWA(Lold.in(qL), Lold.out(qL), Lold.mid(qL), s1, s2, qloc, Abra, Aket, ix);
 		
 		if (FOUND_MATCH == true)
 		{
-			qarray3<Nq> quple = get<0>(ix);
+			qarray3<Symmetry::Nq> quple = get<0>(ix);
 			swap(quple[0], quple[1]);
 			size_t qAbra = get<1>(ix);
 			size_t qAket = get<2>(ix);
 			
-			for (int k=0; k<W[s1][s2].outerSize(); ++k)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2],k); iW; ++iW)
+			for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
 			{
 				size_t a1 = iW.row();
 				size_t a2 = iW.col();
@@ -73,7 +73,7 @@ void contract_L (const Tripod<Nq,MatrixType> &Lold,
 					}
 					else
 					{
-						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2].cols()][1]);
+						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][0].cols()][1]);
 						Mtmpvec[a2][0] = Mtmp;
 						Lnew.push_back(quple, Mtmpvec);
 					}
@@ -92,13 +92,13 @@ void contract_L (const Tripod<Nq,MatrixType> &Lold,
 \param qloc : local basis
 \param Rnew : new transfer matrix to be written to
 */
-template<size_t Nq, typename MatrixType, typename MpoScalar>
-void contract_R (const Tripod<Nq,MatrixType> &Rold,
-                 const vector<Biped<Nq,MatrixType> > &Abra, 
-                 const vector<vector<SparseMatrix<MpoScalar> > > &W, 
-                 const vector<Biped<Nq,MatrixType> > &Aket, 
-                 const vector<qarray<Nq> > &qloc, 
-                 Tripod<Nq,MatrixType> &Rnew)
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
+void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
+                 const vector<Biped<Symmetry,MatrixType> > &Abra, 
+                 const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
+                 const vector<Biped<Symmetry,MatrixType> > &Aket, 
+                 const vector<qarray<Symmetry::Nq> > &qloc, 
+                 Tripod<Symmetry,MatrixType> &Rnew)
 {
 	Rnew.clear();
 	Rnew.setZero();
@@ -107,8 +107,8 @@ void contract_R (const Tripod<Nq,MatrixType> &Rold,
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t qR=0; qR<Rold.dim; ++qR)
 	{
-		qarray2<Nq> cmp1 = {Rold.out(qR)-qloc[s1], Rold.out(qR)};
-		qarray2<Nq> cmp2 = {Rold.in(qR) -qloc[s2], Rold.in(qR)};
+		qarray2<Symmetry::Nq> cmp1 = {Rold.out(qR)-qloc[s1], Rold.out(qR)};
+		qarray2<Symmetry::Nq> cmp2 = {Rold.in(qR) -qloc[s2], Rold.in(qR)};
 		
 		auto q1 = Abra[s1].dict.find(cmp1);
 		auto q2 = Aket[s2].dict.find(cmp2);
@@ -116,13 +116,13 @@ void contract_R (const Tripod<Nq,MatrixType> &Rold,
 		if (q1!=Abra[s1].dict.end() and 
 		    q2!=Aket[s2].dict.end())
 		{
-			qarray<Nq> new_qin  = Aket[s2].in[q2->second]; // A.in
-			qarray<Nq> new_qout = Abra[s1].in[q1->second]; // A†.out = A.in
-			qarray<Nq> new_qmid = Rold.mid(qR) - qloc[s1] + qloc[s2];
-			qarray3<Nq> quple = {new_qin, new_qout, new_qmid};
+			qarray<Symmetry::Nq> new_qin  = Aket[s2].in[q2->second]; // A.in
+			qarray<Symmetry::Nq> new_qout = Abra[s1].in[q1->second]; // A†.out = A.in
+			qarray<Symmetry::Nq> new_qmid = Rold.mid(qR) - qloc[s1] + qloc[s2];
+			qarray3<Symmetry::Nq> quple = {new_qin, new_qout, new_qmid};
 			
-			for (int k=0; k<W[s1][s2].outerSize(); ++k)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2],k); iW; ++iW)
+			for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
 			{
 				size_t a1 = iW.row();
 				size_t a2 = iW.col();
@@ -155,7 +155,7 @@ void contract_R (const Tripod<Nq,MatrixType> &Rold,
 					}
 					else
 					{
-						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2].rows()][1]);
+						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][0].rows()][1]);
 						Mtmpvec[a1][0] = Mtmp;
 						Rnew.push_back(quple, Mtmpvec);
 					}
@@ -173,13 +173,13 @@ void contract_R (const Tripod<Nq,MatrixType> &Rold,
 \param R
 \param qloc : local basis
 \returns : result of contraction*/
-template<size_t Nq, typename Scalar>
-Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
-                    const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-                    const vector<vector<SparseMatrixXd> > &W, 
-                    const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
-                    const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &R, 
-                    const vector<qarray<Nq> > &qloc)
+template<typename Symmetry, typename Scalar>
+Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
+                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                    const vector<vector<vector<SparseMatrixXd> > > &W, 
+                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+                    const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
+                    const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	Scalar res = 0.;
 	
@@ -187,12 +187,12 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t qL=0; qL<L.dim; ++qL)
 	{
-		tuple<qarray3<Nq>,size_t,size_t> ix;
+		tuple<qarray3<Symmetry::Nq>,size_t,size_t> ix;
 		bool FOUND_MATCH = AWA(L.in(qL), L.out(qL), L.mid(qL), s1, s2, qloc, Abra, Aket, ix);
 		
 		if (FOUND_MATCH == true)
 		{
-			qarray3<Nq> quple = get<0>(ix);
+			qarray3<Symmetry::Nq> quple = get<0>(ix);
 			auto qR = R.dict.find(quple);
 			
 			if (qR != R.dict.end())
@@ -201,8 +201,8 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 				size_t qAbra = get<1>(ix);
 				size_t qAket = get<2>(ix);
 				
-				for (int k=0; k<W[s1][s2].outerSize(); ++k)
-				for (SparseMatrixXd::InnerIterator iW(W[s1][s2],k); iW; ++iW)
+				for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
+				for (SparseMatrixXd::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
 				{
 					size_t a1 = iW.row();
 					size_t a2 = iW.col();
@@ -232,11 +232,11 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 	return res;
 }
 
-//template<size_t Nq, typename MatrixType>
-//void contract_LR (const Tripod<Nq,MatrixType> &L,
-//                  const Tripod<Nq,MatrixType> &R, 
-//                  const std::array<qarray<Nq>,D> &qloc, 
-//                  Tripod<Nq,MatrixType> &Bres)
+//template<typename Symmetry, typename MatrixType>
+//void contract_LR (const Tripod<Symmetry,MatrixType> &L,
+//                  const Tripod<Symmetry,MatrixType> &R, 
+//                  const std::array<qarray<Symmetry::Nq>,D> &qloc, 
+//                  Tripod<Symmetry,MatrixType> &Bres)
 //{
 //	Bres.clear();
 //	Bres.setZero();
@@ -245,7 +245,7 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 //	for (size_t s2=0; s2<D; ++s2)
 //	for (size_t qL=0; qL<L.dim; ++qL)
 //	{
-//		qarray3<Nq> quple = {L.out(qL), L.in(qL), L.mid(qL)};
+//		qarray3<Symmetry::Nq> quple = {L.out(qL), L.in(qL), L.mid(qL)};
 //		auto qR = R.dict.find(quple);
 //		
 //		if (qR != R.dict.end())
@@ -288,14 +288,14 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 //	}
 //}
 
-//template<size_t Nq, typename MatrixType>
-//void dryContract_L (const Tripod<Nq,MatrixType> &Lold, 
-//                    const vector<Biped<Nq,MatrixType> > &Abra, 
-//                    const std::array<std::array<Biped<Nq,SparseMatrixXd>,D>,D> &W, 
-//                    const vector<Biped<Nq,MatrixType> > &Aket, 
-//                    const std::array<qarray<Nq>,D> &qloc, 
-//                    Tripod<Nq,MatrixType> &Lnew, 
-//                    vector<tuple<qarray3<Nq>,std::array<size_t,8> > > &ix)
+//template<typename Symmetry, typename MatrixType>
+//void dryContract_L (const Tripod<Symmetry,MatrixType> &Lold, 
+//                    const vector<Biped<Symmetry,MatrixType> > &Abra, 
+//                    const std::array<std::array<Biped<Symmetry,SparseMatrixXd>,D>,D> &W, 
+//                    const vector<Biped<Symmetry,MatrixType> > &Aket, 
+//                    const std::array<qarray<Symmetry::Nq>,D> &qloc, 
+//                    Tripod<Symmetry,MatrixType> &Lnew, 
+//                    vector<tuple<qarray3<Symmetry::Nq>,std::array<size_t,8> > > &ix)
 //{
 //	Lnew.setZero();
 //	
@@ -305,9 +305,9 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 //	for (size_t s2=0; s2<D; ++s2)
 //	for (size_t qL=0; qL<Lold.dim; ++qL)
 //	{
-//		qarray2<Nq> cmp1 = {Lold.in(qL),  Lold.in(qL)+qloc[s1]};
-//		qarray2<Nq> cmp2 = {Lold.out(qL), Lold.out(qL)+qloc[s2]};
-//		qarray2<Nq> cmpW = {Lold.mid(qL), Lold.mid(qL)+qloc[s1]-qloc[s2]};
+//		qarray2<Symmetry::Nq> cmp1 = {Lold.in(qL),  Lold.in(qL)+qloc[s1]};
+//		qarray2<Symmetry::Nq> cmp2 = {Lold.out(qL), Lold.out(qL)+qloc[s2]};
+//		qarray2<Symmetry::Nq> cmpW = {Lold.mid(qL), Lold.mid(qL)+qloc[s1]-qloc[s2]};
 //		
 //		auto q1 = Abra[s1].dict.find(cmp1);
 //		auto q2 = Aket[s2].dict.find(cmp2);
@@ -317,10 +317,10 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 //		    q2!=Aket[s2].dict.end() and 
 //		    qW!=W[s1][s2].dict.end())
 //		{
-//			qarray<Nq> new_qin  = Abra[s1].out[q1->second]; // A†.in = A.out
-//			qarray<Nq> new_qout = Aket[s2].out[q2->second]; // A.in
-//			qarray<Nq> new_qmid = W[s1][s2].out[qW->second];
-//			qarray3<Nq> quple = {new_qin, new_qout, new_qmid};
+//			qarray<Symmetry::Nq> new_qin  = Abra[s1].out[q1->second]; // A†.in = A.out
+//			qarray<Symmetry::Nq> new_qout = Aket[s2].out[q2->second]; // A.in
+//			qarray<Symmetry::Nq> new_qmid = W[s1][s2].out[qW->second];
+//			qarray3<Symmetry::Nq> quple = {new_qin, new_qout, new_qmid};
 //			
 //			size_t Wcols = W[s1][s2].block[qW->second].cols();
 //			
@@ -355,14 +355,14 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 //	}
 //}
 
-//template<size_t Nq, typename MatrixType>
-//void contract_L (const Tripod<Nq,MatrixType> &Lold, 
-//                 const vector<tuple<qarray3<Nq>,std::array<size_t,8> > > ix, 
-//                 const vector<Biped<Nq,MatrixType> > &Abra, 
-//                 const std::array<std::array<Biped<Nq,SparseMatrixXd>,D>,D> &W, 
-//                 const vector<Biped<Nq,MatrixType> > &Aket, 
-//                 const std::array<qarray<Nq>,D> &qloc, 
-//                 Tripod<Nq,MatrixType> &Lnew)
+//template<typename Symmetry, typename MatrixType>
+//void contract_L (const Tripod<Symmetry,MatrixType> &Lold, 
+//                 const vector<tuple<qarray3<Symmetry::Nq>,std::array<size_t,8> > > ix, 
+//                 const vector<Biped<Symmetry,MatrixType> > &Abra, 
+//                 const std::array<std::array<Biped<Symmetry,SparseMatrixXd>,D>,D> &W, 
+//                 const vector<Biped<Symmetry,MatrixType> > &Aket, 
+//                 const std::array<qarray<Symmetry::Nq>,D> &qloc, 
+//                 Tripod<Symmetry,MatrixType> &Lnew)
 //{
 //	Lnew.setZero();
 //	
@@ -417,14 +417,14 @@ Scalar contract_LR (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L,
 
 /**Calculates the contraction between a left transfer matrix \p Lold, two MpsQ tensors \p Abra, \p Aket and two MpoQ tensors \p Wbot, \p Wtop.
 Needed, for example, when calculating \f$\left<H^2\right>\f$ and no MpoQ represenation of \f$H^2\f$ is available.*/
-template<size_t Nq, typename MatrixType, typename MpoScalar>
-void contract_L (const Multipede<4,Nq,MatrixType> &Lold, 
-                 const vector<Biped<Nq,MatrixType> > &Abra, 
-                 const vector<vector<SparseMatrix<MpoScalar> > > &Wbot, 
-                 const vector<vector<SparseMatrix<MpoScalar> > > &Wtop, 
-                 const vector<Biped<Nq,MatrixType> > &Aket, 
-                 const vector<qarray<Nq> > &qloc,
-                 Multipede<4,Nq,MatrixType> &Lnew)
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
+void contract_L (const Multipede<4,Symmetry,MatrixType> &Lold, 
+                 const vector<Biped<Symmetry,MatrixType> > &Abra, 
+                 const vector<vector<vector<SparseMatrix<MpoScalar> > > > &Wbot, 
+                 const vector<vector<vector<SparseMatrix<MpoScalar> > > > &Wtop, 
+                 const vector<Biped<Symmetry,MatrixType> > &Aket, 
+                 const vector<qarray<Symmetry::Nq> > &qloc,
+                 Multipede<4,Symmetry,MatrixType> &Lnew)
 {
 	Lnew.setZero();
 	
@@ -433,7 +433,7 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 	for (size_t s3=0; s3<qloc.size(); ++s3)
 	for (size_t qL=0; qL<Lold.dim; ++qL)
 	{
-		tuple<qarray4<Nq>,size_t,size_t> ix;
+		tuple<qarray4<Symmetry::Nq>,size_t,size_t> ix;
 		bool FOUND_MATCH = AWWA(Lold.in(qL), Lold.out(qL), Lold.bot(qL), Lold.top(qL), 
 		                        s1, s2, s3, qloc, Abra, Aket, ix);
 		auto   quple = get<0>(ix);
@@ -443,10 +443,10 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 		
 		if (FOUND_MATCH == true)
 		{
-			for (int kbot=0; kbot<Wbot[s1][s2].outerSize(); ++kbot)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iWbot(Wbot[s1][s2],kbot); iWbot; ++iWbot)
-			for (int ktop=0; ktop<Wtop[s2][s3].outerSize(); ++ktop)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iWtop(Wtop[s2][s3],ktop); iWtop; ++iWtop)
+			for (int kbot=0; kbot<Wbot[s1][s2][0].outerSize(); ++kbot)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iWbot(Wbot[s1][s2][0],kbot); iWbot; ++iWbot)
+			for (int ktop=0; ktop<Wtop[s2][s3][0].outerSize(); ++ktop)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iWtop(Wtop[s2][s3][0],ktop); iWtop; ++iWtop)
 			{
 				size_t br = iWbot.row();
 				size_t bc = iWbot.col();
@@ -484,8 +484,8 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 						}
 						else
 						{
-							size_t bcols = Wbot[s1][s2].cols();
-							size_t tcols = Wtop[s2][s3].cols();
+							size_t bcols = Wbot[s1][s2][0].cols();
+							size_t tcols = Wtop[s2][s3][0].cols();
 							boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[bcols][tcols]);
 							Mtmparray[bc][tc] = Mtmp;
 							Lnew.push_back(quple, Mtmparray);
@@ -498,30 +498,30 @@ void contract_L (const Multipede<4,Nq,MatrixType> &Lold,
 }
 
 /**For details see: Stoudenmire, White (2010)*/
-template<size_t Nq, typename MatrixType, typename MpoScalar>
-void contract_C0 (vector<qarray<Nq> > qloc,
-                  const vector<vector<SparseMatrix<MpoScalar> > > &W, 
-                  const vector<Biped<Nq,MatrixType> >   &Aket, 
-                  vector<Tripod<Nq,MatrixType> >        &Cnext)
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
+void contract_C0 (vector<qarray<Symmetry::Nq> > qloc,
+                  const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
+                  const vector<Biped<Symmetry,MatrixType> >   &Aket, 
+                  vector<Tripod<Symmetry,MatrixType> >        &Cnext)
 {
 	Cnext.clear();
 	Cnext.resize(qloc.size());
 	
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	{
-		qarray2<Nq> cmpA = {qvacuum<Nq>(), qvacuum<Nq>()+qloc[s2]};
+		qarray2<Symmetry::Nq> cmpA = {qvacuum<Symmetry::Nq>(), qvacuum<Symmetry::Nq>()+qloc[s2]};
 		auto qA = Aket[s2].dict.find(cmpA);
 		
 		if (qA != Aket[s2].dict.end())
 		{
 			for (size_t s1=0; s1<qloc.size(); ++s1)
 			{
-				for (int k=0; k<W[s1][s2].outerSize(); ++k)
-				for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2],k); iW; ++iW)
+				for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
+				for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
 				{
 					MatrixType Mtmp = iW.value() * Aket[s2].block[qA->second];
 					
-					qarray3<Nq> cmpC = {qvacuum<Nq>(), Aket[s2].out[qA->second], qvacuum<Nq>()+qloc[s1]-qloc[s2]};
+					qarray3<Symmetry::Nq> cmpC = {qvacuum<Symmetry::Nq>(), Aket[s2].out[qA->second], qvacuum<Symmetry::Nq>()+qloc[s1]-qloc[s2]};
 					auto qCnext = Cnext[s1].dict.find(cmpC);
 					if (qCnext != Cnext[s1].dict.end())
 					{
@@ -537,9 +537,9 @@ void contract_C0 (vector<qarray<Nq> > qloc,
 					}
 					else
 					{
-						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2].cols()][1]);
+						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][0].cols()][1]);
 						Mtmpvec[iW.col()][0] = Mtmp;
-						Cnext[s1].push_back({qvacuum<Nq>(), Aket[s2].out[qA->second], qvacuum<Nq>()+qloc[s1]-qloc[s2]}, Mtmpvec);
+						Cnext[s1].push_back({qvacuum<Symmetry::Nq>(), Aket[s2].out[qA->second], qvacuum<Symmetry::Nq>()+qloc[s1]-qloc[s2]}, Mtmpvec);
 					}
 				}
 			}
@@ -549,13 +549,13 @@ void contract_C0 (vector<qarray<Nq> > qloc,
 
 /**For details see: Stoudenmire, White (2010)
 \dotfile contract_C.dot*/
-template<size_t Nq, typename MatrixType, typename MpoScalar>
-void contract_C (vector<qarray<Nq> > qloc,
-                 const vector<Biped<Nq,MatrixType> >   &Abra, 
-                 const vector<vector<SparseMatrix<MpoScalar> > > &W, 
-                 const vector<Biped<Nq,MatrixType> >   &Aket, 
-                 const vector<Tripod<Nq,MatrixType> >  &C, 
-                 vector<Tripod<Nq,MatrixType> >        &Cnext)
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
+void contract_C (vector<qarray<Symmetry::Nq> > qloc,
+                 const vector<Biped<Symmetry,MatrixType> >   &Abra, 
+                 const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
+                 const vector<Biped<Symmetry,MatrixType> >   &Aket, 
+                 const vector<Tripod<Symmetry,MatrixType> >  &C, 
+                 vector<Tripod<Symmetry,MatrixType> >        &Cnext)
 {
 	Cnext.clear();
 	Cnext.resize(qloc.size());
@@ -563,7 +563,7 @@ void contract_C (vector<qarray<Nq> > qloc,
 	for (size_t s=0; s<qloc.size(); ++s)
 	for (size_t qC=0; qC<C[s].dim; ++qC)
 	{
-		qarray2<Nq> cmpU = {C[s].in(qC), C[s].in(qC)+qloc[s]};
+		qarray2<Symmetry::Nq> cmpU = {C[s].in(qC), C[s].in(qC)+qloc[s]};
 		auto qU = Abra[s].dict.find(cmpU);
 		
 		if (qU != Abra[s].dict.end())
@@ -571,13 +571,13 @@ void contract_C (vector<qarray<Nq> > qloc,
 			for (size_t s1=0; s1<qloc.size(); ++s1)
 			for (size_t s2=0; s2<qloc.size(); ++s2)
 			{
-				qarray2<Nq> cmpA = {C[s].out(qC), C[s].out(qC)+qloc[s2]};
+				qarray2<Symmetry::Nq> cmpA = {C[s].out(qC), C[s].out(qC)+qloc[s2]};
 				auto qA = Aket[s2].dict.find(cmpA);
 				
 				if (qA != Aket[s2].dict.end())
 				{
-					for (int k=0; k<W[s1][s2].outerSize(); ++k)
-					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2],k); iW; ++iW)
+					for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
+					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
 					{
 						if (C[s].block[qC][iW.row()][0].rows() != 0)
 						{
@@ -591,7 +591,7 @@ void contract_C (vector<qarray<Nq> > qloc,
 							                 Aket[s2].block[qA->second],
 							                 Mtmp);
 							
-							qarray3<Nq> cmpC = {Abra[s].out[qU->second], Aket[s2].out[qA->second], C[s].mid(qC)+qloc[s1]-qloc[s2]};
+							qarray3<Symmetry::Nq> cmpC = {Abra[s].out[qU->second], Aket[s2].out[qA->second], C[s].mid(qC)+qloc[s1]-qloc[s2]};
 							auto qCnext = Cnext[s1].dict.find(cmpC);
 							if (qCnext != Cnext[s1].dict.end())
 							{
@@ -607,7 +607,7 @@ void contract_C (vector<qarray<Nq> > qloc,
 							}
 							else
 							{
-								boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2].cols()][1]);
+								boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][0].cols()][1]);
 								Mtmpvec[iW.col()][0] = Mtmp;
 								Cnext[s1].push_back({Abra[s].out[qU->second], Aket[s2].out[qA->second], C[s].mid(qC)+qloc[s1]-qloc[s2]}, Mtmpvec);
 							}

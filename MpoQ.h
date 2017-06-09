@@ -40,7 +40,7 @@ namespace VMPS{};
 
 template<typename Symmetry, typename Scalar> class MpsQ;
 template<typename Symmetry, typename Scalar> class MpoQ;
-template<size_t Nq, typename MpHamiltonian, typename Scalar> class DmrgSolverQ;
+template<typename Symmetry, typename MpHamiltonian, typename Scalar> class DmrgSolverQ;
 template<size_t Nq, typename Scalar, typename MpoScalar> class MpsQCompressor;
 
 /**Matrix Product Operator with conserved quantum numbers (Abelian symmetries). Just adds a target quantum number and a bunch of labels on top of Mpo.
@@ -55,8 +55,8 @@ typedef SparseMatrixXd SparseMatrixType;
 static constexpr size_t Nq = Symmetry::Nq;
 typedef typename Symmetry::qType qType;
 	
-template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
-template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
+template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
+// template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
 template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
 template<size_t Nq_, typename S1, typename S2> friend class MpsQCompressor;
 template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;

@@ -20,56 +20,56 @@
 \param result : tuple of: an array with \p Rin, \p Rout, \p Rmid; block index of \p Abra; block index of \p Aket
 \returns \p true if a match is found, \p false if not
 \warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.*/
-template<size_t Nq, typename MatrixType>
-bool AWA (qarray<Nq> Lin, qarray<Nq> Lout, qarray<Nq> Lmid, size_t s1, size_t s2, vector<qarray<Nq> > qloc, 
-          const vector<Biped<Nq,MatrixType> > &Abra, 
-          const vector<Biped<Nq,MatrixType> > &Aket, 
-          tuple<qarray3<Nq>,size_t,size_t> &result)
+template<typename Symmetry, typename MatrixType>
+bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid, size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc, 
+          const vector<Biped<Symmetry,MatrixType> > &Abra, 
+          const vector<Biped<Symmetry,MatrixType> > &Aket, 
+          tuple<qarray3<Symmetry::Nq>,size_t,size_t> &result)
 {
-	qarray<Nq> qRout = Lin + qloc[s1];
-	qarray2<Nq> cmp1 = {Lin, qRout};
+	qarray<Symmetry::Nq> qRout = Lin + qloc[s1];
+	qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
 	auto q1 = Abra[s1].dict.find(cmp1);
 	
 	if (q1 != Abra[s1].dict.end())
 	{
-		qarray<Nq> qRin = Lout + qloc[s2];
-		qarray2<Nq> cmp2 = {Lout, qRin};
+		qarray<Symmetry::Nq> qRin = Lout + qloc[s2];
+		qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
 		auto q2 = Aket[s2].dict.find(cmp2);
 		
 		if (q2 != Aket[s2].dict.end())
 		{
-			qarray<Nq> qRmid = Lmid + qloc[s1] - qloc[s2];
+			qarray<Symmetry::Nq> qRmid = Lmid + qloc[s1] - qloc[s2];
 			
-			result = make_tuple(qarray3<Nq>{qRin,qRout,qRmid}, q1->second, q2->second);
+			result = make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q1->second, q2->second);
 			return true;
 		}
 	}
 	return false;
 }
 
-template<size_t Nq, typename MatrixType>
-bool AAWWAA (qarray<Nq> Lin, qarray<Nq> Lout, qarray<Nq> Lmid, 
-             size_t s1, size_t s2, vector<qarray<Nq> > qloc12, 
-             size_t s3, size_t s4, vector<qarray<Nq> > qloc34, 
-             const vector<vector<Biped<Nq,MatrixType> > > &AAbra, 
-             const vector<vector<Biped<Nq,MatrixType> > > &AAket, 
-             tuple<qarray3<Nq>,size_t,size_t> &result)
+template<typename Symmetry, typename MatrixType>
+bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid, 
+             size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc12, 
+             size_t s3, size_t s4, vector<qarray<Symmetry::Nq> > qloc34, 
+             const vector<vector<Biped<Symmetry,MatrixType> > > &AAbra, 
+             const vector<vector<Biped<Symmetry,MatrixType> > > &AAket, 
+             tuple<qarray3<Symmetry::Nq>,size_t,size_t> &result)
 {
-	qarray<Nq> qRout = Lin + qloc12[s1] + qloc34[s3];
-	qarray2<Nq> cmp1 = {Lin, qRout};
+	qarray<Symmetry::Nq> qRout = Lin + qloc12[s1] + qloc34[s3];
+	qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
 	auto q13 = AAbra[s1][s3].dict.find(cmp1);
 	
 	if (q13 != AAbra[s1][s3].dict.end())
 	{
-		qarray<Nq> qRin = Lout + qloc12[s2] + qloc34[s4];
-		qarray2<Nq> cmp2 = {Lout, qRin};
+		qarray<Symmetry::Nq> qRin = Lout + qloc12[s2] + qloc34[s4];
+		qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
 		auto q24 = AAket[s2][s4].dict.find(cmp2);
 		
 		if (q24 != AAket[s2][s4].dict.end())
 		{
-			qarray<Nq> qRmid = Lmid + qloc12[s1] + qloc34[s3] - qloc12[s2] - qloc34[s4];
+			qarray<Symmetry::Nq> qRmid = Lmid + qloc12[s1] + qloc34[s3] - qloc12[s2] - qloc34[s4];
 			
-			result = make_tuple(qarray3<Nq>{qRin,qRout,qRmid}, q13->second, q24->second);
+			result = make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q13->second, q24->second);
 			return true;
 		}
 	}
@@ -91,29 +91,29 @@ bool AAWWAA (qarray<Nq> Lin, qarray<Nq> Lout, qarray<Nq> Lmid,
 \param result : tuple of: an array with \p Rin, \p Rout, \p Rbot, \p Rtop; block index of \p Abra; block index of \p Aket
 \returns \p true if a match is found, \p false if not
 \warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.*/
-template<size_t Nq, typename MatrixType>
-bool AWWA (qarray<Nq> Lin, qarray<Nq> Lout, qarray<Nq> Lbot, qarray<Nq> Ltop, 
-          size_t s1, size_t s2, size_t s3, vector<qarray<Nq> > qloc, 
-          const vector<Biped<Nq,MatrixType> > &Abra, 
-          const vector<Biped<Nq,MatrixType> > &Aket, 
-          tuple<qarray4<Nq>,size_t,size_t> &result)
+template<typename Symmetry, typename MatrixType>
+bool AWWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lbot, qarray<Symmetry::Nq> Ltop, 
+          size_t s1, size_t s2, size_t s3, vector<qarray<Symmetry::Nq> > qloc, 
+          const vector<Biped<Symmetry,MatrixType> > &Abra, 
+          const vector<Biped<Symmetry,MatrixType> > &Aket, 
+          tuple<qarray4<Symmetry::Nq>,size_t,size_t> &result)
 {
-	qarray<Nq> qRout = Lin + qloc[s1];
-	qarray2<Nq> cmp1 = {Lin, qRout};
+	qarray<Symmetry::Nq> qRout = Lin + qloc[s1];
+	qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
 	auto q1 = Abra[s1].dict.find(cmp1);
 	
 	if (q1 != Abra[s1].dict.end())
 	{
-		qarray<Nq> qRin = Lout + qloc[s3];
-		qarray2<Nq> cmp2 = {Lout, qRin};
+		qarray<Symmetry::Nq> qRin = Lout + qloc[s3];
+		qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
 		auto q2 = Aket[s3].dict.find(cmp2);
 		
 		if (q2 != Aket[s3].dict.end())
 		{
-			qarray<Nq> qRbot = Lbot + qloc[s1] - qloc[s2];
-			qarray<Nq> qRtop = Ltop + qloc[s2] - qloc[s3];
+			qarray<Symmetry::Nq> qRbot = Lbot + qloc[s1] - qloc[s2];
+			qarray<Symmetry::Nq> qRtop = Ltop + qloc[s2] - qloc[s3];
 			
-			result = make_tuple(qarray4<Nq>{qRin,qRout,qRbot,qRtop}, q1->second, q2->second);
+			result = make_tuple(qarray4<Symmetry::Nq>{qRin,qRout,qRbot,qRtop}, q1->second, q2->second);
 			return true;
 		}
 	}
@@ -122,13 +122,13 @@ bool AWWA (qarray<Nq> Lin, qarray<Nq> Lout, qarray<Nq> Lbot, qarray<Nq> Ltop,
 
 /**Prepares a PivotMatrixQ by filling PivotMatrixQ::qlhs and PivotMatrixQ::qrhs with the corresponding subspace indices.
 Uses OpenMP.*/
-template<size_t Nq, typename Scalar, typename MpoScalar>
-void precalc_blockStructure (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L, 
-                             const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-                             const vector<vector<SparseMatrix<MpoScalar> > > &W, 
-                             const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
-                             const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &R, 
-                             vector<qarray<Nq> > qloc, 
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L, 
+                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                             const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
+                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+                             const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
+                             vector<qarray<Symmetry::Nq> > qloc, 
                              vector<std::array<size_t,2> > &qlhs, 
                              vector<vector<std::array<size_t,4> > > &qrhs)
 {
@@ -147,7 +147,7 @@ void precalc_blockStructure (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t qL=0; qL<L.dim; ++qL)
 	{
-		tuple<qarray3<Nq>,size_t,size_t> ix;
+		tuple<qarray3<Symmetry::Nq>,size_t,size_t> ix;
 		bool FOUND_MATCH = AWA(L.in(qL), L.out(qL), L.mid(qL), s1,s2, qloc, Abra,Aket, ix);
 		
 		if (FOUND_MATCH == true)
@@ -158,8 +158,8 @@ void precalc_blockStructure (const Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > &L
 			{
 				bool ALL_BLOCKS_ARE_EMPTY = true;
 				
-				for (int k=0; k<W[s1][s2].outerSize(); ++k)
-				for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2],k); iW; ++iW)
+				for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
+				for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
 				{
 					if (L.block[qL][iW.row()][0].rows() != 0 and 
 						R.block[qR->second][iW.col()][0].rows() != 0)
