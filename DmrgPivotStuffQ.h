@@ -10,8 +10,8 @@ template<typename Symmetry, typename Scalar, typename MpoScalar=double>
 struct PivotMatrixQ
 {
 	static constexpr std::size_t Nq = Symmetry::Nq;
-	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > L;
-	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > R;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
 	vector<vector<SparseMatrix<MpoScalar> > >  W;
 	
 	size_t dim;
