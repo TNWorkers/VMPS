@@ -154,14 +154,14 @@ Only a left-to-right contraction is implemented.
 \param O2 : input MpoQ
 \param Vket : input \f$\left|\Psi_{ket}\right>\f$
 */
-template<size_t Nq, typename MpoScalar, typename Scalar>
-Scalar avg (const MpsQ<Nq,Scalar> &Vbra, 
-            const MpoQ<Nq,MpoScalar> &O1,
-            const MpoQ<Nq,MpoScalar> &O2, 
-            const MpsQ<Nq,Scalar> &Vket)
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra, 
+            const MpoQ<Symmetry,MpoScalar> &O1,
+            const MpoQ<Symmetry,MpoScalar> &O2, 
+            const MpsQ<Symmetry,Scalar> &Vket)
 {
-	Multipede<4,Nq,Matrix<Scalar,Dynamic,Dynamic> > B;
-	Multipede<4,Nq,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
+	Multipede<4,Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
+	Multipede<4,Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	
 	B.setVacuum();
 	for (size_t l=0; l<O2.length(); ++l)
@@ -198,13 +198,13 @@ Scalar avg (const MpsQ<Nq,Scalar> &Vbra,
 \param Vin : input \f$\left|\Psi_{in}\right>\f$
 \param Vout : output \f$\left|\Psi_{out}\right>\f$
 \param VERBOSITY : verbosity level*/
-template<size_t Nq, typename MpoScalar, typename Scalar>
-void HxV (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, 
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+void HxV (const MpoQ<Symmetry,MpoScalar> &H, const MpsQ<Symmetry,Scalar> &Vin, MpsQ<Symmetry,Scalar> &Vout, 
           DMRG::VERBOSITY::OPTION VERBOSITY) //=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	Stopwatch<> Chronos;
 	
-	MpsQCompressor<Nq,Scalar,MpoScalar> Compadre(VERBOSITY);
+	MpsQCompressor<Symmetry::Nq,Scalar,MpoScalar> Compadre(VERBOSITY);
 	Compadre.varCompress(H,Vin, Vout, Vin.calc_Dmax());
 	
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
@@ -223,12 +223,12 @@ void HxV (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scala
 \param Vin2 : input MpsQ \f$\left|T_{n-2}\right>\f$
 \param Vout : output MpsQ \f$\left|T_{n}\right>\f$
 \param VERBOSITY : verbosity level*/
-template<size_t Nq, typename MpoScalar, typename Scalar>
-void polyIter (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin1, double polyB, const MpsQ<Nq,Scalar> &Vin2, MpsQ<Nq,Scalar> &Vout, 
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+void polyIter (const MpoQ<Symmetry,MpoScalar> &H, const MpsQ<Symmetry,Scalar> &Vin1, double polyB, const MpsQ<Symmetry,Scalar> &Vin2, MpsQ<Symmetry,Scalar> &Vout, 
                DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	Stopwatch<> Chronos;
-	MpsQCompressor<Nq,Scalar,MpoScalar> Compadre(VERBOSITY);
+	MpsQCompressor<Symmetry::Nq,Scalar,MpoScalar> Compadre(VERBOSITY);
 	Compadre.polyCompress(H,Vin1,polyB,Vin2, Vout, Vin1.calc_Dmax());
 	
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
@@ -239,23 +239,23 @@ void polyIter (const MpoQ<Nq,MpoScalar> &H, const MpsQ<Nq,Scalar> &Vin1, double 
 	}
 }
 
-template<size_t Nq, typename MpoScalar, typename Scalar>
-void HxV (const MpoQ<Nq,MpoScalar> &H, MpsQ<Nq,Scalar> &Vinout, 
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+void HxV (const MpoQ<Symmetry,MpoScalar> &H, MpsQ<Symmetry,Scalar> &Vinout, 
           DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
-	MpsQ<Nq,Scalar> Vtmp;
+	MpsQ<Symmetry,Scalar> Vtmp;
 	HxV(H,Vinout,Vtmp,VERBOSITY);
 	Vinout = Vtmp;
 }
 
-template<size_t Nq, typename Scalar, typename OtherScalar>
-void addScale (const OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, 
+template<typename Symmetry, typename Scalar, typename OtherScalar>
+void addScale (const OtherScalar alpha, const MpsQ<Symmetry,Scalar> &Vin, MpsQ<Symmetry,Scalar> &Vout, 
                DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
 {
 	Stopwatch<> Chronos;
-	MpsQCompressor<Nq,Scalar,OtherScalar> Compadre(VERBOSITY);
+	MpsQCompressor<Symmetry::Nq,Scalar,OtherScalar> Compadre(VERBOSITY);
 	size_t Dstart = Vout.calc_Dmax();
-	MpsQ<Nq,Scalar> Vtmp = Vout;
+	MpsQ<Symmetry,Scalar> Vtmp = Vout;
 	Vtmp.addScale(alpha,Vin,false);
 //	Compadre.varCompress(Vtmp, Vout, Dstart, 1e-3, 100, 1, DMRG::COMPRESSION::RANDOM);
 	Compadre.varCompress(Vtmp, Vout, Dstart);
@@ -268,15 +268,15 @@ void addScale (const OtherScalar alpha, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scal
 	}
 }
 
-template<size_t Nq, typename MpoScalar, typename Scalar>
-void OxV (const MpoQ<Nq,MpoScalar> &O, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout, DMRG::BROOM::OPTION TOOL) //=DMRG::BROOM::SVD)
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+void OxV (const MpoQ<Symmetry,MpoScalar> &O, const MpsQ<Symmetry,Scalar> &Vin, MpsQ<Symmetry,Scalar> &Vout, DMRG::BROOM::OPTION TOOL) //=DMRG::BROOM::SVD)
 {
-	vector<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > > C;
-	vector<Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > > Cnext;
+	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > C;
+	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Cnext;
 	
 	if (TOOL == DMRG::BROOM::QR)
 	{
-		assert(O.Qtarget() == qvacuum<Nq>() and 
+		assert(O.Qtarget() == Symmetry::qvacuum() and 
 		       "Need a qnumber-conserving operator in OxV for QR option!");
 		Vout = Vin;
 	}
@@ -343,10 +343,10 @@ void OxV (const MpoQ<Nq,MpoScalar> &O, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scala
 //	Vout.pivot = Vout.length()-1;
 }
 
-template<size_t Nq, typename MpoScalar, typename Scalar>
-void OxV (const MpoQ<Nq,MpoScalar> &O, MpsQ<Nq,Scalar> &Vinout)
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+void OxV (const MpoQ<Symmetry,MpoScalar> &O, MpsQ<Symmetry,Scalar> &Vinout)
 {
-	MpsQ<Nq,Scalar> Vtmp;
+	MpsQ<Symmetry,Scalar> Vtmp;
 	OxV(O,Vinout,Vtmp);
 	Vinout = Vtmp;
 }
