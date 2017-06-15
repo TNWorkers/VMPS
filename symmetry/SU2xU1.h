@@ -289,7 +289,7 @@ validate ( const std::array<SU2xU1<Scalar>::qType,M>& qs )
 					}
 					return false;
 				}
-	else if constexpr( M==3 )
+	else if constexpr( M == 3 )
 					 {
 						 //todo: check here triangle rule
 						 std::vector<SU2xU1<Scalar>::qType> qTarget = SU2xU1<Scalar>::reduceSilent(qs[0],qs[1]);

@@ -1,0 +1,341 @@
+#ifndef SITEOPERATOR_H_
+#define SITEOPERATOR_H_
+
+#include "qbasis.h"
+#include "Biped.h"
+
+/** \class SiteOperator
+  *
+  * This class is the type for local operators and defines the relevant operations: adjoint(), prod(), outerprod(),...
+  *
+  * \describe_Symmetry
+  * \describe_Scalar
+  *
+  */
+template<typename Symmetry, typename MatrixType_>
+class SiteOperator// : public Biped<Symmetry,MatrixType_>
+{
+private:
+	typedef Eigen::Index Index;
+	typedef typename Symmetry::qType qType;
+	typedef Biped<Symmetry,MatrixType_> base;
+	
+public:
+	typedef MatrixType_ MatrixType;
+	typedef typename MatrixType::Scalar Scalar;
+
+	/**Does nothing.*/
+	SiteOperator() {};
+
+	SiteOperator( const qType& Q_in, const Qbasis<Symmetry>& basis_in )
+		: Q_(Q_in),basis_(basis_in) {};
+
+	SiteOperator( const qType& Q_in, const Qbasis<Symmetry>& basis_in, const base& data_in )
+		:Q_(Q_in),basis_(basis_in),data_(data_in) {};
+	
+	base& data() {return data_;}
+	const base& data() const {return data_;}
+
+	qType& Q() {return Q_;}
+	const qType& Q() const {return Q_;}
+
+	Qbasis<Symmetry>& basis() {return basis_;}
+	const Qbasis<Symmetry>& basis() const {return basis_;}
+
+	MatrixType operator() ( const qType& bra, const qType& ket ) const;
+	MatrixType& operator() ( const qType& bra, const qType& ket );
+
+	Scalar operator() ( const std::string& bra, const std::string& ket ) const;
+	Scalar& operator() ( const std::string& bra, const std::string& ket );
+
+	SiteOperator<Symmetry,MatrixType_>& operator+= ( const SiteOperator<Symmetry,MatrixType_>& Op );
+	SiteOperator<Symmetry,MatrixType_>& operator-= ( const SiteOperator<Symmetry,MatrixType_>& Op );
+
+	SiteOperator<Symmetry,MatrixType_> adjoint() const;
+
+	void setZero();
+	void setIdentity();
+	
+	static SiteOperator<Symmetry,MatrixType_> prod( const SiteOperator<Symmetry,MatrixType_>& O1, const SiteOperator<Symmetry,MatrixType_>& O2, const qType& target );
+	static SiteOperator<Symmetry,MatrixType_> outerprod( const SiteOperator<Symmetry,MatrixType_>& O1, const SiteOperator<Symmetry,MatrixType_>& O2, const qType& target );
+
+	SiteOperator<Symmetry,MatrixType_> diagonalize() const;
+private:
+	base data_;
+	qType Q_;
+	Qbasis<Symmetry> basis_;
+};
+
+template<typename Symmetry, typename MatrixType_>
+MatrixType_& SiteOperator<Symmetry,MatrixType_>::
+operator() ( const qType& bra, const qType& ket )
+{
+	std::array<qType,2> index = {bra,ket};
+	auto it = data_.dict.find(index);
+	if ( it != data_.dict.end() ) { return data_.block[it->second]; }
+	else
+	{
+		Eigen::Index dim1 = basis_.inner_dim(bra);
+		Eigen::Index dim2 = basis_.inner_dim(ket);
+		MatrixType A(dim1,dim2); A.setZero();
+		data_.push_back(index,A);
+		return data_.block[data_.size()-1];
+	}
+}
+
+template<typename Symmetry, typename MatrixType_>
+MatrixType_ SiteOperator<Symmetry,MatrixType_>::
+operator() ( const qType& bra, const qType& ket ) const
+{
+	std::array<qType,2> index = {bra,ket};
+	auto it = data_.dict.find(index);
+	assert( it != data_.dict.end() and "The element does not exist in the SiteOperator." );
+	return data_.block[it->second];
+}
+
+template<typename Symmetry, typename MatrixType_>
+typename MatrixType_::Scalar& SiteOperator<Symmetry,MatrixType_>::
+operator() ( const std::string& bra, const std::string& ket )
+{
+	qType bra_ = basis_.find(bra);
+	qType ket_ = basis_.find(ket);
+	std::array<qType,2> index = {bra_,ket_};
+	auto it = data_.dict.find(index);
+	if ( it != data_.dict.end() )
+	{
+		Eigen::Index i = basis_.location(bra);
+		Eigen::Index j = basis_.location(ket);
+		if constexpr ( std::is_same<MatrixType_,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> >::value )
+			{
+				return data_.block[it->second](i,j);
+			}
+				else if constexpr ( std::is_same<MatrixType_,Eigen::SparseMatrix<Scalar> >::value )
+			{
+				return data_.block[it->second].coeffRef(i,j);
+			}
+	}
+	else
+	{
+		Eigen::Index dim1 = basis_.inner_dim(bra_);
+		Eigen::Index dim2 = basis_.inner_dim(ket_);
+		MatrixType A(dim1,dim2); A.setZero();
+		Eigen::Index i = basis_.location(bra);
+		Eigen::Index j = basis_.location(ket);
+		data_.push_back(index,A);
+		if constexpr ( std::is_same<MatrixType_,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> >::value )
+			{
+				return data_.block[data_.size()-1](i,j);
+			}
+		else if constexpr ( std::is_same<MatrixType_,Eigen::SparseMatrix<Scalar> >::value )
+			{
+				return data_.block[data_.size()-1].coeffRef(i,j);
+			}
+	}
+}
+
+template<typename Symmetry, typename MatrixType_>
+typename MatrixType_::Scalar SiteOperator<Symmetry,MatrixType_>::
+operator() ( const std::string& bra, const std::string& ket ) const
+{
+	qType bra_ = basis_.find(bra);
+	qType ket_ = basis_.find(ket);
+	std::array<qType,2> index = {bra_,ket_};
+	auto it = data_.dict.find(index);
+	assert( it != data_.dict.end() and "The element does not exist in the SiteOperator." );
+	Eigen::Index i = basis_.location(bra);
+	Eigen::Index j = basis_.location(ket);		
+	return data_.block[it->second](i,j);
+}
+
+template<typename Symmetry, typename MatrixType_>
+SiteOperator<Symmetry,MatrixType_> SiteOperator<Symmetry,MatrixType_>::
+diagonalize () const
+{
+	assert(this->Q() == Symmetry::qvacuum() and "Only a singlet operator can get diagonalized.");
+	SiteOperator<Symmetry,MatrixType_> out( this->Q(), this->basis() );
+
+	MatrixType Mtmp,res;
+	for( std::size_t nu=0; nu<this->data().size(); nu++ )
+	{
+		Mtmp = this->data().block[nu];
+		Eigen::SelfAdjointEigenSolver<MatrixType> John(Mtmp);
+		res = John.eigenvalues().asDiagonal();
+		out.data().push_back(this->data().in[nu],this->data().out[nu],res);
+	}
+	return out;
+}
+
+template<typename Symmetry, typename MatrixType_>
+SiteOperator<Symmetry,MatrixType_> SiteOperator<Symmetry,MatrixType_>::
+adjoint () const
+{
+	SiteOperator<Symmetry,MatrixType_> out( Symmetry::flip(this->Q()), this->basis() );
+
+	for( std::size_t nu=0; nu<this->data().size(); nu++ )
+	{
+		std::array<qType,2> index = {this->data().out[nu],this->data().in[nu]};
+		MatrixType A = this->data().block[nu].adjoint();
+		A *= Symmetry::coeff_adjoint(this->data().in[nu],this->data().out[nu],this->Q());
+		out.data().push_back(index,A);
+	}
+	return out;
+}
+
+template<typename Symmetry, typename MatrixType_>
+void SiteOperator<Symmetry,MatrixType_>::
+setZero()
+{
+	for(const auto& q : basis().qloc())
+	{
+		(*this)(q,q).setZero();
+	}
+}
+
+template<typename Symmetry, typename MatrixType_>
+void SiteOperator<Symmetry,MatrixType_>::
+setIdentity()
+{
+	for(const auto& q : basis().qloc())
+	{
+		(*this)(q,q).setIdentity();
+	}
+}
+
+template<typename Symmetry, typename MatrixType_>
+SiteOperator<Symmetry,MatrixType_> SiteOperator<Symmetry,MatrixType_>::
+prod( const SiteOperator<Symmetry,MatrixType_>& O1, const SiteOperator<Symmetry,MatrixType_>& O2, const qType& target )
+{
+	std::array<qType,3> checkIndex = {O1.Q(),O2.Q(),target};
+	assert( Symmetry::validate(checkIndex) and "Operators O1 and O2 cannot get multplied to a quantum number target operator" );
+	assert( O1.basis() == O2.basis() and "For a prod() operation the two operators need to have the same basis" );
+	
+	SiteOperator out( target, O1.basis() );
+
+	std::array<qType,2> totIndex, index;
+	MatrixType A;
+	Scalar factor_cgc;
+	for ( std::size_t nu=0; nu<O1.data().size(); nu++ )
+	{
+		auto qvec = Symmetry::reduceSilent(O1.data().out[nu],Symmetry::flip(O2.Q()));
+		for (const auto& q : qvec)
+		{
+			index = {O1.data().out[nu],q};
+			auto it = O2.data().dict.find(index);
+			if (it == O2.data().dict.end()) {continue;}
+			std::size_t mu = it->second;
+			factor_cgc = Symmetry::coeff_Apair( O1.data().in[nu], O1.Q(), O1.data().out[nu],
+												O2.Q(), O2.data().out[mu], target);
+			if ( std::abs(factor_cgc) < ::numeric_limits<Scalar>::epsilon() ) { continue; }
+			totIndex = { O1.data().in[nu], O2.data().out[mu] };
+			A = O1.data().block[nu] * O2.data().block[mu] * factor_cgc;
+			auto check = out.data().dict.find(totIndex);
+			if ( check == out.data().dict.end() )
+			{
+				out.data().push_back(totIndex,A);
+			}
+			else { out.data().block[check->second] += A; }
+		}
+	}
+	return out;
+}
+
+template<typename Symmetry, typename MatrixType_>
+SiteOperator<Symmetry,MatrixType_> SiteOperator<Symmetry,MatrixType_>::
+outerprod( const SiteOperator<Symmetry,MatrixType_>& O1, const SiteOperator<Symmetry,MatrixType_>& O2, const qType& target )
+{
+	std::array<qType,3> checkIndex = {O1.Q(),O2.Q(),target};
+	assert( Symmetry::validate(checkIndex) and "Operators O1 and O2 cannot get multiplied to a operator with quantum number = target" );
+
+	auto TensorBasis = O1.basis().combine(O2.basis());
+
+	SiteOperator out( target, TensorBasis );
+
+	std::array<qType,2> totIndex;
+	MatrixType Atmp,A;
+	Index rows,cols;
+	Scalar factor_cgc;
+
+	for (std::size_t nu=0; nu<O1.data().size(); nu++)
+	{
+		for (std::size_t mu=0; mu<O2.data().size(); mu++)
+		{
+			auto reduce1 = Symmetry::reduceSilent(O1.data().in[nu], O2.data().in[mu]);
+			auto reduce2 = Symmetry::reduceSilent(O1.data().out[nu], O2.data().out[mu]);
+			for ( const auto& q1: reduce1 )
+				for ( const auto& q2: reduce2 )
+				{
+					factor_cgc = Symmetry::coeff_buildR( O1.data().out[nu], O2.data().out[mu], q2,
+														 O1.Q(), O2.Q(), target,
+														 O1.data().in[nu], O2.data().in[mu], q1);
+					if ( std::abs(factor_cgc) < ::numeric_limits<Scalar>::epsilon() ) { continue; }
+					totIndex = { q1, q2 };
+					rows = O1.data().block[nu].rows()*O2.data().block[mu].rows();
+					cols = O1.data().block[nu].cols()*O2.data().block[mu].cols();
+					Atmp.resize(rows,cols);
+
+					Atmp = kroneckerProduct(O1.data().block[nu],O2.data().block[mu]);
+					Index left1=TensorBasis.leftAmount(q1,{O1.data().in[nu], O2.data().in[mu]});
+					Index right1=TensorBasis.rightAmount(q1,{O1.data().in[nu], O2.data().in[mu]});
+					Index left2=TensorBasis.leftAmount(q2,{O1.data().out[nu], O2.data().out[mu]});
+					Index right2=TensorBasis.rightAmount(q2,{O1.data().out[nu], O2.data().out[mu]});
+					A.resize(rows+left1+right1,cols+left2+right2); A.setZero();
+					A.block(left1,left2,rows,cols) = Atmp;
+
+					auto it = out.data().dict.find(totIndex);
+					if ( it == out.data().dict.end() )
+					{
+						out.data().push_back(totIndex, factor_cgc*A);
+					}
+					else
+					{
+						out.data().block[it->second] += factor_cgc * A;
+					}
+				}
+		}
+	}
+	return out;
+}
+
+template<typename Symmetry,typename MatrixType_>
+SiteOperator<Symmetry,MatrixType_>& SiteOperator<Symmetry,MatrixType_>::operator+= ( const SiteOperator<Symmetry,MatrixType_>& Op )
+{
+	*this = *this + Op;
+	return *this;
+}
+
+template<typename Symmetry,typename MatrixType_>
+SiteOperator<Symmetry,MatrixType_>& SiteOperator<Symmetry,MatrixType_>::operator-= ( const SiteOperator<Symmetry,MatrixType_>& Op )
+{
+	*this = *this - Op;
+	return *this;
+}
+
+template<typename Symmetry,typename MatrixType_>
+SiteOperator<Symmetry,MatrixType_> operator* ( const typename MatrixType_::Scalar& s, const SiteOperator<Symmetry,MatrixType_>& op )
+{
+	SiteOperator<Symmetry,MatrixType_> out = op;
+	out.data() = s*op.data();
+	return out;
+}
+
+template<typename Symmetry,typename MatrixType_>
+SiteOperator<Symmetry,MatrixType_> operator+ ( const SiteOperator<Symmetry,MatrixType_>& O1, const SiteOperator<Symmetry,MatrixType_>& O2 )
+{
+	assert(O1.basis() == O2.basis() and "For addition of SiteOperators the basis needs to be the same.");
+	assert(O1.Q() == O2.Q() and "For addition of SiteOperators the operator quantum number needs to be the same.");
+	SiteOperator<Symmetry,MatrixType_> out(O1.Q(),O1.basis());
+	out.data() = O1.data() + O2.data();
+	return out;
+}
+
+template<typename Symmetry,typename MatrixType_>
+SiteOperator<Symmetry,MatrixType_> operator- ( const SiteOperator<Symmetry,MatrixType_>& O1, const SiteOperator<Symmetry,MatrixType_>& O2 )
+{
+	assert(O1.basis() == O2.basis() and "For subtraction of SiteOperators the basis needs to be the same.");
+	assert(O1.Q() == O2.Q() and "For subtraction of SiteOperators the operator quantum number needs to be the same.");
+	SiteOperator<Symmetry,MatrixType_> out(O1.Q(),O1.basis());
+	out.data() = O1.data() - O2.data();
+	return out;
+}
+
+#endif

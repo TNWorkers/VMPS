@@ -200,7 +200,7 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 \param VERBOSITY : verbosity level*/
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void HxV (const MpoQ<Symmetry,MpoScalar> &H, const MpsQ<Symmetry,Scalar> &Vin, MpsQ<Symmetry,Scalar> &Vout, 
-          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
+          DMRG::VERBOSITY::OPTION VERBOSITY) //=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	Stopwatch<> Chronos;
 	

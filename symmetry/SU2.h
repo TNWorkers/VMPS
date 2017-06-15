@@ -158,8 +158,8 @@ template<typename Scalar>
 Scalar SU2<Scalar>::
 coeff_adjoint(const qType& q1, const qType& q2, const qType& q3)
 {
-	Scalar out = std::pow(static_cast<Scalar>(q1[0]),Scalar(0.5)) * std::pow(static_cast<Scalar>(q2[0]),Scalar(-0.5))*
-		std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q3[0]+q1[0]-q2[0]-1));
+	Scalar out = std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q3[0]+q1[0]-q2[0]-1)) *
+		std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]));
 	return out;
 }
 
