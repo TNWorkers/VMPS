@@ -53,6 +53,7 @@ class MpoQ
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 template<Index Rank> using TensorType = Eigen::Tensor<Scalar,Rank,Eigen::ColMajor,Index>;
 typedef SparseMatrixXd SparseMatrixType;
+typedef SiteOperator<Symmetry,SparseMatrixType> OperatorType;
 static constexpr size_t Nq = Symmetry::Nq;
 typedef typename Symmetry::qType qType;
 	
@@ -85,16 +86,16 @@ public:
 	      bool UNITARY_input=false);
 	
 	/**Construct with all values and a SuperMatrix (useful when constructing an MpoQ by another MpoQ).*/
-	MpoQ (size_t Lx_input, size_t Ly_input, const SuperMatrix<Scalar> &G_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+	MpoQ (size_t Lx_input, size_t Ly_input, const SuperMatrix<Symmetry,Scalar> &G_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	
 	/**Construct with all values and a vector of SuperMatrices (useful when constructing an MpoQ by another MpoQ).*/
-	MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+	MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	
-	MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
+	MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	///\}
@@ -105,25 +106,25 @@ public:
 	\param loc : site index
 	\param Op : the local operator in question
 	*/
-	void setLocal (size_t loc, const SparseMatrixType &Op);
+	void setLocal (size_t loc, const OperatorType &Op);
 	
 	/**Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$
 	\param loc : list of locations
 	\param Op : list of operators
 	*/
-	void setLocal (vector<size_t> loc, const vector<SparseMatrixType> &Op);
+	void setLocal (vector<size_t> loc, const vector<OperatorType> &Op);
 	
 	/**Set to a sum of of local operators \f$\sum_i f(i) O_i\f$
 	\param Op : the local operator in question
 	\param f : the function in question$
 	*/
-	void setLocalSum (const SparseMatrixType &Op, Scalar (*f)(int)=localSumTrivial);
+	void setLocalSum (const OperatorType &Op, Scalar (*f)(int)=localSumTrivial);
 	
 	/**Set to a sum of nearest-neighbour products of local operators \f$\sum_i O^1_i O^2_{i+1}\f$
 	\param Op1 : first local operator
 	\param Op2 : second local operator
 	*/
-	void setProductSum (const SparseMatrixType &Op1, const SparseMatrixType &Op2);
+	void setProductSum (const OperatorType &Op1, const OperatorType &Op2);
 	
 	/**Makes a linear transformation of the MpoQ: \f$H' = factor*H + offset\f$.*/
 	void scale (double factor=1., double offset=0.);
@@ -237,19 +238,19 @@ protected:
 	
 //	ArrayXd truncWeight;
 	
-	void construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore, 
+	void construct (const SuperMatrix<Symmetry,Scalar> &G_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore, vector<SuperMatrix<Symmetry,Scalar> > &Gstore, 
 	                bool OPEN_BC=true);
-	void construct (const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore);
+	void construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore, vector<SuperMatrix<Symmetry,Scalar> > &Gstore);
 	
 	void construct (const MultipedeQ<4,Symmetry,Scalar,-2> &G_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
 					vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gstore);
 	void construct (const vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gvec_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
 					vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gstore);	
 
-	vector<SuperMatrix<Scalar> > Gvec;
+	vector<SuperMatrix<Symmetry,Scalar> > Gvec;
 	vector<vector<vector<vector<SparseMatrix<Scalar> > > > > W;
 	
-	vector<SuperMatrix<Scalar> > GvecSq;
+	vector<SuperMatrix<Symmetry,Scalar> > GvecSq;
 	vector<vector<vector<vector<SparseMatrix<Scalar> > > > > Wsq;
 };
 
@@ -315,7 +316,7 @@ MpoQ (size_t Lx_input, size_t Ly_input, vector<vector<qarray<Nq> > > qloc_input,
 
 template<typename Symmetry, typename Scalar>
 MpoQ<Symmetry,Scalar>::
-MpoQ (size_t Lx_input, size_t Ly_input, const SuperMatrix<Scalar> &G_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+MpoQ (size_t Lx_input, size_t Ly_input, const SuperMatrix<Symmetry,Scalar> &G_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
 :N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
@@ -335,7 +336,7 @@ MpoQ (size_t Lx_input, size_t Ly_input, const SuperMatrix<Scalar> &G_input, vect
 
 template<typename Symmetry, typename Scalar>
 MpoQ<Symmetry,Scalar>::
-MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
 :N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
@@ -355,7 +356,7 @@ MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec
 
 template<typename Symmetry, typename Scalar>
 MpoQ<Symmetry,Scalar>::
-MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
+MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
 :N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
@@ -367,10 +368,10 @@ MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Scalar> > &Gvec
 
 template<typename Symmetry, typename Scalar>
 void MpoQ<Symmetry,Scalar>::
-construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore, vector<SuperMatrix<Scalar> > &Gstore, bool OPEN_BC)
+construct (const SuperMatrix<Symmetry,Scalar> &G_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore, vector<SuperMatrix<Symmetry,Scalar> > &Gstore, bool OPEN_BC)
 {
-	vector<SuperMatrix<Scalar> > Gvec(N_sites);
-	size_t D = G_input(0,0).rows();
+	vector<SuperMatrix<Symmetry,Scalar> > Gvec(N_sites);
+	size_t D = G_input(0,0).data.rows();
 	
 //	make W^[0] from last row
 	if (OPEN_BC)
@@ -407,7 +408,7 @@ construct (const SuperMatrix<Scalar> &G_input, vector<vector<vector<vector<Spars
 
 template<typename Symmetry, typename Scalar>
 void MpoQ<Symmetry,Scalar>::
-construct (const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore, vector<SuperMatrix<Scalar> > &Gstore)
+construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore, vector<SuperMatrix<Symmetry,Scalar> > &Gstore)
 {
 	Wstore.resize(N_sites);
 	Gstore = Gvec_input;
@@ -429,7 +430,7 @@ construct (const vector<SuperMatrix<Scalar> > &Gvec_input, vector<vector<vector<
 				for (size_t a1=0; a1<Gstore[l].rows(); ++a1)
 					for (size_t a2=0; a2<Gstore[l].cols(); ++a2)
 					{
-						Scalar val = Gstore[l](a1,a2)(s1,s2);
+						Scalar val = Gstore[l](a1,a2).data(s1,s2);
 						if (val != 0.)
 						{
 							Wstore[l][s1][s2][0].insert(a1,a2) = val;
@@ -633,18 +634,19 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 
 template<typename Symmetry, typename Scalar>
 void MpoQ<Symmetry,Scalar>::
-setLocal (size_t loc, const SparseMatrixType &Op)
+setLocal (size_t loc, const OperatorType &Op)
 {
-	assert(Op.rows() == qloc[loc].size() and Op.cols() == qloc[loc].size());
+	assert(Op.data.rows() == qloc[loc].size() and Op.data.cols() == qloc[loc].size());
 	assert(loc < N_sites);
 	
 	Daux = 1;
-	vector<SuperMatrix<Scalar> > M(N_sites);
+	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		M[l].setMatrix(Daux,qloc[l].size());
-		(l==loc)? M[l](0,0)=Op : M[l](0,0).setIdentity();
+		if(l==loc) {M[l](0,0).data=Op.data; M[l](0,0).Q=Op.Q;}
+		else {M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum();}
 	}
 	
 	construct(M, W, Gvec);
@@ -652,24 +654,26 @@ setLocal (size_t loc, const SparseMatrixType &Op)
 
 template<typename Symmetry, typename Scalar>
 void MpoQ<Symmetry,Scalar>::
-setLocal (vector<size_t> loc, const vector<SparseMatrixType> &Op)
+setLocal (vector<size_t> loc, const vector<OperatorType> &Op)
 {
 	assert(loc.size() >= 1 and Op.size() == loc.size());
 	
 	Daux = 1;
-	vector<SuperMatrix<Scalar> > M(N_sites);
+	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		M[l].setMatrix(Daux,qloc[l].size());
-		M[l](0,0).setIdentity();
+		M[l](0,0).data.setIdentity();
+		M[l](0,0).Q = Symmetry::qvacuum();
 	}
 	
 	for (size_t i=0; i<loc.size(); ++i)
 	{
 		assert(loc[i] < N_sites);
-		assert(Op[i].rows() == qloc[loc[i]].size() and Op[i].cols() == qloc[loc[i]].size());
-		M[loc[i]](0,0) = M[loc[i]](0,0) * Op[i];
+		assert(Op[i].data.rows() == qloc[loc[i]].size() and Op[i].data.cols() == qloc[loc[i]].size());
+		M[loc[i]](0,0).data = M[loc[i]](0,0).data * Op[i].data;
+		M[loc[i]](0,0).Q = M[loc[i]](0,0).Q + Op[i].Q; //TODO: this line is only valid for U1. Change it.
 	}
 	
 	construct(M, W, Gvec);
@@ -678,32 +682,40 @@ setLocal (vector<size_t> loc, const vector<SparseMatrixType> &Op)
 // sum_i f(i)*O(i)
 template<typename Symmetry, typename Scalar>
 void MpoQ<Symmetry,Scalar>::
-setLocalSum (const SparseMatrixType &Op, Scalar (*f)(int))
+setLocalSum (const OperatorType &Op, Scalar (*f)(int))
 {
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		assert(Op.rows() == qloc[l].size() and Op.cols() == qloc[l].size());
+		assert(Op.data.rows() == qloc[l].size() and Op.data.cols() == qloc[l].size());
 	}
 	
 	Daux = 2;
-	vector<SuperMatrix<Scalar> > M(N_sites);
+	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
 	
 	M[0].setRowVector(Daux,qloc[0].size());
-	M[0](0,0) = f(0) * Op;
-	M[0](0,1).setIdentity();
+	M[0](0,0).data = f(0) * Op.data;
+	M[0](0,0).Q = Op.Q;
+	M[0](0,1).data.setIdentity();
+	M[0](0,1).Q = Symmetry::qvacuum();
 	
 	for (size_t l=1; l<N_sites-1; ++l)
 	{
 		M[l].setMatrix(Daux,qloc[l].size());
-		M[l](0,0).setIdentity();
-		M[l](0,1).setZero();
-		M[l](1,0) = f(l) * Op;
-		M[l](1,1).setIdentity();
+		M[l](0,0).data.setIdentity();
+		M[l](0,0).Q = Symmetry::qvacuum();
+		M[l](0,1).data.setZero();
+		M[l](0,1).Q = Symmetry::qvacuum();
+		M[l](1,0).data = f(l) * Op.data;
+		M[l](1,0).Q = Op.Q;
+		M[l](1,1).data.setIdentity();
+		M[l](1,1).Q = Symmetry::qvacuum();
 	}
 	
 	M[N_sites-1].setColVector(Daux,qloc[N_sites-1].size());
-	M[N_sites-1](0,0).setIdentity();
-	M[N_sites-1](1,0) = f(N_sites-1) * Op;
+	M[N_sites-1](0,0).data.setIdentity();
+	M[N_sites-1](0,0).Q = Symmetry::qvacuum();
+	M[N_sites-1](1,0).data = f(N_sites-1) * Op.data;
+	M[N_sites-1](1,0).Q = Op.Q;
 	
 	construct(M, W, Gvec);
 }
@@ -711,36 +723,45 @@ setLocalSum (const SparseMatrixType &Op, Scalar (*f)(int))
 // O1(1)*O2(2)+O1(2)*O1(3)+...+O1(L-1)*O2(L)
 template<typename Symmetry, typename Scalar>
 void MpoQ<Symmetry,Scalar>::
-setProductSum (const SparseMatrixType &Op1, const SparseMatrixType &Op2)
+setProductSum (const OperatorType &Op1, const OperatorType &Op2)
 {
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		assert(Op1.rows() == qloc[l].size() and Op1.cols() == qloc[l].size() and 
-		       Op2.rows() == qloc[l].size() and Op2.cols() == qloc[l].size());
+		assert(Op1.data.rows() == qloc[l].size() and Op1.data.cols() == qloc[l].size() and 
+		       Op2.data.rows() == qloc[l].size() and Op2.data.cols() == qloc[l].size());
 	}
 	
 	Daux = 3;
-	vector<SuperMatrix<Scalar> > M(N_sites);
+	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
 	
 	M[0].setRowVector(Daux,qloc[0].size());
-	M[0](0,0).setIdentity();
-	M[0](0,1) = Op1;
-	M[0](0,2).setIdentity();
+	M[0](0,0).data.setIdentity();
+	M[0](0,0).Q = Symmetry::qvacuum();
+	M[0](0,1).data = Op1.data;
+	M[0](0,1).data = Op1.Q;
+	M[0](0,2).data.setIdentity();
+	M[0](0,2).Q = Symmetry::qvacuum();
 	
 	for (size_t l=1; l<N_sites-1; ++l)
 	{
 		M[l].setMatrix(Daux,qloc[l].size());
 		M[l].setZero();
-		M[l](0,0).setIdentity();
-		M[l](1,0) = Op1;
-		M[l](2,1) = Op2;
-		M[l](2,2).setIdentity();
+		M[l](0,0).data.setIdentity();
+		M[l](0,0).Q = Symmetry::qvacuum();
+		M[l](1,0).data = Op1.data;
+		M[l](1,0).Q = Op1.Q;
+		M[l](2,1).Q = Op2.Q;
+		M[l](2,2).data.setIdentity();
+		M[l](2,2).Q = Symmetry::qvacuum();
 	}
 	
 	M[N_sites-1].setColVector(Daux,qloc[N_sites-1].size());
 	M[N_sites-1](0,0).setIdentity();
-	M[N_sites-1](1,0) = Op2;
+	M[N_sites-1](0,0).Q = Symmetry::qvacuum();
+	M[N_sites-1](1,0) = Op2.data;
+	M[N_sites-1](0,0).Q = Op2.Q;
 	M[N_sites-1](2,0).setIdentity();
+	M[N_sites-1](2,0).Q = Symmetry::qvacuum();
 	
 	construct(M, W, Gvec);
 }

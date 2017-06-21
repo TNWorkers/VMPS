@@ -199,29 +199,32 @@ std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
 	return s;
 }
 
-template<typename Scalar> using LocalTerms = vector<tuple<Scalar,SparseMatrix<Scalar,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
-template<typename Scalar> using TightTerms = vector<tuple<Scalar,SparseMatrix<Scalar,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
-                                                                 SparseMatrix<Scalar,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
-template<typename Scalar> using NextnTerms = vector<tuple<double,SparseMatrix<Scalar,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
-                                                                 SparseMatrix<Scalar,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>,
-                                                                 SparseMatrix<Scalar,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> > >;
+template<typename Symmetry, typename Scalar> using LocalTerms = vector<tuple<Scalar,
+																			 SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> > > >;
+template<typename Symmetry, typename Scalar> using TightTerms = vector<tuple<Scalar,
+																			 SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> >,
+																			 SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> > > >;
+template<typename Symmetry, typename Scalar> using NextnTerms = vector<tuple<double,
+																			 SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> >,
+																			 SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> >,
+																			 SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> > > >;
 
-template<typename Scalar>
+template<typename Symmetry, typename Scalar>
 struct HamiltonianTerms
 {
 	/**local terms of Hamiltonian, format: coupling, operator*/
-	LocalTerms<Scalar> local;
+	LocalTerms<Symmetry,Scalar> local;
 	
 	/**nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2*/
-	TightTerms<Scalar> tight;
+	TightTerms<Symmetry,Scalar> tight;
 	
 	/**next-nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2, transfer operator*/
-	NextnTerms<Scalar> nextn;
+	NextnTerms<Symmetry,Scalar> nextn;
 	
 	inline size_t auxdim() {return 2+tight.size()+2*nextn.size();}
 };
 
-typedef HamiltonianTerms<double>           HamiltonianTermsXd;
-typedef HamiltonianTerms<complex<double> > HamiltonianTermsXcd;
+template<typename Symmetry> using HamiltonianTermsXd = HamiltonianTerms<Symmetry,double> ;
+template<typename Symmetry> using HamiltonianTermsXcd = HamiltonianTerms<Symmetry,complex<double> >;
 
 #endif

@@ -19,7 +19,7 @@ H = -J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^z
 class HeisenbergModel : public MpoQ<Sym::U1<double>,double>
 {
 typedef Sym::U1<double> Symmetry;
-
+typedef SiteOperator<Symmetry,SparseMatrix<double> > OperatorType;
 public:
 	
 	HeisenbergModel() : MpoQ<Symmetry>() {};
@@ -58,10 +58,10 @@ public:
 //	\right)\f$.
 //	The fourth row and column are missing when \f$J_{xy}=0\f$. Uses the appropriate spin operators for a given \p S.*/
 //	static SuperMatrix<double> Generator (double Jxy, double Jz, double Bz, double Bx, size_t D=2);
-	static HamiltonianTermsXd set_operators (const SpinBase &B, double Jxy, double Jz, double Bz=0., double Bx=0., 
+	static HamiltonianTermsXd<Symmetry> set_operators (const SpinBase &B, double Jxy, double Jz, double Bz=0., double Bx=0., 
 	                                         double Jprime=0., double JxyIntra=0., double JzIntra=0., double K=0.);
 	
-	static HamiltonianTermsXd set_operators (const SpinBase &B, const MatrixXd &JxyInter, const MatrixXd &JzInter, 
+	static HamiltonianTermsXd<Symmetry> set_operators (const SpinBase &B, const MatrixXd &JxyInter, const MatrixXd &JzInter, 
 	                                         const VectorXd &Bz, const VectorXd &Bx, 
 	                                         double Jprime=0., double JxyIntra=0., double JzIntra=0., double K=0.);
 	
@@ -159,7 +159,7 @@ qloc (size_t N_legs, size_t D)
 	return vout;
 };
 
-HamiltonianTermsXd HeisenbergModel::
+HamiltonianTermsXd<Sym::U1<double> > HeisenbergModel::
 set_operators (const SpinBase &B, double Jxy, double Jz, double Bz, double Bx, double Jprime, double JxyIntra, double JzIntra, double K)
 {
 	MatrixXd JxyInter(B.orbitals(),B.orbitals()); JxyInter.setIdentity(); JxyInter *= Jxy;
@@ -169,7 +169,7 @@ set_operators (const SpinBase &B, double Jxy, double Jz, double Bz, double Bx, d
 	return set_operators(B, JxyInter, JzInter, Bzvec, Bxvec, Jprime, JxyIntra, JzIntra, K);
 }
 
-HamiltonianTermsXd HeisenbergModel::
+HamiltonianTermsXd<Sym::U1<double> > HeisenbergModel::
 set_operators (const SpinBase &B, const MatrixXd &JxyInter, const MatrixXd &JzInter, const VectorXd &Bz, const VectorXd &Bx, 
                double Jprime, double JxyIntra, double JzIntra, double K)
 {
@@ -178,7 +178,7 @@ set_operators (const SpinBase &B, const MatrixXd &JxyInter, const MatrixXd &JzIn
 	       B.orbitals() == JzInter.rows()  and 
 	       B.orbitals() == JzInter.cols());
 	
-	HamiltonianTermsXd Terms;
+	HamiltonianTermsXd<Symmetry> Terms;
 	
 	for (int leg1=0; leg1<B.orbitals(); ++leg1)
 	for (int leg2=0; leg2<B.orbitals(); ++leg2)
@@ -196,7 +196,7 @@ set_operators (const SpinBase &B, const MatrixXd &JxyInter, const MatrixXd &JzIn
 	
 	if (Jprime != 0.)
 	{
-		SparseMatrixXd Id = MatrixXd::Identity(B.get_D(),B.get_D()).sparseView();
+		OperatorType Id(Matrix<double,Dynamic,Dynamic>::Identity(B.get_D(),B.get_D()).sparseView(),Symmetry::qvacuum());
 		Terms.nextn.push_back(make_tuple(-0.5*Jprime, B.Scomp(SP), B.Scomp(SM), Id));
 		Terms.nextn.push_back(make_tuple(-0.5*Jprime, B.Scomp(SM), B.Scomp(SP), Id));
 		Terms.nextn.push_back(make_tuple(-Jprime,     B.Scomp(SZ), B.Scomp(SZ), Id));
@@ -217,8 +217,8 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 	this->label = create_label(D,Jxy,Jz,0,Bz,0);
 	
 	B = SpinBase(N_legs,D);
-	HamiltonianTermsXd Terms = set_operators(B, Jxy,Jz,Bz,0.);
-	SuperMatrix<double> G = Generator(Terms);
+	HamiltonianTermsXd<Symmetry> Terms = set_operators(B, Jxy,Jz,Bz,0.);
+	SuperMatrix<Symmetry,double> G = Generator(Terms);
 	this->Daux = Terms.auxdim();
 	
 	this->construct(G, this->W, this->Gvec);
@@ -242,7 +242,7 @@ Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 	this->label = create_label(D,Jxy,Jz,Jprime,Bz,0.);
 	
 	B = SpinBase(N_legs,D);
-	HamiltonianTermsXd Terms;
+	HamiltonianTermsXd<Symmetry> Terms;
 	if (Ly_input == 1)
 	{
 		Terms = set_operators(B, Jxy,Jz,Bz,0., Jprime);
@@ -254,7 +254,7 @@ Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 		Terms.tight.push_back(make_tuple(-0.5*Jxy, B.Scomp(SM,1), B.Scomp(SP,0)));
 		Terms.tight.push_back(make_tuple(-Jz, B.Scomp(SZ,1), B.Scomp(SZ,0)));
 	}
-	SuperMatrix<double> G = Generator(Terms);
+	SuperMatrix<Symmetry,double> G = Generator(Terms);
 	this->Daux = Terms.auxdim();
 	
 	this->construct(G, this->W, this->Gvec);

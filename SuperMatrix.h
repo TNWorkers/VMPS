@@ -6,15 +6,15 @@
 #include "boost/multi_array.hpp"
 
 /**Auxiliary matrix of matrices to create an Mpo and MpoQ.*/
-template<typename Scalar=double>
+template<typename Symmetry, typename Scalar=double>
 class SuperMatrix
 {
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
-
+typedef SiteOperator<Symmetry,MatrixType> OperatorType;
 public:
 	
-	MatrixType &operator() (size_t i, size_t j)       {return data[i][j];} // write
-	MatrixType  operator() (size_t i, size_t j) const {return data[i][j];} // read
+	OperatorType &operator() (size_t i, size_t j)       {return data[i][j];} // write
+	OperatorType  operator() (size_t i, size_t j) const {return data[i][j];} // read
 	
 	/**Resizes to a row vector (1,Daux) for the first site.*/
 	void set (size_t Daux1, size_t Daux2, size_t D)
@@ -45,9 +45,9 @@ public:
 	}
 	
 	/**Returns the i-th row.*/
-	SuperMatrix<Scalar> row (size_t i)
+	SuperMatrix<Symmetry,Scalar> row (size_t i)
 	{
-		SuperMatrix<Scalar> Mout;
+		SuperMatrix<Symmetry,Scalar> Mout;
 		Mout.setRowVector(auxdim(),D());
 		for (size_t j=0; j<N_rows; ++j)
 		{
@@ -57,9 +57,9 @@ public:
 	}
 	
 	/**Returns the i-th column.*/
-	SuperMatrix<Scalar> col (size_t i)
+	SuperMatrix<Symmetry,Scalar> col (size_t i)
 	{
-		SuperMatrix<Scalar> Mout;
+		SuperMatrix<Symmetry,Scalar> Mout;
 		Mout.setColVector(auxdim(),D());
 		for (size_t j=0; j<N_cols; ++j)
 		{
@@ -74,7 +74,7 @@ public:
 		for (size_t i=0; i<N_rows; ++i)
 		for (size_t j=0; j<N_cols; ++j)
 		{
-			data[i][j].setZero();
+			data[i][j].data.setZero();
 		}
 	}
 	
@@ -95,7 +95,7 @@ public:
 		for (size_t i=0; i<N_rows; ++i)
 		for (size_t j=0; j<N_cols; ++j)
 		{
-			return out += calc_memory<Scalar>(data[i][j], memunit);
+			return out += calc_memory<Scalar>(data[i][j].data, memunit);
 		}
 		return out;
 	}
@@ -103,12 +103,12 @@ public:
 	/**\describe_D*/
 	size_t D() const
 	{
-		size_t Dres = data[0][0].rows();
+		size_t Dres = data[0][0].data.rows();
 		for (size_t i=0; i<N_rows; ++i)
 		for (size_t j=0; j<N_cols; ++j)
 		{
-			assert(data[i][j].rows() == Dres);
-			assert(data[i][j].cols() == Dres);
+			assert(data[i][j].data.rows() == Dres);
+			assert(data[i][j].data.cols() == Dres);
 		}
 		return Dres;
 	}
@@ -118,24 +118,24 @@ private:
 	size_t N_rows;
 	size_t N_cols;
 	
-	boost::multi_array<MatrixType,2> data;
+	boost::multi_array<OperatorType,2> data;
 	
 	void innerResize (size_t D)
 	{
 		for (size_t i=0; i<N_rows; ++i)
 		for (size_t j=0; j<N_cols; ++j)
 		{
-			data[i][j].resize(D,D);
+			data[i][j].data.resize(D,D);
 		}
 	}
 };
 
-template<typename Scalar>
-SuperMatrix<Scalar> tensor_product (const SuperMatrix<Scalar> &M1, const SuperMatrix<Scalar> &M2)
+template<typename Symmetry, typename Scalar>
+SuperMatrix<Symmetry,Scalar> tensor_product (const SuperMatrix<Symmetry,Scalar> &M1, const SuperMatrix<Symmetry,Scalar> &M2)
 {
 	assert(M1.D() == M2.D());
 	
-	SuperMatrix<Scalar> Mout;
+	SuperMatrix<Symmetry,Scalar> Mout;
 	
 	if (M1.rows() == 1)
 	{
@@ -155,16 +155,16 @@ SuperMatrix<Scalar> tensor_product (const SuperMatrix<Scalar> &M1, const SuperMa
 	for (size_t r2=0; r2<M2.rows(); ++r2)
 	for (size_t c2=0; c2<M2.cols(); ++c2)
 	{
-		Mout(r1*M2.rows()+r2, c1*M2.cols()+c2) = M1(r1,c1) * M2(r2,c2);
+		Mout(r1*M2.rows()+r2, c1*M2.cols()+c2).data = M1(r1,c1).data * M2(r2,c2).data;
 	}
 	
 	return Mout;
 }
 
-template<typename Scalar>
-SuperMatrix<Scalar> directSum (const SuperMatrix<Scalar> &M1, const SuperMatrix<Scalar> &M2)
+template<typename Symmetry, typename Scalar>
+SuperMatrix<Symmetry,Scalar> directSum (const SuperMatrix<Symmetry,Scalar> &M1, const SuperMatrix<Symmetry,Scalar> &M2)
 {
-	SuperMatrix<Scalar> Mout;
+	SuperMatrix<Symmetry,Scalar> Mout;
 	size_t R;
 	size_t C;
 	
@@ -202,8 +202,8 @@ SuperMatrix<Scalar> directSum (const SuperMatrix<Scalar> &M1, const SuperMatrix<
 	return Mout;
 }
 
-template<typename Scalar>
-ostream &operator<< (ostream& os, const SuperMatrix<Scalar> &M)
+template<typename Symmetry, typename Scalar>
+ostream &operator<< (ostream& os, const SuperMatrix<Symmetry,Scalar> &M)
 {
 	os << showpos;
 	for (int i=0; i<M.rows(); ++i)
@@ -214,7 +214,7 @@ ostream &operator<< (ostream& os, const SuperMatrix<Scalar> &M)
 			{
 				for (int m=0; m<M.D(); ++m)
 				{
-					os << M(i,j)(n,m);
+					os << M(i,j).data(n,m);
 				}
 				os << "\t";
 			}
@@ -226,40 +226,42 @@ ostream &operator<< (ostream& os, const SuperMatrix<Scalar> &M)
 	return os;
 }
 
-template<typename Scalar>
-SuperMatrix<Scalar> Generator (const HamiltonianTerms<Scalar> &Terms)
+template<typename Symmetry, typename Scalar>
+SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar> &Terms)
 {
+	typedef SiteOperator<Symmetry,SparseMatrix<Scalar> > OperatorType;
 	size_t Daux = 2 + Terms.tight.size() + 2*Terms.nextn.size();
 	
-	vector<SparseMatrix<Scalar> > col;
-	vector<SparseMatrix<Scalar> > row;
+	vector<OperatorType> col;
+	vector<OperatorType> row;
 	size_t locdim;
 	if (Terms.tight.size()>0)
 	{
-		locdim = get<1>(Terms.tight[0]).rows();
+		locdim = get<1>(Terms.tight[0]).data.rows();
 	}
 	else if (Terms.nextn.size()>0)
 	{
-		locdim = get<1>(Terms.nextn[0]).rows();
+		locdim = get<1>(Terms.nextn[0]).data.rows();
 	}
 	else
 	{
-		locdim = get<1>(Terms.local[0]).rows();
+		locdim = get<1>(Terms.local[0]).data.rows();
 	}
-	SparseMatrix<Scalar> Id = Matrix<Scalar,Dynamic,Dynamic>::Identity(locdim,locdim).sparseView();
+	OperatorType Id(Matrix<Scalar,Dynamic,Dynamic>::Identity(locdim,locdim).sparseView(),Symmetry::qvacuum());
+	OperatorType Zero(SparseMatrix<Scalar>(locdim,locdim),Symmetry::qvacuum());
 	
 	// last row (except corner element)
 	for (size_t i=0; i<Terms.nextn.size(); ++i)
 	{
-		row.push_back(SparseMatrix<Scalar>(locdim,locdim));
+		row.push_back(Zero);
 	}
 	for (int i=0; i<Terms.tight.size(); ++i)
 	{
-		row.push_back(get<0>(Terms.tight[i]) * get<1>(Terms.tight[i]));
+		row.push_back(OperatorType(get<0>(Terms.tight[i]) * get<1>(Terms.tight[i]).data, get<1>(Terms.tight[i]).Q));
 	}
 	for (int i=0; i<Terms.nextn.size(); ++i)
 	{
-		row.push_back(get<0>(Terms.nextn[i]) * get<1>(Terms.nextn[i]));
+		row.push_back(OperatorType(get<0>(Terms.nextn[i]) * get<1>(Terms.nextn[i]).data, get<1>(Terms.nextn[i]).Q));
 	}
 	row.push_back(Id);
 	
@@ -275,23 +277,27 @@ SuperMatrix<Scalar> Generator (const HamiltonianTerms<Scalar> &Terms)
 	}
 	for (size_t i=0; i<Terms.nextn.size(); ++i)
 	{
-		col.push_back(SparseMatrix<Scalar>(locdim,locdim));
+		col.push_back(Zero);
 	}
 	
-	SuperMatrix<Scalar> Gout;
+	SuperMatrix<Symmetry,Scalar> Gout;
 	Gout.setMatrix(Daux,locdim);
 	Gout.setZero();
 	
 	for (size_t i=0; i<Daux-1; ++i)
 	{
-		Gout(i,0)        = col[i];
-		Gout(Daux-1,i+1) = row[i];
+		Gout(i,0).data     = col[i].data;
+		Gout(i,0).Q        = col[i].Q;
+		Gout(Daux-1,i+1).data = row[i].data;
+		Gout(Daux-1,i+1).Q = row[i].Q;
 	}
 	
 	// corner element : local interaction
 	for (int i=0; i<Terms.local.size(); ++i)
 	{
-		Gout(Daux-1,0) += get<0>(Terms.local[i]) * get<1>(Terms.local[i]);
+		Gout(Daux-1,0).data += get<0>(Terms.local[i]) * get<1>(Terms.local[i]).data;
+		Gout(Daux-1,0).Q = Gout(Daux-1,0).Q + get<1>(Terms.local[i]).Q; //TODO: This line is only valid for U1. Change it.
+
 	}
 	
 	// nearest-neighbour transfer
@@ -299,7 +305,8 @@ SuperMatrix<Scalar> Generator (const HamiltonianTerms<Scalar> &Terms)
 	{
 		for (size_t i=0; i<Terms.nextn.size(); ++i)
 		{
-			Gout(Daux-1-Terms.nextn.size()+i,1+i) = get<3>(Terms.nextn[i]);
+			Gout(Daux-1-Terms.nextn.size()+i,1+i).data = get<3>(Terms.nextn[i]).data;
+			Gout(Daux-1-Terms.nextn.size()+i,1+i).Q = get<3>(Terms.nextn[i]).Q;
 		}
 	}
 	

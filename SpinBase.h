@@ -24,9 +24,23 @@ std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 	return s;
 }
 
+Sym::U1<double>::qType getQ (SPINOP_LABEL Sa)
+{
+	Sym::U1<double>::qType out;
+	if      (Sa==SX)  {out = {0};}
+	else if (Sa==SY)  {out = {0};}
+	else if (Sa==iSY) {out = {0};}
+	else if (Sa==SZ)  {out = {0};}
+	else if (Sa==SP)  {out = {+2};}
+	else if (Sa==SM)  {out = {-2};}
+	return out;
+}
+
 /**This constructs the operators for a L_input spins with local dimension D=2S+1.*/
 class SpinBase
 {
+	typedef Sym::U1<double> Symmetry;
+	typedef SiteOperator<Symmetry,Eigen::SparseMatrix<double> > OperatorType;
 public:
 	
 	SpinBase(){};
@@ -45,7 +59,7 @@ public:
 	/**amount of orbitals*/
 	inline size_t orbitals() const  {return N_orbitals;}
 	
-	SparseMatrixXd Scomp (SPINOP_LABEL Sa, int orbital=0) const;
+	OperatorType Scomp (SPINOP_LABEL Sa, int orbital=0) const;
 	
 	/**Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
 	\param Jxy : \f$J_{xy}\f$
@@ -53,9 +67,9 @@ public:
 	\param Bz : \f$B_{z}\f$
 	\param Bx : \f$B_{x}\f$
 	\param PERIODIC: periodic boundary conditions if \p true*/
-	SparseMatrixXd HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., double K=0., bool PERIODIC=false) const;
+	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., double K=0., bool PERIODIC=false) const;
 	
-	SparseMatrixXd HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, double K, bool PERIODIC=false) const;
+	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, double K, bool PERIODIC=false) const;
 	
 	/**Returns the qarray for a given index of the basis.
 	\param index*/
@@ -81,7 +95,7 @@ SpinBase (size_t L_input, size_t D_input)
 	N_states = pow(D,N_orbitals);
 }
 
-SparseMatrixXd SpinBase::
+SiteOperator<Sym::U1<double>,Eigen::SparseMatrix<double> > SpinBase::
 Scomp (SPINOP_LABEL Sa, int orbital) const
 {
 	assert(orbital<N_orbitals);
@@ -93,10 +107,12 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 	SparseMatrixXd Il = MatrixXd::Identity(Nl,Nl).sparseView();
 	SparseMatrixXd Ir = MatrixXd::Identity(Nr,Nr).sparseView();
 	
-	return kroneckerProduct(Il,kroneckerProduct(ScompSingleSite(Sa),Ir));
+	SparseMatrixXd mat = kroneckerProduct(Il,kroneckerProduct(ScompSingleSite(Sa),Ir));
+	OperatorType Oout(mat,getQ(Sa));
+	return Oout;
 }
 
-SparseMatrixXd SpinBase::
+SiteOperator<Sym::U1<double>,Eigen::SparseMatrix<double> > SpinBase::
 HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, double K, bool PERIODIC) const
 {
 	assert (Bz.rows() == N_orbitals and Bx.rows() == N_orbitals);
@@ -107,44 +123,44 @@ HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd
 	{
 		if (Jxy != 0.)
 		{
-			Mout += -0.5*Jxy * (Scomp(SP,i)*Scomp(SM,i+1) + Scomp(SM,i)*Scomp(SP,i+1));
+			Mout += -0.5*Jxy * (Scomp(SP,i).data*Scomp(SM,i+1).data + Scomp(SM,i).data*Scomp(SP,i+1).data);
 		}
 		if (Jz != 0.)
 		{
-			Mout += -Jz * Scomp(SZ,i)*Scomp(SZ,i+1);
+			Mout += -Jz * Scomp(SZ,i).data*Scomp(SZ,i+1).data;
 		}
 	}
 	if (PERIODIC == true and N_orbitals>2)
 	{
 		if (Jxy != 0.)
 		{
-			Mout += -0.5*Jxy * (Scomp(SP,0)*Scomp(SM,N_orbitals-1) + Scomp(SM,0)*Scomp(SP,N_orbitals-1));
+			Mout += -0.5*Jxy * (Scomp(SP,0).data*Scomp(SM,N_orbitals-1).data + Scomp(SM,0).data*Scomp(SP,N_orbitals-1).data);
 		}
 		if (Jz != 0.)
 		{
-			Mout += -Jz * Scomp(SZ,0)*Scomp(SZ,N_orbitals-1);
+			Mout += -Jz * Scomp(SZ,0).data*Scomp(SZ,N_orbitals-1).data;
 		}
 	}
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (Bz(i) != 0.) {Mout -= Bz(i) * Scomp(SZ,i);}
+		if (Bz(i) != 0.) {Mout -= Bz(i) * Scomp(SZ,i).data;}
 	}
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (Bx(i) != 0.) {Mout -= Bx(i) * Scomp(SX,i);}
+		if (Bx(i) != 0.) {Mout -= Bx(i) * Scomp(SX,i).data;}
 	}
 	if (K!=0.)
 	{
 		for (int i=0; i<N_orbitals; ++i)
 		{
-			Mout += K * Scomp(SZ,i) * Scomp(SZ,i);
+			Mout += K * Scomp(SZ,i).data * Scomp(SZ,i).data;
 		}
 	}
-	
-	return Mout;
+	OperatorType Oout(Mout,Symmetry::qvacuum());
+	return Oout;
 }
 
-SparseMatrixXd SpinBase::
+SiteOperator<Sym::U1<double>,Eigen::SparseMatrix<double> > SpinBase::
 HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double K, bool PERIODIC) const
 {
 	VectorXd Bzvec(N_orbitals); Bzvec.setConstant(Bz);
