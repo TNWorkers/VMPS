@@ -1,9 +1,9 @@
-#ifndef SPINBASE
-#define SPINBASE
+#ifndef BASE_U1_H_
+#define BASE_U1_H_
 
 #include "symmetry/U1.h"
 #include "qbasis.h"
-#include "SiteOperator.h"
+#include "SiteOperatorQ.h"
 
 namespace spins {
 	
@@ -20,7 +20,7 @@ class BaseU1
 {
 	typedef Eigen::Index Index;
 	typedef typename Sym::U1<Scalar> Symmetry;
-	typedef SiteOperator<Symmetry,Scalar> Operator;
+	typedef SiteOperatorQ<Symmetry,Scalar> Operator;
 	typedef typename Symmetry::qType qType;
 	
 public:
@@ -118,7 +118,7 @@ BaseU1 (std::size_t L_input, std::size_t D_input)
 }
 
 template<typename Scalar>
-SiteOperator<Sym::U1<Scalar>,Scalar> BaseU1<Scalar>::
+SiteOperatorQ<Sym::U1<Scalar>,Scalar> BaseU1<Scalar>::
 Sz( std::size_t orbital ) const
 {
 	if(N_orbitals == 1) { return Sz_1s; }
@@ -143,7 +143,7 @@ Sz( std::size_t orbital ) const
 }
 
 template<typename Scalar>
-SiteOperator<Sym::U1<Scalar>,Scalar> BaseU1<Scalar>::
+SiteOperatorQ<Sym::U1<Scalar>,Scalar> BaseU1<Scalar>::
 Splus( std::size_t orbital ) const
 {
 	if(N_orbitals == 1) { return Splus_1s; }
@@ -168,14 +168,14 @@ Splus( std::size_t orbital ) const
 }
 
 template<typename Scalar>
-SiteOperator<Sym::U1<Scalar>,Scalar> BaseU1<Scalar>::
+SiteOperatorQ<Sym::U1<Scalar>,Scalar> BaseU1<Scalar>::
 Sminus( std::size_t orbital ) const
 {
 	return Splus(orbital).adjoint();
 }
 
 template<typename Scalar>
-SiteOperator<Sym::U1<Scalar>,Scalar> BaseU1<Scalar>::
+SiteOperatorQ<Sym::U1<Scalar>,Scalar> BaseU1<Scalar>::
 Id() const
 {
 	if(N_orbitals == 1) { return Id_1s; }
@@ -188,7 +188,7 @@ Id() const
 }
 
 template<typename Scalar>
-SiteOperator<Sym::U1<Scalar>,Scalar> BaseU1<Scalar>::
+SiteOperatorQ<Sym::U1<Scalar>,Scalar> BaseU1<Scalar>::
 HeisenbergHamiltonian (double J, double Bz, bool PERIODIC) const
 {	
 	Operator Mout({1},TensorBasis);

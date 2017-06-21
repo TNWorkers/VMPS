@@ -3,7 +3,7 @@
 
 #include "symmetry/SU2.h"
 #include "qbasis.h"
-#include "SiteOperator.h"
+#include "SiteOperatorQ.h"
 
 namespace spins {
 	
@@ -20,8 +20,8 @@ class BaseSU2
 {
 	typedef Eigen::Index Index;
 	typedef typename Sym::SU2<Scalar> Symmetry;
-	typedef SiteOperator<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
-	// typedef SiteOperator<Symmetry,Eigen::SparseMatrix<Scalar> > Operator;
+	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
+	// typedef SiteOperatorQ<Symmetry,Eigen::SparseMatrix<Scalar> > Operator;
 	typedef typename Symmetry::qType qType;
 	
 public:
@@ -109,7 +109,7 @@ BaseSU2 (std::size_t L_input, std::size_t D_input)
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
+SiteOperatorQ<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
 S( std::size_t orbital ) const
 {
 	if(N_orbitals == 1) { return S_1s; }
@@ -134,14 +134,14 @@ S( std::size_t orbital ) const
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
+SiteOperatorQ<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
 Sdag( std::size_t orbital ) const
 {
 	return S(orbital).adjoint();
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
+SiteOperatorQ<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
 Id() const
 {
 	if(N_orbitals == 1) { return Id_1s; }
@@ -154,7 +154,7 @@ Id() const
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
+SiteOperatorQ<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
 HeisenbergHamiltonian (double J, bool PERIODIC) const
 {	
 	Operator Mout({1},TensorBasis);

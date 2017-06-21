@@ -62,6 +62,10 @@ public:
 														  const qType& target );
 
 	SiteOperatorQ<Symmetry,MatrixType_> diagonalize() const;
+
+	template<typename OtherMatrixType>
+	SiteOperator<Symmetry,OtherMatrixType> plain() const;
+	
 private:
 	base data_;
 	qType Q_;
@@ -180,6 +184,37 @@ adjoint () const
 		A *= Symmetry::coeff_adjoint(this->data().in[nu],this->data().out[nu],this->Q());
 		out.data().push_back(index,A);
 	}
+	return out;
+}
+
+template<typename Symmetry, typename MatrixType_>
+template<typename OtherMatrixType>
+SiteOperator<Symmetry,OtherMatrixType> SiteOperatorQ<Symmetry,MatrixType_>::
+plain() const
+{
+	SiteOperator<Symmetry,OtherMatrixType> out;
+	MatrixType_ Mtmp(basis().size(),basis().size()); Mtmp.setZero();
+	for( auto itQ = basis().cbegin(); itQ != basis().cend(); itQ++ )
+	{
+		auto [qVal,qNum,qPlain] = *itQ;
+		for( auto itP = basis().cbegin(); itP != basis().cend(); itP++ )
+		{
+			auto [pVal,pNum,pPlain] = *itP;
+			if( auto it = data().dict.find({{qVal,pVal}}); it != data().dict.end() )
+			{
+				Mtmp.block(qNum,pNum,qPlain.size(),pPlain.size()) = data().block[it->second];
+			}
+		}
+	}
+	if constexpr ( std::is_same<OtherMatrixType,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> >::value )
+		{
+			out.data = Mtmp;
+		}
+	else if constexpr ( std::is_same<OtherMatrixType,Eigen::SparseMatrix<Scalar> >::value )
+		{
+			out.data = Mtmp.sparseView();
+		}
+	out.Q = this->Q();
 	return out;
 }
 
