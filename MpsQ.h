@@ -413,8 +413,8 @@ MpsQ (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
 	format = H.format;
 	qlabel = H.qlabel;
 	N_legs = H.width();
-//	outerResize<typename Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
-	outerResize(H.length(), H.locBasis(), Qtot_input);
+	if constexpr (Symmetry::SPECIAL) {outerResize(H.length(), H.locBasis__(), Qtot_input);}
+	else {outerResize(H.length(), H.locBasis(), Qtot_input);}
 	innerResize(Dmax);
 }
 
@@ -652,6 +652,8 @@ outerResize(std::size_t L_input, std::vector<Qbasis<Symmetry> > qloc_input, qTyp
 {
 	this->N_sites = L_input;
 	qloc__ = qloc_input;
+	qloc.resize(this->N_sites);
+	for(std::size_t l=0; l<this->N_sites; l++) {qloc[l] = qloc__[l].qloc();}
 	Qtot = Qtot_input;
 
 	this->pivot = -1;

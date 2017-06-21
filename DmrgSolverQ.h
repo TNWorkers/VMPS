@@ -247,16 +247,17 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, qarra
 		}
 	}
 	
-	if (CHOSEN_VERBOSITY>=2) {lout << PrepTimer.info("initial state & sweep") << endl << endl;}
+	if (CHOSEN_VERBOSITY>=2) {lout << PrepTimer.info("initial state & sweep") << endl;}
 	
 	// initial energy
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rtmp;
-	contract_R(Heff[0].R, Vout.state.A[0], H.W[0], Vout.state.A[0], H.locBasis(0), Rtmp);
+	contract_R(Heff[0].R, Vout.state.A[0], H.W[0], Vout.state.A[0], H.locBasis(0), H.opBasis(0), Rtmp);
 	assert(Rtmp.dim == 1 and 
 	       Rtmp.block[0][0][0].rows() == 1 and
 	       Rtmp.block[0][0][0].cols() == 1 and
 	       "Result of contraction <ψ|H|ψ> in DmrgSolverQ::prepare is not a scalar!");
 	Eold = isReal(Rtmp.block[0][0][0](0,0));
+	if (CHOSEN_VERBOSITY>=2) {lout << "initial energy: E₀=" << Eold << endl << endl;}
 	
 	// initial cutoffs
 	Vout.state.eps_svd = eps_svd_input;
@@ -447,7 +448,7 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, L
 	{
 		Heff[pivot].W = H.W[pivot];
 		precalc_blockStructure (Heff[pivot].L, Vout.state.A[pivot], Heff[pivot].W, Vout.state.A[pivot], Heff[pivot].R, 
-		                        H.locBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs);
+		                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs,Heff[pivot].factor_cgcs);
 		Heff[pivot].qloc = H.locBasis(pivot);
 	}
 	
@@ -480,14 +481,14 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 inline void DmrgSolverQ<Symmetry,MpHamiltonian,Scalar>::
 build_L (const MpHamiltonian &H, const Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, size_t loc)
 {
-	contract_L(Heff[loc-1].L, Vout.state.A[loc-1], H.W[loc-1], Vout.state.A[loc-1], H.locBasis(loc-1), Heff[loc].L);
+	contract_L(Heff[loc-1].L, Vout.state.A[loc-1], H.W[loc-1], Vout.state.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].L);
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 inline void DmrgSolverQ<Symmetry,MpHamiltonian,Scalar>::
 build_R (const MpHamiltonian &H, const Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, size_t loc)
 {
-	contract_R(Heff[loc+1].R, Vout.state.A[loc+1], H.W[loc+1], Vout.state.A[loc+1], H.locBasis(loc+1), Heff[loc].R);
+	contract_R(Heff[loc+1].R, Vout.state.A[loc+1], H.W[loc+1], Vout.state.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R);
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>

@@ -74,9 +74,11 @@ public:
 	///\{
 	/**Do nothing.*/
 	MpoQ (){};
-	
+
+	MpoQ (std::size_t Lx_input, std::size_t Ly_input) {this->N_sites = Lx_input;  this->N_legs = Ly_input; initialize();}
+
 	/**Construct with all values and a homogeneous basis.*/
-	MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+	MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, vector<qarray<Nq> > qOp_input, qarray<Nq> Qtot_input, 
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	
@@ -99,7 +101,9 @@ public:
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	///\}
-	
+
+	void initialize();
+
 	//---set special, modify---
 	///\{
 	/**Set to a local operator \f$O_i\f$
@@ -176,12 +180,14 @@ public:
 	
 	/**Returns the local basis at \p loc.*/
 	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
+	inline Qbasis<Symmetry> locBasis__ (size_t loc) const {return qloc__[loc];}
 
 	/**Returns the operator basis at \p loc.*/
 	inline vector<qarray<Nq> > opBasis (size_t loc) const {return qOp[loc];}
 
 	/**Returns the full local basis.*/
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
+	inline vector<Qbasis<Symmetry> > locBasis__()   const {return qloc__;}
 
 	/**Returns the full operator basis.*/
 	inline vector<vector<qarray<Nq> > > opBasis()   const {return qOp;}
@@ -256,7 +262,7 @@ protected:
 
 template<typename Symmetry, typename Scalar>
 MpoQ<Symmetry,Scalar>::
-MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, qarray<Nq> Qtot_input, 
+MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, vector<qarray<Nq> > qOp_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
 	:N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
@@ -265,7 +271,11 @@ MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, qarray<N
 	qloc.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		qOp[l].resize(1); qOp[l][0] = Symmetry::qvacuum();
+		qOp[l].resize(qOp_input.size());
+		for (size_t k=0; k<qOp_input.size(); ++k)
+		{
+			qOp[l][k] = qOp_input[k];
+		}
 		qloc[l].resize(qloc_input.size());
 		for (size_t s=0; s<qloc_input.size(); ++s)
 		{
@@ -368,6 +378,18 @@ MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar
 
 template<typename Symmetry, typename Scalar>
 void MpoQ<Symmetry,Scalar>::
+initialize()
+{
+	format = noFormat;
+	qloc.resize(N_sites);
+	qOp.resize(N_sites);
+	qloc__.resize(N_sites);
+	
+	W.resize(N_sites);
+}
+
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
 construct (const SuperMatrix<Symmetry,Scalar> &G_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore, vector<SuperMatrix<Symmetry,Scalar> > &Gstore, bool OPEN_BC)
 {
 	vector<SuperMatrix<Symmetry,Scalar> > Gvec(N_sites);
@@ -412,7 +434,7 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<vecto
 {
 	Wstore.resize(N_sites);
 	Gstore = Gvec_input;
-	
+
 	for (size_t l=0; l<N_sites;  ++l)
 	{
 		Wstore[l].resize(qloc[l].size());
@@ -424,18 +446,26 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<vecto
 		for (size_t s1=0; s1<qloc[l].size(); ++s1)
 		for (size_t s2=0; s2<qloc[l].size(); ++s2)
 		{
-			Wstore[l][s1][s2].resize(1);
-			Wstore[l][s1][s2][0].resize(Gstore[l].rows(), Gstore[l].cols());
-			
-				for (size_t a1=0; a1<Gstore[l].rows(); ++a1)
-					for (size_t a2=0; a2<Gstore[l].cols(); ++a2)
+			Wstore[l][s1][s2].resize(qOp[l].size());
+			for (size_t k=0; k<qOp[l].size(); ++k)
+			{
+				Wstore[l][s1][s2][k].resize(Gstore[l].rows(), Gstore[l].cols());
+			}
+			for (size_t a1=0; a1<Gstore[l].rows(); ++a1)
+				for (size_t a2=0; a2<Gstore[l].cols(); ++a2)
+				{
+					Scalar val = Gstore[l](a1,a2).data(s1,s2);
+					if (val != 0.)
 					{
-						Scalar val = Gstore[l](a1,a2).data(s1,s2);
-						if (val != 0.)
-						{
-							Wstore[l][s1][s2][0].insert(a1,a2) = val;
+						qType Q = Gstore[l](a1,a2).Q;
+						size_t match;
+						for(size_t k=0; k<qOp[l].size(); ++k) {
+							if(qOp[l][k] == Q) {match = k; break; }
+							// assert(k == qOp[l].size()-1 and "The SuperMatrix is not well defined.");
 						}
+						Wstore[l][s1][s2][match].insert(a1,a2) = val;
 					}
+				}
 		}
 	}
 }
@@ -1579,6 +1609,8 @@ ostream &operator<< (ostream& os, const MpoQ<Symmetry,Scalar> &O)
 		for (size_t s2=0; s2<O.locBasis(l).size(); ++s2)
 		for (size_t k=0; k<O.opBasis(l).size(); ++k)
 		{
+			std::array<typename Symmetry::qType,3> qCheck = {O.locBasis(l)[s2],O.opBasis(l)[k],O.locBasis(l)[s1]};
+			if(!Symmetry::validate(qCheck)) {continue;}
 			os << "[l=" << l << "]\t|" << O.format(O.locBasis(l)[s1]) << "><" << O.format(O.locBasis(l)[s2]) << "|:" << endl;
 //			os << Matrix<Scalar,Dynamic,Dynamic>(O.W_at(l)[s1][s2]) << endl;
 			os << Matrix<Scalar,Dynamic,Dynamic>(O.W_at(l)[s1][s2][k]) << endl;

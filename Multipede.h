@@ -229,7 +229,7 @@ template<size_t Nlegs, typename Symmetry, typename MatrixType>
 void Multipede<Nlegs,Symmetry,MatrixType>::
 setTarget (std::array<qType,Nlegs> Q)
 {
-	MatrixType Mtmp(1,1); Mtmp << 1.;
+	MatrixType Mtmp(1,1); Mtmp << Symmetry::coeff_dot(Q[0]);
 	boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[1][1]);
 	Mtmparray[0][0] = Mtmp;
 	

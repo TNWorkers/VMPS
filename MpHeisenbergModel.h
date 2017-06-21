@@ -34,7 +34,7 @@ public:
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
 	HeisenbergModel (int Lx_input, double Jxy_input=-1., double Jz_input=numeric_limits<double>::infinity(), double Bz_input=0., size_t D_input=2, 
-	                 size_t Ly_input=1, bool CALC_SQUARE=true);
+	                 size_t Ly_input=1, bool CALC_SQUARE=false);
 	
 	/**
 	\param Lx_input : chain length
@@ -94,7 +94,10 @@ public:
 	
 	/**local basis: \f$\{ \left|\uparrow\right>, \left|\downarrow\right> \}\f$ if D=2 and N_legs=1*/
 	static const vector<qarray<1> > qloc (size_t N_legs=1, size_t D=2);
-	
+
+	/**Operator Quantum numbers: \f$\{ \left|0\right>, \left|+2\right>, \left|-2\right> \}\f$ */
+	static const vector<qarray<1> > qOp ();
+
 	/**Labels the conserved quantum number as "M".*/
 	static const std::array<string,1> maglabel;
 	///@}
@@ -159,6 +162,16 @@ qloc (size_t N_legs, size_t D)
 	return vout;
 };
 
+const vector<qarray<1> > HeisenbergModel::
+qOp ()
+{
+	vector<qarray<1> > vout;
+	vout.push_back({0});
+	vout.push_back({+2});
+	vout.push_back({-2});
+	return vout;
+}
+
 HamiltonianTermsXd<Sym::U1<double> > HeisenbergModel::
 set_operators (const SpinBase &B, double Jxy, double Jz, double Bz, double Bx, double Jprime, double JxyIntra, double JzIntra, double K)
 {
@@ -209,7 +222,7 @@ set_operators (const SpinBase &B, const MatrixXd &JxyInter, const MatrixXd &JzIn
 
 HeisenbergModel::
 HeisenbergModel (int Lx_input, double Jxy_input, double Jz_input, double Bz_input, size_t D_input, size_t Ly_input, bool CALC_SQUARE)
-:MpoQ<Symmetry> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), {0}, HeisenbergModel::maglabel, "", halve),
+:MpoQ<Symmetry> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), HeisenbergModel::qOp(), {0}, HeisenbergModel::maglabel, "", halve),
 Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 {
 	if (Jz==numeric_limits<double>::infinity()) {Jz=Jxy;} // default: Jxy=Jz
@@ -236,7 +249,7 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 
 HeisenbergModel::
 HeisenbergModel (size_t Lx_input, std::array<double,2> Jlist, double Bz_input, size_t Ly_input, size_t D_input, bool CALC_SQUARE)
-:MpoQ<Symmetry> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), {0}, HeisenbergModel::maglabel, "", halve),
+:MpoQ<Symmetry> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), HeisenbergModel::qOp(), {0}, HeisenbergModel::maglabel, "", halve),
 Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 {
 	this->label = create_label(D,Jxy,Jz,Jprime,Bz,0.);
@@ -348,7 +361,7 @@ Sz (size_t locx, size_t locy) const
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx << "," << locy << ")";
-	MpoQ<Symmetry> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {0}, HeisenbergModel::maglabel, ss.str(), halve);
+	MpoQ<Symmetry> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {{0}}, {0}, HeisenbergModel::maglabel, ss.str(), halve);
 	Mout.setLocal(locx, B.Scomp(SZ,locy));
 	return Mout;
 }
@@ -359,7 +372,7 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	assert(locx1<N_sites and locx2<N_sites and locy1<N_legs and locy2<N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx1 << "," << locy1 << ")" <<  "Sz(" << locx2 << "," << locy2 << ")";
-	MpoQ<Symmetry> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {0}, HeisenbergModel::maglabel, ss.str(), halve);
+	MpoQ<Symmetry> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {{0}}, {0}, HeisenbergModel::maglabel, ss.str(), halve);
 	Mout.setLocal({locx1, locx2}, {B.Scomp(SZ,locy1), B.Scomp(SZ,locy2)});
 	return Mout;
 }
@@ -374,7 +387,7 @@ SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int)) const
 	if      (SOP==SP) {DeltaM={+2};}
 	else if (SOP==SM) {DeltaM={-2};}
 	else              {DeltaM={ 0};}
-	MpoQ<Sym::U1<double>,complex<double> > Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), DeltaM, HeisenbergModel::maglabel, ss.str(), halve);
+	MpoQ<Sym::U1<double>,complex<double> > Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {DeltaM}, DeltaM, HeisenbergModel::maglabel, ss.str(), halve);
 	Mout.setLocalSum(B.Scomp(SOP), f);
 	return Mout;
 }

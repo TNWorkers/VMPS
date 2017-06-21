@@ -49,11 +49,11 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 		{
 			if (USE_SQUARE == true)
 			{
-				contract_L(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), Bnext);
+				contract_L(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
 			}
 			else
 			{
-				contract_L(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(l), Bnext);
+				contract_L(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
 			}
 			B.clear();
 			B = Bnext;
@@ -68,11 +68,11 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 		{
 			if (USE_SQUARE == true)
 			{
-				contract_R(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), Bnext);
+				contract_R(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
 			}
 			else
 			{
-				contract_R(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(l), Bnext);
+				contract_R(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
 			}
 			B.clear();
 			B = Bnext;

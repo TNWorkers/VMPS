@@ -17,8 +17,9 @@ struct PivotMatrixQ
 	size_t dim;
 	
 	vector<std::array<size_t,2> >          qlhs;
-	vector<vector<std::array<size_t,4> > > qrhs;
-	
+	vector<vector<std::array<size_t,5> > > qrhs;
+	vector<vector<Scalar> > factor_cgcs;
+
 	vector<qarray<Nq> > qloc;
 	
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PL; // PL[n]
@@ -44,11 +45,9 @@ struct PivotVectorQ
 template<typename Symmetry, typename Scalar>
 PivotVectorQ<Symmetry,Scalar>& PivotVectorQ<Symmetry,Scalar>::operator+= (const PivotVectorQ<Symmetry,Scalar> &Vrhs)
 {
-	for (size_t s=0; s<A.size(); ++s)
+	for (std::size_t s=0; s<A.size(); s++)
 	{
-		transform(A[s].block.begin(), A[s].block.end(), 
-		          Vrhs.A[s].block.begin(), A[s].block.begin(), 
-		          std::plus<Matrix<Scalar,Dynamic,Dynamic> >());
+		A[s] = A[s] + Vrhs.A[s];
 	}
 	return *this;
 }
@@ -57,11 +56,9 @@ template<typename Symmetry, typename Scalar>
 PivotVectorQ<Symmetry,Scalar>& PivotVectorQ<Symmetry,Scalar>::
 operator-= (const PivotVectorQ<Symmetry,Scalar> &Vrhs)
 {
-	for (size_t s=0; s<A.size(); ++s)
+	for (std::size_t s=0; s<A.size(); s++)
 	{
-		transform(A[s].block.begin(), A[s].block.end(), 
-		          Vrhs.A[s].block.begin(), A[s].block.begin(), 
-		          std::minus<Matrix<Scalar,Dynamic,Dynamic> >());
+		A[s] = A[s] - Vrhs.A[s];
 	}
 	return *this;
 }
@@ -141,16 +138,16 @@ void HxV (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H, const PivotVectorQ<S
 	{
 		size_t s1 = H.qlhs[q][0];
 		size_t q1 = H.qlhs[q][1];
-		
-		for (auto irhs=H.qrhs[q].begin(); irhs!=H.qrhs[q].end(); ++irhs)
+		for (size_t p=0; p<H.qrhs[q].size(); ++p)
+		// for (auto irhs=H.qrhs[q].begin(); irhs!=H.qrhs[q].end(); ++irhs)
 		{
-			size_t s2 = (*irhs)[0];
-			size_t q2 = (*irhs)[1];
-			size_t qL = (*irhs)[2];
-			size_t qR = (*irhs)[3];
-			
-			for (int k=0; k<H.W[s1][s2][0].outerSize(); ++k)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(H.W[s1][s2][0],k); iW; ++iW)
+			size_t s2 = H.qrhs[q][p][0];
+			size_t q2 = H.qrhs[q][p][1];
+			size_t qL = H.qrhs[q][p][2];
+			size_t qR = H.qrhs[q][p][3];
+			size_t k = H.qrhs[q][p][4];
+			for (int r=0; r<H.W[s1][s2][k].outerSize(); ++r)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(H.W[s1][s2][k],r); iW; ++iW)
 			{
 //				cout << H.L.block[qL][iW.row()][0].rows() << "\t" << H.L.block[qL][iW.row()][0].cols() << endl;
 //				cout << Vin.A[s2].block[q2].rows() << "\t" << Vin.A[s2].block[q2].cols() << endl;
@@ -162,14 +159,14 @@ void HxV (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H, const PivotVectorQ<S
 					if (Vout.A[s1].block[q1].rows() != H.L.block[qL][iW.row()][0].rows() or
 					    Vout.A[s1].block[q1].cols() != H.R.block[qR][iW.col()][0].cols())
 					{
-						Vout.A[s1].block[q1].noalias() = iW.value() * 
+						Vout.A[s1].block[q1].noalias() = H.factor_cgcs[q][p] * iW.value() * 
 						                                 (H.L.block[qL][iW.row()][0] * 
 						                                  Vin.A[s2].block[q2] * 
 						                                  H.R.block[qR][iW.col()][0]);
 					}
 					else
 					{
-						Vout.A[s1].block[q1].noalias() += iW.value() * 
+						Vout.A[s1].block[q1].noalias() += H.factor_cgcs[q][p] * iW.value() * 
 						                                  (H.L.block[qL][iW.row()][0] * 
 						                                   Vin.A[s2].block[q2] * 
 						                                   H.R.block[qR][iW.col()][0]);
@@ -311,25 +308,19 @@ void HxV (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H, PivotVectorQ<Symmetr
 template<typename Symmetry, typename Scalar>
 Scalar dot (const PivotVectorQ<Symmetry,Scalar> &V1, const PivotVectorQ<Symmetry,Scalar> &V2)
 {
-	Scalar res = 0.;
-	for (size_t s=0; s<V2.A.size(); ++s)
-	for (size_t q=0; q<V2.A[s].dim; ++q)
-	for (size_t i=0; i<V2.A[s].block[q].cols(); ++i)
-	{
-		res += V1.A[s].block[q].col(i).dot(V2.A[s].block[q].col(i));
-	}
+	Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out = V1.A[0].adjoint().contract(V2.A[0]);
+	for (std::size_t s=1; s<V1.A.size(); s++)
+		{
+			out += V1.A[s].adjoint().contract(V2.A[s]);
+		}
+	Scalar res = out.trace();
 	return res;
 }
 
 template<typename Symmetry, typename Scalar>
 double squaredNorm (const PivotVectorQ<Symmetry,Scalar> &V)
 {
-	double res = 0.;
-	for (size_t s=0; s<V.A.size(); ++s)
-	for (size_t q=0; q<V.A[s].dim; ++q)
-	{
-		res += V.A[s].block[q].colwise().squaredNorm().sum();
-	}
+	double res = dot(V,V);
 	return res;
 }
 
@@ -350,10 +341,13 @@ double infNorm (const PivotVectorQ<Symmetry,Scalar> &V1, const PivotVectorQ<Symm
 {
 	double res = 0.;
 	for (size_t s=0; s<V1.A.size(); ++s)
-	for (size_t q=0; q<V1.A[s].dim; ++q)
 	{
-		double tmp = (V1.A[s].block[q]-V2.A[s].block[q]).template lpNorm<Eigen::Infinity>();
-		if (tmp>res) {res = tmp;}
+		auto Mtmp = V1.A[s] - V2.A[s];
+		for (size_t q=0; q<Mtmp.dim; ++q)
+		{
+			double tmp = Mtmp.block[q].template lpNorm<Eigen::Infinity>();
+			if (tmp>res) {res = tmp;}
+		}
 	}
 	return res;
 }
@@ -377,9 +371,8 @@ template<typename Symmetry, typename Scalar>
 void swap (PivotVectorQ<Symmetry,Scalar> &V1, PivotVectorQ<Symmetry,Scalar> &V2)
 {
 	for (size_t s=0; s<V1.A.size(); ++s)
-	for (size_t q=0; q<V1.A[s].dim; ++q)
 	{
-		V1.A[s].block[q].swap(V2.A[s].block[q]);
+		V1.A[s].block.swap(V2.A[s].block);
 	}
 }
 

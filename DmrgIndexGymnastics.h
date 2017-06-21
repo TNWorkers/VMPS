@@ -21,30 +21,41 @@
 \returns \p true if a match is found, \p false if not
 \warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.*/
 template<typename Symmetry, typename MatrixType>
-bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid, size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc, 
+bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid,
+		  size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc,
+		  size_t k, vector<qarray<Symmetry::Nq> > qOp,
           const vector<Biped<Symmetry,MatrixType> > &Abra, 
           const vector<Biped<Symmetry,MatrixType> > &Aket, 
-          tuple<qarray3<Symmetry::Nq>,size_t,size_t> &result)
+          vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > &result)
 {
-	qarray<Symmetry::Nq> qRout = Lin + qloc[s1];
-	qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
-	auto q1 = Abra[s1].dict.find(cmp1);
+	bool out = false;
+	result.clear();
 	
-	if (q1 != Abra[s1].dict.end())
+	auto qRouts = Symmetry::reduceSilent(Lin,qloc[s1]);
+	for (const auto& qRout : qRouts)
 	{
-		qarray<Symmetry::Nq> qRin = Lout + qloc[s2];
-		qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
-		auto q2 = Aket[s2].dict.find(cmp2);
-		
-		if (q2 != Aket[s2].dict.end())
+		qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
+		auto q1 = Abra[s1].dict.find(cmp1);
+		if (q1 != Abra[s1].dict.end())
 		{
-			qarray<Symmetry::Nq> qRmid = Lmid + qloc[s1] - qloc[s2];
-			
-			result = make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q1->second, q2->second);
-			return true;
+			auto qRins = Symmetry::reduceSilent(Lout,qloc[s2]);
+			for (const auto& qRin : qRins)
+			{
+				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
+				auto q2 = Aket[s2].dict.find(cmp2);		
+				if (q2 != Aket[s2].dict.end())
+				{
+					auto qRmids = Symmetry::reduceSilent(Lmid,qOp[k]);
+					for (const auto& qRmid : qRmids)
+					{			
+						result.push_back(make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q1->second, q2->second));
+						out = true;
+					}
+				}
+			}
 		}
 	}
-	return false;
+	return out;
 }
 
 template<typename Symmetry, typename MatrixType>
@@ -128,13 +139,17 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
                              const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
                              const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
                              const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
-                             vector<qarray<Symmetry::Nq> > qloc, 
+                             const vector<qarray<Symmetry::Nq> > &qloc,
+							 const vector<qarray<Symmetry::Nq> > &qOp, 
                              vector<std::array<size_t,2> > &qlhs, 
-                             vector<vector<std::array<size_t,4> > > &qrhs)
+                             vector<vector<std::array<size_t,5> > > &qrhs,
+							 vector<vector<Scalar> > &factor_cgcs)
 {
 //	Heff.W = W;
 	
-	unordered_map<std::array<size_t,2>, vector<std::array<size_t,4> > > lookup;
+	unordered_map<std::array<size_t,2>, std::pair<vector<std::array<size_t,5> >, vector<MpoScalar> > > lookup;
+	std::array<typename Symmetry::qType,3> qCheck;
+	MpoScalar factor_cgc;
 
 	#ifndef DMRG_DONT_USE_OPENMP
     #ifndef __INTEL_COMPILER
@@ -145,37 +160,58 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
     #endif
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
-	for (size_t qL=0; qL<L.dim; ++qL)
+	for(size_t k=0; k<qOp.size(); ++k)
 	{
-		tuple<qarray3<Symmetry::Nq>,size_t,size_t> ix;
-		bool FOUND_MATCH = AWA(L.in(qL), L.out(qL), L.mid(qL), s1,s2, qloc, Abra,Aket, ix);
-		
-		if (FOUND_MATCH == true)
+		qCheck = {qloc[s2],qOp[k],qloc[s1]};
+		if(!Symmetry::validate(qCheck)) {continue;}
+		for (size_t qL=0; qL<L.dim; ++qL)
 		{
-			auto qR = R.dict.find(get<0>(ix));
-			
-			if (qR != R.dict.end())
+			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
+			bool FOUND_MATCH = AWA(L.in(qL), L.out(qL), L.mid(qL), s1,s2, qloc, k, qOp, Abra,Aket, ix);
+		
+			if (FOUND_MATCH == true)
 			{
-				bool ALL_BLOCKS_ARE_EMPTY = true;
+				for(size_t n=0; n<ix.size(); ++n)
+				{
+					auto qR = R.dict.find(get<0>(ix[n]));
+			
+					if (qR != R.dict.end())
+					{
+						bool ALL_BLOCKS_ARE_EMPTY = true;
 				
-				for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
-				for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
-				{
-					if (L.block[qL][iW.row()][0].rows() != 0 and 
-						R.block[qR->second][iW.col()][0].rows() != 0)
-					{
-						ALL_BLOCKS_ARE_EMPTY = false;
-					}
-				}
-				if (ALL_BLOCKS_ARE_EMPTY == false)
-				{
-					std::array<size_t,2> key = {s1, get<1>(ix)};
-					std::array<size_t,4> val = {s2, get<2>(ix), qL, qR->second};
-					#ifndef DMRG_DONT_USE_OPENMP
-					#pragma omp critical
-					#endif
-					{
-					lookup[key].push_back(val);
+						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
+							for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+							{
+								if (L.block[qL][iW.row()][0].rows() != 0 and 
+									R.block[qR->second][iW.col()][0].rows() != 0)
+								{
+									ALL_BLOCKS_ARE_EMPTY = false;
+								}
+							}
+						if (ALL_BLOCKS_ARE_EMPTY == false)
+						{
+							if constexpr ( Symmetry::SPECIAL )
+								{
+									factor_cgc = Symmetry::coeff_HPsi(Aket[s2].out[get<2>(ix[n])],qloc[s2],Aket[s2].in[get<2>(ix[n])],
+																	  get<0>(ix[n])[2],qOp[k],L.mid(qL),
+																	  Abra[s1].out[get<1>(ix[n])],qloc[s1],Abra[s1].in[get<1>(ix[n])]);
+								}
+							else
+							{
+									factor_cgc = 1.;
+							}
+							if (std::abs(factor_cgc) < ::mynumeric_limits<Scalar>::epsilon()) {continue;}
+
+							std::array<size_t,2> key = {s1, get<1>(ix[n])};
+							std::array<size_t,5> val = {s2, get<2>(ix[n]), qL, qR->second,k};
+                            #ifndef DMRG_DONT_USE_OPENMP
+                            #pragma omp critical
+                            #endif
+							{
+								lookup[key].first.push_back(val);
+								lookup[key].second.push_back(factor_cgc);
+							}
+						}
 					}
 				}
 			}
@@ -184,13 +220,15 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 	
 	qlhs.clear();
 	qrhs.clear();
+	factor_cgcs.clear();
 	qlhs.reserve(lookup.size());
 	qrhs.reserve(lookup.size());
-	
+	factor_cgcs.reserve(lookup.size());
 	for (auto it=lookup.begin(); it!=lookup.end(); ++it)
 	{
 		qlhs.push_back(it->first);
-		qrhs.push_back(it->second);
+		qrhs.push_back((it->second).first);
+		factor_cgcs.push_back((it->second).second);
 	}
 }
 

@@ -112,6 +112,20 @@ public:
 		}
 		return Dres;
 	}
+
+	vector<typename Symmetry::qType> get_qOp() const
+	{
+		vector<typename Symmetry::qType> out;
+		for (size_t i=0; i<N_rows; ++i)
+		for (size_t j=0; j<N_cols; ++j)
+		{
+			if(auto it = std::find(out.begin(),out.end(),data[i][j].Q); it == out.end())
+			{
+				out.push_back(data[i][j].Q);
+			}
+		}
+		return out;
+	}
 	
 private:
 	
