@@ -19,6 +19,7 @@ H = -J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^z
 class HeisenbergModel : public MpoQ<Sym::U1<double>,double>
 {
 typedef Sym::U1<double> Symmetry;
+typedef Symmetry::qType qType;
 typedef SiteOperator<Symmetry,SparseMatrix<double> > OperatorType;
 public:
 	
@@ -228,7 +229,6 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 	if (Jz==numeric_limits<double>::infinity()) {Jz=Jxy;} // default: Jxy=Jz
 	assert(Jxy != 0. or Jz != 0.);
 	this->label = create_label(D,Jxy,Jz,0,Bz,0);
-	
 	B = SpinBase(N_legs,D);
 	HamiltonianTermsXd<Symmetry> Terms = set_operators(B, Jxy,Jz,Bz,0.);
 	SuperMatrix<Symmetry,double> G = Generator(Terms);
@@ -238,7 +238,11 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 	
 	if (CALC_SQUARE == true)
 	{
-		this->construct(tensor_product(G,G), this->Wsq, this->GvecSq);
+		vector<qType> qOpSq_;
+		qOpSq_.push_back({0}); qOpSq_.push_back({2}); qOpSq_.push_back({-2}); qOpSq_.push_back({4}); qOpSq_.push_back({-4});
+		vector<vector<qType> > qOpSq(this->N_sites,qOpSq_);
+		this->setOpBasisSq(qOpSq);
+		this->construct(tensor_product(G,G), this->Wsq, this->GvecSq, qOpSq);
 		this->GOT_SQUARE = true;
 	}
 	else

@@ -49,7 +49,7 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 		{
 			if (USE_SQUARE == true)
 			{
-				contract_L(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
+				contract_L(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
 			}
 			else
 			{
@@ -68,7 +68,7 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 		{
 			if (USE_SQUARE == true)
 			{
-				contract_R(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
+				contract_R(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
 			}
 			else
 			{
@@ -166,7 +166,7 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 	B.setVacuum();
 	for (size_t l=0; l<O2.length(); ++l)
 	{
-		contract_L(B, Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), O2.locBasis(l), Bnext);
+		contract_L(B, Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), O2.locBasis(l), O1.opBasis(l), O2.opBasis(l), Bnext);
 		B.clear();
 		B = Bnext;
 		Bnext.clear();

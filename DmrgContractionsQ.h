@@ -477,74 +477,86 @@ void contract_L (const Multipede<4,Symmetry,MatrixType> &Lold,
                  const vector<vector<vector<SparseMatrix<MpoScalar> > > > &Wtop, 
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
+				 const vector<qarray<Symmetry::Nq> > &qOpBot,
+                 const vector<qarray<Symmetry::Nq> > &qOpTop,
                  Multipede<4,Symmetry,MatrixType> &Lnew)
 {
+	std::array<typename Symmetry::qType,3> qCheck;
+
 	Lnew.setZero();
 	
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t s3=0; s3<qloc.size(); ++s3)
-	for (size_t qL=0; qL<Lold.dim; ++qL)
+	for (size_t k1=0; k1<qOpBot.size(); ++k1)
+	for (size_t k2=0; k2<qOpTop.size(); ++k2)
 	{
-		tuple<qarray4<Symmetry::Nq>,size_t,size_t> ix;
-		bool FOUND_MATCH = AWWA(Lold.in(qL), Lold.out(qL), Lold.bot(qL), Lold.top(qL), 
-		                        s1, s2, s3, qloc, Abra, Aket, ix);
-		auto   quple = get<0>(ix);
-		swap(quple[0],quple[1]);
-		size_t qAbra = get<1>(ix);
-		size_t qAket = get<2>(ix);
-		
-		if (FOUND_MATCH == true)
+		qCheck = {qloc[s2],qOpBot[k1],qloc[s1]};
+		if(!Symmetry::validate(qCheck)) {continue;}
+		qCheck = {qloc[s3],qOpTop[k2],qloc[s2]};
+		if(!Symmetry::validate(qCheck)) {continue;}
+		for (size_t qL=0; qL<Lold.dim; ++qL)
 		{
-			for (int kbot=0; kbot<Wbot[s1][s2][0].outerSize(); ++kbot)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iWbot(Wbot[s1][s2][0],kbot); iWbot; ++iWbot)
-			for (int ktop=0; ktop<Wtop[s2][s3][0].outerSize(); ++ktop)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iWtop(Wtop[s2][s3][0],ktop); iWtop; ++iWtop)
+			tuple<qarray4<Symmetry::Nq>,size_t,size_t> ix;
+			bool FOUND_MATCH = AWWA(Lold.in(qL), Lold.out(qL), Lold.bot(qL), Lold.top(qL), 
+									s1, s2, s3, qloc, k1, qOpBot, k2, qOpTop, Abra, Aket, ix);
+			auto   quple = get<0>(ix);
+			swap(quple[0],quple[1]);
+			size_t qAbra = get<1>(ix);
+			size_t qAket = get<2>(ix);
+		
+			if (FOUND_MATCH == true)
 			{
-				size_t br = iWbot.row();
-				size_t bc = iWbot.col();
-				size_t tr = iWtop.row();
-				size_t tc = iWtop.col();
-				MpoScalar Wfactor = iWbot.value() * iWtop.value();
+				for (int kbot=0; kbot<Wbot[s1][s2][k1].outerSize(); ++kbot)
+					for (typename SparseMatrix<MpoScalar>::InnerIterator iWbot(Wbot[s1][s2][k1],kbot); iWbot; ++iWbot)
+						for (int ktop=0; ktop<Wtop[s2][s3][k2].outerSize(); ++ktop)
+							for (typename SparseMatrix<MpoScalar>::InnerIterator iWtop(Wtop[s2][s3][k2],ktop); iWtop; ++iWtop)
+							{
+								size_t br = iWbot.row();
+								size_t bc = iWbot.col();
+								size_t tr = iWtop.row();
+								size_t tc = iWtop.col();
+								MpoScalar Wfactor = iWbot.value() * iWtop.value();
 				
-				if (Lold.block[qL][br][tr].rows() != 0)
-				{
+								if (Lold.block[qL][br][tr].rows() != 0)
+								{
 //					MatrixType Mtmp = (iWbot.value() * iWtop.value()) * 
 //					                  (Abra[s1].block[qAbra].adjoint() *
 //					                   Lold.block[qL][br][tr] * 
 //					                   Aket[s3].block[qAket]);
-					MatrixType Mtmp;
-					optimal_multiply(Wfactor,
-					                 Abra[s1].block[qAbra].adjoint(),
-					                 Lold.block[qL][br][tr],
-					                 Aket[s3].block[qAket],
-					                 Mtmp);
+									MatrixType Mtmp;
+									optimal_multiply(Wfactor,
+													 Abra[s1].block[qAbra].adjoint(),
+													 Lold.block[qL][br][tr],
+													 Aket[s3].block[qAket],
+													 Mtmp);
 					
-					if (Mtmp.norm() != 0.)
-					{
-						auto it = Lnew.dict.find(quple);
-						if (it != Lnew.dict.end())
-						{
-							if (Lnew.block[it->second][bc][tc].rows() != Mtmp.rows() or 
-								Lnew.block[it->second][bc][tc].cols() != Mtmp.cols())
-							{
-								Lnew.block[it->second][bc][tc] = Mtmp;
+									if (Mtmp.norm() != 0.)
+									{
+										auto it = Lnew.dict.find(quple);
+										if (it != Lnew.dict.end())
+										{
+											if (Lnew.block[it->second][bc][tc].rows() != Mtmp.rows() or 
+												Lnew.block[it->second][bc][tc].cols() != Mtmp.cols())
+											{
+												Lnew.block[it->second][bc][tc] = Mtmp;
+											}
+											else
+											{
+												Lnew.block[it->second][bc][tc] += Mtmp;
+											}
+										}
+										else
+										{
+											size_t bcols = Wbot[s1][s2][k1].cols();
+											size_t tcols = Wtop[s2][s3][k2].cols();
+											boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[bcols][tcols]);
+											Mtmparray[bc][tc] = Mtmp;
+											Lnew.push_back(quple, Mtmparray);
+										}
+									}
+								}
 							}
-							else
-							{
-								Lnew.block[it->second][bc][tc] += Mtmp;
-							}
-						}
-						else
-						{
-							size_t bcols = Wbot[s1][s2][0].cols();
-							size_t tcols = Wtop[s2][s3][0].cols();
-							boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[bcols][tcols]);
-							Mtmparray[bc][tc] = Mtmp;
-							Lnew.push_back(quple, Mtmparray);
-						}
-					}
-				}
 			}
 		}
 	}

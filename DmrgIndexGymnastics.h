@@ -104,7 +104,8 @@ bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetr
 \warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.*/
 template<typename Symmetry, typename MatrixType>
 bool AWWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lbot, qarray<Symmetry::Nq> Ltop, 
-          size_t s1, size_t s2, size_t s3, vector<qarray<Symmetry::Nq> > qloc, 
+          size_t s1, size_t s2, size_t s3, vector<qarray<Symmetry::Nq> > qloc,
+		  size_t k1, vector<qarray<Symmetry::Nq> > qOpBot, size_t k2, vector<qarray<Symmetry::Nq> > qOpTop,
           const vector<Biped<Symmetry,MatrixType> > &Abra, 
           const vector<Biped<Symmetry,MatrixType> > &Aket, 
           tuple<qarray4<Symmetry::Nq>,size_t,size_t> &result)

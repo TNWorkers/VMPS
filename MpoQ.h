@@ -184,6 +184,7 @@ public:
 
 	/**Returns the operator basis at \p loc.*/
 	inline vector<qarray<Nq> > opBasis (size_t loc) const {return qOp[loc];}
+	inline vector<qarray<Nq> > opBasisSq (size_t loc) const {return qOpSq[loc];}
 
 	/**Returns the full local basis.*/
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
@@ -191,6 +192,9 @@ public:
 
 	/**Returns the full operator basis.*/
 	inline vector<vector<qarray<Nq> > > opBasis()   const {return qOp;}
+	inline vector<vector<qarray<Nq> > > opBasisSq()   const {return qOpSq;}
+
+	inline void setOpBasisSq(const vector<vector<qType> > &qOpSq_in) {qOpSq = qOpSq_in;}
 
 	/**Checks whether the MPO is a unitary operator.*/
 	inline bool IS_UNITARY() const {return UNITARY;};
@@ -230,7 +234,7 @@ protected:
 //	/**next-nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2, transfer operator*/
 //	vector<tuple<Scalar,MatrixType,MatrixType,MatrixType> > Onextn;
 	
-	vector<vector<qarray<Nq> > > qloc, qOp;
+	vector<vector<qarray<Nq> > > qloc, qOp, qOpSq;
 	vector<Qbasis<Symmetry> > qloc__;
 
 	qarray<Nq> Qtot;
@@ -244,9 +248,22 @@ protected:
 	
 //	ArrayXd truncWeight;
 	
-	void construct (const SuperMatrix<Symmetry,Scalar> &G_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore, vector<SuperMatrix<Symmetry,Scalar> > &Gstore, 
+	void construct (const SuperMatrix<Symmetry,Scalar> &G_input,
+					vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+					vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
+					const vector<vector<qType> > &qOp_in,
 	                bool OPEN_BC=true);
-	void construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore, vector<SuperMatrix<Symmetry,Scalar> > &Gstore);
+	void construct (const SuperMatrix<Symmetry,Scalar> &G_input,
+					vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+					vector<SuperMatrix<Symmetry,Scalar> > &Gstore, 
+	                bool OPEN_BC=true);
+	void construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
+					vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+					vector<SuperMatrix<Symmetry,Scalar> > &Gstore);
+	void construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
+					vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+					vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
+					const vector<vector<qType> > &qOp_in);
 	
 	void construct (const MultipedeQ<4,Symmetry,Scalar,-2> &G_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
 					vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gstore);
@@ -282,7 +299,7 @@ MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, vector<q
 			qloc[l][s] = qloc_input[s];
 		}
 	}
-	
+
 	W.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -390,7 +407,11 @@ initialize()
 
 template<typename Symmetry, typename Scalar>
 void MpoQ<Symmetry,Scalar>::
-construct (const SuperMatrix<Symmetry,Scalar> &G_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore, vector<SuperMatrix<Symmetry,Scalar> > &Gstore, bool OPEN_BC)
+construct (const SuperMatrix<Symmetry,Scalar> &G_input,
+		   vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+		   vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
+		   const vector<vector<qType> > &qOp_in,
+		   bool OPEN_BC)
 {
 	vector<SuperMatrix<Symmetry,Scalar> > Gvec(N_sites);
 	size_t D = G_input(0,0).data.rows();
@@ -425,12 +446,25 @@ construct (const SuperMatrix<Symmetry,Scalar> &G_input, vector<vector<vector<vec
 	}
 	
 //	make MPO
-	construct(Gvec,Wstore,Gstore);
+	construct(Gvec,Wstore,Gstore,qOp_in);
 }
 
 template<typename Symmetry, typename Scalar>
 void MpoQ<Symmetry,Scalar>::
-construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore, vector<SuperMatrix<Symmetry,Scalar> > &Gstore)
+construct (const SuperMatrix<Symmetry,Scalar> &G_input,
+		   vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+		   vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
+		   bool OPEN_BC)
+{
+	construct(G_input,Wstore,Gstore,this->qOp,OPEN_BC);
+}
+
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
+construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
+		   vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
+		   vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
+		   const vector<vector<qType> > &qOp_in)
 {
 	Wstore.resize(N_sites);
 	Gstore = Gvec_input;
@@ -446,8 +480,8 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<vecto
 		for (size_t s1=0; s1<qloc[l].size(); ++s1)
 		for (size_t s2=0; s2<qloc[l].size(); ++s2)
 		{
-			Wstore[l][s1][s2].resize(qOp[l].size());
-			for (size_t k=0; k<qOp[l].size(); ++k)
+			Wstore[l][s1][s2].resize(qOp_in[l].size());
+			for (size_t k=0; k<qOp_in[l].size(); ++k)
 			{
 				Wstore[l][s1][s2][k].resize(Gstore[l].rows(), Gstore[l].cols());
 			}
@@ -459,8 +493,8 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<vecto
 					{
 						qType Q = Gstore[l](a1,a2).Q;
 						size_t match;
-						for(size_t k=0; k<qOp[l].size(); ++k) {
-							if(qOp[l][k] == Q) {match = k; break; }
+						for(size_t k=0; k<qOp_in[l].size(); ++k) {
+							if(qOp_in[l][k] == Q) {match = k; break; }
 							// assert(k == qOp[l].size()-1 and "The SuperMatrix is not well defined.");
 						}
 						Wstore[l][s1][s2][match].insert(a1,a2) = val;
@@ -468,6 +502,15 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<vecto
 				}
 		}
 	}
+}
+
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
+construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
+		   vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
+		   vector<SuperMatrix<Symmetry,Scalar> > &Gstore)
+{
+	construct(Gvec_input,Wstore,Gstore,this->qOp);
 }
 
 template<typename Symmetry, typename Scalar>
