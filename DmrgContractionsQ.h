@@ -218,51 +218,72 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 	}
 }
 
-/**Calculates the contraction between a left transfer matrix \p L, two MpsQ tensors \p Abra, \p Aket, an MpoQ tensor \p W and a right transfer matrix \p R. Not really that much useful.
+/**Calculates the contraction between a left transfer matrix \p L, 
+two MpsQ tensors \p Abra, \p Aket, an MpoQ tensor \p W and a right transfer matrix \p R. Not really that much useful.
 \param L
 \param Abra
 \param W
 \param Aket
 \param R
 \param qloc : local basis
-\returns : result of contraction*/
+\returns : result of contraction
+\warning Not working for non-abelian symmetries.*/
 template<typename Symmetry, typename Scalar>
 Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
                     const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
                     const vector<vector<vector<SparseMatrixXd> > > &W, 
                     const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
                     const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
-                    const vector<qarray<Symmetry::Nq> > &qloc)
+                    const vector<qarray<Symmetry::Nq> > &qloc,
+					const vector<qarray<Symmetry::Nq> > &qOp)
 {
 	Scalar res = 0.;
-	
+	std::array<typename Symmetry::qType,3> qCheck;
+	Scalar factor_cgc;
+
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
-	for (size_t qL=0; qL<L.dim; ++qL)
+	for (size_t k=0; k<qOp.size(); ++k)
 	{
-		tuple<qarray3<Symmetry::Nq>,size_t,size_t> ix;
-		bool FOUND_MATCH = AWA(L.in(qL), L.out(qL), L.mid(qL), s1, s2, qloc, Abra, Aket, ix);
-		
-		if (FOUND_MATCH == true)
+		qCheck = {qloc[s2],qOp[k],qloc[s1]};
+		if(!Symmetry::validate(qCheck)) {continue;}
+		for (size_t qL=0; qL<L.dim; ++qL)
 		{
-			qarray3<Symmetry::Nq> quple = get<0>(ix);
-			auto qR = R.dict.find(quple);
-			
-			if (qR != R.dict.end())
+			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
+			bool FOUND_MATCH = AWA(L.in(qL), L.out(qL), L.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
+			if (FOUND_MATCH == true)
 			{
-				swap(quple[0], quple[1]);
-				size_t qAbra = get<1>(ix);
-				size_t qAket = get<2>(ix);
-				
-				for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
-				for (SparseMatrixXd::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
+				for(size_t n=0; n<ix.size(); n++ )
 				{
-					size_t a1 = iW.row();
-					size_t a2 = iW.col();
+					qarray3<Symmetry::Nq> quple = get<0>(ix[n]);
+					auto qR = R.dict.find(quple);
 					
-					if (L.block[qL][a1][0].rows() != 0 and
-					    R.block[qR->second][a2][0].rows() != 0)
+					if (qR != R.dict.end())
 					{
+						swap(quple[0], quple[1]);
+						size_t qAbra = get<1>(ix[n]);
+						size_t qAket = get<2>(ix[n]);
+						if constexpr ( Symmetry::SPECIAL )
+						{
+							factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket],qloc[s2],Aket[s2].in[qAket],
+																quple[2],qOp[k],L.mid(qL),
+																Abra[s1].out[qAbra],qloc[s1],Abra[s1].in[qAbra]);
+						}
+						else
+						{
+							factor_cgc = 1.;
+						}
+						if (std::abs(factor_cgc) < ::mynumeric_limits<Scalar>::epsilon()) { continue; }
+
+						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
+						for (SparseMatrixXd::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+						{
+							size_t a1 = iW.row();
+							size_t a2 = iW.col();
+							
+							if (L.block[qL][a1][0].rows() != 0 and
+								R.block[qR->second][a2][0].rows() != 0)
+							{
 //						Matrix<Scalar,Dynamic,Dynamic> Mtmp  = iW.value() *
 //						                                       (Abra[s1].block[qAbra].adjoint() *
 //						                                        L.block[qL][a1][0] * 
@@ -270,12 +291,14 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 //						                                        R.block[qR->second][a2][0]);
 //						res += Mtmp.trace();
 						
-						Matrix<Scalar,Dynamic,Dynamic> Mtmp = L.block[qL][a1][0] * 
-						                                      Aket[s2].block[qAket] * 
-						                                      R.block[qR->second][a2][0];
-						for (size_t i=0; i<Abra[s1].block[qAbra].cols(); ++i)
-						{
-							res += iW.value() * Abra[s1].block[qAbra].col(i).dot(Mtmp.col(i));
+								Matrix<Scalar,Dynamic,Dynamic> Mtmp = L.block[qL][a1][0] * 
+									Aket[s2].block[qAket] * 
+									R.block[qR->second][a2][0];
+								for (size_t i=0; i<Abra[s1].block[qAbra].cols(); ++i)
+								{
+									res += iW.value() * Abra[s1].block[qAbra].col(i).dot(Mtmp.col(i));
+								}
+							}
 						}
 					}
 				}
@@ -565,28 +588,33 @@ void contract_L (const Multipede<4,Symmetry,MatrixType> &Lold,
 /**For details see: Stoudenmire, White (2010)*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 void contract_C0 (vector<qarray<Symmetry::Nq> > qloc,
+				  vector<qarray<Symmetry::Nq> > qOp,
                   const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
                   const vector<Biped<Symmetry,MatrixType> >   &Aket, 
                   vector<Tripod<Symmetry,MatrixType> >        &Cnext)
 {
 	Cnext.clear();
 	Cnext.resize(qloc.size());
-	
+	std::array<typename Symmetry::qType,3> qCheck;
+
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	{
-		qarray2<Symmetry::Nq> cmpA = {qvacuum<Symmetry::Nq>(), qvacuum<Symmetry::Nq>()+qloc[s2]};
+		qarray2<Symmetry::Nq> cmpA = {Symmetry::qvacuum(), Symmetry::qvacuum()+qloc[s2]};
 		auto qA = Aket[s2].dict.find(cmpA);
 		
 		if (qA != Aket[s2].dict.end())
 		{
 			for (size_t s1=0; s1<qloc.size(); ++s1)
+			for (size_t k=0; k<qOp.size(); ++k)
 			{
-				for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
-				for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
+				qCheck = {qloc[s2],qOp[k],qloc[s1]};
+				if(!Symmetry::validate(qCheck)) {continue;}
+				for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
+				for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
 				{
 					MatrixType Mtmp = iW.value() * Aket[s2].block[qA->second];
 					
-					qarray3<Symmetry::Nq> cmpC = {qvacuum<Symmetry::Nq>(), Aket[s2].out[qA->second], qvacuum<Symmetry::Nq>()+qloc[s1]-qloc[s2]};
+					qarray3<Symmetry::Nq> cmpC = {Symmetry::qvacuum(), Aket[s2].out[qA->second], Symmetry::qvacuum()+qloc[s1]-qloc[s2]};
 					auto qCnext = Cnext[s1].dict.find(cmpC);
 					if (qCnext != Cnext[s1].dict.end())
 					{
@@ -602,9 +630,9 @@ void contract_C0 (vector<qarray<Symmetry::Nq> > qloc,
 					}
 					else
 					{
-						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][0].cols()][1]);
+						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].cols()][1]);
 						Mtmpvec[iW.col()][0] = Mtmp;
-						Cnext[s1].push_back({qvacuum<Symmetry::Nq>(), Aket[s2].out[qA->second], qvacuum<Symmetry::Nq>()+qloc[s1]-qloc[s2]}, Mtmpvec);
+						Cnext[s1].push_back({Symmetry::qvacuum(), Aket[s2].out[qA->second], Symmetry::qvacuum()+qloc[s1]-qloc[s2]}, Mtmpvec);
 					}
 				}
 			}
@@ -616,6 +644,7 @@ void contract_C0 (vector<qarray<Symmetry::Nq> > qloc,
 \dotfile contract_C.dot*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 void contract_C (vector<qarray<Symmetry::Nq> > qloc,
+				 vector<qarray<Symmetry::Nq> > qOp,
                  const vector<Biped<Symmetry,MatrixType> >   &Abra, 
                  const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
                  const vector<Biped<Symmetry,MatrixType> >   &Aket, 
@@ -624,7 +653,8 @@ void contract_C (vector<qarray<Symmetry::Nq> > qloc,
 {
 	Cnext.clear();
 	Cnext.resize(qloc.size());
-	
+	std::array<typename Symmetry::qType,3> qCheck;
+
 	for (size_t s=0; s<qloc.size(); ++s)
 	for (size_t qC=0; qC<C[s].dim; ++qC)
 	{
@@ -635,14 +665,18 @@ void contract_C (vector<qarray<Symmetry::Nq> > qloc,
 		{
 			for (size_t s1=0; s1<qloc.size(); ++s1)
 			for (size_t s2=0; s2<qloc.size(); ++s2)
+			for (size_t k=0; k<qOp.size(); ++k)
 			{
+				qCheck = {qloc[s2],qOp[k],qloc[s1]};
+				if(!Symmetry::validate(qCheck)) {continue;}
+
 				qarray2<Symmetry::Nq> cmpA = {C[s].out(qC), C[s].out(qC)+qloc[s2]};
 				auto qA = Aket[s2].dict.find(cmpA);
 				
 				if (qA != Aket[s2].dict.end())
 				{
-					for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
-					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
+					for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
+					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
 					{
 						if (C[s].block[qC][iW.row()][0].rows() != 0)
 						{

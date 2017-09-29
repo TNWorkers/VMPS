@@ -286,13 +286,13 @@ void OxV (const MpoQ<Symmetry,MpoScalar> &O, const MpsQ<Symmetry,Scalar> &Vin, M
 		Vout.outerResize(O, Vin.Qtarget()+O.Qtarget());
 	}
 	
-	contract_C0(O.locBasis(0), O.W_at(0), Vin.A[0], C);
+	contract_C0(O.locBasis(0), O.opBasis(0), O.W_at(0), Vin.A[0], C);
 	Vout.set_A_from_C(0,C,TOOL);
 	
 	for (size_t l=1; l<Vin.length(); ++l)
 	{
 		Stopwatch<> Chronos;
-		contract_C(O.locBasis(l), Vout.A[l-1], O.W_at(l), Vin.A[l], C, Cnext);
+		contract_C(O.locBasis(l), O.opBasis(l), Vout.A[l-1], O.W_at(l), Vin.A[l], C, Cnext);
 //		lout << "l=" << l << ", " << Chronos.info("contract_C") << endl;
 		
 		for (size_t s1=0; s1<O.locBasis(l).size(); ++s1)
