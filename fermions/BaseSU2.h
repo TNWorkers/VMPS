@@ -86,7 +86,8 @@ public:
 	\param V : \f$V\f$
 	\param J : \f$J\f$
 	\param PERIODIC: periodic boundary conditions if \p true*/
-	Operator HubbardHamiltonian (double U, double mu=std::numeric_limits<double>::infinity(), double t=1., double V=0., double J=0., bool PERIODIC=false) const;
+	Operator HubbardHamiltonian (double U, double mu=std::numeric_limits<double>::infinity(), double t=1.,
+								 double V=0., double J=0., bool PERIODIC=false) const;
 	
 	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
 	\param Uvec : \f$U\f$ for each orbital
@@ -183,14 +184,14 @@ BaseSU2 (std::size_t L_input, bool U_IS_INFINITE)
 	
 	cdag_1s = c_1s.adjoint();
 	
-	n_1s = std::pow(2.,0.5) * Operator::prod(cdag_1s,c_1s,{1});
+	n_1s = std::sqrt(2.) * Operator::prod(cdag_1s,c_1s,{1});
 	
 	d_1s( "double", "double" ) = 1.;
 	
 	S_1s( "single", "single" ) = std::pow(0.75,0.5);
 	
-	p_1s = std::pow(2.,0.5) * Operator::prod(c_1s,c_1s,{1}); //Its not sure, if this operators has the correct sign..
-	pdag_1s = p_1s.adjoint(); //Its not sure, if this operators has the correct sign..
+	p_1s = -std::sqrt(0.5) * Operator::prod(c_1s,c_1s,{1}); //The sign convention corresponds to c_DN c_UP
+	pdag_1s = p_1s.adjoint(); //The sign convention corresponds to (c_DN c_UP)†=c_UP† c_DN†
 
 	//create basis for N_orbitals fermionic sites
 	if (N_orbitals == 1) { TensorBasis = basis_1s; }
@@ -244,7 +245,7 @@ sign (std::size_t orb1, std::size_t orb2) const
 	else
 	{
 		Operator out = Id();
-		for (int i=0; i<N_orbitals; ++i)
+		for (int i=orb1; i<N_orbitals; ++i)
 		{
 			// out = Operator::prod(out,sign_local(i),{1}); // * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
 			out = Operator::prod(out, (Id()-2.*n(i)+4.*d(i)),{1});
@@ -381,13 +382,13 @@ HubbardHamiltonian (double U, double mu, double t, double V, double J, bool PERI
 	Operator Mout({1},TensorBasis);
 	if( N_orbitals >= 2 and t!=0. )
 	{
-		Mout = -t*std::sqrt(2.)*(Operator::prod(cdag(0),c(1),{1})-Operator::prod(c(0),cdag(1),{1}));
+		Mout = -t*std::sqrt(2.)*(Operator::prod(cdag(0),c(1),{1})+Operator::prod(c(0),cdag(1),{1}));
 	}
 	for (int i=1; i<N_orbitals-1; ++i) // for all bonds
 	{
 		if (t != 0.)
 		{
-			Mout += -t*std::sqrt(2.)*(Operator::prod(cdag(i),c(i+1),{1})-Operator::prod(c(i),cdag(i+1),{1}));
+			Mout += -t*std::sqrt(2.)*(Operator::prod(cdag(i),c(i+1),{1})+Operator::prod(c(i),cdag(i+1),{1}));
 		}
 		if (V != 0.) {Mout += V*(Operator::prod(n(i),n(i+1),{1}));}
 		if (J != 0.)
@@ -433,13 +434,6 @@ HubbardHamiltonian (std::vector<double> Uvec, double mu, double t, double V, dou
 				Mout += Uvec[i] * d(i);
 			}
 		}
-		// if (onsite.size() > 0)
-		// {
-		// 	if (onsite[i] != 0.)
-		// 	{
-		// 		Mout += onsite[i] * n(i);
-		// 	}
-		// }
 	}
 	return Mout;
 }

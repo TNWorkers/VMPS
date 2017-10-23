@@ -79,7 +79,17 @@ public:
 	   \param orbital : orbital index*/
 	Operator Sdag (std::size_t orbital=0) const;
 	///\}
+
+	///\{
+	/**Orbital pairing η
+	   \param orbital : orbital index*/
+	Operator Eta (std::size_t orbital=0) const;
 	
+	/**Orbital paring η† 
+	   \param orbital : orbital index*/
+	Operator Etadag (std::size_t orbital=0) const;
+	///\}
+
 	/**Creates the full Hubbard Hamiltonian on the supersite.
 	\param U : \f$U\f$
 	\param t : \f$t\f$
@@ -176,11 +186,11 @@ BaseSU2xU1 (std::size_t L_input, bool U_IS_INFINITE)
 	c_1s( "empty", "single" ) = std::sqrt(2.);
 	c_1s( "single", "double" ) = 1.;
 	cdag_1s = c_1s.adjoint();
-	n_1s = std::pow(2.,0.5) * Operator::prod(cdag_1s,c_1s,{1,0});
+	n_1s = std::sqrt(2.) * Operator::prod(cdag_1s,c_1s,{1,0});
 	d_1s( "double", "double" ) = 1.;
 	S_1s( "single", "single" ) = std::sqrt(0.75);
-	p_1s = std::sqrt(2.) * Operator::prod(c_1s,c_1s,{1,-2}); //Its not sure, if this operators have the correct sign..
-	pdag_1s = p_1s.adjoint(); //Its not sure, if this operators have the correct sign..
+	p_1s = -std::sqrt(0.5) * Operator::prod(c_1s,c_1s,{1,-2}); //The sign convention corresponds to c_DN c_UP
+	pdag_1s = p_1s.adjoint(); //The sign convention corresponds to (c_DN c_UP)†=c_UP† c_DN†
 
 	//create basis for N_orbitals fermionic sites
 	if (N_orbitals == 1) { TensorBasis = basis_1s; }
@@ -234,7 +244,7 @@ sign (std::size_t orb1, std::size_t orb2) const
 	else
 	{
 		Operator out = Id();
-		for (int i=0; i<N_orbitals; ++i)
+		for (int i=orb1; i<N_orbitals; ++i)
 		{
 			// out = Operator::prod(out,sign_local(i),{1}); // * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
 			out = Operator::prod(out, (Id()-2.*n(i)+4.*d(i)),{1,0});
@@ -352,6 +362,38 @@ Sdag (std::size_t orbital) const
 
 template<typename Scalar>
 SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+Eta (std::size_t orbital) const
+{
+	if(N_orbitals == 1) { return p_1s; }
+	else
+	{
+		Operator out;
+		bool TOGGLE=false;
+		if(orbital == 0) { out = Operator::outerprod(p_1s,Id_1s,{1,-2}); TOGGLE=true; }
+		else
+		{
+			if( orbital == 1 ) { out = Operator::outerprod(Id_1s,p_1s,{1,-2}); TOGGLE=true; }
+			else { out = Operator::outerprod(Id_1s,Id_1s,{1,0}); }
+		}
+		for(std::size_t o=2; o<N_orbitals; o++)
+		{
+			if(orbital == o) { out = Operator::outerprod(out,p_1s,{1,-2}); TOGGLE=true; }
+			else if(TOGGLE==false) { out = Operator::outerprod(out,Id_1s,{1,0}); }
+			else if(TOGGLE==true) { out = Operator::outerprod(out,Id_1s,{1,-2}); }
+		}
+		return out;
+	}
+}
+
+template<typename Scalar>
+SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+Etadag (std::size_t orbital) const
+{
+	return Eta(orbital).adjoint();
+}
+
+template<typename Scalar>
+SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 Id (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return Id_1s; }
@@ -370,14 +412,14 @@ HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
 	Operator Mout({1,0},TensorBasis);
 	if( N_orbitals >= 2 and t!=0. )
 	{
-		Mout = -t*std::sqrt(2.)*(Operator::prod(cdag(0),c(1),{1,0})-Operator::prod(c(0),cdag(1),{1,0}));
+		Mout = -t*std::sqrt(2.)*(Operator::prod(cdag(0),c(1),{1,0})+Operator::prod(c(0),cdag(1),{1,0}));
 		std::cout << Mout.data() << std::endl;
 	}
 	for (int i=1; i<N_orbitals-1; ++i) // for all bonds
 	{
 		if (t != 0.)
 		{
-			Mout += -t*std::sqrt(2.)*(Operator::prod(cdag(i),c(i+1),{1,0})-Operator::prod(c(i),cdag(i+1),{1,0}));
+			Mout += -t*std::sqrt(2.)*(Operator::prod(cdag(i),c(i+1),{1,0})+Operator::prod(c(i),cdag(i+1),{1,0}));
 		}
 		if (V != 0.) {Mout += V*(Operator::prod(n(i),n(i+1),{1,0}));}
 		if (J != 0.)
@@ -432,300 +474,3 @@ HubbardHamiltonian (std::vector<double> Uvec, std::vector<double> onsite, double
 
 } //end namespace fermions
 #endif
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// c (std::size_t orbital) const
-// {
-// 	TensorType<2> Mout;
-// 	std::array<qType,3> index;
-// 	Eigen::Tensor<double,2,Eigen::ColMajor,Eigen::Index> A;
-// 	index[2] = {2,-1}; //c is a doublet operator and annihilates one particle 
-
-// 	index[0] = basis[0];
-// 	index[1] = basis[1];
-// 	A.resize(1,1); A.setZero(); A(0,0) = std::pow(2.,0.5); //hopping from double to single
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[1];
-// 	index[1] = basis[2];
-// 	A.resize(1,1); A.setZero(); A(0,0) = 1.; //single site to empty site
-// 	Mout.push_back(index,A);
-
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// fXc (std::size_t orbital) const
-// {
-// 	TensorType<2> Mout;
-// 	std::array<qType,3> index;
-// 	Eigen::Tensor<double,2,Eigen::ColMajor,Eigen::Index> A;
-// 	index[2] = {2,-1}; //c is a doublet operator
-
-// 	index[0] = basis[0];
-// 	index[1] = basis[1];
-// 	A.resize(1,1); A.setZero(); A(0,0) = -std::pow(2.,0.5); //hopping from double to single
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[1];
-// 	index[1] = basis[2];
-// 	A.resize(1,1); A.setZero(); A(0,0) = 1.; //single site to empty site
-// 	Mout.push_back(index,A);
-
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// cXf (std::size_t orbital) const
-// {
-// 	TensorType<2> Mout;
-// 	std::array<qType,3> index;
-// 	Eigen::Tensor<double,2,Eigen::ColMajor,Eigen::Index> A;
-// 	index[2] = {2,-1}; //c is a doublet operator
-
-// 	index[0] = basis[0];
-// 	index[1] = basis[1];
-// 	A.resize(1,1); A.setZero(); A(0,0) = std::pow(2.,0.5); //hopping from double to single
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[1];
-// 	index[1] = basis[2];
-// 	A.resize(1,1); A.setZero(); A(0,0) = -1.; //single site to empty site
-// 	Mout.push_back(index,A);
-
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// cdag (std::size_t orbital) const
-// {
-// 	TensorType<2> Mout;
-// 	std::array<qType,3> index;
-// 	Eigen::Tensor<double,2,Eigen::ColMajor,Eigen::Index> A;
-// 	index[2] = {2,1}; //cdag is a doublet operator and creates one particle
-
-// 	index[0] = basis[2];
-// 	index[1] = basis[1];
-// 	A.resize(1,1); A.setZero(); A(0,0) = std::pow(2.,0.5); //hopping from empty to single
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[1];
-// 	index[1] = basis[0];
-// 	A.resize(1,1); A.setZero(); A(0,0) = -1.; //single to double
-// 	Mout.push_back(index,A);
-
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// cdagXsign (std::size_t orb1) const
-// {
-// 	TensorType<2> Mout;
-// 	std::array<qType,3> index;
-// 	Eigen::Tensor<double,2,Eigen::ColMajor,Eigen::Index> A;
-// 	index[2] = {2,1}; //cdag is a doublet operator
-
-// 	index[0] = basis[2];
-// 	index[1] = basis[1];
-// 	A.resize(1,1); A.setZero(); A(0,0) = std::pow(2.,0.5); //hopping from empty to single
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[1];
-// 	index[1] = basis[0];
-// 	A.resize(1,1); A.setZero(); A(0,0) = 1.; //single to double
-// 	Mout.push_back(index,A);
-
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// signXcdag (std::size_t orb1) const
-// {
-// 	TensorType<2> Mout;
-// 	std::array<qType,3> index;
-// 	Eigen::Tensor<double,2,Eigen::ColMajor,Eigen::Index> A;
-// 	index[2] = {2,1}; //cdag is a doublet operator
-
-// 	index[0] = basis[2];
-// 	index[1] = basis[1];
-// 	A.resize(1,1); A.setZero(); A(0,0) = -std::pow(2.,0.5); //hopping from empty to single
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[1];
-// 	index[1] = basis[0];
-// 	A.resize(1,1); A.setZero(); A(0,0) = 1.; //single to double
-// 	Mout.push_back(index,A);
-
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// sign (std::size_t orbital) const
-// {
-// 	TensorType<2> Mout;
-// 	std::array<qType,3> index;
-// 	Eigen::Tensor<double,2,Eigen::ColMajor,Eigen::Index> A;
-// 	index[2] = {1,0}; //sign is a singlet operator
-
-// 	index[0] = basis[0];
-// 	index[1] = basis[0];
-// 	A.resize(1,1); A.setZero(); A(0,0) = -1.; 
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[1];
-// 	index[1] = basis[1];
-// 	A.resize(1,1); A(0,0) = -1.;
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[2];
-// 	index[1] = basis[2];
-// 	A.resize(1,1); 	A(1,1) = 1.;;
-// 	Mout.push_back(index,A);
-
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// n (std::size_t orbital) const
-// {
-// 	TensorType<2> Mout;
-// 	std::array<qType,3> index;
-// 	Eigen::Tensor<double,2,Eigen::ColMajor,Eigen::Index> A;
-// 	index[2] = {1,0}; //n is a singlet operator
-
-// 	index[0] = basis[0];
-// 	index[1] = basis[0];
-// 	A.resize(1,1); A(0,0) = 2.; //double occupied site has n=2
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[1];
-// 	index[1] = basis[1];
-// 	A.resize(1,1); A(0,0) = 1.; //single occupied site has n=1
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[2];
-// 	index[1] = basis[2];
-// 	A.resize(1,1); 	A(0,0) = 0.; //empty has n=0
-// 	Mout.push_back(index,A);
-
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// d (std::size_t orbital) const
-// {
-// 	TensorType<2> Mout;
-// 	std::array<qType,3> index;
-// 	Eigen::Tensor<double,2,Eigen::ColMajor,Eigen::Index> A;
-// 	index[2] = {1,0}; //d is a singlet operator
-
-// 	index[0] = basis[0];
-// 	index[1] = basis[0];
-// 	A.resize(1,1); A(0,0) = 1.; //double occupied site has d=1
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[1];
-// 	index[1] = basis[1];
-// 	A.resize(1,1); A(0,0) = 0.; //single occupied site has d=0
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[2];
-// 	index[1] = basis[2];
-// 	A.resize(1,1); 	A(0,0) = 0.; //empty has d=0
-// 	Mout.push_back(index,A);
-
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// S (std::size_t orbital) const
-// {
-// 	TensorType<2> Mout(); Mout.setZero();
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// Sdag (std::size_t orbital) const
-// {
-// 	TensorType<2> Mout(); Mout.setZero();
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// Id () const
-// {
-// 	TensorType<2> Mout;
-// 	std::array<qType,3> index;
-// 	Eigen::Tensor<double,2,Eigen::ColMajor,Eigen::Index> A;
-// 	index[2] = {1,0}; //Id is a singlet operator
-
-// 	index[0] = basis[0];
-// 	index[1] = basis[0];
-// 	A.resize(1,1); A(0,0) = 1.;
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[1];
-// 	index[1] = basis[1];
-// 	A.resize(1,1); A(0,0) = 1.;
-// 	Mout.push_back(index,A);
-
-// 	index[0] = basis[2];
-// 	index[1] = basis[2];
-// 	A.resize(1,1); 	A(0,0) = 1.;
-// 	Mout.push_back(index,A);
-
-// 	index[2] = {3,0}; //Dummy
-// 	index[0] = basis[1];
-// 	index[1] = basis[1];
-// 	A.resize(1,1); A(0,0) = 0.;
-// 	Mout.push_back(index,A);
-
-// 	// index[2] = {1,2}; //Dummy
-// 	// index[0] = basis[2];
-// 	// index[1] = basis[0];
-// 	// A.resize(1,1); A(0,0) = 0.;
-// 	// Mout.push_back(index,A);
-
-// 	// index[2] = {1,-2}; //Dummy
-// 	// index[0] = basis[0];
-// 	// index[1] = basis[2];
-// 	// A.resize(1,1); A(0,0) = 0.;
-// 	// Mout.push_back(index,A);
-
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// HubbardHamiltonian (double U, double t, double V, double J, double Bz, bool PERIODIC) const
-// {
-// 	TensorType<2> Mout(); Mout.setZero();		
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// MultipedeQ<2,Sym::SU2xU1<Scalar>,Scalar,1> BaseSU2xU1<Scalar>::
-// HubbardHamiltonian (vector<double> Uvec, double t, double V, double J, double Bz, bool PERIODIC) const
-// {
-// 	TensorType<2> Mout(); Mout.setZero();		
-// 	return Mout;
-// }
-
-// template<typename Scalar>
-// typename Sym::SU2xU1<Scalar>::qType BaseSU2xU1<Scalar>::
-// qNums(std::size_t index)
-// {
-// 	return basis[index];
-// }
