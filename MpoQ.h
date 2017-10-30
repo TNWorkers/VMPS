@@ -44,8 +44,9 @@ template<typename Symmetry, typename Scalar> class MpoQ;
 template<typename Symmetry, typename MpHamiltonian, typename Scalar> class DmrgSolverQ;
 template<typename Symmetry, typename Scalar, typename MpoScalar> class MpsQCompressor;
 
-/**Matrix Product Operator with conserved quantum numbers (Abelian symmetries). Just adds a target quantum number and a bunch of labels on top of Mpo.
-\describe_Nq
+/**Matrix Product Operator with conserved quantum numbers (Abelian and non-abelian symmetries). 
+Just adds a target quantum number and a bunch of labels on top of Mpo.
+\describe_Symmetry
 \describe_Scalar*/
 template<typename Symmetry, typename Scalar=double>
 class MpoQ
@@ -97,7 +98,8 @@ public:
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	
-	MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
+	MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
+		  vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, 
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	///\}
@@ -216,7 +218,7 @@ public:
 //	class qarrayIterator;
 	
 	void SVDcompress (bool USE_SQUARE=false, double eps_svd=1e-7, size_t N_halfsweeps=2);
-	
+
 	// compression stuff
 //	string test_ortho() const;
 //	void init_compression();
@@ -245,7 +247,7 @@ protected:
 	size_t N_sites;
 	size_t N_legs;
 	size_t Daux;
-	
+
 //	ArrayXd truncWeight;
 	
 	void construct (const SuperMatrix<Symmetry,Scalar> &G_input,

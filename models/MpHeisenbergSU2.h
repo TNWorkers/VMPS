@@ -148,13 +148,17 @@ set_operators (const spins::BaseSU2<> &Spins, const MatrixXd &Jinter, double Jpr
 	{
 		if (Jinter(leg1,leg2) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-std::sqrt(3)*Jinter(leg1,leg2), Spins.Sdag(leg1).plain<SparseMatrixType>(), Spins.S(leg2).plain<SparseMatrixType>()));
+			Terms.tight.push_back(make_tuple(-std::sqrt(3)*Jinter(leg1,leg2),
+											 Spins.Sdag(leg1).plain<SparseMatrixType>(),
+											 Spins.S(leg2).plain<SparseMatrixType>()));
 		}
 	}
 	
 	if (Jprime != 0.)
 	{
-		Terms.nextn.push_back(make_tuple(-std::sqrt(3)*Jprime, Spins.S(0).plain<SparseMatrixType>(), Spins.S(0).plain<SparseMatrixType>(), Spins.Id().plain<SparseMatrixType>()));
+		Terms.nextn.push_back(make_tuple(-std::sqrt(3)*Jprime, Spins.S(0).plain<SparseMatrixType>(),
+										 Spins.S(0).plain<SparseMatrixType>(),
+										 Spins.Id().plain<SparseMatrixType>()));
 	}
 
 	if( Spins.orbitals() > 1 )

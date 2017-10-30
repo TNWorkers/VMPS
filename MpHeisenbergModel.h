@@ -176,6 +176,7 @@ qOp ()
 HamiltonianTermsXd<Sym::U1<double> > HeisenbergModel::
 set_operators (const SpinBase &B, double Jxy, double Jz, double Bz, double Bx, double Jprime, double JxyIntra, double JzIntra, double K)
 {
+	JxyIntra = Jxy; JzIntra = Jz;
 	MatrixXd JxyInter(B.orbitals(),B.orbitals()); JxyInter.setIdentity(); JxyInter *= Jxy;
 	MatrixXd JzInter (B.orbitals(),B.orbitals()); JzInter.setIdentity();  JzInter  *= Jz;
 	VectorXd Bzvec(B.orbitals()); Bzvec.setConstant(Bz);
