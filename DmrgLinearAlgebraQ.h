@@ -66,6 +66,8 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 //		for (int l=O.length()-1; l>=0; --l)
 		for (size_t l=O.length()-1; l!=-1; --l)
 		{
+			std::cout << B.print() << std::endl << std::endl;
+
 			if (USE_SQUARE == true)
 			{
 				contract_R(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
@@ -79,7 +81,8 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 			Bnext.clear();
 		}
 	}
-	
+	std::cout << B.print(true,5) << std::endl << std::endl;
+
 	if (B.dim == 1)
 	{
 		return B.block[0][0][0].trace();
@@ -158,19 +161,73 @@ template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra, 
             const MpoQ<Symmetry,MpoScalar> &O1,
             const MpoQ<Symmetry,MpoScalar> &O2, 
-            const MpsQ<Symmetry,Scalar> &Vket)
+            const MpsQ<Symmetry,Scalar> &Vket,
+			typename Symmetry::qType Qtarget = Symmetry::qvacuum())
 {
-	Multipede<4,Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
-	Multipede<4,Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
-	
-	B.setVacuum();
-	for (size_t l=0; l<O2.length(); ++l)
+	if constexpr (Symmetry::SPECIAL)
+		{
+			Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
+			Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
+			vector<std::array<typename Symmetry::qType,3> > insetnext1;
+			vector<std::array<typename Symmetry::qType,3> > inset1;
+			vector<std::array<typename Symmetry::qType,3> > insetnext2;
+			vector<std::array<typename Symmetry::qType,3> > inset2;
+
+			B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), Qtarget});
+			inset1.push_back({Vket.Qtarget(), Vbra.Qtarget(), O1.Qtarget()}); inset2.push_back({Vket.Qtarget(), Vbra.Qtarget(), O2.Qtarget()});
+			for (size_t l=O1.length()-1; l!=-1; --l)
+			{
+				// std::cout << B.print() << std::endl << std::endl;
+				// std::cout << "Bot:" << std::endl;
+				// for (const auto & q : inset1) {
+				// 	for (const auto & p : q) {std::cout << p << " ";} std::cout << std::endl;} std::cout << std::endl;
+				// std::cout << "Top:" << std::endl;
+				// for (const auto & q : inset2) {
+				// 	for (const auto & p : q) {std::cout << p << " ";} std::cout << std::endl;} std::cout << std::endl;
+
+				contract_R(B, Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), O1.locBasis(l), O1.opBasis(l), O2.opBasis(l),
+						   inset1, inset2, insetnext1, insetnext2, Bnext);
+				B.clear();
+				B = Bnext;
+				Bnext.clear();
+				inset1.clear();
+				inset1 = insetnext1;
+				insetnext1.clear();
+				inset2.clear();
+				inset2 = insetnext2;
+				insetnext2.clear();
+			}
+			// std::cout << B.print(true,5) << std::endl << std::endl;
+			// for (const auto & q : inset1) {
+			// 	for (const auto & p : q) {std::cout << p << " ";} std::cout << std::endl;} std::cout << std::endl;
+			// for (const auto & q : inset2) {
+			// 	for (const auto & p : q) {std::cout << p << " ";} std::cout << std::endl;} std::cout << std::endl;
+
+			if (B.dim == 1)
+			{
+				return B.block[0][0][0].trace();
+			}
+			else
+			{
+				lout << "Warning: Result of contraction in <φ|O|ψ> has several blocks, returning 0!" << endl;
+				lout << "MPS in question: " << Vket.info() << endl;
+				lout << "MPO in question: " << O1.info() << endl;
+				return 0;
+			}
+		}
+	else
 	{
-		contract_L(B, Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), O2.locBasis(l), O1.opBasis(l), O2.opBasis(l), Bnext);
-		B.clear();
-		B = Bnext;
-		Bnext.clear();
-	}
+		Multipede<4,Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
+		Multipede<4,Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
+	
+		B.setVacuum();
+		for (size_t l=0; l<O2.length(); ++l)
+		{
+			contract_L(B, Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), O2.locBasis(l), O1.opBasis(l), O2.opBasis(l), Bnext);
+			B.clear();
+			B = Bnext;
+			Bnext.clear();
+		}
 	
 //	cout << "B.dim=" << B.dim << endl;
 //	for (size_t q=0; q<B.dim; ++q)
@@ -179,17 +236,18 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 //		<< B.block[q][0][0] << endl;
 //	}
 	
-	if (B.dim == 1)
-	{
-		return B.block[0][0][0].trace();
-	}
-	else
-	{
-		lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has several blocks, returning 0!" << endl;
-		lout << "MPS in question: " << Vket.info() << endl;
-		lout << "MPO1 in question: " << O1.info() << endl;
-		lout << "MPO2 in question: " << O2.info() << endl;
-		return 0;
+		if (B.dim == 1)
+		{
+			return B.block[0][0][0].trace();
+		}
+		else
+		{
+			lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has several blocks, returning 0!" << endl;
+			lout << "MPS in question: " << Vket.info() << endl;
+			lout << "MPO1 in question: " << O1.info() << endl;
+			lout << "MPO2 in question: " << O2.info() << endl;
+			return 0;
+		}
 	}
 }
 

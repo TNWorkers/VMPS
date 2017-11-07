@@ -26,12 +26,15 @@ struct Multipede
 typedef typename Symmetry::qType qType;
 	
 	Multipede(){dim=0;}
-	
+
+	/**Const reference to the number of legs \p Nlegs */
+	inline constexpr size_t rank() const {return Nlegs;}
+
 	///@{
 	/**Convenience access to the amount of blocks.
 	Equal to either of the following: \p index.size(), \p block.size()*/
 	size_t dim;
-	
+
 	/**Vector of all incoming quantum numbers.
 	The entries are arrays of size \p Nlegs. The sorting is according to the following convention:
 	1. incoming 2. outgoing 3. middle (\p Nlegs=3)
@@ -57,7 +60,8 @@ typedef typename Symmetry::qType qType;
 	
 	/**Prints Multipede<Nlegs,Symmetry,MatrixType>::dict into a string.*/
 	string dict_info() const;
-	
+
+	string print(const bool &SHOW_MATRICES=false, const size_t &precision=3) const;
 //	void rebuild_dict();
 	///@}
 	
@@ -257,4 +261,63 @@ setIdentity (size_t Drows, size_t Dcols, size_t amax, size_t bmax)
 	push_back(quple, Mtmparray);
 }
 
+template<size_t Nlegs, typename Symmetry, typename MatrixType>
+std::string Multipede<Nlegs,Symmetry,MatrixType>::
+print(const bool &SHOW_MATRICES, const std::size_t &precision) const
+{
+#ifndef HELPERS_IO_TABLE
+	std::stringstream out;
+	out << "Texttable library is missing. -> no output" << std::endl;
+	return out.str();
+#else //Use TextTable library for nicer output.
+	std::stringstream out;
+
+	TextTable t( '-', '|', '+' );
+	t.add("ν");
+	t.add("Q_ν");
+	t.add("A_ν");
+	t.endOfRow();
+	for (std::size_t nu=0; nu<dim; nu++)
+	{
+		std::stringstream ss,tt,uu,vv;
+		ss << nu;
+		tt << "(";
+		for (std::size_t q=0; q<index[nu].size(); q++)
+		{
+			tt << index[nu][q];
+			if(q==index[nu].size()-1) {tt << ")";} else {tt << ",";}
+		}
+		uu << block[nu].shape()[0] << ":[";
+		// uu << block[nu][0][0].cols() << "x" << block[nu][0][0].rows() << "x" << block[nu].shape()[0];
+		for (std::size_t q=0; q<block[nu].shape()[0]; q++)
+		{
+			uu << "(" << block[nu][q][0].cols() << "x" << block[nu][q][0].rows() << ")";
+			if(q==block[nu].shape()[0]-1) {uu << "";} else {uu << ",";}
+		}
+		uu << "]";
+		t.add(ss.str());
+		t.add(tt.str());
+		t.add(uu.str());
+		t.endOfRow();
+	}
+	t.setAlignment( 0, TextTable::Alignment::RIGHT );
+	out << t;
+
+	if (SHOW_MATRICES)
+	{
+		out << TCOLOR(BLUE) << "\e[4mA-tensors:\e[0m" << std::endl;
+		for (std::size_t nu=0; nu<dim; nu++)
+		{
+			out << TCOLOR(BLUE) << "ν=" << nu << std::endl;
+			for (std::size_t q=0; q<block[nu].shape()[0]; q++)
+			{
+				out << TCOLOR(GREEN) << "q=" << q << "\t" << std::setprecision(precision) << std::fixed << block[nu][q][0] << std::endl;
+			}
+		}
+		out << TCOLOR(BLACK) << std::endl;
+	}
+
+	return out.str();
+#endif
+}
 #endif

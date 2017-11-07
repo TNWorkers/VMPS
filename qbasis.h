@@ -1,6 +1,7 @@
 #ifndef QBASIS_H_
 #define QBASIS_H_
 
+#include <unordered_set>
 #include <unordered_map>
 
 #include "macros.h"
@@ -78,6 +79,17 @@ public:
 	const std::vector<Eigen::Index> qlocDeg() const {
 		std::vector<Eigen::Index> out; for(const auto& elem : data_) {auto [q,num,plain] = elem; out.push_back(plain.size());} return out;
 	}
+	const std::vector<qType> qs() const {
+		std::vector<qType> out;
+		for(const auto& elem : data_) {
+			auto [q,num,plain] = elem; out.push_back(q); }
+		return out;}
+
+	const std::unordered_set<qType> unordered_qs() const {
+		std::unordered_set<qType> out;
+		for(const auto& elem : data_) {
+			auto [q,num,plain] = elem; out.insert(q); }
+		return out;}
 
 	qType find( const std::string& ident ) const;
 	qType find( const Eigen::Index& num ) const;
@@ -96,6 +108,8 @@ public:
 
 	// template<Eigen::Index Nlegs, typename Scalar, Eigen::Index Nextra>
 	// void pullData( const MultipedeQ<Nlegs,Symmetry,Scalar,Nextra>& M, const Eigen::Index& leg );
+
+	void pullData( const std::vector<std::array<qType,3> > &qvec, const std::size_t& leg, const Eigen::Index &inner_dim_in );
 
 	Qbasis<Symmetry> combine( const Qbasis<Symmetry>& other ) const;
 
@@ -285,6 +299,24 @@ leftAmount(const qType& qnew, const std::array<qType,2>& qold) const
 // 		}
 // 	}
 // }
+
+template<typename Symmetry>
+void Qbasis<Symmetry>::
+pullData(const std::vector<std::array<qType,3> > &qvec, const std::size_t& leg, const Eigen::Index &inner_dim_in)
+{
+	std::unordered_set<qType> unique_controller;
+	Eigen::Index inner_dim = inner_dim_in;
+	for (std::size_t nu=0; nu<qvec.size(); nu++)
+	{
+		auto it = unique_controller.find(qvec[nu][leg]);
+		if( it==unique_controller.end() )
+		{
+			qType q_number = qvec[nu][leg];
+			push_back(q_number,inner_dim);
+			unique_controller.insert(q_number);			
+		}
+	}
+}
 
 template<typename Symmetry>
 bool Qbasis<Symmetry>::

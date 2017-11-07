@@ -132,6 +132,65 @@ bool AWWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry:
 	return false;
 }
 
+
+/**Updates the quantum Numbers of a right environment when a new site with quantum numbers qloc and qOp is added.*/
+template<typename Symmetry, typename Scalar>
+void updateInset (const std::vector<std::array<typename Symmetry::qType,3> > &insetOld, 
+				  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+				  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+				  const vector<qarray<Symmetry::Nq> > &qloc,
+				  const vector<qarray<Symmetry::Nq> > &qOp,
+				  std::vector<std::array<typename Symmetry::qType,3> > &insetNew)
+{
+	std::array<typename Symmetry::qType,3> qCheck;
+	Scalar factor_cgc;
+	std::unordered_set<std::array<typename Symmetry::qType,3> > uniqueControl;
+	
+	insetNew.clear();
+	for (size_t s1=0; s1<qloc.size(); ++s1)
+	for (size_t s2=0; s2<qloc.size(); ++s2)
+	for (size_t k=0; k<qOp.size(); ++k)
+	{
+		qCheck = {qloc[s2],qOp[k],qloc[s1]};
+		if(!Symmetry::validate(qCheck)) {continue;}
+		for(const auto & [qIn_old,qOut_old,qMid_old] : insetOld)
+		{
+			auto qRouts = Symmetry::reduceSilent(qOut_old,Symmetry::flip(qloc[s1]));
+			auto qRins = Symmetry::reduceSilent(qIn_old,Symmetry::flip(qloc[s2]));
+			for(const auto& qOut_new : qRouts)
+				for(const auto& qIn_new : qRins)
+				{
+					qarray2<Symmetry::Nq> cmp1 = {qOut_new, qOut_old};
+					qarray2<Symmetry::Nq> cmp2 = {qIn_new, qIn_old};
+		
+					auto q1 = Abra[s1].dict.find(cmp1);
+					auto q2 = Aket[s2].dict.find(cmp2);
+
+					if (q1!=Abra[s1].dict.end() and 
+						q2!=Aket[s2].dict.end())
+					{
+						// qarray<Symmetry::Nq> new_qin  = Aket[s2].in[q2->second]; // A.in
+						// qarray<Symmetry::Nq> new_qout = Abra[s1].in[q1->second]; // A†.out = A.in
+						auto qRmids = Symmetry::reduceSilent(qMid_old,Symmetry::flip(qOp[k]));
+						for(const auto& qMid_new : qRmids)
+						{
+							// qarray3<Symmetry::Nq> quple = {new_qin, new_qout, new_qmid};
+							factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[q2->second],qloc[s2],Aket[s2].in[q2->second],
+																qMid_old,qOp[k],qMid_new,
+																Abra[s1].out[q1->second],qloc[s1],Abra[s1].in[q1->second]);
+							if (std::abs(factor_cgc) < ::mynumeric_limits<Scalar>::epsilon()) { continue; }
+							if( auto it=uniqueControl.find({qIn_new,qOut_new,qMid_new}) == uniqueControl.end() )
+							{
+								uniqueControl.insert({qIn_new,qOut_new,qMid_new});
+								insetNew.push_back({qIn_new,qOut_new,qMid_new});
+							}
+						}
+					}
+				}
+		}
+	}
+}
+
 /**Prepares a PivotMatrixQ by filling PivotMatrixQ::qlhs and PivotMatrixQ::qrhs with the corresponding subspace indices.
 Uses OpenMP.*/
 template<typename Symmetry, typename Scalar, typename MpoScalar>

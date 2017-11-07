@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cstddef>
+#include <unordered_set>
 
 #include <gsl/gsl_sf_coupling.h>
 
@@ -42,9 +43,17 @@ public:
 	inline static int degeneracy( const qType& q ) { return q[0]; }
 		
 	static std::vector<qType> reduceSilent(const qType& ql, const qType& qr);
-
 	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const qType& qr);
+	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
 
+	/** 
+		Splits the quantum number \p Q into pairs q1,q2 with q1 \otimes q2 = Q.
+		q1 and q2 can take all values from the given parameters \p q1 and \q2.
+		\note : Without specifying \q1 and \q2 there exist infinity solutions.
+	*/
+	static std::vector<std::pair<qType,qType> > split(const qType Q, const std::vector<qType>& ql, const std::vector<qType> qr);
+	static std::vector<std::pair<std::size_t,std::size_t> > split(const qType Q, const std::vector<qType>& ql, const std::vector<qType> qr, bool INDEX);
+		
 	inline static Scalar coeff_unity();
 	static Scalar coeff_dot(const qType& q1);
 	static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
@@ -56,6 +65,8 @@ public:
 						   const qType& q4, const qType& q5, const qType& q6);
 	static Scalar coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 							  const qType& q4, const qType& q5, const qType& q6);
+	static Scalar coeff_temp(const qType& q1, const qType& q2, const qType& q3,
+							 const qType& q4, const qType& q5, const qType& q6);
 	
 	static Scalar coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 						   const qType& q4, const qType& q5, const qType& q6,
@@ -70,6 +81,10 @@ public:
 							 const qType& q4, const qType& q5, const qType& q6,
 							 const qType& q7, const qType& q8, const qType& q9);
 	static Scalar coeff_HPsi(const qType& q1, const qType& q2, const qType& q3,
+							 const qType& q4, const qType& q5, const qType& q6,
+							 const qType& q7, const qType& q8, const qType& q9);
+
+	static Scalar coeff_temp2(const qType& q1, const qType& q2, const qType& q3,
 							 const qType& q4, const qType& q5, const qType& q6,
 							 const qType& q7, const qType& q8, const qType& q9);
 
@@ -108,6 +123,53 @@ reduceSilent( const std::vector<qType>& ql, const qType& qr )
 		int qmin = std::abs(ql[q][0]-qr[0]) +1;
 		int qmax = std::abs(ql[q][0]+qr[0]) -1;
 		for ( int i=qmin; i<=qmax; i+=2 ) { vout.push_back({i}); }
+	}
+	return vout;
+}
+
+template<typename Scalar>
+std::vector<typename SU2<Scalar>::qType> SU2<Scalar>::
+reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
+{
+	std::unordered_set<qType> uniqueControl;
+	std::vector<typename SU2<Scalar>::qType> vout;
+	for (std::size_t q1=0; q1<ql.size(); q1++)
+	for (std::size_t q2=0; q2<qr.size(); q2++)
+	{
+		int qmin = std::abs(ql[q1][0]-qr[q2][0]) +1;
+		int qmax = std::abs(ql[q1][0]+qr[q2][0]) -1;
+		for ( int i=qmin; i<=qmax; i+=2 )
+		{
+			if( auto it = uniqueControl.find({i}) == uniqueControl.end() ) {uniqueControl.insert({i}); vout.push_back({i});}
+		}
+	}
+	return vout;
+}
+
+template<typename Scalar>
+std::vector<std::pair<typename SU2<Scalar>::qType,typename SU2<Scalar>::qType> > SU2<Scalar>::
+split(const qType Q, const std::vector<qType>& ql, const std::vector<qType> qr)
+{
+	std::vector<std::pair<typename SU2<Scalar>::qType,typename SU2<Scalar>::qType> > vout;
+	for (std::size_t q1=0; q1<ql.size(); q1++)
+	for (std::size_t q2=0; q2<qr.size(); q2++)
+	{
+		auto Qs = SU2<Scalar>::reduceSilent(ql[q1],qr[q2]);
+		if(auto it = std::find(Qs.begin(),Qs.end(),Q) != Qs.end()) {vout.push_back({ql[q1],qr[q2]});}
+	}
+	return vout;
+}
+
+template<typename Scalar>
+std::vector<std::pair<std::size_t,std::size_t> > SU2<Scalar>::
+split(const qType Q, const std::vector<qType>& ql, const std::vector<qType> qr, bool INDEX)
+{
+	std::vector<std::pair<std::size_t,std::size_t> > vout;
+	for (std::size_t q1=0; q1<ql.size(); q1++)
+	for (std::size_t q2=0; q2<qr.size(); q2++)
+	{
+		auto Qs = SU2<Scalar>::reduceSilent(ql[q1],qr[q2]);
+		if(auto it = std::find(Qs.begin(),Qs.end(),Q) != Qs.end()) {vout.push_back({q1,q2});}
 	}
 	return vout;
 }
@@ -180,8 +242,29 @@ coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 {
 	Scalar out = gsl_sf_coupling_6j(q1[0]-1,q2[0]-1,q3[0]-1,
 									q4[0]-1,q5[0]-1,q6[0]-1)*
-		std::pow(static_cast<Scalar>(q3[0]*q6[0]),Scalar(0.5))*
+		std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
 		std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q1[0]+q5[0]+q6[0]-3));
+	// Scalar out = gsl_sf_coupling_6j(q2[0]-1,q4[0]-1,q3[0]-1,
+	// 								q5[0]-1,q1[0]-1,q6[0]-1)*
+	// 	std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
+	// 	std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q1[0]+q2[0]+q6[0]-3));
+
+	return out;
+}
+
+template<typename Scalar>
+Scalar SU2<Scalar>::
+coeff_temp(const qType& q1, const qType& q2, const qType& q3,
+		   const qType& q4, const qType& q5, const qType& q6)
+{
+	// Scalar out = gsl_sf_coupling_6j(q1[0]-1,q2[0]-1,q3[0]-1,
+	// 								q4[0]-1,q5[0]-1,q6[0]-1)*
+	// 	std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
+	// 	std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q1[0]+q5[0]+q6[0]-3));
+	Scalar out = gsl_sf_coupling_6j(q2[0]-1,q4[0]-1,q3[0]-1,
+									q5[0]-1,q1[0]-1,q6[0]-1)*
+		std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
+		std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q1[0]+q2[0]+q6[0]-3));
 	return out;
 }
 
@@ -255,6 +338,19 @@ coeff_HPsi(const qType& q1, const qType& q2, const qType& q3,
 
 template<typename Scalar>
 Scalar SU2<Scalar>::
+coeff_temp2(const qType& q1, const qType& q2, const qType& q3,
+			const qType& q4, const qType& q5, const qType& q6,
+			const qType& q7, const qType& q8, const qType& q9)
+{
+	Scalar out = gsl_sf_coupling_9j(q1[0]-1,q2[0]-1,q3[0]-1,
+									q7[0]-1,q8[0]-1,q9[0]-1,
+									q4[0]-1,q5[0]-1,q6[0]-1)*
+		std::sqrt(static_cast<Scalar>(q4[0]*q5[0]*q3[0]*q9[0]));
+	return out;
+}
+
+template<typename Scalar>
+Scalar SU2<Scalar>::
 coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
 			const qType& q4, const qType& q5, const qType& q6,
 			const qType& q7, const qType& q8, const qType& q9,
@@ -263,10 +359,10 @@ coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
 	Scalar out = gsl_sf_coupling_9j(q4[0] -1,q5[0] -1,q6[0] -1,
 									q10[0]-1,q11[0]-1,q12[0]-1,
 									q7[0] -1,q8[0] -1,q9[0] -1)*
-		std::pow(static_cast<Scalar>(q7[0]*q8[0]*q6[0]*q12[0]),Scalar(0.5))*
-		gsl_sf_coupling_6j(q1[0] -1,q10[0]-1,q3[0] -1,
-						   q11[0]-1,q2[0] -1,q12[0]-1)*
-		std::pow(static_cast<Scalar>(q3[0]*q12[0]),Scalar(0.5))*
+		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q6[0]*q12[0]))*
+		gsl_sf_coupling_6j(q2[0] -1,q10[0]-1,q3[0] -1,
+						   q11[0]-1,q1[0] -1,q12[0]-1)*
+		std::sqrt(static_cast<Scalar>(q3[0]*q12[0]))*
 		std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q1[0]+q2[0]+q12[0]-3));
 	return out;
 }

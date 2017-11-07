@@ -187,11 +187,13 @@ HeisenbergSU2 (std::size_t Lx_input, double J_input, std::size_t D_input, double
 	Qtot = {1};
 	qlabel = HeisenbergSU2::Stotlabel;
 	label = HeisenbergSU2::create_label(D_input,J_input);
-	
+
 	HamiltonianTermsXd<Symmetry> Terms = set_operators(Spins, J, Jprime, J);
 	Daux = Terms.auxdim();
 	auto G = ::Generator(Terms);
 	this->construct(G, this->W, this->Gvec);
+
+	this->GOT_SQUARE = false;
 }
 
 MpoQ<Sym::SU2<double> > HeisenbergSU2::
