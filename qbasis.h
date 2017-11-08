@@ -276,7 +276,7 @@ leftAmount(const qType& qnew, const std::array<qType,2>& qold) const
 	for( const auto& i: it->second )
 	{
 		if(i.source != qold and SCHALTER==false) { out+=i.dim; }
-		if(i.source == qold) { SCHALTER = true; }
+		if(i.source == qold) { break; }// SCHALTER = true;
 	}
 	return out;
 }

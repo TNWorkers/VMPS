@@ -10,7 +10,7 @@
 #include <boost/rational.hpp>
 
 #include "qarray.h"
-
+#include "symmetry/phase.h"
 namespace Sym{
 
 /** \class SU2
@@ -264,7 +264,8 @@ coeff_temp(const qType& q1, const qType& q2, const qType& q3,
 	Scalar out = gsl_sf_coupling_6j(q2[0]-1,q4[0]-1,q3[0]-1,
 									q5[0]-1,q1[0]-1,q6[0]-1)*
 		std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
-		std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q1[0]+q2[0]+q6[0]-3));
+		phase((q1[0]+q2[0]+q6[0]-3)/2);
+		// std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q1[0]+q2[0]+q6[0]-3));
 	return out;
 }
 
@@ -290,7 +291,7 @@ coeff_buildR(const qType& q1, const qType& q2, const qType& q3,
 	Scalar out = gsl_sf_coupling_9j(q1[0]-1,q2[0]-1,q3[0]-1,
 									q4[0]-1,q5[0]-1,q6[0]-1,
 									q7[0]-1,q8[0]-1,q9[0]-1)*
-		std::pow(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]),Scalar(0.5));
+		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]));
 	return out;
 }
 
