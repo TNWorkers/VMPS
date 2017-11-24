@@ -102,15 +102,15 @@ public:
 
 	/** 
 		This function defines a strict order for arrays of quantum-numbers.
-		\note : The implementation is arbritary, as long as it defines a strict order.
+		\note The implementation is arbritary, as long as it defines a strict order.
 	*/
 	template<std::size_t M>
 	static bool compare ( const std::array<qType,M>& q1, const std::array<qType,M>& q2 );
 
 	/** 
 		This function checks if the array \p qs contains quantum-numbers which match together, with respect to the flow equations.
-		\todo : Write multiple functions, for different sizes of the array and rename them, to have a more clear interface.
-		        Example: For 3-array: triangular(...) or something similar.
+		\todo Write multiple functions, for different sizes of the array and rename them, to have a more clear interface.
+		      Example: For 3-array: triangular(...) or something similar.
 	*/
 	template<std::size_t M>
 	static bool validate( const std::array<qType,M>& qs );
