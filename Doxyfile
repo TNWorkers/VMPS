@@ -98,7 +98,7 @@ OUTPUT_LANGUAGE        = English
 # documentation (similar to Javadoc). Set to NO to disable this.
 # The default value is: YES.
 
-BRIEF_MEMBER_DESC      = NO
+BRIEF_MEMBER_DESC      = YES
 
 # If the REPEAT_BRIEF tag is set to YES doxygen will prepend the brief
 # description of a member or function before the detailed description
@@ -246,6 +246,12 @@ ALIASES                = "describe_D = \tparam D \n\
                                         amount of conserved quantum numbers: \n\
                                           - \p Nq=1: Heisenberg (\f$2M\f$) \n\
                                           - \p Nq=2: Hubbard (\f$N_{\uparrow}\f$,\f$N_{\downarrow}\f$), Kondo (\f$M_{tot}=2M_{s}+N_{\uparrow}-N_{\downarrow}\f$,\f$N=N_{\uparrow}+N_{\downarrow}\f$) \n" \
+						 "describe_Symmetry = \tparam Symmetry : A class providing all relevant functions and infos that are determined by the Symmetry. \n\
+						 					- All members may be static. \n\
+											- bool \p HAS_CGC to tell if Clebsch-Gordon-coeffecients (CGC) got calculate explicitly. \n\
+											- bool \p SPECIAL to tell if instead of calculating CGC explicitly, calculate (3n)-j symbols instead. Much more efficient but not generically possible. Factors depend on the context. The standard DMRG algorythm is implemented. \n\
+											- typedef for the type of the Symmetry coefficients as typedef qType ... \n\
+											- std::vector<qType> reduceSilent(ql,qr) for defining the flow equations of the symmetry" \
                          "describe_MatrixType = \tparam MatrixType : \p MatrixXd or \p MatrixXcd" \
                          "describe_Scalar = \tparam Scalar : \p double or \p complex<double>" \
                          "describe_MpoScalar = \tparam MpoScalar : \p double or \p complex<double>" \

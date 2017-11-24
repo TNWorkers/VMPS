@@ -7,6 +7,8 @@
 #include "MpoQ.h"
 #include "DmrgIndexGymnastics.h"
 
+#include "symmetry/functions.h"
+
 /**Contracts a left transfer matrix \p Lold with two MpsQ tensors \p Abra, \p Aket and an MpoQ tensor \p W as follows:
 \dotfile contractQ_L.dot
 \param Lold
@@ -49,7 +51,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 					swap(quple[0], quple[1]);
 					size_t qAbra = get<1>(ix[n]);
 					size_t qAket = get<2>(ix[n]);
-					if constexpr ( Symmetry::SPECIAL )
+					if constexpr ( Symmetry::NON_ABELIAN )
 						{
 							factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket],qloc[s2],Aket[s2].in[qAket],
 																quple[2],qOp[k],Lold.mid(qL),
@@ -161,7 +163,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 						for(const auto& new_qmid : qRmids)
 						{
 							qarray3<Symmetry::Nq> quple = {new_qin, new_qout, new_qmid};
-							if constexpr ( Symmetry::SPECIAL )
+							if constexpr ( Symmetry::NON_ABELIAN )
 								{
 									factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[q2->second],qloc[s2],Aket[s2].in[q2->second],
 																		Rold.mid(qR),qOp[k],quple[2],
@@ -265,7 +267,7 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 						swap(quple[0], quple[1]);
 						size_t qAbra = get<1>(ix[n]);
 						size_t qAket = get<2>(ix[n]);
-						if constexpr ( Symmetry::SPECIAL )
+						if constexpr ( Symmetry::NON_ABELIAN )
 						{
 							factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket],qloc[s2],Aket[s2].in[qAket],
 																quple[2],qOp[k],L.mid(qL),
@@ -504,27 +506,21 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
                  const vector<qarray<Symmetry::Nq> > &qloc,
 				 const vector<qarray<Symmetry::Nq> > &qOpBot,
                  const vector<qarray<Symmetry::Nq> > &qOpTop,
-				 const vector<std::array<typename Symmetry::qType,3> > &insetOldBot,
-				 const vector<std::array<typename Symmetry::qType,3> > &insetOldTop,
-				 vector<std::array<typename Symmetry::qType,3> > &insetNewBot,
-				 vector<std::array<typename Symmetry::qType,3> > &insetNewTop,
+				 const Qbasis<Symmetry> &baseRightBot,
+				 const Qbasis<Symmetry> &baseRightTop,
+				 const Qbasis<Symmetry> &baseLeftBot,
+				 const Qbasis<Symmetry> &baseLeftTop,
                  Tripod<Symmetry,MatrixType> &Rnew)
 {
-	updateInset(insetOldBot,Abra,Aket,qloc,qOpBot,insetNewBot);
-	updateInset(insetOldTop,Abra,Aket,qloc,qOpTop,insetNewTop);
-
-	Qbasis<Symmetry> baseRightBot, baseRightTop, baseLeftBot, baseLeftTop;
-	baseRightBot.pullData(insetOldBot,2,4);
-	baseRightTop.pullData(insetOldTop,2,4);
-	baseLeftBot.pullData(insetNewBot,2,4);
-	baseLeftTop.pullData(insetNewTop,2,4);
-
+	// cout << baseRightTop << endl << baseLeftTop << endl;
 	auto leftTopQs = baseLeftTop.unordered_qs();
 	auto leftBotQs = baseLeftBot.unordered_qs();
 
 	auto TensorBaseRight = baseRightTop.combine(baseRightBot);
 	auto TensorBaseLeft = baseLeftTop.combine(baseLeftBot);
-	Stopwatch<> Env;
+
+	std::array<typename Symmetry::qType,3> qCheck;
+
 	MpoScalar factor_cgc, factor_merge, factor_check;
 	Rnew.clear();
 	Rnew.setZero();
@@ -535,11 +531,19 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 	for (size_t k1=0; k1<qOpTop.size(); ++k1)
 	for (size_t k2=0; k2<qOpBot.size(); ++k2)
 	{
+		qCheck = {qloc[s3],qOpTop[k1],qloc[s1]};
+		if(!Symmetry::validate(qCheck)) {continue;}
+		qCheck = {qloc[s2],qOpBot[k2],qloc[s3]};
+		if(!Symmetry::validate(qCheck)) {continue;}
+
 		auto ks = Symmetry::reduceSilent(qOpTop[k1],qOpBot[k2]);
 		for(const auto& k : ks)
 		{
-			factor_check = Symmetry::coeff_temp(qloc[s2],qloc[s1],qloc[s3],
-												qOpTop[k1],qOpBot[k2],k);
+			qCheck = {qloc[s2],k,qloc[s1]};
+			if(!Symmetry::validate(qCheck)) {continue;}
+
+			factor_check = Symmetry::coeff_Apair(qloc[s1],qOpTop[k1],qloc[s3],
+												 qOpBot[k2],qloc[s2],k);
 			if (std::abs(factor_check) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
 			for (size_t qR=0; qR<Rold.dim; ++qR)
 			{
@@ -548,15 +552,10 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 				for(const auto& qRout : qRouts)
 					for(const auto& qRin : qRins)
 					{
-						// qarray2<Symmetry::Nq> cmp1 = {qRout, Rold.out(qR)};
-						// qarray2<Symmetry::Nq> cmp2 = {qRin, Rold.in(qR)};
-		
 						auto q1 = Abra[s1].dict.find({qRout, Rold.out(qR)});
 						auto q2 = Aket[s2].dict.find({qRin, Rold.in(qR)});
 						if (q1!=Abra[s1].dict.end() and q2!=Aket[s2].dict.end())
 						{
-							// qarray<Symmetry::Nq> new_qin  = Aket[s2].in[q2->second]; // A.in
-							// qarray<Symmetry::Nq> new_qout = Abra[s1].in[q1->second]; // A†.out = A.in
 							auto qRmids = Symmetry::reduceSilent(Rold.mid(qR),Symmetry::flip(k));
 							for(const auto& new_qmid : qRmids)
 							{
@@ -565,14 +564,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 																	Rold.mid(qR),k,new_qmid,
 																	Abra[s1].out[q1->second],qloc[s1],Abra[s1].in[q1->second]);
 								if (std::abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
-
-								// Eigen::Index tot_rows = TensorBaseLeft.inner_dim(new_qmid);
-								//calc the MPO elements of OTop \times \OBot on the fly:
-								// Stopwatch<> mpo;
-								//temp_mpo = mpo_prod();
-								// temp_mpo_dense.resize(,TensorBaseRight.inner_dim(Rold.mid(qR)));
-								// temp_mpo_dense.setZero();
-								auto qrightAuxs = Symmetry::split(Rold.mid(qR),baseRightTop.qs(),baseRightBot.qs());
+								auto qrightAuxs = Sym::split<Symmetry>(Rold.mid(qR),baseRightTop.qs(),baseRightBot.qs());
 								for(const auto& [qrightAux,qrightAuxP] : qrightAuxs)
 								{
 									Eigen::Index left2=TensorBaseRight.leftAmount(Rold.mid(qR),{qrightAux, qrightAuxP});
@@ -586,17 +578,11 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 											{
 												if(auto it=leftBotQs.find(qleftAuxP) != leftBotQs.end())
 												{
-													// factor_merge = Symmetry::coeff_Wpair(qloc[s2],qloc[s1],qloc[s3],
-													// 									 qrightAux,qrightAuxP,Rold.mid(qR),
-													// 									 qleftAux,qleftAuxP,quple[2],
-													// 									 qOpTop[k1],qOpBot[k2],k);
-													factor_merge = Symmetry::coeff_temp2(qrightAux,qrightAuxP,Rold.mid(qR),
-																						 qleftAux,qleftAuxP,new_qmid,
-																						 qOpTop[k1],qOpBot[k2],k);
-
+													factor_merge = Symmetry::coeff_buildR(qrightAux,qrightAuxP,Rold.mid(qR),
+																						 qOpTop[k1],qOpBot[k2],k,
+																						 qleftAux,qleftAuxP,new_qmid);
 													if (std::abs(factor_merge) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
 													Eigen::Index left1=TensorBaseLeft.leftAmount(new_qmid,{qleftAux, qleftAuxP});
-													
 													for (int ktop=0; ktop<Wtop[s1][s3][k1].outerSize(); ++ktop)
 													for (typename SparseMatrix<MpoScalar>::InnerIterator iWtop(Wtop[s1][s3][k1],ktop); iWtop; ++iWtop)
 													for (int kbot=0; kbot<Wbot[s3][s2][k2].outerSize(); ++kbot)
@@ -651,7 +637,6 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 			}
 		}
 	}
-	cout << Env.info("environment") << endl << endl;
 }
 
 /**Calculates the contraction between a left transfer matrix \p Lold, two MpsQ tensors \p Abra, \p Aket and two MpoQ tensors \p Wbot, \p Wtop.

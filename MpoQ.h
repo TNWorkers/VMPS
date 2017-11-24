@@ -15,7 +15,6 @@ using namespace Eigen;
 #include "qarray.h"
 #include "qbasis.h"
 #include "Biped.h"
-#include "MultipedeQ.h"
 #include "DmrgPivotStuffQ.h"
 #include <unsupported/Eigen/KroneckerProduct>
 #include "DmrgJanitor.h"
@@ -106,6 +105,8 @@ public:
 
 	void initialize();
 
+	void calc_auxBasis();
+
 	//---set special, modify---
 	///\{
 	/**Set to a local operator \f$O_i\f$
@@ -183,6 +184,7 @@ public:
 	/**Returns the local basis at \p loc.*/
 	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
 	inline Qbasis<Symmetry> locBasis__ (size_t loc) const {return qloc__[loc];}
+	inline Qbasis<Symmetry> auxBasis (size_t loc) const {return qaux[loc];}
 
 	/**Returns the operator basis at \p loc.*/
 	inline vector<qarray<Nq> > opBasis (size_t loc) const {return qOp[loc];}
@@ -191,6 +193,7 @@ public:
 	/**Returns the full local basis.*/
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
 	inline vector<Qbasis<Symmetry> > locBasis__()   const {return qloc__;}
+	inline vector<Qbasis<Symmetry> > auxBasis()   const {return qaux;}
 
 	/**Returns the full operator basis.*/
 	inline vector<vector<qarray<Nq> > > opBasis()   const {return qOp;}
@@ -239,6 +242,8 @@ protected:
 	vector<vector<qarray<Nq> > > qloc, qOp, qOpSq;
 	vector<Qbasis<Symmetry> > qloc__;
 
+	vector<Qbasis<Symmetry> > qaux;
+
 	qarray<Nq> Qtot;
 	
 	bool UNITARY = false;
@@ -267,10 +272,6 @@ protected:
 					vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
 					const vector<vector<qType> > &qOp_in);
 	
-	void construct (const MultipedeQ<4,Symmetry,Scalar,-2> &G_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
-					vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gstore);
-	void construct (const vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gvec_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
-					vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gstore);	
 
 	vector<SuperMatrix<Symmetry,Scalar> > Gvec;
 	vector<vector<vector<vector<SparseMatrix<Scalar> > > > > W;
@@ -409,6 +410,90 @@ initialize()
 
 template<typename Symmetry, typename Scalar>
 void MpoQ<Symmetry,Scalar>::
+calc_auxBasis()
+{
+	auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> std::set<qType>
+	{
+		std::size_t L = (l_last < 0 or l_frst >= qOp.size())? 0 : l_last-l_frst+1;
+		std::set<qType > qset;
+		
+		if (L > 0)
+		{
+			// add qnums of local basis on l_frst to qset_tmp
+			std::set<qType> qset_tmp;
+
+			for (const auto& k : qOp[l_frst])
+			{
+				qset_tmp.insert(k);
+			}
+
+			for (std::size_t l=l_frst+1; l<=l_last; ++l)
+			{
+				for (const auto& k : qOp[l])
+				for (auto it=qset_tmp.begin(); it!=qset_tmp.end(); ++it)
+				{
+					auto qVec = Symmetry::reduceSilent(*it,k);
+					for (const auto& q : qVec)
+					{
+						qset.insert(q);
+					}
+				}
+				// swap qset and qset_tmp to continue
+				std::swap(qset_tmp,qset);
+			}
+			qset = qset_tmp;
+		}
+		else
+		{
+			qset.insert(Symmetry::qvacuum());
+		}
+		return qset;
+	};
+
+	this->qaux.resize(this->N_sites+1);
+	//set aux basis on right end to Qtot.
+	qaux[this->N_sites].push_back(Qtot,1);//auxdim());
+
+	for (std::size_t l=0; l<this->N_sites; ++l)
+	{
+		Qbasis<Symmetry> qauxtmp;
+		std::unordered_set<qType> uniqueControl;
+		int lprev = l-1;
+		int lnext = l+1;
+		std::set<qType> qlset = calc_qnums_on_segment(0,lprev); // length=l
+		std::set<qType> qrset = calc_qnums_on_segment(lnext,this->N_sites-1); // length=L-l-1
+		for (const auto& k : qOp[l])
+		for (auto ql=qlset.begin(); ql!=qlset.end(); ++ql)
+		{
+			auto qVec = Symmetry::reduceSilent(*ql,k);
+			std::vector<std::set<qType> > qrSetVec; qrSetVec.resize(qVec.size());
+			for (std::size_t i=0; i<qVec.size(); i++)
+			{
+				auto qVectmp = Symmetry::reduceSilent(Symmetry::flip(qVec[i]),Qtot);
+				for (std::size_t j=0; j<qVectmp.size(); j++) { qrSetVec[i].insert(qVectmp[j]); }
+				for (auto qr = qrSetVec[i].begin(); qr!=qrSetVec[i].end(); qr++)
+				{
+					auto itqr = qrset.find(*qr);
+					if (itqr != qrset.end())
+					{
+						auto qin = *ql;
+						if(auto it=uniqueControl.find(qin) == uniqueControl.end())
+						{
+							uniqueControl.insert(qin);
+							if(l==0) { qauxtmp.push_back(qin,1); }
+							else { qauxtmp.push_back(qin,auxdim()); }
+						}
+					}
+				}
+			}
+		}
+		qaux[l] = qauxtmp;
+	}
+
+}
+
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
 construct (const SuperMatrix<Symmetry,Scalar> &G_input,
 		   vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
 		   vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
@@ -513,105 +598,6 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 		   vector<SuperMatrix<Symmetry,Scalar> > &Gstore)
 {
 	construct(Gvec_input,Wstore,Gstore,this->qOp);
-}
-
-template<typename Symmetry, typename Scalar>
-void MpoQ<Symmetry,Scalar>::
-construct (const MultipedeQ<4,Symmetry,Scalar,-2> &G_input,vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
-			std::vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gstore)
-{
-	std::vector<MultipedeQ<4,Symmetry,Scalar,-2> > Gvec(N_sites);
-	
-//	make W^[0] from last row
-	for (std::size_t nu=0; nu<G_input.size(); nu++)
-	{
-		std::array<Index, 4> offsets = {G_input.block[nu].dimension(0)-1, 0, 0, 0};
-		std::array<Index, 4> extents = {1, G_input.block[nu].dimension(1), G_input.block[nu].dimension(2), G_input.block[nu].dimension(3)};
-		TensorType<4> A = G_input.block[nu].slice(offsets,extents);
-		if constexpr ( Symmetry::HAS_CGC )
-			{
-				TensorType<4> T;
-				Gvec[0].push_back(G_input.index[nu],A,T);
-			}
-		else
-		{
-			Gvec[0].push_back(G_input.index[nu],A);
-		}
-	}
-
-//	make W^[i], i=1,...,L-2
-	for (std::size_t l=1; l<N_sites-1; ++l)
-	{
-		Gvec[l] = G_input;
-	}
-
-//	make W^[L-1] from first column
-	for (std::size_t nu=0; nu<G_input.size(); nu++)
-	{
-		std::array<Index, 4> offsets = {0, 0, 0, 0};
-		std::array<Index, 4> extents = {G_input.block[nu].dimension(0), 1, G_input.block[nu].dimension(2), G_input.block[nu].dimension(3)};
-		TensorType<4> A = G_input.block[nu].slice(offsets,extents);
-		if constexpr ( Symmetry::HAS_CGC )
-			{
-				TensorType<4> T;
-				Gvec[N_sites-1].push_back(G_input.index[nu],A,T);
-			}
-		else
-		{
-			Gvec[N_sites-1].push_back(G_input.index[nu],A);
-		}
-	}
-	
-//	make Mpo
-	construct(Gvec,Wstore,Gstore);
-}
-
-template<typename Symmetry, typename Scalar>
-void MpoQ<Symmetry,Scalar>::
-construct ( const std::vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gvec_input, vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
-			std::vector<MultipedeQ<4,Symmetry,Scalar,-2> > &Gstore)
-{
-	Wstore.resize(this->N_sites);
-	Gstore = Gvec_input;
-	for (std::size_t l=0; l<this->N_sites; ++l)
-	{
-		Wstore[l].clear();
-		Wstore[l].resize(qloc[l].size());
-		for (std::size_t s1=0; s1<qloc[l].size(); s1++)
-		{
-			Wstore[l][s1].resize(qloc[l].size());
-			for (std::size_t s2=0; s2<qloc[l].size(); s2++)
-			{
-				// for (const auto& q_op : qOp[l])
-				Wstore[l][s1][s2].resize(qOp[l].size());
-				for (std::size_t k=0; k<qOp[l].size(); k++)
-				{
-					std::array<qType,3> qSearch3 = {qloc[l][s1],qloc[l][s2],qOp[l][k]};
-					std::array<Index,3> dummy_legs3; std::iota(dummy_legs3.begin(),dummy_legs3.end(),Index(0));
-					auto it = Gvec_input[l].dict.find(qSearch3,dummy_legs3);
-					
-					if (it != Gvec_input[l].dict.end(dummy_legs3))
-					{
-						std::array<Index, 4> offsets = {0, 0, qloc__[l].inner_num(s1), qloc__[l].inner_num(s2)};//5-1-1+
-						std::array<Index, 4> extents = {Gvec_input[l].block[it->second].dimension(0), Gvec_input[l].block[it->second].dimension(1), 1, 1};
-						std::array<Index, 2> new_dims = {Gvec_input[l].block[it->second].dimension(0), Gvec_input[l].block[it->second].dimension(1)};
-						TensorType<2> A = Gvec_input[l].block[it->second].slice(offsets,extents).reshape(new_dims);
-						MatrixType Mtmp;
-						Mtmp = Eigen::Map<MatrixType>(A.data(), A.dimension(0), A.dimension(1));
-						
-						if (Wstore[l][s1][s2][k].size() == 0)
-						{
-							Wstore[l][s1][s2][k] = Mtmp.sparseView();
-						}
-						else
-						{
-							Wstore[l][s1][s2][k] += Mtmp.sparseView();
-						}
-					}
-				}
-			}	
-		}
-	}
 }
 
 template<typename Symmetry, typename Scalar>

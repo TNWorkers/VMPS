@@ -2,12 +2,10 @@
 <doxygenlayout version="1.0">
   <!-- Navigation index tabs for HTML output -->
   <navindex>
-<!--    <tab type="user" url="index.html" title="Overview" />-->
-<!--    <tab type="modules" visible="yes" title="Unsupported Modules" intro=""/>-->
-<!--    <tab type="mainpage" visible="yes" title=""/> -->
-    <tab type="classlist" visible="yes" title="" intro=""/>
-<!--    <tab type="classmembers" visible="yes" title="" intro=""/> -->
-<!--    <tab type="namespacelist" visible="yes" title="" intro=""/> -->
+    <!-- <tab type="user" url="index.html" title="Overview" /> -->
+    <tab type="modules" visible="yes" title="Modules" intro=""/>
+    <tab type="classlist" visible="yes" title="Classes" intro=""/>
+    <!-- <tab type="namespaces" visible="yes" title="Namespaces"/> -->
     <tab type="filelist" visible="yes" title="" intro=""/> 
     <tab type="globals" visible="yes" title="Functions" intro=""/>
   </navindex>
@@ -122,7 +120,7 @@
 
   <!-- Layout definition for a group page -->
   <group>
-    <briefdescription visible="no"/>
+    <briefdescription visible="yes"/>
     <detaileddescription title=""/>
     <groupgraph visible="$GROUP_GRAPHS"/>
     <memberdecl>

@@ -29,7 +29,7 @@ public:
 
 	static constexpr bool HAS_CGC = false;
 	static constexpr std::size_t Nq=2;
-	static constexpr bool SPECIAL = true;
+	static constexpr bool NON_ABELIAN = true;
 	
 	inline static qType qvacuum() { return {1,1}; }
 

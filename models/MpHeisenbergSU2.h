@@ -194,6 +194,7 @@ HeisenbergSU2 (std::size_t Lx_input, double J_input, std::size_t D_input, double
 	this->construct(G, this->W, this->Gvec);
 
 	this->GOT_SQUARE = false;
+	this->calc_auxBasis();
 }
 
 MpoQ<Sym::SU2<double> > HeisenbergSU2::

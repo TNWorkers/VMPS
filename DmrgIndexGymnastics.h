@@ -250,7 +250,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 							}
 						if (ALL_BLOCKS_ARE_EMPTY == false)
 						{
-							if constexpr ( Symmetry::SPECIAL )
+							if constexpr ( Symmetry::NON_ABELIAN )
 								{
 									factor_cgc = Symmetry::coeff_HPsi(Aket[s2].out[get<2>(ix[n])],qloc[s2],Aket[s2].in[get<2>(ix[n])],
 																	  get<0>(ix[n])[2],qOp[k],L.mid(qL),

@@ -26,7 +26,7 @@ class SU2xU1 // : SymmetryBase<SymSUN<N,Scalar> >
 public:
 	static constexpr bool HAS_CGC = false;
 	static constexpr std::size_t Nq=2;
-	static constexpr bool SPECIAL = true;
+	static constexpr bool NON_ABELIAN = true;
 
 	// typedef std::array<int,2> qType;
 	typedef qarray<Nq> qType;

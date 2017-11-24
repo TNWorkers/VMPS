@@ -19,7 +19,7 @@ class U1xU1 // : SymmetryBase<SymSUN<N,Scalar> >
 public:
 	static constexpr bool HAS_CGC = false;
 	static constexpr std::size_t Nq=2;
-	static constexpr bool SPECIAL = false;
+	static constexpr bool NON_ABELIAN = false;
 
 	typedef qarray<Nq> qType;
 

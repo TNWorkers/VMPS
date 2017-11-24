@@ -21,7 +21,7 @@ class U1 // : SymmetryBase<SymSUN<N,Scalar> >
 public:
 	static constexpr bool HAS_CGC = false;
 	static constexpr size_t Nq=1;
-	static constexpr bool SPECIAL = false;
+	static constexpr bool NON_ABELIAN = false;
 
 	// typedef std::array<int,1> qType;
 	typedef qarray<Nq> qType;
@@ -37,7 +37,6 @@ public:
 	inline static int degeneracy( const qType& q ) { return 1; }
 
 	static std::vector<qType> reduceSilent( const qType& ql, const qType& qr);
-
 	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const qType& qr);
 
 	inline static Scalar coeff_unity();
@@ -51,7 +50,7 @@ public:
 								  const qType& q4, const qType& q5, const qType& q6);
 	inline static Scalar coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 									 const qType& q4, const qType& q5, const qType& q6);
-	
+
 	inline static Scalar coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6,
 								  const qType& q7, const qType& q8, const qType& q9);
@@ -153,8 +152,13 @@ Scalar U1<Scalar>::
 coeff_6j(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q4, const qType& q5, const qType& q6)
 {
-	Scalar out = Scalar(1.);
-	return out;
+	// std::cout << "q1=" << q1 << " q2=" << q2 << " q3=" << q3 << " q4=" << q4 << " q5=" << q5 << " q6=" << q6 << std::endl;
+	// assert(-q1[0] + q2[0] + q3[0] == 0 and "ERROR in U1-symmetry flow equations (6j symbol).");
+	// assert(-q1[0] + q5[0] + q6[0] == 0 and "ERROR in U1-symmetry flow equations (6j symbol).");
+	// assert(+q4[0] + q2[0] - q6[0] == 0 and "ERROR in U1-symmetry flow equations (6j symbol).");
+	// assert(+q4[0] + q5[0] - q3[0] == 0 and "ERROR in U1-symmetry flow equations (6j symbol).");
+
+	return Scalar(1.);
 }
 
 template<typename Scalar>
@@ -173,8 +177,12 @@ coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q7, const qType& q8, const qType& q9)
 {
 	// std::cout << "q1=" << q1 << " q2=" << q2 << " q3=" << q3 << " q4=" << q4 << " q5=" << q5 << " q6=" << q6 << " q7=" << q7 << " q8=" << q8 << " q9=" << q9 << std::endl;
-	Scalar out = Scalar(1.);
-	return out;
+	// if (q1[0] + q4[0] - q7[0] != 0) {return 0.;}
+	// if (q2[0] + q5[0] - q8[0] != 0) {return 0.;}
+	// if (q3[0] + q6[0] - q9[0] != 0) {return 0.;}
+	// if (q4[0] + q5[0] - q6[0] != 0) {return 0.;}
+	// if (q7[0] + q8[0] - q9[0] != 0) {return 0.;}
+	return Scalar(1.);
 }
 	
 template<typename Scalar>
@@ -183,8 +191,13 @@ coeff_buildR(const qType& q1, const qType& q2, const qType& q3,
 			 const qType& q4, const qType& q5, const qType& q6,
 			 const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out = Scalar(1.);
-	return out;
+	// std::cout << "q1=" << q1 << " q2=" << q2 << " q3=" << q3 << " q4=" << q4 << " q5=" << q5 << " q6=" << q6 << " q7=" << q7 << " q8=" << q8 << " q9=" << q9 << std::endl;
+	// assert(-q1[0] + q4[0] + q7[0] == 0 and "ERROR in U1-symmetry flow equations (9j-symbol).");
+	// assert(-q2[0] + q5[0] + q8[0] == 0 and "ERROR in U1-symmetry flow equations (9j-symbol).");
+	// assert(-q3[0] + q6[0] + q9[0] == 0 and "ERROR in U1-symmetry flow equations (9j-symbol).");
+	// assert(+q4[0] + q5[0] - q6[0] == 0 and "ERROR in U1-symmetry flow equations (9j-symbol).");
+	// assert(-q7[0] + q8[0] + q9[0] == 0 and "ERROR in U1-symmetry flow equations (9j-symbol).");
+	return Scalar(1.);
 }
 
 template<typename Scalar>

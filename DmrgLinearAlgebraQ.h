@@ -164,44 +164,20 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
             const MpsQ<Symmetry,Scalar> &Vket,
 			typename Symmetry::qType Qtarget = Symmetry::qvacuum())
 {
-	if constexpr (Symmetry::SPECIAL)
+	if constexpr (Symmetry::NON_ABELIAN )
 		{
 			Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 			Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
-			vector<std::array<typename Symmetry::qType,3> > insetnext1;
-			vector<std::array<typename Symmetry::qType,3> > inset1;
-			vector<std::array<typename Symmetry::qType,3> > insetnext2;
-			vector<std::array<typename Symmetry::qType,3> > inset2;
 
 			B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), Qtarget});
-			inset1.push_back({Vket.Qtarget(), Vbra.Qtarget(), O1.Qtarget()}); inset2.push_back({Vket.Qtarget(), Vbra.Qtarget(), O2.Qtarget()});
 			for (size_t l=O1.length()-1; l!=-1; --l)
 			{
-				// std::cout << B.print() << std::endl << std::endl;
-				// std::cout << "Bot:" << std::endl;
-				// for (const auto & q : inset1) {
-				// 	for (const auto & p : q) {std::cout << p << " ";} std::cout << std::endl;} std::cout << std::endl;
-				// std::cout << "Top:" << std::endl;
-				// for (const auto & q : inset2) {
-				// 	for (const auto & p : q) {std::cout << p << " ";} std::cout << std::endl;} std::cout << std::endl;
-
 				contract_R(B, Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), O1.locBasis(l), O1.opBasis(l), O2.opBasis(l),
-						   inset1, inset2, insetnext1, insetnext2, Bnext);
+						   O1.auxBasis(l+1), O2.auxBasis(l+1), O1.auxBasis(l), O2.auxBasis(l), Bnext);
 				B.clear();
 				B = Bnext;
 				Bnext.clear();
-				inset1.clear();
-				inset1 = insetnext1;
-				insetnext1.clear();
-				inset2.clear();
-				inset2 = insetnext2;
-				insetnext2.clear();
 			}
-			// std::cout << B.print(true,5) << std::endl << std::endl;
-			// for (const auto & q : inset1) {
-			// 	for (const auto & p : q) {std::cout << p << " ";} std::cout << std::endl;} std::cout << std::endl;
-			// for (const auto & q : inset2) {
-			// 	for (const auto & p : q) {std::cout << p << " ";} std::cout << std::endl;} std::cout << std::endl;
 
 			if (B.dim == 1)
 			{
@@ -228,14 +204,7 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 			B = Bnext;
 			Bnext.clear();
 		}
-	
-//	cout << "B.dim=" << B.dim << endl;
-//	for (size_t q=0; q<B.dim; ++q)
-//	{
-//		cout << "q=" << B.in(q) << ", " << B.out(q) << ", " << B.top(q) << ", " << B.bot(q) << endl 
-//		<< B.block[q][0][0] << endl;
-//	}
-	
+		
 		if (B.dim == 1)
 		{
 			return B.block[0][0][0].trace();

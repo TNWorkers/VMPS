@@ -413,7 +413,7 @@ MpsQ (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
 	format = H.format;
 	qlabel = H.qlabel;
 	N_legs = H.width();
-	if constexpr (Symmetry::SPECIAL) {outerResize(H.length(), H.locBasis__(), Qtot_input);}
+	if constexpr (Symmetry::NON_ABELIAN) {outerResize(H.length(), H.locBasis__(), Qtot_input);}
 	else {outerResize(H.length(), H.locBasis(), Qtot_input);}
 	innerResize(Dmax);
 }

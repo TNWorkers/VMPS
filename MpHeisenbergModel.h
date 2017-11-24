@@ -250,6 +250,7 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 	{
 		this->GOT_SQUARE = false;
 	}
+	this->calc_auxBasis();
 }
 
 HeisenbergModel::
