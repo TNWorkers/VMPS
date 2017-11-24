@@ -182,7 +182,7 @@ template<typename Scalar>
 Scalar SU2<Scalar>::
 coeff_rightOrtho(const qType& q1, const qType& q2)
 {
-	Scalar out = static_cast<Scalar>(q1[0]) * std::pow(static_cast<Scalar>(q2[0]),Scalar(-1.));
+	Scalar out = static_cast<Scalar>(q1[0]) / static_cast<Scalar>(q2[0]); //* std::pow(static_cast<Scalar>(q2[0]),Scalar(-1.));
 	return out;
 }
 
@@ -190,8 +190,9 @@ template<typename Scalar>
 Scalar SU2<Scalar>::
 coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3)
 {
-	Scalar out = std::pow(static_cast<Scalar>(q1[0]),Scalar(0.5)) * std::pow(static_cast<Scalar>(q2[0]),Scalar(-0.5))*
-		Scalar(-1.)*std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q3[0]+q1[0]-q2[0]-1));
+	Scalar out = std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]))*
+		Scalar(-1.)*phase<Scalar>((q3[0]+q1[0]-q2[0]-1) / 2);
+		// Scalar(-1.)*std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q3[0]+q1[0]-q2[0]-1));
 	return out;
 }
 
@@ -199,8 +200,9 @@ template<typename Scalar>
 Scalar SU2<Scalar>::
 coeff_sign(const qType& q1, const qType& q2, const qType& q3)
 {
-	Scalar out = std::pow(static_cast<Scalar>(q2[0]),Scalar(0.5)) * std::pow(static_cast<Scalar>(q1[0]),Scalar(-0.5))*
-		Scalar(-1.)*std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q3[0]+q1[0]-q2[0]-1));
+	Scalar out = std::sqrt(static_cast<Scalar>(q2[0])) / std::sqrt(static_cast<Scalar>(q1[0]))*
+		Scalar(-1.)*phase<Scalar>((q3[0]+q1[0]-q2[0]-1) /2);
+		// Scalar(-1.)*std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q3[0]+q1[0]-q2[0]-1));
 	return out;
 }
 
@@ -208,7 +210,7 @@ template<typename Scalar>
 Scalar SU2<Scalar>::
 coeff_adjoint(const qType& q1, const qType& q2, const qType& q3)
 {
-	Scalar out = std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q3[0]+q1[0]-q2[0]-1)) *
+	Scalar out = phase<Scalar>((q3[0]+q1[0]-q2[0]-1) / 2) * //std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q3[0]+q1[0]-q2[0]-1)) *
 		std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]));
 	return out;
 }
@@ -231,7 +233,7 @@ coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 	Scalar out = gsl_sf_coupling_6j(q1[0]-1,q2[0]-1,q3[0]-1,
 									q4[0]-1,q5[0]-1,q6[0]-1)*
 		std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
-		phase((q1[0]+q5[0]+q6[0]-3)/2);
+		phase<Scalar>((q1[0]+q5[0]+q6[0]-3)/2);
 
 		// std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q1[0]+q5[0]+q6[0]-3));
 	// Scalar out = gsl_sf_coupling_6j(q2[0]-1,q4[0]-1,q3[0]-1,
@@ -291,8 +293,8 @@ coeff_buildL(const qType& q1, const qType& q2, const qType& q3,
 	Scalar out = gsl_sf_coupling_9j(q1[0]-1,q2[0]-1,q3[0]-1,
 									q4[0]-1,q5[0]-1,q6[0]-1,
 									q7[0]-1,q8[0]-1,q9[0]-1)*
-		std::pow(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]),Scalar(0.5))*
-		static_cast<Scalar>(q9[0])*std::pow(static_cast<Scalar>(q7[0]),Scalar(-1.));
+		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]))*
+		static_cast<Scalar>(q9[0]) / static_cast<Scalar>(q7[0]); //std::pow(static_cast<Scalar>(q7[0]),Scalar(-1.));
 	return out;
 }
 
@@ -305,8 +307,8 @@ coeff_HPsi(const qType& q1, const qType& q2, const qType& q3,
 	Scalar out = gsl_sf_coupling_9j(q1[0]-1,q2[0]-1,q3[0]-1,
 									q4[0]-1,q5[0]-1,q6[0]-1,
 									q7[0]-1,q8[0]-1,q9[0]-1)*
-		std::pow(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]),Scalar(0.5))*
-		static_cast<Scalar>(q9[0])*std::pow(static_cast<Scalar>(q7[0]),Scalar(-1.));
+		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]))*
+		static_cast<Scalar>(q9[0]) / static_cast<Scalar>(q7[0]); //*std::pow(static_cast<Scalar>(q7[0]),Scalar(-1.));
 	return out;
 }
 
@@ -324,7 +326,8 @@ coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
 		gsl_sf_coupling_6j(q2[0] -1,q10[0]-1,q3[0] -1,
 						   q11[0]-1,q1[0] -1,q12[0]-1)*
 		std::sqrt(static_cast<Scalar>(q3[0]*q12[0]))*
-		std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q1[0]+q2[0]+q12[0]-3));
+		phase<Scalar>((q1[0]+q2[0]+q12[0]-3) /2);
+		// std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q1[0]+q2[0]+q12[0]-3));
 	return out;
 }
 

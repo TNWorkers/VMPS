@@ -2,11 +2,11 @@
 #define FUNCTIONS_H_
 
 namespace Sym{
-	// template<typename Scalar>
-	double phase(int q)
+	template<typename Scalar>
+	Scalar phase(int q)
 	{
-		if (q % 2) {return -1.;}
-		return 1.;
+		if (q % 2) {return Scalar(-1.);}
+		return Scalar(1.);
 	}
 
 	/** 
