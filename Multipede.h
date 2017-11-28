@@ -34,6 +34,7 @@ typedef typename Symmetry::qType qType;
 	/**Convenience access to the amount of blocks.
 	Equal to either of the following: \p index.size(), \p block.size()*/
 	size_t dim;
+	inline std::size_t size() const {return dim;}
 
 	/**Vector of all incoming quantum numbers.
 	The entries are arrays of size \p Nlegs. The sorting is according to the following convention:

@@ -2590,7 +2590,7 @@ enrich_left (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H)
 		for (std::size_t s2=0; s2<qloc[loc].size(); ++s2)
 		for (std::size_t k=0; k<H->W[s1][s2].size(); ++k)
 		{
-			if(W[s1][s2][k].size() == 0) {continue;}
+			if(H->W[s1][s2][k].size() == 0) {continue;}
 			for (std::size_t qR=0; qR<H->R.size(); ++qR)
 			{
 				auto qAs = Symmetry::reduceSilent(H->R.in(qR),Symmetry::flip(qloc[loc][s2]));
@@ -2691,7 +2691,7 @@ enrich_right (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H)
 		for (std::size_t s2=0; s2<qloc[loc].size(); ++s2)
 		for (std::size_t k=0; k<H->W[s1][s2].size(); ++k)
 		{
-			if(W[s1][s2][k].size() == 0) {continue;}
+			if(H->W[s1][s2][k].size() == 0) {continue;}
 			for (std::size_t qL=0; qL<H->L.size(); ++qL)
 			{
 				auto qAs = Symmetry::reduceSilent(H->L.in(qL),qloc[loc][s2]);

@@ -385,7 +385,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, qar
 	
 	print_alpha_eps();
 	
- 	// average local dimension for bond dimension increase
+ 	// average local dimension for later bond dimension increase
 	size_t dimqlocAvg = 0;
 	for (size_t l=0; l<H.length(); ++l)
 	{
@@ -402,7 +402,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, qar
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
 		if (N_halfsweeps%2 == 0 and totalTruncWeight >= Vout.state.eps_svd)
 		{
-			Vout.state.N_sv = min(max(static_cast<size_t>(1.1*Vout.state.N_sv), Vout.state.N_sv+dimqlocAvg), Dlimit);
+			// increase by dimqlocAvg (at least 2), but by no more than 10%
+			size_t N_sv_new = max(static_cast<size_t>(1.1*Vout.state.N_sv), Vout.state.N_sv+max(dimqlocAvg,2ul));
+			// do not increase beyond Dlimit
+			Vout.state.N_sv = min(N_sv_new,Dlimit);
 		}
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
