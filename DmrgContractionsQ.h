@@ -16,6 +16,7 @@
 \param W
 \param Aket
 \param qloc : local basis
+\param qop : operator basis
 \param Lnew : new transfer matrix to be written to
 */
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
@@ -115,6 +116,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 \param W
 \param Aket
 \param qloc : local basis
+\param qloc : operator basis
 \param Rnew : new transfer matrix to be written to
 */
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
@@ -230,6 +232,7 @@ two MpsQ tensors \p Abra, \p Aket, an MpoQ tensor \p W and a right transfer matr
 \param Aket
 \param R
 \param qloc : local basis
+\param qop : operator basis
 \returns : result of contraction
 \warning Not working for non-abelian symmetries.*/
 template<typename Symmetry, typename Scalar>
