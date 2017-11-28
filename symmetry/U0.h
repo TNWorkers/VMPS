@@ -14,7 +14,7 @@ namespace Sym{
 	class U0 // : SymmetryBase<SymSUN<N,Scalar> >
 	{
 	public:
-		typedef int qType;
+		typedef qarray<0> qType;
 		
 		U0() {};
 
@@ -22,8 +22,9 @@ namespace Sym{
 
 		static constexpr bool HAS_CGC = false;
 		static constexpr std::size_t Nq=0;
-		static constexpr bool SPECIAL = false;
+		static constexpr bool NON_ABELIAN = false;
 		
+		static qType qvacuum() {return {};}
 	};
 
 } //end namespace Sym

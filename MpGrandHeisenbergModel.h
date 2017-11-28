@@ -12,8 +12,10 @@ H = - J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^
 \f$.
 \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
 \note \f$J<0\f$ : antiferromagnetic*/
-class GrandHeisenbergModel : public MpoQ<0,double>
+class GrandHeisenbergModel : public MpoQ<Sym::U0,double>
 {
+typedef Sym::U0 Symmetry;
+
 public:
 	
 	GrandHeisenbergModel (int L_input, double Jxy_input=-1., double Jz_input=numeric_limits<double>::infinity(), 
@@ -21,16 +23,16 @@ public:
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
-	typedef MpsQ<0,double>                           StateXd;
-	typedef MpsQ<0,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<0,GrandHeisenbergModel>      Solver;
-	typedef MpsQCompressor<0,double,double>          CompressorXd;
-	typedef MpsQCompressor<0,complex<double>,double> CompressorXcd;
-	typedef MpoQ<0>                                  Operator;
+	typedef MpsQ<Sym::U0,double>                           StateXd;
+	typedef MpsQ<Sym::U0,complex<double> >                 StateXcd;
+	typedef DmrgSolverQ<Sym::U0,GrandHeisenbergModel>      Solver;
+	typedef MpsQCompressor<Sym::U0,double,double>          CompressorXd;
+	typedef MpsQCompressor<Sym::U0,complex<double>,double> CompressorXcd;
+	typedef MpoQ<Sym::U0>                                  Operator;
 	///@}
 	
-	MpoQ<0> SzSz (size_t loc1, size_t loc2);
-	MpoQ<0> Sz   (size_t loc);
+//	MpoQ<Sym::U0> SzSz (size_t loc1, size_t loc2);
+//	MpoQ<Sym::U0> Sz   (size_t loc);
 	
 private:
 	
@@ -42,7 +44,7 @@ private:
 
 GrandHeisenbergModel::
 GrandHeisenbergModel (int L_input, double Jxy_input, double Jz_input, double Bz_input, double Bx_input, bool CALC_SQUARE, size_t D_input)
-	:MpoQ<0> (L_input, 1, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, ""),
+	:MpoQ<Sym::U0> (L_input, 1, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, ""),
 	Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input), D(D_input)
 {
 	if (Jz==numeric_limits<double>::infinity()) {Jz=Jxy;} // default: Jxy=Jz
@@ -50,9 +52,9 @@ GrandHeisenbergModel (int L_input, double Jxy_input, double Jz_input, double Bz_
 	this->label = HeisenbergModel::create_label(D,Jxy,Jz,0.,Bz,Bx);
 	
 	S = SpinBase(1,D);
-	HamiltonianTermsXd Terms = HeisenbergModel::set_operators(S, Jxy,Jz,Bz,Bx);
+	HamiltonianTermsXd<Symmetry> Terms = HeisenbergModel::set_operators(S, Jxy,Jz,Bz,Bx);
 
-	SuperMatrix<double> G = ::Generator(Terms);
+	SuperMatrix<Symmetry,double> G = ::Generator(Terms);
 	this->Daux = Terms.auxdim();
 	this->construct(G, this->W, this->Gvec);
 	
@@ -67,27 +69,27 @@ GrandHeisenbergModel (int L_input, double Jxy_input, double Jz_input, double Bz_
 	}
 }
 
-MpoQ<0> GrandHeisenbergModel::
-Sz (size_t loc)
-{
-	assert(loc<N_sites);
-	stringstream ss;
-	ss << "Sz(" << loc << ")";
-	MpoQ<0> Mout(N_sites, 1, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, "");
-	Mout.setLocal(loc, S.Scomp(SZ));
-	return Mout;
-}
+//MpoQ<Sym::U0> GrandHeisenbergModel::
+//Sz (size_t loc)
+//{
+//	assert(loc<N_sites);
+//	stringstream ss;
+//	ss << "Sz(" << loc << ")";
+//	MpoQ<Sym::U0 > Mout(N_sites, 1, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, "");
+//	Mout.setLocal(loc, S.Scomp(SZ));
+//	return Mout;
+//}
 
-MpoQ<0> GrandHeisenbergModel::
-SzSz (size_t loc1, size_t loc2)
-{
-	assert(loc1<N_sites and loc2<N_sites);
-	stringstream ss;
-	ss << "Sz(" << loc1 << ")" <<  "Sz(" << loc2 << ")";
-	MpoQ<0> Mout(N_sites, 1, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, "");
-	Mout.setLocal({loc1, loc2}, {S.Scomp(SZ), S.Scomp(SZ)});
-	return Mout;
-}
+//MpoQ<Sym::U0> GrandHeisenbergModel::
+//SzSz (size_t loc1, size_t loc2)
+//{
+//	assert(loc1<N_sites and loc2<N_sites);
+//	stringstream ss;
+//	ss << "Sz(" << loc1 << ")" <<  "Sz(" << loc2 << ")";
+//	MpoQ<Sym::U0 > Mout(N_sites, 1, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, "");
+//	Mout.setLocal({loc1, loc2}, {S.Scomp(SZ), S.Scomp(SZ)});
+//	return Mout;
+//}
 
 }
 
