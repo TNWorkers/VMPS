@@ -107,7 +107,11 @@ int main (int argc, char* argv[])
 	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_U0 = Watch_U0.time();
-	
+
+	VMPS::GrandHeisenbergModel::StateXd Hxg_U0;
+	HxV(H_U0,g_U0.state,Hxg_U0,VERB);
+	double E_U0_compressor = g_U0.state.dot(Hxg_U0);
+
 	//--------U(1)---------
 	lout << endl << "--------U(1)---------" << endl << endl;
 	
@@ -120,6 +124,10 @@ int main (int argc, char* argv[])
 	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_U1 = Watch_U1.time();
+
+	VMPS::HeisenbergModel::StateXd Hxg_U1;
+	HxV(H_U1,g_U1.state,Hxg_U1,VERB);
+	double E_U1_compressor = g_U1.state.dot(Hxg_U1);
 	
 	cout << avg(g_U1.state, H_U1.SzSz(0,1), g_U1.state) << endl;
 	VMPS::HeisenbergModel H_U1t(L,2*J,0,0,D,Ly,true); // Bz=0
@@ -156,7 +164,8 @@ int main (int argc, char* argv[])
 	T.add("E/L"); T.add(to_string_prec(g_U0.energy/V)); T.add(to_string_prec(g_U1.energy/V)); T.add(to_string_prec(g_SU2.energy/V)); T.endOfRow();
 	T.add("E/L diff"); T.add(to_string_prec(abs(g_U0.energy-g_SU2.energy)/V)); T.add(to_string_prec(abs(g_U1.energy-g_SU2.energy)/V)); T.add("0");
 	T.endOfRow();
-	
+	T.add("E/L Compressor"); T.add(to_string_prec(E_U0_compressor/V)); T.add(to_string_prec(E_U1_compressor/V)); T.add("-"); T.endOfRow();
+
 	T.add("t/s"); T.add(to_string_prec(t_U0,2)); T.add(to_string_prec(t_U1,2)); T.add(to_string_prec(t_SU2,2)); T.endOfRow();
 	T.add("t gain"); T.add(to_string_prec(t_U0/t_SU2,2)); T.add(to_string_prec(t_U1/t_SU2,2)); T.add("1"); T.endOfRow();
 	
