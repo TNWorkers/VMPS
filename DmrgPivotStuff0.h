@@ -2,7 +2,7 @@
 #define STRAWBERRY_DMRG_HEFF_STUFF_0SITE_WITH_Q
 
 //-----------<definitions>-----------
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 struct PivotVector0Q
 {
 	Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > A;
@@ -15,7 +15,7 @@ struct PivotVector0Q
 //-----------</definitions>-----------
 
 //-----------<vector arithmetics>-----------
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 PivotVector0Q<Nq,Scalar>& PivotVector0Q<Nq,Scalar>::
 operator+= (const PivotVector0Q<Nq,Scalar> &Vrhs)
 {
@@ -25,7 +25,7 @@ operator+= (const PivotVector0Q<Nq,Scalar> &Vrhs)
 	return *this;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 PivotVector0Q<Nq,Scalar>& PivotVector0Q<Nq,Scalar>::
 operator-= (const PivotVector0Q<Nq,Scalar> &Vrhs)
 {
@@ -35,7 +35,7 @@ operator-= (const PivotVector0Q<Nq,Scalar> &Vrhs)
 	return *this;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 template<typename OtherScalar>
 PivotVector0Q<Nq,Scalar>& PivotVector0Q<Nq,Scalar>::
 operator*= (const OtherScalar &alpha)
@@ -47,7 +47,7 @@ operator*= (const OtherScalar &alpha)
 	return *this;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 template<typename OtherScalar>
 PivotVector0Q<Nq,Scalar>& PivotVector0Q<Nq,Scalar>::
 operator/= (const OtherScalar &alpha)
@@ -77,7 +77,7 @@ PivotVector0Q<Nq,Scalar> operator/ (PivotVector0Q<Nq,Scalar> V, const OtherScala
 	return V /= alpha;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 PivotVector0Q<Nq,Scalar> operator+ (const PivotVector0Q<Nq,Scalar> &V1, const PivotVector0Q<Nq,Scalar> &V2)
 {
 	PivotVector0Q<Nq,Scalar> Vout = V1;
@@ -85,7 +85,7 @@ PivotVector0Q<Nq,Scalar> operator+ (const PivotVector0Q<Nq,Scalar> &V1, const Pi
 	return Vout;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 PivotVector0Q<Nq,Scalar> operator- (const PivotVector0Q<Nq,Scalar> &V1, const PivotVector0Q<Nq,Scalar> &V2)
 {
 	PivotVector0Q<Nq,Scalar> Vout = V1;
@@ -155,7 +155,7 @@ void HxV (const PivotMatrixQ<Nq,Scalar,MpoScalar> &H, PivotVector0Q<Nq,Scalar> &
 //-----------</matrix*vector>-----------
 
 //-----------<dot & vector norms>-----------
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 Scalar dot (const PivotVector0Q<Nq,Scalar> &V1, const PivotVector0Q<Nq,Scalar> &V2)
 {
 	Scalar res = 0.;
@@ -167,7 +167,7 @@ Scalar dot (const PivotVector0Q<Nq,Scalar> &V1, const PivotVector0Q<Nq,Scalar> &
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 double squaredNorm (const PivotVector0Q<Nq,Scalar> &V)
 {
 	double res = 0.;
@@ -178,19 +178,19 @@ double squaredNorm (const PivotVector0Q<Nq,Scalar> &V)
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 inline double norm (const PivotVector0Q<Nq,Scalar> &V)
 {
 	return sqrt(squaredNorm(V));
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 inline void normalize (PivotVector0Q<Nq,Scalar> &V)
 {
 	V /= norm(V);
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 double infNorm (const PivotVector0Q<Nq,Scalar> &V1, const PivotVector0Q<Nq,Scalar> &V2)
 {
 	double res = 0.;
@@ -204,7 +204,7 @@ double infNorm (const PivotVector0Q<Nq,Scalar> &V1, const PivotVector0Q<Nq,Scala
 //-----------</dot & vector norms>-----------
 
 //-----------<miscellaneous>-----------
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 void swap (PivotVector0Q<Nq,Scalar> &V1, PivotVector0Q<Nq,Scalar> &V2)
 {
 	for (size_t q=0; q<V1.A.dim; ++q)
@@ -215,7 +215,7 @@ void swap (PivotVector0Q<Nq,Scalar> &V1, PivotVector0Q<Nq,Scalar> &V2)
 
 #include "RandomVector.h"
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, size_t Nq, typename Scalar>
 struct GaussianRandomVector<PivotVector0Q<Nq,Scalar>,Scalar>
 {
 	static void fill (size_t N, PivotVector0Q<Nq,Scalar> &Vout)

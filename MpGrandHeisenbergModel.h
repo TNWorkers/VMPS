@@ -31,6 +31,8 @@ public:
 	typedef MpoQ<Sym::U0>                                  Operator;
 	///@}
 	
+	static const vector<qarray<0> > qloc (size_t N_legs=1, size_t D=2);
+	
 	MpoQ<Sym::U0> SzSz (size_t loc1, size_t loc2);
 	MpoQ<Sym::U0> Sz   (size_t loc);
 	
@@ -42,11 +44,17 @@ private:
 	SpinBase<Symmetry> S;
 };
 
+const vector<qarray<0> > GrandHeisenbergModel::
+qloc (size_t N_legs, size_t D)
+{
+	vector<qarray<0> > vout(pow(D,N_legs),qarray<0>{});
+	return vout;
+};
+
 GrandHeisenbergModel::
 GrandHeisenbergModel (int Lx_input, double Jxy_input, double Jz_input, double Bz_input, double Bx_input, int Ly_input, bool CALC_SQUARE, size_t D_input)
-	:MpoQ<Sym::U0> (Lx_input, Ly_input, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)),
-					vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, ""),
-	Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input), D(D_input)
+:MpoQ<Sym::U0> (Lx_input, Ly_input, GrandHeisenbergModel::qloc(Ly_input,D_input), vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), {}, labeldummy, ""),
+Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input), D(D_input)
 {
 	if (Jz==numeric_limits<double>::infinity()) {Jz=Jxy;} // default: Jxy=Jz
 	assert(Jxy != 0. or Jz != 0.);

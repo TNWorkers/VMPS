@@ -42,6 +42,8 @@ Logger lout;
 #include "MpGrandHeisenbergModel.h"
 //#include "MpsQCompressor.h"
 
+//#include "TDVPPropagator.h"
+
 #include "models/MpHeisenbergSU2.h"
 
 template<typename Scalar>
@@ -58,6 +60,7 @@ double alpha;
 double t_U0, t_U1, t_SU2;
 int Dinit, Dlimit, Imin, Imax;
 double tol_eigval, tol_state;
+double dt;
 DMRG::VERBOSITY::OPTION VERB;
 
 int main (int argc, char* argv[])
@@ -72,6 +75,7 @@ int main (int argc, char* argv[])
 	S = abs(M)+1;
 	alpha = args.get<double>("alpha",1.);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
+	dt = 0.2;
 	
 	Dinit  = args.get<int>("Dmin",2);
 	Dlimit = args.get<int>("Dmax",100);
@@ -115,6 +119,11 @@ int main (int argc, char* argv[])
 	
 	t_U1 = Watch_U1.time();
 	
+//	VMPS::HeisenbergModel H_U1t(L,2*J,2*J,0,D,Ly,true); // Bz=0
+//	MODEL::StateXcd Psi = g_U1.state.cast<complex<double> >();
+//	TDVPPropagator<VMPS::HeisenbergModel,1,double,complex<double>,MODEL::StateXcd> TDVP(H_U1t,Psi);
+//	TDVP.t_step(Hf,Psi, -1.i*dt, 1,1e-8);
+	
 	//--------SU(2)---------
 	lout << endl << "--------SU(2)---------" << endl << endl;
 	
@@ -127,6 +136,8 @@ int main (int argc, char* argv[])
 	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_SU2 = Watch_SU2.time();
+	
+//	cout << avg(g_SU2.state, H_SU2.SSdag(0,1), g_SU2.state) << endl;
 	
 	//--------output---------
 	
