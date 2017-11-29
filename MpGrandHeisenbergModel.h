@@ -18,8 +18,8 @@ typedef Sym::U0 Symmetry;
 
 public:
 	
-	GrandHeisenbergModel (int L_input, double Jxy_input=-1., double Jz_input=numeric_limits<double>::infinity(), 
-	                      double Bz_input=0., double Bx_input=0., bool CALC_SQUARE=true, size_t D_input=2);
+	GrandHeisenbergModel (int Lx_input, double Jxy_input=-1., double Jz_input=numeric_limits<double>::infinity(), 
+	                      double Bz_input=0., double Bx_input=0., int Ly_input=1, bool CALC_SQUARE=true, size_t D_input=2);
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
@@ -31,27 +31,28 @@ public:
 	typedef MpoQ<Sym::U0>                                  Operator;
 	///@}
 	
-//	MpoQ<Sym::U0> SzSz (size_t loc1, size_t loc2);
-//	MpoQ<Sym::U0> Sz   (size_t loc);
+	MpoQ<Sym::U0> SzSz (size_t loc1, size_t loc2);
+	MpoQ<Sym::U0> Sz   (size_t loc);
 	
 private:
 	
 	double Jxy, Jz;
 	double Bz, Bx;
 	size_t D;
-	SpinBase S;
+	SpinBase<Symmetry> S;
 };
 
 GrandHeisenbergModel::
-GrandHeisenbergModel (int L_input, double Jxy_input, double Jz_input, double Bz_input, double Bx_input, bool CALC_SQUARE, size_t D_input)
-	:MpoQ<Sym::U0> (L_input, 1, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, ""),
+GrandHeisenbergModel (int Lx_input, double Jxy_input, double Jz_input, double Bz_input, double Bx_input, int Ly_input, bool CALC_SQUARE, size_t D_input)
+	:MpoQ<Sym::U0> (Lx_input, Ly_input, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)),
+					vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, ""),
 	Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input), D(D_input)
 {
 	if (Jz==numeric_limits<double>::infinity()) {Jz=Jxy;} // default: Jxy=Jz
 	assert(Jxy != 0. or Jz != 0.);
 	this->label = HeisenbergModel::create_label(D,Jxy,Jz,0.,Bz,Bx);
 	
-	S = SpinBase(1,D);
+	S = SpinBase<Symmetry>(N_legs,D);
 	HamiltonianTermsXd<Symmetry> Terms = HeisenbergModel::set_operators(S, Jxy,Jz,Bz,Bx);
 
 	SuperMatrix<Symmetry,double> G = ::Generator(Terms);
@@ -69,27 +70,29 @@ GrandHeisenbergModel (int L_input, double Jxy_input, double Jz_input, double Bz_
 	}
 }
 
-//MpoQ<Sym::U0> GrandHeisenbergModel::
-//Sz (size_t loc)
-//{
-//	assert(loc<N_sites);
-//	stringstream ss;
-//	ss << "Sz(" << loc << ")";
-//	MpoQ<Sym::U0 > Mout(N_sites, 1, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, "");
-//	Mout.setLocal(loc, S.Scomp(SZ));
-//	return Mout;
-//}
+MpoQ<Sym::U0> GrandHeisenbergModel::
+Sz (size_t loc)
+{
+	assert(loc<N_sites);
+	stringstream ss;
+	ss << "Sz(" << loc << ")";
+	MpoQ<Sym::U0 > Mout(N_sites, N_legs, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)),
+						{}, labeldummy, "");
+	Mout.setLocal(loc, S.Scomp(SZ));
+	return Mout;
+}
 
-//MpoQ<Sym::U0> GrandHeisenbergModel::
-//SzSz (size_t loc1, size_t loc2)
-//{
-//	assert(loc1<N_sites and loc2<N_sites);
-//	stringstream ss;
-//	ss << "Sz(" << loc1 << ")" <<  "Sz(" << loc2 << ")";
-//	MpoQ<Sym::U0 > Mout(N_sites, 1, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), {}, labeldummy, "");
-//	Mout.setLocal({loc1, loc2}, {S.Scomp(SZ), S.Scomp(SZ)});
-//	return Mout;
-//}
+MpoQ<Sym::U0> GrandHeisenbergModel::
+SzSz (size_t loc1, size_t loc2)
+{
+	assert(loc1<N_sites and loc2<N_sites);
+	stringstream ss;
+	ss << "Sz(" << loc1 << ")" <<  "Sz(" << loc2 << ")";
+	MpoQ<Sym::U0 > Mout(N_sites, N_legs, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)),
+						{}, labeldummy, "");
+	Mout.setLocal({loc1, loc2}, {S.Scomp(SZ), S.Scomp(SZ)});
+	return Mout;
+}
 
 }
 

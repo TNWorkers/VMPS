@@ -417,6 +417,13 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, qar
 			}
 			lout << endl;
 		}
+
+		// For non-abelian symmetries, the fluctuations are not working correctly, so that they have to be turned off to allow convergence.
+		// 8 is probably a good value for all "easy" models... if the convergence is not good, enhance this value.
+		if constexpr (Symmetry::NON_ABELIAN)
+			{
+				if(N_halfsweeps > 8) { Vout.state.alpha_rsvd = 0.; }
+			}
 		
 		#ifdef USE_HDF5_STORAGE
 		if (savePeriod != 0 and N_halfsweeps%savePeriod == 0)

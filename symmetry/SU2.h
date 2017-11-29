@@ -29,6 +29,7 @@ public:
 	static constexpr std::size_t Nq=1;
 	static constexpr bool HAS_CGC = false;
 	static constexpr bool NON_ABELIAN = true;
+	static constexpr bool IS_TRIVIAL = false;
 
 	// typedef std::array<int,1> qType;
 	typedef qarray<Nq> qType;

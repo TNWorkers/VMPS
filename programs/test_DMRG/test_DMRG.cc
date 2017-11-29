@@ -27,7 +27,7 @@ Logger lout;
 #include <Eigen/Eigen>
 
 #include "ArgParser.h"
-#include "LanczosWrappers.h"
+// #include "LanczosWrappers.h"
 #include "StringStuff.h"
 #include "PolychromaticConsole.h"
 #include "Stopwatch.h"
@@ -39,7 +39,7 @@ Logger lout;
 
 #include "DmrgSolverQ.h"
 #include "MpHeisenbergModel.h"
-//#include "MpGrandHeisenbergModel.h"
+#include "MpGrandHeisenbergModel.h"
 //#include "MpsQCompressor.h"
 
 #include "models/MpHeisenbergSU2.h"
@@ -90,16 +90,17 @@ int main (int argc, char* argv[])
 	#endif
 	
 	//--------U(0)---------
-//	lout << endl << "--------U(0)---------" << endl << endl;
+	lout << endl << "--------U(0)---------" << endl << endl;
+
+	Stopwatch<> Watch_U0;
+	VMPS::GrandHeisenbergModel H_U0(L,J,J,0,0,Ly,true,D); // Bz=0, Bx=0
+	lout << H_U0.info() << endl;
+	Eigenstate<VMPS::GrandHeisenbergModel::StateXd> g_U0;
 	
-//	VMPS::GrandHeisenbergModel H_U0(L,J,J,0,0,true,D); // Bz=0, Bx=0
-//	lout << H_U0.info() << endl;
-//	Eigenstate<VMPS::GrandHeisenbergModel::StateXd> g_U0;
-//	
-//	VMPS::GrandHeisenbergModel::Solver DMRG_U0(VERB);
-//	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 1e-7,1e-6, 20,500, 50,2, alpha);
-//	
-//	lout << Chronos.info("U(0)") << endl;
+	VMPS::GrandHeisenbergModel::Solver DMRG_U0(VERB);
+	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	
+	t_U0 = Watch_U0.time();
 	
 	//--------U(1)---------
 	lout << endl << "--------U(1)---------" << endl << endl;
@@ -134,14 +135,17 @@ int main (int argc, char* argv[])
 	double V = L*Ly;
 	T.add(""); T.add("U(0)"); T.add("U(1)"); T.add("SU(2)"); T.endOfRow();
 	
-	T.add("E/L"); T.add("-"); T.add(to_string_prec(g_U1.energy/V)); T.add(to_string_prec(g_SU2.energy/V)); T.endOfRow();
-	T.add("E/L diff"); T.add("-"); T.add(to_string_prec(abs(g_U1.energy-g_SU2.energy)/V)); T.add("0"); T.endOfRow();
+	T.add("E/L"); T.add(to_string_prec(g_U0.energy/V)); T.add(to_string_prec(g_U1.energy/V)); T.add(to_string_prec(g_SU2.energy/V)); T.endOfRow();
+	T.add("E/L diff"); T.add(to_string_prec(abs(g_U0.energy-g_SU2.energy)/V)); T.add(to_string_prec(abs(g_U1.energy-g_SU2.energy)/V)); T.add("0");
+	T.endOfRow();
 	
-	T.add("t/s"); T.add("-"); T.add(to_string_prec(t_U1,2)); T.add(to_string_prec(t_SU2,2)); T.endOfRow();
-	T.add("t gain"); T.add("-"); T.add(to_string_prec(t_U1/t_SU2,2)); T.add("1"); T.endOfRow();
+	T.add("t/s"); T.add(to_string_prec(t_U0,2)); T.add(to_string_prec(t_U1,2)); T.add(to_string_prec(t_SU2,2)); T.endOfRow();
+	T.add("t gain"); T.add(to_string_prec(t_U0/t_SU2,2)); T.add(to_string_prec(t_U1/t_SU2,2)); T.add("1"); T.endOfRow();
 	
-	T.add("Dmax"); T.add("-"); T.add(to_string(g_U1.state.calc_Dmax())); T.add(to_string(g_SU2.state.calc_Dmax())); T.endOfRow();
-	T.add("Mmax"); T.add("-"); T.add(to_string(g_U1.state.calc_Mmax())); T.add(to_string(g_SU2.state.calc_Mmax())); T.endOfRow();
+	T.add("Dmax"); T.add(to_string(g_U0.state.calc_Dmax())); T.add(to_string(g_U1.state.calc_Dmax())); T.add(to_string(g_SU2.state.calc_Dmax()));
+	T.endOfRow();
+	T.add("Mmax"); T.add(to_string(g_U0.state.calc_Dmax())); T.add(to_string(g_U1.state.calc_Mmax())); T.add(to_string(g_SU2.state.calc_Mmax()));
+	T.endOfRow();
 	
 	lout << endl << T;
 }

@@ -59,10 +59,12 @@ public:
 //	\right)\f$.
 //	The fourth row and column are missing when \f$J_{xy}=0\f$. Uses the appropriate spin operators for a given \p S.*/
 //	static SuperMatrix<double> Generator (double Jxy, double Jz, double Bz, double Bx, size_t D=2);
-	static HamiltonianTermsXd<Symmetry> set_operators (const SpinBase &B, double Jxy, double Jz, double Bz=0., double Bx=0., 
+	template<typename Symmetry_>
+	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, double Jxy, double Jz, double Bz=0., double Bx=0., 
 	                                         double Jprime=0., double JxyIntra=0., double JzIntra=0., double K=0.);
-	
-	static HamiltonianTermsXd<Symmetry> set_operators (const SpinBase &B, const MatrixXd &JxyInter, const MatrixXd &JzInter, 
+
+	template<typename Symmetry_>
+	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const MatrixXd &JxyInter, const MatrixXd &JzInter, 
 	                                         const VectorXd &Bz, const VectorXd &Bx, 
 	                                         double Jprime=0., double JxyIntra=0., double JzIntra=0., double K=0.);
 	
@@ -133,7 +135,7 @@ protected:
 	double K=0.;
 	size_t D=2;
 	
-	SpinBase B;
+	SpinBase<Symmetry> B;
 };
 
 const std::array<string,1> HeisenbergModel::maglabel{"M"};
@@ -173,8 +175,9 @@ qOp ()
 	return vout;
 }
 
-HamiltonianTermsXd<Sym::U1<double> > HeisenbergModel::
-set_operators (const SpinBase &B, double Jxy, double Jz, double Bz, double Bx, double Jprime, double JxyIntra, double JzIntra, double K)
+template<typename Symmetry_>
+HamiltonianTermsXd<Symmetry_> HeisenbergModel::
+set_operators (const SpinBase<Symmetry_> &B, double Jxy, double Jz, double Bz, double Bx, double Jprime, double JxyIntra, double JzIntra, double K)
 {
 	JxyIntra = Jxy; JzIntra = Jz;
 	MatrixXd JxyInter(B.orbitals(),B.orbitals()); JxyInter.setIdentity(); JxyInter *= Jxy;
@@ -184,8 +187,9 @@ set_operators (const SpinBase &B, double Jxy, double Jz, double Bz, double Bx, d
 	return set_operators(B, JxyInter, JzInter, Bzvec, Bxvec, Jprime, JxyIntra, JzIntra, K);
 }
 
-HamiltonianTermsXd<Sym::U1<double> > HeisenbergModel::
-set_operators (const SpinBase &B, const MatrixXd &JxyInter, const MatrixXd &JzInter, const VectorXd &Bz, const VectorXd &Bx, 
+template<typename Symmetry_>
+HamiltonianTermsXd<Symmetry_> HeisenbergModel::
+set_operators (const SpinBase<Symmetry_> &B, const MatrixXd &JxyInter, const MatrixXd &JzInter, const VectorXd &Bz, const VectorXd &Bx, 
                double Jprime, double JxyIntra, double JzIntra, double K)
 {
 	assert(B.orbitals() == JxyInter.rows() and 
@@ -193,7 +197,7 @@ set_operators (const SpinBase &B, const MatrixXd &JxyInter, const MatrixXd &JzIn
 	       B.orbitals() == JzInter.rows()  and 
 	       B.orbitals() == JzInter.cols());
 	
-	HamiltonianTermsXd<Symmetry> Terms;
+	HamiltonianTermsXd<Symmetry_> Terms;
 	
 	for (int leg1=0; leg1<B.orbitals(); ++leg1)
 	for (int leg2=0; leg2<B.orbitals(); ++leg2)
@@ -211,7 +215,7 @@ set_operators (const SpinBase &B, const MatrixXd &JxyInter, const MatrixXd &JzIn
 	
 	if (Jprime != 0.)
 	{
-		OperatorType Id(Matrix<double,Dynamic,Dynamic>::Identity(B.get_D(),B.get_D()).sparseView(),Symmetry::qvacuum());
+		SiteOperator<Symmetry_,SparseMatrix<double> > Id(Matrix<double,Dynamic,Dynamic>::Identity(B.get_D(),B.get_D()).sparseView(),Symmetry_::qvacuum());
 		Terms.nextn.push_back(make_tuple(-0.5*Jprime, B.Scomp(SP), B.Scomp(SM), Id));
 		Terms.nextn.push_back(make_tuple(-0.5*Jprime, B.Scomp(SM), B.Scomp(SP), Id));
 		Terms.nextn.push_back(make_tuple(-Jprime,     B.Scomp(SZ), B.Scomp(SZ), Id));
@@ -230,7 +234,7 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 	if (Jz==numeric_limits<double>::infinity()) {Jz=Jxy;} // default: Jxy=Jz
 	assert(Jxy != 0. or Jz != 0.);
 	this->label = create_label(D,Jxy,Jz,0,Bz,0);
-	B = SpinBase(N_legs,D);
+	B = SpinBase<Symmetry>(N_legs,D);
 	HamiltonianTermsXd<Symmetry> Terms = set_operators(B, Jxy,Jz,Bz,0.);
 	SuperMatrix<Symmetry,double> G = Generator(Terms);
 	this->Daux = Terms.auxdim();
@@ -260,7 +264,7 @@ Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 {
 	this->label = create_label(D,Jxy,Jz,Jprime,Bz,0.);
 	
-	B = SpinBase(N_legs,D);
+	B = SpinBase<Symmetry>(N_legs,D);
 	HamiltonianTermsXd<Symmetry> Terms;
 	if (Ly_input == 1)
 	{
