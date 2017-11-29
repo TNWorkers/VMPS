@@ -18,7 +18,7 @@ struct PivotMatrixQ
 	
 	vector<std::array<size_t,2> >          qlhs;
 	vector<vector<std::array<size_t,5> > > qrhs;
-	vector<vector<double> > factor_cgcs;
+	vector<vector<Scalar> > factor_cgcs;
 
 	vector<qarray<Nq> > qloc;
 	

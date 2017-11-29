@@ -38,6 +38,7 @@ public:
 	inline static int degeneracy( const qType& q ) { return 1; }
 
 	static std::vector<qType> reduceSilent( const qType& ql, const qType& qr);
+	static std::vector<qType> reduceSilent( const qType& ql, const qType& qm, const qType& qr);
 	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const qType& qr);
 
 	inline static Scalar coeff_unity();
@@ -85,6 +86,15 @@ reduceSilent( const U1<Scalar>::qType& ql, const U1<Scalar>::qType& qr )
 {
 	std::vector<typename U1<Scalar>::qType> vout;
 	vout.push_back({ql[0]+qr[0]});
+	return vout;
+}
+
+template<typename Scalar>
+std::vector<typename U1<Scalar>::qType> U1<Scalar>::
+reduceSilent( const U1<Scalar>::qType& ql, const U1<Scalar>::qType& qm, const U1<Scalar>::qType& qr )
+{
+	std::vector<typename U1<Scalar>::qType> vout;
+	vout.push_back({ql[0]+qm[0]+qr[0]});
 	return vout;
 }
 

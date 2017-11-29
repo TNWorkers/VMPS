@@ -148,43 +148,45 @@ void HxV (const PivotMatrix2Q<Symmetry,Scalar,MpoScalar> &H, const PivotVector2Q
 			
 			for (size_t qL=0; qL<H.L.dim; ++qL)
 			{
-				tuple<qarray3<Symmetry::Nq>,size_t,size_t> ix;
-				bool FOUND_MATCH = AAWWAA(H.L.in(qL), H.L.out(qL), H.L.mid(qL), s1, s2, H.qloc12, s3, s4, H.qloc34, Vout.A, Vin.A, ix);
+				vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ixs;
+				bool FOUND_MATCH = AAWWAA(H.L.in(qL), H.L.out(qL), H.L.mid(qL), 
+				                          s1, s2, H.qloc12, k12, H.qOp12, 
+				                          s3, s4, H.qloc34, k34, H.qOp34,
+				                          Vout.A, Vin.A, ixs);
 				
 				if (FOUND_MATCH)
 				{
-					auto qR = H.R.dict.find(get<0>(ix));
-					size_t qA13 = get<1>(ix);
-					size_t qA24 = get<2>(ix);
-					
-					if (qR != H.R.dict.end())
+					for (const auto& ix:ixs)
 					{
-						for (int r12=0; r12<H.W12[s1][s2][k12].outerSize(); ++r12)
-						for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.W12[s1][s2][k12],r12); iW12; ++iW12)
-						for (int r34=0; r34<H.W34[s3][s4][k34].outerSize(); ++r34)
-						for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H.W34[s3][s4][k34],r34); iW34; ++iW34)
+						auto qR = H.R.dict.find(get<0>(ix));
+						size_t qA13 = get<1>(ix);
+						size_t qA24 = get<2>(ix);
+						
+						if (qR != H.R.dict.end())
 						{
-							Matrix<Scalar,Dynamic,Dynamic> Mtmp;
-							MpoScalar Wfactor = iW12.value() * iW34.value();
-							
-							if (H.L.block[qL][iW12.row()][0].rows() != 0 and
-								H.R.block[qR->second][iW34.col()][0].rows() !=0 and
-								iW12.col() == iW34.row())
+							for (int r12=0; r12<H.W12[s1][s2][k12].outerSize(); ++r12)
+							for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.W12[s1][s2][k12],r12); iW12; ++iW12)
+							for (int r34=0; r34<H.W34[s3][s4][k34].outerSize(); ++r34)
+							for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H.W34[s3][s4][k34],r34); iW34; ++iW34)
 							{
-								optimal_multiply(Wfactor, 
-								                 H.L.block[qL][iW12.row()][0],
-								                 Vin.A[s2][s4].block[qA24],
-								                 H.R.block[qR->second][iW34.col()][0],
-								                 Mtmp);
+								Matrix<Scalar,Dynamic,Dynamic> Mtmp;
+								MpoScalar Wfactor = iW12.value() * iW34.value();
 								
-								cout << "L" << endl << H.L.block[qL][iW12.row()][0] << endl << endl;
-								cout << "A" << endl << Vin.A[s2][s4].block[qA24] << endl << endl;
-								cout << "R" << endl << H.R.block[qR->second][iW34.col()][0] << endl << endl;
-							}
-							
-							if (Mtmp.rows() != 0)
-							{
-								Vout.A[s1][s3].block[qA13] += Mtmp;
+								if (H.L.block[qL][iW12.row()][0].rows() != 0 and
+									H.R.block[qR->second][iW34.col()][0].rows() !=0 and
+									iW12.col() == iW34.row())
+								{
+									optimal_multiply(Wfactor, 
+										             H.L.block[qL][iW12.row()][0],
+										             Vin.A[s2][s4].block[qA24],
+										             H.R.block[qR->second][iW34.col()][0],
+										             Mtmp);
+								}
+								
+								if (Mtmp.rows() != 0)
+								{
+									Vout.A[s1][s3].block[qA13] += Mtmp;
+								}
 							}
 						}
 					}
@@ -229,7 +231,8 @@ double squaredNorm (const PivotVector2Q<Symmetry,Scalar> &V)
 //		res += V.A[s1][s3].block[q].colwise().squaredNorm().sum();
 //	}
 //	return res;
-	double res = isReal(dot(V,V));
+	
+	return isReal(dot(V,V));
 }
 
 template<typename Symmetry, typename Scalar>

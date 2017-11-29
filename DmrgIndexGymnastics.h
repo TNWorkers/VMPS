@@ -61,30 +61,63 @@ bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::
 template<typename Symmetry, typename MatrixType>
 bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid, 
              size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc12, 
+             size_t k12, vector<qarray<Symmetry::Nq> > qOp12,
              size_t s3, size_t s4, vector<qarray<Symmetry::Nq> > qloc34, 
+             size_t k34, vector<qarray<Symmetry::Nq> > qOp34,
              const vector<vector<Biped<Symmetry,MatrixType> > > &AAbra, 
              const vector<vector<Biped<Symmetry,MatrixType> > > &AAket, 
-             tuple<qarray3<Symmetry::Nq>,size_t,size_t> &result)
+             vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > &result)
 {
-	qarray<Symmetry::Nq> qRout = Lin + qloc12[s1] + qloc34[s3];
-	qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
-	auto q13 = AAbra[s1][s3].dict.find(cmp1);
+//	qarray<Symmetry::Nq> qRout = Lin + qloc12[s1] + qloc34[s3];
+//	qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
+//	auto q13 = AAbra[s1][s3].dict.find(cmp1);
+//	
+//	if (q13 != AAbra[s1][s3].dict.end())
+//	{
+//		qarray<Symmetry::Nq> qRin = Lout + qloc12[s2] + qloc34[s4];
+//		qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
+//		auto q24 = AAket[s2][s4].dict.find(cmp2);
+//		
+//		if (q24 != AAket[s2][s4].dict.end())
+//		{
+//			qarray<Symmetry::Nq> qRmid = Lmid + qloc12[s1] + qloc34[s3] - qloc12[s2] - qloc34[s4];
+//			
+//			result = make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q13->second, q24->second);
+//			return true;
+//		}
+//	}
+//	return false;
 	
-	if (q13 != AAbra[s1][s3].dict.end())
+	bool out = false;
+	result.clear();
+	
+	auto qRouts = Symmetry::reduceSilent(Lin,qloc12[s1],qloc34[s3]);
+	for (const auto& qRout : qRouts)
 	{
-		qarray<Symmetry::Nq> qRin = Lout + qloc12[s2] + qloc34[s4];
-		qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
-		auto q24 = AAket[s2][s4].dict.find(cmp2);
+		qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
+		auto q13 = AAbra[s1][s3].dict.find(cmp1);
 		
-		if (q24 != AAket[s2][s4].dict.end())
+		if (q13 != AAbra[s1][s3].dict.end())
 		{
-			qarray<Symmetry::Nq> qRmid = Lmid + qloc12[s1] + qloc34[s3] - qloc12[s2] - qloc34[s4];
-			
-			result = make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q13->second, q24->second);
-			return true;
+			auto qRins = Symmetry::reduceSilent(Lout,qloc12[s2],qloc34[s4]);
+			for (const auto& qRin : qRins)
+			{
+				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
+				auto q24 = AAket[s2][s4].dict.find(cmp2);
+				
+				if (q24 != AAket[s2][s4].dict.end())
+				{
+					auto qRmids = Symmetry::reduceSilent(Lmid,qOp12[k12],qOp34[k34]);
+					for (const auto& qRmid : qRmids)
+					{
+						result.push_back(make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q13->second, q24->second));
+						out = true;
+					}
+				}
+			}
 		}
 	}
-	return false;
+	return out;
 }
 
 /**Calculates the matching right indices when contracting a left transfer matrix with two MpsQ and two MpoQ.
@@ -203,13 +236,13 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 							 const vector<qarray<Symmetry::Nq> > &qOp, 
                              vector<std::array<size_t,2> > &qlhs, 
                              vector<vector<std::array<size_t,5> > > &qrhs,
-							 vector<vector<double> > &factor_cgcs)
+							 vector<vector<Scalar> > &factor_cgcs)
 {
 //	Heff.W = W;
 	
-	unordered_map<std::array<size_t,2>, std::pair<vector<std::array<size_t,5> >, vector<MpoScalar> > > lookup;
+	unordered_map<std::array<size_t,2>, std::pair<vector<std::array<size_t,5> >, vector<Scalar> > > lookup;
 	std::array<typename Symmetry::qType,3> qCheck;
-	MpoScalar factor_cgc;
+	Scalar factor_cgc;
 
 	#ifndef DMRG_DONT_USE_OPENMP
     #ifndef __INTEL_COMPILER
@@ -258,7 +291,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 								}
 							else
 							{
-									factor_cgc = 1.;
+									factor_cgc = static_cast<Scalar>(1.);
 							}
 							if (std::abs(factor_cgc) < ::mynumeric_limits<double>::epsilon()) {continue;}
 
