@@ -62,7 +62,7 @@ template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend cl
 // template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
 template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
 template<typename Symmetry_, typename S1, typename S2> friend class MpsQCompressor;
-template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
+template<typename H, typename Symmetry_, typename S1, typename S2, typename V> friend class TDVPPropagator;
 template<typename Symmetry_, typename S_> friend class MpoQ;
 template<typename Symmetry_, typename S1, typename S2> friend void HxV (const MpoQ<Symmetry_,S1> &H, const MpsQ<Symmetry_,S2> &Vin,
 																		MpsQ<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);

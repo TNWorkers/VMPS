@@ -39,7 +39,7 @@ typedef typename Symmetry::qType qType;
 template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
 // template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
 template<typename Symmetry_, typename S1, typename S2> friend class MpsQCompressor;
-template<typename H, size_t Nq_, typename S1, typename S2, typename V> friend class TDVPPropagator;
+template<typename H, typename Symmetry_, typename S1, typename S2, typename V> friend class TDVPPropagator;
 template<typename Symmetry_, typename S1, typename S2> friend void HxV (const MpoQ<Symmetry_,S1> &H, const MpsQ<Symmetry_,S2> &Vin, MpsQ<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
 template<typename Symmetry_, typename S1, typename S2> friend void OxV (const MpoQ<Symmetry_,S1> &H, const MpsQ<Symmetry_,S2> &Vin, MpsQ<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 template<typename Symmetry_, typename S_> friend class MpsQ; // in order to exchange data between real & complex MpsQ

@@ -42,7 +42,9 @@ Logger lout;
 #include "MpGrandHeisenbergModel.h"
 //#include "MpsQCompressor.h"
 
-//#include "TDVPPropagator.h"
+#include "DmrgPivotStuff0.h"
+#include "DmrgPivotStuff2Q.h"
+#include "TDVPPropagator.h"
 
 #include "models/MpHeisenbergSU2.h"
 
@@ -119,10 +121,15 @@ int main (int argc, char* argv[])
 	
 	t_U1 = Watch_U1.time();
 	
-//	VMPS::HeisenbergModel H_U1t(L,2*J,2*J,0,D,Ly,true); // Bz=0
-//	MODEL::StateXcd Psi = g_U1.state.cast<complex<double> >();
-//	TDVPPropagator<VMPS::HeisenbergModel,1,double,complex<double>,MODEL::StateXcd> TDVP(H_U1t,Psi);
-//	TDVP.t_step(Hf,Psi, -1.i*dt, 1,1e-8);
+	cout << avg(g_U1.state, H_U1.SzSz(0,1), g_U1.state) << endl;
+	VMPS::HeisenbergModel H_U1t(L,2*J,0,0,D,Ly,true); // Bz=0
+	VMPS::HeisenbergModel::StateXcd Psi = g_U1.state.cast<complex<double> >();
+	TDVPPropagator<VMPS::HeisenbergModel,Sym::U1<double>,double,complex<double>,VMPS::HeisenbergModel::StateXcd> TDVP(H_U1t,Psi);
+	for (int i=0; i<1; ++i)
+	{
+		TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
+		lout << avg(Psi, H_U1.SzSz(0,1), Psi) << endl;
+	}
 	
 	//--------SU(2)---------
 	lout << endl << "--------SU(2)---------" << endl << endl;

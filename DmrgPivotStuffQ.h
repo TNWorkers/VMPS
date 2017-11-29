@@ -18,7 +18,7 @@ struct PivotMatrixQ
 	
 	vector<std::array<size_t,2> >          qlhs;
 	vector<vector<std::array<size_t,5> > > qrhs;
-	vector<vector<Scalar> > factor_cgcs;
+	vector<vector<double> > factor_cgcs;
 
 	vector<qarray<Nq> > qloc;
 	
@@ -320,7 +320,7 @@ Scalar dot (const PivotVectorQ<Symmetry,Scalar> &V1, const PivotVectorQ<Symmetry
 template<typename Symmetry, typename Scalar>
 double squaredNorm (const PivotVectorQ<Symmetry,Scalar> &V)
 {
-	double res = dot(V,V);
+	double res = isReal(dot(V,V));
 	return res;
 }
 

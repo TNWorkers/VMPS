@@ -203,7 +203,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 							 const vector<qarray<Symmetry::Nq> > &qOp, 
                              vector<std::array<size_t,2> > &qlhs, 
                              vector<vector<std::array<size_t,5> > > &qrhs,
-							 vector<vector<Scalar> > &factor_cgcs)
+							 vector<vector<double> > &factor_cgcs)
 {
 //	Heff.W = W;
 	
@@ -260,7 +260,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 							{
 									factor_cgc = 1.;
 							}
-							if (std::abs(factor_cgc) < ::mynumeric_limits<Scalar>::epsilon()) {continue;}
+							if (std::abs(factor_cgc) < ::mynumeric_limits<double>::epsilon()) {continue;}
 
 							std::array<size_t,2> key = {s1, get<1>(ix[n])};
 							std::array<size_t,5> val = {s2, get<2>(ix[n]), qL, qR->second,k};
