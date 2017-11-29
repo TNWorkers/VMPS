@@ -81,7 +81,6 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 			Bnext.clear();
 		}
 	}
-	std::cout << B.print(true,5) << std::endl << std::endl;
 
 	if (B.dim == 1)
 	{

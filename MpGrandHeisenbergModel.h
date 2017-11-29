@@ -14,8 +14,8 @@ H = - J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^
 \note \f$J<0\f$ : antiferromagnetic*/
 class GrandHeisenbergModel : public MpoQ<Sym::U0,double>
 {
-typedef Sym::U0 Symmetry;
-
+	typedef Sym::U0 Symmetry;
+	typedef typename Symmetry::qType qType;
 public:
 	
 	GrandHeisenbergModel (int Lx_input, double Jxy_input=-1., double Jz_input=numeric_limits<double>::infinity(), 
@@ -69,6 +69,10 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input), D(D_input)
 	
 	if (CALC_SQUARE == true)
 	{
+		vector<qType> qOpSq_;
+		qOpSq_.push_back({});
+		vector<vector<qType> > qOpSq(this->N_sites,qOpSq_);
+		this->setOpBasisSq(qOpSq);
 		this->construct(tensor_product(G,G), this->Wsq, this->GvecSq);
 		this->GOT_SQUARE = true;
 	}
