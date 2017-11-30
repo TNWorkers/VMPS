@@ -981,8 +981,7 @@ template<typename Hamiltonian>
 void MpsQ<Symmetry,Scalar>::
 setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 {
-//	outerResize<typename Hamiltonian::qarrayIterator>(config.size(), qloc, accumulate(config.begin(),config.end(),qvacuum<Nq>()));
-	outerResize(config.size(), qloc, accumulate(config.begin(),config.end(),qvacuum<Nq>()));
+	outerResize(config.size(), H.locBasis(), accumulate(config.begin(),config.end(),qvacuum<Nq>()));
 	
 	for (size_t l=0; l<this->N_sites; ++l)
 	for (size_t s=0; s<qloc[l].size(); ++s)

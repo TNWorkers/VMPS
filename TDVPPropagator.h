@@ -61,16 +61,16 @@ double TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
 memory (MEMUNIT memunit) const
 {
 	double res = 0.;
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		res += Heff[l].L.memory(memunit);
-		res += Heff[l].R.memory(memunit);
-		for (size_t s1=0; s1<Heff[l].W.size(); ++s1)
-		for (size_t s2=0; s2<Heff[l].W[s1].size(); ++s2)
-		{
-			res += calc_memory(Heff[l].W[s1][s2],memunit);
-		}
-	}
+//	for (size_t l=0; l<N_sites; ++l)
+//	{
+//		res += Heff[l].L.memory(memunit);
+//		res += Heff[l].R.memory(memunit);
+//		for (size_t s1=0; s1<Heff[l].W.size(); ++s1)
+//		for (size_t s2=0; s2<Heff[l].W[s1].size(); ++s2)
+//		{
+//			res += calc_memory(Heff[l].W[s1][s2],memunit);
+//		}
+//	}
 	return res;
 }
 
@@ -79,13 +79,13 @@ double TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
 overhead (MEMUNIT memunit) const
 {
 	double res = 0.;
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		res += Heff[l].L.overhead(memunit);
-		res += Heff[l].R.overhead(memunit);
-		res += 2. * calc_memory<size_t>(Heff[l].qlhs.size(),memunit);
-		res += 4. * calc_memory<size_t>(Heff[l].qrhs.size(),memunit);
-	}
+//	for (size_t l=0; l<N_sites; ++l)
+//	{
+//		res += Heff[l].L.overhead(memunit);
+//		res += Heff[l].R.overhead(memunit);
+//		res += 2. * calc_memory<size_t>(Heff[l].qlhs.size(),memunit);
+//		res += 4. * calc_memory<size_t>(Heff[l].qrhs.size(),memunit);
+//	}
 	return res;
 }
 

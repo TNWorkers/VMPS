@@ -55,6 +55,21 @@ string to_string_prec (Scalar x, int n=14)
 	return ss.str();
 }
 
+VMPS::HeisenbergModel::StateXcd Neel (const VMPS::HeisenbergModel &H)
+{
+	vector<qarray<1> > Neel_config(H.length());
+	for (int l=0; l<H.length(); l+=2)
+	{
+		Neel_config[l]   = qarray<1>{+1};
+		Neel_config[l+1] = qarray<1>{-1};
+	}
+	
+	VMPS::HeisenbergModel::StateXcd Psi; 
+	Psi.setProductState(H,Neel_config);
+	
+	return Psi;
+}
+
 int L, Ly, M, D, S;
 double J, Jprime;
 double alpha;
@@ -129,23 +144,50 @@ int main (int argc, char* argv[])
 	
 	t_U1 = Watch_U1.time();
 	
+	// compressor
+	
 	VMPS::HeisenbergModel::StateXd Hxg_U1;
 	HxV(H_U1,g_U1.state,Hxg_U1,VERB);
 	double E_U1_compressor = g_U1.state.dot(Hxg_U1);
+	
+	// zipper
 	
 	VMPS::HeisenbergModel::StateXd Oxg_U1;
 	Oxg_U1.eps_svd = 1e-15;
 	OxV(H_U1,g_U1.state,Oxg_U1,DMRG::BROOM::SVD);
 	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
 	
-	cout << avg(g_U1.state, H_U1.SzSz(0,1), g_U1.state) << endl;
-	VMPS::HeisenbergModel H_U1t(L,2*J,0,0,D,Ly,true); // Bz=0
-	VMPS::HeisenbergModel::StateXcd Psi = g_U1.state.cast<complex<double> >();
-	TDVPPropagator<VMPS::HeisenbergModel,Sym::U1<double>,double,complex<double>,VMPS::HeisenbergModel::StateXcd> TDVP(H_U1t,Psi);
-	for (int i=0; i<1; ++i)
+	// dynamics (of Néel state)
+	
+	int Ldyn = 12;
+	vector<double> Jz_list = {0, -1, -2, -4};
+	
+	for (const auto& Jz:Jz_list)
 	{
-		TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
-		lout << avg(Psi, H_U1.SzSz(0,1), Psi) << endl;
+		VMPS::HeisenbergModel H_U1t(Ldyn,J,Jz,0,D,1,true);
+		lout << H_U1t.info() << endl;
+		VMPS::HeisenbergModel::StateXcd Psi = Neel(H_U1t);
+		TDVPPropagator<VMPS::HeisenbergModel,Sym::U1<double>,double,complex<double>,VMPS::HeisenbergModel::StateXcd> TDVP(H_U1t,Psi);
+		
+		double t = 0;
+		ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
+		for (int i=0; i<=static_cast<int>(6./dt); ++i)
+		{
+			double res = 0;
+			for (int l=0; l<Ldyn; ++l)
+			{
+				res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
+			}
+			res /= Ldyn;
+			lout << t << "\t" << res << endl;
+			Filer << t << "\t" << res << endl;
+		
+			TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
+			lout << TDVP.info() << endl;
+			lout << Psi.info() << endl;
+			t += dt;
+		}
+		Filer.close();
 	}
 	
 	//--------SU(2)---------
