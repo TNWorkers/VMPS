@@ -199,15 +199,20 @@ std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
 	return s;
 }
 
-template<typename Symmetry, typename Scalar> using LocalTerms = vector<tuple<Scalar,
-																			 SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> > > >;
-template<typename Symmetry, typename Scalar> using TightTerms = vector<tuple<Scalar,
-																			 SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> >,
-																			 SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> > > >;
-template<typename Symmetry, typename Scalar> using NextnTerms = vector<tuple<double,
-																			 SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> >,
-																			 SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> >,
-																			 SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> > > >;
+template<typename Symmetry, typename Scalar> using LocalTerms = 
+vector<tuple<Scalar,
+       SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> > > >;
+
+template<typename Symmetry, typename Scalar> using TightTerms = 
+vector<tuple<Scalar,
+       SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> >,
+       SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> > > >;
+
+template<typename Symmetry, typename Scalar> using NextnTerms = 
+vector<tuple<double,
+       SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> >,
+       SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> >,
+       SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> > > >;
 
 template<typename Symmetry, typename Scalar>
 struct HamiltonianTerms
@@ -222,6 +227,8 @@ struct HamiltonianTerms
 	NextnTerms<Symmetry,Scalar> nextn;
 	
 	inline size_t auxdim() {return 2+tight.size()+2*nextn.size();}
+	
+	string info;
 };
 
 template<typename Symmetry> using HamiltonianTermsXd = HamiltonianTerms<Symmetry,double> ;

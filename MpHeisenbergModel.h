@@ -6,6 +6,7 @@
 #include "MpoQ.h"
 #include "SpinBase.h"
 #include "DmrgExternalQ.h"
+#include "ParamHandler.h"
 
 namespace VMPS
 {
@@ -24,6 +25,8 @@ typedef SiteOperator<Symmetry,SparseMatrix<double> > OperatorType;
 public:
 	
 	HeisenbergModel() : MpoQ<Symmetry>() {};
+	
+	HeisenbergModel (size_t Lx_input, initializer_list<Param> params, size_t D_input=2, size_t Ly_input=1, bool CALC_SQUARE=true);
 	
 	/**
 	\param Lx_input : chain length
@@ -62,14 +65,14 @@ public:
 	template<typename Symmetry_>
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, double Jxy, double Jz, double Bz=0., double Bx=0., 
 	                                         double Jprime=0., double JxyIntra=0., double JzIntra=0., double K=0.);
-
+	
 	template<typename Symmetry_>
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const MatrixXd &JxyInter, const MatrixXd &JzInter, 
 	                                         const VectorXd &Bz, const VectorXd &Bx, 
 	                                         double Jprime=0., double JxyIntra=0., double JzIntra=0., double K=0.);
 	
-//	HeisenbergModel (size_t Lx_input, double J, double Bz0_input, double K, const vector<std::array<double,3> > &DM_input, 
-//	                 size_t D_input=2, bool CALC_SQUARE=true);
+	template<typename Symmetry_>
+	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P);
 	
 	//---label stuff---
 	///@{
@@ -109,7 +112,7 @@ public:
 	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
 	typedef MpsQ<Symmetry,double>                           StateXd;
 	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<Symmetry,HeisenbergModel,double>           Solver;
+	typedef DmrgSolverQ<Symmetry,HeisenbergModel,double>    Solver;
 	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
 	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
 	typedef MpoQ<Symmetry>                                  Operator;
@@ -130,10 +133,16 @@ public:
 	
 protected:
 	
-	double Jxy=-1., Jz=-1., Bz=0.;
-	double Jprime=0.;
-	double K=0.;
+	double Jxy=0, Jz=0;
+	double Jxyprime=0, Jzprime=0;
+	MatrixXd JxyInter, JzInter;
+	double Bz=0, K=0;
 	size_t D=2;
+	
+	std::map<string,std::any> defaults = 
+	{
+		{"J",0.}, {"Jxy",0.}, {"Jz",0.}, {"D",2ul}, {"Jprime",0.}, {"Jxyprime",0.}, {"Jzprime",0.}, {"Bz",0.}, {"K",0.}
+	};
 	
 	SpinBase<Symmetry> B;
 };
@@ -226,6 +235,215 @@ set_operators (const SpinBase<Symmetry_> &B, const MatrixXd &JxyInter, const Mat
 	return Terms;
 }
 
+template<typename Symmetry_>
+HamiltonianTermsXd<Symmetry_> HeisenbergModel::
+set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P)
+{
+	HamiltonianTermsXd<Symmetry_> Terms;
+	
+	frac S = frac(B.get_D()-1,2);
+	stringstream ss;
+	IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
+	
+	// J-terms
+	
+	double J   = P.get_default<double>("J");
+	double Jxy = P.get_default<double>("Jxy");
+	double Jz  = P.get_default<double>("Jz");
+	
+	MatrixXd Jpara  (B.orbitals(),B.orbitals()); Jpara.setZero();
+	MatrixXd Jxypara(B.orbitals(),B.orbitals()); Jxypara.setZero();
+	MatrixXd Jzpara (B.orbitals(),B.orbitals()); Jzpara.setZero();
+	
+	if (P.HAS("J"))
+	{
+		J = P.get<double>("J");
+		Jxypara.diagonal().setConstant(J);
+		Jzpara.diagonal().setConstant(J);
+		ss << "Heisenberg(S=" << S << ",J=" << J;
+	}
+	else if (P.HAS("Jxy") or P.HAS("Jz"))
+	{
+		if (P.HAS("Jxy"))
+		{
+			Jxy = P.get<double>("Jxy");
+			Jxypara.diagonal().setConstant(Jxy);
+		}
+		if (P.HAS("Jz"))
+		{
+			Jz = P.get<double>("Jz");
+			Jzpara.diagonal().setConstant(Jz);
+		}
+		
+		if      (Jxy == 0.) {ss << "Ising(S=" << S << ",J=" << Jz;}
+		else if (Jz  == 0.) {ss << "XX(S="    << S << ",J=" << Jxy;}
+		else                {ss << "XXZ(S="   << S << ",Jxy=" << Jxy << ",Jz=" << Jz;}
+	}
+	else if (P.HAS("Jpara"))
+	{
+		assert(B.orbitals() == Jpara.rows() and 
+		       B.orbitals() == Jpara.cols());
+		Jpara = P.get<MatrixXd>("Jpara");
+		ss << "Heisenberg(S=" << S << ",J∥=" << Jpara.format(CommaInitFmt);
+	}
+	else if (P.HAS("Jxypara") or P.HAS("Jzpara"))
+	{
+		if (P.HAS("Jxypara"))
+		{
+			Jxypara = P.get<MatrixXd>("Jxypara");
+		}
+		if (P.HAS("Jzpara"))
+		{
+			Jzpara = P.get<MatrixXd>("Jzpara");
+		}
+		
+		if      (Jxypara.norm() == 0.) {ss << "Ising(S=" << S << ",J∥=" << Jzpara.format(CommaInitFmt);}
+		else if (Jzpara.norm()  == 0.) {ss << "XX(S="    << S << ",J∥=" << Jxypara.format(CommaInitFmt);}
+		else                           {ss << "XXZ(S="   << S << ",Jxy∥=" << Jxypara.format(CommaInitFmt) << ",Jz=" << Jzpara.format(CommaInitFmt);}
+	}
+	else
+	{
+		ss << "JustLocal(";
+	}
+	
+	for (int i=0; i<B.orbitals(); ++i)
+	for (int j=0; j<B.orbitals(); ++j)
+	{
+		if (Jxypara(i,j) != 0.)
+		{
+			Terms.tight.push_back(make_tuple(-0.5*Jxypara(i,j), B.Scomp(SP,i), B.Scomp(SM,j)));
+			Terms.tight.push_back(make_tuple(-0.5*Jxypara(i,j), B.Scomp(SM,i), B.Scomp(SP,j)));
+		}
+		if (Jzpara(i,j) != 0.)
+		{
+			Terms.tight.push_back(make_tuple(-Jzpara(i,j), B.Scomp(SZ,i), B.Scomp(SZ,j)));
+		}
+	}
+	
+	// J'-terms
+	
+	if (P.HAS("Jprime") or P.HAS("Jxyprime") or P.HAS("Jzprime"))
+	{
+		assert(B.orbitals() == 1 and "Cannot interpret Ly>1 and J'!=0");
+		
+		double Jprime, Jxyprime, Jzprime;
+		
+		if (P.HAS("Jprime"))
+		{
+			Jprime = P.get<double>("Jprime");
+			Jxyprime = Jprime;
+			Jzprime  = Jprime;
+			ss << ",J'" << Jprime;
+		}
+		else
+		{
+			if (P.HAS("Jxyprime"))
+			{
+				Jxyprime = P.get<double>("Jxyprime");
+				ss << ",Jxy'" << Jxyprime;
+			}
+			if (P.HAS("Jxzprime"))
+			{
+				Jzprime = P.get<double>("Jzprime");
+				ss << ",Jz'=" << Jzprime;
+			}
+		}
+		
+		SiteOperator<Symmetry_,SparseMatrix<double> > Id(Matrix<double,Dynamic,Dynamic>::Identity(B.get_D(),B.get_D()).sparseView(),Symmetry_::qvacuum());
+		Terms.nextn.push_back(make_tuple(-0.5*Jxyprime, B.Scomp(SP), B.Scomp(SM), Id));
+		Terms.nextn.push_back(make_tuple(-0.5*Jxyprime, B.Scomp(SM), B.Scomp(SP), Id));
+		Terms.nextn.push_back(make_tuple(-Jzprime,     B.Scomp(SZ), B.Scomp(SZ), Id));
+	}
+	
+	// local terms
+	
+	double Jperp   = P.get_default<double>("Jperp");
+	double Jxyperp = P.get_default<double>("Jxyperp");
+	double Jzperp  = P.get_default<double>("Jzperp");
+	
+	if (P.HAS("J"))
+	{
+		Jxyperp = P.get<double>("J");
+		Jzperp  = P.get<double>("J");
+	}
+	else if (P.HAS("Jperp"))
+	{
+		Jperp = P.get<double>("Jperp");
+		ss << ",J⟂=" << Jperp;
+	}
+	else
+	{
+		if (P.HAS("Jxyperp"))
+		{
+			Jxyperp = P.get<double>("Jxyperp");
+			ss << ",Jxy⟂=" << Jxyperp;
+		}
+		if (P.HAS("Jzperp"))
+		{
+			Jzperp = P.get<double>("Jzperp");
+			ss << ",Jz⟂=" << Jzperp;
+		}
+		
+	}
+	
+	double Bz = P.get_default<double>("Bz");
+	double Bx = P.get_default<double>("Bx");
+	double K  = P.get_default<double>("K");
+	
+	if (P.HAS("Bz"))
+	{
+		Bz = P.get<double>("Bz");
+		ss << ",Bz=" << Bz;
+	}
+	if (P.HAS("Bx"))
+	{
+		Bx = P.get<double>("Bx");
+		ss << ",Bx=" << Bx;
+	}
+	if (P.HAS("K"))
+	{
+		K = P.get<double>("K");
+		ss << ",K=" << K;
+	}
+	
+	ss << ")";
+	Terms.info = ss.str();
+	
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp,Jzperp,Bz,Bx,K)));
+	
+	return Terms;
+}
+
+HeisenbergModel::
+HeisenbergModel (size_t Lx_input, initializer_list<Param> params, size_t D_input, size_t Ly_input, bool CALC_SQUARE)
+:MpoQ<Symmetry> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), HeisenbergModel::qOp(), {0}, HeisenbergModel::maglabel, "", halve)
+{
+	ParamHandler P(params,defaults);
+	B = SpinBase<Symmetry>(N_legs, P.HAS("D")? P.get<size_t>("D"):P.get_default<size_t>("D"));
+	
+	HamiltonianTermsXd<Symmetry> Terms = set_operators(B,P);
+	this->label = Terms.info;
+	SuperMatrix<Symmetry,double> G = Generator(Terms);
+	this->Daux = Terms.auxdim();
+	
+	this->construct(G, this->W, this->Gvec);
+	
+	if (CALC_SQUARE == true)
+	{
+		vector<qType> qOpSq_;
+		qOpSq_.push_back({0}); qOpSq_.push_back({2}); qOpSq_.push_back({-2}); qOpSq_.push_back({4}); qOpSq_.push_back({-4});
+		vector<vector<qType> > qOpSq(this->N_sites,qOpSq_);
+		this->setOpBasisSq(qOpSq);
+		this->construct(tensor_product(G,G), this->Wsq, this->GvecSq, qOpSq);
+		this->GOT_SQUARE = true;
+	}
+	else
+	{
+		this->GOT_SQUARE = false;
+	}
+	this->calc_auxBasis();
+}
+
 HeisenbergModel::
 HeisenbergModel (int Lx_input, double Jxy_input, double Jz_input, double Bz_input, size_t D_input, size_t Ly_input, bool CALC_SQUARE)
 :MpoQ<Symmetry> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), HeisenbergModel::qOp(), {0}, HeisenbergModel::maglabel, "", halve),
@@ -260,19 +478,19 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), D(D_input)
 HeisenbergModel::
 HeisenbergModel (size_t Lx_input, std::array<double,2> Jlist, double Bz_input, size_t Ly_input, size_t D_input, bool CALC_SQUARE)
 :MpoQ<Symmetry> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), HeisenbergModel::qOp(), {0}, HeisenbergModel::maglabel, "", halve),
-Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
+Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jxyprime(Jlist[1]), Jzprime(Jlist[1])
 {
-	this->label = create_label(D,Jxy,Jz,Jprime,Bz,0.);
+	this->label = create_label(D,Jxy,Jz,Jxyprime,Bz,0.);
 	
 	B = SpinBase<Symmetry>(N_legs,D);
 	HamiltonianTermsXd<Symmetry> Terms;
 	if (Ly_input == 1)
 	{
-		Terms = set_operators(B, Jxy,Jz,Bz,0., Jprime);
+		Terms = set_operators(B, Jxy,Jz,Bz,0., Jxyprime);
 	}
 	else
 	{
-		Terms = set_operators(B, Jprime,Jprime,Bz,0., 0., Jxy,Jxy);
+		Terms = set_operators(B, Jxyprime,Jxyprime,Bz,0., 0., Jxy,Jxy);
 		Terms.tight.push_back(make_tuple(-0.5*Jxy, B.Scomp(SP,1), B.Scomp(SM,0)));
 		Terms.tight.push_back(make_tuple(-0.5*Jxy, B.Scomp(SM,1), B.Scomp(SP,0)));
 		Terms.tight.push_back(make_tuple(-Jz, B.Scomp(SZ,1), B.Scomp(SZ,0)));
@@ -292,78 +510,6 @@ Jxy(Jlist[0]), Jz(Jlist[0]), Bz(Bz_input), D(D_input), Jprime(Jlist[1])
 		this->GOT_SQUARE = false;
 	}
 }
-
-//HeisenbergModel::
-//HeisenbergModel(size_t Lx_input, double J, double Bz0_input, double K, const vector<std::array<double,3> > &DM_input, size_t D_input, bool CALC_SQUARE)
-//:MpoQ<Symmetry> (Lx_input, 1, HeisenbergModel::qloc(Ly_input,D_input), {0}, HeisenbergModel::maglabel, "", halve),
-//Jxy(J), Jz(J), Bz(Bz0_input), K(K_input), DM(DM_input), D(D_input)
-//{
-//	this->label = create_label(D,Jxy,Jz,0,Bz,0);
-//	
-//	B = SpinBase(N_legs,D);
-//	
-//	HamiltonianTermsXcd Terms_first = set_operators(B, J,Bz,K,DM);
-//	HamiltonianTermsXcd Terms_rest  = set_operators(B, J,0.,K,DM);
-//	
-//	vector<SuperMatrix<double> > G(this->N_sites);
-//	vector<SuperMatrix<double> > Gsq;
-//	if (CALC_SQUARE == true)
-//	{
-//		Gsq.resize(this->N_sites);
-//	}
-//	
-//	for (size_t l=0; l<this->N_sites; ++l)
-//	{
-//		if (l==0)
-//		{
-//			this->Daux = Terms_first.auxdim();
-//			G[l].setRowVector(Daux,F.dim());
-//			G[l] = Generator(Terms_first).row(Daux-1);
-//			
-//			if (CALC_SQUARE == true)
-//			{
-//				Gsq[l].setRowVector(Daux*Daux,F.dim());
-//				Gsq[l] = tensor_product(G[l],G[l]);
-//			}
-//		}
-//		else if (l==this->N_sites-1)
-//		{
-//			this->Daux = Terms_rest.auxdim();
-//			G[l].setColVector(Daux,F.dim());
-//			G[l] = Generator(Terms_rest).col(0);
-//			
-//			if (CALC_SQUARE == true)
-//			{
-//				Gsq[l].setColVector(Daux*Daux,F.dim());
-//				Gsq[l] = tensor_product(G[l],G[l]);
-//			}
-//		}
-//		else
-//		{
-//			this->Daux = Terms_rest.auxdim();
-//			G[l].setMatrix(Daux,F.dim());
-//			G[l] = Generator(Terms_rest);
-//			
-//			if (CALC_SQUARE == true)
-//			{
-//				Gsq[l].setMatrix(Daux*Daux,F.dim());
-//				Gsq[l] = tensor_product(G[l],G[l]);
-//			}
-//		}
-//	}
-//	
-//	this->construct(G, this->W, this->Gvec);
-//	
-//	if (CALC_SQUARE == true)
-//	{
-//		this->construct(Gsq, this->Wsq, this->GvecSq);
-//		this->GOT_SQUARE = true;
-//	}
-//	else
-//	{
-//		this->GOT_SQUARE = false;
-//	}
-//}
 
 MpoQ<Sym::U1<double> > HeisenbergModel::
 Sz (size_t locx, size_t locy) const

@@ -121,10 +121,14 @@ int main (int argc, char* argv[])
 	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_U0 = Watch_U0.time();
-
+	
+	// compressor
+	
 	VMPS::GrandHeisenbergModel::StateXd Hxg_U0;
 	HxV(H_U0,g_U0.state,Hxg_U0,VERB);
 	double E_U0_compressor = g_U0.state.dot(Hxg_U0);
+	
+	// zipper
 	
 	VMPS::GrandHeisenbergModel::StateXd Oxg_U0;
 	Oxg_U0.eps_svd = 1e-15;
@@ -159,36 +163,36 @@ int main (int argc, char* argv[])
 	
 	// dynamics (of Néel state)
 	
-	int Ldyn = 12;
-	vector<double> Jz_list = {0, -1, -2, -4};
-	
-	for (const auto& Jz:Jz_list)
-	{
-		VMPS::HeisenbergModel H_U1t(Ldyn,J,Jz,0,D,1,true);
-		lout << H_U1t.info() << endl;
-		VMPS::HeisenbergModel::StateXcd Psi = Neel(H_U1t);
-		TDVPPropagator<VMPS::HeisenbergModel,Sym::U1<double>,double,complex<double>,VMPS::HeisenbergModel::StateXcd> TDVP(H_U1t,Psi);
-		
-		double t = 0;
-		ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
-		for (int i=0; i<=static_cast<int>(6./dt); ++i)
-		{
-			double res = 0;
-			for (int l=0; l<Ldyn; ++l)
-			{
-				res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
-			}
-			res /= Ldyn;
-			lout << t << "\t" << res << endl;
-			Filer << t << "\t" << res << endl;
-		
-			TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
-			lout << TDVP.info() << endl;
-			lout << Psi.info() << endl;
-			t += dt;
-		}
-		Filer.close();
-	}
+//	int Ldyn = 12;
+//	vector<double> Jz_list = {0, -1, -2, -4};
+//	
+//	for (const auto& Jz:Jz_list)
+//	{
+//		VMPS::HeisenbergModel H_U1t(Ldyn,J,Jz,0,D,1,true);
+//		lout << H_U1t.info() << endl;
+//		VMPS::HeisenbergModel::StateXcd Psi = Neel(H_U1t);
+//		TDVPPropagator<VMPS::HeisenbergModel,Sym::U1<double>,double,complex<double>,VMPS::HeisenbergModel::StateXcd> TDVP(H_U1t,Psi);
+//		
+//		double t = 0;
+//		ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
+//		for (int i=0; i<=static_cast<int>(6./dt); ++i)
+//		{
+//			double res = 0;
+//			for (int l=0; l<Ldyn; ++l)
+//			{
+//				res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
+//			}
+//			res /= Ldyn;
+//			lout << t << "\t" << res << endl;
+//			Filer << t << "\t" << res << endl;
+//			
+//			TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
+//			lout << TDVP.info() << endl;
+//			lout << Psi.info() << endl;
+//			t += dt;
+//		}
+//		Filer.close();
+//	}
 	
 	//--------SU(2)---------
 	lout << endl << "--------SU(2)---------" << endl << endl;
@@ -227,4 +231,40 @@ int main (int argc, char* argv[])
 	T.endOfRow();
 	
 	lout << endl << T;
+	
+	VMPS::HeisenbergModel Htest1(L,{{"Jxy",-1.},{"Jz",-4.}});
+	cout << Htest1.info() << endl;
+	
+	VMPS::HeisenbergModel Htest2(L,{{"Jxy",-1.}});
+	cout << Htest2.info() << endl;
+	
+	VMPS::HeisenbergModel Htest3(L,{{"Jz",-1.}});
+	cout << Htest3.info() << endl;
+	
+	VMPS::HeisenbergModel Htest4(L,{{"J",-1.},{"Bz",10.},{"K",2.}});
+	cout << Htest4.info() << endl;
+	
+	MatrixXd Jpara(2,2); Jpara.setRandom();
+	VMPS::HeisenbergModel Htest5(L,{{"Jpara",Jpara}},2,2);
+	cout << Htest5.info() << endl;
+	
+	MatrixXd Jxypara(2,2); Jxypara.setRandom();
+	VMPS::HeisenbergModel Htest6(L,{{"Jxypara",Jxypara}},2,2);
+	cout << Htest6.info() << endl;
+	
+	MatrixXd Jzpara(2,2); Jzpara.setRandom();
+	VMPS::HeisenbergModel Htest7(L,{{"Jzpara",Jzpara}},2,2);
+	cout << Htest7.info() << endl;
+	
+	VMPS::HeisenbergModel Htest8(L,{{"Jxypara",Jxypara},{"Jzpara",Jzpara}},2,2);
+	cout << Htest8.info() << endl;
+	
+	VMPS::HeisenbergModel Htest9(L,{{"Jpara",Jpara},{"Jperp",-1.5}},2,2);
+	cout << Htest9.info() << endl;
+	
+	VMPS::HeisenbergModel Htest10(L,{{"Jpara",Jpara},{"Jxyperp",-3.},{"Jzperp",-4.}},2,2);
+	cout << Htest10.info() << endl;
+	
+	VMPS::HeisenbergModel Htest11(L,{{"K",5.}});
+	cout << Htest11.info() << endl;
 }
