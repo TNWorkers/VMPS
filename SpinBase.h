@@ -64,6 +64,8 @@ public:
 	/**amount of orbitals*/
 	inline size_t orbitals() const  {return N_orbitals;}
 	
+	vector<qarray<Symmetry_::Nq> > basis() const;
+	
 	OperatorType Scomp (SPINOP_LABEL Sa, int orbital=0) const;
 	
 	/**Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
@@ -78,7 +80,7 @@ public:
 	
 	/**Returns the qarray for a given index of the basis.
 	\param index*/
-	qarray<1> qNums (size_t index);
+	qarray<Symmetry_::Nq> qNums (size_t index) const;
 	
 	SparseMatrixXd ScompSingleSite (SPINOP_LABEL Sa) const;
 	SparseMatrixXd Sbase () const;
@@ -178,17 +180,40 @@ HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double K, bo
 }
 
 template<typename Symmetry_>
-qarray<1> SpinBase<Symmetry_>::
-qNums (size_t index)
+qarray<Symmetry_::Nq> SpinBase<Symmetry_>::
+qNums (size_t index) const
 {
 	NestedLoopIterator Nelly(N_orbitals,D);
 	int M = 0;
 	Nelly = index;
+	
 	for (size_t i=0; i<N_orbitals; i++)
 	{
-		M += D-(2*(Nelly(i)+1)-1); 
+		M += D-(2*(Nelly(i)+1)-1);
 	}
-	return qarray<1>{M};
+	
+	if constexpr(Symmetry_::IS_TRIVIAL)
+	{
+		return qarray<0>{};
+	}
+	else
+	{
+		return qarray<1>{M};
+	}
+}
+
+template<typename Symmetry_>
+vector<qarray<Symmetry_::Nq> > SpinBase<Symmetry_>::
+basis() const
+{
+	vector<qarray<Symmetry::Nq> > vout;
+	
+	for (size_t i=0; i<N_states; ++i)
+	{
+		vout.push_back(qNums(i));
+	}
+	
+	return vout;
 }
 
 template<typename Symmetry_>

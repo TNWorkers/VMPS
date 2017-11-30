@@ -121,7 +121,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::GrandHeisenbergModel::StateXd> g_U0;
 	
 	VMPS::GrandHeisenbergModel::Solver DMRG_U0(VERB);
-	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
 	
 	t_U0 = Watch_U0.time();
 

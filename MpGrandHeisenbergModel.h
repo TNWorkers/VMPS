@@ -41,7 +41,7 @@ private:
 	double Jxy, Jz;
 	double Bz, Bx;
 	size_t D;
-	SpinBase<Symmetry> S;
+	SpinBase<Symmetry> B;
 };
 
 const vector<qarray<0> > GrandHeisenbergModel::
@@ -60,8 +60,8 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input), D(D_input)
 	assert(Jxy != 0. or Jz != 0.);
 	this->label = HeisenbergModel::create_label(D,Jxy,Jz,0.,Bz,Bx);
 	
-	S = SpinBase<Symmetry>(N_legs,D);
-	HamiltonianTermsXd<Symmetry> Terms = HeisenbergModel::set_operators(S, Jxy,Jz,Bz,Bx);
+	B = SpinBase<Symmetry>(N_legs,D);
+	HamiltonianTermsXd<Symmetry> Terms = HeisenbergModel::set_operators(B, Jxy,Jz,Bz,Bx);
 
 	SuperMatrix<Symmetry,double> G = ::Generator(Terms);
 	this->Daux = Terms.auxdim();
@@ -88,9 +88,14 @@ Sz (size_t loc)
 	assert(loc<N_sites);
 	stringstream ss;
 	ss << "Sz(" << loc << ")";
-	MpoQ<Sym::U0 > Mout(N_sites, N_legs, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)),
-						{}, labeldummy, "");
-	Mout.setLocal(loc, S.Scomp(SZ));
+//	MpoQ<Sym::U0 > Mout(N_sites, N_legs, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)),
+//						{}, labeldummy, "");
+	MpoQ<Sym::U0 > Mout(N_sites, N_legs, qarray<0>{}, vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "");
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Mout.setLocBasis(B.basis(),l);
+	}
+	Mout.setLocal(loc, B.Scomp(SZ));
 	return Mout;
 }
 
@@ -100,9 +105,14 @@ SzSz (size_t loc1, size_t loc2)
 	assert(loc1<N_sites and loc2<N_sites);
 	stringstream ss;
 	ss << "Sz(" << loc1 << ")" <<  "Sz(" << loc2 << ")";
-	MpoQ<Sym::U0 > Mout(N_sites, N_legs, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)),
-						{}, labeldummy, "");
-	Mout.setLocal({loc1, loc2}, {S.Scomp(SZ), S.Scomp(SZ)});
+//	MpoQ<Sym::U0 > Mout(N_sites, N_legs, vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)), vector<qarray<0> >(begin(qloc2dummy),end(qloc2dummy)),
+//						{}, labeldummy, "");
+	MpoQ<Sym::U0 > Mout(N_sites, N_legs, qarray<0>{}, vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "");
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Mout.setLocBasis(B.basis(),l);
+	}
+	Mout.setLocal({loc1, loc2}, {B.Scomp(SZ), B.Scomp(SZ)});
 	return Mout;
 }
 

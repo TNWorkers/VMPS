@@ -103,6 +103,13 @@ public:
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	///\}
+	
+	// new constructors:
+	
+	MpoQ (size_t Lx_input, size_t Ly_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input,  
+	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
+	      bool UNITARY_input=false);
+	
 
 	void initialize();
 
@@ -318,8 +325,8 @@ MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, vector<q
       bool UNITARY_input)
 	:N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
-	qOp.resize(N_sites);
-	qloc.resize(N_sites);
+	initialize();
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		qOp[l].resize(qOp_input.size());
@@ -333,8 +340,7 @@ MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, vector<q
 			qloc[l][s] = qloc_input[s];
 		}
 	}
-
-	W.resize(N_sites);
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		W[l].resize(qloc[l].size());
@@ -344,6 +350,39 @@ MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, vector<q
 			for (size_t s2=0; s2<qloc[l].size(); ++s2)
 			{
 				W[l][s1][s2].resize(1);				
+			}
+		}
+	}
+}
+
+// new:
+template<typename Symmetry, typename Scalar>
+MpoQ<Symmetry,Scalar>::
+MpoQ (size_t Lx_input, size_t Ly_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input, 
+      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
+      bool UNITARY_input)
+	:N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+{
+	initialize();
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		qOp[l].resize(qOp_input.size());
+		for (size_t k=0; k<qOp_input.size(); ++k)
+		{
+			qOp[l][k] = qOp_input[k];
+		}
+	}
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		W[l].resize(qloc[l].size());
+		for (size_t s1=0; s1<qloc[l].size(); ++s1)
+		{
+			W[l][s1].resize(qloc[l].size());
+			for (size_t s2=0; s2<qloc[l].size(); ++s2)
+			{
+				W[l][s1][s2].resize(1);
 			}
 		}
 	}
@@ -369,7 +408,7 @@ MpoQ (size_t Lx_input, size_t Ly_input, vector<vector<qarray<Nq> > > qloc_input,
 			W[l][s1].resize(qloc[l].size());
 			for (size_t s2=0; s2<qloc[l].size(); ++s2)
 			{
-				W[l][s1][s2].resize(1);				
+				W[l][s1][s2].resize(1);
 			}
 		}
 	}

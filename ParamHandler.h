@@ -26,8 +26,8 @@ class ParamHandler
 {
 public:
 	
-	ParamHandler (const initializer_list<Param> &x_list);
-	ParamHandler (const initializer_list<Param> &x_list, const map<string,std::any> &defaults_input);
+	ParamHandler (const initializer_list<Param> &p_list);
+	ParamHandler (const initializer_list<Param> &p_list, const map<string,std::any> &defaults_input);
 	
 	template<typename Scalar> Scalar get (const string label) const;
 	template<typename Scalar> Scalar get_default (const string label) const;
@@ -42,21 +42,21 @@ private:
 };
 
 ParamHandler::
-ParamHandler (const initializer_list<Param> &x_list)
+ParamHandler (const initializer_list<Param> &p_list)
 {
-	for (auto x:x_list)
+	for (auto p:p_list)
 	{
-		params.insert(make_pair(x.label,x.value));
+		params.insert(make_pair(p.label,p.value));
 	}
 }
 
 ParamHandler::
-ParamHandler (const initializer_list<Param> &x_list, const map<string,std::any> &defaults_input)
+ParamHandler (const initializer_list<Param> &p_list, const map<string,std::any> &defaults_input)
 :defaults(defaults_input)
 {
-	for (auto x:x_list)
+	for (auto p:p_list)
 	{
-		params.insert(make_pair(x.label,x.value));
+		params.insert(make_pair(p.label,p.value));
 	}
 }
 
@@ -69,6 +69,10 @@ get (const string label) const
 	{
 		return any_cast<Scalar>(it->second);
 	}
+	else
+	{
+		return get_default<Scalar>(label);
+	}
 }
 
 template<typename Scalar> 
@@ -76,10 +80,8 @@ Scalar ParamHandler::
 get_default (const string label) const
 {
 	auto it = defaults.find(label);
-	if (it != defaults.end())
-	{
-		return any_cast<Scalar>(it->second);
-	}
+	assert(it != defaults.end());
+	return any_cast<Scalar>(it->second);
 }
 
 bool ParamHandler::

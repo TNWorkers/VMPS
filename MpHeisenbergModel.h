@@ -129,7 +129,6 @@ public:
 	
 	MpoQ<Symmetry> Sz (size_t locx, size_t locy=0) const;
 	MpoQ<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	MpoQ<Symmetry,complex<double> > SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int)) const;
 	
 protected:
 	
@@ -416,10 +415,15 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P)
 
 HeisenbergModel::
 HeisenbergModel (size_t Lx_input, initializer_list<Param> params, size_t D_input, size_t Ly_input, bool CALC_SQUARE)
-:MpoQ<Symmetry> (Lx_input, Ly_input, HeisenbergModel::qloc(Ly_input,D_input), HeisenbergModel::qOp(), {0}, HeisenbergModel::maglabel, "", halve)
+:MpoQ<Symmetry> (Lx_input, Ly_input, qarray<Symmetry::Nq>({0}), HeisenbergModel::qOp(), HeisenbergModel::maglabel, "", halve)
 {
 	ParamHandler P(params,defaults);
-	B = SpinBase<Symmetry>(N_legs, P.HAS("D")? P.get<size_t>("D"):P.get_default<size_t>("D"));
+	B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D"));
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		setLocBasis(B.basis(),l);
+	}
 	
 	HamiltonianTermsXd<Symmetry> Terms = set_operators(B,P);
 	this->label = Terms.info;
@@ -517,7 +521,12 @@ Sz (size_t locx, size_t locy) const
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx << "," << locy << ")";
-	MpoQ<Symmetry> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {{0}}, {0}, HeisenbergModel::maglabel, ss.str(), halve);
+//	MpoQ<Symmetry> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {{0}}, {0}, HeisenbergModel::maglabel, ss.str(), halve);
+	MpoQ<Symmetry> Mout(N_sites, N_legs, qarray<Symmetry::Nq>({0}), {{0}}, HeisenbergModel::maglabel, ss.str(), halve);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Mout.setLocBasis(B.basis(),l);
+	}
 	Mout.setLocal(locx, B.Scomp(SZ,locy));
 	return Mout;
 }
@@ -528,23 +537,13 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	assert(locx1<N_sites and locx2<N_sites and locy1<N_legs and locy2<N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx1 << "," << locy1 << ")" <<  "Sz(" << locx2 << "," << locy2 << ")";
-	MpoQ<Symmetry> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {{0}}, {0}, HeisenbergModel::maglabel, ss.str(), halve);
+//	MpoQ<Symmetry> Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {{0}}, {0}, HeisenbergModel::maglabel, ss.str(), halve);
+	MpoQ<Symmetry> Mout(N_sites, N_legs, qarray<Symmetry::Nq>({0}), {{0}}, HeisenbergModel::maglabel, ss.str(), halve);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Mout.setLocBasis(B.basis(),l);
+	}
 	Mout.setLocal({locx1, locx2}, {B.Scomp(SZ,locy1), B.Scomp(SZ,locy2)});
-	return Mout;
-}
-
-MpoQ<Sym::U1<double>,complex<double> > HeisenbergModel::
-SaPacket (SPINOP_LABEL SOP, complex<double> (*f)(int)) const
-{
-	assert(SOP==SP or SOP==SM or SOP==SZ);
-	stringstream ss;
-	ss << SOP << "Packet";
-	qarray<1> DeltaM;
-	if      (SOP==SP) {DeltaM={+2};}
-	else if (SOP==SM) {DeltaM={-2};}
-	else              {DeltaM={ 0};}
-	MpoQ<Sym::U1<double>,complex<double> > Mout(N_sites, N_legs, HeisenbergModel::qloc(N_legs,D), {DeltaM}, DeltaM, HeisenbergModel::maglabel, ss.str(), halve);
-	Mout.setLocalSum(B.Scomp(SOP), f);
 	return Mout;
 }
 
