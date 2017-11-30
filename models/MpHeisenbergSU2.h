@@ -29,9 +29,11 @@ public:
 private:
 	typedef Eigen::Index Index;
 	typedef Symmetry::qType qType;
-	template<Index Rank> using TensorType = Eigen::Tensor<double,Rank,Eigen::ColMajor,Index>;
-	typedef SiteOperatorQ<Symmetry,double> Operator;
 	typedef Eigen::SparseMatrix<double> SparseMatrixType;
+	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
+
+	typedef SiteOperatorQ<Symmetry,MatrixType> Operator;
+
 public:
 	/** Does nothing. */
 	HeisenbergSU2() : MpoQ<Symmetry,double>() {};
@@ -200,30 +202,30 @@ HeisenbergSU2 (std::size_t Lx_input, double J_input, std::size_t D_input, double
 MpoQ<Sym::SU2<double> > HeisenbergSU2::
 SSdag (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 {
-	// assert(locx1<this->N_sites and locx2<this->N_sites);
-	// std::stringstream ss;
-	// ss << "S(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
+	assert(locx1<this->N_sites and locx2<this->N_sites);
+	std::stringstream ss;
+	ss << "S(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
 
-	// MpoQ<Symmetry> Mout(N_sites, N_legs);
-	// for (std::size_t l=0; l<N_sites; l++)
-	// {
-	// 	Mout.setLocBasis(HeisenbergSU2::getqloc(Spins),l);
-	// }
+	MpoQ<Symmetry> Mout(N_sites, N_legs);
+	for (std::size_t l=0; l<N_sites; l++)
+	{
+		Mout.setLocBasis(Spins.basis(),l);
+	}
 
-	// Mout.label = ss.str();
-	// Mout.setQtarget(Symmetry::qvacuum());
-	// Mout.qlabel = HeisenbergSU2::Stotlabel;
-	// if(locx1 == locx2)
-	// {
-	// 	auto product = std::sqrt(3.)*Operator::prod(Spins.Sdag(locy1),Spins.S(locy2),Symmetry::qvacuum());
-	// 	Mout.setLocal(locx1,product.plain<SparseMatrixType>(),Symmetry::qvacuum());
-	// 	return Mout;
-	// }
-	// else
-	// {
-	// 	Mout.setLocal({locx1, locx2}, {(std::sqrt(3.)*Spins.Sdag(locy1)).plain<SparseMatrixType>(), Spins.S(locy2).plain<SparseMatrixType>()}, {{3},{3}});
-	// 	return Mout;
-	// }
+	Mout.label = ss.str();
+	Mout.setQtarget(Symmetry::qvacuum());
+	Mout.qlabel = HeisenbergSU2::Stotlabel;
+	if(locx1 == locx2)
+	{
+		auto product = std::sqrt(3.)*Operator::prod(Spins.Sdag(locy1),Spins.S(locy2),Symmetry::qvacuum());
+		Mout.setLocal(locx1,product.plain<SparseMatrixType>());
+		return Mout;
+	}
+	else
+	{
+		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.)*Spins.Sdag(locy1)).plain<SparseMatrixType>(), Spins.S(locy2).plain<SparseMatrixType>()});
+		return Mout;
+	}
 }
 
 } //end namespace VMPS::models

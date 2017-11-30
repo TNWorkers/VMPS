@@ -70,6 +70,7 @@ VMPS::HeisenbergModel::StateXcd Neel (const VMPS::HeisenbergModel &H)
 	return Psi;
 }
 
+bool CALC_DYNAMICS;
 int L, Ly, M, D, S;
 double J, Jprime;
 double alpha;
@@ -99,7 +100,9 @@ int main (int argc, char* argv[])
 	Imax   = args.get<int>("Imax",50);
 	tol_eigval = args.get<double>("tol_eigval",1e-6);
 	tol_state  = args.get<double>("tol_state",1e-5);
-	
+
+	CALC_DYNAMICS = args.get<bool>("CALC_DYN",0);
+
 	lout << args.info() << endl;
 	lout.set(make_string("L=",L,"_Ly=",Ly,"_M=",M,"_D=",D,"_J=",J,".log"),"log");
 	
@@ -122,6 +125,9 @@ int main (int argc, char* argv[])
 	
 	t_U0 = Watch_U0.time();
 
+	Eigen::MatrixXd SpinCorr_U0(L,L); SpinCorr_U0.setZero();
+	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U0(i,j) = 3*avg(g_U0.state, H_U0.SzSz(i,j), g_U0.state); }
+
 	VMPS::GrandHeisenbergModel::StateXd Hxg_U0;
 	HxV(H_U0,g_U0.state,Hxg_U0,VERB);
 	double E_U0_compressor = g_U0.state.dot(Hxg_U0);
@@ -143,7 +149,11 @@ int main (int argc, char* argv[])
 	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_U1 = Watch_U1.time();
-	
+
+	// observables
+	Eigen::MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
+	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U1(i,j) = 3*avg(g_U1.state, H_U1.SzSz(i,j), g_U1.state); }
+
 	// compressor
 	
 	VMPS::HeisenbergModel::StateXd Hxg_U1;
@@ -158,36 +168,37 @@ int main (int argc, char* argv[])
 	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
 	
 	// dynamics (of Néel state)
-	
-	int Ldyn = 12;
-	vector<double> Jz_list = {0, -1, -2, -4};
-	
-	for (const auto& Jz:Jz_list)
+	if(CALC_DYNAMICS)
 	{
-		VMPS::HeisenbergModel H_U1t(Ldyn,J,Jz,0,D,1,true);
-		lout << H_U1t.info() << endl;
-		VMPS::HeisenbergModel::StateXcd Psi = Neel(H_U1t);
-		TDVPPropagator<VMPS::HeisenbergModel,Sym::U1<double>,double,complex<double>,VMPS::HeisenbergModel::StateXcd> TDVP(H_U1t,Psi);
-		
-		double t = 0;
-		ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
-		for (int i=0; i<=static_cast<int>(6./dt); ++i)
+		int Ldyn = 12;
+		vector<double> Jz_list = {0, -1, -2, -4};
+	
+		for (const auto& Jz:Jz_list)
 		{
-			double res = 0;
-			for (int l=0; l<Ldyn; ++l)
-			{
-				res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
-			}
-			res /= Ldyn;
-			lout << t << "\t" << res << endl;
-			Filer << t << "\t" << res << endl;
+			VMPS::HeisenbergModel H_U1t(Ldyn,J,Jz,0,D,1,true);
+			lout << H_U1t.info() << endl;
+			VMPS::HeisenbergModel::StateXcd Psi = Neel(H_U1t);
+			TDVPPropagator<VMPS::HeisenbergModel,Sym::U1<double>,double,complex<double>,VMPS::HeisenbergModel::StateXcd> TDVP(H_U1t,Psi);
 		
-			TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
-			lout << TDVP.info() << endl;
-			lout << Psi.info() << endl;
-			t += dt;
+			double t = 0;
+			ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
+			for (int i=0; i<=static_cast<int>(6./dt); ++i)
+			{
+				double res = 0;
+				for (int l=0; l<Ldyn; ++l)
+				{
+					res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
+				}
+				res /= Ldyn;
+				if(VERB != DMRG::VERBOSITY::SILENT) {lout << t << "\t" << res << endl;}
+				Filer << t << "\t" << res << endl;
+		
+				TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
+				if(VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
+				t += dt;
+			}
+			Filer.close();
 		}
-		Filer.close();
 	}
 	
 	//--------SU(2)---------
@@ -202,14 +213,14 @@ int main (int argc, char* argv[])
 	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_SU2 = Watch_SU2.time();
-	
-//	cout << avg(g_SU2.state, H_SU2.SSdag(0,1), g_SU2.state) << endl;
-	
+
+	Eigen::MatrixXd SpinCorr_SU2(L,L); SpinCorr_SU2.setZero();
+	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SSdag(i,j), g_SU2.state); }
 	//--------output---------
 	
 	TextTable T( '-', '|', '+' );
 	
-	double V = L*Ly;
+	double V = L*Ly; double Vsq = V*V;
 	T.add(""); T.add("U(0)"); T.add("U(1)"); T.add("SU(2)"); T.endOfRow();
 	
 	T.add("E/L"); T.add(to_string_prec(g_U0.energy/V)); T.add(to_string_prec(g_U1.energy/V)); T.add(to_string_prec(g_SU2.energy/V)); T.endOfRow();
@@ -220,7 +231,13 @@ int main (int argc, char* argv[])
 
 	T.add("t/s"); T.add(to_string_prec(t_U0,2)); T.add(to_string_prec(t_U1,2)); T.add(to_string_prec(t_SU2,2)); T.endOfRow();
 	T.add("t gain"); T.add(to_string_prec(t_U0/t_SU2,2)); T.add(to_string_prec(t_U1/t_SU2,2)); T.add("1"); T.endOfRow();
-	
+
+	T.add("observables"); T.add(to_string_prec(SpinCorr_U0.sum()));
+	T.add(to_string_prec(SpinCorr_U1.sum())); T.add(to_string_prec(SpinCorr_SU2.sum())); T.endOfRow();
+
+	T.add("observables diff"); T.add(to_string_prec((SpinCorr_U0-SpinCorr_SU2).lpNorm<1>()/Vsq));
+	T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2).lpNorm<1>()/Vsq)); T.add("0"); T.endOfRow();
+
 	T.add("Dmax"); T.add(to_string(g_U0.state.calc_Dmax())); T.add(to_string(g_U1.state.calc_Dmax())); T.add(to_string(g_SU2.state.calc_Dmax()));
 	T.endOfRow();
 	T.add("Mmax"); T.add(to_string(g_U0.state.calc_Dmax())); T.add(to_string(g_U1.state.calc_Mmax())); T.add(to_string(g_SU2.state.calc_Mmax()));
