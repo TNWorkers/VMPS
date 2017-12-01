@@ -3,6 +3,14 @@
 
 #include <cstddef>
 
+/**Dummies for models without symmetries.*/
+const std::array<qarray<0>,1> qloc1dummy {qarray<0>{}};
+const std::array<qarray<0>,2> qloc2dummy {qarray<0>{}, qarray<0>{}};
+const std::array<qarray<0>,3> qloc3dummy {qarray<0>{}, qarray<0>{}, qarray<0>{}};
+const std::array<qarray<0>,4> qloc4dummy {qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}};
+const std::array<qarray<0>,8> qloc8dummy {qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}, qarray<0>{}};
+const std::array<string,0>    labeldummy{};
+
 namespace Sym{
 	
 /** \class U0
@@ -30,7 +38,9 @@ namespace Sym{
 		inline static int degeneracy( const qType& q ) { return 1; }
 
 		inline static std::vector<qType> reduceSilent( const qType& ql, const qType& qr) { return {{}}; }
+		inline static std::vector<qType> reduceSilent( const qType& ql, const qType& qm, const qType& qr) { return {{}}; }
 		inline static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const qType& qr) { return {{}}; }
+		inline static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr) { return {{}}; }
 
 		inline static double coeff_unity() { return 1.; }
 		inline static double coeff_dot(const qType& q1) { return 1.; }

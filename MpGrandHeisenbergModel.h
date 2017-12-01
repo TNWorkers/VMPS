@@ -53,7 +53,7 @@ qloc (size_t N_legs, size_t D)
 
 GrandHeisenbergModel::
 GrandHeisenbergModel (int Lx_input, double Jxy_input, double Jz_input, double Bz_input, double Bx_input, int Ly_input, bool CALC_SQUARE, size_t D_input)
-:MpoQ<Sym::U0> (Lx_input, Ly_input, GrandHeisenbergModel::qloc(Ly_input,D_input), vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), {}, labeldummy, ""),
+	:MpoQ<Sym::U0> (Lx_input, Ly_input, qarray<0>{}, vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, ""),
 Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input), D(D_input)
 {
 	if (Jz==numeric_limits<double>::infinity()) {Jz=Jxy;} // default: Jxy=Jz
@@ -61,25 +61,30 @@ Jxy(Jxy_input), Jz(Jz_input), Bz(Bz_input), Bx(Bx_input), D(D_input)
 	this->label = HeisenbergModel::create_label(D,Jxy,Jz,0.,Bz,Bx);
 	
 	B = SpinBase<Symmetry>(N_legs,D);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		setLocBasis(B.basis(),l);
+	}
+
 	HamiltonianTermsXd<Symmetry> Terms = HeisenbergModel::set_operators(B, Jxy,Jz,Bz,Bx);
 
 	SuperMatrix<Symmetry,double> G = ::Generator(Terms);
 	this->Daux = Terms.auxdim();
-	this->construct(G, this->W, this->Gvec);
+	this->construct(G, this->W, this->Gvec, CALC_SQUARE);
 	
-	if (CALC_SQUARE == true)
-	{
-		vector<qType> qOpSq_;
-		qOpSq_.push_back({});
-		vector<vector<qType> > qOpSq(this->N_sites,qOpSq_);
-		this->setOpBasisSq(qOpSq);
-		this->construct(tensor_product(G,G), this->Wsq, this->GvecSq);
-		this->GOT_SQUARE = true;
-	}
-	else
-	{
-		this->GOT_SQUARE = false;
-	}
+	// if (CALC_SQUARE == true)
+	// {
+	// 	vector<qType> qOpSq_;
+	// 	qOpSq_.push_back({});
+	// 	vector<vector<qType> > qOpSq(this->N_sites,qOpSq_);
+	// 	this->setOpBasisSq(qOpSq);
+	// 	this->construct(tensor_product(G,G), this->Wsq, this->GvecSq);
+	// 	this->GOT_SQUARE = true;
+	// }
+	// else
+	// {
+	// 	this->GOT_SQUARE = false;
+	// }
 }
 
 MpoQ<Sym::U0> GrandHeisenbergModel::

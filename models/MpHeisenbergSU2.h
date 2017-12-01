@@ -193,10 +193,9 @@ HeisenbergSU2 (std::size_t Lx_input, double J_input, std::size_t D_input, double
 	HamiltonianTermsXd<Symmetry> Terms = set_operators(Spins, J, Jprime, J);
 	Daux = Terms.auxdim();
 	auto G = ::Generator(Terms);
-	this->construct(G, this->W, this->Gvec);
+	this->construct(G, this->W, this->Gvec, false); //For SU(2) symmetries the squared Hamiltonian can not be calculated in advance.
 
-	this->GOT_SQUARE = false;
-	this->calc_auxBasis();
+	// this->calc_auxBasis();
 }
 
 MpoQ<Sym::SU2<double> > HeisenbergSU2::

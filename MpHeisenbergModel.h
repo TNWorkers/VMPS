@@ -430,22 +430,22 @@ HeisenbergModel (size_t Lx_input, initializer_list<Param> params, size_t D_input
 	SuperMatrix<Symmetry,double> G = Generator(Terms);
 	this->Daux = Terms.auxdim();
 	
-	this->construct(G, this->W, this->Gvec);
+	this->construct(G, this->W, this->Gvec, CALC_SQUARE);
 	
-	if (CALC_SQUARE == true)
-	{
-		vector<qType> qOpSq_;
-		qOpSq_.push_back({0}); qOpSq_.push_back({2}); qOpSq_.push_back({-2}); qOpSq_.push_back({4}); qOpSq_.push_back({-4});
-		vector<vector<qType> > qOpSq(this->N_sites,qOpSq_);
-		this->setOpBasisSq(qOpSq);
-		this->construct(tensor_product(G,G), this->Wsq, this->GvecSq, qOpSq);
-		this->GOT_SQUARE = true;
-	}
-	else
-	{
-		this->GOT_SQUARE = false;
-	}
-	this->calc_auxBasis();
+	// if (CALC_SQUARE == true)
+	// {
+	// 	vector<qType> qOpSq_;
+	// 	qOpSq_.push_back({0}); qOpSq_.push_back({2}); qOpSq_.push_back({-2}); qOpSq_.push_back({4}); qOpSq_.push_back({-4});
+	// 	vector<vector<qType> > qOpSq(this->N_sites,qOpSq_);
+	// 	this->setOpBasisSq(qOpSq);
+	// 	this->construct(tensor_product(G,G), this->Wsq, this->GvecSq, qOpSq);
+	// 	this->GOT_SQUARE = true;
+	// }
+	// else
+	// {
+	// 	this->GOT_SQUARE = false;
+	// }
+	// this->calc_auxBasis();
 }
 
 HeisenbergModel::

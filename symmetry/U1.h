@@ -19,8 +19,9 @@ template<typename Scalar>
 class U1 // : SymmetryBase<SymSUN<N,Scalar> >
 {
 public:
-	static constexpr bool HAS_CGC = false;
 	static constexpr size_t Nq=1;
+
+	static constexpr bool HAS_CGC = false;
 	static constexpr bool NON_ABELIAN = false;
 	static constexpr bool IS_TRIVIAL = false;
 
@@ -40,6 +41,7 @@ public:
 	static std::vector<qType> reduceSilent( const qType& ql, const qType& qr);
 	static std::vector<qType> reduceSilent( const qType& ql, const qType& qm, const qType& qr);
 	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const qType& qr);
+	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
 
 	inline static Scalar coeff_unity();
 	inline static Scalar coeff_dot(const qType& q1);
@@ -106,6 +108,19 @@ reduceSilent( const std::vector<qType>& ql, const qType& qr )
 	for (std::size_t q=0; q<ql.size(); q++)
 	{
 		vout.push_back({ql[q][0]+qr[0]});
+	}
+	return vout;
+}
+
+template<typename Scalar>
+std::vector<typename U1<Scalar>::qType> U1<Scalar>::
+reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
+{
+	std::vector<typename U1<Scalar>::qType> vout;
+	for (std::size_t q=0; q<ql.size(); q++)
+	for (std::size_t p=0; p<ql.size(); p++)
+	{
+		vout.push_back({ql[q][0]+qr[p][0]});
 	}
 	return vout;
 }
