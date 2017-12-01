@@ -20,6 +20,8 @@ namespace VMPS
   \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
   \note Uses no symmetry. Any parameter constellations are allowed. For variants with symmetries, see VMPS::HeisenbergU1 or VMPS::HeisenbergSU2.
   \note \f$J<0\f$ is antiferromagnetic
+  \todo In principal one could allow here a general \f$xyz\f$-model. Until now this is not possible, because the Generator of VMPS::HeisenbergU1 is used.
+        Maybe change the order, that VMPS::HeisenbergU1 uses the Generator of VMPS::Heisenberg.
 */
 class Heisenberg : public MpoQ<Sym::U0,double>
 {
