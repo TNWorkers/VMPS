@@ -30,7 +30,7 @@ public:
 	/**
 	\param L_input : amount of sites
 	\param D_input : \f$D=2S+1\f$*/
-	BaseSU2 (std::size_t L_input, std::size_t D_input);
+	BaseSU2 (std::size_t L_input, std::size_t D_input = 2);
 
 	/**amount of states = \f$D^L\f$*/
 	inline std::size_t dim() const {return N_states;}
@@ -46,6 +46,8 @@ public:
 	Operator Id() const;
 	
 	Operator HeisenbergHamiltonian( double J, bool PERIODIC=false ) const;
+
+	Operator HeisenbergHamiltonian( Eigen::MatrixXd J ) const;
 
 	/**Returns the basis. 
 	   \note Use this as input for Mps, Mpo classes.*/ 
@@ -181,5 +183,22 @@ HeisenbergHamiltonian (double J, bool PERIODIC) const
 	return Mout;
 }
 
+template<typename Scalar>
+SiteOperatorQ<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
+HeisenbergHamiltonian (Eigen::MatrixXd J) const
+{	
+	Operator Mout({1},TensorBasis);
+
+	for (int i=0; i<N_orbitals; ++i) // for all bonds
+	for (int j=i+1; j<N_orbitals; ++j) // for all bonds
+	{
+		if (J(i,j) != 0.)
+		{
+			Mout += -std::sqrt(3)*J(i,j) * Operator::prod(Sdag(i),S(j),{1});
+		}
+	}
+	return Mout;
+}
+	
 } //end namespace spins
 #endif
