@@ -5,6 +5,7 @@
 #include "spins/BaseSU2.h"
 #include "MpoQ.h"
 #include "DmrgExternalQ.h"
+#include "ParamHandler.h"
 
 namespace VMPS
 {
@@ -20,6 +21,7 @@ namespace VMPS
   \f]
   *
   \note Take use of the Spin SU(2) symmetry, which implies no magnetic fields. For using B-fields see VMPS::HeisenbergU1 or VMPS::Heisenberg.
+  \note The default variable settings can be seen in \p HeisenbergSU2::defaults.
   \note \f$J<0\f$ is antiferromagnetic
   */
 class HeisenbergSU2 : public MpoQ<Sym::SU2<double>,double>
@@ -55,7 +57,7 @@ public:
 	*/
 	static HamiltonianTermsXd<Symmetry> set_operators (const spins::BaseSU2<> &B, const ParamHandler &P);
 
-	/**Operator Quantum numbers: \f$\{ \left|1\right>, \left|3\right>\}\f$ */
+	/**Operator Quantum numbers: \f$\{ Id:k=\left|1\right>; S:k=\left|3\right>\}\f$ */
 	static const std::vector<qType> qOp ();
 
 	/**Labels the conserved quantum number as "S".*/
@@ -76,10 +78,10 @@ public:
 	MpoQ<Symmetry,double> SS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);	
 	///@}
 	
-private:
+protected:
 	const std::map<string,std::any> defaults = 
 	{
-		{"J",-1.}, {"Jprime",0.}, {"Jpara",0.}, {"Jperp",0.}, {"D",2ul}
+		{"J",-1.}, {"Jprime",0.}, {"Jperp",0.}, {"D",2ul}
 	};
 
 	spins::BaseSU2<> B;
@@ -98,7 +100,7 @@ qOp ()
 
 HeisenbergSU2::
 HeisenbergSU2 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input)
-:MpoQ<Symmetry> (Lx_input, Ly_input, qarray<Symmetry::Nq>({0}), HeisenbergSU2::qOp(), HeisenbergSU2::Stotlabel, "", halve)
+:MpoQ<Symmetry> (Lx_input, Ly_input, qarray<Symmetry::Nq>({1}), HeisenbergSU2::qOp(), HeisenbergSU2::Stotlabel, "", halve)
 {
 	ParamHandler P(params,defaults);
 	B = spins::BaseSU2<>(N_legs,P.get<size_t>("D"));
@@ -194,16 +196,20 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P)
 	}
 	if(Jprime != 0)
 	{
-		Terms.nextn.push_back(make_tuple(-std::sqrt(3)*Jprime, B.S(0).plain<SparseMatrixType>(),
+		Terms.nextn.push_back(make_tuple(-std::sqrt(3)*Jprime, B.Sdag(0).plain<SparseMatrixType>(),
 										 B.S(0).plain<SparseMatrixType>(),
 										 B.Id().plain<SparseMatrixType>()));
 	}
 	
 	// local terms
 
-	double Jperp   = P.get_default<double>("Jperp");
+	double Jperp = P.get_default<double>("Jperp");
 
-	if (P.HAS("Jperp"))
+	if (P.HAS("J"))
+	{
+		Jperp  = P.get<double>("J");
+	}
+	else if (P.HAS("Jperp"))
 	{
 		Jperp = P.get<double>("Jperp");
 		ss << ",J⟂=" << Jperp;

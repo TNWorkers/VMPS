@@ -4,6 +4,8 @@
 #include <array>
 #include <vector>
 
+#include "SiteOperator.h"
+
 #ifndef IS_REAL_FUNCTION
 #define IS_REAL_FUNCTION
 inline double isReal (double x) {return x;}

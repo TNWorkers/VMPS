@@ -1,3 +1,16 @@
+/*! \mainpage VMPS++
+ *
+ * \section intro_sec Introduction
+ *
+ * This is the introduction.
+ *
+ * \section install_sec Supported models
+ *
+ * \subsection heisenberg Heisenberg
+ *
+ * etc...
+ */
+
 /** @defgroup Symmetry Symmetry
  *
  * This group holds all relevant code for the used symmetries.

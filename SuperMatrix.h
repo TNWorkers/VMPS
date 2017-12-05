@@ -220,7 +220,7 @@ SuperMatrix<Symmetry,Scalar> directSum (const SuperMatrix<Symmetry,Scalar> &M1, 
 template<typename Symmetry, typename Scalar>
 ostream &operator<< (ostream& os, const SuperMatrix<Symmetry,Scalar> &M)
 {
-	os << showpos;
+	os << showpos << fixed;
 	for (int i=0; i<M.rows(); ++i)
 	{
 		for (int n=0; n<M.D(); ++n)

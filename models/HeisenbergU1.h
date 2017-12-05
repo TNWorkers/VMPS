@@ -25,6 +25,7 @@ namespace VMPS
   *
   \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
   \note Take use of the \f$S^z\f$ U(1) symmetry.
+  \note The default variable settings can be seen in \p HeisenbergU1::defaults.
   \note \f$J<0\f$ is antiferromagnetic
 */
 
@@ -58,7 +59,7 @@ public:
 	template<typename Symmetry_>
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P);
 
-	/**Operator Quantum numbers: \f$\{ \left|0\right>, \left|+2\right>, \left|-2\right> \}\f$ */
+	/**Operator Quantum numbers: \f$\{ Id,S_z:k=\left|0\right>; S_+:k=\left|+2\right>; S_-:k=\left|-2\right>\}\f$ */
 	static const vector<qarray<1> > qOp ();
 
 	/**Labels the conserved quantum number as "M".*/
@@ -196,6 +197,8 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P)
 		assert(B.orbitals() == Jpara.rows() and 
 		       B.orbitals() == Jpara.cols());
 		Jpara = P.get<MatrixXd>("Jpara");
+		Jxypara = Jpara;
+		Jzpara = Jpara;
 		ss << "Heisenberg(S=" << S << ",J∥=" << Jpara.format(CommaInitFmt);
 	}
 	else if (P.HAS("Jxypara") or P.HAS("Jzpara"))
@@ -233,38 +236,46 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P)
 	}
 	
 	// J'-terms
+	double Jprime   = P.get_default<double>("Jprime");
+	double Jxyprime = P.get_default<double>("Jxyprime");
+	double Jzprime  = P.get_default<double>("Jzprime");
 	
 	if (P.HAS("Jprime") or P.HAS("Jxyprime") or P.HAS("Jzprime"))
 	{
-		assert(B.orbitals() == 1 and "Cannot interpret Ly>1 and J'!=0");
+
+		assert((B.orbitals() == 1 or (Jprime == 0 and Jxyprime == 0 and Jzprime == 0)) and "Cannot interpret Ly>1 and J'!=0");
+		// assert(B.orbitals() == 1 and "Cannot interpret Ly>1 and J'!=0");
 		
-		double Jprime, Jxyprime, Jzprime;
 		
 		if (P.HAS("Jprime"))
 		{
 			Jprime = P.get<double>("Jprime");
 			Jxyprime = Jprime;
 			Jzprime  = Jprime;
-			ss << ",J'" << Jprime;
+			ss << ",J'=" << Jprime;
 		}
 		else
 		{
 			if (P.HAS("Jxyprime"))
 			{
 				Jxyprime = P.get<double>("Jxyprime");
-				ss << ",Jxy'" << Jxyprime;
+				ss << ",Jxy'=" << Jxyprime;
 			}
-			if (P.HAS("Jxzprime"))
+			if (P.HAS("Jzprime"))
 			{
 				Jzprime = P.get<double>("Jzprime");
 				ss << ",Jz'=" << Jzprime;
 			}
 		}
-		
-		SiteOperator<Symmetry_,SparseMatrix<double> > Id(Matrix<double,Dynamic,Dynamic>::Identity(B.get_D(),B.get_D()).sparseView(),Symmetry_::qvacuum());
-		Terms.nextn.push_back(make_tuple(-0.5*Jxyprime, B.Scomp(SP), B.Scomp(SM), Id));
-		Terms.nextn.push_back(make_tuple(-0.5*Jxyprime, B.Scomp(SM), B.Scomp(SP), Id));
-		Terms.nextn.push_back(make_tuple(-Jzprime,     B.Scomp(SZ), B.Scomp(SZ), Id));
+		if(Jxyprime != 0)
+		{
+			Terms.nextn.push_back(make_tuple(-0.5*Jxyprime, B.Scomp(SP), B.Scomp(SM), B.Id()));
+			Terms.nextn.push_back(make_tuple(-0.5*Jxyprime, B.Scomp(SM), B.Scomp(SP), B.Id()));
+		}
+		if(Jzprime != 0)
+		{
+			Terms.nextn.push_back(make_tuple(-Jzprime,     B.Scomp(SZ), B.Scomp(SZ), B.Id()));
+		}
 	}
 	
 	// local terms
@@ -281,6 +292,8 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P)
 	else if (P.HAS("Jperp"))
 	{
 		Jperp = P.get<double>("Jperp");
+		Jxyperp = Jperp;
+		Jzperp  = Jperp;
 		ss << ",J⟂=" << Jperp;
 	}
 	else
@@ -320,7 +333,6 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P)
 	
 	ss << ")";
 	Terms.info = ss.str();
-	
 	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp,Jzperp,Bz,Bx,K)));
 	
 	return Terms;

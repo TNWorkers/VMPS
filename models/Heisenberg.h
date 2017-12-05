@@ -19,6 +19,7 @@ namespace VMPS
   *
   \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
   \note Uses no symmetry. Any parameter constellations are allowed. For variants with symmetries, see VMPS::HeisenbergU1 or VMPS::HeisenbergSU2.
+  \note The default variable settings can be seen in \p Heisenberg::defaults.
   \note \f$J<0\f$ is antiferromagnetic
   \todo In principal one could allow here a general \f$xyz\f$-model. Until now this is not possible, because the Generator of VMPS::HeisenbergU1 is used.
         Maybe change the order, that VMPS::HeisenbergU1 uses the Generator of VMPS::Heisenberg.
@@ -46,26 +47,23 @@ public:
 	///\}
 	
 	///@{
-	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
-	typedef MpsQ<Sym::U0,double>                           StateXd;
-	typedef MpsQ<Sym::U0,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<Sym::U0,Heisenberg>                Solver;
-	typedef MpsQCompressor<Sym::U0,double,double>          CompressorXd;
-	typedef MpsQCompressor<Sym::U0,complex<double>,double> CompressorXcd;
-	typedef MpoQ<Sym::U0>                                  Operator;
+	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
+	typedef MpsQ<Symmetry,double>                           StateXd;
+	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
+	typedef DmrgSolverQ<Symmetry,Heisenberg>                Solver;
+	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
+	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
+	typedef MpoQ<Symmetry>                                  Operator;
 	///@}
 	
 	///@{
 	/**Observables.*/	
-	MpoQ<Sym::U0> SzSz (size_t loc1, size_t loc2);
-	MpoQ<Sym::U0> Sz   (size_t loc);
+	MpoQ<Symmetry> SzSz (size_t loc1, size_t loc2);
+	MpoQ<Symmetry> Sz   (size_t loc);
 	///@}
 	
-private:
+protected:
 	
-	double Jxy, Jz;
-	double Bz, Bx;
-	size_t D;
 	std::map<string,std::any> defaults = 
 	{
 		{"J",0.}, {"Jxy",0.}, {"Jz",0.},
@@ -101,7 +99,7 @@ Sz (size_t loc)
 	assert(loc<N_sites);
 	stringstream ss;
 	ss << "Sz(" << loc << ")";
-	MpoQ<Sym::U0 > Mout(N_sites, N_legs, qarray<0>{}, vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "");
+	MpoQ<Symmetry > Mout(N_sites, N_legs, qarray<0>{}, vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "");
 	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B.basis(),l); }
 	Mout.setLocal(loc, B.Scomp(SZ));
 	return Mout;
@@ -113,7 +111,7 @@ SzSz (size_t loc1, size_t loc2)
 	assert(loc1<N_sites and loc2<N_sites);
 	stringstream ss;
 	ss << "Sz(" << loc1 << ")" <<  "Sz(" << loc2 << ")";
-	MpoQ<Sym::U0 > Mout(N_sites, N_legs, qarray<0>{}, vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "");
+	MpoQ<Symmetry > Mout(N_sites, N_legs, qarray<0>{}, vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "");
 	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B.basis(),l); }
 	Mout.setLocal({loc1, loc2}, {B.Scomp(SZ), B.Scomp(SZ)});
 	return Mout;

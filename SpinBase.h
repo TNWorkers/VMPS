@@ -67,7 +67,9 @@ public:
 	vector<qarray<Symmetry_::Nq> > basis() const;
 	
 	OperatorType Scomp (SPINOP_LABEL Sa, int orbital=0) const;
-	
+
+	OperatorType Id () const;
+
 	/**Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
 	\param Jxy : \f$J_{xy}\f$
 	\param Jz : \f$J_{z}\f$
@@ -123,6 +125,15 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 
 template<typename Symmetry_>
 SiteOperator<Symmetry_,Eigen::SparseMatrix<double> > SpinBase<Symmetry_>::
+Id () const
+{
+	SparseMatrixXd mat = MatrixXd::Identity(N_states,N_states).sparseView();
+	OperatorType Oout(mat,Symmetry::qvacuum());
+	return Oout;	
+}
+
+template<typename Symmetry_>
+SiteOperator<Symmetry_,Eigen::SparseMatrix<double> > SpinBase<Symmetry_>::
 HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, double K, bool PERIODIC) const
 {
 	assert (Bz.rows() == N_orbitals and Bx.rows() == N_orbitals);
@@ -166,6 +177,7 @@ HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd
 			Mout += K * Scomp(SZ,i).data * Scomp(SZ,i).data;
 		}
 	}
+
 	OperatorType Oout(Mout,Symmetry::qvacuum());
 	return Oout;
 }

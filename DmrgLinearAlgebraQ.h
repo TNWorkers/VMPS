@@ -184,9 +184,10 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 			}
 			else
 			{
-				lout << "Warning: Result of contraction in <φ|O|ψ> has several blocks, returning 0!" << endl;
+				lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has several blocks: " << B.dim << ", returning 0!" << endl;
 				lout << "MPS in question: " << Vket.info() << endl;
-				lout << "MPO in question: " << O1.info() << endl;
+				lout << "MPO1 in question: " << O1.info() << endl;
+				lout << "MPO2 in question: " << O2.info() << endl;
 				return 0;
 			}
 		}
