@@ -302,12 +302,14 @@ protected:
 	void construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 					vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
 					vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
-					bool CALC_SQUARE=false);
+					bool CALC_SQUARE=false,
+					bool OPEN_BC=true);
 	void construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 					vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
 					vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
 					const vector<vector<qType> > &qOp_in,
-					bool CALC_SQUARE=false);
+					bool CALC_SQUARE=false,
+					bool OPEN_BC=true);
 	
 
 	vector<SuperMatrix<Symmetry,Scalar> > Gvec;
@@ -603,8 +605,9 @@ construct (const SuperMatrix<Symmetry,Scalar> &G_input,
 	}
 	
 //	make MPO
-	construct(Gvec,Wstore,Gstore,qOp_in,false);
-	// make sqared MPO if desired
+	construct(Gvec, Wstore, Gstore, qOp_in, false, OPEN_BC);
+	
+	// make squared MPO if desired
 	if (CALC_SQUARE == true)
 	{
 		qOpSq.resize(N_sites);
@@ -612,10 +615,13 @@ construct (const SuperMatrix<Symmetry,Scalar> &G_input,
 		{
 			qOpSq[l] = Symmetry::reduceSilent(qOp[l],qOp[l]);
 		}
-		construct(tensor_product(G_input,G_input), Wsq, GvecSq, qOpSq, false); //use false here, otherwise one would also calclate H⁴.
+		construct(tensor_product(G_input,G_input), Wsq, GvecSq, qOpSq, false, OPEN_BC); //use false here, otherwise one would also calclate H⁴.
 		GOT_SQUARE = true;
 	}
-	else { GOT_SQUARE = false; }
+	else
+	{
+		GOT_SQUARE = false;
+	}
 }
 
 template<typename Symmetry, typename Scalar>
@@ -626,7 +632,7 @@ construct (const SuperMatrix<Symmetry,Scalar> &G_input,
 		   bool CALC_SQUARE,
 		   bool OPEN_BC)
 {
-	construct(G_input,Wstore,Gstore,this->qOp,CALC_SQUARE,OPEN_BC);
+	construct(G_input, Wstore, Gstore, this->qOp, CALC_SQUARE, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -635,18 +641,25 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 		   vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
 		   vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
 		   const vector<vector<qType> > &qOp_in,
-		   bool CALC_SQUARE)
+		   bool CALC_SQUARE,
+		   bool OPEN_BC)
 {
 	Wstore.resize(N_sites);
 	Gstore = Gvec_input;
 	
-	for (size_t l=0; l<N_sites;  ++l)
+	for (size_t l=0; l<N_sites; ++l)
 	{
 		Wstore[l].resize(qloc[l].size());
 		for (size_t s1=0; s1<qloc[l].size(); ++s1)
 		{
 			Wstore[l][s1].resize(qloc[l].size());
 		}
+	}
+	
+	// open boundary conditions: use only last row
+	if (OPEN_BC)
+	{
+		size_t l=0;
 		
 		for (size_t s1=0; s1<qloc[l].size(); ++s1)
 		for (size_t s2=0; s2<qloc[l].size(); ++s2)
@@ -654,40 +667,105 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 			Wstore[l][s1][s2].resize(qOp_in[l].size());
 			for (size_t k=0; k<qOp_in[l].size(); ++k)
 			{
-				Wstore[l][s1][s2][k].resize(Gstore[l].rows(), Gstore[l].cols());
+				Wstore[l][s1][s2][k].resize(1,Gstore[l].cols());
 			}
-			for (size_t a1=0; a1<Gstore[l].rows(); ++a1)
 			for (size_t a2=0; a2<Gstore[l].cols(); ++a2)
 			{
-				Scalar val = Gstore[l](a1,a2).data(s1,s2);
+				Scalar val = Gstore[l](Gstore[l].rows()-1,a2).data(s1,s2);
 				if (val != 0.)
 				{
-					qType Q = Gstore[l](a1,a2).Q;
+					qType Q = Gstore[l](Gstore[l].rows()-1,a2).Q;
 					size_t match;
-					for(size_t k=0; k<qOp_in[l].size(); ++k) {
-						if(qOp_in[l][k] == Q) {match = k; break; }
+					for (size_t k=0; k<qOp_in[l].size(); ++k)
+					{
+						if(qOp_in[l][k] == Q) {match=k; break;}
 						// assert(k == qOp[l].size()-1 and "The SuperMatrix is not well defined.");
 					}
-					Wstore[l][s1][s2][match].insert(a1,a2) = val;
+					Wstore[l][s1][s2][match].insert(0,a2) = val;
 				}
 			}
 		}
 	}
 	
-	// make sqared MPO if desired
+	size_t l_frst = (OPEN_BC)? 1:0;
+	size_t l_last = (OPEN_BC)? N_sites-1:N_sites;
+	
+	for (size_t l=l_frst; l<l_last; ++l)
+	for (size_t s1=0; s1<qloc[l].size(); ++s1)
+	for (size_t s2=0; s2<qloc[l].size(); ++s2)
+	{
+		Wstore[l][s1][s2].resize(qOp_in[l].size());
+		for (size_t k=0; k<qOp_in[l].size(); ++k)
+		{
+			Wstore[l][s1][s2][k].resize(Gstore[l].rows(), Gstore[l].cols());
+		}
+		for (size_t a1=0; a1<Gstore[l].rows(); ++a1)
+		for (size_t a2=0; a2<Gstore[l].cols(); ++a2)
+		{
+			Scalar val = Gstore[l](a1,a2).data(s1,s2);
+			if (val != 0.)
+			{
+				qType Q = Gstore[l](a1,a2).Q;
+				size_t match;
+				for(size_t k=0; k<qOp_in[l].size(); ++k)
+				{
+					if (qOp_in[l][k] == Q) {match=k; break;}
+					// assert(k == qOp[l].size()-1 and "The SuperMatrix is not well defined.");
+				}
+				Wstore[l][s1][s2][match].insert(a1,a2) = val;
+			}
+		}
+	}
+	
+	// open boundary conditions: use only first column
+	if (OPEN_BC)
+	{
+		size_t l=l_last;
+		
+		for (size_t s1=0; s1<qloc[l].size(); ++s1)
+		for (size_t s2=0; s2<qloc[l].size(); ++s2)
+		{
+			Wstore[l][s1][s2].resize(qOp_in[l].size());
+			for (size_t k=0; k<qOp_in[l].size(); ++k)
+			{
+				Wstore[l][s1][s2][k].resize(Gstore[l].rows(),1);
+			}
+			for (size_t a1=0; a1<Gstore[l].rows(); ++a1)
+			{
+				Scalar val = Gstore[l](a1,0).data(s1,s2);
+				if (val != 0.)
+				{
+					qType Q = Gstore[l](a1,0).Q;
+					size_t match;
+					for(size_t k=0; k<qOp_in[l].size(); ++k)
+					{
+						if (qOp_in[l][k] == Q) {match=k; break;}
+						// assert(k == qOp[l].size()-1 and "The SuperMatrix is not well defined.");
+					}
+					Wstore[l][s1][s2][match].insert(a1,0) = val;
+				}
+			}
+		}
+	}
+	
+	// make squared MPO if desired
 	if (CALC_SQUARE == true)
 	{
 		qOpSq.resize(N_sites);
-		vector<SuperMatrix<Symmetry,Scalar> > GvecSq_input(N_sites);
-		for(size_t l=0; l<N_sites; l++)
+		vector<SuperMatrix<Symmetry,Scalar> > GvecSq_tmp(N_sites);
+		for (size_t l=0; l<N_sites; ++l)
 		{
 			qOpSq[l] = Symmetry::reduceSilent(qOp[l],qOp[l]);
-			GvecSq_input[l] = tensor_product(Gvec_input[l],Gvec_input[l]);
+			GvecSq_tmp[l].setMatrix(Gvec_input[l].auxdim()*Gvec_input[l].auxdim(), Gvec_input[l].D());
+			GvecSq_tmp[l] = tensor_product(Gvec_input[l],Gvec_input[l]);
 		}
-		construct(GvecSq_input, Wsq, GvecSq, qOpSq, false); //use false here, otherwise one would also calclate H⁴.
+		construct(GvecSq_tmp, Wsq, GvecSq, qOpSq, false, OPEN_BC); //use false here, otherwise one would also calclate H⁴.
 		GOT_SQUARE = true;
 	}
-	else { GOT_SQUARE = false; }
+	else
+	{
+		GOT_SQUARE = false;
+	}
 	
 	// auxiliary Basis
 	calc_auxBasis();
@@ -698,9 +776,10 @@ void MpoQ<Symmetry,Scalar>::
 construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 		   vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
 		   vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
-		   bool CALC_SQUARE)
+		   bool CALC_SQUARE,
+		   bool OPEN_BC)
 {
-	construct(Gvec_input,Wstore,Gstore,this->qOp,CALC_SQUARE);
+	construct(Gvec_input, Wstore, Gstore, this->qOp, CALC_SQUARE, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>

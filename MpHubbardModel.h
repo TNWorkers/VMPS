@@ -122,7 +122,8 @@ protected:
 	const std::map<string,std::any> defaults = 
 	{
 		{"U",0.}, {"V",0.}, {"Bz",0.}, {"J",0.}, {"mu",0.},
-		{"t",1.}, {"tPrime",0.}, {"tPara",0.}, {"tPerp",0.}
+		{"t",1.}, {"tPrime",0.}, {"tPara",0.}, {"tPerp",0.},
+		{"CALC_SQUARE",true}, {"CYLINDER",false}
 	};
 	
 	double U;
@@ -234,7 +235,7 @@ qOp()
 
 template<typename Symmetry_>
 static HamiltonianTermsXd<Symmetry_> HubbardU1::
-set_operators (const FermionBase<Symmetry_> &B, const ParamHandler &P, bool PERIODIC)
+set_operators (const FermionBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry_> Terms;
 	
@@ -315,7 +316,7 @@ set_operators (const FermionBase<Symmetry_> &B, const ParamHandler &P, bool PERI
 	// U
 	
 	ArrayXd Uloc(F.orbitals()); Uloc.setZero();
-	double U = P.get<double>("U");
+	double U = P.get_default<double>("U");
 	
 	if (P.HAS("Uloc"))
 	{
@@ -331,7 +332,7 @@ set_operators (const FermionBase<Symmetry_> &B, const ParamHandler &P, bool PERI
 	// mu
 	
 	ArrayXd muloc(F.orbitals()); muloc.setZero();
-	double mu = P.get<double>("mu");
+	double mu = P.get_default<double>("mu");
 	
 	if (P.HAS("muloc"))
 	{
@@ -347,7 +348,7 @@ set_operators (const FermionBase<Symmetry_> &B, const ParamHandler &P, bool PERI
 	// Bz
 	
 	ArrayXd Bzloc(F.orbitals()); Bz.setZero();
-	double Bz = P.get<double>("Bz");
+	double Bz = P.get_default<double>("Bz");
 	
 	if (P.HAS("Bzloc"))
 	{
@@ -362,7 +363,7 @@ set_operators (const FermionBase<Symmetry_> &B, const ParamHandler &P, bool PERI
 	
 	ss << ")";
 	Terms.info = ss.str();
-	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uloc,muloc,Bzloc,tPerp,V,J,PERIODIC)));
+	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uloc,muloc,Bzloc,tPerp,V,J, P.get<bool>("CYLINDER"))));
 	
 	return Terms;
 }

@@ -90,7 +90,7 @@ protected:
 		{"Jperp",0.}, {"Jxyperp",0.}, {"Jzperp",0.},
 		{"Jpara",0.}, {"Jxypara",0.}, {"Jzpara",0.},
 		{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"K",0.},
-		{"CALC_SQUARE",true}, {"CYLINDER",false}
+		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 	};
 	
 	SpinBase<Symmetry> B;
@@ -134,14 +134,14 @@ HeisenbergU1 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input)
 	}
 	
 	stringstream ss;
+	ss << "unit cell:" << endl;
 	for (size_t l=0; l<Lcell; ++l)
 	{
 		ss << "l=" << l << ": " << labels[l] << endl;
 	}
 	this->label = ss.str();
-	cout << this->label << endl;
 	
-	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"));
+	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
 MpoQ<Sym::U1<double> > HeisenbergU1::
