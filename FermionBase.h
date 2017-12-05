@@ -6,6 +6,9 @@
 #include <boost/dynamic_bitset.hpp>
 
 #include "SpinBase.h"
+
+#include <Eigen/Core>
+
 /**This basically just constructs the full Hubbard model on \p L_input lattice sites.*/
 class FermionBase
 {
@@ -188,12 +191,14 @@ public:
 	
 	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
 	\param Uvec : \f$U\f$ for each orbital
+	\param onsite : \f$E_i\f$ for each orbital
+	\param Bzloc : \f$B_z\f$ for each orbital
 	\param t : \f$t\f$
 	\param V : \f$V\f$
 	\param J : \f$J\f$
-	\param PERIODIC: periodic boundary conditions if \p true
-	\param Bz : \f$B_z\f$ for each orbital*/
-	template<typename Scalar> SparseMatrix<Scalar> HubbardHamiltonian (vector<double> Uvec, vector<double> onsite, Scalar t=1., double V=0., double J=0., double Bz=0., bool PERIODIC=false) const;
+	\param PERIODIC: periodic boundary conditions if \p true*/
+	template<typename Scalar> SparseMatrix<Scalar> HubbardHamiltonian (ArrayXd Uvec, ArrayXd onsite, ArrayXd Bzloc, 
+	                                                                   Scalar t=1., double V=0., double J=0., bool PERIODIC=false) const;
 	
 	/**Returns the qarray for a given index of the basis
 	\param index
@@ -450,26 +455,35 @@ HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERI
 
 template<typename Scalar>
 SparseMatrix<Scalar> FermionBase::
-HubbardHamiltonian (vector<double> Uvec, vector<double> onsite, Scalar t, double V, double J, double Bz, bool PERIODIC) const
+HubbardHamiltonian (ArrayXd Uloc, ArrayXd onsite, ArrayXd Bzloc, Scalar t, double V, double J, bool PERIODIC) const
 {
-	SparseMatrix<Scalar> Mout = HubbardHamiltonian(0,t,V,J,Bz,PERIODIC);
+	SparseMatrix<Scalar> Mout = HubbardHamiltonian(0,t,V,J,0,PERIODIC);
+	
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (Uvec.size() > 0)
+		if (Uloc.rows() > 0)
 		{
-			if (Uvec[i] != 0. and Uvec[i] != numeric_limits<double>::infinity())
+			if (Uloc(i) != 0. and Uloc(i) != numeric_limits<double>::infinity())
 			{
-				Mout += Uvec[i] * d(i).cast<Scalar>();
+				Mout += Uloc(i) * d(i).cast<Scalar>();
 			}
 		}
-		if (onsite.size() > 0)
+		if (onsite.rows() > 0)
 		{
-			if (onsite[i] != 0.)
+			if (onsite(i) != 0.)
 			{
-				Mout += onsite[i] * n(i).cast<Scalar>();
+				Mout += onsite(i) * n(i).cast<Scalar>();
+			}
+		}
+		if (Bzloc.rows() > 0)
+		{
+			if (Bzloc(i) != 0.)
+			{
+				Mout += Bzloc(i) * Sz(i).cast<Scalar>();
 			}
 		}
 	}
+	
 	return Mout;
 }
 

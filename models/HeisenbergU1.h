@@ -49,7 +49,7 @@ public:
 	   \param Ly_input : amount of legs in ladder
 	   \param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
-	HeisenbergU1 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input=1, bool CALC_SQUARE=true);
+	HeisenbergU1 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input=1);
 	///\}
 
 	/**
@@ -57,7 +57,7 @@ public:
 	   \param P : The parameters
 	*/
 	template<typename Symmetry_>
-	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P);
+	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
 
 	/**Operator Quantum numbers: \f$\{ Id,S_z:k=\left|0\right>; S_+:k=\left|+2\right>; S_-:k=\left|-2\right>\}\f$ */
 	static const vector<qarray<1> > qOp ();
@@ -76,20 +76,21 @@ public:
 	///@}
 
 	///@{
-	/**Observables.*/	
+	/**Observables*/
 	MpoQ<Symmetry> Sz (size_t locx, size_t locy=0) const;
 	MpoQ<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 protected:
-		
+	
 	const std::map<string,std::any> defaults = 
 	{
 		{"J",0.}, {"Jxy",0.}, {"Jz",0.},
 		{"Jprime",0.}, {"Jxyprime",0.}, {"Jzprime",0.},
 		{"Jperp",0.}, {"Jxyperp",0.}, {"Jzperp",0.},
 		{"Jpara",0.}, {"Jxypara",0.}, {"Jzpara",0.},
-		{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"K",0.}
+		{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"K",0.},
+		{"CALC_SQUARE",true}, {"CYLINDER",false}
 	};
 	
 	SpinBase<Symmetry> B;
@@ -108,20 +109,39 @@ qOp ()
 }
 
 HeisenbergU1::
-HeisenbergU1 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input, bool CALC_SQUARE)
+HeisenbergU1 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input)
 :MpoQ<Symmetry> (Lx_input, Ly_input, qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve)
 {
 	ParamHandler P(params,defaults);
 	B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D"));
 	
-	for (size_t l=0; l<N_sites; ++l) { setLocBasis(B.basis(),l); }
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		setLocBasis(B.basis(),l);
+	}
 	
-	HamiltonianTermsXd<Symmetry> Terms = set_operators(B,P);
-	this->label = Terms.info;
-	SuperMatrix<Symmetry,double> G = Generator(Terms);
-	this->Daux = Terms.auxdim();
+	size_t Lcell = P.size();
+	vector<SuperMatrix<Symmetry,double> > G;
+	vector<string> labels(Lcell);
 	
-	this->construct(G, this->W, this->Gvec, CALC_SQUARE);	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		HamiltonianTermsXd<Symmetry> Terms = set_operators(B,P,l%Lcell);
+		this->label += Terms.info;
+		labels[l%Lcell] = Terms.info;
+		G.push_back(Generator(Terms));
+		this->Daux = Terms.auxdim();
+	}
+	
+	stringstream ss;
+	for (size_t l=0; l<Lcell; ++l)
+	{
+		ss << "l=" << l << ": " << labels[l] << endl;
+	}
+	this->label = ss.str();
+	cout << this->label << endl;
+	
+	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"));
 }
 
 MpoQ<Sym::U1<double> > HeisenbergU1::
@@ -150,7 +170,7 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 
 template<typename Symmetry_>
 HamiltonianTermsXd<Symmetry_> HeisenbergU1::
-set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P)
+set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry_> Terms;
 	
@@ -168,23 +188,23 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P)
 	MatrixXd Jxypara(B.orbitals(),B.orbitals()); Jxypara.setZero();
 	MatrixXd Jzpara (B.orbitals(),B.orbitals()); Jzpara.setZero();
 	
-	if (P.HAS("J"))
+	if (P.HAS("J",loc))
 	{
-		J = P.get<double>("J");
+		J = P.get<double>("J",loc);
 		Jxypara.diagonal().setConstant(J);
 		Jzpara.diagonal().setConstant(J);
 		ss << "Heisenberg(S=" << S << ",J=" << J;
 	}
-	else if (P.HAS("Jxy") or P.HAS("Jz"))
+	else if (P.HAS("Jxy",loc) or P.HAS("Jz",loc))
 	{
-		if (P.HAS("Jxy"))
+		if (P.HAS("Jxy",loc))
 		{
-			Jxy = P.get<double>("Jxy");
+			Jxy = P.get<double>("Jxy",loc);
 			Jxypara.diagonal().setConstant(Jxy);
 		}
-		if (P.HAS("Jz"))
+		if (P.HAS("Jz",loc))
 		{
-			Jz = P.get<double>("Jz");
+			Jz = P.get<double>("Jz",loc);
 			Jzpara.diagonal().setConstant(Jz);
 		}
 		
@@ -192,24 +212,24 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P)
 		else if (Jz  == 0.) {ss << "XX(S="    << S << ",J=" << Jxy;}
 		else                {ss << "XXZ(S="   << S << ",Jxy=" << Jxy << ",Jz=" << Jz;}
 	}
-	else if (P.HAS("Jpara"))
+	else if (P.HAS("Jpara",loc))
 	{
 		assert(B.orbitals() == Jpara.rows() and 
 		       B.orbitals() == Jpara.cols());
-		Jpara = P.get<MatrixXd>("Jpara");
+		Jpara = P.get<MatrixXd>("Jpara",loc);
 		Jxypara = Jpara;
 		Jzpara = Jpara;
 		ss << "Heisenberg(S=" << S << ",J∥=" << Jpara.format(CommaInitFmt);
 	}
-	else if (P.HAS("Jxypara") or P.HAS("Jzpara"))
+	else if (P.HAS("Jxypara",loc) or P.HAS("Jzpara",loc))
 	{
-		if (P.HAS("Jxypara"))
+		if (P.HAS("Jxypara",loc))
 		{
-			Jxypara = P.get<MatrixXd>("Jxypara");
+			Jxypara = P.get<MatrixXd>("Jxypara",loc);
 		}
-		if (P.HAS("Jzpara"))
+		if (P.HAS("Jzpara",loc))
 		{
-			Jzpara = P.get<MatrixXd>("Jzpara");
+			Jzpara = P.get<MatrixXd>("Jzpara",loc);
 		}
 		
 		if      (Jxypara.norm() == 0.) {ss << "Ising(S=" << S << ",J∥=" << Jzpara.format(CommaInitFmt);}
@@ -240,30 +260,28 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P)
 	double Jxyprime = P.get_default<double>("Jxyprime");
 	double Jzprime  = P.get_default<double>("Jzprime");
 	
-	if (P.HAS("Jprime") or P.HAS("Jxyprime") or P.HAS("Jzprime"))
+	if (P.HAS("Jprime",loc) or P.HAS("Jxyprime",loc) or P.HAS("Jzprime",loc))
 	{
-
 		assert((B.orbitals() == 1 or (Jprime == 0 and Jxyprime == 0 and Jzprime == 0)) and "Cannot interpret Ly>1 and J'!=0");
 		// assert(B.orbitals() == 1 and "Cannot interpret Ly>1 and J'!=0");
 		
-		
-		if (P.HAS("Jprime"))
+		if (P.HAS("Jprime",loc))
 		{
-			Jprime = P.get<double>("Jprime");
+			Jprime = P.get<double>("Jprime",loc);
 			Jxyprime = Jprime;
 			Jzprime  = Jprime;
 			ss << ",J'=" << Jprime;
 		}
 		else
 		{
-			if (P.HAS("Jxyprime"))
+			if (P.HAS("Jxyprime",loc))
 			{
-				Jxyprime = P.get<double>("Jxyprime");
+				Jxyprime = P.get<double>("Jxyprime",loc);
 				ss << ",Jxy'=" << Jxyprime;
 			}
-			if (P.HAS("Jzprime"))
+			if (P.HAS("Jzprime",loc))
 			{
-				Jzprime = P.get<double>("Jzprime");
+				Jzprime = P.get<double>("Jzprime",loc);
 				ss << ",Jz'=" << Jzprime;
 			}
 		}
@@ -284,28 +302,28 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P)
 	double Jxyperp = P.get_default<double>("Jxyperp");
 	double Jzperp  = P.get_default<double>("Jzperp");
 	
-	if (P.HAS("J"))
+	if (P.HAS("J",loc))
 	{
-		Jxyperp = P.get<double>("J");
-		Jzperp  = P.get<double>("J");
+		Jxyperp = P.get<double>("J",loc);
+		Jzperp  = P.get<double>("J",loc);
 	}
-	else if (P.HAS("Jperp"))
+	else if (P.HAS("Jperp",loc))
 	{
-		Jperp = P.get<double>("Jperp");
+		Jperp = P.get<double>("Jperp",loc);
 		Jxyperp = Jperp;
 		Jzperp  = Jperp;
 		ss << ",J⟂=" << Jperp;
 	}
 	else
 	{
-		if (P.HAS("Jxyperp"))
+		if (P.HAS("Jxyperp",loc))
 		{
-			Jxyperp = P.get<double>("Jxyperp");
+			Jxyperp = P.get<double>("Jxyperp",loc);
 			ss << ",Jxy⟂=" << Jxyperp;
 		}
-		if (P.HAS("Jzperp"))
+		if (P.HAS("Jzperp",loc))
 		{
-			Jzperp = P.get<double>("Jzperp");
+			Jzperp = P.get<double>("Jzperp",loc);
 			ss << ",Jz⟂=" << Jzperp;
 		}
 		
@@ -315,25 +333,25 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P)
 	double Bx = P.get_default<double>("Bx");
 	double K  = P.get_default<double>("K");
 	
-	if (P.HAS("Bz"))
+	if (P.HAS("Bz",loc))
 	{
-		Bz = P.get<double>("Bz");
+		Bz = P.get<double>("Bz",loc);
 		ss << ",Bz=" << Bz;
 	}
-	if (P.HAS("Bx"))
+	if (P.HAS("Bx",loc))
 	{
-		Bx = P.get<double>("Bx");
+		Bx = P.get<double>("Bx",loc);
 		ss << ",Bx=" << Bx;
 	}
-	if (P.HAS("K"))
+	if (P.HAS("K",loc))
 	{
-		K = P.get<double>("K");
+		K = P.get<double>("K",loc);
 		ss << ",K=" << K;
 	}
 	
 	ss << ")";
 	Terms.info = ss.str();
-	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp,Jzperp,Bz,Bx,K)));
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp,Jzperp,Bz,Bx,K, P.get<bool>("CYLINDER"))));
 	
 	return Terms;
 }

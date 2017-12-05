@@ -639,7 +639,7 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 {
 	Wstore.resize(N_sites);
 	Gstore = Gvec_input;
-
+	
 	for (size_t l=0; l<N_sites;  ++l)
 	{
 		Wstore[l].resize(qloc[l].size());
@@ -673,7 +673,7 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 			}
 		}
 	}
-
+	
 	// make sqared MPO if desired
 	if (CALC_SQUARE == true)
 	{
@@ -688,7 +688,7 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 		GOT_SQUARE = true;
 	}
 	else { GOT_SQUARE = false; }
-
+	
 	// auxiliary Basis
 	calc_auxBasis();
 }
