@@ -575,36 +575,12 @@ construct (const SuperMatrix<Symmetry,Scalar> &G_input,
 	vector<SuperMatrix<Symmetry,Scalar> > Gvec(N_sites);
 	size_t D = G_input(0,0).data.rows();
 	
-//	make W^[0] from last row
-	if (OPEN_BC)
-	{
-		Gvec[0].setRowVector(G_input.auxdim(),D);
-		for (size_t i=0; i<G_input.cols(); ++i)
-		{
-			Gvec[0](0,i) = G_input(G_input.rows()-1,i);
-		}
-	}
-	
-	size_t l_frst = (OPEN_BC)? 1:0;
-	size_t l_last = (OPEN_BC)? N_sites-1:N_sites;
-//	make W^[i], i=1,...,L-2
-	for (size_t l=l_frst; l<l_last; ++l)
+	for (size_t l=0; l<N_sites; ++l)
 	{
 		Gvec[l].setMatrix(G_input.auxdim(),D);
 		Gvec[l] = G_input;
 	}
 	
-//	make W^[L-1] from first column
-	if (OPEN_BC)
-	{
-		Gvec[N_sites-1].setColVector(G_input.auxdim(),D);
-		for (size_t i=0; i<G_input.rows(); ++i)
-		{
-			Gvec[N_sites-1](i,0) = G_input(i,0);
-		}
-	}
-	
-//	make MPO
 	construct(Gvec, Wstore, Gstore, qOp_in, false, OPEN_BC);
 	
 	// make squared MPO if desired

@@ -24,28 +24,12 @@ std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 	return s;
 }
 
-template<typename Symmetry>
-typename Symmetry::qType getQ (SPINOP_LABEL Sa)
-{
-	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
-	else{
-		typename Symmetry::qType out;
-		if      (Sa==SX)  {out = {0};}
-		else if (Sa==SY)  {out = {0};}
-		else if (Sa==iSY) {out = {0};}
-		else if (Sa==SZ)  {out = {0};}
-		else if (Sa==SP)  {out = {+2};}
-		else if (Sa==SM)  {out = {-2};}
-		return out;
-	}
-}
-
 /**This constructs the operators for L_input spins with local dimension D=2S+1.*/
-template<typename Symmetry_>
+template<typename Symmetry>
 class SpinBase
 {
-	typedef Symmetry_ Symmetry;
 	typedef SiteOperator<Symmetry,Eigen::SparseMatrix<double> > OperatorType;
+	
 public:
 	
 	SpinBase(){};
@@ -64,11 +48,13 @@ public:
 	/**amount of orbitals*/
 	inline size_t orbitals() const  {return N_orbitals;}
 	
-	vector<qarray<Symmetry_::Nq> > basis() const;
+	vector<qarray<Symmetry::Nq> > get_basis() const;
+	
+	typename Symmetry::qType getQ (SPINOP_LABEL Sa) const;
 	
 	OperatorType Scomp (SPINOP_LABEL Sa, int orbital=0) const;
 
-	OperatorType Id () const;
+	OperatorType Id() const;
 
 	/**Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
 	\param Jxy : \f$J_{xy}\f$
@@ -80,23 +66,23 @@ public:
 	
 	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, double K, bool PERIODIC=false) const;
 	
-	/**Returns the qarray for a given index of the basis.
-	\param index*/
-	qarray<Symmetry_::Nq> qNums (size_t index) const;
+private:
 	
 	SparseMatrixXd ScompSingleSite (SPINOP_LABEL Sa) const;
 	SparseMatrixXd Sbase () const;
 	VectorXd       Soffdiag () const;
 	
-private:
-	
 	size_t N_orbitals;
 	size_t N_states;
 	size_t D;
+	
+	/**Returns the qarray for a given index of the basis.
+	\param index*/
+	qarray<Symmetry::Nq> qNums (size_t index) const;
 };
 
-template<typename Symmetry_>
-SpinBase<Symmetry_>::
+template<typename Symmetry>
+SpinBase<Symmetry>::
 SpinBase (size_t L_input, size_t D_input)
 :N_orbitals(L_input), D(D_input)
 {
@@ -105,8 +91,8 @@ SpinBase (size_t L_input, size_t D_input)
 	N_states = pow(D,N_orbitals);
 }
 
-template<typename Symmetry_>
-SiteOperator<Symmetry_,Eigen::SparseMatrix<double> > SpinBase<Symmetry_>::
+template<typename Symmetry>
+SiteOperator<Symmetry,Eigen::SparseMatrix<double> > SpinBase<Symmetry>::
 Scomp (SPINOP_LABEL Sa, int orbital) const
 {
 	assert(orbital<N_orbitals);
@@ -117,23 +103,22 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 	
 	SparseMatrixXd Il = MatrixXd::Identity(Nl,Nl).sparseView();
 	SparseMatrixXd Ir = MatrixXd::Identity(Nr,Nr).sparseView();
+	SparseMatrixXd Mout = kroneckerProduct(Il,kroneckerProduct(ScompSingleSite(Sa),Ir));
 	
-	SparseMatrixXd mat = kroneckerProduct(Il,kroneckerProduct(ScompSingleSite(Sa),Ir));
-	OperatorType Oout(mat,getQ<Symmetry>(Sa));
-	return Oout;
+	return OperatorType(Mout,getQ(Sa));
 }
 
-template<typename Symmetry_>
-SiteOperator<Symmetry_,Eigen::SparseMatrix<double> > SpinBase<Symmetry_>::
-Id () const
+template<typename Symmetry>
+SiteOperator<Symmetry,Eigen::SparseMatrix<double> > SpinBase<Symmetry>::
+Id() const
 {
 	SparseMatrixXd mat = MatrixXd::Identity(N_states,N_states).sparseView();
 	OperatorType Oout(mat,Symmetry::qvacuum());
-	return Oout;	
+	return Oout;
 }
 
-template<typename Symmetry_>
-SiteOperator<Symmetry_,Eigen::SparseMatrix<double> > SpinBase<Symmetry_>::
+template<typename Symmetry>
+SiteOperator<Symmetry,Eigen::SparseMatrix<double> > SpinBase<Symmetry>::
 HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, double K, bool PERIODIC) const
 {
 	assert (Bz.rows() == N_orbitals and Bx.rows() == N_orbitals);
@@ -182,8 +167,8 @@ HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd
 	return Oout;
 }
 
-template<typename Symmetry_>
-SiteOperator<Symmetry_,Eigen::SparseMatrix<double> > SpinBase<Symmetry_>::
+template<typename Symmetry>
+SiteOperator<Symmetry,Eigen::SparseMatrix<double> > SpinBase<Symmetry>::
 HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double K, bool PERIODIC) const
 {
 	VectorXd Bzvec(N_orbitals); Bzvec.setConstant(Bz);
@@ -191,8 +176,8 @@ HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double K, bo
 	return HeisenbergHamiltonian(Jxy, Jz, Bzvec, Bxvec, K, PERIODIC);
 }
 
-template<typename Symmetry_>
-qarray<Symmetry_::Nq> SpinBase<Symmetry_>::
+template<typename Symmetry>
+qarray<Symmetry::Nq> SpinBase<Symmetry>::
 qNums (size_t index) const
 {
 	NestedLoopIterator Nelly(N_orbitals,D);
@@ -204,7 +189,7 @@ qNums (size_t index) const
 		M += D-(2*(Nelly(i)+1)-1);
 	}
 	
-	if constexpr(Symmetry_::IS_TRIVIAL)
+	if constexpr(Symmetry::IS_TRIVIAL)
 	{
 		return qarray<0>{};
 	}
@@ -214,9 +199,9 @@ qNums (size_t index) const
 	}
 }
 
-template<typename Symmetry_>
-vector<qarray<Symmetry_::Nq> > SpinBase<Symmetry_>::
-basis() const
+template<typename Symmetry>
+vector<qarray<Symmetry::Nq> > SpinBase<Symmetry>::
+get_basis() const
 {
 	vector<qarray<Symmetry::Nq> > vout;
 	
@@ -228,8 +213,25 @@ basis() const
 	return vout;
 }
 
-template<typename Symmetry_>
-SparseMatrixXd SpinBase<Symmetry_>::
+template<typename Symmetry>
+typename Symmetry::qType SpinBase<Symmetry>::
+getQ (SPINOP_LABEL Sa) const
+{
+	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
+	else{
+		typename Symmetry::qType out;
+		if      (Sa==SX)  {out = {0};}
+		else if (Sa==SY)  {out = {0};}
+		else if (Sa==iSY) {out = {0};}
+		else if (Sa==SZ)  {out = {0};}
+		else if (Sa==SP)  {out = {+2};}
+		else if (Sa==SM)  {out = {-2};}
+		return out;
+	}
+}
+
+template<typename Symmetry>
+SparseMatrixXd SpinBase<Symmetry>::
 ScompSingleSite (SPINOP_LABEL Sa) const
 {
 	assert(Sa != SY);
@@ -264,8 +266,8 @@ ScompSingleSite (SPINOP_LABEL Sa) const
 	}
 }
 
-template<typename Symmetry_>
-SparseMatrixXd SpinBase<Symmetry_>::
+template<typename Symmetry>
+SparseMatrixXd SpinBase<Symmetry>::
 Sbase () const
 {
 	assert(D >= 2);
@@ -276,8 +278,8 @@ Sbase () const
 	return Mout;
 }
 
-template<typename Symmetry_>
-VectorXd SpinBase<Symmetry_>::
+template<typename Symmetry>
+VectorXd SpinBase<Symmetry>::
 Soffdiag () const
 {
 	VectorXd Vout(D-1);

@@ -47,6 +47,8 @@ Logger lout;
 
 #include "models/HeisenbergSU2.h"
 
+#include "models/HubbardU1xU1.h"
+
 template<typename Scalar>
 string to_string_prec (Scalar x, int n=14)
 {
@@ -149,9 +151,7 @@ int main (int argc, char* argv[])
 	Stopwatch<> Watch_U1;
 //	VMPS::HeisenbergU1 H_U1(L,J,J,0,D,Ly,true); // Bz=0
 	VMPS::HeisenbergU1 H_U1(L,{{"J",-1.,0},{"J",-0.5,1}},Ly);
-	lout << H_U1 << endl;
-	VMPS::HeisenbergU1 Heis(L,{{"J",-1.,0}},Ly);
-	lout << Heis << endl;
+	lout << H_U1.info() << endl;
 	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
 	
 	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);

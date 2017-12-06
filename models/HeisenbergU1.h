@@ -37,34 +37,23 @@ private:
 	typedef Symmetry::qType qType;
 	typedef SiteOperator<Symmetry,SparseMatrix<double> > OperatorType;
 public:
-
-	//---constructors---
-	///\{
-	/**Do nothing.*/
+	
 	HeisenbergU1() : MpoQ<Symmetry>() {};
-
-	/**
-	   \param Lx_input : chain length
-	   \describe_params
-	   \param Ly_input : amount of legs in ladder
-	   \param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
-	*/
 	HeisenbergU1 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input=1);
-	///\}
-
+	
 	/**
 	   \param B : Base class from which the local operators are received
 	   \param P : The parameters
 	*/
 	template<typename Symmetry_>
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
-
+	
 	/**Operator Quantum numbers: \f$\{ Id,S_z:k=\left|0\right>; S_+:k=\left|+2\right>; S_-:k=\left|-2\right>\}\f$ */
-	static const vector<qarray<1> > qOp ();
-
+	static const vector<qarray<1> > qOp();
+	
 	/**Labels the conserved quantum number as "M".*/
 	static const std::array<string,1> maglabel;
-
+	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
 	typedef MpsQ<Symmetry,double>                           StateXd;
@@ -74,7 +63,7 @@ public:
 	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
 	typedef MpoQ<Symmetry>                                  Operator;
 	///@}
-
+	
 	///@{
 	/**Observables*/
 	MpoQ<Symmetry> Sz (size_t locx, size_t locy=0) const;
@@ -113,12 +102,6 @@ HeisenbergU1 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input)
 :MpoQ<Symmetry> (Lx_input, Ly_input, qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve)
 {
 	ParamHandler P(params,defaults);
-	B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D"));
-	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		setLocBasis(B.basis(),l);
-	}
 	
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
@@ -126,11 +109,14 @@ HeisenbergU1 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input)
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
+		B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
+		setLocBasis(B.get_basis(),l);
+		
 		HamiltonianTermsXd<Symmetry> Terms = set_operators(B,P,l%Lcell);
-		this->label += Terms.info;
-		labels[l%Lcell] = Terms.info;
-		G.push_back(Generator(Terms));
 		this->Daux = Terms.auxdim();
+		labels[l%Lcell] = Terms.info;
+		
+		G.push_back(Generator(Terms));
 	}
 	
 	stringstream ss;
@@ -150,8 +136,10 @@ Sz (size_t locx, size_t locy) const
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx << "," << locy << ")";
+	
 	MpoQ<Symmetry> Mout(N_sites, N_legs, qarray<Symmetry::Nq>({0}), {{0}}, HeisenbergU1::maglabel, ss.str(), halve);
-	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B.basis(),l); }
+	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(B.get_basis(),l);}
+	
 	Mout.setLocal(locx, B.Scomp(SZ,locy));
 	return Mout;
 }
@@ -162,8 +150,10 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	assert(locx1<N_sites and locx2<N_sites and locy1<N_legs and locy2<N_legs);
 	stringstream ss;
 	ss << "Sz(" << locx1 << "," << locy1 << ")" <<  "Sz(" << locx2 << "," << locy2 << ")";
+	
 	MpoQ<Symmetry> Mout(N_sites, N_legs, qarray<Symmetry::Nq>({0}), {{0}}, HeisenbergU1::maglabel, ss.str(), halve);
-	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B.basis(),l); }
+	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(B.get_basis(),l);}
+	
 	Mout.setLocal({locx1, locx2}, {B.Scomp(SZ,locy1), B.Scomp(SZ,locy2)});
 	return Mout;
 }

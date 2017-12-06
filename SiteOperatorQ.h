@@ -375,4 +375,14 @@ SiteOperatorQ<Symmetry,MatrixType_> operator- ( const SiteOperatorQ<Symmetry,Mat
 	return out;
 }
 
+template<typename Symmetry,typename MatrixType_>
+SiteOperatorQ<Symmetry,MatrixType_> operator* ( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2 )
+{
+	assert(O1.basis() == O2.basis() and "For multiplication of SiteOperatorQs the basis needs to be the same.");
+//	assert(O1.Q() == O2.Q() and "For multiplication of SiteOperatorQs the operator quantum number needs to be the same.");
+	SiteOperatorQ<Symmetry,MatrixType_> out(O1.Q()+O2.Q(),O1.basis());
+	out.data() = O1.data() * O2.data();
+	return out;
+}
+
 #endif

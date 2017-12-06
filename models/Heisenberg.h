@@ -83,7 +83,7 @@ Heisenberg (size_t Lx_input, initializer_list<Param> params, size_t Ly_input, bo
 	ParamHandler P(params,defaults);
 	B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D"));
 	
-	for (size_t l=0; l<N_sites; ++l) { setLocBasis(B.basis(),l); }
+	for (size_t l=0; l<N_sites; ++l) { setLocBasis(B.get_basis(),l); }
 	
 	HamiltonianTermsXd<Symmetry> Terms = HeisenbergU1::set_operators(B,P);
 	this->label = Terms.info;
@@ -100,7 +100,7 @@ Sz (size_t loc)
 	stringstream ss;
 	ss << "Sz(" << loc << ")";
 	MpoQ<Symmetry > Mout(N_sites, N_legs, qarray<0>{}, vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "");
-	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B.basis(),l); }
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B.get_basis(),l); }
 	Mout.setLocal(loc, B.Scomp(SZ));
 	return Mout;
 }
@@ -112,7 +112,7 @@ SzSz (size_t loc1, size_t loc2)
 	stringstream ss;
 	ss << "Sz(" << loc1 << ")" <<  "Sz(" << loc2 << ")";
 	MpoQ<Symmetry > Mout(N_sites, N_legs, qarray<0>{}, vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "");
-	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B.basis(),l); }
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B.get_basis(),l); }
 	Mout.setLocal({loc1, loc2}, {B.Scomp(SZ), B.Scomp(SZ)});
 	return Mout;
 }
