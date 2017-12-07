@@ -72,6 +72,8 @@ template<typename Scalar>
 Scalar ParamHandler::
 get (const string label, size_t index) const
 {
+	assert(index < params.size());
+	
 	auto it = params[index].find(label);
 	
 	if (it != params[index].end())

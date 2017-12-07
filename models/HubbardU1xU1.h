@@ -119,7 +119,7 @@ HubbardU1xU1 (size_t Lx_input, vector<Param> params, size_t Ly_input)
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		F = FermionBase<Symmetry>(N_legs);
+		F = FermionBase<Symmetry>(N_legs,!isfinite(P.get<double>("U",l%Lcell)));
 		setLocBasis(F.get_basis(),l);
 		
 		Terms[l] = set_operators(F,P,l%Lcell);
@@ -128,7 +128,7 @@ HubbardU1xU1 (size_t Lx_input, vector<Param> params, size_t Ly_input)
 		G.push_back(Generator(Terms[l])); // boost::multi_array has stupid assignment
 	}
 	
-	this->generate_label("Hubbard",Terms,Lcell);
+	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
@@ -158,6 +158,10 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	{
 		tPara = P.get<ArrayXXd>("tPara",loc);
 		ss << ",t∥=" << tPara.format(CommaInitFmt);
+	}
+	else
+	{
+		ss << "t=" << t; // print hopping first no matter what
 	}
 	
 	for (int i=0; i<F.orbitals(); ++i)
@@ -194,6 +198,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 			Terms.tight.push_back(make_tuple(J,     F.Sz(i), F.Sz(i)));
 		}
 		ss << ",J=" << J;
+		Terms.name = "tJ";
 	}
 	
 	/// NNN-terms
@@ -229,6 +234,9 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 		Terms.nextn.push_back(make_tuple(+0.25*J3site, F.cdag(UP), F.sign()*F.c(DN),    F.Sm()*F.sign()));
 		Terms.nextn.push_back(make_tuple(-0.25*J3site, F.c(DN),    F.sign()*F.cdag(UP), F.Sm()*F.sign()));
 		Terms.nextn.push_back(make_tuple(-0.25*J3site, F.c(UP),    F.sign()*F.cdag(DN), F.Sp()*F.sign()));
+		
+		ss << ",J3site=" << J3site;
+		Terms.name = "tJ";
 	}
 	
 	// local terms
@@ -242,12 +250,14 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	{
 		Uloc = P.get<double>("Uloc",loc);
 		ss << ",U=" << Uloc.format(CommaInitFmt);
+		Terms.name = "Hubbard";
 	}
 	else if (P.HAS("U",loc))
 	{
 		U = P.get<double>("U",loc);
 		Uloc = U;
 		ss << ",U=" << U;
+		Terms.name = "Hubbard";
 	}
 	
 	// t⟂

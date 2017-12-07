@@ -152,7 +152,7 @@ int main (int argc, char* argv[])
 	//--------U(1)---------
 	lout << endl << "--------U(1)---------" << endl << endl;
 	
-	VMPS::HubbardU1xU1 Hub_U1(L,{{"U",U},{"t",t}},Ly);
+	VMPS::HubbardU1xU1 Hub_U1(L,{{"U",numeric_limits<double>::infinity()},{"t",t},{"J3site",1.}},Ly);
 	lout << Hub_U1.info() << endl;
 	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1;
 	
@@ -160,10 +160,14 @@ int main (int argc, char* argv[])
 	DMRG_U1.edgeState(Hub_U1, g_U1, {Nupdn,Nupdn}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	
-	VMPS::HubbardU1xU1 H1(L,{{"U",U,0},{"U",2*U,1},{"t",t}},Ly);
-	lout << H1.info() << endl;
-	VMPS::HubbardU1xU1 H2(L,{{"U",U,0},{"t",t,0},{"t",2*t,1}},Ly);
-	lout << H2.info() << endl;
+//	VMPS::HubbardU1xU1 H1(L,{{"U",U,0},{"U",2*U,1},{"t",t}},Ly);
+//	lout << H1.info() << endl;
+//	VMPS::HubbardU1xU1 H2(L,{{"U",U,0},{"t",t,0},{"t",2*t,1}},Ly);
+//	lout << H2.info() << endl;
+//	VMPS::HubbardU1xU1 H3(L,{{"U",numeric_limits<double>::infinity()}},Ly);
+//	lout << H3.info() << endl;
+//	lout << H3 <<
+	
 	
 //	Stopwatch<> Watch_U1;
 ////	VMPS::HeisenbergU1 H_U1(L,J,J,0,D,Ly,true); // Bz=0
@@ -271,39 +275,39 @@ int main (int argc, char* argv[])
 //	
 //	lout << endl << T;
 //	
-	VMPS::HeisenbergU1 Htest1(L,{{"Jxy",-1.},{"Jz",-4.}});
-	cout << Htest1.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest2(L,{{"Jxy",-1.}});
-	cout << Htest2.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest3(L,{{"Jz",-1.}});
-	cout << Htest3.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest4(L,{{"J",-1.},{"Bz",10.},{"K",2.}});
-	cout << Htest4.info() << endl;
-	
-	MatrixXd Jpara(2,2); Jpara.setRandom();
-	VMPS::HeisenbergU1 Htest5(L,{{"Jpara",Jpara}},2);
-	cout << Htest5.info() << endl;
-	
-	MatrixXd Jxypara(2,2); Jxypara.setRandom();
-	VMPS::HeisenbergU1 Htest6(L,{{"Jxypara",Jxypara}},2);
-	cout << Htest6.info() << endl;
-	
-	MatrixXd Jzpara(2,2); Jzpara.setRandom();
-	VMPS::HeisenbergU1 Htest7(L,{{"Jzpara",Jzpara}},2);
-	cout << Htest7.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest8(L,{{"Jxypara",Jxypara},{"Jzpara",Jzpara}},2);
-	cout << Htest8.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest9(L,{{"Jpara",Jpara},{"Jperp",-1.5}},2);
-	cout << Htest9.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest10(L,{{"Jpara",Jpara},{"Jxyperp",-3.},{"Jzperp",-4.}},2);
-	cout << Htest10.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest11(L,{{"Jxy",-1.,0},{"Jxy",-4.,1}});
-	cout << Htest11.info() << endl;
+//	VMPS::HeisenbergU1 Htest1(L,{{"Jxy",-1.},{"Jz",-4.}});
+//	cout << Htest1.info() << endl;
+//	
+//	VMPS::HeisenbergU1 Htest2(L,{{"Jxy",-1.}});
+//	cout << Htest2.info() << endl;
+//	
+//	VMPS::HeisenbergU1 Htest3(L,{{"Jz",-1.}});
+//	cout << Htest3.info() << endl;
+//	
+//	VMPS::HeisenbergU1 Htest4(L,{{"J",-1.},{"Bz",10.},{"K",2.}});
+//	cout << Htest4.info() << endl;
+//	
+//	MatrixXd Jpara(2,2); Jpara.setRandom();
+//	VMPS::HeisenbergU1 Htest5(L,{{"Jpara",Jpara}},2);
+//	cout << Htest5.info() << endl;
+//	
+//	MatrixXd Jxypara(2,2); Jxypara.setRandom();
+//	VMPS::HeisenbergU1 Htest6(L,{{"Jxypara",Jxypara}},2);
+//	cout << Htest6.info() << endl;
+//	
+//	MatrixXd Jzpara(2,2); Jzpara.setRandom();
+//	VMPS::HeisenbergU1 Htest7(L,{{"Jzpara",Jzpara}},2);
+//	cout << Htest7.info() << endl;
+//	
+//	VMPS::HeisenbergU1 Htest8(L,{{"Jxypara",Jxypara},{"Jzpara",Jzpara}},2);
+//	cout << Htest8.info() << endl;
+//	
+//	VMPS::HeisenbergU1 Htest9(L,{{"Jpara",Jpara},{"Jperp",-1.5}},2);
+//	cout << Htest9.info() << endl;
+//	
+//	VMPS::HeisenbergU1 Htest10(L,{{"Jpara",Jpara},{"Jxyperp",-3.},{"Jzperp",-4.}},2);
+//	cout << Htest10.info() << endl;
+//	
+//	VMPS::HeisenbergU1 Htest11(L,{{"Jxy",-1.,0},{"Jxy",-4.,1}});
+//	cout << Htest11.info() << endl;
 }
