@@ -322,7 +322,7 @@ protected:
 	vector<SuperMatrix<Symmetry,Scalar> > GvecSq;
 	vector<vector<vector<vector<SparseMatrix<Scalar> > > > > Wsq;
 	
-	void generate_label (string mainlabel, const vector<HamiltonianTerms<Symmetry,Scalar> > &Terms);
+	void generate_label (string mainlabel, const vector<HamiltonianTerms<Symmetry,Scalar> > &Terms, size_t Lcell);
 };
 
 template<typename Symmetry, typename Scalar>
@@ -788,7 +788,7 @@ string MpoQ<Symmetry,Scalar>::
 info() const
 {
 	stringstream ss;
-	ss << label << ": " << "L=" << N_sites;
+	ss << label << "L=" << N_sites;
 	if (N_legs>1) {ss << "x" << N_legs;}
 	ss << ", ";
 	
@@ -876,37 +876,53 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 	return (PER_MATRIX)? N_nonZeros/N_matrices : N_nonZeros/N_elements;
 }
 
+//struct cmp_sets
+//{
+//	bool operator() (pair<string,set<size_t> > const &a, pair<string,set<size_t> > const &b) const
+//	{
+//		return *min_element(a.second.begin(),a.second.end()) < *min_element(b.second.begin(),b.second.end());
+//	}
+//};
+
 template<typename Symmetry, typename Scalar>
 void MpoQ<Symmetry,Scalar>::
-generate_label (string mainlabel, const vector<HamiltonianTerms<Symmetry,Scalar> > &Terms)
+generate_label (string mainlabel, const vector<HamiltonianTerms<Symmetry,Scalar> > &Terms, size_t Lcell)
 {
 	stringstream ss;
 	ss << mainlabel;
 	
-	map<string,list<size_t> > cells;
+	map<string,set<size_t> > cells;
 	
-	for (int l=0; l<Terms.size(); ++l)
+	for (size_t l=0; l<Terms.size(); ++l)
 	{
-		cells[Terms[l].info].push_back(l);
+		cells[Terms[l%Lcell].info].insert(l%Lcell);
 	}
 	
-	size_t Lcell = cells.size();
-	
-	if (Lcell == 1)
+	if (cells.size() == 1)
 	{
-		ss << "(" << Terms[0].info << ")";
+		ss << "(" << Terms[0].info << "): ";
 	}
 	else
 	{
-		ss << endl;
-		for (auto c:cells)
+		vector<pair<string,set<size_t> > > cells_resort(cells.begin(), cells.end());
+		
+		// sort according to smallest l, not according to label
+		sort(cells_resort.begin(), cells_resort.end(), 
+		[](const pair<string,set<size_t> > &a, const pair<string,set<size_t> > &b) -> bool
 		{
-			ss << "l=";
+			return *min_element(a.second.begin(),a.second.end()) < *min_element(b.second.begin(),b.second.end());
+		});
+		
+		ss << ":" << endl;
+		for (auto c:cells_resort)
+		{
+			ss << " •l=";
 			for (auto s:c.second)
 			{
 				ss << s << ",";
 			}
-			ss << ":" << c.first << endl;
+			ss.seekp(-1,ios_base::end); // delete last comma
+			ss << ": " << c.first << endl;
 		}
 	}
 	

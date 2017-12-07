@@ -27,8 +27,8 @@ class ParamHandler
 {
 public:
 	
-	ParamHandler (const initializer_list<Param> &p_list);
-	ParamHandler (const initializer_list<Param> &p_list, const map<string,std::any> &defaults_input);
+	ParamHandler (const vector<Param> &p_list);
+	ParamHandler (const vector<Param> &p_list, const map<string,std::any> &defaults_input);
 	
 	template<typename Scalar> Scalar get (const string label, const size_t index=0) const;
 	template<typename Scalar> Scalar get_default (const string label) const;
@@ -39,14 +39,14 @@ public:
 	
 private:
 	
-	size_t calc_cellsize (const initializer_list<Param> &p_list);
+	size_t calc_cellsize (const vector<Param> &p_list);
 	
 	vector<map<string,std::any> > params;
 	map<string,std::any> defaults;
 };
 
 ParamHandler::
-ParamHandler (const initializer_list<Param> &p_list)
+ParamHandler (const vector<Param> &p_list)
 {
 	params.resize(calc_cellsize(p_list));
 	
@@ -57,7 +57,7 @@ ParamHandler (const initializer_list<Param> &p_list)
 }
 
 ParamHandler::
-ParamHandler (const initializer_list<Param> &p_list, const map<string,std::any> &defaults_input)
+ParamHandler (const vector<Param> &p_list, const map<string,std::any> &defaults_input)
 :defaults(defaults_input)
 {
 	params.resize(calc_cellsize(p_list));
@@ -121,7 +121,7 @@ HAS (const string label, const size_t index) const
 }
 
 size_t ParamHandler::
-calc_cellsize (const initializer_list<Param> &p_list)
+calc_cellsize (const vector<Param> &p_list)
 {
 	set<size_t> indices;
 	
@@ -137,6 +137,8 @@ calc_cellsize (const initializer_list<Param> &p_list)
 	
 	return indices.size();
 }
+
+// It makes little sense, to print out std::any, but here is a possibility if you know all possible types:
 
 //string ParamHandler::
 //info() const
