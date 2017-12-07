@@ -24,7 +24,7 @@ typedef Sym::U1xU1<double> Symmetry;
 public:
 	
 	HubbardU1xU1() : MpoQ(){};
-	HubbardU1xU1 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input=1);
+	HubbardU1xU1 (size_t Lx_input, vector<Param> params, size_t Ly_input=1);
 	
 	template<typename Symmetry_> 
 	static HamiltonianTermsXd<Symmetry_> set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc=0);
@@ -107,6 +107,31 @@ qOp()
 	return vout;
 }
 
+HubbardU1xU1::
+HubbardU1xU1 (size_t Lx_input, vector<Param> params, size_t Ly_input)
+:MpoQ<Symmetry> (Lx_input, Ly_input, qarray<Symmetry::Nq>({0,0}), HubbardU1xU1::qOp(), HubbardU1xU1::Nlabel, "")
+{
+	ParamHandler P(params,defaults);
+	
+	size_t Lcell = P.size();
+	vector<SuperMatrix<Symmetry,double> > G;
+	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		F = FermionBase<Symmetry>(N_legs);
+		setLocBasis(F.get_basis(),l);
+		
+		Terms[l] = set_operators(F,P,l%Lcell);
+		this->Daux = Terms[l].auxdim();
+		
+		G.push_back(Generator(Terms[l])); // boost::multi_array has stupid assignment
+	}
+	
+	this->generate_label("Hubbard",Terms,Lcell);
+	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+}
+
 template<typename Symmetry_>
 HamiltonianTermsXd<Symmetry_> HubbardU1xU1::
 set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc)
@@ -120,18 +145,18 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	
 	double t = P.get_default<double>("t");
 	
-	MatrixXd tPara(F.orbitals(),F.orbitals()); tPara.setZero();
-	tPara.diagonal().setConstant(t);
+	ArrayXXd tPara(F.orbitals(),F.orbitals()); tPara.setZero();
+	tPara.matrix().diagonal().setConstant(t);
 	
 	if (P.HAS("t",loc))
 	{
 		t = P.get<double>("t",loc);
-		tPara.diagonal().setConstant(t);
+		tPara.matrix().diagonal().setConstant(t);
 		ss << "t=" << t;
 	}
 	else if (P.HAS("tPara",loc))
 	{
-		tPara = P.get<MatrixXd>("tPara",loc);
+		tPara = P.get<ArrayXXd>("tPara",loc);
 		ss << ",t∥=" << tPara.format(CommaInitFmt);
 	}
 	
@@ -273,36 +298,10 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 		ss << ",Bz=" << Bz;
 	}
 	
-	ss << ")";
 	Terms.info = ss.str();
 	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uloc,muloc,Bzloc,tPerp,V,J, P.get<bool>("CYLINDER"))));
 	
 	return Terms;
-}
-
-HubbardU1xU1::
-HubbardU1xU1 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input)
-:MpoQ<Symmetry> (Lx_input, Ly_input, qarray<Symmetry::Nq>({0,0}), HubbardU1xU1::qOp(), HubbardU1xU1::Nlabel, "")
-{
-	ParamHandler P(params,defaults);
-	
-	size_t Lcell = P.size();
-	vector<SuperMatrix<Symmetry,double> > G;
-	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
-	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		F = FermionBase<Symmetry>(N_legs);
-		setLocBasis(F.get_basis(),l);
-		
-		Terms[l] = set_operators(F,P,l%Lcell);
-		this->Daux = Terms[l].auxdim();
-		
-		G.push_back(Generator(Terms[l])); // boost::multi_array has stupid assignment
-	}
-	
-	this->generate_label("Hubbard",Terms);
-	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
 MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
