@@ -48,7 +48,7 @@ public:
 	   \describe_params
 	   \param Ly_input : amount of legs in ladder
 	*/
-	HeisenbergSU2 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input=1);
+	HeisenbergSU2 (size_t Lx_input, vector<Param> params, size_t Ly_input=1);
 	///\}
 
 	/**
@@ -100,35 +100,27 @@ qOp ()
 };
 
 HeisenbergSU2::
-HeisenbergSU2 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input)
+HeisenbergSU2 (size_t Lx_input, vector<Param> params, size_t Ly_input)
 :MpoQ<Symmetry> (Lx_input, Ly_input, qarray<Symmetry::Nq>({1}), HeisenbergSU2::qOp(), HeisenbergSU2::Stotlabel, "", halve)
 {
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
-	vector<string> labels(Lcell);
+	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		B = spins::BaseSU2<>(N_legs,P.get<size_t>("D",l%Lcell));
 		setLocBasis(B.get_basis(),l);
 		
-		HamiltonianTermsXd<Symmetry> Terms = set_operators(B,P,l%Lcell);
-		this->Daux = Terms.auxdim();
-		labels[l%Lcell] = Terms.info;
+		Terms[l] = set_operators(B,P,l%Lcell);
+		this->Daux = Terms[l].auxdim();
 		
-		G.push_back(Generator(Terms));
+		G.push_back(Generator(Terms[l]));
 	}
 
-	stringstream ss;
-	ss << "unit cell:" << endl;
-	for (size_t l=0; l<Lcell; ++l)
-	{
-		ss << "l=" << l << ": " << labels[l] << endl;
-	}
-	this->label = ss.str();
-
+	this->generate_label("Heisenberg",Terms,Lcell);
 	//false: For SU(2) symmetries the squared Hamiltonian can not be calculated in advance.
 	this->construct(G, this->W, this->Gvec, false, P.get<bool>("OPEN_BC"));
 }

@@ -43,7 +43,7 @@ public:
 	   \param Ly_input : amount of legs in ladder
 	   \param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
-	Heisenberg(size_t Lx_input, initializer_list<Param> params, size_t Ly_input=1, bool CALC_SQUARE=true);
+	Heisenberg(size_t Lx_input, vector<Param> params, size_t Ly_input=1);
 	///\}
 	
 	///@{
@@ -78,35 +78,27 @@ protected:
 };
 
 Heisenberg::
-Heisenberg (size_t Lx_input, initializer_list<Param> params, size_t Ly_input, bool CALC_SQUARE)
+Heisenberg (size_t Lx_input, vector<Param> params, size_t Ly_input)
 	:MpoQ<Symmetry> (Lx_input, Ly_input, qarray<0>({}), vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "")
 {
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
-	vector<string> labels(Lcell);
+	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
 		setLocBasis(B.get_basis(),l);
+
+		Terms[l] = HeisenbergU1::set_operators(B,P,l%Lcell);
+		this->Daux = Terms[l].auxdim();
 		
-		HamiltonianTermsXd<Symmetry> Terms = HeisenbergU1::set_operators(B,P,l%Lcell);
-		this->Daux = Terms.auxdim();
-		labels[l%Lcell] = Terms.info;
-		
-		G.push_back(Generator(Terms));
+		G.push_back(Generator(Terms[l]));
 	}
 	
-	stringstream ss;
-	ss << "unit cell:" << endl;
-	for (size_t l=0; l<Lcell; ++l)
-	{
-		ss << "l=" << l << ": " << labels[l] << endl;
-	}
-	this->label = ss.str();
-	
+	this->generate_label("Heisenberg",Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
