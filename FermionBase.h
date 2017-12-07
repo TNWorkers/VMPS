@@ -28,7 +28,7 @@ public:
 	inline size_t dim() const {return N_states;}
 	
 	/**number of orbitals*/
-	inline size_t orbitals() const  {return N_orbitals;}
+	inline size_t orbitals() const {return N_orbitals;}
 	
 	///\{
 	/**Annihilation operator, for \p N_orbitals=1, this is
@@ -171,6 +171,8 @@ public:
 	*/
 	OperatorType sign (int orb1=0, int orb2=0) const;
 	
+	OperatorType Id () const;
+	
 	/**Fermionic sign for the transfer to a particular orbital, needed by HubbardModel::c and HubbardModel::cdag.
 	\param orbital : orbital on the supersite*/
 	OperatorType sign_local (int orbital) const;
@@ -199,6 +201,9 @@ public:
 	
 	vector<qarray<Symmetry::Nq> > get_basis() const;
 	
+	typename Symmetry::qType getQ (SPIN_INDEX sigma, int Delta=0, bool NM=false) const;
+	typename Symmetry::qType getQ (SPINOP_LABEL Sa, bool NM=false) const;
+	
 private:
 	
 	size_t N_orbitals;
@@ -207,14 +212,11 @@ private:
 	/**Returns the qarray for a given index of the basis
 	\param index
 	\param NM : If \p true, the format is (N,M), if \p false the format is (Nup,Ndn)*/ 
-	qarray<Symmetry::Nq> qNums (size_t index, bool NM=true) const;
+	qarray<Symmetry::Nq> qNums (size_t index, bool NM=false) const;
 	
 	vector<boost::dynamic_bitset<unsigned char> > basis;
 	
 	double parity (const boost::dynamic_bitset<unsigned char> &state, int orbital) const;
-	
-	typename Symmetry::qType getQ (SPIN_INDEX sigma, int Delta=0, bool NM=false) const;
-	typename Symmetry::qType getQ (SPINOP_LABEL Sa, bool NM=false) const;
 };
 
 template<typename Symmetry>
@@ -388,6 +390,15 @@ sign (int orb1, int orb2) const
 
 template<typename Symmetry>
 SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+Id() const
+{
+	SparseMatrixXd mat = MatrixXd::Identity(N_states,N_states).sparseView();
+	OperatorType Oout(mat,Symmetry::qvacuum());
+	return Oout;
+}
+
+template<typename Symmetry>
+SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
 sign_local (int orbital) const
 {
 	SparseMatrixXd Id = MatrixXd::Identity(N_states,N_states).sparseView();
@@ -522,8 +533,8 @@ qNums (size_t index, bool NM) const
 	}
 	else
 	{
-		if (NM) {return qarray<2>{N,M};}
-		else    {return qarray<2>{Nup,Ndn};}
+		if (NM) {return qarray<Symmetry::Nq>{N,M};}
+		else    {return qarray<Symmetry::Nq>{Nup,Ndn};}
 	}
 }
 
@@ -531,7 +542,7 @@ template<typename Symmetry>
 vector<qarray<Symmetry::Nq> > FermionBase<Symmetry>::
 get_basis() const
 {
-	vector<qarray<2> > vout;
+	vector<qarray<Symmetry::Nq> > vout;
 	
 	for (size_t i=0; i<N_states; ++i)
 	{

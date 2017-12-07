@@ -9,7 +9,7 @@
 template<typename Symmetry, typename Scalar=double>
 class SuperMatrix
 {
-typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
+typedef SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> MatrixType;
 typedef SiteOperator<Symmetry,MatrixType> OperatorType;
 public:
 	

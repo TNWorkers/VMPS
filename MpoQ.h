@@ -105,6 +105,10 @@ public:
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	
+	MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input,
+	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
+	      bool UNITARY_input=false);
+	
 
 	void initialize();
 
@@ -317,6 +321,8 @@ protected:
 	
 	vector<SuperMatrix<Symmetry,Scalar> > GvecSq;
 	vector<vector<vector<vector<SparseMatrix<Scalar> > > > > Wsq;
+	
+	void generate_label (string mainlabel, const vector<HamiltonianTerms<Symmetry,Scalar> > &Terms);
 };
 
 template<typename Symmetry, typename Scalar>
@@ -387,6 +393,25 @@ MpoQ (size_t Lx_input, size_t Ly_input, qarray<Nq> Qtot_input, vector<qarray<Nq>
 			}
 		}
 	}
+}
+
+template<typename Symmetry, typename Scalar>
+MpoQ<Symmetry,Scalar>::
+MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input,
+	      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), bool UNITARY_input)
+{
+	initialize();
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		qOp[l].resize(qOp_input.size());
+		for (size_t k=0; k<qOp_input.size(); ++k)
+		{
+			qOp[l][k] = qOp_input[k];
+		}
+	}
+	
+	construct(Gvec_input, W, Gvec);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -647,7 +672,7 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 			}
 			for (size_t a2=0; a2<Gstore[l].cols(); ++a2)
 			{
-				Scalar val = Gstore[l](Gstore[l].rows()-1,a2).data(s1,s2);
+				Scalar val = Gstore[l](Gstore[l].rows()-1,a2).data.coeffRef(s1,s2);
 				if (val != 0.)
 				{
 					qType Q = Gstore[l](Gstore[l].rows()-1,a2).Q;
@@ -678,7 +703,7 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 		for (size_t a1=0; a1<Gstore[l].rows(); ++a1)
 		for (size_t a2=0; a2<Gstore[l].cols(); ++a2)
 		{
-			Scalar val = Gstore[l](a1,a2).data(s1,s2);
+			Scalar val = Gstore[l](a1,a2).data.coeffRef(s1,s2);
 			if (val != 0.)
 			{
 				qType Q = Gstore[l](a1,a2).Q;
@@ -708,7 +733,7 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 			}
 			for (size_t a1=0; a1<Gstore[l].rows(); ++a1)
 			{
-				Scalar val = Gstore[l](a1,0).data(s1,s2);
+				Scalar val = Gstore[l](a1,0).data.coeffRef(s1,s2);
 				if (val != 0.)
 				{
 					qType Q = Gstore[l](a1,0).Q;
@@ -849,6 +874,43 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 	}
 	
 	return (PER_MATRIX)? N_nonZeros/N_matrices : N_nonZeros/N_elements;
+}
+
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
+generate_label (string mainlabel, const vector<HamiltonianTerms<Symmetry,Scalar> > &Terms)
+{
+	stringstream ss;
+	ss << mainlabel;
+	
+	map<string,list<size_t> > cells;
+	
+	for (int l=0; l<Terms.size(); ++l)
+	{
+		cells[Terms[l].info].push_back(l);
+	}
+	
+	size_t Lcell = cells.size();
+	
+	if (Lcell == 1)
+	{
+		ss << "(" << Terms[0].info << ")";
+	}
+	else
+	{
+		ss << endl;
+		for (auto c:cells)
+		{
+			ss << "l=";
+			for (auto s:c.second)
+			{
+				ss << s << ",";
+			}
+			ss << ":" << c.first << endl;
+		}
+	}
+	
+	label = ss.str();
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1923,11 +1985,13 @@ ostream &operator<< (ostream& os, const MpoQ<Symmetry,Scalar> &O)
 		for (size_t s2=0; s2<O.locBasis(l).size(); ++s2)
 		for (size_t k=0; k<O.opBasis(l).size(); ++k)
 		{
-			std::array<typename Symmetry::qType,3> qCheck = {O.locBasis(l)[s2],O.opBasis(l)[k],O.locBasis(l)[s1]};
-			if(!Symmetry::validate(qCheck)) {continue;}
-			os << "[l=" << l << "]\t|" << O.format(O.locBasis(l)[s1]) << "><" << O.format(O.locBasis(l)[s2]) << "|:" << endl;
-//			os << Matrix<Scalar,Dynamic,Dynamic>(O.W_at(l)[s1][s2]) << endl;
-			os << Matrix<Scalar,Dynamic,Dynamic>(O.W_at(l)[s1][s2][k]) << endl;
+			if (O.W_at(l)[s1][s2][k].nonZeros()>0)
+			{
+				std::array<typename Symmetry::qType,3> qCheck = {O.locBasis(l)[s2],O.opBasis(l)[k],O.locBasis(l)[s1]};
+				if(!Symmetry::validate(qCheck)) {continue;}
+				os << "[l=" << l << "]\t|" << O.format(O.locBasis(l)[s1]) << "><" << O.format(O.locBasis(l)[s2]) << "|:" << endl;
+				os << Matrix<Scalar,Dynamic,Dynamic>(O.W_at(l)[s1][s2][k]) << endl;
+			}
 		}
 		os << setfill('-') << setw(80) << "-" << setfill(' ');
 		if (l != O.length()-1) {os << endl;}

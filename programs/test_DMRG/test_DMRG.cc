@@ -96,6 +96,10 @@ int main (int argc, char* argv[])
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	dt = 0.2;
 	
+	double U = args.get<double>("U",10.);
+	double t = args.get<double>("t",1.);
+	int Nupdn = args.get<double>("Nupdn",L/2);
+	
 	Dinit  = args.get<int>("Dmin",2);
 	Dlimit = args.get<int>("Dmax",100);
 	Imin   = args.get<int>("Imin",2);
@@ -148,15 +152,18 @@ int main (int argc, char* argv[])
 	//--------U(1)---------
 	lout << endl << "--------U(1)---------" << endl << endl;
 	
-	VMPS::HubbardU1 Hub_U1(L,{{"U",6.}},Ly);
-	cout << Hub_U1.info() << endl;
-	cout << Hub_U1 << endl;
-	Eigenstate<VMPS::HubbardU1::StateXd> g_U1;
+	VMPS::HubbardU1xU1 Hub_U1(L,{{"U",U},{"t",t}},Ly);
+	lout << Hub_U1.info() << endl;
+	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1;
 	
-	VMPS::HubbardU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(Hub_U1, g_U1, {L/2,L/2}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	VMPS::HubbardU1xU1::Solver DMRG_U1(VERB);
+	DMRG_U1.edgeState(Hub_U1, g_U1, {Nupdn,Nupdn}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	
+	VMPS::HubbardU1xU1 H1(L,{{"U",U,0},{"U",2*U,1},{"t",t}},Ly);
+	lout << H1.info() << endl;
+	VMPS::HubbardU1xU1 H2(L,{{"U",U,0},{"t",t,0},{"t",2*t,1}},Ly);
+	lout << H2.info() << endl;
 	
 //	Stopwatch<> Watch_U1;
 ////	VMPS::HeisenbergU1 H_U1(L,J,J,0,D,Ly,true); // Bz=0
