@@ -97,8 +97,8 @@ Heisenberg (size_t Lx_input, vector<Param> params, size_t Ly_input)
 		
 		G.push_back(Generator(Terms[l]));
 	}
-	
-	this->generate_label("Heisenberg",Terms,Lcell);
+
+	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 

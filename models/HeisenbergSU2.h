@@ -162,6 +162,8 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 	stringstream ss;
 	IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
 
+	Terms.name = "Heisenberg";
+	
 	// J-terms
 	
 	double J   = P.get_default<double>("J");
