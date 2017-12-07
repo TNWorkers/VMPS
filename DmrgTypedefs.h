@@ -230,7 +230,8 @@ struct HamiltonianTerms
 	
 	inline size_t auxdim() {return 2+tight.size()+2*nextn.size();}
 	
-	string info;
+	string name="";
+	string info="";
 };
 
 template<typename Symmetry> using HamiltonianTermsXd = HamiltonianTerms<Symmetry,double> ;
