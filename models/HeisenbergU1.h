@@ -39,7 +39,7 @@ private:
 public:
 	
 	HeisenbergU1() : MpoQ<Symmetry>() {};
-	HeisenbergU1 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input=1);
+	HeisenbergU1 (size_t Lx_input, vector<Param> params, size_t Ly_input=1);
 	
 	/**
 	   \param B : Base class from which the local operators are received
@@ -98,35 +98,27 @@ qOp ()
 }
 
 HeisenbergU1::
-HeisenbergU1 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input)
+HeisenbergU1 (size_t Lx_input, vector<Param> params, size_t Ly_input)
 :MpoQ<Symmetry> (Lx_input, Ly_input, qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve)
 {
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
-	vector<string> labels(Lcell);
+	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
 		setLocBasis(B.get_basis(),l);
 		
-		HamiltonianTermsXd<Symmetry> Terms = set_operators(B,P,l%Lcell);
-		this->Daux = Terms.auxdim();
-		labels[l%Lcell] = Terms.info;
+		Terms[l] = set_operators(B,P,l%Lcell);
+		this->Daux = Terms[l].auxdim();
 		
-		G.push_back(Generator(Terms));
+		G.push_back(Generator(Terms[l]));
 	}
 	
-	stringstream ss;
-	ss << "unit cell:" << endl;
-	for (size_t l=0; l<Lcell; ++l)
-	{
-		ss << "l=" << l << ": " << labels[l] << endl;
-	}
-	this->label = ss.str();
-	
+	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
@@ -183,7 +175,8 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 		J = P.get<double>("J",loc);
 		Jxypara.diagonal().setConstant(J);
 		Jzpara.diagonal().setConstant(J);
-		ss << "Heisenberg(S=" << S << ",J=" << J;
+		Terms.name = "Heisenberg";
+		ss << "S=" << S << ",J=" << J;
 	}
 	else if (P.HAS("Jxy",loc) or P.HAS("Jz",loc))
 	{
@@ -198,9 +191,9 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 			Jzpara.diagonal().setConstant(Jz);
 		}
 		
-		if      (Jxy == 0.) {ss << "Ising(S=" << S << ",J=" << Jz;}
-		else if (Jz  == 0.) {ss << "XX(S="    << S << ",J=" << Jxy;}
-		else                {ss << "XXZ(S="   << S << ",Jxy=" << Jxy << ",Jz=" << Jz;}
+		if      (Jxy == 0.) {Terms.name = "Ising"; ss << "S=" << S << ",J=" << Jz;}
+		else if (Jz  == 0.) {Terms.name = "XX"; ss << "S="    << S << ",J=" << Jxy;}
+		else                {Terms.name = "XXZ"; ss << "S="   << S << ",Jxy=" << Jxy << ",Jz=" << Jz;}
 	}
 	else if (P.HAS("Jpara",loc))
 	{
@@ -209,7 +202,8 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 		Jpara = P.get<MatrixXd>("Jpara",loc);
 		Jxypara = Jpara;
 		Jzpara = Jpara;
-		ss << "Heisenberg(S=" << S << ",J∥=" << Jpara.format(CommaInitFmt);
+		Terms.name = "Heisenberg";
+		ss << "S=" << S << ",J∥=" << Jpara.format(CommaInitFmt);
 	}
 	else if (P.HAS("Jxypara",loc) or P.HAS("Jzpara",loc))
 	{
@@ -222,9 +216,9 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 			Jzpara = P.get<MatrixXd>("Jzpara",loc);
 		}
 		
-		if      (Jxypara.norm() == 0.) {ss << "Ising(S=" << S << ",J∥=" << Jzpara.format(CommaInitFmt);}
-		else if (Jzpara.norm()  == 0.) {ss << "XX(S="    << S << ",J∥=" << Jxypara.format(CommaInitFmt);}
-		else                           {ss << "XXZ(S="   << S << ",Jxy∥=" << Jxypara.format(CommaInitFmt) << ",Jz=" << Jzpara.format(CommaInitFmt);}
+		if      (Jxypara.norm() == 0.) {Terms.name = "Ising"; ss << "S=" << S << ",J∥=" << Jzpara.format(CommaInitFmt);}
+		else if (Jzpara.norm()  == 0.) {Terms.name = "XX"; ss << "S="    << S << ",J∥=" << Jxypara.format(CommaInitFmt);}
+		else                           {Terms.name = "XXZ"; ss << "S="   << S << ",Jxy∥=" << Jxypara.format(CommaInitFmt) << ",Jz=" << Jzpara.format(CommaInitFmt);}
 	}
 	else
 	{
@@ -339,7 +333,6 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 		ss << ",K=" << K;
 	}
 	
-	ss << ")";
 	Terms.info = ss.str();
 	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp,Jzperp,Bz,Bx,K, P.get<bool>("CYLINDER"))));
 	
