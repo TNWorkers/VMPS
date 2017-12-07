@@ -55,7 +55,7 @@ public:
 	   \param B : Base class from which the local operators are received
 	   \param P : The parameters
 	*/
-	static HamiltonianTermsXd<Symmetry> set_operators (const spins::BaseSU2<> &B, const ParamHandler &P);
+	static HamiltonianTermsXd<Symmetry> set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc=0);
 
 	/**Operator Quantum numbers: \f$\{ Id:k=\left|1\right>; S:k=\left|3\right>\}\f$ */
 	static const std::vector<qType> qOp ();
@@ -81,7 +81,8 @@ public:
 protected:
 	const std::map<string,std::any> defaults = 
 	{
-		{"J",-1.}, {"Jprime",0.}, {"Jperp",0.}, {"D",2ul}
+		{"J",-1.}, {"Jprime",0.}, {"Jperp",0.}, {"D",2ul},
+		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 	};
 
 	spins::BaseSU2<> B;
@@ -103,16 +104,33 @@ HeisenbergSU2 (size_t Lx_input, initializer_list<Param> params, size_t Ly_input)
 :MpoQ<Symmetry> (Lx_input, Ly_input, qarray<Symmetry::Nq>({1}), HeisenbergSU2::qOp(), HeisenbergSU2::Stotlabel, "", halve)
 {
 	ParamHandler P(params,defaults);
-	B = spins::BaseSU2<>(N_legs,P.get<size_t>("D"));
 	
-	for (size_t l=0; l<N_sites; ++l) { setLocBasis(B.basis(),l); }
-	
-	HamiltonianTermsXd<Symmetry> Terms = set_operators(B,P);
-	this->label = Terms.info;
-	SuperMatrix<Symmetry,double> G = Generator(Terms);
-	this->Daux = Terms.auxdim();
-	
-	this->construct(G, this->W, this->Gvec, false);	//false: For SU(2) symmetries the squared Hamiltonian can not be calculated in advance.
+	size_t Lcell = P.size();
+	vector<SuperMatrix<Symmetry,double> > G;
+	vector<string> labels(Lcell);
+
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		B = spins::BaseSU2<>(N_legs,P.get<size_t>("D",l%Lcell));
+		setLocBasis(B.get_basis(),l);
+		
+		HamiltonianTermsXd<Symmetry> Terms = set_operators(B,P,l%Lcell);
+		this->Daux = Terms.auxdim();
+		labels[l%Lcell] = Terms.info;
+		
+		G.push_back(Generator(Terms));
+	}
+
+	stringstream ss;
+	ss << "unit cell:" << endl;
+	for (size_t l=0; l<Lcell; ++l)
+	{
+		ss << "l=" << l << ": " << labels[l] << endl;
+	}
+	this->label = ss.str();
+
+	//false: For SU(2) symmetries the squared Hamiltonian can not be calculated in advance.
+	this->construct(G, this->W, this->Gvec, false, P.get<bool>("OPEN_BC"));
 }
 
 MpoQ<Sym::SU2<double> > HeisenbergSU2::
@@ -125,7 +143,7 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 	MpoQ<Symmetry> Mout(N_sites, N_legs);
 	for (std::size_t l=0; l<N_sites; l++)
 	{
-		Mout.setLocBasis(B.basis(),l);
+		Mout.setLocBasis(B.get_basis(),l);
 	}
 
 	Mout.label = ss.str();
@@ -145,7 +163,7 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 }
 
 HamiltonianTermsXd<Sym::SU2<double> > HeisenbergSU2::
-set_operators (const spins::BaseSU2<> &B, const ParamHandler &P)
+set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry> Terms;
 	frac S = frac(B.get_D()-1,2);
@@ -158,15 +176,15 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P)
 	MatrixXd Jpara  (B.orbitals(),B.orbitals()); Jpara.setZero();
 	if (P.HAS("J"))
 	{
-		J = P.get<double>("J");
+		J = P.get<double>("J", loc);
 		Jpara.diagonal().setConstant(J);
 		ss << "Heisenberg(S=" << S << ",J=" << J;
 	}
-	else if (P.HAS("Jpara"))
+	else if (P.HAS("Jpara", loc))
 	{
 		assert(B.orbitals() == Jpara.rows() and 
 		       B.orbitals() == Jpara.cols());
-		Jpara = P.get<MatrixXd>("Jpara");
+		Jpara = P.get<MatrixXd>("Jpara", loc);
 		ss << "Heisenberg(S=" << S << ",J∥=" << Jpara.format(CommaInitFmt);
 	}
 	else
@@ -188,9 +206,9 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P)
 
 	double Jprime = P.get_default<double>("Jprime");
 
-	if (P.HAS("Jprime"))
+	if (P.HAS("Jprime", loc))
 	{
-		Jprime = P.get<double>("Jprime");
+		Jprime = P.get<double>("Jprime", loc);
 		assert((B.orbitals() == 1 or Jprime == 0) and "Cannot interpret Ly>1 and J'!=0");
 		ss << ",J'=" << Jprime;
 	}
@@ -205,13 +223,13 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P)
 
 	double Jperp = P.get_default<double>("Jperp");
 
-	if (P.HAS("J"))
+	if (P.HAS("J", loc))
 	{
-		Jperp  = P.get<double>("J");
+		Jperp  = P.get<double>("J", loc);
 	}
 	else if (P.HAS("Jperp"))
 	{
-		Jperp = P.get<double>("Jperp");
+		Jperp = P.get<double>("Jperp", loc);
 		ss << ",J⟂=" << Jperp;
 	}
 

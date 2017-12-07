@@ -57,7 +57,7 @@ public:
 	   \note Use this as input for Mps, Mpo classes.*/ 
 	std::vector<Eigen::Index> qlocDeg() const { return TensorBasis.qlocDeg(); }
 
-	Qbasis<Symmetry> basis() const { return TensorBasis; }
+	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
 	
 private:
 

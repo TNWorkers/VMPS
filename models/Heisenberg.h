@@ -70,7 +70,8 @@ protected:
 		{"Jprime",0.}, {"Jxyprime",0.}, {"Jzprime",0.},
 		{"Jperp",0.}, {"Jxyperp",0.}, {"Jzperp",0.},
 		{"Jpara",0.}, {"Jxypara",0.}, {"Jzpara",0.},
-		{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"K",0.}
+		{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"K",0.},
+		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 	};
 
 	SpinBase<Symmetry> B;
@@ -81,16 +82,32 @@ Heisenberg (size_t Lx_input, initializer_list<Param> params, size_t Ly_input, bo
 	:MpoQ<Symmetry> (Lx_input, Ly_input, qarray<0>({}), vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "")
 {
 	ParamHandler P(params,defaults);
-	B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D"));
 	
-	for (size_t l=0; l<N_sites; ++l) { setLocBasis(B.get_basis(),l); }
+	size_t Lcell = P.size();
+	vector<SuperMatrix<Symmetry,double> > G;
+	vector<string> labels(Lcell);
 	
-	HamiltonianTermsXd<Symmetry> Terms = HeisenbergU1::set_operators(B,P);
-	this->label = Terms.info;
-	SuperMatrix<Symmetry,double> G = Generator(Terms);
-	this->Daux = Terms.auxdim();
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
+		setLocBasis(B.get_basis(),l);
+		
+		HamiltonianTermsXd<Symmetry> Terms = HeisenbergU1::set_operators(B,P,l%Lcell);
+		this->Daux = Terms.auxdim();
+		labels[l%Lcell] = Terms.info;
+		
+		G.push_back(Generator(Terms));
+	}
 	
-	this->construct(G, this->W, this->Gvec, CALC_SQUARE);	
+	stringstream ss;
+	ss << "unit cell:" << endl;
+	for (size_t l=0; l<Lcell; ++l)
+	{
+		ss << "l=" << l << ": " << labels[l] << endl;
+	}
+	this->label = ss.str();
+	
+	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
 MpoQ<Sym::U0> Heisenberg::
