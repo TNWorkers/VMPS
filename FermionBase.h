@@ -9,54 +9,6 @@
 
 #include "SpinBase.h"
 
-template<typename Symmetry>
-typename Symmetry::qType getQ (SPIN_INDEX sigma, int Delta=0, bool NM=false)
-{
-	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
-	else
-	{
-		typename Symmetry::qType out;
-		if (NM)
-		{
-			if      (sigma==UP)     {out = {Delta,Delta};}
-			else if (sigma==DN)     {out = {Delta,-Delta};}
-			else if (sigma==UPDN)   {out = {2*Delta,Delta};}
-			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
-		}
-		else
-		{
-			if      (sigma==UP)     {out = {Delta,0};}
-			else if (sigma==DN)     {out = {0,Delta};}
-			else if (sigma==UPDN)   {out = {Delta,Delta};}
-			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
-		}
-		return out;
-	}
-}
-
-template<typename Symmetry>
-typename Symmetry::qType getQ (SPINOP_LABEL Sa, bool NM=false)
-{
-	assert(Sa != SX and Sa != iSY);
-	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
-	
-	typename Symmetry::qType out;
-	
-	if (Sa==SZ) {out = {0,0};}
-	
-	if (NM)
-	{
-		if (Sa==SP) {out = {0,+2};}
-		if (Sa==SM) {out = {0,-2};}
-	}
-	else
-	{
-		if (Sa==SP) {out = {+1,-1};}
-		if (Sa==SM) {out = {-1,+1};}
-	}
-	return out;
-}
-
 /**This basically just constructs the full Hubbard model on \p L_input lattice sites.*/
 template<typename Symmetry>
 class FermionBase
@@ -245,7 +197,7 @@ public:
 	template<typename Scalar> SiteOperator<Symmetry,Eigen::SparseMatrix<Scalar> >
 	HubbardHamiltonian (ArrayXd Uvec, ArrayXd onsite, ArrayXd Bzloc, Scalar t=1., double V=0., double J=0., bool PERIODIC=false) const;
 	
-	vector<qarray<2> > get_basis() const;
+	vector<qarray<Symmetry::Nq> > get_basis() const;
 	
 private:
 	
@@ -255,7 +207,7 @@ private:
 	/**Returns the qarray for a given index of the basis
 	\param index
 	\param NM : If \p true, the format is (N,M), if \p false the format is (Nup,Ndn)*/ 
-	qarray<2> qNums (size_t index, bool NM=true) const;
+	qarray<Symmetry::Nq> qNums (size_t index, bool NM=true) const;
 	
 	vector<boost::dynamic_bitset<unsigned char> > basis;
 	
@@ -365,7 +317,7 @@ template<typename Symmetry>
 SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
 d (int orbital) const
 {
-	return OperatorType(n(UP,orbital)*n(DN,orbital), Symmetry::qvacuum());
+	return OperatorType(n(UP,orbital).data*n(DN,orbital).data, Symmetry::qvacuum());
 }
 
 template<typename Symmetry>
@@ -384,35 +336,35 @@ template<typename Symmetry>
 SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
 Sz (int orbital) const
 {
-	return OperatorType(0.5*(n(UP,orbital)-n(DN,orbital)), getQ(SZ));
+	return OperatorType(0.5*(n(UP,orbital).data-n(DN,orbital).data), getQ(SZ));
 }
 
 template<typename Symmetry>
 SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
 Sp (int orbital) const
 {
-	return OperatorType(cdag(UP,orbital)*c(DN,orbital), getQ(SP));
+	return OperatorType(cdag(UP,orbital).data*c(DN,orbital).data, getQ(SP));
 }
 
 template<typename Symmetry>
 SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
 Sm (int orbital) const
 {
-	return OperatorType(cdag(DN,orbital)*c(UP,orbital), getQ(SM));
+	return OperatorType(cdag(DN,orbital).data*c(UP,orbital).data, getQ(SM));
 }
 
 template<typename Symmetry>
 SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
 Sx (int orbital) const
 {
-	return OperatorType(0.5*(Sp(orbital)+Sm(orbital)), getQ(SX));
+	return OperatorType(0.5*(Sp(orbital).data+Sm(orbital).data), getQ(SX));
 }
 
 template<typename Symmetry>
 SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
 iSy (int orbital) const
 {
-	return OperatorType(0.5*(Sp(orbital)-Sm(orbital)), getQ(iSY));
+	return OperatorType(0.5*(Sp(orbital).data-Sm(orbital).data), getQ(iSY));
 }
 
 template<typename Symmetry>
@@ -424,11 +376,11 @@ sign (int orb1, int orb2) const
 	
 	for (int i=orb1; i<N_orbitals; ++i)
 	{
-		Mout = Mout * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
+		Mout = Mout * (Id-2.*n(UP,i).data)*(Id-2.*n(DN,i).data);
 	}
 	for (int i=0; i<orb2; ++i)
 	{
-		Mout = Mout * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
+		Mout = Mout * (Id-2.*n(UP,i).data)*(Id-2.*n(DN,i).data);
 	}
 	
 	return OperatorType(Mout,Symmetry::qvacuum());
@@ -443,7 +395,7 @@ sign_local (int orbital) const
 	
 	for (int i=0; i<orbital; ++i)
 	{
-		Mout = Mout * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
+		Mout = Mout * (Id-2.*n(UP,i).data)*(Id-2.*n(DN,i).data);
 	}
 	
 	return OperatorType(Mout,Symmetry::qvacuum());
@@ -461,15 +413,15 @@ HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERI
 		if (t != 0.)
 		{
 			SparseMatrix<Scalar> T = -t*(cdag(UP,i).data * c(UP,i+1).data + 
-			                             cdag(DN,i).data * c(DN,i+1).data).cast<Scalar>();
+			                             cdag(DN,i).data * c(DN,i+1).data).template cast<Scalar>();
 			Mout += -(T+SparseMatrix<Scalar>(T.adjoint()));
 		}
-		if (V != 0.) {Mout += V*(n(i).data*n(i+1).data).cast<Scalar>();}
+		if (V != 0.) {Mout += V*(n(i).data*n(i+1).data).template cast<Scalar>();}
 		if (J != 0.)
 		{
 			Mout += J*(0.5*Sp(i).data*Sm(i+1).data + 
 			           0.5*Sm(i).data*Sp(i+1).data + 
-			               Sz(i).data*Sz(i+1).data).cast<Scalar>();
+			               Sz(i).data*Sz(i+1).data).template cast<Scalar>();
 		}
 	}
 	if (PERIODIC==true and N_orbitals>2)
@@ -477,24 +429,24 @@ HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERI
 		if (t != 0.)
 		{
 			SparseMatrix<Scalar> T = -t*(cdag(UP,0).data*c(UP,N_orbitals-1).data + 
-			                             cdag(DN,0).data*c(DN,N_orbitals-1).data).cast<Scalar>();
+			                             cdag(DN,0).data*c(DN,N_orbitals-1).data).template cast<Scalar>();
 			Mout += -(T+SparseMatrix<Scalar>(T.adjoint()));
 		}
-		if (V != 0.) {Mout += V*(n(0).data*n(N_orbitals-1).data).cast<Scalar>();}
+		if (V != 0.) {Mout += V*(n(0).data*n(N_orbitals-1).data).template cast<Scalar>();}
 		if (J != 0.)
 		{
 			Mout += J*(0.5*Sp(0).data*Sm(N_orbitals-1).data + 
 			           0.5*Sm(0).data*Sp(N_orbitals-1).data + 
-			               Sz(0).data*Sz(N_orbitals-1).data).cast<Scalar>();
+			               Sz(0).data*Sz(N_orbitals-1).data).template cast<Scalar>();
 		}
 	}
 	if (U != 0. and U != numeric_limits<double>::infinity())
 	{
-		for (int i=0; i<N_orbitals; ++i) {Mout += U*d(i).data.cast<Scalar>();}
+		for (int i=0; i<N_orbitals; ++i) {Mout += U*d(i).data.template cast<Scalar>();}
 	}
 	if (Bz != 0.)
 	{
-		for (int i=0; i<N_orbitals; ++i) {Mout -= Bz*Sz(i).data.cast<Scalar>();}
+		for (int i=0; i<N_orbitals; ++i) {Mout -= Bz*Sz(i).data.template cast<Scalar>();}
 	}
 	
 	return OperatorType(Mout,Symmetry::qvacuum());
@@ -513,21 +465,21 @@ HubbardHamiltonian (ArrayXd Uloc, ArrayXd onsite, ArrayXd Bzloc, Scalar t, doubl
 		{
 			if (Uloc(i) != 0. and Uloc(i) != numeric_limits<double>::infinity())
 			{
-				Mout += Uloc(i) * d(i).data.cast<Scalar>();
+				Mout += Uloc(i) * d(i).data.template cast<Scalar>();
 			}
 		}
 		if (onsite.rows() > 0)
 		{
 			if (onsite(i) != 0.)
 			{
-				Mout += onsite(i) * n(i).data.cast<Scalar>();
+				Mout += onsite(i) * n(i).data.template cast<Scalar>();
 			}
 		}
 		if (Bzloc.rows() > 0)
 		{
 			if (Bzloc(i) != 0.)
 			{
-				Mout += Bzloc(i) * Sz(i).data.cast<Scalar>();
+				Mout += Bzloc(i) * Sz(i).data.template cast<Scalar>();
 			}
 		}
 	}
@@ -548,7 +500,7 @@ parity (const boost::dynamic_bitset<unsigned char> &b, int i) const
 }
 
 template<typename Symmetry>
-qarray<2> FermionBase<Symmetry>::
+qarray<Symmetry::Nq> FermionBase<Symmetry>::
 qNums (size_t index, bool NM) const
 {
 	int M=0; int N=0;
@@ -564,12 +516,19 @@ qNums (size_t index, bool NM) const
 		}
 	}
 	
-	if (NM) {return qarray<2>{N,M};}
-	else    {return qarray<2>{Nup,Ndn};}
+	if constexpr(Symmetry::IS_TRIVIAL)
+	{
+		return qarray<0>{};
+	}
+	else
+	{
+		if (NM) {return qarray<2>{N,M};}
+		else    {return qarray<2>{Nup,Ndn};}
+	}
 }
 
 template<typename Symmetry>
-vector<qarray<2> > FermionBase<Symmetry>::
+vector<qarray<Symmetry::Nq> > FermionBase<Symmetry>::
 get_basis() const
 {
 	vector<qarray<2> > vout;

@@ -22,4 +22,15 @@ struct SiteOperator
 	MatrixType data;
 };
 
+template<typename Symmetry,typename MatrixType>
+SiteOperator<Symmetry,MatrixType> operator* (const SiteOperator<Symmetry,MatrixType>& O1, const SiteOperator<Symmetry,MatrixType>& O2)
+{
+//	assert(O1.basis() == O2.basis() and "For multiplication of SiteOperatorQs the basis needs to be the same.");
+//	assert(O1.Q() == O2.Q() and "For multiplication of SiteOperatorQs the operator quantum number needs to be the same.");
+	SiteOperator<Symmetry,MatrixType> out;
+	out.data = O1.data * O2.data;
+	out.Q = O1.Q+O2.Q;
+	return out;
+}
+
 #endif

@@ -148,33 +148,43 @@ int main (int argc, char* argv[])
 	//--------U(1)---------
 	lout << endl << "--------U(1)---------" << endl << endl;
 	
-	Stopwatch<> Watch_U1;
-//	VMPS::HeisenbergU1 H_U1(L,J,J,0,D,Ly,true); // Bz=0
-	VMPS::HeisenbergU1 H_U1(L,{{"J",-1.,0},{"J",-0.5,1}},Ly);
-	lout << H_U1.info() << endl;
-	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
+	VMPS::HubbardU1 Hub_U1(L,{{"U",6.}},Ly);
+	cout << Hub_U1.info() << endl;
+	cout << Hub_U1 << endl;
+	Eigenstate<VMPS::HubbardU1::StateXd> g_U1;
 	
-	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	VMPS::HubbardU1::Solver DMRG_U1(VERB);
+	DMRG_U1.edgeState(Hub_U1, g_U1, {L/2,L/2}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
-	t_U1 = Watch_U1.time();
+	
+	
+//	Stopwatch<> Watch_U1;
+////	VMPS::HeisenbergU1 H_U1(L,J,J,0,D,Ly,true); // Bz=0
+//	VMPS::HeisenbergU1 H_U1(L,{{"J",-1.,0},{"J",-0.5,1}},Ly);
+//	lout << H_U1.info() << endl;
+//	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
+//	
+//	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
+//	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+//	
+//	t_U1 = Watch_U1.time();
 
-	// observables
-	Eigen::MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
-	for(size_t i=0; i<L; i++) for (size_t j=0; j<L; j++) { SpinCorr_U1(i,j) = 3*avg(g_U1.state, H_U1.SzSz(i,j), g_U1.state); }
+//	// observables
+//	Eigen::MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
+//	for(size_t i=0; i<L; i++) for (size_t j=0; j<L; j++) { SpinCorr_U1(i,j) = 3*avg(g_U1.state, H_U1.SzSz(i,j), g_U1.state); }
 
-	// compressor
-	
-	VMPS::HeisenbergU1::StateXd Hxg_U1;
-	HxV(H_U1,g_U1.state,Hxg_U1,VERB);
-	double E_U1_compressor = g_U1.state.dot(Hxg_U1);
-	
-	// zipper
-	
-	VMPS::HeisenbergU1::StateXd Oxg_U1;
-	Oxg_U1.eps_svd = 1e-15;
-	OxV(H_U1,g_U1.state,Oxg_U1,DMRG::BROOM::SVD);
-	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
+//	// compressor
+//	
+//	VMPS::HeisenbergU1::StateXd Hxg_U1;
+//	HxV(H_U1,g_U1.state,Hxg_U1,VERB);
+//	double E_U1_compressor = g_U1.state.dot(Hxg_U1);
+//	
+//	// zipper
+//	
+//	VMPS::HeisenbergU1::StateXd Oxg_U1;
+//	Oxg_U1.eps_svd = 1e-15;
+//	OxV(H_U1,g_U1.state,Oxg_U1,DMRG::BROOM::SVD);
+//	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
 	
 	// dynamics (of Néel state)
 //	if(CALC_DYNAMICS)
