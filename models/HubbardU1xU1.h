@@ -24,7 +24,7 @@ typedef Sym::U1xU1<double> Symmetry;
 public:
 	
 	HubbardU1xU1() : MpoQ(){};
-	HubbardU1xU1 (size_t Lx_input, vector<Param> params, size_t Ly_input=1);
+	HubbardU1xU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params);
 	
 	template<typename Symmetry_> 
 	static HamiltonianTermsXd<Symmetry_> set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc=0);
@@ -108,8 +108,10 @@ qOp()
 }
 
 HubbardU1xU1::
-HubbardU1xU1 (size_t Lx_input, vector<Param> params, size_t Ly_input)
-:MpoQ<Symmetry> (Lx_input, Ly_input, qarray<Symmetry::Nq>({0,0}), HubbardU1xU1::qOp(), HubbardU1xU1::Nlabel, "")
+HubbardU1xU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
+:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
+                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
+                 qarray<Symmetry::Nq>({0,0}), HubbardU1xU1::qOp(), HubbardU1xU1::Nlabel, "")
 {
 	ParamHandler P(params,defaults);
 	
@@ -183,6 +185,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	
 	if (P.HAS("V",loc))
 	{
+		V = P.get<double>("V");
 		for (int i=0; i<F.orbitals(); ++i)
 		{
 			Terms.tight.push_back(make_tuple(V, F.n(i), F.n(i)));
@@ -191,6 +194,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	}
 	if (P.HAS("J",loc))
 	{
+		V = P.get<double>("J");
 		for (int i=0; i<F.orbitals(); ++i)
 		{
 			Terms.tight.push_back(make_tuple(0.5*J, F.Sp(i), F.Sm(i)));
@@ -198,7 +202,6 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 			Terms.tight.push_back(make_tuple(J,     F.Sz(i), F.Sz(i)));
 		}
 		ss << ",J=" << J;
-		Terms.name = "tJ";
 	}
 	
 	/// NNN-terms
@@ -209,6 +212,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	if (P.HAS("tPrime",loc))
 	{
 		assert(F.orbitals() == 1 and "Cannot do a ladder with t'!");
+		tPrime = P.get<double>("tPrime");
 		
 		Terms.nextn.push_back(make_tuple(-tPrime, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
 		Terms.nextn.push_back(make_tuple(-tPrime, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
@@ -217,11 +221,17 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	}
 	
 	/**MPO representation of \f$H = H_{3-site}\f$ with:
-	- \f$ H_{3-site} = - \frac{J}{4} \sum_{<ijk>\sigma} (c^\dagger_{i\sigma} n_{j,-\sigma} c_{k\sigma} - c^\dagger_{i\sigma} S^{-\sigma}_j c_{k,-\sigma} + h.c.) \f$
-	\note useful reference: "Effect of the Three-Site Hopping Term on the t-J Model"; Ammon, Troyer, Tsunetsugu (1995) (http://arxiv.org/pdf/cond-mat/9502037v1.pdf)*/
+	- \f$ H_{3-site} = - \frac{J}{4} \sum_{<ijk>\sigma} (c^\dagger_{i\sigma} n_{j,-\sigma} c_{k\sigma} 
+	                                                   - c^\dagger_{i\sigma} S^{-\sigma}_j c_{k,-\sigma} + h.c.) \f$
+	\note useful reference: 
+	"Effect of the Three-Site Hopping Term on the t-J Model" 
+	(Ammon, Troyer, Tsunetsugu, 1995), 
+	http://arxiv.org/pdf/cond-mat/9502037v1.pdf
+	*/
 	if (P.HAS("J3site",loc))
 	{
 		assert(F.orbitals() == 1 and "Cannot do a ladder with 3-site terms!");
+		J3site = P.get<double>("J3site");
 		
 		// three-site terms without spinflip
 		Terms.nextn.push_back(make_tuple(-0.25*J3site, F.cdag(UP), F.sign()*F.c(UP),    F.n(DN)*F.sign()));
@@ -236,7 +246,6 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 		Terms.nextn.push_back(make_tuple(-0.25*J3site, F.c(UP),    F.sign()*F.cdag(DN), F.Sp()*F.sign()));
 		
 		ss << ",J3site=" << J3site;
-		Terms.name = "tJ";
 	}
 	
 	// local terms
@@ -250,14 +259,12 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	{
 		Uloc = P.get<double>("Uloc",loc);
 		ss << ",U=" << Uloc.format(CommaInitFmt);
-		Terms.name = "Hubbard";
 	}
 	else if (P.HAS("U",loc))
 	{
 		U = P.get<double>("U",loc);
 		Uloc = U;
 		ss << ",U=" << U;
-		Terms.name = "Hubbard";
 	}
 	
 	// t⟂
@@ -308,7 +315,16 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 		ss << ",Bz=" << Bz;
 	}
 	
+	if (isfinite(Uloc.sum()))
+	{
+		Terms.name = "Hubbard";
+	}
+	else
+	{
+		Terms.name = (P.HAS("J") or P.HAS("J3site"))? "t-J":"U=∞-Hubbard";
+	}
 	Terms.info = ss.str();
+	
 	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uloc,muloc,Bzloc,tPerp,V,J, P.get<bool>("CYLINDER"))));
 	
 	return Terms;

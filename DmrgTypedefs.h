@@ -3,6 +3,7 @@
 
 #include <array>
 #include <vector>
+#include <variant>
 
 #include "SiteOperator.h"
 

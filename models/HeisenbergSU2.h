@@ -28,41 +28,43 @@ class HeisenbergSU2 : public MpoQ<Sym::SU2<double>,double>
 {
 public:
 	typedef Sym::SU2<double> Symmetry;
+	
 private:
+	
 	typedef Eigen::Index Index;
 	typedef Symmetry::qType qType;
 	typedef Eigen::SparseMatrix<double> SparseMatrixType;
 	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
-
+	
 	typedef SiteOperatorQ<Symmetry,MatrixType> Operator;
-
+	
 public:
-
+	
 	//---constructors---
 	///\{
 	/**Do nothing.*/
 	HeisenbergSU2() : MpoQ<Symmetry>() {};
-
+	
 	/**
 	   \param Lx_input : chain length
 	   \describe_params
 	   \param Ly_input : amount of legs in ladder
 	*/
-	HeisenbergSU2 (size_t Lx_input, vector<Param> params, size_t Ly_input=1);
+	HeisenbergSU2 (variant<size_t,std::array<size_t,2> >, vector<Param> params);
 	///\}
-
+	
 	/**
 	   \param B : Base class from which the local operators are received
 	   \param P : The parameters
 	*/
 	static HamiltonianTermsXd<Symmetry> set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc=0);
-
+	
 	/**Operator Quantum numbers: \f$\{ Id:k=\left|1\right>; S:k=\left|3\right>\}\f$ */
 	static const std::vector<qType> qOp ();
-
+	
 	/**Labels the conserved quantum number as "S".*/
 	static const std::array<string,1> Stotlabel;
-
+	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
 	typedef MpsQ<Symmetry,double>                                StateXd;
@@ -72,23 +74,24 @@ public:
 	typedef MpsQCompressor<Symmetry,complex<double>,double>      CompressorXcd;
 	typedef MpoQ<Symmetry,double>                                MpOperator;
 	///@}
-
+	
 	///@{
-	/**Observables.*/	
+	/**Observables.*/
 	MpoQ<Symmetry,double> SS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);	
 	///@}
-
+	
 	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an MpsQ.
 	\returns \p true if valid, \p false if not*/
 	bool validate (qarray<1> qnum) const;
-
+	
 protected:
+	
 	const std::map<string,std::any> defaults = 
 	{
 		{"J",-1.}, {"Jprime",0.}, {"Jperp",0.}, {"D",2ul},
 		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 	};
-
+	
 	vector<spins::BaseSU2<> > B;
 };
 
@@ -104,16 +107,18 @@ qOp ()
 };
 
 HeisenbergSU2::
-HeisenbergSU2 (size_t Lx_input, vector<Param> params, size_t Ly_input)
-:MpoQ<Symmetry> (Lx_input, Ly_input, qarray<Symmetry::Nq>({1}), HeisenbergSU2::qOp(), HeisenbergSU2::Stotlabel, "", halve)
+HeisenbergSU2 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
+:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
+                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
+                 qarray<Symmetry::Nq>({1}), HeisenbergSU2::qOp(), HeisenbergSU2::Stotlabel, "", halve)
 {
-	ParamHandler P(params,defaults);
+	ParamHandler P(params,HeisenbergU1::defaults);
 	
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 	B.resize(N_sites);
-
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		B[l] = spins::BaseSU2<>(N_legs,P.get<size_t>("D",l%Lcell));
@@ -124,7 +129,7 @@ HeisenbergSU2 (size_t Lx_input, vector<Param> params, size_t Ly_input)
 		
 		G.push_back(Generator(Terms[l]));
 	}
-
+	
 	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, false, P.get<bool>("OPEN_BC"));
 	//false: For SU(2) symmetries the squared Hamiltonian can not be calculated in advance.
@@ -136,13 +141,13 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 	assert(locx1<this->N_sites and locx2<this->N_sites);
 	std::stringstream ss;
 	ss << "S(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
-
+	
 	MpoQ<Symmetry> Mout(N_sites, N_legs);
 	for (std::size_t l=0; l<N_sites; l++)
 	{
 		Mout.setLocBasis(B[l].get_basis(),l);
 	}
-
+	
 	Mout.label = ss.str();
 	Mout.setQtarget(Symmetry::qvacuum());
 	Mout.qlabel = HeisenbergSU2::Stotlabel;
@@ -176,29 +181,25 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 	frac S = frac(B.get_D()-1,2);
 	stringstream ss;
 	IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
-
+	
 	Terms.name = "Heisenberg";
 	
 	// J-terms
 	
-	double J   = P.get_default<double>("J");
+	double J = P.get_default<double>("J");
 	MatrixXd Jpara  (B.orbitals(),B.orbitals()); Jpara.setZero();
-	if (P.HAS("J"))
+	if (P.HAS("J",loc))
 	{
-		J = P.get<double>("J", loc);
+		J = P.get<double>("J",loc);
 		Jpara.diagonal().setConstant(J);
 		ss << "S=" << print_frac_nice(S) << ",J=" << J;
 	}
-	else if (P.HAS("Jpara", loc))
+	else if (P.HAS("Jpara",loc))
 	{
 		assert(B.orbitals() == Jpara.rows() and 
 		       B.orbitals() == Jpara.cols());
-		Jpara = P.get<MatrixXd>("Jpara", loc);
+		Jpara = P.get<MatrixXd>("Jpara",loc);
 		ss << "S=" << print_frac_nice(S) << ",J∥=" << Jpara.format(CommaInitFmt);
-	}
-	else
-	{
-		ss << "";
 	}
 	for (int i=0; i<B.orbitals(); ++i)
 	for (int j=0; j<B.orbitals(); ++j)
@@ -206,49 +207,49 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 		if (Jpara(i,j) != 0.)
 		{
 			Terms.tight.push_back(make_tuple(-std::sqrt(3)*Jpara(i,j),
-											 B.Sdag(i).plain<SparseMatrixType>(),
-											 B.S(j).plain<SparseMatrixType>()));
+			                                 B.Sdag(i).plain<SparseMatrixType>(),
+			                                 B.S(j).plain<SparseMatrixType>()));
 		}
 	}
-
+	
 	// J'-terms
-
+	
 	double Jprime = P.get_default<double>("Jprime");
-
-	if (P.HAS("Jprime", loc))
+	
+	if (P.HAS("Jprime",loc))
 	{
-		Jprime = P.get<double>("Jprime", loc);
+		Jprime = P.get<double>("Jprime",loc);
 		assert((B.orbitals() == 1 or Jprime == 0) and "Cannot interpret Ly>1 and J'!=0");
 		ss << ",J'=" << Jprime;
 	}
-	if(Jprime != 0)
+	if (Jprime != 0)
 	{
 		Terms.nextn.push_back(make_tuple(-std::sqrt(3)*Jprime, B.Sdag(0).plain<SparseMatrixType>(),
-										 B.S(0).plain<SparseMatrixType>(),
-										 B.Id().plain<SparseMatrixType>()));
+		                                 B.S(0).plain<SparseMatrixType>(),
+		                                 B.Id().plain<SparseMatrixType>()));
 	}
 	
 	// local terms
-
+	
 	double Jperp = P.get_default<double>("Jperp");
-
-	if (P.HAS("J", loc))
+	
+	if (P.HAS("J",loc))
 	{
-		Jperp  = P.get<double>("J", loc);
+		Jperp  = P.get<double>("J",loc);
 	}
-	else if (P.HAS("Jperp"))
+	else if (P.HAS("Jperp",loc))
 	{
-		Jperp = P.get<double>("Jperp", loc);
+		Jperp = P.get<double>("Jperp",loc);
 		ss << ",J⟂=" << Jperp;
 	}
-
+	
 	Terms.info = ss.str();
-
-	if( B.orbitals() > 1 )
+	
+	if (B.orbitals() > 1)
 	{
 		Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp).plain<SparseMatrixType>()));
 	}
-
+	
 	return Terms;
 }
 

@@ -28,22 +28,24 @@ class Heisenberg : public MpoQ<Sym::U0,double>
 {
 public:
 	typedef Sym::U0 Symmetry;
+	
 private:
 	typedef typename Symmetry::qType qType;
+	
 public:
-
+	
 	//---constructors---
 	///\{
 	/**Do nothing.*/
 	Heisenberg() : MpoQ<Symmetry>() {};
-
+	
 	/**
 	   \param Lx_input : chain length
 	   \describe_params
 	   \param Ly_input : amount of legs in ladder
 	   \param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	*/
-	Heisenberg(size_t Lx_input, vector<Param> params, size_t Ly_input=1);
+	Heisenberg (variant<size_t,std::array<size_t,2> > L, vector<Param> params);
 	///\}
 	
 	///@{
@@ -57,31 +59,23 @@ public:
 	///@}
 	
 	///@{
-	/**Observables.*/	
+	/**Observables.*/
 	MpoQ<Symmetry> SzSz (size_t loc1, size_t loc2);
 	MpoQ<Symmetry> Sz   (size_t loc);
 	///@}
 	
 protected:
 	
-	std::map<string,std::any> defaults = 
-	{
-		{"J",0.}, {"Jxy",0.}, {"Jz",0.},
-		{"Jprime",0.}, {"Jxyprime",0.}, {"Jzprime",0.},
-		{"Jperp",0.}, {"Jxyperp",0.}, {"Jzperp",0.},
-		{"Jpara",0.}, {"Jxypara",0.}, {"Jzpara",0.},
-		{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"K",0.},
-		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
-	};
-
 	SpinBase<Symmetry> B;
 };
 
 Heisenberg::
-Heisenberg (size_t Lx_input, vector<Param> params, size_t Ly_input)
-	:MpoQ<Symmetry> (Lx_input, Ly_input, qarray<0>({}), vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "")
+Heisenberg (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
+:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
+                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
+                 qarray<0>({}), vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "")
 {
-	ParamHandler P(params,defaults);
+	ParamHandler P(params,HeisenbergU1::defaults);
 	
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;

@@ -39,7 +39,7 @@ private:
 public:
 	
 	HeisenbergU1() : MpoQ<Symmetry>() {};
-	HeisenbergU1 (size_t Lx_input, vector<Param> params, size_t Ly_input=1);
+	HeisenbergU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params);
 	
 	/**
 	   \param B : Base class from which the local operators are received
@@ -73,23 +73,26 @@ public:
 	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an MpsQ.
 	\returns \p true if valid, \p false if not*/
 	bool validate (qarray<1> qnum) const;
-
-protected:
 	
-	const std::map<string,std::any> defaults = 
-	{
-		{"J",0.}, {"Jxy",0.}, {"Jz",0.},
-		{"Jprime",0.}, {"Jxyprime",0.}, {"Jzprime",0.},
-		{"Jperp",0.}, {"Jxyperp",0.}, {"Jzperp",0.},
-		{"Jpara",0.}, {"Jxypara",0.}, {"Jzpara",0.},
-		{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"K",0.},
-		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
-	};
+	static const std::map<string,std::any> defaults;
+	
+protected:
 	
 	vector<SpinBase<Symmetry> > B;
 };
 
 const std::array<string,1> HeisenbergU1::maglabel{"M"};
+
+const std::map<string,std::any> HeisenbergU1::defaults = 
+{
+	{"J",0.}, {"Jxy",0.}, {"Jz",0.},
+	{"Jprime",0.}, {"Jxyprime",0.}, {"Jzprime",0.},
+	{"Jperp",0.}, {"Jxyperp",0.}, {"Jzperp",0.},
+	{"Jpara",0.}, {"Jxypara",0.}, {"Jzpara",0.},
+	{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"K",0.},
+	{"DMy",0.}, {"DMyprime",0.},
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
+};
 
 const vector<qarray<1> > HeisenbergU1::
 qOp ()
@@ -102,8 +105,10 @@ qOp ()
 }
 
 HeisenbergU1::
-HeisenbergU1 (size_t Lx_input, vector<Param> params, size_t Ly_input)
-:MpoQ<Symmetry> (Lx_input, Ly_input, qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve)
+HeisenbergU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
+:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
+                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
+                 qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve)
 {
 	ParamHandler P(params,defaults);
 	
@@ -185,13 +190,19 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	MatrixXd Jxypara(B.orbitals(),B.orbitals()); Jxypara.setZero();
 	MatrixXd Jzpara (B.orbitals(),B.orbitals()); Jzpara.setZero();
 	
+	// lambda function to indicate FM/AFM alignment
+	auto alignment = [] (const double &x) -> string
+	{
+		return (x<0.)? "(AFM)":"(FM)";
+	};
+	
 	if (P.HAS("J",loc))
 	{
 		J = P.get<double>("J",loc);
 		Jxypara.diagonal().setConstant(J);
 		Jzpara.diagonal().setConstant(J);
 		Terms.name = "Heisenberg";
-		ss << "S=" << print_frac_nice(S) << ",J=" << J;
+		ss << "S=" << print_frac_nice(S) << ",J=" << J << alignment(J);
 	}
 	else if (P.HAS("Jxy",loc) or P.HAS("Jz",loc))
 	{
@@ -206,9 +217,9 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 			Jzpara.diagonal().setConstant(Jz);
 		}
 		
-		if      (Jxy == 0.) {Terms.name = "Ising"; ss << "S=" << print_frac_nice(S) << ",J=" << Jz;}
-		else if (Jz  == 0.) {Terms.name = "XX"; ss << "S="    << print_frac_nice(S) << ",J=" << Jxy;}
-		else                {Terms.name = "XXZ"; ss << "S="   << print_frac_nice(S) << ",Jxy=" << Jxy << ",Jz=" << Jz;}
+		if      (Jxy == 0.) {Terms.name = "Ising"; ss << "S=" << print_frac_nice(S) << ",J=" << Jz << alignment(Jz);}
+		else if (Jz  == 0.) {Terms.name = "XX"; ss << "S="    << print_frac_nice(S) << ",J=" << Jxy << alignment(Jxy);}
+		else                {Terms.name = "XXZ"; ss << "S="   << print_frac_nice(S) << ",Jxy=" << Jxy << ",Jz=" << Jz << alignment(Jz);}
 	}
 	else if (P.HAS("Jpara",loc))
 	{
@@ -231,14 +242,29 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 			Jzpara = P.get<MatrixXd>("Jzpara",loc);
 		}
 		
-		if      (Jxypara.norm() == 0.) {Terms.name = "Ising"; ss << "S=" << print_frac_nice(S) << ",J∥=" << Jzpara.format(CommaInitFmt);}
-		else if (Jzpara.norm()  == 0.) {Terms.name = "XX"; ss << "S="    << print_frac_nice(S) << ",J∥=" << Jxypara.format(CommaInitFmt);}
-		else                           {Terms.name = "XXZ"; ss << "S="   << print_frac_nice(S) <<
-																",Jxy∥=" << Jxypara.format(CommaInitFmt) << ",Jz=" << Jzpara.format(CommaInitFmt);}
+		if (Jxypara.norm() == 0.)
+		{
+			Terms.name = "Ising"; 
+			ss << "S=" << print_frac_nice(S) 
+			   << ",J∥=" << Jzpara.format(CommaInitFmt);
+		}
+		else if (Jzpara.norm()  == 0.)
+		{
+			Terms.name = "XX";
+			ss << "S="    << print_frac_nice(S) 
+			   << ",J∥=" << Jxypara.format(CommaInitFmt);
+		}
+		else
+		{
+			Terms.name = "XXZ"; 
+			ss << "S=" << print_frac_nice(S) 
+			   << ",Jxy∥=" << Jxypara.format(CommaInitFmt) 
+			   << ",Jz=" << Jzpara.format(CommaInitFmt);
+		}
 	}
 	else
 	{
-		ss << "JustLocal(";
+		ss << "J=0";
 	}
 	
 	for (int i=0; i<B.orbitals(); ++i)
@@ -263,7 +289,6 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	if (P.HAS("Jprime",loc) or P.HAS("Jxyprime",loc) or P.HAS("Jzprime",loc))
 	{
 		assert((B.orbitals() == 1 or (Jprime == 0 and Jxyprime == 0 and Jzprime == 0)) and "Cannot interpret Ly>1 and J'!=0");
-		// assert(B.orbitals() == 1 and "Cannot interpret Ly>1 and J'!=0");
 		
 		if (P.HAS("Jprime",loc))
 		{
@@ -285,15 +310,46 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 				ss << ",Jz'=" << Jzprime;
 			}
 		}
-		if(Jxyprime != 0)
+		if (Jxyprime != 0.)
 		{
 			Terms.nextn.push_back(make_tuple(-0.5*Jxyprime, B.Scomp(SP), B.Scomp(SM), B.Id()));
 			Terms.nextn.push_back(make_tuple(-0.5*Jxyprime, B.Scomp(SM), B.Scomp(SP), B.Id()));
 		}
-		if(Jzprime != 0)
+		if (Jzprime != 0.)
 		{
 			Terms.nextn.push_back(make_tuple(-Jzprime,     B.Scomp(SZ), B.Scomp(SZ), B.Id()));
 		}
+	}
+	
+	// Dzyaloshinsky-Moriya terms
+	
+	double DMy = P.get_default<double>("DMy");
+	double DMyprime = P.get_default<double>("DMyprime");
+	
+	if (P.HAS("DMy",loc))
+	{
+		DMy = P.get<double>("DMy",loc);
+		if (DMy != 0.)
+		{
+			Terms.tight.push_back(make_tuple(+DMy, B.Scomp(SX), B.Scomp(SZ)));
+			Terms.tight.push_back(make_tuple(-DMy, B.Scomp(SZ), B.Scomp(SX)));
+		}
+		
+		Terms.name = "Dzyaloshinsky-Moriya";
+		ss << ",DMy=" << DMy;
+	}
+	
+	if (P.HAS("DMyprime",loc))
+	{
+		DMyprime = P.get<double>("DMyprime",loc);
+		if (DMyprime != 0.)
+		{
+			Terms.nextn.push_back(make_tuple(+DMyprime, B.Scomp(SX), B.Scomp(SZ), B.Id()));
+			Terms.nextn.push_back(make_tuple(-DMyprime, B.Scomp(SZ), B.Scomp(SX), B.Id()));
+		}
+		
+		Terms.name = "Dzyaloshinsky-Moriya";
+		ss << ",DM'=" << DMy;
 	}
 	
 	// local terms
