@@ -172,18 +172,18 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 	{
 		J = P.get<double>("J", loc);
 		Jpara.diagonal().setConstant(J);
-		ss << "Heisenberg(S=" << S << ",J=" << J;
+		ss << "S=" << S << ",J=" << J;
 	}
 	else if (P.HAS("Jpara", loc))
 	{
 		assert(B.orbitals() == Jpara.rows() and 
 		       B.orbitals() == Jpara.cols());
 		Jpara = P.get<MatrixXd>("Jpara", loc);
-		ss << "Heisenberg(S=" << S << ",J∥=" << Jpara.format(CommaInitFmt);
+		ss << "S=" << S << ",J∥=" << Jpara.format(CommaInitFmt);
 	}
 	else
 	{
-		ss << "JustLocal(";
+		ss << "";
 	}
 	for (int i=0; i<B.orbitals(); ++i)
 	for (int j=0; j<B.orbitals(); ++j)
@@ -227,7 +227,6 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 		ss << ",J⟂=" << Jperp;
 	}
 
-	ss << ")";
 	Terms.info = ss.str();
 
 	if( B.orbitals() > 1 )

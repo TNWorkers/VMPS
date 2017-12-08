@@ -563,7 +563,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 					qset.insert(*it+qloc[l][s]);
 				}
 				// swap qset and qset_tmp to continue
-				std::swap(qset_tmp,qset);
+				std::swap(qset_tmp,qset); qset.clear();
 			}
 			
 			qset = qset_tmp;
@@ -690,7 +690,7 @@ outerResize(std::size_t L_input, std::vector<Qbasis<Symmetry> > qloc_input, qTyp
 					}
 					// swap qset and qset_tmp to continue
 				}
-				std::swap(qset_tmp,qset);
+				std::swap(qset_tmp,qset);qset.clear();
 			}
 			qset = qset_tmp;
 		}
@@ -698,7 +698,7 @@ outerResize(std::size_t L_input, std::vector<Qbasis<Symmetry> > qloc_input, qTyp
 		{
 			qset.insert(Symmetry::qvacuum());
 		}
-		
+
 		return qset;
 	};
 	
