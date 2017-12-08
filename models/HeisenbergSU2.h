@@ -85,7 +85,7 @@ protected:
 		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 	};
 
-	spins::BaseSU2<> B;
+	vector<spins::BaseSU2<> > B;
 };
 
 const std::array<string,1> HeisenbergSU2::Stotlabel{"S"};
@@ -111,18 +111,18 @@ HeisenbergSU2 (size_t Lx_input, vector<Param> params, size_t Ly_input)
 
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		B = spins::BaseSU2<>(N_legs,P.get<size_t>("D",l%Lcell));
-		setLocBasis(B.get_basis(),l);
+		B[l] = spins::BaseSU2<>(N_legs,P.get<size_t>("D",l%Lcell));
+		setLocBasis(B[l].get_basis(),l);
 		
-		Terms[l] = set_operators(B,P,l%Lcell);
+		Terms[l] = set_operators(B[l],P,l%Lcell);
 		this->Daux = Terms[l].auxdim();
 		
 		G.push_back(Generator(Terms[l]));
 	}
 
-	this->generate_label("Heisenberg",Terms,Lcell);
-	//false: For SU(2) symmetries the squared Hamiltonian can not be calculated in advance.
+	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, false, P.get<bool>("OPEN_BC"));
+	//false: For SU(2) symmetries the squared Hamiltonian can not be calculated in advance.
 }
 
 MpoQ<Sym::SU2<double> > HeisenbergSU2::
@@ -135,7 +135,7 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 	MpoQ<Symmetry> Mout(N_sites, N_legs);
 	for (std::size_t l=0; l<N_sites; l++)
 	{
-		Mout.setLocBasis(B.get_basis(),l);
+		Mout.setLocBasis(B[l].get_basis(),l);
 	}
 
 	Mout.label = ss.str();
@@ -143,13 +143,13 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 	Mout.qlabel = HeisenbergSU2::Stotlabel;
 	if(locx1 == locx2)
 	{
-		auto product = std::sqrt(3.)*Operator::prod(B.Sdag(locy1),B.S(locy2),Symmetry::qvacuum());
+		auto product = std::sqrt(3.)*Operator::prod(B[locx1].Sdag(locy1),B[locx2].S(locy2),Symmetry::qvacuum());
 		Mout.setLocal(locx1,product.plain<SparseMatrixType>());
 		return Mout;
 	}
 	else
 	{
-		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.)*B.Sdag(locy1)).plain<SparseMatrixType>(), B.S(locy2).plain<SparseMatrixType>()});
+		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.)*B[locx1].Sdag(locy1)).plain<SparseMatrixType>(), B[locx2].S(locy2).plain<SparseMatrixType>()});
 		return Mout;
 	}
 }
@@ -172,14 +172,14 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 	{
 		J = P.get<double>("J", loc);
 		Jpara.diagonal().setConstant(J);
-		ss << "S=" << S << ",J=" << J;
+		ss << "S=" << print_frac_nice(S) << ",J=" << J;
 	}
 	else if (P.HAS("Jpara", loc))
 	{
 		assert(B.orbitals() == Jpara.rows() and 
 		       B.orbitals() == Jpara.cols());
 		Jpara = P.get<MatrixXd>("Jpara", loc);
-		ss << "S=" << S << ",J∥=" << Jpara.format(CommaInitFmt);
+		ss << "S=" << print_frac_nice(S) << ",J∥=" << Jpara.format(CommaInitFmt);
 	}
 	else
 	{

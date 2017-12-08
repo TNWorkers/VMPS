@@ -69,7 +69,7 @@ public:
 	MpoQ<Symmetry> Sz (size_t locx, size_t locy=0) const;
 	MpoQ<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
-	
+
 protected:
 	
 	const std::map<string,std::any> defaults = 
@@ -82,7 +82,7 @@ protected:
 		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 	};
 	
-	SpinBase<Symmetry> B;
+	vector<SpinBase<Symmetry> > B;
 };
 
 const std::array<string,1> HeisenbergU1::maglabel{"M"};
@@ -106,13 +106,14 @@ HeisenbergU1 (size_t Lx_input, vector<Param> params, size_t Ly_input)
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
+	B.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
-		setLocBasis(B.get_basis(),l);
+		B[l] = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
+		setLocBasis(B[l].get_basis(),l);
 		
-		Terms[l] = set_operators(B,P,l%Lcell);
+		Terms[l] = set_operators(B[l],P,l%Lcell);
 		this->Daux = Terms[l].auxdim();
 		
 		G.push_back(Generator(Terms[l]));
@@ -130,9 +131,9 @@ Sz (size_t locx, size_t locy) const
 	ss << "Sz(" << locx << "," << locy << ")";
 	
 	MpoQ<Symmetry> Mout(N_sites, N_legs, qarray<Symmetry::Nq>({0}), {{0}}, HeisenbergU1::maglabel, ss.str(), halve);
-	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(B.get_basis(),l);}
+	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
-	Mout.setLocal(locx, B.Scomp(SZ,locy));
+	Mout.setLocal(locx, B[locx].Scomp(SZ,locy));
 	return Mout;
 }
 
@@ -144,12 +145,12 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	ss << "Sz(" << locx1 << "," << locy1 << ")" <<  "Sz(" << locx2 << "," << locy2 << ")";
 	
 	MpoQ<Symmetry> Mout(N_sites, N_legs, qarray<Symmetry::Nq>({0}), {{0}}, HeisenbergU1::maglabel, ss.str(), halve);
-	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(B.get_basis(),l);}
+	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
-	Mout.setLocal({locx1, locx2}, {B.Scomp(SZ,locy1), B.Scomp(SZ,locy2)});
+	Mout.setLocal({locx1, locx2}, {B[locx1].Scomp(SZ,locy1), B[locx2].Scomp(SZ,locy2)});
 	return Mout;
 }
-
+	
 template<typename Symmetry_>
 HamiltonianTermsXd<Symmetry_> HeisenbergU1::
 set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
@@ -176,7 +177,7 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 		Jxypara.diagonal().setConstant(J);
 		Jzpara.diagonal().setConstant(J);
 		Terms.name = "Heisenberg";
-		ss << "S=" << S << ",J=" << J;
+		ss << "S=" << print_frac_nice(S) << ",J=" << J;
 	}
 	else if (P.HAS("Jxy",loc) or P.HAS("Jz",loc))
 	{
@@ -191,9 +192,9 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 			Jzpara.diagonal().setConstant(Jz);
 		}
 		
-		if      (Jxy == 0.) {Terms.name = "Ising"; ss << "S=" << S << ",J=" << Jz;}
-		else if (Jz  == 0.) {Terms.name = "XX"; ss << "S="    << S << ",J=" << Jxy;}
-		else                {Terms.name = "XXZ"; ss << "S="   << S << ",Jxy=" << Jxy << ",Jz=" << Jz;}
+		if      (Jxy == 0.) {Terms.name = "Ising"; ss << "S=" << print_frac_nice(S) << ",J=" << Jz;}
+		else if (Jz  == 0.) {Terms.name = "XX"; ss << "S="    << print_frac_nice(S) << ",J=" << Jxy;}
+		else                {Terms.name = "XXZ"; ss << "S="   << print_frac_nice(S) << ",Jxy=" << Jxy << ",Jz=" << Jz;}
 	}
 	else if (P.HAS("Jpara",loc))
 	{
@@ -203,7 +204,7 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 		Jxypara = Jpara;
 		Jzpara = Jpara;
 		Terms.name = "Heisenberg";
-		ss << "S=" << S << ",J∥=" << Jpara.format(CommaInitFmt);
+		ss << "S=" << print_frac_nice(S) << ",J∥=" << Jpara.format(CommaInitFmt);
 	}
 	else if (P.HAS("Jxypara",loc) or P.HAS("Jzpara",loc))
 	{
@@ -216,9 +217,10 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 			Jzpara = P.get<MatrixXd>("Jzpara",loc);
 		}
 		
-		if      (Jxypara.norm() == 0.) {Terms.name = "Ising"; ss << "S=" << S << ",J∥=" << Jzpara.format(CommaInitFmt);}
-		else if (Jzpara.norm()  == 0.) {Terms.name = "XX"; ss << "S="    << S << ",J∥=" << Jxypara.format(CommaInitFmt);}
-		else                           {Terms.name = "XXZ"; ss << "S="   << S << ",Jxy∥=" << Jxypara.format(CommaInitFmt) << ",Jz=" << Jzpara.format(CommaInitFmt);}
+		if      (Jxypara.norm() == 0.) {Terms.name = "Ising"; ss << "S=" << print_frac_nice(S) << ",J∥=" << Jzpara.format(CommaInitFmt);}
+		else if (Jzpara.norm()  == 0.) {Terms.name = "XX"; ss << "S="    << print_frac_nice(S) << ",J∥=" << Jxypara.format(CommaInitFmt);}
+		else                           {Terms.name = "XXZ"; ss << "S="   << print_frac_nice(S) <<
+																",Jxy∥=" << Jxypara.format(CommaInitFmt) << ",Jz=" << Jzpara.format(CommaInitFmt);}
 	}
 	else
 	{

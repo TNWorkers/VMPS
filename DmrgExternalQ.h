@@ -7,6 +7,13 @@
 #include <boost/rational.hpp>
 typedef boost::rational<int> frac;
 
+string print_frac_nice(frac r)
+{
+	std::stringstream ss;
+	if(r.denominator() == 1) {ss << r.numerator();}
+	else {ss << r;}
+	return ss.str();
+}
 #include "qarray.h"
 
 /**Default format for quantum number output: Print the integer as is.*/

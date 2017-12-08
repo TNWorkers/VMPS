@@ -1,7 +1,7 @@
 #ifndef STRAWBERRY_KONDOMODEL
 #define STRAWBERRY_KONDOMODEL
 
-#include "MpHubbardModel.h"
+#include "/models/HubbardU1xU1.h"
 #include "FermionBase.h"
 #include "SpinBase.h"
 #include "qarray.h"
@@ -17,13 +17,13 @@ The set of impurities \f$I\f$ is completely free to choose.
 \note \f$J<0\f$ : antiferromagnetic
 \note The local magnetic fields act on the impurities only.
 \note If nnn-hopping is positive, the GS-energy is lowered.*/
-class KondoModel : public MpoQ<Sym::U1xU1<double>,double>
+class KondoU1xU1 : public MpoQ<Sym::U1xU1<double>,double>
 {
 typedef Sym::U1xU1<double> Symmetry;
 
 public:
 	/**Does nothing.*/
-	KondoModel() : MpoQ(){};
+	KondoU1xU1() : MpoQ(){};
 	
 	/**Constructs a Kondo Lattice Model on a N-ladder.
 	\param Lx_input : chain length
@@ -34,7 +34,7 @@ public:
 	\param Bz_input : \f$B_z\f$
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	\param D_input : \f$2S+1\f$ (impurity spin)*/
-	KondoModel (size_t Lx_input, double J_input=-1., size_t Ly_input=1, double tPrime_input=0.,
+	KondoU1xU1 (size_t Lx_input, double J_input=-1., size_t Ly_input=1, double tPrime_input=0.,
 	            double U_input=0., double Bz_input=0., bool CALC_SQUARE=false, size_t D_input=2);
 
 	/**Constructs a Kondo Impurity Model on a N-ladder (aka a diluted Kondo Model) using initializer lists for the set of impurities.
@@ -45,7 +45,7 @@ public:
 	\param Ly_input : chain width
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	\param D_input : \f$2S+1\f$ (impurity spin)*/
-	KondoModel (size_t Lx_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzval_input={},
+	KondoU1xU1 (size_t Lx_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzval_input={},
 	            size_t Ly_input=1, bool CALC_SQUARE=true, size_t D_input=2);
 
 	/**Constructs a Kondo Impurity Model on a N-ladder (aka a diluted Kondo Model) using vectors for the set of impurities.
@@ -56,7 +56,7 @@ public:
 	\param Ly_input : chain width
 	\param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
 	\param D_input : \f$2S+1\f$ (impurity spin)*/
-	KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector<double> Bzval_input={},
+	KondoU1xU1 (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector<double> Bzval_input={},
 	            size_t Ly_input=1, bool CALC_SQUARE=true, size_t D_input=2);
 
 	/**Determines the operators of the Hamiltonian. Made static to be called from other classes, e.g. TransverseKondoModel.
@@ -84,13 +84,13 @@ public:
 	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
 	typedef MpsQ<Symmetry,double>                           StateXd;
 	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<Symmetry,KondoModel,double>         Solver;
+	typedef DmrgSolverQ<Symmetry,KondoU1xU1,double>         Solver;
 	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
 	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
 	typedef MpoQ<Symmetry>                                  Operator;
 	///@}
 	
-	class qarrayIterator;
+	// class qarrayIterator;
 	
 	/**Validates whether a given \p qnum is a valid combination of \p N and \p M for the given model.
 	\returns \p true if valid, \p false if not*/
@@ -125,9 +125,9 @@ protected:
 	SpinBase S;
 };
 
-const std::array<string,2> KondoModel::NMlabel{"N","M"};
+const std::array<string,2> KondoU1xU1::NMlabel{"N","M"};
 
-HamiltonianTermsXd KondoModel::
+HamiltonianTermsXd KondoU1xU1::
 set_operators (const FermionBase &F, const SpinBase &S, double J, double Bz, MatrixXd tInter, double tIntra, double Bx, double tPrime, double U, double mu, double K)
 {
 	HamiltonianTermsXd Terms;
@@ -201,8 +201,8 @@ set_operators (const FermionBase &F, const SpinBase &S, double J, double Bz, Mat
 	return Terms;
 }
 
-KondoModel::
-KondoModel (size_t Lx_input, double J_input, size_t Ly_input, double tPrime_input, double U_input, double Bz_input, bool CALC_SQUARE, size_t D_input)
+KondoU1xU1::
+KondoU1xU1 (size_t Lx_input, double J_input, size_t Ly_input, double tPrime_input, double U_input, double Bz_input, bool CALC_SQUARE, size_t D_input)
 :MpoQ<Symmetry> (),
 J(J_input), Bz(Bz_input), tPrime(tPrime_input), U(U_input), D(D_input)
 {
@@ -211,7 +211,7 @@ J(J_input), Bz(Bz_input), tPrime(tPrime_input), U(U_input), D(D_input)
 	this->N_legs = Ly_input;
 	this->Qtot = {0,0};
 	this->qlabel = NMlabel;
-	this->label = "KondoModel";
+	this->label = "KondoU1xU1";
 	this->format = N_halveM;
 	
 	assert(N_legs>1 and tPrime==0. or N_legs==1 and "Cannot build a ladder with t'-hopping!");
@@ -258,8 +258,8 @@ J(J_input), Bz(Bz_input), tPrime(tPrime_input), U(U_input), D(D_input)
 	}
 }
 
-KondoModel::
-KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector<double> Bzval_input, size_t Ly_input, bool CALC_SQUARE, size_t D_input)
+KondoU1xU1::
+KondoU1xU1 (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector<double> Bzval_input, size_t Ly_input, bool CALC_SQUARE, size_t D_input)
 :MpoQ<Symmetry,double>(), J(J_input), imploc(imploc_input), D(D_input)
 {
 	// if Bzval_input empty, set it to zero
@@ -278,7 +278,7 @@ KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector
 	this->N_legs = Ly_input;
 	this->Qtot = {0,0};
 	this->qlabel = NMlabel;
-	this->label = "KondoModel (impurity)";
+	this->label = "KondoU1xU1 (impurity)";
 	this->format = N_halveM;
 	
 	F = FermionBase(N_legs);
@@ -428,12 +428,12 @@ KondoModel (size_t Lx_input, double J_input, vector<size_t> imploc_input, vector
 	}
 }
 
-KondoModel::
-KondoModel (size_t Lx_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzval_input, size_t Ly_input, bool CALC_SQUARE, size_t D_input)
-:KondoModel(Lx_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), vector<double>(begin(Bzval_input),end(Bzval_input)), Ly_input, CALC_SQUARE, D_input)
+KondoU1xU1::
+KondoU1xU1 (size_t Lx_input, double J_input, initializer_list<size_t> imploc_input, initializer_list<double> Bzval_input, size_t Ly_input, bool CALC_SQUARE, size_t D_input)
+:KondoU1xU1(Lx_input, J_input, vector<size_t>(begin(imploc_input),end(imploc_input)), vector<double>(begin(Bzval_input),end(Bzval_input)), Ly_input, CALC_SQUARE, D_input)
 {}
 
-string KondoModel::
+string KondoU1xU1::
 N_halveM (qarray<2> qnum)
 {
 	stringstream ss;
@@ -448,37 +448,37 @@ N_halveM (qarray<2> qnum)
 	return ss.str();
 }
 
-MpoQ<Sym::U1xU1<double> > KondoModel::
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
 Simp (size_t locx, SPINOP_LABEL SOP, size_t locy)
 {
 	assert(locx<this->N_sites);
 	stringstream ss;
 	ss << SOP << "(" << locx << "," << locy << ")";
-	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
+	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
 	SparseMatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
 	Mout.setLocal(locx, kroneckerProduct(S.Scomp(SOP,locy),IdSub));
 	return Mout;
 }
 
-MpoQ<Sym::U1xU1<double> > KondoModel::
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
 Ssub (size_t locx, SPINOP_LABEL SOP, size_t locy)
 {
 	assert(locx<this->N_sites);
 	stringstream ss;
 	ss << SOP << "(" << locx << "," << locy << ")";
-	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
+	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
 	SparseMatrixXd IdImp(MpoQ<Symmetry,double>::qloc[locx].size()/F.dim(), MpoQ<Symmetry,double>::qloc[locx].size()/F.dim()); IdImp.setIdentity();
 	Mout.setLocal(locx, kroneckerProduct(IdImp, F.Scomp(SOP,locy)));
 	return Mout;
 }
 
-MpoQ<Sym::U1xU1<double> > KondoModel::
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
 SimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y, size_t loc2y)
 {
 	assert(loc1x<this->N_sites and loc2x<this->N_sites);
 	stringstream ss;
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
-	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
+	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
 	SparseMatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
 	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
 	                               kroneckerProduct(S.Scomp(SOP2,loc2y),IdSub)}
@@ -486,13 +486,13 @@ SimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size
 	return Mout;
 }
 
-MpoQ<Sym::U1xU1<double> > KondoModel::
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
 SsubSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y, size_t loc2y)
 {
 	assert(loc1x<this->N_sites and loc2x<this->N_sites);
 	stringstream ss;
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
-	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
+	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
 	SparseMatrixXd IdImp1(MpoQ<Symmetry>::qloc[loc1x].size()/F.dim(), MpoQ<Symmetry>::qloc[loc1x].size()/F.dim()); IdImp1.setIdentity();
 	SparseMatrixXd IdImp2(MpoQ<Symmetry>::qloc[loc2x].size()/F.dim(), MpoQ<Symmetry>::qloc[loc2x].size()/F.dim()); IdImp2.setIdentity();
 	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(IdImp1,F.Scomp(SOP1,loc1y)), 
@@ -501,13 +501,13 @@ SsubSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size
 	return Mout;
 }
 
-MpoQ<Sym::U1xU1<double> > KondoModel::
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
 SimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y, size_t loc2y)
 {
 	assert(loc1x<this->N_sites and loc2x<this->N_sites);
 	stringstream ss;
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
-	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
+	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
 	SparseMatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
 	SparseMatrixXd IdImp(MpoQ<Symmetry>::qloc[loc2x].size()/F.dim(), MpoQ<Symmetry>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
 	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
@@ -516,7 +516,7 @@ SimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size
 	return Mout;
 }
 
-MpoQ<Sym::U1xU1<double> > KondoModel::
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
 SimpSsubSimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
                   size_t loc1y, size_t loc2y, size_t loc3y, size_t loc4y)
 {
@@ -524,7 +524,7 @@ SimpSsubSimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SO
 	stringstream ss;
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")" <<
 	      SOP3 << "(" << loc3x << "," << loc3y << ")" << SOP4 << "(" << loc4x << "," << loc4y << ")";
-	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
+	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
 	SparseMatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
 	SparseMatrixXd IdImp(MpoQ<Symmetry>::qloc[loc2x].size()/F.dim(), MpoQ<Symmetry>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
 	Mout.setLocal({loc1x, loc2x, loc3x, loc4x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
@@ -534,7 +534,7 @@ SimpSsubSimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SO
 	return Mout;
 }
 
-MpoQ<Sym::U1xU1<double> > KondoModel::
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
 SimpSsubSimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
                   size_t loc1y, size_t loc2y, size_t loc3y, size_t loc4y)
 {
@@ -542,7 +542,7 @@ SimpSsubSimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SO
 	stringstream ss;
 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")" <<
 	      SOP3 << "(" << loc3x << "," << loc3y << ")" << SOP4 << "(" << loc4x << "," << loc4y << ")";
-	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
+	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
 	SparseMatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
 	SparseMatrixXd IdImp(MpoQ<Symmetry>::qloc[loc2x].size()/F.dim(), MpoQ<Symmetry>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
 	Mout.setLocal({loc1x, loc2x, loc3x, loc4x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
@@ -553,7 +553,7 @@ SimpSsubSimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SO
 	return Mout;
 }
 
-MpoQ<Sym::U1xU1<double> > KondoModel::
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
 c (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
 	assert(locx<this->N_sites and locy<N_legs);
@@ -580,10 +580,10 @@ c (SPIN_INDEX sigma, size_t locx, size_t locy)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<Symmetry>(N_sites, N_legs, M, locBasis(), qdiff, KondoModel::NMlabel, ss.str());
+	return MpoQ<Symmetry>(N_sites, N_legs, M, locBasis(), qdiff, KondoU1xU1::NMlabel, ss.str());
 }
 
-MpoQ<Sym::U1xU1<double> > KondoModel::
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
 cdag (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<N_legs);
@@ -610,10 +610,10 @@ cdag (SPIN_INDEX sigma, size_t locx, size_t locy)
 		M[l](0,0).setIdentity();
 	}
 	
-	return MpoQ<Symmetry>(N_sites, N_legs, M, locBasis(), qdiff, KondoModel::NMlabel, ss.str());
+	return MpoQ<Symmetry>(N_sites, N_legs, M, locBasis(), qdiff, KondoU1xU1::NMlabel, ss.str());
 }
 
-MpoQ<Sym::U1xU1<double> > KondoModel::
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
 cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
 	assert(locx1<N_sites and locx2<N_sites and locy1<N_legs and locy2<N_legs);
@@ -703,108 +703,108 @@ cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 
 	
 	}
-	return MpoQ<Symmetry>(N_sites, N_legs, M, locBasis(), qdiff, KondoModel::NMlabel, ss.str());
+	return MpoQ<Symmetry>(N_sites, N_legs, M, locBasis(), qdiff, KondoU1xU1::NMlabel, ss.str());
 }
 
-MpoQ<Sym::U1xU1<double> > KondoModel::
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
 d (size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
 	ss << "double_occ(" << locx << "," << locy << ")";
 	SparseMatrixXd IdImp(MpoQ<Symmetry>::qloc[locx].size()/F.dim(), MpoQ<Symmetry>::qloc[locx].size()/F.dim()); IdImp.setIdentity();
-	MpoQ<Symmetry> Mout(N_sites, N_legs, locBasis(), {0,0}, KondoModel::NMlabel, ss.str());
+	MpoQ<Symmetry> Mout(N_sites, N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
 	Mout.setLocal(locx, kroneckerProduct(IdImp,F.d(locy)));
 	return Mout;
 }
 
-class KondoModel::qarrayIterator
-{
-public:
+// class KondoU1xU1::qarrayIterator
+// {
+// public:
 	
-	/**
-	\param qloc_input : vector of local bases
-	\param l_frst : first site
-	\param l_last : last site
-	\param N_legs : Dimension in y-direction
-	*/
-	qarrayIterator (const vector<vector<qarray<2> > > &qloc_input, int l_frst, int l_last, size_t N_legs=1)
-	{
-		int Nimps = 0;
-		size_t D = 1;
-		if (l_last < 0 or l_frst >= qloc_input.size())
-		{
-			N_sites = 0;
-		}
-		else
-		{
-			N_sites = l_last-l_frst+1;
+// 	/**
+// 	\param qloc_input : vector of local bases
+// 	\param l_frst : first site
+// 	\param l_last : last site
+// 	\param N_legs : Dimension in y-direction
+// 	*/
+// 	qarrayIterator (const vector<vector<qarray<2> > > &qloc_input, int l_frst, int l_last, size_t N_legs=1)
+// 	{
+// 		int Nimps = 0;
+// 		size_t D = 1;
+// 		if (l_last < 0 or l_frst >= qloc_input.size())
+// 		{
+// 			N_sites = 0;
+// 		}
+// 		else
+// 		{
+// 			N_sites = l_last-l_frst+1;
 			
-			// count the impurities between l_frst and l_last
-			for (size_t l=l_frst; l<=l_last; ++l)
-			{
-				if (qloc_input[l].size()/pow(4,N_legs) > 1)
-				{
-					Nimps += static_cast<int>(N_legs);
-					while (qloc_input[l].size() != pow(4,N_legs)*pow(D,N_legs)) {++D;}
-				}
-			}
-		}
+// 			// count the impurities between l_frst and l_last
+// 			for (size_t l=l_frst; l<=l_last; ++l)
+// 			{
+// 				if (qloc_input[l].size()/pow(4,N_legs) > 1)
+// 				{
+// 					Nimps += static_cast<int>(N_legs);
+// 					while (qloc_input[l].size() != pow(4,N_legs)*pow(D,N_legs)) {++D;}
+// 				}
+// 			}
+// 		}
 		
-		int Sx2 = static_cast<int>(D-1); // necessary because of size_t		
-		int N_legsInt = static_cast<int>(N_legs); // necessary because of size_t
+// 		int Sx2 = static_cast<int>(D-1); // necessary because of size_t		
+// 		int N_legsInt = static_cast<int>(N_legs); // necessary because of size_t
 		
-		for (int Sz=-Sx2*Nimps; Sz<=Sx2*Nimps; Sz+=2)
-		for (int Nup=0; Nup<=N_sites*N_legsInt; ++Nup)
-		for (int Ndn=0; Ndn<=N_sites*N_legsInt; ++Ndn)
-		{
-			qarray<2> q = {Nup+Ndn, Sz+Nup-Ndn};
-			qarraySet.insert(q);
-		}
+// 		for (int Sz=-Sx2*Nimps; Sz<=Sx2*Nimps; Sz+=2)
+// 		for (int Nup=0; Nup<=N_sites*N_legsInt; ++Nup)
+// 		for (int Ndn=0; Ndn<=N_sites*N_legsInt; ++Ndn)
+// 		{
+// 			qarray<2> q = {Nup+Ndn, Sz+Nup-Ndn};
+// 			qarraySet.insert(q);
+// 		}
 		
-		it = qarraySet.begin();
-	};
+// 		it = qarraySet.begin();
+// 	};
 	
-	qarray<2> operator*() {return value;}
+// 	qarray<2> operator*() {return value;}
 	
-	qarrayIterator& operator= (const qarray<2> a) {value=a;}
-	bool operator!=           (const qarray<2> a) {return value!=a;}
-	bool operator<=           (const qarray<2> a) {return value<=a;}
-	bool operator<            (const qarray<2> a) {return value< a;}
+// 	qarrayIterator& operator= (const qarray<2> a) {value=a;}
+// 	bool operator!=           (const qarray<2> a) {return value!=a;}
+// 	bool operator<=           (const qarray<2> a) {return value<=a;}
+// 	bool operator<            (const qarray<2> a) {return value< a;}
 	
-	qarray<2> begin()
-	{
-		return *(qarraySet.begin());
-	}
+// 	qarray<2> begin()
+// 	{
+// 		return *(qarraySet.begin());
+// 	}
 	
-	qarray<2> end()
-	{
-		return *(qarraySet.end());
-	}
+// 	qarray<2> end()
+// 	{
+// 		return *(qarraySet.end());
+// 	}
 	
-	void operator++()
-	{
-		++it;
-		value = *it;
-	}
+// 	void operator++()
+// 	{
+// 		++it;
+// 		value = *it;
+// 	}
 	
-//	bool contains (qarray<2> qnum)
-//	{
-//		return (qarraySet.find(qnum)!=qarraySet.end())? true : false;
-//	}
+// //	bool contains (qarray<2> qnum)
+// //	{
+// //		return (qarraySet.find(qnum)!=qarraySet.end())? true : false;
+// //	}
 	
-private:
+// private:
 	
-	qarray<2> value;
+// 	qarray<2> value;
 	
-	set<qarray<2> > qarraySet;
-	set<qarray<2> >::iterator it;
+// 	set<qarray<2> > qarraySet;
+// 	set<qarray<2> >::iterator it;
 	
-	int N_sites;
-};
+// 	int N_sites;
+// };
 
 
-bool KondoModel::
+bool KondoU1xU1::
 validate (qarray<2> qnum) const
 {
 	int Sx2 = static_cast<int>(D-1); // necessary because of size_t
