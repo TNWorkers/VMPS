@@ -70,6 +70,10 @@ public:
 	MpoQ<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 
+	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an MpsQ.
+	\returns \p true if valid, \p false if not*/
+	bool validate (qarray<1> qnum) const;
+
 protected:
 	
 	const std::map<string,std::any> defaults = 
@@ -149,6 +153,16 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	
 	Mout.setLocal({locx1, locx2}, {B[locx1].Scomp(SZ,locy1), B[locx2].Scomp(SZ,locy2)});
 	return Mout;
+}
+
+bool HeisenbergU1::
+validate (qarray<1> qnum) const
+{
+	frac Smax(0,1);
+	frac q_in(qnum[0],2);
+	for (size_t l=0; l<N_sites; ++l) { Smax+=frac(B[l].get_D()-1,2); }
+	if(Smax.denominator()==q_in.denominator() and q_in <= Smax) {return true;}
+	else {return false;}
 }
 	
 template<typename Symmetry_>

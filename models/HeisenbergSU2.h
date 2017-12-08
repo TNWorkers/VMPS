@@ -77,7 +77,11 @@ public:
 	/**Observables.*/	
 	MpoQ<Symmetry,double> SS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);	
 	///@}
-	
+
+	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an MpsQ.
+	\returns \p true if valid, \p false if not*/
+	bool validate (qarray<1> qnum) const;
+
 protected:
 	const std::map<string,std::any> defaults = 
 	{
@@ -108,6 +112,7 @@ HeisenbergSU2 (size_t Lx_input, vector<Param> params, size_t Ly_input)
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
+	B.resize(N_sites);
 
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -152,6 +157,16 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.)*B[locx1].Sdag(locy1)).plain<SparseMatrixType>(), B[locx2].S(locy2).plain<SparseMatrixType>()});
 		return Mout;
 	}
+}
+
+bool HeisenbergSU2::
+validate (qarray<1> qnum) const
+{
+	frac Smax(0,1);
+	frac q_in(qnum[0]-1,2);
+	for (size_t l=0; l<N_sites; ++l) { Smax+=frac(B[l].get_D()-1,2); }
+	if(Smax.denominator()==q_in.denominator() and q_in <= Smax) {return true;}
+	else {return false;}
 }
 
 HamiltonianTermsXd<Sym::SU2<double> > HeisenbergSU2::
