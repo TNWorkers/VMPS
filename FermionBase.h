@@ -22,7 +22,7 @@ public:
 	/**
 	\param L_input : the amount of orbitals
 	\param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis*/
-	FermionBase (size_t L_input, bool U_IS_INFINITE=false);
+	FermionBase (size_t L_input, bool U_IS_INFINITE=false, bool NM=false);
 	
 	/**number of states = \f$4^L\f$ or \f$3^L\f$ for $U=\infty$*/
 	inline size_t dim() const {return N_states;}
@@ -201,18 +201,19 @@ public:
 	
 	vector<qarray<Symmetry::Nq> > get_basis() const;
 	
-	typename Symmetry::qType getQ (SPIN_INDEX sigma, int Delta=0, bool NM=false) const;
-	typename Symmetry::qType getQ (SPINOP_LABEL Sa, bool NM=false) const;
+	typename Symmetry::qType getQ (SPIN_INDEX sigma, int Delta=0) const;
+	typename Symmetry::qType getQ (SPINOP_LABEL Sa) const;
 	
 private:
 	
 	size_t N_orbitals;
 	size_t N_states;
+	bool NM;
 	
 	/**Returns the qarray for a given index of the basis
 	\param index
 	\param NM : If \p true, the format is (N,M), if \p false the format is (Nup,Ndn)*/ 
-	qarray<Symmetry::Nq> qNums (size_t index, bool NM=false) const;
+	qarray<Symmetry::Nq> qNums (size_t index) const;
 	
 	vector<boost::dynamic_bitset<unsigned char> > basis;
 	
@@ -221,7 +222,7 @@ private:
 
 template<typename Symmetry>
 FermionBase<Symmetry>::
-FermionBase (size_t L_input, bool U_IS_INFINITE)
+FermionBase (size_t L_input, bool U_IS_INFINITE, bool NM)
 :N_orbitals(L_input)
 {
 	assert(N_orbitals>=1);
@@ -512,7 +513,7 @@ parity (const boost::dynamic_bitset<unsigned char> &b, int i) const
 
 template<typename Symmetry>
 qarray<Symmetry::Nq> FermionBase<Symmetry>::
-qNums (size_t index, bool NM) const
+qNums (size_t index) const
 {
 	int M=0; int N=0;
 	int Nup=0; int Ndn=0;
@@ -554,7 +555,7 @@ get_basis() const
 
 template<typename Symmetry>
 typename Symmetry::qType FermionBase<Symmetry>::
-getQ (SPIN_INDEX sigma, int Delta, bool NM) const
+getQ (SPIN_INDEX sigma, int Delta) const
 {
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
 	else
@@ -580,7 +581,7 @@ getQ (SPIN_INDEX sigma, int Delta, bool NM) const
 
 template<typename Symmetry>
 typename Symmetry::qType FermionBase<Symmetry>::
-getQ (SPINOP_LABEL Sa, bool NM) const
+getQ (SPINOP_LABEL Sa) const
 {
 	assert(Sa != SX and Sa != iSY);
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}

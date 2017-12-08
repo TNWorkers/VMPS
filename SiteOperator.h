@@ -67,4 +67,13 @@ SiteOperator<Symmetry,MatrixType> operator* (const typename MatrixType::Scalar& 
 	return Oout;
 }
 
+template<typename Symmetry,typename MatrixType>
+SiteOperator<Symmetry,MatrixType> kroneckerProduct(const SiteOperator<Symmetry,MatrixType>& O1, const SiteOperator<Symmetry,MatrixType>& O2)
+{
+	SiteOperator<Symmetry,MatrixType> Oout;
+	Oout.data = kroneckerProduct(O1.data,O2.data);
+	Oout.Q = O1.Q+O2.Q;
+	return Oout;
+}
+
 #endif
