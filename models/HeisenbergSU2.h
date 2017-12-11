@@ -112,7 +112,7 @@ HeisenbergSU2 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
                  qarray<Symmetry::Nq>({1}), HeisenbergSU2::qOp(), HeisenbergSU2::Stotlabel, "", halve)
 {
-	ParamHandler P(params,HeisenbergU1::defaults);
+	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;

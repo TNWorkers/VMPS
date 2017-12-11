@@ -27,7 +27,24 @@ struct SiteOperator
 		data.setZero();
 		Q = Symmetry::qvacuum();
 	}
+
+	SiteOperator<Symmetry,MatrixType>& operator+= ( const SiteOperator<Symmetry,MatrixType>& Op );
+	SiteOperator<Symmetry,MatrixType>& operator-= ( const SiteOperator<Symmetry,MatrixType>& Op );
 };
+
+template<typename Symmetry,typename MatrixType>
+SiteOperator<Symmetry,MatrixType>& SiteOperator<Symmetry,MatrixType>::operator+= ( const SiteOperator<Symmetry,MatrixType>& Op )
+{
+	*this = *this + Op;
+	return *this;
+}
+
+template<typename Symmetry,typename MatrixType>
+SiteOperator<Symmetry,MatrixType>& SiteOperator<Symmetry,MatrixType>::operator-= ( const SiteOperator<Symmetry,MatrixType>& Op )
+{
+	*this = *this - Op;
+	return *this;
+}
 
 template<typename Symmetry,typename MatrixType>
 SiteOperator<Symmetry,MatrixType> operator* (const SiteOperator<Symmetry,MatrixType>& O1, const SiteOperator<Symmetry,MatrixType>& O2)
