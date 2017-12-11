@@ -203,19 +203,13 @@ std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
 }
 
 template<typename Symmetry, typename Scalar> using LocalTerms = 
-vector<tuple<Scalar,
-       SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> > > >;
+vector<tuple<Scalar, SiteOperator<Symmetry,Scalar> > >;
 
 template<typename Symmetry, typename Scalar> using TightTerms = 
-vector<tuple<Scalar,
-       SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> >,
-       SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> > > >;
+vector<tuple<Scalar, SiteOperator<Symmetry,Scalar>, SiteOperator<Symmetry,Scalar> > >;
 
 template<typename Symmetry, typename Scalar> using NextnTerms = 
-vector<tuple<double,
-       SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> >,
-       SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> >,
-       SiteOperator<Symmetry,SparseMatrix<Scalar,ColMajor,Eigen::Index> > > >;
+vector<tuple<Scalar, SiteOperator<Symmetry,Scalar>, SiteOperator<Symmetry,Scalar>, SiteOperator<Symmetry,Scalar> > >;
 
 template<typename Symmetry, typename Scalar>
 struct HamiltonianTerms
@@ -233,9 +227,31 @@ struct HamiltonianTerms
 	
 	string name="";
 	string info="";
+	
+	template<typename OtherScalar>
+	HamiltonianTerms<Symmetry,OtherScalar> cast() const
+	{
+		HamiltonianTerms<Symmetry,OtherScalar> Tout;
+		Tout.name = name;
+		Tout.info = info;
+		
+		for (size_t i=0; i<local.size(); ++i)
+		{
+			Tout.local.push_back(make_tuple(get<0>(local[i]), (get<1>(local[i]).template cast<OtherScalar>() )));
+		}
+		for (size_t i=0; i<tight.size(); ++i)
+		{
+			Tout.local.push_back(make_tuple(get<0>(tight[i]), (get<1>(tight[i]).template cast<OtherScalar>() )));
+		}
+		for (size_t i=0; i<nextn.size(); ++i)
+		{
+			Tout.local.push_back(make_tuple(get<0>(nextn[i]), (get<1>(nextn[i]).template cast<OtherScalar>() )));
+		}
+		return Tout;
+	}
 };
 
-template<typename Symmetry> using HamiltonianTermsXd = HamiltonianTerms<Symmetry,double> ;
+template<typename Symmetry> using HamiltonianTermsXd  = HamiltonianTerms<Symmetry,double>;
 template<typename Symmetry> using HamiltonianTermsXcd = HamiltonianTerms<Symmetry,complex<double> >;
 
 #endif

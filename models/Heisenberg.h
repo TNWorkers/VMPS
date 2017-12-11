@@ -85,13 +85,13 @@ Heisenberg (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
 	{
 		B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
 		setLocBasis(B.get_basis(),l);
-
+		
 		Terms[l] = HeisenbergU1::set_operators(B,P,l%Lcell);
 		this->Daux = Terms[l].auxdim();
 		
 		G.push_back(Generator(Terms[l]));
 	}
-
+	
 	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }

@@ -46,7 +46,7 @@ class MpoQ
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 template<Index Rank> using TensorType = Eigen::Tensor<Scalar,Rank,Eigen::ColMajor,Index>;
 typedef SparseMatrixXd SparseMatrixType;
-typedef SiteOperator<Symmetry,SparseMatrixType> OperatorType;
+typedef SiteOperator<Symmetry,Scalar> OperatorType;
 static constexpr size_t Nq = Symmetry::Nq;
 typedef typename Symmetry::qType qType;
 	
@@ -935,13 +935,13 @@ setLocal (size_t loc, const OperatorType &Op)
 {
 	assert(Op.data.rows() == qloc[loc].size() and Op.data.cols() == qloc[loc].size());
 	assert(loc < N_sites);
-
+	
 	for (size_t l=0; l<N_sites; l++)
 	{
 		qOp[l].resize(1);
 		qOp[l][0] = (l == loc) ? Op.Q : Symmetry::qvacuum();
 	}
-
+	
 	Daux = 1;
 	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
 	

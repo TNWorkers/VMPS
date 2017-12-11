@@ -13,7 +13,7 @@
 template<typename Symmetry>
 class FermionBase
 {
-	typedef SiteOperator<Symmetry,Eigen::SparseMatrix<double> > OperatorType;
+	typedef SiteOperator<Symmetry,double> OperatorType;
 	
 public:
 	
@@ -185,7 +185,7 @@ public:
 	\param J : \f$J\f$
 	\param PERIODIC: periodic boundary conditions if \p true
 	\param Bz : \f$B_z\f$*/
-	template<typename Scalar> SiteOperator<Symmetry,Eigen::SparseMatrix<Scalar> >
+	template<typename Scalar> SiteOperator<Symmetry,Scalar>
 	HubbardHamiltonian (double U, Scalar t=1., double V=0., double J=0., double Bz=0., bool PERIODIC=false) const;
 	
 	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
@@ -196,7 +196,7 @@ public:
 	\param V : \f$V\f$
 	\param J : \f$J\f$
 	\param PERIODIC: periodic boundary conditions if \p true*/
-	template<typename Scalar> SiteOperator<Symmetry,Eigen::SparseMatrix<Scalar> >
+	template<typename Scalar> SiteOperator<Symmetry,Scalar>
 	HubbardHamiltonian (ArrayXd Uvec, ArrayXd onsite, ArrayXd Bzloc, Scalar t=1., double V=0., double J=0., bool PERIODIC=false) const;
 	
 	vector<qarray<Symmetry::Nq> > get_basis() const;
@@ -255,7 +255,7 @@ FermionBase (size_t L_input, bool U_IS_INFINITE, bool NM)
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 c (SPIN_INDEX sigma, int orbital) const
 {
 	SparseMatrixXd Mout(N_states,N_states);
@@ -282,14 +282,14 @@ c (SPIN_INDEX sigma, int orbital) const
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 cdag (SPIN_INDEX sigma, int orbital) const
 {
 	return OperatorType(c(sigma,orbital).data.transpose(), getQ(sigma,+1));
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 n (SPIN_INDEX sigma, int orbital) const
 {
 	SparseMatrixXd Mout(N_states,N_states);
@@ -310,21 +310,21 @@ n (SPIN_INDEX sigma, int orbital) const
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 n (int orbital) const
 {
 	return n(UPDN,orbital);
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 d (int orbital) const
 {
 	return OperatorType(n(UP,orbital).data*n(DN,orbital).data, Symmetry::qvacuum());
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 Scomp (SPINOP_LABEL Sa, int orbital) const
 {
 	assert(Sa != SY);
@@ -336,42 +336,42 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 Sz (int orbital) const
 {
 	return OperatorType(0.5*(n(UP,orbital).data-n(DN,orbital).data), getQ(SZ));
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 Sp (int orbital) const
 {
 	return OperatorType(cdag(UP,orbital).data*c(DN,orbital).data, getQ(SP));
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 Sm (int orbital) const
 {
 	return OperatorType(cdag(DN,orbital).data*c(UP,orbital).data, getQ(SM));
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 Sx (int orbital) const
 {
 	return OperatorType(0.5*(Sp(orbital).data+Sm(orbital).data), getQ(SX));
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 iSy (int orbital) const
 {
 	return OperatorType(0.5*(Sp(orbital).data-Sm(orbital).data), getQ(iSY));
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 sign (int orb1, int orb2) const
 {
 	SparseMatrixXd Id = MatrixXd::Identity(N_states,N_states).sparseView();
@@ -390,7 +390,7 @@ sign (int orb1, int orb2) const
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 Id() const
 {
 	SparseMatrixXd mat = MatrixXd::Identity(N_states,N_states).sparseView();
@@ -399,7 +399,7 @@ Id() const
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 sign_local (int orbital) const
 {
 	SparseMatrixXd Id = MatrixXd::Identity(N_states,N_states).sparseView();
@@ -415,7 +415,7 @@ sign_local (int orbital) const
 
 template<typename Symmetry>
 template<typename Scalar>
-SiteOperator<Symmetry,Eigen::SparseMatrix<Scalar> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,Scalar> FermionBase<Symmetry>::
 HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERIODIC) const
 {
 	SparseMatrix<Scalar> Mout(N_states,N_states);
@@ -461,12 +461,12 @@ HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERI
 		for (int i=0; i<N_orbitals; ++i) {Mout -= Bz*Sz(i).data.template cast<Scalar>();}
 	}
 	
-	return OperatorType(Mout,Symmetry::qvacuum());
+	return SiteOperator<Symmetry,Scalar>(Mout,Symmetry::qvacuum());
 }
 
 template<typename Symmetry>
 template<typename Scalar>
-SiteOperator<Symmetry,Eigen::SparseMatrix<Scalar> > FermionBase<Symmetry>::
+SiteOperator<Symmetry,Scalar> FermionBase<Symmetry>::
 HubbardHamiltonian (ArrayXd Uloc, ArrayXd onsite, ArrayXd Bzloc, Scalar t, double V, double J, bool PERIODIC) const
 {
 	SparseMatrix<Scalar> Mout = HubbardHamiltonian(0,t,V,J,0,PERIODIC).data;
@@ -496,7 +496,7 @@ HubbardHamiltonian (ArrayXd Uloc, ArrayXd onsite, ArrayXd Bzloc, Scalar t, doubl
 		}
 	}
 	
-	return SiteOperator<Symmetry,Eigen::SparseMatrix<Scalar> >(Mout,Symmetry::qvacuum());
+	return SiteOperator<Symmetry,Scalar>(Mout,Symmetry::qvacuum());
 }
 
 template<typename Symmetry>

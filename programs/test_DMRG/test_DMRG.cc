@@ -49,6 +49,7 @@ Logger lout;
 #include "models/HeisenbergSU2.h"
 
 #include "models/HubbardU1xU1.h"
+#include "models/HeisenbergXYZ.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, int n=14)
@@ -138,6 +139,11 @@ int main (int argc, char* argv[])
 	VMPS::Heisenberg H_U0(Lxy,{{"J",J},{"Jprime",Jprime},{"D",D}});
 	lout << H_U0.info() << endl;
 	Eigenstate<VMPS::Heisenberg::StateXd> g_U0;
+	
+	VMPS::HeisenbergXYZ Hxyz(Lxy,{{"Jx",1.},{"Jy",2.},{"Jz",3.}});
+	cout << Hxyz.info() << endl;
+	VMPS::HeisenbergXYZ Hdm(Lxy,{{"Dy",4.},{"Dz",5.}});
+	cout << Hdm.info() << endl;
 	
 	VMPS::Heisenberg::Solver DMRG_U0(VERB);
 	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
@@ -296,40 +302,4 @@ int main (int argc, char* argv[])
 	T.endOfRow();
 	
 	lout << endl << T;
-	
-	VMPS::HeisenbergU1 Htest1(L,{{"Jxy",-1.},{"Jz",-4.}});
-	cout << Htest1.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest2(L,{{"Jxy",-1.}});
-	cout << Htest2.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest3(L,{{"Jz",-1.}});
-	cout << Htest3.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest4(L,{{"J",-1.},{"Bz",10.},{"K",2.}});
-	cout << Htest4.info() << endl;
-	
-	MatrixXd Jpara(2,2); Jpara.setRandom();
-	VMPS::HeisenbergU1 Htest5(std::array<size_t,2>{L,2ul},{{"Jpara",Jpara}});
-	cout << Htest5.info() << endl;
-	
-	MatrixXd Jxypara(2,2); Jxypara.setRandom();
-	VMPS::HeisenbergU1 Htest6(std::array<size_t,2>{L,2ul},{{"Jxypara",Jxypara}});
-	cout << Htest6.info() << endl;
-	
-	MatrixXd Jzpara(2,2); Jzpara.setRandom();
-	VMPS::HeisenbergU1 Htest7(std::array<size_t,2>{L,2ul},{{"Jzpara",Jzpara}});
-	cout << Htest7.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest8(std::array<size_t,2>{L,2ul},{{"Jxypara",Jxypara},{"Jzpara",Jzpara}});
-	cout << Htest8.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest9(std::array<size_t,2>{L,2ul},{{"Jpara",Jpara},{"Jperp",-1.5}});
-	cout << Htest9.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest10(std::array<size_t,2>{L,2ul},{{"Jpara",Jpara},{"Jxyperp",-3.},{"Jzperp",-4.}});
-	cout << Htest10.info() << endl;
-	
-	VMPS::HeisenbergU1 Htest11(L,{{"DMy",-1.,0},{"DMy",-4.,1}});
-	cout << Htest11.info() << endl;
 }

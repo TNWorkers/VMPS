@@ -10,7 +10,7 @@ template<typename Symmetry, typename Scalar=double>
 class SuperMatrix
 {
 typedef SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> MatrixType;
-typedef SiteOperator<Symmetry,MatrixType> OperatorType;
+typedef SiteOperator<Symmetry,Scalar> OperatorType;
 public:
 	
 	OperatorType &operator() (size_t i, size_t j)       {return data[i][j];} // write
@@ -244,7 +244,7 @@ ostream &operator<< (ostream& os, const SuperMatrix<Symmetry,Scalar> &M)
 template<typename Symmetry, typename Scalar>
 SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar> &Terms)
 {
-	typedef SiteOperator<Symmetry,SparseMatrix<Scalar> > OperatorType;
+	typedef SiteOperator<Symmetry,Scalar> OperatorType;
 	size_t Daux = 2 + Terms.tight.size() + 2*Terms.nextn.size();
 	
 	vector<OperatorType> col;

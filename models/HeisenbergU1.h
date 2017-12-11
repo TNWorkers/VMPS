@@ -85,12 +85,13 @@ const std::array<string,1> HeisenbergU1::maglabel{"M"};
 
 const std::map<string,std::any> HeisenbergU1::defaults = 
 {
-	{"J",0.}, {"Jxy",0.}, {"Jz",0.},
+	{"J",0.}, {"Jxy",0.}, {"Jx",0.}, {"Jy",0.}, {"Jz",0.},
 	{"Jprime",0.}, {"Jxyprime",0.}, {"Jzprime",0.},
 	{"Jperp",0.}, {"Jxyperp",0.}, {"Jzperp",0.},
 	{"Jpara",0.}, {"Jxypara",0.}, {"Jzpara",0.},
 	{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"K",0.},
-	{"DMy",0.}, {"DMyprime",0.},
+	{"Dx",0.}, {"Dy",0.}, {"Dz",0.}, 
+	{"Dxprime",0.}, {"Dyprime",0.}, {"Dzprime",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 };
 
@@ -190,19 +191,13 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	MatrixXd Jxypara(B.orbitals(),B.orbitals()); Jxypara.setZero();
 	MatrixXd Jzpara (B.orbitals(),B.orbitals()); Jzpara.setZero();
 	
-	// lambda function to indicate FM/AFM alignment
-	auto alignment = [] (const double &x) -> string
-	{
-		return (x<0.)? "(AFM)":"(FM)";
-	};
-	
 	if (P.HAS("J",loc))
 	{
 		J = P.get<double>("J",loc);
 		Jxypara.diagonal().setConstant(J);
 		Jzpara.diagonal().setConstant(J);
 		Terms.name = "Heisenberg";
-		ss << "S=" << print_frac_nice(S) << ",J=" << J << alignment(J);
+		ss << "S=" << print_frac_nice(S) << ",J=" << J << B.alignment(J);
 	}
 	else if (P.HAS("Jxy",loc) or P.HAS("Jz",loc))
 	{
@@ -217,9 +212,9 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 			Jzpara.diagonal().setConstant(Jz);
 		}
 		
-		if      (Jxy == 0.) {Terms.name = "Ising"; ss << "S=" << print_frac_nice(S) << ",J=" << Jz << alignment(Jz);}
-		else if (Jz  == 0.) {Terms.name = "XX"; ss << "S="    << print_frac_nice(S) << ",J=" << Jxy << alignment(Jxy);}
-		else                {Terms.name = "XXZ"; ss << "S="   << print_frac_nice(S) << ",Jxy=" << Jxy << ",Jz=" << Jz << alignment(Jz);}
+		if      (Jxy == 0.) {Terms.name = "Ising"; ss << "S=" << print_frac_nice(S) << ",J=" << Jz << B.alignment(Jz);}
+		else if (Jz  == 0.) {Terms.name = "XX"; ss << "S="    << print_frac_nice(S) << ",J=" << Jxy << B.alignment(Jxy);}
+		else                {Terms.name = "XXZ"; ss << "S="   << print_frac_nice(S) << ",Jxy=" << Jxy << ",Jz=" << Jz << B.alignment(Jz);}
 	}
 	else if (P.HAS("Jpara",loc))
 	{
@@ -323,33 +318,33 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	
 	// Dzyaloshinsky-Moriya terms
 	
-	double DMy = P.get_default<double>("DMy");
-	double DMyprime = P.get_default<double>("DMyprime");
+	double Dy = P.get_default<double>("Dy");
+	double Dyprime = P.get_default<double>("Dyprime");
 	
-	if (P.HAS("DMy",loc))
+	if (P.HAS("Dy",loc))
 	{
-		DMy = P.get<double>("DMy",loc);
-		if (DMy != 0.)
+		Dy = P.get<double>("Dy",loc);
+		if (Dy != 0.)
 		{
-			Terms.tight.push_back(make_tuple(+DMy, B.Scomp(SX), B.Scomp(SZ)));
-			Terms.tight.push_back(make_tuple(-DMy, B.Scomp(SZ), B.Scomp(SX)));
+			Terms.tight.push_back(make_tuple(+Dy, B.Scomp(SX), B.Scomp(SZ)));
+			Terms.tight.push_back(make_tuple(-Dy, B.Scomp(SZ), B.Scomp(SX)));
 		}
 		
 		Terms.name = "Dzyaloshinsky-Moriya";
-		ss << ",DMy=" << DMy;
+		ss << ",Dy=" << Dy;
 	}
 	
-	if (P.HAS("DMyprime",loc))
+	if (P.HAS("Dyprime",loc))
 	{
-		DMyprime = P.get<double>("DMyprime",loc);
-		if (DMyprime != 0.)
+		Dyprime = P.get<double>("Dyprime",loc);
+		if (Dyprime != 0.)
 		{
-			Terms.nextn.push_back(make_tuple(+DMyprime, B.Scomp(SX), B.Scomp(SZ), B.Id()));
-			Terms.nextn.push_back(make_tuple(-DMyprime, B.Scomp(SZ), B.Scomp(SX), B.Id()));
+			Terms.nextn.push_back(make_tuple(+Dyprime, B.Scomp(SX), B.Scomp(SZ), B.Id()));
+			Terms.nextn.push_back(make_tuple(-Dyprime, B.Scomp(SZ), B.Scomp(SX), B.Id()));
 		}
 		
 		Terms.name = "Dzyaloshinsky-Moriya";
-		ss << ",DM'=" << DMy;
+		ss << ",DM'=" << Dy;
 	}
 	
 	// local terms

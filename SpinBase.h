@@ -28,7 +28,7 @@ std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 template<typename Symmetry>
 class SpinBase
 {
-	typedef SiteOperator<Symmetry,Eigen::SparseMatrix<double> > OperatorType;
+	typedef SiteOperator<Symmetry,double> OperatorType;
 	
 public:
 	
@@ -55,7 +55,9 @@ public:
 	OperatorType Scomp (SPINOP_LABEL Sa, int orbital=0) const;
 
 	OperatorType Id() const;
-
+	
+	string alignment (double J) const {return (J<0.)? "(AFM)":"(FM)";};
+	
 	/**Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
 	\param Jxy : \f$J_{xy}\f$
 	\param Jz : \f$J_{z}\f$
@@ -92,7 +94,7 @@ SpinBase (size_t L_input, size_t D_input)
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > SpinBase<Symmetry>::
+SiteOperator<Symmetry,double> SpinBase<Symmetry>::
 Scomp (SPINOP_LABEL Sa, int orbital) const
 {
 	assert(orbital<N_orbitals);
@@ -109,7 +111,7 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > SpinBase<Symmetry>::
+SiteOperator<Symmetry,double> SpinBase<Symmetry>::
 Id() const
 {
 	SparseMatrixXd mat = MatrixXd::Identity(N_states,N_states).sparseView();
@@ -118,13 +120,13 @@ Id() const
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > SpinBase<Symmetry>::
+SiteOperator<Symmetry,double> SpinBase<Symmetry>::
 HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, double K, bool PERIODIC) const
 {
 	assert (Bz.rows() == N_orbitals and Bx.rows() == N_orbitals);
 	
 	SparseMatrixXd Mout(N_states,N_states);
-
+	
 	for (int i=0; i<N_orbitals-1; ++i) // for all bonds
 	{
 		if (Jxy != 0.)
@@ -168,7 +170,7 @@ HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,Eigen::SparseMatrix<double> > SpinBase<Symmetry>::
+SiteOperator<Symmetry,double> SpinBase<Symmetry>::
 HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double K, bool PERIODIC) const
 {
 	VectorXd Bzvec(N_orbitals); Bzvec.setConstant(Bz);
@@ -284,7 +286,7 @@ Soffdiag () const
 {
 	VectorXd Vout(D-1);
 	double S = 0.5*(D-1);
-		
+	
 	for (size_t i=0; i<D-1; ++i)
 	{
 		double m = -S + static_cast<double>(i);
