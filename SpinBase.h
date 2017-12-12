@@ -66,7 +66,7 @@ public:
 	\param PERIODIC: periodic boundary conditions if \p true*/
 	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., double K=0., bool PERIODIC=false) const;
 	
-	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, double K, bool PERIODIC=false) const;
+	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &K, bool PERIODIC=false) const;
 	
 private:
 	
@@ -121,12 +121,12 @@ Id() const
 
 template<typename Symmetry>
 SiteOperator<Symmetry,double> SpinBase<Symmetry>::
-HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd &Bx, double K, bool PERIODIC) const
+HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &K, bool PERIODIC) const
 {
 	assert (Bz.rows() == N_orbitals and Bx.rows() == N_orbitals);
 	
 	SparseMatrixXd Mout(N_states,N_states);
-	
+
 	for (int i=0; i<N_orbitals-1; ++i) // for all bonds
 	{
 		if (Jxy != 0.)
@@ -157,12 +157,9 @@ HeisenbergHamiltonian (double Jxy, double Jz, const VectorXd &Bz, const VectorXd
 	{
 		if (Bx(i) != 0.) {Mout -= Bx(i) * Scomp(SX,i).data;}
 	}
-	if (K!=0.)
+	for (int i=0; i<N_orbitals; ++i)
 	{
-		for (int i=0; i<N_orbitals; ++i)
-		{
-			Mout += K * Scomp(SZ,i).data * Scomp(SZ,i).data;
-		}
+		if (K(i)!=0.) { Mout += K(i) * Scomp(SZ,i).data * Scomp(SZ,i).data; }
 	}
 
 	OperatorType Oout(Mout,Symmetry::qvacuum());
@@ -173,9 +170,10 @@ template<typename Symmetry>
 SiteOperator<Symmetry,double> SpinBase<Symmetry>::
 HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double K, bool PERIODIC) const
 {
-	VectorXd Bzvec(N_orbitals); Bzvec.setConstant(Bz);
-	VectorXd Bxvec(N_orbitals); Bxvec.setConstant(Bx);
-	return HeisenbergHamiltonian(Jxy, Jz, Bzvec, Bxvec, K, PERIODIC);
+	ArrayXd Bzvec(N_orbitals); Bzvec.setConstant(Bz);
+	ArrayXd Bxvec(N_orbitals); Bxvec.setConstant(Bx);
+	ArrayXd Kvec(N_orbitals); Kvec.setConstant(K);
+	return HeisenbergHamiltonian(Jxy, Jz, Bzvec, Bxvec, Kvec, PERIODIC);
 }
 
 template<typename Symmetry>
@@ -191,14 +189,10 @@ qNums (size_t index) const
 		M += D-(2*(Nelly(i)+1)-1);
 	}
 	
-	if constexpr(Symmetry::IS_TRIVIAL)
-	{
-		return qarray<0>{};
-	}
-	else
-	{
-		return qarray<1>{M};
-	}
+	if constexpr(Symmetry::IS_TRIVIAL){ return qarray<0>{}; }
+	else if constexpr(Symmetry::Nq == 1) { return qarray<1>{M}; }
+	//return a dummy quantum number for a second symmetry. Format: {other symmetry, magnetization}
+	else if constexpr(Symmetry::Nq == 2) { return qarray<2>{{0,M}}; }
 }
 
 template<typename Symmetry>
@@ -220,16 +214,29 @@ typename Symmetry::qType SpinBase<Symmetry>::
 getQ (SPINOP_LABEL Sa) const
 {
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
-	else{
-		typename Symmetry::qType out;
-		if      (Sa==SX)  {out = {0};}
-		else if (Sa==SY)  {out = {0};}
-		else if (Sa==iSY) {out = {0};}
-		else if (Sa==SZ)  {out = {0};}
-		else if (Sa==SP)  {out = {+2};}
-		else if (Sa==SM)  {out = {-2};}
-		return out;
-	}
+	else if constexpr(Symmetry::Nq == 1)
+					 {
+						 typename Symmetry::qType out;
+						 if      (Sa==SX)  {out = {0};}
+						 else if (Sa==SY)  {out = {0};}
+						 else if (Sa==iSY) {out = {0};}
+						 else if (Sa==SZ)  {out = {0};}
+						 else if (Sa==SP)  {out = {+2};}
+						 else if (Sa==SM)  {out = {-2};}
+						 return out;
+					 }
+	else if constexpr(Symmetry::Nq == 2) //return a dummy quantum number for a second symmetry. Format: {other symmetry, magnetization}
+					 {
+						 typename Symmetry::qType out;
+						 if      (Sa==SX)  {out = qarray<2>({0,0});}
+						 else if (Sa==SY)  {out = qarray<2>({0,0});}
+						 else if (Sa==iSY) {out = qarray<2>({0,0});}
+						 else if (Sa==SZ)  {out = qarray<2>({0,0});}
+						 else if (Sa==SP)  {out = qarray<2>({0,+2});}
+						 else if (Sa==SM)  {out = qarray<2>({0,-2});}
+						 return out;
+					 }
+
 }
 
 template<typename Symmetry>

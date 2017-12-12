@@ -11,7 +11,7 @@
   * For a SiteOperator blocked into different symmetry sectors, see SiteOperatorQ. 
   *
   * \describe_Symmetry
-  * \describe_Eigen::SparseMatrix<Scalar> 
+  * \describe_Scalar
   *
   */
 template<typename Symmetry, typename Scalar>
@@ -39,7 +39,23 @@ struct SiteOperator
 		Oout.data = data.template cast<OtherScalar>();
 		return Oout;
 	}
+
+	SiteOperator<Symmetry,Scalar>& operator+= ( const SiteOperator<Symmetry,Scalar>& Op );
+	SiteOperator<Symmetry,Scalar>& operator-= ( const SiteOperator<Symmetry,Scalar>& Op );
 };
+template<typename Symmetry,typename Scalar>
+SiteOperator<Symmetry,Scalar>& SiteOperator<Symmetry,Scalar>::operator+= ( const SiteOperator<Symmetry,Scalar>& Op )
+{
+	*this = *this + Op;
+	return *this;
+}
+
+template<typename Symmetry,typename Scalar>
+SiteOperator<Symmetry,Scalar>& SiteOperator<Symmetry,Scalar>::operator-= ( const SiteOperator<Symmetry,Scalar>& Op )
+{
+	*this = *this - Op;
+	return *this;
+}
 
 template<typename Symmetry, typename Scalar>
 SiteOperator<Symmetry,Scalar> operator* (const SiteOperator<Symmetry,Scalar> &O1, const SiteOperator<Symmetry,Scalar> &O2)
