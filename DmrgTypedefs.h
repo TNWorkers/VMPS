@@ -226,7 +226,18 @@ struct HamiltonianTerms
 	inline size_t auxdim() {return 2+tight.size()+2*nextn.size();}
 	
 	string name="";
-	string info="";
+	vector<string> info;
+	
+	string get_info() const
+	{
+		stringstream ss;
+		for (const auto &i:info)
+		{
+			ss << i << ",";
+		}
+		ss.seekp(-1,ios_base::end); // delete last comma
+		return ss.str();
+	}
 	
 	template<typename OtherScalar>
 	HamiltonianTerms<Symmetry,OtherScalar> cast() const

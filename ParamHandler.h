@@ -8,6 +8,22 @@
 #include <typeinfo>
 #include <typeindex>
 
+template<typename Scalar>
+struct param1d
+{
+	Scalar x;
+	Array<Scalar,Dynamic,1> a;
+	string label;
+};
+
+template<typename Scalar>
+struct param2d
+{
+	Scalar x;
+	Array<Scalar,Dynamic,Dynamic> a;
+	string label;
+};
+
 struct Param
 {
 	Param (string label_input, std::any value_input, size_t index_input=0)
@@ -37,7 +53,11 @@ public:
 	
 //	string info() const;
 	
+	template<typename Scalar> param1d<Scalar> fill_array1d (string label_x, string label_a, size_t size_a, size_t loc=0) const;
+	
 private:
+	
+	IOFormat arrayFormat;
 	
 	size_t calc_cellsize (const vector<Param> &p_list);
 	
@@ -49,6 +69,7 @@ ParamHandler::
 ParamHandler (const vector<Param> &p_list)
 {
 	params.resize(calc_cellsize(p_list));
+	arrayFormat = IOFormat(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
 	
 	for (auto p:p_list)
 	{
@@ -61,6 +82,7 @@ ParamHandler (const vector<Param> &p_list, const map<string,std::any> &defaults_
 :defaults(defaults_input)
 {
 	params.resize(calc_cellsize(p_list));
+	arrayFormat = IOFormat(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
 	
 	for (auto p:p_list)
 	{
@@ -138,6 +160,34 @@ calc_cellsize (const vector<Param> &p_list)
 	}
 	
 	return indices.size();
+}
+
+template<typename Scalar>
+param1d<Scalar> ParamHandler::
+fill_array1d (string label_x, string label_a, size_t size_a, size_t loc) const
+{
+	assert(!(HAS(label_x) and HAS(label_a)));
+	
+	param1d<Scalar> res;
+	
+	res.a.resize(size_a);
+	res.a.setZero();
+	res.x = get_default<double>(label_x);
+	stringstream ss;
+	
+	if (HAS(label_x,loc))
+	{
+		res.x = get<double>(label_x,loc);
+		res.a = res.x;
+		ss << label_x << "=" << res.x;
+	}
+	else if (HAS(label_a,loc))
+	{
+		res.a = get<double>(label_a,loc);
+		ss << label_a << "=" << res.a.format(arrayFormat);
+	}
+	
+	return res;
 }
 
 // It makes little sense, to print out std::any, but here is a possibility if you know all possible types:

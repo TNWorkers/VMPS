@@ -895,12 +895,12 @@ generate_label (string mainlabel, const vector<HamiltonianTerms<Symmetry,Scalar>
 	
 	for (size_t l=0; l<Terms.size(); ++l)
 	{
-		cells[Terms[l%Lcell].info].insert(l%Lcell);
+		cells[Terms[l%Lcell].get_info()].insert(l%Lcell);
 	}
 	
 	if (cells.size() == 1)
 	{
-		ss << "(" << Terms[0].info << "): ";
+		ss << "(" << Terms[0].get_info() << "): ";
 	}
 	else
 	{

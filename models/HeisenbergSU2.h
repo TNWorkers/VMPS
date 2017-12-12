@@ -154,12 +154,12 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 	if(locx1 == locx2)
 	{
 		auto product = std::sqrt(3.)*Operator::prod(B[locx1].Sdag(locy1),B[locx2].S(locy2),Symmetry::qvacuum());
-		Mout.setLocal(locx1,product.plain<SparseMatrixType>());
+		Mout.setLocal(locx1,product.plain<double>());
 		return Mout;
 	}
 	else
 	{
-		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.)*B[locx1].Sdag(locy1)).plain<SparseMatrixType>(), B[locx2].S(locy2).plain<SparseMatrixType>()});
+		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.)*B[locx1].Sdag(locy1)).plain<double>(), B[locx2].S(locy2).plain<double>()});
 		return Mout;
 	}
 }
@@ -207,8 +207,8 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 		if (Jpara(i,j) != 0.)
 		{
 			Terms.tight.push_back(make_tuple(-std::sqrt(3)*Jpara(i,j),
-			                                 B.Sdag(i).plain<SparseMatrixType>(),
-			                                 B.S(j).plain<SparseMatrixType>()));
+			                                 B.Sdag(i).plain<double>(),
+			                                 B.S(j).plain<double>()));
 		}
 	}
 	
@@ -224,9 +224,9 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 	}
 	if (Jprime != 0)
 	{
-		Terms.nextn.push_back(make_tuple(-std::sqrt(3)*Jprime, B.Sdag(0).plain<SparseMatrixType>(),
-		                                 B.S(0).plain<SparseMatrixType>(),
-		                                 B.Id().plain<SparseMatrixType>()));
+		Terms.nextn.push_back(make_tuple(-std::sqrt(3)*Jprime, B.Sdag(0).plain<double>(),
+		                                 B.S(0).plain<double>(),
+		                                 B.Id().plain<double>()));
 	}
 	
 	// local terms
@@ -247,7 +247,7 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 	
 	if (B.orbitals() > 1)
 	{
-		Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp).plain<SparseMatrixType>()));
+		Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp).plain<double>()));
 	}
 	
 	return Terms;

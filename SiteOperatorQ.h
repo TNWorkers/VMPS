@@ -63,8 +63,8 @@ public:
 
 	SiteOperatorQ<Symmetry,MatrixType_> diagonalize() const;
 
-	template<typename OtherMatrixType>
-	SiteOperator<Symmetry,OtherMatrixType> plain() const;
+	template<typename Scalar>
+	SiteOperator<Symmetry,Scalar> plain() const;
 	
 private:
 	base data_;
@@ -188,11 +188,11 @@ adjoint () const
 }
 
 template<typename Symmetry, typename MatrixType_>
-template<typename OtherMatrixType>
-SiteOperator<Symmetry,OtherMatrixType> SiteOperatorQ<Symmetry,MatrixType_>::
+template<typename Scalar>
+SiteOperator<Symmetry,Scalar> SiteOperatorQ<Symmetry,MatrixType_>::
 plain() const
 {
-	SiteOperator<Symmetry,OtherMatrixType> out;
+	SiteOperator<Symmetry,Scalar> out;
 	MatrixType_ Mtmp(basis().size(),basis().size()); Mtmp.setZero();
 	for( auto itQ = basis().cbegin(); itQ != basis().cend(); itQ++ )
 	{
@@ -206,14 +206,15 @@ plain() const
 			}
 		}
 	}
-	if constexpr ( std::is_same<OtherMatrixType,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> >::value )
-		{
-			out.data = Mtmp;
-		}
-	else if constexpr ( std::is_same<OtherMatrixType,Eigen::SparseMatrix<Scalar> >::value )
-		{
-			out.data = Mtmp.sparseView();
-		}
+//	if constexpr ( std::is_same<OtherMatrixType,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> >::value )
+//		{
+//			out.data = Mtmp;
+//		}
+//	else if constexpr ( std::is_same<OtherMatrixType,Eigen::SparseMatrix<Scalar> >::value )
+//		{
+//			out.data = Mtmp.sparseView();
+//		}
+	out.data = Mtmp.sparseView();
 	out.Q = this->Q();
 	return out;
 }

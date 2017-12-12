@@ -300,20 +300,23 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	
 	// Bz
 	
-	ArrayXd Bzloc(F.orbitals()); Bzloc.setZero();
-	double Bz = P.get_default<double>("Bz");
+//	ArrayXd Bzloc(F.orbitals()); Bzloc.setZero();
+//	double Bz = P.get_default<double>("Bz");
+//	
+//	if (P.HAS("Bzloc",loc))
+//	{
+//		Bzloc = P.get<double>("Bzloc",loc);
+//		ss << ",Bz=" << Bzloc.format(CommaInitFmt);
+//	}
+//	else if (P.HAS("Bz",loc))
+//	{
+//		Bz = P.get<double>("Bz",loc);
+//		Bzloc = Bz;
+//		ss << ",Bz=" << Bz;
+//	}
 	
-	if (P.HAS("Bzloc",loc))
-	{
-		Bzloc = P.get<double>("Bzloc",loc);
-		ss << ",Bz=" << Bzloc.format(CommaInitFmt);
-	}
-	else if (P.HAS("Bz",loc))
-	{
-		Bz = P.get<double>("Bz",loc);
-		Bzloc = Bz;
-		ss << ",Bz=" << Bz;
-	}
+	auto [Bz,Bzloc,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F.orbitals(),loc);
+	Terms.info.push_back(Bzlabel);
 	
 	if (isfinite(Uloc.sum()))
 	{
