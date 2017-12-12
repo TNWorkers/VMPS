@@ -140,6 +140,11 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 {
 	HamiltonianTermsXd<Symmetry_> Terms;
 	
+	auto save_label = [&Terms] (string label)
+	{
+		if (label!="") {Terms.info.push_back(label);}
+	};
+	
 //	stringstream ss;
 //	IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
 	
@@ -167,13 +172,13 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	}
 	
 	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F.orbitals(),loc);
-	Terms.info.push_back(tlabel);
+	save_label(tlabel);
 	
 	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",F.orbitals(),loc);
-	Terms.info.push_back(Vlabel);
+	save_label(Vlabel);
 	
 	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",F.orbitals(),loc);
-	Terms.info.push_back(Jlabel);
+	save_label(Jlabel);
 	
 	for (int i=0; i<F.orbitals(); ++i)
 	for (int j=0; j<F.orbitals(); ++j)
@@ -332,13 +337,13 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	}
 	
 	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F.orbitals(),loc);
-	Terms.info.push_back(Ulabel);
+	save_label(Ulabel);
 	
 	auto [mu,muorb,mulabel] = P.fill_array1d<double>("mu","muorb",F.orbitals(),loc);
-	Terms.info.push_back(mulabel);
+	save_label(mulabel);
 	
 	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F.orbitals(),loc);
-	Terms.info.push_back(Bzlabel);
+	save_label(Bzlabel);
 	
 	if (isfinite(Uorb.sum()))
 	{

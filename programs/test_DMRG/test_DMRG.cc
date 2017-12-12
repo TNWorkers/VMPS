@@ -49,6 +49,7 @@ Logger lout;
 //#include "models/HeisenbergSU2.h"
 
 #include "models/HubbardU1xU1.h"
+#include "models/HeisenbergU1XXZ.h"
 //#include "models/HeisenbergXYZ.h"
 
 template<typename Scalar>
@@ -59,7 +60,7 @@ string to_string_prec (Scalar x, int n=14)
 	return ss.str();
 }
 
-VMPS::HeisenbergU1::StateXcd Neel (const VMPS::HeisenbergU1 &H)
+VMPS::HeisenbergU1XXZ::StateXcd Neel (const VMPS::HeisenbergU1XXZ &H)
 {
 	vector<qarray<1> > Neel_config(H.length());
 	for (int l=0; l<H.length(); l+=2)
@@ -68,7 +69,7 @@ VMPS::HeisenbergU1::StateXcd Neel (const VMPS::HeisenbergU1 &H)
 		Neel_config[l+1] = qarray<1>{-1};
 	}
 	
-	VMPS::HeisenbergU1::StateXcd Psi; 
+	VMPS::HeisenbergU1XXZ::StateXcd Psi; 
 	Psi.setProductState(H,Neel_config);
 	
 	return Psi;
@@ -229,14 +230,14 @@ int main (int argc, char* argv[])
 	if (CALC_DYNAMICS)
 	{
 		int Ldyn = 12;
-		vector<double> Jz_list = {0, -1, -2, -4};
+		vector<double> Jz_list = {0., -1., -2., -4.};
 		
 		for (const auto& Jz:Jz_list)
 		{
-			VMPS::HeisenbergU1 H_U1t(Ldyn,{{"J",J},{"Jz",Jz},{"D",D}});
+			VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
 			lout << H_U1t.info() << endl;
-			VMPS::HeisenbergU1::StateXcd Psi = Neel(H_U1t);
-			TDVPPropagator<VMPS::HeisenbergU1,Sym::U1<double>,double,complex<double>,VMPS::HeisenbergU1::StateXcd> TDVP(H_U1t,Psi);
+			VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
+			TDVPPropagator<VMPS::HeisenbergU1XXZ,Sym::U1<double>,double,complex<double>,VMPS::HeisenbergU1XXZ::StateXcd> TDVP(H_U1t,Psi);
 		
 			double t = 0;
 			ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
@@ -245,7 +246,7 @@ int main (int argc, char* argv[])
 				double res = 0;
 				for (int l=0; l<Ldyn; ++l)
 				{
-					res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
+					res += pow(-1.,l) * isReal(avg(Psi, H_U1.Sz(l), Psi));
 				}
 				res /= Ldyn;
 				if(VERB != DMRG::VERBOSITY::SILENT) {lout << t << "\t" << res << endl;}

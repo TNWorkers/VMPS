@@ -231,11 +231,8 @@ struct HamiltonianTerms
 	string get_info() const
 	{
 		stringstream ss;
-		for (const auto &i:info)
-		{
-			ss << i << ",";
-		}
-		ss.seekp(-1,ios_base::end); // delete last comma
+		copy(info.begin(), info.end()-1, ostream_iterator<string>(ss,","));
+		ss << info.back();
 		return ss.str();
 	}
 	

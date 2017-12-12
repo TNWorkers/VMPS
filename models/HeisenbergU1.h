@@ -129,7 +129,7 @@ HeisenbergU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
 		
 		G.push_back(Generator(Terms[l]));
 	}
-
+	
 	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
@@ -178,10 +178,15 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry_> Terms;
 	
+	auto save_label = [&Terms] (string label)
+	{
+		if (label!="") {Terms.info.push_back(label);}
+	};
+	
 	// J-terms
 	
 	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",B.orbitals(),loc);
-	Terms.info.push_back(Jlabel);
+	save_label(Jlabel);
 	
 	for (int i=0; i<B.orbitals(); ++i)
 	for (int j=0; j<B.orbitals(); ++j)
@@ -214,7 +219,7 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	// Dzyaloshinsky-Moriya terms
 	
 	auto [Dy,Dypara,Dylabel] = P.fill_array2d<double>("Dy","Dypara",B.orbitals(),loc);
-	Terms.info.push_back(Dylabel);
+	save_label(Dylabel);
 	
 	for (int i=0; i<B.orbitals(); ++i)
 	for (int j=0; j<B.orbitals(); ++j)
@@ -267,13 +272,13 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	}
 	
 	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",B.orbitals(),loc);
-	Terms.info.push_back(Bzlabel);
+	save_label(Bzlabel);
 	
 	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",B.orbitals(),loc);
-	Terms.info.push_back(Bxlabel);
+	save_label(Bxlabel);
 	
 	auto [K,Korb,Klabel] = P.fill_array1d<double>("K","Korb",B.orbitals(),loc);
-	Terms.info.push_back(Klabel);
+	save_label(Klabel);
 	
 	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp,Jperp,Bzorb,Bxorb,Korb,Dyperp, P.get<bool>("CYLINDER"))));
 	

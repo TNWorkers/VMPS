@@ -1,13 +1,7 @@
 #ifndef STRAWBERRY_HEISENBERGU1XXZ
 #define STRAWBERRY_HEISENBERGU1XXZ
 
-#include <array>
-
-#include "MpoQ.h"
-#include "symmetry/U1.h"
-#include "SpinBase.h"
-#include "DmrgExternalQ.h"
-#include "ParamHandler.h"
+#include "models/HeisenbergU1.h"
 
 namespace VMPS
 {
@@ -19,6 +13,7 @@ public:
 private:
 	typedef Symmetry::qType qType;
 	typedef SiteOperator<Symmetry,SparseMatrix<double> > OperatorType;
+	
 public:
 	
 	HeisenbergU1XXZ() : MpoQ<Symmetry>() {};
@@ -60,9 +55,9 @@ HeisenbergU1XXZ::
 HeisenbergU1XXZ (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
 :MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                 qarray<Symmetry::Nq>({0}), HeisenbergU1XXZ::qOp(), HeisenbergU1XXZ::maglabel, "", halve)
+                 qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve)
 {
-	ParamHandler P(params,defaults);
+	ParamHandler P(params,HeisenbergU1::defaults);
 	
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
@@ -85,18 +80,23 @@ HeisenbergU1XXZ (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
 }
 
 template<typename Symmetry_>
-HamiltonianTermsXd<Symmetry_> HeisenbergU1::
+HamiltonianTermsXd<Symmetry_> HeisenbergU1XXZ::
 set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry_> Terms;
 	
+	auto save_label = [&Terms] (string label)
+	{
+		if (label!="") {Terms.info.push_back(label);}
+	};
+	
 	// J-terms
 	
 	auto [Jxy,Jxypara,Jxylabel] = P.fill_array2d<double>("Jxy","Jxypara",B.orbitals(),loc);
-	Terms.info.push_back(Jlabel);
+	save_label(Jxylabel);
 	
 	auto [Jz,Jzpara,Jzlabel] = P.fill_array2d<double>("Jz","Jzpara",B.orbitals(),loc);
-	Terms.info.push_back(Jlabel);
+	save_label(Jzlabel);
 	
 	for (int i=0; i<B.orbitals(); ++i)
 	for (int j=0; j<B.orbitals(); ++j)
@@ -126,32 +126,34 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	}
 	else if (P.HAS("Jxyperp",loc))
 	{
-		Jperp = P.get<double>("Jxyperp",loc);
-		stringstream ss; ss << "Jxy⟂=" << Jperp; Terms.info.push_back(ss.str());
+		Jxyperp = P.get<double>("Jxyperp",loc);
+		stringstream ss; ss << "Jxy⟂=" << Jxyperp; Terms.info.push_back(ss.str());
 	}
 	
 	double Jzperp = P.get_default<double>("Jzperp");
 	
 	if (P.HAS("Jz",loc))
 	{
-		Jxyperp = P.get<double>("Jz",loc);
+		Jzperp = P.get<double>("Jz",loc);
 	}
 	else if (P.HAS("Jzperp",loc))
 	{
-		Jperp = P.get<double>("Jzperp",loc);
-		stringstream ss; ss << "Jz⟂=" << Jperp; Terms.info.push_back(ss.str());
+		Jzperp = P.get<double>("Jzperp",loc);
+		stringstream ss; ss << "Jz⟂=" << Jzperp; Terms.info.push_back(ss.str());
 	}
 	
 	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",B.orbitals(),loc);
-	Terms.info.push_back(Bzlabel);
+	save_label(Bzlabel);
 	
 	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",B.orbitals(),loc);
-	Terms.info.push_back(Bxlabel);
+	save_label(Bxlabel);
 	
 	auto [K,Korb,Klabel] = P.fill_array1d<double>("K","Korb",B.orbitals(),loc);
-	Terms.info.push_back(Klabel);
+	save_label(Klabel);
 	
-	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Korb,0., P.get<bool>("CYLINDER"))));
+	double Dyperp = 0.;
+	
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Korb,Dyperp, P.get<bool>("CYLINDER"))));
 	
 	if (P.HAS("Jxy",loc) or P.HAS("Jxypara") or P.HAS("Jxyperp"))
 	{
