@@ -254,41 +254,19 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	
 	// local terms
 	
-	double Jperp = P.get_default<double>("Jperp");
+	param0d Jperp = P.fill_array0d<double>("J","Jperp",loc);
+	save_label(Jperp.label);
 	
-	if (P.HAS("J",loc))
-	{
-		Jperp = P.get<double>("J",loc);
-	}
-	else if (P.HAS("Jperp",loc))
-	{
-		Jperp = P.get<double>("Jperp",loc);
-		stringstream ss; ss << "J⟂=" << Jperp; Terms.info.push_back(ss.str());
-	}
-	
-	double Dyperp = P.get_default<double>("Dyperp");
-	
-	if (P.HAS("Dy",loc))
-	{
-		Dyperp = P.get<double>("Dy",loc);
-	}
-	else if (P.HAS("Dyperp",loc))
-	{
-		Dyperp = P.get<double>("Dyperp",loc);
-		stringstream ss; ss << "Dy⟂=" << Dyperp; Terms.info.push_back(ss.str());
-	}
+	param0d Dyperp = P.fill_array0d<double>("Dy","Dyperp",loc);
+	save_label(Dyperp.label);
 	
 	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",B.orbitals(),loc);
 	save_label(Bzlabel);
 	
-//	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",B.orbitals(),loc);
-//	save_label(Bxlabel);
-	ArrayXd Bxorb(B.orbitals()); Bxorb = 0.;
-	
 	auto [K,Korb,Klabel] = P.fill_array1d<double>("K","Korb",B.orbitals(),loc);
 	save_label(Klabel);
 	
-	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp,Jperp,Bzorb,Bxorb,Korb,Dyperp, P.get<bool>("CYLINDER"))));
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp.x,Jperp.x,Bzorb,ArrayXd::Zero(B.orbitals()),Korb,Dyperp.x, P.get<bool>("CYLINDER"))));
 	
 	if (P.HAS_ANY_OF({"Dy","Dyperp"},loc))
 	{

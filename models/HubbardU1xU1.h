@@ -290,17 +290,20 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	
 	// t⟂
 	
-	double tPerp = P.get_default<double>("tPerp");
+//	double tPerp = P.get_default<double>("tPerp");
+//	
+//	if (P.HAS("t",loc))
+//	{
+//		tPerp = P.get<double>("t",loc);
+//	}
+//	else if (P.HAS("tPerp",loc))
+//	{
+//		tPerp = P.get<double>("tPerp",loc);
+//		stringstream ss; ss << "t⟂=" << tPerp; Terms.info.push_back(ss.str());
+//	}
 	
-	if (P.HAS("t",loc))
-	{
-		tPerp = P.get<double>("t",loc);
-	}
-	else if (P.HAS("tPerp",loc))
-	{
-		tPerp = P.get<double>("tPerp",loc);
-		stringstream ss; ss << "t⟂=" << tPerp; Terms.info.push_back(ss.str());
-	}
+	param0d tPerp = P.fill_array0d<double>("t","tPerp",loc);
+	save_label(tPerp.label);
 	
 	// mu
 	
@@ -354,7 +357,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 		Terms.name = (P.HAS_ANY_OF({"J","J3site"}))? "t-J":"U=∞-Hubbard";
 	}
 	
-	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uorb,muorb,Bzorb,tPerp,V,J, P.get<bool>("CYLINDER"))));
+	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uorb,muorb,Bzorb,tPerp.x,V,J, P.get<bool>("CYLINDER"))));
 	
 	return Terms;
 }

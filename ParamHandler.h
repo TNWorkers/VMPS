@@ -9,6 +9,13 @@
 #include <typeindex>
 
 template<typename Scalar>
+struct param0d
+{
+	Scalar x;
+	string label;
+};
+
+template<typename Scalar>
 struct param1d
 {
 	Scalar x;
@@ -55,6 +62,7 @@ public:
 	
 //	string info() const;
 	
+	template<typename Scalar> param0d<Scalar> fill_array0d (string label_def, string label_x, size_t loc=0) const;
 	template<typename Scalar> param1d<Scalar> fill_array1d (string label_x, string label_a, size_t size_a, size_t loc=0) const;
 	template<typename Scalar> param2d<Scalar> fill_array2d (string label_x, string label_a, size_t size_a, size_t loc=0) const;
 	
@@ -179,20 +187,27 @@ calc_cellsize (const vector<Param> &p_list)
 	return indices.size();
 }
 
-//template<typename Scalar>
-//Scalar ParamHandler::
-//fill_scalar (string label_def, string label_a, size_t size_a, size_t loc) const
-//{
-//	if (P.HAS("Jxy",loc))
-//	{
-//		Jxyperp = P.get<double>("Jxy",loc);
-//	}
-//	else if (P.HAS("Jxyperp",loc))
-//	{
-//		Jxyperp = P.get<double>("Jxyperp",loc);
-//		stringstream ss; ss << "Jxy⟂=" << Jxyperp; Terms.info.push_back(ss.str());
-//	}
-//}
+template<typename Scalar>
+param0d<Scalar> ParamHandler::
+fill_array0d (string label_def, string label_x, size_t loc) const
+{
+	param0d<Scalar> res;
+	
+	if (HAS(label_def,loc))
+	{
+		res.x = get<Scalar>(label_def,loc);
+	}
+	else if (HAS(label_x,loc))
+	{
+		res.x = get<Scalar>(label_x,loc);
+		
+		stringstream ss;
+		ss << label_x << "=" << res.x;
+		res.label = ss.str();
+	}
+	
+	return res;
+}
 
 template<typename Scalar>
 param1d<Scalar> ParamHandler::

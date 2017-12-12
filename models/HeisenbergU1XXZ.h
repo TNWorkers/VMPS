@@ -95,31 +95,37 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &
 		}
 	}
 	
-	double Jxyperp = P.get_default<double>("Jxyperp");
+//	double Jxyperp = P.get_default<double>("Jxyperp");
+//	
+//	if (P.HAS("Jxy",loc))
+//	{
+//		Jxyperp = P.get<double>("Jxy",loc);
+//	}
+//	else if (P.HAS("Jxyperp",loc))
+//	{
+//		Jxyperp = P.get<double>("Jxyperp",loc);
+//		stringstream ss; ss << "Jxy⟂=" << Jxyperp; Terms.info.push_back(ss.str());
+//	}
+//	
+//	double Jzperp = P.get_default<double>("Jzperp");
+//	
+//	if (P.HAS("Jz",loc))
+//	{
+//		Jzperp = P.get<double>("Jz",loc);
+//	}
+//	else if (P.HAS("Jzperp",loc))
+//	{
+//		Jzperp = P.get<double>("Jzperp",loc);
+//		stringstream ss; ss << "Jz⟂=" << Jzperp; Terms.info.push_back(ss.str());
+//	}
 	
-	if (P.HAS("Jxy",loc))
-	{
-		Jxyperp = P.get<double>("Jxy",loc);
-	}
-	else if (P.HAS("Jxyperp",loc))
-	{
-		Jxyperp = P.get<double>("Jxyperp",loc);
-		stringstream ss; ss << "Jxy⟂=" << Jxyperp; Terms.info.push_back(ss.str());
-	}
+	param0d Jxyperp = P.fill_array0d<double>("Jxy","Jxyperp",loc);
+	save_label(Jxyperp.label);
 	
-	double Jzperp = P.get_default<double>("Jzperp");
+	param0d Jzperp = P.fill_array0d<double>("Jz","Jzperp",loc);
+	save_label(Jzperp.label);
 	
-	if (P.HAS("Jz",loc))
-	{
-		Jzperp = P.get<double>("Jz",loc);
-	}
-	else if (P.HAS("Jzperp",loc))
-	{
-		Jzperp = P.get<double>("Jzperp",loc);
-		stringstream ss; ss << "Jz⟂=" << Jzperp; Terms.info.push_back(ss.str());
-	}
-	
-	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp,Jzperp,0.,0.,0.,0., P.get<bool>("CYLINDER"))));
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp.x,Jzperp.x,0.,0.,0.,0., P.get<bool>("CYLINDER"))));
 	
 	Terms.name = (P.HAS_ANY_OF({"Jxy","Jxypara","Jxyperp"},loc))? "XXZ":"Ising";
 	

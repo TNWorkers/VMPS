@@ -305,4 +305,12 @@ int main (int argc, char* argv[])
 //	T.endOfRow();
 //	
 //	lout << endl << T;
+	
+	ArrayXd Jpara(2,2); Jpara.setRandom();
+	std::array<size_t,2> Lx2 = {Lx,2};
+	VMPS::Heisenberg H2(Lx2,{{"J",J},{"Jpara",Jpara},{"Jperp",4056.},{"D",D}});
+	cout << H2.info() << endl;
+	
+	VMPS::Heisenberg H1(Lxy,{{"J",J},{"Jperp",45.},{"D",D}});
+	cout << H1.info() << endl;
 }
