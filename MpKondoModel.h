@@ -129,9 +129,8 @@ public:
 protected:	
 	const std::map<string,std::any> defaults = 
 	{
-		{"U",0.}, {"V",0.}, {"mu",0.},
+		{"J",-1.}, {"U",0.}, {"V",0.}, {"mu",0.},
 		{"t",1.}, {"tPara",0.}, {"tPerp",0.},{"tPrime",0.},
-		{"J",-1.}, {"Jxy",0.}, {"Jz",0.},
 		{"D",2ul}, {"Bz",0.}, {"Bz_elec",0.}, {"Bx",0.}, {"K",0.},
 		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 	};
@@ -474,33 +473,20 @@ HamiltonianTermsXd<Symmetry_> KondoU1xU1::
 set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry_> Terms;
+	Terms.name = "Kondo";
 
 	frac S = frac(B.get_D()-1,2);
-	stringstream ss;
-	IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
+	stringstream Slabel;
+	Slabel << "S=" << print_frac_nice(S);
+	Terms.info.push_back(Slabel.str());
+
+	// stringstream ss;
+	// IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
 	
 	// hopping terms
-	
-	double t = P.get_default<double>("t");
-	
-	ArrayXXd tPara(F.orbitals(),F.orbitals()); tPara.setZero();
-	tPara.matrix().diagonal().setConstant(t);
-	
-	if (P.HAS("t",loc))
-	{
-		t = P.get<double>("t",loc);
-		tPara.matrix().diagonal().setConstant(t);
-		ss << "t=" << t;
-	}
-	else if (P.HAS("tPara",loc))
-	{
-		tPara = P.get<ArrayXXd>("tPara",loc);
-		ss << ",t∥=" << tPara.format(CommaInitFmt);
-	}
-	else
-	{
-		ss << "t=" << t; // print hopping first no matter what
-	}
+
+	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F.orbitals(),loc);
+	Terms.info.push_back(tlabel);
 	
 	for (int i=0; i<F.orbitals(); ++i)
 	for (int j=0; j<F.orbitals(); ++j)
@@ -528,7 +514,9 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 		{
 			Terms.tight.push_back(make_tuple(V, kroneckerProduct(B.Id(),F.n(i)), kroneckerProduct(B.Id(),F.n(i))));
 		}
-		ss << ",V=" << V;
+		stringstream Vlabel;
+		Vlabel << "V=" << V;
+		Terms.info.push_back(Vlabel.str());
 	}
 	
 	/// NNN-terms
@@ -539,7 +527,9 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	{
 		tPrime = P.get<double>("tPrime", loc);
 		assert((B.orbitals() == 1 or tPrime == 0.) and "Cannot interpret Ly>1 and t'!=0");
-		ss << ",t'=" << tPrime;
+		stringstream tPrimelabel;
+		tPrimelabel << "t'=" << tPrime;
+		Terms.info.push_back(tPrimelabel.str());
 	}
 	if(tPrime!=0)
 	{
@@ -563,185 +553,51 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	
 		
 	// local terms
-
+	
 	// Kondo-J
-	
-	ArrayXd Jloc(F.orbitals());   Jloc.setZero();
-	ArrayXd Jzloc(F.orbitals());  Jzloc.setZero();
-	ArrayXd Jxyloc(F.orbitals()); Jxyloc.setZero();
+	auto [J,Jorb,Jlabel] = P.fill_array1d<double>("J","Jorb",F.orbitals(),loc);
+	Terms.info.push_back(Jlabel);
 
-	double J   = P.get_default<double>("J");
-	double Jxy = P.get_default<double>("Jxy");
-	double Jz  = P.get_default<double>("Jz");
-
-	if (P.HAS("Jloc",loc))
-	{
-		Jloc = P.get<double>("Jloc",loc);
-		Jxyloc = Jloc;
-		Jzloc  = Jloc;
-		Terms.name = "Kondo";
-		ss << "S=" << print_frac_nice(S) << ",J=" << Jloc.format(CommaInitFmt);
-	}
-	else if (P.HAS("J",loc))
-	{
-		J = P.get<double>("J",loc);
-		Jloc = J;
-		Jxyloc = Jloc;
-		Jzloc  = Jloc;
-		ss << "S=" << print_frac_nice(S) << ",J=" << J;
-		Terms.name = "Kondo";
-	}
-	else if (P.HAS("Jxyloc",loc) or P.HAS("Jzloc",loc))
-	{
-		if (P.HAS("Jxyloc",loc))
-		{
-			Jxyloc = P.get<double>("Jxyloc",loc);
-		}
-		if (P.HAS("Jzloc",loc))
-		{
-			Jzloc = P.get<double>("Jzloc",loc);
-		}
-		
-		if      (Jxyloc.matrix().norm() == 0.) {Terms.name = "Kondo-Ising"; ss << "S="    << print_frac_nice(S) << ",J=" << Jzloc.format(CommaInitFmt);}
-		else if (Jzloc.matrix().norm()  == 0.) {Terms.name = "Kondo-XX";    ss << "S="    << print_frac_nice(S) << ",J=" << Jxyloc.format(CommaInitFmt);}
-		else {Terms.name = "Kondo-XXZ";   ss << "S="    << print_frac_nice(S)
-											 << ",Jxy=" << Jxyloc.format(CommaInitFmt) << ",Jz=" << Jzloc.format(CommaInitFmt);}
-	}
-	else if (P.HAS("Jxy",loc) or P.HAS("Jz",loc))
-	{
-		if (P.HAS("Jxy",loc))
-		{
-			Jxyloc = P.get<double>("Jxy",loc);
-		}
-		if (P.HAS("Jz",loc))
-		{
-			Jzloc = P.get<double>("Jz",loc);
-		}
-		
-		if      (Jxy == 0.) {Terms.name = "Kondo-Ising"; ss << "S="    << print_frac_nice(S) << ",J=" << Jz;}
-		else if (Jz  == 0.) {Terms.name = "Kondo-XX";    ss << "S="    << print_frac_nice(S) << ",J=" << Jxy;}
-		else                {Terms.name = "Kondo-XXZ";   ss << "S="    << print_frac_nice(S) << ",Jxy=" << Jxy << ",Jz=" << Jz;}
-	}
-
-	// U
-	
-	ArrayXd Uloc(F.orbitals()); Uloc.setZero();
-	double U = P.get_default<double>("U");
-	
-	if (P.HAS("Uloc",loc))
-	{
-		Uloc = P.get<double>("Uloc",loc);
-		ss << ",U=" << Uloc.format(CommaInitFmt);
-	}
-	else if (P.HAS("U",loc))
-	{
-		U = P.get<double>("U",loc);
-		Uloc = U;
-		ss << ",U=" << U;
-	}
-	
 	// t⟂
-	
 	double tPerp = P.get_default<double>("tPerp");
-	
-	if (P.HAS("t",loc))
+	if (P.HAS("tPerp",loc))
+	{
+		tPerp = P.get<double>("tPerp",loc);
+		stringstream ss;
+		ss << "t⟂=" << tPerp;
+		Terms.info.push_back(ss.str());
+	}
+	else if (P.HAS("t",loc))
 	{
 		tPerp = P.get<double>("t",loc);
 	}
-	else if (P.HAS("tPerp",loc))
-	{
-		tPerp = P.get<double>("tPerp",loc);
-		ss << ",t⟂=" << tPerp;
-	}
-	
-	// mu
-	
-	ArrayXd muloc(F.orbitals()); muloc.setZero();
-	double mu = P.get_default<double>("mu");
-	
-	if (P.HAS("muloc",loc))
-	{
-		muloc = P.get<double>("muloc",loc);
-		ss << ",mu=" << muloc.format(CommaInitFmt);
-	}
-	if (P.HAS("mu",loc))
-	{
-		mu = P.get<double>("mu",loc);
-		muloc = mu;
-		ss << ",mu=" << mu;
-	}
-	
-	// K
-	
-	ArrayXd Kloc(F.orbitals()); Kloc.setZero();
-	double K = P.get_default<double>("K");
-	
-	if (P.HAS("Kloc",loc))
-	{
-		Kloc = P.get<double>("Kloc",loc);
-		ss << ",K=" << Kloc.format(CommaInitFmt);
-	}
-	if (P.HAS("K",loc))
-	{
-		K = P.get<double>("K",loc);
-		Kloc = K;
-		ss << ",K=" << K;
-	}
 
-	// Bz elec
-	
-	ArrayXd Bzloc_elec(F.orbitals()); Bzloc_elec.setZero();
-	double Bz_elec = P.get_default<double>("Bz_elec");
-	
-	if (P.HAS("Bzloc_elec",loc))
-	{
-		Bzloc_elec = P.get<double>("Bzloc_elec",loc);
-		ss << ",Bz_elec=" << Bzloc_elec.format(CommaInitFmt);
-	}
-	else if (P.HAS("Bz_elec",loc))
-	{
-		Bz_elec = P.get<double>("Bz_elec",loc);
-		Bzloc_elec = Bz_elec;
-		ss << ",Bz_elec=" << Bz_elec;
-	}
+	// Hubbard U
+	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F.orbitals(),loc);
+	Terms.info.push_back(Ulabel);
+
+	// mu
+	auto [mu,muorb,mulabel] = P.fill_array1d<double>("mu","muorb",F.orbitals(),loc);
+	Terms.info.push_back(mulabel);
+
+	// K (S_z anisotropy)
+	auto [K,Korb,Klabel] = P.fill_array1d<double>("K","Korb",F.orbitals(),loc);
+	Terms.info.push_back(Klabel);
+
+	// Bz electronic sites
+	auto [Bz_elec,Bz_elecorb,Bz_eleclabel] = P.fill_array1d<double>("Bz_elec","Bz_elecorb",F.orbitals(),loc);
+	Terms.info.push_back(Bz_eleclabel);
 
 	// Bz spins
-	
-	ArrayXd Bzloc(F.orbitals()); Bzloc.setZero();
-	double Bz = P.get_default<double>("Bz");
-	
-	if (P.HAS("Bzloc",loc))
-	{
-		Bzloc = P.get<double>("Bzloc",loc);
-		ss << ",Bz=" << Bzloc.format(CommaInitFmt);
-	}
-	else if (P.HAS("Bz",loc))
-	{
-		Bz = P.get<double>("Bz",loc);
-		Bzloc = Bz;
-		ss << ",Bz=" << Bz;
-	}
+	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F.orbitals(),loc);
+	Terms.info.push_back(Bzlabel);
 
 	// Bx spins
+	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",F.orbitals(),loc);
+	Terms.info.push_back(Bxlabel);
 
-	ArrayXd Bxloc(F.orbitals()); Bxloc.setZero();
-	double Bx = P.get_default<double>("Bx");
-	
-	if (P.HAS("Bxloc",loc))
-	{
-		Bxloc = P.get<double>("Bxloc",loc);
-		ss << ",Bx=" << Bxloc.format(CommaInitFmt);
-	}
-	else if (P.HAS("Bx",loc))
-	{
-		Bx = P.get<double>("Bx",loc);
-		Bxloc = Bx;
-		ss << ",Bx=" << Bx;
-	}
-
-	Terms.info = ss.str();
-	auto Hheis = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,Bzloc,Bxloc,Kloc),F.Id());
-	auto Hhubb = kroneckerProduct(B.Id(),F.HubbardHamiltonian(Uloc,muloc,Bzloc_elec,tPerp,V,J, P.get<bool>("CYLINDER")));
+	auto Hheis = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,Bzorb,Bxorb,Korb),F.Id());
+	auto Hhubb = kroneckerProduct(B.Id(),F.HubbardHamiltonian(Uorb,muorb,Bz_elecorb,tPerp,V,J, P.get<bool>("CYLINDER")));
 	auto Hkondo = Hheis + Hhubb;
 	for (int i=0; i<F.orbitals(); ++i)
 	{
@@ -756,6 +612,166 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	Terms.local.push_back(make_tuple(1., Hkondo));
 	
 	return Terms;
+
+	// ArrayXd Jloc(F.orbitals());   Jloc.setZero();
+	// ArrayXd Jzloc(F.orbitals());  Jzloc.setZero();
+	// ArrayXd Jxyloc(F.orbitals()); Jxyloc.setZero();
+
+	// double J   = P.get_default<double>("J");
+	// double Jxy = P.get_default<double>("Jxy");
+	// double Jz  = P.get_default<double>("Jz");
+
+	// if (P.HAS("Jloc",loc))
+	// {
+	// 	Jloc = P.get<double>("Jloc",loc);
+	// 	Jxyloc = Jloc;
+	// 	Jzloc  = Jloc;
+	// 	Terms.name = "Kondo";
+	// 	ss << "S=" << print_frac_nice(S) << ",J=" << Jloc.format(CommaInitFmt);
+	// }
+	// else if (P.HAS("J",loc))
+	// {
+	// 	J = P.get<double>("J",loc);
+	// 	Jloc = J;
+	// 	Jxyloc = Jloc;
+	// 	Jzloc  = Jloc;
+	// 	ss << "S=" << print_frac_nice(S) << ",J=" << J;
+	// 	Terms.name = "Kondo";
+	// }
+	// else if (P.HAS("Jxyloc",loc) or P.HAS("Jzloc",loc))
+	// {
+	// 	if (P.HAS("Jxyloc",loc))
+	// 	{
+	// 		Jxyloc = P.get<double>("Jxyloc",loc);
+	// 	}
+	// 	if (P.HAS("Jzloc",loc))
+	// 	{
+	// 		Jzloc = P.get<double>("Jzloc",loc);
+	// 	}
+		
+	// 	if      (Jxyloc.matrix().norm() == 0.) {Terms.name = "Kondo-Ising"; ss << "S="    << print_frac_nice(S) << ",J=" << Jzloc.format(CommaInitFmt);}
+	// 	else if (Jzloc.matrix().norm()  == 0.) {Terms.name = "Kondo-XX";    ss << "S="    << print_frac_nice(S) << ",J=" << Jxyloc.format(CommaInitFmt);}
+	// 	else {Terms.name = "Kondo-XXZ";   ss << "S="    << print_frac_nice(S)
+	// 										 << ",Jxy=" << Jxyloc.format(CommaInitFmt) << ",Jz=" << Jzloc.format(CommaInitFmt);}
+	// }
+	// else if (P.HAS("Jxy",loc) or P.HAS("Jz",loc))
+	// {
+	// 	if (P.HAS("Jxy",loc))
+	// 	{
+	// 		Jxyloc = P.get<double>("Jxy",loc);
+	// 	}
+	// 	if (P.HAS("Jz",loc))
+	// 	{
+	// 		Jzloc = P.get<double>("Jz",loc);
+	// 	}
+		
+	// 	if      (Jxy == 0.) {Terms.name = "Kondo-Ising"; ss << "S="    << print_frac_nice(S) << ",J=" << Jz;}
+	// 	else if (Jz  == 0.) {Terms.name = "Kondo-XX";    ss << "S="    << print_frac_nice(S) << ",J=" << Jxy;}
+	// 	else                {Terms.name = "Kondo-XXZ";   ss << "S="    << print_frac_nice(S) << ",Jxy=" << Jxy << ",Jz=" << Jz;}
+	// }
+
+	// ArrayXd Uloc(F.orbitals()); Uloc.setZero();
+	// double U = P.get_default<double>("U");
+	
+	// if (P.HAS("Uloc",loc))
+	// {
+	// 	Uloc = P.get<double>("Uloc",loc);
+	// 	ss << ",U=" << Uloc.format(CommaInitFmt);
+	// }
+	// else if (P.HAS("U",loc))
+	// {
+	// 	U = P.get<double>("U",loc);
+	// 	Uloc = U;
+	// 	ss << ",U=" << U;
+	// }
+	
+	
+	// // mu
+	
+	// ArrayXd muloc(F.orbitals()); muloc.setZero();
+	// double mu = P.get_default<double>("mu");
+	
+	// if (P.HAS("muloc",loc))
+	// {
+	// 	muloc = P.get<double>("muloc",loc);
+	// 	ss << ",mu=" << muloc.format(CommaInitFmt);
+	// }
+	// if (P.HAS("mu",loc))
+	// {
+	// 	mu = P.get<double>("mu",loc);
+	// 	muloc = mu;
+	// 	ss << ",mu=" << mu;
+	// }
+	
+	// // K
+	
+	// ArrayXd Kloc(F.orbitals()); Kloc.setZero();
+	// double K = P.get_default<double>("K");
+	
+	// if (P.HAS("Kloc",loc))
+	// {
+	// 	Kloc = P.get<double>("Kloc",loc);
+	// 	ss << ",K=" << Kloc.format(CommaInitFmt);
+	// }
+	// if (P.HAS("K",loc))
+	// {
+	// 	K = P.get<double>("K",loc);
+	// 	Kloc = K;
+	// 	ss << ",K=" << K;
+	// }
+
+	// // Bz elec
+	
+	// ArrayXd Bzloc_elec(F.orbitals()); Bzloc_elec.setZero();
+	// double Bz_elec = P.get_default<double>("Bz_elec");
+	
+	// if (P.HAS("Bzloc_elec",loc))
+	// {
+	// 	Bzloc_elec = P.get<double>("Bzloc_elec",loc);
+	// 	ss << ",Bz_elec=" << Bzloc_elec.format(CommaInitFmt);
+	// }
+	// else if (P.HAS("Bz_elec",loc))
+	// {
+	// 	Bz_elec = P.get<double>("Bz_elec",loc);
+	// 	Bzloc_elec = Bz_elec;
+	// 	ss << ",Bz_elec=" << Bz_elec;
+	// }
+
+	// // Bz spins
+	
+	// ArrayXd Bzloc(F.orbitals()); Bzloc.setZero();
+	// double Bz = P.get_default<double>("Bz");
+	
+	// if (P.HAS("Bzloc",loc))
+	// {
+	// 	Bzloc = P.get<double>("Bzloc",loc);
+	// 	ss << ",Bz=" << Bzloc.format(CommaInitFmt);
+	// }
+	// else if (P.HAS("Bz",loc))
+	// {
+	// 	Bz = P.get<double>("Bz",loc);
+	// 	Bzloc = Bz;
+	// 	ss << ",Bz=" << Bz;
+	// }
+
+	// // Bx spins
+
+	// ArrayXd Bxloc(F.orbitals()); Bxloc.setZero();
+	// double Bx = P.get_default<double>("Bx");
+	
+	// if (P.HAS("Bxloc",loc))
+	// {
+	// 	Bxloc = P.get<double>("Bxloc",loc);
+	// 	ss << ",Bx=" << Bxloc.format(CommaInitFmt);
+	// }
+	// else if (P.HAS("Bx",loc))
+	// {
+	// 	Bx = P.get<double>("Bx",loc);
+	// 	Bxloc = Bx;
+	// 	ss << ",Bx=" << Bx;
+	// }
+
+	// Terms.info = ss.str();
 }
 
 } //end namespace VMPS

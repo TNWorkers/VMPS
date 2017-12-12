@@ -178,29 +178,18 @@ HamiltonianTermsXd<Sym::SU2<double> > HeisenbergSU2::
 set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry> Terms;
-	frac S = frac(B.get_D()-1,2);
-	stringstream ss;
-	IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
-	
 	Terms.name = "Heisenberg";
-	
+
+	frac S = frac(B.get_D()-1,2);	
+	stringstream Slabel;
+	Slabel << "S=" << print_frac_nice(S);
+	Terms.info.push_back(Slabel.str());
+
 	// J-terms
-	
-	double J = P.get_default<double>("J");
-	MatrixXd Jpara  (B.orbitals(),B.orbitals()); Jpara.setZero();
-	if (P.HAS("J",loc))
-	{
-		J = P.get<double>("J",loc);
-		Jpara.diagonal().setConstant(J);
-		ss << "S=" << print_frac_nice(S) << ",J=" << J;
-	}
-	else if (P.HAS("Jpara",loc))
-	{
-		assert(B.orbitals() == Jpara.rows() and 
-		       B.orbitals() == Jpara.cols());
-		Jpara = P.get<MatrixXd>("Jpara",loc);
-		ss << "S=" << print_frac_nice(S) << ",J∥=" << Jpara.format(CommaInitFmt);
-	}
+
+	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",F.orbitals(),loc);
+	Terms.info.push_back(Jlabel);
+
 	for (int i=0; i<B.orbitals(); ++i)
 	for (int j=0; j<B.orbitals(); ++j)
 	{
@@ -220,7 +209,9 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 	{
 		Jprime = P.get<double>("Jprime",loc);
 		assert((B.orbitals() == 1 or Jprime == 0) and "Cannot interpret Ly>1 and J'!=0");
-		ss << ",J'=" << Jprime;
+		stringstream Jprimelabel;
+		Jprimelabel << "J'=" << Jprime;
+		Terms.info.push_back(Jprimelabel.str());
 	}
 	if (Jprime != 0)
 	{
@@ -230,21 +221,19 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 	}
 	
 	// local terms
-	
+
 	double Jperp = P.get_default<double>("Jperp");
-	
-	if (P.HAS("J",loc))
-	{
-		Jperp  = P.get<double>("J",loc);
-	}
-	else if (P.HAS("Jperp",loc))
+	if (P.HAS("Jperp",loc))
 	{
 		Jperp = P.get<double>("Jperp",loc);
-		ss << ",J⟂=" << Jperp;
+		stringstream ss;
+		ss << "J⟂=" << Jperp;
+		Terms.info.push_back(ss.str());
 	}
-	
-	Terms.info = ss.str();
-	
+	else if (P.HAS("J",loc))
+	{
+		Jperp = P.get<double>("J",loc);
+	}	
 	if (B.orbitals() > 1)
 	{
 		Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp).plain<double>()));
