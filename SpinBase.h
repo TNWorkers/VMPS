@@ -89,7 +89,7 @@ SpinBase (size_t L_input, size_t D_input)
 :N_orbitals(L_input), D(D_input)
 {
 	assert(N_orbitals >= 1);
-	assert(D >= 2);
+	assert(D >= 1);
 	N_states = pow(D,N_orbitals);
 }
 
@@ -263,7 +263,7 @@ ScompSingleSite (SPINOP_LABEL Sa) const
 	}
 	else if (Sa==SZ) 
 	{
-		assert(D >= 2);
+		assert(D >= 1);
 		SparseMatrixXd Mout(D,D);
 		double S = 0.5*(D-1);
 		for (size_t i=0; i<D; ++i)
@@ -287,7 +287,7 @@ template<typename Symmetry>
 SparseMatrixXd SpinBase<Symmetry>::
 Sbase () const
 {
-	assert(D >= 2);
+	assert(D >= 1);
 	MatrixXd Mtmp(D,D);
 	Mtmp.setZero();
 	Mtmp.diagonal<1>() = Soffdiag();

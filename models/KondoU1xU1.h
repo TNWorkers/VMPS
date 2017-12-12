@@ -439,7 +439,7 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	// hopping terms
 
 	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F.orbitals(),loc);
-	Terms.info.push_back(tlabel);
+	if(!tlabel.empty()) {Terms.info.push_back(tlabel);}
 	
 	for (int i=0; i<F.orbitals(); ++i)
 	for (int j=0; j<F.orbitals(); ++j)
@@ -527,27 +527,27 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 
 	// Hubbard U
 	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F.orbitals(),loc);
-	Terms.info.push_back(Ulabel);
+	if(!Ulabel.empty()) {Terms.info.push_back(Ulabel);}
 
 	// mu
 	auto [mu,muorb,mulabel] = P.fill_array1d<double>("mu","muorb",F.orbitals(),loc);
-	Terms.info.push_back(mulabel);
+	if(!mulabel.empty()) {Terms.info.push_back(mulabel);}
 
 	// K (S_z anisotropy)
 	auto [K,Korb,Klabel] = P.fill_array1d<double>("K","Korb",F.orbitals(),loc);
-	Terms.info.push_back(Klabel);
+	if(!Klabel.empty()) {Terms.info.push_back(Klabel);}
 
 	// Bz electronic sites
 	auto [Bz_elec,Bz_elecorb,Bz_eleclabel] = P.fill_array1d<double>("Bz_elec","Bz_elecorb",F.orbitals(),loc);
-	Terms.info.push_back(Bz_eleclabel);
+	if(!Bz_eleclabel.empty()) {Terms.info.push_back(Bz_eleclabel);}
 
 	// Bz spins
 	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F.orbitals(),loc);
-	Terms.info.push_back(Bzlabel);
+	if(!Bzlabel.empty()) {Terms.info.push_back(Bzlabel);}
 
 	// Bx spins
 	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",F.orbitals(),loc);
-	Terms.info.push_back(Bxlabel);
+	if(!Bxlabel.empty()) {Terms.info.push_back(Bxlabel);}
 
 	auto Hheis = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,Bzorb,Bxorb,Korb),F.Id());
 	auto Hhubb = kroneckerProduct(B.Id(),F.HubbardHamiltonian(Uorb,muorb,Bz_elecorb,tPerp,V,J, P.get<bool>("CYLINDER")));

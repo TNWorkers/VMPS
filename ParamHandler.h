@@ -217,11 +217,13 @@ fill_array2d (string label_x, string label_a, size_t size_a, size_t loc) const
 		res.x = get<Scalar>(label_x,loc);
 		res.a.matrix().diagonal().setConstant(res.x);
 		ss << label_x << "=" << res.x;
+		res.label = ss.str();
 	}
 	else if (HAS(label_a,loc))
 	{
 		res.a = get<Array<Scalar,Dynamic,Dynamic> >(label_a,loc);
 		ss << label_a << "=" << res.a.format(arrayFormat);
+		res.label = ss.str();
 	}
 	
 	if (HAS(label_x,loc) or HAS(label_a,loc))
