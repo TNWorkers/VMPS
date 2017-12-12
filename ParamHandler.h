@@ -49,6 +49,8 @@ public:
 	template<typename Scalar> Scalar get (const string label, const size_t index=0) const;
 	template<typename Scalar> Scalar get_default (const string label) const;
 	bool HAS (const string label, const size_t index=0) const;
+	bool HAS_ANY_OF (const initializer_list<string> &labels, const size_t &index=0) const;
+	bool HAS_NONE_OF (const initializer_list<string> &labels, const size_t &index=0) const;
 	inline size_t size() const {return params.size();}
 	
 //	string info() const;
@@ -145,6 +147,20 @@ HAS (const string label, const size_t index) const
 	return false;
 }
 
+bool ParamHandler::
+HAS_ANY_OF (const initializer_list<string> &labels, const size_t &index) const
+{
+	vector<bool> res;
+	for (const auto &label:labels) res.push_back(HAS(label,index));
+	return (find(res.begin(), res.end(), true) != res.end())? true:false;
+}
+
+bool ParamHandler::
+HAS_NONE_OF (const initializer_list<string> &labels, const size_t &index) const
+{
+	return !HAS_ANY_OF(labels,index);
+}
+
 size_t ParamHandler::
 calc_cellsize (const vector<Param> &p_list)
 {
@@ -162,6 +178,21 @@ calc_cellsize (const vector<Param> &p_list)
 	
 	return indices.size();
 }
+
+//template<typename Scalar>
+//Scalar ParamHandler::
+//fill_scalar (string label_def, string label_a, size_t size_a, size_t loc) const
+//{
+//	if (P.HAS("Jxy",loc))
+//	{
+//		Jxyperp = P.get<double>("Jxy",loc);
+//	}
+//	else if (P.HAS("Jxyperp",loc))
+//	{
+//		Jxyperp = P.get<double>("Jxyperp",loc);
+//		stringstream ss; ss << "Jxy⟂=" << Jxyperp; Terms.info.push_back(ss.str());
+//	}
+//}
 
 template<typename Scalar>
 param1d<Scalar> ParamHandler::

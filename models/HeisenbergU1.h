@@ -33,13 +33,18 @@ class HeisenbergU1 : public MpoQ<Sym::U1<double>,double>
 {
 public:
 	typedef Sym::U1<double> Symmetry;
+	
 private:
 	typedef Symmetry::qType qType;
 	typedef SiteOperator<Symmetry,SparseMatrix<double> > OperatorType;
+	
 public:
 	
 	HeisenbergU1() : MpoQ<Symmetry>() {};
-	HeisenbergU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params);
+	
+	HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L);
+	
+	HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
 	
 	/**
 	   \param B : Base class from which the local operators are received
@@ -85,14 +90,9 @@ const std::array<string,1> HeisenbergU1::maglabel{"M"};
 
 const std::map<string,std::any> HeisenbergU1::defaults = 
 {
-	{"J",-1.}, {"Jxy",-1.}, {"Jx",0.}, {"Jy",0.}, {"Jz",0.},
-	{"Jprime",0.}, {"Jxyprime",0.}, {"Jzprime",0.},
-	{"Jperp",0.}, {"Jxyperp",0.}, {"Jzperp",0.},
-	{"Jpara",0.}, {"Jxypara",0.}, {"Jzpara",0.},
-	{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"K",0.},
-	{"Dx",0.}, {"Dy",0.}, {"Dz",0.}, 
-	{"Dxperp",0.}, {"Dyperp",0.}, {"Dzperp",0.},
-	{"Dxprime",0.}, {"Dyprime",0.}, {"Dzprime",0.},
+	{"J",-1.}, {"Jprime",0.}, {"Jperp",0.},
+	{"D",2ul}, {"Bz",0.}, {"K",0.},
+	{"Dy",0.}, {"Dyprime",0.}, {"Dyperp",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 };
 
@@ -107,7 +107,14 @@ qOp ()
 }
 
 HeisenbergU1::
-HeisenbergU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
+HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L)
+:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
+                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
+                 qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve)
+{}
+
+HeisenbergU1::
+HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
 :MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
                  qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve)
@@ -274,15 +281,16 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",B.orbitals(),loc);
 	save_label(Bzlabel);
 	
-	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",B.orbitals(),loc);
-	save_label(Bxlabel);
+//	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",B.orbitals(),loc);
+//	save_label(Bxlabel);
+	ArrayXd Bxorb(B.orbitals()); Bxorb = 0.;
 	
 	auto [K,Korb,Klabel] = P.fill_array1d<double>("K","Korb",B.orbitals(),loc);
 	save_label(Klabel);
 	
 	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp,Jperp,Bzorb,Bxorb,Korb,Dyperp, P.get<bool>("CYLINDER"))));
 	
-	if (P.HAS("Dy",loc) or P.HAS("Dyperp"))
+	if (P.HAS_ANY_OF({"Dy","Dyperp"},loc))
 	{
 		Terms.name = "Dzyaloshinsky-Moriya";
 	}

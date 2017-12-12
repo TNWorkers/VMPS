@@ -233,7 +233,20 @@ struct HamiltonianTerms
 		stringstream ss;
 		copy(info.begin(), info.end()-1, ostream_iterator<string>(ss,","));
 		ss << info.back();
-		return ss.str();
+		
+		string res = ss.str();
+		
+		while (res.find("perp") != string::npos)
+		{
+			res.replace(res.find("perp"), 4, "⟂");
+		}
+		
+		while (res.find("para") != string::npos)
+		{
+			res.replace(res.find("para"), 4, "∥");
+		}
+		
+		return res;
 	}
 	
 	template<typename OtherScalar>

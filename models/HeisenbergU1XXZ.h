@@ -6,58 +6,41 @@
 namespace VMPS
 {
 
-class HeisenbergU1XXZ : public MpoQ<Sym::U1<double>,double>
+class HeisenbergU1XXZ : public HeisenbergU1
 {
 public:
 	typedef Sym::U1<double> Symmetry;
-private:
-	typedef Symmetry::qType qType;
-	typedef SiteOperator<Symmetry,SparseMatrix<double> > OperatorType;
 	
 public:
 	
-	HeisenbergU1XXZ() : MpoQ<Symmetry>() {};
-	HeisenbergU1XXZ (variant<size_t,std::array<size_t,2> > L, vector<Param> params);
+	HeisenbergU1XXZ() : HeisenbergU1() {};
+	HeisenbergU1XXZ (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
 	
-	/**
-	   \param B : Base class from which the local operators are received
-	   \param P : The parameters
-	*/
 	template<typename Symmetry_>
-	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
+	static HamiltonianTermsXd<Symmetry_> add_operators (HamiltonianTermsXd<Symmetry_> &Terms, 
+	                                                    const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
 	
-	///@{
-	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
-	typedef MpsQ<Symmetry,double>                           StateXd;
-	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<Symmetry,HeisenbergU1XXZ,double>    Solver;
-	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
-	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
-	typedef MpoQ<Symmetry>                                  Operator;
-	///@}
+	static const std::map<string,std::any> defaults;
+};
+
+const std::map<string,std::any> HeisenbergU1XXZ::defaults = 
+{
+	{"Jxy",-1.}, {"Jz",0.},
+	{"Jxyprime",0.}, {"Jzprime",0.},
+	{"Jxyperp",0.}, {"Jzperp",0.},
+	{"Dy",0.}, {"Dyperp",0.}, {"Dyprime",0.},
+	{"D",2ul}, {"Bz",0.}, {"K",0.},
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true},
 	
-	///@{
-	/**Observables*/
-	MpoQ<Symmetry> Sz (size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	///@}
-	
-	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an MpsQ.
-	\returns \p true if valid, \p false if not*/
-	bool validate (qarray<1> qnum) const;
-	
-protected:
-	
-	vector<SpinBase<Symmetry> > B;
+	// for consistency during inheritance:
+	{"J",0.}, {"Jprime",0.}, {"Jperp",0.}, {"Jpara",0.}
 };
 
 HeisenbergU1XXZ::
-HeisenbergU1XXZ (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
-:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
-                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                 qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve)
+HeisenbergU1XXZ (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
+:HeisenbergU1(L)
 {
-	ParamHandler P(params,HeisenbergU1::defaults);
+	ParamHandler P(params,HeisenbergU1XXZ::defaults);
 	
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
@@ -70,6 +53,7 @@ HeisenbergU1XXZ (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
 		setLocBasis(B[l].get_basis(),l);
 		
 		Terms[l] = set_operators(B[l],P,l%Lcell);
+		add_operators(Terms[l],B[l],P,l%Lcell);
 		this->Daux = Terms[l].auxdim();
 		
 		G.push_back(Generator(Terms[l]));
@@ -81,10 +65,8 @@ HeisenbergU1XXZ (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
 
 template<typename Symmetry_>
 HamiltonianTermsXd<Symmetry_> HeisenbergU1XXZ::
-set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
+add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 {
-	HamiltonianTermsXd<Symmetry_> Terms;
-	
 	auto save_label = [&Terms] (string label)
 	{
 		if (label!="") {Terms.info.push_back(label);}
@@ -105,18 +87,13 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 		{
 			Terms.tight.push_back(make_tuple(-0.5*Jxypara(i,j), B.Scomp(SP,i), B.Scomp(SM,j)));
 			Terms.tight.push_back(make_tuple(-0.5*Jxypara(i,j), B.Scomp(SM,i), B.Scomp(SP,j)));
-			Terms.tight.push_back(make_tuple(-Jxypara(i,j),     B.Scomp(SZ,i), B.Scomp(SZ,j)));
 		}
 		
 		if (Jzpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-0.5*Jzpara(i,j), B.Scomp(SP,i), B.Scomp(SM,j)));
-			Terms.tight.push_back(make_tuple(-0.5*Jzpara(i,j), B.Scomp(SM,i), B.Scomp(SP,j)));
 			Terms.tight.push_back(make_tuple(-Jzpara(i,j),     B.Scomp(SZ,i), B.Scomp(SZ,j)));
 		}
 	}
-	
-	// local terms
 	
 	double Jxyperp = P.get_default<double>("Jxyperp");
 	
@@ -142,27 +119,9 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 		stringstream ss; ss << "Jz⟂=" << Jzperp; Terms.info.push_back(ss.str());
 	}
 	
-	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",B.orbitals(),loc);
-	save_label(Bzlabel);
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp,Jzperp,0.,0.,0.,0., P.get<bool>("CYLINDER"))));
 	
-	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",B.orbitals(),loc);
-	save_label(Bxlabel);
-	
-	auto [K,Korb,Klabel] = P.fill_array1d<double>("K","Korb",B.orbitals(),loc);
-	save_label(Klabel);
-	
-	double Dyperp = 0.;
-	
-	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Korb,Dyperp, P.get<bool>("CYLINDER"))));
-	
-	if (P.HAS("Jxy",loc) or P.HAS("Jxypara") or P.HAS("Jxyperp"))
-	{
-		Terms.name = "XXZ";
-	}
-	else
-	{
-		Terms.name = "Ising";
-	}
+	Terms.name = (P.HAS_ANY_OF({"Jxy","Jxypara","Jxyperp"},loc))? "XXZ":"Ising";
 	
 	return Terms;
 }

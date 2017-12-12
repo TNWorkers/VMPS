@@ -200,7 +200,7 @@ int main (int argc, char* argv[])
 	
 	Stopwatch<> Watch_U1;
 //	VMPS::HeisenbergU1 H_U1(L,J,J,0,D,Ly,true); // Bz=0
-	VMPS::HeisenbergU1 H_U1(Lxy,{{"J",J},{"Jprime",Jprime},{"D",D}});
+	VMPS::HeisenbergU1 H_U1(Lxy,{{"J",J},{"Jprime",Jprime},{"Jperp",24.},{"D",D}});
 	lout << H_U1.info() << endl;
 	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
 	
@@ -229,11 +229,13 @@ int main (int argc, char* argv[])
 	// dynamics (of Néel state)
 	if (CALC_DYNAMICS)
 	{
+		lout << "-------DYNAMICS-------" << endl;
 		int Ldyn = 12;
 		vector<double> Jz_list = {0., -1., -2., -4.};
 		
 		for (const auto& Jz:Jz_list)
 		{
+			cout << "Jz=" << Jz << endl;
 			VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
 			lout << H_U1t.info() << endl;
 			VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
@@ -246,7 +248,7 @@ int main (int argc, char* argv[])
 				double res = 0;
 				for (int l=0; l<Ldyn; ++l)
 				{
-					res += pow(-1.,l) * isReal(avg(Psi, H_U1.Sz(l), Psi));
+					res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
 				}
 				res /= Ldyn;
 				if(VERB != DMRG::VERBOSITY::SILENT) {lout << t << "\t" << res << endl;}
