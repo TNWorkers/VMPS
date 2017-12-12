@@ -64,9 +64,9 @@ public:
 	\param Bz : \f$B_{z}\f$
 	\param Bx : \f$B_{x}\f$
 	\param PERIODIC: periodic boundary conditions if \p true*/
-	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., double K=0., bool PERIODIC=false) const;
+	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., double K=0., double Dy=0., bool PERIODIC=false) const;
 	
-	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &K, bool PERIODIC=false) const;
+	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &K, double Dy=0., bool PERIODIC=false) const;
 	
 private:
 	
@@ -121,7 +121,7 @@ Id() const
 
 template<typename Symmetry>
 SiteOperator<Symmetry,double> SpinBase<Symmetry>::
-HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &K, bool PERIODIC) const
+HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &K, double Dy, bool PERIODIC) const
 {
 	assert (Bz.rows() == N_orbitals and Bx.rows() == N_orbitals);
 	
@@ -137,6 +137,10 @@ HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &
 		{
 			Mout += -Jz * Scomp(SZ,i).data*Scomp(SZ,i+1).data;
 		}
+		if (Dy != 0.)
+		{
+			Mout += Dy * (Scomp(SX,i).data*Scomp(SZ,i+1).data - Scomp(SZ,i).data*Scomp(SX,i+1).data);
+		}
 	}
 	if (PERIODIC == true and N_orbitals>2)
 	{
@@ -147,6 +151,10 @@ HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &
 		if (Jz != 0.)
 		{
 			Mout += -Jz * Scomp(SZ,0).data*Scomp(SZ,N_orbitals-1).data;
+		}
+		if (Dy != 0.)
+		{
+			Mout += Dy * (Scomp(SX,0).data*Scomp(SZ,N_orbitals-1).data - Scomp(SZ,0).data*Scomp(SX,N_orbitals-1).data);
 		}
 	}
 	for (int i=0; i<N_orbitals; ++i)
@@ -159,21 +167,21 @@ HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &
 	}
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (K(i)!=0.) { Mout += K(i) * Scomp(SZ,i).data * Scomp(SZ,i).data; }
+		if (K(i)!=0.) {Mout += K(i) * Scomp(SZ,i).data * Scomp(SZ,i).data;}
 	}
-
+	
 	OperatorType Oout(Mout,Symmetry::qvacuum());
 	return Oout;
 }
 
 template<typename Symmetry>
 SiteOperator<Symmetry,double> SpinBase<Symmetry>::
-HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double K, bool PERIODIC) const
+HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double K, double Dy, bool PERIODIC) const
 {
 	ArrayXd Bzvec(N_orbitals); Bzvec.setConstant(Bz);
 	ArrayXd Bxvec(N_orbitals); Bxvec.setConstant(Bx);
 	ArrayXd Kvec(N_orbitals); Kvec.setConstant(K);
-	return HeisenbergHamiltonian(Jxy, Jz, Bzvec, Bxvec, Kvec, PERIODIC);
+	return HeisenbergHamiltonian(Jxy, Jz, Bzvec, Bxvec, Kvec, Dy, PERIODIC);
 }
 
 template<typename Symmetry>

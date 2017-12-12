@@ -46,10 +46,10 @@ Logger lout;
 #include "DmrgPivotStuff2Q.h"
 #include "TDVPPropagator.h"
 
-#include "models/HeisenbergSU2.h"
+//#include "models/HeisenbergSU2.h"
 
 #include "models/HubbardU1xU1.h"
-#include "models/HeisenbergXYZ.h"
+//#include "models/HeisenbergXYZ.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, int n=14)
@@ -140,10 +140,10 @@ int main (int argc, char* argv[])
 	lout << H_U0.info() << endl;
 	Eigenstate<VMPS::Heisenberg::StateXd> g_U0;
 	
-	VMPS::HeisenbergXYZ Hxyz(Lxy,{{"Jx",1.},{"Jy",2.},{"Jz",3.}});
-	cout << Hxyz.info() << endl;
-	VMPS::HeisenbergXYZ Hdm(Lxy,{{"Dy",4.},{"Dz",5.}});
-	cout << Hdm.info() << endl;
+//	VMPS::HeisenbergXYZ Hxyz(Lxy,{{"Jx",1.},{"Jy",2.},{"Jz",3.}});
+//	cout << Hxyz.info() << endl;
+//	VMPS::HeisenbergXYZ Hdm(Lxy,{{"Dy",4.},{"Dz",5.}});
+//	cout << Hdm.info() << endl;
 	
 	VMPS::Heisenberg::Solver DMRG_U0(VERB);
 	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
@@ -260,46 +260,46 @@ int main (int argc, char* argv[])
 	}
 	
 	// --------SU(2)---------
-	lout << endl << "--------SU(2)---------" << endl << endl;
-	
-	Stopwatch<> Watch_SU2;
-	VMPS::HeisenbergSU2 H_SU2(Lxy,{{"J",J},{"Jprime",Jprime},{"D",D}});
-	lout << H_SU2.info() << endl;
-	Eigenstate<VMPS::HeisenbergSU2::StateXd> g_SU2;
-	
-	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
-	
-	t_SU2 = Watch_SU2.time();
+//	lout << endl << "--------SU(2)---------" << endl << endl;
+//	
+//	Stopwatch<> Watch_SU2;
+//	VMPS::HeisenbergSU2 H_SU2(Lxy,{{"J",J},{"Jprime",Jprime},{"D",D}});
+//	lout << H_SU2.info() << endl;
+//	Eigenstate<VMPS::HeisenbergSU2::StateXd> g_SU2;
+//	
+//	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
+//	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+//	
+//	t_SU2 = Watch_SU2.time();
 
-	Eigen::MatrixXd SpinCorr_SU2(L,L); SpinCorr_SU2.setZero();
-	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SS(i,j), g_SU2.state); }
-	//--------output---------
-	
-	TextTable T( '-', '|', '+' );
-	
-	double V = L*Ly; double Vsq = V*V;
-	T.add(""); T.add("U(0)"); T.add("U(1)"); T.add("SU(2)"); T.endOfRow();
-	
-	T.add("E/L"); T.add(to_string_prec(g_U0.energy/V)); T.add(to_string_prec(g_U1.energy/V)); T.add(to_string_prec(g_SU2.energy/V)); T.endOfRow();
-	T.add("E/L diff"); T.add(to_string_prec(abs(g_U0.energy-g_SU2.energy)/V)); T.add(to_string_prec(abs(g_U1.energy-g_SU2.energy)/V)); T.add("0");
-	T.endOfRow();
-	T.add("E/L Compressor"); T.add(to_string_prec(E_U0_compressor/V)); T.add(to_string_prec(E_U1_compressor/V)); T.add("-"); T.endOfRow();
-	T.add("E/L Zipper"); T.add(to_string_prec(E_U0_zipper/V)); T.add(to_string_prec(E_U1_zipper/V)); T.add("-"); T.endOfRow();
+//	Eigen::MatrixXd SpinCorr_SU2(L,L); SpinCorr_SU2.setZero();
+//	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SS(i,j), g_SU2.state); }
+//	//--------output---------
+//	
+//	TextTable T( '-', '|', '+' );
+//	
+//	double V = L*Ly; double Vsq = V*V;
+//	T.add(""); T.add("U(0)"); T.add("U(1)"); T.add("SU(2)"); T.endOfRow();
+//	
+//	T.add("E/L"); T.add(to_string_prec(g_U0.energy/V)); T.add(to_string_prec(g_U1.energy/V)); T.add(to_string_prec(g_SU2.energy/V)); T.endOfRow();
+//	T.add("E/L diff"); T.add(to_string_prec(abs(g_U0.energy-g_SU2.energy)/V)); T.add(to_string_prec(abs(g_U1.energy-g_SU2.energy)/V)); T.add("0");
+//	T.endOfRow();
+//	T.add("E/L Compressor"); T.add(to_string_prec(E_U0_compressor/V)); T.add(to_string_prec(E_U1_compressor/V)); T.add("-"); T.endOfRow();
+//	T.add("E/L Zipper"); T.add(to_string_prec(E_U0_zipper/V)); T.add(to_string_prec(E_U1_zipper/V)); T.add("-"); T.endOfRow();
 
-	T.add("t/s"); T.add(to_string_prec(t_U0,2)); T.add(to_string_prec(t_U1,2)); T.add(to_string_prec(t_SU2,2)); T.endOfRow();
-	T.add("t gain"); T.add(to_string_prec(t_U0/t_SU2,2)); T.add(to_string_prec(t_U1/t_SU2,2)); T.add("1"); T.endOfRow();
+//	T.add("t/s"); T.add(to_string_prec(t_U0,2)); T.add(to_string_prec(t_U1,2)); T.add(to_string_prec(t_SU2,2)); T.endOfRow();
+//	T.add("t gain"); T.add(to_string_prec(t_U0/t_SU2,2)); T.add(to_string_prec(t_U1/t_SU2,2)); T.add("1"); T.endOfRow();
 
-	T.add("observables"); T.add(to_string_prec(SpinCorr_U0.sum()));
-	T.add(to_string_prec(SpinCorr_U1.sum())); T.add(to_string_prec(SpinCorr_SU2.sum())); T.endOfRow();
+//	T.add("observables"); T.add(to_string_prec(SpinCorr_U0.sum()));
+//	T.add(to_string_prec(SpinCorr_U1.sum())); T.add(to_string_prec(SpinCorr_SU2.sum())); T.endOfRow();
 
-	T.add("observables diff"); T.add(to_string_prec((SpinCorr_U0-SpinCorr_SU2).lpNorm<1>()/Vsq));
-	T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2).lpNorm<1>()/Vsq)); T.add("0"); T.endOfRow();
+//	T.add("observables diff"); T.add(to_string_prec((SpinCorr_U0-SpinCorr_SU2).lpNorm<1>()/Vsq));
+//	T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2).lpNorm<1>()/Vsq)); T.add("0"); T.endOfRow();
 
-	T.add("Dmax"); T.add(to_string(g_U0.state.calc_Dmax())); T.add(to_string(g_U1.state.calc_Dmax())); T.add(to_string(g_SU2.state.calc_Dmax()));
-	T.endOfRow();
-	T.add("Mmax"); T.add(to_string(g_U0.state.calc_Dmax())); T.add(to_string(g_U1.state.calc_Mmax())); T.add(to_string(g_SU2.state.calc_Mmax()));
-	T.endOfRow();
-	
-	lout << endl << T;
+//	T.add("Dmax"); T.add(to_string(g_U0.state.calc_Dmax())); T.add(to_string(g_U1.state.calc_Dmax())); T.add(to_string(g_SU2.state.calc_Dmax()));
+//	T.endOfRow();
+//	T.add("Mmax"); T.add(to_string(g_U0.state.calc_Dmax())); T.add(to_string(g_U1.state.calc_Mmax())); T.add(to_string(g_SU2.state.calc_Mmax()));
+//	T.endOfRow();
+//	
+//	lout << endl << T;
 }

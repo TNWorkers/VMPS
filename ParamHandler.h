@@ -54,6 +54,7 @@ public:
 //	string info() const;
 	
 	template<typename Scalar> param1d<Scalar> fill_array1d (string label_x, string label_a, size_t size_a, size_t loc=0) const;
+	template<typename Scalar> param2d<Scalar> fill_array2d (string label_x, string label_a, size_t size_a, size_t loc=0) const;
 	
 private:
 	
@@ -172,19 +173,60 @@ fill_array1d (string label_x, string label_a, size_t size_a, size_t loc) const
 	
 	res.a.resize(size_a);
 	res.a.setZero();
-	res.x = get_default<double>(label_x);
+	res.x = get_default<Scalar>(label_x);
 	stringstream ss;
 	
 	if (HAS(label_x,loc))
 	{
-		res.x = get<double>(label_x,loc);
+		res.x = get<Scalar>(label_x,loc);
 		res.a = res.x;
+		ss << label_x << "=" << res.x;
+		res.label = ss.str();
+	}
+	else if (HAS(label_a,loc))
+	{
+		res.a = get<Array<Scalar,Dynamic,1> >(label_a,loc);
+		ss << label_a << "=" << res.a.format(arrayFormat);
+		res.label = ss.str();
+	}
+	
+	if (HAS(label_x,loc) or HAS(label_a,loc))
+	{
+		res.label = ss.str();
+	}
+	
+	return res;
+}
+
+template<typename Scalar>
+param2d<Scalar> ParamHandler::
+fill_array2d (string label_x, string label_a, size_t size_a, size_t loc) const
+{
+	assert(!(HAS(label_x) and HAS(label_a)));
+	
+	param2d<Scalar> res;
+	
+	res.x = get_default<double>(label_x);
+	res.a.resize(size_a,size_a);
+	res.a.setZero();
+	res.a.matrix().diagonal().setConstant(res.x);
+	stringstream ss;
+	
+	if (HAS(label_x,loc))
+	{
+		res.x = get<Scalar>(label_x,loc);
+		res.a.matrix().diagonal().setConstant(res.x);
 		ss << label_x << "=" << res.x;
 	}
 	else if (HAS(label_a,loc))
 	{
-		res.a = get<double>(label_a,loc);
+		res.a = get<Array<Scalar,Dynamic,Dynamic> >(label_a,loc);
 		ss << label_a << "=" << res.a.format(arrayFormat);
+	}
+	
+	if (HAS(label_x,loc) or HAS(label_a,loc))
+	{
+		res.label = ss.str();
 	}
 	
 	return res;

@@ -85,12 +85,13 @@ const std::array<string,1> HeisenbergU1::maglabel{"M"};
 
 const std::map<string,std::any> HeisenbergU1::defaults = 
 {
-	{"J",0.}, {"Jxy",0.}, {"Jx",0.}, {"Jy",0.}, {"Jz",0.},
+	{"J",-1.}, {"Jxy",-1.}, {"Jx",0.}, {"Jy",0.}, {"Jz",0.},
 	{"Jprime",0.}, {"Jxyprime",0.}, {"Jzprime",0.},
 	{"Jperp",0.}, {"Jxyperp",0.}, {"Jzperp",0.},
 	{"Jpara",0.}, {"Jxypara",0.}, {"Jzpara",0.},
 	{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"K",0.},
 	{"Dx",0.}, {"Dy",0.}, {"Dz",0.}, 
+	{"Dxperp",0.}, {"Dyperp",0.}, {"Dzperp",0.},
 	{"Dxprime",0.}, {"Dyprime",0.}, {"Dzprime",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 };
@@ -170,241 +171,358 @@ validate (qarray<1> qnum) const
 	if(Smax.denominator()==q_in.denominator() and q_in <= Smax) {return true;}
 	else {return false;}
 }
-	
+
 template<typename Symmetry_>
 HamiltonianTermsXd<Symmetry_> HeisenbergU1::
 set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry_> Terms;
 	
-	frac S = frac(B.get_D()-1,2);
-	stringstream ss;
-	IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
-	
 	// J-terms
 	
-	double J   = P.get_default<double>("J");
-	double Jxy = P.get_default<double>("Jxy");
-	double Jz  = P.get_default<double>("Jz");
-	
-	MatrixXd Jpara  (B.orbitals(),B.orbitals()); Jpara.setZero();
-	MatrixXd Jxypara(B.orbitals(),B.orbitals()); Jxypara.setZero();
-	MatrixXd Jzpara (B.orbitals(),B.orbitals()); Jzpara.setZero();
-	
-	if (P.HAS("J",loc))
-	{
-		J = P.get<double>("J",loc);
-		Jxypara.diagonal().setConstant(J);
-		Jzpara.diagonal().setConstant(J);
-		Terms.name = "Heisenberg";
-		ss << "S=" << print_frac_nice(S) << ",J=" << J << B.alignment(J);
-	}
-	else if (P.HAS("Jxy",loc) or P.HAS("Jz",loc))
-	{
-		if (P.HAS("Jxy",loc))
-		{
-			Jxy = P.get<double>("Jxy",loc);
-			Jxypara.diagonal().setConstant(Jxy);
-		}
-		if (P.HAS("Jz",loc))
-		{
-			Jz = P.get<double>("Jz",loc);
-			Jzpara.diagonal().setConstant(Jz);
-		}
-		
-		if      (Jxy == 0.) {Terms.name = "Ising"; ss << "S=" << print_frac_nice(S) << ",J=" << Jz << B.alignment(Jz);}
-		else if (Jz  == 0.) {Terms.name = "XX"; ss << "S="    << print_frac_nice(S) << ",J=" << Jxy << B.alignment(Jxy);}
-		else                {Terms.name = "XXZ"; ss << "S="   << print_frac_nice(S) << ",Jxy=" << Jxy << ",Jz=" << Jz << B.alignment(Jz);}
-	}
-	else if (P.HAS("Jpara",loc))
-	{
-		assert(B.orbitals() == Jpara.rows() and 
-		       B.orbitals() == Jpara.cols());
-		Jpara = P.get<MatrixXd>("Jpara",loc);
-		Jxypara = Jpara;
-		Jzpara = Jpara;
-		Terms.name = "Heisenberg";
-		ss << "S=" << print_frac_nice(S) << ",J∥=" << Jpara.format(CommaInitFmt);
-	}
-	else if (P.HAS("Jxypara",loc) or P.HAS("Jzpara",loc))
-	{
-		if (P.HAS("Jxypara",loc))
-		{
-			Jxypara = P.get<MatrixXd>("Jxypara",loc);
-		}
-		if (P.HAS("Jzpara",loc))
-		{
-			Jzpara = P.get<MatrixXd>("Jzpara",loc);
-		}
-		
-		if (Jxypara.norm() == 0.)
-		{
-			Terms.name = "Ising"; 
-			ss << "S=" << print_frac_nice(S) 
-			   << ",J∥=" << Jzpara.format(CommaInitFmt);
-		}
-		else if (Jzpara.norm()  == 0.)
-		{
-			Terms.name = "XX";
-			ss << "S="    << print_frac_nice(S) 
-			   << ",J∥=" << Jxypara.format(CommaInitFmt);
-		}
-		else
-		{
-			Terms.name = "XXZ"; 
-			ss << "S=" << print_frac_nice(S) 
-			   << ",Jxy∥=" << Jxypara.format(CommaInitFmt) 
-			   << ",Jz=" << Jzpara.format(CommaInitFmt);
-		}
-	}
-	else
-	{
-		ss << "J=0";
-	}
+	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",B.orbitals(),loc);
+	Terms.info.push_back(Jlabel);
 	
 	for (int i=0; i<B.orbitals(); ++i)
 	for (int j=0; j<B.orbitals(); ++j)
 	{
-		if (Jxypara(i,j) != 0.)
+		if (Jpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-0.5*Jxypara(i,j), B.Scomp(SP,i), B.Scomp(SM,j)));
-			Terms.tight.push_back(make_tuple(-0.5*Jxypara(i,j), B.Scomp(SM,i), B.Scomp(SP,j)));
-		}
-		if (Jzpara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(-Jzpara(i,j), B.Scomp(SZ,i), B.Scomp(SZ,j)));
+			Terms.tight.push_back(make_tuple(-0.5*Jpara(i,j), B.Scomp(SP,i), B.Scomp(SM,j)));
+			Terms.tight.push_back(make_tuple(-0.5*Jpara(i,j), B.Scomp(SM,i), B.Scomp(SP,j)));
+			Terms.tight.push_back(make_tuple(-Jpara(i,j),     B.Scomp(SZ,i), B.Scomp(SZ,j)));
 		}
 	}
 	
 	// J'-terms
-	double Jprime   = P.get_default<double>("Jprime");
-	double Jxyprime = P.get_default<double>("Jxyprime");
-	double Jzprime  = P.get_default<double>("Jzprime");
 	
-	if (P.HAS("Jprime",loc) or P.HAS("Jxyprime",loc) or P.HAS("Jzprime",loc))
+	double Jprime = P.get_default<double>("Jprime");
+	
+	if (P.HAS("Jprime",loc))
 	{
-		assert((B.orbitals() == 1 or (Jprime == 0 and Jxyprime == 0 and Jzprime == 0)) and "Cannot interpret Ly>1 and J'!=0");
+		Jprime = P.get<double>("Jprime",loc);
 		
-		if (P.HAS("Jprime",loc))
+		if (Jprime != 0.)
 		{
-			Jprime = P.get<double>("Jprime",loc);
-			Jxyprime = Jprime;
-			Jzprime  = Jprime;
-			ss << ",J'=" << Jprime;
+			Terms.nextn.push_back(make_tuple(-0.5*Jprime, B.Scomp(SP), B.Scomp(SM), B.Id()));
+			Terms.nextn.push_back(make_tuple(-0.5*Jprime, B.Scomp(SM), B.Scomp(SP), B.Id()));
+			Terms.nextn.push_back(make_tuple(-Jprime,     B.Scomp(SZ), B.Scomp(SZ), B.Id()));
 		}
-		else
-		{
-			if (P.HAS("Jxyprime",loc))
-			{
-				Jxyprime = P.get<double>("Jxyprime",loc);
-				ss << ",Jxy'=" << Jxyprime;
-			}
-			if (P.HAS("Jzprime",loc))
-			{
-				Jzprime = P.get<double>("Jzprime",loc);
-				ss << ",Jz'=" << Jzprime;
-			}
-		}
-		if (Jxyprime != 0.)
-		{
-			Terms.nextn.push_back(make_tuple(-0.5*Jxyprime, B.Scomp(SP), B.Scomp(SM), B.Id()));
-			Terms.nextn.push_back(make_tuple(-0.5*Jxyprime, B.Scomp(SM), B.Scomp(SP), B.Id()));
-		}
-		if (Jzprime != 0.)
-		{
-			Terms.nextn.push_back(make_tuple(-Jzprime,     B.Scomp(SZ), B.Scomp(SZ), B.Id()));
-		}
+		stringstream ss; ss << "J'=" << Jprime; Terms.info.push_back(ss.str());
 	}
 	
 	// Dzyaloshinsky-Moriya terms
 	
-	double Dy = P.get_default<double>("Dy");
-	double Dyprime = P.get_default<double>("Dyprime");
+	auto [Dy,Dypara,Dylabel] = P.fill_array2d<double>("Dy","Dypara",B.orbitals(),loc);
+	Terms.info.push_back(Dylabel);
 	
-	if (P.HAS("Dy",loc))
+	for (int i=0; i<B.orbitals(); ++i)
+	for (int j=0; j<B.orbitals(); ++j)
 	{
-		Dy = P.get<double>("Dy",loc);
-		if (Dy != 0.)
+		if (Dypara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(+Dy, B.Scomp(SX), B.Scomp(SZ)));
-			Terms.tight.push_back(make_tuple(-Dy, B.Scomp(SZ), B.Scomp(SX)));
+			Terms.tight.push_back(make_tuple(+Dypara(i,j), B.Scomp(SX), B.Scomp(SZ)));
+			Terms.tight.push_back(make_tuple(-Dypara(i,j), B.Scomp(SZ), B.Scomp(SX)));
 		}
-		
-		Terms.name = "Dzyaloshinsky-Moriya";
-		ss << ",Dy=" << Dy;
 	}
+	
+	double Dyprime = P.get_default<double>("Dyprime");
 	
 	if (P.HAS("Dyprime",loc))
 	{
 		Dyprime = P.get<double>("Dyprime",loc);
+		
 		if (Dyprime != 0.)
 		{
 			Terms.nextn.push_back(make_tuple(+Dyprime, B.Scomp(SX), B.Scomp(SZ), B.Id()));
 			Terms.nextn.push_back(make_tuple(-Dyprime, B.Scomp(SZ), B.Scomp(SX), B.Id()));
 		}
-		
-		Terms.name = "Dzyaloshinsky-Moriya";
-		ss << ",DM'=" << Dy;
+		stringstream ss; ss << "Dy'=" << Dyprime; Terms.info.push_back(ss.str());
 	}
 	
 	// local terms
 	
-	double Jperp   = P.get_default<double>("Jperp");
-	double Jxyperp = P.get_default<double>("Jxyperp");
-	double Jzperp  = P.get_default<double>("Jzperp");
+	double Jperp = P.get_default<double>("Jperp");
 	
 	if (P.HAS("J",loc))
 	{
-		Jxyperp = P.get<double>("J",loc);
-		Jzperp  = P.get<double>("J",loc);
+		Jperp = P.get<double>("J",loc);
 	}
 	else if (P.HAS("Jperp",loc))
 	{
 		Jperp = P.get<double>("Jperp",loc);
-		Jxyperp = Jperp;
-		Jzperp  = Jperp;
-		ss << ",J⟂=" << Jperp;
+		stringstream ss; ss << "J⟂=" << Jperp; Terms.info.push_back(ss.str());
+	}
+	
+	double Dyperp = P.get_default<double>("Dyperp");
+	
+	if (P.HAS("Dy",loc))
+	{
+		Dyperp = P.get<double>("Dy",loc);
+	}
+	else if (P.HAS("Dyperp",loc))
+	{
+		Dyperp = P.get<double>("Dyperp",loc);
+		stringstream ss; ss << "Dy⟂=" << Dyperp; Terms.info.push_back(ss.str());
+	}
+	
+	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",B.orbitals(),loc);
+	Terms.info.push_back(Bzlabel);
+	
+	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",B.orbitals(),loc);
+	Terms.info.push_back(Bxlabel);
+	
+	auto [K,Korb,Klabel] = P.fill_array1d<double>("K","Korb",B.orbitals(),loc);
+	Terms.info.push_back(Klabel);
+	
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp,Jperp,Bzorb,Bxorb,Korb,Dyperp, P.get<bool>("CYLINDER"))));
+	
+	if (P.HAS("Dy",loc) or P.HAS("Dyperp"))
+	{
+		Terms.name = "Dzyaloshinsky-Moriya";
 	}
 	else
 	{
-		if (P.HAS("Jxyperp",loc))
-		{
-			Jxyperp = P.get<double>("Jxyperp",loc);
-			ss << ",Jxy⟂=" << Jxyperp;
-		}
-		if (P.HAS("Jzperp",loc))
-		{
-			Jzperp = P.get<double>("Jzperp",loc);
-			ss << ",Jz⟂=" << Jzperp;
-		}
-		
+		Terms.name = "Heisenberg";
 	}
-	
-	double Bz = P.get_default<double>("Bz");
-	double Bx = P.get_default<double>("Bx");
-	double K  = P.get_default<double>("K");
-	
-	if (P.HAS("Bz",loc))
-	{
-		Bz = P.get<double>("Bz",loc);
-		ss << ",Bz=" << Bz;
-	}
-	if (P.HAS("Bx",loc))
-	{
-		Bx = P.get<double>("Bx",loc);
-		ss << ",Bx=" << Bx;
-	}
-	if (P.HAS("K",loc))
-	{
-		K = P.get<double>("K",loc);
-		ss << ",K=" << K;
-	}
-	
-	Terms.info = ss.str();
-	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp,Jzperp,Bz,Bx,K, P.get<bool>("CYLINDER"))));
 	
 	return Terms;
 }
+
+//template<typename Symmetry_>
+//HamiltonianTermsXd<Symmetry_> HeisenbergU1::
+//set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
+//{
+//	HamiltonianTermsXd<Symmetry_> Terms;
+//	
+//	frac S = frac(B.get_D()-1,2);
+//	stringstream ss;
+//	IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
+//	
+//	// J-terms
+//	
+//	double J   = P.get_default<double>("J");
+//	double Jxy = P.get_default<double>("Jxy");
+//	double Jz  = P.get_default<double>("Jz");
+//	
+//	MatrixXd Jpara  (B.orbitals(),B.orbitals()); Jpara.setZero();
+//	MatrixXd Jxypara(B.orbitals(),B.orbitals()); Jxypara.setZero();
+//	MatrixXd Jzpara (B.orbitals(),B.orbitals()); Jzpara.setZero();
+//	
+//	if (P.HAS("J",loc))
+//	{
+//		J = P.get<double>("J",loc);
+//		Jxypara.diagonal().setConstant(J);
+//		Jzpara.diagonal().setConstant(J);
+//		Terms.name = "Heisenberg";
+//		ss << "S=" << print_frac_nice(S) << ",J=" << J << B.alignment(J);
+//	}
+//	else if (P.HAS("Jxy",loc) or P.HAS("Jz",loc))
+//	{
+//		if (P.HAS("Jxy",loc))
+//		{
+//			Jxy = P.get<double>("Jxy",loc);
+//			Jxypara.diagonal().setConstant(Jxy);
+//		}
+//		if (P.HAS("Jz",loc))
+//		{
+//			Jz = P.get<double>("Jz",loc);
+//			Jzpara.diagonal().setConstant(Jz);
+//		}
+//		
+//		if      (Jxy == 0.) {Terms.name = "Ising"; ss << "S=" << print_frac_nice(S) << ",J=" << Jz << B.alignment(Jz);}
+//		else if (Jz  == 0.) {Terms.name = "XX"; ss << "S="    << print_frac_nice(S) << ",J=" << Jxy << B.alignment(Jxy);}
+//		else                {Terms.name = "XXZ"; ss << "S="   << print_frac_nice(S) << ",Jxy=" << Jxy << ",Jz=" << Jz << B.alignment(Jz);}
+//	}
+//	else if (P.HAS("Jpara",loc))
+//	{
+//		assert(B.orbitals() == Jpara.rows() and 
+//		       B.orbitals() == Jpara.cols());
+//		Jpara = P.get<MatrixXd>("Jpara",loc);
+//		Jxypara = Jpara;
+//		Jzpara = Jpara;
+//		Terms.name = "Heisenberg";
+//		ss << "S=" << print_frac_nice(S) << ",J∥=" << Jpara.format(CommaInitFmt);
+//	}
+//	else if (P.HAS("Jxypara",loc) or P.HAS("Jzpara",loc))
+//	{
+//		if (P.HAS("Jxypara",loc))
+//		{
+//			Jxypara = P.get<MatrixXd>("Jxypara",loc);
+//		}
+//		if (P.HAS("Jzpara",loc))
+//		{
+//			Jzpara = P.get<MatrixXd>("Jzpara",loc);
+//		}
+//		
+//		if (Jxypara.norm() == 0.)
+//		{
+//			Terms.name = "Ising"; 
+//			ss << "S=" << print_frac_nice(S) 
+//			   << ",J∥=" << Jzpara.format(CommaInitFmt);
+//		}
+//		else if (Jzpara.norm()  == 0.)
+//		{
+//			Terms.name = "XX";
+//			ss << "S="    << print_frac_nice(S) 
+//			   << ",J∥=" << Jxypara.format(CommaInitFmt);
+//		}
+//		else
+//		{
+//			Terms.name = "XXZ"; 
+//			ss << "S=" << print_frac_nice(S) 
+//			   << ",Jxy∥=" << Jxypara.format(CommaInitFmt) 
+//			   << ",Jz=" << Jzpara.format(CommaInitFmt);
+//		}
+//	}
+//	else
+//	{
+//		ss << "J=0";
+//	}
+//	
+//	for (int i=0; i<B.orbitals(); ++i)
+//	for (int j=0; j<B.orbitals(); ++j)
+//	{
+//		if (Jxypara(i,j) != 0.)
+//		{
+//			Terms.tight.push_back(make_tuple(-0.5*Jxypara(i,j), B.Scomp(SP,i), B.Scomp(SM,j)));
+//			Terms.tight.push_back(make_tuple(-0.5*Jxypara(i,j), B.Scomp(SM,i), B.Scomp(SP,j)));
+//		}
+//		if (Jzpara(i,j) != 0.)
+//		{
+//			Terms.tight.push_back(make_tuple(-Jzpara(i,j), B.Scomp(SZ,i), B.Scomp(SZ,j)));
+//		}
+//	}
+//	
+//	// J'-terms
+//	double Jprime   = P.get_default<double>("Jprime");
+//	double Jxyprime = P.get_default<double>("Jxyprime");
+//	double Jzprime  = P.get_default<double>("Jzprime");
+//	
+//	if (P.HAS("Jprime",loc) or P.HAS("Jxyprime",loc) or P.HAS("Jzprime",loc))
+//	{
+//		assert((B.orbitals() == 1 or (Jprime == 0 and Jxyprime == 0 and Jzprime == 0)) and "Cannot interpret Ly>1 and J'!=0");
+//		
+//		if (P.HAS("Jprime",loc))
+//		{
+//			Jprime = P.get<double>("Jprime",loc);
+//			Jxyprime = Jprime;
+//			Jzprime  = Jprime;
+//			ss << ",J'=" << Jprime;
+//		}
+//		else
+//		{
+//			if (P.HAS("Jxyprime",loc))
+//			{
+//				Jxyprime = P.get<double>("Jxyprime",loc);
+//				ss << ",Jxy'=" << Jxyprime;
+//			}
+//			if (P.HAS("Jzprime",loc))
+//			{
+//				Jzprime = P.get<double>("Jzprime",loc);
+//				ss << ",Jz'=" << Jzprime;
+//			}
+//		}
+//		if (Jxyprime != 0.)
+//		{
+//			Terms.nextn.push_back(make_tuple(-0.5*Jxyprime, B.Scomp(SP), B.Scomp(SM), B.Id()));
+//			Terms.nextn.push_back(make_tuple(-0.5*Jxyprime, B.Scomp(SM), B.Scomp(SP), B.Id()));
+//		}
+//		if (Jzprime != 0.)
+//		{
+//			Terms.nextn.push_back(make_tuple(-Jzprime,     B.Scomp(SZ), B.Scomp(SZ), B.Id()));
+//		}
+//	}
+//	
+//	// Dzyaloshinsky-Moriya terms
+//	
+//	double Dy = P.get_default<double>("Dy");
+//	double Dyprime = P.get_default<double>("Dyprime");
+//	
+//	if (P.HAS("Dy",loc))
+//	{
+//		Dy = P.get<double>("Dy",loc);
+//		if (Dy != 0.)
+//		{
+//			Terms.tight.push_back(make_tuple(+Dy, B.Scomp(SX), B.Scomp(SZ)));
+//			Terms.tight.push_back(make_tuple(-Dy, B.Scomp(SZ), B.Scomp(SX)));
+//		}
+//		
+//		Terms.name = "Dzyaloshinsky-Moriya";
+//		ss << ",Dy=" << Dy;
+//	}
+//	
+//	if (P.HAS("Dyprime",loc))
+//	{
+//		Dyprime = P.get<double>("Dyprime",loc);
+//		if (Dyprime != 0.)
+//		{
+//			Terms.nextn.push_back(make_tuple(+Dyprime, B.Scomp(SX), B.Scomp(SZ), B.Id()));
+//			Terms.nextn.push_back(make_tuple(-Dyprime, B.Scomp(SZ), B.Scomp(SX), B.Id()));
+//		}
+//		
+//		Terms.name = "Dzyaloshinsky-Moriya";
+//		ss << ",DM'=" << Dy;
+//	}
+//	
+//	// local terms
+//	
+//	double Jperp   = P.get_default<double>("Jperp");
+//	double Jxyperp = P.get_default<double>("Jxyperp");
+//	double Jzperp  = P.get_default<double>("Jzperp");
+//	
+//	if (P.HAS("J",loc))
+//	{
+//		Jxyperp = P.get<double>("J",loc);
+//		Jzperp  = P.get<double>("J",loc);
+//	}
+//	else if (P.HAS("Jperp",loc))
+//	{
+//		Jperp = P.get<double>("Jperp",loc);
+//		Jxyperp = Jperp;
+//		Jzperp  = Jperp;
+//		ss << ",J⟂=" << Jperp;
+//	}
+//	else
+//	{
+//		if (P.HAS("Jxyperp",loc))
+//		{
+//			Jxyperp = P.get<double>("Jxyperp",loc);
+//			ss << ",Jxy⟂=" << Jxyperp;
+//		}
+//		if (P.HAS("Jzperp",loc))
+//		{
+//			Jzperp = P.get<double>("Jzperp",loc);
+//			ss << ",Jz⟂=" << Jzperp;
+//		}
+//		
+//	}
+//	
+//	double Bz = P.get_default<double>("Bz");
+//	double Bx = P.get_default<double>("Bx");
+//	double K  = P.get_default<double>("K");
+//	
+//	if (P.HAS("Bz",loc))
+//	{
+//		Bz = P.get<double>("Bz",loc);
+//		ss << ",Bz=" << Bz;
+//	}
+//	if (P.HAS("Bx",loc))
+//	{
+//		Bx = P.get<double>("Bx",loc);
+//		ss << ",Bx=" << Bx;
+//	}
+//	if (P.HAS("K",loc))
+//	{
+//		K = P.get<double>("K",loc);
+//		ss << ",K=" << K;
+//	}
+//	
+//	Terms.info = ss.str();
+//	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp,Jzperp,Bz,Bx,K, P.get<bool>("CYLINDER"))));
+//	
+//	return Terms;
+//}
 
 } //end namespace VMPS
 
