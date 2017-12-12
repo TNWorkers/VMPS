@@ -22,7 +22,7 @@ public:
 	/**
 	\param L_input : the amount of orbitals
 	\param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis*/
-	FermionBase (size_t L_input, bool U_IS_INFINITE=false, bool NM=false);
+	FermionBase (size_t L_input, bool U_IS_INFINITE=false, bool NM_input=false);
 	
 	/**number of states = \f$4^L\f$ or \f$3^L\f$ for $U=\infty$*/
 	inline size_t dim() const {return N_states;}
@@ -222,8 +222,8 @@ private:
 
 template<typename Symmetry>
 FermionBase<Symmetry>::
-FermionBase (size_t L_input, bool U_IS_INFINITE, bool NM)
-:N_orbitals(L_input)
+FermionBase (size_t L_input, bool U_IS_INFINITE, bool NM_input)
+	:N_orbitals(L_input),NM(NM_input)
 {
 	assert(N_orbitals>=1);
 	

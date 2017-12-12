@@ -187,7 +187,7 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 
 	// J-terms
 
-	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",F.orbitals(),loc);
+	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",B.orbitals(),loc);
 	Terms.info.push_back(Jlabel);
 
 	for (int i=0; i<B.orbitals(); ++i)
