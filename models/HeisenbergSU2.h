@@ -58,10 +58,7 @@ public:
 	   \param P : The parameters
 	*/
 	static HamiltonianTermsXd<Symmetry> set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc=0);
-	
-	/**Operator Quantum numbers: \f$\{ Id:k=\left|1\right>; S:k=\left|3\right>\}\f$ */
-	static const std::vector<qType> qOp ();
-	
+		
 	/**Labels the conserved quantum number as "S".*/
 	static const std::array<string,1> Stotlabel;
 	
@@ -97,20 +94,11 @@ protected:
 
 const std::array<string,1> HeisenbergSU2::Stotlabel{"S"};
 
-const std::vector<Sym::SU2<double>::qType> HeisenbergSU2::
-qOp ()
-{	
-	std::vector<qType> vout(2);
-	vout[0] = {1};
-	vout[1] = {3};
-	return vout;
-};
-
 HeisenbergSU2::
 HeisenbergSU2 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
 :MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                 qarray<Symmetry::Nq>({1}), HeisenbergSU2::qOp(), HeisenbergSU2::Stotlabel, "", halve)
+                 qarray<Symmetry::Nq>({1}), HeisenbergSU2::Stotlabel, "", halve)
 {
 	ParamHandler P(params,defaults);
 	
@@ -128,6 +116,7 @@ HeisenbergSU2 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
 		this->Daux = Terms[l].auxdim();
 		
 		G.push_back(Generator(Terms[l]));
+		setOpBasis(G[l].calc_qOp(),l);
 	}
 	
 	this->generate_label(Terms[0].name,Terms,Lcell);
@@ -203,40 +192,23 @@ set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
 	
 	// J'-terms
 	
-	double Jprime = P.get_default<double>("Jprime");
-	
-	if (P.HAS("Jprime",loc))
+	param0d Jprime = P.fill_array0d<double>("Jprime","Jprime",loc);
+	if(!Jprime.label.empty()) {Terms.info.push_back(Jprime.label);}
+	assert((B.orbitals() == 1 or Jprime.x == 0) and "Cannot interpret Ly>1 and J'!=0");
+	if (Jprime.x != 0)
 	{
-		Jprime = P.get<double>("Jprime",loc);
-		assert((B.orbitals() == 1 or Jprime == 0) and "Cannot interpret Ly>1 and J'!=0");
-		stringstream Jprimelabel;
-		Jprimelabel << "J'=" << Jprime;
-		Terms.info.push_back(Jprimelabel.str());
-	}
-	if (Jprime != 0)
-	{
-		Terms.nextn.push_back(make_tuple(-std::sqrt(3)*Jprime, B.Sdag(0).plain<double>(),
+		Terms.nextn.push_back(make_tuple(-std::sqrt(3)*Jprime.x, B.Sdag(0).plain<double>(),
 		                                 B.S(0).plain<double>(),
 		                                 B.Id().plain<double>()));
 	}
 	
 	// local terms
 
-	double Jperp = P.get_default<double>("Jperp");
-	if (P.HAS("Jperp",loc))
-	{
-		Jperp = P.get<double>("Jperp",loc);
-		stringstream ss;
-		ss << "J⟂=" << Jperp;
-		Terms.info.push_back(ss.str());
-	}
-	else if (P.HAS("J",loc))
-	{
-		Jperp = P.get<double>("J",loc);
-	}	
+	param0d Jperp = P.fill_array0d<double>("J","Jperp",loc);
+	if(!Jperp.label.empty()) {Terms.info.push_back(Jperp.label);}
 	if (B.orbitals() > 1)
 	{
-		Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp).plain<double>()));
+		Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp.x).plain<double>()));
 	}
 	
 	return Terms;
