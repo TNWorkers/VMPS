@@ -27,8 +27,10 @@ namespace VMPS
 */
 class KondoU1xU1 : public MpoQ<Sym::U1xU1<double>,double>
 {
-typedef Sym::U1xU1<double> Symmetry;
-typedef typename Symmetry::qType qType;
+public:
+	typedef Sym::U1xU1<double> Symmetry;
+private:
+	typedef typename Symmetry::qType qType;
 public:
 	/**Does nothing.*/
 	KondoU1xU1 () : MpoQ(){};
@@ -42,9 +44,6 @@ public:
 	template<typename Symmetry_> 
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F,
 														const ParamHandler &P, size_t loc=0);
-
-	// /**Operator Quantum numbers: \f$\{ Id,S_z:k=\left|0\right>; S_+:k=\left|+2\right>; S_-:k=\left|-2\right>\}\f$ */
-	// static const vector<qType > qOp();
 
 	/**Makes half-integers in the output for the magnetization quantum number.*/
 	static string N_halveM (qType qnum);
@@ -98,20 +97,6 @@ protected:
 };
 
 const std::array<string,2> KondoU1xU1::NMlabel{"N","M"};
-
-// const vector<qarray<2> > KondoU1xU1::
-// qOp ()
-// {
-// 	vector<qarray<2> > vout;
-// 	vout.push_back({0,0}); //Id
-// 	vout.push_back({+1,+1});//cUpDAg
-// 	vout.push_back({-1,-1});//cUp
-// 	vout.push_back({-1,+1});//cDNDag
-// 	vout.push_back({+1,-1});//cDn
-// 	// vout.push_back({+1,-1});//
-// 	// vout.push_back({-1,+1});
-// 	return vout;
-// }
 
 KondoU1xU1::
 KondoU1xU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
@@ -526,9 +511,9 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	if(!Bzlabel.empty()) {Terms.info.push_back(Bzlabel);}
 
 	//Fields in x-direction break the S_z U(1) symmetry. Use KondoU1 instead.
-	ArrayXd Bxorb(B.orbitals()); Bxorb = 0.;
-	auto Hheis = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,Bzorb,Bxorb,Korb),F.Id());
-	auto Hhubb = kroneckerProduct(B.Id(),F.HubbardHamiltonian(Uorb,muorb,Bz_elecorb,tperp.x,V.x,J, P.get<bool>("CYLINDER")));
+	ArrayXd zeros(F.orbitals()); zeros = 0.;
+	auto Hheis = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,Bzorb,zeros,Korb),F.Id());
+	auto Hhubb = kroneckerProduct(B.Id(),F.HubbardHamiltonian(Uorb,muorb,Bz_elecorb,zeros,tperp.x,V.x,J, P.get<bool>("CYLINDER")));
 	auto Hkondo = Hheis + Hhubb;
 	for (int i=0; i<F.orbitals(); ++i)
 	{

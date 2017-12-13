@@ -312,8 +312,7 @@ SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar
 	for (int i=0; i<Terms.local.size(); ++i)
 	{
 		Gout(Daux-1,0).data += get<0>(Terms.local[i]) * get<1>(Terms.local[i]).data;
-		Gout(Daux-1,0).Q = Gout(Daux-1,0).Q + get<1>(Terms.local[i]).Q; //TODO: This line is only valid for U1. Change it.
-
+		// Gout(Daux-1,0).Q = Gout(Daux-1,0).Q + get<1>(Terms.local[i]).Q; //TODO: This line is only valid for U1. Change it.
 	}
 	
 	// nearest-neighbour transfer

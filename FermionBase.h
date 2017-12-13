@@ -197,7 +197,7 @@ public:
 	\param J : \f$J\f$
 	\param PERIODIC: periodic boundary conditions if \p true*/
 	template<typename Scalar> SiteOperator<Symmetry,Scalar>
-	HubbardHamiltonian (ArrayXd Uvec, ArrayXd onsite, ArrayXd Bzloc, Scalar t=1., double V=0., double J=0., bool PERIODIC=false) const;
+	HubbardHamiltonian (ArrayXd Uvec, ArrayXd onsite, ArrayXd Bzloc, ArrayXd Bxloc, Scalar t=1., double V=0., double J=0., bool PERIODIC=false) const;
 	
 	vector<qarray<Symmetry::Nq> > get_basis() const;
 	
@@ -467,7 +467,7 @@ HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERI
 template<typename Symmetry>
 template<typename Scalar>
 SiteOperator<Symmetry,Scalar> FermionBase<Symmetry>::
-HubbardHamiltonian (ArrayXd Uloc, ArrayXd onsite, ArrayXd Bzloc, Scalar t, double V, double J, bool PERIODIC) const
+HubbardHamiltonian (ArrayXd Uloc, ArrayXd onsite, ArrayXd Bzloc, ArrayXd Bxloc, Scalar t, double V, double J, bool PERIODIC) const
 {
 	SparseMatrix<Scalar> Mout = HubbardHamiltonian(0,t,V,J,0,PERIODIC).data;
 	
@@ -492,6 +492,13 @@ HubbardHamiltonian (ArrayXd Uloc, ArrayXd onsite, ArrayXd Bzloc, Scalar t, doubl
 			if (Bzloc(i) != 0.)
 			{
 				Mout += Bzloc(i) * Sz(i).data.template cast<Scalar>();
+			}
+		}
+		if (Bxloc.rows() > 0)
+		{
+			if (Bxloc(i) != 0.)
+			{
+				Mout += Bxloc(i) * Sx(i).data.template cast<Scalar>();
 			}
 		}
 	}
@@ -528,10 +535,8 @@ qNums (size_t index) const
 		}
 	}
 	
-	if constexpr(Symmetry::IS_TRIVIAL)
-	{
-		return qarray<0>{};
-	}
+	if constexpr(Symmetry::IS_TRIVIAL) { return qarray<0>{}; }
+	if constexpr(Symmetry::Nq == 1) { return qarray<1>{N}; }
 	else
 	{
 		if (NM) {return qarray<Symmetry::Nq>{N,M};}
@@ -558,25 +563,35 @@ typename Symmetry::qType FermionBase<Symmetry>::
 getQ (SPIN_INDEX sigma, int Delta) const
 {
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
-	else
-	{
-		typename Symmetry::qType out;
-		if (NM)
-		{
-			if      (sigma==UP)     {out = {Delta,Delta};}
-			else if (sigma==DN)     {out = {Delta,-Delta};}
-			else if (sigma==UPDN)   {out = {2*Delta,Delta};}
-			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
-		}
-		else
-		{
-			if      (sigma==UP)     {out = {Delta,0};}
-			else if (sigma==DN)     {out = {0,Delta};}
-			else if (sigma==UPDN)   {out = {Delta,Delta};}
-			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
-		}
-		return out;
-	}
+	if constexpr(Symmetry::Nq == 1) //return particle number as good quantum number.
+				{
+					typename Symmetry::qType out;
+					if      (sigma==UP)     {out = {Delta};}
+					else if (sigma==DN)     {out = {Delta};}
+					else if (sigma==UPDN)   {out = {2*Delta};}
+					else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
+					return out;
+				}
+	if constexpr(Symmetry::Nq == 2)
+				{
+					typename Symmetry::qType out;
+					if (NM)
+					{
+						if      (sigma==UP)     {out = {Delta,Delta};}
+						else if (sigma==DN)     {out = {Delta,-Delta};}
+						else if (sigma==UPDN)   {out = {2*Delta,Delta};}
+						else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
+					}
+					else
+					{
+						if      (sigma==UP)     {out = {Delta,0};}
+						else if (sigma==DN)     {out = {0,Delta};}
+						else if (sigma==UPDN)   {out = {Delta,Delta};}
+						else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
+					}
+					return out;
+				}
+	static_assert("You inserted a Symmetry which can not be handled by FermionBase.");
 }
 
 template<typename Symmetry>
@@ -585,6 +600,7 @@ getQ (SPINOP_LABEL Sa) const
 {
 	assert(Sa != SX and Sa != iSY);
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
+	if constexpr(Symmetry::Nq == 1) { return {{0}}; } //return particle number as good quantum number.
 	
 	typename Symmetry::qType out;
 	
