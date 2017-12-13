@@ -113,17 +113,18 @@ public:
 		return Dres;
 	}
 
-	vector<typename Symmetry::qType> get_qOp() const
+	vector<typename Symmetry::qType> calc_qOp() const
 	{
-		vector<typename Symmetry::qType> out;
+		std::set<typename Symmetry::qType> qOps;
 		for (size_t i=0; i<N_rows; ++i)
 		for (size_t j=0; j<N_cols; ++j)
 		{
-			if(auto it = std::find(out.begin(),out.end(),data[i][j].Q); it == out.end())
-			{
-				out.push_back(data[i][j].Q);
-			}
+			qOps.insert(data[i][j].Q);
 		}
+		
+		vector<typename Symmetry::qType> out(qOps.size());
+		copy(qOps.begin(), qOps.end(), out.begin());
+		
 		return out;
 	}
 	

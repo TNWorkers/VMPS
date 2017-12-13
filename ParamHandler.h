@@ -192,18 +192,19 @@ param0d<Scalar> ParamHandler::
 fill_array0d (string label_def, string label_x, size_t loc) const
 {
 	param0d<Scalar> res;
+	res.x = get_default<Scalar>(label_x);
 	
-	if (HAS(label_def,loc))
-	{
-		res.x = get<Scalar>(label_def,loc);
-	}
-	else if (HAS(label_x,loc))
+	if (HAS(label_x,loc))
 	{
 		res.x = get<Scalar>(label_x,loc);
 		
 		stringstream ss;
 		ss << label_x << "=" << res.x;
 		res.label = ss.str();
+	}
+	else if (HAS(label_def,loc))
+	{
+		res.x = get<Scalar>(label_def,loc);
 	}
 	
 	return res;

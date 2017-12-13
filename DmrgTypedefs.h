@@ -236,15 +236,12 @@ struct HamiltonianTerms
 		
 		string res = ss.str();
 		
-		while (res.find("perp") != string::npos)
-		{
-			res.replace(res.find("perp"), 4, "⟂");
-		}
-		
-		while (res.find("para") != string::npos)
-		{
-			res.replace(res.find("para"), 4, "∥");
-		}
+		while (res.find("perp") != string::npos) res.replace(res.find("perp"), 4, "⟂");
+		while (res.find("para") != string::npos) res.replace(res.find("para"), 4, "∥");
+		while (res.find("para") != string::npos) res.replace(res.find("prime"), 4, "'");
+		while (res.find("perp") != string::npos) res.replace(res.find("Perp"), 4, "⟂");
+		while (res.find("para") != string::npos) res.replace(res.find("Para"), 4, "∥");
+		while (res.find("para") != string::npos) res.replace(res.find("Prime"), 4, "'");
 		
 		return res;
 	}

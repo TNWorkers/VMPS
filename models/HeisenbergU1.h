@@ -92,7 +92,6 @@ const std::map<string,std::any> HeisenbergU1::defaults =
 {
 	{"J",-1.}, {"Jprime",0.}, {"Jperp",0.},
 	{"D",2ul}, {"Bz",0.}, {"K",0.},
-	{"Dy",0.}, {"Dyprime",0.}, {"Dyperp",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 };
 
@@ -117,7 +116,7 @@ HeisenbergU1::
 HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
 :MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                 qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve)
+                 qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, "", halve)
 {
 	ParamHandler P(params,defaults);
 	
@@ -135,6 +134,7 @@ HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param
 		this->Daux = Terms[l].auxdim();
 		
 		G.push_back(Generator(Terms[l]));
+		setOpBasis(G[l].calc_qOp(),l);
 	}
 	
 	this->generate_label(Terms[0].name,Terms,Lcell);
@@ -148,7 +148,7 @@ Sz (size_t locx, size_t locy) const
 	stringstream ss;
 	ss << "Sz(" << locx << "," << locy << ")";
 	
-	MpoQ<Symmetry> Mout(N_sites, N_legs, qarray<Symmetry::Nq>({0}), {{0}}, HeisenbergU1::maglabel, ss.str(), halve);
+	MpoQ<Symmetry> Mout(N_sites, N_legs, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, ss.str(), halve);
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
 	Mout.setLocal(locx, B[locx].Scomp(SZ,locy));
@@ -162,7 +162,7 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	stringstream ss;
 	ss << "Sz(" << locx1 << "," << locy1 << ")" <<  "Sz(" << locx2 << "," << locy2 << ")";
 	
-	MpoQ<Symmetry> Mout(N_sites, N_legs, qarray<Symmetry::Nq>({0}), {{0}}, HeisenbergU1::maglabel, ss.str(), halve);
+	MpoQ<Symmetry> Mout(N_sites, N_legs, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, ss.str(), halve);
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
 	Mout.setLocal({locx1, locx2}, {B[locx1].Scomp(SZ,locy1), B[locx2].Scomp(SZ,locy2)});
@@ -175,7 +175,7 @@ validate (qarray<1> qnum) const
 	frac Smax(0,1);
 	frac q_in(qnum[0],2);
 	for (size_t l=0; l<N_sites; ++l) { Smax+=frac(B[l].get_D()-1,2); }
-	if(Smax.denominator()==q_in.denominator() and q_in <= Smax) {return true;}
+	if (Smax.denominator()==q_in.denominator() and q_in <= Smax) {return true;}
 	else {return false;}
 }
 
@@ -208,57 +208,18 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	
 	// J'-terms
 	
-	double Jprime = P.get_default<double>("Jprime");
+	param0d Jprime = P.fill_array0d<double>("Jprime","Jprime",loc);
+	save_label(Jprime.label);
 	
-	if (P.HAS("Jprime",loc))
+	if (Jprime.x != 0.)
 	{
-		Jprime = P.get<double>("Jprime",loc);
-		
-		if (Jprime != 0.)
-		{
-			Terms.nextn.push_back(make_tuple(-0.5*Jprime, B.Scomp(SP), B.Scomp(SM), B.Id()));
-			Terms.nextn.push_back(make_tuple(-0.5*Jprime, B.Scomp(SM), B.Scomp(SP), B.Id()));
-			Terms.nextn.push_back(make_tuple(-Jprime,     B.Scomp(SZ), B.Scomp(SZ), B.Id()));
-		}
-		stringstream ss; ss << "J'=" << Jprime; Terms.info.push_back(ss.str());
+		Terms.nextn.push_back(make_tuple(-0.5*Jprime.x, B.Scomp(SP), B.Scomp(SM), B.Id()));
+		Terms.nextn.push_back(make_tuple(-0.5*Jprime.x, B.Scomp(SM), B.Scomp(SP), B.Id()));
+		Terms.nextn.push_back(make_tuple(-Jprime.x,     B.Scomp(SZ), B.Scomp(SZ), B.Id()));
 	}
-	
-	// Dzyaloshinsky-Moriya terms
-	
-	auto [Dy,Dypara,Dylabel] = P.fill_array2d<double>("Dy","Dypara",B.orbitals(),loc);
-	save_label(Dylabel);
-	
-	for (int i=0; i<B.orbitals(); ++i)
-	for (int j=0; j<B.orbitals(); ++j)
-	{
-		if (Dypara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(+Dypara(i,j), B.Scomp(SX), B.Scomp(SZ)));
-			Terms.tight.push_back(make_tuple(-Dypara(i,j), B.Scomp(SZ), B.Scomp(SX)));
-		}
-	}
-	
-	double Dyprime = P.get_default<double>("Dyprime");
-	
-	if (P.HAS("Dyprime",loc))
-	{
-		Dyprime = P.get<double>("Dyprime",loc);
-		
-		if (Dyprime != 0.)
-		{
-			Terms.nextn.push_back(make_tuple(+Dyprime, B.Scomp(SX), B.Scomp(SZ), B.Id()));
-			Terms.nextn.push_back(make_tuple(-Dyprime, B.Scomp(SZ), B.Scomp(SX), B.Id()));
-		}
-		stringstream ss; ss << "Dy'=" << Dyprime; Terms.info.push_back(ss.str());
-	}
-	
-	// local terms
 	
 	param0d Jperp = P.fill_array0d<double>("J","Jperp",loc);
 	save_label(Jperp.label);
-	
-	param0d Dyperp = P.fill_array0d<double>("Dy","Dyperp",loc);
-	save_label(Dyperp.label);
 	
 	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",B.orbitals(),loc);
 	save_label(Bzlabel);
@@ -266,16 +227,9 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	auto [K,Korb,Klabel] = P.fill_array1d<double>("K","Korb",B.orbitals(),loc);
 	save_label(Klabel);
 	
-	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp.x,Jperp.x,Bzorb,ArrayXd::Zero(B.orbitals()),Korb,Dyperp.x, P.get<bool>("CYLINDER"))));
+	Terms.name = "Heisenberg";
 	
-	if (P.HAS_ANY_OF({"Dy","Dyperp"},loc))
-	{
-		Terms.name = "Dzyaloshinsky-Moriya";
-	}
-	else
-	{
-		Terms.name = "Heisenberg";
-	}
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp.x,Jperp.x,Bzorb,B.Zero(),Korb,0., P.get<bool>("CYLINDER"))));
 	
 	return Terms;
 }

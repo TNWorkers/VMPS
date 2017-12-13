@@ -34,19 +34,12 @@ private:
 	
 public:
 	
-	//---constructors---
 	///\{
-	/**Do nothing.*/
 	Heisenberg() : MpoQ<Symmetry>() {};
-	
-	/**
-	   \param Lx_input : chain length
-	   \describe_params
-	   \param Ly_input : amount of legs in ladder
-	   \param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
-	*/
-	Heisenberg (variant<size_t,std::array<size_t,2> > L, vector<Param> params);
+	Heisenberg (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
 	///\}
+	
+	static void add_operators (HamiltonianTermsXd<Symmetry> &Terms, const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc=0);
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
@@ -64,29 +57,42 @@ public:
 	MpoQ<Symmetry> Sz   (size_t loc);
 	///@}
 	
+	static const std::map<string,std::any> defaults;
+	
 protected:
 	
-	SpinBase<Symmetry> B;
+	vector<SpinBase<Symmetry> > B;
 };
 
+const std::map<string,std::any> Heisenberg::defaults = 
+{
+	{"J",-1.}, {"Jprime",0.}, {"Jperp",0.},
+	{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"K",0.},
+	{"Dy",0.}, {"Dyprime",0.}, {"Dyperp",0.}, // Dzialoshinsky-Moriya terms
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
+};
+
+
 Heisenberg::
-Heisenberg (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
+Heisenberg (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
 :MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
                  qarray<0>({}), vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "")
 {
-	ParamHandler P(params,HeisenbergU1::defaults);
+	ParamHandler P(params,Heisenberg::defaults);
 	
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
+	B.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
-		setLocBasis(B.get_basis(),l);
+		B[l] = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
+		setLocBasis(B[l].get_basis(),l);
 		
-		Terms[l] = HeisenbergU1::set_operators(B,P,l%Lcell);
+		Terms[l] = HeisenbergU1::set_operators(B[l],P,l%Lcell);
+		add_operators(Terms[l],B[l],P,l%Lcell);
 		this->Daux = Terms[l].auxdim();
 		
 		G.push_back(Generator(Terms[l]));
@@ -103,8 +109,8 @@ Sz (size_t loc)
 	stringstream ss;
 	ss << "Sz(" << loc << ")";
 	MpoQ<Symmetry > Mout(N_sites, N_legs, qarray<0>{}, vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "");
-	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B.get_basis(),l); }
-	Mout.setLocal(loc, B.Scomp(SZ));
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B[l].get_basis(),l); }
+	Mout.setLocal(loc, B[loc].Scomp(SZ));
 	return Mout;
 }
 
@@ -115,11 +121,68 @@ SzSz (size_t loc1, size_t loc2)
 	stringstream ss;
 	ss << "Sz(" << loc1 << ")" <<  "Sz(" << loc2 << ")";
 	MpoQ<Symmetry > Mout(N_sites, N_legs, qarray<0>{}, vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "");
-	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B.get_basis(),l); }
-	Mout.setLocal({loc1, loc2}, {B.Scomp(SZ), B.Scomp(SZ)});
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B[l].get_basis(),l); }
+	Mout.setLocal({loc1, loc2}, {B[loc1].Scomp(SZ), B[loc2].Scomp(SZ)});
 	return Mout;
 }
+
+void Heisenberg::
+add_operators (HamiltonianTermsXd<Symmetry> &Terms, const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc)
+{
+	auto save_label = [&Terms] (string label)
+	{
+		if (label!="") {Terms.info.push_back(label);}
+	};
 	
+	// Dzyaloshinsky-Moriya terms
+	
+	auto [Dy,Dypara,Dylabel] = P.fill_array2d<double>("Dy","Dypara",B.orbitals(),loc);
+	save_label(Dylabel);
+	
+	for (int i=0; i<B.orbitals(); ++i)
+	for (int j=0; j<B.orbitals(); ++j)
+	{
+		if (Dypara(i,j) != 0.)
+		{
+			Terms.tight.push_back(make_tuple(+Dypara(i,j), B.Scomp(SX), B.Scomp(SZ)));
+			Terms.tight.push_back(make_tuple(-Dypara(i,j), B.Scomp(SZ), B.Scomp(SX)));
+		}
+	}
+	
+	double Dyprime = P.get_default<double>("Dyprime");
+	
+	if (P.HAS("Dyprime",loc))
+	{
+		Dyprime = P.get<double>("Dyprime",loc);
+		
+		if (Dyprime != 0.)
+		{
+			Terms.nextn.push_back(make_tuple(+Dyprime, B.Scomp(SX), B.Scomp(SZ), B.Id()));
+			Terms.nextn.push_back(make_tuple(-Dyprime, B.Scomp(SZ), B.Scomp(SX), B.Id()));
+		}
+		stringstream ss; ss << "Dy'=" << Dyprime; Terms.info.push_back(ss.str());
+	}
+	
+	// local terms
+	
+	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",B.orbitals(),loc);
+	save_label(Bxlabel);
+	
+	param0d Dyperp = P.fill_array0d<double>("Dy","Dyperp",loc);
+	save_label(Dyperp.label);
+	
+	if (P.HAS_ANY_OF({"Dy","Dyperp","Dyprime"},loc))
+	{
+		Terms.name = "Dzyaloshinsky-Moriya";
+	}
+	else
+	{
+		Terms.name = "Heisenberg";
+	}
+	
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(0.,0.,B.Zero(),Bxorb,B.Zero(),Dyperp.x, P.get<bool>("CYLINDER"))));
+}
+
 } // end namespace VMPS
 
 #endif

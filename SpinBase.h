@@ -53,8 +53,10 @@ public:
 	typename Symmetry::qType getQ (SPINOP_LABEL Sa) const;
 	
 	OperatorType Scomp (SPINOP_LABEL Sa, int orbital=0) const;
-
+	
 	OperatorType Id() const;
+	
+	ArrayXd Zero() const;
 	
 	string alignment (double J) const {return (J<0.)? "(AFM)":"(FM)";};
 	
@@ -117,6 +119,13 @@ Id() const
 	SparseMatrixXd mat = MatrixXd::Identity(N_states,N_states).sparseView();
 	OperatorType Oout(mat,Symmetry::qvacuum());
 	return Oout;
+}
+
+template<typename Symmetry>
+ArrayXd SpinBase<Symmetry>::
+Zero() const
+{
+	return ArrayXd::Zero(N_orbitals);
 }
 
 template<typename Symmetry>
