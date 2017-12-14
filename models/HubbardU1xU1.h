@@ -145,31 +145,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 		if (label!="") {Terms.info.push_back(label);}
 	};
 	
-//	stringstream ss;
-//	IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
-	
-	// hopping terms
-	
-//	double t = P.get_default<double>("t");
-//	
-//	ArrayXXd tPara(F.orbitals(),F.orbitals()); tPara.setZero();
-//	tPara.matrix().diagonal().setConstant(t);
-//	
-//	if (P.HAS("t",loc))
-//	{
-//		t = P.get<double>("t",loc);
-//		tPara.matrix().diagonal().setConstant(t);
-//		ss << "t=" << t;
-//	}
-//	else if (P.HAS("tPara",loc))
-//	{
-//		tPara = P.get<ArrayXXd>("tPara",loc);
-//		ss << ",t∥=" << tPara.format(CommaInitFmt);
-//	}
-//	else
-//	{
-//		ss << "t=" << t; // print hopping first no matter what
-//	}
+	// NN terms
 	
 	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F.orbitals(),loc);
 	save_label(tlabel);
@@ -204,140 +180,45 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 		}
 	}
 	
-	// V & J terms
+	// NNN terms
 	
-//	double V = P.get_default<double>("V");
-//	double J = P.get_default<double>("J");
-//	
-//	if (P.HAS("V",loc))
-//	{
-//		V = P.get<double>("V");
-//		for (int i=0; i<F.orbitals(); ++i)
-//		{
-//			Terms.tight.push_back(make_tuple(V, F.n(i), F.n(i)));
-//		}
-//		ss << ",V=" << V;
-//	}
-//	if (P.HAS("J",loc))
-//	{
-//		V = P.get<double>("J");
-//		for (int i=0; i<F.orbitals(); ++i)
-//		{
-//			Terms.tight.push_back(make_tuple(0.5*J, F.Sp(i), F.Sm(i)));
-//			Terms.tight.push_back(make_tuple(0.5*J, F.Sm(i), F.Sp(i)));
-//			Terms.tight.push_back(make_tuple(J,     F.Sz(i), F.Sz(i)));
-//		}
-//		ss << ",J=" << J;
-//	}
+	param0d tPrime = P.fill_array0d<double>("tPrime","tPrime",loc);
+	save_label(tPrime.label);
 	
-	/// NNN-terms
-	
-	double tPrime = P.get_default<double>("tPrime");
-	double J3site = P.get_default<double>("J3site");
-	
-	if (P.HAS("tPrime",loc))
+	if (tPrime.x != 0.)
 	{
 		assert(F.orbitals() == 1 and "Cannot do a ladder with t'!");
-		tPrime = P.get<double>("tPrime");
 		
-		Terms.nextn.push_back(make_tuple(-tPrime, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
-		Terms.nextn.push_back(make_tuple(-tPrime, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
-		Terms.nextn.push_back(make_tuple(+tPrime, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
-		Terms.nextn.push_back(make_tuple(+tPrime, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
-		
-		stringstream ss; ss << "tPrime=" << tPrime; Terms.info.push_back(ss.str());
+		Terms.nextn.push_back(make_tuple(-tPrime.x, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
+		Terms.nextn.push_back(make_tuple(-tPrime.x, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
+		Terms.nextn.push_back(make_tuple(+tPrime.x, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
+		Terms.nextn.push_back(make_tuple(+tPrime.x, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
 	}
 	
-	if (P.HAS("J3site",loc))
+	param0d J3site = P.fill_array0d<double>("J3site","J3site",loc);
+	save_label(J3site.label);
+	
+	if (J3site.x != 0.)
 	{
-		assert(F.orbitals() == 1 and "Cannot do a ladder with 3-site terms!");
-		J3site = P.get<double>("J3site");
+		assert(F.orbitals() == 1 and "Cannot do a ladder with 3-site J terms!");
 		
 		// three-site terms without spinflip
-		Terms.nextn.push_back(make_tuple(-0.25*J3site, F.cdag(UP), F.sign()*F.c(UP),    F.n(DN)*F.sign()));
-		Terms.nextn.push_back(make_tuple(-0.25*J3site, F.cdag(DN), F.sign()*F.c(DN),    F.n(UP)*F.sign()));
-		Terms.nextn.push_back(make_tuple(+0.25*J3site, F.c(UP),    F.sign()*F.cdag(UP), F.n(DN)*F.sign()));
-		Terms.nextn.push_back(make_tuple(+0.25*J3site, F.c(DN),    F.sign()*F.cdag(DN), F.n(UP)*F.sign()));
+		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.cdag(UP), F.sign()*F.c(UP),    F.n(DN)*F.sign()));
+		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.cdag(DN), F.sign()*F.c(DN),    F.n(UP)*F.sign()));
+		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F.c(UP),    F.sign()*F.cdag(UP), F.n(DN)*F.sign()));
+		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F.c(DN),    F.sign()*F.cdag(DN), F.n(UP)*F.sign()));
 		
 		// three-site terms with spinflip
-		Terms.nextn.push_back(make_tuple(+0.25*J3site, F.cdag(DN), F.sign()*F.c(UP),    F.Sp()*F.sign()));
-		Terms.nextn.push_back(make_tuple(+0.25*J3site, F.cdag(UP), F.sign()*F.c(DN),    F.Sm()*F.sign()));
-		Terms.nextn.push_back(make_tuple(-0.25*J3site, F.c(DN),    F.sign()*F.cdag(UP), F.Sm()*F.sign()));
-		Terms.nextn.push_back(make_tuple(-0.25*J3site, F.c(UP),    F.sign()*F.cdag(DN), F.Sp()*F.sign()));
-		
-//		ss << ",J3site=" << J3site;
-		stringstream ss; ss << "J3site=" << J3site; Terms.info.push_back(ss.str());
+		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F.cdag(DN), F.sign()*F.c(UP),    F.Sp()*F.sign()));
+		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F.cdag(UP), F.sign()*F.c(DN),    F.Sm()*F.sign()));
+		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.c(DN),    F.sign()*F.cdag(UP), F.Sm()*F.sign()));
+		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.c(UP),    F.sign()*F.cdag(DN), F.Sp()*F.sign()));
 	}
 	
 	// local terms
 	
-	// U
-	
-//	ArrayXd Uloc(F.orbitals()); Uloc.setZero();
-//	double U = P.get_default<double>("U");
-//	
-//	if (P.HAS("Uloc",loc))
-//	{
-//		Uloc = P.get<double>("Uloc",loc);
-//		ss << ",U=" << Uloc.format(CommaInitFmt);
-//	}
-//	else if (P.HAS("U",loc))
-//	{
-//		U = P.get<double>("U",loc);
-//		Uloc = U;
-//		ss << ",U=" << U;
-//	}
-	
-	// t⟂
-	
-//	double tPerp = P.get_default<double>("tPerp");
-//	
-//	if (P.HAS("t",loc))
-//	{
-//		tPerp = P.get<double>("t",loc);
-//	}
-//	else if (P.HAS("tPerp",loc))
-//	{
-//		tPerp = P.get<double>("tPerp",loc);
-//		stringstream ss; ss << "t⟂=" << tPerp; Terms.info.push_back(ss.str());
-//	}
-	
 	param0d tPerp = P.fill_array0d<double>("t","tPerp",loc);
 	save_label(tPerp.label);
-	
-	// mu
-	
-//	ArrayXd muloc(F.orbitals()); muloc.setZero();
-//	double mu = P.get_default<double>("mu");
-//	
-//	if (P.HAS("muloc",loc))
-//	{
-//		muloc = P.get<double>("muloc",loc);
-//		ss << ",mu=" << muloc.format(CommaInitFmt);
-//	}
-//	if (P.HAS("mu",loc))
-//	{
-//		mu = P.get<double>("mu",loc);
-//		muloc = mu;
-//		ss << ",mu=" << mu;
-//	}
-	
-	// Bz
-	
-//	ArrayXd Bzloc(F.orbitals()); Bzloc.setZero();
-//	double Bz = P.get_default<double>("Bz");
-//	
-//	if (P.HAS("Bzloc",loc))
-//	{
-//		Bzloc = P.get<double>("Bzloc",loc);
-//		ss << ",Bz=" << Bzloc.format(CommaInitFmt);
-//	}
-//	else if (P.HAS("Bz",loc))
-//	{
-//		Bz = P.get<double>("Bz",loc);
-//		Bzloc = Bz;
-//		ss << ",Bz=" << Bz;
-//	}
 	
 	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F.orbitals(),loc);
 	save_label(Ulabel);

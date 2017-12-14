@@ -50,7 +50,7 @@ Logger lout;
 
 #include "models/HubbardU1xU1.h"
 #include "models/HeisenbergU1XXZ.h"
-//#include "models/HeisenbergXYZ.h"
+#include "models/HeisenbergXYZ.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, int n=14)
@@ -313,4 +313,7 @@ int main (int argc, char* argv[])
 	
 	VMPS::HeisenbergU1 H1(Lxy,{{"J",J},{"Jperp",45.},{"D",D}});
 	cout << H1.info() << endl;
+	
+	VMPS::HeisenbergXYZ H3(Lxy,{{"Jx",1.},{"Jy",2.},{"Jz",3.}});
+	cout << H3.info() << endl;
 }

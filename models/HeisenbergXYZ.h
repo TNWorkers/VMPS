@@ -16,17 +16,9 @@ private:
 	
 public:
 	
-	//---constructors---
 	///\{
 	HeisenbergXYZ() : MpoQ<Symmetry,complex<double> >() {};
-	
-	/**
-	   \param Lx_input : chain length
-	   \describe_params
-	   \param Ly_input : amount of legs in ladder
-	   \param CALC_SQUARE : If \p true, calculates and stores \f$H^2\f$
-	*/
-	HeisenbergXYZ (variant<size_t,std::array<size_t,2> > L, vector<Param> params);
+	HeisenbergXYZ (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
 	///\}
 	
 	///@{
@@ -46,52 +38,82 @@ public:
 	
 	void add_operators (HamiltonianTerms<Symmetry,complex<double> > &T, const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc);
 	
+	static const std::map<string,std::any> defaults;
+	
 protected:
 	
 	SpinBase<Symmetry> B;
 };
 
+const std::map<string,std::any> HeisenbergXYZ::defaults = 
+{
+	{"Jx",0.}, {"Jy",0.}, {"Jz",0.},
+	{"Jxperp",0.}, {"Jyperp",0.}, {"Jzperp",0.},
+	{"Jxprime",0.}, {"Jyprime",0.}, {"Jzprime",0.},
+	
+	 // Dzialoshinsky-Moriya terms
+	{"Dx",0.}, {"Dy",0.}, {"Dz",0.},
+	{"Dxperp",0.}, {"Dyperp",0.}, {"Dzperp",0.},
+	{"Dxprime",0.}, {"Dyprime",0.}, {"Dzprime",0.},
+	
+	{"Bx",0.}, {"By",0.}, {"Bz",0.},
+	{"Kx",0.}, {"Ky",0.}, {"Kz",0.},
+	
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true},
+	
+	{"J",0.}, {"Jprime",0.}, {"Jperp",0.}
+};
+
+HeisenbergXYZ::
+HeisenbergXYZ (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
+:MpoQ<Symmetry,complex<double> > (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
+                                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
+                                  qarray<0>({}), labeldummy, "")
+{
+	ParamHandler P(params,HeisenbergXYZ::defaults);
+	
+	size_t Lcell = P.size();
+	vector<SuperMatrix<Symmetry,complex<double> > > G;
+	vector<HamiltonianTerms<Symmetry,complex<double> > > Terms(N_sites);
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
+		setLocBasis(B.get_basis(),l);
+		
+		auto Terms_tmp = HeisenbergU1::set_operators(B,P,l%Lcell);
+		Heisenberg::add_operators(Terms_tmp,B,P,l%Lcell);
+		Terms[l] = Terms_tmp.cast<complex<double> >();
+		add_operators(Terms[l],B,P,l%Lcell);
+		
+		this->Daux = Terms[l].auxdim();
+		
+		G.push_back(Generator(Terms[l]));
+		setOpBasis(G[l].calc_qOp(),l);
+	}
+	
+	this->generate_label(Terms[0].name,Terms,Lcell);
+	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+}
+
 void HeisenbergXYZ::
 add_operators (HamiltonianTerms<Symmetry,complex<double> > &Terms, const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc)
 {
-	stringstream ss;
-	IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
+	auto save_label = [&Terms] (string label)
+	{
+		if (label!="") {Terms.info.push_back(label);}
+	};
 	
-	// Heisenberg terms
+	// J-terms
 	
-	double Jx = P.get_default<double>("Jx");
-	double Jy = P.get_default<double>("Jy");
-	ArrayXXd Jxpara(B.orbitals(),B.orbitals()); Jxpara.setZero();
-	ArrayXXd Jypara(B.orbitals(),B.orbitals()); Jypara.setZero();
+	auto [Jx,Jxpara,Jxlabel] = P.fill_array2d<double>("Jx","Jxpara",B.orbitals(),loc);
+	save_label(Jxlabel);
 	
-	if (P.HAS("Jx",loc))
-	{
-		Jx = P.get<double>("Jx",loc);
-		Jxpara.matrix().diagonal().setConstant(Jx);
-		ss << ",Jx=" << Jx << B.alignment(Jx);
-	}
-	else if (P.HAS("Jxpara",loc))
-	{
-		if (P.HAS("Jxpara",loc))
-		{
-			Jxpara = P.get<ArrayXXd>("Jxpara",loc);
-		}
-		ss << ",Jx=" << Jx;
-	}
-	if (P.HAS("Jy",loc))
-	{
-		Jy = P.get<double>("Jy",loc);
-		Jypara.matrix().diagonal().setConstant(Jy);
-		ss << ",Jy=" << Jy << B.alignment(Jy);
-	}
-	else if (P.HAS("Jypara",loc))
-	{
-		if (P.HAS("Jypara",loc))
-		{
-			Jypara = P.get<ArrayXXd>("Jypara",loc);
-		}
-		ss << ",Jy=" << Jy;
-	}
+	auto [Jy,Jypara,Jylabel] = P.fill_array2d<double>("Jy","Jypara",B.orbitals(),loc);
+	save_label(Jylabel);
+	
+	auto [Jz,Jzpara,Jzlabel] = P.fill_array2d<double>("Jz","Jzpara",B.orbitals(),loc);
+	save_label(Jzlabel);
 	
 	for (int i=0; i<B.orbitals(); ++i)
 	for (int j=0; j<B.orbitals(); ++j)
@@ -106,78 +128,124 @@ add_operators (HamiltonianTerms<Symmetry,complex<double> > &Terms, const SpinBas
 			Terms.tight.push_back(make_tuple(Jypara(i,j), -1.i*B.Scomp(iSY,i).cast<complex<double> >(), 
 			                                              -1.i*B.Scomp(iSY,j).cast<complex<double> >()));
 		}
+		if (Jzpara(i,j) != 0.)
+		{
+			Terms.tight.push_back(make_tuple(Jzpara(i,j), B.Scomp(SZ,i).cast<complex<double> >(), 
+			                                              B.Scomp(SZ,j).cast<complex<double> >()));
+		}
 	}
 	
 	// DM terms
 	
-	SiteOperator<Symmetry,complex<double> > Sx = B.Scomp(SX).cast<complex<double> >();
-	SiteOperator<Symmetry,complex<double> > Sy = -1.i*B.Scomp(iSY).cast<complex<double> >();
-	SiteOperator<Symmetry,complex<double> > Sz = B.Scomp(SZ).cast<complex<double> >();
-	SiteOperator<Symmetry,complex<double> > Id = B.Id().cast<complex<double> >();
+	auto [Dx,Dxpara,Dxlabel] = P.fill_array2d<double>("Dx","Dxpara",B.orbitals(),loc);
+	save_label(Dxlabel);
 	
-	double Dx = P.get_default<double>("Dx");
-	double Dz = P.get_default<double>("Dz");
+	auto [Dz,Dzpara,Dzlabel] = P.fill_array2d<double>("Dz","Dzpara",B.orbitals(),loc);
+	save_label(Dzlabel);
 	
-	if (P.HAS("Dx") or P.HAS("Dz"))
+	for (int i=0; i<B.orbitals(); ++i)
+	for (int j=0; j<B.orbitals(); ++j)
 	{
-		Dx = P.get<double>("Dx");
-		Dz = P.get<double>("Dz");
-		
-		if (Dx!=0. or Dz!=0.)
+		if (Dxpara(i,j)!=0. or Dzpara(i,j)!=0.)
 		{
-			Terms.tight.push_back(make_tuple(1., Sy, +Dz*Sx-Dx*Sz));
-			Terms.tight.push_back(make_tuple(1., +Dx*Sz-Dz*Sx, Sy));
+			SiteOperator<Symmetry,complex<double> > Sxi = B.Scomp(SX,i).cast<complex<double> >();
+			SiteOperator<Symmetry,complex<double> > Sxj = B.Scomp(SX,j).cast<complex<double> >();
+			SiteOperator<Symmetry,complex<double> > Syi = -1.i*B.Scomp(iSY,i).cast<complex<double> >();
+			SiteOperator<Symmetry,complex<double> > Syj = -1.i*B.Scomp(iSY,j).cast<complex<double> >();
+			SiteOperator<Symmetry,complex<double> > Szi = B.Scomp(SZ,i).cast<complex<double> >();
+			SiteOperator<Symmetry,complex<double> > Szj = B.Scomp(SZ,j).cast<complex<double> >();
+			
+			Terms.tight.push_back(make_tuple(1., Syi, +Dzpara(i,j)*Sxj-Dxpara(i,j)*Szj));
+			Terms.tight.push_back(make_tuple(1., +Dxpara(i,j)*Szi-Dzpara(i,j)*Sxi, Syj));
 		}
-		ss << ",Dx=" << Dx << ",Dz=" << Dz;
 	}
 	
-	double Dxprime = P.get_default<double>("Dx");
-	double Dzprime = P.get_default<double>("Dz");
+	// NNN terms
 	
-	if (P.HAS("Dxprime",loc) or P.HAS("Dzprime",loc))
+	param0d Dxprime = P.fill_array0d<double>("Dxprime","Dxprime",loc);
+	save_label(Dxprime.label);
+	
+	param0d Dzprime = P.fill_array0d<double>("Dzprime","Dzprime",loc);
+	save_label(Dzprime.label);
+	
+	if (Dxprime.x!=0. or Dzprime.x!=0.)
 	{
-		Dxprime = P.get<double>("Dxprime",loc);
-		Dzprime = P.get<double>("Dzprime",loc);
+		assert(B.orbitals() == 1 and "Cannot do a ladder with Dx'/Dz' terms!");
 		
-		if (Dxprime!=0. or Dzprime!=0.)
-		{
-			Terms.nextn.push_back(make_tuple(1., Sy, +Dzprime*Sx-Dxprime*Sz, Id));
-			Terms.nextn.push_back(make_tuple(1., +Dxprime*Sz-Dzprime*Sx, Sy, Id));
-		}
+		SiteOperator<Symmetry,complex<double> > Sx = B.Scomp(SX).cast<complex<double> >();
+		SiteOperator<Symmetry,complex<double> > Sy = -1.i*B.Scomp(iSY).cast<complex<double> >();
+		SiteOperator<Symmetry,complex<double> > Sz = B.Scomp(SZ).cast<complex<double> >();
+		SiteOperator<Symmetry,complex<double> > Id = B.Id().cast<complex<double> >();
 		
-		ss << ",Dx'=" << Dxprime << ",Dz'=" << Dzprime;
+		Terms.nextn.push_back(make_tuple(1., Sy, +Dzprime.x*Sx-Dxprime.x*Sz, Id));
+		Terms.nextn.push_back(make_tuple(1., +Dxprime.x*Sz-Dzprime.x*Sx, Sy, Id));
 	}
 	
-	Terms.name = (P.HAS("Dx") or P.HAS("Dy") or P.HAS("Dxprime") or P.HAS("Dzprime"))? "Dzyaloshinsky-Moriya":"HeisenbergXYZ";
-	Terms.info += ss.str();
-}
-
-HeisenbergXYZ::
-HeisenbergXYZ (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
-:MpoQ<Symmetry,complex<double> > (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
-                                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                                  qarray<0>({}), vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "")
-{
-	ParamHandler P(params,HeisenbergU1::defaults);
+	param0d Jxprime = P.fill_array0d<double>("Jxprime","Jxprime",loc);
+	save_label(Jxprime.label);
 	
-	size_t Lcell = P.size();
-	vector<SuperMatrix<Symmetry,complex<double> > > G;
-	vector<HamiltonianTerms<Symmetry,complex<double> > > Terms(N_sites);
+	param0d Jyprime = P.fill_array0d<double>("Jyprime","Jyprime",loc);
+	save_label(Jyprime.label);
 	
-	for (size_t l=0; l<N_sites; ++l)
+	param0d Jzprime = P.fill_array0d<double>("Jzprime","Jzprime",loc);
+	save_label(Jzprime.label);
+	
+	if (Jxprime.x != 0.)
 	{
-		B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
-		setLocBasis(B.get_basis(),l);
-		
-		Terms[l] = HeisenbergU1::set_operators(B,P,l%Lcell).cast<complex<double> >();
-		add_operators(Terms[l],B,P,l%Lcell);
-		this->Daux = Terms[l].auxdim();
-		
-		G.push_back(Generator(Terms[l]));
+		assert(B.orbitals() == 1 and "Cannot do a ladder with Jx' terms!");
+		Terms.nextn.push_back(make_tuple(Jxprime.x, B.Scomp(SX).template cast<complex<double> >(), 
+		                                            B.Scomp(SX).template cast<complex<double> >(), 
+		                                            B.Id().template cast<complex<double> >()));
 	}
 	
-	this->generate_label(Terms[0].name,Terms,Lcell);
-	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	if (Jyprime.x != 0.)
+	{
+		assert(B.orbitals() == 1 and "Cannot do a ladder with Jy' terms!");
+		Terms.nextn.push_back(make_tuple(Jxprime.x, -1.i*B.Scomp(iSY).template cast<complex<double> >(), 
+		                                            -1.i*B.Scomp(iSY).template cast<complex<double> >(), 
+		                                                 B.Id().template cast<complex<double> >()));
+	}
+	
+	if (Jzprime.x != 0.)
+	{
+		assert(B.orbitals() == 1 and "Cannot do a ladder with Jz' terms!");
+		Terms.nextn.push_back(make_tuple(Jzprime.x, -1.i*B.Scomp(SZ).template cast<complex<double> >(), 
+		                                            -1.i*B.Scomp(SZ).template cast<complex<double> >(), 
+		                                                 B.Id().template cast<complex<double> >()));
+	}
+	
+	// local terms
+	
+	param0d Jxperp = P.fill_array0d<double>("Jx","Jxperp",loc);
+	save_label(Jxperp.label);
+	
+	param0d Jyperp = P.fill_array0d<double>("Jy","Jyperp",loc);
+	save_label(Jyperp.label);
+	
+	param0d Jzperp = P.fill_array0d<double>("Jz","Jzperp",loc);
+	save_label(Jzperp.label);
+	
+	param0d Dxperp = P.fill_array0d<double>("Dx","Dxperp",loc);
+	save_label(Dxperp.label);
+	
+	param0d Dzperp = P.fill_array0d<double>("Dz","Dzperp",loc);
+	save_label(Dzperp.label);
+	
+	auto [By,Byorb,Bylabel] = P.fill_array1d<double>("By","Byorb",B.orbitals(),loc);
+	save_label(Bylabel);
+	
+	auto [Ky,Kyorb,Kylabel] = P.fill_array1d<double>("Ky","Kyorb",B.orbitals(),loc);
+	save_label(Kylabel);
+	
+	Terms.name = (P.HAS_ANY_OF({"Dx","Dy","Dz","Dxprime","Dyprime","Dzprime","Dxpara","Dypara","Dzpara"},loc))? 
+	"Dzyaloshinsky-Moriya":"HeisenbergXYZ";
+	
+	Array3d Jorb; Jorb << Jxperp.x, Jyperp.x, Jzperp.x;
+	Array<double,Dynamic,3> Borb(B.orbitals(),3); Borb=0.; Borb.col(1)=Byorb;
+	Array<double,Dynamic,3> Korb(B.orbitals(),3); Korb=0.; Korb.col(1)=Kyorb;
+	Array3d Dorb; Dorb << Dxperp.x, 0., Dzperp.x;
+	
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jorb,Borb,Korb,Dorb, P.get<bool>("CYLINDER"))));
 }
 
 }

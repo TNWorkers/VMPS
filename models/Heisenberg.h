@@ -67,7 +67,7 @@ protected:
 const std::map<string,std::any> Heisenberg::defaults = 
 {
 	{"J",-1.}, {"Jprime",0.}, {"Jperp",0.},
-	{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"K",0.},
+	{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"Kz",0.}, {"Kx",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyperp",0.}, // Dzialoshinsky-Moriya terms
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 };
@@ -77,7 +77,7 @@ Heisenberg::
 Heisenberg (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
 :MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                 qarray<0>({}), vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "")
+                 qarray<0>({}), labeldummy, "")
 {
 	ParamHandler P(params,Heisenberg::defaults);
 	
@@ -96,6 +96,7 @@ Heisenberg (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> 
 		this->Daux = Terms[l].auxdim();
 		
 		G.push_back(Generator(Terms[l]));
+		setOpBasis(G[l].calc_qOp(),l);
 	}
 	
 	this->generate_label(Terms[0].name,Terms,Lcell);
@@ -108,7 +109,7 @@ Sz (size_t loc)
 	assert(loc<N_sites);
 	stringstream ss;
 	ss << "Sz(" << loc << ")";
-	MpoQ<Symmetry > Mout(N_sites, N_legs, qarray<0>{}, vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "");
+	MpoQ<Symmetry > Mout(N_sites, N_legs, qarray<0>{}, labeldummy, "");
 	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B[l].get_basis(),l); }
 	Mout.setLocal(loc, B[loc].Scomp(SZ));
 	return Mout;
@@ -120,7 +121,7 @@ SzSz (size_t loc1, size_t loc2)
 	assert(loc1<N_sites and loc2<N_sites);
 	stringstream ss;
 	ss << "Sz(" << loc1 << ")" <<  "Sz(" << loc2 << ")";
-	MpoQ<Symmetry > Mout(N_sites, N_legs, qarray<0>{}, vector<qarray<0> >(begin(qloc1dummy),end(qloc1dummy)), labeldummy, "");
+	MpoQ<Symmetry > Mout(N_sites, N_legs, qarray<0>{}, labeldummy, "");
 	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B[l].get_basis(),l); }
 	Mout.setLocal({loc1, loc2}, {B[loc1].Scomp(SZ), B[loc2].Scomp(SZ)});
 	return Mout;
@@ -149,18 +150,15 @@ add_operators (HamiltonianTermsXd<Symmetry> &Terms, const SpinBase<Symmetry> &B,
 		}
 	}
 	
-	double Dyprime = P.get_default<double>("Dyprime");
+	param0d Dyprime = P.fill_array0d<double>("Dyprime","Dyprime",loc);
+	save_label(Dyprime.label);
 	
-	if (P.HAS("Dyprime",loc))
+	if (Dyprime.x != 0.)
 	{
-		Dyprime = P.get<double>("Dyprime",loc);
+		assert(B.orbitals() == 1 and "Cannot do a ladder with Dy' terms!");
 		
-		if (Dyprime != 0.)
-		{
-			Terms.nextn.push_back(make_tuple(+Dyprime, B.Scomp(SX), B.Scomp(SZ), B.Id()));
-			Terms.nextn.push_back(make_tuple(-Dyprime, B.Scomp(SZ), B.Scomp(SX), B.Id()));
-		}
-		stringstream ss; ss << "Dy'=" << Dyprime; Terms.info.push_back(ss.str());
+		Terms.nextn.push_back(make_tuple(+Dyprime.x, B.Scomp(SX), B.Scomp(SZ), B.Id()));
+		Terms.nextn.push_back(make_tuple(-Dyprime.x, B.Scomp(SZ), B.Scomp(SX), B.Id()));
 	}
 	
 	// local terms
@@ -168,19 +166,18 @@ add_operators (HamiltonianTermsXd<Symmetry> &Terms, const SpinBase<Symmetry> &B,
 	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",B.orbitals(),loc);
 	save_label(Bxlabel);
 	
+	auto [Kx,Kxorb,Kxlabel] = P.fill_array1d<double>("Kx","Kxorb",B.orbitals(),loc);
+	save_label(Kxlabel);
+	
 	param0d Dyperp = P.fill_array0d<double>("Dy","Dyperp",loc);
 	save_label(Dyperp.label);
 	
-	if (P.HAS_ANY_OF({"Dy","Dyperp","Dyprime"},loc))
-	{
-		Terms.name = "Dzyaloshinsky-Moriya";
-	}
-	else
-	{
-		Terms.name = "Heisenberg";
-	}
+	Terms.name = (P.HAS_ANY_OF({"Dy","Dyperp","Dyprime"},loc))? "Dzyaloshinsky-Moriya":"Heisenberg";
 	
-	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(0.,0.,B.Zero(),Bxorb,B.Zero(),Dyperp.x, P.get<bool>("CYLINDER"))));
+	ArrayXd Bzorb = B.ZeroField();
+	ArrayXd Kzorb = B.ZeroField();
+	
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(0.,0.,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp.x, P.get<bool>("CYLINDER"))));
 }
 
 } // end namespace VMPS

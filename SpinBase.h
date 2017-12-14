@@ -56,7 +56,7 @@ public:
 	
 	OperatorType Id() const;
 	
-	ArrayXd Zero() const;
+	ArrayXd ZeroField() const;
 	
 	string alignment (double J) const {return (J<0.)? "(AFM)":"(FM)";};
 	
@@ -66,9 +66,15 @@ public:
 	\param Bz : \f$B_{z}\f$
 	\param Bx : \f$B_{x}\f$
 	\param PERIODIC: periodic boundary conditions if \p true*/
-	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., double K=0., double Dy=0., bool PERIODIC=false) const;
+	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., double Kz=0., double Kx=0., double Dy=0., 
+	                                    bool PERIODIC=false) const;
 	
-	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &K, double Dy=0., bool PERIODIC=false) const;
+	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, 
+	                                    const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &Kz, const ArrayXd &Kx, double Dy=0., 
+	                                    bool PERIODIC=false) const;
+	
+	SiteOperator<Symmetry,complex<double> > HeisenbergHamiltonian 
+	(Array3d J, Array<double,Dynamic,3> B, Array<double,Dynamic,3> K, Array3d D, bool PERIODIC=false) const;
 	
 private:
 	
@@ -123,49 +129,37 @@ Id() const
 
 template<typename Symmetry>
 ArrayXd SpinBase<Symmetry>::
-Zero() const
+ZeroField() const
 {
 	return ArrayXd::Zero(N_orbitals);
 }
 
 template<typename Symmetry>
 SiteOperator<Symmetry,double> SpinBase<Symmetry>::
-HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &K, double Dy, bool PERIODIC) const
+HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &Kz, const ArrayXd &Kx, double Dy, bool PERIODIC) const
 {
 	assert (Bz.rows() == N_orbitals and Bx.rows() == N_orbitals);
 	
 	SparseMatrixXd Mout(N_states,N_states);
-
-	for (int i=0; i<N_orbitals-1; ++i) // for all bonds
+	
+	size_t ilast = (PERIODIC == true and N_orbitals>2)? N_orbitals:N_orbitals-1;
+	
+	for (int i=0; i<ilast; ++i) // for all bonds
 	{
 		if (Jxy != 0.)
 		{
-			Mout += -0.5*Jxy * (Scomp(SP,i).data*Scomp(SM,i+1).data + Scomp(SM,i).data*Scomp(SP,i+1).data);
+			Mout += -0.5*Jxy * (Scomp(SP,i).data*Scomp(SM,(i+1)%N_orbitals).data + Scomp(SM,i).data*Scomp(SP,(i+1)%N_orbitals).data);
 		}
 		if (Jz != 0.)
 		{
-			Mout += -Jz * Scomp(SZ,i).data*Scomp(SZ,i+1).data;
+			Mout += -Jz * Scomp(SZ,i).data*Scomp(SZ,(i+1)%N_orbitals).data;
 		}
 		if (Dy != 0.)
 		{
-			Mout += Dy * (Scomp(SX,i).data*Scomp(SZ,i+1).data - Scomp(SZ,i).data*Scomp(SX,i+1).data);
+			Mout += Dy * (Scomp(SX,i).data*Scomp(SZ,(i+1)%N_orbitals).data - Scomp(SZ,i).data*Scomp(SX,(i+1)%N_orbitals).data);
 		}
 	}
-	if (PERIODIC == true and N_orbitals>2)
-	{
-		if (Jxy != 0.)
-		{
-			Mout += -0.5*Jxy * (Scomp(SP,0).data*Scomp(SM,N_orbitals-1).data + Scomp(SM,0).data*Scomp(SP,N_orbitals-1).data);
-		}
-		if (Jz != 0.)
-		{
-			Mout += -Jz * Scomp(SZ,0).data*Scomp(SZ,N_orbitals-1).data;
-		}
-		if (Dy != 0.)
-		{
-			Mout += Dy * (Scomp(SX,0).data*Scomp(SZ,N_orbitals-1).data - Scomp(SZ,0).data*Scomp(SX,N_orbitals-1).data);
-		}
-	}
+	
 	for (int i=0; i<N_orbitals; ++i)
 	{
 		if (Bz(i) != 0.) {Mout -= Bz(i) * Scomp(SZ,i).data;}
@@ -176,7 +170,11 @@ HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &
 	}
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (K(i)!=0.) {Mout += K(i) * Scomp(SZ,i).data * Scomp(SZ,i).data;}
+		if (Kz(i)!=0.) {Mout += Kz(i) * Scomp(SZ,i).data * Scomp(SZ,i).data;}
+	}
+	for (int i=0; i<N_orbitals; ++i)
+	{
+		if (Kx(i)!=0.) {Mout += Kx(i) * Scomp(SX,i).data * Scomp(SX,i).data;}
 	}
 	
 	OperatorType Oout(Mout,Symmetry::qvacuum());
@@ -185,12 +183,58 @@ HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &
 
 template<typename Symmetry>
 SiteOperator<Symmetry,double> SpinBase<Symmetry>::
-HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double K, double Dy, bool PERIODIC) const
+HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double Kz, double Kx, double Dy, bool PERIODIC) const
 {
-	ArrayXd Bzvec(N_orbitals); Bzvec.setConstant(Bz);
-	ArrayXd Bxvec(N_orbitals); Bxvec.setConstant(Bx);
-	ArrayXd Kvec(N_orbitals); Kvec.setConstant(K);
-	return HeisenbergHamiltonian(Jxy, Jz, Bzvec, Bxvec, Kvec, Dy, PERIODIC);
+	ArrayXd Bzorb(N_orbitals); Bzorb = Bz;
+	ArrayXd Bxorb(N_orbitals); Bxorb = Bx;
+	ArrayXd Kzorb(N_orbitals); Bzorb = Kz;
+	ArrayXd Kxorb(N_orbitals); Kxorb = Kx;
+	return HeisenbergHamiltonian(Jxy, Jz, Bzorb, Bxorb, Kzorb, Kxorb, Dy, PERIODIC);
+}
+
+template<typename Symmetry>
+SiteOperator<Symmetry,complex<double> > SpinBase<Symmetry>::
+HeisenbergHamiltonian (Array3d J, Array<double,Dynamic,3> B, Array<double,Dynamic,3> K, Array3d D, bool PERIODIC) const
+{
+	SiteOperator<Symmetry,complex<double> > Oout = 
+	HeisenbergHamiltonian(0.,J(2),B.col(2),B.col(0),K.col(2),K.col(0),D(1),PERIODIC).template cast<complex<double> >();
+	
+	size_t ilast = (PERIODIC == true and N_orbitals>2)? N_orbitals:N_orbitals-1;
+	
+	for (size_t i=0; i<ilast; ++i) // for all bonds
+	{
+		if (J(0) != 0.)
+		{
+			Oout.data += -J(0) * (Scomp(SX,i).data * Scomp(SX,(i+1)%N_orbitals).data).template cast<complex<double> >();
+		}
+		if (J(1) != 0.)
+		{
+			Oout.data += +J[1] * (Scomp(iSY,i).data * Scomp(iSY,(i+1)%N_orbitals)).data.template cast<complex<double> >();
+		}
+		if (D(0) != 0.)
+		{
+			Oout.data += D(0) * (-1.i) * (Scomp(iSY,i).data * Scomp(SZ,(i+1)%N_orbitals).data 
+			                            -Scomp(SZ,i).data * Scomp(iSY,(i+1)%N_orbitals).data).template cast<complex<double> >();
+		}
+		if (D(2) != 0.)
+		{
+			Oout.data += D(2) * (-1.i) * (Scomp(SX,i).data * Scomp(iSY,(i+1)%N_orbitals).data 
+			                             -Scomp(iSY,i).data * Scomp(SX,(i+1)%N_orbitals).data).template cast<complex<double> >();
+		}
+	}
+	
+	// By
+	for (int i=0; i<N_orbitals; ++i)
+	{
+		if (B(i,2) != 0.) {Oout.data -= B(i,2) * (-1.i) * Scomp(iSY,i).data.template cast<complex<double> >();}
+	}
+	// Ky
+	for (int i=0; i<N_orbitals; ++i)
+	{
+		if (K(i,1) != 0.) {Oout.data -= K(i,1) * (Scomp(iSY,i).data*Scomp(iSY,i).data).template cast<complex<double> >();}
+	}
+	
+	return Oout;
 }
 
 template<typename Symmetry>
