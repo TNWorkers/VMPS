@@ -7,7 +7,7 @@ namespace VMPS
 {
 	
 /** \class HeisenbergU1XXZ
-  * \ingroup Models
+  * \ingroup Heisenberg
   *
   * \brief Heisenberg Model with XXZ-coupling
   *

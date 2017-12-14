@@ -24,6 +24,24 @@
  *
  */
 
+/** @defgroup Heisenberg Heisenberg Models
+ * @ingroup Models
+ * Different variants of the Heisenberg model.
+ *
+ */
+
+/** @defgroup Hubbard Hubbard Models
+ * @ingroup Models
+ * Different variants of the Hubbard model.
+ *
+ */
+
+/** @defgroup Kondo Kondo Models
+ * @ingroup Models
+ * Different variants of the Kondo model.
+ *
+ */
+
 /** @defgroup Fermions Base for fermions
  *
  * This group defines the local fermion operators in different block diagonal forms, depending on the used symmetry.

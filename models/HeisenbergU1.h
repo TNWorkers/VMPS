@@ -13,7 +13,7 @@ namespace VMPS
 {
 
 /** \class HeisenbergU1
-  * \ingroup Models
+  * \ingroup Heisenberg
   *
   * \brief Heisenberg Model
   *

@@ -8,15 +8,24 @@
 namespace VMPS
 {
 
-/**MPO representation of 
-\f$
-H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
+/** \class HubbardU1xU1
+  * \ingroup Hubbard
+  *
+  * \brief Hubbard Model
+  *
+  * MPO representation of
+  \f[
+  H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
     - t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
     + U \sum_i n_{i\uparrow} n_{i\downarrow}
     + V \sum_{<ij>} n_{i} n_{j}
-\f$.
-\note If the nnn-hopping is positive, the ground state energy is lowered.
-\warning \f$J>0\f$ is antiferromagnetic*/
+  \f]
+  *
+  \note Take use of the \f$S_z\f$ U(1) symmetry and the U(1) particle conservation symmetry.
+  \note The default variable settings can be seen in \p HubbardU1xU1::defaults.
+  \note If the nnn-hopping is positive, the ground state energy is lowered.
+  \warning \f$J>0\f$ is antiferromagnetic
+*/
 class HubbardU1xU1 : public MpoQ<Sym::U1xU1<double>,double>
 {
 typedef Sym::U1xU1<double> Symmetry;

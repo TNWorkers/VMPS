@@ -6,7 +6,7 @@
 namespace VMPS
 {
 /** \class KondoU1
- * \ingroup Models
+ * \ingroup Kondo
  *
  * \brief Kondo Model
  *
