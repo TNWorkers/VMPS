@@ -21,8 +21,7 @@ namespace VMPS
   \note Uses no symmetry. Any parameter constellations are allowed. For variants with symmetries, see VMPS::HeisenbergU1 or VMPS::HeisenbergSU2.
   \note The default variable settings can be seen in \p Heisenberg::defaults.
   \note \f$J<0\f$ is antiferromagnetic
-  \todo In principal one could allow here a general \f$xyz\f$-model. Until now this is not possible, because the Generator of VMPS::HeisenbergU1 is used.
-        Maybe change the order, that VMPS::HeisenbergU1 uses the Generator of VMPS::Heisenberg.
+  \note This is the real version of the Heisenbergmodel without symmetries, so \f$J_x = J_y\f$ is mandatory. For general couplings use VMPS::HeisenbergXYZ.
 */
 class Heisenberg : public MpoQ<Sym::U0,double>
 {

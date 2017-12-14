@@ -5,7 +5,24 @@
 
 namespace VMPS
 {
-
+	
+/** \class HeisenbergU1XXZ
+  * \ingroup Models
+  *
+  * \brief Heisenberg Model with XXZ-coupling
+  *
+  * MPO representation of
+  \f[
+  H = -J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^z_iS^z_j 
+      -J'_{xy} \sum_{<<ij>>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J'_z \sum_{<<ij>>} S^z_iS^z_j 
+      - B_z \sum_i S^z_i
+  \f]
+  *
+  \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
+  \note Take use of the \f$S^z\f$ U(1) symmetry.
+  \note The default variable settings can be seen in \p HeisenbergU1XXZ::defaults.
+  \note \f$J<0\f$ is antiferromagnetic.
+*/
 class HeisenbergU1XXZ : public HeisenbergU1
 {
 public:

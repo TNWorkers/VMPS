@@ -20,7 +20,7 @@ namespace VMPS
   H = -J \sum_{<ij>} \left(\mathbf{S_i}\mathbf{S_j}\right) -J' \sum_{<<ij>>} \left(\mathbf{S_i}\mathbf{S_j}\right)
   \f]
   *
-  \note Take use of the Spin SU(2) symmetry, which implies no magnetic fields. For using B-fields see VMPS::HeisenbergU1 or VMPS::Heisenberg.
+  \note Take use of the Spin SU(2) symmetry, which implies no magnetic fields. For using B-fields see VMPS::HeisenbergU1.
   \note The default variable settings can be seen in \p HeisenbergSU2::defaults.
   \note \f$J<0\f$ is antiferromagnetic
   */

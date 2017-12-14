@@ -19,7 +19,7 @@ namespace VMPS
   *
   * MPO representation of
   \f[
-  H = -J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^z_iS^z_j -J' \sum_{<<ij>>} \left(\mathbf{S_i}\mathbf{S_j}\right)
+  H = -J \sum_{<ij>} \left(\mathbf{S_i}\mathbf{S_j}\right) -J' \sum_{<<ij>>} \left(\mathbf{S_i}\mathbf{S_j}\right)
       - B_z \sum_i S^z_i
   \f]
   *
@@ -27,8 +27,8 @@ namespace VMPS
   \note Take use of the \f$S^z\f$ U(1) symmetry.
   \note The default variable settings can be seen in \p HeisenbergU1::defaults.
   \note \f$J<0\f$ is antiferromagnetic
+  \note Homogeneous \f$J\f$ is required here. For a XXZ couplings, use VMPS::HeisenbergU1XXZ.
 */
-
 class HeisenbergU1 : public MpoQ<Sym::U1<double>,double>
 {
 public:

@@ -6,6 +6,23 @@
 namespace VMPS
 {
 
+/** \class HeisenbergXYZ
+  * \ingroup Models
+  *
+  * \brief Heisenberg Model with general XYZ coupling.
+  *
+  * MPO representation of
+  \f[
+  H = -\sum_{<ij> \alpha} J_{\alpha} S^{\alpha}_iS^{\alpha}_j - \sum_{<<ij>>} J^{\prime\alpha} S^{\alpha}_iS^{\alpha}_j
+      -\sum_i \mathbf{B}\cdot\mathbf{S}_i
+  \f]
+  *
+  \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
+  \note Uses no symmetry. Any parameter constellations are allowed. For variants with symmetries, see VMPS::HeisenbergU1 or VMPS::HeisenbergSU2.
+  \note The default variable settings can be seen in \p HeisenbergXYZ::defaults.
+  \note \f$J<0\f$ is antiferromagnetic
+  \note Due to the \f$S_y\f$ operator, this MPO is complex.
+*/
 class HeisenbergXYZ : public MpoQ<Sym::U0,complex<double> >
 {
 public:
@@ -23,11 +40,11 @@ public:
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
-//	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
-//	typedef DmrgSolverQ<Symmetry,Heisenberg>                Solver;
-//	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
-//	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
-//	typedef MpoQ<Symmetry>                                  Operator;
+	typedef MpsQ<Symmetry,complex<double> >                           StateXcd;
+	typedef DmrgSolverQ<Symmetry,HeisenbergXYZ>                       Solver;
+	typedef MpsQCompressor<Symmetry,complex<double>,double>           CompressorXd;
+	typedef MpsQCompressor<Symmetry,complex<double>,complex<double> > CompressorXcd;
+	typedef MpoQ<Symmetry,complex<double> >                           Operator;
 	///@}
 	
 //	///@{
