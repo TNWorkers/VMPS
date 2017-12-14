@@ -190,7 +190,7 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 		if (label!="") {Terms.info.push_back(label);}
 	};
 	
-	// J-terms
+	// J terms
 	
 	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",B.orbitals(),loc);
 	save_label(Jlabel);
@@ -206,7 +206,7 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 		}
 	}
 	
-	// J'-terms
+	// J' terms
 	
 	param0d Jprime = P.fill_array0d<double>("Jprime","Jprime",loc);
 	save_label(Jprime.label);

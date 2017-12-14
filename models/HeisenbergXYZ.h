@@ -104,7 +104,7 @@ add_operators (HamiltonianTerms<Symmetry,complex<double> > &Terms, const SpinBas
 		if (label!="") {Terms.info.push_back(label);}
 	};
 	
-	// J-terms
+	// J terms
 	
 	auto [Jx,Jxpara,Jxlabel] = P.fill_array2d<double>("Jx","Jxpara",B.orbitals(),loc);
 	save_label(Jxlabel);
