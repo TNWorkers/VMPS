@@ -13,8 +13,14 @@ namespace VMPS
   *
   * MPO representation of
   \f[
-  H = -\sum_{<ij> \alpha} J_{\alpha} S^{\alpha}_iS^{\alpha}_j - \sum_{<<ij>>} J^{\prime\alpha} S^{\alpha}_iS^{\alpha}_j
-      -\sum_i \mathbf{B}\cdot\mathbf{S}_i
+  H = \sum_{\alpha=x,y,z} \left(
+      -J_{\alpha} \sum_{<ij>} \left(S^{\alpha}_i \cdot S^{\alpha}_j\right) 
+      -J'_{\alpha} \sum_{<<ij>>} \left(S^{\alpha}_i \cdot S^{\alpha}_j\right) 
+      -B_{\alpha} \sum_i S^{\alpha}_i
+      +K_{\alpha} \sum_i \left(S^{\alpha}_i\right)^2
+      \right)
+      -\mathbf{D} \sum_{<ij>} \left(\mathbf{S}_i \times \mathbf{S}_j\right) 
+      -\mathbf{D'} \sum_{<<ij>>} \left(\mathbf{S}_i \times \mathbf{S}_j\right) 
   \f]
   *
   \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin

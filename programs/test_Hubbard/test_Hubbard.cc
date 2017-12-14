@@ -46,11 +46,8 @@ Logger lout;
 #include "DmrgPivotStuff2Q.h"
 #include "TDVPPropagator.h"
 
-//#include "models/HeisenbergSU2.h"
-
 #include "models/HubbardU1xU1.h"
-#include "models/HeisenbergU1XXZ.h"
-#include "models/HeisenbergXYZ.h"
+#include "models/Hubbard.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, int n=14)
@@ -60,38 +57,10 @@ string to_string_prec (Scalar x, int n=14)
 	return ss.str();
 }
 
-VMPS::HeisenbergU1XXZ::StateXcd Neel (const VMPS::HeisenbergU1XXZ &H)
-{
-	vector<qarray<1> > Neel_config(H.length());
-	for (int l=0; l<H.length(); l+=2)
-	{
-		Neel_config[l]   = qarray<1>{+1};
-		Neel_config[l+1] = qarray<1>{-1};
-	}
-	
-	VMPS::HeisenbergU1XXZ::StateXcd Psi; 
-	Psi.setProductState(H,Neel_config);
-	
-	return Psi;
-}
-
-void test (variant<size_t,std::array<size_t,2> > Lxy)
-{
-	if (holds_alternative<std::array<size_t,2> >(Lxy))
-	{
-		cout << "Lx=" << get<1>(Lxy)[0] << ", Ly=" << get<1>(Lxy)[1] << endl;
-	}
-	else
-	{
-		cout << "Lx=" << get<0>(Lxy) << ", Ly=" << 1 << endl;
-	}
-}
-
 bool CALC_DYNAMICS;
-int M, S;
-size_t D;
 size_t L, Lx, Ly;
-double J, Jprime;
+double t, tPrime, U, mu, Bz;
+int Nupdn;
 double alpha;
 double t_U0, t_U1, t_SU2;
 int Dinit, Dlimit, Imin, Imax;
@@ -105,11 +74,11 @@ int main (int argc, char* argv[])
 	Lx = args.get<size_t>("Lx",10); L=Lx;
 	Ly = args.get<size_t>("Ly",1);
 	std::array<size_t,2> Lxy = {Lx,Ly};
-	J = args.get<double>("J",-1.);
-	Jprime = args.get<double>("Jprime",0.);
-	M = args.get<int>("M",0);
-	D = args.get<size_t>("D",2);
-	S = abs(M)+1;
+	t = args.get<double>("t",1.);
+	tPrime = args.get<double>("tPrime",0.);
+	U = args.get<double>("U",10.);
+	mu = args.get<double>("mu",-0.5*U);
+	Nupdn = args.get<int>("Nupdn",L/2);
 	alpha = args.get<double>("alpha",1.);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	dt = 0.2;
@@ -124,7 +93,7 @@ int main (int argc, char* argv[])
 	CALC_DYNAMICS = args.get<bool>("CALC_DYN",0);
 	
 	lout << args.info() << endl;
-	lout.set(make_string("Lx=",Lx,"_Ly=",Ly,"_M=",M,"_D=",D,"_J=",J,".log"),"log");
+	lout.set(make_string("Lx=",Lx,"_Ly=",Ly,"_t=",t,"_t'=",tPrime,"_U=",U,".log"),"log");
 	
 	#ifdef _OPENMP
 	lout << "threads=" << omp_get_max_threads() << endl;
@@ -136,76 +105,48 @@ int main (int argc, char* argv[])
 	lout << endl << "--------U(0)---------" << endl << endl;
 	
 	Stopwatch<> Watch_U0;
-//	VMPS::GrandHeisenbergU1 H_U0(L,J,J,0,0,Ly,true,D); // Bz=0, Bx=0
-	VMPS::Heisenberg H_U0(Lxy,{{"J",J},{"Jprime",Jprime},{"D",D}});
+	VMPS::Hubbard H_U0(Lxy,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu}});
 	lout << H_U0.info() << endl;
-	Eigenstate<VMPS::Heisenberg::StateXd> g_U0;
+	Eigenstate<VMPS::Hubbard::StateXd> g_U0;
 	
-//	VMPS::HeisenbergXYZ Hxyz(Lxy,{{"Jx",1.},{"Jy",2.},{"Jz",3.}});
-//	cout << Hxyz.info() << endl;
-//	VMPS::HeisenbergXYZ Hdm(Lxy,{{"Dy",4.},{"Dz",5.}});
-//	cout << Hdm.info() << endl;
-	
-	VMPS::Heisenberg::Solver DMRG_U0(VERB);
+	VMPS::Hubbard::Solver DMRG_U0(VERB);
 	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
 	
+	for (size_t l=0; l<Lx; ++l)
+	{
+		cout << "l=" << l << "\tn=" << avg(g_U0.state, H_U0.n(UPDN,l), g_U0.state) << endl;
+	}
+	
 	t_U0 = Watch_U0.time();
-	
-	// observables
-	
-	Eigen::MatrixXd SpinCorr_U0(L,L); SpinCorr_U0.setZero();
-	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U0(i,j) = 3*avg(g_U0.state, H_U0.SzSz(i,j), g_U0.state); }
-	
-	// compressor
-	
-	VMPS::Heisenberg::StateXd Hxg_U0;
-	HxV(H_U0,g_U0.state,Hxg_U0,VERB);
-	double E_U0_compressor = g_U0.state.dot(Hxg_U0);
-	
-	// zipper
-	
-	VMPS::Heisenberg::StateXd Oxg_U0;
-	Oxg_U0.eps_svd = 1e-15;
-	OxV(H_U0,g_U0.state,Oxg_U0,DMRG::BROOM::SVD);
-	double E_U0_zipper = g_U0.state.dot(Oxg_U0);
+//	
+//	// observables
+//	
+//	Eigen::MatrixXd SpinCorr_U0(L,L); SpinCorr_U0.setZero();
+//	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U0(i,j) = 3*avg(g_U0.state, H_U0.SzSz(i,j), g_U0.state); }
+//	
+//	// compressor
+//	
+//	VMPS::Hubbard::StateXd Hxg_U0;
+//	HxV(H_U0,g_U0.state,Hxg_U0,VERB);
+//	double E_U0_compressor = g_U0.state.dot(Hxg_U0);
+//	
+//	// zipper
+//	
+//	VMPS::Hubbard::StateXd Oxg_U0;
+//	Oxg_U0.eps_svd = 1e-15;
+//	OxV(H_U0,g_U0.state,Oxg_U0,DMRG::BROOM::SVD);
+//	double E_U0_zipper = g_U0.state.dot(Oxg_U0);
 	
 	//--------U(1)---------
 	lout << endl << "--------U(1)---------" << endl << endl;
 	
-//	VMPS::HubbardU1xU1 Hub_U1(L,{{"U",numeric_limits<double>::infinity()},{"J3site",1.}});
-//	lout << Hub_U1.info() << endl;
-//	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1;
-//	
-//	VMPS::HubbardU1xU1::Solver DMRG_U1(VERB);
-//	DMRG_U1.edgeState(Hub_U1, g_U1, {Nupdn,Nupdn}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
-//	
-//	VMPS::HubbardU1xU1 H1(L,{{"U",numeric_limits<double>::infinity()}});
-//	lout << H1.info() << endl;
-//	
-//	std::array Lxy = {Lx,Ly};
-//	VMPS::HubbardU1xU1 H2(std::array<size_t,2>{Lx,Ly},{{"U",numeric_limits<double>::infinity()}});
-//	lout << H2.info() << endl;
-//	
-//	test(std::array{10ul,2ul});
-//	test(30ul);
-	
-//	VMPS::HubbardU1xU1 H1(L,{{"U",U,0},{"U",2*U,1},{"t",t}},Ly);
-//	lout << H1.info() << endl;
-//	VMPS::HubbardU1xU1 H2(L,{{"U",U,0},{"t",t,0},{"t",2*t,1}},Ly);
-//	lout << H2.info() << endl;
-//	VMPS::HubbardU1xU1 H3(L,{{"U",numeric_limits<double>::infinity()}},Ly);
-//	lout << H3.info() << endl;
-//	lout << H3 <<
-	
-	
 	Stopwatch<> Watch_U1;
-//	VMPS::HeisenbergU1 H_U1(L,J,J,0,D,Ly,true); // Bz=0
-	VMPS::HeisenbergU1 H_U1(Lxy,{{"J",J},{"Jprime",Jprime},{"Jperp",24.},{"D",D}});
+	VMPS::HubbardU1xU1 H_U1(Lxy,{{"t",t},{"tPrime",tPrime},{"U",U}});
 	lout << H_U1.info() << endl;
-	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
+	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1;
 	
-	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	VMPS::HubbardU1xU1::Solver DMRG_U1(VERB);
+	DMRG_U1.edgeState(H_U1, g_U1, {Nupdn,Nupdn}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_U1 = Watch_U1.time();
 
@@ -215,52 +156,16 @@ int main (int argc, char* argv[])
 
 	// compressor
 	
-	VMPS::HeisenbergU1::StateXd Hxg_U1;
+	VMPS::HubbardU1xU1::StateXd Hxg_U1;
 	HxV(H_U1,g_U1.state,Hxg_U1,VERB);
 	double E_U1_compressor = g_U1.state.dot(Hxg_U1);
 	
 	// zipper
 	
-	VMPS::HeisenbergU1::StateXd Oxg_U1;
+	VMPS::HubbardU1xU1::StateXd Oxg_U1;
 	Oxg_U1.eps_svd = 1e-15;
 	OxV(H_U1,g_U1.state,Oxg_U1,DMRG::BROOM::SVD);
 	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
-	
-	// dynamics (of Néel state)
-	if (CALC_DYNAMICS)
-	{
-		lout << "-------DYNAMICS-------" << endl;
-		int Ldyn = 12;
-		vector<double> Jz_list = {0., -1., -2., -4.};
-		
-		for (const auto& Jz:Jz_list)
-		{
-			cout << "Jz=" << Jz << endl;
-			VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
-			lout << H_U1t.info() << endl;
-			VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
-			TDVPPropagator<VMPS::HeisenbergU1XXZ,Sym::U1<double>,double,complex<double>,VMPS::HeisenbergU1XXZ::StateXcd> TDVP(H_U1t,Psi);
-		
-			double t = 0;
-			ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
-			for (int i=0; i<=static_cast<int>(6./dt); ++i)
-			{
-				double res = 0;
-				for (int l=0; l<Ldyn; ++l)
-				{
-					res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
-				}
-				res /= Ldyn;
-				if(VERB != DMRG::VERBOSITY::SILENT) {lout << t << "\t" << res << endl;}
-				Filer << t << "\t" << res << endl;
-		
-				TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
-				if(VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
-				t += dt;
-			}
-			Filer.close();
-		}
-	}
 	
 	// --------SU(2)---------
 //	lout << endl << "--------SU(2)---------" << endl << endl;
@@ -305,15 +210,4 @@ int main (int argc, char* argv[])
 //	T.endOfRow();
 //	
 //	lout << endl << T;
-	
-	ArrayXXd Jpara(2,2); Jpara.setRandom();
-	std::array<size_t,2> Lx2 = {Lx,2};
-	VMPS::HeisenbergU1 H2(Lx2,{{"Jpara",Jpara},{"Jperp",4056.},{"D",D}});
-	cout << H2.info() << endl;
-	
-	VMPS::HeisenbergU1 H1(Lxy,{{"J",J},{"Jperp",45.},{"D",D}});
-	cout << H1.info() << endl;
-	
-	VMPS::HeisenbergXYZ H3(Lxy,{{"Jx",1.},{"Jy",2.},{"Jz",3.}});
-	cout << H3.info() << endl;
 }

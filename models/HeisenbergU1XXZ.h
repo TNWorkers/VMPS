@@ -15,7 +15,10 @@ namespace VMPS
   \f[
   H = -J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^z_iS^z_j 
       -J'_{xy} \sum_{<<ij>>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J'_z \sum_{<<ij>>} S^z_iS^z_j 
-      - B_z \sum_i S^z_i
+      -B_z \sum_i S^z_i
+      +K_z \sum_i \left(S^z_i\right)^2
+      -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
+      -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
   \f]
   *
   \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin

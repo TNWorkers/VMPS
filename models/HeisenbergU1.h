@@ -19,8 +19,12 @@ namespace VMPS
   *
   * MPO representation of
   \f[
-  H = -J \sum_{<ij>} \left(\mathbf{S_i}\mathbf{S_j}\right) -J' \sum_{<<ij>>} \left(\mathbf{S_i}\mathbf{S_j}\right)
-      - B_z \sum_i S^z_i
+  H = -J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) 
+      -J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right)
+      -B_z \sum_i S^z_i
+      +K_z \sum_i \left(S^z_i\right)^2
+      -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
+      -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
   \f]
   *
   \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin

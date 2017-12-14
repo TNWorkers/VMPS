@@ -171,7 +171,9 @@ public:
 	*/
 	OperatorType sign (int orb1=0, int orb2=0) const;
 	
-	OperatorType Id () const;
+	OperatorType Id() const;
+	
+	ArrayXd ZeroField() const;
 	
 	/**Fermionic sign for the transfer to a particular orbital, needed by HubbardModel::c and HubbardModel::cdag.
 	\param orbital : orbital on the supersite*/
@@ -190,14 +192,14 @@ public:
 	
 	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
 	\param Uvec : \f$U\f$ for each orbital
-	\param onsite : \f$E_i\f$ for each orbital
+	\param mu : \f$E_i\f$ for each orbital
 	\param Bzloc : \f$B_z\f$ for each orbital
 	\param t : \f$t\f$
 	\param V : \f$V\f$
 	\param J : \f$J\f$
 	\param PERIODIC: periodic boundary conditions if \p true*/
 	template<typename Scalar> SiteOperator<Symmetry,Scalar>
-	HubbardHamiltonian (ArrayXd Uvec, ArrayXd onsite, ArrayXd Bzloc, ArrayXd Bxloc, Scalar t=1., double V=0., double J=0., bool PERIODIC=false) const;
+	HubbardHamiltonian (ArrayXd Uvec, ArrayXd mu, ArrayXd Bzloc, ArrayXd Bxloc, Scalar t=1., double V=0., double J=0., bool PERIODIC=false) const;
 	
 	vector<qarray<Symmetry::Nq> > get_basis() const;
 	
@@ -399,6 +401,13 @@ Id() const
 }
 
 template<typename Symmetry>
+ArrayXd FermionBase<Symmetry>::
+ZeroField() const
+{
+	return ArrayXd::Zero(N_orbitals);
+}
+
+template<typename Symmetry>
 SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 sign_local (int orbital) const
 {
@@ -467,7 +476,7 @@ HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERI
 template<typename Symmetry>
 template<typename Scalar>
 SiteOperator<Symmetry,Scalar> FermionBase<Symmetry>::
-HubbardHamiltonian (ArrayXd Uloc, ArrayXd onsite, ArrayXd Bzloc, ArrayXd Bxloc, Scalar t, double V, double J, bool PERIODIC) const
+HubbardHamiltonian (ArrayXd Uloc, ArrayXd mu, ArrayXd Bzloc, ArrayXd Bxloc, Scalar t, double V, double J, bool PERIODIC) const
 {
 	SparseMatrix<Scalar> Mout = HubbardHamiltonian(0,t,V,J,0,PERIODIC).data;
 	
@@ -480,11 +489,11 @@ HubbardHamiltonian (ArrayXd Uloc, ArrayXd onsite, ArrayXd Bzloc, ArrayXd Bxloc, 
 				Mout += Uloc(i) * d(i).data.template cast<Scalar>();
 			}
 		}
-		if (onsite.rows() > 0)
+		if (mu.rows() > 0)
 		{
-			if (onsite(i) != 0.)
+			if (mu(i) != 0.)
 			{
-				Mout += onsite(i) * n(i).data.template cast<Scalar>();
+				Mout += mu(i) * n(i).data.template cast<Scalar>();
 			}
 		}
 		if (Bzloc.rows() > 0)

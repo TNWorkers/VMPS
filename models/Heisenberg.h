@@ -12,9 +12,15 @@ namespace VMPS
   * \brief Heisenberg Model
   *
   * MPO representation of
-  \f[
-  H = -J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^z_iS^z_j -J' \sum_{<<ij>>} \left(\mathbf{S_i}\mathbf{S_j}\right)
-      - B_z \sum_i S^z_i - B_x \sum_i S^x_i
+ \f[
+  H = -J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) 
+      -J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right)
+      -B_z \sum_i S^z_i
+      -B_x \sum_i S^x_i
+      +K_z \sum_i \left(S^z_i\right)^2
+      +K_x \sum_i \left(S^x_i\right)^2
+      -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
+      -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
   \f]
   *
   \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin

@@ -15,10 +15,20 @@ namespace VMPS
   *
   * MPO representation of
   \f[
-  H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
-    - t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
-    + U \sum_i n_{i\uparrow} n_{i\downarrow}
-    + V \sum_{<ij>} n_{i} n_{j}
+  H = -t \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c. \right)
+      -t^{\prime} \sum_{<<ij>>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} +h.c. \right)
+      +U \sum_i n_{i\uparrow} n_{i\downarrow}
+      +V \sum_{<ij>} n_{i} n_{j}
+      -B_z \sum_{i} \left(n_{i\uparrow}-n_{i\downarrow}\right)
+      +H_{tJ}
+      +H_{3-site}
+  \f]
+  with
+  \f[
+  H_{tJ} = +J \sum_{<ij>} (\mathbf{S}_{i} \mathbf{S}_{j} - \frac{1}{4} n_in_j)
+  \f]
+  \f[
+  H_{3-site} = -\frac{J}{4} \sum_{<ijk>\sigma} (c^\dagger_{i\sigma} n_{j,-\sigma} c_{k\sigma} - c^\dagger_{i\sigma} S^{-\sigma}_j c_{k,-\sigma} + h.c.) \
   \f]
   *
   \note Take use of the \f$S_z\f$ U(1) symmetry and the U(1) particle conservation symmetry.
@@ -48,8 +58,6 @@ public:
 	
 	/**Labels the conserved quantum numbers as \f$N_\uparrow\f$, \f$N_\downarrow\f$.*/
 	static const std::array<string,2> Nlabel;
-	
-	static const vector<qarray<2> > qOp();
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
@@ -85,36 +93,24 @@ public:
 	MpoQ<Symmetry> quadruplon (size_t locx, size_t locy=0);
 	///@}
 	
-protected:
+	static const std::map<string,std::any> defaults;
 	
-	const std::map<string,std::any> defaults = 
-	{
-		{"U",0.}, {"V",0.}, {"Bz",0.}, {"J",0.}, {"mu",0.},
-		{"t",1.}, {"tPara",0.}, {"tPerp",0.},
-		{"tPrime",0.}, {"J3site",0.},
-		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
-	};
+protected:
 	
 	vector<FermionBase<Symmetry> > F;
 };
 
 //const std::array<qarray<2>,4> HubbardU1xU1::qssNupNdn {qarray<2>{0,0}, qarray<2>{1,0}, qarray<2>{0,1},  qarray<2>{1,1}};
 //const std::array<qarray<2>,4> HubbardU1xU1::qssNM     {qarray<2>{0,0}, qarray<2>{1,1}, qarray<2>{1,-1}, qarray<2>{2,0}};
-const std::array<string,2>    HubbardU1xU1::Nlabel {"N↑","N↓"};
+const std::array<string,2> HubbardU1xU1::Nlabel {"N↑","N↓"};
 
-const vector<qarray<2> > HubbardU1xU1::
-qOp()
+const std::map<string,std::any> HubbardU1xU1::defaults = 
 {
-	vector<qarray<2> > vout;
-	vout.push_back({0,0});
-	vout.push_back({+1,0});
-	vout.push_back({-1,0});
-	vout.push_back({0,+1});
-	vout.push_back({0,-1});
-	vout.push_back({+1,-1});
-	vout.push_back({-1,+1});
-	return vout;
-}
+	{"U",0.}, {"V",0.}, {"Bz",0.}, {"mu",0.},
+	{"t",1.}, {"tPerp",0.}, {"tPrime",0.}, 
+	{"J",0.}, {"J3site",0.},
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
+};
 
 HubbardU1xU1::
 HubbardU1xU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
@@ -127,6 +123,7 @@ HubbardU1xU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
+	F.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -247,9 +244,8 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	{
 		Terms.name = (P.HAS_ANY_OF({"J","J3site"}))? "t-J":"U=∞-Hubbard";
 	}
-
-	ArrayXd zeros(F.orbitals()); zeros = 0.;
-	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uorb,muorb,Bzorb,zeros,tPerp.x,V,J, P.get<bool>("CYLINDER"))));
+	
+	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uorb,muorb,Bzorb,F.ZeroField(),tPerp.x,V,J, P.get<bool>("CYLINDER"))));
 	
 	return Terms;
 }
