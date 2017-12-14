@@ -36,8 +36,10 @@ public:
 	
 	/**
 	\param L_input : amount of sites
-	\param D_input : \f$D=2S+1\f$*/
-	SpinBase (size_t L_input, size_t D_input);
+	\param D_input : \f$D=2S+1\f$
+	\param N : if true, the particle number is the good quantum number --> trivial for spins --> all operators have qvacuum()
+	*/
+	SpinBase (size_t L_input, size_t D_input, bool N_input=false);
 	
 	/**amount of states = \f$D^L\f$*/
 	inline size_t dim() const {return N_states;}
@@ -85,6 +87,7 @@ private:
 	size_t N_orbitals;
 	size_t N_states;
 	size_t D;
+	bool N;
 	
 	/**Returns the qarray for a given index of the basis.
 	\param index*/
@@ -93,8 +96,8 @@ private:
 
 template<typename Symmetry>
 SpinBase<Symmetry>::
-SpinBase (size_t L_input, size_t D_input)
-:N_orbitals(L_input), D(D_input)
+SpinBase (size_t L_input, size_t D_input, bool N_input)
+	:N_orbitals(L_input), D(D_input), N(N_input)
 {
 	assert(N_orbitals >= 1);
 	assert(D >= 1);
@@ -251,7 +254,11 @@ qNums (size_t index) const
 	}
 	
 	if constexpr(Symmetry::IS_TRIVIAL){ return qarray<0>{}; }
-	else if constexpr(Symmetry::Nq == 1) { return qarray<1>{M}; }
+	else if constexpr(Symmetry::Nq == 1)
+					 {
+						 if(N) { return qarray<1>{0}; }
+						 else { return qarray<1>{M}; }
+					 }
 	//return a dummy quantum number for a second symmetry. Format: {other symmetry, magnetization}
 	else if constexpr(Symmetry::Nq == 2) { return qarray<2>{{0,M}}; }
 }
@@ -277,14 +284,18 @@ getQ (SPINOP_LABEL Sa) const
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
 	else if constexpr(Symmetry::Nq == 1)
 					 {
-						 typename Symmetry::qType out;
-						 if      (Sa==SX)  {out = {0};}
-						 else if (Sa==SY)  {out = {0};}
-						 else if (Sa==iSY) {out = {0};}
-						 else if (Sa==SZ)  {out = {0};}
-						 else if (Sa==SP)  {out = {+2};}
-						 else if (Sa==SM)  {out = {-2};}
-						 return out;
+						 if(N) { return qarray<1>{0}; }
+						 else
+						 {
+							 typename Symmetry::qType out;
+							 if      (Sa==SX)  {out = {0};}
+							 else if (Sa==SY)  {out = {0};}
+							 else if (Sa==iSY) {out = {0};}
+							 else if (Sa==SZ)  {out = {0};}
+							 else if (Sa==SP)  {out = {+2};}
+							 else if (Sa==SM)  {out = {-2};}
+							 return out;
+						 }
 					 }
 	else if constexpr(Symmetry::Nq == 2) //return a dummy quantum number for a second symmetry. Format: {other symmetry, magnetization}
 					 {

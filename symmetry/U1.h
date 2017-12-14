@@ -118,7 +118,7 @@ reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
 {
 	std::vector<typename U1<Scalar>::qType> vout;
 	for (std::size_t q=0; q<ql.size(); q++)
-	for (std::size_t p=0; p<ql.size(); p++)
+	for (std::size_t p=0; p<qr.size(); p++)
 	{
 		vout.push_back({ql[q][0]+qr[p][0]});
 	}

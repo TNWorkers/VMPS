@@ -237,8 +237,9 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	{
 		Terms.name = (P.HAS_ANY_OF({"J","J3site"}))? "t-J":"U=∞-Hubbard";
 	}
-	
-	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uorb,muorb,Bzorb,tPerp.x,V,J, P.get<bool>("CYLINDER"))));
+
+	ArrayXd zeros(F.orbitals()); zeros = 0.;
+	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uorb,muorb,Bzorb,zeros,tPerp.x,V,J, P.get<bool>("CYLINDER"))));
 	
 	return Terms;
 }

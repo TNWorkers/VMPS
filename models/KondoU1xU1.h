@@ -27,8 +27,10 @@ namespace VMPS
 */
 class KondoU1xU1 : public MpoQ<Sym::U1xU1<double>,double>
 {
-typedef Sym::U1xU1<double> Symmetry;
-typedef typename Symmetry::qType qType;
+public:
+	typedef Sym::U1xU1<double> Symmetry;
+private:
+	typedef typename Symmetry::qType qType;
 public:
 	/**Does nothing.*/
 	KondoU1xU1 () : MpoQ(){};
@@ -42,9 +44,6 @@ public:
 	template<typename Symmetry_> 
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F,
 														const ParamHandler &P, size_t loc=0);
-
-	/**Operator Quantum numbers: \f$\{ Id,S_z:k=\left|0\right>; S_+:k=\left|+2\right>; S_-:k=\left|-2\right>\}\f$ */
-	static const vector<qType > qOp();
 
 	/**Makes half-integers in the output for the magnetization quantum number.*/
 	static string N_halveM (qType qnum);
@@ -88,8 +87,8 @@ protected:
 	const std::map<string,std::any> defaults = 
 	{
 		{"J",-1.}, {"U",0.}, {"V",0.}, {"mu",0.},
-		{"t",1.}, {"tPara",0.}, {"tPerp",0.},{"tPrime",0.},
-		{"D",2ul}, {"Bz",0.}, {"Bz_elec",0.}, {"Bx",0.}, {"K",0.},
+		{"t",1.}, {"tpara",0.}, {"tperp",0.},{"tprime",0.},
+		{"D",2ul}, {"Bz",0.}, {"Bz_elec",0.}, {"K",0.},
 		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 	};
 
@@ -99,25 +98,11 @@ protected:
 
 const std::array<string,2> KondoU1xU1::NMlabel{"N","M"};
 
-const vector<qarray<2> > KondoU1xU1::
-qOp ()
-{
-	vector<qarray<2> > vout;
-	vout.push_back({0,0}); //Id
-	vout.push_back({+1,+1});//cUpDAg
-	vout.push_back({-1,-1});//cUp
-	vout.push_back({-1,+1});//cDNDag
-	vout.push_back({+1,-1});//cDn
-	// vout.push_back({+1,-1});//
-	// vout.push_back({-1,+1});
-	return vout;
-}
-
 KondoU1xU1::
 KondoU1xU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
 	:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0],
 					 holds_alternative<size_t>(L)? 1        :get<1>(L)[1],
-					 qarray<Symmetry::Nq>({0,0}), KondoU1xU1::qOp(), KondoU1xU1::NMlabel, "")//, KondoU1xU1::N_halveM())
+					 qarray<Symmetry::Nq>({0,0}), KondoU1xU1::NMlabel, "")//, KondoU1xU1::N_halveM())
 {
 	ParamHandler P(params,defaults);
 	
@@ -137,6 +122,7 @@ KondoU1xU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
 		this->Daux = Terms[l].auxdim();
 		
 		G.push_back(Generator(Terms[l])); // boost::multi_array has stupid assignment
+		setOpBasis(G[l].calc_qOp(),l);
 	}
 	
 	this->generate_label(Terms[0].name,Terms,Lcell);
@@ -432,73 +418,62 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	stringstream Slabel;
 	Slabel << "S=" << print_frac_nice(S);
 	Terms.info.push_back(Slabel.str());
-
-	// stringstream ss;
-	// IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ",", ",", "", "", "{", "}");
 	
 	// hopping terms
 
-	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F.orbitals(),loc);
+	auto [t,tpara,tlabel] = P.fill_array2d<double>("t","tpara",F.orbitals(),loc);
 	if(!tlabel.empty()) {Terms.info.push_back(tlabel);}
 	
 	for (int i=0; i<F.orbitals(); ++i)
 	for (int j=0; j<F.orbitals(); ++j)
 	{
-		if (tPara(i,j) != 0.)
+		if (tpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-tPara(i,j),kroneckerProduct(B.Id(), F.cdag(UP,i)),
+			Terms.tight.push_back(make_tuple(-tpara(i,j),kroneckerProduct(B.Id(), F.cdag(UP,i)),
 											 kroneckerProduct(B.Id(),F.sign()* F.c(UP,j))));
-			Terms.tight.push_back(make_tuple(-tPara(i,j),kroneckerProduct(B.Id(), F.cdag(DN,i)),
+			Terms.tight.push_back(make_tuple(-tpara(i,j),kroneckerProduct(B.Id(), F.cdag(DN,i)),
 											 kroneckerProduct(B.Id(),F.sign()* F.c(DN,j))));
-			Terms.tight.push_back(make_tuple(+tPara(i,j),kroneckerProduct(B.Id(), F.c(UP,i)),
+			Terms.tight.push_back(make_tuple(+tpara(i,j),kroneckerProduct(B.Id(), F.c(UP,i)),
 											 kroneckerProduct(B.Id(),F.sign()* F.cdag(UP,j))));
-			Terms.tight.push_back(make_tuple(+tPara(i,j),kroneckerProduct(B.Id(), F.c(DN,i)),
+			Terms.tight.push_back(make_tuple(+tpara(i,j),kroneckerProduct(B.Id(), F.c(DN,i)),
 											 kroneckerProduct(B.Id(),F.sign()* F.cdag(DN,j))));
 		}
 	}
 	
 	// V terms
 	
-	double V = P.get_default<double>("V");
-	
-	if (P.HAS("V",loc))
+	param0d V = P.fill_array0d<double>("V","V",loc);
+	if(!V.label.empty()) {Terms.info.push_back(V.label);}
+	if(V.x != 0.)
 	{
 		for (int i=0; i<F.orbitals(); ++i)
 		{
-			Terms.tight.push_back(make_tuple(V, kroneckerProduct(B.Id(),F.n(i)), kroneckerProduct(B.Id(),F.n(i))));
+			Terms.tight.push_back(make_tuple(V.x, kroneckerProduct(B.Id(),F.n(i)), kroneckerProduct(B.Id(),F.n(i))));
 		}
-		stringstream Vlabel;
-		Vlabel << "V=" << V;
-		Terms.info.push_back(Vlabel.str());
 	}
 	
 	/// NNN-terms
 	
-	double tPrime = P.get_default<double>("tPrime");
-	
-	if (P.HAS("tPrime",loc))
+	// double tPrime = P.get_default<double>("tPrime");
+	param0d tprime = P.fill_array0d<double>("tprime","tprime",loc);
+	if(!tprime.label.empty()) {Terms.info.push_back(tprime.label);}
+	assert((B.orbitals() == 1 or tprime.x == 0.) and "Cannot interpret Ly>1 and t'!=0");
+
+	if(tprime.x!=0)
 	{
-		tPrime = P.get<double>("tPrime", loc);
-		assert((B.orbitals() == 1 or tPrime == 0.) and "Cannot interpret Ly>1 and t'!=0");
-		stringstream tPrimelabel;
-		tPrimelabel << "t'=" << tPrime;
-		Terms.info.push_back(tPrimelabel.str());
-	}
-	if(tPrime!=0)
-	{
-		Terms.nextn.push_back(make_tuple(-tPrime,
+		Terms.nextn.push_back(make_tuple(-tprime.x,
 										 kroneckerProduct(B.Id(),F.cdag(UP,0)),
 										 kroneckerProduct(B.Id(),F.sign()* F.c(UP,0)),
 										 kroneckerProduct(B.Id(),F.sign())));
-		Terms.nextn.push_back(make_tuple(-tPrime,
+		Terms.nextn.push_back(make_tuple(-tprime.x,
 										 kroneckerProduct(B.Id(),F.cdag(DN,0)),
 										 kroneckerProduct(B.Id(),F.sign()* F.c(DN,0)),
 										 kroneckerProduct(B.Id(),F.sign())));
-		Terms.nextn.push_back(make_tuple(+tPrime,
+		Terms.nextn.push_back(make_tuple(+tprime.x,
 										 kroneckerProduct(B.Id(),F.c(UP,0)),
 										 kroneckerProduct(B.Id(),F.sign()* F.cdag(UP,0)),
 										 kroneckerProduct(B.Id(),F.sign())));
-		Terms.nextn.push_back(make_tuple(+tPrime,
+		Terms.nextn.push_back(make_tuple(+tprime.x,
 										 kroneckerProduct(B.Id(),F.c(DN,0)),
 										 kroneckerProduct(B.Id(),F.sign()* F.cdag(DN,0)),
 										 kroneckerProduct(B.Id(),F.sign())));
@@ -512,18 +487,8 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	Terms.info.push_back(Jlabel);
 
 	// t⟂
-	double tPerp = P.get_default<double>("tPerp");
-	if (P.HAS("tPerp",loc))
-	{
-		tPerp = P.get<double>("tPerp",loc);
-		stringstream ss;
-		ss << "t⟂=" << tPerp;
-		Terms.info.push_back(ss.str());
-	}
-	else if (P.HAS("t",loc))
-	{
-		tPerp = P.get<double>("t",loc);
-	}
+	param0d tperp = P.fill_array0d<double>("t","tperp",loc);
+	if(!tperp.label.empty()) {Terms.info.push_back(tperp.label);}
 
 	// Hubbard U
 	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F.orbitals(),loc);
@@ -545,12 +510,10 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F.orbitals(),loc);
 	if(!Bzlabel.empty()) {Terms.info.push_back(Bzlabel);}
 
-	// Bx spins
-	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",F.orbitals(),loc);
-	if(!Bxlabel.empty()) {Terms.info.push_back(Bxlabel);}
-
-	auto Hheis = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,Bzorb,Bxorb,Korb),F.Id());
-	auto Hhubb = kroneckerProduct(B.Id(),F.HubbardHamiltonian(Uorb,muorb,Bz_elecorb,tPerp,V,J, P.get<bool>("CYLINDER")));
+	//Fields in x-direction break the S_z U(1) symmetry. Use KondoU1 instead.
+	ArrayXd zeros(F.orbitals()); zeros = 0.;
+	auto Hheis = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,Bzorb,zeros,Korb),F.Id());
+	auto Hhubb = kroneckerProduct(B.Id(),F.HubbardHamiltonian(Uorb,muorb,Bz_elecorb,zeros,tperp.x,V.x,J, P.get<bool>("CYLINDER")));
 	auto Hkondo = Hheis + Hhubb;
 	for (int i=0; i<F.orbitals(); ++i)
 	{
