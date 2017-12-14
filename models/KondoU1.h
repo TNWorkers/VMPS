@@ -11,16 +11,19 @@ namespace VMPS
  * \brief Kondo Model
  *
  * MPO representation of 
- \f$
+ \f[
  H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
  - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i \in I} B_i^z S_i^z - \sum_{i \in I} B_i^x S_i^x
- \f$.
+ \f]
  *
+  \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin of the impurity.
+
  \note Take use of the U(1) particle conservation symmetry.
  \note The \f$S_z\f$ U(1) symmetry is borken due to the field in x-direction.
  \note The default variable settings can be seen in \p KondoU1::defaults.
  \note \f$J<0\f$ is antiferromagnetic
  \note If nnn-hopping is positive, the GS-energy is lowered.
+ \note The multi-impurity model can be received, by setting D=1 (S=0) for all sites without an impurity.
  \todo Most of the observalbes need to be adjusted properly.
 */
 class KondoU1 : public MpoQ<Sym::U1<double>,double>
@@ -32,7 +35,7 @@ private:
 public:
 	/**Does nothing.*/
 	KondoU1 () : MpoQ(){};
-	KondoU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params);
+	KondoU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
 
 	
 	/**Labels the conserved quantum number as "N".*/
@@ -72,7 +75,7 @@ public:
 	Operator hopping (size_t locx, size_t locy=0);
 	///@}
 	
-private:
+protected:
 
 	const std::map<string,std::any> defaults = 
 	{
@@ -90,7 +93,7 @@ private:
 const std::array<string,1> KondoU1::Nlabel{"N"};
 
 KondoU1::
-KondoU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
+KondoU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
 	:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0],
 					 holds_alternative<size_t>(L)? 1        :get<1>(L)[1],
 					 qarray<Symmetry::Nq>({0}), KondoU1::Nlabel, "")
@@ -206,7 +209,7 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &
 	if(!Bxlabel.empty()) {Terms.info.push_back(Bxlabel);}
 
 	ArrayXd zeros(F.orbitals()); zeros = 0.;
-	auto H_Bxspins = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,zeros,Bxorb,zeros),F.Id());
+	auto H_Bxspins = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,B.ZeroField(),Bxorb,B.ZeroField(),B.ZeroField(),0.,P.get<bool>("CYLINDER")),F.Id());
 	auto H_Bxelec = kroneckerProduct(B.Id(),F.HubbardHamiltonian(zeros,zeros,zeros,Bx_elecorb,0.,0.,0., P.get<bool>("CYLINDER")));
 	auto H_Bx = H_Bxspins + H_Bxelec;
 

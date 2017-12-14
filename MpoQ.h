@@ -97,9 +97,6 @@ public:
 	
 	// new constructors:
 
-	MpoQ (){};
-
-	MpoQ (std::size_t Lx_input, std::size_t Ly_input) {this->N_sites = Lx_input;  this->N_legs = Ly_input; initialize();}
 
 	MpoQ (size_t Lx_input, size_t Ly_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input,  
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
@@ -110,8 +107,16 @@ public:
 	      bool UNITARY_input=false);
 	
 	// new new constructors:
-	
+
+	MpoQ (){};
+
+	MpoQ (std::size_t Lx_input, std::size_t Ly_input) {this->N_sites = Lx_input;  this->N_legs = Ly_input; initialize();}
+
 	MpoQ (size_t Lx_input, size_t Ly_input, qarray<Nq> Qtot_input,  
+	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
+	      bool UNITARY_input=false);
+
+	MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input,
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 
@@ -440,6 +445,15 @@ MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar
 		}
 	}
 	
+	construct(Gvec_input, W, Gvec);
+}
+
+template<typename Symmetry, typename Scalar>
+MpoQ<Symmetry,Scalar>::
+MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input,
+	      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), bool UNITARY_input)
+{
+	initialize();	
 	construct(Gvec_input, W, Gvec);
 }
 

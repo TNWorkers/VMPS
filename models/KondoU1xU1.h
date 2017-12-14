@@ -15,14 +15,18 @@ namespace VMPS
   * \brief Kondo Model
   *
   * MPO representation of 
-  \f$
-  H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i \in I} B_i^z S_i^z
-  \f$.
+  \f[
+  H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
+  - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i \in I} B_i^z S_i^z
+  \f]
   *
+  \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin of the impurity.
+
   \note Take use of the \f$S_z\f$ U(1) symmetry and the U(1) particle conservation symmetry.
   \note The default variable settings can be seen in \p KondoU1xU1::defaults.
   \note \f$J<0\f$ is antiferromagnetic
   \note If nnn-hopping is positive, the GS-energy is lowered.
+  \note The multi-impurity model can be received, by setting D=1 (S=0) for all sites without an impurity.
   \todo Most of the observalbes need to be adjusted properly.
 */
 class KondoU1xU1 : public MpoQ<Sym::U1xU1<double>,double>
@@ -34,7 +38,7 @@ private:
 public:
 	/**Does nothing.*/
 	KondoU1xU1 () : MpoQ(){};
-	KondoU1xU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params);
+	KondoU1xU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
 	
 	/**
 	   \param B : Base class from which the local spin-operators are received
@@ -99,7 +103,7 @@ protected:
 const std::array<string,2> KondoU1xU1::NMlabel{"N","M"};
 
 KondoU1xU1::
-KondoU1xU1 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
+KondoU1xU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
 	:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0],
 					 holds_alternative<size_t>(L)? 1        :get<1>(L)[1],
 					 qarray<Symmetry::Nq>({0,0}), KondoU1xU1::NMlabel, "")//, KondoU1xU1::N_halveM())
@@ -510,10 +514,8 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F.orbitals(),loc);
 	if(!Bzlabel.empty()) {Terms.info.push_back(Bzlabel);}
 
-	//Fields in x-direction break the S_z U(1) symmetry. Use KondoU1 instead.
-	ArrayXd zeros(F.orbitals()); zeros = 0.;
-	auto Hheis = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,Bzorb,zeros,Korb),F.Id());
-	auto Hhubb = kroneckerProduct(B.Id(),F.HubbardHamiltonian(Uorb,muorb,Bz_elecorb,zeros,tperp.x,V.x,J, P.get<bool>("CYLINDER")));
+	auto Hheis = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,Bzorb,B.ZeroField(),Korb,B.ZeroField(),0.,P.get<bool>("CYLINDER")),F.Id());
+	auto Hhubb = kroneckerProduct(B.Id(),F.HubbardHamiltonian(Uorb,muorb,Bz_elecorb,B.ZeroField(),tperp.x,V.x,J, P.get<bool>("CYLINDER")));
 	auto Hkondo = Hheis + Hhubb;
 	for (int i=0; i<F.orbitals(); ++i)
 	{

@@ -50,7 +50,7 @@ public:
 	   \describe_params
 	   \param Ly_input : amount of legs in ladder
 	*/
-	HeisenbergSU2 (variant<size_t,std::array<size_t,2> >, vector<Param> params);
+	HeisenbergSU2 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
 	///\}
 	
 	/**
@@ -95,7 +95,7 @@ protected:
 const std::array<string,1> HeisenbergSU2::Stotlabel{"S"};
 
 HeisenbergSU2::
-HeisenbergSU2 (variant<size_t,std::array<size_t,2> > L, vector<Param> params)
+HeisenbergSU2 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
 :MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
                  qarray<Symmetry::Nq>({1}), HeisenbergSU2::Stotlabel, "", halve)
