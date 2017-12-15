@@ -2,6 +2,7 @@
 #define STRAWBERRY_TRANSVERSEKONDOMODEL
 
 #include "models/KondoU1xU1.h"
+#include "symmetry/U1.h"
 
 namespace VMPS
 {
@@ -12,10 +13,13 @@ namespace VMPS
  *
  * MPO representation of 
  \f[
- H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
- - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i \in I} B_i^z S_i^z - \sum_{i \in I} B_i^x S_i^x
+ H = -t\sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right)
+ - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i
+ - \sum_{i \in I} B_i^x S_i^x
+ - \sum_{i \in I} B_i^z S_i^z
  \f]
  *
+ where further parameters from Hubbard and Heisenberg are possible.
   \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin of the impurity.
 
  \note Take use of the U(1) particle conservation symmetry.
@@ -78,9 +82,9 @@ public:
 	Operator hopping (size_t locx, size_t locy=0);
 	///@}
 	
-protected:
+	static const std::map<string,std::any> defaults;
 	
-	const std::map<string,std::any> defaults;
+protected:
 	
 	vector<FermionBase<Symmetry> > F;
 	vector<SpinBase<Symmetry> > B;
@@ -222,11 +226,9 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &
 	auto Himp = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,B.ZeroField(),Bxorb,B.ZeroField(),Kxorb,0.,P.get<bool>("CYLINDER")), F.Id());
 	auto Hsub = kroneckerProduct(B.Id(),F.HubbardHamiltonian(F.ZeroField(),F.ZeroField(),F.ZeroField(),Bxsuborb,0.,0.,0., P.get<bool>("CYLINDER")));
 	
-	Terms.local.push_back(make_tuple(1., Himp+Hsub));
+	Terms.local.push_back(make_tuple(1.,Himp+Hsub));
 	
 	Terms.name = "Transverse-field Kondo";
-	
-	return Terms;
 }
 
 };

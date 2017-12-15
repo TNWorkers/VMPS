@@ -16,10 +16,11 @@ namespace VMPS
   *
   * MPO representation of 
   \f[
-  H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
+  H = - \sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} +h.c.\right)
   - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i \in I} B_i^z S_i^z
   \f]
   *
+   where further parameters from HubbardU1xU1 and HeisenbergU1 are possible.
   \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin of the impurity.
 
   \note Take use of the \f$S_z\f$ U(1) symmetry and the U(1) particle conservation symmetry.
@@ -93,9 +94,9 @@ public:
 	\returns \p true if valid, \p false if not*/
 	bool validate (qType qnum) const;
 	
-protected:
+	static const std::map<string,std::any> defaults;
 	
-	const std::map<string,std::any> defaults;
+protected:
 	
 	vector<FermionBase<Symmetry> > F;
 	vector<SpinBase<Symmetry> > B;
@@ -452,16 +453,16 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	{
 		if (tPara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-tpara(i,j),
+			Terms.tight.push_back(make_tuple(-tPara(i,j),
 			                                 kroneckerProduct(B.Id(), F.cdag(UP,i)),
 			                                 kroneckerProduct(B.Id(),F.sign()* F.c(UP,j))));
-			Terms.tight.push_back(make_tuple(-tpara(i,j),
+			Terms.tight.push_back(make_tuple(-tPara(i,j),
 			                                 kroneckerProduct(B.Id(), F.cdag(DN,i)),
 			                                 kroneckerProduct(B.Id(),F.sign()* F.c(DN,j))));
-			Terms.tight.push_back(make_tuple(+tpara(i,j),
+			Terms.tight.push_back(make_tuple(+tPara(i,j),
 			                                 kroneckerProduct(B.Id(), F.c(UP,i)),
 			                                 kroneckerProduct(B.Id(),F.sign()* F.cdag(UP,j))));
-			Terms.tight.push_back(make_tuple(+tpara(i,j),
+			Terms.tight.push_back(make_tuple(+tPara(i,j),
 			                                 kroneckerProduct(B.Id(), F.c(DN,i)),
 			                                 kroneckerProduct(B.Id(),F.sign()* F.cdag(DN,j))));
 		}
