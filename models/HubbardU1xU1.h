@@ -17,6 +17,7 @@ namespace VMPS
   \f[
   H = -t \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c. \right)
       -t^{\prime} \sum_{<<ij>>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} +h.c. \right)
+      + \sum_i \left(t0_i-\mu\right) n_i
       +U \sum_i n_{i\uparrow} n_{i\downarrow}
       +V \sum_{<ij>} n_{i} n_{j}
       -B_z \sum_{i} \left(n_{i\uparrow}-n_{i\downarrow}\right)
@@ -106,9 +107,11 @@ const std::array<string,2> HubbardU1xU1::Nlabel {"N↑","N↓"};
 
 const std::map<string,std::any> HubbardU1xU1::defaults = 
 {
-	{"U",0.}, {"V",0.}, {"Bz",0.}, {"mu",0.},
 	{"t",1.}, {"tPerp",0.}, {"tPrime",0.}, 
-	{"J",0.}, {"J3site",0.},
+	{"mu",0.}, {"t0",0.}, 
+	{"U",0.}, {"V",0.}, {"Vperp",0.}, 
+	{"Bz",0.}, 
+	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 };
 
@@ -224,15 +227,31 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	
 	// local terms
 	
-	param0d tPerp = P.fill_array0d<double>("t","tPerp",loc);
+	// t⟂
+	param0d tPerp = P.fill_array0d<double>("tPerp","tPerp",loc);
 	save_label(tPerp.label);
 	
+	// V⟂
+	param0d Vperp = P.fill_array0d<double>("Vperp","Vperp",loc);
+	save_label(Vperp.label);
+	
+	// J⟂
+	param0d Jperp = P.fill_array0d<double>("Jperp","Jperp",loc);
+	save_label(Jperp.label);
+	
+	// Hubbard-U
 	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F.orbitals(),loc);
 	save_label(Ulabel);
 	
+	// μ
 	auto [mu,muorb,mulabel] = P.fill_array1d<double>("mu","muorb",F.orbitals(),loc);
 	save_label(mulabel);
 	
+	// t0
+	auto [t0,t0orb,t0label] = P.fill_array1d<double>("t0","t0orb",F.orbitals(),loc);
+	save_label(t0label);
+	
+	// Bz
 	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F.orbitals(),loc);
 	save_label(Bzlabel);
 	
@@ -245,7 +264,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 		Terms.name = (P.HAS_ANY_OF({"J","J3site"}))? "t-J":"U=∞-Hubbard";
 	}
 	
-	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uorb,muorb,Bzorb,F.ZeroField(),tPerp.x,V,J, P.get<bool>("CYLINDER"))));
+	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(Uorb,t0orb-muorb,Bzorb,F.ZeroField(),tPerp.x,Vperp.x,Jperp.x, P.get<bool>("CYLINDER"))));
 	
 	return Terms;
 }

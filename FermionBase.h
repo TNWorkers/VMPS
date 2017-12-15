@@ -199,7 +199,7 @@ public:
 	\param J : \f$J\f$
 	\param PERIODIC: periodic boundary conditions if \p true*/
 	template<typename Scalar> SiteOperator<Symmetry,Scalar>
-	HubbardHamiltonian (ArrayXd Uvec, ArrayXd mu, ArrayXd Bzloc, ArrayXd Bxloc, Scalar t=1., double V=0., double J=0., bool PERIODIC=false) const;
+	HubbardHamiltonian (ArrayXd Uvec, ArrayXd Eloc, ArrayXd Bzloc, ArrayXd Bxloc, Scalar t=1., double V=0., double J=0., bool PERIODIC=false) const;
 	
 	vector<qarray<Symmetry::Nq> > get_basis() const;
 	
@@ -429,38 +429,28 @@ HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERI
 {
 	SparseMatrix<Scalar> Mout(N_states,N_states);
 	
-	for (int i=0; i<N_orbitals-1; ++i) // for all bonds
+	size_t ilast = (PERIODIC == true and N_orbitals>2)? N_orbitals:N_orbitals-1;
+	
+	for (int i=0; i<ilast; ++i) // for all bonds
 	{
 		if (t != 0.)
 		{
-			SparseMatrix<Scalar> T = -t*(cdag(UP,i).data * c(UP,i+1).data + 
-			                             cdag(DN,i).data * c(DN,i+1).data).template cast<Scalar>();
+			SparseMatrix<Scalar> T = -t*(cdag(UP,i).data * c(UP,(i+1)%N_orbitals).data + 
+			                             cdag(DN,i).data * c(DN,(i+1)%N_orbitals).data).template cast<Scalar>();
 			Mout += -(T+SparseMatrix<Scalar>(T.adjoint()));
 		}
-		if (V != 0.) {Mout += V*(n(i).data*n(i+1).data).template cast<Scalar>();}
+		if (V != 0.)
+		{
+			Mout += V*(n(i).data*n((i+1)%N_orbitals).data).template cast<Scalar>();
+		}
 		if (J != 0.)
 		{
-			Mout += J*(0.5*Sp(i).data*Sm(i+1).data + 
-			           0.5*Sm(i).data*Sp(i+1).data + 
-			               Sz(i).data*Sz(i+1).data).template cast<Scalar>();
+			Mout += J*(0.5*Sp(i).data*Sm((i+1)%N_orbitals).data + 
+			           0.5*Sm(i).data*Sp((i+1)%N_orbitals).data + 
+			               Sz(i).data*Sz((i+1)%N_orbitals).data).template cast<Scalar>();
 		}
 	}
-	if (PERIODIC==true and N_orbitals>2)
-	{
-		if (t != 0.)
-		{
-			SparseMatrix<Scalar> T = -t*(cdag(UP,0).data*c(UP,N_orbitals-1).data + 
-			                             cdag(DN,0).data*c(DN,N_orbitals-1).data).template cast<Scalar>();
-			Mout += -(T+SparseMatrix<Scalar>(T.adjoint()));
-		}
-		if (V != 0.) {Mout += V*(n(0).data*n(N_orbitals-1).data).template cast<Scalar>();}
-		if (J != 0.)
-		{
-			Mout += J*(0.5*Sp(0).data*Sm(N_orbitals-1).data + 
-			           0.5*Sm(0).data*Sp(N_orbitals-1).data + 
-			               Sz(0).data*Sz(N_orbitals-1).data).template cast<Scalar>();
-		}
-	}
+	
 	if (U != 0. and U != numeric_limits<double>::infinity())
 	{
 		for (int i=0; i<N_orbitals; ++i) {Mout += U*d(i).data.template cast<Scalar>();}
@@ -476,9 +466,9 @@ HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERI
 template<typename Symmetry>
 template<typename Scalar>
 SiteOperator<Symmetry,Scalar> FermionBase<Symmetry>::
-HubbardHamiltonian (ArrayXd Uloc, ArrayXd mu, ArrayXd Bzloc, ArrayXd Bxloc, Scalar t, double V, double J, bool PERIODIC) const
+HubbardHamiltonian (ArrayXd Uloc, ArrayXd Eloc, ArrayXd Bzloc, ArrayXd Bxloc, Scalar t, double V, double J, bool PERIODIC) const
 {
-	SparseMatrix<Scalar> Mout = HubbardHamiltonian(0,t,V,J,0,PERIODIC).data;
+	SparseMatrix<Scalar> Mout = HubbardHamiltonian(0.,t,V,J,0.,PERIODIC).data;
 	
 	for (int i=0; i<N_orbitals; ++i)
 	{
@@ -489,11 +479,11 @@ HubbardHamiltonian (ArrayXd Uloc, ArrayXd mu, ArrayXd Bzloc, ArrayXd Bxloc, Scal
 				Mout += Uloc(i) * d(i).data.template cast<Scalar>();
 			}
 		}
-		if (mu.rows() > 0)
+		if (Eloc.rows() > 0)
 		{
-			if (mu(i) != 0.)
+			if (Eloc(i) != 0.)
 			{
-				Mout += mu(i) * n(i).data.template cast<Scalar>();
+				Mout += Eloc(i) * n(i).data.template cast<Scalar>();
 			}
 		}
 		if (Bzloc.rows() > 0)

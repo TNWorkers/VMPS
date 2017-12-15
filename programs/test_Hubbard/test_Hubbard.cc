@@ -76,8 +76,8 @@ int main (int argc, char* argv[])
 	std::array<size_t,2> Lxy = {Lx,Ly};
 	t = args.get<double>("t",1.);
 	tPrime = args.get<double>("tPrime",0.);
-	U = args.get<double>("U",10.);
-	mu = args.get<double>("mu",-0.5*U);
+	U = args.get<double>("U",8.);
+	mu = args.get<double>("mu",0.5*U);
 	Nupdn = args.get<int>("Nupdn",L/2);
 	alpha = args.get<double>("alpha",1.);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
@@ -112,10 +112,18 @@ int main (int argc, char* argv[])
 	VMPS::Hubbard::Solver DMRG_U0(VERB);
 	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
 	
+	lout << endl;
+	double Ntot = 0.;
 	for (size_t l=0; l<Lx; ++l)
 	{
-		cout << "l=" << l << "\tn=" << avg(g_U0.state, H_U0.n(UPDN,l), g_U0.state) << endl;
+		double n_l = avg(g_U0.state, H_U0.n(UPDN,l), g_U0.state);
+		cout << "l=" << l << "\tn=" << n_l << endl;
+		Ntot += n_l;
 	}
+	
+	double Emin = g_U0.energy+mu*Ntot;
+	double emin = Emin/(Lx*Ly);
+	lout << "correction for mu: E=" << Emin << ", E/L=" << emin << endl;
 	
 	t_U0 = Watch_U0.time();
 //	

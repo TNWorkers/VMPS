@@ -30,21 +30,24 @@ class KondoU1 : public MpoQ<Sym::U1<double>,double>
 {
 public:
 	typedef Sym::U1<double> Symmetry;
+	
 private:
 	typedef typename Symmetry::qType qType;
+	
 public:
-	/**Does nothing.*/
+	
+	///@{
 	KondoU1 () : MpoQ(){};
 	KondoU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
-
+	///@}
 	
 	/**Labels the conserved quantum number as "N".*/
-	static const std::array<string,1> Nlabel;	
-
+	static const std::array<string,1> Nlabel;
+	
 	template<typename Symmetry_>
-	static HamiltonianTermsXd<Symmetry_> add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F,
-														const ParamHandler &P, size_t loc=0);
-
+	static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &B, 
+	                           const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc=0);
+	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
 	typedef MpsQ<Symmetry,double>                           StateXd;
@@ -76,46 +79,50 @@ public:
 	///@}
 	
 protected:
-
-	const std::map<string,std::any> defaults = 
-	{
-		{"J",-1.}, {"U",0.}, {"V",0.}, {"mu",0.},
-		{"t",1.}, {"tpara",0.}, {"tperp",0.},{"tprime",0.},
-		{"D",2ul}, {"K",0.},
-		{"Bz",0.}, {"Bz_elec",0.}, {"Bx",1.}, {"Bx_elec",0.},
-		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
-	};
-
+	
+	const std::map<string,std::any> defaults;
+	
 	vector<FermionBase<Symmetry> > F;
 	vector<SpinBase<Symmetry> > B;
+};
+
+const std::map<string,std::any> KondoU1::defaults = 
+{
+	{"t",1.}, {"tPerp",0.}, {"tPrime",0.},
+	{"J",-1.}, 
+	{"U",0.}, {"V",0.}, {"Vperp",0.}, 
+	{"mu",0.}, {"t0",0.},
+	{"Bz",0.}, {"Bx",0.}, {"Bzsub",0.}, {"Bxsub",0.}, {"Kz",0.}, {"Kx",0.},
+	{"D",2ul},
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
 };
 
 const std::array<string,1> KondoU1::Nlabel{"N"};
 
 KondoU1::
 KondoU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
-	:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0],
-					 holds_alternative<size_t>(L)? 1        :get<1>(L)[1],
-					 qarray<Symmetry::Nq>({0}), KondoU1::Nlabel, "")
+:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0],
+                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1],
+                 qarray<Symmetry::Nq>({0}), KondoU1::Nlabel, "")
 {
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
-	B.resize(N_sites);	F.resize(N_sites);
-
+	B.resize(N_sites); F.resize(N_sites);
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		F[l] = FermionBase<Symmetry>(N_legs,!isfinite(P.get<double>("U",l%Lcell)));
-		B[l] = SpinBase<Symmetry>(N_legs,P.get<size_t>("D",l%Lcell),true); //true means N is good quantum number
+		F[l] = FermionBase<Symmetry>(N_legs, !isfinite(P.get<double>("U",l%Lcell)));
+		B[l] = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell), true); //true means N is good quantum number
 		setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);
 		
 		Terms[l] = KondoU1xU1::set_operators(B[l],F[l],P,l%Lcell);
 		add_operators(Terms[l],B[l],F[l],P,l%Lcell);
 		this->Daux = Terms[l].auxdim();
 		
-		G.push_back(Generator(Terms[l])); // boost::multi_array has stupid assignment
+		G.push_back(Generator(Terms[l]));
 		setOpBasis(G[l].calc_qOp(),l);
 	}
 	
@@ -192,31 +199,33 @@ KondoU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &pa
 // }
 
 template<typename Symmetry_>
-HamiltonianTermsXd<Symmetry_> KondoU1::
+void KondoU1::
 add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc)
 {
 	auto save_label = [&Terms] (string label)
 	{
 		if (label!="") {Terms.info.push_back(label);}
 	};
-
-	// Bx electronic sites
-	auto [Bx_elec,Bx_elecorb,Bx_eleclabel] = P.fill_array1d<double>("Bx_elec","Bx_elecorb",F.orbitals(),loc);
-	if(!Bx_eleclabel.empty()) {Terms.info.push_back(Bx_eleclabel);}
-
-	// Bx spins
+	
+	// Bx substrate
+	auto [Bxsub,Bxsuborb,Bxsublabel] = P.fill_array1d<double>("Bxsub","Bxsuborb",F.orbitals(),loc);
+	save_label(Bxsublabel);
+	
+	// Bx impurities
 	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",F.orbitals(),loc);
-	if(!Bxlabel.empty()) {Terms.info.push_back(Bxlabel);}
-
-	ArrayXd zeros(F.orbitals()); zeros = 0.;
-	auto H_Bxspins = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,B.ZeroField(),Bxorb,B.ZeroField(),B.ZeroField(),0.,P.get<bool>("CYLINDER")),F.Id());
-	auto H_Bxelec = kroneckerProduct(B.Id(),F.HubbardHamiltonian(zeros,zeros,zeros,Bx_elecorb,0.,0.,0., P.get<bool>("CYLINDER")));
-	auto H_Bx = H_Bxspins + H_Bxelec;
-
-	Terms.local.push_back(make_tuple(1., H_Bx));
-
-	Terms.name = "Transverse Kondo";
-
+	save_label(Bxlabel);
+	
+	// Kx anisotropy
+	auto [Kx,Kxorb,Kxlabel] = P.fill_array1d<double>("Kx","Kxorb",B.orbitals(),loc);
+	save_label(Kxlabel);
+	
+	auto Himp = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,B.ZeroField(),Bxorb,B.ZeroField(),Kxorb,0.,P.get<bool>("CYLINDER")), F.Id());
+	auto Hsub = kroneckerProduct(B.Id(),F.HubbardHamiltonian(F.ZeroField(),F.ZeroField(),F.ZeroField(),Bxsuborb,0.,0.,0., P.get<bool>("CYLINDER")));
+	
+	Terms.local.push_back(make_tuple(1., Himp+Hsub));
+	
+	Terms.name = "Transverse-field Kondo";
+	
 	return Terms;
 }
 

@@ -59,7 +59,7 @@ public:
 //	MpoQ<Symmetry> Sz   (size_t loc);
 //	///@}
 	
-	void add_operators (HamiltonianTerms<Symmetry,complex<double> > &T, const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc);
+	void add_operators (HamiltonianTerms<Symmetry,complex<double> > &Terms, const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc=0);
 	
 	static const std::map<string,std::any> defaults;
 	
