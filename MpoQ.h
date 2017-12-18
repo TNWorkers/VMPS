@@ -279,13 +279,13 @@ public:
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
-	typedef MpsQ<Symmetry,double>                           StateXd;
-	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
+	typedef MpsQ<Symmetry,double>                              StateXd;
+	typedef MpsQ<Symmetry,complex<double> >                    StateXcd;
 	typedef DmrgSolverQ<Symmetry,MpoQ<Symmetry,Scalar>,Scalar> Solver;
-//	typedef VumpsSolver<Symmetry,MpoQ<Symmetry,Scalar> >    uSolver;
-	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
-	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
-	typedef MpoQ<Symmetry>                                  Operator;
+//	typedef VumpsSolver<Symmetry,MpoQ<Symmetry,Scalar> >       uSolver;
+	typedef MpsQCompressor<Symmetry,double,double>             CompressorXd;
+	typedef MpsQCompressor<Symmetry,complex<double>,double>    CompressorXcd;
+	typedef MpoQ<Symmetry>                                     Operator;
 	///@}
 	
 protected:
