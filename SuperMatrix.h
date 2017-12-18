@@ -273,11 +273,11 @@ SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar
 	}
 	for (int i=0; i<Terms.tight.size(); ++i)
 	{
-		row.push_back(OperatorType(get<0>(Terms.tight[i]) * get<1>(Terms.tight[i]).data, get<1>(Terms.tight[i]).Q));
+		row.push_back(get<0>(Terms.tight[i]) * get<1>(Terms.tight[i]));
 	}
 	for (int i=0; i<Terms.nextn.size(); ++i)
 	{
-		row.push_back(OperatorType(get<0>(Terms.nextn[i]) * get<1>(Terms.nextn[i]).data, get<1>(Terms.nextn[i]).Q));
+		row.push_back(get<0>(Terms.nextn[i]) * get<1>(Terms.nextn[i]));
 	}
 	row.push_back(Id);
 	
@@ -302,17 +302,14 @@ SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar
 	
 	for (size_t i=0; i<Daux-1; ++i)
 	{
-		Gout(i,0).data     = col[i].data;
-		Gout(i,0).Q        = col[i].Q;
-		Gout(Daux-1,i+1).data = row[i].data;
-		Gout(Daux-1,i+1).Q = row[i].Q;
+		Gout(i,0)        = col[i];
+		Gout(Daux-1,i+1) = row[i];
 	}
 	
 	// corner element : local interaction
 	for (int i=0; i<Terms.local.size(); ++i)
 	{
-		Gout(Daux-1,0).data += get<0>(Terms.local[i]) * get<1>(Terms.local[i]).data;
-		// Gout(Daux-1,0).Q = Gout(Daux-1,0).Q + get<1>(Terms.local[i]).Q; //TODO: This line is only valid for U1. Change it.
+		Gout(Daux-1,0) += get<0>(Terms.local[i]) * get<1>(Terms.local[i]);
 	}
 	
 	// nearest-neighbour transfer
@@ -320,8 +317,7 @@ SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar
 	{
 		for (size_t i=0; i<Terms.nextn.size(); ++i)
 		{
-			Gout(Daux-1-Terms.nextn.size()+i,1+i).data = get<3>(Terms.nextn[i]).data;
-			Gout(Daux-1-Terms.nextn.size()+i,1+i).Q = get<3>(Terms.nextn[i]).Q;
+			Gout(Daux-1-Terms.nextn.size()+i,1+i) = get<3>(Terms.nextn[i]);
 		}
 	}
 	

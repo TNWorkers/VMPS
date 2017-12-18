@@ -111,7 +111,7 @@ HeisenbergSU2 (const variant<size_t,std::array<size_t,2> > &L, const vector<Para
 	
 	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, false, P.get<bool>("OPEN_BC"));
-	//false: For SU(2) symmetries the squared Hamiltonian can not be calculated in advance.
+	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
 }
 
 MpoQ<Sym::SU2<double> > HeisenbergSU2::

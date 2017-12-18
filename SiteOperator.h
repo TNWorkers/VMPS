@@ -22,7 +22,7 @@ struct SiteOperator
 	:data(data_input), Q(Q_input)
 	{};
 	
-	typename Symmetry::qType Q;
+	typename Symmetry::qType Q = Symmetry::qvacuum();
 	Eigen::SparseMatrix<Scalar> data;
 	
 	void setZero()

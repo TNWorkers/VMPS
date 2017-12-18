@@ -37,7 +37,7 @@ public:
 	SU2xU1() {};
 
 	
-	inline static qType qvacuum() { return {1,0}; }
+	inline static constexpr qType qvacuum() { return {1,0}; }
 
 	inline static std::string name() { return "SU(2)⊗U(1)"; }
 
@@ -191,7 +191,7 @@ Scalar SU2xU1<Scalar>::
 coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3)
 {
 	Scalar out = std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]))*
-		phase<Scalar>((q3[0]+q2[0]-q1[0]-1) /2);
+	             Scalar(-1.)*phase<Scalar>((q3[0]+q1[0]-q2[0]-1) / 2);
 	return out;
 }
 
@@ -357,16 +357,16 @@ validate ( const std::array<SU2xU1<Scalar>::qType,M>& qs )
 
 }//end namespace Sym
 
-std::ostream& operator<< (std::ostream& os, const typename Sym::SU2xU1<double>::qType &q)
-{	
-	boost::rational<int> s = boost::rational<int>(q[0]-1,2);
-	os << "[";
-	if      (s.numerator()   == 0) {os << 0;}
-	else if (s.denominator() == 1) {os << s.numerator();}
-	else {os << s.numerator() << "|" << s.denominator();}
-	// else {os << s;}
-	os << "," << q[1] << "]";
-	return os;
-}
+//std::ostream& operator<< (std::ostream& os, const typename Sym::SU2xU1<double>::qType &q)
+//{	
+//	boost::rational<int> s = boost::rational<int>(q[0]-1,2);
+//	os << "[";
+//	if      (s.numerator()   == 0) {os << 0;}
+//	else if (s.denominator() == 1) {os << s.numerator();}
+//	else {os << s.numerator() << "|" << s.denominator();}
+//	// else {os << s;}
+//	os << "," << q[1] << "]";
+//	return os;
+//}
 
 #endif

@@ -33,7 +33,7 @@ namespace Sym{
 		static constexpr bool NON_ABELIAN = false;
 		static constexpr bool IS_TRIVIAL = true;
 		
-		inline static qType qvacuum() {return {};}
+		inline static constexpr qType qvacuum() {return {};}
 		inline static qType flip( const qType& q ) { return {}; }
 		inline static int degeneracy( const qType& q ) { return 1; }
 

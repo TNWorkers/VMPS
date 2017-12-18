@@ -33,7 +33,7 @@ public:
 	static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc=0);
 	
 	///@{
-	MpoQ<Symmetry> n (SPIN_INDEX sigma, size_t loc) const;
+	MpoQ<Symmetry> n (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
 	MpoQ<Symmetry> Sz (size_t loc) const;
 	///@}
 	
@@ -85,16 +85,16 @@ Hubbard (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &pa
 }
 
 MpoQ<Symmetry> Hubbard::
-n (SPIN_INDEX sigma, size_t loc) const
+n (SPIN_INDEX sigma, size_t locx, size_t locy) const
 {
-	assert(loc<N_sites);
+	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
-	ss << "n(" << loc << ",σ=" << sigma << ")";
+	ss << "n(" << locx << "," << locy << ",σ=" << sigma << ")";
 	
 	MpoQ<Symmetry> Mout(N_sites, 1, {}, labeldummy, ss.str());
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
-	Mout.setLocal(loc, F[loc].n(sigma));
+	Mout.setLocal(locx, F[locx].n(sigma,locy));
 	return Mout;
 }
 

@@ -26,7 +26,7 @@ public:
 
 	U1xU1() {};
 
-	inline static qType qvacuum() { return {0,0}; }
+	inline static constexpr qType qvacuum() { return {0,0}; }
 
 	inline static std::string name() { return "U(1)⊗U(1)"; }
 

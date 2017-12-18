@@ -745,8 +745,8 @@ test_Hubbard.o: test_Hubbard.cc ../../../HELPERS/Logger.h \
  ../../../../CPPLIB/EIGEN/unsupported/Eigen/src/MatrixFunctions/MatrixSquareRoot.h \
  ../../../../CPPLIB/EIGEN/unsupported/Eigen/src/MatrixFunctions/MatrixLogarithm.h \
  ../../../../CPPLIB/EIGEN/unsupported/Eigen/src/MatrixFunctions/MatrixPower.h \
- ../../DmrgPivotStuff0.h ../../models/HubbardU1xU1.h \
- ../../symmetry/U1xU1.h ../../FermionBase.h \
+ ../../DmrgPivotStuff0.h ../../models/Hubbard.h \
+ ../../models/HubbardU1xU1.h ../../symmetry/U1xU1.h ../../FermionBase.h \
  ../../../../CPPLIB/BOOST/boost/dynamic_bitset.hpp \
  ../../../../CPPLIB/BOOST/boost/dynamic_bitset/dynamic_bitset.hpp \
  ../../../../CPPLIB/BOOST/boost/dynamic_bitset/config.hpp \
@@ -774,4 +774,9 @@ test_Hubbard.o: test_Hubbard.cc ../../../HELPERS/Logger.h \
  ../../../../CPPLIB/BOOST/boost/pending/lowest_bit.hpp \
  ../../../../CPPLIB/BOOST/boost/pending/integer_log2.hpp \
  ../../../../CPPLIB/BOOST/boost/integer/integer_log2.hpp ../../SpinBase.h \
- ../../models/Hubbard.h ../../models/HubbardU1xU1.h
+ ../../models/HubbardU1xU1.h ../../models/HubbardSU2xU1.h \
+ ../../fermions/BaseSU2xU1.h ../../SiteOperatorQ.h ../../qbasis.h \
+ ../../symmetry/SU2xU1.h \
+ ../../../../CPPLIB/GSL/include/gsl/gsl_sf_coupling.h \
+ ../../../../CPPLIB/GSL/include/gsl/gsl_sf_result.h \
+ ../../symmetry/functions.h

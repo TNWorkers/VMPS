@@ -215,6 +215,22 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	
 	// local terms
 	
+	// Hubbard-U
+	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F.orbitals(),loc);
+	save_label(Ulabel);
+	
+	// t0
+	auto [t0,t0orb,t0label] = P.fill_array1d<double>("t0","t0orb",F.orbitals(),loc);
+	save_label(t0label);
+	
+	// μ
+	auto [mu,muorb,mulabel] = P.fill_array1d<double>("mu","muorb",F.orbitals(),loc);
+	save_label(mulabel);
+	
+	// Bz
+	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F.orbitals(),loc);
+	save_label(Bzlabel);
+	
 	// t⟂
 	param0d tPerp = P.fill_array0d<double>("tPerp","tPerp",loc);
 	save_label(tPerp.label);
@@ -226,22 +242,6 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	// J⟂
 	param0d Jperp = P.fill_array0d<double>("Jperp","Jperp",loc);
 	save_label(Jperp.label);
-	
-	// Hubbard-U
-	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F.orbitals(),loc);
-	save_label(Ulabel);
-	
-	// μ
-	auto [mu,muorb,mulabel] = P.fill_array1d<double>("mu","muorb",F.orbitals(),loc);
-	save_label(mulabel);
-	
-	// t0
-	auto [t0,t0orb,t0label] = P.fill_array1d<double>("t0","t0orb",F.orbitals(),loc);
-	save_label(t0label);
-	
-	// Bz
-	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F.orbitals(),loc);
-	save_label(Bzlabel);
 	
 	if (isfinite(Uorb.sum()))
 	{

@@ -199,7 +199,7 @@ public:
 	\param J : \f$J\f$
 	\param PERIODIC: periodic boundary conditions if \p true*/
 	template<typename Scalar> SiteOperator<Symmetry,Scalar>
-	HubbardHamiltonian (ArrayXd Uvec, ArrayXd Eloc, ArrayXd Bzloc, ArrayXd Bxloc, Scalar t=1., double V=0., double J=0., bool PERIODIC=false) const;
+	HubbardHamiltonian (ArrayXd Uorb, ArrayXd Eorb, ArrayXd Bzorb, ArrayXd Bxorb, Scalar t=1., double V=0., double J=0., bool PERIODIC=false) const;
 	
 	vector<qarray<Symmetry::Nq> > get_basis() const;
 	
@@ -466,38 +466,38 @@ HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERI
 template<typename Symmetry>
 template<typename Scalar>
 SiteOperator<Symmetry,Scalar> FermionBase<Symmetry>::
-HubbardHamiltonian (ArrayXd Uloc, ArrayXd Eloc, ArrayXd Bzloc, ArrayXd Bxloc, Scalar t, double V, double J, bool PERIODIC) const
+HubbardHamiltonian (ArrayXd Uorb, ArrayXd Eorb, ArrayXd Bzorb, ArrayXd Bxorb, Scalar t, double V, double J, bool PERIODIC) const
 {
 	SparseMatrix<Scalar> Mout = HubbardHamiltonian(0.,t,V,J,0.,PERIODIC).data;
 	
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (Uloc.rows() > 0)
+		if (Uorb.rows() > 0)
 		{
-			if (Uloc(i) != 0. and Uloc(i) != numeric_limits<double>::infinity())
+			if (Uorb(i) != 0. and Uorb(i) != numeric_limits<double>::infinity())
 			{
-				Mout += Uloc(i) * d(i).data.template cast<Scalar>();
+				Mout += Uorb(i) * d(i).data.template cast<Scalar>();
 			}
 		}
-		if (Eloc.rows() > 0)
+		if (Eorb.rows() > 0)
 		{
-			if (Eloc(i) != 0.)
+			if (Eorb(i) != 0.)
 			{
-				Mout += Eloc(i) * n(i).data.template cast<Scalar>();
+				Mout += Eorb(i) * n(i).data.template cast<Scalar>();
 			}
 		}
-		if (Bzloc.rows() > 0)
+		if (Bzorb.rows() > 0)
 		{
-			if (Bzloc(i) != 0.)
+			if (Bzorb(i) != 0.)
 			{
-				Mout += Bzloc(i) * Sz(i).data.template cast<Scalar>();
+				Mout += Bzorb(i) * Sz(i).data.template cast<Scalar>();
 			}
 		}
-		if (Bxloc.rows() > 0)
+		if (Bxorb.rows() > 0)
 		{
-			if (Bxloc(i) != 0.)
+			if (Bxorb(i) != 0.)
 			{
-				Mout += Bxloc(i) * Sx(i).data.template cast<Scalar>();
+				Mout += Bxorb(i) * Sx(i).data.template cast<Scalar>();
 			}
 		}
 	}

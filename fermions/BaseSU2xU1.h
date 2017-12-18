@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <iterator>
 
-#include "SiteOperator.h"
+#include "SiteOperatorQ.h"
 #include "qbasis.h"
 #include "symmetry/SU2xU1.h"
 
@@ -24,7 +24,7 @@ class BaseSU2xU1
 {
 	typedef Eigen::Index Index;
 	typedef typename Sym::SU2xU1<Scalar> Symmetry;
-	typedef SiteOperator<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
+	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
 	typedef typename Symmetry::qType qType;
 public:
 	
@@ -105,7 +105,7 @@ public:
 	\param V : \f$V\f$
 	\param J : \f$J\f$
 	\param PERIODIC: periodic boundary conditions if \p true*/
-	Operator HubbardHamiltonian (std::vector<double> Uvec, std::vector<double> onsite, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
+	Operator HubbardHamiltonian (Eigen::ArrayXd Uorb, Eigen::ArrayXd Eorb, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
 
 	/**Identity*/
 	Operator Id (std::size_t orbital=0) const;
@@ -118,7 +118,7 @@ public:
 	   \note Use this as input for Mps, Mpo classes.*/ 
 	std::vector<Eigen::Index> qlocDeg() const { return TensorBasis.qlocDeg(); }
 
-	Qbasis<Symmetry> basis() const { return TensorBasis; }
+	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
 
 private:
 
@@ -205,7 +205,7 @@ BaseSU2xU1 (std::size_t L_input, bool U_IS_INFINITE)
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 c (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return c_1s; }
@@ -230,14 +230,14 @@ c (std::size_t orbital) const
 }
 	
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 cdag (std::size_t orbital) const
 {
 	return c(orbital).adjoint();
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 sign (std::size_t orb1, std::size_t orb2) const
 {
 	if(N_orbitals == 1) { return F_1s; }
@@ -260,7 +260,7 @@ sign (std::size_t orb1, std::size_t orb2) const
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 sign_local (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return F_1s; }
@@ -283,7 +283,7 @@ sign_local (std::size_t orbital) const
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 n (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return n_1s; }
@@ -306,7 +306,7 @@ n (std::size_t orbital) const
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 d (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return d_1s; }
@@ -329,7 +329,7 @@ d (std::size_t orbital) const
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 S (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return S_1s; }
@@ -354,14 +354,14 @@ S (std::size_t orbital) const
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 Sdag (std::size_t orbital) const
 {
 	return S(orbital).adjoint();
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 Eta (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return p_1s; }
@@ -386,14 +386,14 @@ Eta (std::size_t orbital) const
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 Etadag (std::size_t orbital) const
 {
 	return Eta(orbital).adjoint();
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 Id (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return Id_1s; }
@@ -406,7 +406,7 @@ Id (std::size_t orbital) const
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
 {
 	Operator Mout({1,0},TensorBasis);
@@ -448,24 +448,25 @@ HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
-HubbardHamiltonian (std::vector<double> Uvec, std::vector<double> onsite, double t, double V, double J, bool PERIODIC) const
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+HubbardHamiltonian (Eigen::ArrayXd Uorb, Eigen::ArrayXd Eorb, double t, double V, double J, bool PERIODIC) const
 {
 	auto Mout = HubbardHamiltonian(0.,t,V,J,PERIODIC);
+	
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (Uvec.size() > 0)
+		if (Uorb.rows() > 0)
 		{
-			if (Uvec[i] != 0. and Uvec[i] != std::numeric_limits<double>::infinity())
+			if (Uorb(i) != 0. and Uorb(i) != std::numeric_limits<double>::infinity())
 			{
-				Mout += Uvec[i] * d(i);
+				Mout += Uorb(i) * d(i);
 			}
 		}
-		if (onsite.size() > 0)
+		if (Eorb.rows() > 0)
 		{
-			if (onsite[i] != 0.)
+			if (Eorb(i) != 0.)
 			{
-				Mout += onsite[i] * n(i);
+				Mout += Eorb(i) * n(i);
 			}
 		}
 	}
