@@ -13,7 +13,7 @@ namespace VMPS
 {
 
 /** \class HubbardSU2xU1
-  * \ingroup Models
+  * \ingroup Hubbard
   *
   * \brief Hubbard Model
   *
