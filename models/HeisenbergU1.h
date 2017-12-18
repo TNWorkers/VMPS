@@ -112,6 +112,10 @@ HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param
                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
                  qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, "", halve)
 {
+	qarray<1> qtest{2};
+	cout << "TEST: " << this->format(qtest) << endl;
+	cout << "TEST: " << halve(qtest) << endl;
+	
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();

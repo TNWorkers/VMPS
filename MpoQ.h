@@ -550,7 +550,6 @@ template<typename Symmetry, typename Scalar>
 void MpoQ<Symmetry,Scalar>::
 initialize()
 {
-	format = noFormat;
 	qloc.resize(N_sites);
 	qOp.resize(N_sites);
 	qloc__.resize(N_sites);

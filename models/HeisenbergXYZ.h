@@ -141,13 +141,13 @@ add_operators (HamiltonianTerms<Symmetry_,complex<double> > &Terms, const SpinBa
 		}
 		if (Jypara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(Jypara(i,j), -1.i*B.Scomp(iSY,i).cast<complex<double> >(), 
-			                                              -1.i*B.Scomp(iSY,j).cast<complex<double> >()));
+			Terms.tight.push_back(make_tuple(Jypara(i,j), -1.i*B.Scomp(iSY,i).template cast<complex<double> >(), 
+			                                              -1.i*B.Scomp(iSY,j).template cast<complex<double> >()));
 		}
 		if (Jzpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(Jzpara(i,j), B.Scomp(SZ,i).cast<complex<double> >(), 
-			                                              B.Scomp(SZ,j).cast<complex<double> >()));
+			Terms.tight.push_back(make_tuple(Jzpara(i,j), B.Scomp(SZ,i).template cast<complex<double> >(), 
+			                                              B.Scomp(SZ,j).template cast<complex<double> >()));
 		}
 	}
 	
@@ -164,12 +164,12 @@ add_operators (HamiltonianTerms<Symmetry_,complex<double> > &Terms, const SpinBa
 	{
 		if (Dxpara(i,j)!=0. or Dzpara(i,j)!=0.)
 		{
-			SiteOperator<Symmetry_,complex<double> > Sxi = B.Scomp(SX,i).cast<complex<double> >();
-			SiteOperator<Symmetry_,complex<double> > Sxj = B.Scomp(SX,j).cast<complex<double> >();
-			SiteOperator<Symmetry_,complex<double> > Syi = -1.i*B.Scomp(iSY,i).cast<complex<double> >();
-			SiteOperator<Symmetry_,complex<double> > Syj = -1.i*B.Scomp(iSY,j).cast<complex<double> >();
-			SiteOperator<Symmetry_,complex<double> > Szi = B.Scomp(SZ,i).cast<complex<double> >();
-			SiteOperator<Symmetry_,complex<double> > Szj = B.Scomp(SZ,j).cast<complex<double> >();
+			SiteOperator<Symmetry_,complex<double> > Sxi = B.Scomp(SX,i).template cast<complex<double> >();
+			SiteOperator<Symmetry_,complex<double> > Sxj = B.Scomp(SX,j).template cast<complex<double> >();
+			SiteOperator<Symmetry_,complex<double> > Syi = -1.i*B.Scomp(iSY,i).template cast<complex<double> >();
+			SiteOperator<Symmetry_,complex<double> > Syj = -1.i*B.Scomp(iSY,j).template cast<complex<double> >();
+			SiteOperator<Symmetry_,complex<double> > Szi = B.Scomp(SZ,i).template cast<complex<double> >();
+			SiteOperator<Symmetry_,complex<double> > Szj = B.Scomp(SZ,j).template cast<complex<double> >();
 			
 			Terms.tight.push_back(make_tuple(1., Syi, +Dzpara(i,j)*Sxj-Dxpara(i,j)*Szj));
 			Terms.tight.push_back(make_tuple(1., +Dxpara(i,j)*Szi-Dzpara(i,j)*Sxi, Syj));
@@ -188,10 +188,10 @@ add_operators (HamiltonianTerms<Symmetry_,complex<double> > &Terms, const SpinBa
 	{
 		assert(B.orbitals() == 1 and "Cannot do a ladder with Dx'/Dz' terms!");
 		
-		SiteOperator<Symmetry_,complex<double> > Sx = B.Scomp(SX).cast<complex<double> >();
-		SiteOperator<Symmetry_,complex<double> > Sy = -1.i*B.Scomp(iSY).cast<complex<double> >();
-		SiteOperator<Symmetry_,complex<double> > Sz = B.Scomp(SZ).cast<complex<double> >();
-		SiteOperator<Symmetry_,complex<double> > Id = B.Id().cast<complex<double> >();
+		SiteOperator<Symmetry_,complex<double> > Sx = B.Scomp(SX).template cast<complex<double> >();
+		SiteOperator<Symmetry_,complex<double> > Sy = -1.i*B.Scomp(iSY).template cast<complex<double> >();
+		SiteOperator<Symmetry_,complex<double> > Sz = B.Scomp(SZ).template cast<complex<double> >();
+		SiteOperator<Symmetry_,complex<double> > Id = B.Id().template cast<complex<double> >();
 		
 		Terms.nextn.push_back(make_tuple(1., Sy, +Dzprime.x*Sx-Dxprime.x*Sz, Id));
 		Terms.nextn.push_back(make_tuple(1., +Dxprime.x*Sz-Dzprime.x*Sx, Sy, Id));

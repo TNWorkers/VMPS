@@ -88,7 +88,7 @@ HeisenbergSU2::
 HeisenbergSU2 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
 :MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                 qarray<Symmetry::Nq>({1}), HeisenbergSU2::Stotlabel, "", halve)
+                 qarray<Symmetry::Nq>({1}), HeisenbergSU2::Stotlabel, "", SfromD)
 {
 	ParamHandler P(params,defaults);
 	

@@ -7,14 +7,15 @@
 #include <boost/rational.hpp>
 typedef boost::rational<int> frac;
 
-string print_frac_nice(frac r)
+#include "qarray.h"
+
+string print_frac_nice (frac r)
 {
-	std::stringstream ss;
-	if(r.denominator() == 1) {ss << r.numerator();}
+	stringstream ss;
+	if (r.denominator() == 1) {ss << r.numerator();}
 	else {ss << r;}
 	return ss.str();
 }
-#include "qarray.h"
 
 /**Default format for quantum number output: Print the integer as is.*/
 template<size_t Nq>
@@ -22,6 +23,29 @@ string noFormat (qarray<Nq> qnum)
 {
 	stringstream ss;
 	ss << qnum;
+	return ss.str();
+}
+
+/**Makes half-integers in the output.*/
+string halve (qarray<1> qnum)
+{
+	stringstream ss;
+	ss << "(";
+	boost::rational<int> m = boost::rational<int>(qnum[0],2);
+	if      (m.numerator()   == 0) {ss << 0;}
+	else if (m.denominator() == 1) {ss << m.numerator();}
+	else {ss << m;}
+	ss << ")";
+	return ss.str();
+}
+
+/**Makes half-integers in the output.*/
+string SfromD (qarray<1> qnum)
+{
+	stringstream ss;
+	ss << "(";
+	ss << (qnum[0]-1)/2;
+	ss << ")";
 	return ss.str();
 }
 
@@ -87,19 +111,6 @@ struct hash<qarray<Nq> >
 		return seed;
 	}
 };
-}
-
-/**Makes half-integers in the output.*/
-string halve (qarray<1> qnum)
-{
-	stringstream ss;
-	ss << "(";
-	boost::rational<int> m = boost::rational<int>(qnum[0],2);
-	if      (m.numerator()   == 0) {ss << 0;}
-	else if (m.denominator() == 1) {ss << m.numerator();}
-	else {ss << m;}
-	ss << ")";
-	return ss.str();
 }
 
 /**Function to realize staggered fields.*/
