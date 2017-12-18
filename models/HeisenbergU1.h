@@ -64,16 +64,6 @@ public:
 	static const std::array<string,1> maglabel;
 	
 	///@{
-	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
-	typedef MpsQ<Symmetry,double>                           StateXd;
-	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<Symmetry,HeisenbergU1,double>       Solver;
-	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
-	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
-	typedef MpoQ<Symmetry>                                  Operator;
-	///@}
-	
-	///@{
 	/**Observables*/
 	MpoQ<Symmetry> Sz (size_t locx, size_t locy=0) const;
 	MpoQ<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;

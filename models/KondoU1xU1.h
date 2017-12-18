@@ -63,16 +63,6 @@ public:
 	///@}
 	
 	///@{
-	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
-	typedef MpsQ<Symmetry,double>                           StateXd;
-	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<Symmetry,KondoU1xU1,double>         Solver;
-	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
-	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
-	typedef MpoQ<Symmetry>                                  Operator;
-	///@}
-	
-	///@{
 	MpoQ<Symmetry> Simp (size_t locx, SPINOP_LABEL SOP, size_t locy=0);
 	MpoQ<Symmetry> Ssub (size_t locx, SPINOP_LABEL SOP, size_t locy=0);
 	MpoQ<Symmetry> SimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y=0, size_t loc2y=0);

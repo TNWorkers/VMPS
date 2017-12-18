@@ -60,17 +60,6 @@ public:
 	static const std::array<string,2> Nlabel;
 	
 	///@{
-	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
-	typedef MpsQ<Symmetry,double>                           StateXd;
-	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<Symmetry,HubbardU1xU1,double>          Solver;
-	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
-	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
-	typedef MpoQ<Symmetry,double>                           OperatorXd;
-	typedef MpoQ<Symmetry,complex<double> >                 OperatorXcd;
-	///@}
-	
-	///@{
 	MpoQ<Symmetry> Auger (size_t locx, size_t locy=0);
 	MpoQ<Symmetry,complex<double> > doublonPacket (complex<double> (*f)(int));
 	MpoQ<Symmetry> eta();

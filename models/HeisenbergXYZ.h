@@ -44,22 +44,14 @@ public:
 	HeisenbergXYZ (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
 	///\}
 	
-	///@{
-	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
-	typedef MpsQ<Symmetry,complex<double> >                           StateXcd;
-	typedef DmrgSolverQ<Symmetry,HeisenbergXYZ>                       Solver;
-	typedef MpsQCompressor<Symmetry,complex<double>,double>           CompressorXd;
-	typedef MpsQCompressor<Symmetry,complex<double>,complex<double> > CompressorXcd;
-	typedef MpoQ<Symmetry,complex<double> >                           Operator;
-	///@}
-	
 //	///@{
 //	/**Observables.*/
 //	MpoQ<Symmetry> SzSz (size_t loc1, size_t loc2);
 //	MpoQ<Symmetry> Sz   (size_t loc);
 //	///@}
 	
-	void add_operators (HamiltonianTerms<Symmetry,complex<double> > &Terms, const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc=0);
+	template<typename Symmetry_>
+	void add_operators (HamiltonianTerms<Symmetry_,complex<double> > &Terms, const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
 	
 	static const std::map<string,std::any> defaults;
 	
@@ -119,8 +111,9 @@ HeisenbergXYZ (const variant<size_t,std::array<size_t,2> > &L, const vector<Para
 	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
+template<typename Symmetry_>
 void HeisenbergXYZ::
-add_operators (HamiltonianTerms<Symmetry,complex<double> > &Terms, const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc)
+add_operators (HamiltonianTerms<Symmetry_,complex<double> > &Terms, const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 {
 	auto save_label = [&Terms] (string label)
 	{
@@ -171,12 +164,12 @@ add_operators (HamiltonianTerms<Symmetry,complex<double> > &Terms, const SpinBas
 	{
 		if (Dxpara(i,j)!=0. or Dzpara(i,j)!=0.)
 		{
-			SiteOperator<Symmetry,complex<double> > Sxi = B.Scomp(SX,i).cast<complex<double> >();
-			SiteOperator<Symmetry,complex<double> > Sxj = B.Scomp(SX,j).cast<complex<double> >();
-			SiteOperator<Symmetry,complex<double> > Syi = -1.i*B.Scomp(iSY,i).cast<complex<double> >();
-			SiteOperator<Symmetry,complex<double> > Syj = -1.i*B.Scomp(iSY,j).cast<complex<double> >();
-			SiteOperator<Symmetry,complex<double> > Szi = B.Scomp(SZ,i).cast<complex<double> >();
-			SiteOperator<Symmetry,complex<double> > Szj = B.Scomp(SZ,j).cast<complex<double> >();
+			SiteOperator<Symmetry_,complex<double> > Sxi = B.Scomp(SX,i).cast<complex<double> >();
+			SiteOperator<Symmetry_,complex<double> > Sxj = B.Scomp(SX,j).cast<complex<double> >();
+			SiteOperator<Symmetry_,complex<double> > Syi = -1.i*B.Scomp(iSY,i).cast<complex<double> >();
+			SiteOperator<Symmetry_,complex<double> > Syj = -1.i*B.Scomp(iSY,j).cast<complex<double> >();
+			SiteOperator<Symmetry_,complex<double> > Szi = B.Scomp(SZ,i).cast<complex<double> >();
+			SiteOperator<Symmetry_,complex<double> > Szj = B.Scomp(SZ,j).cast<complex<double> >();
 			
 			Terms.tight.push_back(make_tuple(1., Syi, +Dzpara(i,j)*Sxj-Dxpara(i,j)*Szj));
 			Terms.tight.push_back(make_tuple(1., +Dxpara(i,j)*Szi-Dzpara(i,j)*Sxi, Syj));
@@ -195,10 +188,10 @@ add_operators (HamiltonianTerms<Symmetry,complex<double> > &Terms, const SpinBas
 	{
 		assert(B.orbitals() == 1 and "Cannot do a ladder with Dx'/Dz' terms!");
 		
-		SiteOperator<Symmetry,complex<double> > Sx = B.Scomp(SX).cast<complex<double> >();
-		SiteOperator<Symmetry,complex<double> > Sy = -1.i*B.Scomp(iSY).cast<complex<double> >();
-		SiteOperator<Symmetry,complex<double> > Sz = B.Scomp(SZ).cast<complex<double> >();
-		SiteOperator<Symmetry,complex<double> > Id = B.Id().cast<complex<double> >();
+		SiteOperator<Symmetry_,complex<double> > Sx = B.Scomp(SX).cast<complex<double> >();
+		SiteOperator<Symmetry_,complex<double> > Sy = -1.i*B.Scomp(iSY).cast<complex<double> >();
+		SiteOperator<Symmetry_,complex<double> > Sz = B.Scomp(SZ).cast<complex<double> >();
+		SiteOperator<Symmetry_,complex<double> > Id = B.Id().cast<complex<double> >();
 		
 		Terms.nextn.push_back(make_tuple(1., Sy, +Dzprime.x*Sx-Dxprime.x*Sz, Id));
 		Terms.nextn.push_back(make_tuple(1., +Dxprime.x*Sz-Dzprime.x*Sx, Sy, Id));

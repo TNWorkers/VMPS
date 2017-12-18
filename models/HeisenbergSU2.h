@@ -63,16 +63,6 @@ public:
 	static const std::array<string,1> Stotlabel;
 	
 	///@{
-	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
-	typedef MpsQ<Symmetry,double>                                StateXd;
-	typedef MpsQ<Symmetry,complex<double> >                      StateXcd;
-	typedef DmrgSolverQ<Symmetry,HeisenbergSU2,double>           Solver;
-	typedef MpsQCompressor<Symmetry,double,double>               CompressorXd;
-	typedef MpsQCompressor<Symmetry,complex<double>,double>      CompressorXcd;
-	typedef MpoQ<Symmetry,double>                                MpOperator;
-	///@}
-	
-	///@{
 	/**Observables.*/
 	MpoQ<Symmetry,double> SS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);	
 	///@}

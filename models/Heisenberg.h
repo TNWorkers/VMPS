@@ -47,16 +47,6 @@ public:
 	static void add_operators (HamiltonianTermsXd<Symmetry> &Terms, const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc=0);
 	
 	///@{
-	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
-	typedef MpsQ<Symmetry,double>                           StateXd;
-	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<Symmetry,Heisenberg>                Solver;
-	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
-	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
-	typedef MpoQ<Symmetry>                                  Operator;
-	///@}
-	
-	///@{
 	/**Observables.*/
 	MpoQ<Symmetry> SzSz (size_t loc1, size_t loc2);
 	MpoQ<Symmetry> Sz   (size_t loc);

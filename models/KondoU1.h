@@ -53,16 +53,6 @@ public:
 	                           const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc=0);
 	
 	///@{
-	/**Typedef for convenient reference (no need to specify \p Nq, \p Scalar all the time).*/
-	typedef MpsQ<Symmetry,double>                           StateXd;
-	typedef MpsQ<Symmetry,complex<double> >                 StateXcd;
-	typedef DmrgSolverQ<Symmetry,KondoU1>                   Solver;
-	typedef MpsQCompressor<Symmetry,double,double>          CompressorXd;
-	typedef MpsQCompressor<Symmetry,complex<double>,double> CompressorXcd;
-	typedef MpoQ<Symmetry>                                  Operator;
-	///@}
-	
-	///@{
 	/**Operator for the impurity spin.*/
 	Operator Simp (SPINOP_LABEL Sa, size_t locx, size_t locy=0);
 	
