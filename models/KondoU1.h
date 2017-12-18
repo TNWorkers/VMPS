@@ -81,7 +81,11 @@ public:
 	/***/
 	Operator hopping (size_t locx, size_t locy=0);
 	///@}
-	
+
+	/**Validates whether a given \p qnum is a valid combination of \p N and \p M for the given model.
+	\returns \p true if valid, \p false if not*/
+	bool validate (qType qnum) const;
+
 	static const std::map<string,std::any> defaults;
 	
 protected:
@@ -201,6 +205,13 @@ KondoU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &pa
 // 	             );
 // 	return Mout;
 // }
+
+bool KondoU1::
+validate (qType qnum) const
+{
+	if (qnum[0]<=2*static_cast<int>(this->N_sites*this->N_legs) and qnum[0]>0) {return true;}
+	else {return false;}
+}
 
 template<typename Symmetry_>
 void KondoU1::
