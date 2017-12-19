@@ -993,7 +993,7 @@ setLocal (size_t loc, const OperatorType &Op)
 	for (size_t l=0; l<N_sites; l++)
 	{
 		qOp[l].resize(1);
-		qOp[l][0] = (l == loc) ? Op.Q : Symmetry::qvacuum();
+		qOp[l][0] = (l==loc) ? Op.Q : Symmetry::qvacuum();
 	}
 	
 	Daux = 1;
@@ -1002,8 +1002,8 @@ setLocal (size_t loc, const OperatorType &Op)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		M[l].setMatrix(Daux,qloc[l].size());
-		if(l==loc) {M[l](0,0).data=Op.data; M[l](0,0).Q=Op.Q;}
-		else {M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum();}
+		if (l==loc) { M[l](0,0) = Op; }
+		else        { M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum();}
 	}
 	
 	construct(M, W, Gvec);
@@ -1015,22 +1015,22 @@ setLocal (size_t loc, const OperatorType &Op, const OperatorType &SignOp)
 {
 	assert(Op.data.rows() == qloc[loc].size() and Op.data.cols() == qloc[loc].size());
 	assert(loc < N_sites);
-
+	
 	for (size_t l=0; l<N_sites; l++)
 	{
 		qOp[l].resize(1);
-		qOp[l][0] = (l == loc) ? Op.Q : Symmetry::qvacuum();
+		qOp[l][0] = (l==loc) ? Op.Q : Symmetry::qvacuum();
 	}
-
+	
 	Daux = 1;
 	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		M[l].setMatrix(Daux,qloc[l].size());
-		if(l<loc) {  M[l](0,0) = SignOp; }
-		if(l==loc) { M[l](0,0) = Op; }
-		else {M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum();}
+		if      (l<loc)  { M[l](0,0) = SignOp; }
+		else if (l==loc) { M[l](0,0) = Op; }
+		else             { M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum(); }
 	}
 	
 	construct(M, W, Gvec);
@@ -1051,7 +1051,7 @@ setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op)
 		for(size_t pos2=pos1+1; pos2<loc.size(); pos2++)
 		{
 			assert(loc[pos1] != loc[pos2] and
-				   "setLocal() can only be called with several operators on different sites, when using non-abelian symmetries.");
+			       "setLocal() can only be called with several operators on different sites, when using non-abelian symmetries.");
 		}
 	}
 	
@@ -1081,7 +1081,7 @@ setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op)
 		assert(loc[i] < N_sites);
 		assert(Op[i].data.rows() == qloc[loc[i]].size() and Op[i].data.cols() == qloc[loc[i]].size());
 		M[loc[i]](0,0).data = M[loc[i]](0,0).data * Op[i].data;
-		M[loc[i]](0,0).Q = Symmetry::reduceSilent(M[loc[i]](0,0).Q,Op[i].Q)[0]; //We can use the 0th component here.
+		M[loc[i]](0,0).Q = Symmetry::reduceSilent(M[loc[i]](0,0).Q,Op[i].Q)[0]; // We can use the 0th component here.
 	}
 	
 	construct(M, W, Gvec);

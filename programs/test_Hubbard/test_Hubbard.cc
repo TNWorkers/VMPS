@@ -37,6 +37,7 @@ Logger lout;
 #include "HubbardModel.h"
 #include "LanczosWrappers.h"
 #include "LanczosSolver.h"
+#include "Photo.h"
 
 #include "SiteOperator.h"
 #include "DmrgTypedefs.h"
@@ -119,6 +120,13 @@ int main (int argc, char* argv[])
 	LanczosSolver<HubbardModel,VectorXd,double> Lutz;
 	Lutz.edgeState(H_ED,g_ED,LANCZOS::EDGE::GROUND);
 	
+	HubbardModel H_EDm(L,Nupdn-1,Nupdn,params, BC_DANGLING);
+	Eigenstate<VectorXd> g_EDm;
+	Lutz.edgeState(H_EDm,g_EDm,LANCZOS::EDGE::GROUND);
+	
+	Photo Ph(H_EDm,H_ED,UP,L-1);
+	cout << g_EDm.energy << ", <c>=" << avg(g_EDm.state, Ph.Operator(), g_ED.state) << endl;
+	
 	lout << "Emin/L=" << to_string_prec(g_ED.energy/Lx) << endl;
 	
 //	lout << endl << H_ED.eigenvalues() << endl;
@@ -198,17 +206,19 @@ int main (int argc, char* argv[])
 	
 	t_U1 = Watch_U1.time();
 	
+	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1m;
+	DMRG_U1.edgeState(H_U1, g_U1m, {Nupdn-1,Nupdn}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	cout << g_U1m.energy << ", <c>=" << avg(g_U1m.state, H_U1.c(UP,L-1), g_U1.state) << endl;
+	cout << H_U1.c(UP,L-1) << endl;
+	
 	// observables
 	
 	MatrixXd densityMatrix_U1(L,L); densityMatrix_U1.setZero();
 	for (size_t i=0; i<L; ++i) 
 	for (size_t j=0; j<L; ++j)
 	{
-//		densityMatrix_U1(i,j) = avg(g_U1.state, H_U1.cdag(UP,i), H_U1.c(UP,j), g_U1.state)+
-//		                        avg(g_U1.state, H_U1.cdag(DN,i), H_U1.c(DN,j), g_U1.state);
 		densityMatrix_U1(i,j) = avg(g_U1.state, H_U1.cdagc(UP,i,j), g_U1.state)+
 		                        avg(g_U1.state, H_U1.cdagc(DN,i,j), g_U1.state);
-//		lout << i << "\t" << j << "\t" << avg(g_U1.state, H_U1.cdagc(UP,i,j), g_U1.state) << "\t" << avg(g_U1.state, H_U1.cdagc(DN,i,j), g_U1.state) << endl;
 	}
 	lout << "<cdagc>=" << endl << densityMatrix_U1 << endl;
 	
@@ -273,8 +283,6 @@ int main (int argc, char* argv[])
 	for (size_t j=0; j<L; ++j)
 	{
 		densityMatrix_SU2(i,j) = avg(g_SU2.state, H_SU2.cdagc(i,j), g_SU2.state);
-//		cout << i << "\t" << j << "\t" << avg(g_SU2.state, H_SU2.cdagc(i,j), g_SU2.state) << "\t" <<
-//		                                  avg(g_SU2.state, H_SU2.cdag(i), H_SU2.c(j), g_SU2.state)
 	}
 	lout << densityMatrix_SU2 << endl;
 	
@@ -310,6 +318,7 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(abs(g_U1.energy-g_ED.energy)/V)); 
 	T.add(to_string_prec(abs(g_SU2.energy-g_ED.energy)/V));
 	T.endOfRow();
+	
 //	T.add("E/L Compressor"); T.add(to_string_prec(E_U0_compressor/V)); T.add(to_string_prec(E_U1_compressor/V)); T.add("-"); T.endOfRow();
 //	T.add("E/L Zipper"); T.add(to_string_prec(E_U0_zipper/V)); T.add(to_string_prec(E_U1_zipper/V)); T.add("-"); T.endOfRow();
 	
@@ -317,14 +326,10 @@ int main (int argc, char* argv[])
 	T.add("t gain"); T.add(to_string_prec(t_U0/t_SU2,2)); T.add(to_string_prec(t_U1/t_SU2,2)); T.add("1"); T.endOfRow();
 	
 	T.add("observables diff");
-//	T.add(to_string_prec(SpinCorr_U0.sum()));
 	T.add("-");
 	T.add(to_string_prec((densityMatrix_U1-densityMatrix_ED).norm()));
 	T.add(to_string_prec((densityMatrix_SU2-densityMatrix_ED).norm()));
 	T.endOfRow();
-	
-//	T.add("observables diff"); T.add(to_string_prec((SpinCorr_U0-SpinCorr_SU2).lpNorm<1>()/Vsq));
-//	T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2).lpNorm<1>()/Vsq)); T.add("0"); T.endOfRow();
 	
 	T.add("Dmax"); T.add(to_string(g_U0.state.calc_Dmax())); T.add(to_string(g_U1.state.calc_Dmax())); T.add(to_string(g_SU2.state.calc_Dmax()));
 	T.endOfRow();
