@@ -199,7 +199,7 @@ param0d<Scalar> ParamHandler::
 fill_array0d (string label_def, string label_x, size_t loc) const
 {
 	param0d<Scalar> res;
-	res.x = get_default<Scalar>(label_x);
+	res.x = get_default<Scalar>(label_def);
 	
 	if (HAS(label_x,loc))
 	{

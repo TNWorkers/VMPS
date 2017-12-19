@@ -413,7 +413,6 @@ HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
 	if( N_orbitals >= 2 and t!=0. )
 	{
 		Mout = -t*std::sqrt(2.)*(Operator::prod(cdag(0),c(1),{1,0})+Operator::prod(c(0),cdag(1),{1,0}));
-		std::cout << Mout.data() << std::endl;
 	}
 	for (int i=1; i<N_orbitals-1; ++i) // for all bonds
 	{

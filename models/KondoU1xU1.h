@@ -395,11 +395,12 @@ KondoU1xU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> 
 bool KondoU1xU1::
 validate (qType qnum) const
 {
-	frac S_elec = (qnum[0],2); //electrons have spin 1/2
+	frac S_elec(qnum[0],2); //electrons have spin 1/2
 	frac Smax = S_elec;
 	for (size_t l=0; l<N_sites; ++l) { Smax+=B[l].orbitals()*frac(B[l].get_D()-1,2); } //add local spins to Smax
 	
 	frac S_tot(qnum[1],2);
+	cout << S_tot << "\t" << Smax << endl;
 	if (Smax.denominator()==S_tot.denominator() and S_tot<=Smax and qnum[0]<=2*static_cast<int>(this->N_sites*this->N_legs) and qnum[0]>0) {return true;}
 	else {return false;}
 }
