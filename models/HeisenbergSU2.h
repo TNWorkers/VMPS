@@ -58,13 +58,13 @@ public:
 	   \param P : The parameters
 	*/
 	static HamiltonianTermsXd<Symmetry> set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc=0);
-		
+	
 	/**Labels the conserved quantum number as "S".*/
 	static const std::array<string,1> Stotlabel;
 	
 	///@{
 	/**Observables.*/
-	MpoQ<Symmetry,double> SS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);	
+	MpoQ<Symmetry,double> SS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
 	///@}
 	
 	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an MpsQ.
@@ -130,7 +130,7 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 	Mout.label = ss.str();
 	Mout.setQtarget(Symmetry::qvacuum());
 	Mout.qlabel = HeisenbergSU2::Stotlabel;
-	if(locx1 == locx2)
+	if (locx1 == locx2)
 	{
 		auto product = std::sqrt(3.)*Operator::prod(B[locx1].Sdag(locy1),B[locx2].S(locy2),Symmetry::qvacuum());
 		Mout.setLocal(locx1,product.plain<double>());

@@ -54,21 +54,23 @@ public:
 	/**Labels the conserved quantum numbers as \f$N_\uparrow\f$, \f$N_\downarrow\f$.*/
 	static const std::array<string,Symmetry::Nq> SNlabel;
 	
-//	MpoQ<Symmetry> Auger (size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> eta(size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> Aps (size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> c (size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> cdag (size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
-//	MpoQ<Symmetry> d (size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> n (size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> S (size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> Sdag (size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> SSdag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
-//	MpoQ<Symmetry> EtaEtadag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);	
-//	MpoQ<Symmetry> triplon (size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> antitriplon (size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> quadruplon (size_t locx, size_t locy=0);
+	///@{
+	MpoQ<Symmetry> Auger (size_t locx, size_t locy=0);
+	MpoQ<Symmetry> eta(size_t locx, size_t locy=0);
+	MpoQ<Symmetry> Aps (size_t locx, size_t locy=0);
+	MpoQ<Symmetry> c (size_t locx, size_t locy=0);
+	MpoQ<Symmetry> cdag (size_t locx, size_t locy=0);
+	MpoQ<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	MpoQ<Symmetry> d (size_t locx, size_t locy=0);
+	MpoQ<Symmetry> n (size_t locx, size_t locy=0);
+	MpoQ<Symmetry> S (size_t locx, size_t locy=0);
+	MpoQ<Symmetry> Sdag (size_t locx, size_t locy=0);
+	MpoQ<Symmetry> SSdag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	MpoQ<Symmetry> EtaEtadag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);	
+	MpoQ<Symmetry> triplon (size_t locx, size_t locy=0);
+	MpoQ<Symmetry> antitriplon (size_t locx, size_t locy=0);
+	MpoQ<Symmetry> quadruplon (size_t locx, size_t locy=0);
+	///@}
 	
 	static const map<string,any> defaults;
 	
@@ -92,7 +94,7 @@ HubbardSU2xU1::
 HubbardSU2xU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
 :MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                 qarray<Symmetry::Nq>({1,0}), HubbardSU2xU1::SNlabel, "")
+                 qarray<Symmetry::Nq>({1,0}), HubbardSU2xU1::SNlabel, "", SfromD_noFormat)
 {
 	ParamHandler P(params,defaults);
 	
@@ -166,13 +168,15 @@ set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t lo
 	param0d tPrime = P.fill_array0d<double>("tPrime","tPrime",loc);
 	save_label(tPrime.label);
 	
-//	if (tPrime.x != 0.)
-//	{
-//		assert(F.orbitals() == 1 and "Cannot do a ladder with t'!");
-//		
-//		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), F.cdag(), Operator::prod(F.sign(),F.c(),{2,-1}), F.sign()));
-//		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), F.c(), Operator::prod(F.sign(),F.cdag(),{2,1}), F.sign()));
-//	}
+	if (tPrime.x != 0.)
+	{
+		assert(F.orbitals() == 1 and "Cannot do a ladder with t'!");
+		
+		auto Otmp = OperatorType::prod(F.sign(),F.c(),{2,-1});
+		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), F.cdag().plain<double>(), Otmp.plain<double>(), F.sign().plain<double>()));
+		Otmp = OperatorType::prod(F.sign(),F.cdag(),{2,1});
+		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), F.c().plain<double>(), Otmp.plain<double>(), F.sign().plain<double>()));
+	}
 	
 	// local terms
 	
@@ -302,7 +306,7 @@ set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t lo
 //	ss << "c(" << locx << "," << locy << ")";
 
 //	MpoQ<Sym::SU2xU1<double> > Mout(N_sites, N_legs);
-//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F.basis(),l); }
+//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
 
 //	Mout.label = ss.str();
 //	Mout.setQtarget({2,-1});
@@ -312,75 +316,82 @@ set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
-//cdag (size_t locx, size_t locy)
-//{
-//	assert(locx<N_sites and locy<N_legs);
-//	stringstream ss;
-//	ss << "c†(" << locx << "," << locy << ")";
+MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
+c (size_t locx, size_t locy)
+{
+	assert(locx<N_sites and locy<N_legs);
+	stringstream ss;
+	ss << "c(" << locx << "," << locy << ")";
+	
+	MpoQ<Symmetry> Mout(N_sites, N_legs, {2,-1}, HubbardSU2xU1::SNlabel, ss.str());
+	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+	Mout.setLocal(locx, F[locx].c(locy).plain<double>(), F[0].sign().plain<double>());
+	return Mout;
+}
 
-//	MpoQ<Sym::SU2xU1<double> > Mout(N_sites, N_legs);
-//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F.basis(),l); }
+MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
+cdag (size_t locx, size_t locy)
+{
+	assert(locx<N_sites and locy<N_legs);
+	stringstream ss;
+	ss << "c†(" << locx << "," << locy << ")";
+	
+	MpoQ<Symmetry> Mout(N_sites, N_legs, {2,+1}, HubbardSU2xU1::SNlabel, ss.str());
+	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+	Mout.setLocal(locx, F[locx].cdag(locy).plain<double>(), F[0].sign().plain<double>());
+	return Mout;
+}
 
-//	Mout.label = ss.str();
-//	Mout.setQtarget({2,+1});
-//	Mout.qlabel = HubbardSU2xU1::Slabel;
+MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
+cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	assert(locx1<this->N_sites and locx2<this->N_sites);
+	stringstream ss;
+	ss << "c†(" << locx1 << "," << locy1 << ")" << "c(" << locx2 << "," << locy2 << ")";
+	
+	MpoQ<Symmetry> Mout(N_sites, N_legs, Symmetry::qvacuum(), HubbardSU2xU1::SNlabel, ss.str(), SfromD_noFormat);
+	for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
+	
+	auto cdag = F[locx1].cdag(locy1);
+	auto c    = F[locx2].c   (locy2);
+	if (locx1 == locx2)
+	{
+		Mout.setLocal(locx1, sqrt(2.) * OperatorType::prod(cdag,c,Symmetry::qvacuum()).plain<double>());
+	}
+	else if (locx1<locx2)
+	{
+//		Mout.setLocal({locx1, locx2}, {sqrt(2.) * cdag.plain<double>(), 
+//		                               OperatorType::prod(F[locx2].sign(), c, {2,-1}).plain<double>()}, 
+//		                               F[0].sign().plain<double>());
+		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), {2,+1}).plain<double>(), 
+		                               c.plain<double>()}, 
+		                               F[0].sign().plain<double>());
+	}
+	else if (locx1>locx2)
+	{
+//		Mout.setLocal({locx1, locx2}, {sqrt(2.)*OperatorType::prod(F[locx1].sign(), cdag, {2,+1}).plain<double>(), 
+//		                               c.plain<double>()}, 
+//		                               F[0].sign().plain<double>());
+		Mout.setLocal({locx2, locx1}, {sqrt(2.)*OperatorType::prod(c, F[locx2].sign(), {2,-1}).plain<double>(), 
+		                               cdag.plain<double>()}, 
+		                               F[0].sign().plain<double>());
+	}
+	return Mout;
+}
 
-//	Mout.setLocal(locx, F.cdag(locy), {2,+1}, F.sign());
-//	return Mout;
-//}
-
-//MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
-//cdagc (size_t loc1x, size_t loc2x, size_t loc1y, size_t loc2y)
-//{
-//	assert(loc1x<this->N_sites and loc2x<this->N_sites);
-//	stringstream ss;
-//	ss << "c†(" << loc1x << "," << loc1y << ")" << "c(" << loc2x << "," << loc2y << ")";
-
-//	MpoQ<Symmetry> Mout(N_sites, N_legs);
-//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F.basis(),l); }
-
-//	auto cdag = F.cdag(loc1y);
-//	auto c = F.c(loc2y);
-//	Mout.label = ss.str();
-//	Mout.setQtarget(Symmetry::qvacuum());
-//	Mout.qlabel = HubbardSU2xU1::Slabel;
-//	if(loc1x == loc2x)
-//	{
-//		auto product = sqrt(2.)*Operator::prod(cdag,c,Symmetry::qvacuum());
-//		Mout.setLocal(loc1x,product,Symmetry::qvacuum());
-//		return Mout;
-//	}
-//	else if(loc1x<loc2x)
-//	{
-
-//		Mout.setLocal({loc1x, loc2x}, {sqrt(2.)*cdag, Operator::prod(F.sign(),c,{2,-1})}, {{2,1},{2,-1}}, F.sign());
-//		return Mout;
-//	}
-//	else if(loc1x>loc2x)
-//	{
-
-//		Mout.setLocal({loc1x, loc2x}, {sqrt(2.)*Operator::prod(F.sign(),cdag,{2,+1}), c}, {{2,1},{2,-1}}, F.sign());
-//		return Mout;
-//	}
-//}
-
-//MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
-//d (size_t locx, size_t locy)
-//{
-//	assert(locx<N_sites and locy<N_legs);
-//	stringstream ss;
-//	ss << "double_occ(" << locx << "," << locy << ")";
-//	
-//	MpoQ<Sym::SU2xU1<double> > Mout(N_sites, N_legs);
-//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F.basis(),l); }
-
-//	Mout.label = ss.str();
-//	Mout.setQtarget(Symmetry::qvacuum());
-//	Mout.qlabel = HubbardSU2xU1::Slabel;
-//	Mout.setLocal(locx, F.d(locy), Symmetry::qvacuum());
-//	return Mout;
-//}
+MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
+d (size_t locx, size_t locy)
+{
+	assert(locx<N_sites and locy<N_legs);
+	stringstream ss;
+	ss << "double_occ(" << locx << "," << locy << ")";
+	
+	MpoQ<Sym::SU2xU1<double> > Mout(N_sites, N_legs, Symmetry::qvacuum(), HubbardSU2xU1::SNlabel, ss.str(), SfromD_noFormat);
+	for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
+	
+	Mout.setLocal(locx, F[locx].d(locy).plain<double>());
+	return Mout;
+}
 
 //MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
 //n (size_t locx, size_t locy)
@@ -390,7 +401,7 @@ set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t lo
 //	ss << "n(" << locx << "," << locy << ")";
 
 //	MpoQ<Sym::SU2xU1<double> > Mout(N_sites, N_legs);
-//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F.basis(),l); }
+//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
 
 //	Mout.label = ss.str();
 //	Mout.setQtarget(Symmetry::qvacuum());
@@ -438,57 +449,57 @@ set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t lo
 //// }
 
 //MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
-//SSdag (size_t loc1x, size_t loc2x, size_t loc1y, size_t loc2y)
+//SSdag (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 //{
-//	assert(loc1x<this->N_sites and loc2x<this->N_sites);
+//	assert(locx1<this->N_sites and locx2<this->N_sites);
 //	stringstream ss;
-//	ss << "S†(" << loc1x << "," << loc1y << ")" << "S(" << loc2x << "," << loc2y << ")";
+//	ss << "S†(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
 
 //	MpoQ<Symmetry> Mout(N_sites, N_legs);
-//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F.basis(),l); }
+//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
 
-//	auto Sdag = F.Sdag(loc1y);
-//	auto S = F.S(loc2y);
+//	auto Sdag = F.Sdag(locy1);
+//	auto S = F.S(locy2);
 //	Mout.label = ss.str();
 //	Mout.setQtarget(Symmetry::qvacuum());
 //	Mout.qlabel = HubbardSU2xU1::Slabel;
-//	if(loc1x == loc2x)
+//	if(locx1 == locx2)
 //	{
 //		auto product = sqrt(3.)*Operator::prod(Sdag,S,Symmetry::qvacuum());
-//		Mout.setLocal(loc1x,product,Symmetry::qvacuum());
+//		Mout.setLocal(locx1,product,Symmetry::qvacuum());
 //		return Mout;
 //	}
 //	else
 //	{
-//		Mout.setLocal({loc1x, loc2x}, {sqrt(3.)*Sdag, S}, {{3,0},{3,0}});
+//		Mout.setLocal({locx1, locx2}, {sqrt(3.)*Sdag, S}, {{3,0},{3,0}});
 //		return Mout;
 //	}
 //}
 
 //MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
-//EtaEtadag (size_t loc1x, size_t loc2x, size_t loc1y, size_t loc2y)
+//EtaEtadag (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 //{
-//	assert(loc1x<this->N_sites and loc2x<this->N_sites);
+//	assert(locx1<this->N_sites and locx2<this->N_sites);
 //	stringstream ss;
-//	ss << "η†(" << loc1x << "," << loc1y << ")" << "η(" << loc2x << "," << loc2y << ")";
+//	ss << "η†(" << locx1 << "," << locy1 << ")" << "η(" << locx2 << "," << locy2 << ")";
 
 //	MpoQ<Symmetry> Mout(N_sites, N_legs);
-//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F.basis(),l); }
+//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
 
-//	auto Etadag = F.Etadag(loc1y);
-//	auto Eta = F.Eta(loc2y);
+//	auto Etadag = F.Etadag(locy1);
+//	auto Eta = F.Eta(locy2);
 //	Mout.label = ss.str();
 //	Mout.setQtarget(Symmetry::qvacuum());
 //	Mout.qlabel = HubbardSU2xU1::Slabel;
-//	if(loc1x == loc2x)
+//	if(locx1 == locx2)
 //	{
 //		auto product = Operator::prod(Etadag,Eta,Symmetry::qvacuum());
-//		Mout.setLocal(loc1x,product,Symmetry::qvacuum());
+//		Mout.setLocal(locx1,product,Symmetry::qvacuum());
 //		return Mout;
 //	}
 //	else
 //	{
-//		Mout.setLocal({loc1x, loc2x}, {Etadag, Eta}, {{1,2},{1,-2}});
+//		Mout.setLocal({locx1, locx2}, {Etadag, Eta}, {{1,2},{1,-2}});
 //		return Mout;
 //	}
 //}

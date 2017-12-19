@@ -288,7 +288,7 @@ public:
 	typedef MpoQ<Symmetry>                                     Operator;
 	///@}
 	
-protected:
+//protected:
 	
 //	/**local terms of Hamiltonian, format: coupling, operator*/
 //	vector<tuple<Scalar,MatrixType> >                       Olocal;
@@ -416,6 +416,25 @@ MpoQ (size_t Lx_input, size_t Ly_input, qarray<Nq> Qtot_input, vector<qarray<Nq>
 	}
 }
 
+template<typename Symmetry, typename Scalar>
+MpoQ<Symmetry,Scalar>::
+MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input,
+      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), bool UNITARY_input)
+{
+	initialize();
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		qOp[l].resize(qOp_input.size());
+		for (size_t k=0; k<qOp_input.size(); ++k)
+		{
+			qOp[l][k] = qOp_input[k];
+		}
+	}
+	
+	construct(Gvec_input, W, Gvec);
+}
+
 // new new:
 template<typename Symmetry, typename Scalar>
 MpoQ<Symmetry,Scalar>::
@@ -440,31 +459,14 @@ MpoQ (size_t Lx_input, size_t Ly_input, qarray<Nq> Qtot_input,
 	}
 }
 
-template<typename Symmetry, typename Scalar>
-MpoQ<Symmetry,Scalar>::
-MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input,
-	      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), bool UNITARY_input)
-{
-	initialize();
-	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		qOp[l].resize(qOp_input.size());
-		for (size_t k=0; k<qOp_input.size(); ++k)
-		{
-			qOp[l][k] = qOp_input[k];
-		}
-	}
-	
-	construct(Gvec_input, W, Gvec);
-}
-
+// new new:
 template<typename Symmetry, typename Scalar>
 MpoQ<Symmetry,Scalar>::
 MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input,
-	      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), bool UNITARY_input)
+      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), bool UNITARY_input)
+:N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
-	initialize();	
+	initialize();
 	construct(Gvec_input, W, Gvec);
 }
 
@@ -570,12 +572,12 @@ calc_auxBasis()
 		{
 			// add qnums of local basis on l_frst to qset_tmp
 			std::set<qType> qset_tmp;
-
+			
 			for (const auto& k : qOp[l_frst])
 			{
 				qset_tmp.insert(k);
 			}
-
+			
 			for (std::size_t l=l_frst+1; l<=l_last; ++l)
 			{
 				for (const auto& k : qOp[l])
@@ -598,11 +600,11 @@ calc_auxBasis()
 		}
 		return qset;
 	};
-
+	
 	this->qaux.resize(this->N_sites+1);
 	//set aux basis on right end to Qtot.
 	qaux[this->N_sites].push_back(Qtot,1);//auxdim());
-
+	
 	for (std::size_t l=0; l<this->N_sites; ++l)
 	{
 		Qbasis<Symmetry> qauxtmp;
@@ -638,7 +640,28 @@ calc_auxBasis()
 		}
 		qaux[l] = qauxtmp;
 	}
+}
 
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
+construct (const SuperMatrix<Symmetry,Scalar> &G_input,
+		   vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+		   vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
+		   bool CALC_SQUARE,
+		   bool OPEN_BC)
+{
+	construct(G_input, Wstore, Gstore, this->qOp, CALC_SQUARE, OPEN_BC);
+}
+
+template<typename Symmetry, typename Scalar>
+void MpoQ<Symmetry,Scalar>::
+construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
+		   vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
+		   vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
+		   bool CALC_SQUARE,
+		   bool OPEN_BC)
+{
+	construct(Gvec_input, Wstore, Gstore, this->qOp, CALC_SQUARE, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -676,17 +699,6 @@ construct (const SuperMatrix<Symmetry,Scalar> &G_input,
 	{
 		GOT_SQUARE = false;
 	}
-}
-
-template<typename Symmetry, typename Scalar>
-void MpoQ<Symmetry,Scalar>::
-construct (const SuperMatrix<Symmetry,Scalar> &G_input,
-		   vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
-		   vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
-		   bool CALC_SQUARE,
-		   bool OPEN_BC)
-{
-	construct(G_input, Wstore, Gstore, this->qOp, CALC_SQUARE, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -823,17 +835,6 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 	
 	// auxiliary Basis
 	calc_auxBasis();
-}
-
-template<typename Symmetry, typename Scalar>
-void MpoQ<Symmetry,Scalar>::
-construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
-		   vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
-		   vector<SuperMatrix<Symmetry,Scalar> > &Gstore,
-		   bool CALC_SQUARE,
-		   bool OPEN_BC)
-{
-	construct(Gvec_input, Wstore, Gstore, this->qOp, CALC_SQUARE, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1027,8 +1028,8 @@ setLocal (size_t loc, const OperatorType &Op, const OperatorType &SignOp)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		M[l].setMatrix(Daux,qloc[l].size());
-		if(l<loc) {  M[l](0,0).data=SignOp.data; M[l](0,0).Q=SignOp.Q; }
-		if(l==loc) { M[l](0,0).data=Op.data; M[l](0,0).Q=Op.Q; }
+		if(l<loc) {  M[l](0,0) = SignOp; }
+		if(l==loc) { M[l](0,0) = Op; }
 		else {M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum();}
 	}
 	
@@ -1045,18 +1046,18 @@ setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op)
 	// since multiplication of the operators is only possible in the format of SiteOperatorQ and here SiteOperator is used.
 	// --> The multiplication has to be done in the model-classes, before calling setLocal().
 	if constexpr( Symmetry::NON_ABELIAN )
+	{
+		for(size_t pos1=0; pos1<loc.size(); pos1++)
+		for(size_t pos2=pos1+1; pos2<loc.size(); pos2++)
 		{
-			for(size_t pos1=0; pos1<loc.size(); pos1++)
-			for(size_t pos2=pos1+1; pos2<loc.size(); pos2++)
-			{
-				assert(loc[pos1] != loc[pos2] and
-					   "setLocal() can only be called with several operators on different sites, when using non-abelian symmetries.");
-			}
+			assert(loc[pos1] != loc[pos2] and
+				   "setLocal() can only be called with several operators on different sites, when using non-abelian symmetries.");
 		}
+	}
 	
 	Daux = 1;
 	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
-
+	
 	for (size_t l=0; l<N_sites; l++)
 	{
 		qOp[l].resize(1);
@@ -1067,7 +1068,7 @@ setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op)
 			if( GATE ) { qOp[l][0] = Symmetry::qvacuum(); }
 		}
 	}
-
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		M[l].setMatrix(Daux,qloc[l].size());
@@ -1091,46 +1092,50 @@ void MpoQ<Symmetry,Scalar>::
 setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const OperatorType &SignOp)
 {
 	assert(loc.size() >= 1 and Op.size() == loc.size());
-
+	
 	// For non-abelian symmetries, the operators have to be on different sites,
 	// since multiplication of the operators is only possible in the format of SiteOperatorQ and here SiteOperator is used.
 	// --> The multiplication has to be done in the model-classes, before calling setLocal().
 	if constexpr( Symmetry::NON_ABELIAN )
+	{
+		for(size_t pos1=0; pos1<loc.size(); pos1++)
+		for(size_t pos2=pos1+1; pos2<loc.size(); pos2++)
 		{
-			for(size_t pos1=0; pos1<loc.size(); pos1++)
-			for(size_t pos2=pos1+1; pos2<loc.size(); pos2++)
-			{
-				assert(loc[pos1] != loc[pos2] and
-					   "setLocal() can only be called with several operators on different sites, when using non-abelian symmetries.");
-			}
+			assert(loc[pos1] != loc[pos2] and
+				   "setLocal() can only be called with several operators on different sites, when using non-abelian symmetries.");
 		}
-
+	}
+	
 	auto [min,max] = std::minmax_element(loc.begin(), loc.end());
 	size_t locMin,locMax;
 	locMin = loc[min-loc.begin()];
 	locMax = loc[max-loc.begin()];
-
+	
 	Daux = 1;
 	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
-
+	
 	for (size_t l=0; l<N_sites; l++)
 	{
 		qOp[l].resize(1);
 		bool GATE = true;
-		for(size_t pos=0; pos<loc.size(); pos++)
+		for (size_t pos=0; pos<loc.size(); pos++)
 		{
 			if(l == loc[pos]) { qOp[l][0] = Op[pos].Q; GATE = false; }
 			if( GATE ) { qOp[l][0] = Symmetry::qvacuum(); }
 		}
 	}
-
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		M[l].setMatrix(Daux,qloc[l].size());
 		if ( auto it=std::find(loc.begin(),loc.end(),l) == loc.end() )
 		{
-			if( l<locMin or l>locMax ) { M[l](0,0).data = SignOp.data; M[l](0,0).Q = SignOp.Q; }
+			if( l<locMin or l>locMax ) { M[l](0,0) = SignOp; }
 			else { M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum(); }
+		}
+		else
+		{
+			M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum();
 		}
 	}
 	
@@ -1139,10 +1144,10 @@ setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const Opera
 		assert(loc[i] < N_sites);
 		assert(Op[i].data.rows() == qloc[loc[i]].size() and Op[i].data.cols() == qloc[loc[i]].size());
 		M[loc[i]](0,0).data = M[loc[i]](0,0).data * Op[i].data;
-		M[loc[i]](0,0).Q = Symmetry::reduceSilent(M[loc[i]](0,0).Q,Op[i].Q)[0]; //We can use the 0th component here.
+		M[loc[i]](0,0).Q = Symmetry::reduceSilent(M[loc[i]](0,0).Q,Op[i].Q)[0]; // We can use the 0th component here.
 	}
-
-	construct(M);
+	
+	construct(M, W, Gvec);
 }
 
 // sum_i f(i)*O(i)

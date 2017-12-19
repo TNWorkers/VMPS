@@ -251,10 +251,67 @@ test_Hubbard.o: test_Hubbard.cc ../../../HELPERS/Logger.h \
  ../../../HELPERS/ArgParser.h ../../../HELPERS/StringStuff.h \
  ../../../HELPERS/PolychromaticConsole.h ../../../HELPERS/Stopwatch.h \
  ../../../HELPERS/macros.h ../../../../CPPLIB/cpp-text-table/TextTable.h \
- ../../../HELPERS/numeric_limits.h ../../SiteOperator.h ../../qbasis.h \
- ../../../HELPERS/macros.h ../../Biped.h ../../../HELPERS/MemCalc.h \
+ ../../../HELPERS/numeric_limits.h ../../../HILBERT/HubbardModel.h \
+ ../../../HILBERT/OccNumVecSpaceFloor.h \
  ../../../../CPPLIB/EIGEN/Eigen/Dense \
  ../../../../CPPLIB/EIGEN/Eigen/SparseCore \
+ ../../../../CPPLIB/GSL/include/gsl/gsl_math.h \
+ ../../../../CPPLIB/GSL/include/gsl/gsl_sys.h \
+ ../../../../CPPLIB/GSL/include/gsl/gsl_inline.h \
+ ../../../../CPPLIB/GSL/include/gsl/gsl_machine.h \
+ ../../../../CPPLIB/GSL/include/gsl/gsl_precision.h \
+ ../../../../CPPLIB/GSL/include/gsl/gsl_types.h \
+ ../../../../CPPLIB/GSL/include/gsl/gsl_nan.h \
+ ../../../../CPPLIB/GSL/include/gsl/gsl_pow_int.h \
+ ../../../../CPPLIB/GSL/include/gsl/gsl_minmax.h \
+ ../../../HILBERT/HilbertTypedefs.h \
+ ../../../../CPPLIB/BOOST/boost/dynamic_bitset.hpp \
+ ../../../../CPPLIB/BOOST/boost/dynamic_bitset/dynamic_bitset.hpp \
+ ../../../../CPPLIB/BOOST/boost/dynamic_bitset/config.hpp \
+ ../../../../CPPLIB/BOOST/boost/config.hpp \
+ ../../../../CPPLIB/BOOST/boost/config/user.hpp \
+ ../../../../CPPLIB/BOOST/boost/config/select_compiler_config.hpp \
+ ../../../../CPPLIB/BOOST/boost/config/compiler/gcc.hpp \
+ ../../../../CPPLIB/BOOST/boost/config/select_stdlib_config.hpp \
+ ../../../../CPPLIB/BOOST/boost/config/stdlib/libstdcpp3.hpp \
+ ../../../../CPPLIB/BOOST/boost/config/select_platform_config.hpp \
+ ../../../../CPPLIB/BOOST/boost/config/platform/linux.hpp \
+ ../../../../CPPLIB/BOOST/boost/config/posix_features.hpp \
+ ../../../../CPPLIB/BOOST/boost/config/suffix.hpp \
+ ../../../../CPPLIB/BOOST/boost/detail/workaround.hpp \
+ ../../../../CPPLIB/BOOST/boost/dynamic_bitset_fwd.hpp \
+ ../../../../CPPLIB/BOOST/boost/detail/dynamic_bitset.hpp \
+ ../../../../CPPLIB/BOOST/boost/detail/iterator.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/move.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/detail/config_begin.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/utility.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/detail/workaround.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/utility_core.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/core.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/detail/config_end.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/detail/meta_utils.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/detail/meta_utils_core.hpp \
+ ../../../../CPPLIB/BOOST/boost/static_assert.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/traits.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/detail/type_traits.hpp \
+ ../../../../CPPLIB/BOOST/boost/assert.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/iterator.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/detail/iterator_traits.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/detail/std_ns_begin.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/detail/std_ns_end.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/algorithm.hpp \
+ ../../../../CPPLIB/BOOST/boost/move/algo/move.hpp \
+ ../../../../CPPLIB/BOOST/boost/detail/no_exceptions_support.hpp \
+ ../../../../CPPLIB/BOOST/boost/core/no_exceptions_support.hpp \
+ ../../../../CPPLIB/BOOST/boost/limits.hpp \
+ ../../../../CPPLIB/BOOST/boost/pending/lowest_bit.hpp \
+ ../../../../CPPLIB/BOOST/boost/pending/integer_log2.hpp \
+ ../../../../CPPLIB/BOOST/boost/integer/integer_log2.hpp \
+ ../../../../CPPLIB/BOOST/boost/utility/addressof.hpp \
+ ../../../../CPPLIB/BOOST/boost/core/addressof.hpp \
+ ../../../../CPPLIB/BOOST/boost/throw_exception.hpp \
+ ../../../HILBERT/Geometry.h ../../../HELPERS/NestedLoopIterator.h \
+ ../../../../CPPLIB/EIGEN/Eigen/Sparse ../../../HELPERS/MemCalc.h \
  ../../../../CPPLIB/EIGEN/unsupported/Eigen/CXX11/Tensor \
  ../../../../CPPLIB/EIGEN/unsupported/Eigen/CXX11/../../../Eigen/Core \
  ../../../../CPPLIB/EIGEN/Eigen/src/Core/util/DisableStupidWarnings.h \
@@ -332,31 +389,34 @@ test_Hubbard.o: test_Hubbard.cc ../../../HELPERS/Logger.h \
  ../../../../CPPLIB/EIGEN/unsupported/Eigen/CXX11/src/Tensor/TensorRef.h \
  ../../../../CPPLIB/EIGEN/unsupported/Eigen/CXX11/src/Tensor/TensorIO.h \
  ../../../../CPPLIB/EIGEN/Eigen/src/Core/util/ReenableStupidWarnings.h \
- ../../DmrgExternalQ.h ../../../../CPPLIB/BOOST/boost/functional/hash.hpp \
+ ../../../HILBERT/HxV.h ../../../HILBERT/PerfectShuffle.h \
+ ../../../HILBERT/Chunkomatic.h ../../../HILBERT/HoppingParticles.h \
+ ../../../../CPPLIB/GSL/include/gsl/gsl_sf_gamma.h \
+ ../../../../CPPLIB/GSL/include/gsl/gsl_sf_result.h \
+ ../../../HILBERT/InteractionParams.h ../../../HILBERT/TensorProducts.h \
+ ../../../../CPPLIB/EIGEN/unsupported/Eigen/KroneckerProduct \
+ ../../../../CPPLIB/EIGEN/unsupported/Eigen/../../Eigen/Core \
+ ../../../../CPPLIB/EIGEN/unsupported/Eigen/../../Eigen/src/Core/util/DisableStupidWarnings.h \
+ ../../../../CPPLIB/EIGEN/unsupported/Eigen/../../Eigen/src/SparseCore/SparseUtil.h \
+ ../../../../CPPLIB/EIGEN/unsupported/Eigen/src/KroneckerProduct/KroneckerTensorProduct.h \
+ ../../../../CPPLIB/EIGEN/unsupported/Eigen/../../Eigen/src/Core/util/ReenableStupidWarnings.h \
+ ../../../HILBERT/HubbardOperatorsList.h \
+ ../../../HILBERT/HubbardOperators.h ../../../HILBERT/LanczosWrappers.h \
+ ../../../LANCZOS/LanczosSolver.h ../../../LANCZOS/RandomVector.h \
+ ../../SiteOperator.h ../../qbasis.h ../../../HELPERS/macros.h \
+ ../../Biped.h ../../DmrgExternalQ.h \
+ ../../../../CPPLIB/BOOST/boost/functional/hash.hpp \
  ../../../../CPPLIB/BOOST/boost/functional/hash/hash.hpp \
  ../../../../CPPLIB/BOOST/boost/functional/hash/hash_fwd.hpp \
- ../../../../CPPLIB/BOOST/boost/config.hpp \
- ../../../../CPPLIB/BOOST/boost/config/user.hpp \
- ../../../../CPPLIB/BOOST/boost/config/select_compiler_config.hpp \
- ../../../../CPPLIB/BOOST/boost/config/compiler/gcc.hpp \
- ../../../../CPPLIB/BOOST/boost/config/select_stdlib_config.hpp \
- ../../../../CPPLIB/BOOST/boost/config/stdlib/libstdcpp3.hpp \
- ../../../../CPPLIB/BOOST/boost/config/select_platform_config.hpp \
- ../../../../CPPLIB/BOOST/boost/config/platform/linux.hpp \
- ../../../../CPPLIB/BOOST/boost/config/posix_features.hpp \
- ../../../../CPPLIB/BOOST/boost/config/suffix.hpp \
- ../../../../CPPLIB/BOOST/boost/detail/workaround.hpp \
  ../../../../CPPLIB/BOOST/boost/functional/hash/detail/hash_float.hpp \
  ../../../../CPPLIB/BOOST/boost/functional/hash/detail/float_functions.hpp \
  ../../../../CPPLIB/BOOST/boost/config/no_tr1/cmath.hpp \
  ../../../../CPPLIB/BOOST/boost/functional/hash/detail/limits.hpp \
- ../../../../CPPLIB/BOOST/boost/limits.hpp \
  ../../../../CPPLIB/BOOST/boost/utility/enable_if.hpp \
  ../../../../CPPLIB/BOOST/boost/core/enable_if.hpp \
  ../../../../CPPLIB/BOOST/boost/integer/static_log2.hpp \
  ../../../../CPPLIB/BOOST/boost/integer_fwd.hpp \
  ../../../../CPPLIB/BOOST/boost/cstdint.hpp \
- ../../../../CPPLIB/BOOST/boost/assert.hpp \
  ../../../../CPPLIB/BOOST/boost/type_traits/is_enum.hpp \
  ../../../../CPPLIB/BOOST/boost/type_traits/intrinsics.hpp \
  ../../../../CPPLIB/BOOST/boost/type_traits/detail/config.hpp \
@@ -365,7 +425,6 @@ test_Hubbard.o: test_Hubbard.cc ../../../HELPERS/Logger.h \
  ../../../../CPPLIB/BOOST/boost/type_traits/is_integral.hpp \
  ../../../../CPPLIB/BOOST/boost/functional/hash/extensions.hpp \
  ../../../../CPPLIB/BOOST/boost/detail/container_fwd.hpp \
- ../../../../CPPLIB/BOOST/boost/static_assert.hpp \
  ../../../../CPPLIB/BOOST/boost/preprocessor/repetition/repeat_from_to.hpp \
  ../../../../CPPLIB/BOOST/boost/preprocessor/arithmetic/add.hpp \
  ../../../../CPPLIB/BOOST/boost/preprocessor/arithmetic/dec.hpp \
@@ -412,10 +471,8 @@ test_Hubbard.o: test_Hubbard.cc ../../../HELPERS/Logger.h \
  ../../../../CPPLIB/BOOST/boost/type_traits/is_floating_point.hpp \
  ../../../../CPPLIB/BOOST/boost/type_traits/is_pointer.hpp \
  ../../../../CPPLIB/BOOST/boost/integer/common_factor_rt.hpp \
- ../../../../CPPLIB/BOOST/boost/throw_exception.hpp ../../qarray.h \
- ../../../HELPERS/NestedLoopIterator.h \
- ../../../../CPPLIB/EIGEN/Eigen/Sparse ../../DmrgTypedefs.h \
- ../../SiteOperator.h ../../DmrgSolverQ.h ../../MpoQ.h \
+ ../../qarray.h ../../DmrgTypedefs.h ../../SiteOperator.h \
+ ../../DmrgSolverQ.h ../../MpoQ.h \
  ../../../../CPPLIB/BOOST/boost/multi_array.hpp \
  ../../../../CPPLIB/BOOST/boost/multi_array/base.hpp \
  ../../../../CPPLIB/BOOST/boost/multi_array/extent_range.hpp \
@@ -424,7 +481,6 @@ test_Hubbard.o: test_Hubbard.cc ../../../HELPERS/Logger.h \
  ../../../../CPPLIB/BOOST/boost/array.hpp \
  ../../../../CPPLIB/BOOST/boost/swap.hpp \
  ../../../../CPPLIB/BOOST/boost/core/swap.hpp \
- ../../../../CPPLIB/BOOST/boost/detail/iterator.hpp \
  ../../../../CPPLIB/BOOST/boost/functional/hash_fwd.hpp \
  ../../../../CPPLIB/BOOST/boost/multi_array/types.hpp \
  ../../../../CPPLIB/BOOST/boost/multi_array/index_range.hpp \
@@ -575,8 +631,6 @@ test_Hubbard.o: test_Hubbard.cc ../../../HELPERS/Logger.h \
  ../../../../CPPLIB/BOOST/boost/type_traits/detail/is_mem_fun_pointer_impl.hpp \
  ../../../../CPPLIB/BOOST/boost/type_traits/is_member_pointer.hpp \
  ../../../../CPPLIB/BOOST/boost/iterator/detail/enable_if.hpp \
- ../../../../CPPLIB/BOOST/boost/utility/addressof.hpp \
- ../../../../CPPLIB/BOOST/boost/core/addressof.hpp \
  ../../../../CPPLIB/BOOST/boost/type_traits/add_pointer.hpp \
  ../../../../CPPLIB/BOOST/boost/type_traits/remove_const.hpp \
  ../../../../CPPLIB/BOOST/boost/type_traits/is_pod.hpp \
@@ -718,23 +772,15 @@ test_Hubbard.o: test_Hubbard.cc ../../../HELPERS/Logger.h \
  ../../../../CPPLIB/BOOST/boost/type_traits/promote.hpp \
  ../../symmetry/U0.h ../../SuperMatrix.h ../../DmrgTypedefs.h \
  ../../DmrgPivotStuffQ.h ../../Multipede.h \
- ../../../LANCZOS/RandomVector.h \
- ../../../../CPPLIB/EIGEN/unsupported/Eigen/KroneckerProduct \
- ../../../../CPPLIB/EIGEN/unsupported/Eigen/../../Eigen/Core \
- ../../../../CPPLIB/EIGEN/unsupported/Eigen/../../Eigen/src/Core/util/DisableStupidWarnings.h \
- ../../../../CPPLIB/EIGEN/unsupported/Eigen/../../Eigen/src/SparseCore/SparseUtil.h \
- ../../../../CPPLIB/EIGEN/unsupported/Eigen/src/KroneckerProduct/KroneckerTensorProduct.h \
- ../../../../CPPLIB/EIGEN/unsupported/Eigen/../../Eigen/src/Core/util/ReenableStupidWarnings.h \
- ../../DmrgJanitor.h ../../MpsQ.h ../../DmrgConglutinations.h \
- ../../DmrgIndexGymnastics.h ../../DmrgLinearAlgebraQ.h \
- ../../DmrgContractionsQ.h ../../symmetry/functions.h \
- ../../../LANCZOS/LanczosSolver.h ../../../LANCZOS/RandomVector.h \
- ../../models/HeisenbergU1.h ../../MpoQ.h ../../symmetry/U1.h \
- ../../qarray.h ../../SpinBase.h ../../DmrgExternalQ.h \
- ../../ParamHandler.h ../../models/Heisenberg.h ../../MpsQCompressor.h \
- ../../DmrgPivotStuff2Q.h ../../../LANCZOS/LanczosMower.h \
- ../../../LANCZOS/LanczosSolver.h ../../DmrgPivotStuff0.h \
- ../../DmrgPivotStuff2Q.h ../../TDVPPropagator.h \
+ ../../../LANCZOS/RandomVector.h ../../DmrgJanitor.h ../../MpsQ.h \
+ ../../DmrgConglutinations.h ../../DmrgIndexGymnastics.h \
+ ../../DmrgLinearAlgebraQ.h ../../DmrgContractionsQ.h \
+ ../../symmetry/functions.h ../../models/HeisenbergU1.h ../../MpoQ.h \
+ ../../symmetry/U1.h ../../qarray.h ../../SpinBase.h \
+ ../../DmrgExternalQ.h ../../ParamHandler.h ../../models/Heisenberg.h \
+ ../../MpsQCompressor.h ../../DmrgPivotStuff2Q.h \
+ ../../../LANCZOS/LanczosMower.h ../../../LANCZOS/LanczosSolver.h \
+ ../../DmrgPivotStuff0.h ../../DmrgPivotStuff2Q.h ../../TDVPPropagator.h \
  ../../../LANCZOS/LanczosPropagator.h \
  ../../../../CPPLIB/EIGEN/Eigen/Eigenvalues \
  ../../../../CPPLIB/EIGEN/unsupported/Eigen/MatrixFunctions \
@@ -747,36 +793,8 @@ test_Hubbard.o: test_Hubbard.cc ../../../HELPERS/Logger.h \
  ../../../../CPPLIB/EIGEN/unsupported/Eigen/src/MatrixFunctions/MatrixPower.h \
  ../../DmrgPivotStuff0.h ../../models/Hubbard.h \
  ../../models/HubbardU1xU1.h ../../symmetry/U1xU1.h ../../FermionBase.h \
- ../../../../CPPLIB/BOOST/boost/dynamic_bitset.hpp \
- ../../../../CPPLIB/BOOST/boost/dynamic_bitset/dynamic_bitset.hpp \
- ../../../../CPPLIB/BOOST/boost/dynamic_bitset/config.hpp \
- ../../../../CPPLIB/BOOST/boost/dynamic_bitset_fwd.hpp \
- ../../../../CPPLIB/BOOST/boost/detail/dynamic_bitset.hpp \
- ../../../../CPPLIB/BOOST/boost/move/move.hpp \
- ../../../../CPPLIB/BOOST/boost/move/detail/config_begin.hpp \
- ../../../../CPPLIB/BOOST/boost/move/utility.hpp \
- ../../../../CPPLIB/BOOST/boost/move/detail/workaround.hpp \
- ../../../../CPPLIB/BOOST/boost/move/utility_core.hpp \
- ../../../../CPPLIB/BOOST/boost/move/core.hpp \
- ../../../../CPPLIB/BOOST/boost/move/detail/config_end.hpp \
- ../../../../CPPLIB/BOOST/boost/move/detail/meta_utils.hpp \
- ../../../../CPPLIB/BOOST/boost/move/detail/meta_utils_core.hpp \
- ../../../../CPPLIB/BOOST/boost/move/traits.hpp \
- ../../../../CPPLIB/BOOST/boost/move/detail/type_traits.hpp \
- ../../../../CPPLIB/BOOST/boost/move/iterator.hpp \
- ../../../../CPPLIB/BOOST/boost/move/detail/iterator_traits.hpp \
- ../../../../CPPLIB/BOOST/boost/move/detail/std_ns_begin.hpp \
- ../../../../CPPLIB/BOOST/boost/move/detail/std_ns_end.hpp \
- ../../../../CPPLIB/BOOST/boost/move/algorithm.hpp \
- ../../../../CPPLIB/BOOST/boost/move/algo/move.hpp \
- ../../../../CPPLIB/BOOST/boost/detail/no_exceptions_support.hpp \
- ../../../../CPPLIB/BOOST/boost/core/no_exceptions_support.hpp \
- ../../../../CPPLIB/BOOST/boost/pending/lowest_bit.hpp \
- ../../../../CPPLIB/BOOST/boost/pending/integer_log2.hpp \
- ../../../../CPPLIB/BOOST/boost/integer/integer_log2.hpp ../../SpinBase.h \
- ../../models/HubbardU1xU1.h ../../models/HubbardSU2xU1.h \
- ../../fermions/BaseSU2xU1.h ../../SiteOperatorQ.h ../../qbasis.h \
- ../../symmetry/SU2xU1.h \
+ ../../SpinBase.h ../../models/HubbardU1xU1.h \
+ ../../models/HubbardSU2xU1.h ../../fermions/BaseSU2xU1.h \
+ ../../SiteOperatorQ.h ../../qbasis.h ../../symmetry/SU2xU1.h \
  ../../../../CPPLIB/GSL/include/gsl/gsl_sf_coupling.h \
- ../../../../CPPLIB/GSL/include/gsl/gsl_sf_result.h \
  ../../symmetry/functions.h

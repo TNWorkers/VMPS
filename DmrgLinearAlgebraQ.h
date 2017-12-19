@@ -165,38 +165,38 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 			typename Symmetry::qType Qtarget = Symmetry::qvacuum())
 {
 	if constexpr (Symmetry::NON_ABELIAN )
+	{
+		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
+		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
+		
+		B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), Qtarget});
+		for (size_t l=O1.length()-1; l!=-1; --l)
 		{
-			Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
-			Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
-
-			B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), Qtarget});
-			for (size_t l=O1.length()-1; l!=-1; --l)
-			{
-				contract_R(B, Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), O1.locBasis(l), O1.opBasis(l), O2.opBasis(l),
-						   O1.auxBasis(l+1), O2.auxBasis(l+1), O1.auxBasis(l), O2.auxBasis(l), Bnext);
-				B.clear();
-				B = Bnext;
-				Bnext.clear();
-			}
-
-			if (B.dim == 1)
-			{
-				return B.block[0][0][0].trace();
-			}
-			else
-			{
-				lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has several blocks: " << B.dim << ", returning 0!" << endl;
-				lout << "MPS in question: " << Vket.info() << endl;
-				lout << "MPO1 in question: " << O1.info() << endl;
-				lout << "MPO2 in question: " << O2.info() << endl;
-				return 0;
-			}
+			contract_R(B, Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), O1.locBasis(l), O1.opBasis(l), O2.opBasis(l),
+					   O1.auxBasis(l+1), O2.auxBasis(l+1), O1.auxBasis(l), O2.auxBasis(l), Bnext);
+			B.clear();
+			B = Bnext;
+			Bnext.clear();
 		}
+		
+		if (B.dim == 1)
+		{
+			return B.block[0][0][0].trace();
+		}
+		else
+		{
+			lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has " << B.dim << " blocks, returning 0!" << endl;
+			lout << "MPS in question: " << Vket.info() << endl;
+			lout << "MPO1 in question: " << O1.info() << endl;
+			lout << "MPO2 in question: " << O2.info() << endl;
+			return 0;
+		}
+	}
 	else
 	{
 		Multipede<4,Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
 		Multipede<4,Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
-	
+		
 		B.setVacuum();
 		for (size_t l=0; l<O2.length(); ++l)
 		{
@@ -212,7 +212,7 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 		}
 		else
 		{
-			lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has several blocks, returning 0!" << endl;
+			lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has " << B.dim << " blocks, returning 0!" << endl;
 			lout << "MPS in question: " << Vket.info() << endl;
 			lout << "MPO1 in question: " << O1.info() << endl;
 			lout << "MPO2 in question: " << O2.info() << endl;

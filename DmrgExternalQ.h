@@ -39,12 +39,22 @@ string halve (qarray<1> qnum)
 	return ss.str();
 }
 
-/**Makes half-integers in the output.*/
+/**Calculates the total spin \p S from the degeneracy \p D for a label.*/
 string SfromD (qarray<1> qnum)
 {
 	stringstream ss;
 	ss << "(";
 	ss << (qnum[0]-1)/2;
+	ss << ")";
+	return ss.str();
+}
+
+string SfromD_noFormat (qarray<2> qnum)
+{
+	stringstream ss;
+	ss << "(";
+	ss << (qnum[0]-1)/2 << ",";
+	ss << qnum[1];
 	ss << ")";
 	return ss.str();
 }

@@ -66,6 +66,7 @@ public:
 	MpoQ<Symmetry> Aps (size_t locx, size_t locy=0);
 	MpoQ<Symmetry> c (SPIN_INDEX sigma, size_t locx, size_t locy=0);
 	MpoQ<Symmetry> cdag (SPIN_INDEX sigma, size_t locx, size_t locy=0);
+	MpoQ<Symmetry> cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	MpoQ<Symmetry,complex<double> > electronPacket (complex<double> (*f)(int));
 	MpoQ<Symmetry,complex<double> > holePacket (complex<double> (*f)(int));
 	MpoQ<Symmetry> d (size_t locx, size_t locy=0);
@@ -159,10 +160,20 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	{
 		if (tPara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-tPara(i,j), F.cdag(UP,i), F.sign() * F.c(UP,j)));
-			Terms.tight.push_back(make_tuple(-tPara(i,j), F.cdag(DN,i), F.sign() * F.c(DN,j)));
-			Terms.tight.push_back(make_tuple(+tPara(i,j), F.c(UP,i),    F.sign() * F.cdag(UP,j)));
-			Terms.tight.push_back(make_tuple(+tPara(i,j), F.c(DN,i),    F.sign() * F.cdag(DN,j)));
+//			Terms.tight.push_back(make_tuple(-tPara(i,j), F.cdag(UP,i), F.sign() * F.c(UP,j)));
+//			Terms.tight.push_back(make_tuple(-tPara(i,j), F.cdag(DN,i), F.sign() * F.c(DN,j)));
+//			Terms.tight.push_back(make_tuple(+tPara(i,j), F.c(UP,i),    F.sign() * F.cdag(UP,j)));
+//			Terms.tight.push_back(make_tuple(+tPara(i,j), F.c(DN,i),    F.sign() * F.cdag(DN,j)));
+			
+			Terms.tight.push_back(make_tuple(+tPara(i,j), F.cdag(UP,i), F.sign() * F.c(UP,j)));
+			Terms.tight.push_back(make_tuple(+tPara(i,j), F.cdag(DN,i), F.sign() * F.c(DN,j)));
+			Terms.tight.push_back(make_tuple(-tPara(i,j), F.c(UP,i),    F.sign() * F.cdag(UP,j)));
+			Terms.tight.push_back(make_tuple(-tPara(i,j), F.c(DN,i),    F.sign() * F.cdag(DN,j)));
+			
+//			Terms.tight.push_back(make_tuple(-tPara(i,j), F.sign() * F.c(UP,j), F.cdag(UP,i)));
+//			Terms.tight.push_back(make_tuple(-tPara(i,j), F.sign() * F.c(DN,j), F.cdag(DN,i)));
+//			Terms.tight.push_back(make_tuple(+tPara(i,j), F.sign() * F.cdag(UP,j), F.c(UP,i)));
+//			Terms.tight.push_back(make_tuple(+tPara(i,j), F.sign() * F.cdag(DN,j), F.c(DN,i)));
 		}
 		
 		if (Vpara(i,j) != 0.)
@@ -187,10 +198,15 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	{
 		assert(F.orbitals() == 1 and "Cannot do a ladder with t'!");
 		
-		Terms.nextn.push_back(make_tuple(-tPrime.x, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
-		Terms.nextn.push_back(make_tuple(-tPrime.x, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
-		Terms.nextn.push_back(make_tuple(+tPrime.x, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
-		Terms.nextn.push_back(make_tuple(+tPrime.x, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
+//		Terms.nextn.push_back(make_tuple(-tPrime.x, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
+//		Terms.nextn.push_back(make_tuple(-tPrime.x, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
+//		Terms.nextn.push_back(make_tuple(+tPrime.x, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
+//		Terms.nextn.push_back(make_tuple(+tPrime.x, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
+		
+		Terms.nextn.push_back(make_tuple(+tPrime.x, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
+		Terms.nextn.push_back(make_tuple(+tPrime.x, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
+		Terms.nextn.push_back(make_tuple(-tPrime.x, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
+		Terms.nextn.push_back(make_tuple(-tPrime.x, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
 	}
 	
 	param0d J3site = P.fill_array0d<double>("J3site","J3site",loc);
@@ -198,6 +214,8 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	
 	if (J3site.x != 0.)
 	{
+		// TODO: Hopping-Vorzeichen checken!!!
+		
 		assert(F.orbitals() == 1 and "Cannot do a ladder with 3-site J terms!");
 		
 		// three-site terms without spinflip
@@ -317,27 +335,38 @@ c (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
-	ss << "c(" << locx << "," << locy << ",σ=" << sigma << ")";
+	ss << "c(" << locx << "," << locy << "," << sigma << ")";
 	
 	qarray<2> qdiff;
 	(sigma==UP) ? qdiff = {-1,0} : qdiff = {0,-1};
+//	
+//	vector<SuperMatrix<Symmetry,double> > M(N_sites);
+//	for (size_t l=0; l<locx; ++l)
+//	{
+//		M[l].setMatrix(1,F[l].dim());
+//		M[l](0,0) = F[l].sign();
+//	}
+//	
+//	M[locx].setMatrix(1,F[locx].dim());
+//	M[locx](0,0) = (sigma==UP)? F[locx].sign_local(locy)*F[locx].c(UP,locy):
+//	                            F[locx].sign_local(locy)*F[locx].c(DN,locy);
+//	
+//	for (size_t l=locx+1; l<N_sites; ++l)
+//	{
+//		M[l].setMatrix(1,F[l].dim());
+//		M[l](0,0) = F[l].Id();
+//	}
+//	
+//	MpoQ<Symmetry> Mout(N_sites, N_legs, M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
+//	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+//	Mout.qOp.resize(N_sites);
+//	for (size_t l=0; l<N_sites; ++l) {Mout.qOp[l].resize(1); Mout.qOp[l][0] = Symmetry::qvacuum();}
+//	Mout.setOpBasis({qdiff},locx);
+//	return Mout;
 	
-	vector<SuperMatrix<Symmetry,double> > M(N_sites);
-	for (size_t l=0; l<locx; ++l)
-	{
-		M[l].setMatrix(1,F[l].dim());
-		M[l](0,0) = F[l].sign();
-	}
-	M[locx].setMatrix(1,F[locx].dim());
-	M[locx](0,0) = (sigma==UP)? F[locx].sign_local(locy)*F[locx].c(UP,locy) : F[locx].sign_local(locy)*F[locx].c(DN,locy);
-	for (size_t l=locx+1; l<N_sites; ++l)
-	{
-		M[l].setMatrix(1,F[l].dim());
-		M[l](0,0) = F[l].Id();
-	}
-	
-	MpoQ<Symmetry> Mout(N_sites, N_legs, M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
+	MpoQ<Symmetry> Mout(N_sites, N_legs, qdiff, HubbardU1xU1::Nlabel, ss.str());
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+	Mout.setLocal(locx, F[locx].c(sigma,locy), F[0].sign());
 	return Mout;
 }
 
@@ -346,29 +375,96 @@ cdag (SPIN_INDEX sigma, size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<N_legs);
 	stringstream ss;
-	ss << "c†(" << locx << "," << locy << ",σ=" << sigma << ")";
+	ss << "c†(" << locx << "," << locy << "," << sigma << ")";
 	
 	qarray<2> qdiff;
 	(sigma==UP) ? qdiff = {+1,0} : qdiff = {0,+1};
+//	
+//	vector<SuperMatrix<Symmetry,double> > M(N_sites);
+//	for (size_t l=0; l<locx; ++l)
+//	{
+//		M[l].setMatrix(1,F[l].dim());
+//		M[l](0,0) = F[l].sign();
+//	}
+//	
+//	M[locx].setMatrix(1,F[locx].dim());
+//	M[locx](0,0) = (sigma==UP)? F[locx].sign_local(locy)*F[locx].cdag(UP,locy):
+//	                            F[locx].sign_local(locy)*F[locx].cdag(DN,locy);
+//	
+//	for (size_t l=locx+1; l<N_sites; ++l)
+//	{
+//		M[l].setMatrix(1,F[l].dim());
+//		M[l](0,0) = F[l].Id();
+//	}
+//	
+//	MpoQ<Symmetry> Mout(N_sites, N_legs, M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
+//	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+//	Mout.qOp.resize(N_sites);
+//	for (size_t l=0; l<N_sites; ++l) {Mout.qOp[l].resize(1); Mout.qOp[l][0] = Symmetry::qvacuum();}
+//	Mout.setOpBasis({qdiff},locx);
+//	return Mout;
 	
-	vector<SuperMatrix<Symmetry,double> > M(N_sites);
-	for (size_t l=0; l<locx; ++l)
-	{
-		M[l].setMatrix(1,F[l].dim());
-		M[l](0,0) = F[l].sign();
-	}
-	M[locx].setMatrix(1,F[locx].dim());
-	M[locx](0,0) = (sigma==UP)? F[locx].sign_local(locy)*F[locx].cdag(UP,locy) : F[locx].sign_local(locy)*F[locx].cdag(DN,locy);
-	for (size_t l=locx+1; l<N_sites; ++l)
-	{
-		M[l].setMatrix(1,F[l].dim());
-		M[l](0,0) = F[l].Id();
-	}
-	
-	MpoQ<Symmetry> Mout(N_sites, N_legs, M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
+	MpoQ<Symmetry> Mout(N_sites, N_legs, qdiff, HubbardU1xU1::Nlabel, ss.str());
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+	Mout.setLocal(locx, F[locx].cdag(sigma,locy), F[0].sign());
 	return Mout;
 }
+
+MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	assert(locx1<N_sites and locx2<N_sites);
+	stringstream ss;
+	ss << "c†(" << locx1 << "," << locy1 << "," << sigma << ")" << "c(" << locx2 << "," << locy2 << "," << sigma << ")";
+	
+//	vector<SuperMatrix<Symmetry,double> > M(N_sites);
+//	for (size_t l=0; l<min(locx1,locx2); ++l)
+//	{
+//		M[l].setMatrix(1,F[l].dim());
+//		M[l](0,0) = F[l].Id();
+//	}
+//	
+//	for (size_t l=min(locx1,locx2); l<max(locx1,locx2); ++l)
+//	{
+//		M[l].setMatrix(1,F[l].dim());
+//		M[l](0,0) = F[l].sign();
+//	}
+//	
+//	M[locx].setMatrix(1,F[locx].dim());
+//	M[locx](0,0) = (sigma==UP)? F[locx].sign_local(locy)*F[locx].cdag(UP,locy):
+//	                            F[locx].sign_local(locy)*F[locx].cdag(DN,locy);
+//	
+//	for (size_t l=max(locx1,locx2)+1; l<N_sites; ++l)
+//	{
+//		M[l].setMatrix(1,F[l].dim());
+//		M[l](0,0) = F[l].Id();
+//	}
+//
+//	MpoQ<Symmetry> Mout(N_sites, N_legs, M, qarray<Symmetry::Nq>({0,0}), HubbardU1xU1::Nlabel, ss.str());
+//	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+	
+	auto cdag = F[locx1].cdag(sigma,locy1);
+	auto c    = F[locx2].c   (sigma,locy2);
+	
+	MpoQ<Symmetry> Mout(N_sites, N_legs, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
+	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+	
+	if (locx1 == locx2)
+	{
+		Mout.setLocal(locx1, cdag*c);
+	}
+	else if (locx1<locx2)
+	{
+		Mout.setLocal({locx1, locx2}, {cdag*F[locx1].sign(), c}, F[0].sign());
+	}
+	else if (locx1>locx2)
+	{
+		Mout.setLocal({locx2, locx1}, {c*F[locx2].sign(), -1.*cdag}, F[0].sign());
+	}
+	
+	return Mout;
+}
+
 
 //MpoQ<Sym::U1xU1<double>,complex<double> > HubbardU1xU1::
 //electronPacket (complex<double> (*f)(int))

@@ -302,8 +302,8 @@ coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
 									q10[0]-1,q11[0]-1,q12[0]-1,
 									q7[0] -1,q8[0] -1,q9[0] -1)*
 		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q6[0]*q12[0]))*
-		gsl_sf_coupling_6j(q1[0] -1,q10[0]-1,q3[0] -1,
-						   q11[0]-1,q2[0] -1,q12[0]-1)*
+		gsl_sf_coupling_6j(q2[0] -1,q10[0]-1,q3[0] -1,
+						   q11[0]-1,q1[0] -1,q12[0]-1)*
 		std::sqrt(static_cast<Scalar>(q3[0]*q12[0]))*
 		phase<Scalar>((q1[0]+q2[0]+q12[0]-3) /2);
 	return out;
