@@ -3,7 +3,7 @@
 
 #include "symmetry/SU2xU1.h"
 #include "qbasis.h"
-#include "SiteOperator.h"
+#include "SiteOperatorQ.h"
 
 namespace spins {
 	
@@ -20,7 +20,7 @@ class BaseSU2xU1
 {
 	typedef Eigen::Index Index;
 	typedef typename Sym::SU2xU1<Scalar> Symmetry;
-	typedef SiteOperator<Symmetry,Scalar> Operator;
+	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
 	typedef typename Symmetry::qType qType;
 	
 public:
@@ -54,7 +54,7 @@ public:
 	   \note Use this as input for Mps, Mpo classes.*/ 
 	std::vector<Eigen::Index> qlocDeg() { return TensorBasis.qlocDeg(); }
 
-	Qbasis<Symmetry> basis() const { return TensorBasis; }
+	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
 	
 private:
 
@@ -108,7 +108,7 @@ BaseSU2xU1 (std::size_t L_input, std::size_t D_input)
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Scalar> BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 S( std::size_t orbital ) const
 {
 	if(N_orbitals == 1) { return S_1s; }
@@ -116,65 +116,65 @@ S( std::size_t orbital ) const
 	{
 		Operator out;
 		bool TOGGLE=false;
-		if(orbital == 0) { out = Operator::outerprod(S_1s,Id_1s,{3}); TOGGLE=true; }
+		if(orbital == 0) { out = Operator::outerprod(S_1s,Id_1s,{3,0}); TOGGLE=true; }
 		else
 		{
-			if( orbital == 1 ) { out = Operator::outerprod(Id_1s,S_1s,{3}); TOGGLE=true; }
-			else { out = Operator::outerprod(Id_1s,Id_1s,{1}); }
+			if( orbital == 1 ) { out = Operator::outerprod(Id_1s,S_1s,{3,0}); TOGGLE=true; }
+			else { out = Operator::outerprod(Id_1s,Id_1s,{1,0}); }
 		}
 		for(std::size_t o=2; o<N_orbitals; o++)
 		{
-			if(orbital == o) { out = Operator::outerprod(out,S_1s,{3}); TOGGLE=true; }
-			else if(TOGGLE==false) { out = Operator::outerprod(out,Id_1s,{1}); }
-			else if(TOGGLE==true) { out = Operator::outerprod(out,Id_1s,{3}); }
+			if(orbital == o) { out = Operator::outerprod(out,S_1s,{3,0}); TOGGLE=true; }
+			else if(TOGGLE==false) { out = Operator::outerprod(out,Id_1s,{1,0}); }
+			else if(TOGGLE==true) { out = Operator::outerprod(out,Id_1s,{3,0}); }
 		}
 		return out;
 	}
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Scalar> BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 Sdag( std::size_t orbital ) const
 {
 	return S(orbital).adjoint();
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Scalar> BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 Id() const
 {
 	if(N_orbitals == 1) { return Id_1s; }
 	else
 	{
-		Operator out = Operator::outerprod(Id_1s,Id_1s,{1});
-		for(std::size_t o=2; o<N_orbitals; o++) { out = Operator::outerprod(out,Id_1s,{1}); }
+		Operator out = Operator::outerprod(Id_1s,Id_1s,{1,0});
+		for(std::size_t o=2; o<N_orbitals; o++) { out = Operator::outerprod(out,Id_1s,{1,0}); }
 		return out;
 	}
 }
 
 template<typename Scalar>
-SiteOperator<Sym::SU2xU1<Scalar>,Scalar> BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
 HeisenbergHamiltonian (double J, bool PERIODIC) const
 {	
-	Operator Mout({1},TensorBasis);
+	Operator Mout({1,0},TensorBasis);
 
 	if( N_orbitals >= 2 and J!=0. )
 	{
-		Mout = -std::sqrt(3)*J * Operator::prod(Sdag(0),S(1),{1});
+		Mout = -std::sqrt(3)*J * Operator::prod(Sdag(0),S(1),{1,0});
 	}
 
 	for (int i=1; i<N_orbitals-1; ++i) // for all bonds
 	{
 		if (J != 0.)
 		{
-			Mout += -std::sqrt(3)*J * Operator::prod(Sdag(i),S(i+1),{1});
+			Mout += -std::sqrt(3)*J * Operator::prod(Sdag(i),S(i+1),{1,0});
 		}
 	}
 	if (PERIODIC == true and N_orbitals>2)
 	{
 		if (J != 0.)
 		{
-			Mout += -std::sqrt(3)*J * Operator::prod(Sdag(N_orbitals-1),S(0),{1});
+			Mout += -std::sqrt(3)*J * Operator::prod(Sdag(N_orbitals-1),S(0),{1,0});
 		}
 	}	
 	return Mout;

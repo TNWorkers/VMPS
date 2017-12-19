@@ -46,6 +46,7 @@ Logger lout;
 
 #include "models/KondoU1xU1.h"
 #include "models/KondoU1.h"
+#include "models/KondoSU2xU1"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, int n=14)
@@ -130,6 +131,7 @@ int main (int argc, char* argv[])
 	
 	VMPS::KondoU1 H_U1(Lxy,params);
 	lout << H_U1.info() << endl;
+	assert(H_U1.validate({N}) and "Bad total quantum number of the MPS.");
 	Eigenstate<VMPS::KondoU1::StateXd> g_U1;
 	
 	VMPS::KondoU1::Solver DMRG_U1(VERB);
@@ -162,6 +164,7 @@ int main (int argc, char* argv[])
 	
 	VMPS::KondoU1xU1 H_U1xU1(Lxy,params);
 	lout << H_U1xU1.info() << endl;
+	assert(H_U1xU1.validate({N,M+1}) and "Bad total quantum number of the MPS.");
 	Eigenstate<VMPS::KondoU1xU1::StateXd> g_U1xU1;
 	
 	VMPS::KondoU1xU1::Solver DMRG_U1xU1(VERB);
@@ -222,18 +225,18 @@ int main (int argc, char* argv[])
 //		}
 //	}
 //	
-//	// --------SU(2)---------
-//	lout << endl << "--------SU(2)---------" << endl << endl;
-//	
-//	Stopwatch<> Watch_SU2;
-//	VMPS::HeisenbergSU2 H_SU2(Lxy,{{"J",J},{"Jprime",Jprime},{"D",D}});
-//	lout << H_SU2.info() << endl;
-//	Eigenstate<VMPS::HeisenbergSU2::StateXd> g_SU2;
-//	
-//	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
-//	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
-//	
-//	t_SU2 = Watch_SU2.time();
+	// --------SU(2)---------
+	lout << endl << "--------SU(2)---------" << endl << endl;
+	
+	Stopwatch<> Watch_SU2xU1;
+	VMPS::KondoSU2xU1 H_SU2xU1(Lxy,{{"J",J},{"D",D}});
+	lout << H_SU2xU1.info() << endl;
+	Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1;
+	
+	VMPS::KondoSU2xU1::Solver DMRG_SU2xU1(VERB);
+	DMRG_SU2xU1.edgeState(H_SU2xU1, g_SU2xU1, {S,N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	
+	t_SU2xU1 = Watch_SU2xU1.time();
 
 //	Eigen::MatrixXd SpinCorr_SU2(L,L); SpinCorr_SU2.setZero();
 //	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SS(i,j), g_SU2.state); }
