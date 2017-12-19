@@ -77,7 +77,7 @@ BaseSU2xU1<Scalar>::
 BaseSU2xU1 (std::size_t L_input, std::size_t D_input)
 :N_orbitals(L_input), D(D_input)
 {
-	assert(N_orbitals>=1 and D>=2);
+	assert(N_orbitals>=1 and D>=1);
 	N_states = std::pow(D,N_orbitals);
 
 	//create basis for one spin with quantumnumber D
