@@ -146,10 +146,19 @@ set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t lo
 	{
 		if (tPara(i,j) != 0.)
 		{
-			auto Otmp = OperatorType::prod(F.sign(),F.c(j),{2,-1});
-			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.), F.cdag(i).plain<double>(), Otmp.plain<double>()));
-			Otmp = OperatorType::prod(F.sign(),F.cdag(j),{2,1});
-			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.), F.c(i).plain<double>(), Otmp.plain<double>()));
+			// wrong:
+//			auto Otmp = OperatorType::prod(F.sign(),F.c(j),{2,-1});
+//			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.), F.cdag(i).plain<double>(), Otmp.plain<double>()));
+//			
+//			Otmp = OperatorType::prod(F.sign(),F.cdag(j),{2,1});
+//			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.), F.c(i).plain<double>(), Otmp.plain<double>()));
+			
+			// correct?:
+			auto cF    = OperatorType::prod(F.c(i),F.sign(),{2,-1});
+			auto cdagF = OperatorType::prod(F.cdag(i),F.sign(),{2,+1});
+			
+			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.), cdagF.plain<double>(), F.c(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.), cF.plain<double>(),    F.cdag(j).plain<double>()));
 		}
 		
 		if (Vpara(i,j) != 0.)

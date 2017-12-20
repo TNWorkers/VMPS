@@ -1106,7 +1106,7 @@ setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const Opera
 		}
 	}
 	
-	auto [min,max] = std::minmax_element(loc.begin(), loc.end());
+	auto [min,max] = std::minmax_element(loc.begin(),loc.end());
 	size_t locMin,locMax;
 	locMin = loc[min-loc.begin()];
 	locMax = loc[max-loc.begin()];
@@ -1120,18 +1120,19 @@ setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const Opera
 		bool GATE = true;
 		for (size_t pos=0; pos<loc.size(); pos++)
 		{
-			if(l == loc[pos]) { qOp[l][0] = Op[pos].Q; GATE = false; }
-			if( GATE ) { qOp[l][0] = Symmetry::qvacuum(); }
+			if (l==loc[pos]) {qOp[l][0] = Op[pos].Q; GATE=false;}
+			if (GATE)        {qOp[l][0] = Symmetry::qvacuum();}
 		}
 	}
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		M[l].setMatrix(Daux,qloc[l].size());
-		if ( auto it=std::find(loc.begin(),loc.end(),l) == loc.end() )
+		if (auto it=find(loc.begin(),loc.end(),l) == loc.end())
 		{
-			if( l<locMin or l>locMax ) { M[l](0,0) = SignOp; }
-			else { M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum(); }
+//			if (l<locMin or l>locMax) {M[l](0,0) = SignOp;}
+			if (l>locMin and l<locMax) {M[l](0,0) = SignOp;}
+			else {M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum();}
 		}
 		else
 		{
@@ -1143,8 +1144,9 @@ setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const Opera
 	{
 		assert(loc[i] < N_sites);
 		assert(Op[i].data.rows() == qloc[loc[i]].size() and Op[i].data.cols() == qloc[loc[i]].size());
+		
 		M[loc[i]](0,0).data = M[loc[i]](0,0).data * Op[i].data;
-		M[loc[i]](0,0).Q = Symmetry::reduceSilent(M[loc[i]](0,0).Q,Op[i].Q)[0]; // We can use the 0th component here.
+		M[loc[i]](0,0).Q = Symmetry::reduceSilent(M[loc[i]](0,0).Q, Op[i].Q)[0]; // We can use the 0th component here.
 	}
 	
 	construct(M, W, Gvec);

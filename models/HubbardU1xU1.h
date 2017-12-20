@@ -169,17 +169,21 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	for (int i=0; i<F.orbitals(); ++i)
 	for (int j=0; j<F.orbitals(); ++j)
 	{
+		cout << "i=" << i << ", j=" << j << endl;
+		
 		if (tPara(i,j) != 0.)
 		{
+			// wrong:
 //			Terms.tight.push_back(make_tuple(-tPara(i,j), F.cdag(UP,i), F.sign() * F.c(UP,j)));
 //			Terms.tight.push_back(make_tuple(-tPara(i,j), F.cdag(DN,i), F.sign() * F.c(DN,j)));
 //			Terms.tight.push_back(make_tuple(+tPara(i,j), F.c(UP,i),    F.sign() * F.cdag(UP,j)));
 //			Terms.tight.push_back(make_tuple(+tPara(i,j), F.c(DN,i),    F.sign() * F.cdag(DN,j)));
 			
-			Terms.tight.push_back(make_tuple(+tPara(i,j), F.cdag(UP,i), F.sign() * F.c(UP,j)));
-			Terms.tight.push_back(make_tuple(+tPara(i,j), F.cdag(DN,i), F.sign() * F.c(DN,j)));
-			Terms.tight.push_back(make_tuple(-tPara(i,j), F.c(UP,i),    F.sign() * F.cdag(UP,j)));
-			Terms.tight.push_back(make_tuple(-tPara(i,j), F.c(DN,i),    F.sign() * F.cdag(DN,j)));
+			// correct:
+			Terms.tight.push_back(make_tuple(-tPara(i,j), F.cdag(UP,i)  * F.sign(), F.c(UP,j)));
+			Terms.tight.push_back(make_tuple(-tPara(i,j), F.cdag(DN,i)  * F.sign(), F.c(DN,j)));
+			Terms.tight.push_back(make_tuple(-tPara(i,j), -1.*F.c(UP,i) * F.sign(), F.cdag(UP,j)));
+			Terms.tight.push_back(make_tuple(-tPara(i,j), -1.*F.c(DN,i) * F.sign(), F.cdag(DN,j)));
 		}
 		
 		if (Vpara(i,j) != 0.)
@@ -204,15 +208,17 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	{
 		assert(F.orbitals() == 1 and "Cannot do a ladder with t'!");
 		
+		// wrong:
 //		Terms.nextn.push_back(make_tuple(-tPrime.x, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
 //		Terms.nextn.push_back(make_tuple(-tPrime.x, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
 //		Terms.nextn.push_back(make_tuple(+tPrime.x, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
 //		Terms.nextn.push_back(make_tuple(+tPrime.x, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
 		
-		Terms.nextn.push_back(make_tuple(+tPrime.x, F.cdag(UP), F.sign() * F.c(UP),    F.sign()));
-		Terms.nextn.push_back(make_tuple(+tPrime.x, F.cdag(DN), F.sign() * F.c(DN),    F.sign()));
-		Terms.nextn.push_back(make_tuple(-tPrime.x, F.c(UP),    F.sign() * F.cdag(UP), F.sign()));
-		Terms.nextn.push_back(make_tuple(-tPrime.x, F.c(DN),    F.sign() * F.cdag(DN), F.sign()));
+		// correct?:
+		Terms.nextn.push_back(make_tuple(-tPrime.x, F.cdag(UP)  * F.sign(), F.c(UP),    F.sign()));
+		Terms.nextn.push_back(make_tuple(-tPrime.x, F.cdag(DN)  * F.sign(), F.c(DN),    F.sign()));
+		Terms.nextn.push_back(make_tuple(-tPrime.x, -1.*F.c(UP) * F.sign(), F.cdag(UP), F.sign()));
+		Terms.nextn.push_back(make_tuple(-tPrime.x, -1.*F.c(DN) * F.sign(), F.cdag(DN), F.sign()));
 	}
 	
 	param0d J3site = P.fill_array0d<double>("J3site","J3site",loc);

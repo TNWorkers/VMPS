@@ -124,8 +124,11 @@ int main (int argc, char* argv[])
 	Eigenstate<VectorXd> g_EDm;
 	Lutz.edgeState(H_EDm,g_EDm,LANCZOS::EDGE::GROUND);
 	
-	Photo Ph(H_EDm,H_ED,UP,L-1);
-	cout << g_EDm.energy << ", <c>=" << avg(g_EDm.state, Ph.Operator(), g_ED.state) << endl;
+	for (int l=0; l<L; ++l)
+	{
+		Photo Ph(H_EDm,H_ED,UP,l);
+		cout << "l=" << l << ", <c>=" << avg(g_EDm.state, Ph.Operator(), g_ED.state) << endl;
+	}
 	
 	lout << "Emin/L=" << to_string_prec(g_ED.energy/Lx) << endl;
 	
@@ -208,8 +211,11 @@ int main (int argc, char* argv[])
 	
 	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1m;
 	DMRG_U1.edgeState(H_U1, g_U1m, {Nupdn-1,Nupdn}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
-	cout << g_U1m.energy << ", <c>=" << avg(g_U1m.state, H_U1.c(UP,L-1), g_U1.state) << endl;
-	cout << H_U1.c(UP,L-1) << endl;
+	
+	for (int l=0; l<L; ++l)
+	{
+		cout << "l=" << l << ", <c>=" << avg(g_U1m.state, H_U1.c(UP,l), g_U1.state) << endl;
+	}
 	
 	// observables
 	
