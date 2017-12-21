@@ -41,9 +41,24 @@ public:
 	inline static qType flip( const qType& q ) { return q; }
 	inline static int degeneracy( const qType& q ) { return q[0]*q[1]; }
 
-	static std::vector<qType> reduceSilent( const qType& ql, const qType& qr);
-
-	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const qType& qr);
+	///@{
+	/** 
+		Calculate the irreps of the tensor product of \p ql and \p qr.
+	*/
+	static std::vector<qType> reduceSilent(const qType& ql, const qType& qr);
+	/** 
+		Calculate the irreps of the tensor product of all entries of \p ql with \p qr.
+		\warning : Returns not only unique irreps.
+		           Not sure, if we should return only the unique values here. Probably, that should be at least added as an option.
+	*/
+	static std::vector<qType> reduceSilent(const std::vector<qType>& ql, const qType& qr);
+	/** 
+		Calculate the irreps of the tensor product of all entries of \p ql with all entries of \p qr.
+		\warning : Returns only unique irreps.
+		           Better: Put an option for unique or non-unique irreps in the return vector.
+	*/
+	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
+	///@}
 
 	inline static Scalar coeff_unity();
 	static Scalar coeff_dot(const qType& q1);
@@ -111,6 +126,29 @@ reduceSilent( const std::vector<qType>& ql, const qType& qr )
 		int smax2 = std::abs(ql[q][1]+qr[1]) -1;
 
 		for ( int i=smin1; i<=smax1; i+=2 ) for ( int j=smin2; j<=smax2; j+=2 ) { vout.push_back({i,j}); }
+	}
+	return vout;
+}
+
+template<typename Scalar>
+std::vector<typename SU2xSU2<Scalar>::qType> SU2xSU2<Scalar>::
+reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
+{
+	std::unordered_set<qType> uniqueControl;
+	std::vector<qType> vout;
+	for (std::size_t q1=0; q1<ql.size(); q1++)
+	for (std::size_t q2=0; q2<qr.size(); q2++)
+	{
+		int smin1 = std::abs(ql[q1][0]-qr[q2][0]) +1;
+		int smax1 = std::abs(ql[q1][0]+qr[q2][0]) -1;
+		int smin2 = std::abs(ql[q1][1]-qr[q2][1]) +1;
+		int smax2 = std::abs(ql[q1][1]+qr[q2][1]) -1;
+		for ( int i=smin1; i<=smax1; i+=2 )
+		for ( int j=smin2; j<=smax2; j+=2 )
+		{
+			if( auto it = uniqueControl.find({i,j}) == uniqueControl.end() ) {
+				uniqueControl.insert({i,j}); vout.push_back({i,j});}
+		}
 	}
 	return vout;
 }

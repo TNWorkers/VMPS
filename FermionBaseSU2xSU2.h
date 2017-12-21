@@ -103,6 +103,7 @@ public:
 	\param J : \f$J\f$
 	\param PERIODIC: periodic boundary conditions if \p true*/
 	Operator HubbardHamiltonian (double U, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
+	Operator HubbardHamiltonian (double U, Eigen::ArrayXXd  t) const;
 	
 	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
 	\param Uvec : \f$U\f$ for each orbital
@@ -399,7 +400,7 @@ Id (std::size_t orbital) const
 	if(N_orbitals == 1) { return Id_1s; }
 	else
 	{
-		Operator out = Operator::outerprod(Id_1s,Id_1s,{1,0});
+		Operator out = Operator::outerprod(Id_1s,Id_1s,{1,1});
 		for(std::size_t o=2; o<N_orbitals; o++) { out = Operator::outerprod(out,Id_1s,{1,1}); }
 		return out;
 	}
@@ -444,6 +445,25 @@ HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
 	}
 
 	return Mout;
+}
+
+SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+HubbardHamiltonian (double U, Eigen::ArrayXXd t) const
+{
+	Operator Mout({1,1},TensorBasis);
+	for (int i=1; i<N_orbitals; ++i) // for all bonds
+	for (int j=0; j<N_orbitals; ++j)
+	{
+		if (t(i,j) != 0.)
+		{
+			Mout += -t(i,j)*std::sqrt(2.)*std::sqrt(2.)*Operator::prod(cdag(i),c(j),{1,1});
+		}
+	}
+	if (U != 0. and U != std::numeric_limits<double>::infinity())
+	{
+		for (int i=0; i<N_orbitals; ++i) {Mout += 0.5*U*nh(i);}
+	}
+
 }
 
 SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
