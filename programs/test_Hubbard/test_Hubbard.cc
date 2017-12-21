@@ -24,32 +24,16 @@ using namespace std;
 
 #include "Logger.h"
 Logger lout;
-
-#include <Eigen/Eigen>
-
 #include "ArgParser.h"
-// #include "LanczosWrappers.h"
-#include "StringStuff.h"
-#include "PolychromaticConsole.h"
-#include "Stopwatch.h"
-#include "numeric_limits.h"
 
+// ED stuff
 #include "HubbardModel.h"
 #include "LanczosWrappers.h"
 #include "LanczosSolver.h"
 #include "Photo.h"
+#include "Auger.h"
 
-#include "SiteOperator.h"
-#include "DmrgTypedefs.h"
-
-#include "DmrgSolverQ.h"
-#include "models/HeisenbergU1.h"
-#include "models/Heisenberg.h"
-#include "MpsQCompressor.h"
-
-#include "DmrgPivotStuff0.h"
-#include "DmrgPivotStuff2Q.h"
-#include "TDVPPropagator.h"
+#include "solvers/DmrgSolver.h"
 
 #include "models/Hubbard.h"
 #include "models/HubbardU1xU1.h"
@@ -63,16 +47,34 @@ string to_string_prec (Scalar x, int n=14)
 	return ss.str();
 }
 
+complex<double> Ptot (const MatrixXd &densityMatrix, int Lx)
+{
+	complex<double> P=0.;
+	int L_2 = static_cast<int>(Lx)/2;
+	for (int i=0; i<Lx; ++i)
+	for (int j=0; j<Lx; ++j)
+	for (int n=-L_2; n<L_2; ++n)
+	{
+		double k = 2.*M_PI*n/Lx;
+		P += k * exp(-1.i*k*static_cast<double>(i-j)) * densityMatrix(i,j);
+	}
+	P /= (Lx*Lx);
+	return P;
+}
+
 bool CALC_DYNAMICS;
 size_t L, Lx, Ly;
 double t, tPrime, U, mu, Bz;
-int Nupdn, N;
+int Nup, Ndn, N;
 double alpha;
 double t_U0, t_U1, t_SU2;
 int Dinit, Dlimit, Imin, Imax;
 double tol_eigval, tol_state;
 double dt;
+int i0;
 DMRG::VERBOSITY::OPTION VERB;
+double overlap_ED = 0.;
+double overlap_U1_zipper = 0.;
 
 int main (int argc, char* argv[])
 {
@@ -84,11 +86,15 @@ int main (int argc, char* argv[])
 	tPrime = args.get<double>("tPrime",0.);
 	U = args.get<double>("U",8.);
 	mu = args.get<double>("mu",0.5*U);
-	Nupdn = args.get<int>("Nupdn",L/2);
-	N = 2*Nupdn;
+	Nup = args.get<int>("Nup",L/2);
+	Ndn = args.get<int>("Ndn",L/2);
+	N = Nup+Ndn;
+	cout << "Nup=" << Nup << ", Ndn=" << Ndn << ", N=" << N << endl;
 	alpha = args.get<double>("alpha",1.);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
+	i0 = args.get<int>("i0",L/2);
 	dt = 0.2;
+	double V = L*Ly; double Vsq = V*V;
 	
 	Dinit  = args.get<int>("Dmin",2);
 	Dlimit = args.get<int>("Dmax",100);
@@ -113,16 +119,36 @@ int main (int argc, char* argv[])
 	
 	InteractionParams params;
 	params.set_U(U);
-	params.set_hoppings({-t,-tPrime});
-	HubbardModel H_ED(L,Nupdn,Nupdn,params, BC_DANGLING);
+	(tPrime!=0) ? params.set_hoppings({-t,-tPrime}):params.set_hoppings({-t});
+	MatrixXd BondMatrix(Lx*Ly,Lx*Ly); BondMatrix.setZero();
+	BondMatrix(0,1) = -t;
+	BondMatrix(1,0) = -t;
+	
+	BondMatrix(0,2) = -t;
+	BondMatrix(2,0) = -t;
+	
+	BondMatrix(2,3) = -t;
+	BondMatrix(3,2) = -t;
+	
+	BondMatrix(1,3) = -t;
+	BondMatrix(3,1) = -t;
+	
+	HubbardModel H_ED(Lx*Ly,Nup,Ndn,U,BondMatrix.sparseView(), BC_DANGLING);
+//	HubbardModel H_ED(Lx*Ly,Nup,Ndn,params, BC_DANGLING);
 	lout << H_ED.info() << endl;
 	Eigenstate<VectorXd> g_ED;
 	LanczosSolver<HubbardModel,VectorXd,double> Lutz;
 	Lutz.edgeState(H_ED,g_ED,LANCZOS::EDGE::GROUND);
 	
-	HubbardModel H_EDm(L,Nupdn-1,Nupdn,params, BC_DANGLING);
+	HubbardModel H_EDm(Lx*Ly,Nup-1,Ndn,U,BondMatrix.sparseView(), BC_DANGLING);
+//	HubbardModel H_EDm(Lx*Ly,Nup-1,Ndn,params, BC_DANGLING);
 	Eigenstate<VectorXd> g_EDm;
 	Lutz.edgeState(H_EDm,g_EDm,LANCZOS::EDGE::GROUND);
+	
+	HubbardModel H_EDmm(Lx*Ly,Nup-1,Ndn-1,U,BondMatrix.sparseView(), BC_DANGLING);
+//	HubbardModel H_EDmm(Lx*Ly,Nup-1,Ndn-1,params, BC_DANGLING);
+	Eigenstate<VectorXd> g_EDmm;
+	Lutz.edgeState(H_EDmm,g_EDmm,LANCZOS::EDGE::GROUND);
 	
 	for (int l=0; l<L; ++l)
 	{
@@ -130,9 +156,11 @@ int main (int argc, char* argv[])
 		cout << "l=" << l << ", <c>=" << avg(g_EDm.state, Ph.Operator(), g_ED.state) << endl;
 	}
 	
-	lout << "Emin/L=" << to_string_prec(g_ED.energy/Lx) << endl;
+	Auger A(H_EDmm, H_ED, i0);
+	VectorXd OxV_ED = A.Operator() * g_ED.state;
+	double overlap_ED = g_EDmm.state.dot(OxV_ED);
 	
-//	lout << endl << H_ED.eigenvalues() << endl;
+	lout << "Emin=" << g_ED.energy << ", Emin/V=" << to_string_prec(g_ED.energy/V) << endl;
 	
 	MatrixXd densityMatrix_ED(L,L); densityMatrix_ED.setZero();
 	for (size_t i=0; i<L; ++i) 
@@ -172,49 +200,47 @@ int main (int argc, char* argv[])
 	}
 	
 	double Emin_U0 = g_U0.energy+mu*Ntot;
-	double emin_U0 = Emin_U0/(Lx*Ly);
-	lout << "correction for mu: E=" << to_string_prec(Emin_U0) << ", E/L=" << to_string_prec(emin_U0) << endl;
+	double emin_U0 = Emin_U0/V;
+	lout << "correction for mu: E=" << to_string_prec(Emin_U0) << ", E/V=" << to_string_prec(emin_U0) << endl;
 	
 	t_U0 = Watch_U0.time();
-//	
-//	// observables
-//	
-//	Eigen::MatrixXd SpinCorr_U0(L,L); SpinCorr_U0.setZero();
-//	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U0(i,j) = 3*avg(g_U0.state, H_U0.SzSz(i,j), g_U0.state); }
-//	
+	
 //	// compressor
 //	
 //	VMPS::Hubbard::StateXd Hxg_U0;
 //	HxV(H_U0,g_U0.state,Hxg_U0,VERB);
 //	double E_U0_compressor = g_U0.state.dot(Hxg_U0);
-//	
-//	// zipper
-//	
-//	VMPS::Hubbard::StateXd Oxg_U0;
-//	Oxg_U0.eps_svd = 1e-15;
-//	OxV(H_U0,g_U0.state,Oxg_U0,DMRG::BROOM::SVD);
-//	double E_U0_zipper = g_U0.state.dot(Oxg_U0);
+	
+	// zipper
+	
+	VMPS::Hubbard::StateXd Oxg_U0;
+	Oxg_U0.eps_svd = 1e-15;
+	OxV(H_U0,g_U0.state,Oxg_U0,DMRG::BROOM::SVD);
+	double E_U0_zipper = g_U0.state.dot(Oxg_U0);
 	
 	//--------U(1)---------
 	lout << endl << "--------U(1)---------" << endl << endl;
 	
 	Stopwatch<> Watch_U1;
 	
-	VMPS::HubbardU1xU1 H_U1(Lxy,{{"t",t},{"tPrime",tPrime},{"U",U},{"CALC_SQUARE",false}});
+	VMPS::HubbardU1xU1 H_U1(Lxy,{{"t",t},{"tPrime",tPrime},{"U",U}});
 	lout << H_U1.info() << endl;
 	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1;
 	
 	VMPS::HubbardU1xU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {Nupdn,Nupdn}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_U1.edgeState(H_U1, g_U1, {Nup,Ndn}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_U1 = Watch_U1.time();
 	
 	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1m;
-	DMRG_U1.edgeState(H_U1, g_U1m, {Nupdn-1,Nupdn}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_U1.set_verbosity(DMRG::VERBOSITY::SILENT);
+	DMRG_U1.edgeState(H_U1, g_U1m, {Nup-1,Ndn}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
+	ArrayXd c_U1(L);
 	for (int l=0; l<L; ++l)
 	{
-		cout << "l=" << l << ", <c>=" << avg(g_U1m.state, H_U1.c(UP,l), g_U1.state) << endl;
+		c_U1(l) = avg(g_U1m.state, H_U1.c(UP,l), g_U1.state);
+		cout << "l=" << l << ", <c>=" << c_U1(l) << endl;
 	}
 	
 	// observables
@@ -236,19 +262,9 @@ int main (int argc, char* argv[])
 		                         avg(g_U1.state, H_U1.cdag(DN,i), H_U1.c(DN,j), g_U1.state);
 	}
 	lout << endl << densityMatrix_U1B << endl;
+	lout << "diff=" << (densityMatrix_U1-densityMatrix_U1B).norm() << endl;
 	
-	lout << endl;
-	complex<double> P=0.;
-	int L_2 = static_cast<int>(Lx)/2;
-	for (int i=0; i<Lx; ++i)
-	for (int j=0; j<Lx; ++j)
-	for (int n=-L_2; n<L_2; ++n)
-	{
-		double k = 2.*M_PI*n/Lx;
-		P += k * exp(-1.i*k*static_cast<double>(i-j)) * densityMatrix_U1(i,j);
-	}
-	P /= (Lx*Lx);
-	cout << "P=" << P << endl;
+	lout << "P U(1): " << Ptot(densityMatrix_U1,Lx) << "\t" << Ptot(densityMatrix_U1B,Lx) << endl;
 	
 	ArrayXd d_U1(L); d_U1=0.;
 	for (size_t i=0; i<L; ++i) 
@@ -263,26 +279,45 @@ int main (int argc, char* argv[])
 //	HxV(H_U1,g_U1.state,Hxg_U1,VERB);
 //	double E_U1_compressor = g_U1.state.dot(Hxg_U1);
 //	
-//	// zipper
-//	
-//	VMPS::HubbardU1xU1::StateXd Oxg_U1;
-//	Oxg_U1.eps_svd = 1e-15;
-//	OxV(H_U1,g_U1.state,Oxg_U1,DMRG::BROOM::SVD);
-//	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
+	// zipper
+	
+	VMPS::HubbardU1xU1::StateXd Oxg_U1;
+	Oxg_U1.eps_svd = 1e-15;
+	OxV(H_U1.cc(i0), g_U1.state, Oxg_U1, DMRG::BROOM::SVD);
+	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1mm;
+	DMRG_U1.edgeState(H_U1, g_U1mm, {Nup-1,Ndn-1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+	                  tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	overlap_U1_zipper = g_U1mm.state.dot(Oxg_U1);
 	
 	// --------SU(2)---------
 	lout << endl << "--------SU(2)---------" << endl << endl;
 	
 	Stopwatch<> Watch_SU2;
 	
-	VMPS::HubbardSU2xU1 H_SU2(Lxy,{{"t",t},{"tPrime",tPrime},{"U",U},{"CALC_SQUARE",false}});
+	VMPS::HubbardSU2xU1 H_SU2(Lxy,{{"t",t},{"tPrime",tPrime},{"U",U}});
 	lout << H_SU2.info() << endl;
 	Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 	
 	VMPS::HubbardSU2xU1::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2, g_SU2, {1,N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	cout << Nup-Ndn+1 << "\t" << N << endl;
+	DMRG_SU2.edgeState(H_SU2, g_SU2, {Nup-Ndn+1,N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+	                   tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_SU2 = Watch_SU2.time();
+	
+	// observables
+	
+	Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2m;
+	DMRG_SU2.set_verbosity(DMRG::VERBOSITY::SILENT);
+	DMRG_SU2.edgeState(H_SU2, g_SU2m, {abs(Nup-1-Ndn)+1,N-1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+	                   tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	
+	ArrayXd c_SU2(L);
+	for (int l=0; l<L; ++l)
+	{
+		c_SU2(l) = avg(g_SU2m.state, H_SU2.c(l), g_SU2.state);
+		cout << "l=" << l << ", <c>=" << c_SU2(l) << "\t" << c_SU2(l)/c_U1(l)*2.*sqrt(2.) << endl;
+	}
 	
 	MatrixXd densityMatrix_SU2(L,L); densityMatrix_SU2.setZero();
 	for (size_t i=0; i<L; ++i) 
@@ -296,9 +331,12 @@ int main (int argc, char* argv[])
 	for (size_t i=0; i<L; ++i) 
 	for (size_t j=0; j<L; ++j)
 	{
-		densityMatrix_SU2B(i,j) = sqrt(2.)*avg(g_SU2.state, H_SU2.cdag(i), H_SU2.c(j), g_SU2.state);
+		densityMatrix_SU2B(i,j) = 2.*sqrt(2.)*avg(g_SU2.state, H_SU2.cdag(i), H_SU2.c(j), g_SU2.state);
 	}
 	lout << endl << densityMatrix_SU2B << endl;
+	lout << "diff=" << (densityMatrix_SU2-densityMatrix_SU2B).norm() << endl;
+	
+	lout << "P SU(2): " << Ptot(densityMatrix_SU2,Lx) << "\t" << Ptot(densityMatrix_SU2B,Lx) << endl;
 	
 	ArrayXd d_SU2(L); d_SU2=0.;
 	for (size_t i=0; i<L; ++i) 
@@ -310,37 +348,110 @@ int main (int argc, char* argv[])
 	//--------output---------
 	TextTable T( '-', '|', '+' );
 	
-	double V = L*Ly; double Vsq = V*V;
-	T.add(""); T.add("U(0)"); T.add("U(1)xU(1)"); T.add("SU(2)xU(1)"); T.endOfRow();
+	T.add("");
+	T.add("ED");
+	T.add("U(0)");
+	T.add("U(1)xU(1)");
+	T.add("SU(2)xU(1)");
+	T.endOfRow();
 	
-	T.add("E/L");
+	T.add("E/V");
+	T.add(to_string_prec(g_ED.energy/V));
 	T.add(to_string_prec(emin_U0));
 	T.add(to_string_prec(g_U1.energy/V));
 	T.add(to_string_prec(g_SU2.energy/V));
 	T.endOfRow();
 	
-	T.add("E/L diff"); 
-	T.add(to_string_prec(abs(Emin_U0-g_ED.energy)/V)); 
-	T.add(to_string_prec(abs(g_U1.energy-g_ED.energy)/V)); 
+	T.add("E/V diff");
+	T.add("-");
+	T.add(to_string_prec(abs(Emin_U0-g_ED.energy)/V));
+	T.add(to_string_prec(abs(g_U1.energy-g_ED.energy)/V));
 	T.add(to_string_prec(abs(g_SU2.energy-g_ED.energy)/V));
 	T.endOfRow();
 	
 //	T.add("E/L Compressor"); T.add(to_string_prec(E_U0_compressor/V)); T.add(to_string_prec(E_U1_compressor/V)); T.add("-"); T.endOfRow();
-//	T.add("E/L Zipper"); T.add(to_string_prec(E_U0_zipper/V)); T.add(to_string_prec(E_U1_zipper/V)); T.add("-"); T.endOfRow();
 	
-	T.add("t/s"); T.add(to_string_prec(t_U0,2)); T.add(to_string_prec(t_U1,2)); T.add(to_string_prec(t_SU2,2)); T.endOfRow();
-	T.add("t gain"); T.add(to_string_prec(t_U0/t_SU2,2)); T.add(to_string_prec(t_U1/t_SU2,2)); T.add("1"); T.endOfRow();
+	T.add("OxV");
+	T.add(to_string_prec(overlap_ED));
+	T.add("-");
+	T.add(to_string_prec(overlap_U1_zipper));
+	T.add("-");
+	T.endOfRow();
+	
+	T.add("OxV zipper rel. err.");
+	T.add("0");
+	T.add("-");
+	T.add(to_string_prec(abs(abs(overlap_U1_zipper) -abs(overlap_ED))/abs(overlap_ED)));
+	T.add("-");
+	T.endOfRow();
+	
+	T.add("t/s");
+	T.add("-");
+	T.add(to_string_prec(t_U0,2));
+	T.add(to_string_prec(t_U1,2));
+	T.add(to_string_prec(t_SU2,2));
+	T.endOfRow();
+	
+	T.add("t gain");
+	T.add("-");
+	T.add(to_string_prec(t_U0/t_SU2,2));
+	T.add(to_string_prec(t_U1/t_SU2,2));
+	T.add("1");
+	T.endOfRow();
 	
 	T.add("observables diff");
+	T.add("0");
 	T.add("-");
 	T.add(to_string_prec((densityMatrix_U1-densityMatrix_ED).norm()));
 	T.add(to_string_prec((densityMatrix_SU2-densityMatrix_ED).norm()));
 	T.endOfRow();
 	
-	T.add("Dmax"); T.add(to_string(g_U0.state.calc_Dmax())); T.add(to_string(g_U1.state.calc_Dmax())); T.add(to_string(g_SU2.state.calc_Dmax()));
+	T.add("Dmax");
+	T.add("-");
+	T.add(to_string(g_U0.state.calc_Dmax()));
+	T.add(to_string(g_U1.state.calc_Dmax()));
+	T.add(to_string(g_SU2.state.calc_Dmax()));
 	T.endOfRow();
-	T.add("Mmax"); T.add(to_string(g_U0.state.calc_Dmax())); T.add(to_string(g_U1.state.calc_Mmax())); T.add(to_string(g_SU2.state.calc_Mmax()));
+	
+	T.add("Mmax");
+	T.add("-");
+	T.add(to_string(g_U0.state.calc_Dmax()));
+	T.add(to_string(g_U1.state.calc_Mmax()));
+	T.add(to_string(g_SU2.state.calc_Mmax()));
 	T.endOfRow();
 	
 	lout << endl << T;
+	
+//	FermionBase<Sym::U1xU1<double> > F(2);
+	fermions::BaseSU2xU1<> F(3);
+	typedef SiteOperatorQ<Sym::SU2xU1<double>,MatrixXd> Op;
+	
+//	cout << (F.sign().data*F.c(UP,0).data+F.c(UP,0).data*F.sign().data).norm() << endl;
+//	cout << (F.sign().data*F.c(DN,0).data+F.c(DN,0).data*F.sign().data).norm() << endl;
+//	cout << (F.sign().data*F.c(UP,1).data+F.c(UP,1).data*F.sign().data).norm() << endl;
+//	cout << (F.sign().data*F.c(DN,1).data+F.c(DN,1).data*F.sign().data).norm() << endl;
+//	
+//	cout << (F.sign().data*F.cdag(UP,0).data+F.cdag(UP,0).data*F.sign().data).norm() << endl;
+//	cout << (F.sign().data*F.cdag(DN,0).data+F.cdag(DN,0).data*F.sign().data).norm() << endl;
+//	cout << (F.sign().data*F.cdag(UP,1).data+F.cdag(UP,1).data*F.sign().data).norm() << endl;
+//	cout << (F.sign().data*F.cdag(DN,1).data+F.cdag(DN,1).data*F.sign().data).norm() << endl;
+//	
+//	cout << (F.sign().data*F.n(UP,0).data-F.n(UP,0).data*F.sign().data).norm() << endl;
+//	cout << (F.sign().data*F.n(DN,0).data-F.n(DN,0).data*F.sign().data).norm() << endl;
+//	cout << (F.sign().data*F.n(UP,1).data-F.n(UP,1).data*F.sign().data).norm() << endl;
+//	cout << (F.sign().data*F.n(DN,1).data-F.n(DN,1).data*F.sign().data).norm() << endl;
+	
+//	cout << (Op::prod(F.sign(),F.c(0),{2,-1})+Op::prod(F.c(0),F.sign(),{2,-1})).data() << endl;
+//	cout << (Op::prod(F.sign(),F.cdag(0),{2,+1})+Op::prod(F.cdag(0),F.sign(),{2,+1})).data() << endl;
+//	
+//	cout << (Op::prod(F.sign(),F.n(0),{1,0})-Op::prod(F.n(0),F.sign(),{1,0})).data() << endl;
+	
+//	cout << (Op::prod(F.cdag(2),F.c(0),{1,0})-Op::prod(F.c(0),F.cdag(2),{1,0})).data() << endl;
+//	cout << (Op::prod(F.cdag(2),F.c(0),{1,0})+Op::prod(F.c(0),F.cdag(2),{1,0})).data() << endl;
+	
+//	auto c0 = Op::outerprod(F.c(0),F.Id(),{2,-1});
+//	auto cdag1 = Op::outerprod(F.Id(),F.cdag(0),{2,+1});
+//	cout << (Op::prod(c0,cdag1,{1,0})-Op::prod(cdag1,c0,{1,0})).data() << endl;
+//	cout << (Op::prod(c0,cdag1,{1,0})+Op::prod(cdag1,c0,{1,0})).data() << endl;
+	
 }

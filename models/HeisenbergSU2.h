@@ -2,10 +2,10 @@
 #define STRAWBERRY_HEISENBERGSU2
 
 #include "symmetry/SU2.h"
-#include "spins/BaseSU2.h"
-#include "MpoQ.h"
-#include "DmrgExternalQ.h"
-#include "ParamHandler.h"
+#include "bases/spins/BaseSU2.h"
+#include "Mpo.h"
+#include "DmrgExternal.h"
+#include "ParamHandler.h" // from HELPERS
 
 namespace VMPS
 {

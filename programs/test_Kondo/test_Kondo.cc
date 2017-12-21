@@ -24,25 +24,9 @@ using namespace std;
 
 #include "Logger.h"
 Logger lout;
-
-#include <Eigen/Eigen>
-
 #include "ArgParser.h"
-// #include "LanczosWrappers.h"
-#include "StringStuff.h"
-#include "PolychromaticConsole.h"
-#include "Stopwatch.h"
-#include "numeric_limits.h"
 
-#include "SiteOperator.h"
-#include "DmrgTypedefs.h"
-
-#include "DmrgSolverQ.h"
-#include "MpsQCompressor.h"
-
-#include "DmrgPivotStuff0.h"
-#include "DmrgPivotStuff2Q.h"
-#include "TDVPPropagator.h"
+#include "solvers/DmrgSolver.h"
 
 #include "models/KondoU1xU1.h"
 #include "models/KondoU1.h"
