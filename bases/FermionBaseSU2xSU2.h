@@ -44,6 +44,7 @@ public:
 	/**amount of orbitals*/
 	inline std::size_t orbitals() const  {return N_orbitals;}
 
+	inline SUB_LATTICE sublattice() const {return subLattice;}
 	// \{
 	/** Annihilation operator
 		\param subLattice : Partion of the operator (Either A or B)
@@ -218,6 +219,7 @@ c (std::size_t orbital) const
 		if(orbital%2 == 0) {Op_1s = c_1sB;}
 		else {{Op_1s = c_1sA;}}
 	}
+	else {assert(1!=1 and "Crazy...");}
 
 	if(N_orbitals == 1) { return Op_1s; }
 	else
@@ -256,7 +258,7 @@ sign (std::size_t orb1, std::size_t orb2) const
 		for (int i=orb1; i<N_orbitals; ++i)
 		{
 			// out = Operator::prod(out,sign_local(i),{1}); // * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
-			out = Operator::prod(out, 2.*nh(i),{1,1});
+			out = Operator::prod(out, 2.*nh(i)-Id(i),{1,1});
 		}
 		for (int i=0; i<orb2; ++i)
 		{
@@ -271,7 +273,7 @@ sign (std::size_t orb1, std::size_t orb2) const
 SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
 sign_local (std::size_t orbital) const
 {
-	if(N_orbitals == 1) { return F_1s; }
+	if(N_orbitals == 1) { return Id_1s; }
 	else
 	{
 		Operator out;

@@ -4,6 +4,10 @@
 #include <array>
 #include <cstddef>
 
+#include "DmrgExternal.h"
+#include "symmetry/qarray.h"
+#include "symmetry/functions.h"
+
 namespace Sym{
 
 /** \class U1xU1
