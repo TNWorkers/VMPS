@@ -9,6 +9,7 @@
 
 #include <boost/rational.hpp>
 
+#include "DmrgExternal.h"
 #include "qarray.h"
 #include "symmetry/functions.h"
 

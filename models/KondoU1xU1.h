@@ -2,9 +2,9 @@
 #define STRAWBERRY_KONDOMODEL
 
 #include "models/HubbardU1xU1.h"
-#include "FermionBase.h"
-#include "SpinBase.h"
-#include "qarray.h"
+#include "bases/FermionBase.h"
+#include "bases/SpinBase.h"
+#include "symmetry/qarray.h"
 
 namespace VMPS
 {
@@ -509,7 +509,7 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	save_label(tPerp.label);
 	
 	// V⟂
-	param0d Vperp = P.fill_array0d<double>("Vperp","Vperp",loc);
+	param0d Vperp = P.fill_array0d<double>("V","Vperp",loc);
 	save_label(Vperp.label);
 	
 	// Hubbard U

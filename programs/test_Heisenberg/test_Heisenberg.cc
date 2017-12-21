@@ -24,27 +24,11 @@ using namespace std;
 
 #include "Logger.h"
 Logger lout;
-
-#include <Eigen/Eigen>
-
 #include "ArgParser.h"
-// #include "LanczosWrappers.h"
-#include "StringStuff.h"
-#include "PolychromaticConsole.h"
-#include "Stopwatch.h"
-#include "numeric_limits.h"
 
-#include "SiteOperator.h"
-#include "DmrgTypedefs.h"
-
-#include "DmrgSolverQ.h"
-#include "models/HeisenbergU1.h"
-#include "models/Heisenberg.h"
-#include "MpsQCompressor.h"
-
-#include "DmrgPivotStuff0.h"
-#include "DmrgPivotStuff2Q.h"
-#include "TDVPPropagator.h"
+#include "solvers/DmrgSolver.h"
+#include "solvers/TDVPPropagator.h"
+#include "solvers/MpsCompressor.h"
 
 #include "models/HeisenbergSU2.h"
 #include "models/HeisenbergU1XXZ.h"

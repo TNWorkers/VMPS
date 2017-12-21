@@ -5,7 +5,7 @@
 #include <vector>
 #include <variant>
 
-#include "SiteOperator.h"
+#include "tensors/SiteOperator.h"
 
 #ifndef IS_REAL_FUNCTION
 #define IS_REAL_FUNCTION

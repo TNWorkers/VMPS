@@ -3,11 +3,11 @@
 
 #include <array>
 
-#include "MpoQ.h"
+#include "Mpo.h"
 #include "symmetry/U1.h"
-#include "SpinBase.h"
-#include "DmrgExternalQ.h"
-#include "ParamHandler.h"
+#include "bases/SpinBase.h"
+#include "DmrgExternal.h"
+#include "ParamHandler.h" // from HELPERS
 
 namespace VMPS
 {
@@ -113,8 +113,6 @@ HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param
                  qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, "", halve)
 {
 	qarray<1> qtest{2};
-	cout << "TEST: " << this->format(qtest) << endl;
-	cout << "TEST: " << halve(qtest) << endl;
 	
 	ParamHandler P(params,defaults);
 	

@@ -3,10 +3,10 @@
 
 #include <variant>
 
-#include "fermions/BaseSU2xU1.h"
+#include "bases/fermions/BaseSU2xU1.h"
 #include "symmetry/SU2xU1.h"
-#include "MpoQ.h"
-#include "DmrgExternalQ.h"
+#include "Mpo.h"
+#include "DmrgExternal.h"
 #include "ParamHandler.h"
 
 namespace VMPS
@@ -154,10 +154,11 @@ set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t lo
 //			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.), F.c(i).plain<double>(), Otmp.plain<double>()));
 			
 			// correct?:
-			auto cF    = OperatorType::prod(F.c(i),   F.sign(),{2,-1});
 			auto cdagF = OperatorType::prod(F.cdag(i),F.sign(),{2,+1});
+			auto cF    = OperatorType::prod(F.c(i),   F.sign(),{2,-1});
 			
 			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cdagF.plain<double>(), F.c(j).plain<double>()));
+			// SU(2) spinors commute on different sites, hence no sign flip here:
 			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cF.plain<double>(),    F.cdag(j).plain<double>()));
 		}
 		
@@ -190,8 +191,9 @@ set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t lo
 		// correct?:
 		auto cF    = OperatorType::prod(F.c(),   F.sign(),{2,-1});
 		auto cdagF = OperatorType::prod(F.cdag(),F.sign(),{2,+1});
-		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), cdagF.plain<double>(), F.c().plain<double>(),    F.sign().plain<double>()));
-		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), cF.plain<double>()   , F.cdag().plain<double>(), F.sign().plain<double>()));
+		/**\todo: think about crazy fermionic signs here:*/
+		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cdagF.plain<double>(), F.c().plain<double>(),    F.sign().plain<double>()));
+		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cF.plain<double>()   , F.cdag().plain<double>(), F.sign().plain<double>()));
 	}
 	
 	// local terms
@@ -209,15 +211,15 @@ set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t lo
 	save_label(mulabel);
 	
 	// t⟂
-	param0d tPerp = P.fill_array0d<double>("tPerp","tPerp",loc);
+	param0d tPerp = P.fill_array0d<double>("t","tPerp",loc);
 	save_label(tPerp.label);
 	
 	// V⟂
-	param0d Vperp = P.fill_array0d<double>("Vperp","Vperp",loc);
+	param0d Vperp = P.fill_array0d<double>("V","Vperp",loc);
 	save_label(Vperp.label);
 	
 	// J⟂
-	param0d Jperp = P.fill_array0d<double>("Jperp","Jperp",loc);
+	param0d Jperp = P.fill_array0d<double>("J","Jperp",loc);
 	save_label(Jperp.label);
 	
 	Terms.local.push_back(make_tuple(1.,F.HubbardHamiltonian(Uorb,t0orb-muorb,tPerp.x,Vperp.x,Jperp.x, P.get<bool>("CYLINDER")).plain<double>()));
@@ -236,7 +238,8 @@ c (size_t locx, size_t locy)
 	
 	MpoQ<Symmetry> Mout(N_sites, N_legs, {2,-1}, HubbardSU2xU1::SNlabel, ss.str());
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
-	Mout.setLocal(locx, F[locx].c(locy).plain<double>(), F[0].sign().plain<double>());
+	/**\todo: think about crazy fermionic signs here:*/
+	Mout.setLocal(locx, pow(-1.,locx+1)*F[locx].c(locy).plain<double>(), F[0].sign().plain<double>());
 	return Mout;
 }
 
@@ -249,7 +252,8 @@ cdag (size_t locx, size_t locy)
 	
 	MpoQ<Symmetry> Mout(N_sites, N_legs, {2,+1}, HubbardSU2xU1::SNlabel, ss.str());
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
-	Mout.setLocal(locx, F[locx].cdag(locy).plain<double>(), F[0].sign().plain<double>());
+	/**\todo: think about crazy fermionic signs here:*/
+	Mout.setLocal(locx, pow(-1.,locx+1)*F[locx].cdag(locy).plain<double>(), F[0].sign().plain<double>());
 	return Mout;
 }
 
@@ -270,16 +274,17 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	{
 		Mout.setLocal(locx1, sqrt(2.) * OperatorType::prod(cdag,c,Symmetry::qvacuum()).plain<double>());
 	}
+	/**\todo: think about crazy fermionic signs here:*/
 	else if (locx1<locx2)
 	{
-		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), {2,+1}).plain<double>(), 
-		                               c.plain<double>()}, 
+		Mout.setLocal({locx1, locx2}, {sqrt(2.)*OperatorType::prod(cdag, F[locx1].sign(), {2,+1}).plain<double>(), 
+		                               pow(-1.,locx2-locx1+1)*c.plain<double>()}, 
 		                               F[0].sign().plain<double>());
 	}
 	else if (locx1>locx2)
 	{
 		Mout.setLocal({locx2, locx1}, {sqrt(2.)*OperatorType::prod(c, F[locx2].sign(), {2,-1}).plain<double>(), 
-		                               cdag.plain<double>()}, 
+		                               pow(-1.,locx1-locx2+1)*cdag.plain<double>()}, 
 		                               F[0].sign().plain<double>());
 	}
 	return Mout;

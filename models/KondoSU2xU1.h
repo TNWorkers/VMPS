@@ -1,9 +1,9 @@
 #ifndef KONDOMODELSU2XU1_H_
 #define KONDOMODELSU2XU1_H_
 
-#include "spins/BaseSU2xU1.h"
-#include "fermions/BaseSU2xU1.h"
-#include "MpoQ.h"
+#include "bases/spins/BaseSU2xU1.h"
+#include "bases/fermions/BaseSU2xU1.h"
+#include "Mpo.h"
 
 namespace VMPS
 {

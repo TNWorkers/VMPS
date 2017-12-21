@@ -2,9 +2,9 @@
 #define STRAWBERRY_HUBBARDMODEL
 
 #include "symmetry/U1xU1.h"
-#include "MpoQ.h"
-#include "FermionBase.h"
-#include "ParamHandler.h"
+#include "Mpo.h"
+#include "bases/FermionBase.h"
+#include "ParamHandler.h" // from HELPERS
 
 namespace VMPS
 {
@@ -214,11 +214,12 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	
 	if (J3site.x != 0.)
 	{
-		cout << "Warning! J3site has to be tested against ED!" << endl;
+		lout << "Warning! J3site has to be tested against ED!" << endl;
 		
 		assert(F.orbitals() == 1 and "Cannot do a ladder with 3-site J terms!");
 		
-		// old:
+		// old and probably wrong:
+		
 //		// three-site terms without spinflip
 //		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.cdag(UP), F.sign()*F.c(UP),    F.n(DN)*F.sign()));
 //		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.cdag(DN), F.sign()*F.c(DN),    F.n(UP)*F.sign()));
@@ -231,17 +232,19 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.c(DN),    F.sign()*F.cdag(UP), F.Sm()*F.sign()));
 //		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.c(UP),    F.sign()*F.cdag(DN), F.Sp()*F.sign()));
 		
+		// new:
+		
 		// three-site terms without spinflip
-		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.cdag(UP) * F.sign(), F.c(UP),    F.n(DN)*F.sign()));
-		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.cdag(DN) * F.sign(), F.c(DN),    F.n(UP)*F.sign()));
-		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, -1.*F.c(UP)    * F.sign(), F.cdag(UP), F.n(DN)*F.sign()));
-		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, -1.*F.c(DN)    * F.sign(), F.cdag(DN), F.n(UP)*F.sign()));
+		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.cdag(UP)  * F.sign(), F.c(UP),    F.n(DN)*F.sign()));
+		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.cdag(DN)  * F.sign(), F.c(DN),    F.n(UP)*F.sign()));
+		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, -1.*F.c(UP) * F.sign(), F.cdag(UP), F.n(DN)*F.sign()));
+		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, -1.*F.c(DN) * F.sign(), F.cdag(DN), F.n(UP)*F.sign()));
 		
 		// three-site terms with spinflip
-		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F.cdag(DN) * F.sign(), F.c(UP),    F.Sp()*F.sign()));
-		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F.cdag(UP) * F.sign(), F.c(DN),    F.Sm()*F.sign()));
-		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, -1.*F.c(DN)    * F.sign(), F.cdag(UP), F.Sm()*F.sign()));
-		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, -1.*F.c(UP)    * F.sign(), F.cdag(DN), F.Sp()*F.sign()));
+		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F.cdag(DN)  * F.sign(), F.c(UP),    F.Sp()*F.sign()));
+		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F.cdag(UP)  * F.sign(), F.c(DN),    F.Sm()*F.sign()));
+		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, -1.*F.c(DN) * F.sign(), F.cdag(UP), F.Sm()*F.sign()));
+		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, -1.*F.c(UP) * F.sign(), F.cdag(DN), F.Sp()*F.sign()));
 	}
 	
 	// local terms
@@ -263,15 +266,15 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	save_label(Bzlabel);
 	
 	// t⟂
-	param0d tPerp = P.fill_array0d<double>("tPerp","tPerp",loc);
+	param0d tPerp = P.fill_array0d<double>("t","tPerp",loc);
 	save_label(tPerp.label);
 	
 	// V⟂
-	param0d Vperp = P.fill_array0d<double>("Vperp","Vperp",loc);
+	param0d Vperp = P.fill_array0d<double>("V","Vperp",loc);
 	save_label(Vperp.label);
 	
 	// J⟂
-	param0d Jperp = P.fill_array0d<double>("Jperp","Jperp",loc);
+	param0d Jperp = P.fill_array0d<double>("J","Jperp",loc);
 	save_label(Jperp.label);
 	
 	if (isfinite(Uorb.sum()))
