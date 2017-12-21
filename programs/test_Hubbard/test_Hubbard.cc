@@ -38,6 +38,7 @@ Logger lout;
 #include "LanczosWrappers.h"
 #include "LanczosSolver.h"
 #include "Photo.h"
+#include "Auger.h"
 
 #include "SiteOperator.h"
 #include "DmrgTypedefs.h"
@@ -63,6 +64,21 @@ string to_string_prec (Scalar x, int n=14)
 	return ss.str();
 }
 
+complex<double> Ptot (const MatrixXd &densityMatrix, int Lx)
+{
+	complex<double> P=0.;
+	int L_2 = static_cast<int>(Lx)/2;
+	for (int i=0; i<Lx; ++i)
+	for (int j=0; j<Lx; ++j)
+	for (int n=-L_2; n<L_2; ++n)
+	{
+		double k = 2.*M_PI*n/Lx;
+		P += k * exp(-1.i*k*static_cast<double>(i-j)) * densityMatrix(i,j);
+	}
+	P /= (Lx*Lx);
+	return P;
+}
+
 bool CALC_DYNAMICS;
 size_t L, Lx, Ly;
 double t, tPrime, U, mu, Bz;
@@ -72,6 +88,7 @@ double t_U0, t_U1, t_SU2;
 int Dinit, Dlimit, Imin, Imax;
 double tol_eigval, tol_state;
 double dt;
+int i0;
 DMRG::VERBOSITY::OPTION VERB;
 
 int main (int argc, char* argv[])
@@ -88,6 +105,7 @@ int main (int argc, char* argv[])
 	N = 2*Nupdn;
 	alpha = args.get<double>("alpha",1.);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
+	i0 = args.get<int>("i0",L/2);
 	dt = 0.2;
 	
 	Dinit  = args.get<int>("Dmin",2);
@@ -113,7 +131,7 @@ int main (int argc, char* argv[])
 	
 	InteractionParams params;
 	params.set_U(U);
-	params.set_hoppings({-t,-tPrime});
+	(tPrime!=0) ? params.set_hoppings({-t,-tPrime}):params.set_hoppings({-t});
 	HubbardModel H_ED(L,Nupdn,Nupdn,params, BC_DANGLING);
 	lout << H_ED.info() << endl;
 	Eigenstate<VectorXd> g_ED;
@@ -124,11 +142,19 @@ int main (int argc, char* argv[])
 	Eigenstate<VectorXd> g_EDm;
 	Lutz.edgeState(H_EDm,g_EDm,LANCZOS::EDGE::GROUND);
 	
+	HubbardModel H_EDmm(L,Nupdn-1,Nupdn-1,params, BC_DANGLING);
+	Eigenstate<VectorXd> g_EDmm;
+	Lutz.edgeState(H_EDmm,g_EDmm,LANCZOS::EDGE::GROUND);
+	
 	for (int l=0; l<L; ++l)
 	{
 		Photo Ph(H_EDm,H_ED,UP,l);
 		cout << "l=" << l << ", <c>=" << avg(g_EDm.state, Ph.Operator(), g_ED.state) << endl;
 	}
+	
+	Auger A(H_EDmm, H_ED, i0);
+	VectorXd OxV_ED = A.Operator() * g_ED.state;
+	double overlap_ED = g_EDmm.state.dot(OxV_ED);
 	
 	lout << "Emin/L=" << to_string_prec(g_ED.energy/Lx) << endl;
 	
@@ -236,19 +262,9 @@ int main (int argc, char* argv[])
 		                         avg(g_U1.state, H_U1.cdag(DN,i), H_U1.c(DN,j), g_U1.state);
 	}
 	lout << endl << densityMatrix_U1B << endl;
+	lout << "diff=" << (densityMatrix_U1-densityMatrix_U1B).norm() << endl;
 	
-	lout << endl;
-	complex<double> P=0.;
-	int L_2 = static_cast<int>(Lx)/2;
-	for (int i=0; i<Lx; ++i)
-	for (int j=0; j<Lx; ++j)
-	for (int n=-L_2; n<L_2; ++n)
-	{
-		double k = 2.*M_PI*n/Lx;
-		P += k * exp(-1.i*k*static_cast<double>(i-j)) * densityMatrix_U1(i,j);
-	}
-	P /= (Lx*Lx);
-	cout << "P=" << P << endl;
+	lout << "P U(1): " << Ptot(densityMatrix_U1,Lx) << "\t" << Ptot(densityMatrix_U1B,Lx) << endl;
 	
 	ArrayXd d_U1(L); d_U1=0.;
 	for (size_t i=0; i<L; ++i) 
@@ -263,12 +279,15 @@ int main (int argc, char* argv[])
 //	HxV(H_U1,g_U1.state,Hxg_U1,VERB);
 //	double E_U1_compressor = g_U1.state.dot(Hxg_U1);
 //	
-//	// zipper
-//	
-//	VMPS::HubbardU1xU1::StateXd Oxg_U1;
-//	Oxg_U1.eps_svd = 1e-15;
-//	OxV(H_U1,g_U1.state,Oxg_U1,DMRG::BROOM::SVD);
-//	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
+	// zipper
+	
+	VMPS::HubbardU1xU1::StateXd Oxg_U1;
+	Oxg_U1.eps_svd = 1e-15;
+	OxV(H_U1.cc(i0), g_U1.state, Oxg_U1, DMRG::BROOM::SVD);
+	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1mm;
+	DMRG_U1.edgeState(H_U1, g_U1mm, {Nupdn-1,Nupdn-1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+	                  tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	double overlap_U1_zipper = g_U1mm.state.dot(Oxg_U1);
 	
 	// --------SU(2)---------
 	lout << endl << "--------SU(2)---------" << endl << endl;
@@ -299,6 +318,9 @@ int main (int argc, char* argv[])
 		densityMatrix_SU2B(i,j) = sqrt(2.)*avg(g_SU2.state, H_SU2.cdag(i), H_SU2.c(j), g_SU2.state);
 	}
 	lout << endl << densityMatrix_SU2B << endl;
+	lout << "diff=" << (densityMatrix_SU2-densityMatrix_SU2B).norm() << endl;
+	
+	lout << "P SU(2): " << Ptot(densityMatrix_SU2,Lx) << "\t" << Ptot(densityMatrix_SU2B,Lx) << endl;
 	
 	ArrayXd d_SU2(L); d_SU2=0.;
 	for (size_t i=0; i<L; ++i) 
@@ -306,6 +328,16 @@ int main (int argc, char* argv[])
 		d_SU2(i) = avg(g_SU2.state, H_SU2.d(i), g_SU2.state);
 	}
 	lout << "<d>=" << endl << d_SU2 << endl;
+	
+	// zipper
+	
+	VMPS::HubbardSU2xU1::StateXd Oxg_SU2;
+	Oxg_SU2.eps_svd = 1e-15;
+	OxV(H_SU2.cc(i0), g_SU2.state, Oxg_SU2, DMRG::BROOM::SVD);
+	Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2mm;
+	DMRG_SU2.edgeState(H_SU2, g_SU2mm, {1,N-2}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+	                   tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	double overlap_SU2_zipper = dot(g_SU2mm.state,Oxg_SU2);
 	
 	//--------output---------
 	TextTable T( '-', '|', '+' );
@@ -326,7 +358,12 @@ int main (int argc, char* argv[])
 	T.endOfRow();
 	
 //	T.add("E/L Compressor"); T.add(to_string_prec(E_U0_compressor/V)); T.add(to_string_prec(E_U1_compressor/V)); T.add("-"); T.endOfRow();
-//	T.add("E/L Zipper"); T.add(to_string_prec(E_U0_zipper/V)); T.add(to_string_prec(E_U1_zipper/V)); T.add("-"); T.endOfRow();
+	
+	T.add("OxV zipper rel. err.");
+	T.add("-");
+	T.add(to_string_prec(abs(abs(overlap_U1_zipper) -abs(overlap_ED))/abs(overlap_ED)));
+	T.add(to_string_prec(abs(abs(overlap_SU2_zipper)-abs(overlap_ED))/abs(overlap_ED)));
+	T.endOfRow();
 	
 	T.add("t/s"); T.add(to_string_prec(t_U0,2)); T.add(to_string_prec(t_U1,2)); T.add(to_string_prec(t_SU2,2)); T.endOfRow();
 	T.add("t gain"); T.add(to_string_prec(t_U0/t_SU2,2)); T.add(to_string_prec(t_U1/t_SU2,2)); T.add("1"); T.endOfRow();
@@ -343,4 +380,6 @@ int main (int argc, char* argv[])
 	T.endOfRow();
 	
 	lout << endl << T;
+	
+	lout << "overlaps: " << overlap_ED << "\t" << overlap_U1_zipper << "\t" << overlap_SU2_zipper << endl;
 }

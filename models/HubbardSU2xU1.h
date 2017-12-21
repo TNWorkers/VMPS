@@ -55,21 +55,21 @@ public:
 	static const std::array<string,Symmetry::Nq> SNlabel;
 	
 	///@{
-	MpoQ<Symmetry> Auger (size_t locx, size_t locy=0);
-	MpoQ<Symmetry> eta(size_t locx, size_t locy=0);
-	MpoQ<Symmetry> Aps (size_t locx, size_t locy=0);
+	MpoQ<Symmetry> cc (size_t locx, size_t locy=0);
+//	MpoQ<Symmetry> eta(size_t locx, size_t locy=0);
+//	MpoQ<Symmetry> Aps (size_t locx, size_t locy=0);
 	MpoQ<Symmetry> c (size_t locx, size_t locy=0);
 	MpoQ<Symmetry> cdag (size_t locx, size_t locy=0);
 	MpoQ<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	MpoQ<Symmetry> d (size_t locx, size_t locy=0);
 	MpoQ<Symmetry> n (size_t locx, size_t locy=0);
-	MpoQ<Symmetry> S (size_t locx, size_t locy=0);
-	MpoQ<Symmetry> Sdag (size_t locx, size_t locy=0);
-	MpoQ<Symmetry> SSdag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
-	MpoQ<Symmetry> EtaEtadag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);	
-	MpoQ<Symmetry> triplon (size_t locx, size_t locy=0);
-	MpoQ<Symmetry> antitriplon (size_t locx, size_t locy=0);
-	MpoQ<Symmetry> quadruplon (size_t locx, size_t locy=0);
+//	MpoQ<Symmetry> S (size_t locx, size_t locy=0);
+//	MpoQ<Symmetry> Sdag (size_t locx, size_t locy=0);
+//	MpoQ<Symmetry> SSdag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+//	MpoQ<Symmetry> EtaEtadag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);	
+//	MpoQ<Symmetry> triplon (size_t locx, size_t locy=0);
+//	MpoQ<Symmetry> antitriplon (size_t locx, size_t locy=0);
+//	MpoQ<Symmetry> quadruplon (size_t locx, size_t locy=0);
 	///@}
 	
 	static const map<string,any> defaults;
@@ -154,11 +154,11 @@ set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t lo
 //			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.), F.c(i).plain<double>(), Otmp.plain<double>()));
 			
 			// correct?:
-			auto cF    = OperatorType::prod(F.c(i),F.sign(),{2,-1});
+			auto cF    = OperatorType::prod(F.c(i),   F.sign(),{2,-1});
 			auto cdagF = OperatorType::prod(F.cdag(i),F.sign(),{2,+1});
 			
-			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.), cdagF.plain<double>(), F.c(j).plain<double>()));
-			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.), cF.plain<double>(),    F.cdag(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cdagF.plain<double>(), F.c(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cF.plain<double>(),    F.cdag(j).plain<double>()));
 		}
 		
 		if (Vpara(i,j) != 0.)
@@ -181,10 +181,17 @@ set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t lo
 	{
 		assert(F.orbitals() == 1 and "Cannot do a ladder with t'!");
 		
-		auto Otmp = OperatorType::prod(F.sign(),F.c(),{2,-1});
-		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), F.cdag().plain<double>(), Otmp.plain<double>(), F.sign().plain<double>()));
-		Otmp = OperatorType::prod(F.sign(),F.cdag(),{2,1});
-		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), F.c().plain<double>(), Otmp.plain<double>(), F.sign().plain<double>()));
+		// wrong:
+//		auto Otmp = OperatorType::prod(F.sign(),F.c(),{2,-1});
+//		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), F.cdag().plain<double>(), Otmp.plain<double>(), F.sign().plain<double>()));
+//		Otmp = OperatorType::prod(F.sign(),F.cdag(),{2,1});
+//		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), F.c().plain<double>(), Otmp.plain<double>(), F.sign().plain<double>()));
+		
+		// correct?:
+		auto cF    = OperatorType::prod(F.c(),   F.sign(),{2,-1});
+		auto cdagF = OperatorType::prod(F.cdag(),F.sign(),{2,+1});
+		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), cdagF.plain<double>(), F.c().plain<double>(),    F.sign().plain<double>()));
+		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), cF.plain<double>()   , F.cdag().plain<double>(), F.sign().plain<double>()));
 	}
 	
 	// local terms
@@ -219,111 +226,6 @@ set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t lo
 	
 	return Terms;
 }
-
-//HubbardSU2xU1::
-//HubbardSU2xU1 (size_t Lx_input, double U_input, double V_input, double tPrime_input, size_t Ly_input, bool CALC_SQUARE, double t_input)
-//	:MpoQ<Symmetry> (Lx_input, Ly_input),
-//	U(U_input), V(V_input), tPrime(tPrime_input), t(t_input)
-//{
-//	assert(N_legs>1 and tPrime==0. or N_legs==1 and "Cannot build a ladder with t'-hopping!");
-
-//	//assign stuff
-//	this->label = "HubbardSU2⊗U1";
-//	stringstream ss;
-//	ss << "(U=" << U << ",V=" << V << ",t'=" << tPrime << ")";
-//	this->label += ss.str();
-//	
-//	F = fermions::BaseSU2xU1<>(N_legs,!isfinite(U));
-//	for (size_t l=0; l<N_sites; l++)
-//	{
-//		qloc__[l] = F.basis();
-//		qloc[l] = qloc__[l].qloc();
-//		qOp[l] = HubbardSU2xU1::getqOp();		
-//	}
-//	Qtot = {1,0};
-//	qlabel = HubbardSU2xU1::Slabel;
-
-//	HamiltonianTermsXd<Sym::SU2xU1<double> > Terms = set_operators(F, U, V, tPrime, t, 0.,false,t);
-//	auto G = ::Generator(Terms);
-//	this->Daux = Terms.auxdim();
-//	
-//	this->construct(G);
-
-//	// this->Wloc = F.c();
-//	// this->Wlocdag = F.cdag();
-//	if (CALC_SQUARE == true)
-//	{
-//		// this->construct(tensor_product(G,G), this->Wsq, this->GvecSq);
-//		this->GOT_SQUARE = true;
-//	}
-//	else
-//	{
-//		this->GOT_SQUARE = false;
-//	}
-//}
-
-
-// MpoQ<Symmetry> HubbardSU2xU1::
-// Auger (size_t locx, size_t locy)
-// {
-// 	assert(locx<N_sites and locy<N_legs);
-// 	stringstream ss;
-// 	ss << "Auger(" << locx << "," << locy << ")";
-// 	MpoQ<Symmetry> Mout(N_sites, N_legs, MpoQ<Symmetry>::qloc, {1}, HubbardSU2xU1::Slabel, ss.str());
-// 	Mout.setLocal(locx, F.c(UP,locy)*F.c(DN,locy));
-// 	return Mout;
-// }
-
-// MpoQ<Symmetry> HubbardSU2xU1::
-// eta()
-// {
-// 	stringstream ss;
-// 	ss << "eta";
-// 	MpoQ<Symmetry> Mout(N_sites, N_legs, MpoQ<Symmetry>::qloc, {-1,-1}, HubbardSU2xU1::Nlabel, ss.str());
-// 	SparseMatrixXd etaloc = MatrixXd::Identity(F.dim(),F.dim()).sparseView();
-// 	for (int ly=0; ly<N_legs; ++ly) {etaloc = etaloc * pow(-1.,ly) * F.c(UP,ly)*F.c(DN,ly);}
-// 	Mout.setLocalSum(etaloc, true);
-// 	return Mout;
-// }
-
-// MpoQ<Symmetry> HubbardSU2xU1::
-// Aps (size_t locx, size_t locy)
-// {
-// 	assert(locx<N_sites and locy<N_legs);
-// 	stringstream ss;
-// 	ss << "Aps(" << locx << "," << locy << ")";
-// 	MpoQ<Symmetry> Mout(N_sites, N_legs, MpoQ<Symmetry>::qloc, {+1,+1}, HubbardSU2xU1::Nlabel, ss.str());
-// 	Mout.setLocal(locx, F.cdag(DN,locy)*F.cdag(UP,locy));
-// 	return Mout;
-// }
-
-
-
-
-
-
-
-
-
-
-
-//MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
-//c (size_t locx, size_t locy)
-//{
-//	assert(locx<N_sites and locy<N_legs);
-//	stringstream ss;
-//	ss << "c(" << locx << "," << locy << ")";
-
-//	MpoQ<Sym::SU2xU1<double> > Mout(N_sites, N_legs);
-//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
-
-//	Mout.label = ss.str();
-//	Mout.setQtarget({2,-1});
-//	Mout.qlabel = HubbardSU2xU1::Slabel;
-
-//	Mout.setLocal(locx, F.c(locy), {2,-1}, F.sign());
-//	return Mout;
-//}
 
 MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
 c (size_t locx, size_t locy)
@@ -363,24 +265,19 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	
 	auto cdag = F[locx1].cdag(locy1);
 	auto c    = F[locx2].c   (locy2);
+	
 	if (locx1 == locx2)
 	{
 		Mout.setLocal(locx1, sqrt(2.) * OperatorType::prod(cdag,c,Symmetry::qvacuum()).plain<double>());
 	}
 	else if (locx1<locx2)
 	{
-//		Mout.setLocal({locx1, locx2}, {sqrt(2.) * cdag.plain<double>(), 
-//		                               OperatorType::prod(F[locx2].sign(), c, {2,-1}).plain<double>()}, 
-//		                               F[0].sign().plain<double>());
 		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), {2,+1}).plain<double>(), 
 		                               c.plain<double>()}, 
 		                               F[0].sign().plain<double>());
 	}
 	else if (locx1>locx2)
 	{
-//		Mout.setLocal({locx1, locx2}, {sqrt(2.)*OperatorType::prod(F[locx1].sign(), cdag, {2,+1}).plain<double>(), 
-//		                               c.plain<double>()}, 
-//		                               F[0].sign().plain<double>());
 		Mout.setLocal({locx2, locx1}, {sqrt(2.)*OperatorType::prod(c, F[locx2].sign(), {2,-1}).plain<double>(), 
 		                               cdag.plain<double>()}, 
 		                               F[0].sign().plain<double>());
@@ -402,22 +299,34 @@ d (size_t locx, size_t locy)
 	return Mout;
 }
 
-//MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
-//n (size_t locx, size_t locy)
-//{
-//	assert(locx<N_sites and locy<N_legs);
-//	stringstream ss;
-//	ss << "n(" << locx << "," << locy << ")";
+MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
+cc (size_t locx, size_t locy)
+{
+	assert(locx<N_sites and locy<N_legs);
+	stringstream ss;
+	ss << "c(" << locx << "," << locy << "," << UP << ")"
+	   << "c(" << locx << "," << locy << "," << DN << ")";
+	
+	MpoQ<Symmetry> Mout(N_sites, N_legs, {1,-2}, HubbardSU2xU1::SNlabel, ss.str());
+	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
+	
+	Mout.setLocal(locx, F[locx].Eta(locy).plain<double>());
+	return Mout;
+}
 
-//	MpoQ<Sym::SU2xU1<double> > Mout(N_sites, N_legs);
-//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
-
-//	Mout.label = ss.str();
-//	Mout.setQtarget(Symmetry::qvacuum());
-//	Mout.qlabel = HubbardSU2xU1::Slabel;
-//	Mout.setLocal(locx, F.n(locy), Symmetry::qvacuum());
-//	return Mout;
-//}
+MpoQ<Sym::SU2xU1<double> > HubbardSU2xU1::
+n (size_t locx, size_t locy)
+{
+	assert(locx<N_sites and locy<N_legs);
+	stringstream ss;
+	ss << "n(" << locx << "," << locy << ")";
+	
+	MpoQ<Sym::SU2xU1<double> > Mout(N_sites, N_legs, Symmetry::qvacuum(), HubbardSU2xU1::SNlabel, ss.str());
+	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
+	
+	Mout.setLocal(locx, F[locx].n(locy).plain<double>());
+	return Mout;
+}
 
 //// MpoQ<SymSU2<double> > HubbardSU2xU1::
 //// S (size_t locx, size_t locy)
@@ -636,6 +545,6 @@ d (size_t locx, size_t locy)
 // 	return MpoQ<Symmetry>(N_sites, N_legs, M, MpoQ<Symmetry>::qloc, {-2,-2}, HubbardSU2xU1::Nlabel, ss.str());
 // }
 
-} //end namespace VMPS::models
+} // end namespace VMPS::models
 
 #endif
