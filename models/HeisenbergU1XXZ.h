@@ -34,7 +34,7 @@ public:
 public:
 	
 	HeisenbergU1XXZ() : HeisenbergU1() {};
-	HeisenbergU1XXZ (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
+	HeisenbergU1XXZ (const size_t &L, const vector<Param> &params);
 	
 	template<typename Symmetry_>
 	static HamiltonianTermsXd<Symmetry_> add_operators (HamiltonianTermsXd<Symmetry_> &Terms, 
@@ -51,14 +51,14 @@ const std::map<string,std::any> HeisenbergU1XXZ::defaults =
 	
 	{"Dy",0.}, {"Dyperp",0.}, {"Dyprime",0.},
 	{"D",2ul}, {"Bz",0.}, {"Kz",0.},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true},
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}, 
 	
 	// for consistency during inheritance (should not be set for XXZ!):
 	{"J",0.}, {"Jprime",0.}, {"Jperp",0.}, {"Jpara",0.}
 };
 
 HeisenbergU1XXZ::
-HeisenbergU1XXZ (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
+HeisenbergU1XXZ (const size_t &L, const vector<Param> &params)
 :HeisenbergU1(L)
 {
 	ParamHandler P(params,HeisenbergU1XXZ::defaults);
@@ -70,7 +70,9 @@ HeisenbergU1XXZ (const variant<size_t,std::array<size_t,2> > &L, const vector<Pa
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		B[l] = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
+		N_phys += P.get<size_t>("Ly",l%Lcell);
+		
+		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		setLocBasis(B[l].get_basis(),l);
 		
 		Terms[l] = set_operators(B[l],P,l%Lcell);

@@ -45,10 +45,8 @@ private:
 public:
 	
 	HeisenbergU1() : MpoQ<Symmetry>() {};
-	
-	HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L);
-	
-	HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
+	HeisenbergU1 (const size_t &L);
+	HeisenbergU1 (const size_t &L, const vector<Param> &params);
 	
 	/**
 	   \param B : Base class from which the local operators are received
@@ -86,7 +84,7 @@ const std::map<string,std::any> HeisenbergU1::defaults =
 {
 	{"J",-1.}, {"Jprime",0.}, {"Jperp",0.},
 	{"Bz",0.}, {"Kz",0.},
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
 };
 
 const vector<qarray<1> > HeisenbergU1::
@@ -100,17 +98,13 @@ qOp ()
 }
 
 HeisenbergU1::
-HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L)
-:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
-                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                 qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve)
+HeisenbergU1 (const size_t &L)
+:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve)
 {}
 
 HeisenbergU1::
-HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
-:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
-                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                 qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, "", halve)
+HeisenbergU1 (const size_t &L, const vector<Param> &params)
+:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, "", halve)
 {
 	qarray<1> qtest{2};
 	
@@ -123,7 +117,9 @@ HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		B[l] = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
+		N_phys += P.get<size_t>("Ly",l%Lcell);
+		
+		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		setLocBasis(B[l].get_basis(),l);
 		
 		Terms[l] = set_operators(B[l],P,l%Lcell);
@@ -140,11 +136,11 @@ HeisenbergU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param
 MpoQ<Sym::U1<double> > HeisenbergU1::
 Sz (size_t locx, size_t locy) const
 {
-	assert(locx<N_sites and locy<N_legs);
+	assert(locx<N_sites and locy<B[locx].dim());
 	stringstream ss;
 	ss << "Sz(" << locx << "," << locy << ")";
 	
-	MpoQ<Symmetry> Mout(N_sites, N_legs, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, ss.str(), halve);
+	MpoQ<Symmetry> Mout(N_sites, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, ss.str(), halve);
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
 	Mout.setLocal(locx, B[locx].Scomp(SZ,locy));
@@ -154,11 +150,11 @@ Sz (size_t locx, size_t locy) const
 MpoQ<Sym::U1<double> > HeisenbergU1::
 SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	assert(locx1<N_sites and locx2<N_sites and locy1<N_legs and locy2<N_legs);
+	assert(locx1<N_sites and locx2<N_sites and locy1<B[locx1].dim() and locy2<B[locx2].dim());
 	stringstream ss;
 	ss << "Sz(" << locx1 << "," << locy1 << ")" <<  "Sz(" << locx2 << "," << locy2 << ")";
 	
-	MpoQ<Symmetry> Mout(N_sites, N_legs, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, ss.str(), halve);
+	MpoQ<Symmetry> Mout(N_sites, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, ss.str(), halve);
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
 	Mout.setLocal({locx1, locx2}, {B[locx1].Scomp(SZ,locy1), B[locx2].Scomp(SZ,locy2)});

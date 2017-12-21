@@ -41,7 +41,7 @@ public:
 	
 	///\{
 	Heisenberg() : MpoQ<Symmetry>() {};
-	Heisenberg (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
+	Heisenberg (const size_t &L, const vector<Param> &params);
 	///\}
 	
 	static void add_operators (HamiltonianTermsXd<Symmetry> &Terms, const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc=0);
@@ -64,15 +64,13 @@ const std::map<string,std::any> Heisenberg::defaults =
 	{"J",-1.}, {"Jprime",0.}, {"Jperp",0.},
 	{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"Kz",0.}, {"Kx",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyperp",0.}, // Dzialoshinsky-Moriya terms
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
 };
 
 
 Heisenberg::
-Heisenberg (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
-:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
-                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                 qarray<0>({}), labeldummy, "")
+Heisenberg (const size_t &L, const vector<Param> &params)
+:MpoQ<Symmetry> (L, qarray<0>({}), labeldummy, "")
 {
 	ParamHandler P(params,Heisenberg::defaults);
 	
@@ -83,7 +81,10 @@ Heisenberg (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> 
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		B[l] = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
+		N_phys += P.get<size_t>("Ly",l%Lcell);
+		cout << "l=" << l << ", N_phys=" << P.get<size_t>("Ly",l%Lcell) << endl;
+		
+		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		setLocBasis(B[l].get_basis(),l);
 		
 		Terms[l] = HeisenbergU1::set_operators(B[l],P,l%Lcell);
@@ -93,6 +94,7 @@ Heisenberg (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> 
 		G.push_back(Generator(Terms[l]));
 		setOpBasis(G[l].calc_qOp(),l);
 	}
+	cout << "N_phys=" << N_phys << endl;
 	
 	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
@@ -104,7 +106,7 @@ Sz (size_t loc)
 	assert(loc<N_sites);
 	stringstream ss;
 	ss << "Sz(" << loc << ")";
-	MpoQ<Symmetry > Mout(N_sites, N_legs, qarray<0>{}, labeldummy, "");
+	MpoQ<Symmetry > Mout(N_sites, qarray<0>{}, labeldummy, "");
 	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B[l].get_basis(),l); }
 	Mout.setLocal(loc, B[loc].Scomp(SZ));
 	return Mout;
@@ -116,7 +118,7 @@ SzSz (size_t loc1, size_t loc2)
 	assert(loc1<N_sites and loc2<N_sites);
 	stringstream ss;
 	ss << "Sz(" << loc1 << ")" <<  "Sz(" << loc2 << ")";
-	MpoQ<Symmetry > Mout(N_sites, N_legs, qarray<0>{}, labeldummy, "");
+	MpoQ<Symmetry > Mout(N_sites, qarray<0>{}, labeldummy, "");
 	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(B[l].get_basis(),l); }
 	Mout.setLocal({loc1, loc2}, {B[loc1].Scomp(SZ), B[loc2].Scomp(SZ)});
 	return Mout;

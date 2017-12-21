@@ -42,7 +42,7 @@ public:
 	
 	///@{
 	KondoU1xU1 () : MpoQ(){};
-	KondoU1xU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
+	KondoU1xU1 (const size_t &L, const vector<Param> &params);
 	///@}
 	
 	/**
@@ -106,10 +106,8 @@ const std::map<string,std::any> KondoU1xU1::defaults =
 const std::array<string,2> KondoU1xU1::NMlabel{"N","M"};
 
 KondoU1xU1::
-KondoU1xU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
-:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0],
-                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1],
-                 qarray<Symmetry::Nq>({0,0}), KondoU1xU1::NMlabel, "")//, KondoU1xU1::N_halveM())
+KondoU1xU1 (const size_t &L, const vector<Param> &params)
+:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({0,0}), KondoU1xU1::NMlabel, "")//, KondoU1xU1::N_halveM())
 {
 	ParamHandler P(params,defaults);
 	
@@ -120,8 +118,10 @@ KondoU1xU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> 
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		F[l] = FermionBase<Symmetry>(N_legs, !isfinite(P.get<double>("U",l%Lcell)), true); //true means basis n,m
-		B[l] = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
+		N_phys += P.get<size_t>("Ly",l%Lcell);
+		
+		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)), true); //true means basis n,m
+		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		
 		setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);
 		
@@ -401,7 +401,7 @@ validate (qType qnum) const
 	
 	frac S_tot(qnum[1],2);
 	cout << S_tot << "\t" << Smax << endl;
-	if (Smax.denominator()==S_tot.denominator() and S_tot<=Smax and qnum[0]<=2*static_cast<int>(this->N_sites*this->N_legs) and qnum[0]>0) {return true;}
+	if (Smax.denominator()==S_tot.denominator() and S_tot<=Smax and qnum[0]<=2*static_cast<int>(this->N_phys) and qnum[0]>0) {return true;}
 	else {return false;}
 }
 

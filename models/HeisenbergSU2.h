@@ -50,7 +50,7 @@ public:
 	   \describe_params
 	   \param Ly_input : amount of legs in ladder
 	*/
-	HeisenbergSU2 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
+	HeisenbergSU2 (const size_t &L, const vector<Param> &params);
 	///\}
 	
 	/**
@@ -76,7 +76,7 @@ protected:
 	const std::map<string,std::any> defaults = 
 	{
 		{"J",-1.}, {"Jprime",0.}, {"Jperp",0.}, {"D",2ul},
-		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
+		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
 	};
 	
 	vector<spins::BaseSU2<> > B;
@@ -85,10 +85,8 @@ protected:
 const std::array<string,1> HeisenbergSU2::Stotlabel{"S"};
 
 HeisenbergSU2::
-HeisenbergSU2 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
-:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
-                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                 qarray<Symmetry::Nq>({1}), HeisenbergSU2::Stotlabel, "", SfromD)
+HeisenbergSU2 (const size_t &L, const vector<Param> &params)
+:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({1}), HeisenbergSU2::Stotlabel, "", SfromD)
 {
 	ParamHandler P(params,defaults);
 	
@@ -99,7 +97,9 @@ HeisenbergSU2 (const variant<size_t,std::array<size_t,2> > &L, const vector<Para
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		B[l] = spins::BaseSU2<>(N_legs,P.get<size_t>("D",l%Lcell));
+		N_phys += P.get<size_t>("Ly",l%Lcell);
+		
+		B[l] = spins::BaseSU2<>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		setLocBasis(B[l].get_basis(),l);
 		
 		Terms[l] = set_operators(B[l],P,l%Lcell);
@@ -121,7 +121,7 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 	std::stringstream ss;
 	ss << "S(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
 	
-	MpoQ<Symmetry> Mout(N_sites, N_legs);
+	MpoQ<Symmetry> Mout(N_sites);
 	for (std::size_t l=0; l<N_sites; l++)
 	{
 		Mout.setLocBasis(B[l].get_basis(),l);

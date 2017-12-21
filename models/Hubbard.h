@@ -27,7 +27,7 @@ class Hubbard : public MpoQ<Sym::U0,double>
 public:
 	
 	Hubbard() : MpoQ(){};
-	Hubbard (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
+	Hubbard (const size_t &L, const vector<Param> &params);
 	
 	template<typename Symmetry_>
 	static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc=0);
@@ -51,14 +51,12 @@ const std::map<string,std::any> Hubbard::defaults =
 	{"U",0.}, {"V",0.}, {"Vperp",0.}, 
 	{"Bz",0.}, {"Bx",0.}, 
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
 };
 
 Hubbard::
-Hubbard (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
-:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
-                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                 qarray<0>({}), labeldummy, "")
+Hubbard (const size_t &L, const vector<Param> &params)
+:MpoQ<Symmetry> (L, qarray<0>({}), labeldummy, "")
 {
 	ParamHandler P(params,Hubbard::defaults);
 	
@@ -69,7 +67,9 @@ Hubbard (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &pa
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		F[l] = FermionBase<Symmetry>(N_legs,!isfinite(P.get<double>("U",l%Lcell)));
+		N_phys += P.get<size_t>("Ly",l%Lcell);
+		
+		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
 		setLocBasis(F[l].get_basis(),l);
 		
 		Terms[l] = HubbardU1xU1::set_operators(F[l],P,l%Lcell);
@@ -87,11 +87,11 @@ Hubbard (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &pa
 MpoQ<Symmetry> Hubbard::
 n (SPIN_INDEX sigma, size_t locx, size_t locy) const
 {
-	assert(locx<N_sites and locy<N_legs);
+	assert(locx<N_sites and locy<F[locx].dim());
 	stringstream ss;
 	ss << "n(" << locx << "," << locy << ",σ=" << sigma << ")";
 	
-	MpoQ<Symmetry> Mout(N_sites, 1, {}, labeldummy, ss.str());
+	MpoQ<Symmetry> Mout(N_sites, {}, labeldummy, ss.str());
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	Mout.setLocal(locx, F[locx].n(sigma,locy));
@@ -105,7 +105,7 @@ Sz (size_t loc) const
 	stringstream ss;
 	ss << "Sz(" << loc << ")";
 	
-	MpoQ<Symmetry> Mout(N_sites, 1, {}, labeldummy, ss.str());
+	MpoQ<Symmetry> Mout(N_sites, {}, labeldummy, ss.str());
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	Mout.setLocal(loc, F[loc].Sz());

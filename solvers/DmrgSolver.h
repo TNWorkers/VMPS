@@ -57,7 +57,7 @@ public:
 	
 private:
 	
-	size_t N_sites, N_legs;
+	size_t N_sites, N_phys;
 	size_t Dmax, Mmax, Nqmax;
 	double tol_eigval, tol_state;
 	double totalTruncWeight;
@@ -168,7 +168,7 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, qarra
          double alpha_rsvd_input, double eps_svd_input)
 {
 	N_sites = H.length();
-	N_legs = H.width();
+	N_phys  = H.volume();
 	N_sweepsteps = N_halfsweeps = 0;
 	
 	Stopwatch<> PrepTimer;
@@ -331,11 +331,11 @@ halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, LAN
 		size_t standard_precision = cout.precision();
 		if (EDGE == LANCZOS::EDGE::GROUND)
 		{
-			lout << "Emin=" << setprecision(13) << Vout.energy << " Emin/L=" << Vout.energy/(N_sites*N_legs) << setprecision(standard_precision) << endl;
+			lout << "Emin=" << setprecision(13) << Vout.energy << " Emin/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
 		}
 		else
 		{
-			lout << "Emax=" << setprecision(13) << Vout.energy << " Emax/L=" << Vout.energy/(N_sites*N_legs) << setprecision(standard_precision) << endl;
+			lout << "Emax=" << setprecision(13) << Vout.energy << " Emax/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
 		}
 		lout << eigeninfo() << endl;
 		lout << Vout.state.info() << endl;
@@ -356,7 +356,7 @@ cleanup (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, LANCZ
 	{
 		size_t standard_precision = cout.precision();
 		string Eedge = (EDGE == LANCZOS::EDGE::GROUND)? "Emin" : "Emax";
-		lout << Eedge << "=" << setprecision(13) << Vout.energy << ", " << Eedge << "/L=" << Vout.energy/(N_sites*N_legs) << setprecision(standard_precision) << endl;
+		lout << Eedge << "=" << setprecision(13) << Vout.energy << ", " << Eedge << "/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
 		lout << Vout.state.info() << endl;
 	}
 }

@@ -58,7 +58,6 @@ int main (int argc, char* argv[])
 	ArgParser args(argc,argv);
 	Lx = args.get<size_t>("Lx",10); L=Lx;
 	Ly = args.get<size_t>("Ly",1);
-	std::array<size_t,2> Lxy = {Lx,Ly};
 	
 	J = args.get<double>("J",-1.);
 	t = args.get<double>("t",1.);
@@ -100,6 +99,7 @@ int main (int argc, char* argv[])
 	Stopwatch<> Watch_U1;
 	
 	vector<Param> params;
+	params.push_back({"Ly",Ly});
 	params.push_back({"J",J});
 	params.push_back({"t",t});
 	params.push_back({"U",U});
@@ -115,7 +115,7 @@ int main (int argc, char* argv[])
 		// params.push_back({"Bx",0.,l});
 	}
 	
-	VMPS::KondoU1 H_U1(Lxy,params);
+	VMPS::KondoU1 H_U1(Lx,params);
 	lout << H_U1.info() << endl;
 	assert(H_U1.validate({N}) and "Bad total quantum number of the MPS.");
 	Eigenstate<VMPS::KondoU1::StateXd> g_U1;
@@ -148,7 +148,7 @@ int main (int argc, char* argv[])
 	
 	Stopwatch<> Watch_U1xU1;
 	
-	VMPS::KondoU1xU1 H_U1xU1(Lxy,params);
+	VMPS::KondoU1xU1 H_U1xU1(Lx,params);
 	lout << H_U1xU1.info() << endl;
 	assert(H_U1xU1.validate({N,M}) and "Bad total quantum number of the MPS.");
 	Eigenstate<VMPS::KondoU1xU1::StateXd> g_U1xU1;
@@ -215,7 +215,7 @@ int main (int argc, char* argv[])
 	lout << endl << "--------SU(2)---------" << endl << endl;
 	
 	Stopwatch<> Watch_SU2xU1;
-	VMPS::KondoSU2xU1 H_SU2xU1(Lxy,params);
+	VMPS::KondoSU2xU1 H_SU2xU1(Lx,params);
 	lout << H_SU2xU1.info() << endl;
 	assert(H_SU2xU1.validate({S,N}) and "Bad total quantum number of the MPS.");
 	Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1;

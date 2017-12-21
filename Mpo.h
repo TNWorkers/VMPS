@@ -98,11 +98,11 @@ public:
 	// new constructors:
 
 
-	MpoQ (size_t Lx_input, size_t Ly_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input,  
+	MpoQ (size_t Lx_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input,  
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	
-	MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input,
+	MpoQ (size_t Lx_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input,
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 	
@@ -110,13 +110,13 @@ public:
 
 	MpoQ (){};
 
-	MpoQ (std::size_t Lx_input, std::size_t Ly_input) {this->N_sites = Lx_input;  this->N_legs = Ly_input; initialize();}
+	MpoQ (std::size_t Lx_input) {this->N_sites = Lx_input; initialize();}
 
-	MpoQ (size_t Lx_input, size_t Ly_input, qarray<Nq> Qtot_input,  
+	MpoQ (size_t Lx_input, qarray<Nq> Qtot_input,  
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 
-	MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input,
+	MpoQ (size_t Lx_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input,
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	      bool UNITARY_input=false);
 
@@ -205,6 +205,9 @@ public:
 	
 	/**Returns the width of the chain.*/
 	inline size_t width() const {return N_legs;}
+	
+	/**Returns the width of the chain.*/
+	inline size_t volume() const {return N_phys;}
 	
 	/**\describe_Daux*/
 	inline size_t auxdim() const {return Daux;}
@@ -308,7 +311,8 @@ public:
 	bool GOT_SQUARE = false;
 	
 	size_t N_sites;
-	size_t N_legs;
+	size_t N_legs=1;
+	size_t N_phys=0;
 	size_t Daux;
 
 //	ArrayXd truncWeight;
@@ -386,10 +390,10 @@ MpoQ (size_t Lx_input, size_t Ly_input, vector<qarray<Nq> > qloc_input, vector<q
 // new:
 template<typename Symmetry, typename Scalar>
 MpoQ<Symmetry,Scalar>::
-MpoQ (size_t Lx_input, size_t Ly_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input, 
+MpoQ (size_t Lx_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
-	:N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+	:N_sites(Lx_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	initialize();
 	
@@ -418,7 +422,7 @@ MpoQ (size_t Lx_input, size_t Ly_input, qarray<Nq> Qtot_input, vector<qarray<Nq>
 
 template<typename Symmetry, typename Scalar>
 MpoQ<Symmetry,Scalar>::
-MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input,
+MpoQ (size_t Lx_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input,
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), bool UNITARY_input)
 {
 	initialize();
@@ -438,10 +442,10 @@ MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar
 // new new:
 template<typename Symmetry, typename Scalar>
 MpoQ<Symmetry,Scalar>::
-MpoQ (size_t Lx_input, size_t Ly_input, qarray<Nq> Qtot_input, 
+MpoQ (size_t Lx_input, qarray<Nq> Qtot_input, 
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
       bool UNITARY_input)
-:N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+:N_sites(Lx_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	initialize();
 	
@@ -462,9 +466,9 @@ MpoQ (size_t Lx_input, size_t Ly_input, qarray<Nq> Qtot_input,
 // new new:
 template<typename Symmetry, typename Scalar>
 MpoQ<Symmetry,Scalar>::
-MpoQ (size_t Lx_input, size_t Ly_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input,
+MpoQ (size_t Lx_input, const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input, qarray<Nq> Qtot_input,
       std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), bool UNITARY_input)
-:N_sites(Lx_input), N_legs(Ly_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+:N_sites(Lx_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	initialize();
 	construct(Gvec_input, W, Gvec);
@@ -843,7 +847,7 @@ info() const
 {
 	stringstream ss;
 	ss << label << "L=" << N_sites;
-	if (N_legs>1) {ss << "x" << N_legs;}
+	if (N_phys>N_sites) {ss << ",V=" << N_phys;}
 	ss << ", ";
 	
 //	ss << "(";

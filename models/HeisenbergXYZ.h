@@ -41,7 +41,7 @@ public:
 	
 	///\{
 	HeisenbergXYZ() : MpoQ<Symmetry,complex<double> >() {};
-	HeisenbergXYZ (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
+	HeisenbergXYZ (const size_t &L, const vector<Param> &params);
 	///\}
 	
 //	///@{
@@ -74,16 +74,14 @@ const std::map<string,std::any> HeisenbergXYZ::defaults =
 	{"Bx",0.}, {"By",0.}, {"Bz",0.},
 	{"Kx",0.}, {"Ky",0.}, {"Kz",0.},
 	
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true},
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1},
 	
 	{"J",0.}, {"Jprime",0.}, {"Jperp",0.}
 };
 
 HeisenbergXYZ::
-HeisenbergXYZ (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
-:MpoQ<Symmetry,complex<double> > (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0], 
-                                  holds_alternative<size_t>(L)? 1        :get<1>(L)[1], 
-                                  qarray<0>({}), labeldummy, "")
+HeisenbergXYZ (const size_t &L, const vector<Param> &params)
+:MpoQ<Symmetry,complex<double> > (L, qarray<0>({}), labeldummy, "")
 {
 	ParamHandler P(params,HeisenbergXYZ::defaults);
 	
@@ -93,7 +91,9 @@ HeisenbergXYZ (const variant<size_t,std::array<size_t,2> > &L, const vector<Para
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		B = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell));
+		N_phys += P.get<size_t>("Ly",l%Lcell);
+		
+		B = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		setLocBasis(B.get_basis(),l);
 		
 		auto Terms_tmp = HeisenbergU1::set_operators(B,P,l%Lcell);

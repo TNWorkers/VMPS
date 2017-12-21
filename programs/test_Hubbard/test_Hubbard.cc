@@ -81,7 +81,6 @@ int main (int argc, char* argv[])
 	ArgParser args(argc,argv);
 	Lx = args.get<size_t>("Lx",10); L=Lx;
 	Ly = args.get<size_t>("Ly",1);
-	std::array<size_t,2> Lxy = {Lx,Ly};
 	t = args.get<double>("t",1.);
 	tPrime = args.get<double>("tPrime",0.);
 	U = args.get<double>("U",8.);
@@ -182,7 +181,7 @@ int main (int argc, char* argv[])
 	lout << endl << "--------U(0)---------" << endl << endl;
 	
 	Stopwatch<> Watch_U0;
-	VMPS::Hubbard H_U0(Lxy,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu}});
+	VMPS::Hubbard H_U0(Lx,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"Ly",Ly}});
 	lout << H_U0.info() << endl;
 	Eigenstate<VMPS::Hubbard::StateXd> g_U0;
 	
@@ -223,7 +222,7 @@ int main (int argc, char* argv[])
 	
 	Stopwatch<> Watch_U1;
 	
-	VMPS::HubbardU1xU1 H_U1(Lxy,{{"t",t},{"tPrime",tPrime},{"U",U}});
+	VMPS::HubbardU1xU1 H_U1(Lx,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
 	lout << H_U1.info() << endl;
 	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1;
 	
@@ -294,7 +293,7 @@ int main (int argc, char* argv[])
 	
 	Stopwatch<> Watch_SU2;
 	
-	VMPS::HubbardSU2xU1 H_SU2(Lxy,{{"t",t},{"tPrime",tPrime},{"U",U}});
+	VMPS::HubbardSU2xU1 H_SU2(Lx,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
 	lout << H_SU2.info() << endl;
 	Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 	

@@ -55,8 +55,8 @@ public:
 //	\param qloc_input : local basis
 //	\param Qtot_input : target quantum number
 //	MpsQ<Symmetry,Scalar> (size_t L_input, size_t Dmax, std::array<qarray<Nq>,D> qloc_input, qarray<Nq> Qtot_input);
-	MpsQ<Symmetry,Scalar> (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_legs_input=1);
-	MpsQ<Symmetry,Scalar> (size_t L_input, vector<Qbasis<Symmetry> > qloc_input, qarray<Nq> Qtot_input, size_t N_legs_input=1);
+	MpsQ<Symmetry,Scalar> (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
+	MpsQ<Symmetry,Scalar> (size_t L_input, vector<Qbasis<Symmetry> > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
 	
 	/** Construct by pulling info from an MpoQ.
 	\param H : chain length and local basis will be retrieved from this MpoQ (less importantly, the quantum number labels and the format function as well)
@@ -289,7 +289,7 @@ public:
 	
 private:
 	
-	size_t N_legs=1;
+	size_t N_phys;
 	
 	/**local basis.*/
 	vector<vector<qarray<Nq> > > qloc;
@@ -330,7 +330,7 @@ info() const
 	stringstream ss;
 	ss << "MpsQ: ";
 	ss << "L=" << this->N_sites;
-	if (N_legs>1) {ss << "x" << N_legs;}
+	if (N_phys>this->N_sites) {ss << ",V=" << N_phys;}
 	ss << ", ";
 	
 	if (Nq != 0)
@@ -379,8 +379,8 @@ MpsQ()
 
 template<typename Symmetry, typename Scalar>
 MpsQ<Symmetry,Scalar>::
-MpsQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_legs_input)
-:DmrgJanitor<PivotMatrixQ<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_legs(N_legs_input)
+MpsQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input)
+:DmrgJanitor<PivotMatrixQ<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input)
 {
 	format = noFormat;
 	// for(std::size_t l=0; l<this->N_sites; l++) {qloc[l] = qloc__[l].qloc();}
@@ -392,8 +392,8 @@ MpsQ (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_i
 
 template<typename Symmetry, typename Scalar>
 MpsQ<Symmetry,Scalar>::
-MpsQ (size_t L_input, vector<Qbasis<Symmetry> > qloc_input, qarray<Nq> Qtot_input, size_t N_legs_input)
-:DmrgJanitor<PivotMatrixQ<Symmetry,Scalar,Scalar> >(L_input), qloc__(qloc_input), Qtot(Qtot_input), N_legs(N_legs_input)
+MpsQ (size_t L_input, vector<Qbasis<Symmetry> > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input)
+:DmrgJanitor<PivotMatrixQ<Symmetry,Scalar,Scalar> >(L_input), qloc__(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input)
 {
 	format = noFormat;
 	qloc.resize(this->N_sites);
@@ -412,7 +412,7 @@ MpsQ (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
 {
 	format = H.format;
 	qlabel = H.qlabel;
-	N_legs = H.width();
+	N_phys = H.volume();
 	if constexpr (Symmetry::NON_ABELIAN) {outerResize(H.length(), H.locBasis__(), Qtot_input);}
 	else {outerResize(H.length(), H.locBasis(), Qtot_input);}
 	innerResize(Dmax);
@@ -475,7 +475,7 @@ outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input)
 {
 	format = H.format;
 	qlabel = H.qlabel;
-	N_legs = H.width();
+	N_phys = H.volume();
 	outerResize(H.length(), H.locBasis(), Qtot_input);
 }
 
@@ -487,7 +487,7 @@ outerResize (const MpsQ<Symmetry,OtherMatrixType> &V)
 	format = V.format;
 	qlabel = V.qlabel;
 	this->N_sites = V.N_sites;
-	N_legs = V.N_legs;
+	N_phys = V.N_phys;
 	qloc = V.qloc;
 	Qtot = V.Qtot;
 	
@@ -983,7 +983,7 @@ setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 	assert(H.length() == config.size());
 	format = H.format;
 	qlabel = H.qlabel;
-	N_legs = H.width();
+	N_phys = H.volume();
 	outerResize(H.length(), H.locBasis(), accumulate(config.begin(),config.end(),qvacuum<Nq>()));
 	
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -2937,7 +2937,7 @@ swap (MpsQ<Symmetry,Scalar> &V)
 	truncWeight.swap(V.truncWeight);
 	std::swap(this->pivot, V.pivot);
 	std::swap(this->N_sites, V.N_sites);
-	std::swap(N_legs, V.N_legs);
+	std::swap(N_phys, V.N_phys);
 	
 	std::swap(this->format, V.format);
 	std::swap(this->alpha_noise, V.alpha_noise);

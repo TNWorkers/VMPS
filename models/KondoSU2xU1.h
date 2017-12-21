@@ -36,7 +36,7 @@ private:
 public:
 	///@{
 	KondoSU2xU1 ():MpoQ() {};
-	KondoSU2xU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
+	KondoSU2xU1 (const size_t &L, const vector<Param> &params);
 	///@}
 
 	/**
@@ -92,16 +92,14 @@ const std::map<string,std::any> KondoSU2xU1::defaults =
 	{"U",0.}, {"V",0.}, {"Vperp",0.}, 
 	{"mu",0.}, {"t0",0.},
 	{"D",2ul},
-	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}
+	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
 };
 
 const std::array<std::string,Sym::SU2xU1<double>::Nq> KondoSU2xU1::SNlabel{"S","N"};
 
 KondoSU2xU1::
-KondoSU2xU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
-:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0],
-                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1],
-                 qarray<Symmetry::Nq>({1,0}), KondoSU2xU1::SNlabel, "")
+KondoSU2xU1 (const size_t &L, const vector<Param> &params)
+:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({1,0}), KondoSU2xU1::SNlabel, "")
 {
 	ParamHandler P(params,defaults);
 	
@@ -112,11 +110,13 @@ KondoSU2xU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param>
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		F[l] = fermions::BaseSU2xU1<>(N_legs, !isfinite(P.get<double>("U",l%Lcell))); //true means basis n,m
-		B[l] = spins::BaseSU2xU1<>(N_legs, P.get<size_t>("D",l%Lcell));
+		N_phys += P.get<size_t>("Ly",l%Lcell);
+		
+		F[l] = fermions::BaseSU2xU1<>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell))); //true means basis n,m
+		B[l] = spins::BaseSU2xU1<>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		
 		setLocBasis(B[l].get_basis().combine(F[l].get_basis()),l);
-
+		
 		Terms[l] = set_operators(B[l],F[l],P,l%Lcell);
 		this->Daux = Terms[l].auxdim();
 		
@@ -138,7 +138,7 @@ validate (qType qnum) const
 	
 	frac S_tot(qnum[0]-1,2);
 	cout << S_tot << "\t" << Smax << endl;
-	if (Smax.denominator()==S_tot.denominator() and S_tot<=Smax and qnum[0]<=2*static_cast<int>(this->N_sites*this->N_legs) and qnum[0]>0) {return true;}
+	if (Smax.denominator()==S_tot.denominator() and S_tot<=Smax and qnum[0]<=2*static_cast<int>(this->N_phys) and qnum[0]>0) {return true;}
 	else {return false;}
 }
 

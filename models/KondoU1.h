@@ -42,7 +42,7 @@ public:
 	
 	///@{
 	KondoU1 () : MpoQ(){};
-	KondoU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params);
+	KondoU1 (const size_t &L, const vector<Param> &params);
 	///@}
 	
 	/**Labels the conserved quantum number as "N".*/
@@ -92,16 +92,14 @@ const std::map<string,std::any> KondoU1::defaults =
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bx",0.}, {"Bzsub",0.}, {"Bxsub",0.}, {"Kz",0.}, {"Kx",0.},
 	{"D",2ul},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
 };
 
 const std::array<string,1> KondoU1::Nlabel{"N"};
 
 KondoU1::
-KondoU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &params)
-:MpoQ<Symmetry> (holds_alternative<size_t>(L)? get<0>(L):get<1>(L)[0],
-                 holds_alternative<size_t>(L)? 1        :get<1>(L)[1],
-                 qarray<Symmetry::Nq>({0}), KondoU1::Nlabel, "")
+KondoU1 (const size_t &L, const vector<Param> &params)
+:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({0}), KondoU1::Nlabel, "")
 {
 	ParamHandler P(params,defaults);
 	
@@ -112,8 +110,10 @@ KondoU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &pa
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		F[l] = FermionBase<Symmetry>(N_legs, !isfinite(P.get<double>("U",l%Lcell)));
-		B[l] = SpinBase<Symmetry>(N_legs, P.get<size_t>("D",l%Lcell), true); //true means N is good quantum number
+		N_phys += P.get<size_t>("Ly",l%Lcell);
+		
+		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
+		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell), true); //true means N is good quantum number
 		setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);
 		
 		Terms[l] = KondoU1xU1::set_operators(B[l],F[l],P,l%Lcell);
@@ -199,7 +199,7 @@ KondoU1 (const variant<size_t,std::array<size_t,2> > &L, const vector<Param> &pa
 bool KondoU1::
 validate (qType qnum) const
 {
-	if (qnum[0]<=2*static_cast<int>(this->N_sites*this->N_legs) and qnum[0]>0) {return true;}
+	if (qnum[0]<=2*static_cast<int>(this->N_phys) and qnum[0]>0) {return true;}
 	else {return false;}
 }
 

@@ -74,7 +74,6 @@ int main (int argc, char* argv[])
 	ArgParser args(argc,argv);
 	Lx = args.get<size_t>("Lx",10); L=Lx;
 	Ly = args.get<size_t>("Ly",1);
-	std::array<size_t,2> Lxy = {Lx,Ly};
 	J = args.get<double>("J",-1.);
 	Jprime = args.get<double>("Jprime",0.);
 	M = args.get<int>("M",0);
@@ -106,7 +105,7 @@ int main (int argc, char* argv[])
 	lout << endl << "--------U(0)---------" << endl << endl;
 	
 	Stopwatch<> Watch_U0;
-	VMPS::Heisenberg H_U0(Lxy,{{"J",J},{"Jprime",Jprime},{"D",D}});
+	VMPS::Heisenberg H_U0(Lx,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
 	lout << H_U0.info() << endl;
 	Eigenstate<VMPS::Heisenberg::StateXd> g_U0;
 	
@@ -138,7 +137,7 @@ int main (int argc, char* argv[])
 	
 	Stopwatch<> Watch_U1;
 //	VMPS::HeisenbergU1 H_U1(L,J,J,0,D,Ly,true); // Bz=0
-	VMPS::HeisenbergU1 H_U1(Lxy,{{"J",J},{"Jprime",Jprime},{"D",D}});
+	VMPS::HeisenbergU1 H_U1(Lx,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
 	lout << H_U1.info() << endl;
 	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
 	
@@ -204,7 +203,7 @@ int main (int argc, char* argv[])
 	lout << endl << "--------SU(2)---------" << endl << endl;
 	
 	Stopwatch<> Watch_SU2;
-	VMPS::HeisenbergSU2 H_SU2(Lxy,{{"J",J},{"Jprime",Jprime},{"D",D}});
+	VMPS::HeisenbergSU2 H_SU2(Lx,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
 	lout << H_SU2.info() << endl;
 	Eigenstate<VMPS::HeisenbergSU2::StateXd> g_SU2;
 	
