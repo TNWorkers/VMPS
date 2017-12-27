@@ -1,10 +1,11 @@
 #ifndef STRAWBERRY_KONDOMODEL
 #define STRAWBERRY_KONDOMODEL
 
-#include "models/HubbardU1xU1.h"
+#include "ParamHandler.h" // from HELPERS
+
 #include "bases/FermionBase.h"
 #include "bases/SpinBase.h"
-#include "symmetry/qarray.h"
+#include "symmetry/U1xU1.h"
 
 namespace VMPS
 {
@@ -397,7 +398,7 @@ validate (qType qnum) const
 {
 	frac S_elec(qnum[0],2); //electrons have spin 1/2
 	frac Smax = S_elec;
-	for (size_t l=0; l<N_sites; ++l) { Smax+=B[l].orbitals()*frac(B[l].get_D()-1,2); } //add local spins to Smax
+	for (size_t l=0; l<N_sites; ++l) { Smax+=static_cast<int>(B[l].orbitals())*frac(B[l].get_D()-1,2); } //add local spins to Smax
 	
 	frac S_tot(qnum[1],2);
 	cout << S_tot << "\t" << Smax << endl;
