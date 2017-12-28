@@ -106,7 +106,7 @@ const std::map<string,std::any> KondoSU2xU1::defaults =
 	{"U",0.}, {"V",0.}, {"Vperp",0.}, 
 	{"mu",0.}, {"t0",0.},
 	{"D",2ul},
-	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
+	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 const std::array<std::string,Sym::SU2xU1<double>::Nq> KondoSU2xU1::SNlabel{"S","N"};
