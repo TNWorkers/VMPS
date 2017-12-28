@@ -29,7 +29,6 @@ namespace VMPS
   \note \f$J<0\f$ is antiferromagnetic
   \note If nnn-hopping is positive, the GS-energy is lowered.
   \note The multi-impurity model can be received, by setting D=1 (S=0) for all sites without an impurity.
-  \todo Most of the observalbes need to be adjusted properly.
 */
 class KondoU1xU1 : public MpoQ<Sym::U1xU1<double>,double>
 {
@@ -64,21 +63,34 @@ public:
 	///@}
 	
 	///@{
+	MpoQ<Symmetry> c (SPIN_INDEX sigma, size_t locx, size_t locy=0);
+	MpoQ<Symmetry> cdag (SPIN_INDEX sigma, size_t locx, size_t locy=0);
+	///@}
+
+	///@{
+	MpoQ<Symmetry> n (size_t locx, size_t locy=0);
+	MpoQ<Symmetry> d (size_t locx, size_t locy=0);
+	MpoQ<Symmetry> cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	///@}
+
+	///@{
 	MpoQ<Symmetry> Simp (size_t locx, SPINOP_LABEL SOP, size_t locy=0);
 	MpoQ<Symmetry> Ssub (size_t locx, SPINOP_LABEL SOP, size_t locy=0);
+	///@}
+
+	///@{
 	MpoQ<Symmetry> SimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y=0, size_t loc2y=0);
 	MpoQ<Symmetry> SsubSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y=0, size_t loc2y=0);
 	MpoQ<Symmetry> SimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y=0, size_t loc2y=0);
+	///@}
+
+	///@{ //not implemented
 	MpoQ<Symmetry> SimpSsubSimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, 
 	                          size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
 	                          size_t loc1y=0, size_t loc2y=0, size_t loc3y=0, size_t loc4y=0);
 	MpoQ<Symmetry> SimpSsubSimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, 
 	                          size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
 	                          size_t loc1y=0, size_t loc2y=0, size_t loc3y=0, size_t loc4y=0);
-	MpoQ<Symmetry> d (size_t locx, size_t locy=0);
-	MpoQ<Symmetry> c (SPIN_INDEX sigma, size_t locx, size_t locy=0);
-	MpoQ<Symmetry> cdag (SPIN_INDEX sigma, size_t locx, size_t locy=0);
-	MpoQ<Symmetry> cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	///@}
 	
 	/**Validates whether a given \p qnum is a valid combination of \p N and \p M for the given model.
@@ -137,60 +149,173 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
 	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
-// MpoQ<Sym::U1xU1<double> > KondoU1xU1::
-// Simp (size_t locx, SPINOP_LABEL SOP, size_t locy)
-// {
-// 	assert(locx<this->N_sites);
-// 	stringstream ss;
-// 	ss << SOP << "(" << locx << "," << locy << ")";
-// 	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
-// 	Mout.setLocal(locx, kroneckerProduct(B.Scomp[locx](SOP,locy),F.Id()));
-// 	return Mout;
-// }
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
+c (SPIN_INDEX sigma, size_t locx, size_t locy)
+{
+	assert(locx<N_sites and locy<F[locx].dim());
+	stringstream ss;
+	ss << "c(" << locx << "," << locy << "," << sigma << ")";
+	
+	qarray<2> qdiff;
+	(sigma==UP) ? qdiff={-1,0} : qdiff={0,-1};
 
-// MpoQ<Sym::U1xU1<double> > KondoU1xU1::
-// Ssub (size_t locx, SPINOP_LABEL SOP, size_t locy)
-// {
-// 	assert(locx<this->N_sites);
-// 	stringstream ss;
-// 	ss << SOP << "(" << locx << "," << locy << ")";
-// 	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
-// 	Mout.setLocal(locx, kroneckerProduct(B.Id(), F.Scomp(SOP,locy)));
-// 	return Mout;
-// }
+	MpoQ<Symmetry> Mout(N_sites, qdiff, KondoU1xU1::NMlabel, ss.str());
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l); }
+	
+	Mout.setLocal(locx, kroneckerProduct(B[locx].Id(),F[locx].c(sigma,locy)), kroneckerProduct(B[locx].Id(),F[0].sign()));
+	
+	return Mout;
+}
 
-// MpoQ<Sym::U1xU1<double> > KondoU1xU1::
-// SimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y, size_t loc2y)
-// {
-// 	assert(loc1x<this->N_sites and loc2x<this->N_sites);
-// 	stringstream ss;
-// 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
-// 	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
-// 	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(B.Scomp(SOP1,loc1y),F.Id()), kroneckerProduct(B.Scomp(SOP2,loc2y),F.Id())});
-// 	return Mout;
-// }
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
+cdag (SPIN_INDEX sigma, size_t locx, size_t locy)
+{
+	assert(locx<N_sites and locy<F[locx].dim());
+	stringstream ss;
+	ss << "cdag(" << locx << "," << locy << "," << sigma << ")";
+	
+	qarray<2> qdiff;
+	(sigma==UP) ? qdiff={-1,0} : qdiff={0,-1};
 
-// MpoQ<Sym::U1xU1<double> > KondoU1xU1::
-// SsubSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y, size_t loc2y)
-// {
-// 	assert(loc1x<this->N_sites and loc2x<this->N_sites);
-// 	stringstream ss;
-// 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
-// 	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
-// 	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(B.Id(),F.Scomp(SOP1,loc1y)), kroneckerProduct(B.Id(),F.Scomp(SOP2,loc2y))});
-// 	return Mout;
-// }
+	MpoQ<Symmetry> Mout(N_sites, qdiff, KondoU1xU1::NMlabel, ss.str());
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l); }
+	
+	Mout.setLocal(locx, kroneckerProduct(B[locx].Id(),F[locx].cdag(sigma,locy)), kroneckerProduct(B[locx].Id(),F[0].sign()));
+	
+	return Mout;
+}
 
-// MpoQ<Sym::U1xU1<double> > KondoU1xU1::
-// SimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y, size_t loc2y)
-// {
-// 	assert(loc1x<this->N_sites and loc2x<this->N_sites);
-// 	stringstream ss;
-// 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
-// 	MpoQ<Symmetry> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
-// 	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(B.Scomp(SOP1,loc1y),F.Id()), kroneckerProduct(B.Id(),F.Scomp(SOP2,loc2y))});
-// 	return Mout;
-// }
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
+n (std::size_t locx, std::size_t locy)
+{
+	assert(locx<N_sites and locy<N_legs);
+	std::stringstream ss;
+	ss << "occ(" << locx << "," << locy << ")";
+
+	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoU1xU1::NMlabel, ss.str());
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l); }
+
+	auto n = kroneckerProduct(B[locx].Id(),F[locx].n(locy));
+	Mout.setLocal(locx, n);
+
+	return Mout;	
+}
+
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
+d (std::size_t locx, std::size_t locy)
+{
+	assert(locx<N_sites and locy<F[locx].dim());
+	stringstream ss;
+	ss << "double_occ(" << locx << "," << locy << ")";
+	
+	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoU1xU1::NMlabel, ss.str());
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l); }
+
+	auto d = kroneckerProduct(B[locx].Id(),F[locx].d(locy));
+	Mout.setLocal(locx, d);
+	return Mout;
+}
+
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
+cdagc (SPIN_INDEX sigma, size_t loc1x, size_t loc2x, size_t loc1y, size_t loc2y)
+{
+	assert(loc1x<N_sites and loc2x<N_sites);
+	stringstream ss;
+	ss << "c†(" << loc1x << "," << loc1y << "," << sigma << ")" 
+	   << "c (" << loc2x << "," << loc2y << "," << sigma << ")";
+	
+	auto cdag = kroneckerProduct(B[loc1x].Id(),F[loc1x].cdag(sigma,loc1y));
+	auto c    = kroneckerProduct(B[loc2x].Id(),F[loc2x].c   (sigma,loc2y));
+	auto sign = kroneckerProduct(B[loc2x].Id(),F[loc2x].sign());
+	
+	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoU1xU1::NMlabel, ss.str());
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l); }
+	
+	if (loc1x == loc2x)
+	{
+		Mout.setLocal(loc1x, cdag*c);
+	}
+	else if (loc1x<loc2x)
+	{
+		Mout.setLocal({loc1x, loc2x}, {cdag*sign, c}, sign);
+	}
+	else if (loc1x>loc2x)
+	{
+		Mout.setLocal({loc2x, loc1x}, {c*sign, -1.*cdag}, sign);
+	}
+	
+	return Mout;
+}
+
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
+Simp (size_t locx, SPINOP_LABEL SOP, size_t locy)
+{
+	assert(locx<this->N_sites);
+	stringstream ss;
+	ss << SOP << "(" << locx << "," << locy << ")";
+
+	MpoQ<Symmetry> Mout(N_sites, B[locx].getQ(SOP), KondoU1xU1::NMlabel, ss.str());
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l); }
+
+	Mout.setLocal(locx, kroneckerProduct(B[locx].Scomp(SOP,locy), F[locx].Id()));
+	return Mout;
+}
+
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
+Ssub (size_t locx, SPINOP_LABEL SOP, size_t locy)
+{
+	assert(locx<this->N_sites);
+	stringstream ss;
+	ss << SOP << "(" << locx << "," << locy << ")";
+
+	MpoQ<Symmetry> Mout(N_sites, B[locx].getQ(SOP), KondoU1xU1::NMlabel, ss.str());
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l); }
+
+	Mout.setLocal(locx, kroneckerProduct(B[locx].Id(), F[locx].Scomp(SOP,locy)));
+	return Mout;
+}
+
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
+SimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y, size_t loc2y)
+{
+	assert(loc1x<this->N_sites and loc2x<this->N_sites);
+	std::stringstream ss;
+	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
+
+	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoU1xU1::NMlabel, ss.str());
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l); }
+
+	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(B[loc1x].Scomp(SOP1,loc1y),F[loc1x].Id()), kroneckerProduct(B[loc2x].Scomp(SOP2,loc2y),F[loc2y].Id())});
+	return Mout;
+}
+
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
+SsubSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y, size_t loc2y)
+{
+	assert(loc1x<this->N_sites and loc2x<this->N_sites);
+	std::stringstream ss;
+	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
+
+	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoU1xU1::NMlabel, ss.str());
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l); }
+
+	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(B[loc1x].Id(),F[loc1x].Scomp(SOP1,loc1y)), kroneckerProduct(B[loc2x].Id(),F[loc2x].Scomp(SOP2,loc2y))});
+	return Mout;
+}
+
+MpoQ<Sym::U1xU1<double> > KondoU1xU1::
+SimpSsub (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc1y, size_t loc2y)
+{
+	assert(loc1x<this->N_sites and loc2x<this->N_sites);
+	std::stringstream ss;
+	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")";
+
+	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoU1xU1::NMlabel, ss.str());
+	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l); }
+
+	Mout.setLocal({loc1x, loc2x}, {kroneckerProduct(B[loc1x].Scomp(SOP1,loc1y),F[loc1x].Id()), kroneckerProduct(B[loc2x].Id(),F[loc2x].Scomp(SOP2,loc2y))});
+	return Mout;
+}
 
 // MpoQ<Sym::U1xU1<double> > KondoU1xU1::
 // SimpSsubSimpSimp (size_t loc1x, SPINOP_LABEL SOP1, size_t loc2x, SPINOP_LABEL SOP2, size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
@@ -225,171 +350,6 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
 // 				   kroneckerProduct(B.Id(),F.Scomp(SOP2,loc2y)),
 // 				   kroneckerProduct(B.Scomp(SOP3,loc3y),F.Id()),
 // 				   kroneckerProduct(B.Id(),F.Scomp(SOP4,loc4y))});
-// 	return Mout;
-// }
-
-// MpoQ<Sym::U1xU1<double> > KondoU1xU1::
-// c (SPIN_INDEX sigma, size_t locx, size_t locy)
-// {
-// 	assert(locx<this->N_sites and locy<N_legs);
-// 	stringstream ss;
-// 	ss << "c(" << locx << "," << locy << ",σ=" << sigma << ")";
-// 	qType qdiff;
-// 	(sigma==UP) ? qdiff = {-1,-1} : qdiff = {-1,+1};
-	
-// 	vector<SuperMatrix<double> > M(N_sites);
-// 	for (size_t l=0; l<locx; ++l)
-// 	{
-// 		SparseMatrixXd IdImp(MpoQ<Symmetry>::qloc[l].size()/F.dim(), MpoQ<Symmetry>::qloc[l].size()/F.dim()); IdImp.setIdentity();
-// 		M[l].setMatrix(1,S.dim()*F.dim());
-// 		SparseMatrixXd tmp = kroneckerProduct(IdImp,F.sign());
-// 		M[l](0,0) = tmp;
-// 	}
-// 	SparseMatrixXd IdImp(MpoQ<Symmetry>::qloc[locx].size()/F.dim(), MpoQ<Symmetry>::qloc[locx].size()/F.dim()); IdImp.setIdentity();
-// 	M[locx].setMatrix(1,S.dim()*F.dim());
-// 	SparseMatrixXd tmp = (sigma==UP)? kroneckerProduct(IdImp,F.sign_local(locy)*F.c(UP,locy)) : kroneckerProduct(IdImp,F.sign_local(locy)*F.c(DN,locy));
-// 	M[locx](0,0) = tmp;
-// 	for (size_t l=locx+1; l<N_sites; ++l)
-// 	{
-// 		M[l].setMatrix(1,S.dim()*F.dim());
-// 		M[l](0,0).setIdentity();
-// 	}
-	
-// 	return MpoQ<Symmetry>(N_sites, N_legs, M, locBasis(), qdiff, KondoU1xU1::NMlabel, ss.str());
-// }
-
-// MpoQ<Sym::U1xU1<double> > KondoU1xU1::
-// cdag (SPIN_INDEX sigma, size_t locx, size_t locy)
-// {
-// 	assert(locx<N_sites and locy<N_legs);
-// 	stringstream ss;
-// 	ss << "c†(" << locx << "," << locy << ",σ=" << sigma << ")";
-// 	qType qdiff;
-// 	(sigma==UP) ? qdiff = {+1,+1} : qdiff = {+1,-1};
-	
-// 	vector<SuperMatrix<double> > M(N_sites);
-// 	for (size_t l=0; l<locx; ++l)
-// 	{
-// 		SparseMatrixXd IdImp(MpoQ<Symmetry>::qloc[l].size()/F.dim(), MpoQ<Symmetry>::qloc[l].size()/F.dim()); IdImp.setIdentity();
-// 		M[l].setMatrix(1,S.dim()*F.dim());
-// 		SparseMatrixXd tmp = kroneckerProduct(IdImp,F.sign());
-// 		M[l](0,0) = tmp;
-// 	}
-// 	SparseMatrixXd IdImp(MpoQ<Symmetry>::qloc[locx].size()/F.dim(), MpoQ<Symmetry>::qloc[locx].size()/F.dim()); IdImp.setIdentity();
-// 	M[locx].setMatrix(1,S.dim()*F.dim());
-// 	SparseMatrixXd tmp = (sigma==UP)? kroneckerProduct(IdImp,F.sign_local(locy)*F.cdag(UP,locy)) : kroneckerProduct(IdImp,F.sign_local(locy)*F.cdag(DN,locy));
-// 	M[locx](0,0) = tmp;
-// 	for (size_t l=locx+1; l<N_sites; ++l)
-// 	{
-// 		M[l].setMatrix(1,S.dim()*F.dim());
-// 		M[l](0,0).setIdentity();
-// 	}
-	
-// 	return MpoQ<Symmetry>(N_sites, N_legs, M, locBasis(), qdiff, KondoU1xU1::NMlabel, ss.str());
-// }
-
-// MpoQ<Sym::U1xU1<double> > KondoU1xU1::
-// cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
-// {
-// 	assert(locx1<N_sites and locx2<N_sites and locy1<N_legs and locy2<N_legs);
-// 	stringstream ss;
-// 	ss << "c†(" << locx1 << "," << locy1 << ",σ=" << sigma << ") " << "c(" << locx2 << "," << locy2 << ",σ=" << sigma << ")";
-// 	qType qdiff = {0,0};
-
-// 	vector<SuperMatrix<double> > M(N_sites);
-// 	SparseMatrixXd IdImp;
-	
-// 	if (locx1 < locx2)
-// 	{
-// 		for (size_t l=0; l<locx1; ++l)
-// 		{
-// 			M[l].setMatrix(1,S.dim()*F.dim());
-// 			M[l](0,0).setIdentity();
-// 			// M[l](0,0) = kroneckerProduct(IdImp,F.sign());
-// 		}
-// 		IdImp.resize(MpoQ<Symmetry>::qloc[locx1].size()/F.dim(), MpoQ<Symmetry>::qloc[locx1].size()/F.dim()); IdImp.setIdentity();
-// 		M[locx1].setMatrix(1,S.dim()*F.dim());
-// 		SparseMatrixXd tmp = (sigma==UP) ? kroneckerProduct(IdImp,F.cdag(UP,locy1)) : kroneckerProduct(IdImp,F.cdag(DN,locy1));
-// 		M[locx1](0,0) = tmp;
-// 		for (size_t l=locx1+1; l<locx2; ++l)
-// 		{
-// 			IdImp.resize(MpoQ<Symmetry>::qloc[l].size()/F.dim(), MpoQ<Symmetry>::qloc[l].size()/F.dim()); IdImp.setIdentity();
-// 			M[l].setMatrix(1,S.dim()*F.dim());
-// 			SparseMatrixXd tmp = kroneckerProduct(IdImp,F.sign());
-// 			M[l](0,0) = tmp;
-// 		}
-// 		IdImp.resize(MpoQ<Symmetry>::qloc[locx2].size()/F.dim(), MpoQ<Symmetry>::qloc[locx2].size()/F.dim()); IdImp.setIdentity();
-// 		M[locx2].setMatrix(1,S.dim()*F.dim());
-// 		tmp = (sigma==UP) ? kroneckerProduct(IdImp,F.sign_local(locy2)*F.c(UP,locy2)) : kroneckerProduct(IdImp,F.sign_local(locy2)*F.c(DN,locy2));
-// 		M[locx2](0,0) = tmp;
-// 		for (size_t l=locx2+1; l<N_sites; ++l)
-// 		{
-// 			M[l].setMatrix(1,S.dim()*F.dim());
-// 			M[l](0,0).setIdentity();
-// 		}
-// 	}
-// 	else if(locx1 > locx2)
-// 	{
-// 		for (size_t l=0; l<locx2; ++l)
-// 		{
-// 			M[l].setMatrix(1,S.dim()*F.dim());
-// 			M[l](0,0).setIdentity();
-// 			// M[l](0,0) = kroneckerProduct(IdImp,F.sign());
-// 		}
-// 		IdImp.resize(MpoQ<Symmetry>::qloc[locx2].size()/F.dim(), MpoQ<Symmetry>::qloc[locx2].size()/F.dim()); IdImp.setIdentity();
-// 		M[locx2].setMatrix(1,S.dim()*F.dim());
-// 		SparseMatrixXd tmp = (sigma==UP) ? kroneckerProduct(IdImp,F.c(UP,locy2)) : kroneckerProduct(IdImp,F.c(DN,locy2));
-// 		M[locx2](0,0) = tmp;
-// 		for (size_t l=locx2+1; l<locx1; ++l)
-// 		{
-// 			IdImp.resize(MpoQ<Symmetry>::qloc[l].size()/F.dim(), MpoQ<Symmetry>::qloc[l].size()/F.dim()); IdImp.setIdentity();
-// 			M[l].setMatrix(1,S.dim()*F.dim());
-// 			SparseMatrixXd tmp = kroneckerProduct(IdImp,F.sign());
-// 			M[l](0,0) = tmp;
-// 		}
-// 		IdImp.resize(MpoQ<Symmetry>::qloc[locx1].size()/F.dim(), MpoQ<Symmetry>::qloc[locx1].size()/F.dim()); IdImp.setIdentity();
-// 		M[locx1].setMatrix(1,S.dim()*F.dim());
-// 		tmp = (sigma==UP) ? kroneckerProduct(IdImp,F.sign_local(locy1)*F.cdag(UP,locy1)) : kroneckerProduct(IdImp,F.sign_local(locy1)*F.cdag(DN,locy1));
-// 		M[locx1](0,0) = tmp;
-// 		for (size_t l=locx1+1; l<N_sites; ++l)
-// 		{
-// 			M[l].setMatrix(1,S.dim()*F.dim());
-// 			M[l](0,0).setIdentity();
-// 		}		
-// 	}
-// 	else if(locx1 == locx2)
-// 	{
-// 		for (size_t l=0; l<locx1; ++l)
-// 		{
-// 			M[l].setMatrix(1,S.dim()*F.dim());
-// 			M[l](0,0).setIdentity();
-// 			// M[l](0,0) = kroneckerProduct(IdImp,F.sign());
-// 		}
-// 		IdImp.resize(MpoQ<Symmetry>::qloc[locx1].size()/F.dim(), MpoQ<Symmetry>::qloc[locx1].size()/F.dim()); IdImp.setIdentity();
-// 		M[locx1].setMatrix(1,S.dim()*F.dim());
-// 		SparseMatrixXd tmp = (sigma==UP) ? kroneckerProduct(IdImp,F.cdag(UP,locy1)*F.sign_local(locy1)*F.c(UP,locy2))
-// 			: kroneckerProduct(IdImp,F.cdag(DN,locy1)*F.sign_local(locy1)*F.c(DN,locy2));
-// 		M[locx1](0,0) = tmp;
-// 		for (size_t l=locx1+1; l<N_sites; ++l)
-// 		{
-// 			M[l].setMatrix(1,S.dim()*F.dim());
-// 			M[l](0,0).setIdentity();
-// 		}		
-
-	
-// 	}
-// 	return MpoQ<Symmetry>(N_sites, N_legs, M, locBasis(), qdiff, KondoU1xU1::NMlabel, ss.str());
-// }
-
-// MpoQ<Sym::U1xU1<double> > KondoU1xU1::
-// d (size_t locx, size_t locy)
-// {
-// 	assert(locx<N_sites and locy<N_legs);
-// 	stringstream ss;
-// 	ss << "double_occ(" << locx << "," << locy << ")";
-// 	SparseMatrixXd IdImp(MpoQ<Symmetry>::qloc[locx].size()/F.dim(), MpoQ<Symmetry>::qloc[locx].size()/F.dim()); IdImp.setIdentity();
-// 	MpoQ<Symmetry> Mout(N_sites, N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
-// 	Mout.setLocal(locx, kroneckerProduct(IdImp,F.d(locy)));
 // 	return Mout;
 // }
 
@@ -451,17 +411,17 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 		if (tPara(i,j) != 0.)
 		{
 			Terms.tight.push_back(make_tuple(-tPara(i,j),
-			                                 kroneckerProduct(B.Id(), F.cdag(UP,i)),
-			                                 kroneckerProduct(B.Id(),F.sign()* F.c(UP,j))));
+			                                 kroneckerProduct(B.Id(), F.cdag(UP,i) * F.sign()),
+			                                 kroneckerProduct(B.Id(), F.c(UP,j))));
 			Terms.tight.push_back(make_tuple(-tPara(i,j),
-			                                 kroneckerProduct(B.Id(), F.cdag(DN,i)),
-			                                 kroneckerProduct(B.Id(),F.sign()* F.c(DN,j))));
-			Terms.tight.push_back(make_tuple(+tPara(i,j),
-			                                 kroneckerProduct(B.Id(), F.c(UP,i)),
-			                                 kroneckerProduct(B.Id(),F.sign()* F.cdag(UP,j))));
-			Terms.tight.push_back(make_tuple(+tPara(i,j),
-			                                 kroneckerProduct(B.Id(), F.c(DN,i)),
-			                                 kroneckerProduct(B.Id(),F.sign()* F.cdag(DN,j))));
+			                                 kroneckerProduct(B.Id(), F.cdag(DN,i) * F.sign()),
+			                                 kroneckerProduct(B.Id(), F.c(DN,j))));
+			Terms.tight.push_back(make_tuple(-tPara(i,j),
+			                                 kroneckerProduct(B.Id(), -1.*F.c(UP,i) * F.sign()),
+			                                 kroneckerProduct(B.Id(), F.cdag(UP,j))));
+			Terms.tight.push_back(make_tuple(-tPara(i,j),
+			                                 kroneckerProduct(B.Id(), -1.*F.c(DN,i) * F.sign()),
+			                                 kroneckerProduct(B.Id(), F.cdag(DN,j))));
 		}
 		
 		if (Vpara(i,j) != 0.)

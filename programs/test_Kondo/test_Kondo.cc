@@ -110,7 +110,7 @@ int main (int argc, char* argv[])
 
 	for (size_t l=1; l<L; ++l)
 	{
-		params.push_back({"D",1ul,l});
+		params.push_back({"D",2ul,l});
 		// params.push_back({"Bz",0.,l});
 		// params.push_back({"Bx",0.,l});
 	}
@@ -122,7 +122,14 @@ int main (int argc, char* argv[])
 	
 	VMPS::KondoU1::Solver DMRG_U1(VERB);
 	DMRG_U1.edgeState(H_U1, g_U1, {N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 1000*tol_eigval,1000*tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
-	
+
+	Eigen::ArrayXd d_U1(L); d_U1.setZero();
+	Eigen::ArrayXd n_U1(L); n_U1.setZero();
+	for(size_t i=0; i<L; i++) { d_U1(i) = avg(g_U1.state, H_U1.d(i), g_U1.state); n_U1(i) = avg(g_U1.state, H_U1.n(i), g_U1.state); }
+
+	Eigen::ArrayXXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
+	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U1(i,j) = 3.*avg(g_U1.state, H_U1.SimpSsub(i,SZ,j,SZ), g_U1.state); }
+
 	t_U1 = Watch_U1.time();
 	
 //	// observables
@@ -155,7 +162,16 @@ int main (int argc, char* argv[])
 	
 	VMPS::KondoU1xU1::Solver DMRG_U1xU1(VERB);
 	DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {N,M}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
-	
+
+	Eigen::ArrayXd d_U1xU1(L); d_U1xU1.setZero();
+	Eigen::ArrayXd n_U1xU1(L); n_U1xU1.setZero();
+	for(size_t i=0; i<L; i++) { d_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.d(i), g_U1xU1.state); n_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.n(i), g_U1xU1.state); }
+
+	Eigen::ArrayXXd SpinCorr_U1xU1(L,L); SpinCorr_U1xU1.setZero();
+	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U1xU1(i,j) = 3.*avg(g_U1xU1.state, H_U1xU1.SimpSsub(i,SZ,j,SZ), g_U1xU1.state); }
+
+	Eigen::ArrayXXd densitiy_matrix_U1xU1(L,L); densitiy_matrix_U1xU1.setZero();
+	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { densitiy_matrix_U1xU1(i,j) = 2.*avg(g_U1xU1.state, H_U1xU1.cdagc(UP,i,j), g_U1xU1.state); }
 	t_U1xU1 = Watch_U1xU1.time();
 
 //	// observables
@@ -225,8 +241,18 @@ int main (int argc, char* argv[])
 	
 	t_SU2xU1 = Watch_SU2xU1.time();
 
-//	Eigen::MatrixXd SpinCorr_SU2(L,L); SpinCorr_SU2.setZero();
-//	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SS(i,j), g_SU2.state); }
+	Eigen::ArrayXd d_SU2xU1(L); d_SU2xU1.setZero();
+	Eigen::ArrayXd n_SU2xU1(L); n_SU2xU1.setZero();
+	for(size_t i=0; i<L; i++) { d_SU2xU1(i) = avg(g_SU2xU1.state, H_SU2xU1.d(i), g_SU2xU1.state); n_SU2xU1(i) = avg(g_SU2xU1.state, H_SU2xU1.n(i), g_SU2xU1.state); }
+	
+	Eigen::ArrayXXd SpinCorr_SU2xU1(L,L); SpinCorr_SU2xU1.setZero();
+	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.SimpSsub(i,j), g_SU2xU1.state); }
+
+	Eigen::ArrayXXd densitiy_matrix_SU2xU1(L,L); densitiy_matrix_SU2xU1.setZero();
+	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { densitiy_matrix_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdagc(i,j), g_SU2xU1.state); }
+
+   	cout << densitiy_matrix_U1xU1 << endl << endl;
+	cout << densitiy_matrix_SU2xU1 << endl << endl;
 //	//--------output---------
 //	
 	TextTable T( '-', '|', '+' );
@@ -243,11 +269,11 @@ int main (int argc, char* argv[])
 	T.add("t/s"); T.add(to_string_prec(t_U1,2)); T.add(to_string_prec(t_U1xU1,2)); T.add(to_string_prec(t_SU2xU1,2)); T.endOfRow();
 	T.add("t gain"); T.add(to_string_prec(t_U1/t_SU2xU1,2)); T.add(to_string_prec(t_U1xU1/t_SU2xU1,2)); T.add("1"); T.endOfRow();
 
-//	T.add("observables"); T.add(to_string_prec(SpinCorr_U0.sum()));
-//	T.add(to_string_prec(SpinCorr_U1.sum())); T.add(to_string_prec(SpinCorr_SU2.sum())); T.endOfRow();
+	T.add("observables"); T.add(to_string_prec(SpinCorr_U1.sum()));
+	T.add(to_string_prec(SpinCorr_U1xU1.sum())); T.add(to_string_prec(SpinCorr_SU2xU1.sum())); T.endOfRow();
 
-//	T.add("observables diff"); T.add(to_string_prec((SpinCorr_U0-SpinCorr_SU2).lpNorm<1>()/Vsq));
-//	T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2).lpNorm<1>()/Vsq)); T.add("0"); T.endOfRow();
+	// T.add("observables diff"); T.add(to_string_prec((SpinCorr_U0-SpinCorr_SU2).lpNorm<1>()/Vsq));
+	// T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2).lpNorm<1>()/Vsq)); T.add("0"); T.endOfRow();
 
 	T.add("Dmax"); T.add(to_string(g_U1.state.calc_Dmax())); T.add(to_string(g_U1xU1.state.calc_Dmax())); T.add(to_string(g_SU2xU1.state.calc_Dmax()));
 	T.endOfRow();
