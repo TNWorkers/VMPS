@@ -50,6 +50,14 @@ public:
 	   \param orbital : orbital index*/
 	Operator cdag (std::size_t orbital=0) const;
 
+	/**Annihilation operator
+	   \param orbital : orbital index*/
+	Operator a (std::size_t orbital=0) const;
+	
+	/**Creation operator.
+	   \param orbital : orbital index*/
+	Operator adag (std::size_t orbital=0) const;
+
 	/**Fermionic sign for the hopping between two orbitals of nearest-neighbour supersites of a ladder.
 	   \param orb1 : orbital on supersite i
 	   \param orb2 : orbital on supersite i+1
@@ -133,6 +141,8 @@ private:
 	Operator F_1s; //Fermionic sign
 	Operator c_1s; //annihilation
 	Operator cdag_1s; //creation
+	Operator a_1s; //annihilation
+	Operator adag_1s; //creation
 	Operator n_1s; //particle number
 	Operator d_1s; //double occupancy
 	Operator S_1s; //orbital spin
@@ -171,6 +181,7 @@ BaseSU2xU1 (std::size_t L_input, bool U_IS_INFINITE)
 	Id_1s = Operator({1,0},basis_1s);
 	F_1s = Operator({1,0},basis_1s);
 	c_1s = Operator({2,-1},basis_1s);
+	a_1s = Operator({2,-1},basis_1s);
 	d_1s = Operator({1,0},basis_1s);
 	S_1s = Operator({3,0},basis_1s);
 
@@ -185,7 +196,15 @@ BaseSU2xU1 (std::size_t L_input, bool U_IS_INFINITE)
 
 	c_1s( "empty", "single" ) = std::sqrt(2.);
 	c_1s( "single", "double" ) = 1.;
+	a_1s( "empty", "single" ) = std::sqrt(2.);
+	a_1s( "single", "double" ) = 1.;
+
+	// cdag_1s = Operator({2,+1},basis_1s);
+	// cdag_1s( "single", "empty" ) = 1.;//std::sqrt(2.);
+	// cdag_1s( "double", "single" ) = -std::sqrt(2.); //1.;
+
 	cdag_1s = c_1s.adjoint();
+	adag_1s = a_1s.adjoint();
 	n_1s = std::sqrt(2.) * Operator::prod(cdag_1s,c_1s,{1,0});
 	d_1s( "double", "double" ) = 1.;
 	S_1s( "single", "single" ) = std::sqrt(0.75);
@@ -234,6 +253,38 @@ SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dyn
 cdag (std::size_t orbital) const
 {
 	return c(orbital).adjoint();
+}
+
+template<typename Scalar>
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+a (std::size_t orbital) const
+{
+	if(N_orbitals == 1) { return a_1s; }
+	else
+	{
+		Operator out;
+		bool TOGGLE=false;
+		if(orbital == 0) { out = Operator::outerprod(c_1s,Id_1s,{2,-1}); TOGGLE=true; }
+		else
+		{
+			if( orbital == 1 ) { out = Operator::outerprod(Id_1s,c_1s,{2,-1}); TOGGLE=true; }
+			else { out = Operator::outerprod(Id_1s,Id_1s,{1,0}); }
+		}
+		for(std::size_t o=2; o<N_orbitals; o++)
+		{
+			if(orbital == o) { out = Operator::outerprod(out,c_1s,{2,-1}); TOGGLE=true; }
+			else if(TOGGLE==false) { out = Operator::outerprod(out,Id_1s,{1,0}); }
+			else if(TOGGLE==true) { out = Operator::outerprod(out,Id_1s,{2,-1}); }
+		}
+		return out;
+	}
+}
+	
+template<typename Scalar>
+SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+adag (std::size_t orbital) const
+{
+	return a(orbital).adjoint();
 }
 
 template<typename Scalar>

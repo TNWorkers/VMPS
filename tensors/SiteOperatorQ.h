@@ -5,6 +5,52 @@
 #include "tensors/Biped.h"
 #include "tensors/SiteOperator.h"
 
+template<typename Operator>
+class EDSolver
+{
+	typedef typename Operator::qType qType;
+	typedef typename Operator::MatrixType MatrixType;	
+public:
+	EDSolver(){};
+	EDSolver(const Operator &Op_in, const std::vector<qType> &blocks_in={}, Eigen::DecompositionOptions opt_in=Eigen::DecompositionOptions::EigenvaluesOnly)
+		{compute(Op_in,blocks_in,opt_in);}
+
+	void compute(const Operator &Op, const std::vector<qType> &blocks={}, Eigen::DecompositionOptions opt=Eigen::DecompositionOptions::EigenvaluesOnly);
+
+	const Operator& eigenvalues() const {return eigvals_;}
+	const Operator& eigenvectors() const {return eigvecs_;}
+
+private:
+	Operator eigvals_;
+	Operator eigvecs_;
+};
+
+template<typename Operator>
+void EDSolver<Operator>::
+compute(const Operator &Op, const std::vector<qType> &blocks, Eigen::DecompositionOptions opt)
+{
+	eigvals_.data().clear(); eigvecs_.data().clear();
+	eigvals_.Q() = Op.Q();	eigvecs_.Q() = Op.Q();
+	eigvals_.basis() = Op.basis(); eigvecs_.basis() = Op.basis();
+	MatrixType Mtmp,eigva,eigve;
+	for(std::size_t nu=0; nu<Op.data().size(); nu++)
+	{
+		cout << "before: " << Op.data().in[nu] << endl;
+		if(blocks.size()>0) { if(auto it = std::find(blocks.begin(),blocks.end(),Op.data().in[nu]); it == blocks.end()) {continue;} }
+		cout << "after: " << Op.data().in[nu] << endl;
+		Mtmp = Op.data().block[nu];
+		Eigen::SelfAdjointEigenSolver<MatrixType> John(Mtmp,opt);
+		eigva = John.eigenvalues();//.asDiagonal();
+		eigvals_.data().push_back(Op.data().in[nu],Op.data().out[nu],eigva);
+		if(opt == Eigen::DecompositionOptions::ComputeEigenvectors)
+		{
+			eigve = John.eigenvectors();
+			eigvecs_.data().push_back(Op.data().in[nu],Op.data().out[nu],eigve);
+		}
+	}
+	return;
+}
+
 /** \class SiteOperatorQ
   *
   * This class is the type for local operators and defines the relevant operations: adjoint(), prod(), outerprod(),...
@@ -18,10 +64,10 @@ class SiteOperatorQ// : public Biped<Symmetry,MatrixType_>
 {
 private:
 	typedef Eigen::Index Index;
-	typedef typename Symmetry::qType qType;
 	typedef Biped<Symmetry,MatrixType_> base;
 	
 public:
+	typedef typename Symmetry::qType qType;
 	typedef MatrixType_ MatrixType;
 	typedef typename MatrixType::Scalar Scalar;
 
@@ -62,7 +108,7 @@ public:
 	static SiteOperatorQ<Symmetry,MatrixType_> outerprod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2,
 														  const qType& target );
 
-	SiteOperatorQ<Symmetry,MatrixType_> diagonalize() const;
+	SiteOperatorQ<Symmetry,MatrixType_> diagonalize(const std::vector<qType> &blocks={}, Eigen::DecompositionOptions opt=EigenvaluesOnly) const;
 
 	template<typename Scalar>
 	SiteOperator<Symmetry,Scalar> plain() const;
@@ -156,7 +202,7 @@ operator() ( const std::string& bra, const std::string& ket ) const
 
 template<typename Symmetry, typename MatrixType_>
 SiteOperatorQ<Symmetry,MatrixType_> SiteOperatorQ<Symmetry,MatrixType_>::
-diagonalize () const
+diagonalize (const std::vector<qType> &blocks, Eigen::DecompositionOptions opt) const
 {
 	assert(this->Q() == Symmetry::qvacuum() and "Only a singlet operator can get diagonalized.");
 	SiteOperatorQ<Symmetry,MatrixType_> out( this->Q(), this->basis() );
@@ -164,6 +210,7 @@ diagonalize () const
 	MatrixType Mtmp,res;
 	for( std::size_t nu=0; nu<this->data().size(); nu++ )
 	{
+		if(blocks.size()>0) { if(auto it = std::find(blocks.begin(),blocks.end(),this->data().in[nu]); it == blocks.end()) {continue;} }
 		Mtmp = this->data().block[nu];
 		Eigen::SelfAdjointEigenSolver<MatrixType> John(Mtmp);
 		res = John.eigenvalues().asDiagonal();
@@ -264,9 +311,12 @@ prod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetr
 			std::size_t mu = it->second;
 			factor_cgc = Symmetry::coeff_Apair( O1.data().in[nu], O1.Q(), O1.data().out[nu],
 												O2.Q(), O2.data().out[mu], target);
+			// factor_cgc = Symmetry::coeff_Apair( O2.data().out[mu], O2.Q(), O1.data().out[nu],
+			// 									O1.Q(), O1.data().in[nu], target);
 			if ( std::abs(factor_cgc) < ::numeric_limits<Scalar>::epsilon() ) { continue; }
 			totIndex = { O1.data().in[nu], O2.data().out[mu] };
 			A = O1.data().block[nu] * O2.data().block[mu] * factor_cgc;
+			// A = O2.data().block[mu] * O1.data().block[nu] * factor_cgc;
 			auto check = out.data().dict.find(totIndex);
 			if ( check == out.data().dict.end() )
 			{
@@ -275,6 +325,34 @@ prod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetr
 			else { out.data().block[check->second] += A; }
 		}
 	}
+	// for ( std::size_t nu=0; nu<O1.data().size(); nu++ )
+	// {
+	// 	// auto qvec = Symmetry::reduceSilent(O1.data().in[nu],Symmetry::flip(O2.Q()));
+	// 	auto qvec = Symmetry::reduceSilent(O1.data().in[nu],O2.Q());
+
+	// 	for (const auto& q : qvec)
+	// 	{
+	// 		index = {q,O1.data().in[nu]};
+	// 		auto it = O2.data().dict.find(index);
+	// 		if (it == O2.data().dict.end()) {continue;}
+	// 		std::size_t mu = it->second;
+	// 		// factor_cgc = Symmetry::coeff_Apair( O1.data().out[nu], O1.Q(), O1.data().in[nu],
+	// 		// 									O2.Q(), O2.data().in[mu], target);
+	// 		factor_cgc = Symmetry::coeff_Apair( O2.data().in[mu], O2.Q(), O1.data().in[nu],
+	// 											O1.Q(), O1.data().out[nu], target);
+	// 		if ( std::abs(factor_cgc) < ::numeric_limits<Scalar>::epsilon() ) { continue; }
+	// 		totIndex = { O1.data().in[nu], O2.data().out[mu] };
+	// 		A = O1.data().block[nu] * O2.data().block[mu] * factor_cgc;
+	// 		// A = O2.data().block[mu] * O1.data().block[nu] * factor_cgc;
+	// 		auto check = out.data().dict.find(totIndex);
+	// 		if ( check == out.data().dict.end() )
+	// 		{
+	// 			out.data().push_back(totIndex,A);
+	// 		}
+	// 		else { out.data().block[check->second] += A; }
+	// 	}
+	// }
+
 	return out;
 }
 
