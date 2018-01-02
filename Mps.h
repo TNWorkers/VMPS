@@ -1083,9 +1083,9 @@ save (string filename, string info)
 	string eps_svdLabel = "eps_svd";
 	string alpha_rsvdLabel = "alpha_rsvd";
 	string add_infoLabel = "add_info";
-	target.save_scalar(this->calc_Dmax(),DmaxLabel.c_str());
-	target.save_scalar(this->eps_svd,eps_svdLabel.c_str());
-	target.save_scalar(this->alpha_rsvd,alpha_rsvdLabel.c_str());
+	target.save_scalar(this->calc_Dmax(),DmaxLabel);
+	target.save_scalar(this->eps_svd,eps_svdLabel);
+	target.save_scalar(this->alpha_rsvd,alpha_rsvdLabel);
 	target.save_char(info,add_infoLabel.c_str());
 	
 	std::string label;
@@ -1110,7 +1110,7 @@ loadDmax (string filename)
 
 	string DmaxLabel = "Dmax";
 	size_t Dmax;
-	source.load_scalar(DmaxLabel.c_str(),Dmax);
+	source.load_scalar(Dmax,DmaxLabel);
 	return Dmax;
 }
 
@@ -1123,8 +1123,8 @@ load (string filename)
 
 	string eps_svdLabel = "eps_svd";
 	string alpha_rsvdLabel = "alpha_rsvd";
-	source.load_scalar(eps_svdLabel.c_str(),this->eps_svd);
-	source.load_scalar(alpha_rsvdLabel.c_str(),this->alpha_rsvd);
+	source.load_scalar(this->eps_svd,eps_svdLabel);
+	source.load_scalar(this->alpha_rsvd,alpha_rsvdLabel);
 	
 	std::string label;
 
