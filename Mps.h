@@ -79,21 +79,19 @@ public:
 	\param DIR : If DMRG::DIRECTION::LEFT, the result is left-canonical. If DMRG::DIRECTION::RIGHT, the result is right-canonical.*/
 	void canonize (DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::LEFT);
 	
-	#ifdef USE_HDF5_STORAGE
+#ifdef USE_HDF5_STORAGE
 	///\{
 	/**Save all matrices of the MPS to the file <FILENAME>.h5.
 	   \param filename : the format is fixed to .h5. Just enter the name without the format.
 	   \param info : Additional information about the used model. Enter the info()-method of the used MPO here.
-	   \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/. Additionally eigen3-hdf5 is needed.
-	   See https://github.com/garrison/eigen3-hdf5 for information.
+	   \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	   \note For the filename you should use the info string of the current used Mpo.*/
 	void save(string filename,string info="none");
 	
 	///\{
 	/**Reades all matrices of the MPS from the file <FILENAME>.h5.
 	   \param filename : the format is fixed to .h5. Just enter the name without the format.
-	   \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/. Additionally eigen3-hdf5 is needed.
-	   See https://github.com/garrison/eigen3-hdf5 for information.*/
+	   \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.*/
 	void load(string filename);
 	
 	///\{
@@ -101,7 +99,7 @@ public:
 	   \param filename : the format is fixed to .h5. Just enter the name without the format.
 	   \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.*/
 	size_t loadDmax(string filename);
-	#endif
+#endif
 	
 	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated.
 	\param L_input : chain length
@@ -1084,6 +1082,7 @@ save (string filename, string info)
 	string alpha_rsvdLabel = "alpha_rsvd";
 	string add_infoLabel = "add_info";
 	target.save_scalar(this->calc_Dmax(),DmaxLabel);
+	target.save_scalar(this->N_sv,"N_sv");
 	target.save_scalar(this->eps_svd,eps_svdLabel);
 	target.save_scalar(this->alpha_rsvd,alpha_rsvdLabel);
 	target.save_char(info,add_infoLabel.c_str());
@@ -1125,6 +1124,7 @@ load (string filename)
 	string alpha_rsvdLabel = "alpha_rsvd";
 	source.load_scalar(this->eps_svd,eps_svdLabel);
 	source.load_scalar(this->alpha_rsvd,alpha_rsvdLabel);
+	source.load_scalar(this->N_sv,"N_sv");
 	
 	std::string label;
 

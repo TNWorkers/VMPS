@@ -8,6 +8,9 @@
 #include "DmrgLinearAlgebra.h" // for avg()
 #include "LanczosSolver.h" // from HELPERS
 #include "Stopwatch.h" // from HELPERS
+#ifdef USE_HDF5_STORAGE
+	#include <HDF5Interface.h> // from HELPERS
+#endif
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar = double>
 class DmrgSolverQ
@@ -49,12 +52,25 @@ public:
 	
 	/**Returns the current error of the state while the sweep process.*/
 	inline double get_errState() const {return err_state;};
-	
+
+	/**Returns the current pivot site of the sweep process.*/
+	inline double get_pivot() const {return stat.pivot;};
+
+	/**Returns the current direction of the sweep process.*/
+	inline double get_direction() const {return stat.CURRENT_DIRECTION;};
+
 	void push_back(const MpsQ<Symmetry,Scalar> &Psi0_input)
 	{
 		Psi0.push_back(Psi0_input);
 	};
-	
+
+#ifdef USE_HDF5_STORAGE
+	/**Save the current SweepStatus to <filename>.h5.*/
+	void save(string filename) const;
+	/**Load the a SweepStatus from <filename>.h5.*/
+	void load(string filename);
+#endif
+
 private:
 	
 	size_t N_sites, N_phys;
@@ -62,15 +78,18 @@ private:
 	double tol_eigval, tol_state;
 	double totalTruncWeight;
 	size_t Dmax_old;
-	size_t N_sweepsteps, N_halfsweeps;
 	double err_eigval, err_state, err_state_before_end_of_noise;
 	
 	vector<PivotMatrixQ<Symmetry,Scalar,Scalar> > Heff; // Scalar = MpoScalar for ground state
 	
 	double Eold;
-	
-	int pivot;
-	DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
+
+	struct SweepStatus{
+		int pivot=-1;
+		DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
+		size_t N_sweepsteps, N_halfsweeps;
+	};
+	SweepStatus stat;
 	
 	void LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE);
 	void sweepStep (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout);
@@ -113,12 +132,12 @@ eigeninfo() const
 {
 	stringstream ss;
 	ss << "half-sweeps=";
-	if ((N_sweepsteps-1)/(N_sites-1)>0)
+	if ((stat.N_sweepsteps-1)/(N_sites-1)>0)
 	{
-		ss << (N_sweepsteps-1)/(N_sites-1);
-		if ((N_sweepsteps-1)%(N_sites-1)!=0) {ss << "+";}
+		ss << (stat.N_sweepsteps-1)/(N_sites-1);
+		if ((stat.N_sweepsteps-1)%(N_sites-1)!=0) {ss << "+";}
 	}
-	if ((N_sweepsteps-1)%(N_sites-1)!=0) {ss << (N_sweepsteps-1)%(N_sites-1) << "/" << (N_sites-1);}
+	if ((stat.N_sweepsteps-1)%(N_sites-1)!=0) {ss << (stat.N_sweepsteps-1)%(N_sites-1) << "/" << (N_sites-1);}
 	ss << ", ";
 	
 	ss << "err_eigval=" << err_eigval << ", err_state=" << err_state << ", ";
@@ -127,6 +146,34 @@ eigeninfo() const
 	
 	return ss.str();
 }
+
+#ifdef USE_HDF5_STORAGE
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void DmrgSolverQ<Symmetry,MpHamiltonian,Scalar>::
+save (string filename) const
+{
+	filename+=".h5";
+	HDF5Interface target(filename, WRITE);
+	target.save_scalar(stat.pivot,"pivot");
+	target.save_scalar(stat.N_halfsweeps,"N_halfsweeps");
+	target.save_scalar(stat.N_sweepsteps,"N_sweepsteps");
+	target.save_scalar(static_cast<int>(stat.CURRENT_DIRECTION),"direction");
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void DmrgSolverQ<Symmetry,MpHamiltonian,Scalar>::
+load (string filename)
+{
+	filename+=".h5";
+	HDF5Interface source(filename, READ);
+	source.load_scalar(stat.pivot,"pivot");
+	source.load_scalar(stat.N_halfsweeps,"N_halfsweeps");
+	source.load_scalar(stat.N_sweepsteps,"N_sweepsteps");
+	int DIR_IN_INT;
+	source.load_scalar(DIR_IN_INT,"direction");
+	stat.CURRENT_DIRECTION = static_cast<DMRG::DIRECTION::OPTION>(DIR_IN_INT);
+}
+#endif
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 double DmrgSolverQ<Symmetry,MpHamiltonian,Scalar>::
@@ -169,7 +216,6 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, qarra
 {
 	N_sites = H.length();
 	N_phys  = H.volume();
-	N_sweepsteps = N_halfsweeps = 0;
 	
 	Stopwatch<> PrepTimer;
 	
@@ -187,17 +233,52 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, qarra
 	Heff.resize(N_sites);
 	Heff[0].L.setVacuum();
 	Heff[N_sites-1].R.setTarget(qarray3<Nq>{Qtot_input, Qtot_input, Symmetry::qvacuum()});
-	
-	// initial sweep, right-to-left:
-	for (size_t l=N_sites-1; l>0; --l)
+
+	//if the SweepStatus is default initialized (pivot==-1), one initial sweep from right-to-left and N_halfsweeps = N_sweepsteps = 0,
+	//otherwise prepare for continuing at the given SweepStatus.
+	if( stat.pivot == -1 )
 	{
-		Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
-		build_R(H,Vout,l-1);
+		stat.N_sweepsteps = stat.N_halfsweeps = 0;
+		for (size_t l=N_sites-1; l>0; --l)
+		{
+			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
+			build_R(H,Vout,l-1);
+		}
+		Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 0, DMRG::BROOM::QR); // removes large numbers from first matrix
+		stat.CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
+		stat.pivot = 0;
 	}
-	Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 0, DMRG::BROOM::QR); // removes large numbers from first matrix
-	CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
-	pivot = 0;
-	
+	else
+	{
+		if( stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT )
+		{
+			for (size_t l=N_sites-1; l>0; --l)
+			{
+				Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
+				build_R(H,Vout,l-1);
+			}
+			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 0, DMRG::BROOM::QR); // removes large numbers from first matrix
+			for (size_t l=0; l<stat.pivot; ++l)
+			{
+				Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
+				build_L(H,Vout,l+1);
+			}
+		}
+		else if( stat.CURRENT_DIRECTION == DMRG::DIRECTION::LEFT )
+		{
+			for (size_t l=0; l<N_sites-1; ++l)
+			{
+				Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
+				build_L(H,Vout,l+1);
+			}
+			Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, 0, DMRG::BROOM::QR); // removes large numbers from first matrix		
+			for (size_t l=N_sites-1; l>stat.pivot; --l)
+			{
+				Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
+				build_R(H,Vout,l-1);
+			}
+		}
+	}
 //	// initial sweep, left-to-right:
 //	for (size_t l=0; l<N_sites-1; ++l)
 //	{
@@ -206,8 +287,8 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, qarra
 //		build_L(H,Vout,l+1);
 //	}
 //	Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, 0, DMRG::BROOM::QR); // removes large numbers from first matrix
-//	CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
-//	pivot = N_sites-1;
+//	stat.CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
+//	stat.pivot = N_sites-1;
 	
 	// resize environments for projected-out states
 	if (Psi0.size()>0)
@@ -252,13 +333,21 @@ prepare (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, qarra
 	if (CHOSEN_VERBOSITY>=2) {lout << PrepTimer.info("initial state & sweep") << endl;}
 	
 	// initial energy
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rtmp;
-	contract_R(Heff[0].R, Vout.state.A[0], H.W[0], Vout.state.A[0], H.locBasis(0), H.opBasis(0), Rtmp);
-	assert(Rtmp.dim == 1 and 
-	       Rtmp.block[0][0][0].rows() == 1 and
-	       Rtmp.block[0][0][0].cols() == 1 and
-	       "Result of contraction <ψ|H|ψ> in DmrgSolverQ::prepare is not a scalar!");
-	Eold = isReal(Rtmp.block[0][0][0](0,0));
+	if(stat.pivot == 0)
+	{
+		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rtmp;
+		contract_R(Heff[0].R, Vout.state.A[0], H.W[0], Vout.state.A[0], H.locBasis(0), H.opBasis(0), Rtmp);
+		assert(Rtmp.dim == 1 and 
+			   Rtmp.block[0][0][0].rows() == 1 and
+			   Rtmp.block[0][0][0].cols() == 1 and
+			   "Result of contraction <ψ|H|ψ> in DmrgSolverQ::prepare is not a scalar!");
+		Eold = isReal(Rtmp.block[0][0][0](0,0));
+	}
+	else
+	{
+		Eold = avg(Vout.state,H,Vout.state);
+	}
+	Vout.energy = Eold;
 	if (CHOSEN_VERBOSITY>=2) {lout << "initial energy: E₀=" << Eold << endl << endl;}
 	
 	// initial cutoffs
@@ -283,15 +372,15 @@ halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, LAN
 		Vref = Vout.state;
 	}
 	
-	size_t halfsweepRange = (N_halfsweeps==0)? N_sites : N_sites-1; // one extra step on 1st iteration
+	size_t halfsweepRange = (stat.N_halfsweeps==0)? N_sites : N_sites-1; // one extra step on 1st iteration
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
-		bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
+		bring_her_about(stat.pivot, N_sites, stat.CURRENT_DIRECTION);
 		LanczosStep(H, Vout, EDGE);
 		sweepStep(H,Vout);
-		++N_sweepsteps;
+		++stat.N_sweepsteps;
 	}
-	++N_halfsweeps;
+	++stat.N_halfsweeps;
 	
 	// calculate error
 	err_eigval = fabs(Eold-Vout.energy)/this->N_sites;
@@ -309,7 +398,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, LAN
 		{
 			lout << HsqTimer.info("<H^2>") << endl;
 		}
-		if (N_halfsweeps == 24) {err_state_before_end_of_noise = err_state;}
+		if (stat.N_halfsweeps == 24) {err_state_before_end_of_noise = err_state;}
 	}
 	
 	Eold = Vout.energy;
@@ -347,8 +436,8 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolverQ<Symmetry,MpHamiltonian,Scalar>::
 cleanup (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE)
 {
-	if      (pivot==1)         {Vout.state.sweep(0,DMRG::BROOM::QR);}
-	else if (pivot==N_sites-2) {Vout.state.sweep(N_sites-1,DMRG::BROOM::QR);}
+	if      (stat.pivot==1)         {Vout.state.sweep(0,DMRG::BROOM::QR);}
+	else if (stat.pivot==N_sites-2) {Vout.state.sweep(N_sites-1,DMRG::BROOM::QR);}
 	
 	Vout.state.set_defaultCutoffs();
 	
@@ -395,14 +484,14 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, qar
 	}
 	dimqlocAvg /= H.length();
 	
-	while (((err_eigval >= tol_eigval or err_state >= tol_state) and N_halfsweeps < max_halfsweeps) or 
-		   N_halfsweeps < min_halfsweeps)
+	while (((err_eigval >= tol_eigval or err_state >= tol_state) and stat.N_halfsweeps < max_halfsweeps) or 
+		   stat.N_halfsweeps < min_halfsweeps)
 	{
 		// For non-abelian symmetries, the fluctuations are not working correctly, so that they have to be turned off to allow convergence.
 		// 8 is probably a good value for all "easy" models... if the convergence is not good, enhance this value.
 		if constexpr (Symmetry::NON_ABELIAN)
 			{
-				if(N_halfsweeps == 8)
+				if(stat.N_halfsweeps == 8)
 				{
 					Vout.state.alpha_rsvd = 0.;
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -416,7 +505,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, qar
 		halfsweep(H,Vout,EDGE,TEST);
 		
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
-		if (N_halfsweeps%2 == 0 and totalTruncWeight >= Vout.state.eps_svd)
+		if (stat.N_halfsweeps%2 == 0 and totalTruncWeight >= Vout.state.eps_svd)
 		{
 			// increase by dimqlocAvg (at least 2), but by no more than 10%
 			size_t N_sv_new = max(static_cast<size_t>(1.1*Vout.state.N_sv), Vout.state.N_sv+max(dimqlocAvg,2ul));
@@ -435,7 +524,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, qar
 		}
 		
 		#ifdef USE_HDF5_STORAGE
-		if (savePeriod != 0 and N_halfsweeps%savePeriod == 0)
+		if (savePeriod != 0 and stat.N_halfsweeps%savePeriod == 0)
 		{
 			Vout.state.save("mpsBackup");
 		}
@@ -453,47 +542,47 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolverQ<Symmetry,MpHamiltonian,Scalar>::
 sweepStep (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout)
 {
-//	Vout.state.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::RDM, &Heff[pivot]); // obsolete
-	Vout.state.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::RICH_SVD, &Heff[pivot]);
-	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++pivot) : build_R(H,Vout,--pivot);
-	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,pivot)  : build_PR(H,Vout,pivot);
+//	Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::RDM, &Heff[stat.pivot]); // obsolete
+	Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::RICH_SVD, &Heff[stat.pivot]);
+	(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++stat.pivot) : build_R(H,Vout,--stat.pivot);
+	(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,stat.pivot)  : build_PR(H,Vout,stat.pivot);
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolverQ<Symmetry,MpHamiltonian,Scalar>::
 LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE)
 {
-	if (Heff[pivot].dim == 0)
+	if (Heff[stat.pivot].dim == 0)
 	{
-		Heff[pivot].W = H.W[pivot];
-		precalc_blockStructure (Heff[pivot].L, Vout.state.A[pivot], Heff[pivot].W, Vout.state.A[pivot], Heff[pivot].R, 
-		                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs,Heff[pivot].factor_cgcs);
-		Heff[pivot].qloc = H.locBasis(pivot);
+		Heff[stat.pivot].W = H.W[stat.pivot];
+		precalc_blockStructure (Heff[stat.pivot].L, Vout.state.A[stat.pivot], Heff[stat.pivot].W, Vout.state.A[stat.pivot], Heff[stat.pivot].R, 
+		                        H.locBasis(stat.pivot), H.opBasis(stat.pivot), Heff[stat.pivot].qlhs, Heff[stat.pivot].qrhs,Heff[stat.pivot].factor_cgcs);
+		Heff[stat.pivot].qloc = H.locBasis(stat.pivot);
 	}
 	
 	// reset dim
-	Heff[pivot].dim = 0;
-	for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
-	for (size_t q=0; q<Vout.state.A[pivot][s].dim; ++q)
+	Heff[stat.pivot].dim = 0;
+	for (size_t s=0; s<H.locBasis(stat.pivot).size(); ++s)
+	for (size_t q=0; q<Vout.state.A[stat.pivot][s].dim; ++q)
 	{
-		Heff[pivot].dim += Vout.state.A[pivot][s].block[q].rows() * Vout.state.A[pivot][s].block[q].cols();
+		Heff[stat.pivot].dim += Vout.state.A[stat.pivot][s].block[q].rows() * Vout.state.A[stat.pivot][s].block[q].cols();
 	}
 	
 	Eigenstate<PivotVectorQ<Symmetry,Scalar> > g;
-	g.state.A = Vout.state.A[pivot];
+	g.state.A = Vout.state.A[stat.pivot];
 	LanczosSolver<PivotMatrixQ<Symmetry,Scalar,Scalar>,PivotVectorQ<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
 	
-	Lutz.set_dimK(min(30ul, Heff[pivot].dim));
-	Lutz.edgeState(Heff[pivot],g, EDGE, 1e-7,1e-4, false);
+	Lutz.set_dimK(min(30ul, Heff[stat.pivot].dim));
+	Lutz.edgeState(Heff[stat.pivot],g, EDGE, 1e-7,1e-4, false);
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
-		lout << "loc=" << pivot << "\t" << Lutz.info() << endl;
-		lout << Vout.state.test_ortho() << endl;
+		lout << "loc=" << stat.pivot << "\t" << Lutz.info() << endl;
+		lout << Vout.state.test_ortho() << ", " << g.energy << endl;
 	}
 	
 	Vout.energy = g.energy;
-	Vout.state.A[pivot] = g.state.A;
+	Vout.state.A[stat.pivot] = g.state.A;
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
