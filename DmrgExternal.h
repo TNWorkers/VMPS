@@ -62,7 +62,7 @@ string SfromD_noFormat (qarray<2> qnum)
 /**Makes a default label for conserved quantum numbers: "Q1", "Q2", "Q3"...
 Is realized by a function to preserve the sanity of the programmer since default template-sized arguments seem to be tricky.*/
 template<size_t Nq>
-constexpr std::array<string,Nq> defaultQlabel()
+std::array<string,Nq> defaultQlabel() //constexpr 
 {
 	std::array<string,Nq> out;
 	for (size_t q=0; q<Nq; ++q)
