@@ -9,6 +9,8 @@
 #endif
 using namespace std;
 
+#include <gsl/gsl_sf_ellint.h>
+
 #include "Logger.h"
 Logger lout;
 #include "ArgParser.h"
@@ -24,25 +26,46 @@ Logger lout;
 #include "models/Hubbard.h"
 
 // integration files not included in git
-#include "gsl_integration.h"
+#include "gsl/gsl_integration.h"
 #include "LiebWu.h"
 
-// Ising model integrations
-struct eIsing
-{
-	static double h;
-	static double j;
-	
-	static double f (double x, void*)
-	{
-		return -j*0.5*M_1_PI*sqrt(1.+h*h-2*h*cos(x));
-	}
-};
-double eIsing::h=0.;
-double eIsing::j=1.;
-
+double Jz, Bx, Bz;
+double U, mu;
+double dt;
 double e_exact;
 size_t L;
+size_t M, max_iter;
+double tol_eigval, tol_var;
+
+// Ising model integrations
+// reference: Pfeuty, Annals of Physics 57, 79-90, 1970
+//double IsingGroundIntegrand (double x, void*)
+//{
+//	if (Bx==0.)
+//	{
+//		return -0.25;
+//	}
+//	else
+//	{
+//		double lambda = Jz/(2.*Bx);
+//		double thetasq = 4.*lambda/pow(1.+lambda,2);
+//		return -(Bx+0.5*Jz) * M_1_PI * sqrt(1.-thetasq*pow(sin(x),2));
+//	}
+//}
+
+double IsingGround (double Jz, double Bx)
+{
+	if (Bx==0.)
+	{
+		return -0.25;
+	}
+	else
+	{
+		double lambda = Jz/(2.*Bx);
+		double theta = sqrt(4.*lambda/pow(1.+lambda,2));
+		return -(Bx+0.5*Jz) * M_1_PI *  gsl_sf_ellint_E(0.5*M_PI,theta,GSL_PREC_DOUBLE);
+	}
+}
 
 // SSH model integrations
 struct eSSH
@@ -52,7 +75,7 @@ struct eSSH
 	
 	static double f (double x, void*)
 	{
-		return -M_1_PI*sqrt(v*v+w*w+2*v*w*cos(2*x));
+		return -M_1_PI*sqrt(v*v+w*w+2.*v*w*cos(2.*x));
 	}
 };
 double eSSH::v = -1.;
@@ -81,18 +104,19 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 {
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",1);
-	double Bx = args.get<double>("Bx",1.);
-	double Bz = args.get<double>("Bz",0);
-	eIsing::j = 1.;
-	eIsing::h = 0.5*Bx;
-	double Delta = args.get<double>("Delta",-1.);
-	double U = args.get<double>("U",10.);
-	double mu = args.get<double>("mu",0.5*U);
-	double dt = args.get<double>("dt",0.);
-	size_t M = args.get<double>("M",100); // bond dimension
-	double tol_eigval = args.get<double>("tol_eigval",1e-12);
-	double tol_var = args.get<double>("tol_var",1e-12);
-	size_t max_iter = args.get<size_t>("max_iter",20);
+	Jz = args.get<double>("Jz",1.);
+	Bx = args.get<double>("Bx",1.);
+	Bz = args.get<double>("Bz",0.);
+//	eIsing::j = Jz;
+//	eIsing::h = Bx;
+	U = args.get<double>("U",10.);
+	mu = args.get<double>("mu",0.5*U);
+	
+	dt = args.get<double>("dt",0.5); // hopping-offset beim SSH-Modell
+	M = args.get<double>("M",10); // bond dimension
+	tol_eigval = args.get<double>("tol_eigval",1e-6);
+	tol_var = args.get<double>("tol_var",1e-7);
+	max_iter = args.get<size_t>("max_iter",20);
 	
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
@@ -105,9 +129,6 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	lout << "not parallelized" << endl;
 	#endif
 	
-	vector<double> Bzvec; Bzvec.assign(L,Bz);
-	vector<double> Bxvec; Bxvec.assign(L,Bx);
-	
 	typedef VMPS::Heisenberg    HEIS;
 	typedef VMPS::HeisenbergXXZ XXZ;
 	typedef VMPS::Hubbard       HUBB;
@@ -117,102 +138,98 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	
 	// transverse Ising
 	
-	//HEIS Heis(L,0,+1.,Bzvec,Bxvec,2,false);
-	XXZ Heis(L,{{"Jz",+1.},{"Bx",Bx},{"OPEN_BC",false}});
-//	DMRG.set_log(2,"e.dat","err_eigval.dat","err_var.dat");
-	lout << Heis.info() << endl;
-//	
-////	DMRG.edgeState(Heis.H2site(0,0,true), Heis.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
-	DMRG.edgeState(Heis, g, {}, tol_eigval,tol_var, M, max_iter,1);
+	XXZ Ising(L,{{"Jz",Jz},{"Bx",Bx},{"OPEN_BC",false}});
+	DMRG.set_log(2,"e.dat","err_eigval.dat","err_var.dat");
+	lout << Ising.info() << endl;
 	
-	e_exact = integrate(eIsing::f, -M_PI,M_PI, 1e-10,1e-10);
+	DMRG.edgeState(Ising.H2site(0,0,true), Ising.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
+//	DMRG.edgeState(Ising, g, {}, tol_eigval,tol_var, M, max_iter,1);
+	
+	e_exact = IsingGround(Jz,Bx); // integrate(IsingGroundIntegrand, 0.,0.5*M_PI, 1e-10,1e-10);
 //	e_exact = -1.0635444099809814;
 	lout << TCOLOR(BLUE);
 	lout << "Transverse Ising: e0=" << g.energy << ", exact:" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
+	
 	for (size_t l=0; l<L; ++l)
 	{
-		lout << "<Sz("<<l<<")>=" << avg(g.state, Heis.Sz(l), g.state) << endl;
-//		lout << "<Sx("<<l<<")>=" << avg(g.state, Heis.Scomp(SX,l), g.state) << endl;
+		lout << "<Sz("<<l<<")>=" << avg(g.state, Ising.Sz(l), g.state) << endl;
+//		lout << "<Sx("<<l<<")>=" << avg(g.state, Ising.Scomp(SX,l), g.state) << endl;
 	}
 	lout << TCOLOR(BLACK) << endl;
 	
-//	// Heisenberg S=1/2
+	// Heisenberg S=1/2
 	
-//	Bxvec.assign(L,0);
-//	Heis = HEIS(L,-1.,Delta,Bzvec,Bxvec,2,false);
-//	lout << Heis.info() << endl;
-////	DMRG.edgeState(Heis.H2site(0,0,true), Heis.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
-//	DMRG.edgeState(Heis, g, {}, tol_eigval,tol_var, M, max_iter,1);
-//	e_exact = 0.25-log(2);
-//	lout << TCOLOR(BLUE);
-//	lout << "Heisenberg S=1/2: e0=" << g.energy << ", exact(Δ=0):" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
-//	print_mag(Heis,g);
-//	for (size_t l=0; l<L; ++l)
-//	{
-//		lout << "l=" << l << ", entropy=" << g.state.entropy(l);
-//	}
-//	lout << TCOLOR(BLACK) << endl;
-//	
-//	lout << "spin-spin correlations at distance d:" << endl;
-//	size_t dmax = 10;
-//	for (size_t d=1; d<dmax; ++d)
-//	{
-//		vector<double> Bzvectmp; Bzvectmp.assign(d+1,0);
-//		vector<double> Bxvectmp; Bxvectmp.assign(d+1,Bx);
-//		HEIS Htmp(d+1,-1.,-1.,Bzvectmp,Bxvectmp,2,false);
-//		double SzSz = avg(g.state, Htmp.SzSz(0,d), g.state);
+	HEIS Heis(L,{{"Bz",Bz},{"OPEN_BC",false}});
+	lout << Heis.info() << endl;
+	
+//	DMRG.edgeState(Heis.H2site(0,0,true), Heis.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
+	DMRG.edgeState(Heis, g, {}, tol_eigval,tol_var, M, max_iter,1);
+	
+	e_exact = 0.25-log(2);
+	lout << TCOLOR(BLUE);
+	lout << "Heisenberg S=1/2: e0=" << g.energy << ", exact(Δ=0):" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
+	print_mag(Heis,g);
+	for (size_t l=0; l<L; ++l)
+	{
+		lout << "l=" << l << ", entropy=" << g.state.entropy(l);
+	}
+	lout << TCOLOR(BLACK) << endl;
+	
+	lout << "spin-spin correlations at distance d:" << endl;
+	size_t dmax = 10;
+	for (size_t d=1; d<dmax; ++d)
+	{
+		HEIS Htmp(d+1,{{"Bz",Bz},{"Bx",Bx},{"OPEN_BC",false}});
+		double SzSz = avg(g.state, Htmp.SzSz(0,d), g.state);
 //		double SpSm = avg(g.state, Htmp.SaSa(0,SP,d,SM), g.state);
 //		lout << "d=" << d << ", <SvecSvec>=" << SzSz+SpSm << endl;
-//	}
-//	lout << endl;
+		lout << "d=" << d << ", <SvecSvec>=" << SzSz << endl;
+	}
+	lout << endl;
 	
 	// Heisenberg S=1
 	
-//	Heis = HEIS(L,-1.,-1.,Bzvec,Bxvec,3,false);
-//	lout << Heis.info() << endl;
-////	DMRG.edgeState(Heis.H2site(0,0,true), Heis.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
-//	DMRG.edgeState(Heis, g, {}, tol_eigval,tol_var, M, max_iter,1);
-//	e_exact = -1.40148403897122; // value from: Haegeman et al. PRL 107, 070601 (2011)
-//	lout << TCOLOR(BLUE);
-//	lout << "Heisenberg S=1: e0=" << g.energy << ", quasiexact:" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
-//	print_mag(Heis,g);
-//	for (size_t l=0; l<L; ++l)
-//	{
-//		lout << "l=" << l << ", entropy=" << g.state.entropy(l) << endl;
-//	}
-//	lout << TCOLOR(BLACK) << endl;
-//	ofstream SchmidtFiler("Schmidt.dat");
-//	if (L==1)
-//	{
-//		for (size_t i=0; i<M; ++i)
-//		{
-//			SchmidtFiler << i << "\t" << setprecision(16) << g.state.SchmidtSpectrum(0)(i) << endl;
-//		}
-//	}
-//	SchmidtFiler.close();
+	Heis = HEIS(L,{{"Bz",Bz},{"OPEN_BC",false},{"D",3ul}});
+	lout << Heis.info() << endl;
 	
-//	
-//	MatrixXd TL, TR;
-//	DMRG.make_explicitT(g.state, g.state, TL, TR);
-//	EigenSolver<MatrixXd> Eugen(TL);
-////	cout << "eigL=" << Eugen.eigenvalues().transpose() << endl;
-//	Eugen.compute(TR);
-//	cout << "eigR=" << Eugen.eigenvalues().transpose() << endl;
+//	DMRG.edgeState(Heis.H2site(0,0,true), Heis.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
+	DMRG.edgeState(Heis, g, {}, tol_eigval,tol_var, M, max_iter,1);
+	
+	e_exact = -1.40148403897122; // value from: Haegeman et al. PRL 107, 070601 (2011)
+	lout << TCOLOR(BLUE);
+	lout << "Heisenberg S=1: e0=" << g.energy << ", quasiexact:" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
+	print_mag(Heis,g);
+	for (size_t l=0; l<L; ++l)
+	{
+		lout << "l=" << l << ", entropy=" << g.state.entropy(l) << endl;
+	}
+	lout << TCOLOR(BLACK) << endl;
+	ofstream SchmidtFiler("Schmidt.dat");
+	if (L==1)
+	{
+		for (size_t i=0; i<M; ++i)
+		{
+			SchmidtFiler << i << "\t" << setprecision(16) << g.state.singularValues(0)(i) << endl;
+		}
+	}
+	SchmidtFiler.close();
 	
 	// Hubbard
 	
-//	HUBB Hubb(L,U,mu,1,false,false);
-//	lout << Hubb.info() << endl;
-//	DMRG_HUBB.set_log(10,"e.dat","err_eigval.dat","err_var.dat");
-//	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);
-////	DMRG_HUBB.edgeState(Hubb.H2site(0,0,true), Hubb.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
-//	lout << "half-filling test for μ=U/2: <n>=" << avg(g.state, Hubb.n(UP,0), g.state) + avg(g.state, Hubb.n(DN,0), g.state) << endl;
-////	e_exact = LiebWu_E0_L(U,0.01*tol_eigval)-mu;
+	HUBB Hubb(L,{{"U",U},{"mu",mu},{"OPEN_BC",false}});
+	lout << Hubb.info() << endl;
+	
+	DMRG_HUBB.set_log(10,"e.dat","err_eigval.dat","err_var.dat");
+	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);
+//	DMRG_HUBB.edgeState(Hubb.H2site(0,0,true), Hubb.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
+	
+	lout << "half-filling test for μ=U/2: <n>=" << avg(g.state, Hubb.n(UP,0), g.state) + avg(g.state, Hubb.n(DN,0), g.state) << endl;
+	e_exact = LiebWu_E0_L(U,0.01*tol_eigval)-mu;
 //	e_exact = -0.2671549218961211-mu; // value from: Bethe ansatz code, U=10
-//	lout << TCOLOR(BLUE);
-//	lout << "Hubbard (half-filling): e0=" << g.energy << ", exact:" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
-//	print_mag(Hubb,g);
-//	lout << TCOLOR(BLACK) << endl;
+	lout << TCOLOR(BLUE);
+	lout << "Hubbard (half-filling): e0=" << g.energy << ", exact=" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
+	print_mag(Hubb,g);
+	lout << TCOLOR(BLACK) << endl;
 	
 	
 //	ofstream oFiler("overlap.dat");
@@ -237,22 +254,25 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 //	}
 	
 	// SSH model to test unit cell
-//	
+	
 //	HUBB Hubb(L,{1.+dt,1.-dt},U,mu,false,false);
-//	lout << Hubb.info() << endl;
-//	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);
-//	double n = avg(g.state, Hubb.n(UP,0), g.state) + avg(g.state, Hubb.n(DN,0), g.state);
-//	lout << "<n>=" << n << endl;
-//	lout << TCOLOR(BLUE);
-//	eSSH::v = -(1.+dt);
-//	eSSH::w = -(1.-dt);
-//	e_exact = integrate(eSSH::f, -0.5*M_PI,+0.5*M_PI, 0.01*tol_eigval,0.01*tol_eigval);
-//	
-//	lout << "Hubbard (half-filling): e0=" << g.energy << endl;
-//	lout << "Hubbard (half-filling): e0+mu*n=" << g.energy+mu*n << endl;
-//	lout << "diff=" << abs(g.energy+mu*n-e_exact) << endl;
+	Hubb = HUBB(max(L,2ul),{{"t",1.+dt,0},{"t",1.-dt,1},{"OPEN_BC",false}});
+	lout << Hubb.info() << endl;
+	
+	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);
+	
+	double n = avg(g.state, Hubb.n(UP,0), g.state)+
+	           avg(g.state, Hubb.n(DN,0), g.state);
+	lout << "<n>=" << n << endl;
+	lout << TCOLOR(BLUE);
+	eSSH::v = -(1.+dt);
+	eSSH::w = -(1.-dt);
+	e_exact = integrate(eSSH::f, -0.5*M_PI,+0.5*M_PI, 1e-10,1e-10);
+	
+	lout << "SSH e0=" << g.energy << ", exact=" << e_exact << endl;
+	lout << "diff=" << abs(g.energy-e_exact) << endl;
 //	print_mag(Hubb,g);
-//	lout << TCOLOR(BLACK) << endl;
-//	
-//	lout << "Schmidt values:" << endl << g.state.SchmidtSpectrum(1).head(10) << endl;
+	lout << TCOLOR(BLACK) << endl;
+	
+//	lout << "Schmidt values:" << endl << g.state.singularValues(1).head(10) << endl;
 }

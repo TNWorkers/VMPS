@@ -48,8 +48,8 @@ public:
 	
 	///@{
 	/**Observables.*/
-	MpoQ<Symmetry> SzSz (size_t loc1, size_t loc2);
-	MpoQ<Symmetry> Sz   (size_t loc);
+	MpoQ<Symmetry> SzSz (size_t loc1, size_t loc2) const;
+	MpoQ<Symmetry> Sz   (size_t loc) const;
 	///@}
 	
 	static const std::map<string,std::any> defaults;
@@ -99,7 +99,7 @@ Heisenberg (const size_t &L, const vector<Param> &params)
 }
 
 MpoQ<Sym::U0> Heisenberg::
-Sz (size_t loc)
+Sz (size_t loc) const
 {
 	assert(loc<N_sites);
 	stringstream ss;
@@ -111,7 +111,7 @@ Sz (size_t loc)
 }
 
 MpoQ<Sym::U0> Heisenberg::
-SzSz (size_t loc1, size_t loc2)
+SzSz (size_t loc1, size_t loc2) const
 {
 	assert(loc1<N_sites and loc2<N_sites);
 	stringstream ss;

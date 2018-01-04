@@ -63,7 +63,7 @@ MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
 
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YL (size_t b,
-                    const vector<vector<SparseMatrix<MpoScalar> > > &W,
+                    const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &L,
                     const vector<Biped<Symmetry,MatrixType> > &AL,
                     const vector<qarray<Symmetry::Nq> > &qloc)
@@ -78,8 +78,8 @@ MatrixType make_YL (size_t b,
 	
 	for (size_t s1=0; s1<D; ++s1)
 	for (size_t s2=0; s2<D; ++s2)
-	for (int k=0; k<W[s1][s2].outerSize(); ++k)
-	for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2],k); iW; ++iW)
+	for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
+	for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
 	{
 		size_t a = iW.row();
 		
@@ -94,7 +94,7 @@ MatrixType make_YL (size_t b,
 
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YR (size_t a,
-                    const vector<vector<SparseMatrix<MpoScalar> > > &W,
+                    const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &R,
                     const vector<Biped<Symmetry,MatrixType> > &AR,
                     const vector<qarray<Symmetry::Nq> > &qloc)
@@ -109,8 +109,8 @@ MatrixType make_YR (size_t a,
 	
 	for (size_t s1=0; s1<D; ++s1)
 	for (size_t s2=0; s2<D; ++s2)
-	for (int k=0; k<W[s1][s2].outerSize(); ++k)
-	for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2],k); iW; ++iW)
+	for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
+	for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
 	{
 		size_t b = iW.col();
 		
@@ -125,8 +125,8 @@ MatrixType make_YR (size_t a,
 
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YL (size_t b,
-                    const vector<vector<SparseMatrix<MpoScalar> > > &W12,
-                    const vector<vector<SparseMatrix<MpoScalar> > > &W34,
+                    const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W12,
+                    const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W34,
                     const boost::multi_array<MatrixType,LEGLIMIT> &L,
                     const vector<Biped<Symmetry,MatrixType> > &AL1,
                     const vector<Biped<Symmetry,MatrixType> > &AL2,
@@ -141,12 +141,12 @@ MatrixType make_YL (size_t b,
 	
 	for (size_t s1=0; s1<D; ++s1)
 	for (size_t s2=0; s2<D; ++s2)
-	for (int k12=0; k12<W12[s1][s2].outerSize(); ++k12)
-	for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(W12[s1][s2],k12); iW12; ++iW12)
+	for (int k12=0; k12<W12[s1][s2][0].outerSize(); ++k12)
+	for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(W12[s1][s2][0],k12); iW12; ++iW12)
 	for (size_t s3=0; s3<D; ++s3)
 	for (size_t s4=0; s4<D; ++s4)
-	for (int k34=0; k34<W34[s3][s4].outerSize(); ++k34)
-	for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(W34[s3][s4],k34); iW34; ++iW34)
+	for (int k34=0; k34<W34[s3][s4][0].outerSize(); ++k34)
+	for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(W34[s3][s4][0],k34); iW34; ++iW34)
 	{
 		if (iW12.col()==iW34.row())
 		{
@@ -169,8 +169,8 @@ MatrixType make_YL (size_t b,
 
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YR (size_t a,
-                    const vector<vector<SparseMatrix<MpoScalar> > > &W12,
-                    const vector<vector<SparseMatrix<MpoScalar> > > &W34,
+                    const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W12,
+                    const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W34,
                     const boost::multi_array<MatrixType,LEGLIMIT> &R,
                     const vector<Biped<Symmetry,MatrixType> > &AR1,
                     const vector<Biped<Symmetry,MatrixType> > &AR2,
@@ -185,12 +185,12 @@ MatrixType make_YR (size_t a,
 	
 	for (size_t s1=0; s1<D; ++s1)
 	for (size_t s2=0; s2<D; ++s2)
-	for (int k12=0; k12<W12[s1][s2].outerSize(); ++k12)
-	for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(W12[s1][s2],k12); iW12; ++iW12)
+	for (int k12=0; k12<W12[s1][s2][0].outerSize(); ++k12)
+	for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(W12[s1][s2][0],k12); iW12; ++iW12)
 	for (size_t s3=0; s3<D; ++s3)
 	for (size_t s4=0; s4<D; ++s4)
-	for (int k34=0; k34<W34[s3][s4].outerSize(); ++k34)
-	for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(W34[s3][s4],k34); iW34; ++iW34)
+	for (int k34=0; k34<W34[s3][s4][0].outerSize(); ++k34)
+	for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(W34[s3][s4][0],k34); iW34; ++iW34)
 	{
 		if (iW12.col()==iW34.row())
 		{
@@ -873,7 +873,7 @@ Scalar avg (const UmpsQ<Symmetry,Scalar> &Vbra,
 	for (size_t l=0; l<O.length(); ++l)
 	{
 		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
-		contract_L(B, Vbra.A_at(g,l%Vket.length()), O.W_at(l), Vket.A_at(g,l%Vket.length()), O.locBasis(l), O.opBasisSq(l), Bnext);
+		contract_L(B, Vbra.A_at(g,l%Vket.length()), O.W_at(l), Vket.A_at(g,l%Vket.length()), O.locBasis(l), O.opBasis(l), Bnext);
 		
 		B.clear();
 		B = Bnext;
@@ -891,6 +891,21 @@ Scalar avg (const UmpsQ<Symmetry,Scalar> &Vbra,
 		lout << "MPO in question: " << O.info() << endl;
 		return 0;
 	}
+}
+
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+Scalar avg (const UmpsQ<Symmetry,Scalar> &Vbra, 
+            const vector<MpoQ<Symmetry,MpoScalar> > &O, 
+            const UmpsQ<Symmetry,Scalar> &Vket)
+{
+	Scalar out = 0;
+	
+	for (int t=0; t<O.size(); ++t)
+	{
+//		cout << "partial val=" << avg(Vbra,O[t],Vket) << endl;
+		out += avg(Vbra,O[t],Vket);
+	}
+	return out;
 }
 
 #endif

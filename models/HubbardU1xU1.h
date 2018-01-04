@@ -109,7 +109,7 @@ const std::map<string,std::any> HubbardU1xU1::defaults =
 	{"U",0.}, {"V",0.}, {"Vperp",0.}, 
 	{"Bz",0.}, 
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 HubbardU1xU1::
