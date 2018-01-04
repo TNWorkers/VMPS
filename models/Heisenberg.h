@@ -64,7 +64,7 @@ const std::map<string,std::any> Heisenberg::defaults =
 	{"J",-1.}, {"Jprime",0.}, {"Jperp",0.},
 	{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"Kz",0.}, {"Kx",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyperp",0.}, // Dzialoshinsky-Moriya terms
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 
@@ -82,7 +82,6 @@ Heisenberg (const size_t &L, const vector<Param> &params)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
-		cout << "l=" << l << ", N_phys=" << P.get<size_t>("Ly",l%Lcell) << endl;
 		
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		setLocBasis(B[l].get_basis(),l);
@@ -94,7 +93,6 @@ Heisenberg (const size_t &L, const vector<Param> &params)
 		G.push_back(Generator(Terms[l]));
 		setOpBasis(G[l].calc_qOp(),l);
 	}
-	cout << "N_phys=" << N_phys << endl;
 	
 	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));

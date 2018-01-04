@@ -35,6 +35,7 @@ template<typename Symmetry, typename Scalar> class MpsQ;
 template<typename Symmetry, typename Scalar> class MpoQ;
 template<typename Symmetry, typename MpHamiltonian, typename Scalar> class DmrgSolverQ;
 template<typename Symmetry, typename Scalar, typename MpoScalar> class MpsQCompressor;
+template<typename Symmetry, typename MpHamiltonian, typename Scalar> class VumpsSolver;
 
 /**Matrix Product Operator with conserved quantum numbers (Abelian and non-abelian symmetries). 
 Just adds a target quantum number and a bunch of labels on top of Mpo.
@@ -51,8 +52,7 @@ static constexpr size_t Nq = Symmetry::Nq;
 typedef typename Symmetry::qType qType;
 	
 template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolverQ;
-// template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class iDmrgSolver;
-template<size_t Nq_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
+template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
 template<typename Symmetry_, typename S1, typename S2> friend class MpsQCompressor;
 template<typename H, typename Symmetry_, typename S1, typename S2, typename V> friend class TDVPPropagator;
 template<typename Symmetry_, typename S_> friend class MpoQ;
@@ -285,13 +285,13 @@ public:
 	typedef MpsQ<Symmetry,double>                              StateXd;
 	typedef MpsQ<Symmetry,complex<double> >                    StateXcd;
 	typedef DmrgSolverQ<Symmetry,MpoQ<Symmetry,Scalar>,Scalar> Solver;
-//	typedef VumpsSolver<Symmetry,MpoQ<Symmetry,Scalar> >       uSolver;
+	typedef VumpsSolver<Symmetry,MpoQ<Symmetry,Scalar>,Scalar> uSolver;
 	typedef MpsQCompressor<Symmetry,double,double>             CompressorXd;
 	typedef MpsQCompressor<Symmetry,complex<double>,double>    CompressorXcd;
 	typedef MpoQ<Symmetry>                                     Operator;
 	///@}
 	
-//protected:
+protected:
 	
 //	/**local terms of Hamiltonian, format: coupling, operator*/
 //	vector<tuple<Scalar,MatrixType> >                       Olocal;
@@ -339,7 +339,6 @@ public:
 					const vector<vector<qType> > &qOp_in,
 					bool CALC_SQUARE=false,
 					bool OPEN_BC=true);
-	
 
 	vector<SuperMatrix<Symmetry,Scalar> > Gvec;
 	vector<vector<vector<vector<SparseMatrix<Scalar> > > > > W;

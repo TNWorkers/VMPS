@@ -74,7 +74,7 @@ const std::map<string,std::any> HeisenbergXYZ::defaults =
 	{"Bx",0.}, {"By",0.}, {"Bz",0.},
 	{"Kx",0.}, {"Ky",0.}, {"Kz",0.},
 	
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1},
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul},
 	
 	{"J",0.}, {"Jprime",0.}, {"Jperp",0.}
 };

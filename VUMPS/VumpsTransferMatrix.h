@@ -1,14 +1,14 @@
 #ifndef VANILLA_VUMPSTRANSFERMATRIX
 #define VANILLA_VUMPSTRANSFERMATRIX
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 struct TransferMatrix
 {
 	TransferMatrix(){};
 	
 	TransferMatrix (GAUGE::OPTION gauge_input, 
-	                const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Abra_input, 
-	                const vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > &Aket_input, 
+	                const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra_input, 
+	                const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket_input, 
 	                const Matrix<Scalar,Dynamic,Dynamic> &LReigen_input, 
 	                vector<Scalar> Wvec_input,
 	                vector<size_t> D_input)
@@ -27,8 +27,8 @@ struct TransferMatrix
 	}
 	
 	TransferMatrix (GAUGE::OPTION gauge_input, 
-	                const vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > &ApairBra_input, 
-	                const vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > &ApairKet_input, 
+	                const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &ApairBra_input, 
+	                const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &ApairKet_input, 
 	                const Matrix<Scalar,Dynamic,Dynamic> &LReigen_input, 
 	                boost::multi_array<double,4> Warray_input,
 	                vector<size_t> D_input)
@@ -42,8 +42,8 @@ struct TransferMatrix
 	}
 	
 	TransferMatrix (GAUGE::OPTION gauge_input, 
-	                const boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> &AquartettBra_input, 
-	                const boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> &AquartettKet_input, 
+	                const boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> &AquartettBra_input, 
+	                const boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> &AquartettKet_input, 
 	                const Matrix<Scalar,Dynamic,Dynamic> &LReigen_input, 
 	                boost::multi_array<double,8> Warray4_input,
 	                vector<size_t> D_input)
@@ -58,16 +58,16 @@ struct TransferMatrix
 	GAUGE::OPTION gauge;
 	vector<size_t> D;
 	
-	vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > Aket;
-	vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > Abra;
+	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Aket;
+	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Abra;
 	vector<Scalar> Wvec;
 	
-	vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > ApairKet;
-	vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > ApairBra;
+	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > ApairKet;
+	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > ApairBra;
 	boost::multi_array<double,4> Warray;
 	
-	boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> AquartettKet;
-	boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> AquartettBra;
+	boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> AquartettKet;
+	boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> AquartettBra;
 	boost::multi_array<double,8> Warray4;
 	
 	Matrix<Scalar,Dynamic,Dynamic> LReigen;
@@ -82,8 +82,8 @@ inline void setZero (Matrix<Scalar,Dynamic,Dynamic> &M)
 // Note:
 // if H.LReigen.rows()==0, only T is used
 // if H.LReigen.rows()!=0, 1-T+|1><LReigen| is used
-template<size_t Nq, typename Scalar1, typename Scalar2>
-void HxV (const TransferMatrix<Nq,Scalar1> &H, const Matrix<Scalar2,Dynamic,Dynamic> &Vin, Matrix<Scalar2,Dynamic,Dynamic> &Vout)
+template<typename Symmetry, typename Scalar1, typename Scalar2>
+void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const Matrix<Scalar2,Dynamic,Dynamic> &Vin, Matrix<Scalar2,Dynamic,Dynamic> &Vout)
 {
 	Vout = Vin;
 	
@@ -186,16 +186,16 @@ void HxV (const TransferMatrix<Nq,Scalar1> &H, const Matrix<Scalar2,Dynamic,Dyna
 	}
 }
 
-template<size_t Nq, typename Scalar1, typename Scalar2>
-void HxV (const TransferMatrix<Nq,Scalar1> &H, Matrix<Scalar2,Dynamic,Dynamic> &Vinout)
+template<typename Symmetry, typename Scalar1, typename Scalar2>
+void HxV (const TransferMatrix<Symmetry,Scalar1> &H, Matrix<Scalar2,Dynamic,Dynamic> &Vinout)
 {
 	Matrix<Scalar2,Dynamic,Dynamic> Vtmp;
 	HxV(H,Vinout,Vtmp);
 	Vinout = Vtmp;
 }
 
-template<size_t Nq, typename Scalar>
-inline size_t dim (const TransferMatrix<Nq,Scalar> &H)
+template<typename Symmetry, typename Scalar>
+inline size_t dim (const TransferMatrix<Symmetry,Scalar> &H)
 {
 	if (H.Aket.size() != 0)
 	{

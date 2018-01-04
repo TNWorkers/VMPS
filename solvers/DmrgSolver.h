@@ -556,7 +556,8 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<MpsQ<Symmetry,Scalar> > &Vout, L
 	{
 		Heff[stat.pivot].W = H.W[stat.pivot];
 		precalc_blockStructure (Heff[stat.pivot].L, Vout.state.A[stat.pivot], Heff[stat.pivot].W, Vout.state.A[stat.pivot], Heff[stat.pivot].R, 
-		                        H.locBasis(stat.pivot), H.opBasis(stat.pivot), Heff[stat.pivot].qlhs, Heff[stat.pivot].qrhs,Heff[stat.pivot].factor_cgcs);
+		                        H.locBasis(stat.pivot), H.opBasis(stat.pivot), Heff[stat.pivot].qlhs, Heff[stat.pivot].qrhs,
+		                        Heff[stat.pivot].factor_cgcs);
 		Heff[stat.pivot].qloc = H.locBasis(stat.pivot);
 	}
 	

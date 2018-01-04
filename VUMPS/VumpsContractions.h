@@ -3,13 +3,14 @@
 
 #include "boost/multi_array.hpp"
 
-#include "UmpsQ.h"
-#include "MpoQ.h"
+#include "tensors/DmrgContractions.h"
+#include "VUMPS/Umps.h"
+#include "Mpo.h"
 
-template<size_t Nq, typename MatrixType, typename MpoScalar>
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_hL (const boost::multi_array<MpoScalar,4> &H2site,
-                    const vector<Biped<Nq,MatrixType> > &AL,
-                    const vector<qarray<Nq> > &qloc)
+                    const vector<Biped<Symmetry,MatrixType> > &AL,
+                    const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	MatrixType Mout;
 	Mout.resize(AL[0].block[0].cols(), AL[0].block[0].cols());
@@ -33,10 +34,10 @@ MatrixType make_hL (const boost::multi_array<MpoScalar,4> &H2site,
 	return Mout;
 }
 
-template<size_t Nq, typename MatrixType, typename MpoScalar>
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
-                    const vector<Biped<Nq,MatrixType> > &AR,
-                    const vector<qarray<Nq> > &qloc)
+                    const vector<Biped<Symmetry,MatrixType> > &AR,
+                    const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	MatrixType Mout;
 	Mout.resize(AR[0].block[0].rows(), AR[0].block[0].rows());
@@ -60,12 +61,12 @@ MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
 	return Mout;
 }
 
-template<size_t Nq, typename MatrixType, typename MpoScalar>
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YL (size_t b,
                     const vector<vector<SparseMatrix<MpoScalar> > > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &L,
-                    const vector<Biped<Nq,MatrixType> > &AL,
-                    const vector<qarray<Nq> > &qloc)
+                    const vector<Biped<Symmetry,MatrixType> > &AL,
+                    const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	size_t D  = qloc.size();
 	size_t dW = W.size();
@@ -91,12 +92,12 @@ MatrixType make_YL (size_t b,
 	return Mout;
 }
 
-template<size_t Nq, typename MatrixType, typename MpoScalar>
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YR (size_t a,
                     const vector<vector<SparseMatrix<MpoScalar> > > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &R,
-                    const vector<Biped<Nq,MatrixType> > &AR,
-                    const vector<qarray<Nq> > &qloc)
+                    const vector<Biped<Symmetry,MatrixType> > &AR,
+                    const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	size_t D  = qloc.size();
 	size_t dW = W.size();
@@ -122,14 +123,14 @@ MatrixType make_YR (size_t a,
 	return Mout;
 }
 
-template<size_t Nq, typename MatrixType, typename MpoScalar>
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YL (size_t b,
                     const vector<vector<SparseMatrix<MpoScalar> > > &W12,
                     const vector<vector<SparseMatrix<MpoScalar> > > &W34,
                     const boost::multi_array<MatrixType,LEGLIMIT> &L,
-                    const vector<Biped<Nq,MatrixType> > &AL1,
-                    const vector<Biped<Nq,MatrixType> > &AL2,
-                    const vector<qarray<Nq> > &qloc)
+                    const vector<Biped<Symmetry,MatrixType> > &AL1,
+                    const vector<Biped<Symmetry,MatrixType> > &AL2,
+                    const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	size_t D  = qloc.size();
 	size_t M  = AL1[0].block[0].cols();
@@ -166,14 +167,14 @@ MatrixType make_YL (size_t b,
 	return Mout;
 }
 
-template<size_t Nq, typename MatrixType, typename MpoScalar>
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YR (size_t a,
                     const vector<vector<SparseMatrix<MpoScalar> > > &W12,
                     const vector<vector<SparseMatrix<MpoScalar> > > &W34,
                     const boost::multi_array<MatrixType,LEGLIMIT> &R,
-                    const vector<Biped<Nq,MatrixType> > &AR1,
-                    const vector<Biped<Nq,MatrixType> > &AR2,
-                    const vector<qarray<Nq> > &qloc)
+                    const vector<Biped<Symmetry,MatrixType> > &AR1,
+                    const vector<Biped<Symmetry,MatrixType> > &AR2,
+                    const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	size_t D  = qloc.size();
 	size_t M  = AR1[0].block[0].cols();
@@ -210,11 +211,11 @@ MatrixType make_YR (size_t a,
 	return Mout;
 }
 
-template<size_t Nq, typename MatrixType, typename Scalar, typename MpoScalar>
+template<typename Symmetry, typename MatrixType, typename Scalar, typename MpoScalar>
 MatrixType make_YL (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &L,
-                    const vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > &Apair,
-                    const vector<qarray<Nq> > &qloc)
+                    const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Apair,
+                    const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	size_t D  = qloc.size();
 	size_t M  = Apair[0][0].block[0].cols();
@@ -237,11 +238,11 @@ MatrixType make_YL (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoSca
 	return Mout;
 }
 
-template<size_t Nq, typename MatrixType, typename Scalar, typename MpoScalar>
+template<typename Symmetry, typename MatrixType, typename Scalar, typename MpoScalar>
 MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &R,
-                    const vector<vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > > &Apair,
-                    const vector<qarray<Nq> > &qloc)
+                    const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Apair,
+                    const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	size_t D  = qloc.size();
 	size_t M  = Apair[0][0].block[0].cols();
@@ -264,11 +265,11 @@ MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoSca
 	return Mout;
 }
 
-template<size_t Nq, typename MatrixType, typename Scalar, typename MpoScalar>
+template<typename Symmetry, typename MatrixType, typename Scalar, typename MpoScalar>
 MatrixType make_YL (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &L,
-                    const boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett, 
-                    const vector<qarray<Nq> > &qloc)
+                    const boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett, 
+                    const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	size_t D  = qloc.size();
 	size_t M = Aquartett[0][0][0][0].block[0].cols();
@@ -295,11 +296,11 @@ MatrixType make_YL (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t
 	return Mout;
 }
 
-template<size_t Nq, typename MatrixType, typename Scalar, typename MpoScalar>
+template<typename Symmetry, typename MatrixType, typename Scalar, typename MpoScalar>
 MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &R,
-                    const boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett, 
-                    const vector<qarray<Nq> > &qloc)
+                    const boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett, 
+                    const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	size_t D  = qloc.size();
 	size_t M = Aquartett[0][0][0][0].block[0].cols();
@@ -326,15 +327,15 @@ MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t
 	return Mout;
 }
 
-//template<size_t Nq, typename MatrixType, typename Scalar, typename MpoScalar>
+//template<typename Symmetry, typename MatrixType, typename Scalar, typename MpoScalar>
 //MatrixType make_YL (size_t b,
 //                    const vector<vector<SparseMatrix<MpoScalar> > > &W12,
 //                    const vector<vector<SparseMatrix<MpoScalar> > > &W34,
 //                    const vector<vector<SparseMatrix<MpoScalar> > > &W56,
 //                    const vector<vector<SparseMatrix<MpoScalar> > > &W78,
 //                    const boost::multi_array<MatrixType,LEGLIMIT> &L,
-//                    const boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett, 
-//                    const vector<qarray<Nq> > &qloc)
+//                    const boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett, 
+//                    const vector<qarray<Symmetry::Nq> > &qloc)
 //{
 //	size_t D  = qloc.size();
 ////	size_t M  = AL1[0].block[0].cols();
@@ -393,15 +394,15 @@ MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t
 //	return Mout;
 //}
 
-//template<size_t Nq, typename MatrixType, typename Scalar, typename MpoScalar>
+//template<typename Symmetry, typename MatrixType, typename Scalar, typename MpoScalar>
 //MatrixType make_YR (size_t a,
 //                    const vector<vector<SparseMatrix<MpoScalar> > > &W12,
 //                    const vector<vector<SparseMatrix<MpoScalar> > > &W34,
 //                    const vector<vector<SparseMatrix<MpoScalar> > > &W56,
 //                    const vector<vector<SparseMatrix<MpoScalar> > > &W78,
 //                    const boost::multi_array<MatrixType,LEGLIMIT> &R,
-//                    const boost::multi_array<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett, 
-//                    const vector<qarray<Nq> > &qloc)
+//                    const boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett, 
+//                    const vector<qarray<Symmetry::Nq> > &qloc)
 //{
 //	size_t D  = qloc.size();
 //	size_t M = Aquartett[0][0][0][0].block[0].cols();
@@ -459,11 +460,11 @@ MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t
 //	return Mout;
 //}
 
-//template<size_t Nq, typename MatrixType, typename MpoScalar>
+//template<typename Symmetry, typename MatrixType, typename MpoScalar>
 //double energy_L (const boost::multi_array<MpoScalar,4> &H2site, 
-//                 const vector<Biped<Nq,MatrixType> > &AL, 
-//                 const Biped<Nq,MatrixType> &C,
-//                 const vector<qarray<Nq> > &qloc)
+//                 const vector<Biped<Symmetry,MatrixType> > &AL, 
+//                 const Biped<Symmetry,MatrixType> &C,
+//                 const vector<qarray<Symmetry::Nq> > &qloc)
 //{
 //	size_t D = qloc.size();
 //	double res = 0;
@@ -484,11 +485,11 @@ MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t
 //	return res;
 //}
 
-//template<size_t Nq, typename MatrixType, typename MpoScalar>
+//template<typename Symmetry, typename MatrixType, typename MpoScalar>
 //double energy_R (const boost::multi_array<MpoScalar,4> &H2site, 
-//                 const vector<Biped<Nq,MatrixType> > &AR, 
-//                 const Biped<Nq,MatrixType> &C,
-//                 const vector<qarray<Nq> > &qloc)
+//                 const vector<Biped<Symmetry,MatrixType> > &AR, 
+//                 const Biped<Symmetry,MatrixType> &C,
+//                 const vector<qarray<Symmetry::Nq> > &qloc)
 //{
 //	size_t D = qloc.size();
 //	double res = 0;
@@ -509,11 +510,11 @@ MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t
 //	return res;
 //}
 
-template<size_t Nq, typename MatrixType, typename MpoScalar>
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_hL (const boost::multi_array<MpoScalar,4> &H2site,
-                    const vector<Biped<Nq,MatrixType> > &AL1,
-                    const vector<Biped<Nq,MatrixType> > &AL2,
-                    const vector<qarray<Nq> > &qloc)
+                    const vector<Biped<Symmetry,MatrixType> > &AL1,
+                    const vector<Biped<Symmetry,MatrixType> > &AL2,
+                    const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	MatrixType Mout;
 	Mout.resize(AL1[0].block[0].cols(), AL1[0].block[0].cols());
@@ -537,11 +538,11 @@ MatrixType make_hL (const boost::multi_array<MpoScalar,4> &H2site,
 	return Mout;
 }
 
-template<size_t Nq, typename MatrixType, typename MpoScalar>
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
-                    const vector<Biped<Nq,MatrixType> > &AR1,
-                    const vector<Biped<Nq,MatrixType> > &AR2,
-                    const vector<qarray<Nq> > &qloc)
+                    const vector<Biped<Symmetry,MatrixType> > &AR1,
+                    const vector<Biped<Symmetry,MatrixType> > &AR2,
+                    const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	MatrixType Mout;
 	Mout.resize(AR1[0].block[0].rows(), AR1[0].block[0].rows());
@@ -565,10 +566,10 @@ MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
 	return Mout;
 }
 
-//template<size_t Nq, typename MatrixType>
+//template<typename Symmetry, typename MatrixType>
 //void shift_L (MatrixType &M,
-//              const vector<Biped<Nq,MatrixType> > &AL,
-//              const vector<qarray<Nq> > &qloc)
+//              const vector<Biped<Symmetry,MatrixType> > &AL,
+//              const vector<qarray<Symmetry::Nq> > &qloc)
 //{
 //	size_t D = qloc.size();
 //	MatrixType Mtmp(D,D); Mtmp.setZero();
@@ -581,10 +582,10 @@ MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
 //	M = Mtmp;
 //}
 
-//template<size_t Nq, typename MatrixType>
+//template<typename Symmetry, typename MatrixType>
 //void shift_R (MatrixType &M,
-//              const vector<Biped<Nq,MatrixType> > &AR,
-//              const vector<qarray<Nq> > &qloc)
+//              const vector<Biped<Symmetry,MatrixType> > &AR,
+//              const vector<qarray<Symmetry::Nq> > &qloc)
 //{
 //	size_t D = qloc.size();
 //	MatrixType Mtmp(D,D); Mtmp.setZero();
@@ -598,7 +599,7 @@ MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
 //}
 
 //-----------<definitions>-----------
-template<size_t Nq, typename Scalar, typename MpoScalar=double>
+template<typename Symmetry, typename Scalar, typename MpoScalar=double>
 struct PivumpsMatrix
 {
 	Matrix<Scalar,Dynamic,Dynamic> L;
@@ -606,34 +607,34 @@ struct PivumpsMatrix
 	
 	std::array<boost::multi_array<MpoScalar,4>,2> h;
 	
-	vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > AL;
-	vector<Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > > AR;
+	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > AL;
+	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > AR;
 	
-	vector<qarray<Nq> > qloc;
+	vector<qarray<Symmetry::Nq> > qloc;
 	
 	size_t dim;
 };
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 struct PivumpsVector0
 {
-	Biped<Nq,Matrix<Scalar,Dynamic,Dynamic> > C;
+	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > C;
 	
-	PivumpsVector0<Nq,Scalar>& operator+= (const PivumpsVector0<Nq,Scalar> &Vrhs);
-	PivumpsVector0<Nq,Scalar>& operator-= (const PivumpsVector0<Nq,Scalar> &Vrhs);
-	template<typename OtherScalar> PivumpsVector0<Nq,Scalar>& operator*= (const OtherScalar &alpha);
-	template<typename OtherScalar> PivumpsVector0<Nq,Scalar>& operator/= (const OtherScalar &alpha);
+	PivumpsVector0<Symmetry,Scalar>& operator+= (const PivumpsVector0<Symmetry,Scalar> &Vrhs);
+	PivumpsVector0<Symmetry,Scalar>& operator-= (const PivumpsVector0<Symmetry,Scalar> &Vrhs);
+	template<typename OtherScalar> PivumpsVector0<Symmetry,Scalar>& operator*= (const OtherScalar &alpha);
+	template<typename OtherScalar> PivumpsVector0<Symmetry,Scalar>& operator/= (const OtherScalar &alpha);
 };
 //-----------</definitions>-----------
 
-template<size_t Nq, typename Scalar, typename MpoScalar>
-inline size_t dim (const PivumpsMatrix<Nq,Scalar,MpoScalar> &H)
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+inline size_t dim (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H)
 {
 	return H.dim;
 }
 
-template<size_t Nq, typename Scalar>
-PivumpsVector0<Nq,Scalar>& PivumpsVector0<Nq,Scalar>::operator+= (const PivumpsVector0<Nq,Scalar> &Vrhs)
+template<typename Symmetry, typename Scalar>
+PivumpsVector0<Symmetry,Scalar>& PivumpsVector0<Symmetry,Scalar>::operator+= (const PivumpsVector0<Symmetry,Scalar> &Vrhs)
 {
 	transform(C.block.begin(), C.block.end(), 
 	          Vrhs.C.block.begin(), C.block.begin(), 
@@ -641,9 +642,9 @@ PivumpsVector0<Nq,Scalar>& PivumpsVector0<Nq,Scalar>::operator+= (const PivumpsV
 	return *this;
 }
 
-template<size_t Nq, typename Scalar>
-PivumpsVector0<Nq,Scalar>& PivumpsVector0<Nq,Scalar>::
-operator-= (const PivumpsVector0<Nq,Scalar> &Vrhs)
+template<typename Symmetry, typename Scalar>
+PivumpsVector0<Symmetry,Scalar>& PivumpsVector0<Symmetry,Scalar>::
+operator-= (const PivumpsVector0<Symmetry,Scalar> &Vrhs)
 {
 	transform(C.block.begin(), C.block.end(), 
 	          Vrhs.C.block.begin(), C.block.begin(), 
@@ -651,9 +652,9 @@ operator-= (const PivumpsVector0<Nq,Scalar> &Vrhs)
 	return *this;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename OtherScalar>
-PivumpsVector0<Nq,Scalar>& PivumpsVector0<Nq,Scalar>::
+PivumpsVector0<Symmetry,Scalar>& PivumpsVector0<Symmetry,Scalar>::
 operator*= (const OtherScalar &alpha)
 {
 	for (size_t q=0; q<C.dim; ++q)
@@ -663,9 +664,9 @@ operator*= (const OtherScalar &alpha)
 	return *this;
 }
 
-template<size_t Nq, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename OtherScalar>
-PivumpsVector0<Nq,Scalar>& PivumpsVector0<Nq,Scalar>::
+PivumpsVector0<Symmetry,Scalar>& PivumpsVector0<Symmetry,Scalar>::
 operator/= (const OtherScalar &alpha)
 {
 	for (size_t q=0; q<C.dim; ++q)
@@ -675,42 +676,42 @@ operator/= (const OtherScalar &alpha)
 	return *this;
 }
 
-template<size_t Nq, typename Scalar, typename OtherScalar>
-PivumpsVector0<Nq,Scalar> operator* (const OtherScalar &alpha, PivumpsVector0<Nq,Scalar> V)
+template<typename Symmetry, typename Scalar, typename OtherScalar>
+PivumpsVector0<Symmetry,Scalar> operator* (const OtherScalar &alpha, PivumpsVector0<Symmetry,Scalar> V)
 {
 	return V *= alpha;
 }
 
-template<size_t Nq, typename Scalar, typename OtherScalar>
-PivumpsVector0<Nq,Scalar> operator* (PivumpsVector0<Nq,Scalar> V, const OtherScalar &alpha)
+template<typename Symmetry, typename Scalar, typename OtherScalar>
+PivumpsVector0<Symmetry,Scalar> operator* (PivumpsVector0<Symmetry,Scalar> V, const OtherScalar &alpha)
 {
 	return V *= alpha;
 }
 
-template<size_t Nq, typename Scalar, typename OtherScalar>
-PivumpsVector0<Nq,Scalar> operator/ (PivumpsVector0<Nq,Scalar> V, const OtherScalar &alpha)
+template<typename Symmetry, typename Scalar, typename OtherScalar>
+PivumpsVector0<Symmetry,Scalar> operator/ (PivumpsVector0<Symmetry,Scalar> V, const OtherScalar &alpha)
 {
 	return V /= alpha;
 }
 
-template<size_t Nq, typename Scalar>
-PivumpsVector0<Nq,Scalar> operator+ (const PivumpsVector0<Nq,Scalar> &V1, const PivumpsVector0<Nq,Scalar> &V2)
+template<typename Symmetry, typename Scalar>
+PivumpsVector0<Symmetry,Scalar> operator+ (const PivumpsVector0<Symmetry,Scalar> &V1, const PivumpsVector0<Symmetry,Scalar> &V2)
 {
-	PivumpsVector0<Nq,Scalar> Vout = V1;
+	PivumpsVector0<Symmetry,Scalar> Vout = V1;
 	Vout += V2;
 	return Vout;
 }
 
-template<size_t Nq, typename Scalar>
-PivumpsVector0<Nq,Scalar> operator- (const PivumpsVector0<Nq,Scalar> &V1, const PivumpsVector0<Nq,Scalar> &V2)
+template<typename Symmetry, typename Scalar>
+PivumpsVector0<Symmetry,Scalar> operator- (const PivumpsVector0<Symmetry,Scalar> &V1, const PivumpsVector0<Symmetry,Scalar> &V2)
 {
-	PivumpsVector0<Nq,Scalar> Vout = V1;
+	PivumpsVector0<Symmetry,Scalar> Vout = V1;
 	Vout -= V2;
 	return Vout;
 }
 
-template<size_t Nq, typename Scalar>
-Scalar dot (const PivumpsVector0<Nq,Scalar> &V1, const PivumpsVector0<Nq,Scalar> &V2)
+template<typename Symmetry, typename Scalar>
+Scalar dot (const PivumpsVector0<Symmetry,Scalar> &V1, const PivumpsVector0<Symmetry,Scalar> &V2)
 {
 	Scalar res = 0.;
 	for (size_t q=0; q<V2.C.dim; ++q)
@@ -721,8 +722,8 @@ Scalar dot (const PivumpsVector0<Nq,Scalar> &V1, const PivumpsVector0<Nq,Scalar>
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
-double squaredNorm (const PivumpsVector0<Nq,Scalar> &V)
+template<typename Symmetry, typename Scalar>
+double squaredNorm (const PivumpsVector0<Symmetry,Scalar> &V)
 {
 	double res = 0.;
 	for (size_t q=0; q<V.C.dim; ++q)
@@ -732,20 +733,20 @@ double squaredNorm (const PivumpsVector0<Nq,Scalar> &V)
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
-inline double norm (const PivumpsVector0<Nq,Scalar> &V)
+template<typename Symmetry, typename Scalar>
+inline double norm (const PivumpsVector0<Symmetry,Scalar> &V)
 {
 	return sqrt(squaredNorm(V));
 }
 
-template<size_t Nq, typename Scalar>
-inline void normalize (PivumpsVector0<Nq,Scalar> &V)
+template<typename Symmetry, typename Scalar>
+inline void normalize (PivumpsVector0<Symmetry,Scalar> &V)
 {
 	V /= norm(V);
 }
 
-template<size_t Nq, typename Scalar>
-double infNorm (const PivumpsVector0<Nq,Scalar> &V1, const PivumpsVector0<Nq,Scalar> &V2)
+template<typename Symmetry, typename Scalar>
+double infNorm (const PivumpsVector0<Symmetry,Scalar> &V1, const PivumpsVector0<Symmetry,Scalar> &V2)
 {
 	double res = 0.;
 	for (size_t q=0; q<V1.C.dim; ++q)
@@ -756,8 +757,8 @@ double infNorm (const PivumpsVector0<Nq,Scalar> &V1, const PivumpsVector0<Nq,Sca
 	return res;
 }
 
-template<size_t Nq, typename Scalar>
-void swap (PivumpsVector0<Nq,Scalar> &V1, PivumpsVector0<Nq,Scalar> &V2)
+template<typename Symmetry, typename Scalar>
+void swap (PivumpsVector0<Symmetry,Scalar> &V1, PivumpsVector0<Symmetry,Scalar> &V2)
 {
 	for (size_t q=0; q<V1.C.dim; ++q)
 	{
@@ -765,10 +766,10 @@ void swap (PivumpsVector0<Nq,Scalar> &V1, PivumpsVector0<Nq,Scalar> &V2)
 	}
 }
 
-template<size_t Nq, typename Scalar>
-struct GaussianRandomVector<PivumpsVector0<Nq,Scalar>,Scalar>
+template<typename Symmetry, typename Scalar>
+struct GaussianRandomVector<PivumpsVector0<Symmetry,Scalar>,Scalar>
 {
-	static void fill (size_t N, PivumpsVector0<Nq,Scalar> &Vout)
+	static void fill (size_t N, PivumpsVector0<Symmetry,Scalar> &Vout)
 	{
 		for (size_t q=0; q<Vout.C.dim; ++q)
 		for (size_t a1=0; a1<Vout.C.block[q].rows(); ++a1)
@@ -780,8 +781,8 @@ struct GaussianRandomVector<PivumpsVector0<Nq,Scalar>,Scalar>
 	}
 };
 
-template<size_t Nq, typename Scalar, typename MpoScalar>
-void HxV (const PivumpsMatrix<Nq,Scalar,MpoScalar> &H, const PivotVectorQ<Nq,Scalar> &Vin, PivotVectorQ<Nq,Scalar> &Vout)
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVectorQ<Symmetry,Scalar> &Vin, PivotVectorQ<Symmetry,Scalar> &Vout)
 {
 	size_t D = H.qloc.size();
 	Vout = Vin;
@@ -819,16 +820,16 @@ void HxV (const PivumpsMatrix<Nq,Scalar,MpoScalar> &H, const PivotVectorQ<Nq,Sca
 	}
 }
 
-template<size_t Nq, typename Scalar, typename MpoScalar>
-void HxV (const PivumpsMatrix<Nq,Scalar,MpoScalar> &H, PivotVectorQ<Nq,Scalar> &Vinout)
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, PivotVectorQ<Symmetry,Scalar> &Vinout)
 {
-	PivotVectorQ<Nq,Scalar> Vtmp;
+	PivotVectorQ<Symmetry,Scalar> Vtmp;
 	HxV(H,Vinout,Vtmp);
 	Vinout = Vtmp;
 }
 
-template<size_t Nq, typename Scalar, typename MpoScalar>
-void HxV (const PivumpsMatrix<Nq,Scalar,MpoScalar> &H, const PivumpsVector0<Nq,Scalar> &Vin, PivumpsVector0<Nq,Scalar> &Vout)
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, const PivumpsVector0<Symmetry,Scalar> &Vin, PivumpsVector0<Symmetry,Scalar> &Vout)
 {
 	size_t D = H.qloc.size();
 	
@@ -852,27 +853,27 @@ void HxV (const PivumpsMatrix<Nq,Scalar,MpoScalar> &H, const PivumpsVector0<Nq,S
 	Vout.C.block[0] += Vin.C.block[0] * H.R;
 }
 
-template<size_t Nq, typename Scalar, typename MpoScalar>
-void HxV (const PivumpsMatrix<Nq,Scalar,MpoScalar> &H, PivumpsVector0<Nq,Scalar> &Vinout)
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, PivumpsVector0<Symmetry,Scalar> &Vinout)
 {
-	PivumpsVector0<Nq,Scalar> Vtmp;
+	PivumpsVector0<Symmetry,Scalar> Vtmp;
 	HxV(H,Vinout,Vtmp);
 	Vinout = Vtmp;
 }
 
-template<size_t Nq, typename MpoScalar, typename Scalar>
-Scalar avg (const UmpsQ<Nq,Scalar> &Vbra, 
-            const MpoQ<Nq,MpoScalar> &O, 
-            const UmpsQ<Nq,Scalar> &Vket)
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+Scalar avg (const UmpsQ<Symmetry,Scalar> &Vbra, 
+            const MpoQ<Symmetry,MpoScalar> &O, 
+            const UmpsQ<Symmetry,Scalar> &Vket)
 {
-	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
-	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > B;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
 	
 	B.setIdentity(Vbra.get_frst_rows(),Vbra.get_frst_rows(),1,1);
 	for (size_t l=0; l<O.length(); ++l)
 	{
 		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
-		contract_L(B, Vbra.A_at(g,l%Vket.length()), O.W_at(l), Vket.A_at(g,l%Vket.length()), O.locBasis(l), Bnext);
+		contract_L(B, Vbra.A_at(g,l%Vket.length()), O.W_at(l), Vket.A_at(g,l%Vket.length()), O.locBasis(l), O.opBasisSq(l), Bnext);
 		
 		B.clear();
 		B = Bnext;

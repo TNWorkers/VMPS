@@ -37,7 +37,7 @@ public:
 	HeisenbergU1XXZ (const size_t &L, const vector<Param> &params);
 	
 	template<typename Symmetry_>
-	static HamiltonianTermsXd<Symmetry_> add_operators (HamiltonianTermsXd<Symmetry_> &Terms, 
+	static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, 
 	                                                    const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
 	
 	static const std::map<string,std::any> defaults;
@@ -51,7 +51,7 @@ const std::map<string,std::any> HeisenbergU1XXZ::defaults =
 	
 	{"Dy",0.}, {"Dyperp",0.}, {"Dyprime",0.},
 	{"D",2ul}, {"Bz",0.}, {"Kz",0.},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}, 
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, 
 	
 	// for consistency during inheritance (should not be set for XXZ!):
 	{"J",0.}, {"Jprime",0.}, {"Jperp",0.}, {"Jpara",0.}
@@ -88,7 +88,7 @@ HeisenbergU1XXZ (const size_t &L, const vector<Param> &params)
 }
 
 template<typename Symmetry_>
-HamiltonianTermsXd<Symmetry_> HeisenbergU1XXZ::
+void HeisenbergU1XXZ::
 add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 {
 	auto save_label = [&Terms] (string label)
@@ -153,8 +153,6 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &
 	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp.x,Jzperp.x,0.,0.,0.,0.,0., P.get<bool>("CYLINDER"))));
 	
 	Terms.name = (P.HAS_ANY_OF({"Jxy","Jxypara","Jxyperp"},loc))? "XXZ":"Ising";
-	
-	return Terms;
 }
 
 } //end namespace VMPS
