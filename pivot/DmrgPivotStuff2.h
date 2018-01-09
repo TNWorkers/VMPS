@@ -348,61 +348,61 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 	}
 }
 
-//template<typename Symmetry, typename Scalar>
-//void contract_AAAA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
-//                    vector<qarray<Symmetry::Nq> > qloc1, 
-//                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
-//                    vector<qarray<Symmetry::Nq> > qloc2, 
-//                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A3, 
-//                    vector<qarray<Symmetry::Nq> > qloc3, 
-//                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A4, 
-//                    vector<qarray<Symmetry::Nq> > qloc4, 
-//                    boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett)
-//{
-//	Aquartett.resize(boost::extents[qloc1.size()][qloc2.size()][qloc3.size()][qloc4.size()]);
-//	
-//	for (size_t s1=0; s1<qloc1.size(); ++s1)
-//	for (size_t s2=0; s2<qloc2.size(); ++s2)
-//	for (size_t s3=0; s3<qloc3.size(); ++s3)
-//	for (size_t s4=0; s4<qloc4.size(); ++s4)
-//	for (size_t q1=0; q1<A1[s1].dim; ++q1)
-//	{
-//		qarray2<Symmetry::Nq> quple2 = {A1[s1].out[q1], A1[s1].out[q1]+qloc2[s2]};
-//		auto q2 = A2[s2].dict.find(quple2);
-//		
-//		if (q2 != A2[s2].dict.end())
-//		{
-//			qarray2<Symmetry::Nq> quple3 = {A2[s2].out[q2->second], A2[s2].out[q2->second]+qloc3[s3]};
-//			auto q3 = A3[s3].dict.find(quple3);
-//			
-//			if (q3 != A3[s3].dict.end())
-//			{
-//				qarray2<Symmetry::Nq> quple4 = {A3[s3].out[q3->second], A3[s3].out[q3->second]+qloc4[s4]};
-//				auto q4 = A4[s4].dict.find(quple4);
-//				
-//				if (q4 != A4[s4].dict.end())
-//				{
-//					Matrix<Scalar,Dynamic,Dynamic> Mtmp = A1[s1].block[q1] * 
-//					                                      A2[s2].block[q2->second] * 
-//					                                      A3[s3].block[q3->second] * 
-//					                                      A4[s4].block[q4->second];
-//					
-//					qarray2<Symmetry::Nq> qupleAquartett = {A1[s1].in[q1], A4[s4].out[q4->second]};
-//					auto qAquartett = Aquartett[s1][s2][s3][s4].dict.find(qupleAquartett);
-//					
-//					if (qAquartett != Aquartett[s1][s2][s3][s4].dict.end())
-//					{
-//						Aquartett[s1][s2][s3][s4].block[qAquartett->second] += Mtmp;
-//					}
-//					else
-//					{
-//						Aquartett[s1][s2][s3][s4].push_back(qupleAquartett, Mtmp);
-//					}
-//				}
-//			}
-//		}
-//	}
-//}
+template<typename Symmetry, typename Scalar>
+void contract_AAAA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
+                    vector<qarray<Symmetry::Nq> > qloc1, 
+                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
+                    vector<qarray<Symmetry::Nq> > qloc2, 
+                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A3, 
+                    vector<qarray<Symmetry::Nq> > qloc3, 
+                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A4, 
+                    vector<qarray<Symmetry::Nq> > qloc4, 
+                    boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> &Aquartett)
+{
+	Aquartett.resize(boost::extents[qloc1.size()][qloc2.size()][qloc3.size()][qloc4.size()]);
+	
+	for (size_t s1=0; s1<qloc1.size(); ++s1)
+	for (size_t s2=0; s2<qloc2.size(); ++s2)
+	for (size_t s3=0; s3<qloc3.size(); ++s3)
+	for (size_t s4=0; s4<qloc4.size(); ++s4)
+	for (size_t q1=0; q1<A1[s1].dim; ++q1)
+	{
+		qarray2<Symmetry::Nq> quple2 = {A1[s1].out[q1], A1[s1].out[q1]+qloc2[s2]};
+		auto q2 = A2[s2].dict.find(quple2);
+		
+		if (q2 != A2[s2].dict.end())
+		{
+			qarray2<Symmetry::Nq> quple3 = {A2[s2].out[q2->second], A2[s2].out[q2->second]+qloc3[s3]};
+			auto q3 = A3[s3].dict.find(quple3);
+			
+			if (q3 != A3[s3].dict.end())
+			{
+				qarray2<Symmetry::Nq> quple4 = {A3[s3].out[q3->second], A3[s3].out[q3->second]+qloc4[s4]};
+				auto q4 = A4[s4].dict.find(quple4);
+				
+				if (q4 != A4[s4].dict.end())
+				{
+					Matrix<Scalar,Dynamic,Dynamic> Mtmp = A1[s1].block[q1] * 
+					                                      A2[s2].block[q2->second] * 
+					                                      A3[s3].block[q3->second] * 
+					                                      A4[s4].block[q4->second];
+					
+					qarray2<Symmetry::Nq> qupleAquartett = {A1[s1].in[q1], A4[s4].out[q4->second]};
+					auto qAquartett = Aquartett[s1][s2][s3][s4].dict.find(qupleAquartett);
+					
+					if (qAquartett != Aquartett[s1][s2][s3][s4].dict.end())
+					{
+						Aquartett[s1][s2][s3][s4].block[qAquartett->second] += Mtmp;
+					}
+					else
+					{
+						Aquartett[s1][s2][s3][s4].push_back(qupleAquartett, Mtmp);
+					}
+				}
+			}
+		}
+	}
+}
 
 //template<typename Symmetry, typename Scalar, typename MpoScalar>
 //void HxV (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H1, 

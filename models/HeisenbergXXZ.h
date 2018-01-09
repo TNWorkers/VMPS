@@ -37,7 +37,7 @@ protected:
 
 const std::map<string,std::any> HeisenbergXXZ::defaults = 
 {
-	{"Jxy",-1.}, {"Jz",0.},
+	{"Jxy",0.}, {"Jz",0.},
 	{"Jxyprime",0.}, {"Jzprime",0.},
 	{"Jxyperp",0.}, {"Jzperp",0.},
 	

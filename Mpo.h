@@ -1568,13 +1568,13 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 	SparseMatrixXd IdD1 = MatrixXd::Identity(D1,D1).sparseView();
 	SparseMatrixXd IdD2 = MatrixXd::Identity(D2,D2).sparseView();
 	double factor = (HALF_THE_LOCAL_TERM==true)? 0.5:1.;
-	Hfull += factor * kroneckerProduct(Gvec[loc1](Grow,0), IdD2);
-	Hfull += factor * kroneckerProduct(IdD1, Gvec[loc2](Daux-1,Gcol));
+	Hfull += factor * kroneckerProduct(Gvec[loc1](Grow,0).data, IdD2);
+	Hfull += factor * kroneckerProduct(IdD1, Gvec[loc2](Daux-1,Gcol).data);
 	
 	// tight-binding part
 	for (size_t a=1; a<Daux-1; ++a)
 	{
-		Hfull += kroneckerProduct(Gvec[loc1](Grow,a), Gvec[loc2](a,Gcol));
+		Hfull += kroneckerProduct(Gvec[loc1](Grow,a).data, Gvec[loc2](a,Gcol).data);
 	}
 	
 	boost::multi_array<Scalar,4> Mout(boost::extents[D1][D1][D2][D2]);

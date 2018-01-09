@@ -1,6 +1,11 @@
 #ifndef VANILLA_VUMPSTRANSFERMATRIX
 #define VANILLA_VUMPSTRANSFERMATRIX
 
+#include "boost/multi_array.hpp"
+
+#include "VUMPS/VumpsTypedefs.h"
+#include "tensors/Biped.h"
+
 template<typename Symmetry, typename Scalar>
 struct TransferMatrix
 {
@@ -74,6 +79,18 @@ struct TransferMatrix
 };
 
 template<typename Scalar>
+struct TransferVector
+{
+	Matrix<Scalar,Dynamic,Dynamic> A;
+	GAUGE::OPTION gauge;
+	
+	TransferVector<Scalar>& operator+= (const TransferVector<Scalar> &Vrhs);
+	TransferVector<Scalar>& operator-= (const TransferVector<Scalar> &Vrhs);
+	template<typename OtherScalar> TransferVector<Scalar>& operator*= (const OtherScalar &alpha);
+	template<typename OtherScalar> TransferVector<Scalar>& operator/= (const OtherScalar &alpha);
+};
+
+template<typename Scalar>
 inline void setZero (Matrix<Scalar,Dynamic,Dynamic> &M)
 {
 	M.setZero();
@@ -83,34 +100,36 @@ inline void setZero (Matrix<Scalar,Dynamic,Dynamic> &M)
 // if H.LReigen.rows()==0, only T is used
 // if H.LReigen.rows()!=0, 1-T+|1><LReigen| is used
 template<typename Symmetry, typename Scalar1, typename Scalar2>
-void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const Matrix<Scalar2,Dynamic,Dynamic> &Vin, Matrix<Scalar2,Dynamic,Dynamic> &Vout)
+void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Scalar2> &Vin, TransferVector<Scalar2> &Vout)
 {
 	Vout = Vin;
 	
 	if (H.LReigen.rows() == 0)
 	{
-		setZero(Vout);
+		setZero(Vout.A);
 	}
 	
 	double factor = (H.LReigen.rows()==0)? +1.:-1.;
 	
+	// 1-site
 	if (H.Aket.size() != 0)
 	{
 		if (H.gauge == GAUGE::R)
 		{
-			for (size_t s=0; s<H.Aket.size(); ++s)
+			for (size_t s=0; s<H.D[0]; ++s)
 			{
-				Vout += factor * H.Wvec[s] * H.Aket[s].block[0] * Vin * H.Abra[s].block[0].adjoint();
+				Vout.A += factor * H.Wvec[s] * H.Aket[s].block[0] * Vin.A * H.Abra[s].block[0].adjoint();
 			}
 		}
 		else if (H.gauge == GAUGE::L)
 		{
-			for (size_t s=0; s<H.Aket.size(); ++s)
+			for (size_t s=0; s<H.D[0]; ++s)
 			{
-				Vout += factor * H.Wvec[s] * H.Abra[s].block[0].adjoint() * Vin * H.Aket[s].block[0];
+				Vout.A += factor * H.Wvec[s] * H.Abra[s].block[0].adjoint() * Vin.A * H.Aket[s].block[0];
 			}
 		}
 	}
+	// 2-site cell
 	else if (H.ApairKet.size() != 0)
 	{
 		if (H.gauge == GAUGE::R)
@@ -122,7 +141,7 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const Matrix<Scalar2,Dynami
 			{
 				if (H.Warray[s1][s2][s3][s4] != 0.)
 				{
-					Vout += factor * H.Warray[s1][s2][s3][s4] * H.ApairKet[s2][s4].block[0] * Vin * H.ApairBra[s1][s3].block[0].adjoint();
+					Vout.A += factor * H.Warray[s1][s2][s3][s4] * H.ApairKet[s2][s4].block[0] * Vin.A * H.ApairBra[s1][s3].block[0].adjoint();
 				}
 			}
 		}
@@ -135,11 +154,12 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const Matrix<Scalar2,Dynami
 			{
 				if (H.Warray[s1][s2][s3][s4] != 0.)
 				{
-					Vout += factor * H.Warray[s1][s2][s3][s4] * H.ApairBra[s1][s3].block[0].adjoint() * Vin * H.ApairKet[s2][s4].block[0];
+					Vout.A += factor * H.Warray[s1][s2][s3][s4] * H.ApairBra[s1][s3].block[0].adjoint() * Vin.A * H.ApairKet[s2][s4].block[0];
 				}
 			}
 		}
 	}
+	// 4-site cell
 	else if (H.AquartettKet.size() != 0)
 	{
 		if (H.gauge == GAUGE::R)
@@ -155,8 +175,8 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const Matrix<Scalar2,Dynami
 			{
 				if (H.Warray4[s1][s2][s3][s4][s5][s6][s7][s8] != 0.)
 				{
-					Vout += factor * H.Warray4[s1][s2][s3][s4][s5][s6][s7][s8] * 
-					        H.AquartettKet[s2][s4][s6][s8].block[0] * Vin * H.AquartettBra[s1][s3][s5][s7].block[0].adjoint();
+					Vout.A += factor * H.Warray4[s1][s2][s3][s4][s5][s6][s7][s8] * 
+					          H.AquartettKet[s2][s4][s6][s8].block[0] * Vin.A * H.AquartettBra[s1][s3][s5][s7].block[0].adjoint();
 				}
 			}
 		}
@@ -173,8 +193,11 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const Matrix<Scalar2,Dynami
 			{
 				if (H.Warray4[s1][s2][s3][s4][s5][s6][s7][s8] != 0.)
 				{
-					Vout += factor * H.Warray4[s1][s2][s3][s4][s5][s6][s7][s8] * 
-					        H.AquartettBra[s1][s3][s5][s7].block[0].adjoint() * Vin * H.AquartettKet[s2][s4][s6][s8].block[0];
+					Vout.A += factor * 
+					        H.Warray4[s1][s2][s3][s4][s5][s6][s7][s8] * 
+					        H.AquartettBra[s1][s3][s5][s7].block[0].adjoint() * 
+					        Vin.A * 
+					        H.AquartettKet[s2][s4][s6][s8].block[0];
 				}
 			}
 		}
@@ -182,14 +205,21 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const Matrix<Scalar2,Dynami
 	
 	if (H.LReigen.rows() != 0)
 	{
-		Vout += (H.LReigen * Vin).trace() * Matrix<Scalar2,Dynamic,Dynamic>::Identity(Vin.rows(),Vin.cols());
+		if (H.gauge == GAUGE::R)
+		{
+			Vout.A += (H.LReigen * Vin.A).trace() * Matrix<Scalar2,Dynamic,Dynamic>::Identity(Vin.A.rows(),Vin.A.cols());
+		}
+		else if (H.gauge == GAUGE::L)
+		{
+			Vout.A += (Vin.A * H.LReigen).trace() * Matrix<Scalar2,Dynamic,Dynamic>::Identity(Vin.A.rows(),Vin.A.cols());
+		}
 	}
 }
 
 template<typename Symmetry, typename Scalar1, typename Scalar2>
-void HxV (const TransferMatrix<Symmetry,Scalar1> &H, Matrix<Scalar2,Dynamic,Dynamic> &Vinout)
+void HxV (const TransferMatrix<Symmetry,Scalar1> &H, TransferVector<Scalar2> &Vinout)
 {
-	Matrix<Scalar2,Dynamic,Dynamic> Vtmp;
+	TransferVector<Scalar2> Vtmp;
 	HxV(H,Vinout,Vtmp);
 	Vinout = Vtmp;
 }
@@ -212,52 +242,125 @@ inline size_t dim (const TransferMatrix<Symmetry,Scalar> &H)
 }
 
 template<typename Scalar>
-inline Scalar squaredNorm (const Matrix<Scalar,Dynamic,Dynamic> &V)
+inline Scalar squaredNorm (const TransferVector<Scalar> &V)
 {
-	return V.squaredNorm();
+//	return V.A.squaredNorm();
+	return dot(V,V);
 }
 
 template<typename Scalar>
-inline Scalar norm (const Matrix<Scalar,Dynamic,Dynamic> &V)
+inline Scalar norm (const TransferVector<Scalar> &V)
 {
-	return V.norm();
+	return sqrt(squaredNorm(V));
+//	return V.A.norm();
 }
 
 template<typename Scalar>
-inline void normalize (Matrix<Scalar,Dynamic,Dynamic> &V)
+inline void normalize (TransferVector<Scalar> &V)
 {
 	V /= norm(V);
 }
 
 template<typename Scalar>
-inline Scalar infNorm (const Matrix<Scalar,Dynamic,Dynamic> &V1, const Matrix<Scalar,Dynamic,Dynamic> &V2)
+inline Scalar infNorm (const TransferVector<Scalar> &V1, const TransferVector<Scalar> &V2)
 {
 	return (V1-V2).template lpNorm<Eigen::Infinity>();
 }
 
 template<typename Scalar>
-void swap (Matrix<Scalar,Dynamic,Dynamic> &V1, Matrix<Scalar,Dynamic,Dynamic> &V2)
+void swap (TransferVector<Scalar> &V1, TransferVector<Scalar> &V2)
 {
-	V1.swap(V2);
+	V1.A.swap(V2.A);
 }
 
 template<typename Scalar>
-inline Scalar dot (const Matrix<Scalar,Dynamic,Dynamic> &V1, const Matrix<Scalar,Dynamic,Dynamic> &V2)
+inline Scalar dot (const TransferVector<Scalar> &V1, const TransferVector<Scalar> &V2)
 {
-	return (V1.adjoint() * V2).trace();
+//	return (V1.gauge==GAUGE::R)? (V1.A.adjoint()*V2.A).trace() : (V1.A*V2.A.adjoint()).trace();
+	return (V1.A.adjoint()*V2.A).trace();
 }
+
+//-----------<vector arithmetics>-----------
+template<typename Scalar>
+TransferVector<Scalar>& TransferVector<Scalar>::
+operator+= (const TransferVector<Scalar> &Vrhs)
+{
+	A += Vrhs.A;
+	return *this;
+}
+
+template<typename Scalar>
+TransferVector<Scalar>& TransferVector<Scalar>::
+operator-= (const TransferVector<Scalar> &Vrhs)
+{
+	A -= Vrhs.A;
+	return *this;
+}
+
+template<typename Scalar>
+template<typename OtherScalar>
+TransferVector<Scalar>& TransferVector<Scalar>::
+operator*= (const OtherScalar &alpha)
+{
+	A *= alpha;
+	return *this;
+}
+
+template<typename Scalar>
+template<typename OtherScalar>
+TransferVector<Scalar>& TransferVector<Scalar>::
+operator/= (const OtherScalar &alpha)
+{
+	A /= alpha;
+	return *this;
+}
+
+template<typename Scalar, typename OtherScalar>
+TransferVector<Scalar> operator* (const OtherScalar &alpha, TransferVector<Scalar> V)
+{
+	return V *= alpha;
+}
+
+template<typename Scalar, typename OtherScalar>
+TransferVector<Scalar> operator/ (TransferVector<Scalar> V, const OtherScalar &alpha)
+{
+	return V /= alpha;
+}
+
+template<typename Scalar, typename OtherScalar>
+TransferVector<Scalar> operator+ (const TransferVector<Scalar> &V1, const TransferVector<Scalar> &V2)
+{
+	TransferVector<Scalar> Vout = V1;
+	Vout.A += V2.A;
+	return Vout;
+}
+
+template<typename Scalar, typename OtherScalar>
+TransferVector<Scalar> operator- (const TransferVector<Scalar> &V1, const TransferVector<Scalar> &V2)
+{
+	TransferVector<Scalar> Vout = V1;
+	Vout.A -= V2.A;
+	return Vout;
+}
+
+template<typename Scalar>
+inline void setZero (TransferVector<Scalar> &V)
+{
+	V.A.setZero();
+}
+//-----------</vector arithmetics>-----------
 
 #include "RandomVector.h"
 
 template<typename Scalar>
-struct GaussianRandomVector<Matrix<Scalar,Dynamic,Dynamic>,Scalar>
+struct GaussianRandomVector<TransferVector<Scalar>,Scalar>
 {
-	static void fill (size_t N, Matrix<Scalar,Dynamic,Dynamic> &Vout)
+	static void fill (size_t N, TransferVector<Scalar> &Vout)
 	{
-		for (size_t i=0; i<Vout.rows(); ++i)
-		for (size_t j=0; j<Vout.cols(); ++j)
+		for (size_t i=0; i<Vout.A.rows(); ++i)
+		for (size_t j=0; j<Vout.A.cols(); ++j)
 		{
-			Vout(i,j) = threadSafeRandUniform<Scalar>(-1.,1.);
+			Vout.A(i,j) = threadSafeRandUniform<Scalar>(-1.,1.);
 		}
 		normalize(Vout);
 	}

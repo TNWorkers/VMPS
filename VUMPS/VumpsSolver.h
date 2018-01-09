@@ -3,7 +3,6 @@
 
 #include "unsupported/Eigen/IterativeSolvers"
 
-#include "symmetry/U0.h"
 #include "Mpo.h"
 #include "VUMPS/Umps.h"
 #include "pivot/DmrgPivotStuff0.h"
@@ -11,7 +10,7 @@
 #include "pivot/DmrgPivotStuff2.h"
 #include "tensors/DmrgIndexGymnastics.h"
 #include "DmrgLinearAlgebra.h"
-#include "LanczosSolver.h" // from HELPERS
+#include "LanczosSolver.h" // from LANCZOS
 #include "VUMPS/VumpsContractions.h"
 #include "GMResSolver.h" // from LANCZOS
 #include "VUMPS/VumpsTransferMatrix.h"
@@ -33,6 +32,13 @@ public:
 	string eigeninfo() const;
 	double memory   (MEMUNIT memunit=GB) const;
 	double overhead (MEMUNIT memunit=MB) const;
+	void set_log (int N_log_input, string file_e_input, string file_err_eigval_input, string file_err_var_input)
+	{
+		N_log = N_log_input;
+		file_e          = file_e_input;
+		file_err_eigval = file_err_eigval_input;
+		file_err_var    = file_err_var_input;
+	};
 	
 	void edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input, 
 	                Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot_input, 
@@ -65,8 +71,6 @@ public:
 	/**Returns the current error of the state while the sweep process.*/
 	inline double get_errState() const {return err_var;};
 	
-	void make_explicitT (const UmpsQ<Symmetry,Scalar> &Vbra, const UmpsQ<Symmetry,Scalar> &Vket, MatrixType &TL, MatrixType &TR);
-	
 private:
 	
 	size_t N_sites;
@@ -91,8 +95,16 @@ private:
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
 	
-//	MatrixXd eigenvectorL (const MatrixType &TL);
-//	MatrixXd eigenvectorR (const MatrixType &TR);
+	void set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState);
+	
+	void make_explicitT (const UmpsQ<Symmetry,Scalar> &Vbra, const UmpsQ<Symmetry,Scalar> &Vket, MatrixType &TL, MatrixType &TR);
+	MatrixXd eigenvectorL (const MatrixType &TL);
+	MatrixXd eigenvectorR (const MatrixType &TR);
+	
+	size_t N_log=0;
+	string file_e, file_err_eigval, file_err_var;
+	vector<double> eL_mem, eR_mem, err_eigval_mem, err_var_mem;
+	void write_log (bool FORCE=false);
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -151,6 +163,43 @@ overhead (MEMUNIT memunit) const
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+write_log (bool FORCE)
+{
+	if (N_log>0 or FORCE==true)
+	{
+		eL_mem.push_back(eL);
+		eR_mem.push_back(eR);
+		err_eigval_mem.push_back(err_eigval);
+		err_var_mem.push_back(err_var);
+	}
+	
+	if (N_log>0 and N_iterations%N_log==0 or FORCE==true)
+	{
+		ofstream Filer(file_e);
+		for (int i=0; i<eL_mem.size(); ++i)
+		{
+			Filer << i << "\t" << setprecision(13) << min(eL_mem[i],eR_mem[i]) << "\t" << eL_mem[i] << "\t" << eR_mem[i] << endl;
+		}
+		Filer.close();
+	
+		Filer.open(file_err_eigval);
+		for (int i=0; i<err_eigval_mem.size(); ++i)
+		{
+			Filer << i << "\t" << setprecision(13) << err_eigval_mem[i] << endl;
+		}
+		Filer.close();
+	
+		Filer.open(file_err_var);
+		for (int i=0; i<err_var_mem.size(); ++i)
+		{
+			Filer << i << "\t" << setprecision(13) << err_var_mem[i] << endl;
+		}
+		Filer.close();
+	}
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 prepare (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, size_t M_input, qarray<Symmetry::Nq> Qtot_input)
 {
 	N_sites = 1;
@@ -199,8 +248,33 @@ prepare (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState)
+{
+	tolLanczosEigval = max(min(1e-2*err_eigval,1e-7),1e-12); // 1e-7
+	tolLanczosState  = max(min(1e-2*err_var,   1e-4),1e-12); // 1e-4
+	
+	if (std::isnan(tolLanczosEigval))
+	{
+		tolLanczosEigval = 1e-7;
+	}
+	
+	if (std::isnan(tolLanczosState))
+	{
+		tolLanczosState = 1e-4;
+	}
+	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << "current Lanczos tolerances: " << tolLanczosEigval << ", " << tolLanczosState << endl;
+	}
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 iteration1 (Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 {
+//	auto Vprev = Vout;
+	
 	Stopwatch<> IterationTimer;
 	
 	MatrixType Reigen = Vout.state.C[N_sites-1].block[0] * Vout.state.C[N_sites-1].block[0].adjoint();
@@ -215,11 +289,12 @@ iteration1 (Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 	MatrixType HR(M,M), HL(M,M);
 	
 	Stopwatch<> GMresTimer;
-//	HL = linearL(hL, TL, Reigen, eR);
 	vector<Scalar> Wdummy; // The dummy also clarifies the template parameter of solve_linear for the compiler
 	solve_linear(GAUGE::L, Vout.state.A[GAUGE::L][0], hL, Reigen, Wdummy, eR, HL);
-//	HR = linearR(hR, TR, Leigen, eL);
 	solve_linear(GAUGE::R, Vout.state.A[GAUGE::R][0], hR, Leigen, Wdummy, eL, HR);
+	
+//	cout << "HL*R=" << (HL*Reigen).trace() << endl;
+//	cout << "L*HR=" << (Leigen*HR).trace() << endl;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
@@ -234,13 +309,8 @@ iteration1 (Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 	Heff[0].AR = Vout.state.A[GAUGE::R][0];
 	Heff[0].dim = Heff[0].qloc.size() * M * M;
 	
-	// dynamic Lanczos error: at least 1e-7, can go down further if err_eigval is smaller, but not below 1e-14
-	double tolLanczosEigval = max(min(0.01*err_eigval,1e-7),1e-14); // 1e-7
-	double tolLanczosState  = max(min(0.01*err_var,1e-4),   1e-10); // 1e-4
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
-	{
-		lout << "current Lanczos tolerances: " << tolLanczosEigval << ", " << tolLanczosState << endl;
-	}
+	double tolLanczosEigval, tolLanczosState;
+	set_LanczosTolerances(tolLanczosEigval,tolLanczosState);
 	
 	Heff[0].dim = Heff[0].qloc.size() * M * M;
 	Eigenstate<PivotVectorQ<Symmetry,Scalar> > g1;
@@ -301,6 +371,9 @@ iteration1 (Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 		lout << IterationTimer.info("full iteration") << endl;
 		lout << endl;
 	}
+	
+//	complex<double> overlap = Vout.state.dot(Vprev.state);
+//	cout << "dot=" << overlap << "\t" << arg(overlap) << endl;
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -358,8 +431,8 @@ make_explicitT (const UmpsQ<Symmetry,Scalar> &Vbra, const UmpsQ<Symmetry,Scalar>
 //	
 //	for (size_t s1=0; s1<D; ++s1)
 //	for (size_t s2=0; s2<D; ++s2)
-//	for (int k12=0; k12<H.W[0][0][s1][s2].outerSize(); ++k12)
-//	for (typename SparseMatrix<Scalar>::InnerIterator iW(H.W[0][0][s1][s2],k12); iW; ++iW)
+//	for (int k12=0; k12<H.W[0][s1][s2].outerSize(); ++k12)
+//	for (typename SparseMatrix<Scalar>::InnerIterator iW(H.W[0][s1][s2],k12); iW; ++iW)
 //	for (size_t i=0; i<M; ++i)
 //	for (size_t j=0; j<M; ++j)
 //	for (size_t k=0; k<M; ++k)
@@ -404,6 +477,12 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 	
 	MatrixType Reigen = Vout.state.C[0].block[0] * Vout.state.C[0].block[0].adjoint();
 	MatrixType Leigen = Vout.state.C[0].block[0].adjoint() * Vout.state.C[0].block[0];
+//	MatrixType TL, TR;
+//	make_explicitT(Vout.state,Vout.state,TL,TR);
+//	MatrixType Leigen = eigenvectorL(TL);
+//	MatrixType Reigen = eigenvectorR(TR);
+//	cout << "Leigen: " << (Leigen-Vout.state.C[0].block[0].adjoint() * Vout.state.C[0].block[0]).norm() << endl;
+//	cout << "Reigen: " << (Reigen-Vout.state.C[0].block[0] * Vout.state.C[0].block[0].adjoint()).norm() << endl;
 	
 	vector<MatrixType> YL(dW);
 	vector<MatrixType> YR(dW);
@@ -423,12 +502,12 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 	
 	for (int b=dW-2; b>=0; --b)
 	{
-		YL[b] = make_YL(b, H.W[0][0], L, Vout.state.A[GAUGE::L][0], H.locBasis(0));
+		YL[b] = make_YL(b, H.W[0], L, Vout.state.A[GAUGE::L][0], H.locBasis(0));
 		
 		vector<Scalar> Wval(D);
 		for (size_t s=0; s<D; ++s)
 		{
-			Wval[s] = H.W[0][0][s][s].coeff(b,b);
+			Wval[s] = H.W[0][s][s][0].coeff(b,b);
 		}
 		
 //		if (TL[b][b].norm() == 0.)
@@ -438,7 +517,6 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 		}
 		else
 		{
-//			L[b][0] = linearL(YL[b], TL[b][b], Reigen, (YL[b] * Reigen).trace());
 			solve_linear(GAUGE::L, Vout.state.A[GAUGE::L][0], YL[b], Reigen, Wval, (YL[b]*Reigen).trace(), L[b][0]);
 		}
 	}
@@ -447,12 +525,12 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 	
 	for (int a=1; a<dW; ++a)
 	{
-		YR[a] = make_YR(a, H.W[0][0], R, Vout.state.A[GAUGE::R][0], H.locBasis(0));
+		YR[a] = make_YR(a, H.W[0], R, Vout.state.A[GAUGE::R][0], H.locBasis(0));
 		
 		vector<Scalar> Wval(D);
 		for (size_t s=0; s<D; ++s)
 		{
-			Wval[s] = H.W[0][0][s][s].coeff(a,a);
+			Wval[s] = H.W[0][s][s][0].coeff(a,a);
 		}
 		
 //		if (TR[a][a].norm() == 0.)
@@ -462,8 +540,7 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 		}
 		else
 		{
-//			R[a][0] = linearR(YR[a], TR[a][a], Leigen, (Leigen * YR[a]).trace());
-			solve_linear(GAUGE::R, Vout.state.A[GAUGE::R][0], YR[a], Leigen, Wval, (YR[a]*Leigen).trace(), R[a][0]);
+			solve_linear(GAUGE::R, Vout.state.A[GAUGE::R][0], YR[a], Leigen, Wval, (Leigen*YR[a]).trace(), R[a][0]);
 		}
 	}
 	
@@ -472,13 +549,8 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 		lout << "linear systems" << GMresTimer.info() << endl;
 	}
 	
-	// dynamic Lanczos error: at least 1e-7, can go down further if err_eigval is smaller, but not below 1e-14
-	double tolLanczosEigval = max(min(0.01*err_eigval,1e-7),1e-14); // 1e-7
-	double tolLanczosState  = max(min(0.01*err_var,1e-4),  1e-10); // 1e-4
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
-	{
-		lout << "current Lanczos tolerances: " << tolLanczosEigval << ", " << tolLanczosState << endl;
-	}
+	double tolLanczosEigval, tolLanczosState;
+	set_LanczosTolerances(tolLanczosEigval,tolLanczosState);
 	
 //	HeffA.L.clear();
 //	HeffA.R.clear();
@@ -510,8 +582,9 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 	
 	Stopwatch<> LanczosTimer;
 	LanczosSolver<PivotMatrixQ<Symmetry,Scalar,Scalar>,PivotVectorQ<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
-	Lutz.set_dimK(min(30ul, HeffA.dim));
+	Lutz.set_dimK(min(300ul, HeffA.dim));
 	Lutz.edgeState(HeffA,gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
+	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		lout << "time" << LanczosTimer.info() << ", " << Lutz.info() << endl;
@@ -531,7 +604,7 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 	}
 	
 	LanczosSolver<PivotMatrixQ<Symmetry,Scalar,Scalar>,PivotVector0Q<Symmetry,Scalar>,Scalar> Lucy(LANCZOS::REORTHO::FULL);
-	Lucy.set_dimK(min(30ul, HeffA.dim));
+	Lucy.set_dimK(min(300ul, HeffA.dim));
 	Lucy.edgeState(HeffA,gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -642,7 +715,7 @@ iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 //				
 //				Vout.state.A[GAUGE::R][0][s].block[0].conservativeResize(M+Nret,M+Nret);
 //				Vout.state.A[GAUGE::R][0][s].block[0].block(D,0, Nret,M) = Jack.matrixV().adjoint().topRows(Nret) * 
-//					                                                       Vout.state.N[GAUGE::R][0][s].block[0];
+//				                                                           Vout.state.N[GAUGE::R][0][s].block[0];
 //				Vout.state.A[GAUGE::R][0][s].block[0].rightCols(Nret).setZero();
 //				
 //				Vout.state.A[GAUGE::C][0][s].block[0].conservativeResize(M+Nret,M+Nret);
@@ -674,10 +747,10 @@ make_Warray4 (size_t b, const MpHamiltonian &H)
 	for (size_t s2=0; s2<D; ++s2)
 	for (size_t s3=0; s3<D; ++s3)
 	for (size_t s4=0; s4<D; ++s4)
-	for (int k12=0; k12<H.W[0][0][s1][s2].outerSize(); ++k12)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW12(H.W[0][0][s1][s2],k12); iW12; ++iW12)
-	for (int k34=0; k34<H.W[1][0][s3][s4].outerSize(); ++k34)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW34(H.W[1][s3][s4],k34); iW34; ++iW34)
+	for (int k12=0; k12<H.W[0][s1][s2][0].outerSize(); ++k12)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW12(H.W[0][s1][s2][0],k12); iW12; ++iW12)
+	for (int k34=0; k34<H.W[1][s3][s4][0].outerSize(); ++k34)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW34(H.W[1][s3][s4][0],k34); iW34; ++iW34)
 	{
 		if (iW12.row() == b and iW34.col() == b and 
 		    iW12.col() == iW34.row() and
@@ -707,12 +780,12 @@ iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 	
 	for (size_t s1=0; s1<D; ++s1)
 	for (size_t s2=0; s2<D; ++s2)
-	for (int k12=0; k12<H.W[0][0][s1][s2].outerSize(); ++k12)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW12(H.W[0][0][s1][s2],k12); iW12; ++iW12)
+	for (int k12=0; k12<H.W[0][s1][s2][0].outerSize(); ++k12)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW12(H.W[0][s1][s2][0],k12); iW12; ++iW12)
 	for (size_t s3=0; s3<D; ++s3)
 	for (size_t s4=0; s4<D; ++s4)
-	for (int k34=0; k34<H.W[1][0][s3][s4].outerSize(); ++k34)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW34(H.W[1][0][s3][s4],k34); iW34; ++iW34)
+	for (int k34=0; k34<H.W[1][s3][s4][0].outerSize(); ++k34)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW34(H.W[1][s3][s4][0],k34); iW34; ++iW34)
 	{
 		if (iW12.col()==iW34.row())
 		{
@@ -854,13 +927,8 @@ iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 	vector<Eigenstate<PivotVectorQ<Symmetry,Scalar> > > gAC(N_sites);
 	vector<Eigenstate<PivotVector0Q<Symmetry,Scalar> > > gC(N_sites);
 	
-	// dynamic Lanczos error: at least 1e-7, can go down further if err_eigval is smaller, but not below 1e-14
-	double tolLanczosEigval = max(min(0.01*err_eigval,1e-7),1e-14); // 1e-7
-	double tolLanczosState  = max(min(0.01*err_var,1e-4),   1e-10); // 1e-4
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
-	{
-		lout << "current Lanczos tolerances: " << tolLanczosEigval << ", " << tolLanczosState << endl;
-	}
+	double tolLanczosEigval, tolLanczosState;
+	set_LanczosTolerances(tolLanczosEigval,tolLanczosState);
 	
 	// local optimization
 	for (size_t l=0; l<N_sites; ++l)
@@ -898,7 +966,7 @@ iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 		gAC[l].state.A = Vout.state.A[GAUGE::C][l];
 		
 		Stopwatch<> LanczosTimer;
-		LanczosSolver<PivotMatrixQ<Symmetry,Scalar,Scalar>,PivotVectorQ<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
+		LanczosSolver<PivotMatrixQ<Symmetry,Scalar,Scalar>,PivotVectorQ<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL,LANCZOS::CONVTEST::SQ_TEST);
 		Lutz.set_dimK(min(30ul, HeffA[l].dim));
 		Lutz.edgeState(HeffA[l],gAC[l], LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -929,7 +997,7 @@ iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 			HeffAC[l].dim += Vout.state.C[l].block[q].rows() * Vout.state.C[l].block[q].cols();
 		}
 		
-		LanczosSolver<PivotMatrixQ<Symmetry,Scalar,Scalar>,PivotVector0Q<Symmetry,Scalar>,Scalar> Lucy(LANCZOS::REORTHO::FULL);
+		LanczosSolver<PivotMatrixQ<Symmetry,Scalar,Scalar>,PivotVector0Q<Symmetry,Scalar>,Scalar> Lucy(LANCZOS::REORTHO::FULL,LANCZOS::CONVTEST::SQ_TEST);
 		Lucy.set_dimK(min(30ul, HeffAC[l].dim));
 		Lucy.edgeState(HeffAC[l],gC[l], LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -995,14 +1063,14 @@ make_Warray8 (size_t b, const MpHamiltonian &H)
 	for (size_t s6=0; s6<D; ++s6)
 	for (size_t s7=0; s7<D; ++s7)
 	for (size_t s8=0; s8<D; ++s8)
-	for (int k12=0; k12<H.W[0][0][s1][s2].outerSize(); ++k12)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW12(H.W[0][0][s1][s2],k12); iW12; ++iW12)
-	for (int k34=0; k34<H.W[1][0][s3][s4].outerSize(); ++k34)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW34(H.W[1][0][s3][s4],k34); iW34; ++iW34)
-	for (int k56=0; k56<H.W[2][0][s5][s6].outerSize(); ++k56)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW56(H.W[2][0][s5][s6],k56); iW56; ++iW56)
-	for (int k78=0; k78<H.W[3][0][s7][s8].outerSize(); ++k78)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW78(H.W[3][0][s7][s8],k78); iW78; ++iW78)
+	for (int k12=0; k12<H.W[0][s1][s2][0].outerSize(); ++k12)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW12(H.W[0][s1][s2][0],k12); iW12; ++iW12)
+	for (int k34=0; k34<H.W[1][s3][s4][0].outerSize(); ++k34)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW34(H.W[1][s3][s4][0],k34); iW34; ++iW34)
+	for (int k56=0; k56<H.W[2][s5][s6][0].outerSize(); ++k56)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW56(H.W[2][s5][s6][0],k56); iW56; ++iW56)
+	for (int k78=0; k78<H.W[3][s7][s8][0].outerSize(); ++k78)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW78(H.W[3][s7][s8][0],k78); iW78; ++iW78)
 	{
 		if (iW12.row() == b and iW78.col() == b and 
 		    iW12.col() == iW34.row() and
@@ -1049,20 +1117,20 @@ iteration4 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 	
 	for (size_t s1=0; s1<D; ++s1)
 	for (size_t s2=0; s2<D; ++s2)
-	for (int k12=0; k12<H.W[0][0][s1][s2].outerSize(); ++k12)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW12(H.W[0][0][s1][s2],k12); iW12; ++iW12)
+	for (int k12=0; k12<H.W[0][s1][s2][0].outerSize(); ++k12)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW12(H.W[0][s1][s2][0],k12); iW12; ++iW12)
 	for (size_t s3=0; s3<D; ++s3)
 	for (size_t s4=0; s4<D; ++s4)
-	for (int k34=0; k34<H.W[1][0][s3][s4].outerSize(); ++k34)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW34(H.W[1][0][s3][s4],k34); iW34; ++iW34)
+	for (int k34=0; k34<H.W[1][s3][s4][0].outerSize(); ++k34)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW34(H.W[1][s3][s4][0],k34); iW34; ++iW34)
 	for (size_t s5=0; s5<D; ++s5)
 	for (size_t s6=0; s6<D; ++s6)
-	for (int k56=0; k56<H.W[2][0][s5][s6].outerSize(); ++k56)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW56(H.W[2][0][s5][s6],k56); iW56; ++iW56)
+	for (int k56=0; k56<H.W[2][s5][s6][0].outerSize(); ++k56)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW56(H.W[2][s5][s6][0],k56); iW56; ++iW56)
 	for (size_t s7=0; s7<D; ++s7)
 	for (size_t s8=0; s8<D; ++s8)
-	for (int k78=0; k78<H.W[3][0][s7][s8].outerSize(); ++k78)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW78(H.W[3][0][s7][s8],k78); iW78; ++iW78)
+	for (int k78=0; k78<H.W[3][s7][s8][0].outerSize(); ++k78)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW78(H.W[3][s7][s8][0],k78); iW78; ++iW78)
 	{
 		if (iW12.col()==iW34.row() and 
 		    iW34.col()==iW56.row() and 
@@ -1191,13 +1259,8 @@ iteration4 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 	vector<Eigenstate<PivotVectorQ<Symmetry,Scalar> > > gAC(N_sites);
 	vector<Eigenstate<PivotVector0Q<Symmetry,Scalar> > > gC(N_sites);
 	
-	// dynamic Lanczos error: at least 1e-7, can go down further if err_eigval is smaller, but not below 1e-14
-	double tolLanczosEigval = max(min(0.01*err_eigval,1e-7),1e-14); // 1e-7
-	double tolLanczosState  = max(min(0.01*err_var,1e-4),   1e-10); // 1e-4
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
-	{
-		lout << "current Lanczos tolerances: " << tolLanczosEigval << ", " << tolLanczosState << endl;
-	}
+	double tolLanczosEigval, tolLanczosState;
+	set_LanczosTolerances(tolLanczosEigval,tolLanczosState);
 	
 	vector<PivotMatrixQ<Symmetry,Scalar,Scalar> > HeffA(N_sites);
 	vector<PivotMatrixQ<Symmetry,Scalar,Scalar> > HeffAC(N_sites);
@@ -1213,12 +1276,12 @@ iteration4 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 	
 	for (size_t l=1; l<N_sites; ++l)
 	{
-		contract_L(HeffA[l-1].L, Vout.state.A[GAUGE::L][l-1], H.W[l-1], Vout.state.A[GAUGE::L][l-1], H.locBasis(l-1), HeffA[l].L);
+		contract_L(HeffA[l-1].L, Vout.state.A[GAUGE::L][l-1], H.W[l-1], Vout.state.A[GAUGE::L][l-1], H.locBasis(l-1), H.opBasis(l-1), HeffA[l].L);
 	}
 	
 	for (int l=N_sites-2; l>=0; --l)
 	{
-		contract_R(HeffA[l+1].R, Vout.state.A[GAUGE::R][l+1], H.W[l+1], Vout.state.A[GAUGE::R][l+1], H.locBasis(l+1), HeffA[l].R);
+		contract_R(HeffA[l+1].R, Vout.state.A[GAUGE::R][l+1], H.W[l+1], Vout.state.A[GAUGE::R][l+1], H.locBasis(l+1), H.opBasis(l+1), HeffA[l].R);
 	}
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -1247,7 +1310,7 @@ iteration4 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 		gAC[l].state.A = Vout.state.A[GAUGE::C][l];
 		
 		Stopwatch<> LanczosTimer;
-		LanczosSolver<PivotMatrixQ<Symmetry,Scalar,Scalar>,PivotVectorQ<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
+		LanczosSolver<PivotMatrixQ<Symmetry,Scalar,Scalar>,PivotVectorQ<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL,LANCZOS::CONVTEST::SQ_TEST);
 		Lutz.set_dimK(min(30ul, HeffA[l].dim));
 		Lutz.edgeState(HeffA[l],gAC[l], LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -1267,7 +1330,7 @@ iteration4 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 			HeffAC[l].dim += Vout.state.C[l].block[q].rows() * Vout.state.C[l].block[q].cols();
 		}
 		
-		LanczosSolver<PivotMatrixQ<Symmetry,Scalar,Scalar>,PivotVector0Q<Symmetry,Scalar>,Scalar> Lucy(LANCZOS::REORTHO::FULL);
+		LanczosSolver<PivotMatrixQ<Symmetry,Scalar,Scalar>,PivotVector0Q<Symmetry,Scalar>,Scalar> Lucy(LANCZOS::REORTHO::FULL,LANCZOS::CONVTEST::SQ_TEST);
 		Lucy.set_dimK(min(30ul, HeffAC[l].dim));
 		Lucy.edgeState(HeffAC[l],gC[l], LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -1336,7 +1399,9 @@ edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> >
 	while (((err_eigval >= tol_eigval or err_var >= tol_var) and N_iterations < max_iterations) or N_iterations < min_iterations)
 	{
 		iteration1(Vout);
+		write_log();
 	}
+	write_log(true);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
@@ -1368,7 +1433,9 @@ edgeState (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, qa
 		if      (N_sites==1) {iteration1(H,Vout);}
 		else if (N_sites==2) {iteration2(H,Vout);}
 		else if (N_sites==4) {iteration4(H,Vout);}
+		write_log();
 	}
+	write_log(true);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
@@ -1382,6 +1449,27 @@ edgeState (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, qa
 		lout << Vout.state.info() << endl;
 		lout << endl;
 	}
+	
+	ofstream eLFiler("eL.dat");
+	for (int i=0; i<eL_mem.size(); ++i)
+	{
+		eLFiler << i << "\t" << eL_mem[i] << endl;
+	}
+	eLFiler.close();
+	
+	ofstream eRFiler("eR.dat");
+	for (int i=0; i<eR_mem.size(); ++i)
+	{
+		eRFiler << i << "\t" << eR_mem[i] << endl;
+	}
+	eRFiler.close();
+	
+	ofstream errvarFiler("err_var.dat");
+	for (int i=0; i<err_var_mem.size(); ++i)
+	{
+		errvarFiler << i << "\t" << err_var_mem[i] << endl;
+	}
+	errvarFiler.close();
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -1399,12 +1487,16 @@ solve_linear (GAUGE::OPTION gauge, const Atype &A,
 	
 	TransferMatrix<Symmetry,Scalar> T(gauge, A, A, LReigen, Warray, Dvec);
 	
-	MatrixType bvec = hLR;
-	bvec -= e * MatrixType::Identity(bvec.rows(),bvec.cols());
+	TransferVector<Scalar> bvec;
+	bvec.A = hLR;
+	bvec.gauge = gauge;
+	bvec.A -= e * MatrixType::Identity(bvec.A.rows(),bvec.A.cols());
 	
-	GMResSolver<TransferMatrix<Symmetry,Scalar>,MatrixType> Gimli;
-	Gimli.set_dimK(min(100ul,M*M));
-	Gimli.solve_linear(T,bvec,Hres);
+	GMResSolver<TransferMatrix<Symmetry,Scalar>,TransferVector<Scalar> > Gimli;
+	Gimli.set_dimK(min(10ul,M*M));
+	TransferVector<Scalar> Hres_tmp;
+	Gimli.solve_linear(T,bvec,Hres_tmp);
+	Hres = Hres_tmp.A;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
@@ -1412,51 +1504,51 @@ solve_linear (GAUGE::OPTION gauge, const Atype &A,
 	}
 }
 
-//template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-//MatrixXd VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-//eigenvectorL (const MatrixType &TL)
-//{
-//	EigenSolver<MatrixType> Lutz(TL);
-//	int max_index;
-//	Lutz.eigenvalues().cwiseAbs().maxCoeff(&max_index);
-//	
-////	cout << "max eigenvalue abs=" << Lutz.eigenvalues()(max_index) << endl;
-////	cout << Lutz.eigenvalues().transpose() << endl;
-//	
-//	MatrixType Mout(M,M);
-//	
-//	for (size_t i=0; i<M; ++i)
-//	for (size_t j=0; j<M; ++j)
-//	{
-//		size_t r = i + M*j;
-//		Mout(i,j) = Lutz.eigenvectors().col(max_index)(r).real();
-//	}
-//	
-//	return Mout;
-//}
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+MatrixXd VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+eigenvectorL (const MatrixType &TL)
+{
+	EigenSolver<MatrixType> Lutz(TL);
+	int max_index;
+	Lutz.eigenvalues().cwiseAbs().maxCoeff(&max_index);
+	
+//	cout << "max eigenvalue abs=" << Lutz.eigenvalues()(max_index) << endl;
+//	cout << Lutz.eigenvalues().transpose() << endl;
+	
+	MatrixType Mout(M,M);
+	
+	for (size_t i=0; i<M; ++i)
+	for (size_t j=0; j<M; ++j)
+	{
+		size_t r = i + M*j;
+		Mout(i,j) = Lutz.eigenvectors().col(max_index)(r).real();
+	}
+	
+	return Mout;
+}
 
-//template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-//MatrixXd VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-//eigenvectorR (const MatrixType &TR)
-//{
-//	EigenSolver<MatrixType> Lutz(TR.adjoint());
-//	int max_index;
-//	Lutz.eigenvalues().cwiseAbs().maxCoeff(&max_index);
-//	
-////	cout << "max eigenvalue abs=" << Lutz.eigenvalues()(max_index) << endl;
-////	cout << Lutz.eigenvalues().transpose() << endl;
-//	
-//	MatrixType Mout(M,M);
-//	
-//	for (size_t i=0; i<M; ++i)
-//	for (size_t j=0; j<M; ++j)
-//	{
-//		size_t r = i + M*j;
-//		Mout(i,j) = Lutz.eigenvectors().col(max_index)(r).real();
-//	}
-//	
-//	return Mout;
-//}
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+MatrixXd VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+eigenvectorR (const MatrixType &TR)
+{
+	EigenSolver<MatrixType> Lutz(TR.adjoint());
+	int max_index;
+	Lutz.eigenvalues().cwiseAbs().maxCoeff(&max_index);
+	
+//	cout << "max eigenvalue abs=" << Lutz.eigenvalues()(max_index) << endl;
+//	cout << Lutz.eigenvalues().transpose() << endl;
+	
+	MatrixType Mout(M,M);
+	
+	for (size_t i=0; i<M; ++i)
+	for (size_t j=0; j<M; ++j)
+	{
+		size_t r = i + M*j;
+		Mout(i,j) = Lutz.eigenvectors().col(max_index)(r).real();
+	}
+	
+	return Mout;
+}
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 MatrixXd VumpsSolver<Symmetry,MpHamiltonian,Scalar>::

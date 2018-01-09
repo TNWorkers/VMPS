@@ -113,7 +113,7 @@ const std::map<string,std::any> KondoU1xU1::defaults =
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.},
 	{"D",2ul},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 const std::array<string,2> KondoU1xU1::NMlabel{"N","M"};

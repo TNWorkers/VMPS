@@ -87,7 +87,7 @@ const map<string,any> HubbardSU2xU1::defaults =
 	{"mu",0.}, {"t0",0.}, 
 	{"U",0.}, {"V",0.}, {"Vperp",0.}, 
 	{"J",0.}, {"Jperp",0.},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 HubbardSU2xU1::
