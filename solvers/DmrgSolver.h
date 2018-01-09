@@ -158,6 +158,9 @@ save (string filename) const
 	target.save_scalar(stat.N_halfsweeps,"N_halfsweeps");
 	target.save_scalar(stat.N_sweepsteps,"N_sweepsteps");
 	target.save_scalar(static_cast<int>(stat.CURRENT_DIRECTION),"direction");
+	target.save_scalar(Dmax,"D");
+	target.save_scalar(err_eigval,"errorE");
+	target.save_scalar(err_state,"errorS");
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -172,6 +175,8 @@ load (string filename)
 	int DIR_IN_INT;
 	source.load_scalar(DIR_IN_INT,"direction");
 	stat.CURRENT_DIRECTION = static_cast<DMRG::DIRECTION::OPTION>(DIR_IN_INT);
+	source.load_scalar(err_eigval,"errorE");
+	source.load_scalar(err_state,"errorS");
 }
 #endif
 
