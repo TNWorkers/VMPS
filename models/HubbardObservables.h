@@ -203,7 +203,7 @@ template<typename Symmetry>
 MpoQ<Symmetry> HubbardObservables<Symmetry>::
 eta() const
 {
-//	assert(F.size()==N_phys);
+	for (size_t l=0; l<F.size(); ++l) {assert(F.orbitals()==1);}
 	
 	OperatorType Op = F[0].c(UP)*F[0].c(DN);
 	
@@ -227,7 +227,7 @@ template<typename Symmetry>
 MpoQ<Symmetry> HubbardObservables<Symmetry>::
 dtot() const
 {
-//	assert(F.size()==N_phys);
+	for (size_t l=0; l<F.size(); ++l) {assert(F.orbitals()==1);}
 	
 	OperatorType Op = F[0].d();
 	

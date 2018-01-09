@@ -56,10 +56,6 @@ public:
 	
 	/**Default parameters.*/
 	static const std::map<string,std::any> defaults;
-	
-//protected:
-	
-//	vector<FermionBase<Symmetry> > F;
 };
 
 const std::array<string,2> HubbardU1xU1::Nlabel {"N↑","N↓"};
@@ -84,13 +80,11 @@ HubbardU1xU1 (const size_t &L, const vector<Param> &params)
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
-//	F.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		
-//		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
 		setLocBasis(F[l].get_basis(),l);
 		
 		Terms[l] = set_operators(F[l],P,l%Lcell);
