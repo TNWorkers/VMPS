@@ -11,6 +11,9 @@
 #include "symmetry/qarray.h"
 #include "NestedLoopIterator.h" // from HELPERS
 
+#include "symmetry/U0.h"
+#include "symmetry/U1.h"
+
 enum SPINOP_LABEL {SX, SY, iSY, SZ, SP, SM};
 
 std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
@@ -60,7 +63,7 @@ public:
 	
 	ArrayXd ZeroField() const;
 	
-	string alignment (double J) const {return (J<0.)? "(AFM)":"(FM)";};
+	string alignment (double J) const {return (J<0)? "(AFM)":"(FM)";};
 	
 	/**Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
 	\param Jxy : \f$J_{xy}\f$
@@ -78,6 +81,15 @@ public:
 	SiteOperator<Symmetry,complex<double> > HeisenbergHamiltonian 
 	(Array3d J, Array<double,Dynamic,3> B, Array<double,Dynamic,3> K, Array3d D, bool PERIODIC=false) const;
 	
+//	static const std::array<string,Symmetry::Nq> qlabel;
+//	
+//	static string qformat (qarray<Symmetry::Nq> qnum)
+//	{
+//		if constexpr (Symmetry::IS_TRIVIAL) {return {};}
+//		else if constexpr (Symmetry::Nq==1) {return halve(qnum);}
+//		else                                {return noFormat<Symmetry::Nq>(qnum);}
+//	};
+	
 private:
 	
 	SparseMatrixXd ScompSingleSite (SPINOP_LABEL Sa) const;
@@ -93,6 +105,9 @@ private:
 	\param index*/
 	qarray<Symmetry::Nq> qNums (size_t index) const;
 };
+
+//template<> const std::array<string,0> SpinBase<Sym::U0>::qlabel{};
+//template<> const std::array<string,1> SpinBase<Sym::U1<double> >::qlabel{"M"};
 
 template<typename Symmetry>
 SpinBase<Symmetry>::

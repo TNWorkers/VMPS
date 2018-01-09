@@ -22,7 +22,7 @@ with
 but is mainly needed for VUMPS.
 \note The default variable settings can be seen in \p Hubbard::defaults.
 */
-class Hubbard : public MpoQ<Sym::U0,double>
+class Hubbard : public MpoQ<Sym::U0,double>, public HubbardObservables<Sym::U0>
 {
 public:
 	
@@ -33,15 +33,15 @@ public:
 	static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc=0);
 	
 	///@{
-	MpoQ<Symmetry> n (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> Sz (size_t loc) const;
+//	MpoQ<Symmetry> n (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
+//	MpoQ<Symmetry> Sz (size_t loc) const;
 	///@}
 	
 	static const std::map<string,std::any> defaults;
 	
-private:
-	
-	vector<FermionBase<Symmetry> > F;
+//private:
+//	
+//	vector<FermionBase<Symmetry> > F;
 };
 
 const std::map<string,std::any> Hubbard::defaults = 
@@ -56,20 +56,21 @@ const std::map<string,std::any> Hubbard::defaults =
 
 Hubbard::
 Hubbard (const size_t &L, const vector<Param> &params)
-:MpoQ<Symmetry> (L, qarray<0>({}), labeldummy, "")
+:MpoQ<Symmetry> (L, qarray<0>({}), labeldummy, ""),
+ HubbardObservables(L,params,Hubbard::defaults)
 {
 	ParamHandler P(params,Hubbard::defaults);
 	
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
-	F.resize(N_sites);
+//	F.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		
-		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
+//		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
 		setLocBasis(F[l].get_basis(),l);
 		
 		Terms[l] = HubbardU1xU1::set_operators(F[l],P,l%Lcell);
@@ -84,33 +85,33 @@ Hubbard (const size_t &L, const vector<Param> &params)
 	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
-MpoQ<Symmetry> Hubbard::
-n (SPIN_INDEX sigma, size_t locx, size_t locy) const
-{
-	assert(locx<N_sites and locy<F[locx].dim());
-	stringstream ss;
-	ss << "n(" << locx << "," << locy << ",σ=" << sigma << ")";
-	
-	MpoQ<Symmetry> Mout(N_sites, {}, labeldummy, ss.str());
-	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
-	
-	Mout.setLocal(locx, F[locx].n(sigma,locy));
-	return Mout;
-}
+//MpoQ<Symmetry> Hubbard::
+//n (SPIN_INDEX sigma, size_t locx, size_t locy) const
+//{
+//	assert(locx<N_sites and locy<F[locx].dim());
+//	stringstream ss;
+//	ss << "n(" << locx << "," << locy << ",σ=" << sigma << ")";
+//	
+//	MpoQ<Symmetry> Mout(N_sites, {}, labeldummy, ss.str());
+//	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+//	
+//	Mout.setLocal(locx, F[locx].n(sigma,locy));
+//	return Mout;
+//}
 
-MpoQ<Symmetry> Hubbard::
-Sz (size_t loc) const
-{
-	assert(loc<N_sites);
-	stringstream ss;
-	ss << "Sz(" << loc << ")";
-	
-	MpoQ<Symmetry> Mout(N_sites, {}, labeldummy, ss.str());
-	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
-	
-	Mout.setLocal(loc, F[loc].Sz());
-	return Mout;
-}
+//MpoQ<Symmetry> Hubbard::
+//Sz (size_t loc) const
+//{
+//	assert(loc<N_sites);
+//	stringstream ss;
+//	ss << "Sz(" << loc << ")";
+//	
+//	MpoQ<Symmetry> Mout(N_sites, {}, labeldummy, ss.str());
+//	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+//	
+//	Mout.setLocal(loc, F[loc].Sz());
+//	return Mout;
+//}
 
 template<typename Symmetry_>
 void Hubbard::

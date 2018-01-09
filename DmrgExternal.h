@@ -27,14 +27,19 @@ string noFormat (qarray<Nq> qnum)
 }
 
 /**Makes half-integers in the output.*/
-string halve (qarray<1> qnum)
+template<size_t Nq>
+string halve (qarray<Nq> qnum)
 {
 	stringstream ss;
 	ss << "(";
-	boost::rational<int> m = boost::rational<int>(qnum[0],2);
-	if      (m.numerator()   == 0) {ss << 0;}
-	else if (m.denominator() == 1) {ss << m.numerator();}
-	else {ss << m;}
+	for (size_t q=0; q<Nq; ++q)
+	{
+		boost::rational<int> m = boost::rational<int>(qnum[q],2);
+		if      (m.numerator()   == 0) {ss << 0;}
+		else if (m.denominator() == 1) {ss << m.numerator();}
+		else {ss << m;}
+		if (q!=Nq-1) {ss << ",";}
+	}
 	ss << ")";
 	return ss.str();
 }
