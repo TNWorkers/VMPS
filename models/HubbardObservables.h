@@ -174,8 +174,8 @@ cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
 	assert(locx1<F.size() and locx2<F.size());
 	stringstream ss;
-	ss << "c†(" << locx1 << "," << locy1 << "," << sigma << ")" 
-	   << "c (" << locx2 << "," << locy2 << "," << sigma << ")";
+	ss << "c†" << sigma << "(" << locx1 << "," << locy1 << "," << ")" 
+	   << "c " << sigma << "(" << locx2 << "," << locy2 << "," << ")";
 	
 	auto cdag = F[locx1].cdag(sigma,locy1);
 	auto c    = F[locx2].c   (sigma,locy2);
