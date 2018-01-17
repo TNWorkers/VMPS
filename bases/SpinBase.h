@@ -42,7 +42,7 @@ public:
 	\param D_input : \f$D=2S+1\f$
 	\param N : if true, the particle number is the good quantum number --> trivial for spins --> all operators have qvacuum()
 	*/
-	SpinBase (size_t L_input, size_t D_input, bool N_IS_QNUMBER_input=false);
+	SpinBase (size_t L_input, size_t D_input, bool DUMMY_QNUM_MODE_input=false);
 	
 	/**amount of states = \f$D^L\f$*/
 	inline size_t dim() const {return N_states;}
@@ -81,15 +81,6 @@ public:
 	SiteOperator<Symmetry,complex<double> > HeisenbergHamiltonian 
 	(Array3d J, Array<double,Dynamic,3> B, Array<double,Dynamic,3> K, Array3d D, bool PERIODIC=false) const;
 	
-//	static const std::array<string,Symmetry::Nq> qlabel;
-//	
-//	static string qformat (qarray<Symmetry::Nq> qnum)
-//	{
-//		if constexpr (Symmetry::IS_TRIVIAL) {return {};}
-//		else if constexpr (Symmetry::Nq==1) {return halve(qnum);}
-//		else                                {return noFormat<Symmetry::Nq>(qnum);}
-//	};
-	
 private:
 	
 	SparseMatrixXd ScompSingleSite (SPINOP_LABEL Sa) const;
@@ -99,20 +90,17 @@ private:
 	size_t N_orbitals;
 	size_t N_states;
 	size_t D;
-	bool N_IS_QNUMBER;
+	bool DUMMY_QNUM_MODE;
 	
 	/**Returns the qarray for a given index of the basis.
 	\param index*/
 	qarray<Symmetry::Nq> qNums (size_t index) const;
 };
 
-//template<> const std::array<string,0> SpinBase<Sym::U0>::qlabel{};
-//template<> const std::array<string,1> SpinBase<Sym::U1<double> >::qlabel{"M"};
-
 template<typename Symmetry>
 SpinBase<Symmetry>::
-SpinBase (size_t L_input, size_t D_input, bool N_IS_QNUMBER_input)
-:N_orbitals(L_input), D(D_input), N_IS_QNUMBER(N_IS_QNUMBER_input)
+SpinBase (size_t L_input, size_t D_input, bool DUMMY_QNUM_MODE_input)
+:N_orbitals(L_input), D(D_input), DUMMY_QNUM_MODE(DUMMY_QNUM_MODE_input)
 {
 	assert(N_orbitals >= 1);
 	assert(D >= 1);
@@ -271,7 +259,7 @@ qNums (size_t index) const
 	if constexpr (Symmetry::IS_TRIVIAL) {return qarray<0>{};}
 	else if constexpr (Symmetry::Nq == 1)
 	{
-		if (N_IS_QNUMBER) {return qarray<1>{0};}
+		if (DUMMY_QNUM_MODE) {return qarray<1>{0};}
 		else              {return qarray<1>{M};}
 	}
 	//return a dummy quantum number for a second symmetry. Format: {other symmetry, magnetization}
@@ -301,7 +289,7 @@ getQ (SPINOP_LABEL Sa) const
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
 	else if constexpr (Symmetry::Nq == 1)
 	{
-		if (N_IS_QNUMBER) {return qarray<1>{0};}
+		if (DUMMY_QNUM_MODE) {return qarray<1>{0};}
 		else
 		{
 			if      (Sa==SX)  {out = {0};}

@@ -18,15 +18,10 @@ using namespace Eigen;
 #include "pivot/DmrgPivotStuff1.h"
 #include <unsupported/Eigen/KroneckerProduct>
 #include "DmrgJanitor.h"
+#include "DmrgExternal.h"
 #if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
 	#include "LapackWrappers.h"
 #endif
-
-template<typename Scalar>
-Scalar localSumTrivial (int i)
-{
-	return 1.;
-}
 
 /**Namespace VMPS to distinguish names from ED equivalents.*/
 namespace VMPS{};
@@ -104,7 +99,7 @@ public:
 	
 	MpoQ (){};
 	
-	MpoQ (std::size_t Lx_input) {this->N_sites = Lx_input; initialize();}
+	MpoQ (size_t Lx_input) {this->N_sites = Lx_input; initialize();}
 	
 	MpoQ (size_t Lx_input, qarray<Nq> Qtot_input,  
 	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="MpoQ", string (*format_input)(qarray<Nq> qnum)=noFormat, 
@@ -135,7 +130,7 @@ public:
 	\param Op : the local operator in question
 	\param SignOp : elementary operator for the sign chain.
 	*/
-	void setLocal (std::size_t loc, const OperatorType& Op, const OperatorType &SignOp);
+	void setLocal (size_t loc, const OperatorType& Op, const OperatorType &SignOp);
 
 	/**Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$
 	\param loc : list of locations
@@ -169,7 +164,7 @@ public:
 	void setFromFlattenedMpoQ (const MpsQ<Sym::U0,Scalar> &Op, bool USE_SQUARE=false);
 	
 	/**Sets the product of a left-side and right-side operator in the Heisenberg picture.*/
-	template<typename OtherSymmetry> void setHeisenbergProduct (const MpoQ<OtherSymmetry,Scalar> Op1, const MpoQ<OtherSymmetry,Scalar> Op2);
+	template<typename OtherSymmetry> void set_HeisenbergPicture (const MpoQ<OtherSymmetry,Scalar> Op1, const MpoQ<OtherSymmetry,Scalar> Op2);
 	///\}
 	
 	//---info stuff---
@@ -217,37 +212,37 @@ public:
 	inline void setQtarget(const qType& Q) {Qtot=Q;};
 
 	/**Returns the local basis at \p loc.*/
-	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
-	inline Qbasis<Symmetry> locBasis__ (size_t loc) const {return qloc__[loc];}
-	inline Qbasis<Symmetry> auxBasis (size_t loc) const {return qaux[loc];}
+	inline vector<qarray<Nq> > locBasis   (size_t loc) const {return qloc[loc];}
+	inline Qbasis<Symmetry>    locBasis__ (size_t loc) const {return qloc__[loc];}
+	inline Qbasis<Symmetry>    auxBasis   (size_t loc) const {return qaux[loc];}
 
 	/**Returns the operator basis at \p loc.*/
-	inline vector<qarray<Nq> > opBasis (size_t loc) const {return qOp[loc];}
+	inline vector<qarray<Nq> > opBasis   (size_t loc) const {return qOp[loc];}
 	inline vector<qarray<Nq> > opBasisSq (size_t loc) const {return qOpSq[loc];}
 
 	/**Returns the full local basis.*/
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
-	inline vector<Qbasis<Symmetry> > locBasis__()   const {return qloc__;}
-	inline vector<Qbasis<Symmetry> > auxBasis()   const {return qaux;}
+	inline vector<Qbasis<Symmetry> >    locBasis__() const {return qloc__;}
+	inline vector<Qbasis<Symmetry> >    auxBasis()   const {return qaux;}
 
 	/**Returns the full operator basis.*/
 	inline vector<vector<qarray<Nq> > > opBasis()   const {return qOp;}
-	inline vector<vector<qarray<Nq> > > opBasisSq()   const {return qOpSq;}
+	inline vector<vector<qarray<Nq> > > opBasisSq() const {return qOpSq;}
 
 	/**Sets the local basis at \p loc.*/
-	inline void setLocBasis(const Qbasis<Symmetry>& q, size_t loc) { qloc__[loc] = q; qloc[loc] = q.qloc(); }
-	inline void setLocBasis(const vector<qType>& q, size_t loc) { qloc[loc] = q; }
+	inline void setLocBasis (const Qbasis<Symmetry> &q, size_t loc) {qloc__[loc]=q; qloc[loc]=q.qloc();}
+	inline void setLocBasis (const vector<qType> &q,    size_t loc) {qloc[loc]=q;}
 
 	/**Sets the operator basis at \p loc.*/
-	inline void setOpBasis(const vector<qType>& q, size_t loc) { qOp[loc] = q; }
+	inline void setOpBasis (const vector<qType>& q, size_t loc) {qOp[loc] = q;}
 
 	/**Sets the full local basis.*/
-	inline void setLocBasis(const vector<Qbasis<Symmetry> >& q) { qloc__ = q; }
-	inline void setLocBasis(const vector<vector<qType> >& q) { qloc = q; }
+	inline void setLocBasis (const vector<Qbasis<Symmetry> > &q) {qloc__=q;}
+	inline void setLocBasis (const vector<vector<qType> >    &q) {qloc=q;}
 
 	/**Sets the full operator basis.*/
-	inline void setOpBasis(const vector<vector<qType> >& q) { qOp = q; }
-	inline void setOpBasisSq(const vector<vector<qType> > &qOpSq_in) {qOpSq = qOpSq_in;}
+	inline void setOpBasis   (const vector<vector<qType> > &q)        {qOp=q;}
+	inline void setOpBasisSq (const vector<vector<qType> > &qOpSq_in) {qOpSq=qOpSq_in;}
 
 	/**Checks whether the MPO is a unitary operator.*/
 	inline bool IS_UNITARY() const {return UNITARY;};
@@ -556,7 +551,7 @@ calc_auxBasis()
 {
 	auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> std::set<qType>
 	{
-		std::size_t L = (l_last < 0 or l_frst >= qOp.size())? 0 : l_last-l_frst+1;
+		size_t L = (l_last < 0 or l_frst >= qOp.size())? 0 : l_last-l_frst+1;
 		std::set<qType > qset;
 		
 		if (L > 0)
@@ -569,7 +564,7 @@ calc_auxBasis()
 				qset_tmp.insert(k);
 			}
 			
-			for (std::size_t l=l_frst+1; l<=l_last; ++l)
+			for (size_t l=l_frst+1; l<=l_last; ++l)
 			{
 				for (const auto& k : qOp[l])
 				for (auto it=qset_tmp.begin(); it!=qset_tmp.end(); ++it)
@@ -596,7 +591,7 @@ calc_auxBasis()
 	//set aux basis on right end to Qtot.
 	qaux[this->N_sites].push_back(Qtot,1);//auxdim());
 	
-	for (std::size_t l=0; l<this->N_sites; ++l)
+	for (size_t l=0; l<this->N_sites; ++l)
 	{
 		Qbasis<Symmetry> qauxtmp;
 		std::unordered_set<qType> uniqueControl;
@@ -609,10 +604,10 @@ calc_auxBasis()
 		{
 			auto qVec = Symmetry::reduceSilent(*ql,k);
 			std::vector<std::set<qType> > qrSetVec; qrSetVec.resize(qVec.size());
-			for (std::size_t i=0; i<qVec.size(); i++)
+			for (size_t i=0; i<qVec.size(); i++)
 			{
 				auto qVectmp = Symmetry::reduceSilent(Symmetry::flip(qVec[i]),Qtot);
-				for (std::size_t j=0; j<qVectmp.size(); j++) { qrSetVec[i].insert(qVectmp[j]); }
+				for (size_t j=0; j<qVectmp.size(); j++) { qrSetVec[i].insert(qVectmp[j]); }
 				for (auto qr = qrSetVec[i].begin(); qr!=qrSetVec[i].end(); qr++)
 				{
 					auto itqr = qrset.find(*qr);
@@ -1823,7 +1818,7 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 template<typename Symmetry, typename Scalar>
 template<typename OtherSymmetry>
 void MpoQ<Symmetry,Scalar>::
-setHeisenbergProduct (const MpoQ<OtherSymmetry,Scalar> Op1, const MpoQ<OtherSymmetry,Scalar> Op2)
+set_HeisenbergPicture (const MpoQ<OtherSymmetry,Scalar> Op1, const MpoQ<OtherSymmetry,Scalar> Op2)
 {
 	assert(Op1.length()   == Op2.length());
 	assert(Op1.locBasis() == Op2.locBasis());
