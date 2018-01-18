@@ -38,7 +38,7 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
             const MpoQ<Symmetry,MpoScalar> &O, 
             const MpsQ<Symmetry,Scalar> &Vket, 
             bool USE_SQUARE = false,  
-            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::RIGHT)
+            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT)
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
@@ -67,8 +67,6 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 //		for (int l=O.length()-1; l>=0; --l)
 		for (size_t l=O.length()-1; l!=-1; --l)
 		{
-			std::cout << B.print() << std::endl << std::endl;
-
 			if (USE_SQUARE == true)
 			{
 				contract_R(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
