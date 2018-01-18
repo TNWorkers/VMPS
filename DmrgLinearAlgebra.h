@@ -180,7 +180,7 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 		
 		if (B.dim == 1)
 		{
-			return B.block[0][0][0].trace();
+			return B.block[0][0][0].trace()*Symmetry::coeff_dot(O1.Qtarget());
 		}
 		else
 		{

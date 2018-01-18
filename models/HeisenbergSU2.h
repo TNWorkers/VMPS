@@ -48,7 +48,6 @@ public:
 	/**
 	   \param Lx_input : chain length
 	   \describe_params
-	   \param Ly_input : amount of legs in ladder
 	*/
 	HeisenbergSU2 (const size_t &L, const vector<Param> &params);
 	///\}
@@ -64,6 +63,8 @@ public:
 	
 	///@{
 	/**Observables.*/
+	MpoQ<Symmetry,double> S (std::size_t locx, std::size_t locy=0);
+	MpoQ<Symmetry,double> Sdag (std::size_t locx, std::size_t locy=0);
 	MpoQ<Symmetry,double> SS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
 	///@}
 	
@@ -76,7 +77,7 @@ protected:
 	const std::map<string,std::any> defaults = 
 	{
 		{"J",-1.}, {"Jprime",0.}, {"Jperp",0.}, {"D",2ul},
-		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
+		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 	};
 	
 	vector<SpinBase<Symmetry> > B;
@@ -112,6 +113,38 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, false, P.get<bool>("OPEN_BC"));
 	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
+}
+
+MpoQ<Sym::SU2<double> > HeisenbergSU2::
+S (std::size_t locx, std::size_t locy)
+{
+	assert(locx<this->N_sites);
+	std::stringstream ss;
+	ss << "S(" << locx << "," << locy << ")";
+
+	SiteOperator Op = B[locx].S(locy).plain<double>();
+
+	MpoQ<Symmetry> Mout(N_sites, Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
+	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis(),l); }
+
+	Mout.setLocal(locx,Op);
+	return Mout;
+}
+
+MpoQ<Sym::SU2<double> > HeisenbergSU2::
+Sdag (std::size_t locx, std::size_t locy)
+{
+	assert(locx<this->N_sites);
+	std::stringstream ss;
+	ss << "Sdag(" << locx << "," << locy << ")";
+
+	SiteOperator Op = B[locx].Sdag(locy).plain<double>();
+
+	MpoQ<Symmetry> Mout(N_sites, Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
+	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis(),l); }
+
+	Mout.setLocal(locx,Op);
+	return Mout;
 }
 
 MpoQ<Sym::SU2<double> > HeisenbergSU2::
