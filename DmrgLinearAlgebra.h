@@ -171,8 +171,8 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 		B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), Qtarget});
 		for (size_t l=O1.length()-1; l!=-1; --l)
 		{
-			contract_R(B, Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), O1.locBasis(l), O1.opBasis(l), O2.opBasis(l),
-					   O1.auxBasis(l+1), O2.auxBasis(l+1), O1.auxBasis(l), O2.auxBasis(l), Bnext);
+			contract_R(B, Vbra.A_at(l), O2.W_at(l), O1.W_at(l), Vket.A_at(l), O1.locBasis(l), O2.opBasis(l), O1.opBasis(l),
+					   O2.auxBasis(l+1), O1.auxBasis(l+1), O2.auxBasis(l), O1.auxBasis(l), Bnext);
 			B.clear();
 			B = Bnext;
 			Bnext.clear();

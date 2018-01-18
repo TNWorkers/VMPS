@@ -35,9 +35,9 @@ compute(const Operator &Op, const std::vector<qType> &blocks, Eigen::Decompositi
 	MatrixType Mtmp,eigva,eigve;
 	for(std::size_t nu=0; nu<Op.data().size(); nu++)
 	{
-		cout << "before: " << Op.data().in[nu] << endl;
+		// cout << "before: " << Op.data().in[nu] << endl;
 		if(blocks.size()>0) { if(auto it = std::find(blocks.begin(),blocks.end(),Op.data().in[nu]); it == blocks.end()) {continue;} }
-		cout << "after: " << Op.data().in[nu] << endl;
+		// cout << "after: " << Op.data().in[nu] << endl;
 		Mtmp = Op.data().block[nu];
 		Eigen::SelfAdjointEigenSolver<MatrixType> John(Mtmp,opt);
 		eigva = John.eigenvalues();//.asDiagonal();
