@@ -8,32 +8,32 @@
 #include "symmetry/qbasis.h"
 #include "symmetry/SU2xU1.h"
 
-namespace fermions {
-	
-/** \class BaseSU2xU1
-  * \ingroup Fermions
+#include "bases/FermionBase.h"
+
+/** \class FermionBase<Sym::SU2xU1<double> >
+  * \ingroup Bases
   *
   * This class provides the local operators for fermions in a SU(2)⊗U(1) block representation.
   *
   * \describe_Scalar
   *
-  * \todo Implement the operators for more than one orbital.
   */
-template<typename Scalar = double>
-class BaseSU2xU1
+template<>
+class FermionBase<Sym::SU2xU1<double> >
 {
 	typedef Eigen::Index Index;
+	typedef double Scalar;
 	typedef typename Sym::SU2xU1<Scalar> Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
 	typedef typename Symmetry::qType qType;
 public:
 	
-	BaseSU2xU1(){};
+	FermionBase(){};
 	
 	/**
 	\param L_input : the amount of orbitals
 	\param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis*/
-	BaseSU2xU1 (std::size_t L_input, bool U_IS_INFINITE=false);
+	FermionBase (std::size_t L_input, bool U_IS_INFINITE=false);
 	
 	/**amount of states = \f$4^L\f$*/
 	inline Index dim() const {return static_cast<Index>(N_states);}
@@ -150,9 +150,8 @@ private:
 	Operator pdag_1s; //pairing adjoint
 };
 
-template<typename Scalar>
-BaseSU2xU1<Scalar>::
-BaseSU2xU1 (std::size_t L_input, bool U_IS_INFINITE)
+FermionBase<Sym::SU2xU1<double> >::
+FermionBase (std::size_t L_input, bool U_IS_INFINITE)
 :N_orbitals(L_input)
 {
 	assert(N_orbitals>=1);
@@ -223,8 +222,7 @@ BaseSU2xU1 (std::size_t L_input, bool U_IS_INFINITE)
 	}
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 c (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return c_1s; }
@@ -247,16 +245,14 @@ c (std::size_t orbital) const
 		return out;
 	}
 }
-	
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 cdag (std::size_t orbital) const
 {
 	return c(orbital).adjoint();
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 a (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return a_1s; }
@@ -279,16 +275,14 @@ a (std::size_t orbital) const
 		return out;
 	}
 }
-	
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 adag (std::size_t orbital) const
 {
 	return a(orbital).adjoint();
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 sign (std::size_t orb1, std::size_t orb2) const
 {
 	if(N_orbitals == 1) { return F_1s; }
@@ -310,8 +304,7 @@ sign (std::size_t orb1, std::size_t orb2) const
 	}
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 sign_local (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return F_1s; }
@@ -333,8 +326,7 @@ sign_local (std::size_t orbital) const
 	}
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 n (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return n_1s; }
@@ -356,8 +348,7 @@ n (std::size_t orbital) const
 	}
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 d (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return d_1s; }
@@ -379,8 +370,7 @@ d (std::size_t orbital) const
 	}
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 S (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return S_1s; }
@@ -404,15 +394,13 @@ S (std::size_t orbital) const
 	}
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 Sdag (std::size_t orbital) const
 {
 	return S(orbital).adjoint();
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 Eta (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return p_1s; }
@@ -436,15 +424,13 @@ Eta (std::size_t orbital) const
 	}
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 Etadag (std::size_t orbital) const
 {
 	return Eta(orbital).adjoint();
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 Id (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return Id_1s; }
@@ -456,8 +442,7 @@ Id (std::size_t orbital) const
 	}
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
 {
 	Operator Mout({1,0},TensorBasis);
@@ -497,8 +482,7 @@ HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
 	return Mout;
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2xU1<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2xU1<Scalar>::
+SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xU1<double> >::
 HubbardHamiltonian (Eigen::ArrayXd Uorb, Eigen::ArrayXd Eorb, double t, double V, double J, bool PERIODIC) const
 {
 	auto Mout = HubbardHamiltonian(0.,t,V,J,PERIODIC);
@@ -523,5 +507,4 @@ HubbardHamiltonian (Eigen::ArrayXd Uorb, Eigen::ArrayXd Eorb, double t, double V
 	return Mout;
 }
 
-} //end namespace fermions
 #endif

@@ -2,7 +2,7 @@
 #define STRAWBERRY_HEISENBERGSU2
 
 #include "symmetry/SU2.h"
-#include "bases/spins/BaseSU2.h"
+#include "bases/SpinBaseSU2.h"
 #include "Mpo.h"
 #include "DmrgExternal.h"
 #include "ParamHandler.h" // from HELPERS
@@ -57,7 +57,7 @@ public:
 	   \param B : Base class from which the local operators are received
 	   \param P : The parameters
 	*/
-	static HamiltonianTermsXd<Symmetry> set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc=0);
+	static HamiltonianTermsXd<Symmetry> set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc=0);
 	
 	/**Labels the conserved quantum number as "S".*/
 	static const std::array<string,1> Stotlabel;
@@ -79,7 +79,7 @@ protected:
 		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
 	};
 	
-	vector<spins::BaseSU2<> > B;
+	vector<SpinBase<Symmetry> > B;
 };
 
 const std::array<string,1> HeisenbergSU2::Stotlabel{"S"};
@@ -99,7 +99,7 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		
-		B[l] = spins::BaseSU2<>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
+		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		setLocBasis(B[l].get_basis(),l);
 		
 		Terms[l] = set_operators(B[l],P,l%Lcell);
@@ -154,7 +154,7 @@ validate (qarray<1> qnum) const
 }
 
 HamiltonianTermsXd<Sym::SU2<double> > HeisenbergSU2::
-set_operators (const spins::BaseSU2<> &B, const ParamHandler &P, size_t loc)
+set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry> Terms;
 	Terms.name = "Heisenberg";

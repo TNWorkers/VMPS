@@ -1,36 +1,35 @@
-#ifndef BASE_SU2_H_
-#define BASE_SU2_H_
+#ifndef SPINBASESU2_H_
+#define SPINBASESU2_H_
 
 #include "symmetry/SU2.h"
 #include "symmetry/qbasis.h"
 #include "tensors/SiteOperatorQ.h"
 
-namespace spins {
-	
-/** \class BaseSU2
-  * \ingroup Spins
+#include "bases/SpinBase.h"
+
+/** \class SpinBase<Sym::SU2<double> >
+  * \ingroup Bases
   *
   * This class provides the local operators for spins (magnitude \p D) in a SU(2) block representation for \p N_Orbitals sites.
   *
-  * \describe_Scalar
-  *
   */
-template<typename Scalar=double>
-class BaseSU2
+template<>
+class SpinBase<Sym::SU2<double> >
 {
 	typedef Eigen::Index Index;
+	typedef double Scalar;
 	typedef typename Sym::SU2<Scalar> Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
 	// typedef SiteOperatorQ<Symmetry,Eigen::SparseMatrix<Scalar> > Operator;
 	typedef typename Symmetry::qType qType;
 	
 public:
-	BaseSU2(){};
+	SpinBase(){};
 	
 	/**
 	\param L_input : amount of sites
 	\param D_input : \f$D=2S+1\f$*/
-	BaseSU2 (std::size_t L_input, std::size_t D_input = 2);
+	SpinBase (std::size_t L_input, std::size_t D_input = 2);
 
 	/**amount of states = \f$D^L\f$*/
 	inline std::size_t dim() const {return N_states;}
@@ -75,9 +74,8 @@ private:
 	std::size_t D;
 };
 
-template<typename Scalar>
-BaseSU2<Scalar>::
-BaseSU2 (std::size_t L_input, std::size_t D_input)
+SpinBase<Sym::SU2<double> >::
+SpinBase (std::size_t L_input, std::size_t D_input)
 :N_orbitals(L_input), D(D_input)
 {
 	assert(N_orbitals>=1 and D>=2);
@@ -110,8 +108,7 @@ BaseSU2 (std::size_t L_input, std::size_t D_input)
 	}
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
+SiteOperatorQ<Sym::SU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<double> >::
 S( std::size_t orbital ) const
 {
 	if(N_orbitals == 1) { return S_1s; }
@@ -135,15 +132,13 @@ S( std::size_t orbital ) const
 	}
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
+SiteOperatorQ<Sym::SU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<double> >::
 Sdag( std::size_t orbital ) const
 {
 	return S(orbital).adjoint();
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
+SiteOperatorQ<Sym::SU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<double> >::
 Id() const
 {
 	if(N_orbitals == 1) { return Id_1s; }
@@ -155,8 +150,7 @@ Id() const
 	}
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
+SiteOperatorQ<Sym::SU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<double> >::
 HeisenbergHamiltonian (double J, bool PERIODIC) const
 {	
 	Operator Mout({1},TensorBasis);
@@ -183,8 +177,7 @@ HeisenbergHamiltonian (double J, bool PERIODIC) const
 	return Mout;
 }
 
-template<typename Scalar>
-SiteOperatorQ<Sym::SU2<Scalar>,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > BaseSU2<Scalar>::
+SiteOperatorQ<Sym::SU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<double> >::
 HeisenbergHamiltonian (Eigen::MatrixXd J) const
 {	
 	Operator Mout({1},TensorBasis);
@@ -199,6 +192,5 @@ HeisenbergHamiltonian (Eigen::MatrixXd J) const
 	}
 	return Mout;
 }
-	
-} //end namespace spins
+
 #endif

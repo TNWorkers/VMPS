@@ -3,8 +3,8 @@
 
 #include "ParamHandler.h" // from HELPERS
 
-#include "bases/spins/BaseSU2xU1.h"
-#include "bases/fermions/BaseSU2xU1.h"
+#include "bases/SpinBaseSU2xU1.h"
+#include "bases/FermionBaseSU2xU1.h"
 #include "Mpo.h"
 
 namespace VMPS
@@ -46,7 +46,7 @@ public:
 	   \param F : Base class from which the local fermion-operators are received
 	   \param P : The parameters
 	*/
-	static HamiltonianTermsXd<Symmetry> set_operators (const spins::BaseSU2xU1<> &B, const fermions::BaseSU2xU1<> &F,
+	static HamiltonianTermsXd<Symmetry> set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F,
 	                                                    const ParamHandler &P, size_t loc=0);
 
 	/**Makes half-integers in the output for the magnetization quantum number.*/
@@ -95,8 +95,8 @@ public:
 
 protected:
 
-	vector<fermions::BaseSU2xU1<> > F;
-	vector<spins::BaseSU2xU1<> > B;
+	vector<FermionBase<Symmetry> > F;
+	vector<SpinBase<Symmetry> > B;
 };
 
 const std::map<string,std::any> KondoSU2xU1::defaults =
@@ -126,8 +126,8 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		
-		F[l] = fermions::BaseSU2xU1<>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell))); //true means basis n,m
-		B[l] = spins::BaseSU2xU1<>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
+		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell))); //true means basis n,m
+		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		
 		setLocBasis(B[l].get_basis().combine(F[l].get_basis()),l);
 		
@@ -164,7 +164,7 @@ N_halveM (qType qnum)
 }
 
 HamiltonianTermsXd<Sym::SU2xU1<double> > KondoSU2xU1::
-set_operators (const spins::BaseSU2xU1<> &B, const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t loc)
+set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry> Terms;
 

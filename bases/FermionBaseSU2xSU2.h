@@ -8,19 +8,18 @@
 #include "symmetry/qbasis.h"
 #include "symmetry/SU2xSU2.h"
 
-#include "FermionBase.h"
+#include "bases/FermionBase.h"
 
 enum SUB_LATTICE {A=0,B=1};
 
 	
-/** \class FermionBase
+/** \class FermionBase<Sym::SU2xSU2<double> >
   * \ingroup Fermions
   *
-  * This class provides the local operators for fermions in a SU(2)⊗U(1) block representation.
+  * This class provides the local operators for fermions in a SU(2)⊗SU(2) block representation.
   *
   * \describe_Scalar
   *
-  * \todo Implement the operators for more than one orbital.
   */
 template<>
 class FermionBase<Sym::SU2xSU2<double> >

@@ -27,7 +27,12 @@ std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 	return s;
 }
 
-/**This constructs the operators for L_input spins with local dimension D=2S+1.*/
+/** \class SpinBase<Sym::SU2<double> >
+  * \ingroup Bases
+  *
+  * This class provides the local operators for spins (magnitude \p D) for \p N_Orbitals sites.
+  *
+  */
 template<typename Symmetry>
 class SpinBase
 {

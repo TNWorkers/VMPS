@@ -3,7 +3,7 @@
 
 #include <variant>
 
-#include "bases/fermions/BaseSU2xU1.h"
+#include "bases/FermionBaseSU2xU1.h"
 #include "symmetry/SU2xU1.h"
 #include "Mpo.h"
 #include "DmrgExternal.h"
@@ -49,7 +49,7 @@ public:
 	HubbardSU2xU1() : MpoQ(){};
 	HubbardSU2xU1 (const size_t &L, const vector<Param> &params);
 	
-	static HamiltonianTermsXd<Symmetry> set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t loc=0);
+	static HamiltonianTermsXd<Symmetry> set_operators (const FermionBase<Symmetry> &F, const ParamHandler &P, size_t loc=0);
 	
 	/**Labels the conserved quantum numbers as \f$N_\uparrow\f$, \f$N_\downarrow\f$.*/
 	static const std::array<string,Symmetry::Nq> SNlabel;
@@ -76,7 +76,7 @@ public:
 	
 protected:
 	
-	vector<fermions::BaseSU2xU1<> > F;
+	vector<FermionBase<Symmetry> > F;
 };
 
 const std::array<string,Sym::SU2xU1<double>::Nq> HubbardSU2xU1::SNlabel{"S","N"};
@@ -105,7 +105,7 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		
-		F[l] = fermions::BaseSU2xU1<>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
+		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
 		setLocBasis(F[l].get_basis(),l);
 		
 		Terms[l] = set_operators(F[l],P,l%Lcell);
@@ -121,7 +121,7 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 }
 
 HamiltonianTermsXd<Sym::SU2xU1<double> > HubbardSU2xU1::
-set_operators (const fermions::BaseSU2xU1<> &F, const ParamHandler &P, size_t loc)
+set_operators (const FermionBase<Symmetry> &F, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry> Terms;
 	

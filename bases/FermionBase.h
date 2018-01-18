@@ -9,7 +9,14 @@
 
 #include "bases/SpinBase.h"
 
-/**This basically just constructs the full Hubbard model on \p L_input lattice sites.*/
+/** \class FermionBase
+  * \ingroup Bases
+  *
+  * This class provides the local operators for fermions.
+  *
+  * \describe_Scalar
+  *
+  */
 template<typename Symmetry>
 class FermionBase
 {
