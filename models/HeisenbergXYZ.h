@@ -29,7 +29,7 @@ namespace VMPS
   \note \f$J<0\f$ is antiferromagnetic
   \note Due to the \f$S_y\f$ operator, this MPO is complex.
 */
-class HeisenbergXYZ : public MpoQ<Sym::U0,complex<double> >
+class HeisenbergXYZ : public MpoQ<Sym::U0,complex<double> >, public HeisenbergObservables<Sym::U0>
 {
 public:
 	typedef Sym::U0 Symmetry;
@@ -44,20 +44,10 @@ public:
 	HeisenbergXYZ (const size_t &L, const vector<Param> &params);
 	///\}
 	
-//	///@{
-//	/**Observables.*/
-//	MpoQ<Symmetry> SzSz (size_t loc1, size_t loc2);
-//	MpoQ<Symmetry> Sz   (size_t loc);
-//	///@}
-	
 	template<typename Symmetry_>
 	void add_operators (HamiltonianTerms<Symmetry_,complex<double> > &Terms, const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
 	
 	static const std::map<string,std::any> defaults;
-	
-protected:
-	
-	SpinBase<Symmetry> B;
 };
 
 const std::map<string,std::any> HeisenbergXYZ::defaults = 
@@ -81,7 +71,8 @@ const std::map<string,std::any> HeisenbergXYZ::defaults =
 
 HeisenbergXYZ::
 HeisenbergXYZ (const size_t &L, const vector<Param> &params)
-:MpoQ<Symmetry,complex<double> > (L, qarray<0>({}), labeldummy, "")
+:MpoQ<Symmetry,complex<double> > (L, qarray<0>({}), labeldummy, ""),
+ HeisenbergObservables(L,params,HeisenbergXYZ::defaults)
 {
 	ParamHandler P(params,HeisenbergXYZ::defaults);
 	
@@ -93,14 +84,12 @@ HeisenbergXYZ (const size_t &L, const vector<Param> &params)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		
-		B = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
-		setLocBasis(B.get_basis(),l);
+		setLocBasis(B[l].get_basis(),l);
 		
-		auto Terms_tmp = HeisenbergU1::set_operators(B,P,l%Lcell);
-		Heisenberg::add_operators(Terms_tmp,B,P,l%Lcell);
+		auto Terms_tmp = HeisenbergU1::set_operators(B[l],P,l%Lcell);
+		Heisenberg::add_operators(Terms_tmp,B[l],P,l%Lcell);
 		Terms[l] = Terms_tmp.cast<complex<double> >();
-		add_operators(Terms[l],B,P,l%Lcell);
-		
+		add_operators(Terms[l],B[l],P,l%Lcell);
 		this->Daux = Terms[l].auxdim();
 		
 		G.push_back(Generator(Terms[l]));

@@ -566,34 +566,34 @@ typename Symmetry::qType FermionBase<Symmetry>::
 getQ (SPIN_INDEX sigma, int Delta) const
 {
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
-	if constexpr(Symmetry::Nq == 1) //return particle number as good quantum number.
-				{
-					typename Symmetry::qType out;
-					if      (sigma==UP)     {out = {Delta};}
-					else if (sigma==DN)     {out = {Delta};}
-					else if (sigma==UPDN)   {out = {2*Delta};}
-					else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
-					return out;
-				}
-	if constexpr(Symmetry::Nq == 2)
-				{
-					typename Symmetry::qType out;
-					if (NM)
-					{
-						if      (sigma==UP)     {out = {Delta,Delta};}
-						else if (sigma==DN)     {out = {Delta,-Delta};}
-						else if (sigma==UPDN)   {out = {2*Delta,Delta};}
-						else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
-					}
-					else
-					{
-						if      (sigma==UP)     {out = {Delta,0};}
-						else if (sigma==DN)     {out = {0,Delta};}
-						else if (sigma==UPDN)   {out = {Delta,Delta};}
-						else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
-					}
-					return out;
-				}
+	if constexpr (Symmetry::Nq == 1) //return particle number as good quantum number.
+	{
+		typename Symmetry::qType out;
+		if      (sigma==UP)     {out = {Delta};}
+		else if (sigma==DN)     {out = {Delta};}
+		else if (sigma==UPDN)   {out = {2*Delta};}
+		else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
+		return out;
+	}
+	if constexpr (Symmetry::Nq == 2)
+	{
+		typename Symmetry::qType out;
+		if (NM)
+		{
+			if      (sigma==UP)     {out = {Delta,Delta};}
+			else if (sigma==DN)     {out = {Delta,-Delta};}
+			else if (sigma==UPDN)   {out = {2*Delta,Delta};}
+			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
+		}
+		else
+		{
+			if      (sigma==UP)     {out = {Delta,0};}
+			else if (sigma==DN)     {out = {0,Delta};}
+			else if (sigma==UPDN)   {out = {Delta,Delta};}
+			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
+		}
+		return out;
+	}
 	static_assert("You inserted a Symmetry which can not be handled by FermionBase.");
 }
 

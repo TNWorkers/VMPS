@@ -8,6 +8,7 @@
 #include "bases/SpinBase.h"
 #include "DmrgExternal.h"
 #include "ParamHandler.h" // from HELPERS
+#include "models/HeisenbergObservables.h"
 
 namespace VMPS
 {
@@ -33,7 +34,7 @@ namespace VMPS
   \note \f$J<0\f$ is antiferromagnetic
   \note Homogeneous \f$J\f$ is required here. For a XXZ couplings, use VMPS::HeisenbergU1XXZ.
 */
-class HeisenbergU1 : public MpoQ<Sym::U1<double>,double>
+class HeisenbergU1 : public MpoQ<Sym::U1<double>,double>, public HeisenbergObservables<Sym::U1<double> >
 {
 public:
 	typedef Sym::U1<double> Symmetry;
@@ -44,9 +45,11 @@ private:
 	
 public:
 	
+	///@{
 	HeisenbergU1() : MpoQ<Symmetry>() {};
 	HeisenbergU1 (const size_t &L);
 	HeisenbergU1 (const size_t &L, const vector<Param> &params);
+	///@}
 	
 	/**
 	   \param B : Base class from which the local operators are received
@@ -61,21 +64,11 @@ public:
 	/**Labels the conserved quantum number as "M".*/
 	static const std::array<string,1> maglabel;
 	
-	///@{
-	/**Observables*/
-	MpoQ<Symmetry> Sz (size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	///@}
-
 	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an MpsQ.
 	\returns \p true if valid, \p false if not*/
 	bool validate (qarray<1> qnum) const;
 	
 	static const std::map<string,std::any> defaults;
-	
-protected:
-	
-	vector<SpinBase<Symmetry> > B;
 };
 
 const std::array<string,1> HeisenbergU1::maglabel{"M"};
@@ -99,27 +92,25 @@ qOp ()
 
 HeisenbergU1::
 HeisenbergU1 (const size_t &L)
-:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve)
+:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve<1>),
+ HeisenbergObservables(L)
 {}
 
 HeisenbergU1::
 HeisenbergU1 (const size_t &L, const vector<Param> &params)
-:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, "", halve)
+:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, "", halve<1>),
+ HeisenbergObservables(L,params,HeisenbergU1::defaults)
 {
-	qarray<1> qtest{2};
-	
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
 	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
-	B.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		
-		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		setLocBasis(B[l].get_basis(),l);
 		
 		Terms[l] = set_operators(B[l],P,l%Lcell);
@@ -131,34 +122,6 @@ HeisenbergU1 (const size_t &L, const vector<Param> &params)
 	
 	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-}
-
-MpoQ<Sym::U1<double> > HeisenbergU1::
-Sz (size_t locx, size_t locy) const
-{
-	assert(locx<N_sites and locy<B[locx].dim());
-	stringstream ss;
-	ss << "Sz(" << locx << "," << locy << ")";
-	
-	MpoQ<Symmetry> Mout(N_sites, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, ss.str(), halve);
-	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
-	
-	Mout.setLocal(locx, B[locx].Scomp(SZ,locy));
-	return Mout;
-}
-
-MpoQ<Sym::U1<double> > HeisenbergU1::
-SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	assert(locx1<N_sites and locx2<N_sites and locy1<B[locx1].dim() and locy2<B[locx2].dim());
-	stringstream ss;
-	ss << "Sz(" << locx1 << "," << locy1 << ")" <<  "Sz(" << locx2 << "," << locy2 << ")";
-	
-	MpoQ<Symmetry> Mout(N_sites, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, ss.str(), halve);
-	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
-	
-	Mout.setLocal({locx1, locx2}, {B[locx1].Scomp(SZ,locy1), B[locx2].Scomp(SZ,locy2)});
-	return Mout;
 }
 
 bool HeisenbergU1::

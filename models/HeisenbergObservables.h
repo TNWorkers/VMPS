@@ -1,0 +1,108 @@
+#ifndef HEISENBERGOBSERVABLES
+#define HEISENBERGOBSERVABLES
+
+#include "Mpo.h"
+#include "ParamHandler.h" // from HELPERS
+#include "bases/SpinBase.h"
+#include "DmrgLinearAlgebra.h"
+#include "DmrgExternal.h"
+
+template<typename Symmetry>
+class HeisenbergObservables
+{
+public:
+	
+	///@{
+	HeisenbergObservables(){};
+	HeisenbergObservables (const size_t &L); // for inheritance purposes
+	HeisenbergObservables (const size_t &L, const vector<Param> &params, const std::map<string,std::any> &defaults);
+	///@}
+	
+	///@{
+	MpoQ<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	MpoQ<Symmetry> ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	///@}
+	
+	///@{
+	MpoQ<Symmetry> Sz (size_t locx, size_t locy=0) const {return Scomp(SZ,locx,locy);};
+	MpoQ<Symmetry> Sx (size_t locx, size_t locy=0) const {return Scomp(SX,locx,locy);};
+	MpoQ<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2);};
+	MpoQ<Symmetry> SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2);};
+	///@}
+	
+	// <SvecSvec>
+	// = <SxSx> + <SySy> + <SzSz>
+	// = <S+S-> + <S-S+> + <SzSz>
+	// = Re<S+S-> + <SzSz> for complex states
+	// = <S+S-> + <SzSz> for real states
+	template<typename MpsType> double SvecSvecAvg (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	
+protected:
+	
+	vector<SpinBase<Symmetry> > B;
+};
+
+template<typename Symmetry>
+HeisenbergObservables<Symmetry>::
+HeisenbergObservables (const size_t &L)
+{
+	B.resize(L);
+}
+
+template<typename Symmetry>
+HeisenbergObservables<Symmetry>::
+HeisenbergObservables (const size_t &L, const vector<Param> &params, const std::map<string,std::any> &defaults)
+{
+	ParamHandler P(params,defaults);
+	size_t Lcell = P.size();
+	B.resize(L);
+	
+	for (size_t l=0; l<L; ++l)
+	{
+		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
+	}
+}
+
+template<typename Symmetry>
+MpoQ<Symmetry> HeisenbergObservables<Symmetry>::
+Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+{
+	assert(locx<B.size() and locy<B[locx].dim());
+	stringstream ss;
+	ss << Sa << "(" << locx << "," << locy << ")";
+	SiteOperator Op = B[locx].Scomp(Sa,locy);
+	
+	MpoQ<Symmetry> Mout(B.size(), Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
+	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
+	
+	Mout.setLocal(locx,Op);
+	return Mout;
+}
+
+template<typename Symmetry>
+MpoQ<Symmetry> HeisenbergObservables<Symmetry>::
+ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	assert(locx1<B.size() and locx2<B.size() and locy1<B[locx1].dim() and locy2<B[locx2].dim());
+	stringstream ss;
+	ss << Sa1 << "(" << locx1 << "," << locy1 << ")" << Sa2 << "(" << locx2 << "," << locy2 << ")";
+	SiteOperator Op1 = B[locx1].Scomp(Sa1,locy1);
+	SiteOperator Op2 = B[locx2].Scomp(Sa2,locy2);
+	
+	MpoQ<Symmetry> Mout(B.size(), Op1.Q+Op2.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
+	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
+	
+	Mout.setLocal({locx1,locx2}, {Op1,Op2});
+	return Mout;
+}
+
+template<typename Symmetry>
+template<typename MpsType>
+double HeisenbergObservables<Symmetry>::
+SvecSvecAvg (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	return isReal(avg(Psi,SzSz(locx1,locx2,locy1,locy2),Psi))+
+	       isReal(avg(Psi,SpSm(locx1,locx2,locy1,locy2),Psi));
+}
+
+#endif

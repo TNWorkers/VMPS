@@ -85,19 +85,21 @@ template<typename Hamiltonian, typename Eigenstate>
 void print_mag (const Hamiltonian &H, const Eigenstate &g)
 {
 	VectorXd SZcell(L);
-//	VectorXd SXcell(L);
+	VectorXd SXcell(L);
 	lout << endl;
 	lout << "magnetization within unit cell (i.e. staggered): " << endl;
+	
 	for (size_t l=0; l<L; ++l)
 	{
 		SZcell(l) = avg(g.state, H.Sz(l), g.state);
-//		SXcell(l) = avg(g.state, H.Scomp(SX,l), g.state);
+		SXcell(l) = avg(g.state, H.Scomp(SX,l), g.state);
 		lout << "<Sz("<<l<<")>=" << SZcell(l) << endl;
-//		lout << "<Sx("<<l<<")>=" << SXcell(l) << endl;
+		lout << "<Sx("<<l<<")>=" << SXcell(l) << endl;
 	}
+	
 	lout << "total magnetization: " << endl;
 	lout << "<Sz>=" << SZcell.sum() << endl;
-//	lout << "<Sx>=" << SXcell.sum() << endl;
+	lout << "<Sx>=" << SXcell.sum() << endl;
 }
 
 int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (double) -V (double) -Dinit (int) -Dlimit (int) -D (double)
@@ -153,7 +155,7 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	for (size_t l=0; l<L; ++l)
 	{
 		lout << "<Sz("<<l<<")>=" << avg(g.state, Ising.Sz(l), g.state) << endl;
-//		lout << "<Sx("<<l<<")>=" << avg(g.state, Ising.Scomp(SX,l), g.state) << endl;
+		lout << "<Sx("<<l<<")>=" << avg(g.state, Ising.Sx(l), g.state) << endl;
 	}
 	lout << TCOLOR(BLACK) << endl;
 	
@@ -180,10 +182,8 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	for (size_t d=1; d<dmax; ++d)
 	{
 		HEIS Htmp(d+1,{{"Bz",Bz},{"Bx",Bx},{"OPEN_BC",false}});
-		double SzSz = avg(g.state, Htmp.SzSz(0,d), g.state);
-//		double SpSm = avg(g.state, Htmp.SaSa(0,SP,d,SM), g.state);
-//		lout << "d=" << d << ", <SvecSvec>=" << SzSz+SpSm << endl;
-		lout << "d=" << d << ", <SvecSvec>=" << SzSz << endl;
+		double SvecSvec = Htmp.SvecSvecAvg(g.state,0,d);
+		lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
 	}
 	lout << endl;
 	

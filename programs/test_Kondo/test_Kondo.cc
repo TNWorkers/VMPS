@@ -103,11 +103,11 @@ int main (int argc, char* argv[])
 	params.push_back({"J",J});
 	params.push_back({"t",t});
 	params.push_back({"U",U});
-	// params.push_back({"Bz",Bz,0});
-	// params.push_back({"Bx",Bx,0});
+	//params.push_back({"Bz",Bz,0});
+	//params.push_back({"Bx",Bx,0});
 	params.push_back({"D",2ul,0});
 	params.push_back({"CALC_SQUARE",false});
-
+	
 	for (size_t l=1; l<L; ++l)
 	{
 		params.push_back({"D",2ul,l});
@@ -121,20 +121,28 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::KondoU1::StateXd> g_U1;
 	
 	VMPS::KondoU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 1000*tol_eigval,1000*tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
-
-	Eigen::ArrayXd d_U1(L); d_U1.setZero();
-	Eigen::ArrayXd n_U1(L); n_U1.setZero();
-	for(size_t i=0; i<L; i++) { d_U1(i) = avg(g_U1.state, H_U1.d(i), g_U1.state); n_U1(i) = avg(g_U1.state, H_U1.n(i), g_U1.state); }
-
-	Eigen::ArrayXXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
-	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U1(i,j) = 3.*avg(g_U1.state, H_U1.SimpSsub(i,SZ,j,SZ), g_U1.state); }
-
+	DMRG_U1.edgeState(H_U1, g_U1, {N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 1000.*tol_eigval,1000.*tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
+	
+	VectorXd d_U1(L); d_U1.setZero();
+	VectorXd n_U1(L); n_U1.setZero();
+	for (size_t i=0; i<L; ++i)
+	{
+		d_U1(i) = avg(g_U1.state, H_U1.d(i), g_U1.state); 
+		n_U1(i) = avg(g_U1.state, H_U1.n(i), g_U1.state);
+	}
+	
+	MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
+	for (size_t i=0; i<L; ++i)
+	for (size_t j=0; j<L; ++j)
+	{
+		SpinCorr_U1(i,j) = 3.*avg(g_U1.state, H_U1.SimpSsub(SZ,SZ,i,j), g_U1.state);
+	}
+	
 	t_U1 = Watch_U1.time();
 	
 //	// observables
 //	
-//	Eigen::MatrixXd SpinCorr_U0(L,L); SpinCorr_U0.setZero();
+//	MatrixXd SpinCorr_U0(L,L); SpinCorr_U0.setZero();
 //	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U0(i,j) = 3*avg(g_U0.state, H_U0.SzSz(i,j), g_U0.state); }
 //	
 //	// compressor
@@ -162,20 +170,32 @@ int main (int argc, char* argv[])
 	
 	VMPS::KondoU1xU1::Solver DMRG_U1xU1(VERB);
 	DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {N,M}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
-
-	Eigen::ArrayXd d_U1xU1(L); d_U1xU1.setZero();
-	Eigen::ArrayXd n_U1xU1(L); n_U1xU1.setZero();
-	for(size_t i=0; i<L; i++) { d_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.d(i), g_U1xU1.state); n_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.n(i), g_U1xU1.state); }
-
-	Eigen::ArrayXXd SpinCorr_U1xU1(L,L); SpinCorr_U1xU1.setZero();
-	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U1xU1(i,j) = 3.*avg(g_U1xU1.state, H_U1xU1.SimpSsub(i,SZ,j,SZ), g_U1xU1.state); }
-
-	Eigen::ArrayXXd densitiy_matrix_U1xU1(L,L); densitiy_matrix_U1xU1.setZero();
-	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { densitiy_matrix_U1xU1(i,j) = 2.*avg(g_U1xU1.state, H_U1xU1.cdagc(UP,i,j), g_U1xU1.state); }
+	
+	VectorXd d_U1xU1(L); d_U1xU1.setZero();
+	VectorXd n_U1xU1(L); n_U1xU1.setZero();
+	for (size_t i=0; i<L; i++)
+	{
+		d_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.d(i), g_U1xU1.state);
+		n_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.n(i), g_U1xU1.state);
+	}
+	
+	MatrixXd SpinCorr_U1xU1(L,L); SpinCorr_U1xU1.setZero();
+	for (size_t i=0; i<L; i++)
+	for (size_t j=0; j<L; j++)
+	{
+		SpinCorr_U1xU1(i,j) = 3.*avg(g_U1xU1.state, H_U1xU1.SimpSsub(SZ,SZ,i,j), g_U1xU1.state);
+	}
+	
+	MatrixXd densitiy_matrix_U1xU1(L,L); densitiy_matrix_U1xU1.setZero();
+	for (size_t i=0; i<L; i++)
+	for (size_t j=0; j<L; j++)
+	{
+		densitiy_matrix_U1xU1(i,j) = 2.*avg(g_U1xU1.state, H_U1xU1.cdagc(UP,i,j), g_U1xU1.state);
+	}
 	t_U1xU1 = Watch_U1xU1.time();
 
 //	// observables
-//	Eigen::MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
+//	MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
 //	for(size_t i=0; i<L; i++) for (size_t j=0; j<L; j++) { SpinCorr_U1(i,j) = 3*avg(g_U1.state, H_U1.SzSz(i,j), g_U1.state); }
 
 //	// compressor
@@ -240,44 +260,87 @@ int main (int argc, char* argv[])
 	DMRG_SU2xU1.edgeState(H_SU2xU1, g_SU2xU1, {S,N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_SU2xU1 = Watch_SU2xU1.time();
-
-	Eigen::ArrayXd d_SU2xU1(L); d_SU2xU1.setZero();
-	Eigen::ArrayXd n_SU2xU1(L); n_SU2xU1.setZero();
-	for(size_t i=0; i<L; i++) { d_SU2xU1(i) = avg(g_SU2xU1.state, H_SU2xU1.d(i), g_SU2xU1.state); n_SU2xU1(i) = avg(g_SU2xU1.state, H_SU2xU1.n(i), g_SU2xU1.state); }
 	
-	Eigen::ArrayXXd SpinCorr_SU2xU1(L,L); SpinCorr_SU2xU1.setZero();
-	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.SimpSsub(i,j), g_SU2xU1.state); }
-
-	Eigen::ArrayXXd densitiy_matrix_SU2xU1(L,L); densitiy_matrix_SU2xU1.setZero();
-	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { densitiy_matrix_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdagc(i,j), g_SU2xU1.state); }
-
-   	cout << densitiy_matrix_U1xU1 << endl << endl;
+	VectorXd d_SU2xU1(L); d_SU2xU1.setZero();
+	VectorXd n_SU2xU1(L); n_SU2xU1.setZero();
+	for (size_t i=0; i<L; i++)
+	{
+		d_SU2xU1(i) = avg(g_SU2xU1.state, H_SU2xU1.d(i), g_SU2xU1.state);
+		n_SU2xU1(i) = avg(g_SU2xU1.state, H_SU2xU1.n(i), g_SU2xU1.state);
+	}
+	
+	MatrixXd SpinCorr_SU2xU1(L,L); SpinCorr_SU2xU1.setZero();
+	for (size_t i=0; i<L; i++)
+	for (size_t j=0; j<L; j++)
+	{
+		SpinCorr_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.SimpSsub(i,j), g_SU2xU1.state);
+	}
+	
+	MatrixXd densitiy_matrix_SU2xU1(L,L); densitiy_matrix_SU2xU1.setZero();
+	for (size_t i=0; i<L; i++)
+	for(size_t j=0; j<L; j++)
+	{
+		densitiy_matrix_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdagc(i,j), g_SU2xU1.state);
+	}
+	
+	cout << densitiy_matrix_U1xU1 << endl << endl;
 	cout << densitiy_matrix_SU2xU1 << endl << endl;
 //	//--------output---------
 //	
 	TextTable T( '-', '|', '+' );
 	
 	double V = Lx*Ly; double Vsq = V*V;
-	T.add(""); T.add("U(1)"); T.add("U(1)⊗U(1)"); T.add("SU(2)⊗U(1)"); T.endOfRow();
 	
-	T.add("E/L"); T.add(to_string_prec(g_U1.energy/V)); T.add(to_string_prec(g_U1xU1.energy/V)); T.add(to_string_prec(g_SU2xU1.energy/V)); T.endOfRow();
+	T.add("");
+	T.add("U(1)");
+	T.add("U(1)⊗U(1)");
+	T.add("SU(2)⊗U(1)");
+	T.endOfRow();
+	
+	T.add("E/L");
+	T.add(to_string_prec(g_U1.energy/V));
+	T.add(to_string_prec(g_U1xU1.energy/V)); T.add(to_string_prec(g_SU2xU1.energy/V)); T.endOfRow();
 	T.add("E/L diff"); T.add(to_string_prec(abs(g_U1.energy-g_SU2xU1.energy)/V)); T.add(to_string_prec(abs(g_U1xU1.energy-g_SU2xU1.energy)/V)); T.add("0");
 	T.endOfRow();
+	
 //	T.add("E/L Compressor"); T.add(to_string_prec(E_U0_compressor/V)); T.add(to_string_prec(E_U1_compressor/V)); T.add("-"); T.endOfRow();
 //	T.add("E/L Zipper"); T.add(to_string_prec(E_U0_zipper/V)); T.add(to_string_prec(E_U1_zipper/V)); T.add("-"); T.endOfRow();
-
-	T.add("t/s"); T.add(to_string_prec(t_U1,2)); T.add(to_string_prec(t_U1xU1,2)); T.add(to_string_prec(t_SU2xU1,2)); T.endOfRow();
-	T.add("t gain"); T.add(to_string_prec(t_U1/t_SU2xU1,2)); T.add(to_string_prec(t_U1xU1/t_SU2xU1,2)); T.add("1"); T.endOfRow();
-
-	T.add("observables"); T.add(to_string_prec(SpinCorr_U1.sum()));
-	T.add(to_string_prec(SpinCorr_U1xU1.sum())); T.add(to_string_prec(SpinCorr_SU2xU1.sum())); T.endOfRow();
-
-	// T.add("observables diff"); T.add(to_string_prec((SpinCorr_U0-SpinCorr_SU2).lpNorm<1>()/Vsq));
-	// T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2).lpNorm<1>()/Vsq)); T.add("0"); T.endOfRow();
-
-	T.add("Dmax"); T.add(to_string(g_U1.state.calc_Dmax())); T.add(to_string(g_U1xU1.state.calc_Dmax())); T.add(to_string(g_SU2xU1.state.calc_Dmax()));
+	
+	T.add("t/s");
+	T.add(to_string_prec(t_U1,2));
+	T.add(to_string_prec(t_U1xU1,2));
+	T.add(to_string_prec(t_SU2xU1,2));
 	T.endOfRow();
-	T.add("Mmax"); T.add(to_string(g_U1.state.calc_Dmax())); T.add(to_string(g_U1xU1.state.calc_Mmax())); T.add(to_string(g_SU2xU1.state.calc_Mmax()));
+	
+	T.add("t gain");
+	T.add(to_string_prec(t_U1/t_SU2xU1,2));
+	T.add(to_string_prec(t_U1xU1/t_SU2xU1,2));
+	T.add("1");
 	T.endOfRow();
+	
+	T.add("observables");
+	T.add(to_string_prec(SpinCorr_U1.sum()));
+	T.add(to_string_prec(SpinCorr_U1xU1.sum()));
+	T.add(to_string_prec(SpinCorr_SU2xU1.sum()));
+	T.endOfRow();
+	
+	T.add("observables diff");
+	T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2xU1).norm()));
+	T.add(to_string_prec((SpinCorr_U1xU1-SpinCorr_SU2xU1).norm()));
+	T.add("0");
+	T.endOfRow();
+	
+	T.add("Dmax");
+	T.add(to_string(g_U1.state.calc_Dmax()));
+	T.add(to_string(g_U1xU1.state.calc_Dmax()));
+	T.add(to_string(g_SU2xU1.state.calc_Dmax()));
+	T.endOfRow();
+	
+	T.add("Mmax");
+	T.add(to_string(g_U1.state.calc_Dmax()));
+	T.add(to_string(g_U1xU1.state.calc_Mmax()));
+	T.add(to_string(g_SU2xU1.state.calc_Mmax()));
+	T.endOfRow();
+	
 	lout << T << endl;
 }

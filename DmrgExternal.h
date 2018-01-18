@@ -9,10 +9,11 @@ typedef boost::rational<int> frac;
 
 #include "symmetry/qarray.h"
 
+/**Prints a boost fraction in such a way, that a "1" in the denominator is omitted.*/
 string print_frac_nice (frac r)
 {
 	stringstream ss;
-	if (r.denominator() == 1) {ss << r.numerator();}
+	if (r.denominator()==1) {ss << r.numerator();}
 	else {ss << r;}
 	return ss.str();
 }
@@ -27,14 +28,19 @@ string noFormat (qarray<Nq> qnum)
 }
 
 /**Makes half-integers in the output.*/
-string halve (qarray<1> qnum)
+template<size_t Nq>
+string halve (qarray<Nq> qnum)
 {
 	stringstream ss;
 	ss << "(";
-	boost::rational<int> m = boost::rational<int>(qnum[0],2);
-	if      (m.numerator()   == 0) {ss << 0;}
-	else if (m.denominator() == 1) {ss << m.numerator();}
-	else {ss << m;}
+	for (size_t q=0; q<Nq; ++q)
+	{
+		boost::rational<int> m = boost::rational<int>(qnum[q],2);
+		if      (m.numerator()   == 0) {ss << 0;}
+		else if (m.denominator() == 1) {ss << m.numerator();}
+		else {ss << m;}
+		if (q!=Nq-1) {ss << ",";}
+	}
 	ss << ")";
 	return ss.str();
 }
@@ -123,18 +129,28 @@ struct hash<qarray<Nq> >
 };
 }
 
-/**Function to realize staggered fields.*/
-inline double stagger (int i)
-{
-	return pow(-1.,i);
-}
-
+/**Cost to multiply 2 matrices.*/
 template<typename MatrixTypeA, typename MatrixTypeB>
 size_t mult_cost (const MatrixTypeA &A, const MatrixTypeB &B)
 {
 	return A.rows()*A.cols()*B.cols();
 }
 
+/**Cost to multiply 3 matrices in 2 possible ways.*/
+template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC>
+vector<size_t> mult_cost (const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C)
+{
+	vector<size_t> out(2);
+	// (AB)C
+	out[0] = mult_cost(A,B) + A.rows()*C.rows()*C.cols();
+	
+	// A(BC)
+	out[1] = mult_cost(B,C) + A.rows()*A.cols()*C.cols();
+	
+	return out;
+}
+
+/**Cost to multiply 4 matrices in 5 possible ways.*/
 template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC, typename MatrixTypeD>
 vector<size_t> mult_cost (const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C, const MatrixTypeD &D)
 {
@@ -156,22 +172,30 @@ vector<size_t> mult_cost (const MatrixTypeA &A, const MatrixTypeB &B, const Matr
 	return out;
 }
 
-template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC>
-vector<size_t> mult_cost (const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C)
+
+/**Multiplies 3 matrices by using the optimal order of operations.*/
+template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC, typename MatrixTypeR, typename Scalar>
+void optimal_multiply (Scalar alpha, const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C, MatrixTypeR &result)
 {
-	vector<size_t> out(2);
-	// (AB)C
-	out[0] = mult_cost(A,B) + A.rows()*C.rows()*C.cols();
+	vector<size_t> cost(2);
+	cost = mult_cost(A,B,C);
+	size_t opt_mult = min_element(cost.begin(),cost.end())- cost.begin();
 	
-	// A(BC)
-	out[1] = mult_cost(B,C) + A.rows()*A.cols()*C.cols();
-	
-	return out;
+	if (opt_mult == 0)
+	{
+		MatrixTypeR Mtmp = A * B;
+		result.noalias() = alpha * Mtmp * C;
+	}
+	else if (opt_mult == 1)
+	{
+		MatrixTypeR Mtmp = B * C;
+		result.noalias() = alpha * A * Mtmp;
+	}
 }
 
+/**Multiplies 4 matrices by using the optimal order of operations.*/
 template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC, typename MatrixTypeD, typename MatrixTypeR, typename Scalar>
-void optimal_multiply (Scalar alpha, const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C, const MatrixTypeD &D, 
-                       MatrixTypeR &result)
+void optimal_multiply (Scalar alpha, const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C, const MatrixTypeD &D, MatrixTypeR &result)
 {
 	vector<size_t> cost(5);
 	cost = mult_cost(A,B,C,D);
@@ -209,23 +233,17 @@ void optimal_multiply (Scalar alpha, const MatrixTypeA &A, const MatrixTypeB &B,
 	}
 }
 
-template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC, typename MatrixTypeR, typename Scalar>
-void optimal_multiply (Scalar alpha, const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C, MatrixTypeR &result)
+/**Function to realize staggered fields.*/
+inline double stagger (int i)
 {
-	vector<size_t> cost(2);
-	cost = mult_cost(A,B,C);
-	size_t opt_mult = min_element(cost.begin(),cost.end())- cost.begin();
-	
-	if (opt_mult == 0)
-	{
-		MatrixTypeR Mtmp = A * B;
-		result.noalias() = alpha * Mtmp * C;
-	}
-	else if (opt_mult == 1)
-	{
-		MatrixTypeR Mtmp = B * C;
-		result.noalias() = alpha * A * Mtmp;
-	}
+	return pow(-1.,i);
+}
+
+/**Dummy weight function for sums of local operators.*/
+template<typename Scalar>
+Scalar localSumTrivial (int i)
+{
+	return 1.;
 }
 
 #endif

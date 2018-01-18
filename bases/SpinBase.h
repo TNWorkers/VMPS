@@ -11,6 +11,9 @@
 #include "symmetry/qarray.h"
 #include "NestedLoopIterator.h" // from HELPERS
 
+#include "symmetry/U0.h"
+#include "symmetry/U1.h"
+
 enum SPINOP_LABEL {SX, SY, iSY, SZ, SP, SM};
 
 std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
@@ -39,7 +42,7 @@ public:
 	\param D_input : \f$D=2S+1\f$
 	\param N : if true, the particle number is the good quantum number --> trivial for spins --> all operators have qvacuum()
 	*/
-	SpinBase (size_t L_input, size_t D_input, bool N_input=false);
+	SpinBase (size_t L_input, size_t D_input, bool DUMMY_QNUM_MODE_input=false);
 	
 	/**amount of states = \f$D^L\f$*/
 	inline size_t dim() const {return N_states;}
@@ -60,7 +63,7 @@ public:
 	
 	ArrayXd ZeroField() const;
 	
-	string alignment (double J) const {return (J<0.)? "(AFM)":"(FM)";};
+	string alignment (double J) const {return (J<0)? "(AFM)":"(FM)";};
 	
 	/**Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
 	\param Jxy : \f$J_{xy}\f$
@@ -87,7 +90,7 @@ private:
 	size_t N_orbitals;
 	size_t N_states;
 	size_t D;
-	bool N;
+	bool DUMMY_QNUM_MODE;
 	
 	/**Returns the qarray for a given index of the basis.
 	\param index*/
@@ -96,8 +99,8 @@ private:
 
 template<typename Symmetry>
 SpinBase<Symmetry>::
-SpinBase (size_t L_input, size_t D_input, bool N_input)
-	:N_orbitals(L_input), D(D_input), N(N_input)
+SpinBase (size_t L_input, size_t D_input, bool DUMMY_QNUM_MODE_input)
+:N_orbitals(L_input), D(D_input), DUMMY_QNUM_MODE(DUMMY_QNUM_MODE_input)
 {
 	assert(N_orbitals >= 1);
 	assert(D >= 1);
@@ -253,14 +256,14 @@ qNums (size_t index) const
 		M += D-(2*(Nelly(i)+1)-1);
 	}
 	
-	if constexpr(Symmetry::IS_TRIVIAL){ return qarray<0>{}; }
-	else if constexpr(Symmetry::Nq == 1)
-					 {
-						 if(N) { return qarray<1>{0}; }
-						 else { return qarray<1>{M}; }
-					 }
+	if constexpr (Symmetry::IS_TRIVIAL) {return qarray<0>{};}
+	else if constexpr (Symmetry::Nq == 1)
+	{
+		if (DUMMY_QNUM_MODE) {return qarray<1>{0};}
+		else              {return qarray<1>{M};}
+	}
 	//return a dummy quantum number for a second symmetry. Format: {other symmetry, magnetization}
-	else if constexpr(Symmetry::Nq == 2) { return qarray<2>{{0,M}}; }
+	else if constexpr(Symmetry::Nq==2) {return qarray<2>{{0,M}};}
 }
 
 template<typename Symmetry>
@@ -281,33 +284,33 @@ template<typename Symmetry>
 typename Symmetry::qType SpinBase<Symmetry>::
 getQ (SPINOP_LABEL Sa) const
 {
+	typename Symmetry::qType out;
+	
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
-	else if constexpr(Symmetry::Nq == 1)
-					 {
-						 if(N) { return qarray<1>{0}; }
-						 else
-						 {
-							 typename Symmetry::qType out;
-							 if      (Sa==SX)  {out = {0};}
-							 else if (Sa==SY)  {out = {0};}
-							 else if (Sa==iSY) {out = {0};}
-							 else if (Sa==SZ)  {out = {0};}
-							 else if (Sa==SP)  {out = {+2};}
-							 else if (Sa==SM)  {out = {-2};}
-							 return out;
-						 }
-					 }
-	else if constexpr(Symmetry::Nq == 2) //return a dummy quantum number for a second symmetry. Format: {other symmetry, magnetization}
-					 {
-						 typename Symmetry::qType out;
-						 if      (Sa==SX)  {out = qarray<2>({0,0});}
-						 else if (Sa==SY)  {out = qarray<2>({0,0});}
-						 else if (Sa==iSY) {out = qarray<2>({0,0});}
-						 else if (Sa==SZ)  {out = qarray<2>({0,0});}
-						 else if (Sa==SP)  {out = qarray<2>({0,+2});}
-						 else if (Sa==SM)  {out = qarray<2>({0,-2});}
-						 return out;
-					 }
+	else if constexpr (Symmetry::Nq == 1)
+	{
+		if (DUMMY_QNUM_MODE) {return qarray<1>{0};}
+		else
+		{
+			if      (Sa==SX)  {out = {0};}
+			else if (Sa==SY)  {out = {0};}
+			else if (Sa==iSY) {out = {0};}
+			else if (Sa==SZ)  {out = {0};}
+			else if (Sa==SP)  {out = {+2};}
+			else if (Sa==SM)  {out = {-2};}
+			return out;
+		}
+	}
+	else if constexpr(Symmetry::Nq == 2) // return a dummy quantum number for a second symmetry. Format: {other symmetry, magnetization}
+	{
+		if      (Sa==SX)  {out = qarray<2>({0,0});}
+		else if (Sa==SY)  {out = qarray<2>({0,0});}
+		else if (Sa==iSY) {out = qarray<2>({0,0});}
+		else if (Sa==SZ)  {out = qarray<2>({0,0});}
+		else if (Sa==SP)  {out = qarray<2>({0,+2});}
+		else if (Sa==SM)  {out = qarray<2>({0,-2});}
+		return out;
+	}
 
 }
 
