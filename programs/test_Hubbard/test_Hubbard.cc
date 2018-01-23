@@ -422,8 +422,8 @@ int main (int argc, char* argv[])
 	lout << endl << T;
 	
 //	FermionBase<Sym::U1xU1<double> > F(2);
-	fermions::BaseSU2xU1<> F(3);
-	typedef SiteOperatorQ<Sym::SU2xU1<double>,MatrixXd> Op;
+//	fermions::BaseSU2xU1<> F(3);
+//	typedef SiteOperatorQ<Sym::SU2xU1<double>,MatrixXd> Op;
 	
 //	cout << (F.sign().data*F.c(UP,0).data+F.c(UP,0).data*F.sign().data).norm() << endl;
 //	cout << (F.sign().data*F.c(DN,0).data+F.c(DN,0).data*F.sign().data).norm() << endl;

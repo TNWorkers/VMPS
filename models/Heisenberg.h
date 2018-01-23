@@ -29,7 +29,7 @@ namespace VMPS
   \note \f$J<0\f$ is antiferromagnetic
   \note This is the real version of the Heisenbergmodel without symmetries, so \f$J_x = J_y\f$ is mandatory. For general couplings use VMPS::HeisenbergXYZ.
 */
-class Heisenberg : public MpoQ<Sym::U0,double>, public HeisenbergObservables<Sym::U0>
+class Heisenberg : public Mpo<Sym::U0,double>, public HeisenbergObservables<Sym::U0>
 {
 public:
 	typedef Sym::U0 Symmetry;
@@ -40,7 +40,7 @@ private:
 public:
 	
 	///@{
-	Heisenberg() : MpoQ<Symmetry>(), HeisenbergObservables() {};
+	Heisenberg() : Mpo<Symmetry>(), HeisenbergObservables() {};
 	Heisenberg (const size_t &L, const vector<Param> &params);
 	///@}
 	
@@ -60,7 +60,7 @@ const std::map<string,std::any> Heisenberg::defaults =
 
 Heisenberg::
 Heisenberg (const size_t &L, const vector<Param> &params)
-:MpoQ<Symmetry> (L, qarray<0>({}), labeldummy, ""),
+:Mpo<Symmetry> (L, qarray<0>({}), labeldummy, ""),
  HeisenbergObservables(L,params,Heisenberg::defaults)
 {
 	ParamHandler P(params,Heisenberg::defaults);

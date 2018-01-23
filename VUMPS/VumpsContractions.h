@@ -862,9 +862,9 @@ void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, PivumpsVector0<Symm
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-Scalar avg (const UmpsQ<Symmetry,Scalar> &Vbra, 
-            const MpoQ<Symmetry,MpoScalar> &O, 
-            const UmpsQ<Symmetry,Scalar> &Vket)
+Scalar avg (const Umps<Symmetry,Scalar> &Vbra, 
+            const Mpo<Symmetry,MpoScalar> &O, 
+            const Umps<Symmetry,Scalar> &Vket)
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
@@ -894,9 +894,9 @@ Scalar avg (const UmpsQ<Symmetry,Scalar> &Vbra,
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-Scalar avg (const UmpsQ<Symmetry,Scalar> &Vbra, 
-            const vector<MpoQ<Symmetry,MpoScalar> > &O, 
-            const UmpsQ<Symmetry,Scalar> &Vket)
+Scalar avg (const Umps<Symmetry,Scalar> &Vbra, 
+            const vector<Mpo<Symmetry,MpoScalar> > &O, 
+            const Umps<Symmetry,Scalar> &Vket)
 {
 	Scalar out = 0;
 	

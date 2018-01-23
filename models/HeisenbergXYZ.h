@@ -29,7 +29,7 @@ namespace VMPS
   \note \f$J<0\f$ is antiferromagnetic
   \note Due to the \f$S_y\f$ operator, this MPO is complex.
 */
-class HeisenbergXYZ : public MpoQ<Sym::U0,complex<double> >, public HeisenbergObservables<Sym::U0>
+class HeisenbergXYZ : public Mpo<Sym::U0,complex<double> >, public HeisenbergObservables<Sym::U0>
 {
 public:
 	typedef Sym::U0 Symmetry;
@@ -40,7 +40,7 @@ private:
 public:
 	
 	///\{
-	HeisenbergXYZ() : MpoQ<Symmetry,complex<double> >() {};
+	HeisenbergXYZ() : Mpo<Symmetry,complex<double> >() {};
 	HeisenbergXYZ (const size_t &L, const vector<Param> &params);
 	///\}
 	
@@ -71,7 +71,7 @@ const std::map<string,std::any> HeisenbergXYZ::defaults =
 
 HeisenbergXYZ::
 HeisenbergXYZ (const size_t &L, const vector<Param> &params)
-:MpoQ<Symmetry,complex<double> > (L, qarray<0>({}), labeldummy, ""),
+:Mpo<Symmetry,complex<double> > (L, qarray<0>({}), labeldummy, ""),
  HeisenbergObservables(L,params,HeisenbergXYZ::defaults)
 {
 	ParamHandler P(params,HeisenbergXYZ::defaults);

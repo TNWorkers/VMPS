@@ -22,49 +22,49 @@ public:
 	///@}
 	
 	///@{
-	MpoQ<Symmetry> c (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> cdag (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> c (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> cdag (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
 	///@}
 	
 	///@{
-	MpoQ<Symmetry> cc (size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> cdagcdag (size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	MpoQ<Symmetry> eta() const;
+	Mpo<Symmetry> cc (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> cdagcdag (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> eta() const;
 	///@}
 	
 	///@{
-	MpoQ<Symmetry> d (size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> dtot() const;
-	MpoQ<Symmetry> s (size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> n (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> nn (SPIN_INDEX sigma1, size_t locx1, SPIN_INDEX sigma2, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	MpoQ<Symmetry> hh (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> d (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> dtot() const;
+	Mpo<Symmetry> s (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> n (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> nn (SPIN_INDEX sigma1, size_t locx1, SPIN_INDEX sigma2, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> hh (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 	///@{
-	MpoQ<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> ScompScomp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	MpoQ<Symmetry> Sz (size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> ScompScomp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> Sz (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 	///@{
-//	MpoQ<Symmetry,complex<double> > doublonPacket (complex<double> (*f)(int)) const;
-//	MpoQ<Symmetry,complex<double> > electronPacket (complex<double> (*f)(int)) const;
-//	MpoQ<Symmetry,complex<double> > holePacket (complex<double> (*f)(int)) const;
+//	Mpo<Symmetry,complex<double> > doublonPacket (complex<double> (*f)(int)) const;
+//	Mpo<Symmetry,complex<double> > electronPacket (complex<double> (*f)(int)) const;
+//	Mpo<Symmetry,complex<double> > holePacket (complex<double> (*f)(int)) const;
 	///@}
 	
 	///@{
-//	MpoQ<Symmetry> triplon (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
-//	MpoQ<Symmetry> antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
-//	MpoQ<Symmetry> quadruplon (size_t locx, size_t locy=0) const;
+//	Mpo<Symmetry> triplon (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
+//	Mpo<Symmetry> antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
+//	Mpo<Symmetry> quadruplon (size_t locx, size_t locy=0) const;
 	///@}
 	
 protected:
 	
-	MpoQ<Symmetry> make_local (string name, size_t locx, size_t locy, const OperatorType &Op, bool FERMIONIC=false) const;
-	MpoQ<Symmetry> make_corr  (string name1, string name2, 
+	Mpo<Symmetry> make_local (string name, size_t locx, size_t locy, const OperatorType &Op, bool FERMIONIC=false) const;
+	Mpo<Symmetry> make_corr  (string name1, string name2, 
 	                           size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
 	                           const OperatorType &Op1, const OperatorType &Op2) const;
 	
@@ -95,14 +95,14 @@ HubbardObservables (const size_t &L, const vector<Param> &params, const std::map
 //-------------
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 make_local (string name, size_t locx, size_t locy, const OperatorType &Op, bool FERMIONIC) const
 {
 	assert(locx<F.size() and locy<F[locx].dim());
 	stringstream ss;
 	ss << name << "(" << locx << "," << locy << ")";
 	
-	MpoQ<Symmetry> Mout(F.size(), Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
+	Mpo<Symmetry> Mout(F.size(), Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	(FERMIONIC)? Mout.setLocal(locx,Op,F[0].sign())
@@ -111,7 +111,7 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, bool 
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 make_corr (string name1, string name2, 
            size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
            const OperatorType &Op1, const OperatorType &Op2) const
@@ -121,7 +121,7 @@ make_corr (string name1, string name2,
 	ss << name1 << "(" << locx1 << "," << locy1 << ")"
 	   << name2 << "(" << locx2 << "," << locy2 << ")";
 	
-	MpoQ<Symmetry> Mout(F.size(), Op1.Q+Op2.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
+	Mpo<Symmetry> Mout(F.size(), Op1.Q+Op2.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	Mout.setLocal({locx1,locx2}, {Op1,Op2});
@@ -131,7 +131,7 @@ make_corr (string name1, string name2,
 //-------------
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 c (SPIN_INDEX sigma, size_t locx, size_t locy) const
 {
 	stringstream ss;
@@ -140,7 +140,7 @@ c (SPIN_INDEX sigma, size_t locx, size_t locy) const
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 cdag (SPIN_INDEX sigma, size_t locx, size_t locy) const
 {
 	stringstream ss;
@@ -151,7 +151,7 @@ cdag (SPIN_INDEX sigma, size_t locx, size_t locy) const
 //-------------
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 cc (size_t locx, size_t locy) const
 {
 	stringstream ss;
@@ -160,7 +160,7 @@ cc (size_t locx, size_t locy) const
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 cdagcdag (size_t locx, size_t locy) const
 {
 	stringstream ss;
@@ -169,7 +169,7 @@ cdagcdag (size_t locx, size_t locy) const
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	assert(locx1<F.size() and locx2<F.size());
@@ -180,7 +180,7 @@ cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	auto cdag = F[locx1].cdag(sigma,locy1);
 	auto c    = F[locx2].c   (sigma,locy2);
 	
-	MpoQ<Symmetry> Mout(F.size(), cdag.Q+c.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
+	Mpo<Symmetry> Mout(F.size(), cdag.Q+c.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	if (locx1 == locx2)
@@ -200,14 +200,14 @@ cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 eta() const
 {
 	for (size_t l=0; l<F.size(); ++l) {assert(F.orbitals()==1);}
 	
 	OperatorType Op = F[0].c(UP)*F[0].c(DN);
 	
-	MpoQ<Symmetry> Mout(F.size(), Op.Q, defaultQlabel<Symmetry::Nq>(), "eta");
+	Mpo<Symmetry> Mout(F.size(), Op.Q, defaultQlabel<Symmetry::Nq>(), "eta");
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	Mout.setLocalSum(Op,stagger);
@@ -217,21 +217,21 @@ eta() const
 //-------------
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 d (size_t locx, size_t locy) const
 {
 	return make_local("double_occ", locx,locy, F[locx].d(locy), false);
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 dtot() const
 {
 	for (size_t l=0; l<F.size(); ++l) {assert(F.orbitals()==1);}
 	
 	OperatorType Op = F[0].d();
 	
-	MpoQ<Symmetry> Mout(F.size(), Op.Q, defaultQlabel<Symmetry::Nq>(), "double_occ_total");
+	Mpo<Symmetry> Mout(F.size(), Op.Q, defaultQlabel<Symmetry::Nq>(), "double_occ_total");
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	Mout.setLocalSum(Op);
@@ -239,28 +239,28 @@ dtot() const
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 s (size_t locx, size_t locy) const
 {
 	return make_local("single_occ", locx,locy,  F[locx].n(UP,locy)+F[locx].n(DN,locy)-2.*F[locx].d(locy), false);
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 n (SPIN_INDEX sigma, size_t locx, size_t locy) const
 {
 	return make_local("n", locx,locy, F[locx].n(locy), false);
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 nn (SPIN_INDEX sigma1, size_t locx1, SPIN_INDEX sigma2, size_t locx2, size_t locy1, size_t locy2) const
 {
 	return make_corr ("n","n", locx1,locx2,locy1,locy2, F[locx1].n(sigma1,locy1), F[locx2].n(sigma2,locy2));
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 hh (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	return make_corr("h","h", locx1,locx2,locy1,locy2, 
@@ -269,7 +269,7 @@ hh (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 Scomp (SPINOP_LABEL SOP, size_t locx, size_t locy) const
 {
 	stringstream ss; ss << SOP;
@@ -277,7 +277,7 @@ Scomp (SPINOP_LABEL SOP, size_t locx, size_t locy) const
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 ScompScomp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	stringstream ss1; ss1 << SOP1;
@@ -286,14 +286,14 @@ ScompScomp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, si
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 Sz (size_t locx, size_t locy) const
 {
 	return Scomp(SZ,locx,locy);
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HubbardObservables<Symmetry>::
+Mpo<Symmetry> HubbardObservables<Symmetry>::
 SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2);
@@ -304,13 +304,13 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 
 
 //template<typename Symmetry>
-//MpoQ<Sym::U1xU1<double>,complex<double> > HubbardObservables<Symmetry>::
+//Mpo<Sym::U1xU1<double>,complex<double> > HubbardObservables<Symmetry>::
 //doublonPacket (complex<double> (*f)(int))
 //{
 //	stringstream ss;
 //	ss << "doublonPacket";
 //	
-//	MpoQ<Symmetry,complex<double> > Mout(F.size(), qarray<Symmetry::Nq>({-1,-1}), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry,complex<double> > Mout(F.size(), qarray<Symmetry::Nq>({-1,-1}), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F.get_basis(),l);}
 //	
 //	Mout.setLocalSum(F.c(UP)*F.c(DN), f);
@@ -318,7 +318,7 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 //}
 
 //template<typename Symmetry>
-//MpoQ<Sym::U1xU1<double>,complex<double> > HubbardObservables<Symmetry>::
+//Mpo<Sym::U1xU1<double>,complex<double> > HubbardObservables<Symmetry>::
 //electronPacket (complex<double> (*f)(int))
 //{
 //	assert(N_legs==1);
@@ -350,13 +350,13 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 ////	M[F.size()-1](1,0) = f(F.size()-1) * F.cdag(UP);
 //	M[F.size()-1](1,0).data = f(F.size()-1) * F.cdag(UP).data; M[F.size()-1](1,0).Q = F.cdag(UP).Q;
 //	
-//	MpoQ<Symmetry,complex<double> > Mout(F.size(), M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry,complex<double> > Mout(F.size(), M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F.get_basis(),l);}
 //	return Mout;
 //}
 
 //template<typename Symmetry>
-//MpoQ<Sym::U1xU1<double>,complex<double> > HubbardObservables<Symmetry>::
+//Mpo<Sym::U1xU1<double>,complex<double> > HubbardObservables<Symmetry>::
 //holePacket (complex<double> (*f)(int))
 //{
 //	assert(N_legs==1);
@@ -383,13 +383,13 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 //	M[F.size()-1](0,0) = complex<double>(1.,0.) * F.sign();
 //	M[F.size()-1](1,0) = f(F.size()-1) * F.c(UP);
 //	
-//	MpoQ<Symmetry,complex<double> > Mout(F.size(), M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry,complex<double> > Mout(F.size(), M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F.get_basis(),l);}
 //	return Mout;
 //}
 
 //template<typename Symmetry>
-//MpoQ<Symmetry> HubbardObservables<Symmetry>::
+//Mpo<Symmetry> HubbardObservables<Symmetry>::
 //triplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 //{
 //	assert(locx<F.size() and locy<F[locx].dim());
@@ -417,13 +417,13 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 //		M[l](0,0) = F[l].Id();
 //	}
 //	
-//	MpoQ<Symmetry> Mout(F.size(), M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(F.size(), M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	return Mout;
 //}
 
 //template<typename Symmetry>
-//MpoQ<Symmetry> HubbardObservables<Symmetry>::
+//Mpo<Symmetry> HubbardObservables<Symmetry>::
 //antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 //{
 //	assert(locx<F.size() and locy<F[locx].dim());
@@ -451,13 +451,13 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 //		M[l](0,0) = F[l].Id();
 //	}
 //	
-//	MpoQ<Symmetry> Mout(F.size(), M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(F.size(), M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	return Mout;
 //}
 
 //template<typename Symmetry>
-//MpoQ<Symmetry> HubbardObservables<Symmetry>::
+//Mpo<Symmetry> HubbardObservables<Symmetry>::
 //quadruplon (size_t locx, size_t locy)
 //{
 //	assert(locx<F.size() and locy<F[locx].dim());
@@ -482,7 +482,7 @@ SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 //		M[l](0,0) = F[l].Id();
 //	}
 //	
-//	MpoQ<Symmetry> Mout(F.size(), M, qarray<Symmetry::Nq>({-2,-2}), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(F.size(), M, qarray<Symmetry::Nq>({-2,-2}), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	return Mout;
 //}

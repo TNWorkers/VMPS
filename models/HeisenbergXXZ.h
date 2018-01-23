@@ -7,7 +7,7 @@
 namespace VMPS
 {
 
-class HeisenbergXXZ : public MpoQ<Sym::U0,double>, public HeisenbergObservables<Sym::U0>
+class HeisenbergXXZ : public Mpo<Sym::U0,double>, public HeisenbergObservables<Sym::U0>
 {
 public:
 	typedef Sym::U0 Symmetry;
@@ -18,7 +18,7 @@ private:
 public:
 	
 	///\{
-	HeisenbergXXZ() : MpoQ<Symmetry>() {};
+	HeisenbergXXZ() : Mpo<Symmetry>() {};
 	HeisenbergXXZ (const size_t &L, const vector<Param> &params);
 	///\}
 	
@@ -43,7 +43,7 @@ const std::map<string,std::any> HeisenbergXXZ::defaults =
 
 HeisenbergXXZ::
 HeisenbergXXZ (const size_t &L, const vector<Param> &params)
-:MpoQ<Symmetry> (L, qarray<0>({}), labeldummy, ""),
+:Mpo<Symmetry> (L, qarray<0>({}), labeldummy, ""),
  HeisenbergObservables(L,params,HeisenbergXXZ::defaults)
 {
 	ParamHandler P(params,HeisenbergXXZ::defaults);

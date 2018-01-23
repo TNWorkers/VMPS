@@ -31,7 +31,7 @@ namespace VMPS
   \note If nnn-hopping is positive, the GS-energy is lowered.
   \note The multi-impurity model can be received, by setting D=1 (S=0) for all sites without an impurity.
 */
-class KondoU1xU1 : public MpoQ<Sym::U1xU1<double>,double>, public KondoObservables<Sym::U1xU1<double> >
+class KondoU1xU1 : public Mpo<Sym::U1xU1<double>,double>, public KondoObservables<Sym::U1xU1<double> >
 {
 public:
 	typedef Sym::U1xU1<double> Symmetry;
@@ -42,7 +42,7 @@ private:
 public:
 	
 	///@{
-	KondoU1xU1 () : MpoQ(){};
+	KondoU1xU1 () : Mpo(){};
 	KondoU1xU1 (const size_t &L, const vector<Param> &params);
 	///@}
 	
@@ -85,7 +85,7 @@ const std::array<string,2> KondoU1xU1::NMlabel{"N","M"};
 
 KondoU1xU1::
 KondoU1xU1 (const size_t &L, const vector<Param> &params)
-:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({0,0}), KondoU1xU1::NMlabel, ""), //, KondoU1xU1::N_halveM())
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0,0}), KondoU1xU1::NMlabel, ""), //, KondoU1xU1::N_halveM())
  KondoObservables(L,params,defaults)
 {
 	ParamHandler P(params,defaults);

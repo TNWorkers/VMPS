@@ -82,7 +82,7 @@
 \describe_Nq
 \describe_Scalar*/
 template<typename Symmetry, typename Scalar=double>
-class UmpsQ
+class Umps
 {
 typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 typedef Matrix<complex<double>,Dynamic,Dynamic> CMatrixType;
@@ -93,11 +93,11 @@ template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend cl
 public:
 	
 	/**Does nothing.*/
-	UmpsQ<Symmetry,Scalar>(){};
+	Umps<Symmetry,Scalar>(){};
 	
-	template<typename Hamiltonian> UmpsQ (const Hamiltonian &H, size_t L_input, size_t Dmax, qarray<Symmetry::Nq> Qtot_input);
+	template<typename Hamiltonian> Umps (const Hamiltonian &H, size_t L_input, size_t Dmax, qarray<Symmetry::Nq> Qtot_input);
 	
-	UmpsQ (const vector<qarray<Symmetry::Nq> > &qloc_input, size_t L_input, size_t Dmax, qarray<Symmetry::Nq> Qtot_input);
+	Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, size_t L_input, size_t Dmax, qarray<Symmetry::Nq> Qtot_input);
 	
 	string info() const;
 	string test_ortho (double tol=1e-10) const;
@@ -133,7 +133,7 @@ public:
 	size_t calc_Mmax() const;
 	double memory (MEMUNIT memunit) const;
 	
-	complex<double> dot (const UmpsQ<Symmetry,Scalar> &Vket) const;
+	complex<double> dot (const Umps<Symmetry,Scalar> &Vket) const;
 	
 	const vector<Biped<Symmetry,MatrixType> > &A_at (GAUGE::OPTION g, size_t loc) const {return A[g][loc];};
 	
@@ -165,7 +165,7 @@ private:
 };
 
 template<typename Symmetry, typename Scalar>
-string UmpsQ<Symmetry,Scalar>::
+string Umps<Symmetry,Scalar>::
 info() const
 {
 	stringstream ss;
@@ -199,8 +199,8 @@ info() const
 
 template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
-UmpsQ<Symmetry,Scalar>::
-UmpsQ (const Hamiltonian &H, size_t L_input, size_t Dmax, qarray<Symmetry::Nq> Qtot_input)
+Umps<Symmetry,Scalar>::
+Umps (const Hamiltonian &H, size_t L_input, size_t Dmax, qarray<Symmetry::Nq> Qtot_input)
 {
 //	format = H.format;
 //	qlabel = H.qlabel;
@@ -214,8 +214,8 @@ UmpsQ (const Hamiltonian &H, size_t L_input, size_t Dmax, qarray<Symmetry::Nq> Q
 }
 
 template<typename Symmetry, typename Scalar>
-UmpsQ<Symmetry,Scalar>::
-UmpsQ (const vector<qarray<Symmetry::Nq> > &qloc_input, size_t L_input, size_t Dmax, qarray<Symmetry::Nq> Qtot_input)
+Umps<Symmetry,Scalar>::
+Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, size_t L_input, size_t Dmax, qarray<Symmetry::Nq> Qtot_input)
 {
 	N_sites = L_input;
 	qloc.resize(N_sites);
@@ -224,7 +224,7 @@ UmpsQ (const vector<qarray<Symmetry::Nq> > &qloc_input, size_t L_input, size_t D
 }
 
 template<typename Symmetry, typename Scalar>
-size_t UmpsQ<Symmetry,Scalar>::
+size_t Umps<Symmetry,Scalar>::
 calc_Dmax() const
 {
 	size_t res = 0;
@@ -241,7 +241,7 @@ calc_Dmax() const
 }
 
 template<typename Symmetry, typename Scalar>
-double UmpsQ<Symmetry,Scalar>::
+double Umps<Symmetry,Scalar>::
 memory (MEMUNIT memunit) const
 {
 	double res = 0.;
@@ -258,7 +258,7 @@ memory (MEMUNIT memunit) const
 }
 
 template<typename Symmetry, typename Scalar>
-size_t UmpsQ<Symmetry,Scalar>::
+size_t Umps<Symmetry,Scalar>::
 calc_Mmax() const
 {
 	size_t res = 0;
@@ -279,7 +279,7 @@ calc_Mmax() const
 }
 
 template<typename Symmetry, typename Scalar>
-void UmpsQ<Symmetry,Scalar>::
+void Umps<Symmetry,Scalar>::
 resize (size_t Dmax_input)
 {
 	Dmax = Dmax_input;
@@ -350,7 +350,7 @@ resize (size_t Dmax_input)
 }
 
 template<typename Symmetry, typename Scalar>
-void UmpsQ<Symmetry,Scalar>::
+void Umps<Symmetry,Scalar>::
 forcedResize (size_t Dmax)
 {
 	for (size_t l=0; l<N_sites; ++l)
@@ -362,7 +362,7 @@ forcedResize (size_t Dmax)
 }
 
 template<typename Symmetry, typename Scalar>
-void UmpsQ<Symmetry,Scalar>::
+void Umps<Symmetry,Scalar>::
 setRandom()
 {
 	for (size_t l=0; l<N_sites; ++l)
@@ -393,7 +393,7 @@ setRandom()
 }
 
 template<typename Symmetry, typename Scalar>
-string UmpsQ<Symmetry,Scalar>::
+string Umps<Symmetry,Scalar>::
 test_ortho (double tol) const
 {
 	string sout = "";
@@ -477,8 +477,8 @@ test_ortho (double tol) const
 }
 
 template<typename Symmetry, typename Scalar>
-complex<double> UmpsQ<Symmetry,Scalar>::
-dot (const UmpsQ<Symmetry,Scalar> &Vket) const
+complex<double> Umps<Symmetry,Scalar>::
+dot (const Umps<Symmetry,Scalar> &Vket) const
 {
 	assert(N_sites == Vket.length());
 	
@@ -530,7 +530,7 @@ dot (const UmpsQ<Symmetry,Scalar> &Vket) const
 }
 
 template<typename Symmetry, typename Scalar>
-void UmpsQ<Symmetry,Scalar>::
+void Umps<Symmetry,Scalar>::
 calc_singularValues (size_t loc)
 {
 //	BDCSVD<MatrixType> Jack(C[loc].block[0]);
@@ -541,7 +541,7 @@ calc_singularValues (size_t loc)
 }
 
 template<typename Symmetry, typename Scalar>
-VectorXd UmpsQ<Symmetry,Scalar>::
+VectorXd Umps<Symmetry,Scalar>::
 singularValues (size_t loc)
 {
 	assert(loc<N_sites);
@@ -549,7 +549,7 @@ singularValues (size_t loc)
 }
 
 template<typename Symmetry, typename Scalar>
-double UmpsQ<Symmetry,Scalar>::
+double Umps<Symmetry,Scalar>::
 entropy (size_t loc)
 {
 	assert(loc<N_sites);
@@ -571,7 +571,7 @@ MatrixXd gauge (const MatrixXd &U)
 
 // creates AL, AR from AC, C
 template<typename Symmetry, typename Scalar>
-void UmpsQ<Symmetry,Scalar>::
+void Umps<Symmetry,Scalar>::
 polarDecompose (size_t loc)
 {
 	#ifdef DONT_USE_LAPACK_SVD
@@ -717,7 +717,7 @@ polarDecompose (size_t loc)
 }
 
 template<typename Symmetry, typename Scalar>
-void UmpsQ<Symmetry,Scalar>::
+void Umps<Symmetry,Scalar>::
 calc_epsLRsq (size_t loc, double &epsLsq, double &epsRsq)
 {
 	for (size_t qout=0; qout<outset[loc].size(); ++qout)
@@ -887,7 +887,7 @@ calc_epsLRsq (size_t loc, double &epsLsq, double &epsRsq)
 
 // creates AL, AR from AC, C
 template<typename Symmetry, typename Scalar>
-void UmpsQ<Symmetry,Scalar>::
+void Umps<Symmetry,Scalar>::
 svdDecompose (size_t loc)
 {
 	for (size_t qout=0; qout<outset[loc].size(); ++qout)
@@ -1013,7 +1013,7 @@ svdDecompose (size_t loc)
 }
 
 //template<typename Symmetry, typename Scalar>
-//void UmpsQ<Symmetry,Scalar>::
+//void Umps<Symmetry,Scalar>::
 //decompose (size_t loc, const vector<vector<Biped<Symmetry,MatrixType> > > &Apair)
 //{
 //	ArrayXd truncWeightSub(outset[loc].size()); truncWeightSub.setZero();

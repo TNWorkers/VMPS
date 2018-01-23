@@ -37,14 +37,14 @@ with
 \note If the NNN-hopping is positive, the ground state energy is lowered.
 \warning \f$J>0\f$ is antiferromagnetic
 */
-class HubbardU1xU1 : public MpoQ<Sym::U1xU1<double>,double>, public HubbardObservables<Sym::U1xU1<double> >
+class HubbardU1xU1 : public Mpo<Sym::U1xU1<double>,double>, public HubbardObservables<Sym::U1xU1<double> >
 {
 typedef Sym::U1xU1<double> Symmetry;
 
 public:
 	
 	///@{
-	HubbardU1xU1() : MpoQ(){};
+	HubbardU1xU1() : Mpo(){};
 	HubbardU1xU1 (const size_t &L, const vector<Param> &params);
 	///@}
 	
@@ -72,7 +72,7 @@ const std::map<string,std::any> HubbardU1xU1::defaults =
 
 HubbardU1xU1::
 HubbardU1xU1 (const size_t &L, const vector<Param> &params)
-:MpoQ<Symmetry> (L, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ""),
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ""),
  HubbardObservables(L,params,HubbardU1xU1::defaults)
 {
 	ParamHandler P(params,HubbardU1xU1::defaults);
@@ -248,7 +248,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	return Terms;
 }
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //cc (size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
@@ -256,28 +256,28 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	ss << "c(" << locx << "," << locy << "," << UP << ")"
 //	   << "c(" << locx << "," << locy << "," << DN << ")";
 //	
-//	MpoQ<Symmetry> Mout(N_sites, qarray<Symmetry::Nq>({-1,-1}), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, qarray<Symmetry::Nq>({-1,-1}), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocal(locx, F[locx].c(UP,locy) * F[locx].c(DN,locy));
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //eta()
 //{
 //	assert(N_sites == N_phys);
 //	stringstream ss;
 //	ss << "eta";
 //	
-//	MpoQ<Symmetry> Mout(N_sites, qarray<Symmetry::Nq>({-1,-1}), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, qarray<Symmetry::Nq>({-1,-1}), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocalSum(F[0].c(UP)*F[0].c(DN), stagger);
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //cdagcdag (size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
@@ -285,14 +285,14 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	ss << "c†(" << locx << "," << locy << "," << DN << ")"
 //	   << "c†(" << locx << "," << locy << "," << UP << ")";
 //	
-//	MpoQ<Symmetry> Mout(N_sites, qarray<Symmetry::Nq>({+1,+1}), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, qarray<Symmetry::Nq>({+1,+1}), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocal(locx, F[locx].cdag(DN,locy) * F[locx].cdag(UP,locy));
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //c (SPIN_INDEX sigma, size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
@@ -302,7 +302,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	qarray<2> qdiff;
 //	(sigma==UP) ? qdiff={-1,0} : qdiff={0,-1};
 //	
-//	MpoQ<Symmetry> Mout(N_sites, qdiff, HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, qdiff, HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocal(locx, F[locx].c(sigma,locy), F[0].sign());
@@ -310,7 +310,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //cdag (SPIN_INDEX sigma, size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
@@ -320,14 +320,14 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	qarray<2> qdiff; 
 //	(sigma==UP) ? qdiff={+1,0} : qdiff={0,+1};
 //	
-//	MpoQ<Symmetry> Mout(N_sites, qdiff, HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, qdiff, HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocal(locx, F[locx].cdag(sigma,locy), F[0].sign());
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 //{
 //	assert(locx1<N_sites and locx2<N_sites);
@@ -338,7 +338,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	auto cdag = F[locx1].cdag(sigma,locy1);
 //	auto c    = F[locx2].c   (sigma,locy2);
 //	
-//	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	if (locx1 == locx2)
@@ -357,48 +357,48 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //d (size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
 //	stringstream ss;
 //	ss << "double_occ(" << locx << "," << locy << ")";
 //	
-//	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocal(locx, F[locx].d(locy));
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //dtot()
 //{
 //	stringstream ss;
 //	ss << "double_occ_total";
 //	
-//	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocalSum(F[0].d());
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //n (SPIN_INDEX sigma, size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
 //	stringstream ss;
 //	ss << "n(" << locx << "," << locy << "," << sigma << ")";
 //	
-//	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocal(locx, F[locx].n(sigma,locy));
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //nn (SPIN_INDEX sigma1, size_t locx1, SPIN_INDEX sigma2, size_t locx2, size_t locy1, size_t locy2)
 //{
 //	assert(locx1<N_sites and locx2<N_sites and locy1<F[locx1].dim() and locy2<F[locx2].dim());
@@ -406,28 +406,28 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	ss << "n(" << locx1 << "," << locy1 << ")"
 //	   << "n(" << locx2 << "," << locy2 << ")";
 //	
-//	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocal({locx1,locx2}, {F[locx1].n(sigma1,locy1),F[locx2].n(sigma2,locy2)});
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //Sz (size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
 //	stringstream ss;
 //	ss << "Sz(" << locx << "," << locy << ")";
 //	
-//	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocal(locx, F[locx].Sz(locy));
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 //{
 //	assert(locx1 < N_sites and locx2 < N_sites and locy1<F[locx1].dim() and locy2<F[locx2].dim());
@@ -435,14 +435,14 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	ss << "Sz(" << locx1 << "," << locy1 << ")" 
 //	   << "Sz(" << locx2 << "," << locy2 << ")";
 //	
-//	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocal({locx1,locx2}, {F[locx1].Sz(locy1),F[locx2].Sz(locy2)});
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //SaSa (size_t locx1, SPINOP_LABEL SOP1, size_t locx2, SPINOP_LABEL SOP2, size_t locy1, size_t locy2)
 //{
 //	assert(locx1<N_sites and locx2<N_sites and locy1<F[locx1].dim() and locy2<F[locx2].dim());
@@ -450,28 +450,28 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	ss << SOP1 << "(" << locx1 << "," << locy1 << ")" 
 //	   << SOP2 << "(" << locx2 << "," << locy2 << ")";
 //	
-//	MpoQ<Symmetry> Mout(N_sites, qarray<Symmetry::Nq>(F[locx1].getQ(SOP1)+F[locx2].getQ(SOP2)), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, qarray<Symmetry::Nq>(F[locx1].getQ(SOP1)+F[locx2].getQ(SOP2)), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocal({locx1,locx2}, {F[locx1].Scomp(SOP1,locy1),F[locx2].Scomp(SOP2,locy2)});
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //s (size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
 //	stringstream ss;
 //	ss << "single_occ(" << locx << "," << locy << ")";
 //	
-//	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocal(locx, F[locx].n(UP,locy)+F[locx].n(DN,locy)-2.*F[locx].d(locy));
 //	return Mout;
 //}
 
-//MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 //hh (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 //{
 //	assert(locx1 < N_sites and locx2 < N_sites and locy1<F[locx1].dim() and locy2<F[locx2].dim());
@@ -479,7 +479,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	ss << "h(" << locx1 << "," << locy1 << ")"
 //	   << "h(" << locx2 << "," << locy2 << ")";
 //	
-//	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
+//	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ss.str());
 //	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 //	
 //	Mout.setLocal({locx1,locx2}, {F[locx1].d(locy1)-F[locx1].n(locy1)+F[locx1].Id(),
@@ -487,20 +487,20 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-////MpoQ<Sym::U1xU1<double>,complex<double> > HubbardU1xU1::
+////Mpo<Sym::U1xU1<double>,complex<double> > HubbardU1xU1::
 ////doublonPacket (complex<double> (*f)(int))
 ////{
 ////	stringstream ss;
 ////	ss << "doublonPacket";
 ////	
-////	MpoQ<Symmetry,complex<double> > Mout(N_sites, qarray<Symmetry::Nq>({-1,-1}), HubbardU1xU1::Nlabel, ss.str());
+////	Mpo<Symmetry,complex<double> > Mout(N_sites, qarray<Symmetry::Nq>({-1,-1}), HubbardU1xU1::Nlabel, ss.str());
 ////	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F.get_basis(),l);}
 ////	
 ////	Mout.setLocalSum(F.c(UP)*F.c(DN), f);
 ////	return Mout;
 ////}
 
-////MpoQ<Sym::U1xU1<double>,complex<double> > HubbardU1xU1::
+////Mpo<Sym::U1xU1<double>,complex<double> > HubbardU1xU1::
 ////electronPacket (complex<double> (*f)(int))
 ////{
 ////	assert(N_legs==1);
@@ -532,12 +532,12 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //////	M[N_sites-1](1,0) = f(N_sites-1) * F.cdag(UP);
 ////	M[N_sites-1](1,0).data = f(N_sites-1) * F.cdag(UP).data; M[N_sites-1](1,0).Q = F.cdag(UP).Q;
 ////	
-////	MpoQ<Symmetry,complex<double> > Mout(N_sites, M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
+////	Mpo<Symmetry,complex<double> > Mout(N_sites, M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
 ////	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F.get_basis(),l);}
 ////	return Mout;
 ////}
 
-////MpoQ<Sym::U1xU1<double>,complex<double> > HubbardU1xU1::
+////Mpo<Sym::U1xU1<double>,complex<double> > HubbardU1xU1::
 ////holePacket (complex<double> (*f)(int))
 ////{
 ////	assert(N_legs==1);
@@ -564,12 +564,12 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 ////	M[N_sites-1](0,0) = complex<double>(1.,0.) * F.sign();
 ////	M[N_sites-1](1,0) = f(N_sites-1) * F.c(UP);
 ////	
-////	MpoQ<Symmetry,complex<double> > Mout(N_sites, M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
+////	Mpo<Symmetry,complex<double> > Mout(N_sites, M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
 ////	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F.get_basis(),l);}
 ////	return Mout;
 ////}
 
-////MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+////Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 ////triplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 ////{
 ////	assert(locx<N_sites and locy<F[locx].dim());
@@ -597,12 +597,12 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 ////		M[l](0,0) = F[l].Id();
 ////	}
 ////	
-////	MpoQ<Symmetry> Mout(N_sites, M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
+////	Mpo<Symmetry> Mout(N_sites, M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
 ////	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 ////	return Mout;
 ////}
 
-////MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+////Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 ////antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 ////{
 ////	assert(locx<N_sites and locy<F[locx].dim());
@@ -630,12 +630,12 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 ////		M[l](0,0) = F[l].Id();
 ////	}
 ////	
-////	MpoQ<Symmetry> Mout(N_sites, M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
+////	Mpo<Symmetry> Mout(N_sites, M, qarray<Symmetry::Nq>(qdiff), HubbardU1xU1::Nlabel, ss.str());
 ////	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 ////	return Mout;
 ////}
 
-////MpoQ<Sym::U1xU1<double> > HubbardU1xU1::
+////Mpo<Sym::U1xU1<double> > HubbardU1xU1::
 ////quadruplon (size_t locx, size_t locy)
 ////{
 ////	assert(locx<N_sites and locy<F[locx].dim());
@@ -660,7 +660,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 ////		M[l](0,0) = F[l].Id();
 ////	}
 ////	
-////	MpoQ<Symmetry> Mout(N_sites, M, qarray<Symmetry::Nq>({-2,-2}), HubbardU1xU1::Nlabel, ss.str());
+////	Mpo<Symmetry> Mout(N_sites, M, qarray<Symmetry::Nq>({-2,-2}), HubbardU1xU1::Nlabel, ss.str());
 ////	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 ////	return Mout;
 ////}

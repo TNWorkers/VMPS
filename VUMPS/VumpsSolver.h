@@ -41,12 +41,12 @@ public:
 	};
 	
 	void edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input, 
-	                Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot_input, 
+	                Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot_input, 
 	                double tol_eigval_input=1e-7, double tol_var_input=1e-6, 
 	                size_t Dlimit=500, 
 	                size_t max_iterations=50, size_t min_iterations=6);
 	
-	void edgeState (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot_input, 
+	void edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot_input, 
 	                double tol_eigval_input=1e-7, double tol_var_input=1e-6, 
 	                size_t Dlimit=500, 
 	                size_t max_iterations=50, size_t min_iterations=6);
@@ -54,16 +54,16 @@ public:
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
 	void prepare (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input,
-	              Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, size_t Dlimit, qarray<Symmetry::Nq> Qtot_input);
-	void iteration1 (Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout);
-//	void iteration2 (Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout);
+	              Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t Dlimit, qarray<Symmetry::Nq> Qtot_input);
+	void iteration1 (Eigenstate<Umps<Symmetry,Scalar> > &Vout);
+//	void iteration2 (Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
-	void prepare (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, size_t Dlimit, qarray<Symmetry::Nq> Qtot_input);
-	void iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout);
-	void iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout);
-	void iteration4 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout);
+	void prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t Dlimit, qarray<Symmetry::Nq> Qtot_input);
+	void iteration1 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
+	void iteration2 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
+	void iteration4 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
-	void cleanup (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout);
+	void cleanup (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
 	/**Returns the current error of the eigenvalue while the sweep process.*/
 	inline double get_errEigval() const {return err_eigval;};
@@ -97,7 +97,7 @@ private:
 	
 	void set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState);
 	
-	void make_explicitT (const UmpsQ<Symmetry,Scalar> &Vbra, const UmpsQ<Symmetry,Scalar> &Vket, MatrixType &TL, MatrixType &TR);
+	void make_explicitT (const Umps<Symmetry,Scalar> &Vbra, const Umps<Symmetry,Scalar> &Vket, MatrixType &TL, MatrixType &TR);
 	MatrixXd eigenvectorL (const MatrixType &TL);
 	MatrixXd eigenvectorR (const MatrixType &TR);
 	
@@ -200,7 +200,7 @@ write_log (bool FORCE)
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-prepare (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, size_t M_input, qarray<Symmetry::Nq> Qtot_input)
+prepare (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input, Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t M_input, qarray<Symmetry::Nq> Qtot_input)
 {
 	N_sites = 1;
 	N_iterations = 0;
@@ -228,7 +228,7 @@ prepare (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &
 	h[1] = h2site;
 	
 	// resize Vout
-	Vout.state = UmpsQ<Symmetry,Scalar>(Heff[0].qloc, N_sites, M, Qtot_input);
+	Vout.state = Umps<Symmetry,Scalar>(Heff[0].qloc, N_sites, M, Qtot_input);
 	Vout.state.N_sv = M;
 	Vout.state.setRandom();
 	for (size_t l=0; l<N_sites; ++l)
@@ -271,7 +271,7 @@ set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState)
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-iteration1 (Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
+iteration1 (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 {
 //	auto Vprev = Vout;
 	
@@ -378,7 +378,7 @@ iteration1 (Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-prepare (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, size_t M_input, qarray<Symmetry::Nq> Qtot_input)
+prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t M_input, qarray<Symmetry::Nq> Qtot_input)
 {
 	assert(H.length()<=2 or H.length()==4);
 	
@@ -393,7 +393,7 @@ prepare (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, size
 	dW = H.auxdim();
 	
 	// resize Vout
-	Vout.state = UmpsQ<Symmetry,Scalar>(H.locBasis(0), N_sites, M, Qtot_input);
+	Vout.state = Umps<Symmetry,Scalar>(H.locBasis(0), N_sites, M, Qtot_input);
 	Vout.state.N_sv = M;
 	Vout.state.setRandom();
 	for (size_t l=0; l<N_sites; ++l)
@@ -411,7 +411,7 @@ prepare (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, size
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-make_explicitT (const UmpsQ<Symmetry,Scalar> &Vbra, const UmpsQ<Symmetry,Scalar> &Vket, MatrixType &TL, MatrixType &TR)
+make_explicitT (const Umps<Symmetry,Scalar> &Vbra, const Umps<Symmetry,Scalar> &Vket, MatrixType &TL, MatrixType &TR)
 {
 //	vector<vector<MatrixType> > TL(H.auxdim());
 //	vector<vector<MatrixType> > TR(H.auxdim());
@@ -471,7 +471,7 @@ make_explicitT (const UmpsQ<Symmetry,Scalar> &Vbra, const UmpsQ<Symmetry,Scalar>
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-iteration1 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
+iteration1 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 {
 	Stopwatch<> IterationTimer;
 	
@@ -765,7 +765,7 @@ make_Warray4 (size_t b, const MpHamiltonian &H)
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
+iteration2 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 {
 	Stopwatch<> IterationTimer;
 	
@@ -1021,8 +1021,8 @@ iteration2 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 		(err_var>0.1)? Vout.state.svdDecompose(l) : Vout.state.polarDecompose(l);
 	}
 	
-	eL = (YL[0]*Reigen).trace() / (N_sites * H.width());
-	eR = (Leigen*YR[dW-1]).trace() / (N_sites * H.width());
+	eL = (YL[0]*Reigen).trace() / H.volume();
+	eR = (Leigen*YR[dW-1]).trace() / H.volume();
 	
 	MatrixXd epsLRsq(N_sites,2);
 	for (size_t l=0; l<N_sites; ++l)
@@ -1089,7 +1089,7 @@ make_Warray8 (size_t b, const MpHamiltonian &H)
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-iteration4 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
+iteration4 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 {
 	Stopwatch<> IterationTimer;
 	
@@ -1354,8 +1354,8 @@ iteration4 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 		(err_var>0.1)? Vout.state.svdDecompose(l) : Vout.state.polarDecompose(l);
 	}
 	
-	eL = (YL[0]*Reigen).trace() / (N_sites * H.width());
-	eR = (Leigen*YR[dW-1]).trace() / (N_sites * H.width());
+	eL = (YL[0]*Reigen).trace() / H.volume();
+	eR = (Leigen*YR[dW-1]).trace() / H.volume();
 	
 	MatrixXd epsLRsq(N_sites,2);
 	for (size_t l=0; l<N_sites; ++l)
@@ -1387,7 +1387,7 @@ iteration4 (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout)
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, double tol_eigval_input, double tol_var_input, size_t M, size_t max_iterations, size_t min_iterations)
+edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, double tol_eigval_input, double tol_var_input, size_t M, size_t max_iterations, size_t min_iterations)
 {
 	tol_eigval = tol_eigval_input;
 	tol_var = tol_var_input;
@@ -1419,7 +1419,7 @@ edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> >
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-edgeState (const MpHamiltonian &H, Eigenstate<UmpsQ<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, double tol_eigval_input, double tol_var_input, size_t M, size_t max_iterations, size_t min_iterations)
+edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, double tol_eigval_input, double tol_var_input, size_t M, size_t max_iterations, size_t min_iterations)
 {
 	tol_eigval = tol_eigval_input;
 	tol_var = tol_var_input;
