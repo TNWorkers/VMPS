@@ -23,9 +23,9 @@ digraph G
 	Ltop -> Wtop [label="Ltop"];
 	
 	// bug: same rank & label reverses direction
-	Aket -> Wtop [label="s3"];
-	Wtop -> Wbot [label="s2"]
-	Wbot -> Abra [label="s1"];
+	Wtop -> Aket [label="s3"];
+	Wbot -> Wtop [label="s2"]
+	Abra -> Wbot [label="s1"];
 	
 	Rout -> Abra [label="Rout"];
 	Aket -> Rin [label="Rin"];

@@ -1,5 +1,5 @@
-#ifndef STRAWBERRY_MPO_WITH_Q
-#define STRAWBERRY_MPO_WITH_Q
+#ifndef STRAWBERRY_Mpo_WITH_Q
+#define STRAWBERRY_Mpo_WITH_Q
 
 #include "boost/multi_array.hpp"
 
@@ -62,69 +62,67 @@ public:
 	
 	Mpo(){};
 	
-	Mpo (size_t Lx_input);
+	Mpo (size_t L_input);
 	
-	Mpo (size_t Lx_input, 
+	/**Basic Mpo constructor.
+	\warning Note that qloc and qOp have to be set separately.
+	\param L_input : amount of sites/supersites which are swept
+	\param Qtot_input : the total change in quantum number
+	\param qlabel_input : how to label the conserved quantum numbers in outputs
+	\param label_input : how to label the Mpo itself in outputs
+	\param format_input : format function for the quantum numbers (e.g.\ half-integers for S=1/2).
+	\param UNITARY_input : if the Mpo is known to be unitary, this can be further exploited
+	*/
+	Mpo (size_t L_input, 
 	     qarray<Nq> Qtot_input,
 	     std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), 
 	     string label_input="Mpo", 
 	     string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	     bool UNITARY_input=false);
 	
-//	/**Set with operator quantum number*/
-//	Mpo (size_t Lx_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input,  
-//	      std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), string label_input="Mpo", string (*format_input)(qarray<Nq> qnum)=noFormat, 
-//	      bool UNITARY_input=false);
-	
-	//---set whole MPO for special cases, modify---
+	//---set whole Mpo for special cases, modify---
 	
 	///\{
 	/**Set to a local operator \f$O_i\f$
 	\param loc : site index
 	\param Op : the local operator in question
 	*/
-	void setLocal (size_t loc, const OperatorType &Op);
+	void setLocal (size_t loc, const OperatorType &Op, bool OPEN_BC=true);
 	
 	/**Set to a local operator \f$O_i\f$ but add a chain of sign operators (useful for fermionic operators)
 	\param loc : site index
 	\param Op : the local operator in question
 	\param SignOp : elementary operator for the sign chain.
 	*/
-	void setLocal (size_t loc, const OperatorType& Op, const OperatorType &SignOp);
-
+	void setLocal (size_t loc, const OperatorType& Op, const OperatorType &SignOp, bool OPEN_BC=true);
+	
 	/**Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$
 	\param loc : list of locations
 	\param Op : list of operators
 	*/
-	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op);
-
+	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, bool OPEN_BC=true);
+	
 	/**Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$ with sign chains in between
 	\param loc : list of locations
 	\param Op : list of operators
 	\param SignOp : elementary operator for the sign chain.
 	*/
-	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const OperatorType& SignOp);
-
+	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const OperatorType& SignOp, bool OPEN_BC=true);
+	
 	/**Set to a sum of of local operators \f$\sum_i f(i) O_i\f$
 	\param Op : the local operator in question
 	\param f : the function in question$
 	*/
-	void setLocalSum (const OperatorType &Op, Scalar (*f)(int)=localSumTrivial);
+	void setLocalSum (const OperatorType &Op, Scalar (*f)(int)=localSumTrivial, bool OPEN_BC=true);
 	
 	/**Set to a sum of nearest-neighbour products of local operators \f$\sum_i O^1_i O^2_{i+1}\f$
 	\param Op1 : first local operator
 	\param Op2 : second local operator
 	*/
-	void setProductSum (const OperatorType &Op1, const OperatorType &Op2);
+	void setProductSum (const OperatorType &Op1, const OperatorType &Op2, bool OPEN_BC=true);
 	
 	/**Makes a linear transformation of the Mpo: \f$H' = factor*H + offset\f$.*/
 	void scale (double factor=1., double offset=0.);
-	
-	/**Resets the Mpo from a dummy Mps which has been swept.*/
-	void setFromFlattenedMpo (const Mps<Sym::U0,Scalar> &Op, bool USE_SQUARE=false);
-	
-	/**Sets the product of a left-side and right-side operator in the Heisenberg picture.*/
-	template<typename OtherSymmetry> void set_HeisenbergPicture (const Mpo<OtherSymmetry,Scalar> Op1, const Mpo<OtherSymmetry,Scalar> Op2);
 	///\}
 	
 	//---info stuff---
@@ -155,7 +153,7 @@ public:
 	std::array<string,Nq> qlabel;
 	///\}
 	
-	//---return stuff, set parts---
+	//---return stuff, set parts, check stuff---
 	
 	///\{
 	/**Returns the length of the chain (the amount of sites or supersites which are swept).*/
@@ -206,10 +204,10 @@ public:
 	inline void setOpBasis   (const vector<vector<qType> > &q)        {qOp=q;}
 	inline void setOpBasisSq (const vector<vector<qType> > &qOpSq_in) {qOpSq=qOpSq_in;}
 	
-	/**Checks whether the MPO is a unitary operator.*/
+	/**Checks whether the Mpo is a unitary operator.*/
 	inline bool IS_UNITARY() const {return UNITARY;};
 	
-	/**Checks if the square of the MPO was calculated and stored.*/
+	/**Checks if the square of the Mpo was calculated and stored.*/
 	inline bool check_SQUARE() const {return GOT_SQUARE;}
 	
 	/**Returns the W-matrix at a given site by const reference.*/
@@ -225,7 +223,14 @@ public:
 	boost::multi_array<Scalar,4> H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM=false) const;
 	///\}
 	
-	// compression stuff (do not delete, could still be of use)
+	//--- compression and propagation stuff (do not delete, could still be of use) ---/
+	
+//	/**Resets the Mpo from a dummy Mps which has been swept.*/
+//	void setFromFlattenedMpo (const Mps<Sym::U0,Scalar> &Op, bool USE_SQUARE=false);
+//	
+//	/**Sets the product of a left-side and right-side operator in the Heisenberg picture.*/
+//	template<typename OtherSymmetry> void set_HeisenbergPicture (const Mpo<OtherSymmetry,Scalar> Op1, const Mpo<OtherSymmetry,Scalar> Op2);
+//	
 //	void SVDcompress (bool USE_SQUARE=false, double eps_svd=1e-7, size_t N_halfsweeps=2);
 //	string test_ortho() const;
 //	void init_compression();
@@ -249,12 +254,11 @@ protected:
 	
 	vector<vector<qarray<Nq> > > qloc, qOp, qOpSq;
 	vector<Qbasis<Symmetry> > qloc__;
-	
 	vector<Qbasis<Symmetry> > qaux;
 	
 	qarray<Nq> Qtot;
 	
-	bool UNITARY = false;
+	bool UNITARY    = false;
 	bool GOT_SQUARE = false;
 	
 	size_t N_sites;
@@ -264,6 +268,7 @@ protected:
 	/**Resizes the relevant containers with \p N_sites.*/
 	void initialize();
 	
+	/**Calculates the auxiliary basis.*/
 	void calc_auxBasis();
 	
 	/**Construct with \p vector<SuperMatrix> and input \p qOp. Most general of the construct routines, all the source code is here.*/
@@ -296,6 +301,9 @@ protected:
 	                bool CALC_SQUARE=false,
 	                bool OPEN_BC=true);
 	
+	vector<SuperMatrix<Symmetry,Scalar> > make_localG (size_t loc, const OperatorType &Op);
+	vector<SuperMatrix<Symmetry,Scalar> > make_localG (const vector<size_t> &loc, const vector<OperatorType> &Op);
+	
 	vector<SuperMatrix<Symmetry,Scalar> > Gvec;
 	vector<vector<vector<vector<SparseMatrix<Scalar> > > > > W;
 	
@@ -311,43 +319,21 @@ protected:
 
 template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar>::
-Mpo (size_t Lx_input)
-:N_sites(Lx_input)
+Mpo (size_t L_input)
+:N_sites(L_input)
 {
 	initialize();
 }
 
 template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar>::
-Mpo (size_t Lx_input, qarray<Nq> Qtot_input, 
+Mpo (size_t L_input, qarray<Nq> Qtot_input, 
      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
      bool UNITARY_input)
-:N_sites(Lx_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+:N_sites(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	initialize();
 }
-
-//template<typename Symmetry, typename Scalar>
-//Mpo<Symmetry,Scalar>::
-//Mpo (size_t Lx_input, qarray<Nq> Qtot_input, vector<qarray<Nq> > qOp_input, 
-//      std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
-//      bool UNITARY_input)
-//:N_sites(Lx_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
-//{
-//	initialize();
-//	
-//	if (qOp_input != NULL)
-//	{
-//		for (size_t l=0; l<N_sites; ++l)
-//		{
-//			qOp[l].resize(qOp_input.size());
-//			for (size_t k=0; k<qOp_input.size(); ++k)
-//			{
-//				qOp[l][k] = qOp_input[k];
-//			}
-//		}
-//	}
-//}
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
@@ -369,89 +355,6 @@ initialize()
 				W[l][s1][s2].resize(1);
 			}
 		}
-	}
-}
-
-template<typename Symmetry, typename Scalar>
-void Mpo<Symmetry,Scalar>::
-calc_auxBasis()
-{
-	auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> std::set<qType>
-	{
-		size_t L = (l_last < 0 or l_frst >= qOp.size())? 0 : l_last-l_frst+1;
-		std::set<qType > qset;
-		
-		if (L > 0)
-		{
-			// add qnums of local basis on l_frst to qset_tmp
-			std::set<qType> qset_tmp;
-			
-			for (const auto& k : qOp[l_frst])
-			{
-				qset_tmp.insert(k);
-			}
-			
-			for (size_t l=l_frst+1; l<=l_last; ++l)
-			{
-				for (const auto& k : qOp[l])
-				for (auto it=qset_tmp.begin(); it!=qset_tmp.end(); ++it)
-				{
-					auto qVec = Symmetry::reduceSilent(*it,k);
-					for (const auto& q : qVec)
-					{
-						qset.insert(q);
-					}
-				}
-				// swap qset and qset_tmp to continue
-				std::swap(qset_tmp,qset);
-			}
-			qset = qset_tmp;
-		}
-		else
-		{
-			qset.insert(Symmetry::qvacuum());
-		}
-		return qset;
-	};
-	
-	this->qaux.resize(this->N_sites+1);
-	//set aux basis on right end to Qtot.
-	qaux[this->N_sites].push_back(Qtot,1);//auxdim());
-	
-	for (size_t l=0; l<this->N_sites; ++l)
-	{
-		Qbasis<Symmetry> qauxtmp;
-		std::unordered_set<qType> uniqueControl;
-		int lprev = l-1;
-		int lnext = l+1;
-		std::set<qType> qlset = calc_qnums_on_segment(0,lprev); // length=l
-		std::set<qType> qrset = calc_qnums_on_segment(lnext,this->N_sites-1); // length=L-l-1
-		for (const auto& k : qOp[l])
-		for (auto ql=qlset.begin(); ql!=qlset.end(); ++ql)
-		{
-			auto qVec = Symmetry::reduceSilent(*ql,k);
-			std::vector<std::set<qType> > qrSetVec; qrSetVec.resize(qVec.size());
-			for (size_t i=0; i<qVec.size(); i++)
-			{
-				auto qVectmp = Symmetry::reduceSilent(Symmetry::flip(qVec[i]),Qtot);
-				for (size_t j=0; j<qVectmp.size(); j++) { qrSetVec[i].insert(qVectmp[j]); }
-				for (auto qr = qrSetVec[i].begin(); qr!=qrSetVec[i].end(); qr++)
-				{
-					auto itqr = qrset.find(*qr);
-					if (itqr != qrset.end())
-					{
-						auto qin = *ql;
-						if(auto it=uniqueControl.find(qin) == uniqueControl.end())
-						{
-							uniqueControl.insert(qin);
-							if(l==0) { qauxtmp.push_back(qin,1); }
-							else { qauxtmp.push_back(qin,auxdim()); }
-						}
-					}
-				}
-			}
-		}
-		qaux[l] = qauxtmp;
 	}
 }
 
@@ -497,7 +400,7 @@ construct (const SuperMatrix<Symmetry,Scalar> &G_input,
 	
 	construct(Gvec, Wstore, Gstore, qOp_in, false, OPEN_BC);
 	
-	// make squared MPO if desired
+	// make squared Mpo if desired
 	if (CALC_SQUARE == true)
 	{
 		qOpSq.resize(N_sites);
@@ -627,7 +530,7 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 		}
 	}
 	
-	// make squared MPO if desired
+	// make squared Mpo if desired
 	if (CALC_SQUARE == true)
 	{
 		qOpSq.resize(N_sites);
@@ -651,6 +554,89 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 }
 
 template<typename Symmetry, typename Scalar>
+void Mpo<Symmetry,Scalar>::
+calc_auxBasis()
+{
+	auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> std::set<qType>
+	{
+		size_t L = (l_last < 0 or l_frst >= qOp.size())? 0 : l_last-l_frst+1;
+		std::set<qType > qset;
+		
+		if (L > 0)
+		{
+			// add qnums of local basis on l_frst to qset_tmp
+			std::set<qType> qset_tmp;
+			
+			for (const auto& k : qOp[l_frst])
+			{
+				qset_tmp.insert(k);
+			}
+			
+			for (size_t l=l_frst+1; l<=l_last; ++l)
+			{
+				for (const auto& k : qOp[l])
+				for (auto it=qset_tmp.begin(); it!=qset_tmp.end(); ++it)
+				{
+					auto qVec = Symmetry::reduceSilent(*it,k);
+					for (const auto& q : qVec)
+					{
+						qset.insert(q);
+					}
+				}
+				// swap qset and qset_tmp to continue
+				std::swap(qset_tmp,qset);
+			}
+			qset = qset_tmp;
+		}
+		else
+		{
+			qset.insert(Symmetry::qvacuum());
+		}
+		return qset;
+	};
+	
+	this->qaux.resize(this->N_sites+1);
+	//set aux basis on right end to Qtot.
+	qaux[this->N_sites].push_back(Qtot,1);//auxdim());
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		Qbasis<Symmetry> qauxtmp;
+		std::unordered_set<qType> uniqueControl;
+		int lprev = l-1;
+		int lnext = l+1;
+		std::set<qType> qlset = calc_qnums_on_segment(0,lprev); // length=l
+		std::set<qType> qrset = calc_qnums_on_segment(lnext,this->N_sites-1); // length=L-l-1
+		for (const auto& k : qOp[l])
+		for (auto ql=qlset.begin(); ql!=qlset.end(); ++ql)
+		{
+			auto qVec = Symmetry::reduceSilent(*ql,k);
+			std::vector<std::set<qType> > qrSetVec; qrSetVec.resize(qVec.size());
+			for (size_t i=0; i<qVec.size(); i++)
+			{
+				auto qVectmp = Symmetry::reduceSilent(Symmetry::flip(qVec[i]),Qtot);
+				for (size_t j=0; j<qVectmp.size(); j++) { qrSetVec[i].insert(qVectmp[j]); }
+				for (auto qr = qrSetVec[i].begin(); qr!=qrSetVec[i].end(); qr++)
+				{
+					auto itqr = qrset.find(*qr);
+					if (itqr != qrset.end())
+					{
+						auto qin = *ql;
+						if(auto it=uniqueControl.find(qin) == uniqueControl.end())
+						{
+							uniqueControl.insert(qin);
+							if(l==0) { qauxtmp.push_back(qin,1); }
+							else { qauxtmp.push_back(qin,auxdim()); }
+						}
+					}
+				}
+			}
+		}
+		qaux[l] = qauxtmp;
+	}
+}
+
+template<typename Symmetry, typename Scalar>
 string Mpo<Symmetry,Scalar>::
 info() const
 {
@@ -658,20 +644,6 @@ info() const
 	ss << label << "L=" << N_sites;
 	if (N_phys>N_sites) {ss << ",V=" << N_phys;}
 	ss << ", ";
-	
-//	ss << "(";
-//	for (size_t q=0; q<Nq; ++q)
-//	{
-//		ss << qlabel[q];
-//		if (q != Nq-1) {ss << ",";}
-//	}
-//	ss << ")={";
-//	for (size_t q=0; q<D; ++q)
-//	{
-//		ss << format(qloc[q]);
-//		if (q != D-1) {ss << ",";}
-//	}
-//	ss << "}, ";
 	
 	ss << "Daux=" << Daux << ", ";
 //	ss << "trunc_weight=" << truncWeight.sum() << ", ";
@@ -736,7 +708,7 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 		{
 			N_nonZeros += (USE_SQUARE)? Wsq[l][s1][s2][k].nonZeros() : W[l][s1][s2][k].nonZeros();
 			N_elements += (USE_SQUARE)? Wsq[l][s1][s2][k].rows() * Wsq[l][s1][s2][k].cols():
-				                        W[l][s1][s2][k].rows()   * W[l][s1][s2][k].cols();
+			                            W[l][s1][s2][k].rows()   * W[l][s1][s2][k].cols();
 		}
 	}
 	
@@ -790,7 +762,24 @@ generate_label (string mainlabel, const vector<HamiltonianTerms<Symmetry,Scalar>
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
-setLocal (size_t loc, const OperatorType &Op)
+setLocal (size_t loc, const OperatorType &Op, bool OPEN_BC)
+{
+	auto G = make_localG(loc,Op);
+	construct(G, W, Gvec, false, OPEN_BC);
+}
+
+template<typename Symmetry, typename Scalar>
+void Mpo<Symmetry,Scalar>::
+setLocal (size_t loc, const OperatorType &Op, const OperatorType &SignOp, bool OPEN_BC)
+{
+	auto G = make_localG(loc,Op);
+	for (size_t l=0; l<loc; ++l) {G[l](0,0) = SignOp;}
+	construct(G, W, Gvec, false, OPEN_BC);
+}
+
+template<typename Symmetry, typename Scalar>
+vector<SuperMatrix<Symmetry,Scalar> > Mpo<Symmetry,Scalar>::
+make_localG (size_t loc, const OperatorType &Op)
 {
 	assert(Op.data.rows() == qloc[loc].size() and Op.data.cols() == qloc[loc].size());
 	assert(loc < N_sites);
@@ -802,51 +791,103 @@ setLocal (size_t loc, const OperatorType &Op)
 	}
 	
 	Daux = 1;
-	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
+	vector<SuperMatrix<Symmetry,Scalar> > G(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		M[l].setMatrix(Daux,qloc[l].size());
-		if (l==loc) { M[l](0,0) = Op; }
-		else        { M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum();}
+		G[l].setMatrix(Daux,qloc[l].size());
+		if (l==loc) {G[l](0,0) = Op;}
+		else        {G[l](0,0).data.setIdentity(); G[l](0,0).Q = Symmetry::qvacuum();}
 	}
 	
-	construct(M, W, Gvec);
+	return G;
 }
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
-setLocal (size_t loc, const OperatorType &Op, const OperatorType &SignOp)
+setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, bool OPEN_BC)
 {
-	assert(Op.data.rows() == qloc[loc].size() and Op.data.cols() == qloc[loc].size());
-	assert(loc < N_sites);
-	
-	for (size_t l=0; l<N_sites; l++)
-	{
-		qOp[l].resize(1);
-		qOp[l][0] = (l==loc) ? Op.Q : Symmetry::qvacuum();
-	}
-	
-	Daux = 1;
-	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
-	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		M[l].setMatrix(Daux,qloc[l].size());
-		if      (l<loc)  { M[l](0,0) = SignOp; }
-		else if (l==loc) { M[l](0,0) = Op; }
-		else             { M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum(); }
-	}
-	
-	construct(M, W, Gvec);
+	auto G = make_localG(loc,Op);
+	construct(G, W, Gvec, false, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
-setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op)
+setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const OperatorType &SignOp, bool OPEN_BC)
+{
+//	assert(loc.size() >= 1 and Op.size() == loc.size());
+//	
+//	// For non-abelian symmetries, the operators have to be on different sites,
+//	// since multiplication of the operators is only possible in the format of SiteOperatorQ and here SiteOperator is used.
+//	// --> The multiplication has to be done in the model-classes, before calling setLocal().
+//	if constexpr( Symmetry::NON_ABELIAN )
+//	{
+//		for(size_t pos1=0; pos1<loc.size(); pos1++)
+//		for(size_t pos2=pos1+1; pos2<loc.size(); pos2++)
+//		{
+//			assert(loc[pos1] != loc[pos2] and
+//				   "setLocal() can only be called with several operators on different sites, when using non-abelian symmetries.");
+//		}
+//	}
+//	
+//	auto [min,max] = std::minmax_element(loc.begin(),loc.end());
+//	size_t locMin,locMax;
+//	locMin = loc[min-loc.begin()];
+//	locMax = loc[max-loc.begin()];
+//	
+//	Daux = 1;
+//	vector<SuperMatrix<Symmetry,Scalar> > G(N_sites);
+//	
+//	for (size_t l=0; l<N_sites; l++)
+//	{
+//		qOp[l].resize(1);
+//		bool GATE = true;
+//		for (size_t pos=0; pos<loc.size(); pos++)
+//		{
+//			if (l==loc[pos]) {qOp[l][0] = Op[pos].Q; GATE=false;}
+//			if (GATE)        {qOp[l][0] = Symmetry::qvacuum();}
+//		}
+//	}
+//	
+//	for (size_t l=0; l<N_sites; ++l)
+//	{
+//		G[l].setMatrix(Daux,qloc[l].size());
+//		if (auto it=find(loc.begin(),loc.end(),l) == loc.end())
+//		{
+//			if (l>locMin and l<locMax) {G[l](0,0) = SignOp;}
+//			else {G[l](0,0).data.setIdentity(); G[l](0,0).Q = Symmetry::qvacuum();}
+//		}
+//		else
+//		{
+//			G[l](0,0).data.setIdentity(); G[l](0,0).Q = Symmetry::qvacuum();
+//		}
+//	}
+//	
+//	for (size_t i=0; i<loc.size(); ++i)
+//	{
+//		assert(loc[i] < N_sites);
+//		assert(Op[i].data.rows() == qloc[loc[i]].size() and Op[i].data.cols() == qloc[loc[i]].size());
+//		
+//		G[loc[i]](0,0).data = G[loc[i]](0,0).data * Op[i].data;
+//		G[loc[i]](0,0).Q = Symmetry::reduceSilent(G[loc[i]](0,0).Q, Op[i].Q)[0]; // We can use the 0th component here.
+//	}
+	
+	auto G = make_localG(loc,Op);
+	
+	auto [min,max] = minmax_element(loc.begin(),loc.end());
+	size_t locMin = loc[min-loc.begin()];
+	size_t locMax = loc[max-loc.begin()];
+	for (size_t l=locMin+1; l<locMax; ++l) {G[l](0,0) = SignOp;}
+	
+	construct(G, W, Gvec, false, OPEN_BC);
+}
+
+template<typename Symmetry, typename Scalar>
+vector<SuperMatrix<Symmetry,Scalar> > Mpo<Symmetry,Scalar>::
+make_localG (const vector<size_t> &loc, const vector<OperatorType> &Op)
 {
 	assert(loc.size() >= 1 and Op.size() == loc.size());
-
+	
 	// For non-abelian symmetries, the operators have to be on different sites,
 	// since multiplication of the operators is only possible in the format of SiteOperatorQ and here SiteOperator is used.
 	// --> The multiplication has to be done in the model-classes, before calling setLocal().
@@ -861,7 +902,7 @@ setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op)
 	}
 	
 	Daux = 1;
-	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
+	vector<SuperMatrix<Symmetry,Scalar> > G(N_sites);
 	
 	for (size_t l=0; l<N_sites; l++)
 	{
@@ -876,180 +917,111 @@ setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op)
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		M[l].setMatrix(Daux,qloc[l].size());
-		M[l](0,0).data.setIdentity();
-		M[l](0,0).Q = Symmetry::qvacuum();
+		G[l].setMatrix(Daux,qloc[l].size());
+		G[l](0,0).data.setIdentity();
+		G[l](0,0).Q = Symmetry::qvacuum();
 	}
 	
 	for (size_t i=0; i<loc.size(); ++i)
 	{
 		assert(loc[i] < N_sites);
 		assert(Op[i].data.rows() == qloc[loc[i]].size() and Op[i].data.cols() == qloc[loc[i]].size());
-		M[loc[i]](0,0).data = M[loc[i]](0,0).data * Op[i].data;
-		M[loc[i]](0,0).Q = Symmetry::reduceSilent(M[loc[i]](0,0).Q,Op[i].Q)[0]; // We can use the 0th component here.
+		G[loc[i]](0,0).data = G[loc[i]](0,0).data * Op[i].data;
+		G[loc[i]](0,0).Q = Symmetry::reduceSilent(G[loc[i]](0,0).Q,Op[i].Q)[0]; // We can use the 0th component here.
 	}
 	
-	construct(M, W, Gvec);
-}
-
-template<typename Symmetry, typename Scalar>
-void Mpo<Symmetry,Scalar>::
-setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const OperatorType &SignOp)
-{
-	assert(loc.size() >= 1 and Op.size() == loc.size());
-	
-	// For non-abelian symmetries, the operators have to be on different sites,
-	// since multiplication of the operators is only possible in the format of SiteOperatorQ and here SiteOperator is used.
-	// --> The multiplication has to be done in the model-classes, before calling setLocal().
-	if constexpr( Symmetry::NON_ABELIAN )
-	{
-		for(size_t pos1=0; pos1<loc.size(); pos1++)
-		for(size_t pos2=pos1+1; pos2<loc.size(); pos2++)
-		{
-			assert(loc[pos1] != loc[pos2] and
-				   "setLocal() can only be called with several operators on different sites, when using non-abelian symmetries.");
-		}
-	}
-	
-	auto [min,max] = std::minmax_element(loc.begin(),loc.end());
-	size_t locMin,locMax;
-	locMin = loc[min-loc.begin()];
-	locMax = loc[max-loc.begin()];
-	
-	Daux = 1;
-	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
-	
-	for (size_t l=0; l<N_sites; l++)
-	{
-		qOp[l].resize(1);
-		bool GATE = true;
-		for (size_t pos=0; pos<loc.size(); pos++)
-		{
-			if (l==loc[pos]) {qOp[l][0] = Op[pos].Q; GATE=false;}
-			if (GATE)        {qOp[l][0] = Symmetry::qvacuum();}
-		}
-	}
-	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		M[l].setMatrix(Daux,qloc[l].size());
-		if (auto it=find(loc.begin(),loc.end(),l) == loc.end())
-		{
-			if (l>locMin and l<locMax) {M[l](0,0) = SignOp;}
-			else {M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum();}
-		}
-		else
-		{
-			M[l](0,0).data.setIdentity(); M[l](0,0).Q = Symmetry::qvacuum();
-		}
-	}
-	
-	for (size_t i=0; i<loc.size(); ++i)
-	{
-		assert(loc[i] < N_sites);
-		assert(Op[i].data.rows() == qloc[loc[i]].size() and Op[i].data.cols() == qloc[loc[i]].size());
-		
-		M[loc[i]](0,0).data = M[loc[i]](0,0).data * Op[i].data;
-		M[loc[i]](0,0).Q = Symmetry::reduceSilent(M[loc[i]](0,0).Q, Op[i].Q)[0]; // We can use the 0th component here.
-	}
-	
-	construct(M, W, Gvec);
+	return G;
 }
 
 // sum_i f(i)*O(i)
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
-setLocalSum (const OperatorType &Op, Scalar (*f)(int))
+setLocalSum (const OperatorType &Op, Scalar (*f)(int), bool OPEN_BC)
 {
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		assert(Op.data.rows() == qloc[l].size() and Op.data.cols() == qloc[l].size());
-		if(Op.Q == Symmetry::qvacuum()) { qOp[l].resize(1); qOp[l][0] = Symmetry::qvacuum(); } 
-		else { qOp[l].resize(2); qOp[l][0] ==Symmetry::qvacuum(); qOp[l][1] = Op.Q; }
+		if (Op.Q == Symmetry::qvacuum())
+		{
+			qOp[l].resize(1); qOp[l][0] = Symmetry::qvacuum();
+		}
+		else
+		{
+			qOp[l].resize(2); qOp[l][0] ==Symmetry::qvacuum();
+			qOp[l][1] = Op.Q;
+		}
 	}
 	
 	Daux = 2;
-	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
+	vector<SuperMatrix<Symmetry,Scalar> > G(N_sites);
 	
-	M[0].setRowVector(Daux,qloc[0].size());
-	M[0](0,0).data = f(0) * Op.data;
-	M[0](0,0).Q = Op.Q;
-	M[0](0,1).data.setIdentity();
-	M[0](0,1).Q = Symmetry::qvacuum();
-	
-	for (size_t l=1; l<N_sites-1; ++l)
+	for (size_t l=0; l<N_sites; ++l)
 	{
-		M[l].setMatrix(Daux,qloc[l].size());
-		M[l](0,0).data.setIdentity();
-		M[l](0,0).Q = Symmetry::qvacuum();
-		M[l](0,1).data.setZero();
-		M[l](0,1).Q = Symmetry::qvacuum();
-		M[l](1,0).data = f(l) * Op.data;
-		M[l](1,0).Q = Op.Q;
-		M[l](1,1).data.setIdentity();
-		M[l](1,1).Q = Symmetry::qvacuum();
+		G[l].setMatrix(Daux,qloc[l].size());
+		G[l](0,0).data.setIdentity();
+		G[l](0,0).Q = Symmetry::qvacuum();
+		G[l](0,1).data.setZero();
+		G[l](0,1).Q = Symmetry::qvacuum();
+		G[l](1,0).data = f(l) * Op.data;
+		G[l](1,0).Q = Op.Q;
+		G[l](1,1).data.setIdentity();
+		G[l](1,1).Q = Symmetry::qvacuum();
 	}
 	
-	M[N_sites-1].setColVector(Daux,qloc[N_sites-1].size());
-	M[N_sites-1](0,0).data.setIdentity();
-	M[N_sites-1](0,0).Q = Symmetry::qvacuum();
-	M[N_sites-1](1,0).data = f(N_sites-1) * Op.data;
-	M[N_sites-1](1,0).Q = Op.Q;
-	
-	construct(M, W, Gvec);
+	construct(G, W, Gvec, false, OPEN_BC);
 }
 
 // O1(1)*O2(2)+O1(2)*O1(3)+...+O1(L-1)*O2(L)
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
-setProductSum (const OperatorType &Op1, const OperatorType &Op2)
+setProductSum (const OperatorType &Op1, const OperatorType &Op2, bool OPEN_BC)
 {
 	bool BOTH_VACUUM=false, ONE_VACUUM=false;
-	if(Op1.Q == Symmetry::qvacuum() and Op2.Q == Symmetry::qvacuum()) { BOTH_VACUUM=true; }
-	if(Op1.Q == Symmetry::qvacuum() xor Op2.Q == Symmetry::qvacuum()) { ONE_VACUUM=true; } 	
+	if (Op1.Q == Symmetry::qvacuum() and Op2.Q == Symmetry::qvacuum()) {BOTH_VACUUM=true;}
+	if (Op1.Q == Symmetry::qvacuum() xor Op2.Q == Symmetry::qvacuum()) {ONE_VACUUM=true;}
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		assert(Op1.data.rows() == qloc[l].size() and Op1.data.cols() == qloc[l].size() and 
 		       Op2.data.rows() == qloc[l].size() and Op2.data.cols() == qloc[l].size());
-		if(BOTH_VACUUM) { qOp[l].resize(1); qOp[l][0] = Symmetry::qvacuum(); } 
-		else if( ONE_VACUUM ) { qOp[l].resize(2); qOp[l][0] = Symmetry::qvacuum(); qOp[l][1] = (Op1.Q == Symmetry::qvacuum()) ? Op2.Q : Op1.Q; }
-		else { qOp[l].resize(2); qOp[l][0] = Symmetry::qvacuum(); qOp[l][1] = Op1.Q; qOp[l][1] = Op2.Q; }
-
+		
+		if (BOTH_VACUUM)
+		{
+			qOp[l].resize(1);
+			qOp[l][0] = Symmetry::qvacuum();
+		}
+		else if (ONE_VACUUM)
+		{
+			qOp[l].resize(2);
+			qOp[l][0] = Symmetry::qvacuum();
+			qOp[l][1] = (Op1.Q == Symmetry::qvacuum()) ? Op2.Q : Op1.Q;
+		}
+		else
+		{
+			qOp[l].resize(2);
+			qOp[l][0] = Symmetry::qvacuum();
+			qOp[l][1] = Op1.Q;
+			qOp[l][1] = Op2.Q;
+		}
 	}
 	
 	Daux = 3;
-	vector<SuperMatrix<Symmetry,Scalar> > M(N_sites);
+	vector<SuperMatrix<Symmetry,Scalar> > G(N_sites);
 	
-	M[0].setRowVector(Daux,qloc[0].size());
-	M[0](0,0).data.setIdentity();
-	M[0](0,0).Q = Symmetry::qvacuum();
-	M[0](0,1).data = Op1.data;
-	M[0](0,1).data = Op1.Q;
-	M[0](0,2).data.setIdentity();
-	M[0](0,2).Q = Symmetry::qvacuum();
-	
-	for (size_t l=1; l<N_sites-1; ++l)
+	for (size_t l=0; l<N_sites; ++l)
 	{
-		M[l].setMatrix(Daux,qloc[l].size());
-		M[l].setZero();
-		M[l](0,0).data.setIdentity();
-		M[l](0,0).Q = Symmetry::qvacuum();
-		M[l](1,0).data = Op1.data;
-		M[l](1,0).Q = Op1.Q;
-		M[l](2,1).Q = Op2.Q;
-		M[l](2,2).data.setIdentity();
-		M[l](2,2).Q = Symmetry::qvacuum();
+		G[l].setMatrix(Daux,qloc[l].size());
+		G[l].setZero();
+		G[l](0,0).data.setIdentity();
+		G[l](0,0).Q = Symmetry::qvacuum();
+		G[l](1,0).data = Op1.data;
+		G[l](1,0).Q = Op1.Q;
+		G[l](2,1).Q = Op2.Q;
+		G[l](2,2).data.setIdentity();
+		G[l](2,2).Q = Symmetry::qvacuum();
 	}
 	
-	M[N_sites-1].setColVector(Daux,qloc[N_sites-1].size());
-	M[N_sites-1](0,0).setIdentity();
-	M[N_sites-1](0,0).Q = Symmetry::qvacuum();
-	M[N_sites-1](1,0) = Op2.data;
-	M[N_sites-1](0,0).Q = Op2.Q;
-	M[N_sites-1](2,0).setIdentity();
-	M[N_sites-1](2,0).Q = Symmetry::qvacuum();
-	
-	construct(M, W, Gvec);
+	construct(G, W, Gvec, false, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1662,85 +1634,85 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 //	}
 //}
 
-template<typename Symmetry, typename Scalar>
-template<typename OtherSymmetry>
-void Mpo<Symmetry,Scalar>::
-set_HeisenbergPicture (const Mpo<OtherSymmetry,Scalar> Op1, const Mpo<OtherSymmetry,Scalar> Op2)
-{
-	assert(Op1.length()   == Op2.length());
-	assert(Op1.locBasis() == Op2.locBasis());
-	
-	N_sites = Op1.length();
-	Qtot = qvacuum<0>(); 
-	UNITARY = true;
-	label = Op1.label + " ⊗ " + Op2.label;
-	
-	// extended basis 
-	qloc.resize(N_sites);
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		size_t D = Op1.locBasis(l).size();
-		qloc[l].resize(D*D);
-		
-		for (size_t s1=0; s1<D; ++s1)
-		for (size_t s2=0; s2<D; ++s2)
-		{
-			qloc[l][s2+D*s1] = qvacuum<0>();
-		}
-	}
-	
-	W.resize(N_sites);
-	for (size_t l=0; l<Op1.length(); ++l)
-	{
-		size_t D = Op1.locBasis(l).size();
-		W[l].resize(D*D);
-		
-		for (size_t s=0; s<D*D; ++s)
-		{
-			W[l][s].resize(D*D);
-		}
-	}
-	
-	for (size_t l=0; l<Op1.length(); ++l)
-	{
-		size_t D = Op1.locBasis(l).size();
-		
-		for (size_t s1=0; s1<D; ++s1)
-		for (size_t s2=0; s2<D; ++s2)
-		for (size_t s3=0; s3<D; ++s3)
-		for (size_t s4=0; s4<D; ++s4)
-		{
-			size_t r1 = s4 + D*s1;
-			size_t r2 = s3 + D*s2;
-			
-			W[l][r1][r2] = kroneckerProduct(Op1.W_at(l)[s1][s2], Op2.W_at(l)[s3][s4]);
-		}
-	}
-}
+//template<typename Symmetry, typename Scalar>
+//template<typename OtherSymmetry>
+//void Mpo<Symmetry,Scalar>::
+//set_HeisenbergPicture (const Mpo<OtherSymmetry,Scalar> Op1, const Mpo<OtherSymmetry,Scalar> Op2)
+//{
+//	assert(Op1.length()   == Op2.length());
+//	assert(Op1.locBasis() == Op2.locBasis());
+//	
+//	N_sites = Op1.length();
+//	Qtot = qvacuum<0>(); 
+//	UNITARY = true;
+//	label = Op1.label + " ⊗ " + Op2.label;
+//	
+//	// extended basis 
+//	qloc.resize(N_sites);
+//	for (size_t l=0; l<N_sites; ++l)
+//	{
+//		size_t D = Op1.locBasis(l).size();
+//		qloc[l].resize(D*D);
+//		
+//		for (size_t s1=0; s1<D; ++s1)
+//		for (size_t s2=0; s2<D; ++s2)
+//		{
+//			qloc[l][s2+D*s1] = qvacuum<0>();
+//		}
+//	}
+//	
+//	W.resize(N_sites);
+//	for (size_t l=0; l<Op1.length(); ++l)
+//	{
+//		size_t D = Op1.locBasis(l).size();
+//		W[l].resize(D*D);
+//		
+//		for (size_t s=0; s<D*D; ++s)
+//		{
+//			W[l][s].resize(D*D);
+//		}
+//	}
+//	
+//	for (size_t l=0; l<Op1.length(); ++l)
+//	{
+//		size_t D = Op1.locBasis(l).size();
+//		
+//		for (size_t s1=0; s1<D; ++s1)
+//		for (size_t s2=0; s2<D; ++s2)
+//		for (size_t s3=0; s3<D; ++s3)
+//		for (size_t s4=0; s4<D; ++s4)
+//		{
+//			size_t r1 = s4 + D*s1;
+//			size_t r2 = s3 + D*s2;
+//			
+//			W[l][r1][r2] = kroneckerProduct(Op1.W_at(l)[s1][s2], Op2.W_at(l)[s3][s4]);
+//		}
+//	}
+//}
 
-template<typename Symmetry, typename Scalar>
-void Mpo<Symmetry,Scalar>::
-setFromFlattenedMpo (const Mps<Sym::U0,Scalar> &Op, bool USE_SQUARE)
-{
-	for (size_t l=0; l<this->N_sites; ++l)
-	{
-		size_t D = qloc[l].size();
-		for (size_t s1=0; s1<D; ++s1)
-		for (size_t s2=0; s2<D; ++s2)
-		{
-			size_t s = s2 + D*s1;
-			
-			if (USE_SQUARE)
-			{
-				Wsq[l][s1][s2] = Op.A_at(l)[s].block[0].sparseView(1e-15);
-			}
-			else
-			{
-				W[l][s1][s2] = Op.A_at(l)[s].block[0].sparseView(1e-15);
-			}
-		}
-	}
-}
+//template<typename Symmetry, typename Scalar>
+//void Mpo<Symmetry,Scalar>::
+//setFromFlattenedMpo (const Mps<Sym::U0,Scalar> &Op, bool USE_SQUARE)
+//{
+//	for (size_t l=0; l<this->N_sites; ++l)
+//	{
+//		size_t D = qloc[l].size();
+//		for (size_t s1=0; s1<D; ++s1)
+//		for (size_t s2=0; s2<D; ++s2)
+//		{
+//			size_t s = s2 + D*s1;
+//			
+//			if (USE_SQUARE)
+//			{
+//				Wsq[l][s1][s2] = Op.A_at(l)[s].block[0].sparseView(1e-15);
+//			}
+//			else
+//			{
+//				W[l][s1][s2] = Op.A_at(l)[s].block[0].sparseView(1e-15);
+//			}
+//		}
+//	}
+//}
 
 template<typename Symmetry, typename Scalar>
 ostream &operator<< (ostream& os, const Mpo<Symmetry,Scalar> &O)

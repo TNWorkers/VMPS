@@ -52,14 +52,11 @@ public:
 	///@}
 	
 	/**
-	   \param B : Base class from which the local operators are received
-	   \param P : The parameters
+	\param B : Base class from which the local operators are received
+	\param P : The parameters
 	*/
 	template<typename Symmetry_>
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
-	
-	/**Operator Quantum numbers: \f$\{ Id,S_z:k=\left|0\right>; S_+:k=\left|+2\right>; S_-:k=\left|-2\right>\}\f$ */
-//	static const vector<qarray<1> > qOp();
 	
 	/**Labels the conserved quantum number as "M".*/
 	static const std::array<string,1> maglabel;
@@ -79,16 +76,6 @@ const std::map<string,std::any> HeisenbergU1::defaults =
 	{"Bz",0.}, {"Kz",0.},
 	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
 };
-
-//const vector<qarray<1> > HeisenbergU1::
-//qOp()
-//{
-//	vector<qarray<1> > vout;
-//	vout.push_back({0});
-//	vout.push_back({+2});
-//	vout.push_back({-2});
-//	return vout;
-//}
 
 HeisenbergU1::
 HeisenbergU1 (const size_t &L)
