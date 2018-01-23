@@ -8,8 +8,6 @@ digraph G
 	Abra[label="Abra"];
 	W[label="W", shape="box"];
 	
-//	Lnew[label="Lnew"];
-	
 	Rin[label=" ", style=invisible];
 	Rout[label=" ", style=invisible];
 	Rmid[label=" ", style=invisible];
@@ -18,16 +16,13 @@ digraph G
 	Lold -> W [label="Lmid"];
 	Lold -> Aket [label="Lout"];
 	
-	// bug: same rank & label reverses direction
-	Aket -> W [label="s2"];
-	W -> Abra [label="s1"];
+	W -> Aket [label="s2"];
+	Abra -> W [label="s1"];
 	
 	Rout -> Abra [label="Lnew.in"];
 	W -> Rmid [label="Lnew.mid"];
 	Aket -> Rin [label="Lnew.out"];
 	
-//	{rank=same Lnew}
-	{rank=same Lold}
-	{rank=same Abra W Aket}
+	{rank=same Aket W Abra}
 	{rank=same Rin Rmid Rout}
 }
