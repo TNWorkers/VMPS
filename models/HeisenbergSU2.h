@@ -24,7 +24,7 @@ namespace VMPS
   \note The default variable settings can be seen in \p HeisenbergSU2::defaults.
   \note \f$J<0\f$ is antiferromagnetic
   */
-class HeisenbergSU2 : public MpoQ<Sym::SU2<double>,double>
+class HeisenbergSU2 : public Mpo<Sym::SU2<double>,double>
 {
 public:
 	typedef Sym::SU2<double> Symmetry;
@@ -43,7 +43,7 @@ public:
 	//---constructors---
 	///\{
 	/**Do nothing.*/
-	HeisenbergSU2() : MpoQ<Symmetry>() {};
+	HeisenbergSU2() : Mpo<Symmetry>() {};
 	
 	/**
 	   \param Lx_input : chain length
@@ -63,9 +63,9 @@ public:
 	
 	///@{
 	/**Observables.*/
-	MpoQ<Symmetry,double> S (std::size_t locx, std::size_t locy=0);
-	MpoQ<Symmetry,double> Sdag (std::size_t locx, std::size_t locy=0);
-	MpoQ<Symmetry,double> SS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
+	Mpo<Symmetry,double> S (std::size_t locx, std::size_t locy=0);
+	Mpo<Symmetry,double> Sdag (std::size_t locx, std::size_t locy=0);
+	Mpo<Symmetry,double> SS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
 	///@}
 	
 	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an MpsQ.
@@ -87,7 +87,7 @@ const std::array<string,1> HeisenbergSU2::Stotlabel{"S"};
 
 HeisenbergSU2::
 HeisenbergSU2 (const size_t &L, const vector<Param> &params)
-:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({1}), HeisenbergSU2::Stotlabel, "", SfromD)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), HeisenbergSU2::Stotlabel, "", SfromD)
 {
 	ParamHandler P(params,defaults);
 	
@@ -115,7 +115,7 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
 }
 
-MpoQ<Sym::SU2<double> > HeisenbergSU2::
+Mpo<Sym::SU2<double> > HeisenbergSU2::
 S (std::size_t locx, std::size_t locy)
 {
 	assert(locx<this->N_sites);
@@ -124,14 +124,14 @@ S (std::size_t locx, std::size_t locy)
 
 	SiteOperator Op = B[locx].S(locy).plain<double>();
 
-	MpoQ<Symmetry> Mout(N_sites, Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
+	Mpo<Symmetry> Mout(N_sites, Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
 	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis(),l); }
 
 	Mout.setLocal(locx,Op);
 	return Mout;
 }
 
-MpoQ<Sym::SU2<double> > HeisenbergSU2::
+Mpo<Sym::SU2<double> > HeisenbergSU2::
 Sdag (std::size_t locx, std::size_t locy)
 {
 	assert(locx<this->N_sites);
@@ -140,21 +140,21 @@ Sdag (std::size_t locx, std::size_t locy)
 
 	SiteOperator Op = B[locx].Sdag(locy).plain<double>();
 
-	MpoQ<Symmetry> Mout(N_sites, Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
+	Mpo<Symmetry> Mout(N_sites, Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
 	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis(),l); }
 
 	Mout.setLocal(locx,Op);
 	return Mout;
 }
 
-MpoQ<Sym::SU2<double> > HeisenbergSU2::
+Mpo<Sym::SU2<double> > HeisenbergSU2::
 SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
 	std::stringstream ss;
 	ss << "S(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
 	
-	MpoQ<Symmetry> Mout(N_sites);
+	Mpo<Symmetry> Mout(N_sites);
 	for (std::size_t l=0; l<N_sites; l++)
 	{
 		Mout.setLocBasis(B[l].get_basis(),l);

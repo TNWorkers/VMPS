@@ -22,11 +22,11 @@ with
 but is mainly needed for VUMPS.
 \note The default variable settings can be seen in \p Hubbard::defaults.
 */
-class Hubbard : public MpoQ<Sym::U0,double>, public HubbardObservables<Sym::U0>
+class Hubbard : public Mpo<Sym::U0,double>, public HubbardObservables<Sym::U0>
 {
 public:
 	
-	Hubbard() : MpoQ(){};
+	Hubbard() : Mpo(){};
 	Hubbard (const size_t &L, const vector<Param> &params);
 	
 	template<typename Symmetry_>
@@ -47,7 +47,7 @@ const std::map<string,std::any> Hubbard::defaults =
 
 Hubbard::
 Hubbard (const size_t &L, const vector<Param> &params)
-:MpoQ<Symmetry> (L, qarray<0>({}), labeldummy, ""),
+:Mpo<Symmetry> (L, qarray<0>({}), labeldummy, ""),
  HubbardObservables(L,params,Hubbard::defaults)
 {
 	ParamHandler P(params,Hubbard::defaults);

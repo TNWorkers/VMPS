@@ -119,40 +119,40 @@ int main (int argc, char* argv[])
 	InteractionParams params;
 	params.set_U(U);
 	(tPrime!=0) ? params.set_hoppings({-t,-tPrime}):params.set_hoppings({-t});
-	MatrixXd BondMatrix(Lx*Ly,Lx*Ly); BondMatrix.setZero();
-	BondMatrix(0,1) = -t;
-	BondMatrix(1,0) = -t;
+//	MatrixXd BondMatrix(Lx*Ly,Lx*Ly); BondMatrix.setZero();
+//	BondMatrix(0,1) = -t;
+//	BondMatrix(1,0) = -t;
+//	
+//	BondMatrix(0,2) = -t;
+//	BondMatrix(2,0) = -t;
+//	
+//	BondMatrix(2,3) = -t;
+//	BondMatrix(3,2) = -t;
+//	
+//	BondMatrix(1,3) = -t;
+//	BondMatrix(3,1) = -t;
 	
-	BondMatrix(0,2) = -t;
-	BondMatrix(2,0) = -t;
-	
-	BondMatrix(2,3) = -t;
-	BondMatrix(3,2) = -t;
-	
-	BondMatrix(1,3) = -t;
-	BondMatrix(3,1) = -t;
-	
-	HubbardModel H_ED(Lx*Ly,Nup,Ndn,U,BondMatrix.sparseView(), BC_DANGLING);
-//	HubbardModel H_ED(Lx*Ly,Nup,Ndn,params, BC_DANGLING);
+//	HubbardModel H_ED(Lx*Ly,Nup,Ndn,U,BondMatrix.sparseView(), BC_DANGLING);
+	HubbardModel H_ED(Lx*Ly,Nup,Ndn,params, BC_DANGLING);
 	lout << H_ED.info() << endl;
 	Eigenstate<VectorXd> g_ED;
 	LanczosSolver<HubbardModel,VectorXd,double> Lutz;
 	Lutz.edgeState(H_ED,g_ED,LANCZOS::EDGE::GROUND);
 	
-	HubbardModel H_EDm(Lx*Ly,Nup-1,Ndn,U,BondMatrix.sparseView(), BC_DANGLING);
-//	HubbardModel H_EDm(Lx*Ly,Nup-1,Ndn,params, BC_DANGLING);
+//	HubbardModel H_EDm(Lx*Ly,Nup-1,Ndn,U,BondMatrix.sparseView(), BC_DANGLING);
+	HubbardModel H_EDm(Lx*Ly,Nup-1,Ndn,params, BC_DANGLING);
 	Eigenstate<VectorXd> g_EDm;
 	Lutz.edgeState(H_EDm,g_EDm,LANCZOS::EDGE::GROUND);
 	
-	HubbardModel H_EDmm(Lx*Ly,Nup-1,Ndn-1,U,BondMatrix.sparseView(), BC_DANGLING);
-//	HubbardModel H_EDmm(Lx*Ly,Nup-1,Ndn-1,params, BC_DANGLING);
+//	HubbardModel H_EDmm(Lx*Ly,Nup-1,Ndn-1,U,BondMatrix.sparseView(), BC_DANGLING);
+	HubbardModel H_EDmm(Lx*Ly,Nup-1,Ndn-1,params, BC_DANGLING);
 	Eigenstate<VectorXd> g_EDmm;
 	Lutz.edgeState(H_EDmm,g_EDmm,LANCZOS::EDGE::GROUND);
 	
 	for (int l=0; l<L; ++l)
 	{
 		Photo Ph(H_EDm,H_ED,UP,l);
-		cout << "l=" << l << ", <c>=" << avg(g_EDm.state, Ph.Operator(), g_ED.state) << endl;
+		cout << "l=" << l << ", <c>=" << avg(g_EDm.state, (Ph.Operator()*H_ED.n(l)).eval(), g_ED.state) << endl;
 	}
 	
 	Auger A(H_EDmm, H_ED, i0);
@@ -238,7 +238,7 @@ int main (int argc, char* argv[])
 	ArrayXd c_U1(L);
 	for (int l=0; l<L; ++l)
 	{
-		c_U1(l) = avg(g_U1m.state, H_U1.c(UP,l), g_U1.state);
+		c_U1(l) = avg(g_U1m.state, H_U1.c(UP,l), H_U1.n(UPDN,l), g_U1.state);
 		cout << "l=" << l << ", <c>=" << c_U1(l) << endl;
 	}
 	
@@ -314,8 +314,8 @@ int main (int argc, char* argv[])
 	ArrayXd c_SU2(L);
 	for (int l=0; l<L; ++l)
 	{
-		c_SU2(l) = avg(g_SU2m.state, H_SU2.c(l), g_SU2.state);
-		cout << "l=" << l << ", <c>=" << c_SU2(l) << "\t" << c_SU2(l)/c_U1(l)*2.*sqrt(2.) << endl;
+		c_SU2(l) = avg(g_SU2m.state, H_SU2.c(l), H_SU2.n(l), g_SU2.state, {2,-1});
+		cout << "l=" << l << ", <c>=" << c_SU2(l) << "\t" << c_SU2(l)/c_U1(l) << endl;
 	}
 	
 	MatrixXd densityMatrix_SU2(L,L); densityMatrix_SU2.setZero();
@@ -330,7 +330,7 @@ int main (int argc, char* argv[])
 	for (size_t i=0; i<L; ++i) 
 	for (size_t j=0; j<L; ++j)
 	{
-		densityMatrix_SU2B(i,j) = 2.*sqrt(2.)*avg(g_SU2.state, H_SU2.cdag(i), H_SU2.c(j), g_SU2.state);
+		densityMatrix_SU2B(i,j) = sqrt(2.)*avg(g_SU2.state, H_SU2.cdag(i), H_SU2.c(j), g_SU2.state);
 	}
 	lout << endl << densityMatrix_SU2B << endl;
 	lout << "diff=" << (densityMatrix_SU2-densityMatrix_SU2B).norm() << endl;
@@ -422,8 +422,8 @@ int main (int argc, char* argv[])
 	lout << endl << T;
 	
 //	FermionBase<Sym::U1xU1<double> > F(2);
-	fermions::BaseSU2xU1<> F(3);
-	typedef SiteOperatorQ<Sym::SU2xU1<double>,MatrixXd> Op;
+//	fermions::BaseSU2xU1<> F(3);
+//	typedef SiteOperatorQ<Sym::SU2xU1<double>,MatrixXd> Op;
 	
 //	cout << (F.sign().data*F.c(UP,0).data+F.c(UP,0).data*F.sign().data).norm() << endl;
 //	cout << (F.sign().data*F.c(DN,0).data+F.c(DN,0).data*F.sign().data).norm() << endl;

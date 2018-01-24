@@ -19,15 +19,15 @@ public:
 	///@}
 	
 	///@{
-	MpoQ<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 	///@{
-	MpoQ<Symmetry> Sz (size_t locx, size_t locy=0) const {return Scomp(SZ,locx,locy);};
-	MpoQ<Symmetry> Sx (size_t locx, size_t locy=0) const {return Scomp(SX,locx,locy);};
-	MpoQ<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2);};
-	MpoQ<Symmetry> SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2);};
+	Mpo<Symmetry> Sz (size_t locx, size_t locy=0) const {return Scomp(SZ,locx,locy);};
+	Mpo<Symmetry> Sx (size_t locx, size_t locy=0) const {return Scomp(SX,locx,locy);};
+	Mpo<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2);};
+	Mpo<Symmetry> SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2);};
 	///@}
 	
 	// <SvecSvec>
@@ -64,15 +64,16 @@ HeisenbergObservables (const size_t &L, const vector<Param> &params, const std::
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HeisenbergObservables<Symmetry>::
+Mpo<Symmetry> HeisenbergObservables<Symmetry>::
 Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 {
 	assert(locx<B.size() and locy<B[locx].dim());
 	stringstream ss;
 	ss << Sa << "(" << locx << "," << locy << ")";
+	
 	SiteOperator Op = B[locx].Scomp(Sa,locy);
 	
-	MpoQ<Symmetry> Mout(B.size(), Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
+	Mpo<Symmetry> Mout(B.size(), Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
 	Mout.setLocal(locx,Op);
@@ -80,16 +81,17 @@ Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> HeisenbergObservables<Symmetry>::
+Mpo<Symmetry> HeisenbergObservables<Symmetry>::
 ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	assert(locx1<B.size() and locx2<B.size() and locy1<B[locx1].dim() and locy2<B[locx2].dim());
 	stringstream ss;
 	ss << Sa1 << "(" << locx1 << "," << locy1 << ")" << Sa2 << "(" << locx2 << "," << locy2 << ")";
+	
 	SiteOperator Op1 = B[locx1].Scomp(Sa1,locy1);
 	SiteOperator Op2 = B[locx2].Scomp(Sa2,locy2);
 	
-	MpoQ<Symmetry> Mout(B.size(), Op1.Q+Op2.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
+	Mpo<Symmetry> Mout(B.size(), Op1.Q+Op2.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
 	Mout.setLocal({locx1,locx2}, {Op1,Op2});

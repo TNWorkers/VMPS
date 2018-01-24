@@ -136,7 +136,7 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	typedef VMPS::Hubbard       HUBB;
 	HEIS::uSolver DMRG(VERB);
 	HUBB::uSolver DMRG_HUBB(VERB);
-	Eigenstate<UmpsQ<Sym::U0,double> > g;
+	Eigenstate<Umps<Sym::U0,double> > g;
 	
 	// transverse Ising
 	
@@ -237,7 +237,7 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 //	{
 //		HUBB Hubbl(L,U,mu,false,false);
 //		HUBB::uSolver DMRGl(DMRG::VERBOSITY::SILENT);
-//		Eigenstate<UmpsQ<0,double> > g2;
+//		Eigenstate<Umps<0,double> > g2;
 //		DMRGl.edgeState(Hubbl.H2site(0,0,true), Hubb.locBasis(0), g2, {}, tol_eigval,tol_var, M, max_iter,1);
 //		lout << DMRGl.info() << endl;
 //		auto overlap = g.state.dot(g2.state);

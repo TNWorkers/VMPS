@@ -37,7 +37,7 @@ public:
 	\param Vin : input MPS
 	\param Vout : output MPS
 	\param dt : timestep \f$\delta t\f$, \p complex<double> for real time, \p double for imaginary time
-	\param tol : compression tolerance in MpsQCompressor
+	\param tol : compression tolerance in MpsCompressor
 	\param Nexp : amount of exponentials to apply, implemented: 2,3,5,9,11 (see McLachlan, SIAM J.Sci.Comput. Vol. 16, No. 1, pp. 151-168, January 1995)
 	 - \p Nexp = 2 : error \f$O(\delta t^2)\f$
 	 - \p Nexp = 3 : error \f$O(\delta t^3)\f$, error constant : 0.070
@@ -53,16 +53,16 @@ private:
 	TimeScalar tstep;
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
 	
-	MpoQ<Nq,TimeScalar> GateEvn1;
-	MpoQ<Nq,TimeScalar> GateEvn2;
-	MpoQ<Nq,TimeScalar> GateEvn3;
+	Mpo<Nq,TimeScalar> GateEvn1;
+	Mpo<Nq,TimeScalar> GateEvn2;
+	Mpo<Nq,TimeScalar> GateEvn3;
 	
-	MpoQ<Nq,TimeScalar> GateOdd1;
-	MpoQ<Nq,TimeScalar> GateOdd2;
-	MpoQ<Nq,TimeScalar> GateOdd3;
+	Mpo<Nq,TimeScalar> GateOdd1;
+	Mpo<Nq,TimeScalar> GateOdd2;
+	Mpo<Nq,TimeScalar> GateOdd3;
 	
-	MpoQ<Nq,TimeScalar> GateEvn1Double;
-	MpoQ<Nq,TimeScalar> GateOdd1Double;
+	Mpo<Nq,TimeScalar> GateEvn1Double;
+	Mpo<Nq,TimeScalar> GateOdd1Double;
 };
 
 template<typename Hamiltonian, size_t Nq, typename TimeScalar, typename VectorType>
@@ -154,10 +154,10 @@ t_step (const Hamiltonian &H, const VectorType &Vin, VectorType &Vout, TimeScala
 	
 	Stopwatch<> Chronos;
 	
-	MpsQCompressor<Nq,complex<double>,complex<double> > Compadre(CHOSEN_VERBOSITY);
+	MpsCompressor<Nq,complex<double>,complex<double> > Compadre(CHOSEN_VERBOSITY);
 	VectorType Vtmp1, Vtmp2;
 	
-	auto apply_gate = [this,&Compadre,&tol,&Nexp] (const MpoQ<Nq,TimeScalar> &Gate, const VectorType &Vin, VectorType &Vout, int i, PARITY P)
+	auto apply_gate = [this,&Compadre,&tol,&Nexp] (const Mpo<Nq,TimeScalar> &Gate, const VectorType &Vin, VectorType &Vout, int i, PARITY P)
 	{
 		Compadre.varCompress(Gate, Vin, Vout,  Vin.calc_Dmax(), tol);
 		if (CHOSEN_VERBOSITY != DMRG::VERBOSITY::SILENT)

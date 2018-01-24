@@ -1,0 +1,58 @@
+digraph G
+{
+	rankdir = LR;
+	
+	Lin[label=" ", style=invisible];
+	Lout[label=" ", style=invisible];
+	Lbot[label=" ", style=invisible];
+	Ltop[label=" ", style=invisible];
+	
+	Aket[label="Aket"];
+	Abra[label="Abra"];
+	Wbot[label="Wbot", shape="box"];
+	Wtop[label="Wtop", shape="box"];
+	
+	Rin[label=" ", style=invisible];
+	Rout[label=" ", style=invisible];
+	Rbot[label=" ", style=invisible];
+	Rtop[label=" ", style=invisible];
+	
+	subgraph gAket
+	{
+		Lout -> Aket [label="Lout"];
+		Aket -> Rin [label="Rin"];
+	}
+	
+	subgraph gTop
+	{
+		Ltop -> Wtop [label="Ltop"];
+		Wtop -> Aket [label="s3"];
+	}
+	
+	subgraph gBot
+	{
+		Lbot -> Wbot [label="Lbot"];
+		Wbot -> Rbot [label="Rbot"];
+	}
+	
+	subgraph gAbra
+	{
+		Rout -> Abra [label="Rout"];
+		Abra -> Lin [label="Lin"];
+	}
+	
+	Aket -> Wtop -> Wbot -> Abra [style=invis]; // ensures that Aket is on top
+	
+	Abra -> Wbot [label="s1"];
+	Wbot -> Wtop [label="s2"]
+	Wtop -> Rtop [label="Rtop"];
+	
+	{rank=same Lin Lout Lbot Ltop}
+	{rank=same Abra Aket Wbot Wtop}
+	{rank=same Rin Rout Rbot Rtop}
+	
+//	{rank=same Lin Abra Rout}
+//	{rank=same Lout Aket Rin}
+//	{rank=same Lbot Wbot Rbot}
+//	{rank=same Ltop Wtop Rtop}
+}

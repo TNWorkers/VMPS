@@ -15,32 +15,32 @@ public:
 	///@}
 	
 	///@{
-	MpoQ<Symmetry> c    (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> cdag (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> c    (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> cdag (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
 	///@}
 	
 	///@{
-	MpoQ<Symmetry> n (size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> d (size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> d (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 	///@{
-	MpoQ<Symmetry> Simp (SPINOP_LABEL SOP, size_t locx, size_t locy=0) const;
-	MpoQ<Symmetry> Ssub (SPINOP_LABEL SOP, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Simp (SPINOP_LABEL SOP, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Ssub (SPINOP_LABEL SOP, size_t locx, size_t locy=0) const;
 	///@}
 	
 	///@{
-	MpoQ<Symmetry> SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	MpoQ<Symmetry> SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	MpoQ<Symmetry> SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 	///@{ not implemented
-//	MpoQ<Symmetry> SimpSsubSimpSimp (size_t locx1, SPINOP_LABEL SOP1, size_t locx2, SPINOP_LABEL SOP2, 
+//	Mpo<Symmetry> SimpSsubSimpSimp (size_t locx1, SPINOP_LABEL SOP1, size_t locx2, SPINOP_LABEL SOP2, 
 //	                          size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
 //	                          size_t locy1=0, size_t locy2=0, size_t loc3y=0, size_t loc4y=0) const;
-//	MpoQ<Symmetry> SimpSsubSimpSsub (size_t locx1, SPINOP_LABEL SOP1, size_t locx2, SPINOP_LABEL SOP2, 
+//	Mpo<Symmetry> SimpSsubSimpSsub (size_t locx1, SPINOP_LABEL SOP1, size_t locx2, SPINOP_LABEL SOP2, 
 //	                          size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
 //	                          size_t locy1=0, size_t locy2=0, size_t loc3y=0, size_t loc4y=0) const;
 	///@}
@@ -49,9 +49,9 @@ public:
 	
 protected:
 	
-	MpoQ<Symmetry> make_local (string name, size_t locx, size_t locy, const OperatorType &Oimp, const OperatorType &Osub, bool FERMIONIC=false) const;
+	Mpo<Symmetry> make_local (string name, size_t locx, size_t locy, const OperatorType &Oimp, const OperatorType &Osub, bool FERMIONIC=false) const;
 	
-	MpoQ<Symmetry> make_corr  (string name1, string name2, 
+	Mpo<Symmetry> make_corr  (string name1, string name2, 
 	                          size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
 	                          const OperatorType &Oimp1, const OperatorType &Osub1,
 	                          const OperatorType &Oimp2, const OperatorType &Osub2) const;
@@ -87,14 +87,14 @@ KondoObservables (const size_t &L, const vector<Param> &params, const map<string
 //-------------
 
 template<typename Symmetry>
-MpoQ<Symmetry> KondoObservables<Symmetry>::
+Mpo<Symmetry> KondoObservables<Symmetry>::
 make_local (string name, size_t locx, size_t locy, const OperatorType &Oimp, const OperatorType &Osub, bool FERMIONIC) const
 {
 	assert(locx<F.size() and locy<F[locx].dim());
 	stringstream ss;
 	ss << name << "(" << locx << "," << locy << ")";
 	
-	MpoQ<Symmetry> Mout(F.size(), Oimp.Q+Osub.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
+	Mpo<Symmetry> Mout(F.size(), Oimp.Q+Osub.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);}
 	
 	if (FERMIONIC)
@@ -109,7 +109,7 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Oimp, con
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> KondoObservables<Symmetry>::
+Mpo<Symmetry> KondoObservables<Symmetry>::
 make_corr  (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
             const OperatorType &Oimp1, const OperatorType &Osub1, const OperatorType &Oimp2, const OperatorType &Osub2) const
 {
@@ -118,7 +118,7 @@ make_corr  (string name1, string name2, size_t locx1, size_t locx2, size_t locy1
 	ss << name1 << "(" << locx1 << "," << locy1 << ")"
 	   << name2 << "(" << locx2 << "," << locy2 << ")";
 	
-	MpoQ<Symmetry> Mout(F.size(), Oimp1.Q+Oimp2.Q+Osub1.Q+Osub2.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
+	Mpo<Symmetry> Mout(F.size(), Oimp1.Q+Oimp2.Q+Osub1.Q+Osub2.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
 	for (size_t l=0; l<F.size(); ++l)  {Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);}
 	
 	Mout.setLocal({locx1,locx2}, {kroneckerProduct(Oimp1,Osub1), kroneckerProduct(Oimp2,Osub2)});
@@ -128,7 +128,7 @@ make_corr  (string name1, string name2, size_t locx1, size_t locx2, size_t locy1
 //-------------
 
 template<typename Symmetry>
-MpoQ<Symmetry> KondoObservables<Symmetry>::
+Mpo<Symmetry> KondoObservables<Symmetry>::
 c (SPIN_INDEX sigma, size_t locx, size_t locy) const
 {
 	stringstream ss;
@@ -137,7 +137,7 @@ c (SPIN_INDEX sigma, size_t locx, size_t locy) const
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> KondoObservables<Symmetry>::
+Mpo<Symmetry> KondoObservables<Symmetry>::
 cdag (SPIN_INDEX sigma, size_t locx, size_t locy) const
 {
 	stringstream ss;
@@ -148,21 +148,21 @@ cdag (SPIN_INDEX sigma, size_t locx, size_t locy) const
 //-------------
 
 template<typename Symmetry>
-MpoQ<Symmetry> KondoObservables<Symmetry>::
+Mpo<Symmetry> KondoObservables<Symmetry>::
 n (size_t locx, size_t locy) const
 {
 	return make_local("n", locx,locy, B[locx].Id(),F[locx].n(locy));
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> KondoObservables<Symmetry>::
+Mpo<Symmetry> KondoObservables<Symmetry>::
 d (size_t locx, size_t locy) const
 {
 	return make_local("double_occ", locx,locy, B[locx].Id(),F[locx].d(locy));
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> KondoObservables<Symmetry>::
+Mpo<Symmetry> KondoObservables<Symmetry>::
 cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	assert(locx1<F.size() and locx2<F.size() and locy1<F[locx1].dim() and locy2<F[locx2].dim());
@@ -174,7 +174,7 @@ cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	auto c    = kroneckerProduct(B[locx2].Id(),F[locx2].c   (sigma,locy2));
 	auto sign = kroneckerProduct(B[0].Id(),F[0].sign());
 	
-	MpoQ<Symmetry> Mout(F.size(), cdag.Q+c.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
+	Mpo<Symmetry> Mout(F.size(), cdag.Q+c.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);}
 	
 	if (locx1 == locx2)
@@ -196,7 +196,7 @@ cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 //-------------
 
 template<typename Symmetry>
-MpoQ<Symmetry> KondoObservables<Symmetry>::
+Mpo<Symmetry> KondoObservables<Symmetry>::
 Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 {
 	stringstream ss;
@@ -205,7 +205,7 @@ Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> KondoObservables<Symmetry>::
+Mpo<Symmetry> KondoObservables<Symmetry>::
 Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 {
 	stringstream ss;
@@ -216,7 +216,7 @@ Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 //-------------
 
 template<typename Symmetry>
-MpoQ<Symmetry> KondoObservables<Symmetry>::
+Mpo<Symmetry> KondoObservables<Symmetry>::
 SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	stringstream ss1; ss1 << SOP1 << "imp";
@@ -227,7 +227,7 @@ SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> KondoObservables<Symmetry>::
+Mpo<Symmetry> KondoObservables<Symmetry>::
 SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	stringstream ss1; ss1 << SOP1 << "sub";
@@ -238,7 +238,7 @@ SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size
 }
 
 template<typename Symmetry>
-MpoQ<Symmetry> KondoObservables<Symmetry>::
+Mpo<Symmetry> KondoObservables<Symmetry>::
 SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	stringstream ss1; ss1 << SOP1 << "imp";
@@ -257,7 +257,7 @@ SvecSvecAvgImpSub (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1,
 	       isReal(avg(Psi,SimpSsub(SP,SM,locx1,locx2,locy1,locy2),Psi));
 }
 
-// MpoQ<Sym::U1xU1<double> > KondoU1xU1::
+// Mpo<Sym::U1xU1<double> > KondoU1xU1::
 // SimpSsubSimpSimp (size_t locx1, SPINOP_LABEL SOP1, size_t locx2, SPINOP_LABEL SOP2, size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
 //                   size_t locy1, size_t locy2, size_t loc3y, size_t loc4y)
 // {
@@ -265,7 +265,7 @@ SvecSvecAvgImpSub (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1,
 // 	stringstream ss;
 // 	ss << SOP1 << "(" << locx1 << "," << locy1 << ")" << SOP2 << "(" << locx2 << "," << locy2 << ")" <<
 // 	      SOP3 << "(" << loc3x << "," << loc3y << ")" << SOP4 << "(" << loc4x << "," << loc4y << ")";
-// 	MpoQ<Symmetry> Mout(this->F.size(), this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
+// 	Mpo<Symmetry> Mout(this->F.size(), this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
 // 	Mout.setLocal({locx1, locx2, loc3x, loc4x},
 // 				  {kroneckerProduct(B.Scomp(SOP1,locy1),F.Id()), 
 // 				   kroneckerProduct(B.Id(),F.Scomp(SOP2,locy2)),
@@ -274,7 +274,7 @@ SvecSvecAvgImpSub (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1,
 // 	return Mout;
 // }
 
-// MpoQ<Sym::U1xU1<double> > KondoU1xU1::
+// Mpo<Sym::U1xU1<double> > KondoU1xU1::
 // SimpSsubSimpSsub (size_t locx1, SPINOP_LABEL SOP1, size_t locx2, SPINOP_LABEL SOP2, size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
 //                   size_t locy1, size_t locy2, size_t loc3y, size_t loc4y)
 // {
@@ -282,9 +282,9 @@ SvecSvecAvgImpSub (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1,
 // 	stringstream ss;
 // 	ss << SOP1 << "(" << locx1 << "," << locy1 << ")" << SOP2 << "(" << locx2 << "," << locy2 << ")" <<
 // 	      SOP3 << "(" << loc3x << "," << loc3y << ")" << SOP4 << "(" << loc4x << "," << loc4y << ")";
-// 	MpoQ<Symmetry> Mout(this->F.size(), this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
+// 	Mpo<Symmetry> Mout(this->F.size(), this->N_legs, locBasis(), {0,0}, KondoU1xU1::NMlabel, ss.str());
 // 	SparseMatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
-// 	SparseMatrixXd IdImp(MpoQ<Symmetry>::qloc[locx2].size()/F.dim(), MpoQ<Symmetry>::qloc[locx2].size()/F.dim()); IdImp.setIdentity();
+// 	SparseMatrixXd IdImp(Mpo<Symmetry>::qloc[locx2].size()/F.dim(), Mpo<Symmetry>::qloc[locx2].size()/F.dim()); IdImp.setIdentity();
 // 	Mout.setLocal({locx1, locx2, loc3x, loc4x},
 // 				  {kroneckerProduct(B.Scomp(SOP1,locy1),F.Id()), 
 // 				   kroneckerProduct(B.Id(),F.Scomp(SOP2,locy2)),

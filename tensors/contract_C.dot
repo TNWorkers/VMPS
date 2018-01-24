@@ -22,8 +22,8 @@ digraph G
 	U -> C [label="s"];
 	
 	// bug: same rank & label reverses direction
-	Aket -> W [label="s2"];
-	W -> Abra [label="s1"];
+	W -> Aket [label="s2"];
+	Abra -> W [label="s1"];
 	
 	C -> Aket [label="C.out=Aket.in"];
 	C -> W [label="C.mid=W.in"];

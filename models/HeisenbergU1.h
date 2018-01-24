@@ -34,7 +34,7 @@ namespace VMPS
   \note \f$J<0\f$ is antiferromagnetic
   \note Homogeneous \f$J\f$ is required here. For a XXZ couplings, use VMPS::HeisenbergU1XXZ.
 */
-class HeisenbergU1 : public MpoQ<Sym::U1<double>,double>, public HeisenbergObservables<Sym::U1<double> >
+class HeisenbergU1 : public Mpo<Sym::U1<double>,double>, public HeisenbergObservables<Sym::U1<double> >
 {
 public:
 	typedef Sym::U1<double> Symmetry;
@@ -46,20 +46,17 @@ private:
 public:
 	
 	///@{
-	HeisenbergU1() : MpoQ<Symmetry>() {};
+	HeisenbergU1() : Mpo<Symmetry>() {};
 	HeisenbergU1 (const size_t &L);
 	HeisenbergU1 (const size_t &L, const vector<Param> &params);
 	///@}
 	
 	/**
-	   \param B : Base class from which the local operators are received
-	   \param P : The parameters
+	\param B : Base class from which the local operators are received
+	\param P : The parameters
 	*/
 	template<typename Symmetry_>
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
-	
-	/**Operator Quantum numbers: \f$\{ Id,S_z:k=\left|0\right>; S_+:k=\left|+2\right>; S_-:k=\left|-2\right>\}\f$ */
-	static const vector<qarray<1> > qOp();
 	
 	/**Labels the conserved quantum number as "M".*/
 	static const std::array<string,1> maglabel;
@@ -80,25 +77,15 @@ const std::map<string,std::any> HeisenbergU1::defaults =
 	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
 };
 
-const vector<qarray<1> > HeisenbergU1::
-qOp ()
-{
-	vector<qarray<1> > vout;
-	vout.push_back({0});
-	vout.push_back({+2});
-	vout.push_back({-2});
-	return vout;
-}
-
 HeisenbergU1::
 HeisenbergU1 (const size_t &L)
-:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({0}), HeisenbergU1::qOp(), HeisenbergU1::maglabel, "", halve<1>),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, "", halve<1>),
  HeisenbergObservables(L)
 {}
 
 HeisenbergU1::
 HeisenbergU1 (const size_t &L, const vector<Param> &params)
-:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, "", halve<1>),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, "", halve<1>),
  HeisenbergObservables(L,params,HeisenbergU1::defaults)
 {
 	ParamHandler P(params,defaults);

@@ -1,6 +1,8 @@
 #ifndef HUBBARDMODELSU2XSU2_H_
 #define HUBBARDMODELSU2XSU2_H_
 
+
+
 #include "bases/FermionBaseSU2xSU2.h"
 #include "symmetry/SU2xSU2.h"
 #include "Mpo.h"
@@ -27,7 +29,7 @@ namespace VMPS
   \warning \f$J>0\f$ is antiferromagnetic
   \todo Implement spin and pseudo spin observables.
   */
-class HubbardSU2xSU2 : public MpoQ<Sym::SU2xSU2<double> ,double>
+class HubbardSU2xSU2 : public Mpo<Sym::SU2xSU2<double> ,double>
 {
 public:
 	typedef Sym::SU2xSU2<double> Symmetry;
@@ -42,7 +44,7 @@ private:
 	
 public:
 	
-	HubbardSU2xSU2() : MpoQ(){};
+	HubbardSU2xSU2() : Mpo(){};
 	HubbardSU2xSU2 (const size_t &L, const vector<Param> &params);
 	
 	static HamiltonianTermsXd<Symmetry> set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc=0);
@@ -91,7 +93,7 @@ const map<string,any> HubbardSU2xSU2::defaults =
 
 HubbardSU2xSU2::
 HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
-	:MpoQ<Symmetry> (L, qarray<Symmetry::Nq>({1,1}), HubbardSU2xSU2::STlabel, "", SfromD_SfromD)
+	:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,1}), HubbardSU2xSU2::STlabel, "", SfromD_SfromD)
 {
 	ParamHandler P(params,defaults);
 	
@@ -194,42 +196,42 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 	return Terms;
 }
 
-MpoQ<Sym::SU2xSU2<double> > HubbardSU2xSU2::
+Mpo<Sym::SU2xSU2<double> > HubbardSU2xSU2::
 c (size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<F[locx].dim());
 	stringstream ss;
 	ss << "c(" << locx << "," << locy << ")";
 	
-	MpoQ<Symmetry> Mout(N_sites, {2,2}, HubbardSU2xSU2::STlabel, ss.str(), SfromD_SfromD);
+	Mpo<Symmetry> Mout(N_sites, {2,2}, HubbardSU2xSU2::STlabel, ss.str(), SfromD_SfromD);
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	/**\todo: think about crazy fermionic signs here:*/
 	Mout.setLocal(locx, pow(-1.,locx+1)*F[locx].c(locy).plain<double>(), F[0].sign().plain<double>());
 	return Mout;
 }
 
-MpoQ<Sym::SU2xSU2<double> > HubbardSU2xSU2::
+Mpo<Sym::SU2xSU2<double> > HubbardSU2xSU2::
 cdag (size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<F[locx].dim());
 	stringstream ss;
 	ss << "c†(" << locx << "," << locy << ")";
 	
-	MpoQ<Symmetry> Mout(N_sites, {2,2}, HubbardSU2xSU2::STlabel, ss.str(), SfromD_SfromD);
+	Mpo<Symmetry> Mout(N_sites, {2,2}, HubbardSU2xSU2::STlabel, ss.str(), SfromD_SfromD);
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	/**\todo: think about crazy fermionic signs here:*/
 	Mout.setLocal(locx, pow(-1.,locx+1)*F[locx].cdag(locy).plain<double>(), F[0].sign().plain<double>());
 	return Mout;
 }
 
-MpoQ<Sym::SU2xSU2<double> > HubbardSU2xSU2::
+Mpo<Sym::SU2xSU2<double> > HubbardSU2xSU2::
 cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
 	stringstream ss;
 	ss << "c†(" << locx1 << "," << locy1 << ")" << "c(" << locx2 << "," << locy2 << ")";
 	
-	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardSU2xSU2::STlabel, ss.str(), SfromD_SfromD);
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardSU2xSU2::STlabel, ss.str(), SfromD_SfromD);
 	for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
 	
 	auto cdag = F[locx1].cdag(locy1);
@@ -256,28 +258,28 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	return Mout;
 }
 
-MpoQ<Sym::SU2xSU2<double> > HubbardSU2xSU2::
+Mpo<Sym::SU2xSU2<double> > HubbardSU2xSU2::
 nh (size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<F[locx].dim());
 	stringstream ss;
 	ss << "holon_occ(" << locx << "," << locy << ")";
 	
-	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardSU2xSU2::STlabel, ss.str(), SfromD_SfromD);
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardSU2xSU2::STlabel, ss.str(), SfromD_SfromD);
 	for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
 	
 	Mout.setLocal(locx, F[locx].nh(locy).plain<double>());
 	return Mout;
 }
 
-MpoQ<Sym::SU2xSU2<double> > HubbardSU2xSU2::
+Mpo<Sym::SU2xSU2<double> > HubbardSU2xSU2::
 ns (size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<F[locx].dim());
 	stringstream ss;
 	ss << "spinon_occ(" << locx << "," << locy << ")";
 	
-	MpoQ<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardSU2xSU2::STlabel, ss.str(), SfromD_SfromD);
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), HubbardSU2xSU2::STlabel, ss.str(), SfromD_SfromD);
 	for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
 	
 	Mout.setLocal(locx, F[locx].ns(locy).plain<double>());

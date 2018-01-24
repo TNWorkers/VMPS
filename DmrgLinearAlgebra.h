@@ -7,36 +7,36 @@
 #include "Stopwatch.h" // from HELPERS
 
 /**@file
-\brief External functions to manipulate MpsQ and MpoQ objects.*/
+\brief External functions to manipulate Mps and Mpo objects.*/
 
 /**Calculates the scalar product \f$\left<\Psi_{bra}|\Psi_{ket}\right>\f$.
 \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
 \param Vket : input \f$\left|\Psi_{ket}\right>\f$*/
 template<typename Symmetry, typename Scalar>
-Scalar dot (const MpsQ<Symmetry,Scalar> &Vbra, const MpsQ<Symmetry,Scalar> &Vket)
+Scalar dot (const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket)
 {
 	return Vbra.dot(Vket);
 }
 
-/**Swaps two MpsQ.*/
+/**Swaps two Mps.*/
 template<typename Symmetry, typename Scalar> 
-void swap (MpsQ<Symmetry,Scalar> &V1, MpsQ<Symmetry,Scalar> &V2)
+void swap (Mps<Symmetry,Scalar> &V1, Mps<Symmetry,Scalar> &V2)
 {
 	V1.swap(V2);
 }
 
 /**Calculates the expectation value \f$\left<\Psi_{bra}|O|\Psi_{ket}\right>\f$
 \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
-\param O : input MpoQ
+\param O : input Mpo
 \param Vket : input \f$\left|\Psi_{ket}\right>\f$
-\param USE_SQUARE : If \p true, uses the square of \p O stored in \p O itself. Call MpoQ::check_SQUARE() first to see whether it was calculated.
+\param USE_SQUARE : If \p true, uses the square of \p O stored in \p O itself. Call Mpo::check_SQUARE() first to see whether it was calculated.
 \param INFINITE_BC : If \p true, uses infinite boundary conditions (sets initial 3-leg tensor to identity instead of vacuum).
 \param DIR : whether to contract going left or right (should obviously make no difference, useful for testing purposes)
 */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra, 
-            const MpoQ<Symmetry,MpoScalar> &O, 
-            const MpsQ<Symmetry,Scalar> &Vket, 
+Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
+            const Mpo<Symmetry,MpoScalar> &O, 
+            const Mps<Symmetry,Scalar> &Vket, 
             bool USE_SQUARE = false,  
             DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT)
 {
@@ -152,15 +152,15 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 /**Calculates the expectation value \f$\left<\Psi_{bra}|O_{1}O_{2}|\Psi_{ket}\right>\f$
 Only a left-to-right contraction is implemented.
 \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
-\param O1 : input MpoQ
-\param O2 : input MpoQ
+\param O1 : input Mpo
+\param O2 : input Mpo
 \param Vket : input \f$\left|\Psi_{ket}\right>\f$
 */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra, 
-            const MpoQ<Symmetry,MpoScalar> &O1,
-            const MpoQ<Symmetry,MpoScalar> &O2, 
-            const MpsQ<Symmetry,Scalar> &Vket,
+Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
+            const Mpo<Symmetry,MpoScalar> &O1,
+            const Mpo<Symmetry,MpoScalar> &O2, 
+            const Mps<Symmetry,Scalar> &Vket,
 			typename Symmetry::qType Qtarget = Symmetry::qvacuum())
 {
 	if constexpr (Symmetry::NON_ABELIAN )
@@ -171,8 +171,8 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 		B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), Qtarget});
 		for (size_t l=O1.length()-1; l!=-1; --l)
 		{
-			contract_R(B, Vbra.A_at(l), O2.W_at(l), O1.W_at(l), Vket.A_at(l), O1.locBasis(l), O2.opBasis(l), O1.opBasis(l),
-					   O2.auxBasis(l+1), O1.auxBasis(l+1), O2.auxBasis(l), O1.auxBasis(l), Bnext);
+			contract_R(B, Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), O1.locBasis(l), O1.opBasis(l), O2.opBasis(l),
+					   O1.auxBasis(l+1), O2.auxBasis(l+1), O1.auxBasis(l), O2.auxBasis(l), Bnext);
 			B.clear();
 			B = Bnext;
 			Bnext.clear();
@@ -180,7 +180,12 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 		
 		if (B.dim == 1)
 		{
-			return B.block[0][0][0].trace()*Symmetry::coeff_dot(O1.Qtarget());
+			double res = B.block[0][0][0].trace();
+			if (Qtarget==Symmetry::qvacuum())
+			{
+				res *= sqrt(Symmetry::coeff_dot(O1.Qtarget())*Symmetry::coeff_dot(O2.Qtarget())); // scalar product coeff for SU(2)
+			}
+			return res;
 		}
 		else
 		{
@@ -220,18 +225,18 @@ Scalar avg (const MpsQ<Symmetry,Scalar> &Vbra,
 	}
 }
 
-/**Apply an MpoQ to an MpsQ \f$\left|\Psi_{out}\right> = H \left|\Psi_{in}\right>\f$ by using the zip-up algorithm (Stoudenmire, White 2010).
+/**Apply an Mpo to an Mps \f$\left|\Psi_{out}\right> = H \left|\Psi_{in}\right>\f$ by using the zip-up algorithm (Stoudenmire, White 2010).
 \param H : input Hamiltonian
 \param Vin : input \f$\left|\Psi_{in}\right>\f$
 \param Vout : output \f$\left|\Psi_{out}\right>\f$
 \param VERBOSITY : verbosity level*/
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void HxV (const MpoQ<Symmetry,MpoScalar> &H, const MpsQ<Symmetry,Scalar> &Vin, MpsQ<Symmetry,Scalar> &Vout, 
+void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
           DMRG::VERBOSITY::OPTION VERBOSITY) //=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	Stopwatch<> Chronos;
 	
-	MpsQCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
+	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 	Compadre.varCompress(H,Vin, Vout, Vin.calc_Dmax());
 	
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
@@ -245,18 +250,18 @@ void HxV (const MpoQ<Symmetry,MpoScalar> &H, const MpsQ<Symmetry,Scalar> &Vin, M
 /**Performs an orthogonal polynomial iteration step \f$\left|\Psi_{out}\right> = \cdot H \left|\Psi_{in,1}\right> - B \left|\Psi_{in,2}\right>\f$ as needed in the polynomial recursion relation \f$P_n = (C_n x - A_n) P_{n-1} - B_n P_{n-2}\f$.
 \warning The Hamiltonian is assumed to be rescaled by \p C_n and \p A_n already.
 \param H : input Hamiltonian
-\param Vin1 : input MpsQ \f$\left|T_{n-1}\right>\f$
+\param Vin1 : input Mps \f$\left|T_{n-1}\right>\f$
 \param polyB : the coefficient before the subtracted vector
-\param Vin2 : input MpsQ \f$\left|T_{n-2}\right>\f$
-\param Vout : output MpsQ \f$\left|T_{n}\right>\f$
+\param Vin2 : input Mps \f$\left|T_{n-2}\right>\f$
+\param Vout : output Mps \f$\left|T_{n}\right>\f$
 \param VERBOSITY : verbosity level*/
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void polyIter (const MpoQ<Symmetry,MpoScalar> &H, const MpsQ<Symmetry,Scalar> &Vin1, double polyB, 
-               const MpsQ<Symmetry,Scalar> &Vin2, MpsQ<Symmetry,Scalar> &Vout, 
+void polyIter (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, 
+               const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, 
                DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	Stopwatch<> Chronos;
-	MpsQCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
+	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 	Compadre.polyCompress(H,Vin1,polyB,Vin2, Vout, Vin1.calc_Dmax());
 	
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
@@ -268,22 +273,22 @@ void polyIter (const MpoQ<Symmetry,MpoScalar> &H, const MpsQ<Symmetry,Scalar> &V
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void HxV (const MpoQ<Symmetry,MpoScalar> &H, MpsQ<Symmetry,Scalar> &Vinout, 
+void HxV (const Mpo<Symmetry,MpoScalar> &H, Mps<Symmetry,Scalar> &Vinout, 
           DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
-	MpsQ<Symmetry,Scalar> Vtmp;
+	Mps<Symmetry,Scalar> Vtmp;
 	HxV(H,Vinout,Vtmp,VERBOSITY);
 	Vinout = Vtmp;
 }
 
 template<typename Symmetry, typename Scalar, typename OtherScalar>
-void addScale (const OtherScalar alpha, const MpsQ<Symmetry,Scalar> &Vin, MpsQ<Symmetry,Scalar> &Vout, 
+void addScale (const OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
                DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
 {
 	Stopwatch<> Chronos;
-	MpsQCompressor<Symmetry,Scalar,OtherScalar> Compadre(VERBOSITY);
+	MpsCompressor<Symmetry,Scalar,OtherScalar> Compadre(VERBOSITY);
 	size_t Dstart = Vout.calc_Dmax();
-	MpsQ<Symmetry,Scalar> Vtmp = Vout;
+	Mps<Symmetry,Scalar> Vtmp = Vout;
 	Vtmp.addScale(alpha,Vin,false);
 //	Compadre.varCompress(Vtmp, Vout, Dstart, 1e-3, 100, 1, DMRG::COMPRESSION::RANDOM);
 	Compadre.varCompress(Vtmp, Vout, Dstart);
@@ -297,7 +302,7 @@ void addScale (const OtherScalar alpha, const MpsQ<Symmetry,Scalar> &Vin, MpsQ<S
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV (const MpoQ<Symmetry,MpoScalar> &O, const MpsQ<Symmetry,Scalar> &Vin, MpsQ<Symmetry,Scalar> &Vout, DMRG::BROOM::OPTION TOOL) //=DMRG::BROOM::SVD)
+void OxV (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, DMRG::BROOM::OPTION TOOL) //=DMRG::BROOM::SVD)
 {
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > C;
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Cnext;
@@ -372,18 +377,18 @@ void OxV (const MpoQ<Symmetry,MpoScalar> &O, const MpsQ<Symmetry,Scalar> &Vin, M
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV (const MpoQ<Symmetry,MpoScalar> &O, MpsQ<Symmetry,Scalar> &Vinout)
+void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout)
 {
-	MpsQ<Symmetry,Scalar> Vtmp;
+	Mps<Symmetry,Scalar> Vtmp;
 	OxV(O,Vinout,Vtmp);
 	Vinout = Vtmp;
 }
 
 // unfinished:
 //template<size_t Nq, typename Scalar>
-//void OxV_exact (const MpoQ<D,Nq> &O, const MpsQ<Nq,Scalar> &Vin, MpsQ<Nq,Scalar> &Vout)
+//void OxV_exact (const Mpo<D,Nq> &O, const Mps<Nq,Scalar> &Vin, Mps<Nq,Scalar> &Vout)
 //{
-//	Vout = MpsQ<Nq,Scalar>(Vin.length(), 1, Vin.locbasis(), Vout.Qtarget()+O.Qtarget());
+//	Vout = Mps<Nq,Scalar>(Vin.length(), 1, Vin.locbasis(), Vout.Qtarget()+O.Qtarget());
 //	
 //	for (size_t s1=0; s1<D; ++s1)
 //	for (size_t s2=0; s2<D; ++s2)
