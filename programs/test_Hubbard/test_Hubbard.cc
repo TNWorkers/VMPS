@@ -13,6 +13,9 @@
 #define EIGEN_DEFAULT_DENSE_INDEX_TYPE int
 #define EIGEN_DEFAULT_INDEX_TYPE int
 
+//Also calculate SU2xSU2, implies no tPrime
+#define SU2XSU2
+
 #include <iostream>
 #include <fstream>
 #include <complex>
@@ -38,6 +41,9 @@ Logger lout;
 #include "models/Hubbard.h"
 #include "models/HubbardU1xU1.h"
 #include "models/HubbardSU2xU1.h"
+#ifdef SU2XSU2
+#include "models/HubbardSU2xU1.h"
+#endif
 
 template<typename Scalar>
 string to_string_prec (Scalar x, int n=14)
@@ -343,15 +349,81 @@ int main (int argc, char* argv[])
 		d_SU2(i) = avg(g_SU2.state, H_SU2.d(i), g_SU2.state);
 	}
 	lout << "<d>=" << endl << d_SU2 << endl;
+
+#ifdef SU2XSU2
+	// --------SU(2)xSU(2)---------
+	lout << endl << "--------SU(2)xSU(2)---------" << endl << endl;
 	
+	Stopwatch<> Watch_SU2xSU2;
+
+	vector<Param> paramsSU2xSU2;
+	paramsSU2xSU2.push_back({"U",U,0});
+	paramsSU2xSU2.push_back({"U",U,1});
+	paramsSU2xSU2.push_back({"subL",SUB_LATTICE::A,0});
+	paramsSU2xSU2.push_back({"subL",SUB_LATTICE::B,1});
+	paramsSU2xSU2.push_back({"Ly",Ly,0});
+	paramsSU2xSU2.push_back({"Ly",Ly,1});
+	VMPS::HubbardSU2xU1 H_SU2xSU2(Lx,paramsSU2xSU2);
+	lout << H_SU2xSU2.info() << endl;
+	Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
+	
+	VMPS::HubbardSU2xSU2::Solver DMRG_SU2xSU2(VERB);
+	DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {Nup-Ndn+1,V-(Nup+Ndn)+1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+						   tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha); //Todo: check Pseudospin quantum number... (1 <==> half filling)
+	
+	t_SU2xSU2 = Watch_SU2xSU2.time();
+	
+	// observables
+	
+	// Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2m;
+	// DMRG_SU2.set_verbosity(DMRG::VERBOSITY::SILENT);
+	// DMRG_SU2.edgeState(H_SU2, g_SU2m, {abs(Nup-1-Ndn)+1,N-1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+	//                    tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	
+	// ArrayXd c_SU2(L);
+	// for (int l=0; l<L; ++l)
+	// {
+	// 	c_SU2(l) = avg(g_SU2m.state, H_SU2.c(l), H_SU2.n(l), g_SU2.state, {2,-1});
+	// 	cout << "l=" << l << ", <c>=" << c_SU2(l) << "\t" << c_SU2(l)/c_U1(l) << endl;
+	// }
+	
+	MatrixXd densityMatrix_SU2xSU2(L,L); densityMatrix_SU2xSU2.setZero();
+	for (size_t i=0; i<L; ++i) 
+	for (size_t j=0; j<L; ++j)
+	{
+		densityMatrix_SU2xSU2(i,j) = avg(g_SU2xSU2.state, H_SU2xSU2.cdagc(i,j), g_SU2xSU2.state);
+	}
+	lout << 0.5*densityMatrix_SU2xSU2 << endl;
+	
+	MatrixXd densityMatrix_SU2xSU2B(L,L); densityMatrix_SU2xSU2B.setZero();
+	for (size_t i=0; i<L; ++i) 
+	for (size_t j=0; j<L; ++j)
+	{
+		densityMatrix_SU2xSU2B(i,j) = sqrt(2.)*sqrt(2.)*avg(g_SU2xSU2.state, H_SU2xSU2.cdag(i), H_SU2xSU2.c(j), g_SU2xSU2.state);
+	}
+	lout << endl << 0.5*densityMatrix_SU2xSU2B << endl; //factor 1/2 because we have computed cdagc+cdagc
+	lout << "diff=" << (densityMatrix_SU2xSU2-densityMatrix_SU2xSU2B).norm() << endl;
+	
+	lout << "P SU(2): " << Ptot(0.5*densityMatrix_SU2xSU2,Lx) << "\t" << Ptot(0.5*densityMatrix_SU2xSU2B,Lx) << endl;
+	
+	ArrayXd nh_SU2xSU2(L); nh_SU2xSU2=0.; //We have no double occupation, but the holon number nh is similar. Think about direct comparison..
+	for (size_t i=0; i<L; ++i) 
+	{
+		nh_SU2xSU2(i) = avg(g_SU2xSU2.state, H_SU2xSU2.nh(i), g_SU2xSU2.state);
+	}
+	lout << "<nh>=" << endl << nh_SU2xSU2 << endl;
+#endif
 	//--------output---------
 	TextTable T( '-', '|', '+' );
 	
 	T.add("");
 	T.add("ED");
 	T.add("U(0)");
-	T.add("U(1)xU(1)");
-	T.add("SU(2)xU(1)");
+	T.add("U(1)⊗U(1)");
+	T.add("SU(2)⊗U(1)");
+#ifdef SU2XSU2
+	T.add("SU(2)⊗SU(2)");
+#endif
 	T.endOfRow();
 	
 	T.add("E/V");
@@ -359,6 +431,9 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(emin_U0));
 	T.add(to_string_prec(g_U1.energy/V));
 	T.add(to_string_prec(g_SU2.energy/V));
+#ifdef SU2XSU2
+	T.add(to_string_prec(g_SU2xSU2.energy/V));
+#endif
 	T.endOfRow();
 	
 	T.add("E/V diff");
@@ -366,6 +441,9 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(abs(Emin_U0-g_ED.energy)/V));
 	T.add(to_string_prec(abs(g_U1.energy-g_ED.energy)/V));
 	T.add(to_string_prec(abs(g_SU2.energy-g_ED.energy)/V));
+#ifdef SU2XSU2
+	T.add(to_string_prec(abs(g_SU2xSU2.energy-g_ED.energy)/V));
+#endif
 	T.endOfRow();
 	
 //	T.add("E/L Compressor"); T.add(to_string_prec(E_U0_compressor/V)); T.add(to_string_prec(E_U1_compressor/V)); T.add("-"); T.endOfRow();
@@ -375,6 +453,9 @@ int main (int argc, char* argv[])
 	T.add("-");
 	T.add(to_string_prec(overlap_U1_zipper));
 	T.add("-");
+#ifdef SU2XSU2
+	T.add("-");
+#endif
 	T.endOfRow();
 	
 	T.add("OxV zipper rel. err.");
@@ -382,6 +463,9 @@ int main (int argc, char* argv[])
 	T.add("-");
 	T.add(to_string_prec(abs(abs(overlap_U1_zipper) -abs(overlap_ED))/abs(overlap_ED)));
 	T.add("-");
+#ifdef SU2XSU2
+	T.add("-");
+#endif
 	T.endOfRow();
 	
 	T.add("t/s");
@@ -389,6 +473,9 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(t_U0,2));
 	T.add(to_string_prec(t_U1,2));
 	T.add(to_string_prec(t_SU2,2));
+#ifdef SU2XSU2
+	T.add(to_string_prec(t_SU2xSU2,2));
+#endif
 	T.endOfRow();
 	
 	T.add("t gain");
@@ -396,6 +483,9 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(t_U0/t_SU2,2));
 	T.add(to_string_prec(t_U1/t_SU2,2));
 	T.add("1");
+#ifdef SU2XSU2
+	T.add(to_string_prec(t_SU2xSU2/t_SU2,2));
+#endif
 	T.endOfRow();
 	
 	T.add("observables diff");
@@ -403,6 +493,9 @@ int main (int argc, char* argv[])
 	T.add("-");
 	T.add(to_string_prec((densityMatrix_U1-densityMatrix_ED).norm()));
 	T.add(to_string_prec((densityMatrix_SU2-densityMatrix_ED).norm()));
+#ifdef SU2XSU2
+	T.add(to_string_prec((0.5*densityMatrix_SU2xSU2-densityMatrix_ED).norm()));
+#endif
 	T.endOfRow();
 	
 	T.add("Dmax");
@@ -410,6 +503,9 @@ int main (int argc, char* argv[])
 	T.add(to_string(g_U0.state.calc_Dmax()));
 	T.add(to_string(g_U1.state.calc_Dmax()));
 	T.add(to_string(g_SU2.state.calc_Dmax()));
+#ifdef SU2XSU2
+	T.add(to_string(g_SU2xSU2.state.calc_Dmax()));
+#endif
 	T.endOfRow();
 	
 	T.add("Mmax");
@@ -417,6 +513,9 @@ int main (int argc, char* argv[])
 	T.add(to_string(g_U0.state.calc_Dmax()));
 	T.add(to_string(g_U1.state.calc_Mmax()));
 	T.add(to_string(g_SU2.state.calc_Mmax()));
+#ifdef SU2XSU2
+	T.add(to_string(g_SU2xSU2.state.calc_Mmax()));
+#endif
 	T.endOfRow();
 	
 	lout << endl << T;

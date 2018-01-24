@@ -52,15 +52,15 @@ public:
 	/**Labels the conserved quantum numbers as \f$N_\uparrow\f$, \f$N_\downarrow\f$.*/
 	static const std::array<string,Symmetry::Nq> STlabel;
 	
-//	MpoQ<Symmetry> Auger (size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> eta(size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> Aps (size_t locx, size_t locy=0);
-	MpoQ<Symmetry> c (size_t locx, size_t locy=0);
-	MpoQ<Symmetry> cdag (size_t locx, size_t locy=0);
+//	Mpo<Symmetry> Auger (size_t locx, size_t locy=0);
+//	Mpo<Symmetry> eta(size_t locx, size_t locy=0);
+//	Mpo<Symmetry> Aps (size_t locx, size_t locy=0);
+	Mpo<Symmetry> c (size_t locx, size_t locy=0);
+	Mpo<Symmetry> cdag (size_t locx, size_t locy=0);
 	
-	MpoQ<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
-	MpoQ<Symmetry> nh (size_t locx, size_t locy=0);
-	MpoQ<Symmetry> ns (size_t locx, size_t locy=0);
+	Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> nh (size_t locx, size_t locy=0);
+	Mpo<Symmetry> ns (size_t locx, size_t locy=0);
 	
 	// MpoQ<Symmetry> S (size_t locx, size_t locy=0);
 	// MpoQ<Symmetry> Sdag (size_t locx, size_t locy=0);
@@ -242,17 +242,17 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 		//The diagonal element is actually zero by the symmetry. But we may leave this as a check.
 		Mout.setLocal(locx1, sqrt(2.) * sqrt(2.) * OperatorType::prod(cdag,c,Symmetry::qvacuum()).plain<double>());
 	}
-	/**\todo: think about crazy fermionic signs here:*/
+	/**\todo: think about crazy fermionic signs here:*/	//pow(-1.,locx2-locx1+1)* pow(-1.,locx1-locx2+1)*
 	else if (locx1<locx2)
 	{
-		Mout.setLocal({locx1, locx2}, {sqrt(2.)*sqrt(2.)*OperatorType::prod(cdag, F[locx1].sign(), {2,+1}).plain<double>(), 
-		                               pow(-1.,locx2-locx1+1)*c.plain<double>()}, 
+		Mout.setLocal({locx1, locx2}, {sqrt(2.)*sqrt(2.)*OperatorType::prod(cdag, F[locx1].sign(), {2,2}).plain<double>(), 
+					                   c.plain<double>()}, 
 		                               F[0].sign().plain<double>());
 	}
 	else if (locx1>locx2)
 	{
-		Mout.setLocal({locx2, locx1}, {sqrt(2.)*OperatorType::prod(c, F[locx2].sign(), {2,-1}).plain<double>(), 
-		                               pow(-1.,locx1-locx2+1)*cdag.plain<double>()}, 
+		Mout.setLocal({locx2, locx1}, {sqrt(2.)*sqrt(2.)*OperatorType::prod(c, F[locx2].sign(), {2,2}).plain<double>(), 
+		                               -1.*cdag.plain<double>()}, 
 		                               F[0].sign().plain<double>());
 	}
 	return Mout;
