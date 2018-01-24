@@ -12,13 +12,13 @@
 
 enum SUB_LATTICE {A=0,B=1};
 
-	
 /** \class FermionBase<Sym::SU2xSU2<double> >
-  * \ingroup Fermions
+  * \ingroup Bases
   *
-  * This class provides the local operators for fermions in a SU(2)⊗SU(2) block representation.
+  * This class provides the local operators for fermions in a SU(2)⊗SU(2)~SO(4) block representation.
   *
-  * \describe_Scalar
+  * \note The SU(2)-charge symmetry is only present for a bipartite lattice.
+  *       Using this class in DMRG requires that the SUB_LATTICE parameter is toggled every site.
   *
   */
 template<>
@@ -34,8 +34,8 @@ public:
 	
 	/**
 	\param L_input : the amount of orbitals
-	\param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis*/
-	FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in = SUB_LATTICE::A, bool U_IS_INFINITE=false);
+	\param subLattice_in : The SUB_LATTICE (Either A or B) of orbital 0. SUB_LATTICE of orbital i: \f$\prop (-1)^i \f$*/
+	FermionBase(std::size_t L_input, SUB_LATTICE subLattice_in = SUB_LATTICE::A);
 	
 	/**amount of states = \f$4^L\f$*/
 	inline Index dim() const {return static_cast<Index>(N_states);}
@@ -43,15 +43,15 @@ public:
 	/**amount of orbitals*/
 	inline std::size_t orbitals() const  {return N_orbitals;}
 
+	/**Returns the sublattice of orbital 0.*/
 	inline SUB_LATTICE sublattice() const {return subLattice;}
+	
 	// \{
 	/** Annihilation operator
-		\param subLattice : Partion of the operator (Either A or B)
 		\param orbital : orbital index*/
 	Operator c (std::size_t orbital=0) const;
 	
 	/**Creation operator.
-	   \param subLattice : Partion of the operator (Either A or B)
 	   \param orbital : orbital index*/
 	Operator cdag (std::size_t orbital=0) const;
 
@@ -97,26 +97,35 @@ public:
 	///\}
 
 	/**Creates the full Hubbard Hamiltonian on the supersite.
-	\param U : \f$U\f$
-	\param t : \f$t\f$
-	\param V : \f$V\f$
-	\param J : \f$J\f$
-	\param PERIODIC: periodic boundary conditions if \p true*/
+	   \param U : \f$U\f$
+	   \param t : \f$t\f$
+	   \param V : \f$V\f$ (Pseudo-spin pseudo-spin coupling. Acts not as usual nn interaction)
+	   \param J : \f$J\f$
+	   \param PERIODIC: periodic boundary conditions if \p true
+	*/
 	Operator HubbardHamiltonian (double U, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
-	Operator HubbardHamiltonian (double U, Eigen::ArrayXXd  t) const;
-	
+
 	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
-	\param Uvec : \f$U\f$ for each orbital
-	\param onsite : \f$\varepsilon\f$ onsite energy for each orbital
-	\param t : \f$t\f$
-	\param V : \f$V\f$
-	\param J : \f$J\f$
-	\param PERIODIC: periodic boundary conditions if \p true*/
+	   \param Uorb : \f$U\f$ for each orbital
+	   \param t : \f$t\f$
+	   \param V : \f$V\f$ (Pseudo-spin pseudo-spin coupling. Acts not as usual nn interaction)
+	   \param J : \f$J\f$
+	   \param PERIODIC: periodic boundary conditions if \p true
+	*/
 	Operator HubbardHamiltonian (Eigen::ArrayXd Uorb, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
 
+	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U and with arbitrary hopping matrix (bipartite).
+	   \param Uorb : \f$U\f$ for each orbital
+	   \param t : \f$t_{ij}\f$ (hopping matrix)
+	   \warning : The hopping matrix needs to be bipartite!
+	   \todo : Add a check, that the hopping matrix is really bipartite.
+	*/
+	Operator HubbardHamiltonian (Eigen::ArrayXd Uorb, Eigen::ArrayXXd  t) const;
+	
 	/**Identity*/
 	Operator Id (std::size_t orbital=0) const;
 
+	/**Returns the local basis.*/
 	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
 
 private:
@@ -143,7 +152,7 @@ private:
 };
 
 FermionBase<Sym::SU2xSU2<double> >::
-FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in, bool U_IS_INFINITE)
+FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in)
 :N_orbitals(L_input),subLattice(subLattice_in)
 {
 	assert(N_orbitals>=1);
@@ -415,30 +424,24 @@ HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
 	{
 		Mout = -t*std::sqrt(2.)*std::sqrt(2.)*Operator::prod(cdag(0),c(1),{1,1});
 	}
-	for (int i=1; i<N_orbitals-1; ++i) // for all bonds
+	for (int i=1; i<N_orbitals-1; ++i)
 	{
 		if (t != 0.)
 		{
 			Mout += -t*std::sqrt(2.)*std::sqrt(2.)*Operator::prod(cdag(i),c(i+1),{1,1});
 		}
-		// if (V != 0.) {Mout += V*(Operator::prod(n(i),n(i+1),{1,0}));} //what is this term in so(4)?
-		if (J != 0.)
-		{
-			Mout += -J*std::sqrt(3.)*(Operator::prod(Sdag(i),S(i+1),{1,1}));
-		}
+		if (V != 0.) { Mout += -V*std::sqrt(3.)*(Operator::prod(Tdag(i),T(i+1),{1,1})); }
+		if (J != 0.) { Mout += -J*std::sqrt(3.)*(Operator::prod(Sdag(i),S(i+1),{1,1})); }
 	}
 	if (PERIODIC==true and N_orbitals>2)
 	{
-		assert(N_orbitals%2==0 and "A ring with an odd number of sites is not bipartite! No SO(4) symmetry");
+		assert(N_orbitals%2==0 and "A ring with an odd number of sites is not bipartite! No SO(4) symmetry.");
 		if (t != 0.)
 		{
 			Mout += -t*std::sqrt(2.)*std::sqrt(2.)*Operator::prod(cdag(0),c(N_orbitals-1),{1,1});
 		}
-		// if (V != 0.) {Mout += V*(Operator::prod(n(0),n(N_orbitals-1),{1,1}));} //what is this term in so(4)?
-		if (J != 0.)
-		{
-			Mout += -J*std::sqrt(3.)*(Operator::prod(Sdag(0),S(N_orbitals-1),{1,1}));
-		}
+		if (V != 0.) { Mout += -V*std::sqrt(3.)*(Operator::prod(Tdag(0),T(N_orbitals-1),{1,1})); }
+		if (J != 0.) { Mout += -J*std::sqrt(3.)*(Operator::prod(Sdag(0),S(N_orbitals-1),{1,1})); }
 	}
 	if (U != 0. and U != std::numeric_limits<double>::infinity())
 	{
@@ -446,25 +449,6 @@ HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
 	}
 
 	return Mout;
-}
-
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
-HubbardHamiltonian (double U, Eigen::ArrayXXd t) const
-{
-	Operator Mout({1,1},TensorBasis);
-	for (int i=1; i<N_orbitals; ++i) // for all bonds
-	for (int j=0; j<N_orbitals; ++j)
-	{
-		if (t(i,j) != 0.)
-		{
-			Mout += -t(i,j)*std::sqrt(2.)*std::sqrt(2.)*Operator::prod(cdag(i),c(j),{1,1});
-		}
-	}
-	if (U != 0. and U != std::numeric_limits<double>::infinity())
-	{
-		for (int i=0; i<N_orbitals; ++i) {Mout += 0.5*U*nh(i);}
-	}
-
 }
 
 SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
@@ -485,4 +469,28 @@ HubbardHamiltonian (Eigen::ArrayXd Uorb, double t, double V, double J, bool PERI
 	return Mout;
 }
 
+SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+HubbardHamiltonian (Eigen::ArrayXd Uorb, Eigen::ArrayXXd t) const
+{
+	Operator Mout({1,1},TensorBasis);
+	for (int i=0; i<N_orbitals; ++i)
+	for (int j=0; j<N_orbitals; ++j)
+	{
+		if (t(i,j) != 0.)
+		{
+			Mout += -t(i,j)*std::sqrt(2.)*std::sqrt(2.)*Operator::prod(cdag(i),c(j),{1,1});
+		}
+	}
+	
+	for (int i=0; i<N_orbitals; ++i)
+	{
+		if (Uorb.rows() > 0)
+		{
+			if (Uorb(i) != 0. and Uorb(i) != std::numeric_limits<double>::infinity())
+			{
+				Mout += 0.5*Uorb(i) * nh(i);
+			}
+		}
+	}
+}
 #endif

@@ -1,8 +1,6 @@
 #ifndef HUBBARDMODELSU2XU1_H_
 #define HUBBARDMODELSU2XU1_H_
 
-#include <variant>
-
 #include "bases/FermionBaseSU2xU1.h"
 #include "symmetry/SU2xU1.h"
 #include "Mpo.h"

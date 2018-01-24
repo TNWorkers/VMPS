@@ -65,6 +65,16 @@ string SfromD_noFormat (qarray<2> qnum)
 	return ss.str();
 }
 
+string SfromD_SfromD (qarray<2> qnum)
+{
+	stringstream ss;
+	ss << "(";
+	ss << print_frac_nice(boost::rational<int>(qnum[0]-1,2)) << ",";
+	ss << print_frac_nice(boost::rational<int>(qnum[1]-1,2));
+	ss << ")";
+	return ss.str();
+}
+
 /**Makes a default label for conserved quantum numbers: "Q1", "Q2", "Q3"...
 Is realized by a function to preserve the sanity of the programmer since default template-sized arguments seem to be tricky.*/
 template<size_t Nq>
