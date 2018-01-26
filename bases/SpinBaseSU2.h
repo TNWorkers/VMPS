@@ -7,12 +7,13 @@
 
 #include "bases/SpinBase.h"
 
-/** \class SpinBase<Sym::SU2<double> >
-  * \ingroup Bases
-  *
-  * This class provides the local operators for spins (magnitude \p D) in a SU(2) block representation for \p N_Orbitals sites.
-  *
-  */
+/** 
+ * \class SpinBase<Sym::SU2<double> >
+ * \ingroup Bases
+ *
+ * This class provides the local operators for spins (magnitude \p D) in a SU(2) block representation for \p N_Orbitals sites.
+ *
+ */
 template<>
 class SpinBase<Sym::SU2<double> >
 {
@@ -20,18 +21,18 @@ class SpinBase<Sym::SU2<double> >
 	typedef double Scalar;
 	typedef typename Sym::SU2<Scalar> Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
-	// typedef SiteOperatorQ<Symmetry,Eigen::SparseMatrix<Scalar> > Operator;
 	typedef typename Symmetry::qType qType;
 	
 public:
 	SpinBase(){};
 	
 	/**
-	\param L_input : amount of sites
-	\param D_input : \f$D=2S+1\f$*/
+	 * \param L_input : amount of sites
+	 * \param D_input : \f$D=2S+1\f$
+	 */
 	SpinBase (std::size_t L_input, std::size_t D_input = 2);
 
-	/**amount of states = \f$D^L\f$*/
+	/**Amount of states.*/
 	inline std::size_t dim() const {return N_states;}
 	
 	/**\f$D=2S+1\f$*/
@@ -40,23 +41,37 @@ public:
 	/**amount of orbitals*/
 	inline std::size_t orbitals() const  {return N_orbitals;}
 
+	///\{
+	/**
+	 * Quantum spin operator at given orbital.
+	 * \param orbital : orbital index
+	 */
 	Operator S( std::size_t orbital=0 ) const;
+	/**
+	 * Hermitian conjugate of quantum spin operator at given orbital.
+	 * For calculating scalar product \f$\mathbf{S}\cdot\mathbf{S}\f$. 
+	 * \param orbital : orbital index
+	 */
 	Operator Sdag( std::size_t orbital=0 ) const;
+	///\}
+
+	/**Identity operator.*/
 	Operator Id() const;
 	
+	/**
+	 * Creates the full Heisenberg Hamiltonian on the supersite.
+	 * \param J : \f$J\f$
+	 * \param PERIODIC: periodic boundary conditions if \p true
+	 */
 	Operator HeisenbergHamiltonian( double J, bool PERIODIC=false ) const;
 
+	/**
+	 * Creates the full Heisenberg Hamiltonian on the supersite.
+	 * \param J : \f$J_{ij}\f$
+	 */
 	Operator HeisenbergHamiltonian( Eigen::MatrixXd J ) const;
 
-	/**Returns the basis. 
-	   \note Use this as input for Mps, Mpo classes.*/ 
-	std::vector<typename Symmetry::qType> qloc() const { return TensorBasis.qloc(); }
-
-	/**Returns the degeneracy vector of the basis. 
-	   \note Use this as input for Mps, Mpo classes.*/ 
-	std::vector<Eigen::Index> qlocDeg() const { return TensorBasis.qlocDeg(); }
-
-	// Qbasis<Symmetry> get_basis() const { return TensorBasis; }
+	/**Returns the basis.*/
 	vector<qType> get_basis() const { return TensorBasis.qloc(); }
 	
 private:

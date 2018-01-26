@@ -10,12 +10,13 @@
 
 #include "bases/FermionBase.h"
 
-/** \class FermionBase<Sym::SU2<double> >
-  * \ingroup Bases
-  *
-  * This class provides the local operators for fermions in a SU(2) block representation for \p N_Orbitals fermionic sites.
-  *
-  */
+/** 
+ * \class FermionBase<Sym::SU2<double> >
+ * \ingroup Bases
+ *
+ * This class provides the local operators for fermions in a SU(2) block representation for \p N_Orbitals fermionic sites.
+ *
+ */
 template<>
 class FermionBase<Sym::SU2<double> >
 {
@@ -29,91 +30,116 @@ public:
 	FermionBase(){};
 	
 	/**
-	\param L_input : the amount of orbitals
-	\param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis*/
+	 * \param L_input : the amount of orbitals
+	 * \param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis
+	 */
 	FermionBase (std::size_t L_input, bool U_IS_INFINITE=false);
 	
-	/**amount of states = \f$3^L\f$*/
+	/**amount of states.*/
 	inline Index dim() const {return static_cast<Index>(N_states);}
 	
 	/**amount of orbitals*/
 	inline std::size_t orbitals() const  {return N_orbitals;}
 	
 	///\{
-	/**Annihilation operator
-	   \param orbital : orbital index*/
+	/**
+	 * Annihilation operator
+	 * \param orbital : orbital index
+	 */
 	Operator c (std::size_t orbital=0) const;
 	
-	/**Creation operator.
-	   \param orbital : orbital index*/
+	/**
+	 * Creation operator.
+	 * \param orbital : orbital index
+	 */
 	Operator cdag (std::size_t orbital=0) const;
 
-	/**Fermionic sign for the hopping between two orbitals of nearest-neighbour supersites of a ladder.
-	   \param orb1 : orbital on supersite i
-	   \param orb2 : orbital on supersite i+1
-	*/
+	/**
+	 * Fermionic sign for the hopping between two orbitals of nearest-neighbour supersites of a ladder.
+	 * \param orb1 : orbital on supersite i
+	 * \param orb2 : orbital on supersite i+1
+	 */
 	Operator sign (std::size_t orb1=0, std::size_t orb2=0) const;
 
-	/**Fermionic sign for one orbital of a supersite.
-	   \param orbital : orbital index
-	*/
+	/**
+	 * Fermionic sign for one orbital of a supersite.
+	 * \param orbital : orbital index
+	 */
 	Operator sign_local (std::size_t orbital=0) const;
 
-	/**Occupation number operator
-	\param orbital : orbital index*/
+	/**
+	 * Occupation number operator
+	 * \param orbital : orbital index
+	 */
 	Operator n (std::size_t orbital=0) const;
 		
-	/**Double occupation
-	\param orbital : orbital index*/
+	/**
+	 * Double occupation
+	 * \param orbital : orbital index
+	 */
 	Operator d (std::size_t orbital=0) const;
 	///\}
 	
 	///\{
-	/**Orbital spin
-	   \param orbital : orbital index*/
+	/**
+	 * Orbital spin
+	 * \param orbital : orbital index
+	 */
 	Operator S (std::size_t orbital=0) const;
 	
-	/**Orbital spin† 
-	   \param orbital : orbital index*/
+	/**
+	 * Orbital spin† 
+	 * \param orbital : orbital index
+	 */
 	Operator Sdag (std::size_t orbital=0) const;
 	///\}
 	
-	/**Creates the full Hubbard Hamiltonian on the supersite.
-	\param U : \f$U\f$
-	\param mu : \f$\mu\f$ (chemical potential)
-	\param t : \f$t\f$
-	\param V : \f$V\f$
-	\param J : \f$J\f$
-	\param PERIODIC: periodic boundary conditions if \p true*/
+	/**
+	 * Creates the full Hubbard Hamiltonian on the supersite.
+	 * \param U : \f$U\f$
+	 * \param mu : \f$\mu\f$ (chemical potential)
+	 * \param t : \f$t\f$
+	 * \param V : \f$V\f$
+	 * \param J : \f$J\f$
+	 * \param PERIODIC: periodic boundary conditions if \p true
+	 */
 	Operator HubbardHamiltonian (double U, double mu=std::numeric_limits<double>::infinity(), double t=1.,
 								 double V=0., double J=0., bool PERIODIC=false) const;
 	
-	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
-	\param Uvec : \f$U\f$ for each orbital
-	\param mu : \f$\mu\f$ (chemical potential)
-	\param t : \f$t\f$
-	\param V : \f$V\f$
-	\param J : \f$J\f$
-	\param PERIODIC: periodic boundary conditions if \p true*/
-	Operator HubbardHamiltonian (std::vector<double> Uvec, double mu, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
+	/**
+	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
+	 * \param Uorb : \f$U\f$ for each orbital
+	 * \param mu : \f$\mu\f$ (chemical potential)
+	 * \param t : \f$t\f$
+	 * \param V : \f$V\f$
+	 * \param J : \f$J\f$
+	 * \param PERIODIC: periodic boundary conditions if \p true
+	 */
+	Operator HubbardHamiltonian (std::vector<double> Uorb, double mu, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
 
-	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U and arbitrary hopping matrix.
-	\param U : \f$U\f$ for each orbital
-	\param mu : \f$\mu\f$ (chemical potential)
-	\param t : \f$t\f$ (hopping matrix)
-	\param V : \f$V\f$ (nn Density Interaction matrix)
-	\param J : \f$J\f$ (nn Spin interaction matrix)*/
-	Operator HubbardHamiltonian (Eigen::VectorXd U, double mu, Eigen::MatrixXd t, Eigen::MatrixXd V, Eigen::MatrixXd J) const;
+	/**
+	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U and arbitrary hopping matrix.
+	 * \param Uorb : \f$U\f$ for each orbital
+	 * \param mu : \f$\mu\f$ (chemical potential)
+	 * \param t : \f$t_{ij}\f$ (hopping matrix)
+	 * \param V : \f$V_{ij}\f$ (nn Density Interaction matrix)
+	 * \param J : \f$J_{ij}\f$ (nn Spin interaction matrix)
+	 */
+	Operator HubbardHamiltonian (Eigen::VectorXd Uorb, double mu, Eigen::MatrixXd t, Eigen::MatrixXd V, Eigen::MatrixXd J) const;
 	
 	/**Identity*/
 	Operator Id () const;
 
-	/**Returns the basis. 
-	   \note Use this as input for Mps, Mpo classes.*/ 
+	/**
+	 * Returns the basis. 
+	 * \note Use this as input for Mps, Mpo classes.
+	 */ 
 	std::vector<typename Symmetry::qType> qloc() const { return TensorBasis.qloc(); }
 
-	/**Returns the degeneracy vector of the basis. 
-	   \note Use this as input for Mps, Mpo classes.*/ 
+	/**
+	 * Returns the degeneracy vector of the basis. 
+	 * \note Use this as input for Mps, Mpo classes.
+	 */ 
 	std::vector<Eigen::Index> qlocDeg() const { return TensorBasis.qlocDeg(); }
 
 	vector<qType> get_basis() const { return TensorBasis.qloc(); }

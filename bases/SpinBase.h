@@ -27,10 +27,16 @@ std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 	return s;
 }
 
-/** \class SpinBase<Sym::SU2<double> >
+/** 
+ * \class SpinBase
   * \ingroup Bases
   *
   * This class provides the local operators for spins (magnitude \p D) for \p N_Orbitals sites.
+  *
+  * The class is implemented for all combinations of U1 symmetries in the file SpinBase.h.
+  * For the different non abelian symmetries, their are template specialisations in the files SpinBase!Symmetry!.h
+  *
+  * \describe_Symmetry
   *
   */
 template<typename Symmetry>
@@ -43,10 +49,10 @@ public:
 	SpinBase(){};
 	
 	/**
-	\param L_input : amount of sites
-	\param D_input : \f$D=2S+1\f$
-	\param N : if true, the particle number is the good quantum number --> trivial for spins --> all operators have qvacuum()
-	*/
+	 * \param L_input : amount of sites
+	 * \param D_input : \f$D=2S+1\f$
+	 * \param N : if true, the particle number is the good quantum number --> trivial for spins --> all operators have qvacuum()
+	 */
 	SpinBase (size_t L_input, size_t D_input, bool DUMMY_QNUM_MODE_input=false);
 	
 	/**amount of states = \f$D^L\f$*/
@@ -57,9 +63,11 @@ public:
 	
 	/**amount of orbitals*/
 	inline size_t orbitals() const  {return N_orbitals;}
-	
+
+	/**Returns the local basis.*/
 	vector<qarray<Symmetry::Nq> > get_basis() const;
-	
+
+	/**Returns the quantum numbers of the operators for the different combinations of U1 symmetries.*/
 	typename Symmetry::qType getQ (SPINOP_LABEL Sa) const;
 	
 	OperatorType Scomp (SPINOP_LABEL Sa, int orbital=0) const;
@@ -70,19 +78,43 @@ public:
 	
 	string alignment (double J) const {return (J<0)? "(AFM)":"(FM)";};
 	
-	/**Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
-	\param Jxy : \f$J_{xy}\f$
-	\param Jz : \f$J_{z}\f$
-	\param Bz : \f$B_{z}\f$
-	\param Bx : \f$B_{x}\f$
-	\param PERIODIC: periodic boundary conditions if \p true*/
+	/**
+	 * Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
+	 * \param Jxy : \f$J^{xy}\f$
+	 * \param Jz : \f$J^{z}\f$
+	 * \param Bz : \f$B^{z}\f$
+	 * \param Bx : \f$B^{x}\f$
+	 * \param Kx : \f$K^{z}\f$
+	 * \param Kx : \f$K^{x}\f$
+	 * \param Dx : \f$D^{y}\f$
+	 * \param PERIODIC: periodic boundary conditions if \p true
+	 */
 	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., double Kz=0., double Kx=0., double Dy=0., 
 	                                    bool PERIODIC=false) const;
-	
+
+	/**
+	 * Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
+	 * \param Jxy : \f$J^{xy}\f$
+	 * \param Jz : \f$J^{z}\f$
+	 * \param Bz : \f$B^{z}_i\f$
+	 * \param Bx : \f$B^{x}_i\f$
+	 * \param Kx : \f$K^{z}_i\f$
+	 * \param Kx : \f$K^{x}_i\f$
+	 * \param Dx : \f$D^{y}\f$
+	 * \param PERIODIC: periodic boundary conditions if \p true
+	 */
 	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, 
 	                                    const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &Kz, const ArrayXd &Kx, double Dy=0., 
 	                                    bool PERIODIC=false) const;
-	
+
+	/**
+	 * Creates the full Heisenberg (XYZ) Hamiltonian on the supersite.
+	 * \param J : \f$J^{\alpha}\f$, \f$\alpha \in \{x,y,z\} \f$
+	 * \param B : \f$B^{\alpha}_i\f$, \f$\alpha \in \{x,y,z\} \f$
+	 * \param K : \f$K^{\alpha}_i\f$, \f$\alpha \in \{x,y,z\} \f$
+	 * \param D : \f$D^{\alpha}\f$, \f$\alpha \in \{x,y,z\} \f$
+	 * \param PERIODIC: periodic boundary conditions if \p true
+	 */
 	SiteOperator<Symmetry,complex<double> > HeisenbergHamiltonian 
 	(Array3d J, Array<double,Dynamic,3> B, Array<double,Dynamic,3> K, Array3d D, bool PERIODIC=false) const;
 	
@@ -97,8 +129,10 @@ private:
 	size_t D;
 	bool DUMMY_QNUM_MODE;
 	
-	/**Returns the qarray for a given index of the basis.
-	\param index*/
+	/**
+	 * Returns the qarray for a given index of the basis.
+	 * \param index
+	 */
 	qarray<Symmetry::Nq> qNums (size_t index) const;
 };
 

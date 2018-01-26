@@ -7,16 +7,18 @@
 
 #include <Eigen/Core>
 
-#include "bases/SpinBase.h"
-
-/** \class FermionBase
-  * \ingroup Bases
-  *
-  * This class provides the local operators for fermions.
-  *
-  * \describe_Scalar
-  *
-  */
+/** 
+ * \class FermionBase
+ * \ingroup Bases
+ *
+ * This class provides the local operators for fermions.
+ *
+ * The class is implemented for all combinations of U1 symmetries in the file FermionBase.h.
+ * For the different non abelian symmetries, their are template specialisations in the files FermionBase!Symmetry!.h
+ *
+ * \describe_Symmetry
+ *
+ */
 template<typename Symmetry>
 class FermionBase
 {
@@ -27,190 +29,218 @@ public:
 	FermionBase(){};
 	
 	/**
-	\param L_input : the amount of orbitals
-	\param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis*/
+	 * \param L_input : the amount of orbitals
+	 * \param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis
+	 * \param NM_input : if \p true, the autnum numbers of operators will be in the format \f$(N,M)\f$, otherwise the format is \f$(N_{\uparrow},N_{\downarrow})\f$.
+	 */
 	FermionBase (size_t L_input, bool U_IS_INFINITE=false, bool NM_input=false);
 	
-	/**number of states = \f$4^L\f$ or \f$3^L\f$ for $U=\infty$*/
+	/**number of states = \f$4^L\f$ or \f$3^L\f$ for \f$U=\infty\f$*/
 	inline size_t dim() const {return N_states;}
 	
 	/**number of orbitals*/
 	inline size_t orbitals() const {return N_orbitals;}
 	
 	///\{
-	/**Annihilation operator, for \p N_orbitals=1, this is
-	\f$c_{\uparrow} = \left(
-	\begin{array}{cccc}
-	0 & 1 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 1\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	or
-	\f$c_{\downarrow} = \left(
-	\begin{array}{cccc}
-	0 & 0 & 1 & 0\\
-	0 & 0 & 0 & -1\\
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	\param sigma : spin index
-	\param orbital : orbital index*/
+	/**
+	 * Annihilation operator, for \p N_orbitals=1, this is
+	 * \f$c_{\uparrow} = \left(
+	 * \begin{array}{cccc}
+	 * 0 & 1 & 0 & 0\\
+	 * 0 & 0 & 0 & 0\\
+	 * 0 & 0 & 0 & 1\\
+	 * 0 & 0 & 0 & 0\\
+	 * \end{array}
+	 * \right)\f$
+	 * or
+	 * \f$c_{\downarrow} = \left(
+	 *\begin{array}{cccc}
+	 * 0 & 0 & 1 & 0\\
+	 * 0 & 0 & 0 & -1\\
+	 * 0 & 0 & 0 & 0\\
+	 * 0 & 0 & 0 & 0\\
+	 * \end{array}
+	 * \right)\f$
+	 * \param sigma : spin index
+	 * \param orbital : orbital index
+	 */
 	OperatorType c (SPIN_INDEX sigma, int orbital=0) const;
 	
-	/**Creation operator.
-	\param sigma : spin index
-	\param orbital : orbital index*/
+	/**
+	 * Creation operator.
+	 * \param sigma : spin index
+	 * \param orbital : orbital index
+	 */
 	OperatorType cdag (SPIN_INDEX sigma, int orbital=0) const;
 	
-	/**Occupation number operator
-	\param sigma : spin index
-	\param orbital : orbital index*/
+	/**
+	 * Occupation number operator
+	 * \param sigma : spin index
+	 * \param orbital : orbital index
+	 */
 	OperatorType n (SPIN_INDEX sigma, int orbital=0) const;
 	
-	/**Total occupation number operator, for \p N_orbitals=1, this is
-	\f$n = n_{\uparrow}+n_{\downarrow} = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 1 & 0 & 0\\
-	0 & 0 & 1 & 0\\
-	0 & 0 & 0 & 2\\
-	\end{array}
-	\right)\f$
-	\param orbital : orbital index*/
+	/**
+	 * Total occupation number operator, for \p N_orbitals=1, this is
+	 * \f$n = n_{\uparrow}+n_{\downarrow} = \left(
+	 * \begin{array}{cccc}
+	 * 0 & 0 & 0 & 0\\
+	 * 0 & 1 & 0 & 0\\
+	 * 0 & 0 & 1 & 0\\
+	 * 0 & 0 & 0 & 2\\
+	 * \end{array}
+	 * \right)\f$
+	 * \param orbital : orbital index
+	 */
 	OperatorType n (int orbital=0) const;
 	
-	/**Double occupation, for \p N_orbitals=1, this is
-	\f$d = n_{\uparrow}n_{\downarrow} = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 1\\
-	\end{array}
-	\right)\f$
-	*/
+	/**
+	 * Double occupation, for \p N_orbitals=1, this is
+	 * \f$d = n_{\uparrow}n_{\downarrow} = \left(
+	 * \begin{array}{cccc}
+	 * 0 & 0 & 0 & 0\\
+	 * 0 & 0 & 0 & 0\\
+	 * 0 & 0 & 0 & 0\\
+	 * 0 & 0 & 0 & 1\\
+	 * \end{array}
+	 * \right)\f$
+	 */
 	OperatorType d (int orbital=0) const;
 	///\}
 	
 	///\{
 	/**
-	\param Sa
-	\param orbital
+	 * \param Sa
+	 * \param orbital
 	*/
 	OperatorType Scomp (SPINOP_LABEL Sa, int orbital=0) const;
 	
-	/**For \p N_orbitals=1, this is
-	\f$s^z = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 0.5 & 0 & 0\\
-	0 & 0 & -0.5 & 0\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	*/
+	/**
+	 * For \p N_orbitals=1, this is
+	 * \f$s^z = \left(
+	 * \begin{array}{cccc}
+	 * 0 & 0 & 0 & 0\\
+	 * 0 & 0.5 & 0 & 0\\
+	 * 0 & 0 & -0.5 & 0\\
+	 * 0 & 0 & 0 & 0\\
+	 * \end{array}
+	 * \right)\f$
+	 */
 	OperatorType Sz (int orbital=0) const;
 	
-	/**For \p N_orbitals=1, this is
-	\f$s^+ = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 0 & 1 & 0\\
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	*/
+	/**
+	 * For \p N_orbitals=1, this is
+	 * \f$s^+ = \left(
+	 * \begin{array}{cccc}
+	 * 0 & 0 & 0 & 0\\
+	 * 0 & 0 & 1 & 0\\
+	 * 0 & 0 & 0 & 0\\
+	 * 0 & 0 & 0 & 0\\
+	 * \end{array}
+	 * \right)\f$
+	 */
 	OperatorType Sp (int orbital=0) const;
 	
-	/**For \p N_orbitals=1, this is
-	\f$s^- = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	0 & 1 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	*/
+	/**
+	 * For \p N_orbitals=1, this is
+	 * \f$s^- = \left(
+	 * \begin{array}{cccc}
+	 * 0 & 0 & 0 & 0\\
+	 * 0 & 0 & 0 & 0\\
+	 * 0 & 1 & 0 & 0\\
+	 * 0 & 0 & 0 & 0\\
+	 * \end{array}
+	 * \right)\f$
+	 */
 	OperatorType Sm (int orbital=0) const;
 	
-	/**For \p N_orbitals=1, this is
-	\f$s^x = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0.5 & 0\\
-	0 & 0.5 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	*/
+	/**
+	 * For \p N_orbitals=1, this is
+	 * \f$s^x = \left(
+	 * \begin{array}{cccc}
+	 * 0 & 0 & 0 & 0\\
+	 * 0 & 0 & 0.5 & 0\\
+	 * 0 & 0.5 & 0 & 0\\
+	 * 0 & 0 & 0 & 0\\
+	 * \end{array}
+	 * \right)\f$
+	 */
 	OperatorType Sx (int orbital=0) const;
 	
-	/**For \p N_orbitals=1, this is
-	\f$is^y = \left(
-	\begin{array}{cccc}
-	0 & 0 & 0 & 0\\
-	0 & 0 & 0.5 & 0\\
-	0 & -0.5 & 0 & 0\\
-	0 & 0 & 0 & 0\\
-	\end{array}
-	\right)\f$
-	*/
+	/**
+	 * For \p N_orbitals=1, this is
+	 * \f$is^y = \left(
+	 * \begin{array}{cccc}
+	 * 0 & 0 & 0 & 0\\
+	 * 0 & 0 & 0.5 & 0\\
+	 * 0 & -0.5 & 0 & 0\\
+	 * 0 & 0 & 0 & 0\\
+	 * \end{array}
+	 * \right)\f$
+	 */
 	OperatorType iSy (int orbital=0) const;
 	///\}
 	
 	///\{
-	/**Fermionic sign for the hopping between two orbitals of nearest-neighbour supersites of a ladder. For \p N_orbitals=1, this is
-	\f$(1-2n_{\uparrow})*(1-2n_{\downarrow}) = \left(
-	\begin{array}{cccc}
-	1 & 0  & 0  & 0\\
-	0 & -1 & 0  & 0\\
-	0 & 0  & -1 & 0\\
-	0 & 0  & 0  & 1\\
-	\end{array}
-	\right)\f$
-	\param orb1 : orbital on supersite i
-	\param orb2 : orbital on supersite i+1
-	\note \f$f\f$ anticommutes with \f$c\f$, \f$c^{\dagger}\f$ on the same site and commutes with \f$n\f$, \f$S^+\f$ and \f$S^-\f$
-	*/
+	/**
+	 * Fermionic sign for the hopping between two orbitals of nearest-neighbour supersites of a ladder. For \p N_orbitals=1, this is
+	 * \f$(1-2n_{\uparrow})*(1-2n_{\downarrow}) = \left(
+	 * \begin{array}{cccc}
+	 * 1 & 0  & 0  & 0\\
+	 * 0 & -1 & 0  & 0\\
+	 * 0 & 0  & -1 & 0\\
+	 * 0 & 0  & 0  & 1\\
+	 * \end{array}
+	 * \right)\f$
+	 * \param orb1 : orbital on supersite i
+	 * \param orb2 : orbital on supersite i+1
+	 * \note \f$f\f$ anticommutes with \f$c\f$, \f$c^{\dagger}\f$ on the same site and commutes with \f$n\f$, \f$S^+\f$ and \f$S^-\f$
+	 */
 	OperatorType sign (int orb1=0, int orb2=0) const;
-	
+
+	/**The identiy operator. */
 	OperatorType Id() const;
-	
+
+	/**Returns an array of size dim() with zeros.*/
 	ArrayXd ZeroField() const;
 	
-	/**Fermionic sign for the transfer to a particular orbital, needed by HubbardModel::c and HubbardModel::cdag.
-	\param orbital : orbital on the supersite*/
+	/**
+	 * Fermionic sign for the transfer to a particular orbital, needed by HubbardModel::c and HubbardModel::cdag.
+	 * \param orbital : orbital on the supersite
+	 */
 	OperatorType sign_local (int orbital) const;
 	///\}
 	
-	/**Creates the full Hubbard Hamiltonian on the supersite.
-	\param U : \f$U\f$
-	\param t : \f$t\f$
-	\param V : \f$V\f$
-	\param J : \f$J\f$
-	\param PERIODIC: periodic boundary conditions if \p true
-	\param Bz : \f$B_z\f$*/
+	/**
+	 * Creates the full Hubbard Hamiltonian on the supersite.
+	 * \param U : \f$U\f$
+	 * \param t : \f$t\f$
+	 * \param V : \f$V\f$
+	 * \param J : \f$J\f$
+	 * \param Bz : \f$B_z\f$
+	 * \param PERIODIC: periodic boundary conditions if \p true
+	 */
 	template<typename Scalar> SiteOperator<Symmetry,Scalar>
 	HubbardHamiltonian (double U, Scalar t=1., double V=0., double J=0., double Bz=0., bool PERIODIC=false) const;
 	
-	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
-	\param Uvec : \f$U\f$ for each orbital
-	\param mu : \f$E_i\f$ for each orbital
-	\param Bzloc : \f$B_z\f$ for each orbital
-	\param t : \f$t\f$
-	\param V : \f$V\f$
-	\param J : \f$J\f$
-	\param PERIODIC: periodic boundary conditions if \p true*/
+	/**
+	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
+	 * \param Uorb : \f$U\f$ for each orbital
+	 * \param Eorb : \f$E_i\f$ for each orbital (onsite energy)
+	 * \param Bzorb : \f$B_z\f$ for each orbital
+	 * \param Bxorb : \f$B_x\f$ for each orbital
+	 * \param t : \f$t\f$
+	 * \param V : \f$V\f$
+	 * \param J : \f$J\f$
+	 * \param PERIODIC: periodic boundary conditions if \p true
+	 */
 	template<typename Scalar> SiteOperator<Symmetry,Scalar>
 	HubbardHamiltonian (ArrayXd Uorb, ArrayXd Eorb, ArrayXd Bzorb, ArrayXd Bxorb, Scalar t=1., double V=0., double J=0., bool PERIODIC=false) const;
-	
+
+	/**Returns the local basis.*/
 	vector<qarray<Symmetry::Nq> > get_basis() const;
-	
+
+	/**Returns the quantum numbers of the operators for the different combinations of U1 symmetries.*/
 	typename Symmetry::qType getQ (SPIN_INDEX sigma, int Delta=0) const;
 	typename Symmetry::qType getQ (SPINOP_LABEL Sa) const;
 	
@@ -220,9 +250,11 @@ private:
 	size_t N_states;
 	bool NM;
 	
-	/**Returns the qarray for a given index of the basis
-	\param index
-	\param NM : If \p true, the format is (N,M), if \p false the format is (Nup,Ndn)*/ 
+	/**
+	 * Returns the qarray for a given index of the basis
+	 * \param index
+	 * \param NM : If \p true, the format is (N,M), if \p false the format is (Nup,Ndn)
+	 */ 
 	qarray<Symmetry::Nq> qNums (size_t index) const;
 	
 	vector<boost::dynamic_bitset<unsigned char> > basis;

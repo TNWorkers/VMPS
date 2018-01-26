@@ -7,14 +7,15 @@
 
 #include "bases/SpinBase.h"
 
-/** \class SpinBase<Sym::SU2xU1<double> >
-  * \ingroup Bases
-  *
-  * This class provides the local operators for spins (magnitude \p D) in a SU(2) block representation for \p N_Orbitals sites.
-  *
-  * \note : The U1 quantum number is a dummy, which is present for combining the Spin with SU(2)xU(1) fermions. (Kondo Model)
-  *
-  */
+/** 
+ *\class SpinBase<Sym::SU2xU1<double> >
+ * \ingroup Bases
+ *
+ * This class provides the local operators for spins (magnitude \p D) in a SU(2) block representation for \p N_Orbitals sites.
+ *
+ * \note : The U1 quantum number is a dummy, which is present for combining the Spin with SU(2)xU(1) fermions. (Kondo Model)
+ *
+ */
 template<>
 class SpinBase<Sym::SU2xU1<double> >
 {
@@ -28,11 +29,12 @@ public:
 	SpinBase(){};
 	
 	/**
-	\param L_input : amount of sites
-	\param D_input : \f$D=2S+1\f$*/
+	 * \param L_input : amount of sites
+	 * \param D_input : \f$D=2S+1\f$
+	 */
 	SpinBase (std::size_t L_input, std::size_t D_input);
 
-	/**amount of states = \f$D^L\f$*/
+	/**amount of states*/
 	inline std::size_t dim() const {return N_states;}
 	
 	/**\f$D=2S+1\f$*/
@@ -41,20 +43,31 @@ public:
 	/**amount of orbitals*/
 	inline std::size_t orbitals() const  {return N_orbitals;}
 
+	///\{
+	/**
+	 * Quantum spin operator at given orbital.
+	 * \param orbital : orbital index
+	 */
 	Operator S( std::size_t orbital=0 ) const;
+	/**
+	 * Hermitian conjugate of quantum spin operator at given orbital.
+	 * For calculating scalar product \f$\mathbf{S}\cdot\mathbf{S}\f$. 
+	 * \param orbital : orbital index
+	 */
 	Operator Sdag( std::size_t orbital=0 ) const;
+	///\}
+
+	/**Identity operator.*/
 	Operator Id() const;
-	
+
+	/**
+	 * Creates the full Heisenberg Hamiltonian on the supersite.
+	 * \param J : \f$J\f$
+	 * \param PERIODIC: periodic boundary conditions if \p true
+	 */
 	Operator HeisenbergHamiltonian( double J, bool PERIODIC=false ) const;
-
-	/**Returns the basis. 
-	   \note Use this as input for Mps, Mpo classes.*/ 
-	std::vector<typename Symmetry::qType> qloc() { return TensorBasis.qloc(); }
-
-	/**Returns the degeneracy vector of the basis. 
-	   \note Use this as input for Mps, Mpo classes.*/ 
-	std::vector<Eigen::Index> qlocDeg() { return TensorBasis.qlocDeg(); }
-
+	
+    /**Returns the basis.*/
 	vector<qType> get_basis() const { return TensorBasis.qloc(); }
 private:
 
