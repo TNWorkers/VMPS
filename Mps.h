@@ -25,47 +25,60 @@
 #include "PolychromaticConsole.h" // from HELPERS
 #include "RandomVector.h" // from LANCZOS
 
-/**Matrix Product State with conserved quantum numbers (Abelian symmetries).
-\describe_Symmetry
-\describe_Scalar*/
+/**
+ * Matrix Product State with conserved quantum numbers (Abelian and non abelian symmetries).
+ * \describe_Symmetry
+ * \describe_Scalar
+ */
 template<typename Symmetry, typename Scalar=double>
 class Mps : public DmrgJanitor<PivotMatrixQ<Symmetry,Scalar,Scalar> >
 {
-typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
-static constexpr size_t Nq = Symmetry::Nq;
-typedef typename Symmetry::qType qType;
+	typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
+	static constexpr size_t Nq = Symmetry::Nq;
+	typedef typename Symmetry::qType qType;
 
 // Note: Cannot partially specialize template friends (or anything else, really). That sucks.
-template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolver;
-template<typename Symmetry_, typename S1, typename S2> friend class MpsCompressor;
-template<typename H, typename Symmetry_, typename S1, typename S2, typename V> friend class TDVPPropagator;
-template<typename Symmetry_, typename S1, typename S2> friend void HxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
-template<typename Symmetry_, typename S1, typename S2> friend void OxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
-template<typename Symmetry_, typename S_> friend class Mps; // in order to exchange data between real & complex Mps
+	template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolver;
+	template<typename Symmetry_, typename S1, typename S2> friend class MpsCompressor;
+	template<typename H, typename Symmetry_, typename S1, typename S2, typename V> friend class TDVPPropagator;
+	template<typename Symmetry_, typename S1, typename S2> friend void HxV (const Mpo<Symmetry_,S1> &H,
+																		const Mps<Symmetry_,S2> &Vin,
+																		Mps<Symmetry_,S2> &Vout,
+																		DMRG::VERBOSITY::OPTION VERBOSITY);
+	template<typename Symmetry_, typename S1, typename S2> friend void OxV (const Mpo<Symmetry_,S1> &H,
+																		const Mps<Symmetry_,S2> &Vin,
+																		Mps<Symmetry_,S2> &Vout,
+																		DMRG::BROOM::OPTION TOOL);
+	template<typename Symmetry_, typename S_> friend class Mps; // in order to exchange data between real & complex Mps
 
 public:
 	
 	/**Does nothing.*/
 	Mps<Symmetry,Scalar>();
 	
-//	Construct by setting all the relevant parameters.
-//	\param L_input : chain length
-//	\param Dmax : size cutoff (per subspace)
-//	\param qloc_input : local basis
-//	\param Qtot_input : target quantum number
-//	Mps<Symmetry,Scalar> (size_t L_input, size_t Dmax, std::array<qarray<Nq>,D> qloc_input, qarray<Nq> Qtot_input);
+	/**
+	 * Construct by setting all the relevant parameters.
+	 * \param L_input : chain length
+	 * \param qloc_input : local basis
+	 * \param Qtot_input : target quantum number
+	 * \param N_phys_input : the volume of the system (normally (chain length) * (chain width))
+	*/
 	Mps<Symmetry,Scalar> (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
-	Mps<Symmetry,Scalar> (size_t L_input, vector<Qbasis<Symmetry> > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
 	
-	/** Construct by pulling info from an Mpo.
-	\param H : chain length and local basis will be retrieved from this Mpo (less importantly, the quantum number labels and the format function as well)
-	\param Dmax : size cutoff (per subspace)
-	\param Qtot_input : target quantum number*/
+	/** 
+	 * Construct by pulling info from an Mpo.
+	 * \param H : chain length and local basis will be retrieved from this Mpo (less importantly, the quantum number labels and the format function as well)
+	 * \param Dmax : size cutoff (per subspace)
+	 * \param Qtot_input : target quantum number
+	*/
 	template<typename Hamiltonian> Mps<Symmetry,Scalar> (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input);
 	
 	///\{
-	/**Sets all matrices to random using boost's uniform distribution from -1 to 1.
-	\warning Watch for overflow in large chains where one gets exponentially large values when multiplying all the matrices! The safer way is to randomize while sweeping, using Mps::setRandom(size_t loc).*/
+	/**
+	 * Sets all matrices to random using boost's uniform distribution from -1 to 1.
+	 * \warning Watch for overflow in large chains where one gets exponentially large values when multiplying all the matrices! 
+	 *          The safer way is to randomize while sweeping, using Mps::setRandom(size_t loc).
+	*/
 	void setRandom();
 	
 	/**Sets all matrices at site \p loc to random using boost's uniform distribution from -1 to 1.*/
@@ -74,81 +87,111 @@ public:
 	/**Sets all matrices to zero.*/
 	void setZero();
 	
-	/**Sweeps through the chain with DMRG::BROOM::QR, creating a canonical Mps.
-	\param DIR : If DMRG::DIRECTION::LEFT, the result is left-canonical. If DMRG::DIRECTION::RIGHT, the result is right-canonical.*/
+	/**
+	 * Sweeps through the chain with DMRG::BROOM::QR, creating a canonical Mps.
+	 * \param DIR : If DMRG::DIRECTION::LEFT, the result is left-canonical. If DMRG::DIRECTION::RIGHT, the result is right-canonical.
+	*/
 	void canonize (DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::LEFT);
 	
 #ifdef USE_HDF5_STORAGE
 	///\{
-	/**Save all matrices of the MPS to the file <FILENAME>.h5.
-	   \param filename : the format is fixed to .h5. Just enter the name without the format.
-	   \param info : Additional information about the used model. Enter the info()-method of the used MPO here.
-	   \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
-	   \note For the filename you should use the info string of the current used Mpo.*/
+	/**
+	 * Save all matrices of the MPS to the file <FILENAME>.h5.
+	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
+	 * \param info : Additional information about the used model. Enter the info()-method of the used MPO here.
+	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
+	 * \note For the filename you should use the info string of the current used Mpo.
+	 */
 	void save(string filename,string info="none");
 	
-	///\{
-	/**Reades all matrices of the MPS from the file <FILENAME>.h5.
-	   \param filename : the format is fixed to .h5. Just enter the name without the format.
-	   \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.*/
+	/**
+	 * Reads all matrices of the MPS from the file <FILENAME>.h5.
+	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
+	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
+	 */
 	void load(string filename);
 	
-	///\{
-	/**Returns the maximal bond-dimension of an MPS stored in a file <FILENAME>.h5.
-	   \param filename : the format is fixed to .h5. Just enter the name without the format.
-	   \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.*/
+	/**
+	 * Returns the maximal bond-dimension of an MPS stored in a file <FILENAME>.h5.
+	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
+	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
+	 * \note Use case : First call loadDmax to construct the Mps with Mps::Mps(const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input).
+	 *                  Then call Mps::load() to get the Mps matrices.
+	 */
 	size_t loadDmax(string filename);
-#endif
+	///\}
+#endif //USE_HDF5_STORAGE
 	
-	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated.
-	\param L_input : chain length
-	\param qloc_input : local basis
-	\param Qtot_input : target quantum number*/
+	/**
+	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitialized.
+	 * \param L_input : chain length
+	 * \param qloc_input : local basis
+	 * \param Qtot_input : target quantum number
+	 */
 	void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input);
-	void outerResize (size_t L_input, vector<Qbasis<Symmetry> > qloc_input, qType Qtot_input);
-
-//	template<typename qIterator> void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input);
 	
-	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from an Mpo.
-	\param H : chain length and local basis will be retrieved from this Mpo (less importantly, the quantum number labels and the format function as well)
-	\param Qtot_input : target quantum number*/
+	/**
+	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from an Mpo.
+	 * \param H : chain length and local basis will be retrieved from this Mpo (less importantly, the quantum number labels and the format function as well)
+	 * \param Qtot_input : target quantum number
+	 */
 	template<typename Hamiltonian> void outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input);
 	
-	/**Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from another Mps.
-	\param V : chain length, local basis and target quantum number will be equal to this Mps (less importantly, the quantum number labels and the format function as well)*/
+	/**
+	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from another Mps.
+	 * \param V : chain length, local basis and target quantum number will be equal to this Mps (less importantly, the quantum number labels and the format function as well)
+	 */
 	template<typename OtherMatrixType> void outerResize (const Mps<Symmetry,OtherMatrixType> &V);
 	
-	/**Resizes the block matrices.
-	\param Dmax : size cutoff (per subspace)*/
+	/**
+	 * Resizes the block matrices.
+	 * \param Dmax : size cutoff (per subspace)
+	 */
 	void innerResize (size_t Dmax);
 	
-	/**Performs a resize of the block matrices for MpsCompressor.
-	\param Dmax : size cutoff (per subspace)
-	\param HOW_TO_RESIZE : If DMRG::RESIZE::CONSERV_INCR, then each block gains a zero row and a zero column, the bond dimension increases by \p Nqmax and \p Dmax has no meaning. If DMRG::RESIZE::DECR, all blocks are non-conservatively cut according to \p Dmax.*/
+	/**
+	 * Performs a resize of the block matrices for MpsCompressor.
+	 * \deprecated { Don't use this funtion. }
+	 * \param HOW_TO_RESIZE : If DMRG::RESIZE::CONSERV_INCR, then each block gains a zero row and a zero column, 
+	 *                        the bond dimension increases by \p Nqmax and \p Dmax has no meaning. 
+	 *                        If DMRG::RESIZE::DECR, all blocks are non-conservatively cut according to \p Dmax.
+	 * \param Dmax : size cutoff (per subspace)
+	 */
 	void dynamicResize (DMRG::RESIZE::OPTION HOW_TO_RESIZE, size_t Dmax);
 	
-	/**Sets the Mps from a product state configuration.
-	\param H : Hamiltonian, needed for Mps::outerResize
-	\param config : classical configuration, a vector of \p qarray*/
+	/**
+	 * Sets the Mps from a product state configuration.
+	 * \param H : Hamiltonian, needed for Mps::outerResize
+	 * \param config : classical configuration, a vector of \p qarray
+	 */
 	template<typename Hamiltonian> void setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config);
 	
-	/**Finds broken paths through the quantum number subspaces and mends them by resizing with appropriate zeros. The chain length and total quantum number are determined from \p config.
-	This is needed when applying an Mpo which changes quantum numbers, making some paths impossible. For example, one can add a particle at the beginning or end of the chain with the same target particle number, but if an annihilator is applied in the middle, only the first path survives.*/
+	/**
+	 * Finds broken paths through the quantum number subspaces and mends them by resizing with appropriate zeros. 
+	 * The chain length and total quantum number are determined from \p config.
+	 * This is needed when applying an Mpo which changes quantum numbers, making some paths impossible. 
+	 * For example, one can add a particle at the beginning or end of the chain with the same target particle number, 
+	 * but if an annihilator is applied in the middle, only the first path survives.
+	 */
 	void mend();
 	
-	/**Sets the A-matrix at a given site by performing SVD on the C-tensor.*/
+	/**
+	 * Sets the A-matrix at a given site by performing SVD on the C-tensor.
+	 * \warning Not implemented for non abelian symmetries.
+	 */
 	void set_A_from_C (size_t loc, const vector<Tripod<Symmetry,MatrixType> > &C, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD);
 	
 	/**
 	\param Op : 
 	\param USE_SQUARE : */
 	// template<size_t MpoNq> void setFlattenedMpo (const Mpo<MpoNq,Scalar> &Op, bool USE_SQUARE=false);
-	///\}
 	
 	///\{
-	/**Tests the orthogonality of the Mps.
-	Returns a string with "A"=left-canonical (\f$\sum_s {A^s}^\dag A^s=I\f$), "B"=right-canonical (\f$\sum_s B^s {B^s}^\dag=I\f$), "X"=both, "M"=neither; with the pivot site underlined.
-	\param tol The check is \f$\|\sum_s {A^s}^\dag A^s-I\|_{\infty} < tol\f$
+	/**
+	 * Tests the orthogonality of the Mps.
+	 * Returns a string with "A"=left-canonical (\f$\sum_s {A^s}^\dag A^s=I\f$), "B"=right-canonical (\f$\sum_s B^s {B^s}^\dag=I\f$), 
+	 * "X"=both, "M"=neither; with the pivot site underlined.
+	 * \param tol The check is \f$\|\sum_s {A^s}^\dag A^s-I\|_{\infty} < tol\f$
 	*/
 	string test_ortho (double tol=1e-8) const;
 	
@@ -158,26 +201,38 @@ public:
 	/**Prints the sizes of the matrices for testing purposes.*/
 	string Asizes() const;
 	
-	/**Checks if the sizes of the block matrices are consistent, so that they can be multiplied.
-	\param name : how to call the Mps in the output
-	\returns : string with info*/
+	/**
+	 * Checks if the sizes of the block matrices are consistent, so that they can be multiplied.
+	 * \param name : how to call the Mps in the output
+	 * \returns : string with info
+	 */
 	string validate (string name="Mps") const;
 	
-	/**Writes the subspace connections as a directed graph into a file.
-	Run \verbatim dot filename.dot -Tpdf -o filename.pdf \endverbatim to create a shiny pdf.
-	\param filename : gets a ".dot" extension automatically*/
+	/**
+	 * Writes the subspace connections as a directed graph into a file.
+	 * Run \verbatim dot filename.dot -Tpdf -o filename.pdf \endverbatim to create a shiny pdf.
+	 * \param filename : gets a ".dot" extension automatically
+	 */
 	void graph (string filename) const;
 	
-	/**How to format the conserved quantum numbers in the output, e\.g\. fractions for \f$S=1/2\f$ Heisenberg.*/
+	/**
+	 * How to format the conserved quantum numbers in the output, e\.g\. fractions for \f$S=1/2\f$ Heisenberg.
+	 */
 	string (*format)(qarray<Nq> qnum);
 	
-	/**Determines the maximal bond dimension per site (sum of \p A.rows or \p A.cols over all subspaces).*/
+	/**
+	 * Determines the maximal bond dimension per site (sum of \p A.rows or \p A.cols over all subspaces).
+	 */
 	size_t calc_Mmax() const;
 	
-	/**Determines the maximal amount of rows or columns per site and subspace.*/
+	/**
+	 * Determines the maximal amount of rows or columns per site and subspace.
+	 */
 	size_t calc_Dmax() const;
 	
-	/**Determines the maximal amount of subspaces per site.*/
+	/**
+	 * Determines the maximal amount of subspaces per site.
+	 */
 	size_t calc_Nqmax() const;
 	
 	/**\describe_memory*/
@@ -188,34 +243,57 @@ public:
 	///\}
 	
 	///\{
-	/**Adds another Mps to the given one and scales by \p alpha, i\.e\. performs \f$ \mathrel{+}= \alpha \cdot V_{in}\f$.
-	\param alpha : scalar for scaling
-	\param Vin : Mps to be added
-	\param SVD_COMPRESS : If \p true, the resulting Mps is compressed using SVD. If \p false, the summation is exact (direct sum of the matrices).*/
+	/**
+	 * Adds another Mps to the given one and scales by \p alpha, i\.e\. performs \f$ \mathrel{+}= \alpha \cdot V_{in}\f$.
+	 * \param alpha : scalar for scaling
+	 * \param Vin : Mps to be added
+	 * \param SVD_COMPRESS : If \p true, the resulting Mps is compressed using SVD. If \p false, the summation is exact (direct sum of the matrices).
+	 * \warning Not implemented for non abelian symmetries.
+	 */
 	template<typename OtherScalar> void addScale (OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, bool SVD_COMPRESS=false);
 	
-	/**Performs Mps::addScale with \p alpha = 1.*/
+	/**
+	 *Performs Mps::addScale with \p alpha = 1.
+	 * \warning Not implemented for non abelian symmetries.
+	 */
 	Mps<Symmetry,Scalar>& operator+= (const Mps<Symmetry,Scalar> &Vin);
 	
-	/**Performs Mps::addScale with \p alpha = -1.*/
+	/**
+	 *Performs Mps::addScale with \p alpha = -1.
+	 * \warning Not implemented for non abelian symmetries.
+	 */
 	Mps<Symmetry,Scalar>& operator-= (const Mps<Symmetry,Scalar> &Vin);
 	
-	/**Performs \f$ \mathrel{*}= \alpha\f$. Applies it to the first site.*/
+	/**
+	 * Performs \f$ \mathrel{*}= \alpha\f$. Applies it to the first site.
+	 */
 	template<typename OtherScalar> Mps<Symmetry,Scalar>& operator*= (const OtherScalar &alpha);
 	
-	/**Performs \f$ \mathrel{/}= \alpha\f$. Applies it to the first site.*/
+	/**
+	 * Performs \f$ \mathrel{/}= \alpha\f$. Applies it to the first site.
+	 */
 	template<typename OtherScalar> Mps<Symmetry,Scalar>& operator/= (const OtherScalar &alpha);
 	
-	/**Casts the matrices from \p Scalar to \p OtherScalar.*/
+	/**
+	 * Casts the matrices from \p Scalar to \p OtherScalar.
+	 */
 	template<typename OtherScalar> Mps<Symmetry,OtherScalar> cast() const;
 	
-	/**Calculates the scalar product with another Mps.*/
+	/**
+	 * Calculates the scalar product with another Mps.
+	 */
 	Scalar dot (const Mps<Symmetry,Scalar> &Vket) const;
 	
-	/**Calculates the squared norm. Exploits the canonical form if possible, calculates the dot product with itself otherwise.*/
+	/**
+	 * Calculates the squared norm. Exploits the canonical form if possible, calculates the dot product with itself otherwise.
+	 */
 	double squaredNorm() const;
 	
-	// Calculates the expectation value with a local operator at the pivot site.
+	/** 
+	 * Calculates the expectation value with a local operator at the pivot site. 
+	 * \params O : Local Mpo acting on the pivot side.
+	 * \warning Not implemented for non abelian symmetries.
+	 */
 	template<typename MpoScalar> Scalar locAvg (const Mpo<Symmetry,MpoScalar> &O) const;
 	
 	/**Calculates the expectation value with a local operator at pivot and pivot+1.*/
@@ -224,7 +302,9 @@ public:
 	/**Swaps with another Mps.*/
 	void swap (Mps<Symmetry,Scalar> &V);
 	
-	/**Copies the control parameters from another Mps, i.e.\ all the cutoff tolerances specified in DmrgJanitor.*/
+	/**
+	 * Copies the control parameters from another Mps, i.e.\ all the cutoff tolerances specified in DmrgJanitor.
+	 */
 	void get_controlParams (const Mps<Symmetry,Scalar> &V);
 	
 	/**For METTS.*/
@@ -232,34 +312,51 @@ public:
 	///\}
 	
 	///\{
-	/**Performs a sweep step to the right.
-	\param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc+1
-	\param BROOM : choice of decomposition
-	\param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD
-	\param DISCARD_V : If \p true, don't multiply the V-matrix onto the next site*/
+	/**
+	 * Performs a sweep step to the right.
+	 * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc+1
+	 * \param BROOM : choice of decomposition
+	 * \param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD
+	 * \param DISCARD_V : If \p true, don't multiply the V-matrix onto the next site
+	 */
 	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Symmetry,Scalar,Scalar> *H = NULL, bool DISCARD_V=false);
 	
-	/**Performs a sweep step to the left.
-	\param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1
-	\param BROOM : choice of decomposition
-	\param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD
-	\param DISCARD_U : If \p true, don't multiply the U-matrix onto the next site*/
+	/**
+	 * Performs a sweep step to the left.
+	 * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1
+	 * \param BROOM : choice of decomposition
+	 * \param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD
+	 * \param DISCARD_U : If \p true, don't multiply the U-matrix onto the next site
+	 */
 	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Symmetry,Scalar,Scalar> *H = NULL, bool DISCARD_U=false);
 	
-	/**Performs a two-site sweep.
-	\param DISCARD_SV: If \p true, the singular value matrix is discarded. Useful for iDMRG.*/
+	/**
+	 * Performs a two-site sweep.
+	 * \param DISCARD_SV: If \p true, the singular value matrix is discarded. Useful for iDMRG.
+	 * \warning Not implemented for non abelian symmetries.
+	 * \todo Implemented this function for SU(2) symmetry.
+	 */
 	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<Symmetry,MatrixType> > > &Apair, bool DISCARD_SV=false);
 	
-	/**Performs an SVD split to the left and writes the zero-site tensor to \p C.*/
+	/**
+	 * Performs an SVD split to the left and writes the zero-site tensor to \p C.
+	 * \warning Not implemented for non abelian symmetries.
+	 */
 	void leftSplitStep  (size_t loc, Biped<Symmetry,MatrixType> &C);
 	
-	/**Performs an SVD split to the right and writes the zero-site tensor to \p C.*/
+	/**
+	 * Performs an SVD split to the right and writes the zero-site tensor to \p C.
+	 * \warning Not implemented for non abelian symmetries.
+	 */
 	void rightSplitStep (size_t loc, Biped<Symmetry,MatrixType> &C);
 	
-	/**Absorbs the zero-site tensor \p C (as obtained after an SVD split) into the Mps.
-	\param loc : site to do the absorption
-	\param DIR : specifies whether the absorption is on the left-sweep or right-sweep
-	\param C : the zero-site tensor to be absorbed*/
+	/**
+	 * Absorbs the zero-site tensor \p C (as obtained after an SVD split) into the Mps.
+	 * \param loc : site to do the absorption
+	 * \param DIR : specifies whether the absorption is on the left-sweep or right-sweep
+	 * \param C : the zero-site tensor to be absorbed
+	 * \warning Not implemented for non abelian symmetries.
+	 */
 	void absorb (size_t loc, DMRG::DIRECTION::OPTION DIR, const Biped<Symmetry,MatrixType> &C);
 	///\}
 	
@@ -290,7 +387,6 @@ private:
 	
 	/**local basis.*/
 	vector<vector<qarray<Nq> > > qloc;
-	vector<Qbasis<Symmetry> > qloc__;
 
 	std::array<string,Nq> qlabel = {};
 	qarray<Nq> Qtot;
@@ -380,21 +476,6 @@ Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_in
 :DmrgJanitor<PivotMatrixQ<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input)
 {
 	format = noFormat;
-	// for(size_t l=0; l<this->N_sites; l++) {qloc[l] = qloc__[l].qloc();}
-	// format = ::noFormat<Symmetry>;
-	outerResize(L_input, qloc_input, Qtot_input);
-
-//	qlabel = defaultQlabel<Nq>();
-}
-
-template<typename Symmetry, typename Scalar>
-Mps<Symmetry,Scalar>::
-Mps (size_t L_input, vector<Qbasis<Symmetry> > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input)
-:DmrgJanitor<PivotMatrixQ<Symmetry,Scalar,Scalar> >(L_input), qloc__(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input)
-{
-	format = noFormat;
-	qloc.resize(this->N_sites);
-	for(size_t l=0; l<this->N_sites; l++) {qloc[l] = qloc__[l].qloc();}
 	// format = ::noFormat<Symmetry>;
 	outerResize(L_input, qloc_input, Qtot_input);
 
@@ -410,60 +491,9 @@ Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
 	format = H.format;
 	qlabel = H.qlabel;
 	N_phys = H.volume();
-	if constexpr (Symmetry::NON_ABELIAN) {outerResize(H.length(), H.locBasis__(), Qtot_input);}
-	else {outerResize(H.length(), H.locBasis(), Qtot_input);}
+	outerResize(H.length(), H.locBasis(), Qtot_input);
 	innerResize(Dmax);
 }
-
-// template<typename Symmetry, typename Scalar>
-// template<typename Hamiltonian>
-// Mps<Symmetry,Scalar>::
-// Mps (string filename)
-// 	:DmrgJanitor<PivotMatrixQ<Nq,Scalar,Scalar> >()
-// {
-// 	format = noFormat;
-// 	ifstream file;
-// 	filename+=".mps";
-// 	file.open(filename);
-// 	assert( file.good() and "I have tried to open the .mps file. But it is not there.");
-// 	file.seekg(121,file.beg);
-	
-// 	size_t Lcheck;
-// 	file >> Lcheck;
-	
-// 	vector<size_t> localDimCheck;
-// 	localDimCheck.resize(Lcheck);
-// 	for (size_t l=0;l<Lcheck;++l)
-// 	{
-// 		file >> localDimCheck[l];
-// 	}
-	
-// 	qarray<Nq> QtotCheck;
-// 	for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
-// 	{
-// 		file >> QtotCheck[NqLoop];
-// 	}
-	
-// 	size_t DmaxCheck;
-// 	file >> DmaxCheck;
-
-// 	vector <vector <qarray<Nq > > > qlocCheck;
-// 	qlocCheck.resize(Lcheck);
-// 	for (size_t l=0;l<Lcheck;++l)
-// 	{
-// 		qlocCheck[l].resize(localDimCheck[l]);
-// 	}
-// 	for (size_t l=0;l<Lcheck;++l)
-// 		for (size_t s=0;s<localDimCheck[l];++s)
-// 			for (size_t NqLoop=0;NqLoop<Nq;++NqLoop)
-// 			{
-// 				file >> qlocCheck[l][s][NqLoop];
-// 			}
-
-// //	qlabel = H.qlabel;
-// 	outerResize<typename Hamiltonian::qarrayIterator>(Lcheck, qlocCheck, QtotCheck);
-// 	innerResize(DmaxCheck);
-// }
 
 template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
@@ -528,7 +558,6 @@ resize_arrays()
 }
 
 template<typename Symmetry, typename Scalar>
-//template<typename qIterator>
 void Mps<Symmetry,Scalar>::
 outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input)
 {
@@ -550,30 +579,33 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 			{
 				qset_tmp.insert(qloc[l_frst][s]);
 			}
-			
+
 			for (size_t l=l_frst+1; l<=l_last; ++l)
 			{
 				// add qnums of local basis at l and qset_tmp to qset
 				for (size_t s=0; s<qloc[l].size(); ++s)
 				for (auto it=qset_tmp.begin(); it!=qset_tmp.end(); ++it)
 				{
-					qset.insert(*it+qloc[l][s]);
+					auto qVec = Symmetry::reduceSilent(*it,qloc[l][s]);
+					for (size_t j=0; j<qVec.size(); j++)
+					{
+						qset.insert(qVec[j]);
+					}
 				}
 				// swap qset and qset_tmp to continue
-				std::swap(qset_tmp,qset); qset.clear();
-			}
-			
+				std::swap(qset_tmp,qset);qset.clear();
+			}			
 			qset = qset_tmp;
 		}
 		else
 		{
-			qset.insert(qvacuum<Nq>());
+			qset.insert(Symmetry::qvacuum());
 		}
 		
 		return qset;
 	};
 	
-	if (Nq == 0)
+	if constexpr (Nq == 0)
 	{
 		outerResizeNoSymm();
 	}
@@ -585,179 +617,50 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		{
 			set<qarray<Nq> > intmp;
 			set<qarray<Nq> > outtmp;
-			
+
+			int lprev = l-1;
+			int lnext = l+1;
+
+			set<qarray<Nq> > qlset = calc_qnums_on_segment(0,lprev); // length=l
+			set<qarray<Nq> > qrset = calc_qnums_on_segment(lnext,this->N_sites-1); // length=L-l-1
+
 			for (size_t s=0; s<qloc[l].size(); ++s)
 			{
 				A[l][s].clear();
-				
-	//			qarrayIterator<D,Nq> ql(qloc,l);
-	//			qarrayIterator<D,Nq> qr(qloc,this->N_sites-l-1);
-				
-	//			qIterator ql(qloc,l);
-	//			qIterator qr(qloc,this->N_sites-l-1);
-				
-				int lprev = l-1;
-				int lnext = l+1;
-//				qIterator ql(qloc, 0, lprev, N_legs); // length=l
-//				qIterator qr(qloc, lnext, this->N_sites-1, N_legs); // length=L-l-1
-//				
-//				set<qarray<Nq> > qrset = qr.qset;
-//				for (qr=qr.begin(); qr!=qr.end(); ++qr)
-//				{
-//					qrset.insert(*qr);
-//				}
-				
-				set<qarray<Nq> > qlset = calc_qnums_on_segment(0,lprev); // length=l
-				set<qarray<Nq> > qrset = calc_qnums_on_segment(lnext,this->N_sites-1); // length=L-l-1
-				
-//				for (ql=ql.begin(); ql!=ql.end(); ++ql)
+
+
 				for (auto ql=qlset.begin(); ql!=qlset.end(); ++ql)
 				{
-					auto qr = Qtot-*ql-qloc[l][s];
-					auto itqr = qrset.find(qr);
-					
-					if (itqr != qrset.end())
+					auto qVec = Symmetry::reduceSilent(*ql,qloc[l][s]);
+					vector<set<qType> > qrSetVec; qrSetVec.resize(qVec.size());
+					for (size_t i=0; i<qVec.size(); i++)
 					{
-						auto qin  = *ql;
-						auto qout = *ql+qloc[l][s];
-						
-						intmp.insert(qin);
-						outtmp.insert(qout);
-						
-						A[l][s].in.push_back(qin);
-						A[l][s].out.push_back(qout);
-						A[l][s].dict.insert({qarray2<Nq>{qin,qout}, A[l][s].dim});
-						++A[l][s].dim;
-					}
-				}
-				
-				A[l][s].block.resize(A[l][s].dim);
-			}
-			
-			inset[l].resize(intmp.size());
-			outset[l].resize(outtmp.size());
-			copy(intmp.begin(),  intmp.end(),  inset[l].begin());
-			copy(outtmp.begin(), outtmp.end(), outset[l].begin());
-		}
-	}
-}
-
-template<typename Symmetry, typename Scalar>
-void Mps<Symmetry,Scalar>::
-outerResize(size_t L_input, std::vector<Qbasis<Symmetry> > qloc_input, qType Qtot_input)
-{
-	this->N_sites = L_input;
-	qloc__ = qloc_input;
-	qloc.resize(this->N_sites);
-	for(size_t l=0; l<this->N_sites; l++) {qloc[l] = qloc__[l].qloc();}
-	Qtot = Qtot_input;
-
-	this->pivot = -1;
-
-	auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> std::set<qType>
-	{
-		size_t L = (l_last < 0 or l_frst >= qloc__.size())? 0 : l_last-l_frst+1;
-		std::set<qType > qset;
-		
-		if (L > 0)
-		{
-			// add qnums of local basis on l_frst to qset_tmp
-			std::set<qType> qset_tmp;
-			for (const auto& s : qloc__[l_frst])
-			// for (size_t s=0; s<qloc[l_frst].size(); ++s)
-			{
-				auto [ q_Phys ,  num ,  inner ] = s;
-				qset_tmp.insert(q_Phys);
-			}
-
-			for (size_t l=l_frst+1; l<=l_last; ++l)
-			{
-				// add qnums of local basis at l and qset_tmp to qset
-				for (const auto& s : qloc__[l])
-				{
-					auto [ q_Phys ,  num ,  inner ] = s;
-					for (auto it=qset_tmp.begin(); it!=qset_tmp.end(); ++it)
-					{
-						auto qVec = Symmetry::reduceSilent(*it,q_Phys);
-						for (size_t j=0; j<qVec.size(); j++)
+						auto qVectmp = Symmetry::reduceSilent(Symmetry::flip(qVec[i]),Qtot);
+						for (size_t j=0; j<qVectmp.size(); j++) { qrSetVec[i].insert(qVectmp[j]); }
+						for (auto qr = qrSetVec[i].begin(); qr!=qrSetVec[i].end(); qr++)
 						{
-							// qarray<Nq> qtmp({qVec[j]});
-							qset.insert(qVec[j]);
-						}
-					}
-					// swap qset and qset_tmp to continue
-				}
-				std::swap(qset_tmp,qset);qset.clear();
-			}
-			qset = qset_tmp;
-		}
-		else
-		{
-			qset.insert(Symmetry::qvacuum());
-		}
-
-		return qset;
-	};
-	
-	if constexpr (Symmetry::Nq == 0)
-	{
-		outerResizeNoSymm();
-	}
-	else
-	{
-		resize_arrays();
-
-		for (size_t l=0; l<this->N_sites; ++l)
-		{
-			std::set<qType> intmp;
-			std::set<qType> outtmp;
-			A[l].resize(qloc__[l].size());
-			int lprev = l-1;
-			int lnext = l+1;
-			std::set<qType> qlset = calc_qnums_on_segment(0,lprev); // length=l
-			std::set<qType> qrset = calc_qnums_on_segment(lnext,this->N_sites-1); // length=L-l-1
-
-			for (const auto& s : qloc__[l])
-			{
-				auto [ q_Phys ,  num ,  inner ] = s;
-				for (const auto& plain : inner)
-				{
-					auto [ ident , inner_num ] = plain;
-					A[l][num+inner_num].clear();
-					for (auto ql=qlset.begin(); ql!=qlset.end(); ++ql)
-					{
-						auto qVec = Symmetry::reduceSilent(*ql,q_Phys);
-						std::vector<std::set<qType> > qrSetVec; qrSetVec.resize(qVec.size());
-						for (size_t i=0; i<qVec.size(); i++)
-						{
-							auto qVectmp = Symmetry::reduceSilent(Symmetry::flip(qVec[i]),Qtot);
-							for (size_t j=0; j<qVectmp.size(); j++) { qrSetVec[i].insert(qVectmp[j]); }
-							for (auto qr = qrSetVec[i].begin(); qr!=qrSetVec[i].end(); qr++)
+							auto itqr = qrset.find(*qr);
+							if (itqr != qrset.end())
 							{
-								auto itqr = qrset.find(*qr);
-								if (itqr != qrset.end())
+								auto qin = *ql;
+								auto qout = qVec[i];
+								intmp.insert(qin);
+								outtmp.insert(qout);
+								std::array<qType,2> qTmp = {qin,qout};
+								auto check = A[l][s].dict.find(qTmp);
+								if (check == A[l][s].dict.end())
 								{
-									auto qin = *ql;
-									auto qout = qVec[i];
-									intmp.insert(qin);
-									outtmp.insert(qout);
-									std::array<qType,2> qTmp = {qin,qout};
-									std::array<Index,2> dummy_legs; std::iota(dummy_legs.begin(),dummy_legs.end(),Index(0));
-									auto check = A[l][num+inner_num].dict.find(qTmp);//,dummy_legs);
-									if (check == A[l][num+inner_num].dict.end()) //dummy_legs)
-									{
-										A[l][num+inner_num].in.push_back(qin);
-										A[l][num+inner_num].out.push_back(qout);
-										A[l][num+inner_num].dict.insert({qTmp,A[l][num+inner_num].size()});
-										A[l][num+inner_num].plusplus();
-									}
-									else {}
+									A[l][s].in.push_back(qin);
+									A[l][s].out.push_back(qout);
+									A[l][s].dict.insert({qTmp,A[l][s].size()});
+									A[l][s].plusplus();
 								}
+								else {}
 							}
 						}
 					}
-					A[l][num+inner_num].block.resize(A[l][num+inner_num].size());
 				}
+				A[l][s].block.resize(A[l][s].size());
 			}
 			inset[l].resize(intmp.size());
 			outset[l].resize(outtmp.size());

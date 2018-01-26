@@ -284,7 +284,7 @@ set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F, cons
 Mpo<Sym::SU2xU1<double> > KondoSU2xU1::
 c (std::size_t locx, std::size_t locy)
 {
-	assert(locx<N_sites and locy<N_legs);
+	assert(locx<N_sites and locy<B[locx].dim()*F[locx].dim());
 	std::stringstream ss;
 	ss << "c(" << locx << "," << locy << ")";
 
@@ -299,7 +299,7 @@ c (std::size_t locx, std::size_t locy)
 Mpo<Sym::SU2xU1<double> > KondoSU2xU1::
 cdag (std::size_t locx, std::size_t locy)
 {
-	assert(locx<N_sites and locy<N_legs);
+	assert(locx<N_sites and locy<B[locx].dim()*F[locx].dim());
 	std::stringstream ss;
 	ss << "c†(" << locx << "," << locy << ")";
 
@@ -348,7 +348,7 @@ cdagc (size_t loc1x, size_t loc2x, size_t loc1y, size_t loc2y)
 Mpo<Sym::SU2xU1<double> > KondoSU2xU1::
 n (std::size_t locx, std::size_t locy)
 {
-	assert(locx<N_sites and locy<N_legs);
+	assert(locx<N_sites and locy<B[locx].dim()*F[locx].dim());
 	std::stringstream ss;
 	ss << "occ(" << locx << "," << locy << ")";
 
@@ -364,7 +364,7 @@ n (std::size_t locx, std::size_t locy)
 Mpo<Sym::SU2xU1<double> > KondoSU2xU1::
 d (std::size_t locx, std::size_t locy)
 {
-	assert(locx<N_sites and locy<F[locx].dim());
+	assert(locx<N_sites and locy<B[locx].dim()*F[locx].dim());
 	stringstream ss;
 	ss << "double_occ(" << locx << "," << locy << ")";
 	

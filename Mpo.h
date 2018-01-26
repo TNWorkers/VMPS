@@ -26,53 +26,59 @@ using namespace Eigen;
 /**Namespace VMPS to distinguish names from ED equivalents.*/
 namespace VMPS{};
 
+//Forward declarations
 template<typename Symmetry, typename Scalar> class Mps;
 template<typename Symmetry, typename Scalar> class Mpo;
 template<typename Symmetry, typename MpHamiltonian, typename Scalar> class DmrgSolver;
 template<typename Symmetry, typename Scalar, typename MpoScalar> class MpsCompressor;
 template<typename Symmetry, typename MpHamiltonian, typename Scalar> class VumpsSolver;
 
-/**Matrix Product Operator with conserved quantum numbers (Abelian and non-abelian symmetries). 
-Just adds a target quantum number and a bunch of labels on top of Mpo.
-\describe_Symmetry
-\describe_Scalar*/
+/**
+ * Matrix Product Operator with conserved quantum numbers (Abelian and non-abelian symmetries).
+ * Just adds a target quantum number and a bunch of labels on top of Mpo.
+ * \describe_Symmetry
+ * \describe_Scalar
+ */
 template<typename Symmetry, typename Scalar=double>
 class Mpo
 {
-typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
-template<Index Rank> using TensorType = Eigen::Tensor<Scalar,Rank,Eigen::ColMajor,Index>;
-typedef SparseMatrixXd SparseMatrixType;
-typedef SiteOperator<Symmetry,Scalar> OperatorType;
-static constexpr size_t Nq = Symmetry::Nq;
-typedef typename Symmetry::qType qType;
+	typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
+	typedef SparseMatrixXd SparseMatrixType;
+	typedef SiteOperator<Symmetry,Scalar> OperatorType;
+	static constexpr size_t Nq = Symmetry::Nq;
+	typedef typename Symmetry::qType qType;
 
-template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolver;
-template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
-template<typename Symmetry_, typename S1, typename S2> friend class MpsCompressor;
-template<typename H, typename Symmetry_, typename S1, typename S2, typename V> friend class TDVPPropagator;
-template<typename Symmetry_, typename S_> friend class Mpo;
+	template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolver;
+	template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
+	template<typename Symmetry_, typename S1, typename S2> friend class MpsCompressor;
+	template<typename H, typename Symmetry_, typename S1, typename S2, typename V> friend class TDVPPropagator;
+	template<typename Symmetry_, typename S_> friend class Mpo;
 
-template<typename Symmetry_, typename S1, typename S2> friend void HxV 
-(const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
+	template<typename Symmetry_, typename S1, typename S2> friend void HxV  (const Mpo<Symmetry_,S1> &H,
+																			 const Mps<Symmetry_,S2> &Vin,
+																			 Mps<Symmetry_,S2> &Vout,
+																			 DMRG::VERBOSITY::OPTION VERBOSITY);
 
-template<typename Symmetry_, typename S1, typename S2> friend void OxV 
-(const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
-
+	template<typename Symmetry_, typename S1, typename S2> friend void OxV (const Mpo<Symmetry_,S1> &H,
+																			const Mps<Symmetry_,S2> &Vin,
+																			Mps<Symmetry_,S2> &Vout,
+																			DMRG::BROOM::OPTION TOOL);
 public:
 	
 	Mpo(){};
 	
 	Mpo (size_t L_input);
 	
-	/**Basic Mpo constructor.
-	\warning Note that qloc and qOp have to be set separately.
-	\param L_input : amount of sites/supersites which are swept
-	\param Qtot_input : the total change in quantum number
-	\param qlabel_input : how to label the conserved quantum numbers in outputs
-	\param label_input : how to label the Mpo itself in outputs
-	\param format_input : format function for the quantum numbers (e.g.\ half-integers for S=1/2).
-	\param UNITARY_input : if the Mpo is known to be unitary, this can be further exploited
-	*/
+	/**
+	 * Basic Mpo constructor.
+	 * \warning Note that qloc and qOp have to be set separately.
+	 * \param L_input : amount of sites/supersites which are swept
+	 * \param Qtot_input : the total change in quantum number
+	 * \param qlabel_input : how to label the conserved quantum numbers in outputs
+	 * \param label_input : how to label the Mpo itself in outputs
+	 * \param format_input : format function for the quantum numbers (e.g.\ half-integers for S=1/2).
+	 * \param UNITARY_input : if the Mpo is known to be unitary, this can be further exploited
+	 */
 	Mpo (size_t L_input, 
 	     qarray<Nq> Qtot_input,
 	     std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), 
@@ -83,42 +89,48 @@ public:
 	//---set whole Mpo for special cases, modify---
 	
 	///\{
-	/**Set to a local operator \f$O_i\f$
-	\param loc : site index
-	\param Op : the local operator in question
-	*/
+	/**
+	 * Set to a local operator \f$O_i\f$
+	 * \param loc : site index
+	 * \param Op : the local operator in question
+	 */
 	void setLocal (size_t loc, const OperatorType &Op, bool OPEN_BC=true);
 	
-	/**Set to a local operator \f$O_i\f$ but add a chain of sign operators (useful for fermionic operators)
-	\param loc : site index
-	\param Op : the local operator in question
-	\param SignOp : elementary operator for the sign chain.
-	*/
+	/**
+	 * Set to a local operator \f$O_i\f$ but add a chain of sign operators (useful for fermionic operators)
+	 * \param loc : site index
+	 * \param Op : the local operator in question
+	 * \param SignOp : elementary operator for the sign chain.
+	 */
 	void setLocal (size_t loc, const OperatorType& Op, const OperatorType &SignOp, bool OPEN_BC=true);
 	
-	/**Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$
-	\param loc : list of locations
-	\param Op : list of operators
+	/**
+	 * Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$
+	 * \param loc : list of locations
+	 * \param Op : list of operators
 	*/
 	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, bool OPEN_BC=true);
 	
-	/**Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$ with sign chains in between
-	\param loc : list of locations
-	\param Op : list of operators
-	\param SignOp : elementary operator for the sign chain.
-	*/
+	/**
+	 * Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$ with sign chains in between
+	 * \param loc : list of locations
+	 * \param Op : list of operators
+	 * \param SignOp : elementary operator for the sign chain.
+	 */
 	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const OperatorType& SignOp, bool OPEN_BC=true);
 	
-	/**Set to a sum of of local operators \f$\sum_i f(i) O_i\f$
-	\param Op : the local operator in question
-	\param f : the function in question$
-	*/
+	/**
+	 * Set to a sum of of local operators \f$\sum_i f(i) O_i\f$
+	 * \param Op : the local operator in question
+	 * \param f : the function in question$
+	 */
 	void setLocalSum (const OperatorType &Op, Scalar (*f)(int)=localSumTrivial, bool OPEN_BC=true);
 	
-	/**Set to a sum of nearest-neighbour products of local operators \f$\sum_i O^1_i O^2_{i+1}\f$
-	\param Op1 : first local operator
-	\param Op2 : second local operator
-	*/
+	/**
+	 * Set to a sum of nearest-neighbour products of local operators \f$\sum_i O^1_i O^2_{i+1}\f$
+	 * \param Op1 : first local operator
+	 * \param Op2 : second local operator
+	 */
 	void setProductSum (const OperatorType &Op1, const OperatorType &Op2, bool OPEN_BC=true);
 	
 	/**Makes a linear transformation of the Mpo: \f$H' = factor*H + offset\f$.*/
@@ -134,9 +146,11 @@ public:
 	/**\describe_memory*/
 	double memory (MEMUNIT memunit=GB) const;
 	
-	/**Calculates a measure of the sparsity of the given Mpo.
-	\param USE_SQUARE : If \p true, apply it to the stored square.
-	\param PER_MATRIX : If \p true, calculate the amount of non-zeros per matrix. If \p false, calculate the fraction of non-zero elements.*/
+	/**
+	 * Calculates a measure of the sparsity of the given Mpo.
+	 * \param USE_SQUARE : If \p true, apply it to the stored square.
+	 * \param PER_MATRIX : If \p true, calculate the amount of non-zeros per matrix. If \p false, calculate the fraction of non-zero elements.
+	 */
 	double sparsity (bool USE_SQUARE=false, bool PER_MATRIX=true) const;
 	///\}
 	
@@ -173,35 +187,36 @@ public:
 	
 	/**Returns the local basis at \p loc.*/
 	inline vector<qarray<Nq> > locBasis   (size_t loc) const {return qloc[loc];}
-	inline Qbasis<Symmetry>    locBasis__ (size_t loc) const {return qloc__[loc];}
+	/**Returns the right auxiliary basis at \p loc.*/
 	inline Qbasis<Symmetry>    auxBasis   (size_t loc) const {return qaux[loc];}
 	
 	/**Returns the operator basis at \p loc.*/
 	inline vector<qarray<Nq> > opBasis   (size_t loc) const {return qOp[loc];}
+	/**Returns the operator basis of the squared Mpo at \p loc.*/
 	inline vector<qarray<Nq> > opBasisSq (size_t loc) const {return qOpSq[loc];}
 	
 	/**Returns the full local basis.*/
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
-	inline vector<Qbasis<Symmetry> >    locBasis__() const {return qloc__;}
+	/**Returns the full auxiliary basis.*/
 	inline vector<Qbasis<Symmetry> >    auxBasis()   const {return qaux;}
 	
 	/**Returns the full operator basis.*/
 	inline vector<vector<qarray<Nq> > > opBasis()   const {return qOp;}
+	/**Returns the full operator basis of the squared Mpo.*/
 	inline vector<vector<qarray<Nq> > > opBasisSq() const {return qOpSq;}
 	
 	/**Sets the local basis at \p loc.*/
-	inline void setLocBasis (const Qbasis<Symmetry> &q, size_t loc) {qloc__[loc]=q; qloc[loc]=q.qloc();}
 	inline void setLocBasis (const vector<qType> &q,    size_t loc) {qloc[loc]=q;}
 	
 	/**Sets the operator basis at \p loc.*/
 	inline void setOpBasis (const vector<qType>& q, size_t loc) {qOp[loc] = q;}
 	
 	/**Sets the full local basis.*/
-	inline void setLocBasis (const vector<Qbasis<Symmetry> > &q) {qloc__=q;}
 	inline void setLocBasis (const vector<vector<qType> >    &q) {qloc=q;}
 	
 	/**Sets the full operator basis.*/
 	inline void setOpBasis   (const vector<vector<qType> > &q)        {qOp=q;}
+	/**Sets the full operator basis of the squared Mpo.*/
 	inline void setOpBasisSq (const vector<vector<qType> > &qOpSq_in) {qOpSq=qOpSq_in;}
 	
 	/**Checks whether the Mpo is a unitary operator.*/
@@ -243,7 +258,7 @@ public:
 	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
 	typedef Mps<Symmetry,double>                              StateXd;
 	typedef Mps<Symmetry,complex<double> >                    StateXcd;
-	typedef DmrgSolver<Symmetry,Mpo<Symmetry,Scalar>,Scalar> Solver;
+	typedef DmrgSolver<Symmetry,Mpo<Symmetry,Scalar>,Scalar>  Solver;
 	typedef VumpsSolver<Symmetry,Mpo<Symmetry,Scalar>,Scalar> uSolver;
 	typedef MpsCompressor<Symmetry,double,double>             CompressorXd;
 	typedef MpsCompressor<Symmetry,complex<double>,double>    CompressorXcd;
@@ -253,7 +268,6 @@ public:
 protected:
 	
 	vector<vector<qarray<Nq> > > qloc, qOp, qOpSq;
-	vector<Qbasis<Symmetry> > qloc__;
 	vector<Qbasis<Symmetry> > qaux;
 	
 	qarray<Nq> Qtot;
@@ -341,7 +355,6 @@ initialize()
 {
 	qloc.resize(N_sites);
 	qOp.resize(N_sites);
-	qloc__.resize(N_sites);
 	W.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)

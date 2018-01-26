@@ -126,7 +126,8 @@ public:
 	Operator Id (std::size_t orbital=0) const;
 
 	/**Returns the local basis.*/
-	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
+	vector<qType> get_basis() const { return TensorBasis.qloc(); }
+	// Qbasis<Symmetry> get_basis() const { return TensorBasis; }
 
 private:
 

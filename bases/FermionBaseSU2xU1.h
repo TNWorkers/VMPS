@@ -126,8 +126,7 @@ public:
 	   \note Use this as input for Mps, Mpo classes.*/ 
 	std::vector<Eigen::Index> qlocDeg() const { return TensorBasis.qlocDeg(); }
 
-	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
-
+	vector<qType> get_basis() const { return TensorBasis.qloc(); }
 private:
 
 	std::size_t N_orbitals;
