@@ -151,7 +151,7 @@ public:
 	
 	/**
 	 * Performs a resize of the block matrices for MpsCompressor.
-	 * \deprecated { Don't use this funtion. }
+	 * \deprecated Don't use this funtion.
 	 * \param HOW_TO_RESIZE : If DMRG::RESIZE::CONSERV_INCR, then each block gains a zero row and a zero column, 
 	 *                        the bond dimension increases by \p Nqmax and \p Dmax has no meaning. 
 	 *                        If DMRG::RESIZE::DECR, all blocks are non-conservatively cut according to \p Dmax.

@@ -12,15 +12,16 @@
 
 enum SUB_LATTICE {A=0,B=1};
 
-/** \class FermionBase<Sym::SU2xSU2<double> >
-  * \ingroup Bases
-  *
-  * This class provides the local operators for fermions in a SU(2)⊗SU(2)~SO(4) block representation.
-  *
-  * \note The SU(2)-charge symmetry is only present for a bipartite lattice.
-  *       Using this class in DMRG requires that the SUB_LATTICE parameter is toggled every site.
-  *
-  */
+/** 
+ * \class FermionBase<Sym::SU2xSU2<double> >
+ * \ingroup Bases
+ *
+ * This class provides the local operators for fermions in a SU(2)⊗SU(2)~SO(4) block representation.
+ *
+ * \note The SU(2)-charge symmetry is only present for a bipartite lattice.
+ *       Using this class in DMRG requires that the SUB_LATTICE parameter is toggled every site.
+ *
+ */
 template<>
 class FermionBase<Sym::SU2xSU2<double> >
 {
@@ -33,8 +34,9 @@ public:
 	FermionBase(){};
 	
 	/**
-	\param L_input : the amount of orbitals
-	\param subLattice_in : The SUB_LATTICE (Either A or B) of orbital 0. SUB_LATTICE of orbital i: \f$\prop (-1)^i \f$*/
+	 * \param L_input : the amount of orbitals
+	 * \param subLattice_in : The SUB_LATTICE (Either A or B) of orbital 0. SUB_LATTICE of orbital i: \f$\sim (-1)^i \f$
+	 */
 	FermionBase(std::size_t L_input, SUB_LATTICE subLattice_in = SUB_LATTICE::A);
 	
 	/**amount of states = \f$4^L\f$*/
@@ -47,18 +49,23 @@ public:
 	inline SUB_LATTICE sublattice() const {return subLattice;}
 	
 	// \{
-	/** Annihilation operator
-		\param orbital : orbital index*/
+	/** 
+	 * Annihilation operator
+	 * \param orbital : orbital index
+	 */
 	Operator c (std::size_t orbital=0) const;
 	
-	/**Creation operator.
-	   \param orbital : orbital index*/
+	/**
+	 * Creation operator.
+	 * \param orbital : orbital index
+	 */
 	Operator cdag (std::size_t orbital=0) const;
 
-	/**Fermionic sign for the hopping between two orbitals of nearest-neighbour supersites of a ladder.
-	   \param orb1 : orbital on supersite i
-	   \param orb2 : orbital on supersite i+1
-	*/
+	/**
+	 * Fermionic sign for the hopping between two orbitals of nearest-neighbour supersites of a ladder.
+	 * \param orb1 : orbital on supersite i
+	 * \param orb2 : orbital on supersite i+1
+	 */
 	Operator sign (std::size_t orb1=0, std::size_t orb2=0) const;
 
 	/**Fermionic sign for one orbital of a supersite.
@@ -67,59 +74,74 @@ public:
 	Operator sign_local (std::size_t orbital=0) const;
 
 	///\{
-	/**Holon occupation number operator
-	\param orbital : orbital index*/
+	/**
+	 * Holon occupation number operator
+	 * \param orbital : orbital index
+	 */
 	Operator nh (std::size_t orbital=0) const;
 
-	/**Spinon occupation number operator
-	\param orbital : orbital index*/
+	/**
+	 * Spinon occupation number operator
+	 * \param orbital : orbital index
+	 */
 	Operator ns (std::size_t orbital=0) const;
 	///\}
 
 	///\{
-	/**Orbital spin
-	   \param orbital : orbital index*/
+	/**
+	 * Orbital spin
+	 * \param orbital : orbital index
+	 */
 	Operator S (std::size_t orbital=0) const;
 	
-	/**Orbital spin† 
-	   \param orbital : orbital index*/
+	/**
+	 * Orbital spin† 
+	 * \param orbital : orbital index
+	 */
 	Operator Sdag (std::size_t orbital=0) const;
 	///\}
 
 	///\{
-	/**Orbital pseudo-spin
-	   \param orbital : orbital index*/
+	/**
+	 * Orbital pseudo-spin
+	 * \param orbital : orbital index
+	 */
 	Operator T (std::size_t orbital=0) const;
 	
-	/**Orbital pseudo-spin† 
-	   \param orbital : orbital index*/
+	/**
+	 * Orbital pseudo-spin† 
+	 * \param orbital : orbital index
+	 */
 	Operator Tdag (std::size_t orbital=0) const;
 	///\}
 
-	/**Creates the full Hubbard Hamiltonian on the supersite.
-	   \param U : \f$U\f$
-	   \param t : \f$t\f$
-	   \param V : \f$V\f$ (Pseudo-spin pseudo-spin coupling. Acts not as usual nn interaction)
-	   \param J : \f$J\f$
-	   \param PERIODIC: periodic boundary conditions if \p true
-	*/
+	/**
+	 * Creates the full Hubbard Hamiltonian on the supersite.
+	 * \param U : \f$U\f$
+	 * \param t : \f$t\f$
+	 * \param V : \f$V\f$ (Pseudo-spin pseudo-spin coupling. Acts not as usual nn interaction)
+	 * \param J : \f$J\f$
+	 * \param PERIODIC: periodic boundary conditions if \p true
+	 */
 	Operator HubbardHamiltonian (double U, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
 
-	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
-	   \param Uorb : \f$U\f$ for each orbital
-	   \param t : \f$t\f$
-	   \param V : \f$V\f$ (Pseudo-spin pseudo-spin coupling. Acts not as usual nn interaction)
-	   \param J : \f$J\f$
-	   \param PERIODIC: periodic boundary conditions if \p true
-	*/
+	/**
+	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
+	 * \param Uorb : \f$U\f$ for each orbital
+	 * \param t : \f$t\f$
+	 * \param V : \f$V\f$ (Pseudo-spin pseudo-spin coupling. Acts not as usual nn interaction)
+	 * \param J : \f$J\f$
+	 * \param PERIODIC: periodic boundary conditions if \p true
+	 */
 	Operator HubbardHamiltonian (Eigen::ArrayXd Uorb, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
 
-	/**Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U and with arbitrary hopping matrix (bipartite).
-	   \param Uorb : \f$U\f$ for each orbital
-	   \param t : \f$t_{ij}\f$ (hopping matrix)
-	   \warning : The hopping matrix needs to be bipartite!
-	   \todo : Add a check, that the hopping matrix is really bipartite.
-	*/
+	/**
+	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U and with arbitrary hopping matrix (bipartite).
+	 * \param Uorb : \f$U\f$ for each orbital
+	 * \param t : \f$t_{ij}\f$ (hopping matrix)
+	 * \warning : The hopping matrix needs to be bipartite!
+	 * \todo : Add a check, that the hopping matrix is really bipartite.
+	 */
 	Operator HubbardHamiltonian (Eigen::ArrayXd Uorb, Eigen::ArrayXXd  t) const;
 	
 	/**Identity*/
@@ -127,8 +149,6 @@ public:
 
 	/**Returns the local basis.*/
 	vector<qType> get_basis() const { return TensorBasis.qloc(); }
-	// Qbasis<Symmetry> get_basis() const { return TensorBasis; }
-
 private:
 
 	std::size_t N_orbitals;

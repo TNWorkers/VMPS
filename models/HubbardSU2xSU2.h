@@ -12,23 +12,24 @@
 namespace VMPS
 {
 
-/** \class HubbardSU2xSU2
-  * \ingroup Hubbard
-  *
-  * \brief Hubbard Model
-  *
-  * MPO representation of 
-  * 
-  \f[
-  H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
-  + U \sum_i \left[\left(n_{i\uparrow}-\frac{1}{2}\right)\left(n_{i\downarrow}-\frac{1}{2}\right) -\frac{1}{4}\right]
-  \f]
-  *
-  \note Take use of the Spin SU(2) symmetry and SU(2) charge symmetry.
-  \warning Bipartite hopping structure is mandatory! (Particle-hole symmetry)
-  \warning \f$J>0\f$ is antiferromagnetic
-  \todo Implement spin and pseudo spin observables.
-  */
+/** 
+ * \class HubbardSU2xSU2
+ * \ingroup Hubbard
+ *
+ * \brief Hubbard Model
+ *
+ * MPO representation of 
+ * 
+ * \f[
+ * H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
+ * + U \sum_i \left[\left(n_{i\uparrow}-\frac{1}{2}\right)\left(n_{i\downarrow}-\frac{1}{2}\right) -\frac{1}{4}\right]
+ * \f]
+ *
+ * \note Take use of the Spin SU(2) symmetry and SU(2) charge symmetry.
+ * \warning Bipartite hopping structure is mandatory! (Particle-hole symmetry)
+ * \warning \f$J>0\f$ is antiferromagnetic
+ * \todo Implement spin and pseudo spin observables.
+ */
 class HubbardSU2xSU2 : public Mpo<Sym::SU2xSU2<double> ,double>
 {
 public:
