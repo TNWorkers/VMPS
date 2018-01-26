@@ -7,8 +7,8 @@
 
 #include "bases/SpinBase.h"
 
+//Note: Don't put a name in this documentation with \class .. because doxygen gets confused with template symbols
 /** 
- * \class SpinBase<Sym::SU2<double> >
  * \ingroup Bases
  *
  * This class provides the local operators for spins (magnitude \p D) in a SU(2) block representation for \p N_Orbitals sites.

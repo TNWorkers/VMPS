@@ -12,8 +12,8 @@
 
 enum SUB_LATTICE {A=0,B=1};
 
+//Note: Don't put a name in this documentation with \class .. because doxygen gets confused with template symbols
 /** 
- * \class FermionBase<Sym::SU2xSU2<double> >
  * \ingroup Bases
  *
  * This class provides the local operators for fermions in a SU(2)⊗SU(2)~SO(4) block representation.

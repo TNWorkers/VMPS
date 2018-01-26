@@ -10,8 +10,8 @@
 
 #include "bases/FermionBase.h"
 
-/** 
- * \class FermionBase<Sym::SU2<double> >
+//Note: Don't put a name in this documentation with \class .. because doxygen gets confused with template symbols
+/**
  * \ingroup Bases
  *
  * This class provides the local operators for fermions in a SU(2) block representation for \p N_Orbitals fermionic sites.

@@ -10,8 +10,8 @@
 
 #include "bases/FermionBase.h"
 
+//Note: Don't put a name in this documentation with \class .. because doxygen gets confused with template symbols
 /** 
- * \class FermionBase<Sym::SU2xU1<double> >
  * \ingroup Bases
  *
  * This class provides the local operators for fermions in a SU(2)⊗U(1) block representation.
