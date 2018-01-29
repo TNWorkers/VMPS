@@ -181,9 +181,9 @@ public:
 	 */
 	void set_A_from_C (size_t loc, const vector<Tripod<Symmetry,MatrixType> > &C, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD);
 	
-	/**
-	\param Op : 
-	\param USE_SQUARE : */
+	
+	// \param Op : 
+	// \param USE_SQUARE :
 	// template<size_t MpoNq> void setFlattenedMpo (const Mpo<MpoNq,Scalar> &Op, bool USE_SQUARE=false);
 	
 	///\{
@@ -191,7 +191,7 @@ public:
 	 * Tests the orthogonality of the Mps.
 	 * Returns a string with "A"=left-canonical (\f$\sum_s {A^s}^\dag A^s=I\f$), "B"=right-canonical (\f$\sum_s B^s {B^s}^\dag=I\f$), 
 	 * "X"=both, "M"=neither; with the pivot site underlined.
-	 * \param tol The check is \f$\|\sum_s {A^s}^\dag A^s-I\|_{\infty} < tol\f$
+	 * \param tol : The check is \f$\|\sum_s {A^s}^\dag A^s-I\|_{\infty} < tol\f$
 	*/
 	string test_ortho (double tol=1e-8) const;
 	
@@ -291,7 +291,7 @@ public:
 	
 	/** 
 	 * Calculates the expectation value with a local operator at the pivot site. 
-	 * \params O : Local Mpo acting on the pivot side.
+	 * \param O : Local Mpo acting on the pivot side.
 	 * \warning Not implemented for non abelian symmetries.
 	 */
 	template<typename MpoScalar> Scalar locAvg (const Mpo<Symmetry,MpoScalar> &O) const;
@@ -332,6 +332,9 @@ public:
 	
 	/**
 	 * Performs a two-site sweep.
+	 * \param DIR : Direction of the weep. Either LEFT or RIGHT.
+	 * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1
+	 * \param Apair : Pair of two Mps site tensors which are splitted via a singular value decomposition.
 	 * \param DISCARD_SV: If \p true, the singular value matrix is discarded. Useful for iDMRG.
 	 * \warning Not implemented for non abelian symmetries.
 	 * \todo Implemented this function for SU(2) symmetry.

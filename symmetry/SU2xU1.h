@@ -14,7 +14,8 @@
 
 namespace Sym{
 	
-/** \class SU2xU1
+/** 
+ * \class SU2xU1
  * \ingroup Symmetry
  *
  * Class for handling a SU(2)\f$\otimes\f$U(1) symmetry of a Hamiltonian without explicitly store the Clebsch-Gordon coefficients 
@@ -46,27 +47,27 @@ public:
 
 	///@{
 	/** 
-		Calculate the irreps of the tensor product of \p ql and \p qr.
-	*/
+	 * Calculate the irreps of the tensor product of \p ql and \p qr.
+	 */
 	static std::vector<qType> reduceSilent(const qType& ql, const qType& qr);
 	/** 
-		Calculate the irreps of the tensor product of all entries of \p ql with \p qr.
-		\warning : Returns not only unique irreps.
-		           Not sure, if we should return only the unique values here. Probably, that should be at least added as an option.
-	*/
+	 * Calculate the irreps of the tensor product of all entries of \p ql with \p qr.
+	 * \warning : Returns not only unique irreps.
+	 *            Not sure, if we should return only the unique values here. Probably, that should be at least added as an option.
+	 */
 	static std::vector<qType> reduceSilent(const std::vector<qType>& ql, const qType& qr);
 	/** 
-		Calculate the irreps of the tensor product of all entries of \p ql with all entries of \p qr.
-		\warning : Returns only unique irreps.
-		           Better: Put an option for unique or non-unique irreps in the return vector.
-	*/
+	 * Calculate the irreps of the tensor product of all entries of \p ql with all entries of \p qr.
+	 * \warning : Returns only unique irreps.
+	 *            Better: Put an option for unique or non-unique irreps in the return vector.
+	 */
 	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
 	///@}
 
 	///@{
 	/**
-	   Various coeffecients, all resulting from contractions or traces of the Clebsch-Gordon coefficients.
-	*/
+	 * Various coeffecients, all resulting from contractions or traces of the Clebsch-Gordon coefficients.
+	 */
 	inline static Scalar coeff_unity();
 	static Scalar coeff_dot(const qType& q1);
 	static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
@@ -99,17 +100,17 @@ public:
 	///@}
 
 	/** 
-		This function defines a strict order for arrays of quantum-numbers.
-		\note The implementation is arbritary, as long as it defines a strict order.
-	*/
+	 * This function defines a strict order for arrays of quantum-numbers.
+	 * \note The implementation is arbritary, as long as it defines a strict order.
+	 */
 	template<std::size_t M>
 	static bool compare ( const std::array<qType,M>& q1, const std::array<qType,M>& q2 );
 
 	/** 
-		This function checks if the array \p qs contains quantum-numbers which match together, with respect to the flow equations.
-		\todo Write multiple functions, for different sizes of the array and rename them, to have a more clear interface.
-		      Example: For 3-array: triangular(...) or something similar.
-	*/
+	 * This function checks if the array \p qs contains quantum-numbers which match together, with respect to the flow equations.
+	 * \todo Write multiple functions, for different sizes of the array and rename them, to have a more clear interface.
+	 *       Example: For 3-array: triangular(...) or something similar.
+	 */
 	template<std::size_t M>
 	static bool validate( const std::array<qType,M>& qs );
 };
@@ -119,9 +120,9 @@ template<typename Scalar> bool operator== (const typename SU2xU1<Scalar>::qType&
 
 template<typename Scalar>
 std::vector<typename SU2xU1<Scalar>::qType> SU2xU1<Scalar>::
-reduceSilent( const SU2xU1<Scalar>::qType& ql, const SU2xU1<Scalar>::qType& qr )
+reduceSilent( const qType& ql, const qType& qr )
 {
-	std::vector<typename SU2xU1<Scalar>::qType> vout;
+	std::vector<qType> vout;
 	int smin = std::abs(ql[0]-qr[0]) +1;
 	int smax = std::abs(ql[0]+qr[0]) -1;
 	for ( int i=smin; i<=smax; i+=2 ) {  vout.push_back({i,ql[1]+qr[1]}); }
@@ -130,9 +131,9 @@ reduceSilent( const SU2xU1<Scalar>::qType& ql, const SU2xU1<Scalar>::qType& qr )
 
 template<typename Scalar>
 std::vector<typename SU2xU1<Scalar>::qType> SU2xU1<Scalar>::
-reduceSilent( const std::vector<SU2xU1<Scalar>::qType>& ql, const SU2xU1<Scalar>::qType& qr )
+reduceSilent( const std::vector<qType>& ql, const qType& qr )
 {
-	std::vector<typename SU2xU1<Scalar>::qType> vout;
+	std::vector<qType> vout;
 	for (std::size_t q=0; q<ql.size(); q++)
 	{
 		int smin = std::abs(ql[q][0]-qr[0]) +1;

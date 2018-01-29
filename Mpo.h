@@ -93,6 +93,7 @@ public:
 	 * Set to a local operator \f$O_i\f$
 	 * \param loc : site index
 	 * \param Op : the local operator in question
+	 * \param OPEN_BC : bool, if true open boundary conditions are applied
 	 */
 	void setLocal (size_t loc, const OperatorType &Op, bool OPEN_BC=true);
 	
@@ -101,6 +102,7 @@ public:
 	 * \param loc : site index
 	 * \param Op : the local operator in question
 	 * \param SignOp : elementary operator for the sign chain.
+	 * \param OPEN_BC : bool, if true open boundary conditions are applied
 	 */
 	void setLocal (size_t loc, const OperatorType& Op, const OperatorType &SignOp, bool OPEN_BC=true);
 	
@@ -108,6 +110,7 @@ public:
 	 * Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$
 	 * \param loc : list of locations
 	 * \param Op : list of operators
+	 * \param OPEN_BC : bool, if true open boundary conditions are applied
 	*/
 	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, bool OPEN_BC=true);
 	
@@ -116,6 +119,7 @@ public:
 	 * \param loc : list of locations
 	 * \param Op : list of operators
 	 * \param SignOp : elementary operator for the sign chain.
+	 * \param OPEN_BC : bool, if true open boundary conditions are applied
 	 */
 	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const OperatorType& SignOp, bool OPEN_BC=true);
 	
@@ -123,6 +127,7 @@ public:
 	 * Set to a sum of of local operators \f$\sum_i f(i) O_i\f$
 	 * \param Op : the local operator in question
 	 * \param f : the function in question$
+	 * \param OPEN_BC : bool, if true open boundary conditions are applied
 	 */
 	void setLocalSum (const OperatorType &Op, Scalar (*f)(int)=localSumTrivial, bool OPEN_BC=true);
 	
@@ -130,6 +135,7 @@ public:
 	 * Set to a sum of nearest-neighbour products of local operators \f$\sum_i O^1_i O^2_{i+1}\f$
 	 * \param Op1 : first local operator
 	 * \param Op2 : second local operator
+	 * \param OPEN_BC : bool, if true open boundary conditions are applied
 	 */
 	void setProductSum (const OperatorType &Op1, const OperatorType &Op2, bool OPEN_BC=true);
 	

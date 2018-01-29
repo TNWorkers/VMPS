@@ -8,19 +8,23 @@
 #include "tensors/Multipede.h"
 #include "numeric_limits.h" // from HELPERS
 
-/**Calculates the matching right indices when contracting a left transfer matrix with two MpsQ and an MpoQ.
-\dotfile AWA.dot
-\param Lin
-\param Lout
-\param Lmid
-\param s1
-\param s2
-\param qloc : local basis
-\param Abra
-\param Aket
-\param result : tuple of: an array with \p Rin, \p Rout, \p Rmid; block index of \p Abra; block index of \p Aket
-\returns \p true if a match is found, \p false if not
-\warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.*/
+/**
+ * Calculates the matching right indices when contracting a left transfer matrix with two MpsQ and an MpoQ.
+ * \dotfile AWA.dot
+ * \param Lin
+ * \param Lout
+ * \param Lmid
+ * \param s1
+ * \param s2
+ * \param qloc : local basis
+ * \param k
+ * \param qOp : operator basis
+ * \param Abra
+ * \param Aket
+ * \param result : tuple of: an array with \p Rin, \p Rout, \p Rmid; block index of \p Abra; block index of \p Aket
+ * \returns \p true if a match is found, \p false if not
+ * \warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.
+ */
 template<typename Symmetry, typename MatrixType>
 bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid,
 		  size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc,
@@ -121,21 +125,27 @@ bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetr
 	return out;
 }
 
-/**Calculates the matching right indices when contracting a left transfer matrix with two MpsQ and two MpoQ.
-\dotfile AWWA.dot
-\param Lin
-\param Lout
-\param Lbot
-\param Ltop
-\param s1
-\param s2
-\param s3
-\param qloc : local basis
-\param Abra
-\param Aket
-\param result : tuple of: an array with \p Rin, \p Rout, \p Rbot, \p Rtop; block index of \p Abra; block index of \p Aket
-\returns \p true if a match is found, \p false if not
-\warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.*/
+/**
+ * Calculates the matching right indices when contracting a left transfer matrix with two MpsQ and two MpoQ.
+ * \dotfile AWWA.dot
+ * \param Lin
+ * \param Lout
+ * \param Lbot
+ * \param Ltop
+ * \param s1
+ * \param s2
+ * \param s3
+ * \param qloc : local basis
+ * \param k1
+ * \param qOpBot : operator basis of bottom operator
+ * \param k2
+ * \param qOpTop : operator basis of top operator
+ * \param Abra
+ * \param Aket
+ * \param result : tuple of: an array with \p Rin, \p Rout, \p Rbot, \p Rtop; block index of \p Abra; block index of \p Aket
+ * \returns \p true if a match is found, \p false if not
+ * \warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.
+ */
 template<typename Symmetry, typename MatrixType>
 bool AWWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lbot, qarray<Symmetry::Nq> Ltop, 
           size_t s1, size_t s2, size_t s3, vector<qarray<Symmetry::Nq> > qloc,

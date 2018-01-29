@@ -51,7 +51,7 @@ public:
 	/**
 	 * \param L_input : amount of sites
 	 * \param D_input : \f$D=2S+1\f$
-	 * \param N : if true, the particle number is the good quantum number --> trivial for spins --> all operators have qvacuum()
+	 * \param DUMMY_QNUM_MODE_input : if true, the particle number is the good quantum number --> trivial for spins --> all operators have qvacuum()
 	 */
 	SpinBase (size_t L_input, size_t D_input, bool DUMMY_QNUM_MODE_input=false);
 	
@@ -84,9 +84,9 @@ public:
 	 * \param Jz : \f$J^{z}\f$
 	 * \param Bz : \f$B^{z}\f$
 	 * \param Bx : \f$B^{x}\f$
-	 * \param Kx : \f$K^{z}\f$
+	 * \param Kz : \f$K^{z}\f$
 	 * \param Kx : \f$K^{x}\f$
-	 * \param Dx : \f$D^{y}\f$
+	 * \param Dy : \f$D^{y}\f$
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
 	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., double Kz=0., double Kx=0., double Dy=0., 
@@ -98,9 +98,9 @@ public:
 	 * \param Jz : \f$J^{z}\f$
 	 * \param Bz : \f$B^{z}_i\f$
 	 * \param Bx : \f$B^{x}_i\f$
-	 * \param Kx : \f$K^{z}_i\f$
+	 * \param Kz : \f$K^{z}_i\f$
 	 * \param Kx : \f$K^{x}_i\f$
-	 * \param Dx : \f$D^{y}\f$
+	 * \param Dy : \f$D^{y}\f$
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
 	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, 

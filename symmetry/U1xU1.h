@@ -21,8 +21,8 @@ template<typename Scalar>
 class U1xU1 // : SymmetryBase<SymSUN<N,Scalar> >
 {
 public:
-	static constexpr bool HAS_CGC = false;
 	static constexpr std::size_t Nq=2;
+	static constexpr bool HAS_CGC = false;
 	static constexpr bool NON_ABELIAN = false;
 	static constexpr bool IS_TRIVIAL = false;
 
@@ -31,15 +31,37 @@ public:
 	U1xU1() {};
 
 	inline static constexpr qType qvacuum() { return {0,0}; }
-
 	inline static std::string name() { return "U(1)⊗U(1)"; }
-
 	inline static qType flip( const qType& q ) { return {-q[0],-q[1]}; }
-		
-	static std::vector<qType> reduceSilent( const qType& ql, const qType& qr);
-	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const qType& qr);
-	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
+	inline static int degeneracy( const qType& q ) { return 1; }
 
+	///@{
+	/**
+	 * Calculate the irreps of the tensor product of \p ql and \p qr.
+	 */
+	static std::vector<qType> reduceSilent( const qType& ql, const qType& qr);
+	/**
+	 * Calculate the irreps of the tensor product of \p ql, \p qm and \p qr.
+	 * \note This is independent of the order the quantumnumbers.
+	 */
+	static std::vector<qType> reduceSilent( const qType& ql, const qType& qm, const qType& qr);
+	/**
+	 * Calculate the irreps of the tensor product of all entries of \p ql and \p qr.
+	 */
+	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const qType& qr);
+	/**
+	 * Calculate the irreps of the tensor product of all entries of \p ql with all entries of \p qr.
+	 */
+	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
+	///@}
+
+	///@{
+	/**
+	 * Various coeffecients, all resulting from contractions or traces of the Clebsch-Gordon coefficients.
+	 * \note All coefficients are trivial for U(1) and could be represented by a bunch of Kronecker deltas.
+	 *       Here we return simply 1, because the algorythm only allows valid combinations of quantumnumbers,
+	 *       for which the Kronecker deltas are not necessary.  
+	 */
 	inline static Scalar coeff_unity();
 	inline static Scalar coeff_dot(const qType& q1);
 	inline static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
@@ -69,10 +91,20 @@ public:
 									 const qType& q4, const qType& q5, const qType& q6,
 									 const qType& q7, const qType& q8, const qType& q9,
 									 const qType& q10, const qType& q11, const qType& q12);
+	///@}
 
+	/** 
+	 * This function defines a strict order for arrays of quantum-numbers.
+	 * \note The implementation is arbritary, as long as it defines a strict order.
+	 */
 	template<std::size_t M>
 	static bool compare ( const std::array<qType,M>& q1, const std::array<qType,M>& q2 );
-	
+
+	/** 
+	 * This function checks if the array \p qs contains quantum-numbers which match together, with respect to the flow equations.
+	 * \todo Write multiple functions, for different sizes of the array and rename them, to have a more clear interface.
+	 *       Example: For 3-array: triangular(...) or something similar.
+	 */
 	template<std::size_t M>
 	static bool validate( const std::array<qType,M>& qs );
 };
@@ -81,10 +113,19 @@ template<typename Scalar> bool operator== (const typename U1xU1<Scalar>::qType& 
 	
 template<typename Scalar>
 std::vector<typename U1xU1<Scalar>::qType> U1xU1<Scalar>::
-reduceSilent( const U1xU1<Scalar>::qType& ql, const U1xU1<Scalar>::qType& qr )
+reduceSilent( const qType& ql, const qType& qr )
 {
-	std::vector<typename U1xU1<Scalar>::qType> vout;
+	std::vector<qType> vout;
 	vout.push_back({ql[0]+qr[0],ql[1]+qr[1]});
+	return vout;
+}
+
+template<typename Scalar>
+std::vector<typename U1xU1<Scalar>::qType> U1xU1<Scalar>::
+reduceSilent( const qType& ql, const qType& qm, const qType& qr )
+{
+	std::vector<qType> vout;
+	vout.push_back({ql[0]+qm[0]+qr[0]});
 	return vout;
 }
 
@@ -92,7 +133,7 @@ template<typename Scalar>
 std::vector<typename U1xU1<Scalar>::qType> U1xU1<Scalar>::
 reduceSilent( const std::vector<qType>& ql, const qType& qr )
 {
-	std::vector<typename U1xU1<Scalar>::qType> vout;
+	std::vector<qType> vout;
 	for (std::size_t q=0; q<ql.size(); q++)
 	{
 		vout.push_back({ql[q][0]+qr[0],ql[q][1]+qr[1]});
@@ -104,7 +145,7 @@ template<typename Scalar>
 std::vector<typename U1xU1<Scalar>::qType> U1xU1<Scalar>::
 reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
 {
-	std::vector<typename U1xU1<Scalar>::qType> vout;
+	std::vector<qType> vout;
 	for (std::size_t q=0; q<ql.size(); q++)
 	for (std::size_t p=0; p<qr.size(); p++)
 	{

@@ -19,21 +19,21 @@ namespace VMPS
   * \brief Heisenberg Model
   *
   * MPO representation of
-  \f[
-  H = -J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) 
-      -J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right)
-      -B_z \sum_i S^z_i
-      +K_z \sum_i \left(S^z_i\right)^2
-      -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
-      -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
-  \f]
+  * \f[
+  * H = -J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) 
+  *     -J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right)
+  *     -B_z \sum_i S^z_i
+  *     +K_z \sum_i \left(S^z_i\right)^2
+  *     -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
+  *     -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
+  * \f]
   *
-  \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
-  \note Take use of the \f$S^z\f$ U(1) symmetry.
-  \note The default variable settings can be seen in \p HeisenbergU1::defaults.
-  \note \f$J<0\f$ is antiferromagnetic
-  \note Homogeneous \f$J\f$ is required here. For a XXZ couplings, use VMPS::HeisenbergU1XXZ.
-*/
+  * \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
+  * \note Take use of the \f$S^z\f$ U(1) symmetry.
+  * \note The default variable settings can be seen in \p HeisenbergU1::defaults.
+  * \note \f$J<0\f$ is antiferromagnetic
+  * \note Homogeneous \f$J\f$ is required here. For a XXZ couplings, use VMPS::HeisenbergU1XXZ.
+  */
 class HeisenbergU1 : public Mpo<Sym::U1<double>,double>, public HeisenbergObservables<Sym::U1<double> >
 {
 public:
@@ -52,9 +52,12 @@ public:
 	///@}
 	
 	/**
-	\param B : Base class from which the local operators are received
-	\param P : The parameters
-	*/
+	 * \describe_set_operators
+	 *
+	 * \param B : Base class from which the local operators are received
+	 * \param P : The parameters
+	 * \param loc : The location in the chain
+	 */
 	template<typename Symmetry_>
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
 	

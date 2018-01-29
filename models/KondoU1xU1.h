@@ -17,20 +17,20 @@ namespace VMPS
   * \brief Kondo Model
   *
   * MPO representation of 
-  \f[
-  H = - \sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} +h.c.\right)
-  - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i \in I} B_i^z S_i^z
-  \f]
+  * \f[
+  * H = - \sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} +h.c.\right)
+  * - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i - \sum_{i \in I} B_i^z S_i^z
+  * \f]
   *
-   where further parameters from HubbardU1xU1 and HeisenbergU1 are possible.
-  \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin of the impurity.
-
-  \note Take use of the \f$S_z\f$ U(1) symmetry and the U(1) particle conservation symmetry.
-  \note The default variable settings can be seen in \p KondoU1xU1::defaults.
-  \note \f$J<0\f$ is antiferromagnetic
-  \note If nnn-hopping is positive, the GS-energy is lowered.
-  \note The multi-impurity model can be received, by setting D=1 (S=0) for all sites without an impurity.
-*/
+  * where further parameters from HubbardU1xU1 and HeisenbergU1 are possible.
+  * \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin of the impurity.
+  *
+  * \note Take use of the \f$S_z\f$ U(1) symmetry and the U(1) particle conservation symmetry.
+  * \note The default variable settings can be seen in \p KondoU1xU1::defaults.
+  * \note \f$J<0\f$ is antiferromagnetic
+  * \note If nnn-hopping is positive, the GS-energy is lowered.
+  * \note The multi-impurity model can be received, by setting D=1 (S=0) for all sites without an impurity.
+  */
 class KondoU1xU1 : public Mpo<Sym::U1xU1<double>,double>, public KondoObservables<Sym::U1xU1<double> >
 {
 public:
@@ -47,10 +47,13 @@ public:
 	///@}
 	
 	/**
-	   \param B : Base class from which the local spin-operators are received
-	   \param F : Base class from which the local fermion-operators are received
-	   \param P : The parameters
-	*/
+	 * \describe_set_operators
+	 *
+	 * \param B : Base class from which the local spin-operators are received
+	 * \param F : Base class from which the local fermion-operators are received
+	 * \param P : The parameters
+	 * \param loc : The location in the chain
+	 */
 	template<typename Symmetry_> 
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F,
 	                                                    const ParamHandler &P, size_t loc=0);

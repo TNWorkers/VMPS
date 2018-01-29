@@ -8,16 +8,17 @@
 #include "tensors/DmrgIndexGymnastics.h"
 #include "symmetry/functions.h"
 
-/**Contracts a left transfer matrix \p Lold with two MpsQ tensors \p Abra, \p Aket and an MpoQ tensor \p W as follows:
-\dotfile contractQ_L.dot
-\param Lold
-\param Abra
-\param W
-\param Aket
-\param qloc : local basis
-\param qop : operator basis
-\param Lnew : new transfer matrix to be written to
-*/
+/**
+ * Contracts a left transfer matrix \p Lold with two MpsQ tensors \p Abra, \p Aket and an MpoQ tensor \p W as follows:
+ * \dotfile contractQ_L.dot
+ * \param Lold
+ * \param Abra
+ * \param W
+ * \param Aket
+ * \param qloc : local basis
+ * \param qOp : operator basis
+ * \param Lnew : new transfer matrix to be written to
+ */
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 void contract_L (const Tripod<Symmetry,MatrixType> &Lold, 
                  const vector<Biped<Symmetry,MatrixType> > &Abra, 
@@ -108,16 +109,17 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 	}
 }
 
-/**Contracts a right transfer matrix \p Rold with two MpsQ tensors \p Abra, \p Aket and an MpoQ tensor \p W as follows:
-\dotfile contractQ_R.dot
-\param Rold
-\param Abra
-\param W
-\param Aket
-\param qloc : local basis
-\param qloc : operator basis
-\param Rnew : new transfer matrix to be written to
-*/
+/**
+ * Contracts a right transfer matrix \p Rold with two MpsQ tensors \p Abra, \p Aket and an MpoQ tensor \p W as follows:
+ * \dotfile contractQ_R.dot
+ * \param Rold
+ * \param Abra
+ * \param W
+ * \param Aket
+ * \param qloc : local basis
+ * \param qOp : operator basis
+ * \param Rnew : new transfer matrix to be written to
+ */
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
                  const vector<Biped<Symmetry,MatrixType> > &Abra, 
@@ -223,17 +225,19 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 	}
 }
 
-/**Calculates the contraction between a left transfer matrix \p L, 
-two MpsQ tensors \p Abra, \p Aket, an MpoQ tensor \p W and a right transfer matrix \p R. Not really that much useful.
-\param L
-\param Abra
-\param W
-\param Aket
-\param R
-\param qloc : local basis
-\param qop : operator basis
-\returns : result of contraction
-\warning Not working for non-abelian symmetries.*/
+/**
+ * Calculates the contraction between a left transfer matrix \p L, 
+ * two MpsQ tensors \p Abra, \p Aket, an MpoQ tensor \p W and a right transfer matrix \p R. Not really that much useful.
+ * \param L
+ * \param Abra
+ * \param W
+ * \param Aket
+ * \param R
+ * \param qloc : local basis
+ * \param qOp : operator basis
+ * \returns : result of contraction
+ * \warning Not working for non-abelian symmetries.
+ */
 template<typename Symmetry, typename Scalar>
 Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
                     const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
@@ -497,8 +501,10 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 //	}
 //}
 
-/**Calculates the contraction between a right transfer matrix \p Rold, two MpsQ tensors \p Abra, \p Aket and two MpoQ tensors \p Wbot, \p Wtop.
-Needed, for example, when calculating \f$\left<H^2\right>\f$ and no MpoQ represenation of \f$H^2\f$ is available.*/
+/**
+ * Calculates the contraction between a right transfer matrix \p Rold, two MpsQ tensors \p Abra, \p Aket and two MpoQ tensors \p Wbot, \p Wtop.
+ * Needed, for example, when calculating \f$\left<H^2\right>\f$ and no MpoQ represenation of \f$H^2\f$ is available.
+*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
                  const vector<Biped<Symmetry,MatrixType> > &Abra,
@@ -641,8 +647,10 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 	}
 }
 
-/**Calculates the contraction between a left transfer matrix \p Lold, two MpsQ tensors \p Abra, \p Aket and two MpoQ tensors \p Wbot, \p Wtop.
-Needed, for example, when calculating \f$\left<H^2\right>\f$ and no MpoQ represenation of \f$H^2\f$ is available.*/
+/**
+ * Calculates the contraction between a left transfer matrix \p Lold, two MpsQ tensors \p Abra, \p Aket and two MpoQ tensors \p Wbot, \p Wtop.
+ * Needed, for example, when calculating \f$\left<H^2\right>\f$ and no MpoQ represenation of \f$H^2\f$ is available.
+ */
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 void contract_L (const Multipede<4,Symmetry,MatrixType> &Lold, 
                  const vector<Biped<Symmetry,MatrixType> > &Abra, 

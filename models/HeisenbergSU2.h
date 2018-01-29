@@ -16,13 +16,13 @@ namespace VMPS
   * \brief Heisenberg Model
   *
   * MPO representation of 
-  \f[
-  H = -J \sum_{<ij>} \left(\mathbf{S_i}\mathbf{S_j}\right) -J' \sum_{<<ij>>} \left(\mathbf{S_i}\mathbf{S_j}\right)
-  \f]
+  * \f[
+  * H = -J \sum_{<ij>} \left(\mathbf{S_i}\mathbf{S_j}\right) -J' \sum_{<<ij>>} \left(\mathbf{S_i}\mathbf{S_j}\right)
+  * \f]
   *
-  \note Take use of the Spin SU(2) symmetry, which implies no magnetic fields. For using B-fields see VMPS::HeisenbergU1.
-  \note The default variable settings can be seen in \p HeisenbergSU2::defaults.
-  \note \f$J<0\f$ is antiferromagnetic
+  * \note Take use of the Spin SU(2) symmetry, which implies no magnetic fields. For using B-fields see VMPS::HeisenbergU1.
+  * \note The default variable settings can be seen in \p HeisenbergSU2::defaults.
+  * \note \f$J<0\f$ is antiferromagnetic
   */
 class HeisenbergSU2 : public Mpo<Sym::SU2<double>,double>
 {
@@ -46,15 +46,18 @@ public:
 	HeisenbergSU2() : Mpo<Symmetry>() {};
 	
 	/**
-	   \param Lx_input : chain length
+	   \param L : chain length
 	   \describe_params
 	*/
 	HeisenbergSU2 (const size_t &L, const vector<Param> &params);
 	///\}
 	
 	/**
-	   \param B : Base class from which the local operators are received
-	   \param P : The parameters
+	 * \describe_set_operators
+	 *
+	 * \param B : Base class from which the local operators are received
+	 * \param P : The parameters
+	 * \param loc : The location in the chain
 	*/
 	static HamiltonianTermsXd<Symmetry> set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc=0);
 	

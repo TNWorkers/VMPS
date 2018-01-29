@@ -15,15 +15,16 @@ namespace VMPS
   * \brief Kondo Model
   *
   * MPO representation of
-  \f[
-  H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
-  - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i
-  \f].
+  * \f[
+  * H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
+  * - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i
+  * \f].
   *
-   where further parameters from HubbardSU2xU1 and HeisenbergSU2 are possible.
-  \note Take use of the Spin SU(2) symmetry and U(1) charge symmetry.
-  \note If the nnn-hopping is positive, the ground state energy is lowered.
-  \warning \f$J<0\f$ is antiferromagnetic
+  * where further parameters from HubbardSU2xU1 and HeisenbergSU2 are possible.
+  * \note The default variable settings can be seen in \p KondoSU2xU1::defaults.
+  * \note Take use of the Spin SU(2) symmetry and U(1) charge symmetry.
+  * \note If the nnn-hopping is positive, the ground state energy is lowered.
+  * \warning \f$J<0\f$ is antiferromagnetic
   */
 class KondoSU2xU1 : public Mpo<Sym::SU2xU1<double>,double>
 {
@@ -42,10 +43,13 @@ public:
 	///@}
 
 	/**
-	   \param B : Base class from which the local spin-operators are received
-	   \param F : Base class from which the local fermion-operators are received
-	   \param P : The parameters
-	*/
+	 * \describe_set_operators
+	 *
+	 * \param B : Base class from which the local spin-operators are received
+	 * \param F : Base class from which the local fermion-operators are received
+	 * \param P : The parameters
+	 * \param loc : The location in the chain
+	 */
 	static HamiltonianTermsXd<Symmetry> set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F,
 	                                                    const ParamHandler &P, size_t loc=0);
 

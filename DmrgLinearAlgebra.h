@@ -9,9 +9,11 @@
 /**@file
 \brief External functions to manipulate Mps and Mpo objects.*/
 
-/**Calculates the scalar product \f$\left<\Psi_{bra}|\Psi_{ket}\right>\f$.
-\param Vbra : input \f$\left<\Psi_{bra}\right|\f$
-\param Vket : input \f$\left|\Psi_{ket}\right>\f$*/
+/**
+ * Calculates the scalar product \f$\left<\Psi_{bra}|\Psi_{ket}\right>\f$.
+ * \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
+ * \param Vket : input \f$\left|\Psi_{ket}\right>\f$
+ */
 template<typename Symmetry, typename Scalar>
 Scalar dot (const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket)
 {
@@ -25,14 +27,14 @@ void swap (Mps<Symmetry,Scalar> &V1, Mps<Symmetry,Scalar> &V2)
 	V1.swap(V2);
 }
 
-/**Calculates the expectation value \f$\left<\Psi_{bra}|O|\Psi_{ket}\right>\f$
-\param Vbra : input \f$\left<\Psi_{bra}\right|\f$
-\param O : input Mpo
-\param Vket : input \f$\left|\Psi_{ket}\right>\f$
-\param USE_SQUARE : If \p true, uses the square of \p O stored in \p O itself. Call Mpo::check_SQUARE() first to see whether it was calculated.
-\param INFINITE_BC : If \p true, uses infinite boundary conditions (sets initial 3-leg tensor to identity instead of vacuum).
-\param DIR : whether to contract going left or right (should obviously make no difference, useful for testing purposes)
-*/
+/**
+ * Calculates the expectation value \f$\left<\Psi_{bra}|O|\Psi_{ket}\right>\f$
+ * \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
+ * \param O : input Mpo
+ * \param Vket : input \f$\left|\Psi_{ket}\right>\f$
+ * \param USE_SQUARE : If \p true, uses the square of \p O stored in \p O itself. Call Mpo::check_SQUARE() first to see whether it was calculated.
+ * \param DIR : whether to contract going left or right (should obviously make no difference, useful for testing purposes)
+ */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
             const Mpo<Symmetry,MpoScalar> &O, 
@@ -149,13 +151,15 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 //	}
 }
 
-/**Calculates the expectation value \f$\left<\Psi_{bra}|O_{1}O_{2}|\Psi_{ket}\right>\f$
-Only a left-to-right contraction is implemented.
-\param Vbra : input \f$\left<\Psi_{bra}\right|\f$
-\param O1 : input Mpo
-\param O2 : input Mpo
-\param Vket : input \f$\left|\Psi_{ket}\right>\f$
-*/
+/**
+ * Calculates the expectation value \f$\left<\Psi_{bra}|O_{1}O_{2}|\Psi_{ket}\right>\f$
+ * Only a left-to-right contraction is implemented.
+ * \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
+ * \param O1 : input Mpo
+ * \param O2 : input Mpo
+ * \param Vket : input \f$\left|\Psi_{ket}\right>\f$
+ * \param Qtarget : The quantum number of the product of \f$O_1\cdot O_2\f$. For abelian symmetries simply O1.Qtarget()+O2.Qtarget()
+ */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
             const Mpo<Symmetry,MpoScalar> &O1,
@@ -225,11 +229,14 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 	}
 }
 
-/**Apply an Mpo to an Mps \f$\left|\Psi_{out}\right> = H \left|\Psi_{in}\right>\f$ by using the zip-up algorithm (Stoudenmire, White 2010).
-\param H : input Hamiltonian
-\param Vin : input \f$\left|\Psi_{in}\right>\f$
-\param Vout : output \f$\left|\Psi_{out}\right>\f$
-\param VERBOSITY : verbosity level*/
+/**
+ * Apply an Mpo to an Mps \f$\left|\Psi_{out}\right> = H \left|\Psi_{in}\right>\f$ by using the zip-up algorithm (Stoudenmire, White 2010).
+ * \param H : input Hamiltonian
+ * \param Vin : input \f$\left|\Psi_{in}\right>\f$
+ * \param Vout : output \f$\left|\Psi_{out}\right>\f$
+ * \param VERBOSITY : verbosity level
+ * \warning : Not implemented for SU(2) symmetries.
+ */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
           DMRG::VERBOSITY::OPTION VERBOSITY) //=DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -247,14 +254,18 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 	}
 }
 
-/**Performs an orthogonal polynomial iteration step \f$\left|\Psi_{out}\right> = \cdot H \left|\Psi_{in,1}\right> - B \left|\Psi_{in,2}\right>\f$ as needed in the polynomial recursion relation \f$P_n = (C_n x - A_n) P_{n-1} - B_n P_{n-2}\f$.
-\warning The Hamiltonian is assumed to be rescaled by \p C_n and \p A_n already.
-\param H : input Hamiltonian
-\param Vin1 : input Mps \f$\left|T_{n-1}\right>\f$
-\param polyB : the coefficient before the subtracted vector
-\param Vin2 : input Mps \f$\left|T_{n-2}\right>\f$
-\param Vout : output Mps \f$\left|T_{n}\right>\f$
-\param VERBOSITY : verbosity level*/
+/**
+ * Performs an orthogonal polynomial iteration step \f$\left|\Psi_{out}\right> = \cdot H \left|\Psi_{in,1}\right> - 
+ * B \left|\Psi_{in,2}\right>\f$ as needed in the polynomial recursion relation \f$P_n = (C_n x - A_n) P_{n-1} - B_n P_{n-2}\f$.
+ * \warning The Hamiltonian is assumed to be rescaled by \p C_n and \p A_n already.
+ * \param H : input Hamiltonian
+ * \param Vin1 : input Mps \f$\left|T_{n-1}\right>\f$
+ * \param polyB : the coefficient before the subtracted vector
+ * \param Vin2 : input Mps \f$\left|T_{n-2}\right>\f$
+ * \param Vout : output Mps \f$\left|T_{n}\right>\f$
+ * \param VERBOSITY : verbosity level
+ * \warning : Not implemented for SU(2) symmetries.
+ */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void polyIter (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, 
                const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, 

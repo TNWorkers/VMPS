@@ -101,7 +101,7 @@ reduce(typename SUN<N,Scalar>::qType ql, typename SUN<N,Scalar>::qType qr, typen
 
 template<std::size_t N, typename Scalar>
 std::vector<typename SUN<N,Scalar>::qType> SUN<N,Scalar>::
-reduceSilent( SUN<N,Scalar>::qType ql, SUN<N,Scalar>::qType qr )
+reduceSilent( qType ql, qType qr )
 {
 	std::vector<typename SUN<N,Scalar>::qType> vout;
 	int qmin = std::abs(ql[0]-qr[0]) +1;
@@ -127,7 +127,7 @@ reduceSilent( std::vector<qType> ql, qType qr )
 template<std::size_t N, typename Scalar>
 template<std::size_t M>
 bool SUN<N,Scalar>::
-compare ( std::array<SUN<N,Scalar>::qType,M> q1, std::array<SUN<N,Scalar>::qType,M> q2 )
+compare ( std::array<qType,M> q1, std::array<qType,M> q2 )
 {
 	for (std::size_t m=0; m<M; m++)
 	{

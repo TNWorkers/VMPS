@@ -249,6 +249,7 @@ ALIASES                = "describe_D = \tparam D \n\
                                              Kondo (\f$M_{tot}=2M_{s}+N_{\uparrow}-N_{\downarrow}\f$,\f$N=N_{\uparrow}+N_{\downarrow}\f$	) \n"\
 						 "describe_Symmetry = \tparam Symmetry : A class providing all relevant functions and infos that are determined by the Symmetry."\
 						 "describe_params = \param params : Parmaterpack....\n"\
+						 "describe_set_operators = This function merges the different local operators together to a HamiltonianTerms instance, from which the SuperMatrix is constructed.\n"\	
                          "describe_MatrixType = \tparam MatrixType : \p MatrixXd or \p MatrixXcd"\
                          "describe_Scalar = \tparam Scalar : \p double or \p complex<double>" \
                          "describe_MpoScalar = \tparam MpoScalar : \p double or \p complex<double>" \
@@ -821,7 +822,7 @@ EXCLUDE                = backup \
                          DOXY \
 						 models/deprecated \
 						 tensors/deprecated \
-						 symmetries/deprecated \
+						 symmetry/deprecated \
 						 bases/deprecated \
 						 VUMPS/deprecated
 

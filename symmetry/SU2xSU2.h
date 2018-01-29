@@ -13,24 +13,26 @@
 
 namespace Sym{
 
-/** \class SU2xSU2
-  * \ingroup Symmetry
-  *
-  * Class for handling two independent SU(2) symmetries of a Hamiltonian in the form SU(2)\f$\otimes\f$SU(2) 
-  without explicitly store the Clebsch-Gordon coefficients but with computing (3n)j-symbols.
-  *
-  * \describe_Scalar
-  * \warning Use the gsl library sf_coupling.
-  */
+/** 
+ * \class SU2xSU2
+ * \ingroup Symmetry
+ *
+ * Class for handling two independent SU(2) symmetries of a Hamiltonian in the form SU(2)\f$\otimes\f$SU(2) \f$\sim\f$ SO(4) 
+ * without explicitly store the Clebsch-Gordon coefficients but with computing (3n)j-symbols.
+ *
+ * \describe_Scalar
+ * \warning Use the gsl library sf_coupling.
+ */
 template<typename Scalar>
 class SU2xSU2 // : SymmetryBase<SymSUN<N,Scalar> >
 {
 public:
 	SU2xSU2() {};
 
-	static constexpr bool HAS_CGC = false;
 	static constexpr std::size_t Nq=2;
+	static constexpr bool HAS_CGC = false;
 	static constexpr bool NON_ABELIAN = true;
+	static constexpr bool IS_TRIVIAL = false;
 	
 	typedef qarray<Nq> qType;
 
@@ -43,23 +45,27 @@ public:
 
 	///@{
 	/** 
-		Calculate the irreps of the tensor product of \p ql and \p qr.
-	*/
+	 * Calculate the irreps of the tensor product of \p ql and \p qr.
+	 */
 	static std::vector<qType> reduceSilent(const qType& ql, const qType& qr);
 	/** 
-		Calculate the irreps of the tensor product of all entries of \p ql with \p qr.
-		\warning : Returns not only unique irreps.
-		           Not sure, if we should return only the unique values here. Probably, that should be at least added as an option.
-	*/
+	 * Calculate the irreps of the tensor product of all entries of \p ql with \p qr.
+	 * \warning : Returns not only unique irreps.
+	 *	          Not sure, if we should return only the unique values here. Probably, that should be at least added as an option.
+	 */
 	static std::vector<qType> reduceSilent(const std::vector<qType>& ql, const qType& qr);
 	/** 
-		Calculate the irreps of the tensor product of all entries of \p ql with all entries of \p qr.
-		\warning : Returns only unique irreps.
-		           Better: Put an option for unique or non-unique irreps in the return vector.
-	*/
+	 * Calculate the irreps of the tensor product of all entries of \p ql with all entries of \p qr.
+	 * \warning : Returns only unique irreps.
+	 *            Better: Put an option for unique or non-unique irreps in the return vector.
+	 */
 	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
 	///@}
 
+	///@{
+	/**
+	 * Various coeffecients, all resulting from contractions or traces of the Clebsch-Gordon coefficients.
+	 */
 	inline static Scalar coeff_unity();
 	static Scalar coeff_dot(const qType& q1);
 	static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
@@ -89,10 +95,20 @@ public:
 							  const qType& q4, const qType& q5, const qType& q6,
 							  const qType& q7, const qType& q8, const qType& q9,
 							  const qType& q10, const qType& q11, const qType& q12);
+	///@}
 
+	/** 
+	 * This function defines a strict order for arrays of quantum-numbers.
+	 * \note The implementation is arbritary, as long as it defines a strict order.
+	 */
 	template<std::size_t M>
 	static bool compare ( const std::array<qType,M>& q1, const std::array<qType,M>& q2 );
-	
+
+	/** 
+	 * This function checks if the array \p qs contains quantum-numbers which match together, with respect to the flow equations.
+	 * \todo Write multiple functions, for different sizes of the array and rename them, to have a more clear interface.
+	 *       Example: For 3-array: triangular(...) or something similar.
+	 */
 	template<std::size_t M>
 	static bool validate( const std::array<qType,M>& qs );
 };
@@ -101,9 +117,9 @@ template<typename Scalar> bool operator== (const typename SU2xSU2<Scalar>::qType
 	
 template<typename Scalar>
 std::vector<typename SU2xSU2<Scalar>::qType> SU2xSU2<Scalar>::
-reduceSilent( const SU2xSU2<Scalar>::qType& ql, const SU2xSU2<Scalar>::qType& qr )
+reduceSilent( const qType& ql, const qType& qr )
 {
-	std::vector<typename SU2xSU2<Scalar>::qType> vout;
+	std::vector<qType> vout;
 	int smin1 = std::abs(ql[0]-qr[0]) +1;
 	int smax1 = std::abs(ql[0]+qr[0]) -1;
 	int smin2 = std::abs(ql[1]-qr[1]) +1;
@@ -117,7 +133,7 @@ template<typename Scalar>
 std::vector<typename SU2xSU2<Scalar>::qType> SU2xSU2<Scalar>::
 reduceSilent( const std::vector<qType>& ql, const qType& qr )
 {
-	std::vector<typename SU2xSU2<Scalar>::qType> vout;
+	std::vector<qType> vout;
 	for (std::size_t q=0; q<ql.size(); q++)
 	{
 		int smin1 = std::abs(ql[q][0]-qr[0]) +1;
