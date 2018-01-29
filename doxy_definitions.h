@@ -8,16 +8,14 @@
  * All the datastructures (MPS or MPO) can respect abelian and non abelian symmetries for more efficiency of the algorithms. 
  *
  * \section algorithms Algorithms
+ * All algorithms are collected here: \ref Algorithm
  *
  * \section models Supported models
- *
- * \subsection heisenberg Heisenberg
- *
- * \subsection hubbard Hubbard
- *
- * \subsection kondo Kondo
+ * All models are collected here: \ref Models
  *
  * \section symmetries Symmetries
+ * The different possible symmetries can be found here: \ref Symmetry
+ *
  */
 
 /** 
@@ -26,6 +24,13 @@
  * This group holds all relevant code for the used symmetries.
  *
  * \todo Implement a base class to simplifie the use of several symmetries.
+ */
+
+/** 
+ * @defgroup Algorithm Algorithm
+ *
+ * Different algorithms that can be applied, bla bla bla
+ *
  */
 
 /** 
