@@ -42,7 +42,7 @@ Logger lout;
 #include "models/HubbardU1xU1.h"
 #include "models/HubbardSU2xU1.h"
 #ifdef SU2XSU2
-#include "models/HubbardSU2xU1.h"
+#include "models/HubbardSU2xSU2.h"
 #endif
 
 template<typename Scalar>
@@ -73,7 +73,7 @@ size_t L, Lx, Ly;
 double t, tPrime, U, mu, Bz;
 int Nup, Ndn, N;
 double alpha;
-double t_U0, t_U1, t_SU2;
+double t_U0, t_U1, t_SU2, t_SU2xSU2;
 int Dinit, Dlimit, Imin, Imax;
 double tol_eigval, tol_state;
 double dt;
@@ -349,13 +349,13 @@ int main (int argc, char* argv[])
 		d_SU2(i) = avg(g_SU2.state, H_SU2.d(i), g_SU2.state);
 	}
 	lout << "<d>=" << endl << d_SU2 << endl;
-
+	
 #ifdef SU2XSU2
 	// --------SU(2)xSU(2)---------
 	lout << endl << "--------SU(2)xSU(2)---------" << endl << endl;
 	
 	Stopwatch<> Watch_SU2xSU2;
-
+	
 	vector<Param> paramsSU2xSU2;
 	paramsSU2xSU2.push_back({"U",U,0});
 	paramsSU2xSU2.push_back({"U",U,1});
@@ -363,13 +363,13 @@ int main (int argc, char* argv[])
 	paramsSU2xSU2.push_back({"subL",SUB_LATTICE::B,1});
 	paramsSU2xSU2.push_back({"Ly",Ly,0});
 	paramsSU2xSU2.push_back({"Ly",Ly,1});
-	VMPS::HubbardSU2xU1 H_SU2xSU2(Lx,paramsSU2xSU2);
+	VMPS::HubbardSU2xSU2 H_SU2xSU2(Lx,paramsSU2xSU2);
 	lout << H_SU2xSU2.info() << endl;
 	Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
 	
 	VMPS::HubbardSU2xSU2::Solver DMRG_SU2xSU2(VERB);
 	DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {Nup-Ndn+1,V-(Nup+Ndn)+1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
-						   tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha); //Todo: check Pseudospin quantum number... (1 <==> half filling)
+	                       tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha); //Todo: check Pseudospin quantum number... (1 <==> half filling)
 	
 	t_SU2xSU2 = Watch_SU2xSU2.time();
 	
@@ -406,13 +406,15 @@ int main (int argc, char* argv[])
 	
 	lout << "P SU(2): " << Ptot(0.5*densityMatrix_SU2xSU2,Lx) << "\t" << Ptot(0.5*densityMatrix_SU2xSU2B,Lx) << endl;
 	
-	ArrayXd nh_SU2xSU2(L); nh_SU2xSU2=0.; //We have no double occupation, but the holon number nh is similar. Think about direct comparison..
+	ArrayXd nh_SU2xSU2(L); nh_SU2xSU2=0.; //We have no double occupancy, but the holon number nh is similar. Think about direct comparison..
 	for (size_t i=0; i<L; ++i) 
 	{
-		nh_SU2xSU2(i) = avg(g_SU2xSU2.state, H_SU2xSU2.nh(i), g_SU2xSU2.state);
+		nh_SU2xSU2(i) = 0.5*avg(g_SU2xSU2.state, H_SU2xSU2.nh(i), g_SU2xSU2.state);
 	}
 	lout << "<nh>=" << endl << nh_SU2xSU2 << endl;
 #endif
+	
+	
 	//--------output---------
 	TextTable T( '-', '|', '+' );
 	
@@ -519,37 +521,4 @@ int main (int argc, char* argv[])
 	T.endOfRow();
 	
 	lout << endl << T;
-	
-//	FermionBase<Sym::U1xU1<double> > F(2);
-//	fermions::BaseSU2xU1<> F(3);
-//	typedef SiteOperatorQ<Sym::SU2xU1<double>,MatrixXd> Op;
-	
-//	cout << (F.sign().data*F.c(UP,0).data+F.c(UP,0).data*F.sign().data).norm() << endl;
-//	cout << (F.sign().data*F.c(DN,0).data+F.c(DN,0).data*F.sign().data).norm() << endl;
-//	cout << (F.sign().data*F.c(UP,1).data+F.c(UP,1).data*F.sign().data).norm() << endl;
-//	cout << (F.sign().data*F.c(DN,1).data+F.c(DN,1).data*F.sign().data).norm() << endl;
-//	
-//	cout << (F.sign().data*F.cdag(UP,0).data+F.cdag(UP,0).data*F.sign().data).norm() << endl;
-//	cout << (F.sign().data*F.cdag(DN,0).data+F.cdag(DN,0).data*F.sign().data).norm() << endl;
-//	cout << (F.sign().data*F.cdag(UP,1).data+F.cdag(UP,1).data*F.sign().data).norm() << endl;
-//	cout << (F.sign().data*F.cdag(DN,1).data+F.cdag(DN,1).data*F.sign().data).norm() << endl;
-//	
-//	cout << (F.sign().data*F.n(UP,0).data-F.n(UP,0).data*F.sign().data).norm() << endl;
-//	cout << (F.sign().data*F.n(DN,0).data-F.n(DN,0).data*F.sign().data).norm() << endl;
-//	cout << (F.sign().data*F.n(UP,1).data-F.n(UP,1).data*F.sign().data).norm() << endl;
-//	cout << (F.sign().data*F.n(DN,1).data-F.n(DN,1).data*F.sign().data).norm() << endl;
-	
-//	cout << (Op::prod(F.sign(),F.c(0),{2,-1})+Op::prod(F.c(0),F.sign(),{2,-1})).data() << endl;
-//	cout << (Op::prod(F.sign(),F.cdag(0),{2,+1})+Op::prod(F.cdag(0),F.sign(),{2,+1})).data() << endl;
-//	
-//	cout << (Op::prod(F.sign(),F.n(0),{1,0})-Op::prod(F.n(0),F.sign(),{1,0})).data() << endl;
-	
-//	cout << (Op::prod(F.cdag(2),F.c(0),{1,0})-Op::prod(F.c(0),F.cdag(2),{1,0})).data() << endl;
-//	cout << (Op::prod(F.cdag(2),F.c(0),{1,0})+Op::prod(F.c(0),F.cdag(2),{1,0})).data() << endl;
-	
-//	auto c0 = Op::outerprod(F.c(0),F.Id(),{2,-1});
-//	auto cdag1 = Op::outerprod(F.Id(),F.cdag(0),{2,+1});
-//	cout << (Op::prod(c0,cdag1,{1,0})-Op::prod(cdag1,c0,{1,0})).data() << endl;
-//	cout << (Op::prod(c0,cdag1,{1,0})+Op::prod(cdag1,c0,{1,0})).data() << endl;
-	
 }

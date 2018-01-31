@@ -6,6 +6,7 @@
 #include <boost/dynamic_bitset.hpp>
 
 #include <Eigen/Core>
+#include "DmrgTypedefs.h" // for SPIN_INDEX, SPINOP_LABEL
 
 /** 
  * \class FermionBase

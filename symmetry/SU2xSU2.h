@@ -1,5 +1,5 @@
-#ifndef SU2XSU2
-#define SU2XSU2
+#ifndef SYMMETRY_SU2XSU2
+#define SYMMETRY_SU2XSU2
 
 #include <array>
 #include <cstddef>

@@ -40,6 +40,22 @@ inline double isReal (complex<double> x) {return x.real();}
 	}
 #endif
 
+#ifndef SPINOP_LABEL_ENUM
+#define SPINOP_LABEL_ENUM
+	enum SPINOP_LABEL {SX, SY, iSY, SZ, SP, SM};
+	
+	std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
+	{
+		if      (Sa==SX)  {s << "Sx";}
+		else if (Sa==SY)  {s << "Sy";}
+		else if (Sa==iSY) {s << "iSy";}
+		else if (Sa==SZ)  {s << "Sz";}
+		else if (Sa==SP)  {s << "S+";}
+		else if (Sa==SM)  {s << "S-";}
+		return s;
+	}
+#endif
+
 enum PARITY {EVEN=0, ODD=1};
 
 enum BC_CHOICE

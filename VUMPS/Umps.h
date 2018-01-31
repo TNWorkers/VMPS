@@ -156,7 +156,7 @@ private:
 	
 	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> A; // A[L/R/C][l][s].block[q]
 	vector<Biped<Symmetry,MatrixType> >                        C; // zero-site part C[l]
-	vector<vector<VectorType> >                          Sigma;
+	vector<vector<VectorType> >                                Sigma;
 	
 	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> N; // A[L/R/C][l][s].block[q]
 	
