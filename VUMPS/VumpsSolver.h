@@ -28,48 +28,72 @@ public:
 	:CHOSEN_VERBOSITY(VERBOSITY)
 	{};
 	
+	/**\describe_info*/
 	string info() const;
+	
+	/**\describe_info*/
 	string eigeninfo() const;
+	
+	/**\describe_memory*/
 	double memory   (MEMUNIT memunit=GB) const;
+	
+	/**\describe_overhead*/
 	double overhead (MEMUNIT memunit=MB) const;
+	
+	/**Setup a logfile of the iterations.
+	* \param N_log : save log every \p N_log half-sweeps
+	* \param file_e_input : file for the ground-state energy in the format [min(eL,eR),eL,eR]
+	* \param file_err_eigval_input : file for the energy error
+	* \param file_err_var_input : file for the variatonal error
+	*/
 	void set_log (int N_log_input, string file_e_input, string file_err_eigval_input, string file_err_var_input)
 	{
-		N_log = N_log_input;
+		N_log           = N_log_input;
 		file_e          = file_e_input;
 		file_err_eigval = file_err_eigval_input;
 		file_err_var    = file_err_var_input;
 	};
 	
+	/**Calculates the highest or lowest eigenstate with an explicit 2-site Hamiltonian.*/
 	void edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input, 
 	                Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot_input, 
 	                double tol_eigval_input=1e-7, double tol_var_input=1e-6, 
 	                size_t Dlimit=500, 
 	                size_t max_iterations=50, size_t min_iterations=6);
 	
+	/**Calculates the highest or lowest eigenstate with an MPO.*/
 	void edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot_input, 
 	                double tol_eigval_input=1e-7, double tol_var_input=1e-6, 
 	                size_t Dlimit=500, 
 	                size_t max_iterations=50, size_t min_iterations=6);
 	
+	/**Resets the verbosity level.*/
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
+	/**Prepares the class setting up the environments. Used with an explicit 2-site Hamiltonian.*/
 	void prepare (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input,
 	              Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t Dlimit, qarray<Symmetry::Nq> Qtot_input);
+	
+	/**Performs a half-sweep with 1-site unit cell. Used with an explicit 2-site Hamiltonian.*/
 	void iteration1 (Eigenstate<Umps<Symmetry,Scalar> > &Vout);
+	
+	// Could not get a 2-site Hamiltonian to work with a unit cell. Use MPO instead.
 //	void iteration2 (Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
+	/**Prepares the class setting up the environments. Used with an MPO.*/
 	void prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t Dlimit, qarray<Symmetry::Nq> Qtot_input);
+	
+	/**Performs a half-sweep with 1-site unit cell. Used with an MPO.*/
 	void iteration1 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
+	
+	/**Performs a half-sweep with a 2-site unit cell. Used with an MPO.*/
 	void iteration2 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
+	
+	/**Performs a half-sweep with a 4-site unit cell. Used with an MPO.*/
 	void iteration4 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
+	/**Clean up after the iteration process.*/
 	void cleanup (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
-	
-	/**Returns the current error of the eigenvalue while the sweep process.*/
-	inline double get_errEigval() const {return err_eigval;};
-	
-	/**Returns the current error of the state while the sweep process.*/
-	inline double get_errState() const {return err_var;};
 	
 private:
 	
@@ -78,29 +102,48 @@ private:
 	size_t N_iterations;
 	double err_eigval, err_var, err_state=std::nan("1");
 	
-	vector<PivumpsMatrix<Symmetry,Scalar,Scalar> > Heff;
+	vector<PivumpsMatrix<Symmetry,Scalar,Scalar> > Heff; // environment
 	vector<qarray<Symmetry::Nq> > qloc;
-	std::array<boost::multi_array<Scalar,4>,2> h;
-	size_t D, M, dW;
+	std::array<boost::multi_array<Scalar,4>,2> h; // stored 2-site Hamiltonian
+	size_t D, M, dW; // bond dimension per subspace, bond dimension per site, MPO bond dimension
 	
-	double eL, eR, eoldR, eoldL;
+	double eL, eR, eoldR, eoldL; // left and right error (eq. 18) and old errors from previous half-sweep
 	
-	MatrixXd linearL (const MatrixType &hL, const MatrixType &TL, const MatrixType &Leigen, double e=0);
-	MatrixXd linearR (const MatrixType &hR, const MatrixType &TR, const MatrixType &Reigen, double e=0);
+//	MatrixXd linearL (const MatrixType &hL, const MatrixType &TL, const MatrixType &Leigen, double e=0);
+//	MatrixXd linearR (const MatrixType &hR, const MatrixType &TR, const MatrixType &Reigen, double e=0);
+	
+	/**Solves the linear system (eq. 15) using GMRES.
+	* \param gauge : L or R
+	* \param Atype : A, Apair or Aquartett
+	* \param hLR : (h_L| or |h_R)
+	* \param LReigen : (L| or |R)
+	* \param Warray : MPO tensor for the transfer matrix
+	* \param Hres : resulting (H_L| or |H_R)
+	*/
 	template<typename Atype, typename Wtype> void solve_linear (GAUGE::OPTION gauge, const Atype &A, const MatrixType &hLR, 
 	                                                            const MatrixType &LReigen, const Wtype &Warray, double e, MatrixType &Hres);
 	
+	/**Contracts two MPO tensors (H of length 2) to a 4-legged tensor.*/
 	boost::multi_array<Scalar,4> make_Warray4 (size_t b, const MpHamiltonian &H);
+	
+	/**Contracts four MPO tensors (H of length 4) to an 8-legged tensor.*/
 	boost::multi_array<Scalar,8> make_Warray8 (size_t b, const MpHamiltonian &H);
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
 	
+	/**Adaptively sets the Lanczos tolerances.*/
 	void set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState);
 	
+	/**Creates the transfer matrix (eq. A7) explicitly. This is only for testing purposes, as a 4-legged tensor this is very inefficient.*/
 	void make_explicitT (const Umps<Symmetry,Scalar> &Vbra, const Umps<Symmetry,Scalar> &Vket, MatrixType &TL, MatrixType &TR);
+	
+	/**Explicitly calculates the left eigenvector of the transfer matrix \f$T_L\f$. This is only for testing purposes and very inefficient.*/
 	MatrixXd eigenvectorL (const MatrixType &TL);
+	
+	/**Explicitly calculates the right eigenvector of the transfer matrix \f$T_R\f$. This is only for testing purposes and very inefficient.*/
 	MatrixXd eigenvectorR (const MatrixType &TR);
 	
+	//---log stuff---
 	size_t N_log=0;
 	string file_e, file_err_eigval, file_err_var;
 	vector<double> eL_mem, eR_mem, err_eigval_mem, err_var_mem;
@@ -1550,104 +1593,104 @@ eigenvectorR (const MatrixType &TR)
 	return Mout;
 }
 
-template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-MatrixXd VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-linearL (const MatrixType &hL, const MatrixType &TL, const MatrixType &Reigen, double e)
-{
-	MatrixType RxU(M*M,M*M); RxU.setZero();
-	
-	// projector |Reigen><1|
-	for (size_t i=0; i<M; ++i)
-	for (size_t j=0; j<M; ++j)
-	for (size_t k=0; k<M; ++k)
-	{
-		size_t r = i + M*j;
-		size_t c = k + M*k; // delta(k,l)
-		RxU(r,c) = Reigen(i,j);
-	}
-	
-	VectorType bL(M*M);
-	
-	// reshape hL(i,j)-e*delta(i,j) to vector bL(r)
-	for (size_t i=0; i<M; ++i)
-	for (size_t j=0; j<M; ++j)
-	{
-		size_t r = i + M*j;
-		bL(r) = hL(i,j);
-		
-		if (i==j and e!=0)
-		{
-			bL(r) -= e;
-		}
-	}
-	
-	// solve left linear
-//	Stopwatch<> GmresTimer;
-	MatrixType LinearL = (MatrixType::Identity(M*M,M*M)-TL+RxU).adjoint();
-	GMRES<MatrixType> Leonard(LinearL);
-	VectorType xL = Leonard.solve(bL);
-	
-	MatrixType HL(M,M);
-	
-	// reshape xL(r) to HL(i,j)
-	for (size_t i=0; i<M; ++i)
-	for (size_t j=0; j<M; ++j)
-	{
-		size_t r = i + M*j;
-		HL(i,j) = xL(r);
-	}
-	
-	return HL;
-}
+//template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+//MatrixXd VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+//linearL (const MatrixType &hL, const MatrixType &TL, const MatrixType &Reigen, double e)
+//{
+//	MatrixType RxU(M*M,M*M); RxU.setZero();
+//	
+//	// projector |Reigen><1|
+//	for (size_t i=0; i<M; ++i)
+//	for (size_t j=0; j<M; ++j)
+//	for (size_t k=0; k<M; ++k)
+//	{
+//		size_t r = i + M*j;
+//		size_t c = k + M*k; // delta(k,l)
+//		RxU(r,c) = Reigen(i,j);
+//	}
+//	
+//	VectorType bL(M*M);
+//	
+//	// reshape hL(i,j)-e*delta(i,j) to vector bL(r)
+//	for (size_t i=0; i<M; ++i)
+//	for (size_t j=0; j<M; ++j)
+//	{
+//		size_t r = i + M*j;
+//		bL(r) = hL(i,j);
+//		
+//		if (i==j and e!=0)
+//		{
+//			bL(r) -= e;
+//		}
+//	}
+//	
+//	// solve left linear
+////	Stopwatch<> GmresTimer;
+//	MatrixType LinearL = (MatrixType::Identity(M*M,M*M)-TL+RxU).adjoint();
+//	GMRES<MatrixType> Leonard(LinearL);
+//	VectorType xL = Leonard.solve(bL);
+//	
+//	MatrixType HL(M,M);
+//	
+//	// reshape xL(r) to HL(i,j)
+//	for (size_t i=0; i<M; ++i)
+//	for (size_t j=0; j<M; ++j)
+//	{
+//		size_t r = i + M*j;
+//		HL(i,j) = xL(r);
+//	}
+//	
+//	return HL;
+//}
 
-template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-MatrixXd VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-linearR (const MatrixType &hR, const MatrixType &TR, const MatrixType &Leigen, double e)
-{
-	MatrixType UxL(M*M,M*M); UxL.setZero();
-	
-	// projector |1><Leigen|
-	for (size_t i=0; i<M; ++i)
-	for (size_t k=0; k<M; ++k)
-	for (size_t l=0; l<M; ++l)
-	{
-		size_t r = i + M*i; // delta(i,j)
-		size_t c = k + M*l;
-		UxL(r,c) = Leigen(k,l);
-	}
-	
-	VectorType bR(M*M);
-	
-	// reshape hR(i,j)-e*delta(i,j) to vector bR(r)
-	for (size_t i=0; i<M; ++i)
-	for (size_t j=0; j<M; ++j)
-	{
-		size_t r = i + M*j;
-		bR(r) = hR(i,j);
-		
-		if (i==j and e!=0)
-		{
-			bR(r) -= e;
-		}
-	}
-	
-	// solve right linear
-//	Stopwatch<> GmresTimer;
-	MatrixType LinearR = MatrixType::Identity(M*M,M*M)-TR+UxL;
-	GMRES<MatrixType> Ronald(LinearR);
-	VectorType xR = Ronald.solve(bR);
-	
-	MatrixType HR(M,M);
-	
-	// reshape xR(r) to HR(i,j)
-	for (size_t i=0; i<M; ++i)
-	for (size_t j=0; j<M; ++j)
-	{
-		size_t r = i + M*j;
-		HR(i,j) = xR(r);
-	}
-	
-	return HR;
-}
+//template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+//MatrixXd VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+//linearR (const MatrixType &hR, const MatrixType &TR, const MatrixType &Leigen, double e)
+//{
+//	MatrixType UxL(M*M,M*M); UxL.setZero();
+//	
+//	// projector |1><Leigen|
+//	for (size_t i=0; i<M; ++i)
+//	for (size_t k=0; k<M; ++k)
+//	for (size_t l=0; l<M; ++l)
+//	{
+//		size_t r = i + M*i; // delta(i,j)
+//		size_t c = k + M*l;
+//		UxL(r,c) = Leigen(k,l);
+//	}
+//	
+//	VectorType bR(M*M);
+//	
+//	// reshape hR(i,j)-e*delta(i,j) to vector bR(r)
+//	for (size_t i=0; i<M; ++i)
+//	for (size_t j=0; j<M; ++j)
+//	{
+//		size_t r = i + M*j;
+//		bR(r) = hR(i,j);
+//		
+//		if (i==j and e!=0)
+//		{
+//			bR(r) -= e;
+//		}
+//	}
+//	
+//	// solve right linear
+////	Stopwatch<> GmresTimer;
+//	MatrixType LinearR = MatrixType::Identity(M*M,M*M)-TR+UxL;
+//	GMRES<MatrixType> Ronald(LinearR);
+//	VectorType xR = Ronald.solve(bR);
+//	
+//	MatrixType HR(M,M);
+//	
+//	// reshape xR(r) to HR(i,j)
+//	for (size_t i=0; i<M; ++i)
+//	for (size_t j=0; j<M; ++j)
+//	{
+//		size_t r = i + M*j;
+//		HR(i,j) = xR(r);
+//	}
+//	
+//	return HR;
+//}
 
 #endif
