@@ -4,7 +4,7 @@
 
 
 #include "bases/FermionBaseSU2xSU2.h"
-#include "symmetry/SU2xSU2.h"
+#include "symmetry/S1xS2.h"
 #include "Mpo.h"
 #include "DmrgExternal.h"
 #include "ParamHandler.h"
@@ -30,10 +30,10 @@ namespace VMPS
  * \warning \f$J>0\f$ is antiferromagnetic
  * \todo Implement spin and pseudo spin observables.
  */
-class HubbardSU2xSU2 : public Mpo<Sym::SU2xSU2<double> ,double>
+class HubbardSU2xSU2 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > ,double>
 {
 public:
-	typedef Sym::SU2xSU2<double> Symmetry;
+	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > Symmetry;
 	
 private:
 	
@@ -83,7 +83,7 @@ protected:
 	vector<FermionBase<Symmetry> > F;
 };
 
-const std::array<string,Sym::SU2xSU2<double>::Nq> HubbardSU2xSU2::STlabel{"S","T"};
+const std::array<string,Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >::Nq> HubbardSU2xSU2::STlabel{"S","T"};
 
 const map<string,any> HubbardSU2xSU2::defaults = 
 {
@@ -123,7 +123,7 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
 	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
 }
 
-HamiltonianTermsXd<Sym::SU2xSU2<double> > HubbardSU2xSU2::
+HamiltonianTermsXd<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry> Terms;
@@ -197,7 +197,7 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 	return Terms;
 }
 
-Mpo<Sym::SU2xSU2<double> > HubbardSU2xSU2::
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 c (size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<F[locx].dim());
@@ -211,7 +211,7 @@ c (size_t locx, size_t locy)
 	return Mout;
 }
 
-Mpo<Sym::SU2xSU2<double> > HubbardSU2xSU2::
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 cdag (size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<F[locx].dim());
@@ -225,7 +225,7 @@ cdag (size_t locx, size_t locy)
 	return Mout;
 }
 
-Mpo<Sym::SU2xSU2<double> > HubbardSU2xSU2::
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
@@ -259,7 +259,7 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	return Mout;
 }
 
-Mpo<Sym::SU2xSU2<double> > HubbardSU2xSU2::
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 nh (size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<F[locx].dim());
@@ -273,7 +273,7 @@ nh (size_t locx, size_t locy)
 	return Mout;
 }
 
-Mpo<Sym::SU2xSU2<double> > HubbardSU2xSU2::
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 ns (size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<F[locx].dim());

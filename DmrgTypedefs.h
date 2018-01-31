@@ -53,6 +53,21 @@ std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 	return s;
 }
 
+namespace Sym{
+	enum KIND {S,T,N,M,Nup,Ndn};
+}
+
+std::ostream& operator<< (std::ostream& s, Sym::KIND l)
+{
+	if      (l==Sym::KIND::S)  {s << "S";}
+	else if (l==Sym::KIND::T)  {s << "T";}
+	else if (l==Sym::KIND::N)  {s << "N";}
+	else if (l==Sym::KIND::M)  {s << "M";}
+	else if (l==Sym::KIND::Nup)  {s << "Nup";}
+	else if (l==Sym::KIND::Ndn)  {s << "Ndn";}
+	return s;
+}
+
 enum PARITY {EVEN=0, ODD=1};
 
 enum SUB_LATTICE {A=0,B=1};

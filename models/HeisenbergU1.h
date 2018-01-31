@@ -34,10 +34,10 @@ namespace VMPS
   * \note \f$J<0\f$ is antiferromagnetic
   * \note Homogeneous \f$J\f$ is required here. For a XXZ couplings, use VMPS::HeisenbergU1XXZ.
   */
-class HeisenbergU1 : public Mpo<Sym::U1<double>,double>, public HeisenbergObservables<Sym::U1<double> >
+class HeisenbergU1 : public Mpo<Sym::U1<Sym::SpinU1>,double>, public HeisenbergObservables<Sym::U1<Sym::SpinU1> >
 {
 public:
-	typedef Sym::U1<double> Symmetry;
+	typedef Sym::U1<Sym::SpinU1> Symmetry;
 	
 private:
 	typedef Symmetry::qType qType;

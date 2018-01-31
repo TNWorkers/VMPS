@@ -29,7 +29,7 @@ namespace VMPS
 class HeisenbergU1XXZ : public HeisenbergU1
 {
 public:
-	typedef Sym::U1<double> Symmetry;
+	typedef Sym::U1<Sym::SpinU1> Symmetry;
 	
 public:
 	

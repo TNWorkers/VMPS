@@ -5,6 +5,7 @@
 #include "symmetry/qbasis.h"
 #include "tensors/SiteOperatorQ.h"
 
+#include "symmetry/kind_dummies.h"
 #include "bases/SpinBase.h"
 
 //Note: Don't put a name in this documentation with \class .. because doxygen gets confused with template symbols
@@ -15,11 +16,11 @@
  *
  */
 template<>
-class SpinBase<Sym::SU2<double> >
+class SpinBase<Sym::SU2<Sym::SpinSU2> >
 {
 	typedef Eigen::Index Index;
 	typedef double Scalar;
-	typedef typename Sym::SU2<Scalar> Symmetry;
+	typedef typename Sym::SU2<Sym::SpinSU2> Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
 	typedef typename Symmetry::qType qType;
 	
@@ -90,7 +91,7 @@ private:
 	std::size_t D;
 };
 
-SpinBase<Sym::SU2<double> >::
+SpinBase<Sym::SU2<Sym::SpinSU2> >::
 SpinBase (std::size_t L_input, std::size_t D_input)
 :N_orbitals(L_input), D(D_input)
 {
@@ -124,7 +125,7 @@ SpinBase (std::size_t L_input, std::size_t D_input)
 	}
 }
 
-SiteOperatorQ<Sym::SU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<double> >::
+SiteOperatorQ<Sym::SU2<Sym::SpinSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<Sym::SpinSU2> >::
 S( std::size_t orbital ) const
 {
 	if(N_orbitals == 1) { return S_1s; }
@@ -148,13 +149,13 @@ S( std::size_t orbital ) const
 	}
 }
 
-SiteOperatorQ<Sym::SU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<double> >::
+SiteOperatorQ<Sym::SU2<Sym::SpinSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<Sym::SpinSU2> >::
 Sdag( std::size_t orbital ) const
 {
 	return S(orbital).adjoint();
 }
 
-SiteOperatorQ<Sym::SU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<double> >::
+SiteOperatorQ<Sym::SU2<Sym::SpinSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<Sym::SpinSU2> >::
 Id() const
 {
 	if(N_orbitals == 1) { return Id_1s; }
@@ -166,7 +167,7 @@ Id() const
 	}
 }
 
-SiteOperatorQ<Sym::SU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<double> >::
+SiteOperatorQ<Sym::SU2<Sym::SpinSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<Sym::SpinSU2> >::
 HeisenbergHamiltonian (double J, bool PERIODIC) const
 {	
 	Operator Mout({1},TensorBasis);
@@ -193,7 +194,7 @@ HeisenbergHamiltonian (double J, bool PERIODIC) const
 	return Mout;
 }
 
-SiteOperatorQ<Sym::SU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<double> >::
+SiteOperatorQ<Sym::SU2<Sym::SpinSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<Sym::SpinSU2> >::
 HeisenbergHamiltonian (Eigen::MatrixXd J) const
 {	
 	Operator Mout({1},TensorBasis);

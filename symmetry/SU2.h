@@ -9,6 +9,7 @@
 
 #include <boost/rational.hpp>
 
+#include "DmrgTypedefs.h"
 #include "DmrgExternal.h"
 #include "qarray.h"
 #include "symmetry/functions.h"
@@ -24,10 +25,12 @@ namespace Sym{
  * \describe_Scalar
  * \warning Use the gsl library sf_coupling.
  */
-template<typename Scalar>
+template<typename Kind, typename Scalar=double>
 class SU2 // : SymmetryBase<SymSUN<N,Scalar> >
 {
 public:
+	typedef Scalar Scalar_;
+
 	static constexpr std::size_t Nq=1;
 	static constexpr bool HAS_CGC = false;
 	static constexpr bool NON_ABELIAN = true;
@@ -35,10 +38,11 @@ public:
 
 	// typedef std::array<int,1> qType;
 	typedef qarray<Nq> qType;
-
+	
 	SU2() {};
 
 	inline static std::string name() { return "SU(2)"; }
+	inline static constexpr std::array<KIND,Nq> kind() { return Kind::name; }
 	
 	inline static qType qvacuum() { return {1}; }
 	inline static qType flip( const qType& q ) { return q; }
@@ -112,9 +116,9 @@ public:
 	template<std::size_t M>
 	static bool validate( const std::array<qType,M>& qs );
 };
-	
-template<typename Scalar>
-std::vector<typename SU2<Scalar>::qType> SU2<Scalar>::
+
+template<typename Kind, typename Scalar>
+std::vector<typename SU2<Kind,Scalar>::qType> SU2<Kind,Scalar>::
 reduceSilent( const qType& ql, const qType& qr )
 {
 	std::vector<qType> vout;
@@ -124,11 +128,11 @@ reduceSilent( const qType& ql, const qType& qr )
 	return vout;
 }
 
-template<typename Scalar>
-std::vector<typename SU2<Scalar>::qType> SU2<Scalar>::
+template<typename Kind, typename Scalar>
+std::vector<typename SU2<Kind,Scalar>::qType> SU2<Kind,Scalar>::
 reduceSilent( const std::vector<qType>& ql, const qType& qr )
 {
-	std::vector<typename SU2<Scalar>::qType> vout;
+	std::vector<typename SU2<Kind,Scalar>::qType> vout;
 	for (std::size_t q=0; q<ql.size(); q++)
 	{
 		int qmin = std::abs(ql[q][0]-qr[0]) +1;
@@ -138,8 +142,8 @@ reduceSilent( const std::vector<qType>& ql, const qType& qr )
 	return vout;
 }
 
-template<typename Scalar>
-std::vector<typename SU2<Scalar>::qType> SU2<Scalar>::
+template<typename Kind, typename Scalar>
+std::vector<typename SU2<Kind,Scalar>::qType> SU2<Kind,Scalar>::
 reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
 {
 	std::unordered_set<qType> uniqueControl;
@@ -157,32 +161,32 @@ reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
 	return vout;
 }
 
-template<typename Scalar>
-Scalar SU2<Scalar>::
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_unity()
 {
 	Scalar out = Scalar(1.);
 	return out;
 }
 
-template<typename Scalar>
-Scalar SU2<Scalar>::
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_dot(const qType& q1)
 {
 	Scalar out = static_cast<Scalar>(q1[0]);
 	return out;
 }
 
-template<typename Scalar>
-Scalar SU2<Scalar>::
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_rightOrtho(const qType& q1, const qType& q2)
 {
 	Scalar out = static_cast<Scalar>(q1[0]) / static_cast<Scalar>(q2[0]); //* std::pow(static_cast<Scalar>(q2[0]),Scalar(-1.));
 	return out;
 }
 
-template<typename Scalar>
-Scalar SU2<Scalar>::
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3)
 {
 	Scalar out = std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]))*
@@ -191,8 +195,8 @@ coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3)
 	return out;
 }
 
-template<typename Scalar>
-Scalar SU2<Scalar>::
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_sign(const qType& q1, const qType& q2, const qType& q3)
 {
 	Scalar out = std::sqrt(static_cast<Scalar>(q2[0])) / std::sqrt(static_cast<Scalar>(q1[0]))*
@@ -201,8 +205,8 @@ coeff_sign(const qType& q1, const qType& q2, const qType& q3)
 	return out;
 }
 
-template<typename Scalar>
-Scalar SU2<Scalar>::
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_adjoint(const qType& q1, const qType& q2, const qType& q3)
 {
 	Scalar out = phase<Scalar>((q3[0]+q1[0]-q2[0]-1) / 2) * //std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q3[0]+q1[0]-q2[0]-1)) *
@@ -210,8 +214,8 @@ coeff_adjoint(const qType& q1, const qType& q2, const qType& q3)
 	return out;
 }
 
-template<typename Scalar>
-Scalar SU2<Scalar>::
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_6j(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q4, const qType& q5, const qType& q6)
 {
@@ -220,8 +224,8 @@ coeff_6j(const qType& q1, const qType& q2, const qType& q3,
 	return out;
 }
 
-template<typename Scalar>
-Scalar SU2<Scalar>::
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 			const qType& q4, const qType& q5, const qType& q6)
 {
@@ -239,8 +243,8 @@ coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 	return out;
 }
 
-template<typename Scalar>
-Scalar SU2<Scalar>::
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q4, const qType& q5, const qType& q6,
 		 const qType& q7, const qType& q8, const qType& q9)
@@ -252,8 +256,8 @@ coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 	return out;
 }
 	
-template<typename Scalar>
-Scalar SU2<Scalar>::
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_buildR(const qType& q1, const qType& q2, const qType& q3,
 			 const qType& q4, const qType& q5, const qType& q6,
 			 const qType& q7, const qType& q8, const qType& q9)
@@ -265,8 +269,8 @@ coeff_buildR(const qType& q1, const qType& q2, const qType& q3,
 	return out;
 }
 
-// template<typename Scalar>
-// Scalar SU2<Scalar>::
+// template<typename Kind, typename Scalar>
+// Scalar SU2<Kind,Scalar>::
 // coeff_test(const qType& q1, const qType& q2, const qType& q3,
 // 		   const qType& q4, const qType& q5, const qType& q6,
 // 		   const qType& q7, const qType& q8, const qType& q9)
@@ -279,8 +283,8 @@ coeff_buildR(const qType& q1, const qType& q2, const qType& q3,
 // 	return out;
 // }
 
-template<typename Scalar>
-Scalar SU2<Scalar>::
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_buildL(const qType& q1, const qType& q2, const qType& q3,
 			 const qType& q4, const qType& q5, const qType& q6,
 			 const qType& q7, const qType& q8, const qType& q9)
@@ -293,8 +297,8 @@ coeff_buildL(const qType& q1, const qType& q2, const qType& q3,
 	return out;
 }
 
-template<typename Scalar>
-Scalar SU2<Scalar>::
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_HPsi(const qType& q1, const qType& q2, const qType& q3,
 		   const qType& q4, const qType& q5, const qType& q6,
 		   const qType& q7, const qType& q8, const qType& q9)
@@ -307,8 +311,8 @@ coeff_HPsi(const qType& q1, const qType& q2, const qType& q3,
 	return out;
 }
 
-template<typename Scalar>
-Scalar SU2<Scalar>::
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
 			const qType& q4, const qType& q5, const qType& q6,
 			const qType& q7, const qType& q8, const qType& q9,
@@ -326,10 +330,10 @@ coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
 	return out;
 }
 
-template<typename Scalar>
+template<typename Kind, typename Scalar>
 template<std::size_t M>
-bool SU2<Scalar>::
-compare ( const std::array<SU2<Scalar>::qType,M>& q1, const std::array<SU2<Scalar>::qType,M>& q2 )
+bool SU2<Kind,Scalar>::
+compare ( const std::array<SU2<Kind,Scalar>::qType,M>& q1, const std::array<SU2<Kind,Scalar>::qType,M>& q2 )
 {
 	for (std::size_t m=0; m<M; m++)
 	{
@@ -339,21 +343,21 @@ compare ( const std::array<SU2<Scalar>::qType,M>& q1, const std::array<SU2<Scala
 	return false;
 }
 
-template<typename Scalar>
+template<typename Kind, typename Scalar>
 template<std::size_t M>
-bool SU2<Scalar>::
-validate ( const std::array<SU2<Scalar>::qType,M>& qs )
+bool SU2<Kind,Scalar>::
+validate ( const std::array<SU2<Kind,Scalar>::qType,M>& qs )
 {
 	if constexpr( M > 1 )
 				{
-					std::vector<SU2<Scalar>::qType> decomp = SU2<Scalar>::reduceSilent(qs[0],qs[1]);
+					std::vector<SU2<Kind,Scalar>::qType> decomp = SU2<Kind,Scalar>::reduceSilent(qs[0],qs[1]);
 					for (std::size_t i=2; i<M; i++)
 					{
-						decomp = SU2<Scalar>::reduceSilent(decomp,qs[i]);
+						decomp = SU2<Kind,Scalar>::reduceSilent(decomp,qs[i]);
 					}
 					for (std::size_t i=0; i<decomp.size(); i++)
 					{
-						if ( decomp[i] == SU2<Scalar>::qvacuum() ) { return true; }
+						if ( decomp[i] == SU2<Kind,Scalar>::qvacuum() ) { return true; }
 					}
 					return false;
 				}

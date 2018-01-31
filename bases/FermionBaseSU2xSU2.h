@@ -6,7 +6,7 @@
 
 #include "tensors/SiteOperatorQ.h"
 #include "symmetry/qbasis.h"
-#include "symmetry/SU2xSU2.h"
+#include "symmetry/S1xS2.h"
 
 #include "bases/FermionBase.h"
 
@@ -21,10 +21,10 @@
  *
  */
 template<>
-class FermionBase<Sym::SU2xSU2<double> >
+class FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >
 {
 	typedef Eigen::Index Index;
-	typedef typename Sym::SU2xSU2<double> Symmetry;
+	typedef typename Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > Operator;
 	typedef typename Symmetry::qType qType;
 public:
@@ -170,7 +170,7 @@ private:
 	Operator T_1s; //orbital pseudo spin
 };
 
-FermionBase<Sym::SU2xSU2<double> >::
+FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in)
 :N_orbitals(L_input),subLattice(subLattice_in)
 {
@@ -232,7 +232,7 @@ FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in)
 	N_states = TensorBasis.size();
 }
 
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 c (std::size_t orbital) const
 {
 	Operator Op_1s;
@@ -269,13 +269,13 @@ c (std::size_t orbital) const
 	}
 }
 	
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 cdag (std::size_t orbital) const
 {
 	return c(orbital).adjoint();
 }
 
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 sign (std::size_t orb1, std::size_t orb2) const
 {
 	if(N_orbitals == 1) { return F_1s; }
@@ -297,7 +297,7 @@ sign (std::size_t orb1, std::size_t orb2) const
 	}
 }
 
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 sign_local (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return Id_1s; }
@@ -319,7 +319,7 @@ sign_local (std::size_t orbital) const
 	}
 }
 
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 nh (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return nh_1s; }
@@ -341,7 +341,7 @@ nh (std::size_t orbital) const
 	}
 }
 
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 ns (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return ns_1s; }
@@ -363,7 +363,7 @@ ns (std::size_t orbital) const
 	}
 }
 
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 S (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return S_1s; }
@@ -387,13 +387,13 @@ S (std::size_t orbital) const
 	}
 }
 
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 Sdag (std::size_t orbital) const
 {
 	return S(orbital).adjoint();
 }
 
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 T (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return T_1s; }
@@ -417,13 +417,13 @@ T (std::size_t orbital) const
 	}
 }
 
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 Tdag (std::size_t orbital) const
 {
 	return T(orbital).adjoint();
 }
 
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 Id (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return Id_1s; }
@@ -435,7 +435,7 @@ Id (std::size_t orbital) const
 	}
 }
 
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
 {
 	Operator Mout({1,1},TensorBasis);
@@ -470,7 +470,7 @@ HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
 	return Mout;
 }
 
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 HubbardHamiltonian (Eigen::ArrayXd Uorb, double t, double V, double J, bool PERIODIC) const
 {
 	auto Mout = HubbardHamiltonian(0.,t,V,J,PERIODIC);
@@ -488,7 +488,7 @@ HubbardHamiltonian (Eigen::ArrayXd Uorb, double t, double V, double J, bool PERI
 	return Mout;
 }
 
-SiteOperatorQ<Sym::SU2xSU2<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2xSU2<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 HubbardHamiltonian (Eigen::ArrayXd Uorb, Eigen::ArrayXXd t) const
 {
 	Operator Mout({1,1},TensorBasis);

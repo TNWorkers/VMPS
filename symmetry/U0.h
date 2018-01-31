@@ -3,6 +3,7 @@
 
 #include <cstddef>
 
+#include "DmrgTypedefs.h"
 #include "symmetry/qarray.h"
 
 /**Dummies for models without symmetries.*/
@@ -34,7 +35,9 @@ namespace Sym{
 		static constexpr std::size_t Nq=0;
 		static constexpr bool NON_ABELIAN = false;
 		static constexpr bool IS_TRIVIAL = true;
-		
+
+		inline static constexpr std::array<KIND,Nq> kind() { return {}; }
+
 		inline static constexpr qType qvacuum() {return {};}
 		inline static qType flip( const qType& q ) { return {}; }
 		inline static int degeneracy( const qType& q ) { return 1; }

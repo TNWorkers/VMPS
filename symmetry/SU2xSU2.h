@@ -23,7 +23,7 @@ namespace Sym{
  * \describe_Scalar
  * \warning Use the gsl library sf_coupling.
  */
-template<typename Scalar>
+template<typename Scalar=double>
 class SU2xSU2 // : SymmetryBase<SymSUN<N,Scalar> >
 {
 public:

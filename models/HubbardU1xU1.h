@@ -37,9 +37,10 @@ with
 \note If the NNN-hopping is positive, the ground state energy is lowered.
 \warning \f$J>0\f$ is antiferromagnetic
 */
-class HubbardU1xU1 : public Mpo<Sym::U1xU1<double>,double>, public HubbardObservables<Sym::U1xU1<double> >
+class HubbardU1xU1 : public Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> >,double>,
+					 public HubbardObservables<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > >
 {
-typedef Sym::U1xU1<double> Symmetry;
+typedef Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > Symmetry;
 
 public:
 	
@@ -248,7 +249,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 	return Terms;
 }
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //cc (size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
@@ -263,7 +264,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //eta()
 //{
 //	assert(N_sites == N_phys);
@@ -277,7 +278,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //cdagcdag (size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
@@ -292,7 +293,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //c (SPIN_INDEX sigma, size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
@@ -310,7 +311,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //cdag (SPIN_INDEX sigma, size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
@@ -327,7 +328,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 //{
 //	assert(locx1<N_sites and locx2<N_sites);
@@ -357,7 +358,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //d (size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
@@ -371,7 +372,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //dtot()
 //{
 //	stringstream ss;
@@ -384,7 +385,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //n (SPIN_INDEX sigma, size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
@@ -398,7 +399,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //nn (SPIN_INDEX sigma1, size_t locx1, SPIN_INDEX sigma2, size_t locx2, size_t locy1, size_t locy2)
 //{
 //	assert(locx1<N_sites and locx2<N_sites and locy1<F[locx1].dim() and locy2<F[locx2].dim());
@@ -413,7 +414,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //Sz (size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
@@ -427,7 +428,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 //{
 //	assert(locx1 < N_sites and locx2 < N_sites and locy1<F[locx1].dim() and locy2<F[locx2].dim());
@@ -442,7 +443,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //SaSa (size_t locx1, SPINOP_LABEL SOP1, size_t locx2, SPINOP_LABEL SOP2, size_t locy1, size_t locy2)
 //{
 //	assert(locx1<N_sites and locx2<N_sites and locy1<F[locx1].dim() and locy2<F[locx2].dim());
@@ -457,7 +458,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //s (size_t locx, size_t locy)
 //{
 //	assert(locx<N_sites and locy<F[locx].dim());
@@ -471,7 +472,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-//Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+//Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 //hh (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 //{
 //	assert(locx1 < N_sites and locx2 < N_sites and locy1<F[locx1].dim() and locy2<F[locx2].dim());
@@ -487,7 +488,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 //	return Mout;
 //}
 
-////Mpo<Sym::U1xU1<double>,complex<double> > HubbardU1xU1::
+////Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> >,complex<double> > HubbardU1xU1::
 ////doublonPacket (complex<double> (*f)(int))
 ////{
 ////	stringstream ss;
@@ -500,7 +501,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 ////	return Mout;
 ////}
 
-////Mpo<Sym::U1xU1<double>,complex<double> > HubbardU1xU1::
+////Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> >,complex<double> > HubbardU1xU1::
 ////electronPacket (complex<double> (*f)(int))
 ////{
 ////	assert(N_legs==1);
@@ -537,7 +538,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 ////	return Mout;
 ////}
 
-////Mpo<Sym::U1xU1<double>,complex<double> > HubbardU1xU1::
+////Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> >,complex<double> > HubbardU1xU1::
 ////holePacket (complex<double> (*f)(int))
 ////{
 ////	assert(N_legs==1);
@@ -569,7 +570,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 ////	return Mout;
 ////}
 
-////Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+////Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 ////triplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 ////{
 ////	assert(locx<N_sites and locy<F[locx].dim());
@@ -602,7 +603,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 ////	return Mout;
 ////}
 
-////Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+////Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 ////antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 ////{
 ////	assert(locx<N_sites and locy<F[locx].dim());
@@ -635,7 +636,7 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 ////	return Mout;
 ////}
 
-////Mpo<Sym::U1xU1<double> > HubbardU1xU1::
+////Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
 ////quadruplon (size_t locx, size_t locy)
 ////{
 ////	assert(locx<N_sites and locy<F[locx].dim());

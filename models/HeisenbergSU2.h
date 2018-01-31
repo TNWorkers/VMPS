@@ -24,10 +24,10 @@ namespace VMPS
   * \note The default variable settings can be seen in \p HeisenbergSU2::defaults.
   * \note \f$J<0\f$ is antiferromagnetic
   */
-class HeisenbergSU2 : public Mpo<Sym::SU2<double>,double>
+class HeisenbergSU2 : public Mpo<Sym::SU2<Sym::SpinSU2>,double>
 {
 public:
-	typedef Sym::SU2<double> Symmetry;
+	typedef Sym::SU2<Sym::SpinSU2> Symmetry;
 	
 private:
 	
@@ -118,7 +118,7 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
 }
 
-Mpo<Sym::SU2<double> > HeisenbergSU2::
+Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
 S (std::size_t locx, std::size_t locy)
 {
 	assert(locx<this->N_sites);
@@ -134,7 +134,7 @@ S (std::size_t locx, std::size_t locy)
 	return Mout;
 }
 
-Mpo<Sym::SU2<double> > HeisenbergSU2::
+Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
 Sdag (std::size_t locx, std::size_t locy)
 {
 	assert(locx<this->N_sites);
@@ -150,7 +150,7 @@ Sdag (std::size_t locx, std::size_t locy)
 	return Mout;
 }
 
-Mpo<Sym::SU2<double> > HeisenbergSU2::
+Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
 SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
@@ -189,7 +189,7 @@ validate (qarray<1> qnum) const
 	else {return false;}
 }
 
-HamiltonianTermsXd<Sym::SU2<double> > HeisenbergSU2::
+HamiltonianTermsXd<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
 set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry> Terms;
