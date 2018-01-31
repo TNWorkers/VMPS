@@ -93,6 +93,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		lout << "MPS in question: " << Vket.info() << endl;
 		lout << "MPO in question: " << O.info() << endl;
 		lout << "dim=" << B.dim << endl;
+		lout << "B=" << B.print(true) << endl;
 		return 0;
 	}
 	

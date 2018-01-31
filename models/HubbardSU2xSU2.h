@@ -207,7 +207,7 @@ c (size_t locx, size_t locy)
 	Mpo<Symmetry> Mout(N_sites, {2,2}, HubbardSU2xSU2::STlabel, ss.str(), SfromD_SfromD);
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	/**\todo: think about crazy fermionic signs here:*/
-	Mout.setLocal(locx, pow(-1.,locx+1)*F[locx].c(locy).plain<double>(), F[0].sign().plain<double>());
+	Mout.setLocal(locx, F[locx].c(locy).plain<double>(), F[0].sign().plain<double>());
 	return Mout;
 }
 
@@ -221,7 +221,7 @@ cdag (size_t locx, size_t locy)
 	Mpo<Symmetry> Mout(N_sites, {2,2}, HubbardSU2xSU2::STlabel, ss.str(), SfromD_SfromD);
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	/**\todo: think about crazy fermionic signs here:*/
-	Mout.setLocal(locx, pow(-1.,locx+1)*F[locx].cdag(locy).plain<double>(), F[0].sign().plain<double>());
+	Mout.setLocal(locx, F[locx].cdag(locy).plain<double>(), F[0].sign().plain<double>());
 	return Mout;
 }
 

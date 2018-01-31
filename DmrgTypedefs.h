@@ -40,106 +40,112 @@ inline double isReal (complex<double> x) {return x.real();}
 	}
 #endif
 
-#ifndef SPINOP_LABEL_ENUM
-#define SPINOP_LABEL_ENUM
-	enum SPINOP_LABEL {SX, SY, iSY, SZ, SP, SM};
-	
-	std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
-	{
-		if      (Sa==SX)  {s << "Sx";}
-		else if (Sa==SY)  {s << "Sy";}
-		else if (Sa==iSY) {s << "iSy";}
-		else if (Sa==SZ)  {s << "Sz";}
-		else if (Sa==SP)  {s << "S+";}
-		else if (Sa==SM)  {s << "S-";}
-		return s;
-	}
-#endif
+enum SPINOP_LABEL {SX, SY, iSY, SZ, SP, SM};
 
-enum PARITY {EVEN=0, ODD=1};
-
-enum BC_CHOICE
+std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 {
-	RING, /**<Periodic boundary conditions implemented via an MPO with transfer between the first and the last site.*/
-	HAIRSLIDE, /**<Periodic boundary conditions implemented via chain folding.*/
-	CYLINDER, /**<Periodic boundary conditions in y-direction by using the full Hilbert space.*/
-	FLADDER, /**<2-leg ladder flattened to chain with nnn-hopping.*/
-	CHAIN /**Chain with open boundary conditions for consistency.*/
-};
-
-std::ostream& operator<< (std::ostream& s, BC_CHOICE CHOICE)
-{
-	if      (CHOICE==RING)      {s << "RING";}
-	else if (CHOICE==CYLINDER)  {s << "CYLINDER";}
-	else if (CHOICE==HAIRSLIDE) {s << "HAIRSLIDE";}
-	else if (CHOICE==FLADDER)   {s << "FLADDER";}
-	else if (CHOICE==CHAIN)     {s << "CHAIN";}
+	if      (Sa==SX)  {s << "Sx";}
+	else if (Sa==SY)  {s << "Sy";}
+	else if (Sa==iSY) {s << "iSy";}
+	else if (Sa==SZ)  {s << "Sz";}
+	else if (Sa==SP)  {s << "S+";}
+	else if (Sa==SM)  {s << "S-";}
 	return s;
 }
 
-template<BC_CHOICE CHOICE> struct BC;
+enum PARITY {EVEN=0, ODD=1};
 
-template<>
-struct BC<HAIRSLIDE>
-{
-	BC (size_t Lx_input)
-	:Lx(Lx_input/2), Ly(2), CHOICE(HAIRSLIDE)
-	{
-		assert(Lx_input%2==0 and "L must be even for rings because of folding!");
-	}
-	
-	BC_CHOICE CHOICE;
-	size_t Lx;
-	size_t Ly;
-};
+enum SUB_LATTICE {A=0,B=1};
 
-template<>
-struct BC<RING>
+std::ostream& operator<< (std::ostream& s, SUB_LATTICE sublat)
 {
-	BC (size_t Lx_input)
-	:Lx(Lx_input), Ly(1), CHOICE(RING)
-	{}
-	
-	BC_CHOICE CHOICE;
-	size_t Lx;
-	size_t Ly;
-};
+	if      (sublat==A)  {s << "A";}
+	else if (sublat==B)  {s << "B";}
+	return s;
+}
 
-template<>
-struct BC<CYLINDER>
-{
-	BC (size_t Lx_input, size_t Ly_input)
-	:Lx(Lx_input), Ly(Ly_input), CHOICE(CYLINDER)
-	{}
-	
-	BC_CHOICE CHOICE;
-	size_t Lx;
-	size_t Ly;
-};
+//enum BC_CHOICE
+//{
+//	RING, /**<Periodic boundary conditions implemented via an MPO with transfer between the first and the last site.*/
+//	HAIRSLIDE, /**<Periodic boundary conditions implemented via chain folding.*/
+//	CYLINDER, /**<Periodic boundary conditions in y-direction by using the full Hilbert space.*/
+//	FLADDER, /**<2-leg ladder flattened to chain with nnn-hopping.*/
+//	CHAIN /**Chain with open boundary conditions for consistency.*/
+//};
 
-template<>
-struct BC<FLADDER>
-{
-	BC (size_t Lx_input)
-	:Lx(2*Lx_input), Ly(1), CHOICE(FLADDER)
-	{}
-	
-	BC_CHOICE CHOICE;
-	size_t Lx;
-	size_t Ly;
-};
+//std::ostream& operator<< (std::ostream& s, BC_CHOICE CHOICE)
+//{
+//	if      (CHOICE==RING)      {s << "RING";}
+//	else if (CHOICE==CYLINDER)  {s << "CYLINDER";}
+//	else if (CHOICE==HAIRSLIDE) {s << "HAIRSLIDE";}
+//	else if (CHOICE==FLADDER)   {s << "FLADDER";}
+//	else if (CHOICE==CHAIN)     {s << "CHAIN";}
+//	return s;
+//}
 
-template<>
-struct BC<CHAIN>
-{
-	BC (size_t Lx_input)
-	:Lx(Lx_input), Ly(1), CHOICE(CHAIN)
-	{}
-	
-	BC_CHOICE CHOICE;
-	size_t Lx;
-	size_t Ly;
-};
+//template<BC_CHOICE CHOICE> struct BC;
+
+//template<>
+//struct BC<HAIRSLIDE>
+//{
+//	BC (size_t Lx_input)
+//	:Lx(Lx_input/2), Ly(2), CHOICE(HAIRSLIDE)
+//	{
+//		assert(Lx_input%2==0 and "L must be even for rings because of folding!");
+//	}
+//	
+//	BC_CHOICE CHOICE;
+//	size_t Lx;
+//	size_t Ly;
+//};
+
+//template<>
+//struct BC<RING>
+//{
+//	BC (size_t Lx_input)
+//	:Lx(Lx_input), Ly(1), CHOICE(RING)
+//	{}
+//	
+//	BC_CHOICE CHOICE;
+//	size_t Lx;
+//	size_t Ly;
+//};
+
+//template<>
+//struct BC<CYLINDER>
+//{
+//	BC (size_t Lx_input, size_t Ly_input)
+//	:Lx(Lx_input), Ly(Ly_input), CHOICE(CYLINDER)
+//	{}
+//	
+//	BC_CHOICE CHOICE;
+//	size_t Lx;
+//	size_t Ly;
+//};
+
+//template<>
+//struct BC<FLADDER>
+//{
+//	BC (size_t Lx_input)
+//	:Lx(2*Lx_input), Ly(1), CHOICE(FLADDER)
+//	{}
+//	
+//	BC_CHOICE CHOICE;
+//	size_t Lx;
+//	size_t Ly;
+//};
+
+//template<>
+//struct BC<CHAIN>
+//{
+//	BC (size_t Lx_input)
+//	:Lx(Lx_input), Ly(1), CHOICE(CHAIN)
+//	{}
+//	
+//	BC_CHOICE CHOICE;
+//	size_t Lx;
+//	size_t Ly;
+//};
 
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>

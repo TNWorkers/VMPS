@@ -10,8 +10,6 @@
 
 #include "bases/FermionBase.h"
 
-enum SUB_LATTICE {A=0,B=1};
-
 //Note: Don't put a name in this documentation with \class .. because doxygen gets confused with template symbols
 /** 
  * \ingroup Bases

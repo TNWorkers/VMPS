@@ -99,7 +99,7 @@ int main (int argc, char* argv[])
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	i0 = args.get<int>("i0",L/2);
 	dt = 0.2;
-	double V = L*Ly; double Vsq = V*V;
+	size_t V = L*Ly; size_t Vsq = V*V;
 	
 	Dinit  = args.get<int>("Dmin",2);
 	Dlimit = args.get<int>("Dmax",100);
@@ -158,7 +158,7 @@ int main (int argc, char* argv[])
 	for (int l=0; l<L; ++l)
 	{
 		Photo Ph(H_EDm,H_ED,UP,l);
-		cout << "l=" << l << ", <c>=" << avg(g_EDm.state, (Ph.Operator()*H_ED.n(l)).eval(), g_ED.state) << endl;
+		cout << "l=" << l << ", <c>=" << avg(g_EDm.state, (Ph.Operator()).eval(), g_ED.state) << endl;
 	}
 	
 	Auger A(H_EDmm, H_ED, i0);
@@ -177,11 +177,14 @@ int main (int argc, char* argv[])
 	lout << "<cdagc>=" << endl << densityMatrix_ED << endl;
 	
 	ArrayXd d_ED(L); d_ED=0.;
+	ArrayXd h_ED(L); h_ED=0.;
 	for (size_t i=0; i<L; ++i) 
 	{
 		d_ED(i) = avg(g_ED.state, H_ED.d(i), g_ED.state);
+		h_ED(i) = 1.-avg(g_ED.state, H_ED.n(i), g_ED.state)+d_ED(i);
 	}
 	lout << "<d>=" << endl << d_ED << endl;
+	lout << "<h>=" << endl << h_ED << endl;
 	
 	//--------U(0)---------
 	lout << endl << "--------U(0)---------" << endl << endl;
@@ -240,11 +243,12 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1m;
 	DMRG_U1.set_verbosity(DMRG::VERBOSITY::SILENT);
 	DMRG_U1.edgeState(H_U1, g_U1m, {Nup-1,Ndn}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	lout << "g_U1m.energy=" << g_U1m.energy << endl;
 	
 	ArrayXd c_U1(L);
 	for (int l=0; l<L; ++l)
 	{
-		c_U1(l) = avg(g_U1m.state, H_U1.c(UP,l), H_U1.n(UPDN,l), g_U1.state);
+		c_U1(l) = avg(g_U1m.state, H_U1.c(UP,l), g_U1.state);
 		cout << "l=" << l << ", <c>=" << c_U1(l) << endl;
 	}
 	
@@ -304,7 +308,6 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 	
 	VMPS::HubbardSU2xU1::Solver DMRG_SU2(VERB);
-	cout << Nup-Ndn+1 << "\t" << N << endl;
 	DMRG_SU2.edgeState(H_SU2, g_SU2, {Nup-Ndn+1,N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
 	                   tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
@@ -316,11 +319,12 @@ int main (int argc, char* argv[])
 	DMRG_SU2.set_verbosity(DMRG::VERBOSITY::SILENT);
 	DMRG_SU2.edgeState(H_SU2, g_SU2m, {abs(Nup-1-Ndn)+1,N-1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
 	                   tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	lout << "g_SU2m.energy=" << g_SU2m.energy << endl;
 	
 	ArrayXd c_SU2(L);
 	for (int l=0; l<L; ++l)
 	{
-		c_SU2(l) = avg(g_SU2m.state, H_SU2.c(l), H_SU2.n(l), g_SU2.state, {2,-1});
+		c_SU2(l) = avg(g_SU2m.state, H_SU2.c(l), g_SU2.state);
 		cout << "l=" << l << ", <c>=" << c_SU2(l) << "\t" << c_SU2(l)/c_U1(l) << endl;
 	}
 	
@@ -368,24 +372,27 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
 	
 	VMPS::HubbardSU2xSU2::Solver DMRG_SU2xSU2(VERB);
-	DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {Nup-Ndn+1,V-(Nup+Ndn)+1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+	DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {abs(Nup-Ndn)+1,V-(Nup+Ndn)+1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
 	                       tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha); //Todo: check Pseudospin quantum number... (1 <==> half filling)
 	
+	double Emin_SU2xSU2 = g_SU2xSU2.energy-0.5*U*(V-Nup-Ndn);
+	double emin_SU2xSU2 = Emin_SU2xSU2/V;
 	t_SU2xSU2 = Watch_SU2xSU2.time();
 	
 	// observables
 	
-	// Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2m;
-	// DMRG_SU2.set_verbosity(DMRG::VERBOSITY::SILENT);
-	// DMRG_SU2.edgeState(H_SU2, g_SU2m, {abs(Nup-1-Ndn)+1,N-1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
-	//                    tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	 Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2m;
+	 DMRG_SU2xSU2.set_verbosity(DMRG::VERBOSITY::SILENT);
+	 DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2m, {abs(Nup-1-Ndn)+1,V-(Nup+Ndn)+2}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+	                    tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	lout << "g_SU2xSU2m.energy=" << g_SU2xSU2m.energy-0.5*U*(V-Nup+1-Ndn) << endl;
 	
-	// ArrayXd c_SU2(L);
-	// for (int l=0; l<L; ++l)
-	// {
-	// 	c_SU2(l) = avg(g_SU2m.state, H_SU2.c(l), H_SU2.n(l), g_SU2.state, {2,-1});
-	// 	cout << "l=" << l << ", <c>=" << c_SU2(l) << "\t" << c_SU2(l)/c_U1(l) << endl;
-	// }
+	ArrayXd c_SU2xSU2(L);
+	for (int l=0; l<L; ++l)
+	{
+		c_SU2xSU2(l) = avg(g_SU2xSU2m.state, H_SU2xSU2.c(l), g_SU2xSU2.state);
+		cout << "l=" << l << ", <c>=" << c_SU2xSU2(l) << "\t" << c_SU2xSU2(l)/c_U1(l) << endl;
+	}
 	
 	MatrixXd densityMatrix_SU2xSU2(L,L); densityMatrix_SU2xSU2.setZero();
 	for (size_t i=0; i<L; ++i) 
@@ -406,12 +413,15 @@ int main (int argc, char* argv[])
 	
 	lout << "P SU(2): " << Ptot(0.5*densityMatrix_SU2xSU2,Lx) << "\t" << Ptot(0.5*densityMatrix_SU2xSU2B,Lx) << endl;
 	
-	ArrayXd nh_SU2xSU2(L); nh_SU2xSU2=0.; //We have no double occupancy, but the holon number nh is similar. Think about direct comparison..
+	ArrayXd nh_SU2xSU2(L); nh_SU2xSU2=0.;
+	ArrayXd ns_SU2xSU2(L); ns_SU2xSU2=0.;
 	for (size_t i=0; i<L; ++i) 
 	{
-		nh_SU2xSU2(i) = 0.5*avg(g_SU2xSU2.state, H_SU2xSU2.nh(i), g_SU2xSU2.state);
+		nh_SU2xSU2(i) = avg(g_SU2xSU2.state, H_SU2xSU2.nh(i), g_SU2xSU2.state);
+		ns_SU2xSU2(i) = avg(g_SU2xSU2.state, H_SU2xSU2.ns(i), g_SU2xSU2.state);
 	}
 	lout << "<nh>=" << endl << nh_SU2xSU2 << endl;
+	lout << "error(<nh>=<h>+<d>)=" << (nh_SU2xSU2-d_ED-h_ED).matrix().norm() << endl;
 #endif
 	
 	
@@ -434,7 +444,7 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(g_U1.energy/V));
 	T.add(to_string_prec(g_SU2.energy/V));
 #ifdef SU2XSU2
-	T.add(to_string_prec(g_SU2xSU2.energy/V));
+	T.add(to_string_prec(emin_SU2xSU2));
 #endif
 	T.endOfRow();
 	
@@ -444,7 +454,7 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(abs(g_U1.energy-g_ED.energy)/V));
 	T.add(to_string_prec(abs(g_SU2.energy-g_ED.energy)/V));
 #ifdef SU2XSU2
-	T.add(to_string_prec(abs(g_SU2xSU2.energy-g_ED.energy)/V));
+	T.add(to_string_prec(abs(Emin_SU2xSU2-g_ED.energy)/V));
 #endif
 	T.endOfRow();
 	
