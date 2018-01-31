@@ -1,6 +1,7 @@
 #ifndef VUMPSTYPEDEFS
 #define VUMPSTYPEDEFS
 
+/**Gauge of the UMPS tensor: L (left gauge), R (right gauge), or C (no gauge).*/
 struct GAUGE
 {
 	enum OPTION {L=0, R=1, C=2};
@@ -13,5 +14,56 @@ std::ostream& operator<< (std::ostream& s, GAUGE::OPTION g)
 	else if (g==GAUGE::OPTION::C) {s << "C";}
 	return s;
 }
+
+//template<typename MatrixType>
+//void unique_QR (const MatrixType &M, MatrixType &Qmatrix, MatrixType &Rmatrix)
+//{
+//	#ifdef DONT_USE_EIGEN_QR
+//	LapackQR<Scalar> Quirinus; // Lapack QR
+//	#else
+//	HouseholderQR<MatrixType> Quirinus; // Eigen QR
+//	#endif
+//	
+//	Quirinus.compute(M);
+//	
+//	#ifdef DONT_USE_EIGEN_QR
+//	Qmatrix = Quirinus.Qmatrix();
+//	Rmatrix = Quirinus.Rmatrix();
+//	#else
+//	Qmatrix = Quirinus.householderQ() * MatrixType::Identity(M.rows(),M.cols());
+//	Rmatrix = MatrixType::Identity(M.cols(),M.rows()) 
+//	        * Quirinus.matrixQR().template triangularView<Upper>();
+//	#endif
+//	
+//	// signs of the diagonal of Rmatrix in order to make the QR decomposition unique
+//	VectorXd Signum = (Rmatrix.diagonal().array()/Rmatrix.diagonal().array().abs()).matrix();
+//	Rmatrix = Signum.asDiagonal() * Rmatrix;
+//	Qmatrix = Qmatrix * Signum.asDiagonal();
+//}
+
+//template<typename MatrixType>
+//void unique_RQ (const MatrixType &M, MatrixType &Qmatrix, MatrixType &Rmatrix)
+//{
+//	#ifdef DONT_USE_EIGEN_QR
+//	LapackQR<Scalar> Quirinus; // Lapack QR
+//	#else
+//	HouseholderQR<MatrixType> Quirinus; // Eigen QR
+//	#endif
+//	
+//	Quirinus.compute(M.adjoint());
+//	
+//	#ifdef DONT_USE_EIGEN_QR
+//	Qmatrix = Quirinus.Qmatrix().adjoint();
+//	Rmatrix = Quirinus.Rmatrix().adjoint();
+//	#else
+//	Qmatrix = (Quirinus.householderQ() * MatrixType::Identity(M.cols(),M.rows())).adjoint();
+//	Rmatrix = (MatrixType::Identity(M.rows(),M.cols()) 
+//	        * Quirinus.matrixQR().template triangularView<Upper>()).adjoint();
+//	#endif
+//	
+//	VectorXd Signum = (Rmatrix.diagonal().array()/Rmatrix.diagonal().array().abs()).matrix();
+//	Rmatrix = Rmatrix * Signum.asDiagonal();
+//	Qmatrix = Signum.asDiagonal() * Qmatrix;
+//}
 
 #endif

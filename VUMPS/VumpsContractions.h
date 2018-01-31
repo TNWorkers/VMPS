@@ -7,6 +7,7 @@
 #include "VUMPS/Umps.h"
 #include "Mpo.h"
 
+/**Calculates the tensor \f$h_L\f$ (eq. 12) from the explicit 4-legged 2-site Hamiltonian and \f$A_L\f$.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_hL (const boost::multi_array<MpoScalar,4> &H2site,
                     const vector<Biped<Symmetry,MatrixType> > &AL,
@@ -34,6 +35,7 @@ MatrixType make_hL (const boost::multi_array<MpoScalar,4> &H2site,
 	return Mout;
 }
 
+/**Calculates the tensor \f$h_R\f$ (eq. 12) from the explicit 4-legged 2-site Hamiltonian and \f$A_R\f$.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
                     const vector<Biped<Symmetry,MatrixType> > &AR,
@@ -61,6 +63,7 @@ MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
 	return Mout;
 }
 
+/**Calculates the tensor \f$Y_L\f$ (eq. C17) from the MPO tensor \p W, the left transfer matrix \p L and \f$A_L\f$.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YL (size_t b,
                     const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W,
@@ -92,6 +95,7 @@ MatrixType make_YL (size_t b,
 	return Mout;
 }
 
+/**Calculates the tensor \f$Y_R\f$ (eq. C18) from the MPO tensor \p W, the left transfer matrix \p R and \f$A_R\f$.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YR (size_t a,
                     const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W,
@@ -123,6 +127,7 @@ MatrixType make_YR (size_t a,
 	return Mout;
 }
 
+/**Calculates the tensor \f$Y_L\f$ (eq. C17) explicitly for a 2-site unit cell.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YL (size_t b,
                     const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W12,
@@ -167,6 +172,7 @@ MatrixType make_YL (size_t b,
 	return Mout;
 }
 
+/**Calculates the tensor \f$Y_R\f$ (eq. C18) explicitly for a 2-site unit cell.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YR (size_t a,
                     const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W12,
@@ -510,6 +516,7 @@ MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t
 //	return res;
 //}
 
+/**Calculates the tensor \f$h_L\f$ (eq. 12) explicitly for a 2-site unit cell.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_hL (const boost::multi_array<MpoScalar,4> &H2site,
                     const vector<Biped<Symmetry,MatrixType> > &AL1,
@@ -538,6 +545,7 @@ MatrixType make_hL (const boost::multi_array<MpoScalar,4> &H2site,
 	return Mout;
 }
 
+/**Calculates the tensor \f$h_R\f$ (eq. 12) explicitly for a 2-site unit cell.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
                     const vector<Biped<Symmetry,MatrixType> > &AR1,
@@ -599,6 +607,7 @@ MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
 //}
 
 //-----------<definitions>-----------
+/**Structure to update \f$A_C\f$ (eq. 11). Contains \f$A_L\f$, \f$A_L\f$ and \f$H_L\f$ (= \p L), \f$H_R\f$ (= \p R).*/
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>
 struct PivumpsMatrix
 {
@@ -615,15 +624,19 @@ struct PivumpsMatrix
 	size_t dim;
 };
 
+/**Wrapper containing \f$C\f$ for local upates (eq. 16).*/
 template<typename Symmetry, typename Scalar>
 struct PivumpsVector0
 {
 	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > C;
 	
+	///\{
+	/**Linear algebra for \f$C\f$ in the vector space.*/
 	PivumpsVector0<Symmetry,Scalar>& operator+= (const PivumpsVector0<Symmetry,Scalar> &Vrhs);
 	PivumpsVector0<Symmetry,Scalar>& operator-= (const PivumpsVector0<Symmetry,Scalar> &Vrhs);
 	template<typename OtherScalar> PivumpsVector0<Symmetry,Scalar>& operator*= (const OtherScalar &alpha);
 	template<typename OtherScalar> PivumpsVector0<Symmetry,Scalar>& operator/= (const OtherScalar &alpha);
+	///\}
 };
 //-----------</definitions>-----------
 
@@ -781,6 +794,7 @@ struct GaussianRandomVector<PivumpsVector0<Symmetry,Scalar>,Scalar>
 	}
 };
 
+/**Performs the local update of \f$A_C\f$ (eq. 11) with an explicit 2-site Hamiltonian.*/
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVectorQ<Symmetry,Scalar> &Vin, PivotVectorQ<Symmetry,Scalar> &Vout)
 {
@@ -820,6 +834,7 @@ void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVectorQ<
 	}
 }
 
+/**Performs \p HxV in place.*/
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, PivotVectorQ<Symmetry,Scalar> &Vinout)
 {
@@ -828,6 +843,7 @@ void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, PivotVectorQ<Symmet
 	Vinout = Vtmp;
 }
 
+/**Performs the local update of \f$C\f$ (eq. 16) with an explicit 2-site Hamiltonian.*/
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, const PivumpsVector0<Symmetry,Scalar> &Vin, PivumpsVector0<Symmetry,Scalar> &Vout)
 {
@@ -853,6 +869,7 @@ void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, const PivumpsVector
 	Vout.C.block[0] += Vin.C.block[0] * H.R;
 }
 
+/**Performs \p HxV in place.*/
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, PivumpsVector0<Symmetry,Scalar> &Vinout)
 {
@@ -861,6 +878,7 @@ void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, PivumpsVector0<Symm
 	Vinout = Vtmp;
 }
 
+/**Calculates the matrix element between two UMPS and an MPO. Goes from the left and uses \f$A_C\f$ and \f$A_R\f$.*/
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg (const Umps<Symmetry,Scalar> &Vbra, 
             const Mpo<Symmetry,MpoScalar> &O, 
@@ -893,6 +911,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	}
 }
 
+/**Calculates the matrix element for a vector of MPOs, summing up the result.*/
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg (const Umps<Symmetry,Scalar> &Vbra, 
             const vector<Mpo<Symmetry,MpoScalar> > &O, 

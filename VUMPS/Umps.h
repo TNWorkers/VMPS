@@ -15,8 +15,8 @@
 
 #include "VUMPS/VumpsTypedefs.h"
 #include "VUMPS/VumpsTransferMatrix.h"
-#include "LanczosSolver.h"
-#include "ArnoldiSolver.h"
+#include "LanczosSolver.h" // from LANCZOS
+#include "ArnoldiSolver.h" // from LANCZOS
 #include "tensors/Biped.h"
 #include "tensors/Multipede.h"
 #include "Mpo.h"
@@ -24,61 +24,10 @@
 #if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
 	#include "LapackWrappers.h"
 #endif
-#include "PolychromaticConsole.h"
-#include "RandomVector.h"
+#include "PolychromaticConsole.h" // from HELPERS
+#include "RandomVector.h" // from LANCZOS
 
-//template<typename MatrixType>
-//void unique_QR (const MatrixType &M, MatrixType &Qmatrix, MatrixType &Rmatrix)
-//{
-//	#ifdef DONT_USE_EIGEN_QR
-//	LapackQR<Scalar> Quirinus; // Lapack QR
-//	#else
-//	HouseholderQR<MatrixType> Quirinus; // Eigen QR
-//	#endif
-//	
-//	Quirinus.compute(M);
-//	
-//	#ifdef DONT_USE_EIGEN_QR
-//	Qmatrix = Quirinus.Qmatrix();
-//	Rmatrix = Quirinus.Rmatrix();
-//	#else
-//	Qmatrix = Quirinus.householderQ() * MatrixType::Identity(M.rows(),M.cols());
-//	Rmatrix = MatrixType::Identity(M.cols(),M.rows()) 
-//	        * Quirinus.matrixQR().template triangularView<Upper>();
-//	#endif
-//	
-//	// signs of the diagonal of Rmatrix in order to make the QR decomposition unique
-//	VectorXd Signum = (Rmatrix.diagonal().array()/Rmatrix.diagonal().array().abs()).matrix();
-//	Rmatrix = Signum.asDiagonal() * Rmatrix;
-//	Qmatrix = Qmatrix * Signum.asDiagonal();
-//}
-
-//template<typename MatrixType>
-//void unique_RQ (const MatrixType &M, MatrixType &Qmatrix, MatrixType &Rmatrix)
-//{
-//	#ifdef DONT_USE_EIGEN_QR
-//	LapackQR<Scalar> Quirinus; // Lapack QR
-//	#else
-//	HouseholderQR<MatrixType> Quirinus; // Eigen QR
-//	#endif
-//	
-//	Quirinus.compute(M.adjoint());
-//	
-//	#ifdef DONT_USE_EIGEN_QR
-//	Qmatrix = Quirinus.Qmatrix().adjoint();
-//	Rmatrix = Quirinus.Rmatrix().adjoint();
-//	#else
-//	Qmatrix = (Quirinus.householderQ() * MatrixType::Identity(M.cols(),M.rows())).adjoint();
-//	Rmatrix = (MatrixType::Identity(M.rows(),M.cols()) 
-//	        * Quirinus.matrixQR().template triangularView<Upper>()).adjoint();
-//	#endif
-//	
-//	VectorXd Signum = (Rmatrix.diagonal().array()/Rmatrix.diagonal().array().abs()).matrix();
-//	Rmatrix = Rmatrix * Signum.asDiagonal();
-//	Qmatrix = Signum.asDiagonal() * Qmatrix;
-//}
-
-/**Uniform Matrix Product State.
+/**Uniform Matrix Product State. Currently without symmetries, template parameter \p Symmetry can only be \p Sym::U0.
 \describe_Nq
 \describe_Scalar*/
 template<typename Symmetry, typename Scalar=double>
@@ -95,46 +44,65 @@ public:
 	/**Does nothing.*/
 	Umps<Symmetry,Scalar>(){};
 	
+	/**Constructs a UMPS with fixed bond dimension with the info from the Hamiltonian.*/
 	template<typename Hamiltonian> Umps (const Hamiltonian &H, size_t L_input, size_t Dmax, qarray<Symmetry::Nq> Qtot_input);
 	
+	/**Constructs a UMPS with fixed bond dimension with a given basis.*/
 	Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, size_t L_input, size_t Dmax, qarray<Symmetry::Nq> Qtot_input);
 	
+	/**\describe_info*/
 	string info() const;
+	
+	/**Tests the orthogonality of the UMPS.*/
 	string test_ortho (double tol=1e-10) const;
 	
+	/**Sets all matrices  \f$A_L\f$, \f$A_R\f$, \f$A_C\f$, \f$C\f$) to random using boost's uniform distribution from -1 to 1.*/
 	void setRandom();
 	
+	/**Resizes all containers to \p N_sites, the bond dimension to \p Dmax and sets all quantum numbers to vacuum.*/
 	void resize (size_t Dmax);
 	
-	/**Resizes all block matrices with the same forced dimensions. Useful for iDMRG.*/
-	void forcedResize (size_t Dmax);
-	
-//	void decompose (size_t loc, const vector<vector<Biped<Symmetry,MatrixType> > > &Apair);
+	/**Calculates \f$A_L\f$ and \f$A_R\f$ from \f$A_C\f$ and \f$C\f$ at site \p loc using SVD (eq. 19,20). Calculates the singular values along the way.*/
 	void svdDecompose (size_t loc);
+	
+	/**Calculates \f$A_L\f$ and \f$A_R\f$ from \f$A_C\f$ and \f$C\f$ at site \p loc using the polar decomposition (eq. 21,22).*/
 	void polarDecompose (size_t loc);
 	
+	/**Returns the singular values at site \p loc.*/
 	VectorXd singularValues (size_t loc=0);
+	
+	/**Returns the entropy at site \p loc.*/
 	double entropy (size_t loc=0);
 	
+	/**Returns the local basis at site \p loc.*/
 	inline vector<qarray<Symmetry::Nq> > locBasis (size_t loc) const {return qloc[loc];}
+	
+	/**Returns the whole local basis at site \p loc.*/
 	inline vector<vector<qarray<Symmetry::Nq> > > locBasis()   const {return qloc;}
 	
-	/**Returns the amount of rows of first tensor without symmetries. Useful for iDMRG.*/
+	/**Returns the amount of rows of first tensor. Useful for environment tensors in contractions.*/
 	size_t get_frst_rows() const {return A[GAUGE::C][0][0].block[0].rows();}
 	
-	/**Returns the amount of columns of last tensor without symmetries. Useful for iDMRG.*/
+	/**Returns the amount of columns of last tensor. Useful for environment tensors in contractions.*/
 	size_t get_last_cols() const {return A[GAUGE::C][N_sites][0].block[0].cols();}
 	
+	/**Returns the amount of sites, i.e. the size of the unit cell.*/
 	size_t length() const {return N_sites;}
 	
+	/**Calculates the left and right decomposition error as \f$\epsilon_L=\big|A_C-A_LC\big|^2\f$ and \f$\epsilon_R=\big|A_C-CA_R\big|^2\f$ (eq. 18).*/
 	void calc_epsLRsq (size_t loc, double &epsL, double &epsR);
 	
 	size_t calc_Dmax() const;
 	size_t calc_Mmax() const;
+	
+	/**\describe_memory*/
 	double memory (MEMUNIT memunit) const;
 	
+	/**Calculates the scalar product with another UMPS by finding the dominant eigenvalue of the transfer matrix. 
+	See arXiv:0804.2509 and Phys. Rev. B 78, 155117.*/
 	complex<double> dot (const Umps<Symmetry,Scalar> &Vket) const;
 	
+	/**Returns \f$A_L\f$, \f$A_R\f$ or \f$A_C\f$ at site \p loc as const ref.*/
 	const vector<Biped<Symmetry,MatrixType> > &A_at (GAUGE::OPTION g, size_t loc) const {return A[g][loc];};
 	
 private:
@@ -154,11 +122,14 @@ private:
 	std::array<string,Symmetry::Nq> qlabel = {};
 	qarray<Symmetry::Nq> Qtot;
 	
+	// UMPS-tensors in the three gauges
 	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> A; // A[L/R/C][l][s].block[q]
-	vector<Biped<Symmetry,MatrixType> >                        C; // zero-site part C[l]
-	vector<vector<VectorType> >                                Sigma;
 	
-	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> N; // A[L/R/C][l][s].block[q]
+	// center matrix
+	vector<Biped<Symmetry,MatrixType> >                        C; // zero-site part C[l]
+	
+	// null space (eq. 25 and surrounding text)
+	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> N; // N[L/R/C][l][s].block[q]
 	
 	vector<VectorXd> Csingular;
 	VectorXd S;
@@ -347,18 +318,6 @@ resize (size_t Dmax_input)
 	Csingular.clear();
 	Csingular.resize(N_sites);
 	S.resize(N_sites);
-}
-
-template<typename Symmetry, typename Scalar>
-void Umps<Symmetry,Scalar>::
-forcedResize (size_t Dmax)
-{
-	for (size_t l=0; l<N_sites; ++l)
-	for (size_t s=0; s<qloc.size(); ++s)
-	for (size_t q=0; q<A[GAUGE::C][l][s].dim; ++q)
-	{
-		A[GAUGE::C][l][s].block[q].resize(Dmax,Dmax);
-	}
 }
 
 template<typename Symmetry, typename Scalar>
