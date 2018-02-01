@@ -255,8 +255,8 @@ public:
 //	void SVDcompress (bool USE_SQUARE=false, double eps_svd=1e-7, size_t N_halfsweeps=2);
 //	string test_ortho() const;
 //	void init_compression();
-//	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H=NULL);
-//	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H=NULL);
+//	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix<Nq,Scalar> *H=NULL);
+//	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix<Nq,Scalar> *H=NULL);
 //	void flatten_to_Mps (Mps<0,Scalar> &V);
 //	vector<vector<vector<MatrixType> > > A;
 	
@@ -1426,7 +1426,7 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 
 //template<typename Symmetry, typename Scalar>
 //void Mpo<Symmetry,Scalar>::
-//rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
+//rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix<Nq,Scalar> *H)
 //{
 //	size_t Nrows = A[loc][0][0].rows();
 //	size_t Ncols = A[loc][0][0].cols();
@@ -1476,7 +1476,7 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 
 //template<typename Symmetry, typename Scalar>
 //void Mpo<Symmetry,Scalar>::
-//leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Nq,Scalar> *H)
+//leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix<Nq,Scalar> *H)
 //{
 //	size_t Nrows = A[loc][0][0].rows();
 //	size_t Ncols = A[loc][0][0].cols();

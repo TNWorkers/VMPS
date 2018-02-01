@@ -68,3 +68,11 @@
  *
  * \todo Implement a base class to get rid of duplicated code.
  */
+ 
+ /** 
+ * @defgroup VUMPS VUMPS
+ * 
+ * Implementation of the _Variational Uniform Matrix Product States_ without symmetries. All equation references are according to the follwing paper:
+ * arXiv:1701.07035 "Variational optimization algorithms for uniform matrix product states" (V. Zauner-Stauber, L. Vanderstraeten, M.T. Fishman, F. Verstraete, J. Haegeman, 2017).
+ * 
+ */

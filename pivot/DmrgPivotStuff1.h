@@ -7,7 +7,7 @@
 
 //-----------<definitions>-----------
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>
-struct PivotMatrixQ
+struct PivotMatrix
 {
 	static constexpr std::size_t Nq = Symmetry::Nq;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
@@ -29,21 +29,21 @@ struct PivotMatrixQ
 };
 
 template<typename Symmetry, typename Scalar>
-struct PivotVectorQ
+struct PivotVector1
 {
 	static constexpr std::size_t Nq = Symmetry::Nq;
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > A;
 	
-	PivotVectorQ<Symmetry,Scalar>& operator+= (const PivotVectorQ<Symmetry,Scalar> &Vrhs);
-	PivotVectorQ<Symmetry,Scalar>& operator-= (const PivotVectorQ<Symmetry,Scalar> &Vrhs);
-	template<typename OtherScalar> PivotVectorQ<Symmetry,Scalar>& operator*= (const OtherScalar &alpha);
-	template<typename OtherScalar> PivotVectorQ<Symmetry,Scalar>& operator/= (const OtherScalar &alpha);
+	PivotVector1<Symmetry,Scalar>& operator+= (const PivotVector1<Symmetry,Scalar> &Vrhs);
+	PivotVector1<Symmetry,Scalar>& operator-= (const PivotVector1<Symmetry,Scalar> &Vrhs);
+	template<typename OtherScalar> PivotVector1<Symmetry,Scalar>& operator*= (const OtherScalar &alpha);
+	template<typename OtherScalar> PivotVector1<Symmetry,Scalar>& operator/= (const OtherScalar &alpha);
 };
 //-----------</definitions>-----------
 
 //-----------<vector arithmetics>-----------
 template<typename Symmetry, typename Scalar>
-PivotVectorQ<Symmetry,Scalar>& PivotVectorQ<Symmetry,Scalar>::operator+= (const PivotVectorQ<Symmetry,Scalar> &Vrhs)
+PivotVector1<Symmetry,Scalar>& PivotVector1<Symmetry,Scalar>::operator+= (const PivotVector1<Symmetry,Scalar> &Vrhs)
 {
 	for (std::size_t s=0; s<A.size(); s++)
 	{
@@ -53,8 +53,8 @@ PivotVectorQ<Symmetry,Scalar>& PivotVectorQ<Symmetry,Scalar>::operator+= (const 
 }
 
 template<typename Symmetry, typename Scalar>
-PivotVectorQ<Symmetry,Scalar>& PivotVectorQ<Symmetry,Scalar>::
-operator-= (const PivotVectorQ<Symmetry,Scalar> &Vrhs)
+PivotVector1<Symmetry,Scalar>& PivotVector1<Symmetry,Scalar>::
+operator-= (const PivotVector1<Symmetry,Scalar> &Vrhs)
 {
 	for (std::size_t s=0; s<A.size(); s++)
 	{
@@ -65,7 +65,7 @@ operator-= (const PivotVectorQ<Symmetry,Scalar> &Vrhs)
 
 template<typename Symmetry, typename Scalar>
 template<typename OtherScalar>
-PivotVectorQ<Symmetry,Scalar>& PivotVectorQ<Symmetry,Scalar>::
+PivotVector1<Symmetry,Scalar>& PivotVector1<Symmetry,Scalar>::
 operator*= (const OtherScalar &alpha)
 {
 	for (size_t s=0; s<A.size(); ++s)
@@ -78,7 +78,7 @@ operator*= (const OtherScalar &alpha)
 
 template<typename Symmetry, typename Scalar>
 template<typename OtherScalar>
-PivotVectorQ<Symmetry,Scalar>& PivotVectorQ<Symmetry,Scalar>::
+PivotVector1<Symmetry,Scalar>& PivotVector1<Symmetry,Scalar>::
 operator/= (const OtherScalar &alpha)
 {
 	for (size_t s=0; s<A.size(); ++s)
@@ -90,35 +90,35 @@ operator/= (const OtherScalar &alpha)
 }
 
 template<typename Symmetry, typename Scalar, typename OtherScalar>
-PivotVectorQ<Symmetry,Scalar> operator* (const OtherScalar &alpha, PivotVectorQ<Symmetry,Scalar> V)
+PivotVector1<Symmetry,Scalar> operator* (const OtherScalar &alpha, PivotVector1<Symmetry,Scalar> V)
 {
 	return V *= alpha;
 }
 
 template<typename Symmetry, typename Scalar, typename OtherScalar>
-PivotVectorQ<Symmetry,Scalar> operator* (PivotVectorQ<Symmetry,Scalar> V, const OtherScalar &alpha)
+PivotVector1<Symmetry,Scalar> operator* (PivotVector1<Symmetry,Scalar> V, const OtherScalar &alpha)
 {
 	return V *= alpha;
 }
 
 template<typename Symmetry, typename Scalar, typename OtherScalar>
-PivotVectorQ<Symmetry,Scalar> operator/ (PivotVectorQ<Symmetry,Scalar> V, const OtherScalar &alpha)
+PivotVector1<Symmetry,Scalar> operator/ (PivotVector1<Symmetry,Scalar> V, const OtherScalar &alpha)
 {
 	return V /= alpha;
 }
 
 template<typename Symmetry, typename Scalar>
-PivotVectorQ<Symmetry,Scalar> operator+ (const PivotVectorQ<Symmetry,Scalar> &V1, const PivotVectorQ<Symmetry,Scalar> &V2)
+PivotVector1<Symmetry,Scalar> operator+ (const PivotVector1<Symmetry,Scalar> &V1, const PivotVector1<Symmetry,Scalar> &V2)
 {
-	PivotVectorQ<Symmetry,Scalar> Vout = V1;
+	PivotVector1<Symmetry,Scalar> Vout = V1;
 	Vout += V2;
 	return Vout;
 }
 
 template<typename Symmetry, typename Scalar>
-PivotVectorQ<Symmetry,Scalar> operator- (const PivotVectorQ<Symmetry,Scalar> &V1, const PivotVectorQ<Symmetry,Scalar> &V2)
+PivotVector1<Symmetry,Scalar> operator- (const PivotVector1<Symmetry,Scalar> &V1, const PivotVector1<Symmetry,Scalar> &V2)
 {
-	PivotVectorQ<Symmetry,Scalar> Vout = V1;
+	PivotVector1<Symmetry,Scalar> Vout = V1;
 	Vout -= V2;
 	return Vout;
 }
@@ -126,7 +126,7 @@ PivotVectorQ<Symmetry,Scalar> operator- (const PivotVectorQ<Symmetry,Scalar> &V1
 
 //-----------<matrix*vector>-----------
 template<typename Symmetry, typename Scalar, typename MpoScalar>
-void HxV (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H, const PivotVectorQ<Symmetry,Scalar> &Vin, PivotVectorQ<Symmetry,Scalar> &Vout)
+void HxV (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVector1<Symmetry,Scalar> &Vin, PivotVector1<Symmetry,Scalar> &Vout)
 {
 	Vout = Vin;
 	for (size_t s=0; s<Vout.A.size(); ++s) {Vout.A[s].setZero();}
@@ -212,7 +212,7 @@ void HxV (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H, const PivotVectorQ<S
 }
 
 //template<typename Symmetry, typename Scalar, typename MpoScalar>
-//void careful_HxV (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H, const PivotVectorQ<Symmetry,Scalar> &Vin, PivotVectorQ<Symmetry,Scalar> &Vout, std::array<qarray<Nq>,D> qloc)
+//void careful_HxV (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVector1<Symmetry,Scalar> &Vin, PivotVector1<Symmetry,Scalar> &Vout, std::array<qarray<Nq>,D> qloc)
 //{
 //	Vout = Vin;
 //	for (size_t s=0; s<D; ++s) {Vout.A[s].setZero();}
@@ -296,9 +296,9 @@ void HxV (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H, const PivotVectorQ<S
 //}
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
-void HxV (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H, PivotVectorQ<Symmetry,Scalar> &Vinout)
+void HxV (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H, PivotVector1<Symmetry,Scalar> &Vinout)
 {
-	PivotVectorQ<Symmetry,Scalar> Vtmp;
+	PivotVector1<Symmetry,Scalar> Vtmp;
 	HxV(H,Vinout,Vtmp);
 	Vinout = Vtmp;
 }
@@ -306,7 +306,7 @@ void HxV (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H, PivotVectorQ<Symmetr
 
 //-----------<dot & vector norms>-----------
 template<typename Symmetry, typename Scalar>
-Scalar dot (const PivotVectorQ<Symmetry,Scalar> &V1, const PivotVectorQ<Symmetry,Scalar> &V2)
+Scalar dot (const PivotVector1<Symmetry,Scalar> &V1, const PivotVector1<Symmetry,Scalar> &V2)
 {
 	Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out = V1.A[0].adjoint().contract(V2.A[0]);
 	for (std::size_t s=1; s<V1.A.size(); s++)
@@ -318,26 +318,26 @@ Scalar dot (const PivotVectorQ<Symmetry,Scalar> &V1, const PivotVectorQ<Symmetry
 }
 
 template<typename Symmetry, typename Scalar>
-double squaredNorm (const PivotVectorQ<Symmetry,Scalar> &V)
+double squaredNorm (const PivotVector1<Symmetry,Scalar> &V)
 {
 	double res = isReal(dot(V,V));
 	return res;
 }
 
 template<typename Symmetry, typename Scalar>
-inline double norm (const PivotVectorQ<Symmetry,Scalar> &V)
+inline double norm (const PivotVector1<Symmetry,Scalar> &V)
 {
 	return sqrt(squaredNorm(V));
 }
 
 template<typename Symmetry, typename Scalar>
-inline void normalize (PivotVectorQ<Symmetry,Scalar> &V)
+inline void normalize (PivotVector1<Symmetry,Scalar> &V)
 {
 	V /= norm(V);
 }
 
 template<typename Symmetry, typename Scalar>
-double infNorm (const PivotVectorQ<Symmetry,Scalar> &V1, const PivotVectorQ<Symmetry,Scalar> &V2)
+double infNorm (const PivotVector1<Symmetry,Scalar> &V1, const PivotVector1<Symmetry,Scalar> &V2)
 {
 	double res = 0.;
 	for (size_t s=0; s<V1.A.size(); ++s)
@@ -355,20 +355,20 @@ double infNorm (const PivotVectorQ<Symmetry,Scalar> &V1, const PivotVectorQ<Symm
 
 //-----------<miscellaneous>-----------
 template<typename Symmetry, typename Scalar, typename MpoScalar>
-inline size_t dim (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H)
+inline size_t dim (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H)
 {
 	return H.dim;
 }
 
 // How to calculate the Frobenius norm of this?
 template<typename Symmetry, typename Scalar, typename MpoScalar>
-inline double norm (const PivotMatrixQ<Symmetry,Scalar,MpoScalar> &H)
+inline double norm (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H)
 {
 	return H.dim;
 }
 
 template<typename Symmetry, typename Scalar>
-void swap (PivotVectorQ<Symmetry,Scalar> &V1, PivotVectorQ<Symmetry,Scalar> &V2)
+void swap (PivotVector1<Symmetry,Scalar> &V1, PivotVector1<Symmetry,Scalar> &V2)
 {
 	for (size_t s=0; s<V1.A.size(); ++s)
 	{
@@ -379,9 +379,9 @@ void swap (PivotVectorQ<Symmetry,Scalar> &V1, PivotVectorQ<Symmetry,Scalar> &V2)
 #include "RandomVector.h"
 
 template<typename Symmetry, typename Scalar>
-struct GaussianRandomVector<PivotVectorQ<Symmetry,Scalar>,Scalar>
+struct GaussianRandomVector<PivotVector1<Symmetry,Scalar>,Scalar>
 {
-	static void fill (size_t N, PivotVectorQ<Symmetry,Scalar> &Vout)
+	static void fill (size_t N, PivotVector1<Symmetry,Scalar> &Vout)
 	{
 		for (size_t s=0; s<Vout.A.size(); ++s)
 		for (size_t q=0; q<Vout.A[s].dim; ++q)

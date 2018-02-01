@@ -6,6 +6,7 @@
 #include "bases/FermionBase.h"
 #include "ParamHandler.h" // from HELPERS
 #include "models/HubbardObservables.h"
+#include "symmetry/S1xS2.h"
 
 namespace VMPS
 {

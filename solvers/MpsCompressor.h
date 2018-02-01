@@ -130,7 +130,7 @@ private:
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
 	
 	// for |Vout> ≈ H*|Vin>
-	vector<PivotMatrixQ<Symmetry,Scalar,MpoScalar> > Heff;
+	vector<PivotMatrix<Symmetry,Scalar,MpoScalar> > Heff;
 	template<typename MpOperator>
 	void prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE=true);
 	template<typename MpOperator>
@@ -723,7 +723,7 @@ optimizationStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symm
 	}
 	
 	// why doesn't this work?
-//	PivotVectorQ<Symmetry,Scalar> Vtmp;
+//	PivotVector1<Symmetry,Scalar> Vtmp;
 //	Vtmp.A = Vin.A[pivot];
 //	HxV(Heff[pivot],Vtmp);
 //	Vout.A[pivot] = Vtmp.A;
@@ -917,10 +917,10 @@ energyTruncationStep (Mps<Symmetry,Scalar> &V, size_t dimK)
 		Heff[pivot].dim += V.A[pivot][s].block[q].rows() * V.A[pivot][s].block[q].cols();
 	}
 	
-	PivotVectorQ<Symmetry,Scalar> Psi;
+	PivotVector1<Symmetry,Scalar> Psi;
 	Psi.A = V.A[pivot];
 	
-	LanczosMower<PivotMatrixQ<Symmetry,Scalar,MpoScalar>,PivotVectorQ<Symmetry,Scalar>,Scalar> Lutz(min(dimK,Heff[pivot].dim));
+	LanczosMower<PivotMatrix<Symmetry,Scalar,MpoScalar>,PivotVector1<Symmetry,Scalar>,Scalar> Lutz(min(dimK,Heff[pivot].dim));
 	Lutz.mow(Heff[pivot],Psi,2.);
 	mowedWeight(pivot) = Lutz.get_mowedWeight();
 	

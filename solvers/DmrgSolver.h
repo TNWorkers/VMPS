@@ -80,7 +80,7 @@ private:
 	size_t Dmax_old;
 	double err_eigval, err_state, err_state_before_end_of_noise;
 	
-	vector<PivotMatrixQ<Symmetry,Scalar,Scalar> > Heff; // Scalar = MpoScalar for ground state
+	vector<PivotMatrix<Symmetry,Scalar,Scalar> > Heff; // Scalar = MpoScalar for ground state
 	
 	double Eold;
 
@@ -574,9 +574,9 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LA
 		Heff[stat.pivot].dim += Vout.state.A[stat.pivot][s].block[q].rows() * Vout.state.A[stat.pivot][s].block[q].cols();
 	}
 	
-	Eigenstate<PivotVectorQ<Symmetry,Scalar> > g;
+	Eigenstate<PivotVector1<Symmetry,Scalar> > g;
 	g.state.A = Vout.state.A[stat.pivot];
-	LanczosSolver<PivotMatrixQ<Symmetry,Scalar,Scalar>,PivotVectorQ<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
+	LanczosSolver<PivotMatrix<Symmetry,Scalar,Scalar>,PivotVector1<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
 	
 	Lutz.set_dimK(min(30ul, Heff[stat.pivot].dim));
 	Lutz.edgeState(Heff[stat.pivot],g, EDGE, 1e-7,1e-4, false);

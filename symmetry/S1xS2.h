@@ -5,9 +5,10 @@
 #include <unordered_map>
 #include <iostream>
 
-#include "qarray.h"
+#include "symmetry/qarray.h"
 #include "DmrgTypedefs.h"
 #include "DmrgExternal.h"
+#include "symmetry/kind_dummies.h"
 
 namespace Sym{
 	
