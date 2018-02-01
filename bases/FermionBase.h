@@ -32,7 +32,6 @@ public:
 	/**
 	 * \param L_input : the amount of orbitals
 	 * \param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis
-ow})\f$.
 	 */
 	FermionBase (size_t L_input, bool U_IS_INFINITE=false);
 	

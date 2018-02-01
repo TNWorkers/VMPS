@@ -43,7 +43,7 @@ const std::map<string,std::any> HeisenbergXXZ::defaults =
 
 HeisenbergXXZ::
 HeisenbergXXZ (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<0>({}), labeldummy, ""),
+:Mpo<Symmetry> (L, qarray<0>({}), ""),
  HeisenbergObservables(L,params,HeisenbergXXZ::defaults)
 {
 	ParamHandler P(params,HeisenbergXXZ::defaults);

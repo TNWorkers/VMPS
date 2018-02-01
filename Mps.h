@@ -391,7 +391,6 @@ private:
 	/**local basis.*/
 	vector<vector<qarray<Nq> > > qloc;
 
-	std::array<string,Nq> qlabel = {};
 	qarray<Nq> Qtot;
 	
 	vector<vector<Biped<Symmetry,MatrixType> > > A; // access: A[l][s].block[q]
@@ -470,7 +469,6 @@ Mps()
 :DmrgJanitor<PivotMatrix<Symmetry,Scalar,Scalar> >()
 {
 	format = noFormat;
-//	qlabel = defaultQlabel<Nq>();
 }
 
 template<typename Symmetry, typename Scalar>
@@ -481,8 +479,6 @@ Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_in
 	format = noFormat;
 	// format = ::noFormat<Symmetry>;
 	outerResize(L_input, qloc_input, Qtot_input);
-
-//	qlabel = defaultQlabel<Nq>();
 }
 
 template<typename Symmetry, typename Scalar>
@@ -492,7 +488,6 @@ Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
 :DmrgJanitor<PivotMatrix<Symmetry,Scalar,Scalar> >()
 {
 	format = H.format;
-	qlabel = H.qlabel;
 	N_phys = H.volume();
 	outerResize(H.length(), H.locBasis(), Qtot_input);
 	innerResize(Dmax);
@@ -504,7 +499,6 @@ void Mps<Symmetry,Scalar>::
 outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input)
 {
 	format = H.format;
-	qlabel = H.qlabel;
 	N_phys = H.volume();
 	outerResize(H.length(), H.locBasis(), Qtot_input);
 }
@@ -515,7 +509,6 @@ void Mps<Symmetry,Scalar>::
 outerResize (const Mps<Symmetry,OtherMatrixType> &V)
 {
 	format = V.format;
-	qlabel = V.qlabel;
 	this->N_sites = V.N_sites;
 	N_phys = V.N_phys;
 	qloc = V.qloc;
@@ -885,7 +878,6 @@ setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 {
 	assert(H.length() == config.size());
 	format = H.format;
-	qlabel = H.qlabel;
 	N_phys = H.volume();
 	outerResize(H.length(), H.locBasis(), accumulate(config.begin(),config.end(),qvacuum<Nq>()));
 	

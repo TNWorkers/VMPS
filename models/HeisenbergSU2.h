@@ -60,10 +60,7 @@ public:
 	 * \param loc : The location in the chain
 	*/
 	static HamiltonianTermsXd<Symmetry> set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc=0);
-	
-	/**Labels the conserved quantum number as "S".*/
-	static const std::array<string,1> Stotlabel;
-	
+		
 	///@{
 	/**Observables.*/
 	Mpo<Symmetry,double> S (std::size_t locx, std::size_t locy=0);
@@ -86,11 +83,9 @@ protected:
 	vector<SpinBase<Symmetry> > B;
 };
 
-const std::array<string,1> HeisenbergSU2::Stotlabel{"S"};
-
 HeisenbergSU2::
 HeisenbergSU2 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), HeisenbergSU2::Stotlabel, "", SfromD)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "", SfromD)
 {
 	ParamHandler P(params,defaults);
 	
@@ -127,7 +122,7 @@ S (std::size_t locx, std::size_t locy)
 
 	SiteOperator Op = B[locx].S(locy).plain<double>();
 
-	Mpo<Symmetry> Mout(N_sites, Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
+	Mpo<Symmetry> Mout(N_sites, Op.Q, ss.str(), halve<Symmetry::Nq>);
 	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
 
 	Mout.setLocal(locx,Op);
@@ -143,7 +138,7 @@ Sdag (std::size_t locx, std::size_t locy)
 
 	SiteOperator Op = B[locx].Sdag(locy).plain<double>();
 
-	Mpo<Symmetry> Mout(N_sites, Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
+	Mpo<Symmetry> Mout(N_sites, Op.Q, ss.str(), halve<Symmetry::Nq>);
 	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
 
 	Mout.setLocal(locx,Op);
@@ -165,7 +160,6 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 	
 	Mout.label = ss.str();
 	Mout.setQtarget(Symmetry::qvacuum());
-	Mout.qlabel = HeisenbergSU2::Stotlabel;
 	if (locx1 == locx2)
 	{
 		auto product = std::sqrt(3.)*Operator::prod(B[locx1].Sdag(locy1),B[locx2].S(locy2),Symmetry::qvacuum());

@@ -11,32 +11,36 @@ namespace VMPS
 {
 
 /**
-\class HubbardU1xU1
-\ingroup Hubbard
-\brief Hubbard model with U(1) symmetries.
-MPO representation of the Hubbard model
-\f[
-	H = -t \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c. \right)
-	    -t^{\prime} \sum_{<<ij>>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} +h.c. \right)
-	    +\sum_i \left(t_{0,i}-\mu\right) n_i
-	    +U \sum_i n_{i\uparrow} n_{i\downarrow}
-	    +V \sum_{<ij>} n_{i} n_{j}
-	    -B_z \sum_{i} \left(n_{i\uparrow}-n_{i\downarrow}\right)
-	    +H_{tJ}
-	    +H_{3-site}
-\f]
-with
-\f[
-	H_{tJ} = +J \sum_{<ij>} (\mathbf{S}_{i} \mathbf{S}_{j} - \frac{1}{4} n_in_j)
-\f]
-\f[
-	H_{3-site} = -\frac{J}{4} \sum_{<ijk>\sigma} (c^\dagger_{i\sigma} n_{j,-\sigma} c_{k\sigma} - c^\dagger_{i\sigma} S^{-\sigma}_j c_{k,-\sigma} + h.c.) \
-\f]
-\note Makes use of the \f$S_z\f$ U(1) symmetry and the U(1) particle conservation symmetry.
-\note The default variable settings can be seen in \p HubbardU1xU1::defaults.
-\note If the NNN-hopping is positive, the ground state energy is lowered.
-\warning \f$J>0\f$ is antiferromagnetic
-*/
+ * \class HubbardU1xU1
+ * \ingroup Hubbard
+ * \brief Hubbard model with U(1) symmetries.
+ * MPO representation of the Hubbard model
+ * \f[
+ * 	H = -t \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c. \right)
+ * 	    -t^{\prime} \sum_{<<ij>>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} +h.c. \right)
+ * 	    +\sum_i \left(t_{0,i}-\mu\right) n_i
+ * 	    +U \sum_i n_{i\uparrow} n_{i\downarrow}
+ * 	    +V \sum_{<ij>} n_{i} n_{j}
+ * 	    -B_z \sum_{i} \left(n_{i\uparrow}-n_{i\downarrow}\right)
+ * 	    +H_{tJ}
+ * 	    +H_{3-site}
+ * \f]
+ * with
+ * \f[
+ * 	H_{tJ} = +J \sum_{<ij>} (\mathbf{S}_{i} \mathbf{S}_{j} - \frac{1}{4} n_in_j)
+ * \f]
+ * \f[
+ * 	H_{3-site} = -\frac{J}{4} \sum_{<ijk>\sigma} (c^\dagger_{i\sigma} n_{j,-\sigma} c_{k\sigma} - c^\dagger_{i\sigma} S^{-\sigma}_j c_{k,-\sigma} + h.c.) \
+ * \f]
+ * \note Makes use of the U(1) particle conservation symmetry for both spin components seperatly.
+ *       You can change this by chossing another symmetry class. To use for example the magnetization and the particle number use:
+ * \code{.cpp}
+ *     Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >
+ * \endcode
+ * \note The default variable settings can be seen in \p HubbardU1xU1::defaults.
+ * \note If the NNN-hopping is positive, the ground state energy is lowered.
+ * \warning \f$J>0\f$ is antiferromagnetic
+ */
 class HubbardU1xU1 : public Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> >,double>,
 					 public HubbardObservables<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > >
 {
@@ -51,15 +55,10 @@ public:
 	
 	template<typename Symmetry_> 
 	static HamiltonianTermsXd<Symmetry_> set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc=0);
-	
-	/**Labels the conserved quantum numbers as \f$N_\uparrow\f$, \f$N_\downarrow\f$.*/
-	static const std::array<string,2> Nlabel;
-	
+		
 	/**Default parameters.*/
 	static const std::map<string,std::any> defaults;
 };
-
-const std::array<string,2> HubbardU1xU1::Nlabel {"N↑","N↓"};
 
 const std::map<string,std::any> HubbardU1xU1::defaults = 
 {
@@ -73,7 +72,7 @@ const std::map<string,std::any> HubbardU1xU1::defaults =
 
 HubbardU1xU1::
 HubbardU1xU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, Symmetry::qvacuum(), HubbardU1xU1::Nlabel, ""),
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), ""),
  HubbardObservables(L,params,HubbardU1xU1::defaults)
 {
 	ParamHandler P(params,HubbardU1xU1::defaults);

@@ -60,7 +60,7 @@ const std::map<string,std::any> Heisenberg::defaults =
 
 Heisenberg::
 Heisenberg (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<0>({}), labeldummy, ""),
+:Mpo<Symmetry> (L, qarray<0>({}), ""),
  HeisenbergObservables(L,params,Heisenberg::defaults)
 {
 	ParamHandler P(params,Heisenberg::defaults);

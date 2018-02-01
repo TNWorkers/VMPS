@@ -55,10 +55,7 @@ public:
 
 	/**Makes half-integers in the output for the magnetization quantum number.*/
 	static std::string N_halveM (qType qnum);
-	
-	/**Labels the conserved quantum numbers as "N", "M".*/
-	static const std::array<std::string,2> SNlabel;
-			
+				
 	/**Validates whether a given \p qnum is a valid combination of \p N and \p M for the given model.
 	\returns \p true if valid, \p false if not*/
 	bool validate (qType qnum) const;
@@ -113,11 +110,9 @@ const std::map<string,std::any> KondoSU2xU1::defaults =
 	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
-const std::array<std::string,Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >::Nq> KondoSU2xU1::SNlabel{"S","N"};
-
 KondoSU2xU1::
 KondoSU2xU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,0}), KondoSU2xU1::SNlabel, "")
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,0}), "")
 {
 	ParamHandler P(params,defaults);
 	
@@ -130,7 +125,7 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		
-		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell))); //true means basis n,m
+		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		
 		setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);
@@ -292,7 +287,7 @@ c (std::size_t locx, std::size_t locy)
 	std::stringstream ss;
 	ss << "c(" << locx << "," << locy << ")";
 
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoSU2xU1::SNlabel, ss.str());
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
 	Mout.setLocal(locx, OperatorType::outerprod(B[locx].Id(),F[locx].c(locy),{2,-1}).plain<double>(),
@@ -307,7 +302,7 @@ cdag (std::size_t locx, std::size_t locy)
 	std::stringstream ss;
 	ss << "c†(" << locx << "," << locy << ")";
 
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoSU2xU1::SNlabel, ss.str());
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
 	Mout.setLocal(locx, OperatorType::outerprod(B[locx].Id(),F[locx].cdag(locy),{2,+1}).plain<double>(),
@@ -323,7 +318,7 @@ cdagc (size_t loc1x, size_t loc2x, size_t loc1y, size_t loc2y)
 	stringstream ss;
 	ss << "c†(" << loc1x << "," << loc1y << ")" << "c(" << loc2x << "," << loc2y << ")";
 
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoSU2xU1::SNlabel, ss.str());
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
 	auto cdag = OperatorType::outerprod(B[loc1x].Id(),F[loc1x].cdag(loc1y),{2,+1});
@@ -356,7 +351,7 @@ n (std::size_t locx, std::size_t locy)
 	std::stringstream ss;
 	ss << "occ(" << locx << "," << locy << ")";
 
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoSU2xU1::SNlabel, ss.str());
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
 	auto n = OperatorType::outerprod(B[locx].Id(),F[locx].n(locy),Symmetry::qvacuum());
@@ -372,7 +367,7 @@ d (std::size_t locx, std::size_t locy)
 	stringstream ss;
 	ss << "double_occ(" << locx << "," << locy << ")";
 	
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoSU2xU1::SNlabel, ss.str());
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<N_sites; ++l) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
 	auto d = OperatorType::outerprod(B[locx].Id(),F[locx].d(locy),Symmetry::qvacuum());
@@ -387,7 +382,7 @@ ninj (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y, std::size_t loc2y
 	std::stringstream ss;
 	ss << "n(" << loc1x << "," << loc1y << ")"  << "n(" << loc2x << "," << loc2y << ")";
 
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoSU2xU1::SNlabel, ss.str());
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for(std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
 	auto n1 = OperatorType::outerprod(B[loc1x].Id(),F[loc1x].n(loc1y),Symmetry::qvacuum());
@@ -443,7 +438,7 @@ SimpSimp (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y, std::size_t l
 	std::stringstream ss;
 	ss << "S(" << loc1x << "," << loc1y << ")" << "S(" << loc2x << "," << loc2y << ")";
 
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoSU2xU1::SNlabel, ss.str());
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for(std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
 	auto Sdag = OperatorType::outerprod(B[loc1x].Sdag(loc1y),F[loc1x].Id(),{3,0});
@@ -470,7 +465,7 @@ SsubSsub (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y, std::size_t l
 	std::stringstream ss;
 	ss << "s(" << loc1x << "," << loc1y << ")" << "s(" << loc2x << "," << loc2y << ")";
 
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoSU2xU1::SNlabel, ss.str());
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for(std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
 	auto Sdag = OperatorType::outerprod(B[loc1x].Id(),F[loc1x].Sdag(loc1y),{3,0});
@@ -497,7 +492,7 @@ SimpSsub (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y, std::size_t l
 	std::stringstream ss;
 	ss << "S(" << loc1x << "," << loc1y << ")" << "s(" << loc2x << "," << loc2y << ")";
 
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), KondoSU2xU1::SNlabel, ss.str());
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for(std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
 	auto Sdag = OperatorType::outerprod(B[loc1x].Sdag(loc1y),F[loc1x].Id(),{3,0});

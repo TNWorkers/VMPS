@@ -63,8 +63,8 @@ std::ostream& operator<< (std::ostream& s, Sym::KIND l)
 	else if (l==Sym::KIND::T)  {s << "T";}
 	else if (l==Sym::KIND::N)  {s << "N";}
 	else if (l==Sym::KIND::M)  {s << "M";}
-	else if (l==Sym::KIND::Nup)  {s << "Nup";}
-	else if (l==Sym::KIND::Ndn)  {s << "Ndn";}
+	else if (l==Sym::KIND::Nup)  {s << "N↑";}
+	else if (l==Sym::KIND::Ndn)  {s << "N↓";}
 	return s;
 }
 
