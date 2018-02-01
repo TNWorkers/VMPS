@@ -6,7 +6,7 @@
 
 //-----------<definitions>-----------
 
-/**Structure to update \f$A_C\f$ (eq. 11). Contains \f$A_L\f$, \f$A_L\f$ and \f$H_L\f$ (= \p L), \f$H_R\f$ (= \p R).
+/**Structure to update \f$A_C\f$ (eq. 11) with 2-site Hamiltonian. Contains \f$A_L\f$, \f$A_L\f$ and \f$H_L\f$ (= \p L), \f$H_R\f$ (= \p R).
 \ingroup VUMPS
 */
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>
@@ -196,7 +196,7 @@ struct GaussianRandomVector<PivumpsVector0<Symmetry,Scalar>,Scalar>
 	}
 };
 
-/**Performs the local update of \f$A_C\f$ (eq. 11) with an explicit 2-site Hamiltonian.*/
+/**Performs the local update of \f$A_C\f$ (eq. 11) with a 2-site Hamiltonian.*/
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivumpsMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVector1<Symmetry,Scalar> &Vin, PivotVector1<Symmetry,Scalar> &Vout)
 {

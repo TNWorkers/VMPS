@@ -40,7 +40,6 @@ template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend cl
 
 public:
 	
-	/**Does nothing.*/
 	Umps<Symmetry,Scalar>(){};
 	
 	/**Constructs a UMPS with fixed bond dimension with the info from the Hamiltonian.*/
@@ -121,13 +120,13 @@ private:
 	std::array<string,Symmetry::Nq> qlabel = {};
 	qarray<Symmetry::Nq> Qtot;
 	
-	// UMPS-tensors in the three gauges
+	// UMPS-tensors in the three gauges L,R,C
 	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> A; // A[L/R/C][l][s].block[q]
 	
 	// center matrix
 	vector<Biped<Symmetry,MatrixType> >                        C; // zero-site part C[l]
 	
-	// null space (eq. 25 and surrounding text)
+	// null space (see eq. 25 and surrounding text)
 	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> N; // N[L/R/C][l][s].block[q]
 	
 	vector<VectorXd> Csingular;
@@ -140,29 +139,11 @@ info() const
 {
 	stringstream ss;
 	ss << "Umps: ";
-	
-//	if (Nq != 0)
-//	{
-//		ss << "(";
-//		for (size_t q=0; q<Symmetry; ++q)
-//		{
-//			ss << qlabel[q];
-//			if (q!=Nq-1) {ss << ",";}
-//		}
-//		ss << ")=" << format(Qtot) << ", ";
-//	}
-//	else
-//	{
-		ss << "no symmetries, ";
-//	}
-	
+	ss << "no symmetries, ";
 	ss << "Lcell=" << N_sites << ", ";
 	ss << "Mmax=" << calc_Mmax() << " (Dmax=" << calc_Dmax() << "), ";
-//	ss << "Nqmax=" << calc_Nqmax() << ", ";
-//	ss << "trunc_weight=" << truncWeight.sum() << ", ";
 	ss << "S=(" << S.transpose() << "), ";
 	ss << "mem=" << round(memory(GB),3) << "GB";
-//	"overhead=" << round(overhead(MB),3) << "MB";
 	
 	return ss.str();
 }
@@ -172,14 +153,8 @@ template<typename Hamiltonian>
 Umps<Symmetry,Scalar>::
 Umps (const Hamiltonian &H, size_t L_input, size_t Dmax, qarray<Symmetry::Nq> Qtot_input)
 {
-//	format = H.format;
-//	qlabel = H.qlabel;
-//	N_legs = H.width();
-//	outerResize<typename Hamiltonian::qarrayIterator>(H.length(), H.locBasis(), Qtot_input);
 	N_sites = L_input;
 	qloc = H.locBasis();
-	
-//	outerResize(H.length(), H.locBasis(), Qtot_input);
 	resize(Dmax);
 }
 
@@ -399,12 +374,6 @@ test_ortho (double tol) const
 		}
 		
 		// interpret result
-//		if (all_of(A_CHECK.begin(),A_CHECK.end(),[](bool x){return x;}) and 
-//		    all_of(B_CHECK.begin(),B_CHECK.end(),[](bool x){return x;}))
-//		{
-//			sout += TCOLOR(MAGENTA);
-//			sout += normal_token[3]; // X
-//		}
 		if (all_of(A_CHECK.begin(),A_CHECK.end(),[](bool x){return x;}))
 		{
 			sout += TCOLOR(RED);
@@ -437,6 +406,7 @@ complex<double> Umps<Symmetry,Scalar>::
 dot (const Umps<Symmetry,Scalar> &Vket) const
 {
 	assert(N_sites == Vket.length());
+	assert (N_sites==1 or N_sites==2 and "Only Lcell=1 and Lcell=2 implemented in dot product!");
 	
 	MatrixType LRdummy;
 	size_t Mbra = A[GAUGE::R][0][0].block[0].rows();
@@ -451,12 +421,14 @@ dot (const Umps<Symmetry,Scalar> &Vket) const
 	}
 	else if (N_sites == 2)
 	{
+		// Pre-contract the A-tensors
 		vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > ApairR;
 		contract_AA(A[GAUGE::R][0], qloc[0], A[GAUGE::R][1], qloc[1], ApairR);
 		
 		vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > ApairKetR;
 		contract_AA(Vket.A[GAUGE::R][0], qloc[0], Vket.A[GAUGE::R][1], qloc[1], ApairKetR);
 		
+		// The transfer matrix requires an MPO. Set up a dummy which is equal to unity.
 		size_t D1 = qloc[1].size();
 		boost::multi_array<double,4> WarrayDummy(boost::extents[D0][D0][D1][D1]);
 		for (size_t s1=0; s1<D0; ++s1)
@@ -470,9 +442,8 @@ dot (const Umps<Symmetry,Scalar> &Vket) const
 		TR.Warray.resize(boost::extents[D0][D0][D1][D1]); // This resize is necessary. I hate boost::multi_array. :-(
 		TR = TransferMatrix<Symmetry,double>(GAUGE::R, ApairR, ApairKetR, LRdummy, WarrayDummy, {D0,D1});
 	}
-//	CMatrixType Reigen(Mket,Mbra);
 	
-//	ArnoldiSolver<TransferMatrix<Symmetry,double>,CMatrixType> Arnie;
+	// Calculate dominant eigenvalue
 	TransferVector<complex<double> > Reigen;
 	Reigen.A.resize(Mket,Mbra);
 	ArnoldiSolver<TransferMatrix<Symmetry,double>,TransferVector<complex<double> > > Arnie;
@@ -489,7 +460,6 @@ template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
 calc_singularValues (size_t loc)
 {
-//	BDCSVD<MatrixType> Jack(C[loc].block[0]);
 	JacobiSVD<MatrixType> Jack(C[loc].block[0]);
 	Csingular[loc] = Jack.singularValues();
 	size_t Nnz = (Jack.singularValues().array() > 0).count();
@@ -512,20 +482,20 @@ entropy (size_t loc)
 	return S(loc);
 }
 
-MatrixXd gauge (const MatrixXd &U)
-{
-	MatrixXd Mout;
-	Mout.setIdentity(U.rows(),U.cols());
-	for (int i=0; i<U.rows(); ++i)
-	{
-		MatrixXd::Index imax;
-		U.row(i).maxCoeff(&imax);
-		Mout(i,i) *= (U.row(i)(imax)>=0)? 1:-1;
-	}
-	return Mout;
-}
+// wtf is that?
+//MatrixXd gauge (const MatrixXd &U)
+//{
+//	MatrixXd Mout;
+//	Mout.setIdentity(U.rows(),U.cols());
+//	for (int i=0; i<U.rows(); ++i)
+//	{
+//		MatrixXd::Index imax;
+//		U.row(i).maxCoeff(&imax);
+//		Mout(i,i) *= (U.row(i)(imax)>=0)? 1:-1;
+//	}
+//	return Mout;
+//}
 
-// creates AL, AR from AC, C
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
 polarDecompose (size_t loc)
@@ -541,7 +511,7 @@ polarDecompose (size_t loc)
 	{
 		qarray2<Symmetry::Nq> quple = {outset[loc][qout], outset[loc][qout]};
 		
-		// determine how many A's to glue together
+		// Determine how many A's to glue together
 		vector<size_t> svec, qvec, Nrowsvec;
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
@@ -554,7 +524,7 @@ polarDecompose (size_t loc)
 			}
 		}
 		
-		// do the glue
+		// Do the glue
 		size_t Ncols = A[GAUGE::C][loc][svec[0]].block[qvec[0]].cols();
 		for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].cols() == Ncols);}
 		size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
@@ -592,13 +562,13 @@ polarDecompose (size_t loc)
 			UC.push_back(Jack.matrixU() * Jack.matrixVT());
 			#endif
 			
-			// get the singular values and the entropy while at it (C[loc].dim=1 assumed):
+			// Get the singular values and the entropy while at it (C[loc].dim=1 assumed):
 			Csingular[loc] = Jack.singularValues();
 			size_t Nnz = (Jack.singularValues().array() > 0).count();
 			S(loc) = -(Csingular[loc].head(Nnz).array().square() * Csingular[loc].head(Nnz).array().square().log()).sum();
 		}
 		
-		// update AL
+		// Update AL
 		stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
 		{
@@ -611,7 +581,7 @@ polarDecompose (size_t loc)
 	{
 		qarray2<Symmetry::Nq> quple = {inset[loc][qin], inset[loc][qin]};
 		
-		// determine how many A's to glue together
+		// Determine how many A's to glue together
 		vector<size_t> svec, qvec, Ncolsvec;
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
@@ -624,7 +594,7 @@ polarDecompose (size_t loc)
 			}
 		}
 		
-		// do the glue
+		// Do the glue
 		size_t Nrows = A[GAUGE::C][loc][svec[0]].block[qvec[0]].rows();
 		for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].rows() == Nrows);}
 		size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
@@ -662,7 +632,7 @@ polarDecompose (size_t loc)
 			#endif
 		}
 		
-		// update AR
+		// Update AR
 		stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
 		{
@@ -682,7 +652,7 @@ calc_epsLRsq (size_t loc, double &epsLsq, double &epsRsq)
 		auto it = C[loc].dict.find(quple);
 		size_t qC = it->second;
 		
-		// determine how many A's to glue together
+		// Determine how many A's to glue together
 		vector<size_t> svec, qvec, Nrowsvec;
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
@@ -695,7 +665,7 @@ calc_epsLRsq (size_t loc, double &epsLsq, double &epsRsq)
 			}
 		}
 		
-		// do the glue
+		// Do the glue
 		size_t Ncols = A[GAUGE::C][loc][svec[0]].block[qvec[0]].cols();
 		for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].cols() == Ncols);}
 		size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
@@ -784,7 +754,7 @@ calc_epsLRsq (size_t loc, double &epsLsq, double &epsRsq)
 		auto it = C[locC].dict.find(quple);
 		size_t qC = it->second;
 		
-		// determine how many A's to glue together
+		// Determine how many A's to glue together
 		vector<size_t> svec, qvec, Ncolsvec;
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
@@ -797,7 +767,7 @@ calc_epsLRsq (size_t loc, double &epsLsq, double &epsRsq)
 			}
 		}
 		
-		// do the glue
+		// Do the glue
 		size_t Nrows = A[GAUGE::C][loc][svec[0]].block[qvec[0]].rows();
 		for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].rows() == Nrows);}
 		size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
@@ -841,7 +811,6 @@ calc_epsLRsq (size_t loc, double &epsLsq, double &epsRsq)
 	}
 }
 
-// creates AL, AR from AC, C
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
 svdDecompose (size_t loc)
@@ -852,7 +821,7 @@ svdDecompose (size_t loc)
 		auto it = C[loc].dict.find(quple);
 		size_t qC = it->second;
 		
-		// determine how many A's to glue together
+		// Determine how many A's to glue together
 		vector<size_t> svec, qvec, Nrowsvec;
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
@@ -865,7 +834,7 @@ svdDecompose (size_t loc)
 			}
 		}
 		
-		// do the glue
+		// Do the glue
 		size_t Ncols = A[GAUGE::C][loc][svec[0]].block[qvec[0]].cols();
 		for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].cols() == Ncols);}
 		size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
@@ -890,7 +859,7 @@ svdDecompose (size_t loc)
 		#endif
 		size_t Nret = Jack.singularValues().rows();
 		
-		// update AL
+		// Update AL
 		stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
 		{
@@ -912,7 +881,7 @@ svdDecompose (size_t loc)
 		auto it = C[locC].dict.find(quple);
 		size_t qC = it->second;
 		
-		// determine how many A's to glue together
+		// Determine how many A's to glue together
 		vector<size_t> svec, qvec, Ncolsvec;
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
@@ -925,7 +894,7 @@ svdDecompose (size_t loc)
 			}
 		}
 		
-		// do the glue
+		// Do the glue
 		size_t Nrows = A[GAUGE::C][loc][svec[0]].block[qvec[0]].rows();
 		for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].rows() == Nrows);}
 		size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
@@ -950,7 +919,7 @@ svdDecompose (size_t loc)
 		#endif
 		size_t Nret = Jack.singularValues().rows();
 		
-		// update AR
+		// Update AR
 		stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
 		{

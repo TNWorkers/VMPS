@@ -63,7 +63,7 @@ MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
 	return Mout;
 }
 
-/**Calculates the tensor \f$Y_L\f$ (eq. C17) from the MPO tensor \p W, the left transfer matrix \p L and \f$A_L\f$.*/
+/**Calculates the tensor \f$Y_{Ra}\f$ (eq. C17) from the MPO tensor \p W, the left transfer matrix \p L and \f$A_L\f$.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YL (size_t b,
                     const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W,
@@ -95,7 +95,7 @@ MatrixType make_YL (size_t b,
 	return Mout;
 }
 
-/**Calculates the tensor \f$Y_R\f$ (eq. C18) from the MPO tensor \p W, the left transfer matrix \p R and \f$A_R\f$.*/
+/**Calculates the tensor \f$Y_{Ra}\f$ (eq. C18) from the MPO tensor \p W, the left transfer matrix \p R and \f$A_R\f$.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YR (size_t a,
                     const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W,
@@ -127,7 +127,7 @@ MatrixType make_YR (size_t a,
 	return Mout;
 }
 
-/**Calculates the tensor \f$Y_L\f$ (eq. C17) for a 2-site unit cell.*/
+/**Calculates the tensor \f$Y_{Ra}\f$ (eq. C17) for a 2-site unit cell.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YL (size_t b,
                     const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W12,
@@ -172,7 +172,7 @@ MatrixType make_YL (size_t b,
 	return Mout;
 }
 
-/**Calculates the tensor \f$Y_R\f$ (eq. C18) for a 2-site unit cell.*/
+/**Calculates the tensor \f$Y_{Ra}\f$ (eq. C18) for a 2-site unit cell.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 MatrixType make_YR (size_t a,
                     const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W12,
@@ -217,7 +217,7 @@ MatrixType make_YR (size_t a,
 	return Mout;
 }
 
-/**Calculates the tensor \f$Y_L\f$ (eq. C17) for a 2-site unit cell in a more effective fashion where \p W is a pre-contracted 2-site 4-legged MPO and \p Apair is a pre-contracted pair of A-tensors. The first index of \p W is the row index.*/
+/**Calculates the tensor \f$Y_{La}\f$ (eq. C17) for a 2-site unit cell in a more effective fashion where \p W is a pre-contracted 2-site 4-legged MPO and \p Apair is a pre-contracted pair of A-tensors. The first index of \p W is the row index.*/
 template<typename Symmetry, typename MatrixType, typename Scalar, typename MpoScalar>
 MatrixType make_YL (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &L,
@@ -245,7 +245,7 @@ MatrixType make_YL (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoSca
 	return Mout;
 }
 
-/**Calculates the tensor \f$Y_R\f$ (eq. C18) for a 2-site unit cell in a more effective fashion where \p W is a pre-contracted 2-site 4-legged MPO and \p Apair is a pre-contracted pair of A-tensors. The first index of \p W is the column index.*/
+/**Calculates the tensor \f$Y_{Ra}\f$ (eq. C18) for a 2-site unit cell in a more effective fashion where \p W is a pre-contracted 2-site 4-legged MPO and \p Apair is a pre-contracted pair of A-tensors. The first index of \p W is the column index.*/
 template<typename Symmetry, typename MatrixType, typename Scalar, typename MpoScalar>
 MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &R,
@@ -273,7 +273,7 @@ MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoSca
 	return Mout;
 }
 
-/**Calculates the tensor \f$Y_L\f$ (eq. C17) for a 4-site unit cell in a more effective fashion where \p W is a pre-contracted 4-site 8-legged MPO and \p Aquadruple is a pre-contracted quadruple of A-tensors. The first index of \p W is the row index.*/
+/**Calculates the tensor \f$Y_{La}\f$ (eq. C17) for a 4-site unit cell in a more effective fashion where \p W is a pre-contracted 4-site 8-legged MPO and \p Aquadruple is a pre-contracted quadruple of A-tensors. The first index of \p W is the row index.*/
 template<typename Symmetry, typename MatrixType, typename Scalar, typename MpoScalar>
 MatrixType make_YL (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &L,
@@ -305,7 +305,7 @@ MatrixType make_YL (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t
 	return Mout;
 }
 
-/**Calculates the tensor \f$Y_R\f$ (eq. C18) for a 4-site unit cell in a more effective fashion where \p W is a pre-contracted 4-site 8-legged MPO and \p Aquadruple is a pre-contracted quadruple of A-tensors. The first index of \p W is the column index.*/
+/**Calculates the tensor \f$Y_{Ra}\f$ (eq. C18) for a 4-site unit cell in a more effective fashion where \p W is a pre-contracted 4-site 8-legged MPO and \p Aquadruple is a pre-contracted quadruple of A-tensors. The first index of \p W is the column index.*/
 template<typename Symmetry, typename MatrixType, typename Scalar, typename MpoScalar>
 MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &R,

@@ -1,7 +1,7 @@
 #ifndef VUMPSTYPEDEFS
 #define VUMPSTYPEDEFS
 
-/**Gauge of the UMPS tensor: L (left gauge), R (right gauge), or C (no gauge).*/
+/**Gauge of the UMPS tensor: \p L (left gauge), \p R (right gauge), or \p C (no gauge).*/
 struct GAUGE
 {
 	enum OPTION {L=0, R=1, C=2};

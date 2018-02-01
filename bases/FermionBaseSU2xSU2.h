@@ -59,9 +59,6 @@ public:
 	 */
 	Operator cdag (std::size_t orbital=0) const;
 	
-	Operator csub (SUB_LATTICE subL, std::size_t orbital=0) const;
-	Operator csubdag (SUB_LATTICE subL, std::size_t orbital=0) const;
-	
 	/**
 	 * Fermionic sign for the hopping between two orbitals of nearest-neighbour supersites of a ladder.
 	 * \param orb1 : orbital on supersite i
@@ -276,49 +273,6 @@ SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen
 cdag (std::size_t orbital) const
 {
 	return c(orbital).adjoint();
-}
-
-SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
-csub (SUB_LATTICE subL, std::size_t orbital) const
-{
-	Operator Op_1s;
-	if(subL == SUB_LATTICE::A)
-	{
-		if(orbital%2 == 0) {Op_1s = c_1sA;}
-		else {{Op_1s = c_1sB;}}
-	}
-	else if(subL == SUB_LATTICE::B)
-	{
-		if(orbital%2 == 0) {Op_1s = c_1sB;}
-		else {{Op_1s = c_1sA;}}
-	}
-	else {assert(1!=1 and "Crazy...");}
-
-	if(N_orbitals == 1) { return Op_1s; }
-	else
-	{
-		Operator out;
-		bool TOGGLE=false;
-		if(orbital == 0) { out = Operator::outerprod(Op_1s,Id_1s,{2,2}); TOGGLE=true; }
-		else
-		{
-			if( orbital == 1 ) { out = Operator::outerprod(F_1s,Op_1s,{2,2}); TOGGLE=true; }
-			else { out = Operator::outerprod(F_1s,F_1s,{1,1}); }
-		}
-		for(std::size_t o=2; o<N_orbitals; o++)
-		{
-			if(orbital == o) { out = Operator::outerprod(out,Op_1s,{2,2}); TOGGLE=true; }
-			else if(TOGGLE==false) { out = Operator::outerprod(out,F_1s,{1,1}); }
-			else if(TOGGLE==true) { out = Operator::outerprod(out,Id_1s,{2,2}); }
-		}
-		return out;
-	}
-}
-
-SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
-csubdag (SUB_LATTICE subL, std::size_t orbital) const
-{
-	return csub(subL,orbital).adjoint();
 }
 
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
