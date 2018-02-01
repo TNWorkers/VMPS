@@ -10,6 +10,10 @@
 #include "DmrgExternal.h"
 #include "symmetry/kind_dummies.h"
 
+#include "symmetry/U0.h"
+#include "symmetry/U1.h"
+#include "symmetry/SU2.h"
+
 namespace Sym{
 	
 /** 
@@ -32,7 +36,7 @@ public:
 	static constexpr bool HAS_CGC = false;
 	static constexpr std::size_t Nq=S1::Nq+S2::Nq;
 	static constexpr bool NON_ABELIAN = S1::NON_ABELIAN or S2::NON_ABELIAN;
-	static constexpr bool TRIVIAL = S1::TRIVIAL and S2::TRIVIAL;
+	static constexpr bool IS_TRIVIAL = S1::IS_TRIVIAL and S2::IS_TRIVIAL;
 
 	typedef qarray<Nq> qType;
 

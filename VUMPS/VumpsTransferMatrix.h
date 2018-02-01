@@ -6,6 +6,10 @@
 #include "VUMPS/VumpsTypedefs.h"
 #include "tensors/Biped.h"
 
+/**
+
+\ingroup VUMPS
+*/
 template<typename Symmetry, typename Scalar>
 struct TransferMatrix
 {
@@ -276,7 +280,6 @@ void swap (TransferVector<Scalar> &V1, TransferVector<Scalar> &V2)
 template<typename Scalar>
 inline Scalar dot (const TransferVector<Scalar> &V1, const TransferVector<Scalar> &V2)
 {
-//	return (V1.gauge==GAUGE::R)? (V1.A.adjoint()*V2.A).trace() : (V1.A*V2.A.adjoint()).trace();
 	return (V1.A.adjoint()*V2.A).trace();
 }
 

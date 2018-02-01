@@ -1,7 +1,6 @@
 #ifndef STRAWBERRY_HUBBARDMODEL
 #define STRAWBERRY_HUBBARDMODEL
 
-#include "symmetry/U1xU1.h"
 #include "Mpo.h"
 #include "bases/FermionBase.h"
 #include "ParamHandler.h" // from HELPERS

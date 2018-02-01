@@ -6,7 +6,9 @@
 
 //-----------<definitions>-----------
 
-/**Structure to update \f$A_C\f$ (eq. 11). Contains \f$A_L\f$, \f$A_L\f$ and \f$H_L\f$ (= \p L), \f$H_R\f$ (= \p R).*/
+/**Structure to update \f$A_C\f$ (eq. 11). Contains \f$A_L\f$, \f$A_L\f$ and \f$H_L\f$ (= \p L), \f$H_R\f$ (= \p R).
+\ingroup VUMPS
+*/
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>
 struct PivumpsMatrix
 {

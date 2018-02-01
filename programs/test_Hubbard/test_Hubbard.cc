@@ -99,7 +99,7 @@ int main (int argc, char* argv[])
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	i0 = args.get<int>("i0",L/2);
 	dt = 0.2;
-	size_t V = L*Ly; size_t Vsq = V*V;
+	int V = L*Ly; int Vsq = V*V;
 	
 	Dinit  = args.get<int>("Dmin",2);
 	Dlimit = args.get<int>("Dmax",100);
