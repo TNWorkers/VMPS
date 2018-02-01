@@ -32,9 +32,9 @@ public:
 	/**
 	 * \param L_input : the amount of orbitals
 	 * \param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis
-	 * \param NM_input : if \p true, the autnum numbers of operators will be in the format \f$(N,M)\f$, otherwise the format is \f$(N_{\uparrow},N_{\downarrow})\f$.
+ow})\f$.
 	 */
-	FermionBase (size_t L_input, bool U_IS_INFINITE=false, bool NM_input=false);
+	FermionBase (size_t L_input, bool U_IS_INFINITE=false);
 	
 	/**number of states = \f$4^L\f$ or \f$3^L\f$ for \f$U=\infty\f$*/
 	inline size_t dim() const {return N_states;}
@@ -249,12 +249,10 @@ private:
 	
 	size_t N_orbitals;
 	size_t N_states;
-	bool NM;
 	
 	/**
 	 * Returns the qarray for a given index of the basis
 	 * \param index
-	 * \param NM : If \p true, the format is (N,M), if \p false the format is (Nup,Ndn)
 	 */ 
 	qarray<Symmetry::Nq> qNums (size_t index) const;
 	
@@ -265,8 +263,8 @@ private:
 
 template<typename Symmetry>
 FermionBase<Symmetry>::
-FermionBase (size_t L_input, bool U_IS_INFINITE, bool NM_input)
-	:N_orbitals(L_input),NM(NM_input)
+FermionBase (size_t L_input, bool U_IS_INFINITE)
+	:N_orbitals(L_input)
 {
 	assert(N_orbitals>=1);
 	
@@ -579,12 +577,21 @@ qNums (size_t index) const
 	}
 	
 	if constexpr(Symmetry::IS_TRIVIAL) { return qarray<0>{}; }
-	if constexpr(Symmetry::Nq == 1) { return qarray<1>{N}; }
-	else
+	else if constexpr(Symmetry::Nq == 1)
 	{
-		if (NM) {return qarray<Symmetry::Nq>{N,M};}
-		else    {return qarray<Symmetry::Nq>{Nup,Ndn};}
+		if constexpr(Symmetry::kind()[0] == Sym::KIND::N) {return qarray<1>{N};}
+		else if constexpr(Symmetry::kind()[0] == Sym::KIND::M) {return qarray<1>{M};}
+		else {assert(false and "Ill defined KIND of the used Symmetry.");}
 	}
+	else if constexpr(Symmetry::Nq == 2)
+	{
+		if constexpr(Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M) {return qarray<Symmetry::Nq>{N,M};}
+		else if constexpr(Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N) {return qarray<Symmetry::Nq>{M,N};}
+		else if constexpr(Symmetry::kind()[0] == Sym::KIND::Nup and Symmetry::kind()[1] == Sym::KIND::Ndn) {return qarray<Symmetry::Nq>{Nup,Ndn};}
+		else if constexpr(Symmetry::kind()[0] == Sym::KIND::Ndn and Symmetry::kind()[1] == Sym::KIND::Nup) {return qarray<Symmetry::Nq>{Ndn,Nup};}
+		else {assert(false and "Ill defined KIND of the used Symmetry.");}
+	}
+	// else {static_assert(false,"Three or more symmetries can not be handled from the code.");}
 }
 
 template<typename Symmetry>
@@ -606,29 +613,57 @@ typename Symmetry::qType FermionBase<Symmetry>::
 getQ (SPIN_INDEX sigma, int Delta) const
 {
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
-	if constexpr (Symmetry::Nq == 1) //return particle number as good quantum number.
+	else if constexpr (Symmetry::Nq == 1) 
 	{
-		typename Symmetry::qType out;
-		if      (sigma==UP)     {out = {Delta};}
-		else if (sigma==DN)     {out = {Delta};}
-		else if (sigma==UPDN)   {out = {2*Delta};}
-		else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
-		return out;
-	}
-	if constexpr (Symmetry::Nq == 2)
-	{
-		typename Symmetry::qType out;
-		if (NM)
+		if constexpr(Symmetry::kind()[0] == Sym::KIND::N) //return particle number as good quantum number.
 		{
+			typename Symmetry::qType out;
+			if      (sigma==UP)     {out = {Delta};}
+			else if (sigma==DN)     {out = {Delta};}
+			else if (sigma==UPDN)   {out = {2*Delta};}
+			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
+			return out;
+		}
+		else if constexpr(Symmetry::kind()[0] == Sym::KIND::M) //return magnetization as good quantum number.
+		{
+			typename Symmetry::qType out;
+			if      (sigma==UP)     {out = {Delta};}
+			else if (sigma==DN)     {out = {-Delta};}
+			else if (sigma==UPDN)   {out = Symmetry::qvacuum();}
+			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
+			return out;
+		}
+		else {assert(false and "Ill defined KIND of the used Symmetry.");}
+
+	}
+	else if constexpr (Symmetry::Nq == 2)
+	{
+		typename Symmetry::qType out;
+		if constexpr(Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M)
+	    {
 			if      (sigma==UP)     {out = {Delta,Delta};}
 			else if (sigma==DN)     {out = {Delta,-Delta};}
-			else if (sigma==UPDN)   {out = {2*Delta,Delta};}
+			else if (sigma==UPDN)   {out = {2*Delta,0};}
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 		}
-		else
+		else if constexpr(Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
+	    {
+			if      (sigma==UP)     {out = {Delta,Delta};}
+			else if (sigma==DN)     {out = {-Delta,Delta};}
+			else if (sigma==UPDN)   {out = {0,2*Delta};}
+			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
+		}
+		else if constexpr(Symmetry::kind()[0] == Sym::KIND::Nup and Symmetry::kind()[1] == Sym::KIND::Ndn)
 		{
 			if      (sigma==UP)     {out = {Delta,0};}
 			else if (sigma==DN)     {out = {0,Delta};}
+			else if (sigma==UPDN)   {out = {Delta,Delta};}
+			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
+		}
+		else if constexpr(Symmetry::kind()[0] == Sym::KIND::Ndn and Symmetry::kind()[1] == Sym::KIND::Nup)
+		{
+			if      (sigma==UP)     {out = {0,Delta};}
+			else if (sigma==DN)     {out = {Delta,0};}
 			else if (sigma==UPDN)   {out = {Delta,Delta};}
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 		}
@@ -643,23 +678,52 @@ getQ (SPINOP_LABEL Sa) const
 {
 	assert(Sa != SX and Sa != iSY);
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
-	if constexpr(Symmetry::Nq == 1) { return {{0}}; } //return particle number as good quantum number.
-	
-	typename Symmetry::qType out;
-	
-	if (Sa==SZ) {out = {0,0};}
-	
-	if (NM)
+	else if constexpr(Symmetry::Nq == 1)
 	{
-		if (Sa==SP) {out = {0,+2};}
-		if (Sa==SM) {out = {0,-2};}
+		if constexpr(Symmetry::kind()[0] == Sym::KIND::N) //return particle number as good quantum number.
+		{
+			return Symmetry::qvacuum();
+		}
+		else if constexpr(Symmetry::kind()[0] == Sym::KIND::M) //return magnetization as good quantum number.
+		{
+			typename Symmetry::qType out;
+			if (Sa==SZ) {out = {0,0};}
+			else if (Sa==SP) {out = {+2};}
+			else if (Sa==SM) {out = {-2};}
+			return out;
+		}
+		else {assert(false and "Ill defined KIND of the used Symmetry.");}
 	}
-	else
+	else if constexpr (Symmetry::Nq == 2)
 	{
-		if (Sa==SP) {out = {+1,-1};}
-		if (Sa==SM) {out = {-1,+1};}
+		typename Symmetry::qType out;
+		if constexpr(Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M)
+	    {
+			if (Sa==SZ) {out = {0,0};}
+			else if (Sa==SP) {out = {0,+2};}
+			else if (Sa==SM) {out = {0,-2};}
+		}
+		else if constexpr(Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
+	    {
+			if (Sa==SZ) {out = {0,0};}
+			else if (Sa==SP) {out = {+2,0};}
+			else if (Sa==SM) {out = {-2,0};}
+		}
+		else if constexpr(Symmetry::kind()[0] == Sym::KIND::Nup and Symmetry::kind()[1] == Sym::KIND::Ndn)
+		{
+			if (Sa==SZ) {out = {0,0};}
+			else if (Sa==SP) {out = {+1,-1};}
+			else if (Sa==SM) {out = {-1,+1};}
+		}
+		else if constexpr(Symmetry::kind()[0] == Sym::KIND::Ndn and Symmetry::kind()[1] == Sym::KIND::Nup)
+		{
+			if (Sa==SZ) {out = {0,0};}
+			else if (Sa==SP) {out = {-1,+1};}
+			else if (Sa==SM) {out = {+1,-1};}
+		}
+		return out;
 	}
-	return out;
+	static_assert("You inserted a Symmetry which can not be handled by FermionBase.");
 }
 
 #endif

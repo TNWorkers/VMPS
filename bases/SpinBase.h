@@ -38,9 +38,8 @@ public:
 	/**
 	 * \param L_input : amount of sites
 	 * \param D_input : \f$D=2S+1\f$
-	 * \param DUMMY_QNUM_MODE_input : if true, the particle number is the good quantum number --> trivial for spins --> all operators have qvacuum()
 	 */
-	SpinBase (size_t L_input, size_t D_input, bool DUMMY_QNUM_MODE_input=false);
+	SpinBase (size_t L_input, size_t D_input);
 	
 	/**amount of states = \f$D^L\f$*/
 	inline size_t dim() const {return N_states;}
@@ -114,7 +113,6 @@ private:
 	size_t N_orbitals;
 	size_t N_states;
 	size_t D;
-	bool DUMMY_QNUM_MODE;
 	
 	/**
 	 * Returns the qarray for a given index of the basis.
@@ -125,8 +123,8 @@ private:
 
 template<typename Symmetry>
 SpinBase<Symmetry>::
-SpinBase (size_t L_input, size_t D_input, bool DUMMY_QNUM_MODE_input)
-:N_orbitals(L_input), D(D_input), DUMMY_QNUM_MODE(DUMMY_QNUM_MODE_input)
+SpinBase (size_t L_input, size_t D_input)
+:N_orbitals(L_input), D(D_input)
 {
 	assert(N_orbitals >= 1);
 	assert(D >= 1);
@@ -285,11 +283,17 @@ qNums (size_t index) const
 	if constexpr (Symmetry::IS_TRIVIAL) {return qarray<0>{};}
 	else if constexpr (Symmetry::Nq == 1)
 	{
-		if (DUMMY_QNUM_MODE) {return qarray<1>{0};}
-		else              {return qarray<1>{M};}
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T) {return Symmetry::qvacuum();}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) {return qarray<1>{M};}
+		else {assert(false and "Ill defined KIND of the used Symmetry.");}
 	}
 	//return a dummy quantum number for a second symmetry. Format: {other symmetry, magnetization}
-	else if constexpr(Symmetry::Nq==2) {return qarray<2>{{0,M}};}
+	else if constexpr(Symmetry::Nq==2)
+	{
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T) {return qarray<2>{{Symmetry::qvacuum()[0],M}};}
+		else if constexpr (Symmetry::kind()[1] == Sym::KIND::N or Symmetry::kind()[1] == Sym::KIND::T) {return qarray<2>{{M,Symmetry::qvacuum()[1]}};}
+		else {assert(false and "Ill defined KIND of the used Symmetry.");}
+	}
 }
 
 template<typename Symmetry>
@@ -315,8 +319,8 @@ getQ (SPINOP_LABEL Sa) const
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
 	else if constexpr (Symmetry::Nq == 1)
 	{
-		if (DUMMY_QNUM_MODE) {return qarray<1>{0};}
-		else
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T) {return Symmetry::qvacuum();}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M)
 		{
 			if      (Sa==SX)  {out = {0};}
 			else if (Sa==SY)  {out = {0};}
@@ -326,15 +330,29 @@ getQ (SPINOP_LABEL Sa) const
 			else if (Sa==SM)  {out = {-2};}
 			return out;
 		}
+		else {assert(false and "Ill defined KIND of the used Symmetry.");}
 	}
 	else if constexpr(Symmetry::Nq == 2) // return a dummy quantum number for a second symmetry. Format: {other symmetry, magnetization}
 	{
-		if      (Sa==SX)  {out = qarray<2>({0,0});}
-		else if (Sa==SY)  {out = qarray<2>({0,0});}
-		else if (Sa==iSY) {out = qarray<2>({0,0});}
-		else if (Sa==SZ)  {out = qarray<2>({0,0});}
-		else if (Sa==SP)  {out = qarray<2>({0,+2});}
-		else if (Sa==SM)  {out = qarray<2>({0,-2});}
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T)
+					 {
+						 if      (Sa==SX)  {out = qarray<2>({Symmetry::qvacuum()[0],0});}
+						 else if (Sa==SY)  {out = qarray<2>({Symmetry::qvacuum()[0],0});}
+						 else if (Sa==iSY) {out = qarray<2>({Symmetry::qvacuum()[0],0});}
+						 else if (Sa==SZ)  {out = qarray<2>({Symmetry::qvacuum()[0],0});}
+						 else if (Sa==SP)  {out = qarray<2>({Symmetry::qvacuum()[0],+2});}
+						 else if (Sa==SM)  {out = qarray<2>({Symmetry::qvacuum()[0],-2});}
+					 }
+		else if constexpr (Symmetry::kind()[1] == Sym::KIND::N or Symmetry::kind()[1] == Sym::KIND::T)
+						  {
+							  if      (Sa==SX)  {out = qarray<2>({0,Symmetry::qvacuum()[1]});}
+							  else if (Sa==SY)  {out = qarray<2>({0,Symmetry::qvacuum()[1]});}
+							  else if (Sa==iSY) {out = qarray<2>({0,Symmetry::qvacuum()[1]});}
+							  else if (Sa==SZ)  {out = qarray<2>({0,Symmetry::qvacuum()[1]});}
+							  else if (Sa==SP)  {out = qarray<2>({+2,Symmetry::qvacuum()[1]});}
+							  else if (Sa==SM)  {out = qarray<2>({-2,Symmetry::qvacuum()[1]});}
+						  }
+		else {assert(false and "Ill defined KIND of the used Symmetry.");}
 		return out;
 	}
 

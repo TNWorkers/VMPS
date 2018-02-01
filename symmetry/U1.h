@@ -33,7 +33,7 @@ public:
 
 	inline static qType qvacuum() { return {0}; }
 	inline static std::string name() { return "U(1)"; }
-	inline static constexpr std::array<KIND,Nq> kind() { return Kind::name; }
+	inline static constexpr std::array<KIND,Nq> kind() { return {Kind::name}; }
 
 	inline static qType flip( const qType& q ) { return {-q[0]}; }
 	inline static int degeneracy( const qType& q ) { return 1; }

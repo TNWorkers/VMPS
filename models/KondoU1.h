@@ -29,10 +29,10 @@ namespace VMPS
  \note If nnn-hopping is positive, the GS-energy is lowered.
  \note The multi-impurity model can be received, by setting D=1 (S=0) for all sites without an impurity.
 */
-class KondoU1 : public Mpo<Sym::U1<double>,double>, public KondoObservables<Sym::U1<double> >
+class KondoU1 : public Mpo<Sym::U1<Sym::ChargeU1>,double>, public KondoObservables<Sym::U1<Sym::ChargeU1> >
 {
 public:
-	typedef Sym::U1<double> Symmetry;
+	typedef Sym::U1<Sym::ChargeU1> Symmetry;
 	
 private:
 	typedef typename Symmetry::qType qType;

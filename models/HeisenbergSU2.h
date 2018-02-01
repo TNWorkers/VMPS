@@ -104,7 +104,7 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
-		setLocBasis(B[l].get_basis(),l);
+		setLocBasis(B[l].get_basis().qloc(),l);
 		
 		Terms[l] = set_operators(B[l],P,l%Lcell);
 		this->Daux = Terms[l].auxdim();
@@ -128,7 +128,7 @@ S (std::size_t locx, std::size_t locy)
 	SiteOperator Op = B[locx].S(locy).plain<double>();
 
 	Mpo<Symmetry> Mout(N_sites, Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
-	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis(),l); }
+	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
 
 	Mout.setLocal(locx,Op);
 	return Mout;
@@ -144,7 +144,7 @@ Sdag (std::size_t locx, std::size_t locy)
 	SiteOperator Op = B[locx].Sdag(locy).plain<double>();
 
 	Mpo<Symmetry> Mout(N_sites, Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str(), halve<Symmetry::Nq>);
-	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis(),l); }
+	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
 
 	Mout.setLocal(locx,Op);
 	return Mout;
@@ -160,7 +160,7 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 	Mpo<Symmetry> Mout(N_sites);
 	for (std::size_t l=0; l<N_sites; l++)
 	{
-		Mout.setLocBasis(B[l].get_basis(),l);
+		Mout.setLocBasis(B[l].get_basis().qloc(),l);
 	}
 	
 	Mout.label = ss.str();

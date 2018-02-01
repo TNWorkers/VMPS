@@ -73,7 +73,7 @@ public:
 	Operator HeisenbergHamiltonian( Eigen::MatrixXd J ) const;
 
 	/**Returns the basis.*/
-	vector<qType> get_basis() const { return TensorBasis.qloc(); }
+	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
 	
 private:
 
