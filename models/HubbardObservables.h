@@ -102,7 +102,7 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, bool 
 	stringstream ss;
 	ss << name << "(" << locx << "," << locy << ")";
 	
-	Mpo<Symmetry> Mout(F.size(), Op.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
+	Mpo<Symmetry> Mout(F.size(), Op.Q, ss.str());
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	(FERMIONIC)? Mout.setLocal(locx,Op,F[0].sign())
@@ -121,7 +121,7 @@ make_corr (string name1, string name2,
 	ss << name1 << "(" << locx1 << "," << locy1 << ")"
 	   << name2 << "(" << locx2 << "," << locy2 << ")";
 	
-	Mpo<Symmetry> Mout(F.size(), Op1.Q+Op2.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
+	Mpo<Symmetry> Mout(F.size(), Op1.Q+Op2.Q, ss.str());
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	Mout.setLocal({locx1,locx2}, {Op1,Op2});
@@ -180,7 +180,7 @@ cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	auto cdag = F[locx1].cdag(sigma,locy1);
 	auto c    = F[locx2].c   (sigma,locy2);
 	
-	Mpo<Symmetry> Mout(F.size(), cdag.Q+c.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
+	Mpo<Symmetry> Mout(F.size(), cdag.Q+c.Q, ss.str());
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	if (locx1 == locx2)
@@ -207,7 +207,7 @@ eta() const
 	
 	OperatorType Op = F[0].c(UP)*F[0].c(DN);
 	
-	Mpo<Symmetry> Mout(F.size(), Op.Q, defaultQlabel<Symmetry::Nq>(), "eta");
+	Mpo<Symmetry> Mout(F.size(), Op.Q, "eta");
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	Mout.setLocalSum(Op,stagger);
@@ -231,7 +231,7 @@ dtot() const
 	
 	OperatorType Op = F[0].d();
 	
-	Mpo<Symmetry> Mout(F.size(), Op.Q, defaultQlabel<Symmetry::Nq>(), "double_occ_total");
+	Mpo<Symmetry> Mout(F.size(), Op.Q, "double_occ_total");
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	Mout.setLocalSum(Op);

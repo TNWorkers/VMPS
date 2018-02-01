@@ -61,18 +61,13 @@ public:
 	 */
 	template<typename Symmetry_>
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
-	
-	/**Labels the conserved quantum number as "M".*/
-	static const std::array<string,1> maglabel;
-	
+		
 	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an MpsQ.
 	\returns \p true if valid, \p false if not*/
 	bool validate (qarray<1> qnum) const;
 	
 	static const std::map<string,std::any> defaults;
 };
-
-const std::array<string,1> HeisenbergU1::maglabel{"M"};
 
 const std::map<string,std::any> HeisenbergU1::defaults = 
 {
@@ -83,13 +78,13 @@ const std::map<string,std::any> HeisenbergU1::defaults =
 
 HeisenbergU1::
 HeisenbergU1 (const size_t &L)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, "", halve<1>),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", halve<1>),
  HeisenbergObservables(L)
 {}
 
 HeisenbergU1::
 HeisenbergU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), HeisenbergU1::maglabel, "", halve<1>),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", halve<1>),
  HeisenbergObservables(L,params,HeisenbergU1::defaults)
 {
 	ParamHandler P(params,defaults);

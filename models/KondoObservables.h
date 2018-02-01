@@ -92,7 +92,7 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Oimp, con
 	stringstream ss;
 	ss << name << "(" << locx << "," << locy << ")";
 	
-	Mpo<Symmetry> Mout(F.size(), Oimp.Q+Osub.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
+	Mpo<Symmetry> Mout(F.size(), Oimp.Q+Osub.Q, ss.str());
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);}
 	
 	if (FERMIONIC)
@@ -116,7 +116,7 @@ make_corr  (string name1, string name2, size_t locx1, size_t locx2, size_t locy1
 	ss << name1 << "(" << locx1 << "," << locy1 << ")"
 	   << name2 << "(" << locx2 << "," << locy2 << ")";
 	
-	Mpo<Symmetry> Mout(F.size(), Oimp1.Q+Oimp2.Q+Osub1.Q+Osub2.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
+	Mpo<Symmetry> Mout(F.size(), Oimp1.Q+Oimp2.Q+Osub1.Q+Osub2.Q, ss.str());
 	for (size_t l=0; l<F.size(); ++l)  {Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);}
 	
 	Mout.setLocal({locx1,locx2}, {kroneckerProduct(Oimp1,Osub1), kroneckerProduct(Oimp2,Osub2)});
@@ -172,7 +172,7 @@ cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	auto c    = kroneckerProduct(B[locx2].Id(),F[locx2].c   (sigma,locy2));
 	auto sign = kroneckerProduct(B[0].Id(),F[0].sign());
 	
-	Mpo<Symmetry> Mout(F.size(), cdag.Q+c.Q, defaultQlabel<Symmetry::Nq>(), ss.str());
+	Mpo<Symmetry> Mout(F.size(), cdag.Q+c.Q, ss.str());
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);}
 	
 	if (locx1 == locx2)

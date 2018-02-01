@@ -74,14 +74,12 @@ public:
 	 * \warning Note that qloc and qOp have to be set separately.
 	 * \param L_input : amount of sites/supersites which are swept
 	 * \param Qtot_input : the total change in quantum number
-	 * \param qlabel_input : how to label the conserved quantum numbers in outputs
 	 * \param label_input : how to label the Mpo itself in outputs
 	 * \param format_input : format function for the quantum numbers (e.g.\ half-integers for S=1/2).
 	 * \param UNITARY_input : if the Mpo is known to be unitary, this can be further exploited
 	 */
 	Mpo (size_t L_input, 
 	     qarray<Nq> Qtot_input,
-	     std::array<string,Nq> qlabel_input=defaultQlabel<Nq>(), 
 	     string label_input="Mpo", 
 	     string (*format_input)(qarray<Nq> qnum)=noFormat, 
 	     bool UNITARY_input=false);
@@ -168,11 +166,7 @@ public:
 	
 	/**How this Mpo should be called in outputs.*/
 	string label;
-	
-	/**Label for quantum numbers in output (e.g.\ \f$M\f$ for magnetization; \f$N_\uparrow\f$,\f$N_\downarrow\f$ for particle numbers etc.).*/
-	std::array<string,Nq> qlabel;
-	///\}
-	
+		
 	//---return stuff, set parts, check stuff---
 	
 	///\{
@@ -348,9 +342,9 @@ Mpo (size_t L_input)
 template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar>::
 Mpo (size_t L_input, qarray<Nq> Qtot_input, 
-     std::array<string,Nq> qlabel_input, string label_input, string (*format_input)(qarray<Nq> qnum), 
+	 string label_input, string (*format_input)(qarray<Nq> qnum), 
      bool UNITARY_input)
-:N_sites(L_input), Qtot(Qtot_input), qlabel(qlabel_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
+:N_sites(L_input), Qtot(Qtot_input), label(label_input), format(format_input), UNITARY(UNITARY_input)
 {
 	initialize();
 }

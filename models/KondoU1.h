@@ -12,23 +12,23 @@ namespace VMPS
  * \brief Kondo Model
  *
  * MPO representation of 
- \f[
- H = -t\sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right)
- - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i
- - \sum_{i \in I} B_i^x S_i^x
- - \sum_{i \in I} B_i^z S_i^z
- \f]
+ * \f[
+ * H = -t\sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right)
+ * - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i
+ * - \sum_{i \in I} B_i^x S_i^x
+ * - \sum_{i \in I} B_i^z S_i^z
+ * \f]
  *
- where further parameters from Hubbard and Heisenberg are possible.
-  \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin of the impurity.
-
- \note Take use of the U(1) particle conservation symmetry.
- \note The \f$S_z\f$ U(1) symmetry is borken due to the field in x-direction.
- \note The default variable settings can be seen in \p KondoU1::defaults.
- \note \f$J<0\f$ is antiferromagnetic
- \note If nnn-hopping is positive, the GS-energy is lowered.
- \note The multi-impurity model can be received, by setting D=1 (S=0) for all sites without an impurity.
-*/
+ * where further parameters from Hubbard and Heisenberg are possible.
+ *  \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin of the impurity.
+ * 
+ * \note Take use of the U(1) particle conservation symmetry.
+ * \note The \f$S_z\f$ U(1) symmetry is borken due to the field in x-direction.
+ * \note The default variable settings can be seen in \p KondoU1::defaults.
+ * \note \f$J<0\f$ is antiferromagnetic
+ * \note If nnn-hopping is positive, the GS-energy is lowered.
+ * \note The multi-impurity model can be received, by setting D=1 (S=0) for all sites without an impurity.
+ */
 class KondoU1 : public Mpo<Sym::U1<Sym::ChargeU1>,double>, public KondoObservables<Sym::U1<Sym::ChargeU1> >
 {
 public:
@@ -43,10 +43,7 @@ public:
 	KondoU1 () : Mpo(){};
 	KondoU1 (const size_t &L, const vector<Param> &params);
 	///@}
-	
-	/**Labels the conserved quantum number as "N".*/
-	static const std::array<string,1> Nlabel;
-	
+		
 	template<typename Symmetry_>
 	static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, 
 	                           const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, 
@@ -56,12 +53,7 @@ public:
 	\returns \p true if valid, \p false if not*/
 	bool validate (qType qnum) const;
 	
-	static const std::map<string,std::any> defaults;
-	
-//protected:
-//	
-//	vector<FermionBase<Symmetry> > F;
-//	vector<SpinBase<Symmetry> > B;
+	static const std::map<string,std::any> defaults;	
 };
 
 const std::map<string,std::any> KondoU1::defaults = 
@@ -75,11 +67,9 @@ const std::map<string,std::any> KondoU1::defaults =
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
-const std::array<string,1> KondoU1::Nlabel{"N"};
-
 KondoU1::
 KondoU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), KondoU1::Nlabel, ""),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), ""),
  KondoObservables(L,params,defaults)
 {
 	ParamHandler P(params,defaults);

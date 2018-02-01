@@ -62,10 +62,7 @@ public:
 	
 	///@{
 	/**Makes half-integers in the output for the magnetization quantum number.*/
-	static string N_halveM (qType qnum);
-	
-	/**Labels the conserved quantum numbers as "N", "M".*/
-	static const std::array<string,2> NMlabel;
+	static string N_halveM (qType qnum);	
 	///@}
 	
 	/**Validates whether a given \p qnum is a valid combination of \p N and \p M for the given model.
@@ -86,11 +83,9 @@ const map<string,any> KondoU1xU1::defaults =
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
-const std::array<string,2> KondoU1xU1::NMlabel{"N","M"};
-
 KondoU1xU1::
 KondoU1xU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0,0}), KondoU1xU1::NMlabel, ""), //, KondoU1xU1::N_halveM())
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0,0}),  ""), //, KondoU1xU1::N_halveM())
  KondoObservables(L,params,defaults)
 {
 	ParamHandler P(params,defaults);

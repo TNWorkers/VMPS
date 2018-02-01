@@ -281,14 +281,13 @@ qNums (size_t index) const
 	}
 	
 	if constexpr (Symmetry::IS_TRIVIAL) {return qarray<0>{};}
-	else if constexpr (Symmetry::Nq == 1)
+	else if constexpr (Symmetry::Nq == 1) //return either a dummy quantum number or the magnetic quantum number
 	{
 		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T) {return Symmetry::qvacuum();}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) {return qarray<1>{M};}
 		else {assert(false and "Ill defined KIND of the used Symmetry.");}
 	}
-	//return a dummy quantum number for a second symmetry. Format: {other symmetry, magnetization}
-	else if constexpr(Symmetry::Nq==2)
+	else if constexpr(Symmetry::Nq==2) //return a dummy quantum number for a second symmetry. Either at first place or at second.
 	{
 		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T) {return qarray<2>{{Symmetry::qvacuum()[0],M}};}
 		else if constexpr (Symmetry::kind()[1] == Sym::KIND::N or Symmetry::kind()[1] == Sym::KIND::T) {return qarray<2>{{M,Symmetry::qvacuum()[1]}};}
@@ -317,7 +316,7 @@ getQ (SPINOP_LABEL Sa) const
 	typename Symmetry::qType out;
 	
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
-	else if constexpr (Symmetry::Nq == 1)
+	else if constexpr (Symmetry::Nq == 1) //return either a dummy quantum number or the magnetic quantum number
 	{
 		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T) {return Symmetry::qvacuum();}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M)
@@ -332,7 +331,7 @@ getQ (SPINOP_LABEL Sa) const
 		}
 		else {assert(false and "Ill defined KIND of the used Symmetry.");}
 	}
-	else if constexpr(Symmetry::Nq == 2) // return a dummy quantum number for a second symmetry. Format: {other symmetry, magnetization}
+	else if constexpr(Symmetry::Nq == 2) //return a dummy quantum number for a second symmetry. Either at first place or at second.
 	{
 		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T)
 					 {

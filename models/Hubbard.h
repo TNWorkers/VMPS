@@ -8,20 +8,20 @@ namespace VMPS
 typedef Sym::U0 Symmetry;
 
 /**
-\class Hubbard
-\ingroup Hubbard
-\brief Hubbard model without any symmetries.
-MPO representation of the Hubbard model corresponding to HubbardU1xU1, but without symmetries and an additional possibility of adding
-\f[
-	-B_x \sum_{i} \sigma^x_i
-\f]
-with
-\f[
-	\sigma^x_i = \frac{1}{2} \left(\sigma^+_i+\sigma^-_i\right)
-\f]
-but is mainly needed for VUMPS.
-\note The default variable settings can be seen in \p Hubbard::defaults.
-*/
+ * \class Hubbard
+ * \ingroup Hubbard
+ * \brief Hubbard model without any symmetries.
+ * MPO representation of the Hubbard model corresponding to HubbardU1xU1, but without symmetries and an additional possibility of adding
+ * \f[
+ * 	-B_x \sum_{i} \sigma^x_i
+ * \f]
+ * with
+ * \f[
+ * 	\sigma^x_i = \frac{1}{2} \left(\sigma^+_i+\sigma^-_i\right)
+ * \f]
+ * but is mainly needed for VUMPS.
+ * \note The default variable settings can be seen in \p Hubbard::defaults.
+ */
 class Hubbard : public Mpo<Sym::U0,double>, public HubbardObservables<Sym::U0>
 {
 public:
@@ -47,7 +47,7 @@ const std::map<string,std::any> Hubbard::defaults =
 
 Hubbard::
 Hubbard (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<0>({}), labeldummy, ""),
+:Mpo<Symmetry> (L, qarray<0>({}), ""),
  HubbardObservables(L,params,Hubbard::defaults)
 {
 	ParamHandler P(params,Hubbard::defaults);
