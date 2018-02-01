@@ -193,8 +193,8 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	Heis = HEIS(L,{{"Bz",Bz},{"OPEN_BC",false},{"D",3ul}});
 	lout << Heis.info() << endl;
 	
-//	DMRG.edgeState(Heis.H2site(0,0,true), Heis.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
-	DMRG.edgeState(Heis, g, {}, tol_eigval,tol_var, M, max_iter,1);
+	DMRG.edgeState(Heis.H2site(0,0,true), Heis.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
+//	DMRG.edgeState(Heis, g, {}, tol_eigval,tol_var, M, max_iter,1);
 	
 	e_exact = -1.40148403897122; // value from: Haegeman et al. PRL 107, 070601 (2011)
 	lout << TCOLOR(BLUE);
@@ -221,8 +221,8 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	lout << Hubb.info() << endl;
 	
 	DMRG_HUBB.set_log(10,"e.dat","err_eigval.dat","err_var.dat");
-	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);
-//	DMRG_HUBB.edgeState(Hubb.H2site(0,0,true), Hubb.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
+//	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);
+	DMRG_HUBB.edgeState(Hubb.H2site(0,0,true), Hubb.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
 	
 	lout << "half-filling test for μ=U/2: <n>=" << avg(g.state, Hubb.n(UP,0), g.state) + avg(g.state, Hubb.n(DN,0), g.state) << endl;
 	e_exact = LiebWu_E0_L(U,0.01*tol_eigval)-mu;

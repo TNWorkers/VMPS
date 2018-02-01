@@ -85,7 +85,7 @@ double overlap_U1_zipper = 0.;
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
-	Lx = args.get<size_t>("Lx",10); L=Lx;
+	Lx = args.get<size_t>("Lx",4); L=Lx;
 	Ly = args.get<size_t>("Ly",1);
 	t = args.get<double>("t",1.);
 	tPrime = args.get<double>("tPrime",0.);

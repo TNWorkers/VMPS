@@ -576,19 +576,19 @@ qNums (size_t index) const
 		}
 	}
 	
-	if constexpr(Symmetry::IS_TRIVIAL) { return qarray<0>{}; }
-	else if constexpr(Symmetry::Nq == 1)
+	if constexpr (Symmetry::IS_TRIVIAL) { return qarray<0>{}; }
+	else if constexpr (Symmetry::Nq == 1)
 	{
-		if constexpr(Symmetry::kind()[0] == Sym::KIND::N) {return qarray<1>{N};}
-		else if constexpr(Symmetry::kind()[0] == Sym::KIND::M) {return qarray<1>{M};}
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N) {return qarray<1>{N};}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) {return qarray<1>{M};}
 		else {assert(false and "Ill defined KIND of the used Symmetry.");}
 	}
-	else if constexpr(Symmetry::Nq == 2)
+	else if constexpr (Symmetry::Nq == 2)
 	{
-		if constexpr(Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M) {return qarray<Symmetry::Nq>{N,M};}
-		else if constexpr(Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N) {return qarray<Symmetry::Nq>{M,N};}
-		else if constexpr(Symmetry::kind()[0] == Sym::KIND::Nup and Symmetry::kind()[1] == Sym::KIND::Ndn) {return qarray<Symmetry::Nq>{Nup,Ndn};}
-		else if constexpr(Symmetry::kind()[0] == Sym::KIND::Ndn and Symmetry::kind()[1] == Sym::KIND::Nup) {return qarray<Symmetry::Nq>{Ndn,Nup};}
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M) {return qarray<Symmetry::Nq>{N,M};}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N) {return qarray<Symmetry::Nq>{M,N};}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Nup and Symmetry::kind()[1] == Sym::KIND::Ndn) {return qarray<Symmetry::Nq>{Nup,Ndn};}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Ndn and Symmetry::kind()[1] == Sym::KIND::Nup) {return qarray<Symmetry::Nq>{Ndn,Nup};}
 		else {assert(false and "Ill defined KIND of the used Symmetry.");}
 	}
 	// else {static_assert(false,"Three or more symmetries can not be handled from the code.");}
@@ -612,10 +612,10 @@ template<typename Symmetry>
 typename Symmetry::qType FermionBase<Symmetry>::
 getQ (SPIN_INDEX sigma, int Delta) const
 {
-	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
+	if constexpr (Symmetry::IS_TRIVIAL) {return {};}
 	else if constexpr (Symmetry::Nq == 1) 
 	{
-		if constexpr(Symmetry::kind()[0] == Sym::KIND::N) //return particle number as good quantum number.
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N) //return particle number as good quantum number.
 		{
 			typename Symmetry::qType out;
 			if      (sigma==UP)     {out = {Delta};}
@@ -624,7 +624,7 @@ getQ (SPIN_INDEX sigma, int Delta) const
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 			return out;
 		}
-		else if constexpr(Symmetry::kind()[0] == Sym::KIND::M) //return magnetization as good quantum number.
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) //return magnetization as good quantum number.
 		{
 			typename Symmetry::qType out;
 			if      (sigma==UP)     {out = {Delta};}
@@ -639,28 +639,28 @@ getQ (SPIN_INDEX sigma, int Delta) const
 	else if constexpr (Symmetry::Nq == 2)
 	{
 		typename Symmetry::qType out;
-		if constexpr(Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M)
-	    {
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M)
+		{
 			if      (sigma==UP)     {out = {Delta,Delta};}
 			else if (sigma==DN)     {out = {Delta,-Delta};}
 			else if (sigma==UPDN)   {out = {2*Delta,0};}
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 		}
-		else if constexpr(Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
-	    {
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
+		{
 			if      (sigma==UP)     {out = {Delta,Delta};}
 			else if (sigma==DN)     {out = {-Delta,Delta};}
 			else if (sigma==UPDN)   {out = {0,2*Delta};}
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 		}
-		else if constexpr(Symmetry::kind()[0] == Sym::KIND::Nup and Symmetry::kind()[1] == Sym::KIND::Ndn)
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Nup and Symmetry::kind()[1] == Sym::KIND::Ndn)
 		{
 			if      (sigma==UP)     {out = {Delta,0};}
 			else if (sigma==DN)     {out = {0,Delta};}
 			else if (sigma==UPDN)   {out = {Delta,Delta};}
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 		}
-		else if constexpr(Symmetry::kind()[0] == Sym::KIND::Ndn and Symmetry::kind()[1] == Sym::KIND::Nup)
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Ndn and Symmetry::kind()[1] == Sym::KIND::Nup)
 		{
 			if      (sigma==UP)     {out = {0,Delta};}
 			else if (sigma==DN)     {out = {Delta,0};}
@@ -676,15 +676,19 @@ template<typename Symmetry>
 typename Symmetry::qType FermionBase<Symmetry>::
 getQ (SPINOP_LABEL Sa) const
 {
-	assert(Sa != SX and Sa != iSY);
-	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
-	else if constexpr(Symmetry::Nq == 1)
+	if constexpr (!Symmetry::IS_TRIVIAL)
 	{
-		if constexpr(Symmetry::kind()[0] == Sym::KIND::N) //return particle number as good quantum number.
+		assert(Sa != SX and Sa != iSY);
+	}
+	
+	if constexpr (Symmetry::IS_TRIVIAL) {return {};}
+	else if constexpr (Symmetry::Nq == 1)
+	{
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N) //return particle number as good quantum number.
 		{
 			return Symmetry::qvacuum();
 		}
-		else if constexpr(Symmetry::kind()[0] == Sym::KIND::M) //return magnetization as good quantum number.
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) //return magnetization as good quantum number.
 		{
 			typename Symmetry::qType out;
 			if (Sa==SZ) {out = {0,0};}
@@ -697,25 +701,25 @@ getQ (SPINOP_LABEL Sa) const
 	else if constexpr (Symmetry::Nq == 2)
 	{
 		typename Symmetry::qType out;
-		if constexpr(Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M)
-	    {
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M)
+		{
 			if (Sa==SZ) {out = {0,0};}
 			else if (Sa==SP) {out = {0,+2};}
 			else if (Sa==SM) {out = {0,-2};}
 		}
-		else if constexpr(Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
-	    {
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
+		{
 			if (Sa==SZ) {out = {0,0};}
 			else if (Sa==SP) {out = {+2,0};}
 			else if (Sa==SM) {out = {-2,0};}
 		}
-		else if constexpr(Symmetry::kind()[0] == Sym::KIND::Nup and Symmetry::kind()[1] == Sym::KIND::Ndn)
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Nup and Symmetry::kind()[1] == Sym::KIND::Ndn)
 		{
 			if (Sa==SZ) {out = {0,0};}
 			else if (Sa==SP) {out = {+1,-1};}
 			else if (Sa==SM) {out = {-1,+1};}
 		}
-		else if constexpr(Symmetry::kind()[0] == Sym::KIND::Ndn and Symmetry::kind()[1] == Sym::KIND::Nup)
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Ndn and Symmetry::kind()[1] == Sym::KIND::Nup)
 		{
 			if (Sa==SZ) {out = {0,0};}
 			else if (Sa==SP) {out = {-1,+1};}
