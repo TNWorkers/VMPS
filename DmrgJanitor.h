@@ -21,7 +21,7 @@ void bring_her_about (int pivot, size_t L, DMRG::DIRECTION::OPTION &DIR)
 
 /**\class DmrgJanitor
 \brief Base class for all the sweeping stuff.
-Needs to know \p PivotMatrixType because sweeps using DMRG::BROOM::RDM and DMRG::BROOM::RICH_SVD involve non-local information, i.e.\ knowledge of the transfer matrices and the Hamiltonian (given by PivotMatrixQ).*/
+Needs to know \p PivotMatrixType because sweeps using DMRG::BROOM::RDM and DMRG::BROOM::RICH_SVD involve non-local information, i.e.\ knowledge of the transfer matrices and the Hamiltonian (given by PivotMatrix).*/
 template<typename PivotMatrixType>
 class DmrgJanitor
 {

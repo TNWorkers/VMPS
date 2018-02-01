@@ -20,6 +20,7 @@ Logger lout;
 #include "Stopwatch.h"
 
 #include "VUMPS/VumpsSolver.h"
+#include "VUMPS/VumpsLinearAlgebra.h"
 #include "solvers/DmrgSolver.h"
 #include "models/Heisenberg.h"
 #include "models/HeisenbergXXZ.h"

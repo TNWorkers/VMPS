@@ -9,6 +9,7 @@
 #include "DmrgExternal.h"
 #include "ParamHandler.h" // from HELPERS
 #include "models/HeisenbergObservables.h"
+#include "symmetry/kind_dummies.h"
 
 namespace VMPS
 {

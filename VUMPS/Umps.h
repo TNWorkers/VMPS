@@ -17,8 +17,6 @@
 #include "VUMPS/VumpsTransferMatrix.h"
 #include "LanczosSolver.h" // from LANCZOS
 #include "ArnoldiSolver.h" // from LANCZOS
-#include "tensors/Biped.h"
-#include "tensors/Multipede.h"
 #include "Mpo.h"
 #include "tensors/DmrgConglutinations.h"
 #if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
@@ -27,8 +25,9 @@
 #include "PolychromaticConsole.h" // from HELPERS
 #include "RandomVector.h" // from LANCZOS
 
-/**Uniform Matrix Product State. Currently without symmetries, template parameter \p Symmetry can only be \p Sym::U0.
-\describe_Nq
+/**Uniform Matrix Product State. Analogue of the Mps class. Currently without symmetries, the template parameter \p Symmetry can only be \p Sym::U0.
+\ingroup VUMPS
+\describe_Symmetry
 \describe_Scalar*/
 template<typename Symmetry, typename Scalar=double>
 class Umps
@@ -62,10 +61,10 @@ public:
 	/**Resizes all containers to \p N_sites, the bond dimension to \p Dmax and sets all quantum numbers to vacuum.*/
 	void resize (size_t Dmax);
 	
-	/**Calculates \f$A_L\f$ and \f$A_R\f$ from \f$A_C\f$ and \f$C\f$ at site \p loc using SVD (eq. 19,20). Calculates the singular values along the way.*/
+	/**Calculates \f$A_L\f$ and \f$A_R\f$ from \f$A_C\f$ and \f$C\f$ at site \p loc using SVD (eq. 19,20). Is supposed to be optimal, but not accurate. Calculates the singular values along the way.*/
 	void svdDecompose (size_t loc);
 	
-	/**Calculates \f$A_L\f$ and \f$A_R\f$ from \f$A_C\f$ and \f$C\f$ at site \p loc using the polar decomposition (eq. 21,22).*/
+	/**Calculates \f$A_L\f$ and \f$A_R\f$ from \f$A_C\f$ and \f$C\f$ at site \p loc using the polar decomposition (eq. 21,22). Is supposed to be non-optimal, but accurate.*/
 	void polarDecompose (size_t loc);
 	
 	/**Returns the singular values at site \p loc.*/
@@ -270,7 +269,6 @@ resize (size_t Dmax_input)
 		}
 	}
 	C.resize(N_sites);
-	Sigma.resize(N_sites);
 	inset.resize(N_sites);
 	outset.resize(N_sites);
 	
@@ -278,7 +276,6 @@ resize (size_t Dmax_input)
 	{
 		inset[l].push_back(Symmetry::qvacuum());
 		outset[l].push_back(Symmetry::qvacuum());
-		Sigma[l].resize(outset[l].size());
 	}
 	
 	for (size_t g=0; g<3; ++g)
@@ -970,147 +967,5 @@ svdDecompose (size_t loc)
 	
 	calc_singularValues(loc);
 }
-
-//template<typename Symmetry, typename Scalar>
-//void Umps<Symmetry,Scalar>::
-//decompose (size_t loc, const vector<vector<Biped<Symmetry,MatrixType> > > &Apair)
-//{
-//	ArrayXd truncWeightSub(outset[loc].size()); truncWeightSub.setZero();
-//	ArrayXd entropySub(outset[loc].size()); entropySub.setZero();
-//	
-//	#ifndef DMRG_DONT_USE_OPENMP
-//	#pragma omp parallel for
-//	#endif
-//	for (size_t qout=0; qout<outset[loc].size(); ++qout)
-//	{
-//		vector<size_t> s1vec, s3vec;
-//		map<size_t,vector<size_t> > s13map;
-//		map<pair<size_t,size_t>,size_t> s13qmap;
-//		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
-//		for (size_t s3=0; s3<qloc[loc+1].size(); ++s3)
-//		for (size_t q13=0; q13<Apair[s1][s3].dim; ++q13)
-//		{
-//			if (Apair[s1][s3].in[q13] + qloc[loc][s1] == outset[loc][qout])
-//			{
-//				s1vec.push_back(s1);
-//				s3vec.push_back(s3);
-//				s13map[s1].push_back(s3);
-//				s13qmap[make_pair(s1,s3)] = q13;
-//			}
-//		}
-//		
-//		if (s1vec.size() != 0)
-//		{
-//			vector<MatrixType> Aclumpvec(qloc[loc].size());
-//			size_t istitch = 0;
-//			size_t jstitch = 0;
-//			vector<size_t> get_s3;
-//			vector<size_t> get_Ncols;
-//			bool COLS_ARE_KNOWN = false;
-//			
-//			for (size_t s1=0; s1<qloc[loc].size(); ++s1)
-//			{
-//				for (size_t s3=0; s3<qloc[loc+1].size(); ++s3)
-//				{
-//					auto s3block = find(s13map[s1].begin(), s13map[s1].end(), s3);
-//					if (s3block != s13map[s1].end())
-//					{
-//						size_t q13 = s13qmap[make_pair(s1,s3)];
-//						addRight(Apair[s1][s3].block[q13], Aclumpvec[s1]);
-//						
-//						if (COLS_ARE_KNOWN == false)
-//						{
-//							get_s3.push_back(s3);
-//							get_Ncols.push_back(Apair[s1][s3].block[q13].cols());
-//						}
-//					}
-//				}
-//				if (get_s3.size() != 0) {COLS_ARE_KNOWN = true;}
-//			}
-//			
-//			vector<size_t> get_s1;
-//			vector<size_t> get_Nrows;
-//			MatrixType Aclump;
-//			for (size_t s1=0; s1<qloc[loc].size(); ++s1)
-//			{
-//				size_t Aclump_rows_old = Aclump.rows();
-//				addBottom(Aclumpvec[s1], Aclump);
-//				if (Aclump.rows() > Aclump_rows_old)
-//				{
-//					get_s1.push_back(s1);
-//					get_Nrows.push_back(Aclump.rows()-Aclump_rows_old);
-//				}
-//			}
-//			
-//			#ifdef DONT_USE_LAPACK_SVD
-//			BDCSVD<MatrixType> Jack; // Eigen SVD
-//			#else
-//			LapackSVD<Scalar> Jack; // Lapack SVD
-//			#endif
-//			
-//			#ifdef DONT_USE_LAPACK_SVD
-//			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
-//			#else
-//			Jack.compute(Aclump);
-//			#endif
-//			
-//			// retained states:
-//			size_t Nret = Aclump.cols();
-//			Nret = (Jack.singularValues().array().abs() > this->eps_svd).count();
-//			Nret = min(max(Nret,1ul),static_cast<size_t>(Jack.singularValues().rows()));
-//			Nret = min(Nret,this->N_sv);
-//			
-//			truncWeightSub(qout) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
-//			size_t Nnz = (Jack.singularValues().array() > 1e-9).count();
-//			entropySub(qout) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
-//			
-//			MatrixType Aleft, Aright, ACright, ACleft;
-//			Aleft = Jack.matrixU().leftCols(Nret);
-//			ACleft = Jack.matrixU().leftCols(Nret) * Jack.singularValues().head(Nret).asDiagonal();
-//			#ifdef DONT_USE_LAPACK_SVD
-//			Aright = Jack.matrixV().adjoint().topRows(Nret);
-//			ACright = Jack.singularValues().head(Nret).asDiagonal() * Jack.matrixV().adjoint().topRows(Nret);
-//			#else
-//			Aright = Jack.matrixVT().topRows(Nret);
-//			ACright = Jack.singularValues().head(Nret).asDiagonal() * Jack.matrixVT().topRows(Nret);
-//			#endif
-//			Sigma[loc][qout] = Jack.singularValues();
-//			
-//			// update AL[loc]
-//			istitch = 0;
-//			for (size_t i=0; i<get_s1.size(); ++i)
-//			{
-//				size_t s1 = get_s1[i];
-//				size_t Nrows = get_Nrows[i];
-//				qarray2<Symmetry::Nq> quple = {outset[loc][qout]-qloc[loc][s1], outset[loc][qout]};
-//				auto q = A[GAUGE::L][loc][s1].dict.find(quple);
-//				if (q != A[GAUGE::L][loc][s1].dict.end())
-//				{
-//					A[GAUGE::L][loc][s1].block[q->second] = Aleft.block(istitch,0, Nrows,Nret);
-//					A[GAUGE::C][loc][s1].block[q->second] = ACleft.block(istitch,0, Nrows,Nret);
-//				}
-//				istitch += Nrows;
-//			}
-//			
-//			// update AR[loc+1]
-//			jstitch = 0;
-//			for (size_t i=0; i<get_s3.size(); ++i)
-//			{
-//				size_t s3 = get_s3[i];
-//				size_t Ncols = get_Ncols[i];
-//				qarray2<Symmetry::Nq> quple = {outset[loc][qout], outset[loc][qout]+qloc[loc][s3]};
-//				auto q = A[GAUGE::R][loc+1][s3].dict.find(quple);
-//				if (q != A[GAUGE::R][loc+1][s3].dict.end())
-//				{
-//					A[GAUGE::R][loc+1][s3].block[q->second] = Aright.block(0,jstitch, Nret,Ncols);
-//					A[GAUGE::C][loc+1][s3].block[q->second] = ACright.block(0,jstitch, Nret,Ncols);
-//				}
-//				jstitch += Ncols;
-//			}
-//		}
-//	}
-//	
-////	truncWeight(loc) = truncWeightSub.sum();
-//}
 
 #endif

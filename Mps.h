@@ -31,7 +31,7 @@
  * \describe_Scalar
  */
 template<typename Symmetry, typename Scalar=double>
-class Mps : public DmrgJanitor<PivotMatrixQ<Symmetry,Scalar,Scalar> >
+class Mps : public DmrgJanitor<PivotMatrix<Symmetry,Scalar,Scalar> >
 {
 	typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 	static constexpr size_t Nq = Symmetry::Nq;
@@ -319,7 +319,7 @@ public:
 	 * \param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD
 	 * \param DISCARD_V : If \p true, don't multiply the V-matrix onto the next site
 	 */
-	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Symmetry,Scalar,Scalar> *H = NULL, bool DISCARD_V=false);
+	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrix<Symmetry,Scalar,Scalar> *H = NULL, bool DISCARD_V=false);
 	
 	/**
 	 * Performs a sweep step to the left.
@@ -328,7 +328,7 @@ public:
 	 * \param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD
 	 * \param DISCARD_U : If \p true, don't multiply the U-matrix onto the next site
 	 */
-	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrixQ<Symmetry,Scalar,Scalar> *H = NULL, bool DISCARD_U=false);
+	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrix<Symmetry,Scalar,Scalar> *H = NULL, bool DISCARD_U=false);
 	
 	/**
 	 * Performs a two-site sweep.
@@ -409,14 +409,14 @@ private:
 	template<typename OtherScalar> void add_site (size_t loc, OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin);
 	
 	// sweep stuff RDM
-	void calc_noise (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, 
+	void calc_noise (size_t loc, PivotMatrix<Symmetry,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, 
 	                 const vector<vector<Biped<Symmetry,MatrixType> > > rho, 
 	                 vector<vector<Biped<Symmetry,MatrixType> > > &rhoNoise);
 	void press_rdm (size_t loc, vector<vector<Biped<Symmetry,MatrixType> > > rhoArray, qarray<Nq> qnum, DMRG::DIRECTION::OPTION DIR, MatrixType &rho);
 	
 	// sweep stuff RICH_SVD
-	void enrich_left  (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H);
-	void enrich_right (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H);
+	void enrich_left  (size_t loc, PivotMatrix<Symmetry,Scalar,Scalar> *H);
+	void enrich_right (size_t loc, PivotMatrix<Symmetry,Scalar,Scalar> *H);
 };
 
 template<typename Symmetry, typename Scalar>
@@ -467,7 +467,7 @@ info() const
 template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
 Mps()
-:DmrgJanitor<PivotMatrixQ<Symmetry,Scalar,Scalar> >()
+:DmrgJanitor<PivotMatrix<Symmetry,Scalar,Scalar> >()
 {
 	format = noFormat;
 //	qlabel = defaultQlabel<Nq>();
@@ -476,7 +476,7 @@ Mps()
 template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
 Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input)
-:DmrgJanitor<PivotMatrixQ<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input)
+:DmrgJanitor<PivotMatrix<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input)
 {
 	format = noFormat;
 	// format = ::noFormat<Symmetry>;
@@ -489,7 +489,7 @@ template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
 Mps<Symmetry,Scalar>::
 Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
-:DmrgJanitor<PivotMatrixQ<Symmetry,Scalar,Scalar> >()
+:DmrgJanitor<PivotMatrix<Symmetry,Scalar,Scalar> >()
 {
 	format = H.format;
 	qlabel = H.qlabel;
@@ -1159,7 +1159,7 @@ press_rdm (size_t loc, vector<vector<Biped<Symmetry,MatrixType> > > rhoArray, qa
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Symmetry,Scalar,Scalar> *H, bool DISCARD_U)
+leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix<Symmetry,Scalar,Scalar> *H, bool DISCARD_U)
 {
 	vector<vector<Biped<Symmetry,MatrixType> > > rhoArray, rhoNoiseArray;
 	rhoArray.resize(qloc[loc].size());
@@ -1398,7 +1398,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Symmetry,Scala
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixQ<Symmetry,Scalar,Scalar> *H, bool DISCARD_V)
+rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix<Symmetry,Scalar,Scalar> *H, bool DISCARD_V)
 {
 	vector<vector<Biped<Symmetry,MatrixType> > > rhoArray, rhoNoiseArray;
 	rhoArray.resize(qloc[loc].size());
@@ -2001,7 +2001,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<S
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-calc_noise (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, 
+calc_noise (size_t loc, PivotMatrix<Symmetry,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, 
             const vector<vector<Biped<Symmetry,MatrixType> > > rho, 
                   vector<vector<Biped<Symmetry,MatrixType> > > &rhoNoise)
 {
@@ -2129,7 +2129,7 @@ calc_noise (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H, DMRG::DIRECTION
 // works:
 //template<typename Symmetry, typename Scalar>
 //void Mps<Symmetry,Scalar>::
-//calc_noise (PivotMatrixQ<Symmetry,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const vector<vector<Biped<Symmetry,MatrixType> > > rho, vector<vector<Biped<Symmetry,MatrixType> > > &rhoNoise)
+//calc_noise (PivotMatrix<Symmetry,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const vector<vector<Biped<Symmetry,MatrixType> > > rho, vector<vector<Biped<Symmetry,MatrixType> > > &rhoNoise)
 //{
 //	size_t dimB = (DIR==DMRG::DIRECTION::RIGHT)? H->L.dim : H->R.dim;
 //	
@@ -2323,7 +2323,7 @@ calc_noise (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H, DMRG::DIRECTION
 // seems to work now:
 //template<typename Symmetry, typename Scalar>
 //void Mps<Symmetry,Scalar>::
-//calc_noise (PivotMatrixQ<Symmetry,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const vector<vector<Biped<Symmetry,MatrixType> > > rho, vector<vector<Biped<Symmetry,MatrixType> > > &rhoNoise)
+//calc_noise (PivotMatrix<Symmetry,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, const vector<vector<Biped<Symmetry,MatrixType> > > rho, vector<vector<Biped<Symmetry,MatrixType> > > &rhoNoise)
 //{
 //	size_t dimB = (DIR==DMRG::DIRECTION::RIGHT)? H->L.dim : H->R.dim;
 //	
@@ -2483,7 +2483,7 @@ calc_noise (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H, DMRG::DIRECTION
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-enrich_left (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H)
+enrich_left (size_t loc, PivotMatrix<Symmetry,Scalar,Scalar> *H)
 {
 	if (this->alpha_rsvd != 0.)
 	{
@@ -2584,7 +2584,7 @@ enrich_left (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H)
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-enrich_right (size_t loc, PivotMatrixQ<Symmetry,Scalar,Scalar> *H)
+enrich_right (size_t loc, PivotMatrix<Symmetry,Scalar,Scalar> *H)
 {
 	if (this->alpha_rsvd != 0.)
 	{

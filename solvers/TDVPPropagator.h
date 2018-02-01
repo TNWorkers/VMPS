@@ -26,7 +26,7 @@ public:
 	
 private:
 	
-	vector<PivotMatrixQ<Symmetry,TimeScalar,MpoScalar> >  Heff;
+	vector<PivotMatrix<Symmetry,TimeScalar,MpoScalar> >  Heff;
 	
 	double x (int alg, size_t l, int N_stages);
 	
@@ -190,12 +190,12 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
 		
 		// forwards
-		PivotVector2Q<Symmetry,TimeScalar> Apair;
+		PivotVector2<Symmetry,TimeScalar> Apair;
 		contract_AA(Vinout.A[min(loc1,loc2)], Vinout.locBasis(min(loc1,loc2)), 
 		            Vinout.A[max(loc1,loc2)], Vinout.locBasis(max(loc1,loc2)), 
 		            Apair.A);
 		
-		PivotMatrix2Q<Symmetry,TimeScalar,MpoScalar> Heff2;
+		PivotMatrix2<Symmetry,TimeScalar,MpoScalar> Heff2;
 		Heff2.L = Heff[min(loc1,loc2)].L;
 		Heff2.R = Heff[max(loc1,loc2)].R;
 		Heff2.W12 = H.W_at(min(loc1,loc2));
@@ -214,7 +214,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 			Heff2.dim += Apair.A[s1][s2].block[q].rows() * Apair.A[s1][s2].block[q].cols();
 		}
 		
-		LanczosPropagator<PivotMatrix2Q<Symmetry,TimeScalar,MpoScalar>,PivotVector2Q<Symmetry,TimeScalar> > Lutz2(tol_Lanczos);
+		LanczosPropagator<PivotMatrix2<Symmetry,TimeScalar,MpoScalar>,PivotVector2<Symmetry,TimeScalar> > Lutz2(tol_Lanczos);
 		Lutz2.t_step(Heff2, Apair, -x(2,l,N_stages)*dt.imag()); // 2-site algorithm
 		if (Lutz2.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
 		if (Lutz2.get_dimK() > dimK_max) {dimK_max = Lutz2.get_dimK();}
@@ -240,10 +240,10 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 				Heff[pivot].dim += Vinout.A[pivot][s].block[q].rows() * Vinout.A[pivot][s].block[q].cols();
 			}
 			
-			PivotVectorQ<Symmetry,TimeScalar> Asingle;
+			PivotVector1<Symmetry,TimeScalar> Asingle;
 			Asingle.A = Vinout.A[pivot];
 			
-			LanczosPropagator<PivotMatrixQ<Symmetry,TimeScalar,MpoScalar>, PivotVectorQ<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
+			LanczosPropagator<PivotMatrix<Symmetry,TimeScalar,MpoScalar>, PivotVector1<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 			Lutz.t_step(Heff[pivot], Asingle, +x(2,l,N_stages)*dt.imag()); // 2-site algorithm
 			if (Lutz.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
 			if (Lutz.get_dimK() > dimK_max) {dimK_max = Lutz2.get_dimK();}
@@ -277,7 +277,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 		bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
 		
 		// forwards
-		PivotVectorQ<Symmetry,TimeScalar> Asingle;
+		PivotVector1<Symmetry,TimeScalar> Asingle;
 		Asingle.A = Vinout.A[pivot];
 		
 //		if (Heff[pivot].dim == 0)
@@ -294,7 +294,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 			Heff[pivot].dim += Vinout.A[pivot][s].block[q].rows() * Vinout.A[pivot][s].block[q].cols();
 		}
 		
-		LanczosPropagator<PivotMatrixQ<Symmetry,TimeScalar,MpoScalar>, PivotVectorQ<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
+		LanczosPropagator<PivotMatrix<Symmetry,TimeScalar,MpoScalar>, PivotVector1<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 		Lutz.t_step(Heff[pivot], Asingle, -x(1,l,N_stages)*dt.imag()); // 1-site algorithm
 		if (Lutz.get_dist() > dist_max) {dist_max = Lutz.get_dist();}
 		if (Lutz.get_dimK() > dimK_max) {dimK_max = Lutz.get_dimK();}
@@ -302,16 +302,16 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 		
 		if ((l+1)%N_sites != 0)
 		{
-			PivotVector0Q<Symmetry,TimeScalar> Azero;
+			PivotVector0<Symmetry,TimeScalar> Azero;
 			int old_pivot = pivot;
 			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Vinout.rightSplitStep(pivot,Azero.A) : Vinout.leftSplitStep(pivot,Azero.A);
 			pivot = Vinout.get_pivot();
 			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vinout,pivot) : build_R(H,Vinout,pivot);
 			
-			LanczosPropagator<PivotMatrixQ<Symmetry,TimeScalar,MpoScalar>, PivotVector0Q<Symmetry,TimeScalar> > Lutz0(tol_Lanczos);
+			LanczosPropagator<PivotMatrix<Symmetry,TimeScalar,MpoScalar>, PivotVector0<Symmetry,TimeScalar> > Lutz0(tol_Lanczos);
 			
 			// set Heff0
-			PivotMatrixQ<Symmetry,TimeScalar,MpoScalar> Heff0;
+			PivotMatrix<Symmetry,TimeScalar,MpoScalar> Heff0;
 			Heff0.L = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot+1].L : Heff[old_pivot].L;
 			Heff0.R = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot].R   : Heff[old_pivot-1].R;
 			Heff0.W = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot+1].W : Heff[old_pivot-1].W;

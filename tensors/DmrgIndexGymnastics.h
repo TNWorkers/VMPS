@@ -235,7 +235,7 @@ void updateInset (const std::vector<std::array<typename Symmetry::qType,3> > &in
 	}
 }
 
-/**Prepares a PivotMatrixQ by filling PivotMatrixQ::qlhs and PivotMatrixQ::qrhs with the corresponding subspace indices.
+/**Prepares a PivotMatrix by filling PivotMatrix::qlhs and PivotMatrix::qrhs with the corresponding subspace indices.
 Uses OpenMP.*/
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L, 
