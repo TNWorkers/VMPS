@@ -77,10 +77,8 @@ KondoObservables (const size_t &L, const vector<Param> &params, const map<string
 	
 	for (size_t l=0; l<L; ++l)
 	{
-		B[l] = SpinBase<Symmetry> (P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell), true);
-		// True means that N is the good quantum number. Hence, only a dummy-0 is returned.
-		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)), true);
-		// True means that N,M are the good quantum numbers.
+		B[l] = SpinBase<Symmetry> (P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
+		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
 	}
 }
 

@@ -42,7 +42,7 @@ public:
 	SU2() {};
 
 	inline static std::string name() { return "SU(2)"; }
-	inline static constexpr std::array<KIND,Nq> kind() { return Kind::name; }
+	inline static constexpr std::array<KIND,Nq> kind() { return {Kind::name}; }
 	
 	inline static qType qvacuum() { return {1}; }
 	inline static qType flip( const qType& q ) { return q; }
@@ -361,6 +361,18 @@ validate ( const std::array<SU2<Kind,Scalar>::qType,M>& qs )
 					}
 					return false;
 				}
+	else if constexpr( M==3 )
+					 {
+						 //todo: check here triangle rule
+						 std::vector<SU2<Kind,Scalar>::qType> qTarget = SU2<Kind,Scalar>::reduceSilent(qs[0],qs[1]);
+						 bool CHECK=false;
+						 for( const auto& q : qTarget )
+						 {
+							 if(q == qs[2]) {CHECK = true;}
+						 }
+						 return CHECK;
+					 }
+
 	else { return true; }
 }
 

@@ -434,7 +434,7 @@ info() const
 		ss << "(";
 		for (size_t q=0; q<Nq; ++q)
 		{
-			ss << qlabel[q];
+			ss << Symmetry::kind()[q];
 			if (q!=Nq-1) {ss << ",";}
 		}
 		ss << ")=" << format(Qtot) << ", ";
@@ -3550,7 +3550,7 @@ graph (string filename) const
 	ss << "label=\"MPS: L=" << this->N_sites << ", (";
 	for (size_t q=0; q<Nq; ++q)
 	{
-		ss << qlabel[q];
+		ss << Symmetry::kind()[q];
 		if (q!=Nq-1) {ss << ",";}
 	}
 	ss << ")=" << format(Qtot) << "\";\n";

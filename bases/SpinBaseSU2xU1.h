@@ -1,7 +1,7 @@
 #ifndef SPINBASESU2XU1_H_
 #define SPINBASESU2XU1_H_
 
-#include "symmetry/SU2xU1.h"
+#include "symmetry/S1xS2.h"
 #include "symmetry/qbasis.h"
 #include "tensors/SiteOperatorQ.h"
 
@@ -17,11 +17,11 @@
  *
  */
 template<>
-class SpinBase<Sym::SU2xU1<double> >
+class SpinBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >
 {
 	typedef Eigen::Index Index;
 	typedef double Scalar;
-	typedef typename Sym::SU2xU1<Scalar> Symmetry;
+	typedef typename Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
 	typedef typename Symmetry::qType qType;
 	
@@ -68,7 +68,7 @@ public:
 	Operator HeisenbergHamiltonian( double J, bool PERIODIC=false ) const;
 	
     /**Returns the basis.*/
-	vector<qType> get_basis() const { return TensorBasis.qloc(); }
+	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
 private:
 
 	Qbasis<Symmetry> basis_1s; //basis for one site
@@ -85,7 +85,7 @@ private:
 	std::size_t D;
 };
 
-SpinBase<Sym::SU2xU1<double> >::
+SpinBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 SpinBase (std::size_t L_input, std::size_t D_input)
 :N_orbitals(L_input), D(D_input)
 {
@@ -119,7 +119,7 @@ SpinBase (std::size_t L_input, std::size_t D_input)
 	}
 }
 
-SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2xU1<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 S( std::size_t orbital ) const
 {
 	if(N_orbitals == 1) { return S_1s; }
@@ -143,13 +143,13 @@ S( std::size_t orbital ) const
 	}
 }
 
-SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2xU1<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 Sdag( std::size_t orbital ) const
 {
 	return S(orbital).adjoint();
 }
 
-SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2xU1<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 Id() const
 {
 	if(N_orbitals == 1) { return Id_1s; }
@@ -161,7 +161,7 @@ Id() const
 	}
 }
 
-SiteOperatorQ<Sym::SU2xU1<double>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2xU1<double> >::
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 HeisenbergHamiltonian (double J, bool PERIODIC) const
 {	
 	Operator Mout({1,0},TensorBasis);

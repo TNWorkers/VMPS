@@ -5,7 +5,7 @@
 
 #include "bases/FermionBase.h"
 #include "bases/SpinBase.h"
-#include "symmetry/U1xU1.h"
+#include "symmetry/S1xS2.h"
 #include "models/KondoObservables.h"
 
 namespace VMPS
@@ -31,10 +31,12 @@ namespace VMPS
   * \note If nnn-hopping is positive, the GS-energy is lowered.
   * \note The multi-impurity model can be received, by setting D=1 (S=0) for all sites without an impurity.
   */
-class KondoU1xU1 : public Mpo<Sym::U1xU1<double>,double>, public KondoObservables<Sym::U1xU1<double> >
+class KondoU1xU1 : public Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>,
+				   public KondoObservables<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > >
+
 {
 public:
-	typedef Sym::U1xU1<double> Symmetry;
+	typedef Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > Symmetry;
 	
 private:
 	typedef typename Symmetry::qType qType;

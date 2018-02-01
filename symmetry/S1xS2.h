@@ -31,7 +31,7 @@ public:
 	static constexpr bool HAS_CGC = false;
 	static constexpr std::size_t Nq=S1::Nq+S2::Nq;
 	static constexpr bool NON_ABELIAN = S1::NON_ABELIAN or S2::NON_ABELIAN;
-	static constexpr bool TRIVIAL = S1::TRIVIAL and S2::TRIVIAL;
+	static constexpr bool IS_TRIVIAL = S1::IS_TRIVIAL and S2::IS_TRIVIAL;
 
 	typedef qarray<Nq> qType;
 
@@ -362,12 +362,12 @@ validate ( const std::array<S1xS2<S1,S2>::qType,M>& qs )
 					 {
 						 //todo: check here triangle rule
 						 std::vector<S1xS2<S1,S2>::qType> qTarget = S1xS2<S1,S2>::reduceSilent(qs[0],qs[1]);
-						 if( qTarget[0] == qs[2] ) { return true; }
-						 else { return false; }
-						 // for (std::size_t i=2; i<M; i++)
-						 // {
-						 // 	 decomp = SU2xS1xS2<S1,S2>::reduceSilent(decomp,qs[i]);
-						 // }						 
+						 bool CHECK=false;
+						 for( const auto& q : qTarget )
+						 {
+							 if(q == qs[2]) {CHECK = true;}
+						 }
+						 return CHECK;
 					 }
 }
 
