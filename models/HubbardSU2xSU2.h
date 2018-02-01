@@ -87,7 +87,7 @@ const map<string,any> HubbardSU2xSU2::defaults =
 
 HubbardSU2xSU2::
 HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
-	:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,1}), "", SfromD_SfromD)
+	:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,1}), "")
 {
 	ParamHandler P(params,defaults);
 	
@@ -197,7 +197,7 @@ c (size_t locx, size_t locy)
 	stringstream ss;
 	ss << "c(" << locx << "," << locy << ")";
 	
-	Mpo<Symmetry> Mout(N_sites, {2,2}, ss.str(), SfromD_SfromD);
+	Mpo<Symmetry> Mout(N_sites, {2,2}, ss.str());
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	Mout.setLocal(locx, F[locx].c(locy).plain<double>(), F[0].sign().plain<double>());
 	return Mout;
@@ -210,7 +210,7 @@ cdag (size_t locx, size_t locy)
 	stringstream ss;
 	ss << "c†(" << locx << "," << locy << ")";
 	
-	Mpo<Symmetry> Mout(N_sites, {2,2}, ss.str(), SfromD_SfromD);
+	Mpo<Symmetry> Mout(N_sites, {2,2}, ss.str());
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	Mout.setLocal(locx, F[locx].cdag(locy).plain<double>(), F[0].sign().plain<double>());
 	return Mout;
@@ -223,7 +223,7 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	stringstream ss;
 	ss << "c†(" << locx1 << "," << locy1 << ")" << "c(" << locx2 << "," << locy2 << ")";
 	
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str(), SfromD_SfromD);
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
 	
 	auto cdag = F[locx1].cdag(locy1);
@@ -256,7 +256,7 @@ nh (size_t locx, size_t locy)
 	stringstream ss;
 	ss << "holon_occ(" << locx << "," << locy << ")";
 	
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str(), SfromD_SfromD);
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
 	
 	Mout.setLocal(locx, F[locx].nh(locy).plain<double>());
@@ -270,7 +270,7 @@ ns (size_t locx, size_t locy)
 	stringstream ss;
 	ss << "spinon_occ(" << locx << "," << locy << ")";
 	
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str(), SfromD_SfromD);
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
 	
 	Mout.setLocal(locx, F[locx].ns(locy).plain<double>());

@@ -6,20 +6,22 @@
 #include <unordered_map>
 
 #include "boost/multi_array.hpp"
-//using namespace boost;
 
-#include "symmetry/qarray.h"
 #include "DmrgExternal.h"
 #include "MemCalc.h"
 
+#include "symmetry/functions.h"
+#include "symmetry/qarray.h"
+
 /**
-General tensor with quantum number blocks.
-\tparam Nlegs : Amount of tensor legs, must be >=2. A two-legged tensor is coded separately as Biped.
-\describe_Symmetry
-\describe_MatrixType
-\note special typedefs not caught by Doxygen: \n 
-\p Tripod<Symmetry,MatrixType> (\p Nlegs=3, e.g. the transfer matrix in \f$\left<\Psi|H|\Psi\right>\f$) \n
-\p Quadruped<Symmetry,MatrixType> (\p Nlegs=4, e.g. the transfer matrix in \f$\left<\Psi|H^2|\Psi\right>\f$).*/
+ * General tensor with quantum number blocks.
+ * \tparam Nlegs : Amount of tensor legs, must be >=2. A two-legged tensor is coded separately as Biped.
+ * \describe_Symmetry
+ * \describe_MatrixType
+ * \note special typedefs not caught by Doxygen: \n 
+ * \p Tripod<Symmetry,MatrixType> (\p Nlegs=3, e.g. the transfer matrix in \f$\left<\Psi|H|\Psi\right>\f$) \n
+ * \p Quadruped<Symmetry,MatrixType> (\p Nlegs=4, e.g. the transfer matrix in \f$\left<\Psi|H^2|\Psi\right>\f$).
+ */
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
 struct Multipede
 {
@@ -31,24 +33,39 @@ typedef typename Symmetry::qType qType;
 	inline constexpr size_t rank() const {return Nlegs;}
 
 	///@{
-	/**Convenience access to the amount of blocks.
-	Equal to either of the following: \p index.size(), \p block.size()*/
+	/**
+	 * Convenience access to the amount of blocks.
+	 * Equal to either of the following: \p index.size(), \p block.size()
+	 */
 	size_t dim;
 	inline std::size_t size() const {return dim;}
 
-	/**Vector of all incoming quantum numbers.
-	The entries are arrays of size \p Nlegs. The sorting is according to the following convention:
-	1. incoming 2. outgoing 3. middle (\p Nlegs=3)
-	1. incoming 2. outgoing 3. bottom 4. top (\p Nlegs=4)
-	The middle, bottom and top quantum numbers are always outgoing for the left transfer matrix and incoming for the right transfer matrix in matrix element calculations.*/
+	/**
+	 * Vector of all incoming quantum numbers.
+	 * The entries are arrays of size \p Nlegs. The sorting is according to the following convention:
+	 * 1. incoming 2. outgoing 3. middle (\p Nlegs=3)
+	 * 1. incoming 2. outgoing 3. bottom 4. top (\p Nlegs=4)
+	 * The middle, bottom and top quantum numbers are always outgoing for the left transfer matrix 
+	 * and incoming for the right transfer matrix in matrix element calculations.
+	*/
 	vector<std::array<qType,Nlegs> > index;
 	
-	/**Vector of quantum number blocks.
-	The matrix \p block[q] is characterized by the quantum number array \p index[q]. Since the handling of template-sized arrays is no fun at all, the implementation is done in the following way: \p block[q] is always a boost \p multi_array of dimension \p LEGLIMIT which is set = 2. Tripods need only one dimension (two are already absorbed into \p MatrixType), therefore the rest needs to be set to 1 and the access goes by \p T.block[q][a][0]. \p LEGLIMIT can be increased and some code adjustment can be made (filling in dummy "[0]") if bigger tensors are required.*/
+	/**
+	 * Vector of quantum number blocks.
+	 * The matrix \p block[q] is characterized by the quantum number array \p index[q]. 
+	 * Since the handling of template-sized arrays is no fun at all, 
+	 * the implementation is done in the following way: \p block[q] is always a boost \p multi_array of dimension \p LEGLIMIT 
+	 * which is set = 2. Tripods need only one dimension (two are already absorbed into \p MatrixType), 
+	 * therefore the rest needs to be set to 1 and the access goes by \p T.block[q][a][0]. 
+	 * \p LEGLIMIT can be increased and some code adjustment can be made (filling in dummy "[0]") if bigger tensors are required.
+	 */
 	vector<boost::multi_array<MatrixType,LEGLIMIT> > block;
 	
-	/**Dictionary allowing one to find the index of \p block for a given array of \p Nlegs quantum numbers in \f$O(1)\f$ operations without looping over the blocks.
-	For the ordering convention see Multipede::index.*/
+	/**
+	 * Dictionary allowing one to find the index of \p block for a given array of \p Nlegs quantum numbers in \f$O(1)\f$ operations 
+	 * without looping over the blocks.
+	 * For the ordering convention see Multipede::index.
+	 */
 	unordered_map<std::array<qType,Nlegs>,size_t> dict; // key format: {qin,qout,qmid}
 	///@}
 	
@@ -73,12 +90,17 @@ typedef typename Symmetry::qType qType;
 	/**Sets all matrices in Multipede<Nlegs,Symmetry,MatrixType>::block to zero, preserving the rows and columns.*/
 	void setZero();
 	
-	/**Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers to the vacuum (all of them).
-	Needed in for the transfer matrix to the first site in matrix element calculations.*/
+	/**
+	 * Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers to the vacuum (all of them).
+	 * Needed in for the transfer matrix to the first site in matrix element calculations.
+	 */
 	void setVacuum();
 	
-	/**Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers according to the input \p Q.
-	Needed in for the transfer matrix from the last site in matrix element calculations.*/
+	/**
+	 * Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers according to the input \p Q.
+	 * Needed in for the transfer matrix from the last site in matrix element calculations.
+	 * \todo : setTarget for non abelian symmetries may have a bug. Calculations of avg(Mps,Mpo,Mps) for Mpo = c habe a wrong factor.
+	 */
 	void setTarget (std::array<qType,Nlegs> Q);
 	
 	/***/
@@ -86,8 +108,10 @@ typedef typename Symmetry::qType qType;
 	///@}
 	
 	///@{
-	/**Convenience function to return a quantum number of the block \p q to preserve the sanity of the programmer.
-	For the naming convention see Multipede::index.*/
+	/**
+	 * Convenience function to return a quantum number of the block \p q to preserve the sanity of the programmer.
+	 * For the naming convention see Multipede::index.
+	 */
 	inline qType in  (size_t q) const {return index[q][0];}
 	inline qType out (size_t q) const {return index[q][1];}
 	inline qType mid (size_t q) const {return index[q][2];}
@@ -96,13 +120,17 @@ typedef typename Symmetry::qType qType;
 	///@}
 	
 	///@{
-	/**Adds a new block to the tensor specified by the incoming quantum numbers \p quple.
-	\warning Does not check whether the block for these quantum numbers already exists.*/
+	/**
+	 * Adds a new block to the tensor specified by the incoming quantum numbers \p quple.
+	 * \warning Does not check whether the block for these quantum numbers already exists.
+	 */
 	void push_back (std::array<qType,Nlegs> quple, const boost::multi_array<MatrixType,LEGLIMIT> &M);
 	
-	/**Adds a new block to the tensor specified by the initializer list \p qlist (must be of size \p Nlegs).
-	For the ordering convention see Multipede::index.
-	\warning Does not check whether the block for these quantum numbers already exists.*/
+	/**
+	 * Adds a new block to the tensor specified by the initializer list \p qlist (must be of size \p Nlegs).
+	 * For the ordering convention see Multipede::index.
+	 * \warning Does not check whether the block for these quantum numbers already exists.
+	 */
 	void push_back (std::initializer_list<qType> qlist, const boost::multi_array<MatrixType,LEGLIMIT> &M);
 	///@}
 };
@@ -286,7 +314,7 @@ print(const bool &SHOW_MATRICES, const std::size_t &precision) const
 		tt << "(";
 		for (std::size_t q=0; q<index[nu].size(); q++)
 		{
-			tt << index[nu][q];
+			tt << Sym::format<Symmetry>(index[nu][q]);
 			if(q==index[nu].size()-1) {tt << ")";} else {tt << ",";}
 		}
 		uu << block[nu].shape()[0] << ":[";

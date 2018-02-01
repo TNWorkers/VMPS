@@ -52,9 +52,6 @@ public:
 	 */
 	static HamiltonianTermsXd<Symmetry> set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F,
 	                                                    const ParamHandler &P, size_t loc=0);
-
-	/**Makes half-integers in the output for the magnetization quantum number.*/
-	static std::string N_halveM (qType qnum);
 				
 	/**Validates whether a given \p qnum is a valid combination of \p N and \p M for the given model.
 	\returns \p true if valid, \p false if not*/
@@ -112,7 +109,7 @@ const std::map<string,std::any> KondoSU2xU1::defaults =
 
 KondoSU2xU1::
 KondoSU2xU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,0}), "")
+	:Mpo<Symmetry> (L, Symmetry::qvacuum(), "")
 {
 	ParamHandler P(params,defaults);
 	
@@ -152,14 +149,6 @@ validate (qType qnum) const
 	frac S_tot(qnum[0]-1,2);
 	if (Smax.denominator()==S_tot.denominator() and S_tot<=Smax and qnum[0]<=2*static_cast<int>(this->N_phys) and qnum[0]>0) {return true;}
 	else {return false;}
-}
-
-std::string KondoSU2xU1::
-N_halveM (qType qnum)
-{
-	std::stringstream ss;
-	ss << "not implemented";
-	return ss.str();
 }
 
 HamiltonianTermsXd<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::

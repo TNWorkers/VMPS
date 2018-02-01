@@ -18,78 +18,6 @@ string print_frac_nice (frac r)
 	return ss.str();
 }
 
-/**Default format for quantum number output: Print the integer as is.*/
-template<size_t Nq>
-string noFormat (qarray<Nq> qnum)
-{
-	stringstream ss;
-	ss << qnum;
-	return ss.str();
-}
-
-/**Makes half-integers in the output.*/
-template<size_t Nq>
-string halve (qarray<Nq> qnum)
-{
-	stringstream ss;
-//	ss << "(";
-	for (size_t q=0; q<Nq; ++q)
-	{
-		boost::rational<int> m = boost::rational<int>(qnum[q],2);
-		if      (m.numerator()   == 0) {ss << 0;}
-		else if (m.denominator() == 1) {ss << m.numerator();}
-		else {ss << m;}
-		if (q!=Nq-1) {ss << ",";}
-	}
-//	ss << ")";
-	return ss.str();
-}
-
-/**Calculates the total spin \p S from the degeneracy \p D for a label.*/
-string SfromD (qarray<1> qnum)
-{
-	stringstream ss;
-//	ss << "(";
-	ss << print_frac_nice(boost::rational<int>(qnum[0]-1,2));
-//	ss << ")";
-	return ss.str();
-}
-
-string SfromD_noFormat (qarray<2> qnum)
-{
-	stringstream ss;
-	ss << "(";
-	ss << print_frac_nice(boost::rational<int>(qnum[0]-1,2)) << ",";
-	ss << qnum[1];
-	ss << ")";
-	return ss.str();
-}
-
-string SfromD_SfromD (qarray<2> qnum)
-{
-	stringstream ss;
-	ss << "(";
-	ss << print_frac_nice(boost::rational<int>(qnum[0]-1,2)) << ",";
-	ss << print_frac_nice(boost::rational<int>(qnum[1]-1,2));
-	ss << ")";
-	return ss.str();
-}
-
-/**Makes a default label for conserved quantum numbers: "Q1", "Q2", "Q3"...
-Is realized by a function to preserve the sanity of the programmer since default template-sized arguments seem to be tricky.*/
-template<size_t Nq>
-std::array<string,Nq> defaultQlabel() //constexpr 
-{
-	std::array<string,Nq> out;
-	for (size_t q=0; q<Nq; ++q)
-	{
-		stringstream ss;
-		ss << "Q" << q+1;
-		out[q] = ss.str();
-	}
-	return out;
-}
-
 namespace std
 {
 /**Hashes an array of quantum numbers using boost's \p hash_combine for the dictionaries in Biped, Multipede.*/
@@ -108,8 +36,10 @@ struct hash<std::array<qarray<Nq>,Nlegs> >
 	}
 };
 
-/**Hashes a pair of doubles using boost's \p hash_combine.
-Needed for \ref precalc_blockStructure.*/
+/**
+ * Hashes a pair of doubles using boost's \p hash_combine.
+ * Needed for \ref precalc_blockStructure.
+ */
 template<>
 struct hash<std::array<size_t,2> >
 {
@@ -122,8 +52,10 @@ struct hash<std::array<size_t,2> >
 	}
 };
 	
-/**Hashes one qarray using boost's \p hash_combine.
-Needed in class \ref Qbasis.*/
+/**
+ * Hashes one qarray using boost's \p hash_combine.
+ * Needed in class \ref Qbasis.
+ */
 template<size_t Nq>
 struct hash<qarray<Nq> >
 {

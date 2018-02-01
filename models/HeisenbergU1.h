@@ -78,13 +78,13 @@ const std::map<string,std::any> HeisenbergU1::defaults =
 
 HeisenbergU1::
 HeisenbergU1 (const size_t &L)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", halve<1>),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), ""),
  HeisenbergObservables(L)
 {}
 
 HeisenbergU1::
 HeisenbergU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", halve<1>),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), ""),
  HeisenbergObservables(L,params,HeisenbergU1::defaults)
 {
 	ParamHandler P(params,defaults);

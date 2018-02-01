@@ -66,7 +66,7 @@ public:
 	
 	/** 
 	 * Construct by pulling info from an Mpo.
-	 * \param H : chain length and local basis will be retrieved from this Mpo (less importantly, the quantum number labels and the format function as well)
+	 * \param H : chain length and local basis will be retrieved from this Mpo
 	 * \param Dmax : size cutoff (per subspace)
 	 * \param Qtot_input : target quantum number
 	*/
@@ -131,14 +131,15 @@ public:
 	
 	/**
 	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from an Mpo.
-	 * \param H : chain length and local basis will be retrieved from this Mpo (less importantly, the quantum number labels and the format function as well)
+	 * \param H : chain length and local basis will be retrieved from this Mpo
 	 * \param Qtot_input : target quantum number
 	 */
 	template<typename Hamiltonian> void outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input);
 	
 	/**
-	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from another Mps.
-	 * \param V : chain length, local basis and target quantum number will be equal to this Mps (less importantly, the quantum number labels and the format function as well)
+	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. 
+	 * Pulls info from another Mps.
+	 * \param V : chain length, local basis and target quantum number will be equal to this Mps
 	 */
 	template<typename OtherMatrixType> void outerResize (const Mps<Symmetry,OtherMatrixType> &V);
 	
@@ -213,12 +214,7 @@ public:
 	 * \param filename : gets a ".dot" extension automatically
 	 */
 	void graph (string filename) const;
-	
-	/**
-	 * How to format the conserved quantum numbers in the output, e\.g\. fractions for \f$S=1/2\f$ Heisenberg.
-	 */
-	string (*format)(qarray<Nq> qnum);
-	
+		
 	/**
 	 * Determines the maximal bond dimension per site (sum of \p A.rows or \p A.cols over all subspaces).
 	 */
@@ -466,17 +462,13 @@ template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
 Mps()
 :DmrgJanitor<PivotMatrix<Symmetry,Scalar,Scalar> >()
-{
-	format = noFormat;
-}
+{}
 
 template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
 Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input)
 :DmrgJanitor<PivotMatrix<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input)
 {
-	format = noFormat;
-	// format = ::noFormat<Symmetry>;
 	outerResize(L_input, qloc_input, Qtot_input);
 }
 
@@ -486,7 +478,6 @@ Mps<Symmetry,Scalar>::
 Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
 :DmrgJanitor<PivotMatrix<Symmetry,Scalar,Scalar> >()
 {
-	format = H.format;
 	N_phys = H.volume();
 	outerResize(H.length(), H.locBasis(), Qtot_input);
 	innerResize(Dmax);
@@ -497,7 +488,6 @@ template<typename Hamiltonian>
 void Mps<Symmetry,Scalar>::
 outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input)
 {
-	format = H.format;
 	N_phys = H.volume();
 	outerResize(H.length(), H.locBasis(), Qtot_input);
 }
@@ -507,7 +497,6 @@ template<typename OtherMatrixType>
 void Mps<Symmetry,Scalar>::
 outerResize (const Mps<Symmetry,OtherMatrixType> &V)
 {
-	format = V.format;
 	this->N_sites = V.N_sites;
 	N_phys = V.N_phys;
 	qloc = V.qloc;
@@ -876,7 +865,6 @@ void Mps<Symmetry,Scalar>::
 setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 {
 	assert(H.length() == config.size());
-	format = H.format;
 	N_phys = H.volume();
 	outerResize(H.length(), H.locBasis(), accumulate(config.begin(),config.end(),qvacuum<Nq>()));
 	
@@ -2835,7 +2823,6 @@ swap (Mps<Symmetry,Scalar> &V)
 	std::swap(this->N_sites, V.N_sites);
 	std::swap(N_phys, V.N_phys);
 	
-	std::swap(this->format, V.format);
 	std::swap(this->alpha_noise, V.alpha_noise);
 	std::swap(this->eps_rdm, V.eps_rdm);
 	std::swap(this->eps_svd, V.eps_svd);
@@ -2862,7 +2849,6 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 get_controlParams (const Mps<Symmetry,Scalar> &V)
 {
-	this->format = V.format;
 	this->alpha_noise = V.alpha_noise;
 	this->eps_rdm = V.eps_rdm;
 	this->eps_svd = V.eps_svd;
@@ -3420,14 +3406,14 @@ validate (string name) const
 			{
 				ss << name << " has wrong dimensions at: l=" << l << "→" << l+1
 				<< ", qnum=" << A[l][s1].out[q1] 
-				<< ", s1=" << format(qloc[l][s1]) << ", s2=" << format(qloc[l+1][s1])
+			    << ", s1=" << Sym::format<Symmetry>(qloc[l][s1]) << ", s2=" << Sym::format<Symmetry>(qloc[l+1][s1])
 				<< ", cols=" << A[l][s1].block[q1].cols() << " → rows=" << A[l+1][s2].block[q2].rows() << endl;
 			}
 			if (A[l][s1].block[q1].cols() == 0 or A[l+1][s2].block[q2].rows() == 0)
 			{
 				ss << name << " has zero dimensions at: l=" << l << "→" << l+1
 				<< ", qnum=" << A[l][s1].out[q1] 
-				<< ", s1=" << format(qloc[l][s1]) << ", s2=" << format(qloc[l+1][s1])
+				<< ", s1=" << Sym::format<Symmetry>(qloc[l][s1]) << ", s2=" << Sym::format<Symmetry>(qloc[l+1][s1])
 				<< ", cols=" << A[l][s1].block[q1].cols() << " → rows=" << A[l+1][s2].block[q2].rows() << endl;
 			}
 		}
@@ -3544,11 +3530,11 @@ graph (string filename) const
 		ss << Symmetry::kind()[q];
 		if (q!=Nq-1) {ss << ",";}
 	}
-	ss << ")=" << format(Qtot) << "\";\n";
+	ss << ")=" << Sym::format<Symmetry>(Qtot) << "\";\n";
 	
 	// vacuum node
-	ss << "\"l=" << 0 << ", " << format(qvacuum<Nq>()) << "\"";
-	ss << "[label=" << "\"" << format(qvacuum<Nq>()) << "\"" << "];\n";
+	ss << "\"l=" << 0 << ", " << Sym::format<Symmetry>(Symmetry::qvacuum()) << "\"";
+	ss << "[label=" << "\"" << Sym::format<Symmetry>(Symmetry::qvacuum()) << "\"" << "];\n";
 	
 	// site nodes
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -3557,7 +3543,7 @@ graph (string filename) const
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		for (size_t q=0; q<A[l][s].dim; ++q)
 		{
-			string qin  = format(A[l][s].in[q]);
+			string qin  = Sym::format<Symmetry>(A[l][s].in[q]);
 			ss << "\"l=" << l << ", " << qin << "\"";
 			ss << "[label=" << "\"" << qin << "\"" << "];\n";
 		}
@@ -3568,8 +3554,8 @@ graph (string filename) const
 	
 	// last node
 	ss << "subgraph" << " cluster_" << this->N_sites << "\n{\n";
-		ss << "\"l=" << this->N_sites << ", " << format(Qtot) << "\"";
-		ss << "[label=" << "\"" << format(Qtot) << "\"" << "];\n";
+	ss << "\"l=" << this->N_sites << ", " << Sym::format<Symmetry>(Qtot) << "\"";
+	ss << "[label=" << "\"" << Sym::format<Symmetry>(Qtot) << "\"" << "];\n";
 	ss << "label=\"l=" << this->N_sites << "\"\n";
 	ss << "}\n";
 	
@@ -3579,8 +3565,8 @@ graph (string filename) const
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		for (size_t q=0; q<A[l][s].dim; ++q)
 		{
-			string qin  = format(A[l][s].in[q]);
-			string qout = format(A[l][s].out[q]);
+			string qin  = Sym::format<Symmetry>(A[l][s].in[q]);
+			string qout = Sym::format<Symmetry>(A[l][s].out[q]);
 			ss << "\"l=" << l << ", " << qin << "\"";
 			ss << "->";
 			ss << "\"l=" << l+1 << ", " << qout << "\"";
@@ -3648,9 +3634,7 @@ overhead (MEMUNIT memunit) const
 
 template<typename Symmetry, typename Scalar>
 ostream &operator<< (ostream& os, const Mps<Symmetry,Scalar> &V)
-{
-	assert(V.format and "Empty pointer to format function in Mps!");
-	
+{	
 	os << setfill('-') << setw(30) << "-" << setfill(' ');
 	os << "Mps: L=" << V.length();
 	os << setfill('-') << setw(30) << "-" << endl << setfill(' ');
@@ -3659,8 +3643,8 @@ ostream &operator<< (ostream& os, const Mps<Symmetry,Scalar> &V)
 	{
 		for (size_t s=0; s<V.locBasis(l).size(); ++s)
 		{
-			os << "l=" << l << "\ts=" << V.format(V.locBasis(l)[s]) << endl;
-			os << V.A_at(l)[s].formatted(V.format);
+			os << "l=" << l << "\ts=" << Sym::format<Symmetry>(V.locBasis(l)[s]) << endl;
+			os << V.A_at(l)[s].formatted(Sym::format<Symmetry>);
 			os << endl;
 		}
 		os << setfill('-') << setw(80) << "-" << setfill(' ');

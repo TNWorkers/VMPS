@@ -59,12 +59,7 @@ public:
 	template<typename Symmetry_> 
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F,
 	                                                    const ParamHandler &P, size_t loc=0);
-	
-	///@{
-	/**Makes half-integers in the output for the magnetization quantum number.*/
-	static string N_halveM (qType qnum);	
-	///@}
-	
+		
 	/**Validates whether a given \p qnum is a valid combination of \p N and \p M for the given model.
 	\returns \p true if valid, \p false if not*/
 	bool validate (qType qnum) const;
@@ -85,8 +80,7 @@ const map<string,any> KondoU1xU1::defaults =
 
 KondoU1xU1::
 KondoU1xU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0,0}),  ""), //, KondoU1xU1::N_halveM())
- KondoObservables(L,params,defaults)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0,0}),  ""), KondoObservables(L,params,defaults)
 {
 	ParamHandler P(params,defaults);
 	
@@ -122,21 +116,6 @@ validate (qType qnum) const
 	cout << S_tot << "\t" << Smax << endl;
 	if (Smax.denominator()==S_tot.denominator() and S_tot<=Smax and qnum[0]<=2*static_cast<int>(this->N_phys) and qnum[0]>0) {return true;}
 	else {return false;}
-}
-
-string KondoU1xU1::
-N_halveM (qType qnum)
-{
-	stringstream ss;
-	ss << "(" << qnum[0] << ",";
-	
-	qarray<1> mag;
-	mag[0] = qnum[1];
-	string halfmag = ::halve(mag);
-	halfmag.erase(0,1);
-	ss << halfmag;
-	
-	return ss.str();
 }
 
 template<typename Symmetry_>

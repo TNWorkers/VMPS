@@ -85,7 +85,7 @@ protected:
 
 HeisenbergSU2::
 HeisenbergSU2 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "", SfromD)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "")
 {
 	ParamHandler P(params,defaults);
 	
@@ -122,7 +122,7 @@ S (std::size_t locx, std::size_t locy)
 
 	SiteOperator Op = B[locx].S(locy).plain<double>();
 
-	Mpo<Symmetry> Mout(N_sites, Op.Q, ss.str(), halve<Symmetry::Nq>);
+	Mpo<Symmetry> Mout(N_sites, Op.Q, ss.str());
 	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
 
 	Mout.setLocal(locx,Op);
@@ -138,7 +138,7 @@ Sdag (std::size_t locx, std::size_t locy)
 
 	SiteOperator Op = B[locx].Sdag(locy).plain<double>();
 
-	Mpo<Symmetry> Mout(N_sites, Op.Q, ss.str(), halve<Symmetry::Nq>);
+	Mpo<Symmetry> Mout(N_sites, Op.Q, ss.str());
 	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
 
 	Mout.setLocal(locx,Op);
@@ -152,14 +152,9 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 	std::stringstream ss;
 	ss << "S(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
 	
-	Mpo<Symmetry> Mout(N_sites);
-	for (std::size_t l=0; l<N_sites; l++)
-	{
-		Mout.setLocBasis(B[l].get_basis().qloc(),l);
-	}
+	Mpo<Symmetry> Mout(N_sites,Symmetry::qvacuum(),ss.str());
+	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
 	
-	Mout.label = ss.str();
-	Mout.setQtarget(Symmetry::qvacuum());
 	if (locx1 == locx2)
 	{
 		auto product = std::sqrt(3.)*Operator::prod(B[locx1].Sdag(locy1),B[locx2].S(locy2),Symmetry::qvacuum());

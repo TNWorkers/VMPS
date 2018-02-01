@@ -53,9 +53,12 @@ std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 	return s;
 }
 
+#ifndef KIND_ENUM
+#define KIND_ENUM
 namespace Sym{
 	enum KIND {S,T,N,M,Nup,Ndn};
 }
+#endif
 
 std::ostream& operator<< (std::ostream& s, Sym::KIND l)
 {

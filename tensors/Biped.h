@@ -8,18 +8,21 @@
 #include "MemCalc.h" // from HELPERS
 
 #include "DmrgExternal.h"
+#include "symmetry/functions.h"
 
 namespace contract {
 	enum MODE {UNITY,OORR,DOT};
 }
 
-using namespace std;
+// using namespace std;
 
 /**
-Tensor with two legs and quantum number blocks.
-One could have used a general tensor, but the special case of two legs is hardcoded to preserve the sanity of the programmer. For the general tensor see Multipede.
-@describe_Symmetry
-@describe_MatrixType*/
+ * Tensor with two legs and quantum number blocks.
+ * One could have used a general tensor, but the special case of two legs is hardcoded to preserve the sanity of the programmer. 
+ * For the general tensor see Multipede.
+ * @describe_Symmetry
+ * @describe_MatrixType
+ */
 template<typename Symmetry, typename MatrixType_>
 struct Biped
 {
@@ -36,8 +39,10 @@ public:
 	Biped(){dim=0;}
 	
 	///@{
-	/**Convenience access to the amount of blocks.
-	Equal to either of the following: \p in.size(), \p out.size(), \p block.size()*/
+	/**
+	 * Convenience access to the amount of blocks.
+	 * Equal to either of the following: \p in.size(), \p out.size(), \p block.size()
+	 */
 	std::size_t dim;
 	inline std::size_t size() const {return dim;}
 	inline void plusplus() {++dim;}
@@ -48,13 +53,18 @@ public:
 	/**Vector of all outgoing quantum numbers.*/
 	std::vector<qType> out;
 	
-	/**Vector of quantum number blocks.
-	The matrix \p block[q] is characterized by the incoming quantum number \p in[q] and the outgoing quantum number \p out[q]*/
+	/**
+	 * Vector of quantum number blocks.
+	 * The matrix \p block[q] is characterized by the incoming quantum number \p in[q] and the outgoing quantum number \p out[q]
+	 */
 	std::vector<MatrixType_> block;
 	///@}
 	
 	///@{
-	/**Dictionary allowing one to find the index of \p block for a given array of two quantum numbers \p qin, \p qout in \f$O(1)\f$ operations without looping over the blocks.*/
+	/**
+	 *Dictionary allowing one to find the index of \p block for a given array of two quantum numbers \p qin, \p qout in \f$O(1)\f$ 
+	 * operations without looping over the blocks.
+	 */
 	std::unordered_map<std::array<qType,2>,std::size_t> dict; // key format: {qin,qout}
 	
 	///@{
@@ -66,12 +76,14 @@ public:
 	Eigen::VectorXi norm () const;
 	///@}
 	
-	/**Prints the whole tensor, formatting the quantum numbers accoridng the function \p formatFunction.*/
-	std::string formatted (std::string (*formatFunction)(qType)=noFormat) const;
+	/**Prints the whole tensor, formatting the quantum numbers */
+	std::string formatted () const;
 	
-	/**Function to print the full Biped 
-	\param SHOW_MATRICES : if true, all the block-matrices are printed.
-	\param precision : precision for the \p Scalar tensor components*/
+	/**
+	 * Function to print the full Biped 
+	 * \param SHOW_MATRICES : if true, all the block-matrices are printed.
+	 * \param precision : precision for the tensor components
+	 */
 	std::string print ( const bool SHOW_MATRICES=false , const std::size_t precision=3 ) const;
 	
 	/**Prints Biped<Symmetry,MatrixType>::dict into a string.*/
@@ -94,26 +106,37 @@ public:
 	/**Sets all matrices in Biped<Symmetry,MatrixType>::block to random values, preserving the rows and columns.*/
 	void setRandom();
 	
-	/**Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers to the vacuum (both \p in & \p out).
-	Needed in for the transfer matrix to the first site in overlap calculations.*/
-	
+	/**
+	 * Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers to the vacuum (both \p in & \p out).
+	 * Needed in for the transfer matrix to the first site in overlap calculations.
+	 */
 	void setVacuum();
-	/**Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers to \p Qtot (both \p in & \p out).
-	Needed in for the transfer matrix from the last site in overlap calculations.*/
 	
+	/**
+	 * Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers to \p Qtot (both \p in & \p out).
+	 * Needed in for the transfer matrix from the last site in overlap calculations.
+	 */
 	void setTarget (qType Qtot);
 	///@}
 	
 	///@{
-	/**Returns the adjoint tensor where all the block matrices are adjoint and the quantum number arrows are flipped: \p in \f$\to\f$ \p out and vice versa.*/
+	/**
+	 * Returns the adjoint tensor where all the block matrices are adjoint and the quantum number arrows are flipped: 
+	 * \p in \f$\to\f$ \p out and vice versa.
+	 */
 	Biped<Symmetry,MatrixType_> adjoint() const;
 	
-	/**Adds another tensor to the current one. 
-	   If quantum numbers match, the block is updated (block rows and columns must match), otherwise a new block is created.*/
+	/**
+	 * Adds another tensor to the current one. 
+	 * If quantum numbers match, the block is updated (block rows and columns must match), otherwise a new block is created.
+	 */
 	Biped<Symmetry,MatrixType_>& operator+= (const Biped<Symmetry,MatrixType_> &Arhs);
-	/**This functions perform a contraction of \p this and \p A, which is a standard Matrix multiplication in this case.
-	   \param A : other Biped which is contracted together with \p this.
-	   \param MODE : */
+	
+	/**
+	 * This functions perform a contraction of \p this and \p A, which is a standard Matrix multiplication in this case.
+	 * \param A : other Biped which is contracted together with \p this.
+	 * \param MODE
+	 */
 	Biped<Symmetry,MatrixType_> contract(const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE = contract::MODE::UNITY) const;
 	///@}
 	
@@ -121,15 +144,18 @@ public:
 	Scalar trace() const;
 	
 	///@{
-	/**Adds a new block to the tensor specified by the incoming quantum number \p qin and the outgoing quantum number \p qout.
-	\warning Does not check whether the block for these quantum numbers already exists.*/
+	/**
+	 * Adds a new block to the tensor specified by the incoming quantum number \p qin and the outgoing quantum number \p qout.
+	 * \warning Does not check whether the block for these quantum numbers already exists.
+	 */
 	void push_back (qType qin, qType qout, const MatrixType_ &M);
 	
-	/**Adds a new block to the tensor specified by the 2-array of quantum numbers \p quple.
-	The ordering convention is: \p in, \p out.
-	\warning Does not check whether the block for these quantum numbers already exists.*/
+	/**
+	 * Adds a new block to the tensor specified by the 2-array of quantum numbers \p quple.
+	 * The ordering convention is: \p in, \p out.
+	 * \warning Does not check whether the block for these quantum numbers already exists.
+	 */
 	void push_back (std::array<qType,2> quple, const MatrixType_ &M);
-	
 	///@}
 };
 
@@ -397,13 +423,13 @@ overhead (MEMUNIT memunit) const
 
 template<typename Symmetry, typename MatrixType_>
 std::string Biped<Symmetry,MatrixType_>::
-formatted (std::string (*formatFunction)(qType)) const
+formatted () const
 {
 	std::stringstream ss;
 	ss << "•Biped(" << dim << "):" << endl;
 	for (std::size_t q=0; q<dim; ++q)
 	{
-		ss << "  [" << q << "]: " << formatFunction(in[q]) << "→" << formatFunction(out[q]);
+		ss << "  [" << q << "]: " << Sym::format<Symmetry>(in[q]) << "→" << Sym::format<Symmetry>(out[q]);
 		ss << ":" << endl;
 		ss << "   " << block[q];
 		if (q!=dim-1) {ss << endl;}
