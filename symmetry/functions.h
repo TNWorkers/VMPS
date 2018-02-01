@@ -1,7 +1,24 @@
 #ifndef FUNCTIONS_H_
 #define FUNCTIONS_H_
 
+#include "DmrgExternal.h"
+
 namespace Sym{
+	
+	template<typename Symmetry>
+	string format (qarray<Symmetry::Nq> qnum)
+	{
+		stringstream ss;
+		for (int q=0; q<Symmetry::Nq; ++q)
+		{
+			if (Symmetry::kind()[q] == KIND::S or Symmetry::kind()[q] == KIND::T) {ss << SfromD(qarray<1>{qnum[q]});}
+			else if (Symmetry::kind()[q] == KIND::M)                              {ss << halve(qarray<1>{qnum[q]});}
+			else                                                                  {ss << noFormat(qarray<1>{qnum[q]});}
+			if (q!=Symmetry::Nq-1)                                                {ss << ",";}
+		}
+		return ss.str();
+	}
+	
 	template<typename Scalar>
 	Scalar phase(int q)
 	{

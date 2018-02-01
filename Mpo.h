@@ -10,10 +10,11 @@
 typedef Eigen::SparseMatrix<double,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXd;
 using namespace Eigen;
 
-#include "symmetry/U0.h"
+//#include "symmetry/U0.h"
 #include "SuperMatrix.h"
 #include "symmetry/qarray.h"
 #include "symmetry/qbasis.h"
+#include "symmetry/functions.h"
 #include "tensors/Biped.h"
 #include "pivot/DmrgPivotStuff1.h"
 #include <unsupported/Eigen/KroneckerProduct>
@@ -1730,8 +1731,6 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 template<typename Symmetry, typename Scalar>
 ostream &operator<< (ostream& os, const Mpo<Symmetry,Scalar> &O)
 {
-	assert (O.format and "Empty pointer to format function in Mpo!");
-	
 	os << setfill('-') << setw(30) << "-" << setfill(' ');
 	os << "Mpo: L=" << O.length() << ", Daux=" << O.auxdim();
 	os << setfill('-') << setw(30) << "-" << endl << setfill(' ');
@@ -1746,7 +1745,7 @@ ostream &operator<< (ostream& os, const Mpo<Symmetry,Scalar> &O)
 			{
 				std::array<typename Symmetry::qType,3> qCheck = {O.locBasis(l)[s2],O.opBasis(l)[k],O.locBasis(l)[s1]};
 				if(!Symmetry::validate(qCheck)) {continue;}
-				os << "[l=" << l << "]\t|" << O.format(O.locBasis(l)[s1]) << "><" << O.format(O.locBasis(l)[s2]) << "|:" << endl;
+				os << "[l=" << l << "]\t|" << Sym::format<Symmetry>(O.locBasis(l)[s1]) << "><" << Sym::format<Symmetry>(O.locBasis(l)[s2]) << "|:" << endl;
 				os << Matrix<Scalar,Dynamic,Dynamic>(O.W_at(l)[s1][s2][k]) << endl;
 			}
 		}
@@ -1759,9 +1758,6 @@ ostream &operator<< (ostream& os, const Mpo<Symmetry,Scalar> &O)
 template<typename Symmetry, typename Scalar1, typename Scalar2>
 void compare (const Mpo<Symmetry,Scalar1> &O1, const Mpo<Symmetry,Scalar2> &O2)
 {
-	assert (O1.format and "Empty pointer to format function in Mpo!");
-	assert (O2.format and "Empty pointer to format function in Mpo!");
-	
 	lout << setfill('-') << setw(30) << "-" << setfill(' ');
 	lout << "Mpo: L=" << O1.length() << ", Daux=" << O1.auxdim();
 	lout << setfill('-') << setw(30) << "-" << endl << setfill(' ');
@@ -1772,7 +1768,8 @@ void compare (const Mpo<Symmetry,Scalar1> &O1, const Mpo<Symmetry,Scalar2> &O2)
 		for (size_t s2=0; s2<O1.locBasis(l).size(); ++s2)
 		for (size_t k=0; k<O1.opBasis(l).size(); ++k)
 		{
-			lout << "[l=" << l << "]\t|" << O1.format(O1.locBasis(l)[s1]) << "><" << O1.format(O1.locBasis(l)[s2]) << "|:" << endl;
+			lout << "[l=" << l << "]\t|" << Sym::format<Symmetry>(O1.locBasis(l)[s1]) << "><" 
+			                             << Sym::format<Symmetry>(O1.locBasis(l)[s2]) << "|:" << endl;
 			auto M1 = Matrix<Scalar1,Dynamic,Dynamic>(O1.W_at(l)[s1][s2][k]);
 			auto Mtmp = Matrix<Scalar2,Dynamic,Dynamic>(O2.W_at(l)[s1][s2][k]);
 			auto M2 = Mtmp.template cast<Scalar1>();

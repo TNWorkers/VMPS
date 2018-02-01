@@ -9,7 +9,6 @@
 #include <iostream>
 #include <fstream>
 
-#include "symmetry/qbasis.h"
 #include "tensors/Biped.h"
 #include "tensors/Multipede.h"
 #include "DmrgJanitor.h"
@@ -436,7 +435,7 @@ info() const
 			ss << Symmetry::kind()[q];
 			if (q!=Nq-1) {ss << ",";}
 		}
-		ss << ")=" << format(Qtot) << ", ";
+		ss << ")=(" << Sym::format<Symmetry>(Qtot) << "), ";
 	}
 	else
 	{

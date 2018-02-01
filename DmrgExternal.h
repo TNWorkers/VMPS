@@ -32,7 +32,7 @@ template<size_t Nq>
 string halve (qarray<Nq> qnum)
 {
 	stringstream ss;
-	ss << "(";
+//	ss << "(";
 	for (size_t q=0; q<Nq; ++q)
 	{
 		boost::rational<int> m = boost::rational<int>(qnum[q],2);
@@ -41,7 +41,7 @@ string halve (qarray<Nq> qnum)
 		else {ss << m;}
 		if (q!=Nq-1) {ss << ",";}
 	}
-	ss << ")";
+//	ss << ")";
 	return ss.str();
 }
 
@@ -49,9 +49,9 @@ string halve (qarray<Nq> qnum)
 string SfromD (qarray<1> qnum)
 {
 	stringstream ss;
-	ss << "(";
+//	ss << "(";
 	ss << print_frac_nice(boost::rational<int>(qnum[0]-1,2));
-	ss << ")";
+//	ss << ")";
 	return ss.str();
 }
 

@@ -117,12 +117,13 @@ private:
 	
 	double eL, eR, eoldR, eoldL; // left and right error (eq. 18) and old errors from previous half-sweep
 	
-	/**Solves the linear system (eq. 15) using GMRES.
+	/**Solves the linear system (eq. 15 or eq. C25ab) using GMRES.
 	* \param gauge : L or R
-	* \param Atype : A, Apair or Aquadruple
-	* \param hLR : (h_L| or |h_R)
+	* \param A : A, Apair or Aquadruple
+	* \param hLR : (h_L|, |h_R) for eq. 15 or |Y_Ra), (Y_La| for eq. C25ab
 	* \param LReigen : (L| or |R)
 	* \param Warray : MPO tensor for the transfer matrix
+	* \param e : (h_L|R), (L|h_R) for eq. 15 or (Y_La|R), (L|Y_Ra) for eq. C25ab
 	* \param Hres : resulting (H_L| or |H_R)
 	*/
 	template<typename Atype, typename Wtype> void solve_linear (GAUGE::OPTION gauge, const Atype &A, const MatrixType &hLR, 
