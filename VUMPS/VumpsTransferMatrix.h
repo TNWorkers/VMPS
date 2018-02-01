@@ -7,7 +7,7 @@
 #include "tensors/Biped.h"
 
 /**
-
+Operators \f$T_L\f$, \f$T_R\f$ for solving the linear systems eq. 14; or \f$1-T_L+|R)(1|\f$, \f$1-T_R+|1)(R|\f$ for solving eq. C25ab. Due to the similar structure of the equations, no different data structures are required. 
 \ingroup VUMPS
 */
 template<typename Symmetry, typename Scalar>
@@ -15,6 +15,7 @@ struct TransferMatrix
 {
 	TransferMatrix(){};
 	
+	/**Constructor for a 1-site unit cell.*/
 	TransferMatrix (GAUGE::OPTION gauge_input, 
 	                const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra_input, 
 	                const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket_input, 
@@ -35,6 +36,7 @@ struct TransferMatrix
 		}
 	}
 	
+	/**Constructor for a 2-site unit cell.*/
 	TransferMatrix (GAUGE::OPTION gauge_input, 
 	                const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &ApairBra_input, 
 	                const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &ApairKet_input, 
@@ -50,6 +52,7 @@ struct TransferMatrix
 		Warray = Warray_input;
 	}
 	
+	/**Constructor for a 4-site unit cell.*/
 	TransferMatrix (GAUGE::OPTION gauge_input, 
 	                const boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> &AquartettBra_input, 
 	                const boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> &AquartettKet_input, 
@@ -64,34 +67,54 @@ struct TransferMatrix
 		Warray4 = Warray4_input;
 	}
 	
+	/**Gauge (L or R).*/
 	GAUGE::OPTION gauge;
+	
+	/**Local dimensions within the unit cell.*/
 	vector<size_t> D;
 	
+	///\{
+	/** 1-cell data*/
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Aket;
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Abra;
 	vector<Scalar> Wvec;
+	///\}
 	
+	///\{
+	/** 2-cell data*/
 	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > ApairKet;
 	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > ApairBra;
 	boost::multi_array<double,4> Warray;
+	///\}
 	
+	///\{
+	/** 4-cell data*/
 	boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> AquartettKet;
 	boost::multi_array<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >,4> AquartettBra;
 	boost::multi_array<double,8> Warray4;
+	///\}
 	
+	/**Left and right eigenvectors \f$(L|\f$, \f$|R)\f$.*/
 	Matrix<Scalar,Dynamic,Dynamic> LReigen;
 };
 
+/**
+Vector \f$(H_L|\f$, \f$|H_R)\f$ that is obtained in the linear systems eq. 14 or \f$(L_a|\f$, \f$|R_a)\f$ that is obtained in eq. C25ab.
+\ingroup VUMPS
+*/
 template<typename Scalar>
 struct TransferVector
 {
 	Matrix<Scalar,Dynamic,Dynamic> A;
 	GAUGE::OPTION gauge;
 	
+	///\{
+	/**Linear algebra in the correspodnding vector space.*/
 	TransferVector<Scalar>& operator+= (const TransferVector<Scalar> &Vrhs);
 	TransferVector<Scalar>& operator-= (const TransferVector<Scalar> &Vrhs);
 	template<typename OtherScalar> TransferVector<Scalar>& operator*= (const OtherScalar &alpha);
 	template<typename OtherScalar> TransferVector<Scalar>& operator/= (const OtherScalar &alpha);
+	///\}
 };
 
 template<typename Scalar>
@@ -100,9 +123,11 @@ inline void setZero (Matrix<Scalar,Dynamic,Dynamic> &M)
 	M.setZero();
 }
 
-// Note:
-// if H.LReigen.rows()==0, only T is used
-// if H.LReigen.rows()!=0, 1-T+|1><LReigen| is used
+/**Matrix-vector multiplication in eq. 14 or 25ab
+* Note:
+* - if \p H.LReigen.rows()==0, only \p T is used (eq. 14)
+* - if \p H.LReigen.rows()!=0, \p 1-T+|1)(LReigen| is used (eq. 25ab)
+*/
 template<typename Symmetry, typename Scalar1, typename Scalar2>
 void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Scalar2> &Vin, TransferVector<Scalar2> &Vout)
 {
@@ -115,7 +140,7 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Scalar
 	
 	double factor = (H.LReigen.rows()==0)? +1.:-1.;
 	
-	// 1-site
+	// 1-cell
 	if (H.Aket.size() != 0)
 	{
 		if (H.gauge == GAUGE::R)
@@ -133,7 +158,7 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Scalar
 			}
 		}
 	}
-	// 2-site cell
+	// 2-cell
 	else if (H.ApairKet.size() != 0)
 	{
 		if (H.gauge == GAUGE::R)
@@ -163,7 +188,7 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Scalar
 			}
 		}
 	}
-	// 4-site cell
+	// 4-cell
 	else if (H.AquartettKet.size() != 0)
 	{
 		if (H.gauge == GAUGE::R)
