@@ -652,7 +652,7 @@ info() const
 	stringstream ss;
 	ss << label << "L=" << N_sites;
 	if (N_phys>N_sites) {ss << ",V=" << N_phys;}
-	ss << ", ";
+	ss << ", " << Symmetry::name() << ", ";
 	
 	ss << "Daux=" << Daux << ", ";
 //	ss << "trunc_weight=" << truncWeight.sum() << ", ";

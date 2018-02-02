@@ -421,7 +421,7 @@ info() const
 	ss << "Mps: ";
 	ss << "L=" << this->N_sites;
 	if (N_phys>this->N_sites) {ss << ",V=" << N_phys;}
-	ss << ", ";
+	ss << ", " << Symmetry::name() << ", ";
 	
 	if (Nq != 0)
 	{

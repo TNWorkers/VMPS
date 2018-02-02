@@ -247,7 +247,7 @@ ALIASES                = "describe_D = \tparam D \n\
                                           - \p Nq=1: Heisenberg (\f$2M\f$) \n\
                                           - \p Nq=2: Hubbard (\f$N_{\uparrow}\f$,\f$N_{\downarrow}\f$), \n\
                                              Kondo (\f$M_{tot}=2M_{s}+N_{\uparrow}-N_{\downarrow}\f$,\f$N=N_{\uparrow}+N_{\downarrow}\f$	) \n"\
-						 "describe_Symmetry = \tparam Symmetry : A class providing all relevant functions and infos that are determined by the Symmetry."\
+						 "describe_Symmetry = \tparam Symmetry : A class providing all relevant functions and infos that are determined by the Symmetry. Click <a href=group__Symmetry.html>here</a> for more information."\
 						 "describe_params = \param params : Parmaterpack....\n"\
 						 "describe_set_operators = This function merges the different local operators together to a HamiltonianTerms instance, from which the SuperMatrix is constructed.\n"\	
                          "describe_MatrixType = \tparam MatrixType : \p MatrixXd or \p MatrixXcd"\
