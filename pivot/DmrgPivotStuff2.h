@@ -328,34 +328,52 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
                   vector<qarray<Symmetry::Nq> > qloc2, 
                   vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair)
 {
-	Apair.resize(qloc1.size()*qloc2.size());
+//	Apair.resize(qloc1.size()*qloc2.size());
 	
-	auto index = [&qloc1] (size_t s1, size_t s2) -> size_t
-	{
-		return s1*qloc1.size()+s2;
-	};
+//	auto index = [&qloc2] (size_t s1, size_t s2) -> size_t {return s1*qloc2.size()+s2;};
+	
+	auto tensor_basis = Symmetry::tensorProd(qloc1,qloc2);
+	
+	Apair.resize(tensor_basis.size());
 	
 	for (size_t s1=0; s1<qloc1.size(); ++s1)
 	for (size_t s2=0; s2<qloc2.size(); ++s2)
-	for (size_t q1=0; q1<A1[s1].dim; ++q1)
 	{
-		qarray2<Symmetry::Nq> quple = {A1[s1].out[q1], A1[s1].out[q1]+qloc2[s2]};
-		auto q2 = A2[s2].dict.find(quple);
+		auto qmerges = Symmetry::reduceSilent(qloc1[s1], qloc2[s2]);
 		
-		if (q2 != A2[s2].dict.end())
+		for (const auto &qmerge:qmerges)
 		{
-			Matrix<Scalar,Dynamic,Dynamic> Mtmp = A1[s1].block[q1] * A2[s2].block[q2->second];
+			auto it = tensor_basis.find({qloc1[s1], qloc2[s2], qmerge});
 			
-			qarray2<Symmetry::Nq> qupleApair = {A1[s1].in[q1], A2[s2].out[q2->second]};
-			auto qApair = Apair[index(s1,s2)].dict.find(qupleApair);
-			
-			if (qApair != Apair[index(s1,s2)].dict.end())
+			for (size_t q1=0; q1<A1[s1].dim; ++q1)
 			{
-				Apair[index(s1,s2)].block[qApair->second] += Mtmp;
-			}
-			else
-			{
-				Apair[index(s1,s2)].push_back(qupleApair, Mtmp);
+				auto qmids = Symmetry::reduceSilent(A1[s1].out[q1], qloc2[s2]);
+				
+				for (const auto &qmid:qmids)
+				{
+					qarray2<Symmetry::Nq> quple = {A1[s1].out[q1], qmid};
+					auto q2 = A2[s2].dict.find(quple);
+					
+					if (q2 != A2[s2].dict.end())
+					{
+						Scalar factor_cgc = Symmetry::coeff_Apair(A2[s2].out[q2->second], qloc1[s1], A1[s1].out[q1], 
+						                                          qloc2[s2], A1[s1].in[q1], qmerge);
+						Matrix<Scalar,Dynamic,Dynamic> Mtmp = factor_cgc * A1[s1].block[q1] * A2[s2].block[q2->second];
+						
+						qarray2<Symmetry::Nq> qupleApair = {A1[s1].in[q1], A2[s2].out[q2->second]};
+						
+						auto qApair = Apair[it->second].dict.find(qupleApair);
+						
+						if (qApair != Apair[it->second].dict.end())
+						{
+							Apair[it->second].block[qApair->second] += Mtmp;
+						}
+						else
+						{
+							Apair[it->second].push_back(qupleApair, Mtmp);
+						}
+					}
+				}
 			}
 		}
 	}
