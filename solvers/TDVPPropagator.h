@@ -191,6 +191,8 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		
 		// forwards
 		PivotVector2<Symmetry,TimeScalar> Apair;
+		Apair.D1 = Vinout.locBasis(min(loc1,loc2)).size();
+		Apair.D3 = Vinout.locBasis(max(loc1,loc2)).size();
 		contract_AA(Vinout.A[min(loc1,loc2)], Vinout.locBasis(min(loc1,loc2)), 
 		            Vinout.A[max(loc1,loc2)], Vinout.locBasis(max(loc1,loc2)), 
 		            Apair.A);
@@ -209,9 +211,9 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		Heff2.dim = 0;
 		for (size_t s1=0; s1<H.locBasis(min(loc1,loc2)).size(); ++s1)
 		for (size_t s2=0; s2<H.locBasis(max(loc1,loc2)).size(); ++s2)
-		for (size_t q=0; q<Apair.A[s1][s2].dim; ++q)
+		for (size_t q=0; q<Apair.A[Apair.index(s1,s2)].dim; ++q)
 		{
-			Heff2.dim += Apair.A[s1][s2].block[q].rows() * Apair.A[s1][s2].block[q].cols();
+			Heff2.dim += Apair.A[Apair.index(s1,s2)].block[q].rows() * Apair.A[Apair.index(s1,s2)].block[q].cols();
 		}
 		
 		LanczosPropagator<PivotMatrix2<Symmetry,TimeScalar,MpoScalar>,PivotVector2<Symmetry,TimeScalar> > Lutz2(tol_Lanczos);

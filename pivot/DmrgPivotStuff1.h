@@ -310,9 +310,9 @@ Scalar dot (const PivotVector1<Symmetry,Scalar> &V1, const PivotVector1<Symmetry
 {
 	Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out = V1.A[0].adjoint().contract(V2.A[0]);
 	for (std::size_t s=1; s<V1.A.size(); s++)
-		{
-			out += V1.A[s].adjoint().contract(V2.A[s]);
-		}
+	{
+		out += V1.A[s].adjoint().contract(V2.A[s]);
+	}
 	Scalar res = out.trace();
 	return res;
 }

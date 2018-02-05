@@ -129,10 +129,14 @@ template<typename Symmetry, typename Scalar>
 Scalar dot (const PivumpsVector0<Symmetry,Scalar> &V1, const PivumpsVector0<Symmetry,Scalar> &V2)
 {
 	Scalar res = 0.;
+//	for (size_t q=0; q<V2.C.dim; ++q)
+//	for (size_t i=0; i<V2.C.block[q].cols(); ++i)
+//	{
+//		res += V1.C.block[q].col(i).dot(V2.C.block[q].col(i));
+//	}
 	for (size_t q=0; q<V2.C.dim; ++q)
-	for (size_t i=0; i<V2.C.block[q].cols(); ++i)
 	{
-		res += V1.C.block[q].col(i).dot(V2.C.block[q].col(i));
+		res += (V1.C.block[q].adjoint() * V2.C.block[q]).trace();
 	}
 	return res;
 }

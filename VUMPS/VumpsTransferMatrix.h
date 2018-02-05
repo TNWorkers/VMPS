@@ -38,8 +38,8 @@ struct TransferMatrix
 	
 	/**Constructor for a 2-site unit cell.*/
 	TransferMatrix (GAUGE::OPTION gauge_input, 
-	                const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &ApairBra_input, 
-	                const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &ApairKet_input, 
+	                const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &ApairBra_input, 
+	                const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &ApairKet_input, 
 	                const Matrix<Scalar,Dynamic,Dynamic> &LReigen_input, 
 	                boost::multi_array<double,4> Warray_input,
 	                vector<size_t> D_input)
@@ -82,8 +82,8 @@ struct TransferMatrix
 	
 	///\{
 	/** 2-cell data*/
-	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > ApairKet;
-	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > ApairBra;
+	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > ApairKet;
+	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > ApairBra;
 	boost::multi_array<double,4> Warray;
 	///\}
 	
@@ -140,6 +140,8 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Scalar
 	
 	double factor = (H.LReigen.rows()==0)? +1.:-1.;
 	
+	auto index = [&H] (size_t s1, size_t s3) -> size_t {return s1*H.D[0]+s3;};
+	
 	// 1-cell
 	if (H.Aket.size() != 0)
 	{
@@ -170,7 +172,9 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Scalar
 			{
 				if (H.Warray[s1][s2][s3][s4] != 0.)
 				{
-					Vout.A += factor * H.Warray[s1][s2][s3][s4] * H.ApairKet[s2][s4].block[0] * Vin.A * H.ApairBra[s1][s3].block[0].adjoint();
+					Vout.A += factor * H.Warray[s1][s2][s3][s4] * H.ApairKet[index(s2,s4)].block[0] * 
+					                                              Vin.A * 
+					                                              H.ApairBra[index(s1,s3)].block[0].adjoint();
 				}
 			}
 		}
@@ -183,7 +187,9 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Scalar
 			{
 				if (H.Warray[s1][s2][s3][s4] != 0.)
 				{
-					Vout.A += factor * H.Warray[s1][s2][s3][s4] * H.ApairBra[s1][s3].block[0].adjoint() * Vin.A * H.ApairKet[s2][s4].block[0];
+					Vout.A += factor * H.Warray[s1][s2][s3][s4] * H.ApairBra[index(s1,s3)].block[0].adjoint() * 
+					                                              Vin.A * 
+					                                              H.ApairKet[index(s2,s4)].block[0];
 				}
 			}
 		}
@@ -262,7 +268,7 @@ inline size_t dim (const TransferMatrix<Symmetry,Scalar> &H)
 	}
 	else if (H.ApairKet.size() != 0)
 	{
-		return H.ApairKet[0][0].block[0].cols() * H.ApairBra[0][0].block[0].rows();
+		return H.ApairKet[0].block[0].cols() * H.ApairBra[0].block[0].rows();
 	}
 	else if (H.AquartettKet.size() != 0)
 	{

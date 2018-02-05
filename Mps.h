@@ -330,7 +330,7 @@ public:
 	 * \warning Not implemented for non abelian symmetries.
 	 * \todo Implemented this function for SU(2) symmetry.
 	 */
-	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<Symmetry,MatrixType> > > &Apair, bool DISCARD_SV=false);
+	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, bool DISCARD_SV=false);
 	
 	/**
 	 * Performs an SVD split to the left and writes the zero-site tensor to \p C.
@@ -1793,10 +1793,15 @@ absorb (size_t loc, DMRG::DIRECTION::OPTION DIR, const Biped<Symmetry,MatrixType
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<Symmetry,MatrixType> > > &Apair, bool DISCARD_SV)
+sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, bool DISCARD_SV)
 {
 	ArrayXd truncWeightSub(outset[loc].size()); truncWeightSub.setZero();
 	ArrayXd entropySub(outset[loc].size()); entropySub.setZero();
+	
+	auto index = [this,&loc] (size_t s1, size_t s3) -> size_t
+	{
+		return s1*qloc[loc].size()+s3;
+	};
 	
 	#ifndef DMRG_DONT_USE_OPENMP
 	#pragma omp parallel for
@@ -1808,9 +1813,9 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<S
 		map<pair<size_t,size_t>,size_t> s13qmap;
 		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
 		for (size_t s3=0; s3<qloc[loc+1].size(); ++s3)
-		for (size_t q13=0; q13<Apair[s1][s3].dim; ++q13)
+		for (size_t q13=0; q13<Apair[index(s1,s3)].dim; ++q13)
 		{
-			if (Apair[s1][s3].in[q13] + qloc[loc][s1] == outset[loc][qout])
+			if (Apair[index(s1,s3)].in[q13] + qloc[loc][s1] == outset[loc][qout])
 			{
 				s1vec.push_back(s1);
 				s3vec.push_back(s3);
@@ -1836,12 +1841,12 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<vector<Biped<S
 					if (s3block != s13map[s1].end())
 					{
 						size_t q13 = s13qmap[make_pair(s1,s3)];
-						addRight(Apair[s1][s3].block[q13], Aclumpvec[s1]);
+						addRight(Apair[index(s1,s3)].block[q13], Aclumpvec[s1]);
 						
 						if (COLS_ARE_KNOWN == false)
 						{
 							get_s3.push_back(s3);
-							get_Ncols.push_back(Apair[s1][s3].block[q13].cols());
+							get_Ncols.push_back(Apair[index(s1,s3)].block[q13].cols());
 						}
 					}
 				}
