@@ -1,19 +1,19 @@
 /** 
  * \mainpage VMPS++
  *
- * \section intro_sec Introduction
+ * # Introduction
  *
  * The VMPS library (variational matrix product states) is a c++ library for different algorithms, 
  * all based on the structure of matrix product states (MPS) and matrix product operators (MPO).
  * All the datastructures (MPS or MPO) can respect abelian and non abelian symmetries for more efficiency of the algorithms. 
  *
- * \section algorithms Algorithms
+ * # Algorithms
  * All algorithms are collected here: \ref Algorithm
  *
- * \section models Supported models
+ * # Supported models
  * All models are collected here: \ref Models
  *
- * \section symmetries Symmetries
+ * # Symmetries
  * The different possible symmetries can be found here: \ref Symmetry
  *
  */
