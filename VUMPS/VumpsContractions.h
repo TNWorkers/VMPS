@@ -221,15 +221,17 @@ MatrixType make_YR (size_t a,
 template<typename Symmetry, typename MatrixType, typename Scalar, typename MpoScalar>
 MatrixType make_YL (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &L,
-                    const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Apair,
+                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair,
                     const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	size_t D  = qloc.size();
-	size_t M  = Apair[0][0].block[0].cols();
+	size_t M  = Apair[0].block[0].cols();
 	
 	MatrixType Mout;
 	Mout.resize(M,M);
 	Mout.setZero();
+	
+	auto index = [&D] (size_t s1, size_t s3) -> int {return s1*D+s3;};
 	
 	for (size_t i=0; i<W.size(); ++i)
 	{
@@ -239,7 +241,7 @@ MatrixType make_YL (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoSca
 		size_t s3 = get<3>(W[i]);
 		size_t s4 = get<4>(W[i]);
 		
-		Mout += get<5>(W[i]) * Apair[s1][s3].block[0].adjoint() * L[a][0] * Apair[s2][s4].block[0];
+		Mout += get<5>(W[i]) * Apair[index(s1,s3)].block[0].adjoint() * L[a][0] * Apair[index(s2,s4)].block[0];
 	}
 	
 	return Mout;
@@ -249,15 +251,17 @@ MatrixType make_YL (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoSca
 template<typename Symmetry, typename MatrixType, typename Scalar, typename MpoScalar>
 MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoScalar> > &W,
                     const boost::multi_array<MatrixType,LEGLIMIT> &R,
-                    const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Apair,
+                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair,
                     const vector<qarray<Symmetry::Nq> > &qloc)
 {
 	size_t D  = qloc.size();
-	size_t M  = Apair[0][0].block[0].cols();
+	size_t M  = Apair[0].block[0].cols();
 	
 	MatrixType Mout;
 	Mout.resize(M,M);
 	Mout.setZero();
+	
+	auto index = [&D] (size_t s1, size_t s3) -> size_t {return s1*D+s3;};
 	
 	for (size_t i=0; i<W.size(); ++i)
 	{
@@ -267,7 +271,7 @@ MatrixType make_YR (const vector<tuple<size_t,size_t,size_t,size_t,size_t,MpoSca
 		size_t s3 = get<3>(W[i]);
 		size_t s4 = get<4>(W[i]);
 		
-		Mout += get<5>(W[i]) * Apair[s2][s4].block[0] * R[b][0] * Apair[s1][s3].block[0].adjoint();
+		Mout += get<5>(W[i]) * Apair[index(s2,s4)].block[0] * R[b][0] * Apair[index(s1,s3)].block[0].adjoint();
 	}
 	
 	return Mout;

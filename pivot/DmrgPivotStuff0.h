@@ -158,10 +158,14 @@ template<typename Symmetry, typename Scalar>
 Scalar dot (const PivotVector0<Symmetry,Scalar> &V1, const PivotVector0<Symmetry,Scalar> &V2)
 {
 	Scalar res = 0.;
+//	for (size_t q=0; q<V2.A.dim; ++q)
+//	for (size_t i=0; i<V2.A.block[q].cols(); ++i)
+//	{
+//		res += V1.A.block[q].col(i).dot(V2.A.block[q].col(i));
+//	}
 	for (size_t q=0; q<V2.A.dim; ++q)
-	for (size_t i=0; i<V2.A.block[q].cols(); ++i)
 	{
-		res += V1.A.block[q].col(i).dot(V2.A.block[q].col(i));
+		res += (V1.A.block[q].adjoint() * V2.A.block[q]).trace();
 	}
 	return res;
 }

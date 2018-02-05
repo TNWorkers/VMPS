@@ -56,6 +56,8 @@ public:
 	 * Calculate the irreps of the tensor product of all entries of \p ql with all entries of \p qr.
 	 */
 	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
+	
+	static std::unordered_map<qarray3<1>,std::size_t> tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr );
 	///@}
 
 	///@{
@@ -155,6 +157,21 @@ reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
 		vout.push_back({ql[q][0]+qr[p][0]});
 	}
 	return vout;
+}
+
+template<typename Kind, typename Scalar>
+std::unordered_map<qarray3<1>,std::size_t> U1<Kind,Scalar>::
+tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr )
+{
+	std::unordered_map<qarray3<1>,std::size_t> dout;
+	size_t i=0;
+	for (std::size_t q=0; q<ql.size(); q++)
+	for (std::size_t p=0; p<qr.size(); p++)
+	{
+		dout.insert(make_pair(qarray3<1>{ql[q], qr[p], qarray<1>{ql[q][0]+qr[p][0]}}, i));
+		++i;
+	}
+	return dout;
 }
 
 template<typename Kind, typename Scalar>

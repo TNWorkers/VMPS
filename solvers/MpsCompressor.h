@@ -777,12 +777,17 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 	Heff[loc1].W = H.W[loc1];
 	Heff[loc2].W = H.W[loc2];
 	
-	vector<vector<Biped<Symmetry,MatrixType> > > Apair;
-	Apair.resize(Vin.locBasis(loc1).size());
-	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
+	auto index = [&Vin,&loc1] (size_t s1, size_t s3) -> size_t
 	{
-		Apair[s1].resize(Vin.locBasis(loc2).size());
-	}
+		return s1*Vin.locBasis(loc1).size()+s3;
+	};
+	
+	vector<Biped<Symmetry,MatrixType> > Apair;
+	Apair.resize(Vin.locBasis(loc1).size()*Vin.locBasis(loc2).size());
+//	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
+//	{
+//		Apair[s1].resize(Vin.locBasis(loc2).size());
+//	}
 	
 	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
 	for (size_t s2=0; s2<Vin.locBasis(loc1).size(); ++s2)
@@ -795,7 +800,7 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 			bool FOUND_MATCH12 = AWA(Heff[loc1].L.in(qL), Heff[loc1].L.out(qL), Heff[loc1].L.mid(qL), s1, s2, Vin.locBasis(loc1),
 									 k1, H.opBasis(loc1), Vout.A[loc1], Vin.A[loc1], ix12);
 			// bool FOUND_MATCH = AWA(Lold.in(qL), Lold.out(qL), Lold.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
-
+			
 			if (FOUND_MATCH12)
 			{
 				for(size_t n=0; n<ix12.size(); n++ )
@@ -810,7 +815,7 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 						if(Heff[loc2].W[s3][s4][k2].size() == 0) { continue; }
 						vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix34;
 						bool FOUND_MATCH34 = AWA(quple12[0], quple12[1], quple12[2], s3, s4, Vin.locBasis(loc2),
-												 k2, H.opBasis(loc2), Vout.A[loc2], Vin.A[loc2], ix34);
+						                         k2, H.opBasis(loc2), Vout.A[loc2], Vin.A[loc2], ix34);
 						if (FOUND_MATCH34)
 						{
 							for(size_t m=0; m<ix34.size(); m++)
@@ -818,11 +823,11 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 								qarray3<Symmetry::Nq> quple34 = get<0>(ix34[m]);
 								size_t qA34 = get<2>(ix34[m]);
 								auto qR = Heff[loc2].R.dict.find(quple34);
-					
+								
 								if (qR != Heff[loc2].R.dict.end())
 								{
 									if (Heff[loc1].L.mid(qL) + Vin.locBasis(loc1)[s1] - Vin.locBasis(loc1)[s2] == 
-										Heff[loc2].R.mid(qR->second) - Vin.locBasis(loc2)[s3] + Vin.locBasis(loc2)[s4])
+									    Heff[loc2].R.mid(qR->second) - Vin.locBasis(loc2)[s3] + Vin.locBasis(loc2)[s4])
 									{
 										for (int r12=0; r12<Heff[loc1].W[s1][s2][k1].outerSize(); ++r12)
 										for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(Heff[loc1].W[s1][s2][k1],r12); iW12; ++iW12)
@@ -831,7 +836,7 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 										{
 											MatrixType Mtmp;
 											MpoScalar Wfactor = iW12.value() * iW34.value();
-								
+											
 											if (Heff[loc1].L.block[qL][iW12.row()][0].rows() != 0 and
 												Heff[loc2].R.block[qR->second][iW34.col()][0].rows() !=0 and
 												iW12.col() == iW34.row())
@@ -842,25 +847,25 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 //									       Vin.A[loc2][s4].block[qA34] * 
 //									       Heff[loc2].R.block[qR->second][iW34.col()][0]);
 												optimal_multiply(Wfactor, 
-																 Heff[loc1].L.block[qL][iW12.row()][0],
-																 Vin.A[loc1][s2].block[qA12],
-																 Vin.A[loc2][s4].block[qA34],
-																 Heff[loc2].R.block[qR->second][iW34.col()][0],
-																 Mtmp);
+												                 Heff[loc1].L.block[qL][iW12.row()][0],
+												                 Vin.A[loc1][s2].block[qA12],
+												                 Vin.A[loc2][s4].block[qA34],
+												                 Heff[loc2].R.block[qR->second][iW34.col()][0],
+												                 Mtmp);
 											}
-								
+											
 											if (Mtmp.rows() != 0)
 											{
 												qarray2<Symmetry::Nq> qupleApair = {Heff[loc1].L.in(qL), Heff[loc2].R.out(qR->second)};
-												auto qApair = Apair[s1][s3].dict.find(qupleApair);
-									
-												if (qApair != Apair[s1][s3].dict.end())
+												auto qApair = Apair[index(s1,s3)].dict.find(qupleApair);
+												
+												if (qApair != Apair[index(s1,s3)].dict.end())
 												{
-													Apair[s1][s3].block[qApair->second] += Mtmp;
+													Apair[index(s1,s3)].block[qApair->second] += Mtmp;
 												}
 												else
 												{
-													Apair[s1][s3].push_back(qupleApair, Mtmp);
+													Apair[index(s1,s3)].push_back(qupleApair, Mtmp);
 												}
 											}
 										}

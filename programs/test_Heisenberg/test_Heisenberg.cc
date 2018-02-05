@@ -187,9 +187,9 @@ int main (int argc, char* argv[])
 					res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
 				}
 				res /= Ldyn;
-				if(VERB != DMRG::VERBOSITY::SILENT) {lout << t << "\t" << res << endl;}
+				if(VERB != DMRG::VERBOSITY::SILENT) {lout << "t=" << t << ", <Sz>=" << res << endl;}
 				Filer << t << "\t" << res << endl;
-		
+				
 				TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
 				if(VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
 				t += dt;

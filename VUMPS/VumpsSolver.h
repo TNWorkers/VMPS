@@ -15,6 +15,7 @@
 #include "GMResSolver.h" // from LANCZOS
 #include "VUMPS/VumpsTransferMatrix.h"
 #include "VUMPS/VumpsPivotStuff.h"
+#include "symmetry/U0.h" // for qloc3dummy
 
 /**Solver that calculates the ground state of a UMPS. Analogue of the DmrgSolver class.
 \ingroup VUMPS
@@ -847,8 +848,8 @@ iteration2 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	Stopwatch<> IterationTimer;
 	
 	// Pre-contract two A-tensors to a pair
-	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > ApairL;
-	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > ApairR;
+	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > ApairL;
+	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > ApairR;
 	contract_AA(Vout.state.A[GAUGE::L][0], H.locBasis(0), Vout.state.A[GAUGE::L][1], H.locBasis(1), ApairL);
 	contract_AA(Vout.state.A[GAUGE::R][0], H.locBasis(0), Vout.state.A[GAUGE::R][1], H.locBasis(1), ApairR);
 	

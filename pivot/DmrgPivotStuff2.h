@@ -26,12 +26,21 @@ struct PivotMatrix2
 template<typename Symmetry, typename Scalar>
 struct PivotVector2
 {
-	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A;
+//	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A;
+	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > A;
+	
+	size_t D1;
+	size_t D3;
 	
 	PivotVector2<Symmetry,Scalar>& operator+= (const PivotVector2<Symmetry,Scalar> &Vrhs);
 	PivotVector2<Symmetry,Scalar>& operator-= (const PivotVector2<Symmetry,Scalar> &Vrhs);
 	template<typename OtherScalar> PivotVector2<Symmetry,Scalar>& operator*= (const OtherScalar &alpha);
 	template<typename OtherScalar> PivotVector2<Symmetry,Scalar>& operator/= (const OtherScalar &alpha);
+	
+	size_t index (size_t s1, size_t s3) const
+	{
+		return s1*D1+s3;
+	}
 };
 //-----------</definitions>-----------
 
@@ -39,11 +48,11 @@ struct PivotVector2
 template<typename Symmetry, typename Scalar>
 PivotVector2<Symmetry,Scalar>& PivotVector2<Symmetry,Scalar>::operator+= (const PivotVector2<Symmetry,Scalar> &Vrhs)
 {
-	for (size_t s1=0; s1<A.size(); ++s1)
-	for (size_t s3=0; s3<A[s1].size(); ++s3)
+	for (size_t s1=0; s1<D1; ++s1)
+	for (size_t s3=0; s3<D3; ++s3)
 	{
-		transform(A[s1][s3].block.begin(), A[s1][s3].block.end(), 
-		          Vrhs.A[s1][s3].block.begin(), A[s1][s3].block.begin(), 
+		transform(A[index(s1,s3)].block.begin(), A[index(s1,s3)].block.end(), 
+		          Vrhs.A[index(s1,s3)].block.begin(), A[index(s1,s3)].block.begin(), 
 		          std::plus<Matrix<Scalar,Dynamic,Dynamic> >());
 	}
 	return *this;
@@ -53,11 +62,11 @@ template<typename Symmetry, typename Scalar>
 PivotVector2<Symmetry,Scalar>& PivotVector2<Symmetry,Scalar>::
 operator-= (const PivotVector2<Symmetry,Scalar> &Vrhs)
 {
-	for (size_t s1=0; s1<A.size(); ++s1)
-	for (size_t s3=0; s3<A[s1].size(); ++s3)
+	for (size_t s1=0; s1<D1; ++s1)
+	for (size_t s3=0; s3<D3; ++s3)
 	{
-		transform(A[s1][s3].block.begin(), A[s1][s3].block.end(), 
-		          Vrhs.A[s1][s3].block.begin(), A[s1][s3].block.begin(), 
+		transform(A[index(s1,s3)].block.begin(), A[index(s1,s3)].block.end(), 
+		          Vrhs.A[index(s1,s3)].block.begin(), A[index(s1,s3)].block.begin(), 
 		          std::minus<Matrix<Scalar,Dynamic,Dynamic> >());
 	}
 	return *this;
@@ -68,11 +77,11 @@ template<typename OtherScalar>
 PivotVector2<Symmetry,Scalar>& PivotVector2<Symmetry,Scalar>::
 operator*= (const OtherScalar &alpha)
 {
-	for (size_t s1=0; s1<A.size(); ++s1)
-	for (size_t s3=0; s3<A[s1].size(); ++s3)
-	for (size_t q=0; q<A[s1][s3].dim; ++q)
+	for (size_t s1=0; s1<D1; ++s1)
+	for (size_t s3=0; s3<D3; ++s3)
+	for (size_t q=0; q<A[index(s1,s3)].dim; ++q)
 	{
-		A[s1][s3].block[q] *= alpha;
+		A[index(s1,s3)].block[q] *= alpha;
 	}
 	return *this;
 }
@@ -82,11 +91,11 @@ template<typename OtherScalar>
 PivotVector2<Symmetry,Scalar>& PivotVector2<Symmetry,Scalar>::
 operator/= (const OtherScalar &alpha)
 {
-	for (size_t s1=0; s1<A.size(); ++s1)
-	for (size_t s3=0; s3<A[s1].size(); ++s3)
-	for (size_t q=0; q<A[s1][s3].dim; ++q)
+	for (size_t s1=0; s1<D1; ++s1)
+	for (size_t s3=0; s3<D3; ++s3)
+	for (size_t q=0; q<A[index(s1,s3)].dim; ++q)
 	{
-		A[s1][s3].block[q] /= alpha;
+		A[index(s1,s3)].block[q] /= alpha;
 	}
 	return *this;
 }
@@ -131,10 +140,10 @@ template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector2<Symmetry,Scalar> &Vin, PivotVector2<Symmetry,Scalar> &Vout)
 {
 	Vout = Vin;
-	for (size_t s1=0; s1<Vout.A.size(); ++s1)
-	for (size_t s3=0; s3<Vout.A[s1].size(); ++s3)
+	for (size_t s1=0; s1<Vout.D1; ++s1)
+	for (size_t s3=0; s3<Vout.D3; ++s3)
 	{
-		Vout.A[s1][s3].setZero();
+		Vout.A[Vout.index(s1,s3)].setZero();
 	}
 	
 	for (size_t s1=0; s1<H.qloc12.size(); ++s1)
@@ -183,14 +192,14 @@ void HxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector2<S
 								{
 									optimal_multiply(Wfactor, 
 										             H.L.block[qL][iW12.row()][0],
-										             Vin.A[s2][s4].block[qA24],
+										             Vin.A[Vin.index(s2,s4)].block[qA24],
 										             H.R.block[qR->second][iW34.col()][0],
 										             Mtmp);
 								}
 								
 								if (Mtmp.rows() != 0)
 								{
-									Vout.A[s1][s3].block[qA13] += Mtmp;
+									Vout.A[Vout.index(s1,s3)].block[qA13] += Mtmp;
 								}
 							}
 						}
@@ -215,28 +224,28 @@ template<typename Symmetry, typename Scalar>
 Scalar dot (const PivotVector2<Symmetry,Scalar> &V1, const PivotVector2<Symmetry,Scalar> &V2)
 {
 	Scalar res = 0.;
-	for (size_t s1=0; s1<V2.A.size(); ++s1)
-	for (size_t s3=0; s3<V2.A[s1].size(); ++s3)
-	for (size_t q=0; q<V2.A[s1][s3].dim; ++q)
-	for (size_t i=0; i<V2.A[s1][s3].block[q].cols(); ++i)
+	
+//	for (size_t s1=0; s1<V2.D1; ++s1)
+//	for (size_t s3=0; s3<V2.D3; ++s3)
+//	for (size_t q=0; q<V2.A[V2.index(s1,s3)].dim; ++q)
+//	for (size_t i=0; i<V2.A[V2.index(s1,s3)].block[q].cols(); ++i)
+//	{
+//		res += V1.A[V1.index(s1,s3)].block[q].col(i).dot(V2.A[V2.index(s1,s3)].block[q].col(i));
+//	}
+	
+	for (size_t s1=0; s1<V2.D1; ++s1)
+	for (size_t s3=0; s3<V2.D3; ++s3)
+	for (size_t q=0; q<V2.A[V2.index(s1,s3)].dim; ++q)
 	{
-		res += V1.A[s1][s3].block[q].col(i).dot(V2.A[s1][s3].block[q].col(i));
+		res += (V1.A[V1.index(s1,s3)].block[q].adjoint() * V2.A[V2.index(s1,s3)].block[q]).trace();
 	}
+	
 	return res;
 }
 
 template<typename Symmetry, typename Scalar>
 double squaredNorm (const PivotVector2<Symmetry,Scalar> &V)
 {
-//	double res = 0.;
-//	for (size_t s1=0; s1<V.A.size(); ++s1)
-//	for (size_t s3=0; s3<V.A[s1].size(); ++s3)
-//	for (size_t q=0; q<V.A[s1][s3].dim; ++q)
-//	{
-//		res += V.A[s1][s3].block[q].colwise().squaredNorm().sum();
-//	}
-//	return res;
-	
 	return isReal(dot(V,V));
 }
 
@@ -258,9 +267,9 @@ double infNorm (const PivotVector2<Symmetry,Scalar> &V1, const PivotVector2<Symm
 	double res = 0.;
 	for (size_t s1=0; s1<V2.A.size(); ++s1)
 	for (size_t s3=0; s3<V2.A[s1].size(); ++s3)
-	for (size_t q=0; q<V1.A[s1][s3].dim; ++q)
+	for (size_t q=0; q<V1.A[V1.index(s1,s3)].dim; ++q)
 	{
-		double tmp = (V1.A[s1][s3].block[q]-V2.A[s1][s3].block[q]).template lpNorm<Eigen::Infinity>();
+		double tmp = (V1.A[V1.index(s1,s3)].block[q]-V2.A[V2.index(s1,s3)].block[q]).template lpNorm<Eigen::Infinity>();
 		if (tmp>res) {res = tmp;}
 	}
 	return res;
@@ -286,9 +295,9 @@ void swap (PivotVector2<Symmetry,Scalar> &V1, PivotVector2<Symmetry,Scalar> &V2)
 {
 	for (size_t s1=0; s1<V2.A.size(); ++s1)
 	for (size_t s3=0; s3<V2.A[s1].size(); ++s3)
-	for (size_t q=0; q<V1.A[s1][s3].dim; ++q)
+	for (size_t q=0; q<V1.A[V1.index(s1,s3)].dim; ++q)
 	{
-		V1.A[s1][s3].block[q].swap(V2.A[s1][s3].block[q]);
+		V1.A[V1.index(s1,s3)].block[q].swap(V2.A[V2.index(s1,s3)].block[q]);
 	}
 }
 
@@ -301,11 +310,11 @@ struct GaussianRandomVector<PivotVector2<Symmetry,Scalar>,Scalar>
 	{
 		for (size_t s1=0; s1<Vout.A.size(); ++s1)
 		for (size_t s3=0; s3<Vout.A[s1].size(); ++s3)
-		for (size_t q=0; q<Vout.A[s1][s3].dim; ++q)
-		for (size_t a1=0; a1<Vout.A[s1][s3].block[q].rows(); ++a1)
-		for (size_t a2=0; a2<Vout.A[s1][s3].block[q].cols(); ++a2)
+		for (size_t q=0; q<Vout.A[Vout.index(s1,s3)].dim; ++q)
+		for (size_t a1=0; a1<Vout.A[Vout.index(s1,s3)].block[q].rows(); ++a1)
+		for (size_t a2=0; a2<Vout.A[Vout.index(s1,s3)].block[q].cols(); ++a2)
 		{
-			Vout.A[s1][s3].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
+			Vout.A[Vout.index(s1,s3)].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
 		}
 		normalize(Vout);
 	}
@@ -317,37 +326,60 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
                   vector<qarray<Symmetry::Nq> > qloc1, 
                   const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
                   vector<qarray<Symmetry::Nq> > qloc2, 
-                  vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Apair)
+                  vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair)
 {
-	Apair.resize(qloc1.size());
-	for (size_t s1=0; s1<qloc1.size(); ++s1) {Apair[s1].resize(qloc2.size());}
+//	Apair.resize(qloc1.size()*qloc2.size());
+	
+//	auto index = [&qloc2] (size_t s1, size_t s2) -> size_t {return s1*qloc2.size()+s2;};
+	
+	auto tensor_basis = Symmetry::tensorProd(qloc1,qloc2);
+	
+	Apair.resize(tensor_basis.size());
 	
 	for (size_t s1=0; s1<qloc1.size(); ++s1)
 	for (size_t s2=0; s2<qloc2.size(); ++s2)
-	for (size_t q1=0; q1<A1[s1].dim; ++q1)
 	{
-		qarray2<Symmetry::Nq> quple = {A1[s1].out[q1], A1[s1].out[q1]+qloc2[s2]};
-		auto q2 = A2[s2].dict.find(quple);
+		auto qmerges = Symmetry::reduceSilent(qloc1[s1], qloc2[s2]);
 		
-		if (q2 != A2[s2].dict.end())
+		for (const auto &qmerge:qmerges)
 		{
-			Matrix<Scalar,Dynamic,Dynamic> Mtmp = A1[s1].block[q1] * A2[s2].block[q2->second];
+			auto it = tensor_basis.find({qloc1[s1], qloc2[s2], qmerge});
 			
-			qarray2<Symmetry::Nq> qupleApair = {A1[s1].in[q1], A2[s2].out[q2->second]};
-			auto qApair = Apair[s1][s2].dict.find(qupleApair);
-			
-			if (qApair != Apair[s1][s2].dict.end())
+			for (size_t q1=0; q1<A1[s1].dim; ++q1)
 			{
-				Apair[s1][s2].block[qApair->second] += Mtmp;
-			}
-			else
-			{
-				Apair[s1][s2].push_back(qupleApair, Mtmp);
+				auto qmids = Symmetry::reduceSilent(A1[s1].out[q1], qloc2[s2]);
+				
+				for (const auto &qmid:qmids)
+				{
+					qarray2<Symmetry::Nq> quple = {A1[s1].out[q1], qmid};
+					auto q2 = A2[s2].dict.find(quple);
+					
+					if (q2 != A2[s2].dict.end())
+					{
+						Scalar factor_cgc = Symmetry::coeff_Apair(A2[s2].out[q2->second], qloc1[s1], A1[s1].out[q1], 
+						                                          qloc2[s2], A1[s1].in[q1], qmerge);
+						Matrix<Scalar,Dynamic,Dynamic> Mtmp = factor_cgc * A1[s1].block[q1] * A2[s2].block[q2->second];
+						
+						qarray2<Symmetry::Nq> qupleApair = {A1[s1].in[q1], A2[s2].out[q2->second]};
+						
+						auto qApair = Apair[it->second].dict.find(qupleApair);
+						
+						if (qApair != Apair[it->second].dict.end())
+						{
+							Apair[it->second].block[qApair->second] += Mtmp;
+						}
+						else
+						{
+							Apair[it->second].push_back(qupleApair, Mtmp);
+						}
+					}
+				}
 			}
 		}
 	}
 }
 
+/**for VUMPS 4-site unit cell*/
 template<typename Symmetry, typename Scalar>
 void contract_AAAA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
                     vector<qarray<Symmetry::Nq> > qloc1, 
