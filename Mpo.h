@@ -48,22 +48,19 @@ class Mpo
 	typedef SiteOperator<Symmetry,Scalar> OperatorType;
 	static constexpr size_t Nq = Symmetry::Nq;
 	typedef typename Symmetry::qType qType;
-
+	
 	template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolver;
 	template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
 	template<typename Symmetry_, typename S1, typename S2> friend class MpsCompressor;
 	template<typename H, typename Symmetry_, typename S1, typename S2, typename V> friend class TDVPPropagator;
 	template<typename Symmetry_, typename S_> friend class Mpo;
-
-	template<typename Symmetry_, typename S1, typename S2> friend void HxV  (const Mpo<Symmetry_,S1> &H,
-																			 const Mps<Symmetry_,S2> &Vin,
-																			 Mps<Symmetry_,S2> &Vout,
-																			 DMRG::VERBOSITY::OPTION VERBOSITY);
-
-	template<typename Symmetry_, typename S1, typename S2> friend void OxV (const Mpo<Symmetry_,S1> &H,
-																			const Mps<Symmetry_,S2> &Vin,
-																			Mps<Symmetry_,S2> &Vout,
-																			DMRG::BROOM::OPTION TOOL);
+	
+	template<typename Symmetry_, typename S1, typename S2> friend 
+	void HxV  (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
+	
+	template<typename Symmetry_, typename S1, typename S2> friend 
+	void OxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
+	
 public:
 	
 	Mpo(){};
@@ -78,10 +75,7 @@ public:
 	 * \param label_input : how to label the Mpo itself in outputs
 	 * \param UNITARY_input : if the Mpo is known to be unitary, this can be further exploited
 	 */
-	Mpo (size_t L_input, 
-	     qarray<Nq> Qtot_input,
-	     string label_input="Mpo", 
-	     bool UNITARY_input=false);
+	Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input="Mpo", bool UNITARY_input=false);
 	
 	//---set whole Mpo for special cases, modify---
 	

@@ -32,7 +32,7 @@ public:
 	
 	// <SvecSvec>
 	// = <SxSx> + <SySy> + <SzSz>
-	// = <S+S-> + <S-S+> + <SzSz>
+	// = 0.5*<S+S-> + 0.5*<S-S+> + <SzSz>
 	// = Re<S+S-> + <SzSz> for complex states
 	// = <S+S-> + <SzSz> for real states
 	template<typename MpsType> double SvecSvecAvg (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
