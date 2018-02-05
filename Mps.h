@@ -35,21 +35,17 @@ class Mps : public DmrgJanitor<PivotMatrix<Symmetry,Scalar,Scalar> >
 	typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 	static constexpr size_t Nq = Symmetry::Nq;
 	typedef typename Symmetry::qType qType;
-
-// Note: Cannot partially specialize template friends (or anything else, really). That sucks.
+	
+// Note: Cannot partially specialize template friends (or anything else, really).
 	template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolver;
 	template<typename Symmetry_, typename S1, typename S2> friend class MpsCompressor;
 	template<typename H, typename Symmetry_, typename S1, typename S2, typename V> friend class TDVPPropagator;
-	template<typename Symmetry_, typename S1, typename S2> friend void HxV (const Mpo<Symmetry_,S1> &H,
-																		const Mps<Symmetry_,S2> &Vin,
-																		Mps<Symmetry_,S2> &Vout,
-																		DMRG::VERBOSITY::OPTION VERBOSITY);
-	template<typename Symmetry_, typename S1, typename S2> friend void OxV (const Mpo<Symmetry_,S1> &H,
-																		const Mps<Symmetry_,S2> &Vin,
-																		Mps<Symmetry_,S2> &Vout,
-																		DMRG::BROOM::OPTION TOOL);
+	template<typename Symmetry_, typename S1, typename S2> friend
+	void HxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
+	template<typename Symmetry_, typename S1, typename S2> friend 
+	void OxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 	template<typename Symmetry_, typename S_> friend class Mps; // in order to exchange data between real & complex Mps
-
+	
 public:
 	
 	/**Does nothing.*/
@@ -101,14 +97,14 @@ public:
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	 * \note For the filename you should use the info string of the current used Mpo.
 	 */
-	void save(string filename,string info="none");
+	void save (string filename,string info="none");
 	
 	/**
 	 * Reads all matrices of the MPS from the file <FILENAME>.h5.
 	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	 */
-	void load(string filename);
+	void load (string filename);
 	
 	/**
 	 * Returns the maximal bond-dimension of an MPS stored in a file <FILENAME>.h5.
@@ -117,7 +113,7 @@ public:
 	 * \note Use case : First call loadDmax to construct the Mps with Mps::Mps(const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input).
 	 *                  Then call Mps::load() to get the Mps matrices.
 	 */
-	size_t loadDmax(string filename);
+	size_t loadDmax (string filename);
 	///\}
 #endif //USE_HDF5_STORAGE
 	
@@ -402,7 +398,7 @@ private:
 	// adds one site at a time in addScale, conserving memory
 	template<typename OtherScalar> void add_site (size_t loc, OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin);
 	
-	// sweep stuff RDM
+	// sweep stuff RDM (deprecated)
 	void calc_noise (size_t loc, PivotMatrix<Symmetry,Scalar,Scalar> *H, DMRG::DIRECTION::OPTION DIR, 
 	                 const vector<vector<Biped<Symmetry,MatrixType> > > rho, 
 	                 vector<vector<Biped<Symmetry,MatrixType> > > &rhoNoise);
