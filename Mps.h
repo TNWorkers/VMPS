@@ -49,7 +49,7 @@ class Mps : public DmrgJanitor<PivotMatrix<Symmetry,Scalar,Scalar> >
 public:
 	
 	/**Does nothing.*/
-	Mps<Symmetry,Scalar>();
+	Mps();
 	
 	/**
 	 * Construct by setting all the relevant parameters.
@@ -58,7 +58,7 @@ public:
 	 * \param Qtot_input : target quantum number
 	 * \param N_phys_input : the volume of the system (normally (chain length) * (chain width))
 	*/
-	Mps<Symmetry,Scalar> (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
+	Mps(size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
 	
 	/** 
 	 * Construct by pulling info from an Mpo.
@@ -66,8 +66,19 @@ public:
 	 * \param Dmax : size cutoff (per subspace)
 	 * \param Qtot_input : target quantum number
 	*/
-	template<typename Hamiltonian> Mps<Symmetry,Scalar> (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input);
-	
+	template<typename Hamiltonian> Mps(const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input);
+
+	/** 
+	 * Construct by explicitly provide the Amatrices. Only useful for testing purposes.
+	 * \param L_input : chain length
+	 * \param As : vector of vector of A matrices. (For all sites, and for all local quantumnumbers)
+	 * \param qloc_input : vector of local basis for all sites.
+	 * \param Qtot_input : target quantum number
+	 * \param N_phys_input : the volume of the system (normally (chain length) * (chain width))
+	*/
+	Mps(size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
+		const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
+
 	///\{
 	/**
 	 * Sets all matrices to random using boost's uniform distribution from -1 to 1.
@@ -477,6 +488,15 @@ Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
 	N_phys = H.volume();
 	outerResize(H.length(), H.locBasis(), Qtot_input);
 	innerResize(Dmax);
+}
+
+template<typename Symmetry, typename Scalar>
+Mps<Symmetry,Scalar>::
+Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
+	 const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input)
+	:DmrgJanitor<PivotMatrix<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input), A(As)
+{
+	assert(As.size() == L_input and qloc_input.size() == L_input);
 }
 
 template<typename Symmetry, typename Scalar>

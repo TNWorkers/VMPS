@@ -148,7 +148,7 @@ template<typename Kind, typename Scalar>
 std::vector<typename SU2<Kind,Scalar>::qType> SU2<Kind,Scalar>::
 reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
 {
-	std::unordered_set<qType> uniqueControl;
+	// std::unordered_set<qType> uniqueControl;
 	std::vector<qType> vout;
 	for (std::size_t q1=0; q1<ql.size(); q1++)
 	for (std::size_t q2=0; q2<qr.size(); q2++)
@@ -157,7 +157,8 @@ reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
 		int qmax = std::abs(ql[q1][0]+qr[q2][0]) -1;
 		for ( int i=qmin; i<=qmax; i+=2 )
 		{
-			if( auto it = uniqueControl.find({i}) == uniqueControl.end() ) {uniqueControl.insert({i}); vout.push_back({i});}
+			vout.push_back({i});
+			// if( auto it = uniqueControl.find({i}) == uniqueControl.end() ) {uniqueControl.insert({i}); vout.push_back({i});}
 		}
 	}
 	return vout;
