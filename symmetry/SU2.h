@@ -65,6 +65,8 @@ public:
 	 *            Better: Put an option for unique or non-unique irreps in the return vector.
 	 */
 	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
+
+	static std::unordered_map<qarray3<1>,std::size_t> tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr );
 	///@}
 	
 	///@{
@@ -159,6 +161,27 @@ reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
 		}
 	}
 	return vout;
+}
+
+template<typename Kind, typename Scalar>
+std::unordered_map<qarray3<1>,std::size_t> SU2<Kind,Scalar>::
+tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr )
+{
+	std::unordered_map<qarray3<1>,std::size_t> dout;
+	size_t j=0;
+	for (std::size_t q1=0; q1<ql.size(); q1++)
+	for (std::size_t q2=0; q2<qr.size(); q2++)
+	{
+		int qmin = std::abs(ql[q1][0]-qr[q2][0]) +1;
+		int qmax = std::abs(ql[q1][0]+qr[q2][0]) -1;
+		for ( int i=qmin; i<=qmax; i+=2 )
+		{
+			dout.insert(make_pair(qarray3<1>{ql[q1], qr[q2], qarray<1>{i}}, j));
+			++j;
+			
+		}
+	}
+	return dout;
 }
 
 template<typename Kind, typename Scalar>
