@@ -19,7 +19,7 @@ struct PivotMatrix
 	vector<std::array<size_t,2> >          qlhs;
 	vector<vector<std::array<size_t,5> > > qrhs;
 	vector<vector<Scalar> > factor_cgcs;
-
+	
 	vector<qarray<Nq> > qloc;
 	
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PL; // PL[n]
@@ -33,6 +33,39 @@ struct PivotVector1
 {
 	static constexpr std::size_t Nq = Symmetry::Nq;
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > A;
+	
+	PivotVector1(){};
+	
+	PivotVector1 (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Arhs)
+	{
+		A = Arhs;
+		
+		dim = 0;
+		for (size_t s=0; s<A.size(); ++s)
+		for (size_t q=0; q<A[s].dim; ++q)
+		{
+			dim += A[s].block[q].size();
+		}
+	}
+	
+	/**Set blocks as in Vrhs, but do not resize the matrices*/
+	void outerResize (const PivotVector1 &Vrhs)
+	{
+		dim = Vrhs.dim;
+		
+		A.clear();
+		A.resize(Vrhs.A.size());
+		for (size_t i=0; i<A.size(); ++i)
+		{
+			A[i].in = Vrhs.A[i].in;
+			A[i].out = Vrhs.A[i].out;
+			A[i].dict = Vrhs.A[i].dict;
+			A[i].block.resize(Vrhs.A[i].block.size());
+			A[i].dim = Vrhs.A[i].dim;
+		}
+	}
+	
+	size_t dim;
 	
 	PivotVector1<Symmetry,Scalar>& operator+= (const PivotVector1<Symmetry,Scalar> &Vrhs);
 	PivotVector1<Symmetry,Scalar>& operator-= (const PivotVector1<Symmetry,Scalar> &Vrhs);
@@ -149,10 +182,6 @@ void HxV (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVector1<Sy
 			for (int r=0; r<H.W[s1][s2][k].outerSize(); ++r)
 			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(H.W[s1][s2][k],r); iW; ++iW)
 			{
-//				cout << H.L.block[qL][iW.row()][0].rows() << "\t" << H.L.block[qL][iW.row()][0].cols() << endl;
-//				cout << Vin.A[s2].block[q2].rows() << "\t" << Vin.A[s2].block[q2].cols() << endl;
-//				cout << H.R.block[qR][iW.col()][0].rows() << "\t" << H.R.block[qR][iW.col()][0].cols() << endl;
-				
 				if (H.L.block[qL][iW.row()][0].rows() != 0 and 
 				    H.R.block[qR][iW.col()][0].rows() != 0)
 				{
@@ -203,11 +232,6 @@ void HxV (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVector1<Sy
 				Vout.A[s].block[qA->second] += overlap * H.Epenalty * H.PL[n].block[qPL] * H.A0[n][s].block[qA0->second] * H.PR[n].block[qPR];
 			}
 		}
-		
-//		for (size_t s=0; s<Vout.A.size(); ++s)
-//		{
-//			Vout.A[s] += overlap * H.Epenalty * H.PL[n] *  H.A0[n][s] * H.PR[n];
-//		}
 	}
 }
 

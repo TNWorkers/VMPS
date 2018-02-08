@@ -103,8 +103,6 @@ public:
 	/**Sets all matrices in Biped<Symmetry,MatrixType>::block to zero, preserving the rows and columns.*/
 	void setZero();
 	
-	void resize0();
-	
 	/**Sets all matrices in Biped<Symmetry,MatrixType>::block to random values, preserving the rows and columns.*/
 	void setRandom();
 	
@@ -177,13 +175,6 @@ void Biped<Symmetry,MatrixType_>::
 setZero()
 {
 	for (std::size_t q=0; q<dim; ++q) {block[q].setZero();}
-}
-
-template<typename Symmetry, typename MatrixType_>
-void Biped<Symmetry,MatrixType_>::
-resize0()
-{
-	for (std::size_t q=0; q<dim; ++q) {block[q].resize(0,0); block[q].setZero();}
 }
 
 template<typename Symmetry, typename MatrixType_>

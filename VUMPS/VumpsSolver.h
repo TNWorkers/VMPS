@@ -364,15 +364,14 @@ iteration1 (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	Heff[0].R = HR;
 	Heff[0].AL = Vout.state.A[GAUGE::L][0];
 	Heff[0].AR = Vout.state.A[GAUGE::R][0];
-	Heff[0].dim = Heff[0].qloc.size() * M * M;
 	
 	double tolLanczosEigval, tolLanczosState;
 	set_LanczosTolerances(tolLanczosEigval,tolLanczosState);
 	
 	// Solve for AC (eq. 11)
-	Heff[0].dim = Heff[0].qloc.size() * M * M;
 	Eigenstate<PivotVector1<Symmetry,Scalar> > g1;
-	g1.state.A = Vout.state.A[GAUGE::C][0];
+	g1.state = PivotVector1<Symmetry,Scalar>(Vout.state.A[GAUGE::C][0]);
+	Heff[0].dim = g1.state.dim;
 	
 	Stopwatch<> LanczosTimer;
 	LanczosSolver<PivumpsMatrix<Symmetry,Scalar,Scalar>,PivotVector1<Symmetry,Scalar>,Scalar> Lutz1(LANCZOS::REORTHO::FULL);
@@ -389,11 +388,11 @@ iteration1 (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	}
 	
 	// Solve for C (eq. 16)
-	Heff[0].dim = M*M;
-	Eigenstate<PivumpsVector0<Symmetry,Scalar> > g0;
-	g0.state.C = Vout.state.C[0];
+	Eigenstate<PivotVector0<Symmetry,Scalar> > g0;
+	g0.state = PivotVector0<Symmetry,Scalar>(Vout.state.C[0]);
+	Heff[0].dim = g0.state.dim;
 	
-	LanczosSolver<PivumpsMatrix<Symmetry,Scalar,Scalar>,PivumpsVector0<Symmetry,Scalar>,Scalar> Lutz0(LANCZOS::REORTHO::FULL);
+	LanczosSolver<PivumpsMatrix<Symmetry,Scalar,Scalar>,PivotVector0<Symmetry,Scalar>,Scalar> Lutz0(LANCZOS::REORTHO::FULL);
 	Lutz0.set_dimK(min(30ul, Heff[0].dim));
 	Lutz0.edgeState(Heff[0],g0, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 	
@@ -625,17 +624,10 @@ iteration1 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 		                        H.locBasis(0), H.opBasis(0), HeffA.qlhs, HeffA.qrhs, HeffA.factor_cgcs);
 	}
 	
-	// reset dim
-	HeffA.dim = 0;
-	for (size_t s=0; s<H.locBasis(0).size(); ++s)
-	for (size_t q=0; q<Vout.state.A[GAUGE::C][0][s].dim; ++q)
-	{
-		HeffA.dim += Vout.state.A[GAUGE::C][0][s].block[q].rows() * Vout.state.A[GAUGE::C][0][s].block[q].cols();
-	}
-	
 	// Solve for AC
 	Eigenstate<PivotVector1<Symmetry,Scalar> > gAC;
-	gAC.state.A = Vout.state.A[GAUGE::C][0];
+	gAC.state = PivotVector1<Symmetry,Scalar>(Vout.state.A[GAUGE::C][0]);
+	HeffA.dim = gAC.state.dim;
 	
 	Stopwatch<> LanczosTimer;
 	LanczosSolver<PivotMatrix<Symmetry,Scalar,Scalar>,PivotVector1<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
@@ -653,13 +645,8 @@ iteration1 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	
 	// Solve for C
 	Eigenstate<PivotVector0<Symmetry,Scalar> > gC;
-	gC.state.A = Vout.state.C[0];
-	
-	HeffA.dim = 0;
-	for (size_t q=0; q<Vout.state.C[0].dim; ++q)
-	{
-		HeffA.dim += Vout.state.C[0].block[q].rows() * Vout.state.C[0].block[q].cols();
-	}
+	gC.state = PivotVector0<Symmetry,Scalar>(Vout.state.C[0]);
+	HeffA.dim = gC.state.dim;
 	
 	LanczosSolver<PivotMatrix<Symmetry,Scalar,Scalar>,PivotVector0<Symmetry,Scalar>,Scalar> Lucy(LANCZOS::REORTHO::FULL);
 	Lucy.set_dimK(min(300ul, HeffA.dim));
@@ -680,7 +667,7 @@ iteration1 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	
 	// Calculate AL, AR from AC, C
 	Vout.state.A[GAUGE::C][0] = gAC.state.A;
-	Vout.state.C[0]           = gC.state.A;
+	Vout.state.C[0]           = gC.state.C;
 	(err_var>0.1)? Vout.state.svdDecompose(0) : Vout.state.polarDecompose(0);
 	
 	// Calcualte errors
@@ -997,16 +984,9 @@ iteration2 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 		precalc_blockStructure (HeffA[l].L, Vout.state.A[GAUGE::C][l], HeffA[l].W, Vout.state.A[GAUGE::C][l], HeffA[l].R, 
 		                        H.locBasis(l), H.opBasis(l), HeffA[l].qlhs, HeffA[l].qrhs, HeffA[l].factor_cgcs);
 		
-		// reset dim
-		HeffA[l].dim = 0;
-		for (size_t s=0; s<H.locBasis(l).size(); ++s)
-		for (size_t q=0; q<Vout.state.A[GAUGE::C][l][s].dim; ++q)
-		{
-			HeffA[l].dim += Vout.state.A[GAUGE::C][l][s].block[q].rows() * Vout.state.A[GAUGE::C][l][s].block[q].cols();
-		}
-		
 		// Solve for AC
-		gAC[l].state.A = Vout.state.A[GAUGE::C][l];
+		gAC[l].state = PivotVector1<Symmetry,Scalar>(Vout.state.A[GAUGE::C][l]);
+		HeffA[l].dim = gAC[l].state.dim;
 		
 		Stopwatch<> LanczosTimer;
 		LanczosSolver<PivotMatrix<Symmetry,Scalar,Scalar>,PivotVector1<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL,LANCZOS::CONVTEST::SQ_TEST);
@@ -1022,13 +1002,8 @@ iteration2 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 		}
 		
 		// Solve for C
-		gC[l].state.A = Vout.state.C[l];
-		
-		HeffAC[l].dim = 0;
-		for (size_t q=0; q<Vout.state.C[l].dim; ++q)
-		{
-			HeffAC[l].dim += Vout.state.C[l].block[q].rows() * Vout.state.C[l].block[q].cols();
-		}
+		gC[l].state = PivotVector0<Symmetry,Scalar>(Vout.state.C[l]);
+		HeffAC[l].dim = gC[l].state.dim;
 		
 		LanczosSolver<PivotMatrix<Symmetry,Scalar,Scalar>,PivotVector0<Symmetry,Scalar>,Scalar> Lucy(LANCZOS::REORTHO::FULL,LANCZOS::CONVTEST::SQ_TEST);
 		Lucy.set_dimK(min(30ul, HeffAC[l].dim));
@@ -1047,7 +1022,7 @@ iteration2 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Vout.state.A[GAUGE::C][l] = gAC[l].state.A;
-		Vout.state.C[l]           = gC[l].state.A;
+		Vout.state.C[l]           = gC[l].state.C;
 	}
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -1325,16 +1300,9 @@ iteration4 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 			                        H.locBasis(l), H.opBasis(l), HeffA[l].qlhs, HeffA[l].qrhs, HeffA[l].factor_cgcs);
 		}
 		
-		// reset dim
-		HeffA[l].dim = 0;
-		for (size_t s=0; s<H.locBasis(l).size(); ++s)
-		for (size_t q=0; q<Vout.state.A[GAUGE::C][l][s].dim; ++q)
-		{
-			HeffA[l].dim += Vout.state.A[GAUGE::C][l][s].block[q].rows() * Vout.state.A[GAUGE::C][l][s].block[q].cols();
-		}
-		
 		// Solve for AC
-		gAC[l].state.A = Vout.state.A[GAUGE::C][l];
+		gAC[l].state = PivotVector1<Symmetry,Scalar>(Vout.state.A[GAUGE::C][l]);
+		HeffA[l].dim = gAC[l].state.dim;
 		
 		Stopwatch<> LanczosTimer;
 		LanczosSolver<PivotMatrix<Symmetry,Scalar,Scalar>,PivotVector1<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL,LANCZOS::CONVTEST::SQ_TEST);
@@ -1350,13 +1318,8 @@ iteration4 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 		}
 		
 		// Solve for C
-		gC[l].state.A = Vout.state.C[l];
-		
-		HeffAC[l].dim = 0;
-		for (size_t q=0; q<Vout.state.C[l].dim; ++q)
-		{
-			HeffAC[l].dim += Vout.state.C[l].block[q].rows() * Vout.state.C[l].block[q].cols();
-		}
+		gC[l].state = PivotVector0<Symmetry,Scalar>(Vout.state.C[l]);
+		HeffAC[l].dim = gC[l].state.dim;
 		
 		LanczosSolver<PivotMatrix<Symmetry,Scalar,Scalar>,PivotVector0<Symmetry,Scalar>,Scalar> Lucy(LANCZOS::REORTHO::FULL,LANCZOS::CONVTEST::SQ_TEST);
 		Lucy.set_dimK(min(30ul, HeffAC[l].dim));
@@ -1375,7 +1338,7 @@ iteration4 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Vout.state.A[GAUGE::C][l] = gAC[l].state.A;
-		Vout.state.C[l]           = gC[l].state.A;
+		Vout.state.C[l]           = gC[l].state.C;
 	}
 	
 	for (size_t l=0; l<N_sites; ++l)

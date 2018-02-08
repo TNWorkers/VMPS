@@ -243,20 +243,22 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 			}
 			
 			// reset dim
-			Heff[pivot].dim = 0;
-			for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
-			for (size_t q=0; q<Vinout.A[pivot][s].dim; ++q)
-			{
-				Heff[pivot].dim += Vinout.A[pivot][s].block[q].rows() * Vinout.A[pivot][s].block[q].cols();
-			}
+//			Heff[pivot].dim = 0;
+//			for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
+//			for (size_t q=0; q<Vinout.A[pivot][s].dim; ++q)
+//			{
+//				Heff[pivot].dim += Vinout.A[pivot][s].block[q].rows() * Vinout.A[pivot][s].block[q].cols();
+//			}
 			
-			PivotVector1<Symmetry,TimeScalar> Asingle;
-			Asingle.A = Vinout.A[pivot];
+			PivotVector1<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
+			Heff[pivot].dim = Asingle.dim;
 			
 			LanczosPropagator<PivotMatrix<Symmetry,TimeScalar,MpoScalar>, PivotVector1<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 			Lutz.t_step(Heff[pivot], Asingle, +x(2,l,N_stages)*dt.imag()); // 2-site algorithm
+			
 			if (Lutz.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
 			if (Lutz.get_dimK() > dimK_max) {dimK_max = Lutz2.get_dimK();}
+			
 			Vinout.A[pivot] = Asingle.A;
 		}
 	}
@@ -328,9 +330,9 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 			
 			// reset dim
 			Heff0.dim = 0;
-			for (size_t q=0; q<Azero.A.dim; ++q)
+			for (size_t q=0; q<Azero.C.dim; ++q)
 			{
-				Heff0.dim += Azero.A.block[q].rows() * Azero.A.block[q].cols();
+				Heff0.dim += Azero.C.block[q].rows() * Azero.C.block[q].cols();
 			}
 			
 			Lutz0.t_step(Heff0, Azero, +x(1,l,N_stages)*dt.imag()); // 1-site algorithm

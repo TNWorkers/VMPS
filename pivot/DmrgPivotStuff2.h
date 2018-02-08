@@ -145,7 +145,7 @@ struct PivotVector2
 		for (size_t s3=0; s3<D34; ++s3)
 		for (size_t q=0; q<A[index(s1,s3)].dim; ++q)
 		{
-			dim += A[index(s1,s3)].block[q].rows() * A[index(s1,s3)].block[q].cols();
+			dim += A[index(s1,s3)].block[q].size();
 		}
 	}
 	
@@ -181,7 +181,7 @@ struct PivotVector2
 	
 	size_t index (size_t s1, size_t s3) const
 	{
-		return s1*D3+s3;
+		return s1*D34+s3;
 	}
 };
 

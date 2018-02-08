@@ -8,7 +8,35 @@
 template<typename Symmetry, typename Scalar>
 struct PivotVector0
 {
-	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > A;
+	PivotVector0(){};
+	
+	PivotVector0 (const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Crhs)
+	{
+		C = Crhs;
+		
+		dim = 0;
+		for (size_t q=0; q<C.dim; ++q)
+		{
+			dim += C.block[q].size();
+		}
+	}
+	
+	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > C;
+	
+	/**Set blocks as in Vrhs, but do not resize the matrices*/
+	void outerResize (const PivotVector0 &Vrhs)
+	{
+		dim = Vrhs.dim;
+		
+		C.clear();
+		C.in = Vrhs.C.in;
+		C.out = Vrhs.C.out;
+		C.dict = Vrhs.C.dict;
+		C.block.resize(Vrhs.C.block.size());
+		C.dim = Vrhs.C.dim;
+	}
+	
+	size_t dim;
 	
 	PivotVector0<Symmetry,Scalar>& operator+= (const PivotVector0<Symmetry,Scalar> &Vrhs);
 	PivotVector0<Symmetry,Scalar>& operator-= (const PivotVector0<Symmetry,Scalar> &Vrhs);
@@ -22,7 +50,7 @@ template<typename Symmetry, typename Scalar>
 PivotVector0<Symmetry,Scalar>& PivotVector0<Symmetry,Scalar>::
 operator+= (const PivotVector0<Symmetry,Scalar> &Vrhs)
 {
-	A = A + Vrhs.A;
+	C = C + Vrhs.C;
 	return *this;
 }
 
@@ -30,7 +58,7 @@ template<typename Symmetry, typename Scalar>
 PivotVector0<Symmetry,Scalar>& PivotVector0<Symmetry,Scalar>::
 operator-= (const PivotVector0<Symmetry,Scalar> &Vrhs)
 {
-	A = A - Vrhs.A;
+	C = C - Vrhs.C;
 	return *this;
 }
 
@@ -39,9 +67,9 @@ template<typename OtherScalar>
 PivotVector0<Symmetry,Scalar>& PivotVector0<Symmetry,Scalar>::
 operator*= (const OtherScalar &alpha)
 {
-	for (size_t q=0; q<A.dim; ++q)
+	for (size_t q=0; q<C.dim; ++q)
 	{
-		A.block[q] *= alpha;
+		C.block[q] *= alpha;
 	}
 	return *this;
 }
@@ -51,9 +79,9 @@ template<typename OtherScalar>
 PivotVector0<Symmetry,Scalar>& PivotVector0<Symmetry,Scalar>::
 operator/= (const OtherScalar &alpha)
 {
-	for (size_t q=0; q<A.dim; ++q)
+	for (size_t q=0; q<C.dim; ++q)
 	{
-		A.block[q] /= alpha;
+		C.block[q] /= alpha;
 	}
 	return *this;
 }
@@ -99,8 +127,7 @@ PivotVector0<Symmetry,Scalar> operator- (const PivotVector0<Symmetry,Scalar> &V1
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVector0<Symmetry,Scalar> &Vin, PivotVector0<Symmetry,Scalar> &Vout)
 {
-	Vout = Vin;
-	Vout.A.setZero();
+	Vout.outerResize(Vin);
 	
 	for (size_t qL=0; qL<H.L.dim; ++qL)
 	{
@@ -110,32 +137,39 @@ void HxV (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVector0<Sy
 		if (qR != H.R.dict.end())
 		{
 			qarray2<Symmetry::Nq> qupleAin = {H.L.out(qL), H.L.out(qL)};
-			auto qAin = Vin.A.dict.find(qupleAin);
+			auto qAin = Vin.C.dict.find(qupleAin);
 			
-			if (qAin != Vin.A.dict.end())
+			if (qAin != Vin.C.dict.end())
 			{
 				qarray2<Symmetry::Nq> qupleAout = {H.R.out(qR->second), H.R.out(qR->second)};
-				auto qAout = Vout.A.dict.find(qupleAout);
+				auto qAout = Vout.C.dict.find(qupleAout);
 				
-				if (qAout != Vout.A.dict.end())
+				if (qAout != Vout.C.dict.end())
 				{
 					for (size_t a=0; a<max(H.W[0][0][0].rows(),H.W[0][0][0].cols()); ++a)
 					{
 						Matrix<Scalar,Dynamic,Dynamic> Mtmp;
 						
 						if (H.L.block[qL][a][0].rows() != 0 and
-							H.R.block[qR->second][a][0].rows() !=0)
+						    H.R.block[qR->second][a][0].rows() !=0)
 						{
 							optimal_multiply(1., 
 							                 H.L.block[qL][a][0],
-							                 Vin.A.block[qAin->second],
+							                 Vin.C.block[qAin->second],
 							                 H.R.block[qR->second][a][0],
 							                 Mtmp);
 						}
 						
 						if (Mtmp.rows() != 0)
 						{
-							Vout.A.block[qAout->second] += Mtmp;
+							if (Vout.C.block[qAout->second].rows() != 0)
+							{
+								Vout.C.block[qAout->second] += Mtmp;
+							}
+							else
+							{
+								Vout.C.block[qAout->second] = Mtmp;
+							}
 						}
 					}
 				}
@@ -158,27 +192,28 @@ template<typename Symmetry, typename Scalar>
 Scalar dot (const PivotVector0<Symmetry,Scalar> &V1, const PivotVector0<Symmetry,Scalar> &V2)
 {
 	Scalar res = 0.;
-//	for (size_t q=0; q<V2.A.dim; ++q)
-//	for (size_t i=0; i<V2.A.block[q].cols(); ++i)
+//	for (size_t q=0; q<V2.C.dim; ++q)
+//	for (size_t i=0; i<V2.C.block[q].cols(); ++i)
 //	{
-//		res += V1.A.block[q].col(i).dot(V2.A.block[q].col(i));
+//		res += V1.C.block[q].col(i).dot(V2.C.block[q].col(i));
 //	}
-	for (size_t q=0; q<V2.A.dim; ++q)
+	for (size_t q=0; q<V2.C.dim; ++q)
 	{
-		res += (V1.A.block[q].adjoint() * V2.A.block[q]).trace();
+		res += (V1.C.block[q].adjoint() * V2.C.block[q]).trace();
 	}
 	return res;
 }
 
 template<typename Symmetry, typename Scalar>
-double squaredNorm (const PivotVector0<Symmetry,Scalar> &V)
+inline double squaredNorm (const PivotVector0<Symmetry,Scalar> &V)
 {
-	double res = 0.;
-	for (size_t q=0; q<V.A.dim; ++q)
-	{
-		res += V.A.block[q].colwise().squaredNorm().sum();
-	}
-	return res;
+//	double res = 0.;
+//	for (size_t q=0; q<V.C.dim; ++q)
+//	{
+//		res += V.C.block[q].colwise().squaredNorm().sum();
+//	}
+//	return res;
+	return dot(V,V);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -197,9 +232,9 @@ template<typename Symmetry, typename Scalar>
 double infNorm (const PivotVector0<Symmetry,Scalar> &V1, const PivotVector0<Symmetry,Scalar> &V2)
 {
 	double res = 0.;
-	for (size_t q=0; q<V1.A.dim; ++q)
+	for (size_t q=0; q<V1.C.dim; ++q)
 	{
-		double tmp = (V1.A.block[q]-V2.A.block[q]).template lpNorm<Eigen::Infinity>();
+		double tmp = (V1.C.block[q]-V2.C.block[q]).template lpNorm<Eigen::Infinity>();
 		if (tmp>res) {res = tmp;}
 	}
 	return res;
@@ -210,9 +245,9 @@ double infNorm (const PivotVector0<Symmetry,Scalar> &V1, const PivotVector0<Symm
 template<typename Symmetry, typename Scalar>
 void swap (PivotVector0<Symmetry,Scalar> &V1, PivotVector0<Symmetry,Scalar> &V2)
 {
-	for (size_t q=0; q<V1.A.dim; ++q)
+	for (size_t q=0; q<V1.C.dim; ++q)
 	{
-		V1.A.block[q].swap(V2.A.block[q]);
+		V1.C.block[q].swap(V2.C.block[q]);
 	}
 }
 
@@ -223,11 +258,11 @@ struct GaussianRandomVector<PivotVector0<Symmetry,Scalar>,Scalar>
 {
 	static void fill (size_t N, PivotVector0<Symmetry,Scalar> &Vout)
 	{
-		for (size_t q=0; q<Vout.A.dim; ++q)
-		for (size_t a1=0; a1<Vout.A.block[q].rows(); ++a1)
-		for (size_t a2=0; a2<Vout.A.block[q].cols(); ++a2)
+		for (size_t q=0; q<Vout.C.dim; ++q)
+		for (size_t a1=0; a1<Vout.C.block[q].rows(); ++a1)
+		for (size_t a2=0; a2<Vout.C.block[q].cols(); ++a2)
 		{
-			Vout.A.block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
+			Vout.C.block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
 		}
 		normalize(Vout);
 	}
