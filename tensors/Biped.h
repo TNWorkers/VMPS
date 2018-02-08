@@ -69,11 +69,11 @@ public:
 	
 	///@{
 	/**Returns an Eigen vector of size \p dim containing all Matrix rows for every block nu.*/
-	Eigen::VectorXi rows () const;
+	Eigen::VectorXi rows() const;
 	/**Returns an Eigen vector of size \p dim containing all Matrix cols for every block nu.*/
-	Eigen::VectorXi cols () const;
+	Eigen::VectorXi cols() const;
 	/**Returns an Eigen vector of size \p dim containing all Matrix norm for every block nu.*/
-	Eigen::VectorXi norm () const;
+	Eigen::VectorXi norm() const;
 	///@}
 	
 	/**Prints the whole tensor, formatting the quantum numbers */
@@ -84,7 +84,7 @@ public:
 	 * \param SHOW_MATRICES : if true, all the block-matrices are printed.
 	 * \param precision : precision for the tensor components
 	 */
-	std::string print ( const bool SHOW_MATRICES=false , const std::size_t precision=3 ) const;
+	std::string print (const bool SHOW_MATRICES=false , const std::size_t precision=3 ) const;
 	
 	/**Prints Biped<Symmetry,MatrixType>::dict into a string.*/
 	std::string print_dict() const;
@@ -102,6 +102,8 @@ public:
 	
 	/**Sets all matrices in Biped<Symmetry,MatrixType>::block to zero, preserving the rows and columns.*/
 	void setZero();
+	
+	void resize0();
 	
 	/**Sets all matrices in Biped<Symmetry,MatrixType>::block to random values, preserving the rows and columns.*/
 	void setRandom();
@@ -175,6 +177,13 @@ void Biped<Symmetry,MatrixType_>::
 setZero()
 {
 	for (std::size_t q=0; q<dim; ++q) {block[q].setZero();}
+}
+
+template<typename Symmetry, typename MatrixType_>
+void Biped<Symmetry,MatrixType_>::
+resize0()
+{
+	for (std::size_t q=0; q<dim; ++q) {block[q].resize(0,0); block[q].setZero();}
 }
 
 template<typename Symmetry, typename MatrixType_>

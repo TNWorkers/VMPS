@@ -58,26 +58,26 @@ public:
 	 * \param Qtot_input : target quantum number
 	 * \param N_phys_input : the volume of the system (normally (chain length) * (chain width))
 	*/
-	Mps(size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
+	Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
 	
 	/** 
-	 * Construct by pulling info from an Mpo.
+	 * Construct by pulling info from an MPO.
 	 * \param H : chain length and local basis will be retrieved from this Mpo
 	 * \param Dmax : size cutoff (per subspace)
 	 * \param Qtot_input : target quantum number
 	*/
-	template<typename Hamiltonian> Mps(const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input);
-
+	template<typename Hamiltonian> Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input);
+	
 	/** 
-	 * Construct by explicitly provide the Amatrices. Only useful for testing purposes.
+	 * Construct by explicitly provide the A-matrices. Basically only for testing purposes.
 	 * \param L_input : chain length
 	 * \param As : vector of vector of A matrices. (For all sites, and for all local quantumnumbers)
 	 * \param qloc_input : vector of local basis for all sites.
 	 * \param Qtot_input : target quantum number
 	 * \param N_phys_input : the volume of the system (normally (chain length) * (chain width))
 	*/
-	Mps(size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
-		const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
+	Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
+	     const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
 
 	///\{
 	/**

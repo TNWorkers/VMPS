@@ -19,10 +19,9 @@
 #include "tensors/DmrgContractions.h"
 #include "pivot/DmrgPivotStuff1.h"
 #include "pivot/DmrgPivotStuff2.h"
-#include "LanczosMower.h" // from HELPERS, obsolete
 #include "Stopwatch.h" // from HELPERS
 
-/**Compressor of Matrix Product States with conserved quantum numbers.
+/**Compressor of MPS.
 \describe_Symmetry
 \describe_Scalar
 \describe_MpoScalar*/
@@ -33,10 +32,19 @@ typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 
 public:
 	
-	//---constructor---
 	MpsCompressor (DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT)
 	:CHOSEN_VERBOSITY(VERBOSITY)
 	{};
+	
+	//---info stuff---
+	///\{
+	/**\describe_info*/
+	string info() const;
+	/**\describe_memory*/
+	double memory (MEMUNIT memunit=GB) const;
+	/**\describe_overhead*/
+	double overhead (MEMUNIT memunit=GB) const;
+	///\}
 	
 	//---compression schemes---
 	///\{
@@ -96,23 +104,14 @@ public:
 	*/
 	template<typename MpOperator>
 	void polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, 
-	                   size_t Dcutoff_input, double tol=DMRG_POLYCOMPRESS_TOL, size_t max_halfsweeps=DMRG_POLYCOMPRESS_MAX, size_t min_halfsweeps=DMRG_POLYCOMPRESS_MIN, 
+	                   size_t Dcutoff_input, double tol=DMRG_POLYCOMPRESS_TOL, 
+	                   size_t max_halfsweeps=DMRG_POLYCOMPRESS_MAX, size_t min_halfsweeps=DMRG_POLYCOMPRESS_MIN, 
 	                   DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RHS);
 	
 //	template<typename MpOperator>
 //	void sumCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<double> &factor, Mps<Symmetry,Scalar> &Vout, 
 //	                  size_t Dcutoff_input, double tol=DMRG_POLYCOMPRESS_TOL, size_t max_halfsweeps=DMRG_POLYCOMPRESS_MAX, size_t min_halfsweeps=DMRG_POLYCOMPRESS_MIN, 
 //	                  DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RHS);
-	///\}
-	
-	//---info stuff---
-	///\{
-	/**\describe_info*/
-	string info() const;
-	/**\describe_memory*/
-	double memory (MEMUNIT memunit=GB) const;
-	/**\describe_overhead*/
-	double overhead (MEMUNIT memunit=GB) const;
 	///\}
 	
 private:
@@ -123,7 +122,7 @@ private:
 	void prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE=true);
 	void optimizationStep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
 	void optimizationStep2 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
-	void sweepStep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
+//	void sweepStep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
 	void build_L (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket);
 	void build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket);
 	
@@ -137,23 +136,18 @@ private:
 	void optimizationStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
 	template<typename MpOperator>
 	void optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
-	template<typename MpOperator>
-	void sweepStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
+//	template<typename MpOperator>
+//	void sweepStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
 	template<typename MpOperator>
 	void build_LW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket);
 	template<typename MpOperator>
 	void build_RW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket);
 	
-	// for |Vout> ≈ H*|Vin1> - |Vin2>
+	// for |Vout> ≈ H*|Vin1> - polyB*|Vin2>
 	template<typename MpOperator>
 	void prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE=true);
 	template<typename MpOperator>
 	void sweepStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout);
-	
-	// mowing
-	template<typename MpOperator> void mowSweeps (const MpOperator &H, Mps<Symmetry,Scalar> &Vout);
-	void energyTruncationStep (Mps<Symmetry,Scalar> &Vbra, size_t dimK=10);
-	ArrayXd mowedWeight;
 	
 	size_t N_sites;
 	size_t N_sweepsteps, N_halfsweeps;
@@ -294,12 +288,7 @@ varCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t
 		Stopwatch<> Aion;
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
-			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
-//			optimizationStep(Vin,Vout);
-//			if (j != halfSweepRange)
-//			{
-//				sweepStep(Vin,Vout);
-//			}
+			turnaround(pivot, N_sites, CURRENT_DIRECTION);
 			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
 			{
 				optimizationStep2(Vin,Vout);
@@ -307,10 +296,7 @@ varCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t
 			else
 			{
 				optimizationStep(Vin,Vout);
-				Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-				pivot = Vout.get_pivot();
 			}
-			sweepStep(Vin,Vout);
 			++N_sweepsteps;
 		}
 		halfSweepRange = N_sites-1;
@@ -334,25 +320,6 @@ varCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
-//			size_t Dcutoff_old = Vout.calc_Dmax();
-//			size_t Mmax_old = Vout.calc_Mmax();
-//			
-//			Dcutoff_new = Dcutoff_old+1;
-//			Vout.dynamicResize(DMRG::RESIZE::CONSERV_INCR, Dcutoff_new);
-//			Vout.setRandom();
-//			Mmax_new = Vout.calc_Mmax();
-//			
-//			if (CHOSEN_VERBOSITY>=2)
-//			{
-//				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << endl;
-//			}
-//			
-//			Vout.pivot = -1;
-//			prepSweep(Vin,Vout);
-//			pivot = Vout.pivot;
-//			halfSweepRange = N_sites;
-//			RESIZED = true;
-			
 			Vout.N_sv += 1;
 			Dcutoff_new = Vout.N_sv;
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -362,14 +329,6 @@ varCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t
 		}
 		
 		Mmax_new = Vout.calc_Mmax();
-		
-//		if ((sqdist > tol and
-//		    RESIZED == false and
-//		    N_halfsweeps < max_halfsweeps) or
-//		    N_halfsweeps < min_halfsweeps)
-//		{
-//			sweepStep(Vin,Vout);
-//		}
 	}
 	
 	// last sweep
@@ -391,7 +350,6 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RAN
 			if (RANDOMIZE == true)
 			{
 				Vout.setRandom(l);
-//				if (l>0) {Vout.setRandom(l-1);}
 			}
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			build_R(l-1,Vout,Vin);
@@ -405,7 +363,6 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RAN
 			if (RANDOMIZE == true)
 			{
 				Vout.setRandom(l);
-//				if (l<N_sites-1) {Vout.setRandom(l+1);}
 			}
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
 			build_L(l+1,Vout,Vin);
@@ -415,14 +372,14 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RAN
 	pivot = Vout.pivot;
 }
 
-template<typename Symmetry, typename Scalar, typename MpoScalar>
-void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-sweepStep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
-{
-//	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-//	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(++pivot,Vout,Vin) : build_R(--pivot,Vout,Vin);
-	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(pivot,Vout,Vin) : build_R(pivot,Vout,Vin);
-}
+//template<typename Symmetry, typename Scalar, typename MpoScalar>
+//void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+//sweepStep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
+//{
+////	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
+////	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(++pivot,Vout,Vin) : build_R(--pivot,Vout,Vin);
+//	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(pivot,Vout,Vin) : build_R(pivot,Vout,Vin);
+//}
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
@@ -432,6 +389,10 @@ optimizationStep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 	{
 		Vout.A[pivot][s] = L[pivot] * Vin.A[pivot][s] * R[pivot];
 	}
+	
+	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
+	pivot = Vout.get_pivot();
+	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(pivot,Vout,Vin) : build_R(pivot,Vout,Vin);
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
@@ -454,9 +415,9 @@ optimizationStep2 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 		Apair[s1][s3] = L[loc1] * Vin.A[loc1][s1] * Vin.A[loc2][s3] * R[loc2];
 	}
 	
-	Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
-	
+	Vout.sweepStep2(CURRENT_DIRECTION, loc1, Apair);
 	pivot = Vout.get_pivot();
+	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(pivot,Vout,Vin) : build_R(pivot,Vout,Vin);
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
@@ -567,23 +528,36 @@ varCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
 	{
 		Stopwatch<> Aion;
+		
+		// A 2-site sweep is necessary! Move pivot back to edge.
+		if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+		{
+			if (pivot==1)
+			{
+				Vout.sweep(0,DMRG::BROOM::QR);
+				pivot=0;
+				build_RW(0,Vout,H,Vin);
+			}
+			else if (pivot==N_sites-2)
+			{
+				Vout.sweep(N_sites-1,DMRG::BROOM::QR);
+				pivot = N_sites-1;
+				build_LW(N_sites-1,Vout,H,Vin);
+			}
+		}
+		
+		// Optimization
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
-			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
+			turnaround(pivot, N_sites, CURRENT_DIRECTION);
 			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
 			{
-//				lout << "switching to two-site algorithm for this half-sweep..." << endl;
 				optimizationStep2(H,Vin,Vout);
 			}
 			else
 			{
 				optimizationStep(H,Vin,Vout);
-				Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-				pivot = Vout.get_pivot();
 			}
-			sweepStep(H,Vin,Vout);
-//			cout << Vout.test_ortho() << endl;
-//			if (j != halfSweepRange) {sweepStep(H,Vin,Vout);}
 			++N_sweepsteps;
 		}
 		halfSweepRange = N_sites-1;
@@ -603,26 +577,6 @@ varCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
-//			Stopwatch<> ChronosResize;
-//			size_t Dcutoff_old = Vout.calc_Dmax();
-//			size_t Mmax_old = Vout.calc_Mmax();
-//			
-//			Dcutoff_new = Dcutoff_old+1;
-//			Vout.dynamicResize(DMRG::RESIZE::CONSERV_INCR, Dcutoff_new);
-//			Vout.setRandom();
-//			Mmax_new = Vout.calc_Mmax();
-//			
-//			Vout.pivot = -1;
-//			prepSweep(H,Vin,Vout);
-//			pivot = Vout.pivot;
-//			halfSweepRange = N_sites;
-//			RESIZED = true;
-//			
-//			if (CHOSEN_VERBOSITY>=2)
-//			{
-//				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << "\t" << ChronosResize.info() << endl;
-//			}
-			
 			Vout.N_sv += 1;
 			Dcutoff_new = Vout.N_sv;
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -632,23 +586,9 @@ varCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,
 		}
 		
 		Mmax_new = Vout.calc_Mmax();
-		
-//		if ((sqdist > tol and 
-//		    RESIZED == false and 
-//		    N_halfsweeps < max_halfsweeps) or
-//		    N_halfsweeps < min_halfsweeps)
-//		{
-//			sweepStep(H,Vin,Vout);
-//		}
 	}
 	
-	// mowing
-	if (Vout.N_mow > 0)
-	{
-		mowSweeps(H,Vout);
-	}
-	
-	// last sweep
+	// Move pivot to edge at the end
 	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
 	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
 }
@@ -667,7 +607,6 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Sc
 			if (RANDOMIZE == true)
 			{
 				Vout.setRandom(l);
-//				if (l>0) {Vout.setRandom(l-1);}
 			}
 			Stopwatch<> Chronos;
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
@@ -682,7 +621,6 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Sc
 			if (RANDOMIZE == true)
 			{
 				Vout.setRandom(l);
-//				if (l<N_sites-1) {Vout.setRandom(l+1);}
 			}
 			Stopwatch<> Chronos;
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
@@ -696,25 +634,15 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Sc
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-sweepStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
-{
-//	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-//	(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(++pivot,Vout,H,Vin) : build_RW(--pivot,Vout,H,Vin);
-	(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(pivot,Vout,H,Vin) : build_RW(pivot,Vout,H,Vin);
-}
-
-template<typename Symmetry, typename Scalar, typename MpoScalar>
-template<typename MpOperator>
-void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 optimizationStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 {
 	Stopwatch<> Chronos;
 	
-	for (size_t s=0; s<Vin.locBasis(pivot).size(); ++s)
-	{
-		Vout.A[pivot][s].setZero();
-	}
-	
+//	for (size_t s=0; s<Vin.locBasis(pivot).size(); ++s)
+//	{
+//		Vout.A[pivot][s].setZero();
+//	}
+//	
 //	if (Heff[pivot].qlhs.size() == 0) // Doesn't work with chebCompress, why? Or does it?
 	{
 		Heff[pivot].W = H.W[pivot];
@@ -722,41 +650,45 @@ optimizationStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symm
 		                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 	}
 	
-	// why doesn't this work?
-//	PivotVector1<Symmetry,Scalar> Vtmp;
-//	Vtmp.A = Vin.A[pivot];
-//	HxV(Heff[pivot],Vtmp);
-//	Vout.A[pivot] = Vtmp.A;
+	// faster alternative:
+	PivotVector1<Symmetry,Scalar> Vtmp;
+	Vtmp.A = Vin.A[pivot];
+	HxV(Heff[pivot],Vtmp);
+	Vout.A[pivot] = Vtmp.A;
 	
-	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
-	#pragma omp parallel for
-	#endif
-	for (size_t q=0; q<Heff[pivot].qlhs.size(); ++q)
-	{
-		size_t s1 = Heff[pivot].qlhs[q][0];
-		size_t q1 = Heff[pivot].qlhs[q][1];
-		for (size_t p=0; p<Heff[pivot].qrhs[q].size(); ++p)
-		// for (auto irhs=Heff[pivot].qrhs[q].begin(); irhs!=Heff[pivot].qrhs[q].end(); ++irhs)
-		{
-			size_t s2 = Heff[pivot].qrhs[q][p][0];
-			size_t q2 = Heff[pivot].qrhs[q][p][1];
-			size_t qL = Heff[pivot].qrhs[q][p][2];
-			size_t qR = Heff[pivot].qrhs[q][p][3];
-			size_t k = Heff[pivot].qrhs[q][p][4];
-			for (int r=0; r<H.W[pivot][s1][s2][k].outerSize(); ++r)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(H.W[pivot][s1][s2][k],r); iW; ++iW)
-			{
-				if (Heff[pivot].L.block[qL][iW.row()][0].rows() != 0 and 
-				    Heff[pivot].R.block[qR][iW.col()][0].rows() != 0)
-				{
-					Vout.A[pivot][s1].block[q1].noalias() += Heff[pivot].factor_cgcs[q][p] * iW.value() * 
-					                                         (Heff[pivot].L.block[qL][iW.row()][0] * 
-					                                          Vin.A[pivot][s2].block[q2] * 
-					                                          Heff[pivot].R.block[qR][iW.col()][0]);
-				}
-			}
-		}
-	}
+//	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
+//	#pragma omp parallel for
+//	#endif
+//	for (size_t q=0; q<Heff[pivot].qlhs.size(); ++q)
+//	{
+//		size_t s1 = Heff[pivot].qlhs[q][0];
+//		size_t q1 = Heff[pivot].qlhs[q][1];
+//		for (size_t p=0; p<Heff[pivot].qrhs[q].size(); ++p)
+//		// for (auto irhs=Heff[pivot].qrhs[q].begin(); irhs!=Heff[pivot].qrhs[q].end(); ++irhs)
+//		{
+//			size_t s2 = Heff[pivot].qrhs[q][p][0];
+//			size_t q2 = Heff[pivot].qrhs[q][p][1];
+//			size_t qL = Heff[pivot].qrhs[q][p][2];
+//			size_t qR = Heff[pivot].qrhs[q][p][3];
+//			size_t k = Heff[pivot].qrhs[q][p][4];
+//			for (int r=0; r<H.W[pivot][s1][s2][k].outerSize(); ++r)
+//			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(H.W[pivot][s1][s2][k],r); iW; ++iW)
+//			{
+//				if (Heff[pivot].L.block[qL][iW.row()][0].rows() != 0 and 
+//				    Heff[pivot].R.block[qR][iW.col()][0].rows() != 0)
+//				{
+//					Vout.A[pivot][s1].block[q1].noalias() += Heff[pivot].factor_cgcs[q][p] * iW.value() * 
+//					                                         (Heff[pivot].L.block[qL][iW.row()][0] * 
+//					                                          Vin.A[pivot][s2].block[q2] * 
+//					                                          Heff[pivot].R.block[qR][iW.col()][0]);
+//				}
+//			}
+//		}
+//	}
+	
+	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
+	pivot = Vout.get_pivot();
+	(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(pivot,Vout,H,Vin) : build_RW(pivot,Vout,H,Vin);
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
@@ -774,112 +706,147 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 	size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
 	size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
 	
-	Heff[loc1].W = H.W[loc1];
-	Heff[loc2].W = H.W[loc2];
-	
-	auto index = [&Vin,&loc1] (size_t s1, size_t s3) -> size_t
-	{
-		return s1*Vin.locBasis(loc1).size()+s3;
-	};
-	
-	vector<Biped<Symmetry,MatrixType> > Apair;
-	Apair.resize(Vin.locBasis(loc1).size()*Vin.locBasis(loc2).size());
-//	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
+//	Heff[loc1].W = H.W[loc1];
+//	Heff[loc2].W = H.W[loc2];
+//	
+//	auto index = [&Vin,&loc2] (size_t s1, size_t s3) -> size_t
 //	{
-//		Apair[s1].resize(Vin.locBasis(loc2).size());
+//		return s1*Vin.locBasis(loc2).size()+s3;
+//	};
+//	
+//	vector<Biped<Symmetry,MatrixType> > Apair;
+//	Apair.resize(Vin.locBasis(loc1).size()*Vin.locBasis(loc2).size());
+////	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
+////	{
+////		Apair[s1].resize(Vin.locBasis(loc2).size());
+////	}
+	
+//	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
+//	for (size_t s2=0; s2<Vin.locBasis(loc1).size(); ++s2)
+//	for (size_t k1=0; k1<H.opBasis(loc1).size(); ++k1)
+//	{
+//		if(Heff[loc1].W[s1][s2][k1].size() == 0) { continue; }
+//		for (size_t qL=0; qL<Heff[loc1].L.dim; ++qL)
+//		{
+//			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix12;
+//			bool FOUND_MATCH12 = AWA(Heff[loc1].L.in(qL), Heff[loc1].L.out(qL), Heff[loc1].L.mid(qL), s1, s2, Vin.locBasis(loc1),
+//			                         k1, H.opBasis(loc1), Vout.A[loc1], Vin.A[loc1], ix12);
+//			
+//			if (FOUND_MATCH12)
+//			{
+//				for(size_t n=0; n<ix12.size(); n++ )
+//				{
+//					qarray3<Symmetry::Nq> quple12 = get<0>(ix12[n]);
+//					swap(quple12[0], quple12[1]);
+//					size_t qA12 = get<2>(ix12[n]);
+//					for (size_t s3=0; s3<Vin.locBasis(loc2).size(); ++s3)
+//					for (size_t s4=0; s4<Vin.locBasis(loc2).size(); ++s4)
+//					for (size_t k2=0; k2<H.opBasis(loc2).size(); ++k2)
+//					{
+//						if (Heff[loc2].W[s3][s4][k2].size() == 0) {continue;}
+//						vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix34;
+//						bool FOUND_MATCH34 = AWA(quple12[0], quple12[1], quple12[2], s3, s4, Vin.locBasis(loc2),
+//						                         k2, H.opBasis(loc2), Vout.A[loc2], Vin.A[loc2], ix34);
+//						if (FOUND_MATCH34)
+//						{
+//							for(size_t m=0; m<ix34.size(); m++)
+//							{
+//								qarray3<Symmetry::Nq> quple34 = get<0>(ix34[m]);
+//								size_t qA34 = get<2>(ix34[m]);
+//								auto qR = Heff[loc2].R.dict.find(quple34);
+//								
+//								if (qR != Heff[loc2].R.dict.end())
+//								{
+//									if (Heff[loc1].L.mid(qL) + Vin.locBasis(loc1)[s1] - Vin.locBasis(loc1)[s2] == 
+//									    Heff[loc2].R.mid(qR->second) - Vin.locBasis(loc2)[s3] + Vin.locBasis(loc2)[s4])
+//									{
+//										for (int r12=0; r12<Heff[loc1].W[s1][s2][k1].outerSize(); ++r12)
+//										for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(Heff[loc1].W[s1][s2][k1],r12); iW12; ++iW12)
+//										for (int r34=0; r34<Heff[loc2].W[s3][s4][k2].outerSize(); ++r34)
+//										for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(Heff[loc2].W[s3][s4][k2],r34); iW34; ++iW34)
+//										{
+//											MatrixType Mtmp;
+//											MpoScalar Wfactor = iW12.value() * iW34.value();
+//											
+//											if (Heff[loc1].L.block[qL][iW12.row()][0].rows() != 0 and
+//												Heff[loc2].R.block[qR->second][iW34.col()][0].rows() !=0 and
+//												iW12.col() == iW34.row())
+//											{
+//												optimal_multiply(Wfactor, 
+//												                 Heff[loc1].L.block[qL][iW12.row()][0],
+//												                 Vin.A[loc1][s2].block[qA12],
+//												                 Vin.A[loc2][s4].block[qA34],
+//												                 Heff[loc2].R.block[qR->second][iW34.col()][0],
+//												                 Mtmp);
+//											}
+//											
+//											if (Mtmp.rows() != 0)
+//											{
+//												qarray2<Symmetry::Nq> qupleApair = {Heff[loc1].L.in(qL), Heff[loc2].R.out(qR->second)};
+//												auto qApair = Apair[index(s1,s3)].dict.find(qupleApair);
+//												
+//												if (qApair != Apair[index(s1,s3)].dict.end())
+//												{
+//													Apair[index(s1,s3)].block[qApair->second] += Mtmp;
+//												}
+//												else
+//												{
+//													Apair[index(s1,s3)].push_back(qupleApair, Mtmp);
+//												}
+//											}
+//										}
+//									}
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
+//
+//	Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
+	
+	
+	
+//	PivotVector2<Symmetry,Scalar> Apair;
+//	Apair.D1 = Vin.locBasis(min(loc1,loc2)).size();
+//	Apair.D3 = Vin.locBasis(max(loc1,loc2)).size();
+//	contract_AA(Vin.A[min(loc1,loc2)], Vin.locBasis(min(loc1,loc2)), 
+//	            Vin.A[max(loc1,loc2)], Vin.locBasis(max(loc1,loc2)), 
+//	            Apair.A);
+//	
+//	PivotMatrix2<Symmetry,Scalar,MpoScalar> Heff2;
+//	Heff2.L = Heff[min(loc1,loc2)].L;
+//	Heff2.R = Heff[max(loc1,loc2)].R;
+//	Heff2.W12 = H.W_at(min(loc1,loc2));
+//	Heff2.W34 = H.W_at(max(loc1,loc2));
+//	Heff2.qloc12 = H.locBasis(min(loc1,loc2));
+//	Heff2.qloc34 = H.locBasis(max(loc1,loc2));
+//	Heff2.qOp12 = H.opBasis(min(loc1,loc2));
+//	Heff2.qOp34 = H.opBasis(max(loc1,loc2));
+//	
+//	// reset dim
+//	Heff2.dim = 0;
+//	for (size_t s1=0; s1<H.locBasis(min(loc1,loc2)).size(); ++s1)
+//	for (size_t s3=0; s3<H.locBasis(max(loc1,loc2)).size(); ++s3)
+//	for (size_t q=0; q<Apair.A[Apair.index(s1,s3)].dim; ++q)
+//	{
+//		Heff2.dim += Apair.A[Apair.index(s1,s3)].block[q].rows() * Apair.A[Apair.index(s1,s3)].block[q].cols();
 //	}
 	
-	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
-	for (size_t s2=0; s2<Vin.locBasis(loc1).size(); ++s2)
-	for (size_t k1=0; k1<H.opBasis(loc1).size(); ++k1)
-	{
-		if(Heff[loc1].W[s1][s2][k1].size() == 0) { continue; }
-		for (size_t qL=0; qL<Heff[loc1].L.dim; ++qL)
-		{
-			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix12;
-			bool FOUND_MATCH12 = AWA(Heff[loc1].L.in(qL), Heff[loc1].L.out(qL), Heff[loc1].L.mid(qL), s1, s2, Vin.locBasis(loc1),
-									 k1, H.opBasis(loc1), Vout.A[loc1], Vin.A[loc1], ix12);
-			// bool FOUND_MATCH = AWA(Lold.in(qL), Lold.out(qL), Lold.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
-			
-			if (FOUND_MATCH12)
-			{
-				for(size_t n=0; n<ix12.size(); n++ )
-				{
-					qarray3<Symmetry::Nq> quple12 = get<0>(ix12[n]);
-					swap(quple12[0], quple12[1]);
-					size_t qA12 = get<2>(ix12[n]);
-					for (size_t s3=0; s3<Vin.locBasis(loc2).size(); ++s3)
-					for (size_t s4=0; s4<Vin.locBasis(loc2).size(); ++s4)
-					for (size_t k2=0; k2<H.opBasis(loc2).size(); ++k2)
-					{
-						if(Heff[loc2].W[s3][s4][k2].size() == 0) { continue; }
-						vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix34;
-						bool FOUND_MATCH34 = AWA(quple12[0], quple12[1], quple12[2], s3, s4, Vin.locBasis(loc2),
-						                         k2, H.opBasis(loc2), Vout.A[loc2], Vin.A[loc2], ix34);
-						if (FOUND_MATCH34)
-						{
-							for(size_t m=0; m<ix34.size(); m++)
-							{
-								qarray3<Symmetry::Nq> quple34 = get<0>(ix34[m]);
-								size_t qA34 = get<2>(ix34[m]);
-								auto qR = Heff[loc2].R.dict.find(quple34);
-								
-								if (qR != Heff[loc2].R.dict.end())
-								{
-									if (Heff[loc1].L.mid(qL) + Vin.locBasis(loc1)[s1] - Vin.locBasis(loc1)[s2] == 
-									    Heff[loc2].R.mid(qR->second) - Vin.locBasis(loc2)[s3] + Vin.locBasis(loc2)[s4])
-									{
-										for (int r12=0; r12<Heff[loc1].W[s1][s2][k1].outerSize(); ++r12)
-										for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(Heff[loc1].W[s1][s2][k1],r12); iW12; ++iW12)
-										for (int r34=0; r34<Heff[loc2].W[s3][s4][k2].outerSize(); ++r34)
-										for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(Heff[loc2].W[s3][s4][k2],r34); iW34; ++iW34)
-										{
-											MatrixType Mtmp;
-											MpoScalar Wfactor = iW12.value() * iW34.value();
-											
-											if (Heff[loc1].L.block[qL][iW12.row()][0].rows() != 0 and
-												Heff[loc2].R.block[qR->second][iW34.col()][0].rows() !=0 and
-												iW12.col() == iW34.row())
-											{
-//									Mtmp = Wfactor * 
-//									       (Heff[loc1].L.block[qL][iW12.row()][0] * 
-//									       Vin.A[loc1][s2].block[qA12] * 
-//									       Vin.A[loc2][s4].block[qA34] * 
-//									       Heff[loc2].R.block[qR->second][iW34.col()][0]);
-												optimal_multiply(Wfactor, 
-												                 Heff[loc1].L.block[qL][iW12.row()][0],
-												                 Vin.A[loc1][s2].block[qA12],
-												                 Vin.A[loc2][s4].block[qA34],
-												                 Heff[loc2].R.block[qR->second][iW34.col()][0],
-												                 Mtmp);
-											}
-											
-											if (Mtmp.rows() != 0)
-											{
-												qarray2<Symmetry::Nq> qupleApair = {Heff[loc1].L.in(qL), Heff[loc2].R.out(qR->second)};
-												auto qApair = Apair[index(s1,s3)].dict.find(qupleApair);
-												
-												if (qApair != Apair[index(s1,s3)].dict.end())
-												{
-													Apair[index(s1,s3)].block[qApair->second] += Mtmp;
-												}
-												else
-												{
-													Apair[index(s1,s3)].push_back(qupleApair, Mtmp);
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
 	
-	Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
+	PivotVector2<Symmetry,Scalar> Apair(Vin.A[loc1], Vin.locBasis(loc1), Vin.A[loc2], Vin.locBasis(loc2));
+	PivotMatrix2<Symmetry,Scalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
+	                                              H.W_at(loc1), H.W_at(loc2), 
+	                                              H.locBasis(loc1), H.locBasis(loc2), 
+	                                              H.opBasis(loc1), H.opBasis(loc2),
+	                                              Apair.dim);
+	
+	HxV(Heff2, Apair);
+	Vout.sweepStep2(CURRENT_DIRECTION, loc1, Apair.A);
+	
+	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_LW(loc2,Vout,H,Vin) : build_RW(loc1,Vout,H,Vin);
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
@@ -888,6 +855,17 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 	
 	pivot = Vout.get_pivot();
 }
+
+//template<typename Symmetry, typename Scalar, typename MpoScalar>
+//template<typename MpOperator>
+//void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+//sweepStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
+//{
+////	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
+////	(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(++pivot,Vout,H,Vin) : build_RW(--pivot,Vout,H,Vin);
+//	
+//	(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(pivot,Vout,H,Vin) : build_RW(pivot,Vout,H,Vin);
+//}
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
@@ -903,33 +881,6 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 build_RW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket)
 {
 	contract_R(Heff[loc+1].R, Vbra.A[loc+1], H.W[loc+1], Vket.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R);
-}
-
-template<typename Symmetry, typename Scalar, typename MpoScalar>
-void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-energyTruncationStep (Mps<Symmetry,Scalar> &V, size_t dimK)
-{
-	if (Heff[pivot].qlhs.size() == 0)
-	{
-		precalc_blockStructure (Heff[pivot].L, V.A[pivot], Heff[pivot].W, V.A[pivot], Heff[pivot].R, 
-		                        V.locBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs);
-	}
-	
-	Heff[pivot].dim = 0;
-	for (size_t s=0; s<V.locBasis(pivot).size(); ++s)
-	for (size_t q=0; q<V.A[pivot][s].dim; ++q)
-	{
-		Heff[pivot].dim += V.A[pivot][s].block[q].rows() * V.A[pivot][s].block[q].cols();
-	}
-	
-	PivotVector1<Symmetry,Scalar> Psi;
-	Psi.A = V.A[pivot];
-	
-	LanczosMower<PivotMatrix<Symmetry,Scalar,MpoScalar>,PivotVector1<Symmetry,Scalar>,Scalar> Lutz(min(dimK,Heff[pivot].dim));
-	Lutz.mow(Heff[pivot],Psi,2.);
-	mowedWeight(pivot) = Lutz.get_mowedWeight();
-	
-	V.A[pivot] = Psi.A;
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
@@ -1020,7 +971,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		Stopwatch<> Aion;
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
-			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
+			turnaround(pivot, N_sites, CURRENT_DIRECTION);
 			Stopwatch<> Chronos;
 			
 //			optimizationStep(Vin2,Vout);
@@ -1075,7 +1026,10 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 					Apair[s1][s3].block[q].resize(rows,cols);
 					Apair[s1][s3].block[q].setZero();
 					Apair[s1][s3].block[q].topLeftCorner(Mtmp.rows(),Mtmp.cols()) = Mtmp;
-					Apair[s1][s3].block[q].topLeftCorner(Apair[s1][s3].block[q].rows(),Apair[s1][s3].block[q].cols()) -= polyB * ApairVV[s1][s3].block[it->second];
+					Apair[s1][s3].block[q].topLeftCorner(Apair[s1][s3].block[q].rows(),
+					                                     Apair[s1][s3].block[q].cols()) 
+					-= 
+					polyB * ApairVV[s1][s3].block[it->second];
 				}
 				
 				Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
@@ -1101,10 +1055,6 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 			}
 			
 			sweepStep(H,Vin1,Vin2,Vout);
-//			if (j != halfSweepRange)
-//			{
-//				sweepStep(H,Vin1,Vin2,Vout);
-//			}
 			++N_sweepsteps;
 		}
 		halfSweepRange = N_sites-1;
@@ -1124,26 +1074,6 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		    N_halfsweeps != max_halfsweeps and
 		    sqdist > tol)
 		{
-//			Stopwatch<> ChronosResize;
-//			size_t Dcutoff_old = Vout.calc_Dmax();
-//			size_t Mmax_old = Vout.calc_Mmax();
-//			
-//			Dcutoff_new = Dcutoff_old+1;
-//			Vout.dynamicResize(DMRG::RESIZE::CONSERV_INCR, Dcutoff_new);
-//			Vout.setRandom();
-//			Mmax_new = Vout.calc_Mmax();
-//			
-//			Vout.pivot = -1;
-//			prepSweep(H,Vin1,Vin2,Vout);
-//			pivot = Vout.pivot;
-//			halfSweepRange = N_sites;
-//			RESIZED = true;
-//			
-//			if (CHOSEN_VERBOSITY>=2)
-//			{
-//				lout << "resize: " << Dcutoff_old << "→" << Dcutoff_new << ", M=" << Mmax_old << "→" << Mmax_new << "\t" << ChronosResize.info() << endl;
-//			}
-			
 			Vout.N_sv += 1;
 			Dcutoff_new = Vout.N_sv;
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -1153,14 +1083,6 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		}
 		
 		Mmax_new = Vout.calc_Mmax();
-		
-//		if ((sqdist > tol and 
-//		    RESIZED == false and
-//		    N_halfsweeps < max_halfsweeps) or 
-//		    N_halfsweeps < min_halfsweeps)
-//		{
-//			sweepStep(H,Vin1,Vin2,Vout);
-//		}
 	}
 	
 	// last sweep
@@ -1239,7 +1161,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 //		Stopwatch<> Aion;
 //		for (size_t j=1; j<=halfSweepRange; ++j)
 //		{
-//			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
+//			turnaround(pivot, N_sites, CURRENT_DIRECTION);
 //			Stopwatch<> Chronos;
 //			
 //			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
@@ -1347,78 +1269,6 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-mowSweeps (const MpOperator &H, Mps<Symmetry,Scalar> &Vout)
-{
-//	mowedWeight.resize(N_sites);
-//	
-//	Heff.clear();
-//	Heff.resize(N_sites);
-//	Heff[0].L.setVacuum();
-//	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vout.Qtarget(), Vout.Qtarget(), qvacuum<Symmetry::Nq>()});
-//	for (size_t l=0; l<N_sites; ++l) {Heff[l].W = H.W[l];}
-//	
-//	// preparation
-//	Stopwatch<> Aion;
-//	
-//	if (Vout.pivot == N_sites-1 or Vout.pivot == -1)
-//	{
-//		for (size_t l=N_sites-1; l>0; --l)
-//		{
-//			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
-//			build_RW(l-1,Vout,H,Vout);
-//		}
-//		CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
-//	}
-//	else if (Vout.pivot == 0)
-//	{
-//		for (size_t l=0; l<N_sites-1; ++l)
-//		{
-//			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
-//			build_LW(l+1,Vout,H,Vout);
-//		}
-//		CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
-//	}
-//	pivot = Vout.pivot;
-//	
-//	if (CHOSEN_VERBOSITY<2)
-//	{
-//		lout << Aion.info("mowing preparation") << endl;
-//	}
-//	
-//	size_t halfSweepRange = N_sites;
-//	
-//	for (size_t j=1; j<=Vout.N_mow; ++j)
-//	{
-//		mowedWeight.setZero();
-//		Stopwatch<> Aion;
-//		for (size_t l=1; l<=halfSweepRange; ++l)
-//		{
-//			bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
-//			energyTruncationStep(Vout);
-//			if (l != halfSweepRange)
-//			{
-//				Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-//				(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(++pivot,Vout,H,Vout) : build_RW(--pivot,Vout,H,Vout);
-//			}
-//		}
-//		halfSweepRange = N_sites-1;
-//		
-//		if (CHOSEN_VERBOSITY<2)
-//		{
-//			lout << Aion.info("half-mowsweep") << "\tmowed_weight=" << mowedWeight.sum() << endl;
-//		}
-//		
-//		if (j != Vout.N_mow)
-//		{
-//			Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-//			(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(++pivot,Vout,H,Vout) : build_RW(--pivot,Vout,H,Vout);
-//		}
-//	}
-}
-
-template<typename Symmetry, typename Scalar, typename MpoScalar>
-template<typename MpOperator>
-void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
@@ -1430,7 +1280,6 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 			if (RANDOMIZE == true)
 			{
 				Vout.setRandom(l);
-//				if (l>0) {Vout.setRandom(l-1);}
 			}
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
@@ -1493,8 +1342,6 @@ template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 sweepStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout)
 {
-//	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-//	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? ++pivot : --pivot;
 	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 	#pragma omp parallel sections
 	#endif
@@ -1509,7 +1356,7 @@ sweepStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 		#pragma omp section
 		#endif
 		{
-			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L (pivot,Vout,Vin2)     : build_R(pivot,Vout,Vin2);
+			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L (pivot,Vout,Vin2)   : build_R(pivot,Vout,Vin2);
 		}
 	}
 }

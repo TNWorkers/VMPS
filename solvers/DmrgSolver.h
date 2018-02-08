@@ -380,7 +380,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	size_t halfsweepRange = (stat.N_halfsweeps==0)? N_sites : N_sites-1; // one extra step on 1st iteration
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
-		bring_her_about(stat.pivot, N_sites, stat.CURRENT_DIRECTION);
+		turnaround(stat.pivot, N_sites, stat.CURRENT_DIRECTION);
 		LanczosStep(H, Vout, EDGE);
 		sweepStep(H,Vout);
 		++stat.N_sweepsteps;

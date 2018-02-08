@@ -5,7 +5,7 @@
 #include "DmrgTypedefs.h"
 
 /**\brief Flips the sweep direction when the edge is reached.*/
-void bring_her_about (int pivot, size_t L, DMRG::DIRECTION::OPTION &DIR)
+void turnaround (int pivot, size_t L, DMRG::DIRECTION::OPTION &DIR)
 {
 	if (pivot == L-1 and 
 	    DIR == DMRG::DIRECTION::RIGHT)

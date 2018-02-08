@@ -389,10 +389,10 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout)
+void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::BROOM::OPTION TOOL)
 {
 	Mps<Symmetry,Scalar> Vtmp;
-	OxV(O,Vinout,Vtmp);
+	OxV(O,Vinout,Vtmp,TOOL);
 	Vinout = Vtmp;
 }
 

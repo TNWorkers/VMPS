@@ -185,44 +185,52 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 	for (size_t l=0; l<2*N_stages*(N_sites-1); ++l)
 	{
 		Stopwatch<> Chronos;
-		bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
+		turnaround(pivot, N_sites, CURRENT_DIRECTION);
 		size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
 		size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
 		
 		// forwards
-		PivotVector2<Symmetry,TimeScalar> Apair;
-		Apair.D1 = Vinout.locBasis(min(loc1,loc2)).size();
-		Apair.D3 = Vinout.locBasis(max(loc1,loc2)).size();
-		contract_AA(Vinout.A[min(loc1,loc2)], Vinout.locBasis(min(loc1,loc2)), 
-		            Vinout.A[max(loc1,loc2)], Vinout.locBasis(max(loc1,loc2)), 
-		            Apair.A);
+//		PivotVector2<Symmetry,TimeScalar> Apair;
+//		Apair.D1 = Vinout.locBasis(min(loc1,loc2)).size();
+//		Apair.D3 = Vinout.locBasis(max(loc1,loc2)).size();
+//		contract_AA(Vinout.A[min(loc1,loc2)], Vinout.locBasis(min(loc1,loc2)), 
+//		            Vinout.A[max(loc1,loc2)], Vinout.locBasis(max(loc1,loc2)), 
+//		            Apair.A);
+//		
+//		PivotMatrix2<Symmetry,TimeScalar,MpoScalar> Heff2;
+//		Heff2.L = Heff[min(loc1,loc2)].L;
+//		Heff2.R = Heff[max(loc1,loc2)].R;
+//		Heff2.W12 = H.W_at(min(loc1,loc2));
+//		Heff2.W34 = H.W_at(max(loc1,loc2));
+//		Heff2.qloc12 = H.locBasis(min(loc1,loc2));
+//		Heff2.qloc34 = H.locBasis(max(loc1,loc2));
+//		Heff2.qOp12 = H.opBasis(min(loc1,loc2));
+//		Heff2.qOp34 = H.opBasis(max(loc1,loc2));
+//		
+//		// reset dim
+//		Heff2.dim = 0;
+//		for (size_t s1=0; s1<H.locBasis(min(loc1,loc2)).size(); ++s1)
+//		for (size_t s2=0; s2<H.locBasis(max(loc1,loc2)).size(); ++s2)
+//		for (size_t q=0; q<Apair.A[Apair.index(s1,s2)].dim; ++q)
+//		{
+//			Heff2.dim += Apair.A[Apair.index(s1,s2)].block[q].rows() * Apair.A[Apair.index(s1,s2)].block[q].cols();
+//		}
 		
-		PivotMatrix2<Symmetry,TimeScalar,MpoScalar> Heff2;
-		Heff2.L = Heff[min(loc1,loc2)].L;
-		Heff2.R = Heff[max(loc1,loc2)].R;
-		Heff2.W12 = H.W_at(min(loc1,loc2));
-		Heff2.W34 = H.W_at(max(loc1,loc2));
-		Heff2.qloc12 = H.locBasis(min(loc1,loc2));
-		Heff2.qloc34 = H.locBasis(max(loc1,loc2));
-		Heff2.qOp12 = H.opBasis(min(loc1,loc2));
-		Heff2.qOp34 = H.opBasis(max(loc1,loc2));
-		
-		// reset dim
-		Heff2.dim = 0;
-		for (size_t s1=0; s1<H.locBasis(min(loc1,loc2)).size(); ++s1)
-		for (size_t s2=0; s2<H.locBasis(max(loc1,loc2)).size(); ++s2)
-		for (size_t q=0; q<Apair.A[Apair.index(s1,s2)].dim; ++q)
-		{
-			Heff2.dim += Apair.A[Apair.index(s1,s2)].block[q].rows() * Apair.A[Apair.index(s1,s2)].block[q].cols();
-		}
+		PivotVector2<Symmetry,TimeScalar> Apair(Vinout.A[loc1], Vinout.locBasis(loc1), Vinout.A[loc2], Vinout.locBasis(loc2));
+		PivotMatrix2<Symmetry,TimeScalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
+			                                              H.W_at(loc1), H.W_at(loc2), 
+			                                              H.locBasis(loc1), H.locBasis(loc2), 
+			                                              H.opBasis(loc1), H.opBasis(loc2),
+			                                              Apair.dim);
 		
 		LanczosPropagator<PivotMatrix2<Symmetry,TimeScalar,MpoScalar>,PivotVector2<Symmetry,TimeScalar> > Lutz2(tol_Lanczos);
 		Lutz2.t_step(Heff2, Apair, -x(2,l,N_stages)*dt.imag()); // 2-site algorithm
+		
 		if (Lutz2.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
 		if (Lutz2.get_dimK() > dimK_max) {dimK_max = Lutz2.get_dimK();}
-		Vinout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair.A);
-		(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vinout,max(loc1,loc2)) : build_R(H,Vinout,min(loc1,loc2));
 		
+		Vinout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair.A);
+		(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vinout,loc2) : build_R(H,Vinout,loc1);
 		pivot = Vinout.get_pivot();
 		
 		if ((CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT and pivot != N_sites-1) or
@@ -276,7 +284,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 	
 	for (size_t l=0; l<2*N_stages*N_sites; ++l)
 	{
-		bring_her_about(pivot, N_sites, CURRENT_DIRECTION);
+		turnaround(pivot, N_sites, CURRENT_DIRECTION);
 		
 		// forwards
 		PivotVector1<Symmetry,TimeScalar> Asingle;

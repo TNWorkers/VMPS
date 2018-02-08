@@ -25,7 +25,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
                  const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
-				 const vector<qarray<Symmetry::Nq> > &qOp, 
+                 const vector<qarray<Symmetry::Nq> > &qOp, 
                  Tripod<Symmetry,MatrixType> &Lnew)
 {
 	std::array<typename Symmetry::qType,3> qCheck;

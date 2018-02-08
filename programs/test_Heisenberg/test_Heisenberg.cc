@@ -136,7 +136,6 @@ int main (int argc, char* argv[])
 	lout << endl << "--------U(1)---------" << endl << endl;
 	
 	Stopwatch<> Watch_U1;
-//	VMPS::HeisenbergU1 H_U1(L,J,J,0,D,Ly,true); // Bz=0
 	VMPS::HeisenbergU1 H_U1(Lx,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
 	lout << H_U1.info() << endl;
 	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
