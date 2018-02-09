@@ -840,8 +840,7 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 	PivotMatrix2<Symmetry,Scalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
 	                                              H.W_at(loc1), H.W_at(loc2), 
 	                                              H.locBasis(loc1), H.locBasis(loc2), 
-	                                              H.opBasis(loc1), H.opBasis(loc2),
-	                                              Apair.dim);
+	                                              H.opBasis(loc1), H.opBasis(loc2));
 	
 	HxV(Heff2, Apair);
 	Vout.sweepStep2(CURRENT_DIRECTION, loc1, Apair.A);

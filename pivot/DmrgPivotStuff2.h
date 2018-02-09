@@ -139,14 +139,6 @@ struct PivotVector2
 		D12 = qloc12.size();
 		D34 = qloc34.size();
 		contract_AA(A12, qloc12, A34, qloc34, A);
-		
-		dim = 0;
-		for (size_t s1=0; s1<D12; ++s1)
-		for (size_t s3=0; s3<D34; ++s3)
-		for (size_t q=0; q<A[index(s1,s3)].dim; ++q)
-		{
-			dim += A[index(s1,s3)].block[q].size();
-		}
 	}
 	
 	/**Set blocks as in Vrhs, but do not resize the matrices*/
@@ -154,7 +146,6 @@ struct PivotVector2
 	{
 		D12 = Vrhs.D12;
 		D34 = Vrhs.D34;
-		dim = Vrhs.dim;
 		
 		A.clear();
 		A.resize(Vrhs.A.size());
@@ -172,7 +163,6 @@ struct PivotVector2
 	
 	size_t D12;
 	size_t D34;
-	size_t dim;
 	
 	PivotVector2<Symmetry,Scalar>& operator+= (const PivotVector2<Symmetry,Scalar> &Vrhs);
 	PivotVector2<Symmetry,Scalar>& operator-= (const PivotVector2<Symmetry,Scalar> &Vrhs);
@@ -195,11 +185,9 @@ struct PivotMatrix2
 	              const vector<qarray<Symmetry::Nq> > &qloc12_input, 
 	              const vector<qarray<Symmetry::Nq> > &qloc34_input, 
 	              const vector<qarray<Symmetry::Nq> > &qOp12_input, 
-	              const vector<qarray<Symmetry::Nq> > &qOp34_input,
-	              size_t dim_input)
+	              const vector<qarray<Symmetry::Nq> > &qOp34_input)
 	:L(L_input), R(R_input), W12(W12_input), W34(W34_input), 
-	qloc12(qloc12_input), qloc34(qloc34_input), qOp12(qOp12_input), qOp34(qOp34_input), 
-	dim(dim_input)
+	qloc12(qloc12_input), qloc34(qloc34_input), qOp12(qOp12_input), qOp34(qOp34_input)
 	{}
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
@@ -211,8 +199,6 @@ struct PivotMatrix2
 	vector<qarray<Symmetry::Nq> > qloc34;
 	vector<qarray<Symmetry::Nq> > qOp12;
 	vector<qarray<Symmetry::Nq> > qOp34;
-	
-	size_t dim;
 };
 //-----------</definitions>-----------
 
@@ -448,13 +434,26 @@ double infNorm (const PivotVector2<Symmetry,Scalar> &V1, const PivotVector2<Symm
 	}
 	return res;
 }
+
+template<typename Symmetry, typename Scalar>
+inline size_t dim (const PivotVector2<Symmetry,Scalar> &V)
+{
+	size_t out = 0;
+	for (size_t s1=0; s1<V.D12; ++s1)
+	for (size_t s3=0; s3<V.D34; ++s3)
+	for (size_t q=0; q<V.A[V.index(s1,s3)].dim; ++q)
+	{
+		out += V.A[V.index(s1,s3)].block[q].size();
+	}
+	return out;
+}
 //-----------</dot & vector norms>-----------
 
 //-----------<miscellaneous>-----------
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 inline size_t dim (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H)
 {
-	return H.dim;
+	return 0;
 }
 
 // How to calculate the Frobenius norm of this?

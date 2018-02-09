@@ -11,15 +11,8 @@ struct PivotVector0
 	PivotVector0(){};
 	
 	PivotVector0 (const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Crhs)
-	{
-		C = Crhs;
-		
-		dim = 0;
-		for (size_t q=0; q<C.dim; ++q)
-		{
-			dim += C.block[q].size();
-		}
-	}
+	:C(Crhs)
+	{}
 	
 	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > C;
 	
@@ -33,10 +26,7 @@ struct PivotVector0
 		C.out = Vrhs.C.out;
 		C.dict = Vrhs.C.dict;
 		C.block.resize(Vrhs.C.block.size());
-		C.dim = Vrhs.C.dim;
 	}
-	
-	size_t dim;
 	
 	PivotVector0<Symmetry,Scalar>& operator+= (const PivotVector0<Symmetry,Scalar> &Vrhs);
 	PivotVector0<Symmetry,Scalar>& operator-= (const PivotVector0<Symmetry,Scalar> &Vrhs);
@@ -238,6 +228,17 @@ double infNorm (const PivotVector0<Symmetry,Scalar> &V1, const PivotVector0<Symm
 		if (tmp>res) {res = tmp;}
 	}
 	return res;
+}
+
+template<typename Symmetry, typename Scalar>
+inline size_t dim (const PivotVector0<Symmetry,Scalar> &V)
+{
+	size_t out = 0;
+	for (size_t q=0; q<V.C.dim; ++q)
+	{
+		out += V.C.block[q].size();
+	}
+	return out;
 }
 //-----------</dot & vector norms>-----------
 

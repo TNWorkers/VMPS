@@ -220,8 +220,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		PivotMatrix2<Symmetry,TimeScalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
 			                                              H.W_at(loc1), H.W_at(loc2), 
 			                                              H.locBasis(loc1), H.locBasis(loc2), 
-			                                              H.opBasis(loc1), H.opBasis(loc2),
-			                                              Apair.dim);
+			                                              H.opBasis(loc1), H.opBasis(loc2));
 		
 		LanczosPropagator<PivotMatrix2<Symmetry,TimeScalar,MpoScalar>,PivotVector2<Symmetry,TimeScalar> > Lutz2(tol_Lanczos);
 		Lutz2.t_step(Heff2, Apair, -x(2,l,N_stages)*dt.imag()); // 2-site algorithm
@@ -251,7 +250,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 //			}
 			
 			PivotVector1<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
-			Heff[pivot].dim = Asingle.dim;
+//			Heff[pivot].dim = Asingle.dim;
 			
 			LanczosPropagator<PivotMatrix<Symmetry,TimeScalar,MpoScalar>, PivotVector1<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 			Lutz.t_step(Heff[pivot], Asingle, +x(2,l,N_stages)*dt.imag()); // 2-site algorithm
@@ -298,13 +297,13 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 			                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 		}
 		
-		// reset dim
-		Heff[pivot].dim = 0;
-		for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
-		for (size_t q=0; q<Vinout.A[pivot][s].dim; ++q)
-		{
-			Heff[pivot].dim += Vinout.A[pivot][s].block[q].rows() * Vinout.A[pivot][s].block[q].cols();
-		}
+//		// reset dim
+//		Heff[pivot].dim = 0;
+//		for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
+//		for (size_t q=0; q<Vinout.A[pivot][s].dim; ++q)
+//		{
+//			Heff[pivot].dim += Vinout.A[pivot][s].block[q].rows() * Vinout.A[pivot][s].block[q].cols();
+//		}
 		
 		LanczosPropagator<PivotMatrix<Symmetry,TimeScalar,MpoScalar>, PivotVector1<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 		Lutz.t_step(Heff[pivot], Asingle, -x(1,l,N_stages)*dt.imag()); // 1-site algorithm
@@ -328,12 +327,12 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 			Heff0.R = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot].R   : Heff[old_pivot-1].R;
 			Heff0.W = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot+1].W : Heff[old_pivot-1].W;
 			
-			// reset dim
-			Heff0.dim = 0;
-			for (size_t q=0; q<Azero.C.dim; ++q)
-			{
-				Heff0.dim += Azero.C.block[q].rows() * Azero.C.block[q].cols();
-			}
+//			// reset dim
+//			Heff0.dim = 0;
+//			for (size_t q=0; q<Azero.C.dim; ++q)
+//			{
+//				Heff0.dim += Azero.C.block[q].rows() * Azero.C.block[q].cols();
+//			}
 			
 			Lutz0.t_step(Heff0, Azero, +x(1,l,N_stages)*dt.imag()); // 1-site algorithm
 			if (Lutz0.get_dist() > dist_max) {dist_max = Lutz0.get_dist();}

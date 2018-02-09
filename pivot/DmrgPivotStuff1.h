@@ -14,14 +14,13 @@ struct PivotMatrix
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
 	vector<vector<vector<SparseMatrix<MpoScalar> > > > W;
 	
-	size_t dim;
-	
 	vector<std::array<size_t,2> >          qlhs;
 	vector<vector<std::array<size_t,5> > > qrhs;
 	vector<vector<Scalar> > factor_cgcs;
 	
 	vector<qarray<Nq> > qloc;
 	
+	// stuff for excited states
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PL; // PL[n]
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PR; // PL[n]
 	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0; // A0[n][s]
@@ -37,22 +36,12 @@ struct PivotVector1
 	PivotVector1(){};
 	
 	PivotVector1 (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Arhs)
-	{
-		A = Arhs;
-		
-		dim = 0;
-		for (size_t s=0; s<A.size(); ++s)
-		for (size_t q=0; q<A[s].dim; ++q)
-		{
-			dim += A[s].block[q].size();
-		}
-	}
+	:A(Arhs)
+	{}
 	
 	/**Set blocks as in Vrhs, but do not resize the matrices*/
 	void outerResize (const PivotVector1 &Vrhs)
 	{
-		dim = Vrhs.dim;
-		
 		A.clear();
 		A.resize(Vrhs.A.size());
 		for (size_t i=0; i<A.size(); ++i)
@@ -64,8 +53,6 @@ struct PivotVector1
 			A[i].dim = Vrhs.A[i].dim;
 		}
 	}
-	
-	size_t dim;
 	
 	PivotVector1<Symmetry,Scalar>& operator+= (const PivotVector1<Symmetry,Scalar> &Vrhs);
 	PivotVector1<Symmetry,Scalar>& operator-= (const PivotVector1<Symmetry,Scalar> &Vrhs);
@@ -375,13 +362,25 @@ double infNorm (const PivotVector1<Symmetry,Scalar> &V1, const PivotVector1<Symm
 	}
 	return res;
 }
+
+template<typename Symmetry, typename Scalar>
+inline size_t dim (const PivotVector1<Symmetry,Scalar> &V)
+{
+	size_t out = 0;
+	for (size_t s=0; s<V.A.size(); ++s)
+	for (size_t q=0; q<V.A[s].dim; ++q)
+	{
+		out += V.A[s].block[q].size();
+	}
+	return out;
+}
 //-----------</dot & vector norms>-----------
 
 //-----------<miscellaneous>-----------
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 inline size_t dim (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H)
 {
-	return H.dim;
+	return 0;
 }
 
 // How to calculate the Frobenius norm of this?
