@@ -145,8 +145,8 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	DMRG.set_log(2,"e.dat","err_eigval.dat","err_var.dat");
 	lout << Ising.info() << endl;
 	
-//	DMRG.edgeState(Ising.H2site(0,0,true), Ising.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
-	DMRG.edgeState(Ising, g, {}, tol_eigval,tol_var, M, max_iter,1);
+	DMRG.edgeState(Ising.H2site(0,0,true), Ising.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
+//	DMRG.edgeState(Ising, g, {}, tol_eigval,tol_var, M, max_iter,1);
 	
 	e_exact = IsingGround(Jz,Bx); // integrate(IsingGroundIntegrand, 0.,0.5*M_PI, 1e-10,1e-10);
 //	e_exact = -1.0635444099809814;
