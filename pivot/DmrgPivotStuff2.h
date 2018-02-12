@@ -15,13 +15,12 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
                   vector<qarray<Symmetry::Nq> > qloc2, 
                   vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair)
 {
-//	Apair.resize(qloc1.size()*qloc2.size());
-	
 //	auto index = [&qloc2] (size_t s1, size_t s2) -> size_t {return s1*qloc2.size()+s2;};
 	
 	auto tensor_basis = Symmetry::tensorProd(qloc1,qloc2);
 	
 	Apair.resize(tensor_basis.size());
+//	Apair.resize(qloc1.size()*qloc2.size());
 	
 	for (size_t s1=0; s1<qloc1.size(); ++s1)
 	for (size_t s2=0; s2<qloc2.size(); ++s2)

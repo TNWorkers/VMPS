@@ -10,6 +10,7 @@ template<typename Symmetry, typename Scalar, typename MpoScalar=double>
 struct PivotMatrix
 {
 	static constexpr std::size_t Nq = Symmetry::Nq;
+	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
 	vector<vector<vector<SparseMatrix<MpoScalar> > > > W;
@@ -31,13 +32,14 @@ template<typename Symmetry, typename Scalar>
 struct PivotVector1
 {
 	static constexpr std::size_t Nq = Symmetry::Nq;
-	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > A;
 	
 	PivotVector1(){};
 	
 	PivotVector1 (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Arhs)
 	:A(Arhs)
 	{}
+	
+	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > A;
 	
 	/**Set blocks as in Vrhs, but do not resize the matrices*/
 	void outerResize (const PivotVector1 &Vrhs)

@@ -50,6 +50,7 @@ namespace Sym{
 		inline static std::unordered_map<qarray3<0>,std::size_t> tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr )
 		{
 			std::unordered_map<qarray3<0>,std::size_t> out;
+			out.insert(make_pair(qarray3<0>{qarray<0>{},qarray<0>{},qarray<0>{}},0));
 			return out;
 		};
 

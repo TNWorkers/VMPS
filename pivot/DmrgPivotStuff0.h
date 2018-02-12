@@ -19,8 +19,6 @@ struct PivotVector0
 	/**Set blocks as in Vrhs, but do not resize the matrices*/
 	void outerResize (const PivotVector0 &Vrhs)
 	{
-		dim = Vrhs.dim;
-		
 		C.clear();
 		C.in = Vrhs.C.in;
 		C.out = Vrhs.C.out;
