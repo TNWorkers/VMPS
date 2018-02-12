@@ -175,7 +175,7 @@ int main (int argc, char* argv[])
 			lout << H_U1t.info() << endl;
 			VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
 			TDVPPropagator<VMPS::HeisenbergU1XXZ,Sym::U1<Sym::SpinU1>,double,complex<double>,VMPS::HeisenbergU1XXZ::StateXcd> TDVP(H_U1t,Psi);
-		
+			
 			double t = 0;
 			ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
 			for (int i=0; i<=static_cast<int>(6./dt); ++i)
@@ -212,8 +212,13 @@ int main (int argc, char* argv[])
 	
 	MatrixXd SpinCorr_SU2(L,L); SpinCorr_SU2.setZero();
 	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SS(i,j), g_SU2.state); }
-	//--------output---------
 	
+	VMPS::HeisenbergSU2::StateXcd Psi = g_SU2.state.cast<complex<double> >();
+	TDVPPropagator<VMPS::HeisenbergSU2,Sym::SU2<Sym::SpinSU2>,double,complex<double>,VMPS::HeisenbergSU2::StateXcd> TDVP(H_SU2,Psi);
+	TDVP.t_step(H_SU2,Psi, -1.i*dt, 1,1e-8);
+	cout << TDVP.info() << endl;
+	
+	//--------output---------
 	TextTable T( '-', '|', '+' );
 	
 	double V = L*Ly; double Vsq = V*V;

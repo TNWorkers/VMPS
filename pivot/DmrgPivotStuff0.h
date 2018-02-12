@@ -181,11 +181,6 @@ template<typename Symmetry, typename Scalar>
 Scalar dot (const PivotVector0<Symmetry,Scalar> &V1, const PivotVector0<Symmetry,Scalar> &V2)
 {
 	Scalar res = 0.;
-//	for (size_t q=0; q<V2.C.dim; ++q)
-//	for (size_t i=0; i<V2.C.block[q].cols(); ++i)
-//	{
-//		res += V1.C.block[q].col(i).dot(V2.C.block[q].col(i));
-//	}
 	for (size_t q=0; q<V2.C.dim; ++q)
 	{
 		res += (V1.C.block[q].adjoint() * V2.C.block[q]).trace();
@@ -196,12 +191,6 @@ Scalar dot (const PivotVector0<Symmetry,Scalar> &V1, const PivotVector0<Symmetry
 template<typename Symmetry, typename Scalar>
 inline double squaredNorm (const PivotVector0<Symmetry,Scalar> &V)
 {
-//	double res = 0.;
-//	for (size_t q=0; q<V.C.dim; ++q)
-//	{
-//		res += V.C.block[q].colwise().squaredNorm().sum();
-//	}
-//	return res;
 	return dot(V,V);
 }
 

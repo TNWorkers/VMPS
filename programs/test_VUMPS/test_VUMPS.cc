@@ -217,8 +217,8 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 //	
 //	//---<Hubbard>---
 //	
-//	HUBB Hubb(L,{{"U",U},{"mu",mu},{"OPEN_BC",false}});
-//	lout << Hubb.info() << endl;
+	HUBB Hubb(L,{{"U",U},{"mu",mu},{"OPEN_BC",false}});
+	lout << Hubb.info() << endl;
 //	
 //	DMRG_HUBB.set_log(10,"e.dat","err_eigval.dat","err_var.dat");
 ////	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);
@@ -254,25 +254,25 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 ////	}
 //	
 //	//---<SSH model to test unit cell>---
-//	
-////	HUBB Hubb(L,{1.+dt,1.-dt},U,mu,false,false);
-//	Hubb = HUBB(max(L,2ul),{{"t",1.+dt,0},{"t",1.-dt,1},{"OPEN_BC",false}});
-//	lout << Hubb.info() << endl;
-//	
-//	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);
-//	
-//	double n = avg(g.state, Hubb.n(UP,0), g.state)+
-//	           avg(g.state, Hubb.n(DN,0), g.state);
-//	lout << "<n>=" << n << endl;
-//	lout << TCOLOR(BLUE);
-//	eSSH::v = -(1.+dt);
-//	eSSH::w = -(1.-dt);
-//	e_exact = integrate(eSSH::f, -0.5*M_PI,+0.5*M_PI, 1e-10,1e-10);
-//	
-//	lout << "SSH e0=" << g.energy << ", exact=" << e_exact << endl;
-//	lout << "diff=" << abs(g.energy-e_exact) << endl;
-////	print_mag(Hubb,g);
-//	lout << TCOLOR(BLACK) << endl;
-//	
-////	lout << "Schmidt values:" << endl << g.state.singularValues(1).head(10) << endl;
+	
+//	HUBB Hubb(L,{1.+dt,1.-dt},U,mu,false,false);
+	Hubb = HUBB(max(L,2ul),{{"t",1.+dt,0},{"t",1.-dt,1},{"OPEN_BC",false}});
+	lout << Hubb.info() << endl;
+	
+	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);
+	
+	double n = avg(g.state, Hubb.n(UP,0), g.state)+
+	           avg(g.state, Hubb.n(DN,0), g.state);
+	lout << "<n>=" << n << endl;
+	lout << TCOLOR(BLUE);
+	eSSH::v = -(1.+dt);
+	eSSH::w = -(1.-dt);
+	e_exact = integrate(eSSH::f, -0.5*M_PI,+0.5*M_PI, 1e-10,1e-10);
+	
+	lout << "SSH e0=" << g.energy << ", exact=" << e_exact << endl;
+	lout << "diff=" << abs(g.energy-e_exact) << endl;
+//	print_mag(Hubb,g);
+	lout << TCOLOR(BLACK) << endl;
+	
+//	lout << "Schmidt values:" << endl << g.state.singularValues(1).head(10) << endl;
 }

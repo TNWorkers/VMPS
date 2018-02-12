@@ -52,7 +52,7 @@ bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::
 				{
 					auto qRmids = Symmetry::reduceSilent(Lmid,qOp[k]);
 					for (const auto& qRmid : qRmids)
-					{			
+					{
 						result.push_back(make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q1->second, q2->second));
 						out = true;
 					}
@@ -96,26 +96,35 @@ bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetr
 	bool out = false;
 	result.clear();
 	
-	auto index = [&qloc12] (size_t s1, size_t s3) -> size_t
-	{
-		return s1*qloc12.size()+s3;
-	};
+//	auto index = [&qloc12] (size_t s1, size_t s3) -> size_t
+//	{
+//		return s1*qloc12.size()+s3;
+//	};
+//	
+	auto tensor_basis = Symmetry::tensorProd(qloc12,qloc34);
 	
 	auto qRouts = Symmetry::reduceSilent(Lin,qloc12[s1],qloc34[s3]);
-	for (const auto& qRout : qRouts)
+	for (const auto &qRout:qRouts)
 	{
 		qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
-		auto q13 = AAbra[index(s1,s3)].dict.find(cmp1);
 		
-		if (q13 != AAbra[index(s1,s3)].dict.end())
+		auto qtensor13 = make_tuple(qloc34[s1], s1, qloc34[s3], s3, qRout);
+		auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
+		
+		auto q13 = AAbra[s1s3].dict.find(cmp1);
+		
+		if (q13 != AAbra[s1s3].dict.end())
 		{
 			auto qRins = Symmetry::reduceSilent(Lout,qloc12[s2],qloc34[s4]);
 			for (const auto& qRin : qRins)
 			{
-				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
-				auto q24 = AAket[index(s2,s4)].dict.find(cmp2);
+				auto qtensor24 = make_tuple(qloc12[s2], s2, qloc12[s4], s4, qRin);
+				auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
 				
-				if (q24 != AAket[index(s2,s4)].dict.end())
+				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
+				auto q24 = AAket[s2s4].dict.find(cmp2);
+				
+				if (q24 != AAket[s2s4].dict.end())
 				{
 					auto qRmids = Symmetry::reduceSilent(Lmid,qOp12[k12],qOp34[k34]);
 					for (const auto& qRmid : qRmids)

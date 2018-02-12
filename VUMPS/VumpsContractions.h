@@ -401,7 +401,7 @@ MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
 
 /**Contracts two MPO tensors (H of length 2) to a 4-legged tensor.*/
 template<typename MpHamiltonian, typename Scalar>
-boost::multi_array<Scalar,4> make_Warray4 (size_t b, const MpHamiltonian &H)
+boost::multi_array<Scalar,4> make_Warray4 (int b, const MpHamiltonian &H)
 {
 	size_t D12 = H.locBasis(0).size();
 	size_t D34 = H.locBasis(1).size();
@@ -411,10 +411,10 @@ boost::multi_array<Scalar,4> make_Warray4 (size_t b, const MpHamiltonian &H)
 	for (size_t s2=0; s2<D12; ++s2)
 	for (size_t s3=0; s3<D34; ++s3)
 	for (size_t s4=0; s4<D34; ++s4)
-	for (int k12=0; k12<H.W[0][s1][s2][0].outerSize(); ++k12)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW12(H.W[0][s1][s2][0],k12); iW12; ++iW12)
-	for (int k34=0; k34<H.W[1][s3][s4][0].outerSize(); ++k34)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW34(H.W[1][s3][s4][0],k34); iW34; ++iW34)
+	for (int k12=0; k12<H.W_at(0)[s1][s2][0].outerSize(); ++k12)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW12(H.W_at(0)[s1][s2][0],k12); iW12; ++iW12)
+	for (int k34=0; k34<H.W_at(1)[s3][s4][0].outerSize(); ++k34)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW34(H.W_at(1)[s3][s4][0],k34); iW34; ++iW34)
 	{
 		if (iW12.row() == b and iW34.col() == b and 
 		    iW12.col() == iW34.row() and
@@ -446,7 +446,7 @@ Scalar sum (const boost::multi_array<Scalar,4> &Warray)
 
 /**Contracts four MPO tensors (H of length 4) to an 8-legged tensor.*/
 template<typename MpHamiltonian, typename Scalar>
-boost::multi_array<Scalar,8> make_Warray8 (size_t b, const MpHamiltonian &H)
+boost::multi_array<Scalar,8> make_Warray8 (int b, const MpHamiltonian &H)
 {
 	size_t D12 = H.locBasis(0).size();
 	size_t D34 = H.locBasis(1).size();
@@ -462,14 +462,14 @@ boost::multi_array<Scalar,8> make_Warray8 (size_t b, const MpHamiltonian &H)
 	for (size_t s6=0; s6<D56; ++s6)
 	for (size_t s7=0; s7<D78; ++s7)
 	for (size_t s8=0; s8<D78; ++s8)
-	for (int k12=0; k12<H.W[0][s1][s2][0].outerSize(); ++k12)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW12(H.W[0][s1][s2][0],k12); iW12; ++iW12)
-	for (int k34=0; k34<H.W[1][s3][s4][0].outerSize(); ++k34)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW34(H.W[1][s3][s4][0],k34); iW34; ++iW34)
-	for (int k56=0; k56<H.W[2][s5][s6][0].outerSize(); ++k56)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW56(H.W[2][s5][s6][0],k56); iW56; ++iW56)
-	for (int k78=0; k78<H.W[3][s7][s8][0].outerSize(); ++k78)
-	for (typename SparseMatrix<Scalar>::InnerIterator iW78(H.W[3][s7][s8][0],k78); iW78; ++iW78)
+	for (int k12=0; k12<H.W_at(0)[s1][s2][0].outerSize(); ++k12)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW12(H.W_at(0)[s1][s2][0],k12); iW12; ++iW12)
+	for (int k34=0; k34<H.W_at(1)[s3][s4][0].outerSize(); ++k34)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW34(H.W_at(1)[s3][s4][0],k34); iW34; ++iW34)
+	for (int k56=0; k56<H.W_at(2)[s5][s6][0].outerSize(); ++k56)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW56(H.W_at(2)[s5][s6][0],k56); iW56; ++iW56)
+	for (int k78=0; k78<H.W_at(3)[s7][s8][0].outerSize(); ++k78)
+	for (typename SparseMatrix<Scalar>::InnerIterator iW78(H.W_at(3)[s7][s8][0],k78); iW78; ++iW78)
 	{
 		if (iW12.row() == b and iW78.col() == b and 
 		    iW12.col() == iW34.row() and

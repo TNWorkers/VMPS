@@ -836,9 +836,9 @@ iteration2 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 			{
 				YL[b] = make_YL(WWWWbyCol[b], L, ApairL, H.locBasis(0));
 				
-				boost::multi_array<Scalar,4> Warray = make_Warray4(b,H);
+				boost::multi_array<Scalar,4> Warray = make_Warray4<MpHamiltonian,Scalar>(b,H);
 				
-				if (sum(Warray) == 0.)
+				if (sum<MpHamiltonian,Scalar>(Warray) == 0.)
 				{
 					L[b][0] = YL[b];
 				}
@@ -859,9 +859,9 @@ iteration2 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 			{
 				YR[a] = make_YR(WWWWbyRow[a], R, ApairR, H.locBasis(0));
 				
-				boost::multi_array<Scalar,4> Warray = make_Warray4(a,H);
+				boost::multi_array<Scalar,4> Warray = make_Warray4<MpHamiltonian,Scalar>(a,H);
 				
-				if (sum(Warray) == 0.)
+				if (sum<MpHamiltonian,Scalar>(Warray) == 0.)
 				{
 					R[a][0] = YR[a];
 				}
@@ -1091,9 +1091,9 @@ iteration4 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 			{
 				YL[b] = make_YL(WWWWoffDiagCol[b], L, AquadrupleL, H.locBasis(0));
 				
-				boost::multi_array<Scalar,8> Warray = make_Warray8(b,H);
+				boost::multi_array<Scalar,8> Warray = make_Warray8<MpHamiltonian,Scalar>(b,H);
 				
-				if (sum(Warray) == 0.)
+				if (sum<MpHamiltonian,Scalar>(Warray) == 0.)
 				{
 					L[b][0] = YL[b];
 				}
@@ -1111,9 +1111,9 @@ iteration4 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 			{
 				YR[a] = make_YR(WWWWoffDiagRow[a], R, AquadrupleR, H.locBasis(0));
 				
-				boost::multi_array<Scalar,8> Warray = make_Warray8(a,H);
+				boost::multi_array<Scalar,8> Warray = make_Warray8<MpHamiltonian,Scalar>(a,H);
 				
-				if (sum(Warray) == 0.)
+				if (sum<MpHamiltonian,Scalar>(Warray) == 0.)
 				{
 					R[a][0] = YR[a];
 				}

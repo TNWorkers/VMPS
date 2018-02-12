@@ -1818,7 +1818,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 	ArrayXd truncWeightSub(outset[loc].size()); truncWeightSub.setZero();
 	ArrayXd entropySub(outset[loc].size()); entropySub.setZero();
 	
-	auto index = [this,&loc] (size_t s1, size_t s3) -> size_t {return s1*qloc[loc+1].size()+s3;};
+//	auto index = [this,&loc] (size_t s1, size_t s3) -> size_t {return s1*qloc[loc+1].size()+s3;};
 	
 	auto tensor_basis = Symmetry::tensorProd(qloc[loc], qloc[loc+1]);
 	
@@ -1840,11 +1840,13 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			
 			for (const auto &qmerge:qmerges)
 			{
-				auto it = tensor_basis.find({qloc[loc][s1], qloc[loc+1][s3], qmerge});
+//				auto it = tensor_basis.find({qloc[loc][s1], qloc[loc+1][s3], qmerge});
+				auto qtensor = make_tuple(qloc[loc][s1], s1, qloc[loc+1][s3], s3, qmerge);
+				auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor));
 				
-				for (size_t q13=0; q13<Apair[it->second].dim; ++q13)
+				for (size_t q13=0; q13<Apair[s1s3].dim; ++q13)
 				{
-					auto qmids = Symmetry::reduceSilent(Apair[it->second].in[q13], qloc[loc][s1]);
+					auto qmids = Symmetry::reduceSilent(Apair[s1s3].in[q13], qloc[loc][s1]);
 					for (const auto &qmid:qmids)
 					{
 						if (qmid == outset[loc][qout])
@@ -1852,7 +1854,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 							s1vec.push_back(s1);
 							s13map[s1].push_back(s3);
 							s13qmap[make_pair(s1,s3)] = q13;
-							s13imap[make_pair(s1,s3)] = it->second;
+							s13imap[make_pair(s1,s3)] = s1s3;
 							s13qmerge_map[make_pair(s1,s3)] = qmerge;
 						}
 					}

@@ -47,10 +47,14 @@ namespace Sym{
 		inline static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const qType& qr) { return {{}}; }
 		inline static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr) { return {{}}; }
 		
-		inline static std::unordered_map<qarray3<0>,std::size_t> tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr )
+		inline static vector<tuple<qarray<0>,size_t,qarray<0>,size_t,qarray<0> > > tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr )
 		{
-			std::unordered_map<qarray3<0>,std::size_t> out;
-			out.insert(make_pair(qarray3<0>{qarray<0>{},qarray<0>{},qarray<0>{}},0));
+			vector<tuple<qarray<0>,size_t,qarray<0>,size_t,qarray<0> > > out;
+			for (std::size_t q=0; q<ql.size(); q++)
+			for (std::size_t p=0; p<qr.size(); p++)
+			{
+				out.push_back(make_tuple(qvacuum(),q,qvacuum(),p,qvacuum()));
+			}
 			return out;
 		};
 

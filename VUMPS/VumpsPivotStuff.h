@@ -15,6 +15,7 @@ struct PivumpsMatrix
 {
 	PivumpsMatrix(){};
 	
+	// Produces an error with boost::multi_array!
 //	PivumpsMatrix (const Matrix<Scalar,Dynamic,Dynamic> &L_input,
 //	               const Matrix<Scalar,Dynamic,Dynamic> &R_input,
 //	               const boost::multi_array<MpoScalar,4> &h_input,

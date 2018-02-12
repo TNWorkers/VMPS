@@ -53,6 +53,9 @@ public:
 	 * Calculate the irreps of the tensor product of \p ql and \p qr.
 	 */
 	static std::vector<qType> reduceSilent(const qType& ql, const qType& qr);
+	
+	static std::vector<qType> reduceSilent(const qType& ql, const qType& qm, const qType& qr);
+	
 	/** 
 	 * Calculate the irreps of the tensor product of all entries of \p ql with \p qr.
 	 * \warning : Returns not only unique irreps.
@@ -66,7 +69,7 @@ public:
 	 */
 	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
 
-	static std::unordered_map<qarray3<1>,std::size_t> tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr );
+	static vector<tuple<qarray<1>,size_t,qarray<1>,size_t,qarray<1> > > tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr );
 	///@}
 	
 	///@{
@@ -132,6 +135,14 @@ reduceSilent( const qType& ql, const qType& qr )
 
 template<typename Kind, typename Scalar>
 std::vector<typename SU2<Kind,Scalar>::qType> SU2<Kind,Scalar>::
+reduceSilent( const qType& ql, const qType& qm, const qType& qr )
+{
+	auto qtmp = reduceSilent(ql,qm);
+	return reduceSilent(qtmp,qr);
+}
+
+template<typename Kind, typename Scalar>
+std::vector<typename SU2<Kind,Scalar>::qType> SU2<Kind,Scalar>::
 reduceSilent( const std::vector<qType>& ql, const qType& qr )
 {
 	std::vector<typename SU2<Kind,Scalar>::qType> vout;
@@ -165,24 +176,38 @@ reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
 }
 
 template<typename Kind, typename Scalar>
-std::unordered_map<qarray3<1>,std::size_t> SU2<Kind,Scalar>::
+vector<tuple<qarray<1>,size_t,qarray<1>,size_t,qarray<1> > > SU2<Kind,Scalar>::
 tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr )
 {
-	std::unordered_map<qarray3<1>,std::size_t> dout;
-	size_t j=0;
+//	std::unordered_map<qarray3<1>,std::size_t> dout;
+//	size_t j=0;
+//	for (std::size_t q1=0; q1<ql.size(); q1++)
+//	for (std::size_t q2=0; q2<qr.size(); q2++)
+//	{
+//		int qmin = std::abs(ql[q1][0]-qr[q2][0]) +1;
+//		int qmax = std::abs(ql[q1][0]+qr[q2][0]) -1;
+//		for ( int i=qmin; i<=qmax; i+=2 )
+//		{
+//			dout.insert(make_pair(qarray3<1>{ql[q1], qr[q2], qarray<1>{i}}, j));
+//			++j;
+//			
+//		}
+//	}
+//	return dout;
+	
+	vector<tuple<qarray<1>,size_t,qarray<1>,size_t,qarray<1> > > out;
+	
 	for (std::size_t q1=0; q1<ql.size(); q1++)
 	for (std::size_t q2=0; q2<qr.size(); q2++)
 	{
-		int qmin = std::abs(ql[q1][0]-qr[q2][0]) +1;
-		int qmax = std::abs(ql[q1][0]+qr[q2][0]) -1;
-		for ( int i=qmin; i<=qmax; i+=2 )
+		int qmin = std::abs(ql[q1][0]-qr[q2][0]) + 1;
+		int qmax = std::abs(ql[q1][0]+qr[q2][0]) - 1;
+		for (int i=qmin; i<=qmax; i+=2)
 		{
-			dout.insert(make_pair(qarray3<1>{ql[q1], qr[q2], qarray<1>{i}}, j));
-			++j;
-			
+			out.push_back(make_tuple(ql[q1], q1, qr[q2], q2, qarray<1>{i}));
 		}
 	}
-	return dout;
+	return out;
 }
 
 template<typename Kind, typename Scalar>

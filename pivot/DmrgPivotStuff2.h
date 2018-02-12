@@ -18,9 +18,7 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 //	auto index = [&qloc2] (size_t s1, size_t s2) -> size_t {return s1*qloc2.size()+s2;};
 	
 	auto tensor_basis = Symmetry::tensorProd(qloc1,qloc2);
-	
 	Apair.resize(tensor_basis.size());
-//	Apair.resize(qloc1.size()*qloc2.size());
 	
 	for (size_t s1=0; s1<qloc1.size(); ++s1)
 	for (size_t s2=0; s2<qloc2.size(); ++s2)
@@ -29,7 +27,8 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 		
 		for (const auto &qmerge:qmerges)
 		{
-			auto it = tensor_basis.find({qloc1[s1], qloc2[s2], qmerge});
+			auto qtensor = make_tuple(qloc1[s1], s1, qloc2[s2], s2, qmerge);
+			auto s1s2 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor));
 			
 			for (size_t q1=0; q1<A1[s1].dim; ++q1)
 			{
@@ -48,15 +47,15 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 						
 						qarray2<Symmetry::Nq> qupleApair = {A1[s1].in[q1], A2[s2].out[q2->second]};
 						
-						auto qApair = Apair[it->second].dict.find(qupleApair);
+						auto qApair = Apair[s1s2].dict.find(qupleApair);
 						
-						if (qApair != Apair[it->second].dict.end())
+						if (qApair != Apair[s1s2].dict.end())
 						{
-							Apair[it->second].block[qApair->second] += Mtmp;
+							Apair[s1s2].block[qApair->second] += Mtmp;
 						}
 						else
 						{
-							Apair[it->second].push_back(qupleApair, Mtmp);
+							Apair[s1s2].push_back(qupleApair, Mtmp);
 						}
 					}
 				}
@@ -383,22 +382,12 @@ template<typename Symmetry, typename Scalar>
 Scalar dot (const PivotVector2<Symmetry,Scalar> &V1, const PivotVector2<Symmetry,Scalar> &V2)
 {
 	Scalar res = 0.;
-	
-//	for (size_t s1=0; s1<V2.D12; ++s1)
-//	for (size_t s3=0; s3<V2.D34; ++s3)
-//	for (size_t q=0; q<V2.A[V2.index(s1,s3)].dim; ++q)
-//	for (size_t i=0; i<V2.A[V2.index(s1,s3)].block[q].cols(); ++i)
-//	{
-//		res += V1.A[V1.index(s1,s3)].block[q].col(i).dot(V2.A[V2.index(s1,s3)].block[q].col(i));
-//	}
-	
 	for (size_t s1=0; s1<V2.D12; ++s1)
 	for (size_t s3=0; s3<V2.D34; ++s3)
 	for (size_t q=0; q<V2.A[V2.index(s1,s3)].dim; ++q)
 	{
 		res += (V1.A[V1.index(s1,s3)].block[q].adjoint() * V2.A[V2.index(s1,s3)].block[q]).trace();
 	}
-	
 	return res;
 }
 
@@ -459,7 +448,7 @@ inline size_t dim (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H)
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 inline double norm (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H)
 {
-	return H.dim;
+	return 0;
 }
 
 template<typename Symmetry, typename Scalar>
