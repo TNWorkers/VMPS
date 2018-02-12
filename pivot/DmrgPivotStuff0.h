@@ -24,6 +24,7 @@ struct PivotVector0
 		C.out = Vrhs.C.out;
 		C.dict = Vrhs.C.dict;
 		C.block.resize(Vrhs.C.block.size());
+		C.dim = Vrhs.C.dim;
 	}
 	
 	PivotVector0<Symmetry,Scalar>& operator+= (const PivotVector0<Symmetry,Scalar> &Vrhs);
@@ -116,6 +117,8 @@ template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVector0<Symmetry,Scalar> &Vin, PivotVector0<Symmetry,Scalar> &Vout)
 {
 	Vout.outerResize(Vin);
+//	Vout = Vin;
+//	Vout.C.setZero();
 	
 	for (size_t qL=0; qL<H.L.dim; ++qL)
 	{
