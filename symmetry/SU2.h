@@ -397,7 +397,7 @@ template<std::size_t M>
 bool SU2<Kind,Scalar>::
 validate ( const std::array<SU2<Kind,Scalar>::qType,M>& qs )
 {
-	if constexpr( M > 1 )
+	if constexpr( M > 3 )
 				{
 					std::vector<SU2<Kind,Scalar>::qType> decomp = SU2<Kind,Scalar>::reduceSilent(qs[0],qs[1]);
 					for (std::size_t i=2; i<M; i++)
@@ -412,7 +412,7 @@ validate ( const std::array<SU2<Kind,Scalar>::qType,M>& qs )
 				}
 	else if constexpr( M==3 )
 					 {
-						 //todo: check here triangle rule
+						 // triangle rule
 						 std::vector<SU2<Kind,Scalar>::qType> qTarget = SU2<Kind,Scalar>::reduceSilent(qs[0],qs[1]);
 						 bool CHECK=false;
 						 for( const auto& q : qTarget )

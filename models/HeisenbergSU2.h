@@ -49,7 +49,7 @@ public:
 	   \param L : chain length
 	   \describe_params
 	*/
-	HeisenbergSU2 (const size_t &L, const vector<Param> &params);
+	HeisenbergSU2 (const size_t &L, const vector<Param> &params={});
 	///\}
 	
 	/**

@@ -33,6 +33,7 @@ Logger lout;
 #include "models/HeisenbergSU2.h"
 #include "models/HeisenbergU1XXZ.h"
 #include "models/HeisenbergXYZ.h"
+#include "models/KondoU1xU1.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, int n=14)
@@ -90,34 +91,54 @@ int main (int argc, char* argv[])
 	lout << endl << "--------U(1)---------" << endl << endl;
 	
 	Stopwatch<> Watch_U1;
-	VMPS::HeisenbergU1 H_U1(Lx,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
+	VMPS::HeisenbergSU2 H_U1(Lx,{{"J",J},{"D",D},{"Ly",Ly}});
 	lout << H_U1.info() << endl;
-	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
+	Eigenstate<VMPS::HeisenbergSU2::StateXd> g_U1;
 	
-	VMPS::HeisenbergU1::Solver DMRG_U1(DMRG::VERBOSITY::SILENT);
-	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	VMPS::HeisenbergSU2::Solver DMRG_U1(DMRG::VERBOSITY::SILENT);
+	DMRG_U1.edgeState(H_U1, g_U1, {1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	cout << g_U1.state.info() << endl;
 	
 	t_U1 = Watch_U1.time();
 	
-	VMPS::HeisenbergU1::StateXd Psi = g_U1.state; Psi.setRandom();
+	VMPS::HeisenbergSU2::StateXd Psi = g_U1.state; Psi.setRandom();
 	Psi.canonize();
 	cout << "norm=" << Psi.squaredNorm() << endl;
-//	VMPS::HeisenbergU1::StateXd OxPsi;
+//	VMPS::HeisenbergSU2::StateXd OxPsi;
 //	
 //	Psi.N_sv = 1e-15;
 //	OxV(H_U1.Scomp(SZ,L/2), Psi, OxPsi, DMRG::BROOM::SVD);
 	
 	// compressor
 	
-	VMPS::HeisenbergU1::StateXd HxPsi;
+	VMPS::HeisenbergSU2::StateXd HxPsi;
 	HxV(H_U1, Psi, HxPsi, VERB);
 	
 	cout << setprecision(14) << avg(Psi, H_U1, Psi) << "\t" << dot(Psi,HxPsi) << endl << endl;
 	
-	VMPS::HeisenbergU1::StateXd HxHxPsi;
+	VMPS::HeisenbergSU2::StateXd HxHxPsi;
 	HxV(H_U1, HxPsi, HxHxPsi, VERB);
 	
 	cout << setprecision(14) << avg(Psi, H_U1, H_U1, Psi) << "\t" << dot(Psi,HxHxPsi) << endl << endl;
 	
 	
+	
+//	
+//	VMPS::HeisenbergSU2 Heis(Lx,{{"J",J},{"Ly",Ly}});
+//	cout << Heis.info() << endl;
+//	VMPS::HeisenbergSU2::StateXd Phi(Heis,10,{1});
+//	Phi.setRandom();
+//	VMPS::HeisenbergSU2::StateXd Phi_init = Phi;
+////	Phi.canonize();
+//	size_t loc = static_cast<size_t>(Lx/2);
+//	cout << "loc=" << loc << endl;
+//	vector<Biped<VMPS::HeisenbergSU2::Symmetry,Matrix<double,Dynamic,Dynamic> > > Apair;
+//	contract_AA(Phi.A_at(loc), Phi.locBasis(loc), Phi.A_at(loc+1), Phi.locBasis(loc+1), Apair);
+//	cout << "contract_AA done!" << endl;
+//	
+//	cout << Phi.test_ortho() << endl;
+//	Phi.sweepStep2(DMRG::DIRECTION::RIGHT, loc, Apair);
+//	cout << Phi.test_ortho() << endl;
+//	cout << "dot before=" << Phi.dot(Phi) << ", after=" << Phi_init.dot(Phi) << endl;
+//	
 }

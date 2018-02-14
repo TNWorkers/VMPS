@@ -30,22 +30,22 @@ public:
 	typedef typename S1::Scalar_ Scalar;
 	
 	S1xS2() {};
-
+	
 	static std::string name() { return S1::name()+"⊗"+S2::name(); }
-
+	
 	static constexpr bool HAS_CGC = false;
 	static constexpr std::size_t Nq=S1::Nq+S2::Nq;
 	static constexpr bool NON_ABELIAN = S1::NON_ABELIAN or S2::NON_ABELIAN;
 	static constexpr bool IS_TRIVIAL = S1::IS_TRIVIAL and S2::IS_TRIVIAL;
-
+	
 	typedef qarray<Nq> qType;
-
+	
 	inline static constexpr std::array<KIND,Nq> kind() { return {S1::kind()[0],S2::kind()[0]}; }
-
+	
 	inline static qType qvacuum() { return {S1::qvacuum()[0],S2::qvacuum()[0]}; }
 	inline static qType flip( const qType& q ) { return {S1::flip({q[0]})[0],S2::flip({q[1]})[0]}; }
 	inline static int degeneracy( const qType& q ) { return S1::degeneracy({q[0]})*S2::degeneracy({q[1]}); }
-
+	
 	///@{
 	/** 
 	 * Calculate the irreps of the tensor product of \p ql and \p qr.
@@ -68,6 +68,8 @@ public:
 	 *            Better: Put an option for unique or non-unique irreps in the return vector.
 	 */
 	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
+	
+	static vector<tuple<qarray<S1::Nq+S2::Nq>,size_t,qarray<S1::Nq+S2::Nq>,size_t,qarray<S1::Nq+S2::Nq> > > tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr );
 	///@}
 
 	///@{
@@ -80,12 +82,12 @@ public:
 	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3);
 	inline static Scalar coeff_sign(const qType& q1, const qType& q2, const qType& q3);
 	inline static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
-
+	
 	inline static Scalar coeff_6j(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6);
 	inline static Scalar coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 									 const qType& q4, const qType& q5, const qType& q6);
-
+	
 	inline static Scalar coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6,
 								  const qType& q7, const qType& q8, const qType& q9);
@@ -98,20 +100,20 @@ public:
 	inline static Scalar coeff_HPsi(const qType& q1, const qType& q2, const qType& q3,
 									const qType& q4, const qType& q5, const qType& q6,
 									const qType& q7, const qType& q8, const qType& q9);
-
+	
 	inline static Scalar coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
 									 const qType& q4, const qType& q5, const qType& q6,
 									 const qType& q7, const qType& q8, const qType& q9,
 									 const qType& q10, const qType& q11, const qType& q12);
 	///@}
-
+	
 	/** 
 	 * This function defines a strict order for arrays of quantum-numbers.
 	 * \note The implementation is arbritary, as long as it defines a strict order.
 	 */
 	template<std::size_t M>
 	static bool compare ( const std::array<qType,M>& q1, const std::array<qType,M>& q2 );
-
+	
 	/** 
 	 * This function checks if the array \p qs contains quantum-numbers which match together, with respect to the flow equations.
 	 * \todo Write multiple functions, for different sizes of the array and rename them, to have a more clear interface.
@@ -173,9 +175,9 @@ reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
 	for (std::size_t q=0; q<ql.size(); q++)
 	for (std::size_t p=0; p<qr.size(); p++)
 	{
-		std::vector<typename S1::qType> firstSym = S1::reduceSilent(qarray<1>{ql[q][0]},qarray<1>{qr[p][0]});
+		std::vector<typename S1::qType> firstSym  = S1::reduceSilent(qarray<1>{ql[q][0]},qarray<1>{qr[p][0]});
 		std::vector<typename S2::qType> secondSym = S2::reduceSilent(qarray<1>{ql[q][1]},qarray<1>{qr[p][1]});
-
+		
 		for(const auto& q1:firstSym)
 		for(const auto& q2:secondSym)
 		{
@@ -183,6 +185,26 @@ reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
 		}
 	}
 	return vout;
+}
+
+template<typename S1, typename S2>
+vector<tuple<qarray<S1::Nq+S2::Nq>,size_t,qarray<S1::Nq+S2::Nq>,size_t,qarray<S1::Nq+S2::Nq> > > S1xS2<S1,S2>::
+tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr )
+{
+	vector<tuple<qarray<Nq>,size_t,qarray<Nq>,size_t,qarray<Nq> > > out;
+	for (std::size_t q=0; q<ql.size(); q++)
+	for (std::size_t p=0; p<qr.size(); p++)
+	{
+		std::vector<typename S1::qType> firstSym  = S1::reduceSilent(qarray<1>{ql[q][0]},qarray<1>{qr[p][0]});
+		std::vector<typename S2::qType> secondSym = S2::reduceSilent(qarray<1>{ql[q][1]},qarray<1>{qr[p][1]});
+		
+		for(const auto& q1:firstSym)
+		for(const auto& q2:secondSym)
+		{
+			out.push_back(make_tuple(ql[q], q, qr[p], p, qarray<2>{q1[0],q2[0]}));
+		}
+	}
+	return out;
 }
 
 template<typename S1, typename S2>

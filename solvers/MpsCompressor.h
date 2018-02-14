@@ -487,7 +487,7 @@ varCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,
 	Heff.clear();
 	Heff.resize(N_sites);
 	Heff[0].L.setVacuum();
-	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin.Qtarget(), Vout.Qtarget(), qvacuum<Symmetry::Nq>()});
+	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin.Qtarget(), Vout.Qtarget(), Symmetry::qvacuum()});
 	
 	Vout.N_sv = Dcutoff;
 	Mmax = Vout.calc_Mmax();
@@ -842,8 +842,15 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 	                                              H.locBasis(loc1), H.locBasis(loc2), 
 	                                              H.opBasis(loc1), H.opBasis(loc2));
 	
+	cout << "loc1=" << loc1 << ", loc2=" << loc2 << endl;
 	HxV(Heff2, Apair);
+	cout << Apair.A[0].print(true) << endl;
+	cout << Apair.A[1].print(true) << endl;
+	cout << "sweepStep2" << endl;
 	Vout.sweepStep2(CURRENT_DIRECTION, loc1, Apair.A);
+	cout << Vout.A_at(N_sites-1)[0].print(true) << endl;
+	cout << Vout.validate() << endl;
+	cout << "sweepStep2 done" << endl;
 	
 	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_LW(loc2,Vout,H,Vin) : build_RW(loc1,Vout,H,Vin);
 	

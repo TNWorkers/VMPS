@@ -23,6 +23,7 @@
 #endif
 #include "PolychromaticConsole.h" // from HELPERS
 #include "RandomVector.h" // from LANCZOS
+#include "numeric_limits.h" // from HELPERS
 
 /**
  * Matrix Product State with conserved quantum numbers (Abelian and non abelian symmetries).
@@ -345,13 +346,11 @@ public:
 	
 	/**
 	 * Performs an SVD split to the left and writes the zero-site tensor to \p C.
-	 * \warning Not implemented for non abelian symmetries.
 	 */
 	void leftSplitStep  (size_t loc, Biped<Symmetry,MatrixType> &C);
 	
 	/**
 	 * Performs an SVD split to the right and writes the zero-site tensor to \p C.
-	 * \warning Not implemented for non abelian symmetries.
 	 */
 	void rightSplitStep (size_t loc, Biped<Symmetry,MatrixType> &C);
 	
@@ -1660,7 +1659,10 @@ leftSplitStep (size_t loc, Biped<Symmetry,MatrixType> &C)
 		size_t stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
 		{
-			Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]];
+			Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]] *
+			                                            Symmetry::coeff_leftSweep(A[loc][svec[i]].out[qvec[i]],
+			                                                                      A[loc][svec[i]].in[qvec[i]],
+			                                                                      qloc[loc][svec[i]]);
 			stitch += Ncolsvec[i];
 		}
 		
@@ -1683,7 +1685,10 @@ leftSplitStep (size_t loc, Biped<Symmetry,MatrixType> &C)
 		stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
 		{
-			A[loc][svec[i]].block[qvec[i]] = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i]);
+			A[loc][svec[i]].block[qvec[i]] = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i])*
+			                                 Symmetry::coeff_sign(A[loc][svec[i]].out[qvec[i]],
+			                                                      A[loc][svec[i]].in[qvec[i]],
+			                                                      qloc[loc][svec[i]]);
 			stitch += Ncolsvec[i];
 		}
 		
@@ -1818,8 +1823,6 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 	ArrayXd truncWeightSub(outset[loc].size()); truncWeightSub.setZero();
 	ArrayXd entropySub(outset[loc].size()); entropySub.setZero();
 	
-//	auto index = [this,&loc] (size_t s1, size_t s3) -> size_t {return s1*qloc[loc+1].size()+s3;};
-	
 	auto tensor_basis = Symmetry::tensorProd(qloc[loc], qloc[loc+1]);
 	
 	#ifndef DMRG_DONT_USE_OPENMP
@@ -1827,11 +1830,10 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 	#endif
 	for (size_t qout=0; qout<outset[loc].size(); ++qout)
 	{
-		vector<size_t> s1vec;
-		map<size_t,vector<size_t> > s13map;
-		map<pair<size_t,size_t>,size_t> s13qmap;
-		map<pair<size_t,size_t>,size_t> s13imap;
-		map<pair<size_t,size_t>,qarray<Nq> > s13qmerge_map;
+		map<pair<size_t,qarray<Symmetry::Nq> >,vector<pair<size_t,qarray<Symmetry::Nq> > > > s13map;
+		map<tuple<size_t,qarray<Symmetry::Nq>,size_t,qarray<Symmetry::Nq> >,vector<Scalar> > cgcmap;
+		map<tuple<size_t,qarray<Symmetry::Nq>,size_t,qarray<Symmetry::Nq> >,vector<size_t> > q13map;
+		map<tuple<size_t,qarray<Symmetry::Nq>,size_t,qarray<Symmetry::Nq> >,vector<size_t> > s1s3map;
 		
 		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
 		for (size_t s3=0; s3<qloc[loc+1].size(); ++s3)
@@ -1840,74 +1842,114 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			
 			for (const auto &qmerge:qmerges)
 			{
-//				auto it = tensor_basis.find({qloc[loc][s1], qloc[loc+1][s3], qmerge});
 				auto qtensor = make_tuple(qloc[loc][s1], s1, qloc[loc+1][s3], s3, qmerge);
 				auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor));
 				
 				for (size_t q13=0; q13<Apair[s1s3].dim; ++q13)
 				{
-					auto qmids = Symmetry::reduceSilent(Apair[s1s3].in[q13], qloc[loc][s1]);
-					for (const auto &qmid:qmids)
+					auto qlmids = Symmetry::reduceSilent(Apair[s1s3].in[q13], qloc[loc][s1]);
+					auto qrmids = Symmetry::reduceSilent(Apair[s1s3].out[q13], Symmetry::flip(qloc[loc+1][s3]));
+					
+					for (const auto &qlmid:qlmids)
+					for (const auto &qrmid:qrmids)
 					{
-						if (qmid == outset[loc][qout])
+						if (qlmid == outset[loc][qout] and qrmid == outset[loc][qout])
 						{
-							s1vec.push_back(s1);
-							s13map[s1].push_back(s3);
-							s13qmap[make_pair(s1,s3)] = q13;
-							s13imap[make_pair(s1,s3)] = s1s3;
-							s13qmerge_map[make_pair(s1,s3)] = qmerge;
+							s13map[make_pair(s1,Apair[s1s3].in[q13])].push_back(make_pair(s3,Apair[s1s3].out[q13]));
+							
+							Scalar factor_cgc = Symmetry::coeff_Apair(Apair[s1s3].in[q13], qloc[loc][s1], outset[loc][qout], 
+							                                          qloc[loc+1][s3], Apair[s1s3].out[q13], qmerge);
+							
+							cgcmap[make_tuple(s1,Apair[s1s3].in[q13],s3,Apair[s1s3].out[q13])].push_back(factor_cgc);
+							q13map[make_tuple(s1,Apair[s1s3].in[q13],s3,Apair[s1s3].out[q13])].push_back(q13);
+							s1s3map[make_tuple(s1,Apair[s1s3].in[q13],s3,Apair[s1s3].out[q13])].push_back(s1s3);
 						}
 					}
 				}
 			}
 		}
 		
-		if (s1vec.size() != 0)
+		if (s13map.size() != 0)
 		{
-			vector<MatrixType> Aclumpvec(qloc[loc].size());
+			map<pair<size_t,qarray<Symmetry::Nq> >,MatrixType> Aclumpvec;
 			size_t istitch = 0;
 			size_t jstitch = 0;
 			vector<size_t> get_s3;
 			vector<size_t> get_Ncols;
+			vector<qarray<Symmetry::Nq> > get_qr;
 			bool COLS_ARE_KNOWN = false;
 			
 			for (size_t s1=0; s1<qloc[loc].size(); ++s1)
 			{
-				for (size_t s3=0; s3<qloc[loc+1].size(); ++s3)
+				auto qls = Symmetry::reduceSilent(outset[loc][qout], Symmetry::flip(qloc[loc][s1]));
+				
+				for (const auto &ql:qls)
 				{
-					auto s3block = find(s13map[s1].begin(), s13map[s1].end(), s3);
-					if (s3block != s13map[s1].end())
+					for (size_t s3=0; s3<qloc[loc+1].size(); ++s3)
 					{
-						size_t q13 = s13qmap[make_pair(s1,s3)];
-						Scalar factor_cgc = Symmetry::coeff_Apair(Apair[s13imap[make_pair(s1,s3)]].out[q13], 
-						                                          qloc[loc][s1], 
-						                                          outset[loc][qout], 
-						                                          qloc[loc+1][s3], 
-						                                          Apair[s13imap[make_pair(s1,s3)]].in[q13], 
-						                                          s13qmerge_map[make_pair(s1,s3)]);
-						addRight(factor_cgc * Apair[s13imap[make_pair(s1,s3)]].block[q13], Aclumpvec[s1]);
+						auto qrs = Symmetry::reduceSilent(outset[loc][qout], qloc[loc+1][s3]);
 						
-						if (COLS_ARE_KNOWN == false)
+						for (const auto &qr:qrs)
 						{
-							get_s3.push_back(s3);
-							get_Ncols.push_back(Apair[s13imap[make_pair(s1,s3)]].block[q13].cols());
+							auto s3block = find(s13map[make_pair(s1,ql)].begin(), s13map[make_pair(s1,ql)].end(), make_pair(s3,qr));
+							
+							if (s3block != s13map[make_pair(s1,ql)].end())
+							{
+								MatrixType Mtmp;
+								for (size_t i=0; i<q13map[make_tuple(s1,ql,s3,qr)].size(); ++i)
+								{
+									size_t q13 = q13map[make_tuple(s1,ql,s3,qr)][i];
+									size_t s1s3 = s1s3map[make_tuple(s1,ql,s3,qr)][i];
+									if (cgcmap[make_tuple(s1,ql,s3,qr)][i] < mynumeric_limits<Scalar>::epsilon()) {continue;}
+									
+									if (Mtmp.size() == 0)
+									{
+										cout << "Apair[s1s3].block[q13]: " << Apair[s1s3].block[q13].rows() << "x" << Apair[s1s3].block[q13].cols() << endl;
+										Mtmp = cgcmap[make_tuple(s1,ql,s3,qr)][i] * Apair[s1s3].block[q13];
+									}
+									else
+									{
+										Mtmp += cgcmap[make_tuple(s1,ql,s3,qr)][i] * Apair[s1s3].block[q13];
+									}
+								}
+								if (Mtmp.size() == 0) {continue;}
+								cout << "Mtmp.rows()=" << Mtmp.rows() << endl;
+								
+								addRight(Mtmp, Aclumpvec[make_pair(s1,ql)]);
+								
+								if (COLS_ARE_KNOWN == false)
+								{
+									get_s3.push_back(s3);
+									get_Ncols.push_back(Mtmp.cols());
+									get_qr.push_back(qr);
+								}
+							}
 						}
 					}
+					if (get_s3.size() != 0) {COLS_ARE_KNOWN = true;}
 				}
-				if (get_s3.size() != 0) {COLS_ARE_KNOWN = true;}
 			}
 			
 			vector<size_t> get_s1;
 			vector<size_t> get_Nrows;
+			vector<qarray<Symmetry::Nq> > get_ql;
 			MatrixType Aclump;
 			for (size_t s1=0; s1<qloc[loc].size(); ++s1)
 			{
-				size_t Aclump_rows_old = Aclump.rows();
-				addBottom(Aclumpvec[s1], Aclump);
-				if (Aclump.rows() > Aclump_rows_old)
+				auto qls = Symmetry::reduceSilent(outset[loc][qout], Symmetry::flip(qloc[loc][s1]));
+				
+				for (const auto &ql:qls)
 				{
-					get_s1.push_back(s1);
-					get_Nrows.push_back(Aclump.rows()-Aclump_rows_old);
+					size_t Aclump_rows_old = Aclump.rows();
+					
+					addBottom(Aclumpvec[make_pair(s1,ql)], Aclump);
+					
+					if (Aclump.rows() > Aclump_rows_old)
+					{
+						get_s1.push_back(s1);
+						get_Nrows.push_back(Aclump.rows()-Aclump_rows_old);
+						get_ql.push_back(ql);
+					}
 				}
 			}
 			
@@ -1977,18 +2019,14 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			{
 				size_t s1 = get_s1[i];
 				size_t Nrows = get_Nrows[i];
-				auto qins = Symmetry::reduceSilent(outset[loc][qout], Symmetry::flip(qloc[loc][s1]));
 				
-				for (const auto &qin:qins)
+				qarray2<Nq> quple = {get_ql[i], outset[loc][qout]};
+				auto q = A[loc][s1].dict.find(quple);
+				if (q != A[loc][s1].dict.end())
 				{
-					qarray2<Nq> quple = {qin, outset[loc][qout]};
-					auto q = A[loc][s1].dict.find(quple);
-					if (q != A[loc][s1].dict.end())
-					{
-						A[loc][s1].block[q->second] = Aleft.block(istitch,0, Nrows,Nret);
-					}
-					istitch += Nrows;
+					A[loc][s1].block[q->second] = Aleft.block(istitch,0, Nrows,Nret);
 				}
+				istitch += Nrows;
 			}
 			
 			// update A[loc+1]
@@ -1997,18 +2035,14 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			{
 				size_t s3 = get_s3[i];
 				size_t Ncols = get_Ncols[i];
-				auto qrouts = Symmetry::reduceSilent(outset[loc][qout], qloc[loc+1][s3]);
 				
-				for (const auto &qrout:qrouts)
+				qarray2<Nq> quple = {outset[loc][qout], get_qr[i]};
+				auto q = A[loc+1][s3].dict.find(quple);
+				if (q != A[loc+1][s3].dict.end())
 				{
-					qarray2<Nq> quple = {outset[loc][qout], qrout};
-					auto q = A[loc+1][s3].dict.find(quple);
-					if (q != A[loc+1][s3].dict.end())
-					{
-						A[loc+1][s3].block[q->second] = Aright.block(0,jstitch, Nret,Ncols);
-					}
-					jstitch += Ncols;
+					A[loc+1][s3].block[q->second] = Aright.block(0,jstitch, Nret,Ncols);
 				}
+				jstitch += Ncols;
 			}
 		}
 	}
@@ -2032,6 +2066,228 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 		}
 	}
 }
+
+//template<typename Symmetry, typename Scalar>
+//void Mps<Symmetry,Scalar>::
+//sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, bool DISCARD_SV)
+//{
+//	ArrayXd truncWeightSub(outset[loc].size()); truncWeightSub.setZero();
+//	ArrayXd entropySub(outset[loc].size()); entropySub.setZero();
+//	
+////	auto index = [this,&loc] (size_t s1, size_t s3) -> size_t {return s1*qloc[loc+1].size()+s3;};
+//	
+//	auto tensor_basis = Symmetry::tensorProd(qloc[loc], qloc[loc+1]);
+//	
+//	#ifndef DMRG_DONT_USE_OPENMP
+//	#pragma omp parallel for
+//	#endif
+//	for (size_t qout=0; qout<outset[loc].size(); ++qout)
+//	{
+//		vector<size_t> s1vec;
+//		map<size_t,vector<size_t> > s13map;
+//		map<pair<size_t,size_t>,size_t> s13qmap;
+//		map<pair<size_t,size_t>,size_t> s13imap;
+//		map<pair<size_t,size_t>,qarray<Nq> > s13qmerge_map;
+//		
+//		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
+//		for (size_t s3=0; s3<qloc[loc+1].size(); ++s3)
+//		{
+//			auto qmerges = Symmetry::reduceSilent(qloc[loc][s1], qloc[loc+1][s3]);
+//			
+//			for (const auto &qmerge:qmerges)
+//			{
+////				auto it = tensor_basis.find({qloc[loc][s1], qloc[loc+1][s3], qmerge});
+//				auto qtensor = make_tuple(qloc[loc][s1], s1, qloc[loc+1][s3], s3, qmerge);
+//				auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor));
+//				
+//				for (size_t q13=0; q13<Apair[s1s3].dim; ++q13)
+//				{
+//					auto qmids = Symmetry::reduceSilent(Apair[s1s3].in[q13], qloc[loc][s1]);
+//					for (const auto &qmid:qmids)
+//					{
+//						if (qmid == outset[loc][qout])
+//						{
+//							s1vec.push_back(s1);
+//							s13map[s1].push_back(s3);
+//							s13qmap[make_pair(s1,s3)] = q13;
+//							s13imap[make_pair(s1,s3)] = s1s3;
+//							s13qmerge_map[make_pair(s1,s3)] = qmerge;
+//						}
+//					}
+//				}
+//			}
+//		}
+//		
+//		if (s1vec.size() != 0)
+//		{
+//			vector<MatrixType> Aclumpvec(qloc[loc].size());
+//			size_t istitch = 0;
+//			size_t jstitch = 0;
+//			vector<size_t> get_s3;
+//			vector<size_t> get_Ncols;
+//			bool COLS_ARE_KNOWN = false;
+//			
+//			for (size_t s1=0; s1<qloc[loc].size(); ++s1)
+//			{
+//				for (size_t s3=0; s3<qloc[loc+1].size(); ++s3)
+//				{
+//					auto s3block = find(s13map[s1].begin(), s13map[s1].end(), s3);
+//					if (s3block != s13map[s1].end())
+//					{
+//						size_t q13 = s13qmap[make_pair(s1,s3)];
+//						Scalar factor_cgc = Symmetry::coeff_Apair(Apair[s13imap[make_pair(s1,s3)]].out[q13], 
+//						                                          qloc[loc][s1], 
+//						                                          outset[loc][qout], 
+//						                                          qloc[loc+1][s3], 
+//						                                          Apair[s13imap[make_pair(s1,s3)]].in[q13], 
+//						                                          s13qmerge_map[make_pair(s1,s3)]);
+//						addRight(factor_cgc * Apair[s13imap[make_pair(s1,s3)]].block[q13], Aclumpvec[s1]);
+//						
+//						if (COLS_ARE_KNOWN == false)
+//						{
+//							get_s3.push_back(s3);
+//							get_Ncols.push_back(Apair[s13imap[make_pair(s1,s3)]].block[q13].cols());
+//						}
+//					}
+//				}
+//				if (get_s3.size() != 0) {COLS_ARE_KNOWN = true;}
+//			}
+//			
+//			vector<size_t> get_s1;
+//			vector<size_t> get_Nrows;
+//			MatrixType Aclump;
+//			for (size_t s1=0; s1<qloc[loc].size(); ++s1)
+//			{
+//				size_t Aclump_rows_old = Aclump.rows();
+//				addBottom(Aclumpvec[s1], Aclump);
+//				if (Aclump.rows() > Aclump_rows_old)
+//				{
+//					get_s1.push_back(s1);
+//					get_Nrows.push_back(Aclump.rows()-Aclump_rows_old);
+//				}
+//			}
+//			
+//			#ifdef DONT_USE_LAPACK_SVD
+//			BDCSVD<MatrixType> Jack; // Eigen SVD
+//			#else
+//			LapackSVD<Scalar> Jack; // Lapack SVD
+//			#endif
+//			
+//			#ifdef DONT_USE_LAPACK_SVD
+//			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
+//			#else
+//			Jack.compute(Aclump);
+//			#endif
+//			
+//			// retained states:
+//			size_t Nret = Aclump.cols();
+//			Nret = (Jack.singularValues().array().abs() > this->eps_svd).count();
+//			Nret = min(max(Nret,1ul),static_cast<size_t>(Jack.singularValues().rows()));
+//			Nret = min(Nret,this->N_sv);
+//			
+//			truncWeightSub(qout) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
+//			size_t Nnz = (Jack.singularValues().array() > 1e-9).count();
+//			entropySub(qout) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
+//			
+//			MatrixType Aleft, Aright;
+//			if (DIR == DMRG::DIRECTION::RIGHT)
+//			{
+//				Aleft = Jack.matrixU().leftCols(Nret);
+//				#ifdef DONT_USE_LAPACK_SVD
+//				if (DISCARD_SV)
+//				{
+//					Aright = Jack.matrixV().adjoint().topRows(Nret);
+//				}
+//				else
+//				{
+//					Aright = Jack.singularValues().head(Nret).asDiagonal() * Jack.matrixV().adjoint().topRows(Nret);
+//				}
+//				#else
+//				if (DISCARD_SV)
+//				{
+//					Aright = Jack.matrixVT().topRows(Nret);
+//				}
+//				else
+//				{
+//					Aright = Jack.singularValues().head(Nret).asDiagonal() * Jack.matrixVT().topRows(Nret);
+//				}
+//				#endif
+//				
+//				this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
+//			}
+//			else
+//			{
+//				Aleft = Jack.matrixU().leftCols(Nret) * Jack.singularValues().head(Nret).asDiagonal();
+//				#ifdef DONT_USE_LAPACK_SVD
+//				Aright = Jack.matrixV().adjoint().topRows(Nret);
+//				#else
+//				Aright = Jack.matrixVT().topRows(Nret);
+//				#endif
+//				
+//				this->pivot = (loc==0)? 0 : loc;
+//			}
+//			
+//			// update A[loc]
+//			istitch = 0;
+//			for (size_t i=0; i<get_s1.size(); ++i)
+//			{
+//				size_t s1 = get_s1[i];
+//				size_t Nrows = get_Nrows[i];
+//				auto qins = Symmetry::reduceSilent(outset[loc][qout], Symmetry::flip(qloc[loc][s1]));
+//				
+//				for (const auto &qin:qins)
+//				{
+//					qarray2<Nq> quple = {qin, outset[loc][qout]};
+//					auto q = A[loc][s1].dict.find(quple);
+//					if (q != A[loc][s1].dict.end())
+//					{
+//						A[loc][s1].block[q->second] = Aleft.block(istitch,0, Nrows,Nret);
+//					}
+//					istitch += Nrows;
+//				}
+//			}
+//			
+//			// update A[loc+1]
+//			jstitch = 0;
+//			for (size_t i=0; i<get_s3.size(); ++i)
+//			{
+//				size_t s3 = get_s3[i];
+//				size_t Ncols = get_Ncols[i];
+//				auto qrouts = Symmetry::reduceSilent(outset[loc][qout], qloc[loc+1][s3]);
+//				
+//				for (const auto &qrout:qrouts)
+//				{
+//					qarray2<Nq> quple = {outset[loc][qout], qrout};
+//					auto q = A[loc+1][s3].dict.find(quple);
+//					if (q != A[loc+1][s3].dict.end())
+//					{
+//						A[loc+1][s3].block[q->second] = Aright.block(0,jstitch, Nret,Ncols);
+//					}
+//					jstitch += Ncols;
+//				}
+//			}
+//		}
+//	}
+//	
+//	truncWeight(loc) = truncWeightSub.sum();
+//	
+//	if (DIR == DMRG::DIRECTION::RIGHT)
+//	{
+//		int bond = (loc==this->N_sites-1)? -1 : loc;
+//		if (bond != -1)
+//		{
+//			entropy(loc) = entropySub.sum();
+//		}
+//	}
+//	else
+//	{
+//		int bond = (loc==0)? -1 : loc;
+//		if (bond != -1)
+//		{
+//			entropy(loc-1) = entropySub.sum();
+//		}
+//	}
+//}
 
 //template<typename Symmetry, typename Scalar>
 //void Mps<Symmetry,Scalar>::
@@ -3884,7 +4140,7 @@ ostream &operator<< (ostream& os, const Mps<Symmetry,Scalar> &V)
 		for (size_t s=0; s<V.locBasis(l).size(); ++s)
 		{
 			os << "l=" << l << "\ts=" << Sym::format<Symmetry>(V.locBasis(l)[s]) << endl;
-			os << V.A_at(l)[s].formatted(Sym::format<Symmetry>);
+			os << V.A_at(l)[s].formatted();
 			os << endl;
 		}
 		os << setfill('-') << setw(80) << "-" << setfill(' ');
