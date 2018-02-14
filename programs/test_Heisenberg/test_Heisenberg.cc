@@ -81,7 +81,7 @@ int main (int argc, char* argv[])
 	S = abs(M)+1;
 	alpha = args.get<double>("alpha",1.);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
-	dt = 0.2;
+	dt = args.get<double>("dt",0.1);
 	
 	Dinit  = args.get<int>("Dmin",2);
 	Dlimit = args.get<int>("Dmax",100);
@@ -110,7 +110,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::Heisenberg::StateXd> g_U0;
 	
 	VMPS::Heisenberg::Solver DMRG_U0(VERB);
-	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
+	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 1e2*tol_eigval,1e2*tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
 	
 	t_U0 = Watch_U0.time();
 	
@@ -213,67 +213,90 @@ int main (int argc, char* argv[])
 	MatrixXd SpinCorr_SU2(L,L); SpinCorr_SU2.setZero();
 	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SS(i,j), g_SU2.state); }
 	
+	// --------SU(2) time propagation---------
 	VMPS::HeisenbergSU2::StateXcd Psi = g_SU2.state.cast<complex<double> >();
 	TDVPPropagator<VMPS::HeisenbergSU2,Sym::SU2<Sym::SpinSU2>,double,complex<double>,VMPS::HeisenbergSU2::StateXcd> TDVP(H_SU2,Psi);
-	TDVP.t_step(H_SU2,Psi, -1.i*dt, 1,1e-8);
+	TDVP.t_step0(H_SU2,Psi, -1.i*dt, 1,1e-8);
 	cout << TDVP.info() << endl;
+	complex<double> phi_tp = g_SU2.state.cast<complex<double> >().dot(Psi);
+	complex<double> phi_ex = exp(-1.i*g_SU2.energy*dt);
+	cout << "phase: " << phi_tp << ", " << phi_ex << ", diff=" << abs(phi_tp-phi_ex) << endl;
+	double E_tp = isReal(avg(Psi,H_SU2,Psi));
+	double E_ex = isReal(avg(g_SU2.state,H_SU2,g_SU2.state));
+	cout << "energy: " << E_tp << ", " << E_ex << ", diff=" << abs(E_tp-E_ex) << endl;
 	
 	//--------output---------
 	TextTable T( '-', '|', '+' );
 	
 	double V = L*Ly; double Vsq = V*V;
+	
+	// header
 	T.add("");
 	T.add("U(0)");
 	T.add("U(1)");
-	T.add("SU(2)"); T.endOfRow();
+	T.add("SU(2)");
+	T.endOfRow();
 	
+	// energy
 	T.add("E/L");
 	T.add(to_string_prec(g_U0.energy/V));
 	T.add(to_string_prec(g_U1.energy/V));
-	T.add(to_string_prec(g_SU2.energy/V)); T.endOfRow();
+	T.add(to_string_prec(g_SU2.energy/V));
+	T.endOfRow();
 	
+	// energy error
 	T.add("E/L diff");
 	T.add(to_string_prec(abs(g_U0.energy-g_SU2.energy)/V));
 	T.add(to_string_prec(abs(g_U1.energy-g_SU2.energy)/V));
 	T.add("0");
 	T.endOfRow();
 	
+	// Compressor
 	T.add("E/L Compressor");
 	T.add(to_string_prec(E_U0_compressor/V));
 	T.add(to_string_prec(E_U1_compressor/V));
 	T.add("-"); T.endOfRow();
 	
+	// Zipper
 	T.add("E/L Zipper");
 	T.add(to_string_prec(E_U0_zipper/V));
 	T.add(to_string_prec(E_U1_zipper/V));
 	T.add("-"); T.endOfRow();
 	
+	// time
 	T.add("t/s");
 	T.add(to_string_prec(t_U0,2));
 	T.add(to_string_prec(t_U1,2));
-	T.add(to_string_prec(t_SU2,2)); T.endOfRow();
+	T.add(to_string_prec(t_SU2,2));
+	T.endOfRow();
 	
+	// time gain
 	T.add("t gain");
 	T.add(to_string_prec(t_U0/t_SU2,2));
 	T.add(to_string_prec(t_U1/t_SU2,2));
-	T.add("1"); T.endOfRow();
+	T.add("1");
+	T.endOfRow();
 	
+	// observables
 	T.add("observables");
 	T.add(to_string_prec(SpinCorr_U0.sum()));
 	T.add(to_string_prec(SpinCorr_U1.sum()));
-	T.add(to_string_prec(SpinCorr_SU2.sum())); T.endOfRow();
+	T.add(to_string_prec(SpinCorr_SU2.sum()));
+	T.endOfRow();
 	
+	// observables error
 	T.add("observables diff");
 	T.add(to_string_prec((SpinCorr_U0-SpinCorr_SU2).lpNorm<1>()/Vsq));
 	T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2).lpNorm<1>()/Vsq));
-	T.add("0"); T.endOfRow();
+	T.add("0");
+	T.endOfRow();
 	
+	// bond dimensions
 	T.add("Dmax");
 	T.add(to_string(g_U0.state.calc_Dmax()));
 	T.add(to_string(g_U1.state.calc_Dmax()));
 	T.add(to_string(g_SU2.state.calc_Dmax()));
 	T.endOfRow();
-	
 	T.add("Mmax");
 	T.add(to_string(g_U0.state.calc_Dmax()));
 	T.add(to_string(g_U1.state.calc_Mmax()));

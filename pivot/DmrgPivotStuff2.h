@@ -412,7 +412,8 @@ inline void normalize (PivotVector2<Symmetry,Scalar> &V)
 template<typename Symmetry, typename Scalar>
 double infNorm (const PivotVector2<Symmetry,Scalar> &V1, const PivotVector2<Symmetry,Scalar> &V2)
 {
-	double res = 0.;
+	double res = 0;
+	
 	for (size_t s1=0; s1<V2.A.size(); ++s1)
 	for (size_t s3=0; s3<V2.A[s1].size(); ++s3)
 	for (size_t q=0; q<V1.A[V1.index(s1,s3)].dim; ++q)
@@ -420,6 +421,7 @@ double infNorm (const PivotVector2<Symmetry,Scalar> &V1, const PivotVector2<Symm
 		double tmp = (V1.A[V1.index(s1,s3)].block[q]-V2.A[V2.index(s1,s3)].block[q]).template lpNorm<Eigen::Infinity>();
 		if (tmp>res) {res = tmp;}
 	}
+	
 	return res;
 }
 
@@ -427,12 +429,14 @@ template<typename Symmetry, typename Scalar>
 inline size_t dim (const PivotVector2<Symmetry,Scalar> &V)
 {
 	size_t out = 0;
+	
 	for (size_t s1=0; s1<V.D12; ++s1)
 	for (size_t s3=0; s3<V.D34; ++s3)
 	for (size_t q=0; q<V.A[V.index(s1,s3)].dim; ++q)
 	{
 		out += V.A[V.index(s1,s3)].block[q].size();
 	}
+	
 	return out;
 }
 //-----------</dot & vector norms>-----------

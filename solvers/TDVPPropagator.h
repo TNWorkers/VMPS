@@ -267,7 +267,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 		{
 			PivotVector0<Symmetry,TimeScalar> Azero;
 			int old_pivot = pivot;
-			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Vinout.rightSplitStep(pivot,Azero.A) : Vinout.leftSplitStep(pivot,Azero.A);
+			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Vinout.rightSplitStep(pivot,Azero.C) : Vinout.leftSplitStep(pivot,Azero.C);
 			pivot = Vinout.get_pivot();
 			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vinout,pivot) : build_R(H,Vinout,pivot);
 			
@@ -282,7 +282,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 			if (Lutz0.get_dist() > dist_max) {dist_max = Lutz0.get_dist();}
 			if (Lutz0.get_dimK() > dimK_max) {dimK_max = Lutz0.get_dimK();}
 			
-			Vinout.absorb(pivot,CURRENT_DIRECTION,Azero.A);
+			Vinout.absorb(pivot, CURRENT_DIRECTION, Azero.C);
 		}
 	}
 	

@@ -44,14 +44,14 @@ bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::
 		if (q1 != Abra[s1].dict.end())
 		{
 			auto qRins = Symmetry::reduceSilent(Lout,qloc[s2]);
-			for (const auto& qRin : qRins)
+			for (const auto &qRin:qRins)
 			{
 				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
 				auto q2 = Aket[s2].dict.find(cmp2);
 				if (q2 != Aket[s2].dict.end())
 				{
 					auto qRmids = Symmetry::reduceSilent(Lmid,qOp[k]);
-					for (const auto& qRmid : qRmids)
+					for (const auto &qRmid:qRmids)
 					{
 						result.push_back(make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q1->second, q2->second));
 						out = true;
@@ -102,13 +102,18 @@ bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetr
 //	};
 //	
 	auto tensor_basis = Symmetry::tensorProd(qloc12,qloc34);
+	auto qmerges13 = Symmetry::reduceSilent(qloc12[s1], qloc34[s3]);
+	auto qmerges24 = Symmetry::reduceSilent(qloc12[s2], qloc34[s4]);
 	
 	auto qRouts = Symmetry::reduceSilent(Lin,qloc12[s1],qloc34[s3]);
+	
+	for (const auto &qmerge13:qmerges13)
+	for (const auto &qmerge24:qmerges24)
 	for (const auto &qRout:qRouts)
 	{
 		qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
 		
-		auto qtensor13 = make_tuple(qloc34[s1], s1, qloc34[s3], s3, qRout);
+		auto qtensor13 = make_tuple(qloc12[s1], s1, qloc34[s3], s3, qmerge13);
 		auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
 		
 		auto q13 = AAbra[s1s3].dict.find(cmp1);
@@ -118,12 +123,12 @@ bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetr
 			auto qRins = Symmetry::reduceSilent(Lout,qloc12[s2],qloc34[s4]);
 			for (const auto& qRin : qRins)
 			{
-				auto qtensor24 = make_tuple(qloc12[s2], s2, qloc12[s4], s4, qRin);
+				auto qtensor24 = make_tuple(qloc12[s2], s2, qloc34[s4], s4, qmerge24);
 				auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
-				
+			
 				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
 				auto q24 = AAket[s2s4].dict.find(cmp2);
-				
+			
 				if (q24 != AAket[s2s4].dict.end())
 				{
 					auto qRmids = Symmetry::reduceSilent(Lmid,qOp12[k12],qOp34[k34]);

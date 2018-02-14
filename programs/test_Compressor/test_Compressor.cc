@@ -112,12 +112,12 @@ int main (int argc, char* argv[])
 	VMPS::HeisenbergU1::StateXd HxPsi;
 	HxV(H_U1, Psi, HxPsi, VERB);
 	
-	cout << avg(Psi, H_U1, Psi) << "\t" << dot(Psi,HxPsi) << endl << endl;
+	cout << setprecision(14) << avg(Psi, H_U1, Psi) << "\t" << dot(Psi,HxPsi) << endl << endl;
 	
 	VMPS::HeisenbergU1::StateXd HxHxPsi;
 	HxV(H_U1, HxPsi, HxHxPsi, VERB);
 	
-	cout << avg(Psi, H_U1, H_U1, Psi) << "\t" << dot(Psi,HxHxPsi) << endl << endl;
+	cout << setprecision(14) << avg(Psi, H_U1, H_U1, Psi) << "\t" << dot(Psi,HxHxPsi) << endl << endl;
 	
 	
 }

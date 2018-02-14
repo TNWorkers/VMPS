@@ -191,7 +191,7 @@ Scalar dot (const PivotVector0<Symmetry,Scalar> &V1, const PivotVector0<Symmetry
 template<typename Symmetry, typename Scalar>
 inline double squaredNorm (const PivotVector0<Symmetry,Scalar> &V)
 {
-	return dot(V,V);
+	return isReal(dot(V,V));
 }
 
 template<typename Symmetry, typename Scalar>
