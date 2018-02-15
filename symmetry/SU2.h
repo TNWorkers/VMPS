@@ -81,6 +81,7 @@ public:
 	static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
 	static Scalar coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3);
 	static Scalar coeff_sign(const qType& q1, const qType& q2, const qType& q3);
+	static Scalar coeff_sign2(const qType& q1, const qType& q2, const qType& q3);
 	static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
 
 	static Scalar coeff_6j(const qType& q1, const qType& q2, const qType& q3,
@@ -251,6 +252,16 @@ coeff_sign(const qType& q1, const qType& q2, const qType& q3)
 	Scalar out = std::sqrt(static_cast<Scalar>(q2[0])) / std::sqrt(static_cast<Scalar>(q1[0]))*
 		Scalar(-1.)*phase<Scalar>((q3[0]+q1[0]-q2[0]-1) /2);
 		// Scalar(-1.)*std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q3[0]+q1[0]-q2[0]-1));
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_sign2(const qType& q1, const qType& q2, const qType& q3)
+{
+	Scalar out = std::sqrt(static_cast<Scalar>(q2[0])) / std::sqrt(static_cast<Scalar>(q1[0])); //Scalar(-1.)*phase<Scalar>((q3[0]+q1[0]-q2[0]-1) /2);
+	// Scalar(-1.)*std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q3[0]+q1[0]-q2[0]-1));
+	//std::sqrt(static_cast<Scalar>(q2[0])) / std::sqrt(static_cast<Scalar>(q1[0]))*
 	return out;
 }
 

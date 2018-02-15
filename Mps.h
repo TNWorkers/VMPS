@@ -1900,11 +1900,10 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 								{
 									size_t q13 = q13map[make_tuple(s1,ql,s3,qr)][i];
 									size_t s1s3 = s1s3map[make_tuple(s1,ql,s3,qr)][i];
-									if (cgcmap[make_tuple(s1,ql,s3,qr)][i] < mynumeric_limits<Scalar>::epsilon()) {continue;}
+									// if (cgcmap[make_tuple(s1,ql,s3,qr)][i] < mynumeric_limits<Scalar>::epsilon()) {continue;}
 									
 									if (Mtmp.size() == 0)
 									{
-										cout << "Apair[s1s3].block[q13]: " << Apair[s1s3].block[q13].rows() << "x" << Apair[s1s3].block[q13].cols() << endl;
 										Mtmp = cgcmap[make_tuple(s1,ql,s3,qr)][i] * Apair[s1s3].block[q13];
 									}
 									else
@@ -1913,7 +1912,6 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 									}
 								}
 								if (Mtmp.size() == 0) {continue;}
-								cout << "Mtmp.rows()=" << Mtmp.rows() << endl;
 								
 								addRight(Mtmp, Aclumpvec[make_pair(s1,ql)]);
 								
@@ -2024,7 +2022,10 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				auto q = A[loc][s1].dict.find(quple);
 				if (q != A[loc][s1].dict.end())
 				{
-					A[loc][s1].block[q->second] = Aleft.block(istitch,0, Nrows,Nret);
+					Scalar factor_cgc3=1.;
+					// if(DIR==DMRG::DIRECTION::LEFT) {factor_cgc3=Symmetry::coeff_sign2(outset[loc][qout],get_ql[i],qloc[loc][get_s1[i]]);}
+					// if(DIR==DMRG::DIRECTION::LEFT) {factor_cgc3=Symmetry::coeff_sign2(get_ql[i],outset[loc][qout],qloc[loc][get_s1[i]]);}
+					A[loc][s1].block[q->second] = Aleft.block(istitch,0, Nrows,Nret);//*factor_cgc3;;
 				}
 				istitch += Nrows;
 			}
@@ -2040,7 +2041,22 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				auto q = A[loc+1][s3].dict.find(quple);
 				if (q != A[loc+1][s3].dict.end())
 				{
-					A[loc+1][s3].block[q->second] = Aright.block(0,jstitch, Nret,Ncols);
+					Scalar factor_cgc3=1.;
+					if(DIR==DMRG::DIRECTION::LEFT) {factor_cgc3=Symmetry::coeff_sign2(get_qr[i],outset[loc][qout],qloc[loc+1][get_s3[i]]);}
+					A[loc+1][s3].block[q->second] = Aright.block(0,jstitch, Nret,Ncols)*factor_cgc3;
+					if(abs(factor_cgc3 - 1.) > mynumeric_limits<Scalar>::epsilon())
+					{
+						for(size_t s1=0; s1<qloc[loc].size(); ++s1)
+						{
+							auto qls=Symmetry::reduceSilent(outset[loc][qout],Symmetry::flip(qloc[loc][s1]));
+							for(const auto &ql:qls)
+							{
+								qarray2<Nq> quple_loc = {ql,outset[loc][qout]};
+								auto it = A[loc][s1].dict.find(quple_loc);
+								if (it != A[loc][s1].dict.end()) { A[loc][s1].block[it->second] = A[loc][s1].block[it->second]/factor_cgc3; }
+							}
+						}
+					}
 				}
 				jstitch += Ncols;
 			}
