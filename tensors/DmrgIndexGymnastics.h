@@ -63,27 +63,32 @@ bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::
 	return out;
 }
 
+//template<typename Symmetry, typename MatrixType>
+//bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid, 
+//             size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc12, size_t k12, vector<qarray<Symmetry::Nq> > qOp12,
+//             size_t s3, size_t s4, vector<qarray<Symmetry::Nq> > qloc34, size_t k34, vector<qarray<Symmetry::Nq> > qOp34,
+//             const vector<Biped<Symmetry,MatrixType> > &AA13, const vector<Biped<Symmetry,MatrixType> > &AA24, 
+//             vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > &result)
 template<typename Symmetry, typename MatrixType>
 bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid, 
-             size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc12, 
-             size_t k12, vector<qarray<Symmetry::Nq> > qOp12,
-             size_t s3, size_t s4, vector<qarray<Symmetry::Nq> > qloc34, 
+             size_t k12, vector<qarray<Symmetry::Nq> > qOp12, 
              size_t k34, vector<qarray<Symmetry::Nq> > qOp34,
-             const vector<Biped<Symmetry,MatrixType> > &AAbra, 
-             const vector<Biped<Symmetry,MatrixType> > &AAket, 
+             size_t s1s3, const qarray<Symmetry::Nq> &qmerge13, 
+             size_t s2s4, const qarray<Symmetry::Nq> &qmerge24, 
+             const vector<Biped<Symmetry,MatrixType> > &AA13, const vector<Biped<Symmetry,MatrixType> > &AA24, 
              vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > &result)
 {
 //	qarray<Symmetry::Nq> qRout = Lin + qloc12[s1] + qloc34[s3];
 //	qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
-//	auto q13 = AAbra[s1][s3].dict.find(cmp1);
+//	auto q13 = AA13[s1][s3].dict.find(cmp1);
 //	
-//	if (q13 != AAbra[s1][s3].dict.end())
+//	if (q13 != AA13[s1][s3].dict.end())
 //	{
 //		qarray<Symmetry::Nq> qRin = Lout + qloc12[s2] + qloc34[s4];
 //		qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
-//		auto q24 = AAket[s2][s4].dict.find(cmp2);
+//		auto q24 = AA24[s2][s4].dict.find(cmp2);
 //		
-//		if (q24 != AAket[s2][s4].dict.end())
+//		if (q24 != AA24[s2][s4].dict.end())
 //		{
 //			qarray<Symmetry::Nq> qRmid = Lmid + qloc12[s1] + qloc34[s3] - qloc12[s2] - qloc34[s4];
 //			
@@ -96,40 +101,23 @@ bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetr
 	bool out = false;
 	result.clear();
 	
-//	auto index = [&qloc12] (size_t s1, size_t s3) -> size_t
-//	{
-//		return s1*qloc12.size()+s3;
-//	};
-//	
-	auto tensor_basis = Symmetry::tensorProd(qloc12,qloc34);
-	auto qmerges13 = Symmetry::reduceSilent(qloc12[s1], qloc34[s3]);
-	auto qmerges24 = Symmetry::reduceSilent(qloc12[s2], qloc34[s4]);
+	auto qRouts = Symmetry::reduceSilent(Lin, qmerge13);
 	
-	auto qRouts = Symmetry::reduceSilent(Lin, qloc12[s1], qloc34[s3]);
-	
-	for (const auto &qmerge13:qmerges13)
-	for (const auto &qmerge24:qmerges24)
 	for (const auto &qRout:qRouts)
 	{
 		qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
+		auto q13 = AA13[s1s3].dict.find(cmp1);
 		
-		auto qtensor13 = make_tuple(qloc12[s1], s1, qloc34[s3], s3, qmerge13);
-		auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
-		
-		auto q13 = AAbra[s1s3].dict.find(cmp1);
-		
-		if (q13 != AAbra[s1s3].dict.end())
+		if (q13 != AA13[s1s3].dict.end())
 		{
-			auto qRins = Symmetry::reduceSilent(Lout, qloc12[s2], qloc34[s4]);
+			auto qRins = Symmetry::reduceSilent(Lout, qmerge24);
+			
 			for (const auto &qRin:qRins)
 			{
-				auto qtensor24 = make_tuple(qloc12[s2], s2, qloc34[s4], s4, qmerge24);
-				auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
-				
 				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
-				auto q24 = AAket[s2s4].dict.find(cmp2);
+				auto q24 = AA24[s2s4].dict.find(cmp2);
 				
-				if (q24 != AAket[s2s4].dict.end())
+				if (q24 != AA24[s2s4].dict.end())
 				{
 //					auto qRmids = Symmetry::reduceSilent(Lmid, qOp12[k12], qOp34[k34]);
 					auto qWs = Symmetry::reduceSilent(Lmid, qOp12[k12]);
@@ -323,9 +311,9 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 						{
 							if constexpr ( Symmetry::NON_ABELIAN )
 								{
-									factor_cgc = Symmetry::coeff_HPsi(Aket[s2].out[get<2>(ix[n])],qloc[s2],Aket[s2].in[get<2>(ix[n])],
-																	  get<0>(ix[n])[2],qOp[k],L.mid(qL),
-																	  Abra[s1].out[get<1>(ix[n])],qloc[s1],Abra[s1].in[get<1>(ix[n])]);
+									factor_cgc = Symmetry::coeff_HPsi(Aket[s2].out[get<2>(ix[n])], qloc[s2], Aket[s2].in[get<2>(ix[n])],
+																	  get<0>(ix[n])[2], qOp[k], L.mid(qL),
+																	  Abra[s1].out[get<1>(ix[n])], qloc[s1], Abra[s1].in[get<1>(ix[n])]);
 								}
 							else
 							{

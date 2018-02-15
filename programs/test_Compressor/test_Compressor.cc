@@ -34,6 +34,7 @@ Logger lout;
 #include "models/HeisenbergU1XXZ.h"
 #include "models/HeisenbergXYZ.h"
 #include "models/KondoU1xU1.h"
+#include "models/HubbardSU2xU1.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, int n=14)
@@ -87,36 +88,38 @@ int main (int argc, char* argv[])
 	lout << "not parallelized" << endl;
 	#endif
 	
-	//--------U(1)---------
-	lout << endl << "--------U(1)---------" << endl << endl;
+//	typedef VMPS::HeisenbergSU2 MODEL;
+//	typedef VMPS::HeisenbergU1 MODEL;
+	typedef VMPS::HubbardSU2xU1 MODEL;
 	
 	Stopwatch<> Watch_U1;
-	VMPS::HeisenbergSU2 H_U1(Lx,{{"J",J},{"D",D},{"Ly",Ly}});
+//	MODEL H_U1(Lx,{{"J",J},{"D",D},{"Ly",Ly}});
+	MODEL H_U1(Lx,{{"U",8.},{"Ly",Ly}});
 	lout << H_U1.info() << endl;
-	Eigenstate<VMPS::HeisenbergSU2::StateXd> g_U1;
+	Eigenstate<MODEL::StateXd> g_U1;
 	
-	VMPS::HeisenbergSU2::Solver DMRG_U1(DMRG::VERBOSITY::SILENT);
-	DMRG_U1.edgeState(H_U1, g_U1, {1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	MODEL::Solver DMRG_U1(DMRG::VERBOSITY::SILENT);
+	DMRG_U1.edgeState(H_U1, g_U1, {S,L}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	cout << g_U1.state.info() << endl;
 	
 	t_U1 = Watch_U1.time();
 	
-	VMPS::HeisenbergSU2::StateXd Psi = g_U1.state; Psi.setRandom();
+	MODEL::StateXd Psi = g_U1.state; Psi.setRandom();
 	Psi.canonize();
 	cout << "norm=" << Psi.squaredNorm() << endl;
-//	VMPS::HeisenbergSU2::StateXd OxPsi;
+//	MODEL::StateXd OxPsi;
 //	
 //	Psi.N_sv = 1e-15;
 //	OxV(H_U1.Scomp(SZ,L/2), Psi, OxPsi, DMRG::BROOM::SVD);
 	
 	// compressor
 	
-	VMPS::HeisenbergSU2::StateXd HxPsi;
+	MODEL::StateXd HxPsi;
 	HxV(H_U1, Psi, HxPsi, VERB);
 	
 	cout << setprecision(14) << avg(Psi, H_U1, Psi) << "\t" << dot(Psi,HxPsi) << endl << endl;
 	
-	VMPS::HeisenbergSU2::StateXd HxHxPsi;
+	MODEL::StateXd HxHxPsi;
 	HxV(H_U1, HxPsi, HxHxPsi, VERB);
 	
 	cout << setprecision(14) << avg(Psi, H_U1, H_U1, Psi) << "\t" << dot(Psi,HxHxPsi) << endl << endl;

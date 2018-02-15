@@ -487,7 +487,7 @@ varCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,
 	Heff.clear();
 	Heff.resize(N_sites);
 	Heff[0].L.setVacuum();
-	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin.Qtarget(), Vout.Qtarget(), Symmetry::qvacuum()});
+	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin.Qtarget(), Vout.Qtarget(), H.Qtarget()});
 	
 	Vout.N_sv = Dcutoff;
 	Mmax = Vout.calc_Mmax();
@@ -706,151 +706,14 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 	size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
 	size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
 	
-//	Heff[loc1].W = H.W[loc1];
-//	Heff[loc2].W = H.W[loc2];
-//	
-//	auto index = [&Vin,&loc2] (size_t s1, size_t s3) -> size_t
-//	{
-//		return s1*Vin.locBasis(loc2).size()+s3;
-//	};
-//	
-//	vector<Biped<Symmetry,MatrixType> > Apair;
-//	Apair.resize(Vin.locBasis(loc1).size()*Vin.locBasis(loc2).size());
-////	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
-////	{
-////		Apair[s1].resize(Vin.locBasis(loc2).size());
-////	}
-	
-//	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
-//	for (size_t s2=0; s2<Vin.locBasis(loc1).size(); ++s2)
-//	for (size_t k1=0; k1<H.opBasis(loc1).size(); ++k1)
-//	{
-//		if(Heff[loc1].W[s1][s2][k1].size() == 0) { continue; }
-//		for (size_t qL=0; qL<Heff[loc1].L.dim; ++qL)
-//		{
-//			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix12;
-//			bool FOUND_MATCH12 = AWA(Heff[loc1].L.in(qL), Heff[loc1].L.out(qL), Heff[loc1].L.mid(qL), s1, s2, Vin.locBasis(loc1),
-//			                         k1, H.opBasis(loc1), Vout.A[loc1], Vin.A[loc1], ix12);
-//			
-//			if (FOUND_MATCH12)
-//			{
-//				for(size_t n=0; n<ix12.size(); n++ )
-//				{
-//					qarray3<Symmetry::Nq> quple12 = get<0>(ix12[n]);
-//					swap(quple12[0], quple12[1]);
-//					size_t qA12 = get<2>(ix12[n]);
-//					for (size_t s3=0; s3<Vin.locBasis(loc2).size(); ++s3)
-//					for (size_t s4=0; s4<Vin.locBasis(loc2).size(); ++s4)
-//					for (size_t k2=0; k2<H.opBasis(loc2).size(); ++k2)
-//					{
-//						if (Heff[loc2].W[s3][s4][k2].size() == 0) {continue;}
-//						vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix34;
-//						bool FOUND_MATCH34 = AWA(quple12[0], quple12[1], quple12[2], s3, s4, Vin.locBasis(loc2),
-//						                         k2, H.opBasis(loc2), Vout.A[loc2], Vin.A[loc2], ix34);
-//						if (FOUND_MATCH34)
-//						{
-//							for(size_t m=0; m<ix34.size(); m++)
-//							{
-//								qarray3<Symmetry::Nq> quple34 = get<0>(ix34[m]);
-//								size_t qA34 = get<2>(ix34[m]);
-//								auto qR = Heff[loc2].R.dict.find(quple34);
-//								
-//								if (qR != Heff[loc2].R.dict.end())
-//								{
-//									if (Heff[loc1].L.mid(qL) + Vin.locBasis(loc1)[s1] - Vin.locBasis(loc1)[s2] == 
-//									    Heff[loc2].R.mid(qR->second) - Vin.locBasis(loc2)[s3] + Vin.locBasis(loc2)[s4])
-//									{
-//										for (int r12=0; r12<Heff[loc1].W[s1][s2][k1].outerSize(); ++r12)
-//										for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(Heff[loc1].W[s1][s2][k1],r12); iW12; ++iW12)
-//										for (int r34=0; r34<Heff[loc2].W[s3][s4][k2].outerSize(); ++r34)
-//										for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(Heff[loc2].W[s3][s4][k2],r34); iW34; ++iW34)
-//										{
-//											MatrixType Mtmp;
-//											MpoScalar Wfactor = iW12.value() * iW34.value();
-//											
-//											if (Heff[loc1].L.block[qL][iW12.row()][0].rows() != 0 and
-//												Heff[loc2].R.block[qR->second][iW34.col()][0].rows() !=0 and
-//												iW12.col() == iW34.row())
-//											{
-//												optimal_multiply(Wfactor, 
-//												                 Heff[loc1].L.block[qL][iW12.row()][0],
-//												                 Vin.A[loc1][s2].block[qA12],
-//												                 Vin.A[loc2][s4].block[qA34],
-//												                 Heff[loc2].R.block[qR->second][iW34.col()][0],
-//												                 Mtmp);
-//											}
-//											
-//											if (Mtmp.rows() != 0)
-//											{
-//												qarray2<Symmetry::Nq> qupleApair = {Heff[loc1].L.in(qL), Heff[loc2].R.out(qR->second)};
-//												auto qApair = Apair[index(s1,s3)].dict.find(qupleApair);
-//												
-//												if (qApair != Apair[index(s1,s3)].dict.end())
-//												{
-//													Apair[index(s1,s3)].block[qApair->second] += Mtmp;
-//												}
-//												else
-//												{
-//													Apair[index(s1,s3)].push_back(qupleApair, Mtmp);
-//												}
-//											}
-//										}
-//									}
-//								}
-//							}
-//						}
-//					}
-//				}
-//			}
-//		}
-//	}
-//
-//	Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
-	
-	
-	
-//	PivotVector2<Symmetry,Scalar> Apair;
-//	Apair.D1 = Vin.locBasis(min(loc1,loc2)).size();
-//	Apair.D3 = Vin.locBasis(max(loc1,loc2)).size();
-//	contract_AA(Vin.A[min(loc1,loc2)], Vin.locBasis(min(loc1,loc2)), 
-//	            Vin.A[max(loc1,loc2)], Vin.locBasis(max(loc1,loc2)), 
-//	            Apair.A);
-//	
-//	PivotMatrix2<Symmetry,Scalar,MpoScalar> Heff2;
-//	Heff2.L = Heff[min(loc1,loc2)].L;
-//	Heff2.R = Heff[max(loc1,loc2)].R;
-//	Heff2.W12 = H.W_at(min(loc1,loc2));
-//	Heff2.W34 = H.W_at(max(loc1,loc2));
-//	Heff2.qloc12 = H.locBasis(min(loc1,loc2));
-//	Heff2.qloc34 = H.locBasis(max(loc1,loc2));
-//	Heff2.qOp12 = H.opBasis(min(loc1,loc2));
-//	Heff2.qOp34 = H.opBasis(max(loc1,loc2));
-//	
-//	// reset dim
-//	Heff2.dim = 0;
-//	for (size_t s1=0; s1<H.locBasis(min(loc1,loc2)).size(); ++s1)
-//	for (size_t s3=0; s3<H.locBasis(max(loc1,loc2)).size(); ++s3)
-//	for (size_t q=0; q<Apair.A[Apair.index(s1,s3)].dim; ++q)
-//	{
-//		Heff2.dim += Apair.A[Apair.index(s1,s3)].block[q].rows() * Apair.A[Apair.index(s1,s3)].block[q].cols();
-//	}
-	
-	
 	PivotVector2<Symmetry,Scalar> Apair(Vin.A[loc1], Vin.locBasis(loc1), Vin.A[loc2], Vin.locBasis(loc2));
 	PivotMatrix2<Symmetry,Scalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
 	                                              H.W_at(loc1), H.W_at(loc2), 
 	                                              H.locBasis(loc1), H.locBasis(loc2), 
 	                                              H.opBasis(loc1), H.opBasis(loc2));
 	
-	cout << "loc1=" << loc1 << ", loc2=" << loc2 << endl;
 	HxV(Heff2, Apair);
-	cout << Apair.A[0].print(true) << endl;
-	cout << Apair.A[1].print(true) << endl;
-	cout << "sweepStep2" << endl;
 	Vout.sweepStep2(CURRENT_DIRECTION, loc1, Apair.A);
-	cout << Vout.A_at(N_sites-1)[0].print(true) << endl;
-	cout << Vout.validate() << endl;
-	cout << "sweepStep2 done" << endl;
 	
 	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_LW(loc2,Vout,H,Vin) : build_RW(loc1,Vout,H,Vin);
 	
@@ -861,17 +724,6 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 	
 	pivot = Vout.get_pivot();
 }
-
-//template<typename Symmetry, typename Scalar, typename MpoScalar>
-//template<typename MpOperator>
-//void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-//sweepStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
-//{
-////	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-////	(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(++pivot,Vout,H,Vin) : build_RW(--pivot,Vout,H,Vin);
-//	
-//	(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(pivot,Vout,H,Vin) : build_RW(pivot,Vout,H,Vin);
-//}
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>

@@ -223,7 +223,7 @@ int main (int argc, char* argv[])
 	
 	VMPS::Hubbard::StateXd Oxg_U0;
 	Oxg_U0.eps_svd = 1e-15;
-	OxV(H_U0,g_U0.state,Oxg_U0,DMRG::BROOM::SVD);
+	OxV(H_U0, g_U0.state, Oxg_U0, DMRG::BROOM::SVD);
 	double E_U0_zipper = g_U0.state.dot(Oxg_U0);
 	
 	//--------U(1)---------

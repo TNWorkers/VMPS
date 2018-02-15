@@ -1859,6 +1859,10 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 							
 							Scalar factor_cgc = Symmetry::coeff_Apair(Apair[s1s3].in[q13], qloc[loc][s1], outset[loc][qout], 
 							                                          qloc[loc+1][s3], Apair[s1s3].out[q13], qmerge);
+							if (DIR==DMRG::DIRECTION::LEFT)
+							{
+								factor_cgc *= sqrt(Symmetry::coeff_rightOrtho(Apair[s1s3].out[q13], outset[loc][qout]));
+							}
 							
 							cgcmap[make_tuple(s1,Apair[s1s3].in[q13],s3,Apair[s1s3].out[q13])].push_back(factor_cgc);
 							q13map[make_tuple(s1,Apair[s1s3].in[q13],s3,Apair[s1s3].out[q13])].push_back(q13);
@@ -2022,9 +2026,6 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				auto q = A[loc][s1].dict.find(quple);
 				if (q != A[loc][s1].dict.end())
 				{
-					Scalar factor_cgc3=1.;
-					// if(DIR==DMRG::DIRECTION::LEFT) {factor_cgc3=Symmetry::coeff_sign2(outset[loc][qout],get_ql[i],qloc[loc][get_s1[i]]);}
-					// if(DIR==DMRG::DIRECTION::LEFT) {factor_cgc3=Symmetry::coeff_sign2(get_ql[i],outset[loc][qout],qloc[loc][get_s1[i]]);}
 					A[loc][s1].block[q->second] = Aleft.block(istitch,0, Nrows,Nret);//*factor_cgc3;;
 				}
 				istitch += Nrows;
@@ -2041,22 +2042,8 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				auto q = A[loc+1][s3].dict.find(quple);
 				if (q != A[loc+1][s3].dict.end())
 				{
-					Scalar factor_cgc3=1.;
-					if(DIR==DMRG::DIRECTION::LEFT) {factor_cgc3=Symmetry::coeff_sign2(get_qr[i],outset[loc][qout],qloc[loc+1][get_s3[i]]);}
-					A[loc+1][s3].block[q->second] = Aright.block(0,jstitch, Nret,Ncols)*factor_cgc3;
-					if(abs(factor_cgc3 - 1.) > mynumeric_limits<Scalar>::epsilon())
-					{
-						for(size_t s1=0; s1<qloc[loc].size(); ++s1)
-						{
-							auto qls=Symmetry::reduceSilent(outset[loc][qout],Symmetry::flip(qloc[loc][s1]));
-							for(const auto &ql:qls)
-							{
-								qarray2<Nq> quple_loc = {ql,outset[loc][qout]};
-								auto it = A[loc][s1].dict.find(quple_loc);
-								if (it != A[loc][s1].dict.end()) { A[loc][s1].block[it->second] = A[loc][s1].block[it->second]/factor_cgc3; }
-							}
-						}
-					}
+					Scalar factor_cgc3 = (DIR==DMRG::DIRECTION::LEFT)? sqrt(Symmetry::coeff_rightOrtho(outset[loc][qout], get_qr[i])):1.;
+					A[loc+1][s3].block[q->second] = Aright.block(0,jstitch, Nret,Ncols) * factor_cgc3;
 				}
 				jstitch += Ncols;
 			}

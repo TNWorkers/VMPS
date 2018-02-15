@@ -72,6 +72,7 @@ public:
 	inline static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
 	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3);
 	inline static Scalar coeff_sign(const qType& q1, const qType& q2, const qType& q3);
+	inline static Scalar coeff_sign2(const qType& q1, const qType& q2, const qType& q3) {return 1.;};
 	inline static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
 
 	inline static Scalar coeff_6j(const qType& q1, const qType& q2, const qType& q3,
