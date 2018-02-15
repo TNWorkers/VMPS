@@ -2026,7 +2026,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				auto q = A[loc][s1].dict.find(quple);
 				if (q != A[loc][s1].dict.end())
 				{
-					A[loc][s1].block[q->second] = Aleft.block(istitch,0, Nrows,Nret);//*factor_cgc3;;
+					A[loc][s1].block[q->second] = Aleft.block(istitch,0, Nrows,Nret);
 				}
 				istitch += Nrows;
 			}
