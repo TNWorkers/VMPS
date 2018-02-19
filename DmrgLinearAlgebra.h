@@ -82,7 +82,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			Bnext.clear();
 		}
 	}
-
+	
 	if (B.dim == 1)
 	{
 		return B.block[0][0][0].trace();
@@ -166,7 +166,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
             const Mpo<Symmetry,MpoScalar> &O1,
             const Mpo<Symmetry,MpoScalar> &O2, 
             const Mps<Symmetry,Scalar> &Vket,
-			typename Symmetry::qType Qtarget = Symmetry::qvacuum())
+            typename Symmetry::qType Qtarget = Symmetry::qvacuum())
 {
 	if constexpr (Symmetry::NON_ABELIAN )
 	{
@@ -177,7 +177,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		for (size_t l=O1.length()-1; l!=-1; --l)
 		{
 			contract_R(B, Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), O1.locBasis(l), O1.opBasis(l), O2.opBasis(l),
-					   O1.auxBasis(l+1), O2.auxBasis(l+1), O1.auxBasis(l), O2.auxBasis(l), Bnext);
+			           O1.auxBasis(l+1), O2.auxBasis(l+1), O1.auxBasis(l), O2.auxBasis(l), Bnext);
 			B.clear();
 			B = Bnext;
 			Bnext.clear();
@@ -236,7 +236,6 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
  * \param Vin : input \f$\left|\Psi_{in}\right>\f$
  * \param Vout : output \f$\left|\Psi_{out}\right>\f$
  * \param VERBOSITY : verbosity level
- * \warning : Not implemented for SU(2) symmetries.
  */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 

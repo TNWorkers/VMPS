@@ -150,7 +150,14 @@ PivotVector1<Symmetry,Scalar> operator- (const PivotVector1<Symmetry,Scalar> &V1
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVector1<Symmetry,Scalar> &Vin, PivotVector1<Symmetry,Scalar> &Vout)
 {
+//	Vout.outerResize(Vin);
 	Vout = Vin;
+	OxV(H,Vin,Vout);
+}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void OxV (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVector1<Symmetry,Scalar> &Vin, PivotVector1<Symmetry,Scalar> &Vout)
+{
 	for (size_t s=0; s<Vout.A.size(); ++s) {Vout.A[s].setZero();}
 	
 	#ifndef DMRG_DONT_USE_OPENMP
@@ -161,13 +168,12 @@ void HxV (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVector1<Sy
 		size_t s1 = H.qlhs[q][0];
 		size_t q1 = H.qlhs[q][1];
 		for (size_t p=0; p<H.qrhs[q].size(); ++p)
-		// for (auto irhs=H.qrhs[q].begin(); irhs!=H.qrhs[q].end(); ++irhs)
 		{
 			size_t s2 = H.qrhs[q][p][0];
 			size_t q2 = H.qrhs[q][p][1];
 			size_t qL = H.qrhs[q][p][2];
 			size_t qR = H.qrhs[q][p][3];
-			size_t k = H.qrhs[q][p][4];
+			size_t k  = H.qrhs[q][p][4];
 			for (int r=0; r<H.W[s1][s2][k].outerSize(); ++r)
 			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(H.W[s1][s2][k],r); iW; ++iW)
 			{
@@ -195,6 +201,7 @@ void HxV (const PivotMatrix<Symmetry,Scalar,MpoScalar> &H, const PivotVector1<Sy
 	}
 	
 	// project out unwanted states (e.g. to get lower spectrum)
+	// warning: not implemented for SU(2)!
 	for (size_t n=0; n<H.A0.size(); ++n)
 	{
 		Scalar overlap = 0;

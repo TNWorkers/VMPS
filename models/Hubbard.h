@@ -47,7 +47,7 @@ const std::map<string,std::any> Hubbard::defaults =
 
 Hubbard::
 Hubbard (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<0>({}), ""),
+:Mpo<Symmetry> (L, qarray<0>({}), "", true),
  HubbardObservables(L,params,Hubbard::defaults)
 {
 	ParamHandler P(params,Hubbard::defaults);

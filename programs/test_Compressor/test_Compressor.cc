@@ -48,7 +48,7 @@ bool CALC_DYNAMICS;
 int M, S;
 size_t D;
 size_t L, Lx, Ly;
-double J, Jprime;
+double J, Jprime, tPrime;
 double alpha;
 double t_U0, t_U1, t_SU2;
 int Dinit, Dlimit, Imin, Imax;
@@ -62,7 +62,7 @@ int main (int argc, char* argv[])
 	Lx = args.get<size_t>("Lx",10); L=Lx;
 	Ly = args.get<size_t>("Ly",1);
 	J = args.get<double>("J",-1.);
-	Jprime = args.get<double>("Jprime",0.);
+	tPrime = args.get<double>("tPrime",0.);
 	M = args.get<int>("M",0);
 	D = args.get<size_t>("D",2);
 	S = abs(M)+1;
@@ -94,7 +94,7 @@ int main (int argc, char* argv[])
 	
 	Stopwatch<> Watch_U1;
 //	MODEL H_U1(Lx,{{"J",J},{"D",D},{"Ly",Ly}});
-	MODEL H_U1(Lx,{{"U",8.},{"Ly",Ly}});
+	MODEL H_U1(Lx,{{"U",8.},{"Ly",Ly},{"tPrime",tPrime}});
 	lout << H_U1.info() << endl;
 	Eigenstate<MODEL::StateXd> g_U1;
 	

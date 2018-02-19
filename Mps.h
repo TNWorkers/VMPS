@@ -79,7 +79,7 @@ public:
 	*/
 	Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
 	     const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
-
+	
 	///\{
 	/**
 	 * Sets all matrices to random using boost's uniform distribution from -1 to 1.
@@ -391,8 +391,8 @@ private:
 	
 	/**local basis.*/
 	vector<vector<qarray<Nq> > > qloc;
-
-	qarray<Nq> Qtot;
+	
+	qarray<Nq> Qtot = Symmetry::qvacuum();
 	
 	vector<vector<Biped<Symmetry,MatrixType> > > A; // access: A[l][s].block[q]
 	ArrayXd truncWeight;
@@ -1904,7 +1904,6 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 								{
 									size_t q13 = q13map[make_tuple(s1,ql,s3,qr)][i];
 									size_t s1s3 = s1s3map[make_tuple(s1,ql,s3,qr)][i];
-									// if (cgcmap[make_tuple(s1,ql,s3,qr)][i] < mynumeric_limits<Scalar>::epsilon()) {continue;}
 									
 									if (Mtmp.size() == 0)
 									{

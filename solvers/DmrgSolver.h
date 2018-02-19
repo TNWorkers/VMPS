@@ -566,14 +566,6 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LA
 		Heff[stat.pivot].qloc = H.locBasis(stat.pivot);
 	}
 	
-//	// reset dim
-//	Heff[stat.pivot].dim = 0;
-//	for (size_t s=0; s<H.locBasis(stat.pivot).size(); ++s)
-//	for (size_t q=0; q<Vout.state.A[stat.pivot][s].dim; ++q)
-//	{
-//		Heff[stat.pivot].dim += Vout.state.A[stat.pivot][s].block[q].rows() * Vout.state.A[stat.pivot][s].block[q].cols();
-//	}
-	
 	Eigenstate<PivotVector1<Symmetry,Scalar> > g;
 	g.state = PivotVector1<Symmetry,Scalar>(Vout.state.A[stat.pivot]);
 	LanczosSolver<PivotMatrix<Symmetry,Scalar,Scalar>,PivotVector1<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);

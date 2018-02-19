@@ -69,6 +69,10 @@ double tol_eigval, tol_state;
 double dt;
 DMRG::VERBOSITY::OPTION VERB;
 
+double E_U0_compressor=0., E_U0_zipper=0.;
+MatrixXd SpinCorr_U0;
+Eigenstate<VMPS::Heisenberg::StateXd> g_U0;
+
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
@@ -102,35 +106,34 @@ int main (int argc, char* argv[])
 	#endif
 	
 	//--------U(0)---------
-	lout << endl << "--------U(0)---------" << endl << endl;
-	
-	Stopwatch<> Watch_U0;
-	VMPS::Heisenberg H_U0(Lx,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
-	lout << H_U0.info() << endl;
-	Eigenstate<VMPS::Heisenberg::StateXd> g_U0;
-	
-	VMPS::Heisenberg::Solver DMRG_U0(VERB);
-	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 1e2*tol_eigval,1e2*tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
-	
-	t_U0 = Watch_U0.time();
-	
-	// observables
-	
-	MatrixXd SpinCorr_U0(L,L); SpinCorr_U0.setZero();
-	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U0(i,j) = 3.*avg(g_U0.state, H_U0.SzSz(i,j), g_U0.state); }
-	
-	// compressor
-	
-	VMPS::Heisenberg::StateXd Hxg_U0;
-	HxV(H_U0,g_U0.state,Hxg_U0,VERB);
-	double E_U0_compressor = g_U0.state.dot(Hxg_U0);
-	
-	// zipper
-	
-	VMPS::Heisenberg::StateXd Oxg_U0;
-	Oxg_U0.eps_svd = 1e-15;
-	OxV(H_U0,g_U0.state,Oxg_U0,DMRG::BROOM::SVD);
-	double E_U0_zipper = g_U0.state.dot(Oxg_U0);
+//	lout << endl << "--------U(0)---------" << endl << endl;
+//	
+//	Stopwatch<> Watch_U0;
+//	VMPS::Heisenberg H_U0(Lx,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
+//	lout << H_U0.info() << endl;
+//	
+//	VMPS::Heisenberg::Solver DMRG_U0(VERB);
+//	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 1e3*tol_eigval,1e3*tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
+//	
+//	t_U0 = Watch_U0.time();
+//	
+//	// observables
+//	
+//	SpinCorr_U0.resize(L,L); SpinCorr_U0.setZero();
+//	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U0(i,j) = 3.*avg(g_U0.state, H_U0.SzSz(i,j), g_U0.state); }
+//	
+//	// compressor
+//	
+//	VMPS::Heisenberg::StateXd Hxg_U0;
+//	HxV(H_U0,g_U0.state,Hxg_U0,VERB);
+//	E_U0_compressor = g_U0.state.dot(Hxg_U0);
+//	
+//	// zipper
+//	
+//	VMPS::Heisenberg::StateXd Oxg_U0;
+//	Oxg_U0.eps_svd = 1e-15;
+//	OxV(H_U0,g_U0.state,Oxg_U0,DMRG::BROOM::SVD);
+//	E_U0_zipper = g_U0.state.dot(Oxg_U0);
 	
 	//--------U(1)---------
 	lout << endl << "--------U(1)---------" << endl << endl;
@@ -277,19 +280,19 @@ int main (int argc, char* argv[])
 	T.add("1");
 	T.endOfRow();
 	
-	// observables
-	T.add("observables");
-	T.add(to_string_prec(SpinCorr_U0.sum()));
-	T.add(to_string_prec(SpinCorr_U1.sum()));
-	T.add(to_string_prec(SpinCorr_SU2.sum()));
-	T.endOfRow();
-	
-	// observables error
-	T.add("observables diff");
-	T.add(to_string_prec((SpinCorr_U0-SpinCorr_SU2).lpNorm<1>()/Vsq));
-	T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2).lpNorm<1>()/Vsq));
-	T.add("0");
-	T.endOfRow();
+//	// observables
+//	T.add("observables");
+//	T.add(to_string_prec(SpinCorr_U0.sum()));
+//	T.add(to_string_prec(SpinCorr_U1.sum()));
+//	T.add(to_string_prec(SpinCorr_SU2.sum()));
+//	T.endOfRow();
+//	
+//	// observables error
+//	T.add("observables diff");
+//	T.add(to_string_prec((SpinCorr_U0-SpinCorr_SU2).lpNorm<1>()/Vsq));
+//	T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2).lpNorm<1>()/Vsq));
+//	T.add("0");
+//	T.endOfRow();
 	
 	// bond dimensions
 	T.add("Dmax");

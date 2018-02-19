@@ -80,7 +80,8 @@ const map<string,any> KondoU1xU1::defaults =
 
 KondoU1xU1::
 KondoU1xU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0,0}),  ""), KondoObservables(L,params,defaults)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0,0}),  "", true),
+ KondoObservables(L,params,defaults)
 {
 	ParamHandler P(params,defaults);
 	

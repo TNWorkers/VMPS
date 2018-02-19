@@ -75,7 +75,7 @@ public:
 	 * \param label_input : how to label the Mpo itself in outputs
 	 * \param UNITARY_input : if the Mpo is known to be unitary, this can be further exploited
 	 */
-	Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input="Mpo", bool UNITARY_input=false);
+	Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false);
 	
 	//---set whole Mpo for special cases, modify---
 	
@@ -210,8 +210,11 @@ public:
 	/**Sets the full operator basis of the squared Mpo.*/
 	inline void setOpBasisSq (const vector<vector<qType> > &qOpSq_in) {qOpSq=qOpSq_in;}
 	
-	/**Checks whether the Mpo is a unitary operator.*/
+	/**Checks whether the MPO is a unitary operator.*/
 	inline bool IS_UNITARY() const {return UNITARY;};
+	
+	/**Checks whether the MPO is a Hermitian operator.*/
+	inline bool IS_HERMITIAN() const {return HERMITIAN;};
 	
 	/**Checks if the square of the Mpo was calculated and stored.*/
 	inline bool check_SQUARE() const {return GOT_SQUARE;}
@@ -264,6 +267,7 @@ protected:
 	qarray<Nq> Qtot;
 	
 	bool UNITARY    = false;
+	bool HERMITIAN  = false;
 	bool GOT_SQUARE = false;
 	
 	size_t N_sites;
@@ -332,9 +336,8 @@ Mpo (size_t L_input)
 
 template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar>::
-Mpo (size_t L_input, qarray<Nq> Qtot_input, 
-	 string label_input, bool UNITARY_input)
-:N_sites(L_input), Qtot(Qtot_input), label(label_input), UNITARY(UNITARY_input)
+Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input, bool HERMITIAN_input, bool UNITARY_input)
+:N_sites(L_input), Qtot(Qtot_input), label(label_input), HERMITIAN(HERMITIAN_input), UNITARY(UNITARY_input)
 {
 	initialize();
 }

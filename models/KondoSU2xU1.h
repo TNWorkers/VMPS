@@ -109,7 +109,7 @@ const std::map<string,std::any> KondoSU2xU1::defaults =
 
 KondoSU2xU1::
 KondoSU2xU1 (const size_t &L, const vector<Param> &params)
-	:Mpo<Symmetry> (L, Symmetry::qvacuum(), "")
+	:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", true)
 {
 	ParamHandler P(params,defaults);
 	

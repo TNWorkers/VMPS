@@ -85,7 +85,7 @@ protected:
 
 HeisenbergSU2::
 HeisenbergSU2 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "")
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "", true)
 {
 	ParamHandler P(params,defaults);
 	
@@ -157,13 +157,15 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 	
 	if (locx1 == locx2)
 	{
-		auto product = std::sqrt(3.)*Operator::prod(B[locx1].Sdag(locy1),B[locx2].S(locy2),Symmetry::qvacuum());
+//		auto product = std::sqrt(3.)*Operator::prod(B[locx1].Sdag(locy1),B[locx2].S(locy2),Symmetry::qvacuum());
+		auto product = Operator::prod(B[locx1].Sdag(locy1),B[locx2].S(locy2),Symmetry::qvacuum());
 		Mout.setLocal(locx1,product.plain<double>());
 		return Mout;
 	}
 	else
 	{
-		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.)*B[locx1].Sdag(locy1)).plain<double>(), B[locx2].S(locy2).plain<double>()});
+//		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.)*B[locx1].Sdag(locy1)).plain<double>(), B[locx2].S(locy2).plain<double>()});
+		Mout.setLocal({locx1, locx2}, {(B[locx1].Sdag(locy1)).plain<double>(), B[locx2].S(locy2).plain<double>()});
 		return Mout;
 	}
 }
@@ -183,17 +185,17 @@ set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry> Terms;
 	Terms.name = "Heisenberg";
-
-	frac S = frac(B.get_D()-1,2);	
+	
+	frac S = frac(B.get_D()-1,2);
 	stringstream Slabel;
 	Slabel << "S=" << print_frac_nice(S);
 	Terms.info.push_back(Slabel.str());
-
+	
 	// J-terms
-
+	
 	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",B.orbitals(),loc);
 	Terms.info.push_back(Jlabel);
-
+	
 	for (int i=0; i<B.orbitals(); ++i)
 	for (int j=0; j<B.orbitals(); ++j)
 	{
@@ -218,7 +220,7 @@ set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc)
 	}
 	
 	// local terms
-
+	
 	param0d Jperp = P.fill_array0d<double>("J","Jperp",loc);
 	if(!Jperp.label.empty()) {Terms.info.push_back(Jperp.label);}
 	if (B.orbitals() > 1)

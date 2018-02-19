@@ -80,7 +80,7 @@ public:
 		- DMRG::COMPRESSION::RHS_SVD : perform the multiplication using OxV, cutting the result according to the subspaces of \p Vin
 	*/
 	template<typename MpOperator>
-	void varCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
+	void varCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, qarray<Symmetry::Nq> Qtot_input, 
 	                  size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1, 
 	                  DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RANDOM);
 	
@@ -449,7 +449,7 @@ build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-varCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps, DMRG::COMPRESSION::INIT START)
+varCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, qarray<Symmetry::Nq> Qtot, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps, DMRG::COMPRESSION::INIT START)
 {
 	N_sites = Vin.length();
 	Stopwatch<> Chronos;
@@ -458,30 +458,33 @@ varCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,
 	Dcutoff = Dcutoff_new = Dcutoff_input;
 	bool RANDOMIZE = false;
 	
-	if (START == DMRG::COMPRESSION::RHS)
-	{
-		Vout = Vin;
-	}
-	else if (START == DMRG::COMPRESSION::RANDOM)
-	{
-		Vout = Vin;
-		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
-		if (START == DMRG::COMPRESSION::RANDOM)
-		{
-			RANDOMIZE = true;
-		}
-	}
-	else if (START == DMRG::COMPRESSION::RHS_SVD)
-	{
-		OxV(H,Vin,Vout,DMRG::BROOM::QR);
-	}
-	else if (START == DMRG::COMPRESSION::BRUTAL_SVD)
-	{
-		size_t tmp = Vout.N_sv;
-		Vout.N_sv = Dcutoff;
-		OxV(H,Vin,Vout,DMRG::BROOM::BRUTAL_SVD);
-		Vout.N_sv = tmp;
-	}
+//	if (START == DMRG::COMPRESSION::RHS)
+//	{
+//		Vout = Vin;
+//	}
+//	else if (START == DMRG::COMPRESSION::RANDOM)
+//	{
+//		Vout = Vin;
+//		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
+//		if (START == DMRG::COMPRESSION::RANDOM)
+//		{
+//			RANDOMIZE = true;
+//		}
+//	}
+//	else if (START == DMRG::COMPRESSION::RHS_SVD)
+//	{
+//		OxV(H,Vin,Vout,DMRG::BROOM::QR);
+//	}
+//	else if (START == DMRG::COMPRESSION::BRUTAL_SVD)
+//	{
+//		size_t tmp = Vout.N_sv;
+//		Vout.N_sv = Dcutoff;
+//		OxV(H,Vin,Vout,DMRG::BROOM::BRUTAL_SVD);
+//		Vout.N_sv = tmp;
+//	}
+	
+	Vout = Mps<Symmetry,Scalar>(H, Dcutoff, Qtot);
+	RANDOMIZE = true;
 	
 	// prepare edges of LW & RW
 	Heff.clear();
@@ -506,7 +509,16 @@ varCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,
 			}
 			else
 			{
-				sqnormVin = (H.check_SQUARE()==true)? isReal(avg(Vin,H,Vin,true)) : isReal(avg(Vin,H,H,Vin));
+				if (H.IS_HERMITIAN())
+				{
+					sqnormVin = (H.check_SQUARE()==true)? isReal(avg(Vin,H,Vin,true)) : isReal(avg(Vin,Hdag,H,Vin));
+				}
+				else
+				{
+					sqnormVin = isReal(avg(Vin,Hdag,H,Vin));
+					cout << "sqnormVin=" << sqnormVin << endl;
+				}
+				
 			}
 		}
 		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
@@ -564,6 +576,7 @@ varCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,
 		++N_halfsweeps;
 		
 		sqdist = abs(sqnormVin-Vout.squaredNorm());
+		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		assert(!std::isnan(sqdist));
 		
 		if (CHOSEN_VERBOSITY>=2)
@@ -651,10 +664,16 @@ optimizationStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symm
 	}
 	
 	// faster alternative:
-	PivotVector1<Symmetry,Scalar> Vtmp;
-	Vtmp.A = Vin.A[pivot];
-	HxV(Heff[pivot],Vtmp);
-	Vout.A[pivot] = Vtmp.A;
+//	PivotVector1<Symmetry,Scalar> Vtmp;
+//	Vtmp.A = Vin.A[pivot];
+//	HxV(Heff[pivot],Vtmp);
+//	Vout.A[pivot] = Vtmp.A;
+	
+	PivotVector1<Symmetry,Scalar> Ain(Vin.A[pivot]);
+	PivotVector1<Symmetry,Scalar> Aout(Vout.A[pivot]);
+	OxV(Heff[pivot], Ain, Aout);
+	Vout.A[pivot] = Aout.A;
+	
 	
 //	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 //	#pragma omp parallel for
@@ -706,14 +725,16 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 	size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
 	size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
 	
-	PivotVector2<Symmetry,Scalar> Apair(Vin.A[loc1], Vin.locBasis(loc1), Vin.A[loc2], Vin.locBasis(loc2));
+	PivotVector2<Symmetry,Scalar> AAin(Vin.A[loc1], Vin.locBasis(loc1), Vin.A[loc2], Vin.locBasis(loc2));
 	PivotMatrix2<Symmetry,Scalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
 	                                              H.W_at(loc1), H.W_at(loc2), 
 	                                              H.locBasis(loc1), H.locBasis(loc2), 
-	                                              H.opBasis(loc1), H.opBasis(loc2));
+	                                              H.opBasis (loc1), H.opBasis (loc2));
 	
-	HxV(Heff2, Apair);
-	Vout.sweepStep2(CURRENT_DIRECTION, loc1, Apair.A);
+	PivotVector2<Symmetry,Scalar> AAout(Vout.A[loc1], Vout.locBasis(loc1), Vout.A[loc2], Vout.locBasis(loc2));
+	
+	OxV(Heff2, AAin, AAout);
+	Vout.sweepStep2(CURRENT_DIRECTION, loc1, AAout.A);
 	
 	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_LW(loc2,Vout,H,Vin) : build_RW(loc1,Vout,H,Vin);
 	

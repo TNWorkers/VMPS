@@ -42,7 +42,7 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 						Scalar factor_cgc = Symmetry::coeff_Apair(A1[s1].in[q1], qloc1[s1], A1[s1].out[q1], 
 						                                          qloc2[s2], A2[s2].out[q2->second], qmerge);
 						
-						if (abs(factor_cgc) > mynumeric_limits<Scalar>::epsilon())
+						if (abs(factor_cgc) > abs(mynumeric_limits<Scalar>::epsilon()))
 						{
 							Matrix<Scalar,Dynamic,Dynamic> Mtmp = factor_cgc * A1[s1].block[q1] * A2[s2].block[q2->second];
 							
@@ -154,8 +154,10 @@ struct PivotVector2
 			A[i].in = Vrhs.A[i].in;
 			A[i].out = Vrhs.A[i].out;
 			A[i].dict = Vrhs.A[i].dict;
-			A[i].block.resize(Vrhs.A[i].block.size());
 			A[i].dim = Vrhs.A[i].dim;
+//			A[i].block.resize(Vrhs.A[i].block.size());
+			A[i].block = Vrhs.A[i].block;
+			A[i].setZero();
 		}
 	}
 	
@@ -289,8 +291,18 @@ PivotVector2<Symmetry,Scalar> operator- (const PivotVector2<Symmetry,Scalar> &V1
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector2<Symmetry,Scalar> &Vin, PivotVector2<Symmetry,Scalar> &Vout)
 {
-	auto tensor_basis = Symmetry::tensorProd(H.qloc12, H.qloc34);
 	Vout.outerResize(Vin); // set block structure of Vout as in Vin
+	OxV(H,Vin,Vout);
+}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector2<Symmetry,Scalar> &Vin, PivotVector2<Symmetry,Scalar> &Vout)
+{
+	auto tensor_basis = Symmetry::tensorProd(H.qloc12, H.qloc34);
+	for (size_t i=0; i<Vout.A.size(); ++i)
+	{
+		Vout.A[i].setZero();
+	}
 	
 	for (size_t s1=0; s1<H.qloc12.size(); ++s1)
 	for (size_t s2=0; s2<H.qloc12.size(); ++s2)
@@ -324,7 +336,7 @@ void HxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector2<S
 					Scalar factor_cgc9 = Symmetry::coeff_buildR(H.qloc12[s2], H.qloc34[s4], qmerge24,
 					                                            H.qOp12[k12], H.qOp34[k34], qOp,
 					                                            H.qloc12[s1], H.qloc34[s3], qmerge13);
-					if (abs(factor_cgc9) < mynumeric_limits<Scalar>::epsilon()) {continue;}
+					if (abs(factor_cgc9) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 					
 					for (size_t qL=0; qL<H.L.dim; ++qL)
 					{
@@ -346,7 +358,7 @@ void HxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector2<S
 								// multiplication of Op12, Op34 in the auxiliary space
 								Scalar factor_cgc6 = Symmetry::coeff_Apair(H.L.mid(qL), H.qOp12[k12], qW,
 								                                           H.qOp34[k34], get<0>(ix)[2], qOp);
-								if (abs(factor_cgc6) < mynumeric_limits<Scalar>::epsilon()) {continue;}
+								if (abs(factor_cgc6) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 								
 								if (qR != H.R.dict.end())
 								{
@@ -361,7 +373,7 @@ void HxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector2<S
 									for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H.W34[s3][s4][k34],r34); iW34; ++iW34)
 									{
 										Matrix<Scalar,Dynamic,Dynamic> Mtmp;
-										MpoScalar Wfactor = iW12.value() * iW34.value() * factor_cgc6 * factor_cgc9 * factor_cgcHPsi;
+										auto Wfactor = iW12.value() * iW34.value() * factor_cgc6 * factor_cgc9 * factor_cgcHPsi;
 										
 										if (H.L.block[qL][iW12.row()][0].size() != 0 and
 										    H.R.block[qR->second][iW34.col()][0].size() !=0 and
@@ -376,7 +388,8 @@ void HxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector2<S
 										
 										if (Mtmp.size() != 0)
 										{
-											if (Vout.A[s1s3].block[qA13].size() != 0)
+											if (Vout.A[s1s3].block[qA13].rows() == Mtmp.rows() and
+											    Vout.A[s1s3].block[qA13].cols() == Mtmp.cols())
 											{
 												Vout.A[s1s3].block[qA13] += Mtmp;
 											}

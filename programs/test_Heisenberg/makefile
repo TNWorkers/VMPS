@@ -49,7 +49,7 @@ LIBS=$(GSL)/lib/libgsl.a $(GSL)/lib/libgslcblas.a $(FFTW)/lib/libfftw3.a $(LAPAC
 #-llapack
 #-lfftw3
 #$(EINSPLINE)/lib/libeinspline.a 
-OPTIMIZATION=-O0
+OPTIMIZATION=-O3
 DEBUG=
 EXEC=$(BUILD).out # append .out to BUILD
 CLEXEC=$(BUILD)_cl.out # append .out to BUILD
