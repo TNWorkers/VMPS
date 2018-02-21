@@ -10,13 +10,12 @@
 typedef Eigen::SparseMatrix<double,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXd;
 using namespace Eigen;
 
-//#include "symmetry/U0.h"
 #include "SuperMatrix.h"
 #include "symmetry/qarray.h"
 #include "symmetry/qbasis.h"
 #include "symmetry/functions.h"
 #include "tensors/Biped.h"
-#include "pivot/DmrgPivotStuff1.h"
+#include "pivot/DmrgPivotMatrix1.h"
 #include <unsupported/Eigen/KroneckerProduct>
 #include "DmrgJanitor.h"
 #include "DmrgExternal.h"
@@ -243,8 +242,8 @@ public:
 //	void SVDcompress (bool USE_SQUARE=false, double eps_svd=1e-7, size_t N_halfsweeps=2);
 //	string test_ortho() const;
 //	void init_compression();
-//	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix<Nq,Scalar> *H=NULL);
-//	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix<Nq,Scalar> *H=NULL);
+//	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Nq,Scalar> *H=NULL);
+//	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Nq,Scalar> *H=NULL);
 //	void flatten_to_Mps (Mps<0,Scalar> &V);
 //	vector<vector<vector<MatrixType> > > A;
 	
@@ -706,7 +705,7 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		N_matrices += pow(qloc[l].size(),2);
+		N_matrices += pow(qloc[l].size(),2) * qOp[l].size();
 		
 		for (size_t s1=0; s1<qloc[l].size(); ++s1)
 		for (size_t s2=0; s2<qloc[l].size(); ++s2)
@@ -1413,7 +1412,7 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 
 //template<typename Symmetry, typename Scalar>
 //void Mpo<Symmetry,Scalar>::
-//rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix<Nq,Scalar> *H)
+//rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Nq,Scalar> *H)
 //{
 //	size_t Nrows = A[loc][0][0].rows();
 //	size_t Ncols = A[loc][0][0].cols();
@@ -1463,7 +1462,7 @@ H2site (size_t loc1, size_t loc2, bool HALF_THE_LOCAL_TERM) const
 
 //template<typename Symmetry, typename Scalar>
 //void Mpo<Symmetry,Scalar>::
-//leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix<Nq,Scalar> *H)
+//leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Nq,Scalar> *H)
 //{
 //	size_t Nrows = A[loc][0][0].rows();
 //	size_t Ncols = A[loc][0][0].cols();

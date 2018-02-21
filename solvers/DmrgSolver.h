@@ -3,7 +3,7 @@
 
 #include "Mpo.h"
 #include "Mps.h"
-#include "pivot/DmrgPivotStuff1.h"
+#include "pivot/DmrgPivotMatrix1.h"
 #include "tensors/DmrgContractions.h"
 #include "DmrgLinearAlgebra.h" // for avg()
 #include "LanczosSolver.h" // from HELPERS
@@ -80,7 +80,7 @@ private:
 	size_t Dmax_old;
 	double err_eigval, err_state, err_state_before_end_of_noise;
 	
-	vector<PivotMatrix<Symmetry,Scalar,Scalar> > Heff; // Scalar = MpoScalar for ground state
+	vector<PivotMatrix1<Symmetry,Scalar,Scalar> > Heff; // Scalar = MpoScalar for ground state
 	
 	double Eold;
 
@@ -501,7 +501,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 					Vout.state.alpha_rsvd = 0.;
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 					{
-						lout << "Set α_rsvd=0." << endl;						
+						lout << "Set α_rsvd=0." << endl;
 					}
 				}
 			}
@@ -547,7 +547,6 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 sweepStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout)
 {
-//	Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::RDM, &Heff[stat.pivot]); // obsolete
 	Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::RICH_SVD, &Heff[stat.pivot]);
 	(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++stat.pivot) : build_R(H,Vout,--stat.pivot);
 	(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,stat.pivot)  : build_PR(H,Vout,stat.pivot);
@@ -566,9 +565,9 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LA
 		Heff[stat.pivot].qloc = H.locBasis(stat.pivot);
 	}
 	
-	Eigenstate<PivotVector1<Symmetry,Scalar> > g;
-	g.state = PivotVector1<Symmetry,Scalar>(Vout.state.A[stat.pivot]);
-	LanczosSolver<PivotMatrix<Symmetry,Scalar,Scalar>,PivotVector1<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
+	Eigenstate<PivotVector<Symmetry,Scalar> > g;
+	g.state = PivotVector<Symmetry,Scalar>(Vout.state.A[stat.pivot]);
+	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
 	
 	Lutz.set_dimK(min(30ul,dim(g.state)));
 	Lutz.edgeState(Heff[stat.pivot],g, EDGE, 1e-7,1e-4, false);
@@ -580,7 +579,7 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LA
 	}
 	
 	Vout.energy = g.energy;
-	Vout.state.A[stat.pivot] = g.state.A;
+	Vout.state.A[stat.pivot] = g.state.data;
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>

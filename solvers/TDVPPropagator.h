@@ -3,8 +3,8 @@
 
 #include "tensors/DmrgContractions.h"
 #include "LanczosPropagator.h" // from HELPERS
-#include "pivot/DmrgPivotStuff0.h"
-#include "pivot/DmrgPivotStuff2.h"
+#include "pivot/DmrgPivotMatrix0.h"
+#include "pivot/DmrgPivotMatrix2.h"
 #include "Stopwatch.h" // from HELPERS
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>
@@ -26,7 +26,7 @@ public:
 	
 private:
 	
-	vector<PivotMatrix<Symmetry,TimeScalar,MpoScalar> >  Heff;
+	vector<PivotMatrix1<Symmetry,TimeScalar,MpoScalar> >  Heff;
 	
 	double x (int alg, size_t l, int N_stages);
 	
@@ -191,19 +191,19 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
 		size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
 		
-		PivotVector2<Symmetry,TimeScalar> Apair(Vinout.A[loc1], Vinout.locBasis(loc1), Vinout.A[loc2], Vinout.locBasis(loc2));
+		PivotVector<Symmetry,TimeScalar> Apair(Vinout.A[loc1], Vinout.locBasis(loc1), Vinout.A[loc2], Vinout.locBasis(loc2));
 		PivotMatrix2<Symmetry,TimeScalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
 			                                              H.W_at(loc1), H.W_at(loc2), 
 			                                              H.locBasis(loc1), H.locBasis(loc2), 
 			                                              H.opBasis(loc1), H.opBasis(loc2));
 		
-		LanczosPropagator<PivotMatrix2<Symmetry,TimeScalar,MpoScalar>,PivotVector2<Symmetry,TimeScalar> > Lutz2(tol_Lanczos);
+		LanczosPropagator<PivotMatrix2<Symmetry,TimeScalar,MpoScalar>,PivotVector<Symmetry,TimeScalar> > Lutz2(tol_Lanczos);
 		Lutz2.t_step(Heff2, Apair, -x(2,l,N_stages)*dt.imag()); // 2-site algorithm
 		
 		if (Lutz2.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
 		if (Lutz2.get_dimK() > dimK_max) {dimK_max = Lutz2.get_dimK();}
 		
-		Vinout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair.A);
+		Vinout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair.data);
 		(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vinout,loc2) : build_R(H,Vinout,loc1);
 		pivot = Vinout.get_pivot();
 		
@@ -214,15 +214,15 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 			precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
 			                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 			
-			PivotVector1<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
+			PivotVector<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
 			
-			LanczosPropagator<PivotMatrix<Symmetry,TimeScalar,MpoScalar>, PivotVector1<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
+			LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 			Lutz.t_step(Heff[pivot], Asingle, +x(2,l,N_stages)*dt.imag()); // 2-site algorithm
 			
 			if (Lutz.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
 			if (Lutz.get_dimK() > dimK_max) {dimK_max = Lutz2.get_dimK();}
 			
-			Vinout.A[pivot] = Asingle.A;
+			Vinout.A[pivot] = Asingle.data;
 		}
 	}
 	
@@ -252,37 +252,40 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 		turnaround(pivot, N_sites, CURRENT_DIRECTION);
 		
 		// 1-site propagation
-		PivotVector1<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
+		PivotVector<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
 		precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
 		                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 		
-		LanczosPropagator<PivotMatrix<Symmetry,TimeScalar,MpoScalar>, PivotVector1<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
+		LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 		Lutz.t_step(Heff[pivot], Asingle, -x(1,l,N_stages)*dt.imag()); // 1-site algorithm
 		if (Lutz.get_dist() > dist_max) {dist_max = Lutz.get_dist();}
 		if (Lutz.get_dimK() > dimK_max) {dimK_max = Lutz.get_dimK();}
-		Vinout.A[pivot] = Asingle.A;
+		Vinout.A[pivot] = Asingle.data;
 		
 		// 0-site propagation
 		if ((l+1)%N_sites != 0)
 		{
-			PivotVector0<Symmetry,TimeScalar> Azero;
+			PivotVector<Symmetry,TimeScalar> Azero;
 			int old_pivot = pivot;
-			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Vinout.rightSplitStep(pivot,Azero.C) : Vinout.leftSplitStep(pivot,Azero.C);
+			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Vinout.rightSplitStep(pivot,Azero.data[0]) : Vinout.leftSplitStep(pivot,Azero.data[0]);
 			pivot = Vinout.get_pivot();
 			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vinout,pivot) : build_R(H,Vinout,pivot);
 			
-			LanczosPropagator<PivotMatrix<Symmetry,TimeScalar,MpoScalar>, PivotVector0<Symmetry,TimeScalar> > Lutz0(tol_Lanczos);
+			LanczosPropagator<PivotMatrix0<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz0(tol_Lanczos);
 			
-			PivotMatrix<Symmetry,TimeScalar,MpoScalar> Heff0;
-			Heff0.L = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot+1].L : Heff[old_pivot].L;
-			Heff0.R = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot].R   : Heff[old_pivot-1].R;
-			Heff0.W = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot+1].W : Heff[old_pivot-1].W;
+			PivotMatrix0<Symmetry,TimeScalar,MpoScalar> Heff0;
+//			Heff0.L = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot+1].L : Heff[old_pivot].L;
+//			Heff0.R = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot].R   : Heff[old_pivot-1].R;
+//			Heff0.W = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot+1].W : Heff[old_pivot-1].W;
+			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)?
+			Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot+1].L, Heff[old_pivot].R):
+			Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot].L, Heff[old_pivot-1].R);
 			
 			Lutz0.t_step(Heff0, Azero, +x(1,l,N_stages)*dt.imag()); // 1-site algorithm
 			if (Lutz0.get_dist() > dist_max) {dist_max = Lutz0.get_dist();}
 			if (Lutz0.get_dimK() > dimK_max) {dimK_max = Lutz0.get_dimK();}
 			
-			Vinout.absorb(pivot, CURRENT_DIRECTION, Azero.C);
+			Vinout.absorb(pivot, CURRENT_DIRECTION, Azero.data[0]);
 		}
 	}
 	

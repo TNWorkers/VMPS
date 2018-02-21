@@ -355,16 +355,16 @@ Biped<Symmetry,MatrixType_> operator* (const Biped<Symmetry,MatrixType_> &A1, co
 {
 	Biped<Symmetry,MatrixType_> Ares;
 	for (std::size_t q1=0; q1<A1.dim; ++q1)
-		for (std::size_t q2=0; q2<A2.dim; ++q2)
+	for (std::size_t q2=0; q2<A2.dim; ++q2)
+	{
+		if (A1.out[q1] == A2.in[q2])
 		{
-			if (A1.out[q1] == A2.in[q2])
+			if (A1.block[q1].rows() != 0 and A2.block[q2].rows() != 0)
 			{
-				if (A1.block[q1].rows() != 0 and A2.block[q2].rows() != 0)
-				{
-					Ares.push_back(A1.in[q1], A2.out[q2], A1.block[q1]*A2.block[q2]);
-				}
+				Ares.push_back(A1.in[q1], A2.out[q2], A1.block[q1]*A2.block[q2]);
 			}
 		}
+	}
 	return Ares;
 }
 

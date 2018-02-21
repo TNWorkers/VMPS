@@ -73,6 +73,12 @@ double E_U0_compressor=0., E_U0_zipper=0.;
 MatrixXd SpinCorr_U0;
 Eigenstate<VMPS::Heisenberg::StateXd> g_U0;
 
+double E_U1_compressor=0;
+double E_U1_zipper=0;
+MatrixXd SpinCorr_U1;
+
+MatrixXd SpinCorr_SU2;
+
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
@@ -149,21 +155,21 @@ int main (int argc, char* argv[])
 	t_U1 = Watch_U1.time();
 	
 	// observables
-	MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
-	for(size_t i=0; i<L; i++) for (size_t j=0; j<L; j++) { SpinCorr_U1(i,j) = 3.*avg(g_U1.state, H_U1.SzSz(i,j), g_U1.state); }
+//	MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
+//	for(size_t i=0; i<L; i++) for (size_t j=0; j<L; j++) { SpinCorr_U1(i,j) = 3.*avg(g_U1.state, H_U1.SzSz(i,j), g_U1.state); }
 	
-	// compressor
-	
-	VMPS::HeisenbergU1::StateXd Hxg_U1;
-	HxV(H_U1,g_U1.state,Hxg_U1,VERB);
-	double E_U1_compressor = g_U1.state.dot(Hxg_U1);
+//	// compressor
+//	
+//	VMPS::HeisenbergU1::StateXd Hxg_U1;
+//	HxV(H_U1,g_U1.state,Hxg_U1,VERB);
+//	double E_U1_compressor = g_U1.state.dot(Hxg_U1);
 	
 	// zipper
 	
-	VMPS::HeisenbergU1::StateXd Oxg_U1;
-	Oxg_U1.eps_svd = 1e-15;
-	OxV(H_U1,g_U1.state,Oxg_U1,DMRG::BROOM::SVD);
-	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
+//	VMPS::HeisenbergU1::StateXd Oxg_U1;
+//	Oxg_U1.eps_svd = 1e-15;
+//	OxV(H_U1,g_U1.state,Oxg_U1,DMRG::BROOM::SVD);
+//	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
 	
 	// dynamics (of Néel state)
 	if (CALC_DYNAMICS)
@@ -213,8 +219,8 @@ int main (int argc, char* argv[])
 	
 	t_SU2 = Watch_SU2.time();
 	
-	MatrixXd SpinCorr_SU2(L,L); SpinCorr_SU2.setZero();
-	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SS(i,j), g_SU2.state); }
+//	MatrixXd SpinCorr_SU2(L,L); SpinCorr_SU2.setZero();
+//	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SS(i,j), g_SU2.state); }
 	
 	// --------SU(2) time propagation---------
 	VMPS::HeisenbergSU2::StateXcd Psi = g_SU2.state.cast<complex<double> >();

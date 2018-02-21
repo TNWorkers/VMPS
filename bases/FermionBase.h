@@ -318,8 +318,6 @@ c (SPIN_INDEX sigma, int orbital) const
 		}
 	}
 	
-//	cout << "c " << sigma << "=" << endl << Mout << endl;
-	
 	return OperatorType(Mout, getQ(sigma,-1));
 }
 
@@ -327,7 +325,6 @@ template<typename Symmetry>
 SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 cdag (SPIN_INDEX sigma, int orbital) const
 {
-//	cout << "cdag " << sigma << "=" << endl << c(sigma,orbital).data.transpose() << endl;
 	return OperatorType(c(sigma,orbital).data.transpose(), getQ(sigma,+1));
 }
 

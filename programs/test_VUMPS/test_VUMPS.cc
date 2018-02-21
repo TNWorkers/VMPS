@@ -153,116 +153,122 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	lout << TCOLOR(BLUE);
 	lout << "Transverse Ising: e0=" << g.energy << ", exact:" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
 	
-	for (size_t l=0; l<L; ++l)
+	for (size_t l=0; l<Ising.length(); ++l)
 	{
 		lout << "<Sz("<<l<<")>=" << avg(g.state, Ising.Sz(l), g.state) << endl;
 		lout << "<Sx("<<l<<")>=" << avg(g.state, Ising.Sx(l), g.state) << endl;
 	}
 	lout << TCOLOR(BLACK) << endl;
 	
-//	//---<Heisenberg S=1/2>---
-//	
-//	HEIS Heis(L,{{"Bz",Bz},{"OPEN_BC",false}});
-//	lout << Heis.info() << endl;
-//	
-////	DMRG.edgeState(Heis.H2site(0,0,true), Heis.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
-//	DMRG.edgeState(Heis, g, {}, tol_eigval,tol_var, M, max_iter,1);
-//	
-//	e_exact = 0.25-log(2);
-//	lout << TCOLOR(BLUE);
-//	lout << "Heisenberg S=1/2: e0=" << g.energy << ", exact(Δ=0):" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
-//	print_mag(Heis,g);
-//	for (size_t l=0; l<L; ++l)
-//	{
-//		lout << "l=" << l << ", entropy=" << g.state.entropy(l);
-//	}
-//	lout << TCOLOR(BLACK) << endl;
-//	
-//	lout << "spin-spin correlations at distance d:" << endl;
-//	size_t dmax = 10;
-//	for (size_t d=1; d<dmax; ++d)
-//	{
-//		HEIS Htmp(d+1,{{"Bz",Bz},{"Bx",Bx},{"OPEN_BC",false}});
-//		double SvecSvec = Htmp.SvecSvecAvg(g.state,0,d);
-//		lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
-//	}
-//	lout << endl;
-//	
-//	//---<Heisenberg S=1>---
-//	
-//	Heis = HEIS(L,{{"Bz",Bz},{"OPEN_BC",false},{"D",3ul}});
-//	lout << Heis.info() << endl;
-//	
+	
+	
+	//---<Heisenberg S=1/2>---
+	
+	HEIS Heis(L,{{"Bz",Bz},{"OPEN_BC",false}});
+	lout << Heis.info() << endl;
+	
 //	DMRG.edgeState(Heis.H2site(0,0,true), Heis.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
-////	DMRG.edgeState(Heis, g, {}, tol_eigval,tol_var, M, max_iter,1);
-//	
-//	e_exact = -1.40148403897122; // value from: Haegeman et al. PRL 107, 070601 (2011)
-//	lout << TCOLOR(BLUE);
-//	lout << "Heisenberg S=1: e0=" << g.energy << ", quasiexact:" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
-//	print_mag(Heis,g);
-//	for (size_t l=0; l<L; ++l)
-//	{
-//		lout << "l=" << l << ", entropy=" << g.state.entropy(l) << endl;
-//	}
-//	lout << TCOLOR(BLACK) << endl;
-//	ofstream SchmidtFiler("Schmidt.dat");
-//	if (L==1)
-//	{
-//		for (size_t i=0; i<M; ++i)
-//		{
-//			SchmidtFiler << i << "\t" << setprecision(16) << g.state.singularValues(0)(i) << endl;
-//		}
-//	}
-//	SchmidtFiler.close();
-//	
-//	//---<Hubbard>---
-//	
+	DMRG.edgeState(Heis, g, {}, tol_eigval,tol_var, M, max_iter,1);
+	
+	e_exact = 0.25-log(2);
+	lout << TCOLOR(BLUE);
+	lout << "Heisenberg S=1/2: e0=" << g.energy << ", exact(Δ=0):" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
+	print_mag(Heis,g);
+	for (size_t l=0; l<Heis.length(); ++l)
+	{
+		lout << "l=" << l << ", entropy=" << g.state.entropy(l);
+	}
+	lout << TCOLOR(BLACK) << endl;
+	
+	lout << "spin-spin correlations at distance d:" << endl;
+	size_t dmax = 10;
+	for (size_t d=1; d<dmax; ++d)
+	{
+		HEIS Htmp(d+1,{{"Bz",Bz},{"Bx",Bx},{"OPEN_BC",false}});
+		double SvecSvec = Htmp.SvecSvecAvg(g.state,0,d);
+		lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+	}
+	lout << endl;
+	
+	
+	
+	//---<Heisenberg S=1>---
+	
+	Heis = HEIS(L,{{"Bz",Bz},{"OPEN_BC",false},{"D",3ul}});
+	lout << Heis.info() << endl;
+	
+//	DMRG.edgeState(Heis.H2site(0,0,true), Heis.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
+	DMRG.edgeState(Heis, g, {}, tol_eigval,tol_var, M, max_iter,1);
+	
+	e_exact = -1.40148403897122; // value from: Haegeman et al. PRL 107, 070601 (2011)
+	lout << TCOLOR(BLUE);
+	lout << "Heisenberg S=1: e0=" << g.energy << ", quasiexact:" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
+	print_mag(Heis,g);
+	for (size_t l=0; l<Heis.length(); ++l)
+	{
+		lout << "l=" << l << ", entropy=" << g.state.entropy(l) << endl;
+	}
+	lout << TCOLOR(BLACK) << endl;
+	ofstream SchmidtFiler("Schmidt.dat");
+	if (L==1)
+	{
+		for (size_t i=0; i<M; ++i)
+		{
+			SchmidtFiler << i << "\t" << setprecision(16) << g.state.singularValues(0)(i) << endl;
+		}
+	}
+	SchmidtFiler.close();
+	
+	
+	
+	//---<Hubbard>---
+	
 	HUBB Hubb(L,{{"U",U},{"mu",mu},{"OPEN_BC",false}});
 	lout << Hubb.info() << endl;
-//	
-//	DMRG_HUBB.set_log(10,"e.dat","err_eigval.dat","err_var.dat");
-////	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);
-//	DMRG_HUBB.edgeState(Hubb.H2site(0,0,true), Hubb.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
-//	
-//	lout << "half-filling test for μ=U/2: <n>=" << avg(g.state, Hubb.n(UP,0), g.state) + avg(g.state, Hubb.n(DN,0), g.state) << endl;
-//	e_exact = LiebWu_E0_L(U,0.01*tol_eigval)-mu;
-////	e_exact = -0.2671549218961211-mu; // value from: Bethe ansatz code, U=10
-//	lout << TCOLOR(BLUE);
-//	lout << "Hubbard (half-filling): e0=" << g.energy << ", exact=" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
-//	print_mag(Hubb,g);
-//	lout << TCOLOR(BLACK) << endl;
-//	
-////	ofstream oFiler("overlap.dat");
-////	for (double U=5.; U<=15.; U=U+0.2)
-////	{
-////		HUBB Hubbl(L,U,mu,false,false);
-////		HUBB::uSolver DMRGl(DMRG::VERBOSITY::SILENT);
-////		Eigenstate<Umps<0,double> > g2;
-////		DMRGl.edgeState(Hubbl.H2site(0,0,true), Hubb.locBasis(0), g2, {}, tol_eigval,tol_var, M, max_iter,1);
-////		lout << DMRGl.info() << endl;
-////		auto overlap = g.state.dot(g2.state);
-////		
-////		cout << "U=" << U << ", " << overlap << ", norm=" << abs(overlap) << endl;
-////		oFiler << U << "\t" << abs(overlap) << endl;
-////		
-////		for (size_t l=0; l<L; ++l)
-////		{
-////			lout << "<Sz1("<<l<<")>=" << avg(g.state, Hubb.Sz(l), g.state) << endl;
-////			lout << "<Sz2("<<l<<")>=" << avg(g2.state, Hubb.Sz(l), g2.state) << endl;
-////		}
-////		cout << endl;
-////	}
-//	
-//	//---<SSH model to test unit cell>---
 	
-//	HUBB Hubb(L,{1.+dt,1.-dt},U,mu,false,false);
+	DMRG_HUBB.set_log(10,"e.dat","err_eigval.dat","err_var.dat");
+	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);
+//	DMRG_HUBB.edgeState(Hubb.H2site(0,0,true), Hubb.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
+	
+	lout << "half-filling test for μ=U/2: <n>=" << avg(g.state, Hubb.n(0), g.state) << endl;
+	e_exact = LiebWu_E0_L(U,0.01*tol_eigval)-mu;
+//	e_exact = -0.2671549218961211-mu; // value from: Bethe ansatz code, U=10
+	lout << TCOLOR(BLUE);
+	lout << "Hubbard (half-filling): e0=" << g.energy << ", exact=" << e_exact << ", diff=" << abs(g.energy-e_exact) << endl;
+	print_mag(Hubb,g);
+	lout << TCOLOR(BLACK) << endl;
+	
+//	ofstream oFiler("overlap.dat");
+//	for (double U=5.; U<=15.; U=U+0.2)
+//	{
+//		HUBB Hubbl(L,U,mu,false,false);
+//		HUBB::uSolver DMRGl(DMRG::VERBOSITY::SILENT);
+//		Eigenstate<Umps<0,double> > g2;
+//		DMRGl.edgeState(Hubbl.H2site(0,0,true), Hubb.locBasis(0), g2, {}, tol_eigval,tol_var, M, max_iter,1);
+//		lout << DMRGl.info() << endl;
+//		auto overlap = g.state.dot(g2.state);
+//		
+//		cout << "U=" << U << ", " << overlap << ", norm=" << abs(overlap) << endl;
+//		oFiler << U << "\t" << abs(overlap) << endl;
+//		
+//		for (size_t l=0; l<L; ++l)
+//		{
+//			lout << "<Sz1("<<l<<")>=" << avg(g.state, Hubb.Sz(l), g.state) << endl;
+//			lout << "<Sz2("<<l<<")>=" << avg(g2.state, Hubb.Sz(l), g2.state) << endl;
+//		}
+//		cout << endl;
+//	}
+	
+	
+	
+	//---<SSH model to test unit cell>---
+	
 	Hubb = HUBB(max(L,2ul),{{"t",1.+dt,0},{"t",1.-dt,1},{"OPEN_BC",false}});
 	lout << Hubb.info() << endl;
 	
 	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);
 	
-	double n = avg(g.state, Hubb.n(UP,0), g.state)+
-	           avg(g.state, Hubb.n(DN,0), g.state);
+	double n = avg(g.state, Hubb.n(0), g.state);
 	lout << "<n>=" << n << endl;
 	lout << TCOLOR(BLUE);
 	eSSH::v = -(1.+dt);
@@ -271,7 +277,6 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	
 	lout << "SSH e0=" << g.energy << ", exact=" << e_exact << endl;
 	lout << "diff=" << abs(g.energy-e_exact) << endl;
-//	print_mag(Hubb,g);
 	lout << TCOLOR(BLACK) << endl;
 	
 //	lout << "Schmidt values:" << endl << g.state.singularValues(1).head(10) << endl;

@@ -259,73 +259,73 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
                              const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
                              const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
                              const vector<qarray<Symmetry::Nq> > &qloc,
-							 const vector<qarray<Symmetry::Nq> > &qOp, 
+                             const vector<qarray<Symmetry::Nq> > &qOp, 
                              vector<std::array<size_t,2> > &qlhs, 
                              vector<vector<std::array<size_t,5> > > &qrhs,
-							 vector<vector<Scalar> > &factor_cgcs)
+                             vector<vector<Scalar> > &factor_cgcs)
 {
 //	Heff.W = W;
 	
 	unordered_map<std::array<size_t,2>, std::pair<vector<std::array<size_t,5> >, vector<Scalar> > > lookup;
 	std::array<typename Symmetry::qType,3> qCheck;
 	Scalar factor_cgc;
-
+	
 	#ifndef DMRG_DONT_USE_OPENMP
-    #ifndef __INTEL_COMPILER
-    #pragma omp parallel for collapse(3)
-    #elif __INTEL_COMPILER
-    #pragma omp parallel for
-    #endif
-    #endif
+	#ifndef __INTEL_COMPILER
+	#pragma omp parallel for collapse(3)
+	#elif __INTEL_COMPILER
+	#pragma omp parallel for
+	#endif
+	#endif
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for(size_t k=0; k<qOp.size(); ++k)
 	{
-		qCheck = {qloc[s2],qOp[k],qloc[s1]};
-		if(!Symmetry::validate(qCheck)) {continue;}
+		if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc[s2],qOp[k],qloc[s1]})) {continue;}
+		
 		for (size_t qL=0; qL<L.dim; ++qL)
 		{
 			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
 			bool FOUND_MATCH = AWA(L.in(qL), L.out(qL), L.mid(qL), s1,s2, qloc, k, qOp, Abra,Aket, ix);
-		
+			
 			if (FOUND_MATCH == true)
 			{
 				for(size_t n=0; n<ix.size(); ++n)
 				{
 					auto qR = R.dict.find(get<0>(ix[n]));
-			
+					
 					if (qR != R.dict.end())
 					{
 						bool ALL_BLOCKS_ARE_EMPTY = true;
-				
+						
 						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
-							for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+						for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+						{
+							if (L.block[qL][iW.row()][0].rows() != 0 and 
+							    R.block[qR->second][iW.col()][0].rows() != 0)
 							{
-								if (L.block[qL][iW.row()][0].rows() != 0 and 
-									R.block[qR->second][iW.col()][0].rows() != 0)
-								{
-									ALL_BLOCKS_ARE_EMPTY = false;
-								}
+								ALL_BLOCKS_ARE_EMPTY = false;
 							}
+						}
 						if (ALL_BLOCKS_ARE_EMPTY == false)
 						{
 							if constexpr ( Symmetry::NON_ABELIAN )
-								{
-									factor_cgc = Symmetry::coeff_HPsi(Aket[s2].out[get<2>(ix[n])], qloc[s2], Aket[s2].in[get<2>(ix[n])],
-																	  get<0>(ix[n])[2], qOp[k], L.mid(qL),
-																	  Abra[s1].out[get<1>(ix[n])], qloc[s1], Abra[s1].in[get<1>(ix[n])]);
-								}
+							{
+								factor_cgc = Symmetry::coeff_HPsi(Aket[s2].out[get<2>(ix[n])], qloc[s2], Aket[s2].in[get<2>(ix[n])],
+								                                  get<0>(ix[n])[2], qOp[k], L.mid(qL),
+								                                  Abra[s1].out[get<1>(ix[n])], qloc[s1], Abra[s1].in[get<1>(ix[n])]);
+							}
 							else
 							{
-									factor_cgc = static_cast<Scalar>(1.);
+								factor_cgc = static_cast<Scalar>(1.);
 							}
-							if (std::abs(factor_cgc) < ::mynumeric_limits<double>::epsilon()) {continue;}
-
+							if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
+							
 							std::array<size_t,2> key = {s1, get<1>(ix[n])};
-							std::array<size_t,5> val = {s2, get<2>(ix[n]), qL, qR->second,k};
-                            #ifndef DMRG_DONT_USE_OPENMP
-                            #pragma omp critical
-                            #endif
+							std::array<size_t,5> val = {s2, get<2>(ix[n]), qL, qR->second, k};
+							#ifndef DMRG_DONT_USE_OPENMP
+							#pragma omp critical
+							#endif
 							{
 								lookup[key].first.push_back(val);
 								lookup[key].second.push_back(factor_cgc);
@@ -340,9 +340,11 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 	qlhs.clear();
 	qrhs.clear();
 	factor_cgcs.clear();
+	
 	qlhs.reserve(lookup.size());
 	qrhs.reserve(lookup.size());
 	factor_cgcs.reserve(lookup.size());
+	
 	for (auto it=lookup.begin(); it!=lookup.end(); ++it)
 	{
 		qlhs.push_back(it->first);

@@ -1,7 +1,6 @@
 #ifndef DMRGJANITOR
 #define DMRGJANITOR
 
-// #include "DmrgPivotStuffQ.h"
 #include "DmrgTypedefs.h"
 
 /**\brief Flips the sweep direction when the edge is reached.*/
@@ -21,7 +20,7 @@ void turnaround (int pivot, size_t L, DMRG::DIRECTION::OPTION &DIR)
 
 /**\class DmrgJanitor
 \brief Base class for all the sweeping stuff.
-Needs to know \p PivotMatrixType because sweeps using DMRG::BROOM::RDM and DMRG::BROOM::RICH_SVD involve non-local information, i.e.\ knowledge of the transfer matrices and the Hamiltonian (given by PivotMatrix).*/
+Needs to know \p PivotMatrixType because sweeps using DMRG::BROOM::RDM and DMRG::BROOM::RICH_SVD involve non-local information, i.e.\ knowledge of the transfer matrices and the Hamiltonian (given by PivotMatrix1).*/
 template<typename PivotMatrixType>
 class DmrgJanitor
 {
