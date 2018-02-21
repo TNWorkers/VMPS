@@ -142,7 +142,7 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	//---<transverse Ising>---
 	
 	XXZ Ising(L,{{"Jz",Jz},{"Bx",Bx},{"OPEN_BC",false}});
-	DMRG.set_log(2,"e.dat","err_eigval.dat","err_var.dat");
+	DMRG.set_log(2,"e_Ising.dat","err_eigval_Ising.dat","err_var_Ising.dat");
 	lout << Ising.info() << endl;
 	
 	DMRG.edgeState(Ising.H2site(0,0,true), Ising.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
@@ -165,6 +165,7 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	//---<Heisenberg S=1/2>---
 	
 	HEIS Heis(L,{{"Bz",Bz},{"OPEN_BC",false}});
+	DMRG.set_log(2,"e_HeisS1_2.dat","err_eigval_HeisS1_2.dat","err_var_HeisS1_2.dat");
 	lout << Heis.info() << endl;
 	
 //	DMRG.edgeState(Heis.H2site(0,0,true), Heis.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
@@ -195,6 +196,7 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	//---<Heisenberg S=1>---
 	
 	Heis = HEIS(L,{{"Bz",Bz},{"OPEN_BC",false},{"D",3ul}});
+	DMRG.set_log(2,"e_HeisS1.dat","err_eigval_HeisS1.dat","err_var_HeisS1.dat");
 	lout << Heis.info() << endl;
 	
 //	DMRG.edgeState(Heis.H2site(0,0,true), Heis.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
@@ -224,9 +226,9 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	//---<Hubbard>---
 	
 	HUBB Hubb(L,{{"U",U},{"mu",mu},{"OPEN_BC",false}});
+	DMRG_HUBB.set_log(2,"e_Hubb.dat","err_eigval_Hubb.dat","err_var_Hubb.dat");
 	lout << Hubb.info() << endl;
 	
-	DMRG_HUBB.set_log(10,"e.dat","err_eigval.dat","err_var.dat");
 	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);
 //	DMRG_HUBB.edgeState(Hubb.H2site(0,0,true), Hubb.locBasis(0), g, {}, tol_eigval,tol_var, M, max_iter,1);
 	
@@ -264,6 +266,7 @@ int main (int argc, char* argv[]) // usage: -L (int) -Nup (int) -Ndn (int) -U (d
 	//---<SSH model to test unit cell>---
 	
 	Hubb = HUBB(max(L,2ul),{{"t",1.+dt,0},{"t",1.-dt,1},{"OPEN_BC",false}});
+	DMRG_HUBB.set_log(2,"e_SSH.dat","err_eigval_SSH.dat","err_var_SSH.dat");
 	lout << Hubb.info() << endl;
 	
 	DMRG_HUBB.edgeState(Hubb, g, {}, tol_eigval,tol_var, M, max_iter,1);

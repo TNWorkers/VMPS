@@ -3,8 +3,8 @@
 
 #include <unordered_set>
 
-#include "Mps.h"
-#include "Mpo.h"
+#include "Biped.h"
+#include "Multipede.h"
 #include "tensors/DmrgIndexGymnastics.h"
 #include "symmetry/functions.h"
 
@@ -867,6 +867,65 @@ void contract_C (vector<qarray<Symmetry::Nq> > qloc,
 								boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][0].cols()][1]);
 								Mtmpvec[iW.col()][0] = Mtmp;
 								Cnext[s1].push_back({Abra[s].out[qU->second], Aket[s2].out[qA->second], C[s].mid(qC)+qloc[s1]-qloc[s2]}, Mtmpvec);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+
+template<typename Symmetry, typename Scalar>
+void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
+                  vector<qarray<Symmetry::Nq> > qloc1, 
+                  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
+                  vector<qarray<Symmetry::Nq> > qloc2, 
+                  vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair)
+{
+	auto tensor_basis = Symmetry::tensorProd(qloc1,qloc2);
+	Apair.resize(tensor_basis.size());
+	
+	for (size_t s1=0; s1<qloc1.size(); ++s1)
+	for (size_t s2=0; s2<qloc2.size(); ++s2)
+	{
+		auto qmerges = Symmetry::reduceSilent(qloc1[s1], qloc2[s2]);
+		
+		for (const auto &qmerge:qmerges)
+		{
+			auto qtensor = make_tuple(qloc1[s1], s1, qloc2[s2], s2, qmerge);
+			auto s1s2 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor));
+			
+			for (size_t q1=0; q1<A1[s1].dim; ++q1)
+			{
+				auto qmids = Symmetry::reduceSilent(A1[s1].out[q1], qloc2[s2]);
+				
+				for (const auto &qmid:qmids)
+				{
+					qarray2<Symmetry::Nq> quple = {A1[s1].out[q1], qmid};
+					auto q2 = A2[s2].dict.find(quple);
+					
+					if (q2 != A2[s2].dict.end())
+					{
+						Scalar factor_cgc = Symmetry::coeff_Apair(A1[s1].in[q1], qloc1[s1], A1[s1].out[q1], 
+						                                          qloc2[s2], A2[s2].out[q2->second], qmerge);
+						
+						if (abs(factor_cgc) > abs(mynumeric_limits<Scalar>::epsilon()))
+						{
+							Matrix<Scalar,Dynamic,Dynamic> Mtmp = factor_cgc * A1[s1].block[q1] * A2[s2].block[q2->second];
+							
+							qarray2<Symmetry::Nq> qupleApair = {A1[s1].in[q1], A2[s2].out[q2->second]};
+							
+							auto qApair = Apair[s1s2].dict.find(qupleApair);
+							
+							if (qApair != Apair[s1s2].dict.end())
+							{
+								Apair[s1s2].block[qApair->second] += Mtmp;
+							}
+							else
+							{
+								Apair[s1s2].push_back(qupleApair, Mtmp);
 							}
 						}
 					}

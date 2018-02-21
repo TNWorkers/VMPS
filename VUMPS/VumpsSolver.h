@@ -59,6 +59,10 @@ public:
 		file_e          = file_e_input;
 		file_err_eigval = file_err_eigval_input;
 		file_err_var    = file_err_var_input;
+		eL_mem.clear();
+		eR_mem.clear();
+		err_eigval_mem.clear();
+		err_var_mem.clear();
 	};
 	///\}
 	

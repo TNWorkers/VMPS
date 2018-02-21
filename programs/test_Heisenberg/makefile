@@ -1,10 +1,10 @@
 EIGEN=../../../../CPPLIB/EIGEN/
 ARMA=../../../../CPPLIB/ARMADILLO/include
 #ARMA=../../../../CPPLIB/armadillo-3.920.4/include #g++-4.4 compatible
-LANCZOS=../../../LANCZOS/
+ALGS=../../../ALGS/
 CHEB=../../../CHEBYSHEV/
 HIL=../../../HILBERT/
-HEL=../../../HELPERS/
+TOOLS=../../../TOOLS/
 PLOT=../../../PLOT/
 INT=../../../INTEGRATION/
 FUNC=../../../FUNCTIONS/
@@ -40,7 +40,7 @@ CXX=$(COMPILER) -std=c++1z
 MACROS=-fmax-errors=5
 INCS=-I $(EIGEN) -I $(ARMA) -I $(BOOST) -I $(GSL)/include -I $(FFTW)
 #-I $(ARMA) -I $(FFTW)/include -I $(EINSPLINE) -I $(VIENNACL)
-MYINCS=-I $(LANCZOS) -I $(HIL) -I $(INT) -I $(HEL) -I $(CHEB) -I $(FUNC) -I $(PLOT) -I $(DMRG) -I $(VIENNACL) -I $(TEXTTABLE)
+MYINCS=-I $(ALGS) -I $(HIL) -I $(INT) -I $(TOOLS) -I $(CHEB) -I $(FUNC) -I $(PLOT) -I $(DMRG) -I $(VIENNACL) -I $(TEXTTABLE)
 LIBS=$(GSL)/lib/libgsl.a $(GSL)/lib/libgslcblas.a $(FFTW)/lib/libfftw3.a $(LAPACK)/liblapack.a $(LAPACK)/librefblas.a /usr/lib/gcc/x86_64-linux-gnu/4.8/libgfortran.a
 #$(LAPACK)/liblapack.a $(LAPACK)/librefblas.a -lgfortran -lm
 #$(LAPACK)/liblapack.a
