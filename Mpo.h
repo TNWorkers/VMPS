@@ -72,6 +72,7 @@ public:
 	 * \param L_input : amount of sites/supersites which are swept
 	 * \param Qtot_input : the total change in quantum number
 	 * \param label_input : how to label the Mpo itself in outputs
+	 * \param HERMITIAN_input : if the Mpo is known to be hermitian, this can be further exploited
 	 * \param UNITARY_input : if the Mpo is known to be unitary, this can be further exploited
 	 */
 	Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false);
