@@ -239,12 +239,12 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
  */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-          DMRG::VERBOSITY::OPTION VERBOSITY) //=DMRG::VERBOSITY::HALFSWEEPWISE)
+          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	Stopwatch<> Chronos;
 	
 	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
-	Compadre.varCompress(H,Vin, Vout, Vin.calc_Dmax());
+	Compadre.varCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax());
 	
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
 	{
@@ -271,16 +271,16 @@ void polyIter (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin
                const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, 
                DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
-	Stopwatch<> Chronos;
-	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
-	Compadre.polyCompress(H,Vin1,polyB,Vin2, Vout, Vin1.calc_Dmax());
-	
-	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
-	{
-		lout << Compadre.info() << endl;
-		lout << Chronos.info(make_string("polyIter B=",polyB)) << endl;
-		lout << "Vout: " << Vout.info() << endl << endl;
-	}
+//	Stopwatch<> Chronos;
+//	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
+//	Compadre.polyCompress(H,Vin1,polyB,Vin2, Vout, Vin1.calc_Dmax());
+//	
+//	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
+//	{
+//		lout << Compadre.info() << endl;
+//		lout << Chronos.info(make_string("polyIter B=",polyB)) << endl;
+//		lout << "Vout: " << Vout.info() << endl << endl;
+//	}
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
@@ -313,7 +313,8 @@ void addScale (const OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, DMRG::BROOM::OPTION TOOL) //=DMRG::BROOM::SVD)
+void OxV (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
+          DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD)
 {
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > C;
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Cnext;
@@ -394,20 +395,5 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::
 	OxV(O,Vinout,Vtmp,TOOL);
 	Vinout = Vtmp;
 }
-
-// unfinished:
-//template<size_t Nq, typename Scalar>
-//void OxV_exact (const Mpo<D,Nq> &O, const Mps<Nq,Scalar> &Vin, Mps<Nq,Scalar> &Vout)
-//{
-//	Vout = Mps<Nq,Scalar>(Vin.length(), 1, Vin.locbasis(), Vout.Qtarget()+O.Qtarget());
-//	
-//	for (size_t s1=0; s1<D; ++s1)
-//	for (size_t s2=0; s2<D; ++s2)
-//	for (size_t l=0; l<Vout.length(); ++l)
-//	for (size_t qA2=0; qA2<Vin.A[l][s2].dim; ++qA2)
-//	{
-//		Matrix<Scalar,Dynamic,Dynamic> Mtmp = tensor_product(O.W[s1][s2], Vin.A[l][s2].block[qA2]);
-//	}
-//}
 
 #endif

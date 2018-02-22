@@ -1067,10 +1067,10 @@ scale (double factor, double offset)
 			size_t a1 = (l==0)? 0 : Daux-1;
 			for (size_t a2=0; a2<Daux-1; ++a2)
 			{
-				Gvec[l](a1,a2) *= factor;
+				Gvec[l](a1,a2).data *= factor;
 			}
 		}
-		Gvec[N_sites-1](Daux-1,0) *= factor;
+		Gvec[N_sites-1](Daux-1,0).data *= factor;
 	}
 	
 	if (offset != 0.)
@@ -1078,9 +1078,9 @@ scale (double factor, double offset)
 		for (size_t l=0; l<N_sites; ++l)
 		{
 			size_t a1 = (l==0)? 0 : Daux-1;
-			MatrixType Id(Gvec[l](a1,0).rows(), Gvec[l](a1,0).cols());
+			SparseMatrixType Id(Gvec[l](a1,0).data.rows(), Gvec[l](a1,0).data.cols());
 			Id.setIdentity();
-			Gvec[l](a1,0) += offset/N_sites * Id;
+			Gvec[l](a1,0).data += offset/N_sites * Id;
 		}
 	}
 	
@@ -1093,15 +1093,17 @@ scale (double factor, double offset)
 			for (size_t s1=0; s1<qloc[l].size(); ++s1)
 			for (size_t s2=0; s2<qloc[l].size(); ++s2)
 			for (size_t a2=0; a2<Daux-1; ++a2)
+			for (size_t k=0; k<qOp[l].size(); ++k)
 			{
-				W[l][s1][s2].coeffRef(a1,a2) *= factor;
+				W[l][s1][s2][k].coeffRef(a1,a2) *= factor;
 			}
 		}
 		
 		for (size_t s1=0; s1<qloc[N_sites-1].size(); ++s1)
 		for (size_t s2=0; s2<qloc[N_sites-1].size(); ++s2)
+		for (size_t k=0; k<qOp[N_sites-1].size(); ++k)
 		{
-			W[N_sites-1][s1][s2].coeffRef(Daux-1,0) *= factor;
+			W[N_sites-1][s1][s2][k].coeffRef(Daux-1,0) *= factor;
 		}
 	}
 	if (offset != 0.)
@@ -1114,8 +1116,9 @@ scale (double factor, double offset)
 		{
 			size_t a1 = (l==0)? 0 : Daux-1;
 			for (size_t s=0; s<qloc[l].size(); ++s)
+			for (size_t k=0; k<qOp[l].size(); ++k)
 			{
-				W[l][s][s].coeffRef(a1,0) += offset/N_sites;
+				W[l][s][s][k].coeffRef(a1,0) += offset/N_sites;
 			}
 		}
 	}
@@ -1132,16 +1135,17 @@ scale (double factor, double offset)
 		for (size_t l=0; l<N_sites; ++l)
 		for (size_t s1=0; s1<qloc[l].size(); ++s1)
 		for (size_t s2=0; s2<qloc[l].size(); ++s2)
+		for (size_t k=0; k<qOp[l].size(); ++k)
 		{
-			Wsq[l][s1][s2].resize(GvecSq[l].rows(), GvecSq[l].cols());
+			Wsq[l][s1][s2][k].resize(GvecSq[l].rows(), GvecSq[l].cols());
 			
 			for (size_t a1=0; a1<GvecSq[l].rows(); ++a1)
 			for (size_t a2=0; a2<GvecSq[l].cols(); ++a2)
 			{
-				Scalar val = GvecSq[l](a1,a2)(s1,s2);
+				Scalar val = GvecSq[l](a1,a2).data.coeffRef(s1,s2);
 				if (val != 0.)
 				{
-					Wsq[l][s1][s2].insert(a1,a2) = val;
+					Wsq[l][s1][s2][k].insert(a1,a2) = val;
 				}
 			}
 		}

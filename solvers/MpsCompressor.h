@@ -80,7 +80,8 @@ public:
 		- DMRG::COMPRESSION::RHS_SVD : perform the multiplication using OxV, cutting the result according to the subspaces of \p Vin
 	*/
 	template<typename MpOperator>
-	void varCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, qarray<Symmetry::Nq> Qtot_input, 
+	void varCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
+	                  qarray<Symmetry::Nq> Qtot_input, 
 	                  size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1, 
 	                  DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RANDOM);
 	
@@ -864,57 +865,57 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 //				Vout.A[pivot][s].block[it->second] -= polyB * Atmp[s].block[q];
 //			}
 			
-			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
-			{
-				size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
-				size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
-				
-				Heff[loc1].W = H.W[loc1];
-				Heff[loc2].W = H.W[loc2];
-				
-				// H*Vin1
-				vector<vector<Biped<Symmetry,MatrixType> > > Apair;
-				HxV(Heff[loc1],Heff[loc2], Vin1.A[loc1],Vin1.A[loc2], Vout.A[loc1],Vout.A[loc2], Vin1.locBasis(loc1),Vin1.locBasis(loc2), Apair);
-				
-				// Vin2
-				vector<vector<Biped<Symmetry,MatrixType> > > ApairVV;
-				ApairVV.resize(Vin1.locBasis(loc1).size());
-				for (size_t s1=0; s1<Vin1.locBasis(loc1).size(); ++s1)
-				{
-					ApairVV[s1].resize(Vin1.locBasis(loc2).size());
-				}
-				
-				for (size_t s1=0; s1<Vin2.locBasis(loc1).size(); ++s1)
-				for (size_t s3=0; s3<Vin2.locBasis(loc2).size(); ++s3)
-				{
-					ApairVV[s1][s3] = L[loc1] * Vin2.A[loc1][s1] * Vin2.A[loc2][s3] * R[loc2];
-				}
-				
-				// H*Vin1-polyB*Vin2
-				for (size_t s1=0; s1<H.locBasis(loc1).size(); ++s1)
-				for (size_t s3=0; s3<H.locBasis(loc2).size(); ++s3)
-				for (size_t q=0; q<Apair[s1][s3].dim; ++q)
-				{
-					qarray2<Symmetry::Nq> quple = {Apair[s1][s3].in[q], Apair[s1][s3].out[q]};
-					auto it = ApairVV[s1][s3].dict.find(quple);
-					
-					MatrixType Mtmp = Apair[s1][s3].block[q];
-					size_t rows = max(Apair[s1][s3].block[q].rows(), Apair[s1][s3].block[q].rows());
-					size_t cols = max(Apair[s1][s3].block[q].cols(), Apair[s1][s3].block[q].cols());
-					
-					Apair[s1][s3].block[q].resize(rows,cols);
-					Apair[s1][s3].block[q].setZero();
-					Apair[s1][s3].block[q].topLeftCorner(Mtmp.rows(),Mtmp.cols()) = Mtmp;
-					Apair[s1][s3].block[q].topLeftCorner(Apair[s1][s3].block[q].rows(),
-					                                     Apair[s1][s3].block[q].cols()) 
-					-= 
-					polyB * ApairVV[s1][s3].block[it->second];
-				}
-				
-				Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
-				pivot = Vout.get_pivot();
-			}
-			else
+//			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+//			{
+//				size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
+//				size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
+//				
+//				Heff[loc1].W = H.W[loc1];
+//				Heff[loc2].W = H.W[loc2];
+//				
+//				// H*Vin1
+//				vector<vector<Biped<Symmetry,MatrixType> > > Apair;
+//				HxV(Heff[loc1],Heff[loc2], Vin1.A[loc1],Vin1.A[loc2], Vout.A[loc1],Vout.A[loc2], Vin1.locBasis(loc1),Vin1.locBasis(loc2), Apair);
+//				
+//				// Vin2
+//				vector<vector<Biped<Symmetry,MatrixType> > > ApairVV;
+//				ApairVV.resize(Vin1.locBasis(loc1).size());
+//				for (size_t s1=0; s1<Vin1.locBasis(loc1).size(); ++s1)
+//				{
+//					ApairVV[s1].resize(Vin1.locBasis(loc2).size());
+//				}
+//				
+//				for (size_t s1=0; s1<Vin2.locBasis(loc1).size(); ++s1)
+//				for (size_t s3=0; s3<Vin2.locBasis(loc2).size(); ++s3)
+//				{
+//					ApairVV[s1][s3] = L[loc1] * Vin2.A[loc1][s1] * Vin2.A[loc2][s3] * R[loc2];
+//				}
+//				
+//				// H*Vin1-polyB*Vin2
+//				for (size_t s1=0; s1<H.locBasis(loc1).size(); ++s1)
+//				for (size_t s3=0; s3<H.locBasis(loc2).size(); ++s3)
+//				for (size_t q=0; q<Apair[s1][s3].dim; ++q)
+//				{
+//					qarray2<Symmetry::Nq> quple = {Apair[s1][s3].in[q], Apair[s1][s3].out[q]};
+//					auto it = ApairVV[s1][s3].dict.find(quple);
+//					
+//					MatrixType Mtmp = Apair[s1][s3].block[q];
+//					size_t rows = max(Apair[s1][s3].block[q].rows(), Apair[s1][s3].block[q].rows());
+//					size_t cols = max(Apair[s1][s3].block[q].cols(), Apair[s1][s3].block[q].cols());
+//					
+//					Apair[s1][s3].block[q].resize(rows,cols);
+//					Apair[s1][s3].block[q].setZero();
+//					Apair[s1][s3].block[q].topLeftCorner(Mtmp.rows(),Mtmp.cols()) = Mtmp;
+//					Apair[s1][s3].block[q].topLeftCorner(Apair[s1][s3].block[q].rows(),
+//					                                     Apair[s1][s3].block[q].cols()) 
+//					-= 
+//					polyB * ApairVV[s1][s3].block[it->second];
+//				}
+//				
+//				Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
+//				pivot = Vout.get_pivot();
+//			}
+//			else
 			{
 				optimizationStep(Vin2,Vout);
 				auto Atmp = Vout.A[pivot];
