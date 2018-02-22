@@ -15,16 +15,18 @@
 
 #include "tensors/Biped.h"
 #include "tensors/Multipede.h"
-#include "LanczosSolver.h" // from HELPERS
+#include "LanczosSolver.h" // from ALGS
 #include "tensors/DmrgContractions.h"
 #include "pivot/DmrgPivotMatrix1.h"
 #include "pivot/DmrgPivotMatrix2.h"
-#include "Stopwatch.h" // from HELPERS
+#include "Stopwatch.h" // from TOOLS
 
-/**Compressor of MPS.
-\describe_Symmetry
-\describe_Scalar
-\describe_MpoScalar*/
+/**
+ * Compressor for MPS. Nedded to obtain various operations containing MPSs and MPOs with a variational approach.
+ * \describe_Symmetry
+ * \describe_Scalar
+ * \describe_MpoScalar
+ */
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>
 class MpsCompressor
 {
@@ -48,61 +50,73 @@ public:
 	
 	//---compression schemes---
 	///\{
-	/**Compresses a given Mps \f$V_{out} \approx V_{in}\f$. If convergence is not reached after 2 half-sweeps, the bond dimension of \p Vout is increased and it is set to random.
-	\param[in] Vin : input state to be compressed
-	\param[out] Vout : compressed output state
-	\param[in] Dcutoff_input : matrix size cutoff per site and subspace for \p Vout
-	\param[in] tol : tolerance for the square norm of the difference: \f$\left|V_{out}-V_{in}\right|^2<tol\f$
-	\param[in] max_halfsweeps : maximal amount of half-sweeps; break if exceeded
-	\param[in] min_halfsweeps : minimal amount of half-sweeps
-	\param[in] START : choice of initial guess: 
-		- DMRG::COMPRESSION::RANDOM : use a random state with the cutoff given by \p Dcutoff_input
-		- DMRG::COMPRESSION::RHS : makes no sense here, results in the same as above
-		- DMRG::COMPRESSION::BRUTAL_SVD : cut \p Vin down to \p Dcutoff_input and use as initial guess
-		- DMRG::COMPRESSION::RHS_SVD : makes no sense here, results in the same as above
-	*/
+	/**
+	 * Compresses a given Mps \f$V_{out} \approx V_{in}\f$. If convergence is not reached after 2 half-sweeps, 
+	 * the bond dimension of \p Vout is increased and it is set to random.
+	 * \param[in] Vin : input state to be compressed
+	 * \param[out] Vout : compressed output state
+	 * \param[in] Dcutoff_input : matrix size cutoff per site and subspace for \p Vout
+	 * \param[in] tol : tolerance for the square norm of the difference: \f$\left|V_{out}-V_{in}\right|^2<tol\f$
+	 * \param[in] max_halfsweeps : maximal amount of half-sweeps; break if exceeded
+	 * \param[in] min_halfsweeps : minimal amount of half-sweeps
+	 * \param[in] START : choice of initial guess: 
+	 * 	- DMRG::COMPRESSION::RANDOM : use a random state with the cutoff given by \p Dcutoff_input
+	 * 	- DMRG::COMPRESSION::RHS : makes no sense here, results in the same as above
+	 * 	- DMRG::COMPRESSION::BRUTAL_SVD : cut \p Vin down to \p Dcutoff_input and use as initial guess
+	 * 	- DMRG::COMPRESSION::RHS_SVD : makes no sense here, results in the same as above
+	 * \warning Small adjustions need to be made for non Abelian symmetries.
+	 */
 	void varCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
 	                  size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1, 
 	                  DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::BRUTAL_SVD);
 	
-	/**Compresses a matrix-vector product \f$\left|V_{out}\right> \approx H \left|V_{in}\right>\f$. Needs to calculate \f$\left<V_{in}\right|H^2\left|V_{in}\right>\f$. Works optimally with OpenMP and (at least) 2 threads. If convergence is not reached after 2 half-sweeps, the bond dimension of \p Vout is increased and it is set to random.
-	\param[in] H : Hamiltonian (an Mps with Mpo::Qtarget() = Symmetry::qvacuum())
-	\param[in] Vin : input state
-	\param[out] Vout : compressed output state
-	\param[in] Dcutoff_input : matrix size cutoff per site and subspace for \p Vout, good guess: Vin.calc_Dmax()
-	\param[in] tol : tolerance for the square norm of the difference: \f$\left|V_{out} - H \cdot V_{in}\right|^2<tol\f$
-	\param[in] max_halfsweeps : maximal amount of half-sweeps
-	\param[in] min_halfsweeps : minimal amount of half-sweeps
-	\param[in] START : choice of initial guess: 
-		- DMRG::COMPRESSION::RANDOM : use a random state with the cutoff given by \p Dcutoff_input
-		- DMRG::COMPRESSION::RHS : use \p Vin, \p Dcutoff_input is ignored
-		- DMRG::COMPRESSION::BRUTAL_SVD : perform the multiplication using OxV, cutting the result according to \p Dcutoff_input
-		- DMRG::COMPRESSION::RHS_SVD : perform the multiplication using OxV, cutting the result according to the subspaces of \p Vin
-	*/
+	/**
+	 * Compresses a matrix-vector product \f$\left|V_{out}\right> \approx H \left|V_{in}\right>\f$. 
+	 * Needs to calculate \f$\left<V_{in}\right|H^{\dagger}H\left|V_{in}\right>\f$. 
+	 * Works optimally with OpenMP and (at least) 2 threads. If convergence is not reached after 2 half-sweeps, 
+	 * the bond dimension of \p Vout is increased and it is set to random.
+	 * \param[in] H : Operator
+	 * \param[in] Hdag : Adjoint operator
+	 * \param[in] Vin : input state
+	 * \param[out] Vout : compressed output state
+	 * \param[in] Qtot_input : Resulting quantum number for Vout
+	 * \param[in] Dcutoff_input : matrix size cutoff per site and subspace for \p Vout, good guess: Vin.calc_Dmax()
+	 * \param[in] tol : tolerance for the square norm of the difference: \f$\left|V_{out} - H \cdot V_{in}\right|^2<tol\f$
+	 * \param[in] max_halfsweeps : maximal amount of half-sweeps
+	 * \param[in] min_halfsweeps : minimal amount of half-sweeps
+	 * \param[in] START : choice of initial guess: 
+	 * 	- DMRG::COMPRESSION::RANDOM : use a random state with the cutoff given by \p Dcutoff_input
+	 *  - DMRG::COMPRESSION::RHS : use \p Vin, \p Dcutoff_input is ignored
+	 * 	- DMRG::COMPRESSION::BRUTAL_SVD : perform the multiplication using OxV, cutting the result according to \p Dcutoff_input
+	 * 	- DMRG::COMPRESSION::RHS_SVD : perform the multiplication using OxV, cutting the result according to the subspaces of \p Vin
+	 */
 	template<typename MpOperator>
-	void varCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-	                  qarray<Symmetry::Nq> Qtot_input, 
+	void varCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, qarray<Symmetry::Nq> Qtot_input,
 	                  size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1, 
 	                  DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RANDOM);
 	
-	/**Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. Needs to calculate \f$\left<V_{in1}\right|H^2\left|V_{in1}\right>\f$, \f$\left<V_{in2}\right|H\left|V_{in1}\right>\f$ and \f$\big<V_{in2}\big|V_{in2}\big>\f$. Works optimally with OpenMP and (at least) 3 threads, as the last overlap is cheap to do in the mixed-canonical representation. If convergence is not reached after 4 half-sweeps, the bond dimension of \p Vout is increased and it is set to random.
-	\warning The Hamiltonian has to be rescaled by \p C_n and \p A_n already.
-	\param[in] H : Hamiltonian (an Mps with Mpo::Qtarget() = Symmetry::qvacuum()) rescaled by 2
-	\param[in] Vin1 : input state to be multiplied
-	\param[in] polyB : the coefficient before the subtracted vector
-	\param[in] Vin2 : input state to be subtracted
-	\param[out] Vout : compressed output state
-	\param[in] Dcutoff_input : matrix size cutoff per site and subspace for \p Vout
-	\param[in] tol : tolerance for the square norm of the difference: \f$\left|V_{out} - 2H \cdot V_{in1} - V_{in2}\right|^2<tol\f$
-		\warning Too small a value for \p tol will lead to bad convergence. Try something of the order of 1e-3 to 1e-4.
-	\param[in] max_halfsweeps : maximal amount of half-sweeps
-	\param[in] min_halfsweeps : minimal amount of half-sweeps
-	\param[in] START : choice of initial guess: 
-		- DMRG::COMPRESSION::RANDOM : use a random state with the cutoff given by \p Dcutoff_input
-		- DMRG::COMPRESSION::RHS : use \p Vin1 (previous Chebyshev iteration vector), \p Dcutoff_input is ignored
-		- DMRG::COMPRESSION::BRUTAL_SVD : not implemented
-		- DMRG::COMPRESSION::RHS_SVD : not implemented
-	*/
+	/**
+	 * Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. 
+	 * Needs to calculate \f$\left<V_{in1}\right|H^2\left|V_{in1}\right>\f$, \f$\left<V_{in2}\right|H\left|V_{in1}\right>\f$ and \f$\big<V_{in2}\big|V_{in2}\big>\f$. 
+	 * Works optimally with OpenMP and (at least) 3 threads, as the last overlap is cheap to do in the mixed-canonical representation. 
+	 * If convergence is not reached after 4 half-sweeps, the bond dimension of \p Vout is increased and it is set to random.
+	 * \warning The Hamiltonian has to be rescaled by \p C_n and \p A_n already.
+	 * \param[in] H : Hamiltonian (an Mps with Mpo::Qtarget() = Symmetry::qvacuum()) rescaled by 2
+	 * \param[in] Vin1 : input state to be multiplied
+	 * \param[in] polyB : the coefficient before the subtracted vector
+	 * \param[in] Vin2 : input state to be subtracted
+	 * \param[out] Vout : compressed output state
+	 * \param[in] Dcutoff_input : matrix size cutoff per site and subspace for \p Vout
+	 * \param[in] tol : tolerance for the square norm of the difference: \f$\left|V_{out} - 2H \cdot V_{in1} - V_{in2}\right|^2<tol\f$
+	 * 	                \warning Too small a value for \p tol will lead to bad convergence. Try something of the order of 1e-3 to 1e-4.
+	 * \param[in] max_halfsweeps : maximal amount of half-sweeps
+	 * \param[in] min_halfsweeps : minimal amount of half-sweeps
+	 * \param[in] START : choice of initial guess: 
+	 * 	- DMRG::COMPRESSION::RANDOM : use a random state with the cutoff given by \p Dcutoff_input
+	 * 	- DMRG::COMPRESSION::RHS : use \p Vin1 (previous Chebyshev iteration vector), \p Dcutoff_input is ignored
+	 * 	- DMRG::COMPRESSION::BRUTAL_SVD : not implemented
+	 * 	- DMRG::COMPRESSION::RHS_SVD : not implemented
+	 */
 	template<typename MpOperator>
 	void polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, 
 	                   size_t Dcutoff_input, double tol=DMRG_POLYCOMPRESS_TOL, 
@@ -865,57 +879,57 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 //				Vout.A[pivot][s].block[it->second] -= polyB * Atmp[s].block[q];
 //			}
 			
-//			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
-//			{
-//				size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
-//				size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
-//				
-//				Heff[loc1].W = H.W[loc1];
-//				Heff[loc2].W = H.W[loc2];
-//				
-//				// H*Vin1
-//				vector<vector<Biped<Symmetry,MatrixType> > > Apair;
-//				HxV(Heff[loc1],Heff[loc2], Vin1.A[loc1],Vin1.A[loc2], Vout.A[loc1],Vout.A[loc2], Vin1.locBasis(loc1),Vin1.locBasis(loc2), Apair);
-//				
-//				// Vin2
-//				vector<vector<Biped<Symmetry,MatrixType> > > ApairVV;
-//				ApairVV.resize(Vin1.locBasis(loc1).size());
-//				for (size_t s1=0; s1<Vin1.locBasis(loc1).size(); ++s1)
-//				{
-//					ApairVV[s1].resize(Vin1.locBasis(loc2).size());
-//				}
-//				
-//				for (size_t s1=0; s1<Vin2.locBasis(loc1).size(); ++s1)
-//				for (size_t s3=0; s3<Vin2.locBasis(loc2).size(); ++s3)
-//				{
-//					ApairVV[s1][s3] = L[loc1] * Vin2.A[loc1][s1] * Vin2.A[loc2][s3] * R[loc2];
-//				}
-//				
-//				// H*Vin1-polyB*Vin2
-//				for (size_t s1=0; s1<H.locBasis(loc1).size(); ++s1)
-//				for (size_t s3=0; s3<H.locBasis(loc2).size(); ++s3)
-//				for (size_t q=0; q<Apair[s1][s3].dim; ++q)
-//				{
-//					qarray2<Symmetry::Nq> quple = {Apair[s1][s3].in[q], Apair[s1][s3].out[q]};
-//					auto it = ApairVV[s1][s3].dict.find(quple);
-//					
-//					MatrixType Mtmp = Apair[s1][s3].block[q];
-//					size_t rows = max(Apair[s1][s3].block[q].rows(), Apair[s1][s3].block[q].rows());
-//					size_t cols = max(Apair[s1][s3].block[q].cols(), Apair[s1][s3].block[q].cols());
-//					
-//					Apair[s1][s3].block[q].resize(rows,cols);
-//					Apair[s1][s3].block[q].setZero();
-//					Apair[s1][s3].block[q].topLeftCorner(Mtmp.rows(),Mtmp.cols()) = Mtmp;
-//					Apair[s1][s3].block[q].topLeftCorner(Apair[s1][s3].block[q].rows(),
-//					                                     Apair[s1][s3].block[q].cols()) 
-//					-= 
-//					polyB * ApairVV[s1][s3].block[it->second];
-//				}
-//				
-//				Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
-//				pivot = Vout.get_pivot();
-//			}
-//			else
+			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+			{
+				size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
+				size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
+				
+				Heff[loc1].W = H.W[loc1];
+				Heff[loc2].W = H.W[loc2];
+				
+				// H*Vin1
+				vector<vector<Biped<Symmetry,MatrixType> > > Apair;
+				HxV(Heff[loc1],Heff[loc2], Vin1.A[loc1],Vin1.A[loc2], Vout.A[loc1],Vout.A[loc2], Vin1.locBasis(loc1),Vin1.locBasis(loc2), Apair);
+				
+				// Vin2
+				vector<vector<Biped<Symmetry,MatrixType> > > ApairVV;
+				ApairVV.resize(Vin1.locBasis(loc1).size());
+				for (size_t s1=0; s1<Vin1.locBasis(loc1).size(); ++s1)
+				{
+					ApairVV[s1].resize(Vin1.locBasis(loc2).size());
+				}
+				
+				for (size_t s1=0; s1<Vin2.locBasis(loc1).size(); ++s1)
+				for (size_t s3=0; s3<Vin2.locBasis(loc2).size(); ++s3)
+				{
+					ApairVV[s1][s3] = L[loc1] * Vin2.A[loc1][s1] * Vin2.A[loc2][s3] * R[loc2];
+				}
+				
+				// H*Vin1-polyB*Vin2
+				for (size_t s1=0; s1<H.locBasis(loc1).size(); ++s1)
+				for (size_t s3=0; s3<H.locBasis(loc2).size(); ++s3)
+				for (size_t q=0; q<Apair[s1][s3].dim; ++q)
+				{
+					qarray2<Symmetry::Nq> quple = {Apair[s1][s3].in[q], Apair[s1][s3].out[q]};
+					auto it = ApairVV[s1][s3].dict.find(quple);
+					
+					MatrixType Mtmp = Apair[s1][s3].block[q];
+					size_t rows = max(Apair[s1][s3].block[q].rows(), Apair[s1][s3].block[q].rows());
+					size_t cols = max(Apair[s1][s3].block[q].cols(), Apair[s1][s3].block[q].cols());
+					
+					Apair[s1][s3].block[q].resize(rows,cols);
+					Apair[s1][s3].block[q].setZero();
+					Apair[s1][s3].block[q].topLeftCorner(Mtmp.rows(),Mtmp.cols()) = Mtmp;
+					Apair[s1][s3].block[q].topLeftCorner(Apair[s1][s3].block[q].rows(),
+					                                     Apair[s1][s3].block[q].cols()) 
+					-= 
+					polyB * ApairVV[s1][s3].block[it->second];
+				}
+				
+				Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
+				pivot = Vout.get_pivot();
+			}
+			else
 			{
 				optimizationStep(Vin2,Vout);
 				auto Atmp = Vout.A[pivot];
