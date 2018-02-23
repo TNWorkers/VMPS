@@ -1,6 +1,8 @@
 #ifndef SITEOPERATORQ_H_
 #define SITEOPERATORQ_H_
 
+#include <unsupported/Eigen/KroneckerProduct>
+
 #include "symmetry/qbasis.h"
 #include "tensors/Biped.h"
 #include "tensors/SiteOperator.h"

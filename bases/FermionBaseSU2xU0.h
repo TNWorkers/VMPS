@@ -1,5 +1,5 @@
-#ifndef FERMIONBASESU2_H_
-#define FERMIONBASESU2_H_
+#ifndef FERMIONBASESU2XU0_H_
+#define FERMIONBASESU2XU0_H_
 
 #include <algorithm>
 #include <iterator>
@@ -14,7 +14,7 @@
 /**
  * \ingroup Bases
  *
- * This class provides the local operators for fermions in a SU(2) block representation for \p N_Orbitals fermionic sites.
+ * This class provides the local operators for fermions in a spin-SU(2) block representation for \p N_Orbitals fermionic sites.
  *
  */
 template<>
