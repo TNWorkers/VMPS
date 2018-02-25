@@ -61,6 +61,7 @@ public:
 	 * \param orbital : orbital index
 	 */
 	Operator psidag (SPIN_INDEX sigma, size_t orbital=0) const;
+	///\}
 
 	/**
 	 * Fermionic sign for the hopping between two orbitals of nearest-neighbour supersites of a ladder.
@@ -80,12 +81,31 @@ public:
 	 * \param orbital : orbital index
 	 */
 	Operator nh (std::size_t orbital=0) const;
-		
+
+	///\{
 	/**
 	 * Sz
 	 * \param orbital : orbital index
 	 */
 	Operator Sz (std::size_t orbital=0) const;
+
+	/**
+	 * Sx
+	 * \param orbital : orbital index
+	 */
+	Operator Sx (std::size_t orbital=0) const;
+
+	/**
+	 * Sp
+	 * \param orbital : orbital index
+	 */
+	Operator Sp (std::size_t orbital=0) const;
+
+	/**
+	 * Sm
+	 * \param orbital : orbital index
+	 */
+	Operator Sm (std::size_t orbital=0) const;
 	///\}
 	
 	///\{
@@ -105,13 +125,14 @@ public:
 	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite.
 	 * \param U : \f$U\f$
-	 * \param mu : \f$\mu\f$ (chemical potential)
 	 * \param t : \f$t\f$
 	 * \param V : \f$V\f$
 	 * \param J : \f$J\f$
+	 * \param Bz : \f$B_z\f$
+	 * \param Bx : \f$B_x\f$
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
-	Operator HubbardHamiltonian (double U, double t=1., double V=0., double J=0., double Bz=0., bool PERIODIC=false) const;
+	Operator HubbardHamiltonian (double U, double t=1., double V=0., double Jz=0., double Jxy=0., double Bz=0., double Bx=0., bool PERIODIC=false) const;
 	
 	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
@@ -172,6 +193,7 @@ private:
 	Operator nh_1s; //double occupancy
 	Operator T_1s; //orbital pseudo spin
 	Operator Sz_1s; //spin z operator
+	Operator Sx_1s; //spin x operator
 	Operator Sp_1s; //raising spin operator
 	Operator Sm_1s; //lowering spin operator
 	Operator p_1s; //pairing
@@ -207,6 +229,7 @@ FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in, bool U_IS_INFINITE)
 	nh_1s = Operator({1},basis_1s);
 	T_1s = Operator({3},basis_1s);
 	Sz_1s = Operator({1},basis_1s);
+	Sx_1s = Operator({1},basis_1s);
 	Sp_1s = Operator({1},basis_1s);
 	Sm_1s = Operator({1},basis_1s);
 
@@ -228,6 +251,8 @@ FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in, bool U_IS_INFINITE)
 
 	Sp_1s( "down", "up" ) = 1.;
 	Sm_1s = Sp_1s.adjoint();
+
+	Sx_1s = 0.5*(Sp_1s + Sm_1s);
 
 	// p_1s = -std::sqrt(0.5) * Operator::prod(c_1s,c_1s,{1}); //The sign convention corresponds to c_DN c_UP
 	// pdag_1s = p_1s.adjoint(); //The sign convention corresponds to (c_DN c_UP)†=c_UP† c_DN†
@@ -347,12 +372,10 @@ sign (std::size_t orb1, std::size_t orb2) const
 		Operator out = Id();
 		for (int i=orb1; i<N_orbitals; ++i)
 		{
-			// out = Operator::prod(out,sign_local(i),{1}); // * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
 			out = Operator::prod(out, 2.*nh(i)-Id(),{1});
 		}
 		for (int i=0; i<orb2; ++i)
 		{
-			// out = Operator::prod(out,sign_local(i),{1}); // * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
 			out = Operator::prod(out, 2.*nh(i),{1});
 		}
 
@@ -427,6 +450,56 @@ Sz (std::size_t orbital) const
 }
 
 SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
+Sx (std::size_t orbital) const
+{
+	if(N_orbitals == 1) { return Sx_1s; }
+	else
+	{
+		Operator out;
+		if(orbital == 0) { out = Operator::outerprod(Sx_1s,Id_1s,{1}); }
+		else
+		{
+			if( orbital == 1 ) { out = Operator::outerprod(Id_1s,Sx_1s,{1}); }
+			else { out = Operator::outerprod(Id_1s,Id_1s,{1}); }
+		}
+		for(std::size_t o=2; o<N_orbitals; o++)
+		{
+			if(orbital == o) { out = Operator::outerprod(out,Sx_1s,{1}); }
+			else { out = Operator::outerprod(out,Id_1s,{1}); }
+		}
+		return out;
+	}
+}
+
+SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
+Sp (std::size_t orbital) const
+{
+	if(N_orbitals == 1) { return Sz_1s; }
+	else
+	{
+		Operator out;
+		if(orbital == 0) { out = Operator::outerprod(Sp_1s,Id_1s,{1}); }
+		else
+		{
+			if( orbital == 1 ) { out = Operator::outerprod(Id_1s,Sp_1s,{1}); }
+			else { out = Operator::outerprod(Id_1s,Id_1s,{1}); }
+		}
+		for(std::size_t o=2; o<N_orbitals; o++)
+		{
+			if(orbital == o) { out = Operator::outerprod(out,Sp_1s,{1}); }
+			else { out = Operator::outerprod(out,Id_1s,{1}); }
+		}
+		return out;
+	}
+}
+
+SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
+Sm (std::size_t orbital) const
+{
+	return Sp(orbital).adjoint();
+}
+
+SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
 T (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return T_1s; }
@@ -469,7 +542,7 @@ Id () const
 }
 
 SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
-HubbardHamiltonian (double U, double t, double V, double J, double Bz, bool PERIODIC) const
+HubbardHamiltonian (double U, double t, double V, double Jz, double Jxy, double Bz, double Bx, bool PERIODIC) const
 {
 	Operator Mout({1},TensorBasis);
 	if( N_orbitals >= 2 and t!=0. )
@@ -483,10 +556,8 @@ HubbardHamiltonian (double U, double t, double V, double J, double Bz, bool PERI
 			Mout += -t*std::sqrt(2.)*(Operator::prod(psidag(UP,i),psi(UP,i+1),{1})+Operator::prod(psidag(DN,i),psi(DN,i+1),{1}));
 		}
 		if (V != 0.) { Mout += -V*std::sqrt(3.)*(Operator::prod(Tdag(i),T(i+1),{1})); }
-		if (J != 0.)
-		{
-			// Mout += -J*std::sqrt(3.)*(Operator::prod(Sdag(i),S(i+1),{1}));
-		}
+		if (Jz != 0.) { Mout += -Jz*Operator::prod(Sz(i),Sz(i+1),{1}); }
+		if (Jxy != 0.) { Mout += -Jxy*0.5*(Operator::prod(Sp(i),Sm(i+1),{1})+Operator::prod(Sm(i),Sp(i+1),{1})); }
 	}
 	if (PERIODIC==true and N_orbitals>2)
 	{
@@ -494,20 +565,13 @@ HubbardHamiltonian (double U, double t, double V, double J, double Bz, bool PERI
 		{
 			Mout += -t*std::sqrt(2.)*(Operator::prod(psidag(UP,0),psi(UP,N_orbitals-1),{1})+Operator::prod(psidag(DN,0),psi(DN,N_orbitals-1),{1}));
 		}
-		// if (V != 0.) {Mout += V*(Operator::prod(n(0),n(N_orbitals-1),{1}));}
-		// if (J != 0.)
-		// {
-		// 	Mout += -J*std::sqrt(3.)*(Operator::prod(Sdag(0),S(N_orbitals-1),{1}));
-		// }
+		if (V != 0.) { Mout += -V*std::sqrt(3.)*(Operator::prod(Tdag(0),T(N_orbitals-1),{1})); }
+		if (Jz != 0.) { Mout += -Jz*Operator::prod(Sz(0),Sz(N_orbitals-1),{1}); }
+		if (Jxy != 0.) { Mout += -Jxy*0.5*(Operator::prod(Sp(0),Sm(N_orbitals-1),{1})+Operator::prod(Sm(0),Sp(N_orbitals-1),{1})); }
 	}
-	if (U != 0. and U != std::numeric_limits<double>::infinity())
-	{
-		for (int i=0; i<N_orbitals; ++i) { Mout += 0.5 * U * nh(i); }
-	}
-	if (Bz != 0.)
-	{
-		for (int i=0; i<N_orbitals; ++i) { Mout += -1. * Bz * Sz(i); }
-	}
+	if (U != 0. and U != std::numeric_limits<double>::infinity()) { for (int i=0; i<N_orbitals; ++i) { Mout += 0.5 * U * nh(i); } }
+	if (Bz != 0.) { for (int i=0; i<N_orbitals; ++i) { Mout += -1. * Bz * Sz(i); } }
+	if (Bx != 0.) { for (int i=0; i<N_orbitals; ++i) { Mout += -1. * Bx * Sx(i); } }
 
 	return Mout;
 }

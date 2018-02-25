@@ -5,8 +5,6 @@
 
 namespace VMPS
 {
-typedef Sym::U0 Symmetry;
-
 /**
  * \class Hubbard
  * \ingroup Hubbard
@@ -25,6 +23,7 @@ typedef Sym::U0 Symmetry;
 class Hubbard : public Mpo<Sym::U0,double>, public HubbardObservables<Sym::U0>
 {
 public:
+	typedef Sym::U0 Symmetry;
 	
 	Hubbard() : Mpo(){};
 	Hubbard (const size_t &L, const vector<Param> &params);

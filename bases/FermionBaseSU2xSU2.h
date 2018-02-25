@@ -284,12 +284,10 @@ sign (std::size_t orb1, std::size_t orb2) const
 		Operator out = Id();
 		for (int i=orb1; i<N_orbitals; ++i)
 		{
-			// out = Operator::prod(out,sign_local(i),{1}); // * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
 			out = Operator::prod(out, 2.*nh(i)-Id(i),{1,1});
 		}
 		for (int i=0; i<orb2; ++i)
 		{
-			// out = Operator::prod(out,sign_local(i),{1}); // * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
 			out = Operator::prod(out, 2.*nh(i),{1,1});
 		}
 
@@ -401,17 +399,17 @@ T (std::size_t orbital) const
 	{
 		Operator out;
 		bool TOGGLE=false;
-		if(orbital == 0) { out = Operator::outerprod(T_1s,Id_1s,{3,1}); TOGGLE=true; }
+		if(orbital == 0) { out = Operator::outerprod(T_1s,Id_1s,{1,3}); TOGGLE=true; }
 		else
 		{
-			if( orbital == 1 ) { out = Operator::outerprod(Id_1s,T_1s,{3,1}); TOGGLE=true; }
+			if( orbital == 1 ) { out = Operator::outerprod(Id_1s,T_1s,{1,3}); TOGGLE=true; }
 			else { out = Operator::outerprod(Id_1s,Id_1s,{1,1}); }
 		}
 		for(std::size_t o=2; o<N_orbitals; o++)
 		{
-			if(orbital == o) { out = Operator::outerprod(out,T_1s,{3,1}); TOGGLE=true; }
+			if(orbital == o) { out = Operator::outerprod(out,T_1s,{1,3}); TOGGLE=true; }
 			else if(TOGGLE==false) { out = Operator::outerprod(out,Id_1s,{1,1}); }
-			else if(TOGGLE==true) { out = Operator::outerprod(out,Id_1s,{3,1}); }
+			else if(TOGGLE==true) { out = Operator::outerprod(out,Id_1s,{1,3}); }
 		}
 		return out;
 	}
