@@ -135,7 +135,7 @@ private:
 	vector<Biped<Symmetry,MatrixType> > L;
 	vector<Biped<Symmetry,MatrixType> > R;
 	void prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE=true);
-	void optimizationStep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
+	void optimizationStep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool SWEEP=true);
 	void optimizationStep2 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
 //	void sweepStep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
 	void build_L (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket);
@@ -148,7 +148,7 @@ private:
 	template<typename MpOperator>
 	void prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE=true);
 	template<typename MpOperator>
-	void optimizationStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
+	void optimizationStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool SWEEP=true);
 	template<typename MpOperator>
 	void optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
 //	template<typename MpOperator>
@@ -398,16 +398,19 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RAN
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-optimizationStep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
+optimizationStep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool SWEEP)
 {
 	for (size_t s=0; s<Vin.locBasis(pivot).size(); ++s)
 	{
 		Vout.A[pivot][s] = L[pivot] * Vin.A[pivot][s] * R[pivot];
 	}
 	
-	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-	pivot = Vout.get_pivot();
-	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(pivot,Vout,Vin) : build_R(pivot,Vout,Vin);
+	if (SWEEP)
+	{
+		Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
+		pivot = Vout.get_pivot();
+		(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(pivot,Vout,Vin) : build_R(pivot,Vout,Vin);
+	}
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
@@ -417,20 +420,28 @@ optimizationStep2 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 	size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
 	size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
 	
-	vector<vector<Biped<Symmetry,MatrixType> > > Apair;
-	Apair.resize(Vin.locBasis(loc1).size());
-	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
+// 	vector<vector<Biped<Symmetry,MatrixType> > > Apair;
+// 	Apair.resize(Vin.locBasis(loc1).size());
+// 	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
+// 	{
+// 		Apair[s1].resize(Vin.locBasis(loc2).size());
+// 	}
+// 	
+// 	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
+// 	for (size_t s3=0; s3<Vin.locBasis(loc2).size(); ++s3)
+// 	{
+// 		Apair[s1][s3] = L[loc1] * Vin.A[loc1][s1] * Vin.A[loc2][s3] * R[loc2];
+// 	}
+	
+	PivotVector<Symmetry,Scalar> AAin(Vin.A[loc1], Vin.locBasis(loc1), Vin.A[loc2], Vin.locBasis(loc2));
+	PivotVector<Symmetry,Scalar> AAout;
+	AAout.outerResize(AAin);
+	for (size_t s1s3=0; s1s3<AAin.data.size(); ++s1s3)
 	{
-		Apair[s1].resize(Vin.locBasis(loc2).size());
+		AAout.data[s1s3] = L[loc1] * AAin.data[s1s3] * R[loc2];
 	}
 	
-	for (size_t s1=0; s1<Vin.locBasis(loc1).size(); ++s1)
-	for (size_t s3=0; s3<Vin.locBasis(loc2).size(); ++s3)
-	{
-		Apair[s1][s3] = L[loc1] * Vin.A[loc1][s1] * Vin.A[loc2][s3] * R[loc2];
-	}
-	
-	Vout.sweepStep2(CURRENT_DIRECTION, loc1, Apair);
+	Vout.sweepStep2(CURRENT_DIRECTION, loc1, AAout.data);
 	pivot = Vout.get_pivot();
 	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(pivot,Vout,Vin) : build_R(pivot,Vout,Vin);
 }
@@ -531,7 +542,6 @@ varCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sca
 				else
 				{
 					sqnormVin = isReal(avg(Vin,Hdag,H,Vin));
-					cout << "sqnormVin=" << sqnormVin << endl;
 				}
 				
 			}
@@ -591,7 +601,6 @@ varCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sca
 		++N_halfsweeps;
 		
 		sqdist = abs(sqnormVin-Vout.squaredNorm());
-		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		assert(!std::isnan(sqdist));
 		
 		if (CHOSEN_VERBOSITY>=2)
@@ -662,7 +671,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Sc
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-optimizationStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
+optimizationStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool SWEEP)
 {
 	Stopwatch<> Chronos;
 	
@@ -720,9 +729,12 @@ optimizationStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symm
 //		}
 //	}
 	
-	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-	pivot = Vout.get_pivot();
-	(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(pivot,Vout,H,Vin) : build_RW(pivot,Vout,H,Vin);
+	if (SWEEP)
+	{
+		Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
+		pivot = Vout.get_pivot();
+		(CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? build_LW(pivot,Vout,H,Vin) : build_RW(pivot,Vout,H,Vin);
+	}
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
@@ -863,6 +875,26 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
 	{
 		Stopwatch<> Aion;
+		
+		// A 2-site sweep is necessary! Move pivot back to edge.
+		if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+		{
+			if (pivot==1)
+			{
+				Vout.sweep(0,DMRG::BROOM::QR);
+				pivot=0;
+				build_RW(0,Vout,H,Vin1);
+				build_R (0,Vout,  Vin2);
+			}
+			else if (pivot==N_sites-2)
+			{
+				Vout.sweep(N_sites-1,DMRG::BROOM::QR);
+				pivot = N_sites-1;
+				build_LW(N_sites-1,Vout,H,Vin1);
+				build_L (N_sites-1,Vout,  Vin2);
+			}
+		}
+		
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
@@ -879,63 +911,106 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 //				Vout.A[pivot][s].block[it->second] -= polyB * Atmp[s].block[q];
 //			}
 			
+			// if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+// 			{
+// 				size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
+// 				size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
+// 				
+// 				Heff[loc1].W = H.W[loc1];
+// 				Heff[loc2].W = H.W[loc2];
+// 				
+// 				// H*Vin1
+// 				vector<vector<Biped<Symmetry,MatrixType> > > Apair;
+// 				HxV(Heff[loc1],Heff[loc2], Vin1.A[loc1],Vin1.A[loc2], Vout.A[loc1],Vout.A[loc2], Vin1.locBasis(loc1),Vin1.locBasis(loc2), Apair);
+// 				
+// 				// Vin2
+// 				vector<vector<Biped<Symmetry,MatrixType> > > ApairVV;
+// 				ApairVV.resize(Vin1.locBasis(loc1).size());
+// 				for (size_t s1=0; s1<Vin1.locBasis(loc1).size(); ++s1)
+// 				{
+// 					ApairVV[s1].resize(Vin1.locBasis(loc2).size());
+// 				}
+// 				
+// 				for (size_t s1=0; s1<Vin2.locBasis(loc1).size(); ++s1)
+// 				for (size_t s3=0; s3<Vin2.locBasis(loc2).size(); ++s3)
+// 				{
+// 					ApairVV[s1][s3] = L[loc1] * Vin2.A[loc1][s1] * Vin2.A[loc2][s3] * R[loc2];
+// 				}
+// 				
+// 				// H*Vin1-polyB*Vin2
+// 				for (size_t s1=0; s1<H.locBasis(loc1).size(); ++s1)
+// 				for (size_t s3=0; s3<H.locBasis(loc2).size(); ++s3)
+// 				for (size_t q=0; q<Apair[s1][s3].dim; ++q)
+// 				{
+// 					qarray2<Symmetry::Nq> quple = {Apair[s1][s3].in[q], Apair[s1][s3].out[q]};
+// 					auto it = ApairVV[s1][s3].dict.find(quple);
+// 					
+// 					MatrixType Mtmp = Apair[s1][s3].block[q];
+// 					size_t rows = max(Apair[s1][s3].block[q].rows(), Apair[s1][s3].block[q].rows());
+// 					size_t cols = max(Apair[s1][s3].block[q].cols(), Apair[s1][s3].block[q].cols());
+// 					
+// 					Apair[s1][s3].block[q].resize(rows,cols);
+// 					Apair[s1][s3].block[q].setZero();
+// 					Apair[s1][s3].block[q].topLeftCorner(Mtmp.rows(),Mtmp.cols()) = Mtmp;
+// 					Apair[s1][s3].block[q].topLeftCorner(Apair[s1][s3].block[q].rows(),
+// 					                                     Apair[s1][s3].block[q].cols()) 
+// 					-= 
+// 					polyB * ApairVV[s1][s3].block[it->second];
+// 				}
+// 				
+// 				Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
+// 				pivot = Vout.get_pivot();
+// 			}
+// 			else
 			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
-			{
-				size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
-				size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
+ 			{
+ 				size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
+ 				size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
+ 				
+ 				PivotVector<Symmetry,Scalar> Apair(Vin1.A[loc1], Vin1.locBasis(loc1), Vin1.A[loc2], Vin1.locBasis(loc2));
+				PivotMatrix2<Symmetry,Scalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
+	                                                          H.W[loc1], H.W[loc2], 
+	                                                          H.locBasis(loc1), H.locBasis(loc2), 
+	                                                          H.opBasis (loc1), H.opBasis (loc2));
+				HxV(Heff2, Apair);
 				
-				Heff[loc1].W = H.W[loc1];
-				Heff[loc2].W = H.W[loc2];
-				
-				// H*Vin1
-				vector<vector<Biped<Symmetry,MatrixType> > > Apair;
-				HxV(Heff[loc1],Heff[loc2], Vin1.A[loc1],Vin1.A[loc2], Vout.A[loc1],Vout.A[loc2], Vin1.locBasis(loc1),Vin1.locBasis(loc2), Apair);
-				
-				// Vin2
-				vector<vector<Biped<Symmetry,MatrixType> > > ApairVV;
-				ApairVV.resize(Vin1.locBasis(loc1).size());
-				for (size_t s1=0; s1<Vin1.locBasis(loc1).size(); ++s1)
+				PivotVector<Symmetry,Scalar> Apair_tmp(Vin2.A[loc1], Vin2.locBasis(loc1), Vin2.A[loc2], Vin2.locBasis(loc2));
+				PivotVector<Symmetry,Scalar> ApairVV;
+				ApairVV.outerResize(Apair_tmp);
+				for (size_t s1s3=0; s1s3<ApairVV.data.size(); ++s1s3)
 				{
-					ApairVV[s1].resize(Vin1.locBasis(loc2).size());
+					ApairVV.data[s1s3] = L[loc1] * Apair_tmp.data[s1s3] * R[loc2];
 				}
 				
-				for (size_t s1=0; s1<Vin2.locBasis(loc1).size(); ++s1)
-				for (size_t s3=0; s3<Vin2.locBasis(loc2).size(); ++s3)
+				for (size_t s1s3=0; s1s3<Apair.data.size(); ++s1s3)
+				for (size_t q=0; q<Apair.data[s1s3].size(); ++q)
 				{
-					ApairVV[s1][s3] = L[loc1] * Vin2.A[loc1][s1] * Vin2.A[loc2][s3] * R[loc2];
-				}
-				
-				// H*Vin1-polyB*Vin2
-				for (size_t s1=0; s1<H.locBasis(loc1).size(); ++s1)
-				for (size_t s3=0; s3<H.locBasis(loc2).size(); ++s3)
-				for (size_t q=0; q<Apair[s1][s3].dim; ++q)
-				{
-					qarray2<Symmetry::Nq> quple = {Apair[s1][s3].in[q], Apair[s1][s3].out[q]};
-					auto it = ApairVV[s1][s3].dict.find(quple);
+					qarray2<Symmetry::Nq> quple = {Apair.data[s1s3].in[q], Apair.data[s1s3].out[q]};
+					auto it = ApairVV.data[s1s3].dict.find(quple);
 					
-					MatrixType Mtmp = Apair[s1][s3].block[q];
-					size_t rows = max(Apair[s1][s3].block[q].rows(), Apair[s1][s3].block[q].rows());
-					size_t cols = max(Apair[s1][s3].block[q].cols(), Apair[s1][s3].block[q].cols());
+					MatrixType Mtmp = Apair.data[s1s3].block[q];
+					size_t rows = max(Apair.data[s1s3].block[q].rows(), Apair.data[s1s3].block[q].rows());
+					size_t cols = max(Apair.data[s1s3].block[q].cols(), Apair.data[s1s3].block[q].cols());
 					
-					Apair[s1][s3].block[q].resize(rows,cols);
-					Apair[s1][s3].block[q].setZero();
-					Apair[s1][s3].block[q].topLeftCorner(Mtmp.rows(),Mtmp.cols()) = Mtmp;
-					Apair[s1][s3].block[q].topLeftCorner(Apair[s1][s3].block[q].rows(),
-					                                     Apair[s1][s3].block[q].cols()) 
+					Apair.data[s1s3].block[q].resize(rows,cols);
+					Apair.data[s1s3].block[q].setZero();
+					Apair.data[s1s3].block[q].topLeftCorner(Mtmp.rows(),Mtmp.cols()) = Mtmp;
+					Apair.data[s1s3].block[q].topLeftCorner(Apair.data[s1s3].block[q].rows(),
+					                                        Apair.data[s1s3].block[q].cols()) 
 					-= 
-					polyB * ApairVV[s1][s3].block[it->second];
+					polyB * ApairVV.data[s1s3].block[it->second];
 				}
 				
-				Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
+				Vout.sweepStep2(CURRENT_DIRECTION, loc1, Apair.data);
 				pivot = Vout.get_pivot();
-			}
-			else
+ 			}
+ 			else
 			{
-				optimizationStep(Vin2,Vout);
+				optimizationStep(Vin2,Vout,false);
 				auto Atmp = Vout.A[pivot];
 				
-				optimizationStep(H,Vin1,Vout);
-				
+				optimizationStep(H,Vin1,Vout,false);
+								
 				for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
 				for (size_t q=0; q<Atmp[s].dim; ++q)
 				{
@@ -983,182 +1058,6 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
 	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
 }
-
-//template<typename Symmetry, typename Scalar, typename MpoScalar>
-//void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-//sumCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<double> &factor, Mps<Symmetry,Scalar> &Vout, 
-//size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps, DMRG::COMPRESSION::INIT START)
-//{
-//	N_sites = Vin1.length();
-//	Stopwatch<> Chronos;
-//	N_halfsweeps = 0;
-//	N_sweepsteps = 0;
-//	Dcutoff = Dcutoff_input;
-//	Dcutoff_new = Dcutoff_input;
-//	
-//	if (START == DMRG::COMPRESSION::RHS)
-//	{
-//		Vout = Vin[0];
-//	}
-//	else if (START == DMRG::COMPRESSION::RANDOM)
-//	{
-//		Vout = Vin[0];
-//		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
-//		Vout.setRandom();
-//	}
-//	
-//	// set L&R edges
-//	L.resize(N_sites);
-//	R.resize(N_sites);
-//	R[N_sites-1].setTarget(Vin2.Qtot);
-//	L[0].setVacuum();
-//	
-//	double sqnormV1, sqnormV2, overlapV12;
-//	sqnormV2 = Vin2.squaredNorm();
-//	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
-//	#pragma omp parallel sections
-//	#endif
-//	{
-//		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
-//		#pragma omp section
-//		#endif
-//		{
-//			sqnormV1 = (H.check_SQUARE()==true)? isReal(avg(Vin1,H,Vin1,true)) : isReal(avg(Vin1,H,H,Vin1));
-//		}
-//		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
-//		#pragma omp section
-//		#endif
-//		{
-//			overlapV12 = isReal(avg(Vin2,H,Vin1));
-//		}
-//		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
-//		#pragma omp section
-//		#endif
-//		{
-//			prepSweep(H,Vin1,Vin2,Vout);
-//		}
-//	}
-//	sqdist = 1.;
-//	size_t halfSweepRange = N_sites;
-//	
-//	if (CHOSEN_VERBOSITY>=2)
-//	{
-//		lout << Chronos.info("preparation") << endl;
-//	}
-//	
-//	Mmax = Vout.calc_Mmax();
-//	Vout.N_sv = Dcutoff;
-//	
-//	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
-//	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
-//	{
-//		Stopwatch<> Aion;
-//		for (size_t j=1; j<=halfSweepRange; ++j)
-//		{
-//			turnaround(pivot, N_sites, CURRENT_DIRECTION);
-//			Stopwatch<> Chronos;
-//			
-//			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
-//			{
-//				size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
-//				size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
-//				
-//				Heff[loc1].W = H.W[loc1];
-//				Heff[loc2].W = H.W[loc2];
-//				
-//				// H*Vin1
-//				vector<vector<Biped<Symmetry,MatrixType> > > Apair;
-//				HxV(Heff[loc1],Heff[loc2], Vin1.A[loc1],Vin1.A[loc2], Vout.A[loc1],Vout.A[loc2], Vin1.locBasis(loc1),Vin1.locBasis(loc2), Apair);
-//				
-//				// Vin2
-//				vector<vector<Biped<Symmetry,MatrixType> > > ApairVV;
-//				ApairVV.resize(Vin1.locBasis(loc1).size());
-//				for (size_t s1=0; s1<Vin1.locBasis(loc1).size(); ++s1)
-//				{
-//					ApairVV[s1].resize(Vin1.locBasis(loc2).size());
-//				}
-//				
-//				for (size_t s1=0; s1<Vin2.locBasis(loc1).size(); ++s1)
-//				for (size_t s3=0; s3<Vin2.locBasis(loc2).size(); ++s3)
-//				{
-//					ApairVV[s1][s3] = L[loc1] * Vin2.A[loc1][s1] * Vin2.A[loc2][s3] * R[loc2];
-//				}
-//				
-//				// H*Vin1-B*Vin2
-//				for (size_t s1=0; s1<H.locBasis(loc1).size(); ++s1)
-//				for (size_t s3=0; s3<H.locBasis(loc2).size(); ++s3)
-//				for (size_t q=0; q<Apair[s1][s3].dim; ++q)
-//				{
-//					qarray2<Symmetry::Nq> quple = {Apair[s1][s3].in[q], Apair[s1][s3].out[q]};
-//					auto it = ApairVV[s1][s3].dict.find(quple);
-//					
-//					MatrixType Mtmp = Apair[s1][s3].block[q];
-//					size_t rows = max(Apair[s1][s3].block[q].rows(), Apair[s1][s3].block[q].rows());
-//					size_t cols = max(Apair[s1][s3].block[q].cols(), Apair[s1][s3].block[q].cols());
-//					
-//					Apair[s1][s3].block[q].resize(rows,cols);
-//					Apair[s1][s3].block[q].setZero();
-//					Apair[s1][s3].block[q].topLeftCorner(Mtmp.rows(),Mtmp.cols()) = Mtmp;
-//					Apair[s1][s3].block[q].topLeftCorner(Apair[s1][s3].block[q].rows(),Apair[s1][s3].block[q].cols()) -= polyB * ApairVV[s1][s3].block[it->second];
-//				}
-//				
-//				Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
-//				pivot = Vout.get_pivot();
-//			}
-//			else
-//			{
-//				optimizationStep(Vin2,Vout);
-//				auto Atmp = Vout.A[pivot];
-//				
-//				optimizationStep(H,Vin1,Vout);
-//				
-//				for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
-//				for (size_t q=0; q<Atmp[s].dim; ++q)
-//				{
-//					qarray2<Symmetry::Nq> quple = {Atmp[s].in[q], Atmp[s].out[q]};
-//					auto it = Vout.A[pivot][s].dict.find(quple);
-//					Vout.A[pivot][s].block[it->second] -= polyB * Atmp[s].block[q];
-//				}
-//				
-//				Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
-//				pivot = Vout.get_pivot();
-//			}
-//			
-//			sweepStep(H,Vin1,Vin2,Vout);
-//			++N_sweepsteps;
-//		}
-//		halfSweepRange = N_sites-1;
-//		++N_halfsweeps;
-//		
-//		sqdist = abs(sqnormV1 - Vout.squaredNorm() + polyB*polyB*sqnormV2 - 2.*polyB*overlapV12);
-//		assert(!std::isnan(sqdist));
-//		
-//		if (CHOSEN_VERBOSITY>=2)
-//		{
-//			lout << Aion.info("half-sweep") << "\tdistance^2=" << sqdist << endl;
-//		}
-//		
-//		bool RESIZED = false;
-//		if (N_halfsweeps%4 == 0 and 
-//		    N_halfsweeps > 0 and 
-//		    N_halfsweeps != max_halfsweeps and
-//		    sqdist > tol)
-//		{
-//			Vout.N_sv += 1;
-//			Dcutoff_new = Vout.N_sv;
-//			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-//			{
-//				lout << "resize: " << Vout.N_sv-1 << "→" << Vout.N_sv << endl;
-//			}
-//		}
-//		
-//		Mmax_new = Vout.calc_Mmax();
-//	}
-//	
-//	// last sweep
-//	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
-//	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
-//}
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>

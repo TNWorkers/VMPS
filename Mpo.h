@@ -269,6 +269,7 @@ protected:
 	bool UNITARY    = false;
 	bool HERMITIAN  = false;
 	bool GOT_SQUARE = false;
+	bool GOT_OPEN_BC = true;
 	
 	size_t N_sites;
 	size_t N_phys=0;
@@ -417,10 +418,6 @@ construct (const SuperMatrix<Symmetry,Scalar> &G_input,
 		construct(tensor_product(G_input,G_input), Wsq, GvecSq, qOpSq, false, OPEN_BC); //use false here, otherwise one would also calclate H⁴.
 		GOT_SQUARE = true;
 	}
-	else
-	{
-		GOT_SQUARE = false;
-	}
 }
 
 template<typename Symmetry, typename Scalar>
@@ -432,6 +429,7 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
            bool CALC_SQUARE,
            bool OPEN_BC)
 {
+	GOT_OPEN_BC = OPEN_BC;
 	Wstore.resize(N_sites);
 	Gstore = Gvec_input;
 	
@@ -498,7 +496,7 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 				for(size_t k=0; k<qOp_in[l].size(); ++k)
 				{
 					if (qOp_in[l][k] == Q) {match=k; break;}
-					// assert(k == qOp[l].size()-1 and "The SuperMatrix is not well defined.");
+					// assert(k == qOp[l].size()-1 and "The SuperMatrix is not well-defined.");
 				}
 				Wstore[l][s1][s2][match].insert(a1,a2) = val;
 			}
@@ -549,10 +547,6 @@ construct (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 		}
 		construct(GvecSq_tmp, Wsq, GvecSq, qOpSq, false, OPEN_BC); //use false here, otherwise one would also calclate H⁴.
 		GOT_SQUARE = true;
-	}
-	else
-	{
-		GOT_SQUARE = false;
 	}
 	
 	// auxiliary Basis
@@ -1034,7 +1028,9 @@ template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 scale (double factor, double offset)
 {
-	/**Example for where to apply the scaling factor, 3-site Heisenberg:
+	cout << "scaling by:" << factor << ", " << offset << endl;
+	
+	/**Example for where to apply the scaling factor, 3-site Heisenberg (open boundary conditions):
 	\f$\left(-f \cdot B_x \cdot S^x_1, -f \cdot J \cdot S^z_1, I\right)
 	
 	\cdot 
@@ -1060,97 +1056,29 @@ scale (double factor, double offset)
 	= -f \cdot B_x \cdot (S^x_1 + S^x_2 + S^x_3) - f \cdot J \cdot (S^z_1 \cdot S^z_2 + S^z_2 \cdot S^z_3)
 	= f \cdot H\f$*/
 	
-	// apply to Gvec
-	if (factor != 1.)
+	vector<SuperMatrix<Symmetry,Scalar> > Gvec_tmp = Gvec;
+	
+	if (abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
 	{
-		for (size_t l=0; l<N_sites-1; ++l)
+		size_t last = Daux-1;
+		for (size_t l=0; l<N_sites; ++l)
+		for (size_t a2=0; a2<Daux-1; ++a2)
 		{
-			size_t a1 = (l==0)? 0 : Daux-1;
-			for (size_t a2=0; a2<Daux-1; ++a2)
-			{
-				Gvec[l](a1,a2).data *= factor;
-			}
+			Gvec_tmp[l](last,a2).data *= factor;
 		}
-		Gvec[N_sites-1](Daux-1,0).data *= factor;
 	}
 	
-	if (offset != 0.)
+	if (abs(offset) > ::mynumeric_limits<double>::epsilon())
 	{
+		size_t last = Daux-1;
 		for (size_t l=0; l<N_sites; ++l)
 		{
-			size_t a1 = (l==0)? 0 : Daux-1;
-			SparseMatrixType Id(Gvec[l](a1,0).data.rows(), Gvec[l](a1,0).data.cols());
-			Id.setIdentity();
-			Gvec[l](a1,0).data += offset/N_sites * Id;
+			MatrixType Id = MatrixType::Identity(Gvec_tmp[l](last,0).data.rows(), Gvec_tmp[l](last,0).data.cols());
+			Gvec_tmp[l](last,0).data += offset/N_sites * Id.sparseView();
 		}
 	}
-	
-	// calc W from Gvec
-	if (factor != 1.)
-	{
-		for (size_t l=0; l<N_sites-1; ++l)
-		{
-			size_t a1 = (l==0)? 0 : Daux-1;
-			for (size_t s1=0; s1<qloc[l].size(); ++s1)
-			for (size_t s2=0; s2<qloc[l].size(); ++s2)
-			for (size_t a2=0; a2<Daux-1; ++a2)
-			for (size_t k=0; k<qOp[l].size(); ++k)
-			{
-				W[l][s1][s2][k].coeffRef(a1,a2) *= factor;
-			}
-		}
 		
-		for (size_t s1=0; s1<qloc[N_sites-1].size(); ++s1)
-		for (size_t s2=0; s2<qloc[N_sites-1].size(); ++s2)
-		for (size_t k=0; k<qOp[N_sites-1].size(); ++k)
-		{
-			W[N_sites-1][s1][s2][k].coeffRef(Daux-1,0) *= factor;
-		}
-	}
-	if (offset != 0.)
-	{
-		// apply offset to local part:
-		// leftmost element on first site
-		// downmost element on last site
-		// down left corner element for the rest
-		for (size_t l=0; l<N_sites; ++l)
-		{
-			size_t a1 = (l==0)? 0 : Daux-1;
-			for (size_t s=0; s<qloc[l].size(); ++s)
-			for (size_t k=0; k<qOp[l].size(); ++k)
-			{
-				W[l][s][s][k].coeffRef(a1,0) += offset/N_sites;
-			}
-		}
-	}
-	
-	if (GOT_SQUARE == true and (factor!=1. or offset!=0.))
-	{
-		// apply to GvecSq
-		for (size_t l=0; l<N_sites; ++l)
-		{
-			GvecSq[l] = tensor_product(Gvec[l],Gvec[l]);
-		}
-		
-		// calc Wsq to GvecSq
-		for (size_t l=0; l<N_sites; ++l)
-		for (size_t s1=0; s1<qloc[l].size(); ++s1)
-		for (size_t s2=0; s2<qloc[l].size(); ++s2)
-		for (size_t k=0; k<qOp[l].size(); ++k)
-		{
-			Wsq[l][s1][s2][k].resize(GvecSq[l].rows(), GvecSq[l].cols());
-			
-			for (size_t a1=0; a1<GvecSq[l].rows(); ++a1)
-			for (size_t a2=0; a2<GvecSq[l].cols(); ++a2)
-			{
-				Scalar val = GvecSq[l](a1,a2).data.coeffRef(s1,s2);
-				if (val != 0.)
-				{
-					Wsq[l][s1][s2][k].insert(a1,a2) = val;
-				}
-			}
-		}
-	}
+	construct (Gvec_tmp, W, Gvec, qOp, GOT_SQUARE, GOT_OPEN_BC);
 }
 
 //template<typename Symmetry, typename Scalar>

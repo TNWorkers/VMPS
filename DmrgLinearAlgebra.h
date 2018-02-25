@@ -246,7 +246,7 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 	Compadre.varCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax());
 	
-	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
+ 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
 	{
 		lout << Compadre.info() << endl;
 		lout << Chronos.info("HxV") << endl;
@@ -271,16 +271,16 @@ void polyIter (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin
                const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, 
                DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
-//	Stopwatch<> Chronos;
-//	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
-//	Compadre.polyCompress(H,Vin1,polyB,Vin2, Vout, Vin1.calc_Dmax());
-//	
-//	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
-//	{
-//		lout << Compadre.info() << endl;
-//		lout << Chronos.info(make_string("polyIter B=",polyB)) << endl;
-//		lout << "Vout: " << Vout.info() << endl << endl;
-//	}
+	Stopwatch<> Chronos;
+	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
+	Compadre.polyCompress(H,Vin1,polyB,Vin2, Vout, Vin1.calc_Dmax());
+
+	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
+	{
+		lout << Compadre.info() << endl;
+		lout << Chronos.info(make_string("polyIter B=",polyB)) << endl;
+		lout << "Vout: " << Vout.info() << endl << endl;
+	}
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>

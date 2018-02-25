@@ -1,3 +1,5 @@
+#define DONT_USE_LAPACK_SVD
+#define DONT_USE_LAPACK_QR
 #define DMRG_DONT_USE_OPENMP
 #define EIGEN_DONT_PARALLELIZE
 
@@ -178,16 +180,37 @@ int main (int argc, char* argv[])
 	{
 		OxV(H.Sz(0), init->state, initA);
 	}
-//	delete init;
+	delete init;
 	initA.eps_svd = 1e-7;
 	cout << initA.info() << endl;
 	//--------------</A*init>---------------
 	
-	cout << "scale test: " << avg(init->state, H, init->state)-E0 << endl;
-	H.scale(2.);
-	cout << "scale test: " << avg(init->state, H, init->state, true)-pow(2.*E0,2) << endl;
-	H.scale(3.,5.);
-	cout << "scale test: " << avg(init->state, H, init->state)-6.*E0-5. << endl;
+// 	cout << "1,0: " << avg(init->state, H, init->state, true) << endl;
+ //  	H.scale(2.);
+//   	cout << "2,0: " << avg(init->state, H, init->state) << ", "  << 2.*E0 << endl;
+//   	cout << "2,0: " << avg(init->state, H, init->state, true) << ", "  << pow(2.*E0,2) << endl;
+//   	H.scale(0.5);
+//   	cout << "1,0: " << avg(init->state, H, init->state) << ", "  << E0 << endl;
+//   	cout << "2,0: " << avg(init->state, H, init->state, true) << ", "  << pow(E0,2) << endl;
+	
+ // 	H.scale(2.,2.);
+//  	cout << "H: " << avg(init->state, H, init->state) << ", " <<  2.*E0+2. << endl;  
+//  	cout << "Hsq: " << avg(init->state, H, init->state, true) << ", " << pow(2.*E0+2.,2) << endl;
+	
+// 	cout << "scale test: " << avg(init->state, H, init->state, true)-pow(2.*E0,2) << endl;
+// 	H.scale(3.,5.);
+// 	cout << "scale test: " << avg(init->state, H, init->state)-6.*E0-5. << endl;
+	
+	
+// 	auto Psi = init->state;
+// 	VMPS::HubbardU1xU1::StateXd rand = Psi; rand.setRandom();
+// 	Psi += 0.1 * rand;
+// 	VMPS::HubbardU1xU1::CompressorXd Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
+// 	VMPS::HubbardU1xU1::StateXd Phi;
+// 	Compadre.varCompress(Psi,Phi,2);
+// 	cout << Psi.info() << endl;
+// 	cout << Phi.info() << endl;
+	
 	
 	//--------------<KernelPolynomialSolver>---------------
 	double spillage = 0.;
@@ -234,5 +257,5 @@ int main (int argc, char* argv[])
 	lout << "Chebyshev iteration done!" << endl;
 	//--------------</KernelPolynomialSolver>---------------
 	
-	delete KPS;
+	delete KPS;	
 }
