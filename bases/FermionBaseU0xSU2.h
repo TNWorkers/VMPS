@@ -35,12 +35,11 @@ public:
 	/**
 	 * \param L_input : the amount of orbitals
 	 * \param subLattice_in : The SUB_LATTICE (Either A or B) of orbital 0. SUB_LATTICE of orbital i: \f$\sim (-1)^i \f$
-	 * \param U_IS_INFINITE : if \p true, eliminates doubly-occupied sites from the basis
 	 */
-	FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in = SUB_LATTICE::A, bool U_IS_INFINITE=false);
+	FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in = SUB_LATTICE::A);
 	
 	/**amount of states.*/
-	inline Index dim() const {return static_cast<Index>(N_states);}
+	inline Index dim() const {return static_cast<Index>(TensorBasis.size());}
 	
 	/**amount of orbitals*/
 	inline std::size_t orbitals() const  {return N_orbitals;}
@@ -53,6 +52,15 @@ public:
 	 * Particle-hole spinor
 	 * \param sigma : spin index
 	 * \param orbital : orbital index
+	 *
+	 * The operator quantum number is \f$\frac{1}{2} \f$ and the spinor is defined as follows:
+	 * \f$\psi_{\sigma} = \left(
+	 * \begin{array}{c}
+	 * sc_{\sigma} \\
+	 * c_{-\sigma} \\
+	 * \end{array}
+	 * \right)\f$
+	 * Where the upper component has pseudo-spin z quantumnumber \f$+\frac{1}{2} \f$ and the sign s is either +1 or -1 depending on the sublattice.
 	 */
 	Operator psi (SPIN_INDEX sigma, size_t orbital=0) const;
 
@@ -77,7 +85,7 @@ public:
 	Operator sign_local (std::size_t orbital=0) const;
 
 	/**
-	 * Occupation number operator
+	 * Holon occupation number operator
 	 * \param orbital : orbital index
 	 */
 	Operator nh (std::size_t orbital=0) const;
@@ -110,13 +118,13 @@ public:
 	
 	///\{
 	/**
-	 * Orbital spin
+	 * Orbital pseudo spin
 	 * \param orbital : orbital index
 	 */
 	Operator T (std::size_t orbital=0) const;
 	
 	/**
-	 * Orbital spin† 
+	 * Orbital pseudo spin† 
 	 * \param orbital : orbital index
 	 */
 	Operator Tdag (std::size_t orbital=0) const;
@@ -127,7 +135,8 @@ public:
 	 * \param U : \f$U\f$
 	 * \param t : \f$t\f$
 	 * \param V : \f$V\f$
-	 * \param J : \f$J\f$
+	 * \param Jz : \f$Jz\f$
+	 * \param Jxy : \f$Jxy\f$
 	 * \param Bz : \f$B_z\f$
 	 * \param Bx : \f$B_x\f$
 	 * \param PERIODIC: periodic boundary conditions if \p true
@@ -135,25 +144,17 @@ public:
 	Operator HubbardHamiltonian (double U, double t=1., double V=0., double Jz=0., double Jxy=0., double Bz=0., double Bx=0., bool PERIODIC=false) const;
 	
 	/**
-	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
+	 * Creates the full Hubbard Hamiltonian on the supersite with inhomogeneuous parameters.
 	 * \param Uorb : \f$U\f$ for each orbital
-	 * \param mu : \f$\mu\f$ (chemical potential)
-	 * \param t : \f$t\f$
-	 * \param V : \f$V\f$
-	 * \param J : \f$J\f$
-	 * \param PERIODIC: periodic boundary conditions if \p true
-	 */
-	// Operator HubbardHamiltonian (std::vector<double> Uorb, double mu, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
-
-	/**
-	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U and arbitrary hopping matrix.
-	 * \param Uorb : \f$U\f$ for each orbital
-	 * \param mu : \f$\mu\f$ (chemical potential)
 	 * \param t : \f$t_{ij}\f$ (hopping matrix)
-	 * \param V : \f$V_{ij}\f$ (nn Density Interaction matrix)
-	 * \param J : \f$J_{ij}\f$ (nn Spin interaction matrix)
+	 * \param V : \f$V_{ij}\f$ (nn pseudo-spin pseudo-spin matrix)
+	 * \param Jz : \f$J^{z}_{ij}\f$ (nn Spin interaction matrix)
+	 * \param Jxy : \f$J^{xy}_{ij}\f$ (nn Spin interaction matrix)
+	 * \param Bz : \f$B_z\f$ for each orbital
+	 * \param Bx : \f$B_x\f$ for each orbital
 	 */
-	// Operator HubbardHamiltonian (Eigen::VectorXd Uorb, double mu, Eigen::MatrixXd t, Eigen::MatrixXd V, Eigen::MatrixXd J) const;
+	Operator HubbardHamiltonian (Eigen::VectorXd Uorb, Eigen::MatrixXd t, Eigen::MatrixXd V, Eigen::MatrixXd Jz, Eigen::MatrixXd Jxy,
+								 Eigen::VectorXd Bz, Eigen::VectorXd Bx) const;
 	
 	/**Identity*/
 	Operator Id () const;
@@ -174,7 +175,6 @@ public:
 private:
 	
 	std::size_t N_orbitals;
-	std::size_t N_states;
 
 	SUB_LATTICE subLattice;
 
@@ -201,14 +201,11 @@ private:
 };
 
 FermionBase<Sym::SU2<Sym::ChargeSU2> >::
-FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in, bool U_IS_INFINITE)
+FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in)
 	:N_orbitals(L_input),subLattice(subLattice_in)
 {
 	assert(N_orbitals>=1);
 	
-	std::size_t locdim = (U_IS_INFINITE)? 2 : 3;
-	N_states = std::pow(locdim,N_orbitals);
-
 	//create basis for one Fermionic Site with SU2 particle-hole symmetry
 	typename Symmetry::qType Q={1}; //pseudo spin singlet states Spin Up and Spin Down
 	Eigen::Index inner_dim;
@@ -249,7 +246,7 @@ FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in, bool U_IS_INFINITE)
 	Sz_1s( "up", "up" ) = +0.5;
 	Sz_1s( "down", "down" ) = -0.5;
 
-	Sp_1s( "down", "up" ) = 1.;
+	Sp_1s( "up", "down" ) = 1.;
 	Sm_1s = Sp_1s.adjoint();
 
 	Sx_1s = 0.5*(Sp_1s + Sm_1s);
@@ -474,7 +471,7 @@ Sx (std::size_t orbital) const
 SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
 Sp (std::size_t orbital) const
 {
-	if(N_orbitals == 1) { return Sz_1s; }
+	if(N_orbitals == 1) { return Sp_1s; }
 	else
 	{
 		Operator out;
@@ -545,11 +542,8 @@ SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen
 HubbardHamiltonian (double U, double t, double V, double Jz, double Jxy, double Bz, double Bx, bool PERIODIC) const
 {
 	Operator Mout({1},TensorBasis);
-	if( N_orbitals >= 2 and t!=0. )
-	{
-		Mout = -t*std::sqrt(2.)*(Operator::prod(psidag(UP,0),psi(UP,1),{1})+Operator::prod(psidag(DN,0),psi(DN,1),{1}));
-	}
-	for (int i=1; i<N_orbitals-1; ++i) // for all bonds
+
+	for (int i=0; i<N_orbitals-1; ++i) // for all bonds
 	{
 		if (t != 0.)
 		{
@@ -576,53 +570,39 @@ HubbardHamiltonian (double U, double t, double V, double Jz, double Jxy, double 
 	return Mout;
 }
 
-// SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
-// HubbardHamiltonian (std::vector<double> Uvec, double mu, double t, double V, double J, bool PERIODIC) const
-// {
-// 	auto Mout = HubbardHamiltonian(0.,mu,t,V,J,PERIODIC);
-// 	for (int i=0; i<N_orbitals; ++i)
-// 	{
-// 		if (Uvec.size() > 0)
-// 		{
-// 			if (Uvec[i] != 0. and Uvec[i] != std::numeric_limits<double>::infinity())
-// 			{
-// 				Mout += Uvec[i] * d(i);
-// 			}
-// 		}
-// 	}
-// 	return Mout;
-// }
+SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
+HubbardHamiltonian (Eigen::VectorXd Uorb, Eigen::MatrixXd t, Eigen::MatrixXd V, Eigen::MatrixXd Jz, Eigen::MatrixXd Jxy, Eigen::VectorXd Bz, Eigen::VectorXd Bx) const
+{
+	Operator Mout({1},TensorBasis);
+	Mout.setZero();
+	for (Eigen::Index i=0; i<N_orbitals-1; ++i)
+	{
+		if (Uorb.sum() != 0.)
+		{
+			for (int i=0; i<N_orbitals; ++i) {Mout += 0.5 * Uorb(i) * nh(i);}
+		}
+		if (Bz.sum() != 0.)
+		{
+			for (int i=0; i<N_orbitals; ++i) {Mout += -Bz(i) * Sz(i);}
+		}
+		if (Bx.sum() != 0.)
+		{
+			for (int i=0; i<N_orbitals; ++i) {Mout += -Bx(i) * Sx(i);}
+		}
 
-// SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
-// HubbardHamiltonian (Eigen::VectorXd U, double mu, Eigen::MatrixXd t, Eigen::MatrixXd V, Eigen::MatrixXd J) const
-// {
-// 	Operator Mout({1},TensorBasis);
-// 	Mout.setZero();
-// 	for (Eigen::Index i=0; i<N_orbitals-1; ++i)
-// 	{
-// 		for (Eigen::Index j=i+1; j<N_orbitals; ++j)
-// 		{
-// 			if (t(i,j) != 0.)
-// 			{
-// 				Mout += -t(i,j)*std::sqrt(2.)*(Operator::prod(cdag(i),c(j),{1})+Operator::prod(c(i),cdag(j),{1}));
-// 			}
-// 			if (V(i,j) != 0.) {Mout += V(i,j)*(Operator::prod(n(i),n(j),{1}));}
-// 			if (J(i,j) != 0.)
-// 			{
-// 				Mout += -J(i,j)*std::sqrt(3.)*(Operator::prod(Sdag(i),S(j),{1}));
-// 			}
-// 		}
-// 	}
-// 	if (U.sum() != 0. and U.sum() != std::numeric_limits<double>::infinity())
-// 	{
-// 		for (int i=0; i<N_orbitals; ++i) {Mout += U(i)*d(i);}
-// 	}
-// 	if (mu != 0.)
-// 	{
-// 		for (int i=0; i<N_orbitals; ++i) {Mout += (-mu)*n(i);}
-// 	}
+		for (Eigen::Index j=i+1; j<N_orbitals; ++j)
+		{
+			if (t(i,j) != 0.)
+			{
+				Mout += -t(i,j)*std::sqrt(2.)*(Operator::prod(psidag(UP,i),psi(UP,j),{1})+Operator::prod(psidag(DN,i),psi(DN,j),{1}));
+			}
+			if (V(i,j) != 0.) {Mout += V(i,j)*sqrt(3.)*(Operator::prod(Tdag(i),T(j),{1}));}
+			if (Jz(i,j) != 0.) { Mout += -Jz(i,j)*(Operator::prod(Sz(i),Sz(j),{1})); }
+			if (Jz(i,j) != 0.) { Mout += -0.5*Jxy(i,j)*(Operator::prod(Sp(i),Sm(j),{1})+Operator::prod(Sm(i),Sp(j),{1})); }
+		}
+	}
 
-// 	return Mout;
-// }
+	return Mout;
+}
 
 #endif

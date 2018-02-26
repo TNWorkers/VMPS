@@ -145,9 +145,9 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 		
 		if (Jpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), F.Sp(i), F.Sm(i)));
-			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), F.Sm(i), F.Sp(i)));
-			Terms.tight.push_back(make_tuple(Jpara(i,j),     F.Sz(i), F.Sz(i)));
+			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), F.Sp(i), F.Sm(j)));
+			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), F.Sm(i), F.Sp(j)));
+			Terms.tight.push_back(make_tuple(Jpara(i,j),     F.Sz(i), F.Sz(j)));
 		}
 	}
 	

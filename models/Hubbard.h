@@ -85,7 +85,6 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const FermionBase<Symmetry_
 	// Bx
 	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",F.orbitals(),loc);
 	save_label(Bxlabel);
-	
 	// Can also implement superconductivity terms c*c & cdag*cdag here
 	
 	Terms.name = "Hubbard";
