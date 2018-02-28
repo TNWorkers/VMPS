@@ -56,11 +56,13 @@ public:
 	 * The operator quantum number is \f$\frac{1}{2} \f$ and the spinor is defined as follows:
 	 * \f$\psi_{\sigma} = \left(
 	 * \begin{array}{c}
-	 * sc_{\sigma} \\
-	 * c_{-\sigma} \\
+	 * sc^{\dag}_{-\sigma} \\
+	 * \sigma c_{\sigma} \\
 	 * \end{array}
 	 * \right)\f$
-	 * Where the upper component has pseudo-spin z quantumnumber \f$+\frac{1}{2} \f$ and the sign s is either +1 or -1 depending on the sublattice.
+	 * Where the upper component has pseudo-spin z quantumnumber \f$+\frac{1}{2} \f$ 
+	 * and the sign \f$s\f$ is either +1 or -1 depending on the sublattice.
+	 * \f$\sigma\f$ is as usual \f$\uparrow=1\f$ and \f$\downarrow=-1\f$
 	 */
 	Operator psi (SPIN_INDEX sigma, size_t orbital=0) const;
 
