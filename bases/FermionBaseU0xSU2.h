@@ -227,10 +227,6 @@ FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in)
 	F_1s = Operator({1},basis_1s);
 	nh_1s = Operator({1},basis_1s);
 	T_1s = Operator({3},basis_1s);
-	Sz_1s = Operator({1},basis_1s);
-	Sx_1s = Operator({1},basis_1s);
-	Sp_1s = Operator({1},basis_1s);
-	Sm_1s = Operator({1},basis_1s);
 
 	//create operators for one orbital
 	Id_1s( "up", "up" ) = 1.;
@@ -245,16 +241,14 @@ FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in)
 	
 	T_1s( "holon", "holon" ) = std::pow(0.75,0.5);
 
-	Sz_1s( "up", "up" ) = +0.5;
-	Sz_1s( "down", "down" ) = -0.5;
+	//this is 0.5*(nUP-nDN). Note calling this with a plus sign in between gives the identity operator,
+	//due to the SU2 particle hole symmetry --> no non trivial ordenary occupation operator
+	Sz_1s = 0.5 * (std::sqrt(0.5) * Operator::prod(psidag_1sA(UP),psi_1sA(UP),{1}) - std::sqrt(0.5) * Operator::prod(psidag_1sA(DN),psi_1sA(DN),{1}));
 
-	Sp_1s( "up", "down" ) = 1.;
+	Sp_1s = -std::sqrt(0.5) * Operator::prod(psidag_1sA(UP),psi_1sA(DN),{1});
 	Sm_1s = Sp_1s.adjoint();
 
 	Sx_1s = 0.5*(Sp_1s + Sm_1s);
-
-	// p_1s = -std::sqrt(0.5) * Operator::prod(c_1s,c_1s,{1}); //The sign convention corresponds to c_DN c_UP
-	// pdag_1s = p_1s.adjoint(); //The sign convention corresponds to (c_DN c_UP)†=c_UP† c_DN†
 
 	//create basis for N_orbitals fermionic sites
 	if (N_orbitals == 1) { TensorBasis = basis_1s; }
