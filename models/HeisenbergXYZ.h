@@ -77,7 +77,6 @@ HeisenbergXYZ (const size_t &L, const vector<Param> &params)
 	ParamHandler P(params,HeisenbergXYZ::defaults);
 	
 	size_t Lcell = P.size();
-	vector<SuperMatrix<Symmetry,complex<double> > > G;
 	vector<HamiltonianTerms<Symmetry,complex<double> > > Terms(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -90,14 +89,9 @@ HeisenbergXYZ (const size_t &L, const vector<Param> &params)
 		Heisenberg::add_operators(Terms_tmp,B[l],P,l%Lcell);
 		Terms[l] = Terms_tmp.cast<complex<double> >();
 		add_operators(Terms[l],B[l],P,l%Lcell);
-		this->Daux = Terms[l].auxdim();
-		
-		G.push_back(Generator(Terms[l]));
-		setOpBasis(G[l].calc_qOp(),l);
 	}
 	
-	this->generate_label(Terms[0].name,Terms,Lcell);
-	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
 template<typename Symmetry_>

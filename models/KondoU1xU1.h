@@ -86,7 +86,6 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
-	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -96,14 +95,9 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
 		setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);
 		
 		Terms[l] = set_operators(B[l],F[l],P,l%Lcell);
-		this->Daux = Terms[l].auxdim();
-		
-		G.push_back(Generator(Terms[l]));
-		setOpBasis(G[l].calc_qOp(),l);
 	}
 	
-	this->generate_label(Terms[0].name,Terms,Lcell);
-	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
 bool KondoU1xU1::

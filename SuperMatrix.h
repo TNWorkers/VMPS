@@ -3,6 +3,7 @@
 
 #include "DmrgTypedefs.h"
 #include "MemCalc.h"
+#include "DmrgHamiltonianTerms.h"
 #include "boost/multi_array.hpp"
 
 /**Auxiliary matrix of matrices to create an Mpo and MpoQ.*/
@@ -84,7 +85,7 @@ public:
 	/**\describe_Daux*/
 	inline size_t auxdim() const
 	{
-		return max(N_rows,N_cols);
+		return std::max(N_rows,N_cols);
 	}
 	
 	/**\describe_memory*/
@@ -112,8 +113,8 @@ public:
 		}
 		return Dres;
 	}
-
-	vector<typename Symmetry::qType> calc_qOp() const
+	
+	std::vector<typename Symmetry::qType> calc_qOp() const
 	{
 		std::set<typename Symmetry::qType> qOps;
 		for (size_t i=0; i<N_rows; ++i)
@@ -122,7 +123,7 @@ public:
 			qOps.insert(data[i][j].Q);
 		}
 		
-		vector<typename Symmetry::qType> out(qOps.size());
+		std::vector<typename Symmetry::qType> out(qOps.size());
 		copy(qOps.begin(), qOps.end(), out.begin());
 		
 		return out;
@@ -219,9 +220,9 @@ SuperMatrix<Symmetry,Scalar> directSum (const SuperMatrix<Symmetry,Scalar> &M1, 
 }
 
 template<typename Symmetry, typename Scalar>
-ostream &operator<< (ostream& os, const SuperMatrix<Symmetry,Scalar> &M)
+std::ostream &operator<< (std::ostream& os, const SuperMatrix<Symmetry,Scalar> &M)
 {
-	os << showpos << fixed;
+	os << std::showpos << std::fixed;
 	for (int i=0; i<M.rows(); ++i)
 	{
 		for (int n=0; n<M.D(); ++n)
@@ -234,9 +235,9 @@ ostream &operator<< (ostream& os, const SuperMatrix<Symmetry,Scalar> &M)
 				}
 				os << "\t";
 			}
-			if (n!=M.D()-1) {os << endl;}
+			if (n!=M.D()-1) {os << std::endl;}
 		}
-		if (i!=M.rows()-1) {os << endl;}
+		if (i!=M.rows()-1) {os << std::endl;}
 	}
 	os << noshowpos;
 	return os;
@@ -248,20 +249,20 @@ SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar
 	typedef SiteOperator<Symmetry,Scalar> OperatorType;
 	size_t Daux = 2 + Terms.tight.size() + 2*Terms.nextn.size();
 	
-	vector<OperatorType> col;
-	vector<OperatorType> row;
+	std::vector<OperatorType> col;
+	std::vector<OperatorType> row;
 	size_t locdim;
 	if (Terms.tight.size()>0)
 	{
-		locdim = get<1>(Terms.tight[0]).data.rows();
+		locdim = std::get<1>(Terms.tight[0]).data.rows();
 	}
 	else if (Terms.nextn.size()>0)
 	{
-		locdim = get<1>(Terms.nextn[0]).data.rows();
+		locdim = std::get<1>(Terms.nextn[0]).data.rows();
 	}
 	else
 	{
-		locdim = get<1>(Terms.local[0]).data.rows();
+		locdim = std::get<1>(Terms.local[0]).data.rows();
 	}
 	OperatorType Id(Matrix<Scalar,Dynamic,Dynamic>::Identity(locdim,locdim).sparseView(),Symmetry::qvacuum());
 	OperatorType Zero(SparseMatrix<Scalar>(locdim,locdim),Symmetry::qvacuum());
@@ -273,11 +274,11 @@ SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar
 	}
 	for (int i=0; i<Terms.tight.size(); ++i)
 	{
-		row.push_back(get<0>(Terms.tight[i]) * get<1>(Terms.tight[i]));
+		row.push_back(std::get<0>(Terms.tight[i]) * std::get<1>(Terms.tight[i]));
 	}
 	for (int i=0; i<Terms.nextn.size(); ++i)
 	{
-		row.push_back(get<0>(Terms.nextn[i]) * get<1>(Terms.nextn[i]));
+		row.push_back(std::get<0>(Terms.nextn[i]) * std::get<1>(Terms.nextn[i]));
 	}
 	row.push_back(Id);
 	
@@ -285,11 +286,11 @@ SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar
 	col.push_back(Id);
 	for (int i=0; i<Terms.nextn.size(); ++i)
 	{
-		col.push_back(get<2>(Terms.nextn[i]));
+		col.push_back(std::get<2>(Terms.nextn[i]));
 	}
 	for (int i=0; i<Terms.tight.size(); ++i)
 	{
-		col.push_back(get<2>(Terms.tight[i]));
+		col.push_back(std::get<2>(Terms.tight[i]));
 	}
 	for (size_t i=0; i<Terms.nextn.size(); ++i)
 	{
@@ -309,7 +310,7 @@ SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar
 	// corner element : local interaction
 	for (int i=0; i<Terms.local.size(); ++i)
 	{
-		Gout(Daux-1,0) += get<0>(Terms.local[i]) * get<1>(Terms.local[i]);
+		Gout(Daux-1,0) += std::get<0>(Terms.local[i]) * std::get<1>(Terms.local[i]);
 	}
 	
 	// nearest-neighbour transfer
@@ -317,7 +318,7 @@ SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar
 	{
 		for (size_t i=0; i<Terms.nextn.size(); ++i)
 		{
-			Gout(Daux-1-Terms.nextn.size()+i,1+i) = get<3>(Terms.nextn[i]);
+			Gout(Daux-1-Terms.nextn.size()+i,1+i) = std::get<3>(Terms.nextn[i]);
 		}
 	}
 	

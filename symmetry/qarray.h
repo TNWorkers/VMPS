@@ -48,7 +48,7 @@ template<size_t Nq>
 qarray<Nq> operator+ (const qarray<Nq> &a1, const qarray<Nq> &a2)
 {
 	qarray<Nq> aout;
-	transform(a1.data.begin(),a1.data.end(), a2.data.begin(), aout.data.begin(), plus<int>());
+	transform(a1.data.begin(),a1.data.end(), a2.data.begin(), aout.data.begin(), std::plus<int>());
 	return aout;
 }
 
@@ -57,7 +57,7 @@ template<size_t Nq>
 qarray<Nq> operator- (const qarray<Nq> &a1, const qarray<Nq> &a2)
 {
 	qarray<Nq> aout;
-	transform(a1.data.begin(),a1.data.end(), a2.data.begin(), aout.data.begin(), minus<int>());
+	transform(a1.data.begin(),a1.data.end(), a2.data.begin(), aout.data.begin(), std::minus<int>());
 	return aout;
 }
 
@@ -74,7 +74,7 @@ qarray<Nq> operator* (const size_t &alpha, const qarray<Nq> &a)
 }
 
 template<size_t Nq>
-ostream& operator<< (ostream& os, const qarray<Nq> &a)
+std::ostream& operator<< (std::ostream& os, const qarray<Nq> &a)
 {
 	os << "(";
 	for (size_t q=0; q<Nq; ++q)
@@ -94,105 +94,5 @@ qarray<Nq> qvacuum()
 	for (size_t q=0; q<Nq; ++q) {aout[q] = 0;}
 	return aout;
 }
-
-///**Iterator over all quantum numbers on a subchain.
-//Needed in creating the subspaces when constructing an MpsQ.*/
-//template<size_t D, size_t Nq>
-//class qarrayIterator
-//{
-//public:
-//	
-//	/**\param qloc_input : local basis
-//	\param L_input : length of subchain*/
-//	qarrayIterator (std::array<qarray<Nq>,D> qloc_input, size_t L_input)
-//	:qloc(qloc_input), N_sites(L_input)
-//	{
-//		// determine dq
-//		for (size_t q=0; q<Nq; ++q)
-//		{
-//			set<int> qset;
-//			for (size_t s=0; s<D; ++s) {qset.insert(qloc[s][q]);}
-//			set<int> diffqset;
-//			for (auto it=qset.begin(); it!=qset.end(); ++it)
-//			{
-//				int prev;
-//				if (it==qset.begin()) {prev=*it;}
-//				else
-//				{
-//					diffqset.insert(*it-prev);
-//					prev = *it;
-//				}
-//			}
-//			
-//			assert(diffqset.size()==1 and 
-//			       "Unable to understand quantum number increments!");
-//			dq[q] = *diffqset.begin();
-//		}
-//		
-//		// determine qmin, qmax
-//		qmin = N_sites * (*min_element(qloc.begin(),qloc.end()));
-//		qmax = N_sites * (*max_element(qloc.begin(),qloc.end()));
-//		
-//		// setup NestedLoopIterator
-//		vector<size_t> ranges(Nq);
-//		for (size_t q=0; q<Nq; ++q)
-//		{
-//			ranges[q] = (qmax[q]-qmin[q])/dq[q]+1;
-//		}
-//		Nelly = NestedLoopIterator(Nq,ranges);
-//	};
-//	
-//	/**Returns the value of the quantum number.*/
-//	qarray<Nq> operator*() {return value;}
-//	
-//	qarrayIterator& operator= (const qarray<Nq> a) {value=a;}
-//	bool operator!= (const qarray<Nq> a) {return value!=a;}
-//	bool operator<= (const qarray<Nq> a) {return value<=a;}
-//	bool operator<  (const qarray<Nq> a) {return value< a;}
-//	
-//	qarray<Nq> begin()
-//	{
-//		Nelly = Nelly.begin();
-//		return qmin;
-//	}
-//	
-//	qarray<Nq> end()
-//	{
-//		qarray<Nq> qout = qmax;
-//		qout[0] += dq[0];
-//		return qout;
-//	}
-//	
-//	void operator++()
-//	{
-//		++Nelly;
-//		if (Nelly==Nelly.end())
-//		{
-//			value = qmax;
-//			value[0] += dq[0];
-//		}
-//		else
-//		{
-//			value = qmin;
-//			for (size_t q=0; q<Nq; ++q)
-//			{
-//				value[q] += Nelly(q)*dq[q];
-//			}
-//		}
-//	}
-//	
-//private:
-//	
-//	qarray<Nq> value;
-//	
-//	NestedLoopIterator Nelly;
-//	
-//	qarray<Nq> qmin;
-//	qarray<Nq> qmax;
-//	
-//	std::array<qarray<Nq>,D> qloc;
-//	qarray<Nq> dq;
-//	size_t N_sites;
-//};
 
 #endif

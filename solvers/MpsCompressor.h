@@ -259,34 +259,38 @@ varCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t
 	L[0].setVacuum();
 	bool RANDOMIZE = false;
 	
-	// set initial guess
-	if (START == DMRG::COMPRESSION::RANDOM or
-	    START == DMRG::COMPRESSION::RHS)
-	{
-		Vout = Vin;
-		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
-		if (START == DMRG::COMPRESSION::RANDOM)
-		{
-			RANDOMIZE = true;
-			//Vout.setRandom();
-		}
-	}
-	else if (START == DMRG::COMPRESSION::BRUTAL_SVD or
-	         START == DMRG::COMPRESSION::RHS_SVD)
-	{
-		Vout = Vin;
-		Vout.N_sv = Dcutoff;
-		if (Vout.pivot == -1)
-		{
-			Vout.skim(DMRG::DIRECTION::LEFT, DMRG::BROOM::BRUTAL_SVD);
-		}
-		else
-		{
-			Vout.skim(DMRG::BROOM::BRUTAL_SVD);
-		}
-	}
+//	// set initial guess
+//	if (START == DMRG::COMPRESSION::RANDOM or
+//	    START == DMRG::COMPRESSION::RHS)
+//	{
+//		Vout = Vin;
+//		Vout.dynamicResize(DMRG::RESIZE::DECR, Dcutoff);
+//		if (START == DMRG::COMPRESSION::RANDOM)
+//		{
+//			RANDOMIZE = true;
+//			//Vout.setRandom();
+//		}
+//	}
+//	else if (START == DMRG::COMPRESSION::BRUTAL_SVD or
+//	         START == DMRG::COMPRESSION::RHS_SVD)
+//	{
+//		Vout = Vin;
+//		Vout.N_sv = Dcutoff;
+//		if (Vout.pivot == -1)
+//		{
+//			Vout.skim(DMRG::DIRECTION::LEFT, DMRG::BROOM::BRUTAL_SVD);
+//		}
+//		else
+//		{
+//			Vout.skim(DMRG::BROOM::BRUTAL_SVD);
+//		}
+//	}
 	
+	Vout = Vin;
+	Vout.innerResize(Dcutoff);
 	Vout.N_sv = Dcutoff;
+	RANDOMIZE = true;
+	
 	Mmax = Vout.calc_Mmax();
 	prepSweep(Vin,Vout,RANDOMIZE);
 	sqdist = 1.;
@@ -433,9 +437,13 @@ optimizationStep2 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 // 		Apair[s1][s3] = L[loc1] * Vin.A[loc1][s1] * Vin.A[loc2][s3] * R[loc2];
 // 	}
 	
-	PivotVector<Symmetry,Scalar> AAin(Vin.A[loc1], Vin.locBasis(loc1), Vin.A[loc2], Vin.locBasis(loc2));
-	PivotVector<Symmetry,Scalar> AAout;
-	AAout.outerResize(AAin);
+	PivotVector<Symmetry,Scalar> AAin (Vin.A[loc1],  Vin.locBasis(loc1),  Vin.A[loc2],  Vin.locBasis(loc2));
+	PivotVector<Symmetry,Scalar> AAout(Vout.A[loc1], Vout.locBasis(loc1), Vout.A[loc2], Vout.locBasis(loc2));
+	for (size_t s1s3=0; s1s3<AAout.data.size(); ++s1s3)
+	{
+		AAout.data[s1s3].setZero();
+	}
+	
 	for (size_t s1s3=0; s1s3<AAin.data.size(); ++s1s3)
 	{
 		AAout.data[s1s3] = L[loc1] * AAin.data[s1s3] * R[loc2];

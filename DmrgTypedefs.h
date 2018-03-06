@@ -10,7 +10,7 @@
 #ifndef IS_REAL_FUNCTION
 #define IS_REAL_FUNCTION
 inline double isReal (double x) {return x;}
-inline double isReal (complex<double> x) {return x.real();}
+inline double isReal (std::complex<double> x) {return x.real();}
 #endif
 
 #ifndef SPIN_INDEX_ENUM
@@ -172,7 +172,7 @@ std::ostream& operator<< (std::ostream& s, SUB_LATTICE sublat)
 #endif
 using namespace Eigen;
 typedef SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXd;
-typedef SparseMatrix<complex<double>,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXcd;
+typedef SparseMatrix<std::complex<double>,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXcd;
 
 /**Namespace imitation for various enums.*/
 struct DMRG
@@ -241,75 +241,5 @@ std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
 	else                            {s << "RIGHT";}
 	return s;
 }
-
-template<typename Symmetry, typename Scalar> using LocalTerms = 
-vector<tuple<Scalar, SiteOperator<Symmetry,Scalar> > >;
-
-template<typename Symmetry, typename Scalar> using TightTerms = 
-vector<tuple<Scalar, SiteOperator<Symmetry,Scalar>, SiteOperator<Symmetry,Scalar> > >;
-
-template<typename Symmetry, typename Scalar> using NextnTerms = 
-vector<tuple<Scalar, SiteOperator<Symmetry,Scalar>, SiteOperator<Symmetry,Scalar>, SiteOperator<Symmetry,Scalar> > >;
-
-template<typename Symmetry, typename Scalar>
-struct HamiltonianTerms
-{
-	/**local terms of Hamiltonian, format: coupling, operator*/
-	LocalTerms<Symmetry,Scalar> local;
-	
-	/**nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2*/
-	TightTerms<Symmetry,Scalar> tight;
-	
-	/**next-nearest-neighbour terms of Hamiltonian, format: coupling, operator 1, operator 2, transfer operator*/
-	NextnTerms<Symmetry,Scalar> nextn;
-	
-	inline size_t auxdim() {return 2+tight.size()+2*nextn.size();}
-	
-	string name="";
-	vector<string> info;
-	
-	string get_info() const
-	{
-		stringstream ss;
-		copy(info.begin(), info.end()-1, ostream_iterator<string>(ss,","));
-		ss << info.back();
-		
-		string res = ss.str();
-		
-		while (res.find("perp") != string::npos) res.replace(res.find("perp"), 4, "⟂");
-		while (res.find("para") != string::npos) res.replace(res.find("para"), 4, "∥");
-		while (res.find("para") != string::npos) res.replace(res.find("prime"), 4, "'");
-		while (res.find("perp") != string::npos) res.replace(res.find("Perp"), 4, "⟂");
-		while (res.find("para") != string::npos) res.replace(res.find("Para"), 4, "∥");
-		while (res.find("para") != string::npos) res.replace(res.find("Prime"), 4, "'");
-		
-		return res;
-	}
-	
-	template<typename OtherScalar>
-	HamiltonianTerms<Symmetry,OtherScalar> cast() const
-	{
-		HamiltonianTerms<Symmetry,OtherScalar> Tout;
-		Tout.name = name;
-		Tout.info = info;
-		
-		for (size_t i=0; i<local.size(); ++i)
-		{
-			Tout.local.push_back(make_tuple(get<0>(local[i]), (get<1>(local[i]).template cast<OtherScalar>() )));
-		}
-		for (size_t i=0; i<tight.size(); ++i)
-		{
-			Tout.local.push_back(make_tuple(get<0>(tight[i]), (get<1>(tight[i]).template cast<OtherScalar>() )));
-		}
-		for (size_t i=0; i<nextn.size(); ++i)
-		{
-			Tout.local.push_back(make_tuple(get<0>(nextn[i]), (get<1>(nextn[i]).template cast<OtherScalar>() )));
-		}
-		return Tout;
-	}
-};
-
-template<typename Symmetry> using HamiltonianTermsXd  = HamiltonianTerms<Symmetry,double>;
-template<typename Symmetry> using HamiltonianTermsXcd = HamiltonianTerms<Symmetry,complex<double> >;
 
 #endif

@@ -4,13 +4,13 @@
 #include "DmrgTypedefs.h"
 #include "DmrgExternal.h"
 
-// Crazy that this enum needs to be here, because it is also in DmrgTypedefs.h. But without this, it doesn't compile...
-#ifndef KIND_ENUM
-#define KIND_ENUM
 namespace Sym
 {
+	// Crazy that this enum needs to be here, because it is also in DmrgTypedefs.h. But without this, it doesn't compile...
+	#ifndef KIND_ENUM
+	#define KIND_ENUM
 	enum KIND {S,T,N,M,Nup,Ndn};
-#endif
+	#endif
 	
 	/**
 	 * Returns a formatted string for \p qnum.
@@ -19,9 +19,9 @@ namespace Sym
 	 * \note Uses the kind() function provided from Symmetry for deducing the correct format function.
 	 */
 	template<typename Symmetry>
-	string format (qarray<Symmetry::Nq> qnum)
+	std::string format (qarray<Symmetry::Nq> qnum)
 	{
-		stringstream ss;
+		std::stringstream ss;
 		for (int q=0; q<Symmetry::Nq; ++q)
 		{
 			if (Symmetry::kind()[q] == KIND::S or Symmetry::kind()[q] == KIND::T)

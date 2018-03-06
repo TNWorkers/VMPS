@@ -239,7 +239,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
  */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
+          DMRG::VERBOSITY::OPTION VERBOSITY)
 {
 	Stopwatch<> Chronos;
 	
@@ -252,6 +252,15 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 		lout << Chronos.info("HxV") << endl;
 		lout << "Vout: " << Vout.info() << endl << endl;
 	}
+}
+
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+void HxV (const Mpo<Symmetry,MpoScalar> &H, Mps<Symmetry,Scalar> &Vinout, 
+          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
+{
+	Mps<Symmetry,Scalar> Vtmp;
+	HxV(H,Vinout,Vtmp,VERBOSITY);
+	Vinout = Vtmp;
 }
 
 /**
@@ -274,22 +283,13 @@ void polyIter (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin
 	Stopwatch<> Chronos;
 	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 	Compadre.polyCompress(H,Vin1,polyB,Vin2, Vout, Vin1.calc_Dmax());
-
+	
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
 	{
 		lout << Compadre.info() << endl;
 		lout << Chronos.info(make_string("polyIter B=",polyB)) << endl;
 		lout << "Vout: " << Vout.info() << endl << endl;
 	}
-}
-
-template<typename Symmetry, typename MpoScalar, typename Scalar>
-void HxV (const Mpo<Symmetry,MpoScalar> &H, Mps<Symmetry,Scalar> &Vinout, 
-          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
-{
-	Mps<Symmetry,Scalar> Vtmp;
-	HxV(H,Vinout,Vtmp,VERBOSITY);
-	Vinout = Vtmp;
 }
 
 template<typename Symmetry, typename Scalar, typename OtherScalar>
@@ -313,8 +313,7 @@ void addScale (const OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-          DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD)
+void OxV (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, DMRG::BROOM::OPTION TOOL)
 {
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > C;
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Cnext;

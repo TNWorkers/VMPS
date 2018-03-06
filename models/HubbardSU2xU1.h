@@ -48,9 +48,12 @@ public:
 	HubbardSU2xU1 (const size_t &L, const vector<Param> &params);
 	
 	static HamiltonianTermsXd<Symmetry> set_operators (const FermionBase<Symmetry> &F, const ParamHandler &P, size_t loc=0);
-		
+	
+	static qarray<2> singlet (int N) {return qarray<2>{1,N};};
+	
 	///@{
 	Mpo<Symmetry> cc (size_t locx, size_t locy=0);
+	Mpo<Symmetry> cdagcdag (size_t locx, size_t locy=0);
 //	Mpo<Symmetry> eta(size_t locx, size_t locy=0);
 //	Mpo<Symmetry> Aps (size_t locx, size_t locy=0);
 	Mpo<Symmetry> c (size_t locx, size_t locy=0);
@@ -90,7 +93,6 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
-	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 	F.resize(N_sites);
 	
@@ -102,14 +104,9 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 		setLocBasis(F[l].get_basis().qloc(),l);
 		
 		Terms[l] = set_operators(F[l],P,l%Lcell);
-		this->Daux = Terms[l].auxdim();
-		
-		G.push_back(Generator(Terms[l]));
-		setOpBasis(G[l].calc_qOp(),l);
 	}
 	
-	this->generate_label(Terms[0].name,Terms,Lcell);
-	this->construct(G, this->W, this->Gvec, false, P.get<bool>("OPEN_BC"));
+	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
 	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
 }
 
@@ -309,6 +306,21 @@ cc (size_t locx, size_t locy)
 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
 	
 	Mout.setLocal(locx, F[locx].Eta(locy).plain<double>());
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+cdagcdag (size_t locx, size_t locy)
+{
+	assert(locx<N_sites and locy<F[locx].dim());
+	stringstream ss;
+	ss << "c†(" << locx << "," << locy << "," << DN << ")"
+	   << "c†(" << locx << "," << locy << "," << UP << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, {1,+2}, ss.str());
+	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
+	
+	Mout.setLocal(locx, F[locx].Etadag(locy).plain<double>());
 	return Mout;
 }
 

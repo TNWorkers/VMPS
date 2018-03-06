@@ -257,8 +257,8 @@ adjoint() const
 	// new dict with reversed keys {qin,qout}->{qout,qin}
 	for (auto it=dict.begin(); it!=dict.end(); ++it)
 	{
-		auto qin  = get<0>(it->first);
-		auto qout = get<1>(it->first);
+		auto qin  = std::get<0>(it->first);
+		auto qout = std::get<1>(it->first);
 		Aout.dict.insert({{qout,qin}, it->second});
 	}
 	
@@ -313,7 +313,7 @@ Biped<Symmetry,MatrixType_>& Biped<Symmetry,MatrixType_>::operator+= (const Bipe
 }
 template<typename Symmetry, typename MatrixType_>
 Biped<Symmetry,MatrixType_> Biped<Symmetry,MatrixType_>::
-contract(const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE) const
+contract (const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE) const
 {
 	Biped<Symmetry,MatrixType_> Ares;
 	Scalar factor_cgc;
@@ -357,11 +357,25 @@ Biped<Symmetry,MatrixType_> operator* (const Biped<Symmetry,MatrixType_> &A1, co
 	for (std::size_t q1=0; q1<A1.dim; ++q1)
 	for (std::size_t q2=0; q2<A2.dim; ++q2)
 	{
-		if (A1.out[q1] == A2.in[q2])
+		if (A1.out[q1] == A2.in[q2] and A1.block[q1].size() != 0 and A2.block[q2].size() != 0)
 		{
-			if (A1.block[q1].rows() != 0 and A2.block[q2].rows() != 0)
+			qarray2<Symmetry::Nq> quple = {A1.in[q1], A2.out[q2]};
+			auto it = Ares.dict.find(quple);
+			
+			if (it != Ares.dict.end())
 			{
-				Ares.push_back(A1.in[q1], A2.out[q2], A1.block[q1]*A2.block[q2]);
+				if (Ares.block[it->second].size() != 0)
+				{
+					Ares.block[it->second] += A1.block[q1] * A2.block[q2];
+				}
+				else
+				{
+					Ares.block[it->second] = A1.block[q1] * A2.block[q2];
+				}
+			}
+			else
+			{
+				Ares.push_back(A1.in[q1], A2.out[q2], A1.block[q1] * A2.block[q2]);
 			}
 		}
 	}
@@ -388,13 +402,13 @@ Biped<Symmetry,MatrixType_> operator* (const Scalar &alpha, const Biped<Symmetry
 // }
 
 template<typename Symmetry, typename MatrixType_>
-string Biped<Symmetry,MatrixType_>::
+std::string Biped<Symmetry,MatrixType_>::
 print_dict() const
 {
 	std::stringstream ss;
 	for (auto it=dict.begin(); it!=dict.end(); ++it)
 	{
-		ss << "in:" << get<0>(it->first) << "\tout:" << get<1>(it->first) << "\t→\t" << it->second << endl;
+		ss << "in:" << std::get<0>(it->first) << "\tout:" << std::get<1>(it->first) << "\t→\t" << it->second << std::endl;
 	}
 	return ss.str();
 }
@@ -426,13 +440,13 @@ std::string Biped<Symmetry,MatrixType_>::
 formatted () const
 {
 	std::stringstream ss;
-	ss << "•Biped(" << dim << "):" << endl;
+	ss << "•Biped(" << dim << "):" << std::endl;
 	for (std::size_t q=0; q<dim; ++q)
 	{
 		ss << "  [" << q << "]: " << Sym::format<Symmetry>(in[q]) << "→" << Sym::format<Symmetry>(out[q]);
-		ss << ":" << endl;
+		ss << ":" << std::endl;
 		ss << "   " << block[q];
-		if (q!=dim-1) {ss << endl;}
+		if (q!=dim-1) {ss << std::endl;}
 	}
 	return ss.str();
 }
