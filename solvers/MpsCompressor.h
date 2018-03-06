@@ -21,6 +21,7 @@
 #include "pivot/DmrgPivotMatrix2.h"
 #include "Stopwatch.h" // from TOOLS
 #include "pivot/DmrgPivotOverlap1.h"
+#include "pivot/DmrgPivotOverlap2.h"
 
 /**
  * Compressor for MPS. Nedded to obtain various operations containing MPSs and MPOs with a variational approach.
@@ -294,7 +295,6 @@ varCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t
 		// A 2-site sweep is necessary! Move pivot back to edge.
 		if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
 		{
-			cout << "A 2-site sweep is necessary! Move pivot back to edge." << endl;
 			if (pivot==1)
 			{
 				Vout.sweep(0,DMRG::BROOM::QR);

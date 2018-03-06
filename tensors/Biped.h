@@ -371,6 +371,10 @@ Biped<Symmetry,MatrixType_> operator* (const Biped<Symmetry,MatrixType_> &A1, co
 			}
 			else
 			{
+// 				cout << "pushing" << endl;
+// 				cout << A1.block[q1].rows() << "x" << A1.block[q1].cols() << endl;
+// 				cout << A2.block[q2].rows() << "x" << A2.block[q2].cols() << endl;
+// 				cout << endl;
 				Ares.push_back(A1.in[q1], A2.out[q2], A1.block[q1]*A2.block[q2]);
 			}
 		}

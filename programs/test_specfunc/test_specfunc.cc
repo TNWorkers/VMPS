@@ -1,8 +1,3 @@
-#define DONT_USE_LAPACK_SVD
-#define DONT_USE_LAPACK_QR
-#define DMRG_DONT_USE_OPENMP
-#define EIGEN_DONT_PARALLELIZE
-
 #include <iostream>
 #include <fstream>
 #include <complex>
@@ -110,7 +105,7 @@ int main (int argc, char* argv[])
 			Stopwatch<> nChronos;
 			MODEL::Solver * DMRG = new MODEL::Solver(DMRG::VERBOSITY::HALFSWEEPWISE);
 			
-			DMRG->edgeState(H, *init, Qi, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 1e-7,1e-6, 4,500, 50,10);
+			DMRG->edgeState(H, *init, Qi, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 1e-7,1e-6, 4,500, 50,10);
 			lout << endl << nChronos.info(make_string("ground state ",Qi)) << endl;
 			lout << DMRG->info() << endl;
 			E0 = init->energy;
@@ -122,7 +117,7 @@ int main (int argc, char* argv[])
 			Eigenstate<MODEL::StateXd> * g = new Eigenstate<MODEL::StateXd>;
 			
 			MODEL::Solver * gDMRG = new MODEL::Solver(DMRG::VERBOSITY::SILENT);
-			gDMRG->edgeState(H, *g, Qc, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 1e-8,1e-6, 8,500, 50,10);
+			gDMRG->edgeState(H, *g, Qc, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 1e-8,1e-6, 8,500, 50,10);
 			ginfo << gChronos.info(make_string("ground state ",Qc)) << endl;
 			Emin = g->energy;
 			ginfo << gDMRG->info() << endl;
@@ -137,7 +132,7 @@ int main (int argc, char* argv[])
 			Eigenstate<MODEL::StateXd> * r = new Eigenstate<MODEL::StateXd>;
 			MODEL::Solver * rDMRG = new MODEL::Solver(DMRG::VERBOSITY::SILENT);
 			
-			rDMRG->edgeState(H, *r, Qc, LANCZOS::EDGE::ROOF, LANCZOS::CONVTEST::SQ_TEST, 1e-8,1e-6, 8,500, 50,10);
+			rDMRG->edgeState(H, *r, Qc, LANCZOS::EDGE::ROOF, LANCZOS::CONVTEST::NORM_TEST, 1e-8,1e-6, 8,500, 50,10);
 			rinfo << rChronos.info(make_string("roof state ",Qc)) << endl;
 			Emax = r->energy;
 			rinfo << rDMRG->info() << endl;

@@ -3,3 +3,8 @@
 /DOXY/
 *#
 *.save
+*.depend
+*.out
+*.o
+*.DS_Store
+makefile
