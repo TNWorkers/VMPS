@@ -110,6 +110,7 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 	
 	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, false, P.get<bool>("OPEN_BC"));
+	this->Terms = Terms;
 	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
 }
 

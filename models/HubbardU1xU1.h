@@ -55,6 +55,8 @@ public:
 	
 	template<typename Symmetry_> 
 	static HamiltonianTermsXd<Symmetry_> set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc=0);
+	
+	qarray<2> singlet (int N) const {return qarray<2>{N/2,N/2};};
 		
 	/**Default parameters.*/
 	static const std::map<string,std::any> defaults;
@@ -96,6 +98,7 @@ HubbardU1xU1 (const size_t &L, const vector<Param> &params)
 	
 	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->Terms = Terms;
 }
 
 template<typename Symmetry_>

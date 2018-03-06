@@ -225,6 +225,135 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 	}
 }
 
+template<typename Symmetry, typename MatrixType>
+void contract_L (const Biped<Symmetry,MatrixType> &Lold, 
+				 const vector<Biped<Symmetry,MatrixType> > &Abra, 
+                 const vector<Biped<Symmetry,MatrixType> > &Aket, 
+                 const vector<qarray<Symmetry::Nq> > &qloc,
+                 Biped<Symmetry,MatrixType> &Lnew)
+{
+	Lnew.clear();
+	Lnew.setZero();
+	
+	for (size_t s=0; s<qloc.size(); ++s)
+	{
+		for (size_t qL=0; qL<Lold.dim; ++qL)
+		{
+			vector<tuple<qarray2<Symmetry::Nq>,size_t,size_t> > ix;
+			bool FOUND_MATCH = AA(Lold.in[qL], Lold.out[qL], s, qloc, Abra, Aket, ix);
+		
+			if (FOUND_MATCH)
+			{ 
+				for (size_t n=0; n<ix.size(); n++)
+				{
+					qarray2<Symmetry::Nq> quple = get<0>(ix[n]);
+					swap(quple[0], quple[1]);
+					size_t qAbra = get<1>(ix[n]);
+					size_t qAket = get<2>(ix[n]);
+					{
+						if (Lold.block[qL].rows() != 0)
+						{
+							MatrixType Mtmp;
+							optimal_multiply(1.,
+											 Abra[s].block[qAbra].adjoint(),
+											 Lold.block[qL],
+											 Aket[s].block[qAket],
+											 Mtmp);
+				
+							auto it = Lnew.dict.find(quple);
+							if (it != Lnew.dict.end())
+							{
+								if (Lnew.block[it->second].rows() != Mtmp.rows() or 
+									Lnew.block[it->second].cols() != Mtmp.cols())
+								{
+									Lnew.block[it->second] = Mtmp;
+								}
+								else
+								{
+									Lnew.block[it->second] += Mtmp;
+								}
+							}
+							else
+							{
+								Lnew.push_back(quple, Mtmp);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+template<typename Symmetry, typename MatrixType>
+void contract_R (const Biped<Symmetry,MatrixType> &Rold,
+                 const vector<Biped<Symmetry,MatrixType> > &Abra, 
+                 const vector<Biped<Symmetry,MatrixType> > &Aket, 
+                 const vector<qarray<Symmetry::Nq> > &qloc,
+                 Biped<Symmetry,MatrixType> &Rnew)
+{
+	Rnew.clear();
+	Rnew.setZero();
+	
+	for (size_t s=0; s<qloc.size(); ++s)
+	{
+		for (size_t qR=0; qR<Rold.dim; ++qR)
+		{
+			auto qRouts = Symmetry::reduceSilent(Rold.out[qR],Symmetry::flip(qloc[s]));
+			auto qRins = Symmetry::reduceSilent(Rold.in[qR],Symmetry::flip(qloc[s]));
+			for(const auto& qRout : qRouts)
+				for(const auto& qRin : qRins)
+				{
+					qarray2<Symmetry::Nq> cmp1 = {qRout, Rold.out[qR]};
+					qarray2<Symmetry::Nq> cmp2 = {qRin, Rold.in[qR]};
+		
+					auto q1 = Abra[s].dict.find(cmp1);
+					auto q2 = Aket[s].dict.find(cmp2);
+
+					if (q1!=Abra[s].dict.end() and 
+						q2!=Aket[s].dict.end())
+					{
+						qarray<Symmetry::Nq> new_qin  = Aket[s].in[q2->second]; // A.in
+						qarray<Symmetry::Nq> new_qout = Abra[s].in[q1->second]; // A†.out = A.in
+						{
+							qarray2<Symmetry::Nq> quple = {new_qin, new_qout};
+
+								{
+									if (Rold.block[qR].rows() != 0)
+									{
+										MatrixType Mtmp;
+										optimal_multiply(1.,
+														 Aket[s].block[q2->second],
+														 Rold.block[qR],
+														 Abra[s].block[q1->second].adjoint(),
+														 Mtmp);
+					
+										auto it = Rnew.dict.find(quple);
+										if (it != Rnew.dict.end())
+										{
+											if (Rnew.block[it->second].rows() != Mtmp.rows() or 
+												Rnew.block[it->second].cols() != Mtmp.cols())
+											{
+												Rnew.block[it->second] = Mtmp;
+											}
+											else
+											{
+												Rnew.block[it->second] += Mtmp;
+											}
+										}
+										else
+										{
+											Rnew.push_back(quple, Mtmp);
+										}
+									}
+								}					
+						}
+					}
+				}
+		}
+	}
+}
+
 /**
  * Calculates the contraction between a left transfer matrix \p L, 
  * two MpsQ tensors \p Abra, \p Aket, an MpoQ tensor \p W and a right transfer matrix \p R. Not really that much useful.
@@ -260,7 +389,7 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 		for (size_t qL=0; qL<L.dim; ++qL)
 		{
 			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = AWA(L.in(qL), L.out(qL), L.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
+			bool FOUND_MATCH = AA(L.in(qL), L.out(qL), L.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
 			if (FOUND_MATCH == true)
 			{
 				for(size_t n=0; n<ix.size(); n++ )

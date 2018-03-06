@@ -63,6 +63,41 @@ bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::
 	return out;
 }
 
+template<typename Symmetry, typename MatrixType>
+bool AA (qarray<Symmetry::Nq> Lin,
+         qarray<Symmetry::Nq> Lout,
+		 size_t s, 
+		 vector<qarray<Symmetry::Nq> > qloc,
+         const vector<Biped<Symmetry,MatrixType> > &Abra, 
+         const vector<Biped<Symmetry,MatrixType> > &Aket, 
+         vector<tuple<qarray2<Symmetry::Nq>,size_t,size_t> > &result)
+{
+	bool out = false;
+	result.clear();
+	
+	auto qRouts = Symmetry::reduceSilent(Lin,qloc[s]);
+	for (const auto& qRout : qRouts)
+	{
+		qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
+		auto q1 = Abra[s].dict.find(cmp1);
+		if (q1 != Abra[s].dict.end())
+		{
+			auto qRins = Symmetry::reduceSilent(Lout,qloc[s]);
+			for (const auto &qRin:qRins)
+			{
+				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
+				auto q2 = Aket[s].dict.find(cmp2);
+				if (q2 != Aket[s].dict.end())
+				{
+					result.push_back(make_tuple(qarray2<Symmetry::Nq>{qRin,qRout}, q1->second, q2->second));
+					out = true;
+				}
+			}
+		}
+	}
+	return out;
+}
+
 //template<typename Symmetry, typename MatrixType>
 //bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid, 
 //             size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc12, size_t k12, vector<qarray<Symmetry::Nq> > qOp12,
@@ -133,6 +168,43 @@ bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetr
 							}
 						}
 					}
+				}
+			}
+		}
+	}
+	return out;
+}
+
+template<typename Symmetry, typename MatrixType>
+bool AAAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, 
+           size_t s1s2, const qarray<Symmetry::Nq> &qmerge12, 
+           const vector<Biped<Symmetry,MatrixType> > &AAbra,
+           const vector<Biped<Symmetry,MatrixType> > &AAket, 
+           vector<tuple<qarray2<Symmetry::Nq>,size_t,size_t> > &result)
+{	
+	bool out = false;
+	result.clear();
+	
+	auto qRouts = Symmetry::reduceSilent(Lin, qmerge12);
+	
+	for (const auto &qRout:qRouts)
+	{
+		qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
+		auto qbra = AAbra[s1s2].dict.find(cmp1);
+		
+		if (qbra != AAbra[s1s2].dict.end())
+		{
+			auto qRins = Symmetry::reduceSilent(Lout, qmerge12);
+			
+			for (const auto &qRin:qRins)
+			{
+				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
+				auto qket = AAket[s1s2].dict.find(cmp2);
+				
+				if (qket != AAket[s1s2].dict.end())
+				{
+					result.push_back(make_tuple(qarray2<Symmetry::Nq>{qRin,qRout}, qbra->second, qket->second));
+					out = true;
 				}
 			}
 		}

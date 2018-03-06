@@ -259,6 +259,8 @@ public:
 	typedef Mpo<Symmetry>                                     Operator;
 	///@}
 	
+	vector<HamiltonianTermsXd<Symmetry> > Terms;
+	
 protected:
 	
 	vector<vector<qarray<Nq> > > qloc, qOp, qOpSq;
@@ -266,9 +268,9 @@ protected:
 	
 	qarray<Nq> Qtot;
 	
-	bool UNITARY    = false;
-	bool HERMITIAN  = false;
-	bool GOT_SQUARE = false;
+	bool UNITARY     = false;
+	bool HERMITIAN   = false;
+	bool GOT_SQUARE  = false;
 	bool GOT_OPEN_BC = true;
 	
 	size_t N_sites;
@@ -595,7 +597,8 @@ calc_auxBasis()
 		return qset;
 	};
 	
-	this->qaux.resize(this->N_sites+1);
+	qaux.clear();
+	qaux.resize(this->N_sites+1);
 	//set aux basis on right end to Qtot.
 	qaux[this->N_sites].push_back(Qtot,1);//auxdim());
 	
@@ -1027,9 +1030,7 @@ setProductSum (const OperatorType &Op1, const OperatorType &Op2, bool OPEN_BC)
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 scale (double factor, double offset)
-{
-	cout << "scaling by:" << factor << ", " << offset << endl;
-	
+{	
 	/**Example for where to apply the scaling factor, 3-site Heisenberg (open boundary conditions):
 	\f$\left(-f \cdot B_x \cdot S^x_1, -f \cdot J \cdot S^z_1, I\right)
 	
@@ -1056,29 +1057,43 @@ scale (double factor, double offset)
 	= -f \cdot B_x \cdot (S^x_1 + S^x_2 + S^x_3) - f \cdot J \cdot (S^z_1 \cdot S^z_2 + S^z_2 \cdot S^z_3)
 	= f \cdot H\f$*/
 	
-	vector<SuperMatrix<Symmetry,Scalar> > Gvec_tmp = Gvec;
+// 	vector<SuperMatrix<Symmetry,Scalar> > Gvec_tmp = Gvec;
+// 	
+// 	if (abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
+// 	{
+// 		size_t last = Daux-1;
+// 		for (size_t l=0; l<N_sites; ++l)
+// 		for (size_t a2=0; a2<Daux-1; ++a2)
+// 		{
+// 			Gvec_tmp[l](last,a2).data *= factor;
+// 		}
+// 	}
+// 	
+// 	if (abs(offset) > ::mynumeric_limits<double>::epsilon())
+// 	{
+// 		size_t last = Daux-1;
+// 		for (size_t l=0; l<N_sites; ++l)
+// 		{
+// 			MatrixType Id = MatrixType::Identity(Gvec_tmp[l](last,0).data.rows(), Gvec_tmp[l](last,0).data.cols());
+// 			Gvec_tmp[l](last,0).data += offset/N_sites * Id.sparseView();
+// 		}
+// 	}
+// 		
+// 	construct (Gvec_tmp, W, Gvec, qOp, GOT_SQUARE, GOT_OPEN_BC);
 	
-	if (abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
+	vector<SuperMatrix<Symmetry,Scalar> > Gtmp;
+	
+	for (size_t l=0; l<N_sites; ++l)
 	{
-		size_t last = Daux-1;
-		for (size_t l=0; l<N_sites; ++l)
-		for (size_t a2=0; a2<Daux-1; ++a2)
-		{
-			Gvec_tmp[l](last,a2).data *= factor;
-		}
+		Terms[l].scale(factor,offset/N_sites);
 	}
 	
-	if (abs(offset) > ::mynumeric_limits<double>::epsilon())
+	for (size_t l=0; l<N_sites; ++l)
 	{
-		size_t last = Daux-1;
-		for (size_t l=0; l<N_sites; ++l)
-		{
-			MatrixType Id = MatrixType::Identity(Gvec_tmp[l](last,0).data.rows(), Gvec_tmp[l](last,0).data.cols());
-			Gvec_tmp[l](last,0).data += offset/N_sites * Id.sparseView();
-		}
+		Gtmp.push_back(Generator(Terms[l]));
+		setOpBasis(Gtmp[l].calc_qOp(),l);
 	}
-		
-	construct (Gvec_tmp, W, Gvec, qOp, GOT_SQUARE, GOT_OPEN_BC);
+	construct(Gtmp, W, Gvec, GOT_SQUARE, GOT_OPEN_BC);
 }
 
 //template<typename Symmetry, typename Scalar>

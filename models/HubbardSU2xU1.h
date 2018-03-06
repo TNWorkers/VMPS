@@ -48,9 +48,12 @@ public:
 	HubbardSU2xU1 (const size_t &L, const vector<Param> &params);
 	
 	static HamiltonianTermsXd<Symmetry> set_operators (const FermionBase<Symmetry> &F, const ParamHandler &P, size_t loc=0);
+	
+	qarray<2> singlet (int N) const {return qarray<2>{1,N};};
 		
 	///@{
 	Mpo<Symmetry> cc (size_t locx, size_t locy=0);
+	Mpo<Symmetry> cdagcdag (size_t locx, size_t locy=0);
 //	Mpo<Symmetry> eta(size_t locx, size_t locy=0);
 //	Mpo<Symmetry> Aps (size_t locx, size_t locy=0);
 	Mpo<Symmetry> c (size_t locx, size_t locy=0);
@@ -110,6 +113,7 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 	
 	this->generate_label(Terms[0].name,Terms,Lcell);
 	this->construct(G, this->W, this->Gvec, false, P.get<bool>("OPEN_BC"));
+	this->Terms = Terms;
 	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
 }
 
@@ -290,7 +294,7 @@ d (size_t locx, size_t locy)
 	stringstream ss;
 	ss << "double_occ(" << locx << "," << locy << ")";
 	
-	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, Symmetry::qvacuum(), ss.str(), true);
 	for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
 	
 	Mout.setLocal(locx, F[locx].d(locy).plain<double>());
@@ -313,13 +317,28 @@ cc (size_t locx, size_t locy)
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+cdagcdag (size_t locx, size_t locy)
+{
+	assert(locx<N_sites and locy<F[locx].dim());
+	stringstream ss;
+	ss << "c†(" << locx << "," << locy << "," << UP << ")"
+	   << "c†(" << locx << "," << locy << "," << DN << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, {1,+2}, ss.str());
+	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
+	
+	Mout.setLocal(locx, F[locx].Etadag(locy).plain<double>());
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 n (size_t locx, size_t locy)
 {
 	assert(locx<N_sites and locy<F[locx].dim());
 	stringstream ss;
 	ss << "n(" << locx << "," << locy << ")";
 	
-	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, Symmetry::qvacuum(), ss.str(), true);
 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
 	
 	Mout.setLocal(locx, F[locx].n(locy).plain<double>());

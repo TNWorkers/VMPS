@@ -357,9 +357,19 @@ Biped<Symmetry,MatrixType_> operator* (const Biped<Symmetry,MatrixType_> &A1, co
 	for (std::size_t q1=0; q1<A1.dim; ++q1)
 	for (std::size_t q2=0; q2<A2.dim; ++q2)
 	{
-		if (A1.out[q1] == A2.in[q2])
+		if (A1.out[q1] == A2.in[q2] and A1.block[q1].size() != 0 and A2.block[q2].size() != 0)
 		{
-			if (A1.block[q1].rows() != 0 and A2.block[q2].rows() != 0)
+			auto it = Ares.dict.find(qarray2<Symmetry::Nq>{A1.in[q1],A2.out[q2]});
+			if (it != Ares.dict.end())
+			{
+// 				cout << "adding" << endl;
+// 				cout << Ares.block[it->second].rows() << "x" << Ares.block[it->second].cols() << endl;
+// 				cout << A1.block[q1].rows() << "x" << A1.block[q1].cols() << endl;
+// 				cout << A2.block[q2].rows() << "x" << A2.block[q2].cols() << endl;
+// 				cout << endl;
+				Ares.block[it->second] += A1.block[q1]*A2.block[q2];
+			}
+			else
 			{
 				Ares.push_back(A1.in[q1], A2.out[q2], A1.block[q1]*A2.block[q2]);
 			}

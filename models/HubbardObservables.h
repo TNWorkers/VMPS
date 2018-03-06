@@ -64,11 +64,13 @@ public:
 	
 protected:
 	
-	Mpo<Symmetry> make_local (string name, size_t locx, size_t locy, const OperatorType &Op, bool FERMIONIC=false) const;
+	Mpo<Symmetry> make_local (string name, size_t locx, size_t locy, const OperatorType &Op, bool HERMITIAN=false, bool FERMIONIC=false) const;
+	/**Note: IDENTICAL_AND_HERMITIAN means here that the two operators are identical and hermitian themselves. Then, if coordinates are the same, the total operator is also hermitian.*/
 	Mpo<Symmetry> make_corr  (string name1, string name2, 
 	                           size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
-	                           const OperatorType &Op1, const OperatorType &Op2) const;
-	
+	                           const OperatorType &Op1, const OperatorType &Op2,
+	                           bool IDENTICAL_AND_HERMITIAN=false) const;
+	                           	
 	vector<FermionBase<Symmetry> > F;
 };
 
@@ -97,7 +99,7 @@ HubbardObservables (const size_t &L, const vector<Param> &params, const std::map
 
 template<typename Symmetry>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
-make_local (string name, size_t locx, size_t locy, const OperatorType &Op, bool FERMIONIC) const
+make_local (string name, size_t locx, size_t locy, const OperatorType &Op, bool HERMITIAN, bool FERMIONIC) const
 {
 	assert(locx<F.size() and locy<F[locx].dim());
 	stringstream ss;
@@ -115,7 +117,8 @@ template<typename Symmetry>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
 make_corr (string name1, string name2, 
            size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
-           const OperatorType &Op1, const OperatorType &Op2) const
+           const OperatorType &Op1, const OperatorType &Op2,
+           bool IDENTICAL_AND_HERMITIAN) const
 {
 	assert(locx1<F.size() and locx2<F.size() and locy1<F[locx1].dim() and locy2<F[locx2].dim());
 	stringstream ss;
@@ -126,6 +129,7 @@ make_corr (string name1, string name2,
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	Mout.setLocal({locx1,locx2}, {Op1,Op2});
+	Mout.HERMTIAN = (locx1==locx2 and locy1==locy2 and IDENTICAL_AND_HERMITIAN)? true:false;
 	return Mout;
 }
 
@@ -137,7 +141,7 @@ c (SPIN_INDEX sigma, size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << "c" << sigma;
-	return make_local(ss.str(), locx,locy, F[locx].c(sigma,locy), true);
+	return make_local(ss.str(), locx,locy, F[locx].c(sigma,locy), false, true);
 }
 
 template<typename Symmetry>
@@ -146,7 +150,7 @@ cdag (SPIN_INDEX sigma, size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << "c†" << sigma;
-	return make_local(ss.str(), locx,locy, F[locx].cdag(sigma,locy), true);
+	return make_local(ss.str(), locx,locy, F[locx].cdag(sigma,locy), false, true);
 }
 
 //-------------
@@ -157,7 +161,7 @@ cc (size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << "c" << UP << "c" << DN;
-	return make_local(ss.str(), locx,locy, F[locx].c(UP,locy)*F[locx].c(DN,locy), false);
+	return make_local(ss.str(), locx,locy, F[locx].c(UP,locy)*F[locx].c(DN,locy), false, false);
 }
 
 template<typename Symmetry>
@@ -166,7 +170,7 @@ cdagcdag (size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << "c†" << DN << "c†" << UP;
-	return make_local(ss.str(), locx,locy, F[locx].cdag(DN,locy)*F[locx].cdag(UP,locy), false);
+	return make_local(ss.str(), locx,locy, F[locx].cdag(DN,locy)*F[locx].cdag(UP,locy), false, false);
 }
 
 template<typename Symmetry>
@@ -197,6 +201,8 @@ cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 		Mout.setLocal({locx2, locx1}, {c*F[locx2].sign(), -1.*cdag}, F[0].sign());
 	}
 	
+	Mout.HERMITIAN = (locx1==locx2 and locy1==locy2)? true:false;
+		
 	return Mout;
 }
 
@@ -221,7 +227,7 @@ template<typename Symmetry>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
 d (size_t locx, size_t locy) const
 {
-	return make_local("double_occ", locx,locy, F[locx].d(locy), false);
+	return make_local("double_occ", locx,locy, F[locx].d(locy), true, false);
 }
 
 template<typename Symmetry>
@@ -236,6 +242,7 @@ dtot() const
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
 	Mout.setLocalSum(Op);
+	Mout.HERMITIAN = true;
 	return Mout;
 }
 
@@ -243,28 +250,28 @@ template<typename Symmetry>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
 s (size_t locx, size_t locy) const
 {
-	return make_local("single_occ", locx,locy,  F[locx].n(UP,locy)+F[locx].n(DN,locy)-2.*F[locx].d(locy), false);
+	return make_local("single_occ", locx,locy,  F[locx].n(UP,locy)+F[locx].n(DN,locy)-2.*F[locx].d(locy), true, false);
 }
 
 template<typename Symmetry>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
 n (SPIN_INDEX sigma, size_t locx, size_t locy) const
 {
-	return make_local("n", locx,locy, F[locx].n(sigma,locy), false);
+	return make_local("n", locx,locy, F[locx].n(sigma,locy), true, false);
 }
 
 template<typename Symmetry>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
 n (size_t locx, size_t locy) const
 {
-	return make_local("n", locx,locy, F[locx].n(locy), false);
+	return make_local("n", locx,locy, F[locx].n(locy), true, false);
 }
 
 template<typename Symmetry>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
 nn (SPIN_INDEX sigma1, size_t locx1, SPIN_INDEX sigma2, size_t locx2, size_t locy1, size_t locy2) const
 {
-	return make_corr ("n","n", locx1,locx2,locy1,locy2, F[locx1].n(sigma1,locy1), F[locx2].n(sigma2,locy2));
+	return make_corr ("n","n", locx1,locx2,locy1,locy2, F[locx1].n(sigma1,locy1), F[locx2].n(sigma2,locy2), true);
 }
 
 template<typename Symmetry>
@@ -273,7 +280,8 @@ hh (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	return make_corr("h","h", locx1,locx2,locy1,locy2, 
 	                 F[locx1].d(locy1)-F[locx1].n(locy1)+F[locx1].Id(),
-	                 F[locx2].d(locy2)-F[locx2].n(locy2)+F[locx2].Id());
+	                 F[locx2].d(locy2)-F[locx2].n(locy2)+F[locx2].Id(),
+	                 true);
 }
 
 template<typename Symmetry>
@@ -290,7 +298,12 @@ ScompScomp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, si
 {
 	stringstream ss1; ss1 << SOP1;
 	stringstream ss2; ss2 << SOP2;
-	return make_corr(ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, F[locx1].Scomp(SOP1,locy1), F[locx2].Scomp(SOP2,locy2));
+	bool HERMITIAN = ((SOP1==SX or SOP1==SZ) and (SOP2==SX or SOP2==SZ) and SOP1==SOP2)? true:false;
+	return make_corr(ss1.str(),ss2.str(), 
+	                 locx1,locx2,locy1,locy2, 
+	                 F[locx1].Scomp(SOP1,locy1), 
+	                 F[locx2].Scomp(SOP2,locy2),
+	                 HERMITIAN);
 }
 
 template<typename Symmetry>

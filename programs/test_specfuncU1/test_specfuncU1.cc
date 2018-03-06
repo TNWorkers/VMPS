@@ -21,7 +21,6 @@ Logger lout;
 #include "solvers/MpsCompressor.h"
 #include "models/HubbardU1xU1.h"
 #include "models/HubbardSU2xU1.h"
-#include "models/HeisenbergSU2.h"
 #include "DmrgLinearAlgebra.h"
 
 #include "ArgParser.h"
@@ -42,7 +41,7 @@ double Emin, Emax, E0;
 qarray<2> Qi, Qc;
 
 // typedef VMPS::HubbardU1xU1 MODEL;
-typedef VMPS::HubbardSU2xU1 MODEL;
+typedef VMPS::HubbardU1xU1 MODEL;
 
 OrthPolyGreen<MODEL,MODEL::StateXd> * KPS;
 
@@ -182,12 +181,36 @@ int main (int argc, char* argv[])
 	//--------------<A*init>---------------
 	MODEL::StateXd initA;
 	initA.eps_svd = 1e-15;
-//  OxV(O, init->state, initA);
+	
+	auto Htmp = H;
+	cout << "avg=" << isReal(avg(init->state,Htmp,init->state)) << ", " << pow(1.*E0,1) << endl;
+	cout << "avg=" << isReal(avg(init->state,Htmp,Htmp,init->state)) << ", " << pow(1.*E0,2) << endl;
+	
+	Htmp.scale(2.);
+	cout << "avg=" << isReal(avg(init->state,Htmp,init->state)) << ", " << pow(2.*E0,1) << endl;
+	cout << "avg=" << isReal(avg(init->state,Htmp,Htmp,init->state)) << ", " << pow(2.*E0,2) << endl;
+	
+	Htmp.scale(0.5);
+	cout << "avg=" << isReal(avg(init->state,Htmp,init->state)) << ", " << pow(1.*E0,1) << endl;
+	cout << "avg=" << isReal(avg(init->state,Htmp,Htmp,init->state)) << ", " << pow(1.*E0,2) << endl;
+	
+	Htmp.scale(4.);
+	cout << "avg=" << isReal(avg(init->state,Htmp,init->state)) << ", " << pow(4.*E0,1) << endl;
+	cout << "avg=" << isReal(avg(init->state,Htmp,Htmp,init->state)) << ", " << pow(4.*E0,2) << endl;
+	
+//  	OxV(O, init->state, initA);
 	MODEL::CompressorXd Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
 	Compadre.varCompress(O, Odag, init->state, initA, Qc, init->state.calc_Dmax());
 	cout << Compadre.info() << endl;
-	initA.eps_svd = 1e-7;
+// 	if (MODEL::Symmetry ==  Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> >)
+// 	{
+// 		MODEL::StateXd initA_;
+// 		OxV(O, init->state, initA_);
+// 		cout << "overlap=" << dot(initA,initA_) << ", norms=" << dot(initA,initA) << ", " << dot(initA_,initA_) << endl;
+// 	}
 // 	delete init;
+	initA.eps_svd = 1e-7;
+	cout << "initA.info()=" << initA.info() << endl;
 	//--------------</A*init>---------------
 	
 // 	cout << "1,0: " << avg(init->state, H, init->state, true) << endl;
@@ -208,11 +231,11 @@ int main (int argc, char* argv[])
 	
 	
 	auto Psi = init->state;
-	MODEL::StateXd rand = Psi; rand.setRandom();
-	Psi += 0.1 * rand;
+	// MODEL::StateXd rand = Psi; rand.setRandom();
+// 	Psi += 0.1 * rand;
 	MODEL::CompressorXd Cmp(DMRG::VERBOSITY::HALFSWEEPWISE);
 	MODEL::StateXd Phi;
-	Cmp.varCompress(Psi,Phi,2);
+	Cmp.varCompress(Psi,Phi,1);
 	cout << Psi.info() << endl;
 	cout << Phi.info() << endl;
 	

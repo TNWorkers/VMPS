@@ -254,6 +254,15 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 	}
 }
 
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+void HxV (const Mpo<Symmetry,MpoScalar> &H, Mps<Symmetry,Scalar> &Vinout, 
+          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
+{
+	Mps<Symmetry,Scalar> Vtmp;
+	HxV(H,Vinout,Vtmp,VERBOSITY);
+	Vinout = Vtmp;
+}
+
 /**
  * Performs an orthogonal polynomial iteration step \f$\left|\Psi_{out}\right> = \cdot H \left|\Psi_{in,1}\right> - 
  * B \left|\Psi_{in,2}\right>\f$ as needed in the polynomial recursion relation \f$P_n = (C_n x - A_n) P_{n-1} - B_n P_{n-2}\f$.
@@ -281,15 +290,6 @@ void polyIter (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin
 		lout << Chronos.info(make_string("polyIter B=",polyB)) << endl;
 		lout << "Vout: " << Vout.info() << endl << endl;
 	}
-}
-
-template<typename Symmetry, typename MpoScalar, typename Scalar>
-void HxV (const Mpo<Symmetry,MpoScalar> &H, Mps<Symmetry,Scalar> &Vinout, 
-          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
-{
-	Mps<Symmetry,Scalar> Vtmp;
-	HxV(H,Vinout,Vtmp,VERBOSITY);
-	Vinout = Vtmp;
 }
 
 template<typename Symmetry, typename Scalar, typename OtherScalar>

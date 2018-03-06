@@ -6,6 +6,7 @@
 #include <variant>
 
 #include "tensors/SiteOperator.h"
+#include "numeric_limits.h"
 
 #ifndef IS_REAL_FUNCTION
 #define IS_REAL_FUNCTION
@@ -299,13 +300,59 @@ struct HamiltonianTerms
 		}
 		for (size_t i=0; i<tight.size(); ++i)
 		{
-			Tout.local.push_back(make_tuple(get<0>(tight[i]), (get<1>(tight[i]).template cast<OtherScalar>() )));
+			Tout.tight.push_back(make_tuple(get<0>(tight[i]), (get<1>(tight[i]).template cast<OtherScalar>() )));
 		}
 		for (size_t i=0; i<nextn.size(); ++i)
 		{
-			Tout.local.push_back(make_tuple(get<0>(nextn[i]), (get<1>(nextn[i]).template cast<OtherScalar>() )));
+			Tout.nextn.push_back(make_tuple(get<0>(nextn[i]), (get<1>(nextn[i]).template cast<OtherScalar>() )));
 		}
 		return Tout;
+	}
+	
+	size_t calc_D()
+	{
+		assert(local.size()>0 or tight.size()>0 or nextn.size()>0 and "Cannot determine D in HamiltonianTerms!");
+		if (local.size()>0)
+		{
+			return get<1>(local[0]).data.rows();
+		}
+		else if (tight.size()>0)
+		{
+			return get<1>(tight[0]).data.rows();
+		}
+		else if (nextn.size()>0)
+		{
+			return get<1>(nextn[0]).data.rows();
+		}
+		else
+		{
+			return 0;
+		}
+	}
+	
+	void scale (double factor, double offset=0.)
+	{
+		if (abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
+		{
+			for (size_t i=0; i<local.size(); ++i)
+			{
+				get<0>(local[i]) *= factor;
+			}
+			for (size_t i=0; i<tight.size(); ++i)
+			{
+				get<0>(tight[i]) *= factor;
+			}
+			for (size_t i=0; i<nextn.size(); ++i)
+			{
+				get<0>(nextn[i]) *= factor;			}
+		}
+		
+		if (abs(offset) > ::mynumeric_limits<double>::epsilon())
+		{
+			SiteOperator<Symmetry,Scalar> IdOp;
+			IdOp.data = Matrix<Scalar,Dynamic,Dynamic>::Identity(calc_D(),calc_D()).sparseView();
+			local.push_back(make_tuple(offset,IdOp));
+		}
 	}
 };
 
