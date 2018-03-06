@@ -49,7 +49,6 @@ HeisenbergXXZ (const size_t &L, const vector<Param> &params)
 	ParamHandler P(params,HeisenbergXXZ::defaults);
 	
 	size_t Lcell = P.size();
-	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -61,14 +60,9 @@ HeisenbergXXZ (const size_t &L, const vector<Param> &params)
 		Terms[l] = HeisenbergU1::set_operators(B[l],P,l%Lcell);
 		Heisenberg::add_operators(Terms[l],B[l],P,l%Lcell);
 		HeisenbergU1XXZ::add_operators(Terms[l],B[l],P,l%Lcell);
-		this->Daux = Terms[l].auxdim();
-		
-		G.push_back(Generator(Terms[l]));
-		setOpBasis(G[l].calc_qOp(),l);
 	}
 	
-	this->generate_label(Terms[0].name,Terms,Lcell);
-	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
 } // end namespace VMPS

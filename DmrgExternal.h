@@ -10,9 +10,9 @@ typedef boost::rational<int> frac;
 #include "symmetry/qarray.h"
 
 /**Prints a boost fraction in such a way, that a "1" in the denominator is omitted.*/
-string print_frac_nice (frac r)
+std::string print_frac_nice (frac r)
 {
-	stringstream ss;
+	std::stringstream ss;
 	if (r.denominator()==1) {ss << r.numerator();}
 	else {ss << r;}
 	return ss.str();
@@ -80,9 +80,9 @@ size_t mult_cost (const MatrixTypeA &A, const MatrixTypeB &B)
 
 /**Cost to multiply 3 matrices in 2 possible ways.*/
 template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC>
-vector<size_t> mult_cost (const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C)
+std::vector<size_t> mult_cost (const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C)
 {
-	vector<size_t> out(2);
+	std::vector<size_t> out(2);
 	// (AB)C
 	out[0] = mult_cost(A,B) + A.rows()*C.rows()*C.cols();
 	
@@ -94,9 +94,9 @@ vector<size_t> mult_cost (const MatrixTypeA &A, const MatrixTypeB &B, const Matr
 
 /**Cost to multiply 4 matrices in 5 possible ways.*/
 template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC, typename MatrixTypeD>
-vector<size_t> mult_cost (const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C, const MatrixTypeD &D)
+std::vector<size_t> mult_cost (const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C, const MatrixTypeD &D)
 {
-	vector<size_t> out(5);
+	std::vector<size_t> out(5);
 	// (AB)(CD)
 	out[0] = mult_cost(A,B) + mult_cost(C,D) + A.rows()*B.cols()*C.cols();
 	
@@ -119,7 +119,7 @@ vector<size_t> mult_cost (const MatrixTypeA &A, const MatrixTypeB &B, const Matr
 template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC, typename MatrixTypeR, typename Scalar>
 void optimal_multiply (Scalar alpha, const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C, MatrixTypeR &result)
 {
-	vector<size_t> cost(2);
+	std::vector<size_t> cost(2);
 	cost = mult_cost(A,B,C);
 	size_t opt_mult = min_element(cost.begin(),cost.end())- cost.begin();
 	
@@ -139,7 +139,7 @@ void optimal_multiply (Scalar alpha, const MatrixTypeA &A, const MatrixTypeB &B,
 template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC, typename MatrixTypeD, typename MatrixTypeR, typename Scalar>
 void optimal_multiply (Scalar alpha, const MatrixTypeA &A, const MatrixTypeB &B, const MatrixTypeC &C, const MatrixTypeD &D, MatrixTypeR &result)
 {
-	vector<size_t> cost(5);
+	std::vector<size_t> cost(5);
 	cost = mult_cost(A,B,C,D);
 	size_t opt_mult = min_element(cost.begin(),cost.end())- cost.begin();
 	

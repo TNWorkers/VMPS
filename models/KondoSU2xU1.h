@@ -114,9 +114,9 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
-	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
-	B.resize(N_sites); F.resize(N_sites);
+	B.resize(N_sites);
+	F.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -128,14 +128,9 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 		setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);
 		
 		Terms[l] = set_operators(B[l],F[l],P,l%Lcell);
-		this->Daux = Terms[l].auxdim();
-		
-		G.push_back(Generator(Terms[l]));
-		setOpBasis(G[l].calc_qOp(),l);
 	}
 	
-	this->generate_label(Terms[0].name,Terms,Lcell);
-	this->construct(G, this->W, this->Gvec, false, P.get<bool>("OPEN_BC"));
+	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
 	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
 }
 
@@ -199,7 +194,7 @@ set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F, cons
 			Terms.tight.push_back(make_tuple(Vpara(i,j),
 											 OperatorType::outerprod(B.Id(),F.n(i),{1,0}).plain<double>(),
 											 OperatorType::outerprod(B.Id(),F.n(j),{1,0}).plain<double>()));
-		}		
+		}
 	}
 
 	// NNN terms

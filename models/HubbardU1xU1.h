@@ -1,11 +1,11 @@
 #ifndef STRAWBERRY_HUBBARDMODEL
 #define STRAWBERRY_HUBBARDMODEL
 
-#include "Mpo.h"
 #include "bases/FermionBase.h"
+#include "symmetry/S1xS2.h"
+#include "Mpo.h"
 #include "ParamHandler.h" // from HELPERS
 #include "models/HubbardObservables.h"
-#include "symmetry/S1xS2.h"
 
 namespace VMPS
 {
@@ -53,10 +53,10 @@ public:
 	HubbardU1xU1 (const size_t &L, const vector<Param> &params);
 	///@}
 	
+	static qarray<2> singlet (int N) {return qarray<2>{N/2,N/2};};
+	
 	template<typename Symmetry_> 
 	static HamiltonianTermsXd<Symmetry_> set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc=0);
-	
-	qarray<2> singlet (int N) const {return qarray<2>{N/2,N/2};};
 		
 	/**Default parameters.*/
 	static const std::map<string,std::any> defaults;
@@ -80,7 +80,6 @@ HubbardU1xU1 (const size_t &L, const vector<Param> &params)
 	ParamHandler P(params,HubbardU1xU1::defaults);
 	
 	size_t Lcell = P.size();
-	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -90,15 +89,9 @@ HubbardU1xU1 (const size_t &L, const vector<Param> &params)
 		setLocBasis(F[l].get_basis(),l);
 		
 		Terms[l] = set_operators(F[l],P,l%Lcell);
-		this->Daux = Terms[l].auxdim();
-		
-		G.push_back(Generator(Terms[l])); // boost::multi_array has stupid assignment
-		setOpBasis(G[l].calc_qOp(),l);
 	}
 	
-	this->generate_label(Terms[0].name,Terms,Lcell);
-	this->construct(G, this->W, this->Gvec, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-	this->Terms = Terms;
+	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
 }
 
 template<typename Symmetry_>
@@ -148,9 +141,9 @@ set_operators (const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t lo
 		
 		if (Jpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), F.Sp(i), F.Sm(i)));
-			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), F.Sm(i), F.Sp(i)));
-			Terms.tight.push_back(make_tuple(Jpara(i,j),     F.Sz(i), F.Sz(i)));
+			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), F.Sp(i), F.Sm(j)));
+			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), F.Sm(i), F.Sp(j)));
+			Terms.tight.push_back(make_tuple(Jpara(i,j),     F.Sz(i), F.Sz(j)));
 		}
 	}
 	

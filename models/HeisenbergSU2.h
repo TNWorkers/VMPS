@@ -90,7 +90,6 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
-	vector<SuperMatrix<Symmetry,double> > G;
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 	B.resize(N_sites);
 	
@@ -102,15 +101,9 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 		setLocBasis(B[l].get_basis().qloc(),l);
 		
 		Terms[l] = set_operators(B[l],P,l%Lcell);
-		this->Daux = Terms[l].auxdim();
-		
-		G.push_back(Generator(Terms[l]));
-		setOpBasis(G[l].calc_qOp(),l);
 	}
 	
-	this->generate_label(Terms[0].name,Terms,Lcell);
-	this->construct(G, this->W, this->Gvec, false, P.get<bool>("OPEN_BC"));
-	this->Terms = Terms;
+	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
 	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
 }
 
