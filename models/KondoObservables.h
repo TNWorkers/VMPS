@@ -49,7 +49,10 @@ public:
 	
 protected:
 	
-	Mpo<Symmetry> make_local (string name, size_t locx, size_t locy, const OperatorType &Oimp, const OperatorType &Osub, bool FERMIONIC=false) const;
+	Mpo<Symmetry> make_local (string name, 
+	                          size_t locx, size_t locy, 
+	                          const OperatorType &Oimp, const OperatorType &Osub, 
+	                          bool FERMIONIC=false, bool HERMITIAN=false) const;
 	
 	Mpo<Symmetry> make_corr  (string name1, string name2, 
 	                          size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
@@ -86,13 +89,13 @@ KondoObservables (const size_t &L, const vector<Param> &params, const map<string
 
 template<typename Symmetry>
 Mpo<Symmetry> KondoObservables<Symmetry>::
-make_local (string name, size_t locx, size_t locy, const OperatorType &Oimp, const OperatorType &Osub, bool FERMIONIC) const
+make_local (string name, size_t locx, size_t locy, const OperatorType &Oimp, const OperatorType &Osub, bool FERMIONIC, bool HERMITIAN) const
 {
 	assert(locx<F.size() and locy<F[locx].dim());
 	stringstream ss;
 	ss << name << "(" << locx << "," << locy << ")";
 	
-	Mpo<Symmetry> Mout(F.size(), Oimp.Q+Osub.Q, ss.str());
+	Mpo<Symmetry> Mout(F.size(), Oimp.Q+Osub.Q, ss.str(), HERMITIAN);
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);}
 	
 	if (FERMIONIC)
@@ -149,14 +152,14 @@ template<typename Symmetry>
 Mpo<Symmetry> KondoObservables<Symmetry>::
 n (size_t locx, size_t locy) const
 {
-	return make_local("n", locx,locy, B[locx].Id(),F[locx].n(locy));
+	return make_local("n", locx,locy, B[locx].Id(),F[locx].n(locy), false, true);
 }
 
 template<typename Symmetry>
 Mpo<Symmetry> KondoObservables<Symmetry>::
 d (size_t locx, size_t locy) const
 {
-	return make_local("double_occ", locx,locy, B[locx].Id(),F[locx].d(locy));
+	return make_local("double_occ", locx,locy, B[locx].Id(),F[locx].d(locy), false, true);
 }
 
 template<typename Symmetry>
@@ -199,7 +202,8 @@ Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << Sa << "imp";
-	return make_local(ss.str(), locx,locy, B[locx].Scomp(Sa,locy), F[locx].Id());
+	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
+	return make_local(ss.str(), locx,locy, B[locx].Scomp(Sa,locy), F[locx].Id(), HERMITIAN);
 }
 
 template<typename Symmetry>
@@ -208,7 +212,8 @@ Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << Sa << "sub";
-	return make_local(ss.str(), locx,locy, B[locx].Id(), F[locx].Scomp(Sa,locy));
+	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
+	return make_local(ss.str(), locx,locy, B[locx].Id(), F[locx].Scomp(Sa,locy), HERMITIAN);
 }
 
 //-------------

@@ -194,7 +194,7 @@ set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F, cons
 			Terms.tight.push_back(make_tuple(Vpara(i,j),
 											 OperatorType::outerprod(B.Id(),F.n(i),{1,0}).plain<double>(),
 											 OperatorType::outerprod(B.Id(),F.n(j),{1,0}).plain<double>()));
-		}		
+		}
 	}
 
 	// NNN terms

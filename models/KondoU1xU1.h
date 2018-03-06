@@ -32,7 +32,7 @@ namespace VMPS
   * \note The multi-impurity model can be received, by setting D=1 (S=0) for all sites without an impurity.
   */
 class KondoU1xU1 : public Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>,
-				   public KondoObservables<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > >
+                   public KondoObservables<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > >
 
 {
 public:
@@ -80,7 +80,7 @@ const map<string,any> KondoU1xU1::defaults =
 
 KondoU1xU1::
 KondoU1xU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0,0}),  "", true),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0,0}), "", true),
  KondoObservables(L,params,defaults)
 {
 	ParamHandler P(params,defaults);
@@ -103,13 +103,16 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
 bool KondoU1xU1::
 validate (qType qnum) const
 {
-	frac S_elec(qnum[0],2); //electrons have spin 1/2
+	frac S_elec(qnum[1],2); //electrons have spin 1/2
 	frac Smax = S_elec;
-	for (size_t l=0; l<N_sites; ++l) { Smax+=static_cast<int>(B[l].orbitals())*frac(B[l].get_D()-1,2); } //add local spins to Smax
+	//add local spins to Smax
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Smax += static_cast<int>(B[l].orbitals()) * frac(B[l].get_D()-1,2);
+	}
 	
-	frac S_tot(qnum[1],2);
-	cout << S_tot << "\t" << Smax << endl;
-	if (Smax.denominator()==S_tot.denominator() and S_tot<=Smax and qnum[0]<=2*static_cast<int>(this->N_phys) and qnum[0]>0) {return true;}
+	frac S_tot(qnum[0],2);
+	if (Smax.denominator() == S_tot.denominator() and S_tot<=Smax and qnum[1]<=2*static_cast<int>(this->N_phys) and qnum[1]>0) {return true;}
 	else {return false;}
 }
 
@@ -240,9 +243,9 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	{
 		if (Jorb(i) != 0.)
 		{
-			Hloc += -Jorb(i)    * kroneckerProduct(B.Scomp(SZ,i),F.Sz(i));
-			Hloc += -0.5*Jorb(i)* kroneckerProduct(B.Scomp(SP,i),F.Sm(i));
-			Hloc += -0.5*Jorb(i)* kroneckerProduct(B.Scomp(SM,i),F.Sp(i));
+			Hloc += -0.5*Jorb(i) * kroneckerProduct(B.Scomp(SP,i), F.Sm(i));
+			Hloc += -0.5*Jorb(i) * kroneckerProduct(B.Scomp(SM,i), F.Sp(i));
+			Hloc += -Jorb(i)     * kroneckerProduct(B.Scomp(SZ,i), F.Sz(i));
 		}
 	}
 	

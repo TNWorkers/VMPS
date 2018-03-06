@@ -53,7 +53,7 @@ public:
 	\returns \p true if valid, \p false if not*/
 	bool validate (qType qnum) const;
 	
-	static const std::map<string,std::any> defaults;	
+	static const std::map<string,std::any> defaults;
 };
 
 const std::map<string,std::any> KondoU1::defaults = 

@@ -47,7 +47,7 @@ public:
 	HubbardSU2xSU2 (const size_t &L, const vector<Param> &params);
 	
 	static HamiltonianTermsXd<Symmetry> set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc=0);
-		
+	
 //	Mpo<Symmetry> Auger (size_t locx, size_t locy=0);
 //	Mpo<Symmetry> eta(size_t locx, size_t locy=0);
 //	Mpo<Symmetry> Aps (size_t locx, size_t locy=0);
@@ -100,7 +100,9 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),P.get<SUB_LATTICE>("subL",l%Lcell));
 		setLocBasis(F[l].get_basis().qloc(),l);
-		
+	}
+	for (size_t l=0; l<N_sites; ++l)
+	{
 		Terms[l] = set_operators(F,P,l%Lcell);
 	}
 	
@@ -117,15 +119,15 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 	{
 		if (label!="") {Terms.info.push_back(label);}
 	};
-
+	
 	param0d subL = P.fill_array0d<SUB_LATTICE>("subL","subL",loc);
 	save_label(subL.label);
-
+	
 	// NN terms
 	
 	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F[loc].orbitals(),loc);
 	save_label(tlabel);
-		
+	
 	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",F[loc].orbitals(),loc);
 	save_label(Jlabel);
 	
@@ -149,29 +151,16 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 		}
 	}
 	
-	// NNN terms
-	
-	// param0d tPrime = P.fill_array0d<double>("tPrime","tPrime",loc);
-	// save_label(tPrime.label);
-	
-//	if (tPrime.x != 0.)
-//	{
-//		assert(F.orbitals() == 1 and "Cannot do a ladder with t'!");
-//		
-//		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), F.cdag(), Operator::prod(F.sign(),F.c(),{2,-1}), F.sign()));
-//		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), F.c(), Operator::prod(F.sign(),F.cdag(),{2,1}), F.sign()));
-//	}
-	
 	// local terms
 	
 	// Hubbard-U
 	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F[loc].orbitals(),loc);
 	save_label(Ulabel);
-		
+	
 	// t⟂
 	param0d tPerp = P.fill_array0d<double>("t","tPerp",loc);
 	save_label(tPerp.label);
-
+	
 	// J⟂
 	param0d Jperp = P.fill_array0d<double>("J","Jperp",loc);
 	save_label(Jperp.label);
