@@ -27,8 +27,8 @@
  */
 template<typename Symmetry, typename MatrixType>
 bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid,
-		  size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc,
-		  size_t k, vector<qarray<Symmetry::Nq> > qOp,
+          size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc,
+          size_t k, vector<qarray<Symmetry::Nq> > qOp,
           const vector<Biped<Symmetry,MatrixType> > &Abra, 
           const vector<Biped<Symmetry,MatrixType> > &Aket, 
           vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > &result)
@@ -53,8 +53,11 @@ bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::
 					auto qRmids = Symmetry::reduceSilent(Lmid,qOp[k]);
 					for (const auto &qRmid:qRmids)
 					{
-						result.push_back(make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q1->second, q2->second));
-						out = true;
+						if (Symmetry::validate(qarray3<Symmetry::Nq>{qRin,qRmid,qRout}))
+						{
+							result.push_back(make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q1->second, q2->second));
+							out = true;
+						}
 					}
 				}
 			}
@@ -85,12 +88,15 @@ bool AA (qarray<Symmetry::Nq> Lin,
 			auto qRins = Symmetry::reduceSilent(Lout,qloc[s]);
 			for (const auto &qRin:qRins)
 			{
-				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
-				auto q2 = Aket[s].dict.find(cmp2);
-				if (q2 != Aket[s].dict.end())
+				if (Symmetry::validate(qarray2<Symmetry::Nq>{qRin,qRout}))
 				{
-					result.push_back(make_tuple(qarray2<Symmetry::Nq>{qRin,qRout}, q1->second, q2->second));
-					out = true;
+					qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
+					auto q2 = Aket[s].dict.find(cmp2);
+					if (q2 != Aket[s].dict.end())
+					{
+						result.push_back(make_tuple(qarray2<Symmetry::Nq>{qRin,qRout}, q1->second, q2->second));
+						out = true;
+					}
 				}
 			}
 		}
@@ -198,13 +204,16 @@ bool AAAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout,
 			
 			for (const auto &qRin:qRins)
 			{
-				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
-				auto qket = AAket[s1s2].dict.find(cmp2);
-				
-				if (qket != AAket[s1s2].dict.end())
+				if (Symmetry::validate(qarray2<Symmetry::Nq>{qRin,qRout}))
 				{
-					result.push_back(make_tuple(qarray2<Symmetry::Nq>{qRin,qRout}, qbra->second, qket->second));
-					out = true;
+					qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
+					auto qket = AAket[s1s2].dict.find(cmp2);
+					
+					if (qket != AAket[s1s2].dict.end())
+					{
+						result.push_back(make_tuple(qarray2<Symmetry::Nq>{qRin,qRout}, qbra->second, qket->second));
+						out = true;
+					}
 				}
 			}
 		}
@@ -236,7 +245,7 @@ bool AAAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout,
 template<typename Symmetry, typename MatrixType>
 bool AWWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lbot, qarray<Symmetry::Nq> Ltop, 
           size_t s1, size_t s2, size_t s3, vector<qarray<Symmetry::Nq> > qloc,
-		  size_t k1, vector<qarray<Symmetry::Nq> > qOpBot, size_t k2, vector<qarray<Symmetry::Nq> > qOpTop,
+          size_t k1, vector<qarray<Symmetry::Nq> > qOpBot, size_t k2, vector<qarray<Symmetry::Nq> > qOpTop,
           const vector<Biped<Symmetry,MatrixType> > &Abra, 
           const vector<Biped<Symmetry,MatrixType> > &Aket, 
           tuple<qarray4<Symmetry::Nq>,size_t,size_t> &result)
@@ -267,11 +276,11 @@ bool AWWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry:
 /**Updates the quantum Numbers of a right environment when a new site with quantum numbers qloc and qOp is added.*/
 template<typename Symmetry, typename Scalar>
 void updateInset (const std::vector<std::array<typename Symmetry::qType,3> > &insetOld, 
-				  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-				  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
-				  const vector<qarray<Symmetry::Nq> > &qloc,
-				  const vector<qarray<Symmetry::Nq> > &qOp,
-				  std::vector<std::array<typename Symmetry::qType,3> > &insetNew)
+                  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+                  const vector<qarray<Symmetry::Nq> > &qloc,
+                  const vector<qarray<Symmetry::Nq> > &qOp,
+                  std::vector<std::array<typename Symmetry::qType,3> > &insetNew)
 {
 	std::array<typename Symmetry::qType,3> qCheck;
 	Scalar factor_cgc;

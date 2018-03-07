@@ -39,7 +39,7 @@ void LRxV (const PivotOverlap1<Symmetry,Scalar> &H, const PivotVector<Symmetry,S
 		bool FOUND_MATCH = AA(H.L.in[qL], H.L.out[qL], s, H.qloc, Vout.data, Vin.data, ix);
 		
 		if (FOUND_MATCH)
-		{			
+		{
 			for (size_t n=0; n<ix.size(); ++n)
 			{
 				size_t qAbra = get<1>(ix[n]);
@@ -50,34 +50,20 @@ void LRxV (const PivotOverlap1<Symmetry,Scalar> &H, const PivotVector<Symmetry,S
 				{
 					Matrix<Scalar,Dynamic,Dynamic> Mtmp;
 					
-// 					cout << H.L.block[qL].rows() << "x" << H.L.block[qL].cols() << endl;
-// 					cout << Vin.data[s].block[qAket].rows() << "x" << Vin.data[s].block[qAket].cols() << endl;
-// 					cout << H.R.block[qR->second].rows() << "x" << H.R.block[qR->second].cols() << endl;
-// 					cout << endl;
-					
 					optimal_multiply(1.,
-									 H.L.block[qL],
-									 Vin.data[s].block[qAket],
-									 H.R.block[qR->second],
-									 Mtmp);
+					                 H.L.block[qL],
+					                 Vin.data[s].block[qAket],
+					                 H.R.block[qR->second],
+					                 Mtmp);
 					
 					if (Mtmp.size() != 0)
 					{
 						if (Vout.data[s].block[qAbra].size() != 0)
 						{
-// 							cout << "adding" << endl;
-// 							cout << Vout.data[s].block[qAbra].rows() << "x" << Vout.data[s].block[qAbra].cols() << endl;
-// 							cout << Mtmp.rows() << "x" << Mtmp.cols() << endl;
-// 							cout << endl;
-							
 							Vout.data[s].block[qAbra] += Mtmp;
 						}
 						else
 						{
-	// 						cout << "setting" << endl;
-// 							cout << Mtmp.rows() << "x" << Mtmp.cols() << endl;
-// 							cout << endl;
-							
 							Vout.data[s].block[qAbra] = Mtmp;
 						}
 					}

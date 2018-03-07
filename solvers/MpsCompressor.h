@@ -325,12 +325,9 @@ varCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-		sqdist = abs(sqnormVin-Vout.squaredNorm());
+//		sqdist = abs(sqnormVin-Vout.squaredNorm());
+		sqdist = abs(sqnormVin-dot(Vout,Vout));
 		assert(!std::isnan(sqdist));
-		// test with:
-		//Mps<Symmetry,Scalar> Vtmp = Vbig;
-		//Vtmp -= Vsmall;
-		//abs(dot(Vtmp,Vtmp))
 		
 		if (CHOSEN_VERBOSITY>=2)
 		{
@@ -417,7 +414,7 @@ optimizationStep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, b
 	PivotVector<Symmetry,Scalar> Aout(Vout.A[pivot]);
 	LRxV(Env[pivot], Ain, Aout);
 	Vout.A[pivot] = Aout.data;
-		
+	
 	if (SWEEP)
 	{
 		Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
@@ -447,15 +444,17 @@ optimizationStep2 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 // 	}
 	
 	PivotVector<Symmetry,Scalar> AAin(Vin.A[loc1], Vin.locBasis(loc1), Vin.A[loc2], Vin.locBasis(loc2));
-	PivotVector<Symmetry,Scalar> AAout(Vout.A[loc1], Vout.locBasis(loc1), Vout.A[loc2], Vout.locBasis(loc2));
-// 	AAout.outerResize(AAin);
+//	PivotVector<Symmetry,Scalar> AAout(Vout.A[loc1], Vout.locBasis(loc1), Vout.A[loc2], Vout.locBasis(loc2));
+	PivotVector<Symmetry,Scalar> AAout;
+	AAout.outerResize(AAin);
+	
 // 	for (size_t s1s3=0; s1s3<AAin.data.size(); ++s1s3)
 // 	{
 // 		AAout.data[s1s3] = L[loc1] * AAin.data[s1s3] * R[loc2];
 // 	}
 	
 	PivotOverlap2<Symmetry,Scalar> Env2(Env[loc1].L, Env[loc2].R, Vin.locBasis(loc1), Vin.locBasis(loc2));
- 	LRxV(Env2, AAin, AAout);
+	LRxV(Env2, AAin, AAout);
 	
 	Vout.sweepStep2(CURRENT_DIRECTION, loc1, AAout.data);
 	pivot = Vout.get_pivot();
@@ -690,7 +689,7 @@ optimizationStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symm
 	Stopwatch<> Chronos;
 	
 	precalc_blockStructure (Heff[pivot].L, Vout.A[pivot], Heff[pivot].W, Vin.A[pivot], Heff[pivot].R, 
-		                    H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
+	                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 	
 	PivotVector<Symmetry,Scalar> Ain(Vin.A[pivot]);
 	PivotVector<Symmetry,Scalar> Aout(Vout.A[pivot]);
@@ -722,7 +721,7 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 	
 	PivotVector<Symmetry,Scalar> AAin(Vin.A[loc1], Vin.locBasis(loc1), Vin.A[loc2], Vin.locBasis(loc2));
 	PivotVector<Symmetry,Scalar> AAout(Vout.A[loc1], Vout.locBasis(loc1), Vout.A[loc2], Vout.locBasis(loc2));
-
+	
 	PivotMatrix2<Symmetry,Scalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
 	                                              H.W_at(loc1), H.W_at(loc2), 
 	                                              H.locBasis(loc1), H.locBasis(loc2), 
@@ -960,8 +959,8 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 				
 				Vout.sweepStep2(CURRENT_DIRECTION, loc1, Apair.data);
 				pivot = Vout.get_pivot();
- 			}
- 			else
+			}
+			else
 			{
 				optimizationStep(Vin2,Vout,false);
 				auto Atmp = Vout.A[pivot];

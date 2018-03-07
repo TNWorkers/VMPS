@@ -127,7 +127,6 @@ int main (int argc, char* argv[])
 		
 		#pragma omp section
 		{
-//			lout << "thread(r): " << omp_get_thread_num() << endl;
 			Stopwatch<> rChronos;
 			Eigenstate<MODEL::StateXd> * r = new Eigenstate<MODEL::StateXd>;
 			MODEL::Solver * rDMRG = new MODEL::Solver(DMRG::VERBOSITY::SILENT);
@@ -160,67 +159,66 @@ int main (int argc, char* argv[])
 //	OxV(O, init->state, initA);
 	MODEL::CompressorXd Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
 	Compadre.varCompress(A, Adag, init->state, initA, Qc, init->state.calc_Dmax());
-//	delete init;
+	delete init;
 	initA.eps_svd = 1e-7;
 	cout << "AxV:" << endl << initA.info() << endl;
 	//--------------</A*init>---------------
 	
-	auto Psi = init->state;
-//	MODEL::StateXd rand = Psi; rand.setRandom();
-//	Psi += 0.1 * rand;
-	MODEL::CompressorXd Compadrino(DMRG::VERBOSITY::HALFSWEEPWISE);
-	MODEL::StateXd Phi;
-	Compadrino.varCompress(Psi,Phi,2);
-	cout << endl;
-	cout << "ORIGINAL:" << endl;
-	cout << Psi.info() << endl;
-	cout << "COMPRESSED:" << endl;
-	cout << Phi.info() << endl;
-	
+//	auto Psi = init->state;
+////	MODEL::StateXd rand = Psi; rand.setRandom();
+////	Psi += 0.1 * rand;
+//	MODEL::CompressorXd Compadrino(DMRG::VERBOSITY::HALFSWEEPWISE);
+//	MODEL::StateXd Phi;
+//	Compadrino.varCompress(Psi,Phi,2);
+//	cout << endl;
+//	cout << "ORIGINAL:" << endl;
+//	cout << Psi.info() << endl;
+//	cout << "COMPRESSED:" << endl;
+//	cout << Phi.info() << endl;
 	
 	//--------------<KernelPolynomialSolver>---------------
-//	double spillage = 0.;
-//	if (spec == "PES" or spec == "IPES")
-//	{
-//		spillage = 4.*dE[0];
-//	}
-//	else if (spec == "SSF")
-//	{
-//		spillage = 0.5*(Emax-Emin);
-//	}
-//	KPS = new OrthPolyGreen<MODEL,MODEL::StateXd,CHEBYSHEV>(Emin-spillage, Emax+spillage);
-//	
-//	for (size_t i=0; i<dE.size(); ++i)
-//	{
-//		if (i>0) {assert(dE[i] < dE[i-1]);} // monotoncally decreasing resolution
-//		Msave.push_back((Emax-Emin+2.*spillage)/dE[i]);
-//		lout << "dE=" << dE[i] << " => M=" << Msave[Msave.size()-1] << endl;
-//	}
-//	lout << endl;
-//	
-//	Mmax = args.get<int>("Mmax",*max_element(Msave.begin(),Msave.end()));
-//	lout << KPS->info() << endl;
-//	
-//	string momfile = make_string(wd+"moments/"+outfile,str(dE),".dat");
-//	for (int i=0; i<Msave.size(); ++i)
-//	{
-//		string datfileJ = make_string(wd+outfile,make_string(dE[i]),".dat");
-//		string datfileL = make_string(wd+"Lorentz/"+outfile,make_string(dE[i]),".dat");
-//		
-//		if (spec == "AES" or spec == "PES")
-//		{
-//			KPS->add_savepoint(Msave[i], momfile, datfileJ, Emax, true, JACKSON);
-//			KPS->add_savepoint(Msave[i], momfile, datfileL, Emax, true, LORENTZ);
-//		}
-//		else
-//		{
-//			KPS->add_savepoint(Msave[i], momfile, datfileJ, Emin, false, JACKSON);
-//			KPS->add_savepoint(Msave[i], momfile, datfileL, Emin, false, LORENTZ);
-//		}
-//	}
-//	
-//	KPS->calc_ImAA(H,initA,Mmax,false);
-//	lout << "Chebyshev iteration done!" << endl;
+	double spillage = 0.;
+	if (spec == "PES" or spec == "IPES")
+	{
+		spillage = 4.*dE[0];
+	}
+	else if (spec == "SSF")
+	{
+		spillage = 0.5*(Emax-Emin);
+	}
+	KPS = new OrthPolyGreen<MODEL,MODEL::StateXd,CHEBYSHEV>(Emin-spillage, Emax+spillage);
+	
+	for (size_t i=0; i<dE.size(); ++i)
+	{
+		if (i>0) {assert(dE[i] < dE[i-1]);} // monotoncally decreasing resolution
+		Msave.push_back((Emax-Emin+2.*spillage)/dE[i]);
+		lout << "dE=" << dE[i] << " => M=" << Msave[Msave.size()-1] << endl;
+	}
+	lout << endl;
+	
+	Mmax = args.get<int>("Mmax",*max_element(Msave.begin(),Msave.end()));
+	lout << KPS->info() << endl;
+	
+	string momfile = make_string(wd+"moments/"+outfile,str(dE),".dat");
+	for (int i=0; i<Msave.size(); ++i)
+	{
+		string datfileJ = make_string(wd+outfile,make_string(dE[i]),".dat");
+		string datfileL = make_string(wd+"Lorentz/"+outfile,make_string(dE[i]),".dat");
+		
+		if (spec == "AES" or spec == "PES")
+		{
+			KPS->add_savepoint(Msave[i], momfile, datfileJ, Emax, true, JACKSON);
+			KPS->add_savepoint(Msave[i], momfile, datfileL, Emax, true, LORENTZ);
+		}
+		else
+		{
+			KPS->add_savepoint(Msave[i], momfile, datfileJ, Emin, false, JACKSON);
+			KPS->add_savepoint(Msave[i], momfile, datfileL, Emin, false, LORENTZ);
+		}
+	}
+	
+	KPS->calc_ImAA(H,initA,Mmax,false);
+	lout << "Chebyshev iteration done!" << endl;
 	//--------------</KernelPolynomialSolver>---------------
 	
 	delete KPS;	

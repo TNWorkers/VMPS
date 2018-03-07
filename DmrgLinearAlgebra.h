@@ -239,7 +239,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
  */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-          DMRG::VERBOSITY::OPTION VERBOSITY)
+          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	Stopwatch<> Chronos;
 	
@@ -313,7 +313,7 @@ void addScale (const OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, DMRG::BROOM::OPTION TOOL)
+void OxV (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD)
 {
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > C;
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Cnext;
