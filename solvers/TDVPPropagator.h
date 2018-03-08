@@ -46,7 +46,9 @@ private:
 	double t_0site = 0;
 	double t_1site = 0;
 	double t_2site = 0;
-	double t_overhead = 0;
+	double t_overhead = 0; // precalc
+	double t_cs = 0; // contract & sweep
+	double t_tot = 0; // full time step
 };
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>
@@ -59,7 +61,12 @@ info() const
 	ss << "max(dimK)=" << dimK_max << ", ";
 	ss << "N_stages=" << N_stages_last << ", ";
 	ss << "mem=" << round(memory(GB),3) << "GB, overhead=" << round(overhead(MB),3) << "MB, ";
-	ss << "t_0s=" << t_0site << ", t_1s=" << t_1site << ", t_2s=" << t_2site << ", t_overhead=" << t_overhead;
+	ss << "t[s]=" << t_tot
+	   << ", t0=" << round(t_0site/t_tot*100.,0) << "%"
+	   << ", t1=" << round(t_1site/t_tot*100.) << "%"
+	   << ", t2=" << round(t_2site/t_tot*100.) << "%"
+	   << ", t_overhead=" << round(t_overhead/t_tot*100.) << "%"
+	   << ", t_cs=" << round(t_cs/t_tot*100.) << "%";
 	return ss.str();
 }
 
@@ -188,9 +195,14 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 	dimK_max = 0;
 	N_stages_last = N_stages;
 	
+	t_0site = 0;
 	t_1site = 0;
 	t_2site = 0;
 	t_overhead = 0;
+	t_cs = 0;
+	t_tot = 0;
+	
+	Stopwatch<> Wtot;
 	
 	for (size_t l=0; l<2*N_stages*(N_sites-1); ++l)
 	{
@@ -201,7 +213,9 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
 		size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
 		
+		Stopwatch<> Wc;
 		PivotVector<Symmetry,TimeScalar> Apair(Vinout.A[loc1], Vinout.locBasis(loc1), Vinout.A[loc2], Vinout.locBasis(loc2));
+		t_cs += Wc.time(SECONDS);
 		PivotMatrix2<Symmetry,TimeScalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
 		                                                  H.W_at(loc1), H.W_at(loc2), 
 		                                                  H.locBasis(loc1), H.locBasis(loc2), 
@@ -211,17 +225,19 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		precalc_blockStructure (Heff[loc1].L, Apair.data, Heff2.W12, Heff2.W34, Apair.data, Heff[loc2].R, 
 		                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
 		                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
-		t_overhead += Woh2.time();
+		t_overhead += Woh2.time(SECONDS);
 		
 		LanczosPropagator<PivotMatrix2<Symmetry,TimeScalar,MpoScalar>,PivotVector<Symmetry,TimeScalar> > Lutz2(tol_Lanczos);
 		Stopwatch<> W2;
 		Lutz2.t_step(Heff2, Apair, -x(2,l,N_stages)*dt.imag()); // 2-site algorithm
-		t_2site += W2.time();
+		t_2site += W2.time(SECONDS);
 		
 		if (Lutz2.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
 		if (Lutz2.get_dimK() > dimK_max) {dimK_max = Lutz2.get_dimK();}
 		
+		Stopwatch<> Ws;
 		Vinout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair.data);
+		t_cs += Ws.time(SECONDS);
 		(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vinout,loc2) : build_R(H,Vinout,loc1);
 		pivot = Vinout.get_pivot();
 		
@@ -233,14 +249,14 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 			precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
 			                        H.locBasis(pivot), H.opBasis(pivot), 
 			                        Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
-			t_overhead += Woh1.time();
+			t_overhead += Woh1.time(SECONDS);
 			
 			PivotVector<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
 			
 			LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 			Stopwatch<> W1;
 			Lutz.t_step(Heff[pivot], Asingle, +x(2,l,N_stages)*dt.imag()); // 2-site algorithm
-			t_1site += W1.time();
+			t_1site += W1.time(SECONDS);
 			
 			if (Lutz.get_dist() > dist_max) {dist_max = Lutz2.get_dist();}
 			if (Lutz.get_dimK() > dimK_max) {dimK_max = Lutz2.get_dimK();}
@@ -248,6 +264,8 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 			Vinout.A[pivot] = Asingle.data;
 		}
 	}
+	
+	t_tot = Wtot.time(SECONDS);
 	
 //	double norm_Psi_t = Vref.squaredNorm();
 //	double norm_Psi_dt = Vinout.squaredNorm();
@@ -270,7 +288,12 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 	
 	t_0site = 0;
 	t_1site = 0;
+	t_2site = 0;
 	t_overhead = 0;
+	t_cs = 0;
+	t_tot = 0;
+	
+	Stopwatch<> Wtot;
 	
 //	VectorType Vref = Vinout;
 	
@@ -283,13 +306,13 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 		Stopwatch<> Woh1;
 		precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
 		                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
-		t_overhead += Woh1.time();
+		t_overhead += Woh1.time(SECONDS);
 		
 		LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 		
 		Stopwatch<> W1;
 		Lutz.t_step(Heff[pivot], Asingle, -x(1,l,N_stages)*dt.imag()); // 1-site algorithm
-		t_1site += W1.time();
+		t_1site += W1.time(SECONDS);
 		
 		if (Lutz.get_dist() > dist_max) {dist_max = Lutz.get_dist();}
 		if (Lutz.get_dimK() > dimK_max) {dimK_max = Lutz.get_dimK();}
@@ -316,7 +339,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 			
 			Stopwatch<> W0;
 			Lutz0.t_step(Heff0, Azero, +x(1,l,N_stages)*dt.imag()); // 1-site algorithm
-			t_0site += W0.time();
+			t_0site += W0.time(SECONDS);
 			
 			if (Lutz0.get_dist() > dist_max) {dist_max = Lutz0.get_dist();}
 			if (Lutz0.get_dimK() > dimK_max) {dimK_max = Lutz0.get_dimK();}
@@ -324,6 +347,8 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 			Vinout.absorb(pivot, CURRENT_DIRECTION, Azero.data[0]);
 		}
 	}
+	
+	t_tot = Wtot.time(SECONDS);
 	
 //	double norm_Psi_t = Vref.squaredNorm();
 //	double norm_Psi_dt = Vinout.squaredNorm();

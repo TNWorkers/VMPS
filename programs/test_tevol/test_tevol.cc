@@ -195,6 +195,8 @@ int main (int argc, char* argv[])
 	
 	cout << resU1/resSU2 << endl;
 	
+	cout << "Table9j.size()=" << Table9j.size() << ", Table6j.size()=" << Table6j.size() << endl;
+	
 //	//--------output---------
 //	TextTable T( '-', '|', '+' );
 //	

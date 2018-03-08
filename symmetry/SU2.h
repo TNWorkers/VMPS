@@ -14,6 +14,88 @@
 #include "qarray.h"
 #include "symmetry/functions.h"
 
+#include <unordered_map>
+#include <functional>
+
+namespace std
+{
+	template<>
+	struct hash<std::array<int,9> >
+	{
+		inline size_t operator()(const std::array<int,9> &a) const
+		{
+			size_t seed = 0;
+			boost::hash_combine(seed, a[0]);
+			boost::hash_combine(seed, a[1]);
+			boost::hash_combine(seed, a[2]);
+			boost::hash_combine(seed, a[3]);
+			boost::hash_combine(seed, a[4]);
+			boost::hash_combine(seed, a[5]);
+			boost::hash_combine(seed, a[6]);
+			boost::hash_combine(seed, a[7]);
+			boost::hash_combine(seed, a[8]);
+			return seed;
+		}
+	};
+	
+	template<>
+	struct hash<std::array<int,6> >
+	{
+		inline size_t operator()(const std::array<int,6> &a) const
+		{
+			size_t seed = 0;
+			boost::hash_combine(seed, a[0]);
+			boost::hash_combine(seed, a[1]);
+			boost::hash_combine(seed, a[2]);
+			boost::hash_combine(seed, a[3]);
+			boost::hash_combine(seed, a[4]);
+			boost::hash_combine(seed, a[5]);
+			return seed;
+		}
+	};
+}
+
+std::unordered_map<std::array<int,9>,double > Table9j;
+std::unordered_map<std::array<int,6>,double > Table6j;
+
+double coupling_9j (const int &q1, const int &q2, const int &q3, 
+                    const int &q4, const int &q5, const int &q6, 
+                    const int &q7, const int &q8, const int &q9)
+{
+	auto it = Table9j.find(std::array<int,9>{q1,q2,q3,q4,q5,q6,q7,q8,q9});
+	
+	if (it != Table9j.end())
+	{
+		return Table9j[std::array<int,9>{q1,q2,q3,q4,q5,q6,q7,q8,q9}];
+	}
+	else
+	{
+		double out = gsl_sf_coupling_9j(q1-1,q2-1,q3-1,
+		                                q4-1,q5-1,q6-1,
+		                                q7-1,q8-1,q9-1);
+		Table9j[std::array<int,9>{q1,q2,q3,q4,q5,q6,q7,q8,q9}] = out;
+		return out;
+	}
+}
+
+double coupling_6j (const int &q1, const int &q2, const int &q3, 
+                    const int &q4, const int &q5, const int &q6)
+{
+	auto it = Table6j.find(std::array<int,6>{q1,q2,q3,q4,q5,q6});
+	
+	if (it != Table6j.end())
+	{
+		return Table6j[std::array<int,6>{q1,q2,q3,q4,q5,q6}];
+	}
+	else
+	{
+		double out = gsl_sf_coupling_6j(q1-1,q2-1,q3-1,
+		                                q4-1,q5-1,q6-1);
+		Table6j[std::array<int,6>{q1,q2,q3,q4,q5,q6}] = out;
+		return out;
+	}
+}
+
 namespace Sym{
 
 /** 
@@ -281,17 +363,15 @@ Scalar SU2<Kind,Scalar>::
 coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 			const qType& q4, const qType& q5, const qType& q6)
 {
-	Scalar out = gsl_sf_coupling_6j(q1[0]-1,q2[0]-1,q3[0]-1,
-									q4[0]-1,q5[0]-1,q6[0]-1)*
-		std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
-		phase<Scalar>((q1[0]+q5[0]+q6[0]-3)/2);
-
-		// std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q1[0]+q5[0]+q6[0]-3));
-	// Scalar out = gsl_sf_coupling_6j(q2[0]-1,q4[0]-1,q3[0]-1,
-	// 								q5[0]-1,q1[0]-1,q6[0]-1)*
-	// 	std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
-	// 	std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q1[0]+q2[0]+q6[0]-3));
-
+//	Scalar out = gsl_sf_coupling_6j(q1[0]-1,q2[0]-1,q3[0]-1,
+//									q4[0]-1,q5[0]-1,q6[0]-1)*
+//		std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
+//		phase<Scalar>((q1[0]+q5[0]+q6[0]-3)/2);
+//	return out;
+	
+	Scalar out = coupling_6j(q1[0],q2[0],q3[0],q4[0],q5[0],q6[0])*
+	std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
+	phase<Scalar>((q1[0]+q5[0]+q6[0]-3)/2);
 	return out;
 }
 
@@ -314,11 +394,13 @@ coeff_buildR(const qType& q1, const qType& q2, const qType& q3,
 			 const qType& q4, const qType& q5, const qType& q6,
 			 const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out = gsl_sf_coupling_9j(q1[0]-1,q2[0]-1,q3[0]-1,
-									q4[0]-1,q5[0]-1,q6[0]-1,
-									q7[0]-1,q8[0]-1,q9[0]-1)*
-		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]));
-	return out;
+	return coupling_9j(q1[0],q2[0],q3[0],q4[0],q5[0],q6[0],q7[0],q8[0],q9[0]) * std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]));
+	
+//	Scalar out = gsl_sf_coupling_9j(q1[0]-1,q2[0]-1,q3[0]-1,
+//									q4[0]-1,q5[0]-1,q6[0]-1,
+//									q7[0]-1,q8[0]-1,q9[0]-1)*
+//		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]));
+//	return out;
 }
 
  template<typename Kind, typename Scalar>
@@ -355,12 +437,16 @@ coeff_HPsi(const qType& q1, const qType& q2, const qType& q3,
 		   const qType& q4, const qType& q5, const qType& q6,
 		   const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out = gsl_sf_coupling_9j(q1[0]-1,q2[0]-1,q3[0]-1,
-									q4[0]-1,q5[0]-1,q6[0]-1,
-									q7[0]-1,q8[0]-1,q9[0]-1)*
-		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]))*
-		static_cast<Scalar>(q9[0]) / static_cast<Scalar>(q7[0]); //*std::pow(static_cast<Scalar>(q7[0]),Scalar(-1.));
-	return out;
+	return coupling_9j(q1[0],q2[0],q3[0],q4[0],q5[0],q6[0],q7[0],q8[0],q9[0])*
+	       std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]))*
+	       static_cast<Scalar>(q9[0]) / static_cast<Scalar>(q7[0]);
+
+//	Scalar out = gsl_sf_coupling_9j(q1[0]-1,q2[0]-1,q3[0]-1,
+//									q4[0]-1,q5[0]-1,q6[0]-1,
+//									q7[0]-1,q8[0]-1,q9[0]-1)*
+//		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]))*
+//		static_cast<Scalar>(q9[0]) / static_cast<Scalar>(q7[0]); //*std::pow(static_cast<Scalar>(q7[0]),Scalar(-1.));
+//	return out;
 }
 
 template<typename Kind, typename Scalar>
