@@ -32,145 +32,107 @@ struct PivotMatrix2
 	vector<qarray<Symmetry::Nq> > qloc34;
 	vector<qarray<Symmetry::Nq> > qOp12;
 	vector<qarray<Symmetry::Nq> > qOp34;
+	
+	vector<std::array<size_t,2> >           qlhs;
+	vector<vector<std::array<size_t,10> > > qrhs;
+	vector<vector<Scalar> >                 factor_cgcs;
 };
 
-template<typename Symmetry, typename Scalar, typename MpoScalar>
-void HxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
-{
-	Vout.outerResize(Vin); // set block structure of Vout as in Vin
-	OxV(H,Vin,Vout);
-}
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
-void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
+void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L, 
+                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                             const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W12, 
+                             const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W34, 
+                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+                             const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
+                             const vector<qarray<Symmetry::Nq> > &qloc12,
+                             const vector<qarray<Symmetry::Nq> > &qloc34,
+                             const vector<qarray<Symmetry::Nq> > &qOp12,
+                             const vector<qarray<Symmetry::Nq> > &qOp34,
+                             vector<std::array<size_t,2> > &qlhs, 
+                             vector<vector<std::array<size_t,10> > > &qrhs,
+                             vector<vector<Scalar> > &factor_cgcs)
 {
-	auto tensor_basis = Symmetry::tensorProd(H.qloc12, H.qloc34);
-	for (size_t i=0; i<Vout.data.size(); ++i)
-	{
-		Vout.data[i].setZero();
-	}
+	unordered_map<std::array<size_t,2>, 
+	              std::pair<vector<std::array<size_t,10> >, vector<Scalar> > > lookup;
+	Scalar factor_cgc;
 	
-	Stopwatch Wtot;
-	double ttot=0;
-	double tmult=0;
-	double tcgc=0;
-	double tmatch=0;
-	int N_cgc_calc=0;
+	auto tensor_basis = Symmetry::tensorProd(qloc12, qloc34);
 	
-	for (size_t s1=0; s1<H.qloc12.size(); ++s1)
-	for (size_t s2=0; s2<H.qloc12.size(); ++s2)
-	for (size_t k12=0; k12<H.qOp12.size(); ++k12)
+	for (size_t s1=0; s1<qloc12.size(); ++s1)
+	for (size_t s2=0; s2<qloc12.size(); ++s2)
+	for (size_t k12=0; k12<qOp12.size(); ++k12)
 	{
-		if (!Symmetry::validate(qarray3<Symmetry::Nq>{H.qloc12[s2], H.qOp12[k12], H.qloc12[s1]})) {continue;}
+		if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc12[s2], qOp12[k12], qloc12[s1]})) {continue;}
 		
-		for (size_t s3=0; s3<H.qloc34.size(); ++s3)
-		for (size_t s4=0; s4<H.qloc34.size(); ++s4)
-		for (size_t k34=0; k34<H.qOp34.size(); ++k34)
+		for (size_t s3=0; s3<qloc34.size(); ++s3)
+		for (size_t s4=0; s4<qloc34.size(); ++s4)
+		for (size_t k34=0; k34<qOp34.size(); ++k34)
 		{
-			if (!Symmetry::validate(qarray3<Symmetry::Nq>{H.qloc34[s4], H.qOp34[k34], H.qloc34[s3]})) {continue;}
+			if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc34[s4], qOp34[k34], qloc34[s3]})) {continue;}
 			
-			auto qOps = Symmetry::reduceSilent(H.qOp12[k12], H.qOp34[k34]);
+			auto qOps = Symmetry::reduceSilent(qOp12[k12], qOp34[k34]);
 			
 			for (const auto &qOp:qOps)
 			{
-				auto qmerges13 = Symmetry::reduceSilent(H.qloc12[s1], H.qloc34[s3]);
-				auto qmerges24 = Symmetry::reduceSilent(H.qloc12[s2], H.qloc34[s4]);
+				auto qmerges13 = Symmetry::reduceSilent(qloc12[s1], qloc34[s3]);
+				auto qmerges24 = Symmetry::reduceSilent(qloc12[s2], qloc34[s4]);
 				
 				for (const auto &qmerge13:qmerges13)
 				for (const auto &qmerge24:qmerges24)
 				{
-					auto qtensor13 = make_tuple(H.qloc12[s1], s1, H.qloc34[s3], s3, qmerge13);
+					auto qtensor13 = make_tuple(qloc12[s1], s1, qloc34[s3], s3, qmerge13);
 					auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
 					
-					auto qtensor24 = make_tuple(H.qloc12[s2], s2, H.qloc34[s4], s4, qmerge24);
+					auto qtensor24 = make_tuple(qloc12[s2], s2, qloc34[s4], s4, qmerge24);
 					auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
 					
 					// tensor product of the MPO operators in the physical space
-					Stopwatch<> Wcgc9;
 					Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
-					Symmetry::coeff_buildR(H.qloc12[s2], H.qloc34[s4], qmerge24,
-					                       H.qOp12[k12], H.qOp34[k34], qOp,
-					                       H.qloc12[s1], H.qloc34[s3], qmerge13)
+					Symmetry::coeff_buildR(qloc12[s2], qloc34[s4], qmerge24,
+					                       qOp12[k12], qOp34[k34], qOp,
+					                       qloc12[s1], qloc34[s3], qmerge13)
 					                       :1.;
-					tcgc += Wcgc9.time();
-					++N_cgc_calc;
 					if (abs(factor_cgc9) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 					
-					for (size_t qL=0; qL<H.L.dim; ++qL)
+					for (size_t qL=0; qL<L.dim; ++qL)
 					{
 						vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > ixs;
-						Stopwatch Wmatch;
-						bool FOUND_MATCH = AAWWAA(H.L.in(qL), H.L.out(qL), H.L.mid(qL), 
-						                          k12, H.qOp12, k34, H.qOp34,
+						bool FOUND_MATCH = AAWWAA(L.in(qL), L.out(qL), L.mid(qL), 
+						                          k12, qOp12, k34, qOp34,
 						                          s1s3, qmerge13, s2s4, qmerge24,
-						                          Vout.data, Vin.data, ixs);
-						tmatch += Wmatch.time();
+						                          Abra, Aket, ixs);
 						
 						if (FOUND_MATCH)
 						{
 							for (const auto &ix:ixs)
 							{
-								auto qR = H.R.dict.find(get<0>(ix));
+								auto qR = R.dict.find(get<0>(ix));
 								auto qW     = get<1>(ix);
 								size_t qA13 = get<2>(ix);
 								size_t qA24 = get<3>(ix);
 								
 								// multiplication of Op12, Op34 in the auxiliary space
-								Stopwatch<> Wcgc6;
 								Scalar factor_cgc6 = (Symmetry::NON_ABELIAN)? 
-								Symmetry::coeff_Apair(H.L.mid(qL), H.qOp12[k12], qW,
-								                      H.qOp34[k34], get<0>(ix)[2], qOp)
+								Symmetry::coeff_Apair(L.mid(qL), qOp12[k12], qW,
+								                      qOp34[k34], get<0>(ix)[2], qOp)
 								                      :1.;
-								tcgc += Wcgc6.time();
-								++N_cgc_calc;
 								if (abs(factor_cgc6) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 								
-								if (qR != H.R.dict.end())
+								if (qR != R.dict.end())
 								{
 									// standard coefficient for H*Psi with environments
-									Stopwatch<> WcgcHPsi;
 									Scalar factor_cgcHPsi = (Symmetry::NON_ABELIAN)?
-									Symmetry::coeff_HPsi(Vin.data[s2s4].out[qA24], qmerge24, Vin.data[s2s4].in[qA24],
-									                     H.R.mid(qR->second), qOp, H.L.mid(qL),
-									                     Vout.data[s1s3].out[qA13], qmerge13, Vout.data[s1s3].in[qA13])
+									Symmetry::coeff_HPsi(Aket[s2s4].out[qA24], qmerge24, Aket[s2s4].in[qA24],
+									                     R.mid(qR->second), qOp, L.mid(qL),
+									                     Abra[s1s3].out[qA13], qmerge13, Abra[s1s3].in[qA13])
 									                     :1.;
-									++N_cgc_calc;
-									tcgc += WcgcHPsi.time();
 									
-									for (int r12=0; r12<H.W12[s1][s2][k12].outerSize(); ++r12)
-									for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.W12[s1][s2][k12],r12); iW12; ++iW12)
-									for (int r34=0; r34<H.W34[s3][s4][k34].outerSize(); ++r34)
-									for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H.W34[s3][s4][k34],r34); iW34; ++iW34)
-									{
-										Matrix<Scalar,Dynamic,Dynamic> Mtmp;
-										auto Wfactor = iW12.value() * iW34.value() * factor_cgc6 * factor_cgc9 * factor_cgcHPsi;
-										
-										if (H.L.block[qL][iW12.row()][0].size() != 0 and
-										    H.R.block[qR->second][iW34.col()][0].size() !=0 and
-										    iW12.col() == iW34.row())
-										{
-											Stopwatch Wmult;
-											optimal_multiply(Wfactor, 
-											                 H.L.block[qL][iW12.row()][0],
-											                 Vin.data[s2s4].block[qA24],
-											                 H.R.block[qR->second][iW34.col()][0],
-											                 Mtmp);
-											tmult += Wmult.time();
-										}
-										
-										if (Mtmp.size() != 0)
-										{
-											if (Vout.data[s1s3].block[qA13].rows() == Mtmp.rows() and
-											    Vout.data[s1s3].block[qA13].cols() == Mtmp.cols())
-											{
-												Vout.data[s1s3].block[qA13] += Mtmp;
-											}
-											else
-											{
-												Vout.data[s1s3].block[qA13] = Mtmp;
-											}
-										}
-									}
+									std::array<size_t,2>  key = {static_cast<size_t>(s1s3), qA13};
+									std::array<size_t,10> val = {static_cast<size_t>(s2s4), qA24, qL, qR->second, s1, s2, k12, s3, s4, k34};
+									lookup[key].first.push_back(val);
+									lookup[key].second.push_back(factor_cgc6 * factor_cgc9 * factor_cgcHPsi);
 								}
 							}
 						}
@@ -180,10 +142,229 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 		}
 	}
 	
-	ttot = Wtot.time();
+	qlhs.clear();
+	qrhs.clear();
+	factor_cgcs.clear();
 	
-//	cout << "tmult=" << tmult/ttot << ", tcgc=" << tcgc/ttot << ", tmatch=" << tmatch/ttot << ", N_cgc_calc=" << N_cgc_calc << endl;
+	qlhs.reserve(lookup.size());
+	qrhs.reserve(lookup.size());
+	factor_cgcs.reserve(lookup.size());
+	
+	for (auto it=lookup.begin(); it!=lookup.end(); ++it)
+	{
+		qlhs.push_back(it->first);
+		qrhs.push_back((it->second).first);
+		factor_cgcs.push_back((it->second).second);
+	}
 }
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void HxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
+{
+//	Vout.outerResize(Vin); // set block structure of Vout as in Vin
+	Vout = Vin;
+	OxV(H,Vin,Vout);
+}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
+{
+	for (size_t i=0; i<Vout.data.size(); ++i) {Vout.data[i].setZero();}
+	
+	#ifndef DMRG_DONT_USE_OPENMP
+	#pragma omp parallel for schedule(dynamic)
+	#endif
+	for (size_t q=0; q<H.qlhs.size(); ++q)
+	{
+		size_t s1s3 = H.qlhs[q][0];
+		size_t q13  = H.qlhs[q][1];
+		
+		for (size_t p=0; p<H.qrhs[q].size(); ++p)
+		{
+			size_t s2s4 = H.qrhs[q][p][0];
+			size_t q24 = H.qrhs[q][p][1];
+			size_t qL = H.qrhs[q][p][2];
+			size_t qR = H.qrhs[q][p][3];
+			size_t s1  = H.qrhs[q][p][4];
+			size_t s2  = H.qrhs[q][p][5];
+			size_t k12  = H.qrhs[q][p][6];
+			size_t s3  = H.qrhs[q][p][7];
+			size_t s4  = H.qrhs[q][p][8];
+			size_t k34  = H.qrhs[q][p][9];
+			
+			for (int r12=0; r12<H.W12[s1][s2][k12].outerSize(); ++r12)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.W12[s1][s2][k12],r12); iW12; ++iW12)
+			for (int r34=0; r34<H.W34[s3][s4][k34].outerSize(); ++r34)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H.W34[s3][s4][k34],r34); iW34; ++iW34)
+			{
+				if (H.L.block[qL][iW12.row()][0].size() != 0 and 
+				    H.R.block[qR][iW34.col()][0].size() != 0 and
+				    iW12.col() == iW34.row())
+				{
+					if (Vout.data[s1s3].block[q13].rows() != H.L.block[qL][iW12.row()][0].rows() or
+					    Vout.data[s1s3].block[q13].cols() != H.R.block[qR][iW34.col()][0].cols())
+					{
+						Vout.data[s1s3].block[q13] = H.factor_cgcs[q][p] * iW12.value() * iW34.value() *
+						                                       (H.L.block[qL][iW12.row()][0] * 
+						                                        Vin.data[s2s4].block[q24] * 
+						                                        H.R.block[qR][iW34.col()][0]);
+					}
+					else
+					{
+						Vout.data[s1s3].block[q13] += H.factor_cgcs[q][p] * iW12.value() * iW34.value() *
+						                                        (H.L.block[qL][iW12.row()][0] * 
+						                                         Vin.data[s2s4].block[q24] * 
+						                                         H.R.block[qR][iW34.col()][0]);
+					}
+				}
+			}
+		}
+	}
+}
+
+//template<typename Symmetry, typename Scalar, typename MpoScalar>
+//void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
+//{
+//	auto tensor_basis = Symmetry::tensorProd(H.qloc12, H.qloc34);
+//	for (size_t i=0; i<Vout.data.size(); ++i)
+//	{
+//		Vout.data[i].setZero();
+//	}
+//	
+//	Stopwatch Wtot;
+//	double ttot=0;
+//	double tmult=0;
+//	double tcgc=0;
+//	double tmatch=0;
+//	int N_cgc_calc=0;
+//	
+//	for (size_t s1=0; s1<H.qloc12.size(); ++s1)
+//	for (size_t s2=0; s2<H.qloc12.size(); ++s2)
+//	for (size_t k12=0; k12<H.qOp12.size(); ++k12)
+//	{
+//		if (!Symmetry::validate(qarray3<Symmetry::Nq>{H.qloc12[s2], H.qOp12[k12], H.qloc12[s1]})) {continue;}
+//		
+//		for (size_t s3=0; s3<H.qloc34.size(); ++s3)
+//		for (size_t s4=0; s4<H.qloc34.size(); ++s4)
+//		for (size_t k34=0; k34<H.qOp34.size(); ++k34)
+//		{
+//			if (!Symmetry::validate(qarray3<Symmetry::Nq>{H.qloc34[s4], H.qOp34[k34], H.qloc34[s3]})) {continue;}
+//			
+//			auto qOps = Symmetry::reduceSilent(H.qOp12[k12], H.qOp34[k34]);
+//			
+//			for (const auto &qOp:qOps)
+//			{
+//				auto qmerges13 = Symmetry::reduceSilent(H.qloc12[s1], H.qloc34[s3]);
+//				auto qmerges24 = Symmetry::reduceSilent(H.qloc12[s2], H.qloc34[s4]);
+//				
+//				for (const auto &qmerge13:qmerges13)
+//				for (const auto &qmerge24:qmerges24)
+//				{
+//					auto qtensor13 = make_tuple(H.qloc12[s1], s1, H.qloc34[s3], s3, qmerge13);
+//					auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
+//					
+//					auto qtensor24 = make_tuple(H.qloc12[s2], s2, H.qloc34[s4], s4, qmerge24);
+//					auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
+//					
+//					// tensor product of the MPO operators in the physical space
+//					Stopwatch<> Wcgc9;
+//					Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
+//					Symmetry::coeff_buildR(H.qloc12[s2], H.qloc34[s4], qmerge24,
+//					                       H.qOp12[k12], H.qOp34[k34], qOp,
+//					                       H.qloc12[s1], H.qloc34[s3], qmerge13)
+//					                       :1.;
+//					tcgc += Wcgc9.time();
+//					++N_cgc_calc;
+//					if (abs(factor_cgc9) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
+//					
+//					for (size_t qL=0; qL<H.L.dim; ++qL)
+//					{
+//						vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > ixs;
+//						Stopwatch Wmatch;
+//						bool FOUND_MATCH = AAWWAA(H.L.in(qL), H.L.out(qL), H.L.mid(qL), 
+//						                          k12, H.qOp12, k34, H.qOp34,
+//						                          s1s3, qmerge13, s2s4, qmerge24,
+//						                          Vout.data, Vin.data, ixs);
+//						tmatch += Wmatch.time();
+//						
+//						if (FOUND_MATCH)
+//						{
+//							for (const auto &ix:ixs)
+//							{
+//								auto qR = H.R.dict.find(get<0>(ix));
+//								auto qW     = get<1>(ix);
+//								size_t qA13 = get<2>(ix);
+//								size_t qA24 = get<3>(ix);
+//								
+//								// multiplication of Op12, Op34 in the auxiliary space
+//								Stopwatch<> Wcgc6;
+//								Scalar factor_cgc6 = (Symmetry::NON_ABELIAN)? 
+//								Symmetry::coeff_Apair(H.L.mid(qL), H.qOp12[k12], qW,
+//								                      H.qOp34[k34], get<0>(ix)[2], qOp)
+//								                      :1.;
+//								tcgc += Wcgc6.time();
+//								++N_cgc_calc;
+//								if (abs(factor_cgc6) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
+//								
+//								if (qR != H.R.dict.end())
+//								{
+//									// standard coefficient for H*Psi with environments
+//									Stopwatch<> WcgcHPsi;
+//									Scalar factor_cgcHPsi = (Symmetry::NON_ABELIAN)?
+//									Symmetry::coeff_HPsi(Vin.data[s2s4].out[qA24], qmerge24, Vin.data[s2s4].in[qA24],
+//									                     H.R.mid(qR->second), qOp, H.L.mid(qL),
+//									                     Vout.data[s1s3].out[qA13], qmerge13, Vout.data[s1s3].in[qA13])
+//									                     :1.;
+//									++N_cgc_calc;
+//									tcgc += WcgcHPsi.time();
+//									
+//									for (int r12=0; r12<H.W12[s1][s2][k12].outerSize(); ++r12)
+//									for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.W12[s1][s2][k12],r12); iW12; ++iW12)
+//									for (int r34=0; r34<H.W34[s3][s4][k34].outerSize(); ++r34)
+//									for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H.W34[s3][s4][k34],r34); iW34; ++iW34)
+//									{
+//										Matrix<Scalar,Dynamic,Dynamic> Mtmp;
+//										auto Wfactor = iW12.value() * iW34.value() * factor_cgc6 * factor_cgc9 * factor_cgcHPsi;
+//										
+//										if (H.L.block[qL][iW12.row()][0].size() != 0 and
+//										    H.R.block[qR->second][iW34.col()][0].size() !=0 and
+//										    iW12.col() == iW34.row())
+//										{
+//											Stopwatch Wmult;
+//											optimal_multiply(Wfactor, 
+//											                 H.L.block[qL][iW12.row()][0],
+//											                 Vin.data[s2s4].block[qA24],
+//											                 H.R.block[qR->second][iW34.col()][0],
+//											                 Mtmp);
+//											tmult += Wmult.time();
+//										}
+//										
+//										if (Mtmp.size() != 0)
+//										{
+//											if (Vout.data[s1s3].block[qA13].rows() == Mtmp.rows() and
+//											    Vout.data[s1s3].block[qA13].cols() == Mtmp.cols())
+//											{
+//												Vout.data[s1s3].block[qA13] += Mtmp;
+//											}
+//											else
+//											{
+//												Vout.data[s1s3].block[qA13] = Mtmp;
+//											}
+//										}
+//									}
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
+//	
+//	ttot = Wtot.time();
+//	
+////	cout << "tmult=" << tmult/ttot << ", tcgc=" << tcgc/ttot << ", tmatch=" << tmatch/ttot << ", N_cgc_calc=" << N_cgc_calc << endl;
+//}
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, PivotVector<Symmetry,Scalar> &Vinout)

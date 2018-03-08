@@ -688,7 +688,8 @@ optimizationStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symm
 	Stopwatch<> Chronos;
 	
 	precalc_blockStructure (Heff[pivot].L, Vout.A[pivot], Heff[pivot].W, Vin.A[pivot], Heff[pivot].R, 
-	                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
+	                        H.locBasis(pivot), H.opBasis(pivot), 
+	                        Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 	
 	PivotVector<Symmetry,Scalar> Ain(Vin.A[pivot]);
 	PivotVector<Symmetry,Scalar> Aout(Vout.A[pivot]);
@@ -725,6 +726,10 @@ optimizationStep2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 	                                              H.W_at(loc1), H.W_at(loc2), 
 	                                              H.locBasis(loc1), H.locBasis(loc2), 
 	                                              H.opBasis (loc1), H.opBasis (loc2));
+	
+	precalc_blockStructure (Heff2.L, AAout.data, Heff2.W12, Heff2.W34, AAin.data, Heff2.R, 
+	                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
+	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
 	
 	OxV(Heff2, AAin, AAout);
 	Vout.sweepStep2(CURRENT_DIRECTION, loc1, AAout.data);

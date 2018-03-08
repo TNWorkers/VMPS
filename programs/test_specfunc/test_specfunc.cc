@@ -153,6 +153,18 @@ int main (int argc, char* argv[])
 	
 	//--------------</ground state>---------------
 	
+	auto Psi = init->state;
+//	MODEL::StateXd rand = Psi; rand.setRandom();
+//	Psi += 0.1 * rand;
+	MODEL::CompressorXd Compadrino(DMRG::VERBOSITY::HALFSWEEPWISE);
+	MODEL::StateXd Phi;
+	Compadrino.varCompress(Psi,Phi,2);
+	cout << endl;
+	cout << "ORIGINAL:" << endl;
+	cout << Psi.info() << endl;
+	cout << "COMPRESSED:" << endl;
+	cout << Phi.info() << endl;
+	
 	//--------------<A*init>---------------
 	MODEL::StateXd initA;
 	initA.eps_svd = 1e-15;
@@ -163,18 +175,6 @@ int main (int argc, char* argv[])
 	initA.eps_svd = 1e-7;
 	cout << "AxV:" << endl << initA.info() << endl;
 	//--------------</A*init>---------------
-	
-//	auto Psi = init->state;
-////	MODEL::StateXd rand = Psi; rand.setRandom();
-////	Psi += 0.1 * rand;
-//	MODEL::CompressorXd Compadrino(DMRG::VERBOSITY::HALFSWEEPWISE);
-//	MODEL::StateXd Phi;
-//	Compadrino.varCompress(Psi,Phi,2);
-//	cout << endl;
-//	cout << "ORIGINAL:" << endl;
-//	cout << Psi.info() << endl;
-//	cout << "COMPRESSED:" << endl;
-//	cout << Phi.info() << endl;
 	
 	//--------------<KernelPolynomialSolver>---------------
 	double spillage = 0.;

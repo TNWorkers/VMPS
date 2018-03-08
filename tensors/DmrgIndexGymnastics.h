@@ -396,16 +396,11 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 						}
 						if (ALL_BLOCKS_ARE_EMPTY == false)
 						{
-							if constexpr ( Symmetry::NON_ABELIAN )
-							{
-								factor_cgc = Symmetry::coeff_HPsi(Aket[s2].out[get<2>(ix[n])], qloc[s2], Aket[s2].in[get<2>(ix[n])],
-								                                  get<0>(ix[n])[2], qOp[k], L.mid(qL),
-								                                  Abra[s1].out[get<1>(ix[n])], qloc[s1], Abra[s1].in[get<1>(ix[n])]);
-							}
-							else
-							{
-								factor_cgc = static_cast<Scalar>(1.);
-							}
+							factor_cgc = (Symmetry::NON_ABELIAN)? 
+							Symmetry::coeff_HPsi(Aket[s2].out[get<2>(ix[n])], qloc[s2], Aket[s2].in[get<2>(ix[n])],
+							                     get<0>(ix[n])[2], qOp[k], L.mid(qL),
+							                     Abra[s1].out[get<1>(ix[n])], qloc[s1], Abra[s1].in[get<1>(ix[n])])
+							                     :1.;
 							if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 							
 							std::array<size_t,2> key = {s1, get<1>(ix[n])};

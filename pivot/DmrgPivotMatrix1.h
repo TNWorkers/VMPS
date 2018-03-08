@@ -16,7 +16,7 @@ struct PivotMatrix1
 	
 	vector<std::array<size_t,2> >          qlhs;
 	vector<vector<std::array<size_t,5> > > qrhs;
-	vector<vector<Scalar> > factor_cgcs;
+	vector<vector<Scalar> >                factor_cgcs;
 	
 	vector<qarray<Symmetry::Nq> > qloc;
 	
@@ -59,8 +59,8 @@ void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 			for (int r=0; r<H.W[s1][s2][k].outerSize(); ++r)
 			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(H.W[s1][s2][k],r); iW; ++iW)
 			{
-				if (H.L.block[qL][iW.row()][0].rows() != 0 and 
-				    H.R.block[qR][iW.col()][0].rows() != 0)
+				if (H.L.block[qL][iW.row()][0].size() != 0 and 
+				    H.R.block[qR][iW.col()][0].size() != 0)
 				{
 					if (Vout.data[s1].block[q1].rows() != H.L.block[qL][iW.row()][0].rows() or
 					    Vout.data[s1].block[q1].cols() != H.R.block[qR][iW.col()][0].cols())
