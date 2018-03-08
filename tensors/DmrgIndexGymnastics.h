@@ -111,12 +111,19 @@ bool AA (qarray<Symmetry::Nq> Lin,
 //             const vector<Biped<Symmetry,MatrixType> > &AA13, const vector<Biped<Symmetry,MatrixType> > &AA24, 
 //             vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > &result)
 template<typename Symmetry, typename MatrixType>
-bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid, 
-             size_t k12, vector<qarray<Symmetry::Nq> > qOp12, 
-             size_t k34, vector<qarray<Symmetry::Nq> > qOp34,
-             size_t s1s3, const qarray<Symmetry::Nq> &qmerge13, 
-             size_t s2s4, const qarray<Symmetry::Nq> &qmerge24, 
-             const vector<Biped<Symmetry,MatrixType> > &AA13, const vector<Biped<Symmetry,MatrixType> > &AA24, 
+bool AAWWAA (const qarray<Symmetry::Nq> &Lin, 
+             const qarray<Symmetry::Nq> &Lout, 
+             const qarray<Symmetry::Nq> &Lmid, 
+             const size_t &k12, 
+             const vector<qarray<Symmetry::Nq> > &qOp12, 
+             const size_t &k34, 
+             const vector<qarray<Symmetry::Nq> > &qOp34,
+             const size_t &s1s3, 
+             const qarray<Symmetry::Nq> &qmerge13, 
+             const size_t &s2s4, 
+             const qarray<Symmetry::Nq> &qmerge24, 
+             const vector<Biped<Symmetry,MatrixType> > &AA13, 
+             const vector<Biped<Symmetry,MatrixType> > &AA24, 
              vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > &result)
 {
 //	qarray<Symmetry::Nq> qRout = Lin + qloc12[s1] + qloc34[s3];
@@ -143,6 +150,8 @@ bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetr
 	result.clear();
 	
 	auto qRouts = Symmetry::reduceSilent(Lin, qmerge13);
+	auto qRins = Symmetry::reduceSilent(Lout, qmerge24);
+	auto qWs = Symmetry::reduceSilent(Lmid, qOp12[k12]);
 	
 	for (const auto &qRout:qRouts)
 	{
@@ -151,8 +160,6 @@ bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetr
 		
 		if (q13 != AA13[s1s3].dict.end())
 		{
-			auto qRins = Symmetry::reduceSilent(Lout, qmerge24);
-			
 			for (const auto &qRin:qRins)
 			{
 				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
@@ -160,11 +167,10 @@ bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetr
 				
 				if (q24 != AA24[s2s4].dict.end())
 				{
-//					auto qRmids = Symmetry::reduceSilent(Lmid, qOp12[k12], qOp34[k34]);
-					auto qWs = Symmetry::reduceSilent(Lmid, qOp12[k12]);
 					for (const auto &qW:qWs)
 					{
 						auto qRmids = Symmetry::reduceSilent(qW, qOp34[k34]);
+						
 						for (const auto &qRmid:qRmids)
 						{
 							if (Symmetry::validate(qarray3<Symmetry::Nq>{qRin,qRmid,qRout}))

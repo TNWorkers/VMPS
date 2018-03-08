@@ -50,6 +50,13 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 		Vout.data[i].setZero();
 	}
 	
+	Stopwatch Wtot;
+	double ttot=0;
+	double tmult=0;
+	double tcgc=0;
+	double tmatch=0;
+	int N_cgc_calc=0;
+	
 	for (size_t s1=0; s1<H.qloc12.size(); ++s1)
 	for (size_t s2=0; s2<H.qloc12.size(); ++s2)
 	for (size_t k12=0; k12<H.qOp12.size(); ++k12)
@@ -79,18 +86,25 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 					auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
 					
 					// tensor product of the MPO operators in the physical space
-					Scalar factor_cgc9 = Symmetry::coeff_buildR(H.qloc12[s2], H.qloc34[s4], qmerge24,
-					                                            H.qOp12[k12], H.qOp34[k34], qOp,
-					                                            H.qloc12[s1], H.qloc34[s3], qmerge13);
+					Stopwatch<> Wcgc9;
+					Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
+					Symmetry::coeff_buildR(H.qloc12[s2], H.qloc34[s4], qmerge24,
+					                       H.qOp12[k12], H.qOp34[k34], qOp,
+					                       H.qloc12[s1], H.qloc34[s3], qmerge13)
+					                       :1.;
+					tcgc += Wcgc9.time();
+					++N_cgc_calc;
 					if (abs(factor_cgc9) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 					
 					for (size_t qL=0; qL<H.L.dim; ++qL)
 					{
 						vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > ixs;
+						Stopwatch Wmatch;
 						bool FOUND_MATCH = AAWWAA(H.L.in(qL), H.L.out(qL), H.L.mid(qL), 
 						                          k12, H.qOp12, k34, H.qOp34,
 						                          s1s3, qmerge13, s2s4, qmerge24,
 						                          Vout.data, Vin.data, ixs);
+						tmatch += Wmatch.time();
 						
 						if (FOUND_MATCH)
 						{
@@ -102,16 +116,26 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 								size_t qA24 = get<3>(ix);
 								
 								// multiplication of Op12, Op34 in the auxiliary space
-								Scalar factor_cgc6 = Symmetry::coeff_Apair(H.L.mid(qL), H.qOp12[k12], qW,
-								                                           H.qOp34[k34], get<0>(ix)[2], qOp);
+								Stopwatch<> Wcgc6;
+								Scalar factor_cgc6 = (Symmetry::NON_ABELIAN)? 
+								Symmetry::coeff_Apair(H.L.mid(qL), H.qOp12[k12], qW,
+								                      H.qOp34[k34], get<0>(ix)[2], qOp)
+								                      :1.;
+								tcgc += Wcgc6.time();
+								++N_cgc_calc;
 								if (abs(factor_cgc6) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 								
 								if (qR != H.R.dict.end())
 								{
 									// standard coefficient for H*Psi with environments
-									Scalar factor_cgcHPsi = Symmetry::coeff_HPsi(Vin.data[s2s4].out[qA24], qmerge24, Vin.data[s2s4].in[qA24],
-									                                             H.R.mid(qR->second), qOp, H.L.mid(qL),
-									                                             Vout.data[s1s3].out[qA13], qmerge13, Vout.data[s1s3].in[qA13]);
+									Stopwatch<> WcgcHPsi;
+									Scalar factor_cgcHPsi = (Symmetry::NON_ABELIAN)?
+									Symmetry::coeff_HPsi(Vin.data[s2s4].out[qA24], qmerge24, Vin.data[s2s4].in[qA24],
+									                     H.R.mid(qR->second), qOp, H.L.mid(qL),
+									                     Vout.data[s1s3].out[qA13], qmerge13, Vout.data[s1s3].in[qA13])
+									                     :1.;
+									++N_cgc_calc;
+									tcgc += WcgcHPsi.time();
 									
 									for (int r12=0; r12<H.W12[s1][s2][k12].outerSize(); ++r12)
 									for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.W12[s1][s2][k12],r12); iW12; ++iW12)
@@ -125,11 +149,13 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 										    H.R.block[qR->second][iW34.col()][0].size() !=0 and
 										    iW12.col() == iW34.row())
 										{
+											Stopwatch Wmult;
 											optimal_multiply(Wfactor, 
 											                 H.L.block[qL][iW12.row()][0],
 											                 Vin.data[s2s4].block[qA24],
 											                 H.R.block[qR->second][iW34.col()][0],
 											                 Mtmp);
+											tmult += Wmult.time();
 										}
 										
 										if (Mtmp.size() != 0)
@@ -153,6 +179,10 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 			}
 		}
 	}
+	
+	ttot = Wtot.time();
+	
+//	cout << "tmult=" << tmult/ttot << ", tcgc=" << tcgc/ttot << ", tmatch=" << tmatch/ttot << ", N_cgc_calc=" << N_cgc_calc << endl;
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>

@@ -58,13 +58,13 @@ double alpha;
 double t_U0, t_U1, t_SU2;
 int Dinit, Dlimit, Imin, Imax;
 double tol_eigval, tol_state;
-double dt, tmax;
+double dt, tmax, tol_compr, tol_Lanczos;
 DMRG::VERBOSITY::OPTION VERB;
 
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
-	L = args.get<size_t>("Lx",10);
+	L = args.get<size_t>("L",10);
 	Ly = args.get<size_t>("Ly",1);
 	J = args.get<double>("J",-1.);
 	Jprime = args.get<double>("Jprime",0.);
@@ -76,10 +76,12 @@ int main (int argc, char* argv[])
 	
 	dt = args.get<double>("dt",0.1);
 	tmax = args.get<double>("tmax",6.);
+	tol_compr = args.get<double>("tol_compr",1e-5);
+	tol_Lanczos = args.get<double>("tol_compr",1e-8);
 	
 	Dinit  = args.get<int>("Dmin",2);
 	Dlimit = args.get<int>("Dmax",100);
-	Imin   = args.get<int>("Imin",2);
+	Imin   = args.get<int>("Imin",10);
 	Imax   = args.get<int>("Imax",50);
 	tol_eigval = args.get<double>("tol_eigval",1e-6);
 	tol_state  = args.get<double>("tol_state",1e-5);
@@ -104,14 +106,15 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
 	
 	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_U1 = Watch_U1.time();
 	
 	VMPS::HeisenbergU1::StateXd Psi_U1tmp;
 	Psi_U1tmp.eps_svd = 1e-15;
 	OxV(H_U1.Sz(0), g_U1.state, Psi_U1tmp, DMRG::BROOM::SVD);
-	cout << setprecision(14) << "<avg0>=" << Psi_U1tmp.dot(Psi_U1tmp) << endl;
+	Psi_U1tmp.N_sv = Psi_U1tmp.calc_Dmax();
+	Psi_U1tmp.eps_svd = tol_compr;
 	
 	VMPS::HeisenbergU1::StateXcd init_U1 = Psi_U1tmp.cast<complex<double> >();
 	VMPS::HeisenbergU1::StateXcd Psi_U1 = init_U1;
@@ -120,14 +123,23 @@ int main (int argc, char* argv[])
 	double t = 0;
 	ofstream FilerU1(make_string("U(1).dat"));
 	ArrayXd resU1(static_cast<int>(tmax/dt)+1);
+	string tinfo="";
 	for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
 	{
 		double res = isReal(dot(init_U1,Psi_U1));
 		FilerU1 << t << "\t" << res << endl;
-		lout    << t << "\t" << res << endl;
+		lout << "t=" << t << "\t" << res << "\t" << tinfo << endl;
 		resU1(i) = res;
 		
-		TDVP_U1.t_step(H_U1, Psi_U1, -1.i*dt, 1,1e-8);
+		Stopwatch<> Steptimer;
+		TDVP_U1.t_step(H_U1, Psi_U1, -1.i*dt, 1,tol_Lanczos);
+		tinfo = Steptimer.info();
+		
+		if (Psi_U1tmp.get_truncWeight().sum() > 0.5*tol_compr)
+		{
+			Psi_U1tmp.N_sv = min(static_cast<size_t>(max(Psi_U1tmp.N_sv*1.1,Psi_U1tmp.N_sv+1.)),200ul);
+		}
+		
 		if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_U1.info() << endl << Psi_U1.info() << endl;}
 		t += dt;
 	}
@@ -147,11 +159,10 @@ int main (int argc, char* argv[])
 	t_SU2 = Watch_SU2.time();
 	
 	VMPS::HeisenbergSU2::StateXd Psi_SU2tmp;
-	Psi_SU2tmp.eps_svd = 1e-15;
-	
 	VMPS::HeisenbergSU2::CompressorXd Compadre(VERB);
 	Compadre.varCompress(H_SU2.S(0), H_SU2.Sdag(0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
-	cout << setprecision(14) << "<avg0>=" << Psi_SU2tmp.dot(Psi_SU2tmp) << endl;
+	Psi_SU2tmp.N_sv = Psi_SU2tmp.calc_Dmax();
+	Psi_SU2tmp.eps_svd = tol_compr;
 	
 	VMPS::HeisenbergSU2::StateXcd init_SU2 = Psi_SU2tmp.cast<complex<double> >();
 	VMPS::HeisenbergSU2::StateXcd Psi_SU2 = init_SU2;
@@ -160,14 +171,23 @@ int main (int argc, char* argv[])
 	t = 0;
 	ofstream FilerSU2(make_string("SU(2).dat"));
 	ArrayXd resSU2(static_cast<int>(tmax/dt)+1);
+	tinfo="";
 	for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
 	{
-		double res = isReal(dot(init_SU2,Psi_SU2));
+		double res = 3.*isReal(dot(init_SU2,Psi_SU2));
 		FilerSU2 << t << "\t" << res << endl;
-		lout     << t << "\t" << res << endl;
+		lout << "t=" << t << "\t" << res << "\t" << tinfo << endl;
 		resSU2(i) = res;
 		
-		TDVP_SU2.t_step(H_SU2, Psi_SU2, -1.i*dt, 1,1e-8);
+		Stopwatch<> Steptimer;
+		TDVP_SU2.t_step(H_SU2, Psi_SU2, -1.i*dt, 1,tol_Lanczos);
+		tinfo = Steptimer.info();
+		
+		if (Psi_SU2.get_truncWeight().sum() > 0.5*tol_compr)
+		{
+			Psi_SU2.N_sv = min(static_cast<size_t>(max(Psi_SU2.N_sv*1.1,Psi_SU2.N_sv+1.)),200ul);
+		}
+		
 		if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_SU2.info() << endl << Psi_SU2.info() << endl;}
 		t += dt;
 	}

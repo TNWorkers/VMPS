@@ -60,7 +60,7 @@ VMPS::HeisenbergU1XXZ::StateXcd Neel (const VMPS::HeisenbergU1XXZ &H)
 bool CALC_DYNAMICS;
 int M, S;
 size_t D;
-size_t L, Lx, Ly;
+size_t L, Ly;
 double J, Jprime;
 double alpha;
 double t_U0, t_U1, t_SU2;
@@ -82,7 +82,7 @@ MatrixXd SpinCorr_SU2;
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
-	Lx = args.get<size_t>("Lx",10); L=Lx;
+	L = args.get<size_t>("L",10);
 	Ly = args.get<size_t>("Ly",1);
 	J = args.get<double>("J",-1.);
 	Jprime = args.get<double>("Jprime",0.);
@@ -103,7 +103,7 @@ int main (int argc, char* argv[])
 	CALC_DYNAMICS = args.get<bool>("CALC_DYN",0);
 	
 	lout << args.info() << endl;
-	lout.set(make_string("Lx=",Lx,"_Ly=",Ly,"_M=",M,"_D=",D,"_J=",J,".log"),"log");
+	lout.set(make_string("L=",L,"_Ly=",Ly,"_M=",M,"_D=",D,"_J=",J,".log"),"log");
 	
 	#ifdef _OPENMP
 	lout << "threads=" << omp_get_max_threads() << endl;
@@ -115,7 +115,7 @@ int main (int argc, char* argv[])
 //	lout << endl << "--------U(0)---------" << endl << endl;
 //	
 //	Stopwatch<> Watch_U0;
-//	VMPS::Heisenberg H_U0(Lx,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
+//	VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
 //	lout << H_U0.info() << endl;
 //	
 //	VMPS::Heisenberg::Solver DMRG_U0(VERB);
@@ -145,7 +145,7 @@ int main (int argc, char* argv[])
 	lout << endl << "--------U(1)---------" << endl << endl;
 	
 	Stopwatch<> Watch_U1;
-	VMPS::HeisenbergU1 H_U1(Lx,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
+	VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
 	lout << H_U1.info() << endl;
 	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
 	
@@ -210,7 +210,7 @@ int main (int argc, char* argv[])
 	lout << endl << "--------SU(2)---------" << endl << endl;
 	
 	Stopwatch<> Watch_SU2;
-	VMPS::HeisenbergSU2 H_SU2(Lx,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
+	VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
 	lout << H_SU2.info() << endl;
 	Eigenstate<VMPS::HeisenbergSU2::StateXd> g_SU2;
 	

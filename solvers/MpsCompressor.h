@@ -325,8 +325,7 @@ varCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-//		sqdist = abs(sqnormVin-Vout.squaredNorm());
-		sqdist = abs(sqnormVin-dot(Vout,Vout));
+		sqdist = abs(sqnormVin-Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		
 		if (CHOSEN_VERBOSITY>=2)
