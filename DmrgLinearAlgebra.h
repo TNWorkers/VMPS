@@ -40,7 +40,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
             const Mpo<Symmetry,MpoScalar> &O, 
             const Mps<Symmetry,Scalar> &Vket, 
             bool USE_SQUARE = false,  
-            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT)
+            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::RIGHT)
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
@@ -52,7 +52,8 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		{
 			if (USE_SQUARE == true)
 			{
-				contract_L(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
+				if constexpr (Symmetry::NON_ABELIAN) { contract_L(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
+				else { contract_L(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
 			}
 			else
 			{

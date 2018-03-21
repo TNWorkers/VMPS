@@ -45,7 +45,7 @@ namespace Sym{
 		inline static std::vector<qType> reduceSilent( const qType& ql, const qType& qr) { return {{}}; }
 		inline static std::vector<qType> reduceSilent( const qType& ql, const qType& qm, const qType& qr) { return {{}}; }
 		inline static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const qType& qr) { return {{}}; }
-		inline static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr) { return {{}}; }
+		inline static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool UNIQUE = false) { return {{}}; }
 		
 		inline static vector<tuple<qarray<0>,size_t,qarray<0>,size_t,qarray<0> > > tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr )
 		{

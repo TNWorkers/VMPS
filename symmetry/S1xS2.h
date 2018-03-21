@@ -67,7 +67,7 @@ public:
 	 * \warning : Returns only unique irreps.
 	 *            Better: Put an option for unique or non-unique irreps in the return vector.
 	 */
-	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
+	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool UNIQUE=false);
 	
 	static vector<tuple<qarray<S1::Nq+S2::Nq>,size_t,qarray<S1::Nq+S2::Nq>,size_t,qarray<S1::Nq+S2::Nq> > > tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr );
 	///@}
@@ -169,7 +169,7 @@ reduceSilent( const std::vector<qType>& ql, const qType& qr )
 
 template<typename S1, typename S2>
 std::vector<typename S1xS2<S1,S2>::qType> S1xS2<S1,S2>::
-reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
+reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool UNIQUE )
 {
 	std::vector<qType> vout;
 	for (std::size_t q=0; q<ql.size(); q++)

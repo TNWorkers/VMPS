@@ -73,7 +73,7 @@ const std::map<string,std::any> HeisenbergU1::defaults =
 {
 	{"J",-1.}, {"Jprime",0.}, {"Jperp",0.},
 	{"Bz",0.}, {"Kz",0.},
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1}
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 HeisenbergU1::

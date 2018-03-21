@@ -67,7 +67,7 @@ public:
 	 * \warning : Returns only unique irreps.
 	 *            Better: Put an option for unique or non-unique irreps in the return vector.
 	 */
-	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
+	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool UNIQUE=false);
 
 	static vector<tuple<qarray<1>,size_t,qarray<1>,size_t,qarray<1> > > tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr );
 	///@}
@@ -160,22 +160,36 @@ reduceSilent( const std::vector<qType>& ql, const qType& qr )
 
 template<typename Kind, typename Scalar>
 std::vector<typename SU2<Kind,Scalar>::qType> SU2<Kind,Scalar>::
-reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
+reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool UNIQUE )
 {
-	// std::unordered_set<qType> uniqueControl;
-	std::vector<qType> vout;
-	for (std::size_t q1=0; q1<ql.size(); q1++)
-	for (std::size_t q2=0; q2<qr.size(); q2++)
+	if (UNIQUE)
 	{
-		int qmin = std::abs(ql[q1][0]-qr[q2][0]) +1;
-		int qmax = std::abs(ql[q1][0]+qr[q2][0]) -1;
-		for ( int i=qmin; i<=qmax; i+=2 )
+		std::unordered_set<qType> uniqueControl;
+		std::vector<qType> vout;
+		for (std::size_t q1=0; q1<ql.size(); q1++)
+		for (std::size_t q2=0; q2<qr.size(); q2++)
 		{
-			vout.push_back({i});
-			// if( auto it = uniqueControl.find({i}) == uniqueControl.end() ) {uniqueControl.insert({i}); vout.push_back({i});}
+			int qmin = std::abs(ql[q1][0]-qr[q2][0]) +1;
+			int qmax = std::abs(ql[q1][0]+qr[q2][0]) -1;
+			for ( int i=qmin; i<=qmax; i+=2 )
+			{
+				if( auto it = uniqueControl.find({i}) == uniqueControl.end() ) {uniqueControl.insert({i}); vout.push_back({i});}
+			}
 		}
+		return vout;
 	}
-	return vout;
+	else
+	{
+		std::vector<qType> vout;
+		for (std::size_t q1=0; q1<ql.size(); q1++)
+		for (std::size_t q2=0; q2<qr.size(); q2++)
+		{
+			int qmin = std::abs(ql[q1][0]-qr[q2][0]) +1;
+			int qmax = std::abs(ql[q1][0]+qr[q2][0]) -1;
+			for ( int i=qmin; i<=qmax; i+=2 ) { vout.push_back({i}); }
+		}
+		return vout;
+	}
 }
 
 template<typename Kind, typename Scalar>

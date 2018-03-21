@@ -330,8 +330,11 @@ print(const bool &SHOW_MATRICES, const std::size_t &precision) const
 		// uu << block[nu][0][0].cols() << "x" << block[nu][0][0].rows() << "x" << block[nu].shape()[0];
 		for (std::size_t q=0; q<block[nu].shape()[0]; q++)
 		{
-			uu << "(" << block[nu][q][0].cols() << "x" << block[nu][q][0].rows() << ")";
-			if(q==block[nu].shape()[0]-1) {uu << "";} else {uu << ",";}
+			if(block[nu][q][0].cols() != 0 and block[nu][q][0].rows() != 0)
+			{
+				uu << "(" << block[nu][q][0].cols() << "x" << block[nu][q][0].rows() << ")";
+				if(q==block[nu].shape()[0]-1) {uu << "";} else {uu << ",";}
+			}
 		}
 		uu << "]";
 		t.add(ss.str());

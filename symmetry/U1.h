@@ -55,7 +55,7 @@ public:
 	/**
 	 * Calculate the irreps of the tensor product of all entries of \p ql with all entries of \p qr.
 	 */
-	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr);
+	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool UNIQUE = false);
 	
 	static vector<tuple<qarray<1>,size_t,qarray<1>,size_t,qarray<1> > > tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr );
 	///@}
@@ -149,15 +149,31 @@ reduceSilent( const std::vector<qType>& ql, const qType& qr )
 
 template<typename Kind, typename Scalar>
 std::vector<typename U1<Kind,Scalar>::qType> U1<Kind,Scalar>::
-reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr )
+reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool UNIQUE )
 {
-	std::vector<qType> vout;
-	for (std::size_t q=0; q<ql.size(); q++)
-	for (std::size_t p=0; p<qr.size(); p++)
+	if (UNIQUE)
 	{
-		vout.push_back({ql[q][0]+qr[p][0]});
+		std::unordered_set<qType> uniqueControl;
+		std::vector<qType> vout;
+		for (std::size_t q=0; q<ql.size(); q++)
+		for (std::size_t p=0; p<qr.size(); p++)
+		{
+			int i = ql[q][0]+qr[p][0];
+			if( auto it = uniqueControl.find({i}) == uniqueControl.end() ) { uniqueControl.insert({i}); vout.push_back({i}); }
+		}
+		return vout;
 	}
-	return vout;
+	else
+	{
+		std::vector<qType> vout;
+
+		for (std::size_t q=0; q<ql.size(); q++)
+		for (std::size_t p=0; p<qr.size(); p++)
+		{
+			vout.push_back({ql[q][0]+qr[p][0]});
+		}
+		return vout;
+	}
 }
 
 template<typename Kind, typename Scalar>
