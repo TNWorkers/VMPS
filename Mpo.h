@@ -55,13 +55,13 @@ class Mpo
 	template<typename H, typename Symmetry_, typename S1, typename S2, typename V> friend class TDVPPropagator;
 	template<typename Symmetry_, typename S_> friend class Mpo;
 	
-	template<typename Symmetry_, typename S1, typename S2> friend 
-	void HxV  (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, 
-	           DMRG::VERBOSITY::OPTION VERBOSITY); //=DMRG::VERBOSITY::HALFSWEEPWISE
-	
-	template<typename Symmetry_, typename S1, typename S2> friend 
-	void OxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, 
-	          DMRG::BROOM::OPTION TOOL); //=DMRG::BROOM::SVD
+//	template<typename Symmetry_, typename S1, typename S2> friend 
+//	void HxV  (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, 
+//	           DMRG::VERBOSITY::OPTION VERBOSITY); //=DMRG::VERBOSITY::HALFSWEEPWISE
+//	
+//	template<typename Symmetry_, typename S1, typename S2> friend 
+//	void OxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, 
+//	          DMRG::BROOM::OPTION TOOL); //=DMRG::BROOM::SVD
 	
 public:
 	

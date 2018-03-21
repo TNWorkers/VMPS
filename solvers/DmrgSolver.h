@@ -34,13 +34,13 @@ public:
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-6, 
 	                size_t Dinit=4, size_t Dlimit=500, 
 	                size_t max_halfsweeps=50, size_t min_halfsweeps=6, 
-                    double alpha_rsvd_input=1e-1, double eps_svd_input=1e-7, 
+                    double max_alpha_rsvd_input=1., double eps_svd_input=1e-7, 
 	                size_t savePeriod=0);
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
 	void prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, bool useState=false, size_t Dinit=5,
-	              double alpha_rsvd_input=10., double eps_svd_input=1e-7);
+	              double max_alpha_rsvd_input=1., double eps_svd_input=1e-7);
 	void halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND, 
 	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST);
@@ -83,8 +83,12 @@ private:
 	vector<PivotMatrix1<Symmetry,Scalar,Scalar> > Heff; // Scalar = MpoScalar for ground state
 	
 	double Eold;
-
-	struct SweepStatus{
+	
+	double DeltaEopt;
+	double max_alpha_rsvd;
+	
+	struct SweepStatus
+	{
 		int pivot=-1;
 		DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
 		size_t N_sweepsteps, N_halfsweeps;
@@ -217,10 +221,12 @@ overhead (MEMUNIT memunit) const
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, bool USE_STATE, size_t Dinit,
-         double alpha_rsvd_input, double eps_svd_input)
+         double max_alpha_rsvd_input, double eps_svd_input)
 {
 	N_sites = H.length();
 	N_phys  = H.volume();
+	
+	max_alpha_rsvd = max_alpha_rsvd_input;
 	
 	Stopwatch<> PrepTimer;
 	
@@ -241,7 +247,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 
 	//if the SweepStatus is default initialized (pivot==-1), one initial sweep from right-to-left and N_halfsweeps = N_sweepsteps = 0,
 	//otherwise prepare for continuing at the given SweepStatus.
-	if( stat.pivot == -1 )
+	if (stat.pivot == -1)
 	{
 		stat.N_sweepsteps = stat.N_halfsweeps = 0;
 		for (size_t l=N_sites-1; l>0; --l)
@@ -255,7 +261,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	}
 	else
 	{
-		if( stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT )
+		if (stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)
 		{
 			for (size_t l=N_sites-1; l>0; --l)
 			{
@@ -269,14 +275,14 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 				build_L(H,Vout,l+1);
 			}
 		}
-		else if( stat.CURRENT_DIRECTION == DMRG::DIRECTION::LEFT )
+		else if (stat.CURRENT_DIRECTION == DMRG::DIRECTION::LEFT)
 		{
 			for (size_t l=0; l<N_sites-1; ++l)
 			{
 				Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
 				build_L(H,Vout,l+1);
 			}
-			Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, 0, DMRG::BROOM::QR); // removes large numbers from first matrix		
+			Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, 0, DMRG::BROOM::QR); // removes large numbers from first matrix
 			for (size_t l=N_sites-1; l>stat.pivot; --l)
 			{
 				Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
@@ -357,7 +363,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	
 	// initial cutoffs
 	Vout.state.eps_svd = eps_svd_input;
-	Vout.state.alpha_rsvd = alpha_rsvd_input;
+	Vout.state.alpha_rsvd = max_alpha_rsvd_input;
 	
 	err_eigval = 1.;
 	err_state  = 1.;
@@ -457,12 +463,12 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
-edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t Dinit, size_t Dlimit, size_t max_halfsweeps, size_t min_halfsweeps, double alpha_rsvd_input, double eps_svd_input, size_t savePeriod)
+edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t Dinit, size_t Dlimit, size_t max_halfsweeps, size_t min_halfsweeps, double max_alpha_rsvd_input, double eps_svd_input, size_t savePeriod)
 {
 	tol_eigval = tol_eigval_input;
 	tol_state  = tol_state_input;
 	
-	prepare(H, Vout, Qtot_input, false, Dinit, alpha_rsvd_input, eps_svd_input);
+	prepare(H, Vout, Qtot_input, false, Dinit, max_alpha_rsvd_input, eps_svd_input);
 	
 	Stopwatch<> Saturn;
 	
@@ -494,18 +500,18 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 	{
 		// For non-abelian symmetries, the fluctuations are not working correctly, so that they have to be turned off to allow convergence.
 		// 8 is probably a good value for all "easy" models... if the convergence is not good, enhance this value.
-		if constexpr (Symmetry::NON_ABELIAN)
-			{
-				if(stat.N_halfsweeps == 8)
-				{
-					Vout.state.alpha_rsvd = 0.;
-					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-					{
-						lout << "Set α_rsvd=0." << endl;
-					}
-				}
-			}
-
+//		if constexpr (Symmetry::NON_ABELIAN)
+//		{
+//			if (stat.N_halfsweeps == 8)
+//			{
+//				Vout.state.alpha_rsvd = 0.;
+//				if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+//				{
+//					lout << "Set α_rsvd=0." << endl;
+//				}
+//			}
+//		}
+		
 		// sweep
 		halfsweep(H,Vout,EDGE,TEST);
 		
@@ -547,15 +553,36 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 sweepStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout)
 {
+	// sweep state
 	Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::RICH_SVD, &Heff[stat.pivot]);
+	
+	// build environments
 	(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++stat.pivot) : build_R(H,Vout,--stat.pivot);
 	(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,stat.pivot)  : build_PR(H,Vout,stat.pivot);
+	
+	// adapt alpha
+	PivotVector<Symmetry,Scalar> Vtmp1(Vout.state.A[stat.pivot]);
+	PivotVector<Symmetry,Scalar> Vtmp2;
+	HxV(Heff[stat.pivot], Vtmp1, Vtmp2);
+	
+	double DeltaEtrunc = dot(Vtmp1,Vtmp2)-Vout.energy;
+	
+	if (DeltaEtrunc<0.3*DeltaEopt) {Vout.state.alpha_rsvd *= sqrt(10.);}
+	else                           {Vout.state.alpha_rsvd /= sqrt(10.);}
+	Vout.state.alpha_rsvd = min(Vout.state.alpha_rsvd, max_alpha_rsvd);
+	
+	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << "DeltaEopt=" << DeltaEopt << ", DeltaEtrunc=" << DeltaEtrunc << ", α=" << Vout.state.alpha_rsvd << endl;
+	}
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE)
 {
+	double Ei = Vout.energy;
+	
 	if (Heff[stat.pivot].qloc.size() == 0)
 	{
 		Heff[stat.pivot].W = H.W[stat.pivot];
@@ -569,7 +596,7 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LA
 	g.state = PivotVector<Symmetry,Scalar>(Vout.state.A[stat.pivot]);
 	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
 	
-	Lutz.set_dimK(min(30ul,dim(g.state)));
+	Lutz.set_dimK(min(29ul,dim(g.state)));
 	Lutz.edgeState(Heff[stat.pivot],g, EDGE, 1e-7,1e-4, false);
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
@@ -580,6 +607,7 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LA
 	
 	Vout.energy = g.energy;
 	Vout.state.A[stat.pivot] = g.state.data;
+	DeltaEopt = Ei-Vout.energy;
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>

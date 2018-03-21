@@ -27,8 +27,8 @@
  */
 template<typename Symmetry, typename MatrixType>
 bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid,
-		  size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc,
-		  size_t k, vector<qarray<Symmetry::Nq> > qOp,
+          size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc,
+          size_t k, vector<qarray<Symmetry::Nq> > qOp,
           const vector<Biped<Symmetry,MatrixType> > &Abra, 
           const vector<Biped<Symmetry,MatrixType> > &Aket, 
           vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > &result)
@@ -53,8 +53,11 @@ bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::
 					auto qRmids = Symmetry::reduceSilent(Lmid,qOp[k]);
 					for (const auto &qRmid:qRmids)
 					{
-						result.push_back(make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q1->second, q2->second));
-						out = true;
+						if (Symmetry::validate(qarray3<Symmetry::Nq>{qRin,qRmid,qRout}))
+						{
+							result.push_back(make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q1->second, q2->second));
+							out = true;
+						}
 					}
 				}
 			}
@@ -85,12 +88,15 @@ bool AA (qarray<Symmetry::Nq> Lin,
 			auto qRins = Symmetry::reduceSilent(Lout,qloc[s]);
 			for (const auto &qRin:qRins)
 			{
-				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
-				auto q2 = Aket[s].dict.find(cmp2);
-				if (q2 != Aket[s].dict.end())
+				if (Symmetry::validate(qarray2<Symmetry::Nq>{qRin,qRout}))
 				{
-					result.push_back(make_tuple(qarray2<Symmetry::Nq>{qRin,qRout}, q1->second, q2->second));
-					out = true;
+					qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
+					auto q2 = Aket[s].dict.find(cmp2);
+					if (q2 != Aket[s].dict.end())
+					{
+						result.push_back(make_tuple(qarray2<Symmetry::Nq>{qRin,qRout}, q1->second, q2->second));
+						out = true;
+					}
 				}
 			}
 		}
@@ -105,12 +111,19 @@ bool AA (qarray<Symmetry::Nq> Lin,
 //             const vector<Biped<Symmetry,MatrixType> > &AA13, const vector<Biped<Symmetry,MatrixType> > &AA24, 
 //             vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > &result)
 template<typename Symmetry, typename MatrixType>
-bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid, 
-             size_t k12, vector<qarray<Symmetry::Nq> > qOp12, 
-             size_t k34, vector<qarray<Symmetry::Nq> > qOp34,
-             size_t s1s3, const qarray<Symmetry::Nq> &qmerge13, 
-             size_t s2s4, const qarray<Symmetry::Nq> &qmerge24, 
-             const vector<Biped<Symmetry,MatrixType> > &AA13, const vector<Biped<Symmetry,MatrixType> > &AA24, 
+bool AAWWAA (const qarray<Symmetry::Nq> &Lin, 
+             const qarray<Symmetry::Nq> &Lout, 
+             const qarray<Symmetry::Nq> &Lmid, 
+             const size_t &k12, 
+             const vector<qarray<Symmetry::Nq> > &qOp12, 
+             const size_t &k34, 
+             const vector<qarray<Symmetry::Nq> > &qOp34,
+             const size_t &s1s3, 
+             const qarray<Symmetry::Nq> &qmerge13, 
+             const size_t &s2s4, 
+             const qarray<Symmetry::Nq> &qmerge24, 
+             const vector<Biped<Symmetry,MatrixType> > &AA13, 
+             const vector<Biped<Symmetry,MatrixType> > &AA24, 
              vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > &result)
 {
 //	qarray<Symmetry::Nq> qRout = Lin + qloc12[s1] + qloc34[s3];
@@ -137,6 +150,8 @@ bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetr
 	result.clear();
 	
 	auto qRouts = Symmetry::reduceSilent(Lin, qmerge13);
+	auto qRins = Symmetry::reduceSilent(Lout, qmerge24);
+	auto qWs = Symmetry::reduceSilent(Lmid, qOp12[k12]);
 	
 	for (const auto &qRout:qRouts)
 	{
@@ -145,8 +160,6 @@ bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetr
 		
 		if (q13 != AA13[s1s3].dict.end())
 		{
-			auto qRins = Symmetry::reduceSilent(Lout, qmerge24);
-			
 			for (const auto &qRin:qRins)
 			{
 				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
@@ -154,11 +167,10 @@ bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetr
 				
 				if (q24 != AA24[s2s4].dict.end())
 				{
-//					auto qRmids = Symmetry::reduceSilent(Lmid, qOp12[k12], qOp34[k34]);
-					auto qWs = Symmetry::reduceSilent(Lmid, qOp12[k12]);
 					for (const auto &qW:qWs)
 					{
 						auto qRmids = Symmetry::reduceSilent(qW, qOp34[k34]);
+						
 						for (const auto &qRmid:qRmids)
 						{
 							if (Symmetry::validate(qarray3<Symmetry::Nq>{qRin,qRmid,qRout}))
@@ -198,13 +210,16 @@ bool AAAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout,
 			
 			for (const auto &qRin:qRins)
 			{
-				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
-				auto qket = AAket[s1s2].dict.find(cmp2);
-				
-				if (qket != AAket[s1s2].dict.end())
+				if (Symmetry::validate(qarray2<Symmetry::Nq>{qRin,qRout}))
 				{
-					result.push_back(make_tuple(qarray2<Symmetry::Nq>{qRin,qRout}, qbra->second, qket->second));
-					out = true;
+					qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
+					auto qket = AAket[s1s2].dict.find(cmp2);
+					
+					if (qket != AAket[s1s2].dict.end())
+					{
+						result.push_back(make_tuple(qarray2<Symmetry::Nq>{qRin,qRout}, qbra->second, qket->second));
+						out = true;
+					}
 				}
 			}
 		}
@@ -236,7 +251,7 @@ bool AAAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout,
 template<typename Symmetry, typename MatrixType>
 bool AWWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lbot, qarray<Symmetry::Nq> Ltop, 
           size_t s1, size_t s2, size_t s3, vector<qarray<Symmetry::Nq> > qloc,
-		  size_t k1, vector<qarray<Symmetry::Nq> > qOpBot, size_t k2, vector<qarray<Symmetry::Nq> > qOpTop,
+          size_t k1, vector<qarray<Symmetry::Nq> > qOpBot, size_t k2, vector<qarray<Symmetry::Nq> > qOpTop,
           const vector<Biped<Symmetry,MatrixType> > &Abra, 
           const vector<Biped<Symmetry,MatrixType> > &Aket, 
           tuple<qarray4<Symmetry::Nq>,size_t,size_t> &result)
@@ -267,11 +282,11 @@ bool AWWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry:
 /**Updates the quantum Numbers of a right environment when a new site with quantum numbers qloc and qOp is added.*/
 template<typename Symmetry, typename Scalar>
 void updateInset (const std::vector<std::array<typename Symmetry::qType,3> > &insetOld, 
-				  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-				  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
-				  const vector<qarray<Symmetry::Nq> > &qloc,
-				  const vector<qarray<Symmetry::Nq> > &qOp,
-				  std::vector<std::array<typename Symmetry::qType,3> > &insetNew)
+                  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+                  const vector<qarray<Symmetry::Nq> > &qloc,
+                  const vector<qarray<Symmetry::Nq> > &qOp,
+                  std::vector<std::array<typename Symmetry::qType,3> > &insetNew)
 {
 	std::array<typename Symmetry::qType,3> qCheck;
 	Scalar factor_cgc;
@@ -381,16 +396,11 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 						}
 						if (ALL_BLOCKS_ARE_EMPTY == false)
 						{
-							if constexpr ( Symmetry::NON_ABELIAN )
-							{
-								factor_cgc = Symmetry::coeff_HPsi(Aket[s2].out[get<2>(ix[n])], qloc[s2], Aket[s2].in[get<2>(ix[n])],
-								                                  get<0>(ix[n])[2], qOp[k], L.mid(qL),
-								                                  Abra[s1].out[get<1>(ix[n])], qloc[s1], Abra[s1].in[get<1>(ix[n])]);
-							}
-							else
-							{
-								factor_cgc = static_cast<Scalar>(1.);
-							}
+							factor_cgc = (Symmetry::NON_ABELIAN)? 
+							Symmetry::coeff_HPsi(Aket[s2].out[get<2>(ix[n])], qloc[s2], Aket[s2].in[get<2>(ix[n])],
+							                     get<0>(ix[n])[2], qOp[k], L.mid(qL),
+							                     Abra[s1].out[get<1>(ix[n])], qloc[s1], Abra[s1].in[get<1>(ix[n])])
+							                     :1.;
 							if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 							
 							std::array<size_t,2> key = {s1, get<1>(ix[n])};

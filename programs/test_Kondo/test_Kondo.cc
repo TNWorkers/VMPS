@@ -172,6 +172,8 @@ int main (int argc, char* argv[])
 	VMPS::KondoU1xU1::Solver DMRG_U1xU1(VERB);
 	DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {M,N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
+	t_U1xU1 = Watch_U1xU1.time();
+	
 //	VectorXd d_U1xU1(L); d_U1xU1.setZero();
 //	VectorXd n_U1xU1(L); n_U1xU1.setZero();
 //	for (size_t i=0; i<L; i++)
@@ -194,8 +196,6 @@ int main (int argc, char* argv[])
 //		densitiy_matrix_U1xU1(i,j) = 2.*avg(g_U1xU1.state, H_U1xU1.cdagc(UP,i,j), g_U1xU1.state);
 //	}
 	
-//	t_U1xU1 = Watch_U1xU1.time();
-
 //	// observables
 //	MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
 //	for(size_t i=0; i<L; i++) for (size_t j=0; j<L; j++) { SpinCorr_U1(i,j) = 3*avg(g_U1.state, H_U1.SzSz(i,j), g_U1.state); }
@@ -300,62 +300,62 @@ int main (int argc, char* argv[])
 //	
 //	t_U0xSU2 = Watch_U0xSU2.time();
 
-//	//--------output---------
+	//--------output---------
 	
-//	TextTable T( '-', '|', '+' );
-//	
-//	double V = L*Ly; double Vsq = V*V;
-//	
-//	T.add("");
-//	T.add("U(1)");
-//	T.add("U(1)⊗U(1)");
-//	T.add("SU(2)⊗U(1)");
-//	T.endOfRow();
-//	
-//	T.add("E/L");
-//	T.add(to_string_prec(g_U1.energy/V));
-//	T.add(to_string_prec(g_U1xU1.energy/V)); T.add(to_string_prec(g_SU2xU1.energy/V)); T.endOfRow();
-//	T.add("E/L diff"); T.add(to_string_prec(abs(g_U1.energy-g_SU2xU1.energy)/V)); T.add(to_string_prec(abs(g_U1xU1.energy-g_SU2xU1.energy)/V)); T.add("0");
-//	T.endOfRow();
-//	
-////	T.add("E/L Compressor"); T.add(to_string_prec(E_U0_compressor/V)); T.add(to_string_prec(E_U1_compressor/V)); T.add("-"); T.endOfRow();
-////	T.add("E/L Zipper"); T.add(to_string_prec(E_U0_zipper/V)); T.add(to_string_prec(E_U1_zipper/V)); T.add("-"); T.endOfRow();
-//	
-//	T.add("t/s");
-//	T.add(to_string_prec(t_U1,2));
-//	T.add(to_string_prec(t_U1xU1,2));
-//	T.add(to_string_prec(t_SU2xU1,2));
-//	T.endOfRow();
-//	
-//	T.add("t gain");
-//	T.add(to_string_prec(t_U1/t_SU2xU1,2));
-//	T.add(to_string_prec(t_U1xU1/t_SU2xU1,2));
-//	T.add("1");
-//	T.endOfRow();
-//	
+	TextTable T( '-', '|', '+' );
+	
+	double V = L*Ly; double Vsq = V*V;
+	
+	T.add("");
+	T.add("U(1)");
+	T.add("U(1)⊗U(1)");
+	T.add("SU(2)⊗U(1)");
+	T.endOfRow();
+	
+	T.add("E/L");
+	T.add(to_string_prec(g_U1.energy/V));
+	T.add(to_string_prec(g_U1xU1.energy/V)); T.add(to_string_prec(g_SU2xU1.energy/V)); T.endOfRow();
+	T.add("E/L diff"); T.add(to_string_prec(abs(g_U1.energy-g_SU2xU1.energy)/V)); T.add(to_string_prec(abs(g_U1xU1.energy-g_SU2xU1.energy)/V)); T.add("0");
+	T.endOfRow();
+	
+//	T.add("E/L Compressor"); T.add(to_string_prec(E_U0_compressor/V)); T.add(to_string_prec(E_U1_compressor/V)); T.add("-"); T.endOfRow();
+//	T.add("E/L Zipper"); T.add(to_string_prec(E_U0_zipper/V)); T.add(to_string_prec(E_U1_zipper/V)); T.add("-"); T.endOfRow();
+	
+	T.add("t/s");
+	T.add(to_string_prec(t_U1,2));
+	T.add(to_string_prec(t_U1xU1,2));
+	T.add(to_string_prec(t_SU2xU1,2));
+	T.endOfRow();
+	
+	T.add("t gain");
+	T.add(to_string_prec(t_U1/t_SU2xU1,2));
+	T.add(to_string_prec(t_U1xU1/t_SU2xU1,2));
+	T.add("1");
+	T.endOfRow();
+	
 //	T.add("observables");
 //	T.add(to_string_prec(SpinCorr_U1.sum()));
 //	T.add(to_string_prec(SpinCorr_U1xU1.sum()));
 //	T.add(to_string_prec(SpinCorr_SU2xU1.sum()));
 //	T.endOfRow();
-//	
+	
 //	T.add("observables diff");
 //	T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2xU1).norm()));
 //	T.add(to_string_prec((SpinCorr_U1xU1-SpinCorr_SU2xU1).norm()));
 //	T.add("0");
 //	T.endOfRow();
-//	
-//	T.add("Dmax");
-//	T.add(to_string(g_U1.state.calc_Dmax()));
-//	T.add(to_string(g_U1xU1.state.calc_Dmax()));
-//	T.add(to_string(g_SU2xU1.state.calc_Dmax()));
-//	T.endOfRow();
-//	
-//	T.add("Mmax");
-//	T.add(to_string(g_U1.state.calc_Dmax()));
-//	T.add(to_string(g_U1xU1.state.calc_Mmax()));
-//	T.add(to_string(g_SU2xU1.state.calc_Mmax()));
-//	T.endOfRow();
-//	
-//	lout << T << endl;
+	
+	T.add("Dmax");
+	T.add(to_string(g_U1.state.calc_Dmax()));
+	T.add(to_string(g_U1xU1.state.calc_Dmax()));
+	T.add(to_string(g_SU2xU1.state.calc_Dmax()));
+	T.endOfRow();
+	
+	T.add("Mmax");
+	T.add(to_string(g_U1.state.calc_Dmax()));
+	T.add(to_string(g_U1xU1.state.calc_Mmax()));
+	T.add(to_string(g_SU2xU1.state.calc_Mmax()));
+	T.endOfRow();
+	
+	lout << T << endl;
 }

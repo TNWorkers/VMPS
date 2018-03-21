@@ -29,14 +29,14 @@ void LRxV (const PivotOverlap2<Symmetry,Scalar> &H, const PivotVector<Symmetry,S
 	
 	for (size_t s1=0; s1<H.qloc1.size(); ++s1)
 	for (size_t s2=0; s2<H.qloc2.size(); ++s2)
-	{		
+	{
 		auto qmerges12 = Symmetry::reduceSilent(H.qloc1[s1], H.qloc2[s2]);
 		
 		for (const auto &qmerge12:qmerges12)
 		{
 			auto qtensor12 = make_tuple(H.qloc1[s1], s1, H.qloc2[s2], s2, qmerge12);
 			auto s1s2 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor12));
-								
+			
 			for (size_t qL=0; qL<H.L.dim; ++qL)
 			{
 				vector<tuple<qarray2<Symmetry::Nq>,size_t,size_t> > ixs;
@@ -51,22 +51,17 @@ void LRxV (const PivotOverlap2<Symmetry,Scalar> &H, const PivotVector<Symmetry,S
 						size_t qAket = get<2>(ix);
 						
 						if (qR != H.R.dict.end())
-						{					
+						{
 							Matrix<Scalar,Dynamic,Dynamic> Mtmp;
 							
 							if (H.L.block[qL].size() != 0 and
 								H.R.block[qR->second].size() !=0)
 							{
-// 								cout << H.L.block[qL].rows() << "x" << H.L.block[qL].cols() << endl;
-// 			 					cout << Vin.data[s1s2].block[qAket].rows() << "x" << Vin.data[s1s2].block[qAket].cols() << endl;
-//  								cout << H.R.block[qR->second].rows() << "x" << H.R.block[qR->second].cols() << endl;
-// 			 					cout << endl;
-
 								optimal_multiply(1., 
-												 H.L.block[qL],
-												 Vin.data[s1s2].block[qAket],
-												 H.R.block[qR->second],
-												 Mtmp);
+								                 H.L.block[qL],
+								                 Vin.data[s1s2].block[qAket],
+								                 H.R.block[qR->second],
+								                 Mtmp);
 							}
 							
 							if (Mtmp.size() != 0)

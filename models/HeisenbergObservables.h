@@ -93,7 +93,7 @@ ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size
 	SiteOperator Op1 = B[locx1].Scomp(Sa1,locy1);
 	SiteOperator Op2 = B[locx2].Scomp(Sa2,locy2);
 	
-	bool HERMITIAN = (Sa1==SX or Sa1==SZ and locx1==locx2 and locy1==locy2)? true:false;
+	bool HERMITIAN = (Sa1==Sa2 and (Sa1==SZ or Sa1==SX) and locx1==locx2 and locy1==locy2)? true:false;
 	
 	Mpo<Symmetry> Mout(B.size(), Op1.Q+Op2.Q, ss.str(), HERMITIAN);
 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
