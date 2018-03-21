@@ -106,7 +106,7 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 		Terms[l] = set_operators(F[l],P,l%Lcell);
 	}
 	
-	this->construct_from_Terms(Terms, Lcell, true, P.get<bool>("OPEN_BC"));
+	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
 	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
 }
 
