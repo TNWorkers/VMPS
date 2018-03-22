@@ -144,7 +144,19 @@ public:
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
 	Operator HubbardHamiltonian (double U, double t=1., double V=0., double Jz=0., double Jxy=0., double Bz=0., double Bx=0., bool PERIODIC=false) const;
-	
+
+	/**
+	 * Creates the full Hubbard Hamiltonian on the supersite with partially inhomogeneuous parameters.
+	 * \param Uorb : \f$U\f$ for each orbital
+	 * \param t : \f$t\f$ (hopping)
+	 * \param V : \f$V\f$ (nn pseudo-spin pseudo-spin interaction)
+	 * \param Jz : \f$J^{z}\f$ (nn Spin interaction)
+	 * \param Jxy : \f$J^{xy}\f$ (nn Spin interaction)
+	 * \param Bz : \f$B_z\f$ for each orbital
+	 * \param Bx : \f$B_x\f$ for each orbital
+	 */
+	Operator HubbardHamiltonian (ArrayXd Uorb, Scalar t, Scalar V, Scalar Jz, Scalar Jxy, ArrayXd Bz, ArrayXd Bx) const;
+
 	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite with inhomogeneuous parameters.
 	 * \param Uorb : \f$U\f$ for each orbital
@@ -155,11 +167,16 @@ public:
 	 * \param Bz : \f$B_z\f$ for each orbital
 	 * \param Bx : \f$B_x\f$ for each orbital
 	 */
-	Operator HubbardHamiltonian (Eigen::VectorXd Uorb, Eigen::MatrixXd t, Eigen::MatrixXd V, Eigen::MatrixXd Jz, Eigen::MatrixXd Jxy,
-								 Eigen::VectorXd Bz, Eigen::VectorXd Bx) const;
+	Operator HubbardHamiltonian (ArrayXd Uorb, ArrayXXd t, ArrayXXd V, ArrayXXd Jz, ArrayXXd Jxy, ArrayXd Bz, ArrayXd Bx) const;
 	
 	/**Identity*/
 	Operator Id () const;
+
+	/**Returns an array of size dim() with zeros.*/
+	ArrayXd ZeroField() const { return ArrayXd::Zero(N_orbitals); }
+
+	/**Returns an array of size dim()xdim() with zeros.*/
+	ArrayXXd ZeroMatrix() const { return ArrayXXd::Zero(N_orbitals,N_orbitals); }
 
 	/**
 	 * Returns the basis. 
@@ -567,7 +584,7 @@ HubbardHamiltonian (double U, double t, double V, double Jz, double Jxy, double 
 }
 
 SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
-HubbardHamiltonian (Eigen::VectorXd Uorb, Eigen::MatrixXd t, Eigen::MatrixXd V, Eigen::MatrixXd Jz, Eigen::MatrixXd Jxy, Eigen::VectorXd Bz, Eigen::VectorXd Bx) const
+HubbardHamiltonian (ArrayXd Uorb, ArrayXXd t, ArrayXXd V, ArrayXXd Jz, ArrayXXd Jxy, ArrayXd Bz, ArrayXd Bx) const
 {
 	Operator Mout({1},TensorBasis);
 	Mout.setZero();
@@ -601,4 +618,20 @@ HubbardHamiltonian (Eigen::VectorXd Uorb, Eigen::MatrixXd t, Eigen::MatrixXd V, 
 	return Mout;
 }
 
+SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
+HubbardHamiltonian (ArrayXd Uorb, Scalar t, Scalar V, Scalar Jz, Scalar Jxy, ArrayXd Bz, ArrayXd Bx) const
+{
+	ArrayXXd tMat(N_orbitals,N_orbitals); tMat.setZero();
+	ArrayXXd VMat(N_orbitals,N_orbitals); VMat.setZero();
+	ArrayXXd JzMat(N_orbitals,N_orbitals); JzMat.setZero();
+	ArrayXXd JxyMat(N_orbitals,N_orbitals); JxyMat.setZero();
+	for(size_t i=0; i<N_orbitals; i++)
+	{
+		tMat(i,i) = t;
+		VMat(i,i) = V;
+		JzMat(i,i) = Jz;
+		JxyMat(i,i) = Jxy;
+	}
+	return HubbardHamiltonian(Uorb,tMat,VMat,JzMat,JxyMat,Bz,Bx);
+}
 #endif

@@ -5,7 +5,9 @@
 
 #include "symmetry/qbasis.h"
 #include "tensors/Biped.h"
-#include "tensors/SiteOperator.h"
+
+//Forward declaration
+template<typename Symmetry, typename Scalar> struct SiteOperator;
 
 template<typename Operator>
 class EDSolver

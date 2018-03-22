@@ -52,6 +52,7 @@ public:
 
 	/**Returns the local basis.*/
 	vector<qarray<Symmetry::Nq> > get_basis() const;
+	Qbasis<Symmetry> get_structured_basis() const;
 
 	/**Returns the quantum numbers of the operators for the different combinations of U1 symmetries.*/
 	typename Symmetry::qType getQ (SPINOP_LABEL Sa) const;
@@ -307,6 +308,15 @@ get_basis() const
 	}
 	
 	return vout;
+}
+
+template<typename Symmetry>
+Qbasis<Symmetry> SpinBase<Symmetry>::
+get_structured_basis() const
+{
+	Qbasis<Symmetry> out;
+	out.push_back(Symmetry::qvacuum(),this->dim());
+	return out;
 }
 
 template<typename Symmetry>

@@ -31,7 +31,7 @@ Logger lout;
 #include "models/KondoU1xU1.h"
 #include "models/KondoU1.h"
 #include "models/KondoSU2xU1.h"
-//#include "models/KondoU0xSU2.h"
+#include "models/KondoU0xSU2.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, int n=14)
@@ -70,6 +70,7 @@ int main (int argc, char* argv[])
 	N = args.get<int>("N",L*Ly);
 	M = args.get<int>("M",0);
 	D = args.get<size_t>("D",2);
+	T = args.get<int>("T",1);
 	S = abs(M)+1;
 	
 	alpha = args.get<double>("alpha",1.);
@@ -289,16 +290,37 @@ int main (int argc, char* argv[])
 //	cout << densitiy_matrix_SU2xU1 << endl << endl;
 
 	lout << endl << "--------U(0)xSU(2)---------" << endl << endl;
-//	
-//	Stopwatch<> Watch_U0xSU2;
-//	VMPS::KondoSU2xU1 H_U0xSU2(L,params);
-//	lout << H_U0xSU2.info() << endl;
-//	Eigenstate<VMPS::KondoU0xSU2::StateXd> g_U0xSU2;
-//	
-//	VMPS::KondoU0xSU2::Solver DMRG_U0xSU2(VERB);
-//	DMRG_U0xSU2.edgeState(H_SU2xU1, g_SU2xU1, {S,1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
-//	
-//	t_U0xSU2 = Watch_U0xSU2.time();
+//
+	vector<Param> params2;
+	params2.push_back({"Ly",Ly});
+	params2.push_back({"J",J});
+	params2.push_back({"t",t});
+	params2.push_back({"U",U});
+	// params2.push_back({"Bz",Bz,0});
+	// params2.push_back({"Bx",Bx,0});
+	params2.push_back({"D",2ul,0});
+	params2.push_back({"CALC_SQUARE",false});
+	params2.push_back({"subL",SUB_LATTICE::A,0});
+
+	for (size_t l=1; l<L; ++l)
+	{
+		if(l%2!=0) {params2.push_back({"subL",SUB_LATTICE::B,l});}
+		else {params2.push_back({"subL",SUB_LATTICE::A,l});}
+
+		params2.push_back({"D",1ul,l});
+		// params2.push_back({"Bz",0.,l});
+		// params2.push_back({"Bx",0.,l});
+	}
+
+	Stopwatch<> Watch_U0xSU2;
+	VMPS::KondoSU2xU1 H_U0xSU2(L,params2);
+	lout << H_U0xSU2.info() << endl;
+	Eigenstate<VMPS::KondoU0xSU2::StateXd> g_U0xSU2;
+	
+	VMPS::KondoU0xSU2::Solver DMRG_U0xSU2(VERB);
+	DMRG_U0xSU2.edgeState(H_U0xSU2, g_U0xU1, {T}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	
+	t_U0xSU2 = Watch_U0xSU2.time();
 
 	//--------output---------
 	
@@ -310,12 +332,19 @@ int main (int argc, char* argv[])
 	T.add("U(1)");
 	T.add("U(1)⊗U(1)");
 	T.add("SU(2)⊗U(1)");
+	T.add("U(0)⊗SU(2)");
 	T.endOfRow();
 	
 	T.add("E/L");
 	T.add(to_string_prec(g_U1.energy/V));
-	T.add(to_string_prec(g_U1xU1.energy/V)); T.add(to_string_prec(g_SU2xU1.energy/V)); T.endOfRow();
-	T.add("E/L diff"); T.add(to_string_prec(abs(g_U1.energy-g_SU2xU1.energy)/V)); T.add(to_string_prec(abs(g_U1xU1.energy-g_SU2xU1.energy)/V)); T.add("0");
+	T.add(to_string_prec(g_U1xU1.energy/V)); T.add(to_string_prec(g_SU2xU1.energy/V));
+	T.add(to_string_prec(g_U0xSU2.energy/V)); T.add(to_string_prec(g_SU2xU1.energy/V)); T.endOfRow();
+
+	T.add("E/L diff");
+	T.add(to_string_prec(abs(g_U1.energy-g_SU2xU1.energy)/V));
+	T.add(to_string_prec(abs(g_U1xU1.energy-g_SU2xU1.energy)/V));
+	T.add("0");
+	T.add(to_string_prec(abs(g_U0xSU2.energy-g_SU2xU1.energy)/V));
 	T.endOfRow();
 	
 //	T.add("E/L Compressor"); T.add(to_string_prec(E_U0_compressor/V)); T.add(to_string_prec(E_U1_compressor/V)); T.add("-"); T.endOfRow();
@@ -325,12 +354,14 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(t_U1,2));
 	T.add(to_string_prec(t_U1xU1,2));
 	T.add(to_string_prec(t_SU2xU1,2));
+	T.add(to_string_prec(t_U0xSU2,2));
 	T.endOfRow();
 	
 	T.add("t gain");
 	T.add(to_string_prec(t_U1/t_SU2xU1,2));
 	T.add(to_string_prec(t_U1xU1/t_SU2xU1,2));
 	T.add("1");
+	T.add(to_string_prec(t_U0xSU2/t_SU2xU1,2));
 	T.endOfRow();
 	
 //	T.add("observables");
@@ -349,12 +380,14 @@ int main (int argc, char* argv[])
 	T.add(to_string(g_U1.state.calc_Dmax()));
 	T.add(to_string(g_U1xU1.state.calc_Dmax()));
 	T.add(to_string(g_SU2xU1.state.calc_Dmax()));
+	T.add(to_string(g_U0xSU2.state.calc_Dmax()));
 	T.endOfRow();
 	
 	T.add("Mmax");
 	T.add(to_string(g_U1.state.calc_Dmax()));
 	T.add(to_string(g_U1xU1.state.calc_Mmax()));
 	T.add(to_string(g_SU2xU1.state.calc_Mmax()));
+	T.add(to_string(g_U0xSU2.state.calc_Mmax()));
 	T.endOfRow();
 	
 	lout << T << endl;
