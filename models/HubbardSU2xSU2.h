@@ -82,7 +82,7 @@ const map<string,any> HubbardSU2xSU2::defaults =
 {
 	{"t",1.}, {"tPerp",0.},
 	{"U",0.}, {"J",0.}, {"Jperp",0.},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"subL",SUB_LATTICE::A}, {"Ly",1ul}
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 HubbardSU2xSU2::
@@ -98,7 +98,7 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
-		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),P.get<SUB_LATTICE>("subL",l%Lcell));
+		F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::A) : FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::B);
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
 	for (size_t l=0; l<N_sites; ++l)

@@ -68,7 +68,7 @@ const std::map<string,std::any> KondoU0xSU2::defaults =
 	{"Bz",0.}, {"Bx",0.}, {"Bzsub",0.}, {"Bxsub",0.}, {"Kz",0.}, {"Kx",0.},
 	{"D",2ul},	
 	{"U",0.}, {"V",0.},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"subL",SUB_LATTICE::A}, {"Ly",1ul}
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 KondoU0xSU2::
@@ -86,7 +86,7 @@ KondoU0xSU2 (const size_t &L, const vector<Param> &params)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 
-		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),P.get<SUB_LATTICE>("subL",l%Lcell));
+		F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::A) : FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::B);
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		
 		setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l);
