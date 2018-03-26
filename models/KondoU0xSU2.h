@@ -53,6 +53,8 @@ public:
 	static HamiltonianTermsXd<Symmetry> set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F,
 	                                                    const ParamHandler &P, size_t loc=0);
 	
+	Mpo<Symmetry> Simp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	
 	static const std::map<string,std::any> defaults;
 	
 protected:
@@ -66,7 +68,7 @@ const std::map<string,std::any> KondoU0xSU2::defaults =
 	{"t",1.}, {"tPerp",0.},
 	{"J",-1.}, 
 	{"Bz",0.}, {"Bx",0.}, {"Bzsub",0.}, {"Bxsub",0.}, {"Kz",0.}, {"Kx",0.},
-	{"D",2ul},	
+	{"D",2ul},
 	{"U",0.}, {"V",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
@@ -86,7 +88,8 @@ KondoU0xSU2 (const size_t &L, const vector<Param> &params)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 
-		F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::A) : FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::B);
+		F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::A) 
+		                  : FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::B);
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		
 		setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l);
@@ -205,18 +208,30 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 	// Kx anisotropy
 	auto [Kx,Kxorb,Kxlabel] = P.fill_array1d<double>("Kx","Kxorb",B[loc].orbitals(),loc);
 	save_label(Kxlabel);
+	
+	// Bz substrate
+	auto [Bzsub,Bzsuborb,Bzsublabel] = P.fill_array1d<double>("Bzsub","Bzsuborb",F[loc].orbitals(),loc);
+	save_label(Bzsublabel);
+	
+	// Bz impurities
+	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F[loc].orbitals(),loc);
+	save_label(Bzlabel);
+	
+	// Kx anisotropy
+	auto [Kz,Kzorb,Kzlabel] = P.fill_array1d<double>("Kz","Kzorb",B[loc].orbitals(),loc);
+	save_label(Kzlabel);
 
 	// OperatorType KondoHamiltonian({1},B[loc].get_structured_basis().combine(F[loc].get_basis()));
 
 	//set Heisenberg part of Kondo Hamiltonian
-	auto KondoHamiltonian = OperatorType::outerprod(B[loc].HeisenbergHamiltonian(0.,0.,B[loc].ZeroField(),Bxorb,B[loc].ZeroField(),Kxorb,0.,
+	auto KondoHamiltonian = OperatorType::outerprod(B[loc].HeisenbergHamiltonian(0.,0.,Bzorb,Bxorb,Kzorb,Kxorb,0.,
 																			P.get<bool>("CYLINDER")).structured(),
 													F[loc].Id(),
 													{1});
 
 	//set Hubbard part of Kondo Hamiltonian
 	KondoHamiltonian += OperatorType::outerprod(B[loc].Id().structured(),
-												F[loc].HubbardHamiltonian(Uorb,tPerp.x,0.,0.,0.,F[loc].ZeroField(),Bxsuborb),
+												F[loc].HubbardHamiltonian(Uorb,tPerp.x,0.,0.,0.,Bzsuborb,Bxsuborb),
 												{1});
 
 
@@ -242,6 +257,22 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 	Terms.local.push_back(make_tuple(1.,KondoHamiltonian.plain<double>()));
 	
 	return Terms;
+}
+
+Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+{
+	assert(locx < this->N_sites);
+	std::stringstream ss;
+//	ss << "S(" << loc1x << "," << loc1y << ")" << "S(" << loc2x << "," << loc2y << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	for (std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l); }
+	
+	auto Sop = OperatorType::outerprod(B[locx].Scomp(Sa,locy).structured(), F[locx].Id(), {1});
+	
+	Mout.setLocal(locx, Sop.plain<double>());
+	return Mout;
 }
 
 } //end namespace VMPS
