@@ -28,7 +28,7 @@ elif len(sys.argv) == 2:
 msg = MIMEText(content,'plain','utf-8')
 
 sender = 'git'
-recipients = ['rrausch@physnet.uni-hamburg.de','mpeschke@physnet.uni-hamburg.de']
+recipients = ['rrausch@physnet.uni-hamburg.de','mpeschke@physnet.uni-hamburg.de','cplorin@physnet.uni-hamburg.de']
 
 if len(sys.argv) >= 1:
 	msg['Subject'] = 'git update '+branch
