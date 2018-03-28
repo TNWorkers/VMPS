@@ -439,10 +439,6 @@ info() const
 		}
 		ss << ")=(" << Sym::format<Symmetry>(Qtot) << "), ";
 	}
-	else
-	{
-		ss << "no symmetries, ";
-	}
 	
 	ss << "pivot=" << this->pivot << ", ";
 	
