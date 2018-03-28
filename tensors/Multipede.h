@@ -353,6 +353,7 @@ print(const bool &SHOW_MATRICES, const std::size_t &precision) const
 			out << TCOLOR(BLUE) << "ν=" << nu << std::endl;
 			for (std::size_t q=0; q<block[nu].shape()[0]; q++)
 			{
+				if(block[nu][q][0].size() == 0) {continue;}
 				out << TCOLOR(GREEN) << "q=" << q << "\t" << std::setprecision(precision) << std::fixed << block[nu][q][0] << std::endl;
 			}
 		}

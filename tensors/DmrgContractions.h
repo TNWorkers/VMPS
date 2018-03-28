@@ -106,150 +106,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 }
 
 /**
- * Contracts a left transfer matrix \p Lold with two MpsQ tensors \p Abra, \p Aket and an MpoQ tensor \p W as follows:
- * \dotfile contractQ_L.dot
- * \param Lold
- * \param Abra
- * \param V
- * \param Aket
- * \param qloc : local basis
- * \param qOp : operator basis
- * \param Lnew : new transfer matrix to be written to
- */
-template<typename Symmetry, typename MatrixType, typename MpoScalar>
-void contract_L (const Tripod<Symmetry,MatrixType> &Lold, 
-                 const vector<Biped<Symmetry,MatrixType> > &Abra, 
-                 const unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<MpoScalar> > &V, 
-                 const vector<Biped<Symmetry,MatrixType> > &Aket, 
-                 const vector<qarray<Symmetry::Nq> > &qloc,
-                 const vector<qarray<Symmetry::Nq> > &qOp, 
-                 Tripod<Symmetry,MatrixType> &Lnew)
-{
-	std::array<typename Symmetry::qType,3> qCheck;
-	MpoScalar factor_cgc;
-	Lnew.clear();
-	Lnew.setZero();
-	
-	for (size_t s1=0; s1<qloc.size(); ++s1)
-	for (size_t s2=0; s2<qloc.size(); ++s2)
-	for (size_t k=0; k<qOp.size(); ++k)
-	{
-		qCheck = {qloc[s2],qOp[k],qloc[s1]};
-		if(!Symmetry::validate(qCheck)) {continue;}
-		// cout << "squared: s1=" << qloc[s1] << ", s2=" << qloc[s2] << ", k=" << qOp[k] << ", Lold.dim=" << Lold.dim << endl;
-		for (size_t qL=0; qL<Lold.dim; ++qL)
-		{
-			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = AWA(Lold.in(qL), Lold.out(qL), Lold.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
-			// cout << "squared: ix.size()=" << ix.size() << endl;
-		
-			if (FOUND_MATCH == true)
-			{
-				for(size_t n=0; n<ix.size(); n++ )
-				{
-					qarray3<Symmetry::Nq> quple = get<0>(ix[n]);
-					swap(quple[0], quple[1]);
-					size_t qAbra = get<1>(ix[n]);
-					size_t qAket = get<2>(ix[n]);
-					if constexpr ( Symmetry::NON_ABELIAN )
-						{
-							factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket],qloc[s2],Aket[s2].in[qAket],
-																quple[2]           ,qOp[k]  ,Lold.mid(qL),
-																Abra[s1].out[qAbra],qloc[s1],Abra[s1].in[qAbra]);
-						}
-					else
-					{
-						factor_cgc = 1.;
-					}
-					if (std::abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
-					auto key = make_tuple(s1,s2,k,Lold.mid(qL),quple[2]);
-					// auto itV = V.find(key);
-					// if(itV != V.end())
-					// {
-						for (int r=0; r<V.at(key).outerSize(); ++r)
-						for (typename SparseMatrix<MpoScalar>::InnerIterator iW(V.at(key),r); iW; ++iW)
-						{
-							size_t a1 = iW.row();
-							size_t a2 = iW.col();
-				
-							if (Lold.block[qL][a1][0].rows() != 0)
-							{
-								MatrixType Mtmp;
-								// if(abs(Lold.block[qL][a1][0].sum()) < 1.e-7) {cout << "qL=" << qL << ", a1=" << a1 << endl << Lold.block[qL][a1][0] << endl << endl;}
-								optimal_multiply(factor_cgc*iW.value(),
-												 Abra[s1].block[qAbra].adjoint(),
-												 Lold.block[qL][a1][0],
-												 Aket[s2].block[qAket],
-												 Mtmp);
-								// if(quple[0]==qarray<Symmetry::Nq>{2} and quple[1]==qarray<Symmetry::Nq>{2} and (quple[2]==qarray<Symmetry::Nq>{1} or quple[2]==qarray<Symmetry::Nq>{3}) and (a2 == 13 or a2 == 22))
-								// {
-								// 	cout << "Mtmp for qL=0 and a2=" << a2 << " and a1=" << a1 <<  " is:" << endl << Mtmp << endl;
-								// 	cout << "cgc=" << factor_cgc << ", Mpo=" << iW.value() << endl;
-								// 	cout << "Abra[s1].block[qAbra].adjoint():" << endl << Abra[s1].block[qAbra].adjoint() << endl << endl;
-								// 	cout << "Lold.block[qL][a1][0], in[qL]=" << Lold.in(qL) << ", out[qL]=" << Lold.out(qL)  <<  ", mid[qL]=" << Lold.mid(qL) << ", a1=" << a1 << ":" << endl << Lold.block[qL][a1][0] << endl << endl;
-								// 	cout << "Aket[s2].block[qAket]:" << endl << Aket[s2].block[qAket] << endl << endl;
-								// 	cout << endl << endl << endl;
-
-								// }
-
-								// if(quple[0]==qarray<Symmetry::Nq>{1} and quple[1]==qarray<Symmetry::Nq>{1} and quple[2]==qarray<Symmetry::Nq>{1} and a2 == 18)
-								// {
-								// 	cout << "Mtmp for qL=0 and a2=18 and a1=" << a1 <<  " is:" << endl << Mtmp << endl;
-								// 	cout << "cgc=" << factor_cgc << ", Mpo=" << iW.value() << endl;
-								// 	cout << "Abra[s1].block[qAbra].adjoint():" << endl << Abra[s1].block[qAbra].adjoint() << endl << endl;
-								// 	cout << "Lold.block[qL][a1][0], in[qL]=" << Lold.in(qL) << ", out[qL]=" << Lold.out(qL)  <<  ", mid[qL]=" << Lold.mid(qL) << ", a1=" << a1 << ":" << endl << Lold.block[qL][a1][0] << endl << endl;
-								// 	cout << "Aket[s2].block[qAket]:" << endl << Aket[s2].block[qAket] << endl << endl;
-								// 	cout << endl << endl << endl;
-
-								// }
-								if(Mtmp.norm() < ::mynumeric_limits<MpoScalar>::epsilon())
-								{
-									// cout << "cgc=" << factor_cgc << ", Mpo=" << iW.value() << endl;
-									// cout << "Abra[s1].block[qAbra].adjoint():" << endl << Abra[s1].block[qAbra].adjoint() << endl << endl;
-									// cout << "Lold.block[qL][a1][0], in[qL]=" << Lold.in(qL) << ", out[qL]=" << Lold.out(qL)  <<  ", mid[qL]=" << Lold.mid(qL) << ", a1=" << a1 << ":" << endl << Lold.block[qL][a1][0] << endl << endl;
-									// cout << "Aket[s2].block[qAket]:" << endl << Aket[s2].block[qAket] << endl << endl;
-									// cout << endl << endl << endl;
-									continue;
-								}
-					
-								auto it = Lnew.dict.find(quple);
-								if (it != Lnew.dict.end())
-								{
-									if (Lnew.block[it->second][a2][0].rows() != Mtmp.rows() or 
-										Lnew.block[it->second][a2][0].cols() != Mtmp.cols())
-									{
-										Lnew.block[it->second][a2][0] = Mtmp;
-									}
-									else
-									{
-										Lnew.block[it->second][a2][0] += Mtmp;
-										if(Lnew.block[it->second][a2][0].norm() < ::mynumeric_limits<MpoScalar>::epsilon())
-										{
-											// Lnew.block[it->second][a2][0].resize(0,0);
-											continue;
-										}
-									}
-								}
-								else
-								{
-									boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[V.at(key).cols()][1]);
-									Mtmpvec[a2][0] = Mtmp;
-									Lnew.push_back(quple, Mtmpvec);
-								}
-							}
-						}
-					// }
-					// else {cout << "This happens?" << endl;					cout << "s1=" << qloc[s1] << ", s2=" << qloc[s2] << ", k=" << k << ", qK=" << qOp[k]
-					// 		   << ", ql=" << Lold.mid(qL) << ", qr=" << quple[2] << endl << endl;
-					// }
-				}
-			}
-		}
-	}
-}
-
-/**
- * Contracts a right transfer matrix \p Rold with two MpsQ tensors \p Abra, \p Aket and an MpoQ tensor \p W as follows:
+ * Contracts a right transfer matrix \p Rold with two Mps tensors \p Abra, \p Aket and an Mpo tensor \p V as follows:
  * \dotfile contractQ_R.dot
  * \param Rold
  * \param Abra
@@ -352,6 +209,233 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 									}
 								}
 							}
+					}
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Contracts a left transfer matrix \p Lold with two Mps tensors \p Abra, \p Aket and a block dependent Mpo tensor \p V as follows:
+ * \dotfile contractQ_L.dot
+ * \param Lold
+ * \param Abra
+ * \param V
+ * \param Aket
+ * \param qloc : local basis
+ * \param qOp : operator basis
+ * \param Lnew : new transfer matrix to be written to
+ * \note This function is used, when the squared Mpo with SU(2) symmetry was precalculated, 
+ * since in this case the Mpo matrices depend on the symmetry block. For this reason the special member Vsq of the Mpo is used.
+ */
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
+void contract_L (const Tripod<Symmetry,MatrixType> &Lold, 
+                 const vector<Biped<Symmetry,MatrixType> > &Abra, 
+                 const unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<MpoScalar> > &V, 
+                 const vector<Biped<Symmetry,MatrixType> > &Aket, 
+                 const vector<qarray<Symmetry::Nq> > &qloc,
+                 const vector<qarray<Symmetry::Nq> > &qOp, 
+                 Tripod<Symmetry,MatrixType> &Lnew)
+{
+	std::array<typename Symmetry::qType,3> qCheck;
+	MpoScalar factor_cgc;
+	Lnew.clear();
+	Lnew.setZero();
+	
+	for (size_t s1=0; s1<qloc.size(); ++s1)
+	for (size_t s2=0; s2<qloc.size(); ++s2)
+	for (size_t k=0; k<qOp.size(); ++k)
+	{
+		qCheck = {qloc[s2],qOp[k],qloc[s1]};
+		if(!Symmetry::validate(qCheck)) {continue;}
+		for (size_t qL=0; qL<Lold.dim; ++qL)
+		{
+			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
+			bool FOUND_MATCH = AWA(Lold.in(qL), Lold.out(qL), Lold.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
+		
+			if (FOUND_MATCH == true)
+			{
+				for(size_t n=0; n<ix.size(); n++ )
+				{
+					qarray3<Symmetry::Nq> quple = get<0>(ix[n]);
+					swap(quple[0], quple[1]);
+					size_t qAbra = get<1>(ix[n]);
+					size_t qAket = get<2>(ix[n]);
+					if constexpr ( Symmetry::NON_ABELIAN )
+						{
+							factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket],qloc[s2],Aket[s2].in[qAket],
+																quple[2]           ,qOp[k]  ,Lold.mid(qL),
+																Abra[s1].out[qAbra],qloc[s1],Abra[s1].in[qAbra]);
+						}
+					else
+					{
+						factor_cgc = 1.;
+					}
+					if (std::abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+					auto key = make_tuple(s1,s2,k,Lold.mid(qL),quple[2]);
+					if(auto it=V.find(key); it == V.end()) { continue; }
+					for (int r=0; r<V.at(key).outerSize(); ++r)
+					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(V.at(key),r); iW; ++iW)
+					{
+						size_t a1 = iW.row();
+						size_t a2 = iW.col();
+						
+						if (Lold.block[qL][a1][0].rows() != 0)
+						{
+							MatrixType Mtmp;
+							optimal_multiply(factor_cgc*iW.value(),
+											 Abra[s1].block[qAbra].adjoint(),
+											 Lold.block[qL][a1][0],
+											 Aket[s2].block[qAket],
+											 Mtmp);
+							if(Mtmp.norm() < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+					
+							auto it = Lnew.dict.find(quple);
+							if (it != Lnew.dict.end())
+							{
+								if (Lnew.block[it->second][a2][0].rows() != Mtmp.rows() or 
+									Lnew.block[it->second][a2][0].cols() != Mtmp.cols())
+								{
+									Lnew.block[it->second][a2][0] = Mtmp;
+								}
+								else
+								{
+									Lnew.block[it->second][a2][0] += Mtmp;
+									if(Lnew.block[it->second][a2][0].norm() < ::mynumeric_limits<MpoScalar>::epsilon())
+									{
+										// Lnew.block[it->second][a2][0].resize(0,0);
+										continue;
+									}
+								}
+							}
+							else
+							{
+								boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[V.at(key).cols()][1]);
+								Mtmpvec[a2][0] = Mtmp;
+								Lnew.push_back(quple, Mtmpvec);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Contracts a right transfer matrix \p Rold with two Mps tensors \p Abra, \p Aket and a block dependent Mpo tensor \p V as follows:
+ * \dotfile contractQ_R.dot
+ * \param Rold
+ * \param Abra
+ * \param V
+ * \param Aket
+ * \param qloc : local basis
+ * \param qOp : operator basis
+ * \param Rnew : new transfer matrix to be written to
+ * \note This function is used, when the squared Mpo with SU(2) symmetry was precalculated, 
+ * since in this case the Mpo matrices depend on the symmetry block. For this reason the special member Vsq of the Mpo is used.
+ */
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
+void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
+                 const vector<Biped<Symmetry,MatrixType> > &Abra,
+				 const unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<MpoScalar> > &V,
+                 const vector<Biped<Symmetry,MatrixType> > &Aket, 
+                 const vector<qarray<Symmetry::Nq> > &qloc,
+                 const vector<qarray<Symmetry::Nq> > &qOp, 
+                 Tripod<Symmetry,MatrixType> &Rnew)
+{
+	std::array<typename Symmetry::qType,3> qCheck;
+	MpoScalar factor_cgc;
+	Rnew.clear();
+	Rnew.setZero();
+	
+	for (size_t s1=0; s1<qloc.size(); ++s1)
+	for (size_t s2=0; s2<qloc.size(); ++s2)
+	for (size_t k=0; k<qOp.size(); ++k)
+	{
+		qCheck = {qloc[s2],qOp[k],qloc[s1]};
+		if(!Symmetry::validate(qCheck)) {continue;}
+		
+		for (size_t qR=0; qR<Rold.dim; ++qR)
+		{
+			auto qRouts = Symmetry::reduceSilent(Rold.out(qR),Symmetry::flip(qloc[s1]));
+			auto qRins = Symmetry::reduceSilent(Rold.in(qR),Symmetry::flip(qloc[s2]));
+			
+			for(const auto& qRout : qRouts)
+			for(const auto& qRin : qRins)
+			{
+				qarray2<Symmetry::Nq> cmp1 = {qRout, Rold.out(qR)};
+				qarray2<Symmetry::Nq> cmp2 = {qRin, Rold.in(qR)};
+				
+				auto q1 = Abra[s1].dict.find(cmp1);
+				auto q2 = Aket[s2].dict.find(cmp2);
+				
+				if (q1!=Abra[s1].dict.end() and 
+				    q2!=Aket[s2].dict.end())
+				{
+					qarray<Symmetry::Nq> new_qin  = Aket[s2].in[q2->second]; // A.in
+					qarray<Symmetry::Nq> new_qout = Abra[s1].in[q1->second]; // A†.out = A.in
+					auto qRmids = Symmetry::reduceSilent(Rold.mid(qR),Symmetry::flip(qOp[k]));
+					
+					for(const auto& new_qmid : qRmids)
+					{
+						qarray3<Symmetry::Nq> quple = {new_qin, new_qout, new_qmid};
+						if constexpr (Symmetry::NON_ABELIAN)
+						{
+							factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[q2->second],qloc[s2],Aket[s2].in[q2->second],
+							                                    Rold.mid(qR),qOp[k],quple[2],
+							                                    Abra[s1].out[q1->second],qloc[s1],Abra[s1].in[q1->second]);
+						}
+						else
+						{
+							factor_cgc = 1.;
+						}
+						if (std::abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+						auto key = make_tuple(s1,s2,k,quple[2],Rold.mid(qR));
+						if(auto it=V.find(key); it == V.end()) { continue; }
+						for (int r=0; r<V.at(key).outerSize(); ++r)
+						for (typename SparseMatrix<MpoScalar>::InnerIterator iW(V.at(key),r); iW; ++iW)
+						{
+							size_t a1 = iW.row();
+							size_t a2 = iW.col();
+								
+							if (Rold.block[qR][a2][0].rows() != 0)
+							{
+								MatrixType Mtmp;
+								optimal_multiply(factor_cgc*iW.value(),
+												 Aket[s2].block[q2->second],
+												 Rold.block[qR][a2][0],
+												 Abra[s1].block[q1->second].adjoint(),
+												 Mtmp);
+								if(Mtmp.norm() < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+								
+								auto it = Rnew.dict.find(quple);
+								if (it != Rnew.dict.end())
+								{
+									if (Rnew.block[it->second][a1][0].rows() != Mtmp.rows() or 
+										Rnew.block[it->second][a1][0].cols() != Mtmp.cols())
+									{
+										Rnew.block[it->second][a1][0] = Mtmp;
+									}
+									else
+									{
+										Rnew.block[it->second][a1][0] += Mtmp;
+										if(Rnew.block[it->second][a1][0].norm() < ::mynumeric_limits<MpoScalar>::epsilon())
+										{
+											Rnew.block[it->second][a1][0].resize(0,0);
+											continue;
+										}
+									}
+								}
+								else
+								{
+									boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[V.at(key).rows()][1]);
+									Mtmpvec[a1][0] = Mtmp;
+									Rnew.push_back(quple, Mtmpvec);
+								}
+							}
+						}
 					}
 				}
 			}
@@ -820,7 +904,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 			for (size_t qR=0; qR<Rold.dim; ++qR)
 			{
 				auto qRouts = Symmetry::reduceSilent(Rold.out(qR),Symmetry::flip(qloc[s1]));
-				auto qRins = Symmetry::reduceSilent(Rold.in(qR),Symmetry::flip(qloc[s3]));
+				auto qRins =  Symmetry::reduceSilent(Rold.in(qR),Symmetry::flip(qloc[s3]));
 				auto qrightAuxs = Sym::split<Symmetry>(Rold.mid(qR),baseRightTop.qs(),baseRightBot.qs());
 				
 				for(const auto& qRout : qRouts)

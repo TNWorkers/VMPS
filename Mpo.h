@@ -567,11 +567,12 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 				qOpSq.resize(N_sites);
 				for(size_t l=0; l<N_sites; l++)
 				{
+					cout << "l=" << l << endl;
 					auto TensorBaseRight = qaux[l+1].combine(qaux[l+1]);
 					auto TensorBaseLeft = qaux[l].combine(qaux[l]);
 
 					auto qauxLeft = qaux[l].qs();
-					auto qauxRight = qaux[l+1].qs();
+					auto qauxRight = qaux[l+1].unordered_qs();
 
 					qOpSq[l] = Symmetry::reduceSilent(qOp[l],qOp[l],true);
 					
@@ -585,33 +586,39 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 						if(!Symmetry::validate(qCheck)) {continue;}
 						qCheck = {qloc[l][s2],qOp[l][k2],qloc[l][s1]};
 						if(!Symmetry::validate(qCheck)) {continue;}
-
 						auto qKs = Symmetry::reduceSilent(qOp[l][k1],qOp[l][k2]);
 						for(const auto qK : qKs)
 						{
 							qCheck = {qloc[l][s3],qK,qloc[l][s1]};
 							if(!Symmetry::validate(qCheck)) {continue;}
-
 							Scalar factor_check = Symmetry::coeff_Apair(qloc[l][s1],qOp[l][k2] ,qloc[l][s2],
 																		qOp[l][k1] ,qloc[l][s3],qK);
 							if (std::abs(factor_check) < std::abs(::mynumeric_limits<Scalar>::epsilon())) { continue; }
-							for(size_t ql1=0; ql1<qauxLeft.size(); ql1++)
-							for(size_t ql2=0; ql2<qauxLeft.size(); ql2++)
+							auto K = distance(qOpSq[l].begin(), find(qOpSq[l].begin(), qOpSq[l].end(), qK));
+							for(const auto& ql1: qauxLeft)
+							for(const auto& ql2: qauxLeft)
 							{
-								auto qlns = Symmetry::reduceSilent(qauxLeft[ql1],qauxLeft[ql2]);
-								for(size_t qr1=0; qr1<qauxRight.size(); qr1++)
-								for(size_t qr2=0; qr2<qauxRight.size(); qr2++)
+								auto qlns = Symmetry::reduceSilent(ql1,ql2);
+								auto qr1s = Symmetry::reduceSilent(ql1,qOp[l][k2]);
+								auto qr2s = Symmetry::reduceSilent(ql2,qOp[l][k1]);
+								for(const auto& qr1: qr1s)
+								for(const auto& qr2: qr2s)
 								{
-									auto qrns = Symmetry::reduceSilent(qauxRight[qr1],qauxRight[qr2]);
+									if(auto it = qauxRight.find(qr1); it == qauxRight.end()) {continue;}
+									if(auto it = qauxRight.find(qr2); it == qauxRight.end()) {continue;}
+									auto qrns = Symmetry::reduceSilent(qr1,qr2);
 									for(const auto& qln : qlns)
 									for(const auto& qrn : qrns)
 									{
-										Scalar factor_merge = Symmetry::coeff_buildR(qauxRight[qr1], qauxRight[qr2], qrn,
-																					 qOp[l][k2]    , qOp[l][k1]    , qK ,
-																					 qauxLeft[ql1] , qauxLeft[ql2] , qln);
+										Scalar factor_merge = Symmetry::coeff_buildR(qr1       , qr2       , qrn,
+																					 qOp[l][k2], qOp[l][k1], qK ,
+																					 ql1       , ql2       , qln);
+
+										Eigen::Index left1=TensorBaseLeft.leftAmount(qln,{ql1, ql2});
+										Eigen::Index left2=TensorBaseRight.leftAmount(qrn,{qr1, qr2});
 										if (std::abs(factor_merge) < std::abs(::mynumeric_limits<Scalar>::epsilon())) { continue; }
-										Eigen::Index left2=TensorBaseRight.leftAmount(qrn,{qauxRight[qr1], qauxRight[qr2]});
-										Eigen::Index left1=TensorBaseLeft.leftAmount(qln,{qauxLeft[ql1], qauxLeft[ql2]});
+										auto key = make_tuple(s1,s3,K,qln,qrn);
+
 										for (int ktop=0; ktop<W[l][s2][s3][k1].outerSize(); ++ktop)
 										for (typename SparseMatrix<Scalar>::InnerIterator iWtop(W[l][s2][s3][k1],ktop); iWtop; ++iWtop)
 										for (int kbot=0; kbot<W[l][s1][s2][k2].outerSize(); ++kbot)
@@ -624,8 +631,6 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 											Scalar Wfactor = factor_check * factor_merge * iWbot.value() * iWtop.value();
 											size_t a1 = left1+br*W[l][s2][s3][k1].rows()+tr;
 											size_t a2 = left2+bc*W[l][s2][s3][k1].cols()+tc;
-											auto K = distance(qOpSq[l].begin(), find(qOpSq[l].begin(), qOpSq[l].end(), qK));
-											auto key = make_tuple(s1,s3,K,qln,qrn);
 											if(auto it = Vsq[l].find(key); it != Vsq[l].end()) { Vsq[l][it->first].coeffRef(a1,a2) += Wfactor; }
 											else
 											{
@@ -649,7 +654,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			vector<SuperMatrix<Symmetry,Scalar> > GvecSq(N_sites);
 			for (size_t l=0; l<N_sites; ++l)
 			{
-				qOpSq[l] = Symmetry::reduceSilent(qOp[l],qOp[l]);
+				qOpSq[l] = Symmetry::reduceSilent(qOp[l],qOp[l],true);
 				GvecSq[l].setMatrix(Gvec[l].auxdim()*Gvec[l].auxdim(), Gvec[l].D());
 				GvecSq[l] = tensor_product(Gvec[l], Gvec[l]);
 			}
@@ -741,6 +746,7 @@ calc_auxBasis()
 		}
 		qaux[l] = qauxtmp;
 	}
+
 }
 
 template<typename Symmetry, typename Scalar>
@@ -776,8 +782,8 @@ memory (MEMUNIT memunit) const
 			res += calc_memory(W[l][s1][s2][k],memunit);
 			if (GOT_SQUARE)
 			{
-				if constexpr (Symmetry::NON_ABELIAN) {res = res;}
-				else {res += calc_memory(Wsq[l][s1][s2][k],memunit);}
+				// if constexpr (Symmetry::NON_ABELIAN) {res = res;}
+				// else {res += calc_memory(Wsq[l][s1][s2][k],memunit);}
 			}
 		}
 	}
@@ -802,14 +808,14 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 		for (size_t s2=0; s2<qloc[l].size(); ++s2)
 		for (size_t k=0; k<qOp[l].size(); ++k)
 		{
-			if constexpr (Symmetry::NON_ABELIAN) {N_nonZeros += W[l][s1][s2][k].nonZeros();}
-			if constexpr (Symmetry::NON_ABELIAN) {N_elements += W[l][s1][s2][k].rows()   * W[l][s1][s2][k].cols();}
-			else
-			{
-				N_nonZeros += (USE_SQUARE)? Wsq[l][s1][s2][k].nonZeros() : W[l][s1][s2][k].nonZeros();
-				N_elements += (USE_SQUARE)? Wsq[l][s1][s2][k].rows() * Wsq[l][s1][s2][k].cols():
-					W[l][s1][s2][k].rows()   * W[l][s1][s2][k].cols();
-			}
+			// if constexpr (Symmetry::NON_ABELIAN) {N_nonZeros += W[l][s1][s2][k].nonZeros();}
+			// if constexpr (Symmetry::NON_ABELIAN) {N_elements += W[l][s1][s2][k].rows()   * W[l][s1][s2][k].cols();}
+			// else
+			// {
+			// 	N_nonZeros += (USE_SQUARE)? Wsq[l][s1][s2][k].nonZeros() : W[l][s1][s2][k].nonZeros();
+			// 	N_elements += (USE_SQUARE)? Wsq[l][s1][s2][k].rows() * Wsq[l][s1][s2][k].cols():
+			// 		W[l][s1][s2][k].rows()   * W[l][s1][s2][k].cols();
+			// }
 		}
 	}
 	
