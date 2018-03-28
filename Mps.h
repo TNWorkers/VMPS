@@ -100,6 +100,7 @@ public:
 	*/
 	void canonize (DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::LEFT);
 	
+
 #ifdef USE_HDF5_STORAGE
 	///\{
 	/**
