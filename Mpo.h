@@ -10,6 +10,7 @@
 typedef Eigen::SparseMatrix<double,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXd;
 using namespace Eigen;
 
+#include "Stopwatch.h" // from TOOLS
 #include "SuperMatrix.h"
 #include "symmetry/qarray.h"
 #include "symmetry/qbasis.h"

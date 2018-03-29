@@ -111,17 +111,26 @@ int main (int argc, char* argv[])
 	lout << "not parallelized" << endl;
 	#endif
 	
+	MatrixXd A(3,5);
+	A.setRandom();
+	BDCSVD<MatrixXd> Jack;
+	Jack.compute(A,ComputeFullU|ComputeFullV);
+	cout << A << endl << endl;
+	cout << Jack.matrixU() << endl << endl;
+	cout << Jack.matrixV().adjoint() << endl << endl;
+	cout << Jack.matrixV().adjoint()*Jack.matrixV() << endl;
+	
 	//--------U(0)---------
-//	lout << endl << "--------U(0)---------" << endl << endl;
-//	
-//	Stopwatch<> Watch_U0;
-//	VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
-//	lout << H_U0.info() << endl;
-//	
-//	VMPS::Heisenberg::Solver DMRG_U0(VERB);
-//	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 1e3*tol_eigval,1e3*tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
-//	
-//	t_U0 = Watch_U0.time();
+	lout << endl << "--------U(0)---------" << endl << endl;
+	
+	Stopwatch<> Watch_U0;
+	VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
+	lout << H_U0.info() << endl;
+	
+	VMPS::Heisenberg::Solver DMRG_U0(VERB);
+	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 1e3*tol_eigval,1e3*tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
+	
+	t_U0 = Watch_U0.time();
 //	
 //	// observables
 //	
@@ -140,6 +149,8 @@ int main (int argc, char* argv[])
 //	Oxg_U0.eps_svd = 1e-15;
 //	OxV(H_U0,g_U0.state,Oxg_U0,DMRG::BROOM::SVD);
 //	E_U0_zipper = g_U0.state.dot(Oxg_U0);
+	
+	assert(1!=1);
 	
 	//--------U(1)---------
 	lout << endl << "--------U(1)---------" << endl << endl;

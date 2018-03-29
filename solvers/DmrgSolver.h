@@ -252,7 +252,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		stat.N_sweepsteps = stat.N_halfsweeps = 0;
 		for (size_t l=N_sites-1; l>0; --l)
 		{
-			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
+			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::SVD);
 			build_R(H,Vout,l-1);
 		}
 		Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 0, DMRG::BROOM::QR); // removes large numbers from first matrix
@@ -487,7 +487,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 	
 	print_alpha_eps();
 	
- 	// average local dimension for later bond dimension increase
+	// average local dimension for later bond dimension increase
 	size_t dimqlocAvg = 0;
 	for (size_t l=0; l<H.length(); ++l)
 	{
@@ -496,7 +496,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 	dimqlocAvg /= H.length();
 	
 	while (((err_eigval >= tol_eigval or err_state >= tol_state) and stat.N_halfsweeps < max_halfsweeps) or 
-		   stat.N_halfsweeps < min_halfsweeps)
+	       stat.N_halfsweeps < min_halfsweeps)
 	{
 		// For non-abelian symmetries, the fluctuations are not working correctly, so that they have to be turned off to allow convergence.
 		// 8 is probably a good value for all "easy" models... if the convergence is not good, enhance this value.

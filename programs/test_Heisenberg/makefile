@@ -42,7 +42,7 @@ MACROS=-fmax-errors=5
 INCS=-I $(EIGEN) -I $(ARMA) -I $(BOOST) -I $(GSL)/include -I $(FFTW)
 #-I $(ARMA) -I $(FFTW)/include -I $(EINSPLINE) -I $(VIENNACL)
 MYINCS=-I $(ALGS) -I $(HIL) -I $(INT) -I $(TOOLS) -I $(CHEB) -I $(FUNC) -I $(PLOT) -I $(DMRG) -I $(VIENNACL) -I $(TEXTTABLE)
-LIBS=$(GSL)/lib/libgsl.a $(GSL)/lib/libgslcblas.a 
+LIBS=$(GSL)/lib/libgsl.a $(GSL)/lib/libgslcblas.a
 # $(FFTW)/lib/libfftw3.a $(LAPACK)/liblapack.a $(LAPACK)/librefblas.a /usr/lib/gcc/x86_64-linux-gnu/4.8/libgfortran.a
 #$(LAPACK)/liblapack.a $(LAPACK)/librefblas.a -lgfortran -lm
 #$(LAPACK)/liblapack.a

@@ -398,6 +398,8 @@ private:
 	ArrayXd truncWeight;
 	ArrayXd entropy;
 	
+	vector<vector<Biped<Symmetry,MatrixType> > > Null; // access: A[l][s].block[q]
+	
 	// sets of all unique incoming & outgoing indices for convenience
 	vector<vector<qarray<Nq> > > inset;
 	vector<vector<qarray<Nq> > > outset;
@@ -521,8 +523,8 @@ outerResize (const Mps<Symmetry,OtherMatrixType> &V)
 	outset = V.outset;
 	
 	A.resize(this->N_sites);
-	inset.resize(this->N_sites);
-	outset.resize(this->N_sites);
+	Null.resize(this->N_sites);
+	
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
 	entropy.resize(this->N_sites-1); entropy.setConstant(numeric_limits<double>::quiet_NaN());
 	
@@ -539,6 +541,20 @@ outerResize (const Mps<Symmetry,OtherMatrixType> &V)
 			A[l][s].dim = V.A[l][s].dim;
 		}
 	}
+	
+	for (size_t l=0; l<V.N_sites; ++l)
+	{
+		Null[l].resize(qloc[l].size());
+		
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		{
+			Null[l][s].in = V.Null[l][s].in;
+			Null[l][s].out = V.Null[l][s].out;
+			Null[l][s].block.resize(V.Null[l][s].dim);
+			Null[l][s].dict = V.Null[l][s].dict;
+			Null[l][s].dim = V.Null[l][s].dim;
+		}
+	}
 }
 
 template<typename Symmetry, typename Scalar>
@@ -546,12 +562,17 @@ void Mps<Symmetry,Scalar>::
 resize_arrays()
 {
 	A.resize(this->N_sites);
+	Null.resize(this->N_sites);
+	
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
 		A[l].resize(qloc[l].size());
+		Null[l].resize(qloc[l].size());
 	}
+	
 	inset.resize(this->N_sites);
 	outset.resize(this->N_sites);
+	
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
 	entropy.resize(this->N_sites-1); entropy.setConstant(numeric_limits<double>::quiet_NaN());
 }
@@ -578,7 +599,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 			{
 				qset_tmp.insert(qloc[l_frst][s]);
 			}
-
+			
 			for (size_t l=l_frst+1; l<=l_last; ++l)
 			{
 				// add qnums of local basis at l and qset_tmp to qset
@@ -593,7 +614,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 				}
 				// swap qset and qset_tmp to continue
 				std::swap(qset_tmp,qset);qset.clear();
-			}			
+			}
 			qset = qset_tmp;
 		}
 		else
@@ -616,18 +637,17 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		{
 			set<qarray<Nq> > intmp;
 			set<qarray<Nq> > outtmp;
-
+			
 			int lprev = l-1;
 			int lnext = l+1;
-
+			
 			set<qarray<Nq> > qlset = calc_qnums_on_segment(0,lprev); // length=l
 			set<qarray<Nq> > qrset = calc_qnums_on_segment(lnext,this->N_sites-1); // length=L-l-1
-
+			
 			for (size_t s=0; s<qloc[l].size(); ++s)
 			{
 				A[l][s].clear();
-
-
+				
 				for (auto ql=qlset.begin(); ql!=qlset.end(); ++ql)
 				{
 					auto qVec = Symmetry::reduceSilent(*ql,qloc[l][s]);
@@ -654,19 +674,22 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 									A[l][s].dict.insert({qTmp,A[l][s].size()});
 									A[l][s].plusplus();
 								}
-								else {}
 							}
 						}
 					}
 				}
+				
 				A[l][s].block.resize(A[l][s].size());
 			}
+			
 			inset[l].resize(intmp.size());
 			outset[l].resize(outtmp.size());
 			copy(intmp.begin(),  intmp.end(),  inset[l].begin());
 			copy(outtmp.begin(), outtmp.end(), outset[l].begin());
 		}
 	}
+	
+	Null = A;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -689,6 +712,7 @@ outerResizeNoSymm()
 			A[l][s].dict.insert({qarray2<Nq>{qvacuum<Nq>(),qvacuum<Nq>()}, A[l][s].dim});
 			A[l][s].dim = 1;
 			A[l][s].block.resize(1);
+			Null = A;
 		}
 	}
 }
@@ -1236,7 +1260,10 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		for (size_t i=0; i<svec.size(); ++i)
 		{
 			Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]]*
-				Symmetry::coeff_leftSweep(A[loc][svec[i]].out[qvec[i]],A[loc][svec[i]].in[qvec[i]],qloc[loc][svec[i]]);
+			                                            Symmetry::coeff_leftSweep(
+			                                             A[loc][svec[i]].out[qvec[i]],
+			                                             A[loc][svec[i]].in[qvec[i]],
+			                                             qloc[loc][svec[i]]);
 			stitch += Ncolsvec[i];
 		}
 		
@@ -1258,7 +1285,12 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 		{
 			#ifdef DONT_USE_LAPACK_SVD
-			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
+//			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
+			Jack.compute(Aclump,ComputeFullU|ComputeFullV);
+			cout << "Aclump: " << Aclump.rows() << "x" << Aclump.cols() << endl;
+			cout << "U: " << Jack.matrixU().rows() << "x" << Jack.matrixU().cols() << endl;
+			cout << "V: " << Jack.matrixV().rows() << "x" << Jack.matrixV().cols() << endl;
+			cout << "m=" << Nrows << ", " << Ncols << endl;
 			#else
 			Jack.compute(Aclump);
 			#endif
@@ -1329,16 +1361,47 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 			{
 				#ifdef DONT_USE_LAPACK_SVD
 				A[loc][svec[i]].block[qvec[i]] = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])*
-					Symmetry::coeff_sign(A[loc][svec[i]].out[qvec[i]],A[loc][svec[i]].in[qvec[i]],qloc[loc][svec[i]]);
+				                                 Symmetry::coeff_sign(
+				                                  A[loc][svec[i]].out[qvec[i]],
+				                                  A[loc][svec[i]].in[qvec[i]],
+				                                  qloc[loc][svec[i]]);
+				
+				size_t Nnull = Jack.matrixV().adjoint().rows()-Nret;
+				
+				cout << "norm=" << (Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i]) * 
+				Jack.matrixV().adjoint().block(Nret,stitch, Nnull,Ncolsvec[i]).adjoint()).norm() << endl;
+				
+				Null[loc][svec[i]].block[qvec[i]] = Jack.matrixV().adjoint().block(Nret,stitch, Nnull,Ncolsvec[i])*
+				                                 Symmetry::coeff_sign(
+				                                  A[loc][svec[i]].out[qvec[i]],
+				                                  A[loc][svec[i]].in[qvec[i]],
+				                                  qloc[loc][svec[i]]);
 				#else
 				A[loc][svec[i]].block[qvec[i]] = Jack.matrixVT().block(0,stitch, Nret,Ncolsvec[i])*
-					Symmetry::coeff_sign(A[loc][svec[i]].out[qvec[i]],A[loc][svec[i]].in[qvec[i]],qloc[loc][svec[i]]);
+				                                 Symmetry::coeff_sign(
+				                                  A[loc][svec[i]].out[qvec[i]],
+				                                  A[loc][svec[i]].in[qvec[i]],
+				                                  qloc[loc][svec[i]]);
+				
+				size_t Nnull = Jack.matrixVT().rows()-Nret;
+				cout << "norm=" << (Jack.matrixVT().block(0,stitch, Nret,Ncolsvec[i]) * 
+				Jack.matrixVT().block(Nret,stitch, Nnull,Ncolsvec[i]).adjoint()).norm() << endl;
+				
+				Null[loc][svec[i]].block[qvec[i]] = Jack.matrixVT().block(Nret,stitch, Nnull,Ncolsvec[i])*
+				                                 Symmetry::coeff_sign(
+				                                  A[loc][svec[i]].out[qvec[i]],
+				                                  A[loc][svec[i]].in[qvec[i]],
+				                                  qloc[loc][svec[i]]);
+				
 				#endif
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{
 				A[loc][svec[i]].block[qvec[i]] = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i])*
-					Symmetry::coeff_sign(A[loc][svec[i]].out[qvec[i]],A[loc][svec[i]].in[qvec[i]],qloc[loc][svec[i]]);
+				                                 Symmetry::coeff_sign(
+				                                  A[loc][svec[i]].out[qvec[i]],
+				                                  A[loc][svec[i]].in[qvec[i]],
+				                                  qloc[loc][svec[i]]);
 			}
 			else if (TOOL == DMRG::BROOM::RDM)
 			{
@@ -1498,7 +1561,12 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 		{
 			#ifdef DONT_USE_LAPACK_SVD
-			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
+//			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
+			Jack.compute(Aclump,ComputeFullU|ComputeFullV);
+			cout << "Aclump: " << Aclump.rows() << "x" << Aclump.cols() << endl;
+			cout << "U: " << Jack.matrixU().rows() << "x" << Jack.matrixU().cols() << endl;
+			cout << "V: " << Jack.matrixV().rows() << "x" << Jack.matrixV().cols() << endl;
+			cout << "m=" << Nrows << ", " << Ncols << endl;
 			#else
 			Jack.compute(Aclump);
 			#endif
@@ -1569,6 +1637,9 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 			if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 			{
 				A[loc][svec[i]].block[qvec[i]] = Jack.matrixU().block(stitch,0, Nrowsvec[i],Nret);
+				
+				size_t Nnull = Jack.matrixU().cols()-Nret;
+				Null[loc][svec[i]].block[qvec[i]] = Jack.matrixU().block(stitch,Nret, Nrowsvec[i],Nnull);
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{
@@ -4009,6 +4080,79 @@ test_ortho (double tol) const
 	}
 	
 	sout += TCOLOR(BLACK);
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		if (l<this->pivot)
+		{
+			auto Test = Null[l][0].adjoint().contract(A[l][0]);
+			for (size_t s=0; s<qloc[l].size(); ++s)
+			{
+				Test = Test + Null[l][s].adjoint().contract(A[l][s]);
+			}
+			
+			double Tinfnorm = 0.;
+			for (size_t q=0; q<Test.dim; ++q)
+			{
+				Tinfnorm += Test.block[q].template lpNorm<Infinity>();
+			}
+			cout << "l=" << l << ", Ndag*A=" << Tinfnorm << endl;
+		}
+		
+		if (l>this->pivot)
+		{
+			auto Test = A[l][0].contract(Null[l][0].adjoint(), contract::MODE::OORR);
+			for (size_t s=0; s<qloc[l].size(); ++s)
+			{
+				Test = Test + A[l][s].contract(Null[l][s].adjoint(), contract::MODE::OORR);
+			}
+			
+			double Tinfnorm = 0.;
+			for (size_t q=0; q<Test.dim; ++q)
+			{
+				Tinfnorm += Test.block[q].template lpNorm<Infinity>();
+			}
+			cout << "l=" << l << ", B*Ndag=" << Tinfnorm << endl;
+		}
+	}
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		if (l<this->pivot)
+		{
+			auto Test = Null[l][0].adjoint().contract(Null[l][0]);
+			for (size_t s=0; s<qloc[l].size(); ++s)
+			{
+				Test = Test + Null[l][s].adjoint().contract(Null[l][s]);
+			}
+			
+			double Tinfnorm = 0.;
+			for (size_t q=0; q<Test.dim; ++q)
+			{
+				Test.block[q] -=  MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
+				Tinfnorm += Test.block[q].template lpNorm<Infinity>();
+			}
+			cout << "l=" << l << ", Ndag*N-1=" << Tinfnorm << endl;
+		}
+		
+		if (l>this->pivot)
+		{
+			auto Test = Null[l][0].contract(Null[l][0].adjoint(), contract::MODE::OORR);
+			for (size_t s=0; s<qloc[l].size(); ++s)
+			{
+				Test = Test + Null[l][s].contract(Null[l][s].adjoint(), contract::MODE::OORR);
+			}
+			
+			double Tinfnorm = 0.;
+			for (size_t q=0; q<Test.dim; ++q)
+			{
+				Test.block[q] -=  MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
+				Tinfnorm += Test.block[q].template lpNorm<Infinity>();
+			}
+			cout << "l=" << l << ", N*Ndag-1=" << Tinfnorm << endl;
+		}
+	}
+	
 	return sout;
 }
 
