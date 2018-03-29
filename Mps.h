@@ -394,12 +394,14 @@ private:
 	vector<vector<qarray<Nq> > > qloc;
 	
 	qarray<Nq> Qtot = Symmetry::qvacuum();
-	
+
+	//*The Mps site-tensor.*/
 	vector<vector<Biped<Symmetry,MatrixType> > > A; // access: A[l][s].block[q]
 	ArrayXd truncWeight;
 	ArrayXd entropy;
-	
-	vector<vector<Biped<Symmetry,MatrixType> > > Null; // access: A[l][s].block[q]
+
+	//*N[l] is the nullspace of the site-tensor A[l]. That means a projection to all discraded states. Useful for error estimation.*/
+	vector<vector<Biped<Symmetry,MatrixType> > > N; // access: N[l][s].block[q]
 	
 	// sets of all unique incoming & outgoing indices for convenience
 	vector<vector<qarray<Nq> > > inset;
@@ -520,7 +522,7 @@ outerResize (const Mps<Symmetry,OtherMatrixType> &V)
 	outset = V.outset;
 	
 	A.resize(this->N_sites);
-	Null.resize(this->N_sites);
+	N.resize(this->N_sites);
 	
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
 	entropy.resize(this->N_sites-1); entropy.setConstant(numeric_limits<double>::quiet_NaN());
@@ -541,15 +543,15 @@ outerResize (const Mps<Symmetry,OtherMatrixType> &V)
 	
 	for (size_t l=0; l<V.N_sites; ++l)
 	{
-		Null[l].resize(qloc[l].size());
+		N[l].resize(qloc[l].size());
 		
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
-			Null[l][s].in = V.Null[l][s].in;
-			Null[l][s].out = V.Null[l][s].out;
-			Null[l][s].block.resize(V.Null[l][s].dim);
-			Null[l][s].dict = V.Null[l][s].dict;
-			Null[l][s].dim = V.Null[l][s].dim;
+			N[l][s].in = V.N[l][s].in;
+			N[l][s].out = V.N[l][s].out;
+			N[l][s].block.resize(V.N[l][s].dim);
+			N[l][s].dict = V.N[l][s].dict;
+			N[l][s].dim = V.N[l][s].dim;
 		}
 	}
 }
@@ -559,12 +561,12 @@ void Mps<Symmetry,Scalar>::
 resize_arrays()
 {
 	A.resize(this->N_sites);
-	Null.resize(this->N_sites);
+	N.resize(this->N_sites);
 	
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
 		A[l].resize(qloc[l].size());
-		Null[l].resize(qloc[l].size());
+		N[l].resize(qloc[l].size());
 	}
 	
 	inset.resize(this->N_sites);
@@ -686,7 +688,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		}
 	}
 	
-	Null = A;
+	N = A;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -709,7 +711,7 @@ outerResizeNoSymm()
 			A[l][s].dict.insert({qarray2<Nq>{qvacuum<Nq>(),qvacuum<Nq>()}, A[l][s].dim});
 			A[l][s].dim = 1;
 			A[l][s].block.resize(1);
-			Null = A;
+			N = A;
 		}
 	}
 }
@@ -1284,10 +1286,6 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 			#ifdef DONT_USE_LAPACK_SVD
 //			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
 			Jack.compute(Aclump,ComputeFullU|ComputeFullV);
-			cout << "Aclump: " << Aclump.rows() << "x" << Aclump.cols() << endl;
-			cout << "U: " << Jack.matrixU().rows() << "x" << Jack.matrixU().cols() << endl;
-			cout << "V: " << Jack.matrixV().rows() << "x" << Jack.matrixV().cols() << endl;
-			cout << "m=" << Nrows << ", " << Ncols << endl;
 			#else
 			Jack.compute(Aclump);
 			#endif
@@ -1363,12 +1361,8 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				                                  A[loc][svec[i]].in[qvec[i]],
 				                                  qloc[loc][svec[i]]);
 				
-				size_t Nnull = Jack.matrixV().adjoint().rows()-Nret;
-				
-				cout << "norm=" << (Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i]) * 
-				Jack.matrixV().adjoint().block(Nret,stitch, Nnull,Ncolsvec[i]).adjoint()).norm() << endl;
-				
-				Null[loc][svec[i]].block[qvec[i]] = Jack.matrixV().adjoint().block(Nret,stitch, Nnull,Ncolsvec[i])*
+				size_t Nnull = Jack.matrixV().adjoint().rows()-Nret;				
+				N[loc][svec[i]].block[qvec[i]] = Jack.matrixV().adjoint().block(Nret,stitch, Nnull,Ncolsvec[i])*
 				                                 Symmetry::coeff_sign(
 				                                  A[loc][svec[i]].out[qvec[i]],
 				                                  A[loc][svec[i]].in[qvec[i]],
@@ -1381,10 +1375,9 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				                                  qloc[loc][svec[i]]);
 				
 				size_t Nnull = Jack.matrixVT().rows()-Nret;
-				cout << "norm=" << (Jack.matrixVT().block(0,stitch, Nret,Ncolsvec[i]) * 
 				Jack.matrixVT().block(Nret,stitch, Nnull,Ncolsvec[i]).adjoint()).norm() << endl;
 				
-				Null[loc][svec[i]].block[qvec[i]] = Jack.matrixVT().block(Nret,stitch, Nnull,Ncolsvec[i])*
+				N[loc][svec[i]].block[qvec[i]] = Jack.matrixVT().block(Nret,stitch, Nnull,Ncolsvec[i])*
 				                                 Symmetry::coeff_sign(
 				                                  A[loc][svec[i]].out[qvec[i]],
 				                                  A[loc][svec[i]].in[qvec[i]],
@@ -1560,10 +1553,6 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 			#ifdef DONT_USE_LAPACK_SVD
 //			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
 			Jack.compute(Aclump,ComputeFullU|ComputeFullV);
-			cout << "Aclump: " << Aclump.rows() << "x" << Aclump.cols() << endl;
-			cout << "U: " << Jack.matrixU().rows() << "x" << Jack.matrixU().cols() << endl;
-			cout << "V: " << Jack.matrixV().rows() << "x" << Jack.matrixV().cols() << endl;
-			cout << "m=" << Nrows << ", " << Ncols << endl;
 			#else
 			Jack.compute(Aclump);
 			#endif
@@ -1634,9 +1623,8 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 			if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 			{
 				A[loc][svec[i]].block[qvec[i]] = Jack.matrixU().block(stitch,0, Nrowsvec[i],Nret);
-				
 				size_t Nnull = Jack.matrixU().cols()-Nret;
-				Null[loc][svec[i]].block[qvec[i]] = Jack.matrixU().block(stitch,Nret, Nrowsvec[i],Nnull);
+				N[loc][svec[i]].block[qvec[i]] = Jack.matrixU().block(stitch,Nret, Nrowsvec[i],Nnull);
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{
@@ -4009,6 +3997,9 @@ test_ortho (double tol) const
 	std::array<string,4> normal_token  = {"A","B","M","X"};
 	std::array<string,4> special_token = {"\e[4mA\e[0m","\e[4mB\e[0m","\e[4mM\e[0m","\e[4mX\e[0m"};
 	
+	std::array<string,4> normal_token_for_nullspace  = {"F","G","M","X"};
+	std::array<string,4> special_token_for_nullspace = {"\e[4mF\e[0m","\e[4mG\e[0m","\e[4mM\e[0m","\e[4mX\e[0m"};
+	
 	for (int l=0; l<this->N_sites; ++l)
 	{
 		// check for A
@@ -4077,78 +4068,137 @@ test_ortho (double tol) const
 	}
 	
 	sout += TCOLOR(BLACK);
-	
+	sout += "\n";
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
 		if (l<this->pivot)
 		{
-			auto Test = Null[l][0].adjoint().contract(A[l][0]);
-			for (size_t s=0; s<qloc[l].size(); ++s)
+			// check for F
+			Biped<Symmetry,MatrixType> Test = N[l][0].adjoint().contract(A[l][0]);
+			for (size_t s=1; s<qloc[l].size(); ++s)
 			{
-				Test = Test + Null[l][s].adjoint().contract(A[l][s]);
+				Test += N[l][s].adjoint().contract(A[l][s]);
 			}
-			
-			double Tinfnorm = 0.;
+			vector<bool> F_CHECK(Test.dim);
+			vector<double> F_infnorm(Test.dim);
 			for (size_t q=0; q<Test.dim; ++q)
 			{
-				Tinfnorm += Test.block[q].template lpNorm<Infinity>();
+				F_CHECK[q] = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
+				F_infnorm[q] = Test.block[q].template lpNorm<Infinity>();
 			}
-			cout << "l=" << l << ", Ndag*A=" << Tinfnorm << endl;
+			if (all_of(F_CHECK.begin(),F_CHECK.end(),[](bool x){return x;}))
+			{
+				sout += TCOLOR(RED);
+				sout += (l==this->pivot) ? special_token_for_nullspace[0] : normal_token_for_nullspace[0]; // F
+			}
+			else
+			{
+				sout += TCOLOR(GREEN);
+				sout += (l==this->pivot) ? special_token_for_nullspace[2] : normal_token_for_nullspace[2]; // M
+			}
 		}
+
+		else if (l>this->pivot)
+		{
+			// check for G
+			Biped<Symmetry,MatrixType> Test = A[l][0].contract(N[l][0].adjoint(),contract::MODE::OORR);
+			for (size_t s=1; s<qloc[l].size(); ++s)
+			{
+				Test = Test + A[l][s].contract(N[l][s].adjoint(),contract::MODE::OORR);
+			}
 		
-		if (l>this->pivot)
-		{
-			auto Test = A[l][0].contract(Null[l][0].adjoint(), contract::MODE::OORR);
-			for (size_t s=0; s<qloc[l].size(); ++s)
-			{
-				Test = Test + A[l][s].contract(Null[l][s].adjoint(), contract::MODE::OORR);
-			}
-			
-			double Tinfnorm = 0.;
+			vector<bool> G_CHECK(Test.dim);
+			vector<double> G_infnorm(Test.dim);
 			for (size_t q=0; q<Test.dim; ++q)
 			{
-				Tinfnorm += Test.block[q].template lpNorm<Infinity>();
+				G_CHECK[q] = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
+				G_infnorm[q] = Test.block[q].template lpNorm<Infinity>();
 			}
-			cout << "l=" << l << ", B*Ndag=" << Tinfnorm << endl;
-		}
-	}
-	
-	for (size_t l=0; l<this->N_sites; ++l)
-	{
-		if (l<this->pivot)
-		{
-			auto Test = Null[l][0].adjoint().contract(Null[l][0]);
-			for (size_t s=0; s<qloc[l].size(); ++s)
+
+			if (all_of(G_CHECK.begin(),G_CHECK.end(),[](bool x){return x;}))
 			{
-				Test = Test + Null[l][s].adjoint().contract(Null[l][s]);
+				sout += TCOLOR(BLUE);
+				sout += (l==this->pivot) ? special_token_for_nullspace[1] : normal_token_for_nullspace[1]; // G
 			}
+			else
+			{
+				sout += TCOLOR(GREEN);
+				sout += (l==this->pivot) ? special_token_for_nullspace[2] : normal_token_for_nullspace[2]; // M
+			}
+		}
+		else {sout += TCOLOR(GREEN); sout += (l==this->pivot) ? special_token_for_nullspace[2] : normal_token_for_nullspace[2];}
+
+		// if (l<this->pivot)
+		// {
+		// 	auto Test = N[l][0].adjoint().contract(A[l][0]);
+		// 	for (size_t s=1; s<qloc[l].size(); ++s)
+		// 	{
+		// 		Test = Test + N[l][s].adjoint().contract(A[l][s]);
+		// 	}
 			
-			double Tinfnorm = 0.;
-			for (size_t q=0; q<Test.dim; ++q)
-			{
-				Test.block[q] -=  MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
-				Tinfnorm += Test.block[q].template lpNorm<Infinity>();
-			}
-			cout << "l=" << l << ", Ndag*N-1=" << Tinfnorm << endl;
-		}
+		// 	double Tinfnorm = 0.;
+		// 	for (size_t q=0; q<Test.dim; ++q)
+		// 	{
+		// 		Tinfnorm += Test.block[q].template lpNorm<Infinity>();
+		// 	}
+		// 	cout << "l=" << l << ", Ndag*A=" << Tinfnorm << endl;
+		// }
 		
-		if (l>this->pivot)
-		{
-			auto Test = Null[l][0].contract(Null[l][0].adjoint(), contract::MODE::OORR);
-			for (size_t s=0; s<qloc[l].size(); ++s)
-			{
-				Test = Test + Null[l][s].contract(Null[l][s].adjoint(), contract::MODE::OORR);
-			}
+		// if (l>this->pivot)
+		// {
+		// 	auto Test = A[l][0].contract(N[l][0].adjoint(), contract::MODE::OORR);
+		// 	for (size_t s=1; s<qloc[l].size(); ++s)
+		// 	{
+		// 		Test = Test + A[l][s].contract(N[l][s].adjoint(), contract::MODE::OORR);
+		// 	}
 			
-			double Tinfnorm = 0.;
-			for (size_t q=0; q<Test.dim; ++q)
-			{
-				Test.block[q] -=  MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
-				Tinfnorm += Test.block[q].template lpNorm<Infinity>();
-			}
-			cout << "l=" << l << ", N*Ndag-1=" << Tinfnorm << endl;
-		}
+		// 	double Tinfnorm = 0.;
+		// 	for (size_t q=0; q<Test.dim; ++q)
+		// 	{
+		// 		Tinfnorm += Test.block[q].template lpNorm<Infinity>();
+		// 	}
+		// 	cout << "l=" << l << ", B*Ndag=" << Tinfnorm << endl;
+		// }
 	}
+	sout += TCOLOR(BLACK);
+
+	// cout << endl;
+	// for (size_t l=0; l<this->N_sites; ++l)
+	// {
+	// 	if (l<this->pivot)
+	// 	{
+	// 		auto Test = N[l][0].adjoint().contract(N[l][0]);
+	// 		for (size_t s=1; s<qloc[l].size(); ++s)
+	// 		{
+	// 			Test = Test + N[l][s].adjoint().contract(N[l][s]);
+	// 		}
+			
+	// 		double Tinfnorm = 0.;
+	// 		for (size_t q=0; q<Test.dim; ++q)
+	// 		{
+	// 			Test.block[q] -=  MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
+	// 			Tinfnorm += Test.block[q].template lpNorm<Infinity>();
+	// 		}
+	// 		cout << "l=" << l << ", Ndag*N-1=" << Tinfnorm << endl;
+	// 	}
+		
+	// 	if (l>this->pivot)
+	// 	{
+	// 		auto Test = N[l][0].contract(N[l][0].adjoint(), contract::MODE::OORR);
+	// 		for (size_t s=1; s<qloc[l].size(); ++s)
+	// 		{
+	// 			Test = Test + N[l][s].contract(N[l][s].adjoint(), contract::MODE::OORR);
+	// 		}
+			
+	// 		double Tinfnorm = 0.;
+	// 		for (size_t q=0; q<Test.dim; ++q)
+	// 		{
+	// 			Test.block[q] -=  MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
+	// 			Tinfnorm += Test.block[q].template lpNorm<Infinity>();
+	// 		}
+	// 		cout << "l=" << l << ", N*Ndag-1=" << Tinfnorm << endl;
+	// 	}
+	// }
 	
 	return sout;
 }
