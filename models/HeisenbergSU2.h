@@ -77,7 +77,7 @@ protected:
 	const std::map<string,std::any> defaults = 
 	{
 		{"J",-1.}, {"Jprime",0.}, {"Jperp",0.}, {"D",2ul},
-		{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
+		{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 	};
 	
 	vector<SpinBase<Symmetry> > B;
@@ -103,8 +103,7 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 		Terms[l] = set_operators(B[l],P,l%Lcell);
 	}
 	
-	this->construct_from_Terms(Terms, Lcell, true, P.get<bool>("OPEN_BC"));
-	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
+	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::

@@ -83,7 +83,7 @@ const map<string,any> HubbardSU2xU1::defaults =
 	{"mu",0.}, {"t0",0.}, 
 	{"U",0.}, {"V",0.}, {"Vperp",0.}, 
 	{"J",0.}, {"Jperp",0.},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
+	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 HubbardSU2xU1::
@@ -106,8 +106,7 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 		Terms[l] = set_operators(F[l],P,l%Lcell);
 	}
 	
-	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
-	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
+	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
 HamiltonianTermsXd<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::

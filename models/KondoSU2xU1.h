@@ -9,23 +9,24 @@
 
 namespace VMPS
 {
-/** \class KondoSU2xU1
-  * \ingroup Kondo
-  *
-  * \brief Kondo Model
-  *
-  * MPO representation of
-  * \f[
-  * H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
-  * - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i
-  * \f].
-  *
-  * where further parameters from HubbardSU2xU1 and HeisenbergSU2 are possible.
-  * \note The default variable settings can be seen in \p KondoSU2xU1::defaults.
-  * \note Take use of the Spin SU(2) symmetry and U(1) charge symmetry.
-  * \note If the nnn-hopping is positive, the ground state energy is lowered.
-  * \warning \f$J<0\f$ is antiferromagnetic
-  */
+/** 
+ * \class KondoSU2xU1
+ * \ingroup Kondo
+ *
+ * \brief Kondo Model
+ *
+ * MPO representation of
+ * \f[
+ * H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} -t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
+ * - J \sum_{i \in I} \mathbf{S}_i \cdot \mathbf{s}_i
+ * \f].
+ *
+ * where further parameters from HubbardSU2xU1 and HeisenbergSU2 are possible.
+ * \note The default variable settings can be seen in \p KondoSU2xU1::defaults.
+ * \note Take use of the Spin SU(2) symmetry and U(1) charge symmetry.
+ * \note If the nnn-hopping is positive, the ground state energy is lowered.
+ * \warning \f$J<0\f$ is antiferromagnetic
+ */
 class KondoSU2xU1 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,double>
 {
 public:
@@ -130,7 +131,7 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 		Terms[l] = set_operators(B[l],F[l],P,l%Lcell);
 	}
 	
-	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
+	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
 }
 

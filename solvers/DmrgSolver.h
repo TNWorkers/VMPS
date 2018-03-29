@@ -403,7 +403,8 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	else if (TEST == LANCZOS::CONVTEST::SQ_TEST)
 	{
 		Stopwatch<> HsqTimer;
-		double avgHsq = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state));
+		DMRG::DIRECTION::OPTION DIR = (stat.N_halfsweeps%2==0) ? DMRG::DIRECTION::RIGHT : DMRG::DIRECTION::LEFT;
+		double avgHsq = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true,DIR)) : isReal(avg(Vout.state,H,H,Vout.state));
 		err_state = fabs(avgHsq-pow(Vout.energy,2))/this->N_sites;
 		if (CHOSEN_VERBOSITY>=2)
 		{
