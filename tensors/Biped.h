@@ -73,7 +73,9 @@ public:
 	/**Returns an Eigen vector of size \p dim containing all Matrix cols for every block nu.*/
 	Eigen::VectorXi cols() const;
 	/**Returns an Eigen vector of size \p dim containing all Matrix norm for every block nu.*/
-	Eigen::VectorXi norm() const;
+	Eigen::VectorXd norm() const;
+	/**Returns an Eigen vector of size \p dim containing all Matrix squared norm for every block nu.*/
+	Eigen::VectorXd squaredNorm() const;
 	///@}
 	
 	/**Prints the whole tensor, formatting the quantum numbers */
@@ -219,11 +221,20 @@ cols () const
 }
 
 template<typename Symmetry, typename MatrixType_>
-Eigen::VectorXi Biped<Symmetry,MatrixType_>::
+Eigen::VectorXd Biped<Symmetry,MatrixType_>::
 norm () const
 {
-	Eigen::VectorXi Vout(size());
+	Eigen::VectorXd Vout(size());
 	for (std::size_t nu=0; nu<size(); nu++) { Vout[nu] = block[nu].norm(); }
+	return Vout;
+}
+
+template<typename Symmetry, typename MatrixType_>
+Eigen::VectorXd Biped<Symmetry,MatrixType_>::
+squaredNorm () const
+{
+	Eigen::VectorXd Vout(size());
+	for (std::size_t nu=0; nu<size(); nu++) { Vout[nu] = block[nu].squaredNorm(); }
 	return Vout;
 }
 

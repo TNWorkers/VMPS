@@ -154,6 +154,9 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 				if (q1!=Abra[s1].dict.end() and 
 				    q2!=Aket[s2].dict.end())
 				{
+					if (Aket[s2].block[q2->second].size() == 0) {continue;}
+					if (Abra[s1].block[q1->second].size() == 0) {continue;}
+					
 					qarray<Symmetry::Nq> new_qin  = Aket[s2].in[q2->second]; // A.in
 					qarray<Symmetry::Nq> new_qout = Abra[s1].in[q1->second]; // A†.out = A.in
 					auto qRmids = Symmetry::reduceSilent(Rold.mid(qR),Symmetry::flip(qOp[k]));
@@ -565,6 +568,101 @@ void contract_R (const Biped<Symmetry,MatrixType> &Rold,
 						else
 						{
 							Rnew.push_back(quple, Mtmp);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+template<typename Symmetry, typename Scalar>
+void contract_botmid (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
+                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                    const vector<vector<vector<SparseMatrixXd> > > &W, 
+                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+                    const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
+                    const vector<qarray<Symmetry::Nq> > &qloc,
+                    const vector<qarray<Symmetry::Nq> > &qOp,
+                    Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Tout)
+{
+	std::array<typename Symmetry::qType,3> qCheck;
+	Scalar factor_cgc;
+	
+	for (size_t s1=0; s1<qloc.size(); ++s1)
+	for (size_t s2=0; s2<qloc.size(); ++s2)
+	for (size_t k=0; k<qOp.size(); ++k)
+	{
+		qCheck = {qloc[s2],qOp[k],qloc[s1]};
+		if(!Symmetry::validate(qCheck)) {continue;}
+		
+		for (size_t qL=0; qL<L.dim; ++qL)
+		{
+			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
+			bool FOUND_MATCH = AWA(L.in(qL), L.out(qL), L.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
+			
+			if (FOUND_MATCH == true)
+			{
+				for(size_t n=0; n<ix.size(); n++ )
+				{
+					qarray3<Symmetry::Nq> quple = get<0>(ix[n]);
+					auto qR = R.dict.find(quple);
+					
+					if (qR != R.dict.end())
+					{
+						swap(quple[0], quple[1]);
+						size_t qAbra = get<1>(ix[n]);
+						size_t qAket = get<2>(ix[n]);
+						if (Aket[s2].block[qAket].size() == 0) {continue;}
+						if (Abra[s1].block[qAbra].size() == 0) {continue;}
+						if constexpr (Symmetry::NON_ABELIAN)
+						{
+							factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
+							                                    quple[2], qOp[k], L.mid(qL),
+							                                    Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
+						}
+						else
+						{
+							factor_cgc = 1.;
+						}
+						if (std::abs(factor_cgc) < ::mynumeric_limits<Scalar>::epsilon()) {continue;}
+						
+						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
+						for (SparseMatrixXd::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+						{
+							size_t a1 = iW.row();
+							size_t a2 = iW.col();
+							
+							if (L.block[qL][a1][0].size() != 0 and
+								R.block[qR->second][a2][0].size() != 0)
+							{
+								Matrix<Scalar,Dynamic,Dynamic> Mtmp;
+								optimal_multiply(iW.value() * factor_cgc,
+								                 R.block[qR->second][a2][0],
+								                 Abra[s1].block[qAbra].adjoint(),
+								                 L.block[qL][a1][0],
+								                 Aket[s2].block[qAket],
+								                 Mtmp);
+								
+								qarray2<Symmetry::Nq> qTout = {Aket[s2].out[qAket], Aket[s2].out[qAket]};
+								auto it = Tout.dict.find(qTout);
+								if (it != Tout.dict.end())
+								{
+									if (Tout.block[it->second].rows() != Mtmp.rows() or 
+										Tout.block[it->second].cols() != Mtmp.cols())
+									{
+										Tout.block[it->second] = Mtmp;
+									}
+									else
+									{
+										Tout.block[it->second] += Mtmp;
+									}
+								}
+								else
+								{
+									Tout.push_back(qTout,Mtmp);
+								}
+							}
 						}
 					}
 				}

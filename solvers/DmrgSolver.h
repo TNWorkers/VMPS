@@ -78,7 +78,7 @@ private:
 	double tol_eigval, tol_state;
 	double totalTruncWeight;
 	size_t Dmax_old;
-	double err_eigval, err_state, err_state_before_end_of_noise;
+	double err_eigval, err_state;
 	
 	vector<PivotMatrix1<Symmetry,Scalar,Scalar> > Heff; // Scalar = MpoScalar for ground state
 	
@@ -97,6 +97,7 @@ private:
 	
 	void LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE);
 	void sweepStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout);
+	void sweep_to_edge (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, bool MAKE_ENVIRONMENT);
 	
 	/**Constructs the left transfer matrix at chain site \p loc (left environment of \p loc).*/
 	void build_L (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout, size_t loc);
@@ -244,7 +245,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	Heff.resize(N_sites);
 	Heff[0].L.setVacuum();
 	Heff[N_sites-1].R.setTarget(qarray3<Nq>{Qtot_input, Qtot_input, Symmetry::qvacuum()});
-
+	
 	//if the SweepStatus is default initialized (pivot==-1), one initial sweep from right-to-left and N_halfsweeps = N_sweepsteps = 0,
 	//otherwise prepare for continuing at the given SweepStatus.
 	if (stat.pivot == -1)
@@ -405,12 +406,145 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		Stopwatch<> HsqTimer;
 		DMRG::DIRECTION::OPTION DIR = (stat.N_halfsweeps%2==0) ? DMRG::DIRECTION::RIGHT : DMRG::DIRECTION::LEFT;
 		double avgHsq = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true,DIR)) : isReal(avg(Vout.state,H,H,Vout.state));
-		err_state = fabs(avgHsq-pow(Vout.energy,2))/this->N_sites;
+		err_state = abs(avgHsq-pow(Vout.energy,2))/this->N_sites;
 		if (CHOSEN_VERBOSITY>=2)
 		{
 			lout << HsqTimer.info("<H^2>") << endl;
 		}
-		if (stat.N_halfsweeps == 24) {err_state_before_end_of_noise = err_state;}
+		
+		if (stat.pivot == 1)
+		{
+			Stopwatch<> HsqTimer;
+			
+			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 1, DMRG::BROOM::QR);
+			build_R(H,Vout,0);
+			stat.pivot = 0;
+			
+			double err_state = 0.;
+			for (size_t l=0; l<this->N_sites; ++l)
+			{
+				Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR_NULL);
+				
+				Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
+				contract_botmid (Heff[l].L, Vout.state.A[l], Heff[l].W, Vout.state.N[l], Heff[l].R, H.locBasis(l), H.opBasis(l), Err);
+				err_state += Err.squaredNorm().sum();
+				
+				if (l<N_sites-1)
+				{
+					Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
+					build_L(H,Vout,l+1);
+					stat.pivot = l;
+				}
+			}
+			
+			for (size_t l=this->N_sites-1; l>0; --l)
+			{
+				Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR_NULL);
+				
+				Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Y;
+				contract_R(Heff[l].R, Vout.state.A[l], H.W[l], Vout.state.N[l], H.locBasis(l), H.opBasis(l), Y);
+				
+				Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
+				contract_botmid (Heff[l-1].L, Vout.state.A[l-1], Heff[l-1].W, Vout.state.N[l-1], Y, H.locBasis(l-1), H.opBasis(l-1), Err);
+				err_state += Err.squaredNorm().sum();
+				
+				Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
+				build_R(H,Vout,l-1);
+				stat.pivot = l-1;
+			}
+			
+			Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, 0, DMRG::BROOM::QR);
+			build_L(H,Vout,1);
+			stat.pivot = 1;
+			
+			err_state /= this->N_sites;
+			
+			stat.CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
+			
+			if (CHOSEN_VERBOSITY>=2)
+			{
+				lout << HsqTimer.info("<H^2>") << endl;
+			}
+			
+//			Mps<Symmetry,Scalar> HPsi;
+//			HPsi.eps_svd = 1e-15;
+//			OxV(H,Vout.state,HPsi);
+//			Mps<Symmetry,Scalar> EPsi = Vout.state;
+//			EPsi *= Vout.energy;
+//			HPsi -= EPsi;
+//			double err_exact = HPsi.dot(HPsi)/this->N_sites;
+//			cout << "err_exact= " << err_exact << ", diff=" << abs(err_exact-err_state) << endl;
+		}
+		
+//		Stopwatch<> HsqTimer;
+//		
+//		cout << "pivot=" << stat.pivot << " " << stat.CURRENT_DIRECTION << endl;
+//		sweep_to_edge(H,Vout,true);
+//		cout << "moved to edge: pivot=" << stat.pivot << " " << stat.CURRENT_DIRECTION << endl;
+//		double err_state = 0.;
+//		
+//		for (size_t l=0; l<this->N_sites; ++l)
+//		{
+//			cout << "l=" << l << ", pivot=" << stat.pivot << " " << stat.CURRENT_DIRECTION << endl;
+//			Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::QR_NULL);
+//			
+//			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
+//			contract_botmid (Heff[stat.pivot].L, Vout.state.A[stat.pivot], Heff[stat.pivot].W, Vout.state.N[stat.pivot], Heff[stat.pivot].R, 
+//			                 H.locBasis(stat.pivot), H.opBasis(stat.pivot), Err);
+//			cout << "contraction done!" << endl;
+//			err_state += Err.squaredNorm().sum();
+//			
+//			if (l<N_sites-1)
+//			{
+//				Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::QR);
+//				(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++stat.pivot) : build_R(H,Vout,--stat.pivot);
+//			}
+//			cout << "pivot=" << stat.pivot << " " << stat.CURRENT_DIRECTION << endl;
+//			cout << endl;
+//		}
+//		
+//		cout << "done, turning around" << endl;
+//		turnaround(stat.pivot, N_sites, stat.CURRENT_DIRECTION);
+//		cout << "turnaround: " << stat.CURRENT_DIRECTION << endl;
+//		
+//		for (size_t bond=0; bond<this->N_sites-1; ++bond)
+//		{
+//			size_t loc1 = (stat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? stat.pivot : stat.pivot-1;
+//			size_t loc2 = (stat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? stat.pivot+1 : stat.pivot;
+//			cout << "pivot=" << stat.pivot << ", loc1=" << loc1 << ", loc2=" << loc2 << " " << stat.CURRENT_DIRECTION << endl;
+//			
+//			Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::QR_NULL);
+//			
+//			Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Y;
+//			contract_R(Heff[loc2].R, Vout.state.A[loc2], H.W[loc2], Vout.state.N[loc2], H.locBasis(loc2), H.opBasis(loc2), Y);
+//			
+//			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
+//			contract_botmid (Heff[loc1].L, Vout.state.A[loc1], Heff[loc1].W, Vout.state.N[loc1], Y, H.locBasis(loc1), H.opBasis(loc1), Err);
+//			err_state += Err.squaredNorm().sum();
+//			
+//			Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::QR);
+//			(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++stat.pivot) : build_R(H,Vout,--stat.pivot);
+//		}
+//		
+//		turnaround(stat.pivot, N_sites, stat.CURRENT_DIRECTION);
+//		Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::QR);
+//		(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++stat.pivot) : build_R(H,Vout,--stat.pivot);
+//		
+//		err_state /= this->N_sites;
+//		
+//		if (CHOSEN_VERBOSITY>=2)
+//		{
+//			lout << HsqTimer.info("<H^2>") << endl;
+//		}
+//		
+////			Mps<Symmetry,Scalar> HPsi;
+////			HPsi.eps_svd = 1e-15;
+////			OxV(H,Vout.state,HPsi);
+////			Mps<Symmetry,Scalar> EPsi = Vout.state;
+////			EPsi *= Vout.energy;
+////			HPsi -= EPsi;
+////			double err_exact = HPsi.dot(HPsi)/this->N_sites;
+////			cout << "err_exact= " << err_exact << ", diff=" << abs(err_exact-err_state) << endl;
 	}
 	
 	Eold = Vout.energy;
@@ -446,10 +580,34 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
+sweep_to_edge (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, bool MAKE_ENVIRONMENT)
+{
+	assert(stat.pivot==1 or stat.pivot==N_sites-2);
+	if (stat.pivot==1)
+	{
+		Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 1, DMRG::BROOM::QR);
+		if (MAKE_ENVIRONMENT)
+		{
+			build_R(H,Vout,0);
+			stat.pivot = 0;
+		}
+	}
+	else if (stat.pivot==N_sites-2)
+	{
+		Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, N_sites-2, DMRG::BROOM::QR);
+		if (MAKE_ENVIRONMENT)
+		{
+			build_L(H,Vout,N_sites-1);
+			stat.pivot = N_sites-1;
+		}
+	}
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE)
 {
-	if      (stat.pivot==1)         {Vout.state.sweep(0,DMRG::BROOM::QR);}
-	else if (stat.pivot==N_sites-2) {Vout.state.sweep(N_sites-1,DMRG::BROOM::QR);}
+	sweep_to_edge(H,Vout,false);
 	
 	Vout.state.set_defaultCutoffs();
 	

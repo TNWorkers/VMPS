@@ -1191,8 +1191,8 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 	{
 		// pre-calc rho
 		#ifndef DMRG_DONT_USE_OPENMP
-        #ifndef __INTEL_COMPILER
-        #pragma omp parallel for collapse(2)
+		 #ifndef __INTEL_COMPILER
+		#pragma omp parallel for collapse(2)
 		#elif __INTEL_COMPILER
 		#pragma omp parallel for
 		#endif
@@ -1284,8 +1284,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 		{
 			#ifdef DONT_USE_LAPACK_SVD
-//			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
-			Jack.compute(Aclump,ComputeFullU|ComputeFullV);
+			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
 			#else
 			Jack.compute(Aclump);
 			#endif
@@ -1315,6 +1314,11 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 			Qmatrix = (Quirinus.householderQ() * MatrixType::Identity(Aclump.cols(),Aclump.rows())).adjoint();
 			Rmatrix = (MatrixType::Identity(Aclump.rows(),Aclump.cols()) * Quirinus.matrixQR().template triangularView<Upper>()).adjoint();
 			#endif
+		}
+		else if (TOOL == DMRG::BROOM::QR_NULL)
+		{
+			Quirinus.compute(Aclump.adjoint());
+			Qmatrix = Quirinus.householderQ().adjoint();
 		}
 		else if (TOOL == DMRG::BROOM::RDM)
 		{
@@ -1360,13 +1364,6 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				                                  A[loc][svec[i]].out[qvec[i]],
 				                                  A[loc][svec[i]].in[qvec[i]],
 				                                  qloc[loc][svec[i]]);
-				
-				size_t Nnull = Jack.matrixV().adjoint().rows()-Nret;				
-				N[loc][svec[i]].block[qvec[i]] = Jack.matrixV().adjoint().block(Nret,stitch, Nnull,Ncolsvec[i])*
-				                                 Symmetry::coeff_sign(
-				                                  A[loc][svec[i]].out[qvec[i]],
-				                                  A[loc][svec[i]].in[qvec[i]],
-				                                  qloc[loc][svec[i]]);
 				#else
 				A[loc][svec[i]].block[qvec[i]] = Jack.matrixVT().block(0,stitch, Nret,Ncolsvec[i])*
 				                                 Symmetry::coeff_sign(
@@ -1374,14 +1371,14 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				                                  A[loc][svec[i]].in[qvec[i]],
 				                                  qloc[loc][svec[i]]);
 				
-				size_t Nnull = Jack.matrixVT().rows()-Nret;
-				Jack.matrixVT().block(Nret,stitch, Nnull,Ncolsvec[i]).adjoint()).norm() << endl;
-				
-				N[loc][svec[i]].block[qvec[i]] = Jack.matrixVT().block(Nret,stitch, Nnull,Ncolsvec[i])*
-				                                 Symmetry::coeff_sign(
-				                                  A[loc][svec[i]].out[qvec[i]],
-				                                  A[loc][svec[i]].in[qvec[i]],
-				                                  qloc[loc][svec[i]]);
+//				size_t Nnull = Jack.matrixVT().rows()-Nret;
+//				Jack.matrixVT().block(Nret,stitch, Nnull,Ncolsvec[i]).adjoint()).norm() << endl;
+//				
+//				N[loc][svec[i]].block[qvec[i]] = Jack.matrixVT().block(Nret,stitch, Nnull,Ncolsvec[i])*
+//				                                 Symmetry::coeff_sign(
+//				                                  A[loc][svec[i]].out[qvec[i]],
+//				                                  A[loc][svec[i]].in[qvec[i]],
+//				                                  qloc[loc][svec[i]]);
 				
 				#endif
 			}
@@ -1396,6 +1393,23 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 			else if (TOOL == DMRG::BROOM::RDM)
 			{
 				A[loc][svec[i]].block[qvec[i]] = Eugen.eigenvectors().rowwise().reverse().transpose().topRows(Nret).block(0,stitch, Nret,Ncolsvec[i]);
+			}
+			else if (TOOL == DMRG::BROOM::QR_NULL)
+			{
+				if (Qmatrix.rows() > Nret)
+				{
+					size_t Nnull = Qmatrix.rows()-Nret;
+					N[loc][svec[i]].block[qvec[i]] = Qmatrix.block(Nret,stitch, Nnull,Ncolsvec[i])*
+					                                  Symmetry::coeff_sign(
+					                                  A[loc][svec[i]].out[qvec[i]],
+					                                  A[loc][svec[i]].in[qvec[i]],
+					                                  qloc[loc][svec[i]]);
+				}
+				else
+				{
+					MatrixType Mtmp(0,0);
+					N[loc][svec[i]].block[qvec[i]] = Mtmp;
+				}
 			}
 			stitch += Ncolsvec[i];
 		}
@@ -1430,7 +1444,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		}
 	}
 	
-	if (TOOL != DMRG::BROOM::QR)
+	if (TOOL != DMRG::BROOM::QR and TOOL != DMRG::BROOM::QR_NULL)
 	{
 		truncWeight(loc) = truncWeightSub.sum();
 		int bond = (loc==0)? -1 : loc;
@@ -1551,8 +1565,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 		{
 			#ifdef DONT_USE_LAPACK_SVD
-//			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
-			Jack.compute(Aclump,ComputeFullU|ComputeFullV);
+			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
 			#else
 			Jack.compute(Aclump);
 			#endif
@@ -1582,6 +1595,11 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 			Qmatrix = Quirinus.householderQ() * MatrixType::Identity(Aclump.rows(),Aclump.cols());
 			Rmatrix = MatrixType::Identity(Aclump.cols(),Aclump.rows()) * Quirinus.matrixQR().template triangularView<Upper>();
 			#endif
+		}
+		else if (TOOL == DMRG::BROOM::QR_NULL)
+		{
+			Quirinus.compute(Aclump);
+			Qmatrix = Quirinus.householderQ();
 		}
 		else if (TOOL == DMRG::BROOM::RDM)
 		{
@@ -1623,8 +1641,6 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 			if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 			{
 				A[loc][svec[i]].block[qvec[i]] = Jack.matrixU().block(stitch,0, Nrowsvec[i],Nret);
-				size_t Nnull = Jack.matrixU().cols()-Nret;
-				N[loc][svec[i]].block[qvec[i]] = Jack.matrixU().block(stitch,Nret, Nrowsvec[i],Nnull);
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{
@@ -1633,6 +1649,21 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 			else if (TOOL == DMRG::BROOM::RDM)
 			{
 				A[loc][svec[i]].block[qvec[i]] = (Eugen.eigenvectors().rowwise().reverse().leftCols(Nret)).block(stitch,0, Nrowsvec[i],Nret);
+			}
+			else if (TOOL == DMRG::BROOM::QR_NULL)
+			{
+//				cout << "Qmatrix.cols()=" << Qmatrix.cols() << ", Nret=" << Nret << endl;
+				if (Qmatrix.cols() > Nret)
+				{
+					size_t Nnull = Qmatrix.cols()-Nret;
+					N[loc][svec[i]].block[qvec[i]] = Qmatrix.block(stitch,Nret, Nrowsvec[i],Nnull);
+//					cout << Qmatrix.block(stitch,Nret, Nrowsvec[i],Nnull) << endl << endl;
+				}
+				else
+				{
+					MatrixType Mtmp(0,0);
+					N[loc][svec[i]].block[qvec[i]] = Mtmp;
+				}
 			}
 			stitch += Nrowsvec[i];
 		}
@@ -1671,7 +1702,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		}
 	}
 	
-	if (TOOL != DMRG::BROOM::QR)
+	if (TOOL != DMRG::BROOM::QR and TOOL != DMRG::BROOM::QR_NULL)
 	{
 		truncWeight(loc) = truncWeightSub.sum();
 		int bond = (loc==this->N_sites-1)? -1 : loc;

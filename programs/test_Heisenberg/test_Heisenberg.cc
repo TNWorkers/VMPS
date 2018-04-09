@@ -111,14 +111,14 @@ int main (int argc, char* argv[])
 	lout << "not parallelized" << endl;
 	#endif
 	
-	MatrixXd A(3,5);
-	A.setRandom();
-	BDCSVD<MatrixXd> Jack;
-	Jack.compute(A,ComputeFullU|ComputeFullV);
-	cout << A << endl << endl;
-	cout << Jack.matrixU() << endl << endl;
-	cout << Jack.matrixV().adjoint() << endl << endl;
-	cout << Jack.matrixV().adjoint()*Jack.matrixV() << endl;
+//	MatrixXd A(3,5);
+//	A.setRandom();
+//	BDCSVD<MatrixXd> Jack;
+//	Jack.compute(A,ComputeFullU|ComputeFullV);
+//	cout << A << endl << endl;
+//	cout << Jack.matrixU() << endl << endl;
+//	cout << Jack.matrixV().adjoint() << endl << endl;
+//	cout << Jack.matrixV().adjoint()*Jack.matrixV() << endl;
 	
 	//--------U(0)---------
 	lout << endl << "--------U(0)---------" << endl << endl;
@@ -128,9 +128,10 @@ int main (int argc, char* argv[])
 	lout << H_U0.info() << endl;
 	
 	VMPS::Heisenberg::Solver DMRG_U0(VERB);
-	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 1e3*tol_eigval,1e3*tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
+	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
 	
 	t_U0 = Watch_U0.time();
+	
 //	
 //	// observables
 //	
@@ -150,7 +151,7 @@ int main (int argc, char* argv[])
 //	OxV(H_U0,g_U0.state,Oxg_U0,DMRG::BROOM::SVD);
 //	E_U0_zipper = g_U0.state.dot(Oxg_U0);
 	
-	assert(1!=1);
+//	assert(1!=1);
 	
 	//--------U(1)---------
 	lout << endl << "--------U(1)---------" << endl << endl;
@@ -161,7 +162,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
 	
 	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_U1 = Watch_U1.time();
 	
@@ -226,7 +227,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HeisenbergSU2::StateXd> g_SU2;
 	
 	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_SU2 = Watch_SU2.time();
 	
