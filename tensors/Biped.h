@@ -69,9 +69,9 @@ public:
 	
 	///@{
 	/**Returns an Eigen vector of size \p dim containing all Matrix rows for every block nu.*/
-	Eigen::VectorXi rows() const;
+	Eigen::VectorXi rows(bool FULL=false) const;
 	/**Returns an Eigen vector of size \p dim containing all Matrix cols for every block nu.*/
-	Eigen::VectorXi cols() const;
+	Eigen::VectorXi cols(bool FULL=false) const;
 	/**Returns an Eigen vector of size \p dim containing all Matrix norm for every block nu.*/
 	Eigen::VectorXd norm() const;
 	/**Returns an Eigen vector of size \p dim containing all Matrix squared norm for every block nu.*/
@@ -204,19 +204,56 @@ setTarget (qType Qtot)
 
 template<typename Symmetry, typename MatrixType_>
 Eigen::VectorXi Biped<Symmetry,MatrixType_>::
-rows () const
+rows (bool FULL) const
 {
-	Eigen::VectorXi Vout(size());
-	for (std::size_t nu=0; nu<size(); nu++) { Vout[nu] = block[nu].rows(); }
+	std::unordered_set<qType> uniqueControl;
+	Index count=0;
+	for (std::size_t nu=0; nu<size(); nu++)
+	{
+		if(auto it=uniqueControl.find(in[nu]); it == uniqueControl.end()){
+			uniqueControl.insert(in[nu]); count++;
+		}
+	}
+	Eigen::VectorXi Vout(count);
+	count=0;
+	uniqueControl.clear();
+	for (std::size_t nu=0; nu<size(); nu++)
+	{
+		if(auto it=uniqueControl.find(in[nu]) == uniqueControl.end()){
+			uniqueControl.insert(in[nu]);
+			if(FULL) { Vout[count] = Symmetry::degeneracy(in[nu])*block[nu].rows() ; }
+			else { Vout[count] = block[nu].rows(); }
+			count++;
+		}
+	}
 	return Vout;
 }
 
 template<typename Symmetry, typename MatrixType_>
 Eigen::VectorXi Biped<Symmetry,MatrixType_>::
-cols () const
+cols (bool FULL) const
 {
-	Eigen::VectorXi Vout(size());
-	for (std::size_t nu=0; nu<size(); nu++) { Vout[nu] = block[nu].cols(); }
+	std::unordered_set<qType> uniqueControl;
+	Index count=0;
+	for (std::size_t nu=0; nu<size(); nu++)
+	{
+		if(auto it=uniqueControl.find(out[nu]); it == uniqueControl.end()){
+			uniqueControl.insert(out[nu]); count++;
+		}
+	}
+	Eigen::VectorXi Vout(count);
+	count=0;
+	uniqueControl.clear();
+	for (std::size_t nu=0; nu<size(); nu++)
+	{
+		if(auto it=uniqueControl.find(out[nu]) == uniqueControl.end()){
+			uniqueControl.insert(out[nu]);
+			if(FULL) { Vout[count] = Symmetry::degeneracy(out[nu])*block[nu].cols(); }
+			else { Vout[count] = block[nu].cols(); }
+			count++;
+		}
+	}
+
 	return Vout;
 }
 

@@ -227,7 +227,7 @@ public:
 	/**
 	 * Determines the maximal bond dimension per site (sum of \p A.rows or \p A.cols over all subspaces).
 	 */
-	size_t calc_Mmax() const;
+	size_t calc_Mmax(bool FULL=false) const;
 	
 	/**
 	 * Determines the maximal amount of rows or columns per site and subspace.
@@ -1062,38 +1062,56 @@ load (string filename)
 }
 #endif
 
-template<typename Symmetry, typename Scalar>
-size_t Mps<Symmetry,Scalar>::
-calc_Mmax() const
-{
-//	size_t res = 0;
-//	for (size_t l=0; l<this->N_sites; ++l)
-//	{
-//		size_t M = 0;
-//		for (size_t s=0; s<qloc[l].size(); ++s)
-//		for (size_t q=0; q<A[l][s].dim; ++q)
-//		{
-//			M += A[l][s].block[q].rows() * A[l][s].block[q].cols();
-//		}
-//		if (M>res) {res = M;}
-//	}
-//	return res;
+// template<typename Symmetry, typename Scalar>
+// size_t Mps<Symmetry,Scalar>::
+// calc_Mmax() const
+// {
+// //	size_t res = 0;
+// //	for (size_t l=0; l<this->N_sites; ++l)
+// //	{
+// //		size_t M = 0;
+// //		for (size_t s=0; s<qloc[l].size(); ++s)
+// //		for (size_t q=0; q<A[l][s].dim; ++q)
+// //		{
+// //			M += A[l][s].block[q].rows() * A[l][s].block[q].cols();
+// //		}
+// //		if (M>res) {res = M;}
+// //	}
+// //	return res;
 	
-	size_t res = 0;
+// 	size_t res = 0;
+// 	for (size_t l=0; l<this->N_sites; ++l)
+// 	for (size_t s=0; s<qloc[l].size(); ++s)
+// 	{
+// 		size_t Mrows = 0;
+// 		size_t Mcols = 0;
+// 		for (size_t q=0; q<A[l][s].dim; ++q)
+// 		{
+// 			Mrows += A[l][s].block[q].rows();
+// 			Mcols += A[l][s].block[q].cols();
+// 		}
+// 		if (Mrows>res) {res = Mrows;}
+// 		if (Mcols>res) {res = Mcols;}
+// 	}
+// 	return res;
+// }
+
+template<typename Symmetry, typename Scalar>
+std::size_t Mps<Symmetry,Scalar>::
+calc_Mmax(bool FULL) const
+{
+	Index res = 0;
 	for (size_t l=0; l<this->N_sites; ++l)
-	for (size_t s=0; s<qloc[l].size(); ++s)
+	for (size_t s=0; s<qloc[l].size(); s++)
 	{
-		size_t Mrows = 0;
-		size_t Mcols = 0;
-		for (size_t q=0; q<A[l][s].dim; ++q)
-		{
-			Mrows += A[l][s].block[q].rows();
-			Mcols += A[l][s].block[q].cols();
-		}
+		Index Mrows = 0;
+		Index Mcols = 0;
+		Mrows = A[l][s].rows(FULL).sum();
+		Mcols = A[l][s].cols(FULL).sum();
 		if (Mrows>res) {res = Mrows;}
 		if (Mcols>res) {res = Mcols;}
 	}
-	return res;
+	return static_cast<size_t>(res);
 }
 
 template<typename Symmetry, typename Scalar>
