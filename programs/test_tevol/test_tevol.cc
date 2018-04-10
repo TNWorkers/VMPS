@@ -106,7 +106,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
 	
 	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_U1 = Watch_U1.time();
 	
@@ -154,7 +154,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HeisenbergSU2::StateXd> g_SU2;
 	
 	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_SU2 = Watch_SU2.time();
 	

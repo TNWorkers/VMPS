@@ -179,7 +179,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::KondoU0xSU2::StateXd> g_SU2;
 	
 	VMPS::KondoU0xSU2::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2i, g_SU2, {T}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_SU2.edgeState(H_SU2i, g_SU2, {T}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_SU2 = Watch_SU2.time();
 	

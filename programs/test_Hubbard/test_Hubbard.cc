@@ -195,7 +195,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::Hubbard::StateXd> g_U0;
 	
 	VMPS::Hubbard::Solver DMRG_U0(VERB);
-	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 10.*tol_eigval,10.*tol_state, Dinit,3*Dlimit, Imax,Imin, 0.1);
+	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR, 10.*tol_eigval,10.*tol_state, Dinit,3*Dlimit, Imax,Imin, 0.1);
 	
 	lout << endl;
 	double Ntot = 0.;
@@ -236,13 +236,13 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1;
 	
 	VMPS::HubbardU1xU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {Nup,Ndn}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_U1.edgeState(H_U1, g_U1, {Nup,Ndn}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_U1 = Watch_U1.time();
 	
 	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1m;
 	DMRG_U1.set_verbosity(DMRG::VERBOSITY::SILENT);
-	DMRG_U1.edgeState(H_U1, g_U1m, {Nup-1,Ndn}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_U1.edgeState(H_U1, g_U1m, {Nup-1,Ndn}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	lout << "g_U1m.energy=" << g_U1m.energy << endl;
 	
 	ArrayXd c_U1(L);
@@ -294,7 +294,7 @@ int main (int argc, char* argv[])
 	Oxg_U1.eps_svd = 1e-15;
 	OxV(H_U1.cc(i0), g_U1.state, Oxg_U1, DMRG::BROOM::SVD);
 	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1mm;
-	DMRG_U1.edgeState(H_U1, g_U1mm, {Nup-1,Ndn-1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+	DMRG_U1.edgeState(H_U1, g_U1mm, {Nup-1,Ndn-1}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR, 
 	                  tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	overlap_U1_zipper = g_U1mm.state.dot(Oxg_U1);
 	
@@ -308,7 +308,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 	
 	VMPS::HubbardSU2xU1::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2, g_SU2, {Nup-Ndn+1,N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+	DMRG_SU2.edgeState(H_SU2, g_SU2, {Nup-Ndn+1,N}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR, 
 	                   tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_SU2 = Watch_SU2.time();
@@ -317,7 +317,7 @@ int main (int argc, char* argv[])
 	
 	Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2m;
 	DMRG_SU2.set_verbosity(DMRG::VERBOSITY::SILENT);
-	DMRG_SU2.edgeState(H_SU2, g_SU2m, {abs(Nup-1-Ndn)+1,N-1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+	DMRG_SU2.edgeState(H_SU2, g_SU2m, {abs(Nup-1-Ndn)+1,N-1}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR,
 	                   tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	lout << "g_SU2m.energy=" << g_SU2m.energy << endl;
 	
@@ -372,7 +372,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
 	
 	VMPS::HubbardSU2xSU2::Solver DMRG_SU2xSU2(VERB);
-	DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {abs(Nup-Ndn)+1,V-(Nup+Ndn)+1}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+	DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {abs(Nup-Ndn)+1,V-(Nup+Ndn)+1}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR,
 	                       tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha); //Todo: check Pseudospin quantum number... (1 <==> half filling)
 	
 	double Emin_SU2xSU2 = g_SU2xSU2.energy-0.5*U*(V-Nup-Ndn);
@@ -383,7 +383,7 @@ int main (int argc, char* argv[])
 	
 	 Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2m;
 	 DMRG_SU2xSU2.set_verbosity(DMRG::VERBOSITY::SILENT);
-	 DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2m, {abs(Nup-1-Ndn)+1,V-(Nup+Ndn)+2}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST, 
+	 DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2m, {abs(Nup-1-Ndn)+1,V-(Nup+Ndn)+2}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR,
 	                    tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	lout << "g_SU2xSU2m.energy=" << g_SU2xSU2m.energy-0.5*U*(V-Nup+1-Ndn) << endl;
 	

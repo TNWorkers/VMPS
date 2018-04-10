@@ -43,5 +43,5 @@ int main (int argc, char* argv[])
 	cout << H.info() << endl;
 	Eigenstate<MODEL::StateXd> g;
 	MODEL::Solver DMRG(DMRG::VERBOSITY::ON_EXIT);
-	DMRG.edgeState(H, g, {1ul}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::SQ_TEST);
+	DMRG.edgeState(H, g, {1ul}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR);
 }

@@ -213,7 +213,7 @@ struct DMRG
 		};
 	};
 	
-	/**Choice of initial guess for variational compression in MpsCompressor and MpsCompressorQ.*/
+	/**Choice of initial guess for variational compression in MpsCompressor.*/
 	struct COMPRESSION
 	{
 		enum INIT
@@ -225,13 +225,26 @@ struct DMRG
 		};
 	};
 	
-	/**Choice of how to resize in MpsCompressor and MpsCompressorQ.*/
+	/**Choice of how to resize in MpsCompressor.*/
 	struct RESIZE
 	{
 		enum OPTION
 		{
 			CONSERV_INCR, /**<conservative increase: add a row and column of zeros for each subspace block, the bond dimension increases by \p Nqmax*/
 			DECR /**<non-conservative decrease: cut all blocks according to a given \p Dmax*/
+		};
+	};
+
+	/**Choice of how to check convergence of a state.*/
+	struct CONVTEST
+	{
+		enum OPTION
+		{
+			TWO_SITE_VAR, /**<Most efficient algorithm: the two-site variance as proposed in arXiv:1711.01104.*/
+			SQ_TEST, /**<Full variance of the energy: <H²>-<H>².*/
+			NORM_TEST, /**< Overlap to state from previous calculation. */
+			FULL_RESOLVENT, /**< This computes the norm of the full resolvent: || H|Psi> - E|Epsi> ||.*/
+			COEFFWISE /**< I guess this is not used anymore --> deprecated.*/
 		};
 	};
 };

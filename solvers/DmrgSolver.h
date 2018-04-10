@@ -6,11 +6,12 @@
 #include "pivot/DmrgPivotMatrix1.h"
 #include "tensors/DmrgContractions.h"
 #include "DmrgLinearAlgebra.h" // for avg()
-#include "LanczosSolver.h" // from HELPERS
-#include "Stopwatch.h" // from HELPERS
+#include "LanczosSolver.h" // from ALGS
+#include "Stopwatch.h" // from TOOLS
 #ifdef USE_HDF5_STORAGE
-	#include <HDF5Interface.h> // from HELPERS
+	#include <HDF5Interface.h> // from TOOLS
 #endif
+#include "solvers/MpsCompressor.h"
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar = double>
 class DmrgSolver
@@ -30,7 +31,7 @@ public:
 	
 	void edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND,
-	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST,
+	                DMRG::CONVTEST::OPTION TEST = DMRG::CONVTEST::TWO_SITE_VAR,
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-6, 
 	                size_t Dinit=4, size_t Dlimit=500, 
 	                size_t max_halfsweeps=50, size_t min_halfsweeps=6, 
@@ -43,7 +44,7 @@ public:
 	              double max_alpha_rsvd_input=1., double eps_svd_input=1e-7);
 	void halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND, 
-	                LANCZOS::CONVTEST::OPTION TEST = LANCZOS::CONVTEST::SQ_TEST);
+	                DMRG::CONVTEST::OPTION TEST = DMRG::CONVTEST::TWO_SITE_VAR);
 	void cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	              LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND);
 	
@@ -115,7 +116,7 @@ private:
 	double Epenalty = 10.;
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
-	LANCZOS::CONVTEST::OPTION CHOSEN_CONVTEST;
+	DMRG::CONVTEST::OPTION CHOSEN_CONVTEST;
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -372,14 +373,14 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
-halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST)
+halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE, DMRG::CONVTEST::OPTION TEST)
 {
 	Stopwatch<> HalfsweepTimer;
 	
 	// save state for reference
 	Mps<Symmetry,Scalar> Vref;
-	if (TEST == LANCZOS::CONVTEST::NORM_TEST or
-	    TEST == LANCZOS::CONVTEST::COEFFWISE)
+	if (TEST == DMRG::CONVTEST::NORM_TEST or
+	    TEST == DMRG::CONVTEST::COEFFWISE)
 	{
 		Vref = Vout.state;
 	}
@@ -395,87 +396,25 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	++stat.N_halfsweeps;
 	
 	// calculate error
-	err_eigval = fabs(Eold-Vout.energy)/this->N_sites;
-	if (TEST == LANCZOS::CONVTEST::NORM_TEST or
-	    TEST == LANCZOS::CONVTEST::COEFFWISE)
+	err_eigval = abs(Eold-Vout.energy)/this->N_sites;
+	if (TEST == DMRG::CONVTEST::NORM_TEST or
+	    TEST == DMRG::CONVTEST::COEFFWISE)
 	{
-		err_state = fabs(1.-fabs(dot(Vout.state,Vref)));
+		err_state = abs(1.-abs(dot(Vout.state,Vref)));
 	}
-	else if (TEST == LANCZOS::CONVTEST::SQ_TEST)
+	else if (TEST == DMRG::CONVTEST::SQ_TEST)
 	{
-// 		Stopwatch<> HsqTimer;
-// 		DMRG::DIRECTION::OPTION DIR = (stat.N_halfsweeps%2==0) ? DMRG::DIRECTION::RIGHT : DMRG::DIRECTION::LEFT;
-// 		double avgHsq = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true,DIR)) : isReal(avg(Vout.state,H,H,Vout.state));
-// 		err_state = abs(avgHsq-pow(Vout.energy,2))/this->N_sites;
-// 		if (CHOSEN_VERBOSITY>=2)
-// 		{
-// 			lout << HsqTimer.info("<H^2>") << endl;
-// 		}
-		
-// 		if (stat.pivot == 1)
-// 		{
-// 			Stopwatch<> HsqTimer;
-// 			
-// 			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 1, DMRG::BROOM::QR);
-// 			build_R(H,Vout,0);
-// 			stat.pivot = 0;
-// 			
-// 			double err_state = 0.;
-// 			for (size_t l=0; l<this->N_sites; ++l)
-// 			{
-// 				Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR_NULL);
-// 				
-// 				Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
-// 				contract_GRALF (Heff[l].L, Vout.state.A[l], Heff[l].W, Vout.state.N[l], Heff[l].R, H.locBasis(l), H.opBasis(l), Err);
-// 				err_state += Err.squaredNorm().sum();
-// 				
-// 				if (l<N_sites-1)
-// 				{
-// 					Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
-// 					build_L(H,Vout,l+1);
-// 					stat.pivot = l;
-// 				}
-// 			}
-// 			
-// 			for (size_t l=this->N_sites-1; l>0; --l)
-// 			{
-// 				Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR_NULL);
-// 				
-// 				Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Y;
-// 				contract_R(Heff[l].R, Vout.state.A[l], H.W[l], Vout.state.N[l], H.locBasis(l), H.opBasis(l), Y);
-// 				
-// 				Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
-// 				contract_GRALF (Heff[l-1].L, Vout.state.A[l-1], Heff[l-1].W, Vout.state.N[l-1], Y, H.locBasis(l-1), H.opBasis(l-1), Err);
-// 				err_state += Err.squaredNorm().sum();
-// 				
-// 				Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
-// 				build_R(H,Vout,l-1);
-// 				stat.pivot = l-1;
-// 			}
-// 			
-// 			Vout.state.sweepStep(DMRG::DIRECTION::RIGHT, 0, DMRG::BROOM::QR);
-// 			build_L(H,Vout,1);
-// 			stat.pivot = 1;
-// 			
-// 			err_state /= this->N_sites;
-// 			
-// 			stat.CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
-// 			
-// 			if (CHOSEN_VERBOSITY>=2)
-// 			{
-// 				lout << HsqTimer.info("<H^2>") << endl;
-// 			}
-// 			
-// //			Mps<Symmetry,Scalar> HPsi;
-// //			HPsi.eps_svd = 1e-15;
-// //			OxV(H,Vout.state,HPsi);
-// //			Mps<Symmetry,Scalar> EPsi = Vout.state;
-// //			EPsi *= Vout.energy;
-// //			HPsi -= EPsi;
-// //			double err_exact = HPsi.dot(HPsi)/this->N_sites;
-// //			cout << "err_exact= " << err_exact << ", diff=" << abs(err_exact-err_state) << endl;
-// 		}
-		
+		Stopwatch<> HsqTimer;
+		DMRG::DIRECTION::OPTION DIR = (stat.N_halfsweeps%2==0) ? DMRG::DIRECTION::RIGHT : DMRG::DIRECTION::LEFT;
+		double avgHsq = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true,DIR)) : isReal(avg(Vout.state,H,H,Vout.state));
+		err_state = abs(avgHsq-pow(Vout.energy,2))/this->N_sites;
+		if (CHOSEN_VERBOSITY>=2)
+		{
+			lout << HsqTimer.info("<H^2>") << endl;
+		}
+	}
+	else if (TEST == DMRG::CONVTEST::TWO_SITE_VAR)
+	{		
 		Stopwatch<> HsqTimer;
 	
 		sweep_to_edge(H,Vout,true);
@@ -510,6 +449,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			contract_R(Heff[loc2].R, Vout.state.A[loc2], H.W[loc2], Vout.state.N[loc2], H.locBasis(loc2), H.opBasis(loc2), Y);
 		
 			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
+
 			contract_GRALF (Heff[loc1].L, Vout.state.A[loc1], Heff[loc1].W, Vout.state.N[loc1], Y, H.locBasis(loc1), H.opBasis(loc1), Err, DMRG::DIRECTION::RIGHT);
 			err_state += Err.squaredNorm().sum();
 		
@@ -525,22 +465,31 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	
 		if (CHOSEN_VERBOSITY>=2)
 		{
-			lout << HsqTimer.info("<H^2>") << endl;
+			lout << HsqTimer.info("Two site variance") << endl;
 		}
-	
-// 		Mps<Symmetry,Scalar> HPsi;
-// 		HPsi.eps_svd = 1e-15;
-// 		OxV(H,Vout.state,HPsi);
-// 		Mps<Symmetry,Scalar> EPsi = Vout.state;
-// 		EPsi *= Vout.energy;
-// 		HPsi -= EPsi;
-// 		double err_exact = HPsi.dot(HPsi)/this->N_sites;
-// 		cout << "err_exact= " << err_exact << ", err_state=" << err_state << ", diff=" << abs(err_exact-err_state) << endl;
+	}
+	else if(TEST == DMRG::CONVTEST::FULL_RESOLVENT)
+	{
+		Stopwatch<> HsqTimer;
+		Mps<Symmetry,Scalar> HPsi;
+		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
+		if constexpr(Symmetry::NON_ABELIAN) { HxV(H,Psi,HPsi,DMRG::VERBOSITY::HALFSWEEPWISE); }
+		else {HPsi.eps_svd = 1e-15; OxV(H,Psi,HPsi);}
+
+		Mps<Symmetry,Scalar> EPsi = Vout.state;
+		EPsi *= Vout.energy;
+		HPsi -= EPsi;
+
+		double err_state = HPsi.dot(HPsi)/this->N_sites;
+		if (CHOSEN_VERBOSITY>=2)
+		{
+			lout << HsqTimer.info("|| H|Psi>-E|Psi> ||") << endl;
+		}
 	}
 	
 	Eold = Vout.energy;
-	if (TEST == LANCZOS::CONVTEST::NORM_TEST or
-	    TEST == LANCZOS::CONVTEST::COEFFWISE)
+	if (TEST == DMRG::CONVTEST::NORM_TEST or
+	    TEST == DMRG::CONVTEST::COEFFWISE)
 	{
 		Vref = Vout.state;
 	}
@@ -613,7 +562,7 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
-edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE, LANCZOS::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t Dinit, size_t Dlimit, size_t max_halfsweeps, size_t min_halfsweeps, double max_alpha_rsvd_input, double eps_svd_input, size_t savePeriod)
+edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE, DMRG::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t Dinit, size_t Dlimit, size_t max_halfsweeps, size_t min_halfsweeps, double max_alpha_rsvd_input, double eps_svd_input, size_t savePeriod)
 {
 	tol_eigval = tol_eigval_input;
 	tol_state  = tol_state_input;
@@ -635,7 +584,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		}
 	};
 	
-	print_alpha_eps();
+	print_alpha_eps(); lout << endl;
 	
 	// average local dimension for later bond dimension increase
 	size_t dimqlocAvg = 0;

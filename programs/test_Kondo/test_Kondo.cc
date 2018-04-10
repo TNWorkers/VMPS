@@ -123,7 +123,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::KondoU1::StateXd> g_U1;
 	
 	VMPS::KondoU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, 1e3*tol_eigval,1e3*tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
+	DMRG_U1.edgeState(H_U1, g_U1, {N}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR, 1e3*tol_eigval,1e3*tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
 	
 //	VectorXd d_U1(L); d_U1.setZero();
 //	VectorXd n_U1(L); n_U1.setZero();
@@ -171,7 +171,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::KondoU1xU1::StateXd> g_U1xU1;
 	
 	VMPS::KondoU1xU1::Solver DMRG_U1xU1(VERB);
-	DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {M,N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {M,N}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_U1xU1 = Watch_U1xU1.time();
 	
@@ -260,7 +260,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1;
 	
 	VMPS::KondoSU2xU1::Solver DMRG_SU2xU1(VERB);
-	DMRG_SU2xU1.edgeState(H_SU2xU1, g_SU2xU1, {S,N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_SU2xU1.edgeState(H_SU2xU1, g_SU2xU1, {S,N}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_SU2xU1 = Watch_SU2xU1.time();
 	
@@ -318,7 +318,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::KondoU0xSU2::StateXd> g_U0xSU2;
 	
 	VMPS::KondoU0xSU2::Solver DMRG_U0xSU2(VERB);
-	DMRG_U0xSU2.edgeState(H_U0xSU2, g_U0xU1, {T}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_U0xSU2.edgeState(H_U0xSU2, g_U0xU1, {T}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::TWO_SITE_VAR, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 	
 	t_U0xSU2 = Watch_U0xSU2.time();
 

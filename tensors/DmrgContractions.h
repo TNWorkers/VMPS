@@ -576,6 +576,67 @@ void contract_R (const Biped<Symmetry,MatrixType> &Rold,
 	}
 }
 
+// template<typename Symmetry, typename MatrixType>
+// void contract_TT (const Tripod<Symmetry,MatrixType>  &T1,
+// 				  const Tripod<Symmetry,MatrixType>  &T2,
+// 				  Biped<Symmetry,MatrixType> &Res)
+// {
+// 	Res.clear();
+// 	Res.setZero();
+	
+// 	// for (size_t s=0; s<qloc.size(); ++s)
+// 	// {
+// 		for (size_t qT1=0; qT1<T1.dim; ++qT1)
+// 		{
+// 			// auto qRouts = Symmetry::reduceSilent(Rold.out[qR],Symmetry::flip(qloc[s]));
+// 			// auto qRins = Symmetry::reduceSilent(Rold.in[qR],Symmetry::flip(qloc[s]));
+			
+// 			// for(const auto& qRout : qRouts)
+// 			// for(const auto& qRin : qRins)
+// 			// {
+// 			qarray3<Symmetry::Nq> quple = { T1.out(qT1),T1.in(qT1),T1.mid(qT1); }
+// 			if(auto qT2=T2.dict.find(quple); qT2 != T2.dict.end())
+// 			{
+// 				qarray<Symmetry::Nq> new_qin  = T1.in(qT1);
+// 				qarray<Symmetry::Nq> new_qout = T1.out(qT2->second);
+// 				qarray2<Symmetry::Nq> quple2 = {new_qin, new_qout};
+// 				if (!Symmetry::validate(quple2)) {continue;}
+					
+// 				double factor_cgc = Symmetry::coeff_rightOrtho(Abra[s].out[q1->second],
+// 															   Abra[s].in[q1->second]);
+					
+// 					if (Rold.block[qR].rows() != 0)
+// 					{
+// 						MatrixType Mtmp;
+// 						optimal_multiply(factor_cgc,
+// 						                 Aket[s].block[q2->second],
+// 						                 Rold.block[qR],
+// 						                 Abra[s].block[q1->second].adjoint(),
+// 						                 Mtmp);
+						
+// 						auto it = Rnew.dict.find(quple);
+// 						if (it != Rnew.dict.end())
+// 						{
+// 							if (Rnew.block[it->second].rows() != Mtmp.rows() or 
+// 								Rnew.block[it->second].cols() != Mtmp.cols())
+// 							{
+// 								Rnew.block[it->second] = Mtmp;
+// 							}
+// 							else
+// 							{
+// 								Rnew.block[it->second] += Mtmp;
+// 							}
+// 						}
+// 						else
+// 						{
+// 							Rnew.push_back(quple, Mtmp);
+// 						}
+// 					}
+// 				}
+// 			}
+// 	// }
+// }
+
 template<typename Symmetry, typename Scalar>
 void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
                      const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
@@ -588,7 +649,7 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
                      DMRG::DIRECTION::OPTION DIR)
 {
 	std::array<typename Symmetry::qType,3> qCheck;
-	Scalar factor_cgc;
+	Scalar factor_cgc, factor_merge;
 	
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
@@ -618,15 +679,27 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 						if (Abra[s1].block[qAbra].size() == 0) {continue;}
 						if constexpr (Symmetry::NON_ABELIAN)
 						{
-							factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
-							                                    quple[2], qOp[k], L.mid(qL),
-							                                    Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
+							if (DIR == DMRG::DIRECTION::RIGHT)
+							{
+								factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
+																	quple[2], qOp[k], L.mid(qL),
+																	Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
+								factor_merge = Symmetry::coeff_rightOrtho(Abra[s1].out[qAbra],Aket[s2].out[qAket]);
+							}
+							else if (DIR == DMRG::DIRECTION::LEFT)
+							{
+								factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
+																	quple[2], qOp[k], L.mid(qL),
+																	Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
+								factor_merge = Symmetry::coeff_rightOrtho(L.in(qL),L.out(qL));
+							}
 						}
 						else
 						{
 							factor_cgc = 1.;
+							factor_merge = 1.;
 						}
-						if (std::abs(factor_cgc) < ::mynumeric_limits<Scalar>::epsilon()) {continue;}
+						if (std::abs(factor_cgc*factor_merge) < ::mynumeric_limits<Scalar>::epsilon()) {continue;}
 						
 						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
 						for (SparseMatrixXd::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
@@ -640,21 +713,21 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 								Matrix<Scalar,Dynamic,Dynamic> Mtmp;
 								if (DIR == DMRG::DIRECTION::RIGHT)
 								{
-									optimal_multiply(iW.value() * factor_cgc,
-								                 R.block[qR->second][a2][0],
-								                 Abra[s1].block[qAbra].adjoint(),
-								                 L.block[qL][a1][0],
-								                 Aket[s2].block[qAket],
-								                 Mtmp);
+									optimal_multiply(iW.value() * factor_cgc * factor_merge,
+													 R.block[qR->second][a2][0],
+													 Abra[s1].block[qAbra].adjoint(),
+													 L.block[qL][a1][0],
+													 Aket[s2].block[qAket],
+													 Mtmp);
 								}
 								else if (DIR == DMRG::DIRECTION::LEFT)
 								{
-									optimal_multiply(iW.value() * factor_cgc,
-									             Aket[s2].block[qAket],
-								                 R.block[qR->second][a2][0],
-								                 Abra[s1].block[qAbra].adjoint(),
-								                 L.block[qL][a1][0],
-								                 Mtmp);
+									optimal_multiply(iW.value() * factor_cgc * factor_merge,
+													 Aket[s2].block[qAket],
+													 R.block[qR->second][a2][0],
+													 Abra[s1].block[qAbra].adjoint(),
+													 L.block[qL][a1][0],
+													 Mtmp);
 								}
 								
 								qarray2<Symmetry::Nq> qTout; 

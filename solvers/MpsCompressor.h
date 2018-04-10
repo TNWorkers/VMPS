@@ -24,7 +24,7 @@
 #include "pivot/DmrgPivotOverlap2.h"
 
 /**
- * Compressor for MPS. Nedded to obtain various operations containing MPSs and MPOs with a variational approach.
+ * Compressor for MPS. Needed to obtain various operations containing MPSs and MPOs with a variational approach.
  * \describe_Symmetry
  * \describe_Scalar
  * \describe_MpoScalar
@@ -32,7 +32,7 @@
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>
 class MpsCompressor
 {
-typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
+	typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 
 public:
 	
@@ -94,7 +94,7 @@ public:
 	 */
 	template<typename MpOperator>
 	void varCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, qarray<Symmetry::Nq> Qtot_input,
-	                  size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1, 
+	                  size_t Dcutoff_input, double tol=1e-14, size_t max_halfsweeps=40, size_t min_halfsweeps=1, 
 	                  DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RANDOM);
 	
 	/**

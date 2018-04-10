@@ -366,7 +366,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 	#endif
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
-	for(size_t k=0; k<qOp.size(); ++k)
+	for (size_t k=0; k<qOp.size(); ++k)
 	{
 		if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc[s2],qOp[k],qloc[s1]})) {continue;}
 		

@@ -275,7 +275,6 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, Mps<Symmetry,Scalar> &Vinout,
  * \param Vin2 : input Mps \f$\left|T_{n-2}\right>\f$
  * \param Vout : output Mps \f$\left|T_{n}\right>\f$
  * \param VERBOSITY : verbosity level
- * \warning : Not implemented for SU(2) symmetries.
  */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void polyIter (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, 
