@@ -577,14 +577,15 @@ void contract_R (const Biped<Symmetry,MatrixType> &Rold,
 }
 
 template<typename Symmetry, typename Scalar>
-void contract_botmid (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
-                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-                    const vector<vector<vector<SparseMatrixXd> > > &W, 
-                    const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
-                    const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
-                    const vector<qarray<Symmetry::Nq> > &qloc,
-                    const vector<qarray<Symmetry::Nq> > &qOp,
-                    Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Tout)
+void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
+                     const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                     const vector<vector<vector<SparseMatrixXd> > > &W, 
+                     const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+                     const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
+                     const vector<qarray<Symmetry::Nq> > &qloc,
+                     const vector<qarray<Symmetry::Nq> > &qOp,
+                     Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Tout,
+                     DMRG::DIRECTION::OPTION DIR)
 {
 	std::array<typename Symmetry::qType,3> qCheck;
 	Scalar factor_cgc;
@@ -637,14 +638,34 @@ void contract_botmid (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 								R.block[qR->second][a2][0].size() != 0)
 							{
 								Matrix<Scalar,Dynamic,Dynamic> Mtmp;
-								optimal_multiply(iW.value() * factor_cgc,
+								if (DIR == DMRG::DIRECTION::RIGHT)
+								{
+									optimal_multiply(iW.value() * factor_cgc,
 								                 R.block[qR->second][a2][0],
 								                 Abra[s1].block[qAbra].adjoint(),
 								                 L.block[qL][a1][0],
 								                 Aket[s2].block[qAket],
 								                 Mtmp);
+								}
+								else if (DIR == DMRG::DIRECTION::LEFT)
+								{
+									optimal_multiply(iW.value() * factor_cgc,
+									             Aket[s2].block[qAket],
+								                 R.block[qR->second][a2][0],
+								                 Abra[s1].block[qAbra].adjoint(),
+								                 L.block[qL][a1][0],
+								                 Mtmp);
+								}
 								
-								qarray2<Symmetry::Nq> qTout = {Aket[s2].out[qAket], Aket[s2].out[qAket]};
+								qarray2<Symmetry::Nq> qTout; 
+								if (DIR == DMRG::DIRECTION::RIGHT)
+								{
+									qTout = {Aket[s2].out[qAket], Aket[s2].out[qAket]};
+								}
+								 else if (DIR == DMRG::DIRECTION::LEFT)
+								{
+									qTout = {Aket[s2].in[qAket], Aket[s2].in[qAket]};
+								}
 								auto it = Tout.dict.find(qTout);
 								if (it != Tout.dict.end())
 								{
