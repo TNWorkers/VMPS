@@ -675,13 +675,33 @@ sweepStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout)
 	
 	double DeltaEtrunc = dot(Vtmp1,Vtmp2)-Vout.energy;
 	
-	if (DeltaEtrunc<0.3*DeltaEopt) {Vout.state.alpha_rsvd *= sqrt(10.);}
-	else                           {Vout.state.alpha_rsvd /= sqrt(10.);}
+	if (DeltaEtrunc < 0.3*DeltaEopt) {Vout.state.alpha_rsvd *= sqrt(10.);}
+	else                             {Vout.state.alpha_rsvd /= sqrt(10.);}
 	Vout.state.alpha_rsvd = min(Vout.state.alpha_rsvd, max_alpha_rsvd);
 	
-	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
+//	double f;
+//	double epsilon = 1e-9;
+//	if (abs(DeltaEopt) < epsilon or abs(DeltaEtrunc) < epsilon)
+//	{
+//		if (abs(DeltaEtrunc) > epsilon) {f = 0.9;}
+//		else                            {f = 1.001;}
+//	}
+//	else
+//	{
+//		double r = abs(DeltaEtrunc) / abs(DeltaEopt);
+//		if (DeltaEtrunc < 0.) {f = 2.*(r+1.);}
+//		else if (r < 0.05)    {f = 1.2-r;}
+//		else if (r > 0.3)     {f = 1./(r+0.75);}
+//	}
+//	f = max(0.1,min(2.,f)); // limit between [0.1,2]
+//	Vout.state.alpha_rsvd *= f;
+//	Vout.state.alpha_rsvd = max(1e-11,min(100.,Vout.state.alpha_rsvd)); // limit between [1e-11,100]
+//	
+//	cout << "ΔEopt=" << DeltaEopt << ", ΔEtrunc=" << DeltaEtrunc << ", f=" << f << ", alpha=" << Vout.state.alpha_rsvd << endl;
+	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
-		lout << "DeltaEopt=" << DeltaEopt << ", DeltaEtrunc=" << DeltaEtrunc << ", α=" << Vout.state.alpha_rsvd << endl;
+		lout << "ΔEopt=" << DeltaEopt << ", ΔEtrunc=" << DeltaEtrunc << ", α=" << Vout.state.alpha_rsvd << endl;
 	}
 }
 
