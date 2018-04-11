@@ -93,8 +93,8 @@ int main (int argc, char* argv[])
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	dt = args.get<double>("dt",0.1);
 	
-	Dinit  = args.get<int>("Dmin",2);
-	Dlimit = args.get<int>("Dmax",100);
+	Dinit  = args.get<int>("Dinit",2);
+	Dlimit = args.get<int>("Dlimit",100);
 	Imin   = args.get<int>("Imin",2);
 	Imax   = args.get<int>("Imax",50);
 	tol_eigval = args.get<double>("tol_eigval",1e-6);
@@ -235,16 +235,16 @@ int main (int argc, char* argv[])
 //	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SS(i,j), g_SU2.state); }
 	
 	// --------SU(2) time propagation---------
-	VMPS::HeisenbergSU2::StateXcd Psi = g_SU2.state.cast<complex<double> >();
-	TDVPPropagator<VMPS::HeisenbergSU2,Sym::SU2<Sym::SpinSU2>,double,complex<double>,VMPS::HeisenbergSU2::StateXcd> TDVP(H_SU2,Psi);
-	TDVP.t_step0(H_SU2,Psi, -1.i*dt, 1,1e-8);
-	cout << TDVP.info() << endl;
-	complex<double> phi_tp = g_SU2.state.cast<complex<double> >().dot(Psi);
-	complex<double> phi_ex = exp(-1.i*g_SU2.energy*dt);
-	cout << "phase: " << phi_tp << ", " << phi_ex << ", diff=" << abs(phi_tp-phi_ex) << endl;
-	double E_tp = isReal(avg(Psi,H_SU2,Psi));
-	double E_ex = isReal(avg(g_SU2.state,H_SU2,g_SU2.state));
-	cout << "energy: " << E_tp << ", " << E_ex << ", diff=" << abs(E_tp-E_ex) << endl;
+//	VMPS::HeisenbergSU2::StateXcd Psi = g_SU2.state.cast<complex<double> >();
+//	TDVPPropagator<VMPS::HeisenbergSU2,Sym::SU2<Sym::SpinSU2>,double,complex<double>,VMPS::HeisenbergSU2::StateXcd> TDVP(H_SU2,Psi);
+//	TDVP.t_step0(H_SU2,Psi, -1.i*dt, 1,1e-8);
+//	cout << TDVP.info() << endl;
+//	complex<double> phi_tp = g_SU2.state.cast<complex<double> >().dot(Psi);
+//	complex<double> phi_ex = exp(-1.i*g_SU2.energy*dt);
+//	cout << "phase: " << phi_tp << ", " << phi_ex << ", diff=" << abs(phi_tp-phi_ex) << endl;
+//	double E_tp = isReal(avg(Psi,H_SU2,Psi));
+//	double E_ex = isReal(avg(g_SU2.state,H_SU2,g_SU2.state));
+//	cout << "energy: " << E_tp << ", " << E_ex << ", diff=" << abs(E_tp-E_ex) << endl;
 	
 	//--------output---------
 	TextTable T( '-', '|', '+' );

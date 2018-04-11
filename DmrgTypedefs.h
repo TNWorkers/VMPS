@@ -62,12 +62,12 @@ namespace Sym{
 
 std::ostream& operator<< (std::ostream& s, Sym::KIND l)
 {
-	if      (l==Sym::KIND::S)  {s << "S";}
-	else if (l==Sym::KIND::T)  {s << "T";}
-	else if (l==Sym::KIND::N)  {s << "N";}
-	else if (l==Sym::KIND::M)  {s << "M";}
-	else if (l==Sym::KIND::Nup)  {s << "N↑";}
-	else if (l==Sym::KIND::Ndn)  {s << "N↓";}
+	if      (l==Sym::KIND::S)   {s << "S";}
+	else if (l==Sym::KIND::T)   {s << "T";}
+	else if (l==Sym::KIND::N)   {s << "N";}
+	else if (l==Sym::KIND::M)   {s << "M";}
+	else if (l==Sym::KIND::Nup) {s << "N↑";}
+	else if (l==Sym::KIND::Ndn) {s << "N↓";}
 	return s;
 }
 
@@ -240,11 +240,10 @@ struct DMRG
 	{
 		enum OPTION
 		{
-			TWO_SITE_VAR, /**<Most efficient algorithm: the two-site variance as proposed in arXiv:1711.01104.*/
+			TWO_SITE_VAR, /**<Most efficient algorithm: the two-site variance as proposed in Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104.*/
 			SQ_TEST, /**<Full variance of the energy: <H²>-<H>².*/
-			NORM_TEST, /**< Overlap to state from previous calculation. */
-			FULL_RESOLVENT, /**< This computes the norm of the full resolvent: || H|Psi> - E|Epsi> ||.*/
-			COEFFWISE /**< I guess this is not used anymore --> deprecated.*/
+			NORM_TEST, /**< Overlap to state from previous calculation. Not a very good measure.*/
+			FULL_RESOLVENT /**< This computes the norm of the full resolvent: ‖H|Ψ>-E|Ψ>‖.*/
 		};
 	};
 };
