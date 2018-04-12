@@ -459,6 +459,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			contract_R(Heff[loc2].R, Vout.state.A[loc2], H.W[loc2], N, H.locBasis(loc2), H.opBasis(loc2), Y);
 			
 			// complete the contraction in Fig. 4 bottom from Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104
+			N.clear();
 			Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc1, N);
 			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
 			contract_GRALF (Heff[loc1].L, Vout.state.A[loc1], Heff[loc1].W, N, Y, 

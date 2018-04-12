@@ -115,16 +115,16 @@ int main (int argc, char* argv[])
 	#endif
 	
 	//--------U(0)---------
-//	lout << endl << "--------U(0)---------" << endl << endl;
-//	
-//	Stopwatch<> Watch_U0;
-//	VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
-//	lout << H_U0.info() << endl;
-//	
-//	VMPS::Heisenberg::Solver DMRG_U0(VERB);
-//	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, tol_eigval,tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
-//	
-//	t_U0 = Watch_U0.time();
+	lout << endl << "--------U(0)---------" << endl << endl;
+	
+	Stopwatch<> Watch_U0;
+	VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
+	lout << H_U0.info() << endl;
+	
+	VMPS::Heisenberg::Solver DMRG_U0(VERB);
+	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, tol_eigval,tol_state, Dinit,3*Dlimit, Imax,Imin, alpha,eps_svd);
+	
+	t_U0 = Watch_U0.time();
 	
 //	
 //	// observables
@@ -179,56 +179,56 @@ int main (int argc, char* argv[])
 //	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
 	
 	// dynamics (of Néel state)
-	if (CALC_DYNAMICS)
-	{
-		lout << "-------DYNAMICS-------" << endl;
-		int Ldyn = 12;
-		vector<double> Jz_list = {0., -1., -2., -4.};
-		
-		for (const auto& Jz:Jz_list)
-		{
-			VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
-			lout << H_U1t.info() << endl;
-			VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
-			TDVPPropagator<VMPS::HeisenbergU1XXZ,Sym::U1<Sym::SpinU1>,double,complex<double>,VMPS::HeisenbergU1XXZ::StateXcd> TDVP(H_U1t,Psi);
-			
-			double t = 0;
-			ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
-			for (int i=0; i<=static_cast<int>(6./dt); ++i)
-			{
-				double res = 0;
-				for (int l=0; l<Ldyn; ++l)
-				{
-					res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
-				}
-				res /= Ldyn;
-				if(VERB != DMRG::VERBOSITY::SILENT) {lout << "t=" << t << ", <Sz>=" << res << endl;}
-				Filer << t << "\t" << res << endl;
-				
-				TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
-				if(VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
-				t += dt;
-			}
-			Filer.close();
-		}
-	}
+//	if (CALC_DYNAMICS)
+//	{
+//		lout << "-------DYNAMICS-------" << endl;
+//		int Ldyn = 12;
+//		vector<double> Jz_list = {0., -1., -2., -4.};
+//		
+//		for (const auto& Jz:Jz_list)
+//		{
+//			VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
+//			lout << H_U1t.info() << endl;
+//			VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
+//			TDVPPropagator<VMPS::HeisenbergU1XXZ,Sym::U1<Sym::SpinU1>,double,complex<double>,VMPS::HeisenbergU1XXZ::StateXcd> TDVP(H_U1t,Psi);
+//			
+//			double t = 0;
+//			ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
+//			for (int i=0; i<=static_cast<int>(6./dt); ++i)
+//			{
+//				double res = 0;
+//				for (int l=0; l<Ldyn; ++l)
+//				{
+//					res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
+//				}
+//				res /= Ldyn;
+//				if(VERB != DMRG::VERBOSITY::SILENT) {lout << "t=" << t << ", <Sz>=" << res << endl;}
+//				Filer << t << "\t" << res << endl;
+//				
+//				TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
+//				if(VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
+//				t += dt;
+//			}
+//			Filer.close();
+//		}
+//	}
 	
 	// --------SU(2)---------
-//	lout << endl << "--------SU(2)---------" << endl << endl;
-//	
-//	Stopwatch<> Watch_SU2;
-//	VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
-//	lout << H_SU2.info() << endl;
-//	
-//	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
-//	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
-//	
-//	t_SU2 = Watch_SU2.time();
+	lout << endl << "--------SU(2)---------" << endl << endl;
+	
+	Stopwatch<> Watch_SU2;
+	VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
+	lout << H_SU2.info() << endl;
+	
+	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
+	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha,eps_svd);
+	
+	t_SU2 = Watch_SU2.time();
 	
 //	MatrixXd SpinCorr_SU2(L,L); SpinCorr_SU2.setZero();
 //	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SS(i,j), g_SU2.state); }
 	
-	// --------SU(2) time propagation---------
+//	 --------SU(2) time propagation---------
 //	VMPS::HeisenbergSU2::StateXcd Psi = g_SU2.state.cast<complex<double> >();
 //	TDVPPropagator<VMPS::HeisenbergSU2,Sym::SU2<Sym::SpinSU2>,double,complex<double>,VMPS::HeisenbergSU2::StateXcd> TDVP(H_SU2,Psi);
 //	TDVP.t_step0(H_SU2,Psi, -1.i*dt, 1,1e-8);
