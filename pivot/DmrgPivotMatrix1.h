@@ -62,6 +62,11 @@ void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 				if (H.L.block[qL][iW.row()][0].size() != 0 and 
 				    H.R.block[qR][iW.col()][0].size() != 0)
 				{
+//					print_size(H.L.block[qL][iW.row()][0],"H.L.block[qL][iW.row()][0]");
+//					print_size(Vin.data[s2].block[q2], "Vin.data[s2].block[q2]");
+//					print_size(H.R.block[qR][iW.col()][0], "H.R.block[qR][iW.col()][0]");
+//					cout << endl;
+					
 					if (Vout.data[s1].block[q1].rows() != H.L.block[qL][iW.row()][0].rows() or
 					    Vout.data[s1].block[q1].cols() != H.R.block[qR][iW.col()][0].cols())
 					{

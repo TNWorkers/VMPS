@@ -130,6 +130,11 @@ std::vector<size_t> mult_cost (const MatrixTypeA &A, const MatrixTypeB &B, const
 	return out;
 }
 
+template<typename MatrixType>
+inline void print_size (const MatrixType &M, string label)
+{
+	std::cout << label << ": " << M.rows() << "x" << M.cols() << std::endl;
+}
 
 /**Multiplies 3 matrices by using the optimal order of operations.*/
 template<typename MatrixTypeA, typename MatrixTypeB, typename MatrixTypeC, typename MatrixTypeR, typename Scalar>
@@ -137,9 +142,9 @@ void optimal_multiply (Scalar alpha, const MatrixTypeA &A, const MatrixTypeB &B,
 {
 	if (DEBUG)
 	{
-		std::cout << "A: " << A.rows() << "x" << A.cols() << endl;
-		std::cout << "B: " << B.rows() << "x" << B.cols() << endl;
-		std::cout << "C: " << C.rows() << "x" << C.cols() << endl;
+		print_size(A,"A");
+		print_size(B,"B");
+		print_size(C,"C");
 		std::cout << endl;
 	}
 	
@@ -166,10 +171,10 @@ void optimal_multiply (Scalar alpha, const MatrixTypeA &A, const MatrixTypeB &B,
 {
 	if (DEBUG)
 	{
-		std::cout << "A: " << A.rows() << "x" << A.cols() << endl;
-		std::cout << "B: " << B.rows() << "x" << B.cols() << endl;
-		std::cout << "C: " << C.rows() << "x" << C.cols() << endl;
-		std::cout << "D: " << D.rows() << "x" << D.cols() << endl;
+		print_size(A,"A");
+		print_size(B,"B");
+		print_size(C,"C");
+		print_size(D,"D");
 		std::cout << endl;
 	}
 	

@@ -31,7 +31,7 @@ public:
 	
 	void edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND,
-	                DMRG::CONVTEST::OPTION TEST = DMRG::CONVTEST::TWO_SITE_VAR,
+	                DMRG::CONVTEST::OPTION TEST = DMRG::CONVTEST::VAR_2SITE,
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-6, 
 	                size_t Dinit=4, size_t Dlimit=500, 
 	                size_t max_halfsweeps=50, size_t min_halfsweeps=6, 
@@ -44,7 +44,7 @@ public:
 	              double max_alpha_rsvd_input=1., double eps_svd_input=1e-7);
 	void halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND, 
-	                DMRG::CONVTEST::OPTION TEST = DMRG::CONVTEST::TWO_SITE_VAR);
+	                DMRG::CONVTEST::OPTION TEST = DMRG::CONVTEST::VAR_2SITE);
 	void cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	              LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND);
 	
@@ -346,7 +346,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	if (CHOSEN_VERBOSITY>=2) {lout << PrepTimer.info("initial state & sweep") << endl;}
 	
 	// initial energy
-	if(stat.pivot == 0)
+	if (stat.pivot == 0)
 	{
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rtmp;
 		contract_R(Heff[0].R, Vout.state.A[0], H.W[0], Vout.state.A[0], H.locBasis(0), H.opBasis(0), Rtmp);
@@ -400,7 +400,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	{
 		err_state = abs(1.-abs(dot(Vout.state,Vref)));
 	}
-	else if (TEST == DMRG::CONVTEST::SQ_TEST)
+	else if (TEST == DMRG::CONVTEST::VAR_HSQ)
 	{
 		Stopwatch<> HsqTimer;
 		DMRG::DIRECTION::OPTION DIR = (stat.N_halfsweeps%2==0) ? DMRG::DIRECTION::RIGHT : DMRG::DIRECTION::LEFT;
@@ -413,7 +413,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			lout << HsqTimer.info("<H^2>") << endl;
 		}
 	}
-	else if (TEST == DMRG::CONVTEST::TWO_SITE_VAR)
+	else if (TEST == DMRG::CONVTEST::VAR_2SITE)
 	{
 		Stopwatch<> HsqTimer;
 		
@@ -424,11 +424,13 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		for (size_t l=0; l<this->N_sites; ++l)
 		{
 			// calculate the nullspace tensor F/G with QR_NULL
-			Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::QR_NULL);
+			vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > N;
+//			Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::QR_NULL, NULL, false, &N);
+			Vout.state.calc_N(stat.CURRENT_DIRECTION, stat.pivot, N);
 			
 			// contract Fig. 4 top from Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104
 			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
-			contract_GRALF (Heff[stat.pivot].L, Vout.state.A[stat.pivot], Heff[stat.pivot].W, Vout.state.N[stat.pivot], Heff[stat.pivot].R, 
+			contract_GRALF (Heff[stat.pivot].L, Vout.state.A[stat.pivot], Heff[stat.pivot].W, N, Heff[stat.pivot].R, 
 			                H.locBasis(stat.pivot), H.opBasis(stat.pivot), Err, stat.CURRENT_DIRECTION);
 			err_state += Err.squaredNorm().sum();
 			
@@ -449,15 +451,17 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			size_t loc2 = (stat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? stat.pivot+1 : stat.pivot;
 			
 			// calculate the nullspace tensor F/G with QR_NULL
-			Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::QR_NULL);
+			vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > N;
+			Vout.state.calc_N(DMRG::DIRECTION::LEFT, loc2, N);
 			
 			// pre-contract the right site
 			Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Y;
-			contract_R(Heff[loc2].R, Vout.state.A[loc2], H.W[loc2], Vout.state.N[loc2], H.locBasis(loc2), H.opBasis(loc2), Y);
+			contract_R(Heff[loc2].R, Vout.state.A[loc2], H.W[loc2], N, H.locBasis(loc2), H.opBasis(loc2), Y);
 			
 			// complete the contraction in Fig. 4 bottom from Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104
+			Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc1, N);
 			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
-			contract_GRALF (Heff[loc1].L, Vout.state.A[loc1], Heff[loc1].W, Vout.state.N[loc1], Y, 
+			contract_GRALF (Heff[loc1].L, Vout.state.A[loc1], Heff[loc1].W, N, Y, 
 			                H.locBasis(loc1), H.opBasis(loc1), Err, DMRG::DIRECTION::RIGHT);
 			err_state += Err.squaredNorm().sum();
 			
@@ -477,8 +481,21 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		{
 			lout << HsqTimer.info("2-site variance") << endl;
 		}
+		
+//		Mps<Symmetry,Scalar> HxPsi;
+//		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
+//		if constexpr (Symmetry::NON_ABELIAN) {HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);}
+//		else {HxPsi.eps_svd = 0.; OxV(H,Psi,HxPsi);}
+//		
+//		Mps<Symmetry,Scalar> ExPsi = Vout.state;
+//		ExPsi *= Vout.energy;
+//		HxPsi -= ExPsi;
+//		
+//		double err_exact = HxPsi.dot(HxPsi) / this->N_sites;
+//		
+//		cout << "err_state=" << err_state << ", err_exact=" << err_exact << ", diff=" << abs(err_state-err_exact) << endl;
 	}
-	else if (TEST == DMRG::CONVTEST::FULL_RESOLVENT)
+	else if (TEST == DMRG::CONVTEST::VAR_FULL)
 	{
 		Stopwatch<> HsqTimer;
 		Mps<Symmetry,Scalar> HxPsi;
@@ -671,6 +688,11 @@ sweepStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout)
 	// adapt alpha
 	PivotVector<Symmetry,Scalar> Vtmp1(Vout.state.A[stat.pivot]);
 	PivotVector<Symmetry,Scalar> Vtmp2;
+	Heff[stat.pivot].W = H.W[stat.pivot];
+	precalc_blockStructure (Heff[stat.pivot].L, Vout.state.A[stat.pivot], Heff[stat.pivot].W, Vout.state.A[stat.pivot], Heff[stat.pivot].R, 
+		                        H.locBasis(stat.pivot), H.opBasis(stat.pivot), Heff[stat.pivot].qlhs, Heff[stat.pivot].qrhs,
+		                        Heff[stat.pivot].factor_cgcs);
+	Heff[stat.pivot].qloc = H.locBasis(stat.pivot);
 	HxV(Heff[stat.pivot], Vtmp1, Vtmp2);
 	
 	double DeltaEtrunc = dot(Vtmp1,Vtmp2)-Vout.energy;
@@ -711,7 +733,7 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LA
 {
 	double Ei = Vout.energy;
 	
-	if (Heff[stat.pivot].qloc.size() == 0)
+//	if (Heff[stat.pivot].qloc.size() == 0)
 	{
 		Heff[stat.pivot].W = H.W[stat.pivot];
 		precalc_blockStructure (Heff[stat.pivot].L, Vout.state.A[stat.pivot], Heff[stat.pivot].W, Vout.state.A[stat.pivot], Heff[stat.pivot].R, 

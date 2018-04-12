@@ -52,6 +52,10 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 					swap(quple[0], quple[1]);
 					size_t qAbra = get<1>(ix[n]);
 					size_t qAket = get<2>(ix[n]);
+					
+					if (Aket[s2].block[qAket].size() == 0) {continue;}
+					if (Abra[s1].block[qAbra].size() == 0) {continue;}
+					
 					if constexpr ( Symmetry::NON_ABELIAN )
 					{
 						factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
@@ -68,16 +72,16 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 						{
 							size_t a1 = iW.row();
 							size_t a2 = iW.col();
-
+							
 							if (Lold.block[qL][a1][0].rows() != 0)
 							{
 								MatrixType Mtmp;
 								optimal_multiply(factor_cgc*iW.value(),
-												 Abra[s1].block[qAbra].adjoint(),
+								                 Abra[s1].block[qAbra].adjoint(),
 												 Lold.block[qL][a1][0],
 												 Aket[s2].block[qAket],
 												 Mtmp);
-					
+								
 								auto it = Lnew.dict.find(quple);
 								if (it != Lnew.dict.end())
 								{
@@ -713,6 +717,7 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 								Matrix<Scalar,Dynamic,Dynamic> Mtmp;
 								if (DIR == DMRG::DIRECTION::RIGHT)
 								{
+									// RALF
 									optimal_multiply(iW.value() * factor_cgc * factor_merge,
 													 R.block[qR->second][a2][0],
 													 Abra[s1].block[qAbra].adjoint(),
@@ -722,6 +727,7 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 								}
 								else if (DIR == DMRG::DIRECTION::LEFT)
 								{
+									// GRAL
 									optimal_multiply(iW.value() * factor_cgc * factor_merge,
 													 Aket[s2].block[qAket],
 													 R.block[qR->second][a2][0],
