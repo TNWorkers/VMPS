@@ -575,6 +575,11 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 			set<qarray<Nq> > qset_tmp;
 			for (size_t s=0; s<qloc[l_frst].size(); ++s)
 			{
+				//This line should change if we want (left QN) = (right QN) which is required for VUMPS for example
+				//Instead of inserting qloc[l_frst][s] one needs to shift the local QN by the total density of the desired target QN
+				//For Abelian symmetries one would have qloc[l_frst][s]-Qtot/L which would require rational QN --> see todo in qarray.
+				//For SU(2) the situation might be more tricky and we cant just shift the QN but also need to apply an factor to the Amatrix,
+				//which is until now not constructed... --> think about that.
 				qset_tmp.insert(qloc[l_frst][s]);
 			}
 			
