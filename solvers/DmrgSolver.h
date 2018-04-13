@@ -33,14 +33,14 @@ public:
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND,
 	                DMRG::CONVTEST::OPTION TEST = DMRG::CONVTEST::VAR_2SITE,
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-6, 
-	                size_t Dinit=4, size_t Dlimit=500, 
+	                size_t Dinit=4, size_t Dlimit=500, int Qinit=50,
 	                size_t max_halfsweeps=50, size_t min_halfsweeps=6, 
                     double max_alpha_rsvd_input=1., double eps_svd_input=1e-7, 
 	                size_t savePeriod=0);
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
-	void prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, bool useState=false, size_t Dinit=5,
+	void prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, bool useState=false, size_t Dinit=5, int Qinit=50,
 	              double max_alpha_rsvd_input=1., double eps_svd_input=1e-7);
 	void halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND, 
@@ -222,7 +222,7 @@ overhead (MEMUNIT memunit) const
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
-prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, bool USE_STATE, size_t Dinit,
+prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, bool USE_STATE, size_t Dinit, int Qinit,
          double max_alpha_rsvd_input, double eps_svd_input)
 {
 	N_sites = H.length();
@@ -231,11 +231,10 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	max_alpha_rsvd = max_alpha_rsvd_input;
 	
 	Stopwatch<> PrepTimer;
-	
 	if (!USE_STATE)
 	{
 		// resize Vout
-		Vout.state = Mps<Symmetry,Scalar>(H, Dinit, Qtot_input);
+		Vout.state = Mps<Symmetry,Scalar>(H, Dinit, Qtot_input, Qinit);
 		Vout.state.N_sv = Dinit;
 		Vout.state.setRandom();
 	}
@@ -246,7 +245,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	Heff.resize(N_sites);
 	Heff[0].L.setVacuum();
 	Heff[N_sites-1].R.setTarget(qarray3<Nq>{Qtot_input, Qtot_input, Symmetry::qvacuum()});
-	
+
 	//if the SweepStatus is default initialized (pivot==-1), one initial sweep from right-to-left and N_halfsweeps = N_sweepsteps = 0,
 	//otherwise prepare for continuing at the given SweepStatus.
 	if (stat.pivot == -1)
@@ -292,6 +291,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 			}
 		}
 	}
+
 //	// initial sweep, left-to-right:
 //	for (size_t l=0; l<N_sites-1; ++l)
 //	{
@@ -344,7 +344,6 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	}
 	
 	if (CHOSEN_VERBOSITY>=2) {lout << PrepTimer.info("initial state & sweep") << endl;}
-	
 	// initial energy
 	if (stat.pivot == 0)
 	{
@@ -589,12 +588,14 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
-edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE, DMRG::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t Dinit, size_t Dlimit, size_t max_halfsweeps, size_t min_halfsweeps, double max_alpha_rsvd_input, double eps_svd_input, size_t savePeriod)
+edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE,
+		   DMRG::CONVTEST::OPTION TEST, double tol_eigval_input, double tol_state_input, size_t Dinit, size_t Dlimit, int Qinit,
+		   size_t max_halfsweeps, size_t min_halfsweeps, double max_alpha_rsvd_input, double eps_svd_input, size_t savePeriod)
 {
 	tol_eigval = tol_eigval_input;
 	tol_state  = tol_state_input;
 	
-	prepare(H, Vout, Qtot_input, false, Dinit, max_alpha_rsvd_input, eps_svd_input);
+	prepare(H, Vout, Qtot_input, false, Dinit, Qinit, max_alpha_rsvd_input, eps_svd_input);
 	
 	Stopwatch<> Saturn;
 	

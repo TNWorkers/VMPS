@@ -29,6 +29,12 @@ struct qarray
 	int &operator() (size_t i) {return data[i];}
 	const int &operator[] (size_t i) const {return data[i];}
 	const int &operator() (size_t i) const {return data[i];}
+
+	int distance(const qarray<Nq>& other) {
+		array<int,Nq> dists;
+		for(size_t i=0; i<Nq; i++) { dists[i] = abs(this->data[i] - other[i]); }
+		return *std::max_element(std::begin(dists), std::end(dists));
+	}
 };
 
 template<size_t Nq> using qarray2 = std::array<qarray<Nq>,2>;

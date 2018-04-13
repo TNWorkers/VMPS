@@ -553,7 +553,9 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 	}
 
 	// auxiliary Basis
-	calc_auxBasis();
+	// cout << "begin auxbasis" << endl;
+	// calc_auxBasis();
+	// cout << "finished auxbasis" << endl;
 
 	// make squared Mpo if desired
 	if (CALC_SQUARE == true)

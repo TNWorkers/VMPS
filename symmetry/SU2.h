@@ -70,6 +70,17 @@ double coupling_9j (const int &q1, const int &q2, const int &q3,
 	}
 	else
 	{
+		// cout << q1 << ", " << q2 << ", " << q3 << ", " << q4 << ", " << q5 << ", " << q6 << ", " << q7 << ", " << q8 << ", " << q9 << endl;
+		if(q1 >= 167) {return 0.;}
+		if(q2 >= 167) {return 0.;}
+		if(q3 >= 167) {return 0.;}
+		if(q4 >= 167) {return 0.;}
+		if(q5 >= 167) {return 0.;}
+		if(q6 >= 167) {return 0.;}
+		if(q7 >= 167) {return 0.;}
+		if(q8 >= 167) {return 0.;}
+		if(q9 >= 167) {return 0.;}
+
 		double out = gsl_sf_coupling_9j(q1-1,q2-1,q3-1,
 		                                q4-1,q5-1,q6-1,
 		                                q7-1,q8-1,q9-1);
@@ -82,6 +93,12 @@ double coupling_6j (const int &q1, const int &q2, const int &q3,
                     const int &q4, const int &q5, const int &q6)
 {
 	auto it = Table6j.find(std::array<int,6>{q1,q2,q3,q4,q5,q6});
+	if(q1 >= 167) {return 0.;}
+	if(q2 >= 167) {return 0.;}
+	if(q3 >= 167) {return 0.;}
+	if(q4 >= 167) {return 0.;}
+	if(q5 >= 167) {return 0.;}
+	if(q6 >= 167) {return 0.;}
 	
 	if (it != Table6j.end())
 	{

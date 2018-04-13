@@ -516,7 +516,7 @@ varCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sca
 	Dcutoff = Dcutoff_new = Dcutoff_input;
 	bool RANDOMIZE = false;
 	
-	Vout = Mps<Symmetry,Scalar>(H, Dcutoff, Qtot);
+	Vout = Mps<Symmetry,Scalar>(H, Dcutoff, Qtot, 100);
 	RANDOMIZE = true;
 	
 	// prepare edges of LW & RW

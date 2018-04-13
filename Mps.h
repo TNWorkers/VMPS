@@ -59,7 +59,7 @@ public:
 	 * \param Qtot_input : target quantum number
 	 * \param N_phys_input : the volume of the system (normally (chain length) * (chain width))
 	*/
-	Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
+	Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Qmax_input);
 	
 	/** 
 	 * Construct by pulling info from an MPO.
@@ -67,7 +67,7 @@ public:
 	 * \param Dmax : size cutoff (per subspace)
 	 * \param Qtot_input : target quantum number
 	*/
-	template<typename Hamiltonian> Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input);
+	template<typename Hamiltonian> Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, int Qmax_input);
 	
 	/** 
 	 * Construct by explicitly provide the A-matrices. Basically only for testing purposes.
@@ -136,14 +136,14 @@ public:
 	 * \param qloc_input : local basis
 	 * \param Qtot_input : target quantum number
 	 */
-	void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input);
+	void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Qmax_input);
 	
 	/**
 	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from an Mpo.
 	 * \param H : chain length and local basis will be retrieved from this Mpo
 	 * \param Qtot_input : target quantum number
 	 */
-	template<typename Hamiltonian> void outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input);
+	template<typename Hamiltonian> void outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, int Qmax_input);
 	
 	/**
 	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. 
@@ -469,20 +469,20 @@ Mps()
 
 template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
-Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input)
+Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Qmax_input)
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input)
 {
-	outerResize(L_input, qloc_input, Qtot_input);
+	outerResize(L_input, qloc_input, Qtot_input, Qmax_input);
 }
 
 template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
 Mps<Symmetry,Scalar>::
-Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input)
+Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, int Qmax_input)
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >()
 {
 	N_phys = H.volume();
-	outerResize(H.length(), H.locBasis(), Qtot_input);
+	outerResize(H.length(), H.locBasis(), Qtot_input, Qmax_input);
 	innerResize(Dmax);
 }
 
@@ -498,10 +498,10 @@ Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
 template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
 void Mps<Symmetry,Scalar>::
-outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input)
+outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, int Qmax_input)
 {
 	N_phys = H.volume();
-	outerResize(H.length(), H.locBasis(), Qtot_input);
+	outerResize(H.length(), H.locBasis(), Qtot_input, Qmax_input);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -557,14 +557,14 @@ resize_arrays()
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input)
+outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Qmax_input)
 {
 	this->N_sites = L_input;
 	qloc = qloc_input;
 	Qtot = Qtot_input;
 	this->pivot = -1;
 	
-	auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> set<qarray<Nq> >
+	auto calc_qnums_on_segment = [this,Qmax_input](int l_frst, int l_last) -> set<qarray<Nq> >
 	{
 		size_t L = (l_last < 0 or l_frst >= qloc.size())? 0 : l_last-l_frst+1;
 		set<qarray<Nq> > qset;
@@ -587,6 +587,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 					auto qVec = Symmetry::reduceSilent(*it,qloc[l][s]);
 					for (size_t j=0; j<qVec.size(); j++)
 					{
+						if(qVec[j].distance(Symmetry::qvacuum()) > Qmax_input) { continue; }
 						qset.insert(qVec[j]);
 					}
 				}
@@ -641,6 +642,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 							{
 								auto qin = *ql;
 								auto qout = qVec[i];
+								// if(qout.distance(Symmetry::qvacuum()) > Qmax_input or qin.distance(Symmetry::qvacuum()) > Qmax_input) { continue; }
 								intmp.insert(qin);
 								outtmp.insert(qout);
 								std::array<qType,2> qTmp = {qin,qout};
@@ -696,7 +698,7 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 innerResize (size_t Dmax)
 {
-	if (Nq == 0)
+	if constexpr (Nq == 0)
 	{
 		size_t Dl = qloc[0].size();
 		size_t Dr = qloc[this->N_sites-1].size();
@@ -824,7 +826,6 @@ innerResize (size_t Dmax)
 			
 				size_t Nrows = min(lrmin[l][Qin],    Dmax);
 				size_t Ncols = min(lrmin[l+1][Qout], Dmax);
-			
 				A[l][s].block[q].resize(Nrows,Ncols);
 			}
 		}
