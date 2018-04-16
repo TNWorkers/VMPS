@@ -57,7 +57,13 @@ namespace Sym{
 			}
 			return out;
 		};
-
+		
+		template<std::size_t M>
+		static bool compare ( const std::array<qType,M>& q1, const std::array<qType,M>& q2 )
+		{
+			return false;
+		}
+		
 		inline static double coeff_unity() { return 1.; }
 		inline static double coeff_dot(const qType& q1) { return 1.; }
 		inline static double coeff_rightOrtho(const qType& q1, const qType& q2) { return 1.; }

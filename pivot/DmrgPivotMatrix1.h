@@ -19,6 +19,7 @@ struct PivotMatrix1
 	vector<vector<Scalar> >                factor_cgcs;
 	
 	vector<qarray<Symmetry::Nq> > qloc;
+	vector<qarray<Symmetry::Nq> > qOp;
 	
 	// stuff for excited states
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PL; // PL[n]

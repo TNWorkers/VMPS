@@ -64,7 +64,7 @@ size_t L, Ly;
 double J, Jprime;
 double alpha;
 double t_U0, t_U1, t_SU2;
-int Dinit, Dlimit, Imin, Imax;
+int Dinit, Dlimit, Imin, Imax, Qinit;
 double tol_eigval, tol_state, eps_svd;
 double dt;
 DMRG::VERBOSITY::OPTION VERB;
@@ -97,6 +97,7 @@ int main (int argc, char* argv[])
 	
 	Dinit  = args.get<int>("Dinit",2);
 	Dlimit = args.get<int>("Dlimit",100);
+	Qinit = args.get<int>("Qinit",500);
 	Imin   = args.get<int>("Imin",2);
 	Imax   = args.get<int>("Imax",50);
 	tol_eigval = args.get<double>("tol_eigval",1e-6);
@@ -115,16 +116,16 @@ int main (int argc, char* argv[])
 	#endif
 	
 	//--------U(0)---------
-	lout << endl << "--------U(0)---------" << endl << endl;
-	
-	Stopwatch<> Watch_U0;
-	VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
-	lout << H_U0.info() << endl;
-	
-	VMPS::Heisenberg::Solver DMRG_U0(VERB);
-	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, tol_eigval,tol_state, Dinit,3*Dlimit, Imax,Imin, alpha,eps_svd);
-	
-	t_U0 = Watch_U0.time();
+//	lout << endl << "--------U(0)---------" << endl << endl;
+//	
+//	Stopwatch<> Watch_U0;
+//	VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
+//	lout << H_U0.info() << endl;
+//	
+//	VMPS::Heisenberg::Solver DMRG_U0(VERB);
+//	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, tol_eigval,tol_state, Dinit,3*Dlimit, Imax,Imin, alpha,eps_svd);
+//	
+//	t_U0 = Watch_U0.time();
 	
 //	
 //	// observables
@@ -155,11 +156,14 @@ int main (int argc, char* argv[])
 	lout << H_U1.info() << endl;
 	
 	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha,eps_svd);
+	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
+	                  tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha,eps_svd);
 	
-	g_U1.state.graph(make_string("L_=",L));
+	g_U1.state.graph(make_string("L=",L));
 	
 	t_U1 = Watch_U1.time();
+	
+	assert(1!=1);
 	
 	// observables
 //	MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();

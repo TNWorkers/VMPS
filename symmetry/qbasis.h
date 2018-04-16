@@ -2,6 +2,7 @@
 #define QBASIS_H_
 
 #include <unordered_set>
+#include <set>
 #include <unordered_map>
 #include <numeric>
 
@@ -67,6 +68,15 @@ public:
 	/**Does nothing.*/
 	Qbasis() {};
 	
+	template<typename Container>
+	Qbasis (const Container &qins, const Eigen::Index &dim)
+	{
+		for (const auto &qin:qins)
+		{
+			push_back(qin,dim);
+		}
+	}
+	
 	std::size_t size() const {
 		std::size_t out = 0; for(const auto& entry : data_) {auto [qVal,num,plain] = entry; out+=plain.size();} return out;
 	}
@@ -108,6 +118,8 @@ public:
 	void push_back( const std::tuple<qType,Eigen::Index,std::vector<std::string> >& state );
 	void push_back( const qType& q_number, const Eigen::Index& inner_dim);
 	void push_back( const qType& q_number, const Eigen::Index& inner_dim, const std::vector<std::string>& idents);
+	
+	void clear() {data_.clear(); history.clear();}
 
 	// template<Eigen::Index Nlegs, typename Scalar, Eigen::Index Nextra>
 	// void pullData( const MultipedeQ<Nlegs,Symmetry,Scalar,Nextra>& M, const Eigen::Index& leg );
@@ -135,7 +147,7 @@ private:
 	};
 
 	std::vector<std::tuple<qType,Eigen::Index,Basis> > data_;
-	Eigen::Index curr_dim=0;	
+	Eigen::Index curr_dim=0;
 	std::unordered_map<qType,std::vector<fuseData> > history;
 };
 

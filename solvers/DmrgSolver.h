@@ -239,6 +239,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		Vout.state.setRandom();
 	}
 	Dmax_old = Dinit;
+	Vout.state.graph("Psi");
 	
 	// set edges
 	Heff.clear();
@@ -695,6 +696,7 @@ sweepStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout)
 		                        H.locBasis(stat.pivot), H.opBasis(stat.pivot), Heff[stat.pivot].qlhs, Heff[stat.pivot].qrhs,
 		                        Heff[stat.pivot].factor_cgcs);
 	Heff[stat.pivot].qloc = H.locBasis(stat.pivot);
+	Heff[stat.pivot].qOp  = H.opBasis(stat.pivot);
 	HxV(Heff[stat.pivot], Vtmp1, Vtmp2);
 	
 	double DeltaEtrunc = dot(Vtmp1,Vtmp2)-Vout.energy;
@@ -742,6 +744,7 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LA
 		                        H.locBasis(stat.pivot), H.opBasis(stat.pivot), Heff[stat.pivot].qlhs, Heff[stat.pivot].qrhs,
 		                        Heff[stat.pivot].factor_cgcs);
 		Heff[stat.pivot].qloc = H.locBasis(stat.pivot);
+		Heff[stat.pivot].qOp = H.opBasis(stat.pivot);
 	}
 	
 	Eigenstate<PivotVector<Symmetry,Scalar> > g;

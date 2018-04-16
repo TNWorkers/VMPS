@@ -136,14 +136,14 @@ public:
 	 * \param qloc_input : local basis
 	 * \param Qtot_input : target quantum number
 	 */
-	void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Qmax_input);
+	void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Qmax_input=500);
 	
 	/**
 	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from an Mpo.
 	 * \param H : chain length and local basis will be retrieved from this Mpo
 	 * \param Qtot_input : target quantum number
 	 */
-	template<typename Hamiltonian> void outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, int Qmax_input);
+	template<typename Hamiltonian> void outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, int Qmax_input=500);
 	
 	/**
 	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. 
@@ -408,6 +408,16 @@ private:
 	// sets of all unique incoming & outgoing indices for convenience
 	vector<vector<qarray<Nq> > > inset;
 	vector<vector<qarray<Nq> > > outset;
+	vector<Qbasis<Symmetry> > QbasisIn;
+	vector<Qbasis<Symmetry> > QbasisOut;
+	
+	vector<vector<qarray<Nq> > > inset_glob;
+	vector<vector<qarray<Nq> > > outset_glob;
+	
+	void update_inset (size_t loc);
+	void update_outset (size_t loc);
+	void update_QbasisIn (size_t loc);
+	void update_QbasisOut (size_t loc);
 	
 	void resize_arrays();
 	void outerResizeNoSymm();
@@ -516,6 +526,10 @@ outerResize (const Mps<Symmetry,OtherMatrixType> &V)
 	
 	inset = V.inset;
 	outset = V.outset;
+	inset_glob = V.inset_glob;
+	outset_glob = V.outset_glob;
+	QbasisIn = V.QbasisIn;
+	QbasisOut = V.QbasisOut;
 	
 	A.resize(this->N_sites);
 	
@@ -550,6 +564,10 @@ resize_arrays()
 	
 	inset.resize(this->N_sites);
 	outset.resize(this->N_sites);
+	QbasisIn.resize(this->N_sites);
+	QbasisOut.resize(this->N_sites);
+	inset_glob.resize(this->N_sites);
+	outset_glob.resize(this->N_sites);
 	
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
 	entropy.resize(this->N_sites-1); entropy.setConstant(numeric_limits<double>::quiet_NaN());
@@ -592,12 +610,30 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 					auto qVec = Symmetry::reduceSilent(*it,qloc[l][s]);
 					for (size_t j=0; j<qVec.size(); j++)
 					{
-						if(qVec[j].distance(Symmetry::qvacuum()) > Qmax_input) { continue; }
+//						if (qVec[j].distance(Symmetry::qvacuum()) > Qmax_input) { continue; }
+//						VectorXd Qavg(Nq);
+//						for (size_t q=0; q<Nq; ++q)
+//						{
+//							double qavg = Qtot[q]*(l+1.)*1./this->N_sites;
+//							Qavg(q) = qavg;
+//						}
+//						VectorXd qVec_curr(Nq);
+//						for (size_t q=0; q<Nq; ++q)
+//						{
+//							qVec_curr(q) = static_cast<double>(qVec[j][q]);
+//						}
+////						if (qVec[j].distance(Qavg) > Qmax_input)
+//						if ((Qavg-qVec_curr).lpNorm<Infinity>() > double(Qmax_input))
+//						{
+//							cout << "l=" << l << ", qVec[j]=" << qVec[j] << ", Qavg=" << Qavg << endl;
+//							continue;
+//						}
 						qset.insert(qVec[j]);
 					}
 				}
 				// swap qset and qset_tmp to continue
-				std::swap(qset_tmp,qset);qset.clear();
+				std::swap(qset_tmp,qset);
+				qset.clear();
 			}
 			qset = qset_tmp;
 		}
@@ -621,6 +657,8 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		{
 			set<qarray<Nq> > intmp;
 			set<qarray<Nq> > outtmp;
+			set<qarray<Nq> > intmp_glob;
+			set<qarray<Nq> > outtmp_glob;
 			
 			int lprev = l-1;
 			int lnext = l+1;
@@ -648,16 +686,34 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 								auto qin = *ql;
 								auto qout = qVec[i];
 								// if(qout.distance(Symmetry::qvacuum()) > Qmax_input or qin.distance(Symmetry::qvacuum()) > Qmax_input) { continue; }
-								intmp.insert(qin);
-								outtmp.insert(qout);
-								std::array<qType,2> qTmp = {qin,qout};
-								auto check = A[l][s].dict.find(qTmp);
-								if (check == A[l][s].dict.end())
+								VectorXd Dqin_curr(Nq);
+								VectorXd Dqout_curr(Nq);
+								for (size_t q=0; q<Nq; ++q)
 								{
-									A[l][s].in.push_back(qin);
-									A[l][s].out.push_back(qout);
-									A[l][s].dict.insert({qTmp,A[l][s].size()});
-									A[l][s].plusplus();
+									Dqin_curr(q)  = Qtot[q]*(l)   *1./this->N_sites - static_cast<double>(qin[q]);
+									Dqout_curr(q) = Qtot[q]*(l+1.)*1./this->N_sites - static_cast<double>(qout[q]);
+								}
+								if (Dqin_curr.lpNorm<Infinity>()  > double(Qmax_input) or
+								    Dqout_curr.lpNorm<Infinity>() > double(Qmax_input))
+								{
+									intmp_glob.insert(qin);
+									outtmp_glob.insert(qout);
+								}
+								else
+								{
+									intmp.insert(qin);
+									outtmp.insert(qout);
+									intmp_glob.insert(qin);
+									outtmp_glob.insert(qout);
+									std::array<qType,2> qTmp = {qin,qout};
+									auto check = A[l][s].dict.find(qTmp);
+									if (check == A[l][s].dict.end())
+									{
+										A[l][s].in.push_back(qin);
+										A[l][s].out.push_back(qout);
+										A[l][s].dict.insert({qTmp,A[l][s].size()});
+										A[l][s].plusplus();
+									}
 								}
 							}
 						}
@@ -671,6 +727,14 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 			outset[l].resize(outtmp.size());
 			copy(intmp.begin(),  intmp.end(),  inset[l].begin());
 			copy(outtmp.begin(), outtmp.end(), outset[l].begin());
+			
+			inset_glob[l].resize(intmp_glob.size());
+			outset_glob[l].resize(outtmp_glob.size());
+			copy(intmp_glob.begin(),  intmp_glob.end(),  inset_glob[l].begin());
+			copy(outtmp_glob.begin(), outtmp_glob.end(), outset_glob[l].begin());
+			
+			update_QbasisIn(l);
+			update_QbasisOut(l);
 		}
 	}
 }
@@ -687,6 +751,8 @@ outerResizeNoSymm()
 	{
 		inset[l].push_back(qvacuum<Nq>());
 		outset[l].push_back(qvacuum<Nq>());
+		inset_glob[l].push_back(qvacuum<Nq>());
+		outset_glob[l].push_back(qvacuum<Nq>());
 		
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
@@ -755,7 +821,7 @@ innerResize (size_t Dmax)
 	{
 		vector<map<qarray<Nq>,size_t> > fromL(this->N_sites+1);
 		vector<map<qarray<Nq>,size_t> > fromR(this->N_sites+1);
-	
+		
 		fromL[0].insert({Symmetry::qvacuum(),1});
 		for (size_t l=1; l<this->N_sites+1; ++l)
 		for (auto qout=outset[l-1].begin(); qout!=outset[l-1].end(); ++qout)
@@ -770,6 +836,7 @@ innerResize (size_t Dmax)
 					fromL[l][*qout] += fromL[l-1][qin];
 				}
 			}
+			fromL[l][*qout] = min(fromL[l][*qout], Dmax);
 		}
 	
 	//	cout << "LEFT: " << endl;
@@ -797,6 +864,7 @@ innerResize (size_t Dmax)
 					fromR[l][*qin] += fromR[l+1][qout];
 				}
 			}
+			fromR[l][*qin] = min(fromR[l][*qin], Dmax);
 		}
 		
 	//	cout << "RIGHT: " << endl;
@@ -828,7 +896,7 @@ innerResize (size_t Dmax)
 			{
 				qarray<Nq> Qin  = A[l][s].in[q];
 				qarray<Nq> Qout = A[l][s].out[q];
-			
+				
 				size_t Nrows = min(lrmin[l][Qin],    Dmax);
 				size_t Ncols = min(lrmin[l+1][Qout], Dmax);
 				A[l][s].block[q].resize(Nrows,Ncols);
@@ -1315,27 +1383,10 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		A[loc-1] = Aprev;
 	}
 	
-	set<qarray<Nq> > qset_tmp;
-	
-	for (size_t s=0; s<qloc[loc].size(); ++s)
-	for (size_t q=0; q<A[loc][s].dim; ++q)
-	{
-		qset_tmp.insert(A[loc][s].in[q]);
-	}
-	inset[loc].clear();
-	copy(qset_tmp.begin(), qset_tmp.end(), back_inserter(inset[loc]));
-	qset_tmp.clear();
-	
+	update_inset(loc);
 	if (loc != 0 and DISCARD_U == false)
 	{
-		for (size_t s=0; s<qloc[loc-1].size(); ++s)
-		for (size_t q=0; q<A[loc-1][s].dim; ++q)
-		{
-			qset_tmp.insert(A[loc-1][s].out[q]);
-		}
-		outset[loc-1].clear();
-		copy(qset_tmp.begin(), qset_tmp.end(), back_inserter(outset[loc-1]));
-		qset_tmp.clear();
+		update_outset(loc-1);
 	}
 	
 	if (TOOL != DMRG::BROOM::QR)
@@ -1348,6 +1399,100 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		}
 	}
 	this->pivot = (loc==0)? 0 : loc-1;
+}
+
+template<typename Symmetry, typename Scalar>
+void Mps<Symmetry,Scalar>::
+update_inset (size_t loc)
+{
+	set<qarray<Nq> > qset_tmp;
+	
+	for (size_t s=0; s<qloc[loc].size(); ++s)
+	for (size_t q=0; q<A[loc][s].dim; ++q)
+	{
+		qset_tmp.insert(A[loc][s].in[q]);
+	}
+	inset[loc].clear();
+	copy(qset_tmp.begin(), qset_tmp.end(), back_inserter(inset[loc]));
+	qset_tmp.clear();
+	
+	update_QbasisIn(loc);
+}
+
+template<typename Symmetry, typename Scalar>
+void Mps<Symmetry,Scalar>::
+update_QbasisOut (size_t loc)
+{
+	QbasisOut[loc].clear();
+	
+	for (size_t qout=0; qout<outset[loc].size(); ++qout)
+	{
+		int dim = 0;
+		size_t s_ = 0;
+		size_t q = 0;
+		for (size_t s=0; s<qloc[loc].size(); ++s)
+		{
+			auto qins = Symmetry::reduceSilent(outset[loc][qout], Symmetry::flip(qloc[loc][s]));
+			for (const auto &qin:qins)
+			{
+				auto it = A[loc][s].dict.find(qarray2<Nq>{qin,outset[loc][qout]});
+				if (it != A[loc][s].dict.end())
+				{
+					dim = A[loc][s].block[it->second].cols();
+					s_ = s;
+					q = it->second;
+				}
+			}
+		}
+		QbasisOut[loc].push_back(outset[loc][qout], A[loc][s_].block[q].cols());
+	}
+}
+
+template<typename Symmetry, typename Scalar>
+void Mps<Symmetry,Scalar>::
+update_QbasisIn (size_t loc)
+{
+	QbasisIn[loc].clear();
+	
+	for (size_t qin=0; qin<inset[loc].size(); ++qin)
+	{
+		int dim = 0;
+		size_t s_ = 0;
+		size_t q = 0;
+		for (size_t s=0; s<qloc[loc].size(); ++s)
+		{
+			auto qouts = Symmetry::reduceSilent(inset[loc][qin], qloc[loc][s]);
+			for (const auto &qout:qouts)
+			{
+				auto it = A[loc][s].dict.find(qarray2<Nq>{inset[loc][qin],qout});
+				if (it != A[loc][s].dict.end())
+				{
+					dim = A[loc][s].block[it->second].cols();
+					s_ = s;
+					q = it->second;
+				}
+			}
+		}
+		QbasisIn[loc].push_back(inset[loc][qin], A[loc][s_].block[q].cols());
+	}
+}
+
+template<typename Symmetry, typename Scalar>
+void Mps<Symmetry,Scalar>::
+update_outset (size_t loc)
+{
+	set<qarray<Nq> > qset_tmp;
+	
+	for (size_t s=0; s<qloc[loc].size(); ++s)
+	for (size_t q=0; q<A[loc][s].dim; ++q)
+	{
+		qset_tmp.insert(A[loc][s].out[q]);
+	}
+	outset[loc].clear();
+	copy(qset_tmp.begin(), qset_tmp.end(), back_inserter(outset[loc]));
+	qset_tmp.clear();
+	
+	update_QbasisOut(loc);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1520,27 +1665,11 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 	{
 		A[loc+1] = Anext;
 	}
-	set<qarray<Nq> > qset_tmp;
 	
-	for (size_t s=0; s<qloc[loc].size(); ++s)
-	for (size_t q=0; q<A[loc][s].dim; ++q)
-	{
-		qset_tmp.insert(A[loc][s].out[q]);
-	}
-	outset[loc].clear();
-	copy(qset_tmp.begin(), qset_tmp.end(), back_inserter(outset[loc]));
-	qset_tmp.clear();
-	
+	update_outset(loc);
 	if (loc != this->N_sites-1 and DISCARD_V == false)
 	{
-		for (size_t s=0; s<qloc[loc+1].size(); ++s)
-		for (size_t q=0; q<A[loc+1][s].dim; ++q)
-		{
-			qset_tmp.insert(A[loc+1][s].in[q]);
-		}
-		inset[loc+1].clear();
-		copy(qset_tmp.begin(), qset_tmp.end(), back_inserter(inset[loc+1]));
-		qset_tmp.clear();
+		update_inset(loc+1);
 	}
 	
 	if (TOOL != DMRG::BROOM::QR)
@@ -2626,6 +2755,111 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 	}
 }
 
+//template<typename Symmetry, typename Scalar>
+//void Mps<Symmetry,Scalar>::
+//enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
+//{
+//	if (this->alpha_rsvd != 0.)
+//	{
+//		std::vector<Biped<Symmetry,MatrixType> > P(qloc[loc].size());
+//		
+//		// create tensor P
+//		#ifndef DMRG_DONT_USE_OPENMP
+//		#pragma omp parallel for
+//		#endif
+//		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
+//		for (size_t s2=0; s2<qloc[loc].size(); ++s2)
+//		for (size_t k=0; k<H->W[s1][s2].size(); ++k)
+//		{
+//			if (H->W[s1][s2][k].size() == 0) {continue;}
+//			for (size_t qL=0; qL<H->L.size(); ++qL)
+//			{
+//				auto qAs = Symmetry::reduceSilent(H->L.in(qL),qloc[loc][s2]);
+//				for (const auto& qA : qAs)
+//				{
+//					qarray2<Symmetry::Nq> quple1 = {H->L.in(qL), qA};
+//					auto itA = A[loc][s2].dict.find(quple1);
+//				
+//					if (itA != A[loc][s2].dict.end())
+//					{
+//						for (int spInd=0; spInd<H->W[s1][s2][k].outerSize(); ++spInd)
+//						for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][k],spInd); iW; ++iW)
+//						{
+//							size_t a = iW.row();
+//							size_t b = iW.col();
+//							size_t Prows = H->L.block[qL][a][0].cols();
+//							size_t Acols = A[loc][s2].block[itA->second].cols();
+//							MatrixType Mtmp(Prows, Acols*H->W[s1][s2][k].cols());
+//							Mtmp.setZero();
+//				
+//							if (H->L.block[qL][a][0].rows() != 0 and
+//								H->L.block[qL][a][0].cols() != 0)
+//							{
+//								Mtmp.block(0,b*Acols, Prows,Acols) =
+//									(this->alpha_rsvd * iW.value()) * H->L.block[qL][a][0].adjoint() * A[loc][s2].block[itA->second];
+//							}
+//				
+//							if (Mtmp.rows() != 0 and 
+//								Mtmp.cols() != 0)
+//							{
+//								qarray2<Symmetry::Nq> qupleP = {H->L.out(qL), A[loc][s2].out[itA->second]};
+//								auto it = P[s1].dict.find(qupleP);
+//								if (it != P[s1].dict.end())
+//								{
+//									if (P[s1].block[it->second].rows() == 0)
+//									{
+//										P[s1].block[it->second] = Mtmp;
+//									}
+//									else
+//									{
+//										P[s1].block[it->second] += Mtmp;
+//									}
+//								}
+//								else
+//								{
+//									P[s1].push_back(qupleP, Mtmp);
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+//	
+//		// extend the A matrices
+//		for (size_t s=0; s<qloc[loc].size(); ++s)
+//		for (size_t qA=0; qA<A[loc][s].size(); ++qA)
+//		{
+//			qarray2<Symmetry::Nq> quple = {A[loc][s].in[qA], A[loc][s].out[qA]};
+//			auto qP = P[s].dict.find(quple);
+//		
+//			if (qP != P[s].dict.end())
+//			{
+//				// if (P[s].block[qP->second].rows() != A[loc][s].block[qA].rows()) {continue;}
+//				addRight(P[s].block[qP->second], A[loc][s].block[qA]);
+//			
+//				if (loc != this->N_sites-1)
+//				{
+//					for (size_t snext=0; snext<qloc[loc+1].size(); ++snext)
+//					for (size_t qAnext=0; qAnext<A[loc+1][snext].size(); ++qAnext)
+//					{
+//						if (A[loc+1][snext].in[qAnext] == A[loc][s].out[qA] and 
+//							A[loc+1][snext].block[qAnext].rows() != A[loc][s].block[qA].cols())
+//						{
+//							size_t rows = A[loc+1][snext].block[qAnext].rows();
+//							size_t cols = A[loc+1][snext].block[qAnext].cols();
+//							int drows = A[loc][s].block[qA].cols()-rows;
+//							
+//							A[loc+1][snext].block[qAnext].conservativeResize(rows+drows, cols);
+//							A[loc+1][snext].block[qAnext].bottomRows(drows).setZero();
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
+//}
+
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
@@ -2634,61 +2868,116 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 	{
 		std::vector<Biped<Symmetry,MatrixType> > P(qloc[loc].size());
 		
+//		Qbasis<Symmetry> QbasisA;
+//		for (size_t qout=0; qout<outset[loc].size(); ++qout)
+//		{
+//			int dim = 0;
+//			for (size_t s=0; s<qloc[loc].size(); ++s)
+//			{
+//				auto qins = Symmetry::reduceSilent(outset[qout], Symmetry::flip(qloc[loc][s]));
+//				for (const auto &qin:qins)
+//				{
+//					auto it = A[loc][s].dict.find(qarray2{qin,outset[qout]});
+//					if (it != A[loc][s].dict.end())
+//					{
+//						dim = A[loc][s].block[it->second].cols();
+//					}
+//				}
+//			}
+//			QbasisA.push_back(outset[qout], A[loc][s].block[it->second].cols());
+//		}
+		
+		set<qarray<Nq> > Lmid_set;
+		for (size_t qL=0; qL<H->L.size(); ++qL)
+		{
+			Lmid_set.insert(H->L.mid(qL));
+		}
+		
+		Qbasis<Symmetry> QbasisL(Lmid_set, H->W[0][0][0].cols());
+		Qbasis<Symmetry> QbasisOp;
+		for (size_t k=0; k<H->qOp.size(); ++k)
+		{
+			QbasisOp.push_back(H->qOp[k],1);
+		}
+		auto QbasisW = QbasisL.combine(QbasisOp);
+		
+//		cout << "loc=" << loc << endl << QbasisW << endl << endl;
+		
+		auto QbasisP = QbasisOut[loc].combine(QbasisW);
+		
 		// create tensor P
 		#ifndef DMRG_DONT_USE_OPENMP
 		#pragma omp parallel for
 		#endif
 		for (size_t s1=0; s1<qloc[loc].size(); ++s1)
 		for (size_t s2=0; s2<qloc[loc].size(); ++s2)
-		for (size_t k=0; k<H->W[s1][s2].size(); ++k)
+		for (size_t k=0; k<H->qOp.size(); ++k)
 		{
-			if(H->W[s1][s2][k].size() == 0) {continue;}
+			if (H->W[s1][s2][k].size() == 0) {continue;}
 			for (size_t qL=0; qL<H->L.size(); ++qL)
 			{
-				auto qAs = Symmetry::reduceSilent(H->L.in(qL),qloc[loc][s2]);
+				map<qarray<Nq>,vector<tuple<pair<qarray<Nq>,qarray<Nq> >,int> > > Pmap;
+				
+				auto qAs = Symmetry::reduceSilent(H->L.out(qL),qloc[loc][s2]);
 				for (const auto& qA : qAs)
 				{
-					qarray2<Symmetry::Nq> quple1 = {H->L.in(qL), qA};
+					qarray2<Symmetry::Nq> quple1 = {H->L.out(qL), qA};
 					auto itA = A[loc][s2].dict.find(quple1);
-				
+					
 					if (itA != A[loc][s2].dict.end())
 					{
-						for (int spInd=0; spInd<H->W[s1][s2][k].outerSize(); ++spInd)
-						for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][k],spInd); iW; ++iW)
+						auto qWs = Symmetry::reduceSilent(H->L.mid(qL), H->qOp[k]);
+						
+						for (const auto& qW : qWs)
 						{
-							size_t a = iW.row();
-							size_t b = iW.col();
-							size_t Prows = H->L.block[qL][a][0].cols();
-							size_t Acols = A[loc][s2].block[itA->second].cols();
-							MatrixType Mtmp(Prows, Acols*H->W[s1][s2][k].cols());
-							Mtmp.setZero();
-				
-							if (H->L.block[qL][a][0].rows() != 0 and
-								H->L.block[qL][a][0].cols() != 0)
+							auto qPs = Symmetry::reduceSilent(qA,qW);
+							
+							for (const auto& qP : qPs)
 							{
-								Mtmp.block(0,b*Acols, Prows,Acols) =
-									(this->alpha_rsvd * iW.value()) * H->L.block[qL][a][0].adjoint() * A[loc][s2].block[itA->second];
-							}
-				
-							if (Mtmp.rows() != 0 and 
-								Mtmp.cols() != 0)
-							{
-								qarray2<Symmetry::Nq> qupleP = {H->L.out(qL), A[loc][s2].out[itA->second]};
-								auto it = P[s1].dict.find(qupleP);
-								if (it != P[s1].dict.end())
+								if (auto it=find(outset_glob[loc].begin(), outset_glob[loc].end(), qP); it==outset_glob[loc].end()) {continue;}
+								
+								for (int spInd=0; spInd<H->W[s1][s2][k].outerSize(); ++spInd)
+								for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][k],spInd); iW; ++iW)
 								{
-									if (P[s1].block[it->second].rows() == 0)
+									size_t a = iW.row();
+									size_t b = iW.col();
+									
+									size_t Prows = H->L.block[qL][a][0].rows();
+									size_t Pcols = QbasisP.inner_dim(qP);
+									size_t Acols = A[loc][s2].block[itA->second].cols();
+									size_t stitch = QbasisP.leftAmount(qP,{qA,qW});
+									
+									MatrixType Mtmp(Prows,Pcols);
+									Mtmp.setZero();
+									
+									if (H->L.block[qL][a][0].rows() != 0 and
+										H->L.block[qL][a][0].cols() != 0)
 									{
-										P[s1].block[it->second] = Mtmp;
+										Mtmp.block(0,stitch+b*Acols, Prows,Acols) += (this->alpha_rsvd * iW.value()) * 
+										                                             H->L.block[qL][a][0] * A[loc][s2].block[itA->second];
 									}
-									else
+									
+									if (Mtmp.rows() != 0 and 
+										Mtmp.cols() != 0)
 									{
-										P[s1].block[it->second] += Mtmp;
+										qarray2<Symmetry::Nq> qupleP = {H->L.in(qL), qP};
+										auto it = P[s1].dict.find(qupleP);
+										if (it != P[s1].dict.end())
+										{
+											if (P[s1].block[it->second].rows() == 0)
+											{
+												P[s1].block[it->second] = Mtmp;
+											}
+											else
+											{
+												P[s1].block[it->second] += Mtmp;
+											}
+										}
+										else
+										{
+											P[s1].push_back(qupleP, Mtmp);
+										}
 									}
-								}
-								else
-								{
-									P[s1].push_back(qupleP, Mtmp);
 								}
 							}
 						}
@@ -2696,30 +2985,30 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 				}
 			}
 		}
-	
+		
 		// extend the A matrices
 		for (size_t s=0; s<qloc[loc].size(); ++s)
-		for (size_t qA=0; qA<A[loc][s].size(); ++qA)
+		for (size_t qP=0; qP<P[s].size(); ++qP)
 		{
-			qarray2<Symmetry::Nq> quple = {A[loc][s].in[qA], A[loc][s].out[qA]};
-			auto qP = P[s].dict.find(quple);
-		
-			if (qP != P[s].dict.end())
+			qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
+			auto qA = A[loc][s].dict.find(quple);
+			
+			if (qA != A[loc][s].dict.end())
 			{
 				// if (P[s].block[qP->second].rows() != A[loc][s].block[qA].rows()) {continue;}
-				addRight(P[s].block[qP->second], A[loc][s].block[qA]);
-			
+				addRight(P[s].block[qP], A[loc][s].block[qA->second]);
+				
 				if (loc != this->N_sites-1)
 				{
 					for (size_t snext=0; snext<qloc[loc+1].size(); ++snext)
 					for (size_t qAnext=0; qAnext<A[loc+1][snext].size(); ++qAnext)
 					{
-						if (A[loc+1][snext].in[qAnext] == A[loc][s].out[qA] and 
-							A[loc+1][snext].block[qAnext].rows() != A[loc][s].block[qA].cols())
+						if (A[loc+1][snext].in[qAnext] == A[loc][s].out[qA->second] and 
+							A[loc+1][snext].block[qAnext].rows() != A[loc][s].block[qA->second].cols())
 						{
 							size_t rows = A[loc+1][snext].block[qAnext].rows();
 							size_t cols = A[loc+1][snext].block[qAnext].cols();
-							int drows = A[loc][s].block[qA].cols()-rows;
+							int drows = A[loc][s].block[qA->second].cols()-rows;
 							
 							A[loc+1][snext].block[qAnext].conservativeResize(rows+drows, cols);
 							A[loc+1][snext].block[qAnext].bottomRows(drows).setZero();
@@ -2727,7 +3016,68 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 					}
 				}
 			}
+			else
+			{
+				A[loc][s].push_back(quple,P[s].block[qP]);
+				
+				if (loc != this->N_sites-1)
+				{
+					bool BLOCK_EXISTS = false;
+					
+					for (size_t snext=0; snext<qloc[loc+1].size(); ++snext)
+					for (size_t qAnext=0; qAnext<A[loc+1][snext].size(); ++qAnext)
+					{
+						if (A[loc+1][snext].in[qAnext] == P[s].out[qP] and 
+						    A[loc+1][snext].block[qAnext].rows() != P[s].block[qP].cols())
+						{
+							size_t rows = A[loc+1][snext].block[qAnext].rows();
+							size_t cols = A[loc+1][snext].block[qAnext].cols();
+							int drows = P[s].block[qP].cols()-rows;
+							
+							A[loc+1][snext].block[qAnext].conservativeResize(rows+drows, cols);
+							A[loc+1][snext].block[qAnext].bottomRows(drows).setZero();
+							BLOCK_EXISTS = true;
+						}
+					}
+					
+					if (!BLOCK_EXISTS)
+					{
+						bool BLOCK_POSSIBLE = false;
+						for (size_t snext=0; snext<qloc[loc+1].size(); ++snext)
+						{
+							auto qCandidates = Symmetry::reduceSilent(P[s].out[qP], qloc[loc+1][snext]);
+							for (const auto &qCandidate:qCandidates)
+							{
+								if (auto it=find(outset[loc+1].begin(), outset[loc+1].end(), qCandidate); it==outset[loc+1].end()) {continue;}
+								else
+								{
+									MatrixType Mtmp(P[s].block[qP].cols(), QbasisOut[loc+1].inner_dim(qCandidate));
+									Mtmp.setZero();
+									auto it2 = A[loc+1][snext].dict.find(qarray2<Nq>{P[s].out[qP], qCandidate});
+									if (it2 != A[loc+1][snext].dict.end())
+									{
+//										cout << "Problem: block exists after all!" << endl;
+										continue;
+									}
+									A[loc+1][snext].push_back(P[s].out[qP], qCandidate, Mtmp);
+									BLOCK_POSSIBLE = true;
+								}
+							}
+						}
+//						assert(BLOCK_POSSIBLE);
+					}
+				}
+			}
 		}
+		
+		update_outset(loc);
+		if (loc != this->N_sites-1)
+		{
+			update_inset(loc+1);
+		}
+		
+//		cout << "loc=" << loc << " enrich done!" << endl;
+		graph("after_enrich");
 	}
 }
 
