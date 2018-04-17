@@ -27,6 +27,11 @@ public:
 		}
 	};
 
+	Basis(Eigen::Index dim) {
+		std::vector<std::string> idents(dim,"");
+		Basis(idents,dim);
+	};
+
 	Eigen::Index size() const {return data_.size();}
 	void push_back( const std::string& ident) {
 		curr_dim++;
@@ -127,6 +132,8 @@ public:
 	void pullData( const std::vector<std::array<qType,3> > &qvec, const std::size_t& leg, const Eigen::Index &inner_dim_in );
 
 	Qbasis<Symmetry> combine( const Qbasis<Symmetry>& other ) const;
+
+	Qbasis<Symmetry> add( const Qbasis<Symmetry>& other ) const;
 
 	std::string print() const;
 	std::string printHistory() const;
@@ -338,6 +345,32 @@ bool Qbasis<Symmetry>::
 operator==( const Qbasis<Symmetry>& other ) const
 {
 	return (this->data_ == other.data_);
+}
+
+template<typename Symmetry>
+Qbasis<Symmetry> Qbasis<Symmetry>::
+add( const Qbasis<Symmetry>& other ) const
+{
+	std::unordered_set<qType> uniqueController;
+	Qbasis out;
+	for(const auto& elem1 : this->data_)
+	{
+		auto [q1,num1,plain1] = elem1;
+		for(const auto& elem2 : other.data_)
+		{
+			auto [q2,num2,plain2] = elem2;
+			auto qs = Symmetry::reduceSilent(q1,q2);
+			for (const auto& q: qs)
+			{
+				if(auto it=uniqueController.find(q); it==uniqueController.end())
+				{
+					uniqueController.insert(q);
+					out.push_back(q,plain1.size());
+				}
+			}
+		}
+	}
+	return out;
 }
 
 template<typename Symmetry>

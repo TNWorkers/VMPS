@@ -239,7 +239,6 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		Vout.state.setRandom();
 	}
 	Dmax_old = Dinit;
-	Vout.state.graph("Psi");
 	
 	// set edges
 	Heff.clear();
