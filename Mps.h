@@ -136,7 +136,7 @@ public:
 	 * \param qloc_input : local basis
 	 * \param Qtot_input : target quantum number
 	 */
-	void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Qmax_input=500);
+	void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Nqmax_input=500);
 	
 	/**
 	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from an Mpo.
@@ -575,14 +575,70 @@ resize_arrays()
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Qmax_input)
+outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Nqmax_input)
 {
 	this->N_sites = L_input;
 	qloc = qloc_input;
 	Qtot = Qtot_input;
 	this->pivot = -1;
+
+
+	auto take_first_elems = [this, Nqmax_input](const vector<qarray<Nq> > &qs, array<double,Nq> mean) -> vector<qarray<Nq>>
+	{
+		vector<qarray<Nq> > out = qs;
+		sort(out.begin(),out.end(),[mean](qarray<Nq> q1, qarray<Nq> q2){
+				for(size_t q=0; q<Nq; q++)
+				{
+					if(abs(q1[q]-mean[q]) < abs(q2[q]-mean[q]))
+					{
+						return true;
+					}
+				}
+				return false;
+			});
+		if(out.size() > Nqmax_input) {out.erase(out.begin()+Nqmax_input,out.end());}
+		return out;
+	};
+
+	// vector<unordered_set<qarray> > Q(this->N_sites+1);
+	vector<vector<qarray<Nq> > > Q_trunc(this->N_sites+1);
+
+	Q_trunc[0].push_back(Symmetry::qvacuum());
+	for(size_t l=1; l<this->N_sites; l++)
+	{
+		auto new_qs=Symmetry::reduceSilent(Q_trunc[l-1],qloc[l],true);
+		array<double,Nq> mean;
+		for(size_t q=0; q<Nq; q++)
+		{
+			mean[q] = static_cast<double>(Qtot[q])*l*1./this->N_sites;
+		}
+		new_qs = take_first_elems(new_qs,mean);
+		Q_trunc[l] = new_qs;
+	}
+	Q_trunc[this->N_sites].push_back(Qtot);
+
+
+	// vector<VectorXd> Qmax(this->N_sites+1);
+
+	// for(size_t l=0; l<this->N_sites; l++)
+	// {
+	// 	vector<qarray<Nq> > Qmaxs;
+	// 	if(Nqmax_input==1) {Qmaxs = qloc[l];}
+	// 	else {Qmaxs = Symmetry::reduceSilent(qloc[l],qloc[l],true);}
+
+	// 	for(size_t q=2; q<Nqmax_input; q++)
+	// 	{
+	// 		Qmaxs = Symmetry::reduceSilent(Qmaxs,qloc[l],true);
+	// 	}
+	// 	auto it=max_element(Qmaxs.begin(),Qmaxs.end());
+	// 	qarray<Nq> Qmaxtmp = *it;
+	// 	Qmax[l].resize(Nq); Qmax[l].setZero();
+	// 	for(size_t q=0; q<Nq; q++) { Qmax[l][q] = static_cast<double>(Qmaxtmp[q]); }
+	// }
+	// Qmax[this->N_sites] = Qmax[this->N_sites-1];
+
 	
-	auto calc_qnums_on_segment = [this,Qmax_input](int l_frst, int l_last) -> set<qarray<Nq> >
+	auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> set<qarray<Nq> >
 	{
 		size_t L = (l_last < 0 or l_frst >= qloc.size())? 0 : l_last-l_frst+1;
 		set<qarray<Nq> > qset;
@@ -684,18 +740,23 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 							if (itqr != qrset.end())
 							{
 								auto qin = *ql;
+								auto itin=find(Q_trunc[l].begin(),Q_trunc[l].end(),qin);
 								auto qout = qVec[i];
-								// if(qout.distance(Symmetry::qvacuum()) > Qmax_input or qin.distance(Symmetry::qvacuum()) > Qmax_input) { continue; }
-								VectorXd Dqin_curr(Nq);
-								VectorXd Dqout_curr(Nq);
-								for (size_t q=0; q<Nq; ++q)
-								{
-									Dqin_curr(q)  = Qtot[q]*(l)   *1./this->N_sites - static_cast<double>(qin[q]);
-									Dqout_curr(q) = Qtot[q]*(l+1.)*1./this->N_sites - static_cast<double>(qout[q]);
-								}
-								if (Dqin_curr.lpNorm<Infinity>()  > double(Qmax_input) or
-								    Dqout_curr.lpNorm<Infinity>() > double(Qmax_input))
-								{
+								auto itout=find(Q_trunc[l+1].begin(),Q_trunc[l+1].end(),qout);
+								if(itin == Q_trunc[l].end() or itout == Q_trunc[l+1].end())
+								{									
+								
+								// // if(qout.distance(Symmetry::qvacuum()) > Qmax_input or qin.distance(Symmetry::qvacuum()) > Qmax_input) { continue; }
+								// VectorXd Dqin_curr(Nq);
+								// VectorXd Dqout_curr(Nq);
+								// for (size_t q=0; q<Nq; ++q)
+								// {
+								// 	Dqin_curr(q)  = abs(Qtot[q]*(l)   *1./this->N_sites - static_cast<double>(qin[q]));
+								// 	Dqout_curr(q) = abs(Qtot[q]*(l+1.)*1./this->N_sites - static_cast<double>(qout[q]));
+								// }
+								// if (((Dqin_curr-Qmax[l]).maxCoeff() > 0) or
+								// 	((Dqout_curr-Qmax[l+1]).maxCoeff() > 0))
+								// {
 									intmp_glob.insert(qin);
 									outtmp_glob.insert(qout);
 								}
