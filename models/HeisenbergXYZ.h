@@ -103,6 +103,10 @@ add_operators (HamiltonianTerms<Symmetry_,complex<double> > &Terms, const SpinBa
 		if (label!="") {Terms.info.push_back(label);}
 	};
 	
+	stringstream ss;
+	ss << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc)-1,2));
+	save_label(ss.str());
+	
 	// J terms
 	
 	auto [Jx,Jxpara,Jxlabel] = P.fill_array2d<double>("Jx","Jxpara",B.orbitals(),loc);

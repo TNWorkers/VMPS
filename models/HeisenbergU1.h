@@ -125,6 +125,10 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 		if (label!="") {Terms.info.push_back(label);}
 	};
 	
+	stringstream ss;
+	ss << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc)-1,2));
+	save_label(ss.str());
+	
 	// J terms
 	
 	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",B.orbitals(),loc);

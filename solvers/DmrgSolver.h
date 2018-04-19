@@ -35,7 +35,7 @@ public:
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-6, 
 	                size_t Dinit=4, size_t Dlimit=500, int Qinit=50,
 	                size_t max_halfsweeps=50, size_t min_halfsweeps=6, 
-                    double max_alpha_rsvd_input=1., double eps_svd_input=1e-7, 
+                    double max_alpha_rsvd_input=1e3, double eps_svd_input=1e-7, 
 	                size_t savePeriod=0);
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
@@ -53,25 +53,25 @@ public:
 	
 	/**Returns the current error of the state while the sweep process.*/
 	inline double get_errState() const {return err_state;};
-
+	
 	/**Returns the current pivot site of the sweep process.*/
 	inline double get_pivot() const {return stat.pivot;};
-
+	
 	/**Returns the current direction of the sweep process.*/
 	inline double get_direction() const {return stat.CURRENT_DIRECTION;};
-
+	
 	void push_back(const Mps<Symmetry,Scalar> &Psi0_input)
 	{
 		Psi0.push_back(Psi0_input);
 	};
-
-#ifdef USE_HDF5_STORAGE
+	
+	#ifdef USE_HDF5_STORAGE
 	/**Save the current SweepStatus to <filename>.h5.*/
 	void save(string filename) const;
 	/**Load the a SweepStatus from <filename>.h5.*/
 	void load(string filename);
-#endif
-
+	#endif
+	
 private:
 	
 	size_t N_sites, N_phys;
@@ -253,7 +253,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		stat.N_sweepsteps = stat.N_halfsweeps = 0;
 		for (size_t l=N_sites-1; l>0; --l)
 		{
-			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::SVD);
+			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR); // SVD correct here?
 			build_R(H,Vout,l-1);
 		}
 		Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 0, DMRG::BROOM::QR); // removes large numbers from first matrix
@@ -291,7 +291,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 			}
 		}
 	}
-
+	
 //	// initial sweep, left-to-right:
 //	for (size_t l=0; l<N_sites-1; ++l)
 //	{
@@ -304,7 +304,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 //	stat.pivot = N_sites-1;
 	
 	// resize environments for projected-out states
-	if (Psi0.size()>0)
+	if (Psi0.size() > 0)
 	{
 		for (size_t l=0; l<N_sites; ++l)
 		{
@@ -347,20 +347,35 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	// initial energy
 	if (stat.pivot == 0)
 	{
+		Vout.state.graph("init");
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rtmp;
 		contract_R(Heff[0].R, Vout.state.A[0], H.W[0], Vout.state.A[0], H.locBasis(0), H.opBasis(0), Rtmp);
-		assert(Rtmp.dim == 1 and 
-			   Rtmp.block[0][0][0].rows() == 1 and
-			   Rtmp.block[0][0][0].cols() == 1 and
-			   "Result of contraction <ψ|H|ψ> in DmrgSolver::prepare is not a scalar!");
-		Eold = isReal(Rtmp.block[0][0][0](0,0));
+		if (Rtmp.dim != 1)
+		{
+			lout << "Warning: Could not contract initial state!" << endl;
+			Eold = 1e3;
+		}
+		else
+		{
+			assert(Rtmp.dim == 1 and 
+			       Rtmp.block[0][0][0].rows() == 1 and
+			       Rtmp.block[0][0][0].cols() == 1 and
+			       "Result of contraction <ψ|H|ψ> in DmrgSolver::prepare is not a scalar!");
+			Eold = isReal(Rtmp.block[0][0][0](0,0));
+		}
 	}
 	else
 	{
 		Eold = avg(Vout.state,H,Vout.state);
 	}
 	Vout.energy = Eold;
-	if (CHOSEN_VERBOSITY>=2) {lout << "initial energy: E₀=" << Eold << endl << endl;}
+	if (CHOSEN_VERBOSITY>=2)
+	{
+		lout << "initial energy: E₀=" << Eold << endl;
+		lout << Vout.state.info() << endl;
+		lout << endl;
+		Vout.state.graph("init");
+	}
 	
 	// initial cutoffs
 	Vout.state.eps_svd = eps_svd_input;
@@ -692,36 +707,36 @@ sweepStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout)
 	PivotVector<Symmetry,Scalar> Vtmp2;
 	Heff[stat.pivot].W = H.W[stat.pivot];
 	precalc_blockStructure (Heff[stat.pivot].L, Vout.state.A[stat.pivot], Heff[stat.pivot].W, Vout.state.A[stat.pivot], Heff[stat.pivot].R, 
-		                        H.locBasis(stat.pivot), H.opBasis(stat.pivot), Heff[stat.pivot].qlhs, Heff[stat.pivot].qrhs,
-		                        Heff[stat.pivot].factor_cgcs);
+	                        H.locBasis(stat.pivot), H.opBasis(stat.pivot), Heff[stat.pivot].qlhs, Heff[stat.pivot].qrhs,
+	                        Heff[stat.pivot].factor_cgcs);
 	Heff[stat.pivot].qloc = H.locBasis(stat.pivot);
 	Heff[stat.pivot].qOp  = H.opBasis(stat.pivot);
 	HxV(Heff[stat.pivot], Vtmp1, Vtmp2);
 	
 	double DeltaEtrunc = dot(Vtmp1,Vtmp2)-Vout.energy;
 	
-	if (DeltaEtrunc < 0.3*DeltaEopt) {Vout.state.alpha_rsvd *= sqrt(10.);}
-	else                             {Vout.state.alpha_rsvd /= sqrt(10.);}
-	Vout.state.alpha_rsvd = min(Vout.state.alpha_rsvd, max_alpha_rsvd);
+//	if (DeltaEtrunc < 0.3*DeltaEopt) {Vout.state.alpha_rsvd *= sqrt(10.);}
+//	else                             {Vout.state.alpha_rsvd /= sqrt(10.);}
+//	Vout.state.alpha_rsvd = min(Vout.state.alpha_rsvd, max_alpha_rsvd);
 	
-//	double f;
-//	double epsilon = 1e-9;
-//	if (abs(DeltaEopt) < epsilon or abs(DeltaEtrunc) < epsilon)
-//	{
-//		if (abs(DeltaEtrunc) > epsilon) {f = 0.9;}
-//		else                            {f = 1.001;}
-//	}
-//	else
-//	{
-//		double r = abs(DeltaEtrunc) / abs(DeltaEopt);
-//		if (DeltaEtrunc < 0.) {f = 2.*(r+1.);}
-//		else if (r < 0.05)    {f = 1.2-r;}
-//		else if (r > 0.3)     {f = 1./(r+0.75);}
-//	}
-//	f = max(0.1,min(2.,f)); // limit between [0.1,2]
-//	Vout.state.alpha_rsvd *= f;
-//	Vout.state.alpha_rsvd = max(1e-11,min(100.,Vout.state.alpha_rsvd)); // limit between [1e-11,100]
-//	
+	double f;
+	double epsilon = 1e-9;
+	if (abs(DeltaEopt) < epsilon or abs(DeltaEtrunc) < epsilon)
+	{
+		if (abs(DeltaEtrunc) > epsilon) {f = 0.9;}
+		else                            {f = 1.001;}
+	}
+	else
+	{
+		double r = abs(DeltaEtrunc) / abs(DeltaEopt);
+		if (DeltaEtrunc < 0.) {f = 2.*(r+1.);}
+		else if (r < 0.05)    {f = 1.2-r;}
+		else if (r > 0.3)     {f = 1./(r+0.75);}
+	}
+	f = max(0.1,min(2.,f)); // limit between [0.1,2]
+	Vout.state.alpha_rsvd *= f;
+	Vout.state.alpha_rsvd = max(1e-11,min(max_alpha_rsvd,Vout.state.alpha_rsvd)); // limit between [1e-11,max_alpha_rsvd]
+	
 //	cout << "ΔEopt=" << DeltaEopt << ", ΔEtrunc=" << DeltaEtrunc << ", f=" << f << ", alpha=" << Vout.state.alpha_rsvd << endl;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)

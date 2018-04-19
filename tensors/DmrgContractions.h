@@ -189,27 +189,33 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 								if (Rold.block[qR][a2][0].rows() != 0)
 								{
 									MatrixType Mtmp;
-									optimal_multiply(factor_cgc*iW.value(),
+									optimal_multiply(factor_cgc * iW.value(),
 									                 Aket[s2].block[q2->second],
 									                 Rold.block[qR][a2][0],
 									                 Abra[s1].block[q1->second].adjoint(),
 									                 Mtmp);
 									
+//									cout << "q=" << quple[0] << ", " << quple[1] << ", " << quple[2] << endl;
+									
 									auto it = Rnew.dict.find(quple);
 									if (it != Rnew.dict.end())
 									{
+//										cout << "in Rnew" << endl;
 										if (Rnew.block[it->second][a1][0].rows() != Mtmp.rows() or 
 										    Rnew.block[it->second][a1][0].cols() != Mtmp.cols())
 										{
+//											cout << "setting" << endl;
 											Rnew.block[it->second][a1][0] = Mtmp;
 										}
 										else
 										{
+//											cout << "adding" << endl;
 											Rnew.block[it->second][a1][0] += Mtmp;
 										}
 									}
 									else
 									{
+//										cout << "not in Rnew" << endl;
 										boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].rows()][1]);
 										Mtmpvec[a1][0] = Mtmp;
 										Rnew.push_back(quple, Mtmpvec);

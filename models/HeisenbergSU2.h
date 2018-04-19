@@ -179,9 +179,8 @@ set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc)
 	HamiltonianTermsXd<Symmetry> Terms;
 	Terms.name = "Heisenberg";
 	
-	frac S = frac(B.get_D()-1,2);
 	stringstream Slabel;
-	Slabel << "S=" << print_frac_nice(S);
+	Slabel << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc)-1,2));
 	Terms.info.push_back(Slabel.str());
 	
 	// J-terms

@@ -245,7 +245,7 @@ SiteOperator<Symmetry,Scalar> SiteOperatorQ<Symmetry,MatrixType_>::
 plain() const
 {
 	SiteOperator<Symmetry,Scalar> out;
-	MatrixType_ Mtmp(basis().size(),basis().size()); Mtmp.setZero();
+	MatrixType_ Mtmp(basis().Mmax(), basis().Mmax()); Mtmp.setZero();
 	for( auto itQ = basis().cbegin(); itQ != basis().cend(); itQ++ )
 	{
 		auto [qVal,qNum,qPlain] = *itQ;

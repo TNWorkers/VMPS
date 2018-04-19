@@ -82,13 +82,29 @@ public:
 		}
 	}
 	
-	std::size_t size() const {
+	std::size_t Mmax() const {
 		std::size_t out = 0; for(const auto& entry : data_) {auto [qVal,num,plain] = entry; out+=plain.size();} return out;
 	}
-	std::size_t totSize() const {
+	std::size_t fullMmax() const {
 		std::size_t out = 0; for(const auto& entry : data_) {auto [qVal,num,plain] = entry; out+=plain.size()*Symmetry::degeneracy(qVal);} return out;
 	}
-
+	
+	std::size_t Dmax() const
+	{
+		std::size_t out = 0;
+		for (const auto& entry : data_)
+		{
+			auto [qVal,num,plain] = entry;
+			if (plain.size() > out) {out = plain.size();}
+		}
+		return out;
+	}
+	
+	std::size_t Nqmax() const
+	{
+		return data_.size();
+	}
+	
 	const std::vector<qType> qloc() const {
 		std::vector<qType> out;
 		for(const auto& elem : data_) {
@@ -204,7 +220,7 @@ template<typename Symmetry>
 typename Symmetry::qType Qbasis<Symmetry>::
 find(const Eigen::Index& num_in ) const
 {
-	assert( num_in < size() and "The number larger than the size of this basis." );
+	assert( num_in < Mmax() and "The number larger than the size of this basis." );
 	Eigen::Index check = num_in;
 	for (const auto& q : data_)
 	{
@@ -217,7 +233,7 @@ template<typename Symmetry>
 Eigen::Index Qbasis<Symmetry>::
 inner_num(const Eigen::Index& outer_num) const
 {
-	assert( outer_num < size() and "The number larger than the size of this basis." );
+	assert( outer_num < Mmax() and "The number larger than the size of this basis." );
 	Eigen::Index check = outer_num;
 	for (const auto& q : data_)
 	{
