@@ -91,7 +91,7 @@ int main (int argc, char* argv[])
 	M = args.get<int>("M",0);
 	D = args.get<size_t>("D",2);
 	S = abs(M)+1;
-	alpha = args.get<double>("alpha",1e3);
+	alpha = args.get<double>("alpha",1e2);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	dt = args.get<double>("dt",0.1);
 	
@@ -150,18 +150,18 @@ int main (int argc, char* argv[])
 //	assert(1!=1);
 	
 	//--------U(1)---------
-//	lout << endl << "--------U(1)---------" << endl << endl;
-//	
-//	Stopwatch<> Watch_U1;
-//	VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"CALC_SQUARE",false}});
-//	lout << H_U1.info() << endl;
-//	
-//	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
-//	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
-//	                  tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha,eps_svd);
-//	g_U1.state.graph("U1");
-//	
-//	t_U1 = Watch_U1.time();
+	lout << endl << "--------U(1)---------" << endl << endl;
+	
+	Stopwatch<> Watch_U1;
+	VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"CALC_SQUARE",false}});
+	lout << H_U1.info() << endl;
+	
+	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
+	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
+	                  tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha,eps_svd);
+	g_U1.state.graph("U1");
+	
+	t_U1 = Watch_U1.time();
 	
 //	assert(1!=1);
 	

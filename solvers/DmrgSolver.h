@@ -382,11 +382,26 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	}
 	
 	size_t halfsweepRange = (stat.N_halfsweeps==0)? N_sites : N_sites-1; // one extra step on 1st iteration
+	double t_Lanczos = 0;
+	double t_sweep = 0;
+	double t_LR = 0;
+	double t_err=0;
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
 		turnaround(stat.pivot, N_sites, stat.CURRENT_DIRECTION);
+		
+		Stopwatch<> LanczosTimer;
 		LanczosStep(H, Vout, EDGE);
+		t_Lanczos += LanczosTimer.time();
+		
+		Stopwatch<> SweepTimer;
+		Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::RICH_SVD, &Heff[stat.pivot]);
+		t_sweep += SweepTimer.time();
+		
+		Stopwatch<> LRtimer;
 		sweepStep(H,Vout);
+		t_LR += LRtimer.time();
+		
 		++stat.N_sweepsteps;
 	}
 	++stat.N_halfsweeps;
@@ -413,29 +428,44 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	else if (TEST == DMRG::CONVTEST::VAR_2SITE)
 	{
 		Stopwatch<> HsqTimer;
+		double t_LR=0;
+		double t_N=0;
+		double t_QR=0;
+		double t_GRALF=0;
 		
 		sweep_to_edge(H,Vout,true);
 		err_state = 0.;
+		
+		vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Nsaved(this->N_sites);
+		DMRG::DIRECTION::OPTION DIR_N = stat.CURRENT_DIRECTION;
 		
 		// one-site variance
 		for (size_t l=0; l<this->N_sites; ++l)
 		{
 			// calculate the nullspace tensor F/G with QR_NULL
-			vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > N;
+//			vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > N;
 //			Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::QR_NULL, NULL, false, &N);
-			Vout.state.calc_N(stat.CURRENT_DIRECTION, stat.pivot, N);
+			Stopwatch<> Ntimer;
+			Vout.state.calc_N(stat.CURRENT_DIRECTION, stat.pivot, Nsaved[stat.pivot]);
+			t_N += Ntimer.time();
 			
 			// contract Fig. 4 top from Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104
 			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
-			contract_GRALF (Heff[stat.pivot].L, Vout.state.A[stat.pivot], Heff[stat.pivot].W, N, Heff[stat.pivot].R, 
+			Stopwatch<> GRALFtimer;
+			contract_GRALF (Heff[stat.pivot].L, Vout.state.A[stat.pivot], Heff[stat.pivot].W, Nsaved[stat.pivot], Heff[stat.pivot].R, 
 			                H.locBasis(stat.pivot), H.opBasis(stat.pivot), Err, stat.CURRENT_DIRECTION);
+			t_GRALF += GRALFtimer.time();
 			err_state += Err.squaredNorm().sum();
 			
 			// sweep to next site
 			if (l<N_sites-1)
 			{
+				Stopwatch<> QRtimer;
 				Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::QR);
+				t_QR += QRtimer.time();
+				Stopwatch<> LRtimer;
 				(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++stat.pivot) : build_R(H,Vout,--stat.pivot);
+				t_LR += LRtimer.time();
 			}
 		}
 		
@@ -449,41 +479,81 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			
 			// calculate the nullspace tensor F/G with QR_NULL
 			vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > N;
-			Vout.state.calc_N(DMRG::DIRECTION::LEFT, loc2, N);
+			if (DIR_N == DMRG::DIRECTION::LEFT)
+			{
+				N = Nsaved[loc2];
+			}
+			else
+			{
+				Stopwatch<> Ntimer;
+				Vout.state.calc_N(DMRG::DIRECTION::LEFT, loc2, N);
+				t_N += Ntimer.time();
+			}
 			
 			// pre-contract the right site
 			Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Y;
+			Stopwatch<> LRtimer1;
 			contract_R(Heff[loc2].R, Vout.state.A[loc2], H.W[loc2], N, H.locBasis(loc2), H.opBasis(loc2), Y);
+			t_LR += LRtimer1.time();
 			
 			// complete the contraction in Fig. 4 bottom from Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104
 			N.clear();
-			Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc1, N);
-			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
+			if (DIR_N == DMRG::DIRECTION::RIGHT)
+			{
+				N = Nsaved[loc1];
+			}
+			else
+			{
+				Stopwatch<> Ntimer;
+				Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc1, N);
+				t_N += Ntimer.time();
+			}
+			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err2;
+			Stopwatch<> GRALFtimer;
 			contract_GRALF (Heff[loc1].L, Vout.state.A[loc1], Heff[loc1].W, N, Y, 
-			                H.locBasis(loc1), H.opBasis(loc1), Err, DMRG::DIRECTION::RIGHT);
-			err_state += Err.squaredNorm().sum();
+			                H.locBasis(loc1), H.opBasis(loc1), Err2, DMRG::DIRECTION::RIGHT);
+			t_GRALF += GRALFtimer.time();
+			err_state += Err2.squaredNorm().sum();
 			
 			// sweep to next site
+			Stopwatch<> QRtimer;
 			Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::QR);
+			t_QR += QRtimer.time();
+			Stopwatch<> LRtimer2;
 			(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++stat.pivot) : build_R(H,Vout,--stat.pivot);
+			t_LR += LRtimer2.time();
 		}
 		
 		// sweep back to the beginning (one site away from the edge)
 		turnaround(stat.pivot, N_sites, stat.CURRENT_DIRECTION);
+		Stopwatch<> QRtimer;
 		Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::QR);
+		t_QR += QRtimer.time();
+		Stopwatch<> LRtimer;
 		(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++stat.pivot) : build_R(H,Vout,--stat.pivot);
+		t_LR += LRtimer.time();
 		
 		err_state /= this->N_sites;
 		
 		if (CHOSEN_VERBOSITY>=2)
 		{
-			lout << HsqTimer.info("2-site variance") << endl;
+			double t_tot = HsqTimer.time();
+			t_err += t_tot;
+			lout << HsqTimer.info("2-site variance") 
+			     << " ("
+			     << "GRALF=" << round(t_GRALF/t_tot*100.,0) << "%" 
+			     << ", LR=" << round(t_LR/t_tot*100.,0) << "%" 
+			     << ", N=" << round(t_N/t_tot*100.,0) << "%" 
+			     << ", QR=" << round(t_QR/t_tot*100.,0) << "%" 
+			     << ")"
+			     << endl;
 		}
 		
 //		Mps<Symmetry,Scalar> HxPsi;
 //		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
-//		if constexpr (Symmetry::NON_ABELIAN) {HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);}
-//		else {HxPsi.eps_svd = 0.; OxV(H,Psi,HxPsi);}
+////		if constexpr (Symmetry::NON_ABELIAN) {HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);}
+////		else {HxPsi.eps_svd = 0.; OxV(H,Psi,HxPsi);}
+//		HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);
 //		
 //		Mps<Symmetry,Scalar> ExPsi = Vout.state;
 //		ExPsi *= Vout.energy;
@@ -499,7 +569,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		Mps<Symmetry,Scalar> HxPsi;
 		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
 		if constexpr (Symmetry::NON_ABELIAN) {HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);}
-		else {HxPsi.eps_svd = 0.; OxV(H,Psi,HxPsi);}
+		else                                 {HxPsi.eps_svd = 0.; OxV(H,Psi,HxPsi);}
 		
 		Mps<Symmetry,Scalar> ExPsi = Vout.state;
 		ExPsi *= Vout.energy;
@@ -538,7 +608,15 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		}
 		lout << eigeninfo() << endl;
 		lout << Vout.state.info() << endl;
-		lout << HalfsweepTimer.info("half-sweep") << endl; //", " << Saturn.info("total",false) << endl;
+		double t_halfsweep = HalfsweepTimer.time();
+		lout << HalfsweepTimer.info("half-sweep") 
+		     << " ("
+		     << "Lanczos=" << round(t_Lanczos/t_halfsweep*100.,0) << "%"
+		     << ", sweeps=" << round(t_sweep/t_halfsweep*100.,0) << "%"
+		     << ", LR=" << round(t_LR/t_halfsweep*100.,0) << "%"
+		     << ", err=" << round(t_err/t_halfsweep*100.,0) << "%"
+		     << ")"
+		     << endl;
 	}
 }
 
@@ -678,9 +756,6 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 sweepStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout)
 {
-	// sweep state
-	Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::RICH_SVD, &Heff[stat.pivot]);
-	
 	// build environments
 	(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++stat.pivot) : build_R(H,Vout,--stat.pivot);
 	(stat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,stat.pivot)  : build_PR(H,Vout,stat.pivot);
