@@ -243,9 +243,6 @@ public:
 	
 	/**\describe_memory*/
 	double memory (MEMUNIT memunit=GB) const;
-	
-	/**\describe_overhead*/
-	double overhead (MEMUNIT=MB) const;
 	///\}
 	
 	///\{
@@ -414,8 +411,13 @@ private:
 	vector<Qbasis<Symmetry> > QbasisIn;
 	vector<Qbasis<Symmetry> > QbasisOut;
 	
-	vector<vector<qarray<Nq> > > inset_glob;
-	vector<vector<qarray<Nq> > > outset_glob;
+//	vector<vector<qarray<Nq> > > inset_glob;
+//	vector<vector<qarray<Nq> > > outset_glob;
+	
+	vector<qarray<Nq> > QinTop;
+	vector<qarray<Nq> > QinBot;
+	vector<qarray<Nq> > QoutTop;
+	vector<qarray<Nq> > QoutBot;
 	
 	void update_inset (size_t loc);
 	void update_outset (size_t loc);
@@ -473,7 +475,7 @@ info() const
 			ss << "entropy(" << lSmax << ")=" << entropy(lSmax) << ", ";
 		}
 	}
-	ss << "mem=" << round(memory(GB),3) << "GB, overhead=" << round(overhead(MB),3) << "MB";
+	ss << "mem=" << round(memory(GB),3) << "GB";
 	
 //	ss << endl << " •ortho: " << test_ortho();
 	return ss.str();
@@ -534,8 +536,8 @@ outerResize (const Mps<Symmetry,OtherMatrixType> &V)
 	
 	inset = V.inset;
 	outset = V.outset;
-	inset_glob = V.inset_glob;
-	outset_glob = V.outset_glob;
+//	inset_glob = V.inset_glob;
+//	outset_glob = V.outset_glob;
 	QbasisIn = V.QbasisIn;
 	QbasisOut = V.QbasisOut;
 	
@@ -574,8 +576,8 @@ resize_arrays()
 	outset.resize(this->N_sites);
 	QbasisIn.resize(this->N_sites);
 	QbasisOut.resize(this->N_sites);
-	inset_glob.resize(this->N_sites);
-	outset_glob.resize(this->N_sites);
+//	inset_glob.resize(this->N_sites);
+//	outset_glob.resize(this->N_sites);
 	
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
 	entropy.resize(this->N_sites-1); entropy.setConstant(numeric_limits<double>::quiet_NaN());
@@ -618,7 +620,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 	
 	// fill Q_trunc
 	Q_trunc[0].push_back(Symmetry::qvacuum());
-	for(size_t l=1; l<this->N_sites; l++)
+	for (size_t l=1; l<this->N_sites; l++)
 	{
 		auto new_qs = Symmetry::reduceSilent(Q_trunc[l-1], qloc[l], true);
 		array<double,Nq> mean;
@@ -626,55 +628,115 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		{
 			mean[q] = Qtot[q]*l*1./this->N_sites;
 		}
-		new_qs = take_first_elems(new_qs,mean);
-		Q_trunc[l] = new_qs;
+		auto tmp = take_first_elems(new_qs,mean);
+		Q_trunc[l] = tmp;
 	}
 	Q_trunc[this->N_sites].push_back(Qtot);
 	
-	auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> set<qarray<Nq> >
+	// calculate Qtop and Qbot
+	
+	QinTop.resize(this->N_sites);
+	QinBot.resize(this->N_sites);
+	QoutTop.resize(this->N_sites);
+	QoutBot.resize(this->N_sites);
+	
+//	vector<qarray<Nq> > QinTop(this->N_sites);
+//	vector<qarray<Nq> > QinBot(this->N_sites);
+	QinTop[0] = Symmetry::qvacuum();
+	QinBot[0] = Symmetry::qvacuum();
+	vector<qarray<Nq> > vac(1); vac[0] = Symmetry::qvacuum();
+	for (size_t l=1; l<this->N_sites; ++l)
 	{
-		size_t L = (l_last < 0 or l_frst >= qloc.size())? 0 : l_last-l_frst+1;
-		set<qarray<Nq> > qset;
+		auto new_tops = Symmetry::reduceSilent(qloc[l], QinTop[l-1]);
+		auto new_bots = Symmetry::reduceSilent(qloc[l], QinBot[l-1]);
 		
-		if (L > 0)
-		{
-			// add qnums of local basis on l_frst to qset_tmp
-			set<qarray<Nq> > qset_tmp;
-			for (size_t s=0; s<qloc[l_frst].size(); ++s)
-			{
-				//This line should change if we want (left QN) = (right QN) which is required for VUMPS for example
-				//Instead of inserting qloc[l_frst][s] one needs to shift the local QN by the total density of the desired target QN
-				//For Abelian symmetries one would have qloc[l_frst][s]-Qtot/L which would require rational QN --> see todo in qarray.
-				//For SU(2) the situation might be more tricky and we cant just shift the QN but also need to apply an factor to the Amatrix,
-				//which is until now not constructed... --> think about that.
-				qset_tmp.insert(qloc[l_frst][s]);
-			}
-			
-			for (size_t l=l_frst+1; l<=l_last; ++l)
-			{
-				// add qnums of local basis at l and qset_tmp to qset
-				for (size_t s=0; s<qloc[l].size(); ++s)
-				for (auto it=qset_tmp.begin(); it!=qset_tmp.end(); ++it)
-				{
-					auto qVec = Symmetry::reduceSilent(*it,qloc[l][s]);
-					for (size_t j=0; j<qVec.size(); j++)
-					{
-						qset.insert(qVec[j]);
-					}
-				}
-				// swap qset and qset_tmp to continue
-				std::swap(qset_tmp,qset);
-				qset.clear();
-			}
-			qset = qset_tmp;
-		}
-		else
-		{
-			qset.insert(Symmetry::qvacuum());
-		}
+		sort(new_tops.begin(),new_tops.end());
+		sort(new_bots.begin(),new_bots.end());
 		
-		return qset;
-	};
+		QinTop[l] = new_tops[new_tops.size()-1];
+		QinBot[l] = new_bots[0];
+		
+//		cout << "l=" << l << ", top=" << QinTop[l] << ", bot=" << QinBot[l] << endl;
+	}
+	
+//	vector<qarray<Nq> > QoutTop(this->N_sites);
+//	vector<qarray<Nq> > QoutBot(this->N_sites);
+	QoutTop[this->N_sites-1] = Qtot;
+	QoutBot[this->N_sites-1] = Qtot;
+	for (int l=this->N_sites-2; l>=0; --l)
+	{
+		auto new_tops = Symmetry::reduceSilent(qloc[l], QoutTop[l+1]);
+		auto new_bots = Symmetry::reduceSilent(qloc[l], QoutBot[l+1]);
+		
+		sort(new_tops.begin(),new_tops.end());
+		sort(new_bots.begin(),new_bots.end());
+		
+		QoutTop[l] = new_tops[new_tops.size()-1];
+		QoutBot[l] = new_bots[0];
+		
+//		cout << "l=" << l << ", top=" << QoutTop[l] << ", bot=" << QoutBot[l] << endl;
+	}
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		if (l!=0)
+		{
+			QinTop[l]  = min(QinTop[l], QoutTop[l-1]);
+			QinBot[l]  = max(QinBot[l], QoutBot[l-1]);
+		}
+		if (l!=this->N_sites-1)
+		{
+			QoutTop[l] = min(QoutTop[l], QinTop[l+1]);
+			QoutBot[l] = max(QoutBot[l], QinBot[l+1]);
+		}
+//		cout << "l=" << l << " in : top=" << QinTop[l]  << ", bot=" << QinBot[l]  << endl;
+//		cout << "l=" << l << " out: top=" << QoutTop[l] << ", bot=" << QoutBot[l] << endl;
+	}
+	
+//	auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> set<qarray<Nq> >
+//	{
+//		size_t L = (l_last < 0 or l_frst >= qloc.size())? 0 : l_last-l_frst+1;
+//		set<qarray<Nq> > qset;
+//		
+//		if (L > 0)
+//		{
+//			// add qnums of local basis on l_frst to qset_tmp
+//			set<qarray<Nq> > qset_tmp;
+//			for (size_t s=0; s<qloc[l_frst].size(); ++s)
+//			{
+//				//This line should change if we want (left QN) = (right QN) which is required for VUMPS for example
+//				//Instead of inserting qloc[l_frst][s] one needs to shift the local QN by the total density of the desired target QN
+//				//For Abelian symmetries one would have qloc[l_frst][s]-Qtot/L which would require rational QN --> see todo in qarray.
+//				//For SU(2) the situation might be more tricky and we cant just shift the QN but also need to apply an factor to the Amatrix,
+//				//which is until now not constructed... --> think about that.
+//				qset_tmp.insert(qloc[l_frst][s]);
+//			}
+//			
+//			for (size_t l=l_frst+1; l<=l_last; ++l)
+//			{
+//				// add qnums of local basis at l and qset_tmp to qset
+//				for (size_t s=0; s<qloc[l].size(); ++s)
+//				for (auto it=qset_tmp.begin(); it!=qset_tmp.end(); ++it)
+//				{
+//					auto qVec = Symmetry::reduceSilent(*it,qloc[l][s]);
+//					for (size_t j=0; j<qVec.size(); j++)
+//					{
+//						qset.insert(qVec[j]);
+//					}
+//				}
+//				// swap qset and qset_tmp to continue
+//				std::swap(qset_tmp,qset);
+//				qset.clear();
+//			}
+//			qset = qset_tmp;
+//		}
+//		else
+//		{
+//			qset.insert(Symmetry::qvacuum());
+//		}
+//		
+//		return qset;
+//	};
 	
 	if constexpr (Nq == 0)
 	{
@@ -688,59 +750,28 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		{
 			set<qarray<Nq> > intmp;
 			set<qarray<Nq> > outtmp;
-			set<qarray<Nq> > intmp_glob;
-			set<qarray<Nq> > outtmp_glob;
-			
-			int lprev = l-1;
-			int lnext = l+1;
-			
-			set<qarray<Nq> > qlset = calc_qnums_on_segment(0,lprev); // length=l
-			set<qarray<Nq> > qrset = calc_qnums_on_segment(lnext,this->N_sites-1); // length=L-l-1
 			
 			for (size_t s=0; s<qloc[l].size(); ++s)
 			{
-				A[l][s].clear();
-				
-				for (auto ql=qlset.begin(); ql!=qlset.end(); ++ql)
+				for (size_t q=0; q<Q_trunc[l].size(); ++q)
 				{
-					auto qVec = Symmetry::reduceSilent(*ql,qloc[l][s]);
-					vector<set<qType> > qrSetVec; qrSetVec.resize(qVec.size());
-					for (size_t i=0; i<qVec.size(); i++)
+					qarray<Nq> qin = Q_trunc[l][q];
+					auto qouts = Symmetry::reduceSilent(qloc[l][s],qin);
+					for (const auto &qout:qouts)
 					{
-						auto qVectmp = Symmetry::reduceSilent(Symmetry::flip(qVec[i]),Qtot);
-						for (size_t j=0; j<qVectmp.size(); j++) { qrSetVec[i].insert(qVectmp[j]); }
-						for (auto qr = qrSetVec[i].begin(); qr!=qrSetVec[i].end(); qr++)
+						auto it = find(Q_trunc[l+1].begin(), Q_trunc[l+1].end(), qout);
+						if (it != Q_trunc[l+1].end())
 						{
-							auto itqr = qrset.find(*qr);
-							if (itqr != qrset.end())
+							intmp.insert(qin);
+							outtmp.insert(qout);
+							
+							std::array<qType,2> qinout = {qin,qout};
+							if (A[l][s].dict.find(qinout) == A[l][s].dict.end())
 							{
-								auto qin = *ql;
-								auto itin = find(Q_trunc[l].begin(),Q_trunc[l].end(),qin);
-								
-								auto qout = qVec[i];
-								auto itout = find(Q_trunc[l+1].begin(),Q_trunc[l+1].end(),qout);
-								
-								if (itin == Q_trunc[l].end() or itout == Q_trunc[l+1].end())
-								{
-									intmp_glob.insert(qin);
-									outtmp_glob.insert(qout);
-								}
-								else
-								{
-									intmp.insert(qin);
-									outtmp.insert(qout);
-									intmp_glob.insert(qin);
-									outtmp_glob.insert(qout);
-									std::array<qType,2> qTmp = {qin,qout};
-									auto check = A[l][s].dict.find(qTmp);
-									if (check == A[l][s].dict.end())
-									{
-										A[l][s].in.push_back(qin);
-										A[l][s].out.push_back(qout);
-										A[l][s].dict.insert({qTmp,A[l][s].size()});
-										A[l][s].plusplus();
-									}
-								}
+								A[l][s].in.push_back(qin);
+								A[l][s].out.push_back(qout);
+								A[l][s].dict.insert({qinout,A[l][s].size()});
+								A[l][s].plusplus();
 							}
 						}
 					}
@@ -754,14 +785,88 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 			copy(intmp.begin(),  intmp.end(),  inset[l].begin());
 			copy(outtmp.begin(), outtmp.end(), outset[l].begin());
 			
-			inset_glob[l].resize(intmp_glob.size());
-			outset_glob[l].resize(outtmp_glob.size());
-			copy(intmp_glob.begin(),  intmp_glob.end(),  inset_glob[l].begin());
-			copy(outtmp_glob.begin(), outtmp_glob.end(), outset_glob[l].begin());
-			
 			update_QbasisIn(l);
 			update_QbasisOut(l);
 		}
+		
+//		for (size_t l=0; l<this->N_sites; ++l)
+//		{
+//			set<qarray<Nq> > intmp;
+//			set<qarray<Nq> > outtmp;
+//			set<qarray<Nq> > intmp_glob;
+//			set<qarray<Nq> > outtmp_glob;
+//			
+//			int lprev = l-1;
+//			int lnext = l+1;
+//			
+//			set<qarray<Nq> > qlset = calc_qnums_on_segment(0,lprev); // length=l
+//			set<qarray<Nq> > qrset = calc_qnums_on_segment(lnext,this->N_sites-1); // length=L-l-1
+//			
+//			for (size_t s=0; s<qloc[l].size(); ++s)
+//			{
+//				A[l][s].clear();
+//				
+//				for (auto ql=qlset.begin(); ql!=qlset.end(); ++ql)
+//				{
+//					auto qVec = Symmetry::reduceSilent(*ql,qloc[l][s]);
+//					vector<set<qType> > qrSetVec; qrSetVec.resize(qVec.size());
+//					for (size_t i=0; i<qVec.size(); i++)
+//					{
+//						auto qVectmp = Symmetry::reduceSilent(Symmetry::flip(qVec[i]),Qtot);
+//						for (size_t j=0; j<qVectmp.size(); j++) { qrSetVec[i].insert(qVectmp[j]); }
+//						for (auto qr = qrSetVec[i].begin(); qr!=qrSetVec[i].end(); qr++)
+//						{
+//							auto itqr = qrset.find(*qr);
+//							if (itqr != qrset.end())
+//							{
+//								auto qin = *ql;
+//								auto itin = find(Q_trunc[l].begin(),Q_trunc[l].end(),qin);
+//								
+//								auto qout = qVec[i];
+//								auto itout = find(Q_trunc[l+1].begin(),Q_trunc[l+1].end(),qout);
+//								
+//								if (itin == Q_trunc[l].end() or itout == Q_trunc[l+1].end())
+//								{
+//									intmp_glob.insert(qin);
+//									outtmp_glob.insert(qout);
+//								}
+//								else
+//								{
+//									intmp.insert(qin);
+//									outtmp.insert(qout);
+//									intmp_glob.insert(qin);
+//									outtmp_glob.insert(qout);
+//									std::array<qType,2> qTmp = {qin,qout};
+//									auto check = A[l][s].dict.find(qTmp);
+//									if (check == A[l][s].dict.end())
+//									{
+//										A[l][s].in.push_back(qin);
+//										A[l][s].out.push_back(qout);
+//										A[l][s].dict.insert({qTmp,A[l][s].size()});
+//										A[l][s].plusplus();
+//									}
+//								}
+//							}
+//						}
+//					}
+//				}
+//				
+//				A[l][s].block.resize(A[l][s].size());
+//			}
+//			
+//			inset[l].resize(intmp.size());
+//			outset[l].resize(outtmp.size());
+//			copy(intmp.begin(),  intmp.end(),  inset[l].begin());
+//			copy(outtmp.begin(), outtmp.end(), outset[l].begin());
+//			
+//			inset_glob[l].resize(intmp_glob.size());
+//			outset_glob[l].resize(outtmp_glob.size());
+//			copy(intmp_glob.begin(),  intmp_glob.end(),  inset_glob[l].begin());
+//			copy(outtmp_glob.begin(), outtmp_glob.end(), outset_glob[l].begin());
+//			
+//			update_QbasisIn(l);
+//			update_QbasisOut(l);
+//		}
 	}
 }
 
@@ -777,8 +882,8 @@ outerResizeNoSymm()
 	{
 		inset[l].push_back(qvacuum<Nq>());
 		outset[l].push_back(qvacuum<Nq>());
-		inset_glob[l].push_back(qvacuum<Nq>());
-		outset_glob[l].push_back(qvacuum<Nq>());
+//		inset_glob[l].push_back(qvacuum<Nq>());
+//		outset_glob[l].push_back(qvacuum<Nq>());
 		
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
@@ -2733,7 +2838,8 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 							
 							for (const auto& qP : qPs)
 							{
-								if (auto it=find(inset_glob[loc].begin(), inset_glob[loc].end(), qP); it==inset_glob[loc].end()) {continue;}
+//								if (auto it=find(inset_glob[loc].begin(), inset_glob[loc].end(), qP); it==inset_glob[loc].end()) {continue;}
+								if (qP > QinTop[loc] or qP < QinBot[loc]) {continue;}
 								
 								Scalar factor_cgc = Symmetry::coeff_HPsi(A[loc][s2].out[itA->second], qloc[loc][s2], A[loc][s2].in[itA->second],
 								                                         H->R.mid(qR), H->qOp[k], qW,
@@ -2949,7 +3055,8 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 							
 							for (const auto& qP : qPs)
 							{
-								if (auto it=find(outset_glob[loc].begin(), outset_glob[loc].end(), qP); it==outset_glob[loc].end()) {continue;}
+//								if (auto it=find(outset_glob[loc].begin(), outset_glob[loc].end(), qP); it==outset_glob[loc].end()) {continue;}
+								if (qP > QoutTop[loc] or qP < QoutBot[loc]) {continue;}
 								
 								Scalar factor_cgc = Symmetry::coeff_HPsi(A[loc][s2].out[itA->second], qloc[loc][s2], A[loc][s2].in[itA->second],
 								                                         qW, H->qOp[k], H->L.mid(qL),
@@ -4067,21 +4174,6 @@ memory (MEMUNIT memunit) const
 	{
 		res += A[l][s].memory(memunit);
 	}
-	return res;
-}
-
-template<typename Symmetry, typename Scalar>
-double Mps<Symmetry,Scalar>::
-overhead (MEMUNIT memunit) const
-{
-	double res = 0.;
-	for (size_t l=0; l<this->N_sites; ++l)
-	for (size_t s=0; s<qloc[l].size(); ++s)
-	{
-		res += A[l][s].overhead(memunit);
-	}
-	res += Nq * calc_memory<int>(inset.size(),  memunit);
-	res += Nq * calc_memory<int>(outset.size(), memunit);
 	return res;
 }
 

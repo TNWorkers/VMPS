@@ -27,7 +27,6 @@ public:
 	string info() const;
 	string eigeninfo() const;
 	double memory   (MEMUNIT memunit=GB) const;
-	double overhead (MEMUNIT memunit=MB) const;
 	
 	void edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND,
@@ -35,7 +34,7 @@ public:
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-6, 
 	                size_t Dinit=4, size_t Dlimit=500, int Qinit=50,
 	                size_t max_halfsweeps=50, size_t min_halfsweeps=6, 
-                    double max_alpha_rsvd_input=1e3, double eps_svd_input=1e-7, 
+                    double max_alpha_rsvd_input=1e2, double eps_svd_input=1e-7, 
 	                size_t savePeriod=0);
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
@@ -148,7 +147,7 @@ eigeninfo() const
 	
 	ss << "err_eigval=" << err_eigval << ", err_state=" << err_state << ", ";
 	
-	ss << "mem=" << round(memory(GB),3) << "GB, overhead=" << round(overhead(MB),3) << "MB";
+	ss << "mem=" << round(memory(GB),3) << "GB";
 	
 	return ss.str();
 }
@@ -201,21 +200,6 @@ memory (MEMUNIT memunit) const
 		{
 			res += calc_memory(Heff[l].W[s1][s2][k],memunit);
 		}
-	}
-	return res;
-}
-
-template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-double DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
-overhead (MEMUNIT memunit) const
-{
-	double res = 0.;
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		res += Heff[l].L.overhead(memunit);
-		res += Heff[l].R.overhead(memunit);
-		res += 2. * calc_memory<size_t>(Heff[l].qlhs.size(),memunit);
-		res += 4. * calc_memory<size_t>(Heff[l].qrhs.size(),memunit);
 	}
 	return res;
 }
@@ -347,13 +331,12 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	// initial energy
 	if (stat.pivot == 0)
 	{
-		Vout.state.graph("init");
+//		Vout.state.graph("init");
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rtmp;
 		contract_R(Heff[0].R, Vout.state.A[0], H.W[0], Vout.state.A[0], H.locBasis(0), H.opBasis(0), Rtmp);
-		if (Rtmp.dim != 1)
+		if (Rtmp.dim == 0)
 		{
-			lout << "Warning: Could not contract initial state!" << endl;
-			Eold = 1e3;
+			Eold = 0;
 		}
 		else
 		{

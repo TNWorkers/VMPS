@@ -53,14 +53,14 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 					size_t qAbra = get<1>(ix[n]);
 					size_t qAket = get<2>(ix[n]);
 					
-					if (Aket[s2].block[qAket].size() == 0) {continue;}
-					if (Abra[s1].block[qAbra].size() == 0) {continue;}
+//					if (Aket[s2].block[qAket].size() == 0) {continue;}
+//					if (Abra[s1].block[qAbra].size() == 0) {continue;}
 					
 					if constexpr ( Symmetry::NON_ABELIAN )
 					{
 						factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
-															quple[2],            qOp[k],   Lold.mid(qL),
-															Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
+						                                    quple[2],            qOp[k],   Lold.mid(qL),
+						                                    Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
 					}
 					else
 					{
@@ -158,8 +158,8 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 				if (q1!=Abra[s1].dict.end() and 
 				    q2!=Aket[s2].dict.end())
 				{
-					if (Aket[s2].block[q2->second].size() == 0) {continue;}
-					if (Abra[s1].block[q1->second].size() == 0) {continue;}
+//					if (Aket[s2].block[q2->second].size() == 0) {continue;}
+//					if (Abra[s1].block[q1->second].size() == 0) {continue;}
 					
 					qarray<Symmetry::Nq> new_qin  = Aket[s2].in[q2->second]; // A.in
 					qarray<Symmetry::Nq> new_qout = Abra[s1].in[q1->second]; // A†.out = A.in
@@ -195,27 +195,21 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 									                 Abra[s1].block[q1->second].adjoint(),
 									                 Mtmp);
 									
-//									cout << "q=" << quple[0] << ", " << quple[1] << ", " << quple[2] << endl;
-									
 									auto it = Rnew.dict.find(quple);
 									if (it != Rnew.dict.end())
 									{
-//										cout << "in Rnew" << endl;
 										if (Rnew.block[it->second][a1][0].rows() != Mtmp.rows() or 
 										    Rnew.block[it->second][a1][0].cols() != Mtmp.cols())
 										{
-//											cout << "setting" << endl;
 											Rnew.block[it->second][a1][0] = Mtmp;
 										}
 										else
 										{
-//											cout << "adding" << endl;
 											Rnew.block[it->second][a1][0] += Mtmp;
 										}
 									}
 									else
 									{
-//										cout << "not in Rnew" << endl;
 										boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].rows()][1]);
 										Mtmpvec[a1][0] = Mtmp;
 										Rnew.push_back(quple, Mtmpvec);

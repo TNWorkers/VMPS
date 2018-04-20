@@ -150,20 +150,18 @@ int main (int argc, char* argv[])
 //	assert(1!=1);
 	
 	//--------U(1)---------
-	lout << endl << "--------U(1)---------" << endl << endl;
-	
-	Stopwatch<> Watch_U1;
-	VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"CALC_SQUARE",false}});
-	lout << H_U1.info() << endl;
-	
-	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
-	                  tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha,eps_svd);
-	g_U1.state.graph("end");
-	
-	g_U1.state.graph(make_string("L=",L));
-	
-	t_U1 = Watch_U1.time();
+//	lout << endl << "--------U(1)---------" << endl << endl;
+//	
+//	Stopwatch<> Watch_U1;
+//	VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"CALC_SQUARE",false}});
+//	lout << H_U1.info() << endl;
+//	
+//	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
+//	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
+//	                  tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha,eps_svd);
+//	g_U1.state.graph("U1");
+//	
+//	t_U1 = Watch_U1.time();
 	
 //	assert(1!=1);
 	
@@ -220,17 +218,18 @@ int main (int argc, char* argv[])
 //	}
 	
 	// --------SU(2)---------
-//	lout << endl << "--------SU(2)---------" << endl << endl;
-//	
-//	Stopwatch<> Watch_SU2;
-//	VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
-//	lout << H_SU2.info() << endl;
-//	
-//	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
-//	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
-//	                   tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha,eps_svd);
-//	
-//	t_SU2 = Watch_SU2.time();
+	lout << endl << "--------SU(2)---------" << endl << endl;
+	
+	Stopwatch<> Watch_SU2;
+	VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
+	lout << H_SU2.info() << endl;
+	
+	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
+	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
+	                   tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha,eps_svd);
+	g_SU2.state.graph("SU2");
+	
+	t_SU2 = Watch_SU2.time();
 	
 //	MatrixXd SpinCorr_SU2(L,L); SpinCorr_SU2.setZero();
 //	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SS(i,j), g_SU2.state); }
