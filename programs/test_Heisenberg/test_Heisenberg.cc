@@ -183,39 +183,40 @@ int main (int argc, char* argv[])
 //	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
 	
 	// dynamics (of Néel state)
-//	if (CALC_DYNAMICS)
-//	{
-//		lout << "-------DYNAMICS-------" << endl;
-//		int Ldyn = 12;
+	if (CALC_DYNAMICS)
+	{
+		lout << "-------DYNAMICS-------" << endl;
+		int Ldyn = 12;
 //		vector<double> Jz_list = {0., -1., -2., -4.};
-//		
-//		for (const auto& Jz:Jz_list)
-//		{
-//			VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
-//			lout << H_U1t.info() << endl;
-//			VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
-//			TDVPPropagator<VMPS::HeisenbergU1XXZ,Sym::U1<Sym::SpinU1>,double,complex<double>,VMPS::HeisenbergU1XXZ::StateXcd> TDVP(H_U1t,Psi);
-//			
-//			double t = 0;
-//			ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
-//			for (int i=0; i<=static_cast<int>(6./dt); ++i)
-//			{
-//				double res = 0;
-//				for (int l=0; l<Ldyn; ++l)
-//				{
-//					res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
-//				}
-//				res /= Ldyn;
-//				if(VERB != DMRG::VERBOSITY::SILENT) {lout << "t=" << t << ", <Sz>=" << res << endl;}
-//				Filer << t << "\t" << res << endl;
-//				
-//				TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
-//				if(VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
-//				t += dt;
-//			}
-//			Filer.close();
-//		}
-//	}
+		vector<double> Jz_list = {0.};
+		
+		for (const auto& Jz:Jz_list)
+		{
+			VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
+			lout << H_U1t.info() << endl;
+			VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
+			TDVPPropagator<VMPS::HeisenbergU1XXZ,Sym::U1<Sym::SpinU1>,double,complex<double>,VMPS::HeisenbergU1XXZ::StateXcd> TDVP(H_U1t,Psi);
+			
+			double t = 0;
+			ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
+			for (int i=0; i<=static_cast<int>(6./dt); ++i)
+			{
+				double res = 0;
+				for (int l=0; l<Ldyn; ++l)
+				{
+					res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
+				}
+				res /= Ldyn;
+				if(VERB != DMRG::VERBOSITY::SILENT) {lout << "t=" << t << ", <Sz>=" << res << endl;}
+				Filer << t << "\t" << res << endl;
+				
+				TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
+				if(VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
+				t += dt;
+			}
+			Filer.close();
+		}
+	}
 	
 	// --------SU(2)---------
 	lout << endl << "--------SU(2)---------" << endl << endl;

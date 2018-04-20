@@ -161,7 +161,6 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
 {
-//	Vout.outerResize(Vin); // set block structure of Vout as in Vin
 	Vout = Vin;
 	OxV(H,Vin,Vout);
 }

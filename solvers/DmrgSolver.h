@@ -600,11 +600,11 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		size_t standard_precision = cout.precision();
 		if (EDGE == LANCZOS::EDGE::GROUND)
 		{
-			lout << "Emin=" << setprecision(13) << Vout.energy << " Emin/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
+			lout << "E₀=" << setprecision(13) << Vout.energy << ", E₀/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
 		}
 		else
 		{
-			lout << "Emax=" << setprecision(13) << Vout.energy << " Emax/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
+			lout << "E₀=" << setprecision(13) << Vout.energy << ", E₀/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
 		}
 		lout << eigeninfo() << endl;
 		lout << Vout.state.info() << endl;

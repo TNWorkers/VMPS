@@ -6,5 +6,6 @@
 *.depend
 *.out
 *.o
+*.dat
 *.DS_Store
 makefile

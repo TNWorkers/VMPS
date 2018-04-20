@@ -94,7 +94,6 @@ public:
 	/**Cutoff criterion for DMRG::BROOM::OPTION.*/
 	double alpha_noise, eps_rdm, eps_svd, alpha_rsvd;
 	size_t N_sv, Dlimit;
-	size_t N_mow;
 	///@}
 	
 	void set_defaultCutoffs();
@@ -133,7 +132,6 @@ set_defaultCutoffs()
 	alpha_noise = 1e-10;
 	alpha_rsvd = 1e-2;
 	N_sv = 500;
-	N_mow = 0;
 }
 
 template<typename PivotMatrixType>

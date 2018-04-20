@@ -101,7 +101,7 @@ public:
 	void canonize (DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::LEFT);
 	
 
-#ifdef USE_HDF5_STORAGE
+	#ifdef USE_HDF5_STORAGE
 	///\{
 	/**
 	 * Save all matrices of the MPS to the file <FILENAME>.h5.
@@ -128,7 +128,7 @@ public:
 	 */
 	size_t loadDmax (string filename);
 	///\}
-#endif //USE_HDF5_STORAGE
+	#endif //USE_HDF5_STORAGE
 	
 	/**
 	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitialized.
@@ -157,16 +157,6 @@ public:
 	 * \param Dmax : size cutoff (per subspace)
 	 */
 	void innerResize (size_t Dmax);
-	
-	/**
-	 * Performs a resize of the block matrices for MpsCompressor.
-	 * \deprecated Don't use this funtion.
-	 * \param HOW_TO_RESIZE : If DMRG::RESIZE::CONSERV_INCR, then each block gains a zero row and a zero column, 
-	 *                        the bond dimension increases by \p Nqmax and \p Dmax has no meaning. 
-	 *                        If DMRG::RESIZE::DECR, all blocks are non-conservatively cut according to \p Dmax.
-	 * \param Dmax : size cutoff (per subspace)
-	 */
-	void dynamicResize (DMRG::RESIZE::OPTION HOW_TO_RESIZE, size_t Dmax);
 	
 	/**
 	 * Sets the Mps from a product state configuration.
@@ -419,6 +409,8 @@ private:
 	vector<qarray<Nq> > QoutTop;
 	vector<qarray<Nq> > QoutBot;
 	
+	void calc_Qlimits();
+	
 	void update_inset (size_t loc);
 	void update_outset (size_t loc);
 	void update_QbasisIn (size_t loc);
@@ -585,54 +577,8 @@ resize_arrays()
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Nqmax_input)
+calc_Qlimits()
 {
-	this->N_sites = L_input;
-	qloc = qloc_input;
-	Qtot = Qtot_input;
-	this->pivot = -1;
-	
-	// take the first Nqmax_input quantum numbers from qs which have the smallerst distance to mean
-	auto take_first_elems = [this,Nqmax_input] (const vector<qarray<Nq> > &qs, array<double,Nq> mean) -> vector<qarray<Nq> >
-	{
-		vector<qarray<Nq> > out = qs;
-		if (out.size() > Nqmax_input)
-		{
-			// sort the vector first according to the distance to mean
-			sort(out.begin(),out.end(),[mean] (qarray<Nq> q1, qarray<Nq> q2)
-			{
-				for (size_t q=0; q<Nq; q++)
-				{
-					if(abs(q1[q]-mean[q]) < abs(q2[q]-mean[q]))
-					{
-						return true;
-					}
-				}
-				return false;
-			});
-			out.erase(out.begin()+Nqmax_input,out.end());
-		}
-		return out;
-	};
-	
-	// Q_trunc contains the first Nqmax_input blocks (consistent with Qtot) for each site
-	vector<vector<qarray<Nq> > > Q_trunc(this->N_sites+1);
-	
-	// fill Q_trunc
-	Q_trunc[0].push_back(Symmetry::qvacuum());
-	for (size_t l=1; l<this->N_sites; l++)
-	{
-		auto new_qs = Symmetry::reduceSilent(Q_trunc[l-1], qloc[l], true);
-		array<double,Nq> mean;
-		for (size_t q=0; q<Nq; q++)
-		{
-			mean[q] = Qtot[q]*l*1./this->N_sites;
-		}
-		auto tmp = take_first_elems(new_qs,mean);
-		Q_trunc[l] = tmp;
-	}
-	Q_trunc[this->N_sites].push_back(Qtot);
-	
 	// calculate Qtop and Qbot
 	
 	QinTop.resize(this->N_sites);
@@ -692,6 +638,59 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 //		cout << "l=" << l << " in : top=" << QinTop[l]  << ", bot=" << QinBot[l]  << endl;
 //		cout << "l=" << l << " out: top=" << QoutTop[l] << ", bot=" << QoutBot[l] << endl;
 	}
+}
+
+template<typename Symmetry, typename Scalar>
+void Mps<Symmetry,Scalar>::
+outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Nqmax_input)
+{
+	this->N_sites = L_input;
+	qloc = qloc_input;
+	Qtot = Qtot_input;
+	this->pivot = -1;
+	
+	// take the first Nqmax_input quantum numbers from qs which have the smallerst distance to mean
+	auto take_first_elems = [this,Nqmax_input] (const vector<qarray<Nq> > &qs, array<double,Nq> mean) -> vector<qarray<Nq> >
+	{
+		vector<qarray<Nq> > out = qs;
+		if (out.size() > Nqmax_input)
+		{
+			// sort the vector first according to the distance to mean
+			sort(out.begin(),out.end(),[mean] (qarray<Nq> q1, qarray<Nq> q2)
+			{
+				for (size_t q=0; q<Nq; q++)
+				{
+					if(abs(q1[q]-mean[q]) < abs(q2[q]-mean[q]))
+					{
+						return true;
+					}
+				}
+				return false;
+			});
+			out.erase(out.begin()+Nqmax_input,out.end());
+		}
+		return out;
+	};
+	
+	// Q_trunc contains the first Nqmax_input blocks (consistent with Qtot) for each site
+	vector<vector<qarray<Nq> > > Q_trunc(this->N_sites+1);
+	
+	// fill Q_trunc
+	Q_trunc[0].push_back(Symmetry::qvacuum());
+	for (size_t l=1; l<this->N_sites; l++)
+	{
+		auto new_qs = Symmetry::reduceSilent(Q_trunc[l-1], qloc[l], true);
+		array<double,Nq> mean;
+		for (size_t q=0; q<Nq; q++)
+		{
+			mean[q] = Qtot[q]*l*1./this->N_sites;
+		}
+		auto tmp = take_first_elems(new_qs,mean);
+		Q_trunc[l] = tmp;
+	}
+	Q_trunc[this->N_sites].push_back(Qtot);
+	
+	calc_Qlimits();
 	
 //	auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> set<qarray<Nq> >
 //	{
@@ -1037,81 +1036,73 @@ innerResize (size_t Dmax)
 }
 
 template<typename Symmetry, typename Scalar>
-void Mps<Symmetry,Scalar>::
-dynamicResize (DMRG::RESIZE::OPTION HOW_TO_RESIZE, size_t Dmax)
-{
-	if (HOW_TO_RESIZE == DMRG::RESIZE::CONSERV_INCR)
-	{
-		for (size_t l=0; l<this->N_sites; ++l)
-		for (size_t s=0; s<qloc[l].size(); ++s)
-		for (size_t q=0; q<A[l][s].dim; ++q)
-		{
-			size_t Noldrows = A[l][s].block[q].rows();
-			size_t Noldcols = A[l][s].block[q].cols();
-			size_t incr = (Nq==0)? 10 : 1;
-			size_t Nnewrows = Noldrows+incr;
-			size_t Nnewcols = Noldcols+incr;
-			
-			if (l==0)                    {Nnewrows=1;}
-			else if (l==this->N_sites-1) {Nnewcols=1;}
-			
-			A[l][s].block[q].conservativeResize(Nnewrows,Nnewcols);
-			A[l][s].block[q].bottomRows(Nnewrows-Noldrows).setZero();
-			A[l][s].block[q].rightCols (Nnewcols-Noldcols).setZero();
-		}
-	}
-	else if (HOW_TO_RESIZE == DMRG::RESIZE::DECR)
-	{
-		for (size_t l=0; l<this->N_sites; ++l)
-		for (size_t s=0; s<qloc[l].size(); ++s)
-		for (size_t q=0; q<A[l][s].dim; ++q)
-		{
-			size_t Noldrows = A[l][s].block[q].rows();
-			size_t Noldcols = A[l][s].block[q].cols();
-//			A[l][s].block[q].resize(min(Noldrows,Dmax), min(Noldcols,Dmax));
-			size_t Nnewrows = min(Noldrows,Dmax);
-			size_t Nnewcols = min(Noldcols,Dmax);
-			if (l==0)                    {Nnewrows=1;}
-			else if (l==this->N_sites-1) {Nnewcols=1;}
-			A[l][s].block[q].resize(Nnewrows,Nnewcols);
-		}
-	}
-}
-
-template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
 void Mps<Symmetry,Scalar>::
 setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 {
 	assert(H.length() == config.size());
+	assert(!Symmetry::NON_ABELIAN);
+	
+	this->N_sites = config.size();
 	N_phys = H.volume();
-	outerResize(H.length(), H.locBasis(), accumulate(config.begin(),config.end(),qvacuum<Nq>()));
+	qloc = H.locBasis();
+	Qtot = accumulate(config.begin(),config.end(),qvacuum<Nq>());
+	this->pivot = -1;
+	
+	resize_arrays();
+	
+	vector<qarray<Nq> > qouts(this->N_sites+1);
+	qouts[0] = Symmetry::qvacuum();
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		qouts[l+1] = accumulate(config.begin(), config.begin()+l+1, qvacuum<Nq>());
+	}
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		set<qarray<Nq> > intmp;
+		set<qarray<Nq> > outtmp;
+		
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		{
+			qarray<Nq> qout = qouts[l+1];
+			qarray<Nq> qin = Symmetry::reduceSilent(qout, Symmetry::flip(qloc[l][s]))[0];
+			
+			if (qin == qouts[l])
+			{
+				intmp.insert(qin);
+				outtmp.insert(qout);
+			
+				std::array<qType,2> qinout = {qin,qout};
+				if (A[l][s].dict.find(qinout) == A[l][s].dict.end())
+				{
+					A[l][s].in.push_back(qin);
+					A[l][s].out.push_back(qout);
+					A[l][s].dict.insert({qinout,A[l][s].size()});
+					A[l][s].plusplus();
+				}
+				
+				A[l][s].block.resize(A[l][s].size());
+			}
+		}
+		
+		inset[l].resize(intmp.size());
+		outset[l].resize(outtmp.size());
+		copy(intmp.begin(),  intmp.end(),  inset[l].begin());
+		copy(outtmp.begin(), outtmp.end(), outset[l].begin());
+		
+		update_QbasisIn(l);
+		update_QbasisOut(l);
+	}
+	
+	calc_Qlimits();
 	
 	for (size_t l=0; l<this->N_sites; ++l)
 	for (size_t s=0; s<qloc[l].size(); ++s)
 	for (size_t q=0; q<A[l][s].dim; ++q)
 	{
 		A[l][s].block[q].resize(1,1);
-		A[l][s].block[q].setZero();
-	}
-	
-	qarray<Nq> Qcurr;
-	qarray<Nq> Qprev = qvacuum<Nq>();
-	
-	for (auto it=config.begin(); it!=config.end(); ++it)
-	{
-		Qcurr = accumulate(config.begin(), it+1, qvacuum<Nq>());
-		size_t l = it-config.begin();
-		
-		for (int s=0; s<qloc[l].size(); ++s)
-		for (int q=0; q<A[l][s].dim; ++q)
-		{
-			if (A[l][s].out[q]==Qcurr and A[l][s].in[q]==Qprev)
-			{
-				A[l][s].block[q].setConstant(1.);
-			}
-		}
-		Qprev = Qcurr;
+		A[l][s].block[q].setConstant(1.);
 	}
 }
 
@@ -1179,7 +1170,7 @@ save (string filename, string info)
 {
 	filename+=".h5";
 	HDF5Interface target(filename, WRITE);
-
+	
 	string DmaxLabel = "Dmax";
 	string eps_svdLabel = "eps_svd";
 	string alpha_rsvdLabel = "alpha_rsvd";
@@ -1191,16 +1182,16 @@ save (string filename, string info)
 	target.save_char(info,add_infoLabel.c_str());
 	
 	std::string label;
-
+	
 	for (size_t l=0; l<this->N_sites; ++l)
-		for (size_t s=0; s<qloc[l].size(); ++s)
-			for (size_t q=0; q<A[l][s].dim; ++q)
-			{
-				std::stringstream ss;
-				ss << l << "_" << s << "_" << "(" << A[l][s].in[q] << "," << A[l][s].out[q] << ")";
-				label = ss.str();
-				target.save_matrix(A[l][s].block[q],label);
-			}
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	for (size_t q=0; q<A[l][s].dim; ++q)
+	{
+		std::stringstream ss;
+		ss << l << "_" << s << "_" << "(" << A[l][s].in[q] << "," << A[l][s].out[q] << ")";
+		label = ss.str();
+		target.save_matrix(A[l][s].block[q],label);
+	}
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1222,7 +1213,7 @@ load (string filename)
 {
 	filename+=".h5";
 	HDF5Interface source(filename, READ);
-
+	
 	string eps_svdLabel = "eps_svd";
 	string alpha_rsvdLabel = "alpha_rsvd";
 	source.load_scalar(this->eps_svd,eps_svdLabel);
@@ -1230,52 +1221,18 @@ load (string filename)
 	source.load_scalar(this->N_sv,"N_sv");
 	
 	std::string label;
-
+	
 	for (size_t l=0; l<this->N_sites; ++l)
-		for (size_t s=0; s<qloc[l].size(); ++s)
-			for (size_t q=0; q<A[l][s].dim; ++q)
-			{
-				std::stringstream ss;
-				ss << l << "_" << s << "_" << "(" << A[l][s].in[q] << "," << A[l][s].out[q] << ")";
-				label = ss.str();
-				source.load_matrix(A[l][s].block[q], label);
-			}
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	for (size_t q=0; q<A[l][s].dim; ++q)
+	{
+		std::stringstream ss;
+		ss << l << "_" << s << "_" << "(" << A[l][s].in[q] << "," << A[l][s].out[q] << ")";
+		label = ss.str();
+		source.load_matrix(A[l][s].block[q], label);
+	}
 }
 #endif
-
-// template<typename Symmetry, typename Scalar>
-// size_t Mps<Symmetry,Scalar>::
-// calc_Mmax() const
-// {
-// //	size_t res = 0;
-// //	for (size_t l=0; l<this->N_sites; ++l)
-// //	{
-// //		size_t M = 0;
-// //		for (size_t s=0; s<qloc[l].size(); ++s)
-// //		for (size_t q=0; q<A[l][s].dim; ++q)
-// //		{
-// //			M += A[l][s].block[q].rows() * A[l][s].block[q].cols();
-// //		}
-// //		if (M>res) {res = M;}
-// //	}
-// //	return res;
-	
-// 	size_t res = 0;
-// 	for (size_t l=0; l<this->N_sites; ++l)
-// 	for (size_t s=0; s<qloc[l].size(); ++s)
-// 	{
-// 		size_t Mrows = 0;
-// 		size_t Mcols = 0;
-// 		for (size_t q=0; q<A[l][s].dim; ++q)
-// 		{
-// 			Mrows += A[l][s].block[q].rows();
-// 			Mcols += A[l][s].block[q].cols();
-// 		}
-// 		if (Mrows>res) {res = Mrows;}
-// 		if (Mcols>res) {res = Mcols;}
-// 	}
-// 	return res;
-// }
 
 template<typename Symmetry, typename Scalar>
 std::size_t Mps<Symmetry,Scalar>::
@@ -1446,7 +1403,6 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 					if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 					{
 						#ifdef DONT_USE_LAPACK_SVD
-						// A[loc][svec[i]].block[qvec[i]] = 
 						Mtmp = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])*
 								                         Symmetry::coeff_sign(
 								                          A[loc][svec[i]].out[qvec[i]],
@@ -1491,8 +1447,6 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 								Mtmp = A[loc-1][s].block[q] * 
 										          Jack.matrixU().leftCols(Nret) * 
 										          Jack.singularValues().head(Nret).asDiagonal();
-								// without temporary crash in Eigen 3.3 alpha
-		//						A[loc-1][s].block[q] = Mtmp;
 							}
 							else if (TOOL == DMRG::BROOM::QR)
 							{
@@ -2130,15 +2084,30 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, bool DISCARD_SV)
 {
-	ArrayXd truncWeightSub(outset[loc].size()); truncWeightSub.setZero();
-	ArrayXd entropySub(outset[loc].size()); entropySub.setZero();
+	vector<qarray<Nq> > midset;
+	if (DIR == DMRG::DIRECTION::RIGHT)
+	{
+		midset = Symmetry::reduceSilent(inset[loc], qloc[loc]);
+	}
+	else
+	{
+		vector<qarray<Nq> > qloctmp = qloc[loc];
+		for (size_t s=0; s<qloctmp.size(); ++s)
+		{
+			Symmetry::flip(qloctmp[s]);
+		}
+		midset = Symmetry::reduceSilent(outset[loc+1], qloctmp);
+	}
+	
+	ArrayXd truncWeightSub(midset.size()); truncWeightSub.setZero();
+	ArrayXd entropySub(midset.size()); entropySub.setZero();
 	
 	auto tensor_basis = Symmetry::tensorProd(qloc[loc], qloc[loc+1]);
 	
 	#ifndef DMRG_DONT_USE_OPENMP
 	#pragma omp parallel for
 	#endif
-	for (size_t qout=0; qout<outset[loc].size(); ++qout)
+	for (size_t qmid=0; qmid<midset.size(); ++qmid)
 	{
 		map<pair<size_t,qarray<Symmetry::Nq> >,vector<pair<size_t,qarray<Symmetry::Nq> > > > s13map;
 		map<tuple<size_t,qarray<Symmetry::Nq>,size_t,qarray<Symmetry::Nq> >,vector<Scalar> > cgcmap;
@@ -2163,15 +2132,17 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 					for (const auto &qlmid:qlmids)
 					for (const auto &qrmid:qrmids)
 					{
-						if (qlmid == outset[loc][qout] and qrmid == outset[loc][qout])
+//						cout << "qlmid=" << qlmid << ", qrmid=" << qrmid << ", midset[qmid]=" << midset[qmid]<< endl;
+						if (qlmid == midset[qmid] and qrmid == midset[qmid])
 						{
+//							cout << "qlmid == midset[qmid] and qrmid == midset[qmid]" << endl;
 							s13map[make_pair(s1,Apair[s1s3].in[q13])].push_back(make_pair(s3,Apair[s1s3].out[q13]));
 							
-							Scalar factor_cgc = Symmetry::coeff_Apair(Apair[s1s3].in[q13], qloc[loc][s1], outset[loc][qout], 
+							Scalar factor_cgc = Symmetry::coeff_Apair(Apair[s1s3].in[q13], qloc[loc][s1], midset[qmid], 
 							                                          qloc[loc+1][s3], Apair[s1s3].out[q13], qmerge);
 							if (DIR==DMRG::DIRECTION::LEFT)
 							{
-								factor_cgc *= sqrt(Symmetry::coeff_rightOrtho(Apair[s1s3].out[q13], outset[loc][qout]));
+								factor_cgc *= sqrt(Symmetry::coeff_rightOrtho(Apair[s1s3].out[q13], midset[qmid]));
 							}
 							
 							cgcmap[make_tuple(s1,Apair[s1s3].in[q13],s3,Apair[s1s3].out[q13])].push_back(factor_cgc);
@@ -2182,6 +2153,8 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				}
 			}
 		}
+		
+//		cout << "s13map.size()=" << s13map.size() << endl;
 		
 		if (s13map.size() != 0)
 		{
@@ -2195,13 +2168,13 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			
 			for (size_t s1=0; s1<qloc[loc].size(); ++s1)
 			{
-				auto qls = Symmetry::reduceSilent(outset[loc][qout], Symmetry::flip(qloc[loc][s1]));
+				auto qls = Symmetry::reduceSilent(midset[qmid], Symmetry::flip(qloc[loc][s1]));
 				
 				for (const auto &ql:qls)
 				{
 					for (size_t s3=0; s3<qloc[loc+1].size(); ++s3)
 					{
-						auto qrs = Symmetry::reduceSilent(outset[loc][qout], qloc[loc+1][s3]);
+						auto qrs = Symmetry::reduceSilent(midset[qmid], qloc[loc+1][s3]);
 						
 						for (const auto &qr:qrs)
 						{
@@ -2247,7 +2220,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			MatrixType Aclump;
 			for (size_t s1=0; s1<qloc[loc].size(); ++s1)
 			{
-				auto qls = Symmetry::reduceSilent(outset[loc][qout], Symmetry::flip(qloc[loc][s1]));
+				auto qls = Symmetry::reduceSilent(midset[qmid], Symmetry::flip(qloc[loc][s1]));
 				
 				for (const auto &ql:qls)
 				{
@@ -2263,6 +2236,8 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 					}
 				}
 			}
+			
+//			cout << "get_s1.size()=" << get_s1.size() << endl;
 			
 			#ifdef DONT_USE_LAPACK_SVD
 			BDCSVD<MatrixType> Jack; // Eigen SVD
@@ -2282,9 +2257,9 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			Nret = min(max(Nret,1ul),static_cast<size_t>(Jack.singularValues().rows()));
 			Nret = min(Nret,this->N_sv);
 			
-			truncWeightSub(qout) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
+			truncWeightSub(qmid) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
 			size_t Nnz = (Jack.singularValues().array() > 1e-9).count();
-			entropySub(qout) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
+			entropySub(qmid) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
 			
 			MatrixType Aleft, Aright;
 			if (DIR == DMRG::DIRECTION::RIGHT)
@@ -2331,11 +2306,19 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				size_t s1 = get_s1[i];
 				size_t Nrows = get_Nrows[i];
 				
-				qarray2<Nq> quple = {get_ql[i], outset[loc][qout]};
+				qarray2<Nq> quple = {get_ql[i], midset[qmid]};
 				auto q = A[loc][s1].dict.find(quple);
 				if (q != A[loc][s1].dict.end())
 				{
+//					cout << "setting loc=" << loc << endl;
 					A[loc][s1].block[q->second] = Aleft.block(istitch,0, Nrows,Nret);
+				}
+				else
+				{
+//					cout << "pushing loc=" << loc << endl;
+					A[loc][s1].push_back(get_ql[i], 
+					                     midset[qmid], 
+					                     Aleft.block(istitch,0, Nrows,Nret));
 				}
 				istitch += Nrows;
 			}
@@ -2347,17 +2330,30 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				size_t s3 = get_s3[i];
 				size_t Ncols = get_Ncols[i];
 				
-				qarray2<Nq> quple = {outset[loc][qout], get_qr[i]};
+				qarray2<Nq> quple = {midset[qmid], get_qr[i]};
 				auto q = A[loc+1][s3].dict.find(quple);
+				Scalar factor_cgc3 = (DIR==DMRG::DIRECTION::LEFT)? sqrt(Symmetry::coeff_rightOrtho(midset[qmid], get_qr[i])):1.;
 				if (q != A[loc+1][s3].dict.end())
 				{
-					Scalar factor_cgc3 = (DIR==DMRG::DIRECTION::LEFT)? sqrt(Symmetry::coeff_rightOrtho(outset[loc][qout], get_qr[i])):1.;
+//					cout << "setting loc=" << loc+1 << endl;
 					A[loc+1][s3].block[q->second] = Aright.block(0,jstitch, Nret,Ncols) * factor_cgc3;
+				}
+				else
+				{
+//					cout << "pushing loc=" << loc+1 << endl;
+					A[loc+1][s3].push_back(midset[qmid], 
+					                       get_qr[i], 
+					                       Aright.block(0,jstitch, Nret,Ncols) * factor_cgc3);
 				}
 				jstitch += Ncols;
 			}
 		}
 	}
+	
+//	cout << endl;
+	
+	update_outset(loc);
+	update_inset(loc+1);
 	
 	truncWeight(loc) = truncWeightSub.sum();
 	
@@ -3376,6 +3372,12 @@ swap (Mps<Symmetry,Scalar> &V)
 	
 	inset.swap(V.inset);
 	outset.swap(V.outset);
+	
+	QinTop.swap(V.QinTop);
+	QinBot.swap(V.QinTop);
+	QoutTop.swap(V.QinTop);
+	QoutBot.swap(V.QinTop);
+	
 	truncWeight.swap(V.truncWeight);
 	std::swap(this->pivot, V.pivot);
 	std::swap(this->N_sites, V.N_sites);
@@ -3385,7 +3387,6 @@ swap (Mps<Symmetry,Scalar> &V)
 	std::swap(this->eps_rdm, V.eps_rdm);
 	std::swap(this->eps_svd, V.eps_svd);
 	std::swap(this->N_sv, V.N_sv);
-	std::swap(this->N_mow, V.N_mow);
 	std::swap(this->entropy, V.entropy);
 	
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -3411,7 +3412,6 @@ get_controlParams (const Mps<Symmetry,Scalar> &V)
 	this->eps_rdm = V.eps_rdm;
 	this->eps_svd = V.eps_svd;
 	this->N_sv = V.N_sv;
-	this->N_mow = V.N_mow;
 }
 
 template<typename Symmetry, typename Scalar>
