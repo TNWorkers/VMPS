@@ -60,13 +60,13 @@ VMPS::HeisenbergU1XXZ::StateXcd Neel (const VMPS::HeisenbergU1XXZ &H)
 bool CALC_DYNAMICS;
 int M, S;
 size_t D;
-size_t L, Ly;
+size_t L, Ly, Ldyn;
 double J, Jprime;
 double alpha;
 double t_U0, t_U1, t_SU2;
 int Dinit, Dlimit, Imin, Imax, Qinit;
 double tol_eigval, tol_state, eps_svd;
-double dt;
+double dt, tmax;
 DMRG::VERBOSITY::OPTION VERB;
 
 double E_U0_compressor=0., E_U0_zipper=0.;
@@ -86,6 +86,7 @@ int main (int argc, char* argv[])
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",10);
 	Ly = args.get<size_t>("Ly",1);
+	Ldyn = args.get<size_t>("Ldyn",12);
 	J = args.get<double>("J",-1.);
 	Jprime = args.get<double>("Jprime",0.);
 	M = args.get<int>("M",0);
@@ -94,6 +95,7 @@ int main (int argc, char* argv[])
 	alpha = args.get<double>("alpha",1e2);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	dt = args.get<double>("dt",0.1);
+	tmax = args.get<double>("tmax",6.);
 	
 	Dinit  = args.get<int>("Dinit",2);
 	Dlimit = args.get<int>("Dlimit",100);
@@ -186,9 +188,8 @@ int main (int argc, char* argv[])
 	if (CALC_DYNAMICS)
 	{
 		lout << "-------DYNAMICS-------" << endl;
-		int Ldyn = 12;
-//		vector<double> Jz_list = {0., -1., -2., -4.};
-		vector<double> Jz_list = {0.};
+		vector<double> Jz_list = {0., -1., -2., -4.};
+//		vector<double> Jz_list = {0.};
 		
 		for (const auto& Jz:Jz_list)
 		{
@@ -199,7 +200,7 @@ int main (int argc, char* argv[])
 			
 			double t = 0;
 			ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
-			for (int i=0; i<=static_cast<int>(6./dt); ++i)
+			for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
 			{
 				double res = 0;
 				for (int l=0; l<Ldyn; ++l)
@@ -207,11 +208,11 @@ int main (int argc, char* argv[])
 					res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
 				}
 				res /= Ldyn;
-				if(VERB != DMRG::VERBOSITY::SILENT) {lout << "t=" << t << ", <Sz>=" << res << endl;}
+				if (VERB != DMRG::VERBOSITY::SILENT) {lout << "t=" << t << ", <Sz>=" << res << endl;}
 				Filer << t << "\t" << res << endl;
 				
 				TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
-				if(VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
+				if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
 				t += dt;
 			}
 			Filer.close();
@@ -231,7 +232,7 @@ int main (int argc, char* argv[])
 	g_SU2.state.graph("SU2");
 	
 	t_SU2 = Watch_SU2.time();
-	
+//	
 //	MatrixXd SpinCorr_SU2(L,L); SpinCorr_SU2.setZero();
 //	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SS(i,j), g_SU2.state); }
 	

@@ -158,6 +158,8 @@ public:
 	 * \warning Does not check whether the block for these quantum numbers already exists.
 	 */
 	void push_back (std::array<qType,2> quple, const MatrixType_ &M);
+	
+	void create_block (std::array<qType,2> quple);
 	///@}
 };
 
@@ -289,6 +291,18 @@ push_back (std::array<qType,2> quple, const MatrixType_ &M)
 	in.push_back(quple[0]);
 	out.push_back(quple[1]);
 	block.push_back(M);
+	dict.insert({quple, dim});
+	++dim;
+}
+
+template<typename Symmetry, typename MatrixType_>
+void Biped<Symmetry,MatrixType_>::
+create_block (std::array<qType,2> quple)
+{
+	in.push_back(quple[0]);
+	out.push_back(quple[1]);
+	MatrixType_ Mtmp(0,0);
+	block.push_back(Mtmp);
 	dict.insert({quple, dim});
 	++dim;
 }
@@ -545,33 +559,49 @@ template<typename Symmetry, typename MatrixType_>
 Biped<Symmetry,MatrixType_> operator+ (const Biped<Symmetry,MatrixType_> &M1, const Biped<Symmetry,MatrixType_> &M2)
 {
 	if (M1.size() < M2.size()) {return M2+M1;}
-	std::vector<std::size_t> blocks_in_2nd_biped;
 	
+	std::vector<std::size_t> blocks_in_2nd_biped;
 	Biped<Symmetry,MatrixType_> Mout;
-	MatrixType_ Mtmp;
+	
 	for (std::size_t nu=0; nu<M1.size(); nu++)
 	{
-		auto it1 = M2.dict.find({{M1.in[nu],M1.out[nu]}});
-		if ( it1 != M2.dict.end() )
+		auto it = M2.dict.find({{M1.in[nu], M1.out[nu]}});
+		if (it != M2.dict.end())
 		{
-			blocks_in_2nd_biped.push_back(it1->second);
-			Mtmp = M1.block[nu] + M2.block[it1->second];
+			blocks_in_2nd_biped.push_back(it->second);
+		}
+		
+		MatrixType_ Mtmp;
+		if (it != M2.dict.end() and M1.block[nu].size() > 0 and M2.block[it->second].size() > 0)
+		{
+			Mtmp = M1.block[nu] + M2.block[it->second]; // M1+M2
+		}
+		else if (it != M2.dict.end() and M1.block[nu].size() == 0)
+		{
+			Mtmp = M2.block[it->second]; // 0+M2
 		}
 		else
 		{
-			Mtmp = M1.block[nu];
+			Mtmp = M1.block[nu]; // M1+0
 		}
-		Mout.push_back({{M1.in[nu],M1.out[nu]}},Mtmp);
+		
+		if (Mtmp.size() != 0)
+		{
+			Mout.push_back({{M1.in[nu], M1.out[nu]}}, Mtmp);
+		}
 	}
+	
 	if (blocks_in_2nd_biped.size() != M2.size())
 	{
-		for(std::size_t nu=0; nu<M2.size(); nu++)
+		for (std::size_t nu=0; nu<M2.size(); nu++)
 		{
 			auto it = std::find(blocks_in_2nd_biped.begin(),blocks_in_2nd_biped.end(),nu);
-			if(it == blocks_in_2nd_biped.end())
+			if (it == blocks_in_2nd_biped.end())
 			{
-				Mtmp = M2.block[nu];
-				Mout.push_back({{M2.in[nu],M2.out[nu]}},Mtmp);
+				if (M2.block[nu].size() != 0)
+				{
+					Mout.push_back({{M2.in[nu], M2.out[nu]}}, M2.block[nu]); // 0+M2
+				}
 			}
 		}
 	}
@@ -584,33 +614,58 @@ Biped<Symmetry,MatrixType_> operator- (const Biped<Symmetry,MatrixType_> &M1, co
 {
 	std::vector<std::size_t> blocks_in_2nd_biped;
 	Biped<Symmetry,MatrixType_> Mout;
-	MatrixType_ Mtmp;
+	
 	for (std::size_t nu=0; nu<M1.size(); nu++)
 	{
-		auto it1 = M2.dict.find({{M1.in[nu],M1.out[nu]}});
-		if ( it1 != M2.dict.end() )
+		auto it = M2.dict.find({{M1.in[nu], M1.out[nu]}});
+		if (it != M2.dict.end())
 		{
-			blocks_in_2nd_biped.push_back(it1->second);
-			Mtmp = M1.block[nu] - M2.block[it1->second];
+			blocks_in_2nd_biped.push_back(it->second);
+		}
+		
+		MatrixType_ Mtmp;
+		if (it != M2.dict.end() and M1.block[nu].size() != 0 and M2.block[it->second].size() != 0)
+		{
+//			cout << "nu=" << nu << ", M1-M2" << endl;
+			Mtmp = M1.block[nu] - M2.block[it->second]; // M1-M2
+		}
+		else if (it != M2.dict.end() and M1.block[nu].size() == 0)
+		{
+//			cout << "nu=" << nu << ", 0-M2" << endl;
+			Mtmp = -M2.block[it->second]; // 0-M2
 		}
 		else
 		{
-			Mtmp = M1.block[nu];
+//			cout << "nu=" << nu << ", M1-0" << endl;
+			Mtmp = M1.block[nu]; // M1-0
 		}
-		Mout.push_back({{M1.in[nu],M1.out[nu]}},Mtmp);
+		
+		if (Mtmp.size() != 0)
+		{
+			Mout.push_back({{M1.in[nu], M1.out[nu]}}, Mtmp);
+		}
 	}
+	
 	if (blocks_in_2nd_biped.size() != M2.size())
 	{
-		for(std::size_t nu=0; nu<M2.size(); nu++)
+		for (std::size_t nu=0; nu<M2.size(); nu++)
 		{
 			auto it = std::find(blocks_in_2nd_biped.begin(),blocks_in_2nd_biped.end(),nu);
-			if(it == blocks_in_2nd_biped.end())
+			if (it == blocks_in_2nd_biped.end())
 			{
-				Mtmp = -M2.block[nu];
-				Mout.push_back({{M2.in[nu],M2.out[nu]}},Mtmp);
+				if (M2.block[nu].size() != 0)
+				{
+//					cout << "nu=" << nu << ", 0-M2 and blocks_in_2nd_biped.size() != M2.size()" << endl;
+					Mout.push_back({{M2.in[nu], M2.out[nu]}}, -M2.block[nu]); // 0-M2
+				}
 			}
 		}
 	}
+	
+//	cout << "M1:" << endl << M1 << endl;
+//	cout << "M2:" << endl << M2 << endl;
+//	cout << "Mout:" << endl << Mout << endl;
+	
 	return Mout;
 }
 

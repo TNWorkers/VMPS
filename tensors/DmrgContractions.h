@@ -1423,6 +1423,63 @@ void contract_C (vector<qarray<Symmetry::Nq> > qloc,
 	}
 }
 
+//template<typename Symmetry, typename Scalar>
+//void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
+//                  vector<qarray<Symmetry::Nq> > qloc1, 
+//                  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
+//                  vector<qarray<Symmetry::Nq> > qloc2, 
+//                  vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair)
+//{
+//	auto tensor_basis = Symmetry::tensorProd(qloc1,qloc2);
+//	Apair.resize(tensor_basis.size());
+//	
+//	for (size_t s1=0; s1<qloc1.size(); ++s1)
+//	for (size_t s2=0; s2<qloc2.size(); ++s2)
+//	{
+//		auto qmerges = Symmetry::reduceSilent(qloc1[s1], qloc2[s2]);
+//		
+//		for (const auto &qmerge:qmerges)
+//		{
+//			auto qtensor = make_tuple(qloc1[s1], s1, qloc2[s2], s2, qmerge);
+//			auto s1s2 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor));
+//			
+//			for (size_t q1=0; q1<A1[s1].dim; ++q1)
+//			{
+//				auto qmids = Symmetry::reduceSilent(A1[s1].out[q1], qloc2[s2]);
+//				
+//				for (const auto &qmid:qmids)
+//				{
+//					qarray2<Symmetry::Nq> quple = {A1[s1].out[q1], qmid};
+//					auto q2 = A2[s2].dict.find(quple);
+//					
+//					if (q2 != A2[s2].dict.end())
+//					{
+//						Scalar factor_cgc = Symmetry::coeff_Apair(A1[s1].in[q1], qloc1[s1], A1[s1].out[q1], 
+//						                                          qloc2[s2], A2[s2].out[q2->second], qmerge);
+//						
+//						if (abs(factor_cgc) > abs(mynumeric_limits<Scalar>::epsilon()))
+//						{
+//							Matrix<Scalar,Dynamic,Dynamic> Mtmp = factor_cgc * A1[s1].block[q1] * A2[s2].block[q2->second];
+//							
+//							qarray2<Symmetry::Nq> qupleApair = {A1[s1].in[q1], A2[s2].out[q2->second]};
+//							
+//							auto qApair = Apair[s1s2].dict.find(qupleApair);
+//							
+//							if (qApair != Apair[s1s2].dict.end())
+//							{
+//								Apair[s1s2].block[qApair->second] += Mtmp;
+//							}
+//							else
+//							{
+//								Apair[s1s2].push_back(qupleApair, Mtmp);
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
+//}
 
 template<typename Symmetry, typename Scalar>
 void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
@@ -1433,6 +1490,90 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 {
 	auto tensor_basis = Symmetry::tensorProd(qloc1,qloc2);
 	Apair.resize(tensor_basis.size());
+	
+	vector<qarray<Symmetry::Nq> > qmid_fromL;
+	vector<qarray<Symmetry::Nq> > qmid_fromR;
+	vector<qarray<Symmetry::Nq> > A1in;
+	vector<qarray<Symmetry::Nq> > A2out;
+	
+	for (size_t s1=0; s1<qloc1.size(); ++s1)
+	for (size_t q=0; q<A1[s1].dim; ++q)
+	{
+		A1in.push_back(A1[s1].in[q]);
+	}
+	
+	for (size_t s2=0; s2<qloc2.size(); ++s2)
+	for (size_t q=0; q<A2[s2].dim; ++q)
+	{
+		A2out.push_back(A2[s2].out[q]);
+	}
+	
+	for (size_t s1=0; s1<qloc1.size(); ++s1)
+	{
+		auto tmp = Symmetry::reduceSilent(A1in, qloc1[s1]);
+		qmid_fromL.insert(qmid_fromL.end(), tmp.begin(), tmp.end());
+	}
+	for (size_t s2=0; s2<qloc2.size(); ++s2)
+	{
+		auto tmp = Symmetry::reduceSilent(A2out, Symmetry::flip(qloc2[s2]));
+		qmid_fromR.insert(qmid_fromR.end(), tmp.begin(), tmp.end());
+	}
+	
+//	for (int i=0; i<qmid_fromL.size(); ++i)
+//	{
+//		cout << "qL=" << qmid_fromL[i] << endl;
+//	}
+//	for (int i=0; i<qmid_fromR.size(); ++i)
+//	{
+//		cout << "qR=" << qmid_fromR[i] << endl;
+//	}
+	
+	vector<qarray<Symmetry::Nq> > qsplit;
+	sort(qmid_fromL.begin(), qmid_fromL.end());
+	sort(qmid_fromR.begin(), qmid_fromR.end());
+	set_intersection(qmid_fromL.begin(), qmid_fromL.end(), qmid_fromR.begin(), qmid_fromR.end(), back_inserter(qsplit));
+	sort(qsplit.begin(), qsplit.end());
+	qsplit.erase(unique(qsplit.begin(), qsplit.end()), qsplit.end());
+	
+//	for (int i=0; i<qsplit.size(); ++i)
+//	{
+//		cout << "possible qsplit= " << qsplit[i] << endl;
+//	}
+//	cout << endl;
+	
+	for (size_t s1=0; s1<qloc1.size(); ++s1)
+	for (size_t m=0; m<qsplit.size(); ++m)
+	{
+		auto qins = Symmetry::reduceSilent(qsplit[m], Symmetry::flip(qloc1[s1]));
+		
+		for (const auto &qin:qins)
+		{
+			for (size_t s2=0; s2<qloc2.size(); ++s2)
+			{
+				auto qmerges = Symmetry::reduceSilent(qloc1[s1], qloc2[s2]);
+				
+				for (const auto &qmerge:qmerges)
+				{
+					auto qtensor = make_tuple(qloc1[s1], s1, qloc2[s2], s2, qmerge);
+					auto s1s2 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor));
+				
+					auto qouts = Symmetry::reduceSilent(qsplit[m], qloc2[s2]);
+					for (const auto &qout:qouts)
+					{
+						auto qA1 = find(A1in.begin(),  A1in.end(),  qin);
+						auto qA2 = find(A2out.begin(), A2out.end(), qout);
+						if (qA1 != A1in.end() and qA2 != A2out.end())
+						{
+//							cout << "create block: qin=" << qin << ", qsplit=" << qsplit[m] << ", qout=" << qout 
+//							     << ", s1=" << qloc1[s1] << ", s2=" << qloc2[s2] << endl;
+							Apair[s1s2].create_block({qin,qout});
+						}
+					}
+				}
+			}
+		}
+	}
+//	cout << endl;
 	
 	for (size_t s1=0; s1<qloc1.size(); ++s1)
 	for (size_t s2=0; s2<qloc2.size(); ++s2)
@@ -1466,9 +1607,15 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 							
 							auto qApair = Apair[s1s2].dict.find(qupleApair);
 							
-							if (qApair != Apair[s1s2].dict.end())
+							if (qApair != Apair[s1s2].dict.end() and 
+							    Apair[s1s2].block[qApair->second].size() == Mtmp.size())
 							{
 								Apair[s1s2].block[qApair->second] += Mtmp;
+							}
+							else if (qApair != Apair[s1s2].dict.end() and 
+							         Apair[s1s2].block[qApair->second].size() == 0)
+							{
+								Apair[s1s2].block[qApair->second] = Mtmp;
 							}
 							else
 							{

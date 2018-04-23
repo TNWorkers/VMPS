@@ -377,7 +377,7 @@ public:
 	ArrayXd get_entropy() const {return entropy;};
 	///\}
 	
-private:
+//private:
 	
 	size_t N_phys;
 	
@@ -2084,20 +2084,48 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, bool DISCARD_SV)
 {
-	vector<qarray<Nq> > midset;
-	if (DIR == DMRG::DIRECTION::RIGHT)
+	vector<qarray<Symmetry::Nq> > qmid_fromL;
+	vector<qarray<Symmetry::Nq> > qmid_fromR;
+	vector<qarray<Symmetry::Nq> > A1in;
+	vector<qarray<Symmetry::Nq> > A2out;
+	
+	for (size_t s1=0; s1<qloc[loc].size(); ++s1)
+	for (size_t q=0; q<A[loc][s1].dim; ++q)
 	{
-		midset = Symmetry::reduceSilent(inset[loc], qloc[loc]);
+		A1in.push_back(A[loc][s1].in[q]);
 	}
-	else
+	
+	for (size_t s2=0; s2<qloc[loc+1].size(); ++s2)
+	for (size_t q=0; q<A[loc+1][s2].dim; ++q)
 	{
-		vector<qarray<Nq> > qloctmp = qloc[loc];
-		for (size_t s=0; s<qloctmp.size(); ++s)
-		{
-			Symmetry::flip(qloctmp[s]);
-		}
-		midset = Symmetry::reduceSilent(outset[loc+1], qloctmp);
+		A2out.push_back(A[loc+1][s2].out[q]);
 	}
+	
+	for (size_t s1=0; s1<qloc[loc].size(); ++s1)
+	{
+		auto tmp = Symmetry::reduceSilent(A1in, qloc[loc][s1]);
+		qmid_fromL.insert(qmid_fromL.end(), tmp.begin(), tmp.end());
+	}
+	for (size_t s2=0; s2<qloc[loc+1].size(); ++s2)
+	{
+		auto tmp = Symmetry::reduceSilent(A2out, Symmetry::flip(qloc[loc+1][s2]));
+		qmid_fromR.insert(qmid_fromR.end(), tmp.begin(), tmp.end());
+	}
+	
+	sort(qmid_fromL.begin(), qmid_fromL.end());
+	sort(qmid_fromR.begin(), qmid_fromR.end());
+	vector<qarray<Symmetry::Nq> > midset;
+	set_intersection(qmid_fromL.begin(), qmid_fromL.end(), qmid_fromR.begin(), qmid_fromR.end(), back_inserter(midset));
+	sort(midset.begin(), midset.end());
+	midset.erase(unique(midset.begin(), midset.end()), midset.end());
+	
+//	for (int i=0; i<midset.size(); ++i)
+//	{
+//		cout << "loc=" << loc << ", qmid= " << midset[i] << endl;
+//	}
+//	cout << validate() << endl;
+//	cout << info() << endl;
+//	cout << endl;
 	
 	ArrayXd truncWeightSub(midset.size()); truncWeightSub.setZero();
 	ArrayXd entropySub(midset.size()); entropySub.setZero();
@@ -2132,10 +2160,8 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 					for (const auto &qlmid:qlmids)
 					for (const auto &qrmid:qrmids)
 					{
-//						cout << "qlmid=" << qlmid << ", qrmid=" << qrmid << ", midset[qmid]=" << midset[qmid]<< endl;
 						if (qlmid == midset[qmid] and qrmid == midset[qmid])
 						{
-//							cout << "qlmid == midset[qmid] and qrmid == midset[qmid]" << endl;
 							s13map[make_pair(s1,Apair[s1s3].in[q13])].push_back(make_pair(s3,Apair[s1s3].out[q13]));
 							
 							Scalar factor_cgc = Symmetry::coeff_Apair(Apair[s1s3].in[q13], qloc[loc][s1], midset[qmid], 
@@ -2153,8 +2179,6 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				}
 			}
 		}
-		
-//		cout << "s13map.size()=" << s13map.size() << endl;
 		
 		if (s13map.size() != 0)
 		{
@@ -2192,7 +2216,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 									{
 										Mtmp = cgcmap[make_tuple(s1,ql,s3,qr)][i] * Apair[s1s3].block[q13];
 									}
-									else
+									else if (Mtmp.size() > 0 and Apair[s1s3].block[q13].size() > 0)
 									{
 										Mtmp += cgcmap[make_tuple(s1,ql,s3,qr)][i] * Apair[s1s3].block[q13];
 									}
@@ -2236,8 +2260,6 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 					}
 				}
 			}
-			
-//			cout << "get_s1.size()=" << get_s1.size() << endl;
 			
 			#ifdef DONT_USE_LAPACK_SVD
 			BDCSVD<MatrixType> Jack; // Eigen SVD
@@ -2310,12 +2332,10 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				auto q = A[loc][s1].dict.find(quple);
 				if (q != A[loc][s1].dict.end())
 				{
-//					cout << "setting loc=" << loc << endl;
 					A[loc][s1].block[q->second] = Aleft.block(istitch,0, Nrows,Nret);
 				}
 				else
 				{
-//					cout << "pushing loc=" << loc << endl;
 					A[loc][s1].push_back(get_ql[i], 
 					                     midset[qmid], 
 					                     Aleft.block(istitch,0, Nrows,Nret));
@@ -2335,12 +2355,10 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				Scalar factor_cgc3 = (DIR==DMRG::DIRECTION::LEFT)? sqrt(Symmetry::coeff_rightOrtho(midset[qmid], get_qr[i])):1.;
 				if (q != A[loc+1][s3].dict.end())
 				{
-//					cout << "setting loc=" << loc+1 << endl;
 					A[loc+1][s3].block[q->second] = Aright.block(0,jstitch, Nret,Ncols) * factor_cgc3;
 				}
 				else
 				{
-//					cout << "pushing loc=" << loc+1 << endl;
 					A[loc+1][s3].push_back(midset[qmid], 
 					                       get_qr[i], 
 					                       Aright.block(0,jstitch, Nret,Ncols) * factor_cgc3);
@@ -2349,8 +2367,6 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			}
 		}
 	}
-	
-//	cout << endl;
 	
 	update_outset(loc);
 	update_inset(loc+1);

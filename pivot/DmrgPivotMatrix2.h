@@ -198,22 +198,27 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 			{
 				if (H.L.block[qL][iW12.row()][0].size() != 0 and 
 				    H.R.block[qR][iW34.col()][0].size() != 0 and
+				    Vin.data[s2s4].block[q24].size() != 0 and
 				    iW12.col() == iW34.row())
 				{
+//					print_size(H.L.block[qL][iW12.row()][0],"H.L.block[qL][iW12.row()][0]");
+//					print_size(Vin.data[s2s4].block[q24],"Vin.data[s2s4].block[q24]");
+//					print_size(H.R.block[qR][iW34.col()][0],"H.R.block[qR][iW34.col()][0]");
+					
 					if (Vout.data[s1s3].block[q13].rows() != H.L.block[qL][iW12.row()][0].rows() or
 					    Vout.data[s1s3].block[q13].cols() != H.R.block[qR][iW34.col()][0].cols())
 					{
 						Vout.data[s1s3].block[q13] = H.factor_cgcs[q][p] * iW12.value() * iW34.value() *
-						                                       (H.L.block[qL][iW12.row()][0] * 
-						                                        Vin.data[s2s4].block[q24] * 
-						                                        H.R.block[qR][iW34.col()][0]);
+						                             (H.L.block[qL][iW12.row()][0] * 
+						                              Vin.data[s2s4].block[q24] * 
+						                              H.R.block[qR][iW34.col()][0]);
 					}
 					else
 					{
 						Vout.data[s1s3].block[q13] += H.factor_cgcs[q][p] * iW12.value() * iW34.value() *
-						                                        (H.L.block[qL][iW12.row()][0] * 
-						                                         Vin.data[s2s4].block[q24] * 
-						                                         H.R.block[qR][iW34.col()][0]);
+						                              (H.L.block[qL][iW12.row()][0] * 
+						                               Vin.data[s2s4].block[q24] * 
+						                               H.R.block[qR][iW34.col()][0]);
 					}
 				}
 			}

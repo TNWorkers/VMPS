@@ -149,7 +149,15 @@ Scalar dot (const PivotVector<Symmetry,Scalar> &V1, const PivotVector<Symmetry,S
 	for (size_t s=0; s<V2.data.size(); ++s)
 	for (size_t q=0; q<V2.data[s].dim; ++q)
 	{
-		res += (V1.data[s].block[q].adjoint() * V2.data[s].block[q]).trace() * Symmetry::coeff_dot(V1.data[s].out[q]);
+//		cout << "V1 inout=" << V1.data[s].in[q] << ", " << V1.data[s].out[q] << endl;
+//		cout << "V2 inout=" << V2.data[s].in[q] << ", " << V2.data[s].out[q] << endl;
+//		cout << endl;
+		
+		if (V1.data[s].block[q].size() > 0 and 
+		    V2.data[s].block[q].size() > 0)
+		{
+			res += (V1.data[s].block[q].adjoint() * V2.data[s].block[q]).trace() * Symmetry::coeff_dot(V1.data[s].out[q]);
+		}
 	}
 	return res;
 }
