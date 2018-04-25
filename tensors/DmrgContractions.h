@@ -287,7 +287,6 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 					{
 						size_t a1 = iW.row();
 						size_t a2 = iW.col();
-						
 						if (Lold.block[qL][a1][0].size() != 0)
 						{
 							MatrixType Mtmp;
@@ -296,7 +295,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 											 Lold.block[qL][a1][0],
 											 Aket[s2].block[qAket],
 											 Mtmp);
-//							if (Mtmp.norm() < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+							if (Mtmp.norm() < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
 							
 							auto it = Lnew.dict.find(quple);
 							if (it != Lnew.dict.end())
@@ -309,11 +308,11 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 								else
 								{
 									Lnew.block[it->second][a2][0] += Mtmp;
-//									if (Lnew.block[it->second][a2][0].norm() < ::mynumeric_limits<MpoScalar>::epsilon())
-//									{
-//										// Lnew.block[it->second][a2][0].resize(0,0);
-//										continue;
-//									}
+									if (Lnew.block[it->second][a2][0].norm() < ::mynumeric_limits<MpoScalar>::epsilon())
+									{
+										Lnew.block[it->second][a2][0].resize(0,0);
+										continue;
+									}
 								}
 							}
 							else

@@ -554,7 +554,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 
 	// auxiliary Basis
 	// cout << "begin auxbasis" << endl;
-	// calc_auxBasis();
+	calc_auxBasis();
 	// cout << "finished auxbasis" << endl;
 
 	// make squared Mpo if desired
@@ -570,7 +570,6 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 				qOpSq.resize(N_sites);
 				for(size_t l=0; l<N_sites; l++)
 				{
-					cout << "l=" << l << endl;
 					auto TensorBaseRight = qaux[l+1].combine(qaux[l+1]);
 					auto TensorBaseLeft = qaux[l].combine(qaux[l]);
 
@@ -583,7 +582,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 					for(size_t s2=0; s2<qloc[l].size(); s2++)
 					for(size_t s3=0; s3<qloc[l].size(); s3++)
 					for(size_t k1=0; k1<qOp[l].size(); k1++)
-					for(size_t k2=0; k2<qOp[l].size(); k2++)					
+					for(size_t k2=0; k2<qOp[l].size(); k2++)
 					{
 						qCheck = {qloc[l][s3],qOp[l][k1],qloc[l][s2]};
 						if(!Symmetry::validate(qCheck)) {continue;}
@@ -671,82 +670,87 @@ template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 calc_auxBasis()
 {
-	auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> std::set<qType>
-	{
-		size_t L = (l_last < 0 or l_frst >= qOp.size())? 0 : l_last-l_frst+1;
-		std::set<qType > qset;
+	// auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> std::set<qType>
+	// {
+	// 	size_t L = (l_last < 0 or l_frst >= qOp.size())? 0 : l_last-l_frst+1;
+	// 	std::set<qType > qset;
 		
-		if (L > 0)
-		{
-			// add qnums of local basis on l_frst to qset_tmp
-			std::set<qType> qset_tmp;
+	// 	if (L > 0)
+	// 	{
+	// 		// add qnums of local basis on l_frst to qset_tmp
+	// 		std::set<qType> qset_tmp;
 			
-			for (const auto& k : qOp[l_frst])
-			{
-				qset_tmp.insert(k);
-			}
+	// 		for (const auto& k : qOp[l_frst])
+	// 		{
+	// 			qset_tmp.insert(k);
+	// 		}
 			
-			for (size_t l=l_frst+1; l<=l_last; ++l)
-			{
-				for (const auto& k : qOp[l])
-				for (auto it=qset_tmp.begin(); it!=qset_tmp.end(); ++it)
-				{
-					auto qVec = Symmetry::reduceSilent(*it,k);
-					for (const auto& q : qVec)
-					{
-						qset.insert(q);
-					}
-				}
-				// swap qset and qset_tmp to continue
-				std::swap(qset_tmp,qset);
-			}
-			qset = qset_tmp;
-		}
-		else
-		{
-			qset.insert(Symmetry::qvacuum());
-		}
-		return qset;
-	};
+	// 		for (size_t l=l_frst+1; l<=l_last; ++l)
+	// 		{
+	// 			for (const auto& k : qOp[l])
+	// 			for (auto it=qset_tmp.begin(); it!=qset_tmp.end(); ++it)
+	// 			{
+	// 				auto qVec = Symmetry::reduceSilent(*it,k);
+	// 				for (const auto& q : qVec)
+	// 				{
+	// 					qset.insert(q);
+	// 				}
+	// 			}
+	// 			// swap qset and qset_tmp to continue
+	// 			std::swap(qset_tmp,qset);
+	// 		}
+	// 		qset = qset_tmp;
+	// 	}
+	// 	else
+	// 	{
+	// 		qset.insert(Symmetry::qvacuum());
+	// 	}
+	// 	return qset;
+	// };
 	
 	qaux.clear();
 	qaux.resize(this->N_sites+1);
 	//set aux basis on right end to Qtot.
 	qaux[this->N_sites].push_back(Qtot,1);//auxdim());
+	qaux[0].push_back(Symmetry::qvacuum(),1);//auxdim());
 	
-	for (size_t l=0; l<this->N_sites; ++l)
+	for (size_t l=1; l<this->N_sites; ++l)
 	{
 		Qbasis<Symmetry> qauxtmp;
-		std::unordered_set<qType> uniqueControl;
-		int lprev = l-1;
-		int lnext = l+1;
-		std::set<qType> qlset = calc_qnums_on_segment(0,lprev); // length=l
-		std::set<qType> qrset = calc_qnums_on_segment(lnext,this->N_sites-1); // length=L-l-1
-		for (const auto& k : qOp[l])
-		for (auto ql=qlset.begin(); ql!=qlset.end(); ++ql)
+		for(size_t k=0; k<qOp[l].size(); ++k)
 		{
-			auto qVec = Symmetry::reduceSilent(*ql,k);
-			std::vector<std::set<qType> > qrSetVec; qrSetVec.resize(qVec.size());
-			for (size_t i=0; i<qVec.size(); i++)
-			{
-				auto qVectmp = Symmetry::reduceSilent(Symmetry::flip(qVec[i]),Qtot);
-				for (size_t j=0; j<qVectmp.size(); j++) { qrSetVec[i].insert(qVectmp[j]); }
-				for (auto qr = qrSetVec[i].begin(); qr!=qrSetVec[i].end(); qr++)
-				{
-					auto itqr = qrset.find(*qr);
-					if (itqr != qrset.end())
-					{
-						auto qin = *ql;
-						if(auto it=uniqueControl.find(qin) == uniqueControl.end())
-						{
-							uniqueControl.insert(qin);
-							if(l==0) { qauxtmp.push_back(qin,1); }
-							else { qauxtmp.push_back(qin,auxdim()); }
-						}
-					}
-				}
-			}
+			qauxtmp.push_back(qOp[l][k],auxdim());
 		}
+		// std::unordered_set<qType> uniqueControl;
+		// int lprev = l-1;
+		// int lnext = l+1;
+		// std::set<qType> qlset = calc_qnums_on_segment(0,lprev); // length=l
+		// std::set<qType> qrset = calc_qnums_on_segment(lnext,this->N_sites-1); // length=L-l-1
+		// for (const auto& k : qOp[l])
+		// for (auto ql=qlset.begin(); ql!=qlset.end(); ++ql)
+		// {
+		// 	auto qVec = Symmetry::reduceSilent(*ql,k);
+		// 	std::vector<std::set<qType> > qrSetVec; qrSetVec.resize(qVec.size());
+		// 	for (size_t i=0; i<qVec.size(); i++)
+		// 	{
+		// 		auto qVectmp = Symmetry::reduceSilent(Symmetry::flip(qVec[i]),Qtot);
+		// 		for (size_t j=0; j<qVectmp.size(); j++) { qrSetVec[i].insert(qVectmp[j]); }
+		// 		for (auto qr = qrSetVec[i].begin(); qr!=qrSetVec[i].end(); qr++)
+		// 		{
+		// 			auto itqr = qrset.find(*qr);
+		// 			if (itqr != qrset.end())
+		// 			{
+		// 				auto qin = *ql;
+		// 				if(auto it=uniqueControl.find(qin) == uniqueControl.end())
+		// 				{
+		// 					uniqueControl.insert(qin);
+		// 					if(l==0) { qauxtmp.push_back(qin,1); }
+		// 					else { qauxtmp.push_back(qin,auxdim()); }
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
 		qaux[l] = qauxtmp;
 	}
 
