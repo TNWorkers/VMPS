@@ -30,9 +30,11 @@ struct PivotVector
 	PivotVector (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A12,
 	             const vector<qarray<Symmetry::Nq> > &qloc12,
 	             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A34,
-	             const vector<qarray<Symmetry::Nq> > &qloc34)
+	             const vector<qarray<Symmetry::Nq> > &qloc34,
+	             const qarray<Symmetry::Nq> &Qtop, 
+                 const qarray<Symmetry::Nq> &Qbot)
 	{
-		contract_AA(A12, qloc12, A34, qloc34, data);
+		contract_AA(A12, qloc12, A34, qloc34, Qtop, Qbot, data);
 	}
 	
 	/**Set blocks as in Vrhs, but do not resize the matrices*/

@@ -7,5 +7,6 @@
 *.out
 *.o
 *.dat
+*.pdf
 *.DS_Store
 makefile

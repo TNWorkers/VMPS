@@ -99,8 +99,8 @@ int main (int argc, char* argv[])
 	
 	Dinit  = args.get<int>("Dinit",2);
 	Dlimit = args.get<int>("Dlimit",100);
-	Qinit = args.get<int>("Qinit",500);
-	Imin   = args.get<int>("Imin",2);
+	Qinit = args.get<int>("Qinit",2);
+	Imin   = args.get<int>("Imin",6);
 	Imax   = args.get<int>("Imax",20);
 	tol_eigval = args.get<double>("tol_eigval",1e-6);
 	tol_state  = args.get<double>("tol_state",1e-5);

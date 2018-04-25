@@ -32,7 +32,7 @@ public:
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND,
 	                DMRG::CONVTEST::OPTION TEST = DMRG::CONVTEST::VAR_2SITE,
 	                double tol_eigval_input=1e-7, double tol_state_input=1e-6, 
-	                size_t Dinit=4, size_t Dlimit=500, int Qinit=50,
+	                size_t Dinit=4, size_t Dlimit=500, int Qinit=2,
 	                size_t max_halfsweeps=50, size_t min_halfsweeps=6, 
                     double max_alpha_rsvd_input=1e2, double eps_svd_input=1e-7, 
 	                size_t savePeriod=0);
@@ -92,6 +92,7 @@ private:
 		int pivot=-1;
 		DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
 		size_t N_sweepsteps, N_halfsweeps;
+		size_t min_halfsweeps;
 	};
 	SweepStatus stat;
 	
@@ -408,11 +409,13 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	
 	// calculate state error
 	err_eigval = abs(Eold-Vout.energy)/this->N_sites;
-	if (TEST == DMRG::CONVTEST::NORM_TEST)
+	if (TEST == DMRG::CONVTEST::NORM_TEST and stat.N_halfsweeps > stat.min_halfsweeps)
 	{
+		Stopwatch<> ErrTimer;
 		err_state = abs(1.-abs(dot(Vout.state,Vref)));
+		t_err += ErrTimer.time();
 	}
-	else if (TEST == DMRG::CONVTEST::VAR_HSQ)
+	else if (TEST == DMRG::CONVTEST::VAR_HSQ and stat.N_halfsweeps > stat.min_halfsweeps)
 	{
 		Stopwatch<> HsqTimer;
 		DMRG::DIRECTION::OPTION DIR = (stat.N_halfsweeps%2==0) ? DMRG::DIRECTION::RIGHT : DMRG::DIRECTION::LEFT;
@@ -420,12 +423,13 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		double avgHsq = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true,DIR)) : isReal(avg(Vout.state,H,H,Vout.state));
 		err_state = abs(avgHsq-pow(Vout.energy,2))/this->N_sites;
 		
+		t_err += HsqTimer.time();
 		if (CHOSEN_VERBOSITY>=2)
 		{
 			lout << HsqTimer.info("<H^2>") << endl;
 		}
 	}
-	else if (TEST == DMRG::CONVTEST::VAR_2SITE)
+	else if (TEST == DMRG::CONVTEST::VAR_2SITE and stat.N_halfsweeps > stat.min_halfsweeps)
 	{
 		Stopwatch<> HsqTimer;
 		double t_LR=0;
@@ -670,6 +674,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 {
 	tol_eigval = tol_eigval_input;
 	tol_state  = tol_state_input;
+	stat.min_halfsweeps = min_halfsweeps;
 	
 	prepare(H, Vout, Qtot_input, false, Dinit, Qinit, max_alpha_rsvd_input, eps_svd_input);
 	

@@ -53,8 +53,8 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 					size_t qAbra = get<1>(ix[n]);
 					size_t qAket = get<2>(ix[n]);
 					
-//					if (Aket[s2].block[qAket].size() == 0) {continue;}
-//					if (Abra[s1].block[qAbra].size() == 0) {continue;}
+					if (Aket[s2].block[qAket].size() == 0) {continue;}
+					if (Abra[s1].block[qAbra].size() == 0) {continue;}
 					
 					if constexpr ( Symmetry::NON_ABELIAN )
 					{
@@ -158,8 +158,8 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 				if (q1!=Abra[s1].dict.end() and 
 				    q2!=Aket[s2].dict.end())
 				{
-//					if (Aket[s2].block[q2->second].size() == 0) {continue;}
-//					if (Abra[s1].block[q1->second].size() == 0) {continue;}
+					if (Aket[s2].block[q2->second].size() == 0) {continue;}
+					if (Abra[s1].block[q1->second].size() == 0) {continue;}
 					
 					qarray<Symmetry::Nq> new_qin  = Aket[s2].in[q2->second]; // A.in
 					qarray<Symmetry::Nq> new_qout = Abra[s1].in[q1->second]; // A†.out = A.in
@@ -186,7 +186,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 								size_t a1 = iW.row();
 								size_t a2 = iW.col();
 								
-								if (Rold.block[qR][a2][0].rows() != 0)
+								if (Rold.block[qR][a2][0].size() != 0)
 								{
 									MatrixType Mtmp;
 									optimal_multiply(factor_cgc * iW.value(),
@@ -288,7 +288,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 						size_t a1 = iW.row();
 						size_t a2 = iW.col();
 						
-						if (Lold.block[qL][a1][0].rows() != 0)
+						if (Lold.block[qL][a1][0].size() != 0)
 						{
 							MatrixType Mtmp;
 							optimal_multiply(factor_cgc*iW.value(),
@@ -296,8 +296,8 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 											 Lold.block[qL][a1][0],
 											 Aket[s2].block[qAket],
 											 Mtmp);
-							if(Mtmp.norm() < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
-					
+//							if (Mtmp.norm() < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+							
 							auto it = Lnew.dict.find(quple);
 							if (it != Lnew.dict.end())
 							{
@@ -309,11 +309,11 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 								else
 								{
 									Lnew.block[it->second][a2][0] += Mtmp;
-									if(Lnew.block[it->second][a2][0].norm() < ::mynumeric_limits<MpoScalar>::epsilon())
-									{
-										// Lnew.block[it->second][a2][0].resize(0,0);
-										continue;
-									}
+//									if (Lnew.block[it->second][a2][0].norm() < ::mynumeric_limits<MpoScalar>::epsilon())
+//									{
+//										// Lnew.block[it->second][a2][0].resize(0,0);
+//										continue;
+//									}
 								}
 							}
 							else
@@ -1483,63 +1483,33 @@ void contract_C (vector<qarray<Symmetry::Nq> > qloc,
 
 template<typename Symmetry, typename Scalar>
 void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
-                  vector<qarray<Symmetry::Nq> > qloc1, 
+                  const vector<qarray<Symmetry::Nq> > &qloc1, 
                   const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
-                  vector<qarray<Symmetry::Nq> > qloc2, 
+                  const vector<qarray<Symmetry::Nq> > &qloc2, 
+                  const qarray<Symmetry::Nq> &Qtop, 
+                  const qarray<Symmetry::Nq> &Qbot, 
                   vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair)
 {
 	auto tensor_basis = Symmetry::tensorProd(qloc1,qloc2);
 	Apair.resize(tensor_basis.size());
 	
-	vector<qarray<Symmetry::Nq> > qmid_fromL;
-	vector<qarray<Symmetry::Nq> > qmid_fromR;
+	vector<qarray<Symmetry::Nq> > qsplit = calc_qsplit(A1, qloc1, A2, qloc2, Qtop, Qbot);
+	
 	vector<qarray<Symmetry::Nq> > A1in;
 	vector<qarray<Symmetry::Nq> > A2out;
 	
+	// gather all qin at the left:
 	for (size_t s1=0; s1<qloc1.size(); ++s1)
 	for (size_t q=0; q<A1[s1].dim; ++q)
 	{
 		A1in.push_back(A1[s1].in[q]);
 	}
-	
+	// gather all qout at the right:
 	for (size_t s2=0; s2<qloc2.size(); ++s2)
 	for (size_t q=0; q<A2[s2].dim; ++q)
 	{
 		A2out.push_back(A2[s2].out[q]);
 	}
-	
-	for (size_t s1=0; s1<qloc1.size(); ++s1)
-	{
-		auto tmp = Symmetry::reduceSilent(A1in, qloc1[s1]);
-		qmid_fromL.insert(qmid_fromL.end(), tmp.begin(), tmp.end());
-	}
-	for (size_t s2=0; s2<qloc2.size(); ++s2)
-	{
-		auto tmp = Symmetry::reduceSilent(A2out, Symmetry::flip(qloc2[s2]));
-		qmid_fromR.insert(qmid_fromR.end(), tmp.begin(), tmp.end());
-	}
-	
-//	for (int i=0; i<qmid_fromL.size(); ++i)
-//	{
-//		cout << "qL=" << qmid_fromL[i] << endl;
-//	}
-//	for (int i=0; i<qmid_fromR.size(); ++i)
-//	{
-//		cout << "qR=" << qmid_fromR[i] << endl;
-//	}
-	
-	vector<qarray<Symmetry::Nq> > qsplit;
-	sort(qmid_fromL.begin(), qmid_fromL.end());
-	sort(qmid_fromR.begin(), qmid_fromR.end());
-	set_intersection(qmid_fromL.begin(), qmid_fromL.end(), qmid_fromR.begin(), qmid_fromR.end(), back_inserter(qsplit));
-	sort(qsplit.begin(), qsplit.end());
-	qsplit.erase(unique(qsplit.begin(), qsplit.end()), qsplit.end());
-	
-//	for (int i=0; i<qsplit.size(); ++i)
-//	{
-//		cout << "possible qsplit= " << qsplit[i] << endl;
-//	}
-//	cout << endl;
 	
 	for (size_t s1=0; s1<qloc1.size(); ++s1)
 	for (size_t m=0; m<qsplit.size(); ++m)
@@ -1556,7 +1526,7 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 				{
 					auto qtensor = make_tuple(qloc1[s1], s1, qloc2[s2], s2, qmerge);
 					auto s1s2 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor));
-				
+					
 					auto qouts = Symmetry::reduceSilent(qsplit[m], qloc2[s2]);
 					for (const auto &qout:qouts)
 					{
@@ -1573,7 +1543,6 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 			}
 		}
 	}
-//	cout << endl;
 	
 	for (size_t s1=0; s1<qloc1.size(); ++s1)
 	for (size_t s2=0; s2<qloc2.size(); ++s2)

@@ -69,8 +69,8 @@ bool AWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::
 template<typename Symmetry, typename MatrixType>
 bool AA (qarray<Symmetry::Nq> Lin,
          qarray<Symmetry::Nq> Lout,
-		 size_t s, 
-		 vector<qarray<Symmetry::Nq> > qloc,
+         size_t s, 
+         vector<qarray<Symmetry::Nq> > qloc,
          const vector<Biped<Symmetry,MatrixType> > &Abra, 
          const vector<Biped<Symmetry,MatrixType> > &Aket, 
          vector<tuple<qarray2<Symmetry::Nq>,size_t,size_t> > &result)
@@ -185,6 +185,67 @@ bool AAWWAA (const qarray<Symmetry::Nq> &Lin,
 		}
 	}
 	return out;
+}
+
+template<typename Symmetry, typename Scalar>
+vector<qarray<Symmetry::Nq> > calc_qsplit (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
+                                           const vector<qarray<Symmetry::Nq> > &qloc1, 
+                                           const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
+                                           vector<qarray<Symmetry::Nq> > qloc2,
+                                           const qarray<Symmetry::Nq> &Qtop, 
+                                           const qarray<Symmetry::Nq> &Qbot)
+{
+	set<qarray<Symmetry::Nq> > qmid_fromL;
+	set<qarray<Symmetry::Nq> > qmid_fromR;
+	vector<qarray<Symmetry::Nq> > A1in;
+	vector<qarray<Symmetry::Nq> > A2out;
+	
+	// gather all qin at the left:
+	for (size_t s1=0; s1<qloc1.size(); ++s1)
+	for (size_t q=0; q<A1[s1].dim; ++q)
+	{
+		A1in.push_back(A1[s1].in[q]);
+	}
+	// gather all qout at the right:
+	for (size_t s2=0; s2<qloc2.size(); ++s2)
+	for (size_t q=0; q<A2[s2].dim; ++q)
+	{
+		A2out.push_back(A2[s2].out[q]);
+	}
+	
+	for (size_t s1=0; s1<qloc1.size(); ++s1)
+	{
+		auto qls = Symmetry::reduceSilent(A1in, qloc1[s1]);
+		for (auto const &ql:qls)
+		{
+			if (ql<=Qtop and ql>=Qbot)
+			{
+				qmid_fromL.insert(ql);
+			}
+		}
+	}
+	for (size_t s2=0; s2<qloc2.size(); ++s2)
+	{
+		auto qrs = Symmetry::reduceSilent(A2out, Symmetry::flip(qloc2[s2]));
+		for (auto const &qr:qrs)
+		{
+			if (qr<=Qtop and qr>=Qbot)
+			{
+				qmid_fromR.insert(qr);
+			}
+		}
+	}
+	
+	vector<qarray<Symmetry::Nq> > qres;
+//	sort(qmid_fromL.begin(), qmid_fromL.end());
+//	sort(qmid_fromR.begin(), qmid_fromR.end());
+	// take common elements between left and right:
+	set_intersection(qmid_fromL.begin(), qmid_fromL.end(), qmid_fromR.begin(), qmid_fromR.end(), back_inserter(qres));
+	// erase non-unique elements to be sure:
+	sort(qres.begin(), qres.end());
+	qres.erase(unique(qres.begin(), qres.end()), qres.end());
+	
+	return qres;
 }
 
 template<typename Symmetry, typename MatrixType>

@@ -127,6 +127,7 @@ public:
 
 	qType find( const std::string& ident ) const;
 	qType find( const Eigen::Index& num ) const;
+	bool find( const qType& q ) const;
 
 	Eigen::Index inner_num( const Eigen::Index& outer_num ) const;
 	Eigen::Index location( const std::string& ident ) const;
@@ -227,6 +228,18 @@ find(const Eigen::Index& num_in ) const
 		auto [qVal,num,basis] = q;
 		if (check < num+basis.size()) { return qVal; }
 	}
+}
+
+template<typename Symmetry>
+bool Qbasis<Symmetry>::
+find (const qType& q ) const
+{
+	for (const auto& entry : data_)
+	{
+		auto [qVal,num,basis] = entry;
+		if (qVal == q) {return true;}
+	}
+	return false;
 }
 
 template<typename Symmetry>

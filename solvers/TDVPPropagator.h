@@ -46,8 +46,8 @@ private:
 	double t_0site = 0;
 	double t_1site = 0;
 	double t_2site = 0;
-	double t_overhead = 0; // precalc
-	double t_cs = 0; // contract & sweep
+	double t_ohead = 0; // precalc
+	double t_contr = 0; // contract & sweep
 	double t_tot = 0; // full time step
 };
 
@@ -65,8 +65,8 @@ info() const
 	   << ", t0=" << round(t_0site/t_tot*100.,0) << "%"
 	   << ", t1=" << round(t_1site/t_tot*100.) << "%"
 	   << ", t2=" << round(t_2site/t_tot*100.) << "%"
-	   << ", t_overhead=" << round(t_overhead/t_tot*100.) << "%"
-	   << ", t_cs=" << round(t_cs/t_tot*100.) << "%";
+	   << ", t_ohead=" << round(t_ohead/t_tot*100.) << "%"
+	   << ", t_contr=" << round(t_contr/t_tot*100.) << "%";
 	return ss.str();
 }
 
@@ -198,8 +198,8 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 	t_0site = 0;
 	t_1site = 0;
 	t_2site = 0;
-	t_overhead = 0;
-	t_cs = 0;
+	t_ohead = 0;
+	t_contr = 0;
 	t_tot = 0;
 	
 	Stopwatch<> Wtot;
@@ -214,8 +214,10 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
 		
 		Stopwatch<> Wc;
-		PivotVector<Symmetry,TimeScalar> Apair(Vinout.A[loc1], Vinout.locBasis(loc1), Vinout.A[loc2], Vinout.locBasis(loc2));
-		t_cs += Wc.time(SECONDS);
+		PivotVector<Symmetry,TimeScalar> Apair(Vinout.A[loc1], Vinout.locBasis(loc1),
+		                                       Vinout.A[loc2], Vinout.locBasis(loc2),
+		                                       Vinout.QoutTop[loc1], Vinout.QoutBot[loc1]);
+		t_contr += Wc.time(SECONDS);
 		PivotMatrix2<Symmetry,TimeScalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
 		                                                  H.W_at(loc1), H.W_at(loc2), 
 		                                                  H.locBasis(loc1), H.locBasis(loc2), 
@@ -225,7 +227,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		precalc_blockStructure (Heff[loc1].L, Apair.data, Heff2.W12, Heff2.W34, Apair.data, Heff[loc2].R, 
 		                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
 		                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
-		t_overhead += Woh2.time(SECONDS);
+		t_ohead += Woh2.time(SECONDS);
 		
 		LanczosPropagator<PivotMatrix2<Symmetry,TimeScalar,MpoScalar>,PivotVector<Symmetry,TimeScalar> > Lutz2(tol_Lanczos);
 		Stopwatch<> W2;
@@ -237,7 +239,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		
 		Stopwatch<> Ws;
 		Vinout.sweepStep2(CURRENT_DIRECTION, loc1, Apair.data);
-		t_cs += Ws.time(SECONDS);
+		t_contr += Ws.time(SECONDS);
 		(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vinout,loc2) : build_R(H,Vinout,loc1);
 		pivot = Vinout.get_pivot();
 		
@@ -249,7 +251,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 			precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
 			                        H.locBasis(pivot), H.opBasis(pivot), 
 			                        Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
-			t_overhead += Woh1.time(SECONDS);
+			t_ohead += Woh1.time(SECONDS);
 			
 			PivotVector<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
 			
@@ -289,8 +291,8 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 	t_0site = 0;
 	t_1site = 0;
 	t_2site = 0;
-	t_overhead = 0;
-	t_cs = 0;
+	t_ohead = 0;
+	t_contr = 0;
 	t_tot = 0;
 	
 	Stopwatch<> Wtot;
@@ -306,7 +308,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 		Stopwatch<> Woh1;
 		precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
 		                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
-		t_overhead += Woh1.time(SECONDS);
+		t_ohead += Woh1.time(SECONDS);
 		
 		LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 		
