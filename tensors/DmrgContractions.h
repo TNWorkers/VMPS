@@ -295,7 +295,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 											 Lold.block[qL][a1][0],
 											 Aket[s2].block[qAket],
 											 Mtmp);
-							if (Mtmp.norm() < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+							// if (Mtmp.norm() < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
 							
 							auto it = Lnew.dict.find(quple);
 							if (it != Lnew.dict.end())
@@ -308,11 +308,11 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 								else
 								{
 									Lnew.block[it->second][a2][0] += Mtmp;
-									if (Lnew.block[it->second][a2][0].norm() < ::mynumeric_limits<MpoScalar>::epsilon())
-									{
-										Lnew.block[it->second][a2][0].resize(0,0);
-										continue;
-									}
+									// if (Lnew.block[it->second][a2][0].norm() < ::mynumeric_limits<MpoScalar>::epsilon())
+									// {
+									// 	Lnew.block[it->second][a2][0].resize(0,0);
+									// 	continue;
+									// }
 								}
 							}
 							else
@@ -414,7 +414,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 												 Rold.block[qR][a2][0],
 												 Abra[s1].block[q1->second].adjoint(),
 												 Mtmp);
-								if(Mtmp.norm() < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+								// if(Mtmp.norm() < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
 								
 								auto it = Rnew.dict.find(quple);
 								if (it != Rnew.dict.end())
@@ -427,11 +427,11 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 									else
 									{
 										Rnew.block[it->second][a1][0] += Mtmp;
-										if(Rnew.block[it->second][a1][0].norm() < ::mynumeric_limits<MpoScalar>::epsilon())
-										{
-											Rnew.block[it->second][a1][0].resize(0,0);
-											continue;
-										}
+										// if(Rnew.block[it->second][a1][0].norm() < ::mynumeric_limits<MpoScalar>::epsilon())
+										// {
+										// 	Rnew.block[it->second][a1][0].resize(0,0);
+										// 	continue;
+										// }
 									}
 								}
 								else
