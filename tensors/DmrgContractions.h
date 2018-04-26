@@ -1571,23 +1571,26 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 						{
 							Matrix<Scalar,Dynamic,Dynamic> Mtmp = factor_cgc * A1[s1].block[q1] * A2[s2].block[q2->second];
 							
-							qarray2<Symmetry::Nq> qupleApair = {A1[s1].in[q1], A2[s2].out[q2->second]};
-							
-							auto qApair = Apair[s1s2].dict.find(qupleApair);
-							
-							if (qApair != Apair[s1s2].dict.end() and 
-							    Apair[s1s2].block[qApair->second].size() == Mtmp.size())
+							if (Mtmp.size() != 0)
 							{
-								Apair[s1s2].block[qApair->second] += Mtmp;
-							}
-							else if (qApair != Apair[s1s2].dict.end() and 
-							         Apair[s1s2].block[qApair->second].size() == 0)
-							{
-								Apair[s1s2].block[qApair->second] = Mtmp;
-							}
-							else
-							{
-								Apair[s1s2].push_back(qupleApair, Mtmp);
+								qarray2<Symmetry::Nq> qupleApair = {A1[s1].in[q1], A2[s2].out[q2->second]};
+								
+								auto qApair = Apair[s1s2].dict.find(qupleApair);
+								
+								if (qApair != Apair[s1s2].dict.end() and 
+								    Apair[s1s2].block[qApair->second].size() == Mtmp.size())
+								{
+									Apair[s1s2].block[qApair->second] += Mtmp;
+								}
+								else if (qApair != Apair[s1s2].dict.end() and 
+									     Apair[s1s2].block[qApair->second].size() == 0)
+								{
+									Apair[s1s2].block[qApair->second] = Mtmp;
+								}
+								else
+								{
+									Apair[s1s2].push_back(qupleApair, Mtmp);
+								}
 							}
 						}
 					}

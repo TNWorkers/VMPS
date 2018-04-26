@@ -39,7 +39,7 @@ public:
 	FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in = SUB_LATTICE::A);
 	
 	/**amount of states.*/
-	inline Index dim() const {return static_cast<Index>(TensorBasis.size());}
+	inline Index dim() const {return static_cast<Index>(TensorBasis.M());}
 	
 	/**amount of orbitals*/
 	inline std::size_t orbitals() const  {return N_orbitals;}

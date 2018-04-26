@@ -533,6 +533,11 @@ outerResize (const Mps<Symmetry,OtherMatrixType> &V)
 	QbasisIn = V.QbasisIn;
 	QbasisOut = V.QbasisOut;
 	
+	QoutTop = V.QoutTop;
+	QoutBot = V.QoutBot;
+	QinTop  = V.QinTop;
+	QinBot  = V.QinBot;
+	
 	A.resize(this->N_sites);
 	
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
@@ -604,8 +609,13 @@ calc_Qlimits()
 	QoutBot[this->N_sites-1] = Qtot;
 	for (int l=this->N_sites-2; l>=0; --l)
 	{
-		auto new_tops = Symmetry::reduceSilent(qloc[l], QoutTop[l+1]);
-		auto new_bots = Symmetry::reduceSilent(qloc[l], QoutBot[l+1]);
+		vector<qarray<Symmetry::Nq> > qlocflip;
+		for (size_t q=0; q<qloc[l].size(); ++q)
+		{
+			qlocflip.push_back(Symmetry::flip(qloc[l][q]));
+		}
+		auto new_tops = Symmetry::reduceSilent(qlocflip, QoutTop[l+1]);
+		auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBot[l+1]);
 		
 		sort(new_tops.begin(),new_tops.end());
 		sort(new_bots.begin(),new_bots.end());
@@ -1234,8 +1244,8 @@ calc_Mmax () const
 	size_t res = 0;
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
-		if (QbasisIn[l].Mmax()  > res) {res = QbasisIn[l].Mmax();}
-		if (QbasisOut[l].Mmax() > res) {res = QbasisOut[l].Mmax();}
+		if (QbasisIn[l].M()  > res) {res = QbasisIn[l].M();}
+		if (QbasisOut[l].M() > res) {res = QbasisOut[l].M();}
 	}
 	return res;
 }
@@ -1247,8 +1257,8 @@ calc_fullMmax () const
 	size_t res = 0;
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
-		if (QbasisIn[l].fullMmax()  > res) {res = QbasisIn[l].fullMmax();}
-		if (QbasisOut[l].fullMmax() > res) {res = QbasisOut[l].fullMmax();}
+		if (QbasisIn[l].fullM()  > res) {res = QbasisIn[l].fullM();}
+		if (QbasisOut[l].fullM() > res) {res = QbasisOut[l].fullM();}
 	}
 	return res;
 }
@@ -2079,6 +2089,15 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 {
 	vector<qarray<Symmetry::Nq> > midset = calc_qsplit(A[loc], qloc[loc], A[loc+1], qloc[loc+1], QoutTop[loc], QoutBot[loc]);
 	
+	for (size_t s=0; s<qloc[loc].size(); ++s)
+	{
+		A[loc][s].clear();
+	}
+	for (size_t s=0; s<qloc[loc+1].size(); ++s)
+	{
+		A[loc+1][s].clear();
+	}
+	
 	ArrayXd truncWeightSub(midset.size()); truncWeightSub.setZero();
 	ArrayXd entropySub(midset.size()); entropySub.setZero();
 	
@@ -2296,13 +2315,11 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				auto q = A[loc][s1].dict.find(quple);
 				if (q != A[loc][s1].dict.end())
 				{
-					A[loc][s1].block[q->second] = Aleft.block(istitch,0, Nrows,Nret);
+					A[loc][s1].block[q->second] += Aleft.block(istitch,0, Nrows,Nret);
 				}
 				else
 				{
-					A[loc][s1].push_back(get_ql[i], 
-					                     midset[qmid], 
-					                     Aleft.block(istitch,0, Nrows,Nret));
+					A[loc][s1].push_back(get_ql[i], midset[qmid], Aleft.block(istitch,0, Nrows,Nret));
 				}
 				istitch += Nrows;
 			}
@@ -2319,13 +2336,11 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				Scalar factor_cgc3 = (DIR==DMRG::DIRECTION::LEFT)? sqrt(Symmetry::coeff_rightOrtho(midset[qmid], get_qr[i])):1.;
 				if (q != A[loc+1][s3].dict.end())
 				{
-					A[loc+1][s3].block[q->second] = Aright.block(0,jstitch, Nret,Ncols) * factor_cgc3;
+					A[loc+1][s3].block[q->second] += factor_cgc3 * Aright.block(0,jstitch, Nret,Ncols);
 				}
 				else
 				{
-					A[loc+1][s3].push_back(midset[qmid], 
-					                       get_qr[i], 
-					                       Aright.block(0,jstitch, Nret,Ncols) * factor_cgc3);
+					A[loc+1][s3].push_back(midset[qmid], get_qr[i], factor_cgc3 * Aright.block(0,jstitch, Nret,Ncols));
 				}
 				jstitch += Ncols;
 			}

@@ -52,7 +52,7 @@ double Bxi, Bzi, Bxf, Bzf;
 double J, U;
 double alpha;
 double t_U1, t_SU2;
-int Dinit, Dlimit, Imin, Imax;
+int Dinit, Dlimit, Imin, Imax, Qinit;
 double tol_eigval, tol_state;
 double t, dt, tmax, tol_compr, tol_Lanczos;
 DMRG::VERBOSITY::OPTION VERB;
@@ -74,18 +74,19 @@ int main (int argc, char* argv[])
 	D = args.get<size_t>("D",2);
 	T = args.get<int>("T",1);
 	
-	alpha = args.get<double>("alpha",1.);
+	alpha = args.get<double>("alpha",100.);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
-	dt = args.get<double>("dt",0.1);
+	dt = args.get<double>("dt",0.2);
 	tmax = args.get<double>("tmax",6.);
-	tol_compr = args.get<double>("tol_compr",1e-5);
+	tol_compr = args.get<double>("tol_compr",1e-4);
 	tol_Lanczos = args.get<double>("tol_compr",1e-8);
 	
 	Dinit  = args.get<int>("Dmin",2);
 	Dlimit = args.get<int>("Dmax",100);
-	Imin   = args.get<int>("Imin",10);
-	Imax   = args.get<int>("Imax",50);
+	Imin   = args.get<int>("Imin",6);
+	Imax   = args.get<int>("Imax",20);
+	Qinit  = args.get<int>("Qinit",2);
 	tol_eigval = args.get<double>("tol_eigval",1e-6);
 	tol_state  = args.get<double>("tol_state",1e-5);
 	
@@ -124,48 +125,50 @@ int main (int argc, char* argv[])
 	params_prop.push_back({"Bz",Bzf,0});
 	
 	//--------U(1)---------
-//	lout << endl << "--------U(1)---------" << endl << endl;
-//	
-//	Stopwatch<> Watch_U1;
-//	
-//	VMPS::KondoU1 H_U1i(L,params_init);
-//	VMPS::KondoU1 H_U1f(L,params_prop);
-//	lout << H_U1i.info() << endl;
-//	lout << H_U1f.info() << endl;
-//	assert(H_U1i.validate({N}) and "Bad total quantum number of the MPS.");
-//	Eigenstate<VMPS::KondoU1::StateXd> g_U1;
-//	
-//	VMPS::KondoU1::Solver DMRG_U1(VERB);
-//	DMRG_U1.edgeState(H_U1i, g_U1, {N}, LANCZOS::EDGE::GROUND, LANCZOS::CONVTEST::NORM_TEST, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
-//	
-//	t_U1 = Watch_U1.time();
-//	
-//	VMPS::KondoU1::StateXcd Psi_U1 = g_U1.state.cast<complex<double> >();
-//	Psi_U1.eps_svd = tol_compr;
-//	TDVPPropagator<VMPS::KondoU1,Sym::U1<Sym::ChargeU1>,double,complex<double>,VMPS::KondoU1::StateXcd> TDVP_U1(H_U1f,Psi_U1);
-//	
-//	t = 0;
-//	ofstream FilerU1(make_string("U1.dat"));
-//	tinfo = "";
-//	for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
-//	{
-//		double res = isReal(avg(Psi_U1, H_U1f.Simp(SZ,0), Psi_U1));
-//		FilerU1 << t << "\t" << res << endl;
-//		lout << "t=" << t << "\t" << res << "\t" << tinfo << endl;
-//		
-//		Stopwatch<> Steptimer;
-//		TDVP_U1.t_step(H_U1f, Psi_U1, -1.i*dt, 1,tol_Lanczos);
-//		tinfo = Steptimer.info();
-//		
-//		if (Psi_U1.get_truncWeight().sum() > 0.5*tol_compr)
-//		{
-//			Psi_U1.N_sv = min(static_cast<size_t>(max(Psi_U1.N_sv*1.1,Psi_U1.N_sv+1.)),200ul);
-//		}
-//		
-//		if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_U1.info() << endl << Psi_U1.info() << endl;}
-//		t += dt;
-//	}
-//	FilerU1.close();
+	lout << endl << "--------U(1)---------" << endl << endl;
+	
+	Stopwatch<> Watch_U1;
+	
+	VMPS::KondoU1 H_U1i(L,params_init);
+	VMPS::KondoU1 H_U1f(L,params_prop);
+	lout << H_U1i.info() << endl;
+	lout << H_U1f.info() << endl;
+	assert(H_U1i.validate({N}) and "Bad total quantum number of the MPS.");
+	Eigenstate<VMPS::KondoU1::StateXd> g_U1;
+	
+	VMPS::KondoU1::Solver DMRG_U1(VERB);
+	DMRG_U1.edgeState(H_U1i, g_U1, {N}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
+	                  tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha);
+	g_U1.state.graph("g");
+	
+	t_U1 = Watch_U1.time();
+	
+	VMPS::KondoU1::StateXcd Psi_U1 = g_U1.state.cast<complex<double> >();
+	Psi_U1.eps_svd = tol_compr;
+	TDVPPropagator<VMPS::KondoU1,Sym::U1<Sym::ChargeU1>,double,complex<double>,VMPS::KondoU1::StateXcd> TDVP_U1(H_U1f,Psi_U1);
+	
+	t = 0;
+	ofstream FilerU1(make_string("U1.dat"));
+	tinfo = "";
+	for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
+	{
+		double res = isReal(avg(Psi_U1, H_U1f.Simp(SZ,0), Psi_U1));
+		FilerU1 << t << "\t" << res << endl;
+		lout << "t=" << t << "\t" << res << "\t" << tinfo << endl;
+		
+		Stopwatch<> Steptimer;
+		TDVP_U1.t_step(H_U1f, Psi_U1, -1.i*dt, 1,tol_Lanczos);
+		tinfo = Steptimer.info();
+		
+		if (Psi_U1.get_truncWeight().sum() > 0.5*tol_compr)
+		{
+			Psi_U1.N_sv = min(static_cast<size_t>(max(Psi_U1.N_sv*1.1,Psi_U1.N_sv+1.)),200ul);
+		}
+		
+		if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_U1.info() << endl << Psi_U1.info() << endl;}
+		t += dt;
+	}
+	FilerU1.close();
 	
 	//--------SU(2)---------
 	lout << endl << "--------SU(2)---------" << endl << endl;
@@ -179,7 +182,8 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::KondoU0xSU2::StateXd> g_SU2;
 	
 	VMPS::KondoU0xSU2::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2i, g_SU2, {T}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_SU2.edgeState(H_SU2i, g_SU2, {T}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
+	                   tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha);
 	
 	t_SU2 = Watch_SU2.time();
 	

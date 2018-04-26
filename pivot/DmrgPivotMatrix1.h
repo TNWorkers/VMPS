@@ -34,6 +34,13 @@ void HxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 //	Vout.outerResize(Vin);
 	Vout = Vin;
 	OxV(H,Vin,Vout);
+//	for (size_t s=0; s<Vin.data.size(); ++s)
+//	{
+//		cout << "s=" << s << endl;
+//		cout << Vin.data[s].print(false) << endl;
+//		cout << Vout.data[s].print(false) << endl;
+//	}
+//	cout << endl;
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
@@ -61,7 +68,8 @@ void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(H.W[s1][s2][k],r); iW; ++iW)
 			{
 				if (H.L.block[qL][iW.row()][0].size() != 0 and 
-				    H.R.block[qR][iW.col()][0].size() != 0)
+				    H.R.block[qR][iW.col()][0].size() != 0 and
+				    Vin.data[s2].block[q2].size() !=0)
 				{
 //					print_size(H.L.block[qL][iW.row()][0],"H.L.block[qL][iW.row()][0]");
 //					print_size(Vin.data[s2].block[q2], "Vin.data[s2].block[q2]");
@@ -87,6 +95,16 @@ void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 			}
 		}
 	}
+	
+//	for (size_t s=0; s<Vin.data.size(); ++s)
+//	for (size_t q=0; q<Vin.data[s].dim; ++q)
+//	{
+//		cout << "Vin inout=" << Vin.data[s].in[q] << ", " << Vin.data[s].out[q] << endl;
+//		cout << "Vout inout=" << Vout.data[s].in[q] << ", " << Vout.data[s].out[q] << endl;
+//		print_size(Vin.data[s].block[q],"Vin.data[s].block[q]");
+//		print_size(Vout.data[s].block[q],"Vout.data[s].block[q]");
+//		cout << endl;
+//	}
 	
 	// project out unwanted states (e.g. to get lower spectrum)
 	// warning: not implemented for SU(2)!

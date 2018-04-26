@@ -440,6 +440,8 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 			{
 				for(size_t n=0; n<ix.size(); ++n)
 				{
+//					if (Aket[s2].block[get<2>(ix[n])].size() == 0) {continue;}
+					
 					auto qR = R.dict.find(get<0>(ix[n]));
 					
 					if (qR != R.dict.end())
@@ -449,8 +451,8 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
 						for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
 						{
-							if (L.block[qL][iW.row()][0].rows() != 0 and 
-							    R.block[qR->second][iW.col()][0].rows() != 0)
+							if (L.block[qL][iW.row()][0].size() != 0 and 
+							    R.block[qR->second][iW.col()][0].size() != 0)
 							{
 								ALL_BLOCKS_ARE_EMPTY = false;
 							}

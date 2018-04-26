@@ -65,22 +65,70 @@ struct PivotVector
 template<typename Symmetry, typename Scalar>
 PivotVector<Symmetry,Scalar>& PivotVector<Symmetry,Scalar>::operator+= (const PivotVector<Symmetry,Scalar> &Vrhs)
 {
-	for (std::size_t s=0; s<data.size(); s++)
+//	for (std::size_t s=0; s<data.size(); s++)
+//	{
+////		for (size_t q=0; q<data[s].dim; ++q)
+////		{
+////			cout << "+= 1=" << data[s].in[q] << ", " << data[s].out[q] << endl;
+////			cout << "+= 1=" << Vrhs.data[s].in[q] << ", " << Vrhs.data[s].out[q] << endl;
+////			print_size(data[s].block[q],"data[s].block[q]");
+////			print_size(Vrhs.data[s].block[q],"Vrhs.data[s].block[q]");
+////		}
+////		cout << "dims(s)=" << data[s].dim << ", " << Vrhs.data[s].dim << endl;
+//		data[s] = data[s] + Vrhs.data[s];
+//	}
+//	return *this;
+	
+	for (size_t s=0; s<data.size(); s++)
+	for (size_t q=0; q<data[s].dim; ++q)
 	{
-		data[s] = data[s] + Vrhs.data[s];
+		if (data[s].block[q].size() == 0)
+		{
+			data[s].block[q] = Vrhs.data[s].block[q];
+		}
+		else if (data[s].block[q].size() != 0 and Vrhs.data[s].block[q].size() != 0)
+		{
+			data[s].block[q] += Vrhs.data[s].block[q];
+		}
 	}
-	return *this;
 }
 
 template<typename Symmetry, typename Scalar>
 PivotVector<Symmetry,Scalar>& PivotVector<Symmetry,Scalar>::
 operator-= (const PivotVector<Symmetry,Scalar> &Vrhs)
 {
-	for (std::size_t s=0; s<data.size(); s++)
+//	for (std::size_t s=0; s<data.size(); s++)
+//	{
+////		for (size_t q=0; q<data[s].dim; ++q)
+////		{
+////			cout << "-= 1=" << data[s].in[q] << ", " << data[s].out[q] << endl;
+////			cout << "-= 2=" << Vrhs.data[s].in[q] << ", " << Vrhs.data[s].out[q] << endl;
+////			print_size(data[s].block[q],"data[s].block[q]");
+////			print_size(Vrhs.data[s].block[q],"Vrhs.data[s].block[q]");
+////		}
+////		cout << "dims(s)=" << data[s].dim << ", " << Vrhs.data[s].dim << endl;
+//		data[s] = data[s] - Vrhs.data[s];
+//	}
+//	return *this;
+	
+	for (size_t s=0; s<data.size(); s++)
+	for (size_t q=0; q<data[s].dim; ++q)
 	{
-		data[s] = data[s] - Vrhs.data[s];
+//		cout << "s=" << s << ", q=" << q << endl;
+//		cout << "-= 1=" << data[s].in[q] << ", " << data[s].out[q] << endl;
+//		cout << "-= 2=" << Vrhs.data[s].in[q] << ", " << Vrhs.data[s].out[q] << endl;
+//		print_size(data[s].block[q],"data[s].block[q]");
+//		print_size(Vrhs.data[s].block[q],"Vrhs.data[s].block[q]");
+		
+		if (data[s].block[q].size() == 0)
+		{
+			data[s].block[q] = -Vrhs.data[s].block[q];
+		}
+		else if (data[s].block[q].size() != 0 and Vrhs.data[s].block[q].size() != 0)
+		{
+			data[s].block[q] -= Vrhs.data[s].block[q];
+		}
 	}
-	return *this;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -147,13 +195,20 @@ PivotVector<Symmetry,Scalar> operator- (const PivotVector<Symmetry,Scalar> &V1, 
 template<typename Symmetry, typename Scalar>
 Scalar dot (const PivotVector<Symmetry,Scalar> &V1, const PivotVector<Symmetry,Scalar> &V2)
 {
+//	cout << "sizes in dot: " << V1.data.size() << ", " << V2.data.size() << endl;
 	Scalar res = 0;
 	for (size_t s=0; s<V2.data.size(); ++s)
 	for (size_t q=0; q<V2.data[s].dim; ++q)
 	{
-//		cout << "V1 inout=" << V1.data[s].in[q] << ", " << V1.data[s].out[q] << endl;
-//		cout << "V2 inout=" << V2.data[s].in[q] << ", " << V2.data[s].out[q] << endl;
-//		cout << endl;
+		if (V1.data[s].in[q] != V2.data[s].in[q] or V1.data[s].out[q] != V2.data[s].out[q])
+		{
+			cout << "s=" << s << ", q=" << q << endl;
+			cout << "V1 inout=" << V1.data[s].in[q] << ", " << V1.data[s].out[q] << endl;
+			cout << "V2 inout=" << V2.data[s].in[q] << ", " << V2.data[s].out[q] << endl;
+			print_size(V1.data[s].block[q],"V1.data[s].block[q]");
+			print_size(V2.data[s].block[q],"V2.data[s].block[q]");
+			cout << endl;
+		}
 		
 		if (V1.data[s].block[q].size() > 0 and 
 		    V2.data[s].block[q].size() > 0)
@@ -214,10 +269,11 @@ inline size_t dim (const PivotVector<Symmetry,Scalar> &V)
 template<typename Symmetry, typename Scalar>
 void swap (PivotVector<Symmetry,Scalar> &V1, PivotVector<Symmetry,Scalar> &V2)
 {
-	for (size_t s=0; s<V1.data.size(); ++s)
-	{
-		V1.data[s].block.swap(V2.data[s].block);
-	}
+//	for (size_t s=0; s<V1.data.size(); ++s)
+//	{
+//		V1.data[s].block.swap(V2.data[s].block);
+//	}
+	swap(V1.data, V2.data);
 }
 
 #include "RandomVector.h"
