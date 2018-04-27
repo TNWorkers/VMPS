@@ -6,7 +6,7 @@
 
 #include "symmetry/SU2.h"
 #include "tensors/SiteOperator.h"
-#include "symmetry/qbasis.h"
+#include "tensors/Qbasis.h"
 
 #include "bases/FermionBase.h"
 

@@ -2,7 +2,7 @@
 #define SPINBASESU2_H_
 
 #include "symmetry/SU2.h"
-#include "symmetry/qbasis.h"
+#include "tensors/Qbasis.h"
 #include "tensors/SiteOperatorQ.h"
 
 #include "symmetry/kind_dummies.h"

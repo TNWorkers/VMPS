@@ -3,7 +3,7 @@
 
 #include <unsupported/Eigen/KroneckerProduct>
 
-#include "symmetry/qbasis.h"
+#include "tensors/Qbasis.h"
 #include "tensors/Biped.h"
 
 //Forward declaration

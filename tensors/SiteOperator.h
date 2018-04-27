@@ -1,7 +1,7 @@
 #ifndef SITEOPERATOR_H_
 #define SITEOPERATOR_H_
 
-#include "symmetry/qbasis.h"
+#include "tensors/Qbasis.h"
 #include "tensors/Biped.h"
 #include <Eigen/Sparse>
 #include "tensors/SiteOperatorQ.h"

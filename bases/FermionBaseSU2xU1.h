@@ -5,7 +5,7 @@
 #include <iterator>
 
 #include "tensors/SiteOperatorQ.h"
-#include "symmetry/qbasis.h"
+#include "tensors/Qbasis.h"
 #include "symmetry/S1xS2.h"
 
 #include "bases/FermionBase.h"

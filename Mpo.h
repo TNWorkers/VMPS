@@ -13,7 +13,7 @@ using namespace Eigen;
 #include "Stopwatch.h" // from TOOLS
 #include "SuperMatrix.h"
 #include "symmetry/qarray.h"
-#include "symmetry/qbasis.h"
+#include "tensors/Qbasis.h"
 #include "symmetry/functions.h"
 #include "tensors/Biped.h"
 #include "pivot/DmrgPivotMatrix1.h"
@@ -21,9 +21,9 @@ using namespace Eigen;
 #include "DmrgJanitor.h"
 #include "DmrgExternal.h"
 #include "DmrgHamiltonianTerms.h"
-#if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
-	#include "LapackWrappers.h"
-#endif
+// #if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
+// 	#include "LapackWrappers.h"
+// #endif
 
 /**Namespace VMPS to distinguish names from ED equivalents.*/
 namespace VMPS{};
@@ -553,9 +553,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 	}
 
 	// auxiliary Basis
-	// cout << "begin auxbasis" << endl;
 	calc_auxBasis();
-	// cout << "finished auxbasis" << endl;
 
 	// make squared Mpo if desired
 	if (CALC_SQUARE == true)
@@ -620,7 +618,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 										Eigen::Index left2=TensorBaseRight.leftAmount(qrn,{qr1, qr2});
 										if (std::abs(factor_merge) < std::abs(::mynumeric_limits<Scalar>::epsilon())) { continue; }
 										auto key = make_tuple(s1,s3,K,qln,qrn);
-
+										
 										for (int ktop=0; ktop<W[l][s2][s3][k1].outerSize(); ++ktop)
 										for (typename SparseMatrix<Scalar>::InnerIterator iWtop(W[l][s2][s3][k1],ktop); iWtop; ++iWtop)
 										for (int kbot=0; kbot<W[l][s1][s2][k2].outerSize(); ++kbot)
