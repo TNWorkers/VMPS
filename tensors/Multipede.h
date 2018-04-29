@@ -14,6 +14,8 @@
 #include "symmetry/qarray.h"
 
 /**
+ * \ingroup Tensors
+ *
  * General tensor with quantum number blocks.
  * \tparam Nlegs : Amount of tensor legs, must be >=2. A two-legged tensor is coded separately as Biped.
  * \describe_Symmetry

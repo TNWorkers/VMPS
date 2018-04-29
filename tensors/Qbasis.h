@@ -15,6 +15,7 @@
 
 /** \class Qbasis
   *
+  * \ingroup Tensors
   * \describe_Symmetry
   *
   * This class is a container like class for a basis of a Hilbert space in which global symmetries are present.

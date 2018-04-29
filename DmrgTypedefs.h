@@ -241,9 +241,9 @@ struct DMRG
 		enum OPTION
 		{
 			VAR_2SITE, /**<Most efficient algorithm: the two-site variance as proposed in Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104.*/
-			VAR_HSQ, /**<Full variance of the energy: <H²>-<H>².*/
+			VAR_HSQ, /**<Full variance of the energy: \f$\langle H^2\rangle-\langle H\rangle^2\f$.*/
 			NORM_TEST, /**< Overlap to state from previous calculation. Not a very good measure.*/
-			VAR_FULL /**< This computes the norm of the full resolvent: ‖H|Ψ>-E|Ψ>‖.*/
+			VAR_FULL /**< This computes the norm of the full resolvent: \f$\left\Vert H |\Psi\rangle - E |\Psi\rangle \right\Vert \f$.*/
 		};
 	};
 };

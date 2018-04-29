@@ -9,6 +9,7 @@
 #include "symmetry/functions.h"
 
 /**
+ * \ingroup Tensors
  * Contracts a left transfer matrix \p Lold with two MpsQ tensors \p Abra, \p Aket and an MpoQ tensor \p W as follows:
  * \dotfile contractQ_L.dot
  * \param Lold
@@ -110,6 +111,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 }
 
 /**
+ * \ingroup Tensors
  * Contracts a right transfer matrix \p Rold with two Mps tensors \p Abra, \p Aket and an Mpo tensor \p V as follows:
  * \dotfile contractQ_R.dot
  * \param Rold
@@ -224,6 +226,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 }
 
 /**
+ * \ingroup Tensors
  * Contracts a left transfer matrix \p Lold with two Mps tensors \p Abra, \p Aket and a block dependent Mpo tensor \p V as follows:
  * \dotfile contractQ_L.dot
  * \param Lold
@@ -330,6 +333,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 }
 
 /**
+ * \ingroup Tensors
  * Contracts a right transfer matrix \p Rold with two Mps tensors \p Abra, \p Aket and a block dependent Mpo tensor \p V as follows:
  * \dotfile contractQ_R.dot
  * \param Rold
@@ -771,6 +775,7 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 }
 
 /**
+ * \ingroup Tensors
  * Calculates the contraction between a left transfer matrix \p L, 
  * two MpsQ tensors \p Abra, \p Aket, an MpoQ tensor \p W and a right transfer matrix \p R. Not really that much useful.
  * \param L
@@ -1047,6 +1052,7 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 //}
 
 /**
+ * \ingroup Tensors
  * Calculates the contraction between a right transfer matrix \p Rold, two MpsQ tensors \p Abra, \p Aket and two MpoQ tensors \p Wbot, \p Wtop.
  * Needed, for example, when calculating \f$\left<H^2\right>\f$ and no MpoQ represenation of \f$H^2\f$ is available.
 */
@@ -1194,6 +1200,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 }
 
 /**
+ * \ingroup Tensors
  * Calculates the contraction between a left transfer matrix \p Lold, two MpsQ tensors \p Abra, \p Aket and two MpoQ tensors \p Wbot, \p Wtop.
  * Needed, for example, when calculating \f$\left<H^2\right>\f$ and no MpoQ represenation of \f$H^2\f$ is available.
  */

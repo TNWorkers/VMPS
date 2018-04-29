@@ -7,14 +7,16 @@
 #include "tensors/SiteOperatorQ.h"
 
 /** \struct SiteOperator
-  *
-  * Just a struct to add a quantum number to a matrix which forms a plain SiteOperator.
-  * For a SiteOperator blocked into different symmetry sectors, see SiteOperatorQ. 
-  *
-  * \describe_Symmetry
-  * \describe_Scalar
-  *
-  */
+ *
+ * \ingroup Tensors
+ *
+ * Just a struct to add a quantum number to a matrix which forms a plain SiteOperator.
+ * For a SiteOperator blocked into different symmetry sectors, see SiteOperatorQ. 
+ *
+ * \describe_Symmetry
+ * \describe_Scalar
+ *
+ */
 template<typename Symmetry, typename Scalar>
 struct SiteOperator
 {

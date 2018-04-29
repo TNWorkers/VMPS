@@ -55,14 +55,17 @@ compute(const Operator &Op, const std::vector<qType> &blocks, Eigen::Decompositi
 	return;
 }
 
-/** \class SiteOperatorQ
-  *
-  * This class is the type for local operators and defines the relevant operations: adjoint(), prod(), outerprod(),...
-  *
-  * \describe_Symmetry
-  * \describe_Scalar
-  *
-  */
+/** 
+ * \class SiteOperatorQ
+ *
+ * \ingroup Tensors
+ *
+ * This class is the type for local operators and defines the relevant operations: adjoint(), prod(), outerprod(),...
+ *
+ * \describe_Symmetry
+ * \describe_Scalar
+ *
+ */
 template<typename Symmetry, typename MatrixType_>
 class SiteOperatorQ// : public Biped<Symmetry,MatrixType_>
 {

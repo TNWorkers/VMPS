@@ -17,6 +17,8 @@ namespace contract {
 // using namespace std;
 
 /**
+ * \ingroup Tensors
+ *
  * Tensor with two legs and quantum number blocks.
  * One could have used a general tensor, but the special case of two legs is hardcoded to preserve the sanity of the programmer. 
  * For the general tensor see Multipede.

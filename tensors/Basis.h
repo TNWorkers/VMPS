@@ -3,6 +3,8 @@
 
 /** \class Basis
   *
+  * \ingroup Tensors
+  *
   * Class for a plain basis without symmetries. A basis with symmetries is a collection of plain bases for each Symmetry entry
   *
   */
