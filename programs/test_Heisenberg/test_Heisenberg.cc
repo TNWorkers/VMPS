@@ -159,8 +159,7 @@ int main (int argc, char* argv[])
 	lout << H_U1.info() << endl;
 	
 	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
-	                  tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha,eps_svd);
+	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND);
 	g_U1.state.graph("U1");
 	
 	t_U1 = Watch_U1.time();
@@ -227,8 +226,7 @@ int main (int argc, char* argv[])
 	lout << H_SU2.info() << endl;
 	
 	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
-	                   tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha,eps_svd);
+	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND);
 	g_SU2.state.graph("SU2");
 	
 	t_SU2 = Watch_SU2.time();

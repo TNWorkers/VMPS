@@ -1030,7 +1030,8 @@ save (string filename, string info)
 	string alpha_rsvdLabel = "alpha_rsvd";
 	string add_infoLabel = "add_info";
 	target.save_scalar(this->calc_Dmax(),DmaxLabel);
-	target.save_scalar(this->N_sv,"N_sv");
+	target.save_scalar(this->min_Nsv,"min_Nsv");
+	target.save_scalar(this->max_Nsv,"max_Nsv");
 	target.save_scalar(this->eps_svd,eps_svdLabel);
 	target.save_scalar(this->alpha_rsvd,alpha_rsvdLabel);
 	target.save_char(info,add_infoLabel.c_str());
@@ -1072,7 +1073,8 @@ load (string filename)
 	string alpha_rsvdLabel = "alpha_rsvd";
 	source.load_scalar(this->eps_svd,eps_svdLabel);
 	source.load_scalar(this->alpha_rsvd,alpha_rsvdLabel);
-	source.load_scalar(this->N_sv,"N_sv");
+	source.load_scalar(this->min_Nsv,"min_Nsv");
+	source.load_scalar(this->max_Nsv,"max_Nsv");
 	
 	std::string label;
 	
@@ -1144,8 +1146,6 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scalar,Scalar> *H, bool DISCARD_U)
 {
-//	cout << "leftSweepStep, " << "loc=" << loc << endl;
-	
 	if (TOOL == DMRG::BROOM::RICH_SVD)
 	{
 		enrich_left(loc,H);
@@ -1217,14 +1217,14 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				Jack.compute(Aclump,ComputeThinU|ComputeThinV);
 				if (TOOL == DMRG::BROOM::BRUTAL_SVD)
 				{
-					Nret = min(static_cast<size_t>(Jack.singularValues().rows()), this->N_sv);
+					Nret = min(static_cast<size_t>(Jack.singularValues().rows()), this->max_Nsv);
 				}
 				else
 				{
 					Nret = (Jack.singularValues().array() > this->eps_svd).count();
 				}
-	//			Nret = min(max(Nret,1ul),static_cast<size_t>(Jack.singularValues().rows()));
-				Nret = min(Nret, this->N_sv);
+				Nret = min(max(Nret,this->min_Nsv),static_cast<size_t>(Jack.singularValues().rows()));
+				Nret = min(Nret, this->max_Nsv);
 				truncWeightSub(qin) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy
@@ -1310,13 +1310,9 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 	}
 	
 	update_inbase(loc);
-//	cout << "update in at loc=" << loc << endl;
-//	cout << inbase[loc] << endl;
 	if (loc != 0 and DISCARD_U == false)
 	{
 		update_outbase(loc-1);
-//		cout << "update out at loc=" << loc-1 << endl;
-//		cout << outbase[loc-1] << endl;
 	}
 	
 	if (TOOL != DMRG::BROOM::QR)
@@ -1329,8 +1325,6 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		}
 	}
 	this->pivot = (loc==0)? 0 : loc-1;
-	
-//	cout << "done leftSweepStep, " << "loc=" << loc << endl;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1339,7 +1333,6 @@ update_inbase (size_t loc)
 {
 	inbase[loc].clear();
 	inbase[loc].pullData(A[loc],0);
-//	cout << "inbase at loc=" << loc << endl << inbase[loc] << endl;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1348,14 +1341,12 @@ update_outbase (size_t loc)
 {
 	outbase[loc].clear();
 	outbase[loc].pullData(A[loc],1);
-//	cout << "outbase at loc=" << loc << endl << outbase[loc] << endl;
 }
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scalar,Scalar> *H, bool DISCARD_V)
 {
-//	cout << "begin rightSweepStep" << endl;
 	if (TOOL == DMRG::BROOM::RICH_SVD)
 	{
 		enrich_right(loc,H);
@@ -1420,14 +1411,14 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 				Jack.compute(Aclump,ComputeThinU|ComputeThinV);
 				if (TOOL == DMRG::BROOM::BRUTAL_SVD)
 				{
-					Nret = min(static_cast<size_t>(Jack.singularValues().rows()), this->N_sv);
+					Nret = min(static_cast<size_t>(Jack.singularValues().rows()), this->max_Nsv);
 				}
 				else
 				{
 					Nret = (Jack.singularValues().array() > this->eps_svd).count();
 				}
-	//			Nret = min(max(Nret,1ul),static_cast<size_t>(Jack.singularValues().rows()));
-				Nret = min(Nret, this->N_sv);
+				Nret = min(max(Nret,this->min_Nsv),static_cast<size_t>(Jack.singularValues().rows()));
+				Nret = min(Nret, this->max_Nsv);
 				truncWeightSub(qout) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy
@@ -1520,7 +1511,6 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		}
 	}
 	this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
-//	cout << "end rightSweepStep" << endl;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1987,7 +1977,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			size_t Nret = Aclump.cols();
 			Nret = (Jack.singularValues().array().abs() > this->eps_svd).count();
 //			Nret = min(max(Nret,1ul),static_cast<size_t>(Jack.singularValues().rows()));
-			Nret = min(Nret,this->N_sv);
+			Nret = min(Nret,this->max_Nsv);
 			
 			truncWeightSub(qmid) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
 			size_t Nnz = (Jack.singularValues().array() > 1e-9).count();
@@ -2666,10 +2656,9 @@ swap (Mps<Symmetry,Scalar> &V)
 	std::swap(this->N_sites, V.N_sites);
 	std::swap(N_phys, V.N_phys);
 	
-	std::swap(this->alpha_noise, V.alpha_noise);
-	std::swap(this->eps_rdm, V.eps_rdm);
 	std::swap(this->eps_svd, V.eps_svd);
-	std::swap(this->N_sv, V.N_sv);
+	std::swap(this->max_Nsv, V.max_Nsv);
+	std::swap(this->min_Nsv, V.min_Nsv);
 	std::swap(this->entropy, V.entropy);
 	
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -2691,10 +2680,9 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 get_controlParams (const Mps<Symmetry,Scalar> &V)
 {
-	this->alpha_noise = V.alpha_noise;
-	this->eps_rdm = V.eps_rdm;
 	this->eps_svd = V.eps_svd;
-	this->N_sv = V.N_sv;
+	this->max_Nsv = V.max_Nsv;
+	this->min_Nsv = V.min_Nsv;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -2748,11 +2736,9 @@ cast() const
 		Vout.A[l][s].block[q] = A[l][s].block[q].template cast<OtherScalar>();
 	}
 	
-	Vout.alpha_noise = this->alpha_noise;
-	Vout.eps_rdm = this->eps_rdm;
 	Vout.eps_svd = this->eps_svd;
 	Vout.alpha_rsvd = this->alpha_rsvd;
-	Vout.N_sv = this->N_sv;
+	Vout.max_Nsv = this->max_Nsv;
 	Vout.pivot = this->pivot;
 	Vout.truncWeight = truncWeight;
 	
@@ -3004,7 +2990,7 @@ set_A_from_C (size_t loc, const vector<Tripod<Symmetry,MatrixType> > &C, DMRG::B
 				if (TOOL == DMRG::BROOM::BRUTAL_SVD)
 				{
 					Nret = (Jack.singularValues().array() > 0.).count();
-					Nret = min(Nret, this->N_sv);
+					Nret = min(Nret, this->max_Nsv);
 				}
 				else // SVD
 				{

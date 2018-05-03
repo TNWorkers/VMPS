@@ -274,7 +274,7 @@ varCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t
 	// set initial guess
 	Vout = Vin;
 	Vout.innerResize(Dcutoff);
-	Vout.N_sv = Dcutoff;
+	Vout.max_Nsv = Dcutoff;
 	bool RANDOMIZE = true;
 	
 	Mmax = Vout.calc_Mmax();
@@ -339,11 +339,11 @@ varCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
-			Vout.N_sv += 1;
-			Dcutoff_new = Vout.N_sv;
+			Vout.max_Nsv += 1;
+			Dcutoff_new = Vout.max_Nsv;
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
-				lout << "resize: " << Vout.N_sv-1 << "→" << Vout.N_sv << endl;
+				lout << "resize: " << Vout.max_Nsv-1 << "→" << Vout.max_Nsv << endl;
 			}
 		}
 		
@@ -529,7 +529,7 @@ varCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sca
 		Heff[l].W = H.W[l];
 	}
 	
-	Vout.N_sv = Dcutoff;
+	Vout.max_Nsv = Dcutoff;
 	Mmax = Vout.calc_Mmax();
 	double avgHsqVin;
 	
@@ -626,11 +626,11 @@ varCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sca
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
-			Vout.N_sv += 1;
-			Dcutoff_new = Vout.N_sv;
+			Vout.max_Nsv += 1;
+			Dcutoff_new = Vout.max_Nsv;
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
-				lout << "resize: " << Vout.N_sv-1 << "→" << Vout.N_sv << endl;
+				lout << "resize: " << Vout.max_Nsv-1 << "→" << Vout.max_Nsv << endl;
 			}
 		}
 		
@@ -833,7 +833,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	}
 	
 	Mmax = Vout.calc_Mmax();
-	Vout.N_sv = Dcutoff;
+	Vout.max_Nsv = Dcutoff;
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
@@ -1007,11 +1007,11 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		    N_halfsweeps != max_halfsweeps and
 		    sqdist > tol)
 		{
-			Vout.N_sv += 1;
-			Dcutoff_new = Vout.N_sv;
+			Vout.max_Nsv += 1;
+			Dcutoff_new = Vout.max_Nsv;
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
-				lout << "resize: " << Vout.N_sv-1 << "→" << Vout.N_sv << endl;
+				lout << "resize: " << Vout.max_Nsv-1 << "→" << Vout.max_Nsv << endl;
 			}
 		}
 		

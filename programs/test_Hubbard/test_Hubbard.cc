@@ -247,8 +247,8 @@ int main (int argc, char* argv[])
 	                  tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha);
 	g_U1.state.graph("U1");
 	
-//	t_U1 = Watch_U1.time();
-//	
+	t_U1 = Watch_U1.time();
+	
 //	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1m;
 //	DMRG_U1.set_verbosity(DMRG::VERBOSITY::SILENT);
 //	DMRG_U1.edgeState(H_U1, g_U1m, {Nup-1,Ndn}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 

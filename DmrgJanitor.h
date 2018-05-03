@@ -92,8 +92,8 @@ public:
 	
 	///@{
 	/**Cutoff criterion for DMRG::BROOM::OPTION.*/
-	double alpha_noise, eps_rdm, eps_svd, alpha_rsvd;
-	size_t N_sv, Dlimit;
+	double eps_svd, alpha_rsvd;
+	size_t max_Nsv, min_Nsv;
 	///@}
 	
 	void set_defaultCutoffs();
@@ -128,10 +128,9 @@ void DmrgJanitor<PivotMatrixType>::
 set_defaultCutoffs()
 {
 	eps_svd = 1e-7;
-	eps_rdm = 1e-14;
-	alpha_noise = 1e-10;
 	alpha_rsvd = 1e-2;
-	N_sv = 500;
+	min_Nsv = 0;
+	max_Nsv = 500;
 }
 
 template<typename PivotMatrixType>
@@ -189,13 +188,7 @@ template<typename PivotMatrixType>
 inline void DmrgJanitor<PivotMatrixType>::
 sweepStep (DMRG::DIRECTION::OPTION DIR, size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H, bool DISCARD_U_or_V)
 {
-	DMRG::BROOM::OPTION NEW_TOOL = TOOL;
-	if ((TOOL == DMRG::BROOM::RDM and alpha_noise < 1e-15) or
-	    (TOOL == DMRG::BROOM::RICH_SVD and alpha_rsvd < 1e-15))
-	{
-		NEW_TOOL = DMRG::BROOM::SVD;
-	}
-	(DIR==DMRG::DIRECTION::LEFT)? leftSweepStep(loc,NEW_TOOL,H,DISCARD_U_or_V) : rightSweepStep(loc,NEW_TOOL,H,DISCARD_U_or_V);
+	(DIR==DMRG::DIRECTION::LEFT)? leftSweepStep(loc,TOOL,H,DISCARD_U_or_V) : rightSweepStep(loc,TOOL,H,DISCARD_U_or_V);
 }
 
 #endif

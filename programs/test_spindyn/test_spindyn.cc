@@ -162,7 +162,7 @@ int main (int argc, char* argv[])
 		
 		if (Psi_U1.get_truncWeight().sum() > 0.5*tol_compr)
 		{
-			Psi_U1.N_sv = min(static_cast<size_t>(max(Psi_U1.N_sv*1.1,Psi_U1.N_sv+1.)),200ul);
+			Psi_U1.max_Nsv = min(static_cast<size_t>(max(Psi_U1.max_Nsv*1.1,Psi_U1.max_Nsv+1.)),200ul);
 		}
 		
 		if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_U1.info() << endl << Psi_U1.info() << endl;}
@@ -206,7 +206,7 @@ int main (int argc, char* argv[])
 		
 		if (Psi_SU2.get_truncWeight().sum() > 0.5*tol_compr)
 		{
-			Psi_SU2.N_sv = min(static_cast<size_t>(max(Psi_SU2.N_sv*1.1,Psi_SU2.N_sv+1.)),200ul);
+			Psi_SU2.max_Nsv = min(static_cast<size_t>(max(Psi_SU2.max_Nsv*1.1,Psi_SU2.max_Nsv+1.)),200ul);
 		}
 		
 		if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_SU2.info() << endl << Psi_SU2.info() << endl;}
