@@ -400,11 +400,10 @@ private:
 	ArrayXd truncWeight;
 	ArrayXd entropy;
 	
-	
 	// Bases on all ingoing and outgoing legs of the MPS
 	vector<Qbasis<Symmetry> > inbase;
 	vector<Qbasis<Symmetry> > outbase;
-		
+	
 	vector<qarray<Nq> > QinTop;
 	vector<qarray<Nq> > QinBot;
 	vector<qarray<Nq> > QoutTop;
@@ -482,7 +481,7 @@ Mps()
 
 template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
-Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Nqmax_input)
+Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Qmax_input)
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input)
 {
 	outerResize(L_input, qloc_input, Qtot_input, Qmax_input);
@@ -1145,6 +1144,8 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scalar,Scalar> *H, bool DISCARD_U)
 {
+//	cout << "leftSweepStep, " << "loc=" << loc << endl;
+	
 	if (TOOL == DMRG::BROOM::RICH_SVD)
 	{
 		enrich_left(loc,H);
@@ -1183,7 +1184,10 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		{
 			// do the glue
 			size_t Nrows = A[loc][svec[0]].block[qvec[0]].rows();
-			for (size_t i=1; i<svec.size(); ++i) {assert(A[loc][svec[i]].block[qvec[i]].rows() == Nrows);}
+			for (size_t i=1; i<svec.size(); ++i)
+			{
+				assert(A[loc][svec[i]].block[qvec[i]].rows() == Nrows);
+			}
 			size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
 			
 			MatrixType Aclump(Nrows,Ncols);
@@ -1279,17 +1283,18 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 							if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 							{
 								Mtmp = A[loc-1][s].block[q] * 
-										          Jack.matrixU().leftCols(Nret) * 
-										          Jack.singularValues().head(Nret).asDiagonal();
+								       Jack.matrixU().leftCols(Nret) * 
+								       Jack.singularValues().head(Nret).asDiagonal();
 							}
 							else if (TOOL == DMRG::BROOM::QR)
 							{
 								Mtmp = A[loc-1][s].block[q] * Rmatrix;
 							}
 							
+							auto it = Aprev[s].dict.find(qarray2<Nq>{A[loc-1][s].in[q], A[loc-1][s].out[q]});
 							if (Mtmp.size() != 0)
 							{
-								Aprev[s].push_back(A[loc-1][s].in[q], A[loc-1][s].out[q], Mtmp);
+								Aprev[s].try_push_back(A[loc-1][s].in[q], A[loc-1][s].out[q], Mtmp);
 							}
 						}
 					}
@@ -1305,9 +1310,13 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 	}
 	
 	update_inbase(loc);
+//	cout << "update in at loc=" << loc << endl;
+//	cout << inbase[loc] << endl;
 	if (loc != 0 and DISCARD_U == false)
 	{
 		update_outbase(loc-1);
+//		cout << "update out at loc=" << loc-1 << endl;
+//		cout << outbase[loc-1] << endl;
 	}
 	
 	if (TOOL != DMRG::BROOM::QR)
@@ -1320,6 +1329,8 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		}
 	}
 	this->pivot = (loc==0)? 0 : loc-1;
+	
+//	cout << "done leftSweepStep, " << "loc=" << loc << endl;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1328,6 +1339,7 @@ update_inbase (size_t loc)
 {
 	inbase[loc].clear();
 	inbase[loc].pullData(A[loc],0);
+//	cout << "inbase at loc=" << loc << endl << inbase[loc] << endl;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1336,12 +1348,14 @@ update_outbase (size_t loc)
 {
 	outbase[loc].clear();
 	outbase[loc].pullData(A[loc],1);
+//	cout << "outbase at loc=" << loc << endl << outbase[loc] << endl;
 }
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scalar,Scalar> *H, bool DISCARD_V)
 {
+//	cout << "begin rightSweepStep" << endl;
 	if (TOOL == DMRG::BROOM::RICH_SVD)
 	{
 		enrich_right(loc,H);
@@ -1415,7 +1429,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 	//			Nret = min(max(Nret,1ul),static_cast<size_t>(Jack.singularValues().rows()));
 				Nret = min(Nret, this->N_sv);
 				truncWeightSub(qout) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
-			
+				
 				// calculate entropy
 				size_t Nnz = (Jack.singularValues().array() > 0.).count();
 				entropySub(qout) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
@@ -1472,9 +1486,10 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 								Mtmp = Rmatrix * A[loc+1][s].block[q];
 							}
 							
+							auto it = Anext[s].dict.find(qarray2<Nq>{A[loc+1][s].in[q], A[loc+1][s].out[q]});
 							if (Mtmp.size() != 0)
 							{
-								Anext[s].push_back(A[loc+1][s].in[q], A[loc+1][s].out[q], Mtmp);
+								Anext[s].try_push_back(A[loc+1][s].in[q], A[loc+1][s].out[q], Mtmp);
 							}
 						}
 					}
@@ -1505,12 +1520,14 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		}
 	}
 	this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
+//	cout << "end rightSweepStep" << endl;
 }
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixType> > &N)
 {
+	N.clear();
 	N.resize(qloc[loc].size());
 	
 	if (DIR == DMRG::DIRECTION::LEFT)
@@ -1536,7 +1553,7 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixTyp
 				size_t Nrows = A[loc][svec[0]].block[qvec[0]].rows();
 				for (size_t i=1; i<svec.size(); ++i) {assert(A[loc][svec[i]].block[qvec[i]].rows() == Nrows);}
 				size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
-			
+				
 				MatrixType Aclump(Nrows,Ncols);
 				size_t stitch = 0;
 				for (size_t i=0; i<svec.size(); ++i)
@@ -1565,7 +1582,7 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixTyp
 						                  A[loc][svec[i]].out[qvec[i]],
 						                  A[loc][svec[i]].in[qvec[i]],
 						                  qloc[loc][svec[i]]);
-						N[svec[i]].push_back(A[loc][svec[i]].in[qvec[i]], A[loc][svec[i]].out[qvec[i]], Mtmp);
+						N[svec[i]].try_push_back(A[loc][svec[i]].in[qvec[i]], A[loc][svec[i]].out[qvec[i]], Mtmp);
 					}
 					stitch += Ncolsvec[i];
 				}
@@ -1595,7 +1612,7 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixTyp
 				size_t Ncols = A[loc][svec[0]].block[qvec[0]].cols();
 				for (size_t i=1; i<svec.size(); ++i) {assert(A[loc][svec[i]].block[qvec[i]].cols() == Ncols);}
 				size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
-			
+				
 				MatrixType Aclump(Nrows,Ncols);
 				Aclump.setZero();
 				size_t stitch = 0;
@@ -1618,7 +1635,7 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixTyp
 						size_t Nnull = Qmatrix.cols()-Nret;
 //							N[loc][svec[i]].block[qvec[i]] = Qmatrix.block(stitch,Nret, Nrowsvec[i],Nnull);
 						MatrixType Mtmp = Qmatrix.block(stitch,Nret, Nrowsvec[i],Nnull);
-						N[svec[i]].push_back(A[loc][svec[i]].in[qvec[i]], A[loc][svec[i]].out[qvec[i]], Mtmp);
+						N[svec[i]].try_push_back(A[loc][svec[i]].in[qvec[i]], A[loc][svec[i]].out[qvec[i]], Mtmp);
 					}
 					stitch += Nrowsvec[i];
 				}
@@ -1987,7 +2004,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				else
 				{
 					Aright = Jack.singularValues().head(Nret).asDiagonal() * Jack.matrixV().adjoint().topRows(Nret);
-				}				
+				}
 				this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
 			}
 			else
@@ -2067,13 +2084,12 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 {
-	if (this->alpha_rsvd != 0.)
+	if (this->alpha_rsvd > 0.)
 	{
 		std::vector<Biped<Symmetry,MatrixType> > P(qloc[loc].size());
 		
 		set<qarray<Nq> > Rmid_set;
 		for (size_t qR=0; qR<H->R.size(); ++qR)
-		// for (size_t qL=0; qL<H->L.size(); ++qL)
 		{
 			Rmid_set.insert(H->R.mid(qR));
 		}
@@ -2085,7 +2101,6 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 			QbasisOp.push_back(H->qOp[k],1);
 		}
 		auto QbasisW = QbasisR.add(QbasisOp);
-		
 		auto QbasisP = inbase[loc].combine(QbasisW);
 		
 		// create tensor P
@@ -2134,9 +2149,6 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 									
 									MatrixType Mtmp(Prows,Pcols);
 									Mtmp.setZero();
-									
-//									print_size(Mtmp,"Mtmp");
-//									cout << "stitch=" << stitch << ", a=" << a << ", Arows=" << Arows << endl;
 									
 									if (stitch >= Prows) {continue;}
 									
@@ -2204,90 +2216,71 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 			if (qA != A[loc][s].dict.end())
 			{
 				addBottom(P[s].block[qP], A[loc][s].block[qA->second]);
-				
-				if (loc != 0)
+			}
+			else
+			{
+				if (inbase[loc].find(P[s].in[qP]))
 				{
-					for (size_t sprev=0; sprev<qloc[loc-1].size(); ++sprev)
-					for (size_t qAprev=0; qAprev<A[loc-1][sprev].size(); ++qAprev)
+					MatrixType Mtmp(inbase[loc].inner_dim(P[s].in[qP]), P[s].block[qP].cols());
+					Mtmp.setZero();
+					addBottom(P[s].block[qP], Mtmp);
+					A[loc][s].push_back(quple, Mtmp);
+				}
+				else
+				{
+					if (loc != 0)
 					{
-						if (A[loc-1][sprev].out[qAprev]          == A[loc][s].in[qA->second] and
-						    A[loc-1][sprev].block[qAprev].cols() != A[loc][s].block[qA->second].rows())
+						bool BLOCK_INSERTED_AT_LOC = false;
+						
+						for (size_t qin=0; qin<inbase[loc-1].Nq(); ++qin)
+						for (size_t sprev=0; sprev<qloc[loc-1].size(); ++sprev)
 						{
-							size_t rows = A[loc-1][sprev].block[qAprev].rows();
-							size_t cols = A[loc-1][sprev].block[qAprev].cols();
-							size_t dcols = A[loc][s].block[qA->second].rows()-cols;
+							auto qCandidates = Symmetry::reduceSilent(inbase[loc-1][qin], qloc[loc-1][sprev]);
+							auto it = find(qCandidates.begin(), qCandidates.end(), P[s].in[qP]);
 							
-							A[loc-1][sprev].block[qAprev].conservativeResize(rows, cols+dcols);
-							A[loc-1][sprev].block[qAprev].rightCols(dcols).setZero();
+							if (it != qCandidates.end())
+							{
+								if (!BLOCK_INSERTED_AT_LOC)
+								{
+									A[loc][s].push_back(quple, P[s].block[qP]);
+									BLOCK_INSERTED_AT_LOC = true;
+								}
+								MatrixType Mtmp(inbase[loc-1].inner_dim(inbase[loc-1][qin]), P[s].block[qP].rows());
+								Mtmp.setZero();
+								A[loc-1][sprev].try_push_back(inbase[loc-1][qin], P[s].in[qP], Mtmp);
+							}
+						}
+					}
+					else
+					{
+						if (P[s].in[qP] == Symmetry::qvacuum())
+						{
+							A[loc][s].push_back(quple, P[s].block[qP]);
 						}
 					}
 				}
 			}
-			else
+		}
+		
+		if (loc != 0)
+		{
+			for (size_t s=0; s<qloc[loc].size(); ++s)
+			for (size_t qA=0; qA<A[loc][s].dim; ++qA)
+			for (size_t sprev=0; sprev<qloc[loc-1].size(); ++sprev)
+			for (size_t qAprev=0; qAprev<A[loc-1][sprev].size(); ++qAprev)
 			{
-				update_outbase(loc-1);
-				update_inbase(loc);
-				if (inbase[loc].find(P[s].in[qP]))
-				if (P[s].block[qP].rows() != inbase[loc].inner_dim(P[s].in[qP]))
+				if (A[loc-1][sprev].out[qAprev]          == A[loc][s].in[qA] and
+				    A[loc-1][sprev].block[qAprev].cols() != A[loc][s].block[qA].rows())
 				{
-					size_t Prows = P[s].block[qP].rows();
-					P[s].block[qP].conservativeResize(inbase[loc].inner_dim(P[s].in[qP]), P[s].block[qP].cols());
-					if (P[s].block[qP].rows() > Prows)
-					{
-						P[s].block[qP].bottomRows(P[s].block[qP].rows()-Prows).setZero();
-					}
-				}
-				A[loc][s].push_back(quple, P[s].block[qP]);
-				
-				if (loc != 0)
-				{
-					bool BLOCK_EXISTS = false;
+					size_t rows = A[loc-1][sprev].block[qAprev].rows();
+					size_t cols = A[loc-1][sprev].block[qAprev].cols();
+					int dcols = A[loc][s].block[qA].rows()-cols;
 					
-					for (size_t sprev=0; sprev<qloc[loc-1].size(); ++sprev)
-					for (size_t qAprev=0; qAprev<A[loc-1][sprev].size(); ++qAprev)
-					{
-						if (A[loc-1][sprev].out[qAprev]          == P[s].in[qP] and
-						    A[loc-1][sprev].block[qAprev].cols() != P[s].block[qP].rows())
-						{
-							size_t rows = A[loc-1][sprev].block[qAprev].rows();
-							size_t cols = A[loc-1][sprev].block[qAprev].cols();
-							int dcols = P[s].block[qP].rows()-cols;
-							
-							A[loc-1][sprev].block[qAprev].conservativeResize(rows, cols+dcols);
-							if (dcols > 0)
-							{
-								A[loc-1][sprev].block[qAprev].rightCols(dcols).setZero();
-							}
-							BLOCK_EXISTS = true;
-						}
-					}
+					A[loc-1][sprev].block[qAprev].conservativeResize(rows, cols+dcols);
 					
-					if (!BLOCK_EXISTS)
+					if (dcols > 0)
 					{
-						bool BLOCK_POSSIBLE = false;
-						for (size_t sprev=0; sprev<qloc[loc-1].size(); ++sprev)
-						{
-							auto qCandidates = Symmetry::reduceSilent(P[s].in[qP], Symmetry::flip(qloc[loc-1][sprev]));
-							for (const auto &qCandidate:qCandidates)
-							{
-								auto insettmp = inbase[loc-1].qs();
-								if (auto it=find(insettmp.begin(), insettmp.end(), qCandidate); it==insettmp.end()) {continue;}
-								else
-								{
-									MatrixType Mtmp(inbase[loc-1].inner_dim(qCandidate), P[s].block[qP].rows());
-									Mtmp.setZero();
-									auto it2 = A[loc-1][sprev].dict.find(qarray2<Nq>{qCandidate,P[s].in[qP]});
-									if (it2 != A[loc-1][sprev].dict.end())
-									{
-//										cout << "Problem: block exists after all!" << endl;
-										continue;
-									}
-									A[loc-1][sprev].push_back(qCandidate, P[s].in[qP], Mtmp);
-									BLOCK_POSSIBLE = true;
-								}
-							}
-						}
-//						assert(BLOCK_POSSIBLE);
+						A[loc-1][sprev].block[qAprev].rightCols(dcols).setZero();
 					}
 				}
 			}
@@ -2302,7 +2295,7 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 {
-	if (this->alpha_rsvd != 0.)
+	if (this->alpha_rsvd > 0.)
 	{
 		std::vector<Biped<Symmetry,MatrixType> > P(qloc[loc].size());
 		
@@ -2435,93 +2428,71 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 			
 			if (qA != A[loc][s].dict.end())
 			{
-				// if (P[s].block[qP->second].rows() != A[loc][s].block[qA].rows()) {continue;}
 				addRight(P[s].block[qP], A[loc][s].block[qA->second]);
-				
-				if (loc != this->N_sites-1)
+			}
+			else
+			{
+				if (outbase[loc].find(P[s].out[qP]))
 				{
-					for (size_t snext=0; snext<qloc[loc+1].size(); ++snext)
-					for (size_t qAnext=0; qAnext<A[loc+1][snext].size(); ++qAnext)
+					MatrixType Mtmp(P[s].block[qP].rows(), outbase[loc].inner_dim(P[s].out[qP]));
+					Mtmp.setZero();
+					addRight(P[s].block[qP], Mtmp);
+					A[loc][s].push_back(quple, Mtmp);
+				}
+				else
+				{
+					if (loc != this->N_sites-1)
 					{
-						if (A[loc+1][snext].in[qAnext] == A[loc][s].out[qA->second] and 
-							A[loc+1][snext].block[qAnext].rows() != A[loc][s].block[qA->second].cols())
+						bool BLOCK_INSERTED_AT_LOC = false;
+						
+						for (size_t qout=0; qout<outbase[loc+1].Nq(); ++qout)
+						for (size_t snext=0; snext<qloc[loc+1].size(); ++snext)
 						{
-							size_t rows = A[loc+1][snext].block[qAnext].rows();
-							size_t cols = A[loc+1][snext].block[qAnext].cols();
-							int drows = A[loc][s].block[qA->second].cols()-rows;
-							A[loc+1][snext].block[qAnext].conservativeResize(rows+drows, cols);
-							A[loc+1][snext].block[qAnext].bottomRows(drows).setZero();
+							auto qCandidates = Symmetry::reduceSilent(outbase[loc+1][qout], Symmetry::flip(qloc[loc+1][snext]));
+							auto it = find(qCandidates.begin(), qCandidates.end(), P[s].out[qP]);
+							
+							if (it != qCandidates.end())
+							{
+								if (!BLOCK_INSERTED_AT_LOC)
+								{
+									A[loc][s].push_back(quple, P[s].block[qP]);
+									BLOCK_INSERTED_AT_LOC = true;
+								}
+								MatrixType Mtmp(P[s].block[qP].cols(), outbase[loc+1].inner_dim(outbase[loc+1][qout]));
+								Mtmp.setZero();
+								A[loc+1][snext].try_push_back(P[s].out[qP], outbase[loc+1][qout], Mtmp);
+							}
+						}
+					}
+					else
+					{
+						if (P[s].out[qP] == Qtarget())
+						{
+							A[loc][s].push_back(quple, P[s].block[qP]);
 						}
 					}
 				}
 			}
-			else
+		}
+		
+		if (loc != this->N_sites-1)
+		{
+			for (size_t s=0; s<qloc[loc].size(); ++s)
+			for (size_t qA=0; qA<A[loc][s].size(); ++qA)
+			for (size_t snext=0; snext<qloc[loc+1].size(); ++snext)
+			for (size_t qAnext=0; qAnext<A[loc+1][snext].size(); ++qAnext)
 			{
-				update_outbase(loc);
-				update_inbase(loc+1);
-				if (outbase[loc].find(P[s].out[qP]))
-				if (P[s].block[qP].cols() != outbase[loc].inner_dim(P[s].out[qP]))
+				if (A[loc+1][snext].in[qAnext] == A[loc][s].out[qA] and 
+				    A[loc+1][snext].block[qAnext].rows() != A[loc][s].block[qA].cols())
 				{
-					size_t Pcols = P[s].block[qP].cols();
-					P[s].block[qP].conservativeResize(P[s].block[qP].rows(), outbase[loc].inner_dim(P[s].out[qP]));
-					if (P[s].block[qP].cols() > Pcols)
-					{
-						P[s].block[qP].rightCols(P[s].block[qP].cols()-Pcols).setZero();
-					}
-				}
-				
-				A[loc][s].push_back(quple,P[s].block[qP]);
-				
-				if (loc != this->N_sites-1)
-				{
-					bool BLOCK_EXISTS = false;
+					size_t rows = A[loc+1][snext].block[qAnext].rows();
+					size_t cols = A[loc+1][snext].block[qAnext].cols();
+					int drows = A[loc][s].block[qA].cols()-rows;
 					
-					for (size_t snext=0; snext<qloc[loc+1].size(); ++snext)
-					for (size_t qAnext=0; qAnext<A[loc+1][snext].size(); ++qAnext)
+					A[loc+1][snext].block[qAnext].conservativeResize(rows+drows, cols);
+					if (drows > 0)
 					{
-						if (A[loc+1][snext].in[qAnext] == P[s].out[qP] and 
-						    A[loc+1][snext].block[qAnext].rows() != P[s].block[qP].cols())
-						{
-							size_t rows = A[loc+1][snext].block[qAnext].rows();
-							size_t cols = A[loc+1][snext].block[qAnext].cols();
-							int drows = P[s].block[qP].cols()-rows;
-							
-							A[loc+1][snext].block[qAnext].conservativeResize(rows+drows, cols);
-							if (drows > 0)
-							{
-								A[loc+1][snext].block[qAnext].bottomRows(drows).setZero();
-							}
-							BLOCK_EXISTS = true;
-						}
-					}
-					
-					if (!BLOCK_EXISTS)
-					{
-						bool BLOCK_POSSIBLE = false;
-						for (size_t snext=0; snext<qloc[loc+1].size(); ++snext)
-						{
-							auto qCandidates = Symmetry::reduceSilent(P[s].out[qP], qloc[loc+1][snext]);
-							for (const auto &qCandidate:qCandidates)
-							{
-								auto outsettmp = outbase[loc+1].qs();
-								if (auto it=find(outsettmp.begin(), outsettmp.end(), qCandidate); it==outsettmp.end()) {continue;}
-								else
-								{
-									update_outbase(loc+1);
-									MatrixType Mtmp(P[s].block[qP].cols(), outbase[loc+1].inner_dim(qCandidate));
-									Mtmp.setZero();
-									auto it2 = A[loc+1][snext].dict.find(qarray2<Nq>{P[s].out[qP], qCandidate});
-									if (it2 != A[loc+1][snext].dict.end())
-									{
-//										cout << "Problem: block exists after all!" << endl;
-										continue;
-									}
-									A[loc+1][snext].push_back(P[s].out[qP], qCandidate, Mtmp);
-									BLOCK_POSSIBLE = true;
-								}
-							}
-						}
-//						assert(BLOCK_POSSIBLE);
+						A[loc+1][snext].block[qAnext].bottomRows(drows).setZero();
 					}
 				}
 			}
@@ -3023,7 +2994,7 @@ set_A_from_C (size_t loc, const vector<Tripod<Symmetry,MatrixType> > &C, DMRG::B
 //				}
 //				cout << endl;
 				
-                #ifdef DONT_USE_BDCSVD
+				#ifdef DONT_USE_BDCSVD
 				JacobiSVD<MatrixType>  Jack(Cclump,ComputeThinU); // standard SVD
 				#else
 				BDCSVD<MatrixType> Jack(Cclump,ComputeThinU); // "Divide and conquer" SVD (only available in Eigen)

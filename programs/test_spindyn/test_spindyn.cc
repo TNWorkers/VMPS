@@ -65,7 +65,7 @@ int main (int argc, char* argv[])
 	
 	J = args.get<double>("J",-1.);
 	U = args.get<double>("U",0.);
-	Bxi = args.get<double>("Bxi",1.);
+	Bxi = args.get<double>("Bxi",10.);
 	Bzi = args.get<double>("Bzi",0.);
 	Bxf = args.get<double>("Bxf",0.);
 	Bzf = args.get<double>("Bzf",1.);

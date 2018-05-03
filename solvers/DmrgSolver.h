@@ -91,10 +91,51 @@ private:
 	{
 		int pivot=-1;
 		DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
-		size_t N_sweepsteps, N_halfsweeps;
-		size_t min_halfsweeps;
+		size_t N_sweepsteps;
+		size_t N_halfsweeps, min_halfsweeps;
 	};
+	
 	SweepStatus stat;
+	
+//	SweepStatus SweepStat;
+//	
+//	struct GlobControl
+//	{
+//		size_t min_halfsweeps = 6;
+//		size_t max_halfsweeps = 20;
+//		double tol_eigval = 1e-7;
+//		double tol_state = 1e-6;
+//		size_t Dinit = 2;
+//		size_t Dlimit = 500;
+//		size_t Qinit = 10;
+//		size_t savePeriod = 0;
+//		DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
+//	};
+//	
+//	GlobControl GlobParam;
+//	
+//	struct DynControl
+//	{
+//		double alpha_rsvd = 1e2;
+//		double eps_svd = 1e-7;
+//		size_t Dincr_abs = 2;
+//		double Dincr_rel = 0.1;
+//		size_t min_Nsv = 0;
+//		size_t max_Nrich = numeric_limits<size_t>::infinity();
+//	};
+//	
+//	DynControl DynParam;
+//	
+//	struct LanczosControl
+//	{
+//		LANCZOS::REORTHO::OPTION REORTHO = LANCZOS::REORTHO::FULL;
+//		LANCZOS::CONVTEST::OPTION CONVTEST = LANCZOS::CONVTEST::COEFFWISE;
+//		double eps_eigval = 1e-7;
+//		double eps_coeff = 1e-4;
+//		size_t dimK = 30ul;
+//	};
+//	
+//	LanczosControl LanczosParam;
 	
 	void LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE);
 	void sweepStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout);
@@ -394,14 +435,23 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		Stopwatch<> LanczosTimer;
 		LanczosStep(H, Vout, EDGE);
 		t_Lanczos += LanczosTimer.time();
+//		if (stat.CURRENT_DIRECTION == DMRG::DIRECTION::LEFT and stat.pivot<this->N_sites-1)
+//			cout << stat.pivot << " after Lancz:" << endl << Vout.state.inbase[stat.pivot] << endl;
 		
 		Stopwatch<> SweepTimer;
 		Vout.state.sweepStep(stat.CURRENT_DIRECTION, stat.pivot, DMRG::BROOM::RICH_SVD, &Heff[stat.pivot]);
 		t_sweep += SweepTimer.time();
+//		if (stat.CURRENT_DIRECTION == DMRG::DIRECTION::LEFT and stat.pivot > 0)
+//		{
+//			cout << stat.pivot << " after sweep in:" << endl << Vout.state.inbase[stat.pivot] << endl;
+//			cout << stat.pivot-1 << " after sweep out:" << endl << Vout.state.outbase[stat.pivot-1] << endl;
+//		}
 		
 		Stopwatch<> LRtimer;
 		sweepStep(H,Vout);
 		t_LR += LRtimer.time();
+//		if (stat.CURRENT_DIRECTION == DMRG::DIRECTION::LEFT and stat.pivot<this->N_sites-1)
+//			cout << stat.pivot+1 << " after buildL:" << endl << Vout.state.inbase[stat.pivot+1] << endl;
 		
 		++stat.N_sweepsteps;
 	}
@@ -828,7 +878,7 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LA
 	g.state = PivotVector<Symmetry,Scalar>(Vout.state.A[stat.pivot]);
 	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL);
 	
-	Lutz.set_dimK(min(29ul,dim(g.state)));
+	Lutz.set_dimK(min(30ul,dim(g.state)));
 	Lutz.edgeState(Heff[stat.pivot],g, EDGE, 1e-7,1e-4, false);
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)

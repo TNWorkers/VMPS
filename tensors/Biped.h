@@ -161,6 +161,9 @@ public:
 	 */
 	void push_back (std::array<qType,2> quple, const MatrixType_ &M);
 	
+	void try_push_back (std::array<qType,2> quple, const MatrixType_ &M);
+	void try_push_back (qType qin, qType qout, const MatrixType_ &M);
+	
 	void create_block (std::array<qType,2> quple);
 	///@}
 };
@@ -290,6 +293,7 @@ template<typename Symmetry, typename MatrixType_>
 void Biped<Symmetry,MatrixType_>::
 push_back (std::array<qType,2> quple, const MatrixType_ &M)
 {
+	assert(dict.find(quple) == dict.end() and "Block already exists in Biped!");
 	in.push_back(quple[0]);
 	out.push_back(quple[1]);
 	block.push_back(M);
@@ -299,8 +303,30 @@ push_back (std::array<qType,2> quple, const MatrixType_ &M)
 
 template<typename Symmetry, typename MatrixType_>
 void Biped<Symmetry,MatrixType_>::
+try_push_back (qType qin, qType qout, const MatrixType_ &M)
+{
+	try_push_back({qin,qout},M);
+}
+
+template<typename Symmetry, typename MatrixType_>
+void Biped<Symmetry,MatrixType_>::
+try_push_back (std::array<qType,2> quple, const MatrixType_ &M)
+{
+	if (dict.find(quple) == dict.end() and "Block already exists in Biped!")
+	{
+		in.push_back(quple[0]);
+		out.push_back(quple[1]);
+		block.push_back(M);
+		dict.insert({quple, dim});
+		++dim;
+	}
+}
+
+template<typename Symmetry, typename MatrixType_>
+void Biped<Symmetry,MatrixType_>::
 create_block (std::array<qType,2> quple)
 {
+	assert(dict.find(quple) == dict.end() and "Block already exists in Biped!");
 	in.push_back(quple[0]);
 	out.push_back(quple[1]);
 	MatrixType_ Mtmp(0,0);

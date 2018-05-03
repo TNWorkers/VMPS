@@ -119,8 +119,8 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 		if (label!="") {Terms.info.push_back(label);}
 	};
 	
-	param0d subL = P.fill_array0d<SUB_LATTICE>("subL","subL",loc);
-	save_label(subL.label);
+//	param0d subL = P.fill_array0d<SUB_LATTICE>("subL","subL",loc);
+//	save_label(subL.label);
 	
 	// NN terms
 	
