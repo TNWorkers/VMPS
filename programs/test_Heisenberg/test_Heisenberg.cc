@@ -193,7 +193,6 @@ int main (int argc, char* argv[])
 		for (const auto& Jz:Jz_list)
 		{
 			VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
-			lout << H_U1t.info() << endl;
 			VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
 			TDVPPropagator<VMPS::HeisenbergU1XXZ,Sym::U1<Sym::SpinU1>,double,complex<double>,VMPS::HeisenbergU1XXZ::StateXcd> TDVP(H_U1t,Psi);
 			
