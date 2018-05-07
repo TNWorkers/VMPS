@@ -98,8 +98,8 @@ int main (int argc, char* argv[])
 	Ndn = args.get<int>("Ndn",L/2);
 	N = Nup+Ndn;
 	
-	DMRG::CONTROL::GLOB ParamGlob;
-	DMRG::CONTROL::DYN  ParamDyn;
+	DMRG::CONTROL::GLOB GlobParam;
+	DMRG::CONTROL::DYN  DynParam;
 	
 	alpha = args.get<double>("alpha",100.);
 	
@@ -108,13 +108,13 @@ int main (int argc, char* argv[])
 	i0 = args.get<int>("i0",L/2);
 	int V = L*Ly; int Vsq = V*V;
 	
-	ParamGlob.Dinit  = args.get<int>("Dmin",2);
-	ParamGlob.Dlimit = args.get<int>("Dmax",100);
-	ParamGlob.Qinit = args.get<int>("Qinit",10);
-	ParamGlob.min_halfsweeps = args.get<int>("Imin",6);
-	ParamGlob.max_halfsweeps = args.get<int>("Imax",20);
-	ParamGlob.tol_eigval = args.get<double>("tol_eigval",1e-6);
-	ParamGlob.tol_state = args.get<double>("tol_state",1e-5);
+	GlobParam.Dinit  = args.get<int>("Dmin",2);
+	GlobParam.Dlimit = args.get<int>("Dmax",100);
+	GlobParam.Qinit = args.get<int>("Qinit",10);
+	GlobParam.min_halfsweeps = args.get<int>("Imin",6);
+	GlobParam.max_halfsweeps = args.get<int>("Imax",20);
+	GlobParam.tol_eigval = args.get<double>("tol_eigval",1e-6);
+	GlobParam.tol_state = args.get<double>("tol_state",1e-5);
 	
 	lout << args.info() << endl;
 	lout.set(make_string("Lx=",Lx,"_Ly=",Ly,"_t=",t,"_t'=",tPrime,"_U=",U,".log"),"log");
@@ -202,7 +202,7 @@ int main (int argc, char* argv[])
 //	lout << H_U0.info() << endl;
 //	
 //	VMPS::Hubbard::Solver DMRG_U0(VERB);
-//	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn);
+//	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, GlobParam, DynParam);
 //	
 //	lout << endl;
 //	double Ntot = 0.;
@@ -243,7 +243,9 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1;
 	
 	VMPS::HubbardU1xU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {Nup,Ndn}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn);
+	DMRG_U1.GlobParam = GlobParam;
+	DMRG_U1.DynParam = DynParam;
+	DMRG_U1.edgeState(H_U1, g_U1, {Nup,Ndn}, LANCZOS::EDGE::GROUND);
 	g_U1.state.graph("U1");
 	
 	t_U1 = Watch_U1.time();
@@ -319,7 +321,9 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 	
 	VMPS::HubbardSU2xU1::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2, g_SU2, {Nup-Ndn+1,N}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn);
+	DMRG_SU2.GlobParam = GlobParam;
+	DMRG_SU2.DynParam = DynParam;
+	DMRG_SU2.edgeState(H_SU2, g_SU2, {Nup-Ndn+1,N}, LANCZOS::EDGE::GROUND);
 	g_SU2.state.graph("SU2");
 	
 	t_SU2 = Watch_SU2.time();
@@ -383,7 +387,9 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
 	
 	VMPS::HubbardSU2xSU2::Solver DMRG_SU2xSU2(VERB);
-	DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {abs(Nup-Ndn)+1,V-(Nup+Ndn)+1}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn); //Todo: check Pseudospin quantum number... (1 <==> half filling)
+	DMRG_SU2xSU2.GlobParam = GlobParam;
+	DMRG_SU2xSU2.DynParam = DynParam;
+	DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {abs(Nup-Ndn)+1,V-(Nup+Ndn)+1}, LANCZOS::EDGE::GROUND); //Todo: check Pseudospin quantum number... (1 <==> half filling)
 	g_SU2xSU2.state.graph("SU2xSU2");
 	
 	double Emin_SU2xSU2 = g_SU2xSU2.energy-0.5*U*(V-Nup-Ndn);

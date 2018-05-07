@@ -63,11 +63,13 @@ public:
 	
 	string info() const;
 	string eigeninfo() const;
-	double memory   (MEMUNIT memunit=GB) const;
+	double memory (MEMUNIT memunit=GB) const;
 	// = LANCZOS::EDGE::GROUND
 	void edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
-	                qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE,
-	                DMRG::CONTROL::GLOB GlobParam_input, DMRG::CONTROL::DYN DynParam_input);
+	                qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE);
+	
+	DMRG::CONTROL::GLOB GlobParam;
+	DMRG::CONTROL::DYN  DynParam;
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
@@ -96,10 +98,10 @@ public:
 	
 	#ifdef USE_HDF5_STORAGE
 	/**Save the current SweepStatus to <filename>.h5.*/
-	void save(string filename) const;
+	void save (string filename) const;
 	
 	/**Load the a SweepStatus from <filename>.h5.*/
-	void load(string filename);
+	void load (string filename);
 	#endif
 	
 private:
@@ -126,9 +128,6 @@ private:
 	};
 	
 	SweepStatus SweepStat;
-	
-	DMRG::CONTROL::GLOB GlobParam;
-	DMRG::CONTROL::DYN  DynParam;
 	
 	struct LanczosControl
 	{
@@ -727,11 +726,10 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
-edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE,
-           DMRG::CONTROL::GLOB GlobParam_input, DMRG::CONTROL::DYN DynParam_input)
+edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE)
 {
-	DynParam = DynParam_input;
-	GlobParam = GlobParam_input;
+//	DynParam = DynParam_input;
+//	GlobParam = GlobParam_input;
 	prepare(H, Vout, Qtot_input, false);
 	
 	Stopwatch<> TotalTimer;

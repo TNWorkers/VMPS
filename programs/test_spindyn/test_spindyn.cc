@@ -137,8 +137,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::KondoU1::StateXd> g_U1;
 	
 	VMPS::KondoU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1i, g_U1, {N}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
-	                  tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha);
+	DMRG_U1.edgeState(H_U1i, g_U1, {N}, LANCZOS::EDGE::GROUND);
 	g_U1.state.graph("g");
 	
 	t_U1 = Watch_U1.time();
@@ -182,8 +181,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::KondoU0xSU2::StateXd> g_SU2;
 	
 	VMPS::KondoU0xSU2::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2i, g_SU2, {T}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
-	                   tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha);
+	DMRG_SU2.edgeState(H_SU2i, g_SU2, {T}, LANCZOS::EDGE::GROUND);
 	
 	t_SU2 = Watch_SU2.time();
 	

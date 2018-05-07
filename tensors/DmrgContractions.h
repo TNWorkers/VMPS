@@ -1542,7 +1542,7 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 						{
 //							cout << "create block: qin=" << qin << ", qsplit=" << qsplit[m] << ", qout=" << qout 
 //							     << ", s1=" << qloc1[s1] << ", s2=" << qloc2[s2] << endl;
-							Apair[s1s2].create_block({qin,qout});
+							Apair[s1s2].try_create_block({qin,qout});
 						}
 					}
 				}

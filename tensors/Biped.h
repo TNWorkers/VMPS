@@ -165,6 +165,7 @@ public:
 	void try_push_back (qType qin, qType qout, const MatrixType_ &M);
 	
 	void create_block (std::array<qType,2> quple);
+	void try_create_block (std::array<qType,2> quple);
 	///@}
 };
 
@@ -333,6 +334,21 @@ create_block (std::array<qType,2> quple)
 	block.push_back(Mtmp);
 	dict.insert({quple, dim});
 	++dim;
+}
+
+template<typename Symmetry, typename MatrixType_>
+void Biped<Symmetry,MatrixType_>::
+try_create_block (std::array<qType,2> quple)
+{
+	if (dict.find(quple) == dict.end())
+	{
+		in.push_back(quple[0]);
+		out.push_back(quple[1]);
+		MatrixType_ Mtmp(0,0);
+		block.push_back(Mtmp);
+		dict.insert({quple, dim});
+		++dim;
+	}
 }
 
 template<typename Symmetry, typename MatrixType_>

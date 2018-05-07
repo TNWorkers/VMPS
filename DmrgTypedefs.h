@@ -270,7 +270,6 @@ struct DMRG
 			static double Dincr_rel      (size_t i) {return 1.1;}
 			static size_t Dincr_per      (size_t i) {return 2;}
 			static size_t min_Nsv        (size_t i) {return 0;}
-	//		static size_t max_Nsv        (size_t i) {return 500;}
 			static int    max_Nrich      (size_t i) {return -1;} // -1 = infinity
 		};
 		
@@ -297,7 +296,6 @@ struct DMRG
 			double (*Dincr_rel)      (size_t i) = CONTROL::DEFAULT::Dincr_rel;
 			size_t (*Dincr_per)      (size_t i) = CONTROL::DEFAULT::Dincr_per;
 			size_t (*min_Nsv)        (size_t i) = CONTROL::DEFAULT::min_Nsv;
-//			size_t (*max_Nsv)        (size_t i) = CONTROL::DEFAULT::max_Nsv;
 			int    (*max_Nrich)      (size_t i) = CONTROL::DEFAULT::max_Nrich;
 		};
 	};

@@ -104,23 +104,23 @@ int main (int argc, char* argv[])
 	size_t D1 = args.get<size_t>("D1",2);
 	S = abs(M)+1;
 	
-	DMRG::CONTROL::GLOB ParamGlob;
-	DMRG::CONTROL::DYN  ParamDyn;
+	DMRG::CONTROL::GLOB GlobParam;
+	DMRG::CONTROL::DYN  DynParam;
 	
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
-	ParamGlob.Dinit = args.get<int>("Dinit",2);
-	ParamGlob.Dlimit = args.get<int>("Dlimit",100);
-	ParamGlob.Qinit = args.get<int>("Qinit",2);
-	ParamGlob.min_halfsweeps = args.get<int>("Imin",6);
-	ParamGlob.max_halfsweeps = args.get<int>("Imax",20);
-	ParamGlob.tol_eigval = args.get<double>("tol_eigval",1e-6);
-	ParamGlob.tol_state = args.get<double>("tol_state",1e-5);
+	GlobParam.Dinit = args.get<int>("Dinit",2);
+	GlobParam.Dlimit = args.get<int>("Dlimit",100);
+	GlobParam.Qinit = args.get<int>("Qinit",2);
+	GlobParam.min_halfsweeps = args.get<int>("Imin",6);
+	GlobParam.max_halfsweeps = args.get<int>("Imax",20);
+	GlobParam.tol_eigval = args.get<double>("tol_eigval",1e-6);
+	GlobParam.tol_state = args.get<double>("tol_state",1e-5);
 	
 	eps_svd = args.get<double>("tol_state",1e-7);
 	alpha = args.get<double>("alpha",1e2);
-	ParamDyn.max_alpha_rsvd = const_max_alpha;
-	ParamDyn.min_alpha_rsvd = const_min_alpha;
+	DynParam.max_alpha_rsvd = const_max_alpha;
+	DynParam.min_alpha_rsvd = const_min_alpha;
 	
 	CALC_DYNAMICS = args.get<bool>("CALC_DYN",0);
 	dt = args.get<double>("dt",0.1);
@@ -143,7 +143,9 @@ int main (int argc, char* argv[])
 	lout << H_U0.info() << endl;
 	
 	VMPS::Heisenberg::Solver DMRG_U0(VERB);
-	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn);
+	DMRG_U0.GlobParam = GlobParam;
+	DMRG_U0.DynParam = DynParam;
+	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, GlobParam, DynParam);
 	
 	t_U0 = Watch_U0.time();
 	
@@ -176,7 +178,9 @@ int main (int argc, char* argv[])
 	lout << H_U1.info() << endl;
 	
 	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn);
+	DMRG_U1.GlobParam = GlobParam;
+	DMRG_U1.DynParam = DynParam;
+	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, GlobParam, DynParam);
 	g_U1.state.graph("U1");
 	
 	t_U1 = Watch_U1.time();
@@ -242,7 +246,9 @@ int main (int argc, char* argv[])
 	lout << H_SU2.info() << endl;
 	
 	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn);
+	DMRG_SU2.GlobParam = GlobParam;
+	DMRG_SU2.DynParam = DynParam;
+	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, GlobParam, DynParam);
 	g_SU2.state.graph("SU2");
 	
 	t_SU2 = Watch_SU2.time();
