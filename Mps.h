@@ -982,9 +982,6 @@ setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 	
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
-		set<qarray<Nq> > intmp;
-		set<qarray<Nq> > outtmp;
-		
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
 			qarray<Nq> qout = qouts[l+1];
@@ -992,9 +989,6 @@ setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 			
 			if (qin == qouts[l])
 			{
-				intmp.insert(qin);
-				outtmp.insert(qout);
-			
 				std::array<qType,2> qinout = {qin,qout};
 				if (A[l][s].dict.find(qinout) == A[l][s].dict.end())
 				{
@@ -1006,10 +1000,16 @@ setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 				
 				A[l][s].block.resize(A[l][s].size());
 			}
-		}		
+		}
 	}
 	
 	calc_Qlimits();
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		update_inbase(l);
+		update_outbase(l);
+	}
 	
 	for (size_t l=0; l<this->N_sites; ++l)
 	for (size_t s=0; s<qloc[l].size(); ++s)
