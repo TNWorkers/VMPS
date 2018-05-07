@@ -188,7 +188,7 @@ public:
 	 * Returns the degeneracy vector of the basis. 
 	 * \note Use this as input for Mps, Mpo classes.
 	 */ 
-	std::vector<Eigen::Index> qlocDeg() const { return TensorBasis.qlocDeg(); }
+	// std::vector<Eigen::Index> qlocDeg() const { return TensorBasis.qlocDeg(); }
 
 	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
 private:

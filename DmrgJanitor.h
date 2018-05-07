@@ -93,7 +93,7 @@ public:
 	///@{
 	/**Cutoff criterion for DMRG::BROOM::OPTION.*/
 	double eps_svd, alpha_rsvd;
-	size_t max_Nsv, min_Nsv;
+	size_t max_Nsv, min_Nsv, max_Nrich;
 	///@}
 	
 	void set_defaultCutoffs();
@@ -131,6 +131,7 @@ set_defaultCutoffs()
 	alpha_rsvd = 1e-2;
 	min_Nsv = 0;
 	max_Nsv = 500;
+	max_Nrich = numeric_limits<size_t>::infinity();
 }
 
 template<typename PivotMatrixType>

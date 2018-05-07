@@ -580,6 +580,46 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 calc_Qlimits()
 {
+	auto lowest_q = [] (const vector<qarray<Nq> > &qs) -> qarray<Nq>
+	{
+		qarray<Nq> out;
+		array<vector<int>,Nq> tmp;
+		for (size_t q=0; q<Nq; q++)
+		{
+			tmp[q].resize(qs.size());
+			for (size_t i=0; i<qs.size(); i++)
+			{
+				tmp[q][i] = qs[i][q];
+			}
+		}
+		for (size_t q=0; q<Nq; q++)
+		{
+			sort(tmp[q].begin(),tmp[q].end());
+			out[q] = tmp[q][0];
+		}
+		return out;
+	};
+
+	auto highest_q = [] (const vector<qarray<Nq> > &qs) -> qarray<Nq>
+	{
+		qarray<Nq> out;
+		array<vector<int>,Nq> tmp;
+		for (size_t q=0; q<Nq; q++)
+		{
+			tmp[q].resize(qs.size());
+			for (size_t i=0; i<qs.size(); i++)
+			{
+				tmp[q][i] = qs[i][q];
+			}
+		}
+		for (size_t q=0; q<Nq; q++)
+		{
+			sort(tmp[q].begin(),tmp[q].end());
+			out[q] = tmp[q][qs.size()-1];
+		}
+		return out;
+	};
+
 	QinTop.resize(this->N_sites);
 	QinBot.resize(this->N_sites);
 	QoutTop.resize(this->N_sites);
@@ -591,14 +631,15 @@ calc_Qlimits()
 	{
 		auto new_tops = Symmetry::reduceSilent(qloc[l], QinTop[l-1]);
 		auto new_bots = Symmetry::reduceSilent(qloc[l], QinBot[l-1]);
+		cout << "l=" << l << ", new_tops="; for(const auto& nq:new_tops) {cout << nq << " ";} cout << endl;
+		// sort(new_tops.begin(),new_tops.end());
+		// sort(new_bots.begin(),new_bots.end());
+		// QinTop[l] = new_tops[new_tops.size()-1];
+		// QinBot[l] = new_bots[0];
+		QinTop[l] = highest_q(new_tops);
+		QinBot[l] = lowest_q(new_bots);
 		
-		sort(new_tops.begin(),new_tops.end());
-		sort(new_bots.begin(),new_bots.end());
-		
-		QinTop[l] = new_tops[new_tops.size()-1];
-		QinBot[l] = new_bots[0];
-		
-//		cout << "l=" << l << ", top=" << QinTop[l] << ", bot=" << QinBot[l] << endl;
+		cout << "l=" << l << ", top=" << QinTop[l] << ", bot=" << QinBot[l] << endl;
 	}
 	
 	QoutTop[this->N_sites-1] = Qtot;
@@ -613,11 +654,13 @@ calc_Qlimits()
 		auto new_tops = Symmetry::reduceSilent(qlocflip, QoutTop[l+1]);
 		auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBot[l+1]);
 		
-		sort(new_tops.begin(),new_tops.end());
-		sort(new_bots.begin(),new_bots.end());
+		// sort(new_tops.begin(),new_tops.end());
+		// sort(new_bots.begin(),new_bots.end());
 		
-		QoutTop[l] = new_tops[new_tops.size()-1];
-		QoutBot[l] = new_bots[0];
+		// QoutTop[l] = new_tops[new_tops.size()-1];
+		// QoutBot[l] = new_bots[0];
+		QoutTop[l] = highest_q(new_tops);
+		QoutBot[l] = lowest_q(new_bots);
 		
 //		cout << "l=" << l << ", top=" << QoutTop[l] << ", bot=" << QoutBot[l] << endl;
 	}
@@ -626,16 +669,27 @@ calc_Qlimits()
 	{
 		if (l!=0)
 		{
-			QinTop[l]  = min(QinTop[l], QoutTop[l-1]);
-			QinBot[l]  = max(QinBot[l], QoutBot[l-1]);
+			for (size_t q=0; q<Nq; q++)
+			{
+				QinTop[l][q] = min(QinTop[l][q], QoutTop[l-1][q]);
+				QinBot[l][q]  = max(QinBot[l][q], QoutBot[l-1][q]);
+				
+			}
+			// QinTop[l]  = min(QinTop[l], QoutTop[l-1]);
+			// QinBot[l]  = max(QinBot[l], QoutBot[l-1]);
 		}
 		if (l!=this->N_sites-1)
 		{
-			QoutTop[l] = min(QoutTop[l], QinTop[l+1]);
-			QoutBot[l] = max(QoutBot[l], QinBot[l+1]);
+			for (size_t q=0; q<Nq; q++)
+			{
+				QoutTop[l][q] = min(QoutTop[l][q], QinTop[l+1][q]);
+				QoutBot[l][q]  = max(QoutBot[l][q], QinBot[l+1][q]);
+			}
+			// QoutTop[l] = min(QoutTop[l], QinTop[l+1]);
+			// QoutBot[l] = max(QoutBot[l], QinBot[l+1]);
 		}
-//		cout << "l=" << l << " in : top=" << QinTop[l]  << ", bot=" << QinBot[l]  << endl;
-//		cout << "l=" << l << " out: top=" << QoutTop[l] << ", bot=" << QoutBot[l] << endl;
+		cout << "l=" << l << " in : top=" << QinTop[l]  << ", bot=" << QinBot[l]  << endl;
+		cout << "l=" << l << " out: top=" << QoutTop[l] << ", bot=" << QoutBot[l] << endl;
 	}
 }
 
@@ -643,6 +697,7 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Nqmax_input)
 {
+	cout << "Nqmax_input=" << Nqmax_input << endl;
 	this->N_sites = L_input;
 	qloc = qloc_input;
 	Qtot = Qtot_input;
@@ -657,14 +712,18 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 			// sort the vector first according to the distance to mean
 			sort(out.begin(),out.end(),[mean] (qarray<Nq> q1, qarray<Nq> q2)
 			{
+				// vector<bool> out(Nq);
 				for (size_t q=0; q<Nq; q++)
 				{
 					if(abs(q1[q]-mean[q]) < abs(q2[q]-mean[q]))
 					{
 						return true;
+						// out[q] = true;
 					}
+					// else {out[q] = false;}
 				}
 				return false;
+				// return out[0];// and out[1];
 			});
 			out.erase(out.begin()+Nqmax_input,out.end());
 		}
@@ -682,10 +741,11 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		array<double,Nq> mean;
 		for (size_t q=0; q<Nq; q++)
 		{
-			mean[q] = Qtot[q]*l*1./this->N_sites;
+				mean[q] = Qtot[q]*l*1./this->N_sites;
 		}
 		auto tmp = take_first_elems(new_qs,mean);
 		Q_trunc[l] = tmp;
+		cout << "l=" << l << ", Q_trunc[l].size()=" << Q_trunc[l].size() << endl;
 	}
 	Q_trunc[this->N_sites].push_back(Qtot);
 	
@@ -2151,22 +2211,22 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 										                                                H->R.block[qR][b][0];
 									}
 									
-//									VectorXd norms = Mtmp.rowwise().norm();
-//									vector<int> indices(norms.size());
-//									iota(indices.begin(), indices.end(), 0);
-//									sort(indices.begin(), indices.end(), [norms](int i, int j){return norms(i) > norms(j);});
-//									
-////									int Nret = min(static_cast<int>(0.1*Prows),20);
-////									Nret = max(Nret,1);
-////									Nret = min(Mtmp.rows(), Nret);
-//									int Nret = min(Mtmp.rows(), 20);
-//									
-//									MatrixType Mret(Nret,Mtmp.cols());
-//									for (int i=0; i<Nret; ++i)
-//									{
-//										Mret.row(i) = Mtmp.row(indices[i]);
-//									}
-//									Mtmp = Mret;
+									// VectorXd norms = Mtmp.rowwise().norm();
+									vector<int> indices(Mtmp.rows());
+									iota(indices.begin(), indices.end(), 0);
+									// sort(indices.begin(), indices.end(), [norms](int i, int j){return norms(i) > norms(j);});
+									
+									// int Nret = min(static_cast<int>(0.1*Prows),20);
+									// Nret = max(Nret,1);
+									// Nret = min(Mtmp.rows(), Nret);
+									int Nret = min(Mtmp.rows(), static_cast<int>(this->max_Nrich));
+									
+									MatrixType Mret(Nret,Mtmp.cols());
+									for (int i=0; i<Nret; ++i)
+									{
+										Mret.row(i) = Mtmp.row(indices[i]);
+									}
+									Mtmp = Mret;
 									
 									if (Mtmp.size() != 0)
 									{
@@ -2364,22 +2424,22 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 										                                             A[loc][s2].block[itA->second];
 									}
 									
-//									VectorXd norms = Mtmp.colwise().norm();
-//									vector<int> indices(norms.size());
-//									iota(indices.begin(), indices.end(), 0);
-//									sort(indices.begin(), indices.end(), [norms](int i, int j){return norms(i) > norms(j);});
+									// VectorXd norms = Mtmp.colwise().norm();
+									vector<int> indices(Mtmp.cols());
+									iota(indices.begin(), indices.end(), 0);
+									// sort(indices.begin(), indices.end(), [norms](int i, int j){return norms(i) > norms(j);});
 //									
 ////									int Nret = min(static_cast<int>(0.1*Pcols),20);
 ////									Nret = max(Nret,1);
 ////									Nret = min(Mtmp.cols(), Nret);
-//									int Nret = min(Mtmp.cols(), 20);
-//									
-//									MatrixType Mret(Mtmp.rows(),Nret);
-//									for (int i=0; i<Nret; ++i)
-//									{
-//										Mret.col(i) = Mtmp.col(indices[i]);
-//									}
-//									Mtmp = Mret;
+									int Nret = min(Mtmp.cols(), static_cast<int>(this->max_Nrich));
+									
+									MatrixType Mret(Mtmp.rows(),Nret);
+									for (int i=0; i<Nret; ++i)
+									{
+										Mret.col(i) = Mtmp.col(indices[i]);
+									}
+									Mtmp = Mret;
 									
 									if (Mtmp.size() != 0)
 									{

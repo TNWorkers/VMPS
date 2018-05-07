@@ -246,6 +246,37 @@ struct DMRG
 			VAR_FULL /**< This computes the norm of the full resolvent: \f$\left\Vert H |\Psi\rangle - E |\Psi\rangle \right\Vert \f$.*/
 		};
 	};
+	
+	/**Default configuration values for various solvers.*/
+	struct DEFAULT
+	{
+		// struct GlobControl
+		// {
+		// 	size_t min_halfsweeps = 6;
+		// 	size_t max_halfsweeps = 20;
+		// 	double tol_eigval = 1e-7;
+		// 	double tol_state = 1e-6;
+		// 	size_t Dinit = 4;
+		// 	size_t Dlimit = 500;
+		// 	size_t Qinit = 10;
+		// 	size_t savePeriod = 0;
+		// 	DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
+		// };
+
+		// struct DynControl
+		// {
+		// 	double (*max_alpha_rsvd) (size_t i) = DefaultDynControl::max_alpha_rsvd;
+		// 	double (*min_alpha_rsvd) (size_t i) = DefaultDynControl::min_alpha_rsvd;
+		// 	double (*eps_svd)        (size_t i) = DefaultDynControl::eps_svd;
+		// 	size_t (*Dincr_abs)      (size_t i) = DefaultDynControl::Dincr_abs;
+		// 	double (*Dincr_rel)      (size_t i) = DefaultDynControl::Dincr_rel;
+		// 	size_t (*min_Nsv)        (size_t i) = DefaultDynControl::min_Nsv;
+		// 	size_t (*max_Nsv)        (size_t i) = DefaultDynControl::max_Nsv;
+		// 	size_t (*max_Nrich)      (size_t i) = DefaultDynControl::max_Nrich;
+		// };
+
+	};
+
 };
 
 std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
