@@ -631,7 +631,7 @@ calc_Qlimits()
 	{
 		auto new_tops = Symmetry::reduceSilent(qloc[l], QinTop[l-1]);
 		auto new_bots = Symmetry::reduceSilent(qloc[l], QinBot[l-1]);
-		cout << "l=" << l << ", new_tops="; for(const auto& nq:new_tops) {cout << nq << " ";} cout << endl;
+//		cout << "l=" << l << ", new_tops="; for(const auto& nq:new_tops) {cout << nq << " ";} cout << endl;
 		// sort(new_tops.begin(),new_tops.end());
 		// sort(new_bots.begin(),new_bots.end());
 		// QinTop[l] = new_tops[new_tops.size()-1];
@@ -639,7 +639,7 @@ calc_Qlimits()
 		QinTop[l] = highest_q(new_tops);
 		QinBot[l] = lowest_q(new_bots);
 		
-		cout << "l=" << l << ", top=" << QinTop[l] << ", bot=" << QinBot[l] << endl;
+//		cout << "l=" << l << ", top=" << QinTop[l] << ", bot=" << QinBot[l] << endl;
 	}
 	
 	QoutTop[this->N_sites-1] = Qtot;
@@ -688,8 +688,8 @@ calc_Qlimits()
 			// QoutTop[l] = min(QoutTop[l], QinTop[l+1]);
 			// QoutBot[l] = max(QoutBot[l], QinBot[l+1]);
 		}
-		cout << "l=" << l << " in : top=" << QinTop[l]  << ", bot=" << QinBot[l]  << endl;
-		cout << "l=" << l << " out: top=" << QoutTop[l] << ", bot=" << QoutBot[l] << endl;
+//		cout << "l=" << l << " in : top=" << QinTop[l]  << ", bot=" << QinBot[l]  << endl;
+//		cout << "l=" << l << " out: top=" << QoutTop[l] << ", bot=" << QoutBot[l] << endl;
 	}
 }
 
@@ -697,7 +697,7 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Nqmax_input)
 {
-	cout << "Nqmax_input=" << Nqmax_input << endl;
+//	cout << "Nqmax_input=" << Nqmax_input << endl;
 	this->N_sites = L_input;
 	qloc = qloc_input;
 	Qtot = Qtot_input;
@@ -737,20 +737,18 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 	Q_trunc[0].push_back(Symmetry::qvacuum());
 	for (size_t l=1; l<this->N_sites; l++)
 	{
-		auto new_qs = Symmetry::reduceSilent(Q_trunc[l-1], qloc[l], true);
+		auto new_qs = Symmetry::reduceSilent(Q_trunc[l-1], qloc[l-1], true);
 		array<double,Nq> mean;
 		for (size_t q=0; q<Nq; q++)
 		{
-				mean[q] = Qtot[q]*l*1./this->N_sites;
+			mean[q] = Qtot[q]*l*1./this->N_sites;
 		}
-		auto tmp = take_first_elems(new_qs,mean);
-		Q_trunc[l] = tmp;
-		cout << "l=" << l << ", Q_trunc[l].size()=" << Q_trunc[l].size() << endl;
+		Q_trunc[l] = take_first_elems(new_qs,mean);
 	}
 	Q_trunc[this->N_sites].push_back(Qtot);
 	
 	calc_Qlimits();
-		
+	
 	if constexpr (Nq == 0)
 	{
 		outerResizeNoSymm();
@@ -760,39 +758,31 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		resize_arrays();
 		
 		for (size_t l=0; l<this->N_sites; ++l)
+		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
-			set<qarray<Nq> > intmp;
-			set<qarray<Nq> > outtmp;
-			
-			for (size_t s=0; s<qloc[l].size(); ++s)
+			for (size_t q=0; q<Q_trunc[l].size(); ++q)
 			{
-				for (size_t q=0; q<Q_trunc[l].size(); ++q)
+				qarray<Nq> qin = Q_trunc[l][q];
+				auto qouts = Symmetry::reduceSilent(qloc[l][s],qin);
+				for (const auto &qout:qouts)
 				{
-					qarray<Nq> qin = Q_trunc[l][q];
-					auto qouts = Symmetry::reduceSilent(qloc[l][s],qin);
-					for (const auto &qout:qouts)
+					auto it = find(Q_trunc[l+1].begin(), Q_trunc[l+1].end(), qout);
+					if (it != Q_trunc[l+1].end())
 					{
-						auto it = find(Q_trunc[l+1].begin(), Q_trunc[l+1].end(), qout);
-						if (it != Q_trunc[l+1].end())
+						std::array<qType,2> qinout = {qin,qout};
+						if (A[l][s].dict.find(qinout) == A[l][s].dict.end())
 						{
-							intmp.insert(qin);
-							outtmp.insert(qout);
-							
-							std::array<qType,2> qinout = {qin,qout};
-							if (A[l][s].dict.find(qinout) == A[l][s].dict.end())
-							{
-								A[l][s].in.push_back(qin);
-								A[l][s].out.push_back(qout);
-								A[l][s].dict.insert({qinout,A[l][s].size()});
-								A[l][s].plusplus();
-							}
+							A[l][s].in.push_back(qin);
+							A[l][s].out.push_back(qout);
+							A[l][s].dict.insert({qinout,A[l][s].size()});
+							A[l][s].plusplus();
 						}
 					}
 				}
-				
-				A[l][s].block.resize(A[l][s].size());
-			}			
-		}		
+			}
+			
+			A[l][s].block.resize(A[l][s].size());
+		}
 	}
 }
 
@@ -1204,6 +1194,22 @@ calc_Nqmax() const
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
+update_inbase (size_t loc)
+{
+	inbase[loc].clear();
+	inbase[loc].pullData(A[loc],0);
+}
+
+template<typename Symmetry, typename Scalar>
+void Mps<Symmetry,Scalar>::
+update_outbase (size_t loc)
+{
+	outbase[loc].clear();
+	outbase[loc].pullData(A[loc],1);
+}
+
+template<typename Symmetry, typename Scalar>
+void Mps<Symmetry,Scalar>::
 leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scalar,Scalar> *H, bool DISCARD_U)
 {
 	if (TOOL == DMRG::BROOM::RICH_SVD)
@@ -1283,7 +1289,8 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				{
 					Nret = (Jack.singularValues().array() > this->eps_svd).count();
 				}
-				Nret = min(max(Nret,this->min_Nsv),static_cast<size_t>(Jack.singularValues().rows()));
+//				Nret = min(max(Nret,this->min_Nsv),static_cast<size_t>(Jack.singularValues().rows()));
+				Nret = max(Nret, this->min_Nsv);
 				Nret = min(Nret, this->max_Nsv);
 				truncWeightSub(qin) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
 				
@@ -1389,22 +1396,6 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-update_inbase (size_t loc)
-{
-	inbase[loc].clear();
-	inbase[loc].pullData(A[loc],0);
-}
-
-template<typename Symmetry, typename Scalar>
-void Mps<Symmetry,Scalar>::
-update_outbase (size_t loc)
-{
-	outbase[loc].clear();
-	outbase[loc].pullData(A[loc],1);
-}
-
-template<typename Symmetry, typename Scalar>
-void Mps<Symmetry,Scalar>::
 rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scalar,Scalar> *H, bool DISCARD_V)
 {
 	if (TOOL == DMRG::BROOM::RICH_SVD)
@@ -1477,7 +1468,8 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 				{
 					Nret = (Jack.singularValues().array() > this->eps_svd).count();
 				}
-				Nret = min(max(Nret,this->min_Nsv),static_cast<size_t>(Jack.singularValues().rows()));
+//				Nret = min(max(Nret,this->min_Nsv),static_cast<size_t>(Jack.singularValues().rows()));
+				Nret = max(Nret, this->min_Nsv);
 				Nret = min(Nret, this->max_Nsv);
 				truncWeightSub(qout) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
 				
@@ -2212,21 +2204,23 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 									}
 									
 									// VectorXd norms = Mtmp.rowwise().norm();
-									vector<int> indices(Mtmp.rows());
-									iota(indices.begin(), indices.end(), 0);
+//									vector<int> indices(Mtmp.rows());
+//									iota(indices.begin(), indices.end(), 0);
 									// sort(indices.begin(), indices.end(), [norms](int i, int j){return norms(i) > norms(j);});
 									
 									// int Nret = min(static_cast<int>(0.1*Prows),20);
 									// Nret = max(Nret,1);
 									// Nret = min(Mtmp.rows(), Nret);
-									int Nret = min(Mtmp.rows(), static_cast<int>(this->max_Nrich));
+									int Nret = (this->max_Nrich<0)? Mtmp.rows():
+									                                min(Mtmp.rows(), this->max_Nrich);
 									
-									MatrixType Mret(Nret,Mtmp.cols());
-									for (int i=0; i<Nret; ++i)
-									{
-										Mret.row(i) = Mtmp.row(indices[i]);
-									}
-									Mtmp = Mret;
+//									cout << "Nret=" << Nret << ", Mtmp.rows()=" << Mtmp.rows() << endl;
+//									MatrixType Mret(Nret,Mtmp.cols());
+//									for (int i=0; i<Nret; ++i)
+//									{
+//										Mret.row(i) = Mtmp.row(indices[i]);
+//									}
+									Mtmp = Mtmp.topRows(Nret);
 									
 									if (Mtmp.size() != 0)
 									{
@@ -2425,21 +2419,23 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 									}
 									
 									// VectorXd norms = Mtmp.colwise().norm();
-									vector<int> indices(Mtmp.cols());
-									iota(indices.begin(), indices.end(), 0);
+//									vector<int> indices(Mtmp.cols());
+//									iota(indices.begin(), indices.end(), 0);
 									// sort(indices.begin(), indices.end(), [norms](int i, int j){return norms(i) > norms(j);});
 //									
 ////									int Nret = min(static_cast<int>(0.1*Pcols),20);
 ////									Nret = max(Nret,1);
 ////									Nret = min(Mtmp.cols(), Nret);
-									int Nret = min(Mtmp.cols(), static_cast<int>(this->max_Nrich));
+									int Nret = (this->max_Nrich<0)? Mtmp.cols():
+									                                min(Mtmp.cols(), this->max_Nrich);
 									
-									MatrixType Mret(Mtmp.rows(),Nret);
-									for (int i=0; i<Nret; ++i)
-									{
-										Mret.col(i) = Mtmp.col(indices[i]);
-									}
-									Mtmp = Mret;
+//									MatrixType Mret(Mtmp.rows(),Nret);
+//									for (int i=0; i<Nret; ++i)
+//									{
+//										Mret.col(i) = Mtmp.col(indices[i]);
+//									}
+//									Mtmp = Mret;
+									Mtmp = Mtmp.leftCols(Nret);
 									
 									if (Mtmp.size() != 0)
 									{

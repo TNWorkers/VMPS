@@ -93,7 +93,8 @@ public:
 	///@{
 	/**Cutoff criterion for DMRG::BROOM::OPTION.*/
 	double eps_svd, alpha_rsvd;
-	size_t max_Nsv, min_Nsv, max_Nrich;
+	size_t max_Nsv, min_Nsv;
+	int max_Nrich;
 	///@}
 	
 	void set_defaultCutoffs();
@@ -127,11 +128,11 @@ template<typename PivotMatrixType>
 void DmrgJanitor<PivotMatrixType>::
 set_defaultCutoffs()
 {
-	eps_svd = 1e-7;
-	alpha_rsvd = 1e-2;
-	min_Nsv = 0;
-	max_Nsv = 500;
-	max_Nrich = numeric_limits<size_t>::infinity();
+	eps_svd    = DMRG::CONTROL::DEFAULT::eps_svd(0);
+	alpha_rsvd = DMRG::CONTROL::DEFAULT::max_alpha_rsvd(0);
+	min_Nsv    = DMRG::CONTROL::DEFAULT::min_Nsv(0);
+	max_Nsv    = DMRG::CONTROL::DEFAULT::Dlimit;
+	max_Nrich  = DMRG::CONTROL::DEFAULT::max_Nrich(0);
 }
 
 template<typename PivotMatrixType>
@@ -155,6 +156,7 @@ void DmrgJanitor<PivotMatrixType>::
 skim (DMRG::BROOM::OPTION TOOL, PivotMatrixType *H)
 {
 	assert(pivot == 0 or pivot == N_sites-1);
+	
 	if (pivot == 0)
 	{
 		skim(DMRG::DIRECTION::RIGHT,TOOL,H);

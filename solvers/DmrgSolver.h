@@ -13,44 +13,42 @@
 #endif
 #include "solvers/MpsCompressor.h"
 
-struct DefaultDynControl
-{
-	static double max_alpha_rsvd (size_t i) {return (i<=10)? 100.:0.;}
-	static double min_alpha_rsvd (size_t i) {return 1.e-11;}
-	static double eps_svd        (size_t i) {return 1e-7;}
-	static size_t Dincr_abs      (size_t i) {return 2;}
-	static double Dincr_rel      (size_t i) {return 1.1;}
-	static size_t min_Nsv        (size_t i) {return 0;}
-	static size_t max_Nsv        (size_t i) {return 500;}
-	static size_t max_Nrich      (size_t i) {return numeric_limits<size_t>::infinity();}
-};
+//struct DefaultDynControl
+//{
+//	static double max_alpha_rsvd (size_t i) {return (i<=10)? 100.:0.;}
+//	static double min_alpha_rsvd (size_t i) {return 1.e-11;}
+//	static double eps_svd        (size_t i) {return 1e-7;}
+//	static size_t Dincr_abs      (size_t i) {return 2;}
+//	static double Dincr_rel      (size_t i) {return 1.1;}
+//	static size_t min_Nsv        (size_t i) {return 0;}
+//	static size_t max_Nsv        (size_t i) {return 500;}
+//	static size_t max_Nrich      (size_t i) {return numeric_limits<size_t>::infinity();}
+//};
 
-struct GlobControl
-{
-	size_t min_halfsweeps = 6;
-	size_t max_halfsweeps = 20;
-	double tol_eigval = 1e-7;
-	double tol_state = 1e-6;
-	size_t Dinit = 4;
-	size_t Dlimit = 500;
-	size_t Qinit = 10;
-	size_t savePeriod = 0;
-	DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
-};
+//struct GlobControl
+//{
+//	size_t min_halfsweeps = 6;
+//	size_t max_halfsweeps = 20;
+//	double tol_eigval = 1e-7;
+//	double tol_state = 1e-6;
+//	size_t Dinit = 4;
+//	size_t Dlimit = 500;
+//	size_t Qinit = 10;
+//	size_t savePeriod = 0;
+//	DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
+//};
 
-struct DynControl
-{
-	double (*max_alpha_rsvd) (size_t i) = DefaultDynControl::max_alpha_rsvd;
-	double (*min_alpha_rsvd) (size_t i) = DefaultDynControl::min_alpha_rsvd;
-	double (*eps_svd)        (size_t i) = DefaultDynControl::eps_svd;
-	size_t (*Dincr_abs)      (size_t i) = DefaultDynControl::Dincr_abs;
-	double (*Dincr_rel)      (size_t i) = DefaultDynControl::Dincr_rel;
-	size_t (*min_Nsv)        (size_t i) = DefaultDynControl::min_Nsv;
-	size_t (*max_Nsv)        (size_t i) = DefaultDynControl::max_Nsv;
-	size_t (*max_Nrich)      (size_t i) = DefaultDynControl::max_Nrich;
-};
-
-
+//struct DynControl
+//{
+//	double (*max_alpha_rsvd) (size_t i) = DefaultDynControl::max_alpha_rsvd;
+//	double (*min_alpha_rsvd) (size_t i) = DefaultDynControl::min_alpha_rsvd;
+//	double (*eps_svd)        (size_t i) = DefaultDynControl::eps_svd;
+//	size_t (*Dincr_abs)      (size_t i) = DefaultDynControl::Dincr_abs;
+//	double (*Dincr_rel)      (size_t i) = DefaultDynControl::Dincr_rel;
+//	size_t (*min_Nsv)        (size_t i) = DefaultDynControl::min_Nsv;
+//	size_t (*max_Nsv)        (size_t i) = DefaultDynControl::max_Nsv;
+//	size_t (*max_Nrich)      (size_t i) = DefaultDynControl::max_Nrich;
+//};
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar = double>
 class DmrgSolver
@@ -69,7 +67,7 @@ public:
 	// = LANCZOS::EDGE::GROUND
 	void edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	                qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE,
-					GlobControl GlobParam_in, DynControl DynParam_in);
+	                DMRG::CONTROL::GLOB GlobParam_input, DMRG::CONTROL::DYN DynParam_input);
 	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
@@ -128,10 +126,9 @@ private:
 	};
 	
 	SweepStatus SweepStat;
-		
-	GlobControl GlobParam;
-		
-	DynControl DynParam;
+	
+	DMRG::CONTROL::GLOB GlobParam;
+	DMRG::CONTROL::DYN  DynParam;
 	
 	struct LanczosControl
 	{
@@ -145,7 +142,6 @@ private:
 	LanczosControl LanczosParam;
 	
 	void LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE);
-	void sweepStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout);
 	void sweep_to_edge (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, bool MAKE_ENVIRONMENT);
 	
 	/**Constructs the left transfer matrix at chain site \p loc (left environment of \p loc).*/
@@ -156,6 +152,8 @@ private:
 	
 	void build_PL (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout, size_t loc);
 	void build_PR (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout, size_t loc);
+	
+	void adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout);
 	
 	/**Projected-out states to find the edge of the spectrum.*/
 	vector<Mps<Symmetry,Scalar> > Psi0;
@@ -376,7 +374,6 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	// initial energy
 	if (SweepStat.pivot == 0)
 	{
-//		Vout.state.graph("init");
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rtmp;
 		contract_R(Heff[0].R, Vout.state.A[0], H.W[0], Vout.state.A[0], H.locBasis(0), H.opBasis(0), Rtmp);
 		if (Rtmp.dim == 0)
@@ -406,7 +403,6 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	}
 	
 	// initial cutoffs
-	cout << "eps=" << DynParam.eps_svd(0) << endl;
 	Vout.state.eps_svd    = DynParam.eps_svd(0);
 	Vout.state.alpha_rsvd = DynParam.max_alpha_rsvd(0);
 	
@@ -432,7 +428,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	double t_Lanczos = 0;
 	double t_sweep = 0;
 	double t_LR = 0;
-	double t_err=0;
+	double t_err = 0;
 	
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
@@ -449,8 +445,11 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		t_sweep += SweepTimer.time();
 		
 		Stopwatch<> LRtimer;
-		sweepStep(H,Vout);
+		(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
+		(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
 		t_LR += LRtimer.time();
+		
+		adapt_alpha_rsvd(H,Vout);
 		
 		++SweepStat.N_sweepsteps;
 	}
@@ -678,6 +677,7 @@ void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 sweep_to_edge (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, bool MAKE_ENVIRONMENT)
 {
 	assert(SweepStat.pivot==1 or SweepStat.pivot==N_sites-2);
+	
 	if (SweepStat.pivot==1)
 	{
 		Vout.state.sweepStep(DMRG::DIRECTION::LEFT, 1, DMRG::BROOM::QR);
@@ -704,7 +704,10 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 {
 	sweep_to_edge(H,Vout,false);
 	
-	Vout.state.set_defaultCutoffs();
+	if (GlobParam.CALC_S_ON_EXIT)
+	{
+		Vout.state.skim(DMRG::BROOM::SVD,NULL);
+	}
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
@@ -712,16 +715,23 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 		string Eedge = (EDGE == LANCZOS::EDGE::GROUND)? "Emin" : "Emax";
 		lout << Eedge << "=" << setprecision(13) << Vout.energy << ", " << Eedge << "/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
 		lout << Vout.state.info() << endl;
+		if (GlobParam.CALC_S_ON_EXIT)
+		{
+			size_t standard_precision = cout.precision();
+			lout << setprecision(2) << "S=" << Vout.state.get_entropy().transpose() << setprecision(standard_precision) << endl;
+		}
 	}
+	
+	Vout.state.set_defaultCutoffs();
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE,
-		   GlobControl GlobParam_in, DynControl DynParam_in)
+           DMRG::CONTROL::GLOB GlobParam_input, DMRG::CONTROL::DYN DynParam_input)
 {
-	DynParam = DynParam_in;
-	GlobParam = GlobParam_in;
+	DynParam = DynParam_input;
+	GlobParam = GlobParam_input;
 	prepare(H, Vout, Qtot_input, false);
 	
 	Stopwatch<> TotalTimer;
@@ -739,29 +749,21 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 	
 	print_alpha_eps(); lout << endl;
 	
-	// average local dimension for later bond dimension increase
-//	size_t dimqlocAvg = 0;
-//	for (size_t l=0; l<H.length(); ++l)
-//	{
-//		dimqlocAvg += H.locBasis(l).size();
-//	}
-//	dimqlocAvg /= H.length();
-	
 	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and SweepStat.N_halfsweeps < GlobParam.max_halfsweeps) or
 	       SweepStat.N_halfsweeps < GlobParam.min_halfsweeps)
 	{
 		// sweep
 		halfsweep(H,Vout,EDGE);
-
+		
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
-		Vout.state.eps_svd    = DynParam.eps_svd(SweepStat.N_halfsweeps);
-		if (SweepStat.N_halfsweeps%2 == 0 and totalTruncWeight >= Vout.state.eps_svd)
+		Vout.state.eps_svd = DynParam.eps_svd(SweepStat.N_halfsweeps);
+		if (SweepStat.N_halfsweeps%DynParam.Dincr_per(SweepStat.N_halfsweeps) == 0 and totalTruncWeight >= Vout.state.eps_svd)
 		{
 			// increase by Dincr_abs, but by no more than Dincr_rel (e.g. 10%)
 			size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Dincr_rel(SweepStat.N_halfsweeps) * Vout.state.max_Nsv), 
 			                                             Vout.state.max_Nsv + DynParam.Dincr_abs(SweepStat.N_halfsweeps));
 			// do not increase beyond Dlimit
-			Vout.state.max_Nsv = min(max_Nsv_new,GlobParam.Dlimit);
+			Vout.state.max_Nsv = min(max_Nsv_new, GlobParam.Dlimit);
 		}
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -791,12 +793,8 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
-sweepStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout)
+adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout)
 {
-	// build environments
-	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
-	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
-	
 	// adapt alpha
 	PivotVector<Symmetry,Scalar> Vtmp1(Vout.state.A[SweepStat.pivot]);
 	PivotVector<Symmetry,Scalar> Vtmp2;
@@ -831,8 +829,10 @@ sweepStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout)
 	}
 	f = max(0.1,min(2.,f)); // limit between [0.1,2]
 	Vout.state.alpha_rsvd *= f;
-	// limit between [1e-11,max_alpha_rsvd]:
-	Vout.state.alpha_rsvd = max(DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps),min(DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps), Vout.state.alpha_rsvd)); 
+	// limit between [min_alpha_rsvd,max_alpha_rsvd]:
+	Vout.state.alpha_rsvd = max(DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps),
+	                            min(DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps), Vout.state.alpha_rsvd)
+	                           ); 
 	
 //	cout << "ΔEopt=" << DeltaEopt << ", ΔEtrunc=" << DeltaEtrunc << ", f=" << f << ", alpha=" << Vout.state.alpha_rsvd << endl;
 	

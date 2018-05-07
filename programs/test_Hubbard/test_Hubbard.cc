@@ -68,7 +68,6 @@ complex<double> Ptot (const MatrixXd &densityMatrix, int Lx)
 	return P;
 }
 
-bool CALC_DYNAMICS;
 size_t L, Lx, Ly;
 double t, tPrime, U, mu, Bz;
 int Nup, Ndn, N;
@@ -76,7 +75,6 @@ double alpha;
 double t_U0, t_U1, t_SU2, t_SU2xSU2;
 int Dinit, Dlimit, Imin, Imax, Qinit;
 double tol_eigval, tol_state;
-double dt;
 int i0;
 DMRG::VERBOSITY::OPTION VERB;
 double overlap_ED = 0.;
@@ -99,22 +97,24 @@ int main (int argc, char* argv[])
 	Nup = args.get<int>("Nup",L/2);
 	Ndn = args.get<int>("Ndn",L/2);
 	N = Nup+Ndn;
-	cout << "Nup=" << Nup << ", Ndn=" << Ndn << ", N=" << N << endl;
+	
+	DMRG::CONTROL::GLOB ParamGlob;
+	DMRG::CONTROL::DYN  ParamDyn;
+	
 	alpha = args.get<double>("alpha",100.);
+	
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
+	
 	i0 = args.get<int>("i0",L/2);
-	dt = 0.2;
 	int V = L*Ly; int Vsq = V*V;
 	
-	Dinit  = args.get<int>("Dmin",2);
-	Dlimit = args.get<int>("Dmax",100);
-	Qinit = args.get<int>("Qinit",10);
-	Imin   = args.get<int>("Imin",6);
-	Imax   = args.get<int>("Imax",20);
-	tol_eigval = args.get<double>("tol_eigval",1e-6);
-	tol_state  = args.get<double>("tol_state",1e-5);
-	
-	CALC_DYNAMICS = args.get<bool>("CALC_DYN",0);
+	ParamGlob.Dinit  = args.get<int>("Dmin",2);
+	ParamGlob.Dlimit = args.get<int>("Dmax",100);
+	ParamGlob.Qinit = args.get<int>("Qinit",10);
+	ParamGlob.min_halfsweeps = args.get<int>("Imin",6);
+	ParamGlob.max_halfsweeps = args.get<int>("Imax",20);
+	ParamGlob.tol_eigval = args.get<double>("tol_eigval",1e-6);
+	ParamGlob.tol_state = args.get<double>("tol_state",1e-5);
 	
 	lout << args.info() << endl;
 	lout.set(make_string("Lx=",Lx,"_Ly=",Ly,"_t=",t,"_t'=",tPrime,"_U=",U,".log"),"log");
@@ -202,7 +202,7 @@ int main (int argc, char* argv[])
 //	lout << H_U0.info() << endl;
 //	
 //	VMPS::Hubbard::Solver DMRG_U0(VERB);
-//	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 10.*tol_eigval,10.*tol_state, Dinit,3*Dlimit,Qinit, Imax,Imin, 0.1);
+//	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn);
 //	
 //	lout << endl;
 //	double Ntot = 0.;
@@ -243,8 +243,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1;
 	
 	VMPS::HubbardU1xU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {Nup,Ndn}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
-	                  tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha);
+	DMRG_U1.edgeState(H_U1, g_U1, {Nup,Ndn}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn);
 	g_U1.state.graph("U1");
 	
 	t_U1 = Watch_U1.time();
@@ -320,8 +319,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 	
 	VMPS::HubbardSU2xU1::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2, g_SU2, {Nup-Ndn+1,N}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
-	                   tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha);
+	DMRG_SU2.edgeState(H_SU2, g_SU2, {Nup-Ndn+1,N}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn);
 	g_SU2.state.graph("SU2");
 	
 	t_SU2 = Watch_SU2.time();
@@ -385,8 +383,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
 	
 	VMPS::HubbardSU2xSU2::Solver DMRG_SU2xSU2(VERB);
-	DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {abs(Nup-Ndn)+1,V-(Nup+Ndn)+1}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE,
-	                       tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha); //Todo: check Pseudospin quantum number... (1 <==> half filling)
+	DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {abs(Nup-Ndn)+1,V-(Nup+Ndn)+1}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn); //Todo: check Pseudospin quantum number... (1 <==> half filling)
 	g_SU2xSU2.state.graph("SU2xSU2");
 	
 	double Emin_SU2xSU2 = g_SU2xSU2.energy-0.5*U*(V-Nup-Ndn);

@@ -81,6 +81,16 @@ MatrixXd SpinCorr_U1;
 
 MatrixXd SpinCorr_SU2;
 
+double const_max_alpha (size_t i)
+{
+	return alpha;
+}
+
+double const_min_alpha (size_t i)
+{
+	return 0;
+}
+
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
@@ -91,22 +101,30 @@ int main (int argc, char* argv[])
 	Jprime = args.get<double>("Jprime",0.);
 	M = args.get<int>("M",0);
 	D = args.get<size_t>("D",2);
+	size_t D1 = args.get<size_t>("D1",2);
 	S = abs(M)+1;
-	alpha = args.get<double>("alpha",1e2);
-	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
-	dt = args.get<double>("dt",0.1);
-	tmax = args.get<double>("tmax",6.);
 	
-	Dinit  = args.get<int>("Dinit",2);
-	Dlimit = args.get<int>("Dlimit",100);
-	Qinit = args.get<int>("Qinit",2);
-	Imin   = args.get<int>("Imin",6);
-	Imax   = args.get<int>("Imax",20);
-	tol_eigval = args.get<double>("tol_eigval",1e-6);
-	tol_state  = args.get<double>("tol_state",1e-5);
-	eps_svd  = args.get<double>("tol_state",1e-7);
+	DMRG::CONTROL::GLOB ParamGlob;
+	DMRG::CONTROL::DYN  ParamDyn;
+	
+	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
+	
+	ParamGlob.Dinit = args.get<int>("Dinit",2);
+	ParamGlob.Dlimit = args.get<int>("Dlimit",100);
+	ParamGlob.Qinit = args.get<int>("Qinit",2);
+	ParamGlob.min_halfsweeps = args.get<int>("Imin",6);
+	ParamGlob.max_halfsweeps = args.get<int>("Imax",20);
+	ParamGlob.tol_eigval = args.get<double>("tol_eigval",1e-6);
+	ParamGlob.tol_state = args.get<double>("tol_state",1e-5);
+	
+	eps_svd = args.get<double>("tol_state",1e-7);
+	alpha = args.get<double>("alpha",1e2);
+	ParamDyn.max_alpha_rsvd = const_max_alpha;
+	ParamDyn.min_alpha_rsvd = const_min_alpha;
 	
 	CALC_DYNAMICS = args.get<bool>("CALC_DYN",0);
+	dt = args.get<double>("dt",0.1);
+	tmax = args.get<double>("tmax",6.);
 	
 	lout << args.info() << endl;
 	lout.set(make_string("L=",L,"_Ly=",Ly,"_M=",M,"_D=",D,"_J=",J,".log"),"log");
@@ -118,17 +136,16 @@ int main (int argc, char* argv[])
 	#endif
 	
 	//--------U(0)---------
-//	lout << endl << "--------U(0)---------" << endl << endl;
-//	
-//	Stopwatch<> Watch_U0;
-//	VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
-//	lout << H_U0.info() << endl;
-//	
-//	VMPS::Heisenberg::Solver DMRG_U0(VERB);
-//	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
-//	                  tol_eigval,tol_state, Dinit,3*Dlimit,Qinit, Imax,Imin, alpha,eps_svd);
-//	
-//	t_U0 = Watch_U0.time();
+	lout << endl << "--------U(0)---------" << endl << endl;
+	
+	Stopwatch<> Watch_U0;
+	VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"D",D1,1},{"Ly",Ly}});
+	lout << H_U0.info() << endl;
+	
+	VMPS::Heisenberg::Solver DMRG_U0(VERB);
+	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn);
+	
+	t_U0 = Watch_U0.time();
 	
 //	
 //	// observables
@@ -155,11 +172,11 @@ int main (int argc, char* argv[])
 	lout << endl << "--------U(1)---------" << endl << endl;
 	
 	Stopwatch<> Watch_U1;
-	VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"CALC_SQUARE",false}});
+	VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",false}});
 	lout << H_U1.info() << endl;
 	
 	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND);
+	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn);
 	g_U1.state.graph("U1");
 	
 	t_U1 = Watch_U1.time();
@@ -221,11 +238,11 @@ int main (int argc, char* argv[])
 	lout << endl << "--------SU(2)---------" << endl << endl;
 	
 	Stopwatch<> Watch_SU2;
-	VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
+	VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"D",D1,1},{"Ly",Ly}});
 	lout << H_SU2.info() << endl;
 	
 	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND);
+	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, ParamGlob, ParamDyn);
 	g_SU2.state.graph("SU2");
 	
 	t_SU2 = Watch_SU2.time();

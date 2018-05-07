@@ -248,35 +248,59 @@ struct DMRG
 	};
 	
 	/**Default configuration values for various solvers.*/
-	struct DEFAULT
+	struct CONTROL
 	{
-		// struct GlobControl
-		// {
-		// 	size_t min_halfsweeps = 6;
-		// 	size_t max_halfsweeps = 20;
-		// 	double tol_eigval = 1e-7;
-		// 	double tol_state = 1e-6;
-		// 	size_t Dinit = 4;
-		// 	size_t Dlimit = 500;
-		// 	size_t Qinit = 10;
-		// 	size_t savePeriod = 0;
-		// 	DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
-		// };
-
-		// struct DynControl
-		// {
-		// 	double (*max_alpha_rsvd) (size_t i) = DefaultDynControl::max_alpha_rsvd;
-		// 	double (*min_alpha_rsvd) (size_t i) = DefaultDynControl::min_alpha_rsvd;
-		// 	double (*eps_svd)        (size_t i) = DefaultDynControl::eps_svd;
-		// 	size_t (*Dincr_abs)      (size_t i) = DefaultDynControl::Dincr_abs;
-		// 	double (*Dincr_rel)      (size_t i) = DefaultDynControl::Dincr_rel;
-		// 	size_t (*min_Nsv)        (size_t i) = DefaultDynControl::min_Nsv;
-		// 	size_t (*max_Nsv)        (size_t i) = DefaultDynControl::max_Nsv;
-		// 	size_t (*max_Nrich)      (size_t i) = DefaultDynControl::max_Nrich;
-		// };
-
+		struct DEFAULT
+		{
+			constexpr static size_t min_halfsweeps = 6;
+			constexpr static size_t max_halfsweeps = 20;
+			constexpr static double tol_eigval = 1e-6;
+			constexpr static double tol_state = 1e-5;
+			constexpr static size_t Dinit = 5;
+			constexpr static size_t Dlimit = 500;
+			constexpr static size_t Qinit = 10;
+			constexpr static size_t savePeriod = 0;
+			constexpr static DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
+			constexpr static bool CALC_S_ON_EXIT = true;
+			
+			static double max_alpha_rsvd (size_t i) {return (i<=10)? 100.:0;}
+			static double min_alpha_rsvd (size_t i) {return 1e-11;}
+			static double eps_svd        (size_t i) {return 1e-7;}
+			static size_t Dincr_abs      (size_t i) {return 2;}
+			static double Dincr_rel      (size_t i) {return 1.1;}
+			static size_t Dincr_per      (size_t i) {return 2;}
+			static size_t min_Nsv        (size_t i) {return 0;}
+	//		static size_t max_Nsv        (size_t i) {return 500;}
+			static int    max_Nrich      (size_t i) {return -1;} // -1 = infinity
+		};
+		
+		struct GLOB
+		{
+			size_t min_halfsweeps           = CONTROL::DEFAULT::min_halfsweeps;
+			size_t max_halfsweeps           = CONTROL::DEFAULT::max_halfsweeps;
+			double tol_eigval               = CONTROL::DEFAULT::tol_eigval;
+			double tol_state                = CONTROL::DEFAULT::tol_state;
+			size_t Dinit                    = CONTROL::DEFAULT::Dinit;
+			size_t Dlimit                   = CONTROL::DEFAULT::Dlimit;
+			size_t Qinit                    = CONTROL::DEFAULT::Qinit;
+			size_t savePeriod               = CONTROL::DEFAULT::savePeriod;
+			DMRG::CONVTEST::OPTION CONVTEST = CONTROL::DEFAULT::CONVTEST;
+			bool CALC_S_ON_EXIT             = CONTROL::DEFAULT::CALC_S_ON_EXIT;
+		};
+		
+		struct DYN
+		{
+			double (*max_alpha_rsvd) (size_t i) = CONTROL::DEFAULT::max_alpha_rsvd;
+			double (*min_alpha_rsvd) (size_t i) = CONTROL::DEFAULT::min_alpha_rsvd;
+			double (*eps_svd)        (size_t i) = CONTROL::DEFAULT::eps_svd;
+			size_t (*Dincr_abs)      (size_t i) = CONTROL::DEFAULT::Dincr_abs;
+			double (*Dincr_rel)      (size_t i) = CONTROL::DEFAULT::Dincr_rel;
+			size_t (*Dincr_per)      (size_t i) = CONTROL::DEFAULT::Dincr_per;
+			size_t (*min_Nsv)        (size_t i) = CONTROL::DEFAULT::min_Nsv;
+//			size_t (*max_Nsv)        (size_t i) = CONTROL::DEFAULT::max_Nsv;
+			int    (*max_Nrich)      (size_t i) = CONTROL::DEFAULT::max_Nrich;
+		};
 	};
-
 };
 
 std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
