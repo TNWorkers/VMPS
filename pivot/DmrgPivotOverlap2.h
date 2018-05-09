@@ -55,7 +55,8 @@ void LRxV (const PivotOverlap2<Symmetry,Scalar> &H, const PivotVector<Symmetry,S
 							Matrix<Scalar,Dynamic,Dynamic> Mtmp;
 							
 							if (H.L.block[qL].size() != 0 and
-								H.R.block[qR->second].size() !=0)
+							    H.R.block[qR->second].size() !=0 and
+							    Vin.data[s1s2].block[qAket].size() != 0)
 							{
 								optimal_multiply(1., 
 								                 H.L.block[qL],

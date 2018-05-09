@@ -46,7 +46,10 @@ void LRxV (const PivotOverlap1<Symmetry,Scalar> &H, const PivotVector<Symmetry,S
 				size_t qAket = get<2>(ix[n]);
 				auto qR = H.R.dict.find(get<0>(ix[n]));
 				
-				if (qR != H.R.dict.end())
+				if (qR != H.R.dict.end() and
+				    H.L.block[qL].size() != 0 and
+				    Vin.data[s].block[qAket].size() != 0 and
+				    H.R.block[qR->second].size() != 0)
 				{
 					Matrix<Scalar,Dynamic,Dynamic> Mtmp;
 					

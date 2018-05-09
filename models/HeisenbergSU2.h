@@ -112,12 +112,12 @@ S (std::size_t locx, std::size_t locy)
 	assert(locx<this->N_sites);
 	std::stringstream ss;
 	ss << "S(" << locx << "," << locy << ")";
-
+	
 	SiteOperator Op = B[locx].S(locy).plain<double>();
-
+	
 	Mpo<Symmetry> Mout(N_sites, Op.Q, ss.str());
 	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
-
+	
 	Mout.setLocal(locx,Op);
 	return Mout;
 }
@@ -128,12 +128,12 @@ Sdag (std::size_t locx, std::size_t locy, double factor)
 	assert(locx<this->N_sites);
 	std::stringstream ss;
 	ss << "Sdag(" << locx << "," << locy << ")";
-
+	
 	SiteOperator Op = factor * B[locx].Sdag(locy).plain<double>();
-
+	
 	Mpo<Symmetry> Mout(N_sites, Op.Q, ss.str());
 	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
-
+	
 	Mout.setLocal(locx,Op);
 	return Mout;
 }
@@ -151,8 +151,8 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 	if (locx1 == locx2)
 	{
 //		auto product = std::sqrt(3.)*Operator::prod(B[locx1].Sdag(locy1),B[locx2].S(locy2),Symmetry::qvacuum());
-		auto product = Operator::prod(B[locx1].Sdag(locy1),B[locx2].S(locy2),Symmetry::qvacuum());
-		Mout.setLocal(locx1,product.plain<double>());
+		auto product = Operator::prod(B[locx1].Sdag(locy1), B[locx2].S(locy2), Symmetry::qvacuum());
+		Mout.setLocal(locx1, product.plain<double>());
 		return Mout;
 	}
 	else

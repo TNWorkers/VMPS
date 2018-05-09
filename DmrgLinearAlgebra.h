@@ -178,10 +178,14 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), Qtarget});
 		for (size_t l=O1.length()-1; l!=-1; --l)
 		{
-			contract_R(B, Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), O1.locBasis(l), O1.opBasis(l), O2.opBasis(l),
-			           O1.auxBasis(l+1), O2.auxBasis(l+1), O1.auxBasis(l), O2.auxBasis(l), Bnext);
+			contract_R(B, 
+			           Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), 
+			           O1.locBasis(l), O1.opBasis(l), O2.opBasis(l),
+			           O1.auxBasis(l+1), O2.auxBasis(l+1), O1.auxBasis(l), O2.auxBasis(l), 
+			           Bnext);
 			B.clear();
 			B = Bnext;
+//			cout << "l=" << l << ", B.dim=" << B.dim << endl;
 			Bnext.clear();
 		}
 		
@@ -196,10 +200,12 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		}
 		else
 		{
+			lout << endl;
 			lout << "Warning: Result of contraction in <φ|O1*O2|ψ> has " << B.dim << " blocks, returning 0!" << endl;
 			lout << "MPS in question: " << Vket.info() << endl;
 			lout << "MPO1 in question: " << O1.info() << endl;
 			lout << "MPO2 in question: " << O2.info() << endl;
+			lout << endl;
 			return 0;
 		}
 	}
@@ -246,7 +252,7 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 	Stopwatch<> Chronos;
 	
 	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
-	Compadre.varCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax());
+	Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax());
 	
  	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
 	{
@@ -302,8 +308,8 @@ void addScale (const OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 	size_t Dstart = Vout.calc_Dmax();
 	Mps<Symmetry,Scalar> Vtmp = Vout;
 	Vtmp.addScale(alpha,Vin,false);
-//	Compadre.varCompress(Vtmp, Vout, Dstart, 1e-3, 100, 1, DMRG::COMPRESSION::RANDOM);
-	Compadre.varCompress(Vtmp, Vout, Dstart);
+//	Compadre.stateCompress(Vtmp, Vout, Dstart, 1e-3, 100, 1, DMRG::COMPRESSION::RANDOM);
+	Compadre.stateCompress(Vtmp, Vout, Dstart);
 	
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
 	{

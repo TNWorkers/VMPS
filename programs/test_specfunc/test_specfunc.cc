@@ -91,6 +91,8 @@ int main (int argc, char* argv[])
 		Adag = A;
 		Qc = Qi;
 	}
+	lout << A.info() << endl;
+	lout << Adag.info() << endl;
 	//--------------</Hamiltonian & transition operator>---------------
 	
 	//--------------<ground state>---------------
@@ -105,7 +107,7 @@ int main (int argc, char* argv[])
 			Stopwatch<> nChronos;
 			MODEL::Solver * DMRG = new MODEL::Solver(DMRG::VERBOSITY::HALFSWEEPWISE);
 			
-			DMRG->edgeState(H, *init, Qi, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::NORM_TEST, 1e-7,1e-6, 4,500, 50,10);
+			DMRG->edgeState(H, *init, Qi, LANCZOS::EDGE::GROUND);
 			lout << endl << nChronos.info(make_string("ground state ",Qi)) << endl;
 			lout << DMRG->info() << endl;
 			E0 = init->energy;
@@ -117,7 +119,7 @@ int main (int argc, char* argv[])
 			Eigenstate<MODEL::StateXd> * g = new Eigenstate<MODEL::StateXd>;
 			
 			MODEL::Solver * gDMRG = new MODEL::Solver(DMRG::VERBOSITY::SILENT);
-			gDMRG->edgeState(H, *g, Qc, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::NORM_TEST, 1e-8,1e-6, 8,500, 50,10);
+			gDMRG->edgeState(H, *g, Qc, LANCZOS::EDGE::GROUND);
 			ginfo << gChronos.info(make_string("ground state ",Qc)) << endl;
 			Emin = g->energy;
 			ginfo << gDMRG->info() << endl;
@@ -131,7 +133,7 @@ int main (int argc, char* argv[])
 			Eigenstate<MODEL::StateXd> * r = new Eigenstate<MODEL::StateXd>;
 			MODEL::Solver * rDMRG = new MODEL::Solver(DMRG::VERBOSITY::SILENT);
 			
-			rDMRG->edgeState(H, *r, Qc, LANCZOS::EDGE::ROOF, DMRG::CONVTEST::NORM_TEST, 1e-8,1e-6, 8,500, 50,10);
+			rDMRG->edgeState(H, *r, Qc, LANCZOS::EDGE::ROOF);
 			rinfo << rChronos.info(make_string("roof state ",Qc)) << endl;
 			Emax = r->energy;
 			rinfo << rDMRG->info() << endl;
@@ -158,7 +160,7 @@ int main (int argc, char* argv[])
 //	Psi += 0.1 * rand;
 	MODEL::CompressorXd Compadrino(DMRG::VERBOSITY::HALFSWEEPWISE);
 	MODEL::StateXd Phi;
-	Compadrino.varCompress(Psi,Phi,2);
+	Compadrino.stateCompress(Psi,Phi,2,1e-10);
 	cout << endl;
 	cout << "ORIGINAL:" << endl;
 	cout << Psi.info() << endl;
@@ -170,7 +172,10 @@ int main (int argc, char* argv[])
 	initA.eps_svd = 1e-15;
 //	OxV(O, init->state, initA);
 	MODEL::CompressorXd Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
-	Compadre.varCompress(A, Adag, init->state, initA, Qc, init->state.calc_Dmax());
+	cout << "avg1=" << avg(init->state, Adag, A, init->state) << endl;
+	cout << "avg2=" << avg(init->state, H.d(L/2), init->state) << endl;
+	Compadre.prodCompress(A, Adag, init->state, initA, Qc, init->state.calc_Dmax());
+	initA.graph("Psi");
 	delete init;
 	initA.eps_svd = 1e-7;
 	cout << "AxV:" << endl << initA.info() << endl;

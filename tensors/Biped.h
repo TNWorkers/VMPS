@@ -124,6 +124,9 @@ public:
 	///@}
 	
 	///@{
+	
+	Biped<Symmetry,MatrixType_> cleaned() const;
+	
 	/**
 	 * Returns the adjoint tensor where all the block matrices are adjoint and the quantum number arrows are flipped: 
 	 * \p in \f$\to\f$ \p out and vice versa.
@@ -349,6 +352,21 @@ try_create_block (std::array<qType,2> quple)
 		dict.insert({quple, dim});
 		++dim;
 	}
+}
+
+template<typename Symmetry, typename MatrixType_>
+Biped<Symmetry,MatrixType_> Biped<Symmetry,MatrixType_>::
+cleaned() const
+{
+	Biped<Symmetry,MatrixType_> Aout;
+	for (size_t q=0; q<dim; ++q)
+	{
+		if (block[q].size() > 0)
+		{
+			Aout.try_push_back(in[q], out[q], block[q]);
+		}
+	}
+	return Aout;
 }
 
 template<typename Symmetry, typename MatrixType_>

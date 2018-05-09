@@ -759,9 +759,14 @@ string Mpo<Symmetry,Scalar>::
 info() const
 {
 	stringstream ss;
-	ss << label << "L=" << N_sites;
+	ss << label << ": L=" << N_sites;
 	if (N_phys>N_sites) {ss << ",V=" << N_phys;}
 	ss << ", " << Symmetry::name() << ", ";
+	
+	ss << "UNITARY=" << boolalpha << UNITARY << ", ";
+	ss << "HERMITIAN=" << boolalpha << HERMITIAN << ", ";
+	ss << "SQUARE=" << boolalpha << GOT_SQUARE << ", ";
+	ss << "OPEN_BC=" << boolalpha << GOT_OPEN_BC << ", ";
 	
 	ss << "Daux=" << Daux << ", ";
 //	ss << "trunc_weight=" << truncWeight.sum() << ", ";

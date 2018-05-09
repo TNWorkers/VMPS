@@ -106,14 +106,19 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
 	
 	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND);
 	
 	t_U1 = Watch_U1.time();
 	
 	VMPS::HeisenbergU1::StateXd Psi_U1tmp;
 	Psi_U1tmp.eps_svd = 1e-15;
-	OxV(H_U1.Sz(0), g_U1.state, Psi_U1tmp, DMRG::BROOM::SVD);
-	Psi_U1tmp.N_sv = Psi_U1tmp.calc_Dmax();
+//	OxV(H_U1.Sz(0), g_U1.state, Psi_U1tmp, DMRG::BROOM::SVD);
+	VMPS::HeisenbergU1::CompressorXd CompadreU1(VERB);
+	
+//	CompadreU1.varCompress(H_U1.Sz(0), H_U1.Sz(0), g_U1.state, Psi_U1tmp, {M}, g_U1.state.calc_Dmax());
+	CompadreU1.varCompress(H_U1.Sz(0), H_U1.SzSz(0,0), g_U1.state, Psi_U1tmp, {M}, g_U1.state.calc_Dmax());
+	
+	Psi_U1tmp.max_Nsv = Psi_U1tmp.calc_Dmax();
 	Psi_U1tmp.eps_svd = tol_compr;
 	
 	VMPS::HeisenbergU1::StateXcd init_U1 = Psi_U1tmp.cast<complex<double> >();
@@ -137,7 +142,7 @@ int main (int argc, char* argv[])
 		
 		if (Psi_U1tmp.get_truncWeight().sum() > 0.5*tol_compr)
 		{
-			Psi_U1tmp.N_sv = min(static_cast<size_t>(max(Psi_U1tmp.N_sv*1.1,Psi_U1tmp.N_sv+1.)),200ul);
+			Psi_U1tmp.max_Nsv = min(static_cast<size_t>(max(Psi_U1tmp.max_Nsv*1.1,Psi_U1tmp.max_Nsv+1.)),200ul);
 		}
 		
 		if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_U1.info() << endl << Psi_U1.info() << endl;}
@@ -154,14 +159,20 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::HeisenbergSU2::StateXd> g_SU2;
 	
 	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND);
 	
 	t_SU2 = Watch_SU2.time();
 	
 	VMPS::HeisenbergSU2::StateXd Psi_SU2tmp;
 	VMPS::HeisenbergSU2::CompressorXd Compadre(VERB);
-	Compadre.varCompress(H_SU2.S(0), H_SU2.Sdag(0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
-	Psi_SU2tmp.N_sv = Psi_SU2tmp.calc_Dmax();
+	
+	cout << "avg=" << avg(g_SU2.state, H_SU2.Sdag(0), H_SU2.S(0), g_SU2.state, {0}) << endl;
+	cout << "avg=" << avg(g_SU2.state, H_SU2.SS(0,0), g_SU2.state) << endl;
+	
+//	Compadre.varCompress(H_SU2.S(0), H_SU2.Sdag(0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
+	Compadre.varCompress(H_SU2.S(0), H_SU2.SS(0,0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
+	
+	Psi_SU2tmp.max_Nsv = Psi_SU2tmp.calc_Dmax();
 	Psi_SU2tmp.eps_svd = tol_compr;
 	
 	VMPS::HeisenbergSU2::StateXcd init_SU2 = Psi_SU2tmp.cast<complex<double> >();
@@ -185,7 +196,7 @@ int main (int argc, char* argv[])
 		
 		if (Psi_SU2.get_truncWeight().sum() > 0.5*tol_compr)
 		{
-			Psi_SU2.N_sv = min(static_cast<size_t>(max(Psi_SU2.N_sv*1.1,Psi_SU2.N_sv+1.)),200ul);
+			Psi_SU2.max_Nsv = min(static_cast<size_t>(max(Psi_SU2.max_Nsv*1.1,Psi_SU2.max_Nsv+1.)),200ul);
 		}
 		
 		if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_SU2.info() << endl << Psi_SU2.info() << endl;}

@@ -115,7 +115,7 @@ public:
 	static SiteOperatorQ<Symmetry,MatrixType_> outerprod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2,
 														  const qType& target );
 
-	SiteOperatorQ<Symmetry,MatrixType_> diagonalize(const std::vector<qType> &blocks={}, Eigen::DecompositionOptions opt=EigenvaluesOnly) const;
+	SiteOperatorQ<Symmetry,MatrixType_> diagonalize(const std::vector<qType> &blocks={}, Eigen::DecompositionOptions opt=Eigen::DecompositionOptions::EigenvaluesOnly) const;
 
 	template<typename Scalar>
 	SiteOperator<Symmetry,Scalar> plain() const;

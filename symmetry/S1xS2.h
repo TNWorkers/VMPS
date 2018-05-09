@@ -172,16 +172,29 @@ std::vector<typename S1xS2<S1,S2>::qType> S1xS2<S1,S2>::
 reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool UNIQUE )
 {
 	std::vector<qType> vout;
+	std::unordered_set<qType> uniqueControl;
+	
 	for (std::size_t q=0; q<ql.size(); q++)
 	for (std::size_t p=0; p<qr.size(); p++)
 	{
 		std::vector<typename S1::qType> firstSym  = S1::reduceSilent(qarray<1>{ql[q][0]},qarray<1>{qr[p][0]});
 		std::vector<typename S2::qType> secondSym = S2::reduceSilent(qarray<1>{ql[q][1]},qarray<1>{qr[p][1]});
-		
+	
 		for(const auto& q1:firstSym)
 		for(const auto& q2:secondSym)
 		{
-			vout.push_back({q1[0],q2[0]});
+			if (UNIQUE)
+			{
+				if( auto it = uniqueControl.find({q1[0],q2[0]}) == uniqueControl.end() )
+				{
+					uniqueControl.insert({q1[0],q2[0]});
+					vout.push_back({q1[0],q2[0]});
+				}
+			}
+			else
+			{
+				vout.push_back({q1[0],q2[0]});
+			}
 		}
 	}
 	return vout;

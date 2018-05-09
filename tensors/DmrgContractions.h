@@ -1166,6 +1166,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 																			 Abra[s1].block[q1->second].adjoint(),
 																			 Mtmp);
 															auto it = Rnew.dict.find(quple);
+
 															if (it != Rnew.dict.end())
 															{
 																if (Rnew.block[it->second][a1][0].rows() != Mtmp.rows() or 

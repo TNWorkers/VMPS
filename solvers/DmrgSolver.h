@@ -264,6 +264,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		Vout.state.max_Nsv = GlobParam.Dinit;
 		Vout.state.setRandom();
 	}
+	Vout.state.graph("ginit");
 	Dmax_old = GlobParam.Dinit;
 	
 	// set edges

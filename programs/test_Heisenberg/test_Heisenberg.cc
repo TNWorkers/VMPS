@@ -91,6 +91,21 @@ double const_min_alpha (size_t i)
 	return 0;
 }
 
+template<typename T>
+class returnConst
+{
+public:
+	
+	returnConst (T x) : data(x) {}
+	
+	
+	int operator() (int i) {return data;}
+	
+private:
+	
+	T data;
+};
+
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
@@ -145,7 +160,7 @@ int main (int argc, char* argv[])
 	VMPS::Heisenberg::Solver DMRG_U0(VERB);
 	DMRG_U0.GlobParam = GlobParam;
 	DMRG_U0.DynParam = DynParam;
-	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND, GlobParam, DynParam);
+	DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND);
 	
 	t_U0 = Watch_U0.time();
 	
@@ -180,7 +195,7 @@ int main (int argc, char* argv[])
 	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
 	DMRG_U1.GlobParam = GlobParam;
 	DMRG_U1.DynParam = DynParam;
-	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND, GlobParam, DynParam);
+	DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND);
 	g_U1.state.graph("U1");
 	
 	t_U1 = Watch_U1.time();
@@ -248,7 +263,7 @@ int main (int argc, char* argv[])
 	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
 	DMRG_SU2.GlobParam = GlobParam;
 	DMRG_SU2.DynParam = DynParam;
-	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND, GlobParam, DynParam);
+	DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND);
 	g_SU2.state.graph("SU2");
 	
 	t_SU2 = Watch_SU2.time();

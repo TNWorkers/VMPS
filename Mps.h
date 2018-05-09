@@ -599,7 +599,7 @@ calc_Qlimits()
 		}
 		return out;
 	};
-
+	
 	auto highest_q = [] (const vector<qarray<Nq> > &qs) -> qarray<Nq>
 	{
 		qarray<Nq> out;
@@ -619,7 +619,7 @@ calc_Qlimits()
 		}
 		return out;
 	};
-
+	
 	QinTop.resize(this->N_sites);
 	QinBot.resize(this->N_sites);
 	QoutTop.resize(this->N_sites);
@@ -631,15 +631,9 @@ calc_Qlimits()
 	{
 		auto new_tops = Symmetry::reduceSilent(qloc[l], QinTop[l-1]);
 		auto new_bots = Symmetry::reduceSilent(qloc[l], QinBot[l-1]);
-//		cout << "l=" << l << ", new_tops="; for(const auto& nq:new_tops) {cout << nq << " ";} cout << endl;
-		// sort(new_tops.begin(),new_tops.end());
-		// sort(new_bots.begin(),new_bots.end());
-		// QinTop[l] = new_tops[new_tops.size()-1];
-		// QinBot[l] = new_bots[0];
+		
 		QinTop[l] = highest_q(new_tops);
 		QinBot[l] = lowest_q(new_bots);
-		
-//		cout << "l=" << l << ", top=" << QinTop[l] << ", bot=" << QinBot[l] << endl;
 	}
 	
 	QoutTop[this->N_sites-1] = Qtot;
@@ -654,15 +648,8 @@ calc_Qlimits()
 		auto new_tops = Symmetry::reduceSilent(qlocflip, QoutTop[l+1]);
 		auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBot[l+1]);
 		
-		// sort(new_tops.begin(),new_tops.end());
-		// sort(new_bots.begin(),new_bots.end());
-		
-		// QoutTop[l] = new_tops[new_tops.size()-1];
-		// QoutBot[l] = new_bots[0];
 		QoutTop[l] = highest_q(new_tops);
 		QoutBot[l] = lowest_q(new_bots);
-		
-//		cout << "l=" << l << ", top=" << QoutTop[l] << ", bot=" << QoutBot[l] << endl;
 	}
 	
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -675,8 +662,6 @@ calc_Qlimits()
 				QinBot[l][q]  = max(QinBot[l][q], QoutBot[l-1][q]);
 				
 			}
-			// QinTop[l]  = min(QinTop[l], QoutTop[l-1]);
-			// QinBot[l]  = max(QinBot[l], QoutBot[l-1]);
 		}
 		if (l!=this->N_sites-1)
 		{
@@ -685,11 +670,9 @@ calc_Qlimits()
 				QoutTop[l][q] = min(QoutTop[l][q], QinTop[l+1][q]);
 				QoutBot[l][q]  = max(QoutBot[l][q], QinBot[l+1][q]);
 			}
-			// QoutTop[l] = min(QoutTop[l], QinTop[l+1]);
-			// QoutBot[l] = max(QoutBot[l], QinBot[l+1]);
 		}
-//		cout << "l=" << l << " in : top=" << QinTop[l]  << ", bot=" << QinBot[l]  << endl;
-//		cout << "l=" << l << " out: top=" << QoutTop[l] << ", bot=" << QoutBot[l] << endl;
+		
+		cout << "QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] << endl;
 	}
 }
 
@@ -703,49 +686,79 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 	Qtot = Qtot_input;
 	this->pivot = -1;
 	
+	calc_Qlimits();
+	
 	// take the first Nqmax_input quantum numbers from qs which have the smallerst distance to mean
-	auto take_first_elems = [this,Nqmax_input] (const vector<qarray<Nq> > &qs, array<double,Nq> mean) -> vector<qarray<Nq> >
+	auto take_first_elems = [this,Nqmax_input] (const vector<qarray<Nq> > &qs, array<double,Nq> mean, const size_t &loc) -> vector<qarray<Nq> >
 	{
 		vector<qarray<Nq> > out = qs;
 		if (out.size() > Nqmax_input)
 		{
 			// sort the vector first according to the distance to mean
-			sort(out.begin(),out.end(),[mean] (qarray<Nq> q1, qarray<Nq> q2)
+			sort(out.begin(),out.end(),[mean,loc,this] (qarray<Nq> q1, qarray<Nq> q2)
 			{
-				// vector<bool> out(Nq);
+//				for (size_t q=0; q<Nq; q++)
+//				{
+//					if (abs(q1[q]-mean[q]) < abs(q2[q]-mean[q]))
+//					{
+//						return true;
+//					}
+//				}
+//				return false;
+				
+//				cout << "loc=" << loc << endl;
+				VectorXd dist_q1(Nq);
+				VectorXd dist_q2(Nq);
 				for (size_t q=0; q<Nq; q++)
 				{
-					if(abs(q1[q]-mean[q]) < abs(q2[q]-mean[q]))
-					{
-						return true;
-						// out[q] = true;
-					}
-					// else {out[q] = false;}
+					double Delta = QinTop[loc][q] - QinBot[loc][q];
+					dist_q1(q) = (q1[q]-mean[q]) / Delta;
+					dist_q2(q) = (q2[q]-mean[q]) / Delta;
+//					cout << "q1=" << q1 << ", dist=" << dist_q1(q) << ", mean[q]=" << mean[q] << ", Delta=" << Delta << endl;
+//					cout << "q2=" << q2 << ", dist=" << dist_q2(q) << ", mean[q]=" << mean[q] << ", Delta=" << Delta << endl;
 				}
-				return false;
-				// return out[0];// and out[1];
+//				cout << "dist_q1.norm()=" << dist_q1.norm() << ", dist_q2.norm()=" << dist_q2.norm() << endl;
+//				cout << endl;
+				
+				return (dist_q1.norm() < dist_q2.norm())? true:false;
 			});
-			out.erase(out.begin()+Nqmax_input,out.end());
+			
+			out.erase(out.begin()+Nqmax_input, out.end());
 		}
 		return out;
 	};
 	
-	// Q_trunc contains the first Nqmax_input blocks (consistent with Qtot) for each site
-	vector<vector<qarray<Nq> > > Q_trunc(this->N_sites+1);
+	// Qin_trunc contains the first Nqmax_input blocks (consistent with Qtot) for each site
+	vector<vector<qarray<Nq> > > Qin_trunc(this->N_sites+1);
 	
-	// fill Q_trunc
-	Q_trunc[0].push_back(Symmetry::qvacuum());
+	// fill Qin_trunc
+	Qin_trunc[0].push_back(Symmetry::qvacuum());
 	for (size_t l=1; l<this->N_sites; l++)
 	{
-		auto new_qs = Symmetry::reduceSilent(Q_trunc[l-1], qloc[l-1], true);
+		auto new_qs = Symmetry::reduceSilent(Qin_trunc[l-1], qloc[l-1], true);
 		array<double,Nq> mean;
 		for (size_t q=0; q<Nq; q++)
 		{
 			mean[q] = Qtot[q]*l*1./this->N_sites;
 		}
-		Q_trunc[l] = take_first_elems(new_qs,mean);
+//		Qin_trunc[l] = take_first_elems(new_qs,mean,l);
+		
+		// check if within ranges (QinBot,QinTop) for all q:
+		auto candidates = take_first_elems(new_qs,mean,l);
+		for (const auto &candidate:candidates)
+		{
+			array<bool,Nq> WITHIN_RANGE;
+			for (size_t q=0; q<Nq; ++q)
+			{
+				WITHIN_RANGE[q] = (candidate[q] <= QinTop[l][q] and candidate[q] >= QinBot[l][q]);
+			}
+			if (all_of(WITHIN_RANGE.begin(), WITHIN_RANGE.end(), [] (bool x) {return x;}))
+			{
+				Qin_trunc[l].push_back(candidate);
+			}
+		}
 	}
-	Q_trunc[this->N_sites].push_back(Qtot);
+	Qin_trunc[this->N_sites].push_back(Qtot);
 	
 	calc_Qlimits();
 	
@@ -760,14 +773,14 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		for (size_t l=0; l<this->N_sites; ++l)
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
-			for (size_t q=0; q<Q_trunc[l].size(); ++q)
+			for (size_t q=0; q<Qin_trunc[l].size(); ++q)
 			{
-				qarray<Nq> qin = Q_trunc[l][q];
+				qarray<Nq> qin = Qin_trunc[l][q];
 				auto qouts = Symmetry::reduceSilent(qloc[l][s],qin);
 				for (const auto &qout:qouts)
 				{
-					auto it = find(Q_trunc[l+1].begin(), Q_trunc[l+1].end(), qout);
-					if (it != Q_trunc[l+1].end())
+					auto it = find(Qin_trunc[l+1].begin(), Qin_trunc[l+1].end(), qout);
+					if (it != Qin_trunc[l+1].end())
 					{
 						std::array<qType,2> qinout = {qin,qout};
 						if (A[l][s].dict.find(qinout) == A[l][s].dict.end())
@@ -795,7 +808,7 @@ outerResizeNoSymm()
 	resize_arrays();
 	
 	for (size_t l=0; l<this->N_sites; ++l)
-	{		
+	{
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
 			A[l][s].in.push_back(qvacuum<Nq>());
@@ -1370,10 +1383,16 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		}
 	}
 	
-	A[loc] = Aloc;
+	for (size_t s=0; s<qloc[loc].size(); ++s)
+	{
+		A[loc][s] = Aloc[s].cleaned();
+	}
 	if (loc != 0 and DISCARD_U == false)
 	{
-		A[loc-1] = Aprev;
+		for (size_t s=0; s<qloc[loc-1].size(); ++s)
+		{
+			A[loc-1][s] = Aprev[s].cleaned();
+		}
 	}
 	
 	update_inbase(loc);
@@ -1541,10 +1560,16 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		}
 	}
 	
-	A[loc] = Aloc;
+	for (size_t s=0; s<qloc[loc].size(); ++s)
+	{
+		A[loc][s] = Aloc[s].cleaned();
+	}
 	if (loc != this->N_sites-1 and DISCARD_V == false)
 	{
-		A[loc+1] = Anext;
+		for (size_t s=0; s<qloc[loc+1].size(); ++s)
+		{
+			A[loc+1][s] = Anext[s].cleaned();
+		}
 	}
 	
 	update_outbase(loc);
@@ -2029,6 +2054,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			size_t Nret = Aclump.cols();
 			Nret = (Jack.singularValues().array().abs() > this->eps_svd).count();
 //			Nret = min(max(Nret,1ul),static_cast<size_t>(Jack.singularValues().rows()));
+			Nret = max(Nret,this->min_Nsv);
 			Nret = min(Nret,this->max_Nsv);
 			
 			truncWeightSub(qmid) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
@@ -2097,6 +2123,13 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				jstitch += Ncols;
 			}
 		}
+	}
+	
+	// remove unwanted zero-sized blocks
+	for (size_t s=0; s<qloc[loc].size(); ++s)
+	{
+		A[loc][s]   = A[loc][s].cleaned();
+		A[loc+1][s] = A[loc+1][s].cleaned();
 	}
 	
 	update_outbase(loc);
@@ -2212,7 +2245,7 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 									// Nret = max(Nret,1);
 									// Nret = min(Mtmp.rows(), Nret);
 									int Nret = (this->max_Nrich<0)? Mtmp.rows():
-									                                min(Mtmp.rows(), this->max_Nrich);
+									                                min(static_cast<int>(Mtmp.rows()), this->max_Nrich);
 									
 //									cout << "Nret=" << Nret << ", Mtmp.rows()=" << Mtmp.rows() << endl;
 //									MatrixType Mret(Nret,Mtmp.cols());
@@ -2427,7 +2460,7 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 ////									Nret = max(Nret,1);
 ////									Nret = min(Mtmp.cols(), Nret);
 									int Nret = (this->max_Nrich<0)? Mtmp.cols():
-									                                min(Mtmp.cols(), this->max_Nrich);
+									                                min(static_cast<int>(Mtmp.cols()), this->max_Nrich);
 									
 //									MatrixType Mret(Mtmp.rows(),Nret);
 //									for (int i=0; i<Nret; ++i)
@@ -2577,7 +2610,7 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 			Mtmp += A[0][s].adjoint().contract(Vket.A[0][s]);
 		}
 		Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > Mout = Mtmp;
-	
+		
 		for (size_t l=1; l<this->N_sites; ++l)
 		{
 			Mtmp = (A[l][0].adjoint() * Mout ).contract(Vket.A[l][0]);
@@ -2587,7 +2620,7 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 			}
 			Mout = Mtmp;
 		}
-	
+		
 		assert(Mout.dim == 1 and 
 			   Mout.block[0].rows() == 1 and 
 			   Mout.block[0].cols() == 1 and 
