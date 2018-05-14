@@ -139,6 +139,8 @@ public:
 	 */
 	Biped<Symmetry,MatrixType_>& operator+= (const Biped<Symmetry,MatrixType_> &Arhs);
 	
+	void addScale (const double &factor, const Biped<Symmetry,MatrixType_> &Mrhs);
+	
 	/**
 	 * This functions perform a contraction of \p this and \p A, which is a standard Matrix multiplication in this case.
 	 * \param A : other Biped which is contracted together with \p this.
@@ -264,7 +266,7 @@ cols (bool FULL) const
 			count++;
 		}
 	}
-
+	
 	return Vout;
 }
 
@@ -729,6 +731,68 @@ Biped<Symmetry,MatrixType_> operator- (const Biped<Symmetry,MatrixType_> &M1, co
 //	cout << "Mout:" << endl << Mout << endl;
 	
 	return Mout;
+}
+
+/**Subtracts two Bipeds block- and coefficient-wise.*/
+template<typename Symmetry, typename MatrixType_>
+void Biped<Symmetry,MatrixType_>::
+addScale (const double &factor, const Biped<Symmetry,MatrixType_> &Mrhs)
+{
+	vector<size_t> blocks_in_Mrhs;
+	Biped<Symmetry,MatrixType_> Mout;
+	
+	for (size_t q=0; q<dim; ++q)
+	{
+		auto it = Mrhs.dict.find({{in[q], out[q]}});
+		if (it != Mrhs.dict.end())
+		{
+			blocks_in_Mrhs.push_back(it->second);
+		}
+		
+		MatrixType_ Mtmp;
+		if (it != Mrhs.dict.end())
+		{
+			if (block[q].size() != 0 and Mrhs.block[it->second].size() != 0)
+			{
+				Mtmp = block[q] + factor * Mrhs.block[it->second]; // M1+factor*Mrhs
+			}
+			else if (block[q].size() == 0 and Mrhs.block[it->second].size() != 0)
+			{
+				Mtmp = factor * Mrhs.block[it->second]; // 0+factor*Mrhs
+			}
+			else if (block[q].size() != 0 and Mrhs.block[it->second].size() == 0)
+			{
+				Mtmp = block[q]; // M1+0
+			}
+			// else: block[q].size() == 0 and Mrhs.block[it->second].size() == 0 -> do nothing -> Mtmp.size() = 0
+		}
+		else
+		{
+			Mtmp = block[q]; // M1+0
+		}
+		
+		if (Mtmp.size() != 0)
+		{
+			Mout.push_back({{in[q], out[q]}}, Mtmp);
+		}
+	}
+	
+	if (blocks_in_Mrhs.size() != Mrhs.dim)
+	{
+		for (size_t q=0; q<Mrhs.size(); ++q)
+		{
+			auto it = find(blocks_in_Mrhs.begin(), blocks_in_Mrhs.end(), q);
+			if (it == blocks_in_Mrhs.end())
+			{
+				if (Mrhs.block[q].size() != 0)
+				{
+					Mout.push_back({{Mrhs.in[q], Mrhs.out[q]}}, factor * Mrhs.block[q]); // 0+factor*Mrhs
+				}
+			}
+		}
+	}
+	
+	*this = Mout;
 }
 
 template<typename Symmetry, typename MatrixType_>

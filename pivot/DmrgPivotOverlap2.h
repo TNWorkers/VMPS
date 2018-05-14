@@ -85,4 +85,12 @@ void LRxV (const PivotOverlap2<Symmetry,Scalar> &H, const PivotVector<Symmetry,S
 	}
 }
 
+template<typename Symmetry, typename Scalar>
+void LRxV (const PivotOverlap2<Symmetry,Scalar> &H, PivotVector<Symmetry,Scalar> &Vinout)
+{
+	PivotVector<Symmetry,Scalar> Vtmp;
+	LRxV(H,Vinout,Vtmp);
+	Vinout = Vtmp;
+}
+
 #endif

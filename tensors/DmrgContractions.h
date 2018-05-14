@@ -1495,7 +1495,8 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
                   const vector<qarray<Symmetry::Nq> > &qloc2, 
                   const qarray<Symmetry::Nq> &Qtop, 
                   const qarray<Symmetry::Nq> &Qbot, 
-                  vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair)
+                  vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair, 
+                  bool DRY = false)
 {
 	auto tensor_basis = Symmetry::tensorProd(qloc1,qloc2);
 	Apair.resize(tensor_basis.size());
@@ -1541,8 +1542,6 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 						auto qA2 = find(A2out.begin(), A2out.end(), qout);
 						if (qA1 != A1in.end() and qA2 != A2out.end())
 						{
-//							cout << "create block: qin=" << qin << ", qsplit=" << qsplit[m] << ", qout=" << qout 
-//							     << ", s1=" << qloc1[s1] << ", s2=" << qloc2[s2] << endl;
 							Apair[s1s2].try_create_block({qin,qout});
 						}
 					}
@@ -1577,7 +1576,11 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 						
 						if (abs(factor_cgc) > abs(mynumeric_limits<Scalar>::epsilon()))
 						{
-							Matrix<Scalar,Dynamic,Dynamic> Mtmp = factor_cgc * A1[s1].block[q1] * A2[s2].block[q2->second];
+							Matrix<Scalar,Dynamic,Dynamic> Mtmp;
+							if (!DRY)
+							{
+								Mtmp = factor_cgc * A1[s1].block[q1] * A2[s2].block[q2->second];
+							}
 							
 							if (Mtmp.size() != 0)
 							{

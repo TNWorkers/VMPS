@@ -46,8 +46,6 @@ public:
 	string info() const;
 	/**\describe_memory*/
 	double memory (MEMUNIT memunit=GB) const;
-	/**\describe_overhead*/
-	double overhead (MEMUNIT memunit=GB) const;
 	///\}
 	
 	//---compression schemes---
@@ -61,16 +59,9 @@ public:
 	 * \param[in] tol : tolerance for the square norm of the difference: \f$\left|V_{out}-V_{in}\right|^2<tol\f$
 	 * \param[in] max_halfsweeps : maximal amount of half-sweeps; break if exceeded
 	 * \param[in] min_halfsweeps : minimal amount of half-sweeps
-	 * \param[in] START : choice of initial guess: 
-	 * 	- DMRG::COMPRESSION::RANDOM : use a random state with the cutoff given by \p Dcutoff_input
-	 * 	- DMRG::COMPRESSION::RHS : makes no sense here, results in the same as above
-	 * 	- DMRG::COMPRESSION::BRUTAL_SVD : cut \p Vin down to \p Dcutoff_input and use as initial guess
-	 * 	- DMRG::COMPRESSION::RHS_SVD : makes no sense here, results in the same as above
-	 * \warning Small adjustions need to be made for non Abelian symmetries.
 	 */
 	void stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-	                    size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1, 
-	                    DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::BRUTAL_SVD);
+	                    size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
 	
 	/**
 	 * Compresses a matrix-vector product \f$\left|V_{out}\right> \approx H \left|V_{in}\right>\f$. 
@@ -86,17 +77,11 @@ public:
 	 * \param[in] tol : tolerance for the square norm of the difference: \f$\left|V_{out} - H \cdot V_{in}\right|^2<tol\f$
 	 * \param[in] max_halfsweeps : maximal amount of half-sweeps
 	 * \param[in] min_halfsweeps : minimal amount of half-sweeps
-	 * \param[in] START : choice of initial guess: 
-	 * 	- DMRG::COMPRESSION::RANDOM : use a random state with the cutoff given by \p Dcutoff_input
-	 *  - DMRG::COMPRESSION::RHS : use \p Vin, \p Dcutoff_input is ignored
-	 * 	- DMRG::COMPRESSION::BRUTAL_SVD : perform the multiplication using OxV, cutting the result according to \p Dcutoff_input
-	 * 	- DMRG::COMPRESSION::RHS_SVD : perform the multiplication using OxV, cutting the result according to the subspaces of \p Vin
 	 */
 	template<typename MpOperator>
 	void prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
 	                   qarray<Symmetry::Nq> Qtot_input,
-	                   size_t Dcutoff_input, double tol=1e-14, size_t max_halfsweeps=40, size_t min_halfsweeps=1, 
-	                   DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RANDOM);
+	                   size_t Dcutoff_input, double tol=1e-9, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
 	
 	/**
 	 * Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. 
@@ -114,59 +99,64 @@ public:
 	 * 	                \warning Too small a value for \p tol will lead to bad convergence. Try something of the order of 1e-3 to 1e-4.
 	 * \param[in] max_halfsweeps : maximal amount of half-sweeps
 	 * \param[in] min_halfsweeps : minimal amount of half-sweeps
-	 * \param[in] START : choice of initial guess: 
-	 * 	- DMRG::COMPRESSION::RANDOM : use a random state with the cutoff given by \p Dcutoff_input
-	 * 	- DMRG::COMPRESSION::RHS : use \p Vin1 (previous Chebyshev iteration vector), \p Dcutoff_input is ignored
-	 * 	- DMRG::COMPRESSION::BRUTAL_SVD : not implemented
-	 * 	- DMRG::COMPRESSION::RHS_SVD : not implemented
 	 */
 	template<typename MpOperator>
 	void polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, 
 	                   size_t Dcutoff_input, double tol=DMRG_POLYCOMPRESS_TOL, 
-	                   size_t max_halfsweeps=DMRG_POLYCOMPRESS_MAX, size_t min_halfsweeps=DMRG_POLYCOMPRESS_MIN, 
-	                   DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RHS);
-	
-//	template<typename MpOperator>
-//	void sumCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<double> &factor, Mps<Symmetry,Scalar> &Vout, 
-//	                  size_t Dcutoff_input, double tol=DMRG_POLYCOMPRESS_TOL, size_t max_halfsweeps=DMRG_POLYCOMPRESS_MAX, size_t min_halfsweeps=DMRG_POLYCOMPRESS_MIN, 
-//	                  DMRG::COMPRESSION::INIT START = DMRG::COMPRESSION::RHS);
+	                   size_t max_halfsweeps=DMRG_POLYCOMPRESS_MAX, size_t min_halfsweeps=DMRG_POLYCOMPRESS_MIN);
 	///\}
 	
 private:
 	
-	// for |Vout> ≈ |Vin>
-	vector<PivotOverlap1<Symmetry,Scalar> > Env;
-// 	vector<Biped<Symmetry,MatrixType> > L;
-// 	vector<Biped<Symmetry,MatrixType> > R;
-	void prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE=true);
-	void stateOptimization1 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool SWEEP=true);
-	void stateOptimization2 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
-//	void sweepStep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
-	void build_L (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket);
-	void build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket);
-	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
 	
+	// for |Vout> ≈ |Vin>
+		vector<PivotOverlap1<Symmetry,Scalar> > Env;
+		
+		void prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
+		
+		void stateOptimize1 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool SWEEP=true);
+		
+		void stateOptimize2 (const Mps<Symmetry,Scalar> &Vin, const Mps<Symmetry,Scalar> &Vout, 
+		                         PivotVector<Symmetry,Scalar> &ApairOut);
+		
+		void stateOptimize2 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
+		
+		void build_L (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket);
+		
+		void build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket);
+		
 	// for |Vout> ≈ H*|Vin>
-	vector<PivotMatrix1<Symmetry,Scalar,MpoScalar> > Heff;
-	template<typename MpOperator>
-	void prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE=true);
-	template<typename MpOperator>
-	void prodOptimization1 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool SWEEP=true);
-	template<typename MpOperator>
-	void prodOptimization2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
-//	template<typename MpOperator>
-//	void sweepStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
-	template<typename MpOperator>
-	void build_LW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket);
-	template<typename MpOperator>
-	void build_RW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket);
-	
+		vector<PivotMatrix1<Symmetry,Scalar,MpoScalar> > Heff;
+		
+		template<typename MpOperator>
+		void prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
+		
+		template<typename MpOperator>
+		void prodOptimize1 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool SWEEP=true);
+		
+		template<typename MpOperator>
+		void prodOptimize2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
+		
+		template<typename MpOperator>
+		void prodOptimize2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, const Mps<Symmetry,Scalar> &Vout, 
+		                        PivotVector<Symmetry,Scalar> &ApairOut);
+		
+		template<typename MpOperator>
+		void build_LW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket);
+		
+		template<typename MpOperator>
+		void build_RW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket);
+		
 	// for |Vout> ≈ H*|Vin1> - polyB*|Vin2>
-	template<typename MpOperator>
-	void prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE=true);
-	template<typename MpOperator>
-	void sweepStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout);
+		template<typename MpOperator>
+		void prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout);
+		
+		template<typename MpOperator>
+		void polySweepStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout);
+	
+	inline size_t loc1() const {return (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;};
+	inline size_t loc2() const {return (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;};
 	
 	size_t N_sites;
 	size_t N_sweepsteps, N_halfsweeps;
@@ -205,7 +195,7 @@ info() const
 	
 	ss << "|Vlhs-Vrhs|^2=" << sqdist << ", ";
 	ss << "halfsweeps=" << N_halfsweeps << ", ";
-	ss << "mem=" << round(memory(GB),3) << "GB, overhead=" << round(overhead(MB),3) << "MB";
+	ss << "mem=" << round(memory(GB),3) << "GB";
 	return ss.str();
 }
 
@@ -227,33 +217,13 @@ memory (MEMUNIT memunit) const
 	return res;
 }
 
-template<typename Symmetry, typename Scalar, typename MpoScalar>
-double MpsCompressor<Symmetry,Scalar,MpoScalar>::
-overhead (MEMUNIT memunit) const
-{
-	double res = 0.;
-	for (size_t l=0; l<Env.size(); ++l)
-	{
-		res += Env[l].L.overhead(memunit);
-		res += Env[l].R.overhead(memunit);
-	}
-	for (size_t l=0; l<Heff.size(); ++l)
-	{
-		res += Heff[l].L.overhead(memunit);
-		res += Heff[l].R.overhead(memunit);
-		res += 2. * calc_memory<size_t>(Heff[l].qlhs.size(),memunit);
-		res += 4. * calc_memory<size_t>(Heff[l].qrhs.size(),memunit);
-	}
-	return res;
-}
-
 //---------------------------compression of |Psi>---------------------------
 // |Vout> ≈ |Vin>, M(Vout) < M(Vin)
 // convention in program: <Vout|Vin>
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps, DMRG::COMPRESSION::INIT START)
+stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps)
 {
 	Stopwatch<> Chronos;
 	N_sites = Vin.length();
@@ -276,10 +246,9 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 	Vout = Vin;
 	Vout.innerResize(Dcutoff);
 	Vout.max_Nsv = Dcutoff;
-	bool RANDOMIZE = true;
 	
 	Mmax = Vout.calc_Mmax();
-	prepSweep(Vin,Vout,RANDOMIZE);
+	prepSweep(Vin,Vout);
 	sqdist = 1.;
 	size_t halfSweepRange = N_sites;
 	
@@ -315,11 +284,11 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
 			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
 			{
-				stateOptimization2(Vin,Vout);
+				stateOptimize2(Vin,Vout);
 			}
 			else
 			{
-				stateOptimization1(Vin,Vout);
+				stateOptimize1(Vin,Vout);
 			}
 			++N_sweepsteps;
 		}
@@ -358,7 +327,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE)
+prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
 	
@@ -367,10 +336,7 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RAN
 	{
 		for (size_t l=N_sites-1; l>0; --l)
 		{
-			if (RANDOMIZE == true)
-			{
-				Vout.setRandom(l);
-			}
+			Vout.setRandom(l);
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			build_R(l-1,Vout,Vin);
 		}
@@ -380,10 +346,7 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RAN
 	{
 		for (size_t l=0; l<N_sites-1; ++l)
 		{
-			if (RANDOMIZE == true)
-			{
-				Vout.setRandom(l);
-			}
+			Vout.setRandom(l);
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
 			build_L(l+1,Vout,Vin);
 		}
@@ -394,14 +357,13 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RAN
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-stateOptimization1 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool SWEEP)
+stateOptimize1 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool SWEEP)
 {
-	PivotVector<Symmetry,Scalar> Ain(Vin.A[pivot]);
-	PivotVector<Symmetry,Scalar> Aout(Vout.A[pivot]);
-	LRxV(Env[pivot], Ain, Aout);
+	PivotVector<Symmetry,Scalar> A(Vin.A[pivot]);
+	LRxV(Env[pivot], A);
 	for (size_t s=0; s<Vin.locBasis(pivot).size(); ++s)
 	{
-		Vout.A[pivot][s] = Aout.data[s].cleaned();
+		Vout.A[pivot][s] = A.data[s].cleaned();
 	}
 	
 	if (SWEEP)
@@ -414,21 +376,34 @@ stateOptimization1 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-stateOptimization2 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
+stateOptimize2 (const Mps<Symmetry,Scalar> &Vin, const Mps<Symmetry,Scalar> &Vout, PivotVector<Symmetry,Scalar> &ApairOut)
 {
-	size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
-	size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
+	PivotVector<Symmetry,Scalar> ApairIn(Vin.A[loc1()], Vin.locBasis(loc1()), 
+	                                     Vin.A[loc2()], Vin.locBasis(loc2()),
+	                                     Vin.QoutTop[loc1()], Vin.QoutBot[loc1()]);
 	
-	PivotVector<Symmetry,Scalar> AAin(Vin.A[loc1], Vin.locBasis(loc1), 
-	                                  Vin.A[loc2], Vin.locBasis(loc2),
-	                                  Vin.QoutTop[loc1], Vin.QoutBot[loc1]);
-	PivotVector<Symmetry,Scalar> AAout;
-	AAout.outerResize(AAin);
+	ApairOut = PivotVector<Symmetry,Scalar>(Vout.A[loc1()], Vout.locBasis(loc1()), 
+	                                        Vout.A[loc2()], Vout.locBasis(loc2()),
+	                                        Vout.QoutTop[loc1()], Vout.QoutBot[loc1()],
+	                                        true);  // dry run: do not multiply matrices, just set blocks
 	
-	PivotOverlap2<Symmetry,Scalar> Env2(Env[loc1].L, Env[loc2].R, Vin.locBasis(loc1), Vin.locBasis(loc2));
-	LRxV(Env2, AAin, AAout);
+	PivotOverlap2<Symmetry,Scalar> Env2(Env[loc1()].L, Env[loc2()].R, Vin.locBasis(loc1()), Vin.locBasis(loc2()));
+	LRxV(Env2, ApairIn, ApairOut);
 	
-	Vout.sweepStep2(CURRENT_DIRECTION, loc1, AAout.data);
+	for (size_t s=0; s<ApairOut.data.size(); ++s)
+	{
+		ApairOut.data[s] = ApairOut.data[s].cleaned();
+	}
+}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+stateOptimize2 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
+{
+	PivotVector<Symmetry,Scalar> Apair;
+	stateOptimize2(Vin,Vout,Apair);
+	
+	Vout.sweepStep2(CURRENT_DIRECTION, loc1(), Apair.data);
 	pivot = Vout.get_pivot();
 	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(pivot,Vout,Vin) : build_R(pivot,Vout,Vin);
 }
@@ -454,18 +429,15 @@ build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, qarray<Symmetry::Nq> Qtot, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps, DMRG::COMPRESSION::INIT START)
+prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, qarray<Symmetry::Nq> Qtot, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps)
 {
 	N_sites = Vin.length();
 	Stopwatch<> Chronos;
 	N_halfsweeps = 0;
 	N_sweepsteps = 0;
 	Dcutoff = Dcutoff_new = Dcutoff_input;
-	bool RANDOMIZE = false;
 	
 	Vout = Mps<Symmetry,Scalar>(H, Dcutoff, Qtot, max(Vin.calc_Nqmax(), DMRG::CONTROL::DEFAULT::Qinit));
-	Vout.graph("init");
-	RANDOMIZE = true;
 	
 	// prepare edges of LW & RW
 	Heff.clear();
@@ -510,7 +482,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		#pragma omp section
 		#endif
 		{
-			prepSweep(H,Vin,Vout,RANDOMIZE);
+			prepSweep(H,Vin,Vout);
 		}
 	}
 	sqdist = 1.;
@@ -549,18 +521,18 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
 			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
 			{
-				prodOptimization2(H,Vin,Vout);
+				prodOptimize2(H,Vin,Vout);
 			}
 			else
 			{
-				prodOptimization1(H,Vin,Vout);
+				prodOptimize1(H,Vin,Vout);
 			}
 			++N_sweepsteps;
 		}
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-		cout << "\tavgHsqVin=" << avgHsqVin << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+//		cout << "\tavgHsqVin=" << avgHsqVin << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		sqdist = abs(avgHsqVin-Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		
@@ -594,7 +566,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE)
+prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
 	
@@ -602,10 +574,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Sc
 	{
 		for (size_t l=N_sites-1; l>0; --l)
 		{
-			if (RANDOMIZE == true)
-			{
-				Vout.setRandom(l);
-			}
+			Vout.setRandom(l);
 			Stopwatch<> Chronos;
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			build_RW(l-1,Vout,H,Vin);
@@ -616,10 +585,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Sc
 	{
 		for (size_t l=0; l<N_sites-1; ++l)
 		{
-			if (RANDOMIZE == true)
-			{
-				Vout.setRandom(l);
-			}
+			Vout.setRandom(l);
 			Stopwatch<> Chronos;
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
 			build_LW(l+1,Vout,H,Vin);
@@ -632,7 +598,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Sc
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-prodOptimization1 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool SWEEP)
+prodOptimize1 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool SWEEP)
 {
 	Stopwatch<> Chronos;
 	
@@ -661,37 +627,45 @@ prodOptimization1 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-prodOptimization2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
+prodOptimize2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, const Mps<Symmetry,Scalar> &Vout, PivotVector<Symmetry,Scalar> &ApairOut)
+{
+	PivotVector<Symmetry,Scalar> ApairIn(Vin.A[loc1()], Vin.locBasis(loc1()), 
+	                                     Vin.A[loc2()], Vin.locBasis(loc2()),
+	                                     Vin.QoutTop[loc1()], Vin.QoutBot[loc1()]);
+	
+	ApairOut = PivotVector<Symmetry,Scalar>(Vout.A[loc1()], Vout.locBasis(loc1()), 
+	                                        Vout.A[loc2()], Vout.locBasis(loc2()),
+	                                        Vout.QoutTop[loc1()], Vout.QoutBot[loc1()], 
+	                                        true); // dry run: do not multiply matrices, just set blocks
+	
+	PivotMatrix2<Symmetry,Scalar,MpoScalar> Heff2(Heff[loc1()].L, Heff[loc2()].R, 
+	                                              H.W[loc1()], H.W[loc2()], 
+	                                              H.locBasis(loc1()), H.locBasis(loc2()), 
+	                                              H.opBasis (loc1()), H.opBasis (loc2()));
+	
+	precalc_blockStructure (Heff[loc1()].L, ApairOut.data, Heff2.W12, Heff2.W34, ApairIn.data, Heff[loc2()].R, 
+	                        H.locBasis(loc1()), H.locBasis(loc2()), H.opBasis(loc1()), H.opBasis(loc2()), 
+	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
+	OxV(Heff2, ApairIn, ApairOut);
+	
+	for (size_t s=0; s<ApairOut.data.size(); ++s)
+	{
+		ApairOut.data[s] = ApairOut.data[s].cleaned();
+	}
+}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+template<typename MpOperator>
+void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+prodOptimize2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 {
 	Stopwatch<> Chronos;
 	
-	size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
-	size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
-	cout << "bond=" << loc1 << "-" << loc2 << endl;
+	PivotVector<Symmetry,Scalar> Apair;
+	prodOptimize2(H,Vin,Vout,Apair);
+	Vout.sweepStep2(CURRENT_DIRECTION, loc1(), Apair.data);
 	
-	PivotVector<Symmetry,Scalar> AAin(Vin.A[loc1], Vin.locBasis(loc1), 
-	                                  Vin.A[loc2], Vin.locBasis(loc2),
-	                                  Vin.QoutTop[loc1], Vin.QoutBot[loc1]);
-	PivotVector<Symmetry,Scalar> AAout(Vout.A[loc1], Vout.locBasis(loc1), 
-	                                   Vout.A[loc2], Vout.locBasis(loc2),
-	                                   Vout.QoutTop[loc1], Vout.QoutBot[loc1]);
-	
-	PivotMatrix2<Symmetry,Scalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
-	                                              H.W_at(loc1), H.W_at(loc2), 
-	                                              H.locBasis(loc1), H.locBasis(loc2), 
-	                                              H.opBasis (loc1), H.opBasis (loc2));
-	
-	precalc_blockStructure (Heff2.L, AAout.data, Heff2.W12, Heff2.W34, AAin.data, Heff2.R, 
-	                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
-	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
-	
-	cout << "before OxV2: " << Vout.info() << endl;
-	OxV(Heff2, AAin, AAout);
-	Vout.sweepStep2(CURRENT_DIRECTION, loc1, AAout.data);
-	cout << Vout.validate() << endl;
-	cout << "after OxV2: " << Vout.info() << endl;
-	
-	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_LW(loc2,Vout,H,Vin) : build_RW(loc1,Vout,H,Vin);
+	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_LW(loc2(),Vout,H,Vin) : build_RW(loc1(),Vout,H,Vin);
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
@@ -720,7 +694,7 @@ build_RW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, con
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps, DMRG::COMPRESSION::INIT START)
+polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps)
 {
 	N_sites = Vin1.length();
 	Stopwatch<> Chronos;
@@ -729,7 +703,14 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	Dcutoff = Dcutoff_input;
 	Dcutoff_new = Dcutoff_input;
 	
-	Vout = Vin1;
+//	Vout = Vin1;
+	Vout = Mps<Symmetry,Scalar>(H, Dcutoff, Vin1.Qtarget(), max(Vin1.calc_Nqmax(), DMRG::CONTROL::DEFAULT::Qinit));
+	Vout.setRandom();
+	if (CHOSEN_VERBOSITY>=2)
+	{
+		lout << "Vin: " << Vout.info() << endl;
+		Vout.graph("it");
+	}
 	
 	// prepare edges of LW & RW
 	Heff.clear();
@@ -799,7 +780,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 			if (pivot==1)
 			{
 				Vout.sweep(0,DMRG::BROOM::QR);
-				pivot=0;
+				pivot = 0;
 				build_RW(0,Vout,H,Vin1);
 				build_R (0,Vout,  Vin2);
 			}
@@ -817,139 +798,40 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
 			Stopwatch<> Chronos;
 			
-//			optimizationStep(Vin2,Vout);
-//			auto Atmp = Vout.A[pivot];
-//			optimizationStep(H,Vin1,Vout);
-//			for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
-//			for (size_t q=0; q<Atmp[s].dim; ++q)
-//			{
-//				qarray2<Symmetry::Nq> quple = {Atmp[s].in[q], Atmp[s].out[q]};
-//				auto it = Vout.A[pivot][s].dict.find(quple);
-//				Vout.A[pivot][s].block[it->second] -= polyB * Atmp[s].block[q];
-//			}
-			
-			// if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
-// 			{
-// 				size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
-// 				size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
-// 				
-// 				Heff[loc1].W = H.W[loc1];
-// 				Heff[loc2].W = H.W[loc2];
-// 				
-// 				// H*Vin1
-// 				vector<vector<Biped<Symmetry,MatrixType> > > Apair;
-// 				HxV(Heff[loc1],Heff[loc2], Vin1.A[loc1],Vin1.A[loc2], Vout.A[loc1],Vout.A[loc2], Vin1.locBasis(loc1),Vin1.locBasis(loc2), Apair);
-// 				
-// 				// Vin2
-// 				vector<vector<Biped<Symmetry,MatrixType> > > ApairVV;
-// 				ApairVV.resize(Vin1.locBasis(loc1).size());
-// 				for (size_t s1=0; s1<Vin1.locBasis(loc1).size(); ++s1)
-// 				{
-// 					ApairVV[s1].resize(Vin1.locBasis(loc2).size());
-// 				}
-// 				
-// 				for (size_t s1=0; s1<Vin2.locBasis(loc1).size(); ++s1)
-// 				for (size_t s3=0; s3<Vin2.locBasis(loc2).size(); ++s3)
-// 				{
-// 					ApairVV[s1][s3] = L[loc1] * Vin2.A[loc1][s1] * Vin2.A[loc2][s3] * R[loc2];
-// 				}
-// 				
-// 				// H*Vin1-polyB*Vin2
-// 				for (size_t s1=0; s1<H.locBasis(loc1).size(); ++s1)
-// 				for (size_t s3=0; s3<H.locBasis(loc2).size(); ++s3)
-// 				for (size_t q=0; q<Apair[s1][s3].dim; ++q)
-// 				{
-// 					qarray2<Symmetry::Nq> quple = {Apair[s1][s3].in[q], Apair[s1][s3].out[q]};
-// 					auto it = ApairVV[s1][s3].dict.find(quple);
-// 					
-// 					MatrixType Mtmp = Apair[s1][s3].block[q];
-// 					size_t rows = max(Apair[s1][s3].block[q].rows(), Apair[s1][s3].block[q].rows());
-// 					size_t cols = max(Apair[s1][s3].block[q].cols(), Apair[s1][s3].block[q].cols());
-// 					
-// 					Apair[s1][s3].block[q].resize(rows,cols);
-// 					Apair[s1][s3].block[q].setZero();
-// 					Apair[s1][s3].block[q].topLeftCorner(Mtmp.rows(),Mtmp.cols()) = Mtmp;
-// 					Apair[s1][s3].block[q].topLeftCorner(Apair[s1][s3].block[q].rows(),
-// 					                                     Apair[s1][s3].block[q].cols()) 
-// 					-= 
-// 					polyB * ApairVV[s1][s3].block[it->second];
-// 				}
-// 				
-// 				Vout.sweepStep2(CURRENT_DIRECTION, min(loc1,loc2), Apair);
-// 				pivot = Vout.get_pivot();
-// 			}
-// 			else
 			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
 			{
-				size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
-				size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
-				cout << "a" << endl;
+				PivotVector<Symmetry,Scalar> ApairV1;
+				prodOptimize2(H,Vin1,Vout,ApairV1);
 				
-				PivotVector<Symmetry,Scalar> Apair(Vin1.A[loc1], Vin1.locBasis(loc1), 
-				                                   Vin1.A[loc2], Vin1.locBasis(loc2),
-				                                   Vin1.QoutTop[loc1], Vin1.QoutBot[loc1]);
-				PivotMatrix2<Symmetry,Scalar,MpoScalar> Heff2(Heff[loc1].L, Heff[loc2].R, 
-				                                              H.W[loc1], H.W[loc2], 
-				                                              H.locBasis(loc1), H.locBasis(loc2), 
-				                                              H.opBasis (loc1), H.opBasis (loc2));
-				cout << "b" << endl;
-				HxV(Heff2, Apair);
-				cout << "c" << endl;
+				PivotVector<Symmetry,Scalar> ApairV2;
+				stateOptimize2(Vin2,Vout,ApairV2);
 				
-				PivotVector<Symmetry,Scalar> Apair_tmp(Vin2.A[loc1], Vin2.locBasis(loc1), 
-				                                       Vin2.A[loc2], Vin2.locBasis(loc2),
-				                                       Vin2.QoutTop[loc1], Vin2.QoutBot[loc1]);
-				cout << "d" << endl;
-				PivotVector<Symmetry,Scalar> ApairVV;
-				ApairVV.outerResize(Apair_tmp);
-				for (size_t s1s3=0; s1s3<ApairVV.data.size(); ++s1s3)
+				for (size_t s=0; s<ApairV1.data.size(); ++s)
 				{
-					ApairVV.data[s1s3] = Env[loc1].L * Apair_tmp.data[s1s3] * Env[loc2].R;
-				}
-				cout << "e" << endl;
-				
-				for (size_t s1s3=0; s1s3<Apair.data.size(); ++s1s3)
-				for (size_t q=0; q<Apair.data[s1s3].size(); ++q)
-				{
-					qarray2<Symmetry::Nq> quple = {Apair.data[s1s3].in[q], Apair.data[s1s3].out[q]};
-					auto it = ApairVV.data[s1s3].dict.find(quple);
-					
-					MatrixType Mtmp = Apair.data[s1s3].block[q];
-					size_t rows = max(Apair.data[s1s3].block[q].rows(), ApairVV.data[s1s3].block[it->second].rows());
-					size_t cols = max(Apair.data[s1s3].block[q].cols(), ApairVV.data[s1s3].block[it->second].cols());
-					
-					Apair.data[s1s3].block[q].resize(rows,cols);
-					Apair.data[s1s3].block[q].setZero();
-					Apair.data[s1s3].block[q].topLeftCorner(Mtmp.rows(),Mtmp.cols()) = Mtmp;
-					Apair.data[s1s3].block[q].topLeftCorner(ApairVV.data[s1s3].block[it->second].rows(),
-					                                        ApairVV.data[s1s3].block[it->second].cols()) 
-					-= 
-					polyB * ApairVV.data[s1s3].block[it->second];
+					ApairV1.data[s].addScale(-polyB, ApairV2.data[s]);
+					ApairV1.data[s] = ApairV1.data[s].cleaned();
 				}
 				
-				Vout.sweepStep2(CURRENT_DIRECTION, loc1, Apair.data);
+				Vout.sweepStep2(CURRENT_DIRECTION, loc1(), ApairV1.data);
 				pivot = Vout.get_pivot();
 			}
 			else
 			{
-				stateOptimization1(Vin2,Vout,false);
+				stateOptimize1(Vin2,Vout,false);
 				auto Atmp = Vout.A[pivot];
 				
-				prodOptimization1(H,Vin1,Vout,false);
+				prodOptimize1(H,Vin1,Vout,false);
 				
 				for (size_t s=0; s<H.locBasis(pivot).size(); ++s)
-				for (size_t q=0; q<Atmp[s].dim; ++q)
 				{
-					qarray2<Symmetry::Nq> quple = {Atmp[s].in[q], Atmp[s].out[q]};
-					auto it = Vout.A[pivot][s].dict.find(quple);
-					Vout.A[pivot][s].block[it->second] -= polyB * Atmp[s].block[q];
+					Vout.A[pivot][s].addScale(-polyB, Atmp[s]);
 				}
 				
 				Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::QR);
 				pivot = Vout.get_pivot();
 			}
 			
-			sweepStep(H,Vin1,Vin2,Vout);
+			polySweepStep(H,Vin1,Vin2,Vout);
 			++N_sweepsteps;
 		}
 		halfSweepRange = N_sites-1;
@@ -988,7 +870,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE)
+prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
 	
@@ -996,10 +878,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 	{
 		for (size_t l=N_sites-1; l>0; --l)
 		{
-			if (RANDOMIZE == true)
-			{
-				Vout.setRandom(l);
-			}
+//			Vout.setRandom(l);
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 			#pragma omp parallel sections
@@ -1026,11 +905,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 	{
 		for (size_t l=0; l<N_sites-1; ++l)
 		{
-			if (RANDOMIZE == true)
-			{
-				Vout.setRandom(l);
-//				if (l<N_sites-1) {Vout.setRandom(l+1);}
-			}
+//			Vout.setRandom(l);
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
 			#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 			#pragma omp parallel sections
@@ -1059,7 +934,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-sweepStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout)
+polySweepStep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout)
 {
 	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 	#pragma omp parallel sections

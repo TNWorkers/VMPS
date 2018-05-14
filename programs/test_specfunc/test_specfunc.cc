@@ -175,9 +175,8 @@ int main (int argc, char* argv[])
 	cout << "avg1=" << avg(init->state, Adag, A, init->state) << endl;
 	cout << "avg2=" << avg(init->state, H.d(L/2), init->state) << endl;
 	Compadre.prodCompress(A, Adag, init->state, initA, Qc, init->state.calc_Dmax());
-	initA.graph("Psi");
 	delete init;
-	initA.eps_svd = 1e-7;
+	initA.eps_svd = 1e-10;
 	cout << "AxV:" << endl << initA.info() << endl;
 	//--------------</A*init>---------------
 	

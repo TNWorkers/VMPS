@@ -254,7 +254,7 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 	Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax());
 	
- 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
+	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
 	{
 		lout << Compadre.info() << endl;
 		lout << Chronos.info("HxV") << endl;

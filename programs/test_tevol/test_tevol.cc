@@ -115,8 +115,8 @@ int main (int argc, char* argv[])
 //	OxV(H_U1.Sz(0), g_U1.state, Psi_U1tmp, DMRG::BROOM::SVD);
 	VMPS::HeisenbergU1::CompressorXd CompadreU1(VERB);
 	
-//	CompadreU1.varCompress(H_U1.Sz(0), H_U1.Sz(0), g_U1.state, Psi_U1tmp, {M}, g_U1.state.calc_Dmax());
-	CompadreU1.varCompress(H_U1.Sz(0), H_U1.SzSz(0,0), g_U1.state, Psi_U1tmp, {M}, g_U1.state.calc_Dmax());
+//	CompadreU1.prodCompress(H_U1.Sz(0), H_U1.Sz(0), g_U1.state, Psi_U1tmp, {M}, g_U1.state.calc_Dmax());
+	CompadreU1.prodCompress(H_U1.Sz(0), H_U1.SzSz(0,0), g_U1.state, Psi_U1tmp, {M}, g_U1.state.calc_Dmax());
 	
 	Psi_U1tmp.max_Nsv = Psi_U1tmp.calc_Dmax();
 	Psi_U1tmp.eps_svd = tol_compr;
@@ -169,8 +169,8 @@ int main (int argc, char* argv[])
 	cout << "avg=" << avg(g_SU2.state, H_SU2.Sdag(0), H_SU2.S(0), g_SU2.state, {0}) << endl;
 	cout << "avg=" << avg(g_SU2.state, H_SU2.SS(0,0), g_SU2.state) << endl;
 	
-//	Compadre.varCompress(H_SU2.S(0), H_SU2.Sdag(0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
-	Compadre.varCompress(H_SU2.S(0), H_SU2.SS(0,0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
+//	Compadre.prodCompress(H_SU2.S(0), H_SU2.Sdag(0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
+	Compadre.prodCompress(H_SU2.S(0), H_SU2.SS(0,0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
 	
 	Psi_SU2tmp.max_Nsv = Psi_SU2tmp.calc_Dmax();
 	Psi_SU2tmp.eps_svd = tol_compr;

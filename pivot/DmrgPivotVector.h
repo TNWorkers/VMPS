@@ -32,9 +32,10 @@ struct PivotVector
 	             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A34,
 	             const vector<qarray<Symmetry::Nq> > &qloc34,
 	             const qarray<Symmetry::Nq> &Qtop, 
-                 const qarray<Symmetry::Nq> &Qbot)
+                 const qarray<Symmetry::Nq> &Qbot, 
+                 bool DRY = false)
 	{
-		contract_AA(A12, qloc12, A34, qloc34, Qtop, Qbot, data);
+		contract_AA(A12, qloc12, A34, qloc34, Qtop, Qbot, data, DRY);
 	}
 	
 	/**Set blocks as in Vrhs, but do not resize the matrices*/
@@ -51,6 +52,43 @@ struct PivotVector
 			data[i].dim = Vrhs.data[i].dim;
 		}
 	}
+	
+	inline size_t size() const {return data.size();}
+	
+	void print_dims() const
+	{
+		map<qarray<Symmetry::Nq>,set<int> > indim;
+		map<qarray<Symmetry::Nq>,set<int> > outdim;
+		for (size_t s1s3=0; s1s3<data.size(); ++s1s3)
+		for (size_t q=0; q<data[s1s3].dim; ++q)
+		{
+			indim[data[s1s3].in[q]].insert(data[s1s3].block[q].rows());
+			outdim[data[s1s3].out[q]].insert(data[s1s3].block[q].cols());
+		}
+		for (auto it=indim.begin(); it!=indim.end(); ++it)
+		{
+			cout << "in=" << it->first << ":";
+			for (auto ip=it->second.begin(); ip!=it->second.end(); ++ip)
+			{
+				cout << *ip << " ";
+			}
+			cout << endl;
+		}
+		for (auto it=outdim.begin(); it!=outdim.end(); ++it)
+		{
+			cout << "out=" << it->first << ":";
+			for (auto ip=it->second.begin(); ip!=it->second.end(); ++ip)
+			{
+				cout << *ip << " ";
+			}
+			cout << endl;
+		}
+	}
+	
+	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &operator[] (size_t i) {return data[i];}
+	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &operator() (size_t i) {return data[i];}
+	const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &operator[] (size_t i) const {return data[i];}
+	const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &operator() (size_t i) const {return data[i];}
 	
 	PivotVector<Symmetry,Scalar>& operator+= (const PivotVector<Symmetry,Scalar> &Vrhs);
 	PivotVector<Symmetry,Scalar>& operator-= (const PivotVector<Symmetry,Scalar> &Vrhs);

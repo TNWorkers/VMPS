@@ -1,6 +1,8 @@
 #ifndef HUBBARDMODELSU2XU1_H_
 #define HUBBARDMODELSU2XU1_H_
 
+#include "tensors/SiteOperatorQ.h"
+#include "tensors/SiteOperator.h"
 #include "bases/FermionBaseSU2xU1.h"
 #include "symmetry/S1xS2.h"
 #include "Mpo.h"

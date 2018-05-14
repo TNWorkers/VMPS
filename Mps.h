@@ -672,7 +672,7 @@ calc_Qlimits()
 			}
 		}
 		
-		cout << "QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] << endl;
+//		cout << "QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] << endl;
 	}
 }
 
@@ -2019,6 +2019,24 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				{
 					size_t Aclump_rows_old = Aclump.rows();
 					
+//					cout << "ql=" << ql << ", s1=" << qloc[loc][s1] << endl;
+//					cout << Aclumpvec[make_pair(s1,ql)].rows() << "x" << Aclumpvec[make_pair(s1,ql)].cols() << endl;
+//					cout << Aclump.rows() << "x" << Aclump.cols() << endl;
+					
+					// If cols don't match, it means that zeros were cut, restore them:
+					if (Aclumpvec[make_pair(s1,ql)].cols() < Aclump.cols())
+					{
+						size_t dcols = Aclump.cols() - Aclumpvec[make_pair(s1,ql)].cols();
+						Aclumpvec[make_pair(s1,ql)].conservativeResize(Aclumpvec[make_pair(s1,ql)].rows(), Aclump.cols());
+						Aclumpvec[make_pair(s1,ql)].rightCols(dcols).setZero();
+					}
+					else if (Aclumpvec[make_pair(s1,ql)].cols() > Aclump.cols())
+					{
+						size_t dcols = Aclumpvec[make_pair(s1,ql)].cols() - Aclump.cols();
+						Aclump.conservativeResize(Aclump.rows(), Aclump.cols()+dcols);
+						Aclump.rightCols(dcols).setZero();
+					}
+					
 					addBottom(Aclumpvec[make_pair(s1,ql)], Aclump);
 					
 					if (Aclump.rows() > Aclump_rows_old)
@@ -2053,12 +2071,11 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			// retained states:
 			size_t Nret = Aclump.cols();
 			Nret = (Jack.singularValues().array().abs() > this->eps_svd).count();
-//			Nret = min(max(Nret,1ul),static_cast<size_t>(Jack.singularValues().rows()));
 			Nret = max(Nret,this->min_Nsv);
 			Nret = min(Nret,this->max_Nsv);
 			
 			truncWeightSub(qmid) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
-			size_t Nnz = (Jack.singularValues().array() > 1e-9).count();
+			size_t Nnz = (Jack.singularValues().array() > 0.).count();
 			entropySub(qmid) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
 			
 			MatrixType Aleft, Aright;
