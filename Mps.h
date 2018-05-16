@@ -232,6 +232,8 @@ public:
 	 */
 	size_t calc_Nqmax() const;
 	
+	double calc_Nqavg() const;
+	
 	/**\describe_memory*/
 	double memory (MEMUNIT memunit=GB) const;
 	///\}
@@ -457,6 +459,7 @@ info() const
 	}
 	ss << "Dmax=" << calc_Dmax() << "), ";
 	ss << "Nqmax=" << calc_Nqmax() << ", ";
+	ss << "Nqavg=" << calc_Nqavg() << ", ";
 	ss << "trunc_weight=" << truncWeight.sum() << ", ";
 	int lSmax;
 	if (this->N_sites > 1)
@@ -464,7 +467,7 @@ info() const
 		entropy.maxCoeff(&lSmax);
 		if (!std::isnan(entropy(lSmax)))
 		{
-			ss << "entropy(" << lSmax << ")=" << entropy(lSmax) << ", ";
+			ss << "Smax(l=" << lSmax << ")=" << entropy(lSmax) << ", ";
 		}
 	}
 	ss << "mem=" << round(memory(GB),3) << "GB";
@@ -1206,6 +1209,18 @@ calc_Nqmax() const
 }
 
 template<typename Symmetry, typename Scalar>
+double Mps<Symmetry,Scalar>::
+calc_Nqavg() const
+{
+	double res = 0.;
+	for (size_t l=0; l<this->N_sites-1; ++l)
+	{
+		res += outbase[l].Nq();
+	}
+	return res/(this->N_sites-1.);
+}
+
+template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 update_inbase (size_t loc)
 {
@@ -1401,7 +1416,8 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		update_outbase(loc-1);
 	}
 	
-	if (TOOL != DMRG::BROOM::QR)
+	if (TOOL == DMRG::BROOM::SVD or 
+	    (TOOL == DMRG::BROOM::RICH_SVD and this->alpha_rsvd == 0.))
 	{
 		truncWeight(loc) = truncWeightSub.sum();
 		int bond = (loc==0)? -1 : loc;
@@ -1578,7 +1594,8 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		update_inbase(loc+1);
 	}
 	
-	if (TOOL != DMRG::BROOM::QR)
+	if (TOOL == DMRG::BROOM::SVD or 
+	    (TOOL == DMRG::BROOM::RICH_SVD and this->alpha_rsvd == 0.))
 	{
 		truncWeight(loc) = truncWeightSub.sum();
 		int bond = (loc==this->N_sites-1)? -1 : loc;
@@ -2019,11 +2036,8 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				{
 					size_t Aclump_rows_old = Aclump.rows();
 					
-//					cout << "ql=" << ql << ", s1=" << qloc[loc][s1] << endl;
-//					cout << Aclumpvec[make_pair(s1,ql)].rows() << "x" << Aclumpvec[make_pair(s1,ql)].cols() << endl;
-//					cout << Aclump.rows() << "x" << Aclump.cols() << endl;
-					
-					// If cols don't match, it means that zeros were cut, restore them:
+					// If cols don't match, it means that zeros were cut, restore them 
+					// (happens in MpsCompressor::polyCompress):
 					if (Aclumpvec[make_pair(s1,ql)].cols() < Aclump.cols())
 					{
 						size_t dcols = Aclump.cols() - Aclumpvec[make_pair(s1,ql)].cols();
@@ -2069,10 +2083,9 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
 			
 			// retained states:
-			size_t Nret = Aclump.cols();
-			Nret = (Jack.singularValues().array().abs() > this->eps_svd).count();
-			Nret = max(Nret,this->min_Nsv);
-			Nret = min(Nret,this->max_Nsv);
+			size_t Nret = (Jack.singularValues().array().abs() > this->eps_svd).count();
+			Nret = max(Nret, this->min_Nsv);
+			Nret = min(Nret, this->max_Nsv);
 			
 			truncWeightSub(qmid) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
 			size_t Nnz = (Jack.singularValues().array() > 0.).count();
@@ -2095,7 +2108,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			else
 			{
 				Aleft = Jack.matrixU().leftCols(Nret) * Jack.singularValues().head(Nret).asDiagonal();
-				Aright = Jack.matrixV().adjoint().topRows(Nret);				
+				Aright = Jack.matrixV().adjoint().topRows(Nret);
 				this->pivot = (loc==0)? 0 : loc;
 			}
 			

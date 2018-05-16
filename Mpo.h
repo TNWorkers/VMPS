@@ -482,7 +482,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 					size_t match;
 					for (size_t k=0; k<qOp_in[l].size(); ++k)
 					{
-						if(qOp_in[l][k] == Q) {match=k; break;}
+						if (qOp_in[l][k] == Q) {match=k; break;}
 						// assert(k == qOp[l].size()-1 and "The SuperMatrix is not well defined.");
 					}
 					Wstore[l][s1][s2][match].insert(0,a2) = val;

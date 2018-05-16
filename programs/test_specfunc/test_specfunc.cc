@@ -44,7 +44,7 @@ int main (int argc, char* argv[])
 	wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
 	
-	dE = args.get_list<double>("dE",{0.2});
+	dE = args.get_list<double>("dE",{1.,0.5,0.2});
 	outfile = make_string(spec,"_L=",L,"_N=",N,"_U=",U);
 	if (V != 0.) {outfile += make_string("_V=",V);}
 	Efilename = outfile;
@@ -61,7 +61,7 @@ int main (int argc, char* argv[])
 	#endif
 	
 	//--------------<Hamiltonian & transition operator>---------------
-	MODEL H(L,{{"U",U},{"V",V}});
+	MODEL H(L,{{"U",U},{"V",V},{"CALC_SQUARE",true}});
 	lout << H.info() << endl << endl;
 	
 	MODEL::Operator A, Adag;
@@ -176,7 +176,7 @@ int main (int argc, char* argv[])
 	cout << "avg2=" << avg(init->state, H.d(L/2), init->state) << endl;
 	Compadre.prodCompress(A, Adag, init->state, initA, Qc, init->state.calc_Dmax());
 	delete init;
-	initA.eps_svd = 1e-10;
+	initA.eps_svd = 1e-7;
 	cout << "AxV:" << endl << initA.info() << endl;
 	//--------------</A*init>---------------
 	

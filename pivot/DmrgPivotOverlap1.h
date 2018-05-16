@@ -25,11 +25,6 @@ struct PivotOverlap1
 template<typename Symmetry, typename Scalar>
 void LRxV (const PivotOverlap1<Symmetry,Scalar> &H, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
 {
-// 	Vout = Vin;
-// 	for (size_t i=0; i<Vout.data.size(); ++i)
-// 	{
-// 		Vout.data[i].setZero();
-// 	}
 	Vout.outerResize(Vin);
 	
 	for (size_t s=0; s<H.qloc.size(); ++s)
