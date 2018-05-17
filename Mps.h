@@ -1416,10 +1416,12 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		update_outbase(loc-1);
 	}
 	
+	truncWeight(loc) = truncWeightSub.sum();
+	
+	// entropy
 	if (TOOL == DMRG::BROOM::SVD or 
-	    (TOOL == DMRG::BROOM::RICH_SVD and this->alpha_rsvd == 0.))
+	   (TOOL == DMRG::BROOM::RICH_SVD and this->alpha_rsvd == 0.))
 	{
-		truncWeight(loc) = truncWeightSub.sum();
 		int bond = (loc==0)? -1 : loc;
 		if (bond != -1)
 		{
@@ -1594,10 +1596,12 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		update_inbase(loc+1);
 	}
 	
+	truncWeight(loc) = truncWeightSub.sum();
+	
+	// entropy
 	if (TOOL == DMRG::BROOM::SVD or 
-	    (TOOL == DMRG::BROOM::RICH_SVD and this->alpha_rsvd == 0.))
+	   (TOOL == DMRG::BROOM::RICH_SVD and this->alpha_rsvd == 0.))
 	{
-		truncWeight(loc) = truncWeightSub.sum();
 		int bond = (loc==this->N_sites-1)? -1 : loc;
 		if (bond != -1)
 		{

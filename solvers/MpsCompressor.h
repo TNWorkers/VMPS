@@ -168,6 +168,12 @@ private:
 	inline size_t loc1() const {return (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;};
 	inline size_t loc2() const {return (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;};
 	
+	void sweep_to_edge (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool BUILD_LR);
+	
+	template<typename MpOperator>
+	void sweep_to_edge (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, 
+	                    Mps<Symmetry,Scalar> &Vout, bool BUILD_LR, bool BUILD_LWRW);
+	
 	size_t N_sites;
 	size_t N_sweepsteps, N_halfsweeps;
 	size_t Dcutoff, Dcutoff_new;
@@ -177,11 +183,11 @@ private:
 	int pivot;
 	DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
 	
-	double t_opt = 0;
-	double t_AA = 0;
-	double t_sweep = 0;
-	double t_LR = 0;
-	double t_ohead = 0;
+	double t_opt = 0; // optimization
+	double t_AA = 0; // contract_AA
+	double t_sweep = 0; // sweepStep, sweepStep2
+	double t_LR = 0; // build L, R, LW, RW
+	double t_ohead = 0; // precalc_blockStructure
 	double t_tot = 0; // full time step
 };
 
@@ -254,6 +260,68 @@ memory (MEMUNIT memunit) const
 	return res;
 }
 
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+template<typename MpOperator>
+void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+sweep_to_edge (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, 
+               Mps<Symmetry,Scalar> &Vout, bool BUILD_LR, bool BUILD_LWRW)
+{
+	assert(pivot == 0 or pivot==1 or pivot==N_sites-2 or pivot==N_sites-1);
+	
+	if (pivot==1)
+	{
+		Vout.sweep(0,DMRG::BROOM::QR);
+		pivot = 0;
+		if (BUILD_LWRW)
+		{
+			build_RW(0,Vout,H,Vin1);
+		}
+		if (BUILD_LR)
+		{
+			build_R (0,Vout,  Vin2);
+		}
+	}
+	else if (pivot==N_sites-2)
+	{
+		Vout.sweep(N_sites-1,DMRG::BROOM::QR);
+		pivot = N_sites-1;
+		if (BUILD_LWRW)
+		{
+			build_LW(N_sites-1,Vout,H,Vin1);
+		}
+		if (BUILD_LR)
+		{
+			build_L (N_sites-1,Vout,  Vin2);
+		}
+	}
+}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+sweep_to_edge (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool BUILD_LR)
+{
+	assert(pivot == 0 or pivot==1 or pivot==N_sites-2 or pivot==N_sites-1);
+	
+	if (pivot==1)
+	{
+		Vout.sweep(0,DMRG::BROOM::QR);
+		pivot = 0;
+		if (BUILD_LR)
+		{
+			build_R(0,Vout,Vin);
+		}
+	}
+	else if (pivot==N_sites-2)
+	{
+		Vout.sweep(N_sites-1,DMRG::BROOM::QR);
+		pivot = N_sites-1;
+		if (BUILD_LR)
+		{
+			build_L(N_sites-1,Vout,Vin);
+		}
+	}
+}
+
 //---------------------------compression of |Psi>---------------------------
 // |Vout> ≈ |Vin>, M(Vout) < M(Vin)
 // convention in program: <Vout|Vin>
@@ -308,18 +376,19 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 		// A 2-site sweep is necessary! Move pivot back to edge.
 		if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
 		{
-			if (pivot==1)
-			{
-				Vout.sweep(0,DMRG::BROOM::QR);
-				pivot=0;
-				build_R(0,Vout,Vin);
-			}
-			else if (pivot==N_sites-2)
-			{
-				Vout.sweep(N_sites-1,DMRG::BROOM::QR);
-				pivot = N_sites-1;
-				build_L(N_sites-1,Vout,Vin);
-			}
+			sweep_to_edge(Vin,Vout,true); // BUILD_LR = true
+//			if (pivot==1)
+//			{
+//				Vout.sweep(0,DMRG::BROOM::QR);
+//				pivot=0;
+//				build_R(0,Vout,Vin);
+//			}
+//			else if (pivot==N_sites-2)
+//			{
+//				Vout.sweep(N_sites-1,DMRG::BROOM::QR);
+//				pivot = N_sites-1;
+//				build_L(N_sites-1,Vout,Vin);
+//			}
 		}
 		
 		for (size_t j=1; j<=halfSweepRange; ++j)
@@ -348,7 +417,6 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 			lout << t_info() << endl;
 		}
 		
-		bool RESIZED = false;
 		if (N_halfsweeps%4 == 0 and 
 		    N_halfsweeps > 0 and 
 		    N_halfsweeps != max_halfsweeps and 
@@ -366,8 +434,9 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 	}
 	
 	// last sweep
-	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
-	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
+//	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
+//	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
+	sweep_to_edge(Vin,Vout,false);
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
@@ -541,7 +610,6 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 				{
 					avgHsqVin = isReal(avg(Vin,Hdag,H,Vin));
 				}
-//				avgHsqVin = isReal(avg(Vin,HdagH,Vin));
 			}
 		}
 		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
@@ -573,18 +641,19 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		// A 2-site sweep is necessary! Move pivot back to edge.
 		if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
 		{
-			if (pivot==1)
-			{
-				Vout.sweep(0,DMRG::BROOM::QR);
-				pivot=0;
-				build_RW(0,Vout,H,Vin);
-			}
-			else if (pivot==N_sites-2)
-			{
-				Vout.sweep(N_sites-1,DMRG::BROOM::QR);
-				pivot = N_sites-1;
-				build_LW(N_sites-1,Vout,H,Vin);
-			}
+			sweep_to_edge(H,Vin,Vin,Vout,false,true); // build_LWRW = true
+//			if (pivot==1)
+//			{
+//				Vout.sweep(0,DMRG::BROOM::QR);
+//				pivot=0;
+//				build_RW(0,Vout,H,Vin);
+//			}
+//			else if (pivot==N_sites-2)
+//			{
+//				Vout.sweep(N_sites-1,DMRG::BROOM::QR);
+//				pivot = N_sites-1;
+//				build_LW(N_sites-1,Vout,H,Vin);
+//			}
 		}
 		
 		// optimization
@@ -633,8 +702,9 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	}
 	
 	// move pivot to edge at the end
-	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
-	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
+//	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
+//	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
+	sweep_to_edge(H,Vin,Vin,Vout,false,false);
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
@@ -870,20 +940,21 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		// A 2-site sweep is necessary! Move pivot back to edge.
 		if (N_halfsweeps%4 and N_halfsweeps > 0)
 		{
-			if (pivot==1)
-			{
-				Vout.sweep(0,DMRG::BROOM::QR);
-				pivot = 0;
-				build_RW(0,Vout,H,Vin1);
-				build_R (0,Vout,  Vin2);
-			}
-			else if (pivot==N_sites-2)
-			{
-				Vout.sweep(N_sites-1,DMRG::BROOM::QR);
-				pivot = N_sites-1;
-				build_LW(N_sites-1,Vout,H,Vin1);
-				build_L (N_sites-1,Vout,  Vin2);
-			}
+			sweep_to_edge(H,Vin1,Vin2,Vout,true,true); // build_LR = true, build LWRW = true
+//			if (pivot==1)
+//			{
+//				Vout.sweep(0,DMRG::BROOM::QR);
+//				pivot = 0;
+//				build_RW(0,Vout,H,Vin1);
+//				build_R (0,Vout,  Vin2);
+//			}
+//			else if (pivot==N_sites-2)
+//			{
+//				Vout.sweep(N_sites-1,DMRG::BROOM::QR);
+//				pivot = N_sites-1;
+//				build_LW(N_sites-1,Vout,H,Vin1);
+//				build_L (N_sites-1,Vout,  Vin2);
+//			}
 		}
 		
 		for (size_t j=1; j<=halfSweepRange; ++j)
@@ -891,7 +962,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
 			Stopwatch<> Chronos;
 			
-			if (N_halfsweeps%4 and N_halfsweeps > 0)
+			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
 			{
 				PivotVector<Symmetry,Scalar> Apair1;
 				prodOptimize2(H,Vin1,Vout,Apair1);
@@ -944,17 +1015,11 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		{
 			lout << " distance^2=" << sqdist << "\t";
 			t_tot = FullSweepTimer.time();
-			lout << "t[s]="      << t_tot
-			     << ", opt=" << round(t_opt/t_tot*100.,0) << "%"
-			     << ", ohead=" << round(t_ohead/t_tot*100.) << "%"
-			     << ", sweep=" << round(t_sweep/t_tot*100.) << "%"
-			     << ", LR="    << round(t_LR/t_tot*100.) << "%"
-			     << ", AA="    << round(t_AA/t_tot*100.) << "%"
-			     << endl;
+			lout << t_info() << endl;
 		}
 		
 		bool RESIZED = false;
-		if (N_halfsweeps%4 and 
+		if (N_halfsweeps%4 == 0 and 
 		    N_halfsweeps > 0 and 
 		    N_halfsweeps != max_halfsweeps and
 		    sqdist > tol)
@@ -971,8 +1036,9 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	}
 	
 	// last sweep
-	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
-	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
+//	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
+//	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
+	sweep_to_edge(H,Vin1,Vin2,Vout,false,false);
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
