@@ -604,29 +604,43 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 //		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
 ////		if constexpr (Symmetry::NON_ABELIAN) {HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);}
 ////		else {HxPsi.eps_svd = 0.; OxV(H,Psi,HxPsi);}
-//		HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);
+//		HxV(H,Psi,HxPsi,DMRG::VERBOSITY::SILENT);
+//		Mps<Symmetry,Scalar> ExPsi = Vout.state;
+//		ExPsi *= Vout.energy;
+//		cout << HxPsi.validate() << ", " << HxPsi.info() << endl;
+//		cout << ExPsi.validate() << ", " << ExPsi.info() << endl;
+//		HxPsi -= ExPsi;
+//		double err_exact = HxPsi.dot(HxPsi) / this->N_sites;
+		
+//		Stopwatch<> HsqTimer_;
+//		double PsixHxHxPsi = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state));
+//		double PsixPsi = dot(Vout.state,Vout.state);
+//		double PsixHxPsi = isReal(avg(Vout.state,H,Vout.state));
+//		double err_exact = (PsixHxHxPsi + pow(Vout.energy,2)*PsixPsi - 2.*Vout.energy*PsixHxPsi) / this->N_sites;
+//		cout << sqrt(PsixHxHxPsi) << ", " << Vout.energy << ", " << PsixHxPsi << ", " << PsixPsi << endl;
+//		
+//		cout << TCOLOR(RED) << "err_state=" << err_state << ", err_exact=" << err_exact << ", diff=" << abs(err_state-err_exact)
+//		     << ", " << HsqTimer_.info("‖H|Ψ>-E|Ψ>‖") << TCOLOR(BLACK) << endl;
+	}
+	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_FULL)
+	{
+		Stopwatch<> HsqTimer;
+//		Mps<Symmetry,Scalar> HxPsi;
+//		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
+//		if constexpr (Symmetry::NON_ABELIAN) {HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);}
+//		else                                 {HxPsi.eps_svd = 0.; OxV(H,Psi,HxPsi);}
 //		
 //		Mps<Symmetry,Scalar> ExPsi = Vout.state;
 //		ExPsi *= Vout.energy;
 //		HxPsi -= ExPsi;
 //		
-//		double err_exact = HxPsi.dot(HxPsi) / this->N_sites;
-//		
-//		cout << "err_state=" << err_state << ", err_exact=" << err_exact << ", diff=" << abs(err_state-err_exact) << endl;
-	}
-	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_FULL)
-	{
-		Stopwatch<> HsqTimer;
-		Mps<Symmetry,Scalar> HxPsi;
-		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
-		if constexpr (Symmetry::NON_ABELIAN) {HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);}
-		else                                 {HxPsi.eps_svd = 0.; OxV(H,Psi,HxPsi);}
+//		double err_state = HxPsi.dot(HxPsi) / this->N_sites;
 		
-		Mps<Symmetry,Scalar> ExPsi = Vout.state;
-		ExPsi *= Vout.energy;
-		HxPsi -= ExPsi;
+		double PsixHxHxPsi = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state));
+		double PsixPsi = dot(Vout.state,Vout.state);
+		double PsixHxPsi = isReal(avg(Vout.state,H,Vout.state));
+		err_state = (PsixHxHxPsi + pow(Vout.energy,2)*PsixPsi - 2.*Vout.energy*PsixHxPsi) / this->N_sites;
 		
-		double err_state = HxPsi.dot(HxPsi) / this->N_sites;
 		if (CHOSEN_VERBOSITY >= 2)
 		{
 			lout << HsqTimer.info("‖H|Ψ>-E|Ψ>‖") << endl;
@@ -756,7 +770,8 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
 		Vout.state.eps_svd = DynParam.eps_svd(SweepStat.N_halfsweeps);
-		if (SweepStat.N_halfsweeps%DynParam.Dincr_per(SweepStat.N_halfsweeps) == 0 and totalTruncWeight >= Vout.state.eps_svd)
+		if (SweepStat.N_halfsweeps%DynParam.Dincr_per(SweepStat.N_halfsweeps) == 0 and 
+		    (totalTruncWeight >= Vout.state.eps_svd or err_state > 1e2*GlobParam.tol_state))
 		{
 			// increase by Dincr_abs, but by no more than Dincr_rel (e.g. 10%)
 			size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Dincr_rel(SweepStat.N_halfsweeps) * Vout.state.max_Nsv), 
@@ -829,9 +844,9 @@ adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vou
 	f = max(0.1,min(2.,f)); // limit between [0.1,2]
 	Vout.state.alpha_rsvd *= f;
 	// limit between [min_alpha_rsvd,max_alpha_rsvd]:
-	Vout.state.alpha_rsvd = max(DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps),
-	                            min(DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps), Vout.state.alpha_rsvd)
-	                           ); 
+	double alpha_min = min(DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps), 
+	                       DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps)); // for the accidental case alpha_min > alpha_max
+	Vout.state.alpha_rsvd = max(alpha_min, min(DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps), Vout.state.alpha_rsvd)); 
 	
 //	cout << "ΔEopt=" << DeltaEopt << ", ΔEtrunc=" << DeltaEtrunc << ", f=" << f << ", alpha=" << Vout.state.alpha_rsvd << endl;
 	

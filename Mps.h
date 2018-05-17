@@ -1309,22 +1309,25 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 			if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 			{
 				Jack.compute(Aclump,ComputeThinU|ComputeThinV);
+				VectorXd SV = Jack.singularValues();
+				// sqrt(Symmetry::degeneracy(inbase[loc][qin])) 
+				
 				if (TOOL == DMRG::BROOM::BRUTAL_SVD)
 				{
-					Nret = min(static_cast<size_t>(Jack.singularValues().rows()), this->max_Nsv);
+					Nret = min(static_cast<size_t>(SV.rows()), this->max_Nsv);
 				}
 				else
 				{
-					Nret = (Jack.singularValues().array() > this->eps_svd).count();
+					Nret = (SV.array() > this->eps_svd).count();
 				}
-//				Nret = min(max(Nret,this->min_Nsv),static_cast<size_t>(Jack.singularValues().rows()));
 				Nret = max(Nret, this->min_Nsv);
 				Nret = min(Nret, this->max_Nsv);
-				truncWeightSub(qin) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
+				truncWeightSub(qin) = SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy
-				size_t Nnz = (Jack.singularValues().array() > 0.).count();
-				entropySub(qin) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
+//				cout << inbase[loc][qin] << ": SV=" << SV.transpose() << endl;
+				size_t Nnz = (SV.array() > 0.).count();
+				entropySub(qin) = -(SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{
@@ -1416,7 +1419,10 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		update_outbase(loc-1);
 	}
 	
-	truncWeight(loc) = truncWeightSub.sum();
+	if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::RICH_SVD)
+	{
+		truncWeight(loc) = truncWeightSub.sum();
+	}
 	
 	// entropy
 	if (TOOL == DMRG::BROOM::SVD or 
@@ -1497,22 +1503,25 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 			if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 			{
 				Jack.compute(Aclump,ComputeThinU|ComputeThinV);
+				VectorXd SV = Jack.singularValues();
+				// sqrt(Symmetry::degeneracy(outbase[loc][qout]))
+				
 				if (TOOL == DMRG::BROOM::BRUTAL_SVD)
 				{
-					Nret = min(static_cast<size_t>(Jack.singularValues().rows()), this->max_Nsv);
+					Nret = min(static_cast<size_t>(SV.rows()), this->max_Nsv);
 				}
 				else
 				{
-					Nret = (Jack.singularValues().array() > this->eps_svd).count();
+					Nret = (SV.array() > this->eps_svd).count();
 				}
-//				Nret = min(max(Nret,this->min_Nsv),static_cast<size_t>(Jack.singularValues().rows()));
 				Nret = max(Nret, this->min_Nsv);
 				Nret = min(Nret, this->max_Nsv);
-				truncWeightSub(qout) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
+				truncWeightSub(qout) = SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy
-				size_t Nnz = (Jack.singularValues().array() > 0.).count();
-				entropySub(qout) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
+//				cout << outbase[loc][qout] << ": SV=" << SV.transpose() << endl;
+				size_t Nnz = (SV.array() > 0.).count();
+				entropySub(qout) = -(SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{
@@ -1596,7 +1605,10 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		update_inbase(loc+1);
 	}
 	
-	truncWeight(loc) = truncWeightSub.sum();
+	if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::RICH_SVD)
+	{
+		truncWeight(loc) = truncWeightSub.sum();
+	}
 	
 	// entropy
 	if (TOOL == DMRG::BROOM::SVD or 
@@ -2895,34 +2907,57 @@ template<typename OtherScalar>
 void Mps<Symmetry,Scalar>::
 add_site (size_t loc, OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin)
 {
+//	if (loc == 0)
+//	{
+//		for (size_t s=0; s<qloc[0].size(); ++s)
+//		for (size_t q=0; q<A[0][s].dim; ++q)
+//		{
+//			qarray2<Nq> quple = {A[0][s].in[q], A[0][s].out[q]};
+//			auto it = Vin.A[0][s].dict.find(quple);
+//			addRight(alpha*Vin.A[0][s].block[it->second], A[0][s].block[q]);
+//		}
+//	}
+//	else if (loc == this->N_sites-1)
+//	{
+//		for (size_t s=0; s<qloc[this->N_sites-1].size(); ++s)
+//		for (size_t q=0; q<A[this->N_sites-1][s].dim; ++q)
+//		{
+//			qarray2<Nq> quple = {A[this->N_sites-1][s].in[q], A[this->N_sites-1][s].out[q]};
+//			auto it = Vin.A[this->N_sites-1][s].dict.find(quple);
+//			addBottom(Vin.A[this->N_sites-1][s].block[it->second], A[this->N_sites-1][s].block[q]);
+//		}
+//	}
+//	else
+//	{
+//		for (size_t s=0; s<qloc[loc].size(); ++s)
+//		for (size_t q=0; q<A[loc][s].dim; ++q)
+//		{
+//			qarray2<Nq> quple = {A[loc][s].in[q], A[loc][s].out[q]};
+//			auto it = Vin.A[loc][s].dict.find(quple);
+//			addBottomRight(Vin.A[loc][s].block[it->second], A[loc][s].block[q]);
+//		}
+//	}
+	
+	// NOTE: Does not work if blocks don't match!
 	if (loc == 0)
 	{
-		for (size_t s=0; s<qloc[0].size(); ++s)
-		for (size_t q=0; q<A[0][s].dim; ++q)
+		for (size_t s=0; s<qloc[loc].size(); ++s)
 		{
-			qarray2<Nq> quple = {A[0][s].in[q], A[0][s].out[q]};
-			auto it = Vin.A[0][s].dict.find(quple);
-			addRight(alpha*Vin.A[0][s].block[it->second], A[0][s].block[q]);
+			A[loc][s].addScale(alpha, Vin.A[loc][s], RIGHT);
 		}
 	}
 	else if (loc == this->N_sites-1)
 	{
-		for (size_t s=0; s<qloc[this->N_sites-1].size(); ++s)
-		for (size_t q=0; q<A[this->N_sites-1][s].dim; ++q)
+		for (size_t s=0; s<qloc[loc].size(); ++s)
 		{
-			qarray2<Nq> quple = {A[this->N_sites-1][s].in[q], A[this->N_sites-1][s].out[q]};
-			auto it = Vin.A[this->N_sites-1][s].dict.find(quple);
-			addBottom(Vin.A[this->N_sites-1][s].block[it->second], A[this->N_sites-1][s].block[q]);
+			A[loc][s].addScale(1., Vin.A[loc][s], BOTTOM);
 		}
 	}
 	else
 	{
 		for (size_t s=0; s<qloc[loc].size(); ++s)
-		for (size_t q=0; q<A[loc][s].dim; ++q)
 		{
-			qarray2<Nq> quple = {A[loc][s].in[q], A[loc][s].out[q]};
-			auto it = Vin.A[loc][s].dict.find(quple);
-			addBottomRight(Vin.A[loc][s].block[it->second], A[loc][s].block[q]);
+			A[loc][s].addScale(1., Vin.A[loc][s], BOTTOM_RIGHT);
 		}
 	}
 }

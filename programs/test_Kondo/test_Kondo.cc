@@ -45,14 +45,16 @@ bool CALC_DYNAMICS;
 int M, S;
 size_t D;
 size_t L, Ly;
-int N;
+int N, T;
 double J, U, t, tPrime, Bx, Bz;
 double alpha;
-double t_U1, t_U1xU1, t_SU2xU1;
+double t_U1, t_U1xU1, t_SU2xU1, t_U0xSU2;
 int Dinit, Dlimit, Imin, Imax;
 double tol_eigval, tol_state;
 double dt;
 DMRG::VERBOSITY::OPTION VERB;
+
+Eigenstate<VMPS::KondoU0xSU2::StateXd> g_U0xSU2;
 
 int main (int argc, char* argv[])
 {
@@ -84,8 +86,6 @@ int main (int argc, char* argv[])
 	tol_eigval = args.get<double>("tol_eigval",1e-6);
 	tol_state  = args.get<double>("tol_state",1e-5);
 	
-	CALC_DYNAMICS = args.get<bool>("CALC_DYN",0);
-	
 	lout << args.info() << endl;
 	lout.set(make_string("L=",L,"_Ly=",Ly,"_M=",M,"_D=",D,"_J=",J,".log"),"log");
 	
@@ -104,18 +104,19 @@ int main (int argc, char* argv[])
 	params.push_back({"Ly",Ly});
 	params.push_back({"J",J});
 	params.push_back({"t",t});
+	params.push_back({"tPrime",tPrime});
 	params.push_back({"U",U});
 	//params.push_back({"Bz",Bz,0});
 	//params.push_back({"Bx",Bx,0});
 	params.push_back({"D",2ul,0});
 	params.push_back({"CALC_SQUARE",false});
 	
-	for (size_t l=1; l<L; ++l)
-	{
-		params.push_back({"D",1ul,l});
-		// params.push_back({"Bz",0.,l});
-		// params.push_back({"Bx",0.,l});
-	}
+//	for (size_t l=1; l<L; ++l)
+//	{
+//		params.push_back({"D",1ul,l});
+//		// params.push_back({"Bz",0.,l});
+//		// params.push_back({"Bx",0.,l});
+//	}
 	
 	VMPS::KondoU1 H_U1(L,params);
 	lout << H_U1.info() << endl;
@@ -123,7 +124,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::KondoU1::StateXd> g_U1;
 	
 	VMPS::KondoU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {N}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 1e3*tol_eigval,1e3*tol_state, Dinit,3*Dlimit, Imax,Imin, alpha);
+	DMRG_U1.edgeState(H_U1, g_U1, {N}, LANCZOS::EDGE::GROUND);
 	
 //	VectorXd d_U1(L); d_U1.setZero();
 //	VectorXd n_U1(L); n_U1.setZero();
@@ -171,7 +172,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::KondoU1xU1::StateXd> g_U1xU1;
 	
 	VMPS::KondoU1xU1::Solver DMRG_U1xU1(VERB);
-	DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {M,N}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {M,N}, LANCZOS::EDGE::GROUND);
 	
 	t_U1xU1 = Watch_U1xU1.time();
 	
@@ -214,42 +215,6 @@ int main (int argc, char* argv[])
 //	OxV(H_U1,g_U1.state,Oxg_U1,DMRG::BROOM::SVD);
 //	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
 //	
-//	// dynamics (of Néel state)
-//	if (CALC_DYNAMICS)
-//	{
-//		lout << "-------DYNAMICS-------" << endl;
-//		int Ldyn = 12;
-//		vector<double> Jz_list = {0., -1., -2., -4.};
-//		
-//		for (const auto& Jz:Jz_list)
-//		{
-//			cout << "Jz=" << Jz << endl;
-//			VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
-//			lout << H_U1t.info() << endl;
-//			VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
-//			TDVPPropagator<VMPS::HeisenbergU1XXZ,Sym::U1<double>,double,complex<double>,VMPS::HeisenbergU1XXZ::StateXcd> TDVP(H_U1t,Psi);
-//		
-//			double t = 0;
-//			ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
-//			for (int i=0; i<=static_cast<int>(6./dt); ++i)
-//			{
-//				double res = 0;
-//				for (int l=0; l<Ldyn; ++l)
-//				{
-//					res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
-//				}
-//				res /= Ldyn;
-//				if(VERB != DMRG::VERBOSITY::SILENT) {lout << t << "\t" << res << endl;}
-//				Filer << t << "\t" << res << endl;
-//		
-//				TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
-//				if(VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
-//				t += dt;
-//			}
-//			Filer.close();
-//		}
-//	}
-//	
 	// --------SU(2)---------
 	lout << endl << "--------SU(2)---------" << endl << endl;
 	
@@ -260,7 +225,7 @@ int main (int argc, char* argv[])
 	Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1;
 	
 	VMPS::KondoSU2xU1::Solver DMRG_SU2xU1(VERB);
-	DMRG_SU2xU1.edgeState(H_SU2xU1, g_SU2xU1, {S,N}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
+	DMRG_SU2xU1.edgeState(H_SU2xU1, g_SU2xU1, {S,N}, LANCZOS::EDGE::GROUND);
 	
 	t_SU2xU1 = Watch_SU2xU1.time();
 	
@@ -288,40 +253,19 @@ int main (int argc, char* argv[])
 //	
 //	cout << densitiy_matrix_U1xU1 << endl << endl;
 //	cout << densitiy_matrix_SU2xU1 << endl << endl;
-
-	lout << endl << "--------U(0)xSU(2)---------" << endl << endl;
-//
-	vector<Param> params2;
-	params2.push_back({"Ly",Ly});
-	params2.push_back({"J",J});
-	params2.push_back({"t",t});
-	params2.push_back({"U",U});
-	// params2.push_back({"Bz",Bz,0});
-	// params2.push_back({"Bx",Bx,0});
-	params2.push_back({"D",2ul,0});
-	params2.push_back({"CALC_SQUARE",false});
-	params2.push_back({"subL",SUB_LATTICE::A,0});
-
-	for (size_t l=1; l<L; ++l)
-	{
-		if(l%2!=0) {params2.push_back({"subL",SUB_LATTICE::B,l});}
-		else {params2.push_back({"subL",SUB_LATTICE::A,l});}
-
-		params2.push_back({"D",1ul,l});
-		// params2.push_back({"Bz",0.,l});
-		// params2.push_back({"Bx",0.,l});
-	}
-
-	Stopwatch<> Watch_U0xSU2;
-	VMPS::KondoSU2xU1 H_U0xSU2(L,params2);
-	lout << H_U0xSU2.info() << endl;
-	Eigenstate<VMPS::KondoU0xSU2::StateXd> g_U0xSU2;
 	
-	VMPS::KondoU0xSU2::Solver DMRG_U0xSU2(VERB);
-	DMRG_U0xSU2.edgeState(H_U0xSU2, g_U0xU1, {T}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
-	
-	t_U0xSU2 = Watch_U0xSU2.time();
-
+	// --------U(0)xSU(2)---------
+//	lout << endl << "--------U(0)xSU(2)---------" << endl << endl;
+//	
+//	Stopwatch<> Watch_U0xSU2;
+//	VMPS::KondoU0xSU2 H_U0xSU2(L,params);
+//	lout << H_U0xSU2.info() << endl;
+//	
+//	VMPS::KondoU0xSU2::Solver DMRG_U0xSU2(VERB);
+//	DMRG_U0xSU2.edgeState(H_U0xSU2, g_U0xSU2, {T}, LANCZOS::EDGE::GROUND);
+//	
+//	t_U0xSU2 = Watch_U0xSU2.time();
+//	
 	//--------output---------
 	
 	TextTable T( '-', '|', '+' );
@@ -337,9 +281,11 @@ int main (int argc, char* argv[])
 	
 	T.add("E/L");
 	T.add(to_string_prec(g_U1.energy/V));
-	T.add(to_string_prec(g_U1xU1.energy/V)); T.add(to_string_prec(g_SU2xU1.energy/V));
-	T.add(to_string_prec(g_U0xSU2.energy/V)); T.add(to_string_prec(g_SU2xU1.energy/V)); T.endOfRow();
-
+	T.add(to_string_prec(g_U1xU1.energy/V));
+	T.add(to_string_prec(g_SU2xU1.energy/V));
+	T.add(to_string_prec(g_U0xSU2.energy/V));
+	T.endOfRow();
+	
 	T.add("E/L diff");
 	T.add(to_string_prec(abs(g_U1.energy-g_SU2xU1.energy)/V));
 	T.add(to_string_prec(abs(g_U1xU1.energy-g_SU2xU1.energy)/V));

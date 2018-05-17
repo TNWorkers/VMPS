@@ -53,22 +53,22 @@ string to_string_prec (Scalar x, int n=14)
 	return ss.str();
 }
 
-complex<double> Ptot (const MatrixXd &densityMatrix, int Lx)
+complex<double> Ptot (const MatrixXd &densityMatrix, int L)
 {
 	complex<double> P=0.;
-	int L_2 = static_cast<int>(Lx)/2;
-	for (int i=0; i<Lx; ++i)
-	for (int j=0; j<Lx; ++j)
+	int L_2 = static_cast<int>(L)/2;
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
 	for (int n=-L_2; n<L_2; ++n)
 	{
-		double k = 2.*M_PI*n/Lx;
+		double k = 2.*M_PI*n/L;
 		P += k * exp(-1.i*k*static_cast<double>(i-j)) * densityMatrix(i,j);
 	}
-	P /= (Lx*Lx);
+	P /= (L*L);
 	return P;
 }
 
-size_t L, Lx, Ly;
+size_t L, Ly;
 double t, tPrime, U, mu, Bz;
 int Nup, Ndn, N;
 double alpha;
@@ -88,7 +88,7 @@ Eigenstate<VMPS::Hubbard::StateXd> g_U0;
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
-	Lx = args.get<size_t>("Lx",4); L=Lx;
+	L = args.get<size_t>("L",4);
 	Ly = args.get<size_t>("Ly",1);
 	t = args.get<double>("t",1.);
 	tPrime = args.get<double>("tPrime",0.);
@@ -117,7 +117,7 @@ int main (int argc, char* argv[])
 	GlobParam.tol_state = args.get<double>("tol_state",1e-5);
 	
 	lout << args.info() << endl;
-	lout.set(make_string("Lx=",Lx,"_Ly=",Ly,"_t=",t,"_t'=",tPrime,"_U=",U,".log"),"log");
+	lout.set(make_string("L=",L,"_Ly=",Ly,"_t=",t,"_t'=",tPrime,"_U=",U,".log"),"log");
 	
 	#ifdef _OPENMP
 	lout << "threads=" << omp_get_max_threads() << endl;
@@ -128,12 +128,12 @@ int main (int argc, char* argv[])
 	//--------ED-----------
 	lout << endl << "--------ED---------" << endl << endl;
 	
-	if (Lx <= 12)
+	if (L <= 12)
 	{
 		InteractionParams params;
 		params.set_U(U);
 		(tPrime!=0) ? params.set_hoppings({-t,-tPrime}):params.set_hoppings({-t});
-	//	MatrixXd BondMatrix(Lx*Ly,Lx*Ly); BondMatrix.setZero();
+	//	MatrixXd BondMatrix(L*Ly,L*Ly); BondMatrix.setZero();
 	//	BondMatrix(0,1) = -t;
 	//	BondMatrix(1,0) = -t;
 	//	
@@ -146,19 +146,19 @@ int main (int argc, char* argv[])
 	//	BondMatrix(1,3) = -t;
 	//	BondMatrix(3,1) = -t;
 	
-	//	HubbardModel H_ED(Lx*Ly,Nup,Ndn,U,BondMatrix.sparseView(), BC_DANGLING);
-		HubbardModel H_ED(Lx*Ly,Nup,Ndn,params, BC_DANGLING);
+	//	HubbardModel H_ED(L*Ly,Nup,Ndn,U,BondMatrix.sparseView(), BC_DANGLING);
+		HubbardModel H_ED(L*Ly,Nup,Ndn,params, BC_DANGLING);
 		lout << H_ED.info() << endl;
 		LanczosSolver<HubbardModel,VectorXd,double> Lutz;
 		Lutz.edgeState(H_ED,g_ED,LANCZOS::EDGE::GROUND);
 	
-	//	HubbardModel H_EDm(Lx*Ly,Nup-1,Ndn,U,BondMatrix.sparseView(), BC_DANGLING);
-		HubbardModel H_EDm(Lx*Ly,Nup-1,Ndn,params, BC_DANGLING);
+	//	HubbardModel H_EDm(L*Ly,Nup-1,Ndn,U,BondMatrix.sparseView(), BC_DANGLING);
+		HubbardModel H_EDm(L*Ly,Nup-1,Ndn,params, BC_DANGLING);
 		Eigenstate<VectorXd> g_EDm;
 		Lutz.edgeState(H_EDm,g_EDm,LANCZOS::EDGE::GROUND);
 	
-	//	HubbardModel H_EDmm(Lx*Ly,Nup-1,Ndn-1,U,BondMatrix.sparseView(), BC_DANGLING);
-		HubbardModel H_EDmm(Lx*Ly,Nup-1,Ndn-1,params, BC_DANGLING);
+	//	HubbardModel H_EDmm(L*Ly,Nup-1,Ndn-1,U,BondMatrix.sparseView(), BC_DANGLING);
+		HubbardModel H_EDmm(L*Ly,Nup-1,Ndn-1,params, BC_DANGLING);
 		Eigenstate<VectorXd> g_EDmm;
 		Lutz.edgeState(H_EDmm,g_EDmm,LANCZOS::EDGE::GROUND);
 	
@@ -198,7 +198,7 @@ int main (int argc, char* argv[])
 //	lout << endl << "--------U(0)---------" << endl << endl;
 //	
 //	Stopwatch<> Watch_U0;
-//	VMPS::Hubbard H_U0(Lx,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"Ly",Ly}});
+//	VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"Ly",Ly}});
 //	lout << H_U0.info() << endl;
 //	
 //	VMPS::Hubbard::Solver DMRG_U0(VERB);
@@ -206,7 +206,7 @@ int main (int argc, char* argv[])
 //	
 //	lout << endl;
 //	double Ntot = 0.;
-//	for (size_t lx=0; lx<Lx; ++lx)
+//	for (size_t lx=0; lx<L; ++lx)
 //	for (size_t ly=0; ly<Ly; ++ly)
 //	{
 //		double n_l = avg(g_U0.state, H_U0.n(UPDN,lx,ly), g_U0.state);
@@ -238,7 +238,7 @@ int main (int argc, char* argv[])
 	
 	Stopwatch<> Watch_U1;
 	
-	VMPS::HubbardU1xU1 H_U1(Lx,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
+	VMPS::HubbardU1xU1 H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
 	lout << H_U1.info() << endl;
 	Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1;
 	
@@ -284,7 +284,7 @@ int main (int argc, char* argv[])
 //	lout << endl << densityMatrix_U1B << endl;
 //	lout << "diff=" << (densityMatrix_U1-densityMatrix_U1B).norm() << endl;
 //	
-//	lout << "P U(1): " << Ptot(densityMatrix_U1,Lx) << "\t" << Ptot(densityMatrix_U1B,Lx) << endl;
+//	lout << "P U(1): " << Ptot(densityMatrix_U1,L) << "\t" << Ptot(densityMatrix_U1B,L) << endl;
 //	
 //	ArrayXd d_U1(L); d_U1=0.;
 //	for (size_t i=0; i<L; ++i) 
@@ -316,7 +316,7 @@ int main (int argc, char* argv[])
 	
 	Stopwatch<> Watch_SU2;
 	
-	VMPS::HubbardSU2xU1 H_SU2(Lx,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
+	VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
 	lout << H_SU2.info() << endl;
 	Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 	
@@ -360,7 +360,7 @@ int main (int argc, char* argv[])
 //	lout << endl << densityMatrix_SU2B << endl;
 //	lout << "diff=" << (densityMatrix_SU2-densityMatrix_SU2B).norm() << endl;
 //	
-//	lout << "P SU(2): " << Ptot(densityMatrix_SU2,Lx) << "\t" << Ptot(densityMatrix_SU2B,Lx) << endl;
+//	lout << "P SU(2): " << Ptot(densityMatrix_SU2,L) << "\t" << Ptot(densityMatrix_SU2B,L) << endl;
 //	
 //	ArrayXd d_SU2(L); d_SU2=0.;
 //	for (size_t i=0; i<L; ++i) 
@@ -382,7 +382,7 @@ int main (int argc, char* argv[])
 	paramsSU2xSU2.push_back({"subL",SUB_LATTICE::B,1});
 	paramsSU2xSU2.push_back({"Ly",Ly,0});
 	paramsSU2xSU2.push_back({"Ly",Ly,1});
-	VMPS::HubbardSU2xSU2 H_SU2xSU2(Lx,paramsSU2xSU2);
+	VMPS::HubbardSU2xSU2 H_SU2xSU2(L,paramsSU2xSU2);
 	lout << H_SU2xSU2.info() << endl;
 	Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
 	
@@ -428,7 +428,7 @@ int main (int argc, char* argv[])
 //	lout << endl << 0.5*densityMatrix_SU2xSU2B << endl; //factor 1/2 because we have computed cdagc+cdagc
 //	lout << "diff=" << (densityMatrix_SU2xSU2-densityMatrix_SU2xSU2B).norm() << endl;
 //	
-//	lout << "P SU(2): " << Ptot(0.5*densityMatrix_SU2xSU2,Lx) << "\t" << Ptot(0.5*densityMatrix_SU2xSU2B,Lx) << endl;
+//	lout << "P SU(2): " << Ptot(0.5*densityMatrix_SU2xSU2,L) << "\t" << Ptot(0.5*densityMatrix_SU2xSU2B,L) << endl;
 //	
 //	ArrayXd nh_SU2xSU2(L); nh_SU2xSU2=0.;
 //	ArrayXd ns_SU2xSU2(L); ns_SU2xSU2=0.;

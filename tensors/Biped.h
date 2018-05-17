@@ -9,6 +9,7 @@
 
 #include "DmrgExternal.h"
 #include "symmetry/functions.h"
+#include "DmrgConglutinations.h"
 
 namespace contract {
 	enum MODE {UNITY,OORR,DOT};
@@ -139,7 +140,7 @@ public:
 	 */
 	Biped<Symmetry,MatrixType_>& operator+= (const Biped<Symmetry,MatrixType_> &Arhs);
 	
-	void addScale (const double &factor, const Biped<Symmetry,MatrixType_> &Mrhs);
+	void addScale (const double &factor, const Biped<Symmetry,MatrixType_> &Mrhs, BLOCK_POSITION BP = SAME_PLACE);
 	
 	/**
 	 * This functions perform a contraction of \p this and \p A, which is a standard Matrix multiplication in this case.
@@ -733,10 +734,12 @@ Biped<Symmetry,MatrixType_> operator- (const Biped<Symmetry,MatrixType_> &M1, co
 	return Mout;
 }
 
+
+
 /**Subtracts two Bipeds block- and coefficient-wise.*/
 template<typename Symmetry, typename MatrixType_>
 void Biped<Symmetry,MatrixType_>::
-addScale (const double &factor, const Biped<Symmetry,MatrixType_> &Mrhs)
+addScale (const double &factor, const Biped<Symmetry,MatrixType_> &Mrhs, BLOCK_POSITION POS)
 {
 	vector<size_t> blocks_in_Mrhs;
 	Biped<Symmetry,MatrixType_> Mout;
@@ -754,7 +757,15 @@ addScale (const double &factor, const Biped<Symmetry,MatrixType_> &Mrhs)
 		{
 			if (block[q].size() != 0 and Mrhs.block[it->second].size() != 0)
 			{
-				Mtmp = block[q] + factor * Mrhs.block[it->second]; // M1+factor*Mrhs
+				if (POS == SAME_PLACE)
+				{
+					Mtmp = block[q] + factor * Mrhs.block[it->second]; // M1+factor*Mrhs
+				}
+				else
+				{
+					Mtmp = block[q];
+					addPos(factor * Mrhs.block[it->second], Mtmp, POS);
+				}
 			}
 			else if (block[q].size() == 0 and Mrhs.block[it->second].size() != 0)
 			{

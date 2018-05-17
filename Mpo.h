@@ -870,7 +870,7 @@ generate_label (size_t Lcell)
 				ss << s << ",";
 			}
 			ss.seekp(-1,ios_base::end); // delete last comma
-			ss << ": " << c.first << endl;
+//			ss << ": " << c.first << endl;
 		}
 	}
 	

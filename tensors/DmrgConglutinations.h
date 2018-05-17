@@ -78,6 +78,17 @@ void addBottom (const MatrixType1 &Min, MatrixType2 &Mout)
 	}
 }
 
+enum BLOCK_POSITION {SAME_PLACE, BOTTOM_RIGHT, RIGHT, BOTTOM};
+
+template<typename MatrixType1, typename MatrixType2>
+void addPos (const MatrixType1 &Min, MatrixType2 &Mout, BLOCK_POSITION POS)
+{
+	assert(POS != SAME_PLACE);
+	if      (POS == BOTTOM_RIGHT) {addBottomRight(Min,Mout);}
+	else if (POS == RIGHT)        {addRight(Min,Mout);}
+	else if (POS == BOTTOM)       {addBottom(Min,Mout);}
+}
+
 /**Removes a column of a matrix. Might be useful to remove zero columns before doing SVD and such.
 @param i : column to be removed
 @param M : apply to this matrix*/

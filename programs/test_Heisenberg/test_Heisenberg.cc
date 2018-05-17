@@ -59,7 +59,7 @@ VMPS::HeisenbergU1XXZ::StateXcd Neel (const VMPS::HeisenbergU1XXZ &H)
 
 bool CALC_DYNAMICS;
 int M, S;
-size_t D;
+size_t D, D1;
 size_t L, Ly, Ldyn;
 double J, Jprime;
 double alpha;
@@ -116,7 +116,7 @@ int main (int argc, char* argv[])
 	Jprime = args.get<double>("Jprime",0.);
 	M = args.get<int>("M",0);
 	D = args.get<size_t>("D",2);
-	size_t D1 = args.get<size_t>("D1",2);
+	D1 = args.get<size_t>("D1",D);
 	S = abs(M)+1;
 	
 	DMRG::CONTROL::GLOB GlobParam;
@@ -189,7 +189,7 @@ int main (int argc, char* argv[])
 	lout << endl << "--------U(1)---------" << endl << endl;
 	
 	Stopwatch<> Watch_U1;
-	VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",false}});
+	VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
 	lout << H_U1.info() << endl;
 	
 	VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
@@ -257,7 +257,7 @@ int main (int argc, char* argv[])
 	lout << endl << "--------SU(2)---------" << endl << endl;
 	
 	Stopwatch<> Watch_SU2;
-	VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"D",D1,1},{"Ly",Ly}});
+	VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",true}});
 	lout << H_SU2.info() << endl;
 	
 	VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
