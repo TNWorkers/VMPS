@@ -60,7 +60,13 @@ public:
 	 * \param loc : The location in the chain
 	*/
 	static HamiltonianTermsXd<Symmetry> set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc=0);
-		
+
+	///@{
+	/**Push params for DMRG algorithms via these functions to an instance of DmrgSolver.*/
+	DMRG::CONTROL::DYN get_DynParam(const vector<Param> &params={}) const;
+	DMRG::CONTROL::GLOB get_GlobParam(const vector<Param> &params={}) const;
+	///@}
+	
 	///@{
 	/**Observables.*/
 	Mpo<Symmetry,double> S (std::size_t locx, std::size_t locy=0);
@@ -71,7 +77,7 @@ public:
 	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an MpsQ.
 	\returns \p true if valid, \p false if not*/
 	bool validate (qarray<1> qnum) const;
-	
+	double alpha;
 protected:
 	
 	const std::map<string,std::any> defaults = 
@@ -79,7 +85,18 @@ protected:
 		{"J",-1.}, {"Jprime",0.}, {"Jperp",0.}, {"D",2ul},
 		{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 	};
-	
+
+	const std::map<string,std::any> sweep_defaults = 
+	{
+		{"max_alpha",100.}, {"min_alpha",1.e-11}, {"eps_svd",1.e-7},
+		{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
+		{"min_Nsv",0ul}, {"max_Nrich",-1},
+		{"max_halfsweeps",20ul}, {"max_halfsweeps",6ul},
+		{"Dinit",4ul}, {"Qinit",10ul}, {"Dlimit",100ul},
+		{"tol_eigval",1.e-7}, {"tol_state",1.e-6},
+		{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
+	};
+
 	vector<SpinBase<Symmetry> > B;
 };
 
@@ -104,6 +121,49 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+}
+
+DMRG::CONTROL::GLOB HeisenbergSU2::
+get_GlobParam(const vector<Param> &params) const
+{
+	ParamHandler P(params,sweep_defaults);
+	DMRG::CONTROL::GLOB out;
+	out.min_halfsweeps = P.get<size_t>("min_halfsweeps");
+	out.max_halfsweeps = P.get<size_t>("max_halfsweeps");
+	out.Dinit          = P.get<size_t>("Dinit");
+	out.Qinit          = P.get<size_t>("Qinit");
+	out.Dlimit         = P.get<size_t>("Dlimit");
+	out.tol_eigval     = P.get<double>("tol_eigval");
+	out.tol_state      = P.get<double>("tol_state");
+	out.savePeriod     = P.get<size_t>("savePeriod");
+	out.CONVTEST       = P.get<DMRG::CONVTEST::OPTION>("CONVTEST");
+	out.CALC_S_ON_EXIT = P.get<bool>("CALC_S_ON_EXIT");
+	return out;
+}
+
+DMRG::CONTROL::DYN HeisenbergSU2::
+get_DynParam(const vector<Param> &params) const
+{
+	ParamHandler P(params,sweep_defaults);
+	DMRG::CONTROL::DYN out;
+	double tmp1        = P.get<double>("max_alpha");
+	out.max_alpha_rsvd = [tmp1] (size_t i) { return tmp1; };
+	tmp1               = P.get<double>("min_alpha");
+	out.min_alpha_rsvd = [tmp1] (size_t i) { return tmp1; };
+	tmp1               = P.get<double>("eps_svd");
+	out.eps_svd        = [tmp1] (size_t i) { return tmp1; };
+	size_t tmp2        = P.get<size_t>("Dincr_abs");
+	out.Dincr_abs      = [tmp2] (size_t i) { return tmp2; };
+	tmp2               = P.get<size_t>("Dincr_per");
+	out.Dincr_per      = [tmp2] (size_t i) { return tmp2; };
+	tmp1               = P.get<double>("Dincr_rel");
+	out.Dincr_rel      = [tmp1] (size_t i) { return tmp1; };
+	tmp2               = P.get<size_t>("min_Nsv");
+	out.min_Nsv        = [tmp2] (size_t i) { return tmp2; };
+	int tmp3           = P.get<int>("max_Nrich");
+	out.max_Nrich	   = [tmp3] (size_t i) { return tmp3; };
+
+	return out;
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::

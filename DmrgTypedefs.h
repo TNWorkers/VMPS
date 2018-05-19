@@ -3,7 +3,7 @@
 
 #include <array>
 #include <vector>
-#include <variant>
+#include <functional>
 
 #include "tensors/SiteOperator.h"
 
@@ -262,7 +262,7 @@ struct DMRG
 			constexpr static size_t savePeriod = 0;
 			constexpr static DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
 			constexpr static bool CALC_S_ON_EXIT = true;
-			
+
 			static double max_alpha_rsvd (size_t i) {return (i<=10)? 1e2:0;}
 			static double min_alpha_rsvd (size_t i) {return (i<=10)? 1e-11:0;}
 			static double eps_svd        (size_t i) {return 1e-7;}
@@ -289,14 +289,23 @@ struct DMRG
 		
 		struct DYN
 		{
-			double (*max_alpha_rsvd) (size_t i) = CONTROL::DEFAULT::max_alpha_rsvd;
-			double (*min_alpha_rsvd) (size_t i) = CONTROL::DEFAULT::min_alpha_rsvd;
-			double (*eps_svd)        (size_t i) = CONTROL::DEFAULT::eps_svd;
-			size_t (*Dincr_abs)      (size_t i) = CONTROL::DEFAULT::Dincr_abs;
-			double (*Dincr_rel)      (size_t i) = CONTROL::DEFAULT::Dincr_rel;
-			size_t (*Dincr_per)      (size_t i) = CONTROL::DEFAULT::Dincr_per;
-			size_t (*min_Nsv)        (size_t i) = CONTROL::DEFAULT::min_Nsv;
-			int    (*max_Nrich)      (size_t i) = CONTROL::DEFAULT::max_Nrich;
+			function<double(size_t)> max_alpha_rsvd  = CONTROL::DEFAULT::max_alpha_rsvd;
+			function<double(size_t)> min_alpha_rsvd	 = CONTROL::DEFAULT::min_alpha_rsvd;
+			function<double(size_t)> eps_svd		 = CONTROL::DEFAULT::eps_svd;
+			function<size_t(size_t)> Dincr_abs		 = CONTROL::DEFAULT::Dincr_abs;
+			function<double(size_t)> Dincr_rel		 = CONTROL::DEFAULT::Dincr_rel;
+			function<size_t(size_t)> Dincr_per		 = CONTROL::DEFAULT::Dincr_per;
+			function<size_t(size_t)> min_Nsv		 = CONTROL::DEFAULT::min_Nsv;
+			function<int(size_t)> max_Nrich			 = CONTROL::DEFAULT::max_Nrich;
+
+			// double (*max_alpha_rsvd) (size_t i) = CONTROL::DEFAULT::max_alpha_rsvd;
+			// double (*min_alpha_rsvd) (size_t i) = CONTROL::DEFAULT::min_alpha_rsvd;
+			// double (*eps_svd)        (size_t i) = CONTROL::DEFAULT::eps_svd;
+			// size_t (*Dincr_abs)      (size_t i) = CONTROL::DEFAULT::Dincr_abs;
+			// double (*Dincr_rel)      (size_t i) = CONTROL::DEFAULT::Dincr_rel;
+			// size_t (*Dincr_per)      (size_t i) = CONTROL::DEFAULT::Dincr_per;
+			// size_t (*min_Nsv)        (size_t i) = CONTROL::DEFAULT::min_Nsv;
+			// int    (*max_Nrich)      (size_t i) = CONTROL::DEFAULT::max_Nrich;
 		};
 	};
 };
