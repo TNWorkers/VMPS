@@ -489,7 +489,7 @@ Simp (std::size_t locx, std::size_t locy)
 	std::stringstream ss;
 	ss << "Simp(" << locx << "," << locy << ")";
 
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	Mpo<Symmetry> Mout(N_sites, {3,0}, ss.str());
 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
 	Mout.setLocal(locx, OperatorType::outerprod(B[locx].S(locy),F[locx].Id(),{3,0}).plain<double>());
@@ -503,7 +503,7 @@ Simpdag (std::size_t locx, std::size_t locy)
 	std::stringstream ss;
 	ss << "Simp†(" << locx << "," << locy << ")";
 
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	Mpo<Symmetry> Mout(N_sites, {3,0}, ss.str());
 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
 	Mout.setLocal(locx, sqrt(3.)*OperatorType::outerprod(B[locx].Sdag(locy),F[locx].Id(),{3,0}).plain<double>());
