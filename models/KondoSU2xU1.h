@@ -183,7 +183,7 @@ get_DynParam(const vector<Param> &params) const
 	DMRG::CONTROL::DYN out;
 	double tmp1          = P.get<double>("max_alpha");
 	size_t lim_for_alpha = P.get<size_t>("lim_for_alpha");
-	out.max_alpha_rsvd   = [tmp1] (size_t i) { return (i<=lim_for_alpha)? tmp1:0; };
+	out.max_alpha_rsvd   = [tmp1,lim_for_alpha] (size_t i) { return (i<=lim_for_alpha)? tmp1:0; };
 	tmp1                 = P.get<double>("min_alpha");
 	out.min_alpha_rsvd   = [tmp1] (size_t i) { return tmp1; };
 	tmp1                 = P.get<double>("eps_svd");
