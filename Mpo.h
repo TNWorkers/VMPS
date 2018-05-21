@@ -715,10 +715,20 @@ calc_auxBasis()
 	for (size_t l=1; l<this->N_sites; ++l)
 	{
 		Qbasis<Symmetry> qauxtmp;
-		for(size_t k=0; k<qOp[l].size(); ++k)
+		auto qtmps = Symmetry::reduceSilent(qaux[l-1].qs(),qOp[l-1],true);
+
+		// for(size_t k=0; k<qOp[l].size(); ++k)
+		// {
+		// 	qauxtmp.push_back(qOp[l][k],auxdim());
+		// }
+		for(const auto &qtmp : qtmps)
 		{
-			qauxtmp.push_back(qOp[l][k],auxdim());
+			if(auto it=find(qOp[l].begin(),qOp[l].end(),qtmp); it != qOp[l].end())
+			{
+				qauxtmp.push_back(qtmp,auxdim());
+			}
 		}
+		if(qauxtmp.Nq() == 0) {qauxtmp.push_back(qtmps[0],auxdim());}
 		// std::unordered_set<qType> uniqueControl;
 		// int lprev = l-1;
 		// int lnext = l+1;

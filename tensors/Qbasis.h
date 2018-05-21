@@ -73,7 +73,7 @@ public:
     /**Returns a vector containing all quantum numbers (irreps) contained in the basis. The size of the vector is Nq().*/
 	const std::vector<qType> qs() const;
 
-	/**Same as qs(), but the quantum numbers are inserted to an std::unordered_map.*/
+	/**Same as qs(), but the quantum numbers are inserted to an std::unordered_set.*/
 	const std::unordered_set<qType> unordered_qs() const;
 	///\}
 

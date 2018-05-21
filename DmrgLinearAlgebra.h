@@ -185,7 +185,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			           Bnext);
 			B.clear();
 			B = Bnext;
-//			cout << "l=" << l << ", B.dim=" << B.dim << endl;
+			// cout << "after l=" << l << ", B.dim=" << B.dim << endl << endl;;
 			Bnext.clear();
 		}
 		
