@@ -602,15 +602,17 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		}
 		
 //		Mps<Symmetry,Scalar> HxPsi;
+//		cout << "Vout.state.min_Nsv=" << Vout.state.min_Nsv << endl;
 //		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
 //		HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);
 //		Mps<Symmetry,Scalar> ExPsi = Vout.state;
 //		ExPsi *= Vout.energy;
-//		cout << HxPsi.validate() << ", " << HxPsi.info() << endl;
-//		cout << ExPsi.validate() << ", " << ExPsi.info() << endl;
+//		cout << HxPsi.validate("HxPsi") << ", " << HxPsi.info() << endl;
+//		cout << ExPsi.validate("ExPsi") << ", " << ExPsi.info() << endl;
 //		HxPsi -= ExPsi;
+//		cout << HxPsi.validate("res") << ", " << HxPsi.info() << endl;
 //		double err_exact_ = HxPsi.dot(HxPsi) / this->N_sites;
-		
+//		
 //		Stopwatch<> HsqTimer_;
 //		double PsixHxHxPsi = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state));
 //		double PsixPsi = dot(Vout.state,Vout.state);
@@ -619,7 +621,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 //		cout << sqrt(PsixHxHxPsi) << ", " << Vout.energy << ", " << PsixHxPsi << ", " << PsixPsi << endl;
 //		
 //		cout << TCOLOR(RED) << "err_state=" << err_state << ", err_exact=" << err_exact 
-////		<< ", " << err_exact_ 
+//		<< ", " << err_exact_ 
 //		<< ", diff=" << abs(err_state-err_exact)
 //		<< ", ratio=" << err_state/err_exact
 //		     << ", " << HsqTimer_.info("‖H|Ψ>-E|Ψ>‖") << TCOLOR(BLACK) << endl;
@@ -627,21 +629,17 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_FULL)
 	{
 		Stopwatch<> HsqTimer;
-//		Mps<Symmetry,Scalar> HxPsi;
-//		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
-//		if constexpr (Symmetry::NON_ABELIAN) {HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);}
-//		else                                 {HxPsi.eps_svd = 0.; OxV(H,Psi,HxPsi);}
-//		
-//		Mps<Symmetry,Scalar> ExPsi = Vout.state;
-//		ExPsi *= Vout.energy;
-//		HxPsi -= ExPsi;
-//		
-//		double err_state = HxPsi.dot(HxPsi) / this->N_sites;
 		
-		double PsixHxHxPsi = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state));
-		double PsixPsi = dot(Vout.state,Vout.state);
-		double PsixHxPsi = isReal(avg(Vout.state,H,Vout.state));
-		err_state = (PsixHxHxPsi + pow(Vout.energy,2)*PsixPsi - 2.*Vout.energy*PsixHxPsi) / this->N_sites;
+		Mps<Symmetry,Scalar> HxPsi;
+		Mps<Symmetry,Scalar> Psi = Vout.state;
+		Psi.sweep(0,DMRG::BROOM::QR);
+		HxV(H, Psi, HxPsi, DMRG::VERBOSITY::SILENT);
+		
+		Mps<Symmetry,Scalar> ExPsi = Vout.state;
+		ExPsi *= Vout.energy;
+		HxPsi -= ExPsi;
+		
+		double err_state = HxPsi.dot(HxPsi) / this->N_sites;
 		
 		if (CHOSEN_VERBOSITY >= 2)
 		{

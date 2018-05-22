@@ -2179,7 +2179,6 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			size_t Nret = (Jack.singularValues().array().abs() > this->eps_svd).count();
 			Nret = max(Nret, this->min_Nsv);
 			Nret = min(Nret, this->max_Nsv);
-			cout << "this->min_Nsv=" << this->min_Nsv << endl;
 			
 			truncWeightSub(qmid) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
 			size_t Nnz = (Jack.singularValues().array() > 0.).count();
@@ -3057,17 +3056,54 @@ addScale (OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, bool SVD_COMPRESS)
 	{
 		add_site(0,alpha,Vin);
 		add_site(1,alpha,Vin);
-		if (SVD_COMPRESS == true)
-		{
-			rightSweepStep(0,DMRG::BROOM::SVD);
-		}
+//		if (SVD_COMPRESS == true)
+//		{
+//			rightSweepStep(0,DMRG::BROOM::SVD);
+//		}
 		for (size_t l=2; l<this->N_sites; ++l)
 		{
 			add_site(l,alpha,Vin);
-			if (SVD_COMPRESS == true)
+//			if (SVD_COMPRESS == true)
+//			{
+//				rightSweepStep(l-1,DMRG::BROOM::SVD);
+//			}
+		}
+		
+		// mend the blocks without match
+		for (size_t l=1; l<this->N_sites-1; ++l)
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		for (size_t q=0; q<A[l][s].dim; ++q)
+		{
+			size_t rows = A[l][s].block[q].rows();
+			size_t cols = A[l][s].block[q].cols();
+			size_t rows_old = rows;
+			size_t cols_old = cols;
+			
+			for (size_t snext=0; snext<qloc[l+1].size(); ++snext)
+			for (size_t qnext=0; qnext<A[l+1][snext].dim; ++qnext)
 			{
-				rightSweepStep(l-1,DMRG::BROOM::SVD);
+				if (A[l+1][snext].in[qnext] == A[l][s].out[q] and
+				    A[l+1][snext].block[qnext].rows() > A[l][s].block[q].cols())
+				{
+					cols = A[l+1][snext].block[qnext].rows();
+					break;
+				}
 			}
+			
+			for (size_t sprev=0; sprev<qloc[l-1].size(); ++sprev)
+			for (size_t qprev=0; qprev<A[l-1][sprev].dim; ++qprev)
+			{
+				if (A[l-1][sprev].out[qprev] == A[l][s].in[q] and
+				    A[l-1][sprev].block[qprev].cols() > A[l][s].block[q].rows())
+				{
+					rows = A[l-1][sprev].block[qprev].cols();
+					break;
+				}
+			}
+			
+			A[l][s].block[q].conservativeResize(rows,cols);
+			A[l][s].block[q].bottomRows(rows-rows_old).setZero();
+			A[l][s].block[q].rightCols(cols-cols_old).setZero();
 		}
 	}
 }

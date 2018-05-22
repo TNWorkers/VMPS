@@ -6,7 +6,7 @@
 #endif
 
 #ifndef DMRG_POLYCOMPRESS_MIN
-#define DMRG_POLYCOMPRESS_MIN 1
+#define DMRG_POLYCOMPRESS_MIN 2
 #endif
 
 #ifndef DMRG_POLYCOMPRESS_MAX
@@ -64,7 +64,7 @@ public:
 	 * \param[in] min_halfsweeps : minimal amount of half-sweeps
 	 */
 	void stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-	                    size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
+	                    size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=2);
 	
 	/**
 	 * Compresses a matrix-vector product \f$\left|V_{out}\right> \approx H \left|V_{in}\right>\f$. 
@@ -84,7 +84,7 @@ public:
 	template<typename MpOperator>
 	void prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
 	                   qarray<Symmetry::Nq> Qtot_input,
-	                   size_t Dcutoff_input, double tol=1e-9, size_t max_halfsweeps=56, size_t min_halfsweeps=1);
+	                   size_t Dcutoff_input, double tol=1e-7, size_t max_halfsweeps=56, size_t min_halfsweeps=2);
 	
 	/**
 	 * Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. 
@@ -374,7 +374,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 		Stopwatch<> FullSweepTimer;
 		
 		// A 2-site sweep is necessary! Move pivot back to edge.
-		if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+		if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 		{
 			sweep_to_edge(Vin,Vout,true); // BUILD_LR = true
 //			if (pivot==1)
@@ -394,7 +394,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
-			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+			if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 			{
 				stateOptimize2(Vin,Vout);
 			}
@@ -418,7 +418,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 		}
 		
 		if (N_halfsweeps%4 == 0 and 
-		    N_halfsweeps > 0 and 
+		    N_halfsweeps > 1 and 
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
@@ -640,7 +640,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		Stopwatch<> FullSweepTimer;
 		
 		// A 2-site sweep is necessary! Move pivot back to edge.
-		if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+		if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 		{
 			sweep_to_edge(H,Vin,Vin,Vout,false,true); // build_LWRW = true
 //			if (pivot==1)
@@ -661,7 +661,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
-			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+			if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 			{
 				prodOptimize2(H,Vin,Vout);
 			}
@@ -687,7 +687,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		
 		bool RESIZED = false;
 		if (N_halfsweeps%4 == 0 and 
-		    N_halfsweeps > 0 and 
+		    N_halfsweeps > 1 and 
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
@@ -941,7 +941,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		Stopwatch<> FullSweepTimer;
 		
 		// A 2-site sweep is necessary! Move pivot back to edge.
-		if (N_halfsweeps%4 and N_halfsweeps > 0)
+		if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 		{
 			sweep_to_edge(H,Vin1,Vin2,Vout,true,true); // build_LR = true, build LWRW = true
 //			if (pivot==1)
@@ -965,7 +965,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
 			Stopwatch<> Chronos;
 			
-			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+			if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 			{
 				PivotVector<Symmetry,Scalar> Apair1;
 				prodOptimize2(H,Vin1,Vout,Apair1);
@@ -1023,7 +1023,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		
 		bool RESIZED = false;
 		if (N_halfsweeps%4 == 0 and 
-		    N_halfsweeps > 0 and 
+		    N_halfsweeps > 1 and 
 		    N_halfsweeps != max_halfsweeps and
 		    sqdist > tol)
 		{
