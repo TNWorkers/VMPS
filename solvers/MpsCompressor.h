@@ -585,6 +585,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	}
 	
 	Vout.max_Nsv = Dcutoff;
+	Vout.min_Nsv = Vin.min_Nsv;
 	Mmax = Vout.calc_Mmax();
 	double avgHsqVin;
 	
@@ -861,6 +862,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	Dcutoff_new = Dcutoff_input;
 	
 	Vout = Vin1;
+	cout << "Vin1.min_Nsv=" << Vin1.min_Nsv << endl;
 //	Vout = Mps<Symmetry,Scalar>(H, Dcutoff, Vin1.Qtarget(), max(Vin1.calc_Nqmax(), DMRG::CONTROL::DEFAULT::Qinit));
 //	Vout.setRandom();
 	if (CHOSEN_VERBOSITY>=2)
@@ -925,6 +927,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	
 	Mmax = Vout.calc_Mmax();
 	Vout.max_Nsv = Dcutoff;
+	Vout.min_Nsv = Vin1.min_Nsv;
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)

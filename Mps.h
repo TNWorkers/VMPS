@@ -603,6 +603,72 @@ calc_Qlimits()
 		return out;
 	};
 	
+	// For spins: calculate maximal S across the chain
+	size_t Smax = 1;
+	if (!Symmetry::IS_TRIVIAL)
+	{
+		for (size_t l=0; l<this->N_sites; ++l)
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		{
+			if (ceil(0.5*(qloc[l][s][0]-1.)) > Smax) {Smax = ceil(0.5*(qloc[l][s][0]-1.));}
+		}
+	}
+//	cout << "Smax=" << Smax << endl;
+	
+	auto lowest_qs = [Smax] (const vector<qarray<Nq> > &qs) -> vector<qarray<Nq> >
+	{
+		if (Symmetry::IS_TRIVIAL)
+		{
+			vector<qarray<Nq> > out(1);
+			out[0] = Symmetry::qvacuum();
+			return out;
+		}
+		
+//		cout << "in:" << endl;
+//		for (size_t i=0; i<qs.size(); ++i)
+//		{
+//			cout << qs[i] << ", ";
+//		}
+//		cout << endl;
+		
+		// sort for every q and remove duplicates
+		array<vector<int>,Nq> tmp;
+		for (size_t q=0; q<Nq; q++)
+		{
+			tmp[q].resize(qs.size());
+			for (size_t i=0; i<qs.size(); i++)
+			{
+				tmp[q][i] = qs[i][q];
+			}
+			sort(tmp[q].begin(),tmp[q].end());
+			tmp[q].erase(unique(tmp[q].begin(), tmp[q].end()), tmp[q].end());
+		}
+		
+		// Can have different resulting sizes depending on q...
+		Array<size_t,Dynamic,1> tmp_sizes(Nq);
+		for (size_t q=0; q<Nq; q++)
+		{
+			tmp_sizes(q) = tmp[q].size();
+		}
+//		cout << "sizes=" << tmp_sizes.transpose() << endl;
+		vector<qarray<Nq> > out(min(Smax+1, tmp_sizes.minCoeff()));
+		
+		for (size_t q=0; q<Nq; q++)
+		for (size_t i=0; i<min(Smax+1,tmp[q].size()); ++i)
+		{
+			out[i][q] = tmp[q][i];
+		}
+		
+//		cout << "out:" << endl;
+//		for (size_t i=0; i<out.size(); ++i)
+//		{
+//			cout << out[i] << ", ";
+//		}
+//		cout << endl;
+		
+		return out;
+	};
+	
 	auto highest_q = [] (const vector<qarray<Nq> > &qs) -> qarray<Nq>
 	{
 		qarray<Nq> out;
@@ -625,34 +691,44 @@ calc_Qlimits()
 	
 	QinTop.resize(this->N_sites);
 	QinBot.resize(this->N_sites);
+	vector<vector<qarray<Symmetry::Nq> > > QinBotRange(this->N_sites);
+	vector<vector<qarray<Symmetry::Nq> > > QoutBotRange(this->N_sites);
 	QoutTop.resize(this->N_sites);
 	QoutBot.resize(this->N_sites);
 	
 	QinTop[0] = Symmetry::qvacuum();
 	QinBot[0] = Symmetry::qvacuum();
+	QinBotRange[0] = {Symmetry::qvacuum()};
 	for (size_t l=1; l<this->N_sites; ++l)
 	{
-		auto new_tops = Symmetry::reduceSilent(qloc[l], QinTop[l-1]);
-		auto new_bots = Symmetry::reduceSilent(qloc[l], QinBot[l-1]);
+		auto new_tops = Symmetry::reduceSilent(qloc[l-1], QinTop[l-1]);
+//		auto new_bots = Symmetry::reduceSilent(qloc[l], QinBot[l-1]);
+		auto new_bots = Symmetry::reduceSilent(qloc[l-1], QinBotRange[l-1]);
+//		cout << "l=" << l << ", new_bots.size()=" << new_bots.size() << endl;
 		
 		QinTop[l] = highest_q(new_tops);
 		QinBot[l] = lowest_q(new_bots);
+		QinBotRange[l] = lowest_qs(new_bots);
+//		cout << "l=" << l << ", QinBotRange.size()=" << QinBotRange.size() << endl;
 	}
 	
 	QoutTop[this->N_sites-1] = Qtot;
 	QoutBot[this->N_sites-1] = Qtot;
+	QoutBotRange[this->N_sites-1] = {Qtot};
 	for (int l=this->N_sites-2; l>=0; --l)
 	{
 		vector<qarray<Symmetry::Nq> > qlocflip;
-		for (size_t q=0; q<qloc[l].size(); ++q)
+		for (size_t q=0; q<qloc[l+1].size(); ++q)
 		{
-			qlocflip.push_back(Symmetry::flip(qloc[l][q]));
+			qlocflip.push_back(Symmetry::flip(qloc[l+1][q]));
 		}
 		auto new_tops = Symmetry::reduceSilent(qlocflip, QoutTop[l+1]);
-		auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBot[l+1]);
+//		auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBot[l+1]);
+		auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBotRange[l+1]);
 		
 		QoutTop[l] = highest_q(new_tops);
 		QoutBot[l] = lowest_q(new_bots);
+		QoutBotRange[l] = lowest_qs(new_bots);
 	}
 	
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -675,7 +751,10 @@ calc_Qlimits()
 			}
 		}
 		
-//		cout << "QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] << endl;
+//		cout << "l=" << l 
+//		     << ", QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] 
+//		     << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] 
+//		     << endl;
 	}
 }
 
@@ -762,8 +841,6 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		}
 	}
 	Qin_trunc[this->N_sites].push_back(Qtot);
-	
-	calc_Qlimits();
 	
 	if constexpr (Nq == 0)
 	{
@@ -2102,6 +2179,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			size_t Nret = (Jack.singularValues().array().abs() > this->eps_svd).count();
 			Nret = max(Nret, this->min_Nsv);
 			Nret = min(Nret, this->max_Nsv);
+			cout << "this->min_Nsv=" << this->min_Nsv << endl;
 			
 			truncWeightSub(qmid) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
 			size_t Nnz = (Jack.singularValues().array() > 0.).count();

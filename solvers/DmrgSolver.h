@@ -262,6 +262,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		// resize Vout
 		Vout.state = Mps<Symmetry,Scalar>(H, GlobParam.Dinit, Qtot_input, GlobParam.Qinit);
 		Vout.state.max_Nsv = GlobParam.Dinit;
+		Vout.state.min_Nsv = DynParam.min_Nsv(0);
 		Vout.state.setRandom();
 	}
 	Vout.state.graph("ginit");
@@ -494,7 +495,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		// one-site variance
 		for (size_t l=0; l<this->N_sites; ++l)
 		{
-			// calculate the nullspace tensor F/G with QR_NULL
+			// calculate the nullspace tensor F/G
 			Stopwatch<> Ntimer;
 			Vout.state.calc_N(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, Nsaved[SweepStat.pivot]);
 			t_N += Ntimer.time();
@@ -602,15 +603,13 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		
 //		Mps<Symmetry,Scalar> HxPsi;
 //		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
-////		if constexpr (Symmetry::NON_ABELIAN) {HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);}
-////		else {HxPsi.eps_svd = 0.; OxV(H,Psi,HxPsi);}
-//		HxV(H,Psi,HxPsi,DMRG::VERBOSITY::SILENT);
+//		HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);
 //		Mps<Symmetry,Scalar> ExPsi = Vout.state;
 //		ExPsi *= Vout.energy;
 //		cout << HxPsi.validate() << ", " << HxPsi.info() << endl;
 //		cout << ExPsi.validate() << ", " << ExPsi.info() << endl;
 //		HxPsi -= ExPsi;
-//		double err_exact = HxPsi.dot(HxPsi) / this->N_sites;
+//		double err_exact_ = HxPsi.dot(HxPsi) / this->N_sites;
 		
 //		Stopwatch<> HsqTimer_;
 //		double PsixHxHxPsi = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state));
@@ -619,7 +618,10 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 //		double err_exact = (PsixHxHxPsi + pow(Vout.energy,2)*PsixPsi - 2.*Vout.energy*PsixHxPsi) / this->N_sites;
 //		cout << sqrt(PsixHxHxPsi) << ", " << Vout.energy << ", " << PsixHxPsi << ", " << PsixPsi << endl;
 //		
-//		cout << TCOLOR(RED) << "err_state=" << err_state << ", err_exact=" << err_exact << ", diff=" << abs(err_state-err_exact)
+//		cout << TCOLOR(RED) << "err_state=" << err_state << ", err_exact=" << err_exact 
+////		<< ", " << err_exact_ 
+//		<< ", diff=" << abs(err_state-err_exact)
+//		<< ", ratio=" << err_state/err_exact
 //		     << ", " << HsqTimer_.info("‖H|Ψ>-E|Ψ>‖") << TCOLOR(BLACK) << endl;
 	}
 	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_FULL)

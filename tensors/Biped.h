@@ -285,7 +285,7 @@ Eigen::VectorXd Biped<Symmetry,MatrixType_>::
 squaredNorm () const
 {
 	Eigen::VectorXd Vout(size());
-	for (std::size_t nu=0; nu<size(); nu++) { Vout[nu] = block[nu].squaredNorm(); }
+	for (std::size_t nu=0; nu<size(); nu++) { Vout[nu] = block[nu].squaredNorm() * Symmetry::coeff_dot(in[nu]); }
 	return Vout;
 }
 

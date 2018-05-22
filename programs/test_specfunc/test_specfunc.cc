@@ -155,6 +155,7 @@ int main (int argc, char* argv[])
 	
 	//--------------</ground state>---------------
 	
+	//--------------<state compression>---------------
 	auto Psi = init->state;
 //	MODEL::StateXd rand = Psi; rand.setRandom();
 //	Psi += 0.1 * rand;
@@ -166,6 +167,7 @@ int main (int argc, char* argv[])
 	cout << Psi.info() << endl;
 	cout << "COMPRESSED:" << endl;
 	cout << Phi.info() << endl;
+	//--------------</state compression>---------------
 	
 	//--------------<A*init>---------------
 	MODEL::StateXd initA;

@@ -123,7 +123,7 @@ HeisenbergU1 (const size_t &L, const vector<Param> &params)
 }
 
 DMRG::CONTROL::GLOB HeisenbergU1::
-get_GlobParam(const vector<Param> &params) const
+get_GlobParam (const vector<Param> &params) const
 {
 	ParamHandler P(params,HeisenbergU1::sweep_defaults);
 	DMRG::CONTROL::GLOB out;
@@ -141,7 +141,7 @@ get_GlobParam(const vector<Param> &params) const
 }
 
 DMRG::CONTROL::DYN HeisenbergU1::
-get_DynParam(const vector<Param> &params) const
+get_DynParam (const vector<Param> &params) const
 {
 	ParamHandler P(params,HeisenbergU1::sweep_defaults);
 	DMRG::CONTROL::DYN out;
