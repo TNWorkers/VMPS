@@ -82,8 +82,8 @@ public:
 	///@}
 
 	///@{
-	Mpo<Symmetry> Simp (std::size_t locx, std::size_t locy=0);
-	Mpo<Symmetry> Simpdag (std::size_t locx, std::size_t locy=0);
+	Mpo<Symmetry> Simp (std::size_t locx, std::size_t locy=0, double factor=1.);
+	Mpo<Symmetry> Simpdag (std::size_t locx, std::size_t locy=0, double factor=sqrt(3.));
 	///@}
 
 	///@{
@@ -480,7 +480,7 @@ ninj (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y, std::size_t loc2y
 // }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
-Simp (std::size_t locx, std::size_t locy)
+Simp (std::size_t locx, std::size_t locy, double factor)
 {
 	assert(locx<N_sites and locy<B[locx].dim()*F[locx].dim());
 	std::stringstream ss;
@@ -489,12 +489,12 @@ Simp (std::size_t locx, std::size_t locy)
 	Mpo<Symmetry> Mout(N_sites, {3,0}, ss.str());
 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
-	Mout.setLocal(locx, OperatorType::outerprod(B[locx].S(locy),F[locx].Id(),{3,0}).plain<double>());
+	Mout.setLocal(locx, factor*OperatorType::outerprod(B[locx].S(locy),F[locx].Id(),{3,0}).plain<double>());
 	return Mout;
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
-Simpdag (std::size_t locx, std::size_t locy)
+Simpdag (std::size_t locx, std::size_t locy, double factor)
 {
 	assert(locx<N_sites and locy<B[locx].dim()*F[locx].dim());
 	std::stringstream ss;
@@ -503,7 +503,7 @@ Simpdag (std::size_t locx, std::size_t locy)
 	Mpo<Symmetry> Mout(N_sites, {3,0}, ss.str());
 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
-	Mout.setLocal(locx, sqrt(3.)*OperatorType::outerprod(B[locx].Sdag(locy),F[locx].Id(),{3,0}).plain<double>());
+	Mout.setLocal(locx, factor*OperatorType::outerprod(B[locx].Sdag(locy),F[locx].Id(),{3,0}).plain<double>());
 	return Mout;
 }
 
