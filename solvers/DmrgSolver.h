@@ -602,7 +602,6 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		}
 		
 //		Mps<Symmetry,Scalar> HxPsi;
-//		cout << "Vout.state.min_Nsv=" << Vout.state.min_Nsv << endl;
 //		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
 //		HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);
 //		Mps<Symmetry,Scalar> ExPsi = Vout.state;
@@ -743,8 +742,6 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE)
 {
-//	DynParam = DynParam_input;
-//	GlobParam = GlobParam_input;
 	prepare(H, Vout, Qtot_input, false);
 	
 	Stopwatch<> TotalTimer;
@@ -768,14 +765,15 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		// sweep
 		halfsweep(H,Vout,EDGE);
 		
+		size_t j = SweepStat.N_halfsweeps;
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
-		Vout.state.eps_svd = DynParam.eps_svd(SweepStat.N_halfsweeps);
-		if (SweepStat.N_halfsweeps%DynParam.Dincr_per(SweepStat.N_halfsweeps) == 0 and 
+		Vout.state.eps_svd = DynParam.eps_svd(j);
+		if (j%DynParam.Dincr_per(j) == 0 and 
 		    (totalTruncWeight >= Vout.state.eps_svd or err_state > 1e2*GlobParam.tol_state))
 		{
 			// increase by Dincr_abs, but by no more than Dincr_rel (e.g. 10%)
-			size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Dincr_rel(SweepStat.N_halfsweeps) * Vout.state.max_Nsv), 
-			                                             Vout.state.max_Nsv + DynParam.Dincr_abs(SweepStat.N_halfsweeps));
+			size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Dincr_rel(j) * Vout.state.max_Nsv), 
+			                                             Vout.state.max_Nsv + DynParam.Dincr_abs(j));
 			// do not increase beyond Dlimit
 			Vout.state.max_Nsv = min(max_Nsv_new, GlobParam.Dlimit);
 		}
@@ -791,7 +789,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		}
 		
 		#ifdef USE_HDF5_STORAGE
-		if (GlobParam.savePeriod != 0 and SweepStat.N_halfsweeps%GlobParam.savePeriod == 0)
+		if (GlobParam.savePeriod != 0 and j%GlobParam.savePeriod == 0)
 		{
 			Vout.state.save("mpsBackup");
 		}

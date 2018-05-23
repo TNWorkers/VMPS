@@ -703,7 +703,7 @@ calc_Qlimits()
 	{
 		auto new_tops = Symmetry::reduceSilent(qloc[l-1], QinTop[l-1]);
 //		auto new_bots = Symmetry::reduceSilent(qloc[l], QinBot[l-1]);
-		auto new_bots = Symmetry::reduceSilent(qloc[l-1], QinBotRange[l-1]);
+		auto new_bots = Symmetry::reduceSilent(qloc[l-1], QinBotRange[l-1], true);
 //		cout << "l=" << l << ", new_bots.size()=" << new_bots.size() << endl;
 		
 		QinTop[l] = highest_q(new_tops);
@@ -1399,12 +1399,13 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				}
 				Nret = max(Nret, this->min_Nsv);
 				Nret = min(Nret, this->max_Nsv);
-				truncWeightSub(qin) = SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
+				truncWeightSub(qin) = Symmetry::degeneracy(inbase[loc][qin]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy
 //				cout << inbase[loc][qin] << ": SV=" << SV.transpose() << endl;
 				size_t Nnz = (SV.array() > 0.).count();
-				entropySub(qin) = -(SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
+				entropySub(qin) = -Symmetry::degeneracy(inbase[loc][qin]) * 
+				                  (SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{
@@ -1593,12 +1594,13 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 				}
 				Nret = max(Nret, this->min_Nsv);
 				Nret = min(Nret, this->max_Nsv);
-				truncWeightSub(qout) = SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
+				truncWeightSub(qout) = Symmetry::degeneracy(outbase[loc][qout]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy
 //				cout << outbase[loc][qout] << ": SV=" << SV.transpose() << endl;
 				size_t Nnz = (SV.array() > 0.).count();
-				entropySub(qout) = -(SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
+				entropySub(qout) = -Symmetry::degeneracy(outbase[loc][qout]) * 
+				                   (SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{

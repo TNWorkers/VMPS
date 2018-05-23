@@ -1104,6 +1104,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 			factor_check = Symmetry::coeff_Apair(qloc[s1],qOpBot[k2],qloc[s2],
 												 qOpTop[k1],qloc[s3],k);
 			if (std::abs(factor_check) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+//			cout << "checked physical" << endl;
 			for (size_t qR=0; qR<Rold.dim; ++qR)
 			{
 				auto qRouts = Symmetry::reduceSilent(Rold.out(qR),Symmetry::flip(qloc[s1]));
@@ -1117,6 +1118,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 					auto q3 = Aket[s3].dict.find({qRin, Rold.in(qR)});
 					if (q1!=Abra[s1].dict.end() and q3!=Aket[s3].dict.end())
 					{
+//						cout << "checked MPS" << endl;
 						auto qRmids = Symmetry::reduceSilent(Rold.mid(qR),Symmetry::flip(k));
 						for(const auto& new_qmid : qRmids)
 						{
@@ -1135,7 +1137,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 									// cout << "qleftAux=" << qleftAux << endl;
 									if(auto it=leftTopQs.find(qleftAux) != leftTopQs.end())
 									{
-										// cout << "checked top qs" << endl;
+//										 cout << "checked top qs" << endl;
 										// cout << "qrightAuxP=" << qrightAuxP << ", qOpBot[k2]=" << qOpBot[k2] << endl;
 										auto qleftAuxPs = Symmetry::reduceSilent(qrightAuxP,Symmetry::flip(qOpBot[k2]));
 										for(const auto& qleftAuxP : qleftAuxPs)
@@ -1145,12 +1147,12 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 
 											if(auto it=leftBotQs.find(qleftAuxP) != leftBotQs.end())
 											{
-												// cout << "checked bot qs" << endl;
+//												 cout << "checked bot qs" << endl;
 												factor_merge = Symmetry::coeff_buildR(qrightAuxP,qrightAux,Rold.mid(qR),
 																					  qOpBot[k2],qOpTop[k1],k,
 																					  qleftAuxP,qleftAux,new_qmid);
 												if (std::abs(factor_merge) < std::abs(::mynumeric_limits<MpoScalar>::epsilon())) { continue; }
-												// cout << "multiplying the tensors" << endl;
+//												 cout << "multiplying the tensors" << endl;
 												Eigen::Index left1=TensorBaseLeft.leftAmount(new_qmid,{qleftAuxP, qleftAux});
 												for (int ktop=0; ktop<Wtop[s2][s3][k1].outerSize(); ++ktop)
 												for (typename SparseMatrix<MpoScalar>::InnerIterator iWtop(Wtop[s2][s3][k1],ktop); iWtop; ++iWtop)

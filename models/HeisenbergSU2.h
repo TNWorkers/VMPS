@@ -70,7 +70,7 @@ public:
 	///@{
 	/**Observables.*/
 	Mpo<Symmetry,double> S (std::size_t locx, std::size_t locy=0);
-	Mpo<Symmetry,double> Sdag (std::size_t locx, std::size_t locy=0, double factor=1./(3.*sqrt(3.)));
+	Mpo<Symmetry,double> Sdag (std::size_t locx, std::size_t locy=0, double factor=sqrt(3.));
 	Mpo<Symmetry,double> SS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
 	///@}
 	
