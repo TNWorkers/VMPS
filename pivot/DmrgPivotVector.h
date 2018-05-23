@@ -129,6 +129,7 @@ PivotVector<Symmetry,Scalar>& PivotVector<Symmetry,Scalar>::operator+= (const Pi
 			data[s].block[q] += Vrhs.data[s].block[q];
 		}
 	}
+	return *this;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -167,6 +168,7 @@ operator-= (const PivotVector<Symmetry,Scalar> &Vrhs)
 			data[s].block[q] -= Vrhs.data[s].block[q];
 		}
 	}
+	return *this;
 }
 
 template<typename Symmetry, typename Scalar>

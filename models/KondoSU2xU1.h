@@ -379,20 +379,17 @@ cdagc (size_t loc1x, size_t loc2x, size_t loc1y, size_t loc2y)
 	{
 		auto product = std::sqrt(2.)*OperatorType::prod(cdag,c,Symmetry::qvacuum());
 		Mout.setLocal(loc1x,product.plain<double>());
-		return Mout;
 	}
 	else if(loc1x<loc2x)
 	{
 
 		Mout.setLocal({loc1x, loc2x}, {-sqrt(2.)*cdag.plain<double>(), OperatorType::prod(sign,c,{2,-1}).plain<double>()}, sign.plain<double>());
-		return Mout;
 	}
 	else if(loc1x>loc2x)
 	{
-
 		Mout.setLocal({loc1x, loc2x}, {-sqrt(2.)*OperatorType::prod(sign,cdag,{2,+1}).plain<double>(), c.plain<double>()}, sign.plain<double>());
-		return Mout;
 	}
+	return Mout;
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::

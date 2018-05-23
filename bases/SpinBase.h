@@ -372,35 +372,35 @@ SparseMatrixXd SpinBase<Symmetry>::
 ScompSingleSite (SPINOP_LABEL Sa) const
 {
 	assert(Sa != SY);
-	
+	SparseMatrixXd Mout(D,D);
 	if (Sa==SX)
 	{
-		return Sbase()+SparseMatrixXd(Sbase().transpose());
+		Mout = Sbase()+SparseMatrixXd(Sbase().transpose());
 	}
 	else if (Sa==iSY)
 	{
-		return Sbase()-SparseMatrixXd(Sbase().transpose());
+		Mout = Sbase()-SparseMatrixXd(Sbase().transpose());
 	}
 	else if (Sa==SZ) 
 	{
 		assert(D >= 1);
-		SparseMatrixXd Mout(D,D);
+		// SparseMatrixXd Mout(D,D);
 		double S = 0.5*(D-1);
 		for (size_t i=0; i<D; ++i)
 		{
 			double M = S-i;
 			Mout.insert(i,i) = M;
 		}
-		return Mout;
 	}
 	else if (Sa==SP) 
 	{
-		return 2.*Sbase();
+		Mout = 2.*Sbase();
 	}
 	else if (Sa==SM) 
 	{
-		return SparseMatrixXd(2.*Sbase().transpose());
+		Mout = SparseMatrixXd(2.*Sbase().transpose());
 	}
+	return Mout;
 }
 
 template<typename Symmetry>
