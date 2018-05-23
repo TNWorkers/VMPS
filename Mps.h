@@ -2911,6 +2911,7 @@ operator*= (const OtherScalar &alpha)
 	{
 		A[loc][s].block[q] *= alpha;
 	}
+	return *this;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -2925,6 +2926,7 @@ operator/= (const OtherScalar &alpha)
 	{
 		A[loc][s].block[q] /= alpha;
 	}
+	return *this;
 }
 
 template<typename Symmetry, typename Scalar, typename OtherScalar>
@@ -2972,6 +2974,7 @@ Mps<Symmetry,Scalar>& Mps<Symmetry,Scalar>::
 operator+= (const Mps<Symmetry,Scalar> &Vin)
 {
 	addScale(+1.,Vin);
+	return *this;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -2979,6 +2982,7 @@ Mps<Symmetry,Scalar>& Mps<Symmetry,Scalar>::
 operator-= (const Mps<Symmetry,Scalar> &Vin)
 {
 	addScale(-1.,Vin);
+	return *this;
 }
 
 template<typename Symmetry, typename Scalar>
