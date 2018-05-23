@@ -59,6 +59,7 @@ double t_U0, t_U1, t_SU2;
 int Dinit, Dlimit, Imin, Imax;
 double tol_eigval, tol_state;
 double dt, tmax, tol_compr, tol_Lanczos;
+size_t i0;
 DMRG::VERBOSITY::OPTION VERB;
 
 int main (int argc, char* argv[])
@@ -73,6 +74,7 @@ int main (int argc, char* argv[])
 	S = abs(M)+1;
 	alpha = args.get<double>("alpha",1.);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
+	i0 = args.get<size_t>("i0",0);
 	
 	dt = args.get<double>("dt",0.1);
 	tmax = args.get<double>("tmax",6.);
@@ -115,8 +117,7 @@ int main (int argc, char* argv[])
 //	OxV(H_U1.Sz(0), g_U1.state, Psi_U1tmp, DMRG::BROOM::SVD);
 	VMPS::HeisenbergU1::CompressorXd CompadreU1(VERB);
 	
-//	CompadreU1.prodCompress(H_U1.Sz(0), H_U1.Sz(0), g_U1.state, Psi_U1tmp, {M}, g_U1.state.calc_Dmax());
-	CompadreU1.prodCompress(H_U1.Sz(0), H_U1.SzSz(0,0), g_U1.state, Psi_U1tmp, {M}, g_U1.state.calc_Dmax());
+	CompadreU1.prodCompress(H_U1.Sz(i0), H_U1.Sz(i0), g_U1.state, Psi_U1tmp, {M}, g_U1.state.calc_Dmax());
 	
 	Psi_U1tmp.max_Nsv = Psi_U1tmp.calc_Dmax();
 	Psi_U1tmp.eps_svd = tol_compr;
@@ -166,11 +167,10 @@ int main (int argc, char* argv[])
 	VMPS::HeisenbergSU2::StateXd Psi_SU2tmp;
 	VMPS::HeisenbergSU2::CompressorXd Compadre(VERB);
 	
-	cout << "avg=" << avg(g_SU2.state, H_SU2.Sdag(0), H_SU2.S(0), g_SU2.state, {0}) << endl;
-	cout << "avg=" << avg(g_SU2.state, H_SU2.SS(0,0), g_SU2.state) << endl;
+	cout << "avg=" << avg(g_SU2.state, H_SU2.Sdag(i0), H_SU2.S(i0), g_SU2.state, {1}) << endl;
+	cout << "avg=" << avg(g_SU2.state, H_SU2.SS(i0,i0), g_SU2.state) << endl;
 	
-//	Compadre.prodCompress(H_SU2.S(0), H_SU2.Sdag(0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
-	Compadre.prodCompress(H_SU2.S(0), H_SU2.SS(0,0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
+	Compadre.prodCompress(H_SU2.S(i0), H_SU2.Sdag(i0,i0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
 	
 	Psi_SU2tmp.max_Nsv = Psi_SU2tmp.calc_Dmax();
 	Psi_SU2tmp.eps_svd = tol_compr;
@@ -185,7 +185,7 @@ int main (int argc, char* argv[])
 	tinfo="";
 	for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
 	{
-		double res = 3.*isReal(dot(init_SU2,Psi_SU2));
+		double res = isReal(dot(init_SU2,Psi_SU2));
 		FilerSU2 << t << "\t" << res << endl;
 		lout << "t=" << t << "\t" << res << "\t" << tinfo << endl;
 		resSU2(i) = res;
@@ -204,7 +204,7 @@ int main (int argc, char* argv[])
 	}
 	FilerSU2.close();
 	
-	cout << resU1/resSU2 << endl;
+	cout << resU1/(resSU2/3.) << endl;
 	
 	cout << "Table9j.size()=" << Table9j.size() << ", Table6j.size()=" << Table6j.size() << endl;
 	

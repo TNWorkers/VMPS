@@ -603,6 +603,72 @@ calc_Qlimits()
 		return out;
 	};
 	
+	// For spins: calculate maximal S across the chain
+	size_t Smax = 1;
+	if (!Symmetry::IS_TRIVIAL)
+	{
+		for (size_t l=0; l<this->N_sites; ++l)
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		{
+			if (ceil(0.5*(qloc[l][s][0]-1.)) > Smax) {Smax = ceil(0.5*(qloc[l][s][0]-1.));}
+		}
+	}
+//	cout << "Smax=" << Smax << endl;
+	
+	auto lowest_qs = [Smax] (const vector<qarray<Nq> > &qs) -> vector<qarray<Nq> >
+	{
+		if (Symmetry::IS_TRIVIAL)
+		{
+			vector<qarray<Nq> > out(1);
+			out[0] = Symmetry::qvacuum();
+			return out;
+		}
+		
+//		cout << "in:" << endl;
+//		for (size_t i=0; i<qs.size(); ++i)
+//		{
+//			cout << qs[i] << ", ";
+//		}
+//		cout << endl;
+		
+		// sort for every q and remove duplicates
+		array<vector<int>,Nq> tmp;
+		for (size_t q=0; q<Nq; q++)
+		{
+			tmp[q].resize(qs.size());
+			for (size_t i=0; i<qs.size(); i++)
+			{
+				tmp[q][i] = qs[i][q];
+			}
+			sort(tmp[q].begin(),tmp[q].end());
+			tmp[q].erase(unique(tmp[q].begin(), tmp[q].end()), tmp[q].end());
+		}
+		
+		// Can have different resulting sizes depending on q...
+		Array<size_t,Dynamic,1> tmp_sizes(Nq);
+		for (size_t q=0; q<Nq; q++)
+		{
+			tmp_sizes(q) = tmp[q].size();
+		}
+//		cout << "sizes=" << tmp_sizes.transpose() << endl;
+		vector<qarray<Nq> > out(min(Smax+1, tmp_sizes.minCoeff()));
+		
+		for (size_t q=0; q<Nq; q++)
+		for (size_t i=0; i<min(Smax+1,tmp[q].size()); ++i)
+		{
+			out[i][q] = tmp[q][i];
+		}
+		
+//		cout << "out:" << endl;
+//		for (size_t i=0; i<out.size(); ++i)
+//		{
+//			cout << out[i] << ", ";
+//		}
+//		cout << endl;
+		
+		return out;
+	};
+	
 	auto highest_q = [] (const vector<qarray<Nq> > &qs) -> qarray<Nq>
 	{
 		qarray<Nq> out;
@@ -625,34 +691,44 @@ calc_Qlimits()
 	
 	QinTop.resize(this->N_sites);
 	QinBot.resize(this->N_sites);
+	vector<vector<qarray<Symmetry::Nq> > > QinBotRange(this->N_sites);
+	vector<vector<qarray<Symmetry::Nq> > > QoutBotRange(this->N_sites);
 	QoutTop.resize(this->N_sites);
 	QoutBot.resize(this->N_sites);
 	
 	QinTop[0] = Symmetry::qvacuum();
 	QinBot[0] = Symmetry::qvacuum();
+	QinBotRange[0] = {Symmetry::qvacuum()};
 	for (size_t l=1; l<this->N_sites; ++l)
 	{
-		auto new_tops = Symmetry::reduceSilent(qloc[l], QinTop[l-1]);
-		auto new_bots = Symmetry::reduceSilent(qloc[l], QinBot[l-1]);
+		auto new_tops = Symmetry::reduceSilent(qloc[l-1], QinTop[l-1]);
+//		auto new_bots = Symmetry::reduceSilent(qloc[l], QinBot[l-1]);
+		auto new_bots = Symmetry::reduceSilent(qloc[l-1], QinBotRange[l-1], true);
+//		cout << "l=" << l << ", new_bots.size()=" << new_bots.size() << endl;
 		
 		QinTop[l] = highest_q(new_tops);
 		QinBot[l] = lowest_q(new_bots);
+		QinBotRange[l] = lowest_qs(new_bots);
+//		cout << "l=" << l << ", QinBotRange.size()=" << QinBotRange.size() << endl;
 	}
 	
 	QoutTop[this->N_sites-1] = Qtot;
 	QoutBot[this->N_sites-1] = Qtot;
+	QoutBotRange[this->N_sites-1] = {Qtot};
 	for (int l=this->N_sites-2; l>=0; --l)
 	{
 		vector<qarray<Symmetry::Nq> > qlocflip;
-		for (size_t q=0; q<qloc[l].size(); ++q)
+		for (size_t q=0; q<qloc[l+1].size(); ++q)
 		{
-			qlocflip.push_back(Symmetry::flip(qloc[l][q]));
+			qlocflip.push_back(Symmetry::flip(qloc[l+1][q]));
 		}
 		auto new_tops = Symmetry::reduceSilent(qlocflip, QoutTop[l+1]);
-		auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBot[l+1]);
+//		auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBot[l+1]);
+		auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBotRange[l+1]);
 		
 		QoutTop[l] = highest_q(new_tops);
 		QoutBot[l] = lowest_q(new_bots);
+		QoutBotRange[l] = lowest_qs(new_bots);
 	}
 	
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -675,7 +751,10 @@ calc_Qlimits()
 			}
 		}
 		
-//		cout << "QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] << endl;
+//		cout << "l=" << l 
+//		     << ", QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] 
+//		     << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] 
+//		     << endl;
 	}
 }
 
@@ -762,8 +841,6 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		}
 	}
 	Qin_trunc[this->N_sites].push_back(Qtot);
-	
-	calc_Qlimits();
 	
 	if constexpr (Nq == 0)
 	{
@@ -1322,12 +1399,13 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				}
 				Nret = max(Nret, this->min_Nsv);
 				Nret = min(Nret, this->max_Nsv);
-				truncWeightSub(qin) = SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
+				truncWeightSub(qin) = Symmetry::degeneracy(inbase[loc][qin]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy
 //				cout << inbase[loc][qin] << ": SV=" << SV.transpose() << endl;
 				size_t Nnz = (SV.array() > 0.).count();
-				entropySub(qin) = -(SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
+				entropySub(qin) = -Symmetry::degeneracy(inbase[loc][qin]) * 
+				                  (SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{
@@ -1516,12 +1594,13 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 				}
 				Nret = max(Nret, this->min_Nsv);
 				Nret = min(Nret, this->max_Nsv);
-				truncWeightSub(qout) = SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
+				truncWeightSub(qout) = Symmetry::degeneracy(outbase[loc][qout]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy
 //				cout << outbase[loc][qout] << ": SV=" << SV.transpose() << endl;
 				size_t Nnz = (SV.array() > 0.).count();
-				entropySub(qout) = -(SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
+				entropySub(qout) = -Symmetry::degeneracy(outbase[loc][qout]) * 
+				                   (SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{
@@ -2979,17 +3058,54 @@ addScale (OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, bool SVD_COMPRESS)
 	{
 		add_site(0,alpha,Vin);
 		add_site(1,alpha,Vin);
-		if (SVD_COMPRESS == true)
-		{
-			rightSweepStep(0,DMRG::BROOM::SVD);
-		}
+//		if (SVD_COMPRESS == true)
+//		{
+//			rightSweepStep(0,DMRG::BROOM::SVD);
+//		}
 		for (size_t l=2; l<this->N_sites; ++l)
 		{
 			add_site(l,alpha,Vin);
-			if (SVD_COMPRESS == true)
+//			if (SVD_COMPRESS == true)
+//			{
+//				rightSweepStep(l-1,DMRG::BROOM::SVD);
+//			}
+		}
+		
+		// mend the blocks without match
+		for (size_t l=1; l<this->N_sites-1; ++l)
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		for (size_t q=0; q<A[l][s].dim; ++q)
+		{
+			size_t rows = A[l][s].block[q].rows();
+			size_t cols = A[l][s].block[q].cols();
+			size_t rows_old = rows;
+			size_t cols_old = cols;
+			
+			for (size_t snext=0; snext<qloc[l+1].size(); ++snext)
+			for (size_t qnext=0; qnext<A[l+1][snext].dim; ++qnext)
 			{
-				rightSweepStep(l-1,DMRG::BROOM::SVD);
+				if (A[l+1][snext].in[qnext] == A[l][s].out[q] and
+				    A[l+1][snext].block[qnext].rows() > A[l][s].block[q].cols())
+				{
+					cols = A[l+1][snext].block[qnext].rows();
+					break;
+				}
 			}
+			
+			for (size_t sprev=0; sprev<qloc[l-1].size(); ++sprev)
+			for (size_t qprev=0; qprev<A[l-1][sprev].dim; ++qprev)
+			{
+				if (A[l-1][sprev].out[qprev] == A[l][s].in[q] and
+				    A[l-1][sprev].block[qprev].cols() > A[l][s].block[q].rows())
+				{
+					rows = A[l-1][sprev].block[qprev].cols();
+					break;
+				}
+			}
+			
+			A[l][s].block[q].conservativeResize(rows,cols);
+			A[l][s].block[q].bottomRows(rows-rows_old).setZero();
+			A[l][s].block[q].rightCols(cols-cols_old).setZero();
 		}
 	}
 }

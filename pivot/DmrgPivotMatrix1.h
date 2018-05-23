@@ -80,16 +80,16 @@ void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 					    Vout.data[s1].block[q1].cols() != H.R.block[qR][iW.col()][0].cols())
 					{
 						Vout.data[s1].block[q1].noalias() = H.factor_cgcs[q][p] * iW.value() * 
-						                                 (H.L.block[qL][iW.row()][0] * 
-						                                  Vin.data[s2].block[q2] * 
-						                                  H.R.block[qR][iW.col()][0]);
+						                                   (H.L.block[qL][iW.row()][0] * 
+						                                    Vin.data[s2].block[q2] * 
+						                                    H.R.block[qR][iW.col()][0]);
 					}
 					else
 					{
 						Vout.data[s1].block[q1].noalias() += H.factor_cgcs[q][p] * iW.value() * 
-						                                  (H.L.block[qL][iW.row()][0] * 
-						                                   Vin.data[s2].block[q2] * 
-						                                   H.R.block[qR][iW.col()][0]);
+						                                    (H.L.block[qL][iW.row()][0] * 
+						                                     Vin.data[s2].block[q2] * 
+						                                     H.R.block[qR][iW.col()][0]);
 					}
 				}
 			}

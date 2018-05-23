@@ -6,7 +6,7 @@
 #endif
 
 #ifndef DMRG_POLYCOMPRESS_MIN
-#define DMRG_POLYCOMPRESS_MIN 1
+#define DMRG_POLYCOMPRESS_MIN 2
 #endif
 
 #ifndef DMRG_POLYCOMPRESS_MAX
@@ -64,7 +64,7 @@ public:
 	 * \param[in] min_halfsweeps : minimal amount of half-sweeps
 	 */
 	void stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-	                    size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
+	                    size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=2);
 	
 	/**
 	 * Compresses a matrix-vector product \f$\left|V_{out}\right> \approx H \left|V_{in}\right>\f$. 
@@ -84,7 +84,7 @@ public:
 	template<typename MpOperator>
 	void prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
 	                   qarray<Symmetry::Nq> Qtot_input,
-	                   size_t Dcutoff_input, double tol=1e-9, size_t max_halfsweeps=56, size_t min_halfsweeps=1);
+	                   size_t Dcutoff_input, double tol=1e-8, size_t max_halfsweeps=56, size_t min_halfsweeps=2);
 	
 	/**
 	 * Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. 
@@ -363,7 +363,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 	}
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
-	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
+	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps or N_halfsweeps%2 != 0)
 	{
 		t_opt = 0;
 		t_AA = 0;
@@ -374,7 +374,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 		Stopwatch<> FullSweepTimer;
 		
 		// A 2-site sweep is necessary! Move pivot back to edge.
-		if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+		if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 		{
 			sweep_to_edge(Vin,Vout,true); // BUILD_LR = true
 //			if (pivot==1)
@@ -394,7 +394,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
-			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+			if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 			{
 				stateOptimize2(Vin,Vout);
 			}
@@ -418,7 +418,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 		}
 		
 		if (N_halfsweeps%4 == 0 and 
-		    N_halfsweeps > 0 and 
+		    N_halfsweeps > 1 and 
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
@@ -444,13 +444,13 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
+	Vout.setRandom();
 	
 	if (Vout.pivot == N_sites-1 or
 	    Vout.pivot == -1)
 	{
 		for (size_t l=N_sites-1; l>0; --l)
 		{
-			Vout.setRandom(l);
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			build_R(l-1,Vout,Vin);
 		}
@@ -460,7 +460,6 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 	{
 		for (size_t l=0; l<N_sites-1; ++l)
 		{
-			Vout.setRandom(l);
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
 			build_L(l+1,Vout,Vin);
 		}
@@ -585,6 +584,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	}
 	
 	Vout.max_Nsv = Dcutoff;
+	Vout.min_Nsv = Vin.min_Nsv;
 	Mmax = Vout.calc_Mmax();
 	double avgHsqVin;
 	
@@ -628,7 +628,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	}
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
-	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
+	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps or N_halfsweeps%2 != 0)
 	{
 		t_opt = 0;
 		t_AA = 0;
@@ -639,7 +639,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		Stopwatch<> FullSweepTimer;
 		
 		// A 2-site sweep is necessary! Move pivot back to edge.
-		if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+		if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 		{
 			sweep_to_edge(H,Vin,Vin,Vout,false,true); // build_LWRW = true
 //			if (pivot==1)
@@ -660,7 +660,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
-			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+			if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 			{
 				prodOptimize2(H,Vin,Vout);
 			}
@@ -674,7 +674,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		++N_halfsweeps;
 		
 //		cout << "\tavgHsqVin=" << avgHsqVin << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
-		sqdist = abs(avgHsqVin-Vout.squaredNorm());
+		sqdist = abs(avgHsqVin - pow(Symmetry::degeneracy(H.Qtarget()),2) * Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		
 		if (CHOSEN_VERBOSITY>=2)
@@ -686,7 +686,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		
 		bool RESIZED = false;
 		if (N_halfsweeps%4 == 0 and 
-		    N_halfsweeps > 0 and 
+		    N_halfsweeps > 1 and 
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
@@ -704,6 +704,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	// move pivot to edge at the end
 //	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
 //	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
+	Vout *= Symmetry::degeneracy(H.Qtarget());
 	sweep_to_edge(H,Vin,Vin,Vout,false,false);
 }
 
@@ -713,13 +714,12 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
+	Vout.setRandom();
 	
 	if (Vout.pivot == N_sites-1 or Vout.pivot == -1)
 	{
 		for (size_t l=N_sites-1; l>0; --l)
 		{
-			Vout.setRandom(l);
-			Stopwatch<> Chronos;
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			build_RW(l-1,Vout,H,Vin);
 		}
@@ -729,13 +729,12 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Sc
 	{
 		for (size_t l=0; l<N_sites-1; ++l)
 		{
-			Vout.setRandom(l);
-			Stopwatch<> Chronos;
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
 			build_LW(l+1,Vout,H,Vin);
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
 	}
+	
 	pivot = Vout.pivot;
 }
 
@@ -767,6 +766,16 @@ prodOptimize1 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetr
 	PivotVector<Symmetry,Scalar> Aout;
 	prodOptimize1(H,Vin,Vout,Aout);
 	Vout.A[pivot] = Aout.data;
+	
+	// safeguard against sudden norm loss:
+	if (Vout.squaredNorm() < 1e-7)
+	{
+		if (CHOSEN_VERBOSITY > 0)
+		{
+			lout << "WARNING: small norm encountered at pivot=" << pivot << "!" << endl;
+		}
+		Vout /= sqrt(Vout.squaredNorm());
+	}
 	
 	Stopwatch<> SweepTimer;
 	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::SVD);
@@ -866,7 +875,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	if (CHOSEN_VERBOSITY>=2)
 	{
 		lout << "Vin: " << Vout.info() << endl;
-		Vout.graph("it");
+//		Vout.graph("it");
 	}
 	
 	// prepare edges of LW & RW
@@ -925,9 +934,10 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	
 	Mmax = Vout.calc_Mmax();
 	Vout.max_Nsv = Dcutoff;
+	Vout.min_Nsv = Vin1.min_Nsv;
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
-	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
+	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps or N_halfsweeps%2 != 0)
 	{
 		t_opt = 0;
 		t_AA = 0;
@@ -938,7 +948,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		Stopwatch<> FullSweepTimer;
 		
 		// A 2-site sweep is necessary! Move pivot back to edge.
-		if (N_halfsweeps%4 and N_halfsweeps > 0)
+		if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 		{
 			sweep_to_edge(H,Vin1,Vin2,Vout,true,true); // build_LR = true, build LWRW = true
 //			if (pivot==1)
@@ -962,7 +972,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
 			Stopwatch<> Chronos;
 			
-			if (N_halfsweeps%4 == 0 and N_halfsweeps > 0)
+			if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 			{
 				PivotVector<Symmetry,Scalar> Apair1;
 				prodOptimize2(H,Vin1,Vout,Apair1);
@@ -1020,7 +1030,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		
 		bool RESIZED = false;
 		if (N_halfsweeps%4 == 0 and 
-		    N_halfsweeps > 0 and 
+		    N_halfsweeps > 1 and 
 		    N_halfsweeps != max_halfsweeps and
 		    sqdist > tol)
 		{
@@ -1047,15 +1057,12 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
+	if (RANDOMIZE) {Vout.setRandom();}
 	
 	if (Vout.pivot == N_sites-1)
 	{
 		for (size_t l=N_sites-1; l>0; --l)
 		{
-			if (RANDOMIZE)
-			{
-				Vout.setRandom(l);
-			}
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 			#pragma omp parallel sections
@@ -1082,10 +1089,6 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 	{
 		for (size_t l=0; l<N_sites-1; ++l)
 		{
-			if (RANDOMIZE)
-			{
-				Vout.setRandom(l);
-			}
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
 			#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 			#pragma omp parallel sections

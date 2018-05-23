@@ -769,7 +769,7 @@ string Mpo<Symmetry,Scalar>::
 info() const
 {
 	stringstream ss;
-	ss << label << ": L=" << N_sites;
+	ss << label << "L=" << N_sites;
 	if (N_phys>N_sites) {ss << ",V=" << N_phys;}
 	ss << ", " << Symmetry::name() << ", ";
 	

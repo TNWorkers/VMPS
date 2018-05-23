@@ -218,6 +218,9 @@ int main (int argc, char* argv[])
 	// --------SU(2)---------
 	lout << endl << "--------SU(2)---------" << endl << endl;
 	
+	params.push_back({"subL",SUB_LATTICE::A,0});
+	params.push_back({"subL",SUB_LATTICE::B,1});
+	
 	Stopwatch<> Watch_SU2xU1;
 	VMPS::KondoSU2xU1 H_SU2xU1(L,params);
 	lout << H_SU2xU1.info() << endl;
@@ -255,17 +258,17 @@ int main (int argc, char* argv[])
 //	cout << densitiy_matrix_SU2xU1 << endl << endl;
 	
 	// --------U(0)xSU(2)---------
-//	lout << endl << "--------U(0)xSU(2)---------" << endl << endl;
-//	
-//	Stopwatch<> Watch_U0xSU2;
-//	VMPS::KondoU0xSU2 H_U0xSU2(L,params);
-//	lout << H_U0xSU2.info() << endl;
-//	
-//	VMPS::KondoU0xSU2::Solver DMRG_U0xSU2(VERB);
-//	DMRG_U0xSU2.edgeState(H_U0xSU2, g_U0xSU2, {T}, LANCZOS::EDGE::GROUND);
-//	
-//	t_U0xSU2 = Watch_U0xSU2.time();
-//	
+	lout << endl << "--------U(0)xSU(2)---------" << endl << endl;
+	
+	Stopwatch<> Watch_U0xSU2;
+	VMPS::KondoU0xSU2 H_U0xSU2(L,params);
+	lout << H_U0xSU2.info() << endl;
+	
+	VMPS::KondoU0xSU2::Solver DMRG_U0xSU2(VERB);
+	DMRG_U0xSU2.edgeState(H_U0xSU2, g_U0xSU2, {T}, LANCZOS::EDGE::GROUND);
+	
+	t_U0xSU2 = Watch_U0xSU2.time();
+	
 	//--------output---------
 	
 	TextTable T( '-', '|', '+' );

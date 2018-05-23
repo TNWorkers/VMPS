@@ -5,6 +5,7 @@
 #include <vector>
 #include <functional>
 
+#include "tensors/SiteOperatorQ.h"
 #include "tensors/SiteOperator.h"
 
 #ifndef IS_REAL_FUNCTION

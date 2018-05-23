@@ -262,6 +262,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		// resize Vout
 		Vout.state = Mps<Symmetry,Scalar>(H, GlobParam.Dinit, Qtot_input, GlobParam.Qinit);
 		Vout.state.max_Nsv = GlobParam.Dinit;
+		Vout.state.min_Nsv = DynParam.min_Nsv(0);
 		Vout.state.setRandom();
 	}
 	Vout.state.graph("ginit");
@@ -494,7 +495,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		// one-site variance
 		for (size_t l=0; l<this->N_sites; ++l)
 		{
-			// calculate the nullspace tensor F/G with QR_NULL
+			// calculate the nullspace tensor F/G
 			Stopwatch<> Ntimer;
 			Vout.state.calc_N(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, Nsaved[SweepStat.pivot]);
 			t_N += Ntimer.time();
@@ -602,16 +603,15 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		
 //		Mps<Symmetry,Scalar> HxPsi;
 //		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
-////		if constexpr (Symmetry::NON_ABELIAN) {HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);}
-////		else {HxPsi.eps_svd = 0.; OxV(H,Psi,HxPsi);}
-//		HxV(H,Psi,HxPsi,DMRG::VERBOSITY::SILENT);
+//		HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);
 //		Mps<Symmetry,Scalar> ExPsi = Vout.state;
 //		ExPsi *= Vout.energy;
-//		cout << HxPsi.validate() << ", " << HxPsi.info() << endl;
-//		cout << ExPsi.validate() << ", " << ExPsi.info() << endl;
+//		cout << HxPsi.validate("HxPsi") << ", " << HxPsi.info() << endl;
+//		cout << ExPsi.validate("ExPsi") << ", " << ExPsi.info() << endl;
 //		HxPsi -= ExPsi;
-//		double err_exact = HxPsi.dot(HxPsi) / this->N_sites;
-		
+//		cout << HxPsi.validate("res") << ", " << HxPsi.info() << endl;
+//		double err_exact_ = HxPsi.dot(HxPsi) / this->N_sites;
+//		
 //		Stopwatch<> HsqTimer_;
 //		double PsixHxHxPsi = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state));
 //		double PsixPsi = dot(Vout.state,Vout.state);
@@ -619,27 +619,26 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 //		double err_exact = (PsixHxHxPsi + pow(Vout.energy,2)*PsixPsi - 2.*Vout.energy*PsixHxPsi) / this->N_sites;
 //		cout << sqrt(PsixHxHxPsi) << ", " << Vout.energy << ", " << PsixHxPsi << ", " << PsixPsi << endl;
 //		
-//		cout << TCOLOR(RED) << "err_state=" << err_state << ", err_exact=" << err_exact << ", diff=" << abs(err_state-err_exact)
+//		cout << TCOLOR(RED) << "err_state=" << err_state << ", err_exact=" << err_exact 
+//		<< ", " << err_exact_ 
+//		<< ", diff=" << abs(err_state-err_exact)
+//		<< ", ratio=" << err_state/err_exact
 //		     << ", " << HsqTimer_.info("‖H|Ψ>-E|Ψ>‖") << TCOLOR(BLACK) << endl;
 	}
 	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_FULL)
 	{
 		Stopwatch<> HsqTimer;
-//		Mps<Symmetry,Scalar> HxPsi;
-//		Mps<Symmetry,Scalar> Psi = Vout.state; Psi.sweep(0,DMRG::BROOM::QR);
-//		if constexpr (Symmetry::NON_ABELIAN) {HxV(H,Psi,HxPsi,DMRG::VERBOSITY::HALFSWEEPWISE);}
-//		else                                 {HxPsi.eps_svd = 0.; OxV(H,Psi,HxPsi);}
-//		
-//		Mps<Symmetry,Scalar> ExPsi = Vout.state;
-//		ExPsi *= Vout.energy;
-//		HxPsi -= ExPsi;
-//		
-//		double err_state = HxPsi.dot(HxPsi) / this->N_sites;
 		
-		double PsixHxHxPsi = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state));
-		double PsixPsi = dot(Vout.state,Vout.state);
-		double PsixHxPsi = isReal(avg(Vout.state,H,Vout.state));
-		err_state = (PsixHxHxPsi + pow(Vout.energy,2)*PsixPsi - 2.*Vout.energy*PsixHxPsi) / this->N_sites;
+		Mps<Symmetry,Scalar> HxPsi;
+		Mps<Symmetry,Scalar> Psi = Vout.state;
+		Psi.sweep(0,DMRG::BROOM::QR);
+		HxV(H, Psi, HxPsi, DMRG::VERBOSITY::SILENT);
+		
+		Mps<Symmetry,Scalar> ExPsi = Vout.state;
+		ExPsi *= Vout.energy;
+		HxPsi -= ExPsi;
+		
+		double err_state = HxPsi.dot(HxPsi) / this->N_sites;
 		
 		if (CHOSEN_VERBOSITY >= 2)
 		{
@@ -743,8 +742,6 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE)
 {
-//	DynParam = DynParam_input;
-//	GlobParam = GlobParam_input;
 	prepare(H, Vout, Qtot_input, false);
 	
 	Stopwatch<> TotalTimer;
@@ -768,14 +765,15 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		// sweep
 		halfsweep(H,Vout,EDGE);
 		
+		size_t j = SweepStat.N_halfsweeps;
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
-		Vout.state.eps_svd = DynParam.eps_svd(SweepStat.N_halfsweeps);
-		if (SweepStat.N_halfsweeps%DynParam.Dincr_per(SweepStat.N_halfsweeps) == 0 and 
+		Vout.state.eps_svd = DynParam.eps_svd(j);
+		if (j%DynParam.Dincr_per(j) == 0 and 
 		    (totalTruncWeight >= Vout.state.eps_svd or err_state > 1e2*GlobParam.tol_state))
 		{
 			// increase by Dincr_abs, but by no more than Dincr_rel (e.g. 10%)
-			size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Dincr_rel(SweepStat.N_halfsweeps) * Vout.state.max_Nsv), 
-			                                             Vout.state.max_Nsv + DynParam.Dincr_abs(SweepStat.N_halfsweeps));
+			size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Dincr_rel(j) * Vout.state.max_Nsv), 
+			                                             Vout.state.max_Nsv + DynParam.Dincr_abs(j));
 			// do not increase beyond Dlimit
 			Vout.state.max_Nsv = min(max_Nsv_new, GlobParam.Dlimit);
 		}
@@ -791,7 +789,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		}
 		
 		#ifdef USE_HDF5_STORAGE
-		if (GlobParam.savePeriod != 0 and SweepStat.N_halfsweeps%GlobParam.savePeriod == 0)
+		if (GlobParam.savePeriod != 0 and j%GlobParam.savePeriod == 0)
 		{
 			Vout.state.save("mpsBackup");
 		}

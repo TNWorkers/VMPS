@@ -6,6 +6,9 @@
 #include <Eigen/Sparse>
 #include "tensors/SiteOperatorQ.h"
 
+//Forward declaration
+//template<typename Symmetry, typename MatrixType_> class SiteOperatorQ;
+
 /** \struct SiteOperator
  *
  * \ingroup Tensors
