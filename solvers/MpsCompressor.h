@@ -377,18 +377,6 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 		if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 		{
 			sweep_to_edge(Vin,Vout,true); // BUILD_LR = true
-//			if (pivot==1)
-//			{
-//				Vout.sweep(0,DMRG::BROOM::QR);
-//				pivot=0;
-//				build_R(0,Vout,Vin);
-//			}
-//			else if (pivot==N_sites-2)
-//			{
-//				Vout.sweep(N_sites-1,DMRG::BROOM::QR);
-//				pivot = N_sites-1;
-//				build_L(N_sites-1,Vout,Vin);
-//			}
 		}
 		
 		for (size_t j=1; j<=halfSweepRange; ++j)
@@ -434,8 +422,6 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 	}
 	
 	// last sweep
-//	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
-//	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
 	sweep_to_edge(Vin,Vout,false);
 }
 
@@ -642,18 +628,6 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 		{
 			sweep_to_edge(H,Vin,Vin,Vout,false,true); // build_LWRW = true
-//			if (pivot==1)
-//			{
-//				Vout.sweep(0,DMRG::BROOM::QR);
-//				pivot=0;
-//				build_RW(0,Vout,H,Vin);
-//			}
-//			else if (pivot==N_sites-2)
-//			{
-//				Vout.sweep(N_sites-1,DMRG::BROOM::QR);
-//				pivot = N_sites-1;
-//				build_LW(N_sites-1,Vout,H,Vin);
-//			}
 		}
 		
 		// optimization
@@ -891,7 +865,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	// set L&R edges
 	Env.clear();
 	Env.resize(N_sites);
-	Env[N_sites-1].R.setTarget(Vin2.Qtot);
+	Env[N_sites-1].R.setTarget(Vin2.Qtarget());
 	Env[0].L.setVacuum();
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -937,7 +911,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	Vout.min_Nsv = Vin1.min_Nsv;
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
-	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps or N_halfsweeps%2 != 0)
+	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
 	{
 		t_opt = 0;
 		t_AA = 0;
@@ -951,20 +925,6 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
 		{
 			sweep_to_edge(H,Vin1,Vin2,Vout,true,true); // build_LR = true, build LWRW = true
-//			if (pivot==1)
-//			{
-//				Vout.sweep(0,DMRG::BROOM::QR);
-//				pivot = 0;
-//				build_RW(0,Vout,H,Vin1);
-//				build_R (0,Vout,  Vin2);
-//			}
-//			else if (pivot==N_sites-2)
-//			{
-//				Vout.sweep(N_sites-1,DMRG::BROOM::QR);
-//				pivot = N_sites-1;
-//				build_LW(N_sites-1,Vout,H,Vin1);
-//				build_L (N_sites-1,Vout,  Vin2);
-//			}
 		}
 		
 		for (size_t j=1; j<=halfSweepRange; ++j)
@@ -972,7 +932,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
 			Stopwatch<> Chronos;
 			
-			if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
+			if (N_halfsweeps%4 == 0 and N_halfsweeps > 1)
 			{
 				PivotVector<Symmetry,Scalar> Apair1;
 				prodOptimize2(H,Vin1,Vout,Apair1);
@@ -1018,6 +978,11 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
+//		cout << "avgHsqV1=" << avgHsqV1 
+//		     << ", Vout.squaredNorm()=" << Vout.squaredNorm() 
+//		     << ", polyB*polyB*sqnormV2=" << polyB*polyB*sqnormV2 
+//		     << ", 2.*polyB*overlapV12=" << 2.*polyB*overlapV12 
+//		     << endl;
 		sqdist = abs(avgHsqV1 - Vout.squaredNorm() + polyB*polyB*sqnormV2 - 2.*polyB*overlapV12);
 		assert(!std::isnan(sqdist));
 		
@@ -1046,8 +1011,6 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	}
 	
 	// last sweep
-//	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
-//	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
 	sweep_to_edge(H,Vin1,Vin2,Vout,false,false);
 }
 
@@ -1082,7 +1045,6 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 				}
 			}
 		}
-//		Vout.leftSweepStep(0, DMRG::BROOM::QR); // last sweep to get rid of large numbers
 		CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
 	}
 	else if (Vout.pivot == 0 or Vout.pivot == -1)
@@ -1108,7 +1070,6 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 				}
 			}
 		}
-//		Vout.rightSweepStep(N_sites-1, DMRG::BROOM::QR); // last sweep to get rid of large numbers
 		CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
 	}
 	pivot = Vout.pivot;

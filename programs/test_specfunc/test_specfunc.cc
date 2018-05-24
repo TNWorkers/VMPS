@@ -77,10 +77,21 @@ int main (int argc, char* argv[])
 		Adag = H.cc(L/2);
 		Qc = MODEL::singlet(N+2);
 	}
-//	else if (spec == "PES")
-//	{
-//		Nc = qarray<2>({Nupdn-1,Nupdn});
-//	}
+	else if (spec == "PES")
+	{
+		if constexpr (MODEL::Symmetry::NON_ABELIAN)
+		{
+			A = H.c(L/2);
+			Adag = H.cdag(L/2);
+			Qc = qarray<2>({2,N-1});
+		}
+		else
+		{
+			A = H.c(UP,L/2);
+			Adag = H.cdag(UP,L/2);
+			Qc = qarray<2>({N/2-1,N/2});
+		}
+	}
 //	else if (spec == "IPES")
 //	{
 //		Nc = qarray<2>({Nupdn+1,Nupdn});
@@ -90,6 +101,21 @@ int main (int argc, char* argv[])
 		A = H.n(L/2);
 		Adag = A;
 		Qc = Qi;
+	}
+	else if (spec == "SSF")
+	{
+		if constexpr (MODEL::Symmetry::NON_ABELIAN)
+		{
+			A = H.S(L/2);
+			Adag = H.Sdag(L/2);
+			Qc = {3,N};
+		}
+//		else
+//		{
+//			A = H.Sz(L/2);
+//			Adag = H.Sz(L/2);
+//			Qc = Qi;
+//		}
 	}
 	lout << A.info() << endl;
 	lout << Adag.info() << endl;

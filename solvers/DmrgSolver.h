@@ -152,7 +152,7 @@ private:
 	void build_PL (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout, size_t loc);
 	void build_PR (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout, size_t loc);
 	
-	void adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout);
+	void adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE);
 	
 	/**Projected-out states to find the edge of the spectrum.*/
 	vector<Mps<Symmetry,Scalar> > Psi0;
@@ -450,7 +450,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
 		t_LR += LRtimer.time();
 		
-		adapt_alpha_rsvd(H,Vout);
+		adapt_alpha_rsvd(H,Vout,EDGE);
 		
 		++SweepStat.N_sweepsteps;
 	}
@@ -805,7 +805,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
-adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout)
+adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE)
 {
 	// adapt alpha
 	PivotVector<Symmetry,Scalar> Vtmp1(Vout.state.A[SweepStat.pivot]);
@@ -835,7 +835,12 @@ adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vou
 	else
 	{
 		double r = abs(DeltaEtrunc) / abs(DeltaEopt);
-		if (DeltaEtrunc < 0.) {f = 2.*(r+1.);}
+		if ((DeltaEtrunc < 0. and EDGE == LANCZOS::EDGE::GROUND) or
+		    (DeltaEtrunc > 0. and EDGE == LANCZOS::EDGE::ROOF)
+		   )
+		{
+			f = 2.*(r+1.);
+		}
 		else if (r < 0.05)    {f = 1.2-r;}
 		else if (r > 0.3)     {f = 1./(r+0.75);}
 	}
