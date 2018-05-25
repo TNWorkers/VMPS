@@ -212,7 +212,9 @@ template<typename Symmetry, typename MatrixType_>
 void Biped<Symmetry,MatrixType_>::
 setTarget (qType Qtot)
 {
-	MatrixType_ Mtmp(1,1); Mtmp << Symmetry::coeff_dot(Qtot);
+	MatrixType_ Mtmp(1,1);
+	Mtmp << 1.;
+//	Mtmp << Symmetry::coeff_dot(Qtot);
 	push_back(Qtot, Qtot, Mtmp);
 }
 

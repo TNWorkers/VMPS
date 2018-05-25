@@ -181,6 +181,8 @@ public:
 	 */
 	void set_A_from_C (size_t loc, const vector<Tripod<Symmetry,MatrixType> > &C, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD);
 	
+	template<typename SymmetryBig>
+	void reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs);
 	
 	// \param Op : 
 	// \param USE_SQUARE :
@@ -3111,6 +3113,46 @@ addScale (OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, bool SVD_COMPRESS)
 			A[l][s].block[q].bottomRows(rows-rows_old).setZero();
 			A[l][s].block[q].rightCols(cols-cols_old).setZero();
 		}
+	}
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename SymmetryBig>
+void Mps<Symmetry,Scalar>::
+reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs)
+{
+	for (size_t l=0; l<PsiRhs.length(); ++l)
+	for (size_t s=0; s<PsiRhs.qloc[l].size(); ++s)
+	{
+		A[l][s].clear();
+		
+		cout << "l=" << l << ", s=" << s << endl;
+		set<qarray2<Nq> > qset;
+		
+		for (size_t q=0; q<PsiRhs.A[l][s].dim; ++q)
+		{
+			qarray2<Nq> qred;
+			size_t index = 0;
+			cout << "in=" << PsiRhs.A[l][s].in[q] << ", out=" << PsiRhs.A[l][s].out[q] << endl;
+			for (size_t r=0; r<SymmetryBig::Nq; ++r)
+			{
+				if (r != iq)
+				{
+					qred[0][index] = PsiRhs.A[l][s].in[q][r];
+					qred[1][index] = PsiRhs.A[l][s].out[q][r];
+					cout << "in new=" << qred[0][index] << ", out new=" << qred[1][index] << endl;
+				}
+				++index;
+			}
+			qset.insert(qred);
+		}
+		
+		for (auto it=qset.begin(); it!=qset.end(); ++it)
+		{
+			cout << "try: " << (*it)[0] << "\t" << (*it)[1] << endl;
+			A[l][s].try_create_block(*it);
+		}
+		cout << endl;
 	}
 }
 

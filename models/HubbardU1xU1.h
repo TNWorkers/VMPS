@@ -44,9 +44,9 @@ namespace VMPS
 class HubbardU1xU1 : public Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> >,double>,
 					 public HubbardObservables<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > >
 {
-typedef Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > Symmetry;
-
 public:
+	
+	typedef Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > Symmetry;
 	
 	///@{
 	HubbardU1xU1() : Mpo(){};

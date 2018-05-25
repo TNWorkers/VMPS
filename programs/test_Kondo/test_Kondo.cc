@@ -174,6 +174,10 @@ int main (int argc, char* argv[])
 	VMPS::KondoU1xU1::Solver DMRG_U1xU1(VERB);
 	DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {M,N}, LANCZOS::EDGE::GROUND);
 	
+	VMPS::KondoU1::StateXd Vred(H_U1,5,{N},0);
+	Vred.reduce_symmetry(0,g_U1xU1.state);
+	Vred.graph("Vred");
+	
 	t_U1xU1 = Watch_U1xU1.time();
 	
 //	VectorXd d_U1xU1(L); d_U1xU1.setZero();
