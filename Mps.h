@@ -66,7 +66,7 @@ public:
 	 * \param Qtot_input : target quantum number
 	 * \param Qmax_input : Maximal number of symmetry blocks per site in the Mps
 	 */
-	template<typename Hamiltonian> Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, int Qmax_input);
+	template<typename Hamiltonian> Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, size_t Nqmax_input);
 	
 	/** 
 	 * Construct by explicitly provide the A-matrices. Basically only for testing purposes.
@@ -126,6 +126,16 @@ public:
 	 *                  Then call Mps::load() to get the Mps matrices.
 	 */
 	size_t loadDmax (string filename);
+
+	/**
+	 * Returns the maximal amount of symmetry blocks of an MPS stored in a file <FILENAME>.h5.
+	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
+	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
+	 * \note Use case : First call loadDmax and loadNqmax to construct the Mps with Mps::Mps(const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, size_t Nqmax).
+	 *                  Then call Mps::load() to get the Mps matrices.
+	 */
+	size_t loadNqmax (string filename);
+
 	///\}
 	#endif //USE_HDF5_STORAGE
 	
@@ -495,11 +505,11 @@ Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_in
 template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
 Mps<Symmetry,Scalar>::
-Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, int Qmax_input)
+Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, size_t Nqmax_input)
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >()
 {
 	N_phys = H.volume();
-	outerResize(H.length(), H.locBasis(), Qtot_input, Qmax_input);
+	outerResize(H.length(), H.locBasis(), Qtot_input, Nqmax_input);
 	update_inbase();
 	update_outbase();
 	innerResize(Dmax);
@@ -519,10 +529,10 @@ Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
 template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
 void Mps<Symmetry,Scalar>::
-outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, int Qmax_input)
+outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t Nqmax_input)
 {
 	N_phys = H.volume();
-	outerResize(H.length(), H.locBasis(), Qtot_input, Qmax_input);
+	outerResize(H.length(), H.locBasis(), Qtot_input, Nqmax_input);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -762,7 +772,7 @@ calc_Qlimits()
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Nqmax_input)
+outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t Nqmax_input)
 {
 //	cout << "Nqmax_input=" << Nqmax_input << endl;
 	this->N_sites = L_input;
@@ -1171,10 +1181,12 @@ save (string filename, string info)
 	HDF5Interface target(filename, WRITE);
 	
 	string DmaxLabel = "Dmax";
+	string NqmaxLabel = "Nqmax";
 	string eps_svdLabel = "eps_svd";
 	string alpha_rsvdLabel = "alpha_rsvd";
 	string add_infoLabel = "add_info";
 	target.save_scalar(this->calc_Dmax(),DmaxLabel);
+	target.save_scalar(this->calc_Nqmax(),NqmaxLabel);	
 	target.save_scalar(this->min_Nsv,"min_Nsv");
 	target.save_scalar(this->max_Nsv,"max_Nsv");
 	target.save_scalar(this->eps_svd,eps_svdLabel);
@@ -1205,6 +1217,19 @@ loadDmax (string filename)
 	size_t Dmax;
 	source.load_scalar(Dmax,DmaxLabel);
 	return Dmax;
+}
+
+template<typename Symmetry, typename Scalar>
+size_t Mps<Symmetry,Scalar>::
+loadNqmax (string filename)
+{
+	filename+=".h5";
+	HDF5Interface source(filename, READ);
+
+	string NqmaxLabel = "Nqmax";
+	size_t Nqmax;
+	source.load_scalar(Nqmax,NqmaxLabel);
+	return Nqmax;
 }
 
 template<typename Symmetry, typename Scalar>

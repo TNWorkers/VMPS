@@ -325,7 +325,7 @@ set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F, cons
 		KondoHamiltonian += -Jorb(i)*std::sqrt(3.)*OperatorType::outerprod(B.Sdag(i),F.S(i),{1,0});
 	}
 
-	Terms.name = "Kondo SU(2)⊗U(1)";
+	Terms.name = "Kondo";
 	Terms.local.push_back(make_tuple(1.,KondoHamiltonian.plain<double>()));
 	
 	return Terms;

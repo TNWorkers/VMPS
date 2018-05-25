@@ -372,13 +372,6 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		}
 	}
 	
-	if (CHOSEN_VERBOSITY>=2)
-	{
-		lout << endl << termcolor::colorize << termcolor::bold
-			 << "——————————————————————————————————————————DMRG 1site Algorithm——————————————————————————————————————————"
-			 <<  termcolor::reset << endl;
-		lout << PrepTimer.info("initial state & sweep") << endl;
-	}
 	// initial energy
 	if (SweepStat.pivot == 0)
 	{
@@ -409,11 +402,14 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 
 	if (CHOSEN_VERBOSITY>=2)
 	{
-		lout << "initial energy: E₀=" << Eold << endl;
-		lout << "initial state: " << Vout.state.info() << endl;
-		lout << "initial fluctuations: α_rsvd=" << Vout.state.alpha_rsvd << ", "
-			 << "ε_svd=" << Vout.state.eps_svd 
-			 << endl << endl;
+		lout << endl << termcolor::colorize << termcolor::bold
+			 << "——————————————————————————————————————————DMRG 1site Algorithm——————————————————————————————————————————"
+			 <<  termcolor::reset << endl;
+		lout << PrepTimer.info("initial state & sweep") << endl;
+		lout <<                "initial energy       : E₀=" << Eold << endl;
+		lout <<                "initial state        : " << Vout.state.info() << endl;
+		lout <<                "initial fluctuations : α_rsvd=" << Vout.state.alpha_rsvd
+			 << ", " << "ε_svd=" << Vout.state.eps_svd << endl << endl;
 		Vout.state.graph("init");
 	}
 
