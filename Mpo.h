@@ -3,6 +3,8 @@
 
 #include "boost/multi_array.hpp"
 
+#include "termcolor.hpp" //from https://github.com/ikalnytskyi/termcolor
+
 #include <Eigen/SparseCore>
 #ifndef EIGEN_DEFAULT_SPARSE_INDEX_TYPE
 #define EIGEN_DEFAULT_SPARSE_INDEX_TYPE int

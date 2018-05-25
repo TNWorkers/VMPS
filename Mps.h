@@ -146,7 +146,7 @@ public:
 	 * \param Qtot_input : target quantum number
 	 * \param Nqmax_input : Maximum number of symmetry blocks in the Mps per site.
 	 */
-	void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, int Nqmax_input=500);
+	void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t Nqmax_input=500);
 	
 	/**
 	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from an Mpo.
@@ -154,7 +154,7 @@ public:
 	 * \param Qtot_input : target quantum number
 	 * \param Nqmax_input : Maximum number of symmetry blocks in the Mps per site.
 	 */
-	template<typename Hamiltonian> void outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, int Nqmax_input=500);
+	template<typename Hamiltonian> void outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t Nqmax_input=500);
 	
 	/**
 	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. 

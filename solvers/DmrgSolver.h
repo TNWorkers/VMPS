@@ -1,6 +1,8 @@
 #ifndef STRAWBERRY_DMRGSOLVER_WITH_Q
 #define STRAWBERRY_DMRGSOLVER_WITH_Q
 
+#include "termcolor.hpp" //from https://github.com/ikalnytskyi/termcolor
+
 #include "Mpo.h"
 #include "Mps.h"
 #include "pivot/DmrgPivotMatrix1.h"
