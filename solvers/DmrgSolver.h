@@ -1,6 +1,8 @@
 #ifndef STRAWBERRY_DMRGSOLVER_WITH_Q
 #define STRAWBERRY_DMRGSOLVER_WITH_Q
 
+#include "termcolor.hpp" //from https://github.com/ikalnytskyi/termcolor
+
 #include "Mpo.h"
 #include "Mps.h"
 #include "pivot/DmrgPivotMatrix1.h"
@@ -181,12 +183,13 @@ string DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 eigeninfo() const
 {
 	stringstream ss;
-	ss << "half-sweeps=";
+	ss << termcolor::colorize << termcolor::underline << "half-sweeps=";
 	if ((SweepStat.N_sweepsteps-1)/(N_sites-1)>0)
 	{
 		ss << (SweepStat.N_sweepsteps-1)/(N_sites-1);
 		if ((SweepStat.N_sweepsteps-1)%(N_sites-1)!=0) {ss << "+";}
 	}
+	ss << termcolor::reset;
 	if ((SweepStat.N_sweepsteps-1)%(N_sites-1)!=0) {ss << (SweepStat.N_sweepsteps-1)%(N_sites-1) << "/" << (N_sites-1);}
 	ss << ", ";
 	
@@ -371,7 +374,6 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		}
 	}
 	
-	if (CHOSEN_VERBOSITY>=2) {lout << PrepTimer.info("initial state & sweep") << endl;}
 	// initial energy
 	if (SweepStat.pivot == 0)
 	{
@@ -395,18 +397,24 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		Eold = avg(Vout.state,H,Vout.state);
 	}
 	Vout.energy = Eold;
-	if (CHOSEN_VERBOSITY>=2)
-	{
-		lout << "initial energy: E₀=" << Eold << endl;
-		lout << Vout.state.info() << endl;
-		lout << endl;
-		Vout.state.graph("init");
-	}
 	
 	// initial cutoffs
 	Vout.state.eps_svd    = DynParam.eps_svd(0);
 	Vout.state.alpha_rsvd = DynParam.max_alpha_rsvd(0);
-	
+
+	if (CHOSEN_VERBOSITY>=2)
+	{
+		lout << endl << termcolor::colorize << termcolor::bold
+			 << "——————————————————————————————————————————DMRG 1site Algorithm——————————————————————————————————————————"
+			 <<  termcolor::reset << endl;
+		lout << PrepTimer.info("initial state & sweep") << endl;
+		lout <<                "initial energy       : E₀=" << Eold << endl;
+		lout <<                "initial state        : " << Vout.state.info() << endl;
+		lout <<                "initial fluctuations : α_rsvd=" << Vout.state.alpha_rsvd
+			 << ", " << "ε_svd=" << Vout.state.eps_svd << endl << endl;
+		Vout.state.graph("init");
+	}
+
 	err_eigval = 1.;
 	err_state  = 1.;
 }
@@ -457,6 +465,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	++SweepStat.N_halfsweeps;
 	
 	// calculate state error
+	stringstream errorCalcInfo;
 	err_eigval = abs(Eold-Vout.energy)/this->N_sites;
 	if (GlobParam.CONVTEST == DMRG::CONVTEST::NORM_TEST and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps)
 	{
@@ -475,7 +484,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		t_err += HsqTimer.time();
 		if (CHOSEN_VERBOSITY>=2)
 		{
-			lout << HsqTimer.info("<H^2>") << endl;
+			errorCalcInfo << HsqTimer.info("<H^2>") << endl;
 		}
 	}
 	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_2SITE and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps)
@@ -591,14 +600,14 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		{
 			double t_tot = HsqTimer.time();
 			t_err += t_tot;
-			lout << HsqTimer.info("2-site variance") 
-			     << " ("
-			     << "GRALF=" << round(t_GRALF/t_tot*100.,0) << "%" 
-			     << ", LR=" << round(t_LR/t_tot*100.,0) << "%" 
-			     << ", N=" << round(t_N/t_tot*100.,0) << "%" 
-			     << ", QR=" << round(t_QR/t_tot*100.,0) << "%" 
-			     << ")"
-			     << endl;
+			errorCalcInfo << HsqTimer.info("2-site variance") 
+						  << " ("
+						  << "GRALF=" << round(t_GRALF/t_tot*100.,0) << "%" 
+						  << ", LR=" << round(t_LR/t_tot*100.,0) << "%" 
+						  << ", N=" << round(t_N/t_tot*100.,0) << "%" 
+						  << ", QR=" << round(t_QR/t_tot*100.,0) << "%" 
+						  << ")"
+						  << endl;
 		}
 		
 //		Mps<Symmetry,Scalar> HxPsi;
@@ -642,7 +651,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		
 		if (CHOSEN_VERBOSITY >= 2)
 		{
-			lout << HsqTimer.info("‖H|Ψ>-E|Ψ>‖") << endl;
+			errorCalcInfo << HsqTimer.info("‖H|Ψ>-E|Ψ>‖") << endl;
 		}
 	}
 	
@@ -661,6 +670,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	// print stuff
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
+		lout << eigeninfo() << endl;
 		size_t standard_precision = cout.precision();
 		if (EDGE == LANCZOS::EDGE::GROUND)
 		{
@@ -668,9 +678,9 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		}
 		else
 		{
-			lout << "E₀=" << setprecision(13) << Vout.energy << ", E₀/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
+			lout << "Eₘₐₓ=" << setprecision(13) << Vout.energy << ", Eₘₐₓ/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
 		}
-		lout << eigeninfo() << endl;
+		lout << errorCalcInfo.str();
 		lout << Vout.state.info() << endl;
 		double t_halfsweep = HalfsweepTimer.time();
 		lout << HalfsweepTimer.info("half-sweep") 
@@ -726,7 +736,8 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 	{
 		size_t standard_precision = cout.precision();
 		string Eedge = (EDGE == LANCZOS::EDGE::GROUND)? "Emin" : "Emax";
-		lout << Eedge << "=" << setprecision(13) << Vout.energy << ", " << Eedge << "/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
+		lout << termcolor::bold << Eedge << "=" << setprecision(13) << Vout.energy << ", "
+			 << Eedge << "/L=" << Vout.energy/N_phys << setprecision(standard_precision) << termcolor::reset << endl;
 		lout << Vout.state.info() << endl;
 		if (GlobParam.CALC_S_ON_EXIT)
 		{
@@ -757,7 +768,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		}
 	};
 	
-	print_alpha_eps(); lout << endl;
+	// print_alpha_eps(); lout << endl;
 	
 	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and SweepStat.N_halfsweeps < GlobParam.max_halfsweeps) or
 	       SweepStat.N_halfsweeps < GlobParam.min_halfsweeps)

@@ -3,6 +3,8 @@
 
 #include "boost/multi_array.hpp"
 
+#include "termcolor.hpp" //from https://github.com/ikalnytskyi/termcolor
+
 #include <Eigen/SparseCore>
 #ifndef EIGEN_DEFAULT_SPARSE_INDEX_TYPE
 #define EIGEN_DEFAULT_SPARSE_INDEX_TYPE int
@@ -769,7 +771,7 @@ string Mpo<Symmetry,Scalar>::
 info() const
 {
 	stringstream ss;
-	ss << label << "L=" << N_sites;
+	ss << termcolor::colorize << termcolor::bold << label << termcolor::reset << "L=" << N_sites;
 	if (N_phys>N_sites) {ss << ",V=" << N_phys;}
 	ss << ", " << Symmetry::name() << ", ";
 	
