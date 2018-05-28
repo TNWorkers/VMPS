@@ -174,9 +174,15 @@ int main (int argc, char* argv[])
 	VMPS::KondoU1xU1::Solver DMRG_U1xU1(VERB);
 	DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {M,N}, LANCZOS::EDGE::GROUND);
 	
-	VMPS::KondoU1::StateXd Vred(H_U1,5,{N},0);
+	VMPS::KondoU1::StateXd Vred = g_U1.state;
+	Vred.graph("V");
 	Vred.reduce_symmetry(0,g_U1xU1.state);
+	Vred.mend();
+	cout << "Vred done!" << endl;
 	Vred.graph("Vred");
+	cout << Vred.validate() << endl;
+	g_U1xU1.state.graph("Vfull");
+	cout << "red.avg=" << avg(Vred, H_U1, Vred) << endl;
 	
 	t_U1xU1 = Watch_U1xU1.time();
 	

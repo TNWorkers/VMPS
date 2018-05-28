@@ -1,11 +1,11 @@
 #ifndef STRAWBERRY_KONDOMODEL
 #define STRAWBERRY_KONDOMODEL
 
-#include "ParamHandler.h" // from HELPERS
-
 #include "bases/FermionBase.h"
 #include "bases/SpinBase.h"
 #include "symmetry/S1xS2.h"
+#include "Mpo.h"
+#include "ParamHandler.h" // from TOOLS
 #include "models/KondoObservables.h"
 
 namespace VMPS
@@ -48,6 +48,8 @@ public:
 	KondoU1xU1 (const size_t &L, const vector<Param> &params);
 	///@}
 	
+	static qarray<2> singlet (int N) {return qarray<2>{0,N};};
+	
 	/**
 	 * \describe_set_operators
 	 *
@@ -59,7 +61,7 @@ public:
 	template<typename Symmetry_> 
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F,
 	                                                    const ParamHandler &P, size_t loc=0);
-		
+	
 	/**Validates whether a given \p qnum is a valid combination of \p N and \p M for the given model.
 	\returns \p true if valid, \p false if not*/
 	bool validate (qType qnum) const;

@@ -3121,38 +3121,114 @@ template<typename SymmetryBig>
 void Mps<Symmetry,Scalar>::
 reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs)
 {
+	assert(SymmetryBig::Nq == Nq+1);
+	
 	for (size_t l=0; l<PsiRhs.length(); ++l)
 	for (size_t s=0; s<PsiRhs.qloc[l].size(); ++s)
 	{
+		cout << "l=" << l << ", s=" << PsiRhs.qloc[l][s] << endl;
 		A[l][s].clear();
 		
-		cout << "l=" << l << ", s=" << s << endl;
-		set<qarray2<Nq> > qset;
+//		set<qarray2<Nq> > qset;
+		map<qarray2<Nq>,vector<qarray2<1> > > qmap;
+		map<qarray2<Nq>,vector<qarray2<SymmetryBig::Nq> > > qmapFull;
 		
 		for (size_t q=0; q<PsiRhs.A[l][s].dim; ++q)
 		{
-			qarray2<Nq> qred;
+			qarray<Nq> qred_in;
+			qarray<Nq> qred_out;
+			
+			qarray<1> qblock_in;
+			qarray<1> qblock_out;
+			
 			size_t index = 0;
-			cout << "in=" << PsiRhs.A[l][s].in[q] << ", out=" << PsiRhs.A[l][s].out[q] << endl;
 			for (size_t r=0; r<SymmetryBig::Nq; ++r)
 			{
 				if (r != iq)
 				{
-					qred[0][index] = PsiRhs.A[l][s].in[q][r];
-					qred[1][index] = PsiRhs.A[l][s].out[q][r];
-					cout << "in new=" << qred[0][index] << ", out new=" << qred[1][index] << endl;
+					qred_in[index] = PsiRhs.A[l][s].in[q][r];
+					qred_out[index] = PsiRhs.A[l][s].out[q][r];
+					++index;
 				}
-				++index;
+				else
+				{
+					qblock_in[0] = PsiRhs.A[l][s].in[q][r];
+					qblock_out[0] = PsiRhs.A[l][s].out[q][r];
+				}
 			}
-			qset.insert(qred);
+//			qset.insert(qarray2<Nq>{qred_in,qred_out});
+			
+			qmap[qarray2<Nq>{qred_in,qred_out}].push_back(qarray2<Nq>{qblock_in, qblock_out});
+			qmapFull[qarray2<Nq>{qred_in,qred_out}].push_back(qarray2<SymmetryBig::Nq>{PsiRhs.A[l][s].in[q], PsiRhs.A[l][s].out[q]});
 		}
 		
-		for (auto it=qset.begin(); it!=qset.end(); ++it)
+//		for (auto it=qset.begin(); it!=qset.end(); ++it)
+//		{
+//			A[l][s].try_create_block(*it);
+//		}
+		for (auto it=qmap.begin(); it!=qmap.end(); ++it)
 		{
-			cout << "try: " << (*it)[0] << "\t" << (*it)[1] << endl;
-			A[l][s].try_create_block(*it);
+			qarray<Nq> qval_in = it->first[0];
+			qarray<Nq> qval_out = it->first[1];
+			vector<array<qarray<1>,2> > b = it->second;
+			
+			A[l][s].try_create_block(qarray2<Nq>{qval_in,qval_out});
+			cout << qval_in << ", " << qval_out << endl;
+			
+			cout << "b:" << endl;
+			for (size_t j=0; j<b.size(); ++j) // block index, in, out
+			{
+				cout << b[j][0] << ", " << b[j][1] << endl;
+			}
+			cout << endl;
+			
+			for (size_t j=0; j<b.size(); ++j) // block index, in, out
+			{
+				auto itl = A[l][s].dict.find(it->first);
+				
+//				qarray<SymmetryBig::Nq> quple_in;
+//				qarray<SymmetryBig::Nq> quple_out;
+//				size_t index = 0;
+//				for (size_t r=0; r<SymmetryBig::Nq; ++r)
+//				{
+//					if (r != iq)
+//					{
+//						quple_in[r] = qval_in[index];
+//						quple_out[r] = qval_out[index];
+//						++index;
+//					}
+//					else
+//					{
+//						quple_in[r] = b[j][0][r];
+//						quple_out[r] = b[j][1][r];
+//					}
+//				}
+				
+				qarray<SymmetryBig::Nq> quple_in  = qmapFull[qarray2<Nq>{qval_in, qval_out}][j][0];
+				qarray<SymmetryBig::Nq> quple_out = qmapFull[qarray2<Nq>{qval_in, qval_out}][j][1];
+				
+				auto itr = PsiRhs.A[l][s].dict.find(qarray2<SymmetryBig::Nq>{quple_in,quple_out});
+				
+				cout << "block: " << quple_in << ", " << quple_out << " -> " << qval_in << ", " << qval_out << endl;
+				if (itl != A[l][s].dict.end() and itr != PsiRhs.A[l][s].dict.end())
+				{
+					cout << "adding: " << quple_in << ", " << quple_out << " -> " << qval_in << ", " << qval_out 
+					     << ", size=" << PsiRhs.A[l][s].block[itr->second].rows() << "x" << PsiRhs.A[l][s].block[itr->second].cols() << endl;
+					if (l==0)
+					{
+						addRight(PsiRhs.A[l][s].block[itr->second], A[l][s].block[itl->second]);
+					}
+					else if (l==this->N_sites-1)
+					{
+						addBottom(PsiRhs.A[l][s].block[itr->second], A[l][s].block[itl->second]);
+					}
+					else
+					{
+						addBottomRight(PsiRhs.A[l][s].block[itr->second], A[l][s].block[itl->second]);
+					}
+				}
+			}
 		}
-		cout << endl;
 	}
 }
 

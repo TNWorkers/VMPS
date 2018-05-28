@@ -42,13 +42,15 @@ public:
 	KondoSU2xU1 ():Mpo() {};
 	KondoSU2xU1 (const size_t &L, const vector<Param> &params);
 	///@}
-
+	
+	static qarray<2> singlet (int N) {return qarray<2>{1,N};};
+	
 	///@{
 	/**Push params for DMRG algorithms via these functions to an instance of DmrgSolver.*/
 	DMRG::CONTROL::DYN get_DynParam(const vector<Param> &params={}) const;
 	DMRG::CONTROL::GLOB get_GlobParam(const vector<Param> &params={}) const;
 	///@}
-
+	
 	/**
 	 * \describe_set_operators
 	 *
