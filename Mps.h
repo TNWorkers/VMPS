@@ -78,6 +78,15 @@ public:
 	 */
 	Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
 	     const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
+
+    #ifdef USE_HDF5_STORAGE
+	/**
+	 * Construct from an external HDF5 file named <FILENAME>.h5.
+	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
+	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
+	 */
+	Mps(string filename) { load(filename); }
+	#endif //USE_HDF5_STORAGE
 	
 	///\{
 	/**
@@ -103,7 +112,7 @@ public:
 	#ifdef USE_HDF5_STORAGE
 	///\{
 	/**
-	 * Save all matrices of the MPS to the file <FILENAME>.h5.
+	 * Save all information of the MPS to the file <FILENAME>.h5.
 	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
 	 * \param info : Additional information about the used model. Enter the info()-method of the used MPO here.
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
@@ -112,30 +121,11 @@ public:
 	void save (string filename,string info="none");
 	
 	/**
-	 * Reads all matrices of the MPS from the file <FILENAME>.h5.
+	 * Reads all information of the MPS from the file <FILENAME>.h5.
 	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	 */
 	void load (string filename);
-	
-	/**
-	 * Returns the maximal bond-dimension of an MPS stored in a file <FILENAME>.h5.
-	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
-	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
-	 * \note Use case : First call loadDmax to construct the Mps with Mps::Mps(const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input).
-	 *                  Then call Mps::load() to get the Mps matrices.
-	 */
-	size_t loadDmax (string filename);
-
-	/**
-	 * Returns the maximal amount of symmetry blocks of an MPS stored in a file <FILENAME>.h5.
-	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
-	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
-	 * \note Use case : First call loadDmax and loadNqmax to construct the Mps with Mps::Mps(const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, size_t Nqmax).
-	 *                  Then call Mps::load() to get the Mps matrices.
-	 */
-	size_t loadNqmax (string filename);
-
 	///\}
 	#endif //USE_HDF5_STORAGE
 	
@@ -1179,12 +1169,24 @@ save (string filename, string info)
 {
 	filename+=".h5";
 	HDF5Interface target(filename, WRITE);
+	target.create_group("mps");
+	target.create_group("qloc");
+	target.create_group("Qtot");
 	
 	string DmaxLabel = "Dmax";
 	string NqmaxLabel = "Nqmax";
 	string eps_svdLabel = "eps_svd";
 	string alpha_rsvdLabel = "alpha_rsvd";
 	string add_infoLabel = "add_info";
+
+	//save scalar values
+	target.save_scalar(this->N_sites,"L");
+	target.save_scalar(this->N_phys,"Nphys");
+	for (size_t q=0; q<Nq; q++)
+	{
+		stringstream ss; ss << "q=" << q;
+		target.save_scalar(this->Qtot[q],ss.str(),"Qtot");
+	}
 	target.save_scalar(this->calc_Dmax(),DmaxLabel);
 	target.save_scalar(this->calc_Nqmax(),NqmaxLabel);	
 	target.save_scalar(this->min_Nsv,"min_Nsv");
@@ -1193,44 +1195,69 @@ save (string filename, string info)
 	target.save_scalar(this->alpha_rsvd,alpha_rsvdLabel);
 	target.save_char(info,add_infoLabel.c_str());
 	
-	std::string label;
-	
+	//save qloc
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		stringstream ss; ss << "l=" << l;
+		target.save_scalar(qloc[l].size(),ss.str(),"qloc");
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		for (size_t q=0; q<Nq; q++)
+		{
+			stringstream tt; tt << "l=" << l << ",s=" << s << ",q=" << q;
+			target.save_scalar((qloc[l][s])[q],tt.str(),"qloc");
+		}
+	}
+
+	//save the A-matrices
+	string label;
 	for (size_t l=0; l<this->N_sites; ++l)
 	for (size_t s=0; s<qloc[l].size(); ++s)
-	for (size_t q=0; q<A[l][s].dim; ++q)
 	{
-		std::stringstream ss;
-		ss << l << "_" << s << "_" << "(" << A[l][s].in[q] << "," << A[l][s].out[q] << ")";
-		label = ss.str();
-		target.save_matrix(A[l][s].block[q],label);
+		stringstream tt; tt << "l=" << l << ",s=" << s;
+		target.save_scalar(A[l][s].dim,tt.str());
+		for (size_t q=0; q<A[l][s].dim; ++q)
+		{
+			for (size_t p=0; p<Nq; p++)
+			{
+				stringstream in; in << "in,l=" << l << ",s=" << s << ",q=" << q << ",p=" << p;
+				stringstream out; out << "out,l=" << l << ",s=" << s << ",q=" << q << ",p=" << p;
+				target.save_scalar((A[l][s].in[q])[p],in.str(),"mps");
+				target.save_scalar((A[l][s].out[q])[p],out.str(),"mps");
+			}
+			stringstream ss;			
+			ss << l << "_" << s << "_" << "(" << A[l][s].in[q] << "," << A[l][s].out[q] << ")";
+			label = ss.str();
+			target.save_matrix(A[l][s].block[q],label,"mps");
+		}
 	}
+	target.close();
 }
 
-template<typename Symmetry, typename Scalar>
-size_t Mps<Symmetry,Scalar>::
-loadDmax (string filename)
-{
-	filename+=".h5";
-	HDF5Interface source(filename, READ);
+// template<typename Symmetry, typename Scalar>
+// size_t Mps<Symmetry,Scalar>::
+// loadDmax (string filename)
+// {
+// 	filename+=".h5";
+// 	HDF5Interface source(filename, READ);
 
-	string DmaxLabel = "Dmax";
-	size_t Dmax;
-	source.load_scalar(Dmax,DmaxLabel);
-	return Dmax;
-}
+// 	string DmaxLabel = "Dmax";
+// 	size_t Dmax;
+// 	source.load_scalar(Dmax,DmaxLabel);
+// 	return Dmax;
+// }
 
-template<typename Symmetry, typename Scalar>
-size_t Mps<Symmetry,Scalar>::
-loadNqmax (string filename)
-{
-	filename+=".h5";
-	HDF5Interface source(filename, READ);
+// template<typename Symmetry, typename Scalar>
+// size_t Mps<Symmetry,Scalar>::
+// loadNqmax (string filename)
+// {
+// 	filename+=".h5";
+// 	HDF5Interface source(filename, READ);
 
-	string NqmaxLabel = "Nqmax";
-	size_t Nqmax;
-	source.load_scalar(Nqmax,NqmaxLabel);
-	return Nqmax;
-}
+// 	string NqmaxLabel = "Nqmax";
+// 	size_t Nqmax;
+// 	source.load_scalar(Nqmax,NqmaxLabel);
+// 	return Nqmax;
+// }
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
@@ -1241,22 +1268,67 @@ load (string filename)
 	
 	string eps_svdLabel = "eps_svd";
 	string alpha_rsvdLabel = "alpha_rsvd";
+	//load the scalars
+	source.load_scalar(this->N_sites,"L");
+	source.load_scalar(this->N_phys,"Nphys");
+	for (size_t q=0; q<Nq; q++)
+	{
+		stringstream ss; ss << "q=" << q;
+		source.load_scalar(this->Qtot[q],ss.str(),"Qtot");
+	}
 	source.load_scalar(this->eps_svd,eps_svdLabel);
 	source.load_scalar(this->alpha_rsvd,alpha_rsvdLabel);
 	source.load_scalar(this->min_Nsv,"min_Nsv");
 	source.load_scalar(this->max_Nsv,"max_Nsv");
-	
-	std::string label;
-	
+
+	//load qloc
+	qloc.resize(this->N_sites);
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		stringstream ss; ss << "l=" << l;
+		size_t qloc_size;
+		source.load_scalar(qloc_size,ss.str(),"qloc");
+		qloc[l].resize(qloc_size);
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		for (size_t q=0; q<Nq; q++)
+		{
+			stringstream tt; tt << "l=" << l << ",s=" << s << ",q=" << q;
+			int Q;
+			source.load_scalar(Q,tt.str(),"qloc");
+			(qloc[l][s])[q] = Q;
+		}
+	}
+	this->resize_arrays();
+
+	//load the A-matrices
+	string label;
 	for (size_t l=0; l<this->N_sites; ++l)
 	for (size_t s=0; s<qloc[l].size(); ++s)
-	for (size_t q=0; q<A[l][s].dim; ++q)
 	{
-		std::stringstream ss;
-		ss << l << "_" << s << "_" << "(" << A[l][s].in[q] << "," << A[l][s].out[q] << ")";
-		label = ss.str();
-		source.load_matrix(A[l][s].block[q], label);
+		size_t Asize;
+		stringstream tt; tt << "l=" << l << ",s=" << s;
+		source.load_scalar(Asize,tt.str());
+		for (size_t q=0; q<Asize; ++q)
+		{
+			qarray<Nq> qin,qout;
+			for (size_t p=0; p<Nq; p++)
+			{
+				stringstream in; in << "in,l=" << l << ",s=" << s << ",q=" << q << ",p=" << p;
+				stringstream out; out << "out,l=" << l << ",s=" << s << ",q=" << q << ",p=" << p;
+				source.load_scalar(qin[p],in.str(),"mps");
+				source.load_scalar(qout[p],out.str(),"mps");
+			}
+			stringstream ss;
+			ss << l << "_" << s << "_" << "(" << qin << "," << qout << ")";
+			label = ss.str();
+			MatrixType mat;
+			source.load_matrix(mat, label, "mps");
+			A[l][s].push_back(qin,qout,mat);
+		}
 	}
+	source.close();
+	update_inbase();
+	update_outbase();
 }
 #endif
 
