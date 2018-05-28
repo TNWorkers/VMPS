@@ -32,8 +32,8 @@ int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L");
-	N = args.get<size_t>("N",L);
-	qarray<2> Qi = MODEL::singlet(N);
+	N = args.get<size_t>("N",0);
+	qarray<2> Qi = MODEL::polaron(L,N);
 	qarray<2> Qc;
 	spec = args.get<string>("spec","IPES");
 	U = args.get<double>("U",0.);
@@ -75,33 +75,35 @@ int main (int argc, char* argv[])
 //	}
 	if (spec == "PES")
 	{
-		if constexpr (MODEL::Symmetry::NON_ABELIAN)
+		#ifdef USING_SU2
 		{
 			A = H.c(L/2);
 			Adag = H.cdag(L/2);
-			Qc = qarray<2>({2,N-1});
+			Qc = qarray<2>({L,N-1});
 		}
-		else
+		#else
 		{
-			A = H.c(UP,L/2);
-			Adag = H.cdag(UP,L/2);
-			Qc = qarray<2>({-1,N-1});
+			A = H.c(DN,L/2);
+			Adag = H.cdag(DN,L/2);
+			Qc = Qi+A.Qtarget();
 		}
+		#endif
 	}
 	else if (spec == "IPES")
 	{
-		if constexpr (MODEL::Symmetry::NON_ABELIAN)
+		#ifdef USING_SU2
 		{
-			A = H.cdag(L/2);
-			Adag = H.c(L/2);
-			Qc = qarray<2>({2,N+1});
+			A = H.cdag(L/2,0,1.);
+			Adag = H.c(L/2,0,sqrt(2.));
+			Qc = qarray<2>({L,N+1});
 		}
-		else
+		#else
 		{
-			A = H.cdag(UP,L/2);
-			Adag = H.c(UP,L/2);
-			Qc = qarray<2>({1,N+1});
+			A = H.cdag(DN,L/2);
+			Adag = H.c(DN,L/2);
+			Qc = Qi+A.Qtarget();
 		}
+		#endif
 	}
 //	else if (spec == "CSF")
 //	{
@@ -194,16 +196,22 @@ int main (int argc, char* argv[])
 //	OxV(O, init->state, initA);
 	MODEL::CompressorXd Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
 	Compadre.prodCompress(A, Adag, init->state, initA, Qc, init->state.calc_Dmax());
+	cout << "c*cdag 1=" << avg(init->state, H.c(L/2), H.cdag(L/2), init->state) << endl;
+	cout << "c*cdag 2=" << avg(init->state, H.ccdag(L/2,L/2), init->state) << endl;
+	cout << "avg1=" << avg(init->state, H.cdag(L/2), H.c(L/2), init->state) << endl;
+	cout << "avg2=" << avg(init->state, H.cdagc(L/2,L/2), init->state) << endl;
+	cout << "avg3=" << avg(init->state, H.n(L/2), init->state) << endl;
 	delete init;
 	initA.eps_svd = 1e-7;
 	cout << "AxV:" << endl << initA.info() << endl;
+	initA.graph("initA");
 	//--------------</A*init>---------------
 	
 	//--------------<KernelPolynomialSolver>---------------
 	double spillage = 0.;
 	if (spec == "PES" or spec == "IPES")
 	{
-		spillage = 4.*dE[0];
+		spillage = 8.*dE[0];
 	}
 	else if (spec == "SSF")
 	{
@@ -244,5 +252,5 @@ int main (int argc, char* argv[])
 	lout << "Chebyshev iteration done!" << endl;
 	//--------------</KernelPolynomialSolver>---------------
 	
-	delete KPS;	
+	delete KPS;
 }

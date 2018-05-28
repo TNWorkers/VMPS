@@ -192,7 +192,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		if (B.dim == 1)
 		{
 			double res = B.block[0][0][0].trace();
-			if (Qtarget==Symmetry::qvacuum())
+			if (Qtarget == Symmetry::qvacuum())
 			{
 				res *= sqrt(Symmetry::coeff_dot(O1.Qtarget())*Symmetry::coeff_dot(O2.Qtarget())); // scalar product coeff for SU(2)
 			}

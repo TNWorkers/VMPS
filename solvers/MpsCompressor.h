@@ -647,7 +647,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-//		cout << "\tavgHsqVin=" << avgHsqVin << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+		cout << "\tavgHsqVin=" << avgHsqVin << ", deg=" << pow(Symmetry::degeneracy(H.Qtarget()),2) << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		sqdist = abs(avgHsqVin - pow(Symmetry::degeneracy(H.Qtarget()),2) * Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		

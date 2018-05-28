@@ -500,9 +500,18 @@ Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, size_t Nqmax_inpu
 {
 	N_phys = H.volume();
 	outerResize(H.length(), H.locBasis(), Qtot_input, Nqmax_input);
+	
 	update_inbase();
 	update_outbase();
+	
 	innerResize(Dmax);
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	{
+		A[l][s] = A[l][s].cleaned();
+	}
+	
 	update_inbase();
 	update_outbase();
 }

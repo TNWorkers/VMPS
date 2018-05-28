@@ -44,6 +44,7 @@ public:
 	///@}
 	
 	static qarray<2> singlet (int N) {return qarray<2>{1,N};};
+	static qarray<2> polaron (int L, int N=0) {assert(N%2==0); return qarray<2>{L+1,N};};
 	
 	///@{
 	/**Push params for DMRG algorithms via these functions to an instance of DmrgSolver.*/
@@ -67,18 +68,19 @@ public:
 	bool validate (qType qnum) const;
 
 	///@{
-	Mpo<Symmetry> c (std::size_t locx, std::size_t locy=0);
-	Mpo<Symmetry> cdag (std::size_t locx, std::size_t locy=0);
+	Mpo<Symmetry> c (std::size_t locx, std::size_t locy=0, double factor=1.);
+	Mpo<Symmetry> cdag (std::size_t locx, std::size_t locy=0, double factor=sqrt(2.));
 	///@}
 	
 	///@{
 	Mpo<Symmetry> n (std::size_t locx, std::size_t locy=0);
 	Mpo<Symmetry> d (std::size_t locx, std::size_t locy=0);
 	Mpo<Symmetry> cdagc (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
+	Mpo<Symmetry> ccdag (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
 	///@}
 	
 	///@{
-	Mpo<Symmetry> ninj (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y=0, std::size_t loc2y=0);
+	Mpo<Symmetry> ninj (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
 	//*\warning not implemented
 	Mpo<Symmetry> cdagcdagcc (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
 	///@}
@@ -89,18 +91,18 @@ public:
 	///@}
 
 	///@{
-	Mpo<Symmetry> SimpSimp (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y=0, std::size_t loc2y=0);
-	Mpo<Symmetry> SsubSsub (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y=0, std::size_t loc2y=0);
-	Mpo<Symmetry> SimpSsub (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y=0, std::size_t loc2y=0);
+	Mpo<Symmetry> SimpSimp (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
+	Mpo<Symmetry> SsubSsub (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
+	Mpo<Symmetry> SimpSsub (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
 	///@}
 
 	///@{ \warning not implemented
-	Mpo<Symmetry> SimpSsubSimpSimp (std::size_t loc1x, std::size_t loc2x,
+	Mpo<Symmetry> SimpSsubSimpSimp (std::size_t locx1, std::size_t locx2,
 									 std::size_t loc3x, std::size_t loc4x,
-									 std::size_t loc1y=0, std::size_t loc2y=0, std::size_t loc3y=0, std::size_t loc4y=0);
-	Mpo<Symmetry> SimpSsubSimpSsub (std::size_t loc1x, std::size_t loc2x,
+									 std::size_t locy1=0, std::size_t locy2=0, std::size_t loc3y=0, std::size_t loc4y=0);
+	Mpo<Symmetry> SimpSsubSimpSsub (std::size_t locx1, std::size_t locx2,
 									 std::size_t loc3x, std::size_t loc4x,
-									 std::size_t loc1y=0, std::size_t loc2y=0, std::size_t loc3y=0, std::size_t loc4y=0);
+									 std::size_t locy1=0, std::size_t locy2=0, std::size_t loc3y=0, std::size_t loc4y=0);
 	///@}
 
 	static const std::map<string,std::any> defaults;
@@ -334,62 +336,105 @@ set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F, cons
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
-c (std::size_t locx, std::size_t locy)
+c (std::size_t locx, std::size_t locy, double factor)
 {
 	assert(locx<N_sites and locy<B[locx].dim()*F[locx].dim());
 	std::stringstream ss;
 	ss << "c(" << locx << "," << locy << ")";
 
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	Mpo<Symmetry> Mout(N_sites, {2,-1}, ss.str());
 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
-	Mout.setLocal(locx, OperatorType::outerprod(B[locx].Id(),F[locx].c(locy),{2,-1}).plain<double>(),
-				        OperatorType::outerprod(B[locx].Id(),F[locx].sign(),{1,0}).plain<double>());
+	Mout.setLocal(locx, OperatorType::outerprod(B[locx].Id(), factor * pow(-1.,locx+1) * F[locx].c(locy),{2,-1}).plain<double>(),
+				        OperatorType::outerprod(B[locx].Id(), F[locx].sign(),{1,0}).plain<double>());
 	return Mout;
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
-cdag (std::size_t locx, std::size_t locy)
+cdag (std::size_t locx, std::size_t locy, double factor)
 {
 	assert(locx<N_sites and locy<B[locx].dim()*F[locx].dim());
 	std::stringstream ss;
 	ss << "c†(" << locx << "," << locy << ")";
 
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	Mpo<Symmetry> Mout(N_sites, {2,+1}, ss.str());
 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
-	Mout.setLocal(locx, OperatorType::outerprod(B[locx].Id(),F[locx].cdag(locy),{2,+1}).plain<double>(),
-				  OperatorType::outerprod(B[locx].Id(),F[locx].sign(),{1,0}).plain<double>());
+	Mout.setLocal(locx, OperatorType::outerprod(B[locx].Id(), factor * pow(-1.,locx+1) * F[locx].cdag(locy),{2,+1}).plain<double>(),
+				        OperatorType::outerprod(B[locx].Id(), F[locx].sign(),{1,0}).plain<double>());
 	return Mout;
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
-cdagc (size_t loc1x, size_t loc2x, size_t loc1y, size_t loc2y)
+cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
 	//Not well implemented.. the same problems with sign as in the Hubbard model.
-	assert(loc1x<this->N_sites and loc2x<this->N_sites);
+	assert(locx1<this->N_sites and locx2<this->N_sites);
 	stringstream ss;
-	ss << "c†(" << loc1x << "," << loc1y << ")" << "c(" << loc2x << "," << loc2y << ")";
+	ss << "c†(" << locx1 << "," << locy1 << ")" << "c(" << locx2 << "," << locy2 << ")";
 
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
-	auto cdag = OperatorType::outerprod(B[loc1x].Id(),F[loc1x].cdag(loc1y),{2,+1});
-	auto c    = OperatorType::outerprod(B[loc2x].Id(),F[loc2x].c(loc2y),{2,-1});
-	auto sign = OperatorType::outerprod(B[loc2x].Id(),F[loc2x].sign(),{1,0});
-	if(loc1x == loc2x)
+	auto cdag = OperatorType::outerprod(B[locx1].Id(),F[locx1].cdag(locy1),{2,+1});
+	auto c    = OperatorType::outerprod(B[locx2].Id(),F[locx2].c(locy2),{2,-1});
+	auto sign = OperatorType::outerprod(B[locx2].Id(),F[locx2].sign(),{1,0});
+	if(locx1 == locx2)
 	{
 		auto product = std::sqrt(2.)*OperatorType::prod(cdag,c,Symmetry::qvacuum());
-		Mout.setLocal(loc1x,product.plain<double>());
+		Mout.setLocal(locx1,product.plain<double>());
 	}
-	else if(loc1x<loc2x)
+	else if(locx1<locx2)
 	{
+		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, sign, {2,+1}).plain<double>(), 
+		                               pow(-1.,locx2-locx1+1) * c.plain<double>()}, 
+		                               sign.plain<double>());
+		// old:
+//		Mout.setLocal({locx1, locx2}, {-sqrt(2.) * cdag.plain<double>(), 
+//		                               OperatorType::prod(sign,c,{2,-1}).plain<double>()}, 
+//		                               sign.plain<double>());
+	}
+	else if(locx1>locx2)
+	{
+		Mout.setLocal({locx2, locx1}, {sqrt(2.)*OperatorType::prod(c, sign, {2,-1}).plain<double>(), 
+		                               pow(-1.,locx1-locx2+1) * cdag.plain<double>()}, 
+		                               sign.plain<double>());
+	// old:
+//		Mout.setLocal({locx1, locx2}, {-sqrt(2.)*OperatorType::prod(sign,cdag,{2,+1}).plain<double>(), c.plain<double>()}, sign.plain<double>());
+	}
+	return Mout;
+}
 
-		Mout.setLocal({loc1x, loc2x}, {-sqrt(2.)*cdag.plain<double>(), OperatorType::prod(sign,c,{2,-1}).plain<double>()}, sign.plain<double>());
-	}
-	else if(loc1x>loc2x)
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
+ccdag (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	//Not well implemented.. the same problems with sign as in the Hubbard model.
+	assert(locx1<this->N_sites and locx2<this->N_sites);
+	stringstream ss;
+	ss << "c(" << locx1 << "," << locy1 << ")" << "c†(" << locx2 << "," << locy2 << ")";
+
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
+
+	auto cdag = OperatorType::outerprod(B[locx1].Id(),F[locx1].cdag(locy1),{2,+1});
+	auto c    = OperatorType::outerprod(B[locx2].Id(),F[locx2].c(locy2),{2,-1});
+	auto sign = OperatorType::outerprod(B[locx2].Id(),F[locx2].sign(),{1,0});
+	if(locx1 == locx2)
 	{
-		Mout.setLocal({loc1x, loc2x}, {-sqrt(2.)*OperatorType::prod(sign,cdag,{2,+1}).plain<double>(), c.plain<double>()}, sign.plain<double>());
+		auto product = std::sqrt(2.)*OperatorType::prod(c,cdag,Symmetry::qvacuum());
+		Mout.setLocal(locx1,product.plain<double>());
+	}
+	else if(locx1<locx2)
+	{
+		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(c, sign, {2,+1}).plain<double>(), 
+		                               pow(-1.,locx2-locx1+1) * cdag.plain<double>()}, 
+		                               sign.plain<double>());
+	}
+	else if(locx1>locx2)
+	{
+		Mout.setLocal({locx2, locx1}, {sqrt(2.)*OperatorType::prod(cdag, sign, {2,-1}).plain<double>(), 
+		                               pow(-1.,locx1-locx2+1) * c.plain<double>()}, 
+		                               sign.plain<double>());
 	}
 	return Mout;
 }
@@ -426,27 +471,27 @@ d (std::size_t locx, std::size_t locy)
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
-ninj (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y, std::size_t loc2y)
+ninj (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 {
-	assert(loc1x<this->N_sites and loc2x<this->N_sites);
+	assert(locx1<this->N_sites and locx2<this->N_sites);
 	std::stringstream ss;
-	ss << "n(" << loc1x << "," << loc1y << ")"  << "n(" << loc2x << "," << loc2y << ")";
+	ss << "n(" << locx1 << "," << locy1 << ")"  << "n(" << locx2 << "," << locy2 << ")";
 
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for(std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
-	auto n1 = OperatorType::outerprod(B[loc1x].Id(),F[loc1x].n(loc1y),Symmetry::qvacuum());
-	auto n2 = OperatorType::outerprod(B[loc2x].Id(),F[loc2x].n(loc2y),Symmetry::qvacuum());
+	auto n1 = OperatorType::outerprod(B[locx1].Id(),F[locx1].n(locy1),Symmetry::qvacuum());
+	auto n2 = OperatorType::outerprod(B[locx2].Id(),F[locx2].n(locy2),Symmetry::qvacuum());
 
-	if(loc1x == loc2x)
+	if(locx1 == locx2)
 	{
 		auto product = OperatorType::prod(n1,n2,Symmetry::qvacuum());
-		Mout.setLocal(loc1x,product.plain<double>());
+		Mout.setLocal(locx1,product.plain<double>());
 		return Mout;
 	}
 	else
 	{
-		Mout.setLocal({loc1x, loc2x}, {n1.plain<double>(), n2.plain<double>()});
+		Mout.setLocal({locx1, locx2}, {n1.plain<double>(), n2.plain<double>()});
 		return Mout;
 	}
 
@@ -454,29 +499,29 @@ ninj (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y, std::size_t loc2y
 }
 
 // Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
-// cdagcdagcc (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y, std::size_t loc2y)
+// cdagcdagcc (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 // {
-// 	assert(loc1x<this->N_sites and loc2x<this->N_sites);
+// 	assert(locx1<this->N_sites and locx2<this->N_sites);
 // 	std::stringstream ss;
-// 	ss << "η†(" << loc1x << "," << loc1y << ")" << "η(" << loc2x << "," << loc2y << ")";
+// 	ss << "η†(" << locx1 << "," << locy1 << ")" << "η(" << locx2 << "," << locy2 << ")";
 
 // 	Mpo<Symmetry> Mout(N_sites, N_legs);
 // 	for(std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(Spins.basis().combine(F.basis()),l); }
 
-// 	auto Etadag = Operator::outerprod(Spins.Id(),F.Etadag(loc1y),{1,2});
-// 	auto Eta = Operator::outerprod(Spins.Id(),F.Eta(loc2y),{1,-2});
+// 	auto Etadag = Operator::outerprod(Spins.Id(),F.Etadag(locy1),{1,2});
+// 	auto Eta = Operator::outerprod(Spins.Id(),F.Eta(locy2),{1,-2});
 // 	Mout.label = ss.str();
 // 	Mout.setQtarget(Symmetry::qvacuum());
 // 	Mout.qlabel = KondoSU2xU1::SNlabel;
-// 	if(loc1x == loc2x)
+// 	if(locx1 == locx2)
 // 	{
 // 		auto product = Operator::prod(Etadag,Eta,Symmetry::qvacuum());
-// 		Mout.setLocal(loc1x,product,Symmetry::qvacuum());
+// 		Mout.setLocal(locx1,product,Symmetry::qvacuum());
 // 		return Mout;
 // 	}
 // 	else
 // 	{
-// 		Mout.setLocal({loc1x, loc2x}, {Etadag, Eta}, {{1,2},{1,-2}});
+// 		Mout.setLocal({locx1, locx2}, {Etadag, Eta}, {{1,2},{1,-2}});
 // 		return Mout;
 // 	}
 // }
@@ -510,117 +555,117 @@ Simpdag (std::size_t locx, std::size_t locy, double factor)
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
-SimpSimp (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y, std::size_t loc2y)
+SimpSimp (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 {
-	assert(loc1x<this->N_sites and loc2x<this->N_sites);
+	assert(locx1<this->N_sites and locx2<this->N_sites);
 	std::stringstream ss;
-	ss << "S(" << loc1x << "," << loc1y << ")" << "S(" << loc2x << "," << loc2y << ")";
+	ss << "S(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
 
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for(std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
-	auto Sdag = OperatorType::outerprod(B[loc1x].Sdag(loc1y),F[loc1x].Id(),{3,0});
-	auto S = OperatorType::outerprod(B[loc2x].S(loc2y),F[loc1x].Id(),{3,0});
+	auto Sdag = OperatorType::outerprod(B[locx1].Sdag(locy1),F[locx1].Id(),{3,0});
+	auto S = OperatorType::outerprod(B[locx2].S(locy2),F[locx1].Id(),{3,0});
 
-	if(loc1x == loc2x)
+	if(locx1 == locx2)
 	{
 		auto product = sqrt(3.)*OperatorType::prod(Sdag,S,Symmetry::qvacuum());
-		Mout.setLocal(loc1x,product.plain<double>());
+		Mout.setLocal(locx1,product.plain<double>());
 		return Mout;
 	}
 	else
 	{
-		Mout.setLocal({loc1x, loc2x}, {sqrt(3.)*Sdag.plain<double>(), S.plain<double>()});
+		Mout.setLocal({locx1, locx2}, {sqrt(3.)*Sdag.plain<double>(), S.plain<double>()});
 		return Mout;
 	}
 	return Mout;
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
-SsubSsub (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y, std::size_t loc2y)
+SsubSsub (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 {
-	assert(loc1x<this->N_sites and loc2x<this->N_sites);
+	assert(locx1<this->N_sites and locx2<this->N_sites);
 	std::stringstream ss;
-	ss << "s(" << loc1x << "," << loc1y << ")" << "s(" << loc2x << "," << loc2y << ")";
+	ss << "s(" << locx1 << "," << locy1 << ")" << "s(" << locx2 << "," << locy2 << ")";
 
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for(std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
-	auto Sdag = OperatorType::outerprod(B[loc1x].Id(),F[loc1x].Sdag(loc1y),{3,0});
-	auto S = OperatorType::outerprod(B[loc2x].Id(),F[loc1x].S(loc2y),{3,0});
+	auto Sdag = OperatorType::outerprod(B[locx1].Id(),F[locx1].Sdag(locy1),{3,0});
+	auto S = OperatorType::outerprod(B[locx2].Id(),F[locx1].S(locy2),{3,0});
 
-	if(loc1x == loc2x)
+	if(locx1 == locx2)
 	{
 		auto product = sqrt(3.)*OperatorType::prod(Sdag,S,Symmetry::qvacuum());
-		Mout.setLocal(loc1x,product.plain<double>());
+		Mout.setLocal(locx1,product.plain<double>());
 		return Mout;
 	}
 	else
 	{
-		Mout.setLocal({loc1x, loc2x}, {sqrt(3.)*Sdag.plain<double>(), S.plain<double>()});
+		Mout.setLocal({locx1, locx2}, {sqrt(3.)*Sdag.plain<double>(), S.plain<double>()});
 		return Mout;
 	}
 	return Mout;
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
-SimpSsub (std::size_t loc1x, std::size_t loc2x, std::size_t loc1y, std::size_t loc2y)
+SimpSsub (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 {
-	assert(loc1x<this->N_sites and loc2x<this->N_sites);
+	assert(locx1<this->N_sites and locx2<this->N_sites);
 	std::stringstream ss;
-	ss << "S(" << loc1x << "," << loc1y << ")" << "s(" << loc2x << "," << loc2y << ")";
+	ss << "S(" << locx1 << "," << locy1 << ")" << "s(" << locx2 << "," << locy2 << ")";
 
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for(std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
 
-	auto Sdag = OperatorType::outerprod(B[loc1x].Sdag(loc1y),F[loc1x].Id(),{3,0});
-	auto S = OperatorType::outerprod(B[loc2x].Id(),F[loc1x].S(loc2y),{3,0});
+	auto Sdag = OperatorType::outerprod(B[locx1].Sdag(locy1),F[locx1].Id(),{3,0});
+	auto S = OperatorType::outerprod(B[locx2].Id(),F[locx1].S(locy2),{3,0});
 
-	if(loc1x == loc2x)
+	if(locx1 == locx2)
 	{
 		auto product = sqrt(3.)*OperatorType::prod(Sdag,S,Symmetry::qvacuum());
-		Mout.setLocal(loc1x,product.plain<double>());
+		Mout.setLocal(locx1,product.plain<double>());
 		return Mout;
 	}
 	else
 	{
-		Mout.setLocal({loc1x, loc2x}, {sqrt(3.)*Sdag.plain<double>(), S.plain<double>()});
+		Mout.setLocal({locx1, locx2}, {sqrt(3.)*Sdag.plain<double>(), S.plain<double>()});
 		return Mout;
 	}
 	return Mout;
 }
 
 // Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
-// SimpSsubSimpSimp (std::size_t loc1x, std::size_t loc2x, std::size_t loc3x, std::size_t loc4x,
-//                   std::size_t loc1y, std::size_t loc2y, std::size_t loc3y, std::size_t loc4y)
+// SimpSsubSimpSimp (std::size_t locx1, std::size_t locx2, std::size_t loc3x, std::size_t loc4x,
+//                   std::size_t locy1, std::size_t locy2, std::size_t loc3y, std::size_t loc4y)
 // {
-// 	assert(loc1x<this->N_sites and loc2x<this->N_sites and loc3x<this->N_sites and loc4x<this->N_sites);
+// 	assert(locx1<this->N_sites and locx2<this->N_sites and loc3x<this->N_sites and loc4x<this->N_sites);
 // 	stringstream ss;
-// 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")" <<
+// 	ss << SOP1 << "(" << locx1 << "," << locy1 << ")" << SOP2 << "(" << locx2 << "," << locy2 << ")" <<
 // 	      SOP3 << "(" << loc3x << "," << loc3y << ")" << SOP4 << "(" << loc4x << "," << loc4y << ")";
 // 	Mpo<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoSU2xU1::NMlabel, ss.str());
 // 	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
-// 	MatrixXd IdImp(Mpo<2>::qloc[loc2x].size()/F.dim(), Mpo<2>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
-// 	Mout.setLocal({loc1x, loc2x, loc3x, loc4x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
-// 	                                             kroneckerProduct(IdImp,F.Scomp(SOP2,loc2y)),
+// 	MatrixXd IdImp(Mpo<2>::qloc[locx2].size()/F.dim(), Mpo<2>::qloc[locx2].size()/F.dim()); IdImp.setIdentity();
+// 	Mout.setLocal({locx1, locx2, loc3x, loc4x}, {kroneckerProduct(S.Scomp(SOP1,locy1),IdSub), 
+// 	                                             kroneckerProduct(IdImp,F.Scomp(SOP2,locy2)),
 // 	                                             kroneckerProduct(S.Scomp(SOP3,loc3y),IdSub),
 // 	                                             kroneckerProduct(S.Scomp(SOP4,loc4y),IdSub)});
 // 	return Mout;
 // }
 
 // Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
-// SimpSsubSimpSsub (std::size_t loc1x, std::size_t loc2x, std::size_t loc3x, std::size_t loc4x,
-// 				  std::size_t loc1y, std::size_t loc2y, std::size_t loc3y, std::size_t loc4y)
+// SimpSsubSimpSsub (std::size_t locx1, std::size_t locx2, std::size_t loc3x, std::size_t loc4x,
+// 				  std::size_t locy1, std::size_t locy2, std::size_t loc3y, std::size_t loc4y)
 // {
-// 	assert(loc1x<this->N_sites and loc2x<this->N_sites and loc3x<this->N_sites and loc4x<this->N_sites);
+// 	assert(locx1<this->N_sites and locx2<this->N_sites and loc3x<this->N_sites and loc4x<this->N_sites);
 // 	stringstream ss;
-// 	ss << SOP1 << "(" << loc1x << "," << loc1y << ")" << SOP2 << "(" << loc2x << "," << loc2y << ")" <<
+// 	ss << SOP1 << "(" << locx1 << "," << locy1 << ")" << SOP2 << "(" << locx2 << "," << locy2 << ")" <<
 // 	      SOP3 << "(" << loc3x << "," << loc3y << ")" << SOP4 << "(" << loc4x << "," << loc4y << ")";
 // 	Mpo<2> Mout(this->N_sites, this->N_legs, locBasis(), {0,0}, KondoSU2xU1::NMlabel, ss.str());
 // 	MatrixXd IdSub(F.dim(),F.dim()); IdSub.setIdentity();
-// 	MatrixXd IdImp(Mpo<2>::qloc[loc2x].size()/F.dim(), Mpo<2>::qloc[loc2x].size()/F.dim()); IdImp.setIdentity();
-// 	Mout.setLocal({loc1x, loc2x, loc3x, loc4x}, {kroneckerProduct(S.Scomp(SOP1,loc1y),IdSub), 
-// 	                                             kroneckerProduct(IdImp,F.Scomp(SOP2,loc2y)),
+// 	MatrixXd IdImp(Mpo<2>::qloc[locx2].size()/F.dim(), Mpo<2>::qloc[locx2].size()/F.dim()); IdImp.setIdentity();
+// 	Mout.setLocal({locx1, locx2, loc3x, loc4x}, {kroneckerProduct(S.Scomp(SOP1,locy1),IdSub), 
+// 	                                             kroneckerProduct(IdImp,F.Scomp(SOP2,locy2)),
 // 	                                             kroneckerProduct(S.Scomp(SOP3,loc3y),IdSub),
 // 	                                             kroneckerProduct(IdImp,F.Scomp(SOP4,loc4y))}
 // 		);

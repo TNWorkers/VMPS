@@ -12,5 +12,6 @@ Logger lout;
 #include "models/KondoSU2xU1.h"
 
 typedef VMPS::KondoSU2xU1 MODEL;
+#define USING_SU2
 
 #include "../test_polaron.cc"
