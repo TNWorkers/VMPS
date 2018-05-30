@@ -25,6 +25,7 @@ string spec, wd, outfile, Efilename;
 vector<double> dE;
 double Emin, Emax, E0;
 double d, n_sig;
+bool CHEB;
 
 OrthPolyGreen<MODEL,MODEL::StateXd> * KPS;
 
@@ -38,6 +39,7 @@ int main (int argc, char* argv[])
 	spec = args.get<string>("spec","IPES");
 	U = args.get<double>("U",0.);
 	J = args.get<double>("J",-1.);
+	CHEB = args.get<bool>("CHEB",true);
 	wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
 	
@@ -61,25 +63,25 @@ int main (int argc, char* argv[])
 	lout << H.info() << endl << endl;
 	
 	MODEL::Operator A, Adag;
-//	if (spec == "AES")
-//	{
-//		A = H.cc(L/2);
-//		Adag = H.cdagcdag(L/2);
-//		Qc = MODEL::singlet(N-2);
-//	}
-//	else if (spec == "APS")
-//	{
-//		A = H.cdagcdag(L/2);
-//		Adag = H.cc(L/2);
-//		Qc = MODEL::singlet(N+2);
-//	}
+	if (spec == "AES")
+	{
+		A = H.cc(L/2);
+		Adag = H.cdagcdag(L/2);
+		Qc = MODEL::polaron(L,N-2);
+	}
+	else if (spec == "APS")
+	{
+		A = H.cdagcdag(L/2);
+		Adag = H.cc(L/2);
+		Qc = MODEL::polaron(L,N+2);
+	}
 	if (spec == "PES")
 	{
 		#ifdef USING_SU2
 		{
-			A = H.c(L/2);
-			Adag = H.cdag(L/2);
-			Qc = qarray<2>({L,N-1});
+			A = H.c(L/2, 0, 1.);
+			Adag = H.cdag(L/2, 0, sqrt(2.));
+			Qc = qarray<2>({L+2,N-1});
 		}
 		#else
 		{
@@ -93,24 +95,24 @@ int main (int argc, char* argv[])
 	{
 		#ifdef USING_SU2
 		{
-			A = H.cdag(L/2,0,1.);
-			Adag = H.c(L/2,0,sqrt(2.));
+			A = H.cdag(L/2, 0, 1.);
+			Adag = H.c(L/2, 0, sqrt(2.));
 			Qc = qarray<2>({L,N+1});
 		}
 		#else
 		{
-			A = H.cdag(DN,L/2);
-			Adag = H.c(DN,L/2);
+			A = H.cdag(DN, L/2);
+			Adag = H.c(DN, L/2);
 			Qc = Qi+A.Qtarget();
 		}
 		#endif
 	}
-//	else if (spec == "CSF")
-//	{
-//		A = H.n(L/2);
-//		Adag = A;
-//		Qc = Qi;
-//	}
+	else if (spec == "CSF")
+	{
+		A = H.n(L/2);
+		Adag = A;
+		Qc = Qi;
+	}
 //	else if (spec == "SSF")
 //	{
 //		if constexpr (MODEL::Symmetry::NON_ABELIAN)
@@ -208,48 +210,51 @@ int main (int argc, char* argv[])
 	//--------------</A*init>---------------
 	
 	//--------------<KernelPolynomialSolver>---------------
-	double spillage = 0.;
-	if (spec == "PES" or spec == "IPES")
+	if (CHEB)
 	{
-		spillage = 8.*dE[0];
-	}
-	else if (spec == "SSF")
-	{
-		spillage = 0.5*(Emax-Emin);
-	}
-	KPS = new OrthPolyGreen<MODEL,MODEL::StateXd,CHEBYSHEV>(Emin-spillage, Emax+spillage);
-	
-	for (size_t i=0; i<dE.size(); ++i)
-	{
-		if (i>0) {assert(dE[i] < dE[i-1]);} // monotoncally decreasing resolution
-		Msave.push_back((Emax-Emin+2.*spillage)/dE[i]);
-		lout << "dE=" << dE[i] << " => M=" << Msave[Msave.size()-1] << endl;
-	}
-	lout << endl;
-	
-	Mmax = args.get<int>("Mmax",*max_element(Msave.begin(),Msave.end()));
-	lout << KPS->info() << endl;
-	
-	string momfile = make_string(wd+"moments/"+outfile,str(dE),".dat");
-	for (int i=0; i<Msave.size(); ++i)
-	{
-		string datfileJ = make_string(wd+outfile,make_string(dE[i]),".dat");
-		string datfileL = make_string(wd+"Lorentz/"+outfile,make_string(dE[i]),".dat");
+		double spillage = 0.;
+		if (spec == "PES" or spec == "IPES")
+		{
+			spillage = 8.*dE[0];
+		}
+		else if (spec == "SSF")
+		{
+			spillage = 0.5*(Emax-Emin);
+		}
+		KPS = new OrthPolyGreen<MODEL,MODEL::StateXd,CHEBYSHEV>(Emin-spillage, Emax+spillage);
 		
-		if (spec == "AES" or spec == "PES")
+		for (size_t i=0; i<dE.size(); ++i)
 		{
-			KPS->add_savepoint(Msave[i], momfile, datfileJ, Emax, true, JACKSON);
-			KPS->add_savepoint(Msave[i], momfile, datfileL, Emax, true, LORENTZ);
+			if (i>0) {assert(dE[i] < dE[i-1]);} // monotoncally decreasing resolution
+			Msave.push_back((Emax-Emin+2.*spillage)/dE[i]);
+			lout << "dE=" << dE[i] << " => M=" << Msave[Msave.size()-1] << endl;
 		}
-		else
+		lout << endl;
+		
+		Mmax = args.get<int>("Mmax",*max_element(Msave.begin(),Msave.end()));
+		lout << KPS->info() << endl;
+		
+		string momfile = make_string(wd+"moments/"+outfile,str(dE),".dat");
+		for (int i=0; i<Msave.size(); ++i)
 		{
-			KPS->add_savepoint(Msave[i], momfile, datfileJ, Emin, false, JACKSON);
-			KPS->add_savepoint(Msave[i], momfile, datfileL, Emin, false, LORENTZ);
+			string datfileJ = make_string(wd+outfile,make_string(dE[i]),".dat");
+			string datfileL = make_string(wd+"Lorentz/"+outfile,make_string(dE[i]),".dat");
+		
+			if (spec == "AES" or spec == "PES")
+			{
+				KPS->add_savepoint(Msave[i], momfile, datfileJ, Emax, true, JACKSON);
+				KPS->add_savepoint(Msave[i], momfile, datfileL, Emax, true, LORENTZ);
+			}
+			else
+			{
+				KPS->add_savepoint(Msave[i], momfile, datfileJ, Emin, false, JACKSON);
+				KPS->add_savepoint(Msave[i], momfile, datfileL, Emin, false, LORENTZ);
+			}
 		}
+		
+		KPS->calc_ImAA(H,initA,Mmax,false);
+		lout << "Chebyshev iteration done!" << endl;
 	}
-	
-	KPS->calc_ImAA(H,initA,Mmax,false);
-	lout << "Chebyshev iteration done!" << endl;
 	//--------------</KernelPolynomialSolver>---------------
 	
 	delete KPS;

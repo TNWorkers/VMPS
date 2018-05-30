@@ -1,13 +1,15 @@
 #ifndef SITEOPERATOR_H_
 #define SITEOPERATOR_H_
 
+//forward declarations
+template<typename Symmetry, typename MatrixType_> class SiteOperatorQ;
+template<typename Symmetry> class Qbasis;
+template<typename Symmetry, typename MatrixType_> struct Biped;
+
 #include "tensors/Qbasis.h"
 #include "tensors/Biped.h"
 #include <Eigen/Sparse>
 #include "tensors/SiteOperatorQ.h"
-
-//Forward declaration
-//template<typename Symmetry, typename MatrixType_> class SiteOperatorQ;
 
 /** \struct SiteOperator
  *
@@ -52,18 +54,18 @@ struct SiteOperator
 	/**
 	 * Returns a trivial SiteOperatorQ for an object with has essentialy no symmetry.
 	 */
-//	SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > structured();
+	SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > structured();
 };
 
-//template<typename Symmetry,typename Scalar>
-//SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > SiteOperator<Symmetry,Scalar>::
-//structured()
-//{
-//	Qbasis<Symmetry> basis; basis.push_back(Symmetry::qvacuum(),this->data.rows());
-//	Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > mat; mat.push_back(Symmetry::qvacuum(),Symmetry::qvacuum(),this->data);
-//	SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out(Symmetry::qvacuum(),basis,mat);
-//	return out;
-//}
+template<typename Symmetry,typename Scalar>
+SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > SiteOperator<Symmetry,Scalar>::
+structured()
+{
+	Qbasis<Symmetry> basis; basis.push_back(Symmetry::qvacuum(),this->data.rows());
+	Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > mat; mat.push_back(Symmetry::qvacuum(),Symmetry::qvacuum(),this->data);
+	SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out(Symmetry::qvacuum(),basis,mat);
+	return out;
+}
 
 template<typename Symmetry,typename Scalar>
 SiteOperator<Symmetry,Scalar>& SiteOperator<Symmetry,Scalar>::operator+= ( const SiteOperator<Symmetry,Scalar>& Op )
