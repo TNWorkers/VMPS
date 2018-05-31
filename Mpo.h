@@ -771,7 +771,7 @@ string Mpo<Symmetry,Scalar>::
 info() const
 {
 	stringstream ss;
-	ss << termcolor::colorize << termcolor::bold << label << termcolor::reset << "L=" << N_sites;
+	ss << termcolor::colorize << termcolor::bold << label << termcolor::reset << ": L=" << N_sites;
 	if (N_phys>N_sites) {ss << ",V=" << N_phys;}
 	ss << ", " << Symmetry::name() << ", ";
 	
@@ -860,7 +860,7 @@ generate_label (size_t Lcell)
 	
 	if (cells.size() == 1)
 	{
-		ss << "(" << Terms[0].get_info() << "): ";
+		ss << "(" << Terms[0].get_info() << ")";
 	}
 	else
 	{

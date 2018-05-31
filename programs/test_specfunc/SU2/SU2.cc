@@ -8,9 +8,9 @@ using namespace std;
 #include "Logger.h"
 Logger lout;
 
-#include "tensors/SiteOperatorQ.h"
 #include "models/HubbardSU2xU1.h"
 
 typedef VMPS::HubbardSU2xU1 MODEL;
+#define USING_SU2
 
 #include "../test_specfunc.cc"

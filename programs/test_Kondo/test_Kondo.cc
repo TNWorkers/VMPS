@@ -53,7 +53,17 @@ int Dinit, Dlimit, Imin, Imax;
 double tol_eigval, tol_state;
 double dt;
 DMRG::VERBOSITY::OPTION VERB;
+bool U1, U1U1, SU2, U0SU2, CORR, PRINT;
 
+MatrixXd SpinCorr_U1xU1, nCorr_U1xU1, densityMatrix_U1xU1;
+MatrixXd SpinCorr_SU2xU1, nCorr_SU2xU1, densityMatrix_SU2xU1;
+
+VectorXd d_U1, d_U1xU1, d_SU2xU1;
+VectorXd n_U1, n_U1xU1, n_SU2xU1;
+
+Eigenstate<VMPS::KondoU1::StateXd> g_U1;
+Eigenstate<VMPS::KondoU1xU1::StateXd> g_U1xU1;
+Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1;
 Eigenstate<VMPS::KondoU0xSU2::StateXd> g_U0xSU2;
 
 int main (int argc, char* argv[])
@@ -75,6 +85,14 @@ int main (int argc, char* argv[])
 	T = args.get<int>("T",1);
 	S = abs(M)+1;
 	
+	U1 = args.get<bool>("U1",true);
+	U1U1 = args.get<bool>("U1U1",true);
+	SU2 = args.get<bool>("SU2",true);
+	U0SU2 = args.get<bool>("U0SU2",true);
+	CORR = args.get<bool>("CORR",false);
+	PRINT = args.get<bool>("PRINT",false);
+	if (CORR == false) {PRINT = false;}
+	
 	alpha = args.get<double>("alpha",1.);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	dt = 0.2;
@@ -95,11 +113,6 @@ int main (int argc, char* argv[])
 	lout << "not parallelized" << endl;
 	#endif
 	
-	//--------U(1)---------
-	lout << endl << "--------U(1)---------" << endl << endl;
-	
-	Stopwatch<> Watch_U1;
-	
 	vector<Param> params;
 	params.push_back({"Ly",Ly});
 	params.push_back({"J",J});
@@ -108,8 +121,8 @@ int main (int argc, char* argv[])
 	params.push_back({"U",U});
 	//params.push_back({"Bz",Bz,0});
 	//params.push_back({"Bx",Bx,0});
-	params.push_back({"D",2ul,0});
-	params.push_back({"CALC_SQUARE",false});
+	params.push_back({"D",2ul});
+	params.push_back({"CALC_SQUARE",true});
 	
 //	for (size_t l=1; l<L; ++l)
 //	{
@@ -118,166 +131,177 @@ int main (int argc, char* argv[])
 //		// params.push_back({"Bx",0.,l});
 //	}
 	
-	VMPS::KondoU1 H_U1(L,params);
-	lout << H_U1.info() << endl;
-	assert(H_U1.validate({N}) and "Bad total quantum number of the MPS.");
-	Eigenstate<VMPS::KondoU1::StateXd> g_U1;
-	
-	VMPS::KondoU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1, g_U1, {N}, LANCZOS::EDGE::GROUND);
-	
-//	VectorXd d_U1(L); d_U1.setZero();
-//	VectorXd n_U1(L); n_U1.setZero();
-//	for (size_t i=0; i<L; ++i)
-//	{
-//		d_U1(i) = avg(g_U1.state, H_U1.d(i), g_U1.state); 
-//		n_U1(i) = avg(g_U1.state, H_U1.n(i), g_U1.state);
-//	}
-//	
-//	MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
-//	for (size_t i=0; i<L; ++i)
-//	for (size_t j=0; j<L; ++j)
-//	{
-//		SpinCorr_U1(i,j) = 3.*avg(g_U1.state, H_U1.SimpSsub(SZ,SZ,i,j), g_U1.state);
-//	}
-	
-	t_U1 = Watch_U1.time();
-	
-//	// observables
-//	
-//	MatrixXd SpinCorr_U0(L,L); SpinCorr_U0.setZero();
-//	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U0(i,j) = 3*avg(g_U0.state, H_U0.SzSz(i,j), g_U0.state); }
-//	
-//	// compressor
-//	
-//	VMPS::KondoU1::StateXd Hxg_U0;
-//	HxV(H_U0,g_U0.state,Hxg_U0,VERB);
-//	double E_U0_compressor = g_U0.state.dot(Hxg_U0);
-//	
-//	// zipper
-//	
-//	VMPS::KondoU1::StateXd Oxg_U0;
-//	Oxg_U0.eps_svd = 1e-15;
-//	OxV(H_U0,g_U0.state,Oxg_U0,DMRG::BROOM::SVD);
-//	double E_U0_zipper = g_U0.state.dot(Oxg_U0);
+	//--------U(1)---------
+	if (U1)
+	{
+		lout << endl << termcolor::red << "--------U(1)---------" << termcolor::reset << endl << endl;
+		
+		Stopwatch<> Watch_U1;
+		
+		VMPS::KondoU1 H_U1(L,params);
+		lout << H_U1.info() << endl;
+		assert(H_U1.validate({N}) and "Bad total quantum number of the MPS.");
+		
+		VMPS::KondoU1::Solver DMRG_U1(VERB);
+		DMRG_U1.edgeState(H_U1, g_U1, {N}, LANCZOS::EDGE::GROUND);
+		
+		t_U1 = Watch_U1.time();
+	}
 	
 	//--------U(1)xU(1)---------
-	lout << endl << "--------U(1)xU(1)---------" << endl << endl;
-	
-	Stopwatch<> Watch_U1xU1;
-	
-	VMPS::KondoU1xU1 H_U1xU1(L,params);
-	lout << H_U1xU1.info() << endl;
-	assert(H_U1xU1.validate({M,N}) and "Bad total quantum number of the MPS.");
-	Eigenstate<VMPS::KondoU1xU1::StateXd> g_U1xU1;
-	
-	VMPS::KondoU1xU1::Solver DMRG_U1xU1(VERB);
-	DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {M,N}, LANCZOS::EDGE::GROUND);
-	
-	VMPS::KondoU1::StateXd Vred = g_U1.state;
-	Vred.graph("V");
-	Vred.reduce_symmetry(0,g_U1xU1.state);
-	Vred.mend();
-	cout << "Vred done!" << endl;
-	Vred.graph("Vred");
-	cout << Vred.validate() << endl;
-	g_U1xU1.state.graph("Vfull");
-	cout << "red.avg=" << avg(Vred, H_U1, Vred) << endl;
-	
-	t_U1xU1 = Watch_U1xU1.time();
-	
-//	VectorXd d_U1xU1(L); d_U1xU1.setZero();
-//	VectorXd n_U1xU1(L); n_U1xU1.setZero();
-//	for (size_t i=0; i<L; i++)
-//	{
-//		d_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.d(i), g_U1xU1.state);
-//		n_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.n(i), g_U1xU1.state);
-//	}
-//	
-//	MatrixXd SpinCorr_U1xU1(L,L); SpinCorr_U1xU1.setZero();
-//	for (size_t i=0; i<L; i++)
-//	for (size_t j=0; j<L; j++)
-//	{
-//		SpinCorr_U1xU1(i,j) = 3.*avg(g_U1xU1.state, H_U1xU1.SimpSsub(SZ,SZ,i,j), g_U1xU1.state);
-//	}
-//	
-//	MatrixXd densitiy_matrix_U1xU1(L,L); densitiy_matrix_U1xU1.setZero();
-//	for (size_t i=0; i<L; i++)
-//	for (size_t j=0; j<L; j++)
-//	{
-//		densitiy_matrix_U1xU1(i,j) = 2.*avg(g_U1xU1.state, H_U1xU1.cdagc(UP,i,j), g_U1xU1.state);
-//	}
-	
-//	// observables
-//	MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
-//	for(size_t i=0; i<L; i++) for (size_t j=0; j<L; j++) { SpinCorr_U1(i,j) = 3*avg(g_U1.state, H_U1.SzSz(i,j), g_U1.state); }
-
-//	// compressor
-//	
-//	VMPS::HeisenbergU1::StateXd Hxg_U1;
-//	HxV(H_U1,g_U1.state,Hxg_U1,VERB);
-//	double E_U1_compressor = g_U1.state.dot(Hxg_U1);
-//	
-//	// zipper
-//	
-//	VMPS::HeisenbergU1::StateXd Oxg_U1;
-//	Oxg_U1.eps_svd = 1e-15;
-//	OxV(H_U1,g_U1.state,Oxg_U1,DMRG::BROOM::SVD);
-//	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
-//	
+	if (U1U1)
+	{
+		lout << endl << termcolor::red << "--------U(1)⊗U(1)---------" << termcolor::reset << endl << endl;
+		
+		Stopwatch<> Watch_U1xU1;
+		
+		VMPS::KondoU1xU1 H_U1xU1(L,params);
+		lout << H_U1xU1.info() << endl;
+		assert(H_U1xU1.validate({M,N}) and "Bad total quantum number of the MPS.");
+		
+		VMPS::KondoU1xU1::Solver DMRG_U1xU1(VERB);
+		DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {M,N}, LANCZOS::EDGE::GROUND);
+		
+		t_U1xU1 = Watch_U1xU1.time();
+		
+//		VMPS::KondoU1::StateXd Vred = g_U1.state;
+	//	Vred.graph("V");
+	//	Vred.reduce_symmetry(0,g_U1xU1.state);
+	//	Vred.mend();
+	//	cout << "Vred done!" << endl;
+	//	Vred.graph("Vred");
+	//	cout << Vred.validate() << endl;
+	//	g_U1xU1.state.graph("Vfull");
+	//	cout << "red.avg=" << avg(Vred, H_U1, Vred) << endl;
+		
+		if (CORR)
+		{
+			d_U1xU1.resize(L); d_U1xU1.setZero();
+			n_U1xU1.resize(L); n_U1xU1.setZero();
+			for (size_t i=0; i<L; i++)
+			{
+				d_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.d(i), g_U1xU1.state);
+				n_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.n(i), g_U1xU1.state);
+			}
+			
+			SpinCorr_U1xU1.resize(L,L);
+			SpinCorr_U1xU1.setZero();
+			for (size_t i=0; i<L; i++)
+			for (size_t j=0; j<L; j++)
+			{
+				SpinCorr_U1xU1(i,j) = 3.*avg(g_U1xU1.state, H_U1xU1.SimpSsub(SZ,SZ,i,j), g_U1xU1.state);
+			}
+			
+			nCorr_U1xU1.resize(L,L);
+			nCorr_U1xU1.setZero();
+			for (size_t i=0; i<L; i++)
+			for (size_t j=0; j<L; j++)
+			{
+				nCorr_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.nn(i,j), g_U1xU1.state);
+			}
+			
+			densityMatrix_U1xU1.resize(L,L);
+			densityMatrix_U1xU1.setZero();
+			for (size_t i=0; i<L; i++)
+			for (size_t j=0; j<L; j++)
+			{
+				densityMatrix_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdagc(UP,i,j), g_U1xU1.state)+
+				                             avg(g_U1xU1.state, H_U1xU1.cdagc(DN,i,j), g_U1xU1.state);
+			}
+		}
+	}
 	// --------SU(2)---------
-	lout << endl << "--------SU(2)---------" << endl << endl;
-	
-	params.push_back({"subL",SUB_LATTICE::A,0});
-	params.push_back({"subL",SUB_LATTICE::B,1});
-	
-	Stopwatch<> Watch_SU2xU1;
-	VMPS::KondoSU2xU1 H_SU2xU1(L,params);
-	lout << H_SU2xU1.info() << endl;
-	assert(H_SU2xU1.validate({S,N}) and "Bad total quantum number of the MPS.");
-	Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1;
-	
-	VMPS::KondoSU2xU1::Solver DMRG_SU2xU1(VERB);
-	DMRG_SU2xU1.edgeState(H_SU2xU1, g_SU2xU1, {S,N}, LANCZOS::EDGE::GROUND);
-	
-	t_SU2xU1 = Watch_SU2xU1.time();
-	
-//	VectorXd d_SU2xU1(L); d_SU2xU1.setZero();
-//	VectorXd n_SU2xU1(L); n_SU2xU1.setZero();
-//	for (size_t i=0; i<L; i++)
-//	{
-//		d_SU2xU1(i) = avg(g_SU2xU1.state, H_SU2xU1.d(i), g_SU2xU1.state);
-//		n_SU2xU1(i) = avg(g_SU2xU1.state, H_SU2xU1.n(i), g_SU2xU1.state);
-//	}
-//	
-//	MatrixXd SpinCorr_SU2xU1(L,L); SpinCorr_SU2xU1.setZero();
-//	for (size_t i=0; i<L; i++)
-//	for (size_t j=0; j<L; j++)
-//	{
-//		SpinCorr_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.SimpSsub(i,j), g_SU2xU1.state);
-//	}
-//	
-//	MatrixXd densitiy_matrix_SU2xU1(L,L); densitiy_matrix_SU2xU1.setZero();
-//	for (size_t i=0; i<L; i++)
-//	for(size_t j=0; j<L; j++)
-//	{
-//		densitiy_matrix_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdagc(i,j), g_SU2xU1.state);
-//	}
-//	
-//	cout << densitiy_matrix_U1xU1 << endl << endl;
-//	cout << densitiy_matrix_SU2xU1 << endl << endl;
-	
+	if (SU2)
+	{
+		lout << endl << termcolor::red << "--------SU(2)---------" << termcolor::reset << endl << endl;
+		
+		Stopwatch<> Watch_SU2xU1;
+		VMPS::KondoSU2xU1 H_SU2xU1(L,params);
+		lout << H_SU2xU1.info() << endl;
+		assert(H_SU2xU1.validate({S,N}) and "Bad total quantum number of the MPS.");
+		
+		VMPS::KondoSU2xU1::Solver DMRG_SU2xU1(VERB);
+		DMRG_SU2xU1.edgeState(H_SU2xU1, g_SU2xU1, {S,N}, LANCZOS::EDGE::GROUND);
+		
+		t_SU2xU1 = Watch_SU2xU1.time();
+		
+		if (CORR)
+		{
+			d_SU2xU1.resize(L); d_SU2xU1.setZero();
+			n_SU2xU1.resize(L); n_SU2xU1.setZero();
+			for (size_t i=0; i<L; i++)
+			{
+				d_SU2xU1(i) = avg(g_SU2xU1.state, H_SU2xU1.d(i), g_SU2xU1.state);
+				n_SU2xU1(i) = avg(g_SU2xU1.state, H_SU2xU1.n(i), g_SU2xU1.state);
+			}
+			
+			SpinCorr_SU2xU1.resize(L,L);
+			SpinCorr_SU2xU1.setZero();
+			for (size_t i=0; i<L; i++)
+			for (size_t j=0; j<L; j++)
+			{
+				SpinCorr_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.SimpSsub(i,j), g_SU2xU1.state);
+			}
+			
+			nCorr_SU2xU1.resize(L,L);
+			nCorr_SU2xU1.setZero();
+			for (size_t i=0; i<L; i++)
+			for (size_t j=0; j<L; j++)
+			{
+				nCorr_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.nn(i,j), g_SU2xU1.state);
+			}
+			
+			densityMatrix_SU2xU1.resize(L,L);
+			densityMatrix_SU2xU1.setZero();
+			for (size_t i=0; i<L; i++)
+			for(size_t j=0; j<L; j++)
+			{
+				densityMatrix_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdagc(i,j), g_SU2xU1.state);
+			}
+		}
+	}
 	// --------U(0)xSU(2)---------
-	lout << endl << "--------U(0)xSU(2)---------" << endl << endl;
+	if (U0SU2)
+	{
+		lout << endl << termcolor::red << "--------U(0)⊗SU(2)---------" << termcolor::reset << endl << endl;
+		
+		params.push_back({"subL",SUB_LATTICE::A,0});
+		params.push_back({"subL",SUB_LATTICE::B,1});
+		
+		Stopwatch<> Watch_U0xSU2;
+		VMPS::KondoU0xSU2 H_U0xSU2(L,params);
+		lout << H_U0xSU2.info() << endl;
+		
+		VMPS::KondoU0xSU2::Solver DMRG_U0xSU2(VERB);
+		DMRG_U0xSU2.edgeState(H_U0xSU2, g_U0xSU2, {T}, LANCZOS::EDGE::GROUND);
+		
+		t_U0xSU2 = Watch_U0xSU2.time();
+	}
 	
-	Stopwatch<> Watch_U0xSU2;
-	VMPS::KondoU0xSU2 H_U0xSU2(L,params);
-	lout << H_U0xSU2.info() << endl;
-	
-	VMPS::KondoU0xSU2::Solver DMRG_U0xSU2(VERB);
-	DMRG_U0xSU2.edgeState(H_U0xSU2, g_U0xSU2, {T}, LANCZOS::EDGE::GROUND);
-	
-	t_U0xSU2 = Watch_U0xSU2.time();
+	//-------------correlations-----------------
+	if (PRINT)
+	{
+		lout << endl << termcolor::blue << "--------Observables---------" << termcolor::reset << endl << endl;
+		
+		cout << "<SS> U(1)⊗U(1):" << endl;
+		cout << SpinCorr_U1xU1 << endl;
+		cout << endl;
+		cout << "<SS> SU(2)⊗U(1):" << endl;
+		cout << SpinCorr_SU2xU1 << endl;
+		cout << endl;
+		
+		cout << "<nn> U(1)⊗U(1):" << endl;
+		cout << SpinCorr_U1xU1 << endl;
+		cout << endl;
+		cout << "<nn> SU(2)⊗U(1):" << endl;
+		cout << SpinCorr_SU2xU1 << endl;
+		cout << endl;
+		
+		cout << "density matrix U(1)⊗U(1): " << endl;
+		cout << densityMatrix_U1xU1 << endl << endl;
+		cout << "density matrix SU(2)⊗U(1): " << endl;
+		cout << densityMatrix_SU2xU1 << endl << endl;
+	}
 	
 	//--------output---------
 	
@@ -306,9 +330,6 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(abs(g_U0xSU2.energy-g_SU2xU1.energy)/V));
 	T.endOfRow();
 	
-//	T.add("E/L Compressor"); T.add(to_string_prec(E_U0_compressor/V)); T.add(to_string_prec(E_U1_compressor/V)); T.add("-"); T.endOfRow();
-//	T.add("E/L Zipper"); T.add(to_string_prec(E_U0_zipper/V)); T.add(to_string_prec(E_U1_zipper/V)); T.add("-"); T.endOfRow();
-	
 	T.add("t/s");
 	T.add(to_string_prec(t_U1,2));
 	T.add(to_string_prec(t_U1xU1,2));
@@ -323,17 +344,50 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(t_U0xSU2/t_SU2xU1,2));
 	T.endOfRow();
 	
-//	T.add("observables");
-//	T.add(to_string_prec(SpinCorr_U1.sum()));
-//	T.add(to_string_prec(SpinCorr_U1xU1.sum()));
-//	T.add(to_string_prec(SpinCorr_SU2xU1.sum()));
-//	T.endOfRow();
-	
-//	T.add("observables diff");
-//	T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2xU1).norm()));
-//	T.add(to_string_prec((SpinCorr_U1xU1-SpinCorr_SU2xU1).norm()));
-//	T.add("0");
-//	T.endOfRow();
+	if (CORR)
+	{
+		T.add("<d>");
+		T.add("-");
+		T.add(to_string_prec(d_U1xU1.sum()));
+		T.add(to_string_prec(d_SU2xU1.sum()));
+		T.add("-");
+		T.endOfRow();
+		
+		T.add("<d> diff");
+		T.add(to_string_prec("-"));
+		T.add(to_string_prec((d_U1xU1-d_SU2xU1).norm()));
+		T.add("0");
+		T.add("-");
+		T.endOfRow();
+		
+		T.add("<SS>");
+		T.add("-");
+		T.add(to_string_prec(SpinCorr_U1xU1.sum()));
+		T.add(to_string_prec(SpinCorr_SU2xU1.sum()));
+		T.add("-");
+		T.endOfRow();
+		
+		T.add("<SS> diff");
+		T.add(to_string_prec("-"));
+		T.add(to_string_prec((SpinCorr_U1xU1-SpinCorr_SU2xU1).norm()));
+		T.add("0");
+		T.add("-");
+		T.endOfRow();
+		
+		T.add("ρA");
+		T.add("-");
+		T.add(to_string_prec(densityMatrix_U1xU1.sum()));
+		T.add(to_string_prec(densityMatrix_SU2xU1.sum()));
+		T.add("-");
+		T.endOfRow();
+		
+		T.add("ρA diff");
+		T.add("-");
+		T.add(to_string_prec((densityMatrix_U1xU1-densityMatrix_SU2xU1).norm()));
+		T.add("0");
+		T.add("-");
+		T.endOfRow();
+	}
 	
 	T.add("Dmax");
 	T.add(to_string(g_U1.state.calc_Dmax()));

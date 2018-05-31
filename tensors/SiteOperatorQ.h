@@ -67,7 +67,7 @@ compute(const Operator &Op, const std::vector<qType> &blocks, Eigen::Decompositi
  *
  */
 template<typename Symmetry, typename MatrixType_>
-class SiteOperatorQ// : public Biped<Symmetry,MatrixType_>
+class SiteOperatorQ // : public Biped<Symmetry,MatrixType_>
 {
 private:
 	typedef Eigen::Index Index;

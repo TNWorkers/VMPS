@@ -110,8 +110,8 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, bool 
 	Mpo<Symmetry> Mout(F.size(), Op.Q, ss.str(), HERMITIAN);
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
-	(FERMIONIC)? Mout.setLocal(locx,Op,F[0].sign())
-	           : Mout.setLocal(locx,Op);
+	(FERMIONIC)? Mout.setLocal(locx, Op, F[0].sign())
+	           : Mout.setLocal(locx, Op);
 	return Mout;
 }
 
@@ -144,7 +144,7 @@ c (SPIN_INDEX sigma, size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << "c" << sigma;
-	return make_local(ss.str(), locx,locy, F[locx].c(sigma,locy), true);
+	return make_local("c", locx,locy, F[locx].c(sigma,locy), true);
 }
 
 template<typename Symmetry>
@@ -155,8 +155,6 @@ cdag (SPIN_INDEX sigma, size_t locx, size_t locy) const
 	ss << "c†" << sigma;
 	return make_local(ss.str(), locx,locy, F[locx].cdag(sigma,locy), true);
 }
-
-//-------------
 
 template<typename Symmetry>
 Mpo<Symmetry> HubbardObservables<Symmetry>::

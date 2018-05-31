@@ -1,6 +1,8 @@
 #ifndef KONDOOBSERVABLES
 #define KONDOOBSERVABLES
 
+enum KONDO_SUBSYSTEM {IMP, SUB, IMPSUB};
+
 template<typename Symmetry>
 class KondoObservables
 {
@@ -23,6 +25,7 @@ public:
 	Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> d (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> nn (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 	///@{
@@ -49,15 +52,15 @@ public:
 	
 protected:
 	
-	Mpo<Symmetry> make_local (string name, 
+	Mpo<Symmetry> make_local (KONDO_SUBSYSTEM SUBSYS, string name, 
 	                          size_t locx, size_t locy, 
-	                          const OperatorType &Oimp, const OperatorType &Osub, 
+	                          const OperatorType &Op,
 	                          bool FERMIONIC=false, bool HERMITIAN=false) const;
 	
-	Mpo<Symmetry> make_corr  (string name1, string name2, 
+	Mpo<Symmetry> make_corr  (KONDO_SUBSYSTEM SUBSYS, string name1, string name2, 
 	                          size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
-	                          const OperatorType &Oimp1, const OperatorType &Osub1,
-	                          const OperatorType &Oimp2, const OperatorType &Osub2) const;
+	                          const OperatorType &Op1, const OperatorType &Op2,
+	                          bool BOTH_HERMITIAN=false) const;
 	
 	vector<SpinBase   <Symmetry> > B;
 	vector<FermionBase<Symmetry> > F;
@@ -89,40 +92,77 @@ KondoObservables (const size_t &L, const vector<Param> &params, const map<string
 
 template<typename Symmetry>
 Mpo<Symmetry> KondoObservables<Symmetry>::
-make_local (string name, size_t locx, size_t locy, const OperatorType &Oimp, const OperatorType &Osub, bool FERMIONIC, bool HERMITIAN) const
+make_local (KONDO_SUBSYSTEM SUBSYS, string name, size_t locx, size_t locy, const OperatorType &Op, bool FERMIONIC, bool HERMITIAN) const
 {
 	assert(locx<F.size() and locy<F[locx].dim());
+	assert(SUBSYS != IMPSUB);
 	stringstream ss;
 	ss << name << "(" << locx << "," << locy << ")";
 	
-	Mpo<Symmetry> Mout(F.size(), Oimp.Q+Osub.Q, ss.str(), HERMITIAN);
+	Mpo<Symmetry> Mout(F.size(), Op.Q, ss.str(), HERMITIAN);
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);}
+	
+	OperatorType OpExt, SignExt;
+	
+	if (SUBSYS == SUB)
+	{
+		OpExt   = kroneckerProduct(B[locx].Id(), Op);
+		SignExt = kroneckerProduct(B[locx].Id(), F[locx].sign());
+	}
+	else if (SUBSYS == IMP)
+	{
+		assert(!FERMIONIC and "Impurity cannot be fermionic!");
+		OpExt = kroneckerProduct(Op, F[locx].Id());
+	}
 	
 	if (FERMIONIC)
 	{
-		Mout.setLocal(locx, kroneckerProduct(Oimp,Osub), kroneckerProduct(B[locx].Id(),F[0].sign()));
+		Mout.setLocal(locx, OpExt, SignExt);
 	}
 	else
 	{
-		Mout.setLocal(locx, kroneckerProduct(Oimp,Osub));
+		Mout.setLocal(locx, OpExt);
 	}
 	return Mout;
 }
 
 template<typename Symmetry>
 Mpo<Symmetry> KondoObservables<Symmetry>::
-make_corr  (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
-            const OperatorType &Oimp1, const OperatorType &Osub1, const OperatorType &Oimp2, const OperatorType &Osub2) const
+make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2, 
+           size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
+           const OperatorType &Op1, const OperatorType &Op2, 
+           bool BOTH_HERMITIAN) const
 {
 	assert(locx1<F.size() and locx2<F.size() and locy1<F[locx1].dim() and locy2<F[locx2].dim());
 	stringstream ss;
 	ss << name1 << "(" << locx1 << "," << locy1 << ")"
 	   << name2 << "(" << locx2 << "," << locy2 << ")";
 	
-	Mpo<Symmetry> Mout(F.size(), Oimp1.Q+Oimp2.Q+Osub1.Q+Osub2.Q, ss.str());
+	bool HERMITIAN = (BOTH_HERMITIAN and locx1==locx2 and locy1==locy2)? true:false;
+	
+	OperatorType Op1Ext;
+	OperatorType Op2Ext;
+	
+	if (SUBSYS == SUB)
+	{
+		Op1Ext = kroneckerProduct(B[locx1].Id(), Op1);
+		Op2Ext = kroneckerProduct(B[locx2].Id(), Op2);
+	}
+	else if (SUBSYS == IMP)
+	{
+		Op1Ext = kroneckerProduct(Op1, F[locx1].Id());
+		Op2Ext = kroneckerProduct(Op2, F[locx2].Id());
+	}
+	else if (SUBSYS = IMPSUB)
+	{
+		Op2Ext = kroneckerProduct(Op1, F[locx1].Id());
+		Op1Ext = kroneckerProduct(B[locx2].Id(), Op2);
+	}
+	
+	Mpo<Symmetry> Mout(F.size(), Op1.Q+Op2.Q, ss.str(), HERMITIAN);
 	for (size_t l=0; l<F.size(); ++l)  {Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);}
 	
-	Mout.setLocal({locx1,locx2}, {kroneckerProduct(Oimp1,Osub1), kroneckerProduct(Oimp2,Osub2)});
+	Mout.setLocal({locx1,locx2}, {Op1Ext,Op2Ext});
 	return Mout;
 }
 
@@ -134,7 +174,7 @@ c (SPIN_INDEX sigma, size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << "c" << sigma;
-	return make_local(ss.str(), locx,locy, B[locx].Id(),F[locx].c(sigma,locy), true);
+	return make_local(SUB, ss.str(), locx,locy, F[locx].c(sigma,locy), true);
 }
 
 template<typename Symmetry>
@@ -143,23 +183,87 @@ cdag (SPIN_INDEX sigma, size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << "c†" << sigma;
-	return make_local(ss.str(), locx,locy, B[locx].Id(),F[locx].cdag(sigma,locy), true);
+	return make_local(SUB, ss.str(), locx,locy, F[locx].cdag(sigma,locy), true);
 }
-
-//-------------
 
 template<typename Symmetry>
 Mpo<Symmetry> KondoObservables<Symmetry>::
 n (size_t locx, size_t locy) const
 {
-	return make_local("n", locx,locy, B[locx].Id(),F[locx].n(locy), false, true);
+	return make_local(SUB, "n", locx,locy, F[locx].n(locy), false, true);
 }
 
 template<typename Symmetry>
 Mpo<Symmetry> KondoObservables<Symmetry>::
 d (size_t locx, size_t locy) const
 {
-	return make_local("double_occ", locx,locy, B[locx].Id(),F[locx].d(locy), false, true);
+	return make_local(SUB, "d", locx,locy, F[locx].d(locy), false, true);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> KondoObservables<Symmetry>::
+nn (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr(SUB, "n","n", locx1,locx2,locy1,locy2, F[locx1].n(UPDN,locy1), F[locx2].n(UPDN,locy2));
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> KondoObservables<Symmetry>::
+Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+{
+	stringstream ss;
+	ss << Sa << "imp";
+	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
+	return make_local(IMP, ss.str(), locx,locy, B[locx].Scomp(Sa,locy), HERMITIAN);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> KondoObservables<Symmetry>::
+Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+{
+	stringstream ss;
+	ss << Sa << "sub";
+	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
+	return make_local(SUB, ss.str(), locx,locy, F[locx].Scomp(Sa,locy), HERMITIAN);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> KondoObservables<Symmetry>::
+SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss1; ss1 << SOP1 << "imp";
+	stringstream ss2; ss2 << SOP2 << "imp";
+	
+	return make_corr(IMP, ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, B[locx1].Scomp(SOP1,locy1), B[locx2].Scomp(SOP2,locy2));
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> KondoObservables<Symmetry>::
+SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss1; ss1 << SOP1 << "sub";
+	stringstream ss2; ss2 << SOP2 << "sub";
+	
+	return make_corr(SUB, ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, F[locx1].Scomp(SOP1,locy1), F[locx2].Scomp(SOP2,locy2));
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> KondoObservables<Symmetry>::
+SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss1; ss1 << SOP1 << "imp";
+	stringstream ss2; ss2 << SOP2 << "sub";
+	
+	return make_corr(IMPSUB, ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, B[locx1].Scomp(SOP1,locy1), F[locx2].Scomp(SOP2,locy2));
+}
+
+template<typename Symmetry>
+template<typename MpsType>
+double KondoObservables<Symmetry>::
+SvecSvecAvgImpSub (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	return isReal(avg(Psi,SimpSsub(SZ,SZ,locx1,locx2,locy1,locy2),Psi))+
+	       isReal(avg(Psi,SimpSsub(SP,SM,locx1,locx2,locy1,locy2),Psi));
 }
 
 template<typename Symmetry>
@@ -192,72 +296,6 @@ cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	}
 	
 	return Mout;
-}
-
-//-------------
-
-template<typename Symmetry>
-Mpo<Symmetry> KondoObservables<Symmetry>::
-Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
-{
-	stringstream ss;
-	ss << Sa << "imp";
-	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
-	return make_local(ss.str(), locx,locy, B[locx].Scomp(Sa,locy), F[locx].Id(), HERMITIAN);
-}
-
-template<typename Symmetry>
-Mpo<Symmetry> KondoObservables<Symmetry>::
-Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy) const
-{
-	stringstream ss;
-	ss << Sa << "sub";
-	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
-	return make_local(ss.str(), locx,locy, B[locx].Id(), F[locx].Scomp(Sa,locy), HERMITIAN);
-}
-
-//-------------
-
-template<typename Symmetry>
-Mpo<Symmetry> KondoObservables<Symmetry>::
-SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	stringstream ss1; ss1 << SOP1 << "imp";
-	stringstream ss2; ss2 << SOP2 << "imp";
-	
-	return make_corr(ss1.str(), ss2.str(), locx1,locx2,locy1,locy2, B[locx1].Scomp(SOP1,locy1), F[locx1].Id(), 
-	                                                                B[locx2].Scomp(SOP2,locy2), F[locx2].Id());
-}
-
-template<typename Symmetry>
-Mpo<Symmetry> KondoObservables<Symmetry>::
-SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	stringstream ss1; ss1 << SOP1 << "sub";
-	stringstream ss2; ss2 << SOP2 << "sub";
-	
-	return make_corr(ss1.str(), ss2.str(), locx1,locx2,locy1,locy2, B[locx1].Id(), F[locx1].Scomp(SOP1,locy1), 
-	                                                                B[locx1].Id(), F[locx2].Scomp(SOP2,locy2));
-}
-
-template<typename Symmetry>
-Mpo<Symmetry> KondoObservables<Symmetry>::
-SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	stringstream ss1; ss1 << SOP1 << "imp";
-	stringstream ss2; ss2 << SOP2 << "sub";
-	
-	return make_corr(ss1.str(), ss2.str(), locx1,locx2,locy1,locy2, B[locx1].Scomp(SOP1,locy1), F[locx1].Id(), 
-	                                                                B[locx2].Id(), F[locx2].Scomp(SOP2,locy2));
-}
-
-template<typename Symmetry>
-template<typename MpsType>
-double KondoObservables<Symmetry>::
-SvecSvecAvgImpSub (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
-{
-	return isReal(avg(Psi,SimpSsub(SZ,SZ,locx1,locx2,locy1,locy2),Psi))+
-	       isReal(avg(Psi,SimpSsub(SP,SM,locx1,locx2,locy1,locy2),Psi));
 }
 
 // Mpo<Sym::U1xU1<double> > KondoU1xU1::

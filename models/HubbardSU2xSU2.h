@@ -51,8 +51,8 @@ public:
 //	Mpo<Symmetry> Auger (size_t locx, size_t locy=0);
 //	Mpo<Symmetry> eta(size_t locx, size_t locy=0);
 //	Mpo<Symmetry> Aps (size_t locx, size_t locy=0);
-	Mpo<Symmetry> c (size_t locx, size_t locy=0);
-	Mpo<Symmetry> cdag (size_t locx, size_t locy=0);
+	Mpo<Symmetry> c (size_t locx, size_t locy=0, double factor=sqrt(2.));
+	Mpo<Symmetry> cdag (size_t locx, size_t locy=0, double factor=sqrt(2.));
 	
 	Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	Mpo<Symmetry> nh (size_t locx, size_t locy=0);
@@ -171,7 +171,7 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-c (size_t locx, size_t locy)
+c (size_t locx, size_t locy, double factor)
 {
 	assert(locx<N_sites and locy<F[locx].dim());
 	stringstream ss;
@@ -179,12 +179,12 @@ c (size_t locx, size_t locy)
 	
 	Mpo<Symmetry> Mout(N_sites, {2,2}, ss.str());
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
-	Mout.setLocal(locx, F[locx].c(locy).plain<double>(), F[0].sign().plain<double>());
+	Mout.setLocal(locx, factor*F[locx].c(locy).plain<double>(), F[0].sign().plain<double>());
 	return Mout;
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-cdag (size_t locx, size_t locy)
+cdag (size_t locx, size_t locy, double factor)
 {
 	assert(locx<N_sites and locy<F[locx].dim());
 	stringstream ss;
@@ -192,7 +192,7 @@ cdag (size_t locx, size_t locy)
 	
 	Mpo<Symmetry> Mout(N_sites, {2,2}, ss.str());
 	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
-	Mout.setLocal(locx, F[locx].cdag(locy).plain<double>(), F[0].sign().plain<double>());
+	Mout.setLocal(locx, factor*F[locx].cdag(locy).plain<double>(), F[0].sign().plain<double>());
 	return Mout;
 }
 
@@ -216,14 +216,14 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	}
 	else if (locx1<locx2)
 	{
-		Mout.setLocal({locx1, locx2}, {sqrt(2.)*sqrt(2.)*OperatorType::prod(cdag, F[locx1].sign(), {2,2}).plain<double>(), 
-					                   c.plain<double>()}, 
+		Mout.setLocal({locx1, locx2}, {sqrt(2.) * sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), {2,2}).plain<double>(), 
+		                               c.plain<double>()}, 
 		                               F[0].sign().plain<double>());
 	}
 	else if (locx1>locx2)
 	{
-		Mout.setLocal({locx2, locx1}, {sqrt(2.)*sqrt(2.)*OperatorType::prod(c, F[locx2].sign(), {2,2}).plain<double>(), 
-		                               -1.*cdag.plain<double>()}, 
+		Mout.setLocal({locx2, locx1}, {sqrt(2.) * sqrt(2.) * OperatorType::prod(c, F[locx2].sign(), {2,2}).plain<double>(), 
+		                               -1. * cdag.plain<double>()}, 
 		                               F[0].sign().plain<double>());
 	}
 	return Mout;
