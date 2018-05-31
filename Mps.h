@@ -2451,7 +2451,9 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 									size_t a = iW.row();
 									size_t b = iW.col();
 									size_t Prows = QbasisP.inner_dim(qP);
+									if(Prows==0) { continue;}
 									size_t Pcols = H->R.block[qR][b][0].cols();
+									if(Pcols==0) { continue;}
 									size_t Arows = A[loc][s2].block[itA->second].rows();
 									size_t stitch = QbasisP.leftAmount(qP,{qA,qW});
 									
@@ -2459,7 +2461,6 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 									Mtmp.setZero();
 									
 									if (stitch >= Prows) {continue;}
-									
 									if (H->R.block[qR][b][0].size() != 0)
 									{
 										Mtmp.block(stitch + a*Arows,0, Arows,Pcols) += (this->alpha_rsvd * 
@@ -2468,6 +2469,7 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 										                                                A[loc][s2].block[itA->second] * 
 										                                                H->R.block[qR][b][0];
 									}
+									
 									
 									// VectorXd norms = Mtmp.rowwise().norm();
 //									vector<int> indices(Mtmp.rows());
@@ -2480,14 +2482,12 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 									int Nret = (this->max_Nrich<0)? Mtmp.rows():
 									                                min(static_cast<int>(Mtmp.rows()), this->max_Nrich);
 									
-//									cout << "Nret=" << Nret << ", Mtmp.rows()=" << Mtmp.rows() << endl;
 //									MatrixType Mret(Nret,Mtmp.cols());
 //									for (int i=0; i<Nret; ++i)
 //									{
 //										Mret.row(i) = Mtmp.row(indices[i]);
 //									}
-									Mtmp = Mtmp.topRows(Nret);
-									
+									if( Nret < Mtmp.rows() ) { Mtmp = Mtmp.topRows(Nret).eval(); }
 									if (Mtmp.size() != 0)
 									{
 										qarray2<Symmetry::Nq> qupleP = {qP, H->R.out(qR)};
@@ -2515,7 +2515,6 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 				}
 			}
 		}
-		
 		// extend the A matrices
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t qP=0; qP<P[s].size(); ++qP)
@@ -2665,7 +2664,9 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 									size_t b = iW.col();
 									
 									size_t Prows = H->L.block[qL][a][0].rows();
+									if(Prows==0) { continue; }
 									size_t Pcols = QbasisP.inner_dim(qP);
+									if(Pcols==0) { continue; }
 									size_t Acols = A[loc][s2].block[itA->second].cols();
 									size_t stitch = QbasisP.leftAmount(qP,{qA,qW});
 									
@@ -2673,7 +2674,6 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 									Mtmp.setZero();
 									
 									if (stitch >= Pcols) {continue;}
-									
 									if (H->L.block[qL][a][0].rows() != 0 and
 									    H->L.block[qL][a][0].cols() != 0)
 									{
@@ -2701,7 +2701,7 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 //										Mret.col(i) = Mtmp.col(indices[i]);
 //									}
 //									Mtmp = Mret;
-									Mtmp = Mtmp.leftCols(Nret);
+									if( Nret < Mtmp.cols() ) { Mtmp = Mtmp.leftCols(Nret).eval(); }
 									
 									if (Mtmp.size() != 0)
 									{
@@ -2730,7 +2730,7 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 				}
 			}
 		}
-		
+
 		// extend the A matrices
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t qP=0; qP<P[s].size(); ++qP)
