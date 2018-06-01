@@ -53,13 +53,17 @@ int Dinit, Dlimit, Imin, Imax;
 double tol_eigval, tol_state;
 double dt;
 DMRG::VERBOSITY::OPTION VERB;
-bool U1, U1U1, SU2, U0SU2, CORR, PRINT;
+bool U1, U1U1, SU2, U0SU2, CORR, SINGLE_OP, PRINT;
+string OP;
 
-MatrixXd SpinCorr_U1xU1, nCorr_U1xU1, densityMatrix_U1xU1;
-MatrixXd SpinCorr_SU2xU1, nCorr_SU2xU1, densityMatrix_SU2xU1;
+MatrixXd SpinCorr_U1xU1, nCorr_U1xU1, densityMatrixA_U1xU1, densityMatrixB_U1xU1;
+MatrixXd SpinCorr_SU2xU1, nCorr_SU2xU1, densityMatrixA_SU2xU1, densityMatrixB_SU2xU1;
 
 VectorXd d_U1, d_U1xU1, d_SU2xU1;
 VectorXd n_U1, n_U1xU1, n_SU2xU1;
+VectorXd expS_U1, expS1_U1xU1, expS2_U1xU1, expS_SU2xU1, expS1dag_U1xU1, expS2dag_U1xU1, expSdag_SU2xU1;
+
+qarray<2> Qc_U1xU1, Qc_SU2xU1;
 
 Eigenstate<VMPS::KondoU1::StateXd> g_U1;
 Eigenstate<VMPS::KondoU1xU1::StateXd> g_U1xU1;
@@ -90,9 +94,30 @@ int main (int argc, char* argv[])
 	SU2 = args.get<bool>("SU2",true);
 	U0SU2 = args.get<bool>("U0SU2",true);
 	CORR = args.get<bool>("CORR",false);
+	SINGLE_OP = args.get<bool>("SINGLE_OP",false);
 	PRINT = args.get<bool>("PRINT",false);
 	if (CORR == false) {PRINT = false;}
-	
+	OP = args.get<string>("OP","Simp");
+
+	double factor = args.get<double>("factor",1.);
+	double factor_U1 = args.get<double>("factor_U1",1.);
+	double factor_U1_dag = args.get<double>("factor_U1_dag",1.);
+	double factor_SU2 = args.get<double>("factor_SU2",1.);
+	double factor_SU2_dag = args.get<double>("factor_SU2_dag",1.);
+
+	if(OP == "Simp" or OP == "Ssub")
+	{
+		// The factor 1./sqrt(2.) comes from the spinor which has components Svec = {-1./sqrt(2.)*S+, Sz, 1./sqrt(2.)*S-}
+		// At least in the paper from Weichselbaum this is the case. McCulloch seems to have another convention: Svec = {S+, 1./sqrt(2.)*Sz, -S-}
+		// I guess that our convention is identical to Weichselbaum.
+		factor_U1 = -1./sqrt(2.); 
+		factor_U1_dag = 1./sqrt(2.);
+		// The factor sqrt(3.) is unclear to me.
+		factor_SU2 = sqrt(3.);
+		// The first factor sqrt(3.) is unclear but propably the same as above.
+		// The second sqrt(3.) comes from Clebsch Gordan coefficient. TODO: Check this carefully!
+		factor_SU2_dag = sqrt(3.) * sqrt(3.);
+	}
 	alpha = args.get<double>("alpha",1.);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	dt = 0.2;
@@ -200,13 +225,68 @@ int main (int argc, char* argv[])
 				nCorr_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.nn(i,j), g_U1xU1.state);
 			}
 			
-			densityMatrix_U1xU1.resize(L,L);
-			densityMatrix_U1xU1.setZero();
+			densityMatrixA_U1xU1.resize(L,L);
+			densityMatrixA_U1xU1.setZero();
 			for (size_t i=0; i<L; i++)
 			for (size_t j=0; j<L; j++)
 			{
-				densityMatrix_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdagc(UP,i,j), g_U1xU1.state)+
+				densityMatrixA_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdagc(UP,i,j), g_U1xU1.state)+
 				                             avg(g_U1xU1.state, H_U1xU1.cdagc(DN,i,j), g_U1xU1.state);
+			}
+
+			densityMatrixB_U1xU1.resize(L,L);
+			densityMatrixB_U1xU1.setZero();
+			for (size_t i=0; i<L; i++)
+			for (size_t j=0; j<L; j++)
+			{
+				densityMatrixB_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdag(UP,i), H_U1xU1.c(UP,j), g_U1xU1.state)
+					                      + avg(g_U1xU1.state, H_U1xU1.cdag(DN,i), H_U1xU1.c(DN,j), g_U1xU1.state);
+			}
+
+			if (SINGLE_OP)
+			{
+				auto SingleOp = [OP, &H_U1xU1](size_t i) -> Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>
+					{
+						if (OP=="Simp") {return H_U1xU1.Simp(SP,i);}
+						if (OP=="Ssub") {return H_U1xU1.Ssub(SP,i);}
+						if (OP=="cUP") {return H_U1xU1.c(UP,i);}
+						if (OP=="cDN") {return H_U1xU1.c(DN,i);}
+					};
+				auto SingleOp_dag = [OP, &H_U1xU1](size_t i) -> Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>
+					{
+						if (OP=="Simp") {return H_U1xU1.Simp(SM,i);}
+						if (OP=="Ssub") {return H_U1xU1.Ssub(SM,i);}
+						if (OP=="cUP") {return H_U1xU1.cdag(UP,i);}
+						if (OP=="cDN") {return H_U1xU1.cdag(DN,i);}
+					};
+
+				if(OP == "Simp" or OP == "Ssub") { Qc_U1xU1 = {M+2,N}; }
+				else if(OP == "cUP") { Qc_U1xU1 = {M-1,N-1}; }
+				else if(OP == "cDN") { Qc_U1xU1 = {M+1,N-1}; }
+				
+				VMPS::KondoU1xU1::Solver DMRG_U1xU1_(DMRG::VERBOSITY::SILENT);
+				Eigenstate<VMPS::KondoU1xU1::StateXd> g_U1xU1_;
+				DMRG_U1xU1_.edgeState(H_U1xU1, g_U1xU1_, Qc_U1xU1, LANCZOS::EDGE::GROUND);
+				// auto calc_totalSpin = []<typename Symmetry> (const Mps<Symmetry,double> &Bra, const Mps<Symmetry,double> &Ket) -> double
+				// 	{
+						
+				// 	};
+				double Stot=0.;
+				for (size_t i=0; i<L; i++)
+				for (size_t j=0; j<L; j++)
+				{
+					Stot += 3.*avg(g_U1xU1_.state,H_U1xU1.SimpSimp(SZ,SZ,i,j),g_U1xU1_.state);
+					Stot += 3.*avg(g_U1xU1_.state,H_U1xU1.SsubSsub(SZ,SZ,i,j),g_U1xU1_.state);
+					Stot += 6.*avg(g_U1xU1_.state,H_U1xU1.SimpSsub(SZ,SZ,i,j),g_U1xU1_.state);
+				}
+				cout << "Total spin for (" << Sym::format<VMPS::KondoU1xU1::Symmetry>(Qc_U1xU1) << ") S=" << Stot << endl;
+				expS1_U1xU1.resize(L);
+				expS1dag_U1xU1.resize(L);
+				for (size_t i=0; i<L; i++)
+				{
+					expS1_U1xU1(i) = avg(g_U1xU1_.state, SingleOp(i), g_U1xU1.state);
+					expS1dag_U1xU1(i) = avg(g_U1xU1.state, SingleOp_dag(i), g_U1xU1_.state);
+				}
 			}
 		}
 	}
@@ -251,12 +331,50 @@ int main (int argc, char* argv[])
 				nCorr_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.nn(i,j), g_SU2xU1.state);
 			}
 			
-			densityMatrix_SU2xU1.resize(L,L);
-			densityMatrix_SU2xU1.setZero();
+			densityMatrixA_SU2xU1.resize(L,L);
+			densityMatrixA_SU2xU1.setZero();
 			for (size_t i=0; i<L; i++)
-			for(size_t j=0; j<L; j++)
+			for (size_t j=0; j<L; j++)
 			{
-				densityMatrix_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdagc(i,j), g_SU2xU1.state);
+				densityMatrixA_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdagc(i,j), g_SU2xU1.state);
+			}
+
+			densityMatrixB_SU2xU1.resize(L,L);
+			densityMatrixB_SU2xU1.setZero();
+			for (size_t i=0; i<L; i++)
+			for (size_t j=0; j<L; j++)
+			{
+				densityMatrixB_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdag(i,0,sqrt(2.)), H_SU2xU1.c(j,0,1.), g_SU2xU1.state);
+			}
+
+			if (SINGLE_OP)
+			{
+				auto SingleOp = [OP, &H_SU2xU1, factor](size_t i) -> Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,double>
+					{
+						if (OP=="Simp") {return H_SU2xU1.Simp(i,0,factor);}
+						if (OP=="Ssub") {return H_SU2xU1.Ssub(i,0,factor);}
+						if (OP=="cUP" or OP == "cDN") {return H_SU2xU1.c(i,0,factor);}
+					};
+				auto SingleOp_dag = [OP, &H_SU2xU1, factor](size_t i) -> Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,double>
+					{
+						if (OP=="Simp") {return H_SU2xU1.Simpdag(i,0,factor);}
+						if (OP=="Ssub") {return H_SU2xU1.Ssubdag(i,0,factor);}
+						if (OP=="cUP" or OP == "cDN") {return H_SU2xU1.cdag(i,0,factor);}
+					};
+
+				if(OP == "Simp" or OP == "Ssub") { Qc_SU2xU1 = {S+2,N}; }
+				else if (OP == "cUP" or OP == "cDN") { Qc_SU2xU1 = {S+1,N-1}; }
+
+				VMPS::KondoSU2xU1::Solver DMRG_SU2xU1_(DMRG::VERBOSITY::SILENT);
+				Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1_;
+				DMRG_SU2xU1_.edgeState(H_SU2xU1, g_SU2xU1_, Qc_SU2xU1, LANCZOS::EDGE::GROUND);
+				expS_SU2xU1.resize(L);
+				expSdag_SU2xU1.resize(L);
+				for (size_t i=0; i<L; i++)
+				{
+					expS_SU2xU1(i) = avg(g_SU2xU1_.state, SingleOp(i), g_SU2xU1.state);
+					expSdag_SU2xU1(i) = avg(g_SU2xU1.state, SingleOp_dag(i), g_SU2xU1_.state);
+				}
 			}
 		}
 	}
@@ -291,16 +409,49 @@ int main (int argc, char* argv[])
 		cout << endl;
 		
 		cout << "<nn> U(1)⊗U(1):" << endl;
-		cout << SpinCorr_U1xU1 << endl;
+		cout << nCorr_U1xU1 << endl;
 		cout << endl;
 		cout << "<nn> SU(2)⊗U(1):" << endl;
-		cout << SpinCorr_SU2xU1 << endl;
+		cout << nCorr_SU2xU1 << endl;
 		cout << endl;
 		
-		cout << "density matrix U(1)⊗U(1): " << endl;
-		cout << densityMatrix_U1xU1 << endl << endl;
-		cout << "density matrix SU(2)⊗U(1): " << endl;
-		cout << densityMatrix_SU2xU1 << endl << endl;
+		cout << "density matrixA U(1)⊗U(1): " << endl;
+		cout << densityMatrixA_U1xU1 << endl << endl;
+		cout << "density matrixA SU(2)⊗U(1): " << endl;
+		cout << densityMatrixA_SU2xU1 << endl << endl;
+
+		cout << "density matrixB U(1)⊗U(1): " << endl;
+		cout << densityMatrixB_U1xU1 << endl << endl;
+		cout << "density matrixB SU(2)⊗U(1): " << endl;
+		cout << densityMatrixB_SU2xU1 << endl << endl;
+
+		if(SINGLE_OP)
+		{
+			cout << termcolor::green << "Operator: " << OP << termcolor::reset << endl;
+			
+			lout << endl << termcolor::red << "--------U(1)---------" << termcolor::reset << endl << endl;
+			cout << factor_U1 << "*<g(" << Sym::format<VMPS::KondoU1xU1::Symmetry>(Qc_U1xU1) << ")|" << OP << "|g("
+				 << Sym::format<VMPS::KondoU1xU1::Symmetry>(qarray<2>{M,N}) << ")> U(1)⊗U(1): " << endl;
+			cout << factor_U1*expS1_U1xU1 << endl << endl;
+			cout << factor_U1_dag << "*<g(" << Sym::format<VMPS::KondoU1xU1::Symmetry>(qarray<2>{M,N}) << ")|" << OP << "†|g("
+				 << Sym::format<VMPS::KondoU1xU1::Symmetry>(Qc_U1xU1) << ")> U(1)⊗U(1): " << endl;
+			cout << factor_U1_dag*expS1dag_U1xU1 << endl << endl;
+			
+			lout << endl << termcolor::red << "--------SU(2)---------" << termcolor::reset << endl << endl;
+			cout << factor_SU2 << "*<g(" << Sym::format<VMPS::KondoSU2xU1::Symmetry>(Qc_SU2xU1) << ")|" << OP << "|g("
+				 << Sym::format<VMPS::KondoSU2xU1::Symmetry>(qarray<2>{S,N}) << ")> SU(2)⊗U(1): " << endl;
+			cout << factor_SU2 * expS_SU2xU1 << endl << endl;
+			cout << factor_SU2_dag << "*<g(" << Sym::format<VMPS::KondoSU2xU1::Symmetry>(qarray<2>{S,N}) << ")|" << OP << "†|g("
+				 << Sym::format<VMPS::KondoSU2xU1::Symmetry>(Qc_SU2xU1) << ")> SU(2)⊗U(1): " << endl;
+			cout << factor_SU2_dag * expSdag_SU2xU1 << endl << endl;
+
+			lout << endl << termcolor::red << "--------ratios---------" << termcolor::reset << endl << endl;
+			cout << "ratio:" << endl;
+			cout << factor_SU2 * expS_SU2xU1.array()/(factor_U1*expS1_U1xU1.array()) << endl << endl;
+			cout << "ratio dag:" << endl;
+			cout << factor_SU2_dag * expSdag_SU2xU1.array()/(factor_U1_dag*expS1dag_U1xU1.array()) << endl << endl;
+
+		}
 	}
 	
 	//--------output---------
@@ -376,17 +527,32 @@ int main (int argc, char* argv[])
 		
 		T.add("ρA");
 		T.add("-");
-		T.add(to_string_prec(densityMatrix_U1xU1.sum()));
-		T.add(to_string_prec(densityMatrix_SU2xU1.sum()));
+		T.add(to_string_prec(densityMatrixA_U1xU1.sum()));
+		T.add(to_string_prec(densityMatrixA_SU2xU1.sum()));
 		T.add("-");
 		T.endOfRow();
 		
 		T.add("ρA diff");
 		T.add("-");
-		T.add(to_string_prec((densityMatrix_U1xU1-densityMatrix_SU2xU1).norm()));
+		T.add(to_string_prec((densityMatrixA_U1xU1-densityMatrixA_SU2xU1).norm()));
 		T.add("0");
 		T.add("-");
 		T.endOfRow();
+
+		T.add("ρB");
+		T.add("-");
+		T.add(to_string_prec(densityMatrixB_U1xU1.sum()));
+		T.add(to_string_prec(densityMatrixB_SU2xU1.sum()));
+		T.add("-");
+		T.endOfRow();
+		
+		T.add("ρB diff");
+		T.add("-");
+		T.add(to_string_prec((densityMatrixB_U1xU1-densityMatrixB_SU2xU1).norm()));
+		T.add("0");
+		T.add("-");
+		T.endOfRow();
+
 	}
 	
 	T.add("Dmax");

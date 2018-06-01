@@ -388,7 +388,10 @@ make_local (KONDO_SUBSYSTEM SUBSYS,
 	}
 	
 	(FERMIONIC)? Mout.setLocal(locx, (factor * pow(-1.,locx+1) * OpExt).plain<double>(), SignExt.plain<double>())
-	           : Mout.setLocal(locx, OpExt.plain<double>());
+		: Mout.setLocal(locx, (factor * OpExt).plain<double>());
+	// (FERMIONIC)? Mout.setLocal(locx, (factor * OpExt).plain<double>(), SignExt.plain<double>())
+	// 	: Mout.setLocal(locx, (factor * OpExt).plain<double>());
+
 	return Mout;
 }
 

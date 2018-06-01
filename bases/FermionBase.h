@@ -368,11 +368,13 @@ SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 Scomp (SPINOP_LABEL Sa, int orbital) const
 {
 	assert(Sa != SY);
-	if      (Sa==SX)  {return Sx(orbital);}
-	else if (Sa==iSY) {return iSy(orbital);}
-	else if (Sa==SZ)  {return Sz(orbital);}
-	else if (Sa==SP)  {return Sp(orbital);}
-	else if (Sa==SM)  {return Sm(orbital);}
+	SiteOperator<Symmetry,double> out;
+	if      (Sa==SX)  { out = Sx(orbital); }
+	else if (Sa==iSY) { out = iSy(orbital); }
+	else if (Sa==SZ)  { out = Sz(orbital); }
+	else if (Sa==SP)  { out = Sp(orbital); }
+	else if (Sa==SM)  { out = Sm(orbital); }
+	return out;
 }
 
 template<typename Symmetry>

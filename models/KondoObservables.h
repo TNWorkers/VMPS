@@ -214,7 +214,7 @@ Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 	stringstream ss;
 	ss << Sa << "imp";
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
-	return make_local(IMP, ss.str(), locx,locy, B[locx].Scomp(Sa,locy), HERMITIAN);
+	return make_local(IMP, ss.str(), locx, locy, B[locx].Scomp(Sa,locy), false, HERMITIAN);
 }
 
 template<typename Symmetry>
@@ -224,7 +224,7 @@ Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 	stringstream ss;
 	ss << Sa << "sub";
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
-	return make_local(SUB, ss.str(), locx,locy, F[locx].Scomp(Sa,locy), HERMITIAN);
+	return make_local(SUB, ss.str(), locx,locy, F[locx].Scomp(Sa,locy), false, HERMITIAN);
 }
 
 template<typename Symmetry>
