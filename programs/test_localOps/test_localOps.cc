@@ -69,9 +69,7 @@ int main (int argc, char* argv[])
 		Eigen::VectorXd c(L); c.setZero();
 		for(size_t i=0; i<L; i++)
 		{
-			// cout << "i=" << i << endl << F.c(i).data().print(true) << endl << endl;
   			auto res = Op::prod(John.groundstate(Q2).adjoint(),Op::prod(F.c(i),John.groundstate(Q1),{2,-1}),{2,-1});
-			// cout << "i=" << i << endl << res.data().print(true) << endl << endl;
 			c(i) = res.data().block[0](0,0);
 		}
 		cout << "c" << endl << c << endl << endl;
@@ -79,23 +77,12 @@ int main (int argc, char* argv[])
 		Eigen::VectorXd cdag(L); cdag.setZero();
 		for(size_t i=0; i<L; i++)
 		{
-			// cout << "i=" << i << endl << F.cdag(i).data().print(true) << endl << endl;
+			//cdag2 gibt den richtigen hermitische konjugierten Operator!
   			auto res = Op::prod(John.groundstate(Q1).adjoint(),Op::prod(F.cdag2(i),John.groundstate(Q2),{2,1}),{2,1});
-			// cout << "i=" << i << endl << res.data().print(true) << endl << endl;
 			cdag(i) = res.data().block[0](0,0);
 		}
-		// The factor sqrt(1./2.) fox the result of cdag to c for Q1={1,N} (Singlet)
-		// The general factor seems to be sqrt(S/(S+1)) got Q1 = {S,N}.
-		// TODO: Understand this factor this factor!
-		double factor = 1.;
-		// if (Q1.data[0] == 1) { factor = sqrt(1./2.); }
-		// else if (Q1.data[0] == 2) { factor = sqrt(2./3.); }
-		// else if (Q1.data[0] == 3) { factor = sqrt(3./4.); }
-		// else if (Q1.data[0] == 4) { factor = sqrt(4./5.); }
-		// else if (Q1.data[0] == 5) { factor = sqrt(5./6.); }
 
-		cout << "cdag" << endl << factor*cdag << endl << endl;
-
-		cout << "ratio=" << endl << c.array()/(factor*cdag.array()) << endl << endl;
+		cout << "cdag" << endl << cdag << endl << endl;
+		cout << "ratio=" << endl << c.array()/(cdag.array()) << endl << endl;
 	}
 }
