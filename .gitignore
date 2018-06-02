@@ -10,3 +10,5 @@
 *.pdf
 *.DS_Store
 makefile
+*.dot
+*.d

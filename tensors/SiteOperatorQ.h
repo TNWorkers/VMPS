@@ -24,9 +24,12 @@ public:
 	const Operator& eigenvalues() const {return eigvals_;}
 	const Operator& eigenvectors() const {return eigvecs_;}
 
+	Operator groundstate( qType Q ) const;
+	
 private:
 	Operator eigvals_;
 	Operator eigvecs_;
+	bool COMPUTED=false;
 };
 
 template<typename Operator>
@@ -52,8 +55,23 @@ compute(const Operator &Op, const std::vector<qType> &blocks, Eigen::Decompositi
 			eigvecs_.data().push_back(Op.data().in[nu],Op.data().out[nu],eigve);
 		}
 	}
+	COMPUTED = true;
 	return;
 }
+
+template<typename Operator>
+Operator EDSolver<Operator>::
+groundstate( qType Q ) const
+{
+	assert(COMPUTED and "First diagonlize the Operator before accessing the groundstate!");
+	auto all_gs = eigenvectors();
+	Operator out(all_gs.Q(),all_gs.basis());
+	auto it = all_gs.data().dict.find({Q,Q});
+	assert(it != all_gs.data().dict.end() and "The groundstate to the given Q is not present.");
+	out.data().push_back(all_gs.data().in[it->second],all_gs.data().out[it->second],all_gs.data().block[it->second]);
+	return out;
+}
+
 
 /** 
  * \class SiteOperatorQ
@@ -106,6 +124,8 @@ public:
 	SiteOperatorQ<Symmetry,MatrixType_>& operator-= ( const SiteOperatorQ<Symmetry,MatrixType_>& Op );
 
 	SiteOperatorQ<Symmetry,MatrixType_> adjoint() const;
+
+	SiteOperatorQ<Symmetry,MatrixType_> hermitian_conj() const;
 
 	void setZero();
 	void setIdentity();
@@ -237,6 +257,22 @@ adjoint () const
 		std::array<qType,2> index = {this->data().out[nu],this->data().in[nu]};
 		MatrixType A = this->data().block[nu].adjoint();
 		A *= Symmetry::coeff_adjoint(this->data().in[nu],this->data().out[nu],this->Q());
+		out.data().push_back(index,A);
+	}
+	return out;
+}
+
+template<typename Symmetry, typename MatrixType_>
+SiteOperatorQ<Symmetry,MatrixType_> SiteOperatorQ<Symmetry,MatrixType_>::
+hermitian_conj () const
+{
+	SiteOperatorQ<Symmetry,MatrixType_> out( Symmetry::flip(this->Q()), this->basis() );
+
+	for( std::size_t nu=0; nu<this->data().size(); nu++ )
+	{
+		std::array<qType,2> index = {this->data().out[nu],this->data().in[nu]};
+		MatrixType A = this->data().block[nu].adjoint();
+		// A *= Symmetry::coeff_adjoint(this->data().in[nu],this->data().out[nu],this->Q());
 		out.data().push_back(index,A);
 	}
 	return out;

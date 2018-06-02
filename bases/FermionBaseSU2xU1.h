@@ -22,10 +22,10 @@ class FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >
 {
 	typedef Eigen::Index Index;
 	typedef double Scalar;
+public:
 	typedef typename Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
 	typedef typename Symmetry::qType qType;
-public:
 	
 	FermionBase(){};
 	
@@ -53,6 +53,7 @@ public:
 	 * \param orbital : orbital index
 	 */
 	Operator cdag (std::size_t orbital=0) const;
+	Operator cdag2 (std::size_t orbital=0) const;
 
 	/**
 	 * Annihilation operator
@@ -268,6 +269,12 @@ SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::
 cdag (std::size_t orbital) const
 {
 	return c(orbital).adjoint();
+}
+
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
+cdag2 (std::size_t orbital) const
+{
+	return c(orbital).hermitian_conj();
 }
 
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
