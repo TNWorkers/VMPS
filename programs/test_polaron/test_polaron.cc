@@ -32,7 +32,7 @@ OrthPolyGreen<MODEL,MODEL::StateXd> * KPS;
 int main (int argc, char* argv[]) 
 {
 	ArgParser args(argc,argv);
-	L = args.get<size_t>("L");
+	L = args.get<size_t>("L",4);
 	N = args.get<size_t>("N",0);
 	qarray<2> Qi = MODEL::polaron(L,N);
 	qarray<2> Qc;
@@ -85,8 +85,8 @@ int main (int argc, char* argv[])
 		}
 		#else
 		{
-			A = H.c(DN,L/2);
-			Adag = H.cdag(DN,L/2);
+			A = H.c<DN>(L/2);
+			Adag = H.cdag<DN>(L/2);
 			Qc = Qi+A.Qtarget();
 		}
 		#endif
@@ -101,8 +101,8 @@ int main (int argc, char* argv[])
 		}
 		#else
 		{
-			A = H.cdag(DN, L/2);
-			Adag = H.c(DN, L/2);
+			A = H.cdag<DN>(L/2);
+			Adag = H.c<DN>(L/2);
 			Qc = Qi+A.Qtarget();
 		}
 		#endif

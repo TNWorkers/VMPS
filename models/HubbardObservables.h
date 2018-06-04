@@ -22,14 +22,16 @@ public:
 	///@}
 	
 	///@{
-	Mpo<Symmetry> c (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
-	Mpo<Symmetry> cdag (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
+	template<SPIN_INDEX sigma>
+	Mpo<Symmetry> c (size_t locx, size_t locy=0) const;
+	template<SPIN_INDEX sigma>
+	Mpo<Symmetry> cdag (size_t locx, size_t locy=0) const;
 	///@}
 	
 	///@{
 	Mpo<Symmetry> cc (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> cdagcdag (size_t locx, size_t locy=0) const;
-	Mpo<Symmetry> cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	template<SPIN_INDEX sigma> Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> eta() const;
 	///@}
 	
@@ -37,9 +39,10 @@ public:
 	Mpo<Symmetry> d (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> dtot() const;
 	Mpo<Symmetry> s (size_t locx, size_t locy=0) const;
-	Mpo<Symmetry> n (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
+	template<SPIN_INDEX sigma> Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
-	Mpo<Symmetry> nn (SPIN_INDEX sigma1, size_t locx1, SPIN_INDEX sigma2, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2>
+	Mpo<Symmetry> nn (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> hh (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
@@ -139,8 +142,9 @@ make_corr (string name1, string name2,
 //-------------
 
 template<typename Symmetry>
+template<SPIN_INDEX sigma>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
-c (SPIN_INDEX sigma, size_t locx, size_t locy) const
+c (size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << "c" << sigma;
@@ -148,8 +152,9 @@ c (SPIN_INDEX sigma, size_t locx, size_t locy) const
 }
 
 template<typename Symmetry>
+template<SPIN_INDEX sigma>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
-cdag (SPIN_INDEX sigma, size_t locx, size_t locy) const
+cdag (size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << "c†" << sigma;
@@ -175,8 +180,9 @@ cdagcdag (size_t locx, size_t locy) const
 }
 
 template<typename Symmetry>
+template<SPIN_INDEX sigma>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
-cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	assert(locx1<F.size() and locx2<F.size());
 	stringstream ss;
@@ -254,8 +260,9 @@ s (size_t locx, size_t locy) const
 }
 
 template<typename Symmetry>
+template<SPIN_INDEX sigma>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
-n (SPIN_INDEX sigma, size_t locx, size_t locy) const
+n (size_t locx, size_t locy) const
 {
 	return make_local("n", locx,locy, F[locx].n(sigma,locy), false, true);
 	// FERMIONIC=false, HERMITIAN=true
@@ -270,8 +277,9 @@ n (size_t locx, size_t locy) const
 }
 
 template<typename Symmetry>
+template<SPIN_INDEX sigma1, SPIN_INDEX sigma2>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
-nn (SPIN_INDEX sigma1, size_t locx1, SPIN_INDEX sigma2, size_t locx2, size_t locy1, size_t locy2) const
+nn (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	return make_corr ("n","n", locx1,locx2,locy1,locy2, F[locx1].n(sigma1,locy1), F[locx2].n(sigma2,locy2), true);
 }

@@ -35,7 +35,7 @@ OrthPolyGreen<MODEL,MODEL::StateXd> * KPS;
 int main (int argc, char* argv[]) 
 {
 	ArgParser args(argc,argv);
-	L = args.get<size_t>("L");
+	L = args.get<size_t>("L",4);
 	N = args.get<size_t>("N",L);
 	qarray<2> Qi = MODEL::singlet(N);
 	qarray<2> Qc;
@@ -89,8 +89,8 @@ int main (int argc, char* argv[])
 		}
 		#else
 		{
-			A = H.c(UP,L/2);
-			Adag = H.cdag(UP,L/2);
+			A = H.c<UP>(L/2);
+			Adag = H.cdag<UP>(L/2);
 			Qc = qarray<2>({N/2-1,N/2});
 		}
 		#endif
@@ -105,8 +105,8 @@ int main (int argc, char* argv[])
 		}
 		#else
 		{
-			A = H.cdag(UP,L/2);
-			Adag = H.c(UP,L/2);
+			A = H.cdag<UP>(L/2);
+			Adag = H.c<UP>(L/2);
 			Qc = qarray<2>({N/2+1,N/2});
 		}
 		#endif

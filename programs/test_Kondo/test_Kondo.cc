@@ -190,14 +190,16 @@ int main (int argc, char* argv[])
 		t_U1xU1 = Watch_U1xU1.time();
 		
 //		VMPS::KondoU1::StateXd Vred = g_U1.state;
-	//	Vred.graph("V");
-	//	Vred.reduce_symmetry(0,g_U1xU1.state);
-	//	Vred.mend();
-	//	cout << "Vred done!" << endl;
-	//	Vred.graph("Vred");
-	//	cout << Vred.validate() << endl;
-	//	g_U1xU1.state.graph("Vfull");
-	//	cout << "red.avg=" << avg(Vred, H_U1, Vred) << endl;
+//		Vred.graph("V");
+//		Vred.reduce_symmetry(0,g_U1xU1.state);
+//		cout << "Vred done!" << endl;
+//		Vred.graph("Vred");
+//		cout << Vred.validate() << endl;
+//		g_U1xU1.state.graph("Vfull");
+//		VMPS::KondoU1 H_U1(L,params);
+//		cout << "dot=" << Vred.squaredNorm() << endl;
+//		cout << Vred << endl;
+//		cout << "red.avg=" << avg(Vred, H_U1, Vred) << endl;
 		
 		if (CORR)
 		{
@@ -230,8 +232,8 @@ int main (int argc, char* argv[])
 			for (size_t i=0; i<L; i++)
 			for (size_t j=0; j<L; j++)
 			{
-				densityMatrixA_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdagc(UP,i,j), g_U1xU1.state)+
-				                             avg(g_U1xU1.state, H_U1xU1.cdagc(DN,i,j), g_U1xU1.state);
+				densityMatrixA_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdagc<UP>(i,j), g_U1xU1.state)+
+				                             avg(g_U1xU1.state, H_U1xU1.cdagc<DN>(i,j), g_U1xU1.state);
 			}
 
 			densityMatrixB_U1xU1.resize(L,L);
@@ -239,8 +241,8 @@ int main (int argc, char* argv[])
 			for (size_t i=0; i<L; i++)
 			for (size_t j=0; j<L; j++)
 			{
-				densityMatrixB_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdag(UP,i), H_U1xU1.c(UP,j), g_U1xU1.state)
-					                      + avg(g_U1xU1.state, H_U1xU1.cdag(DN,i), H_U1xU1.c(DN,j), g_U1xU1.state);
+				densityMatrixB_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdag<UP>(i), H_U1xU1.c<UP>(j), g_U1xU1.state)
+					                      + avg(g_U1xU1.state, H_U1xU1.cdag<DN>(i), H_U1xU1.c<DN>(j), g_U1xU1.state);
 			}
 
 			if (SINGLE_OP)
@@ -249,15 +251,15 @@ int main (int argc, char* argv[])
 					{
 						if (OP=="Simp") {return H_U1xU1.Simp(SP,i);}
 						if (OP=="Ssub") {return H_U1xU1.Ssub(SP,i);}
-						if (OP=="cUP") {return H_U1xU1.c(UP,i);}
-						if (OP=="cDN") {return H_U1xU1.c(DN,i);}
+						if (OP=="cUP") {return H_U1xU1.c<UP>(i);}
+						if (OP=="cDN") {return H_U1xU1.c<DN>(i);}
 					};
 				auto SingleOp_dag = [OP, &H_U1xU1](size_t i) -> Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>
 					{
 						if (OP=="Simp") {return H_U1xU1.Simp(SM,i);}
 						if (OP=="Ssub") {return H_U1xU1.Ssub(SM,i);}
-						if (OP=="cUP") {return H_U1xU1.cdag(UP,i);}
-						if (OP=="cDN") {return H_U1xU1.cdag(DN,i);}
+						if (OP=="cUP") {return H_U1xU1.cdag<UP>(i);}
+						if (OP=="cDN") {return H_U1xU1.cdag<DN>(i);}
 					};
 
 				if(OP == "Simp" or OP == "Ssub") { Qc_U1xU1 = {M+2,N}; }

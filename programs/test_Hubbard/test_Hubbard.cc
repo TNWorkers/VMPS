@@ -242,7 +242,7 @@ int main (int argc, char* argv[])
 		for (size_t lx=0; lx<L; ++lx)
 		for (size_t ly=0; ly<Ly; ++ly)
 		{
-			double n_l = avg(g_U0.state, H_U0.n(UPDN,lx,ly), g_U0.state);
+			double n_l = avg(g_U0.state, H_U0.n(lx,ly), g_U0.state);
 			cout << "lx=" << lx << ", ly=" << ly << "\tn=" << n_l << endl;
 			Ntot += n_l;
 		}
@@ -289,16 +289,16 @@ int main (int argc, char* argv[])
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{
-				densityMatrix_U1A(i,j) = avg(g_U1.state, H_U1.cdagc(UP,i,j), g_U1.state)+
-				                         avg(g_U1.state, H_U1.cdagc(DN,i,j), g_U1.state);
+				densityMatrix_U1A(i,j) = avg(g_U1.state, H_U1.cdagc<UP>(i,j), g_U1.state)+
+				                         avg(g_U1.state, H_U1.cdagc<DN>(i,j), g_U1.state);
 			}
 			
 			densityMatrix_U1B.resize(L,L); densityMatrix_U1B.setZero();
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{
-				densityMatrix_U1B(i,j) = avg(g_U1.state, H_U1.cdag(UP,i), H_U1.c(UP,j), g_U1.state)+
-				                         avg(g_U1.state, H_U1.cdag(DN,i), H_U1.c(DN,j), g_U1.state);
+				densityMatrix_U1B(i,j) = avg(g_U1.state, H_U1.cdag<UP>(i), H_U1.c<UP>(j), g_U1.state)+
+				                         avg(g_U1.state, H_U1.cdag<DN>(i), H_U1.c<DN>(j), g_U1.state);
 			}
 			
 //			lout << "P U(1): " << Ptot(densityMatrix_U1,L) << "\t" << Ptot(densityMatrix_U1B,L) << endl;

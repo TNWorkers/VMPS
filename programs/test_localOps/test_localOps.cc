@@ -104,7 +104,7 @@ int main (int argc, char* argv[])
 		Eigen::VectorXd c_check(L); c_check.setZero();
 		for(size_t i=0; i<L; i++)
 		{
-			c_check(i) = avg(g2.state, H_DMRG.c(UP,i), g1.state);
+			c_check(i) = avg(g2.state, H_DMRG.c<UP>(i), g1.state);
 		}
 		cout << "c_check" << endl << c_check << endl << endl;
 		

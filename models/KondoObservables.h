@@ -17,8 +17,8 @@ public:
 	///@}
 	
 	///@{
-	Mpo<Symmetry> c    (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
-	Mpo<Symmetry> cdag (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
+	template<SPIN_INDEX sigma> Mpo<Symmetry> c    (size_t locx, size_t locy=0) const;
+	template<SPIN_INDEX sigma> Mpo<Symmetry> cdag (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> cc   (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> cdagcdag (size_t locx, size_t locy=0) const;
 	///@}
@@ -26,7 +26,7 @@ public:
 	///@{
 	Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> d (size_t locx, size_t locy=0) const;
-	Mpo<Symmetry> cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	template<SPIN_INDEX sigma> Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> nn (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
@@ -171,8 +171,9 @@ make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2,
 //-------------
 
 template<typename Symmetry>
+template<SPIN_INDEX sigma>
 Mpo<Symmetry> KondoObservables<Symmetry>::
-c (SPIN_INDEX sigma, size_t locx, size_t locy) const
+c (size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << "c" << sigma;
@@ -180,8 +181,9 @@ c (SPIN_INDEX sigma, size_t locx, size_t locy) const
 }
 
 template<typename Symmetry>
+template<SPIN_INDEX sigma>
 Mpo<Symmetry> KondoObservables<Symmetry>::
-cdag (SPIN_INDEX sigma, size_t locx, size_t locy) const
+cdag (size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << "c†" << sigma;
@@ -287,8 +289,9 @@ SvecSvecAvgImpSub (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1,
 }
 
 template<typename Symmetry>
+template<SPIN_INDEX sigma>
 Mpo<Symmetry> KondoObservables<Symmetry>::
-cdagc (SPIN_INDEX sigma, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	assert(locx1<F.size() and locx2<F.size() and locy1<F[locx1].dim() and locy2<F[locx2].dim());
 	stringstream ss;

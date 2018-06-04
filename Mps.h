@@ -3232,7 +3232,7 @@ reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs)
 	for (size_t l=0; l<PsiRhs.length(); ++l)
 	for (size_t s=0; s<PsiRhs.qloc[l].size(); ++s)
 	{
-		cout << "l=" << l << ", s=" << PsiRhs.qloc[l][s] << endl;
+//		cout << "l=" << l << ", s=" << PsiRhs.qloc[l][s] << endl;
 		A[l][s].clear();
 		
 //		set<qarray2<Nq> > qset;
@@ -3279,14 +3279,14 @@ reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs)
 			vector<array<qarray<1>,2> > b = it->second;
 			
 			A[l][s].try_create_block(qarray2<Nq>{qval_in,qval_out});
-			cout << qval_in << ", " << qval_out << endl;
-			
-			cout << "b:" << endl;
-			for (size_t j=0; j<b.size(); ++j) // block index, in, out
-			{
-				cout << b[j][0] << ", " << b[j][1] << endl;
-			}
-			cout << endl;
+//			cout << qval_in << ", " << qval_out << endl;
+//			
+//			cout << "b:" << endl;
+//			for (size_t j=0; j<b.size(); ++j) // block index, in, out
+//			{
+//				cout << b[j][0] << ", " << b[j][1] << endl;
+//			}
+//			cout << endl;
 			
 			for (size_t j=0; j<b.size(); ++j) // block index, in, out
 			{
@@ -3315,11 +3315,11 @@ reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs)
 				
 				auto itr = PsiRhs.A[l][s].dict.find(qarray2<SymmetryBig::Nq>{quple_in,quple_out});
 				
-				cout << "block: " << quple_in << ", " << quple_out << " -> " << qval_in << ", " << qval_out << endl;
+//				cout << "block: " << quple_in << ", " << quple_out << " -> " << qval_in << ", " << qval_out << endl;
 				if (itl != A[l][s].dict.end() and itr != PsiRhs.A[l][s].dict.end())
 				{
-					cout << "adding: " << quple_in << ", " << quple_out << " -> " << qval_in << ", " << qval_out 
-					     << ", size=" << PsiRhs.A[l][s].block[itr->second].rows() << "x" << PsiRhs.A[l][s].block[itr->second].cols() << endl;
+//					cout << "adding: " << quple_in << ", " << quple_out << " -> " << qval_in << ", " << qval_out 
+//					     << ", size=" << PsiRhs.A[l][s].block[itr->second].rows() << "x" << PsiRhs.A[l][s].block[itr->second].cols() << endl;
 					if (l==0)
 					{
 						addRight(PsiRhs.A[l][s].block[itr->second], A[l][s].block[itl->second]);
@@ -3332,6 +3332,46 @@ reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs)
 					{
 						addBottomRight(PsiRhs.A[l][s].block[itr->second], A[l][s].block[itl->second]);
 					}
+				}
+			}
+		}
+	}
+	
+	for (size_t l=0; l<this->N_sites-1; ++l)
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	for (size_t q=0; q<A[l][s].dim; ++q)
+	{
+		for (size_t snext=0; snext<qloc[l+1].size(); ++snext)
+		for (size_t qnext=0; qnext<A[l+1][snext].dim; ++qnext)
+		{
+			if (A[l][s].out[q] == A[l+1][snext].in[qnext])
+			{
+				if (A[l][s].block[q].cols() < A[l+1][snext].block[qnext].rows())
+				{
+					size_t dc = A[l+1][snext].block[qnext].rows() - A[l][s].block[q].cols();
+					A[l][s].block[q].conservativeResize(A[l][s].block[q].rows(),
+					                                    A[l+1][snext].block[qnext].rows());
+					A[l][s].block[q].rightCols(dc).setZero();
+				}
+			}
+		}
+	}
+	
+	for (size_t l=this->N_sites-1; l>0; --l)
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	for (size_t q=0; q<A[l][s].dim; ++q)
+	{
+		for (size_t sprev=0; sprev<qloc[l-1].size(); ++sprev)
+		for (size_t qprev=0; qprev<A[l-1][sprev].dim; ++qprev)
+		{
+			if (A[l][s].in[q] == A[l-1][sprev].out[qprev])
+			{
+				if (A[l][s].block[q].rows() < A[l-1][sprev].block[qprev].cols())
+				{
+					size_t dr = A[l-1][sprev].block[qprev].cols() - A[l][s].block[q].rows();
+					A[l][s].block[q].conservativeResize(A[l-1][sprev].block[qprev].cols(),
+					                                    A[l][s].block[q].cols());
+					A[l][s].block[q].bottomRows(dr).setZero();
 				}
 			}
 		}
