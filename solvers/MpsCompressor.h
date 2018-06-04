@@ -6,12 +6,14 @@
 #endif
 
 #ifndef DMRG_POLYCOMPRESS_MIN
-#define DMRG_POLYCOMPRESS_MIN 2
+#define DMRG_POLYCOMPRESS_MIN 1
 #endif
 
 #ifndef DMRG_POLYCOMPRESS_MAX
 #define DMRG_POLYCOMPRESS_MAX 16
 #endif
+
+#include "termcolor.hpp" //from https://github.com/ikalnytskyi/termcolor
 
 #include "tensors/Biped.h"
 #include "tensors/Multipede.h"
@@ -64,7 +66,7 @@ public:
 	 * \param[in] min_halfsweeps : minimal amount of half-sweeps
 	 */
 	void stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-	                    size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=2);
+	                    size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
 	
 	/**
 	 * Compresses a matrix-vector product \f$\left|V_{out}\right> \approx H \left|V_{in}\right>\f$. 
@@ -84,7 +86,7 @@ public:
 	template<typename MpOperator>
 	void prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
 	                   qarray<Symmetry::Nq> Qtot_input,
-	                   size_t Dcutoff_input, double tol=1e-8, size_t max_halfsweeps=56, size_t min_halfsweeps=2);
+	                   size_t Dcutoff_input, double tol=1e-8, size_t max_halfsweeps=56, size_t min_halfsweeps=1);
 	
 	/**
 	 * Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. 
@@ -178,7 +180,7 @@ private:
 	size_t N_sweepsteps, N_halfsweeps;
 	size_t Dcutoff, Dcutoff_new;
 	size_t Mmax, Mmax_new;
-	double sqdist;
+	double sqdist, tol;
 	
 	int pivot;
 	DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
@@ -216,7 +218,10 @@ info() const
 		ss << " (not changed), ";
 	}
 	
-	ss << "|Vlhs-Vrhs|^2=" << sqdist << ", ";
+	ss << "|Vlhs-Vrhs|^2=";
+	if (sqdist <= tol) {ss << termcolor::green;}
+	else               {ss << termcolor::red;}
+	ss << termcolor::reset << sqdist << ", ";
 	ss << "halfsweeps=" << N_halfsweeps << ", ";
 	ss << "mem=" << round(memory(GB),3) << "GB";
 	return ss.str();
@@ -227,7 +232,7 @@ string MpsCompressor<Symmetry,Scalar,MpoScalar>::
 t_info() const
 {
 	stringstream ss;
-	ss << "t[s]="      << t_tot
+	ss << "t[s]=" << termcolor::bold << t_tot << termcolor::reset
 	   << ", opt=" << round(t_opt/t_tot*100.,0) << "%"
 	   << ", sweep=" << round(t_sweep/t_tot*100.) << "%"
 	   << ", LR="    << round(t_LR/t_tot*100.) << "%";
@@ -328,10 +333,12 @@ sweep_to_edge (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps)
+stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
+               size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
 {
 	Stopwatch<> Chronos;
 	N_sites = Vin.length();
+	tol = tol_input;
 	double sqnormVin = isReal(dot(Vin,Vin));
 	N_halfsweeps = 0;
 	N_sweepsteps = 0;
@@ -374,7 +381,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 		Stopwatch<> FullSweepTimer;
 		
 		// A 2-site sweep is necessary! Move pivot back to edge.
-		if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
+		if (N_halfsweeps%4 == 0 and N_halfsweeps > 1)
 		{
 			sweep_to_edge(Vin,Vout,true); // BUILD_LR = true
 		}
@@ -382,7 +389,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
-			if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
+			if (N_halfsweeps%4 == 0 and N_halfsweeps > 1)
 			{
 				stateOptimize2(Vin,Vout);
 			}
@@ -400,7 +407,10 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, size
 		
 		if (CHOSEN_VERBOSITY>=2)
 		{
-			lout << " distance^2=" << sqdist << "\t";
+			lout << " distance^2=";
+			if (sqdist <= tol) {lout << termcolor::green;}
+			else               {lout << termcolor::red;}
+			lout << sqdist << termcolor::reset << ", ";
 			t_tot = FullSweepTimer.time();
 			lout << t_info() << endl;
 		}
@@ -549,10 +559,12 @@ build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, qarray<Symmetry::Nq> Qtot, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps)
+prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
+              qarray<Symmetry::Nq> Qtot, size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
 {
 	N_sites = Vin.length();
 	Stopwatch<> Chronos;
+	tol = tol_input;
 	N_halfsweeps = 0;
 	N_sweepsteps = 0;
 	Dcutoff = Dcutoff_new = Dcutoff_input;
@@ -653,7 +665,10 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		
 		if (CHOSEN_VERBOSITY>=2)
 		{
-			lout << " distance^2=" << sqdist << "\t";
+			lout << " distance^2=";
+			if (sqdist <= tol) {lout << termcolor::green;}
+			else               {lout << termcolor::red;}
+			lout << sqdist << termcolor::reset << ", ";
 			t_tot = FullSweepTimer.time();
 			lout << t_info() << endl;
 		}
@@ -834,9 +849,11 @@ build_RW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, con
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, size_t Dcutoff_input, double tol, size_t max_halfsweeps, size_t min_halfsweeps)
+polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, 
+              size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
 {
 	N_sites = Vin1.length();
+	tol = tol_input;
 	Stopwatch<> Chronos;
 	N_halfsweeps = 0;
 	N_sweepsteps = 0;
@@ -849,7 +866,6 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	if (CHOSEN_VERBOSITY>=2)
 	{
 		lout << "Vin: " << Vout.info() << endl;
-//		Vout.graph("it");
 	}
 	
 	// prepare edges of LW & RW
@@ -909,6 +925,11 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	Mmax = Vout.calc_Mmax();
 	Vout.max_Nsv = Dcutoff;
 	Vout.min_Nsv = Vin1.min_Nsv;
+	// In order to avoid block loss for small Hilbert spaces:
+	if (Vout.calc_Nqmax() <= 3)
+	{
+		Vout.min_Nsv = 1;
+	}
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
 	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps)
@@ -922,7 +943,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		Stopwatch<> FullSweepTimer;
 		
 		// A 2-site sweep is necessary! Move pivot back to edge.
-		if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
+		if (N_halfsweeps%4 == 0 and N_halfsweeps > 1)
 		{
 			sweep_to_edge(H,Vin1,Vin2,Vout,true,true); // build_LR = true, build LWRW = true
 		}
@@ -988,7 +1009,10 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		
 		if (CHOSEN_VERBOSITY>=2)
 		{
-			lout << " distance^2=" << sqdist << "\t";
+			lout << " distance^2=";
+			if (sqdist <= tol) {lout << termcolor::green;}
+			else               {lout << termcolor::red;}
+			lout << sqdist << termcolor::reset << ", ";
 			t_tot = FullSweepTimer.time();
 			lout << t_info() << endl;
 		}
@@ -1005,6 +1029,15 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 			{
 				lout << "resize: " << Vout.max_Nsv-1 << "→" << Vout.max_Nsv << endl;
 			}
+		}
+		
+		if (N_halfsweeps%8 == 0 and
+		    N_halfsweeps > 1 and 
+		    N_halfsweeps != max_halfsweeps and
+		    sqdist > tol)
+		{
+			lout << "Warning: Could not reach tolerance, restarting from random!" << endl;
+			prepSweep(H,Vin1,Vin2,Vout,true);
 		}
 		
 		Mmax_new = Vout.calc_Mmax();

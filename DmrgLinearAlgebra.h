@@ -294,7 +294,7 @@ void polyIter (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
 	{
 		lout << Compadre.info() << endl;
-		lout << Chronos.info(make_string("polyIter B=",polyB)) << endl;
+		lout << termcolor::bold << Chronos.info(make_string("polyIter B=",polyB)) << termcolor::reset << endl;
 		lout << "Vout: " << Vout.info() << endl << endl;
 	}
 }

@@ -19,6 +19,8 @@ public:
 	///@{
 	Mpo<Symmetry> c    (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> cdag (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> cc   (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> cdagcdag (size_t locx, size_t locy=0) const;
 	///@}
 	
 	///@{
@@ -198,6 +200,24 @@ Mpo<Symmetry> KondoObservables<Symmetry>::
 d (size_t locx, size_t locy) const
 {
 	return make_local(SUB, "d", locx,locy, F[locx].d(locy), false, true);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> KondoObservables<Symmetry>::
+cc (size_t locx, size_t locy) const
+{
+	stringstream ss;
+	ss << "c" << UP << "c" << DN;
+	return make_local(SUB, ss.str(), locx,locy, F[locx].c(UP,locy)*F[locx].c(DN,locy), false, false);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> KondoObservables<Symmetry>::
+cdagcdag (size_t locx, size_t locy) const
+{
+	stringstream ss;
+	ss << "c†" << DN << "c†" << UP;
+	return make_local(SUB, ss.str(), locx,locy, F[locx].cdag(DN,locy)*F[locx].cdag(UP,locy), false, false);
 }
 
 template<typename Symmetry>

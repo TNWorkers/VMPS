@@ -198,11 +198,11 @@ int main (int argc, char* argv[])
 //	OxV(O, init->state, initA);
 	MODEL::CompressorXd Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
 	Compadre.prodCompress(A, Adag, init->state, initA, Qc, init->state.calc_Dmax());
-	cout << "c*cdag 1=" << avg(init->state, H.c(L/2), H.cdag(L/2), init->state) << endl;
-	cout << "c*cdag 2=" << avg(init->state, H.ccdag(L/2,L/2), init->state) << endl;
-	cout << "avg1=" << avg(init->state, H.cdag(L/2), H.c(L/2), init->state) << endl;
-	cout << "avg2=" << avg(init->state, H.cdagc(L/2,L/2), init->state) << endl;
-	cout << "avg3=" << avg(init->state, H.n(L/2), init->state) << endl;
+//	cout << "c*cdag 1=" << avg(init->state, H.c(L/2), H.cdag(L/2), init->state) << endl;
+//	cout << "c*cdag 2=" << avg(init->state, H.ccdag(L/2,L/2), init->state) << endl;
+//	cout << "avg1=" << avg(init->state, H.cdag(L/2), H.c(L/2), init->state) << endl;
+//	cout << "avg2=" << avg(init->state, H.cdagc(L/2,L/2), init->state) << endl;
+//	cout << "avg3=" << avg(init->state, H.n(L/2), init->state) << endl;
 	delete init;
 	initA.eps_svd = 1e-7;
 	cout << "AxV:" << endl << initA.info() << endl;
@@ -215,7 +215,7 @@ int main (int argc, char* argv[])
 		double spillage = 0.;
 		if (spec == "PES" or spec == "IPES")
 		{
-			spillage = 8.*dE[0];
+			spillage = 6.*dE[0];
 		}
 		else if (spec == "SSF")
 		{
