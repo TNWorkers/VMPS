@@ -375,6 +375,12 @@ int main (int argc, char* argv[])
 					expS_SU2xU1(i) = avg(g_SU2xU1_.state, SingleOp(i), g_SU2xU1.state);
 					expSdag_SU2xU1(i) = avg(g_SU2xU1.state, SingleOp_dag(i), g_SU2xU1_.state);
 				}
+				// VMPS::KondoSU2xU1::StateXd ket;
+				// MpsCompressor<VMPS::KondoSU2xU1::Symmetry,double,double> Compadre(DMRG::VERBOSITY::SILENT);
+				// Compadre.prodCompress(H_SU2xU1.Simp(0,0,1.), H_SU2xU1.Simpdag(0,0,sqrt(3.)), g_SU2xU1.state, ket, Qc_SU2xU1, g_SU2xU1.state.calc_Dmax());
+				// VMPS::KondoSU2xU1::StateXd bra;;
+				// Compadre.prodCompress(H_SU2xU1.Simpdag(1,0,1.), H_SU2xU1.Simp(1,0,sqrt(3.)), g_SU2xU1.state, bra, Qc_SU2xU1, g_SU2xU1.state.calc_Dmax());
+				// cout << "check=" << ket.dot(bra) << "=" << avg(g_SU2xU1.state,H_SU2xU1.SimpSimp(1,0),g_SU2xU1.state) << endl;
 			}
 		}
 	}

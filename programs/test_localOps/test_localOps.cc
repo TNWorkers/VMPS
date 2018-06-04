@@ -4,8 +4,14 @@
 
 #include "ArgParser.h"
 
+#include "Logger.h"
+Logger lout;
+
 using namespace std;
 #include "bases/FermionBaseSU2xU1.h"
+
+#include "models/HubbardU1xU1.h"
+#include "solvers/DmrgSolver.h"
 
 size_t L;
 double U;
@@ -47,7 +53,9 @@ int main (int argc, char* argv[])
 
 		auto H = F.HubbardHamiltonian(U);
 		EDSolver<Op> John(H,{Q1,Q2},Eigen::DecompositionOptions::ComputeEigenvectors);
-		cout << "gse=" << John.eigenvalues().data().block[0](0,0) << endl;
+		cout << "gse1=" << John.eigenvalues().data().block[1](0,0) << endl;
+		cout << "gse2=" << John.eigenvalues().data().block[0](0,0) << endl;
+
 		Eigen::MatrixXd densityMatrix(L,L); densityMatrix.setZero();
 		for(size_t i=0; i<L; i++)
 		for(size_t j=0; j<L; j++)
@@ -84,5 +92,21 @@ int main (int argc, char* argv[])
 
 		cout << "cdag" << endl << cdag << endl << endl;
 		cout << "ratio=" << endl << c.array()/(cdag.array()) << endl << endl;
+		
+		VMPS::HubbardU1xU1 H_DMRG(L,{{"U",U}});
+		cout << H_DMRG.info() << endl;
+		VMPS::HubbardU1xU1::Solver Jack(DMRG::VERBOSITY::ON_EXIT);
+		Eigenstate<VMPS::HubbardU1xU1::StateXd> g1, g2;
+		Jack.edgeState(H_DMRG,g1,{static_cast<int>(L/2),static_cast<int>(L/2)},LANCZOS::EDGE::GROUND);
+		
+		VMPS::HubbardU1xU1::Solver Lisa(DMRG::VERBOSITY::ON_EXIT);
+		Lisa.edgeState(H_DMRG,g2,{static_cast<int>(L/2)-1,static_cast<int>(L/2)},LANCZOS::EDGE::GROUND);
+		Eigen::VectorXd c_check(L); c_check.setZero();
+		for(size_t i=0; i<L; i++)
+		{
+			c_check(i) = avg(g2.state, H_DMRG.c(UP,i), g1.state);
+		}
+		cout << "c_check" << endl << c_check << endl << endl;
+		
 	}
 }
