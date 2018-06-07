@@ -28,15 +28,14 @@ class HeisenbergSU2 : public Mpo<Sym::SU2<Sym::SpinSU2>,double>
 {
 public:
 	typedef Sym::SU2<Sym::SpinSU2> Symmetry;
+	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
+	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
 	
 private:
 	
 	typedef Eigen::Index Index;
 	typedef Symmetry::qType qType;
 	typedef Eigen::SparseMatrix<double> SparseMatrixType;
-	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
-	
-	typedef SiteOperatorQ<Symmetry,MatrixType> Operator;
 	
 public:
 	
@@ -78,6 +77,7 @@ public:
 	\returns \p true if valid, \p false if not*/
 	bool validate (qarray<1> qnum) const;
 	double alpha;
+	
 protected:
 	
 	const std::map<string,std::any> defaults = 
@@ -210,7 +210,7 @@ SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 	
 	if (locx1 == locx2)
 	{
-		auto product = std::sqrt(3.)*Operator::prod(B[locx1].Sdag(locy1),B[locx2].S(locy2),Symmetry::qvacuum());
+		auto product = std::sqrt(3.)*OperatorType::prod(B[locx1].Sdag(locy1), B[locx2].S(locy2),Symmetry::qvacuum());
 		// auto product = Operator::prod(B[locx1].Sdag(locy1), B[locx2].S(locy2), Symmetry::qvacuum());
 		Mout.setLocal(locx1, product.plain<double>());
 		return Mout;

@@ -1,5 +1,5 @@
 #define DMRG_DONT_USE_OPENMP
-// #define PRINT_SU2_FACTORS
+#define PRINT_SU2_FACTORS
 
 #include <iostream>
 
@@ -27,7 +27,7 @@ int main (int argc, char* argv[])
 	U = args.get<double>("U",8.);
 	S = args.get<int>("S",1);
 	N = args.get<int>("N",L);
-	factor = args.get<double>("factor",sqrt(2.));
+	factor = args.get<double>("factor",1.);
 	
 	bool COMMUTATORS = args.get<bool>("COMMUTATORS",false);
 	bool OBSERVABLES = args.get<bool>("OBSERVABLES",true);
@@ -87,16 +87,18 @@ int main (int argc, char* argv[])
 		}
 		cout << "c" << endl << c << endl << endl;
 
-		Eigen::VectorXd cdag(L); cdag.setZero();
+		Eigen::VectorXd adag(L); adag.setZero();
 		for(size_t i=0; i<L; i++)
 		{
 			//cdag2 gibt den richtigen hermitisch konjugierten Operator!
-  			auto res = Op::prod(John.groundstate(Q1).adjoint(),Op::prod(F.cdag2(i),John.groundstate(Q2),{2,1}),{2,1});
-			cdag(i) = res.data().block[0](0,0);
+			auto adagQ2 = Op::prod(F.cdag(i), John.groundstate(Q1), {2,+1});
+			auto res = Op::prod(adagQ2.adjoint(), adagQ2, {1,0});
+//  		auto res = Op::prod(John.groundstate(Q1).adjoint(), Op::prod(F.adag(i),John.groundstate(Q2),{2,1}),{2,1});
+			adag(i) = res.data().block[0](0,0);
 		}
 
-		cout << "cdag" << endl << cdag << endl << endl;
-		cout << "ratio=" << endl << c.array()/(cdag.array()) << endl << endl;
+		cout << "adag" << endl << adag << endl << endl;
+//		cout << "ratio=" << endl << c.array()/(cdag.array()) << endl << endl;
 		
 		VMPS::HubbardU1xU1 H_DMRGU1(L,{{"U",U}});
 		cout << H_DMRGU1.info() << endl;
@@ -108,20 +110,22 @@ int main (int argc, char* argv[])
 		Lisa.edgeState(H_DMRGU1,g2,{static_cast<int>(L/2)-1,static_cast<int>(L/2)},LANCZOS::EDGE::GROUND);
 		Eigen::VectorXd c_checkU1(L); c_checkU1.setZero();
 		Eigen::VectorXd c_checkU1_comp(L); c_checkU1_comp.setZero();
-
+		Eigen::VectorXd n_checkU1_comp(L); n_checkU1_comp.setZero();
+		
 		for(size_t i=0; i<L; i++)
 		{
-			c_checkU1(i) = avg(g2.state, H_DMRGU1.c<UP>(i), g1.state);
-
+			c_checkU1(i) = avg(g1.state, H_DMRGU1.cdag<UP>(i), g2.state);
+		
 			VMPS::HubbardU1xU1::CompressorXd Compadre(DMRG::VERBOSITY::SILENT);
-			VMPS::HubbardU1xU1::StateXd cg1;
-			Compadre.prodCompress(H_DMRGU1.c<UP>(i), H_DMRGU1.cdag<UP>(i), g1.state, cg1, {static_cast<int>(L/2)-1,static_cast<int>(L/2)}, g1.state.calc_Dmax());
-			c_checkU1_comp(i) = dot(g2.state, cg1);
+			VMPS::HubbardU1xU1::StateXd cg2;
+			Compadre.prodCompress(H_DMRGU1.cdag<UP>(i), H_DMRGU1.c<UP>(i), g2.state, cg2, {static_cast<int>(L/2),static_cast<int>(L/2)}, g2.state.calc_Dmax());
+			c_checkU1_comp(i) = dot(g1.state, cg2);
+			n_checkU1_comp(i) = dot(cg2,cg2);
 		}
 		cout << "c_checkU1" << endl << c_checkU1 << endl << endl;
 		cout << "c_checkU1_comp" << endl << c_checkU1_comp << endl << endl;
-
-
+		cout << "n_checkU1_comp" << endl << n_checkU1_comp << endl << endl;
+		
 		VMPS::HubbardSU2xU1 H_DMRGSU2(L,{{"U",U}});
 		cout << H_DMRGSU2.info() << endl;
 		VMPS::HubbardSU2xU1::Solver Jim(DMRG::VERBOSITY::ON_EXIT);
@@ -135,22 +139,22 @@ int main (int argc, char* argv[])
 		Eigen::VectorXd n_checkSU2_comp(L); n_checkSU2_comp.setZero();
 		for(size_t i=0; i<L; i++)
 		{
-			c_checkSU2(i) = avg(h2.state, H_DMRGSU2.c(i,0,factor), h1.state);
-
+			c_checkSU2(i) = avg(h1.state, H_DMRGSU2.adag(i,0,factor), h2.state);
+			
 			VMPS::HubbardSU2xU1::CompressorXd Compadre(DMRG::VERBOSITY::SILENT);
-			VMPS::HubbardSU2xU1::StateXd ch1;
-			Compadre.prodCompress(H_DMRGSU2.c(i), H_DMRGSU2.cdag(i,0,1./sqrt(2.)), h1.state, ch1, {S+1,N-1}, h1.state.calc_Dmax());
-			c_checkSU2_comp(i) = dot(h2.state, ch1);
-			n_checkSU2_comp(i) = dot(ch1,ch1);
+			VMPS::HubbardSU2xU1::StateXd ch2;
+			Compadre.prodCompress(H_DMRGSU2.cdag(i,0,1.), H_DMRGSU2.c(i,0,1./sqrt(2.)), h1.state, ch2, {S+1,N+1}, h1.state.calc_Dmax());
+//			c_checkSU2_comp(i) = dot(h1.state, ch2);
+			n_checkSU2_comp(i) = dot(ch2,ch2);
 		}
 		cout << "c_checkSU2" << endl << c_checkSU2 << endl << endl;
 		cout << "c_checkSU2_comp" << endl << c_checkSU2_comp << endl << endl;
 		cout << "n_checkSU2_comp" << endl << n_checkSU2_comp << endl << endl;
-
+		
 		Eigen::VectorXd cdag_checkSU2(L); cdag_checkSU2.setZero();
 		for(size_t i=0; i<L; i++)
 		{
-			cdag_checkSU2(i) = avg(h1.state, H_DMRGSU2.cdag(i,0,factor), h2.state);
+			cdag_checkSU2(i) = avg(h1.state, H_DMRGSU2.adag(i,0,factor), h2.state);
 		}
 		cout << "cdag_checkSU2" << endl << -cdag_checkSU2 << endl << endl;
 	}

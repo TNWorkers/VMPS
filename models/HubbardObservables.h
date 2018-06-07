@@ -47,7 +47,7 @@ public:
 	///@}
 	
 	///@{
-	Mpo<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
 	Mpo<Symmetry> ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> Sz (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
@@ -296,11 +296,11 @@ hh (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 
 template<typename Symmetry>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
-Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 {
 	stringstream ss; ss << Sa;
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
-	return make_local(ss.str(), locx,locy, F[locx].Scomp(Sa,locy), false, HERMITIAN);
+	return make_local(ss.str(), locx,locy, factor*F[locx].Scomp(Sa,locy), false, HERMITIAN);
 }
 
 template<typename Symmetry>

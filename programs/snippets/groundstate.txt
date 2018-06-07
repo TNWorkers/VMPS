@@ -1,0 +1,58 @@
+	//--------------<ground state>---------------
+	Eigenstate<MODEL::StateXd> * init = new Eigenstate<MODEL::StateXd>;
+	
+	Stopwatch<> Chronos;
+	stringstream ginfo, rinfo;
+	#pragma omp parallel sections
+	{
+		#pragma omp section
+		{
+			Stopwatch<> nChronos;
+			MODEL::Solver * DMRG = new MODEL::Solver(DMRG::VERBOSITY::HALFSWEEPWISE);
+			
+			DMRG->edgeState(H, *init, Qi, LANCZOS::EDGE::GROUND);
+			lout << endl << nChronos.info(make_string("ground state ",Qi)) << endl;
+			lout << DMRG->info() << endl;
+			E0 = init->energy;
+			delete DMRG;
+		}
+		#pragma omp section
+		{
+			Stopwatch<> gChronos;
+			Eigenstate<MODEL::StateXd> * g = new Eigenstate<MODEL::StateXd>;
+			
+			MODEL::Solver * gDMRG = new MODEL::Solver(DMRG::VERBOSITY::SILENT);
+			gDMRG->edgeState(H, *g, Qc, LANCZOS::EDGE::GROUND);
+			ginfo << gChronos.info(make_string("ground state ",Qc)) << endl;
+			Emin = g->energy;
+			ginfo << gDMRG->info() << endl;
+			delete gDMRG;
+			delete g;
+		}
+		
+		#pragma omp section
+		{
+			Stopwatch<> rChronos;
+			Eigenstate<MODEL::StateXd> * r = new Eigenstate<MODEL::StateXd>;
+			MODEL::Solver * rDMRG = new MODEL::Solver(DMRG::VERBOSITY::SILENT);
+			
+			rDMRG->edgeState(H, *r, Qc, LANCZOS::EDGE::ROOF);
+			rinfo << rChronos.info(make_string("roof state ",Qc)) << endl;
+			Emax = r->energy;
+			rinfo << rDMRG->info() << endl;
+			delete rDMRG;
+			delete r;
+		}
+	}
+	
+	lout << ginfo.str() << rinfo.str() << endl;
+	lout << Chronos.info("all edge states") << endl;
+	lout << termcolor::bold << "E0=" << E0 << ", Emin=" << Emin << ", Emax=" << Emax << termcolor::reset << endl << endl;
+	
+	// save energies
+	ofstream Efile(make_string(wd+"energies/"+Efilename,".dat"));
+	Efile << E0 << endl;
+	Efile << Emin << endl;
+	Efile << Emax << endl;
+	Efile.close();
+	//--------------</ground state>---------------

@@ -17,38 +17,34 @@ using namespace std;
 #include "OrthPolyGreen.h"
 
 size_t L;
-int N, M;
-double U, J;
+int M;
+double J;
 vector<int> Msave;
 int Mmax;
 string spec, wd, outfile, Efilename;
 vector<double> dE;
 double Emin, Emax, E0;
-double d, n_sig;
 bool CHEB;
 
 int main (int argc, char* argv[]) 
 {
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",4);
-	N = args.get<size_t>("N",0);
-	M = args.get<size_t>("M",L);
-//	qarray<2> Qi = MODEL::polaron(L,N); // {L+1,N}
+	M = args.get<size_t>("M",0);
 	#ifdef USING_SU2
-	qarray<2> Qi = {M+1,N};
+	qarray<1> Qi = {M+1};
 	#else
-	qarray<2> Qi = {M,N};
+	qarray<1> Qi = {M};
 	#endif
-	qarray<2> Qc;
-	spec = args.get<string>("spec","IPES");
-	U = args.get<double>("U",0.);
+	qarray<1> Qc;
+	spec = args.get<string>("spec","SSF");
 	J = args.get<double>("J",-1.);
 	CHEB = args.get<bool>("CHEB",true);
 	wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
 	
 	dE = args.get_list<double>("dE",{0.2});
-	outfile = make_string(spec,"_L=",L,"_N=",N,"_J=",J,"_U=",U);
+	outfile = make_string(spec,"_L=",L,"_J=",J,"_M=",M);
 	Efilename = outfile;
 	outfile += "_dE=";
 	lout.set(outfile+str(dE)+".log",wd+"log");
@@ -63,83 +59,44 @@ int main (int argc, char* argv[])
 	#endif
 	
 	//--------------<Hamiltonian & transition operator>---------------
-	MODEL H(L,{{"U",U},{"J",J},{"CALC_SQUARE",true}});
+	MODEL H(L,{{"J",J},{"CALC_SQUARE",true}});
 	lout << H.info() << endl << endl;
 	
 	MODEL::Operator A, Adag;
-	if (spec == "AES")
+	#ifdef USING_SU2
 	{
-		A = H.cc(L/2);
-		Adag = H.cdagcdag(L/2);
-		Qc = MODEL::polaron(L,N-2);
+		A = H.S(L/2);
+		Adag = H.Sdag(L/2, 0, 1./sqrt(3.));
+		Qc = {M+3};
 	}
-	else if (spec == "APS")
+	#else
 	{
-		A = H.cdagcdag(L/2);
-		Adag = H.cc(L/2);
-		Qc = MODEL::polaron(L,N+2);
-	}
-	if (spec == "PES")
-	{
-		#ifdef USING_SU2
+		if (spec == "SSFP")
 		{
-			A = H.c(L/2, 0, 1.);
-			Adag = H.cdag(L/2, 0, 1./sqrt(2.));
-//			Qc = qarray<2>({L,N-1});
-			Qc = qarray<2>({M+2,N-1});
-		}
-		#else
-		{
-			A = H.c<DN>(L/2);
-			Adag = H.cdag<DN>(L/2);
+			A = H.Scomp(SP, L/2, 0, 1./sqrt(2));
+			Adag = H.Scomp(SM, L/2, 0, 1./sqrt(2));
 			Qc = Qi+A.Qtarget();
 		}
-		#endif
-	}
-	else if (spec == "IPES")
-	{
-		#ifdef USING_SU2
+		else if (spec == "SSFM")
 		{
-			A = H.cdag(L/2, 0, 1.);
-			Adag = H.c(L/2, 0, -1./sqrt(2.));
-//			Qc = qarray<2>({L,N+1});
-			Qc = qarray<2>({M+2,N+1});
-		}
-		#else
-		{
-			A = H.cdag<UP>(L/2);
-			Adag = H.c<UP>(L/2);
+			A = H.Scomp(SM, L/2, 0, 1./sqrt(2));
+			Adag = H.Scomp(SP, L/2, 0, 1./sqrt(2));
 			Qc = Qi+A.Qtarget();
 		}
-		#endif
+		else
+		{
+			A = H.Sz(L/2);
+			Adag = H.Sz(L/2);
+			Qc = Qi;
+		}
 	}
-	else if (spec == "CSF")
-	{
-		A = H.n(L/2);
-		Adag = A;
-		Qc = Qi;
-	}
-//	else if (spec == "SSF")
-//	{
-//		if constexpr (MODEL::Symmetry::NON_ABELIAN)
-//		{
-//			A = H.S(L/2);
-//			Adag = H.Sdag(L/2);
-//			Qc = {3,N};
-//		}
-////		else
-////		{
-////			A = H.Sz(L/2);
-////			Adag = H.Sz(L/2);
-////			Qc = Qi;
-////		}
-//	}
+	#endif
 	lout << A.info() << endl;
 	lout << Adag.info() << endl;
 	//--------------</Hamiltonian & transition operator>---------------
 	
 	#include "programs/snippets/groundstate.txt"
-//	#include "programs/snippets/state_compression.txt"
+	#include "programs/snippets/state_compression.txt"
 	#include "programs/snippets/AxInit.txt"
 	#include "programs/snippets/KPS.txt"
 }

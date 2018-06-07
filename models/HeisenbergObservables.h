@@ -19,7 +19,7 @@ public:
 	///@}
 	
 	///@{
-	Mpo<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
 	Mpo<Symmetry> ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
@@ -65,13 +65,13 @@ HeisenbergObservables (const size_t &L, const vector<Param> &params, const std::
 
 template<typename Symmetry>
 Mpo<Symmetry> HeisenbergObservables<Symmetry>::
-Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 {
 	assert(locx<B.size() and locy<B[locx].dim());
 	stringstream ss;
 	ss << Sa << "(" << locx << "," << locy << ")";
 	
-	SiteOperator Op = B[locx].Scomp(Sa,locy);
+	SiteOperator Op = factor * B[locx].Scomp(Sa,locy);
 	
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
 	

@@ -402,6 +402,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
+		cout << "sqnormVin=" << sqnormVin << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		sqdist = abs(sqnormVin-Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		
@@ -763,7 +764,7 @@ prodOptimize1 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetr
 	{
 		if (CHOSEN_VERBOSITY > 0)
 		{
-			lout << "WARNING: small norm encountered at pivot=" << pivot << "!" << endl;
+			lout << termcolor::bold << termcolor::red << "WARNING: small norm encountered at pivot=" << pivot << "!" << termcolor::reset << endl;
 		}
 		Vout /= sqrt(Vout.squaredNorm());
 	}
@@ -1001,11 +1002,11 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-//		cout << "avgHsqV1=" << avgHsqV1 
-//		     << ", Vout.squaredNorm()=" << Vout.squaredNorm() 
-//		     << ", polyB*polyB*sqnormV2=" << polyB*polyB*sqnormV2 
-//		     << ", 2.*polyB*overlapV12=" << 2.*polyB*overlapV12 
-//		     << endl;
+		cout << "avgHsqV1=" << avgHsqV1 
+		     << ", Vout.squaredNorm()=" << Vout.squaredNorm() 
+		     << ", polyB*polyB*sqnormV2=" << polyB*polyB*sqnormV2 
+		     << ", 2.*polyB*overlapV12=" << 2.*polyB*overlapV12 
+		     << endl;
 		sqdist = abs(avgHsqV1 - Vout.squaredNorm() + polyB*polyB*sqnormV2 - 2.*polyB*overlapV12);
 		assert(!std::isnan(sqdist));
 		

@@ -212,17 +212,19 @@ FermionBase (std::size_t L_input, bool U_IS_INFINITE)
 	F_1s( "double", "double" ) = 1.;
 	F_1s( "single", "single" ) = -1.;
 
-	c_1s( "empty", "single" ) = std::sqrt(2.);
+	c_1s( "empty", "single" ) = -std::sqrt(2.);
 	c_1s( "single", "double" ) = 1.;
-	a_1s( "empty", "single" ) = std::sqrt(2.);
-	a_1s( "single", "double" ) = 1.;
+	
+//	a_1s( "empty", "single" ) = std::sqrt(2.);
+//	a_1s( "single", "double" ) = 1.;
 
-	// cdag_1s = Operator({2,+1},basis_1s);
-	// cdag_1s( "single", "empty" ) = 1.;//std::sqrt(2.);
-	// cdag_1s( "double", "single" ) = -std::sqrt(2.); //1.;
+	adag_1s = Operator({2,+1},basis_1s);
+	adag_1s( "single", "empty" ) = 1.;//std::sqrt(2.);
+	adag_1s( "double", "single" ) = +std::sqrt(2.); //1.;
+	a_1s = adag_1s.adjoint();
 
 	cdag_1s = c_1s.adjoint();
-	adag_1s = a_1s.adjoint();
+//	adag_1s = a_1s.adjoint();
 	n_1s = std::sqrt(2.) * Operator::prod(cdag_1s,c_1s,{1,0});
 	d_1s( "double", "double" ) = 1.;
 	S_1s( "single", "single" ) = std::sqrt(0.75);
@@ -288,13 +290,13 @@ a (std::size_t orbital) const
 		if(orbital == 0) { out = Operator::outerprod(c_1s,Id_1s,{2,-1}); TOGGLE=true; }
 		else
 		{
-			if( orbital == 1 ) { out = Operator::outerprod(Id_1s,c_1s,{2,-1}); TOGGLE=true; }
-			else { out = Operator::outerprod(Id_1s,Id_1s,{1,0}); }
+			if( orbital == 1 ) { out = Operator::outerprod(F_1s,c_1s,{2,-1}); TOGGLE=true; }
+			else { out = Operator::outerprod(F_1s,F_1s,{1,0}); }
 		}
 		for(std::size_t o=2; o<N_orbitals; o++)
 		{
 			if(orbital == o) { out = Operator::outerprod(out,c_1s,{2,-1}); TOGGLE=true; }
-			else if(TOGGLE==false) { out = Operator::outerprod(out,Id_1s,{1,0}); }
+			else if(TOGGLE==false) { out = Operator::outerprod(out,F_1s,{1,0}); }
 			else if(TOGGLE==true) { out = Operator::outerprod(out,Id_1s,{2,-1}); }
 		}
 		return out;

@@ -1,0 +1,13 @@
+	//--------------<state compression>---------------
+	auto Psi = init->state;
+//	MODEL::StateXd rand = Psi; rand.setRandom();
+//	Psi += 0.1 * rand;
+	MODEL::CompressorXd Compadrino(DMRG::VERBOSITY::HALFSWEEPWISE);
+	MODEL::StateXd Phi;
+	Compadrino.stateCompress(Psi,Phi,2,1e-10);
+	cout << endl;
+	cout << "ORIGINAL:" << endl;
+	cout << Psi.info() << endl;
+	cout << "COMPRESSED:" << endl;
+	cout << Phi.info() << endl;
+	//--------------</state compression>---------------
