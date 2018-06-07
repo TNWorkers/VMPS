@@ -268,11 +268,19 @@ setTarget (std::array<qType,Nlegs> Q)
 	
 	if (Q[2] == Symmetry::qvacuum())
 	{
+#ifdef PRINT_SU2_FACTORS
+		cout << termcolor::bold << termcolor::red << "Global SU2 factor in setTarget() from Multipede: " << termcolor::reset
+			 << "√" << Symmetry::coeff_dot(Q[0]) << " • √" << Symmetry::coeff_dot(Q[1]) << endl;
+#endif
 		Mtmp << sqrt(Symmetry::coeff_dot(Q[0]) * Symmetry::coeff_dot(Q[1]));
 	}
-	else
+	else// if (Q[1] == Symmetry::qvacuum())
 	{
-		Mtmp << 1.;
+#ifdef PRINT_SU2_FACTORS
+		cout << termcolor::bold << termcolor::red << "Global SU2 factor in setTarget() from Multipede: " << termcolor::reset
+			 << "√" << Symmetry::coeff_dot(Q[0]) << " • √" << Symmetry::coeff_dot(Q[2]) << endl;
+#endif
+		Mtmp << sqrt(Symmetry::coeff_dot(Q[0]) * Symmetry::coeff_dot(Q[2]));
 	}
 	
 	boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[1][1]);

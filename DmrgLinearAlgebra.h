@@ -194,6 +194,11 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			double res = B.block[0][0][0].trace();
 			if (Qtarget == Symmetry::qvacuum())
 			{
+#ifdef PRINT_SU2_FACTORS
+				cout << termcolor::bold << termcolor::red << "Global SU2 factor in avg(Bra,O1,O2,Ket) from DmrgLinearAlgebra: " << termcolor::reset
+					 << "√" << Symmetry::coeff_dot(O1.Qtarget()) << " • √" << Symmetry::coeff_dot(O1.Qtarget()) << endl;
+#endif
+
 				res *= sqrt(Symmetry::coeff_dot(O1.Qtarget())*Symmetry::coeff_dot(O2.Qtarget())); // scalar product coeff for SU(2)
 			}
 			return res;

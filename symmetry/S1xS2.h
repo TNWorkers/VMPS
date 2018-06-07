@@ -82,6 +82,11 @@ public:
 	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3);
 	inline static Scalar coeff_sign(const qType& q1, const qType& q2, const qType& q3);
 	inline static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
+
+	static Scalar coeff_3j(const qType& q1, const qType& q2, const qType& q3,
+						   int        q1_z, int        q2_z,        int q3_z) {return 1.;}
+	static Scalar coeff_CGC(const qType& q1, const qType& q2, const qType& q3,
+							int        q1_z, int        q2_z,        int q3_z) {return 1.;}
 	
 	inline static Scalar coeff_6j(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6);
@@ -267,6 +272,24 @@ coeff_adjoint(const qType& q1, const qType& q2, const qType& q3)
 	Scalar out = S1::coeff_adjoint({q1[0]},{q2[0]},{q3[0]})*S2::coeff_adjoint({q1[1]},{q2[1]},{q3[1]});
 	return out;
 }
+
+// template<typename S1, typename S2>
+// typename S1::Scalar S1xS2<S1,S2>::
+// coeff_3j(const qType& q1, const qType& q2, const qType& q3,
+// 		 int        q1_z, int        q2_z,        int q3_z)
+// {
+// 	Scalar out = S1::coeff_3j({q1[0]}, {q2[0]}, {q3[0]}, q1_z, q2_z, q3_z) * S2::coeff_3j({q1[1]}, {q2[1]}, {q3[1]}, q1_z, q2_z, q3_z);
+// 	return out;
+// }
+
+// template<typename S1, typename S2>
+// typename S1::Scalar S1xS2<S1,S2>::
+// coeff_CGC(const qType& q1, const qType& q2, const qType& q3,
+// 		  int        q1_z, int        q2_z,        int q3_z)
+// {
+// 	Scalar out = S1::coeff_CGC({q1[0]}, {q2[0]}, {q3[0]}, q1_z, q2_z, q3_z) * S2::coeff_CGC({q1[1]}, {q2[1]}, {q3[1]}, q1_z, q2_z, q3_z);
+// 	return out;
+// }
 
 template<typename S1, typename S2>
 typename S1::Scalar_ S1xS2<S1,S2>::

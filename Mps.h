@@ -2859,6 +2859,11 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 			   Mout.block[0].cols() == 1 and 
 			   "Result of contraction in <φ|ψ> is not a scalar!");
 		Scalar out = Mtmp.block[0](0,0);
+#ifdef PRINT_SU2_FACTORS
+		cout << termcolor::bold << termcolor::red << "Global SU2 factor in dot(Bra,Ket) from Mps: " << termcolor::reset
+			 << "√" << Symmetry::coeff_dot(Qtot) << endl;
+#endif
+
 		out *= Symmetry::coeff_dot(Qtot);
 		return out;
 //	}

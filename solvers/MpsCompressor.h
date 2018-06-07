@@ -659,8 +659,9 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-		cout << "\tavgHsqVin=" << avgHsqVin << ", deg=" << pow(Symmetry::degeneracy(H.Qtarget()),2) << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
-		sqdist = abs(avgHsqVin - pow(Symmetry::degeneracy(H.Qtarget()),2) * Vout.squaredNorm());
+		// cout << "\tavgHsqVin=" << avgHsqVin << ", deg=" << pow(Symmetry::degeneracy(H.Qtarget()),2) << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+		Scalar factor_cgc = 1.;//pow(Symmetry::degeneracy(H.Qtarget()),1);
+		sqdist = abs(avgHsqVin - factor_cgc * factor_cgc * Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		
 		if (CHOSEN_VERBOSITY>=2)
@@ -693,7 +694,8 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	// move pivot to edge at the end
 //	if      (pivot==1)         {Vout.sweep(0,DMRG::BROOM::QR);}
 //	else if (pivot==N_sites-2) {Vout.sweep(N_sites-1,DMRG::BROOM::QR);}
-	Vout *= Symmetry::degeneracy(H.Qtarget());
+	Scalar factor_cgc = 1.;//Symmetry::degeneracy(H.Qtarget());
+	Vout *= factor_cgc;
 	sweep_to_edge(H,Vin,Vin,Vout,false,false);
 }
 
