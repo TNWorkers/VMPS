@@ -182,6 +182,11 @@ public:
 	static Scalar coeff_sign(const qType& q1, const qType& q2, const qType& q3);
 	static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
 
+	static Scalar coeff_3j(const qType& q1, const qType& q2, const qType& q3,
+						   int        q1_z, int        q2_z,        int q3_z);
+	static Scalar coeff_CGC(const qType& q1, const qType& q2, const qType& q3,
+							int        q1_z, int        q2_z,        int q3_z);
+
 	static Scalar coeff_6j(const qType& q1, const qType& q2, const qType& q3,
 						   const qType& q4, const qType& q5, const qType& q6);
 	static Scalar coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
@@ -376,6 +381,29 @@ coeff_adjoint(const qType& q1, const qType& q2, const qType& q3)
 {
 	Scalar out = phase<Scalar>((q3[0]+q1[0]-q2[0]-1) / 2) * //std::pow(Scalar(-1.),Scalar(0.5)*static_cast<Scalar>(q3[0]+q1[0]-q2[0]-1)) *
 		std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]));
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_3j(const qType& q1, const qType& q2, const qType& q3,
+		 int        q1_z, int        q2_z,        int q3_z)
+{
+
+	Scalar out = gsl_sf_coupling_3j(q1[0]-1,q2[0]-1,q3[0]-1,
+									q1_z   ,q2_z   ,q3_z);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_CGC(const qType& q1, const qType& q2, const qType& q3,
+		  int        q1_z, int        q2_z,        int q3_z)
+{
+
+	Scalar out = coeff_3j(q1  , q2  , q3,
+						  q1_z, q2_z, -q3_z);
+	out *= phase<Scalar>((-q1[0]+q2[0]-q3_z-2)/2) * sqrt(q3[0]);
 	return out;
 }
 

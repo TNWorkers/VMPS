@@ -56,6 +56,7 @@ public:
 	///@{
 	Mpo<Symmetry> c (size_t locx, size_t locy=0, double factor=1.);
 	Mpo<Symmetry> cdag (size_t locx, size_t locy=0, double factor=sqrt(2.));
+	Mpo<Symmetry> cdag2 (size_t locx, size_t locy=0, double factor=sqrt(2.));
 	Mpo<Symmetry> n (size_t locx, size_t locy=0);
 	Mpo<Symmetry> d (size_t locx, size_t locy=0);
 	///@}
@@ -223,7 +224,7 @@ set_operators (const FermionBase<Symmetry> &F, const ParamHandler &P, size_t loc
 	
 	Terms.local.push_back(make_tuple(1.,F.HubbardHamiltonian(Uorb,t0orb-muorb,tPerp.x,Vperp.x,Jperp.x, P.get<bool>("CYLINDER")).plain<double>()));
 	
-	Terms.name = "Hubbard SU(2)⊗U(1)";
+	Terms.name = "Hubbard";
 	
 	return Terms;
 }
@@ -239,7 +240,7 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
 	(FERMIONIC)? Mout.setLocal(locx, (factor * pow(-1.,locx+1) * Op).plain<double>(), F[0].sign().plain<double>())
-	           : Mout.setLocal(locx, Op.plain<double>());
+		: Mout.setLocal(locx, Op.plain<double>());
 	return Mout;
 }
 
@@ -301,6 +302,12 @@ cdag (size_t locx, size_t locy, double factor)
 //	Mout.setLocal(locx, factor*pow(-1.,locx+1)*F[locx].cdag(locy).plain<double>(), F[0].sign().plain<double>());
 //	return Mout;
 	return make_local("c†", locx,locy, F[locx].cdag(locy), factor, true, false);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+cdag2 (size_t locx, size_t locy, double factor)
+{
+	return make_local("c†", locx,locy, F[locx].cdag2(locy), factor, true, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
