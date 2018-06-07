@@ -3,6 +3,8 @@
 
 import smtplib
 from email.mime.text import MIMEText
+from email.header import Header
+from email import charset
 import os, sys
 from subprocess import check_output
 
@@ -19,19 +21,35 @@ if len(sys.argv) == 1:
 # erstes Argument gibt git-Ordner an
 # Der branch wird automatisch ermittelt als der letzte gepushte
 elif len(sys.argv) == 2:
-	branch = check_output(['git','log','--pretty=oneline','--abbrev-commit','--decorate','-1','--all']) # finde den branch-Namen
-	branch = branch.split(' ') # splitte string zu array
-	branch = branch[1] # branch-Name ist an dieser Stelle
-	branch = branch.replace('(','') # Klammer löschen
-	branch = branch.replace(')','') # Klammer löschen
-	content = check_output(['git','--git-dir',sys.argv[1]+'/.git','log','-2','--decorate','--branches',branch])
-msg = MIMEText(content,'plain','utf-8')
+	
+	name = sys.argv[1].split('/')
+	if sys.argv[1].endswith('.git/'):
+		directory = sys.argv[1]
+	else:
+		directory = sys.argv[1]+'.git/'
+	name = name[-2]
+	
+#	branch = check_output(['git','--git-dir',directory,'log','--pretty=oneline','--abbrev-commit','--decorate','-1','--all']) # finde den branch-Namen
+#	branch = branch.split(' ') # splitte string zu array
+#	print branch
+#	branch = branch[-1] # branch-Name ist an dieser Stelle
+#	branch = branch.split('/')
+#	branch = branch[-1]
+#	print branch
+#	branch = branch.replace('(','') # Klammer löschen
+#	branch = branch.replace(')','') # Klammer löschen
+	
+	content = check_output(['git','--git-dir',directory,'log','-2','--decorate'])
+
+cs = charset.Charset('utf-8')
+msg = MIMEText(content) #,'plain','utf-8'
+msg.set_charset(cs)
 
 sender = 'git'
 recipients = ['rrausch@physnet.uni-hamburg.de','mpeschke@physnet.uni-hamburg.de','cplorin@physnet.uni-hamburg.de']
 
 if len(sys.argv) >= 1:
-	msg['Subject'] = 'git update '+branch
+	msg['Subject'] = 'git update '+name
 else:
 	msg['Subject'] = 'git update'
 msg['From'] = sender
