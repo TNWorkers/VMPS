@@ -2,6 +2,7 @@
 #define DONT_USE_LAPACK_QR
 #define DMRG_DONT_USE_OPENMP
 #define EIGEN_DONT_PARALLELIZE
+// #define PRINT_SU2_FACTORS
 
 using namespace std;
 

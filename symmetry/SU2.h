@@ -178,6 +178,7 @@ public:
 	inline static Scalar coeff_unity();
 	static Scalar coeff_dot(const qType& q1);
 	static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
+	static Scalar coeff_rightOrtho2(const qType& q1, const qType& q2);
 	static Scalar coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3);
 	static Scalar coeff_sign(const qType& q1, const qType& q2, const qType& q3);
 	static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
@@ -351,7 +352,15 @@ template<typename Kind, typename Scalar>
 Scalar SU2<Kind,Scalar>::
 coeff_rightOrtho(const qType& q1, const qType& q2)
 {
-	Scalar out = static_cast<Scalar>(q1[0]) / static_cast<Scalar>(q2[0]); //* std::pow(static_cast<Scalar>(q2[0]),Scalar(-1.));
+	Scalar out = static_cast<Scalar>(q1[0]) / static_cast<Scalar>(q2[0]);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_rightOrtho2(const qType& q1, const qType& q2)
+{
+	Scalar out = std::sqrt( static_cast<Scalar>(q1[0]) / static_cast<Scalar>(q2[0]) );
 	return out;
 }
 
@@ -545,19 +554,31 @@ template<std::size_t M>
 bool SU2<Kind,Scalar>::
 validate ( const std::array<SU2<Kind,Scalar>::qType,M>& qs )
 {
-	if constexpr( M > 3 )
-				{
-					std::vector<SU2<Kind,Scalar>::qType> decomp = SU2<Kind,Scalar>::reduceSilent(qs[0],qs[1]);
-					for (std::size_t i=2; i<M; i++)
-					{
-						decomp = SU2<Kind,Scalar>::reduceSilent(decomp,qs[i]);
-					}
-					for (std::size_t i=0; i<decomp.size(); i++)
-					{
-						if ( decomp[i] == SU2<Kind,Scalar>::qvacuum() ) { return true; }
-					}
-					return false;
-				}
+	if constexpr( M == 1 or M > 3 ) { return true; }
+
+	else if constexpr( M == 2 )
+					 {
+						 std::vector<qType> decomp = SU2<Kind,Scalar>::reduceSilent(qs[0],SU2<Kind,Scalar>::flip(qs[1]));
+						 for (std::size_t i=0; i<decomp.size(); i++)
+						 {
+							 if ( decomp[i] == SU2<Kind,Scalar>::qvacuum() ) { return true; }
+						 }
+						 return false;
+					 }
+
+		// else if constexpr( M > 3 )
+		// 		{
+		// 			std::vector<SU2<Kind,Scalar>::qType> decomp = SU2<Kind,Scalar>::reduceSilent(qs[0],qs[1]);
+		// 			for (std::size_t i=2; i<M; i++)
+		// 			{
+		// 				decomp = SU2<Kind,Scalar>::reduceSilent(decomp,qs[i]);
+		// 			}
+		// 			for (std::size_t i=0; i<decomp.size(); i++)
+		// 			{
+		// 				if ( decomp[i] == SU2<Kind,Scalar>::qvacuum() ) { return true; }
+		// 			}
+		// 			return false;
+		// 		}
 	else if constexpr( M==3 )
 					 {
 						 // triangle rule
@@ -569,8 +590,6 @@ validate ( const std::array<SU2<Kind,Scalar>::qType,M>& qs )
 						 }
 						 return CHECK;
 					 }
-
-	else { return true; }
 }
 
 } //end namespace Sym

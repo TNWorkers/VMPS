@@ -2862,7 +2862,7 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 		Scalar out = Mtmp.block[0](0,0);
 #ifdef PRINT_SU2_FACTORS
 		cout << termcolor::bold << termcolor::red << "Global SU2 factor in dot(Bra,Ket) from Mps: " << termcolor::reset
-			 << "√" << Symmetry::coeff_dot(Qtot) << endl;
+			 << Symmetry::coeff_dot(Qtot) << endl;
 #endif
 
 		out *= Symmetry::coeff_dot(Qtot);

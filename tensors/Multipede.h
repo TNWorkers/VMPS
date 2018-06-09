@@ -265,7 +265,6 @@ void Multipede<Nlegs,Symmetry,MatrixType>::
 setTarget (std::array<qType,Nlegs> Q)
 {
 	MatrixType Mtmp(1,1);
-	
 	if (Q[2] == Symmetry::qvacuum())
 	{
 #ifdef PRINT_SU2_FACTORS

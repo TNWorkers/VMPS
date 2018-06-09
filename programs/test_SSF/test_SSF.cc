@@ -25,12 +25,16 @@ string spec, wd, outfile, Efilename;
 vector<double> dE;
 double Emin, Emax, E0;
 bool CHEB;
+int Qinit, Dinit;
 
 int main (int argc, char* argv[]) 
 {
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",4);
 	M = args.get<size_t>("M",0);
+	Qinit = args.get<int>("Qinit",1000);
+	Dinit = args.get<int>("Dinit",1000);
+
 	#ifdef USING_SU2
 	qarray<1> Qi = {M+1};
 	#else

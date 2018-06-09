@@ -82,9 +82,11 @@ public:
 	 * \param UNITARY_input : if the Mpo is known to be unitary, this can be further exploited
 	 */
 	Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false);
+
+	Mpo<Symmetry,Scalar> Identity() const;
 	
 	//---set whole Mpo for special cases, modify---
-	
+
 	///\{
 	/**
 	 * Set to a local operator \f$O_i\f$
@@ -371,6 +373,27 @@ initialize()
 			}
 		}
 	}
+}
+
+template<typename Symmetry, typename Scalar>
+Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
+Identity() const
+{
+	Mpo<Symmetry,Scalar> Id(this->N_sites, Symmetry::qvacuum(), "Id", true, true);
+	Id.qloc = this->qloc;
+	Id.initialize();
+	Id.Daux = 1;
+	for(size_t l=0; l<Id.N_sites; l++)
+	{
+		Id.qOp[l].resize(1);
+		Id.qOp[l][0] = Symmetry::qvacuum();
+		for (size_t s1=0; s1<Id.qloc[l].size(); ++s1)
+		{
+			Id.W[l][s1][s1][0] = MatrixXd::Identity(1,1).sparseView();
+		}
+	}
+	Id.calc_auxBasis();
+	return Id;
 }
 
 template<typename Symmetry, typename Scalar>
