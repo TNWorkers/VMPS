@@ -119,21 +119,26 @@ int main (int argc, char* argv[])
 		Adag = A;
 		Qc = Qi;
 	}
-//	else if (spec == "SSF")
-//	{
-//		if constexpr (MODEL::Symmetry::NON_ABELIAN)
-//		{
-//			A = H.S(L/2);
-//			Adag = H.Sdag(L/2);
-//			Qc = {3,N};
-//		}
-////		else
-////		{
-////			A = H.Sz(L/2);
-////			Adag = H.Sz(L/2);
-////			Qc = Qi;
-////		}
-//	}
+	else if (spec == "SSF")
+	{
+        #ifdef USING_SU2
+		{
+			A = H.Simp(L/2);
+			Adag = H.Simpdag(L/2,0,1./sqrt(3.));
+			Qc = {M+3,N};
+		}
+		#else
+		{
+			A = H.Simp(SP, L/2, 0, 1./sqrt(2));
+			Adag = H.Simp(SM, L/2, 0, 1./sqrt(2));
+			Qc = Qi+A.Qtarget();
+
+			// A = H.Sz(L/2);
+			// Adag = H.Sz(L/2);
+			// Qc = Qi;
+		}
+		#endif
+	}
 	lout << A.info() << endl;
 	lout << Adag.info() << endl;
 	//--------------</Hamiltonian & transition operator>---------------

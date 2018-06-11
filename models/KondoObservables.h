@@ -31,8 +31,8 @@ public:
 	///@}
 	
 	///@{
-	Mpo<Symmetry> Simp (SPINOP_LABEL SOP, size_t locx, size_t locy=0) const;
-	Mpo<Symmetry> Ssub (SPINOP_LABEL SOP, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Simp (SPINOP_LABEL SOP, size_t locx, size_t locy=0, double factor=1.) const;
+	Mpo<Symmetry> Ssub (SPINOP_LABEL SOP, size_t locx, size_t locy=0, double factor=1.) const;
 	///@}
 	
 	///@{
@@ -236,7 +236,7 @@ Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 	stringstream ss;
 	ss << Sa << "imp";
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
-	return make_local(IMP, ss.str(), locx, locy, B[locx].Scomp(Sa,locy), false, HERMITIAN);
+	return make_local(IMP, ss.str(), locx, locy, factor * B[locx].Scomp(Sa,locy), false, HERMITIAN);
 }
 
 template<typename Symmetry>
@@ -246,7 +246,7 @@ Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 	stringstream ss;
 	ss << Sa << "sub";
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
-	return make_local(SUB, ss.str(), locx,locy, F[locx].Scomp(Sa,locy), false, HERMITIAN);
+	return make_local(SUB, ss.str(), locx,locy, factor * F[locx].Scomp(Sa,locy), false, HERMITIAN);
 }
 
 template<typename Symmetry>
