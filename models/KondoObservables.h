@@ -231,7 +231,7 @@ nn (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 
 template<typename Symmetry>
 Mpo<Symmetry> KondoObservables<Symmetry>::
-Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+Simp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 {
 	stringstream ss;
 	ss << Sa << "imp";
@@ -241,7 +241,7 @@ Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 
 template<typename Symmetry>
 Mpo<Symmetry> KondoObservables<Symmetry>::
-Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 {
 	stringstream ss;
 	ss << Sa << "sub";
