@@ -1339,6 +1339,7 @@ load (string filename)
 	source.close();
 	update_inbase();
 	update_outbase();
+	calc_Qlimits();
 }
 #endif
 
