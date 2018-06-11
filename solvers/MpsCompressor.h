@@ -402,7 +402,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-		cout << "sqnormVin=" << sqnormVin << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+//		cout << "sqnormVin=" << sqnormVin << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		sqdist = abs(sqnormVin-Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		
@@ -442,6 +442,7 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
 	Vout.setRandom();
+	
 	if (Vout.pivot == N_sites-1 or
 	    Vout.pivot == -1)
 	{
@@ -675,7 +676,6 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-		// cout << "\tavgHsqVin=" << avgHsqVin << ", deg=" << pow(Symmetry::degeneracy(H.Qtarget()),2) << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		Scalar factor_cgc = 1.;//pow(Symmetry::degeneracy(H.Qtarget()),1);
 		sqdist = abs(avgHsqVin - factor_cgc * factor_cgc * Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
@@ -947,7 +947,6 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	if (Vout.calc_Nqmax() <= 4)
 	{
 		Vout.min_Nsv = 1;
-		cout << "Vout.min_Nsv=" << Vout.min_Nsv << endl;
 	}
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
@@ -996,40 +995,12 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 				PivotVector<Symmetry,Scalar> A1;
 				prodOptimize1(H,Vin1,Vout,A1);
 				
-//				cout << "after prodOptimize1" << endl;
-				for (size_t s=0; s<A1.size(); ++s)
-				{
-//					cout << "s=" << s << endl;
-//					cout << A1[s].print(true,15) << endl;
-					
-					if (A1[s].squaredNorm().sum() < 1e-10)
-					{
-						lout << termcolor::red << termcolor::bold << "prodOptimize1: norm loss detected, setting random!" << termcolor::reset << endl;
-						A1[s].setRandom();
-					}
-				}
-				
 				PivotVector<Symmetry,Scalar> A2;
 				stateOptimize1(Vin2,Vout,A2);
-				
-//				cout << "after stateOptimize1" << endl;
-				for (size_t s=0; s<A2.size(); ++s)
-				{
-//					cout << "s=" << s << endl;
-//					cout << A2[s].print(true,15) << endl;
-					
-					if (A2[s].squaredNorm().sum() < 1e-10)
-					{
-						lout << termcolor::red << termcolor::bold << "stateOptimize1: norm loss detected, setting random!" << termcolor::reset << endl;
-						A2[s].setRandom();
-					}
-				}
 				
 				for (size_t s=0; s<A1.size(); ++s)
 				{
 					A1[s].addScale(-polyB, A2[s]);
-//					cout << "s=" << s << endl;
-//					cout << A1[s].print(true,15) << endl;
 					A1[s] = A1[s].cleaned();
 				}
 				Vout.A[pivot] = A1.data;
@@ -1038,19 +1009,6 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 				Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::SVD);
 				t_sweep += SweepTimer.time();
 				pivot = Vout.get_pivot();
-				
-				if (Vout.squaredNorm() < 1e-15)
-				{
-					cout << "after opt1: Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
-//					for (size_t s=0; s<A1.size(); ++s)
-//					{
-//						cout << "s=" << s << endl;
-//						cout << A1[s].print(true,15) << endl;
-//					}
-//					cout << Vout.info() << endl;
-					lout << termcolor::red << termcolor::bold << "Can't fix this norm loss!" << termcolor::reset << endl;
-					assert(1==-1);
-				}
 			}
 			
 			build_LRW(H,Vin1,Vin2,Vout);
@@ -1119,7 +1077,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 	{
 		for (size_t l=N_sites-1; l>0; --l)
 		{
-			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
+			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,RANDOMIZE);
 			#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 			#pragma omp parallel sections
 			#endif
@@ -1128,13 +1086,13 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 				#pragma omp section
 				#endif
 				{
-					build_RW(l-1,Vout,H,Vin1,true);
+					build_RW(l-1,Vout,H,Vin1,RANDOMIZE);
 				}
 				#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 				#pragma omp section
 				#endif
 				{
-					build_R(l-1,Vout,Vin2,true);
+					build_R(l-1,Vout,Vin2,RANDOMIZE);
 				}
 			}
 		}
@@ -1144,7 +1102,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 	{
 		for (size_t l=0; l<N_sites-1; ++l)
 		{
-			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
+			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,RANDOMIZE);
 			#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 			#pragma omp parallel sections
 			#endif
@@ -1153,13 +1111,13 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 				#pragma omp section
 				#endif
 				{
-					build_LW(l+1,Vout,H,Vin1,true);
+					build_LW(l+1,Vout,H,Vin1,RANDOMIZE);
 				}
 				#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 				#pragma omp section
 				#endif
 				{
-					build_L(l+1,Vout,Vin2,true);
+					build_L(l+1,Vout,Vin2,RANDOMIZE);
 				}
 			}
 		}

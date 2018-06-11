@@ -58,6 +58,7 @@ namespace std
 std::unordered_map<std::array<int,9>,double > Table9j;
 std::unordered_map<std::array<int,6>,double > Table6j;
 
+#ifdef HASH_CGC
 double coupling_9j (const int &q1, const int &q2, const int &q3, 
                     const int &q4, const int &q5, const int &q6, 
                     const int &q7, const int &q8, const int &q9)
@@ -112,6 +113,23 @@ double coupling_6j (const int &q1, const int &q2, const int &q3,
 		return out;
 	}
 }
+#else
+double coupling_9j (const int &q1, const int &q2, const int &q3, 
+                    const int &q4, const int &q5, const int &q6, 
+                    const int &q7, const int &q8, const int &q9)
+{
+	return gsl_sf_coupling_9j(q1-1,q2-1,q3-1,
+		                      q4-1,q5-1,q6-1,
+		                      q7-1,q8-1,q9-1);
+}
+
+double coupling_6j (const int &q1, const int &q2, const int &q3, 
+                    const int &q4, const int &q5, const int &q6)
+{
+	return gsl_sf_coupling_6j(q1-1,q2-1,q3-1,
+	                          q4-1,q5-1,q6-1);
+}
+#endif
 
 namespace Sym{
 

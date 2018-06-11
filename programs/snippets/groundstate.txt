@@ -10,8 +10,6 @@
 			Stopwatch<> nChronos;
 			MODEL::Solver * DMRG = new MODEL::Solver(DMRG::VERBOSITY::HALFSWEEPWISE);
 			
-//			DMRG->DynParam.min_Nsv = [](size_t i) {return 1;};
-//			DMRG->GlobParam.Qinit = 500;
 			DMRG->edgeState(H, *init, Qi, LANCZOS::EDGE::GROUND);
 			lout << endl << nChronos.info(make_string("ground state ",Qi)) << endl;
 			lout << DMRG->info() << endl;

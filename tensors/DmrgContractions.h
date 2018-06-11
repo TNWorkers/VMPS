@@ -78,12 +78,20 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 							if (Lold.block[qL][a1][0].rows() != 0)
 							{
 								MatrixType Mtmp;
-								optimal_multiply(factor_cgc*iW.value(),
+								if(RANDOMIZE)
+								{
+									Mtmp.resize(Abra[s1].block[qAbra].cols(), Aket[s2].block[qAket].cols());
+									Mtmp.setRandom();
+								}
+								else
+								{
+									optimal_multiply(factor_cgc*iW.value(),
 								                 Abra[s1].block[qAbra].adjoint(),
 												 Lold.block[qL][a1][0],
 												 Aket[s2].block[qAket],
 												 Mtmp);
-								if(RANDOMIZE) {Mtmp.setRandom();}
+								}
+								
 								auto it = Lnew.dict.find(quple);
 								if (it != Lnew.dict.end())
 								{
@@ -193,12 +201,20 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 								if (Rold.block[qR][a2][0].size() != 0)
 								{
 									MatrixType Mtmp;
-									optimal_multiply(factor_cgc * iW.value(),
+									if (RANDOMIZE)
+									{
+										Mtmp.resize(Aket[s2].block[q2->second].rows(), Abra[s1].block[q1->second].rows());
+										Mtmp.setRandom();
+									}
+									else
+									{
+										optimal_multiply(factor_cgc * iW.value(),
 									                 Aket[s2].block[q2->second],
 									                 Rold.block[qR][a2][0],
 									                 Abra[s1].block[q1->second].adjoint(),
 									                 Mtmp);
-									if(RANDOMIZE) {Mtmp.setRandom();}
+									}
+									
 									auto it = Rnew.dict.find(quple);
 									if (it != Rnew.dict.end())
 									{
@@ -486,12 +502,20 @@ void contract_L (const Biped<Symmetry,MatrixType> &Lold,
 						if (Lold.block[qL].rows() != 0)
 						{
 							MatrixType Mtmp;
-							optimal_multiply(1.,
+							if(RANDOMIZE)
+							{
+								Mtmp.resize(Abra[s].block[qAbra].cols(), Aket[s].block[qAket].cols());
+								Mtmp.setRandom();
+							}
+							else
+							{
+								optimal_multiply(1.,
 							                 Abra[s].block[qAbra].adjoint(),
 							                 Lold.block[qL],
 							                 Aket[s].block[qAket],
 							                 Mtmp);
-							if(RANDOMIZE) {Mtmp.setRandom();}
+							}
+							
 							auto it = Lnew.dict.find(quple);
 							if (it != Lnew.dict.end())
 							{
@@ -557,12 +581,20 @@ void contract_R (const Biped<Symmetry,MatrixType> &Rold,
 					if (Rold.block[qR].rows() != 0)
 					{
 						MatrixType Mtmp;
-						optimal_multiply(factor_cgc,
+						if(RANDOMIZE)
+						{
+							Mtmp.resize(Aket[s].block[q2->second].rows(), Abra[s].block[q1->second].rows());
+							Mtmp.setRandom();
+						}
+						else
+						{
+							optimal_multiply(factor_cgc,
 						                 Aket[s].block[q2->second],
 						                 Rold.block[qR],
 						                 Abra[s].block[q1->second].adjoint(),
 						                 Mtmp);
-						if(RANDOMIZE) {Mtmp.setRandom();}
+						}
+						
 						auto it = Rnew.dict.find(quple);
 						if (it != Rnew.dict.end())
 						{
