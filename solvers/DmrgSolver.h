@@ -256,6 +256,13 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, bool USE_STATE)
 {
+	if (CHOSEN_VERBOSITY>=2)
+	{
+		lout << endl << termcolor::colorize << termcolor::bold
+		 << "——————————————————————————————————————————DMRG 1site Algorithm——————————————————————————————————————————"
+		 <<  termcolor::reset << endl;
+	}
+	
 	N_sites = H.length();
 	N_phys  = H.volume();
 	
@@ -268,7 +275,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		Vout.state.min_Nsv = DynParam.min_Nsv(0);
 		Vout.state.setRandom();
 	}
-	Vout.state.graph("ginit");
+//	Vout.state.graph("ginit");
 	Dmax_old = GlobParam.Dinit;
 	
 	// set edges
@@ -276,7 +283,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	Heff.resize(N_sites);
 	Heff[0].L.setVacuum();
 	Heff[N_sites-1].R.setTarget(qarray3<Nq>{Qtot_input, Qtot_input, Symmetry::qvacuum()});
-
+	
 	//if the SweepStatus is default initialized (pivot==-1), one initial sweep from right-to-left and N_halfsweeps = N_sweepsteps = 0,
 	//otherwise prepare for continuing at the given SweepStatus.
 	if (SweepStat.pivot == -1)
@@ -404,15 +411,12 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 
 	if (CHOSEN_VERBOSITY>=2)
 	{
-		lout << endl << termcolor::colorize << termcolor::bold
-			 << "——————————————————————————————————————————DMRG 1site Algorithm——————————————————————————————————————————"
-			 <<  termcolor::reset << endl;
 		lout << PrepTimer.info("initial state & sweep") << endl;
 		lout <<                "initial energy       : E₀=" << Eold << endl;
 		lout <<                "initial state        : " << Vout.state.info() << endl;
 		lout <<                "initial fluctuations : α_rsvd=" << Vout.state.alpha_rsvd
 			 << ", " << "ε_svd=" << Vout.state.eps_svd << endl << endl;
-		Vout.state.graph("init");
+//		Vout.state.graph("init");
 	}
 
 	err_eigval = 1.;
@@ -691,7 +695,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		     << ", err=" << round(t_err/t_halfsweep*100.,0) << "%"
 		     << ")"
 		     << endl;
-		Vout.state.graph("current");
+//		Vout.state.graph("current");
 	}
 }
 

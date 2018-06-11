@@ -75,29 +75,52 @@ bool AA (qarray<Symmetry::Nq> Lin,
          const vector<Biped<Symmetry,MatrixType> > &Aket, 
          vector<tuple<qarray2<Symmetry::Nq>,size_t,size_t> > &result)
 {
+//	bool out = false;
+//	result.clear();
+//	
+//	auto qRouts = Symmetry::reduceSilent(Lin,qloc[s]);
+//	for (const auto& qRout : qRouts)
+//	{
+//		qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
+//		auto q1 = Abra[s].dict.find(cmp1);
+//		if (q1 != Abra[s].dict.end())
+//		{
+//			auto qRins = Symmetry::reduceSilent(Lout,qloc[s]);
+//			for (const auto &qRin:qRins)
+//			{
+//				if (Symmetry::validate(qarray2<Symmetry::Nq>{qRin,qRout}))
+//				{
+//					qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
+//					auto q2 = Aket[s].dict.find(cmp2);
+//					if (q2 != Aket[s].dict.end())
+//					{
+//						result.push_back(make_tuple(qarray2<Symmetry::Nq>{qRin,qRout}, q1->second, q2->second));
+//						out = true;
+//					}
+//				}
+//			}
+//		}
+//	}
+//	return out;
+	
 	bool out = false;
 	result.clear();
 	
-	auto qRouts = Symmetry::reduceSilent(Lin,qloc[s]);
-	for (const auto& qRout : qRouts)
+	auto qRins = Symmetry::reduceSilent(Lin,qloc[s]);
+	for (const auto& qRin : qRins)
 	{
-		qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
-		auto q1 = Abra[s].dict.find(cmp1);
-		if (q1 != Abra[s].dict.end())
+		qarray2<Symmetry::Nq> cmp1 = {Lin, qRin};
+		auto qAket = Aket[s].dict.find(cmp1);
+		
+		if (qAket != Aket[s].dict.end())
 		{
-			auto qRins = Symmetry::reduceSilent(Lout,qloc[s]);
-			for (const auto &qRin:qRins)
+			qarray2<Symmetry::Nq> cmp2 = {Lin, qRin};
+			auto qAbra = Abra[s].dict.find(cmp1);
+			
+			if (qAbra != Abra[s].dict.end())
 			{
-				if (Symmetry::validate(qarray2<Symmetry::Nq>{qRin,qRout}))
-				{
-					qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
-					auto q2 = Aket[s].dict.find(cmp2);
-					if (q2 != Aket[s].dict.end())
-					{
-						result.push_back(make_tuple(qarray2<Symmetry::Nq>{qRin,qRout}, q1->second, q2->second));
-						out = true;
-					}
-				}
+				result.push_back(make_tuple(qarray2<Symmetry::Nq>{qRin,qRin}, qAbra->second, qAket->second));
+				out = true;
 			}
 		}
 	}

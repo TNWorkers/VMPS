@@ -1,6 +1,8 @@
 	//--------------<KernelPolynomialSolver>---------------
 	if (CHEB)
 	{
+		sort(dE.rbegin(), dE.rend());
+		
 		double spillage = 0.;
 		if (spec == "PES" or spec == "IPES")
 		{
@@ -8,13 +10,13 @@
 		}
 		else if (spec == "SSF" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
 		{
-			spillage = 0.5*(Emax-Emin);
+			spillage = 10.*dE[0]; //0.5*(Emax-Emin);
 		}
 		OrthPolyGreen<MODEL,MODEL::StateXd,CHEBYSHEV> KPS(Emin-spillage, Emax+spillage);
 		
 		for (size_t i=0; i<dE.size(); ++i)
 		{
-			if (i>0) {assert(dE[i] < dE[i-1]);} // monotoncally decreasing resolution
+//			if (i>0) {assert(dE[i] < dE[i-1]);} // monotoncally decreasing resolution
 			Msave.push_back((Emax-Emin+2.*spillage)/dE[i]);
 			lout << "dE=" << dE[i] << " => M=" << Msave[Msave.size()-1] << endl;
 		}
