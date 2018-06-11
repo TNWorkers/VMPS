@@ -129,9 +129,9 @@ private:
 		
 		void stateOptimize2 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
 		
-		void build_L (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket);
+		void build_L (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE=false);
 		
-		void build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket);
+        void build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE=false);
 		
 	// for |Vout> ≈ H*|Vin>
 		vector<PivotMatrix1<Symmetry,Scalar,MpoScalar> > Heff;
@@ -154,10 +154,10 @@ private:
 		                        PivotVector<Symmetry,Scalar> &ApairOut);
 		
 		template<typename MpOperator>
-		void build_LW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket);
+		void build_LW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE=false);
 		
 		template<typename MpOperator>
-		void build_RW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket);
+		void build_RW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE=false);
 		
 	// for |Vout> ≈ H*|Vin1> - polyB*|Vin2>
 		template<typename MpOperator>
@@ -442,14 +442,13 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
 	Vout.setRandom();
-	
 	if (Vout.pivot == N_sites-1 or
 	    Vout.pivot == -1)
 	{
 		for (size_t l=N_sites-1; l>0; --l)
 		{
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
-			build_R(l-1,Vout,Vin);
+			build_R(l-1,Vout,Vin,true); //true randomize Env[l].R
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
 	}
@@ -458,7 +457,7 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 		for (size_t l=0; l<N_sites-1; ++l)
 		{
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
-			build_L(l+1,Vout,Vin);
+			build_L(l+1,Vout,Vin,true); //true randomize Env[l].L
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
 	}
@@ -487,7 +486,6 @@ stateOptimize1 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 	PivotVector<Symmetry,Scalar> Aout;
 	stateOptimize1(Vin,Vout,Aout);
 	Vout.A[pivot] = Aout.data;
-	
 	// safeguard against sudden norm loss:
 	if (Vout.squaredNorm() < 1e-7)
 	{
@@ -547,19 +545,19 @@ stateOptimize2 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-build_L (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket)
+build_L (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE)
 {
 	Stopwatch<> LRtimer;
-	contract_L(Env[loc-1].L, Vbra.A[loc-1], Vket.A[loc-1], Vket.locBasis(loc-1), Env[loc].L);
+	contract_L(Env[loc-1].L, Vbra.A[loc-1], Vket.A[loc-1], Vket.locBasis(loc-1), Env[loc].L, RANDOMIZE);
 	t_LR += LRtimer.time();
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket)
+build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE)
 {
 	Stopwatch<> LRtimer;
-	contract_R(Env[loc+1].R, Vbra.A[loc+1], Vket.A[loc+1], Vket.locBasis(loc+1), Env[loc].R);
+	contract_R(Env[loc+1].R, Vbra.A[loc+1], Vket.A[loc+1], Vket.locBasis(loc+1), Env[loc].R, RANDOMIZE);
 	t_LR += LRtimer.time();
 }
 
@@ -730,7 +728,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Sc
 		for (size_t l=N_sites-1; l>0; --l)
 		{
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
-			build_RW(l-1,Vout,H,Vin);
+			build_RW(l-1,Vout,H,Vin,true);
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
 	}
@@ -739,7 +737,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Sc
 		for (size_t l=0; l<N_sites-1; ++l)
 		{
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
-			build_LW(l+1,Vout,H,Vin);
+			build_LW(l+1,Vout,H,Vin,true);
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
 	}
@@ -849,20 +847,20 @@ prodOptimize2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetr
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-build_LW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket)
+build_LW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE)
 {
 	Stopwatch<> LRtimer;
-	contract_L(Heff[loc-1].L, Vbra.A[loc-1], H.W[loc-1], Vket.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].L);
+	contract_L(Heff[loc-1].L, Vbra.A[loc-1], H.W[loc-1], Vket.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].L, RANDOMIZE);
 	t_LR += LRtimer.time();
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-build_RW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket)
+build_RW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE)
 {
 	Stopwatch<> LRtimer;
-	contract_R(Heff[loc+1].R, Vbra.A[loc+1], H.W[loc+1], Vket.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R);
+	contract_R(Heff[loc+1].R, Vbra.A[loc+1], H.W[loc+1], Vket.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R, RANDOMIZE);
 	t_LR += LRtimer.time();
 }
 
@@ -1130,13 +1128,13 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 				#pragma omp section
 				#endif
 				{
-					build_RW(l-1,Vout,H,Vin1);
+					build_RW(l-1,Vout,H,Vin1,true);
 				}
 				#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 				#pragma omp section
 				#endif
 				{
-					build_R(l-1,Vout,Vin2);
+					build_R(l-1,Vout,Vin2,true);
 				}
 			}
 		}
@@ -1155,13 +1153,13 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 				#pragma omp section
 				#endif
 				{
-					build_LW(l+1,Vout,H,Vin1);
+					build_LW(l+1,Vout,H,Vin1,true);
 				}
 				#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 				#pragma omp section
 				#endif
 				{
-					build_L(l+1,Vout,Vin2);
+					build_L(l+1,Vout,Vin2,true);
 				}
 			}
 		}

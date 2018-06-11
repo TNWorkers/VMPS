@@ -27,7 +27,8 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
-                 Tripod<Symmetry,MatrixType> &Lnew)
+                 Tripod<Symmetry,MatrixType> &Lnew,
+				 bool RANDOMIZE=false)
 {
 	std::array<typename Symmetry::qType,3> qCheck;
 	MpoScalar factor_cgc;
@@ -82,7 +83,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 												 Lold.block[qL][a1][0],
 												 Aket[s2].block[qAket],
 												 Mtmp);
-								
+								if(RANDOMIZE) {Mtmp.setRandom();}
 								auto it = Lnew.dict.find(quple);
 								if (it != Lnew.dict.end())
 								{
@@ -129,7 +130,8 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
-                 Tripod<Symmetry,MatrixType> &Rnew)
+                 Tripod<Symmetry,MatrixType> &Rnew,
+				 bool RANDOMIZE=false)
 {
 	std::array<typename Symmetry::qType,3> qCheck;
 	MpoScalar factor_cgc;
@@ -196,7 +198,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 									                 Rold.block[qR][a2][0],
 									                 Abra[s1].block[q1->second].adjoint(),
 									                 Mtmp);
-									
+									if(RANDOMIZE) {Mtmp.setRandom();}
 									auto it = Rnew.dict.find(quple);
 									if (it != Rnew.dict.end())
 									{
@@ -458,7 +460,8 @@ void contract_L (const Biped<Symmetry,MatrixType> &Lold,
                  const vector<Biped<Symmetry,MatrixType> > &Abra, 
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
-                 Biped<Symmetry,MatrixType> &Lnew)
+                 Biped<Symmetry,MatrixType> &Lnew,
+				 bool RANDOMIZE=false)
 {
 	Lnew.clear();
 	Lnew.setZero();
@@ -488,7 +491,7 @@ void contract_L (const Biped<Symmetry,MatrixType> &Lold,
 							                 Lold.block[qL],
 							                 Aket[s].block[qAket],
 							                 Mtmp);
-							
+							if(RANDOMIZE) {Mtmp.setRandom();}
 							auto it = Lnew.dict.find(quple);
 							if (it != Lnew.dict.end())
 							{
@@ -519,7 +522,8 @@ void contract_R (const Biped<Symmetry,MatrixType> &Rold,
                  const vector<Biped<Symmetry,MatrixType> > &Abra, 
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
-                 Biped<Symmetry,MatrixType> &Rnew)
+                 Biped<Symmetry,MatrixType> &Rnew,
+				 bool RANDOMIZE=false)
 {
 	Rnew.clear();
 	Rnew.setZero();
@@ -558,7 +562,7 @@ void contract_R (const Biped<Symmetry,MatrixType> &Rold,
 						                 Rold.block[qR],
 						                 Abra[s].block[q1->second].adjoint(),
 						                 Mtmp);
-						
+						if(RANDOMIZE) {Mtmp.setRandom();}
 						auto it = Rnew.dict.find(quple);
 						if (it != Rnew.dict.end())
 						{
