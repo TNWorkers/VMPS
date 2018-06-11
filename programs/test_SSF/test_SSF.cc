@@ -101,6 +101,7 @@ int main (int argc, char* argv[])
 	
 	#include "programs/snippets/groundstate.txt"
 	#include "programs/snippets/state_compression.txt"
+	assert(1==-1);
 	#include "programs/snippets/AxInit.txt"
 	#include "programs/snippets/KPS.txt"
 }

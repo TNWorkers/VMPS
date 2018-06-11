@@ -66,7 +66,7 @@ public:
 	 * \param[in] min_halfsweeps : minimal amount of half-sweeps
 	 */
 	void stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-	                    size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=3, size_t min_halfsweeps=1);
+	                    size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
 	
 	/**
 	 * Compresses a matrix-vector product \f$\left|V_{out}\right> \approx H \left|V_{in}\right>\f$. 
@@ -86,7 +86,7 @@ public:
 	template<typename MpOperator>
 	void prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
 	                   qarray<Symmetry::Nq> Qtot_input,
-	                   size_t Dcutoff_input, double tol=1e-8, size_t max_halfsweeps=56, size_t min_halfsweeps=1);
+	                   size_t Dcutoff_input, double tol=1e-8, size_t max_halfsweeps=42, size_t min_halfsweeps=1);
 	
 	/**
 	 * Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. 
@@ -488,6 +488,16 @@ stateOptimize1 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 	stateOptimize1(Vin,Vout,Aout);
 	Vout.A[pivot] = Aout.data;
 	
+	// safeguard against sudden norm loss:
+	if (Vout.squaredNorm() < 1e-7)
+	{
+		if (CHOSEN_VERBOSITY > 0)
+		{
+			lout << termcolor::bold << termcolor::red << "WARNING: small norm encountered at pivot=" << pivot << "!" << termcolor::reset << endl;
+		}
+		Vout /= sqrt(Vout.squaredNorm());
+	}
+	
 	Stopwatch<> SweepTimer;
 	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::SVD);
 	t_sweep += SweepTimer.time();
@@ -570,7 +580,14 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	N_sweepsteps = 0;
 	Dcutoff = Dcutoff_new = Dcutoff_input;
 	
-	Vout = Mps<Symmetry,Scalar>(H, Dcutoff, Qtot, max(Vin.calc_Nqmax(), DMRG::CONTROL::DEFAULT::Qinit));
+	if (H.Qtarget() == Symmetry::qvacuum())
+	{
+		Vout = Vin;
+	}
+	else
+	{
+		Vout = Mps<Symmetry,Scalar>(H, Dcutoff, Qtot, max(Vin.calc_Nqmax(), DMRG::CONTROL::DEFAULT::Qinit));
+	}
 	
 	// prepare edges of LW & RW
 	Heff.clear();
@@ -929,9 +946,10 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	Vout.max_Nsv = Dcutoff;
 	Vout.min_Nsv = Vin1.min_Nsv;
 	// In order to avoid block loss for small Hilbert spaces:
-	if (Vout.calc_Nqmax() <= 3)
+	if (Vout.calc_Nqmax() <= 4)
 	{
 		Vout.min_Nsv = 1;
+		cout << "Vout.min_Nsv=" << Vout.min_Nsv << endl;
 	}
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
@@ -980,12 +998,40 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 				PivotVector<Symmetry,Scalar> A1;
 				prodOptimize1(H,Vin1,Vout,A1);
 				
+//				cout << "after prodOptimize1" << endl;
+				for (size_t s=0; s<A1.size(); ++s)
+				{
+//					cout << "s=" << s << endl;
+//					cout << A1[s].print(true,15) << endl;
+					
+					if (A1[s].squaredNorm().sum() < 1e-10)
+					{
+						lout << termcolor::red << termcolor::bold << "prodOptimize1: norm loss detected, setting random!" << termcolor::reset << endl;
+						A1[s].setRandom();
+					}
+				}
+				
 				PivotVector<Symmetry,Scalar> A2;
 				stateOptimize1(Vin2,Vout,A2);
+				
+//				cout << "after stateOptimize1" << endl;
+				for (size_t s=0; s<A2.size(); ++s)
+				{
+//					cout << "s=" << s << endl;
+//					cout << A2[s].print(true,15) << endl;
+					
+					if (A2[s].squaredNorm().sum() < 1e-10)
+					{
+						lout << termcolor::red << termcolor::bold << "stateOptimize1: norm loss detected, setting random!" << termcolor::reset << endl;
+						A2[s].setRandom();
+					}
+				}
 				
 				for (size_t s=0; s<A1.size(); ++s)
 				{
 					A1[s].addScale(-polyB, A2[s]);
+//					cout << "s=" << s << endl;
+//					cout << A1[s].print(true,15) << endl;
 					A1[s] = A1[s].cleaned();
 				}
 				Vout.A[pivot] = A1.data;
@@ -994,6 +1040,19 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 				Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::SVD);
 				t_sweep += SweepTimer.time();
 				pivot = Vout.get_pivot();
+				
+				if (Vout.squaredNorm() < 1e-15)
+				{
+					cout << "after opt1: Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+//					for (size_t s=0; s<A1.size(); ++s)
+//					{
+//						cout << "s=" << s << endl;
+//						cout << A1[s].print(true,15) << endl;
+//					}
+//					cout << Vout.info() << endl;
+					lout << termcolor::red << termcolor::bold << "Can't fix this norm loss!" << termcolor::reset << endl;
+					assert(1==-1);
+				}
 			}
 			
 			build_LRW(H,Vin1,Vin2,Vout);
@@ -1002,11 +1061,11 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-		cout << "avgHsqV1=" << avgHsqV1 
-		     << ", Vout.squaredNorm()=" << Vout.squaredNorm() 
-		     << ", polyB*polyB*sqnormV2=" << polyB*polyB*sqnormV2 
-		     << ", 2.*polyB*overlapV12=" << 2.*polyB*overlapV12 
-		     << endl;
+//		cout << "avgHsqV1=" << avgHsqV1 
+//		     << ", Vout.squaredNorm()=" << Vout.squaredNorm() 
+//		     << ", polyB*polyB*sqnormV2=" << polyB*polyB*sqnormV2 
+//		     << ", 2.*polyB*overlapV12=" << 2.*polyB*overlapV12 
+//		     << endl;
 		sqdist = abs(avgHsqV1 - Vout.squaredNorm() + polyB*polyB*sqnormV2 - 2.*polyB*overlapV12);
 		assert(!std::isnan(sqdist));
 		
@@ -1077,7 +1136,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 				#pragma omp section
 				#endif
 				{
-					build_R (l-1,Vout,Vin2);
+					build_R(l-1,Vout,Vin2);
 				}
 			}
 		}
@@ -1102,7 +1161,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 				#pragma omp section
 				#endif
 				{
-					build_L (l+1,Vout,Vin2);
+					build_L(l+1,Vout,Vin2);
 				}
 			}
 		}
