@@ -695,7 +695,23 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		     << ", err=" << round(t_err/t_halfsweep*100.,0) << "%"
 		     << ")"
 		     << endl;
-//		Vout.state.graph("current");
+		
+//		// check qmid:
+//		for (size_t l=0; l<N_sites; ++l)
+//		{
+//			set<qarray<Nq> > qmids;
+//			for (size_t q=0; q<Heff[l].L.dim; ++q)
+//			{
+//				qmids.insert(Heff[l].L.mid(q));
+//			}
+//			
+//			cout << "l=" << l << endl;
+//			for (const auto &qmid:qmids)
+//			{
+//				cout << qmid << " ";
+//			}
+//			cout << endl;
+//		}
 	}
 }
 

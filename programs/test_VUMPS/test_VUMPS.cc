@@ -23,9 +23,10 @@ Logger lout;
 #include "tensors/Biped.h"
 #include "VUMPS/Umps.h"
 
-//#include "VUMPS/VumpsSolver.h"
+#include "VUMPS/VumpsSolver.h"
 //#include "VUMPS/VumpsLinearAlgebra.h"
 //#include "solvers/DmrgSolver.h"
+#include "models/Heisenberg.h"
 #include "models/HeisenbergU1.h"
 #include "models/HeisenbergSU2.h"
 //#include "models/HeisenbergXXZ.h"
@@ -124,7 +125,7 @@ int main (int argc, char* argv[])
 	tol_eigval = args.get<double>("tol_eigval",1e-6);
 	tol_var = args.get<double>("tol_var",1e-7);
 	max_iter = args.get<size_t>("max_iter",20);
-	size_t Qinit = args.get<size_t>("Qinit",6);
+	size_t Nqmax = args.get<size_t>("Nqmax",6);
 	size_t D = args.get<size_t>("D",2);
 	
 	ISING = args.get<bool>("ISING",true);
@@ -163,7 +164,7 @@ int main (int argc, char* argv[])
 	typedef VMPS::HeisenbergU1 HEISENBERG;
 //	typedef VMPS::HeisenbergSU2 HEISENBERG;
 	HEISENBERG Heis(L,{{"OPEN_BC",false},{"D",D}});
-	HEISENBERG::StateUd Psi(Heis.locBasis(0), L, M, Qinit);
+	HEISENBERG::StateUd Psi(Heis.locBasis(0), L, M, Nqmax);
 	Psi.setRandom();
 	Psi.graph("Psi");
 	auto Phi = Psi;
@@ -185,6 +186,10 @@ int main (int argc, char* argv[])
 		Phi.polarDecompose(l);
 	}
 	cout << Phi.test_ortho() << endl;
+	
+	HEISENBERG::uSolver DMRG(VERB);
+	Eigenstate<HEISENBERG::StateUd> g;
+	DMRG.edgeState(Heis, g, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 	
 //	//---<transverse Ising>---
 //	if (ISING)

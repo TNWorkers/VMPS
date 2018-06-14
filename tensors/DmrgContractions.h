@@ -95,6 +95,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 								auto it = Lnew.dict.find(quple);
 								if (it != Lnew.dict.end())
 								{
+//									cout << "a=" << a1 << ", b=" << a2 << ", q=" << quple[0] << "," << quple[1] << "," << quple[2] << endl;
 									if (Lnew.block[it->second][a2][0].rows() != Mtmp.rows() or 
 										Lnew.block[it->second][a2][0].cols() != Mtmp.cols())
 									{
@@ -218,6 +219,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 									auto it = Rnew.dict.find(quple);
 									if (it != Rnew.dict.end())
 									{
+										cout << "a=" << a1 << ", b=" << a2 << ", qmid=" << quple[2] << endl;
 										if (Rnew.block[it->second][a1][0].rows() != Mtmp.rows() or 
 										    Rnew.block[it->second][a1][0].cols() != Mtmp.cols())
 										{
@@ -230,6 +232,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 									}
 									else
 									{
+										cout << "a=" << a1 << ", b=" << a2 << ", qmid=" << quple[2] << endl;
 										boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].rows()][1]);
 										Mtmpvec[a1][0] = Mtmp;
 										Rnew.push_back(quple, Mtmpvec);
