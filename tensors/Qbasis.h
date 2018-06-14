@@ -13,6 +13,8 @@
 #include "tensors/Basis.h"
 #include "tensors/Biped.h"
 
+template<typename Symmetry, typename MatrixType_> struct Biped;
+
 /** \class Qbasis
   *
   * \ingroup Tensors

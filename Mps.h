@@ -420,7 +420,7 @@ private:
 	void update_outbase (size_t loc);
 	void update_inbase () { for(size_t l=0; l<this->N_sites; l++) {update_inbase(l); } }
 	void update_outbase () { for(size_t l=0; l<this->N_sites; l++) {update_outbase(l); } }
-
+	
 	void resize_arrays();
 	void outerResizeNoSymm();
 	
@@ -774,7 +774,6 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t Nqmax_input)
 {
-//	cout << "Nqmax_input=" << Nqmax_input << endl;
 	this->N_sites = L_input;
 	qloc = qloc_input;
 	Qtot = Qtot_input;
@@ -791,16 +790,6 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 			// sort the vector first according to the distance to mean
 			sort(out.begin(),out.end(),[mean,loc,this] (qarray<Nq> q1, qarray<Nq> q2)
 			{
-//				for (size_t q=0; q<Nq; q++)
-//				{
-//					if (abs(q1[q]-mean[q]) < abs(q2[q]-mean[q]))
-//					{
-//						return true;
-//					}
-//				}
-//				return false;
-				
-//				cout << "loc=" << loc << endl;
 				VectorXd dist_q1(Nq);
 				VectorXd dist_q2(Nq);
 				for (size_t q=0; q<Nq; q++)
@@ -808,12 +797,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 					double Delta = QinTop[loc][q] - QinBot[loc][q];
 					dist_q1(q) = (q1[q]-mean[q]) / Delta;
 					dist_q2(q) = (q2[q]-mean[q]) / Delta;
-//					cout << "q1=" << q1 << ", dist=" << dist_q1(q) << ", mean[q]=" << mean[q] << ", Delta=" << Delta << endl;
-//					cout << "q2=" << q2 << ", dist=" << dist_q2(q) << ", mean[q]=" << mean[q] << ", Delta=" << Delta << endl;
 				}
-//				cout << "dist_q1.norm()=" << dist_q1.norm() << ", dist_q2.norm()=" << dist_q2.norm() << endl;
-//				cout << endl;
-				
 				return (dist_q1.norm() < dist_q2.norm())? true:false;
 			});
 			
@@ -835,7 +819,6 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		{
 			mean[q] = Qtot[q]*l*1./this->N_sites;
 		}
-//		Qin_trunc[l] = take_first_elems(new_qs,mean,l);
 		
 		// check if within ranges (QinBot,QinTop) for all q:
 		auto candidates = take_first_elems(new_qs,mean,l);

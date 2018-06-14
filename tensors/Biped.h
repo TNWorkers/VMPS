@@ -479,6 +479,7 @@ contract(const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE) const
 	return Ares;
 }
 
+// Note: wrong! Use contract instead
 template<typename Symmetry, typename MatrixType_>
 Biped<Symmetry,MatrixType_> operator* (const Biped<Symmetry,MatrixType_> &A1, const Biped<Symmetry,MatrixType_> &A2)
 {

@@ -32,6 +32,7 @@ namespace VMPS{};
 
 //Forward declarations
 template<typename Symmetry, typename Scalar> class Mps;
+template<typename Symmetry, typename Scalar> class Umps;
 template<typename Symmetry, typename Scalar> class Mpo;
 template<typename Symmetry, typename MpHamiltonian, typename Scalar> class DmrgSolver;
 template<typename Symmetry, typename Scalar, typename MpoScalar> class MpsCompressor;
@@ -262,6 +263,7 @@ public:
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
 	typedef Mps<Symmetry,double>                              StateXd;
+	typedef Umps<Symmetry,double>                             StateUd;
 	typedef Mps<Symmetry,complex<double> >                    StateXcd;
 	typedef DmrgSolver<Symmetry,Mpo<Symmetry,Scalar>,Scalar>  Solver;
 	typedef VumpsSolver<Symmetry,Mpo<Symmetry,Scalar>,Scalar> uSolver;
