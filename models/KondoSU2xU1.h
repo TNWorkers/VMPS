@@ -153,7 +153,7 @@ const map<string,any> KondoSU2xU1::sweep_defaults =
 	{"max_alpha",100.}, {"min_alpha",1.e-11}, {"eps_svd",1.e-7}, {"lim_for_alpha",20ul},
 	{"Dincr_abs", 10ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
-	{"max_halfsweeps",60ul}, {"max_halfsweeps",6ul},
+	{"max_halfsweeps",60ul}, {"min_halfsweeps",6ul},
 	{"Dinit",100ul}, {"Qinit",50ul}, {"Dlimit",1000ul},
 	{"tol_eigval",1.e-8}, {"tol_state",1.e-8},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
