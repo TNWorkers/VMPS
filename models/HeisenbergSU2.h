@@ -91,7 +91,7 @@ protected:
 		{"max_alpha",100.}, {"min_alpha",1.e-11}, {"eps_svd",1.e-7},
 		{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 		{"min_Nsv",0ul}, {"max_Nrich",-1},
-		{"max_halfsweeps",20ul}, {"max_halfsweeps",6ul},
+		{"max_halfsweeps",20ul}, {"min_halfsweeps",6ul},
 		{"Dinit",4ul}, {"Qinit",10ul}, {"Dlimit",100ul},
 		{"tol_eigval",1.e-7}, {"tol_state",1.e-6},
 		{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}

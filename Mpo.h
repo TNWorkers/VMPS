@@ -84,8 +84,13 @@ public:
 	 */
 	Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false);
 
-	Mpo<Symmetry,Scalar> Identity() const;
-	
+
+	/**
+	 * Static function for contructing an identity operator.
+	 * \param qloc : the local basis on all sites.
+	 */
+	static Mpo<Symmetry,Scalar> Identity (const vector<vector<qarray<Nq> > > &qloc);
+
 	//---set whole Mpo for special cases, modify---
 
 	///\{
@@ -189,7 +194,13 @@ public:
 	inline vector<qarray<Nq> > locBasis   (size_t loc) const {return qloc[loc];}
 	/**Returns the right auxiliary basis at \p loc.*/
 	inline Qbasis<Symmetry>    auxBasis   (size_t loc) const {return qaux[loc];}
-	
+
+	/**Returns the auxiliary in-basis at \p loc.*/
+	inline Qbasis<Symmetry>    inBasis   (size_t loc) const {return qaux[loc];}
+
+	/**Returns the auxiliary out-basis at \p loc.*/
+	inline Qbasis<Symmetry>    outBasis   (size_t loc) const {return qaux[loc+1];}
+
 	/**Returns the operator basis at \p loc.*/
 	inline vector<qarray<Nq> > opBasis   (size_t loc) const {return qOp[loc];}
 	/**Returns the operator basis of the squared Mpo at \p loc.*/
@@ -379,23 +390,23 @@ initialize()
 
 template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
-Identity() const
+Identity(const vector<vector<qarray<Nq> > > &qloc)
 {
-	Mpo<Symmetry,Scalar> Id(this->N_sites, Symmetry::qvacuum(), "Id", true, true);
-	Id.qloc = this->qloc;
-	Id.initialize();
-	Id.Daux = 1;
-	for(size_t l=0; l<Id.N_sites; l++)
+	Mpo<Symmetry,Scalar> out(qloc.size(), Symmetry::qvacuum(), "Identity", true, true);
+	out.qloc = qloc;
+	out.initialize();
+	out.Daux = 1;
+	for(size_t l=0; l<out.N_sites; l++)
 	{
-		Id.qOp[l].resize(1);
-		Id.qOp[l][0] = Symmetry::qvacuum();
-		for (size_t s1=0; s1<Id.qloc[l].size(); ++s1)
+		out.qOp[l].resize(1);
+		out.qOp[l][0] = Symmetry::qvacuum();
+		for (size_t s=0; s<out.qloc[l].size(); ++s)
 		{
-			Id.W[l][s1][s1][0] = MatrixXd::Identity(1,1).sparseView();
+			out.W[l][s][s][0] = MatrixXd::Identity(1,1).sparseView();
 		}
 	}
-	Id.calc_auxBasis();
-	return Id;
+	out.calc_auxBasis();
+	return out;
 }
 
 template<typename Symmetry, typename Scalar>

@@ -377,10 +377,21 @@ public:
 	/**Returns the local basis.*/
 	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
-	
+
+	/**Returns the auxiliary in-basis.*/
+	inline Qbasis<Symmetry> inBasis (size_t loc) const {return inbase[loc];}
+	inline vector<Qbasis<Symmetry> > inBasis()   const {return inbase;}
+
+	/**Returns the auxiliary out-basis.*/
+	inline Qbasis<Symmetry> outBasis (size_t loc) const {return outbase[loc];}
+	inline vector<Qbasis<Symmetry> > outBasis()   const {return outbase;}
+
 	/**Const reference to the A-tensor at site \p loc.*/
 	const vector<Biped<Symmetry,MatrixType> > &A_at (size_t loc) const {return A[loc];};
-	
+
+	/**Reference to the A-tensor at site \p loc.*/
+	vector<Biped<Symmetry,MatrixType> > &A_at (size_t loc) {return A[loc];};
+
 	/**Returns the pivot position.*/
 	inline int get_pivot() const {return this->pivot;};
 	

@@ -407,4 +407,32 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::
 	Vinout = Vtmp;
 }
 
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, typename Symmetry::qType Qtot)
+{
+	Vout = Mps<Symmetry,Scalar>(Vin.length(), Vin.locBasis(), Qtot, O.volume(), Vin.calc_Nqmax());
+
+	Qbasis<Symmetry> targetBase;
+	targetBase.push_back(Qtot,1);
+	
+	for (size_t l=0; l<Vin.length()-1; ++l)
+	{
+		contract_AW(Vin.A_at(l), Vin.locBasis(l), O.W_at(l), O.locBasis(l),
+					Vin.inBasis(l) , O.inBasis(l) , Vin.inBasis(l).combine(O.inBasis(l)),
+					Vin.outBasis(l), O.outBasis(l), Vin.outBasis(l).combine(O.outBasis(l)),
+					Vout.A_at(l));
+	}
+	contract_AW(Vin.A_at(Vin.length()-1), Vin.locBasis(Vin.length()-1), O.W_at(Vin.length()-1), O.locBasis(Vin.length()-1),
+				Vin.inBasis(Vin.length()-1) , Vin.inBasis(Vin.length()-1) , Vin.inBasis(Vin.length()-1).combine(O.inBasis(Vin.length()-1)),
+				Vin.outBasis(Vin.length()-1), Vin.outBasis(Vin.length()-1), targetBase,
+				Vout.A_at(Vin.length()-1));
+}
+
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, typename Symmetry::qType Qtot)
+{
+	Mps<Symmetry,Scalar> Vtmp;
+	OxV_exact(O,Vinout,Vtmp,Qtot);
+	Vinout = Vtmp;
+}
 #endif

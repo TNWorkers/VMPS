@@ -1,5 +1,5 @@
 #define DMRG_DONT_USE_OPENMP
-#define PRINT_SU2_FACTORS
+//#define PRINT_SU2_FACTORS
 
 #include <iostream>
 
@@ -11,151 +11,114 @@
 Logger lout;
 
 using namespace std;
-#include "bases/FermionBaseSU2xU1.h"
+#include "bases/SpinBaseSU2.h"
 
-#include "models/HubbardU1xU1.h"
-#include "models/HubbardSU2xU1.h"
+#include "models/HeisenbergSU2.h"
 #include "solvers/DmrgSolver.h"
+#include "solvers/MpsCompressor.h"
 
 size_t L;
-double U, factor;
-int S,N;
+double J, factor;
+int S,Sc,D;
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",4);
-	U = args.get<double>("U",8.);
+	J = args.get<double>("J",-1.);
 	S = args.get<int>("S",1);
-	N = args.get<int>("N",L);
+	Sc = args.get<int>("Sc",S+2);
+	D = args.get<int>("D",1);
 	factor = args.get<double>("factor",1.);
 	
-	bool COMMUTATORS = args.get<bool>("COMMUTATORS",false);
 	bool OBSERVABLES = args.get<bool>("OBSERVABLES",true);
 
-	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > Symmetry;
-	typedef FermionBase<Symmetry> Base;
+	typedef Sym::SU2<Sym::SpinSU2> Symmetry;
+	typedef SpinBase<Symmetry> Base;
 	typedef Base::Operator Op;
-	Base F(L);
-
-	if(COMMUTATORS)
-	{
-		cout << termcolor::red << "-------Commutators--------" << termcolor::reset << endl;
-		for(size_t i=0; i<L; i++)
-		for(size_t j=0; j<L; j++)
-		{
-			auto commutator = Op::prod(F.cdag(i),F.c(j),Symmetry::qvacuum()) - Op::prod(F.c(j),F.cdag(i),Symmetry::qvacuum());
-			cout << "i=" << i << ", j=" << j << endl << commutator.data().print(true) << endl << endl;
-			
-			auto anticommutator = Op::prod(F.cdag(i),F.c(j),Symmetry::qvacuum()) + Op::prod(F.c(j),F.cdag(i),Symmetry::qvacuum());
-			cout << "i=" << i << ", j=" << j << endl << anticommutator.data().print(true) << endl << endl;
-		}
-	}
+	Base B(L);
 
 	if (OBSERVABLES)
 	{
-		qarray<2> Q1 = {S,N};
-		qarray<2> Q2 = {S+1,N-1};
+		qarray<1> Q1 = {S};
 
-		auto H = F.HubbardHamiltonian(U);
-		EDSolver<Op> John(H,{Q1,Q2},Eigen::DecompositionOptions::ComputeEigenvectors);
-		cout << "gse1=" << John.eigenvalues().data().block[1](0,0) << endl;
-		cout << "gse2=" << John.eigenvalues().data().block[0](0,0) << endl;
+		auto H = B.HeisenbergHamiltonian(J);
+		EDSolver<Op> John(H,{Q1},Eigen::DecompositionOptions::ComputeEigenvectors);
+		cout << "gse=" << John.eigenvalues().data().block[0](0,0) << endl;
 
-		Eigen::MatrixXd densityMatrix(L,L); densityMatrix.setZero();
+		Eigen::VectorXd SdagS(L); SdagS.setZero();
+		for(size_t i=0; i<L; i++)
+		{
+			auto SQ1 = Op::prod(B.S(i), John.groundstate(Q1), {3});
+			auto res = Op::prod(SQ1.adjoint(), SQ1, {1});
+			SdagS(i) = res.data().block[0](0,0);
+		}
+		cout << "sqrt(1./3.)*SdagS" << endl << sqrt(1./3.)*SdagS << endl << endl;
+		cout << "sqrt(3.)*SdagS" << endl << sqrt(3.)*SdagS << endl << endl;
+
+		Eigen::MatrixXd SS(L,L); SS.setZero();
 		for(size_t i=0; i<L; i++)
 		for(size_t j=0; j<L; j++)
 		{
-  			auto res = Op::prod(John.groundstate(Q1).adjoint(),Op::prod(F.cdag(i),Op::prod(F.c(j),John.groundstate(Q1),{2,-1}),{1,0}),{1,0});
+			auto SQ1i = Op::prod(B.S(i), John.groundstate(Q1), {3});
+			auto SQ1j = Op::prod(B.S(j), John.groundstate(Q1), {3});
 
-			densityMatrix(i,j) = sqrt(2.) * res.data().block[0](0,0);
+			auto res = Op::prod(SQ1i.adjoint(), SQ1j, {1});
+			SS(i,j) = res.data().block[0](0,0);
 		}
-		cout << "densityMatrix" << endl << densityMatrix << endl << endl;
+		cout << "sqrt(1./3.)*SS" << endl << sqrt(1./3.)*SS << endl << endl;
+		cout << "sqrt(3.)*SS" << endl << sqrt(3.)*SS << endl << endl;
 
-		Eigen::VectorXd n(L); n.setZero();
+
+		VMPS::HeisenbergSU2 H_SU2(L,{ {"J",J} });
+		lout << H_SU2.info() << endl;
+
+		Eigenstate<VMPS::HeisenbergSU2::StateXd> g;
+		Eigenstate<VMPS::HeisenbergSU2::StateXd> h;
+
+		vector<Param> SweepParams;
+		SweepParams.push_back({"max_alpha",10.});
+
+		VMPS::HeisenbergSU2::Solver Lana(DMRG::VERBOSITY::ON_EXIT);
+		Lana.GlobParam = H_SU2.get_GlobParam(SweepParams);
+		Lana.DynParam = H_SU2.get_DynParam(SweepParams);
+		Lana.edgeState(H_SU2, g, {S}, LANCZOS::EDGE::GROUND);
+
+		// VMPS::HeisenbergSU2::Solver Jim(DMRG::VERBOSITY::SILENT);
+		// Jim.GlobParam = H_SU2.get_GlobParam(SweepParams);
+		// Jim.DynParam = H_SU2.get_DynParam(SweepParams);
+		// Jim.edgeState(H_SU2, h, {S+2}, LANCZOS::EDGE::GROUND);
+
+		Eigen::VectorXd SdagS_DMRG(L); SdagS_DMRG.setZero();
 		for(size_t i=0; i<L; i++)
 		{
-  			auto res = Op::prod(John.groundstate(Q1).adjoint(),Op::prod(F.n(i),John.groundstate(Q1),{1,0}),{1,0});
-			n(i) = res.data().block[0](0,0);
+			VMPS::HeisenbergSU2::StateXd Sg;
+			// VMPS::HeisenbergSU2::CompressorXd Compadre(DMRG::VERBOSITY::SILENT);
+			// Compadre.prodCompress(H_SU2.S(i), H_SU2.Sdag(i,0,1./sqrt(3.)), g.state, Sg, {Sc}, 100);
+			OxV_exact(H_SU2.S(i),g.state,Sg,{Sc});
+			SdagS_DMRG(i) = Sg.dot(Sg);
 		}
-		cout << "n" << endl << n << endl << n.sum() << endl << endl;
+		cout << "sqrt(1./3.)*SdagS DMRG: " << endl << SdagS_DMRG << endl << endl;
+		cout << "sqrt(3.)*SdagS DMRG" << endl << 3.*SdagS_DMRG << endl << endl;
 
-		Eigen::VectorXd c(L); c.setZero();
+		Eigen::MatrixXd SS_DMRG(L,L); SS_DMRG.setZero();
 		for(size_t i=0; i<L; i++)
+		for(size_t j=0; j<L; j++)
 		{
-  			auto res = Op::prod(John.groundstate(Q2).adjoint(),Op::prod(F.c(i),John.groundstate(Q1),{2,-1}),{2,-1});
-			c(i) = res.data().block[0](0,0);
-		}
-		cout << "c" << endl << c << endl << endl;
-
-		Eigen::VectorXd adag(L); adag.setZero();
-		for(size_t i=0; i<L; i++)
-		{
-			//cdag2 gibt den richtigen hermitisch konjugierten Operator!
-			auto adagQ2 = Op::prod(F.cdag(i), John.groundstate(Q1), {2,+1});
-			auto res = Op::prod(adagQ2.adjoint(), adagQ2, {1,0});
-//  		auto res = Op::prod(John.groundstate(Q1).adjoint(), Op::prod(F.adag(i),John.groundstate(Q2),{2,1}),{2,1});
-			adag(i) = res.data().block[0](0,0);
-		}
-
-		cout << "adag" << endl << adag << endl << endl;
-//		cout << "ratio=" << endl << c.array()/(cdag.array()) << endl << endl;
-		
-		VMPS::HubbardU1xU1 H_DMRGU1(L,{{"U",U}});
-		cout << H_DMRGU1.info() << endl;
-		VMPS::HubbardU1xU1::Solver Jack(DMRG::VERBOSITY::ON_EXIT);
-		Eigenstate<VMPS::HubbardU1xU1::StateXd> g1, g2;
-		Jack.edgeState(H_DMRGU1,g1,{static_cast<int>(L/2),static_cast<int>(L/2)},LANCZOS::EDGE::GROUND);
-		cout << endl << endl;
-		VMPS::HubbardU1xU1::Solver Lisa(DMRG::VERBOSITY::ON_EXIT);
-		Lisa.edgeState(H_DMRGU1,g2,{static_cast<int>(L/2)-1,static_cast<int>(L/2)},LANCZOS::EDGE::GROUND);
-		Eigen::VectorXd c_checkU1(L); c_checkU1.setZero();
-		Eigen::VectorXd c_checkU1_comp(L); c_checkU1_comp.setZero();
-		Eigen::VectorXd n_checkU1_comp(L); n_checkU1_comp.setZero();
-		
-		for(size_t i=0; i<L; i++)
-		{
-			c_checkU1(i) = avg(g1.state, H_DMRGU1.cdag<UP>(i), g2.state);
-		
-			VMPS::HubbardU1xU1::CompressorXd Compadre(DMRG::VERBOSITY::SILENT);
-			VMPS::HubbardU1xU1::StateXd cg2;
-			Compadre.prodCompress(H_DMRGU1.cdag<UP>(i), H_DMRGU1.c<UP>(i), g2.state, cg2, {static_cast<int>(L/2),static_cast<int>(L/2)}, g2.state.calc_Dmax());
-			c_checkU1_comp(i) = dot(g1.state, cg2);
-			n_checkU1_comp(i) = dot(cg2,cg2);
-		}
-		cout << "c_checkU1" << endl << c_checkU1 << endl << endl;
-		cout << "c_checkU1_comp" << endl << c_checkU1_comp << endl << endl;
-		cout << "n_checkU1_comp" << endl << n_checkU1_comp << endl << endl;
-		
-		VMPS::HubbardSU2xU1 H_DMRGSU2(L,{{"U",U}});
-		cout << H_DMRGSU2.info() << endl;
-		VMPS::HubbardSU2xU1::Solver Jim(DMRG::VERBOSITY::ON_EXIT);
-		Eigenstate<VMPS::HubbardSU2xU1::StateXd> h1, h2;
-		Jim.edgeState(H_DMRGSU2,h1,{S,N},LANCZOS::EDGE::GROUND);
-		cout << endl << endl;
-		VMPS::HubbardSU2xU1::Solver Lana(DMRG::VERBOSITY::ON_EXIT);
-		Lana.edgeState(H_DMRGSU2,h2,{S+1,N-1},LANCZOS::EDGE::GROUND);
-		Eigen::VectorXd c_checkSU2(L); c_checkSU2.setZero();
-		Eigen::VectorXd c_checkSU2_comp(L); c_checkSU2_comp.setZero();
-		Eigen::VectorXd n_checkSU2_comp(L); n_checkSU2_comp.setZero();
-		for(size_t i=0; i<L; i++)
-		{
-			c_checkSU2(i) = avg(h1.state, H_DMRGSU2.adag(i,0,factor), h2.state);
+			VMPS::HeisenbergSU2::StateXd Sig;
+			// VMPS::HeisenbergSU2::CompressorXd Compadrei(DMRG::VERBOSITY::SILENT);
+			// Compadrei.prodCompress(H_SU2.S(i), H_SU2.Sdag(i,0,1./sqrt(3.)), g.state, Sig, {Sc}, 100);
+			VMPS::HeisenbergSU2::StateXd Sjg;
+			// VMPS::HeisenbergSU2::CompressorXd Compadrej(DMRG::VERBOSITY::SILENT);
+			// Compadrej.prodCompress(H_SU2.S(j), H_SU2.Sdag(j,0,1./sqrt(3.)), g.state, Sjg, {Sc}, 100);
 			
-			VMPS::HubbardSU2xU1::CompressorXd Compadre(DMRG::VERBOSITY::SILENT);
-			VMPS::HubbardSU2xU1::StateXd ch2;
-			Compadre.prodCompress(H_DMRGSU2.cdag(i,0,1.), H_DMRGSU2.c(i,0,1./sqrt(2.)), h1.state, ch2, {S+1,N+1}, h1.state.calc_Dmax());
-//			c_checkSU2_comp(i) = dot(h1.state, ch2);
-			n_checkSU2_comp(i) = dot(ch2,ch2);
+			OxV_exact(H_SU2.S(i),g.state,Sig,{Sc});
+			OxV_exact(H_SU2.S(j),g.state,Sjg,{Sc});
+			SS_DMRG(i,j) = Sig.dot(Sjg);
 		}
-		cout << "c_checkSU2" << endl << c_checkSU2 << endl << endl;
-		cout << "c_checkSU2_comp" << endl << c_checkSU2_comp << endl << endl;
-		cout << "n_checkSU2_comp" << endl << n_checkSU2_comp << endl << endl;
-		
-		Eigen::VectorXd cdag_checkSU2(L); cdag_checkSU2.setZero();
-		for(size_t i=0; i<L; i++)
-		{
-			cdag_checkSU2(i) = avg(h1.state, H_DMRGSU2.adag(i,0,factor), h2.state);
-		}
-		cout << "cdag_checkSU2" << endl << -cdag_checkSU2 << endl << endl;
+		cout << "sqrt(1./3.)*SS DMRG: " << endl << SS_DMRG << endl << endl;
+		cout << "sqrt(3.)*SS DMRG" << endl << 3.*SS_DMRG << endl << endl;
+
+		cout << "ratio: " << endl << 3.*(SS_DMRG.array())/(sqrt(3.)*SS.array()) << endl << endl;
+
 	}
 }

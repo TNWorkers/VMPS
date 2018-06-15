@@ -21,10 +21,11 @@ class SpinBase<Sym::SU2<Sym::SpinSU2> >
 	typedef Eigen::Index Index;
 	typedef double Scalar;
 	typedef typename Sym::SU2<Sym::SpinSU2> Symmetry;
-	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
 	typedef typename Symmetry::qType qType;
 	
 public:
+	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
+
 	SpinBase(){};
 	
 	/**

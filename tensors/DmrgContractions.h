@@ -219,7 +219,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 									auto it = Rnew.dict.find(quple);
 									if (it != Rnew.dict.end())
 									{
-										cout << "a=" << a1 << ", b=" << a2 << ", qmid=" << quple[2] << endl;
+										// cout << "a=" << a1 << ", b=" << a2 << ", qmid=" << quple[2] << endl;
 										if (Rnew.block[it->second][a1][0].rows() != Mtmp.rows() or 
 										    Rnew.block[it->second][a1][0].cols() != Mtmp.cols())
 										{
@@ -232,7 +232,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 									}
 									else
 									{
-										cout << "a=" << a1 << ", b=" << a2 << ", qmid=" << quple[2] << endl;
+										// cout << "a=" << a1 << ", b=" << a2 << ", qmid=" << quple[2] << endl;
 										boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].rows()][1]);
 										Mtmpvec[a1][0] = Mtmp;
 										Rnew.push_back(quple, Mtmpvec);
@@ -1537,6 +1537,87 @@ void contract_C (vector<qarray<Symmetry::Nq> > qloc,
 //		}
 //	}
 //}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Ain, 
+                  const vector<qarray<Symmetry::Nq> > &qloc,
+				  const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
+                  const vector<qarray<Symmetry::Nq> > &qOp,
+				  const Qbasis<Symmetry> &qauxAl,
+				  const Qbasis<Symmetry> &qauxWl,
+				  const Qbasis<Symmetry> &tensor_l,
+				  const Qbasis<Symmetry> &qauxAr,
+				  const Qbasis<Symmetry> &qauxWr,
+				  const Qbasis<Symmetry> &tensor_r,
+                  vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aout)
+{
+	for (size_t s=0; s<qloc.size(); ++s)
+	{
+		Aout[s].clear();
+	}
+
+	auto tensorBasis_l = tensor_l;
+	auto tensorBasis_r = tensor_r;
+
+	for (size_t s1=0; s1<qloc.size(); ++s1)
+	for (size_t s2=0; s2<qloc.size(); ++s2)
+	for (size_t k=0;  k<qloc.size();  ++k)
+	{
+
+		for (size_t q=0; q<Ain[s2].size(); q++)
+		// for (const auto &[qWl,qWl_dim,qWl_plain] : qauxWl) // cpp is to stupid to call cbegin() and cend() here... 
+		for (auto it=qauxWl.cbegin(); it != qauxWl.cend(); it++)
+		{
+			auto [qWl, qWl_dim, qWl_plain] = *it;
+			auto qWrs = Symmetry::reduceSilent(qWl,qOp[k]);
+			for (const auto &qWr : qWrs)
+			{
+				auto qmerge_ls = Symmetry::reduceSilent(Ain[s2].in[q] ,qWl);
+				auto qmerge_rs = Symmetry::reduceSilent(Ain[s2].out[q],qWr);
+				for (const auto qmerge_l : qmerge_ls)
+				for (const auto qmerge_r : qmerge_rs)
+				{
+					Scalar factor_cgc = Symmetry::coeff_AW(Ain[s2].in[q] , qWl     , qmerge_l,
+														   qOp[k]      , qloc[s2], qloc[s1],
+														   Ain[s2].out[q], qWr     , qmerge_r);
+					if (abs(factor_cgc) < abs(mynumeric_limits<Scalar>::epsilon())) { continue; }
+
+					MatrixXd Mtmp(tensorBasis_l.size(), tensorBasis_r.size()); Mtmp.setZero();
+					
+					int left_l = tensorBasis_l.leftAmount(qmerge_l, { Ain[s2].in[q] , qWl } );
+					int left_r = tensorBasis_r.leftAmount(qmerge_r, { Ain[s2].out[q], qWr } );
+
+					for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
+					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+					{
+						size_t wr = iW.row();
+						size_t wc = iW.col();
+
+						// size_t br = iWbot.row();
+						// size_t bc = iWbot.col();
+						// size_t tr = iWtop.row();
+						// size_t tc = iWtop.col();
+
+						// size_t a1 = left1+br*W[s1][s2][k].rows()+tr;
+						// size_t a2 = left2+bc*W[s1][s2][k].cols()+tc;
+
+						Mtmp.block(wr+left_l,wc+left_r,Ain[s2].block[q].rows(),Ain[s2].block[q].cols()) += Ain[s2].block[q] * iW.value() * factor_cgc;
+					}
+					qarray2<Symmetry::Nq> cmp = qarray2<Symmetry::Nq>{qmerge_l, qmerge_r}; //auxiliary quantum numbers of Aout
+					auto it = Aout[s1].dict.find(cmp);
+					if (it == Aout[s1].dict.end())
+					{
+						Aout[s1].push_back(cmp,Mtmp);
+					}
+					else
+					{
+						Aout[s1].block[it->second] += Mtmp;
+					}
+				}
+			}
+		}
+	}
+}
 
 template<typename Symmetry, typename Scalar>
 void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
