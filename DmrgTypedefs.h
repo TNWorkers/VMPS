@@ -8,6 +8,8 @@
 #include "tensors/SiteOperatorQ.h"
 #include "tensors/SiteOperator.h"
 
+#include "LanczosSolver.h" // from ALGS
+
 #ifndef IS_REAL_FUNCTION
 #define IS_REAL_FUNCTION
 inline double isReal (double x) {return x;}
@@ -202,7 +204,7 @@ struct DMRG
 		};
 	};
 	
-	/**Choice of verbosity for DmrgSolver, DmrgSolverQ, MpsCompressor and MpsCompressorQ.*/
+	/**Choice of verbosity for DmrgSolver and MpsCompressor.*/
 	struct VERBOSITY
 	{
 		enum OPTION
@@ -213,7 +215,7 @@ struct DMRG
 			STEPWISE=3, /**<level 3, prints as much info as possible*/
 		};
 	};
-	
+
 	/**Choice of initial guess for variational compression in MpsCompressor.*/
 	struct COMPRESSION
 	{
@@ -253,6 +255,7 @@ struct DMRG
 	{
 		struct DEFAULT
 		{
+			//GLOB DEFAULTS
 			constexpr static size_t min_halfsweeps = 1;
 			constexpr static size_t max_halfsweeps = 20;
 			constexpr static double tol_eigval = 1e-6;
@@ -264,6 +267,7 @@ struct DMRG
 			constexpr static DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
 			constexpr static bool CALC_S_ON_EXIT = true;
 
+			//DYN DEFAULTS
 			static double max_alpha_rsvd (size_t i) {return (i<=10)? 1e2:0;}
 			static double min_alpha_rsvd (size_t i) {return (i<=10)? 1e-11:0;}
 			static double eps_svd        (size_t i) {return 1e-7;}
@@ -272,6 +276,14 @@ struct DMRG
 			static size_t Dincr_per      (size_t i) {return 2;} // increase D every 2 half-sweeps
 			static size_t min_Nsv        (size_t i) {return 0;}
 			static int    max_Nrich      (size_t i) {return -1;} // -1 = infinity
+			static void   doSomething    (size_t i) {return;} // -1 = infinity
+
+			//LANCZOS DEFAULTS
+			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO = LANCZOS::REORTHO::FULL;
+			constexpr static ::LANCZOS::CONVTEST::OPTION LANCZOS_CONVTEST = LANCZOS::CONVTEST::COEFFWISE;
+			constexpr static double eps_eigval = 1e-7;
+			constexpr static double eps_coeff = 1e-4;
+			constexpr static size_t dimK = 40ul;
 		};
 		
 		struct GLOB
@@ -298,18 +310,35 @@ struct DMRG
 			function<size_t(size_t)> Dincr_per		 = CONTROL::DEFAULT::Dincr_per;
 			function<size_t(size_t)> min_Nsv		 = CONTROL::DEFAULT::min_Nsv;
 			function<int(size_t)> max_Nrich			 = CONTROL::DEFAULT::max_Nrich;
-
-			// double (*max_alpha_rsvd) (size_t i) = CONTROL::DEFAULT::max_alpha_rsvd;
-			// double (*min_alpha_rsvd) (size_t i) = CONTROL::DEFAULT::min_alpha_rsvd;
-			// double (*eps_svd)        (size_t i) = CONTROL::DEFAULT::eps_svd;
-			// size_t (*Dincr_abs)      (size_t i) = CONTROL::DEFAULT::Dincr_abs;
-			// double (*Dincr_rel)      (size_t i) = CONTROL::DEFAULT::Dincr_rel;
-			// size_t (*Dincr_per)      (size_t i) = CONTROL::DEFAULT::Dincr_per;
-			// size_t (*min_Nsv)        (size_t i) = CONTROL::DEFAULT::min_Nsv;
-			// int    (*max_Nrich)      (size_t i) = CONTROL::DEFAULT::max_Nrich;
+			function<void(size_t)> doSomething		 = CONTROL::DEFAULT::doSomething;
+		};
+		
+		struct LANCZOS
+		{
+			::LANCZOS::REORTHO::OPTION REORTHO   = CONTROL::DEFAULT::REORTHO;
+			::LANCZOS::CONVTEST::OPTION CONVTEST = CONTROL::DEFAULT::LANCZOS_CONVTEST;
+			double eps_eigval                    = CONTROL::DEFAULT::eps_eigval;
+			double eps_coeff                     = CONTROL::DEFAULT::eps_coeff;
+			size_t dimK                          = CONTROL::DEFAULT::dimK;
 		};
 	};
 };
+
+std::ostream& operator<< (std::ostream& s, DMRG::VERBOSITY::OPTION VERB)
+{
+	if (VERB==DMRG::VERBOSITY::SILENT) {s << "SILENT";}
+	else if (VERB==DMRG::VERBOSITY::ON_EXIT) {s << "ON_EXIT";}
+	else if (VERB==DMRG::VERBOSITY::HALFSWEEPWISE) {s << "HALFSWEEPWISE";}
+	else if (VERB==DMRG::VERBOSITY::STEPWISE) {s << "STEPWSIE";}
+	return s;
+}
+
+inline std::istream & operator>>(std::istream & str, DMRG::VERBOSITY::OPTION &VERB)
+{
+	size_t verb = 0;
+	if (str >> verb) { VERB = static_cast<DMRG::VERBOSITY::OPTION>(verb);}
+	return str;
+}
 
 std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
 {

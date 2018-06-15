@@ -15,43 +15,6 @@
 #endif
 #include "solvers/MpsCompressor.h"
 
-//struct DefaultDynControl
-//{
-//	static double max_alpha_rsvd (size_t i) {return (i<=10)? 100.:0.;}
-//	static double min_alpha_rsvd (size_t i) {return 1.e-11;}
-//	static double eps_svd        (size_t i) {return 1e-7;}
-//	static size_t Dincr_abs      (size_t i) {return 2;}
-//	static double Dincr_rel      (size_t i) {return 1.1;}
-//	static size_t min_Nsv        (size_t i) {return 0;}
-//	static size_t max_Nsv        (size_t i) {return 500;}
-//	static size_t max_Nrich      (size_t i) {return numeric_limits<size_t>::infinity();}
-//};
-
-//struct GlobControl
-//{
-//	size_t min_halfsweeps = 6;
-//	size_t max_halfsweeps = 20;
-//	double tol_eigval = 1e-7;
-//	double tol_state = 1e-6;
-//	size_t Dinit = 4;
-//	size_t Dlimit = 500;
-//	size_t Qinit = 10;
-//	size_t savePeriod = 0;
-//	DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
-//};
-
-//struct DynControl
-//{
-//	double (*max_alpha_rsvd) (size_t i) = DefaultDynControl::max_alpha_rsvd;
-//	double (*min_alpha_rsvd) (size_t i) = DefaultDynControl::min_alpha_rsvd;
-//	double (*eps_svd)        (size_t i) = DefaultDynControl::eps_svd;
-//	size_t (*Dincr_abs)      (size_t i) = DefaultDynControl::Dincr_abs;
-//	double (*Dincr_rel)      (size_t i) = DefaultDynControl::Dincr_rel;
-//	size_t (*min_Nsv)        (size_t i) = DefaultDynControl::min_Nsv;
-//	size_t (*max_Nsv)        (size_t i) = DefaultDynControl::max_Nsv;
-//	size_t (*max_Nrich)      (size_t i) = DefaultDynControl::max_Nrich;
-//};
-
 template<typename Symmetry, typename MpHamiltonian, typename Scalar = double>
 class DmrgSolver
 {
@@ -72,7 +35,8 @@ public:
 	
 	DMRG::CONTROL::GLOB GlobParam;
 	DMRG::CONTROL::DYN  DynParam;
-	
+	DMRG::CONTROL::LANCZOS LanczosParam;
+
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
 	void prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
@@ -129,18 +93,7 @@ private:
 		size_t N_halfsweeps;
 	};
 	
-	SweepStatus SweepStat;
-	
-	struct LanczosControl
-	{
-		LANCZOS::REORTHO::OPTION REORTHO = LANCZOS::REORTHO::FULL;
-		LANCZOS::CONVTEST::OPTION CONVTEST = LANCZOS::CONVTEST::COEFFWISE;
-		double eps_eigval = 1e-7;
-		double eps_coeff = 1e-4;
-		size_t dimK = 40ul;
-	};
-	
-	LanczosControl LanczosParam;
+	SweepStatus SweepStat;	
 	
 	void LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE);
 	void sweep_to_edge (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, bool MAKE_ENVIRONMENT);
@@ -818,6 +771,8 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 			}
 			lout << endl;
 		}
+
+		DynParam.doSomething(j);
 		
 		#ifdef USE_HDF5_STORAGE
 		if (GlobParam.savePeriod != 0 and j%GlobParam.savePeriod == 0)
