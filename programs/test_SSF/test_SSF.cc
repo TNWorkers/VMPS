@@ -17,7 +17,7 @@ using namespace std;
 #include "OrthPolyGreen.h"
 
 size_t L;
-int M;
+int M, Sc;
 double J;
 vector<int> Msave;
 int Mmax;
@@ -27,11 +27,12 @@ double Emin, Emax, E0;
 bool CHEB;
 int Qinit, Dinit;
 
-int main (int argc, char* argv[]) 
+int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",4);
 	M = args.get<size_t>("M",0);
+	Sc = args.get<size_t>("Sc",3);
 	Qinit = args.get<int>("Qinit",1000);
 	Dinit = args.get<int>("Dinit",1000);
 
@@ -48,7 +49,7 @@ int main (int argc, char* argv[])
 	if (wd.back() != '/') {wd += "/";}
 	
 	dE = args.get_list<double>("dE",{0.2});
-	outfile = make_string(spec,"_L=",L,"_J=",J,"_M=",M);
+	outfile = make_string(spec,"_L=",L,"_J=",J,"_M=",M,"_Sc=",Sc);
 	Efilename = outfile;
 	outfile += "_dE=";
 	lout.set(outfile+str(dE)+".log",wd+"log");
@@ -70,8 +71,8 @@ int main (int argc, char* argv[])
 	#ifdef USING_SU2
 	{
 		A = H.S(L/2);
-		Adag = H.Sdag(L/2, 0, 1./sqrt(3.));
-		Qc = {M+3};
+		Adag = H.Sdag(L/2, 0, sqrt(3.));
+		Qc = {Sc};
 	}
 	#else
 	{

@@ -265,23 +265,31 @@ void Multipede<Nlegs,Symmetry,MatrixType>::
 setTarget (std::array<qType,Nlegs> Q)
 {
 	MatrixType Mtmp(1,1);
-	if (Q[2] == Symmetry::qvacuum())
-	{
+// 	if (Q[2] == Symmetry::qvacuum())
+// 	{
+// #ifdef PRINT_SU2_FACTORS
+// 		cout << termcolor::bold << termcolor::red << "Global SU2 factor in setTarget() from Multipede: " << termcolor::reset
+// 			 << "√" << Symmetry::coeff_dot(Q[0]) << " • √" << Symmetry::coeff_dot(Q[1]) << endl;
+// #endif
+// 		Mtmp << sqrt(Symmetry::coeff_dot(Q[0]) * Symmetry::coeff_dot(Q[1]));
+// 	}
+// 	else if (Q[1] == Symmetry::qvacuum())
+// 	{
+// #ifdef PRINT_SU2_FACTORS
+// 		cout << termcolor::bold << termcolor::red << "Global SU2 factor in setTarget() from Multipede: " << termcolor::reset
+// 			 << "√" << Symmetry::coeff_dot(Q[0]) << " • √" << Symmetry::coeff_dot(Q[2]) << endl;
+// #endif
+// 		Mtmp << sqrt(Symmetry::coeff_dot(Q[0]) * Symmetry::coeff_dot(Q[2]));
+// 	}
+// 	else
+// 	{
 #ifdef PRINT_SU2_FACTORS
 		cout << termcolor::bold << termcolor::red << "Global SU2 factor in setTarget() from Multipede: " << termcolor::reset
-			 << "√" << Symmetry::coeff_dot(Q[0]) << " • √" << Symmetry::coeff_dot(Q[1]) << endl;
+			 << "√" << Symmetry::coeff_dot(Q[0]) << " • √" << Symmetry::coeff_dot(Q[1]) << " • √" << Symmetry::coeff_dot(Q[2]) << endl;
 #endif
-		Mtmp << sqrt(Symmetry::coeff_dot(Q[0]) * Symmetry::coeff_dot(Q[1]));
-	}
-	else// if (Q[1] == Symmetry::qvacuum())
-	{
-#ifdef PRINT_SU2_FACTORS
-		cout << termcolor::bold << termcolor::red << "Global SU2 factor in setTarget() from Multipede: " << termcolor::reset
-			 << "√" << Symmetry::coeff_dot(Q[0]) << " • √" << Symmetry::coeff_dot(Q[2]) << endl;
-#endif
-		Mtmp << sqrt(Symmetry::coeff_dot(Q[0]) * Symmetry::coeff_dot(Q[2]));
-	}
-	
+		Mtmp << sqrt(Symmetry::coeff_dot(Q[0])) * sqrt(Symmetry::coeff_dot(Q[1])) * sqrt(Symmetry::coeff_dot(Q[2]));
+	// }
+
 	boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[1][1]);
 	Mtmparray[0][0] = Mtmp;
 	
