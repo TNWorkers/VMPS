@@ -243,6 +243,7 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 	
 	(FERMIONIC)? Mout.setLocal(locx, (factor * pow(-1.,locx+1) * Op).plain<double>(), F[0].sign().plain<double>())
 		: Mout.setLocal(locx, Op.plain<double>());
+
 	return Mout;
 }
 

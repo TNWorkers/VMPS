@@ -43,6 +43,9 @@ class Mps : public DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >
 	void HxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::VERBOSITY::OPTION VERBOSITY);
 	template<typename Symmetry_, typename S1, typename S2> friend 
 	void OxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
+	template<typename Symmetry_, typename S1, typename S2> friend 
+	void OxV_exact (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout);
+
 	template<typename Symmetry_, typename S_> friend class Mps; // in order to exchange data between real & complex Mps
 	
 public:
@@ -2821,56 +2824,24 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 		return 0.;
 	}
 	
-//	if (this->pivot != -1 and this->pivot == Vket.pivot and false)
-//	{
-//		Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out = A[this->pivot][0].adjoint().contract(Vket.A[Vket.pivot][0]);
-//		for (size_t s=1; s<qloc[this->pivot].size(); s++)
-//		{
-//			out += A[this->pivot][s].adjoint().contract(Vket.A[Vket.pivot][s]);
-//		}
-//		Scalar res = out.trace();
-//		return res;
-//	}
-//	else
-//	{
-		Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > Mtmp = A[0][0].adjoint().contract(Vket.A[0][0]);
-		for (size_t s=1; s<qloc[0].size(); ++s)
-		{
-			Mtmp += A[0][s].adjoint().contract(Vket.A[0][s]);
-		}
-		Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > Mout = Mtmp;
-		
-		for (size_t l=1; l<this->N_sites; ++l)
-		{
-			Mtmp = (A[l][0].adjoint() * Mout ).contract(Vket.A[l][0]);
-			for (size_t s=1; s<qloc[l].size(); ++s)
-			{
-				Mtmp += (A[l][s].adjoint() * Mout).contract(Vket.A[l][s]);
-			}
-			Mout = Mtmp;
-		}
-		
-		assert(Mout.dim == 1 and 
-			   Mout.block[0].rows() == 1 and 
-			   Mout.block[0].cols() == 1 and 
-			   "Result of contraction in <φ|ψ> is not a scalar!");
-		Scalar out = Mtmp.block[0](0,0);
-#ifdef PRINT_SU2_FACTORS
-		cout << termcolor::bold << termcolor::red << "Global SU2 factor in dot(Bra,Ket) from Mps: " << termcolor::reset
-			 << Symmetry::coeff_dot(Qtot) << endl;
-#endif
+	Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > L; L.setVacuum();
+	Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > Lnext;
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		contract_L(L, A[l], Vket.A_at(l), qloc[l], Lnext);
+		L.clear();
+		L = Lnext;
+		Lnext.clear();
+	}
 
-		out *= Symmetry::coeff_dot(Qtot);
-		return out;
-//	}
-	
-//	assert(Mout.dim == 1 and 
-//	       Mout.block[0].rows() == 1 and 
-//	       Mout.block[0].cols() == 1 and 
-//	       "Result of contraction in <φ|ψ> is not a scalar!");
-	
-//	return Mout.block[0](0,0);
-	// return Mout.block[0].trace();
+	Scalar out = L.trace();
+// #ifdef PRINT_SU2_FACTORS
+// 		cout << termcolor::bold << termcolor::red << "Global SU2 factor in dot(Bra,Ket) from Mps: " << termcolor::reset
+// 			 << Symmetry::coeff_dot(Qtot) << endl;
+// #endif
+
+// 		out *= Symmetry::coeff_dot(Qtot);
+	return out;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -4000,7 +3971,7 @@ ostream &operator<< (ostream& os, const Mps<Symmetry,Scalar> &V)
 		for (size_t s=0; s<V.locBasis(l).size(); ++s)
 		{
 			os << "l=" << l << "\ts=" << Sym::format<Symmetry>(V.locBasis(l)[s]) << endl;
-			os << V.A_at(l)[s].formatted();
+			os << V.A_at(l)[s].print(true); //V.A_at(l)[s].formatted();
 			os << endl;
 		}
 		os << setfill('-') << setw(80) << "-" << setfill(' ');

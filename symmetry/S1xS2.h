@@ -105,6 +105,9 @@ public:
 	inline static Scalar coeff_HPsi(const qType& q1, const qType& q2, const qType& q3,
 									const qType& q4, const qType& q5, const qType& q6,
 									const qType& q7, const qType& q8, const qType& q9);
+	inline static Scalar coeff_AW(const qType& q1, const qType& q2, const qType& q3,
+								  const qType& q4, const qType& q5, const qType& q6,
+								  const qType& q7, const qType& q8, const qType& q9);
 	
 	inline static Scalar coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
 									 const qType& q4, const qType& q5, const qType& q6,
@@ -372,6 +375,21 @@ coeff_HPsi(const qType& q1, const qType& q2, const qType& q3,
 		       S2::coeff_HPsi({q1[1]},{q2[1]},{q3[1]},
 							  {q4[1]},{q5[1]},{q6[1]},
 							  {q7[1]},{q8[1]},{q9[1]});
+	return out;
+}
+
+template<typename S1, typename S2>
+typename S1::Scalar_ S1xS2<S1,S2>::
+coeff_AW(const qType& q1, const qType& q2, const qType& q3,
+		 const qType& q4, const qType& q5, const qType& q6,
+		 const qType& q7, const qType& q8, const qType& q9)
+{
+	Scalar out=S1::coeff_AW({q1[0]},{q2[0]},{q3[0]},
+							{q4[0]},{q5[0]},{q6[0]},
+							{q7[0]},{q8[0]},{q9[0]})*
+		       S2::coeff_AW({q1[1]},{q2[1]},{q3[1]},
+							{q4[1]},{q5[1]},{q6[1]},
+							{q7[1]},{q8[1]},{q9[1]});
 	return out;
 }
 

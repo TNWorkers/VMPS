@@ -93,8 +93,8 @@ public:
 	///@{
 	Mpo<Symmetry> Simp (size_t locx, size_t locy=0, double factor=1.);
 	Mpo<Symmetry> Simpdag (size_t locx, size_t locy=0, double factor=sqrt(3.));
-	Mpo<Symmetry> Ssub (size_t locx, size_t locy, double factor);
-	Mpo<Symmetry> Ssubdag (size_t locx, size_t locy, double factor=sqrt(3.));
+	Mpo<Symmetry> Ssub (size_t locx, size_t locy=0, double factor=1.);
+	Mpo<Symmetry> Ssubdag (size_t locx, size_t locy=0, double factor=sqrt(3.));
 	///@}
 	
 	///@{
@@ -183,7 +183,6 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-	// false: For SU(2) symmetries, the squared Hamiltonian cannot be calculated in advance.
 }
 
 DMRG::CONTROL::GLOB KondoSU2xU1::
@@ -268,20 +267,31 @@ set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F, cons
 	{
 		if (tPara(i,j) != 0.)
 		{
-			auto Otmp = OperatorType::prod(OperatorType::outerprod(B.Id(),F.sign(),{1,0}),OperatorType::outerprod(B.Id(),F.c(j),{2,-1}),{2,-1});
-			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.),
-											 OperatorType::outerprod(B.Id(),F.cdag(i),{2,+1}).plain<double>(),
-											 Otmp.plain<double>()));
-			Otmp = OperatorType::prod(OperatorType::outerprod(B.Id(),F.sign(),{1,0}),OperatorType::outerprod(B.Id(),F.cdag(j),{2,+1}),{2,+1});
-			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.),
-											 OperatorType::outerprod(B.Id(),F.c(i),{2,-1}).plain<double>(),
-											 Otmp.plain<double>()));
+			// auto Otmp = OperatorType::prod(OperatorType::outerprod(B.Id(),F.sign(),{1,0}),OperatorType::outerprod(B.Id(),F.c(j),{2,-1}),{2,-1});
+			// Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.),
+			// 								 OperatorType::outerprod(B.Id(),F.cdag(i),{2,+1}).plain<double>(),
+			// 								 Otmp.plain<double>()));
+			// Otmp = OperatorType::prod(OperatorType::outerprod(B.Id(),F.sign(),{1,0}),OperatorType::outerprod(B.Id(),F.cdag(j),{2,+1}),{2,+1});
+			// Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.),
+			// 								 OperatorType::outerprod(B.Id(),F.c(i),{2,-1}).plain<double>(),
+			// 								 Otmp.plain<double>()));
+			
 			// Use this version:
-			// auto cF    = OperatorType::prod(F.c(),   F.sign(),{2,-1});
-			// auto cdagF = OperatorType::prod(F.cdag(),F.sign(),{2,+1});
-			// /**\todo: think about crazy fermionic signs here:*/
-			// Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cdagF.plain<double>(), F.c().plain<double>(),    F.sign().plain<double>()));
-			// Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cF.plain<double>()   , F.cdag().plain<double>(), F.sign().plain<double>()));
+			// auto cdagF = OperatorType::prod(F.cdag(i),F.sign(),{2,+1});
+			// auto cF    = OperatorType::prod(F.c(i),   F.sign(),{2,-1});
+			// Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cdagF.plain<double>(), F.c(j).plain<double>()));
+			// SU(2) spinors commute on different sites, hence no sign flip here:
+			// Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cF.plain<double>(),    F.cdag(j).plain<double>()));
+
+			auto cF = OperatorType::prod(OperatorType::outerprod(B.Id(),F.c(i),{2,-1}),OperatorType::outerprod(B.Id(),F.sign(),{1,0}),{2,-1});
+			auto cdagF = OperatorType::prod(OperatorType::outerprod(B.Id(),F.cdag(i),{2,+1}), OperatorType::outerprod(B.Id(),F.sign(),{1,0}),{2,+1});
+
+			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
+											 cF.plain<double>(),
+											 OperatorType::outerprod(B.Id(),F.cdag(j),{2,+1}).plain<double>()));
+			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
+											 cdagF.plain<double>(),
+											 OperatorType::outerprod(B.Id(),F.c(j),{2,-1}).plain<double>()));
 		}
 		
 		if (Vpara(i,j) != 0.)
@@ -301,16 +311,33 @@ set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F, cons
 	{
 		assert(F.orbitals() == 1 and "Cannot do a ladder with t'!");
 		
-		auto Otmp = OperatorType::prod(F.sign(),F.c(),{2,-1});
-		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.),
-										 OperatorType::outerprod(B.Id(),F.cdag(),{2,+1}).plain<double>(),
-										 OperatorType::outerprod(B.Id(),Otmp,{2,-1}).plain<double>(),
-										 OperatorType::outerprod(B.Id(),F.sign(),{1,0}).plain<double>()));
-		Otmp = OperatorType::prod(F.sign(),F.cdag(),{2,+1});
-		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.),
+		// auto cF    = OperatorType::prod(F.c(),   F.sign(),{2,-1});
+		// auto cdagF = OperatorType::prod(F.cdag(),F.sign(),{2,+1});
+		// /**\todo: think about crazy fermionic signs here:*/
+		// Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cdagF.plain<double>(), F.c().plain<double>(),    F.sign().plain<double>()));
+		// Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cF.plain<double>()   , F.cdag().plain<double>(), F.sign().plain<double>()));
+
+		auto cF = OperatorType::prod(OperatorType::outerprod(B.Id(),F.c(),{2,-1}),OperatorType::outerprod(B.Id(),F.sign(),{1,0}),{2,-1});
+		auto cdagF = OperatorType::prod(OperatorType::outerprod(B.Id(),F.cdag(),{2,+1}),OperatorType::outerprod(B.Id(),F.sign(),{1,0}),{2,+1});
+		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.),
+										 cdagF.plain<double>(),
 										 OperatorType::outerprod(B.Id(),F.c(),{2,-1}).plain<double>(),
-										 OperatorType::outerprod(B.Id(),Otmp,{2,+1}).plain<double>(),
 										 OperatorType::outerprod(B.Id(),F.sign(),{1,0}).plain<double>()));
+		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.),
+										 cF.plain<double>(),
+										 OperatorType::outerprod(B.Id(),F.cdag(),{2,+1}).plain<double>(),
+										 OperatorType::outerprod(B.Id(),F.sign(),{1,0}).plain<double>()));
+									 
+		// auto Otmp = OperatorType::prod(F.sign(),F.c(),{2,-1});
+		// Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.),
+		// 								 OperatorType::outerprod(B.Id(),F.cdag(),{2,+1}).plain<double>(),
+		// 								 OperatorType::outerprod(B.Id(),Otmp,{2,-1}).plain<double>(),
+		// 								 OperatorType::outerprod(B.Id(),F.sign(),{1,0}).plain<double>()));
+		// Otmp = OperatorType::prod(F.sign(),F.cdag(),{2,+1});
+		// Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.),
+		// 								 OperatorType::outerprod(B.Id(),F.c(),{2,-1}).plain<double>(),
+		// 								 OperatorType::outerprod(B.Id(),Otmp,{2,+1}).plain<double>(),
+		// 								 OperatorType::outerprod(B.Id(),F.sign(),{1,0}).plain<double>()));
 	}
 	
 	// local terms
@@ -710,23 +737,23 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	}
 	else if(locx1<locx2)
 	{
-//		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, sign, {2,+1}).plain<double>(), 
-//		                               pow(-1.,locx2-locx1+1) * c.plain<double>()}, 
-//		                               sign.plain<double>());
-		// old:
-		Mout.setLocal({locx1, locx2}, {-sqrt(2.) * cdag.plain<double>(), 
-		                               OperatorType::prod(sign, c, {2,-1}).plain<double>()}, 
+		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, sign, {2,+1}).plain<double>(), 
+		                               pow(-1.,locx2-locx1+1) * c.plain<double>()}, 
 		                               sign.plain<double>());
+		// old:
+		// Mout.setLocal({locx1, locx2}, {-sqrt(2.) * cdag.plain<double>(), 
+		//                                OperatorType::prod(sign, c, {2,-1}).plain<double>()}, 
+		//                                sign.plain<double>());
 	}
 	else if(locx1>locx2)
 	{
-//		Mout.setLocal({locx2, locx1}, {sqrt(2.) * OperatorType::prod(c, sign, {2,-1}).plain<double>(), 
-//		                               pow(-1.,locx2-locx1+1) * cdag.plain<double>()}, 
-//		                               sign.plain<double>());
-	// old:
-		Mout.setLocal({locx1, locx2}, {-sqrt(2.) * OperatorType::prod(sign, cdag, {2,+1}).plain<double>(), 
-		                               c.plain<double>()}, 
+		Mout.setLocal({locx2, locx1}, {sqrt(2.) * OperatorType::prod(c, sign, {2,-1}).plain<double>(), 
+		                               pow(-1.,locx2-locx1+1) * cdag.plain<double>()}, 
 		                               sign.plain<double>());
+	// old:
+		// Mout.setLocal({locx1, locx2}, {-sqrt(2.) * OperatorType::prod(sign, cdag, {2,+1}).plain<double>(), 
+		//                                c.plain<double>()}, 
+		//                                sign.plain<double>());
 	}
 	return Mout;
 }

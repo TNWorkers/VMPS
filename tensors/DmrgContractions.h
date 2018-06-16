@@ -1545,10 +1545,8 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
                   const vector<qarray<Symmetry::Nq> > &qOp,
 				  const Qbasis<Symmetry> &qauxAl,
 				  const Qbasis<Symmetry> &qauxWl,
-				  const Qbasis<Symmetry> &tensor_l,
 				  const Qbasis<Symmetry> &qauxAr,
 				  const Qbasis<Symmetry> &qauxWr,
-				  const Qbasis<Symmetry> &tensor_r,
                   vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aout)
 {
 	for (size_t s=0; s<qloc.size(); ++s)
@@ -1556,14 +1554,16 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 		Aout[s].clear();
 	}
 
-	auto tensorBasis_l = tensor_l;
-	auto tensorBasis_r = tensor_r;
+	MpoScalar factor_cgc;
+	
+	auto tensorBasis_l = qauxAl.combine(qauxWl);
+	auto tensorBasis_r = qauxAr.combine(qauxWr);
 
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
-	for (size_t k=0;  k<qloc.size();  ++k)
+	for (size_t k=0;  k<qOp.size();   ++k)
 	{
-
+		if(W[s1][s2][k].size() == 0) { continue; } //Checks whether QNs s1, s2 and k fit together.
 		for (size_t q=0; q<Ain[s2].size(); q++)
 		// for (const auto &[qWl,qWl_dim,qWl_plain] : qauxWl) // cpp is to stupid to call cbegin() and cend() here... 
 		for (auto it=qauxWl.cbegin(); it != qauxWl.cend(); it++)
@@ -1572,18 +1572,27 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 			auto qWrs = Symmetry::reduceSilent(qWl,qOp[k]);
 			for (const auto &qWr : qWrs)
 			{
+				if (qauxWr.find(qWr) == false) {continue;}
 				auto qmerge_ls = Symmetry::reduceSilent(Ain[s2].in[q] ,qWl);
 				auto qmerge_rs = Symmetry::reduceSilent(Ain[s2].out[q],qWr);
 				for (const auto qmerge_l : qmerge_ls)
 				for (const auto qmerge_r : qmerge_rs)
 				{
-					Scalar factor_cgc = Symmetry::coeff_AW(Ain[s2].in[q] , qWl     , qmerge_l,
-														   qOp[k]      , qloc[s2], qloc[s1],
-														   Ain[s2].out[q], qWr     , qmerge_r);
-					if (abs(factor_cgc) < abs(mynumeric_limits<Scalar>::epsilon())) { continue; }
+					qarray3<Symmetry::Nq> qCheck = {qmerge_l,qloc[s1],qmerge_r};
+					if (!Symmetry::validate(qCheck)) { continue; }
+					if (tensorBasis_l.find(qmerge_l) == false) {continue;}
+					if (tensorBasis_r.find(qmerge_r) == false) {continue;}
+					if constexpr (Symmetry::NON_ABELIAN)
+								 {
+									 factor_cgc = Symmetry::coeff_AW(Ain[s2].in[q] , qWl   , qmerge_l,
+									 								 qloc[s2]      , qOp[k], qloc[s1],
+									 								 Ain[s2].out[q], qWr   , qmerge_r);
+								 }
+					else { factor_cgc = MpoScalar(1); }
 
-					MatrixXd Mtmp(tensorBasis_l.size(), tensorBasis_r.size()); Mtmp.setZero();
-					
+					if (abs(factor_cgc) < abs(mynumeric_limits<MpoScalar>::epsilon())) { continue; }
+
+					MatrixXd Mtmp(tensorBasis_l.inner_dim(qmerge_l), tensorBasis_r.inner_dim(qmerge_r)); Mtmp.setZero();
 					int left_l = tensorBasis_l.leftAmount(qmerge_l, { Ain[s2].in[q] , qWl } );
 					int left_r = tensorBasis_r.leftAmount(qmerge_r, { Ain[s2].out[q], qWr } );
 
@@ -1592,15 +1601,6 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 					{
 						size_t wr = iW.row();
 						size_t wc = iW.col();
-
-						// size_t br = iWbot.row();
-						// size_t bc = iWbot.col();
-						// size_t tr = iWtop.row();
-						// size_t tc = iWtop.col();
-
-						// size_t a1 = left1+br*W[s1][s2][k].rows()+tr;
-						// size_t a2 = left2+bc*W[s1][s2][k].cols()+tc;
-
 						Mtmp.block(wr+left_l,wc+left_r,Ain[s2].block[q].rows(),Ain[s2].block[q].cols()) += Ain[s2].block[q] * iW.value() * factor_cgc;
 					}
 					qarray2<Symmetry::Nq> cmp = qarray2<Symmetry::Nq>{qmerge_l, qmerge_r}; //auxiliary quantum numbers of Aout

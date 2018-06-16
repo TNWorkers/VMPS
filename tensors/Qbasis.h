@@ -132,6 +132,12 @@ public:
 	 */
 	Qbasis<Symmetry> combine( const Qbasis<Symmetry>& other ) const;
 
+	/**
+	 * Sets the history of a Qbasis which only has one quantum number \p Qval with inner dimension 1 
+	 * so that the quantum number is arised from combining \p Q1 and \p Q2 
+	 */
+	void setHistoryEntry( const qType& Qval, const qType &Q1, const qType &Q2, Eigen::Index dim );
+
 	/**Adds to bases together.*/
 	Qbasis<Symmetry> add( const Qbasis<Symmetry>& other ) const;
 
@@ -439,6 +445,18 @@ add( const Qbasis<Symmetry>& other ) const
 		}
 	}
 	return out;
+}
+
+template<typename Symmetry>
+void Qbasis<Symmetry>::
+setHistoryEntry( const qType &Qval, const qType &Q1, const qType &Q2, Eigen::Index dim )
+{
+	vector<fuseData> history_;
+	fuseData entry;
+	entry.source = {Q1,Q2};
+	entry.dim = dim;
+	history_.push_back(entry);
+	history.insert(std::make_pair(Qval,history_));
 }
 
 template<typename Symmetry>

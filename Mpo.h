@@ -1068,17 +1068,16 @@ make_localGvec (const vector<size_t> &loc, const vector<OperatorType> &Op)
 	
 	Daux = 1;
 	vector<SuperMatrix<Symmetry,Scalar> > Gvec(N_sites);
-	
-	for (size_t l=0; l<N_sites; l++)
-	{
-		qOp[l].resize(1);
-		bool GATE = true;
+
+	for (size_t l=0; l<N_sites; l++) { qOp[l].resize(1); qOp[l][0] = Symmetry::qvacuum(); }
+	// for (size_t l=0; l<N_sites; l++)
+	// {
 		for(size_t pos=0; pos<loc.size(); pos++)
 		{
-			if(l == loc[pos]) { qOp[l][0] = Op[pos].Q; GATE = false; }
-			if( GATE ) { qOp[l][0] = Symmetry::qvacuum(); }
+			// if(l == loc[pos]) {  cout << "l=" << l << ", qOp[l]=" << qOp[l][0] << endl;} // We can use the 0th component here.
+			qOp[loc[pos]][0] = Symmetry::reduceSilent(qOp[loc[pos]][0],Op[pos].Q)[0];
 		}
-	}
+	// }
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{

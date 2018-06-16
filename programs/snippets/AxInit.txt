@@ -1,8 +1,9 @@
 	//--------------<A*init>---------------
 	MODEL::StateXd initA;
-	initA.eps_svd = 1e-15;
-	MODEL::CompressorXd Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
-	Compadre.prodCompress(A, Adag, init->state, initA, Qc, init->state.calc_Dmax());
+	// initA.eps_svd = 1e-15;
+	// MODEL::CompressorXd Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
+	OxV_exact(A,init->state,initA);
+	// Compadre.prodCompress(A, Adag, init->state, initA, Qc, init->state.calc_Dmax());
 	delete init;
 	initA.eps_svd = 1e-7;
 	cout << "AxV:" << endl << initA.info() << endl;

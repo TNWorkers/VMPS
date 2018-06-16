@@ -447,35 +447,35 @@ contract(const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE) const
 	Biped<Symmetry,MatrixType_> Ares;
 	Scalar factor_cgc;
 	for (std::size_t q1=0; q1<this->size(); ++q1)
-		for (std::size_t q2=0; q2<A.size(); ++q2)
+	for (std::size_t q2=0; q2<A.size(); ++q2)
+	{
+		if (this->out[q1] == A.in[q2])
 		{
-			if (this->out[q1] == A.in[q2])
+			if (this->in[q1] == A.out[q2])
 			{
-				if (this->in[q1] == A.out[q2])
+				if (this->block[q1].rows() != 0 and A.block[q2].rows() != 0)
 				{
-					if (this->block[q1].rows() != 0 and A.block[q2].rows() != 0)
+					factor_cgc = Scalar(1);
+					if ( MODE == contract::MODE::OORR )
 					{
-						factor_cgc = Scalar(1);
-						if ( MODE == contract::MODE::OORR )
-						{
-							factor_cgc = Symmetry::coeff_rightOrtho(this->out[q1],this->in[q2]);
-						}
-						else if ( MODE == contract::MODE::DOT )
-						{
-							factor_cgc = Symmetry::coeff_dot(this->out[q1]);
-						}
-						if ( auto it = Ares.dict.find({{this->in[q1],A.out[q2]}}); it == Ares.dict.end() )
-						{
-							Ares.push_back(this->in[q1], A.out[q2], factor_cgc*this->block[q1]*A.block[q2]);
-						}
-						else
-						{
-							Ares.block[it->second] += factor_cgc*this->block[q1]*A.block[q2];
-						}
+						factor_cgc = Symmetry::coeff_rightOrtho(this->out[q1],this->in[q2]);
+					}
+					else if ( MODE == contract::MODE::DOT )
+					{
+						factor_cgc = Symmetry::coeff_dot(this->out[q1]);
+					}
+					if ( auto it = Ares.dict.find({{this->in[q1],A.out[q2]}}); it == Ares.dict.end() )
+					{
+						Ares.push_back(this->in[q1], A.out[q2], factor_cgc*this->block[q1]*A.block[q2]);
+					}
+					else
+					{
+						Ares.block[it->second] += factor_cgc*this->block[q1]*A.block[q2];
 					}
 				}
 			}
 		}
+	}
 	return Ares;
 }
 

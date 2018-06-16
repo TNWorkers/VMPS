@@ -28,6 +28,7 @@ public:
 	Mpo<Symmetry> Sx (size_t locx, size_t locy=0) const {return Scomp(SX,locx,locy);};
 	Mpo<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2);};
 	Mpo<Symmetry> SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2);};
+	Mpo<Symmetry> SmSp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SM,SP,locx1,locx2,locy1,locy2);};
 	///@}
 	
 	// <SvecSvec>
@@ -108,7 +109,8 @@ double HeisenbergObservables<Symmetry>::
 SvecSvecAvg (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
 	return isReal(avg(Psi,SzSz(locx1,locx2,locy1,locy2),Psi))+
-	       isReal(avg(Psi,SpSm(locx1,locx2,locy1,locy2),Psi));
+		   0.5*(isReal(avg(Psi,SpSm(locx1,locx2,locy1,locy2),Psi))+
+			    isReal(avg(Psi,SmSp(locx1,locx2,locy1,locy2),Psi)));
 }
 
 #endif
