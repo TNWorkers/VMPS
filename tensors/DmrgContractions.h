@@ -8,6 +8,8 @@
 #include "tensors/DmrgIndexGymnastics.h"
 #include "symmetry/functions.h"
 
+enum CONTRACT_LR_MODE {FULL, TRIANGULAR, FIXED};
+
 /**
  * \ingroup Tensors
  * Contracts a left transfer matrix \p Lold with two MpsQ tensors \p Abra, \p Aket and an MpoQ tensor \p W as follows:
@@ -28,18 +30,19 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
                  Tripod<Symmetry,MatrixType> &Lnew,
-				 bool RANDOMIZE=false)
+                 bool RANDOMIZE=false,
+                 tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0))
 {
-	std::array<typename Symmetry::qType,3> qCheck;
 	MpoScalar factor_cgc;
 	Lnew.clear();
 	Lnew.setZero();
+	auto [MODE,fixed_b] = MODE_input;
 	
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t k=0; k<qOp.size(); ++k)
 	{
-		qCheck = {qloc[s2],qOp[k],qloc[s1]};
+		array<typename Symmetry::qType,3> qCheck = {qloc[s2],qOp[k],qloc[s1]};
 		if(!Symmetry::validate(qCheck)) {continue;}
 		
 		for (size_t qL=0; qL<Lold.dim; ++qL)
@@ -68,14 +71,20 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 					{
 						factor_cgc = 1.;
 					}
-					if (std::abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+					if (abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) {continue;}
+					
 					for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
-						for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+					{
+						size_t a = iW.row();
+						size_t b = iW.col();
+						
+						if (MODE == FULL or
+						   (MODE == TRIANGULAR and b==fixed_b and a>fixed_b) or
+						   (MODE == FIXED and b==a and b==fixed_b))
 						{
-							size_t a1 = iW.row();
-							size_t a2 = iW.col();
-							
-							if (Lold.block[qL][a1][0].rows() != 0)
+//							cout << "contract_L MODE=" << MODE << ", a=" << a << ", b=" << b << endl;
+							if (Lold.block[qL][a][0].rows() != 0)
 							{
 								MatrixType Mtmp;
 								if(RANDOMIZE)
@@ -85,35 +94,35 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 								}
 								else
 								{
-									optimal_multiply(factor_cgc*iW.value(),
-								                 Abra[s1].block[qAbra].adjoint(),
-												 Lold.block[qL][a1][0],
-												 Aket[s2].block[qAket],
-												 Mtmp);
+									optimal_multiply(factor_cgc * iW.value(),
+									             Abra[s1].block[qAbra].adjoint(),
+									             Lold.block[qL][a][0],
+									             Aket[s2].block[qAket],
+									             Mtmp);
 								}
-								
+							
 								auto it = Lnew.dict.find(quple);
 								if (it != Lnew.dict.end())
 								{
-//									cout << "a=" << a1 << ", b=" << a2 << ", q=" << quple[0] << "," << quple[1] << "," << quple[2] << endl;
-									if (Lnew.block[it->second][a2][0].rows() != Mtmp.rows() or 
-										Lnew.block[it->second][a2][0].cols() != Mtmp.cols())
+									if (Lnew.block[it->second][b][0].rows() != Mtmp.rows() or 
+										Lnew.block[it->second][b][0].cols() != Mtmp.cols())
 									{
-										Lnew.block[it->second][a2][0] = Mtmp;
+										Lnew.block[it->second][b][0] = Mtmp;
 									}
 									else
 									{
-										Lnew.block[it->second][a2][0] += Mtmp;
+										Lnew.block[it->second][b][0] += Mtmp;
 									}
 								}
 								else
 								{
 									boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].cols()][1]);
-									Mtmpvec[a2][0] = Mtmp;
+									Mtmpvec[b][0] = Mtmp;
 									Lnew.push_back(quple, Mtmpvec);
 								}
 							}
 						}
+					}
 				}
 			}
 		}
@@ -140,18 +149,19 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
                  Tripod<Symmetry,MatrixType> &Rnew,
-				 bool RANDOMIZE=false)
+                 bool RANDOMIZE = false,
+                 tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0))
 {
-	std::array<typename Symmetry::qType,3> qCheck;
 	MpoScalar factor_cgc;
 	Rnew.clear();
 	Rnew.setZero();
+	auto [MODE,fixed_a] = MODE_input;
 	
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t k=0; k<qOp.size(); ++k)
 	{
-		qCheck = {qloc[s2],qOp[k],qloc[s1]};
+		array<typename Symmetry::qType,3> qCheck = {qloc[s2],qOp[k],qloc[s1]};
 		if(!Symmetry::validate(qCheck)) {continue;}
 		
 		for (size_t qR=0; qR<Rold.dim; ++qR)
@@ -191,15 +201,19 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 						{
 							factor_cgc = 1.;
 						}
-						if (std::abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+						if (abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
 						
 						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
-							for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+						for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+						{
+							size_t a = iW.row();
+							size_t b = iW.col();
+							
+							if (MODE == FULL or
+							   (MODE == TRIANGULAR and a==fixed_a and fixed_a>b) or
+							   (MODE == FIXED and b==a and a==fixed_a))
 							{
-								size_t a1 = iW.row();
-								size_t a2 = iW.col();
-								
-								if (Rold.block[qR][a2][0].size() != 0)
+								if (Rold.block[qR][b][0].size() != 0)
 								{
 									MatrixType Mtmp;
 									if (RANDOMIZE)
@@ -210,35 +224,34 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 									else
 									{
 										optimal_multiply(factor_cgc * iW.value(),
-									                 Aket[s2].block[q2->second],
-									                 Rold.block[qR][a2][0],
-									                 Abra[s1].block[q1->second].adjoint(),
-									                 Mtmp);
+										             Aket[s2].block[q2->second],
+										             Rold.block[qR][b][0],
+										             Abra[s1].block[q1->second].adjoint(),
+										             Mtmp);
 									}
-									
+								
 									auto it = Rnew.dict.find(quple);
 									if (it != Rnew.dict.end())
 									{
-										// cout << "a=" << a1 << ", b=" << a2 << ", qmid=" << quple[2] << endl;
-										if (Rnew.block[it->second][a1][0].rows() != Mtmp.rows() or 
-										    Rnew.block[it->second][a1][0].cols() != Mtmp.cols())
+										if (Rnew.block[it->second][a][0].rows() != Mtmp.rows() or 
+											Rnew.block[it->second][a][0].cols() != Mtmp.cols())
 										{
-											Rnew.block[it->second][a1][0] = Mtmp;
+											Rnew.block[it->second][a][0] = Mtmp;
 										}
 										else
 										{
-											Rnew.block[it->second][a1][0] += Mtmp;
+											Rnew.block[it->second][a][0] += Mtmp;
 										}
 									}
 									else
 									{
-										// cout << "a=" << a1 << ", b=" << a2 << ", qmid=" << quple[2] << endl;
 										boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].rows()][1]);
-										Mtmpvec[a1][0] = Mtmp;
+										Mtmpvec[a][0] = Mtmp;
 										Rnew.push_back(quple, Mtmpvec);
 									}
 								}
 							}
+						}
 					}
 				}
 			}
@@ -370,7 +383,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
                  const vector<Biped<Symmetry,MatrixType> > &Abra,
-				 const unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<MpoScalar> > &V,
+                 const unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<MpoScalar> > &V,
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
@@ -480,7 +493,7 @@ void contract_L (const Biped<Symmetry,MatrixType> &Lold,
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  Biped<Symmetry,MatrixType> &Lnew,
-				 bool RANDOMIZE=false)
+                 bool RANDOMIZE=false)
 {
 	Lnew.clear();
 	Lnew.setZero();
@@ -904,6 +917,110 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 			}
 		}
 	}
+	return res;
+}
+
+template<typename Symmetry, typename Scalar>
+Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
+                    const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R,
+                    bool ADJOINT=false)
+{
+	Scalar res = 0;
+	
+	for (size_t qL=0; qL<L.dim; ++qL)
+	{
+		qarray3<Symmetry::Nq> quple;
+//		if (ADJOINT)
+//		{
+//			quple = {L.in(qL), L.out(qL), L.mid(qL)};
+//		}
+//		else
+//		{
+//			quple = {L.out(qL), L.in(qL), L.mid(qL)};
+//		}
+		quple = {L.out(qL), L.in(qL), L.mid(qL)};
+		auto qR = R.dict.find(quple);
+		
+		if (qR != R.dict.end())
+		{
+			for (size_t a=0; a<L.block[qL].shape()[0]; ++a)
+			{
+				if (L.block[qL][a][0].size() != 0 and
+					R.block[qR->second][a][0].size() != 0)
+				{
+					if (ADJOINT)
+					{
+						res += (L.block[qL][a][0].adjoint() * R.block[qR->second][a][0]).trace();
+					}
+					else
+					{
+						res += (L.block[qL][a][0] * R.block[qR->second][a][0]).trace();
+					}
+				}
+			}
+		}
+	}
+	
+	return res;
+}
+
+template<typename Symmetry, typename Scalar>
+Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
+                    const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >  &R)
+{
+	Scalar res = 0;
+	
+	for (size_t qL=0; qL<L.dim; ++qL)
+	{
+		if (L.mid(qL) == Symmetry::qvacuum())
+		{
+			qarray2<Symmetry::Nq> quple = {L.out(qL), L.in(qL)};
+			auto qR = R.dict.find(quple);
+		
+			if (qR != R.dict.end())
+			{
+				for (size_t a=0; a<L.block[qL].shape()[0]; ++a)
+				{
+					if (L.block[qL][a][0].size() != 0 and
+						R.block[qR->second].size() != 0)
+					{
+						res += (L.block[qL][a][0] * R.block[qR->second]).trace();
+					}
+				}
+			}
+		}
+	}
+	
+	return res;
+}
+
+template<typename Symmetry, typename Scalar>
+Scalar contract_LR (const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
+                    const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R)
+{
+	Scalar res = 0;
+	
+	for (size_t qR=0; qR<R.dim; ++qR)
+	{
+		if (R.mid(qR) == Symmetry::qvacuum())
+		{
+			qarray2<Symmetry::Nq> quple = {R.out(qR), R.in(qR)};
+			auto qL = L.dict.find(quple);
+			
+			if (qL != L.dict.end())
+			{
+				for (size_t a=0; a<R.block[qR].shape()[0]; ++a)
+				{
+					if (R.block[qR][a][0].size() != 0 and
+						L.block[qL->second].size() != 0)
+					{
+						res += (L.block[qL->second] * R.block[qR][a][0]).trace();
+					}
+				}
+			}
+		}
+	}
+	
 	return res;
 }
 

@@ -134,6 +134,8 @@ typedef typename Symmetry::qType qType;
 	 * \warning Does not check whether the block for these quantum numbers already exists.
 	 */
 	void push_back (std::initializer_list<qType> qlist, const boost::multi_array<MatrixType,LEGLIMIT> &M);
+	
+	void insert (size_t ab, size_t abmax, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs);
 	///@}
 };
 
@@ -318,6 +320,27 @@ setIdentity (size_t Drows, size_t Dcols, size_t amax, size_t bmax)
 }
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
+void Multipede<Nlegs,Symmetry,MatrixType>::
+insert (size_t ab, size_t abmax, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs)
+{
+	for (size_t q=0; q<Trhs.dim; ++q)
+	{
+		qarray3<Symmetry::Nq> quple = {Trhs.in(q), Trhs.out(q), Trhs.mid(q)};
+		auto it = dict.find(quple);
+		if (it != dict.end())
+		{
+			block[it->second][ab][0] = Trhs.block[q][ab][0];
+		}
+		else
+		{
+			boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[abmax][1]);
+			Mtmparray[ab][0] = Trhs.block[q][ab][0];
+			push_back(quple, Mtmparray);
+		}
+	}
+}
+
+template<size_t Nlegs, typename Symmetry, typename MatrixType>
 std::string Multipede<Nlegs,Symmetry,MatrixType>::
 print(const bool &SHOW_MATRICES, const std::size_t &precision) const
 {
@@ -347,7 +370,7 @@ print(const bool &SHOW_MATRICES, const std::size_t &precision) const
 		// uu << block[nu][0][0].cols() << "x" << block[nu][0][0].rows() << "x" << block[nu].shape()[0];
 		for (std::size_t q=0; q<block[nu].shape()[0]; q++)
 		{
-			if(block[nu][q][0].cols() != 0 or block[nu][q][0].rows() != 0)
+//			if(block[nu][q][0].cols() != 0 or block[nu][q][0].rows() != 0)
 			{
 				uu << "(" << block[nu][q][0].cols() << "x" << block[nu][q][0].rows() << ")";
 				if(q==block[nu].shape()[0]-1) {uu << "";} else {uu << ",";}
@@ -371,7 +394,7 @@ print(const bool &SHOW_MATRICES, const std::size_t &precision) const
 			for (std::size_t q=0; q<block[nu].shape()[0]; q++)
 			{
 				if(block[nu][q][0].size() == 0) {continue;}
-				out << TCOLOR(GREEN) << "q=" << q << "\t" << std::setprecision(precision) << std::fixed << block[nu][q][0] << std::endl;
+				out << TCOLOR(GREEN) << "q=" << q << endl << std::setprecision(precision) << std::fixed << block[nu][q][0] << std::endl;
 			}
 		}
 		out << TCOLOR(BLACK) << std::endl;
