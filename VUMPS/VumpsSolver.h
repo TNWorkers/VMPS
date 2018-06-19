@@ -135,7 +135,7 @@ private:
 	                   const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &hLR, 
 	                   const Biped<Symmetry,MatrixType> &LReigen, 
 	                   const MpHamiltonian &H, 
-	                   double e, 
+	                   Scalar e, 
 	                   Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Hres);
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
@@ -544,9 +544,32 @@ iteration1 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 //	L[dW-1][0].setIdentity();
 //	R[0][0].resize(M,M);
 //	R[0][0].setIdentity();
-	Tripod<Symmetry,MatrixType> Id; Id.setIdentity(M,M,dW,1);
-	L.insert(dW-1,dW,Id);
-	R.insert(0,dW,Id);
+	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(M, dW, 1, Vout.state.inbase[0]);
+	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(M, dW, 1, Vout.state.outbase[0]);
+	L.insert(dW-1, IdL);
+	R.insert(0,    IdR);
+	
+//	cout << "b=" << dW-1 << endl;
+//	cout << L.print(false) << endl;
+	
+	auto Wsum = [&H] (size_t a, size_t b)
+	{
+		double res = 0;
+		for (size_t s1=0; s1<H.locBasis(0).size(); ++s1)
+		for (size_t s2=0; s2<H.locBasis(0).size(); ++s2)
+		for (size_t k=0; k<H.opBasis(0).size(); ++k)
+		{
+			for (int r=0; r<H.W[0][s1][s2][k].outerSize(); ++r)
+			for (typename SparseMatrix<Scalar>::InnerIterator iW(H.W[0][s1][s2][k],r); iW; ++iW)
+			{
+				if (iW.row() == a and iW.col() == b)
+				{
+					res += iW.value();
+				}
+			}
+		}
+		return res;
+	};
 	
 	// Eq. C19
 	for (int b=dW-2; b>=0; --b)
@@ -560,32 +583,23 @@ iteration1 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 //			Wval[s] = H.W[0][s][s][0].coeff(b,b);
 //		}
 		
-		double Wsum = 0;
-		for (size_t s=0; s<H.locBasis(0).size(); ++s)
-		for (size_t k=0; k<H.opBasis(0).size(); ++k)
-		{
-			for (int r=0; r<H.W[0][s][s][k].outerSize(); ++r)
-			for (typename SparseMatrix<Scalar>::InnerIterator iW(H.W[0][s][s][k],r); iW; ++iW)
-			{
-				if (iW.row() == b and iW.col() == b)
-				{
-					Wsum += iW.value();
-				}
-			}
-		}
-		
 //		if (accumulate(Wval.begin(),Wval.end(),0) == 0.)
-		if (Wsum == 0.)
+		if (Wsum(b,b) == 0.)
 		{
 //			L[b][0] = YL[b];
-			L.insert(b,dW,YL[b]);
+			L.insert(b,YL[b]);
 		}
 		else
 		{
 //			solve_linear(GAUGE::L, Vout.state.A[GAUGE::L][0], YL[b], Reigen, Wval, (YL[b]*Reigen).trace(), L[b][0]);
 			Tripod<Symmetry,MatrixType> Ltmp;
-			solve_linear(GAUGE::L, b, Vout.state.A[GAUGE::L][0], YL[b], Reigen, H, contract_LR(YL[b], Reigen), Ltmp);
-			L.insert(b,dW,Ltmp);
+			solve_linear(GAUGE::L, b, Vout.state.A[GAUGE::L][0], YL[b], Reigen, H, contract_LR(YL[b],Reigen), Ltmp);
+			L.insert(b,Ltmp);
+			
+			if (b == 0)
+			{
+				cout << "<L[0]|R>=" << contract_LR(Ltmp,Reigen) << endl;
+			}
 		}
 	}
 	
@@ -601,32 +615,23 @@ iteration1 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 //			Wval[s] = H.W[0][s][s][0].coeff(a,a);
 //		}
 		
-		double Wsum = 0;
-		for (size_t s=0; s<H.locBasis(0).size(); ++s)
-		for (size_t k=0; k<H.opBasis(0).size(); ++k)
-		{
-			for (int r=0; r<H.W[0][s][s][k].outerSize(); ++r)
-			for (typename SparseMatrix<Scalar>::InnerIterator iW(H.W[0][s][s][k],r); iW; ++iW)
-			{
-				if (iW.row() == a and iW.col() == a)
-				{
-					Wsum += iW.value();
-				}
-			}
-		}
-		
 //		if (accumulate(Wval.begin(),Wval.end(),0) == 0.)
-		if (Wsum == 0.)
+		if (Wsum(a,a) == 0.)
 		{
 //			R[a][0] = YR[a];
-			R.insert(a,dW,YR[a]);
+			R.insert(a,YR[a]);
 		}
 		else
 		{
 //			solve_linear(GAUGE::R, Vout.state.A[GAUGE::R][0], YR[a], Leigen, Wval, (Leigen*YR[a]).trace(), R[a][0]);
 			Tripod<Symmetry,MatrixType> Rtmp;
-			solve_linear(GAUGE::R, a, Vout.state.A[GAUGE::R][0], YR[a], Leigen, H, contract_LR(Leigen, YR[a]), Rtmp);
-			R.insert(a,dW,Rtmp);
+			solve_linear(GAUGE::R, a, Vout.state.A[GAUGE::R][0], YR[a], Leigen, H, contract_LR(Leigen,YR[a]), Rtmp);
+			R.insert(a,Rtmp);
+			
+			if (a == dW-1)
+			{
+				cout << "<L|R[dW-1]>=" << contract_LR(Leigen,Rtmp) << endl;
+			}
 		}
 	}
 	
@@ -691,7 +696,20 @@ iteration1 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	// Calculate AL, AR from AC, C
 	Vout.state.A[GAUGE::C][0] = gAC.state.data;
 	Vout.state.C[0]           = gC.state.data[0];
-	(err_var>0.1)? Vout.state.svdDecompose(0) : Vout.state.polarDecompose(0);
+//	cout << Vout.state.C[0].print(true,15) << endl;
+	for (size_t q=0; q<Vout.state.C[0].dim; ++q)
+	{
+		cout << termcolor::blue << "q=" << Vout.state.C[0].in[q] << ", norm=" << Vout.state.C[0].block[q].norm() << termcolor::reset << endl;
+	}
+//	for (size_t s=0; s<H.locBasis(0).size(); ++s)
+//	{
+//		cout << "s=" << s << endl;
+//		cout << Vout.state.A[GAUGE::C][0][s].print(true,15) << endl;
+//	}
+//	(err_var>0.1)? Vout.state.svdDecompose(0) : Vout.state.polarDecompose(0);
+	Vout.state.svdDecompose(0);
+	
+	cout << Vout.state.test_ortho() << endl;
 	
 	// Calcualte errors
 	double epsLsq, epsRsq;
@@ -702,6 +720,7 @@ iteration1 (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	eoldR = eR;
 	eoldL = eL;
 	Vout.energy = min(eL,eR);
+	cout << "ratio test=" << 2.-abs(gAC.energy/Vout.energy) << ", " << 1.-abs(gC.energy/Vout.energy) << endl;
 	
 	++N_iterations;
 	
@@ -1366,11 +1385,11 @@ void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 solve_linear (GAUGE::OPTION gauge, 
               size_t ab, 
               const vector<Biped<Symmetry,MatrixType> > &A, 
-              const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &hLR, 
+              const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Y_LR, 
               const Biped<Symmetry,MatrixType> &LReigen, 
               const MpHamiltonian &H, 
-              double e, 
-              Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Hres)
+              Scalar LRdotY, 
+              Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LRres)
 {
 	// local dimension for the whole unit cell
 //	vector<size_t> Dvec(N_sites);
@@ -1383,22 +1402,16 @@ solve_linear (GAUGE::OPTION gauge,
 //	TransferMatrix<Symmetry,Scalar> T(gauge, A, A, LReigen, Warray, Dvec);
 	TransferMatrix<Symmetry,Scalar> T(gauge, A, A, LReigen, H.W[0], H.locBasis(0), H.opBasis(0), ab);
 	
-	// Right-hand site vector |hLR)-e*1
-	TransferVector<Symmetry,Scalar> bvec;
-	bvec.data = hLR;
-	bvec.ab = ab;
-	for (size_t q=0; q<bvec.data.dim; ++q)
-	{
-		bvec.data.block[q][ab][0] -= e * MatrixType::Identity(bvec.data.block[q][ab][0].rows(),bvec.data.block[q][ab][0].cols());
-	}
+	// Right-hand site vector |Y_LR)-e*1
+	TransferVector<Symmetry,Scalar> bvec(Y_LR, ab, LRdotY);
 //	bvec.A -= e * MatrixType::Identity(bvec.A.rows(),bvec.A.cols());
 	
 	// Solve linear system
 	GMResSolver<TransferMatrix<Symmetry,Scalar>,TransferVector<Symmetry,Scalar> > Gimli;
-	Gimli.set_dimK(min(10ul,M*M));
-	TransferVector<Symmetry,Scalar> Hres_tmp;
-	Gimli.solve_linear(T,bvec,Hres_tmp);
-	Hres = Hres_tmp.data;
+	Gimli.set_dimK(min(10ul,dim(bvec)));
+	TransferVector<Symmetry,Scalar> LRres_tmp;
+	Gimli.solve_linear(T, bvec, LRres_tmp);
+	LRres = LRres_tmp.data;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{

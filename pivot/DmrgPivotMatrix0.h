@@ -49,14 +49,13 @@ void HxV (const PivotMatrix0<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 				
 				if (qAout != Vout.data[0].dict.end())
 				{
-//					for (size_t a=0; a<max(H.W[0][0][0].rows(),H.W[0][0][0].cols()); ++a)
 					assert(H.L.block[qL].shape()[0] == H.R.block[qR->second].shape()[0]);
 					for (size_t a=0; a<H.L.block[qL].shape()[0]; ++a)
 					{
 						Matrix<Scalar,Dynamic,Dynamic> Mtmp;
 						
-						if (H.L.block[qL][a][0].rows() != 0 and
-						    H.R.block[qR->second][a][0].rows() !=0)
+						if (H.L.block[qL][a][0].size() != 0 and
+						    H.R.block[qR->second][a][0].size() !=0)
 						{
 							optimal_multiply(1., 
 							                 H.L.block[qL][a][0],
@@ -67,7 +66,7 @@ void HxV (const PivotMatrix0<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 						
 						if (Mtmp.rows() != 0)
 						{
-							if (Vout.data[0].block[qAout->second].rows() != 0)
+							if (Vout.data[0].block[qAout->second].size() != 0)
 							{
 								Vout.data[0].block[qAout->second] += Mtmp;
 							}

@@ -107,6 +107,8 @@ typedef typename Symmetry::qType qType;
 	
 	/***/
 	void setIdentity (size_t Drows, size_t Dcols, size_t amax=1, size_t bmax=1);
+	
+	void setIdentity (size_t D, size_t amax, size_t bmax, const Qbasis<Symmetry> &base);
 	///@}
 	
 	///@{
@@ -135,7 +137,7 @@ typedef typename Symmetry::qType qType;
 	 */
 	void push_back (std::initializer_list<qType> qlist, const boost::multi_array<MatrixType,LEGLIMIT> &M);
 	
-	void insert (size_t ab, size_t abmax, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs);
+	void insert (size_t ab, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs);
 	///@}
 };
 
@@ -321,19 +323,51 @@ setIdentity (size_t Drows, size_t Dcols, size_t amax, size_t bmax)
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
 void Multipede<Nlegs,Symmetry,MatrixType>::
-insert (size_t ab, size_t abmax, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs)
+setIdentity (size_t D, size_t amax, size_t bmax, const Qbasis<Symmetry> &base)
 {
+	static_assert(Nlegs == 3);
+	
+	for (size_t q=0; q<base.Nq(); ++q)
+	{
+		boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[amax][bmax]);
+		for (size_t a=0; a<amax; ++a)
+		for (size_t b=0; b<bmax; ++b)
+		{
+			MatrixType Mtmp(D,D);
+			Mtmp.setIdentity();
+			Mtmparray[a][b] = Mtmp;
+		}
+		
+		qarray3<Symmetry::Nq> quple = {base[q], base[q], Symmetry::qvacuum()};
+		push_back(quple, Mtmparray);
+	}
+}
+
+template<size_t Nlegs, typename Symmetry, typename MatrixType>
+void Multipede<Nlegs,Symmetry,MatrixType>::
+insert (size_t ab, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs)
+{
+	static_assert(Nlegs == 3);
+	
 	for (size_t q=0; q<Trhs.dim; ++q)
 	{
 		qarray3<Symmetry::Nq> quple = {Trhs.in(q), Trhs.out(q), Trhs.mid(q)};
 		auto it = dict.find(quple);
 		if (it != dict.end())
 		{
-			block[it->second][ab][0] = Trhs.block[q][ab][0];
+			if (block[it->second][ab][0].rows() == Trhs.block[q][ab][0].rows() and
+			    block[it->second][ab][0].cols() == Trhs.block[q][ab][0].cols())
+			{
+				block[it->second][ab][0] += Trhs.block[q][ab][0];
+			}
+			else
+			{
+				block[it->second][ab][0] = Trhs.block[q][ab][0];
+			}
 		}
 		else
 		{
-			boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[abmax][1]);
+			boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[Trhs.block[q].shape()[0]][1]);
 			Mtmparray[ab][0] = Trhs.block[q][ab][0];
 			push_back(quple, Mtmparray);
 		}

@@ -922,50 +922,6 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 
 template<typename Symmetry, typename Scalar>
 Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
-                    const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R,
-                    bool ADJOINT=false)
-{
-	Scalar res = 0;
-	
-	for (size_t qL=0; qL<L.dim; ++qL)
-	{
-		qarray3<Symmetry::Nq> quple;
-//		if (ADJOINT)
-//		{
-//			quple = {L.in(qL), L.out(qL), L.mid(qL)};
-//		}
-//		else
-//		{
-//			quple = {L.out(qL), L.in(qL), L.mid(qL)};
-//		}
-		quple = {L.out(qL), L.in(qL), L.mid(qL)};
-		auto qR = R.dict.find(quple);
-		
-		if (qR != R.dict.end())
-		{
-			for (size_t a=0; a<L.block[qL].shape()[0]; ++a)
-			{
-				if (L.block[qL][a][0].size() != 0 and
-					R.block[qR->second][a][0].size() != 0)
-				{
-					if (ADJOINT)
-					{
-						res += (L.block[qL][a][0].adjoint() * R.block[qR->second][a][0]).trace();
-					}
-					else
-					{
-						res += (L.block[qL][a][0] * R.block[qR->second][a][0]).trace();
-					}
-				}
-			}
-		}
-	}
-	
-	return res;
-}
-
-template<typename Symmetry, typename Scalar>
-Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
                     const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >  &R)
 {
 	Scalar res = 0;

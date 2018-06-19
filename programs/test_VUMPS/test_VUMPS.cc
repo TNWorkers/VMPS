@@ -15,8 +15,9 @@ using namespace std;
 #include "Logger.h"
 Logger lout;
 #include "ArgParser.h"
+#include "termcolor.hpp"
 
-#include "LanczosWrappers.h"
+//#include "LanczosWrappers.h"
 #include "StringStuff.h"
 #include "Stopwatch.h"
 
@@ -28,15 +29,17 @@ Logger lout;
 //#include "solvers/DmrgSolver.h"
 #include "models/Heisenberg.h"
 #include "models/HeisenbergU1.h"
+#include "models/HeisenbergU1XXZ.h"
+#include "models/HeisenbergXXZ.h"
 #include "models/HeisenbergSU2.h"
 //#include "models/HeisenbergXXZ.h"
 //#include "models/Hubbard.h"
 
 // integration files not included in git
-#include "gsl/gsl_integration.h"
-#include "LiebWu.h"
+//#include "gsl/gsl_integration.h"
+//#include "LiebWu.h"
 
-double Jz, Bx, Bz;
+double Jxy, Jz, Bx, Bz;
 double U, mu;
 double dt;
 double e_exact;
@@ -114,7 +117,8 @@ int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",1);
-	Jz = args.get<double>("Jz",1.);
+	Jxy = args.get<double>("Jxy",-1.);
+	Jz = args.get<double>("Jz",-1.);
 	Bx = args.get<double>("Bx",1.);
 	Bz = args.get<double>("Bz",0.);
 	U = args.get<double>("U",10.);
@@ -124,7 +128,7 @@ int main (int argc, char* argv[])
 	M = args.get<double>("M",10);    // bond dimension
 	tol_eigval = args.get<double>("tol_eigval",1e-6);
 	tol_var = args.get<double>("tol_var",1e-7);
-	max_iter = args.get<size_t>("max_iter",20);
+	max_iter = args.get<size_t>("max_iter",10);
 	size_t Nqmax = args.get<size_t>("Nqmax",6);
 	size_t D = args.get<size_t>("D",2);
 	
@@ -161,35 +165,45 @@ int main (int argc, char* argv[])
 //	HUBBARD::uSolver DMRG_HUBB(VERB);
 //	Eigenstate<Umps<Sym::U0,double> > g;
 	
-	typedef VMPS::HeisenbergU1 HEISENBERG;
+	typedef VMPS::HeisenbergU1XXZ HEISENBERG;
 //	typedef VMPS::HeisenbergSU2 HEISENBERG;
-	HEISENBERG Heis(L,{{"OPEN_BC",false},{"D",D}});
-	HEISENBERG::StateUd Psi(Heis.locBasis(0), L, M, Nqmax);
-	Psi.setRandom();
-	Psi.graph("Psi");
-	auto Phi = Psi;
-	for (size_t l=0; l<L; ++l)
-	{
-		Psi.svdDecompose(l);
-	}
-	cout << Psi.info() << endl;
-	cout << Psi.test_ortho() << endl;
-	for (size_t l=0; l<L; ++l)
-	{
-		double epsLsq, epsRsq;
-		Psi.calc_epsLRsq(l,epsLsq,epsRsq);
-		cout << "l=" << l << ", epsLsq=" << epsLsq << ", epsRsq=" << epsRsq << endl;
-	}
-	
-	for (size_t l=0; l<L; ++l)
-	{
-		Phi.polarDecompose(l);
-	}
-	cout << Phi.test_ortho() << endl;
+	HEISENBERG Heis(L,{{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	lout << Heis.info() << endl;
+//	HEISENBERG::StateUd Psi(Heis.locBasis(0), L, M, Nqmax);
+//	Psi.setRandom();
+//	Psi.graph("Psi");
+//	auto Phi = Psi;
+//	for (size_t l=0; l<L; ++l)
+//	{
+//		Psi.svdDecompose(l);
+//	}
+//	cout << Psi.info() << endl;
+//	cout << Psi.test_ortho() << endl;
+//	for (size_t l=0; l<L; ++l)
+//	{
+//		double epsLsq, epsRsq;
+//		Psi.calc_epsLRsq(l,epsLsq,epsRsq);
+//		cout << "l=" << l << ", epsLsq=" << epsLsq << ", epsRsq=" << epsRsq << endl;
+//	}
+//	
+//	for (size_t l=0; l<L; ++l)
+//	{
+//		Phi.polarDecompose(l);
+//	}
+//	cout << Phi.test_ortho() << endl;
 	
 	HEISENBERG::uSolver DMRG(VERB);
 	Eigenstate<HEISENBERG::StateUd> g;
 	DMRG.edgeState(Heis, g, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+	
+	typedef VMPS::HeisenbergXXZ HEISENBERG0;
+	HEISENBERG0 Heis0(L,{{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	lout << Heis0.info() << endl;
+	HEISENBERG0::uSolver DMRG0(DMRG::VERBOSITY::SILENT);
+	Eigenstate<HEISENBERG0::StateUd> g0;
+	DMRG0.edgeState(Heis0, g0, tol_eigval,tol_var, M, 1, max_iter,1);
+	cout << g0.state.info() << endl;
+	cout << "e0=" << g0.energy << endl;
 	
 //	//---<transverse Ising>---
 //	if (ISING)

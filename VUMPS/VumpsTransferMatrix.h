@@ -125,6 +125,21 @@ Vector \f$(H_L|\f$, \f$|H_R)\f$ that is obtained in the linear systems eq. 14 or
 template<typename Symmetry, typename Scalar>
 struct TransferVector
 {
+	TransferVector(){};
+	
+	TransferVector (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &T, const size_t &ab_input, const Scalar &LRdotY)
+	:data(T), ab(ab_input)
+	{
+		for (size_t q=0; q<data.dim; ++q)
+		{
+			if (data.mid(q) == Symmetry::qvacuum())
+			{
+				data.block[q][ab][0] -= LRdotY * Matrix<Scalar,Dynamic,Dynamic>::Identity(data.block[q][ab][0].rows(),
+				                                                                          data.block[q][ab][0].cols());
+			}
+		}
+	};
+	
 //	Matrix<Scalar,Dynamic,Dynamic> A;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > data;
 	size_t ab;
@@ -152,9 +167,11 @@ struct TransferVector
 template<typename Symmetry, typename Scalar1, typename Scalar2>
 void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmetry,Scalar2> &Vin, TransferVector<Symmetry,Scalar2> &Vout)
 {
-	Vout.ab = H.ab;
-	TransferVector<Symmetry,Scalar2> TxV;
-	TxV.ab  = H.ab;
+	Vout = Vin;
+	Vout.data.setZero();
+	
+	TransferVector<Symmetry,Scalar2> TxV = Vin;
+	TxV.data.setZero();
 	
 	if (H.gauge == GAUGE::R)
 	{
@@ -183,10 +200,13 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 		Matrix<Scalar2,Dynamic,Dynamic> Mtmp;
 		if (it != Vin.data.dict.end())
 		{
-			Mtmp = Vin.data.block[it->second][H.ab][0] 
-			     - TxV.data.block[q][H.ab][0] 
-			     + LdotR * Matrix<Scalar2,Dynamic,Dynamic>::Identity(Vin.data.block[it->second][H.ab][0].rows(),
-			                                                         Vin.data.block[it->second][H.ab][0].cols());
+			Mtmp = Vin.data.block[it->second][H.ab][0] - TxV.data.block[q][H.ab][0];
+			
+			if (quple[2] == Symmetry::qvacuum())
+			{
+				Mtmp += LdotR * Matrix<Scalar2,Dynamic,Dynamic>::Identity(Vin.data.block[it->second][H.ab][0].rows(),
+				                                                          Vin.data.block[it->second][H.ab][0].cols());
+			}
 		}
 		
 		if (Mtmp.size() != 0)
@@ -206,6 +226,7 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 			}
 			else
 			{
+				cout << termcolor::red << "push_back that shouldn't be" << termcolor::reset << endl;
 				boost::multi_array<Matrix<Scalar2,Dynamic,Dynamic>,LEGLIMIT> Mtmpvec(boost::extents[H.W[0][0][0].cols()][1]);
 				Mtmpvec[H.ab][0] = Mtmp;
 				Vout.data.push_back(quple, Mtmpvec);
@@ -403,17 +424,27 @@ inline void normalize (TransferVector<Symmetry,Scalar> &V)
 //	return (V1-V2).template lpNorm<Eigen::Infinity>();
 //}
 
-template<typename Symmetry, typename Scalar>
-void swap (TransferVector<Symmetry,Scalar> &V1, TransferVector<Symmetry,Scalar> &V2)
-{
-	V1.A.swap(V2.A);
-}
+//template<typename Symmetry, typename Scalar>
+//void swap (TransferVector<Symmetry,Scalar> &V1, TransferVector<Symmetry,Scalar> &V2)
+//{
+//	V1.A.swap(V2.A);
+//}
 
 template<typename Symmetry, typename Scalar>
 inline Scalar dot (const TransferVector<Symmetry,Scalar> &V1, const TransferVector<Symmetry,Scalar> &V2)
 {
 //	return (V1.A.adjoint()*V2.A).trace();
-	return contract_LR(V1.data,V2.data,true);
+	Scalar res = 0;
+	for (size_t q=0; q<V1.data.size(); ++q)
+	{
+		assert(V1.data.in(q) == V2.data.in(q));
+		assert(V1.data.out(q) == V2.data.out(q));
+		assert(V1.data.mid(q) == V2.data.mid(q));
+//		cout << V1.data.in(q) << ", " << V1.data.out(q) << ", " << V1.data.mid(q) << " | " 
+//		     << V2.data.in(q) << ", " << V2.data.out(q) << ", " << V2.data.mid(q) << endl;
+		res += (V1.data.block[q][V1.ab][0].adjoint() * V2.data.block[q][V2.ab][0]).trace();
+	}
+	return res;
 }
 
 //-----------<vector arithmetics>-----------
@@ -439,6 +470,8 @@ operator-= (const TransferVector<Symmetry,Scalar> &Vrhs)
 {
 	for (size_t q=0; q<Vrhs.data.dim; ++q)
 	{
+//		cout << data.in(q) << ", " << data.out(q) << ", " << data.mid(q) << " | " 
+//		     << Vrhs.data.in(q) << ", " << Vrhs.data.out(q) << ", " << Vrhs.data.mid(q) << endl;
 		qarray3<Symmetry::Nq> quple = {Vrhs.data.in(q), Vrhs.data.out(q), Vrhs.data.mid(q)};
 		auto it = data.dict.find(quple);
 		if (it != data.dict.end())

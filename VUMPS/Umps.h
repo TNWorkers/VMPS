@@ -60,7 +60,7 @@ public:
 	void setRandom();
 	
 	/**Resizes all containers to \p N_sites, the bond dimension to \p Dmax and sets all quantum numbers to vacuum.*/
-	void resize (size_t Dmax, size_t Nqmax);
+	void resize (size_t Dmax_input, size_t Nqmax_input);
 	
 	/**Calculates \f$A_L\f$ and \f$A_R\f$ from \f$A_C\f$ and \f$C\f$ at site \p loc using SVD (eq. 19,20). Is supposed to be optimal, but not accurate. Calculates the singular values along the way.*/
 	void svdDecompose (size_t loc);
@@ -109,7 +109,7 @@ public:
 private:
 	
 	size_t N_sites;
-	size_t Dmax;
+	size_t Dmax, Nqmax;
 	double eps_svd = 1e-7;
 	size_t N_sv;
 	
@@ -284,7 +284,7 @@ update_outbase (size_t loc)
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-resize (size_t Dmax_input, size_t Nqmax)
+resize (size_t Dmax_input, size_t Nqmax_input)
 {
 //	Dmax = Dmax_input;
 //	
@@ -351,6 +351,7 @@ resize (size_t Dmax_input, size_t Nqmax)
 //	S.resize(N_sites);
 	
 	Dmax = Dmax_input;
+	Nqmax = Nqmax_input;
 	
 	for (size_t g=0; g<3; ++g)
 	{
@@ -745,7 +746,11 @@ calc_singularValues (size_t loc)
 	{
 		JacobiSVD<MatrixType> Jack(C[loc].block[q]);
 //		Csingular[loc] += Jack.singularValues();
-		size_t Nnz = (Jack.singularValues().array() > 0).count();
+		size_t Nnz = (Jack.singularValues().array() > 0.).count();
+		
+		double Scontr = -Symmetry::degeneracy(C[loc].in[q]) * (Jack.singularValues().head(Nnz).array().square() 
+		                                              * Jack.singularValues().head(Nnz).array().square().log()).sum();
+		cout << "q=" << q << ", in=" << C[loc].in[q] << ", out=" << C[loc].out[q] << ", S=" << Scontr << endl;
 		
 		S(loc) += -Symmetry::degeneracy(C[loc].in[q]) * (Jack.singularValues().head(Nnz).array().square() 
 		                                              * Jack.singularValues().head(Nnz).array().square().log()).sum();
@@ -1213,9 +1218,9 @@ svdDecompose (size_t loc)
 			                                           Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])
 			                                           *
 			                                           Symmetry::coeff_sign(
-								                          A[GAUGE::C][loc][svec[i]].out[qvec[i]],
-								                          A[GAUGE::C][loc][svec[i]].in[qvec[i]],
-								                          qloc[loc][svec[i]]);
+			                                            A[GAUGE::C][loc][svec[i]].out[qvec[i]],
+			                                            A[GAUGE::C][loc][svec[i]].in[qvec[i]],
+			                                            qloc[loc][svec[i]]);
 			stitch += Ncolsvec[i];
 		}
 	}
