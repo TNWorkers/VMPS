@@ -335,6 +335,7 @@ setIdentity (size_t D, size_t amax, size_t bmax, const Qbasis<Symmetry> &base)
 		{
 			MatrixType Mtmp(D,D);
 			Mtmp.setIdentity();
+			Mtmp *= Symmetry::degeneracy(base[q]);
 			Mtmparray[a][b] = Mtmp;
 		}
 		

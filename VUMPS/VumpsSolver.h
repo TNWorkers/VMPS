@@ -17,10 +17,12 @@
 #include "VUMPS/VumpsTransferMatrix.h"
 #include "symmetry/U0.h" // for qloc3dummy
 
-/**Solver that calculates the ground state of a UMPS. Analogue of the DmrgSolver class.
-\ingroup VUMPS
-\describe_Symmetry
-\describe_Scalar*/
+/**
+ * Solver that calculates the ground state of a UMPS. Analogue of the DmrgSolver class.
+ * \ingroup VUMPS
+ * \describe_Symmetry
+ * \describe_Scalar
+ */
 template<typename Symmetry, typename MpHamiltonian, typename Scalar=double>
 class VumpsSolver
 {

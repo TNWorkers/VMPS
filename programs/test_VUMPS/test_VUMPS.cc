@@ -39,7 +39,7 @@ Logger lout;
 //#include "gsl/gsl_integration.h"
 //#include "LiebWu.h"
 
-double Jxy, Jz, Bx, Bz;
+double Jxy, Jz, Bx, Bz, J;
 double U, mu;
 double dt;
 double e_exact;
@@ -117,6 +117,7 @@ int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",1);
+	J = args.get<double>("J",-1.);
 	Jxy = args.get<double>("Jxy",-1.);
 	Jz = args.get<double>("Jz",-1.);
 	Bx = args.get<double>("Bx",1.);
@@ -165,9 +166,12 @@ int main (int argc, char* argv[])
 //	HUBBARD::uSolver DMRG_HUBB(VERB);
 //	Eigenstate<Umps<Sym::U0,double> > g;
 	
-	typedef VMPS::HeisenbergU1XXZ HEISENBERG;
-//	typedef VMPS::HeisenbergSU2 HEISENBERG;
-	HEISENBERG Heis(L,{{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	// typedef VMPS::HeisenbergU1XXZ HEISENBERG;
+	// HEISENBERG Heis(L,{{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+
+	typedef VMPS::HeisenbergSU2 HEISENBERG;
+	HEISENBERG Heis(L,{{"J",J},{"OPEN_BC",false},{"D",D}});
+
 	lout << Heis.info() << endl;
 //	HEISENBERG::StateUd Psi(Heis.locBasis(0), L, M, Nqmax);
 //	Psi.setRandom();
