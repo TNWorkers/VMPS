@@ -117,6 +117,7 @@ int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",1);
+	size_t Ly = args.get<size_t>("Ly",1);
 	Jxy = args.get<double>("Jxy",-1.);
 	Jz = args.get<double>("Jz",-1.);
 	Bx = args.get<double>("Bx",1.);
@@ -167,7 +168,7 @@ int main (int argc, char* argv[])
 	
 	typedef VMPS::HeisenbergU1XXZ HEISENBERG;
 //	typedef VMPS::HeisenbergSU2 HEISENBERG;
-	HEISENBERG Heis(L,{{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG Heis(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	lout << Heis.info() << endl;
 //	HEISENBERG::StateUd Psi(Heis.locBasis(0), L, M, Nqmax);
 //	Psi.setRandom();
@@ -197,13 +198,23 @@ int main (int argc, char* argv[])
 	DMRG.edgeState(Heis, g, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 	
 	typedef VMPS::HeisenbergXXZ HEISENBERG0;
-	HEISENBERG0 Heis0(L,{{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	lout << Heis0.info() << endl;
 	HEISENBERG0::uSolver DMRG0(DMRG::VERBOSITY::SILENT);
 	Eigenstate<HEISENBERG0::StateUd> g0;
 	DMRG0.edgeState(Heis0, g0, tol_eigval,tol_var, M, 1, max_iter,1);
 	cout << g0.state.info() << endl;
-	cout << "e0=" << g0.energy << endl;
+	
+	cout << "e0(U1)=" << g.energy << endl;
+	cout << "e0(U0)=" << g0.energy << endl;
+	if (D==2)
+	{
+		cout << "e(ref)=" << 0.25-log(2) << endl;
+	}
+	else if (D==3)
+	{
+		cout << "e(ref)=" << 1.401484038971 << endl;
+	}
 	
 //	//---<transverse Ising>---
 //	if (ISING)

@@ -106,6 +106,9 @@ public:
 	/**Returns \f$A_L\f$, \f$A_R\f$ or \f$A_C\f$ at site \p loc as const ref.*/
 	const vector<Biped<Symmetry,MatrixType> > &A_at (GAUGE::OPTION g, size_t loc) const {return A[g][loc];};
 	
+	qarray<Symmetry::Nq> Qtop (size_t loc) const;
+	qarray<Symmetry::Nq> Qbot (size_t loc) const;
+	
 private:
 	
 	size_t N_sites;
@@ -157,7 +160,8 @@ info() const
 	{
 		ss << "full=" << calc_fullMmax() << ", ";
 	}
-	ss << "Dmax=" << calc_Dmax() << "), ";
+	ss << "Dmax=" << Dmax << "), ";
+	ss << "Nqmax=" << Nqmax << ", ";
 	ss << "S=(" << S.transpose() << "), ";
 	ss << "mem=" << round(memory(GB),3) << "GB";
 	
@@ -280,6 +284,30 @@ update_outbase (size_t loc)
 {
 	outbase[loc].clear();
 	outbase[loc].pullData(A[GAUGE::C][loc],1);
+}
+
+template<typename Symmetry, typename Scalar>
+qarray<Symmetry::Nq> Umps<Symmetry,Scalar>::
+Qtop (size_t loc) const
+{
+	qarray<Symmetry::Nq> res = Symmetry::qvacuum();
+	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
+	{
+		if (outbase[loc][qout] > res) {res = outbase[loc][qout];}
+	}
+	return res;
+}
+
+template<typename Symmetry, typename Scalar>
+qarray<Symmetry::Nq> Umps<Symmetry,Scalar>::
+Qbot (size_t loc) const
+{
+	qarray<Symmetry::Nq> res = Symmetry::qvacuum();
+	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
+	{
+		if (outbase[loc][qout] < res) {res = outbase[loc][qout];}
+	}
+	return res;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -463,7 +491,7 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 		{
 			for (const auto &qin:qins)
 			{
-				auto qouts = Symmetry::reduceSilent(qloc[l], qin);
+				auto qouts = Symmetry::reduceSilent(qloc[l][s], qin);
 				for (const auto &qout:qouts)
 				{
 					if (auto it=qoutset[l].find(qout); it!=qoutset[l].end())
@@ -750,7 +778,7 @@ calc_singularValues (size_t loc)
 		
 		double Scontr = -Symmetry::degeneracy(C[loc].in[q]) * (Jack.singularValues().head(Nnz).array().square() 
 		                                              * Jack.singularValues().head(Nnz).array().square().log()).sum();
-		cout << "q=" << q << ", in=" << C[loc].in[q] << ", out=" << C[loc].out[q] << ", S=" << Scontr << endl;
+		cout << "loc=" << loc << ", q=" << q << ", in=" << C[loc].in[q] << ", out=" << C[loc].out[q] << ", S=" << Scontr << endl;
 		
 		S(loc) += -Symmetry::degeneracy(C[loc].in[q]) * (Jack.singularValues().head(Nnz).array().square() 
 		                                              * Jack.singularValues().head(Nnz).array().square().log()).sum();

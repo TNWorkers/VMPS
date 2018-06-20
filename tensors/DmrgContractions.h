@@ -167,7 +167,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 		for (size_t qR=0; qR<Rold.dim; ++qR)
 		{
 			auto qRouts = Symmetry::reduceSilent(Rold.out(qR),Symmetry::flip(qloc[s1]));
-			auto qRins = Symmetry::reduceSilent(Rold.in(qR),Symmetry::flip(qloc[s2]));
+			auto qRins  = Symmetry::reduceSilent(Rold.in(qR),Symmetry::flip(qloc[s2]));
 			
 			for(const auto& qRout : qRouts)
 			for(const auto& qRin : qRins)
@@ -1705,7 +1705,7 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 	auto tensor_basis = Symmetry::tensorProd(qloc1,qloc2);
 	Apair.resize(tensor_basis.size());
 	
-	vector<qarray<Symmetry::Nq> > qsplit = calc_qsplit(A1, qloc1, A2, qloc2, Qtop, Qbot);
+	vector<qarray<Symmetry::Nq> > qsplit = calc_qsplit (A1, qloc1, A2, qloc2, Qtop, Qbot);
 	
 	vector<qarray<Symmetry::Nq> > A1in;
 	vector<qarray<Symmetry::Nq> > A2out;
@@ -1766,11 +1766,11 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 			
 			for (size_t q1=0; q1<A1[s1].dim; ++q1)
 			{
-				auto qmids = Symmetry::reduceSilent(A1[s1].out[q1], qloc2[s2]);
+				auto qouts = Symmetry::reduceSilent(A1[s1].out[q1], qloc2[s2]);
 				
-				for (const auto &qmid:qmids)
+				for (const auto &qout:qouts)
 				{
-					qarray2<Symmetry::Nq> quple = {A1[s1].out[q1], qmid};
+					qarray2<Symmetry::Nq> quple = {A1[s1].out[q1], qout};
 					auto q2 = A2[s2].dict.find(quple);
 					
 					if (q2 != A2[s2].dict.end())
