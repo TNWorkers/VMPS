@@ -15,7 +15,8 @@ using namespace std;
 #include "Logger.h"
 Logger lout;
 #include "ArgParser.h"
-#include "termcolor.hpp"
+
+#include "util/LapackManager.h"
 
 //#include "LanczosWrappers.h"
 #include "StringStuff.h"
@@ -25,7 +26,7 @@ Logger lout;
 #include "VUMPS/Umps.h"
 
 #include "VUMPS/VumpsSolver.h"
-//#include "VUMPS/VumpsLinearAlgebra.h"
+#include "VUMPS/VumpsLinearAlgebra.h"
 //#include "solvers/DmrgSolver.h"
 #include "models/Heisenberg.h"
 #include "models/HeisenbergU1.h"
@@ -39,7 +40,7 @@ Logger lout;
 //#include "gsl/gsl_integration.h"
 //#include "LiebWu.h"
 
-double Jxy, Jz, Bx, Bz;
+double Jxy, Jz, J, Bx, Bz;
 double U, mu;
 double dt;
 double e_exact;
@@ -120,6 +121,7 @@ int main (int argc, char* argv[])
 	size_t Ly = args.get<size_t>("Ly",1);
 	Jxy = args.get<double>("Jxy",-1.);
 	Jz = args.get<double>("Jz",-1.);
+	J = args.get<double>("J",-1.);
 	Bx = args.get<double>("Bx",1.);
 	Bz = args.get<double>("Bz",0.);
 	U = args.get<double>("U",10.);
@@ -166,45 +168,24 @@ int main (int argc, char* argv[])
 //	HUBBARD::uSolver DMRG_HUBB(VERB);
 //	Eigenstate<Umps<Sym::U0,double> > g;
 	
-	typedef VMPS::HeisenbergU1XXZ HEISENBERG;
+	typedef VMPS::HeisenbergU1 HEISENBERG;
 //	typedef VMPS::HeisenbergSU2 HEISENBERG;
 	HEISENBERG Heis(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	lout << Heis.info() << endl;
-//	HEISENBERG::StateUd Psi(Heis.locBasis(0), L, M, Nqmax);
-//	Psi.setRandom();
-//	Psi.graph("Psi");
-//	auto Phi = Psi;
-//	for (size_t l=0; l<L; ++l)
-//	{
-//		Psi.svdDecompose(l);
-//	}
-//	cout << Psi.info() << endl;
-//	cout << Psi.test_ortho() << endl;
-//	for (size_t l=0; l<L; ++l)
-//	{
-//		double epsLsq, epsRsq;
-//		Psi.calc_epsLRsq(l,epsLsq,epsRsq);
-//		cout << "l=" << l << ", epsLsq=" << epsLsq << ", epsRsq=" << epsRsq << endl;
-//	}
-//	
-//	for (size_t l=0; l<L; ++l)
-//	{
-//		Phi.polarDecompose(l);
-//	}
-//	cout << Phi.test_ortho() << endl;
-	
 	HEISENBERG::uSolver DMRG(VERB);
+	DMRG.set_log(2,"e_Heis.dat","err_eigval_Heis.dat","err_var_Heis.dat");
 	Eigenstate<HEISENBERG::StateUd> g;
 	DMRG.edgeState(Heis, g, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 	
-	typedef VMPS::HeisenbergXXZ HEISENBERG0;
-	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	typedef VMPS::Heisenberg HEISENBERG0;
+	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"J",J},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	lout << Heis0.info() << endl;
-	HEISENBERG0::uSolver DMRG0(DMRG::VERBOSITY::SILENT);
+	HEISENBERG0::uSolver DMRG0(DMRG::VERBOSITY::ON_EXIT);
 	Eigenstate<HEISENBERG0::StateUd> g0;
 	DMRG0.edgeState(Heis0, g0, tol_eigval,tol_var, M, 1, max_iter,1);
 	cout << g0.state.info() << endl;
 	
+	cout << setprecision(13);
 	cout << "e0(U1)=" << g.energy << endl;
 	cout << "e0(U0)=" << g0.energy << endl;
 	if (D==2)
@@ -215,6 +196,28 @@ int main (int argc, char* argv[])
 	{
 		cout << "e(ref)=" << 1.401484038971 << endl;
 	}
+	
+	cout << "-----U0-----" << endl;
+	print_mag(Heis0,g0);
+	size_t dmax = 10;
+	for (size_t d=1; d<dmax; ++d)
+	{
+		HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+		double SvecSvec = Htmp.SvecSvecAvg(g0.state,0,d);
+		lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+	}
+	
+	cout << endl;
+	cout << "-----U1-----" << endl;
+	print_mag(Heis,g);
+	for (size_t d=1; d<dmax; ++d)
+	{
+		HEISENBERG Htmp(d+1,{{"Ly",Ly},{"J",J},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+		double SvecSvec = Htmp.SvecSvecAvg(g.state,0,d);
+		lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+	}
+	
+	g.state.graph("g");
 	
 //	//---<transverse Ising>---
 //	if (ISING)

@@ -402,7 +402,7 @@ public:
 	inline ArrayXd get_truncWeight() const {return truncWeight;};
 	
 	/**Returns the entropy when cut at site (Eigen array).*/
-	ArrayXd get_entropy() const {return entropy;};
+	ArrayXd entropy() const {return S;};
 	///\}
 	
 private:
@@ -417,7 +417,7 @@ private:
 	//*The Mps site-tensor.*/
 	vector<vector<Biped<Symmetry,MatrixType> > > A; // access: A[l][s].block[q]
 	ArrayXd truncWeight;
-	ArrayXd entropy;
+	ArrayXd S;
 	
 	// Bases on all ingoing and outgoing legs of the MPS
 	vector<Qbasis<Symmetry> > inbase;
@@ -481,10 +481,10 @@ info() const
 	int lSmax;
 	if (this->N_sites > 1)
 	{
-		entropy.maxCoeff(&lSmax);
-		if (!std::isnan(entropy(lSmax)))
+		S.maxCoeff(&lSmax);
+		if (!std::isnan(S(lSmax)))
 		{
-			ss << "Smax(l=" << lSmax << ")=" << entropy(lSmax) << ", ";
+			ss << "Smax(l=" << lSmax << ")=" << S(lSmax) << ", ";
 		}
 	}
 	ss << "mem=" << round(memory(GB),3) << "GB";
@@ -570,7 +570,7 @@ outerResize (const Mps<Symmetry,OtherMatrixType> &V)
 	A.resize(this->N_sites);
 	
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
-	entropy.resize(this->N_sites-1); entropy.setConstant(numeric_limits<double>::quiet_NaN());
+	S.resize(this->N_sites-1); S.setConstant(numeric_limits<double>::quiet_NaN());
 	
 	for (size_t l=0; l<V.N_sites; ++l)
 	{
@@ -602,7 +602,7 @@ resize_arrays()
 	outbase.resize(this->N_sites);
 	
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
-	entropy.resize(this->N_sites-1); entropy.setConstant(numeric_limits<double>::quiet_NaN());
+	S.resize(this->N_sites-1); S.setConstant(numeric_limits<double>::quiet_NaN());
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1616,7 +1616,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		int bond = (loc==0)? -1 : loc;
 		if (bond != -1)
 		{
-			entropy(loc-1) = entropySub.sum();
+			S(loc-1) = entropySub.sum();
 		}
 	}
 	this->pivot = (loc==0)? 0 : loc-1;
@@ -1803,7 +1803,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		int bond = (loc==this->N_sites-1)? -1 : loc;
 		if (bond != -1)
 		{
-			entropy(loc) = entropySub.sum();
+			S(loc) = entropySub.sum();
 		}
 	}
 	this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
@@ -2374,7 +2374,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 		int bond = (loc==this->N_sites-1)? -1 : loc;
 		if (bond != -1)
 		{
-			entropy(loc) = entropySub.sum();
+			S(loc) = entropySub.sum();
 		}
 	}
 	else
@@ -2382,7 +2382,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 		int bond = (loc==0)? -1 : loc;
 		if (bond != -1)
 		{
-			entropy(loc-1) = entropySub.sum();
+			S(loc-1) = entropySub.sum();
 		}
 	}
 }
@@ -2953,7 +2953,7 @@ swap (Mps<Symmetry,Scalar> &V)
 	std::swap(this->eps_svd, V.eps_svd);
 	std::swap(this->max_Nsv, V.max_Nsv);
 	std::swap(this->min_Nsv, V.min_Nsv);
-	std::swap(this->entropy, V.entropy);
+	std::swap(this->S, V.S);
 	
 	for (size_t l=0; l<this->N_sites; ++l)
 	for (size_t s=0; s<qloc[l].size(); ++s)

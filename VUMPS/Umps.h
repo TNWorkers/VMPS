@@ -72,7 +72,7 @@ public:
 	VectorXd singularValues (size_t loc=0);
 	
 	/**Returns the entropy at site \p loc.*/
-	double entropy (size_t loc=0);
+	VectorXd entropy() const {return S;};
 	
 	/**Returns the local basis at site \p loc.*/
 	inline vector<qarray<Symmetry::Nq> > locBasis (size_t loc) const {return qloc[loc];}
@@ -80,11 +80,17 @@ public:
 	/**Returns the whole local basis at site \p loc.*/
 	inline vector<vector<qarray<Symmetry::Nq> > > locBasis()   const {return qloc;}
 	
+	inline Qbasis<Symmetry> inBasis (size_t loc) const {return inbase[loc];}
+	inline vector<Qbasis<Symmetry> > inBasis()   const {return inbase;}
+	
+	inline Qbasis<Symmetry> outBasis (size_t loc) const {return outbase[loc];}
+	inline vector<Qbasis<Symmetry> > outBasis()   const {return outbase;}
+	
 	/**Returns the amount of rows of first tensor. Useful for environment tensors in contractions.*/
 	size_t get_frst_rows() const {return A[GAUGE::C][0][0].block[0].rows();}
 	
 	/**Returns the amount of columns of last tensor. Useful for environment tensors in contractions.*/
-	size_t get_last_cols() const {return A[GAUGE::C][N_sites][0].block[0].cols();}
+	size_t get_last_cols() const {return A[GAUGE::C][N_sites-1][0].block[0].cols();}
 	
 	/**Returns the amount of sites, i.e. the size of the unit cell.*/
 	size_t length() const {return N_sites;}
@@ -116,7 +122,7 @@ private:
 	double eps_svd = 1e-7;
 	size_t N_sv;
 	
-	void calc_singularValues (size_t loc=0);
+	void calc_entropy (size_t loc=0);
 	
 	// sets of all unique incoming & outgoing indices for convenience
 	vector<vector<qarray<Symmetry::Nq> > > inset;
@@ -127,6 +133,8 @@ private:
 	
 	// UMPS-tensors in the three gauges L,R,C
 	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> A; // A[L/R/C][l][s].block[q]
+	
+	std::array<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >,2> Acell;
 	
 	// center matrix
 	vector<Biped<Symmetry,MatrixType> >                        C; // zero-site part C[l]
@@ -192,17 +200,6 @@ template<typename Symmetry, typename Scalar>
 size_t Umps<Symmetry,Scalar>::
 calc_Dmax() const
 {
-//	size_t res = 0;
-//	for (size_t l=0; l<N_sites; ++l)
-//	{
-//		for (size_t s=0; s<qloc[l].size(); ++s)
-//		for (size_t q=0; q<A[GAUGE::C][l][s].dim; ++q)
-//		{
-//			if (A[GAUGE::C][l][s].block[q].rows()>res) {res = A[GAUGE::C][l][s].block[q].rows();}
-//			if (A[GAUGE::C][l][s].block[q].cols()>res) {res = A[GAUGE::C][l][s].block[q].cols();}
-//		}
-//	}
-//	return res;
 	size_t res = 0;
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
@@ -233,21 +230,6 @@ template<typename Symmetry, typename Scalar>
 size_t Umps<Symmetry,Scalar>::
 calc_Mmax() const
 {
-//	size_t res = 0;
-//	for (size_t l=0; l<N_sites; ++l)
-//	for (size_t s=0; s<qloc[l].size(); ++s)
-//	{
-//		size_t Mrows = 0;
-//		size_t Mcols = 0;
-//		for (size_t q=0; q<A[GAUGE::C][l][s].dim; ++q)
-//		{
-//			Mrows += A[GAUGE::C][l][s].block[q].rows();
-//			Mcols += A[GAUGE::C][l][s].block[q].cols();
-//		}
-//		if (Mrows>res) {res = Mrows;}
-//		if (Mcols>res) {res = Mcols;}
-//	}
-//	return res;
 	size_t res = 0;
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
@@ -314,70 +296,6 @@ template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
 resize (size_t Dmax_input, size_t Nqmax_input)
 {
-//	Dmax = Dmax_input;
-//	
-//	for (size_t g=0; g<3; ++g)
-//	{
-//		A[g].resize(N_sites);
-//		for (size_t l=0; l<N_sites; ++l)
-//		{
-//			A[g][l].resize(qloc[l].size());
-//		}
-//		
-//		N[g].resize(N_sites);
-//		for (size_t l=0; l<N_sites; ++l)
-//		{
-//			N[g][l].resize(qloc[l].size());
-//		}
-//	}
-//	C.resize(N_sites);
-//	inset.resize(N_sites);
-//	outset.resize(N_sites);
-//	
-//	for (size_t l=0; l<N_sites; ++l)
-//	{
-//		inset[l].push_back(Symmetry::qvacuum());
-//		outset[l].push_back(Symmetry::qvacuum());
-//	}
-//	
-//	for (size_t g=0; g<3; ++g)
-//	for (size_t l=0; l<N_sites; ++l)
-//	for (size_t s=0; s<qloc[l].size(); ++s)
-//	{
-//		A[g][l][s].in.push_back(Symmetry::qvacuum());
-//		A[g][l][s].out.push_back(Symmetry::qvacuum());
-//		A[g][l][s].dict.insert({qarray2<Symmetry::Nq>{Symmetry::qvacuum(),Symmetry::qvacuum()}, A[g][l][s].dim});
-//		A[g][l][s].dim = 1;
-//		A[g][l][s].block.resize(1);
-//		
-//		N[g][l][s].in.push_back(Symmetry::qvacuum());
-//		N[g][l][s].out.push_back(Symmetry::qvacuum());
-//		N[g][l][s].dict.insert({qarray2<Symmetry::Nq>{Symmetry::qvacuum(),Symmetry::qvacuum()}, A[g][l][s].dim});
-//		N[g][l][s].dim = 1;
-//		N[g][l][s].block.resize(1);
-//	}
-//	
-//	for (size_t g=0; g<3; ++g)
-//	for (size_t l=0; l<N_sites; ++l)
-//	for (size_t s=0; s<qloc[l].size(); ++s)
-//	{
-//		A[g][l][s].block[0].resize(Dmax,Dmax);
-//	}
-//	
-//	for (size_t l=0; l<N_sites; ++l)
-//	{
-//		C[l].in.push_back(Symmetry::qvacuum());
-//		C[l].out.push_back(Symmetry::qvacuum());
-//		C[l].dict.insert({qarray2<Symmetry::Nq>{Symmetry::qvacuum(),Symmetry::qvacuum()}, C[l].dim});
-//		C[l].dim = 1;
-//		C[l].block.resize(1);
-//		C[l].block[0].resize(Dmax,Dmax);
-//	}
-//	
-//	Csingular.clear();
-//	Csingular.resize(N_sites);
-//	S.resize(N_sites);
-	
 	Dmax = Dmax_input;
 	Nqmax = Nqmax_input;
 	
@@ -402,7 +320,7 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	auto take_first_elems = [this] (const vector<qarray<Nq> > &qs) -> vector<qarray<Nq> >
 	{
 		vector<qarray<Nq> > out = qs;
-		// sort the vector first according to the distance to mean
+		// sort the vector first according to the distance to qvacuum
 		sort(out.begin(),out.end(),[this] (qarray<Nq> q1, qarray<Nq> q2)
 		{
 			VectorXd dist_q1(Nq);
@@ -410,8 +328,8 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 			for (size_t q=0; q<Nq; q++)
 			{
 				double Delta = 1.; // QinTop[loc][q] - QinBot[loc][q];
-				dist_q1(q) = (q1[q]) / Delta;
-				dist_q2(q) = (q2[q]) / Delta;
+				dist_q1(q) = q1[q] / Delta;
+				dist_q2(q) = q2[q] / Delta;
 			}
 			return (dist_q1.norm() < dist_q2.norm())? true:false;
 		});
@@ -428,7 +346,8 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	{
 		for (size_t l=0; l<N_sites; ++l)
 		{
-			for (const auto &t:qoutset[(l-1)%N_sites])
+			size_t index = (l==0)? N_sites-1 : (l-1)%N_sites;
+			for (const auto &t:qoutset[index])
 			{
 				if (qinset[l].size() < Nqmax)
 				{
@@ -527,8 +446,6 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 		C[l].push_back(qarray2<Symmetry::Nq>{outbase[l][qout], outbase[l][qout]}, Mtmp);
 	}
 	
-//	Csingular.clear();
-//	Csingular.resize(N_sites);
 	S.resize(N_sites);
 }
 
@@ -559,7 +476,7 @@ setRandom()
 		A[GAUGE::C][l][s].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
 	}
 	
-	calc_singularValues();
+	calc_entropy();
 }
 
 template<typename Symmetry, typename Scalar>
@@ -766,7 +683,7 @@ test_ortho (double tol) const
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-calc_singularValues (size_t loc)
+calc_entropy (size_t loc)
 {
 	S(loc) = 0;
 	
@@ -775,10 +692,6 @@ calc_singularValues (size_t loc)
 		JacobiSVD<MatrixType> Jack(C[loc].block[q]);
 //		Csingular[loc] += Jack.singularValues();
 		size_t Nnz = (Jack.singularValues().array() > 0.).count();
-		
-		double Scontr = -Symmetry::degeneracy(C[loc].in[q]) * (Jack.singularValues().head(Nnz).array().square() 
-		                                              * Jack.singularValues().head(Nnz).array().square().log()).sum();
-		cout << "loc=" << loc << ", q=" << q << ", in=" << C[loc].in[q] << ", out=" << C[loc].out[q] << ", S=" << Scontr << endl;
 		
 		S(loc) += -Symmetry::degeneracy(C[loc].in[q]) * (Jack.singularValues().head(Nnz).array().square() 
 		                                              * Jack.singularValues().head(Nnz).array().square().log()).sum();
@@ -794,28 +707,6 @@ calc_singularValues (size_t loc)
 //}
 
 template<typename Symmetry, typename Scalar>
-double Umps<Symmetry,Scalar>::
-entropy (size_t loc)
-{
-	assert(loc<N_sites);
-	return S(loc);
-}
-
-// wtf is that?
-//MatrixXd gauge (const MatrixXd &U)
-//{
-//	MatrixXd Mout;
-//	Mout.setIdentity(U.rows(),U.cols());
-//	for (int i=0; i<U.rows(); ++i)
-//	{
-//		MatrixXd::Index imax;
-//		U.row(i).maxCoeff(&imax);
-//		Mout(i,i) *= (U.row(i)(imax)>=0)? 1:-1;
-//	}
-//	return Mout;
-//}
-
-template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
 polarDecompose (size_t loc)
 {
@@ -826,6 +717,18 @@ polarDecompose (size_t loc)
 	#endif
 	
 	S(loc) = 0;
+	
+	vector<MatrixType> UC;
+	for (size_t q=0; q<C[loc].dim; ++q)
+	{
+		Jack.compute(C[loc].block[q], ComputeThinU|ComputeThinV);
+		UC.push_back(Jack.matrixU() * Jack.matrixV().adjoint());
+		
+		// Get the singular values and the entropy while at it (C[loc].dim=1 assumed):
+		size_t Nnz = (Jack.singularValues().array() > 0).count();
+		S(loc) += -Symmetry::degeneracy(C[loc].in[q]) * (Jack.singularValues().head(Nnz).array().square() 
+		                                              * Jack.singularValues().head(Nnz).array().square().log()).sum();
+	}
 	
 	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
 	{
@@ -850,7 +753,6 @@ polarDecompose (size_t loc)
 		size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
 		
 		MatrixType Aclump(Nrows,Ncols);
-		MatrixType Acmp(Nrows,Ncols);
 		Aclump.setZero();
 		size_t stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
@@ -865,20 +767,6 @@ polarDecompose (size_t loc)
 		auto it = C[loc].dict.find(quple);
 		size_t qC = it->second;
 		
-		// Check if possible to move outside the loop:
-		vector<MatrixType> UC;
-		for (size_t q=0; q<C[loc].dim; ++q)
-		{
-			Jack.compute(C[loc].block[q], ComputeThinU|ComputeThinV);
-			UC.push_back(Jack.matrixU() * Jack.matrixV().adjoint());
-			
-			// Get the singular values and the entropy while at it (C[loc].dim=1 assumed):
-//			Csingular[loc] = Jack.singularValues();
-			size_t Nnz = (Jack.singularValues().array() > 0).count();
-			S(loc) += -Symmetry::degeneracy(C[loc].in[q]) * (Jack.singularValues().head(Nnz).array().square() 
-			                                             * Jack.singularValues().head(Nnz).array().square().log()).sum();
-		}
-		
 		// Update AL
 		stitch = 0;
 		for (size_t i=0; i<svec.size(); ++i)
@@ -886,6 +774,14 @@ polarDecompose (size_t loc)
 			A[GAUGE::L][loc][svec[i]].block[qvec[i]] = UL.block(stitch,0, Nrowsvec[i],Ncols) * UC[qC].adjoint();
 			stitch += Nrowsvec[i];
 		}
+	}
+	
+	UC.clear();
+	size_t locC = (loc==0)? N_sites-1 : (loc-1)%N_sites;
+	for (size_t q=0; q<C[locC].dim; ++q)
+	{
+		Jack.compute(C[locC].block[q], ComputeThinU|ComputeThinV);
+		UC.push_back(Jack.matrixU() * Jack.matrixV().adjoint());
 	}
 	
 	for (size_t qin=0; qin<inbase[loc].Nq(); ++qin)
@@ -916,26 +812,17 @@ polarDecompose (size_t loc)
 		{
 			Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[GAUGE::C][loc][svec[i]].block[qvec[i]]*
 			                                             Symmetry::coeff_leftSweep(
-					                                         A[GAUGE::C][loc][svec[i]].out[qvec[i]],
-					                                         A[GAUGE::C][loc][svec[i]].in[qvec[i]],
-					                                         qloc[loc][svec[i]]);;
+			                                              A[GAUGE::C][loc][svec[i]].out[qvec[i]],
+			                                              A[GAUGE::C][loc][svec[i]].in[qvec[i]],
+			                                              qloc[loc][svec[i]]);;
 			stitch += Ncolsvec[i];
 		}
 		
 		Jack.compute(Aclump,ComputeThinU|ComputeThinV);
 		MatrixType UR = Jack.matrixU() * Jack.matrixV().adjoint();
 		
-		size_t locC = (N_sites==1)? 0 : (loc-1)%N_sites;
 		auto it = C[locC].dict.find(quple);
 		size_t qC = it->second;
-		
-		vector<MatrixType> UC;
-		
-		for (size_t q=0; q<C[locC].dim; ++q)
-		{
-			Jack.compute(C[locC].block[q], ComputeThinU|ComputeThinV);
-			UC.push_back(Jack.matrixU() * Jack.matrixV().adjoint());
-		}
 		
 		// Update AR
 		stitch = 0;
@@ -943,9 +830,9 @@ polarDecompose (size_t loc)
 		{
 			A[GAUGE::R][loc][svec[i]].block[qvec[i]] = UC[qC].adjoint() * UR.block(0,stitch, Nrows,Ncolsvec[i])*
 			                                           Symmetry::coeff_sign(
-								                          A[GAUGE::C][loc][svec[i]].out[qvec[i]],
-								                          A[GAUGE::C][loc][svec[i]].in[qvec[i]],
-								                          qloc[loc][svec[i]]);
+			                                            A[GAUGE::C][loc][svec[i]].out[qvec[i]],
+			                                            A[GAUGE::C][loc][svec[i]].in[qvec[i]],
+			                                            qloc[loc][svec[i]]);
 			stitch += Ncolsvec[i];
 		}
 	}
@@ -1062,7 +949,7 @@ calc_epsLRsq (size_t loc, double &epsLsq, double &epsRsq)
 	for (size_t qin=0; qin<inbase[loc].Nq(); ++qin)
 	{
 		qarray2<Symmetry::Nq> quple = {inbase[loc][qin], inbase[loc][qin]};
-		size_t locC = (N_sites==1)? 0 : (loc-1)%N_sites;
+		size_t locC = (loc==0)? N_sites-1 : (loc-1)%N_sites;
 		auto it = C[locC].dict.find(quple);
 		size_t qC = it->second;
 		
@@ -1192,7 +1079,7 @@ svdDecompose (size_t loc)
 	for (size_t qin=0; qin<inbase[loc].Nq(); ++qin)
 	{
 		qarray2<Symmetry::Nq> quple = {inbase[loc][qin], inbase[loc][qin]};
-		size_t locC = (N_sites==1)? 0 : (loc-1)%N_sites;
+		size_t locC = (loc==0)? N_sites-1 : (loc-1)%N_sites;
 		auto it = C[locC].dict.find(quple);
 		size_t qC = it->second;
 		
@@ -1253,7 +1140,7 @@ svdDecompose (size_t loc)
 		}
 	}
 	
-	calc_singularValues(loc);
+	calc_entropy(loc);
 }
 
 #endif

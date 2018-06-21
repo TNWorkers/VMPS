@@ -110,7 +110,7 @@ SvecSvecAvg (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1, size_
 {
 	return isReal(avg(Psi,SzSz(locx1,locx2,locy1,locy2),Psi))+
 		   0.5*(isReal(avg(Psi,SpSm(locx1,locx2,locy1,locy2),Psi))+
-			    isReal(avg(Psi,SmSp(locx1,locx2,locy1,locy2),Psi)));
+		        isReal(avg(Psi,SmSp(locx1,locx2,locy1,locy2),Psi)));
 }
 
 #endif

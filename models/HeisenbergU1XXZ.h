@@ -90,10 +90,6 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &
 		if (label!="") {Terms.info.push_back(label);}
 	};
 	
-	stringstream ss;
-	ss << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc)-1,2));
-	save_label(ss.str());
-	
 	// Jxy/Jz terms
 	
 	auto [Jxy,Jxypara,Jxylabel] = P.fill_array2d<double>("Jxy","Jxypara",B.orbitals(),loc);

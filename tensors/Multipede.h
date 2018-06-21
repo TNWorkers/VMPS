@@ -139,6 +139,29 @@ typedef typename Symmetry::qType qType;
 	
 	void insert (size_t ab, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs);
 	///@}
+	
+	template<typename OtherMatrixType>
+	Multipede<Nlegs,Symmetry,OtherMatrixType> cast() const
+	{
+		Multipede<Nlegs,Symmetry,OtherMatrixType> Vout;
+		
+		Vout.dict = dict;
+		Vout.block.resize(block.size());
+		Vout.index = index;
+		Vout.dim = dim;
+		
+		for (size_t q=0; q<dim; ++q)
+		{
+			Vout.block[q].resize(boost::extents[block[q].shape()[0]][block[q].shape()[1]]);
+			for (size_t a=0; a<block[q].shape()[0]; ++a)
+			for (size_t b=0; b<block[q].shape()[1]; ++b)
+			{
+				Vout.block[q][a][b] = block[q][a][b].template cast<typename OtherMatrixType::Scalar>();
+			}
+		}
+		
+		return Vout;
+	}
 };
 
 template<typename Symmetry, typename MatrixType> using Tripod    = Multipede<3,Symmetry,MatrixType>;

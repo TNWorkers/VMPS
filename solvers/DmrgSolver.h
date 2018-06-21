@@ -715,7 +715,7 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 		if (GlobParam.CALC_S_ON_EXIT)
 		{
 			size_t standard_precision = cout.precision();
-			lout << setprecision(2) << "S=" << Vout.state.get_entropy().transpose() << setprecision(standard_precision) << endl;
+			lout << setprecision(2) << "S=" << Vout.state.entropy().transpose() << setprecision(standard_precision) << endl;
 		}
 	}
 	

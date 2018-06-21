@@ -173,6 +173,25 @@ public:
 	void create_block (std::array<qType,2> quple);
 	void try_create_block (std::array<qType,2> quple);
 	///@}
+	
+	template<typename OtherMatrixType>
+	Biped<Symmetry,OtherMatrixType> cast() const
+	{
+		Biped<Symmetry,OtherMatrixType> Vout;
+		
+		Vout.dict = dict;
+		Vout.block.resize(block.size());
+		Vout.in = in;
+		Vout.out = out;
+		Vout.dim = dim;
+		
+		for (size_t q=0; q<dim; ++q)
+		{
+			Vout.block[q] = block[q].template cast<typename OtherMatrixType::Scalar>();
+		}
+		
+		return Vout;
+	}
 };
 
 template<typename Symmetry, typename MatrixType_>

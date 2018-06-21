@@ -140,10 +140,6 @@ add_operators (HamiltonianTermsXd<Symmetry> &Terms, const SpinBase<Symmetry> &B,
 		if (label!="") {Terms.info.push_back(label);}
 	};
 	
-	stringstream ss;
-	ss << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc)-1,2));
-	save_label(ss.str());
-	
 	// Dzyaloshinsky-Moriya terms
 	
 	auto [Dy,Dypara,Dylabel] = P.fill_array2d<double>("Dy","Dypara",B.orbitals(),loc);
