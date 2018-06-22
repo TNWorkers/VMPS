@@ -681,7 +681,43 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	build_LR (Vout.state.Acell[GAUGE::L], Vout.state.Acell[GAUGE::R], Vout.state.C[N_sites-1], 
 	          Wcell, qlocCell, qOpCell, 
 	          HeffA[0].L, HeffA[N_sites-1].R);
-	
+
+	// for(size_t q=0; q<HeffA[N_sites-1].R.dim; q++)
+	// {
+	// 	// if(HeffA[N_sites-1].R.mid(q) == Symmetry::qvacuum())
+	// 	// {
+	// 		for (size_t a=0; a<HeffA[N_sites-1].R.block[q].shape()[0]; ++a)
+	// 		{
+	// 			if(HeffA[N_sites-1].R.block[q][a][0].size() != 0)
+	// 			{
+	// 				HeffA[N_sites-1].R.block[q][a][0] = HeffA[N_sites-1].R.block[q][a][0]
+	// 					* sqrt(Symmetry::coeff_dot(HeffA[N_sites-1].R.in(q)))
+	// 					* sqrt(Symmetry::coeff_dot(HeffA[N_sites-1].R.out(q)))
+	// 					* sqrt(Symmetry::coeff_dot(HeffA[N_sites-1].R.mid(q)));
+	// 			}
+	// 		}
+	// 	// }
+	// 	// else {cout << termcolor::red << "Non diagonal blocks in the right cell environment" << termcolor::reset << endl;}
+	// }
+
+	// for(size_t q=0; q<HeffA[0].L.dim; q++)
+	// {
+	// 	// if(HeffA[0].L.mid(q) == Symmetry::qvacuum())
+	// 	// {
+	// 		for (size_t a=0; a<HeffA[0].L.block[q].shape()[0]; ++a)
+	// 		{
+	// 			if(HeffA[0].L.block[q][a][0].size() != 0)
+	// 			{
+	// 				HeffA[0].L.block[q][a][0] = HeffA[0].L.block[q][a][0]
+	// 					* sqrt(Symmetry::coeff_dot(HeffA[0].L.in(q)))
+	// 					* sqrt(Symmetry::coeff_dot(HeffA[0].L.out(q)))
+	// 					* sqrt(Symmetry::coeff_dot(HeffA[0].L.mid(q)));
+	// 			}
+	// 		}
+	// 	// }
+	// 	// else {cout << termcolor::red << "Non diagonal blocks in the right cell environment" << termcolor::reset << endl;}
+	// }
+
 	// Make environment for each site of the unit cell
 	for (size_t l=1; l<N_sites; ++l)
 	{

@@ -194,8 +194,8 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 						if constexpr (Symmetry::NON_ABELIAN)
 						{
 							factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[q2->second],qloc[s2],Aket[s2].in[q2->second],
-							                                    Rold.mid(qR),qOp[k],quple[2],
-							                                    Abra[s1].out[q1->second],qloc[s1],Abra[s1].in[q1->second]);
+																Rold.mid(qR),qOp[k],quple[2],
+																Abra[s1].out[q1->second],qloc[s1],Abra[s1].in[q1->second]);
 						}
 						else
 						{
@@ -931,6 +931,7 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 		if (L.mid(qL) == Symmetry::qvacuum())
 		{
 			qarray2<Symmetry::Nq> quple = {L.out(qL), L.in(qL)};
+			assert(L.out(qL) == L.in(qL) and "contract_LR(Tripod,Biped) error.");
 			auto qR = R.dict.find(quple);
 		
 			if (qR != R.dict.end())
@@ -940,7 +941,7 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 					if (L.block[qL][a][0].size() != 0 and
 						R.block[qR->second].size() != 0)
 					{
-						res += (L.block[qL][a][0] * R.block[qR->second]).trace();
+						res += (L.block[qL][a][0] * R.block[qR->second]).trace() * Symmetry::coeff_dot(L.out(qL));
 					}
 				}
 			}
@@ -961,6 +962,7 @@ Scalar contract_LR (const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 		if (R.mid(qR) == Symmetry::qvacuum())
 		{
 			qarray2<Symmetry::Nq> quple = {R.out(qR), R.in(qR)};
+			assert(R.out(qR) == R.in(qR) and "contract_LR(Biped,Tripod) error.");
 			auto qL = L.dict.find(quple);
 			
 			if (qL != L.dict.end())
@@ -970,7 +972,7 @@ Scalar contract_LR (const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 					if (R.block[qR][a][0].size() != 0 and
 						L.block[qL->second].size() != 0)
 					{
-						res += (L.block[qL->second] * R.block[qR][a][0]).trace();
+						res += (L.block[qL->second] * R.block[qR][a][0]).trace() * Symmetry::coeff_dot(R.out(qR));
 					}
 				}
 			}
@@ -998,7 +1000,7 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 				if (L.block[qL][a][0].size() != 0 and
 				    R.block[qR->second][a][0].size() != 0)
 				{
-					res += (L.block[qL][a][0] * R.block[qR->second][a][0]).trace();
+					res += (L.block[qL][a][0] * R.block[qR->second][a][0]).trace() * Symmetry::coeff_dot(L.out(qL));
 				}
 			}
 		}

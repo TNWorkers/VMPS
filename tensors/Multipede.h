@@ -108,7 +108,7 @@ typedef typename Symmetry::qType qType;
 	/***/
 	void setIdentity (size_t Drows, size_t Dcols, size_t amax=1, size_t bmax=1);
 	
-	void setIdentity (size_t D, size_t amax, size_t bmax, const Qbasis<Symmetry> &base);
+	void setIdentity (size_t D, size_t amax, size_t bmax, const Qbasis<Symmetry> &base, bool factor=false);
 	///@}
 	
 	///@{
@@ -346,7 +346,7 @@ setIdentity (size_t Drows, size_t Dcols, size_t amax, size_t bmax)
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
 void Multipede<Nlegs,Symmetry,MatrixType>::
-setIdentity (size_t D, size_t amax, size_t bmax, const Qbasis<Symmetry> &base)
+setIdentity (size_t D, size_t amax, size_t bmax, const Qbasis<Symmetry> &base, bool factor)
 {
 	static_assert(Nlegs == 3);
 	
@@ -358,7 +358,7 @@ setIdentity (size_t D, size_t amax, size_t bmax, const Qbasis<Symmetry> &base)
 		{
 			MatrixType Mtmp(D,D);
 			Mtmp.setIdentity();
-			Mtmp *= Symmetry::degeneracy(base[q]);
+			if (factor) { Mtmp *= Symmetry::degeneracy(base[q]); }
 			Mtmparray[a][b] = Mtmp;
 		}
 		

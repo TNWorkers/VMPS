@@ -439,6 +439,93 @@ boost::multi_array<Scalar,4> make_Warray4 (int b, const MpHamiltonian &H)
 	return Wout;
 }
 
+// template<typename Symmetry, typename MpoScalar>
+// void contract_WW (const vector<unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<MpoScalar> > > V12,
+//                   const vector<qarray<Symmetry::Nq> > &qloc12, 
+//                   const vector<qarray<Symmetry::Nq> > &qOp12,
+//                   const vector<unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<MpoScalar> > > V34,
+//                   const vector<qarray<Symmetry::Nq> > &qloc34, 
+//                   const vector<qarray<Symmetry::Nq> > &qOp34,
+// 				  vector<unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<MpoScalar> > > V,
+// 				  vector<qarray<Symmetry::Nq> > &qloc, 
+// 				  vector<qarray<Symmetry::Nq> > &qOp)
+// {
+// 	V.clear();
+// 	qloc.clear();
+// 	qOp.clear();
+	
+// 	qOp = Symmetry::reduceSilent(qOp12, qOp34, true);
+// 	auto tensor_basis = Symmetry::tensorProd(qloc12, qloc34);
+	
+// 	qloc.resize(tensor_basis.size());
+// 	for (size_t q=0; q<tensor_basis.size(); ++q)
+// 	{
+// 		qloc[q] = get<4>(tensor_basis[q]);
+// 	}
+	
+// 	W.resize(tensor_basis.size());
+	
+// 	for (size_t s1=0; s1<qloc12.size(); ++s1)
+// 	for (size_t s3=0; s3<qloc34.size(); ++s3)
+// 	{
+// 		auto qmerges13 = Symmetry::reduceSilent(qloc12[s1], qloc34[s3]);
+		
+// 		for (const auto &qmerge13:qmerges13)
+// 		{
+// 			auto qtensor13 = make_tuple(qloc12[s1], s1, qloc34[s3], s3, qmerge13);
+// 			auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
+			
+// 			for (size_t s2=0; s2<qloc12.size(); ++s2)
+// 			for (size_t s4=0; s4<qloc34.size(); ++s4)
+// 			{
+// 				auto qmerges24 = Symmetry::reduceSilent(qloc12[s2], qloc34[s4]);
+				
+// 				for (const auto &qmerge24:qmerges24)
+// 				{
+// 					auto qtensor24 = make_tuple(qloc12[s2], s2, qloc34[s4], s4, qmerge24);
+// 					auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
+					
+// 					for (size_t k12=0; k12<qOp12.size(); ++k12)
+// 					for (size_t k34=0; k34<qOp34.size(); ++k34)
+// 					{
+// 						auto kmerges = Symmetry::reduceSilent(qOp12[k12], qOp34[k34]);
+						
+// 						for (const auto &kmerge:kmerges)
+// 						{
+// 							if (!Symmetry::validate(qarray3<Symmetry::Nq>{qmerge24,kmerge,qmerge13})) {continue;}
+							
+// 							auto k = distance(qOp.begin(), find(qOp.begin(), qOp.end(), kmerge));
+							
+// 							auto key12 = make_tuple(s1,s2,k12,Lold.mid(qL),quple[2]);
+// 							if(auto it=V12.find(key); it == V.end()) { continue; }
+// 							for (int r12=0; r12<V12.at(key).outerSize(); ++r12)
+
+// 							for (int r12=0; r12<W12[s1][s2][k12].outerSize(); ++r12)
+// 							for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(W12[s1][s2][k12],r12); iW12; ++iW12)
+// 							for (int r34=0; r34<W34[s3][s4][k34].outerSize(); ++r34)
+// 							for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(W34[s3][s4][k34],r34); iW34; ++iW34)
+// 							{
+// 								MpoScalar val = iW12.value() * iW34.value();
+								
+// 								if (iW12.col() == iW34.row() and abs(val) > 0.)
+// 								{
+// 									if (W[s1s3][s2s4][k].size() == 0)
+// 									{
+// 										W[s1s3][s2s4][k].resize(W12[s1][s2][k12].rows(), W34[s3][s4][k34].cols());
+// 									}
+									
+// 									W[s1s3][s2s4][k].coeffRef(iW12.row(),iW34.col()) += val;
+// 								}
+// 							}
+// 						}
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// }
+
+
 template<typename Symmetry, typename MpoScalar>
 void contract_WW (const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W12, 
                   const vector<qarray<Symmetry::Nq> > &qloc12, 
