@@ -15,6 +15,11 @@ std::ostream& operator<< (std::ostream& s, GAUGE::OPTION g)
 	return s;
 }
 
+struct VUMPS_ALG
+{
+	enum OPTION {PARA=0, SEQU=1};
+};
+
 //template<typename MatrixType>
 //void unique_QR (const MatrixType &M, MatrixType &Qmatrix, MatrixType &Rmatrix)
 //{

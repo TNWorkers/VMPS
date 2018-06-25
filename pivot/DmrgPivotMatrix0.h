@@ -24,6 +24,18 @@ struct PivotMatrix0
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
 };
 
+template<typename Symmetry, typename Scalar>
+void phase_convention (Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C)
+{
+	for (size_t q=0; q<C.dim; ++q)
+	{
+		for (size_t i=0; i<C.block[q].cols(); ++i)
+		{
+			if (C.block[q].col(i)(0) < 0.) {C.block[q].col(i) *= -1.;}
+		}
+	}
+}
+
 //-----------<matrix*vector>-----------
 /**Calculates the following contraction:
 \dotfile HxV_0site.dot*/

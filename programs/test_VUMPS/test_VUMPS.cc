@@ -177,7 +177,7 @@ int main (int argc, char* argv[])
 
 	HEISENBERG_SU2::uSolver DMRG_SU2(VERB);
 	Eigenstate<HEISENBERG_SU2::StateUd> g_SU2;
-	if(CALC_SU2)
+	if (CALC_SU2)
 	{
 		lout << Heis_SU2.info() << endl;
 		DMRG_SU2.set_log(2,"e_Heis_SU2.dat","err_eigval_Heis_SU2.dat","err_var_Heis_SU2.dat");
@@ -199,19 +199,20 @@ int main (int argc, char* argv[])
 	typedef VMPS::Heisenberg HEISENBERG0;
 	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"J",J},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	
-	HEISENBERG0::uSolver DMRG0(DMRG::VERBOSITY::ON_EXIT);
+	HEISENBERG0::uSolver DMRG0(VERB);
 	Eigenstate<HEISENBERG0::StateUd> g0;
-	if(CALC_U1)
+	if (CALC_U1)
 	{
 		lout << Heis0.info() << endl;
+		DMRG0.set_log(2,"e_Heis_U0.dat","err_eigval_Heis_U0.dat","err_var_Heis_U0.dat");
 		DMRG0.edgeState(Heis0, g0, tol_eigval,tol_var, M, 1, max_iter,1);
 		cout << g0.state.info() << endl;
 	}
 	
 	cout << setprecision(13);
-	if(CALC_SU2) {cout << "e0(SU2)=" << g_SU2.energy << endl;}
-	if(CALC_U1) {cout << "e0(U1) =" << g_U1.energy << endl;}
-	if(CALC_U0) {cout << "e0(U0) =" << g0.energy << endl;}
+	if (CALC_SU2) {cout << "e0(SU2)=" << g_SU2.energy << endl;}
+	if (CALC_U1) {cout << "e0(U1) =" << g_U1.energy << endl;}
+	if (CALC_U0) {cout << "e0(U0) =" << g0.energy << endl;}
 	if (D==2)
 	{
 		cout << "e(ref) =" << 0.25-log(2) << endl;
@@ -220,8 +221,8 @@ int main (int argc, char* argv[])
 	{
 		cout << "e(ref) =" << 1.401484038971 << endl;
 	}
-
-	if(CALC_U0)
+	
+	if (CALC_U0)
 	{
 		cout << "-----U0-----" << endl;
 		print_mag(Heis0,g0);
@@ -229,11 +230,11 @@ int main (int argc, char* argv[])
 		for (size_t d=1; d<dmax; ++d)
 		{
 			HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
-		double SvecSvec = Htmp.SvecSvecAvg(g0.state,0,d);
-		lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
-	    }
+			double SvecSvec = Htmp.SvecSvecAvg(g0.state,0,d);
+			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		}
 	}
-	if(CALC_U1)
+	if (CALC_U1)
 	{
 		cout << endl;
 		cout << "-----U1-----" << endl;
@@ -245,11 +246,11 @@ int main (int argc, char* argv[])
 			double SvecSvec = Htmp.SvecSvecAvg(g_U1.state,0,d);
 			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
 		}
-	
+		
 		g_U1.state.graph("g");
 	}
 
-	if(CALC_SU2)
+	if (CALC_SU2)
 	{
 		cout << endl;
 		cout << "-----SU2-----" << endl;

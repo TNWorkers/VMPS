@@ -166,7 +166,7 @@ int main (int argc, char* argv[])
 		lout << endl << "--------U(0)---------" << endl << endl;
 	
 		Stopwatch<> Watch_U0;
-		VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"D",D1,1},{"Ly",Ly}});
+		VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
 		lout << H_U0.info() << endl;
 	
 		VMPS::Heisenberg::Solver DMRG_U0(VERB);
@@ -273,7 +273,7 @@ int main (int argc, char* argv[])
 		lout << endl << "--------SU(2)---------" << endl << endl;
 		
 		Stopwatch<> Watch_SU2;
-		VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",false}});
+		VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",false}});
 		lout << H_SU2.info() << endl;
 		
 		VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);

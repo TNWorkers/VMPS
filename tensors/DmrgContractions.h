@@ -42,14 +42,14 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t k=0; k<qOp.size(); ++k)
 	{
-		array<typename Symmetry::qType,3> qCheck = {qloc[s2],qOp[k],qloc[s1]};
-		if(!Symmetry::validate(qCheck)) {continue;}
+		if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc[s2], qOp[k], qloc[s1]})) {continue;}
 		
 		for (size_t qL=0; qL<Lold.dim; ++qL)
 		{
 			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = AWA(Lold.in(qL), Lold.out(qL), Lold.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
-			if (FOUND_MATCH == true)
+			bool FOUND_MATCH = LAWA(Lold.in(qL), Lold.out(qL), Lold.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
+			
+			if (FOUND_MATCH)
 			{
 				for(size_t n=0; n<ix.size(); n++ )
 				{
@@ -83,11 +83,10 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 						   (MODE == TRIANGULAR and b==fixed_b and a>fixed_b) or
 						   (MODE == FIXED and b==a and b==fixed_b))
 						{
-//							cout << "contract_L MODE=" << MODE << ", a=" << a << ", b=" << b << endl;
-							if (Lold.block[qL][a][0].rows() != 0)
+							if (Lold.block[qL][a][0].size() != 0)
 							{
 								MatrixType Mtmp;
-								if(RANDOMIZE)
+								if (RANDOMIZE)
 								{
 									Mtmp.resize(Abra[s1].block[qAbra].cols(), Aket[s2].block[qAket].cols());
 									Mtmp.setRandom();
@@ -95,12 +94,12 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 								else
 								{
 									optimal_multiply(factor_cgc * iW.value(),
-									             Abra[s1].block[qAbra].adjoint(),
-									             Lold.block[qL][a][0],
-									             Aket[s2].block[qAket],
-									             Mtmp);
+									                 Abra[s1].block[qAbra].adjoint(),
+									                 Lold.block[qL][a][0],
+									                 Aket[s2].block[qAket],
+									                 Mtmp);
 								}
-							
+								
 								auto it = Lnew.dict.find(quple);
 								if (it != Lnew.dict.end())
 								{
@@ -157,98 +156,187 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 	Rnew.setZero();
 	auto [MODE,fixed_a] = MODE_input;
 	
+//	for (size_t s1=0; s1<qloc.size(); ++s1)
+//	for (size_t s2=0; s2<qloc.size(); ++s2)
+//	for (size_t k=0; k<qOp.size(); ++k)
+//	{
+//		array<typename Symmetry::qType,3> qCheck = {qloc[s2],qOp[k],qloc[s1]};
+//		if(!Symmetry::validate(qCheck)) {continue;}
+//		
+//		for (size_t qR=0; qR<Rold.dim; ++qR)
+//		{
+//			auto qRouts = Symmetry::reduceSilent(Rold.out(qR),Symmetry::flip(qloc[s1]));
+//			auto qRins  = Symmetry::reduceSilent(Rold.in(qR), Symmetry::flip(qloc[s2]));
+//			
+//			for(const auto& qRout : qRouts)
+//			for(const auto& qRin : qRins)
+//			{
+//				qarray2<Symmetry::Nq> cmp1 = {qRout, Rold.out(qR)};
+//				qarray2<Symmetry::Nq> cmp2 = {qRin, Rold.in(qR)};
+//				
+//				auto q1 = Abra[s1].dict.find(cmp1);
+//				auto q2 = Aket[s2].dict.find(cmp2);
+//				
+//				if (q1!=Abra[s1].dict.end() and 
+//				    q2!=Aket[s2].dict.end())
+//				{
+//					if (Aket[s2].block[q2->second].size() == 0) {continue;}
+//					if (Abra[s1].block[q1->second].size() == 0) {continue;}
+//					
+//					qarray<Symmetry::Nq> new_qin  = Aket[s2].in[q2->second]; // A.in
+//					qarray<Symmetry::Nq> new_qout = Abra[s1].in[q1->second]; // A†.out = A.in
+//					auto qRmids = Symmetry::reduceSilent(Rold.mid(qR),Symmetry::flip(qOp[k]));
+//					
+//					for(const auto& new_qmid : qRmids)
+//					{
+//						qarray3<Symmetry::Nq> quple = {new_qin, new_qout, new_qmid};
+//						if constexpr (Symmetry::NON_ABELIAN)
+//						{
+//							factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[q2->second], qloc[s2], Aket[s2].in[q2->second],
+//							                                    Rold.mid(qR),             qOp[k],   quple[2],
+//							                                    Abra[s1].out[q1->second], qloc[s1], Abra[s1].in[q1->second]);
+//						}
+//						else
+//						{
+//							factor_cgc = 1.;
+//						}
+//						if (abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+//						
+//						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
+//						for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+//						{
+//							size_t a = iW.row();
+//							size_t b = iW.col();
+//							
+//							if (MODE == FULL or
+//							   (MODE == TRIANGULAR and a==fixed_a and fixed_a>b) or
+//							   (MODE == FIXED and b==a and a==fixed_a))
+//							{
+//								if (Rold.block[qR][b][0].size() != 0)
+//								{
+//									MatrixType Mtmp;
+//									if (RANDOMIZE)
+//									{
+//										Mtmp.resize(Aket[s2].block[q2->second].rows(), Abra[s1].block[q1->second].rows());
+//										Mtmp.setRandom();
+//									}
+//									else
+//									{
+//										optimal_multiply(factor_cgc * iW.value(),
+//										                 Aket[s2].block[q2->second],
+//										                 Rold.block[qR][b][0],
+//										                 Abra[s1].block[q1->second].adjoint(),
+//										                 Mtmp);
+//									}
+//									
+//									auto it = Rnew.dict.find(quple);
+//									if (it != Rnew.dict.end())
+//									{
+//										if (Rnew.block[it->second][a][0].rows() != Mtmp.rows() or 
+//										    Rnew.block[it->second][a][0].cols() != Mtmp.cols())
+//										{
+//											Rnew.block[it->second][a][0] = Mtmp;
+//										}
+//										else
+//										{
+//											Rnew.block[it->second][a][0] += Mtmp;
+//										}
+//									}
+//									else
+//									{
+//										boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].rows()][1]);
+//										Mtmpvec[a][0] = Mtmp;
+//										Rnew.push_back(quple, Mtmpvec);
+//									}
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
+	
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t k=0; k<qOp.size(); ++k)
 	{
-		array<typename Symmetry::qType,3> qCheck = {qloc[s2],qOp[k],qloc[s1]};
-		if(!Symmetry::validate(qCheck)) {continue;}
+		if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc[s2], qOp[k], qloc[s1]})) {continue;}
 		
 		for (size_t qR=0; qR<Rold.dim; ++qR)
 		{
-			auto qRouts = Symmetry::reduceSilent(Rold.out(qR),Symmetry::flip(qloc[s1]));
-			auto qRins  = Symmetry::reduceSilent(Rold.in(qR),Symmetry::flip(qloc[s2]));
+			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
+			bool FOUND_MATCH = AWAR(Rold.in(qR), Rold.out(qR), Rold.mid(qR), s1, s2, qloc, k, qOp, Abra, Aket, ix);
 			
-			for(const auto& qRout : qRouts)
-			for(const auto& qRin : qRins)
+			if (FOUND_MATCH)
 			{
-				qarray2<Symmetry::Nq> cmp1 = {qRout, Rold.out(qR)};
-				qarray2<Symmetry::Nq> cmp2 = {qRin, Rold.in(qR)};
-				
-				auto q1 = Abra[s1].dict.find(cmp1);
-				auto q2 = Aket[s2].dict.find(cmp2);
-				
-				if (q1!=Abra[s1].dict.end() and 
-				    q2!=Aket[s2].dict.end())
+				for(size_t n=0; n<ix.size(); n++ )
 				{
-					if (Aket[s2].block[q2->second].size() == 0) {continue;}
-					if (Abra[s1].block[q1->second].size() == 0) {continue;}
+					qarray3<Symmetry::Nq> quple = get<0>(ix[n]);
+					swap(quple[0], quple[1]);
+					size_t qAbra = get<1>(ix[n]);
+					size_t qAket = get<2>(ix[n]);
 					
-					qarray<Symmetry::Nq> new_qin  = Aket[s2].in[q2->second]; // A.in
-					qarray<Symmetry::Nq> new_qout = Abra[s1].in[q1->second]; // A†.out = A.in
-					auto qRmids = Symmetry::reduceSilent(Rold.mid(qR),Symmetry::flip(qOp[k]));
+					if (Aket[s2].block[qAket].size() == 0) {continue;}
+					if (Abra[s1].block[qAbra].size() == 0) {continue;}
 					
-					for(const auto& new_qmid : qRmids)
+					if constexpr (Symmetry::NON_ABELIAN)
 					{
-						qarray3<Symmetry::Nq> quple = {new_qin, new_qout, new_qmid};
-						if constexpr (Symmetry::NON_ABELIAN)
-						{
-							factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[q2->second],qloc[s2],Aket[s2].in[q2->second],
-																Rold.mid(qR),qOp[k],quple[2],
-																Abra[s1].out[q1->second],qloc[s1],Abra[s1].in[q1->second]);
-						}
-						else
-						{
-							factor_cgc = 1.;
-						}
-						if (abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+						factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
+						                                    Rold.mid(qR),        qOp[k],   quple[2],
+						                                    Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
+					}
+					else
+					{
+						factor_cgc = 1.;
+					}
+					if (abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) {continue;}
+					
+					for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
+					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+					{
+						size_t a = iW.row();
+						size_t b = iW.col();
 						
-						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
-						for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+						if (MODE == FULL or
+						   (MODE == TRIANGULAR and a==fixed_a and fixed_a>b) or
+						   (MODE == FIXED and b==a and a==fixed_a))
 						{
-							size_t a = iW.row();
-							size_t b = iW.col();
-							
-							if (MODE == FULL or
-							   (MODE == TRIANGULAR and a==fixed_a and fixed_a>b) or
-							   (MODE == FIXED and b==a and a==fixed_a))
+							if (Rold.block[qR][b][0].rows() != 0)
 							{
-								if (Rold.block[qR][b][0].size() != 0)
+								MatrixType Mtmp;
+								if (RANDOMIZE)
 								{
-									MatrixType Mtmp;
-									if (RANDOMIZE)
+									Mtmp.resize(Aket[s2].block[qAket].rows(), Abra[s1].block[qAbra].rows());
+									Mtmp.setRandom();
+								}
+								else
+								{
+									optimal_multiply(factor_cgc * iW.value(),
+									                 Aket[s2].block[qAket],
+									                 Rold.block[qR][b][0],
+									                 Abra[s1].block[qAbra].adjoint(),
+									                 Mtmp);
+								}
+							
+								auto it = Rnew.dict.find(quple);
+								if (it != Rnew.dict.end())
+								{
+									if (Rnew.block[it->second][a][0].rows() != Mtmp.rows() or 
+										Rnew.block[it->second][a][0].cols() != Mtmp.cols())
 									{
-										Mtmp.resize(Aket[s2].block[q2->second].rows(), Abra[s1].block[q1->second].rows());
-										Mtmp.setRandom();
+										Rnew.block[it->second][a][0] = Mtmp;
 									}
 									else
 									{
-										optimal_multiply(factor_cgc * iW.value(),
-										             Aket[s2].block[q2->second],
-										             Rold.block[qR][b][0],
-										             Abra[s1].block[q1->second].adjoint(),
-										             Mtmp);
+										Rnew.block[it->second][a][0] += Mtmp;
 									}
-								
-									auto it = Rnew.dict.find(quple);
-									if (it != Rnew.dict.end())
-									{
-										if (Rnew.block[it->second][a][0].rows() != Mtmp.rows() or 
-											Rnew.block[it->second][a][0].cols() != Mtmp.cols())
-										{
-											Rnew.block[it->second][a][0] = Mtmp;
-										}
-										else
-										{
-											Rnew.block[it->second][a][0] += Mtmp;
-										}
-									}
-									else
-									{
-										boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].rows()][1]);
-										Mtmpvec[a][0] = Mtmp;
-										Rnew.push_back(quple, Mtmpvec);
-									}
+								}
+								else
+								{
+									boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].rows()][1]);
+									Mtmpvec[a][0] = Mtmp;
+									Rnew.push_back(quple, Mtmpvec);
 								}
 							}
 						}
@@ -282,7 +370,6 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
                  Tripod<Symmetry,MatrixType> &Lnew)
 {
-	std::array<typename Symmetry::qType,3> qCheck;
 	MpoScalar factor_cgc;
 	Lnew.clear();
 	Lnew.setZero();
@@ -291,12 +378,11 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t k=0; k<qOp.size(); ++k)
 	{
-		qCheck = {qloc[s2],qOp[k],qloc[s1]};
-		if(!Symmetry::validate(qCheck)) {continue;}
+		if(!Symmetry::validate(qarray3<Symmetry::Nq>{qloc[s2], qOp[k], qloc[s1]})) {continue;}
 		for (size_t qL=0; qL<Lold.dim; ++qL)
 		{
 			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = AWA(Lold.in(qL), Lold.out(qL), Lold.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
+			bool FOUND_MATCH = LAWA(Lold.in(qL), Lold.out(qL), Lold.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
 		
 			if (FOUND_MATCH == true)
 			{
@@ -309,8 +395,8 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 					if constexpr ( Symmetry::NON_ABELIAN )
 						{
 							factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket],qloc[s2],Aket[s2].in[qAket],
-																quple[2]           ,qOp[k]  ,Lold.mid(qL),
-																Abra[s1].out[qAbra],qloc[s1],Abra[s1].in[qAbra]);
+							                                    quple[2]           ,qOp[k]  ,Lold.mid(qL),
+							                                    Abra[s1].out[qAbra],qloc[s1],Abra[s1].in[qAbra]);
 						}
 					else
 					{
@@ -389,7 +475,6 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
                  Tripod<Symmetry,MatrixType> &Rnew)
 {
-	std::array<typename Symmetry::qType,3> qCheck;
 	MpoScalar factor_cgc;
 	Rnew.clear();
 	Rnew.setZero();
@@ -398,8 +483,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t k=0; k<qOp.size(); ++k)
 	{
-		qCheck = {qloc[s2],qOp[k],qloc[s1]};
-		if(!Symmetry::validate(qCheck)) {continue;}
+		if(!Symmetry::validate(qarray3<Symmetry::Nq>{qloc[s2],qOp[k],qloc[s1]})) {continue;}
 		
 		for (size_t qR=0; qR<Rold.dim; ++qR)
 		{
@@ -448,10 +532,10 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 							{
 								MatrixType Mtmp;
 								optimal_multiply(factor_cgc*iW.value(),
-												 Aket[s2].block[q2->second],
-												 Rold.block[qR][a2][0],
-												 Abra[s1].block[q1->second].adjoint(),
-												 Mtmp);
+								                 Aket[s2].block[q2->second],
+								                 Rold.block[qR][a2][0],
+								                 Abra[s1].block[q1->second].adjoint(),
+								                 Mtmp);
 								// if(Mtmp.norm() < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
 								
 								auto it = Rnew.dict.find(quple);
@@ -495,7 +579,8 @@ void contract_L (const Biped<Symmetry,MatrixType2> &Lold,
                  Biped<Symmetry,MatrixType2> &Lnew,
                  bool RANDOMIZE=false)
 {
-	Lnew.clear();
+//	Lnew.clear();
+	Lnew = Lold;
 	Lnew.setZero();
 	
 	for (size_t s=0; s<qloc.size(); ++s)
@@ -503,7 +588,7 @@ void contract_L (const Biped<Symmetry,MatrixType2> &Lold,
 		for (size_t qL=0; qL<Lold.dim; ++qL)
 		{
 			vector<tuple<qarray2<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = AA(Lold.in[qL], Lold.out[qL], s, qloc, Abra, Aket, ix);
+			bool FOUND_MATCH = LAA(Lold.in[qL], Lold.out[qL], s, qloc, Abra, Aket, ix);
 			
 			if (FOUND_MATCH)
 			{
@@ -514,41 +599,40 @@ void contract_L (const Biped<Symmetry,MatrixType2> &Lold,
 					if (!Symmetry::validate(quple)) {continue;}
 					size_t qAbra = get<1>(ix[n]);
 					size_t qAket = get<2>(ix[n]);
+					
+					if (Lold.block[qL].rows() != 0)
 					{
-						if (Lold.block[qL].rows() != 0)
+						MatrixType2 Mtmp;
+						if (RANDOMIZE)
 						{
-							MatrixType2 Mtmp;
-							if(RANDOMIZE)
+							Mtmp.resize(Abra[s].block[qAbra].cols(), Aket[s].block[qAket].cols());
+							Mtmp.setRandom();
+						}
+						else
+						{
+							optimal_multiply(1.,
+						                     Abra[s].block[qAbra].adjoint(),
+						                     Lold.block[qL],
+						                     Aket[s].block[qAket],
+						                     Mtmp);
+						}
+						
+						auto it = Lnew.dict.find(quple);
+						if (it != Lnew.dict.end())
+						{
+							if (Lnew.block[it->second].rows() != Mtmp.rows() or 
+								Lnew.block[it->second].cols() != Mtmp.cols())
 							{
-								Mtmp.resize(Abra[s].block[qAbra].cols(), Aket[s].block[qAket].cols());
-								Mtmp.setRandom();
+								Lnew.block[it->second] = Mtmp;
 							}
 							else
 							{
-								optimal_multiply(1.,
-							                 Abra[s].block[qAbra].adjoint(),
-							                 Lold.block[qL],
-							                 Aket[s].block[qAket],
-							                 Mtmp);
+								Lnew.block[it->second] += Mtmp;
 							}
-							
-							auto it = Lnew.dict.find(quple);
-							if (it != Lnew.dict.end())
-							{
-								if (Lnew.block[it->second].rows() != Mtmp.rows() or 
-									Lnew.block[it->second].cols() != Mtmp.cols())
-								{
-									Lnew.block[it->second] = Mtmp;
-								}
-								else
-								{
-									Lnew.block[it->second] += Mtmp;
-								}
-							}
-							else
-							{
-								Lnew.push_back(quple, Mtmp);
-							}
+						}
+						else
+						{
+							Lnew.push_back(quple, Mtmp);
 						}
 					}
 				}
@@ -563,52 +647,113 @@ void contract_R (const Biped<Symmetry,MatrixType2> &Rold,
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  Biped<Symmetry,MatrixType2> &Rnew,
-				 bool RANDOMIZE=false)
+                 bool RANDOMIZE=false)
 {
-	Rnew.clear();
+//	Rnew.clear();
+	Rnew = Rold;
 	Rnew.setZero();
+	
+//	for (size_t s=0; s<qloc.size(); ++s)
+//	{
+//		for (size_t qR=0; qR<Rold.dim; ++qR)
+//		{
+//			auto qRouts = Symmetry::reduceSilent(Rold.out[qR],Symmetry::flip(qloc[s]));
+//			auto qRins = Symmetry::reduceSilent(Rold.in[qR],Symmetry::flip(qloc[s]));
+//			
+//			for(const auto& qRout : qRouts)
+//			for(const auto& qRin : qRins)
+//			{
+//				qarray2<Symmetry::Nq> cmp1 = {qRout, Rold.out[qR]};
+//				qarray2<Symmetry::Nq> cmp2 = {qRin, Rold.in[qR]};
+//				auto q1 = Abra[s].dict.find(cmp1);
+//				auto q2 = Aket[s].dict.find(cmp2);
+//				
+//				if (q1!=Abra[s].dict.end() and 
+//				    q2!=Aket[s].dict.end())
+//				{
+//					qarray<Symmetry::Nq> new_qin  = Aket[s].in[q2->second]; // A.in
+//					qarray<Symmetry::Nq> new_qout = Abra[s].in[q1->second]; // A†.out = A.in
+//					qarray2<Symmetry::Nq> quple = {new_qin, new_qout};
+//					if (!Symmetry::validate(quple)) {continue;}
+//					
+//					double factor_cgc = Symmetry::coeff_rightOrtho(Abra[s].out[q1->second],
+//					                                               Abra[s].in[q1->second]);
+//					
+//					if (Rold.block[qR].rows() != 0)
+//					{
+//						MatrixType2 Mtmp;
+//						if(RANDOMIZE)
+//						{
+//							Mtmp.resize(Aket[s].block[q2->second].rows(), Abra[s].block[q1->second].rows());
+//							Mtmp.setRandom();
+//						}
+//						else
+//						{
+//							optimal_multiply(factor_cgc,
+//						                 Aket[s].block[q2->second],
+//						                 Rold.block[qR],
+//						                 Abra[s].block[q1->second].adjoint(),
+//						                 Mtmp);
+//						}
+//						
+//						auto it = Rnew.dict.find(quple);
+//						if (it != Rnew.dict.end())
+//						{
+//							if (Rnew.block[it->second].rows() != Mtmp.rows() or 
+//								Rnew.block[it->second].cols() != Mtmp.cols())
+//							{
+//								Rnew.block[it->second] = Mtmp;
+//							}
+//							else
+//							{
+//								Rnew.block[it->second] += Mtmp;
+//							}
+//						}
+//						else
+//						{
+//							Rnew.push_back(quple, Mtmp);
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
 	
 	for (size_t s=0; s<qloc.size(); ++s)
 	{
 		for (size_t qR=0; qR<Rold.dim; ++qR)
 		{
-			auto qRouts = Symmetry::reduceSilent(Rold.out[qR],Symmetry::flip(qloc[s]));
-			auto qRins = Symmetry::reduceSilent(Rold.in[qR],Symmetry::flip(qloc[s]));
+			vector<tuple<qarray2<Symmetry::Nq>,size_t,size_t> > ix;
+			bool FOUND_MATCH = AAR(Rold.in[qR], Rold.out[qR], s, qloc, Abra, Aket, ix);
 			
-			for(const auto& qRout : qRouts)
-			for(const auto& qRin : qRins)
+			if (FOUND_MATCH)
 			{
-				qarray2<Symmetry::Nq> cmp1 = {qRout, Rold.out[qR]};
-				qarray2<Symmetry::Nq> cmp2 = {qRin, Rold.in[qR]};
-				auto q1 = Abra[s].dict.find(cmp1);
-				auto q2 = Aket[s].dict.find(cmp2);
-				
-				if (q1!=Abra[s].dict.end() and 
-				    q2!=Aket[s].dict.end())
+				for (size_t n=0; n<ix.size(); n++)
 				{
-					qarray<Symmetry::Nq> new_qin  = Aket[s].in[q2->second]; // A.in
-					qarray<Symmetry::Nq> new_qout = Abra[s].in[q1->second]; // A†.out = A.in
-					qarray2<Symmetry::Nq> quple = {new_qin, new_qout};
+					qarray2<Symmetry::Nq> quple = get<0>(ix[n]);
+					swap(quple[0], quple[1]);
 					if (!Symmetry::validate(quple)) {continue;}
+					size_t qAbra = get<1>(ix[n]);
+					size_t qAket = get<2>(ix[n]);
 					
-					double factor_cgc = Symmetry::coeff_rightOrtho(Abra[s].out[q1->second],
-					                                               Abra[s].in[q1->second]);
+					double factor_cgc = Symmetry::coeff_rightOrtho(Abra[s].out[qAbra],
+					                                               Abra[s].in [qAbra]);
 					
 					if (Rold.block[qR].rows() != 0)
 					{
 						MatrixType2 Mtmp;
-						if(RANDOMIZE)
+						if (RANDOMIZE)
 						{
-							Mtmp.resize(Aket[s].block[q2->second].rows(), Abra[s].block[q1->second].rows());
+							Mtmp.resize(Aket[s].block[qAket].rows(), Abra[s].block[qAbra].rows());
 							Mtmp.setRandom();
 						}
 						else
 						{
 							optimal_multiply(factor_cgc,
-						                 Aket[s].block[q2->second],
-						                 Rold.block[qR],
-						                 Abra[s].block[q1->second].adjoint(),
-						                 Mtmp);
+						                     Aket[s].block[qAket],
+						                     Rold.block[qR],
+						                     Abra[s].block[qAbra].adjoint(),
+						                     Mtmp);
 						}
 						
 						auto it = Rnew.dict.find(quple);
@@ -720,7 +865,7 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 		for (size_t qL=0; qL<L.dim; ++qL)
 		{
 			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = AWA(L.in(qL), L.out(qL), L.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
+			bool FOUND_MATCH = LAWA(L.in(qL), L.out(qL), L.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
 			
 			if (FOUND_MATCH == true)
 			{
@@ -862,7 +1007,7 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 		for (size_t qL=0; qL<L.dim; ++qL)
 		{
 			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = AA(L.in(qL), L.out(qL), L.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
+			bool FOUND_MATCH = LAA(L.in(qL), L.out(qL), L.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
 			if (FOUND_MATCH == true)
 			{
 				for(size_t n=0; n<ix.size(); n++ )
@@ -922,7 +1067,7 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 
 template<typename Symmetry, typename Scalar>
 Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
-                    const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> >  &R)
+                    const Biped <Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R)
 {
 	Scalar res = 0;
 	
@@ -931,17 +1076,17 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 		if (L.mid(qL) == Symmetry::qvacuum())
 		{
 			qarray2<Symmetry::Nq> quple = {L.out(qL), L.in(qL)};
-			assert(L.out(qL) == L.in(qL) and "contract_LR(Tripod,Biped) error.");
+			assert(L.out(qL) == L.in(qL) and "contract_LR(Tripod,Biped) error!");
 			auto qR = R.dict.find(quple);
-		
+			
 			if (qR != R.dict.end())
 			{
-				for (size_t a=0; a<L.block[qL].shape()[0]; ++a)
+				for (size_t b=0; b<L.block[qL].shape()[0]; ++b)
 				{
-					if (L.block[qL][a][0].size() != 0 and
-						R.block[qR->second].size() != 0)
+					if (L.block[qL][b][0].size() != 0 and
+					    R.block[qR->second].size() != 0)
 					{
-						res += (L.block[qL][a][0] * R.block[qR->second]).trace() * Symmetry::coeff_dot(L.out(qL));
+						res += (L.block[qL][b][0] * R.block[qR->second]).trace() * Symmetry::coeff_dot(L.out(qL));
 					}
 				}
 			}
@@ -952,7 +1097,7 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 }
 
 template<typename Symmetry, typename Scalar>
-Scalar contract_LR (const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
+Scalar contract_LR (const Biped <Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
                     const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R)
 {
 	Scalar res = 0;
@@ -962,7 +1107,7 @@ Scalar contract_LR (const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 		if (R.mid(qR) == Symmetry::qvacuum())
 		{
 			qarray2<Symmetry::Nq> quple = {R.out(qR), R.in(qR)};
-			assert(R.out(qR) == R.in(qR) and "contract_LR(Biped,Tripod) error.");
+			assert(R.out(qR) == R.in(qR) and "contract_LR(Biped,Tripod) error!");
 			auto qL = L.dict.find(quple);
 			
 			if (qL != L.dict.end())
@@ -970,7 +1115,7 @@ Scalar contract_LR (const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 				for (size_t a=0; a<R.block[qR].shape()[0]; ++a)
 				{
 					if (R.block[qR][a][0].size() != 0 and
-						L.block[qL->second].size() != 0)
+					    L.block[qL->second].size() != 0)
 					{
 						res += (L.block[qL->second] * R.block[qR][a][0]).trace() * Symmetry::coeff_dot(R.out(qR));
 					}
