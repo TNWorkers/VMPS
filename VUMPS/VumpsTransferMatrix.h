@@ -65,10 +65,13 @@ struct TransferVector
 				data.block[q][ab][0] -= LRdotY * Matrix<Scalar,Dynamic,Dynamic>::Identity(data.block[q][ab][0].rows(),
 				                                                                          data.block[q][ab][0].cols());
 			}
+			else
+			{
+				cout << termcolor::red << "ELSE" << termcolor::reset << endl;
+			}
 		}
 	};
 	
-//	Matrix<Scalar,Dynamic,Dynamic> A;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > data;
 	size_t ab;
 	
@@ -97,21 +100,21 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 	
 	if (H.gauge == GAUGE::R)
 	{
-		contract_R(Vin.data, H.Abra, H.W, H.Aket, H.qloc, H.qOp, TxV.data, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
+		contract_R (Vin.data, H.Abra, H.W, H.Aket, H.qloc, H.qOp, TxV.data, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
 	}
 	else if (H.gauge == GAUGE::L)
 	{
-		contract_L(Vin.data, H.Abra, H.W, H.Aket, H.qloc, H.qOp, TxV.data, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
+		contract_L (Vin.data, H.Abra, H.W, H.Aket, H.qloc, H.qOp, TxV.data, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
 	}
 	
 	Scalar2 LdotR;
 	if (H.gauge == GAUGE::R)
 	{
-		LdotR = contract_LR(H.LReigen, Vin.data);
+		LdotR = contract_LR(H.ab, H.LReigen, Vin.data);
 	}
 	else if (H.gauge == GAUGE::L)
 	{
-		LdotR = contract_LR(Vin.data, H.LReigen);
+		LdotR = contract_LR(H.ab, Vin.data, H.LReigen);
 	}
 	
 	for (size_t q=0; q<TxV.data.dim; ++q)
@@ -137,7 +140,7 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 			if (ip != Vout.data.dict.end())
 			{
 				if (Vout.data.block[ip->second][H.ab][0].rows() != Mtmp.rows() or 
-					Vout.data.block[ip->second][H.ab][0].cols() != Mtmp.cols())
+				    Vout.data.block[ip->second][H.ab][0].cols() != Mtmp.cols())
 				{
 					Vout.data.block[ip->second][H.ab][0] = Mtmp;
 				}
@@ -169,7 +172,7 @@ template<typename Symmetry, typename Scalar>
 inline size_t dim (const TransferMatrix<Symmetry,Scalar> &H)
 {
 	size_t out = 0;
-	for (size_t s=0; s<H.qloc.size(); ++s)
+	for (size_t s=0; s<H.Aket.size(); ++s)
 	for (size_t q=0; q<H.Aket[s].dim; ++q)
 	{
 		out += H.Aket[s].block[q].size();

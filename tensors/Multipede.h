@@ -28,6 +28,7 @@ template<size_t Nlegs, typename Symmetry, typename MatrixType>
 struct Multipede
 {
 typedef typename Symmetry::qType qType;
+typedef typename MatrixType::Scalar Scalar;
 	
 	Multipede(){dim=0;}
 
@@ -162,7 +163,42 @@ typedef typename Symmetry::qType qType;
 		
 		return Vout;
 	}
+	
+	Scalar compare (const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs) const 
+	{
+		double res = 0;
+		for (size_t q=0; q<dim; ++q)
+		{
+			qarray3<Symmetry::Nq> quple = {in(q), out(q), mid(q)};
+			auto it = Mrhs.dict.find(quple);
+			for (size_t a=0; a<block[q].shape()[0]; ++a)
+			{
+				res += (block[q][a][0]-Mrhs.block[it->second][a][0]).norm();
+			}
+		}
+		return res;
+	}
+	
+	
 };
+
+template<size_t Nlegs, typename Symmetry, typename MatrixType>
+Multipede<Nlegs,Symmetry,MatrixType> operator- (const Multipede<Nlegs,Symmetry,MatrixType> &M1, const Multipede<Nlegs,Symmetry,MatrixType> &M2)
+{
+	Multipede<Nlegs,Symmetry,MatrixType> Mout;
+	for (size_t q=0; q<M1.dim; ++q)
+	{
+		qarray3<Symmetry::Nq> quple = {M1.in(q), M1.out(q), M1.mid(q)};
+		auto it = M2.dict.find(quple);
+		boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[M1.block[q].shape()[0]][1]);
+		for (size_t a=0; a<M1.block[q].shape()[0]; ++a)
+		{
+			Mtmpvec[a][0] = M1.block[q][a][0]-M2.block[it->second][a][0];
+		}
+		Mout.push_back(quple, Mtmpvec);
+	}
+	return Mout;
+}
 
 template<typename Symmetry, typename MatrixType> using Tripod    = Multipede<3,Symmetry,MatrixType>;
 template<typename Symmetry, typename MatrixType> using Quadruped = Multipede<4,Symmetry,MatrixType>;
@@ -382,15 +418,18 @@ insert (size_t ab, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs)
 			if (block[it->second][ab][0].rows() == Trhs.block[q][ab][0].rows() and
 			    block[it->second][ab][0].cols() == Trhs.block[q][ab][0].cols())
 			{
+//				cout << termcolor::green << "operator+= in insert" << termcolor::reset << endl;
 				block[it->second][ab][0] += Trhs.block[q][ab][0];
 			}
 			else
 			{
+//				cout << termcolor::blue << "operator= in insert" << termcolor::reset << "\t" << block[it->second][ab][0].rows() << "x" << block[it->second][ab][0].cols() << endl;
 				block[it->second][ab][0] = Trhs.block[q][ab][0];
 			}
 		}
 		else
 		{
+//			cout << termcolor::red << "push_back in insert" << termcolor::reset << endl;
 			boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[Trhs.block[q].shape()[0]][1]);
 			Mtmparray[ab][0] = Trhs.block[q][ab][0];
 			push_back(quple, Mtmparray);

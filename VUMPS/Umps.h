@@ -54,7 +54,7 @@ public:
 	void graph (string filename) const;
 	
 	/**Tests the orthogonality of the UMPS.*/
-	string test_ortho (double tol=1e-10) const;
+	string test_ortho (double tol=1e-8) const;
 	
 	/**Sets all matrices  \f$A_L\f$, \f$A_R\f$, \f$A_C\f$, \f$C\f$) to random using boost's uniform distribution from -1 to 1.*/
 	void setRandom();
@@ -96,7 +96,7 @@ public:
 	size_t length() const {return N_sites;}
 	
 	/**Calculates the left and right decomposition error as \f$\epsilon_L=\big|A_C-A_LC\big|^2\f$ and \f$\epsilon_R=\big|A_C-CA_R\big|^2\f$ (eq. 18).*/
-	void calc_epsLRsq (size_t loc, double &epsL, double &epsR);
+	Scalar calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const;
 	
 	size_t calc_Dmax() const;
 	size_t calc_Mmax() const;
@@ -107,13 +107,15 @@ public:
 	
 	/**Calculates the scalar product with another UMPS by finding the dominant eigenvalue of the transfer matrix. 
 	See arXiv:0804.2509 and Phys. Rev. B 78, 155117.*/
-	complex<double> dot (const Umps<Symmetry,Scalar> &Vket) const;
+	double dot (const Umps<Symmetry,Scalar> &Vket) const;
 	
 	/**Returns \f$A_L\f$, \f$A_R\f$ or \f$A_C\f$ at site \p loc as const ref.*/
 	const vector<Biped<Symmetry,MatrixType> > &A_at (GAUGE::OPTION g, size_t loc) const {return A[g][loc];};
 	
 	qarray<Symmetry::Nq> Qtop (size_t loc) const;
 	qarray<Symmetry::Nq> Qbot (size_t loc) const;
+	
+	inline size_t minus1modL (size_t l) const {return (l==0)? N_sites-1 : (l-1);}
 	
 private:
 	
@@ -299,6 +301,7 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 {
 	Dmax = Dmax_input;
 	Nqmax = Nqmax_input;
+	if (Symmetry::IS_TRIVIAL) {Nqmax = 1;}
 	
 	for (size_t g=0; g<3; ++g)
 	{
@@ -431,12 +434,6 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	{
 		A[g][l][s].block[q].resize(Dmax,Dmax);
 	}
-//	for (size_t l=0; l<N_sites; ++l)
-//	for (size_t s=0; s<qloc[l].size(); ++s)
-//	{
-//		cout << "l=" << l << ", s=" << s << endl;
-//		cout << A[GAUGE::C][l][s].print(false) << endl;
-//	}
 	
 	update_inbase();
 	update_outbase();
@@ -445,6 +442,11 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	for (size_t qout=0; qout<outbase[l].Nq(); ++qout)
 	{
 		C[l].push_back(qarray2<Symmetry::Nq>{outbase[l][qout], outbase[l][qout]}, Mtmp);
+	}
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		C[l] = C[l].sorted();
 	}
 	
 	S.resize(N_sites);
@@ -587,6 +589,63 @@ test_ortho (double tol) const
 			Test += A[GAUGE::R][l][s].contract(A[GAUGE::R][l][s].adjoint(), contract::MODE::OORR);
 		}
 		
+		// check for AL*C = AC
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		{
+			Biped<Symmetry,MatrixType> Test = A[GAUGE::L][l][s].contract(C[l]);
+			for (size_t q=0; q<Test.dim; ++q)
+			{
+				qarray2<Symmetry::Nq> quple = {Test.in[q], Test.out[q]};
+				auto it = A[GAUGE::C][l][s].dict.find(quple);
+				Test.block[q] -= A[GAUGE::C][l][s].block[it->second];
+			}
+			vector<double> T_CHECK(Test.dim);
+			cout << "Test.dim=" << Test.dim << endl;
+			for (size_t q=0; q<Test.dim; ++q)
+			{
+				cout << "g=L, " << "s=" << s << ", q=" << Test.in[q] << ", " << Test.out[q] 
+				     << ", norm=" << Test.block[q].template lpNorm<Infinity>() << endl;
+				T_CHECK[q] = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
+			}
+			if (all_of(T_CHECK.begin(),T_CHECK.end(),[](bool x){return x;}))
+			{
+				cout << "l=" << l << ", s=" << s << ", AL*C=AC true!" << endl;
+			}
+			else
+			{
+				cout << "l=" << l << ", s=" << s << ", AL*C=AC false!" << endl;
+			}
+		}
+		
+		// check for C*AR = AC
+		size_t locC = minus1modL(l);
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		{
+			Biped<Symmetry,MatrixType> Test = C[locC].contract(A[GAUGE::R][l][s]);
+			for (size_t q=0; q<Test.dim; ++q)
+			{
+				qarray2<Symmetry::Nq> quple = {Test.in[q], Test.out[q]};
+				auto it = A[GAUGE::C][l][s].dict.find(quple);
+				Test.block[q] -= A[GAUGE::C][l][s].block[it->second];
+			}
+			vector<double> T_CHECK(Test.dim);
+			cout << "Test.dim=" << Test.dim << endl;
+			for (size_t q=0; q<Test.dim; ++q)
+			{
+				cout << "g=R, " << "s=" << s << ", q=" << Test.in[q] << ", " << Test.out[q] 
+				     << ", norm=" << Test.block[q].template lpNorm<Infinity>() << endl;
+				T_CHECK[q] = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
+			}
+			if (all_of(T_CHECK.begin(),T_CHECK.end(),[](bool x){return x;}))
+			{
+				cout << "l=" << l << ", s=" << s << ", C*AR=AC true!" << endl;
+			}
+			else
+			{
+				cout << "l=" << l << ", s=" << s << ", C*AR=AC false!" << endl;
+			}
+		}
+		
 		vector<bool> B_CHECK(Test.dim);
 		vector<double> B_infnorm(Test.dim);
 		for (size_t q=0; q<Test.dim; ++q)
@@ -627,10 +686,10 @@ test_ortho (double tol) const
 	return sout.str();
 }
 
-//template<typename Symmetry, typename Scalar>
-//complex<double> Umps<Symmetry,Scalar>::
-//dot (const Umps<Symmetry,Scalar> &Vket) const
-//{
+template<typename Symmetry, typename Scalar>
+double Umps<Symmetry,Scalar>::
+dot (const Umps<Symmetry,Scalar> &Vket) const
+{
 //	assert(N_sites == Vket.length());
 //	assert (N_sites==1 or N_sites==2 and "Only Lcell=1 and Lcell=2 implemented in dot product!");
 //	
@@ -680,7 +739,12 @@ test_ortho (double tol) const
 //	lout << Arnie.info() << endl;
 //	
 //	return lambda;
-//}
+	
+	double outL = calc_LReigen(GAUGE::L, Acell[GAUGE::L], Vket.Acell[GAUGE::L], C[N_sites-1], qlocCell).energy;
+	cout << "from AL: " << outL << endl;
+	double out = calc_LReigen(GAUGE::R, Acell[GAUGE::R], Vket.Acell[GAUGE::R], C[N_sites-1], qlocCell).energy;
+	return out;
+}
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
@@ -688,15 +752,20 @@ calc_entropy (size_t loc)
 {
 	S(loc) = 0;
 	
+	cout << "loc=" << loc << endl;
 	for (size_t q=0; q<C[loc].dim; ++q)
 	{
 		JacobiSVD<MatrixType> Jack(C[loc].block[q]);
 //		Csingular[loc] += Jack.singularValues();
 		size_t Nnz = (Jack.singularValues().array() > 0.).count();
 		
+		cout << termcolor::blue << "S: " << C[loc].in[q] << ", " << C[loc].out[q] << "\t" 
+		<< -Symmetry::degeneracy(C[loc].in[q]) * (Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum() << termcolor::reset << endl;
+		
 		S(loc) += -Symmetry::degeneracy(C[loc].in[q]) * (Jack.singularValues().head(Nnz).array().square() 
 		                                              * Jack.singularValues().head(Nnz).array().square().log()).sum();
 	}
+	cout << endl;
 }
 
 //template<typename Symmetry, typename Scalar>
@@ -708,34 +777,34 @@ calc_entropy (size_t loc)
 //}
 
 template<typename Symmetry, typename Scalar>
-void Umps<Symmetry,Scalar>::
-polarDecompose (size_t loc, GAUGE::OPTION gauge)
+Scalar Umps<Symmetry,Scalar>::
+calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const
 {
-	#ifdef DONT_USE_BDCSVD
-	JacobiSVD<MatrixType> Jack; // standard SVD
-	#else
-	BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
-	#endif
-	
-	S(loc) = 0;
-	
-	if (gauge == GAUGE::L or gauge == GAUGE::C)
+	for (size_t s=0; s<qloc[loc].size(); ++s)
+	for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
 	{
-		vector<MatrixType> UC;
-		for (size_t q=0; q<C[loc].dim; ++q)
+		std::array<qarray3<Symmetry::Nq>,3> quple;
+		for (size_t g=0; g<3; ++g)
 		{
-			Jack.compute(C[loc].block[q], ComputeThinU|ComputeThinV);
-			UC.push_back(Jack.matrixU() * Jack.matrixV().adjoint());
-		
-			// Get the singular values and the entropy while at it (C[loc].dim=1 assumed):
-			size_t Nnz = (Jack.singularValues().array() > 0).count();
-			S(loc) += -Symmetry::degeneracy(C[loc].in[q]) * (Jack.singularValues().head(Nnz).array().square() 
-				                                          * Jack.singularValues().head(Nnz).array().square().log()).sum();
+			quple[g] = {A[g][loc][s].in[q], A[g][loc][s].out[q]};
 		}
+		
+		for (size_t g=1; g<3; ++g)
+		{
+			assert(quple[0] == quple[g]);
+		}
+	}
 	
+	Scalar res = 0;
+	
+	if (gauge == GAUGE::L)
+	{
 		for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
 		{
 			qarray2<Symmetry::Nq> quple = {outbase[loc][qout], outbase[loc][qout]};
+			auto it = C[loc].dict.find(quple);
+			assert(it != C[loc].dict.end());
+			size_t qC = it->second;
 		
 			// Determine how many A's to glue together
 			vector<size_t> svec, qvec, Nrowsvec;
@@ -756,6 +825,219 @@ polarDecompose (size_t loc, GAUGE::OPTION gauge)
 			size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
 		
 			MatrixType Aclump(Nrows,Ncols);
+			MatrixType Acmp(Nrows,Ncols);
+			Aclump.setZero();
+			size_t stitch = 0;
+			for (size_t i=0; i<svec.size(); ++i)
+			{
+				Aclump.block(stitch,0, Nrowsvec[i],Ncols) = A[GAUGE::C][loc][svec[i]].block[qvec[i]];
+				Acmp.block  (stitch,0, Nrowsvec[i],Ncols) = A[GAUGE::L][loc][svec[i]].block[qvec[i]];
+				stitch += Nrowsvec[i];
+			}
+			
+			res += (Aclump-Acmp*C[loc].block[qC]).squaredNorm() * Symmetry::coeff_dot(C[loc].in[qC]);
+			
+	//		BDCSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
+	////		JacobiSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
+	//		MatrixType NullSpace = Jack.matrixV().rightCols((qloc[loc].size()-1) * A[GAUGE::C][loc][0].block[0].rows());
+	//		
+	//		double epsL_ = (NullSpace.adjoint() * Aclump).norm();
+	////		double epsL__ = sqrt(Aclump.squaredNorm() - (Acmp*C[loc].block[qC]).squaredNorm());
+	//		
+	//		MatrixType B = Aclump-Acmp*C[loc].block[qC];
+	//		size_t D = qloc[loc].size();
+	//		size_t M = A[GAUGE::C][loc][0].block[0].rows();
+	//		
+	////		double epsL___ = 0;
+	////		for (size_t s=0; s<qloc[loc].size(); ++s)
+	////		{
+	////			epsL___ += (A[GAUGE::C][loc][s].block[0] - A[GAUGE::L][loc][s].block[0] * C[loc].block[0]).squaredNorm();
+	////		}
+	////		epsL___ = sqrt(epsL___);
+	//		
+	//		cout << "nullspace test: " << (Acmp.adjoint() * NullSpace).norm() << endl;
+	//		cout << "ortho test: " << (NullSpace.adjoint() * NullSpace - MatrixType::Identity(NullSpace.cols(),NullSpace.cols())).norm() << endl;
+	//		cout << "norm(NullSpace)=" << NullSpace.norm() << endl;
+	//		
+	//		stitch = 0;
+	//		for (size_t i=0; i<svec.size(); ++i)
+	//		{
+	//			N[GAUGE::L][loc][svec[i]].block[0] = NullSpace.block(stitch,0, Nrowsvec[i],NullSpace.cols());
+	//			stitch += Nrowsvec[i];
+	//		}
+		
+	//		MatrixType Ntest = N[GAUGE::L][loc][0].block[0].adjoint() * N[GAUGE::L][loc][0].block[0];
+	//		for (size_t s=1; s<qloc[loc].size(); ++s)
+	//		{
+	//			Ntest += N[GAUGE::L][loc][s].block[0].adjoint() * N[GAUGE::L][loc][s].block[0];
+	//		}
+	//		cout << "NtestL1=" << (Ntest-MatrixType::Identity(Ntest.rows(),Ntest.cols())).norm() << endl;
+	//		
+	//		Ntest = N[GAUGE::L][loc][0].block[0].adjoint() * A[GAUGE::L][loc][0].block[0];
+	//		for (size_t s=1; s<qloc[loc].size(); ++s)
+	//		{
+	//			Ntest += N[GAUGE::L][loc][s].block[0].adjoint() * A[GAUGE::L][loc][s].block[0];
+	//		}
+	//		cout << "NtestL2=" << Ntest.norm() << endl;
+	//		
+	//		MatrixType U(D*M,D*M);
+	//		U.leftCols(M) = Acmp;
+	//		U.rightCols((D-1)*M) = NullSpace;
+	//		
+	//		cout << "Utest1=" << (U.adjoint() * U - MatrixType::Identity(D*M,D*M)).norm() << endl;
+	//		cout << "Utest2=" << (U * U.adjoint() - MatrixType::Identity(D*M,D*M)).norm() << endl;
+	//		cout << "Bnorm=" << B.norm() << endl;
+	//		cout << "UBnorm=" << (U.adjoint()*B).norm() << "\t" << (U*B).norm() << endl;
+	//		cout << (Acmp.adjoint()*B).norm() << endl;
+	//		cout << (NullSpace.adjoint() * B).norm() << endl;
+	//		
+	//		MatrixType Cprime = A[GAUGE::L][loc][0].block[0].adjoint() * A[GAUGE::C][loc][0].block[0];
+	//		for (size_t s=1; s<D; ++s)
+	//		{
+	//			Cprime += A[GAUGE::L][loc][s].block[0].adjoint() * A[GAUGE::C][loc][s].block[0];
+	//		}
+	//		cout << "Ctest=" << (Cprime-C[loc].block[0]).norm() << endl;
+	//		
+	//		cout << endl << "epsL = " << sqrt(epsLsq) << "\t" << epsL_ << endl << endl;
+		}
+	}
+	else if (gauge == GAUGE::R)
+	{
+		size_t locC = minus1modL(loc);
+		
+		for (size_t qin=0; qin<inbase[loc].Nq(); ++qin)
+		{
+			qarray2<Symmetry::Nq> quple = {inbase[loc][qin], inbase[loc][qin]};
+			auto it = C[locC].dict.find(quple);
+			assert(it != C[locC].dict.end());
+			size_t qC = it->second;
+		
+			// Determine how many A's to glue together
+			vector<size_t> svec, qvec, Ncolsvec;
+			for (size_t s=0; s<qloc[loc].size(); ++s)
+			for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
+			{
+				if (A[GAUGE::C][loc][s].in[q] == inbase[loc][qin])
+				{
+					svec.push_back(s);
+					qvec.push_back(q);
+					Ncolsvec.push_back(A[GAUGE::C][loc][s].block[q].cols());
+				}
+			}
+		
+			// Do the glue
+			size_t Nrows = A[GAUGE::C][loc][svec[0]].block[qvec[0]].rows();
+			for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].rows() == Nrows);}
+			size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
+		
+			MatrixType Aclump(Nrows,Ncols);
+			MatrixType Acmp(Nrows,Ncols);
+			size_t stitch = 0;
+			for (size_t i=0; i<svec.size(); ++i)
+			{
+				Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[GAUGE::C][loc][svec[i]].block[qvec[i]]*
+					                                        Symmetry::coeff_sign(
+					                                         A[GAUGE::C][loc][svec[i]].out[qvec[i]],
+					                                         A[GAUGE::C][loc][svec[i]].in[qvec[i]],
+					                                         qloc[loc][svec[i]]);
+				Acmp.block  (0,stitch, Nrows,Ncolsvec[i]) = A[GAUGE::R][loc][svec[i]].block[qvec[i]]*
+					                                        Symmetry::coeff_sign(
+					                                         A[GAUGE::R][loc][svec[i]].out[qvec[i]],
+					                                         A[GAUGE::R][loc][svec[i]].in[qvec[i]],
+					                                         qloc[loc][svec[i]]);
+				stitch += Ncolsvec[i];
+			}
+			
+			res += (Aclump-C[locC].block[qC]*Acmp).squaredNorm() * Symmetry::coeff_dot(C[locC].in[qC]);
+			
+	//		BDCSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
+	////		JacobiSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
+	//		MatrixType NullSpace = Jack.matrixU().adjoint().bottomRows((qloc[loc].size()-1) * A[GAUGE::C][loc][0].block[0].rows());
+		
+	//		stitch = 0;
+	//		for (size_t i=0; i<svec.size(); ++i)
+	//		{
+	//			N[GAUGE::R][loc][svec[i]].block[0] = NullSpace.block(0,stitch, NullSpace.rows(),Ncolsvec[i]);
+	//			stitch += Ncolsvec[i];
+	//		}
+		
+	//		MatrixType Ntest = N[GAUGE::R][loc][0].block[0] * N[GAUGE::R][loc][0].block[0].adjoint();
+	//		for (size_t s=1; s<qloc[loc].size(); ++s)
+	//		{
+	//			Ntest += N[GAUGE::R][loc][s].block[0] * N[GAUGE::R][loc][s].block[0].adjoint();
+	//		}
+	//		cout << "NtestR1=" << (Ntest-MatrixType::Identity(Ntest.rows(),Ntest.cols())).norm() << endl;
+	//		
+	//		Ntest = A[GAUGE::R][loc][0].block[0] * N[GAUGE::R][loc][0].block[0].adjoint();
+	//		for (size_t s=1; s<qloc[loc].size(); ++s)
+	//		{
+	//			Ntest += A[GAUGE::R][loc][s].block[0] * N[GAUGE::R][loc][s].block[0].adjoint();
+	//		}
+	//		cout << "NtestR2=" << Ntest.norm() << endl;
+		}
+	}
+	
+	return res;
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+polarDecompose (size_t loc, GAUGE::OPTION gauge)
+{
+	for (size_t s=0; s<qloc[loc].size(); ++s)
+	for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
+	{
+		std::array<qarray3<Symmetry::Nq>,3> quple;
+		for (size_t g=0; g<3; ++g)
+		{
+			quple[g] = {A[g][loc][s].in[q], A[g][loc][s].out[q]};
+		}
+		
+		for (size_t g=1; g<3; ++g)
+		{
+			assert(quple[0] == quple[g]);
+		}
+	}
+	
+	#ifdef DONT_USE_BDCSVD
+	JacobiSVD<MatrixType> Jack; // standard SVD
+	#else
+	BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
+	#endif
+	
+	if (gauge == GAUGE::L or gauge == GAUGE::C)
+	{
+//		S(loc) = 0;
+		vector<MatrixType> UC;
+		for (size_t q=0; q<C[loc].dim; ++q)
+		{
+			Jack.compute(C[loc].block[q], ComputeThinU|ComputeThinV);
+			UC.push_back(Jack.matrixU() * Jack.matrixV().adjoint());
+		}
+		
+		for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
+		{
+			qarray2<Symmetry::Nq> quple = {outbase[loc][qout], outbase[loc][qout]};
+			
+			// Determine how many A's to glue together
+			vector<size_t> svec, qvec, Nrowsvec;
+			for (size_t s=0; s<qloc[loc].size(); ++s)
+			for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
+			{
+				if (A[GAUGE::C][loc][s].out[q] == outbase[loc][qout])
+				{
+					svec.push_back(s);
+					qvec.push_back(q);
+					Nrowsvec.push_back(A[GAUGE::C][loc][s].block[q].rows());
+				}
+			}
+			
+			// Do the glue
+			size_t Ncols = A[GAUGE::C][loc][svec[0]].block[qvec[0]].cols();
+			for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].cols() == Ncols);}
+			size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
+			
+			MatrixType Aclump(Nrows,Ncols);
 			Aclump.setZero();
 			size_t stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
@@ -763,13 +1045,14 @@ polarDecompose (size_t loc, GAUGE::OPTION gauge)
 				Aclump.block(stitch,0, Nrowsvec[i],Ncols) = A[GAUGE::C][loc][svec[i]].block[qvec[i]];
 				stitch += Nrowsvec[i];
 			}
-		
+			
 			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
 			MatrixType UL = Jack.matrixU() * Jack.matrixV().adjoint();
-		
+			
 			auto it = C[loc].dict.find(quple);
+			assert(it != C[loc].dict.end());
 			size_t qC = it->second;
-		
+			
 			// Update AL
 			stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
@@ -778,12 +1061,17 @@ polarDecompose (size_t loc, GAUGE::OPTION gauge)
 				stitch += Nrowsvec[i];
 			}
 		}
+		
+		calc_entropy(loc);
 	}
+	
+	size_t locC = minus1modL(loc);
 	
 	if (gauge == GAUGE::R or gauge == GAUGE::C)
 	{
 		vector<MatrixType> UC;
-		size_t locC = (loc==0)? N_sites-1 : (loc-1)%N_sites;
+//		cout << "polarDecompose AR from C at " << locC << endl;
+		
 		for (size_t q=0; q<C[locC].dim; ++q)
 		{
 			Jack.compute(C[locC].block[q], ComputeThinU|ComputeThinV);
@@ -793,7 +1081,7 @@ polarDecompose (size_t loc, GAUGE::OPTION gauge)
 		for (size_t qin=0; qin<inbase[loc].Nq(); ++qin)
 		{
 			qarray2<Symmetry::Nq> quple = {inbase[loc][qin], inbase[loc][qin]};
-		
+			
 			// Determine how many A's to glue together
 			vector<size_t> svec, qvec, Ncolsvec;
 			for (size_t s=0; s<qloc[loc].size(); ++s)
@@ -828,6 +1116,7 @@ polarDecompose (size_t loc, GAUGE::OPTION gauge)
 			MatrixType UR = Jack.matrixU() * Jack.matrixV().adjoint();
 			
 			auto it = C[locC].dict.find(quple);
+			assert(it != C[locC].dict.end());
 			size_t qC = it->second;
 			
 			// Update AR
@@ -842,186 +1131,8 @@ polarDecompose (size_t loc, GAUGE::OPTION gauge)
 				stitch += Ncolsvec[i];
 			}
 		}
-	}
-}
-
-template<typename Symmetry, typename Scalar>
-void Umps<Symmetry,Scalar>::
-calc_epsLRsq (size_t loc, double &epsLsq, double &epsRsq)
-{
-	epsLsq = 0;
-	epsRsq = 0;
-	
-	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
-	{
-		qarray2<Symmetry::Nq> quple = {outbase[loc][qout], outbase[loc][qout]};
-		auto it = C[loc].dict.find(quple);
-		size_t qC = it->second;
 		
-		// Determine how many A's to glue together
-		vector<size_t> svec, qvec, Nrowsvec;
-		for (size_t s=0; s<qloc[loc].size(); ++s)
-		for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
-		{
-			if (A[GAUGE::C][loc][s].out[q] == outbase[loc][qout])
-			{
-				svec.push_back(s);
-				qvec.push_back(q);
-				Nrowsvec.push_back(A[GAUGE::C][loc][s].block[q].rows());
-			}
-		}
-		
-		// Do the glue
-		size_t Ncols = A[GAUGE::C][loc][svec[0]].block[qvec[0]].cols();
-		for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].cols() == Ncols);}
-		size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
-		
-		MatrixType Aclump(Nrows,Ncols);
-		MatrixType Acmp(Nrows,Ncols);
-		Aclump.setZero();
-		size_t stitch = 0;
-		for (size_t i=0; i<svec.size(); ++i)
-		{
-			Aclump.block(stitch,0, Nrowsvec[i],Ncols) = A[GAUGE::C][loc][svec[i]].block[qvec[i]];
-			Acmp.block  (stitch,0, Nrowsvec[i],Ncols) = A[GAUGE::L][loc][svec[i]].block[qvec[i]];
-			stitch += Nrowsvec[i];
-		}
-		
-		epsLsq += (Aclump-Acmp*C[loc].block[qC]).squaredNorm() * Symmetry::coeff_dot(C[loc].in[qC]);
-		
-//		BDCSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
-////		JacobiSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
-//		MatrixType NullSpace = Jack.matrixV().rightCols((qloc[loc].size()-1) * A[GAUGE::C][loc][0].block[0].rows());
-//		
-//		double epsL_ = (NullSpace.adjoint() * Aclump).norm();
-////		double epsL__ = sqrt(Aclump.squaredNorm() - (Acmp*C[loc].block[qC]).squaredNorm());
-//		
-//		MatrixType B = Aclump-Acmp*C[loc].block[qC];
-//		size_t D = qloc[loc].size();
-//		size_t M = A[GAUGE::C][loc][0].block[0].rows();
-//		
-////		double epsL___ = 0;
-////		for (size_t s=0; s<qloc[loc].size(); ++s)
-////		{
-////			epsL___ += (A[GAUGE::C][loc][s].block[0] - A[GAUGE::L][loc][s].block[0] * C[loc].block[0]).squaredNorm();
-////		}
-////		epsL___ = sqrt(epsL___);
-//		
-//		cout << "nullspace test: " << (Acmp.adjoint() * NullSpace).norm() << endl;
-//		cout << "ortho test: " << (NullSpace.adjoint() * NullSpace - MatrixType::Identity(NullSpace.cols(),NullSpace.cols())).norm() << endl;
-//		cout << "norm(NullSpace)=" << NullSpace.norm() << endl;
-//		
-//		stitch = 0;
-//		for (size_t i=0; i<svec.size(); ++i)
-//		{
-//			N[GAUGE::L][loc][svec[i]].block[0] = NullSpace.block(stitch,0, Nrowsvec[i],NullSpace.cols());
-//			stitch += Nrowsvec[i];
-//		}
-		
-//		MatrixType Ntest = N[GAUGE::L][loc][0].block[0].adjoint() * N[GAUGE::L][loc][0].block[0];
-//		for (size_t s=1; s<qloc[loc].size(); ++s)
-//		{
-//			Ntest += N[GAUGE::L][loc][s].block[0].adjoint() * N[GAUGE::L][loc][s].block[0];
-//		}
-//		cout << "NtestL1=" << (Ntest-MatrixType::Identity(Ntest.rows(),Ntest.cols())).norm() << endl;
-//		
-//		Ntest = N[GAUGE::L][loc][0].block[0].adjoint() * A[GAUGE::L][loc][0].block[0];
-//		for (size_t s=1; s<qloc[loc].size(); ++s)
-//		{
-//			Ntest += N[GAUGE::L][loc][s].block[0].adjoint() * A[GAUGE::L][loc][s].block[0];
-//		}
-//		cout << "NtestL2=" << Ntest.norm() << endl;
-//		
-//		MatrixType U(D*M,D*M);
-//		U.leftCols(M) = Acmp;
-//		U.rightCols((D-1)*M) = NullSpace;
-//		
-//		cout << "Utest1=" << (U.adjoint() * U - MatrixType::Identity(D*M,D*M)).norm() << endl;
-//		cout << "Utest2=" << (U * U.adjoint() - MatrixType::Identity(D*M,D*M)).norm() << endl;
-//		cout << "Bnorm=" << B.norm() << endl;
-//		cout << "UBnorm=" << (U.adjoint()*B).norm() << "\t" << (U*B).norm() << endl;
-//		cout << (Acmp.adjoint()*B).norm() << endl;
-//		cout << (NullSpace.adjoint() * B).norm() << endl;
-//		
-//		MatrixType Cprime = A[GAUGE::L][loc][0].block[0].adjoint() * A[GAUGE::C][loc][0].block[0];
-//		for (size_t s=1; s<D; ++s)
-//		{
-//			Cprime += A[GAUGE::L][loc][s].block[0].adjoint() * A[GAUGE::C][loc][s].block[0];
-//		}
-//		cout << "Ctest=" << (Cprime-C[loc].block[0]).norm() << endl;
-//		
-//		cout << endl << "epsL = " << sqrt(epsLsq) << "\t" << epsL_ << endl << endl;
-	}
-	
-	for (size_t qin=0; qin<inbase[loc].Nq(); ++qin)
-	{
-		qarray2<Symmetry::Nq> quple = {inbase[loc][qin], inbase[loc][qin]};
-		size_t locC = (loc==0)? N_sites-1 : (loc-1)%N_sites;
-		auto it = C[locC].dict.find(quple);
-		size_t qC = it->second;
-		
-		// Determine how many A's to glue together
-		vector<size_t> svec, qvec, Ncolsvec;
-		for (size_t s=0; s<qloc[loc].size(); ++s)
-		for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
-		{
-			if (A[GAUGE::C][loc][s].in[q] == inbase[loc][qin])
-			{
-				svec.push_back(s);
-				qvec.push_back(q);
-				Ncolsvec.push_back(A[GAUGE::C][loc][s].block[q].cols());
-			}
-		}
-		
-		// Do the glue
-		size_t Nrows = A[GAUGE::C][loc][svec[0]].block[qvec[0]].rows();
-		for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].rows() == Nrows);}
-		size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
-		
-		MatrixType Aclump(Nrows,Ncols);
-		MatrixType Acmp(Nrows,Ncols);
-		size_t stitch = 0;
-		for (size_t i=0; i<svec.size(); ++i)
-		{
-			Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[GAUGE::C][loc][svec[i]].block[qvec[i]]*
-			                                            Symmetry::coeff_sign(
-								                          A[GAUGE::C][loc][svec[i]].out[qvec[i]],
-								                          A[GAUGE::C][loc][svec[i]].in[qvec[i]],
-								                          qloc[loc][svec[i]]);
-			Acmp.block  (0,stitch, Nrows,Ncolsvec[i]) = A[GAUGE::R][loc][svec[i]].block[qvec[i]]*
-			                                            Symmetry::coeff_sign(
-								                          A[GAUGE::R][loc][svec[i]].out[qvec[i]],
-								                          A[GAUGE::R][loc][svec[i]].in[qvec[i]],
-								                          qloc[loc][svec[i]]);
-			stitch += Ncolsvec[i];
-		}
-		
-		epsRsq += (Aclump-C[locC].block[qC]*Acmp).squaredNorm() * Symmetry::coeff_dot(C[locC].in[qC]);
-		
-//		BDCSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
-////		JacobiSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
-//		MatrixType NullSpace = Jack.matrixU().adjoint().bottomRows((qloc[loc].size()-1) * A[GAUGE::C][loc][0].block[0].rows());
-		
-//		stitch = 0;
-//		for (size_t i=0; i<svec.size(); ++i)
-//		{
-//			N[GAUGE::R][loc][svec[i]].block[0] = NullSpace.block(0,stitch, NullSpace.rows(),Ncolsvec[i]);
-//			stitch += Ncolsvec[i];
-//		}
-		
-//		MatrixType Ntest = N[GAUGE::R][loc][0].block[0] * N[GAUGE::R][loc][0].block[0].adjoint();
-//		for (size_t s=1; s<qloc[loc].size(); ++s)
-//		{
-//			Ntest += N[GAUGE::R][loc][s].block[0] * N[GAUGE::R][loc][s].block[0].adjoint();
-//		}
-//		cout << "NtestR1=" << (Ntest-MatrixType::Identity(Ntest.rows(),Ntest.cols())).norm() << endl;
-//		
-//		Ntest = A[GAUGE::R][loc][0].block[0] * N[GAUGE::R][loc][0].block[0].adjoint();
-//		for (size_t s=1; s<qloc[loc].size(); ++s)
-//		{
-//			Ntest += A[GAUGE::R][loc][s].block[0] * N[GAUGE::R][loc][s].block[0].adjoint();
-//		}
-//		cout << "NtestR2=" << Ntest.norm() << endl;
+		calc_entropy(locC);
 	}
 }
 
@@ -1029,30 +1140,53 @@ template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
 svdDecompose (size_t loc, GAUGE::OPTION gauge)
 {
+	for (size_t s=0; s<qloc[loc].size(); ++s)
+	for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
+	{
+		std::array<qarray3<Symmetry::Nq>,3> quple;
+		for (size_t g=0; g<3; ++g)
+		{
+			quple[g] = {A[g][loc][s].in[q], A[g][loc][s].out[q]};
+		}
+		
+		for (size_t g=1; g<3; ++g)
+		{
+			assert(quple[0] == quple[g]);
+		}
+	}
+	
 	if (gauge == GAUGE::L or gauge == GAUGE::C)
 	{
+		vector<Biped<Symmetry,MatrixType> > Atmp(qloc[loc].size());
+		for (size_t s=0; s<qloc[loc].size(); ++s)
+		{
+			Atmp[s] = A[GAUGE::C][loc][s].contract(C[loc].adjoint());
+		}
+		
+//		cout << "svdDecompose AL from C at " << loc << endl;
 		for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
 		{
 			qarray2<Symmetry::Nq> quple = {outbase[loc][qout], outbase[loc][qout]};
 			auto it = C[loc].dict.find(quple);
+			assert(it != C[loc].dict.end());
 			size_t qC = it->second;
-		
+			
 			// Determine how many A's to glue together
 			vector<size_t> svec, qvec, Nrowsvec;
 			for (size_t s=0; s<qloc[loc].size(); ++s)
-			for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
+			for (size_t q=0; q<Atmp[s].dim; ++q)
 			{
-				if (A[GAUGE::C][loc][s].out[q] == outbase[loc][qout])
+				if (Atmp[s].out[q] == outbase[loc][qout])
 				{
 					svec.push_back(s);
 					qvec.push_back(q);
-					Nrowsvec.push_back(A[GAUGE::C][loc][s].block[q].rows());
+					Nrowsvec.push_back(Atmp[s].block[q].rows());
 				}
 			}
 		
 			// Do the glue
-			size_t Ncols = A[GAUGE::C][loc][svec[0]].block[qvec[0]].cols();
-			for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].cols() == Ncols);}
+			size_t Ncols = Atmp[svec[0]].block[qvec[0]].cols();
+			for (size_t i=1; i<svec.size(); ++i) {assert(Atmp[svec[i]].block[qvec[i]].cols() == Ncols);}
 			size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
 		
 			MatrixType Aclump(Nrows,Ncols);
@@ -1060,11 +1194,11 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 			size_t stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
 			{
-				Aclump.block(stitch,0, Nrowsvec[i],Ncols) = A[GAUGE::C][loc][svec[i]].block[qvec[i]];
+				Aclump.block(stitch,0, Nrowsvec[i],Ncols) = Atmp[svec[i]].block[qvec[i]];
 				stitch += Nrowsvec[i];
 			}
 			
-			Aclump *= C[loc].block[qC].adjoint();
+//			Aclump *= C[loc].block[qC].adjoint();
 			
 			#ifdef DONT_USE_BDCSVD
 			JacobiSVD<MatrixType> Jack; // standard SVD
@@ -1080,80 +1214,92 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 			for (size_t i=0; i<svec.size(); ++i)
 			{
 				A[GAUGE::L][loc][svec[i]].block[qvec[i]] = Jack.matrixU().block(stitch,0, Nrowsvec[i],Nret) * 
-					                                       Jack.matrixV().adjoint().topRows(Nret);
+				                                           Jack.matrixV().adjoint().topRows(Nret);
 				stitch += Nrowsvec[i];
 			}
 		}
+		
+		calc_entropy(loc);
 	}
+	
+	size_t locC = minus1modL(loc);
 	
 	if (gauge == GAUGE::R or gauge == GAUGE::C)
 	{
+		vector<Biped<Symmetry,MatrixType> > Atmp(qloc[loc].size());
+		for (size_t s=0; s<qloc[loc].size(); ++s)
+		{
+			Atmp[s] = C[locC].adjoint().contract(A[GAUGE::C][loc][s]);
+		}
+		
+//		cout << "svdDecompose AR from C at " << locC << endl;
+		
 		for (size_t qin=0; qin<inbase[loc].Nq(); ++qin)
 		{
 			qarray2<Symmetry::Nq> quple = {inbase[loc][qin], inbase[loc][qin]};
-			size_t locC = (loc==0)? N_sites-1 : (loc-1)%N_sites;
 			auto it = C[locC].dict.find(quple);
+			assert(it != C[locC].dict.end());
 			size_t qC = it->second;
-		
+			
 			// Determine how many A's to glue together
 			vector<size_t> svec, qvec, Ncolsvec;
 			for (size_t s=0; s<qloc[loc].size(); ++s)
-			for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
+			for (size_t q=0; q<Atmp[s].dim; ++q)
 			{
-				if (A[GAUGE::C][loc][s].in[q] == inbase[loc][qin])
+				if (Atmp[s].in[q] == inbase[loc][qin])
 				{
 					svec.push_back(s);
 					qvec.push_back(q);
-					Ncolsvec.push_back(A[GAUGE::C][loc][s].block[q].cols());
+					Ncolsvec.push_back(Atmp[s].block[q].cols());
 				}
 			}
-		
+			
 			// Do the glue
-			size_t Nrows = A[GAUGE::C][loc][svec[0]].block[qvec[0]].rows();
-			for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].rows() == Nrows);}
+			size_t Nrows = Atmp[svec[0]].block[qvec[0]].rows();
+			for (size_t i=1; i<svec.size(); ++i) {assert(Atmp[svec[i]].block[qvec[i]].rows() == Nrows);}
 			size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
-		
+			
 			MatrixType Aclump(Nrows,Ncols);
 			Aclump.setZero();
 			size_t stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
 			{
-				Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[GAUGE::C][loc][svec[i]].block[qvec[i]]*
-							                                Symmetry::coeff_leftSweep(
-							                                     A[GAUGE::C][loc][svec[i]].out[qvec[i]],
-							                                     A[GAUGE::C][loc][svec[i]].in[qvec[i]],
-							                                     qloc[loc][svec[i]]);
+				Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = Atmp[svec[i]].block[qvec[i]]*
+				                                            Symmetry::coeff_leftSweep(
+				                                             Atmp[svec[i]].out[qvec[i]],
+				                                             Atmp[svec[i]].in[qvec[i]],
+				                                             qloc[loc][svec[i]]);
 				stitch += Ncolsvec[i];
 			}
-		
-			Aclump = C[locC].block[qC].adjoint() * Aclump;
-		
+			
+//			Aclump = C[locC].block[qC].adjoint() * Aclump;
+			
 			#ifdef DONT_USE_BDCSVD
 			JacobiSVD<MatrixType> Jack; // standard SVD
 			#else
 			BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
 			#endif
 			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
-		
+			
 			size_t Nret = Jack.singularValues().rows();
-		
+			
 			// Update AR
 			stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
 			{
 				A[GAUGE::R][loc][svec[i]].block[qvec[i]] = Jack.matrixU().leftCols(Nret) * 
-					                                       Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])
-					                                       *
-					                                       Symmetry::coeff_sign(
-					                                        A[GAUGE::C][loc][svec[i]].out[qvec[i]],
-					                                        A[GAUGE::C][loc][svec[i]].in[qvec[i]],
-					                                        qloc[loc][svec[i]]);
+				                                           Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])
+				                                           *
+				                                           Symmetry::coeff_sign(
+				                                            Atmp[svec[i]].out[qvec[i]],
+				                                            Atmp[svec[i]].in[qvec[i]],
+				                                            qloc[loc][svec[i]]);
 				stitch += Ncolsvec[i];
 			}
 		}
+		
+		calc_entropy(locC);
 	}
-	
-	calc_entropy(loc);
 }
 
 #endif

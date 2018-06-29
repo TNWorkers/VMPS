@@ -26,13 +26,7 @@ struct TransferMatrixAA
 template<typename Symmetry, typename Scalar>
 inline size_t dim (const TransferMatrixAA<Symmetry,Scalar> &H)
 {
-	size_t out = 0;
-	for (size_t s=0; s<H.qloc.size(); ++s)
-	for (size_t q=0; q<H.Aket[s].dim; ++q)
-	{
-		out += H.Aket[s].block[q].size();
-	}
-	return out;
+	return 0;
 }
 
 template<typename Symmetry, typename Scalar1, typename Scalar2>
@@ -42,11 +36,11 @@ void HxV (const TransferMatrixAA<Symmetry,Scalar1> &H, const PivotVector<Symmetr
 	
 	if (H.gauge == GAUGE::L)
 	{
-		contract_L (Vin.data[0], H.Abra, H.Aket, H.qloc, Vout.data[0]);
+		contract_R (Vin.data[0], H.Abra, H.Aket, H.qloc, Vout.data[0]);
 	}
 	else if (H.gauge == GAUGE::R)
 	{
-		contract_R (Vin.data[0], H.Abra, H.Aket, H.qloc, Vout.data[0]);
+		contract_L (Vin.data[0], H.Abra, H.Aket, H.qloc, Vout.data[0]);
 	}
 }
 

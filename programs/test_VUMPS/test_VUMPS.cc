@@ -16,7 +16,7 @@ using namespace std;
 Logger lout;
 #include "ArgParser.h"
 
-#include "util/LapackManager.h"
+//#include "util/LapackManager.h"
 
 //#include "LanczosWrappers.h"
 #include "StringStuff.h"
@@ -99,7 +99,7 @@ void print_mag (const Hamiltonian &H, const Eigenstate &g)
 	VectorXd SZcell(L);
 	VectorXd SXcell(L);
 	lout << endl;
-	lout << "magnetization within unit cell (i.e. staggered): " << endl;
+	lout << "magnetization within unit cell: " << endl;
 	
 	for (size_t l=0; l<L; ++l)
 	{
@@ -129,16 +129,17 @@ int main (int argc, char* argv[])
 	
 	dt = args.get<double>("dt",0.5); // hopping-offset for SSH model
 	M = args.get<double>("M",10);    // bond dimension
-	tol_eigval = args.get<double>("tol_eigval",1e-6);
-	tol_var = args.get<double>("tol_var",1e-7);
+	tol_eigval = args.get<double>("tol_eigval",1e-9);
+	tol_var = args.get<double>("tol_var",1e-9);
 	max_iter = args.get<size_t>("max_iter",10);
 	size_t Nqmax = args.get<size_t>("Nqmax",6);
 	size_t D = args.get<size_t>("D",2);
-
+	
 	bool CALC_SU2 = args.get<bool>("SU2",false);
 	bool CALC_U1 = args.get<bool>("U1",true);
 	bool CALC_U0 = args.get<bool>("U0",true);
-
+	bool CALC_DOT = args.get<bool>("DOT",true);
+	
 	ISING = args.get<bool>("ISING",true);
 	HEIS2 = args.get<bool>("HEIS2",false);
 	HEIS3 = args.get<bool>("HEIS3",false);
@@ -184,43 +185,82 @@ int main (int argc, char* argv[])
 		DMRG_SU2.edgeState(Heis_SU2, g_SU2, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 	}
 	
-	typedef VMPS::HeisenbergU1 HEISENBERG_U1;
-	HEISENBERG_U1 Heis_U1(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
-
+	typedef VMPS::HeisenbergU1XXZ HEISENBERG_U1;
+	HEISENBERG_U1 Heis_U1(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG_U1 Heis_U1_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",2.*Jz},{"OPEN_BC",false},{"D",D}});
+	
 	HEISENBERG_U1::uSolver DMRG_U1(VERB);
 	Eigenstate<HEISENBERG_U1::StateUd> g_U1;
-	if(CALC_U1)
+	if (CALC_U1)
 	{
 		lout << Heis_U1.info() << endl;
 		DMRG_U1.set_log(2,"e_Heis_U1.dat","err_eigval_Heis_U1.dat","err_var_Heis_U1.dat");
 		DMRG_U1.edgeState(Heis_U1, g_U1, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+		
+		if (CALC_DOT)
+		{
+			HEISENBERG_U1::uSolver DMRG_U1_(DMRG::VERBOSITY::ON_EXIT);
+			Eigenstate<HEISENBERG_U1::StateUd> g_U1_;
+			DMRG_U1_.set_log(2,"e_Heis_U1_.dat","err_eigval_Heis_U1_.dat","err_var_Heis_U1_.dat");
+			DMRG_U1_.edgeState(Heis_U1_, g_U1_, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+			double dot1 = g_U1.state.dot(g_U1.state);
+			double dot2 = g_U1_.state.dot(g_U1_.state);
+			double dot3 = g_U1.state.dot(g_U1_.state);
+			cout << "<ψ|ψ>=" <<  dot1 
+			     << ", <φ|φ>=" << dot2 
+			     << ", <ψ|φ>=" << dot3 
+			<< endl;
+		}
 	}
 	
-	typedef VMPS::Heisenberg HEISENBERG0;
-	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"J",J},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	typedef VMPS::HeisenbergXXZ HEISENBERG0;
+	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG0 Heis0_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",2.*Jz},{"OPEN_BC",false},{"D",D}});
 	
 	HEISENBERG0::uSolver DMRG0(VERB);
 	Eigenstate<HEISENBERG0::StateUd> g0;
-	if (CALC_U1)
+	if (CALC_U0)
 	{
 		lout << Heis0.info() << endl;
 		DMRG0.set_log(2,"e_Heis_U0.dat","err_eigval_Heis_U0.dat","err_var_Heis_U0.dat");
 		DMRG0.edgeState(Heis0, g0, tol_eigval,tol_var, M, 1, max_iter,1);
 		cout << g0.state.info() << endl;
+		
+		if (CALC_DOT)
+		{
+			HEISENBERG0::uSolver DMRG0_(DMRG::VERBOSITY::ON_EXIT);
+			Eigenstate<HEISENBERG0::StateUd> g0_;
+			DMRG0_.edgeState(Heis0_, g0_, tol_eigval,tol_var, M, 1, max_iter,1);
+			double dot1 = g0.state.dot(g0.state);
+			double dot2 = g0_.state.dot(g0_.state);
+			double dot3 = g0.state.dot(g0_.state);
+			cout << "<ψ|ψ>=" <<  dot1 
+			     << ", <φ|φ>=" << dot2 
+			     << ", <ψ|φ>=" << dot3 << endl;
+		}
 	}
 	
 	cout << setprecision(13);
-	if (CALC_SU2) {cout << "e0(SU2)=" << g_SU2.energy << endl;}
-	if (CALC_U1) {cout << "e0(U1) =" << g_U1.energy << endl;}
-	if (CALC_U0) {cout << "e0(U0) =" << g0.energy << endl;}
+	double eref = std::nan("1");
 	if (D==2)
 	{
-		cout << "e(ref) =" << 0.25-log(2) << endl;
+		if (Jz==0.)
+		{
+			eref = -1./M_PI;
+		}
+		else
+		{
+			eref = 0.25-log(2);
+		}
 	}
 	else if (D==3)
 	{
-		cout << "e(ref) =" << 1.401484038971 << endl;
+		eref = -1.401484038971;
 	}
+	cout << "e(ref)=" << eref << endl;
+	if (CALC_SU2) {cout << "e0(SU2)=" << g_SU2.energy << ", diff=" << abs(eref-g_SU2.energy) << endl;}
+	if (CALC_U1)  {cout << "e0(U1) =" << g_U1.energy << ", diff=" << abs(eref-g_U1.energy) << endl;}
+	if (CALC_U0)  {cout << "e0(U0) =" << g0.energy << ", diff=" << abs(eref-g0.energy) << endl;}
 	
 	if (CALC_U0)
 	{
@@ -229,7 +269,7 @@ int main (int argc, char* argv[])
 		size_t dmax = 10;
 		for (size_t d=1; d<dmax; ++d)
 		{
-			HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+			HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
 			double SvecSvec = Htmp.SvecSvecAvg(g0.state,0,d);
 			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
 		}
@@ -242,7 +282,7 @@ int main (int argc, char* argv[])
 		size_t dmax = 10;
 		for (size_t d=1; d<dmax; ++d)
 		{
-			HEISENBERG_U1 Htmp(d+1,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+			HEISENBERG_U1 Htmp(d+1,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
 			double SvecSvec = Htmp.SvecSvecAvg(g_U1.state,0,d);
 			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
 		}

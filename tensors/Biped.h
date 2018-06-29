@@ -128,6 +128,8 @@ public:
 	
 	Biped<Symmetry,MatrixType_> cleaned() const;
 	
+	Biped<Symmetry,MatrixType_> sorted() const;
+	
 	/**
 	 * Returns the adjoint tensor where all the block matrices are adjoint and the quantum number arrows are flipped: 
 	 * \p in \f$\to\f$ \p out and vice versa.
@@ -175,15 +177,20 @@ public:
 	///@}
 	
 	template<typename OtherMatrixType>
+	void outerResize (const Biped<Symmetry,OtherMatrixType> Brhs)
+	{
+		dict = Brhs.dict;
+		in = Brhs.in;
+		out = Brhs.out;
+		dim = Brhs.dim;
+		block.resize(dim);
+	}
+	
+	template<typename OtherMatrixType>
 	Biped<Symmetry,OtherMatrixType> cast() const
 	{
 		Biped<Symmetry,OtherMatrixType> Vout;
-		
-		Vout.dict = dict;
-		Vout.block.resize(block.size());
-		Vout.in = in;
-		Vout.out = out;
-		Vout.dim = dim;
+		Vout.outerResize(*this);
 		
 		for (size_t q=0; q<dim; ++q)
 		{
@@ -395,6 +402,24 @@ cleaned() const
 
 template<typename Symmetry, typename MatrixType_>
 Biped<Symmetry,MatrixType_> Biped<Symmetry,MatrixType_>::
+sorted() const
+{
+	Biped<Symmetry,MatrixType_> Aout;
+	set<qarray2<Symmetry::Nq> > quples;
+	for (size_t q=0; q<dim; ++q)
+	{
+		quples.insert(qarray2<Symmetry::Nq>{in[q], out[q]});
+	}
+	for (const auto &quple:quples)
+	{
+		auto it = dict.find(quple);
+		Aout.push_back(quple, block[it->second]);
+	}
+	return Aout;
+}
+
+template<typename Symmetry, typename MatrixType_>
+Biped<Symmetry,MatrixType_> Biped<Symmetry,MatrixType_>::
 adjoint() const
 {
 	Biped<Symmetry,MatrixType_> Aout;
@@ -461,7 +486,7 @@ Biped<Symmetry,MatrixType_>& Biped<Symmetry,MatrixType_>::operator+= (const Bipe
 }
 template<typename Symmetry, typename MatrixType_>
 Biped<Symmetry,MatrixType_> Biped<Symmetry,MatrixType_>::
-contract(const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE) const
+contract (const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE) const
 {
 	Biped<Symmetry,MatrixType_> Ares;
 	Scalar factor_cgc;
@@ -470,20 +495,20 @@ contract(const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE) const
 	{
 		if (this->out[q1] == A.in[q2])
 		{
-			if (this->in[q1] == A.out[q2])
+//			if (this->in[q1] == A.out[q2]) // Warning: Only for true Bipeds, not with qloc!
 			{
-				if (this->block[q1].rows() != 0 and A.block[q2].rows() != 0)
+				if (this->block[q1].size() != 0 and A.block[q2].size() != 0)
 				{
 					factor_cgc = Scalar(1);
-					if ( MODE == contract::MODE::OORR )
+					if (MODE == contract::MODE::OORR)
 					{
 						factor_cgc = Symmetry::coeff_rightOrtho(this->out[q1],this->in[q2]);
 					}
-					else if ( MODE == contract::MODE::DOT )
+					else if (MODE == contract::MODE::DOT)
 					{
 						factor_cgc = Symmetry::coeff_dot(this->out[q1]);
 					}
-					if ( auto it = Ares.dict.find({{this->in[q1],A.out[q2]}}); it == Ares.dict.end() )
+					if (auto it = Ares.dict.find({{this->in[q1],A.out[q2]}}); it == Ares.dict.end())
 					{
 						Ares.push_back(this->in[q1], A.out[q2], factor_cgc*this->block[q1]*A.block[q2]);
 					}

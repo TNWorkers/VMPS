@@ -24,18 +24,6 @@ struct PivotMatrix0
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
 };
 
-template<typename Symmetry, typename Scalar>
-void phase_convention (Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C)
-{
-	for (size_t q=0; q<C.dim; ++q)
-	{
-		for (size_t i=0; i<C.block[q].cols(); ++i)
-		{
-			if (C.block[q].col(i)(0) < 0.) {C.block[q].col(i) *= -1.;}
-		}
-	}
-}
-
 //-----------<matrix*vector>-----------
 /**Calculates the following contraction:
 \dotfile HxV_0site.dot*/
@@ -43,6 +31,7 @@ template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivotMatrix0<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
 {
 	Vout.outerResize(Vin);
+	Vout.data[0].setZero();
 	
 	for (size_t qL=0; qL<H.L.dim; ++qL)
 	{
@@ -76,14 +65,22 @@ void HxV (const PivotMatrix0<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 							                 Mtmp);
 						}
 						
+//						Scalar norm = Mtmp.norm();
+//						if (norm > 0)
+//						{
+//							cout << "q=" << qupleAout[0] << ", a=" << a << ", Mtmp.norm()=" << Mtmp.norm() << endl;
+//						}
+						
 						if (Mtmp.rows() != 0)
 						{
 							if (Vout.data[0].block[qAout->second].size() != 0)
 							{
+//								cout << "adding L: a=" << a << ", q=" << H.L.out(qL) << ", " << H.L.in(qL) << ", " << H.L.mid(qL) << endl;
 								Vout.data[0].block[qAout->second] += Mtmp;
 							}
 							else
 							{
+//								cout << "adding L: a=" << a << ", q=" << H.L.out(qL) << ", " << H.L.in(qL) << ", " << H.L.mid(qL) << endl;
 								Vout.data[0].block[qAout->second] = Mtmp;
 							}
 						}
@@ -92,6 +89,7 @@ void HxV (const PivotMatrix0<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 			}
 		}
 	}
+//	cout << "done!" << endl;
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>

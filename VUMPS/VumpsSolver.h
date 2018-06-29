@@ -38,6 +38,9 @@ public:
 	:CHOSEN_VERBOSITY(VERBOSITY)
 	{};
 	
+	/**Resets the verbosity level.*/
+	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
+	
 	///\{
 	/**\describe_info*/
 	string info() const;
@@ -82,9 +85,6 @@ public:
 	
 private:
 	
-	/**Resets the verbosity level.*/
-	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
-	
 	///\{
 //	/**Prepares the class, setting up the environments. Used with an explicit 2-site Hamiltonian.*/
 //	void prepare (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input,
@@ -115,6 +115,9 @@ private:
 	void iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
 	void phase_convention (Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C);
+	
+	void gauge_convention (Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C,
+	                       vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AL);
 	///\}
 	
 	/**Clean up after the iteration process.*/
@@ -127,7 +130,7 @@ private:
 	
 	vector<PivumpsMatrix1<Symmetry,Scalar,Scalar> > Heff; // environment
 	vector<PivotMatrix1<Symmetry,Scalar,Scalar> > HeffA;
-	vector<PivotMatrix1<Symmetry,Scalar,Scalar> > HeffAC;
+	vector<PivotMatrix1<Symmetry,Scalar,Scalar> > HeffC;
 	vector<qarray<Symmetry::Nq> > qloc;
 //	TwoSiteHamiltonian h2site; // stored 2-site Hamiltonian
 	size_t D, M, dW; // bond dimension per subspace, bond dimension per site, MPO bond dimension
@@ -157,27 +160,17 @@ private:
 	                   Scalar LRdotY, 
 	                   Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LRres);
 	
-	Biped<Symmetry,ComplexMatrixType> calc_LReigen (GAUGE::OPTION gauge, 
-	                                                const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A,
-	                                                const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C,
-	                                                const vector<qarray<Symmetry::Nq> > &qlocCell);
-	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
 	
 	/**Sets the Lanczos tolerances adaptively, depending on the current errors.*/
 	void set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState);
 	
-	/**Creates the left and right transfer matrices (eq. A7) explicitly. This is only for testing purposes, as a 4-legged tensor this is very inefficient.*/
-//	void make_explicitT (const Umps<Symmetry,Scalar> &Vbra, const Umps<Symmetry,Scalar> &Vket, MatrixType &TL, MatrixType &TR);
-	
-	/**Explicitly calculates the left eigenvector of the transfer matrix \f$T_L\f$. This is only for testing purposes and very inefficient.*/
-//	MatrixXd eigenvectorL (const MatrixType &TL);
-	
-	/**Explicitly calculates the right eigenvector of the transfer matrix \f$T_R\f$. This is only for testing purposes and very inefficient.*/
-//	MatrixXd eigenvectorR (const MatrixType &TR);
+	void calc_errors (Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
 	Tripod<Symmetry,MatrixType> YLlast;
 	Tripod<Symmetry,MatrixType> YRfrst;
+	
+	string test_LReigen (const Eigenstate<Umps<Symmetry,Scalar> > &Vout) const;
 	
 	///\{
 	/**log stuff*/
@@ -317,7 +310,7 @@ set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState)
 {
 	// Set less accuracy for the first iterations
 	tolLanczosEigval = max(max(1e-2*err_eigval,1e-13),1e-13); // 1e-7
-	tolLanczosState  = max(max(1e-2*err_var,   1e-8), 1e-13); // 1e-4
+	tolLanczosState  = max(max(1e-2*err_var,   1e-10),1e-13); // 1e-4
 	
 	if (std::isnan(tolLanczosEigval))
 	{
@@ -333,6 +326,44 @@ set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState)
 	{
 		lout << "current Lanczos tolerances: " << tolLanczosEigval << ", " << tolLanczosState << endl;
 	}
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+calc_errors (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
+{
+	std::array<VectorXd,2> epsLRsq;
+	std::array<GAUGE::OPTION,2> gs = {GAUGE::L, GAUGE::R};
+	
+	for (const auto &g:gs)
+	{
+		epsLRsq[g].resize(N_sites);
+		
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			epsLRsq[g](l) = Vout.state.calc_epsLRsq(g,l);
+			
+			bool GAUGE_FLIP = false;
+			// If wrong phase, flip sign of C and recalculate:
+			if (epsLRsq[g](l) > 1.)
+			{
+				size_t lC = (g==GAUGE::R)? Vout.state.minus1modL(l):l;
+				Vout.state.C[lC] = -1. * Vout.state.C[lC];
+				GAUGE_FLIP = true;
+			}
+			if (GAUGE_FLIP)
+			{
+				epsLRsq[g](l) = Vout.state.calc_epsLRsq(g,l);
+			}
+		}
+	}
+	
+	err_var = max(sqrt(epsLRsq[GAUGE::L].sum()), 
+	              sqrt(epsLRsq[GAUGE::R].sum()));
+	err_eigval = max(abs(eoldR-eR), 
+	                 abs(eoldL-eL));
+	eoldR = eR;
+	eoldL = eL;
 }
 
 //template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -418,7 +449,7 @@ set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState)
 //	// Calculate AL and AR from AC, C
 //	Vout.state.A[GAUGE::C][0] = gAC.state.data;
 //	Vout.state.C[0]           = gC.state.data[0];
-//	(err_var>0.1)? Vout.state.svdDecompose(0) : Vout.state.polarDecompose(0);
+//	(err_var>0.01)? Vout.state.svdDecompose(0) : Vout.state.polarDecompose(0);
 //	
 //	// Calculate errors
 //	double epsLsq, epsRsq;
@@ -447,8 +478,6 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t M_input, size_t Nqmax)
 {
-//	assert(H.length()<=2 or H.length()==4); // only 2- and 4-site unit cells are implemented
-	
 	N_sites = H.length();
 	N_iterations = 0;
 	
@@ -476,66 +505,6 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_
 	err_var    = 1.;
 }
 
-//template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-//void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-//make_explicitT (const Umps<Symmetry,Scalar> &Vbra, const Umps<Symmetry,Scalar> &Vket, MatrixType &TL, MatrixType &TR)
-//{
-////	vector<vector<MatrixType> > TL(H.auxdim());
-////	vector<vector<MatrixType> > TR(H.auxdim());
-////	
-////	for (size_t a=0; a<H.auxdim(); ++a)
-////	{
-////		TL[a].resize(H.auxdim());
-////		TR[a].resize(H.auxdim());
-////	}
-////	
-////	for (size_t a=0; a<H.auxdim(); ++a)
-////	for (size_t b=0; b<H.auxdim(); ++b)
-////	{
-////		TL[a][b].resize(M*M,M*M); TL[a][b].setZero();
-////		TR[a][b].resize(M*M,M*M); TR[a][b].setZero();
-////	}
-////	
-////	for (size_t s1=0; s1<D; ++s1)
-////	for (size_t s2=0; s2<D; ++s2)
-////	for (int k12=0; k12<H.W[0][s1][s2].outerSize(); ++k12)
-////	for (typename SparseMatrix<Scalar>::InnerIterator iW(H.W[0][s1][s2],k12); iW; ++iW)
-////	for (size_t i=0; i<M; ++i)
-////	for (size_t j=0; j<M; ++j)
-////	for (size_t k=0; k<M; ++k)
-////	for (size_t l=0; l<M; ++l)
-////	{
-////		size_t a = iW.row();
-////		size_t b = iW.col();
-////		
-////		size_t r = i + M*l; // note: rows of A & cols of A† (= rows of A*) become new rows of T
-////		size_t c = j + M*k; // note: cols of A & rows of A† (= cols of A*) become new cols of T
-////		
-////		TL[a][b](r,c) += iW.value() * Vout.state.A[GAUGE::L][0][s2].block[0](i,j) * Vout.state.A[GAUGE::L][0][s1].block[0].adjoint()(k,l);
-////		TR[a][b](r,c) += iW.value() * Vout.state.A[GAUGE::R][0][s2].block[0](i,j) * Vout.state.A[GAUGE::R][0][s1].block[0].adjoint()(k,l);
-////	}
-//	
-//	TL.resize(M*M,M*M); TL.setZero();
-//	TR.resize(M*M,M*M); TR.setZero();
-////	for (size_t s=0; s<D; ++s)
-////	{
-////		// only for real:
-////		TL += kroneckerProduct(Vout.state.A[GAUGE::L][0][s].block[0], Vout.state.A[GAUGE::L][0][s].block[0]); 
-////		TR += kroneckerProduct(Vout.state.A[GAUGE::R][0][s].block[0], Vout.state.A[GAUGE::R][0][s].block[0]);
-////	}
-//	for (size_t s=0; s<D; ++s)
-//	for (size_t i=0; i<M; ++i)
-//	for (size_t j=0; j<M; ++j)
-//	for (size_t k=0; k<M; ++k)
-//	for (size_t l=0; l<M; ++l)
-//	{
-//		size_t r = i + M*l; // Note: rows of A & cols of A† (= rows of A*) become new rows of T
-//		size_t c = j + M*k; // Note: cols of A & rows of A† (= cols of A*) become new cols of T
-//		TL(r,c) += Vket.A[GAUGE::L][0][s].block[0](i,j) * Vbra.A[GAUGE::L][0][s].block[0].adjoint()(k,l);
-//		TR(r,c) += Vket.A[GAUGE::R][0][s].block[0](i,j) * Vbra.A[GAUGE::R][0][s].block[0].adjoint()(k,l);
-//	}
-//}
-
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 build_LR (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AL,
@@ -548,6 +517,9 @@ build_LR (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AL,
           Tripod<Symmetry,MatrixType> &R)
 {
 	Stopwatch<> GMresTimer;
+	
+	L.clear();
+	R.clear();
 	
 	// |R) and (L|
 	Biped<Symmetry,MatrixType> Reigen = C.contract(C.adjoint());
@@ -580,7 +552,7 @@ build_LR (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AL,
 			{
 				if (iW.row() == a and iW.col() == b)
 				{
-					res += iW.value();
+					res += abs(iW.value());
 				}
 			}
 		}
@@ -603,12 +575,12 @@ build_LR (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AL,
 				else
 				{
 					Tripod<Symmetry,MatrixType> Ltmp;
-					solve_linear(GAUGE::L, b, AL, YL[b], Reigen, W, qlocCell, qOpCell, contract_LR(YL[b],Reigen), Ltmp);
+					solve_linear(GAUGE::L, b, AL, YL[b], Reigen, W, qlocCell, qOpCell, contract_LR(b,YL[b],Reigen), Ltmp);
 					L.insert(b,Ltmp);
 					
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and b == 0)
 					{
-						cout << "<L[0]|R>=" << contract_LR(Ltmp,Reigen) << endl;
+						cout << "<L[0]|R>=" << contract_LR(0,Ltmp,Reigen) << endl;
 					}
 				}
 			}
@@ -628,12 +600,12 @@ build_LR (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AL,
 				else
 				{
 					Tripod<Symmetry,MatrixType> Rtmp;
-					solve_linear(GAUGE::R, a, AR, YR[a], Leigen, W, qlocCell, qOpCell, contract_LR(Leigen,YR[a]), Rtmp);
+					solve_linear(GAUGE::R, a, AR, YR[a], Leigen, W, qlocCell, qOpCell, contract_LR(a,Leigen,YR[a]), Rtmp);
 					R.insert(a,Rtmp);
 					
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and a == dW-1)
 					{
-						cout << "<L|R[dW-1]>=" << contract_LR(Leigen,Rtmp) << endl;
+						cout << "<L|R[dW-1]>=" << contract_LR(dW-1,Leigen,Rtmp) << endl;
 					}
 				}
 			}
@@ -647,6 +619,14 @@ build_LR (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AL,
 	
 	YLlast = YL[0];
 	YRfrst = YR[dW-1];
+	
+//	Tripod<Symmetry,MatrixType> Lcheck;
+//	contract_L(L, AL, W, AL, qlocCell, qOpCell, Lcheck);
+//	Tripod<Symmetry,MatrixType> Rcheck;
+//	contract_R(R, AR, W, AR, qlocCell, qOpCell, Rcheck);
+//	
+//	cout << termcolor::magenta << "CHECK=" << L.compare(Lcheck) << ", " << R.compare(Rcheck) << termcolor::reset << endl;
+//	cout << (R-Rcheck).print(true,13) << endl;
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -695,13 +675,13 @@ build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	// With a unit cell, Heff is a vector for each site
 	HeffA.clear();
 	HeffA.resize(N_sites);
-	HeffAC.clear();
-	HeffAC.resize(N_sites);
+	HeffC.clear();
+	HeffC.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		HeffA[l].W  = H.W[l];
-		HeffAC[l].W = H.W[l];
+		HeffA[l].W = H.W[l];
+		HeffC[l].W = H.W[l];
 	}
 	
 	// Make environment for the unit cell
@@ -748,18 +728,18 @@ build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	// Make environment for each site of the unit cell
 	for (size_t l=1; l<N_sites; ++l)
 	{
-		contract_L(HeffA[l-1].L, Vout.state.A[GAUGE::L][l-1], H.W[l-1], Vout.state.A[GAUGE::L][l-1], H.locBasis(l-1), H.opBasis(l-1), HeffA[l].L);
+		contract_L (HeffA[l-1].L, Vout.state.A[GAUGE::L][l-1], H.W[l-1], Vout.state.A[GAUGE::L][l-1], H.locBasis(l-1), H.opBasis(l-1), HeffA[l].L);
 	}
 	
 	for (int l=N_sites-2; l>=0; --l)
 	{
-		contract_R(HeffA[l+1].R, Vout.state.A[GAUGE::R][l+1], H.W[l+1], Vout.state.A[GAUGE::R][l+1], H.locBasis(l+1), H.opBasis(l+1), HeffA[l].R);
+		contract_R (HeffA[l+1].R, Vout.state.A[GAUGE::R][l+1], H.W[l+1], Vout.state.A[GAUGE::R][l+1], H.locBasis(l+1), H.opBasis(l+1), HeffA[l].R);
 	}
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		HeffAC[l].L = HeffA[(l+1)%N_sites].L;
-		HeffAC[l].R = HeffA[l].R;
+		HeffC[l].L = HeffA[(l+1)%N_sites].L;
+		HeffC[l].R = HeffA[l].R;
 	}
 }
 
@@ -772,11 +752,11 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	double tolLanczosEigval, tolLanczosState;
 	set_LanczosTolerances(tolLanczosEigval,tolLanczosState);
 	
+	build_cellEnv(H,Vout);
+	
 	// See Algorithm 4
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		build_cellEnv(H,Vout);
-		
 		precalc_blockStructure (HeffA[l].L, Vout.state.A[GAUGE::C][l], HeffA[l].W, Vout.state.A[GAUGE::C][l], HeffA[l].R, 
 		                        H.locBasis(l), H.opBasis(l), HeffA[l].qlhs, HeffA[l].qrhs, HeffA[l].factor_cgcs);
 		
@@ -787,7 +767,8 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		gAC.state = PivotVector<Symmetry,Scalar>(Vout.state.A[GAUGE::C][l]);
 		
 		Stopwatch<> LanczosTimer;
-		LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL,LANCZOS::CONVTEST::SQ_TEST);
+		LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
+		Lutz(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
 		Lutz.set_dimK(min(30ul, dim(gAC.state)));
 		Lutz.edgeState(HeffA[l], gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -796,15 +777,16 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		}
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 		{
-			lout << "e0(AC)=" << setprecision(13) << gAC.energy << ", ratio=" << abs(2.-gAC.energy/Vout.energy) << endl;
+			lout << "e0(AC)=" << setprecision(13) << gAC.energy << ", ratio=" << gAC.energy/Vout.energy << endl;
 		}
 		
 		// Solve for C
 		gC.state = PivotVector<Symmetry,Scalar>(Vout.state.C[l]);
 		
-		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lucy(LANCZOS::REORTHO::FULL,LANCZOS::CONVTEST::SQ_TEST);
+		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
+		Lucy(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
 		Lucy.set_dimK(min(30ul, dim(gC.state)));
-		Lucy.edgeState(PivotMatrix0(HeffAC[l]), gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
+		Lucy.edgeState(PivotMatrix0(HeffC[l]), gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -812,7 +794,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		}
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 		{
-			lout << "e0(C)=" << setprecision(13) << gC.energy << ", ratio=" << abs(1.-gC.energy/Vout.energy) << endl;
+			lout << "e0(C)=" << setprecision(13) << gC.energy << ", ratio=" << gC.energy/Vout.energy << endl;
 		}
 		
 		Vout.state.A[GAUGE::C][l] = gAC.state.data;
@@ -821,36 +803,32 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		(err_var>0.1)? Vout.state.svdDecompose(l) : Vout.state.polarDecompose(l);
+		(err_var>0.01)? Vout.state.svdDecompose(l) : Vout.state.polarDecompose(l);
 	}
+	cout << Vout.state.test_ortho() << endl;
 	
 	// Calculate energies
-	
-//	Biped<Symmetry,ComplexMatrixType> Reigen = calc_LReigen(GAUGE::R, Vout.state.Acell[GAUGE::R], Vout.state.C[N_sites-1], Vout.state.qlocCell);
-//	Biped<Symmetry,ComplexMatrixType> Leigen = calc_LReigen(GAUGE::L, Vout.state.Acell[GAUGE::L], Vout.state.C[N_sites-1], Vout.state.qlocCell);
-//	eL = abs(contract_LR(YLlast.template cast<ComplexMatrixType>(), Reigen)) / H.volume();
-//	eR = abs(contract_LR(Leigen, YRfrst.template cast<ComplexMatrixType>())) / H.volume();
+//	Biped<Symmetry,ComplexMatrixType> Reigen = calc_LReigen(GAUGE::R, Vout.state.Acell[GAUGE::R], Vout.state.Acell[GAUGE::R], 
+//	                                                        Vout.state.C[N_sites-1], Vout.state.qlocCell).state;
+//	Biped<Symmetry,ComplexMatrixType> Leigen = calc_LReigen(GAUGE::L, Vout.state.Acell[GAUGE::L], Vout.state.Acell[GAUGE::L],
+//	                                                        Vout.state.C[N_sites-1], Vout.state.qlocCell).state;
+//	eL = abs(contract_LR(0,    YLlast.template cast<ComplexMatrixType>(), Reigen)) / H.volume();
+//	eR = abs(contract_LR(dW-1, Leigen, YRfrst.template cast<ComplexMatrixType>())) / H.volume();
+//	cout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
 	
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
-	eL = contract_LR(YLlast, Reigen) / H.volume();
-	eR = contract_LR(Leigen, YRfrst) / H.volume();
+	eL = contract_LR(0, YLlast, Reigen) / H.volume();
+	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
+	cout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
+	
+	cout << test_LReigen(Vout) << endl;
 	
 //	cout << Reigen.print(true) << endl;
 //	cout << Reigen_.print(true) << endl;
 //	cout << endl;
 	
-	// Calculate errors
-	MatrixXd epsLRsq(N_sites,2);
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Vout.state.calc_epsLRsq(l, epsLRsq(l,0), epsLRsq(l,1));
-	}
-	err_var = max(sqrt(epsLRsq.col(0).sum()), sqrt(epsLRsq.col(1).sum()));
-	
-	err_eigval = max(abs(eoldR-eR), abs(eoldL-eL));
-	eoldR = eR;
-	eoldL = eL;
+	calc_errors(Vout);
 	Vout.energy = min(eL,eR);
 	
 	++N_iterations;
@@ -891,7 +869,8 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		gAC.state = PivotVector<Symmetry,Scalar>(Vout.state.A[GAUGE::C][l]);
 		
 		Stopwatch<> LanczosTimer;
-		LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LANCZOS::REORTHO::FULL,LANCZOS::CONVTEST::SQ_TEST);
+		LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
+		Lutz(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
 		Lutz.set_dimK(min(30ul, dim(gAC.state)));
 		Lutz.edgeState(HeffA[l], gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -900,15 +879,16 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		}
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 		{
-			lout << "e0(AC)=" << setprecision(13) << gAC.energy << ", ratio=" << abs(2.-gAC.energy/Vout.energy) << endl;
+			lout << "e0(AC)=" << setprecision(13) << gAC.energy << ", ratio=" << gAC.energy/Vout.energy << endl;
 		}
 		
 		// Solve for CR
 		gCR.state = PivotVector<Symmetry,Scalar>(Vout.state.C[l]);
 		
-		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lucy(LANCZOS::REORTHO::FULL,LANCZOS::CONVTEST::SQ_TEST);
+		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
+		Lucy(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
 		Lucy.set_dimK(min(30ul, dim(gCR.state)));
-		Lucy.edgeState(PivotMatrix0(HeffAC[l]), gCR, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
+		Lucy.edgeState(PivotMatrix0(HeffC[l]), gCR, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 //		phase_convention(gCR.state.data[0]);
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -917,16 +897,22 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		}
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 		{
-			lout << "e0(C)=" << setprecision(13) << gCR.energy << ", ratio=" << abs(1.-gCR.energy/Vout.energy) << endl;
+			lout << "e0(C)=" << setprecision(13) << gCR.energy << ", ratio=" << gCR.energy/Vout.energy << endl;
 		}
 		
 		// Solve for CL
-		size_t lC = (l==0)? N_sites-1 : (l-1)%N_sites;
+		size_t lC = Vout.state.minus1modL(l);
 		gCL.state = PivotVector<Symmetry,Scalar>(Vout.state.C[lC]);
+//		MatrixXd Mtmp(M,M); Mtmp.setZero();
+//		for (size_t qin=0; qin<Vout.state.inbase[l].Nq(); ++qin)
+//		{
+//			gCL.state.data[0].push_back(qarray2<Symmetry::Nq>{Vout.state.inbase[l][qin], Vout.state.inbase[l][qin]}, Mtmp);
+//		}
 		
-		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Luca(LANCZOS::REORTHO::FULL,LANCZOS::CONVTEST::SQ_TEST);
+		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
+		Luca(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
 		Luca.set_dimK(min(30ul, dim(gCL.state)));
-		Luca.edgeState(PivotMatrix0(HeffAC[lC]), gCL, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
+		Luca.edgeState(PivotMatrix0(HeffC[lC]), gCL, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, true);
 //		phase_convention(gCL.state.data[0]);
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -935,7 +921,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		}
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 		{
-			lout << "e0(C)=" << setprecision(13) << gCL.energy << ", ratio=" << abs(1.-gCL.energy/Vout.energy) << endl;
+			lout << "e0(C)=" << setprecision(13) << gCL.energy << ", ratio=" << gCL.energy/Vout.energy << endl;
 		}
 		
 //		if (l==0)
@@ -946,38 +932,23 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		Vout.state.A[GAUGE::C][l] = gAC.state.data;
 		Vout.state.C[lC]          = gCL.state.data[0]; // C(l-1) = CL
 		Vout.state.C[l]           = gCR.state.data[0]; // C(l)   = CR
-		phase_convention(Vout.state.C[lC]);
-		phase_convention(Vout.state.C[l]);
 		
-		(err_var>0.1)? Vout.state.svdDecompose(l,GAUGE::R) : Vout.state.polarDecompose(l,GAUGE::R); // AR from AC, CL
-		(err_var>0.1)? Vout.state.svdDecompose(l,GAUGE::L) : Vout.state.polarDecompose(l,GAUGE::L); // AL from AC, CR
+		(err_var>0.01)? Vout.state.svdDecompose(l,GAUGE::R) : Vout.state.polarDecompose(l,GAUGE::R); // AR from AC, CL
+		(err_var>0.01)? Vout.state.svdDecompose(l,GAUGE::L) : Vout.state.polarDecompose(l,GAUGE::L); // AL from AC, CR
 	}
+	cout << Vout.state.test_ortho() << endl;
 	
 	// Calculate energies
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
-	eL = contract_LR(YLlast, Reigen) / H.volume();
-	eR = contract_LR(Leigen, YRfrst) / H.volume();
+	eL = contract_LR(0, YLlast, Reigen) / H.volume();
+	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
+	cout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
 	
-	// Calculate errors
-	MatrixXd epsLRsq(N_sites,2);
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Vout.state.calc_epsLRsq(l, epsLRsq(l,0), epsLRsq(l,1));
-	}
-	err_var = max(sqrt(epsLRsq.col(0).sum()), sqrt(epsLRsq.col(1).sum()));
+	cout << test_LReigen(Vout) << endl;
 	
-	err_eigval = max(abs(eoldR-eR), abs(eoldL-eL));
-	eoldR = eR;
-	eoldL = eL;
+	calc_errors(Vout);
 	Vout.energy = min(eL,eR);
-	
-//	if (N_sites == 1 and CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
-//	{
-//		lout << "eL=" << eL << ", eR=" << eR << endl;
-//		lout << "ratio test AC: " << abs(2.-gCR[0].energy/Vout.energy) 
-//		     << ", C: " << abs(1.-gCR[0].energy/Vout.energy) << endl;
-//	}
 	
 	++N_iterations;
 	
@@ -993,39 +964,86 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-phase_convention (Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C)
+string VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+test_LReigen (const Eigenstate<Umps<Symmetry,Scalar> > &Vout) const
 {
-//	cout << "before: " << (C.contract(C.adjoint())).trace() << ", " << (C.adjoint().contract(C)).trace() << endl;
-	for (size_t q=0; q<C.dim; ++q)
-	{
-		for (size_t i=0; i<C.block[q].cols(); ++i)
-		{
-			if (C.block[q].col(i)(0) < 0.) {C.block[q].col(i) *= -1.;}
-		}
-	}
-//	cout << "after: " << (C.contract(C.adjoint())).trace() << ", " << (C.adjoint().contract(C)).trace() << endl;
+	TransferMatrixAA TR(GAUGE::R, Vout.state.Acell[GAUGE::R], Vout.state.Acell[GAUGE::R], Vout.state.qlocCell);
+	TransferMatrixAA TL(GAUGE::L, Vout.state.Acell[GAUGE::L], Vout.state.Acell[GAUGE::L], Vout.state.qlocCell);
+	
+	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
+	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
+	
+	PivotVector<Symmetry,Scalar> PsiR(Reigen);
+	PivotVector<Symmetry,Scalar> PsiL(Leigen);
+	
+	HxV(TL,PsiR);
+	HxV(TR,PsiL);
+	
+	stringstream ss;
+	ss << "ReigenTest=" << (Reigen-PsiR.data[0]).norm().sum() << ", LeigenTest=" << (Leigen-PsiL.data[0]).norm().sum() << endl;
+	return ss.str();
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-calc_LReigen (GAUGE::OPTION gauge, 
-              const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A,
-              const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C,
-              const vector<qarray<Symmetry::Nq> > &qlocCell)
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+phase_convention (Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C)
 {
-	TransferMatrixAA<Symmetry,Scalar> T(gauge, A, A, qlocCell);
-	PivotVector<Symmetry,complex<double> > LRtmp(C.template cast<MatrixXcd>());
+//	if (Symmetry::IS_TRIVIAL and C.block[0](0,0) < 0.)
+//	{
+//		C.block[0] *= -1.;
+//	}
 	
-	ArnoldiSolver<TransferMatrixAA<Symmetry,double>,PivotVector<Symmetry,complex<double> > > Arnie;
-	Arnie.set_dimK(30ul);
+	if (C.block[0](0,0) < 0.)
+	{
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+		{
+			lout << "phase of C flipped, based on block: " << C.in[0] << ", " << C.out[0] << endl;
+		}
+		for (size_t q=0; q<C.dim; ++q)
+		{
+			C.block[q] *= -1.;
+		}
+	}
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+gauge_convention (Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C,
+                  vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AL)
+{
+	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > U;
+	U.outerResize(C);
+	for (size_t q=0; q<C.dim; ++q)
+	{
+		Matrix<Scalar,Dynamic,Dynamic> Mtmp = Matrix<Scalar,Dynamic,Dynamic>::Identity(C.block[q].rows(),C.block[q].cols());
+		
+		for (size_t i=0; i<C.block[q].cols(); ++i)
+		{
+			if (C.block[q].col(i)(0) < 0.)
+			{
+				C.block[q].col(i) *= -1.;
+				Mtmp(i,i) = -1.;
+			}
+		}
+		
+		U.block[q] = Mtmp;
+	}
 	
-	complex<double> lambda;
+//	for (size_t q=0; q<U.dim; ++q)
+//	{
+//		cout << "q=" << q << ", U.in=" << U.in[q] << endl;
+//	}
+//	
+//	for (size_t s=0; s<AL.size(); ++s)
+//	for (size_t q=0; q<AL[s].dim; ++q)
+//	{
+//		cout << "q=" << q << ", s=" << s << ", AL.out=" << AL[s].out[q] << endl;
+//	}
 	
-	Arnie.calc_dominant(T, LRtmp ,lambda);
-	lout << gauge << ": " << Arnie.info() << ", lambda=" << lambda << endl;
-	
-	return LRtmp.data[0];
+	for (size_t s=0; s<AL.size(); ++s)
+	{
+		AL[s] = AL[s].contract(U);
+	}
 }
 
 //template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -1135,7 +1153,7 @@ solve_linear (GAUGE::OPTION gauge,
 	GMResSolver<TransferMatrix<Symmetry,Scalar>,TransferVector<Symmetry,Scalar> > Gimli;
 	
 	size_t dimK = GMRes_dimK[gauge];
-	if      (GMRes_Niter[gauge] > 1 and dimK < 100) {dimK += 10;}
+	if      (GMRes_Niter[gauge] > 1 and dimK < 200) {dimK += 10;}
 	else if (GMRes_Niter[gauge] == 1 and dimK > 10) {dimK -= 10;}
 	Gimli.set_dimK(min(dimK,dim(bvec)));
 	Gimli.set_dimK(max(dimK,10ul));
@@ -1152,45 +1170,5 @@ solve_linear (GAUGE::OPTION gauge,
 		lout << gauge << ": " << Gimli.info() << endl;
 	}
 }
-
-//template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-//MatrixXd VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-//eigenvectorL (const MatrixType &TL)
-//{
-//	EigenSolver<MatrixType> Lutz(TL);
-//	int max_index;
-//	Lutz.eigenvalues().cwiseAbs().maxCoeff(&max_index);
-//	
-//	MatrixType Mout(M,M);
-//	
-//	for (size_t i=0; i<M; ++i)
-//	for (size_t j=0; j<M; ++j)
-//	{
-//		size_t r = i + M*j;
-//		Mout(i,j) = Lutz.eigenvectors().col(max_index)(r).real();
-//	}
-//	
-//	return Mout;
-//}
-
-//template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-//MatrixXd VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-//eigenvectorR (const MatrixType &TR)
-//{
-//	EigenSolver<MatrixType> Lutz(TR.adjoint());
-//	int max_index;
-//	Lutz.eigenvalues().cwiseAbs().maxCoeff(&max_index);
-//	
-//	MatrixType Mout(M,M);
-//	
-//	for (size_t i=0; i<M; ++i)
-//	for (size_t j=0; j<M; ++j)
-//	{
-//		size_t r = i + M*j;
-//		Mout(i,j) = Lutz.eigenvectors().col(max_index)(r).real();
-//	}
-//	
-//	return Mout;
-//}
 
 #endif

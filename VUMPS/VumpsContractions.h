@@ -5,7 +5,38 @@
 
 #include "tensors/DmrgContractions.h"
 #include "VUMPS/Umps.h"
+#include "VUMPS/VumpsTransferMatrixAA.h"
 #include "Mpo.h"
+
+template<typename Symmetry, typename Scalar>
+Eigenstate<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > >
+calc_LReigen (GAUGE::OPTION gauge, 
+              const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket,
+              const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra,
+              const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C,
+              const vector<qarray<Symmetry::Nq> > &qlocCell,
+              size_t dimK = 100ul)
+{
+	TransferMatrixAA<Symmetry,Scalar> T(gauge, Abra, Aket, qlocCell);
+	PivotVector<Symmetry,complex<double> > LRtmp(C.template cast<MatrixXcd>());
+	
+	ArnoldiSolver<TransferMatrixAA<Symmetry,double>,PivotVector<Symmetry,complex<double> > > Arnie;
+	Arnie.set_dimK(dimK);
+	
+	complex<double> lambda;
+	
+	Arnie.calc_dominant(T,LRtmp,lambda);
+	
+	Eigenstate<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > > out;
+	out.energy = lambda.real();
+	out.state = LRtmp.data[0];
+	if (abs(lambda.imag()) > 1e-10)
+	{
+		lout << termcolor::red << "Non-zero imaginary part of dominant eigenvalue λ=" << lambda << ", |λ|=" << abs(lambda) << termcolor::reset << endl;
+	}
+	
+	return out;
+}
 
 ///**Calculates the tensor \f$h_L\f$ (eq. 12) from the explicit 4-legged 2-site Hamiltonian and \f$A_L\f$.*/
 //template<typename Symmetry, typename MatrixType, typename MpoScalar>

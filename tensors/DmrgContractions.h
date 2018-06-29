@@ -611,10 +611,10 @@ void contract_L (const Biped<Symmetry,MatrixType2> &Lold,
 						else
 						{
 							optimal_multiply(1.,
-						                     Abra[s].block[qAbra].adjoint(),
-						                     Lold.block[qL],
-						                     Aket[s].block[qAket],
-						                     Mtmp);
+							                 Abra[s].block[qAbra].adjoint(),
+							                 Lold.block[qL],
+							                 Aket[s].block[qAket],
+							                 Mtmp);
 						}
 						
 						auto it = Lnew.dict.find(quple);
@@ -1066,7 +1066,8 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 }
 
 template<typename Symmetry, typename Scalar>
-Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
+Scalar contract_LR (size_t fixed_b, 
+                    const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
                     const Biped <Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R)
 {
 	Scalar res = 0;
@@ -1081,12 +1082,12 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 			
 			if (qR != R.dict.end())
 			{
-				for (size_t b=0; b<L.block[qL].shape()[0]; ++b)
+//				for (size_t b=0; b<L.block[qL].shape()[0]; ++b)
 				{
-					if (L.block[qL][b][0].size() != 0 and
+					if (L.block[qL][fixed_b][0].size() != 0 and
 					    R.block[qR->second].size() != 0)
 					{
-						res += (L.block[qL][b][0] * R.block[qR->second]).trace() * Symmetry::coeff_dot(L.out(qL));
+						res += (L.block[qL][fixed_b][0] * R.block[qR->second]).trace() * Symmetry::coeff_dot(L.out(qL));
 					}
 				}
 			}
@@ -1097,7 +1098,8 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 }
 
 template<typename Symmetry, typename Scalar>
-Scalar contract_LR (const Biped <Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
+Scalar contract_LR (size_t fixed_a, 
+                    const Biped <Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
                     const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R)
 {
 	Scalar res = 0;
@@ -1112,12 +1114,12 @@ Scalar contract_LR (const Biped <Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 			
 			if (qL != L.dict.end())
 			{
-				for (size_t a=0; a<R.block[qR].shape()[0]; ++a)
+//				for (size_t a=0; a<R.block[qR].shape()[0]; ++a)
 				{
-					if (R.block[qR][a][0].size() != 0 and
+					if (R.block[qR][fixed_a][0].size() != 0 and
 					    L.block[qL->second].size() != 0)
 					{
-						res += (L.block[qL->second] * R.block[qR][a][0]).trace() * Symmetry::coeff_dot(R.out(qR));
+						res += (L.block[qL->second] * R.block[qR][fixed_a][0]).trace() * Symmetry::coeff_dot(R.out(qR));
 					}
 				}
 			}
