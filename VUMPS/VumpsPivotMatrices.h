@@ -27,13 +27,15 @@ struct PivumpsMatrix1
 //		h = h_input;
 //	}
 	
-	Matrix<Scalar,Dynamic,Dynamic> L;
-	Matrix<Scalar,Dynamic,Dynamic> R;
+	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
+	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
 	
 	boost::multi_array<MpoScalar,4> h;
 	
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > AL;
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > AR;
+	
+	vector<qarray<Symmetry::Nq> > qloc;
 };
 
 /**Structure to update \f$C\f$ (eq. 16) with a 2-site Hamiltonian. Contains \f$A_L\f$, \f$A_L\f$ and \f$H_L\f$ (= \p L), \f$H_R\f$ (= \p R).
@@ -45,16 +47,18 @@ struct PivumpsMatrix0
 	PivumpsMatrix0(){};
 	
 	PivumpsMatrix0 (const PivumpsMatrix1<Symmetry,Scalar,MpoScalar> &H)
-	:L(H.L), R(H.R), h(H.h), AL(H.AL), AR(H.AR)
+	:L(H.L), R(H.R), h(H.h), AL(H.AL), AR(H.AR), qloc(H.qloc)
 	{}
 	
-	Matrix<Scalar,Dynamic,Dynamic> L;
-	Matrix<Scalar,Dynamic,Dynamic> R;
+	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
+	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
 	
 	boost::multi_array<MpoScalar,4> h;
 	
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > AL;
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > AR;
+	
+	vector<qarray<Symmetry::Nq> > qloc;
 };
 //-----------</definitions>-----------
 
@@ -63,39 +67,228 @@ template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivumpsMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
 {
 	size_t D = H.h.shape()[0];
+//	
+//	Vout = Vin;
+//	for (size_t s=0; s<D; ++s)
+//	{
+//		Vout.data[s].block[0].setZero();
+//	}
+//	
+//	for (size_t s1=0; s1<D; ++s1)
+//	for (size_t s2=0; s2<D; ++s2)
+//	for (size_t s3=0; s3<D; ++s3)
+//	for (size_t s4=0; s4<D; ++s4)
+//	{
+//		if (H.h[s1][s2][s3][s4] != 0.)
+//		{
+//			Vout.data[s3].block[0] += H.h[s1][s2][s3][s4] * H.AL[s1].block[0].adjoint() * H.AL[s2].block[0] * Vin.data[s4].block[0];
+//		}
+//	}
+//	
+//	for (size_t s1=0; s1<D; ++s1)
+//	for (size_t s2=0; s2<D; ++s2)
+//	for (size_t s3=0; s3<D; ++s3)
+//	for (size_t s4=0; s4<D; ++s4)
+//	{
+//		if (H.h[s1][s2][s3][s4] != 0.)
+//		{
+//			Vout.data[s1].block[0] += H.h[s1][s2][s3][s4] * Vin.data[s2].block[0] * H.AR[s4].block[0] * H.AR[s3].block[0].adjoint();
+//		}
+//	}
+//	
+//	for (size_t s=0; s<D; ++s)
+//	{
+//		Vout.data[s].block[0] += H.L * Vin.data[s].block[0];
+//		Vout.data[s].block[0] += Vin.data[s].block[0] * H.R;
+//	}
 	
-	Vout = Vin;
-	for (size_t s=0; s<D; ++s)
-	{
-		Vout.data[s].block[0].setZero();
-	}
+	Vout.outerResize(Vin);
+	Vout.setZero();
 	
+	// term 1 AL
 	for (size_t s1=0; s1<D; ++s1)
 	for (size_t s2=0; s2<D; ++s2)
 	for (size_t s3=0; s3<D; ++s3)
 	for (size_t s4=0; s4<D; ++s4)
+	for (size_t q1=0; q1<H.AL[s1].dim; ++q1)
 	{
-		if (H.h[s1][s2][s3][s4] != 0.)
+		auto quple2s = Symmetry::reduceSilent(H.AL[s1].out[q1], H.qloc[s2]);
+		for (const auto &quple2 : quple2s)
 		{
-			Vout.data[s3].block[0] += H.h[s1][s2][s3][s4] * H.AL[s1].block[0].adjoint() * H.AL[s2].block[0] * Vin.data[s4].block[0];
+			auto it2 = H.AL[s2].dict.find(qarray2<Symmetry::Nq>{H.AL[s1].out[q1], quple2});
+			if (it2 != H.AL[s2].dict.end())
+			{
+				auto quple4s = Symmetry::reduceSilent(H.AL[s2].out[it2->second], H.qloc[s4]);
+				for (const auto &quple4 : quple4s)
+				{
+					auto it4 = Vin.data[s4].dict.find(qarray2<Symmetry::Nq>{H.AL[s2].out[it2->second], quple4});
+					if (it4 != H.AL[s4].dict.end())
+					{
+						Matrix<Scalar,Dynamic,Dynamic> Mtmp;
+						if (H.h[s1][s2][s3][s4] != 0.)
+						{
+							optimal_multiply(H.h[s1][s2][s3][s4],
+							                        H.AL[s1].block[q1].adjoint(),
+							                        H.AL[s2].block[it2->second],
+							                        Vin.data[s4].block[it4->second],
+							                        Mtmp
+							                       );
+						}
+						
+						if (Mtmp.size() != 0)
+						{
+							qarray2<Symmetry::Nq> quple = {H.AL[s1].in[q1], H.AL[s4].out[it4->second]};
+							auto it = Vout.data[s3].dict.find(quple);
+							
+							if (it != Vout.data[s3].dict.end())
+							{
+								if (Vout.data[s3].block[it->second].rows() != Mtmp.rows() and
+									Vout.data[s3].block[it->second].cols() != Mtmp.cols())
+								{
+									Vout.data[s3].block[it->second] = Mtmp;
+								}
+								else
+								{
+									Vout.data[s3].block[it->second] += Mtmp;
+								}
+							}
+							else
+							{
+								Vout.data[s3].push_back(quple, Mtmp);
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	
+	// term 2 AR
 	for (size_t s1=0; s1<D; ++s1)
 	for (size_t s2=0; s2<D; ++s2)
 	for (size_t s3=0; s3<D; ++s3)
 	for (size_t s4=0; s4<D; ++s4)
+	for (size_t q2=0; q2<Vin.data[s2].dim; ++q2)
 	{
-		if (H.h[s1][s2][s3][s4] != 0.)
+		auto quple4s = Symmetry::reduceSilent(Vin.data[s2].out[q2], H.qloc[s4]);
+		for (const auto &quple4 : quple4s)
 		{
-			Vout.data[s1].block[0] += H.h[s1][s2][s3][s4] * Vin.data[s2].block[0] * H.AR[s4].block[0] * H.AR[s3].block[0].adjoint();
+			auto it4 = H.AR[s4].dict.find(qarray2<Symmetry::Nq>{Vin.data[s2].out[q2], quple4});
+			if (it4 != H.AR[s4].dict.end())
+			{
+				auto quple3s = Symmetry::reduceSilent(H.AR[s4].out[it4->second], Symmetry::flip(H.qloc[s3]));
+				for (const auto &quple3 : quple3s)
+				{
+					auto it3 = H.AR[s3].dict.find(qarray2<Symmetry::Nq>{H.AR[s4].out[it4->second], quple3});
+					if (it3 != H.AR[s3].dict.end())
+					{
+						Matrix<Scalar,Dynamic,Dynamic> Mtmp;
+						if (H.h[s1][s2][s3][s4] != 0.)
+						{
+							optimal_multiply(H.h[s1][s2][s3][s4],
+							                        Vin.data[s2].block[q2],
+							                        H.AR[s4].block[it4->second],
+							                        H.AR[s3].block[it3->second].adjoint(),
+							                        Mtmp
+							                       );
+						}
+						
+						if (Mtmp.size() != 0)
+						{
+							qarray2<Symmetry::Nq> quple = {Vin.data[s2].in[q2], H.AR[s3].out[it3->second]};
+							auto it = Vout.data[s1].dict.find(quple);
+							
+							if (it != Vout.data[s1].dict.end())
+							{
+								if (Vout.data[s1].block[it->second].rows() != Mtmp.rows() and
+									Vout.data[s1].block[it->second].cols() != Mtmp.cols())
+								{
+									Vout.data[s1].block[it->second] = Mtmp;
+								}
+								else
+								{
+									Vout.data[s1].block[it->second] += Mtmp;
+								}
+							}
+							else
+							{
+								Vout.data[s1].push_back(quple, Mtmp);
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	
+	// term 3 AL
 	for (size_t s=0; s<D; ++s)
+	for (size_t q=0; q<Vin.data[s].dim; ++q)
 	{
-		Vout.data[s].block[0] += H.L * Vin.data[s].block[0];
-		Vout.data[s].block[0] += Vin.data[s].block[0] * H.R;
+		qarray2<Symmetry::Nq> qupleL = {Vin.data[s].in[q], Vin.data[s].in[q]};
+		auto itL = H.L.dict.find(qupleL);
+		if (itL != H.L.dict.end())
+		{
+			Matrix<Scalar,Dynamic,Dynamic> Mtmp = H.L.block[itL->second] * Vin.data[s].block[q];
+			if (Mtmp.size() != 0)
+			{
+				qarray2<Symmetry::Nq> quple = {Vin.data[s].in[q], Vout.data[s].out[q]};
+				auto it = Vout.data[s].dict.find(quple);
+				
+				if (it != Vout.data[s].dict.end())
+				{
+					if (Vout.data[s].block[it->second].rows() != Mtmp.rows() and
+					    Vout.data[s].block[it->second].cols() != Mtmp.cols())
+					{
+						Vout.data[s].block[it->second] = Mtmp;
+					}
+					else
+					{
+						Vout.data[s].block[it->second] += Mtmp;
+					}
+				}
+				else
+				{
+					cout << termcolor::red << "pushback that shouldn't be" << endl;
+					Vout.data[s].push_back(quple, Mtmp);
+				}
+			}
+		}
+	}
+	
+	// term 4 AR
+	for (size_t s=0; s<D; ++s)
+	for (size_t q=0; q<Vin.data[s].dim; ++q)
+	{
+		qarray2<Symmetry::Nq> qupleR = {Vin.data[s].out[q], Vin.data[s].out[q]};
+		auto itR = H.R.dict.find(qupleR);
+		if (itR != H.R.dict.end())
+		{
+			Matrix<Scalar,Dynamic,Dynamic> Mtmp = Vin.data[s].block[q] * H.R.block[itR->second];
+			if (Mtmp.size() != 0)
+			{
+				qarray2<Symmetry::Nq> quple = {Vin.data[s].in[q], Vout.data[s].out[q]};
+				auto it = Vout.data[s].dict.find(quple);
+				
+				if (it != Vout.data[s].dict.end())
+				{
+					if (Vout.data[s].block[it->second].rows() != Mtmp.rows() and
+					    Vout.data[s].block[it->second].cols() != Mtmp.cols())
+					{
+						Vout.data[s].block[it->second] = Mtmp;
+					}
+					else
+					{
+						Vout.data[s].block[it->second] += Mtmp;
+					}
+				}
+				else
+				{
+					cout << termcolor::red << "pushback that shouldn't be" << endl;
+					Vout.data[s].push_back(quple, Mtmp);
+				}
+			}
+		}
 	}
 }
 
@@ -114,24 +307,105 @@ void HxV (const PivumpsMatrix0<Symmetry,Scalar,MpoScalar> &H, const PivotVector<
 {
 	size_t D = H.h.shape()[0];
 	
-	Vout = Vin;
-	Vout.data[0].setZero();
+//	Vout = Vin;
+//	Vout.data[0].setZero();
+//	
+//	for (size_t s1=0; s1<D; ++s1)
+//	for (size_t s2=0; s2<D; ++s2)
+//	for (size_t s3=0; s3<D; ++s3)
+//	for (size_t s4=0; s4<D; ++s4)
+//	{
+//		if (H.h[s1][s2][s3][s4] != 0.)
+//		{
+//			Vout.data[0].block[0] += H.h[s1][s2][s3][s4] * H.AL[s1].block[0].adjoint() * H.AL[s2].block[0] 
+//			                                             * Vin.data[0].block[0] 
+//			                                             * H.AR[s4].block[0] * H.AR[s3].block[0].adjoint();
+//		}
+//	}
+//	
+//	Vout.data[0].block[0] += H.L * Vin.data[0].block[0];
+//	Vout.data[0].block[0] += Vin.data[0].block[0] * H.R;
 	
+	Vout.outerResize(Vin);
+	Vout.setZero();
+	
+	// term 1
 	for (size_t s1=0; s1<D; ++s1)
 	for (size_t s2=0; s2<D; ++s2)
 	for (size_t s3=0; s3<D; ++s3)
 	for (size_t s4=0; s4<D; ++s4)
+	for (size_t q1=0; q1<H.AL[s1].dim; ++q1)
 	{
-		if (H.h[s1][s2][s3][s4] != 0.)
+		auto quple2s = Symmetry::reduceSilent(H.AL[s1].out[q1], H.qloc[s2]);
+		for (const auto &quple2 : quple2s)
 		{
-			Vout.data[0].block[0] += H.h[s1][s2][s3][s4] * H.AL[s1].block[0].adjoint() * H.AL[s2].block[0] 
-			                                             * Vin.data[0].block[0] 
-			                                             * H.AR[s4].block[0] * H.AR[s3].block[0].adjoint();
+			qarray2<Symmetry::Nq> qupleC = {quple2, quple2};
+			auto itC = Vin.data[0].dict.find(qupleC);
+			auto it2 = H.AL[s2].dict.find(qarray2<Symmetry::Nq>{H.AL[s1].out[q1], quple2});
+			
+			if (it2 != H.AL[s2].dict.end() and itC != Vin.data[0].dict.end())
+			{
+				auto quple4s = Symmetry::reduceSilent(H.AL[s2].out[it2->second], H.qloc[s4]);
+				for (const auto &quple4 : quple4s)
+				{
+					auto it4 = H.AR[s4].dict.find(qarray2<Symmetry::Nq>{H.AL[s2].out[it2->second], quple4});
+					if (it4 != H.AR[s4].dict.end())
+					{
+						auto quple3s = Symmetry::reduceSilent(H.AR[s4].out[it2->second], Symmetry::flip(H.qloc[s3]));
+						for (const auto &quple3 : quple3s)
+						{
+							auto it3 = H.AR[s3].dict.find(qarray2<Symmetry::Nq>{H.AR[s4].out[it2->second], quple3});
+							if (it3 != H.AR[s3].dict.end())
+							{
+								Matrix<Scalar,Dynamic,Dynamic> Mtmp;
+								if (H.h[s1][s2][s3][s4] != 0.)
+								{
+									Mtmp = H.h[s1][s2][s3][s4] *
+									                 H.AL[s1].block[q1].adjoint() * 
+									                 H.AL[s2].block[it2->second] *
+									                 Vin.data[0].block[itC->second] *
+									                 H.AR[s4].block[it4->second] * 
+									                 H.AR[s3].block[it3->second].adjoint();
+								}
+								
+								if (Mtmp.size() != 0)
+								{
+									qarray2<Symmetry::Nq> quple = {H.AL[s1].in[q1], H.AR[s3].out[it3->second]};
+									auto it = Vout.data[0].dict.find(quple);
+									
+									if (it != Vout.data[0].dict.end())
+									{
+										if (Vout.data[0].block[it->second].rows() != Mtmp.rows() and
+											Vout.data[0].block[it->second].cols() != Mtmp.cols())
+										{
+											Vout.data[0].block[it->second] = Mtmp;
+										}
+										else
+										{
+											Vout.data[0].block[it->second] += Mtmp;
+										}
+									}
+									else
+									{
+										cout << termcolor::red << "pushback that shouldn't be" << endl;
+										Vout.data[0].push_back(quple, Mtmp);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	
-	Vout.data[0].block[0] += H.L * Vin.data[0].block[0];
-	Vout.data[0].block[0] += Vin.data[0].block[0] * H.R;
+	// term 2 HL
+	auto Ctmp = H.L.contract(Vin.data[0]);
+	Vout.data[0] += Ctmp;
+	
+	// term 2 HR
+	Ctmp = Vin.data[0].contract(H.R);
+	Vout.data[0] += Ctmp;
 }
 
 /**Performs \p HxV in place.*/

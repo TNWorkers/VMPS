@@ -87,21 +87,6 @@ MatrixXd SpinCorr_U1;
 
 MatrixXd SpinCorr_SU2;
 
-template<typename T>
-class returnConst
-{
-public:
-	
-	returnConst (T x) : data(x) {}
-	
-	
-	int operator() (int i) {return data;}
-	
-private:
-	
-	T data;
-};
-
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);

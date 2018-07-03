@@ -457,11 +457,17 @@ void Umps<Symmetry,Scalar>::
 setRandom()
 {
 	for (size_t l=0; l<N_sites; ++l)
-	for (size_t q=0; q<C[l].dim; ++q)
-	for (size_t a1=0; a1<C[l].block[q].rows(); ++a1)
-	for (size_t a2=0; a2<C[l].block[q].cols(); ++a2)
 	{
-		C[l].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
+		for (size_t a1=0; a1<C[l].block[0].rows(); ++a1)
+		for (size_t a2=0; a2<C[l].block[0].cols(); ++a2)
+		{
+			C[l].block[0](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
+//			C[l].block[0](a1,a2) = 1.;
+		}
+		for (size_t q=1; q<C[l].dim; ++q)
+		{
+			C[l].block[q] = C[l].block[0];
+		}
 	}
 	
 	// normalize the centre matrices for proper wavefunction norm: Tr(C*C†)=1
@@ -474,9 +480,12 @@ setRandom()
 	for (size_t s=0; s<qloc[l].size(); ++s)
 	for (size_t q=0; q<A[GAUGE::C][l][s].dim; ++q)
 	for (size_t a1=0; a1<A[GAUGE::C][l][s].block[q].rows(); ++a1)
-	for (size_t a2=0; a2<A[GAUGE::C][l][s].block[q].cols(); ++a2)
+//	for (size_t a2=0; a2<A[GAUGE::C][l][s].block[q].cols(); ++a2)
+	for (size_t a2=0; a2<=a1; ++a2)
 	{
 		A[GAUGE::C][l][s].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
+//		A[GAUGE::C][l][s].block[q](a1,a2) = 1.;
+		A[GAUGE::C][l][s].block[q](a2,a1) = A[GAUGE::C][l][s].block[q](a1,a2);
 	}
 	
 	calc_entropy();
@@ -579,6 +588,7 @@ test_ortho (double tol) const
 			Test.block[q] -= MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
 			A_CHECK[q]     = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
 			A_infnorm[q]   = Test.block[q].template lpNorm<Infinity>();
+//			cout << "q=" << q << ", A_infnorm[q]=" << A_infnorm[q] << endl;
 		}
 		
 		// check for B
@@ -653,6 +663,7 @@ test_ortho (double tol) const
 			Test.block[q] -= MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
 			B_CHECK[q]     = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
 			B_infnorm[q]   = Test.block[q].template lpNorm<Infinity>();
+//			cout << "q=" << q << ", B_infnorm[q]=" << B_infnorm[q] << endl;
 		}
 		
 		norm(l) = (C[l].contract(C[l].adjoint())).trace();

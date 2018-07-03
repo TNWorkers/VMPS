@@ -71,7 +71,7 @@ void HxV (const PivotMatrix0<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 //							cout << "q=" << qupleAout[0] << ", a=" << a << ", Mtmp.norm()=" << Mtmp.norm() << endl;
 //						}
 						
-						if (Mtmp.rows() != 0)
+						if (Mtmp.size() != 0)
 						{
 							if (Vout.data[0].block[qAout->second].size() != 0)
 							{

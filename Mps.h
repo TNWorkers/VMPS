@@ -1513,6 +1513,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				size_t Nnz = (SV.array() > 0.).count();
 				entropySub(qin) = -Symmetry::degeneracy(inbase[loc][qin]) * 
 				                  (SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
+				cout << "loc=" << loc << ", qin=" << inbase[loc][qin] << ", S=" << entropySub(qin) << endl;
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{
@@ -1708,6 +1709,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 				size_t Nnz = (SV.array() > 0.).count();
 				entropySub(qout) = -Symmetry::degeneracy(outbase[loc][qout]) * 
 				                   (SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
+				cout << "loc=" << loc << ", qout=" << outbase[loc][qout] << ", S=" << entropySub(qout) << endl;
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{

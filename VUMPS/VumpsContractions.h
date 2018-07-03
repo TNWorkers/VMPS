@@ -17,82 +17,183 @@ calc_LReigen (GAUGE::OPTION gauge,
               const vector<qarray<Symmetry::Nq> > &qlocCell,
               size_t dimK = 100ul)
 {
-	TransferMatrixAA<Symmetry,Scalar> T(gauge, Abra, Aket, qlocCell);
-	PivotVector<Symmetry,complex<double> > LRtmp(C.template cast<MatrixXcd>());
-	
-	ArnoldiSolver<TransferMatrixAA<Symmetry,double>,PivotVector<Symmetry,complex<double> > > Arnie;
-	Arnie.set_dimK(dimK);
-	
-	complex<double> lambda;
-	
-	Arnie.calc_dominant(T,LRtmp,lambda);
-	
-	Eigenstate<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > > out;
-	out.energy = lambda.real();
-	out.state = LRtmp.data[0];
-	if (abs(lambda.imag()) > 1e-10)
-	{
-		lout << termcolor::red << "Non-zero imaginary part of dominant eigenvalue λ=" << lambda << ", |λ|=" << abs(lambda) << termcolor::reset << endl;
-	}
-	
-	return out;
+//	TransferMatrixAA<Symmetry,Scalar> T(gauge, Abra, Aket, qlocCell);
+//	PivotVector<Symmetry,complex<double> > LRtmp(C.template cast<MatrixXcd>());
+//	
+//	ArnoldiSolver<TransferMatrixAA<Symmetry,double>,PivotVector<Symmetry,complex<double> > > Arnie;
+//	Arnie.set_dimK(dimK);
+//	
+//	complex<double> lambda;
+//	
+//	Arnie.calc_dominant(T,LRtmp,lambda);
+//	
+//	Eigenstate<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > > out;
+//	out.energy = lambda.real();
+//	out.state = LRtmp.data[0];
+//	if (abs(lambda.imag()) > 1e-10)
+//	{
+//		lout << termcolor::red << "Non-zero imaginary part of dominant eigenvalue λ=" << lambda << ", |λ|=" << abs(lambda) << termcolor::reset << endl;
+//	}
+//	
+//	return out;
 }
 
 ///**Calculates the tensor \f$h_L\f$ (eq. 12) from the explicit 4-legged 2-site Hamiltonian and \f$A_L\f$.*/
-//template<typename Symmetry, typename MatrixType, typename MpoScalar>
-//MatrixType make_hL (const boost::multi_array<MpoScalar,4> &H2site,
-//                    const vector<Biped<Symmetry,MatrixType> > &AL,
-//                    const vector<qarray<Symmetry::Nq> > &qloc)
-//{
-//	MatrixType Mout;
-//	Mout.resize(AL[0].block[0].cols(), AL[0].block[0].cols());
-//	Mout.setZero();
-//	size_t D = qloc.size();
-//	
-//	for (size_t s1=0; s1<D; ++s1)
-//	for (size_t s2=0; s2<D; ++s2)
-//	for (size_t s3=0; s3<D; ++s3)
-//	for (size_t s4=0; s4<D; ++s4)
-//	{
-//		if (H2site[s1][s2][s3][s4] != 0.)
-//		{
-//			Mout += H2site[s1][s2][s3][s4] * AL[s3].block[0].adjoint()
-//			                               * AL[s1].block[0].adjoint()
-//			                               * AL[s2].block[0]
-//			                               * AL[s4].block[0];
-//		}
-//	}
-//	
-//	return Mout;
-//}
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
+Biped<Symmetry,MatrixType> make_hL (const boost::multi_array<MpoScalar,4> &H2site,
+                                    const vector<Biped<Symmetry,MatrixType> > &AL,
+                                    const vector<qarray<Symmetry::Nq> > &qloc)
+{
+	Biped<Symmetry,MatrixType> Mout;
+	size_t D = qloc.size();
+	
+	for (size_t s1=0; s1<D; ++s1)
+	for (size_t s2=0; s2<D; ++s2)
+	for (size_t s3=0; s3<D; ++s3)
+	for (size_t s4=0; s4<D; ++s4)
+	for (size_t q3=0; q3<AL[s3].dim; ++q3)
+	{
+		auto quple1s = Symmetry::reduceSilent(AL[s3].out[q3], Symmetry::flip(qloc[s1]));
+		for (const auto &quple1 : quple1s)
+		{
+			auto it1 = AL[s1].dict.find(qarray2<Symmetry::Nq>{AL[s3].out[q3], quple1});
+			if (it1 != AL[s1].dict.end())
+			{
+				auto quple2s = Symmetry::reduceSilent(AL[s1].out[it1->second], qloc[s2]);
+				for (const auto &quple2 : quple2s)
+				{
+					auto it2 = AL[s2].dict.find(qarray2<Symmetry::Nq>{AL[s1].out[it1->second], quple2});
+					if (it2 != AL[s2].dict.end())
+					{
+						auto quple4s = Symmetry::reduceSilent(AL[s2].out[it2->second], qloc[s4]);
+						for (const auto &quple4 : quple4s)
+						{
+							auto it4 = AL[s4].dict.find(qarray2<Symmetry::Nq>{AL[s2].out[it2->second], quple4});
+							if (it4 != AL[s4].dict.end())
+							{
+								MatrixType Mtmp;
+								if (H2site[s1][s2][s3][s4] != 0.)
+								{
+									optimal_multiply(H2site[s1][s2][s3][s4],
+										                    AL[s3].block[q3].adjoint(),
+										                    AL[s1].block[it1->second].adjoint(),
+										                    AL[s2].block[it2->second],
+										                    AL[s4].block[it4->second],
+										                    Mtmp);
+								}
+								
+								if (Mtmp.size() != 0)
+								{
+									qarray2<Symmetry::Nq> qupleMout = {AL[s3].in[q3], AL[s4].out[it4->second]};
+									cout << "quple=" << qupleMout[0] << ", " << qupleMout[1] << ", " << Mtmp.norm() << endl;
+									cout << "s1=" << s1 << ", s2=" << s2 << ", s3=" << s3 << ", s4=" << s4 << endl;
+									cout << "H2site[s1][s2][s3][s4]=" << H2site[s1][s2][s3][s4] << endl;
+									auto itMout = Mout.dict.find(qupleMout);
+									
+									if (itMout != Mout.dict.end())
+									{
+										if (Mout.block[itMout->second].rows() != Mtmp.rows() and
+											Mout.block[itMout->second].cols() != Mtmp.cols())
+										{
+											Mout.block[itMout->second] = Mtmp;
+										}
+										else
+										{
+											Mout.block[itMout->second] += Mtmp;
+										}
+									}
+									else
+									{
+										Mout.push_back(qupleMout, Mtmp);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	return Mout;
+}
 
-///**Calculates the tensor \f$h_R\f$ (eq. 12) from the explicit 4-legged 2-site Hamiltonian and \f$A_R\f$.*/
-//template<typename Symmetry, typename MatrixType, typename MpoScalar>
-//MatrixType make_hR (const boost::multi_array<MpoScalar,4> &H2site,
-//                    const vector<Biped<Symmetry,MatrixType> > &AR,
-//                    const vector<qarray<Symmetry::Nq> > &qloc)
-//{
-//	MatrixType Mout;
-//	Mout.resize(AR[0].block[0].rows(), AR[0].block[0].rows());
-//	Mout.setZero();
-//	size_t D = qloc.size();
-//	
-//	for (size_t s1=0; s1<D; ++s1)
-//	for (size_t s2=0; s2<D; ++s2)
-//	for (size_t s3=0; s3<D; ++s3)
-//	for (size_t s4=0; s4<D; ++s4)
-//	{
-//		if (H2site[s1][s2][s3][s4] != 0.)
-//		{
-//			Mout += H2site[s1][s2][s3][s4] * AR[s2].block[0]
-//			                               * AR[s4].block[0]
-//			                               * AR[s3].block[0].adjoint()
-//			                               * AR[s1].block[0].adjoint();
-//		}
-//	}
-//	
-//	return Mout;
-//}
+/**Calculates the tensor \f$h_R\f$ (eq. 12) from the explicit 4-legged 2-site Hamiltonian and \f$A_R\f$.*/
+template<typename Symmetry, typename MatrixType, typename MpoScalar>
+Biped<Symmetry,MatrixType> make_hR (const boost::multi_array<MpoScalar,4> &H2site,
+                                    const vector<Biped<Symmetry,MatrixType> > &AR,
+                                    const vector<qarray<Symmetry::Nq> > &qloc)
+{
+	Biped<Symmetry,MatrixType> Mout;
+	size_t D = qloc.size();
+	
+	for (size_t s1=0; s1<D; ++s1)
+	for (size_t s2=0; s2<D; ++s2)
+	for (size_t s3=0; s3<D; ++s3)
+	for (size_t s4=0; s4<D; ++s4)
+	for (size_t q=0; q<AR[s2].dim; ++q)
+	{
+		auto quple4s = Symmetry::reduceSilent(AR[s2].out[q], qloc[s4]);
+		for (const auto &quple4 : quple4s)
+		{
+			auto it4 = AR[s4].dict.find(qarray2<Symmetry::Nq>{AR[s2].out[q], quple4});
+			if (it4 != AR[s4].dict.end())
+			{
+				auto quple3s = Symmetry::reduceSilent(AR[s4].out[it4->second], Symmetry::flip(qloc[s3]));
+				for (const auto &quple3 : quple3s)
+				{
+					auto it3 = AR[s3].dict.find(qarray2<Symmetry::Nq>{AR[s4].out[it4->second], quple3});
+					if (it3 != AR[s3].dict.end())
+					{
+						auto quple1s = Symmetry::reduceSilent(AR[s3].out[it3->second], Symmetry::flip(qloc[s1]));
+						for (const auto &quple1 : quple1s)
+						{
+							auto it1 = AR[s1].dict.find(qarray2<Symmetry::Nq>{AR[s3].out[it3->second], quple1});
+							if (it1 != AR[s1].dict.end())
+							{
+								MatrixType Mtmp;
+								if (H2site[s1][s2][s3][s4] != 0.)
+								{
+									optimal_multiply(H2site[s1][s2][s3][s4],
+										                    AR[s2].block[q],
+										                    AR[s4].block[it4->second], 
+										                    AR[s3].block[it3->second].adjoint(),
+										                    AR[s1].block[it1->second].adjoint(),
+										                    Mtmp);
+								}
+							
+								if (Mtmp.size() != 0)
+								{
+									qarray2<Symmetry::Nq> qupleMout = {AR[s2].in[q], AR[s1].out[it1->second]};
+									auto itMout = Mout.dict.find(qupleMout);
+								
+									if (itMout != Mout.dict.end())
+									{
+										if (Mout.block[itMout->second].rows() != Mtmp.rows() and
+											Mout.block[itMout->second].cols() != Mtmp.cols())
+										{
+											Mout.block[itMout->second] = Mtmp;
+										}
+										else
+										{
+											Mout.block[itMout->second] += Mtmp;
+										}
+									}
+									else
+									{
+										Mout.push_back(qupleMout, Mtmp);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	return Mout;
+}
 
 /**Calculates the tensor \f$Y_{Ra}\f$ (eq. C17) from the MPO tensor \p W, the left transfer matrix \p L and \f$A_L\f$.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>

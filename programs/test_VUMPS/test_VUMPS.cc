@@ -186,8 +186,8 @@ int main (int argc, char* argv[])
 	}
 	
 	typedef VMPS::HeisenbergU1XXZ HEISENBERG_U1;
-	HEISENBERG_U1 Heis_U1(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
-	HEISENBERG_U1 Heis_U1_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",2.*Jz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG_U1 Heis_U1(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG_U1 Heis_U1_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",0.5*Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	
 	HEISENBERG_U1::uSolver DMRG_U1(VERB);
 	Eigenstate<HEISENBERG_U1::StateUd> g_U1;
@@ -195,7 +195,8 @@ int main (int argc, char* argv[])
 	{
 		lout << Heis_U1.info() << endl;
 		DMRG_U1.set_log(2,"e_Heis_U1.dat","err_eigval_Heis_U1.dat","err_var_Heis_U1.dat");
-		DMRG_U1.edgeState(Heis_U1, g_U1, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+//		DMRG_U1.edgeState(Heis_U1, g_U1, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+		DMRG_U1.edgeState(Heis_U1.H2site(0,true), Heis_U1.locBasis(0), g_U1, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 		
 		if (CALC_DOT)
 		{
@@ -214,8 +215,8 @@ int main (int argc, char* argv[])
 	}
 	
 	typedef VMPS::HeisenbergXXZ HEISENBERG0;
-	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
-	HEISENBERG0 Heis0_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",2.*Jz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG0 Heis0_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",0.5*Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	
 	HEISENBERG0::uSolver DMRG0(VERB);
 	Eigenstate<HEISENBERG0::StateUd> g0;
@@ -223,7 +224,8 @@ int main (int argc, char* argv[])
 	{
 		lout << Heis0.info() << endl;
 		DMRG0.set_log(2,"e_Heis_U0.dat","err_eigval_Heis_U0.dat","err_var_Heis_U0.dat");
-		DMRG0.edgeState(Heis0, g0, tol_eigval,tol_var, M, 1, max_iter,1);
+//		DMRG0.edgeState(Heis0, g0, tol_eigval,tol_var, M, 1, max_iter,1);
+		DMRG0.edgeState(Heis0.H2site(0,true), Heis0.locBasis(0), g0, tol_eigval,tol_var, M, 1, max_iter,1);
 		cout << g0.state.info() << endl;
 		
 		if (CALC_DOT)

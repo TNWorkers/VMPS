@@ -53,6 +53,15 @@ struct PivotVector
 		}
 	}
 	
+	void setZero()
+	{
+		for (size_t i=0; i<data.size(); ++i)
+		for (size_t q=0; q<data[i].dim; ++q)
+		{
+			data[i].block[q].setZero();
+		}
+	}
+	
 	inline size_t size() const {return data.size();}
 	
 	void print_dims() const
