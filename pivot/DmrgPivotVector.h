@@ -330,6 +330,16 @@ void swap (PivotVector<Symmetry,Scalar> &V1, PivotVector<Symmetry,Scalar> &V2)
 	swap(V1.data, V2.data);
 }
 
+template<typename Symmetry, typename Scalar>
+void setZero (PivotVector<Symmetry,Scalar> &V)
+{
+	for (size_t s=0; s<V.data.size(); ++s)
+	for (size_t q=0; q<V.data[s].dim; ++q)
+	{
+		V.data[s].block[q].setZero();
+	}
+};
+
 #include "RandomVector.h"
 
 template<typename Symmetry, typename Scalar>

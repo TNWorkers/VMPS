@@ -358,15 +358,13 @@ iteration_h (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	// energies
 	eL = (Leigen.contract(hR)).trace();
 	eR = (hL.contract(Reigen)).trace();
+	cout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
 	
 	// |H_R) and (H_L|
 	Biped<Symmetry,MatrixType> HL, HR;
 	
 	// Solve the linear systems in eq. 14
 	Stopwatch<> GMresTimer;
-//	vector<Scalar> Wdummy; // This dummy also clarifies the template parameter of solve_linear for the compiler
-//	solve_linear(GAUGE::L, Vout.state.A[GAUGE::L][0], hL, Reigen, Wdummy, eR, HL);
-//	solve_linear(GAUGE::R, Vout.state.A[GAUGE::R][0], hR, Leigen, Wdummy, eL, HR);
 	solve_linear (GAUGE::L, Vout.state.A[GAUGE::L][0], hL, Reigen, Vout.state.locBasis(0), eR, HL);
 	solve_linear (GAUGE::R, Vout.state.A[GAUGE::R][0], hR, Leigen, Vout.state.locBasis(0), eL, HR);
 	
@@ -438,7 +436,7 @@ iteration_h (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		size_t standard_precision = cout.precision();
-//		lout << "S=" << Vout.state.entropy(0) << endl;
+		lout << "S=" << Vout.state.entropy().transpose() << endl;
 		lout << eigeninfo() << endl;
 		lout << IterationTimer.info("full iteration") << endl;
 		lout << endl;
@@ -1194,7 +1192,7 @@ solve_linear (GAUGE::OPTION gauge,
               Scalar hLRdotLR, 
               Biped<Symmetry,MatrixType> &LRres)
 {
-	TransferMatrixAA<Symmetry,Scalar> T(gauge, A, A, qloc, SHIFTED);
+	TransferMatrixAA<Symmetry,Scalar> T(gauge,A,A,qloc,true);
 	T.LReigen = LReigen;
 	PivotVector<Symmetry,Scalar> bvec(hLR);
 	
@@ -1209,13 +1207,13 @@ solve_linear (GAUGE::OPTION gauge,
 	GMResSolver<TransferMatrixAA<Symmetry,Scalar>,PivotVector<Symmetry,Scalar> > Gimli;
 	
 	size_t dimK = GMRes_dimK[gauge];
-	if      (GMRes_Niter[gauge] > 1 and dimK < 200) {dimK += 10;}
+	if      (GMRes_Niter[gauge] > 1 and dimK < 100) {dimK += 10;}
 	else if (GMRes_Niter[gauge] == 1 and dimK > 10) {dimK -= 10;}
 	Gimli.set_dimK(min(dimK,dim(bvec)));
 	Gimli.set_dimK(max(dimK,10ul));
 	
 	PivotVector<Symmetry,Scalar> LRres_tmp;
-	Gimli.solve_linear(T, bvec, LRres_tmp);
+	Gimli.solve_linear(T,bvec,LRres_tmp);
 	LRres = LRres_tmp.data[0];
 	
 	GMRes_Niter[gauge] = Gimli.get_Niter();

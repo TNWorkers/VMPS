@@ -1,8 +1,6 @@
 #ifndef VANILLA_VUMPSTRANSFERMATRIXAA
 #define VANILLA_VUMPSTRANSFERMATRIXAA
 
-enum TM_MULT_MODE {UNSHIFTED, SHIFTED};
-
 template<typename Symmetry, typename Scalar>
 struct TransferMatrixAA
 {
@@ -12,8 +10,8 @@ struct TransferMatrixAA
 	                const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra_input, 
 	                const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket_input, 
 	                const vector<qarray<Symmetry::Nq> > &qloc_input,
-	                TM_MULT_MODE MODE_input = UNSHIFTED)
-	:gauge(gauge_input), Abra(Abra_input), Aket(Aket_input), qloc(qloc_input), CURRENT_MODE(MODE_input)
+	                bool SHIFTED_input = false)
+	:gauge(gauge_input), Abra(Abra_input), Aket(Aket_input), qloc(qloc_input), SHIFTED(SHIFTED_input)
 	{}
 	
 	GAUGE::OPTION gauge;
@@ -25,7 +23,7 @@ struct TransferMatrixAA
 	
 	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > LReigen;
 	
-	TM_MULT_MODE CURRENT_MODE = UNSHIFTED;
+	bool SHIFTED = false;
 	
 	vector<qarray<Symmetry::Nq> > qloc;
 };
@@ -41,7 +39,7 @@ void HxV (const TransferMatrixAA<Symmetry,Scalar1> &H, const PivotVector<Symmetr
 {
 	Vout.outerResize(Vin);
 	
-	if (H.CURRENT_MODE == UNSHIFTED)
+	if (H.SHIFTED == false)
 	{
 		if (H.gauge == GAUGE::L)
 		{
@@ -52,7 +50,7 @@ void HxV (const TransferMatrixAA<Symmetry,Scalar1> &H, const PivotVector<Symmetr
 			contract_L (Vin.data[0], H.Abra, H.Aket, H.qloc, Vout.data[0]);
 		}
 	}
-	else if (H.CURRENT_MODE == SHIFTED)
+	else
 	{
 		Vout = Vin;
 		Vout.setZero();
@@ -87,13 +85,9 @@ void HxV (const TransferMatrixAA<Symmetry,Scalar1> &H, const PivotVector<Symmetr
 			Matrix<Scalar2,Dynamic,Dynamic> Mtmp;
 			if (it != Vin.data[0].dict.end())
 			{
-				Mtmp = Vin.data[0].block[it->second] - TxV.data[0].block[q];
-				
-				if (quple[2] == Symmetry::qvacuum())
-				{
-					Mtmp += LdotR * Matrix<Scalar2,Dynamic,Dynamic>::Identity(Vin.data[0].block[it->second].rows(),
-					                                                          Vin.data[0].block[it->second].cols());
-				}
+				Mtmp = Vin.data[0].block[it->second] - TxV.data[0].block[q] +
+				       LdotR * Matrix<Scalar2,Dynamic,Dynamic>::Identity(Vin.data[0].block[it->second].rows(),
+				                                                         Vin.data[0].block[it->second].cols());
 			}
 			
 			if (Mtmp.size() != 0)
@@ -113,7 +107,7 @@ void HxV (const TransferMatrixAA<Symmetry,Scalar1> &H, const PivotVector<Symmetr
 				}
 				else
 				{
-					cout << termcolor::red << "push_back that shouldn't be" << termcolor::reset << endl;
+					cout << termcolor::red << "push_back that shouldn't be: TransferMatrixAA" << termcolor::reset << endl;
 					Vout.data[0].push_back(quple, Mtmp);
 				}
 			}

@@ -186,7 +186,7 @@ int main (int argc, char* argv[])
 	}
 	
 	typedef VMPS::HeisenbergU1XXZ HEISENBERG_U1;
-	HEISENBERG_U1 Heis_U1(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG_U1 Heis_U1(2,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	HEISENBERG_U1 Heis_U1_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",0.5*Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	
 	HEISENBERG_U1::uSolver DMRG_U1(VERB);
@@ -215,7 +215,7 @@ int main (int argc, char* argv[])
 	}
 	
 	typedef VMPS::HeisenbergXXZ HEISENBERG0;
-	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG0 Heis0(2,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	HEISENBERG0 Heis0_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",0.5*Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	
 	HEISENBERG0::uSolver DMRG0(VERB);
@@ -258,6 +258,18 @@ int main (int argc, char* argv[])
 	else if (D==3)
 	{
 		eref = -1.401484038971;
+	}
+	else if (D==4)
+	{
+		eref = -2.828337;
+	}
+	else if (D==5)
+	{
+		eref = -4.761248;
+	}
+	else if (D==6)
+	{
+		eref = -7.1924;
 	}
 	cout << "e(ref)=" << eref << endl;
 	if (CALC_SU2) {cout << "e0(SU2)=" << g_SU2.energy << ", diff=" << abs(eref-g_SU2.energy) << endl;}

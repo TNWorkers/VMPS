@@ -53,58 +53,56 @@ Biped<Symmetry,MatrixType> make_hL (const boost::multi_array<MpoScalar,4> &H2sit
 	for (size_t s4=0; s4<D; ++s4)
 	for (size_t q3=0; q3<AL[s3].dim; ++q3)
 	{
-		auto quple1s = Symmetry::reduceSilent(AL[s3].out[q3], Symmetry::flip(qloc[s1]));
-		for (const auto &quple1 : quple1s)
+		auto A1ins = Symmetry::reduceSilent(AL[s3].in[q3], Symmetry::flip(qloc[s1]));
+		for (const auto &A1in : A1ins)
 		{
-			auto it1 = AL[s1].dict.find(qarray2<Symmetry::Nq>{AL[s3].out[q3], quple1});
+			auto it1 = AL[s1].dict.find(qarray2<Symmetry::Nq>{A1in, AL[s3].in[q3]});
 			if (it1 != AL[s1].dict.end())
 			{
-				auto quple2s = Symmetry::reduceSilent(AL[s1].out[it1->second], qloc[s2]);
-				for (const auto &quple2 : quple2s)
+				auto A2outs = Symmetry::reduceSilent(AL[s1].in[it1->second], qloc[s2]);
+				for (const auto &A2out : A2outs)
 				{
-					auto it2 = AL[s2].dict.find(qarray2<Symmetry::Nq>{AL[s1].out[it1->second], quple2});
+					auto it2 = AL[s2].dict.find(qarray2<Symmetry::Nq>{AL[s1].in[it1->second], A2out});
 					if (it2 != AL[s2].dict.end())
 					{
-						auto quple4s = Symmetry::reduceSilent(AL[s2].out[it2->second], qloc[s4]);
-						for (const auto &quple4 : quple4s)
+						auto A4outs = Symmetry::reduceSilent(AL[s2].out[it2->second], qloc[s4]);
+						for (const auto &A4out : A4outs)
 						{
-							auto it4 = AL[s4].dict.find(qarray2<Symmetry::Nq>{AL[s2].out[it2->second], quple4});
+							auto it4 = AL[s4].dict.find(qarray2<Symmetry::Nq>{AL[s2].out[it2->second], A4out});
 							if (it4 != AL[s4].dict.end())
 							{
 								MatrixType Mtmp;
 								if (H2site[s1][s2][s3][s4] != 0.)
 								{
 									optimal_multiply(H2site[s1][s2][s3][s4],
-										                    AL[s3].block[q3].adjoint(),
-										                    AL[s1].block[it1->second].adjoint(),
-										                    AL[s2].block[it2->second],
-										                    AL[s4].block[it4->second],
-										                    Mtmp);
+									                 AL[s3].block[q3].adjoint(),
+									                 AL[s1].block[it1->second].adjoint(),
+									                 AL[s2].block[it2->second],
+									                 AL[s4].block[it4->second],
+									                 Mtmp);
 								}
 								
 								if (Mtmp.size() != 0)
 								{
-									qarray2<Symmetry::Nq> qupleMout = {AL[s3].in[q3], AL[s4].out[it4->second]};
-									cout << "quple=" << qupleMout[0] << ", " << qupleMout[1] << ", " << Mtmp.norm() << endl;
-									cout << "s1=" << s1 << ", s2=" << s2 << ", s3=" << s3 << ", s4=" << s4 << endl;
-									cout << "H2site[s1][s2][s3][s4]=" << H2site[s1][s2][s3][s4] << endl;
-									auto itMout = Mout.dict.find(qupleMout);
+									qarray2<Symmetry::Nq> quple = {AL[s3].out[q3], AL[s4].out[it4->second]};
+									assert(quple[0] == quple[1]);
+									auto it = Mout.dict.find(quple);
 									
-									if (itMout != Mout.dict.end())
+									if (it != Mout.dict.end())
 									{
-										if (Mout.block[itMout->second].rows() != Mtmp.rows() and
-											Mout.block[itMout->second].cols() != Mtmp.cols())
+										if (Mout.block[it->second].rows() != Mtmp.rows() and
+											Mout.block[it->second].cols() != Mtmp.cols())
 										{
-											Mout.block[itMout->second] = Mtmp;
+											Mout.block[it->second] = Mtmp;
 										}
 										else
 										{
-											Mout.block[itMout->second] += Mtmp;
+											Mout.block[it->second] += Mtmp;
 										}
 									}
 									else
 									{
-										Mout.push_back(qupleMout, Mtmp);
+										Mout.push_back(quple, Mtmp);
 									}
 								}
 							}
@@ -131,57 +129,58 @@ Biped<Symmetry,MatrixType> make_hR (const boost::multi_array<MpoScalar,4> &H2sit
 	for (size_t s2=0; s2<D; ++s2)
 	for (size_t s3=0; s3<D; ++s3)
 	for (size_t s4=0; s4<D; ++s4)
-	for (size_t q=0; q<AR[s2].dim; ++q)
+	for (size_t q2=0; q2<AR[s2].dim; ++q2)
 	{
-		auto quple4s = Symmetry::reduceSilent(AR[s2].out[q], qloc[s4]);
-		for (const auto &quple4 : quple4s)
+		auto A4outs = Symmetry::reduceSilent(AR[s2].out[q2], qloc[s4]);
+		for (const auto &A4out : A4outs)
 		{
-			auto it4 = AR[s4].dict.find(qarray2<Symmetry::Nq>{AR[s2].out[q], quple4});
+			auto it4 = AR[s4].dict.find(qarray2<Symmetry::Nq>{AR[s2].out[q2], A4out});
 			if (it4 != AR[s4].dict.end())
 			{
-				auto quple3s = Symmetry::reduceSilent(AR[s4].out[it4->second], Symmetry::flip(qloc[s3]));
-				for (const auto &quple3 : quple3s)
+				auto A3ins = Symmetry::reduceSilent(AR[s4].out[it4->second], Symmetry::flip(qloc[s3]));
+				for (const auto &A3in : A3ins)
 				{
-					auto it3 = AR[s3].dict.find(qarray2<Symmetry::Nq>{AR[s4].out[it4->second], quple3});
+					auto it3 = AR[s3].dict.find(qarray2<Symmetry::Nq>{A3in, AR[s4].out[it4->second]});
 					if (it3 != AR[s3].dict.end())
 					{
-						auto quple1s = Symmetry::reduceSilent(AR[s3].out[it3->second], Symmetry::flip(qloc[s1]));
-						for (const auto &quple1 : quple1s)
+						auto A1ins = Symmetry::reduceSilent(AR[s3].in[it3->second], Symmetry::flip(qloc[s1]));
+						for (const auto &A1in : A1ins)
 						{
-							auto it1 = AR[s1].dict.find(qarray2<Symmetry::Nq>{AR[s3].out[it3->second], quple1});
+							auto it1 = AR[s1].dict.find(qarray2<Symmetry::Nq>{A1in, AR[s3].in[it3->second]});
 							if (it1 != AR[s1].dict.end())
 							{
 								MatrixType Mtmp;
 								if (H2site[s1][s2][s3][s4] != 0.)
 								{
 									optimal_multiply(H2site[s1][s2][s3][s4],
-										                    AR[s2].block[q],
-										                    AR[s4].block[it4->second], 
-										                    AR[s3].block[it3->second].adjoint(),
-										                    AR[s1].block[it1->second].adjoint(),
-										                    Mtmp);
+									                 AR[s2].block[q2],
+									                 AR[s4].block[it4->second], 
+									                 AR[s3].block[it3->second].adjoint(),
+									                 AR[s1].block[it1->second].adjoint(),
+									                 Mtmp);
 								}
-							
+								
 								if (Mtmp.size() != 0)
 								{
-									qarray2<Symmetry::Nq> qupleMout = {AR[s2].in[q], AR[s1].out[it1->second]};
-									auto itMout = Mout.dict.find(qupleMout);
-								
-									if (itMout != Mout.dict.end())
+									qarray2<Symmetry::Nq> quple = {AR[s2].in[q2], AR[s1].in[it1->second]};
+									assert(quple[0] == quple[1]);
+									auto it = Mout.dict.find(quple);
+									
+									if (it != Mout.dict.end())
 									{
-										if (Mout.block[itMout->second].rows() != Mtmp.rows() and
-											Mout.block[itMout->second].cols() != Mtmp.cols())
+										if (Mout.block[it->second].rows() != Mtmp.rows() and
+											Mout.block[it->second].cols() != Mtmp.cols())
 										{
-											Mout.block[itMout->second] = Mtmp;
+											Mout.block[it->second] = Mtmp;
 										}
 										else
 										{
-											Mout.block[itMout->second] += Mtmp;
+											Mout.block[it->second] += Mtmp;
 										}
 									}
 									else
 									{
-										Mout.push_back(qupleMout, Mtmp);
+										Mout.push_back(quple, Mtmp);
 									}
 								}
 							}
@@ -205,29 +204,6 @@ Tripod<Symmetry,MatrixType> make_YL (size_t b,
                                      const vector<qarray<Symmetry::Nq> > &qloc,
                                      const vector<qarray<Symmetry::Nq> > &qOp)
 {
-//	size_t D  = qloc.size();
-//	size_t dW = W.size();
-//	size_t M  = AL[0].block[0].cols();
-//	
-//	MatrixType Mout;
-//	Mout.resize(M,M);
-//	Mout.setZero();
-//	
-//	for (size_t s1=0; s1<D; ++s1)
-//	for (size_t s2=0; s2<D; ++s2)
-//	for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
-//	for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
-//	{
-//		size_t a = iW.row();
-//		
-//		if (a>b and b==iW.col() and iW.value()!=0.)
-//		{
-//			Mout += iW.value() * AL[s1].block[0].adjoint() * L[a][0] * AL[s2].block[0];
-//		}
-//	}
-//	
-//	return Mout;
-	
 	Tripod<Symmetry,MatrixType> Lnew;
 	contract_L(Lold, Abra, W, Aket, qloc, qOp, Lnew, false, make_pair(TRIANGULAR,b));
 	return Lnew;
@@ -243,29 +219,6 @@ Tripod<Symmetry,MatrixType> make_YR (size_t a,
                                      const vector<qarray<Symmetry::Nq> > &qloc,
                                      const vector<qarray<Symmetry::Nq> > &qOp)
 {
-//	size_t D  = qloc.size();
-//	size_t dW = W.size();
-//	size_t M  = AR[0].block[0].cols();
-//	
-//	MatrixType Mout;
-//	Mout.resize(M,M);
-//	Mout.setZero();
-//	
-//	for (size_t s1=0; s1<D; ++s1)
-//	for (size_t s2=0; s2<D; ++s2)
-//	for (int k=0; k<W[s1][s2][0].outerSize(); ++k)
-//	for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][0],k); iW; ++iW)
-//	{
-//		size_t b = iW.col();
-//		
-//		if (a>b and a==iW.row() and iW.value()!=0.)
-//		{
-//			Mout += iW.value() * AR[s2].block[0] * R[b][0] * AR[s1].block[0].adjoint();
-//		}
-//	}
-//	
-//	return Mout;
-	
 	Tripod<Symmetry,MatrixType> Rnew;
 	contract_R(Rold, Abra, W, Aket, qloc, qOp, Rnew, false, make_pair(TRIANGULAR,a));
 	return Rnew;

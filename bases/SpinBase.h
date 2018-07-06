@@ -218,7 +218,7 @@ HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double Kz, d
 {
 	ArrayXd Bzorb(N_orbitals); Bzorb = Bz;
 	ArrayXd Bxorb(N_orbitals); Bxorb = Bx;
-	ArrayXd Kzorb(N_orbitals); Bzorb = Kz;
+	ArrayXd Kzorb(N_orbitals); Kzorb = Kz;
 	ArrayXd Kxorb(N_orbitals); Kxorb = Kx;
 	return HeisenbergHamiltonian(Jxy, Jz, Bzorb, Bxorb, Kzorb, Kxorb, Dy, PERIODIC);
 }
