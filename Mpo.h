@@ -146,6 +146,16 @@ public:
 	
 	/**Makes a linear transformation of the Mpo: \f$H' = factor*H + offset\f$.*/
 	void scale (double factor=1., double offset=0.);
+	
+	void transform_base (qarray<Symmetry::Nq> Qtot)
+	{
+		for (size_t l=0; l<N_sites; ++l)
+		for (size_t i=0; i<qloc[l].size(); ++i)
+		for (size_t q=0; q<Symmetry::Nq; ++q)
+		{
+			qloc[l][i][q] = qloc[l][i][q] - Qtot[q]/static_cast<int>(N_sites);
+		}
+	};
 	///\}
 	
 	//---info stuff---

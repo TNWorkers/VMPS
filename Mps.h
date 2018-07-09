@@ -82,8 +82,8 @@ public:
 	 */
 	Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
 	     const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
-
-    #ifdef USE_HDF5_STORAGE
+	
+	#ifdef USE_HDF5_STORAGE
 	/**
 	 * Construct from an external HDF5 file named <FILENAME>.h5.
 	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
@@ -1513,7 +1513,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				size_t Nnz = (SV.array() > 0.).count();
 				entropySub(qin) = -Symmetry::degeneracy(inbase[loc][qin]) * 
 				                  (SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
-				cout << "loc=" << loc << ", qin=" << inbase[loc][qin] << ", S=" << entropySub(qin) << endl;
+//				cout << "loc=" << loc << ", qin=" << inbase[loc][qin] << ", S=" << entropySub(qin) << endl;
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{
@@ -1709,7 +1709,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 				size_t Nnz = (SV.array() > 0.).count();
 				entropySub(qout) = -Symmetry::degeneracy(outbase[loc][qout]) * 
 				                   (SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
-				cout << "loc=" << loc << ", qout=" << outbase[loc][qout] << ", S=" << entropySub(qout) << endl;
+//				cout << "loc=" << loc << ", qout=" << outbase[loc][qout] << ", S=" << entropySub(qout) << endl;
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{

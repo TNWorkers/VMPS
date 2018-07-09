@@ -73,12 +73,14 @@ public:
 	/**Calculates the highest or lowest eigenstate with an explicit 2-site Hamiltonian (algorithm 2). No unit cell is implemented here.*/
 	void edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input, 
 	                Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
+	                qarray<Symmetry::Nq> Qtot_input, 
 	                double tol_eigval_input=1e-7, double tol_var_input=1e-6, 
 	                size_t M=10, size_t Nqmax=4,
 	                size_t max_iterations=50, size_t min_iterations=6);
 	
 	/**Calculates the highest or lowest eigenstate with an MPO (algorithm 6). Works also for a 2- and 4-site unit cell. Simply create an MPO on 2 or 4 sites.*/
 	void edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
+	                qarray<Symmetry::Nq> Qtot_input, 
 	                double tol_eigval_input=1e-7, double tol_var_input=1e-6, 
 	                size_t M=10, size_t Nqmax=4, 
 	                size_t max_iterations=50, size_t min_iterations=6);
@@ -87,8 +89,10 @@ private:
 	
 	///\{
 	/**Prepares the class, setting up the environments. Used with an explicit 2-site Hamiltonian.*/
-	void prepare (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input,
-	              Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t M, size_t Nqmax);
+	void prepare (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input, 
+	              Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
+	              qarray<Symmetry::Nq> Qtot_input,
+	              size_t M, size_t Nqmax);
 //	
 //	/**Performs a half-sweep with 1-site unit cell. Used with an explicit 2-site Hamiltonian.*/
 	void iteration_h (Eigenstate<Umps<Symmetry,Scalar> > &Vout);
@@ -96,7 +100,7 @@ private:
 	
 	///\{
 	/**Prepares the class setting up the environments. Used with an MPO.*/
-	void prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t M, size_t Nqmax);
+	void prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M, size_t Nqmax);
 	
 	void build_LR (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AL,
 	               const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AR,
@@ -188,8 +192,8 @@ private:
 	void write_log (bool FORCE=false);
 	///\}
 	
-	std::array<size_t,2> GMRes_Niter = {1ul,1ul};
-	std::array<size_t,2> GMRes_dimK  = {30ul,30ul};
+//	std::array<size_t,2> GMRes_Niter = {1ul,1ul};
+//	std::array<size_t,2> GMRes_dimK  = {30ul,30ul};
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -426,6 +430,7 @@ iteration_h (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	Vout.state.A[GAUGE::C][0] = gAC.state.data;
 	Vout.state.C[0]           = gC.state.data[0];
 	(err_var>0.01)? Vout.state.svdDecompose(0) : Vout.state.polarDecompose(0);
+	Vout.state.calc_entropy();
 	
 	calc_errors(Vout);
 	Vout.energy = min(eL,eR);
@@ -446,7 +451,7 @@ iteration_h (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 prepare (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symmetry::Nq> > &qloc_input, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
-         size_t M_input, size_t Nqmax)
+         qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax)
 {
 	Stopwatch<> PrepTimer;
 	
@@ -462,13 +467,14 @@ prepare (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symmetry::N
 	h2site = h2site_input;
 	
 	// resize Vout
-	Vout.state = Umps<Symmetry,Scalar>(qloc_input, N_sites, M, Nqmax);
+	Vout.state = Umps<Symmetry,Scalar>(qloc_input, Qtot, N_sites, M, Nqmax);
 	Vout.state.N_sv = M;
 	Vout.state.setRandom();
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Vout.state.svdDecompose(l);
 	}
+	Vout.state.calc_entropy();
 	
 	// initial energy & error
 	eoldL = std::nan("");
@@ -479,7 +485,7 @@ prepare (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symmetry::N
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t M_input, size_t Nqmax)
+prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax)
 {
 	N_sites = H.length();
 	N_iterations = 0;
@@ -492,13 +498,14 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_
 	dW = H.auxdim();
 	
 	// resize Vout
-	Vout.state = Umps<Symmetry,Scalar>(H.locBasis(0), N_sites, M, Nqmax);
+	Vout.state = Umps<Symmetry,Scalar>(H.locBasis(0), Qtot, N_sites, M, Nqmax);
 	Vout.state.N_sv = M;
 	Vout.state.setRandom();
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Vout.state.svdDecompose(l);
 	}
+	Vout.state.calc_entropy();
 	
 	// initial energy
 	eoldL = std::nan("");
@@ -811,6 +818,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 //		for (size_t s=0; s<Vout.state.A[GAUGE::C][l].size(); ++s)
 //		cout << "l=" << l << ", A=" << endl << Vout.state.A[GAUGE::C][l][s].print(false,15) << endl;
 	}
+	Vout.state.calc_entropy();
 	cout << Vout.state.test_ortho() << endl;
 	
 	// Calculate energies
@@ -942,6 +950,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		(err_var>0.01)? Vout.state.svdDecompose(l,GAUGE::R) : Vout.state.polarDecompose(l,GAUGE::R); // AR from AC, CL
 		(err_var>0.01)? Vout.state.svdDecompose(l,GAUGE::L) : Vout.state.polarDecompose(l,GAUGE::L); // AL from AC, CR
 	}
+	Vout.state.calc_entropy();
 	cout << Vout.state.test_ortho() << endl;
 	
 //	for (size_t l=0; l<N_sites; ++l)
@@ -1059,12 +1068,13 @@ gauge_convention (Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C,
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
-           double tol_eigval_input, double tol_var_input, size_t M, size_t Nqmax, size_t max_iterations, size_t min_iterations)
+           qarray<Symmetry::Nq> Qtot, double tol_eigval_input, double tol_var_input, 
+           size_t M, size_t Nqmax, size_t max_iterations, size_t min_iterations)
 {
 	tol_eigval = tol_eigval_input;
 	tol_var = tol_var_input;
 	
-	prepare(h2site, qloc, Vout, M, Nqmax);
+	prepare(h2site, qloc, Vout, Qtot, M, Nqmax);
 	
 	Stopwatch<> GlobalTimer;
 	
@@ -1091,7 +1101,7 @@ edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> >
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
+edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, 
            double tol_eigval_input, double tol_var_input, size_t M, size_t Nqmax, 
            size_t max_iterations, size_t min_iterations)
 {
@@ -1105,7 +1115,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout,
 	tol_eigval = tol_eigval_input;
 	tol_var = tol_var_input;
 	
-	prepare(H, Vout, M, Nqmax);
+	prepare(H, Vout, Qtot, M, Nqmax);
 	
 	Stopwatch<> GlobalTimer;
 	
@@ -1163,18 +1173,19 @@ solve_linear (GAUGE::OPTION gauge,
 	// Solve linear system
 	GMResSolver<TransferMatrix<Symmetry,Scalar>,TransferVector<Symmetry,Scalar> > Gimli;
 	
-	size_t dimK = GMRes_dimK[gauge];
-	if      (GMRes_Niter[gauge] > 1 and dimK < 200) {dimK += 10;}
-	else if (GMRes_Niter[gauge] == 1 and dimK > 10) {dimK -= 10;}
-	Gimli.set_dimK(min(dimK,dim(bvec)));
-	Gimli.set_dimK(max(dimK,10ul));
+//	size_t dimK = GMRes_dimK[gauge];
+//	if      (GMRes_Niter[gauge] > 1 and dimK < 200) {dimK += 10;}
+//	else if (GMRes_Niter[gauge] == 1 and dimK > 10) {dimK -= 10;}
+//	Gimli.set_dimK(min(dimK,dim(bvec)));
+//	Gimli.set_dimK(max(dimK,10ul));
 	
+	Gimli.set_dimK(min(200ul,dim(bvec)));
 	TransferVector<Symmetry,Scalar> LRres_tmp;
 	Gimli.solve_linear(T, bvec, LRres_tmp);
 	LRres = LRres_tmp.data;
 	
-	GMRes_Niter[gauge] = Gimli.get_Niter();
-	GMRes_dimK[gauge]  = Gimli.get_dimK();
+//	GMRes_Niter[gauge] = Gimli.get_Niter();
+//	GMRes_dimK [gauge] = Gimli.get_dimK();
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
@@ -1206,18 +1217,19 @@ solve_linear (GAUGE::OPTION gauge,
 	// Solve linear system
 	GMResSolver<TransferMatrixAA<Symmetry,Scalar>,PivotVector<Symmetry,Scalar> > Gimli;
 	
-	size_t dimK = GMRes_dimK[gauge];
-	if      (GMRes_Niter[gauge] > 1 and dimK < 100) {dimK += 10;}
-	else if (GMRes_Niter[gauge] == 1 and dimK > 10) {dimK -= 10;}
-	Gimli.set_dimK(min(dimK,dim(bvec)));
-	Gimli.set_dimK(max(dimK,10ul));
+//	size_t dimK = GMRes_dimK[gauge];
+//	if      (GMRes_Niter[gauge] > 1 and dimK < 100) {dimK += 10;}
+//	else if (GMRes_Niter[gauge] == 1 and dimK > 10) {dimK -= 10;}
+//	Gimli.set_dimK(min(dimK,dim(bvec)));
+//	Gimli.set_dimK(max(dimK,10ul));
 	
+	Gimli.set_dimK(min(200ul,dim(bvec)));
 	PivotVector<Symmetry,Scalar> LRres_tmp;
 	Gimli.solve_linear(T,bvec,LRres_tmp);
 	LRres = LRres_tmp.data[0];
 	
-	GMRes_Niter[gauge] = Gimli.get_Niter();
-	GMRes_dimK[gauge]  = Gimli.get_dimK();
+//	GMRes_Niter[gauge] = Gimli.get_Niter();
+//	GMRes_dimK[gauge]  = Gimli.get_dimK();
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{

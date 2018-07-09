@@ -43,10 +43,10 @@ public:
 	Umps<Symmetry,Scalar>(){};
 	
 	/**Constructs a UMPS with fixed bond dimension with the info from the Hamiltonian.*/
-	template<typename Hamiltonian> Umps (const Hamiltonian &H, size_t L_input, size_t Dmax, size_t Nqmax);
+	template<typename Hamiltonian> Umps (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
 	
 	/**Constructs a UMPS with fixed bond dimension with a given basis.*/
-	Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, size_t L_input, size_t Dmax, size_t Nqmax);
+	Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
 	
 	/**\describe_info*/
 	string info() const;
@@ -123,8 +123,11 @@ private:
 	size_t Dmax, Nqmax;
 	double eps_svd = 1e-7;
 	size_t N_sv;
+	qarray<Nq> Qtot;
 	
-	void calc_entropy (size_t loc=0);
+	void calc_entropy (size_t loc);
+	
+	void calc_entropy() {for (size_t l=0; l<N_sites; ++l) calc_entropy(l);};
 	
 	// sets of all unique incoming & outgoing indices for convenience
 	vector<vector<qarray<Symmetry::Nq> > > inset;
@@ -156,6 +159,27 @@ private:
 	void update_outbase (size_t loc);
 	void update_inbase()  { for(size_t l=0; l<this->N_sites; l++) {update_inbase(l); } }
 	void update_outbase() { for(size_t l=0; l<this->N_sites; l++) {update_outbase(l); } }
+	
+	void transform_base (qarray<Symmetry::Nq> Qtot)
+	{
+		for (size_t l=0; l<N_sites; ++l)
+		for (size_t i=0; i<qloc[l].size(); ++i)
+		for (size_t q=0; q<Symmetry::Nq; ++q)
+		{
+			cout << "subtracting: " << Qtot[q]/static_cast<int>(N_sites) << " from " << qloc[l][i][q] << endl;
+			qloc[l][i][q] = qloc[l][i][q] - Qtot[q]/static_cast<int>(N_sites);
+		}
+		
+		cout << "transformed base:" << endl;
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			cout << "l=" << l << endl;
+			for (size_t i=0; i<qloc[l].size(); ++i)
+			{
+				cout << "qloc: " << qloc[l][i] << endl;
+			}
+		}
+	};
 };
 
 template<typename Symmetry, typename Scalar>
@@ -182,21 +206,23 @@ info() const
 template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
 Umps<Symmetry,Scalar>::
-Umps (const Hamiltonian &H, size_t L_input, size_t Dmax, size_t Nqmax)
+Umps (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax)
+:N_sites(L_input), Qtot(Qtot_input)
 {
-	N_sites = L_input;
 	qloc = H.locBasis();
 	resize(Dmax,Nqmax);
+	transform_base(Qtot);
 }
 
 template<typename Symmetry, typename Scalar>
 Umps<Symmetry,Scalar>::
-Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, size_t L_input, size_t Dmax, size_t Nqmax)
+Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax)
+:N_sites(L_input), Qtot(Qtot_input)
 {
-	N_sites = L_input;
 	qloc.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l) {qloc[l] = qloc_input;}
 	resize(Dmax,Nqmax);
+	transform_base(Qtot);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -610,20 +636,22 @@ test_ortho (double tol) const
 				Test.block[q] -= A[GAUGE::C][l][s].block[it->second];
 			}
 			vector<double> T_CHECK(Test.dim);
-			cout << "Test.dim=" << Test.dim << endl;
+//			cout << "Test.dim=" << Test.dim << endl;
+			double normsum = 0;
 			for (size_t q=0; q<Test.dim; ++q)
 			{
-				cout << "g=L, " << "s=" << s << ", q=" << Test.in[q] << ", " << Test.out[q] 
-				     << ", norm=" << Test.block[q].template lpNorm<Infinity>() << endl;
+//				cout << "g=L, " << "s=" << s << ", q=" << Test.in[q] << ", " << Test.out[q] 
+//				     << ", norm=" << Test.block[q].template lpNorm<Infinity>() << endl;
+				normsum += Test.block[q].template lpNorm<Infinity>();
 				T_CHECK[q] = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
 			}
 			if (all_of(T_CHECK.begin(),T_CHECK.end(),[](bool x){return x;}))
 			{
-				cout << "l=" << l << ", s=" << s << ", AL*C=AC true!" << endl;
+				cout << "l=" << l << ", s=" << s << ", AL*C=AC true!, normsum=" << normsum << endl;
 			}
 			else
 			{
-				cout << "l=" << l << ", s=" << s << ", AL*C=AC false!" << endl;
+				cout << "l=" << l << ", s=" << s << ", AL*C=AC false!, normsum=" << normsum << endl;
 			}
 		}
 		
@@ -639,20 +667,22 @@ test_ortho (double tol) const
 				Test.block[q] -= A[GAUGE::C][l][s].block[it->second];
 			}
 			vector<double> T_CHECK(Test.dim);
-			cout << "Test.dim=" << Test.dim << endl;
+//			cout << "Test.dim=" << Test.dim << endl;
+			double normsum = 0;
 			for (size_t q=0; q<Test.dim; ++q)
 			{
-				cout << "g=R, " << "s=" << s << ", q=" << Test.in[q] << ", " << Test.out[q] 
-				     << ", norm=" << Test.block[q].template lpNorm<Infinity>() << endl;
+//				cout << "g=R, " << "s=" << s << ", q=" << Test.in[q] << ", " << Test.out[q] 
+//				     << ", norm=" << Test.block[q].template lpNorm<Infinity>() << endl;
+				normsum += Test.block[q].template lpNorm<Infinity>();
 				T_CHECK[q] = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
 			}
 			if (all_of(T_CHECK.begin(),T_CHECK.end(),[](bool x){return x;}))
 			{
-				cout << "l=" << l << ", s=" << s << ", C*AR=AC true!" << endl;
+				cout << "l=" << l << ", s=" << s << ", C*AR=AC true!, normsum=" << normsum << endl;
 			}
 			else
 			{
-				cout << "l=" << l << ", s=" << s << ", C*AR=AC false!" << endl;
+				cout << "l=" << l << ", s=" << s << ", C*AR=AC false!, normsum=" << normsum << endl;
 			}
 		}
 		
@@ -995,6 +1025,7 @@ template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
 polarDecompose (size_t loc, GAUGE::OPTION gauge)
 {
+	// check that blocks are the same for all gauges
 	for (size_t s=0; s<qloc[loc].size(); ++s)
 	for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
 	{
@@ -1019,11 +1050,11 @@ polarDecompose (size_t loc, GAUGE::OPTION gauge)
 	if (gauge == GAUGE::L or gauge == GAUGE::C)
 	{
 //		S(loc) = 0;
-		vector<MatrixType> UC;
+		vector<MatrixType> UC(C[loc].dim);
 		for (size_t q=0; q<C[loc].dim; ++q)
 		{
 			Jack.compute(C[loc].block[q], ComputeThinU|ComputeThinV);
-			UC.push_back(Jack.matrixU() * Jack.matrixV().adjoint());
+			UC[q] = Jack.matrixU() * Jack.matrixV().adjoint();
 		}
 		
 		for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
@@ -1072,21 +1103,19 @@ polarDecompose (size_t loc, GAUGE::OPTION gauge)
 				stitch += Nrowsvec[i];
 			}
 		}
-		
-		calc_entropy(loc);
 	}
 	
 	size_t locC = minus1modL(loc);
 	
 	if (gauge == GAUGE::R or gauge == GAUGE::C)
 	{
-		vector<MatrixType> UC;
+		vector<MatrixType> UC(C[locC].dim);
 //		cout << "polarDecompose AR from C at " << locC << endl;
 		
 		for (size_t q=0; q<C[locC].dim; ++q)
 		{
 			Jack.compute(C[locC].block[q], ComputeThinU|ComputeThinV);
-			UC.push_back(Jack.matrixU() * Jack.matrixV().adjoint());
+			UC[q] = Jack.matrixU() * Jack.matrixV().adjoint();
 		}
 		
 		for (size_t qin=0; qin<inbase[loc].Nq(); ++qin)
@@ -1142,8 +1171,6 @@ polarDecompose (size_t loc, GAUGE::OPTION gauge)
 				stitch += Ncolsvec[i];
 			}
 		}
-		
-		calc_entropy(locC);
 	}
 }
 
@@ -1151,6 +1178,7 @@ template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
 svdDecompose (size_t loc, GAUGE::OPTION gauge)
 {
+	// check that blocks are the same for all gauges
 	for (size_t s=0; s<qloc[loc].size(); ++s)
 	for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
 	{
@@ -1177,10 +1205,10 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 //		cout << "svdDecompose AL from C at " << loc << endl;
 		for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
 		{
-			qarray2<Symmetry::Nq> quple = {outbase[loc][qout], outbase[loc][qout]};
-			auto it = C[loc].dict.find(quple);
-			assert(it != C[loc].dict.end());
-			size_t qC = it->second;
+//			qarray2<Symmetry::Nq> quple = {outbase[loc][qout], outbase[loc][qout]};
+//			auto it = C[loc].dict.find(quple);
+//			assert(it != C[loc].dict.end());
+//			size_t qC = it->second;
 			
 			// Determine how many A's to glue together
 			vector<size_t> svec, qvec, Nrowsvec;
@@ -1229,8 +1257,6 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 				stitch += Nrowsvec[i];
 			}
 		}
-		
-		calc_entropy(loc);
 	}
 	
 	size_t locC = minus1modL(loc);
@@ -1247,10 +1273,10 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 		
 		for (size_t qin=0; qin<inbase[loc].Nq(); ++qin)
 		{
-			qarray2<Symmetry::Nq> quple = {inbase[loc][qin], inbase[loc][qin]};
-			auto it = C[locC].dict.find(quple);
-			assert(it != C[locC].dict.end());
-			size_t qC = it->second;
+//			qarray2<Symmetry::Nq> quple = {inbase[loc][qin], inbase[loc][qin]};
+//			auto it = C[locC].dict.find(quple);
+//			assert(it != C[locC].dict.end());
+//			size_t qC = it->second;
 			
 			// Determine how many A's to glue together
 			vector<size_t> svec, qvec, Ncolsvec;
@@ -1308,8 +1334,6 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 				stitch += Ncolsvec[i];
 			}
 		}
-		
-		calc_entropy(locC);
 	}
 }
 

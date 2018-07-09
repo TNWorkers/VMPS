@@ -42,7 +42,7 @@ namespace VMPS
  * \warning \f$J>0\f$ is antiferromagnetic
  */
 class HubbardU1xU1 : public Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> >,double>,
-					 public HubbardObservables<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > >
+                     public HubbardObservables<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > >
 {
 public:
 	

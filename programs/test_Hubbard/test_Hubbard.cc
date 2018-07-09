@@ -40,6 +40,8 @@ Logger lout;
 
 #include "models/Hubbard.h"
 #include "models/HubbardU1xU1.h"
+#include "models/HubbardU1xU1NM.h"
+#include "models/HubbardU1.h"
 #include "models/HubbardSU2xU1.h"
 #ifdef SU2XSU2
 #include "models/HubbardSU2xSU2.h"
@@ -87,7 +89,8 @@ bool ED, U0, U1, SU2, SU22, CORR, PRINT;
 
 Eigenstate<VectorXd> g_ED;
 Eigenstate<VMPS::Hubbard::StateXd> g_U0;
-Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1;
+typedef VMPS::HubbardU1xU1NM HUBBARD;
+Eigenstate<HUBBARD::StateXd> g_U1;
 Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
 
@@ -259,13 +262,14 @@ int main (int argc, char* argv[])
 		
 		Stopwatch<> Watch_U1;
 		
-		VMPS::HubbardU1xU1 H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
+		HUBBARD H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
 		lout << H_U1.info() << endl;
 		
-		VMPS::HubbardU1xU1::Solver DMRG_U1(VERB);
+		HUBBARD::Solver DMRG_U1(VERB);
 		DMRG_U1.GlobParam = GlobParam;
 		DMRG_U1.DynParam = DynParam;
-		DMRG_U1.edgeState(H_U1, g_U1, {Nup,Ndn}, LANCZOS::EDGE::GROUND);
+//		DMRG_U1.edgeState(H_U1, g_U1, {Nup,Ndn}, LANCZOS::EDGE::GROUND);
+		DMRG_U1.edgeState(H_U1, g_U1, {Nup+Ndn,Nup-Ndn}, LANCZOS::EDGE::GROUND);
 		g_U1.state.graph("U1");
 		
 		t_U1 = Watch_U1.time();
