@@ -633,7 +633,10 @@ test_ortho (double tol) const
 			{
 				qarray2<Symmetry::Nq> quple = {Test.in[q], Test.out[q]};
 				auto it = A[GAUGE::C][l][s].dict.find(quple);
-				Test.block[q] -= A[GAUGE::C][l][s].block[it->second];
+				if (it != A[GAUGE::C][l][s].dict.end())
+				{
+					Test.block[q] -= A[GAUGE::C][l][s].block[it->second];
+				}
 			}
 			vector<double> T_CHECK(Test.dim);
 //			cout << "Test.dim=" << Test.dim << endl;
@@ -647,11 +650,11 @@ test_ortho (double tol) const
 			}
 			if (all_of(T_CHECK.begin(),T_CHECK.end(),[](bool x){return x;}))
 			{
-				cout << "l=" << l << ", s=" << s << ", AL*C=AC true!, normsum=" << normsum << endl;
+				cout << "l=" << l << ", s=" << s << ", AL[" << l << "]*C[" << l << "]=AC[" << l << "] true!, normsum=" << normsum << endl;
 			}
 			else
 			{
-				cout << "l=" << l << ", s=" << s << ", AL*C=AC false!, normsum=" << normsum << endl;
+				cout << "l=" << l << ", s=" << s << ", AL[" << l << "]*C[" << l << "]=AC[" << l << "] false!, normsum=" << normsum << endl;
 			}
 		}
 		
@@ -664,7 +667,10 @@ test_ortho (double tol) const
 			{
 				qarray2<Symmetry::Nq> quple = {Test.in[q], Test.out[q]};
 				auto it = A[GAUGE::C][l][s].dict.find(quple);
-				Test.block[q] -= A[GAUGE::C][l][s].block[it->second];
+				if (it != A[GAUGE::C][l][s].dict.end())
+				{
+					Test.block[q] -= A[GAUGE::C][l][s].block[it->second];
+				}
 			}
 			vector<double> T_CHECK(Test.dim);
 //			cout << "Test.dim=" << Test.dim << endl;
@@ -678,11 +684,11 @@ test_ortho (double tol) const
 			}
 			if (all_of(T_CHECK.begin(),T_CHECK.end(),[](bool x){return x;}))
 			{
-				cout << "l=" << l << ", s=" << s << ", C*AR=AC true!, normsum=" << normsum << endl;
+				cout << "l=" << l << ", s=" << s << ", C[" << locC << "]*AR[" << l << "]=AC[" << l << "] true!, normsum=" << normsum << endl;
 			}
 			else
 			{
-				cout << "l=" << l << ", s=" << s << ", C*AR=AC false!, normsum=" << normsum << endl;
+				cout << "l=" << l << ", s=" << s << ", C[" << locC << "]*AR[" << l << "]=AC[" << l << "] false!, normsum=" << normsum << endl;
 			}
 		}
 		

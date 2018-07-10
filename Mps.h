@@ -89,7 +89,7 @@ public:
 	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	 */
-	Mps(string filename) { load(filename); }
+	Mps (string filename) {load(filename);}
 	#endif //USE_HDF5_STORAGE
 	
 	///\{
@@ -112,7 +112,6 @@ public:
 	 */
 	void canonize (DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::LEFT);
 	
-
 	#ifdef USE_HDF5_STORAGE
 	///\{
 	/**
@@ -238,6 +237,9 @@ public:
 	 */
 	size_t calc_Nqmax() const;
 	
+	/**
+	 * Determines the average amount of subspaces per site.
+	 */
 	double calc_Nqavg() const;
 	
 	/**\describe_memory*/
@@ -347,11 +349,15 @@ public:
 	 * \param DIR : Direction of the weep. Either LEFT or RIGHT.
 	 * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1
 	 * \param Apair : Pair of two Mps site tensors which are splitted via a singular value decomposition.
-	 * \param DISCARD_SV: If \p true, the singular value matrix is discarded. Useful for iDMRG.
+	 * \param SEPARATE_SV: If \p true, the singular value matrix is discarded. Useful for iDMRG.
 	 * \warning Not implemented for non abelian symmetries.
 	 * \todo Implemented this function for SU(2) symmetry.
 	 */
-	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, bool DISCARD_SV=false);
+	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, bool SEPARATE_SV=false);
+	
+	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, 
+	                 vector<Biped<Symmetry,MatrixType> > &Al, vector<Biped<Symmetry,MatrixType> > &Ar, Biped<Symmetry,MatrixType> &C, 
+	                 bool SEPARATE_SV);
 	
 	/**
 	 * Performs an SVD split to the left and writes the zero-site tensor to \p C.
@@ -405,7 +411,7 @@ public:
 	ArrayXd entropy() const {return S;};
 	///\}
 	
-private:
+//private:
 	
 	size_t N_phys;
 	
@@ -1397,7 +1403,7 @@ double Mps<Symmetry,Scalar>::
 calc_Nqavg() const
 {
 	double res = 0.;
-	for (size_t l=0; l<this->N_sites-1; ++l)
+	for (size_t l=0; l<this->N_sites; ++l)
 	{
 		res += outbase[l].Nq();
 	}
@@ -2104,17 +2110,27 @@ absorb (size_t loc, DMRG::DIRECTION::OPTION DIR, const Biped<Symmetry,MatrixType
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, bool DISCARD_SV)
+sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, bool SEPARATE_SV)
 {
-	vector<qarray<Symmetry::Nq> > midset = calc_qsplit(A[loc], qloc[loc], A[loc+1], qloc[loc+1], QoutTop[loc], QoutBot[loc]);
+	Biped<Symmetry,MatrixType> Cdump;
+	sweepStep2(DIR, loc, Apair, A[loc], A[loc+1], Cdump, false);
+}
+
+template<typename Symmetry, typename Scalar>
+void Mps<Symmetry,Scalar>::
+sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, 
+            vector<Biped<Symmetry,MatrixType> > &Al, vector<Biped<Symmetry,MatrixType> > &Ar, Biped<Symmetry,MatrixType> &C, 
+            bool SEPARATE_SV)
+{
+	vector<qarray<Symmetry::Nq> > midset = calc_qsplit(Al, qloc[loc], Ar, qloc[loc+1], QoutTop[loc], QoutBot[loc]);
 	
 	for (size_t s=0; s<qloc[loc].size(); ++s)
 	{
-		A[loc][s].clear();
+		Al[s].clear();
 	}
 	for (size_t s=0; s<qloc[loc+1].size(); ++s)
 	{
-		A[loc+1][s].clear();
+		Ar[s].clear();
 	}
 	
 	ArrayXd truncWeightSub(midset.size()); truncWeightSub.setZero();
@@ -2295,13 +2311,14 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			size_t Nnz = (Jack.singularValues().array() > 0.).count();
 			entropySub(qmid) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
 			
-			MatrixType Aleft, Aright;
+			MatrixType Aleft, Aright, Cmatrix;
 			if (DIR == DMRG::DIRECTION::RIGHT)
 			{
 				Aleft = Jack.matrixU().leftCols(Nret);
-				if (DISCARD_SV)
+				if (SEPARATE_SV)
 				{
 					Aright = Jack.matrixV().adjoint().topRows(Nret);
+					Cmatrix = Jack.singularValues().head(Nret).asDiagonal();
 				}
 				else
 				{
@@ -2311,12 +2328,20 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			}
 			else
 			{
-				Aleft = Jack.matrixU().leftCols(Nret) * Jack.singularValues().head(Nret).asDiagonal();
 				Aright = Jack.matrixV().adjoint().topRows(Nret);
+				if (SEPARATE_SV)
+				{
+					Aleft = Jack.matrixU().leftCols(Nret);
+					Cmatrix = Jack.singularValues().head(Nret).asDiagonal();
+				}
+				else
+				{
+					Aleft = Jack.matrixU().leftCols(Nret) * Jack.singularValues().head(Nret).asDiagonal();
+				}
 				this->pivot = (loc==0)? 0 : loc;
 			}
 			
-			// update A[loc]
+			// update Al
 			istitch = 0;
 			for (size_t i=0; i<get_s1.size(); ++i)
 			{
@@ -2324,19 +2349,19 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				size_t Nrows = get_Nrows[i];
 				
 				qarray2<Nq> quple = {get_ql[i], midset[qmid]};
-				auto q = A[loc][s1].dict.find(quple);
-				if (q != A[loc][s1].dict.end())
+				auto q = Al[s1].dict.find(quple);
+				if (q != Al[s1].dict.end())
 				{
-					A[loc][s1].block[q->second] += Aleft.block(istitch,0, Nrows,Nret);
+					Al[s1].block[q->second] += Aleft.block(istitch,0, Nrows,Nret);
 				}
 				else
 				{
-					A[loc][s1].push_back(get_ql[i], midset[qmid], Aleft.block(istitch,0, Nrows,Nret));
+					Al[s1].push_back(get_ql[i], midset[qmid], Aleft.block(istitch,0, Nrows,Nret));
 				}
 				istitch += Nrows;
 			}
 			
-			// update A[loc+1]
+			// update Ar
 			jstitch = 0;
 			for (size_t i=0; i<get_s3.size(); ++i)
 			{
@@ -2344,17 +2369,31 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				size_t Ncols = get_Ncols[i];
 				
 				qarray2<Nq> quple = {midset[qmid], get_qr[i]};
-				auto q = A[loc+1][s3].dict.find(quple);
+				auto q = Ar[s3].dict.find(quple);
 				Scalar factor_cgc3 = (DIR==DMRG::DIRECTION::LEFT)? sqrt(Symmetry::coeff_rightOrtho(midset[qmid], get_qr[i])):1.;
-				if (q != A[loc+1][s3].dict.end())
+				if (q != Ar[s3].dict.end())
 				{
-					A[loc+1][s3].block[q->second] += factor_cgc3 * Aright.block(0,jstitch, Nret,Ncols);
+					Ar[s3].block[q->second] += factor_cgc3 * Aright.block(0,jstitch, Nret,Ncols);
 				}
 				else
 				{
-					A[loc+1][s3].push_back(midset[qmid], get_qr[i], factor_cgc3 * Aright.block(0,jstitch, Nret,Ncols));
+					Ar[s3].push_back(midset[qmid], get_qr[i], factor_cgc3 * Aright.block(0,jstitch, Nret,Ncols));
 				}
 				jstitch += Ncols;
+			}
+			
+			if (SEPARATE_SV)
+			{
+				qarray2<Nq> quple = {midset[qmid], midset[qmid]};
+				auto q = C.dict.find(quple);
+				if (q != C.dict.end())
+				{
+					C.block[q->second] += Cmatrix;
+				}
+				else
+				{
+					C.push_back(midset[qmid], midset[qmid], Cmatrix);
+				}
 			}
 		}
 	}
@@ -2362,8 +2401,8 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 	// remove unwanted zero-sized blocks
 	for (size_t s=0; s<qloc[loc].size(); ++s)
 	{
-		A[loc][s]   = A[loc][s].cleaned();
-		A[loc+1][s] = A[loc+1][s].cleaned();
+		Al[s] = Al[s].cleaned();
+		Ar[s] = Ar[s].cleaned();
 	}
 	
 	update_outbase(loc);
