@@ -54,10 +54,12 @@ public:
 	void graph (string filename) const;
 	
 	/**Tests the orthogonality of the UMPS.*/
-	string test_ortho (double tol=1e-8) const;
+	string test_ortho (double tol=1e-6) const;
 	
 	/**Sets all matrices  \f$A_L\f$, \f$A_R\f$, \f$A_C\f$, \f$C\f$) to random using boost's uniform distribution from -1 to 1.*/
 	void setRandom();
+	
+	void normalize_C();
 	
 	/**Resizes all containers to \p N_sites, the bond dimension to \p Dmax and sets all quantum numbers to vacuum.*/
 	void resize (size_t Dmax_input, size_t Nqmax_input);
@@ -117,6 +119,9 @@ public:
 	
 	inline size_t minus1modL (size_t l) const {return (l==0)? N_sites-1 : (l-1);}
 	
+	/**Returns the total quantum number of the UMPS.*/
+	inline qarray<Nq> Qtarget() const {return Qtot;};
+	
 private:
 	
 	size_t N_sites;
@@ -125,9 +130,9 @@ private:
 	size_t N_sv;
 	qarray<Nq> Qtot;
 	
-	void calc_entropy (size_t loc);
+	void calc_entropy (size_t loc, bool PRINT=false);
 	
-	void calc_entropy() {for (size_t l=0; l<N_sites; ++l) calc_entropy(l);};
+	void calc_entropy (bool PRINT=false) {for (size_t l=0; l<N_sites; ++l) calc_entropy(l,PRINT);};
 	
 	// sets of all unique incoming & outgoing indices for convenience
 	vector<vector<qarray<Symmetry::Nq> > > inset;
@@ -159,27 +164,6 @@ private:
 	void update_outbase (size_t loc);
 	void update_inbase()  { for(size_t l=0; l<this->N_sites; l++) {update_inbase(l); } }
 	void update_outbase() { for(size_t l=0; l<this->N_sites; l++) {update_outbase(l); } }
-	
-	void transform_base (qarray<Symmetry::Nq> Qtot)
-	{
-		for (size_t l=0; l<N_sites; ++l)
-		for (size_t i=0; i<qloc[l].size(); ++i)
-		for (size_t q=0; q<Symmetry::Nq; ++q)
-		{
-			cout << "subtracting: " << Qtot[q]/static_cast<int>(N_sites) << " from " << qloc[l][i][q] << endl;
-			qloc[l][i][q] = qloc[l][i][q] - Qtot[q]/static_cast<int>(N_sites);
-		}
-		
-		cout << "transformed base:" << endl;
-		for (size_t l=0; l<N_sites; ++l)
-		{
-			cout << "l=" << l << endl;
-			for (size_t i=0; i<qloc[l].size(); ++i)
-			{
-				cout << "qloc: " << qloc[l][i] << endl;
-			}
-		}
-	};
 };
 
 template<typename Symmetry, typename Scalar>
@@ -211,7 +195,7 @@ Umps (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, 
 {
 	qloc = H.locBasis();
 	resize(Dmax,Nqmax);
-	transform_base(Qtot);
+	::transform_base<Symmetry>(qloc,Qtot); // from DmrgExternal.h
 }
 
 template<typename Symmetry, typename Scalar>
@@ -222,7 +206,7 @@ Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, si
 	qloc.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l) {qloc[l] = qloc_input;}
 	resize(Dmax,Nqmax);
-	transform_base(Qtot);
+	::transform_base<Symmetry>(qloc,Qtot); // from DmrgExternal.h
 }
 
 template<typename Symmetry, typename Scalar>
@@ -301,24 +285,26 @@ template<typename Symmetry, typename Scalar>
 qarray<Symmetry::Nq> Umps<Symmetry,Scalar>::
 Qtop (size_t loc) const
 {
-	qarray<Symmetry::Nq> res = Symmetry::qvacuum();
-	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
-	{
-		if (outbase[loc][qout] > res) {res = outbase[loc][qout];}
-	}
-	return res;
+//	qarray<Symmetry::Nq> res = Symmetry::qvacuum();
+//	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
+//	{
+//		if (outbase[loc][qout] > res) {res = outbase[loc][qout];}
+//	}
+//	return res;
+	return qplusinf<Symmetry::Nq>();
 }
 
 template<typename Symmetry, typename Scalar>
 qarray<Symmetry::Nq> Umps<Symmetry,Scalar>::
 Qbot (size_t loc) const
 {
-	qarray<Symmetry::Nq> res = Symmetry::qvacuum();
-	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
-	{
-		if (outbase[loc][qout] < res) {res = outbase[loc][qout];}
-	}
-	return res;
+//	qarray<Symmetry::Nq> res = Symmetry::qvacuum();
+//	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
+//	{
+//		if (outbase[loc][qout] < res) {res = outbase[loc][qout];}
+//	}
+//	return res;
+	return qminusinf<Symmetry::Nq>();
 }
 
 template<typename Symmetry, typename Scalar>
@@ -404,23 +390,26 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	
 	// symmetrization
 	// check later for particles!
-	for (size_t l=0; l<N_sites; ++l)
+	if (Qtot == Symmetry::qvacuum())
 	{
-		auto qinset_tmp = qinset[l];
-		for (const auto &q:qinset_tmp)
+		for (size_t l=0; l<N_sites; ++l)
 		{
-			if (auto it=qinset_tmp.find(Symmetry::flip(q)); it==qinset_tmp.end())
+			auto qinset_tmp = qinset[l];
+			for (const auto &q:qinset_tmp)
 			{
-				qinset[l].insert(Symmetry::flip(q));
+				if (auto it=qinset_tmp.find(Symmetry::flip(q)); it==qinset_tmp.end())
+				{
+					qinset[l].insert(Symmetry::flip(q));
+				}
 			}
-		}
-		
-		auto qoutset_tmp = qoutset[l];
-		for (const auto &q:qoutset_tmp)
-		{
-			if (auto it=qoutset_tmp.find(Symmetry::flip(q)); it==qoutset_tmp.end())
+			
+			auto qoutset_tmp = qoutset[l];
+			for (const auto &q:qoutset_tmp)
 			{
-				qoutset[l].insert(Symmetry::flip(q));
+				if (auto it=qoutset_tmp.find(Symmetry::flip(q)); it==qoutset_tmp.end())
+				{
+					qoutset[l].insert(Symmetry::flip(q));
+				}
 			}
 		}
 	}
@@ -476,6 +465,19 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	}
 	
 	S.resize(N_sites);
+	
+	graph("init");
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+normalize_C()
+{
+	// normalize the centre matrices for proper wavefunction norm: Tr(C*C†)=1
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		C[l] = 1./sqrt((C[l].contract(C[l].adjoint())).trace()) * C[l];
+	}
 }
 
 template<typename Symmetry, typename Scalar>
@@ -483,24 +485,18 @@ void Umps<Symmetry,Scalar>::
 setRandom()
 {
 	for (size_t l=0; l<N_sites; ++l)
+	for (size_t q=0; q<C[l].dim; ++q)
 	{
 		for (size_t a1=0; a1<C[l].block[0].rows(); ++a1)
-		for (size_t a2=0; a2<C[l].block[0].cols(); ++a2)
+//		for (size_t a2=0; a2<C[l].block[0].cols(); ++a2)
+		for (size_t a2=0; a2<=a1; ++a2)
 		{
-			C[l].block[0](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
-//			C[l].block[0](a1,a2) = 1.;
-		}
-		for (size_t q=1; q<C[l].dim; ++q)
-		{
-			C[l].block[q] = C[l].block[0];
+			C[l].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
+			C[l].block[q](a2,a1) = C[l].block[q](a1,a2);
 		}
 	}
 	
-	// normalize the centre matrices for proper wavefunction norm: Tr(C*C†)=1
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		C[l] = 1./sqrt((C[l].contract(C[l].adjoint())).trace()) * C[l];
-	}
+	normalize_C();
 	
 	for (size_t l=0; l<N_sites; ++l)
 	for (size_t s=0; s<qloc[l].size(); ++s)
@@ -510,8 +506,12 @@ setRandom()
 	for (size_t a2=0; a2<=a1; ++a2)
 	{
 		A[GAUGE::C][l][s].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
-//		A[GAUGE::C][l][s].block[q](a1,a2) = 1.;
 		A[GAUGE::C][l][s].block[q](a2,a1) = A[GAUGE::C][l][s].block[q](a1,a2);
+	}
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		svdDecompose(l);
 	}
 	
 	calc_entropy();
@@ -612,8 +612,8 @@ test_ortho (double tol) const
 		for (size_t q=0; q<Test.dim; ++q)
 		{
 			Test.block[q] -= MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
-			A_CHECK[q]     = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
-			A_infnorm[q]   = Test.block[q].template lpNorm<Infinity>();
+			A_CHECK[q]     = Test.block[q].norm()<tol ? true : false;
+			A_infnorm[q]   = Test.block[q].norm();
 //			cout << "q=" << q << ", A_infnorm[q]=" << A_infnorm[q] << endl;
 		}
 		
@@ -645,16 +645,18 @@ test_ortho (double tol) const
 			{
 //				cout << "g=L, " << "s=" << s << ", q=" << Test.in[q] << ", " << Test.out[q] 
 //				     << ", norm=" << Test.block[q].template lpNorm<Infinity>() << endl;
-				normsum += Test.block[q].template lpNorm<Infinity>();
-				T_CHECK[q] = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
+				normsum += Test.block[q].norm();
+				T_CHECK[q] = Test.block[q].norm()<tol ? true : false;
 			}
 			if (all_of(T_CHECK.begin(),T_CHECK.end(),[](bool x){return x;}))
 			{
-				cout << "l=" << l << ", s=" << s << ", AL[" << l << "]*C[" << l << "]=AC[" << l << "] true!, normsum=" << normsum << endl;
+				cout << "l=" << l << ", s=" << s << ", AL[" << l << "]*C[" << l << "]=AC[" << l << "]=" 
+				     << termcolor::green << "true" << termcolor::reset << ", normsum=" << normsum << endl;
 			}
 			else
 			{
-				cout << "l=" << l << ", s=" << s << ", AL[" << l << "]*C[" << l << "]=AC[" << l << "] false!, normsum=" << normsum << endl;
+				cout << "l=" << l << ", s=" << s << ", AL[" << l << "]*C[" << l << "]=AC[" << l << "]=" 
+				     << termcolor::red << "false" << termcolor::reset << ", normsum=" << normsum << endl;
 			}
 		}
 		
@@ -684,11 +686,13 @@ test_ortho (double tol) const
 			}
 			if (all_of(T_CHECK.begin(),T_CHECK.end(),[](bool x){return x;}))
 			{
-				cout << "l=" << l << ", s=" << s << ", C[" << locC << "]*AR[" << l << "]=AC[" << l << "] true!, normsum=" << normsum << endl;
+				cout << "l=" << l << ", s=" << s << ", C[" << locC << "]*AR[" << l << "]=AC[" << l << "]="
+				     << termcolor::green << "true" << termcolor::reset << ", normsum=" << normsum << endl;
 			}
 			else
 			{
-				cout << "l=" << l << ", s=" << s << ", C[" << locC << "]*AR[" << l << "]=AC[" << l << "] false!, normsum=" << normsum << endl;
+				cout << "l=" << l << ", s=" << s << ", C[" << locC << "]*AR[" << l << "]=AC[" << l << "]="
+				     << termcolor::red << "false" << termcolor::reset << ", normsum=" << normsum << endl;
 			}
 		}
 		
@@ -795,24 +799,36 @@ dot (const Umps<Symmetry,Scalar> &Vket) const
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-calc_entropy (size_t loc)
+calc_entropy (size_t loc, bool PRINT)
 {
 	S(loc) = 0;
 	
-	cout << "loc=" << loc << endl;
+	if (PRINT)
+	{
+		lout << termcolor::magenta << "loc=" << loc << termcolor::reset << endl;
+	}
 	for (size_t q=0; q<C[loc].dim; ++q)
 	{
 		JacobiSVD<MatrixType> Jack(C[loc].block[q]);
 //		Csingular[loc] += Jack.singularValues();
+		
 		size_t Nnz = (Jack.singularValues().array() > 0.).count();
+		double Scontrib = -Symmetry::degeneracy(C[loc].in[q]) * 
+		                   (Jack.singularValues().head(Nnz).array().square() * 
+		                    Jack.singularValues().head(Nnz).array().square().log()
+		                   ).sum();
 		
-		cout << termcolor::blue << "S: " << C[loc].in[q] << ", " << C[loc].out[q] << "\t" 
-		<< -Symmetry::degeneracy(C[loc].in[q]) * (Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum() << termcolor::reset << endl;
+		S(loc) += Scontrib;
 		
-		S(loc) += -Symmetry::degeneracy(C[loc].in[q]) * (Jack.singularValues().head(Nnz).array().square() 
-		                                              * Jack.singularValues().head(Nnz).array().square().log()).sum();
+		if (PRINT)
+		{
+			lout << termcolor::magenta << "S(" << C[loc].in[q] << "," << C[loc].out[q] << ")\t=\t" << Scontrib << termcolor::reset << endl;
+		}
 	}
-	cout << endl;
+	if (PRINT)
+	{
+		lout << endl;
+	}
 }
 
 //template<typename Symmetry, typename Scalar>
@@ -883,6 +899,7 @@ calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const
 			}
 			
 			res += (Aclump-Acmp*C[loc].block[qC]).squaredNorm() * Symmetry::coeff_dot(C[loc].in[qC]);
+//			cout << "contrib L, l=" << loc << ", " << (Aclump-Acmp*C[loc].block[qC]).squaredNorm() * Symmetry::coeff_dot(C[loc].in[qC]) << endl;
 			
 	//		BDCSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
 	////		JacobiSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
@@ -996,6 +1013,7 @@ calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const
 			}
 			
 			res += (Aclump-C[locC].block[qC]*Acmp).squaredNorm() * Symmetry::coeff_dot(C[locC].in[qC]);
+//			cout << "contrib R=" << (Aclump-C[locC].block[qC]*Acmp).squaredNorm() * Symmetry::coeff_dot(C[locC].in[qC]) << endl;
 			
 	//		BDCSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
 	////		JacobiSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);

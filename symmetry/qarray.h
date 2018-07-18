@@ -33,8 +33,9 @@ struct qarray
 	int &operator() (size_t i) {return data[i];}
 	const int &operator[] (size_t i) const {return data[i];}
 	const int &operator() (size_t i) const {return data[i];}
-
-	int distance(const qarray<Nq>& other) {
+	
+	int distance(const qarray<Nq>& other)
+	{
 		array<int,Nq> dists;
 		for(size_t i=0; i<Nq; i++) { dists[i] = abs(this->data[i] - other[i]); }
 		return *std::max_element(std::begin(dists), std::end(dists));
@@ -96,12 +97,28 @@ std::ostream& operator<< (std::ostream& os, const qarray<Nq> &a)
 	return os;
 }
 
-/**Constructs the vacuum (all quantum numbers equal to zero).*/
+///**Constructs the vacuum (all quantum numbers equal to zero).*/
+//template<size_t Nq>
+//qarray<Nq> qvacuum()
+//{
+//	qarray<Nq> aout;
+//	for (size_t q=0; q<Nq; ++q) {aout[q] = 0;}
+//	return aout;
+//}
+
 template<size_t Nq>
-qarray<Nq> qvacuum()
+qarray<Nq> qplusinf()
 {
 	qarray<Nq> aout;
-	for (size_t q=0; q<Nq; ++q) {aout[q] = 0;}
+	for (size_t q=0; q<Nq; ++q) {aout[q] = std::numeric_limits<int>::infinity();}
+	return aout;
+}
+
+template<size_t Nq>
+qarray<Nq> qminusinf()
+{
+	qarray<Nq> aout;
+	for (size_t q=0; q<Nq; ++q) {aout[q] = -std::numeric_limits<int>::infinity();}
 	return aout;
 }
 

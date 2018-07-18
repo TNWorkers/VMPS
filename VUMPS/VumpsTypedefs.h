@@ -15,60 +15,19 @@ std::ostream& operator<< (std::ostream& s, GAUGE::OPTION g)
 	return s;
 }
 
-struct VUMPS_ALG
+struct UMPS_ALG
 {
-	enum OPTION {PARA=0, SEQU=1};
+	enum OPTION {PARALLEL=0, SEQUENTIAL=1, H2SITE=2, IDMRG=3, DYNAMIC=4};
 };
 
-//template<typename MatrixType>
-//void unique_QR (const MatrixType &M, MatrixType &Qmatrix, MatrixType &Rmatrix)
-//{
-//	#ifdef DONT_USE_EIGEN_QR
-//	LapackQR<Scalar> Quirinus; // Lapack QR
-//	#else
-//	HouseholderQR<MatrixType> Quirinus; // Eigen QR
-//	#endif
-//	
-//	Quirinus.compute(M);
-//	
-//	#ifdef DONT_USE_EIGEN_QR
-//	Qmatrix = Quirinus.Qmatrix();
-//	Rmatrix = Quirinus.Rmatrix();
-//	#else
-//	Qmatrix = Quirinus.householderQ() * MatrixType::Identity(M.rows(),M.cols());
-//	Rmatrix = MatrixType::Identity(M.cols(),M.rows()) 
-//	        * Quirinus.matrixQR().template triangularView<Upper>();
-//	#endif
-//	
-//	// signs of the diagonal of Rmatrix in order to make the QR decomposition unique
-//	VectorXd Signum = (Rmatrix.diagonal().array()/Rmatrix.diagonal().array().abs()).matrix();
-//	Rmatrix = Signum.asDiagonal() * Rmatrix;
-//	Qmatrix = Qmatrix * Signum.asDiagonal();
-//}
-
-//template<typename MatrixType>
-//void unique_RQ (const MatrixType &M, MatrixType &Qmatrix, MatrixType &Rmatrix)
-//{
-//	#ifdef DONT_USE_EIGEN_QR
-//	LapackQR<Scalar> Quirinus; // Lapack QR
-//	#else
-//	HouseholderQR<MatrixType> Quirinus; // Eigen QR
-//	#endif
-//	
-//	Quirinus.compute(M.adjoint());
-//	
-//	#ifdef DONT_USE_EIGEN_QR
-//	Qmatrix = Quirinus.Qmatrix().adjoint();
-//	Rmatrix = Quirinus.Rmatrix().adjoint();
-//	#else
-//	Qmatrix = (Quirinus.householderQ() * MatrixType::Identity(M.cols(),M.rows())).adjoint();
-//	Rmatrix = (MatrixType::Identity(M.rows(),M.cols()) 
-//	        * Quirinus.matrixQR().template triangularView<Upper>()).adjoint();
-//	#endif
-//	
-//	VectorXd Signum = (Rmatrix.diagonal().array()/Rmatrix.diagonal().array().abs()).matrix();
-//	Rmatrix = Rmatrix * Signum.asDiagonal();
-//	Qmatrix = Signum.asDiagonal() * Qmatrix;
-//}
+std::ostream& operator<< (std::ostream& s, UMPS_ALG::OPTION a)
+{
+	if      (a==UMPS_ALG::OPTION::PARALLEL)   {s << "parallel";}
+	else if (a==UMPS_ALG::OPTION::SEQUENTIAL) {s << "sequential";}
+	else if (a==UMPS_ALG::OPTION::H2SITE)     {s << "h2site";}
+	else if (a==UMPS_ALG::OPTION::IDMRG)      {s << "IDMRG";}
+	else if (a==UMPS_ALG::OPTION::DYNAMIC)    {s << "dynamic(par/seq)";}
+	return s;
+}
 
 #endif

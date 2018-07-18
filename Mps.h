@@ -906,9 +906,9 @@ outerResizeNoSymm()
 	{
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
-			A[l][s].in.push_back(qvacuum<Nq>());
-			A[l][s].out.push_back(qvacuum<Nq>());
-			A[l][s].dict.insert({qarray2<Nq>{qvacuum<Nq>(),qvacuum<Nq>()}, A[l][s].dim});
+			A[l][s].in.push_back(Symmetry::qvacuum());
+			A[l][s].out.push_back(Symmetry::qvacuum());
+			A[l][s].dict.insert({qarray2<Nq>{Symmetry::qvacuum(),Symmetry::qvacuum()}, A[l][s].dim});
 			A[l][s].dim = 1;
 			A[l][s].block.resize(1);
 		}
@@ -1066,7 +1066,7 @@ setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 	this->N_sites = config.size();
 	N_phys = H.volume();
 	qloc = H.locBasis();
-	Qtot = accumulate(config.begin(),config.end(),qvacuum<Nq>());
+	Qtot = accumulate(config.begin(),config.end(),Symmetry::qvacuum());
 	this->pivot = -1;
 	
 	resize_arrays();
@@ -1075,7 +1075,7 @@ setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 	qouts[0] = Symmetry::qvacuum();
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
-		qouts[l+1] = accumulate(config.begin(), config.begin()+l+1, qvacuum<Nq>());
+		qouts[l+1] = accumulate(config.begin(), config.begin()+l+1, Symmetry::qvacuum());
 	}
 	
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -3701,7 +3701,7 @@ collapse()
 //	
 //	setProductState(conf);
 //	
-////	outerResize(this->N_sites, qloc, accumulate(conf.begin(),conf.end(),qvacuum<Nq>()));
+////	outerResize(this->N_sites, qloc, accumulate(conf.begin(),conf.end(),Symmetry::qvacuum()));
 ////	
 ////	for (size_t l=0; l<this->N_sites; ++l)
 ////	for (size_t s=0; s<qloc[l].size(); ++s)

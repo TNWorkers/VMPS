@@ -89,7 +89,6 @@ void HxV (const PivotMatrix0<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 			}
 		}
 	}
-//	cout << "done!" << endl;
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>

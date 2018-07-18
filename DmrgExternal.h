@@ -227,4 +227,31 @@ Scalar localSumTrivial (int i)
 	return 1.;
 }
 
+template<typename Symmetry>
+void transform_base (vector<vector<qarray<Symmetry::Nq> > > &qloc, qarray<Symmetry::Nq> Qtot, bool PRINT = false)
+{
+	if (Qtot != Symmetry::qvacuum())
+	{
+		for (size_t l=0; l<qloc.size(); ++l)
+		for (size_t i=0; i<qloc[l].size(); ++i)
+		for (size_t q=0; q<Symmetry::Nq; ++q)
+		{
+			qloc[l][i][q] = qloc[l][i][q] * static_cast<int>(qloc.size()) - Qtot[q];
+		}
+		
+		if (PRINT)
+		{
+			lout << "transformed base:" << endl;
+			for (size_t l=0; l<qloc.size(); ++l)
+			{
+				lout << "l=" << l << endl;
+				for (size_t i=0; i<qloc[l].size(); ++i)
+				{
+					cout << "qloc: " << qloc[l][i] << endl;
+				}
+			}
+		}
+	}
+};
+
 #endif

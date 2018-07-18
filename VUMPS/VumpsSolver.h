@@ -41,6 +41,9 @@ public:
 	/**Resets the verbosity level.*/
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
+	/**Resets a custom algorithm.*/
+	inline void set_algorithm (UMPS_ALG::OPTION ALGORITHM) {CHOSEN_ALGORITHM = ALGORITHM; USER_SET_ALGORITHM = true;};
+	
 	///\{
 	/**\describe_info*/
 	string info() const;
@@ -70,14 +73,6 @@ public:
 	};
 	///\}
 	
-	/**Calculates the highest or lowest eigenstate with an explicit 2-site Hamiltonian (algorithm 2). No unit cell is implemented here.*/
-	void edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input, 
-	                Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
-	                qarray<Symmetry::Nq> Qtot_input, 
-	                double tol_eigval_input=1e-7, double tol_var_input=1e-6, 
-	                size_t M=10, size_t Nqmax=4,
-	                size_t max_iterations=50, size_t min_iterations=6);
-	
 	/**Calculates the highest or lowest eigenstate with an MPO (algorithm 6). Works also for a 2- and 4-site unit cell. Simply create an MPO on 2 or 4 sites.*/
 	void edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
 	                qarray<Symmetry::Nq> Qtot_input, 
@@ -89,19 +84,33 @@ private:
 	
 	///\{
 	/**Prepares the class, setting up the environments. Used with an explicit 2-site Hamiltonian.*/
-	void prepare (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input, 
-	              Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
-	              qarray<Symmetry::Nq> Qtot_input,
-	              size_t M, size_t Nqmax);
+	void prepare_h2site (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input, 
+	                     Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
+	                     qarray<Symmetry::Nq> Qtot_input,
+	                     size_t M, size_t Nqmax);
 //	
 //	/**Performs a half-sweep with 1-site unit cell. Used with an explicit 2-site Hamiltonian.*/
-	void iteration_h (Eigenstate<Umps<Symmetry,Scalar> > &Vout);
+	void iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	///\}
 	
 	///\{
 	/**Prepares the class setting up the environments. Used with an MPO.*/
 	void prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M, size_t Nqmax);
 	
+//	/**Performs a half-sweep with an n-site unit cell (sequentially, algorithm 4). Used with an MPO.*/
+	void iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
+	
+	void iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
+	///\}
+	
+	///\{
+	void iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
+	
+	void prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax);
+	double Eold = std::nan("1");
+	///\}
+	
+	///\{
 	void build_LR (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AL,
 	               const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AR,
 	               const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C,
@@ -110,19 +119,9 @@ private:
 	               const vector<qarray<Symmetry::Nq> > &qOp,
 	               Tripod<Symmetry,MatrixType> &L,
 	               Tripod<Symmetry,MatrixType> &R);
+	///\}
 	
 	void build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
-	
-//	/**Performs a half-sweep with an n-site unit cell (sequentially, algorithm 4). Used with an MPO.*/
-	void iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
-	
-	void iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
-	
-	void iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
-	
-	void prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax);
-	double Eold = std::nan("1");
-	///\}
 	
 	/**Clean up after the iteration process.*/
 	void cleanup (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
@@ -152,7 +151,6 @@ private:
 	* \param LRdotY : (h_L|R), (L|h_R) for eq. 15 or (Y_La|R), (L|Y_Ra) for eq. C25ab
 	* \param LRres : resulting (H_L| or |H_R)
 	*/
-//	template<typename Atype, typename Wtype>
 	void solve_linear (GAUGE::OPTION gauge, 
 	                   size_t ab, 
 	                   const vector<Biped<Symmetry,MatrixType> > &A, 
@@ -173,6 +171,8 @@ private:
 	                   Biped<Symmetry,MatrixType> &LRres);
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
+	UMPS_ALG::OPTION CHOSEN_ALGORITHM = UMPS_ALG::DYNAMIC;
+	bool USER_SET_ALGORITHM = false;
 	
 	/**Sets the Lanczos tolerances adaptively, depending on the current errors.*/
 	void set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState);
@@ -191,9 +191,6 @@ private:
 	vector<double> eL_mem, eR_mem, err_eigval_mem, err_var_mem;
 	void write_log (bool FORCE=false);
 	///\}
-	
-//	std::array<size_t,2> GMRes_Niter = {1ul,1ul};
-//	std::array<size_t,2> GMRes_dimK  = {30ul,30ul};
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -347,111 +344,8 @@ calc_errors (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-iteration_h (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
-{
-	Stopwatch<> IterationTimer;
-	
-	// |R) and (L|
-	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
-	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
-	
-	// |h_R) and (h_L|
-	Biped<Symmetry,MatrixType> hR = make_hR(h2site, Vout.state.A[GAUGE::R][0], Vout.state.locBasis(0));
-	Biped<Symmetry,MatrixType> hL = make_hL(h2site, Vout.state.A[GAUGE::L][0], Vout.state.locBasis(0));
-	
-	// energies
-	eL = (Leigen.contract(hR)).trace();
-	eR = (hL.contract(Reigen)).trace();
-	cout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
-	
-	// |H_R) and (H_L|
-	Biped<Symmetry,MatrixType> HL, HR;
-	
-	// Solve the linear systems in eq. 14
-	Stopwatch<> GMresTimer;
-	solve_linear (GAUGE::L, Vout.state.A[GAUGE::L][0], hL, Reigen, Vout.state.locBasis(0), eR, HL);
-	solve_linear (GAUGE::R, Vout.state.A[GAUGE::R][0], hR, Leigen, Vout.state.locBasis(0), eL, HR);
-	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-	{
-		lout << "linear systems" << GMresTimer.info() << endl;
-	}
-	
-	// Doesn't work like that!! boost::multi_array is shit!
-//	Heff[0] = PivumpsMatrix1<Symmetry,Scalar,Scalar>(HL, HR, h2site, Vout.state.A[GAUGE::L][0], Vout.state.A[GAUGE::R][0]);
-	
-	Heff[0].h.resize(boost::extents[D][D][D][D]);
-	Heff[0].h = h2site;
-	Heff[0].L = HL;
-	Heff[0].R = HR;
-	Heff[0].AL = Vout.state.A[GAUGE::L][0];
-	Heff[0].AR = Vout.state.A[GAUGE::R][0];
-	Heff[0].qloc = Vout.state.locBasis(0);
-	
-	double tolLanczosEigval, tolLanczosState;
-	set_LanczosTolerances(tolLanczosEigval,tolLanczosState);
-	
-	// Solve for AC (eq. 11)
-	Eigenstate<PivotVector<Symmetry,Scalar> > gAC;
-	gAC.state = PivotVector<Symmetry,Scalar>(Vout.state.A[GAUGE::C][0]);
-	
-	Stopwatch<> LanczosTimer;
-	LanczosSolver<PivumpsMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz1(LANCZOS::REORTHO::FULL);
-	Lutz1.set_dimK(min(30ul, dim(gAC.state)));
-	Lutz1.edgeState(Heff[0],gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
-	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-	{
-		lout << "time" << LanczosTimer.info() << ", " << Lutz1.info() << endl;
-	}
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
-	{
-		lout << "e0(AC)=" << setprecision(13) << gAC.energy << endl;
-	}
-	
-	// Solve for C (eq. 16)
-	Eigenstate<PivotVector<Symmetry,Scalar> > gC;
-	gC.state = PivotVector<Symmetry,Scalar>(Vout.state.C[0]);
-	
-	LanczosSolver<PivumpsMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz0(LANCZOS::REORTHO::FULL);
-	Lutz0.set_dimK(min(30ul, dim(gC.state)));
-	Lutz0.edgeState(PivumpsMatrix0(Heff[0]),gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
-	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-	{
-		lout << "time" << LanczosTimer.info() << ", " << Lutz0.info() << endl;
-	}
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
-	{
-		lout << "e0(C)=" << setprecision(13) << gC.energy << endl;
-	}
-	
-	// Calculate AL and AR from AC, C
-	Vout.state.A[GAUGE::C][0] = gAC.state.data;
-	Vout.state.C[0]           = gC.state.data[0];
-	(err_var>0.01)? Vout.state.svdDecompose(0) : Vout.state.polarDecompose(0);
-	Vout.state.calc_entropy();
-	
-	calc_errors(Vout);
-	Vout.energy = min(eL,eR);
-	
-	++N_iterations;
-	
-	// Print stuff
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-	{
-		size_t standard_precision = cout.precision();
-		lout << "S=" << Vout.state.entropy().transpose() << endl;
-		lout << eigeninfo() << endl;
-		lout << IterationTimer.info("full iteration") << endl;
-		lout << endl;
-	}
-}
-
-template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-prepare (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symmetry::Nq> > &qloc_input, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
-         qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax)
+prepare_h2site (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symmetry::Nq> > &qloc_input, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
+                qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax)
 {
 	Stopwatch<> PrepTimer;
 	
@@ -474,13 +368,18 @@ prepare (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symmetry::N
 	{
 		Vout.state.svdDecompose(l);
 	}
-	Vout.state.calc_entropy();
+	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
 	// initial energy & error
 	eoldL = std::nan("");
 	eoldR = std::nan("");
 	err_eigval = 1.;
 	err_var    = 1.;
+	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	{
+		lout << PrepTimer.info("prepare") << endl; 
+	}
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -505,13 +404,60 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	{
 		Vout.state.svdDecompose(l);
 	}
-	Vout.state.calc_entropy();
+	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
 	// initial energy
 	eoldL = std::nan("");
 	eoldR = std::nan("");
 	err_eigval = 1.;
 	err_var    = 1.;
+	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	{
+		lout << PrepTimer.info("prepare") << endl; 
+	}
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax)
+{
+	Stopwatch<> PrepTimer;
+	
+	// general
+	N_sites = 1;
+	N_iterations = 0;
+	M = M_input; // bond dimension
+	dW = H.auxdim();
+	
+	// resize Vout
+	Vout.state = Umps<Symmetry,Scalar>(H.locBasis(0), Qtot, N_sites, M, Nqmax);
+	Vout.state.N_sv = M;
+	Vout.state.setRandom();
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Vout.state.svdDecompose(l);
+	}
+	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
+	
+	HeffA.resize(1);
+	Qbasis<Symmetry> inbase;
+	inbase.pullData(Vout.state.A[GAUGE::C][0],0);
+	Qbasis<Symmetry> outbase;
+	outbase.pullData(Vout.state.A[GAUGE::C][0],1);
+	HeffA[0].L.setIdentity(M, dW, 1, inbase);
+	HeffA[0].R.setIdentity(M, dW, 1, outbase);
+	
+	// initial energy & error
+	eoldL = std::nan("");
+	eoldR = std::nan("");
+	err_eigval = 1.;
+	err_var    = 1.;
+	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	{
+		lout << PrepTimer.info("prepare") << endl; 
+	}
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -698,42 +644,6 @@ build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	          Wcell, Vout.state.qlocCell, qOpCell, 
 	          HeffA[0].L, HeffA[N_sites-1].R);
 	
-	// for(size_t q=0; q<HeffA[N_sites-1].R.dim; q++)
-	// {
-	// 	// if(HeffA[N_sites-1].R.mid(q) == Symmetry::qvacuum())
-	// 	// {
-	// 		for (size_t a=0; a<HeffA[N_sites-1].R.block[q].shape()[0]; ++a)
-	// 		{
-	// 			if(HeffA[N_sites-1].R.block[q][a][0].size() != 0)
-	// 			{
-	// 				HeffA[N_sites-1].R.block[q][a][0] = HeffA[N_sites-1].R.block[q][a][0]
-	// 					* sqrt(Symmetry::coeff_dot(HeffA[N_sites-1].R.in(q)))
-	// 					* sqrt(Symmetry::coeff_dot(HeffA[N_sites-1].R.out(q)))
-	// 					* sqrt(Symmetry::coeff_dot(HeffA[N_sites-1].R.mid(q)));
-	// 			}
-	// 		}
-	// 	// }
-	// 	// else {cout << termcolor::red << "Non diagonal blocks in the right cell environment" << termcolor::reset << endl;}
-	// }
-
-	// for(size_t q=0; q<HeffA[0].L.dim; q++)
-	// {
-	// 	// if(HeffA[0].L.mid(q) == Symmetry::qvacuum())
-	// 	// {
-	// 		for (size_t a=0; a<HeffA[0].L.block[q].shape()[0]; ++a)
-	// 		{
-	// 			if(HeffA[0].L.block[q][a][0].size() != 0)
-	// 			{
-	// 				HeffA[0].L.block[q][a][0] = HeffA[0].L.block[q][a][0]
-	// 					* sqrt(Symmetry::coeff_dot(HeffA[0].L.in(q)))
-	// 					* sqrt(Symmetry::coeff_dot(HeffA[0].L.out(q)))
-	// 					* sqrt(Symmetry::coeff_dot(HeffA[0].L.mid(q)));
-	// 			}
-	// 		}
-	// 	// }
-	// 	// else {cout << termcolor::red << "Non diagonal blocks in the right cell environment" << termcolor::reset << endl;}
-	// }
-	
 	// Make environment for each site of the unit cell
 	for (size_t l=1; l<N_sites; ++l)
 	{
@@ -797,6 +707,18 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		Lucy.set_dimK(min(30ul, dim(gC.state)));
 		Lucy.edgeState(PivotMatrix0(HeffC[l]), gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		
+//		qarray2<Symmetry::Nq> vac = {Symmetry::qvacuum(), Symmetry::qvacuum()};
+//		auto it = gC.state.data[0].dict.find(vac);
+//		double maxnorm = 0.;
+//		double maxq;
+//		for (size_t q=0; q<gC.state.data[0].size(); ++q)
+//		{
+//			double norm = gC.state.data[0].block[q].norm();
+//			if (norm > maxnorm) {maxnorm = norm; maxq = q;}
+//		}
+//		gC.state.data[0].block[it->second].swap(gC.state.data[0].block[maxq]);
+//		cout << "swapped: " << it->second << " and " << maxq << endl;
+		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
 			lout << "l=" << l << ", C" << ", time" << LanczosTimer.info() << ", " << Lucy.info() << endl;
@@ -807,19 +729,14 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		}
 		
 		Vout.state.A[GAUGE::C][l] = gAC.state.data;
-		Vout.state.C[l]           = gC.state.data[0];
-		Vout.state.calc_entropy();
+		Vout.state.C[l] = gC.state.data[0];
 	}
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-//		(err_var>0.01)? Vout.state.svdDecompose(l) : Vout.state.polarDecompose(l);
-		Vout.state.svdDecompose(l);
-//		for (size_t s=0; s<Vout.state.A[GAUGE::C][l].size(); ++s)
-//		cout << "l=" << l << ", A=" << endl << Vout.state.A[GAUGE::C][l][s].print(false,15) << endl;
+		(err_var>0.01)? Vout.state.svdDecompose(l) : Vout.state.polarDecompose(l);
 	}
-	Vout.state.calc_entropy();
-	cout << Vout.state.test_ortho() << endl;
+	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
 	// Calculate energies
 //	Biped<Symmetry,ComplexMatrixType> Reigen = calc_LReigen(GAUGE::R, Vout.state.Acell[GAUGE::R], Vout.state.Acell[GAUGE::R], 
@@ -834,13 +751,13 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
 	eL = contract_LR(0, YLlast, Reigen) / H.volume();
 	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
-	cout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
 	
-	cout << test_LReigen(Vout) << endl;
-	
-//	cout << Reigen.print(true) << endl;
-//	cout << Reigen_.print(true) << endl;
-//	cout << endl;
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << Vout.state.test_ortho() << endl;
+		lout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
+		lout << test_LReigen(Vout) << endl;
+	}
 	
 	calc_errors(Vout);
 	Vout.energy = min(eL,eR);
@@ -848,133 +765,6 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	++N_iterations;
 	
 	// print stuff
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-	{
-		size_t standard_precision = cout.precision();
-		lout << "S=" << Vout.state.entropy().transpose() << endl;
-		lout << termcolor::bold << eigeninfo() << termcolor::reset << endl;
-		lout << IterationTimer.info("full iteration") << endl;
-		lout << endl;
-	}
-}
-
-template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax)
-{
-	Stopwatch<> PrepTimer;
-	
-	// general
-	N_sites = 1;
-	N_iterations = 0;
-	M = M_input; // bond dimension
-	dW = H.auxdim();
-	
-	// resize Vout
-	Vout.state = Umps<Symmetry,Scalar>(H.locBasis(0), Qtot, N_sites, M, Nqmax);
-	Vout.state.N_sv = M;
-	Vout.state.setRandom();
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Vout.state.svdDecompose(l);
-	}
-	Vout.state.calc_entropy();
-	
-	HeffA.resize(1);
-	Qbasis<Symmetry> inbase;
-	inbase.pullData(Vout.state.A[GAUGE::C][0],0);
-	Qbasis<Symmetry> outbase;
-	outbase.pullData(Vout.state.A[GAUGE::C][0],1);
-	HeffA[0].L.setIdentity(M, dW, 1, inbase);
-	HeffA[0].R.setIdentity(M, dW, 1, outbase);
-	
-	// initial energy & error
-	eoldL = std::nan("");
-	eoldR = std::nan("");
-	err_eigval = 1.;
-	err_var    = 1.;
-}
-
-template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
-{
-	assert(H.length() == 2);
-	Stopwatch<> IterationTimer;
-	
-	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Atmp;
-	contract_AA (Vout.state.A[GAUGE::C][0], H.locBasis(0), 
-	             Vout.state.A[GAUGE::C][0], H.locBasis(1), 
-	             Vout.state.Qtop(0), Vout.state.Qbot(0),
-	             Atmp);
-	for (size_t s=0; s<Atmp.size(); ++s)
-	{
-		Atmp[s] = Atmp[s].cleaned();
-	}
-	
-	if (HeffA[0].W.size() == 0)
-	{
-		contract_WW<Symmetry,Scalar> (H.W_at(0), H.locBasis(0), H.opBasis(0), 
-		                              H.W_at(1), H.locBasis(1), H.opBasis(1),
-		                              HeffA[0].W, HeffA[0].qloc, HeffA[0].qOp);
-	}
-	
-	Eigenstate<PivotVector<Symmetry,Scalar> > g;
-	g.state = PivotVector<Symmetry,Scalar>(Atmp);
-	
-//	if (HeffA[0].qlhs.size() == 0)
-	{
-		HeffA[0].qlhs.clear();
-		HeffA[0].qrhs.clear();
-		HeffA[0].factor_cgcs.clear();
-		precalc_blockStructure (HeffA[0].L, Atmp, HeffA[0].W, Atmp, HeffA[0].R, 
-		                        HeffA[0].qloc, HeffA[0].qOp, 
-		                        HeffA[0].qlhs, HeffA[0].qrhs, HeffA[0].factor_cgcs);
-	}
-	
-	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-	Lutz(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
-	Lutz.set_dimK(min(30ul, dim(g.state)));
-	Lutz.edgeState(HeffA[0], g, LANCZOS::EDGE::GROUND, DMRG::CONTROL::DEFAULT::eps_eigval, DMRG::CONTROL::DEFAULT::eps_coeff, false);
-	cout << Lutz.info() << endl;
-	
-	auto Cref = Vout.state.C[0];
-	
-	Mps<Symmetry,Scalar> Vtmp(2, H.locBasis(), Symmetry::qvacuum(), 2, Vout.state.Nqmax);
-	Vtmp.min_Nsv = M;
-	Vtmp.max_Nsv = M;
-	Vtmp.sweepStep2(DMRG::DIRECTION::RIGHT, 0, g.state.data, 
-	                Vout.state.A[GAUGE::L][0], Vout.state.A[GAUGE::R][0], Vout.state.C[0],
-	                true);
-	
-	Vout.state.C[0] = 1./sqrt((Vout.state.C[0].contract(Vout.state.C[0].adjoint())).trace()) * Vout.state.C[0];
-	
-	Vout.state.calc_entropy();
-	
-	for (size_t s=0; s<H.locBasis(0).size(); ++s)
-	{
-		Vout.state.A[GAUGE::C][0][s] = Vout.state.A[GAUGE::L][0][s].contract(Vout.state.C[0]);
-//		Vout.state.A[GAUGE::C][0][s] = Vout.state.C[0].contract(Vout.state.A[GAUGE::R][0][s]);
-	}
-	
-	++N_iterations;
-	
-	Vout.energy = 0.5*g.energy-Eold;
-	err_eigval = abs(Vout.energy-eL); // the energy density is the contribution of the new site
-	err_state = (Cref-Vout.state.C[0]).norm().sum();
-	err_var = err_state;
-	Eold = 0.5*g.energy;
-	eL = Vout.energy;
-	
-	lout << Vout.state.test_ortho() << endl;
-	
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > HeffLtmp, HeffRtmp;
-	contract_L(HeffA[0].L, Vout.state.A[GAUGE::L][0], H.W[0], Vout.state.A[GAUGE::L][0], H.locBasis(0), H.opBasis(0), HeffLtmp);
-	HeffA[0].L = HeffLtmp;
-//	cout << HeffLtmp.print(true) << endl;
-	contract_R(HeffA[0].R, Vout.state.A[GAUGE::R][0], H.W[1], Vout.state.A[GAUGE::R][0], H.locBasis(1), H.opBasis(1), HeffRtmp);
-	HeffA[0].R = HeffRtmp;
-	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		size_t standard_precision = cout.precision();
@@ -1043,11 +833,6 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		// Solve for CL
 		size_t lC = Vout.state.minus1modL(l);
 		gCL.state = PivotVector<Symmetry,Scalar>(Vout.state.C[lC]);
-//		MatrixXd Mtmp(M,M); Mtmp.setZero();
-//		for (size_t qin=0; qin<Vout.state.inbase[l].Nq(); ++qin)
-//		{
-//			gCL.state.data[0].push_back(qarray2<Symmetry::Nq>{Vout.state.inbase[l][qin], Vout.state.inbase[l][qin]}, Mtmp);
-//		}
 		
 		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
 		Luca(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
@@ -1063,33 +848,28 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 			lout << "e0(C)=" << setprecision(13) << gCL.energy << ", ratio=" << gCL.energy/Vout.energy << endl;
 		}
 		
-//		if (l==0)
-//		cout << gCR.state.data[0].print(true) << endl;
-//		if (l==1)
-//		cout << gCL.state.data[0].print(true) << endl;
-		
 		Vout.state.A[GAUGE::C][l] = gAC.state.data;
-		Vout.state.C[lC]          = gCL.state.data[0]; // C(l-1) = CL
-		Vout.state.C[l]           = gCR.state.data[0]; // C(l)   = CR
+		Vout.state.C[lC]          = gCL.state.data[0]; // C(l-1 mod L) = CL
+		Vout.state.C[l]           = gCR.state.data[0]; // C(l)         = CR
 		
 		(err_var>0.01)? Vout.state.svdDecompose(l,GAUGE::R) : Vout.state.polarDecompose(l,GAUGE::R); // AR from AC, CL
 		(err_var>0.01)? Vout.state.svdDecompose(l,GAUGE::L) : Vout.state.polarDecompose(l,GAUGE::L); // AL from AC, CR
 	}
-	Vout.state.calc_entropy();
-	cout << Vout.state.test_ortho() << endl;
 	
-//	for (size_t l=0; l<N_sites; ++l)
-//	for (size_t s=0; s<Vout.state.A[GAUGE::C][l].size(); ++s)
-//	cout << "l=" << l << ", s=" << s << ", A=" << endl << Vout.state.A[GAUGE::C][l][s].print(false,15) << endl;
+	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
 	// Calculate energies
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
 	eL = contract_LR(0, YLlast, Reigen) / H.volume();
 	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
-	cout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
 	
-	cout << test_LReigen(Vout) << endl;
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << Vout.state.test_ortho() << endl;
+		lout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
+		lout << test_LReigen(Vout) << endl;
+	}
 	
 	calc_errors(Vout);
 	Vout.energy = min(eL,eR);
@@ -1097,6 +877,212 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	++N_iterations;
 	
 	// print stuff
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	{
+		size_t standard_precision = cout.precision();
+		lout << "S=" << Vout.state.entropy().transpose() << endl;
+		lout << termcolor::bold << eigeninfo() << termcolor::reset << endl;
+		lout << IterationTimer.info("full iteration") << endl;
+		lout << endl;
+	}
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
+{
+	Stopwatch<> IterationTimer;
+	
+	// |R) and (L|
+	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
+	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
+	
+	// |h_R) and (h_L|
+	Biped<Symmetry,MatrixType> hR = make_hR(h2site, Vout.state.A[GAUGE::R][0], Vout.state.locBasis(0));
+	Biped<Symmetry,MatrixType> hL = make_hL(h2site, Vout.state.A[GAUGE::L][0], Vout.state.locBasis(0));
+	
+	// energies
+	eL = (Leigen.contract(hR)).trace();
+	eR = (hL.contract(Reigen)).trace();
+	
+	// |H_R) and (H_L|
+	Biped<Symmetry,MatrixType> HL, HR;
+	
+	// Solve the linear systems in eq. 14
+	Stopwatch<> GMresTimer;
+	solve_linear (GAUGE::L, Vout.state.A[GAUGE::L][0], hL, Reigen, Vout.state.locBasis(0), eR, HL);
+	solve_linear (GAUGE::R, Vout.state.A[GAUGE::R][0], hR, Leigen, Vout.state.locBasis(0), eL, HR);
+	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	{
+		lout << "linear systems" << GMresTimer.info() << endl;
+	}
+	
+	// Doesn't work like that!! boost::multi_array is shit!
+//	Heff[0] = PivumpsMatrix1<Symmetry,Scalar,Scalar>(HL, HR, h2site, Vout.state.A[GAUGE::L][0], Vout.state.A[GAUGE::R][0]);
+	
+	Heff[0].h.resize(boost::extents[D][D][D][D]);
+	Heff[0].h = h2site;
+	Heff[0].L = HL;
+	Heff[0].R = HR;
+	Heff[0].AL = Vout.state.A[GAUGE::L][0];
+	Heff[0].AR = Vout.state.A[GAUGE::R][0];
+	Heff[0].qloc = Vout.state.locBasis(0);
+	
+	double tolLanczosEigval, tolLanczosState;
+	set_LanczosTolerances(tolLanczosEigval,tolLanczosState);
+	
+	// Solve for AC (eq. 11)
+	Eigenstate<PivotVector<Symmetry,Scalar> > gAC;
+	gAC.state = PivotVector<Symmetry,Scalar>(Vout.state.A[GAUGE::C][0]);
+	
+	Stopwatch<> LanczosTimer;
+	LanczosSolver<PivumpsMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz1(LANCZOS::REORTHO::FULL);
+	Lutz1.set_dimK(min(30ul, dim(gAC.state)));
+	Lutz1.edgeState(Heff[0],gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
+	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	{
+		lout << "time" << LanczosTimer.info() << ", " << Lutz1.info() << endl;
+	}
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << "e0(AC)=" << setprecision(13) << gAC.energy << endl;
+	}
+	
+	// Solve for C (eq. 16)
+	Eigenstate<PivotVector<Symmetry,Scalar> > gC;
+	gC.state = PivotVector<Symmetry,Scalar>(Vout.state.C[0]);
+	
+	LanczosSolver<PivumpsMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz0(LANCZOS::REORTHO::FULL);
+	Lutz0.set_dimK(min(30ul, dim(gC.state)));
+	Lutz0.edgeState(PivumpsMatrix0(Heff[0]),gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
+	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	{
+		lout << "time" << LanczosTimer.info() << ", " << Lutz0.info() << endl;
+	}
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << "e0(C)=" << setprecision(13) << gC.energy << endl;
+	}
+	
+	// Calculate AL and AR from AC, C
+	Vout.state.A[GAUGE::C][0] = gAC.state.data;
+	Vout.state.C[0]           = gC.state.data[0];
+	(err_var>0.01)? Vout.state.svdDecompose(0) : Vout.state.polarDecompose(0);
+	
+	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
+	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << Vout.state.test_ortho() << endl;
+		lout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
+		lout << test_LReigen(Vout) << endl;
+	}
+	
+	calc_errors(Vout);
+	Vout.energy = min(eL,eR);
+	
+	++N_iterations;
+	
+	// Print stuff
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	{
+		size_t standard_precision = cout.precision();
+		lout << "S=" << Vout.state.entropy().transpose() << endl;
+		lout << eigeninfo() << endl;
+		lout << IterationTimer.info("full iteration") << endl;
+		lout << endl;
+	}
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
+{
+	assert(H.length() == 2);
+	Stopwatch<> IterationTimer;
+	
+	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Atmp;
+	contract_AA (Vout.state.A[GAUGE::C][0], H.locBasis(0), 
+	             Vout.state.A[GAUGE::C][0], H.locBasis(1), 
+	             Vout.state.Qtop(0), Vout.state.Qbot(0),
+	             Atmp);
+	for (size_t s=0; s<Atmp.size(); ++s)
+	{
+		Atmp[s] = Atmp[s].cleaned();
+	}
+	
+	if (HeffA[0].W.size() == 0)
+	{
+		contract_WW<Symmetry,Scalar> (H.W_at(0), H.locBasis(0), H.opBasis(0), 
+		                              H.W_at(1), H.locBasis(1), H.opBasis(1),
+		                              HeffA[0].W, HeffA[0].qloc, HeffA[0].qOp);
+	}
+	
+	Eigenstate<PivotVector<Symmetry,Scalar> > g;
+	g.state = PivotVector<Symmetry,Scalar>(Atmp);
+	
+//	if (HeffA[0].qlhs.size() == 0)
+	{
+		HeffA[0].qlhs.clear();
+		HeffA[0].qrhs.clear();
+		HeffA[0].factor_cgcs.clear();
+		precalc_blockStructure (HeffA[0].L, Atmp, HeffA[0].W, Atmp, HeffA[0].R, 
+		                        HeffA[0].qloc, HeffA[0].qOp, 
+		                        HeffA[0].qlhs, HeffA[0].qrhs, HeffA[0].factor_cgcs);
+	}
+	
+	Stopwatch<> LanczosTimer;
+	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
+	Lutz(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
+	Lutz.set_dimK(min(30ul, dim(g.state)));
+	Lutz.edgeState(HeffA[0], g, LANCZOS::EDGE::GROUND, DMRG::CONTROL::DEFAULT::eps_eigval, DMRG::CONTROL::DEFAULT::eps_coeff, false);
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	{
+		lout << "time" << LanczosTimer.info() << ", " << Lutz.info() << endl;
+	}
+	
+	auto Cref = Vout.state.C[0];
+	
+	Mps<Symmetry,Scalar> Vtmp(2, H.locBasis(), Symmetry::qvacuum(), 2, Vout.state.Nqmax);
+	Vtmp.min_Nsv = M;
+	Vtmp.max_Nsv = M;
+	Vtmp.sweepStep2(DMRG::DIRECTION::RIGHT, 0, g.state.data, 
+	                Vout.state.A[GAUGE::L][0], Vout.state.A[GAUGE::R][0], Vout.state.C[0],
+	                true);
+	
+	Vout.state.C[0] = 1./sqrt((Vout.state.C[0].contract(Vout.state.C[0].adjoint())).trace()) * Vout.state.C[0];
+	
+	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
+	
+	for (size_t s=0; s<H.locBasis(0).size(); ++s)
+	{
+		Vout.state.A[GAUGE::C][0][s] = Vout.state.A[GAUGE::L][0][s].contract(Vout.state.C[0]);
+//		Vout.state.A[GAUGE::C][0][s] = Vout.state.C[0].contract(Vout.state.A[GAUGE::R][0][s]);
+	}
+	
+	++N_iterations;
+	
+	Vout.energy = 0.5*g.energy-Eold;
+	err_eigval = abs(Vout.energy-eL); // the energy density is the contribution of the new site
+	err_state = (Cref-Vout.state.C[0]).norm().sum();
+	err_var = err_state;
+	Eold = 0.5*g.energy;
+	eL = Vout.energy;
+	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << Vout.state.test_ortho() << endl;
+	}
+	
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > HeffLtmp, HeffRtmp;
+	contract_L(HeffA[0].L, Vout.state.A[GAUGE::L][0], H.W[0], Vout.state.A[GAUGE::L][0], H.locBasis(0), H.opBasis(0), HeffLtmp);
+	HeffA[0].L = HeffLtmp;
+	contract_R(HeffA[0].R, Vout.state.A[GAUGE::R][0], H.W[1], Vout.state.A[GAUGE::R][0], H.locBasis(1), H.opBasis(1), HeffRtmp);
+	HeffA[0].R = HeffRtmp;
+	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		size_t standard_precision = cout.precision();
@@ -1130,40 +1116,6 @@ test_LReigen (const Eigenstate<Umps<Symmetry,Scalar> > &Vout) const
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-edgeState (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
-           qarray<Symmetry::Nq> Qtot, double tol_eigval_input, double tol_var_input, 
-           size_t M, size_t Nqmax, size_t max_iterations, size_t min_iterations)
-{
-	tol_eigval = tol_eigval_input;
-	tol_var = tol_var_input;
-	
-	prepare(h2site, qloc, Vout, Qtot, M, Nqmax);
-	
-	Stopwatch<> GlobalTimer;
-	
-	while (((err_eigval >= tol_eigval or err_var >= tol_var) and N_iterations < max_iterations) or N_iterations < min_iterations)
-	{
-		iteration_h(Vout);
-		write_log();
-	}
-	write_log(true); // force log on exit
-	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-	{
-		lout << GlobalTimer.info("total runtime") << endl;
-	}
-	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
-	{
-		size_t standard_precision = cout.precision();
-		lout << "emin=" << setprecision(13) << Vout.energy << setprecision(standard_precision) << endl;
-		lout << Vout.state.info() << endl;
-		lout << endl;
-	}
-}
-
-template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, 
            double tol_eigval_input, double tol_var_input, size_t M, size_t Nqmax, 
            size_t max_iterations, size_t min_iterations)
@@ -1171,29 +1123,62 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 	if (CHOSEN_VERBOSITY>=2)
 	{
 		lout << endl << termcolor::colorize << termcolor::bold
-		 << "——————————————————————————————————————————VUMPS algorithm——————————————————————————————————————————"
+		 << "——————————————————————————————————————————VUMPS algorithm " << CHOSEN_ALGORITHM << "——————————————————————————————————————————"
 		 <<  termcolor::reset << endl;
 	}
 	
 	tol_eigval = tol_eigval_input;
 	tol_var = tol_var_input;
 	
-	prepare(H, Vout, Qtot, M, Nqmax);
-//	prepare_idmrg(H, Vout, Qtot, M, Nqmax);
+	if (USER_SET_ALGORITHM and CHOSEN_ALGORITHM == UMPS_ALG::IDMRG)
+	{
+		prepare_idmrg(H, Vout, Qtot, M, Nqmax);
+	}
+	else if (USER_SET_ALGORITHM and CHOSEN_ALGORITHM == UMPS_ALG::H2SITE)
+	{
+		assert(H.length() == 2 and "Need L=2 for H2SITE!");
+		prepare_h2site(H.H2site(0,true), H.locBasis(0), Vout, Qtot, M, Nqmax);
+	}
+	else
+	{
+		prepare(H, Vout, Qtot, M, Nqmax);
+	}
 	
 	Stopwatch<> GlobalTimer;
 	
 	while (((err_eigval >= tol_eigval or err_var >= tol_var) and N_iterations < max_iterations) or N_iterations < min_iterations)
 	{
-		if (N_sites == 1)
+		if (USER_SET_ALGORITHM) // custom choice of algorithm
 		{
-			iteration_parallel(H,Vout);
+			if (CHOSEN_ALGORITHM == UMPS_ALG::PARALLEL)
+			{
+				iteration_parallel(H,Vout);
+			}
+			else if (CHOSEN_ALGORITHM == UMPS_ALG::SEQUENTIAL)
+			{
+				iteration_sequential(H,Vout);
+			}
+			else if (CHOSEN_ALGORITHM == UMPS_ALG::H2SITE)
+			{
+				iteration_h2site(Vout);
+			}
+			else if (CHOSEN_ALGORITHM == UMPS_ALG::IDMRG)
+			{
+				iteration_idmrg(H,Vout);
+			}
 		}
-		else
+		else // dynamical choice: L=1 parallel, L>1 sequential
 		{
-			iteration_sequential(H,Vout);
+			if (N_sites == 1)
+			{
+				iteration_parallel(H,Vout);
+			}
+			else
+			{
+				iteration_sequential(H,Vout);
+			}
 		}
-//		iteration_idmrg(H,Vout);
+		
 		write_log();
 	}
 	write_log(true); // force log on exit
@@ -1244,7 +1229,7 @@ solve_linear (GAUGE::OPTION gauge,
 //	Gimli.set_dimK(min(dimK,dim(bvec)));
 //	Gimli.set_dimK(max(dimK,10ul));
 	
-	Gimli.set_dimK(min(200ul,dim(bvec)));
+	Gimli.set_dimK(min(100ul,dim(bvec)));
 	TransferVector<Symmetry,Scalar> LRres_tmp;
 	Gimli.solve_linear(T, bvec, LRres_tmp);
 	LRres = LRres_tmp.data;
@@ -1288,7 +1273,7 @@ solve_linear (GAUGE::OPTION gauge,
 //	Gimli.set_dimK(min(dimK,dim(bvec)));
 //	Gimli.set_dimK(max(dimK,10ul));
 	
-	Gimli.set_dimK(min(200ul,dim(bvec)));
+	Gimli.set_dimK(min(100ul,dim(bvec)));
 	PivotVector<Symmetry,Scalar> LRres_tmp;
 	Gimli.solve_linear(T,bvec,LRres_tmp);
 	LRres = LRres_tmp.data[0];

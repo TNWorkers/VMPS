@@ -12,37 +12,28 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
 	
-	auto Obs = O;
-	Obs.transform_base(Vket.Qtarget(),false);
-	
-//	B.setIdentity(Vket.get_frst_rows(),Vbra.get_frst_rows(),1,1);
-	B.setIdentity(Vket.get_frst_rows(), Obs.auxdim(), 1, Vket.inBasis(0));
-	for (size_t l=0; l<Obs.length(); ++l)
+	B.setIdentity(Vbra.get_frst_rows(),Vbra.get_frst_rows(),1,1);
+	for (size_t l=0; l<O.length(); ++l)
 	{
 		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
-		contract_L(B, Vbra.A_at(g,l%Vket.length()), Obs.W_at(l), Vket.A_at(g,l%Vket.length()), Obs.locBasis(l), Obs.opBasis(l), Bnext);
+		contract_L(B, Vbra.A_at(g,l%Vket.length()), O.W_at(l), Vket.A_at(g,l%Vket.length()), O.locBasis(l), O.opBasis(l), Bnext);
 		
 		B.clear();
 		B = Bnext;
 		Bnext.clear();
 	}
 	
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdR;
-	IdR.setIdentity(Vket.get_last_cols(), Obs.auxdim(), 1, Vket.outBasis((Obs.length()-1)%Vket.length()));
-	
-	return contract_LR(B,IdR);
-	
-//	if (B.dim == 1)
-//	{
-//		return B.block[0][0][0].trace();
-//	}
-//	else
-//	{
-//		lout << "Warning: Result of VUMPS-contraction in <φ|O|ψ> has several blocks, returning 0!" << endl;
-//		lout << "UMPS in question: " << Vket.info() << endl;
-//		lout << "MPO in question: "  << O.info() << endl;
-//		return 0;
-//	}
+	if (B.dim == 1)
+	{
+		return B.block[0][0][0].trace();
+	}
+	else
+	{
+		lout << "Warning: Result of VUMPS-contraction in <φ|O|ψ> has several blocks, returning 0!" << endl;
+		lout << "UMPS in question: " << Vket.info() << endl;
+		lout << "MPO in question: "  << O.info() << endl;
+		return 0;
+	}
 }
 
 /**Calculates the matrix element for a vector of MPOs, summing up the result.*/
