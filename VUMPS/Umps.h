@@ -13,8 +13,8 @@
 #include <iostream>
 #include <fstream>
 
-#include "VUmps/VumpsTypedefs.h"
-#include "VUmps/VumpsTransferMatrix.h"
+#include "VUMPS/VumpsTypedefs.h"
+#include "VUMPS/VumpsTransferMatrix.h"
 #include "tensors/Biped.h"
 #include "LanczosSolver.h" // from LANCZOS
 #include "ArnoldiSolver.h" // from LANCZOS
@@ -146,13 +146,16 @@ private:
 	vector<vector<qarray<Symmetry::Nq> > > inset;
 	vector<vector<qarray<Symmetry::Nq> > > outset;
 	
+	/**local basis*/
 	vector<vector<qarray<Symmetry::Nq> > > qloc;
-	std::array<string,Symmetry::Nq> qlabel = {};
 	
-	/**Umps-tensors in the three gauges \p L, \p R, \p C*/
+	/**A-tensors in the three gauges \p L, \p R, \p C*/
 	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> A; // A[L/R/C][l][s].block[q]
 	
+	/**Contracted and saved A-tensors (\p L and \p R) of the whole unit cell.*/
 	std::array<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >,2> Acell;
+	
+	/**Basis of the whole unit cell.*/
 	vector<qarray<Symmetry::Nq> > qlocCell;
 	
 	/**center matrix \p C*/

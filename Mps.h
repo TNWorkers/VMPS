@@ -198,14 +198,14 @@ public:
 	template<typename SymmetryBig>
 	void reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs);
 	
-	/**
-	 * Takes an Mpo and flattens/purifies it into this Mps (to do time propagation in the Heisenberg picture, for example).
-	 * \param Op : the Mpo to be flattened
-	 * \param USE_SQUARE : if \p true, takes the saved square of the Mpo
-	 * \warning: Long time since this has been tested. Might be useful in the future, though.
-	 */
-	template<size_t MpoNq> void setFlattenedMpo (const Mpo<MpoNq,Scalar> &Op, bool USE_SQUARE=false);
-	///\{
+//	/**
+//	 * Takes an Mpo and flattens/purifies it into this Mps (to do time propagation in the Heisenberg picture, for example).
+//	 * \param Op : the Mpo to be flattened
+//	 * \param USE_SQUARE : if \p true, takes the saved square of the Mpo
+//	 * \warning: Long time since this has been tested. Might be useful in the future, though.
+//	 */
+//	template<size_t MpoNq> void setFlattenedMpo (const Mpo<MpoNq,Scalar> &Op, bool USE_SQUARE=false);
+	///\}
 	
 	//---print infos---
 	
