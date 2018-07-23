@@ -1,5 +1,5 @@
-#ifndef VANILLA_UMPS
-#define VANILLA_UMPS
+#ifndef VANILLA_Umps
+#define VANILLA_Umps
 
 #if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
 	#include "LapackWrappers.h"
@@ -13,8 +13,8 @@
 #include <iostream>
 #include <fstream>
 
-#include "VUMPS/VumpsTypedefs.h"
-#include "VUMPS/VumpsTransferMatrix.h"
+#include "VUmps/VumpsTypedefs.h"
+#include "VUmps/VumpsTransferMatrix.h"
 #include "tensors/Biped.h"
 #include "LanczosSolver.h" // from LANCZOS
 #include "ArnoldiSolver.h" // from LANCZOS
@@ -26,7 +26,7 @@
 #include "PolychromaticConsole.h" // from HELPERS
 #include "RandomVector.h" // from LANCZOS
 
-/**Uniform Matrix Product State. Analogue of the Mps class. Currently without symmetries, the template parameter \p Symmetry can only be \p Sym::U0.
+/**Uniform Matrix Product State. Analogue of the Mps class.
 \ingroup VUMPS
 \describe_Symmetry
 \describe_Scalar*/
@@ -40,51 +40,53 @@ class Umps
 	
 public:
 	
+	/**Does nothing.*/
 	Umps<Symmetry,Scalar>(){};
 	
-	/**Constructs a UMPS with fixed bond dimension with the info from the Hamiltonian.*/
+	/**Constructs a Umps with fixed bond dimension with the info from the Hamiltonian.*/
 	template<typename Hamiltonian> Umps (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
 	
-	/**Constructs a UMPS with fixed bond dimension with a given basis.*/
+	/**Constructs a Umps with fixed bond dimension with a given basis.*/
 	Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
 	
 	/**\describe_info*/
 	string info() const;
 	
+	/**Prints a graph. See Mps::graph.*/
 	void graph (string filename) const;
 	
-	/**Tests the orthogonality of the UMPS.*/
+	/**Tests the orthogonality of the Umps.*/
 	string test_ortho (double tol=1e-6) const;
 	
 	/**Sets all matrices  \f$A_L\f$, \f$A_R\f$, \f$A_C\f$, \f$C\f$) to random using boost's uniform distribution from -1 to 1.*/
 	void setRandom();
 	
+	/**Normalizes the state, so that \f$Tr C^{\dagger} C = 1\f$*/
 	void normalize_C();
 	
-	/**Resizes all containers to \p N_sites, the bond dimension to \p Dmax and sets all quantum numbers to vacuum.*/
+	/**Resizes all containers to \p N_sites, the bond dimension to \p Dmax and sets \p Nqmax blocks per site.*/
 	void resize (size_t Dmax_input, size_t Nqmax_input);
 	
-	/**Calculates \f$A_L\f$ and \f$A_R\f$ from \f$A_C\f$ and \f$C\f$ at site \p loc using SVD (eq. 19,20). Is supposed to be optimal, but not accurate. Calculates the singular values along the way.*/
+	/**Calculates \f$A_L\f$ and \f$A_R\f$ from \f$A_C\f$ and \f$C\f$ at site \p loc using SVD (eqs. (19),(20)). 
+	* This is supposed to be optimal, but not accurate.*/
 	void svdDecompose (size_t loc, GAUGE::OPTION gauge = GAUGE::C);
 	
-	/**Calculates \f$A_L\f$ and \f$A_R\f$ from \f$A_C\f$ and \f$C\f$ at site \p loc using the polar decomposition (eq. 21,22). Is supposed to be non-optimal, but accurate.*/
+	/**Calculates \f$A_L\f$ and \f$A_R\f$ from \f$A_C\f$ and \f$C\f$ at site \p loc using the polar decomposition (eq. (21),(22)). 
+	* This is supposed to be non-optimal, but accurate.*/
 	void polarDecompose (size_t loc, GAUGE::OPTION gauge = GAUGE::C);
 	
-	/**Returns the singular values at site \p loc.*/
-	VectorXd singularValues (size_t loc=0);
-	
-	/**Returns the entropy at site \p loc.*/
+	/**Returns the entropy for all sites.*/
 	VectorXd entropy() const {return S;};
 	
-	/**Returns the local basis at site \p loc.*/
+	/**Returns the local basis.*/
 	inline vector<qarray<Symmetry::Nq> > locBasis (size_t loc) const {return qloc[loc];}
-	
-	/**Returns the whole local basis at site \p loc.*/
 	inline vector<vector<qarray<Symmetry::Nq> > > locBasis()   const {return qloc;}
 	
+	/**Returns the ingoing basis.*/
 	inline Qbasis<Symmetry> inBasis (size_t loc) const {return inbase[loc];}
 	inline vector<Qbasis<Symmetry> > inBasis()   const {return inbase;}
 	
+	/**Returns the outgoing basis.*/
 	inline Qbasis<Symmetry> outBasis (size_t loc) const {return outbase[loc];}
 	inline vector<Qbasis<Symmetry> > outBasis()   const {return outbase;}
 	
@@ -97,9 +99,10 @@ public:
 	/**Returns the amount of sites, i.e. the size of the unit cell.*/
 	size_t length() const {return N_sites;}
 	
-	/**Calculates the left and right decomposition error as \f$\epsilon_L=\big|A_C-A_LC\big|^2\f$ and \f$\epsilon_R=\big|A_C-CA_R\big|^2\f$ (eq. 18).*/
+	/**Calculates the left and right decomposition error as \f$\epsilon_L=\big|A_C-A_LC\big|^2\f$ and \f$\epsilon_R=\big|A_C-CA_R\big|^2\f$ (eq. (18)).*/
 	Scalar calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const;
 	
+	/**Calculates the appropriate bond dimension.*/
 	size_t calc_Dmax() const;
 	size_t calc_Mmax() const;
 	size_t calc_fullMmax() const;
@@ -107,59 +110,64 @@ public:
 	/**\describe_memory*/
 	double memory (MEMUNIT memunit) const;
 	
-	/**Calculates the scalar product with another UMPS by finding the dominant eigenvalue of the transfer matrix. 
+	/**Calculates the scalar product with another Umps by finding the dominant eigenvalue of the transfer matrix. 
 	See arXiv:0804.2509 and Phys. Rev. B 78, 155117.*/
 	double dot (const Umps<Symmetry,Scalar> &Vket) const;
 	
 	/**Returns \f$A_L\f$, \f$A_R\f$ or \f$A_C\f$ at site \p loc as const ref.*/
 	const vector<Biped<Symmetry,MatrixType> > &A_at (GAUGE::OPTION g, size_t loc) const {return A[g][loc];};
 	
+	/**quantum number bounds for compatibility in contract_AA*/
 	qarray<Symmetry::Nq> Qtop (size_t loc) const;
 	qarray<Symmetry::Nq> Qbot (size_t loc) const;
 	
+	/**Safely calculates \f$l-1 mod L\f$ without overflow for \p size_t.*/
 	inline size_t minus1modL (size_t l) const {return (l==0)? N_sites-1 : (l-1);}
 	
-	/**Returns the total quantum number of the UMPS.*/
+	/**Returns the total quantum number of the Umps.*/
 	inline qarray<Nq> Qtarget() const {return Qtot;};
 	
 private:
 	
+	/**parameter*/
 	size_t N_sites;
 	size_t Dmax, Nqmax;
 	double eps_svd = 1e-7;
 	size_t N_sv;
 	qarray<Nq> Qtot;
 	
+	/**Calculate entropy at site \p loc.*/
 	void calc_entropy (size_t loc, bool PRINT=false);
 	
+	/**Calculate entropy for all sites.*/
 	void calc_entropy (bool PRINT=false) {for (size_t l=0; l<N_sites; ++l) calc_entropy(l,PRINT);};
 	
-	// sets of all unique incoming & outgoing indices for convenience
+	/**Sets of all unique incoming & outgoing indices for convenience*/
 	vector<vector<qarray<Symmetry::Nq> > > inset;
 	vector<vector<qarray<Symmetry::Nq> > > outset;
 	
 	vector<vector<qarray<Symmetry::Nq> > > qloc;
 	std::array<string,Symmetry::Nq> qlabel = {};
 	
-	// UMPS-tensors in the three gauges L,R,C
+	/**Umps-tensors in the three gauges \p L, \p R, \p C*/
 	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> A; // A[L/R/C][l][s].block[q]
 	
 	std::array<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >,2> Acell;
 	vector<qarray<Symmetry::Nq> > qlocCell;
 	
-	// center matrix
+	/**center matrix \p C*/
 	vector<Biped<Symmetry,MatrixType> >                        C; // zero-site part C[l]
 	
-	// null space (see eq. 25 and surrounding text)
+	/**null space (see eq. (25) and surrounding text)*/
 	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> N; // N[L/R/C][l][s].block[q]
 	
-//	vector<VectorXd> Csingular;
 	VectorXd S;
 	
-	// Bases on all ingoing and outgoing legs of the MPS
+	/**bases on all ingoing and outgoing legs of the Umps*/
 	vector<Qbasis<Symmetry> > inbase;
 	vector<Qbasis<Symmetry> > outbase;
 	
+	/**update basis*/
 	void update_inbase  (size_t loc);
 	void update_outbase (size_t loc);
 	void update_inbase()  { for(size_t l=0; l<this->N_sites; l++) {update_inbase(l); } }
@@ -527,7 +535,7 @@ graph (string filename) const
 	ss << "digraph G\n{\n";
 	ss << "rankdir = LR;\n";
 	ss << "labelloc=\"t\";\n";
-	ss << "label=\"UMPS: cell size=" << N_sites << ", Q=(";
+	ss << "label=\"Umps: cell size=" << N_sites << ", Q=(";
 	for (size_t q=0; q<Nq; ++q)
 	{
 		ss << Symmetry::kind()[q];
@@ -830,14 +838,6 @@ calc_entropy (size_t loc, bool PRINT)
 		lout << endl;
 	}
 }
-
-//template<typename Symmetry, typename Scalar>
-//VectorXd Umps<Symmetry,Scalar>::
-//singularValues (size_t loc)
-//{
-//	assert(loc<N_sites);
-//	return Csingular[loc];
-//}
 
 template<typename Symmetry, typename Scalar>
 Scalar Umps<Symmetry,Scalar>::

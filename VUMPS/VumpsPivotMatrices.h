@@ -6,7 +6,7 @@
 
 //-----------<definitions>-----------
 
-/**Structure to update \f$A_C\f$ (eq. 11) with a 2-site Hamiltonian. Contains \f$A_L\f$, \f$A_L\f$ and \f$H_L\f$ (= \p L), \f$H_R\f$ (= \p R).
+/**Structure to update \f$A_C\f$ (eq. (11)) with a 2-site Hamiltonian. Contains \f$A_L\f$, \f$A_L\f$ and \f$H_L\f$ (= \p L), \f$H_R\f$ (= \p R).
 \ingroup VUMPS
 */
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>
@@ -38,7 +38,7 @@ struct PivumpsMatrix1
 	vector<qarray<Symmetry::Nq> > qloc;
 };
 
-/**Structure to update \f$C\f$ (eq. 16) with a 2-site Hamiltonian. Contains \f$A_L\f$, \f$A_L\f$ and \f$H_L\f$ (= \p L), \f$H_R\f$ (= \p R).
+/**Structure to update \f$C\f$ (eq. (16)) with a 2-site Hamiltonian. Contains \f$A_L\f$, \f$A_L\f$ and \f$H_L\f$ (= \p L), \f$H_R\f$ (= \p R).
 \ingroup VUMPS
 */
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>
@@ -62,7 +62,7 @@ struct PivumpsMatrix0
 };
 //-----------</definitions>-----------
 
-/**Performs the local update of \f$A_C\f$ (eq. 11) with a 2-site Hamiltonian.*/
+/**Performs the local update of \f$A_C\f$ (eq. (11)) with a 2-site Hamiltonian.*/
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void HxV (const PivumpsMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
 {

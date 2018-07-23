@@ -35,7 +35,7 @@ class Mps : public DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >
 	static constexpr size_t Nq = Symmetry::Nq;
 	typedef typename Symmetry::qType qType;
 	
-	// Note: Cannot partially specialize template friends (or anything else, really).
+	// Note: Cannot partially specialize template friends
 	template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class DmrgSolver;
 	template<typename Symmetry_, typename S1, typename S2> friend class MpsCompressor;
 	template<typename H, typename Symmetry_, typename S1, typename S2, typename V> friend class TDVPPropagator;
@@ -45,10 +45,12 @@ class Mps : public DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >
 	void OxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 	template<typename Symmetry_, typename S1, typename S2> friend 
 	void OxV_exact (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout);
-
+	
 	template<typename Symmetry_, typename S_> friend class Mps; // in order to exchange data between real & complex Mps
 	
 public:
+	
+	//---constructors---
 	
 	/**Does nothing.*/
 	Mps();
@@ -59,24 +61,24 @@ public:
 	 * \param qloc_input : local basis
 	 * \param Qtot_input : target quantum number
 	 * \param N_phys_input : the volume of the system (normally (chain length) * (chain width))
-	 * \param Qmax_input : Maximal number of symmetry blocks per site in the Mps
+	 * \param Nqmax_input : maximal initial number of symmetry blocks per site in the Mps
 	 */
-	Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Qmax_input);
+	Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Nqmax_input);
 	
 	/** 
-	 * Construct by pulling info from an MPO.
+	 * Construct by pulling info from an Mpo.
 	 * \param H : chain length and local basis will be retrieved from this Mpo
 	 * \param Dmax : size cutoff (per subspace)
 	 * \param Qtot_input : target quantum number
-	 * \param Qmax_input : Maximal number of symmetry blocks per site in the Mps
+	 * \param Nqmax_input : maximal initial number of symmetry blocks per site in the Mps
 	 */
 	template<typename Hamiltonian> Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, size_t Nqmax_input);
 	
 	/** 
-	 * Construct by explicitly provide the A-matrices. Basically only for testing purposes.
+	 * Construct by explicitly providing the A-matrices. Basically only for testing purposes.
 	 * \param L_input : chain length
-	 * \param As : vector of vector of A matrices. (For all sites, and for all local quantumnumbers)
-	 * \param qloc_input : vector of local basis for all sites.
+	 * \param As : vector of vectors of A matrices ([site][local basis index])
+	 * \param qloc_input : vector of local bases for all sites
 	 * \param Qtot_input : target quantum number
 	 * \param N_phys_input : the volume of the system (normally (chain length) * (chain width))
 	 */
@@ -86,11 +88,13 @@ public:
 	#ifdef USE_HDF5_STORAGE
 	/**
 	 * Construct from an external HDF5 file named <FILENAME>.h5.
-	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
-	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
+	 * \param filename : The format is fixed to .h5, just enter the name without the format.
+	 * \warning This method requires hdf5. For more information see https://www.hdfgroup.org/.
 	 */
 	Mps (string filename) {load(filename);}
 	#endif //USE_HDF5_STORAGE
+	
+	//---set and modify---
 	
 	///\{
 	/**
@@ -115,21 +119,20 @@ public:
 	#ifdef USE_HDF5_STORAGE
 	///\{
 	/**
-	 * Save all information of the MPS to the file <FILENAME>.h5.
-	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
-	 * \param info : Additional information about the used model. Enter the info()-method of the used MPO here.
-	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
-	 * \note For the filename you should use the info string of the current used Mpo.
+	 * Save all information of the Mps to the file <FILENAME>.h5.
+	 * \param filename : The format is fixed to .h5, Just enter the name without the format.
+	 * \param info : Additional information about the used model. Enter the info()-method of the used Mpo here.
+	 * \warning This method requires hdf5. For more information see https://www.hdfgroup.org/.
+	 * \note For the filename you should use the info string of the currently used Mpo.
 	 */
 	void save (string filename,string info="none");
 	
 	/**
-	 * Reads all information of the MPS from the file <FILENAME>.h5.
+	 * Reads all information of the Mps from the file <FILENAME>.h5.
 	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	 */
 	void load (string filename);
-	///\}
 	#endif //USE_HDF5_STORAGE
 	
 	/**
@@ -137,15 +140,16 @@ public:
 	 * \param L_input : chain length
 	 * \param qloc_input : local basis
 	 * \param Qtot_input : target quantum number
-	 * \param Nqmax_input : Maximum number of symmetry blocks in the Mps per site.
+	 * \param Nqmax_input : maximum initial number of symmetry blocks in the Mps per site
 	 */
 	void outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t Nqmax_input=500);
 	
 	/**
-	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. Pulls info from an Mpo.
+	 * Determines all subspace quantum numbers and resizes the containers for the blocks. 
+	 * Memory for the matrices remains uninitiated. Pulls info from an Mpo.
 	 * \param H : chain length and local basis will be retrieved from this Mpo
 	 * \param Qtot_input : target quantum number
-	 * \param Nqmax_input : Maximum number of symmetry blocks in the Mps per site.
+	 * \param Nqmax_input : maximum initial number of symmetry blocks in the Mps per site
 	 */
 	template<typename Hamiltonian> void outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t Nqmax_input=500);
 	
@@ -159,37 +163,51 @@ public:
 	/**
 	 * Resizes the block matrices.
 	 * \param Dmax : size cutoff (per subspace)
+	 * \note The edges will have the analytically exact size, which may be smaller than \p Dmax.
 	 */
 	void innerResize (size_t Dmax);
 	
 	/**
 	 * Sets the Mps from a product state configuration.
 	 * \param H : Hamiltonian, needed for Mps::outerResize
-	 * \param config : classical configuration, a vector of \p qarray
+	 * \param config : classical configuration, a vector of \p qarray, e.g. (+1,-1,+1,-1,...) for the Néel state
 	 */
 	template<typename Hamiltonian> void setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config);
 	
 	/**
 	 * Finds broken paths through the quantum number subspaces and mends them by resizing with appropriate zeros. 
-	 * The chain length and total quantum number are determined from \p config.
 	 * This is needed when applying an Mpo which changes quantum numbers, making some paths impossible. 
 	 * For example, one can add a particle at the beginning or end of the chain with the same target particle number, 
 	 * but if an annihilator is applied in the middle, only the first path survives.
+	 * \warning: deprecated!
 	 */
 	void mend();
 	
 	/**
 	 * Sets the A-matrix at a given site by performing SVD on the C-tensor.
-	 * \warning Not implemented for non abelian symmetries.
+	 * \warning Not implemented for non-abelian symmetries, deprecated!
 	 */
 	void set_A_from_C (size_t loc, const vector<Tripod<Symmetry,MatrixType> > &C, DMRG::BROOM::OPTION TOOL=DMRG::BROOM::SVD);
 	
+	/**
+	 * A try to reduce the symmetry, e.g. from U(1) to U(0).
+	 * \param iq: the symmetry index to be removed
+	 * \param PsiRhs: the Mps with the larger symmetry as input, writes to this Mps
+	 * \warning: Does not really work. Unclear if possible at all.
+	 */
 	template<typename SymmetryBig>
 	void reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs);
 	
-	// \param Op : 
-	// \param USE_SQUARE :
-	// template<size_t MpoNq> void setFlattenedMpo (const Mpo<MpoNq,Scalar> &Op, bool USE_SQUARE=false);
+	/**
+	 * Takes an Mpo and flattens/purifies it into this Mps (to do time propagation in the Heisenberg picture, for example).
+	 * \param Op : the Mpo to be flattened
+	 * \param USE_SQUARE : if \p true, takes the saved square of the Mpo
+	 * \warning: Long time since this has been tested. Might be useful in the future, though.
+	 */
+	template<size_t MpoNq> void setFlattenedMpo (const Mpo<MpoNq,Scalar> &Op, bool USE_SQUARE=false);
+	///\{
+	
+	//---print infos---
 	
 	///\{
 	/**
@@ -219,16 +237,19 @@ public:
 	 * \param filename : gets a ".dot" extension automatically
 	 */
 	void graph (string filename) const;
-		
+	
 	/**
 	 * Determines the maximal bond dimension per site (sum of \p A.rows or \p A.cols over all subspaces).
 	 */
 	size_t calc_Mmax() const;
 	
+	/**
+	 * For SU(2) symmetries, determines the equivalent U(1) bond dimension.
+	 */
 	size_t calc_fullMmax() const;
 	
 	/**
-	 * Determines the maximal amount of rows or columns per site and subspace.
+	 * Determines the maximal amount of rows or columns per site and per subspace.
 	 */
 	size_t calc_Dmax() const;
 	
@@ -246,35 +267,37 @@ public:
 	double memory (MEMUNIT memunit=GB) const;
 	///\}
 	
+	//---linear algebra operations---
+	
 	///\{
 	/**
 	 * Adds another Mps to the given one and scales by \p alpha, i\.e\. performs \f$ \mathrel{+}= \alpha \cdot V_{in}\f$.
 	 * \param alpha : scalar for scaling
 	 * \param Vin : Mps to be added
 	 * \param SVD_COMPRESS : If \p true, the resulting Mps is compressed using SVD. If \p false, the summation is exact (direct sum of the matrices).
-	 * \warning Not implemented for non abelian symmetries.
+	 * \warning Not implemented for non-abelian symmetries.
 	 */
 	template<typename OtherScalar> void addScale (OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, bool SVD_COMPRESS=false);
 	
 	/**
-	 *Performs Mps::addScale with \p alpha = 1.
-	 * \warning Not implemented for non abelian symmetries.
+	 * Performs Mps::addScale with \p alpha = +1.
+	 * \warning Not implemented for non-abelian symmetries.
 	 */
 	Mps<Symmetry,Scalar>& operator+= (const Mps<Symmetry,Scalar> &Vin);
 	
 	/**
 	 *Performs Mps::addScale with \p alpha = -1.
-	 * \warning Not implemented for non abelian symmetries.
+	 * \warning Not implemented for non-abelian symmetries.
 	 */
 	Mps<Symmetry,Scalar>& operator-= (const Mps<Symmetry,Scalar> &Vin);
 	
 	/**
-	 * Performs \f$ \mathrel{*}= \alpha\f$. Applies it to the first site.
+	 * Performs \f$ \mathrel{*}= \alpha\f$. Applies it to the pivot site (if non-orthogonal, to the first site).
 	 */
 	template<typename OtherScalar> Mps<Symmetry,Scalar>& operator*= (const OtherScalar &alpha);
 	
 	/**
-	 * Performs \f$ \mathrel{/}= \alpha\f$. Applies it to the first site.
+	 * Performs \f$ \mathrel{/}= \alpha\f$. Applies it to the pivot site (if non-orthogonal, to the first site).
 	 */
 	template<typename OtherScalar> Mps<Symmetry,Scalar>& operator/= (const OtherScalar &alpha);
 	
@@ -295,8 +318,8 @@ public:
 	
 	/** 
 	 * Calculates the expectation value with a local operator at the pivot site. 
-	 * \param O : Local Mpo acting on the pivot side.
-	 * \warning Not implemented for non abelian symmetries.
+	 * \param O : local Mpo acting on the pivot side.
+	 * \warning Not implemented for non-abelian symmetries.
 	 */
 	template<typename MpoScalar> Scalar locAvg (const Mpo<Symmetry,MpoScalar> &O) const;
 	
@@ -311,17 +334,21 @@ public:
 	 */
 	void get_controlParams (const Mps<Symmetry,Scalar> &V);
 	
-	/**For METTS.*/
+	/**For METTS.
+	* \warning Not tested and soon abandoned.
+	*/
 	void collapse();
 	///\}
+	
+	//---sweeping---
 	
 	///\{
 	/**
 	 * Performs a sweep step to the right.
 	 * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc+1
 	 * \param BROOM : choice of decomposition
-	 * \param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD
-	 * \param DISCARD_V : If \p true, don't multiply the V-matrix onto the next site
+	 * \param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RICH_SVD
+	 * \param DISCARD_V : if \p true, don't multiply the V-matrix onto the next site
 	 */
 	void rightSweepStep (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrix1<Symmetry,Scalar,Scalar> *H = NULL, bool DISCARD_V=false);
 	
@@ -329,55 +356,65 @@ public:
 	 * Performs a sweep step to the left.
 	 * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1
 	 * \param BROOM : choice of decomposition
-	 * \param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RDM or DMRG::BROOM::RICH_SVD
-	 * \param DISCARD_U : If \p true, don't multiply the U-matrix onto the next site
+	 * \param H : non-local information from transfer matrices is provided here when \p BROOM is DMRG::BROOM::RICH_SVD
+	 * \param DISCARD_U : if \p true, don't multiply the U-matrix onto the next site
 	 */
 	void leftSweepStep  (size_t loc, DMRG::BROOM::OPTION BROOM, PivotMatrix1<Symmetry,Scalar,Scalar> *H = NULL, bool DISCARD_U=false);
 
 	/**
 	 * Calculates the nullspace of the site tensor on site \p loc when blocked into direction \p DIR.
-	 * \param DIR : Direction of the weep. Either LEFT or RIGHT.
-	 * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1
-	 * \param N : Tensor to write the Nullsapce to.
-	 * \note Nullspace is obtained by a full QR decomposition.
+	 * \param DIR : direction of the sweep, either LEFT or RIGHT.
+	 * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1 or \p loc+1
+	 * \param N : tensor to write the nullsapce to.
+	 * \note The nullspace is obtained by a full QR decomposition.
 	 * \note The nullspace is used for error estimation as suggested here: arXiv:1711.01104
 	 */
 	void calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixType> > &N);
 	
 	/**
 	 * Performs a two-site sweep.
-	 * \param DIR : Direction of the weep. Either LEFT or RIGHT.
-	 * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1
-	 * \param Apair : Pair of two Mps site tensors which are splitted via a singular value decomposition.
-	 * \param SEPARATE_SV: If \p true, the singular value matrix is discarded. Useful for iDMRG.
-	 * \warning Not implemented for non abelian symmetries.
-	 * \todo Implemented this function for SU(2) symmetry.
+	 * \param DIR : direction of the sweep, either LEFT or RIGHT.
+	 * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1 or \p loc+1
+	 * \param Apair : pair of two Mps site tensors which are split via an SVD
+	 * \param SEPARATE_SV: if \p true, the singular value matrix is discarded (iseful for IDMRG)
 	 */
 	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, bool SEPARATE_SV=false);
 	
+	/**
+	 * Performs a two-site sweep and writes the result into \p Al, \p Ar and \p C (useful for IDMRG).
+	 * \param DIR : direction of the sweep, either LEFT or RIGHT.
+	 * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1 or \p loc+1
+	 * \param Apair : pair of two Mps site tensors which are split via an SVD
+	 * \param Al : left-orthogonal part goes here
+	 * \param Ar : right-orthogonal part goes here
+	 * \param C : singular values go here
+	 * \param SEPARATE_SV: if \p true, the singular value matrix is discarded (iseful for IDMRG)
+	 */
 	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, 
 	                 vector<Biped<Symmetry,MatrixType> > &Al, vector<Biped<Symmetry,MatrixType> > &Ar, Biped<Symmetry,MatrixType> &C, 
 	                 bool SEPARATE_SV);
 	
 	/**
-	 * Performs an SVD split to the left and writes the zero-site tensor to \p C.
+	 * Performs an SVD split to the left and writes the zero-site tensor to \p C. Used in TDVPPropagator.
 	 */
 	void leftSplitStep  (size_t loc, Biped<Symmetry,MatrixType> &C);
 	
 	/**
-	 * Performs an SVD split to the right and writes the zero-site tensor to \p C.
+	 * Performs an SVD split to the right and writes the zero-site tensor to \p C. Used in TDVPPropagator.
 	 */
 	void rightSplitStep (size_t loc, Biped<Symmetry,MatrixType> &C);
 	
 	/**
-	 * Absorbs the zero-site tensor \p C (as obtained after an SVD split) into the Mps.
+	 * Absorbs the zero-site tensor \p C (as obtained after an SVD split) into the Mps. Used in TDVPPropagator.
 	 * \param loc : site to do the absorption
 	 * \param DIR : specifies whether the absorption is on the left-sweep or right-sweep
 	 * \param C : the zero-site tensor to be absorbed
-	 * \warning Not implemented for non abelian symmetries.
+	 * \warning Not implemented for non-abelian symmetries.
 	 */
 	void absorb (size_t loc, DMRG::DIRECTION::OPTION DIR, const Biped<Symmetry,MatrixType> &C);
 	///\}
+	
+	//---return stuff---
 	
 	///\{
 	/**Returns the target quantum number.*/
@@ -386,68 +423,78 @@ public:
 	/**Returns the local basis.*/
 	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
-
-	/**Returns the auxiliary in-basis.*/
+	
+	/**Returns the auxiliary ingoing basis.*/
 	inline Qbasis<Symmetry> inBasis (size_t loc) const {return inbase[loc];}
 	inline vector<Qbasis<Symmetry> > inBasis()   const {return inbase;}
-
-	/**Returns the auxiliary out-basis.*/
+	
+	/**Returns the auxiliary outgoing basis.*/
 	inline Qbasis<Symmetry> outBasis (size_t loc) const {return outbase[loc];}
 	inline vector<Qbasis<Symmetry> > outBasis()   const {return outbase;}
-
+	
 	/**Const reference to the A-tensor at site \p loc.*/
 	const vector<Biped<Symmetry,MatrixType> > &A_at (size_t loc) const {return A[loc];};
-
+	
 	/**Reference to the A-tensor at site \p loc.*/
 	vector<Biped<Symmetry,MatrixType> > &A_at (size_t loc) {return A[loc];};
-
+	
 	/**Returns the pivot position.*/
 	inline int get_pivot() const {return this->pivot;};
 	
-	/**Returns the truncated weight per site (Eigen array).*/
+	/**Returns the truncated weight for all sites.*/
 	inline ArrayXd get_truncWeight() const {return truncWeight;};
 	
-	/**Returns the entropy when cut at site (Eigen array).*/
-	ArrayXd entropy() const {return S;};
+	/**Returns the entropy for all bonds.*/
+	inline ArrayXd entropy() const {return S;};
 	///\}
 	
-//private:
+private:
 	
+	/**volume of the system (normally (chain length) * (chain width))*/
 	size_t N_phys;
 	
-	/**local basis.*/
+	/**local basis*/
 	vector<vector<qarray<Nq> > > qloc;
 	
+	/**total quantum number*/
 	qarray<Nq> Qtot = Symmetry::qvacuum();
 	
-	//*The Mps site-tensor.*/
+	/**A-tensor*/
 	vector<vector<Biped<Symmetry,MatrixType> > > A; // access: A[l][s].block[q]
+	
+	/**truncated weight*/
 	ArrayXd truncWeight;
+	
+	/**entropy*/
 	ArrayXd S;
 	
-	// Bases on all ingoing and outgoing legs of the MPS
+	/**bases on all ingoing and outgoing legs of the Mps*/
 	vector<Qbasis<Symmetry> > inbase;
 	vector<Qbasis<Symmetry> > outbase;
 	
+	/**pre-calculated bounds for the quantum numbers that result from the finite system*/
 	vector<qarray<Nq> > QinTop;
 	vector<qarray<Nq> > QinBot;
 	vector<qarray<Nq> > QoutTop;
 	vector<qarray<Nq> > QoutBot;
 	
+	/**Calculate quantum number bounds.*/
 	void calc_Qlimits();
 	
+	/**Update the bases in case new blocks have appeared or old ones have disappeared*/
 	void update_inbase (size_t loc);
 	void update_outbase (size_t loc);
-	void update_inbase () { for(size_t l=0; l<this->N_sites; l++) {update_inbase(l); } }
-	void update_outbase () { for(size_t l=0; l<this->N_sites; l++) {update_outbase(l); } }
+	void update_inbase()  {for(size_t l=0; l<this->N_sites; l++) update_inbase(l);}
+	void update_outbase() {for(size_t l=0; l<this->N_sites; l++) update_outbase(l);}
 	
+	/**Shorthand to resize all the relevant arrays: \p A, \p inbase, \p outbase, \p truncWeight, \p S.*/
 	void resize_arrays();
 	void outerResizeNoSymm();
 	
-	// adds one site at a time in addScale, conserving memory
+	/**Adds one site at a time in addScale, conserving memory.*/
 	template<typename OtherScalar> void add_site (size_t loc, OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin);
 	
-	// sweep stuff RICH_SVD
+	/**Enriches the search space in order to dynamically find the right bond dimension. Used in sweeps with the option RICH_SVD.*/
 	void enrich_left  (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H);
 	void enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H);
 };
@@ -1407,7 +1454,7 @@ calc_Nqavg() const
 	{
 		res += outbase[l].Nq();
 	}
-	return res/(this->N_sites-1.);
+	return res/this->N_sites;
 }
 
 template<typename Symmetry, typename Scalar>

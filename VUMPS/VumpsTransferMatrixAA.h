@@ -1,6 +1,10 @@
 #ifndef VANILLA_VUMPSTRANSFERMATRIXAA
 #define VANILLA_VUMPSTRANSFERMATRIXAA
 
+/**
+Operators \f$T_L\f$, \f$T_R\f$ for solving the linear systems eq. 14.
+\ingroup VUMPS
+*/
 template<typename Symmetry, typename Scalar>
 struct TransferMatrixAA
 {

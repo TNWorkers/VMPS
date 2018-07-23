@@ -69,36 +69,39 @@ class Mpo
 	
 public:
 	
+	//---constructors---
+	
+	/**Does nothing.*/
 	Mpo(){};
 	
+	/**Just sets the chain length.*/
 	Mpo (size_t L_input);
 	
 	/**
 	 * Basic Mpo constructor.
-	 * \warning Note that qloc and qOp have to be set separately.
-	 * \param L_input : amount of sites/supersites which are swept
-	 * \param Qtot_input : the total change in quantum number
-	 * \param label_input : how to label the Mpo itself in outputs
+	 * \warning Note that qloc and qOp have to be set separately afterwards.
+	 * \param L_input : chain length
+	 * \param Qtot_input : total change in quantum number
+	 * \param label_input : how to label the Mpo in outputs
 	 * \param HERMITIAN_input : if the Mpo is known to be hermitian, this can be further exploited
 	 * \param UNITARY_input : if the Mpo is known to be unitary, this can be further exploited
 	 */
 	Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false);
-
-
+	
 	/**
-	 * Static function for contructing an identity operator.
-	 * \param qloc : the local basis on all sites.
+	 * Static function for constructing an identity operator.
+	 * \param qloc : the local basis on all sites
 	 */
 	static Mpo<Symmetry,Scalar> Identity (const vector<vector<qarray<Nq> > > &qloc);
-
+	
 	//---set whole Mpo for special cases, modify---
-
+	
 	///\{
 	/**
 	 * Set to a local operator \f$O_i\f$
 	 * \param loc : site index
 	 * \param Op : the local operator in question
-	 * \param OPEN_BC : bool, if true open boundary conditions are applied
+	 * \param OPEN_BC : if \p true, open boundary conditions are applied
 	 */
 	void setLocal (size_t loc, const OperatorType &Op, bool OPEN_BC=true);
 	
@@ -106,8 +109,8 @@ public:
 	 * Set to a local operator \f$O_i\f$ but add a chain of sign operators (useful for fermionic operators)
 	 * \param loc : site index
 	 * \param Op : the local operator in question
-	 * \param SignOp : elementary operator for the sign chain.
-	 * \param OPEN_BC : bool, if true open boundary conditions are applied
+	 * \param SignOp : elementary operator for the sign chain
+	 * \param OPEN_BC : if \p true, open boundary conditions are applied
 	 */
 	void setLocal (size_t loc, const OperatorType& Op, const OperatorType &SignOp, bool OPEN_BC=true);
 	
@@ -115,7 +118,7 @@ public:
 	 * Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$
 	 * \param loc : list of locations
 	 * \param Op : list of operators
-	 * \param OPEN_BC : bool, if true open boundary conditions are applied
+	 * \param OPEN_BC : if \p true, open boundary conditions are applied
 	*/
 	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, bool OPEN_BC=true);
 	
@@ -124,15 +127,15 @@ public:
 	 * \param loc : list of locations
 	 * \param Op : list of operators
 	 * \param SignOp : elementary operator for the sign chain.
-	 * \param OPEN_BC : bool, if true open boundary conditions are applied
+	 * \param OPEN_BC : if \p true, open boundary conditions are applied
 	 */
 	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const OperatorType& SignOp, bool OPEN_BC=true);
 	
 	/**
 	 * Set to a sum of of local operators \f$\sum_i f(i) O_i\f$
 	 * \param Op : the local operator in question
-	 * \param f : the function in question$
-	 * \param OPEN_BC : bool, if true open boundary conditions are applied
+	 * \param f : the function in question
+	 * \param OPEN_BC : if \p true, open boundary conditions are applied
 	 */
 	void setLocalSum (const OperatorType &Op, Scalar (*f)(int)=localSumTrivial, bool OPEN_BC=true);
 	
@@ -140,13 +143,16 @@ public:
 	 * Set to a sum of nearest-neighbour products of local operators \f$\sum_i O^1_i O^2_{i+1}\f$
 	 * \param Op1 : first local operator
 	 * \param Op2 : second local operator
-	 * \param OPEN_BC : bool, if true open boundary conditions are applied
+	 * \param OPEN_BC : if \p true, open boundary conditions are applied
 	 */
 	void setProductSum (const OperatorType &Op1, const OperatorType &Op2, bool OPEN_BC=true);
 	
-	/**Makes a linear transformation of the Mpo: \f$H' = factor*H + offset\f$.*/
+	/**Makes a linear transformation of the Mpo: \f$H' = factor*H + offset\f$. Needed for the Chebyshev iteration, for example.*/
 	void scale (double factor=1., double offset=0.);
 	
+	/**Transforms the local base in the follwing manner: \f$ qloc \rightarrow L \cdot qloc-Qtot\f$, \f$ qOp \rightarrow L \cdot qOp\f$.
+	 * Results in a new \p Qtot = \p qvacuum, useful for IDMRG and VUMPS. The scaling with \p L avoids fractions.
+	 */
 	void transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT = true);
 	///\}
 	
@@ -169,7 +175,7 @@ public:
 	
 	//---formatting stuff---
 	
-	///\{	
+	///\{
 	/**How this Mpo should be called in outputs.*/
 	string label;
 	///\}
@@ -190,31 +196,35 @@ public:
 	inline qarray<Nq> Qtarget() const {return Qtot;};
 	
 	/**Sets the total quantum number of the Mpo.*/
-	inline void setQtarget(const qType& Q) {Qtot=Q;};
+	inline void setQtarget (const qType& Q) {Qtot=Q;};
 	
 	/**Returns the local basis at \p loc.*/
 	inline vector<qarray<Nq> > locBasis   (size_t loc) const {return qloc[loc];}
+	
 	/**Returns the right auxiliary basis at \p loc.*/
 	inline Qbasis<Symmetry>    auxBasis   (size_t loc) const {return qaux[loc];}
-
-	/**Returns the auxiliary in-basis at \p loc.*/
+	
+	/**Returns the auxiliary ingoing basis at \p loc.*/
 	inline Qbasis<Symmetry>    inBasis   (size_t loc) const {return qaux[loc];}
-
-	/**Returns the auxiliary out-basis at \p loc.*/
+	
+	/**Returns the auxiliary outgoing basis at \p loc.*/
 	inline Qbasis<Symmetry>    outBasis   (size_t loc) const {return qaux[loc+1];}
-
+	
 	/**Returns the operator basis at \p loc.*/
 	inline vector<qarray<Nq> > opBasis   (size_t loc) const {return qOp[loc];}
+	
 	/**Returns the operator basis of the squared Mpo at \p loc.*/
 	inline vector<qarray<Nq> > opBasisSq (size_t loc) const {return qOpSq[loc];}
 	
 	/**Returns the full local basis.*/
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
+	
 	/**Returns the full auxiliary basis.*/
 	inline vector<Qbasis<Symmetry> >    auxBasis()   const {return qaux;}
 	
 	/**Returns the full operator basis.*/
 	inline vector<vector<qarray<Nq> > > opBasis()   const {return qOp;}
+	
 	/**Returns the full operator basis of the squared Mpo.*/
 	inline vector<vector<qarray<Nq> > > opBasisSq() const {return qOpSq;}
 	
@@ -229,13 +239,14 @@ public:
 	
 	/**Sets the full operator basis.*/
 	inline void setOpBasis   (const vector<vector<qType> > &q)        {qOp=q;}
+	
 	/**Sets the full operator basis of the squared Mpo.*/
 	inline void setOpBasisSq (const vector<vector<qType> > &qOpSq_in) {qOpSq=qOpSq_in;}
 	
-	/**Checks whether the MPO is a unitary operator.*/
+	/**Checks whether the Mpo is a unitary operator.*/
 	inline bool IS_UNITARY() const {return UNITARY;};
 	
-	/**Checks whether the MPO is a Hermitian operator.*/
+	/**Checks whether the Mpo is a Hermitian operator.*/
 	inline bool IS_HERMITIAN() const {return HERMITIAN;};
 	
 	/**Checks if the square of the Mpo was calculated and stored.*/
@@ -246,10 +257,10 @@ public:
 	
 	/**Returns the W-matrix of the squared operator at a given site by const reference.*/
 	inline const vector<vector<vector<SparseMatrix<Scalar> > > > &Wsq_at (size_t loc) const {return Wsq[loc];};
-
-	inline const unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<Scalar> > &Vsq_at (size_t loc) const
-		{return Vsq[loc];};
-
+	
+	inline const unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<Scalar> > 
+	&Vsq_at (size_t loc) const {return Vsq[loc];};
+	
 	/**\warning Needs updating to new Mpo scheme.*/
 //	template<typename TimeScalar> Mpo<Symmetry,TimeScalar> BondPropagator (TimeScalar dt, PARITY P) const;
 	
@@ -287,20 +298,29 @@ public:
 	
 protected:
 	
+	/**stored terms of the Hamiltonian*/
 	vector<HamiltonianTerms<Symmetry,Scalar> > Terms;
 	
+	/**bases*/
 	vector<vector<qarray<Nq> > > qloc, qOp, qOpSq;
 	vector<Qbasis<Symmetry> > qaux;
 	
+	/**total change in quantum number*/
 	qarray<Nq> Qtot;
 	
+	/**properties and boundary conditions*/
 	bool UNITARY    = false;
 	bool HERMITIAN  = false;
 	bool GOT_SQUARE = false;
 	bool GOT_OPEN_BC = true;
 	
+	/**chain length*/
 	size_t N_sites;
-	size_t N_phys=0;
+	
+	/**physical volume*/
+	size_t N_phys = 0;
+	
+	/**Mpo bond dimension*/
 	size_t Daux;
 	
 	/**Resizes the relevant containers with \p N_sites.*/
@@ -309,42 +329,50 @@ protected:
 	/**Calculates the auxiliary basis.*/
 	void calc_auxBasis();
 	
+	/**Calculates the W-matrices from given \p HamiltonianTerms. Used to construct Hamiltonians.*/
 	void construct_from_Terms (const vector<HamiltonianTerms<Symmetry,Scalar> > &Terms_input,
 	                           size_t Lcell=1ul, bool CALC_SQUARE=false, bool OPEN_BC=true);
 	
 	/**Construct with \p vector<SuperMatrix> and input \p qOp. Most general of the construct routines, all the source code is here.*/
 	void calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
-	                vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
-	                bool CALC_SQUARE=false, bool OPEN_BC=true);
+	                       vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+	                       bool CALC_SQUARE = false, 
+	                       bool OPEN_BC = true);
 	
 	/**Construct with \p SuperMatrix (homogeneously extended) and input \p qOp.*/
 	void calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G_input,
-	                vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
-	                const vector<vector<qType> > &qOp_in,
-	                bool CALC_SQUARE=false, bool OPEN_BC=true);
+	                    vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+	                    const vector<vector<qType> > &qOp_in,
+	                    bool CALC_SQUARE = false, 
+	                    bool OPEN_BC = true);
 	
 	/**Construct with \p SuperMatrix and stored \p qOp.*/
 	void calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G_input,
-	                vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
-	                bool CALC_SQUARE=false, bool OPEN_BC=true);
+	                    vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+	                    bool CALC_SQUARE = false, 
+	                    bool OPEN_BC = true);
 	
 	/**Construct with \p vector<SuperMatrix> and stored \p qOp.*/
 	void calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
-	                vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
-	                const vector<vector<qType> > &qOp_in,
-	                bool CALC_SQUARE=false, bool OPEN_BC=true);
+	                       vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+	                       const vector<vector<qType> > &qOp_in,
+	                       bool CALC_SQUARE = false, 
+	                       bool OPEN_BC = true);
 	
+	/**Makes a \p vector<SuperMatrix> from the local operator \p Op. Core of setLocal.*/
 	vector<SuperMatrix<Symmetry,Scalar> > make_localGvec (size_t loc, const OperatorType &Op);
+	
+	/**Makes a \p vector<SuperMatrix> from a list of local operators \p Op. Core of setLocal.*/
 	vector<SuperMatrix<Symmetry,Scalar> > make_localGvec (const vector<size_t> &loc, const vector<OperatorType> &Op);
 	
-//	vector<SuperMatrix<Symmetry,Scalar> > Gvec;
+	/**W-matrix*/
 	vector<vector<vector<vector<SparseMatrix<Scalar> > > > > W;
 	
-//	vector<SuperMatrix<Symmetry,Scalar> > GvecSq;
+	/**square of W-matrix*/
 	vector<vector<vector<vector<SparseMatrix<Scalar> > > > > Wsq;
-
+	
 	vector<unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<Scalar> > > Vsq;
-
+	
 	/**Generates the Mpo label from the info stored in \p HamiltonianTerms.*/
 	void generate_label (size_t Lcell);
 	

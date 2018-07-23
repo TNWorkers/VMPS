@@ -3,7 +3,7 @@
 
 #include "tensors/Multipede.h"
 
-/**Calculates the matrix element between two UMPS and an MPO. Goes from the left and uses \f$A_C\f$ and \f$A_R\f$.*/
+/**Calculates the matrix element between two Umps and an Mpo. Goes from the left and uses \f$A_C\f$ and \f$A_R\f$.*/
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg (const Umps<Symmetry,Scalar> &Vbra, 
             const Mpo<Symmetry,MpoScalar> &O, 

@@ -21,6 +21,10 @@ enum CONTRACT_LR_MODE {FULL, TRIANGULAR, FIXED};
  * \param qloc : local basis
  * \param qOp : operator basis
  * \param Lnew : new transfer matrix to be written to
+ * \param RANDOMIZE : if \p true, set right blocks but fill result with random numbers
+ * \param MODE_input : if \p FULL, simple contraction, 
+ *                     if \p TRIANGULAR, contract only the lower triangle \f$a<b\f$, 
+ *                     if \p FIXED contract with fixed \f$a\f$
  */
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 void contract_L (const Tripod<Symmetry,MatrixType> &Lold, 
@@ -30,7 +34,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
                  Tripod<Symmetry,MatrixType> &Lnew,
-                 bool RANDOMIZE=false,
+                 bool RANDOMIZE = false,
                  tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0))
 {
 	MpoScalar factor_cgc;
@@ -139,6 +143,10 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
  * \param qloc : local basis
  * \param qOp : operator basis
  * \param Rnew : new transfer matrix to be written to
+ * \param RANDOMIZE : if \p true, set right blocks but fill result with random numbers
+ * \param MODE_input : if \p FULL, simple contraction, 
+ *                     if \p TRIANGULAR, contract only the lower triangle \f$a<b\f$, 
+ *                     if \p FIXED contract with fixed \f$a\f$
  */
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 void contract_R (const Tripod<Symmetry,MatrixType> &Rold,

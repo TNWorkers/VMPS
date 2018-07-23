@@ -448,7 +448,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	{
 		Stopwatch<> HsqTimer;
 		double t_LR = 0;
-		double t_N = 0;
+		double t_Nsp = 0;
 		double t_QR = 0;
 		double t_GRALF = 0;
 		
@@ -462,9 +462,9 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		for (size_t l=0; l<this->N_sites; ++l)
 		{
 			// calculate the nullspace tensor F/G
-			Stopwatch<> Ntimer;
+			Stopwatch<> NspTimer;
 			Vout.state.calc_N(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, Nsaved[SweepStat.pivot]);
-			t_N += Ntimer.time();
+			t_Nsp += NspTimer.time();
 			
 			// contract Fig. 4 top from Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104
 			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
@@ -503,9 +503,9 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			}
 			else
 			{
-				Stopwatch<> Ntimer;
+				Stopwatch<> NspTimer;
 				Vout.state.calc_N(DMRG::DIRECTION::LEFT, loc2, N);
-				t_N += Ntimer.time();
+				t_Nsp += NspTimer.time();
 			}
 			
 			// pre-contract the right site
@@ -522,9 +522,9 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			}
 			else
 			{
-				Stopwatch<> Ntimer;
+				Stopwatch<> NspTimer;
 				Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc1, N);
-				t_N += Ntimer.time();
+				t_Nsp += NspTimer.time();
 			}
 			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err2;
 			Stopwatch<> GRALFtimer;
@@ -561,7 +561,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 						  << " ("
 						  << "GRALF=" << round(t_GRALF/t_tot*100.,0) << "%" 
 						  << ", LR=" << round(t_LR/t_tot*100.,0) << "%" 
-						  << ", N=" << round(t_N/t_tot*100.,0) << "%" 
+						  << ", Nsp=" << round(t_Nsp/t_tot*100.,0) << "%" 
 						  << ", QR=" << round(t_QR/t_tot*100.,0) << "%" 
 						  << ")"
 						  << endl;

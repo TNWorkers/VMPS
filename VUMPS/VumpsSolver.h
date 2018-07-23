@@ -52,25 +52,15 @@ public:
 	string eigeninfo() const;
 	
 	/**\describe_memory*/
-	double memory   (MEMUNIT memunit=GB) const;
+	double memory (MEMUNIT memunit=GB) const;
 	
 	/**Setup a logfile of the iterations.
-	* \param N_log_input : save the log every \p N_log half-sweeps
+	* \param N_log_input : save the log every \p N_log_input half-sweeps
 	* \param file_e_input : file for the ground-state energy in the format [min(eL,eR), eL, eR]
 	* \param file_err_eigval_input : file for the energy error
-	* \param file_err_var_input : file for the variatonal error
+	* \param file_err_var_input : file for the variational error
 	*/
-	void set_log (int N_log_input, string file_e_input, string file_err_eigval_input, string file_err_var_input)
-	{
-		N_log           = N_log_input;
-		file_e          = file_e_input;
-		file_err_eigval = file_err_eigval_input;
-		file_err_var    = file_err_var_input;
-		eL_mem.clear();
-		eR_mem.clear();
-		err_eigval_mem.clear();
-		err_var_mem.clear();
-	};
+	void set_log (int N_log_input, string file_e_input, string file_err_eigval_input, string file_err_var_input);
 	///\}
 	
 	/**Calculates the highest or lowest eigenstate with an MPO (algorithm 6). Works also for a 2- and 4-site unit cell. Simply create an MPO on 2 or 4 sites.*/
@@ -88,29 +78,35 @@ private:
 	                     Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
 	                     qarray<Symmetry::Nq> Qtot_input,
 	                     size_t M, size_t Nqmax);
-//	
-//	/**Performs a half-sweep with 1-site unit cell. Used with an explicit 2-site Hamiltonian.*/
+	
+	/**Performs an iteration with 1-site unit cell. Used with an explicit 2-site Hamiltonian.*/
 	void iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	///\}
 	
 	///\{
-	/**Prepares the class setting up the environments. Used with an MPO.*/
+	/**Prepares the class setting up the environments. Used with an Mpo.*/
 	void prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M, size_t Nqmax);
 	
-//	/**Performs a half-sweep with an n-site unit cell (sequentially, algorithm 4). Used with an MPO.*/
+	/**Performs an iteration with an n-site unit cell (in parallel, algorithm 3). Used with an MPO.*/
 	void iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
+	/**Performs an iteration with an n-site unit cell (sequentially, algorithm 4). Used with an MPO.*/
 	void iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	///\}
 	
 	///\{
+	/**Performs an IDMRG iteration with a 1-site unit cell.*/
 	void iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
+	/**Prepares the class, setting up the environments for IDMRG.*/
 	void prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax);
+	
+	/**old energy for comparison in IDMRG.*/
 	double Eold = std::nan("1");
 	///\}
 	
 	///\{
+	/**Builds the environment of a unit cell.*/
 	void build_LR (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AL,
 	               const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &AR,
 	               const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C,
@@ -119,36 +115,57 @@ private:
 	               const vector<qarray<Symmetry::Nq> > &qOp,
 	               Tripod<Symmetry,MatrixType> &L,
 	               Tripod<Symmetry,MatrixType> &R);
+	
+	/**Builds environments for each site of the unit cell.*/
+	void build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	///\}
 	
-	void build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
-	
-	/**Clean up after the iteration process.*/
+	/**Cleans up after the iteration process.*/
 	void cleanup (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
+	/**chain length*/
 	size_t N_sites;
+	
+	/**tolerances*/
 	double tol_eigval, tol_var;
+	
+	/**keeping track of iterations*/
 	size_t N_iterations;
+	
+	/**errors*/
 	double err_eigval, err_var, err_state=std::nan("1");
 	
-	vector<PivumpsMatrix1<Symmetry,Scalar,Scalar> > Heff; // environment
+	/**environment for the 2-site Hamiltonian version*/
+	vector<PivumpsMatrix1<Symmetry,Scalar,Scalar> > Heff;
+	
+	/**environment of \p AL and \p AR for the Mpo version*/
 	vector<PivotMatrix1<Symmetry,Scalar,Scalar> > HeffA;
+	
+	/**environment of \p C for the Mpo version*/
 	vector<PivotMatrix1<Symmetry,Scalar,Scalar> > HeffC;
+	
+	/**local base*/
 	vector<qarray<Symmetry::Nq> > qloc;
-	TwoSiteHamiltonian h2site; // stored 2-site Hamiltonian
-	size_t D, M, dW; // bond dimension per subspace, bond dimension per site, MPO bond dimension
 	
-	double eL, eR, eoldR, eoldL; // left and right error (eq. 18) and old errors from previous half-sweep
+	/**stored 2-site Hamiltonian*/
+	TwoSiteHamiltonian h2site;
 	
-	/**Solves the linear system (eq. 15 or eq. C25ab) using GMRES.
+	/**bond dimension per subspace, bond dimension per site, Mpo bond dimension*/
+	size_t D, M, dW;
+	
+	/**left and right error (eq. 18) and old errors from previous half-sweep*/
+	double eL, eR, eoldR, eoldL;
+	
+	/**Solves the linear system (eq. C25ab) using GMRES.
 	* \param gauge : L or R
-	* \param A : A, Apair or Aquadruple
-	* \param Y_LR : (h_L|, |h_R) for eq. 15 or |Y_Ra), (Y_La| for eq. C25ab
+	* \param ab : fixed index \p a (rows) or \p b (cols)
+	* \param A : contracted A-tensor of the cell
+	* \param Y_LR : |Y_Ra), (Y_La| for eq. C25ab
 	* \param LReigen : (L| or |R)
-	* \param W : MPO tensor for the transfer matrix
-	* \param qloc :
-	* \param qOp :
-	* \param LRdotY : (h_L|R), (L|h_R) for eq. 15 or (Y_La|R), (L|Y_Ra) for eq. C25ab
+	* \param W : Mpo tensor for the transfer matrix
+	* \param qloc : local basis
+	* \param qOp : operator basis
+	* \param LRdotY : (Y_La|R), (L|Y_Ra) for eq. C25ab
 	* \param LRres : resulting (H_L| or |H_R)
 	*/
 	void solve_linear (GAUGE::OPTION gauge, 
@@ -162,6 +179,14 @@ private:
 	                   Scalar LRdotY, 
 	                   Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LRres);
 	
+	/**Solves the linear system (eq. 15) using GMRES.
+	* \param gauge : L or R
+	* \param A : contracted A-tensor of the cell
+	* \param hLR : (h_L|, |h_R) for eq. 15
+	* \param LReigen : (L| or |R) 
+	* \param qloc : local basis
+	* \param hLRdotLR : (h_L|R), (L|h_R) for eq. 15
+	* \param LRres : resulting (H_L| or |H_R)*/
 	void solve_linear (GAUGE::OPTION gauge, 
 	                   const vector<Biped<Symmetry,MatrixType> > &A, 
 	                   const Biped<Symmetry,MatrixType> &hLR, 
@@ -170,6 +195,7 @@ private:
 	                   Scalar hLRdotLR, 
 	                   Biped<Symmetry,MatrixType> &LRres);
 	
+	/**control of verbosity and algorithms*/
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
 	UMPS_ALG::OPTION CHOSEN_ALGORITHM = UMPS_ALG::DYNAMIC;
 	bool USER_SET_ALGORITHM = false;
@@ -177,19 +203,32 @@ private:
 	/**Sets the Lanczos tolerances adaptively, depending on the current errors.*/
 	void set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState);
 	
+	/**Calculates the errors and sets the right sign for \p C.*/
 	void calc_errors (Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
+	/**saved \f$Y_{L_{0}}\f$, see eq. (C26), (C27)*/
 	Tripod<Symmetry,MatrixType> YLlast;
+	
+	/**saved \f$Y_{R_{dW-1}}\f$, see eq. (C26), (C27)*/
 	Tripod<Symmetry,MatrixType> YRfrst;
 	
+	/**Tests if \f$C \cdot C^{\dagger}\f$ and \f$C^{\dagger} \cdot C\f$ are the eigenvectors of the transfer matrices.*/
 	string test_LReigen (const Eigenstate<Umps<Symmetry,Scalar> > &Vout) const;
 	
 	///\{
-	/**log stuff*/
-	size_t N_log=0;
+	/**Save log every \p N_log optimization steps.*/
+	size_t N_log = 0;
+	
+	/**log filenames*/
 	string file_e, file_err_eigval, file_err_var;
+	
+	/**log data*/
 	vector<double> eL_mem, eR_mem, err_eigval_mem, err_var_mem;
-	void write_log (bool FORCE=false);
+	
+	/**Function to write out the logfiles.
+	* \param FORCE : if \p true, forced write without checking any conditions
+	*/
+	void write_log (bool FORCE = false);
 	///\}
 };
 
@@ -238,6 +277,20 @@ memory (MEMUNIT memunit) const
 //	}
 	return res;
 }
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+set_log (int N_log_input, string file_e_input, string file_err_eigval_input, string file_err_var_input)
+{
+	N_log           = N_log_input;
+	file_e          = file_e_input;
+	file_err_eigval = file_err_eigval_input;
+	file_err_var    = file_err_var_input;
+	eL_mem.clear();
+	eR_mem.clear();
+	err_eigval_mem.clear();
+	err_var_mem.clear();
+};
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::

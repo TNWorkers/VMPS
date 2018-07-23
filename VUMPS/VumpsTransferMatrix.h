@@ -10,7 +10,7 @@
 #include "pivot/DmrgPivotVector.h"
 
 /**
-Operators \f$T_L\f$, \f$T_R\f$ for solving the linear systems eq. 14; or \f$1-T_L+|R)(1|\f$, \f$1-T_R+|1)(R|\f$ for solving eq. C25ab. Due to the similar structure of the equations, no different data structures are required. 
+Operators \f$1-T_L+|R)(1|\f$, \f$1-T_R+|1)(R|\f$ for solving eq. C25ab.
 \ingroup VUMPS
 */
 template<typename Symmetry, typename Scalar>
@@ -47,7 +47,7 @@ struct TransferMatrix
 };
 
 /**
-Vector \f$(H_L|\f$, \f$|H_R)\f$ that is obtained in the linear systems eq. 14 or \f$(L_a|\f$, \f$|R_a)\f$ that is obtained in eq. C25ab.
+Vector \f$(L_a|\f$, \f$|R_a)\f$ that is obtained in eq. (C25ab).
 \ingroup VUMPS
 */
 template<typename Symmetry, typename Scalar>
@@ -84,11 +84,8 @@ struct TransferVector
 	///\}
 };
 
-/**Matrix-vector multiplication in eq. 14 or 25ab
-* Note:
-* - if \p H.LReigen.rows()==0, only \p T is used (eq. 14)
-* - if \p H.LReigen.rows()!=0, \p 1-T+|1)(LReigen| is used (eq. 25ab)
-*/
+/**Matrix-vector multiplication in eq. (25ab)
+\ingroup VUMPS*/
 template<typename Symmetry, typename Scalar1, typename Scalar2>
 void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmetry,Scalar2> &Vin, TransferVector<Symmetry,Scalar2> &Vout)
 {
@@ -215,11 +212,11 @@ inline Scalar dot (const TransferVector<Symmetry,Scalar> &V1, const TransferVect
 	Scalar res = 0;
 	for (size_t q=0; q<V1.data.size(); ++q)
 	{
-		assert(V1.data.in(q) == V2.data.in(q));
-		assert(V1.data.out(q) == V2.data.out(q));
-		assert(V1.data.mid(q) == V2.data.mid(q) and V1.data.mid(q) == Symmetry::qvacuum());
-//		cout << V1.data.in(q) << ", " << V1.data.out(q) << ", " << V1.data.mid(q) << " | " 
-//		     << V2.data.in(q) << ", " << V2.data.out(q) << ", " << V2.data.mid(q) << endl;
+//		assert(V1.data.in(q) == V2.data.in(q));
+//		assert(V1.data.out(q) == V2.data.out(q));
+//		assert(V1.data.mid(q) == V2.data.mid(q) and V1.data.mid(q) == Symmetry::qvacuum());
+////		cout << V1.data.in(q) << ", " << V1.data.out(q) << ", " << V1.data.mid(q) << " | " 
+////		     << V2.data.in(q) << ", " << V2.data.out(q) << ", " << V2.data.mid(q) << endl;
 		res += (V1.data.block[q][V1.ab][0].adjoint() * V2.data.block[q][V2.ab][0]).trace();
 	}
 	return res;
@@ -317,6 +314,7 @@ inline void setZero (TransferVector<Symmetry,Scalar> &V)
 {
 	V.data.setZero();
 }
+
 //-----------</vector arithmetics>-----------
 
 #include "RandomVector.h"
