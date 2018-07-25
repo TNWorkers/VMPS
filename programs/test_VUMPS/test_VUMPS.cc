@@ -201,7 +201,7 @@ int main (int argc, char* argv[])
 	{
 		lout << Heis_U1.info() << endl;
 		DMRG_U1.set_log(2,"e_Heis_U1.dat","err_eigval_Heis_U1.dat","err_var_Heis_U1.dat");
-//		DMRG_U1.set_algorithm(UMPS_ALG::H2SITE);
+//		DMRG_U1.set_algorithm(UMPS_ALG::IDMRG);
 		DMRG_U1.edgeState(Heis_U1, g_U1, {0}, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 		
 		if (CALC_DOT)

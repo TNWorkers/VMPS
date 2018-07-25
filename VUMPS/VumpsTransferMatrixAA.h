@@ -11,9 +11,9 @@ struct TransferMatrixAA
 	TransferMatrixAA(){};
 	
 	TransferMatrixAA (GAUGE::OPTION gauge_input, 
-	                const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra_input, 
-	                const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket_input, 
-	                const vector<qarray<Symmetry::Nq> > &qloc_input,
+	                const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Abra_input, 
+	                const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Aket_input, 
+	                const vector<vector<qarray<Symmetry::Nq> > > &qloc_input,
 	                bool SHIFTED_input = false)
 	:gauge(gauge_input), Abra(Abra_input), Aket(Aket_input), qloc(qloc_input), SHIFTED(SHIFTED_input)
 	{}
@@ -21,15 +21,15 @@ struct TransferMatrixAA
 	GAUGE::OPTION gauge;
 	
 	///\{
-	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Aket;
-	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Abra;
+	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Aket;
+	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Abra;
 	///\}
 	
 	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > LReigen;
 	
 	bool SHIFTED = false;
 	
-	vector<qarray<Symmetry::Nq> > qloc;
+	vector<vector<qarray<Symmetry::Nq> > > qloc;
 };
 
 template<typename Symmetry, typename Scalar>
@@ -42,16 +42,35 @@ template<typename Symmetry, typename Scalar1, typename Scalar2>
 void HxV (const TransferMatrixAA<Symmetry,Scalar1> &H, const PivotVector<Symmetry,Scalar2> &Vin, PivotVector<Symmetry,Scalar2> &Vout)
 {
 	Vout.outerResize(Vin);
+	size_t Lcell = H.qloc.size();
 	
 	if (H.SHIFTED == false)
 	{
 		if (H.gauge == GAUGE::L)
 		{
-			contract_R (Vin.data[0], H.Abra, H.Aket, H.qloc, Vout.data[0]);
+			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > Rnext;
+			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > R = Vin.data[0];
+			for (int l=Lcell-1; l>=0; --l)
+			{
+				contract_R(R, H.Abra[l], H.Aket[l], H.qloc[l], Rnext);
+				R.clear();
+				R = Rnext;
+				Rnext.clear();
+			}
+			Vout.data[0] = R;
 		}
 		else if (H.gauge == GAUGE::R)
 		{
-			contract_L (Vin.data[0], H.Abra, H.Aket, H.qloc, Vout.data[0]);
+			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > Lnext;
+			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > L = Vin.data[0];
+			for (size_t l=0; l<Lcell; ++l)
+			{
+				contract_L (L, H.Abra[l], H.Aket[l], H.qloc[l], Lnext);
+				L.clear();
+				L = Lnext;
+				Lnext.clear();
+			}
+			Vout.data[0] = L;
 		}
 	}
 	else
@@ -64,11 +83,29 @@ void HxV (const TransferMatrixAA<Symmetry,Scalar1> &H, const PivotVector<Symmetr
 		
 		if (H.gauge == GAUGE::R)
 		{
-			contract_R (Vin.data[0], H.Abra, H.Aket, H.qloc, TxV.data[0]);
+			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > Rnext;
+			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > R = Vin.data[0];
+			for (int l=Lcell-1; l>=0; --l)
+			{
+				contract_R(R, H.Abra[l], H.Aket[l], H.qloc[l], Rnext);
+				R.clear();
+				R = Rnext;
+				Rnext.clear();
+			}
+			Vout.data[0] = R;
 		}
 		else if (H.gauge == GAUGE::L)
 		{
-			contract_L (Vin.data[0], H.Abra, H.Aket, H.qloc, TxV.data[0]);
+			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > Lnext;
+			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > L = Vin.data[0];
+			for (size_t l=0; l<Lcell; ++l)
+			{
+				contract_L (L, H.Abra[l], H.Aket[l], H.qloc[l], Lnext);
+				L.clear();
+				L = Lnext;
+				Lnext.clear();
+			}
+			Vout.data[0] = L;
 		}
 		
 		Scalar2 LdotR;

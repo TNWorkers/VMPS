@@ -330,6 +330,14 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	Nqmax = Nqmax_input;
 	if (Symmetry::IS_TRIVIAL) {Nqmax = 1;}
 	
+//	C.clear();
+//	inbase.clear();
+//	outbase.clear();
+//	for (size_t g=0; g<3; ++g)
+//	{
+//		A[g].clear();
+//	}
+	
 	for (size_t g=0; g<3; ++g)
 	{
 		A[g].resize(N_sites);
@@ -457,13 +465,13 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 		}
 	}
 	
-	for (size_t g=0; g<3; ++g)
-	for (size_t l=0; l<N_sites; ++l)
-	for (size_t s=0; s<qloc[l].size(); ++s)
-	for (size_t q=0; q<A[g][l][s].dim; ++q)
-	{
-		A[g][l][s].block[q].resize(Dmax,Dmax);
-	}
+//	for (size_t g=0; g<3; ++g)
+//	for (size_t l=0; l<N_sites; ++l)
+//	for (size_t s=0; s<qloc[l].size(); ++s)
+//	for (size_t q=0; q<A[g][l][s].dim; ++q)
+//	{
+//		A[g][l][s].block[q].resize(Dmax,Dmax);
+//	}
 	
 	update_inbase();
 	update_outbase();
@@ -471,7 +479,7 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	for (size_t l=0; l<N_sites; ++l)
 	for (size_t qout=0; qout<outbase[l].Nq(); ++qout)
 	{
-		C[l].push_back(qarray2<Symmetry::Nq>{outbase[l][qout], outbase[l][qout]}, Mtmp);
+		C[l].try_push_back(qarray2<Symmetry::Nq>{outbase[l][qout], outbase[l][qout]}, Mtmp);
 	}
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -643,7 +651,7 @@ test_ortho (double tol) const
 		// check for AL*C = AC
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
-			Biped<Symmetry,MatrixType> Test = A[GAUGE::L][l][s].contract(C[l]);
+			Biped<Symmetry,MatrixType> Test = A[GAUGE::L][l][s] * C[l];
 			for (size_t q=0; q<Test.dim; ++q)
 			{
 				qarray2<Symmetry::Nq> quple = {Test.in[q], Test.out[q]};
@@ -679,7 +687,7 @@ test_ortho (double tol) const
 		size_t locC = minus1modL(l);
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
-			Biped<Symmetry,MatrixType> Test = C[locC].contract(A[GAUGE::R][l][s]);
+			Biped<Symmetry,MatrixType> Test = C[locC] * A[GAUGE::R][l][s];
 			for (size_t q=0; q<Test.dim; ++q)
 			{
 				qarray2<Symmetry::Nq> quple = {Test.in[q], Test.out[q]};
@@ -853,7 +861,7 @@ calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const
 	for (size_t s=0; s<qloc[loc].size(); ++s)
 	for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
 	{
-		std::array<qarray3<Symmetry::Nq>,3> quple;
+		std::array<qarray2<Symmetry::Nq>,3> quple;
 		for (size_t g=0; g<3; ++g)
 		{
 			quple[g] = {A[g][loc][s].in[q], A[g][loc][s].out[q]};
@@ -875,7 +883,7 @@ calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const
 			auto it = C[loc].dict.find(quple);
 			assert(it != C[loc].dict.end());
 			size_t qC = it->second;
-		
+			
 			// Determine how many A's to glue together
 			vector<size_t> svec, qvec, Nrowsvec;
 			for (size_t s=0; s<qloc[loc].size(); ++s)
@@ -888,15 +896,16 @@ calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const
 					Nrowsvec.push_back(A[GAUGE::C][loc][s].block[q].rows());
 				}
 			}
-		
+			
 			// Do the glue
 			size_t Ncols = A[GAUGE::C][loc][svec[0]].block[qvec[0]].cols();
 			for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].cols() == Ncols);}
 			size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
-		
+			
 			MatrixType Aclump(Nrows,Ncols);
 			MatrixType Acmp(Nrows,Ncols);
 			Aclump.setZero();
+			Acmp.setZero();
 			size_t stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
 			{
@@ -907,69 +916,6 @@ calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const
 			
 			res += (Aclump-Acmp*C[loc].block[qC]).squaredNorm() * Symmetry::coeff_dot(C[loc].in[qC]);
 //			cout << "contrib L, l=" << loc << ", " << (Aclump-Acmp*C[loc].block[qC]).squaredNorm() * Symmetry::coeff_dot(C[loc].in[qC]) << endl;
-			
-	//		BDCSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
-	////		JacobiSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
-	//		MatrixType NullSpace = Jack.matrixV().rightCols((qloc[loc].size()-1) * A[GAUGE::C][loc][0].block[0].rows());
-	//		
-	//		double epsL_ = (NullSpace.adjoint() * Aclump).norm();
-	////		double epsL__ = sqrt(Aclump.squaredNorm() - (Acmp*C[loc].block[qC]).squaredNorm());
-	//		
-	//		MatrixType B = Aclump-Acmp*C[loc].block[qC];
-	//		size_t D = qloc[loc].size();
-	//		size_t M = A[GAUGE::C][loc][0].block[0].rows();
-	//		
-	////		double epsL___ = 0;
-	////		for (size_t s=0; s<qloc[loc].size(); ++s)
-	////		{
-	////			epsL___ += (A[GAUGE::C][loc][s].block[0] - A[GAUGE::L][loc][s].block[0] * C[loc].block[0]).squaredNorm();
-	////		}
-	////		epsL___ = sqrt(epsL___);
-	//		
-	//		cout << "nullspace test: " << (Acmp.adjoint() * NullSpace).norm() << endl;
-	//		cout << "ortho test: " << (NullSpace.adjoint() * NullSpace - MatrixType::Identity(NullSpace.cols(),NullSpace.cols())).norm() << endl;
-	//		cout << "norm(NullSpace)=" << NullSpace.norm() << endl;
-	//		
-	//		stitch = 0;
-	//		for (size_t i=0; i<svec.size(); ++i)
-	//		{
-	//			N[GAUGE::L][loc][svec[i]].block[0] = NullSpace.block(stitch,0, Nrowsvec[i],NullSpace.cols());
-	//			stitch += Nrowsvec[i];
-	//		}
-		
-	//		MatrixType Ntest = N[GAUGE::L][loc][0].block[0].adjoint() * N[GAUGE::L][loc][0].block[0];
-	//		for (size_t s=1; s<qloc[loc].size(); ++s)
-	//		{
-	//			Ntest += N[GAUGE::L][loc][s].block[0].adjoint() * N[GAUGE::L][loc][s].block[0];
-	//		}
-	//		cout << "NtestL1=" << (Ntest-MatrixType::Identity(Ntest.rows(),Ntest.cols())).norm() << endl;
-	//		
-	//		Ntest = N[GAUGE::L][loc][0].block[0].adjoint() * A[GAUGE::L][loc][0].block[0];
-	//		for (size_t s=1; s<qloc[loc].size(); ++s)
-	//		{
-	//			Ntest += N[GAUGE::L][loc][s].block[0].adjoint() * A[GAUGE::L][loc][s].block[0];
-	//		}
-	//		cout << "NtestL2=" << Ntest.norm() << endl;
-	//		
-	//		MatrixType U(D*M,D*M);
-	//		U.leftCols(M) = Acmp;
-	//		U.rightCols((D-1)*M) = NullSpace;
-	//		
-	//		cout << "Utest1=" << (U.adjoint() * U - MatrixType::Identity(D*M,D*M)).norm() << endl;
-	//		cout << "Utest2=" << (U * U.adjoint() - MatrixType::Identity(D*M,D*M)).norm() << endl;
-	//		cout << "Bnorm=" << B.norm() << endl;
-	//		cout << "UBnorm=" << (U.adjoint()*B).norm() << "\t" << (U*B).norm() << endl;
-	//		cout << (Acmp.adjoint()*B).norm() << endl;
-	//		cout << (NullSpace.adjoint() * B).norm() << endl;
-	//		
-	//		MatrixType Cprime = A[GAUGE::L][loc][0].block[0].adjoint() * A[GAUGE::C][loc][0].block[0];
-	//		for (size_t s=1; s<D; ++s)
-	//		{
-	//			Cprime += A[GAUGE::L][loc][s].block[0].adjoint() * A[GAUGE::C][loc][s].block[0];
-	//		}
-	//		cout << "Ctest=" << (Cprime-C[loc].block[0]).norm() << endl;
-	//		
-	//		cout << endl << "epsL = " << sqrt(epsLsq) << "\t" << epsL_ << endl << endl;
 		}
 	}
 	else if (gauge == GAUGE::R)
@@ -982,7 +928,7 @@ calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const
 			auto it = C[locC].dict.find(quple);
 			assert(it != C[locC].dict.end());
 			size_t qC = it->second;
-		
+			
 			// Determine how many A's to glue together
 			vector<size_t> svec, qvec, Ncolsvec;
 			for (size_t s=0; s<qloc[loc].size(); ++s)
@@ -995,14 +941,16 @@ calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const
 					Ncolsvec.push_back(A[GAUGE::C][loc][s].block[q].cols());
 				}
 			}
-		
+			
 			// Do the glue
 			size_t Nrows = A[GAUGE::C][loc][svec[0]].block[qvec[0]].rows();
 			for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::C][loc][svec[i]].block[qvec[i]].rows() == Nrows);}
 			size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
-		
+			
 			MatrixType Aclump(Nrows,Ncols);
 			MatrixType Acmp(Nrows,Ncols);
+			Aclump.setZero();
+			Acmp.setZero();
 			size_t stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
 			{
@@ -1021,31 +969,6 @@ calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const
 			
 			res += (Aclump-C[locC].block[qC]*Acmp).squaredNorm() * Symmetry::coeff_dot(C[locC].in[qC]);
 //			cout << "contrib R=" << (Aclump-C[locC].block[qC]*Acmp).squaredNorm() * Symmetry::coeff_dot(C[locC].in[qC]) << endl;
-			
-	//		BDCSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
-	////		JacobiSVD<MatrixType> Jack(Acmp.adjoint(),ComputeFullU|ComputeFullV);
-	//		MatrixType NullSpace = Jack.matrixU().adjoint().bottomRows((qloc[loc].size()-1) * A[GAUGE::C][loc][0].block[0].rows());
-		
-	//		stitch = 0;
-	//		for (size_t i=0; i<svec.size(); ++i)
-	//		{
-	//			N[GAUGE::R][loc][svec[i]].block[0] = NullSpace.block(0,stitch, NullSpace.rows(),Ncolsvec[i]);
-	//			stitch += Ncolsvec[i];
-	//		}
-		
-	//		MatrixType Ntest = N[GAUGE::R][loc][0].block[0] * N[GAUGE::R][loc][0].block[0].adjoint();
-	//		for (size_t s=1; s<qloc[loc].size(); ++s)
-	//		{
-	//			Ntest += N[GAUGE::R][loc][s].block[0] * N[GAUGE::R][loc][s].block[0].adjoint();
-	//		}
-	//		cout << "NtestR1=" << (Ntest-MatrixType::Identity(Ntest.rows(),Ntest.cols())).norm() << endl;
-	//		
-	//		Ntest = A[GAUGE::R][loc][0].block[0] * N[GAUGE::R][loc][0].block[0].adjoint();
-	//		for (size_t s=1; s<qloc[loc].size(); ++s)
-	//		{
-	//			Ntest += A[GAUGE::R][loc][s].block[0] * N[GAUGE::R][loc][s].block[0].adjoint();
-	//		}
-	//		cout << "NtestR2=" << Ntest.norm() << endl;
 		}
 	}
 	

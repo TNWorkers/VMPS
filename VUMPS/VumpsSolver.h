@@ -188,10 +188,10 @@ private:
 	* \param hLRdotLR : (h_L|R), (L|h_R) for eq. 15
 	* \param LRres : resulting (H_L| or |H_R)*/
 	void solve_linear (GAUGE::OPTION gauge, 
-	                   const vector<Biped<Symmetry,MatrixType> > &A, 
+	                   const vector<vector<Biped<Symmetry,MatrixType> > > &A, 
 	                   const Biped<Symmetry,MatrixType> &hLR, 
 	                   const Biped<Symmetry,MatrixType> &LReigen, 
-	                   const vector<qarray<Symmetry::Nq> > &qloc, 
+	                   const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
 	                   Scalar hLRdotLR, 
 	                   Biped<Symmetry,MatrixType> &LRres);
 	
@@ -379,6 +379,7 @@ calc_errors (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 				size_t lC = (g==GAUGE::R)? Vout.state.minus1modL(l):l;
 				Vout.state.C[lC] = -1. * Vout.state.C[lC];
 				GAUGE_FLIP = true;
+//				cout << "GAUGE FLIP: " << "l=" << lC << endl;
 			}
 			if (GAUGE_FLIP)
 			{
@@ -808,6 +809,9 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	eL = contract_LR(0, YLlast, Reigen) / H.volume();
 	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
 	
+	calc_errors(Vout);
+	Vout.energy = min(eL,eR);
+	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << Vout.state.test_ortho() << endl;
@@ -815,13 +819,15 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		lout << test_LReigen(Vout) << endl;
 	}
 	
-	calc_errors(Vout);
-	Vout.energy = min(eL,eR);
-	
 //	if (err_var < 1e-5 and M<50)
 //	{
 //		Vout.state.expand_basis(5,H.H2site(0,true),Vout.energy);
 //		M += 5;
+//	}
+	
+//	if (N_iterations%10 == 0 and N_iterations>0 and Vout.state.Nqmax<=50)
+//	{
+//		Vout.state.resize(Vout.state.Dmax,Vout.state.Nqmax+1);
 //	}
 	
 	++N_iterations;
@@ -926,15 +932,15 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	eL = contract_LR(0, YLlast, Reigen) / H.volume();
 	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
 	
+	calc_errors(Vout);
+	Vout.energy = min(eL,eR);
+	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << Vout.state.test_ortho() << endl;
 		lout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
 		lout << test_LReigen(Vout) << endl;
 	}
-	
-	calc_errors(Vout);
-	Vout.energy = min(eL,eR);
 	
 //	Vout.state.expand_basis(2,H.H2site(0,true),Vout.energy);
 //	M += 2;
@@ -975,8 +981,8 @@ iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	
 	// Solve the linear systems in eq. 14
 	Stopwatch<> GMresTimer;
-	solve_linear (GAUGE::L, Vout.state.A[GAUGE::L][0], hL, Reigen, Vout.state.locBasis(0), eR, HL);
-	solve_linear (GAUGE::R, Vout.state.A[GAUGE::R][0], hR, Leigen, Vout.state.locBasis(0), eL, HR);
+	solve_linear(GAUGE::L, Vout.state.A[GAUGE::L], hL, Reigen, Vout.state.locBasis(), eR, HL);
+	solve_linear(GAUGE::R, Vout.state.A[GAUGE::R], hR, Leigen, Vout.state.locBasis(), eL, HR);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
@@ -1039,15 +1045,15 @@ iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
+	calc_errors(Vout);
+	Vout.energy = min(eL,eR);
+	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << Vout.state.test_ortho() << endl;
 		lout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
 		lout << test_LReigen(Vout) << endl;
 	}
-	
-	calc_errors(Vout);
-	Vout.energy = min(eL,eR);
 	
 	++N_iterations;
 	
@@ -1162,8 +1168,8 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 string VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 test_LReigen (const Eigenstate<Umps<Symmetry,Scalar> > &Vout) const
 {
-	TransferMatrixAA TR(GAUGE::R, Vout.state.Acell[GAUGE::R], Vout.state.Acell[GAUGE::R], Vout.state.qlocCell);
-	TransferMatrixAA TL(GAUGE::L, Vout.state.Acell[GAUGE::L], Vout.state.Acell[GAUGE::L], Vout.state.qlocCell);
+	TransferMatrixAA TR(GAUGE::R, Vout.state.A[GAUGE::R], Vout.state.A[GAUGE::R], Vout.state.qloc);
+	TransferMatrixAA TL(GAUGE::L, Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::L], Vout.state.qloc);
 	
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
@@ -1311,10 +1317,10 @@ solve_linear (GAUGE::OPTION gauge,
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 solve_linear (GAUGE::OPTION gauge, 
-              const vector<Biped<Symmetry,MatrixType> > &A, 
+              const vector<vector<Biped<Symmetry,MatrixType> > > &A, 
               const Biped<Symmetry,MatrixType> &hLR, 
               const Biped<Symmetry,MatrixType> &LReigen, 
-              const vector<qarray<Symmetry::Nq> > &qloc, 
+              const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
               Scalar hLRdotLR, 
               Biped<Symmetry,MatrixType> &LRres)
 {
