@@ -75,7 +75,7 @@ const std::map<string,std::any> KondoU0xSU2::defaults =
 
 KondoU0xSU2::
 KondoU0xSU2 (const size_t &L, const vector<Param> &params)
-	:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", true)
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", true)
 {
 	ParamHandler P(params,defaults);
 	
@@ -87,9 +87,9 @@ KondoU0xSU2 (const size_t &L, const vector<Param> &params)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
-
-		F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::A) 
-		                  : FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::B);
+		
+		F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), SUB_LATTICE::A) 
+		                  : FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), SUB_LATTICE::B);
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		
 		setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l);
@@ -108,7 +108,7 @@ HamiltonianTermsXd<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
 set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry> Terms;
-
+	
 	frac S = frac(B[loc].get_D()-1,2);
 	stringstream Slabel;
 	Slabel << "S=" << print_frac_nice(S);
@@ -145,19 +145,19 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			// Terms.tight.push_back(make_tuple(-tPara(i,j),
 			//                                  kroneckerProduct(B.Id(), -1.*F.c(DN,i) * F.sign()),
 			//                                  kroneckerProduct(B.Id(), F.cdag(DN,j))));
-
+			
 			// Mout += -t*std::sqrt(2.)*(Operator::prod(psidag(UP,i),psi(UP,i+1),{1})+Operator::prod(psidag(DN,i),psi(DN,i+1),{1}));
 			//-------------------------------------------------------------------------------------------------------------------------------------//
-
+			
 			//c†UPcUP
-
+			
 			auto Otmp = OperatorType::prod(OperatorType::outerprod(B[loc].Id().structured(),F[loc].psidag(UP,i),{2}),
 										   OperatorType::outerprod(B[loc].Id().structured(),F[loc].sign()      ,{1}),
 										   {2});
 			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
 											 Otmp.plain<double>(),
 											 OperatorType::outerprod(B[loc].Id().structured(),F[loc].psi(UP,j),{2}).plain<double>()));
-
+			
 			//c†DNcDN
 			Otmp = OperatorType::prod(OperatorType::outerprod(B[loc].Id().structured(),F[loc].psidag(DN,i),{2}),
 									  OperatorType::outerprod(B[loc].Id().structured(),F[loc].sign()      ,{1}),
@@ -165,7 +165,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
 											 Otmp.plain<double>(),
 											 OperatorType::outerprod(B[loc].Id().structured(),F[loc].psi(DN,j),{2}).plain<double>()));
-
+			
 			//-cUPc†UP
 			// Otmp = OperatorType::prod(OperatorType::outerprod(B.Id().structured(),F.psi(UP,i),{2}),
 			// 						  OperatorType::outerprod(B.Id().structured(),F.sign()   ,{1}),
@@ -173,7 +173,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			// Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.),
 			// 								 Otmp.plain<double>(),
 			// 								 OperatorType::outerprod(B.Id().structured(),F.psidag(UP,j),{2}).plain<double>()));
-
+			
 			//-cDNc†DN
 			// Otmp = OperatorType::prod(OperatorType::outerprod(B.Id().structured(),F.psi(DN,i),{2}),
 			// 						  OperatorType::outerprod(B.Id().structured(),F.sign()   ,{1}),
@@ -181,7 +181,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			// Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.),
 			// 								 Otmp.plain<double>(),
 			// 								 OperatorType::outerprod(B.Id().structured(),F.psidag(DN,j),{2}).plain<double>()));
-
+			
 			//-------------------------------------------------------------------------------------------------------------------------------------//
 		}
 	}
@@ -219,21 +219,19 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 	// Kx anisotropy
 	auto [Kz,Kzorb,Kzlabel] = P.fill_array1d<double>("Kz","Kzorb",B[loc].orbitals(),loc);
 	save_label(Kzlabel);
-
+	
 	// OperatorType KondoHamiltonian({1},B[loc].get_structured_basis().combine(F[loc].get_basis()));
-
+	
 	//set Heisenberg part of Kondo Hamiltonian
-	auto KondoHamiltonian = OperatorType::outerprod(B[loc].HeisenbergHamiltonian(0.,0.,Bzorb,Bxorb,Kzorb,Kxorb,0.,
-																			P.get<bool>("CYLINDER")).structured(),
-													F[loc].Id(),
-													{1});
-
+	auto KondoHamiltonian = OperatorType::outerprod(B[loc].HeisenbergHamiltonian(0.,0.,Bzorb,Bxorb,Kzorb,Kxorb,0.,P.get<bool>("CYLINDER")).structured(),
+	                                                F[loc].Id(),
+	                                                {1});
+	
 	//set Hubbard part of Kondo Hamiltonian
 	KondoHamiltonian += OperatorType::outerprod(B[loc].Id().structured(),
-												F[loc].HubbardHamiltonian(Uorb,tPerp.x,0.,0.,0.,Bzsuborb,Bxsuborb),
-												{1});
-
-
+	                                            F[loc].HubbardHamiltonian(Uorb,tPerp.x,0.,0.,0.,Bzsuborb,Bxsuborb),
+	                                            {1});
+	
 	//set Heisenberg part of Hamiltonian
 //	KondoHamiltonian += OperatorType::outerprod(B.HeisenbergHamiltonian(0.,P.get<bool>("CYLINDER")),F[loc].Id(),{1,0});
 	

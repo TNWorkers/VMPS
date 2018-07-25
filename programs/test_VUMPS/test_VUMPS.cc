@@ -134,17 +134,17 @@ int main (int argc, char* argv[])
 	N = args.get<int>("N",L);
 	
 	dt = args.get<double>("dt",0.5); // hopping-offset for SSH model
-	M = args.get<double>("M",10);    // bond dimension
+	M = args.get<double>("M",5);    // bond dimension
 	tol_eigval = args.get<double>("tol_eigval",1e-9);
 	tol_var = args.get<double>("tol_var",1e-9);
-	max_iter = args.get<size_t>("max_iter",10);
+	max_iter = args.get<size_t>("max_iter",100);
 	size_t Nqmax = args.get<size_t>("Nqmax",6);
-	size_t D = args.get<size_t>("D",2);
+	size_t D = args.get<size_t>("D",3);
 	
 	bool CALC_SU2 = args.get<bool>("SU2",false);
 	bool CALC_U1 = args.get<bool>("U1",true);
 	bool CALC_U0 = args.get<bool>("U0",true);
-	bool CALC_DOT = args.get<bool>("DOT",true);
+	bool CALC_DOT = args.get<bool>("DOT",false);
 	
 	ISING = args.get<bool>("ISING",true);
 	HEIS2 = args.get<bool>("HEIS2",false);
@@ -199,60 +199,60 @@ int main (int argc, char* argv[])
 	Eigenstate<HEISENBERG_U1::StateUd> g_U1;
 	if (CALC_U1)
 	{
-//		lout << Heis_U1.info() << endl;
-//		DMRG_U1.set_log(2,"e_Heis_U1.dat","err_eigval_Heis_U1.dat","err_var_Heis_U1.dat");
-////		DMRG_U1.set_algorithm(UMPS_ALG::H2SITE);
-//		DMRG_U1.edgeState(Heis_U1, g_U1, {0}, tol_eigval,tol_var, M, Nqmax, max_iter,1);
-//		
-//		if (CALC_DOT)
-//		{
-//			HEISENBERG_U1::uSolver DMRG_U1_(DMRG::VERBOSITY::ON_EXIT);
-//			Eigenstate<HEISENBERG_U1::StateUd> g_U1_;
-//			DMRG_U1_.set_log(2,"e_Heis_U1_.dat","err_eigval_Heis_U1_.dat","err_var_Heis_U1_.dat");
-//			DMRG_U1_.edgeState(Heis_U1_, g_U1_, {0}, tol_eigval,tol_var, M, Nqmax, max_iter,1);
-//			double dot1 = g_U1.state.dot(g_U1.state);
-//			double dot2 = g_U1_.state.dot(g_U1_.state);
-//			double dot3 = g_U1.state.dot(g_U1_.state);
-//			cout << "<ψ|ψ>=" <<  dot1 
-//			     << ", <φ|φ>=" << dot2 
-//			     << ", <ψ|φ>=" << dot3 
-//			<< endl;
-//		}
+		lout << Heis_U1.info() << endl;
+		DMRG_U1.set_log(2,"e_Heis_U1.dat","err_eigval_Heis_U1.dat","err_var_Heis_U1.dat");
+//		DMRG_U1.set_algorithm(UMPS_ALG::H2SITE);
+		DMRG_U1.edgeState(Heis_U1, g_U1, {0}, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 		
-		typedef VMPS::HubbardU1xU1NM HUBBARD_U1;
-//		typedef VMPS::HubbardU1 HUBBARD_U1;
-		HUBBARD_U1 Hubb_U1(L,{{"U",U},{"OPEN_BC",false}});
-		qarray<2> Qc = {N,0};
-//		qarray<1> Qc = {N};
-		Hubb_U1.transform_base(Qc);
-		cout << Hubb_U1.info() << endl;
-		HUBBARD_U1::uSolver DMRG_HUBBU1(VERB);
-		Eigenstate<HUBBARD_U1::StateUd> g_U1Hubb;
-		DMRG_HUBBU1.set_log(2,"e_Hubb_U1.dat","err_eigval_Hubb_U1.dat","err_var_Hubb_U1.dat");
-		DMRG_HUBBU1.edgeState(Hubb_U1, g_U1Hubb, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
-		g_U1Hubb.state.graph("Hubb");
-//		cout << "exact=" << -0.2671549218961211 << endl;
-		double e_exact = LiebWu_E0_L(U,0.01*tol_eigval);
-		cout << "e_exact=" << e_exact << ", diff=" << abs(e_exact-g_U1Hubb.energy) << endl;
-		
-		ArrayXd nvec(L), dvec(L), Szvec(L);
-		for (size_t l=0; l<L; ++l)
+		if (CALC_DOT)
 		{
-			cout << "l=" << l << endl;
-			
-			nvec(l) = avg(g_U1Hubb.state, Hubb_U1.n(l), g_U1Hubb.state);
-			cout << "n=" << nvec(l) << endl;
-			
-			dvec(l) = avg(g_U1Hubb.state, Hubb_U1.d(l), g_U1Hubb.state);
-			cout << "d=" << dvec(l) << endl;
-			
-			Szvec(l) = avg(g_U1Hubb.state, Hubb_U1.Sz(l), g_U1Hubb.state);
-			cout << "Sz=" << Szvec(l) << endl;
+			HEISENBERG_U1::uSolver DMRG_U1_(DMRG::VERBOSITY::ON_EXIT);
+			Eigenstate<HEISENBERG_U1::StateUd> g_U1_;
+			DMRG_U1_.set_log(2,"e_Heis_U1_.dat","err_eigval_Heis_U1_.dat","err_var_Heis_U1_.dat");
+			DMRG_U1_.edgeState(Heis_U1_, g_U1_, {0}, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+			double dot1 = g_U1.state.dot(g_U1.state);
+			double dot2 = g_U1_.state.dot(g_U1_.state);
+			double dot3 = g_U1.state.dot(g_U1_.state);
+			cout << "<ψ|ψ>=" <<  dot1 
+			     << ", <φ|φ>=" << dot2 
+			     << ", <ψ|φ>=" << dot3 
+			<< endl;
 		}
-		cout << "navg=" << nvec.sum()/L << endl;
-		cout << "davg=" << dvec.sum()/L << endl;
-		cout << "Szavg=" << Szvec.sum()/L << endl;
-		cout << "n(0)n(1)=" << avg(g_U1Hubb.state, Hubb_U1.nn<UPDN,UPDN>(0,1), g_U1Hubb.state) << endl;
+		
+//		typedef VMPS::HubbardU1xU1NM HUBBARD_U1;
+////		typedef VMPS::HubbardU1 HUBBARD_U1;
+//		HUBBARD_U1 Hubb_U1(L,{{"U",U},{"OPEN_BC",false}});
+//		qarray<2> Qc = {N,0};
+////		qarray<1> Qc = {N};
+//		Hubb_U1.transform_base(Qc);
+//		cout << Hubb_U1.info() << endl;
+//		HUBBARD_U1::uSolver DMRG_HUBBU1(VERB);
+//		Eigenstate<HUBBARD_U1::StateUd> g_U1Hubb;
+//		DMRG_HUBBU1.set_log(2,"e_Hubb_U1.dat","err_eigval_Hubb_U1.dat","err_var_Hubb_U1.dat");
+//		DMRG_HUBBU1.edgeState(Hubb_U1, g_U1Hubb, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+//		g_U1Hubb.state.graph("Hubb");
+////		cout << "exact=" << -0.2671549218961211 << endl;
+//		double e_exact = LiebWu_E0_L(U,0.01*tol_eigval);
+//		cout << "e_exact=" << e_exact << ", diff=" << abs(e_exact-g_U1Hubb.energy) << endl;
+		
+//		ArrayXd nvec(L), dvec(L), Szvec(L);
+//		for (size_t l=0; l<L; ++l)
+//		{
+//			cout << "l=" << l << endl;
+//			
+//			nvec(l) = avg(g_U1Hubb.state, Hubb_U1.n(l), g_U1Hubb.state);
+//			cout << "n=" << nvec(l) << endl;
+//			
+//			dvec(l) = avg(g_U1Hubb.state, Hubb_U1.d(l), g_U1Hubb.state);
+//			cout << "d=" << dvec(l) << endl;
+//			
+//			Szvec(l) = avg(g_U1Hubb.state, Hubb_U1.Sz(l), g_U1Hubb.state);
+//			cout << "Sz=" << Szvec(l) << endl;
+//		}
+//		cout << "navg=" << nvec.sum()/L << endl;
+//		cout << "davg=" << dvec.sum()/L << endl;
+//		cout << "Szavg=" << Szvec.sum()/L << endl;
+//		cout << "n(0)n(1)=" << avg(g_U1Hubb.state, Hubb_U1.nn<UPDN,UPDN>(0,1), g_U1Hubb.state) << endl;
 	}
 	
 	typedef VMPS::HeisenbergXXZ HEISENBERG0;
@@ -263,107 +263,107 @@ int main (int argc, char* argv[])
 	Eigenstate<HEISENBERG0::StateUd> g0;
 	if (CALC_U0)
 	{
-//		lout << Heis0.info() << endl;
-//		DMRG0.set_log(2,"e_Heis_U0.dat","err_eigval_Heis_U0.dat","err_var_Heis_U0.dat");
-//		DMRG0.edgeState(Heis0, g0, {}, tol_eigval,tol_var, M, 1, max_iter,1);
-//		cout << g0.state.info() << endl;
-//		
-//		if (CALC_DOT)
-//		{
-//			HEISENBERG0::uSolver DMRG0_(DMRG::VERBOSITY::ON_EXIT);
-//			Eigenstate<HEISENBERG0::StateUd> g0_;
-//			DMRG0_.edgeState(Heis0_, g0_, {}, tol_eigval,tol_var, M, 1, max_iter,1);
-//			double dot1 = g0.state.dot(g0.state);
-//			double dot2 = g0_.state.dot(g0_.state);
-//			double dot3 = g0.state.dot(g0_.state);
-//			cout << "<ψ|ψ>=" <<  dot1 
-//			     << ", <φ|φ>=" << dot2 
-//			     << ", <ψ|φ>=" << dot3 << endl;
-//		}
+		lout << Heis0.info() << endl;
+		DMRG0.set_log(2,"e_Heis_U0.dat","err_eigval_Heis_U0.dat","err_var_Heis_U0.dat");
+		DMRG0.edgeState(Heis0, g0, {}, tol_eigval,tol_var, M, 1, max_iter,1);
+		cout << g0.state.info() << endl;
 		
-		typedef VMPS::Hubbard HUBBARD_U0;
-		HUBBARD_U0 Hubb_U0(L,{{"U",U},{"mu",mu},{"OPEN_BC",false}});
-		qarray<0> Qc = {};
-		Hubb_U0.transform_base(Qc);
-		cout << Hubb_U0.info() << endl;
-		HUBBARD_U0::uSolver DMRG_HUBBU0(VERB);
-		Eigenstate<HUBBARD_U0::StateUd> g_U0Hubb;
-		DMRG_HUBBU0.set_log(2,"e_Hubb_U0.dat","err_eigval_Hubb_U0.dat","err_var_Hubb_U0.dat");
-		DMRG_HUBBU0.edgeState(Hubb_U0, g_U0Hubb, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
-//		cout << "exact=" << -0.2671549218961211 << endl;
-		double e_exact = LiebWu_E0_L(U,0.01*tol_eigval);
-		cout << "e_exact=" << e_exact-mu << endl;
-		for (size_t l=0; l<L; ++l)
+		if (CALC_DOT)
 		{
-			cout << "l=" << l << endl;
-			cout << "n=" << avg(g_U0Hubb.state, Hubb_U0.n(l), g_U0Hubb.state) << endl;
-			cout << "d=" << avg(g_U0Hubb.state, Hubb_U0.d(l), g_U0Hubb.state) << endl;
-			cout << "Sz=" << avg(g_U0Hubb.state, Hubb_U0.Sz(l), g_U0Hubb.state) << endl;
+			HEISENBERG0::uSolver DMRG0_(DMRG::VERBOSITY::ON_EXIT);
+			Eigenstate<HEISENBERG0::StateUd> g0_;
+			DMRG0_.edgeState(Heis0_, g0_, {}, tol_eigval,tol_var, M, 1, max_iter,1);
+			double dot1 = g0.state.dot(g0.state);
+			double dot2 = g0_.state.dot(g0_.state);
+			double dot3 = g0.state.dot(g0_.state);
+			cout << "<ψ|ψ>=" <<  dot1 
+			     << ", <φ|φ>=" << dot2 
+			     << ", <ψ|φ>=" << dot3 << endl;
 		}
-		cout << "n(0)n(1)=" << avg(g_U0Hubb.state, Hubb_U0.nn<UPDN,UPDN>(0,1), g_U0Hubb.state) << endl;
+		
+//		typedef VMPS::Hubbard HUBBARD_U0;
+//		HUBBARD_U0 Hubb_U0(L,{{"U",U},{"mu",mu},{"OPEN_BC",false}});
+//		qarray<0> Qc = {};
+//		Hubb_U0.transform_base(Qc);
+//		cout << Hubb_U0.info() << endl;
+//		HUBBARD_U0::uSolver DMRG_HUBBU0(VERB);
+//		Eigenstate<HUBBARD_U0::StateUd> g_U0Hubb;
+//		DMRG_HUBBU0.set_log(2,"e_Hubb_U0.dat","err_eigval_Hubb_U0.dat","err_var_Hubb_U0.dat");
+//		DMRG_HUBBU0.edgeState(Hubb_U0, g_U0Hubb, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+////		cout << "exact=" << -0.2671549218961211 << endl;
+//		double e_exact = LiebWu_E0_L(U,0.01*tol_eigval);
+//		cout << "e_exact=" << e_exact-mu << endl;
+//		for (size_t l=0; l<L; ++l)
+//		{
+//			cout << "l=" << l << endl;
+//			cout << "n=" << avg(g_U0Hubb.state, Hubb_U0.n(l), g_U0Hubb.state) << endl;
+//			cout << "d=" << avg(g_U0Hubb.state, Hubb_U0.d(l), g_U0Hubb.state) << endl;
+//			cout << "Sz=" << avg(g_U0Hubb.state, Hubb_U0.Sz(l), g_U0Hubb.state) << endl;
+//		}
+//		cout << "n(0)n(1)=" << avg(g_U0Hubb.state, Hubb_U0.nn<UPDN,UPDN>(0,1), g_U0Hubb.state) << endl;
 	}
 	
-//	cout << setprecision(13);
-//	double eref = std::nan("1");
-//	if (D==2)
-//	{
-//		if (Jz==0.)
-//		{
-//			eref = -1./M_PI;
-//		}
-//		else
-//		{
-//			eref = 0.25-log(2);
-//		}
-//	}
-//	else if (D==3)
-//	{
-//		eref = -1.401484038971;
-//	}
-//	else if (D==4)
-//	{
-//		eref = -2.828337;
-//	}
-//	else if (D==5)
-//	{
-//		eref = -4.761248;
-//	}
-//	else if (D==6)
-//	{
-//		eref = -7.1924;
-//	}
-//	cout << "e(ref)=" << eref << endl;
-//	if (CALC_SU2) {cout << "e0(SU2)=" << g_SU2.energy << ", diff=" << abs(eref-g_SU2.energy) << endl;}
-//	if (CALC_U1)  {cout << "e0(U1) =" << g_U1.energy << ", diff=" << abs(eref-g_U1.energy) << endl;}
-//	if (CALC_U0)  {cout << "e0(U0) =" << g0.energy << ", diff=" << abs(eref-g0.energy) << endl;}
-//	
-//	if (CALC_U0)
-//	{
-//		cout << "-----U0-----" << endl;
-//		print_mag(Heis0,g0);
-//		size_t dmax = 10;
-//		for (size_t d=1; d<dmax; ++d)
-//		{
-//			HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
-//			double SvecSvec = Htmp.SvecSvecAvg(g0.state,0,d);
-//			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
-//		}
-//	}
-//	if (CALC_U1)
-//	{
-//		cout << endl;
-//		cout << "-----U1-----" << endl;
-//		print_mag(Heis_U1,g_U1);
-//		size_t dmax = 10;
-//		for (size_t d=1; d<dmax; ++d)
-//		{
-//			HEISENBERG_U1 Htmp(d+1,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
-//			double SvecSvec = Htmp.SvecSvecAvg(g_U1.state,0,d);
-//			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
-//		}
-//		
-//		g_U1.state.graph("g");
-//	}
+	cout << setprecision(13);
+	double eref = std::nan("1");
+	if (D==2)
+	{
+		if (Jz==0.)
+		{
+			eref = -1./M_PI;
+		}
+		else
+		{
+			eref = 0.25-log(2);
+		}
+	}
+	else if (D==3)
+	{
+		eref = -1.401484038971;
+	}
+	else if (D==4)
+	{
+		eref = -2.828337;
+	}
+	else if (D==5)
+	{
+		eref = -4.761248;
+	}
+	else if (D==6)
+	{
+		eref = -7.1924;
+	}
+	cout << "e(ref)=" << eref << endl;
+	if (CALC_SU2) {cout << "e0(SU2)=" << g_SU2.energy << ", diff=" << abs(eref-g_SU2.energy) << endl;}
+	if (CALC_U1)  {cout << "e0(U1) =" << g_U1.energy << ", diff=" << abs(eref-g_U1.energy) << endl;}
+	if (CALC_U0)  {cout << "e0(U0) =" << g0.energy << ", diff=" << abs(eref-g0.energy) << endl;}
+	
+	if (CALC_U0)
+	{
+		cout << "-----U0-----" << endl;
+		print_mag(Heis0,g0);
+		size_t dmax = 10;
+		for (size_t d=1; d<dmax; ++d)
+		{
+			HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
+			double SvecSvec = Htmp.SvecSvecAvg(g0.state,0,d);
+			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		}
+	}
+	if (CALC_U1)
+	{
+		cout << endl;
+		cout << "-----U1-----" << endl;
+		print_mag(Heis_U1,g_U1);
+		size_t dmax = 10;
+		for (size_t d=1; d<dmax; ++d)
+		{
+			HEISENBERG_U1 Htmp(d+1,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
+			double SvecSvec = Htmp.SvecSvecAvg(g_U1.state,0,d);
+			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		}
+		
+		g_U1.state.graph("g");
+	}
 	
 	if (CALC_SU2)
 	{

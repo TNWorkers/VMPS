@@ -198,30 +198,68 @@ Biped<Symmetry,MatrixType> make_hR (const boost::multi_array<MpoScalar,4> &H2sit
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 Tripod<Symmetry,MatrixType> make_YL (size_t b,
                                      const Tripod<Symmetry,MatrixType> &Lold, 
-                                     const vector<Biped<Symmetry,MatrixType> > &Abra, 
-                                     const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
-                                     const vector<Biped<Symmetry,MatrixType> > &Aket, 
-                                     const vector<qarray<Symmetry::Nq> > &qloc,
-                                     const vector<qarray<Symmetry::Nq> > &qOp)
+                                     const vector<vector<Biped<Symmetry,MatrixType> > > &Abra, 
+                                     const vector<vector<vector<vector<SparseMatrix<MpoScalar> > > > > &W, 
+                                     const vector<vector<Biped<Symmetry,MatrixType> > > &Aket, 
+                                     const vector<vector<qarray<Symmetry::Nq> > > &qloc,
+                                     const vector<vector<qarray<Symmetry::Nq> > > &qOp)
 {
-	Tripod<Symmetry,MatrixType> Lnew;
-	contract_L(Lold, Abra, W, Aket, qloc, qOp, Lnew, false, make_pair(TRIANGULAR,b));
-	return Lnew;
+	size_t Lcell = Abra.size();
+	Tripod<Symmetry,MatrixType> Lnext;
+	Tripod<Symmetry,MatrixType> L = Lold;
+	for (size_t l=0; l<Lcell; ++l)
+	{
+		if (l==Lcell-1)
+		{
+			contract_L(L, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(FIXED,b));
+		}
+		else if (l==0)
+		{
+			contract_L(L, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(TRIANGULAR,b));
+		}
+		else
+		{
+			contract_L(L, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Lnext);
+		}
+		L.clear();
+		L = Lnext;
+		Lnext.clear();
+	}
+	return L;
 }
 
 /**Calculates the tensor \f$Y_{Ra}\f$ (eq. (C18)) from the MPO tensor \p W, the left transfer matrix \p R and \f$A_R\f$.*/
 template<typename Symmetry, typename MatrixType, typename MpoScalar>
 Tripod<Symmetry,MatrixType> make_YR (size_t a,
                                      const Tripod<Symmetry,MatrixType> &Rold,
-                                     const vector<Biped<Symmetry,MatrixType> > &Abra, 
-                                     const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
-                                     const vector<Biped<Symmetry,MatrixType> > &Aket, 
-                                     const vector<qarray<Symmetry::Nq> > &qloc,
-                                     const vector<qarray<Symmetry::Nq> > &qOp)
+                                     const vector<vector<Biped<Symmetry,MatrixType> > > &Abra, 
+                                     const vector<vector<vector<vector<SparseMatrix<MpoScalar> > > > > &W, 
+                                     const vector<vector<Biped<Symmetry,MatrixType> > > &Aket, 
+                                     const vector<vector<qarray<Symmetry::Nq> > > &qloc,
+                                     const vector<vector<qarray<Symmetry::Nq> > > &qOp)
 {
-	Tripod<Symmetry,MatrixType> Rnew;
-	contract_R(Rold, Abra, W, Aket, qloc, qOp, Rnew, false, make_pair(TRIANGULAR,a));
-	return Rnew;
+	size_t Lcell = Abra.size();
+	Tripod<Symmetry,MatrixType> Rnext;
+	Tripod<Symmetry,MatrixType> R = Rold;
+	for (int l=Lcell-1; l>=0; --l)
+	{
+		if (l==0)
+		{
+			contract_R(R, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(FIXED,a));
+		}
+		else if (l==Lcell-1)
+		{
+			contract_R(R, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(TRIANGULAR,a));
+		}
+		else
+		{
+			contract_R(R, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Rnext);
+		}
+		R.clear();
+		R = Rnext;
+		Rnext.clear();
+	}
+	return R;
 }
 
 template<typename Symmetry, typename MpoScalar>

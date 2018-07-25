@@ -16,7 +16,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	Obs.transform_base(Vket.Qtarget(),false);
 	
 //	B.setIdentity(Vket.get_frst_rows(),Vbra.get_frst_rows(),1,1);
-	B.setIdentity(Vket.get_frst_rows(), Obs.auxdim(), 1, Vket.inBasis(0));
+	B.setIdentity(Obs.auxdim(), 1, Vket.inBasis(0));
 	for (size_t l=0; l<Obs.length(); ++l)
 	{
 		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
@@ -28,7 +28,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	}
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdR;
-	IdR.setIdentity(Vket.get_last_cols(), Obs.auxdim(), 1, Vket.outBasis((Obs.length()-1)%Vket.length()));
+	IdR.setIdentity(Obs.auxdim(), 1, Vket.outBasis((Obs.length()-1)%Vket.length()));
 	
 	return contract_LR(B,IdR);
 	

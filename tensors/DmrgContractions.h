@@ -84,8 +84,8 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 						size_t b = iW.col();
 						
 						if (MODE == FULL or
-						   (MODE == TRIANGULAR and b==fixed_b and a>fixed_b) or
-						   (MODE == FIXED and b==a and b==fixed_b))
+						   (MODE == TRIANGULAR and a>fixed_b) or
+						   (MODE == FIXED and b==fixed_b))
 						{
 							if (Lold.block[qL][a][0].size() != 0)
 							{
@@ -164,107 +164,6 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 	Rnew.setZero();
 	auto [MODE,fixed_a] = MODE_input;
 	
-//	for (size_t s1=0; s1<qloc.size(); ++s1)
-//	for (size_t s2=0; s2<qloc.size(); ++s2)
-//	for (size_t k=0; k<qOp.size(); ++k)
-//	{
-//		array<typename Symmetry::qType,3> qCheck = {qloc[s2],qOp[k],qloc[s1]};
-//		if(!Symmetry::validate(qCheck)) {continue;}
-//		
-//		for (size_t qR=0; qR<Rold.dim; ++qR)
-//		{
-//			auto qRouts = Symmetry::reduceSilent(Rold.out(qR),Symmetry::flip(qloc[s1]));
-//			auto qRins  = Symmetry::reduceSilent(Rold.in(qR), Symmetry::flip(qloc[s2]));
-//			
-//			for(const auto& qRout : qRouts)
-//			for(const auto& qRin : qRins)
-//			{
-//				qarray2<Symmetry::Nq> cmp1 = {qRout, Rold.out(qR)};
-//				qarray2<Symmetry::Nq> cmp2 = {qRin, Rold.in(qR)};
-//				
-//				auto q1 = Abra[s1].dict.find(cmp1);
-//				auto q2 = Aket[s2].dict.find(cmp2);
-//				
-//				if (q1!=Abra[s1].dict.end() and 
-//				    q2!=Aket[s2].dict.end())
-//				{
-//					if (Aket[s2].block[q2->second].size() == 0) {continue;}
-//					if (Abra[s1].block[q1->second].size() == 0) {continue;}
-//					
-//					qarray<Symmetry::Nq> new_qin  = Aket[s2].in[q2->second]; // A.in
-//					qarray<Symmetry::Nq> new_qout = Abra[s1].in[q1->second]; // A†.out = A.in
-//					auto qRmids = Symmetry::reduceSilent(Rold.mid(qR),Symmetry::flip(qOp[k]));
-//					
-//					for(const auto& new_qmid : qRmids)
-//					{
-//						qarray3<Symmetry::Nq> quple = {new_qin, new_qout, new_qmid};
-//						if constexpr (Symmetry::NON_ABELIAN)
-//						{
-//							factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[q2->second], qloc[s2], Aket[s2].in[q2->second],
-//							                                    Rold.mid(qR),             qOp[k],   quple[2],
-//							                                    Abra[s1].out[q1->second], qloc[s1], Abra[s1].in[q1->second]);
-//						}
-//						else
-//						{
-//							factor_cgc = 1.;
-//						}
-//						if (abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
-//						
-//						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
-//						for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
-//						{
-//							size_t a = iW.row();
-//							size_t b = iW.col();
-//							
-//							if (MODE == FULL or
-//							   (MODE == TRIANGULAR and a==fixed_a and fixed_a>b) or
-//							   (MODE == FIXED and b==a and a==fixed_a))
-//							{
-//								if (Rold.block[qR][b][0].size() != 0)
-//								{
-//									MatrixType Mtmp;
-//									if (RANDOMIZE)
-//									{
-//										Mtmp.resize(Aket[s2].block[q2->second].rows(), Abra[s1].block[q1->second].rows());
-//										Mtmp.setRandom();
-//									}
-//									else
-//									{
-//										optimal_multiply(factor_cgc * iW.value(),
-//										                 Aket[s2].block[q2->second],
-//										                 Rold.block[qR][b][0],
-//										                 Abra[s1].block[q1->second].adjoint(),
-//										                 Mtmp);
-//									}
-//									
-//									auto it = Rnew.dict.find(quple);
-//									if (it != Rnew.dict.end())
-//									{
-//										if (Rnew.block[it->second][a][0].rows() != Mtmp.rows() or 
-//										    Rnew.block[it->second][a][0].cols() != Mtmp.cols())
-//										{
-//											Rnew.block[it->second][a][0] = Mtmp;
-//										}
-//										else
-//										{
-//											Rnew.block[it->second][a][0] += Mtmp;
-//										}
-//									}
-//									else
-//									{
-//										boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].rows()][1]);
-//										Mtmpvec[a][0] = Mtmp;
-//										Rnew.push_back(quple, Mtmpvec);
-//									}
-//								}
-//							}
-//						}
-//					}
-//				}
-//			}
-//		}
-//	}
-	
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t k=0; k<qOp.size(); ++k)
@@ -307,8 +206,8 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 						size_t b = iW.col();
 						
 						if (MODE == FULL or
-						   (MODE == TRIANGULAR and a==fixed_a and fixed_a>b) or
-						   (MODE == FIXED and b==a and a==fixed_a))
+						   (MODE == TRIANGULAR and fixed_a>b) or
+						   (MODE == FIXED and a==fixed_a))
 						{
 							if (Rold.block[qR][b][0].rows() != 0)
 							{

@@ -105,7 +105,7 @@ int main (int argc, char* argv[])
 	double factor_SU2 = args.get<double>("factor_SU2",1.);
 	double factor_SU2_dag = args.get<double>("factor_SU2_dag",1.);
 
-	if(OP == "Simp" or OP == "Ssub")
+	if (OP == "Simp" or OP == "Ssub")
 	{
 		// The factor 1./sqrt(2.) comes from the spinor which has components Svec = {-1./sqrt(2.)*S+, Sz, 1./sqrt(2.)*S-}
 		// At least in the paper from Weichselbaum this is the case. McCulloch seems to have another convention: Svec = {S+, 1./sqrt(2.)*Sz, -S-}
@@ -235,7 +235,7 @@ int main (int argc, char* argv[])
 				densityMatrixA_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdagc<UP>(i,j), g_U1xU1.state)+
 				                             avg(g_U1xU1.state, H_U1xU1.cdagc<DN>(i,j), g_U1xU1.state);
 			}
-
+			
 			densityMatrixB_U1xU1.resize(L,L);
 			densityMatrixB_U1xU1.setZero();
 			for (size_t i=0; i<L; i++)
@@ -244,27 +244,27 @@ int main (int argc, char* argv[])
 				densityMatrixB_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdag<UP>(i), H_U1xU1.c<UP>(j), g_U1xU1.state)
 					                      + avg(g_U1xU1.state, H_U1xU1.cdag<DN>(i), H_U1xU1.c<DN>(j), g_U1xU1.state);
 			}
-
+			
 			if (SINGLE_OP)
 			{
 				auto SingleOp = [OP, &H_U1xU1](size_t i) -> Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>
-					{
-						if (OP=="Simp") {return H_U1xU1.Simp(SP,i);}
-						if (OP=="Ssub") {return H_U1xU1.Ssub(SP,i);}
-						if (OP=="cUP") {return H_U1xU1.c<UP>(i);}
-						if (OP=="cDN") {return H_U1xU1.c<DN>(i);}
-					};
+				{
+					if (OP=="Simp") {return H_U1xU1.Simp(SP,i);}
+					if (OP=="Ssub") {return H_U1xU1.Ssub(SP,i);}
+					if (OP=="cUP") {return H_U1xU1.c<UP>(i);}
+					if (OP=="cDN") {return H_U1xU1.c<DN>(i);}
+				};
 				auto SingleOp_dag = [OP, &H_U1xU1](size_t i) -> Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>
-					{
-						if (OP=="Simp") {return H_U1xU1.Simp(SM,i);}
-						if (OP=="Ssub") {return H_U1xU1.Ssub(SM,i);}
-						if (OP=="cUP") {return H_U1xU1.cdag<UP>(i);}
-						if (OP=="cDN") {return H_U1xU1.cdag<DN>(i);}
-					};
-
-				if(OP == "Simp" or OP == "Ssub") { Qc_U1xU1 = {M+2,N}; }
-				else if(OP == "cUP") { Qc_U1xU1 = {M-1,N-1}; }
-				else if(OP == "cDN") { Qc_U1xU1 = {M+1,N-1}; }
+				{
+					if (OP=="Simp") {return H_U1xU1.Simp(SM,i);}
+					if (OP=="Ssub") {return H_U1xU1.Ssub(SM,i);}
+					if (OP=="cUP") {return H_U1xU1.cdag<UP>(i);}
+					if (OP=="cDN") {return H_U1xU1.cdag<DN>(i);}
+				};
+				
+				if (OP == "Simp" or OP == "Ssub") { Qc_U1xU1 = {M+2,N}; }
+				else if (OP == "cUP") { Qc_U1xU1 = {M-1,N-1}; }
+				else if (OP == "cDN") { Qc_U1xU1 = {M+1,N-1}; }
 				
 				VMPS::KondoU1xU1::Solver DMRG_U1xU1_(DMRG::VERBOSITY::SILENT);
 				Eigenstate<VMPS::KondoU1xU1::StateXd> g_U1xU1_;

@@ -19,12 +19,12 @@ struct TransferMatrix
 	TransferMatrix(){};
 	
 	TransferMatrix (GAUGE::OPTION gauge_input, 
-	                const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra_input, 
-	                const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket_input, 
+	                const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Abra_input, 
+	                const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Aket_input, 
 	                const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LReigen_input, 
-	                vector<vector<vector<SparseMatrix<Scalar> > > > W_input,
-	                const vector<qarray<Symmetry::Nq> > &qloc_input,
-	                const vector<qarray<Symmetry::Nq> > &qOp_input,
+	                const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W_input,
+	                const vector<vector<qarray<Symmetry::Nq> > > &qloc_input,
+	                const vector<vector<qarray<Symmetry::Nq> > > &qOp_input,
 	                size_t ab_input)
 	:gauge(gauge_input), Abra(Abra_input), Aket(Aket_input), LReigen(LReigen_input), W(W_input), qloc(qloc_input), qOp(qOp_input), ab(ab_input)
 	{}
@@ -33,17 +33,17 @@ struct TransferMatrix
 	GAUGE::OPTION gauge;
 	
 	///\{
-	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Aket;
-	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Abra;
-	vector<vector<vector<SparseMatrix<Scalar> > > > W;
+	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Aket;
+	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Abra;
+	vector<vector<vector<vector<SparseMatrix<Scalar> > > > > W;
 	///\}
 	
 	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > LReigen;
 	
 	size_t ab;
 	
-	vector<qarray<Symmetry::Nq> > qloc;
-	vector<qarray<Symmetry::Nq> > qOp;
+	vector<vector<qarray<Symmetry::Nq> > > qloc;
+	vector<vector<qarray<Symmetry::Nq> > > qOp;
 };
 
 /**
@@ -91,17 +91,50 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 {
 	Vout = Vin;
 	Vout.data.setZero();
+	size_t Lcell = H.W.size();
 	
 	TransferVector<Symmetry,Scalar2> TxV = Vin;
 	TxV.data.setZero();
 	
 	if (H.gauge == GAUGE::R)
 	{
-		contract_R (Vin.data, H.Abra, H.W, H.Aket, H.qloc, H.qOp, TxV.data, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
+		Tripod<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > Rnext;
+		Tripod<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > R = Vin.data;
+		for (int l=Lcell-1; l>=0; --l)
+		{
+			if (l==0 or l==Lcell-1)
+			{
+				contract_R(R, H.Abra[l], H.W[l], H.Aket[l], H.qloc[l], H.qOp[l], Rnext, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
+			}
+			else
+			{
+				contract_R(R, H.Abra[l], H.W[l], H.Aket[l], H.qloc[l], H.qOp[l], Rnext);
+			}
+			R.clear();
+			R = Rnext;
+			Rnext.clear();
+		}
+		TxV.data = R;
 	}
 	else if (H.gauge == GAUGE::L)
 	{
-		contract_L (Vin.data, H.Abra, H.W, H.Aket, H.qloc, H.qOp, TxV.data, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
+		Tripod<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > Lnext;
+		Tripod<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > L = Vin.data;
+		for (size_t l=0; l<Lcell; ++l)
+		{
+			if (l==Lcell-1 or l==0)
+			{
+				contract_L(L, H.Abra[l], H.W[l], H.Aket[l], H.qloc[l], H.qOp[l], Lnext, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
+			}
+			else
+			{
+				contract_L(L, H.Abra[l], H.W[l], H.Aket[l], H.qloc[l], H.qOp[l], Lnext);
+			}
+			L.clear();
+			L = Lnext;
+			Lnext.clear();
+		}
+		TxV.data = L;
 	}
 	
 	Scalar2 LdotR;
@@ -149,7 +182,7 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 			else
 			{
 				cout << termcolor::red << "push_back that shouldn't be" << termcolor::reset << endl;
-				boost::multi_array<Matrix<Scalar2,Dynamic,Dynamic>,LEGLIMIT> Mtmpvec(boost::extents[H.W[0][0][0].cols()][1]);
+				boost::multi_array<Matrix<Scalar2,Dynamic,Dynamic>,LEGLIMIT> Mtmpvec(boost::extents[H.W[0][0][0][0].cols()][1]);
 				Mtmpvec[H.ab][0] = Mtmp;
 				Vout.data.push_back(quple, Mtmpvec);
 			}
@@ -168,13 +201,14 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, TransferVector<Symmetry,Sca
 template<typename Symmetry, typename Scalar>
 inline size_t dim (const TransferMatrix<Symmetry,Scalar> &H)
 {
-	size_t out = 0;
-	for (size_t s=0; s<H.Aket.size(); ++s)
-	for (size_t q=0; q<H.Aket[s].dim; ++q)
-	{
-		out += H.Aket[s].block[q].size();
-	}
-	return out;
+//	size_t out = 0;
+//	for (size_t s=0; s<H.Aket.size(); ++s)
+//	for (size_t q=0; q<H.Aket[s].dim; ++q)
+//	{
+//		out += H.Aket[s].block[q].size();
+//	}
+//	return out;
+	return 0;
 }
 
 template<typename Symmetry, typename Scalar>

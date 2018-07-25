@@ -127,6 +127,10 @@ public:
 	/**Returns the total quantum number of the Umps.*/
 	inline qarray<Nq> Qtarget() const {return Qtot;};
 	
+	void expand_basis (size_t DeltaD, const boost::multi_array<Scalar,4> &h2site, double e);
+	
+	void calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixType> > &N);
+	
 private:
 	
 	/**parameter*/
@@ -1362,6 +1366,547 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 			}
 		}
 	}
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &N)
+{
+	N.clear();
+	N.resize(qloc[loc].size());
+	
+	if (DIR == DMRG::DIRECTION::LEFT)
+	{
+		for (size_t qin=0; qin<inbase[loc].Nq(); ++qin)
+		{
+			// determine how many A's to glue together
+			vector<size_t> svec, qvec, Ncolsvec;
+			for (size_t s=0; s<qloc[loc].size(); ++s)
+			for (size_t q=0; q<A[GAUGE::R][loc][s].dim; ++q)
+			{
+				if (A[GAUGE::R][loc][s].in[q] == inbase[loc][qin])
+				{
+					svec.push_back(s);
+					qvec.push_back(q);
+					Ncolsvec.push_back(A[GAUGE::R][loc][s].block[q].cols());
+				}
+			}
+			
+			if (Ncolsvec.size() > 0)
+			{
+				// do the glue
+				size_t Nrows = A[GAUGE::R][loc][svec[0]].block[qvec[0]].rows();
+				for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::R][loc][svec[i]].block[qvec[i]].rows() == Nrows);}
+				size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
+				
+				MatrixType Aclump(Nrows,Ncols);
+				size_t stitch = 0;
+				for (size_t i=0; i<svec.size(); ++i)
+				{
+					Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[GAUGE::R][loc][svec[i]].block[qvec[i]]*
+					                                            Symmetry::coeff_leftSweep(
+					                                            A[GAUGE::R][loc][svec[i]].out[qvec[i]],
+					                                            A[GAUGE::R][loc][svec[i]].in[qvec[i]],
+					                                            qloc[loc][svec[i]]);
+					stitch += Ncolsvec[i];
+				}
+				
+				HouseholderQR<MatrixType> Quirinus(Aclump.adjoint());
+				MatrixType Qmatrix = Quirinus.householderQ().adjoint();
+				size_t Nret = Nrows; // retained states
+				
+				// fill N
+				stitch = 0;
+				for (size_t i=0; i<svec.size(); ++i)
+				{
+					if (Qmatrix.rows() > Nret)
+					{
+						size_t Nnull = Qmatrix.rows()-Nret;
+						MatrixType Mtmp = Qmatrix.block(Nret,stitch, Nnull,Ncolsvec[i])*
+						                  Symmetry::coeff_sign(
+						                  A[GAUGE::R][loc][svec[i]].out[qvec[i]],
+						                  A[GAUGE::R][loc][svec[i]].in[qvec[i]],
+						                  qloc[loc][svec[i]]);
+						N[svec[i]].try_push_back(A[GAUGE::R][loc][svec[i]].in[qvec[i]], A[GAUGE::R][loc][svec[i]].out[qvec[i]], Mtmp);
+					}
+					stitch += Ncolsvec[i];
+				}
+			}
+		}
+	}
+	else if (DIR == DMRG::DIRECTION::RIGHT)
+	{
+		for (size_t qout=0; qout<outbase[loc].size(); ++qout)
+		{
+			// determine how many A's to glue together
+			vector<size_t> svec, qvec, Nrowsvec;
+			for (size_t s=0; s<qloc[loc].size(); ++s)
+			for (size_t q=0; q<A[GAUGE::L][loc][s].dim; ++q)
+			{
+				if (A[GAUGE::L][loc][s].out[q] == outbase[loc][qout])
+				{
+					svec.push_back(s);
+					qvec.push_back(q);
+					Nrowsvec.push_back(A[GAUGE::L][loc][s].block[q].rows());
+				}
+			}
+			
+			if (Nrowsvec.size() > 0)
+			{
+				// do the glue
+				size_t Ncols = A[GAUGE::L][loc][svec[0]].block[qvec[0]].cols();
+				for (size_t i=1; i<svec.size(); ++i) {assert(A[GAUGE::L][loc][svec[i]].block[qvec[i]].cols() == Ncols);}
+				size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
+				
+				MatrixType Aclump(Nrows,Ncols);
+				Aclump.setZero();
+				size_t stitch = 0;
+				for (size_t i=0; i<svec.size(); ++i)
+				{
+					Aclump.block(stitch,0, Nrowsvec[i],Ncols) = A[GAUGE::L][loc][svec[i]].block[qvec[i]];
+					stitch += Nrowsvec[i];
+				}
+				
+				HouseholderQR<MatrixType> Quirinus(Aclump);
+				MatrixType Qmatrix = Quirinus.householderQ();
+				size_t Nret = Ncols; // retained states
+				
+				// fill N
+				stitch = 0;
+				for (size_t i=0; i<svec.size(); ++i)
+				{
+					if (Qmatrix.cols() > Nret)
+					{
+						size_t Nnull = Qmatrix.cols()-Nret;
+						MatrixType Mtmp = Qmatrix.block(stitch,Nret, Nrowsvec[i],Nnull);
+						N[svec[i]].try_push_back(A[GAUGE::L][loc][svec[i]].in[qvec[i]], A[GAUGE::L][loc][svec[i]].out[qvec[i]], Mtmp);
+					}
+					stitch += Nrowsvec[i];
+				}
+			}
+		}
+	}
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+expand_basis (size_t DeltaD, const boost::multi_array<Scalar,4> &h2site, double e)
+{
+	vector<Biped<Symmetry,MatrixType> > NL;
+	vector<Biped<Symmetry,MatrixType> > NR;
+	
+	size_t l = 0;
+	size_t loc = l;
+	
+	calc_N(DMRG::DIRECTION::RIGHT, l, NL);
+	calc_N(DMRG::DIRECTION::LEFT,  l, NR);
+	
+	Biped<Symmetry,MatrixType> TestR = A[GAUGE::R][l][0].contract(NR[0].adjoint());
+	Biped<Symmetry,MatrixType> TestL = NL[0].adjoint().contract(A[GAUGE::L][l][0]);
+	for (size_t s=1; s<qloc[l].size(); ++s)
+	{
+		TestR += A[GAUGE::R][l][s].contract(NR[s].adjoint());
+		TestL += NL[s].adjoint().contract(A[GAUGE::L][l][s]);
+	}
+	
+	for (size_t q=0; q<TestL.dim; ++q)
+	{
+		cout << "q=" << q << ", TestLR.block[q].norm()=\t" << TestR.block[q].norm() << "\t" << TestL.block[q].norm() << endl;
+	}
+	
+	
+	
+//	cout << "NL=" << endl;
+//	for (size_t s=0; s<qloc[l].size(); ++s)
+//	{
+//		cout << "s=" << s << endl;
+//		cout << NL[s].print(false,15) << endl;
+//	}
+//	
+//	cout << "NR=" << endl;
+//	for (size_t s=0; s<qloc[l].size(); ++s)
+//	{
+//		cout << "s=" << s << endl;
+//		cout << NR[s].print(false,15) << endl;
+//	}
+	
+	Biped<Symmetry,MatrixType> NAAN;
+	
+//	for (size_t s1=0; s1<qloc[l].size(); ++s1)
+//	for (size_t s2=0; s2<qloc[l].size(); ++s2)
+//	for (size_t s3=0; s3<qloc[l].size(); ++s3)
+//	for (size_t s4=0; s4<qloc[l].size(); ++s4)
+//	for (size_t qNL=0; qNL<NL[s1].dim; ++qNL)
+//	{
+//		auto qALouts = Symmetry::reduceSilent(NL[s1].in[qNL], qloc[l][s2]);
+//		for (const auto &qALout : qALouts)
+//		{
+//			auto itAL = A[GAUGE::L][l][s2].dict.find(qarray2<Symmetry::Nq>{NL[s1].in[qNL], qALout});
+//			if (itAL != A[GAUGE::L][l][s2].dict.end())
+//			{
+//				auto itC = C[l].dict.find(qarray2<Symmetry::Nq>{qALout, qALout});
+//				if (itC != C[l].dict.end())
+//				{
+//					auto qARouts = Symmetry::reduceSilent(qALout, qloc[l][s4]);
+//					for (const auto &qARout : qARouts)
+//					{
+//						auto itAR = A[GAUGE::R][l][s4].dict.find(qarray2<Symmetry::Nq>{qALout, qARout});
+//						if (itAR != A[GAUGE::R][l][s4].dict.end())
+//						{
+//							auto qNRins = Symmetry::reduceSilent(qARout, Symmetry::flip(qloc[l][s3]));
+//							for (const auto &qNRin : qNRins)
+//							{
+//								auto itNR = NR[s3].dict.find(qarray2<Symmetry::Nq>{qNRin, qARout});
+//								if (itNR != NR[s3].dict.end())
+//								{
+//									size_t r = s1 + qloc[l].size()*s3;
+//									size_t c = s2 + qloc[l].size()*s4;
+//									
+//									double factor = (r==c)? h2site[s1][s2][s3][s4]-e : h2site[s1][s2][s3][s4];
+//									MatrixType Mtmp = factor * 
+//									                  NL[s1].block[qNL].adjoint() *
+//									                  A[GAUGE::L][l][s2].block[itAL->second] * 
+//									                  C[l].block[itC->second] * 
+//									                  A[GAUGE::R][l][s4].block[itAR->second] * 
+//									                  NR[s3].block[itNR->second].adjoint();
+//									
+//									qarray2<Symmetry::Nq> quple = {NL[s1].out[qNL], NR[s3].in[itNR->second]};
+//									
+//									if (Mtmp.size() != 0 and NL[s1].out[qNL] == NR[s3].in[itNR->second])
+//									{
+//										auto it = NAAN.dict.find(quple);
+//										
+//										if (it != NAAN.dict.end())
+//										{
+//											if (NAAN.block[it->second].rows() != Mtmp.rows() and
+//											    NAAN.block[it->second].cols() != Mtmp.cols())
+//											{
+//												NAAN.block[it->second] = Mtmp;
+//											}
+//											else
+//											{
+//												NAAN.block[it->second] += Mtmp;
+//											}
+//										}
+//										else
+//										{
+//											NAAN.push_back(quple, Mtmp);
+//										}
+//									}
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
+	
+	for (size_t s1=0; s1<qloc[l].size(); ++s1)
+	for (size_t s2=0; s2<qloc[l].size(); ++s2)
+	for (size_t s3=0; s3<qloc[l].size(); ++s3)
+	for (size_t s4=0; s4<qloc[l].size(); ++s4)
+	for (size_t qNL=0; qNL<NL[s1].dim; ++qNL)
+	{
+		auto qALouts = Symmetry::reduceSilent(NL[s1].in[qNL], qloc[l][s2]);
+		for (const auto &qALout : qALouts)
+		{
+			auto itAL = A[GAUGE::L][l][s2].dict.find(qarray2<Symmetry::Nq>{NL[s1].in[qNL], qALout});
+			if (itAL != A[GAUGE::L][l][s2].dict.end())
+			{
+				auto qACouts = Symmetry::reduceSilent(qALout, qloc[l][s4]);
+				for (const auto &qACout : qACouts)
+				{
+					auto itAC = A[GAUGE::C][l][s4].dict.find(qarray2<Symmetry::Nq>{qALout, qACout});
+					if (itAC != A[GAUGE::C][l][s4].dict.end())
+					{
+						auto qNRins = Symmetry::reduceSilent(qACout, Symmetry::flip(qloc[l][s3]));
+						for (const auto &qNRin : qNRins)
+						{
+							auto itNR = NR[s3].dict.find(qarray2<Symmetry::Nq>{qNRin, qACout});
+							if (itNR != NR[s3].dict.end())
+							{
+								size_t r = s1 + qloc[l].size()*s3;
+								size_t c = s2 + qloc[l].size()*s4;
+								
+								double factor = (r==c)? h2site[s1][s2][s3][s4]-e : h2site[s1][s2][s3][s4];
+								MatrixType Mtmp = factor * 
+								                  NL[s1].block[qNL].adjoint() *
+								                  A[GAUGE::L][l][s2].block[itAL->second] * 
+								                  A[GAUGE::C][l][s4].block[itAC->second] * 
+								                  NR[s3].block[itNR->second].adjoint();
+								
+								qarray2<Symmetry::Nq> quple = {NL[s1].out[qNL], NR[s3].in[itNR->second]};
+								
+								if (Mtmp.size() != 0 and NL[s1].out[qNL] == NR[s3].in[itNR->second])
+								{
+									auto it = NAAN.dict.find(quple);
+									
+									if (it != NAAN.dict.end())
+									{
+										if (NAAN.block[it->second].rows() != Mtmp.rows() and
+										    NAAN.block[it->second].cols() != Mtmp.cols())
+										{
+											NAAN.block[it->second] = Mtmp;
+										}
+										else
+										{
+											NAAN.block[it->second] += Mtmp;
+										}
+									}
+									else
+									{
+										NAAN.push_back(quple, Mtmp);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+//	cout << "NAAN=" << endl;
+//	cout << NAAN.print(true,15) << endl;
+	double normsum = 0;
+	for (size_t q=0; q<NAAN.dim; ++q)
+	{
+		cout << "q=" << NAAN.in[q] << ", " << NAAN.out[q] << ", norm=" << NAAN.block[q].norm() << endl;
+		normsum += NAAN.block[q].norm();
+	}
+	cout << "normsum=" << normsum << ", sqrt(normsum)=" << sqrt(normsum) << endl;
+	
+	Biped<Symmetry,MatrixType> U, Vdag;
+	for (size_t q=0; q<NAAN.dim; ++q)
+	{
+		JacobiSVD<MatrixType> Jack(NAAN.block[q],ComputeThinU|ComputeThinV);
+		
+//		size_t Nret = (Jack.singularValues().array() > this->eps_svd).count();
+		size_t Nret = Jack.singularValues().rows();
+		Nret = min(DeltaD, Nret);
+		
+		U.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixU().leftCols(Nret));
+		Vdag.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixV().adjoint().topRows(Nret));
+	}
+	
+	vector<Biped<Symmetry,MatrixType> > P(qloc[l].size());
+	
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	{
+		P[s] = Vdag.contract(NR[s]);
+	}
+	
+	for (size_t s=0; s<qloc[loc].size(); ++s)
+	for (size_t qP=0; qP<P[s].size(); ++qP)
+	{
+		qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
+		auto qA = A[GAUGE::R][l][s].dict.find(quple);
+		
+		if (qA != A[GAUGE::R][l][s].dict.end())
+		{
+			addBottom(P[s].block[qP], A[GAUGE::R][l][s].block[qA->second]);
+		}
+		else
+		{
+			if (inbase[loc].find(P[s].in[qP]))
+			{
+				MatrixType Mtmp(inbase[loc].inner_dim(P[s].in[qP]), P[s].block[qP].cols());
+				Mtmp.setZero();
+				addBottom(P[s].block[qP], Mtmp);
+				A[GAUGE::R][l][s].push_back(quple, Mtmp);
+			}
+			else
+			{
+//				if (loc != 0)
+//				{
+//					bool BLOCK_INSERTED_AT_LOC = false;
+//					
+//					for (size_t qin=0; qin<inbase[loc-1].Nq(); ++qin)
+//					for (size_t sprev=0; sprev<qloc[loc-1].size(); ++sprev)
+//					{
+//						auto qCandidates = Symmetry::reduceSilent(inbase[loc-1][qin], qloc[loc-1][sprev]);
+//						auto it = find(qCandidates.begin(), qCandidates.end(), P[s].in[qP]);
+//						
+//						if (it != qCandidates.end())
+//						{
+//							if (!BLOCK_INSERTED_AT_LOC)
+//							{
+//								A[GAUGE::R][l][s].push_back(quple, P[s].block[qP]);
+//								BLOCK_INSERTED_AT_LOC = true;
+//							}
+//							MatrixType Mtmp(inbase[loc-1].inner_dim(inbase[loc-1][qin]), P[s].block[qP].rows());
+//							Mtmp.setZero();
+//							A[loc-1][sprev].try_push_back(inbase[loc-1][qin], P[s].in[qP], Mtmp);
+//						}
+//					}
+//				}
+//				else
+				{
+					if (P[s].in[qP] == Symmetry::qvacuum())
+					{
+						A[GAUGE::R][l][s].push_back(quple, P[s].block[qP]);
+					}
+				}
+			}
+		}
+	}
+	
+	P.clear();
+	P.resize(qloc[l].size());
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	{
+		P[s] = NL[s].contract(U);
+	}
+	
+	for (size_t s=0; s<qloc[loc].size(); ++s)
+	for (size_t qP=0; qP<P[s].size(); ++qP)
+	{
+		qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
+		auto qA = A[GAUGE::L][l][s].dict.find(quple);
+		
+		if (qA != A[GAUGE::L][l][s].dict.end())
+		{
+			addRight(P[s].block[qP], A[GAUGE::L][l][s].block[qA->second]);
+		}
+		else
+		{
+			if (outbase[loc].find(P[s].out[qP]))
+			{
+				MatrixType Mtmp(P[s].block[qP].rows(), outbase[loc].inner_dim(P[s].out[qP]));
+				Mtmp.setZero();
+				addRight(P[s].block[qP], Mtmp);
+				A[GAUGE::L][l][s].push_back(quple, Mtmp);
+			}
+			else
+			{
+//				if (loc != this->N_sites-1)
+//				{
+//					bool BLOCK_INSERTED_AT_LOC = false;
+//					
+//					for (size_t qout=0; qout<outbase[loc+1].Nq(); ++qout)
+//					for (size_t snext=0; snext<qloc[loc+1].size(); ++snext)
+//					{
+//						auto qCandidates = Symmetry::reduceSilent(outbase[loc+1][qout], Symmetry::flip(qloc[loc+1][snext]));
+//						auto it = find(qCandidates.begin(), qCandidates.end(), P[s].out[qP]);
+//						
+//						if (it != qCandidates.end())
+//						{
+//							if (!BLOCK_INSERTED_AT_LOC)
+//							{
+//								A[GAUGE::L][l][s].push_back(quple, P[s].block[qP]);
+//								BLOCK_INSERTED_AT_LOC = true;
+//							}
+//							MatrixType Mtmp(P[s].block[qP].cols(), outbase[loc+1].inner_dim(outbase[loc+1][qout]));
+//							Mtmp.setZero();
+//							A[loc+1][snext].try_push_back(P[s].out[qP], outbase[loc+1][qout], Mtmp);
+//						}
+//					}
+//				}
+//				else
+				{
+					if (P[s].out[qP] == Qtarget())
+					{
+						A[GAUGE::L][l][s].push_back(quple, P[s].block[qP]);
+					}
+				}
+			}
+		}
+	}
+	
+	map<qarray<Symmetry::Nq>,int> ALcols;
+	map<qarray<Symmetry::Nq>,int> ARrows;
+	
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	for (size_t q=0; q<A[GAUGE::L][l][s].dim; ++q)
+	{
+		if (A[GAUGE::L][l][s].block[q].cols() > A[GAUGE::L][l][s].block[q].rows())
+		{
+			size_t Delta = A[GAUGE::L][l][s].block[q].cols() - A[GAUGE::L][l][s].block[q].rows();
+			cout << "Delta=" << Delta << endl;
+			A[GAUGE::L][l][s].block[q].conservativeResize(A[GAUGE::L][l][s].block[q].cols(), A[GAUGE::L][l][s].block[q].cols());
+			A[GAUGE::L][l][s].block[q].bottomRows(Delta).setZero();
+		}
+		
+		ALcols[A[GAUGE::L][l][s].out[q]] = A[GAUGE::L][l][s].block[q].cols();
+	}
+	
+	cout << "AL=" << endl;
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	{
+		cout << "s=" << s << endl;
+		cout << A[GAUGE::L][l][s].print(false) << endl;
+	}
+	
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	for (size_t q=0; q<A[GAUGE::R][l][s].dim; ++q)
+	{
+		if (A[GAUGE::R][l][s].block[q].rows() > A[GAUGE::R][l][s].block[q].cols())
+		{
+			size_t Delta = A[GAUGE::R][l][s].block[q].rows() - A[GAUGE::R][l][s].block[q].cols();
+			cout << "Delta=" << Delta << endl;
+			A[GAUGE::R][l][s].block[q].conservativeResize(A[GAUGE::R][l][s].block[q].rows(), A[GAUGE::R][l][s].block[q].rows());
+			A[GAUGE::R][l][s].block[q].rightCols(Delta).setZero();
+		}
+		
+		ARrows[A[GAUGE::R][l][s].in[q]] = A[GAUGE::R][l][s].block[q].rows();
+	}
+	
+	cout << "AR=" << endl;
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	{
+		cout << "s=" << s << endl;
+		cout << A[GAUGE::R][l][s].print(false) << endl;
+	}
+	
+	for (size_t q=0; q<C[l].dim; ++q)
+	{
+		qarray<Symmetry::Nq> qC = C[l].in[q];
+		int r = ALcols[qC];
+		int c = ARrows[qC];
+		int dr = r-C[l].block[q].rows();
+		int dc = c-C[l].block[q].cols();
+		
+		cout << "q=" << C[l].in[q] << ", r=" << r << ", c=" << c << ", dr=" << dr << ", dc=" << dc << endl;
+		C[l].block[q].conservativeResize(r,c);
+		
+		C[l].block[q].bottomRows(dr).setZero();
+		C[l].block[q].rightCols(dc).setZero();
+	}
+	
+	cout << "C=" << endl;
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	{
+		cout << C[l].print(false) << endl;
+	}
+	
+//	for (size_t s=0; s<qloc[l].size(); ++s)
+//	for (size_t q=0; q<A[GAUGE::C][l][s].dim; ++q)
+//	{
+//		int r = ALcols[A[GAUGE::C][l][s].in[q]];
+//		int c = ARrows[A[GAUGE::C][l][s].out[q]];
+//		int dr = r-A[GAUGE::C][l][s].block[q].rows();
+//		int dc = c-A[GAUGE::C][l][s].block[q].cols();
+//		
+//		A[GAUGE::C][l][s].block[q].conservativeResize(r,c);
+//		A[GAUGE::C][l][l].block[q].bottomRows(dr).setZero();
+//		A[GAUGE::C][l][l].block[q].rightCols(dc).setZero();
+//	}
+	
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	{
+		A[GAUGE::C][l][s] = A[GAUGE::L][l][s].contract(C[l]);
+	}
+	
+	cout << "AC=" << endl;
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	{
+		cout << "s=" << s << endl;
+		cout << A[GAUGE::C][l][s].print(false) << endl;
+	}
+	
+	update_inbase();
+	update_outbase();
 }
 
 #endif

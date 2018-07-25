@@ -1483,10 +1483,11 @@ template<typename Symmetry, typename Scalar>
 boost::multi_array<Scalar,4> Mpo<Symmetry,Scalar>::
 H2site (size_t loc, bool HALF_THE_LOCAL_TERM) const
 {
-	assert(loc+1 <= N_sites-1);
+//	assert(loc+1 <= N_sites-1);
 	
 	size_t D1 = qloc[loc].size();
-	size_t D2 = qloc[loc+1].size();
+	size_t D2 = qloc[loc].size();
+//	size_t D2 = qloc[loc+1].size();
 	
 	size_t Grow = Daux-1; // last row
 	size_t Gcol = 0;      // first column
@@ -1499,15 +1500,16 @@ H2site (size_t loc, bool HALF_THE_LOCAL_TERM) const
 	SparseMatrixXd IdD2 = MatrixXd::Identity(D2,D2).sparseView();
 	
 	// local part
-	double factor = (HALF_THE_LOCAL_TERM==true)? 0.5:1.;
+//	double factor = (HALF_THE_LOCAL_TERM==true)? 0.5:1.;
+	double factor = 1.;
 	for (int i=0; i<Terms[loc].local.size(); ++i)
 	{
 		Hfull += factor * get<0>(Terms[loc].local[i]) * kroneckerProduct(get<1>(Terms[loc].local[i]).data, IdD2);
 	}
-	for (int i=0; i<Terms[loc+1].local.size(); ++i)
-	{
-		Hfull += factor * get<0>(Terms[loc+1].local[i]) * kroneckerProduct(IdD1, get<1>(Terms[loc+1].local[i]).data);
-	}
+//	for (int i=0; i<Terms[loc+1].local.size(); ++i)
+//	{
+//		Hfull += factor * get<0>(Terms[loc+1].local[i]) * kroneckerProduct(IdD1, get<1>(Terms[loc+1].local[i]).data);
+//	}
 	
 	// tight-binding part
 	for (size_t i=0; i<Terms[loc].tight.size(); ++i)

@@ -2817,7 +2817,7 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 				}
 			}
 		}
-
+		
 		// extend the A matrices
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t qP=0; qP<P[s].size(); ++qP)

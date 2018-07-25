@@ -109,7 +109,7 @@ typedef typename MatrixType::Scalar Scalar;
 	/***/
 	void setIdentity (size_t Drows, size_t Dcols, size_t amax=1, size_t bmax=1);
 	
-	void setIdentity (size_t D, size_t amax, size_t bmax, const Qbasis<Symmetry> &base, bool factor=false);
+	void setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base, bool factor=false);
 	///@}
 	
 	///@{
@@ -382,7 +382,7 @@ setIdentity (size_t Drows, size_t Dcols, size_t amax, size_t bmax)
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
 void Multipede<Nlegs,Symmetry,MatrixType>::
-setIdentity (size_t D, size_t amax, size_t bmax, const Qbasis<Symmetry> &base, bool factor)
+setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base, bool factor)
 {
 	static_assert(Nlegs == 3);
 	
@@ -392,9 +392,9 @@ setIdentity (size_t D, size_t amax, size_t bmax, const Qbasis<Symmetry> &base, b
 		for (size_t a=0; a<amax; ++a)
 		for (size_t b=0; b<bmax; ++b)
 		{
-			MatrixType Mtmp(D,D);
+			MatrixType Mtmp(base.inner_dim(base[q]), base.inner_dim(base[q]));
 			Mtmp.setIdentity();
-			if (factor) { Mtmp *= Symmetry::degeneracy(base[q]); }
+			if (factor) {Mtmp *= Symmetry::degeneracy(base[q]);}
 			Mtmparray[a][b] = Mtmp;
 		}
 		
