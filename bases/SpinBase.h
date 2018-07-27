@@ -62,6 +62,7 @@ public:
 	OperatorType Id() const;
 	
 	ArrayXd ZeroField() const;
+	ArrayXXd ZeroHopping() const;
 	
 	string alignment (double J) const {return (J<0)? "(AFM)":"(FM)";};
 	
@@ -88,11 +89,10 @@ public:
 	 * \param Kz : \f$K^{z}_i\f$
 	 * \param Kx : \f$K^{x}_i\f$
 	 * \param Dy : \f$D^{y}\f$
-	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
-	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, 
-	                                    const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &Kz, const ArrayXd &Kx, double Dy=0., 
-	                                    bool PERIODIC=false) const;
+	OperatorType HeisenbergHamiltonian (ArrayXXd Jxy, ArrayXXd Jz, 
+	                                    const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &Kz, const ArrayXd &Kx, 
+	                                    ArrayXXd Dy=0.) const;
 
 	/**
 	 * Creates the full Heisenberg (XYZ) Hamiltonian on the supersite.
@@ -102,8 +102,10 @@ public:
 	 * \param D : \f$D^{\alpha}\f$, \f$\alpha \in \{x,y,z\} \f$
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
-	SiteOperator<Symmetry,complex<double> > HeisenbergHamiltonian 
-	(Array3d J, Array<double,Dynamic,3> B, Array<double,Dynamic,3> K, Array3d D, bool PERIODIC=false) const;
+	SiteOperator<Symmetry,complex<double> > HeisenbergHamiltonian (const std::array<ArrayXXd,3> &J, 
+	                                                               const std::array<ArrayXd,3> &B, 
+	                                                               const std::array<ArrayXd,3> &K, 
+	                                                               const std::array<ArrayXXd,3> &D) const;
 	
 private:
 	
@@ -166,28 +168,34 @@ ZeroField() const
 }
 
 template<typename Symmetry>
-SiteOperator<Symmetry,double> SpinBase<Symmetry>::
-HeisenbergHamiltonian (double Jxy, double Jz, const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &Kz, const ArrayXd &Kx, double Dy, bool PERIODIC) const
+ArrayXXd SpinBase<Symmetry>::
+ZeroHopping() const
 {
-	assert (Bz.rows() == N_orbitals and Bx.rows() == N_orbitals);
+	return ArrayXXd::Zero(N_orbitals,N_orbitals);
+}
+
+template<typename Symmetry>
+SiteOperator<Symmetry,double> SpinBase<Symmetry>::
+HeisenbergHamiltonian (ArrayXXd Jxy, ArrayXXd Jz, const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &Kz, const ArrayXd &Kx, ArrayXXd Dy) const
+{
+	assert(Bz.rows() == N_orbitals and Bx.rows() == N_orbitals and Kz.rows() == N_orbitals and Kx.rows() == N_orbitals);
 	
 	SparseMatrixXd Mout(N_states,N_states);
 	
-	size_t ilast = (PERIODIC == true and N_orbitals>2)? N_orbitals:N_orbitals-1;
-	
-	for (int i=0; i<ilast; ++i) // for all bonds
+	for (int i=0; i<N_orbitals; ++i)
+	for (int j=0; j<i; ++j)
 	{
-		if (Jxy != 0.)
+		if (Jxy(i,j) != 0.)
 		{
-			Mout += -0.5*Jxy * (Scomp(SP,i).data*Scomp(SM,(i+1)%N_orbitals).data + Scomp(SM,i).data*Scomp(SP,(i+1)%N_orbitals).data);
+			Mout += -0.5*Jxy(i,j) * (Scomp(SP,i).data*Scomp(SM,j).data + Scomp(SM,i).data*Scomp(SP,j).data);
 		}
-		if (Jz != 0.)
+		if (Jz(i,j) != 0.)
 		{
-			Mout += -Jz * Scomp(SZ,i).data*Scomp(SZ,(i+1)%N_orbitals).data;
+			Mout += -Jz(i,j) * Scomp(SZ,i).data*Scomp(SZ,j).data;
 		}
-		if (Dy != 0.)
+		if (Dy(i,j) != 0.)
 		{
-			Mout += Dy * (Scomp(SX,i).data*Scomp(SZ,(i+1)%N_orbitals).data - Scomp(SZ,i).data*Scomp(SX,(i+1)%N_orbitals).data);
+			Mout += Dy(i,j) * (Scomp(SX,i).data*Scomp(SZ,j).data - Scomp(SZ,i).data*Scomp(SX,j).data);
 		}
 	}
 	
@@ -220,49 +228,79 @@ HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double Kz, d
 	ArrayXd Bxorb(N_orbitals); Bxorb = Bx;
 	ArrayXd Kzorb(N_orbitals); Kzorb = Kz;
 	ArrayXd Kxorb(N_orbitals); Kxorb = Kx;
-	return HeisenbergHamiltonian(Jxy, Jz, Bzorb, Bxorb, Kzorb, Kxorb, Dy, PERIODIC);
+	
+	ArrayXXd Jxyhop(N_orbitals,N_orbitals);
+	Jxyhop = 0;
+	Jxyhop.matrix().diagonal<1>().setConstant(Jxy);
+	Jxyhop.matrix().diagonal<-1>() = Jxyhop.matrix().diagonal<1>();
+	
+	ArrayXXd Jzhop(N_orbitals,N_orbitals);
+	Jzhop = 0;
+	Jzhop.matrix().diagonal<1>().setConstant(Jz);
+	Jzhop.matrix().diagonal<-1>() = Jzhop.matrix().diagonal<1>();
+	
+	ArrayXXd Dyhop(N_orbitals,N_orbitals);
+	Dyhop = 0;
+	Dyhop.matrix().diagonal<1>().setConstant(Dy);
+	Dyhop.matrix().diagonal<-1>() = Dyhop.matrix().diagonal<1>();
+	
+	if (PERIODIC and N_orbitals>2)
+	{
+		Jxyhop(0,N_orbitals-1) = Jxy;
+		Jxyhop(N_orbitals-1,0) = Jxy;
+		
+		Jzhop(0,N_orbitals-1) = Jz;
+		Jzhop(N_orbitals-1,0) = Jz;
+		
+		Dyhop(0,N_orbitals-1) = Dy;
+		Dyhop(N_orbitals-1,0) = Dy;
+	}
+	
+	return HeisenbergHamiltonian(Jxyhop, Jzhop, Bzorb, Bxorb, Kzorb, Kxorb, Dyhop, PERIODIC);
 }
 
 template<typename Symmetry>
 SiteOperator<Symmetry,complex<double> > SpinBase<Symmetry>::
-HeisenbergHamiltonian (Array3d J, Array<double,Dynamic,3> B, Array<double,Dynamic,3> K, Array3d D, bool PERIODIC) const
+HeisenbergHamiltonian (const std::array<ArrayXXd,3> &J, 
+                       const std::array<ArrayXd,3> &B, 
+                       const std::array<ArrayXd,3> &K, 
+                       const std::array<ArrayXXd,3> &D) const
 {
 	SiteOperator<Symmetry,complex<double> > Oout = 
-	HeisenbergHamiltonian(0.,J(2),B.col(2),B.col(0),K.col(2),K.col(0),D(1),PERIODIC).template cast<complex<double> >();
+	HeisenbergHamiltonian(ZeroHopping(),J[2],B[2],B[0],K[2],K[0],D[1]).template cast<complex<double> >();
 	
-	size_t ilast = (PERIODIC == true and N_orbitals>2)? N_orbitals:N_orbitals-1;
-	
-	for (size_t i=0; i<ilast; ++i) // for all bonds
+	for (size_t i=0; i<N_orbitals; ++i)
+	for (size_t j=0; j<i; ++j)
 	{
-		if (J(0) != 0.)
+		if (J[0](i,j) != 0.)
 		{
-			Oout.data += -J(0) * (Scomp(SX,i).data * Scomp(SX,(i+1)%N_orbitals).data).template cast<complex<double> >();
+			Oout.data += -J[0](i,j) * (Scomp(SX,i).data * Scomp(SX,j).data).template cast<complex<double> >();
 		}
-		if (J(1) != 0.)
+		if (J[1](i,j) != 0.)
 		{
-			Oout.data += +J[1] * (Scomp(iSY,i).data * Scomp(iSY,(i+1)%N_orbitals)).data.template cast<complex<double> >();
+			Oout.data += +J[1](i,j) * (Scomp(iSY,i).data * Scomp(iSY,j).data).template cast<complex<double> >();
 		}
-		if (D(0) != 0.)
+		if (D[0](i,j) != 0.)
 		{
-			Oout.data += D(0) * (-1.i) * (Scomp(iSY,i).data * Scomp(SZ,(i+1)%N_orbitals).data 
-			                            -Scomp(SZ,i).data * Scomp(iSY,(i+1)%N_orbitals).data).template cast<complex<double> >();
+			Oout.data += D[0](i,j) * (-1.i) * (Scomp(iSY,i).data * Scomp(SZ,j).data 
+				                              -Scomp(SZ,i).data  * Scomp(iSY,j).data).template cast<complex<double> >();
 		}
-		if (D(2) != 0.)
+		if (D[2](i,j) != 0.)
 		{
-			Oout.data += D(2) * (-1.i) * (Scomp(SX,i).data * Scomp(iSY,(i+1)%N_orbitals).data 
-			                             -Scomp(iSY,i).data * Scomp(SX,(i+1)%N_orbitals).data).template cast<complex<double> >();
+			Oout.data += D[2](i,j) * (-1.i) * (Scomp(SX,i).data * Scomp(iSY,j).data 
+				                              -Scomp(iSY,i).data * Scomp(SX,j).data).template cast<complex<double> >();
 		}
 	}
 	
 	// By
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (B(i,2) != 0.) {Oout.data -= B(i,2) * (-1.i) * Scomp(iSY,i).data.template cast<complex<double> >();}
+		if (B[2](i) != 0.) {Oout.data -= B[2](i) * (-1.i) * Scomp(iSY,i).data.template cast<complex<double> >();}
 	}
 	// Ky
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (K(i,1) != 0.) {Oout.data -= K(i,1) * (Scomp(iSY,i).data*Scomp(iSY,i).data).template cast<complex<double> >();}
+		if (K[1](i) != 0.) {Oout.data -= K[1](i) * (Scomp(iSY,i).data*Scomp(iSY,i).data).template cast<complex<double> >();}
 	}
 	
 	return Oout;
@@ -286,13 +324,13 @@ qNums (size_t index) const
 	{
 		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T) {return Symmetry::qvacuum();}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) {return qarray<1>{M};}
-		else {assert(false and "Ill defined KIND of the used Symmetry.");}
+		else {assert(false and "Ill-defined KIND of the used Symmetry.");}
 	}
 	else if constexpr(Symmetry::Nq==2) //return a dummy quantum number for a second symmetry. Either at first place or at second.
 	{
 		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T) {return qarray<2>{{Symmetry::qvacuum()[0],M}};}
 		else if constexpr (Symmetry::kind()[1] == Sym::KIND::N or Symmetry::kind()[1] == Sym::KIND::T) {return qarray<2>{{M,Symmetry::qvacuum()[1]}};}
-		else {assert(false and "Ill defined KIND of the used Symmetry.");}
+		else {assert(false and "Ill-defined KIND of the used Symmetry.");}
 	}
 }
 

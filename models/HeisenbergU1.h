@@ -10,6 +10,7 @@
 #include "ParamHandler.h" // from HELPERS
 #include "models/HeisenbergObservables.h"
 #include "symmetry/kind_dummies.h"
+#include "ParamReturner.h"
 
 namespace VMPS
 {
@@ -30,12 +31,12 @@ namespace VMPS
   * \f]
   *
   * \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
-  * \note Take use of the \f$S^z\f$ U(1) symmetry.
+  * \note Makes use of the \f$S^z\f$ U(1) symmetry.
   * \note The default variable settings can be seen in \p HeisenbergU1::defaults.
   * \note \f$J<0\f$ is antiferromagnetic
-  * \note Homogeneous \f$J\f$ is required here. For a XXZ couplings, use VMPS::HeisenbergU1XXZ.
+  * \note Isotropic \f$J\f$ is required here. For XXZ coupling, use VMPS::HeisenbergU1XXZ.
   */
-class HeisenbergU1 : public Mpo<Sym::U1<Sym::SpinU1>,double>, public HeisenbergObservables<Sym::U1<Sym::SpinU1> >
+class HeisenbergU1 : public Mpo<Sym::U1<Sym::SpinU1>,double>, public HeisenbergObservables<Sym::U1<Sym::SpinU1> >, public ParamReturner
 {
 public:
 	typedef Sym::U1<Sym::SpinU1> Symmetry;
@@ -47,7 +48,7 @@ private:
 public:
 	
 	///@{
-	HeisenbergU1() : Mpo<Symmetry>() {};
+	HeisenbergU1() : Mpo<Symmetry>(), ParamReturner(HeisenbergU1::sweep_defaults) {};
 	HeisenbergU1 (const size_t &L);
 	HeisenbergU1 (const size_t &L, const vector<Param> &params);
 	///@}
@@ -61,15 +62,7 @@ public:
 	 */
 	template<typename Symmetry_>
 	static HamiltonianTermsXd<Symmetry_> set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
-
-	///@{
-	/**
-	 * Push params for DMRG algorithms via these functions to an instance of DmrgSolver.
-	 */
-	DMRG::CONTROL::DYN get_DynParam(const vector<Param> &params={}) const;
-	DMRG::CONTROL::GLOB get_GlobParam(const vector<Param> &params={}) const;
-	///@}
-
+	
 	/**
 	 * Validates whether a given total quantum number \p qnum is a possible target quantum number for an Mps.
 	 * \returns \p true if valid, \p false if not
@@ -82,7 +75,7 @@ public:
 
 const std::map<string,std::any> HeisenbergU1::defaults = 
 {
-	{"J",-1.}, {"Jprime",0.}, {"Jperp",0.},
+	{"J",-1.}, {"Jprime",0.},
 	{"Bz",0.}, {"Kz",0.},
 	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
@@ -101,13 +94,15 @@ const std::map<string,std::any> HeisenbergU1::sweep_defaults =
 HeisenbergU1::
 HeisenbergU1 (const size_t &L)
 :Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", true),
- HeisenbergObservables(L)
+ HeisenbergObservables(L),
+ ParamReturner(HeisenbergU1::sweep_defaults)
 {}
 
 HeisenbergU1::
 HeisenbergU1 (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", true),
- HeisenbergObservables(L,params,HeisenbergU1::defaults)
+ HeisenbergObservables(L,params,HeisenbergU1::defaults),
+ ParamReturner(HeisenbergU1::sweep_defaults)
 {
 	ParamHandler P(params,defaults);
 	
@@ -124,48 +119,6 @@ HeisenbergU1 (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-}
-
-DMRG::CONTROL::GLOB HeisenbergU1::
-get_GlobParam (const vector<Param> &params) const
-{
-	ParamHandler P(params,HeisenbergU1::sweep_defaults);
-	DMRG::CONTROL::GLOB out;
-	out.min_halfsweeps = P.get<size_t>("min_halfsweeps");
-	out.max_halfsweeps = P.get<size_t>("max_halfsweeps");
-	out.Dinit          = P.get<size_t>("Dinit");
-	out.Qinit          = P.get<size_t>("Qinit");
-	out.Dlimit         = P.get<size_t>("Dlimit");
-	out.tol_eigval     = P.get<double>("tol_eigval");
-	out.tol_state      = P.get<double>("tol_state");
-	out.savePeriod     = P.get<size_t>("savePeriod");
-	out.CONVTEST       = P.get<DMRG::CONVTEST::OPTION>("CONVTEST");
-	out.CALC_S_ON_EXIT = P.get<bool>("CALC_S_ON_EXIT");
-	return out;
-}
-
-DMRG::CONTROL::DYN HeisenbergU1::
-get_DynParam (const vector<Param> &params) const
-{
-	ParamHandler P(params,HeisenbergU1::sweep_defaults);
-	DMRG::CONTROL::DYN out;
-	double tmp1        = P.get<double>("max_alpha");
-	out.max_alpha_rsvd = [tmp1] (size_t i) { return tmp1; };
-	tmp1               = P.get<double>("min_alpha");
-	out.min_alpha_rsvd = [tmp1] (size_t i) { return tmp1; };
-	tmp1               = P.get<double>("eps_svd");
-	out.eps_svd        = [tmp1] (size_t i) { return tmp1; };
-	size_t tmp2        = P.get<size_t>("Dincr_abs");
-	out.Dincr_abs      = [tmp2] (size_t i) { return tmp2; };
-	tmp2               = P.get<size_t>("Dincr_per");
-	out.Dincr_per      = [tmp2] (size_t i) { return tmp2; };
-	tmp1               = P.get<double>("Dincr_rel");
-	out.Dincr_rel      = [tmp1] (size_t i) { return tmp1; };
-	tmp2               = P.get<size_t>("min_Nsv");
-	out.min_Nsv        = [tmp2] (size_t i) { return tmp2; };
-	int tmp3           = P.get<int>("max_Nrich");
-	out.max_Nrich	   = [tmp3] (size_t i) { return tmp3; };
-	return out;
 }
 
 bool HeisenbergU1::
@@ -225,8 +178,10 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	
 	// local terms
 	
-	param0d Jperp = P.fill_array0d<double>("J","Jperp",loc);
-	save_label(Jperp.label);
+//	param0d Jperp = P.fill_array0d<double>("J","Jperp",loc);
+//	save_label(Jperp.label);
+	auto [J_,Jperp,Jperplabel] = P.fill_array2d<double>("J","Jperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	save_label(Jperplabel);
 	
 	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",B.orbitals(),loc);
 	save_label(Bzlabel);
@@ -236,10 +191,11 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	
 	Terms.name = "Heisenberg";
 	
-	ArrayXd Bxorb = B.ZeroField();
-	ArrayXd Kxorb = B.ZeroField();
+	ArrayXd Bxorb   = B.ZeroField();
+	ArrayXd Kxorb   = B.ZeroField();
+	ArrayXXd Dyperp = B.ZeroHopping();
 	
-	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp.x,Jperp.x,Bzorb,Bxorb,Kzorb,Kxorb,0., P.get<bool>("CYLINDER"))));
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp,Jperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp)));
 	
 	return Terms;
 }

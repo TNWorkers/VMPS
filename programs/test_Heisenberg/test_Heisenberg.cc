@@ -131,7 +131,7 @@ int main (int argc, char* argv[])
 	// SweepParams.push_back({"tol_state",tol_state});
 	// SweepParams.push_back({"max_Nrich",max_Nrich});
 //	SweepParams.push_back({"CONVTEST",DMRG::CONVTEST::VAR_HSQ});
-
+	
 	CALC_DYNAMICS = args.get<bool>("CALC_DYN",0);
 	dt = args.get<double>("dt",0.1);
 	tmax = args.get<double>("tmax",6.);
@@ -149,18 +149,18 @@ int main (int argc, char* argv[])
 	if (U0)
 	{
 		lout << endl << "--------U(0)---------" << endl << endl;
-	
+		
 		Stopwatch<> Watch_U0;
 		VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
 		lout << H_U0.info() << endl;
-	
+		
 		VMPS::Heisenberg::Solver DMRG_U0(VERB);
 		DMRG_U0.GlobParam = H_U0.get_GlobParam(SweepParams);
 		DMRG_U0.DynParam = H_U0.get_DynParam(SweepParams);
 		DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND);
-	
+		
 		t_U0 = Watch_U0.time();
-	
+		
 	//	
 	//	// observables
 	//	
@@ -195,11 +195,9 @@ int main (int argc, char* argv[])
 		DMRG_U1.DynParam = H_U1.get_DynParam(SweepParams);
 		DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND);
 		g_U1.state.graph("U1");
-	
+		
 		t_U1 = Watch_U1.time();
-	
-	//	assert(1!=1);
-	
+		
 		// observables
 	//	MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
 	//	for(size_t i=0; i<L; i++) for (size_t j=0; j<L; j++) { SpinCorr_U1(i,j) = 3.*avg(g_U1.state, H_U1.SzSz(i,j), g_U1.state); }
@@ -364,4 +362,7 @@ int main (int argc, char* argv[])
 	T.endOfRow();
 	
 	lout << endl << T;
+	
+	lout << "Eref=" << VMPS::Heisenberg::ref({{"J",J},{"D",D},{"Ly",Ly}}).value 
+	     << ", from: " << VMPS::Heisenberg::ref({{"J",J},{"D",D},{"Ly",Ly}}).source << endl;
 }

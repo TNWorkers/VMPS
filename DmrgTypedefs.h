@@ -266,7 +266,7 @@ struct DMRG
 			constexpr static size_t savePeriod = 0;
 			constexpr static DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
 			constexpr static bool CALC_S_ON_EXIT = true;
-
+			
 			//DYN DEFAULTS
 			static double max_alpha_rsvd (size_t i) {return (i<=10)? 1e2:0;}
 			static double min_alpha_rsvd (size_t i) {return (i<=10)? 1e-11:0;}
@@ -277,7 +277,7 @@ struct DMRG
 			static size_t min_Nsv        (size_t i) {return 0;}
 			static int    max_Nrich      (size_t i) {return -1;} // -1 = infinity
 			static void   doSomething    (size_t i) {return;} // -1 = infinity
-
+			
 			//LANCZOS DEFAULTS
 			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO = LANCZOS::REORTHO::FULL;
 			constexpr static ::LANCZOS::CONVTEST::OPTION LANCZOS_CONVTEST = LANCZOS::CONVTEST::COEFFWISE;
@@ -346,5 +346,11 @@ std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
 	else                            {s << "RIGHT";}
 	return s;
 }
+
+struct refEnergy
+{
+	double value;
+	string source;
+};
 
 #endif

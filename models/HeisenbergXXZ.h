@@ -7,7 +7,7 @@
 namespace VMPS
 {
 
-class HeisenbergXXZ : public Mpo<Sym::U0,double>, public HeisenbergObservables<Sym::U0>
+class HeisenbergXXZ : public Mpo<Sym::U0,double>, public HeisenbergObservables<Sym::U0>, public ParamReturner
 {
 public:
 	typedef Sym::U0 Symmetry;
@@ -27,24 +27,25 @@ public:
 
 const std::map<string,std::any> HeisenbergXXZ::defaults = 
 {
-	{"Jxy",0.}, {"Jz",0.},
-	{"Jxyprime",0.}, {"Jzprime",0.},
-	{"Jxyperp",0.}, {"Jzperp",0.},
+	{"Jxy",0.}, {"Jxyprime",0.},
+	{"Jz",0.}, {"Jzprime",0.},
 	
-	{"Bz",0.}, {"Bx",0.}, {"Kz",0.}, {"Kx",0.},
-	{"Dy",0.}, {"Dyperp",0.}, {"Dyprime",0.},
+	{"Bz",0.}, {"Bx",0.}, 
+	{"Kz",0.}, {"Kx",0.},
+	{"Dy",0.}, {"Dyprime",0.},
 	{"D",2ul}, {"Bz",0.}, {"Kz",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, 
 	
 	// for consistency during inheritance (should not be set for XXZ!):
-	{"J",0.}, {"Jprime",0.}, {"Jperp",0.}, {"Jpara",0.}
+	{"J",0.}, {"Jprime",0.}
 };
 
 
 HeisenbergXXZ::
 HeisenbergXXZ (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry> (L, qarray<0>({}), "", true),
- HeisenbergObservables(L,params,HeisenbergXXZ::defaults)
+ HeisenbergObservables(L,params,HeisenbergXXZ::defaults),
+ ParamReturner(Heisenberg::sweep_defaults)
 {
 	ParamHandler P(params,HeisenbergXXZ::defaults);
 	

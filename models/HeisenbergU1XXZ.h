@@ -37,24 +37,22 @@ public:
 	HeisenbergU1XXZ (const size_t &L, const vector<Param> &params);
 	
 	template<typename Symmetry_>
-	static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, 
-	                                                    const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
+	static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc=0);
 	
 	static const std::map<string,std::any> defaults;
 };
 
 const std::map<string,std::any> HeisenbergU1XXZ::defaults = 
 {
-	{"Jxy",-1.}, {"Jz",0.},
-	{"Jxyprime",0.}, {"Jzprime",0.},
-	{"Jxyperp",0.}, {"Jzperp",0.},
+	{"Jxy",-1.}, {"Jxyprime",0.},
+	{"Jz",0.}, {"Jzprime",0.},
 	
-	{"Dy",0.}, {"Dyperp",0.}, {"Dyprime",0.},
+	{"Dy",0.}, {"Dyprime",0.},
 	{"D",2ul}, {"Bz",0.}, {"Kz",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, 
 	
 	// for consistency during inheritance (should not be set for XXZ!):
-	{"J",0.}, {"Jprime",0.}, {"Jperp",0.}, {"Jpara",0.}
+	{"J",0.}, {"Jprime",0.}
 };
 
 HeisenbergU1XXZ::
@@ -138,13 +136,25 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &
 	
 	// local terms
 	
-	param0d Jxyperp = P.fill_array0d<double>("Jxy","Jxyperp",loc);
-	save_label(Jxyperp.label);
+//	param0d Jxyperp = P.fill_array0d<double>("Jxy","Jxyperp",loc);
+//	save_label(Jxyperp.label);
+//	
+//	param0d Jzperp = P.fill_array0d<double>("Jz","Jzperp",loc);
+//	save_label(Jzperp.label);
 	
-	param0d Jzperp = P.fill_array0d<double>("Jz","Jzperp",loc);
-	save_label(Jzperp.label);
+	auto [Jxy_,Jxyperp,Jxyperplabel] = P.fill_array2d<double>("Jxy","Jxyperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	save_label(Jxyperplabel);
 	
-	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp.x,Jzperp.x,0.,0.,0.,0.,0., P.get<bool>("CYLINDER"))));
+	auto [Jz_,Jzperp,Jzperplabel] = P.fill_array2d<double>("Jz","Jzperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	save_label(Jzperplabel);
+	
+	ArrayXd Bzorb  = B.ZeroField();
+	ArrayXd Bxorb  = B.ZeroField();
+	ArrayXd Kzorb  = B.ZeroField();
+	ArrayXd Kxorb  = B.ZeroField();
+	ArrayXXd Dyperp = B.ZeroHopping();
+	
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp)));
 	
 	Terms.name = (P.HAS_ANY_OF({"Jxy","Jxypara","Jxyperp"},loc))? "XXZ":"Ising";
 }

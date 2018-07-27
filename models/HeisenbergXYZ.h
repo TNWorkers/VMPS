@@ -29,7 +29,7 @@ namespace VMPS
   \note \f$J<0\f$ is antiferromagnetic
   \note Due to the \f$S_y\f$ operator, this MPO is complex.
 */
-class HeisenbergXYZ : public Mpo<Sym::U0,complex<double> >, public HeisenbergObservables<Sym::U0>
+class HeisenbergXYZ : public Mpo<Sym::U0,complex<double> >, public HeisenbergObservables<Sym::U0>, public ParamReturner
 {
 public:
 	typedef Sym::U0 Symmetry;
@@ -40,7 +40,7 @@ private:
 public:
 	
 	///\{
-	HeisenbergXYZ() : Mpo<Symmetry,complex<double> >() {};
+	HeisenbergXYZ() : Mpo<Symmetry,complex<double> >(), ParamReturner(Heisenberg::sweep_defaults) {};
 	HeisenbergXYZ (const size_t &L, const vector<Param> &params);
 	///\}
 	
@@ -53,12 +53,10 @@ public:
 const std::map<string,std::any> HeisenbergXYZ::defaults = 
 {
 	{"Jx",0.}, {"Jy",0.}, {"Jz",0.},
-	{"Jxperp",0.}, {"Jyperp",0.}, {"Jzperp",0.},
 	{"Jxprime",0.}, {"Jyprime",0.}, {"Jzprime",0.},
 	
 	 // Dzialoshinsky-Moriya terms
 	{"Dx",0.}, {"Dy",0.}, {"Dz",0.},
-	{"Dxperp",0.}, {"Dyperp",0.}, {"Dzperp",0.},
 	{"Dxprime",0.}, {"Dyprime",0.}, {"Dzprime",0.},
 	
 	{"Bx",0.}, {"By",0.}, {"Bz",0.},
@@ -66,13 +64,14 @@ const std::map<string,std::any> HeisenbergXYZ::defaults =
 	
 	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul},
 	
-	{"J",0.}, {"Jprime",0.}, {"Jperp",0.}
+	{"J",0.}, {"Jprime",0.}
 };
 
 HeisenbergXYZ::
 HeisenbergXYZ (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry,complex<double> > (L, qarray<0>({}), "", true),
- HeisenbergObservables(L,params,HeisenbergXYZ::defaults)
+ HeisenbergObservables(L,params,HeisenbergXYZ::defaults),
+ ParamReturner(Heisenberg::sweep_defaults)
 {
 	ParamHandler P(params,HeisenbergXYZ::defaults);
 	
@@ -215,20 +214,35 @@ add_operators (HamiltonianTerms<Symmetry_,complex<double> > &Terms, const SpinBa
 	
 	// local terms
 	
-	param0d Jxperp = P.fill_array0d<double>("Jx","Jxperp",loc);
-	save_label(Jxperp.label);
+//	param0d Jxperp = P.fill_array0d<double>("Jx","Jxperp",loc);
+//	save_label(Jxperp.label);
+//	
+//	param0d Jyperp = P.fill_array0d<double>("Jy","Jyperp",loc);
+//	save_label(Jyperp.label);
+//	
+//	param0d Jzperp = P.fill_array0d<double>("Jz","Jzperp",loc);
+//	save_label(Jzperp.label);
+//	
+//	param0d Dxperp = P.fill_array0d<double>("Dx","Dxperp",loc);
+//	save_label(Dxperp.label);
+//	
+//	param0d Dzperp = P.fill_array0d<double>("Dz","Dzperp",loc);
+//	save_label(Dzperp.label);
 	
-	param0d Jyperp = P.fill_array0d<double>("Jy","Jyperp",loc);
-	save_label(Jyperp.label);
+	auto [Jx_,Jxperp,Jxperplabel] = P.fill_array2d<double>("Jx","Jxperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	save_label(Jxperplabel);
 	
-	param0d Jzperp = P.fill_array0d<double>("Jz","Jzperp",loc);
-	save_label(Jzperp.label);
+	auto [Jy_,Jyperp,Jyperplabel] = P.fill_array2d<double>("Jy","Jyperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	save_label(Jyperplabel);
 	
-	param0d Dxperp = P.fill_array0d<double>("Dx","Dxperp",loc);
-	save_label(Dxperp.label);
+	auto [Jz_,Jzperp,Jzperplabel] = P.fill_array2d<double>("Jz","Jzperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	save_label(Jzperplabel);
 	
-	param0d Dzperp = P.fill_array0d<double>("Dz","Dzperp",loc);
-	save_label(Dzperp.label);
+	auto [Dx_,Dxperp,Dxperplabel] = P.fill_array2d<double>("Dx","Dxperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	save_label(Dxperplabel);
+	
+	auto [Dz_,Dzperp,Dzperplabel] = P.fill_array2d<double>("Dz","Dzperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	save_label(Dzperplabel);
 	
 	auto [By,Byorb,Bylabel] = P.fill_array1d<double>("By","Byorb",B.orbitals(),loc);
 	save_label(Bylabel);
@@ -239,12 +253,12 @@ add_operators (HamiltonianTerms<Symmetry_,complex<double> > &Terms, const SpinBa
 	Terms.name = (P.HAS_ANY_OF({"Dx","Dy","Dz","Dxprime","Dyprime","Dzprime","Dxpara","Dypara","Dzpara"},loc))? 
 	"Dzyaloshinsky-Moriya":"HeisenbergXYZ";
 	
-	Array3d Jorb; Jorb << Jxperp.x, Jyperp.x, Jzperp.x;
-	Array<double,Dynamic,3> Borb(B.orbitals(),3); Borb=0.; Borb.col(1)=Byorb;
-	Array<double,Dynamic,3> Korb(B.orbitals(),3); Korb=0.; Korb.col(1)=Kyorb;
-	Array3d Dorb; Dorb << Dxperp.x, 0., Dzperp.x;
+	std::array<ArrayXXd,3> Jperp = {Jxperp, Jyperp, Jzperp};
+	std::array<ArrayXd,3>  Borb = {B.ZeroField(), Byorb, B.ZeroField()};
+	std::array<ArrayXd,3>  Korb = {B.ZeroField(), Kyorb, B.ZeroField()};
+	std::array<ArrayXXd,3> Dperp = {Dxperp, B.ZeroHopping(), Dzperp};
 	
-	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jorb,Borb,Korb,Dorb, P.get<bool>("CYLINDER"))));
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp,Borb,Korb,Dperp)));
 }
 
 }

@@ -29,7 +29,7 @@ namespace VMPS
   * \note \f$J<0\f$ is antiferromagnetic
   * \note This is the real version of the Heisenbergmodel without symmetries, so \f$J_x = J_y\f$ is mandatory. For general couplings use VMPS::HeisenbergXYZ.
   */
-class Heisenberg : public Mpo<Sym::U0,double>, public HeisenbergObservables<Sym::U0>
+class Heisenberg : public Mpo<Sym::U0,double>, public HeisenbergObservables<Sym::U0>, public ParamReturner
 {
 public:
 	typedef Sym::U0 Symmetry;
@@ -40,27 +40,23 @@ private:
 public:
 	
 	///@{
-	Heisenberg() : Mpo<Symmetry>(), HeisenbergObservables() {};
+	Heisenberg() : Mpo<Symmetry>(), HeisenbergObservables(), ParamReturner(Heisenberg::sweep_defaults) {};
 	Heisenberg (const size_t &L, const vector<Param> &params);
 	///@}
-
-	///@{
-	/**Push params for DMRG algorithms via these functions to an instance of DmrgSolver.*/
-	DMRG::CONTROL::DYN get_DynParam(const vector<Param> &params={}) const;
-	DMRG::CONTROL::GLOB get_GlobParam(const vector<Param> &params={}) const;
-	///@}
-
+	
 	static void add_operators (HamiltonianTermsXd<Symmetry> &Terms, const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc=0);
 	
 	static const std::map<string,std::any> defaults;
 	static const std::map<string,std::any> sweep_defaults;
+	
+	static refEnergy ref (const vector<Param> &params);
 };
 
 const std::map<string,std::any> Heisenberg::defaults = 
 {
-	{"J",-1.}, {"Jprime",0.}, {"Jperp",0.},
+	{"J",-1.}, {"Jprime",0.},
 	{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"Kz",0.}, {"Kx",0.},
-	{"Dy",0.}, {"Dyprime",0.}, {"Dyperp",0.}, // Dzialoshinsky-Moriya terms
+	{"Dy",0.}, {"Dyprime",0.}, // Dzialoshinsky-Moriya terms
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
@@ -69,7 +65,7 @@ const std::map<string,std::any> Heisenberg::sweep_defaults =
 	{"max_alpha",100.}, {"min_alpha",1.e-11}, {"eps_svd",1.e-7},
 	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
-	{"max_halfsweeps",40ul}, {"max_halfsweeps",6ul},
+	{"max_halfsweeps",40ul}, {"min_halfsweeps",6ul},
 	{"Dinit",10ul}, {"Qinit",10ul}, {"Dlimit",1000ul},
 	{"tol_eigval",1.e-5}, {"tol_state",1.e-5},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
@@ -78,7 +74,8 @@ const std::map<string,std::any> Heisenberg::sweep_defaults =
 Heisenberg::
 Heisenberg (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry> (L, qarray<0>({}), "", true),
- HeisenbergObservables(L,params,Heisenberg::defaults)
+ HeisenbergObservables(L,params,Heisenberg::defaults),
+ ParamReturner(Heisenberg::sweep_defaults)
 {
 	ParamHandler P(params,Heisenberg::defaults);
 	
@@ -96,40 +93,6 @@ Heisenberg (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-}
-
-DMRG::CONTROL::GLOB Heisenberg::
-get_GlobParam(const vector<Param> &params) const
-{
-	ParamHandler P(params,Heisenberg::sweep_defaults);
-	DMRG::CONTROL::GLOB out;
-	out.min_halfsweeps = P.get<size_t>("min_halfsweeps");
-	out.max_halfsweeps = P.get<size_t>("max_halfsweeps");
-	out.Dinit          = P.get<size_t>("Dinit");
-	out.Qinit          = P.get<size_t>("Qinit");
-	out.Dlimit         = P.get<size_t>("Dlimit");
-	out.tol_eigval     = P.get<double>("tol_eigval");
-	out.tol_state      = P.get<double>("tol_state");
-	out.savePeriod     = P.get<size_t>("savePeriod");
-	out.CONVTEST       = P.get<DMRG::CONVTEST::OPTION>("CONVTEST");
-	out.CALC_S_ON_EXIT = P.get<bool>("CALC_S_ON_EXIT");
-	return out;
-}
-
-DMRG::CONTROL::DYN Heisenberg::
-get_DynParam(const vector<Param> &params) const
-{
-	ParamHandler P(params,Heisenberg::sweep_defaults);
-	DMRG::CONTROL::DYN out;
-	out.max_alpha_rsvd = [&P](size_t i){return P.get<double>("max_alpha");};
-	out.min_alpha_rsvd = [&P] (size_t i) { return P.get<double>("min_alpha");};
-	out.eps_svd        = [&P] (size_t i) { return P.get<double>("eps_svd"); };
-	out.Dincr_abs      = [&P] (size_t i) { return P.get<size_t>("Dincr_abs"); };
-	out.Dincr_per      = [&P] (size_t i) { return P.get<size_t>("Dincr_per");};
-	out.Dincr_rel      = [&P] (size_t i) { return P.get<double>("Dincr_rel"); };
-	out.min_Nsv        = [&P] (size_t i) { return P.get<size_t>("min_Nsv"); };
-	out.max_Nrich	   = [&P] (size_t i) { return P.get<int>("max_Nrich");};
-	return out;
 }
 
 void Heisenberg::
@@ -174,15 +137,78 @@ add_operators (HamiltonianTermsXd<Symmetry> &Terms, const SpinBase<Symmetry> &B,
 	auto [Kx,Kxorb,Kxlabel] = P.fill_array1d<double>("Kx","Kxorb",B.orbitals(),loc);
 	save_label(Kxlabel);
 	
-	param0d Dyperp = P.fill_array0d<double>("Dy","Dyperp",loc);
-	save_label(Dyperp.label);
+//	param0d Dyperp = P.fill_array0d<double>("Dy","Dyperp",loc);
+//	save_label(Dyperp.label);
+	auto [Dy_,Dyperp,Dyperplabel] = P.fill_array2d<double>("Dy","Dyperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	save_label(Dyperplabel);
 	
 	Terms.name = (P.HAS_ANY_OF({"Dy","Dyperp","Dyprime"},loc))? "Dzyaloshinsky-Moriya":"Heisenberg";
 	
 	ArrayXd Bzorb = B.ZeroField();
 	ArrayXd Kzorb = B.ZeroField();
+	ArrayXXd Jperp = B.ZeroHopping();
 	
-	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(0.,0.,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp.x, P.get<bool>("CYLINDER"))));
+	Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp,Jperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp)));
+}
+
+refEnergy Heisenberg::
+ref (const vector<Param> &params)
+{
+	ParamHandler P(params,{{"D",2ul},{"Ly",1ul}});
+	refEnergy out;
+	
+	if (P.HAS_NONE_OF({"Bz","Bx","Kx","Kz","Dy","Dyprime"}))
+	{
+		out.source = "Tao Xiang, Thermodynamics of quantum Heisenberg spin chains, Phys. Rev. B 58, 9142 (1998)";
+		
+		if (P.get<size_t>("D") == 2)
+		{
+			if (P.get<size_t>("Ly") == 1) {out.value = 0.25-log(2);}
+			if (P.get<size_t>("Ly") == 2) {out.value = -0.578043140180;}
+			if (P.get<size_t>("Ly") == 3) {out.value = -0.600537;}
+			if (P.get<size_t>("Ly") == 4) {out.value = -0.618566;}
+			if (P.get<size_t>("Ly") == 5) {out.value = -0.62776;}
+			if (P.get<size_t>("Ly") == 6) {out.value = -0.6346;}
+		}
+		else if (P.get<size_t>("D") == 3)
+		{
+			if (P.get<size_t>("Ly") == 1) {out.value = -1.40148403897;}
+			if (P.get<size_t>("Ly") == 2) {out.value = -1.878372746;}
+			if (P.get<size_t>("Ly") == 3) {out.value = -2.0204;}
+			if (P.get<size_t>("Ly") == 4) {out.value = -2.0957;}
+			if (P.get<size_t>("Ly") == 5) {out.value = -2.141;}
+			if (P.get<size_t>("Ly") == 6) {out.value = -2.169;}
+		}
+		else if (P.get<size_t>("D") == 4)
+		{
+			if (P.get<size_t>("Ly") == 1) {out.value = -2.828337;}
+			if (P.get<size_t>("Ly") == 2) {out.value = -3.930067;}
+			if (P.get<size_t>("Ly") == 3) {out.value = -4.2718;}
+			if (P.get<size_t>("Ly") == 4) {out.value = -4.446;}
+			if (P.get<size_t>("Ly") == 5) {out.value = -4.553;}
+			if (P.get<size_t>("Ly") == 6) {out.value = -4.60;}
+		}
+		else if (P.get<size_t>("D") == 5)
+		{
+			if (P.get<size_t>("Ly") == 1) {out.value = -4.761248;}
+			if (P.get<size_t>("Ly") == 2) {out.value = -6.73256;}
+			if (P.get<size_t>("Ly") == 3) {out.value = -7.3565;}
+			if (P.get<size_t>("Ly") == 4) {out.value = -7.669;}
+			if (P.get<size_t>("Ly") == 5) {out.value = -7.865;}
+			if (P.get<size_t>("Ly") == 6) {out.value = -7.94;}
+		}
+		else if (P.get<size_t>("D") == 6)
+		{
+			if (P.get<size_t>("Ly") == 1) {out.value = -7.1924;}
+			if (P.get<size_t>("Ly") == 2) {out.value = -10.2852;}
+			if (P.get<size_t>("Ly") == 3) {out.value = -11.274;}
+			if (P.get<size_t>("Ly") == 4) {out.value = -11.76;}
+			if (P.get<size_t>("Ly") == 5) {out.value = -12.08;}
+			if (P.get<size_t>("Ly") == 6) {out.value = -12.1;}
+		}
+	}
+	
+	return out;
 }
 
 } // end namespace VMPS
