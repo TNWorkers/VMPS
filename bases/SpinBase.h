@@ -61,8 +61,11 @@ public:
 	
 	OperatorType Id() const;
 	
-	ArrayXd ZeroField() const;
-	ArrayXXd ZeroHopping() const;
+	/**Returns an array of size dim() with zeros.*/
+	ArrayXd ZeroField() const { return ArrayXd::Zero(N_orbitals); }
+	
+	/**Returns an array of size dim()xdim() with zeros.*/
+	ArrayXXd ZeroHopping() const { return ArrayXXd::Zero(N_orbitals,N_orbitals); }
 	
 	string alignment (double J) const {return (J<0)? "(AFM)":"(FM)";};
 	
@@ -158,20 +161,6 @@ Id() const
 	SparseMatrixXd mat = MatrixXd::Identity(N_states,N_states).sparseView();
 	OperatorType Oout(mat,Symmetry::qvacuum());
 	return Oout;
-}
-
-template<typename Symmetry>
-ArrayXd SpinBase<Symmetry>::
-ZeroField() const
-{
-	return ArrayXd::Zero(N_orbitals);
-}
-
-template<typename Symmetry>
-ArrayXXd SpinBase<Symmetry>::
-ZeroHopping() const
-{
-	return ArrayXXd::Zero(N_orbitals,N_orbitals);
 }
 
 template<typename Symmetry>

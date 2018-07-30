@@ -168,7 +168,7 @@ public:
 	 * \param Bx : \f$B_x\f$ for each orbital
 	 */
 	Operator HubbardHamiltonian (const ArrayXd &U, const ArrayXXd &t, const ArrayXXd &V, 
-	                             const ArrayXXd &Jz, const ArrayXXd &Jxy, 
+	                             const ArrayXXd &Jxy, const ArrayXXd &Jz, 
 	                             const ArrayXd &Bz, const ArrayXd &Bx) const;
 	
 	/**Identity*/
@@ -178,7 +178,7 @@ public:
 	ArrayXd ZeroField() const { return ArrayXd::Zero(N_orbitals); }
 	
 	/**Returns an array of size dim()xdim() with zeros.*/
-	ArrayXXd ZeroMatrix() const { return ArrayXXd::Zero(N_orbitals,N_orbitals); }
+	ArrayXXd ZeroHopping() const { return ArrayXXd::Zero(N_orbitals,N_orbitals); }
 	
 	/**
 	 * Returns the basis. 
@@ -587,7 +587,7 @@ Id () const
 
 SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
 HubbardHamiltonian (const ArrayXd &U, const ArrayXXd &t, const ArrayXXd &V, 
-                    const ArrayXXd &Jz, const ArrayXXd &Jxy, 
+                    const ArrayXXd &Jxy, const ArrayXXd &Jz, 
                     const ArrayXd &Bz, const ArrayXd &Bx) const
 {
 	Operator Mout({1},TensorBasis);

@@ -238,8 +238,10 @@ public:
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
 	template<typename Scalar> SiteOperator<Symmetry,Scalar>
-	HubbardHamiltonian (const Array<Scalar,Dynamic,1> &Uorb, const Array<Scalar,Dynamic,1> &Eorb, 
-	                    const Array<Scalar,Dynamic,1> &Bzorb, const Array<Scalar,Dynamic,1> &Bxorb, 
+	HubbardHamiltonian (const Array<Scalar,Dynamic,1> &Uorb, 
+	                    const Array<Scalar,Dynamic,1> &Eorb, 
+	                    const Array<Scalar,Dynamic,1> &Bzorb, 
+	                    const Array<Scalar,Dynamic,1> &Bxorb, 
 	                    const Array<Scalar,Dynamic,Dynamic> &t, 
 	                    const Array<Scalar,Dynamic,Dynamic> &V, 
 	                    const Array<Scalar,Dynamic,Dynamic> &J) const;

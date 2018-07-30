@@ -233,7 +233,7 @@ int main (int argc, char* argv[])
 			for (size_t j=0; j<L; j++)
 			{
 				densityMatrixA_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdagc<UP>(i,j), g_U1xU1.state)+
-				                             avg(g_U1xU1.state, H_U1xU1.cdagc<DN>(i,j), g_U1xU1.state);
+				                            avg(g_U1xU1.state, H_U1xU1.cdagc<DN>(i,j), g_U1xU1.state);
 			}
 			
 			densityMatrixB_U1xU1.resize(L,L);
@@ -470,9 +470,9 @@ int main (int argc, char* argv[])
 	
 	T.add("");
 	T.add("U(1)");
-	T.add("U(1)⊗U(1)");
-	T.add("SU(2)⊗U(1)");
-	T.add("U(0)⊗SU(2)");
+	T.add("U(1)xU(1)");
+	T.add("SU(2)xU(1)");
+	T.add("U(0)xSU(2)");
 	T.endOfRow();
 	
 	T.add("E/L");
@@ -533,28 +533,28 @@ int main (int argc, char* argv[])
 		T.add("-");
 		T.endOfRow();
 		
-		T.add("ρA");
+		T.add("rhoA");
 		T.add("-");
 		T.add(to_string_prec(densityMatrixA_U1xU1.sum()));
 		T.add(to_string_prec(densityMatrixA_SU2xU1.sum()));
 		T.add("-");
 		T.endOfRow();
 		
-		T.add("ρA diff");
+		T.add("rhoA diff");
 		T.add("-");
 		T.add(to_string_prec((densityMatrixA_U1xU1-densityMatrixA_SU2xU1).norm()));
 		T.add("0");
 		T.add("-");
 		T.endOfRow();
 
-		T.add("ρB");
+		T.add("rhoB");
 		T.add("-");
 		T.add(to_string_prec(densityMatrixB_U1xU1.sum()));
 		T.add(to_string_prec(densityMatrixB_SU2xU1.sum()));
 		T.add("-");
 		T.endOfRow();
 		
-		T.add("ρB diff");
+		T.add("rhoB diff");
 		T.add("-");
 		T.add(to_string_prec((densityMatrixB_U1xU1-densityMatrixB_SU2xU1).norm()));
 		T.add("0");

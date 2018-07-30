@@ -72,13 +72,12 @@ public:
 
 const map<string,any> KondoU1xU1::defaults =
 {
-	{"t",1.}, {"tPerp",0.},{"tPrime",0.},
-	{"J",-1.}, 
-	{"U",0.}, {"V",0.}, {"Vperp",0.}, 
+	{"t",1.}, {"tPrime",0.}, {"tRung",0.},
+	{"J",1.}, {"U",0.}, 
+	{"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.},
-	{"D",2ul},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 KondoU1xU1::
@@ -202,13 +201,21 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	
 	// local terms
 	
+//	// t⟂
+//	param0d tPerp = P.fill_array0d<double>("t","tPerp",loc);
+//	save_label(tPerp.label);
+//	
+//	// V⟂
+//	param0d Vperp = P.fill_array0d<double>("V","Vperp",loc);
+//	save_label(Vperp.label);
+	
 	// t⟂
-	param0d tPerp = P.fill_array0d<double>("t","tPerp",loc);
-	save_label(tPerp.label);
+	auto [tRung,tPerp,tPerplabel] = P.fill_array2d<double>("tRung","t","tPerp",F.orbitals(),loc,P.get<bool>("CYLINDER"));
+	save_label(tPerplabel);
 	
 	// V⟂
-	param0d Vperp = P.fill_array0d<double>("V","Vperp",loc);
-	save_label(Vperp.label);
+	auto [Vrung,Vperp,Vperplabel] = P.fill_array2d<double>("Vrung","V","Vperp",F.orbitals(),loc,P.get<bool>("CYLINDER"));
+	save_label(Vperplabel);
 	
 	// Hubbard U
 	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F.orbitals(),loc);
@@ -234,8 +241,16 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F.orbitals(),loc);
 	save_label(Bzlabel);
 	
-	auto Himp = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,Bzorb,B.ZeroField(),Kzorb,B.ZeroField(),0.,P.get<bool>("CYLINDER")),F.Id());
-	auto Hsub = kroneckerProduct(B.Id(),F.HubbardHamiltonian(Uorb,t0orb-muorb,Bzsuborb,B.ZeroField(),tPerp.x,Vperp.x,0., P.get<bool>("CYLINDER")));
+	ArrayXXd Jxyperp = B.ZeroHopping();
+	ArrayXXd Jzperp  = B.ZeroHopping();
+	ArrayXd  Bxorb   = B.ZeroField();
+	ArrayXd  Bxsuborb= F.ZeroField();
+	ArrayXd  Kxorb   = B.ZeroField();
+	ArrayXXd Dyperp  = B.ZeroHopping();
+	ArrayXXd Jperp   = F.ZeroHopping();
+	
+	auto Himp = kroneckerProduct(B.HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp), F.Id());
+	auto Hsub = kroneckerProduct(B.Id(), F.template HubbardHamiltonian<double>(Uorb,t0orb-muorb,Bzsuborb,Bxsuborb,tPerp,Vperp,Jperp));
 	auto Hloc = Himp + Hsub;
 	
 	// Kondo-J
@@ -246,9 +261,9 @@ set_operators (const SpinBase<Symmetry_> &B, const FermionBase<Symmetry_> &F, co
 	{
 		if (Jorb(i) != 0.)
 		{
-			Hloc += -0.5*Jorb(i) * kroneckerProduct(B.Scomp(SP,i), F.Sm(i));
-			Hloc += -0.5*Jorb(i) * kroneckerProduct(B.Scomp(SM,i), F.Sp(i));
-			Hloc += -Jorb(i)     * kroneckerProduct(B.Scomp(SZ,i), F.Sz(i));
+			Hloc += 0.5*Jorb(i) * kroneckerProduct(B.Scomp(SP,i), F.Sm(i));
+			Hloc += 0.5*Jorb(i) * kroneckerProduct(B.Scomp(SM,i), F.Sp(i));
+			Hloc +=     Jorb(i) * kroneckerProduct(B.Scomp(SZ,i), F.Sz(i));
 		}
 	}
 	

@@ -116,7 +116,13 @@ public:
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
 //	Operator HubbardHamiltonian (std::vector<double> Uorb, double mu, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
-
+	
+	/**Returns an array of size dim() with zeros.*/
+	ArrayXd ZeroField() const { return ArrayXd::Zero(N_orbitals); }
+	
+	/**Returns an array of size dim()xdim() with zeros.*/
+	ArrayXXd ZeroHopping() const { return ArrayXXd::Zero(N_orbitals,N_orbitals); }
+	
 	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U and arbitrary hopping matrix.
 	 * \param U : \f$U\f$ for each orbital

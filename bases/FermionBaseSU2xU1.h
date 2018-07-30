@@ -22,7 +22,9 @@ class FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >
 {
 	typedef Eigen::Index Index;
 	typedef double Scalar;
+	
 public:
+	
 	typedef typename Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > Symmetry;
 	typedef SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > Operator;
 	typedef typename Symmetry::qType qType;
@@ -131,6 +133,12 @@ public:
 	 */
 //	Operator HubbardHamiltonian (double U, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
 	
+	/**Returns an array of size dim() with zeros.*/
+	ArrayXd ZeroField() const { return ArrayXd::Zero(N_orbitals); }
+	
+	/**Returns an array of size dim()xdim() with zeros.*/
+	ArrayXXd ZeroHopping() const { return ArrayXXd::Zero(N_orbitals,N_orbitals); }
+	
 	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
 	 * \param Uorb : \f$U\f$ for each orbital
@@ -141,14 +149,15 @@ public:
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
 	Operator HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Eorb, const ArrayXXd &t, const ArrayXXd &V, const ArrayXXd &J) const;
-
+	
 	/**Identity*/
 	Operator Id (std::size_t orbital=0) const;
-
+	
 	/**Returns the basis.*/
 	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
+	
 private:
-
+	
 	std::size_t N_orbitals;
 	std::size_t N_states;
 	

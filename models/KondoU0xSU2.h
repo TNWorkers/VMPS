@@ -65,12 +65,13 @@ protected:
 
 const std::map<string,std::any> KondoU0xSU2::defaults =
 {
-	{"t",1.}, {"tPerp",0.},
-	{"J",-1.}, 
-	{"Bz",0.}, {"Bx",0.}, {"Bzsub",0.}, {"Bxsub",0.}, {"Kz",0.}, {"Kx",0.},
-	{"D",2ul},
+	{"t",1.}, {"tRung",0.},
+	{"J",1.}, 
+	{"Bz",0.}, {"Bx",0.},
+	{"Bzsub",0.}, {"Bxsub",0.},
+	{"Kz",0.}, {"Kx",0.},
 	{"U",0.}, {"V",0.},
-	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
+	{"D",2ul}, {"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 KondoU0xSU2::
@@ -189,8 +190,8 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 	// local terms
 	
 	// t⟂
-	param0d tPerp = P.fill_array0d<double>("t","tPerp",loc);
-	save_label(tPerp.label);
+	auto [tRung,tPerp,tPerplabel] = P.fill_array2d<double>("tRung","t","tPerp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
+	save_label(tPerplabel);
 	
 	// Hubbard U
 	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F[loc].orbitals(),loc);
@@ -222,14 +223,22 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 	
 	// OperatorType KondoHamiltonian({1},B[loc].get_structured_basis().combine(F[loc].get_basis()));
 	
+	ArrayXXd Jxyperp = B[loc].ZeroHopping();
+	ArrayXXd Jzperp  = B[loc].ZeroHopping();
+	ArrayXXd Dyperp  = B[loc].ZeroHopping();
+	
 	//set Heisenberg part of Kondo Hamiltonian
-	auto KondoHamiltonian = OperatorType::outerprod(B[loc].HeisenbergHamiltonian(0.,0.,Bzorb,Bxorb,Kzorb,Kxorb,0.,P.get<bool>("CYLINDER")).structured(),
+	auto KondoHamiltonian = OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp).structured(),
 	                                                F[loc].Id(),
 	                                                {1});
 	
+	ArrayXXd Vperp      = F[loc].ZeroHopping();
+	ArrayXXd Jxysubperp = F[loc].ZeroHopping();
+	ArrayXXd Jzsubperp  = F[loc].ZeroHopping();
+	
 	//set Hubbard part of Kondo Hamiltonian
 	KondoHamiltonian += OperatorType::outerprod(B[loc].Id().structured(),
-	                                            F[loc].HubbardHamiltonian(Uorb,tPerp.x,0.,0.,0.,Bzsuborb,Bxsuborb),
+	                                            F[loc].HubbardHamiltonian(Uorb,tPerp,Vperp,Jxysubperp,Jzsubperp,Bzsuborb,Bxsuborb),
 	                                            {1});
 	
 	//set Heisenberg part of Hamiltonian
@@ -244,9 +253,9 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 	{
 		if (Jorb(i) != 0.)
 		{
-			KondoHamiltonian += -Jorb(i)    * OperatorType::outerprod(B[loc].Scomp(SZ,i).structured(), F[loc].Sz(i), {1});
-			KondoHamiltonian += -0.5*Jorb(i)* OperatorType::outerprod(B[loc].Scomp(SP,i).structured(), F[loc].Sm(i), {1});
-			KondoHamiltonian += -0.5*Jorb(i)* OperatorType::outerprod(B[loc].Scomp(SM,i).structured(), F[loc].Sp(i), {1});
+			KondoHamiltonian +=     Jorb(i) * OperatorType::outerprod(B[loc].Scomp(SZ,i).structured(), F[loc].Sz(i), {1});
+			KondoHamiltonian += 0.5*Jorb(i) * OperatorType::outerprod(B[loc].Scomp(SP,i).structured(), F[loc].Sm(i), {1});
+			KondoHamiltonian += 0.5*Jorb(i) * OperatorType::outerprod(B[loc].Scomp(SM,i).structured(), F[loc].Sp(i), {1});
 		}
 	}
 	

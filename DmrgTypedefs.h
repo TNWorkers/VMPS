@@ -349,8 +349,8 @@ std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
 
 struct refEnergy
 {
-	double value;
-	string source;
+	double value = std::nan("0");
+	string source = "";
 };
 
 std::ostream& operator<< (std::ostream& s, refEnergy r)

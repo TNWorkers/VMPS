@@ -58,13 +58,13 @@ public:
 
 const std::map<string,std::any> KondoU1::defaults = 
 {
-	{"t",1.}, {"tPerp",0.}, {"tPrime",0.},
-	{"J",-1.}, 
-	{"U",0.}, {"V",0.}, {"Vperp",0.}, 
+	{"t",1.}, {"tPrime",0.}, {"tRung",0.},
+	{"J",1.}, 
+	{"U",0.},
+	{"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bx",0.}, {"Bzsub",0.}, {"Bxsub",0.}, {"Kz",0.}, {"Kx",0.},
-	{"D",2ul},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 KondoU1::
@@ -118,8 +118,21 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &
 	auto [Kx,Kxorb,Kxlabel] = P.fill_array1d<double>("Kx","Kxorb",B.orbitals(),loc);
 	save_label(Kxlabel);
 	
-	auto Himp = kroneckerProduct(B.HeisenbergHamiltonian(0.,0.,B.ZeroField(),Bxorb,B.ZeroField(),Kxorb,0.,P.get<bool>("CYLINDER")), F.Id());
-	auto Hsub = kroneckerProduct(B.Id(),F.HubbardHamiltonian(F.ZeroField(),F.ZeroField(),F.ZeroField(),Bxsuborb,0.,0.,0., P.get<bool>("CYLINDER")));
+	ArrayXXd Jxyperp = B.ZeroHopping();
+	ArrayXXd Jzperp  = B.ZeroHopping();
+	ArrayXd  Bzorb   = B.ZeroField();
+	ArrayXd  Kzorb   = B.ZeroField();
+	ArrayXXd Dyperp  = B.ZeroHopping();
+	
+	ArrayXd Uorb     = F.ZeroField();
+	ArrayXd Eorb     = F.ZeroField();
+	ArrayXd Bzsuborb = F.ZeroField();
+	ArrayXXd tPerp   = F.ZeroHopping();
+	ArrayXXd Vperp   = F.ZeroHopping();
+	ArrayXXd Jperp   = F.ZeroHopping();
+	
+	auto Himp = kroneckerProduct(B.HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp), F.Id());
+	auto Hsub = kroneckerProduct(B.Id(),F.HubbardHamiltonian(Uorb,Eorb,Bzsuborb,Bxsuborb,tPerp,Vperp,Jperp));
 	
 	Terms.local.push_back(make_tuple(1.,Himp+Hsub));
 	

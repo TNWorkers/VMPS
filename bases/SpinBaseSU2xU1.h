@@ -60,7 +60,13 @@ public:
 
 	/**Identity operator.*/
 	Operator Id() const;
-
+	
+	/**Returns an array of size dim() with zeros.*/
+	ArrayXd ZeroField() const { return ArrayXd::Zero(N_orbitals); }
+	
+	/**Returns an array of size dim()xdim() with zeros.*/
+	ArrayXXd ZeroHopping() const { return ArrayXXd::Zero(N_orbitals,N_orbitals); }
+	
 	/**
 	 * Creates the full Heisenberg Hamiltonian on the supersite.
 	 * \param J : \f$J\f$

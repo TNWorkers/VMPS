@@ -113,7 +113,11 @@ public:
 	Operator Tdag (std::size_t orbital=0) const;
 	///\}
 	
-	ArrayXXd ZeroHopping() const;
+	/**Returns an array of size dim() with zeros.*/
+	ArrayXd ZeroField() const { return ArrayXd::Zero(N_orbitals); }
+	
+	/**Returns an array of size dim()xdim() with zeros.*/
+	ArrayXXd ZeroHopping() const { return ArrayXXd::Zero(N_orbitals,N_orbitals); }
 	
 	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite.
@@ -436,12 +440,6 @@ Id (std::size_t orbital) const
 	}
 }
 
-ArrayXXd FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
-ZeroHopping() const
-{
-	return ArrayXXd::Zero(N_orbitals,N_orbitals);
-}
-
 //SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 //HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
 //{
@@ -491,7 +489,7 @@ ZeroHopping() const
 //				Mout += 0.5*Uorb(i) * nh(i);
 //			}
 //		}
-//	}
+//	}F
 //	return Mout;
 //}
 

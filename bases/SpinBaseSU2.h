@@ -66,7 +66,13 @@ public:
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
 //	Operator HeisenbergHamiltonian (double J, bool PERIODIC=false) const;
-
+	
+	/**Returns an array of size dim() with zeros.*/
+	ArrayXd ZeroField() const { return ArrayXd::Zero(N_orbitals); }
+	
+	/**Returns an array of size dim()xdim() with zeros.*/
+	ArrayXXd ZeroHopping() const { return ArrayXXd::Zero(N_orbitals,N_orbitals); }
+	
 	/**
 	 * Creates the full Heisenberg Hamiltonian on the supersite.
 	 * \param J : \f$J_{ij}\f$
