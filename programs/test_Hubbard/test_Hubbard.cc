@@ -1,5 +1,3 @@
-#define DONT_USE_LAPACK_SVD
-#define DONT_USE_LAPACK_QR
 //#define USE_HDF5_STORAGE
 //#define EIGEN_USE_THREADS
 
@@ -116,8 +114,8 @@ int main (int argc, char* argv[])
 	tPrime = args.get<double>("tPrime",0.);
 	U = args.get<double>("U",8.);
 	mu = args.get<double>("mu",0.5*U);
-	Nup = args.get<int>("Nup",L/2);
-	Ndn = args.get<int>("Ndn",L/2);
+	Nup = args.get<int>("Nup",L*Ly/2);
+	Ndn = args.get<int>("Ndn",L*Ly/2);
 	N = Nup+Ndn;
 	
 	ED = args.get<bool>("ED",false);
@@ -380,10 +378,12 @@ int main (int argc, char* argv[])
 		Stopwatch<> Watch_SU2xSU2;
 		
 		vector<Param> paramsSU2xSU2;
+		paramsSU2xSU2.push_back({"t",t,0});
+		paramsSU2xSU2.push_back({"t",t,1});
 		paramsSU2xSU2.push_back({"U",U,0});
 		paramsSU2xSU2.push_back({"U",U,1});
-		paramsSU2xSU2.push_back({"subL",SUB_LATTICE::A,0});
-		paramsSU2xSU2.push_back({"subL",SUB_LATTICE::B,1});
+//		paramsSU2xSU2.push_back({"subL",SUB_LATTICE::A,0});
+//		paramsSU2xSU2.push_back({"subL",SUB_LATTICE::B,1});
 		paramsSU2xSU2.push_back({"Ly",Ly,0});
 		paramsSU2xSU2.push_back({"Ly",Ly,1});
 		VMPS::HubbardSU2xSU2 H_SU2xSU2(L,paramsSU2xSU2);
@@ -473,9 +473,9 @@ int main (int argc, char* argv[])
 	T.add("");
 	T.add("ED");
 	T.add("U(0)");
-	T.add("U(1)⊗U(1)");
-	T.add("SU(2)⊗U(1)");
-	T.add("SU(2)⊗SU(2)");
+	T.add("U(1)xU(1)");
+	T.add("SU(2)xU(1)");
+	T.add("SU(2)xSU(2)");
 	T.endOfRow();
 	
 	T.add("E/V");
@@ -518,25 +518,22 @@ int main (int argc, char* argv[])
 		T.add(to_string_prec((d_U1-d_ED).norm()));
 		T.add(to_string_prec((d_SU2-d_ED).norm()));
 		T.add(to_string_prec((nh_SU2xSU2-d_ED-h_ED).norm()));
-		T.add("-");
 		T.endOfRow();
 		
-		T.add("ρA diff");
+		T.add("rhoA diff");
 		T.add("0");
 		T.add("-");
 		T.add(to_string_prec((densityMatrix_U1A-densityMatrix_ED).norm()));
 		T.add(to_string_prec((densityMatrix_SU2A-densityMatrix_ED).norm()));
 		T.add(to_string_prec((densityMatrix_SU2xSU2A-densityMatrix_ED).norm()));
-		T.add("-");
 		T.endOfRow();
 		
-		T.add("ρB diff");
+		T.add("rhoB diff");
 		T.add("0");
 		T.add("-");
 		T.add(to_string_prec((densityMatrix_U1B-densityMatrix_ED).norm()));
 		T.add(to_string_prec((densityMatrix_SU2B-densityMatrix_ED).norm()));
 		T.add(to_string_prec((densityMatrix_SU2xSU2B-densityMatrix_ED).norm()));
-		T.add("-");
 		T.endOfRow();
 	}
 	

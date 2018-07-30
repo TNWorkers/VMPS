@@ -158,7 +158,7 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 		{
 			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), B.Scomp(SP,i), B.Scomp(SM,j)));
 			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), B.Scomp(SM,i), B.Scomp(SP,j)));
-			Terms.tight.push_back(make_tuple(Jpara(i,j),     B.Scomp(SZ,i), B.Scomp(SZ,j)));
+			Terms.tight.push_back(make_tuple(    Jpara(i,j), B.Scomp(SZ,i), B.Scomp(SZ,j)));
 		}
 	}
 	
@@ -173,7 +173,7 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 		
 		Terms.nextn.push_back(make_tuple(0.5*Jprime.x, B.Scomp(SP), B.Scomp(SM), B.Id()));
 		Terms.nextn.push_back(make_tuple(0.5*Jprime.x, B.Scomp(SM), B.Scomp(SP), B.Id()));
-		Terms.nextn.push_back(make_tuple(Jprime.x,     B.Scomp(SZ), B.Scomp(SZ), B.Id()));
+		Terms.nextn.push_back(make_tuple(    Jprime.x, B.Scomp(SZ), B.Scomp(SZ), B.Id()));
 	}
 	
 	// local terms

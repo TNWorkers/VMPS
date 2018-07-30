@@ -25,7 +25,7 @@ class Hubbard : public Mpo<Sym::U0,double>, public HubbardObservables<Sym::U0>
 public:
 	typedef Sym::U0 Symmetry;
 	
-	Hubbard() : Mpo(){};
+	Hubbard() : Mpo() {};
 	Hubbard (const size_t &L, const vector<Param> &params);
 	
 	template<typename Symmetry_>
@@ -36,11 +36,13 @@ public:
 
 const std::map<string,std::any> Hubbard::defaults = 
 {
-	{"t",1.}, {"tPerp",0.}, {"tPrime",0.}, 
+	{"t",1.}, {"tPrime",0.}, {"tRung",1.},
 	{"mu",0.}, {"t0",0.}, 
-	{"U",0.}, {"V",0.}, {"Vperp",0.}, 
+	{"U",0.},
+	{"V",0.}, {"Vrung",0.}, 
 	{"Bz",0.}, {"Bx",0.}, 
-	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
+	{"J",0.}, {"Jrung",0.},
+	{"J3site",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
@@ -79,11 +81,19 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const FermionBase<Symmetry_
 	// Bx
 	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",F.orbitals(),loc);
 	save_label(Bxlabel);
+	
 	// Can also implement superconductivity terms c*c & cdag*cdag here
 	
 	Terms.name = "Hubbard";
 	
-	Terms.local.push_back(make_tuple(1., F.HubbardHamiltonian(F.ZeroField(),F.ZeroField(),F.ZeroField(),Bxorb,0.,0.,0., P.get<bool>("CYLINDER"))));
+	ArrayXd Uorb = F.ZeroField();
+	ArrayXd Eorb = F.ZeroField();
+	ArrayXd Bzorb = F.ZeroField();
+	ArrayXXd tPerp = F.ZeroHopping();
+	ArrayXXd Vperp = F.ZeroHopping();
+	ArrayXXd Jperp = F.ZeroHopping();
+	
+	Terms.local.push_back(make_tuple(1., F.template HubbardHamiltonian<double>(Uorb,Eorb,Bzorb,Bxorb,tPerp,Vperp,Jperp)));
 }
 
 }

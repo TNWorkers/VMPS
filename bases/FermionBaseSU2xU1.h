@@ -129,7 +129,7 @@ public:
 	 * \param J : \f$J\f$
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
-	Operator HubbardHamiltonian (double U, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
+//	Operator HubbardHamiltonian (double U, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
 	
 	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
@@ -140,7 +140,7 @@ public:
 	 * \param J : \f$J\f$
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
-	Operator HubbardHamiltonian (Eigen::ArrayXd Uorb, Eigen::ArrayXd Eorb, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
+	Operator HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Eorb, const ArrayXXd &t, const ArrayXXd &V, const ArrayXXd &J) const;
 
 	/**Identity*/
 	Operator Id (std::size_t orbital=0) const;
@@ -469,66 +469,77 @@ Id (std::size_t orbital) const
 	}
 }
 
+//SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
+//HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
+//{
+//	Operator Mout({1,0},TensorBasis);
+//	if (N_orbitals >= 2 and t != 0.)
+//	{
+//		Mout = -t*std::sqrt(2.)*(Operator::prod(cdag(0),c(1),{1,0})+Operator::prod(c(0),cdag(1),{1,0}));
+//	}
+//	for (int i=1; i<N_orbitals-1; ++i) // for all bonds
+//	{
+//		if (t != 0.)
+//		{
+//			Mout += -t*std::sqrt(2.)*(Operator::prod(cdag(i),c(i+1),{1,0})+Operator::prod(c(i),cdag(i+1),{1,0}));
+//		}
+//		if (V != 0.) {Mout += V*(Operator::prod(n(i),n(i+1),{1,0}));}
+//		if (J != 0.)
+//		{
+//			Mout += -J*std::sqrt(3.)*(Operator::prod(Sdag(i),S(i+1),{1,0}));
+//		}
+//	}
+//	if (PERIODIC==true and N_orbitals>2)
+//	{
+//		if (t != 0.)
+//		{
+//			Mout += -t*std::sqrt(2.)*(Operator::prod(cdag(0),c(N_orbitals-1),{1,0})+Operator::prod(cdag(N_orbitals-1),c(0),{1,0}));
+//		}
+//		if (V != 0.) {Mout += V*(Operator::prod(n(0),n(N_orbitals-1),{1}));}
+//		if (J != 0.)
+//		{
+//			Mout += -J*std::sqrt(3.)*(Operator::prod(Sdag(0),S(N_orbitals-1),{1,0}));
+//		}
+//	}
+//	if (U != 0. and U != std::numeric_limits<double>::infinity())
+//	{
+//		for (int i=0; i<N_orbitals; ++i) {Mout += U*d(i);}
+//	}
+
+//	return Mout;
+//}
+
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
-HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
+HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Eorb, const ArrayXXd &t, const ArrayXXd &V, const ArrayXXd &J) const
 {
 	Operator Mout({1,0},TensorBasis);
-	if( N_orbitals >= 2 and t!=0. )
+	
+	for (int i=0; i<N_orbitals; ++i)
+	for (int j=0; j<i; ++j)
 	{
-		Mout = -t*std::sqrt(2.)*(Operator::prod(cdag(0),c(1),{1,0})+Operator::prod(c(0),cdag(1),{1,0}));
-	}
-	for (int i=1; i<N_orbitals-1; ++i) // for all bonds
-	{
-		if (t != 0.)
+		if (t(i,j) != 0.)
 		{
-			Mout += -t*std::sqrt(2.)*(Operator::prod(cdag(i),c(i+1),{1,0})+Operator::prod(c(i),cdag(i+1),{1,0}));
+			Mout += -t(i,j)*std::sqrt(2.) * (Operator::prod(cdag(i),c(j),{1,0}) + Operator::prod(c(i),cdag(j),{1,0}));
 		}
-		if (V != 0.) {Mout += V*(Operator::prod(n(i),n(i+1),{1,0}));}
-		if (J != 0.)
+		if (V(i,j) != 0.)
 		{
-			Mout += -J*std::sqrt(3.)*(Operator::prod(Sdag(i),S(i+1),{1,0}));
+			Mout += V(i,j) * (Operator::prod(n(i),n(j),{1,0}));
 		}
-	}
-	if (PERIODIC==true and N_orbitals>2)
-	{
-		if (t != 0.)
+		if (J(i,j) != 0.)
 		{
-			Mout += -t*std::sqrt(2.)*(Operator::prod(cdag(0),c(N_orbitals-1),{1,0})+Operator::prod(cdag(N_orbitals-1),c(0),{1,0}));
-		}
-		if (V != 0.) {Mout += V*(Operator::prod(n(0),n(N_orbitals-1),{1}));}
-		if (J != 0.)
-		{
-			Mout += -J*std::sqrt(3.)*(Operator::prod(Sdag(0),S(N_orbitals-1),{1,0}));
+			Mout += J(i,j)*std::sqrt(3.)*(Operator::prod(Sdag(i),S(j),{1,0}));
 		}
 	}
-	if (U != 0. and U != std::numeric_limits<double>::infinity())
-	{
-		for (int i=0; i<N_orbitals; ++i) {Mout += U*d(i);}
-	}
-
-	return Mout;
-}
-
-SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
-HubbardHamiltonian (Eigen::ArrayXd Uorb, Eigen::ArrayXd Eorb, double t, double V, double J, bool PERIODIC) const
-{
-	auto Mout = HubbardHamiltonian(0.,t,V,J,PERIODIC);
 	
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (Uorb.rows() > 0)
+		if (U(i) != 0. and U(i) != std::numeric_limits<double>::infinity())
 		{
-			if (Uorb(i) != 0. and Uorb(i) != std::numeric_limits<double>::infinity())
-			{
-				Mout += Uorb(i) * d(i);
-			}
+			Mout += U(i) * d(i);
 		}
-		if (Eorb.rows() > 0)
+		if (Eorb(i) != 0.)
 		{
-			if (Eorb(i) != 0.)
-			{
-				Mout += Eorb(i) * n(i);
-			}
+			Mout += Eorb(i) * n(i);
 		}
 	}
 	return Mout;

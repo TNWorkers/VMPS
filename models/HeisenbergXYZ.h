@@ -40,7 +40,7 @@ private:
 public:
 	
 	///\{
-	HeisenbergXYZ() : Mpo<Symmetry,complex<double> >(), ParamReturner(HeisenbergXYZ::sweep_defaults) {};
+	HeisenbergXYZ() : Mpo<Symmetry,complex<double> >(), ParamReturner(Heisenberg::sweep_defaults) {};
 	HeisenbergXYZ (const size_t &L, const vector<Param> &params);
 	///\}
 	

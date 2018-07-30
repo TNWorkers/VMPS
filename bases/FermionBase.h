@@ -200,9 +200,12 @@ public:
 
 	/**The identiy operator. */
 	OperatorType Id() const;
-
+	
 	/**Returns an array of size dim() with zeros.*/
 	ArrayXd ZeroField() const;
+	
+	/**Returns an array of size dim() x dim() with zeros.*/
+	ArrayXXd ZeroHopping() const;
 	
 	/**
 	 * Fermionic sign for the transfer to a particular orbital, needed by HubbardModel::c and HubbardModel::cdag.
@@ -220,8 +223,8 @@ public:
 	 * \param Bz : \f$B_z\f$
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
-	template<typename Scalar> SiteOperator<Symmetry,Scalar>
-	HubbardHamiltonian (double U, Scalar t=1., double V=0., double J=0., double Bz=0., bool PERIODIC=false) const;
+//	template<typename Scalar> SiteOperator<Symmetry,Scalar>
+//	HubbardHamiltonian (double U, Scalar t=1., double V=0., double J=0., double Bz=0., bool PERIODIC=false) const;
 	
 	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
@@ -235,11 +238,15 @@ public:
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
 	template<typename Scalar> SiteOperator<Symmetry,Scalar>
-	HubbardHamiltonian (ArrayXd Uorb, ArrayXd Eorb, ArrayXd Bzorb, ArrayXd Bxorb, Scalar t=1., double V=0., double J=0., bool PERIODIC=false) const;
-
+	HubbardHamiltonian (const Array<Scalar,Dynamic,1> &Uorb, const Array<Scalar,Dynamic,1> &Eorb, 
+	                    const Array<Scalar,Dynamic,1> &Bzorb, const Array<Scalar,Dynamic,1> &Bxorb, 
+	                    const Array<Scalar,Dynamic,Dynamic> &t, 
+	                    const Array<Scalar,Dynamic,Dynamic> &V, 
+	                    const Array<Scalar,Dynamic,Dynamic> &J) const;
+	
 	/**Returns the local basis.*/
 	vector<qarray<Symmetry::Nq> > get_basis() const;
-
+	
 	/**Returns the quantum numbers of the operators for the different combinations of U1 symmetries.*/
 	typename Symmetry::qType getQ (SPIN_INDEX sigma, int Delta=0) const;
 	typename Symmetry::qType getQ (SPINOP_LABEL Sa) const;
@@ -448,6 +455,13 @@ ZeroField() const
 }
 
 template<typename Symmetry>
+ArrayXXd FermionBase<Symmetry>::
+ZeroHopping() const
+{
+	return ArrayXXd::Zero(N_orbitals,N_orbitals);
+}
+
+template<typename Symmetry>
 SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 sign_local (int orbital) const
 {
@@ -462,83 +476,98 @@ sign_local (int orbital) const
 	return OperatorType(Mout,Symmetry::qvacuum());
 }
 
-template<typename Symmetry>
-template<typename Scalar>
-SiteOperator<Symmetry,Scalar> FermionBase<Symmetry>::
-HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERIODIC) const
-{
-	SparseMatrix<Scalar> Mout(N_states,N_states);
-	
-	size_t ilast = (PERIODIC == true and N_orbitals>2)? N_orbitals:N_orbitals-1;
-	
-	for (int i=0; i<ilast; ++i) // for all bonds
-	{
-		if (t != 0.)
-		{
-			SparseMatrix<Scalar> T = -t*(cdag(UP,i).data * c(UP,(i+1)%N_orbitals).data + 
-			                             cdag(DN,i).data * c(DN,(i+1)%N_orbitals).data).template cast<Scalar>();
-			Mout += -(T+SparseMatrix<Scalar>(T.adjoint()));
-		}
-		if (V != 0.)
-		{
-			Mout += V*(n(i).data*n((i+1)%N_orbitals).data).template cast<Scalar>();
-		}
-		if (J != 0.)
-		{
-			Mout += J*(0.5*Sp(i).data*Sm((i+1)%N_orbitals).data + 
-			           0.5*Sm(i).data*Sp((i+1)%N_orbitals).data + 
-			               Sz(i).data*Sz((i+1)%N_orbitals).data).template cast<Scalar>();
-		}
-	}
-	
-	if (U != 0. and U != numeric_limits<double>::infinity())
-	{
-		for (int i=0; i<N_orbitals; ++i) {Mout += U*d(i).data.template cast<Scalar>();}
-	}
-	if (Bz != 0.)
-	{
-		for (int i=0; i<N_orbitals; ++i) {Mout -= Bz*Sz(i).data.template cast<Scalar>();}
-	}
-	
-	return SiteOperator<Symmetry,Scalar>(Mout,Symmetry::qvacuum());
-}
+//template<typename Symmetry>
+//template<typename Scalar>
+//SiteOperator<Symmetry,Scalar> FermionBase<Symmetry>::
+//HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERIODIC) const
+//{
+//	ArrayXd Uorb(N_orbitals);  Uorb  = U;
+//	ArrayXd Eorb(N_orbitals);  Eorb  = 0;
+//	ArrayXd Bzorb(N_orbitals); Bzorb = Bz;
+//	ArrayXd Bxorb(N_orbitals); Bxorb = 0;
+//	
+//	ArrayXXd tHop(N_orbitals,N_orbitals);
+//	tHop = 0;
+//	tHop.matrix().diagonal<1>().setConstant(t);
+//	tHop.matrix().diagonal<-1>() = tHop.matrix().diagonal<1>();
+//	
+//	ArrayXXd Vhop(N_orbitals,N_orbitals);
+//	Vhop = 0;
+//	Vhop.matrix().diagonal<1>().setConstant(V);
+//	Vhop.matrix().diagonal<-1>() = Vhop.matrix().diagonal<1>();
+//	
+//	ArrayXXd Jhop(N_orbitals,N_orbitals);
+//	Jhop = 0;
+//	Jhop.matrix().diagonal<1>().setConstant(J);
+//	Jhop.matrix().diagonal<-1>() = Jhop.matrix().diagonal<1>();
+//	
+//	if (PERIODIC and N_orbitals>2)
+//	{
+//		tHop(0,N_orbitals-1) = t;
+//		tHop(N_orbitals-1,0) = t;
+//		
+//		Vhop(0,N_orbitals-1) = V;
+//		Vhop(N_orbitals-1,0) = V;
+//		
+//		Jhop(0,N_orbitals-1) = J;
+//		Jhop(N_orbitals-1,0) = J;
+//	}
+//	
+//	return HubbardHamiltonian(Uorb,Eorb,Bzorb,Bxorb,tHop,Vhop,Jhop);
+//}
 
 template<typename Symmetry>
 template<typename Scalar>
 SiteOperator<Symmetry,Scalar> FermionBase<Symmetry>::
-HubbardHamiltonian (ArrayXd Uorb, ArrayXd Eorb, ArrayXd Bzorb, ArrayXd Bxorb, Scalar t, double V, double J, bool PERIODIC) const
+HubbardHamiltonian (const Array<Scalar,Dynamic,1> &U, 
+                    const Array<Scalar,Dynamic,1> &Eorb, 
+                    const Array<Scalar,Dynamic,1> &Bz, 
+                    const Array<Scalar,Dynamic,1> &Bx, 
+                    const Array<Scalar,Dynamic,Dynamic> &t, 
+                    const Array<Scalar,Dynamic,Dynamic> &V, 
+                    const Array<Scalar,Dynamic,Dynamic> &J) const
 {
-	SparseMatrix<Scalar> Mout = HubbardHamiltonian(0.,t,V,J,0.,PERIODIC).data;
+	SparseMatrix<Scalar> Mout(N_states,N_states);
+	
+	for (int i=0; i<N_orbitals; ++i)
+	for (int j=0; j<i; ++j)
+	{
+		if (t(i,j) != 0.)
+		{
+			Mout += -t(i,j)*(cdag(UP,i).data * c(UP,j).data + 
+			                 cdag(DN,i).data * c(DN,j).data).template cast<Scalar>();
+			Mout += -t(j,i)*(cdag(UP,j).data * c(UP,i).data + 
+			                 cdag(DN,j).data * c(DN,i).data).template cast<Scalar>();
+		}
+		if (V(i,j) != 0.)
+		{
+			Mout += V(i,j) * (n(i).data*n(j).data).template cast<Scalar>();
+		}
+		if (J(i,j) != 0.)
+		{
+			Mout += J(i,j) * (0.5*Sp(i).data*Sm(j).data + 
+			                  0.5*Sm(i).data*Sp(j).data + 
+			                      Sz(i).data*Sz(j).data).template cast<Scalar>();
+		}
+	}
 	
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (Uorb.rows() > 0)
+		if (U(i) != 0. and U(i) != numeric_limits<double>::infinity())
 		{
-			if (Uorb(i) != 0. and Uorb(i) != numeric_limits<double>::infinity())
-			{
-				Mout += Uorb(i) * d(i).data.template cast<Scalar>();
-			}
+			Mout += U(i) * d(i).data.template cast<Scalar>();
 		}
-		if (Eorb.rows() > 0)
+		if (Eorb(i) != 0.)
 		{
-			if (Eorb(i) != 0.)
-			{
-				Mout += Eorb(i) * n(i).data.template cast<Scalar>();
-			}
+			Mout += Eorb(i) * n(i).data.template cast<Scalar>();
 		}
-		if (Bzorb.rows() > 0)
+		if (Bz(i) != 0.)
 		{
-			if (Bzorb(i) != 0.)
-			{
-				Mout += Bzorb(i) * Sz(i).data.template cast<Scalar>();
-			}
+			Mout += Bz(i) * Sz(i).data.template cast<Scalar>();
 		}
-		if (Bxorb.rows() > 0)
+		if (Bx(i) != 0.)
 		{
-			if (Bxorb(i) != 0.)
-			{
-				Mout += Bxorb(i) * Sx(i).data.template cast<Scalar>();
-			}
+			Mout += Bx(i) * Sx(i).data.template cast<Scalar>();
 		}
 	}
 	

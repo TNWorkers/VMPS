@@ -19,14 +19,17 @@ namespace VMPS
  * MPO representation of 
  * 
  * \f[
- * H = - \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
- * + U \sum_i \left[\left(n_{i\uparrow}-\frac{1}{2}\right)\left(n_{i\downarrow}-\frac{1}{2}\right) -\frac{1}{4}\right]
+ * H = -t \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
+ *     +U \sum_i \left[\left(n_{i\uparrow}-\frac{1}{2}\right)\left(n_{i\downarrow}-\frac{1}{2}\right) -\frac{1}{4}\right]
+ *     +V \sum_{<ij>} \mathbf{T}_i \mathbf{T}_j
+ *     +J \sum_{<ij>} \mathbf{S}_i \mathbf{S}_j
  * \f]
+ * with \f$T^+_i = (-1)^i c^{\dagger}_{i\uparrow} c^{\dagger}_{i\downarrow}\f$, \f$Q^-_i = (T^+_i)^{\dagger}\f$, \f$T^z_i = 0.5(n_{i}-1)\f$
  *
- * \note Take use of the Spin SU(2) symmetry and SU(2) charge symmetry.
- * \warning Bipartite hopping structure is mandatory! (Particle-hole symmetry)
+ * \note Makes use of the spin-SU(2) symmetry and the charge-SU(2) symmetry.
+ * \warning Bipartite hopping structure is mandatory (particle-hole symmetry)!
  * \warning \f$J>0\f$ is antiferromagnetic
- * \todo Implement spin and pseudo spin observables.
+ * \todo Implement spin and pseudo-spin observables.
  */
 class HubbardSU2xSU2 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > ,double>
 {
@@ -80,14 +83,16 @@ protected:
 
 const map<string,any> HubbardSU2xSU2::defaults = 
 {
-	{"t",1.}, {"tPerp",0.},
-	{"U",0.}, {"J",0.}, {"Jperp",0.},
+	{"t",1.}, {"tRung",1.},
+	{"U",0.},
+	{"V",0.}, {"Vrung",0.},
+	{"J",0.}, {"Jrung",0.},
 	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 HubbardSU2xSU2::
 HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
-	:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,1}), "", true)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,1}), "", true)
 {
 	ParamHandler P(params,defaults);
 	
@@ -98,9 +103,11 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
-		F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::A) : FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::B);
+		F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::A):
+		                    FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::B);
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
+	// need FermionBase at loc, loc+1 for set_operators:
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Terms[l] = set_operators(F,P,l%Lcell);
@@ -119,34 +126,36 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 		if (label!="") {Terms.info.push_back(label);}
 	};
 	
-//	param0d subL = P.fill_array0d<SUB_LATTICE>("subL","subL",loc);
-//	save_label(subL.label);
-	
 	// NN terms
 	
 	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F[loc].orbitals(),loc);
 	save_label(tlabel);
 	
+	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",F[loc].orbitals(),loc);
+	save_label(Vlabel);
+	
 	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",F[loc].orbitals(),loc);
 	save_label(Jlabel);
 	
-	for (int i=0; i<F[loc%2].orbitals(); ++i)
-	for (int j=0; j<F[(loc+1)%2].orbitals(); ++j)
+	size_t lp1 = (loc<F.size()-1)? loc+1:0;
+	for (int i=0; i<F[loc].orbitals(); ++i)
+	for (int j=0; j<F[lp1].orbitals(); ++j)
 	{
 		if (tPara(i,j) != 0.)
 		{
-			auto cdagF = OperatorType::prod(F[loc%2].cdag(i),F[loc%2].sign(),{2,2});
-			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.)*sqrt(2.), cdagF.plain<double>(), F[(loc)%2].c(j).plain<double>()));
+			// Only works with both times loc: strange??
+			auto cdagF = OperatorType::prod(F[loc].cdag(i), F[loc].sign(), {2,2});
+			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.)*sqrt(2.), cdagF.plain<double>(), F[loc].c(j).plain<double>()));
 		}
 		
-		// if (Vpara(i,j) != 0.)
-		// {
-		// 	Terms.tight.push_back(make_tuple(Vpara(i,j), F.n(i).plain<double>(), F.n(j).plain<double>()));
-		// }
+		if (Vpara(i,j) != 0.)
+		{
+			Terms.tight.push_back(make_tuple(Vpara(i,j)*sqrt(3.), F[loc].Tdag(i).plain<double>(), F[loc].T(j).plain<double>()));
+		}
 		
 		if (Jpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-sqrt(3)*Jpara(i,j), F[loc].Sdag(i).plain<double>(), F[(loc+1)%2].S(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(Jpara(i,j)*sqrt(3.), F[loc].Sdag(i).plain<double>(), F[loc].S(j).plain<double>()));
 		}
 	}
 	
@@ -157,14 +166,18 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 	save_label(Ulabel);
 	
 	// t⟂
-	param0d tPerp = P.fill_array0d<double>("t","tPerp",loc);
-	save_label(tPerp.label);
+	auto [tRung,tPerp,tPerplabel] = P.fill_array2d<double>("tRung","t","tPerp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
+	save_label(tPerplabel);
+	
+	// V⟂
+	auto [Vrung,Vperp,Vperplabel] = P.fill_array2d<double>("Vrung","V","Vperp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
+	save_label(Vperplabel);
 	
 	// J⟂
-	param0d Jperp = P.fill_array0d<double>("J","Jperp",loc);
-	save_label(Jperp.label);
+	auto [Jrung,Jperp,Jperplabel] = P.fill_array2d<double>("Jrung","J","Jperp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
+	save_label(Jperplabel);
 	
-	Terms.local.push_back(make_tuple(1.,F[loc].HubbardHamiltonian(Uorb,tPerp.x,0.,Jperp.x, P.get<bool>("CYLINDER")).plain<double>()));
+	Terms.local.push_back(make_tuple(1., F[loc].HubbardHamiltonian(Uorb,tPerp,Vperp,Jperp).plain<double>()));
 	Terms.name = "Hubbard SU(2)⊗SU(2)";
 	
 	return Terms;

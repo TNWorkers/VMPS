@@ -24,9 +24,14 @@ namespace VMPS
   * - t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
   * + U \sum_i n_{i\uparrow} n_{i\downarrow}
   * + V \sum_{<ij>} n_{i} n_{j}
+  * +H_{tJ}
   * \f$.
-  *
-  * \note Take use of the Spin SU(2) symmetry and U(1) charge symmetry.
+  * with
+  * \f[
+  * H_{tJ} = +J \sum_{<ij>} (\mathbf{S}_{i} \mathbf{S}_{j} - \frac{1}{4} n_in_j)
+  * \f]
+  * \note: The term before \f$n_i n_j\f$ is not set and has to be adjusted with \p V
+  * \note Makes use of the spin-SU(2) symmetry and the U(1) charge symmetry.
   * \note If the nnn-hopping is positive, the ground state energy is lowered.
   * \warning \f$J>0\f$ is antiferromagnetic
   * \todo Implement more observables.
@@ -92,9 +97,10 @@ protected:
 
 const map<string,any> HubbardSU2xU1::defaults = 
 {
-	{"t",1.}, {"tPerp",0.}, {"tPrime",0.}, 
+	{"t",1.}, {"tPrime",0.}, {"tRung",1.},
 	{"mu",0.}, {"t0",0.}, 
-	{"U",0.}, {"V",0.}, {"Vperp",0.}, 
+	{"U",0.},
+	{"V",0.}, {"Vrung",0.}, 
 	{"J",0.}, {"Jperp",0.},
 	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
@@ -171,7 +177,7 @@ set_operators (const FermionBase<Symmetry> &F, const ParamHandler &P, size_t loc
 		
 		if (Jpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-sqrt(3)*Jpara(i,j), F.Sdag(i).plain<double>(), F.S(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(sqrt(3.)*Jpara(i,j), F.Sdag(i).plain<double>(), F.S(j).plain<double>()));
 		}
 	}
 	
@@ -213,18 +219,18 @@ set_operators (const FermionBase<Symmetry> &F, const ParamHandler &P, size_t loc
 	save_label(mulabel);
 	
 	// t⟂
-	param0d tPerp = P.fill_array0d<double>("t","tPerp",loc);
-	save_label(tPerp.label);
+	auto [tRung,tPerp,tPerplabel] = P.fill_array2d<double>("tRung","t","tPerp",F.orbitals(),loc,P.get<bool>("CYLINDER"));
+	save_label(tPerplabel);
 	
 	// V⟂
-	param0d Vperp = P.fill_array0d<double>("V","Vperp",loc);
-	save_label(Vperp.label);
+	auto [Vrung,Vperp,Vperplabel] = P.fill_array2d<double>("Vrung","V","Vperp",F.orbitals(),loc,P.get<bool>("CYLINDER"));
+	save_label(Vperplabel);
 	
 	// J⟂
-	param0d Jperp = P.fill_array0d<double>("J","Jperp",loc);
-	save_label(Jperp.label);
+	auto [Jrung,Jperp,Jperplabel] = P.fill_array2d<double>("Jrung","J","Jperp",F.orbitals(),loc,P.get<bool>("CYLINDER"));
+	save_label(Jperplabel);
 	
-	Terms.local.push_back(make_tuple(1.,F.HubbardHamiltonian(Uorb,t0orb-muorb,tPerp.x,Vperp.x,Jperp.x, P.get<bool>("CYLINDER")).plain<double>()));
+	Terms.local.push_back(make_tuple(1.,F.HubbardHamiltonian(Uorb,t0orb-muorb,tPerp,Vperp,Jperp).plain<double>()));
 	
 	Terms.name = "Hubbard";
 	

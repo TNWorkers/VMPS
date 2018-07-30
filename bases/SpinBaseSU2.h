@@ -65,13 +65,13 @@ public:
 	 * \param J : \f$J\f$
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
-	Operator HeisenbergHamiltonian (double J, bool PERIODIC=false) const;
+//	Operator HeisenbergHamiltonian (double J, bool PERIODIC=false) const;
 
 	/**
 	 * Creates the full Heisenberg Hamiltonian on the supersite.
 	 * \param J : \f$J_{ij}\f$
 	 */
-	Operator HeisenbergHamiltonian (Eigen::MatrixXd J) const;
+	Operator HeisenbergHamiltonian (const ArrayXXd &J) const;
 
 	/**Returns the basis.*/
 	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
@@ -168,46 +168,47 @@ Id() const
 	}
 }
 
-SiteOperatorQ<Sym::SU2<Sym::SpinSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<Sym::SpinSU2> >::
-HeisenbergHamiltonian (double J, bool PERIODIC) const
-{
-	Operator Mout({1},TensorBasis);
-	
-	if( N_orbitals >= 2 and J!=0. )
-	{
-		Mout = -std::sqrt(3)*J * Operator::prod(Sdag(0),S(1),{1});
-	}
-	
-	for (int i=1; i<N_orbitals-1; ++i) // for all bonds
-	{
-		if (J != 0.)
-		{
-			Mout += std::sqrt(3)*J * Operator::prod(Sdag(i),S(i+1),{1});
-		}
-	}
-	if (PERIODIC == true and N_orbitals>2)
-	{
-		if (J != 0.)
-		{
-			Mout += std::sqrt(3)*J * Operator::prod(Sdag(N_orbitals-1),S(0),{1});
-		}
-	}	
-	return Mout;
-}
+//SiteOperatorQ<Sym::SU2<Sym::SpinSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<Sym::SpinSU2> >::
+//HeisenbergHamiltonian (double J, bool PERIODIC) const
+//{
+//	Operator Mout({1},TensorBasis);
+//	
+//	if( N_orbitals >= 2 and J!=0. )
+//	{
+//		Mout = -std::sqrt(3)*J * Operator::prod(Sdag(0),S(1),{1});
+//	}
+//	
+//	for (int i=1; i<N_orbitals-1; ++i) // for all bonds
+//	{
+//		if (J != 0.)
+//		{
+//			Mout += std::sqrt(3)*J * Operator::prod(Sdag(i),S(i+1),{1});
+//		}
+//	}
+//	if (PERIODIC == true and N_orbitals>2)
+//	{
+//		if (J != 0.)
+//		{
+//			Mout += std::sqrt(3)*J * Operator::prod(Sdag(N_orbitals-1),S(0),{1});
+//		}
+//	}	
+//	return Mout;
+//}
 
 SiteOperatorQ<Sym::SU2<Sym::SpinSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<Sym::SpinSU2> >::
-HeisenbergHamiltonian (Eigen::MatrixXd J) const
+HeisenbergHamiltonian (const ArrayXXd &J) const
 {
 	Operator Mout({1},TensorBasis);
 	
 	for (int i=0; i<N_orbitals; ++i)
-	for (int j=i+1; j<N_orbitals; ++j)
+	for (int j=0; j<i; ++j)
 	{
 		if (J(i,j) != 0.)
 		{
-			Mout += std::sqrt(3)*J(i,j) * Operator::prod(Sdag(i),S(j),{1});
+			Mout += J(i,j)*std::sqrt(3) * Operator::prod(Sdag(i),S(j),{1});
 		}
 	}
+	
 	return Mout;
 }
 
