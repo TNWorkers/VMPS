@@ -14,8 +14,8 @@ namespace VMPS
   * MPO representation of
   \f[
   H = \sum_{\alpha=x,y,z} \left(
-      -J_{\alpha} \sum_{<ij>} \left(S^{\alpha}_i \cdot S^{\alpha}_j\right) 
-      -J'_{\alpha} \sum_{<<ij>>} \left(S^{\alpha}_i \cdot S^{\alpha}_j\right) 
+       J_{\alpha} \sum_{<ij>} \left(S^{\alpha}_i \cdot S^{\alpha}_j\right) 
+      +J'_{\alpha} \sum_{<<ij>>} \left(S^{\alpha}_i \cdot S^{\alpha}_j\right) 
       -B_{\alpha} \sum_i S^{\alpha}_i
       +K_{\alpha} \sum_i \left(S^{\alpha}_i\right)^2
       \right)
@@ -24,9 +24,9 @@ namespace VMPS
   \f]
   *
   \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
-  \note Uses no symmetry. Any parameter constellations are allowed. For variants with symmetries, see VMPS::HeisenbergU1 or VMPS::HeisenbergSU2.
+  \note Uses no symmetries. Any parameter constellations are allowed. For variants with symmetries, see VMPS::HeisenbergU1 or VMPS::HeisenbergSU2.
   \note The default variable settings can be seen in \p HeisenbergXYZ::defaults.
-  \note \f$J<0\f$ is antiferromagnetic
+  \note \f$J>0\f$ is antiferromagnetic
   \note Due to the \f$S_y\f$ operator, this MPO is complex.
 */
 class HeisenbergXYZ : public Mpo<Sym::U0,complex<double> >, public HeisenbergObservables<Sym::U0>, public ParamReturner
@@ -40,7 +40,7 @@ private:
 public:
 	
 	///\{
-	HeisenbergXYZ() : Mpo<Symmetry,complex<double> >(), ParamReturner(Heisenberg::sweep_defaults) {};
+	HeisenbergXYZ() : Mpo<Symmetry,complex<double> >(), ParamReturner(HeisenbergXYZ::sweep_defaults) {};
 	HeisenbergXYZ (const size_t &L, const vector<Param> &params);
 	///\}
 	
@@ -53,10 +53,12 @@ public:
 const std::map<string,std::any> HeisenbergXYZ::defaults = 
 {
 	{"Jx",0.}, {"Jy",0.}, {"Jz",0.},
+	{"Jxrung",0.}, {"Jyrung",0.}, {"Jzrung",0.},
 	{"Jxprime",0.}, {"Jyprime",0.}, {"Jzprime",0.},
 	
 	 // Dzialoshinsky-Moriya terms
 	{"Dx",0.}, {"Dy",0.}, {"Dz",0.},
+	{"Dxrung",0.}, {"Dyrung",0.}, {"Dzrung",0.},
 	{"Dxprime",0.}, {"Dyprime",0.}, {"Dzprime",0.},
 	
 	{"Bx",0.}, {"By",0.}, {"Bz",0.},
@@ -199,7 +201,7 @@ add_operators (HamiltonianTerms<Symmetry_,complex<double> > &Terms, const SpinBa
 	if (Jyprime.x != 0.)
 	{
 		assert(B.orbitals() == 1 and "Cannot do a ladder with Jy' terms!");
-		Terms.nextn.push_back(make_tuple(Jxprime.x, -1.i*B.Scomp(iSY).template cast<complex<double> >(), 
+		Terms.nextn.push_back(make_tuple(Jyprime.x, -1.i*B.Scomp(iSY).template cast<complex<double> >(), 
 		                                            -1.i*B.Scomp(iSY).template cast<complex<double> >(), 
 		                                                 B.Id().template cast<complex<double> >()));
 	}
@@ -207,41 +209,26 @@ add_operators (HamiltonianTerms<Symmetry_,complex<double> > &Terms, const SpinBa
 	if (Jzprime.x != 0.)
 	{
 		assert(B.orbitals() == 1 and "Cannot do a ladder with Jz' terms!");
-		Terms.nextn.push_back(make_tuple(Jzprime.x, -1.i*B.Scomp(SZ).template cast<complex<double> >(), 
-		                                            -1.i*B.Scomp(SZ).template cast<complex<double> >(), 
-		                                                 B.Id().template cast<complex<double> >()));
+		Terms.nextn.push_back(make_tuple(Jzprime.x, B.Scomp(SZ).template cast<complex<double> >(), 
+		                                            B.Scomp(SZ).template cast<complex<double> >(), 
+		                                            B.Id().template cast<complex<double> >()));
 	}
 	
 	// local terms
 	
-//	param0d Jxperp = P.fill_array0d<double>("Jx","Jxperp",loc);
-//	save_label(Jxperp.label);
-//	
-//	param0d Jyperp = P.fill_array0d<double>("Jy","Jyperp",loc);
-//	save_label(Jyperp.label);
-//	
-//	param0d Jzperp = P.fill_array0d<double>("Jz","Jzperp",loc);
-//	save_label(Jzperp.label);
-//	
-//	param0d Dxperp = P.fill_array0d<double>("Dx","Dxperp",loc);
-//	save_label(Dxperp.label);
-//	
-//	param0d Dzperp = P.fill_array0d<double>("Dz","Dzperp",loc);
-//	save_label(Dzperp.label);
-	
-	auto [Jx_,Jxperp,Jxperplabel] = P.fill_array2d<double>("Jx","Jxperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	auto [Jx_,Jxperp,Jxperplabel] = P.fill_array2d<double>("Jxrung","Jx","Jxperp",B.orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(Jxperplabel);
 	
-	auto [Jy_,Jyperp,Jyperplabel] = P.fill_array2d<double>("Jy","Jyperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	auto [Jy_,Jyperp,Jyperplabel] = P.fill_array2d<double>("Jyrung","Jy","Jyperp",B.orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(Jyperplabel);
 	
-	auto [Jz_,Jzperp,Jzperplabel] = P.fill_array2d<double>("Jz","Jzperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	auto [Jz_,Jzperp,Jzperplabel] = P.fill_array2d<double>("Jzrung","Jz","Jzperp",B.orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(Jzperplabel);
 	
-	auto [Dx_,Dxperp,Dxperplabel] = P.fill_array2d<double>("Dx","Dxperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	auto [Dx_,Dxperp,Dxperplabel] = P.fill_array2d<double>("Dxrung","Dx","Dxperp",B.orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(Dxperplabel);
 	
-	auto [Dz_,Dzperp,Dzperplabel] = P.fill_array2d<double>("Dz","Dzperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	auto [Dz_,Dzperp,Dzperplabel] = P.fill_array2d<double>("Dzrung","Dz","Dzperp",B.orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(Dzperplabel);
 	
 	auto [By,Byorb,Bylabel] = P.fill_array1d<double>("By","Byorb",B.orbitals(),loc);

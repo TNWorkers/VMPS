@@ -13,8 +13,8 @@ namespace VMPS
   *
   * MPO representation of
   \f[
-  H = -J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J_z \sum_{<ij>} S^z_iS^z_j 
-      -J'_{xy} \sum_{<<ij>>} \left(S^x_iS^x_j+S^y_iS^y_j\right) - J'_z \sum_{<<ij>>} S^z_iS^z_j 
+  H =  J_{xy} \sum_{<ij>} \left(S^x_iS^x_j+S^y_iS^y_j\right) + J_z \sum_{<ij>} S^z_iS^z_j 
+      +J'_{xy} \sum_{<<ij>>} \left(S^x_iS^x_j+S^y_iS^y_j\right) + J'_z \sum_{<<ij>>} S^z_iS^z_j 
       -B_z \sum_i S^z_i
       +K_z \sum_i \left(S^z_i\right)^2
       -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
@@ -22,9 +22,9 @@ namespace VMPS
   \f]
   *
   \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
-  \note Take use of the \f$S^z\f$ U(1) symmetry.
+  \note Makes use of the \f$S^z\f$ U(1) symmetry.
   \note The default variable settings can be seen in \p HeisenbergU1XXZ::defaults.
-  \note \f$J<0\f$ is antiferromagnetic.
+  \note \f$J>0\f$ is antiferromagnetic.
 */
 class HeisenbergU1XXZ : public HeisenbergU1
 {
@@ -44,12 +44,12 @@ public:
 
 const std::map<string,std::any> HeisenbergU1XXZ::defaults = 
 {
-	{"Jxy",-1.}, {"Jxyprime",0.},
-	{"Jz",0.}, {"Jzprime",0.},
+	{"Jxy",1.}, {"Jxyprime",0.}, {"Jxyrung",1.},
+	{"Jz",0.}, {"Jzprime",0.}, {"Jzrung",0.},
 	
-	{"Dy",0.}, {"Dyprime",0.},
-	{"D",2ul}, {"Bz",0.}, {"Kz",0.},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, 
+	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.},
+	{"Bz",0.}, {"Kz",0.},
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, 
 	
 	// for consistency during inheritance (should not be set for XXZ!):
 	{"J",0.}, {"Jprime",0.}
@@ -101,13 +101,13 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &
 	{
 		if (Jxypara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-0.5*Jxypara(i,j), B.Scomp(SP,i), B.Scomp(SM,j)));
-			Terms.tight.push_back(make_tuple(-0.5*Jxypara(i,j), B.Scomp(SM,i), B.Scomp(SP,j)));
+			Terms.tight.push_back(make_tuple(0.5*Jxypara(i,j), B.Scomp(SP,i), B.Scomp(SM,j)));
+			Terms.tight.push_back(make_tuple(0.5*Jxypara(i,j), B.Scomp(SM,i), B.Scomp(SP,j)));
 		}
 		
 		if (Jzpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-Jzpara(i,j), B.Scomp(SZ,i), B.Scomp(SZ,j)));
+			Terms.tight.push_back(make_tuple(Jzpara(i,j), B.Scomp(SZ,i), B.Scomp(SZ,j)));
 		}
 	}
 	
@@ -120,8 +120,8 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &
 	{
 		assert(B.orbitals() == 1 and "Cannot do a ladder with Jxy' terms!");
 		
-		Terms.nextn.push_back(make_tuple(-0.5*Jxyprime.x, B.Scomp(SP), B.Scomp(SM), B.Id()));
-		Terms.nextn.push_back(make_tuple(-0.5*Jxyprime.x, B.Scomp(SM), B.Scomp(SP), B.Id()));
+		Terms.nextn.push_back(make_tuple(0.5*Jxyprime.x, B.Scomp(SP), B.Scomp(SM), B.Id()));
+		Terms.nextn.push_back(make_tuple(0.5*Jxyprime.x, B.Scomp(SM), B.Scomp(SP), B.Id()));
 	}
 	
 	param0d Jzprime = P.fill_array0d<double>("Jzprime","Jzprime",loc);
@@ -131,7 +131,7 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &
 	{
 		assert(B.orbitals() == 1 and "Cannot do a ladder with Jz' terms!");
 		
-		Terms.nextn.push_back(make_tuple(-Jzprime.x, B.Scomp(SZ), B.Scomp(SZ), B.Id()));
+		Terms.nextn.push_back(make_tuple(Jzprime.x, B.Scomp(SZ), B.Scomp(SZ), B.Id()));
 	}
 	
 	// local terms
@@ -142,10 +142,10 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const SpinBase<Symmetry_> &
 //	param0d Jzperp = P.fill_array0d<double>("Jz","Jzperp",loc);
 //	save_label(Jzperp.label);
 	
-	auto [Jxy_,Jxyperp,Jxyperplabel] = P.fill_array2d<double>("Jxy","Jxyperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	auto [Jxy_,Jxyperp,Jxyperplabel] = P.fill_array2d<double>("Jxyrung","Jxy","Jxyperp",B.orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(Jxyperplabel);
 	
-	auto [Jz_,Jzperp,Jzperplabel] = P.fill_array2d<double>("Jz","Jzperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	auto [Jz_,Jzperp,Jzperplabel] = P.fill_array2d<double>("Jzrung","Jz","Jzperp",B.orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(Jzperplabel);
 	
 	ArrayXd Bzorb  = B.ZeroField();

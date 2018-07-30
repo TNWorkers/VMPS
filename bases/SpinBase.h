@@ -187,11 +187,11 @@ HeisenbergHamiltonian (ArrayXXd Jxy, ArrayXXd Jz, const ArrayXd &Bz, const Array
 	{
 		if (Jxy(i,j) != 0.)
 		{
-			Mout += -0.5*Jxy(i,j) * (Scomp(SP,i).data*Scomp(SM,j).data + Scomp(SM,i).data*Scomp(SP,j).data);
+			Mout += 0.5*Jxy(i,j) * (Scomp(SP,i).data*Scomp(SM,j).data + Scomp(SM,i).data*Scomp(SP,j).data);
 		}
 		if (Jz(i,j) != 0.)
 		{
-			Mout += -Jz(i,j) * Scomp(SZ,i).data*Scomp(SZ,j).data;
+			Mout += Jz(i,j) * Scomp(SZ,i).data*Scomp(SZ,j).data;
 		}
 		if (Dy(i,j) != 0.)
 		{
@@ -274,21 +274,21 @@ HeisenbergHamiltonian (const std::array<ArrayXXd,3> &J,
 	{
 		if (J[0](i,j) != 0.)
 		{
-			Oout.data += -J[0](i,j) * (Scomp(SX,i).data * Scomp(SX,j).data).template cast<complex<double> >();
+			Oout.data += J[0](i,j) * (Scomp(SX,i).data * Scomp(SX,j).data).template cast<complex<double> >();
 		}
 		if (J[1](i,j) != 0.)
 		{
-			Oout.data += +J[1](i,j) * (Scomp(iSY,i).data * Scomp(iSY,j).data).template cast<complex<double> >();
+			Oout.data += -J[1](i,j) * (Scomp(iSY,i).data * Scomp(iSY,j).data).template cast<complex<double> >();
 		}
 		if (D[0](i,j) != 0.)
 		{
 			Oout.data += D[0](i,j) * (-1.i) * (Scomp(iSY,i).data * Scomp(SZ,j).data 
-				                              -Scomp(SZ,i).data  * Scomp(iSY,j).data).template cast<complex<double> >();
+			                                  -Scomp(SZ,i).data  * Scomp(iSY,j).data).template cast<complex<double> >();
 		}
 		if (D[2](i,j) != 0.)
 		{
 			Oout.data += D[2](i,j) * (-1.i) * (Scomp(SX,i).data * Scomp(iSY,j).data 
-				                              -Scomp(iSY,i).data * Scomp(SX,j).data).template cast<complex<double> >();
+			                                  -Scomp(iSY,i).data * Scomp(SX,j).data).template cast<complex<double> >();
 		}
 	}
 	

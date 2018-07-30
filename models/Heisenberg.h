@@ -13,8 +13,8 @@ namespace VMPS
   *
   * MPO representation of
   * \f[
-  * H = -J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) 
-  *     -J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right)
+  * H =  J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) 
+  *      J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right)
   *     -B_z \sum_i S^z_i
   *     -B_x \sum_i S^x_i
   *     +K_z \sum_i \left(S^z_i\right)^2
@@ -24,9 +24,9 @@ namespace VMPS
   * \f]
   *
   * \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
-  * \note Uses no symmetry. Any parameter constellations are allowed. For variants with symmetries, see VMPS::HeisenbergU1 or VMPS::HeisenbergSU2.
+  * \note Uses no symmetries. Any parameter constellations are allowed. For variants with symmetries, see VMPS::HeisenbergU1 or VMPS::HeisenbergSU2.
   * \note The default variable settings can be seen in \p Heisenberg::defaults.
-  * \note \f$J<0\f$ is antiferromagnetic
+  * \note \f$J>0\f$ is antiferromagnetic
   * \note This is the real version of the Heisenbergmodel without symmetries, so \f$J_x = J_y\f$ is mandatory. For general couplings use VMPS::HeisenbergXYZ.
   */
 class Heisenberg : public Mpo<Sym::U0,double>, public HeisenbergObservables<Sym::U0>, public ParamReturner
@@ -49,15 +49,16 @@ public:
 	static const std::map<string,std::any> defaults;
 	static const std::map<string,std::any> sweep_defaults;
 	
-	static refEnergy ref (const vector<Param> &params);
+	static refEnergy ref (const vector<Param> &params, double L=numeric_limits<double>::infinity());
 };
 
 const std::map<string,std::any> Heisenberg::defaults = 
 {
-	{"J",-1.}, {"Jprime",0.},
-	{"D",2ul}, {"Bz",0.}, {"Bx",0.}, {"Kz",0.}, {"Kx",0.},
-	{"Dy",0.}, {"Dyprime",0.}, // Dzialoshinsky-Moriya terms
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
+	{"J",1.}, {"Jprime",0.}, {"Jrung",1.},
+	{"Bz",0.}, {"Bx",0.},
+	{"Kz",0.}, {"Kx",0.},
+	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.}, // Dzialoshinsky-Moriya terms
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 const std::map<string,std::any> Heisenberg::sweep_defaults = 
@@ -137,9 +138,7 @@ add_operators (HamiltonianTermsXd<Symmetry> &Terms, const SpinBase<Symmetry> &B,
 	auto [Kx,Kxorb,Kxlabel] = P.fill_array1d<double>("Kx","Kxorb",B.orbitals(),loc);
 	save_label(Kxlabel);
 	
-//	param0d Dyperp = P.fill_array0d<double>("Dy","Dyperp",loc);
-//	save_label(Dyperp.label);
-	auto [Dy_,Dyperp,Dyperplabel] = P.fill_array2d<double>("Dy","Dyperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	auto [Dyrung,Dyperp,Dyperplabel] = P.fill_array2d<double>("Dyrung","Dy","Dyperp",B.orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(Dyperplabel);
 	
 	Terms.name = (P.HAS_ANY_OF({"Dy","Dyperp","Dyprime"},loc))? "Dzyaloshinsky-Moriya":"Heisenberg";
@@ -152,12 +151,12 @@ add_operators (HamiltonianTermsXd<Symmetry> &Terms, const SpinBase<Symmetry> &B,
 }
 
 refEnergy Heisenberg::
-ref (const vector<Param> &params)
+ref (const vector<Param> &params, double L)
 {
 	ParamHandler P(params,{{"D",2ul},{"Ly",1ul}});
 	refEnergy out;
 	
-	if (P.HAS_NONE_OF({"Bz","Bx","Kx","Kz","Dy","Dyprime"}))
+	if (isinf(L) and P.HAS_NONE_OF({"Bz","Bx","Kx","Kz","Dy","Dyprime"}))
 	{
 		out.source = "Tao Xiang, Thermodynamics of quantum Heisenberg spin chains, Phys. Rev. B 58, 9142 (1998)";
 		

@@ -65,7 +65,7 @@ bool CALC_DYNAMICS;
 int M, S;
 size_t D, D1;
 size_t L, Ly, Ldyn;
-double J, Jprime;
+double J, Jprime, Jrung;
 double alpha;
 double t_U0, t_U1, t_SU2;
 size_t Dinit, Dlimit, Qinit, Imin, Imax;
@@ -93,7 +93,8 @@ int main (int argc, char* argv[])
 	L = args.get<size_t>("L",10);
 	Ly = args.get<size_t>("Ly",1);
 	Ldyn = args.get<size_t>("Ldyn",12);
-	J = args.get<double>("J",-1.);
+	J = args.get<double>("J",1.);
+	Jrung = args.get<double>("Jrung",J);
 	Jprime = args.get<double>("Jprime",0.);
 	M = args.get<int>("M",0);
 	D = args.get<size_t>("D",2);
@@ -151,7 +152,7 @@ int main (int argc, char* argv[])
 		lout << endl << "--------U(0)---------" << endl << endl;
 		
 		Stopwatch<> Watch_U0;
-		VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
+		VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
 		lout << H_U0.info() << endl;
 		
 		VMPS::Heisenberg::Solver DMRG_U0(VERB);
@@ -187,7 +188,7 @@ int main (int argc, char* argv[])
 		lout << endl << "--------U(1)---------" << endl << endl;
 	
 		Stopwatch<> Watch_U1;
-		VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
+		VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
 		lout << H_U1.info() << endl;
 	
 		VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
@@ -256,7 +257,7 @@ int main (int argc, char* argv[])
 		lout << endl << "--------SU(2)---------" << endl << endl;
 		
 		Stopwatch<> Watch_SU2;
-		VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",false}});
+		VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",false}});
 		lout << H_SU2.info() << endl;
 		
 		VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
@@ -363,6 +364,5 @@ int main (int argc, char* argv[])
 	
 	lout << endl << T;
 	
-	lout << "Eref=" << VMPS::Heisenberg::ref({{"J",J},{"D",D},{"Ly",Ly}}).value 
-	     << ", from: " << VMPS::Heisenberg::ref({{"J",J},{"D",D},{"Ly",Ly}}).source << endl;
+	lout << "ref=" << VMPS::Heisenberg::ref({{"J",J},{"D",D},{"Ly",Ly}}) << endl;
 }

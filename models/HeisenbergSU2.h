@@ -18,12 +18,13 @@ namespace VMPS
   *
   * MPO representation of 
   * \f[
-  * H = -J \sum_{<ij>} \left(\mathbf{S_i}\mathbf{S_j}\right) -J' \sum_{<<ij>>} \left(\mathbf{S_i}\mathbf{S_j}\right)
+  * H =  J \sum_{<ij>} \left(\mathbf{S_i}\mathbf{S_j}\right)
+        +J' \sum_{<<ij>>} \left(\mathbf{S_i}\mathbf{S_j}\right)
   * \f]
   *
   * \note Makes use of the spin-SU(2) symmetry, which implies no magnetic fields. For B-fields see VMPS::HeisenbergU1.
   * \note The default variable settings can be seen in \p HeisenbergSU2::defaults.
-  * \note \f$J<0\f$ is antiferromagnetic
+  * \note \f$J>0\f$ is antiferromagnetic
   */
 class HeisenbergSU2 : public Mpo<Sym::SU2<Sym::SpinSU2>,double>, public ParamReturner
 {
@@ -41,6 +42,7 @@ private:
 public:
 	
 	//---constructors---
+	
 	///\{
 	/**Do nothing.*/
 	HeisenbergSU2() : Mpo<Symmetry>(), ParamReturner(HeisenbergSU2::sweep_defaults) {};
@@ -82,8 +84,8 @@ protected:
 
 const std::map<string,std::any> HeisenbergSU2::defaults = 
 {
-	{"J",-1.}, {"Jprime",0.}, {"Jperp",0.}, {"D",2ul},
-	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
+	{"J",1.}, {"Jprime",0.}, {"Jrung",1.},
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 const std::map<string,std::any> HeisenbergSU2::sweep_defaults = 
@@ -194,45 +196,52 @@ set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc)
 	HamiltonianTermsXd<Symmetry> Terms;
 	Terms.name = "Heisenberg";
 	
-	stringstream Slabel;
-	Slabel << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc)-1,2));
-	Terms.info.push_back(Slabel.str());
+	auto save_label = [&Terms] (string label)
+	{
+		if (label!="") {Terms.info.push_back(label);}
+	};
+	
+	stringstream ss;
+	ss << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc)-1,2));
+	save_label(ss.str());
 	
 	// J-terms
 	
 	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",B.orbitals(),loc);
-	Terms.info.push_back(Jlabel);
+	save_label(Jlabel);
 	
 	for (int i=0; i<B.orbitals(); ++i)
 	for (int j=0; j<B.orbitals(); ++j)
 	{
 		if (Jpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-std::sqrt(3)*Jpara(i,j),
-			                                 B.Sdag(i).plain<double>(),
-			                                 B.S(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(std::sqrt(3)*Jpara(i,j), B.Sdag(i).plain<double>(), 
+			                                                          B.S(j).plain<double>()));
 		}
 	}
 	
 	// J'-terms
 	
 	param0d Jprime = P.fill_array0d<double>("Jprime","Jprime",loc);
-	if(!Jprime.label.empty()) {Terms.info.push_back(Jprime.label);}
+	save_label(Jprime.label);
+	
 	assert((B.orbitals() == 1 or Jprime.x == 0) and "Cannot interpret Ly>1 and J'!=0");
+	
 	if (Jprime.x != 0)
 	{
-		Terms.nextn.push_back(make_tuple(-std::sqrt(3)*Jprime.x, B.Sdag(0).plain<double>(),
-		                                 B.S(0).plain<double>(),
-		                                 B.Id().plain<double>()));
+		Terms.nextn.push_back(make_tuple(std::sqrt(3)*Jprime.x, B.Sdag(0).plain<double>(), 
+		                                                        B.S(0).plain<double>(), 
+		                                                        B.Id().plain<double>()));
 	}
 	
-	// local terms
+	// perp terms
 	
-	param0d Jperp = P.fill_array0d<double>("J","Jperp",loc);
-	if(!Jperp.label.empty()) {Terms.info.push_back(Jperp.label);}
+	auto [Jrung,Jperp,Jperplabel] = P.fill_array2d<double>("Jrung","J","Jperp",B.orbitals(),loc,P.get<bool>("CYLINDER"));
+	save_label(Jperplabel);
+	
 	if (B.orbitals() > 1)
 	{
-		Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp.x).plain<double>()));
+		Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp).plain<double>()));
 	}
 	
 	return Terms;

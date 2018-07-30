@@ -22,8 +22,8 @@ namespace VMPS
   *
   * MPO representation of
   * \f[
-  * H = -J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) 
-  *     -J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right)
+  * H =  J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) 
+  *     +J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right)
   *     -B_z \sum_i S^z_i
   *     +K_z \sum_i \left(S^z_i\right)^2
   *     -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
@@ -33,7 +33,7 @@ namespace VMPS
   * \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
   * \note Makes use of the \f$S^z\f$ U(1) symmetry.
   * \note The default variable settings can be seen in \p HeisenbergU1::defaults.
-  * \note \f$J<0\f$ is antiferromagnetic
+  * \note \f$J>0\f$ is antiferromagnetic
   * \note Isotropic \f$J\f$ is required here. For XXZ coupling, use VMPS::HeisenbergU1XXZ.
   */
 class HeisenbergU1 : public Mpo<Sym::U1<Sym::SpinU1>,double>, public HeisenbergObservables<Sym::U1<Sym::SpinU1> >, public ParamReturner
@@ -75,7 +75,7 @@ public:
 
 const std::map<string,std::any> HeisenbergU1::defaults = 
 {
-	{"J",-1.}, {"Jprime",0.},
+	{"J",1.}, {"Jprime",0.}, {"Jrung",1.},
 	{"Bz",0.}, {"Kz",0.},
 	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
@@ -156,9 +156,9 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	{
 		if (Jpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-0.5*Jpara(i,j), B.Scomp(SP,i), B.Scomp(SM,j)));
-			Terms.tight.push_back(make_tuple(-0.5*Jpara(i,j), B.Scomp(SM,i), B.Scomp(SP,j)));
-			Terms.tight.push_back(make_tuple(-Jpara(i,j),     B.Scomp(SZ,i), B.Scomp(SZ,j)));
+			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), B.Scomp(SP,i), B.Scomp(SM,j)));
+			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), B.Scomp(SM,i), B.Scomp(SP,j)));
+			Terms.tight.push_back(make_tuple(Jpara(i,j),     B.Scomp(SZ,i), B.Scomp(SZ,j)));
 		}
 	}
 	
@@ -171,16 +171,14 @@ set_operators (const SpinBase<Symmetry_> &B, const ParamHandler &P, size_t loc)
 	{
 		assert(B.orbitals() == 1 and "Cannot do a ladder with J' terms!");
 		
-		Terms.nextn.push_back(make_tuple(-0.5*Jprime.x, B.Scomp(SP), B.Scomp(SM), B.Id()));
-		Terms.nextn.push_back(make_tuple(-0.5*Jprime.x, B.Scomp(SM), B.Scomp(SP), B.Id()));
-		Terms.nextn.push_back(make_tuple(-Jprime.x,     B.Scomp(SZ), B.Scomp(SZ), B.Id()));
+		Terms.nextn.push_back(make_tuple(0.5*Jprime.x, B.Scomp(SP), B.Scomp(SM), B.Id()));
+		Terms.nextn.push_back(make_tuple(0.5*Jprime.x, B.Scomp(SM), B.Scomp(SP), B.Id()));
+		Terms.nextn.push_back(make_tuple(Jprime.x,     B.Scomp(SZ), B.Scomp(SZ), B.Id()));
 	}
 	
 	// local terms
 	
-//	param0d Jperp = P.fill_array0d<double>("J","Jperp",loc);
-//	save_label(Jperp.label);
-	auto [J_,Jperp,Jperplabel] = P.fill_array2d<double>("J","Jperp",B.orbitals(),loc,true,P.get<bool>("CYLINDER"));
+	auto [Jrung,Jperp,Jperplabel] = P.fill_array2d<double>("Jrung","J","Jperp",B.orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(Jperplabel);
 	
 	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",B.orbitals(),loc);

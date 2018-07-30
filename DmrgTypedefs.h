@@ -353,4 +353,10 @@ struct refEnergy
 	string source;
 };
 
+std::ostream& operator<< (std::ostream& s, refEnergy r)
+{
+	s << r.value << " (" << r.source << ")";
+	return s;
+}
+
 #endif

@@ -13,12 +13,13 @@ public:
 	typedef Sym::U0 Symmetry;
 	
 private:
+	
 	typedef typename Symmetry::qType qType;
 	
 public:
 	
 	///\{
-	HeisenbergXXZ() : Mpo<Symmetry>() {};
+	HeisenbergXXZ() : Mpo<Symmetry>(), ParamReturner(Heisenberg::defaults) {};
 	HeisenbergXXZ (const size_t &L, const vector<Param> &params);
 	///\}
 	
@@ -27,19 +28,17 @@ public:
 
 const std::map<string,std::any> HeisenbergXXZ::defaults = 
 {
-	{"Jxy",0.}, {"Jxyprime",0.},
-	{"Jz",0.}, {"Jzprime",0.},
+	{"Jxy",1.}, {"Jxyprime",0.}, {"Jxyrung",1.},
+	{"Jz",0.}, {"Jzprime",0.}, {"Jzrung",0.},
 	
 	{"Bz",0.}, {"Bx",0.}, 
 	{"Kz",0.}, {"Kx",0.},
-	{"Dy",0.}, {"Dyprime",0.},
-	{"D",2ul}, {"Bz",0.}, {"Kz",0.},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, 
+	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.},
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, 
 	
-	// for consistency during inheritance (should not be set for XXZ!):
+	// for consistency during inheritance (should not be set!):
 	{"J",0.}, {"Jprime",0.}
 };
-
 
 HeisenbergXXZ::
 HeisenbergXXZ (const size_t &L, const vector<Param> &params)

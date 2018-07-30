@@ -26,6 +26,7 @@ class SpinBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >
 	typedef typename Symmetry::qType qType;
 	
 public:
+	
 	SpinBase(){};
 	
 	/**
@@ -65,21 +66,22 @@ public:
 	 * \param J : \f$J\f$
 	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
-	Operator HeisenbergHamiltonian( double J, bool PERIODIC=false ) const;
+	Operator HeisenbergHamiltonian (double J, bool PERIODIC=false) const;
 	
-    /**Returns the basis.*/
-	Qbasis<Symmetry> get_basis() const { return TensorBasis; }
+	/**Returns the basis.*/
+	Qbasis<Symmetry> get_basis() const {return TensorBasis;}
+	
 private:
-
+	
 	Qbasis<Symmetry> basis_1s; //basis for one site
 	Qbasis<Symmetry> TensorBasis; //Final basis for N_orbital sites
-
+	
 	//operators defined on one orbital
 	Operator Id_1s; //identity
 	Operator S_1s; //spin
 	Operator Sdag_1s; 
 	Operator Q_1s; //Quadrupled operator (prod(S,S,{5}))
-
+	
 	std::size_t N_orbitals;
 	std::size_t N_states;
 	std::size_t D;
@@ -166,23 +168,23 @@ HeisenbergHamiltonian (double J, bool PERIODIC) const
 {	
 	Operator Mout({1,0},TensorBasis);
 
-	if( N_orbitals >= 2 and J!=0. )
+	if (N_orbitals >= 2 and J != 0.)
 	{
-		Mout = -std::sqrt(3)*J * Operator::prod(Sdag(0),S(1),{1,0});
+		Mout = std::sqrt(3)*J * Operator::prod(Sdag(0),S(1),{1,0});
 	}
-
+	
 	for (int i=1; i<N_orbitals-1; ++i) // for all bonds
 	{
 		if (J != 0.)
 		{
-			Mout += -std::sqrt(3)*J * Operator::prod(Sdag(i),S(i+1),{1,0});
+			Mout += std::sqrt(3)*J * Operator::prod(Sdag(i),S(i+1),{1,0});
 		}
 	}
 	if (PERIODIC == true and N_orbitals>2)
 	{
 		if (J != 0.)
 		{
-			Mout += -std::sqrt(3)*J * Operator::prod(Sdag(N_orbitals-1),S(0),{1,0});
+			Mout += std::sqrt(3)*J * Operator::prod(Sdag(N_orbitals-1),S(0),{1,0});
 		}
 	}	
 	return Mout;
