@@ -80,6 +80,7 @@ complex<double> Ptot (const MatrixXd &densityMatrix, int L)
 }
 
 size_t L, Ly;
+int V, Vsq;
 double t, tPrime, U, mu, Bz;
 int Nup, Ndn, N;
 double alpha;
@@ -98,7 +99,7 @@ bool ED, U0, U1, SU2, SU22, CORR, PRINT;
 
 Eigenstate<VectorXd> g_ED;
 Eigenstate<VMPS::Hubbard::StateXd> g_U0;
-typedef VMPS::HubbardU1xU1NM HUBBARD;
+typedef VMPS::HubbardU1xU1 HUBBARD;
 Eigenstate<HUBBARD::StateXd> g_U1;
 Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
@@ -121,6 +122,7 @@ int main (int argc, char* argv[])
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",4);
 	Ly = args.get<size_t>("Ly",1);
+	size_t Ly2 = args.get<size_t>("Ly2",Ly);
 	t = args.get<double>("t",1.);
 	tPrime = args.get<double>("tPrime",0.);
 	U = args.get<double>("U",8.);
@@ -128,6 +130,9 @@ int main (int argc, char* argv[])
 	Nup = args.get<int>("Nup",L*Ly/2);
 	Ndn = args.get<int>("Ndn",L*Ly/2);
 	N = Nup+Ndn;
+	
+//	ArrayXXd tParaA(1,2); tParaA = t;
+//	ArrayXXd tParaB(2,1); tParaB = t;
 	
 	ED = args.get<bool>("ED",false);
 	U0 = args.get<bool>("U0",false);
@@ -149,7 +154,6 @@ int main (int argc, char* argv[])
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
 	i0 = args.get<int>("i0",L/2);
-	int V = L*Ly; int Vsq = V*V;
 	
 	GlobParam.Dinit  = args.get<int>("Dmin",2);
 	GlobParam.Dlimit = args.get<int>("Dmax",100);
@@ -178,6 +182,7 @@ int main (int argc, char* argv[])
 			InteractionParams params;
 			params.set_U(U);
 			(tPrime!=0) ? params.set_hoppings({-t,-tPrime}):params.set_hoppings({-t});
+			
 		//	MatrixXd BondMatrix(L*Ly,L*Ly); BondMatrix.setZero();
 		//	BondMatrix(0,1) = -t;
 		//	BondMatrix(1,0) = -t;
@@ -190,7 +195,7 @@ int main (int argc, char* argv[])
 		//	
 		//	BondMatrix(1,3) = -t;
 		//	BondMatrix(3,1) = -t;
-	
+		
 		//	HubbardModel H_ED(L*Ly,Nup,Ndn,U,BondMatrix.sparseView(), BC_DANGLING);
 			HubbardModel H_ED(L*Ly,Nup,Ndn,params, BC_DANGLING);
 			lout << H_ED.info() << endl;
@@ -241,7 +246,11 @@ int main (int argc, char* argv[])
 		lout << endl << termcolor::red << "--------U(0)---------" << termcolor::reset << endl << endl;
 		
 		Stopwatch<> Watch_U0;
-		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"Ly",Ly}});
+		//{"tPara",tParaA,0},{"tPara",tParaB,1}
+		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"tRung",0.},{"Ly",Ly,0},{"Ly",Ly2,1}});
+//		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"Ly",Ly}});
+		V = H_U0.volume();
+		Vsq = V*V;
 		lout << H_U0.info() << endl;
 		
 		VMPS::Hubbard::Solver DMRG_U0(VERB);
@@ -271,14 +280,17 @@ int main (int argc, char* argv[])
 		
 		Stopwatch<> Watch_U1;
 		
-		HUBBARD H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
+		//,{"tPara",tParaA,0},{"tPara",tParaB,1}
+		HUBBARD H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"tRung",0.},{"Ly",Ly,0},{"Ly",Ly2,1}});
+//		VMPS::Hubbard H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
+		V = H_U1.volume();
+		Vsq = V*V;
 		lout << H_U1.info() << endl;
 		
 		HUBBARD::Solver DMRG_U1(VERB);
 		DMRG_U1.GlobParam = GlobParam;
 		DMRG_U1.DynParam = DynParam;
-//		DMRG_U1.edgeState(H_U1, g_U1, {Nup,Ndn}, LANCZOS::EDGE::GROUND);
-		DMRG_U1.edgeState(H_U1, g_U1, {Nup+Ndn,Nup-Ndn}, LANCZOS::EDGE::GROUND);
+		DMRG_U1.edgeState(H_U1, g_U1, {Nup,Ndn}, LANCZOS::EDGE::GROUND);
 		g_U1.state.graph("U1");
 		
 		t_U1 = Watch_U1.time();
@@ -332,6 +344,8 @@ int main (int argc, char* argv[])
 		Stopwatch<> Watch_SU2;
 		
 		VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
+		V = H_SU2.volume();
+		Vsq = V*V;
 		lout << H_SU2.info() << endl;
 		
 		VMPS::HubbardSU2xU1::Solver DMRG_SU2(VERB);
@@ -398,6 +412,8 @@ int main (int argc, char* argv[])
 		paramsSU2xSU2.push_back({"Ly",Ly,0});
 		paramsSU2xSU2.push_back({"Ly",Ly,1});
 		VMPS::HubbardSU2xSU2 H_SU2xSU2(L,paramsSU2xSU2);
+		V = H_SU2xSU2.volume();
+		Vsq = V*V;
 		lout << H_SU2xSU2.info() << endl;
 		
 		VMPS::HubbardSU2xSU2::Solver DMRG_SU2xSU2(VERB);

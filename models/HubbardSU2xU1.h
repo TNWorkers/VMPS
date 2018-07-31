@@ -126,6 +126,10 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Terms[l] = set_operators(F,P,l%Lcell);
+		
+		stringstream ss;
+		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
+		Terms[l].info.push_back(ss.str());
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
@@ -141,19 +145,18 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 		if (label!="") {Terms.info.push_back(label);}
 	};
 	
+	size_t lp1 = (loc+1)%F.size();
+	
 	// NN terms
 	
-	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F[loc].orbitals(),loc);
+	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
 	save_label(tlabel);
 	
-	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",F[loc].orbitals(),loc);
+	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
 	save_label(Vlabel);
 	
-	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",F[loc].orbitals(),loc);
+	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
 	save_label(Jlabel);
-	
-	size_t lp1 = (loc+1)%F.size();
-	size_t lp2 = (loc+2)%F.size();
 	
 	for (int i=0; i<F[loc].orbitals(); ++i)
 	for (int j=0; j<F[lp1].orbitals(); ++j)
@@ -163,19 +166,19 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 			auto cdagF = OperatorType::prod(F[loc].cdag(i), F[loc].sign(),{2,+1});
 			auto cF    = OperatorType::prod(F[loc].c(i),    F[loc].sign(),{2,-1});
 			
-			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cdagF.plain<double>(), F[lp1].c(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cdagF.plain<double>(), F[loc].c(i).plain<double>()));
 			// SU(2) spinors commute on different sites, hence no sign flip here:
-			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cF.plain<double>(),    F[lp1].cdag(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cF.plain<double>(),    F[loc].cdag(i).plain<double>()));
 		}
 		
 		if (Vpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(Vpara(i,j), F[loc].n(i).plain<double>(), F[lp1].n(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(Vpara(i,j), F[loc].n(i).plain<double>(), F[loc].n(i).plain<double>()));
 		}
 		
 		if (Jpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(sqrt(3.)*Jpara(i,j), F[loc].Sdag(i).plain<double>(), F[lp1].S(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(sqrt(3.)*Jpara(i,j), F[loc].Sdag(i).plain<double>(), F[loc].S(i).plain<double>()));
 		}
 	}
 	
@@ -192,8 +195,8 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 		auto cdagF = OperatorType::prod(F[loc].cdag(), F[loc].sign(),{2,+1});
 		/**\todo: think about crazy fermionic signs here:*/
 		
-		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cdagF.plain<double>(), F[lp2].c().plain<double>(),    F[lp1].sign().plain<double>()));
-		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cF.plain<double>()   , F[lp2].cdag().plain<double>(), F[lp1].sign().plain<double>()));
+		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cdagF.plain<double>(), F[loc].c().plain<double>(),    F[loc].sign().plain<double>()));
+		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cF.plain<double>()   , F[loc].cdag().plain<double>(), F[loc].sign().plain<double>()));
 	}
 	
 	// local terms

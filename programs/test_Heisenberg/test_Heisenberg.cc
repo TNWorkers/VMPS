@@ -39,10 +39,21 @@ Logger lout;
 #include "models/HeisenbergXYZ.h"
 
 template<typename Scalar>
-string to_string_prec (Scalar x, int n=14)
+string to_string_prec (Scalar x, bool COLOR=false, int n=14)
 {
 	ostringstream ss;
-	ss << setprecision(n) << x;
+	if (x < 1e-5 and COLOR)
+	{
+		ss << termcolor::colorize << termcolor::green << setprecision(n) << x << termcolor::reset;
+	}
+	else if (x >= 1e-5 and COLOR)
+	{
+		ss << termcolor::colorize << termcolor::red << setprecision(n) << x << termcolor::reset;
+	}
+	else
+	{
+		ss << setprecision(n) << x;
+	}
 	return ss.str();
 }
 
@@ -305,8 +316,8 @@ int main (int argc, char* argv[])
 	
 	// energy error
 	T.add("E/L diff");
-	T.add(to_string_prec(abs(g_U0.energy-g_SU2.energy)/V));
-	T.add(to_string_prec(abs(g_U1.energy-g_SU2.energy)/V));
+	T.add(to_string_prec(abs(g_U0.energy-g_SU2.energy)/V,true));
+	T.add(to_string_prec(abs(g_U1.energy-g_SU2.energy)/V,true));
 	T.add("0");
 	T.endOfRow();
 	
@@ -324,15 +335,15 @@ int main (int argc, char* argv[])
 	
 	// time
 	T.add("t/s");
-	T.add(to_string_prec(t_U0,2));
-	T.add(to_string_prec(t_U1,2));
-	T.add(to_string_prec(t_SU2,2));
+	T.add(to_string_prec(t_U0,false,2));
+	T.add(to_string_prec(t_U1,false,2));
+	T.add(to_string_prec(t_SU2,false,2));
 	T.endOfRow();
 	
 	// time gain
 	T.add("t gain");
-	T.add(to_string_prec(t_U0/t_SU2,2));
-	T.add(to_string_prec(t_U1/t_SU2,2));
+	T.add(to_string_prec(t_U0/t_SU2,false,2));
+	T.add(to_string_prec(t_U1/t_SU2,false,2));
 	T.add("1");
 	T.endOfRow();
 	

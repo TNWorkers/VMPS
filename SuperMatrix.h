@@ -252,18 +252,20 @@ SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar
 	std::vector<OperatorType> col;
 	std::vector<OperatorType> row;
 	size_t locdim;
-	if (Terms.tight.size()>0)
-	{
-		locdim = std::get<1>(Terms.tight[0]).data.rows();
-	}
-	else if (Terms.nextn.size()>0)
-	{
-		locdim = std::get<1>(Terms.nextn[0]).data.rows();
-	}
-	else
+	
+	if (Terms.local.size()>0)
 	{
 		locdim = std::get<1>(Terms.local[0]).data.rows();
 	}
+	else if (Terms.tight.size()>0)
+	{
+		locdim = std::get<1>(Terms.tight[0]).data.rows();
+	}
+	else
+	{
+		locdim = std::get<1>(Terms.nextn[0]).data.rows();
+	}
+	
 	OperatorType Id(Matrix<Scalar,Dynamic,Dynamic>::Identity(locdim,locdim).sparseView(),Symmetry::qvacuum());
 	OperatorType Zero(SparseMatrix<Scalar>(locdim,locdim),Symmetry::qvacuum());
 	

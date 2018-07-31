@@ -186,6 +186,10 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Terms[l] = set_operators(B,F,P,l%Lcell);
+		
+		stringstream ss;
+		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
+		Terms[l].info.push_back(ss.str());
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
@@ -261,27 +265,26 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		if (label!="") {Terms.info.push_back(label);}
 	};
 	
+	size_t lp1 = (loc+1)%F.size();
+	
 	// NN terms
 	
-	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F[loc].orbitals(),loc);
+	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
 	save_label(tlabel);
 	
-	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",F[loc].orbitals(),loc);
+	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
 	save_label(Vlabel);
-	
-	size_t lp1 = (loc+1)%F.size();
-	size_t lp2 = (loc+2)%F.size();
 	
 	for (int i=0; i<F[loc].orbitals(); ++i)
 	for (int j=0; j<F[lp1].orbitals(); ++j)
 	{
 		if (tPara(i,j) != 0.)
 		{
-			// auto Otmp = OperatorType::prod(OperatorType::outerprod(B.Id(),F.sign(),{1,0}),OperatorType::outerprod(B.Id(),F.c(j),{2,-1}),{2,-1});
+			// auto Otmp = OperatorType::prod(OperatorType::outerprod(B.Id(),F.sign(),{1,0}),OperatorType::outerprod(B.Id(),F.c(i),{2,-1}),{2,-1});
 			// Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.),
 			// 								 OperatorType::outerprod(B.Id(),F.cdag(i),{2,+1}).plain<double>(),
 			// 								 Otmp.plain<double>()));
-			// Otmp = OperatorType::prod(OperatorType::outerprod(B.Id(),F.sign(),{1,0}),OperatorType::outerprod(B.Id(),F.cdag(j),{2,+1}),{2,+1});
+			// Otmp = OperatorType::prod(OperatorType::outerprod(B.Id(),F.sign(),{1,0}),OperatorType::outerprod(B.Id(),F.cdag(i),{2,+1}),{2,+1});
 			// Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.),
 			// 								 OperatorType::outerprod(B.Id(),F.c(i),{2,-1}).plain<double>(),
 			// 								 Otmp.plain<double>()));
@@ -289,9 +292,9 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			// Use this version:
 			// auto cdagF = OperatorType::prod(F.cdag(i),F.sign(),{2,+1});
 			// auto cF    = OperatorType::prod(F.c(i),   F.sign(),{2,-1});
-			// Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cdagF.plain<double>(), F.c(j).plain<double>()));
+			// Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cdagF.plain<double>(), F.c(i).plain<double>()));
 			// SU(2) spinors commute on different sites, hence no sign flip here:
-			// Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cF.plain<double>(),    F.cdag(j).plain<double>()));
+			// Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cF.plain<double>(),    F.cdag(i).plain<double>()));
 			
 			auto cF = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(i) ,{2,-1}),
 			                             OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0}), {2,-1});
@@ -300,17 +303,17 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			
 			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
 											 cdagF.plain<double>(),
-											 OperatorType::outerprod(B[lp1].Id(), F[lp1].c(j), {2,-1}).plain<double>()));
+											 OperatorType::outerprod(B[loc].Id(), F[loc].c(i), {2,-1}).plain<double>()));
 			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
 											 cF.plain<double>(),
-											 OperatorType::outerprod(B[lp1].Id(), F[lp1].cdag(j), {2,+1}).plain<double>()));
+											 OperatorType::outerprod(B[loc].Id(), F[loc].cdag(i), {2,+1}).plain<double>()));
 		}
 		
 		if (Vpara(i,j) != 0.)
 		{
 			Terms.tight.push_back(make_tuple(Vpara(i,j),
 											 OperatorType::outerprod(B[loc].Id(), F[loc].n(i), {1,0}).plain<double>(),
-											 OperatorType::outerprod(B[lp1].Id(), F[lp1].n(j), {1,0}).plain<double>()));
+											 OperatorType::outerprod(B[loc].Id(), F[loc].n(i), {1,0}).plain<double>()));
 		}
 	}
 	
@@ -330,12 +333,12 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		
 		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.),
 										 cdagF.plain<double>(),
-										 OperatorType::outerprod(B[lp2].Id(), F[lp2].c(), {2,-1}).plain<double>(),
-										 OperatorType::outerprod(B[lp1].Id(), F[lp1].sign(), {1,0}).plain<double>()));
+										 OperatorType::outerprod(B[loc].Id(), F[loc].c(), {2,-1}).plain<double>(),
+										 OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0}).plain<double>()));
 		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.),
 										 cF.plain<double>(),
-										 OperatorType::outerprod(B[lp2].Id(), F[lp2].cdag(), {2,+1}).plain<double>(),
-										 OperatorType::outerprod(B[lp1].Id(), F[lp1].sign(), {1,0}).plain<double>()));
+										 OperatorType::outerprod(B[loc].Id(), F[loc].cdag(), {2,+1}).plain<double>(),
+										 OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0}).plain<double>()));
 	}
 	
 	// local terms

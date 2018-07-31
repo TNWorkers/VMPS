@@ -42,10 +42,10 @@ struct HamiltonianTerms
 		
 		while (res.find("perp") != std::string::npos) res.replace(res.find("perp"), 4, "⟂");
 		while (res.find("para") != std::string::npos) res.replace(res.find("para"), 4, "∥");
-		while (res.find("para") != std::string::npos) res.replace(res.find("prime"), 4, "'");
-		while (res.find("perp") != std::string::npos) res.replace(res.find("Perp"), 4, "⟂");
-		while (res.find("para") != std::string::npos) res.replace(res.find("Para"), 4, "∥");
-		while (res.find("para") != std::string::npos) res.replace(res.find("Prime"), 4, "'");
+		while (res.find("prime") != std::string::npos) res.replace(res.find("prime"), 5, "'");
+		while (res.find("Perp") != std::string::npos) res.replace(res.find("Perp"), 4, "⟂");
+		while (res.find("Para") != std::string::npos) res.replace(res.find("Para"), 4, "∥");
+		while (res.find("Prime") != std::string::npos) res.replace(res.find("Prime"), 5, "'");
 		
 		return res;
 	}

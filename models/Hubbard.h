@@ -69,6 +69,10 @@ Hubbard (const size_t &L, const vector<Param> &params)
 	{
 		Terms[l] = HubbardU1xU1::set_operators(F,P,l%Lcell);
 		add_operators(Terms[l],F,P,l%Lcell);
+		
+		stringstream ss;
+		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
+		Terms[l].info.push_back(ss.str());
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));

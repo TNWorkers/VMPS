@@ -104,6 +104,10 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Terms[l] = set_operators(F,P,l%Lcell);
+		
+		stringstream ss;
+		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
+		Terms[l].info.push_back(ss.str());
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
@@ -119,19 +123,18 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 		if (label!="") {Terms.info.push_back(label);}
 	};
 	
+	size_t lp1 = (loc+1)%F.size();
+	
 	// NN terms
 	
-	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F[loc].orbitals(),loc);
+	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
 	save_label(tlabel);
 	
-	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",F[loc].orbitals(),loc);
+	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
 	save_label(Vlabel);
 	
-	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",F[loc].orbitals(),loc);
+	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
 	save_label(Jlabel);
-	
-	size_t lp1 = (loc+1)%F.size();
-	size_t lp2 = (loc+2)%F.size();
 	
 	for (int i=0; i<F[loc].orbitals(); ++i)
 	for (int j=0; j<F[lp1].orbitals(); ++j)
@@ -140,19 +143,19 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 		{
 			// Only works with both times loc: strange??
 			auto cdagF = OperatorType::prod(F[loc].cdag(i), F[loc].sign(), {2,2});
-			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.)*sqrt(2.), cdagF.plain<double>(), F[loc].c(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.)*sqrt(2.), cdagF.plain<double>(), F[loc].c(i).plain<double>()));
 		}
 		
 		// Warning: Needs testing! Especially if correct with [loc] both times.
 		
 		if (Vpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(Vpara(i,j)*sqrt(3.), F[loc].Tdag(i).plain<double>(), F[loc].T(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(Vpara(i,j)*sqrt(3.), F[loc].Tdag(i).plain<double>(), F[loc].T(i).plain<double>()));
 		}
 		
 		if (Jpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(Jpara(i,j)*sqrt(3.), F[loc].Sdag(i).plain<double>(), F[loc].S(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(Jpara(i,j)*sqrt(3.), F[loc].Sdag(i).plain<double>(), F[loc].S(i).plain<double>()));
 		}
 	}
 	

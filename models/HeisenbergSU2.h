@@ -61,7 +61,7 @@ public:
 	 * \param P : The parameters
 	 * \param loc : The location in the chain
 	*/
-	static HamiltonianTermsXd<Symmetry> set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc=0);
+	static HamiltonianTermsXd<Symmetry> set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, size_t loc=0);
 	
 	///@{
 	/**Observables.*/
@@ -116,8 +116,15 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 		
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		setLocBasis(B[l].get_basis().qloc(),l);
+	}
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Terms[l] = set_operators(B,P,l%Lcell);
 		
-		Terms[l] = set_operators(B[l],P,l%Lcell);
+		stringstream ss;
+		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
+		Terms[l].info.push_back(ss.str());
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
@@ -191,7 +198,7 @@ validate (qarray<1> qnum) const
 }
 
 HamiltonianTermsXd<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
-set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc)
+set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry> Terms;
 	Terms.name = "Heisenberg";
@@ -205,18 +212,20 @@ set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc)
 	ss << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc)-1,2));
 	save_label(ss.str());
 	
+	size_t lp1 = (loc+1)%B.size();
+	
 	// J-terms
 	
-	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",B.orbitals(),loc);
+	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",{{B[loc].orbitals(),B[lp1].orbitals()}},loc);
 	save_label(Jlabel);
 	
-	for (int i=0; i<B.orbitals(); ++i)
-	for (int j=0; j<B.orbitals(); ++j)
+	for (int i=0; i<B[loc].orbitals(); ++i)
+	for (int j=0; j<B[lp1].orbitals(); ++j)
 	{
 		if (Jpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(std::sqrt(3)*Jpara(i,j), B.Sdag(i).plain<double>(), 
-			                                                          B.S(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(std::sqrt(3)*Jpara(i,j), B[loc].Sdag(i).plain<double>(), 
+			                                                          B[loc].S(i).plain<double>()));
 		}
 	}
 	
@@ -225,23 +234,23 @@ set_operators (const SpinBase<Symmetry> &B, const ParamHandler &P, size_t loc)
 	param0d Jprime = P.fill_array0d<double>("Jprime","Jprime",loc);
 	save_label(Jprime.label);
 	
-	assert((B.orbitals() == 1 or Jprime.x == 0) and "Cannot interpret Ly>1 and J'!=0");
+	assert((B[loc].orbitals() == 1 or Jprime.x == 0) and "Cannot interpret Ly>1 and J'!=0");
 	
 	if (Jprime.x != 0)
 	{
-		Terms.nextn.push_back(make_tuple(std::sqrt(3)*Jprime.x, B.Sdag(0).plain<double>(), 
-		                                                        B.S(0).plain<double>(), 
-		                                                        B.Id().plain<double>()));
+		Terms.nextn.push_back(make_tuple(std::sqrt(3)*Jprime.x, B[loc].Sdag(0).plain<double>(), 
+		                                                        B[loc].S(0).plain<double>(), 
+		                                                        B[loc].Id().plain<double>()));
 	}
 	
 	// perp terms
 	
-	auto [Jrung,Jperp,Jperplabel] = P.fill_array2d<double>("Jrung","J","Jperp",B.orbitals(),loc,P.get<bool>("CYLINDER"));
+	auto [Jrung,Jperp,Jperplabel] = P.fill_array2d<double>("Jrung","J","Jperp",B[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(Jperplabel);
 	
-	if (B.orbitals() > 1)
+	if (B[loc].orbitals() > 1)
 	{
-		Terms.local.push_back(make_tuple(1., B.HeisenbergHamiltonian(Jperp).plain<double>()));
+		Terms.local.push_back(make_tuple(1., B[loc].HeisenbergHamiltonian(Jperp).plain<double>()));
 	}
 	
 	return Terms;

@@ -99,6 +99,10 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Terms[l] = set_operators(B,F,P,l%Lcell);
+		
+		stringstream ss;
+		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
+		Terms[l].info.push_back(ss.str());
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
@@ -136,16 +140,15 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		if (label!="") {Terms.info.push_back(label);}
 	};
 	
+	size_t lp1 = (loc+1)%F.size();
+	
 	// NN terms
 	
-	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F[loc].orbitals(),loc);
+	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
 	save_label(tlabel);
 	
-	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",F[loc].orbitals(),loc);
+	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
 	save_label(Vlabel);
-	
-	size_t lp1 = (loc+1)%F.size();
-	size_t lp2 = (loc+2)%F.size();
 	
 	for (int i=0; i<F[loc].orbitals(); ++i)
 	for (int j=0; j<F[lp1].orbitals(); ++j)
@@ -154,16 +157,16 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		{
 			Terms.tight.push_back(make_tuple(-tPara(i,j),
 			                                 kroneckerProduct(B[loc].Id(), F[loc].cdag(UP,i) * F[loc].sign()),
-			                                 kroneckerProduct(B[lp1].Id(), F[lp1].c(UP,j))));
+			                                 kroneckerProduct(B[loc].Id(), F[loc].c(UP,i))));
 			Terms.tight.push_back(make_tuple(-tPara(i,j),
 			                                 kroneckerProduct(B[loc].Id(), F[loc].cdag(DN,i) * F[loc].sign()),
-			                                 kroneckerProduct(B[lp1].Id(), F[lp1].c(DN,j))));
+			                                 kroneckerProduct(B[loc].Id(), F[loc].c(DN,i))));
 			Terms.tight.push_back(make_tuple(-tPara(i,j),
 			                                 kroneckerProduct(B[loc].Id(), -1.*F[loc].c(UP,i) * F[loc].sign()),
-			                                 kroneckerProduct(B[lp1].Id(), F[lp1].cdag(UP,j))));
+			                                 kroneckerProduct(B[loc].Id(), F[loc].cdag(UP,i))));
 			Terms.tight.push_back(make_tuple(-tPara(i,j),
 			                                 kroneckerProduct(B[loc].Id(), -1.*F[loc].c(DN,i) * F[loc].sign()),
-			                                 kroneckerProduct(B[lp1].Id(), F[lp1].cdag(DN,j))));
+			                                 kroneckerProduct(B[loc].Id(), F[loc].cdag(DN,i))));
 		}
 		
 		if (Vpara(i,j) != 0.)
@@ -172,7 +175,7 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 			{
 				Terms.tight.push_back(make_tuple(Vpara(i,j), 
 				                                 kroneckerProduct(B[loc].Id(),F[loc].n(i)), 
-				                                 kroneckerProduct(B[lp1].Id(),F[lp1].n(j))));
+				                                 kroneckerProduct(B[loc].Id(),F[loc].n(i))));
 			}
 		}
 	}
@@ -188,20 +191,20 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		
 		Terms.nextn.push_back(make_tuple(-tPrime.x,
 		                                 kroneckerProduct(B[loc].Id(),F[loc].cdag(UP,0) * F[loc].sign()),
-		                                 kroneckerProduct(B[lp2].Id(),F[lp2].c(UP,0)),
-		                                 kroneckerProduct(B[lp1].Id(),F[lp1].sign())));
+		                                 kroneckerProduct(B[loc].Id(),F[loc].c(UP,0)),
+		                                 kroneckerProduct(B[loc].Id(),F[loc].sign())));
 		Terms.nextn.push_back(make_tuple(-tPrime.x,
 		                                 kroneckerProduct(B[loc].Id(),F[loc].cdag(DN,0) * F[loc].sign()),
-		                                 kroneckerProduct(B[lp2].Id(),F[lp2].c(DN,0)),
-		                                 kroneckerProduct(B[lp1].Id(),F[lp1].sign())));
+		                                 kroneckerProduct(B[loc].Id(),F[loc].c(DN,0)),
+		                                 kroneckerProduct(B[loc].Id(),F[loc].sign())));
 		Terms.nextn.push_back(make_tuple(+tPrime.x,
 		                                 kroneckerProduct(B[loc].Id(),F[loc].c(UP,0) * F[loc].sign()),
-		                                 kroneckerProduct(B[lp2].Id(),F[lp2].cdag(UP,0)),
-		                                 kroneckerProduct(B[lp1].Id(),F[lp1].sign())));
+		                                 kroneckerProduct(B[loc].Id(),F[loc].cdag(UP,0)),
+		                                 kroneckerProduct(B[loc].Id(),F[loc].sign())));
 		Terms.nextn.push_back(make_tuple(+tPrime.x,
 		                                 kroneckerProduct(B[loc].Id(),F[loc].c(DN,0) * F[loc].sign()),
-		                                 kroneckerProduct(B[lp2].Id(),F[lp2].cdag(DN,0)),
-		                                 kroneckerProduct(B[lp1].Id(),F[lp1].sign())));
+		                                 kroneckerProduct(B[loc].Id(),F[loc].cdag(DN,0)),
+		                                 kroneckerProduct(B[loc].Id(),F[loc].sign())));
 	}
 	
 	// local terms

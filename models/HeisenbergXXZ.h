@@ -54,12 +54,18 @@ HeisenbergXXZ (const size_t &L, const vector<Param> &params)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
-		
 		setLocBasis(B[l].get_basis(),l);
+	}
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Terms[l] = HeisenbergU1::set_operators(B,P,l%Lcell);
+		Heisenberg::add_operators(Terms[l],B,P,l%Lcell);
+		HeisenbergU1XXZ::add_operators(Terms[l],B,P,l%Lcell);
 		
-		Terms[l] = HeisenbergU1::set_operators(B[l],P,l%Lcell);
-		Heisenberg::add_operators(Terms[l],B[l],P,l%Lcell);
-		HeisenbergU1XXZ::add_operators(Terms[l],B[l],P,l%Lcell);
+		stringstream ss;
+		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
+		Terms[l].info.push_back(ss.str());
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));

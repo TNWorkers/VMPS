@@ -87,7 +87,7 @@ int main (int argc, char* argv[])
 	L = args.get<size_t>("L",10ul);
 	Ly = args.get<size_t>("Ly",1ul);
 	
-	J = args.get<double>("J",-1.);
+	J = args.get<double>("J",1.);
 	t = args.get<double>("t",1.);
 	tPrime = args.get<double>("tPrime",0.);
 	U = args.get<double>("U",0.);
@@ -157,7 +157,8 @@ int main (int argc, char* argv[])
 	params.push_back({"U",U});
 	//params.push_back({"Bz",Bz,0});
 	//params.push_back({"Bx",Bx,0});
-	params.push_back({"D",2ul});
+	params.push_back({"D",2ul,0});
+	params.push_back({"D",1ul,1});
 	params.push_back({"CALC_SQUARE",true});
 	
 //	for (size_t l=1; l<L; ++l)
@@ -524,7 +525,7 @@ int main (int argc, char* argv[])
 		T.endOfRow();
 		
 		T.add("<d> diff");
-		T.add(to_string_prec("-"));
+		T.add("-");
 		T.add(to_string_prec((d_U1xU1-d_SU2xU1).norm(),true));
 		T.add("0");
 		T.add("-");
@@ -538,7 +539,7 @@ int main (int argc, char* argv[])
 		T.endOfRow();
 		
 		T.add("<SS> diff");
-		T.add(to_string_prec("-"));
+		T.add("-");
 		T.add(to_string_prec((SpinCorr_U1xU1-SpinCorr_SU2xU1).norm(),true));
 		T.add("0");
 		T.add("-");
