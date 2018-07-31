@@ -332,9 +332,6 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 			LanczosPropagator<PivotMatrix0<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz0(tol_Lanczos);
 			
 			PivotMatrix0<Symmetry,TimeScalar,MpoScalar> Heff0;
-//			Heff0.L = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot+1].L : Heff[old_pivot].L;
-//			Heff0.R = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot].R   : Heff[old_pivot-1].R;
-//			Heff0.W = (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Heff[old_pivot+1].W : Heff[old_pivot-1].W;
 			(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)?
 			Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot+1].L, Heff[old_pivot].R):
 			Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot].L, Heff[old_pivot-1].R);

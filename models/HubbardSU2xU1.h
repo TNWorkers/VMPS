@@ -54,7 +54,7 @@ public:
 	HubbardSU2xU1() : Mpo(){};
 	HubbardSU2xU1 (const size_t &L, const vector<Param> &params);
 	
-	static HamiltonianTermsXd<Symmetry> set_operators (const FermionBase<Symmetry> &F, const ParamHandler &P, size_t loc=0);
+	static HamiltonianTermsXd<Symmetry> set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc=0);
 	
 	static qarray<2> singlet (int N) {return qarray<2>{1,N};};
 	
@@ -121,15 +121,18 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 		
 		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
 		setLocBasis(F[l].get_basis().qloc(),l);
-		
-		Terms[l] = set_operators(F[l],P,l%Lcell);
+	}
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Terms[l] = set_operators(F,P,l%Lcell);
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
 HamiltonianTermsXd<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-set_operators (const FermionBase<Symmetry> &F, const ParamHandler &P, size_t loc)
+set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry> Terms;
 	
@@ -140,44 +143,39 @@ set_operators (const FermionBase<Symmetry> &F, const ParamHandler &P, size_t loc
 	
 	// NN terms
 	
-	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F.orbitals(),loc);
+	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F[loc].orbitals(),loc);
 	save_label(tlabel);
 	
-	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",F.orbitals(),loc);
+	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",F[loc].orbitals(),loc);
 	save_label(Vlabel);
 	
-	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",F.orbitals(),loc);
+	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",F[loc].orbitals(),loc);
 	save_label(Jlabel);
 	
-	for (int i=0; i<F.orbitals(); ++i)
-	for (int j=0; j<F.orbitals(); ++j)
+	size_t lp1 = (loc+1)%F.size();
+	size_t lp2 = (loc+2)%F.size();
+	
+	for (int i=0; i<F[loc].orbitals(); ++i)
+	for (int j=0; j<F[lp1].orbitals(); ++j)
 	{
 		if (tPara(i,j) != 0.)
 		{
-			// wrong:
-//			auto Otmp = OperatorType::prod(F.sign(),F.c(j),{2,-1});
-//			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.), F.cdag(i).plain<double>(), Otmp.plain<double>()));
-//			
-//			Otmp = OperatorType::prod(F.sign(),F.cdag(j),{2,1});
-//			Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.), F.c(i).plain<double>(), Otmp.plain<double>()));
+			auto cdagF = OperatorType::prod(F[loc].cdag(i), F[loc].sign(),{2,+1});
+			auto cF    = OperatorType::prod(F[loc].c(i),    F[loc].sign(),{2,-1});
 			
-			// correct?:
-			auto cdagF = OperatorType::prod(F.cdag(i),F.sign(),{2,+1});
-			auto cF    = OperatorType::prod(F.c(i),   F.sign(),{2,-1});
-			
-			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cdagF.plain<double>(), F.c(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cdagF.plain<double>(), F[lp1].c(j).plain<double>()));
 			// SU(2) spinors commute on different sites, hence no sign flip here:
-			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cF.plain<double>(),    F.cdag(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cF.plain<double>(),    F[lp1].cdag(j).plain<double>()));
 		}
 		
 		if (Vpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(Vpara(i,j), F.n(i).plain<double>(), F.n(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(Vpara(i,j), F[loc].n(i).plain<double>(), F[lp1].n(j).plain<double>()));
 		}
 		
 		if (Jpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(sqrt(3.)*Jpara(i,j), F.Sdag(i).plain<double>(), F.S(j).plain<double>()));
+			Terms.tight.push_back(make_tuple(sqrt(3.)*Jpara(i,j), F[loc].Sdag(i).plain<double>(), F[lp1].S(j).plain<double>()));
 		}
 	}
 	
@@ -188,49 +186,43 @@ set_operators (const FermionBase<Symmetry> &F, const ParamHandler &P, size_t loc
 	
 	if (tPrime.x != 0.)
 	{
-		assert(F.orbitals() == 1 and "Cannot do a ladder with t'!");
+		assert(F[loc].orbitals() == 1 and "Cannot do a ladder with t'!");
 		
-		// wrong:
-//		auto Otmp = OperatorType::prod(F.sign(),F.c(),{2,-1});
-//		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), F.cdag().plain<double>(), Otmp.plain<double>(), F.sign().plain<double>()));
-//		Otmp = OperatorType::prod(F.sign(),F.cdag(),{2,1});
-//		Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.), F.c().plain<double>(), Otmp.plain<double>(), F.sign().plain<double>()));
-		
-		// correct?:
-		auto cF    = OperatorType::prod(F.c(),   F.sign(),{2,-1});
-		auto cdagF = OperatorType::prod(F.cdag(),F.sign(),{2,+1});
+		auto cF    = OperatorType::prod(F[loc].c(),    F[loc].sign(),{2,-1});
+		auto cdagF = OperatorType::prod(F[loc].cdag(), F[loc].sign(),{2,+1});
 		/**\todo: think about crazy fermionic signs here:*/
-		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cdagF.plain<double>(), F.c().plain<double>(),    F.sign().plain<double>()));
-		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cF.plain<double>()   , F.cdag().plain<double>(), F.sign().plain<double>()));
+		
+		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cdagF.plain<double>(), F[lp2].c().plain<double>(),    F[lp1].sign().plain<double>()));
+		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cF.plain<double>()   , F[lp2].cdag().plain<double>(), F[lp1].sign().plain<double>()));
 	}
 	
 	// local terms
 	
 	// Hubbard-U
-	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F.orbitals(),loc);
+	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F[loc].orbitals(),loc);
 	save_label(Ulabel);
 	
 	// t0
-	auto [t0,t0orb,t0label] = P.fill_array1d<double>("t0","t0orb",F.orbitals(),loc);
+	auto [t0,t0orb,t0label] = P.fill_array1d<double>("t0","t0orb",F[loc].orbitals(),loc);
 	save_label(t0label);
 	
 	// μ
-	auto [mu,muorb,mulabel] = P.fill_array1d<double>("mu","muorb",F.orbitals(),loc);
+	auto [mu,muorb,mulabel] = P.fill_array1d<double>("mu","muorb",F[loc].orbitals(),loc);
 	save_label(mulabel);
 	
 	// t⟂
-	auto [tRung,tPerp,tPerplabel] = P.fill_array2d<double>("tRung","t","tPerp",F.orbitals(),loc,P.get<bool>("CYLINDER"));
+	auto [tRung,tPerp,tPerplabel] = P.fill_array2d<double>("tRung","t","tPerp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(tPerplabel);
 	
 	// V⟂
-	auto [Vrung,Vperp,Vperplabel] = P.fill_array2d<double>("Vrung","V","Vperp",F.orbitals(),loc,P.get<bool>("CYLINDER"));
+	auto [Vrung,Vperp,Vperplabel] = P.fill_array2d<double>("Vrung","V","Vperp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(Vperplabel);
 	
 	// J⟂
-	auto [Jrung,Jperp,Jperplabel] = P.fill_array2d<double>("Jrung","J","Jperp",F.orbitals(),loc,P.get<bool>("CYLINDER"));
+	auto [Jrung,Jperp,Jperplabel] = P.fill_array2d<double>("Jrung","J","Jperp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(Jperplabel);
 	
-	Terms.local.push_back(make_tuple(1.,F.HubbardHamiltonian(Uorb,t0orb-muorb,tPerp,Vperp,Jperp).plain<double>()));
+	Terms.local.push_back(make_tuple(1., F[loc].HubbardHamiltonian(Uorb,t0orb-muorb,tPerp,Vperp,Jperp).plain<double>()));
 	
 	Terms.name = "Hubbard";
 	

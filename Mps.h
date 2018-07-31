@@ -409,7 +409,6 @@ public:
 	 * \param loc : site to do the absorption
 	 * \param DIR : specifies whether the absorption is on the left-sweep or right-sweep
 	 * \param C : the zero-site tensor to be absorbed
-	 * \warning Not implemented for non-abelian symmetries.
 	 */
 	void absorb (size_t loc, DMRG::DIRECTION::OPTION DIR, const Biped<Symmetry,MatrixType> &C);
 	///\}

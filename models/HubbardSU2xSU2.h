@@ -51,9 +51,6 @@ public:
 	
 	static HamiltonianTermsXd<Symmetry> set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc=0);
 	
-//	Mpo<Symmetry> Auger (size_t locx, size_t locy=0);
-//	Mpo<Symmetry> eta(size_t locx, size_t locy=0);
-//	Mpo<Symmetry> Aps (size_t locx, size_t locy=0);
 	Mpo<Symmetry> c (size_t locx, size_t locy=0, double factor=sqrt(2.));
 	Mpo<Symmetry> cdag (size_t locx, size_t locy=0, double factor=sqrt(2.));
 	
@@ -68,11 +65,6 @@ public:
 	// MpoQ<Symmetry> T (size_t locx, size_t locy=0);
 	// MpoQ<Symmetry> Tdag (size_t locx, size_t locy=0);
 	// MpoQ<Symmetry> TTdag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
-	
-//	MpoQ<Symmetry> EtaEtadag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);	
-//	MpoQ<Symmetry> triplon (size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> antitriplon (size_t locx, size_t locy=0);
-//	MpoQ<Symmetry> quadruplon (size_t locx, size_t locy=0);
 	
 	static const map<string,any> defaults;
 	
@@ -103,11 +95,12 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
+		
 		F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::A):
 		                    FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::B);
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
-	// need FermionBase at loc, loc+1 for set_operators:
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Terms[l] = set_operators(F,P,l%Lcell);
@@ -137,7 +130,9 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",F[loc].orbitals(),loc);
 	save_label(Jlabel);
 	
-	size_t lp1 = (loc<F.size()-1)? loc+1:0;
+	size_t lp1 = (loc+1)%F.size();
+	size_t lp2 = (loc+2)%F.size();
+	
 	for (int i=0; i<F[loc].orbitals(); ++i)
 	for (int j=0; j<F[lp1].orbitals(); ++j)
 	{
@@ -147,6 +142,8 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 			auto cdagF = OperatorType::prod(F[loc].cdag(i), F[loc].sign(), {2,2});
 			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.)*sqrt(2.), cdagF.plain<double>(), F[loc].c(j).plain<double>()));
 		}
+		
+		// Warning: Needs testing! Especially if correct with [loc] both times.
 		
 		if (Vpara(i,j) != 0.)
 		{

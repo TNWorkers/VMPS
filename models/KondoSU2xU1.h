@@ -2,6 +2,7 @@
 #define KONDOMODELSU2XU1_H_
 
 #include "ParamHandler.h" // from HELPERS
+#include "ParamReturner.h"
 
 #include "bases/SpinBaseSU2xU1.h"
 #include "bases/FermionBaseSU2xU1.h"
@@ -29,7 +30,7 @@ namespace VMPS
  * \note If the nnn-hopping is positive, the ground state energy is lowered.
  * \warning \f$J<0\f$ is antiferromagnetic
  */
-class KondoSU2xU1 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,double>
+class KondoSU2xU1 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,double>, public ParamReturner
 {
 public:
 	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > Symmetry;
@@ -41,8 +42,9 @@ private:
 	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
 	
 public:
+	
 	///@{
-	KondoSU2xU1 ():Mpo() {};
+	KondoSU2xU1 (): Mpo(), ParamReturner(KondoSU2xU1::sweep_defaults) {};
 	KondoSU2xU1 (const size_t &L, const vector<Param> &params);
 	///@}
 	
@@ -51,8 +53,8 @@ public:
 	
 	///@{
 	/**Push params for DMRG algorithms via these functions to an instance of DmrgSolver.*/
-	DMRG::CONTROL::DYN get_DynParam(const vector<Param> &params={}) const;
-	DMRG::CONTROL::GLOB get_GlobParam(const vector<Param> &params={}) const;
+//	DMRG::CONTROL::DYN get_DynParam(const vector<Param> &params={}) const;
+//	DMRG::CONTROL::GLOB get_GlobParam(const vector<Param> &params={}) const;
 	///@}
 	
 	/**
@@ -63,7 +65,7 @@ public:
 	 * \param P : The parameters
 	 * \param loc : The location in the chain
 	 */
-	static HamiltonianTermsXd<Symmetry> set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F,
+	static HamiltonianTermsXd<Symmetry> set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F,
 	                                                    const ParamHandler &P, size_t loc=0);
 	
 	/**Validates whether a given \p qnum is a valid combination of \p N and \p M for the given model.
@@ -161,7 +163,8 @@ const map<string,any> KondoSU2xU1::sweep_defaults =
 
 KondoSU2xU1::
 KondoSU2xU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", true)
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", true),
+ ParamReturner(KondoSU2xU1::sweep_defaults)
 {
 	ParamHandler P(params,defaults);
 	
@@ -178,55 +181,58 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		
 		setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);
-		
-		Terms[l] = set_operators(B[l],F[l],P,l%Lcell);
+	}
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Terms[l] = set_operators(B,F,P,l%Lcell);
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
-DMRG::CONTROL::GLOB KondoSU2xU1::
-get_GlobParam(const vector<Param> &params) const
-{
-	ParamHandler P(params,sweep_defaults);
-	DMRG::CONTROL::GLOB out;
-	out.min_halfsweeps = P.get<size_t>("min_halfsweeps");
-	out.max_halfsweeps = P.get<size_t>("max_halfsweeps");
-	out.Dinit          = P.get<size_t>("Dinit");
-	out.Qinit          = P.get<size_t>("Qinit");
-	out.Dlimit         = P.get<size_t>("Dlimit");
-	out.tol_eigval     = P.get<double>("tol_eigval");
-	out.tol_state      = P.get<double>("tol_state");
-	out.savePeriod     = P.get<size_t>("savePeriod");
-	out.CONVTEST       = P.get<DMRG::CONVTEST::OPTION>("CONVTEST");
-	out.CALC_S_ON_EXIT = P.get<bool>("CALC_S_ON_EXIT");
-	return out;
-}
+//DMRG::CONTROL::GLOB KondoSU2xU1::
+//get_GlobParam(const vector<Param> &params) const
+//{
+//	ParamHandler P(params,sweep_defaults);
+//	DMRG::CONTROL::GLOB out;
+//	out.min_halfsweeps = P.get<size_t>("min_halfsweeps");
+//	out.max_halfsweeps = P.get<size_t>("max_halfsweeps");
+//	out.Dinit          = P.get<size_t>("Dinit");
+//	out.Qinit          = P.get<size_t>("Qinit");
+//	out.Dlimit         = P.get<size_t>("Dlimit");
+//	out.tol_eigval     = P.get<double>("tol_eigval");
+//	out.tol_state      = P.get<double>("tol_state");
+//	out.savePeriod     = P.get<size_t>("savePeriod");
+//	out.CONVTEST       = P.get<DMRG::CONVTEST::OPTION>("CONVTEST");
+//	out.CALC_S_ON_EXIT = P.get<bool>("CALC_S_ON_EXIT");
+//	return out;
+//}
 
-DMRG::CONTROL::DYN KondoSU2xU1::
-get_DynParam(const vector<Param> &params) const
-{
-	ParamHandler P(params,sweep_defaults);
-	DMRG::CONTROL::DYN out;
-	double tmp1          = P.get<double>("max_alpha");
-	size_t lim_for_alpha = P.get<size_t>("lim_for_alpha");
-	out.max_alpha_rsvd   = [tmp1,lim_for_alpha] (size_t i) { return (i<=lim_for_alpha)? tmp1:0; };
-	tmp1                 = P.get<double>("min_alpha");
-	out.min_alpha_rsvd   = [tmp1] (size_t i) { return tmp1; };
-	tmp1                 = P.get<double>("eps_svd");
-	out.eps_svd          = [tmp1] (size_t i) { return tmp1; };
-	size_t tmp2          = P.get<size_t>("Dincr_abs");
-	out.Dincr_abs        = [tmp2] (size_t i) { return tmp2; };
-	tmp2                 = P.get<size_t>("Dincr_per");
-	out.Dincr_per        = [tmp2] (size_t i) { return tmp2; };
-	tmp1                 = P.get<double>("Dincr_rel");
-	out.Dincr_rel        = [tmp1] (size_t i) { return tmp1; };
-	tmp2                 = P.get<size_t>("min_Nsv");
-	out.min_Nsv          = [tmp2] (size_t i) { return tmp2; };
-	int tmp3             = P.get<int>("max_Nrich");
-	out.max_Nrich	     = [tmp3] (size_t i) { return tmp3; };
-	return out;
-}
+//DMRG::CONTROL::DYN KondoSU2xU1::
+//get_DynParam(const vector<Param> &params) const
+//{
+//	ParamHandler P(params,sweep_defaults);
+//	DMRG::CONTROL::DYN out;
+//	double tmp1          = P.get<double>("max_alpha");
+//	size_t lim_for_alpha = P.get<size_t>("lim_for_alpha");
+//	out.max_alpha_rsvd   = [tmp1,lim_for_alpha] (size_t i) { return (i<=lim_for_alpha)? tmp1:0; };
+//	tmp1                 = P.get<double>("min_alpha");
+//	out.min_alpha_rsvd   = [tmp1] (size_t i) { return tmp1; };
+//	tmp1                 = P.get<double>("eps_svd");
+//	out.eps_svd          = [tmp1] (size_t i) { return tmp1; };
+//	size_t tmp2          = P.get<size_t>("Dincr_abs");
+//	out.Dincr_abs        = [tmp2] (size_t i) { return tmp2; };
+//	tmp2                 = P.get<size_t>("Dincr_per");
+//	out.Dincr_per        = [tmp2] (size_t i) { return tmp2; };
+//	tmp1                 = P.get<double>("Dincr_rel");
+//	out.Dincr_rel        = [tmp1] (size_t i) { return tmp1; };
+//	tmp2                 = P.get<size_t>("min_Nsv");
+//	out.min_Nsv          = [tmp2] (size_t i) { return tmp2; };
+//	int tmp3             = P.get<int>("max_Nrich");
+//	out.max_Nrich	     = [tmp3] (size_t i) { return tmp3; };
+//	return out;
+//}
 
 bool KondoSU2xU1::
 validate (qType qnum) const
@@ -241,11 +247,11 @@ validate (qType qnum) const
 }
 
 HamiltonianTermsXd<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
-set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F, const ParamHandler &P, size_t loc)
+set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc)
 {
 	HamiltonianTermsXd<Symmetry> Terms;
 	
-	frac S = frac(B.get_D()-1,2);
+	frac S = frac(B[loc].get_D()-1,2);
 	stringstream Slabel;
 	Slabel << "S=" << print_frac_nice(S);
 	Terms.info.push_back(Slabel.str());
@@ -257,13 +263,17 @@ set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F, cons
 	
 	// NN terms
 	
-	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F.orbitals(),loc);
+	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",F[loc].orbitals(),loc);
 	save_label(tlabel);
 	
-	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",F.orbitals(),loc);
+	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",F[loc].orbitals(),loc);
 	save_label(Vlabel);
-	for (int i=0; i<F.orbitals(); ++i)
-	for (int j=0; j<F.orbitals(); ++j)
+	
+	size_t lp1 = (loc+1)%F.size();
+	size_t lp2 = (loc+2)%F.size();
+	
+	for (int i=0; i<F[loc].orbitals(); ++i)
+	for (int j=0; j<F[lp1].orbitals(); ++j)
 	{
 		if (tPara(i,j) != 0.)
 		{
@@ -282,23 +292,25 @@ set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F, cons
 			// Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cdagF.plain<double>(), F.c(j).plain<double>()));
 			// SU(2) spinors commute on different sites, hence no sign flip here:
 			// Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cF.plain<double>(),    F.cdag(j).plain<double>()));
-
-			auto cF = OperatorType::prod(OperatorType::outerprod(B.Id(),F.c(i),{2,-1}),OperatorType::outerprod(B.Id(),F.sign(),{1,0}),{2,-1});
-			auto cdagF = OperatorType::prod(OperatorType::outerprod(B.Id(),F.cdag(i),{2,+1}), OperatorType::outerprod(B.Id(),F.sign(),{1,0}),{2,+1});
-
+			
+			auto cF = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(i) ,{2,-1}),
+			                             OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0}), {2,-1});
+			auto cdagF = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(i), {2,+1}), 
+			                                OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0}),{2,+1});
+			
 			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
 											 cdagF.plain<double>(),
-											 OperatorType::outerprod(B.Id(),F.c(j),{2,-1}).plain<double>()));
+											 OperatorType::outerprod(B[lp1].Id(), F[lp1].c(j), {2,-1}).plain<double>()));
 			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
 											 cF.plain<double>(),
-											 OperatorType::outerprod(B.Id(),F.cdag(j),{2,+1}).plain<double>()));
+											 OperatorType::outerprod(B[lp1].Id(), F[lp1].cdag(j), {2,+1}).plain<double>()));
 		}
 		
 		if (Vpara(i,j) != 0.)
 		{
 			Terms.tight.push_back(make_tuple(Vpara(i,j),
-											 OperatorType::outerprod(B.Id(),F.n(i),{1,0}).plain<double>(),
-											 OperatorType::outerprod(B.Id(),F.n(j),{1,0}).plain<double>()));
+											 OperatorType::outerprod(B[loc].Id(), F[loc].n(i), {1,0}).plain<double>(),
+											 OperatorType::outerprod(B[lp1].Id(), F[lp1].n(j), {1,0}).plain<double>()));
 		}
 	}
 	
@@ -309,78 +321,64 @@ set_operators (const SpinBase<Symmetry> &B, const FermionBase<Symmetry> &F, cons
 	
 	if (tPrime.x != 0.)
 	{
-		assert(F.orbitals() == 1 and "Cannot do a ladder with t'!");
+		assert(F[loc].orbitals() == 1 and "Cannot do a ladder with t'!");
 		
-		// auto cF    = OperatorType::prod(F.c(),   F.sign(),{2,-1});
-		// auto cdagF = OperatorType::prod(F.cdag(),F.sign(),{2,+1});
-		// /**\todo: think about crazy fermionic signs here:*/
-		// Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cdagF.plain<double>(), F.c().plain<double>(),    F.sign().plain<double>()));
-		// Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cF.plain<double>()   , F.cdag().plain<double>(), F.sign().plain<double>()));
-
-		auto cF = OperatorType::prod(OperatorType::outerprod(B.Id(),F.c(),{2,-1}),OperatorType::outerprod(B.Id(),F.sign(),{1,0}),{2,-1});
-		auto cdagF = OperatorType::prod(OperatorType::outerprod(B.Id(),F.cdag(),{2,+1}),OperatorType::outerprod(B.Id(),F.sign(),{1,0}),{2,+1});
+		auto cF = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(), {2,-1}),
+		                             OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0}),{2,-1});
+		auto cdagF = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(), {2,+1}),
+		                                OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0}),{2,+1});
+		
 		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.),
 										 cdagF.plain<double>(),
-										 OperatorType::outerprod(B.Id(),F.c(),{2,-1}).plain<double>(),
-										 OperatorType::outerprod(B.Id(),F.sign(),{1,0}).plain<double>()));
+										 OperatorType::outerprod(B[lp2].Id(), F[lp2].c(), {2,-1}).plain<double>(),
+										 OperatorType::outerprod(B[lp1].Id(), F[lp1].sign(), {1,0}).plain<double>()));
 		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.),
 										 cF.plain<double>(),
-										 OperatorType::outerprod(B.Id(),F.cdag(),{2,+1}).plain<double>(),
-										 OperatorType::outerprod(B.Id(),F.sign(),{1,0}).plain<double>()));
-									 
-		// auto Otmp = OperatorType::prod(F.sign(),F.c(),{2,-1});
-		// Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.),
-		// 								 OperatorType::outerprod(B.Id(),F.cdag(),{2,+1}).plain<double>(),
-		// 								 OperatorType::outerprod(B.Id(),Otmp,{2,-1}).plain<double>(),
-		// 								 OperatorType::outerprod(B.Id(),F.sign(),{1,0}).plain<double>()));
-		// Otmp = OperatorType::prod(F.sign(),F.cdag(),{2,+1});
-		// Terms.nextn.push_back(make_tuple(tPrime.x*sqrt(2.),
-		// 								 OperatorType::outerprod(B.Id(),F.c(),{2,-1}).plain<double>(),
-		// 								 OperatorType::outerprod(B.Id(),Otmp,{2,+1}).plain<double>(),
-		// 								 OperatorType::outerprod(B.Id(),F.sign(),{1,0}).plain<double>()));
+										 OperatorType::outerprod(B[lp2].Id(), F[lp2].cdag(), {2,+1}).plain<double>(),
+										 OperatorType::outerprod(B[lp1].Id(), F[lp1].sign(), {1,0}).plain<double>()));
 	}
 	
 	// local terms
 	
 	// t⟂
-	auto [tRung,tPerp,tPerplabel] = P.fill_array2d<double>("tRung","t","tPerp",F.orbitals(),loc,P.get<bool>("CYLINDER"));
+	auto [tRung,tPerp,tPerplabel] = P.fill_array2d<double>("tRung","t","tPerp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(tPerplabel);
 	
 	// V⟂
-	auto [Vrung,Vperp,Vperplabel] = P.fill_array2d<double>("Vrung","V","Vperp",F.orbitals(),loc,P.get<bool>("CYLINDER"));
+	auto [Vrung,Vperp,Vperplabel] = P.fill_array2d<double>("Vrung","V","Vperp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
 	save_label(Vperplabel);
 	
 	// Hubbard U
-	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F.orbitals(),loc);
+	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F[loc].orbitals(),loc);
 	save_label(Ulabel);
 	
 	// mu
-	auto [mu,muorb,mulabel] = P.fill_array1d<double>("mu","muorb",F.orbitals(),loc);
+	auto [mu,muorb,mulabel] = P.fill_array1d<double>("mu","muorb",F[loc].orbitals(),loc);
 	save_label(mulabel);
 	
 	// t0
-	auto [t0,t0orb,t0label] = P.fill_array1d<double>("t0","t0orb",F.orbitals(),loc);
+	auto [t0,t0orb,t0label] = P.fill_array1d<double>("t0","t0orb",F[loc].orbitals(),loc);
 	save_label(t0label);
 	
-	OperatorType KondoHamiltonian({1,0},B.get_basis().combine(F.get_basis()));
+	OperatorType KondoHamiltonian({1,0}, B[loc].get_basis().combine(F[loc].get_basis()));
 	
-	ArrayXXd Jperp    = B.ZeroHopping();
-	ArrayXXd Jperpsub = F.ZeroHopping();
+	ArrayXXd Jperp    = B[loc].ZeroHopping();
+	ArrayXXd Jperpsub = F[loc].ZeroHopping();
 	
 	//set Hubbard part of Kondo Hamiltonian
-	KondoHamiltonian = OperatorType::outerprod(B.Id(), F.HubbardHamiltonian(Uorb,t0orb-muorb,tPerp,Vperp,Jperpsub), {1,0});
+	KondoHamiltonian = OperatorType::outerprod(B[loc].Id(), F[loc].HubbardHamiltonian(Uorb,t0orb-muorb,tPerp,Vperp,Jperpsub), {1,0});
 	
 	//set Heisenberg part of Hamiltonian
-	KondoHamiltonian += OperatorType::outerprod(B.HeisenbergHamiltonian(Jperp), F.Id(), {1,0});
+	KondoHamiltonian += OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jperp), F[loc].Id(), {1,0});
 	
 	// Kondo-J
-	auto [J,Jorb,Jlabel] = P.fill_array1d<double>("J","Jorb",F.orbitals(),loc);
+	auto [J,Jorb,Jlabel] = P.fill_array1d<double>("J","Jorb",F[loc].orbitals(),loc);
 	save_label(Jlabel);
 	
 	//set interaction part of Hamiltonian.
-	for (int i=0; i<F.orbitals(); ++i)
+	for (int i=0; i<F[loc].orbitals(); ++i)
 	{
-		KondoHamiltonian += Jorb(i)*sqrt(3.) * OperatorType::outerprod(B.Sdag(i), F.S(i), {1,0});
+		KondoHamiltonian += Jorb(i)*sqrt(3.) * OperatorType::outerprod(B[loc].Sdag(i), F[loc].S(i), {1,0});
 	}
 	
 	Terms.name = "Kondo";

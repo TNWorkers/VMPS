@@ -7,6 +7,8 @@ class ParamReturner
 {
 public:
 	
+	ParamReturner(){};
+	
 	ParamReturner (const std::map<string,std::any> &defaults_input)
 	:defaults(defaults_input)
 	{}

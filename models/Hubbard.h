@@ -2,6 +2,7 @@
 #define VANILLA_GRANDHUBBARDMODEL
 
 #include "HubbardU1xU1.h"
+#include "LiebWu.h" // from TOOLS, depends on gsl
 
 namespace VMPS
 {
@@ -29,9 +30,11 @@ public:
 	Hubbard (const size_t &L, const vector<Param> &params);
 	
 	template<typename Symmetry_>
-	static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc=0);
+	static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, size_t loc=0);
 	
 	static const std::map<string,std::any> defaults;
+	
+	static refEnergy ref (const vector<Param> &params, double L=numeric_limits<double>::infinity());
 };
 
 const std::map<string,std::any> Hubbard::defaults = 
@@ -59,11 +62,13 @@ Hubbard (const size_t &L, const vector<Param> &params)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
-		
 		setLocBasis(F[l].get_basis(),l);
-		
-		Terms[l] = HubbardU1xU1::set_operators(F[l],P,l%Lcell);
-		add_operators(Terms[l],F[l],P,l%Lcell);
+	}
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Terms[l] = HubbardU1xU1::set_operators(F,P,l%Lcell);
+		add_operators(Terms[l],F,P,l%Lcell);
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
@@ -71,7 +76,7 @@ Hubbard (const size_t &L, const vector<Param> &params)
 
 template<typename Symmetry_>
 void Hubbard::
-add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const FermionBase<Symmetry_> &F, const ParamHandler &P, size_t loc)
+add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, size_t loc)
 {
 	auto save_label = [&Terms] (string label)
 	{
@@ -79,21 +84,37 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const FermionBase<Symmetry_
 	};
 	
 	// Bx
-	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",F.orbitals(),loc);
+	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",F[loc].orbitals(),loc);
 	save_label(Bxlabel);
 	
 	// Can also implement superconductivity terms c*c & cdag*cdag here
 	
 	Terms.name = "Hubbard";
 	
-	ArrayXd Uorb = F.ZeroField();
-	ArrayXd Eorb = F.ZeroField();
-	ArrayXd Bzorb = F.ZeroField();
-	ArrayXXd tPerp = F.ZeroHopping();
-	ArrayXXd Vperp = F.ZeroHopping();
-	ArrayXXd Jperp = F.ZeroHopping();
+	ArrayXd  Uorb  = F[loc].ZeroField();
+	ArrayXd  Eorb  = F[loc].ZeroField();
+	ArrayXd  Bzorb = F[loc].ZeroField();
+	ArrayXXd tPerp = F[loc].ZeroHopping();
+	ArrayXXd Vperp = F[loc].ZeroHopping();
+	ArrayXXd Jperp = F[loc].ZeroHopping();
 	
-	Terms.local.push_back(make_tuple(1., F.template HubbardHamiltonian<double>(Uorb,Eorb,Bzorb,Bxorb,tPerp,Vperp,Jperp)));
+	Terms.local.push_back(make_tuple(1., F[loc].template HubbardHamiltonian<double>(Uorb,Eorb,Bzorb,Bxorb,tPerp,Vperp,Jperp)));
+}
+
+refEnergy Hubbard::
+ref (const vector<Param> &params, double L)
+{
+	ParamHandler P(params,{{"n",1.},{"Ly",1ul},{"U",0.}});
+	refEnergy out;
+	
+	if (isinf(L) and P.get<size_t>("Ly") == 1ul and P.get<double>("n") == 1. and P.HAS_NONE_OF({"tPrime","t0","V","Bz","Bx","J","J3site"}))
+	{
+		out.value = LiebWu_e0(P.get<double>("U"));
+		out.source = "Elliott H. Lieb, F. Y. Wu, Absence of Mott Transition in an Exact Solution of the Short-Range, One-Band Model in One Dimension, Phys. Rev. Lett. 20, 1445 (1968)";
+		out.method = "numerical integration";
+	}
+	
+	return out;
 }
 
 }

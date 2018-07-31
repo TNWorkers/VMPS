@@ -46,10 +46,21 @@ Logger lout;
 #endif
 
 template<typename Scalar>
-string to_string_prec (Scalar x, int n=14)
+string to_string_prec (Scalar x, bool COLOR=false, int n=14)
 {
 	ostringstream ss;
-	ss << setprecision(n) << x;
+	if (x < 1e-5 and COLOR)
+	{
+		ss << termcolor::colorize << termcolor::green << setprecision(n) << x << termcolor::reset;
+	}
+	else if (x >= 1e-5 and COLOR)
+	{
+		ss << termcolor::colorize << termcolor::red << setprecision(n) << x << termcolor::reset;
+	}
+	else
+	{
+		ss << setprecision(n) << x;
+	}
 	return ss.str();
 }
 
@@ -462,9 +473,9 @@ int main (int argc, char* argv[])
 		cout << densityMatrix_SU2B << endl << endl;
 		
 		cout << "density matrix SU(2)⊗SU(2) A: " << endl;
-		cout << densityMatrix_SU2A << endl << endl;
+		cout << densityMatrix_SU2xSU2A << endl << endl;
 		cout << "density matrix SU(2)⊗SU(2) B: " << endl;
-		cout << densityMatrix_SU2B << endl << endl;
+		cout << densityMatrix_SU2xSU2B << endl << endl;
 	}
 	
 	//--------output---------
@@ -488,26 +499,26 @@ int main (int argc, char* argv[])
 	
 	T.add("E/V diff");
 	T.add("-");
-	T.add(to_string_prec(abs(Emin_U0-g_ED.energy)/V));
-	T.add(to_string_prec(abs(g_U1.energy-g_ED.energy)/V));
-	T.add(to_string_prec(abs(g_SU2.energy-g_ED.energy)/V));
-	T.add(to_string_prec(abs(Emin_SU2xSU2-g_ED.energy)/V));
+	T.add(to_string_prec(abs(Emin_U0-g_ED.energy)/V,true));
+	T.add(to_string_prec(abs(g_U1.energy-g_ED.energy)/V,true));
+	T.add(to_string_prec(abs(g_SU2.energy-g_ED.energy)/V,true));
+	T.add(to_string_prec(abs(Emin_SU2xSU2-g_ED.energy)/V,true));
 	T.endOfRow();
 	
 	T.add("t/s");
 	T.add("-");
-	T.add(to_string_prec(t_U0,2));
-	T.add(to_string_prec(t_U1,2));
-	T.add(to_string_prec(t_SU2,2));
-	T.add(to_string_prec(t_SU2xSU2,2));
+	T.add(to_string_prec(t_U0,false,2));
+	T.add(to_string_prec(t_U1,false,2));
+	T.add(to_string_prec(t_SU2,false,2));
+	T.add(to_string_prec(t_SU2xSU2,false,2));
 	T.endOfRow();
 	
 	T.add("t gain");
 	T.add("-");
-	T.add(to_string_prec(t_U0/t_SU2,2));
-	T.add(to_string_prec(t_U1/t_SU2,2));
+	T.add(to_string_prec(t_U0/t_SU2,false,2));
+	T.add(to_string_prec(t_U1/t_SU2,false,2));
 	T.add("1");
-	T.add(to_string_prec(t_SU2xSU2/t_SU2,2));
+	T.add(to_string_prec(t_SU2xSU2/t_SU2,false,2));
 	T.endOfRow();
 	
 	if (CORR)
@@ -515,25 +526,25 @@ int main (int argc, char* argv[])
 		T.add("d diff");
 		T.add("0");
 		T.add("-");
-		T.add(to_string_prec((d_U1-d_ED).norm()));
-		T.add(to_string_prec((d_SU2-d_ED).norm()));
-		T.add(to_string_prec((nh_SU2xSU2-d_ED-h_ED).norm()));
+		T.add(to_string_prec((d_U1-d_ED).norm(),true));
+		T.add(to_string_prec((d_SU2-d_ED).norm(),true));
+		T.add(to_string_prec((nh_SU2xSU2-d_ED-h_ED).norm(),true));
 		T.endOfRow();
 		
 		T.add("rhoA diff");
 		T.add("0");
 		T.add("-");
-		T.add(to_string_prec((densityMatrix_U1A-densityMatrix_ED).norm()));
-		T.add(to_string_prec((densityMatrix_SU2A-densityMatrix_ED).norm()));
-		T.add(to_string_prec((densityMatrix_SU2xSU2A-densityMatrix_ED).norm()));
+		T.add(to_string_prec((densityMatrix_U1A-densityMatrix_ED).norm(),true));
+		T.add(to_string_prec((densityMatrix_SU2A-densityMatrix_ED).norm(),true));
+		T.add(to_string_prec((densityMatrix_SU2xSU2A-densityMatrix_ED).norm(),true));
 		T.endOfRow();
 		
 		T.add("rhoB diff");
 		T.add("0");
 		T.add("-");
-		T.add(to_string_prec((densityMatrix_U1B-densityMatrix_ED).norm()));
-		T.add(to_string_prec((densityMatrix_SU2B-densityMatrix_ED).norm()));
-		T.add(to_string_prec((densityMatrix_SU2xSU2B-densityMatrix_ED).norm()));
+		T.add(to_string_prec((densityMatrix_U1B-densityMatrix_ED).norm(),true));
+		T.add(to_string_prec((densityMatrix_SU2B-densityMatrix_ED).norm(),true));
+		T.add(to_string_prec((densityMatrix_SU2xSU2B-densityMatrix_ED).norm(),true));
 		T.endOfRow();
 	}
 	
@@ -554,4 +565,6 @@ int main (int argc, char* argv[])
 	T.endOfRow();
 	
 	lout << endl << T;
+	
+	lout << "ref=" << VMPS::Hubbard::ref({{"n",static_cast<double>((Nup+Ndn)/L)},{"U",U},{"Ly",Ly}}) << endl;
 }

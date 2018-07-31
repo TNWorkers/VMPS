@@ -159,6 +159,7 @@ ref (const vector<Param> &params, double L)
 	if (isinf(L) and P.HAS_NONE_OF({"Bz","Bx","Kx","Kz","Dy","Dyprime"}))
 	{
 		out.source = "Tao Xiang, Thermodynamics of quantum Heisenberg spin chains, Phys. Rev. B 58, 9142 (1998)";
+		out.method = "from literature";
 		
 		if (P.get<size_t>("D") == 2)
 		{

@@ -2,6 +2,7 @@
 #define KONDOMODEL_U0XU1_H_
 
 #include "ParamHandler.h" // from HELPERS
+#include "ParamReturner.h"
 
 #include "bases/SpinBase.h"
 #include "bases/FermionBaseU0xSU2.h"
@@ -94,8 +95,6 @@ KondoU0xSU2 (const size_t &L, const vector<Param> &params)
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		
 		setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l);
-		
-		// Terms[l] = set_operators(B,F,P,l%Lcell);
 	}
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -152,20 +151,20 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			
 			//c†UPcUP
 			
-			auto Otmp = OperatorType::prod(OperatorType::outerprod(B[loc].Id().structured(),F[loc].psidag(UP,i),{2}),
-										   OperatorType::outerprod(B[loc].Id().structured(),F[loc].sign()      ,{1}),
+			auto Otmp = OperatorType::prod(OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,i), {2}),
+										   OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign()      , {1}),
 										   {2});
 			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
 											 Otmp.plain<double>(),
-											 OperatorType::outerprod(B[loc].Id().structured(),F[loc].psi(UP,j),{2}).plain<double>()));
+											 OperatorType::outerprod(B[loc].Id().structured(), F[loc].psi(UP,j), {2}).plain<double>()));
 			
 			//c†DNcDN
-			Otmp = OperatorType::prod(OperatorType::outerprod(B[loc].Id().structured(),F[loc].psidag(DN,i),{2}),
-									  OperatorType::outerprod(B[loc].Id().structured(),F[loc].sign()      ,{1}),
+			Otmp = OperatorType::prod(OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,i), {2}),
+									  OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign()      , {1}),
 									  {2});
 			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
 											 Otmp.plain<double>(),
-											 OperatorType::outerprod(B[loc].Id().structured(),F[loc].psi(DN,j),{2}).plain<double>()));
+											 OperatorType::outerprod(B[loc].Id().structured(), F[loc].psi(DN,j), {2}).plain<double>()));
 			
 			//-cUPc†UP
 			// Otmp = OperatorType::prod(OperatorType::outerprod(B.Id().structured(),F.psi(UP,i),{2}),

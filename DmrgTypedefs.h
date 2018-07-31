@@ -351,11 +351,12 @@ struct refEnergy
 {
 	double value = std::nan("0");
 	string source = "";
+	string method = "";
 };
 
 std::ostream& operator<< (std::ostream& s, refEnergy r)
 {
-	s << r.value << " (" << r.source << ")";
+	s << r.value << " (" << r.source << ")" << " [" << r.method << "]";
 	return s;
 }
 

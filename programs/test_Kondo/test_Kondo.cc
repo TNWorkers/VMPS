@@ -34,10 +34,21 @@ Logger lout;
 #include "models/KondoU0xSU2.h"
 
 template<typename Scalar>
-string to_string_prec (Scalar x, int n=14)
+string to_string_prec (Scalar x, bool COLOR=false, int n=14)
 {
 	ostringstream ss;
-	ss << setprecision(n) << x;
+	if (x < 1e-5 and COLOR)
+	{
+		ss << termcolor::colorize << termcolor::green << setprecision(n) << x << termcolor::reset;
+	}
+	else if (x >= 1e-5 and COLOR)
+	{
+		ss << termcolor::colorize << termcolor::red << setprecision(n) << x << termcolor::reset;
+	}
+	else
+	{
+		ss << setprecision(n) << x;
+	}
 	return ss.str();
 }
 
@@ -98,13 +109,13 @@ int main (int argc, char* argv[])
 	PRINT = args.get<bool>("PRINT",false);
 	if (CORR == false) {PRINT = false;}
 	OP = args.get<string>("OP","Simp");
-
+	
 	double factor = args.get<double>("factor",1.);
 	double factor_U1 = args.get<double>("factor_U1",1.);
 	double factor_U1_dag = args.get<double>("factor_U1_dag",1.);
 	double factor_SU2 = args.get<double>("factor_SU2",1.);
 	double factor_SU2_dag = args.get<double>("factor_SU2_dag",1.);
-
+	
 	if (OP == "Simp" or OP == "Ssub")
 	{
 		// The factor 1./sqrt(2.) comes from the spinor which has components Svec = {-1./sqrt(2.)*S+, Sz, 1./sqrt(2.)*S-}
@@ -247,14 +258,14 @@ int main (int argc, char* argv[])
 			
 			if (SINGLE_OP)
 			{
-				auto SingleOp = [OP, &H_U1xU1](size_t i) -> Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>
+				auto SingleOp = [&H_U1xU1](size_t i) -> Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>
 				{
 					if (OP=="Simp") {return H_U1xU1.Simp(SP,i);}
 					if (OP=="Ssub") {return H_U1xU1.Ssub(SP,i);}
 					if (OP=="cUP") {return H_U1xU1.c<UP>(i);}
 					if (OP=="cDN") {return H_U1xU1.c<DN>(i);}
 				};
-				auto SingleOp_dag = [OP, &H_U1xU1](size_t i) -> Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>
+				auto SingleOp_dag = [&H_U1xU1](size_t i) -> Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>
 				{
 					if (OP=="Simp") {return H_U1xU1.Simp(SM,i);}
 					if (OP=="Ssub") {return H_U1xU1.Ssub(SM,i);}
@@ -340,7 +351,7 @@ int main (int argc, char* argv[])
 			{
 				densityMatrixA_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdagc(i,j), g_SU2xU1.state);
 			}
-
+			
 			densityMatrixB_SU2xU1.resize(L,L);
 			densityMatrixB_SU2xU1.setZero();
 			for (size_t i=0; i<L; i++)
@@ -348,25 +359,25 @@ int main (int argc, char* argv[])
 			{
 				densityMatrixB_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdag(i,0,sqrt(2.)), H_SU2xU1.c(j,0,1.), g_SU2xU1.state);
 			}
-
+			
 			if (SINGLE_OP)
 			{
-				auto SingleOp = [OP, &H_SU2xU1, factor](size_t i) -> Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,double>
-					{
-						if (OP=="Simp") {return H_SU2xU1.Simp(i,0,factor);}
-						if (OP=="Ssub") {return H_SU2xU1.Ssub(i,0,factor);}
-						if (OP=="cUP" or OP == "cDN") {return H_SU2xU1.c(i,0,factor);}
-					};
-				auto SingleOp_dag = [OP, &H_SU2xU1, factor](size_t i) -> Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,double>
-					{
-						if (OP=="Simp") {return H_SU2xU1.Simpdag(i,0,factor);}
-						if (OP=="Ssub") {return H_SU2xU1.Ssubdag(i,0,factor);}
-						if (OP=="cUP" or OP == "cDN") {return H_SU2xU1.cdag(i,0,factor);}
-					};
-
+				auto SingleOp = [&H_SU2xU1, factor](size_t i) -> Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,double>
+				{
+					if (OP=="Simp") {return H_SU2xU1.Simp(i,0,factor);}
+					if (OP=="Ssub") {return H_SU2xU1.Ssub(i,0,factor);}
+					if (OP=="cUP" or OP == "cDN") {return H_SU2xU1.c(i,0,factor);}
+				};
+				auto SingleOp_dag = [&H_SU2xU1, factor](size_t i) -> Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,double>
+				{
+					if (OP=="Simp") {return H_SU2xU1.Simpdag(i,0,factor);}
+					if (OP=="Ssub") {return H_SU2xU1.Ssubdag(i,0,factor);}
+					if (OP=="cUP" or OP == "cDN") {return H_SU2xU1.cdag(i,0,factor);}
+				};
+				
 				if(OP == "Simp" or OP == "Ssub") { Qc_SU2xU1 = {S+2,N}; }
 				else if (OP == "cUP" or OP == "cDN") { Qc_SU2xU1 = {S+1,N-1}; }
-
+				
 				VMPS::KondoSU2xU1::Solver DMRG_SU2xU1_(DMRG::VERBOSITY::SILENT);
 				Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1_;
 				DMRG_SU2xU1_.edgeState(H_SU2xU1, g_SU2xU1_, Qc_SU2xU1, LANCZOS::EDGE::GROUND);
@@ -483,24 +494,24 @@ int main (int argc, char* argv[])
 	T.endOfRow();
 	
 	T.add("E/L diff");
-	T.add(to_string_prec(abs(g_U1.energy-g_SU2xU1.energy)/V));
-	T.add(to_string_prec(abs(g_U1xU1.energy-g_SU2xU1.energy)/V));
+	T.add(to_string_prec(abs(g_U1.energy-g_SU2xU1.energy)/V,true));
+	T.add(to_string_prec(abs(g_U1xU1.energy-g_SU2xU1.energy)/V,true));
 	T.add("0");
-	T.add(to_string_prec(abs(g_U0xSU2.energy-g_SU2xU1.energy)/V));
+	T.add(to_string_prec(abs(g_U0xSU2.energy-g_SU2xU1.energy)/V,true));
 	T.endOfRow();
 	
 	T.add("t/s");
-	T.add(to_string_prec(t_U1,2));
-	T.add(to_string_prec(t_U1xU1,2));
-	T.add(to_string_prec(t_SU2xU1,2));
-	T.add(to_string_prec(t_U0xSU2,2));
+	T.add(to_string_prec(t_U1,false,2));
+	T.add(to_string_prec(t_U1xU1,false,2));
+	T.add(to_string_prec(t_SU2xU1,false,2));
+	T.add(to_string_prec(t_U0xSU2,false,2));
 	T.endOfRow();
 	
 	T.add("t gain");
-	T.add(to_string_prec(t_U1/t_SU2xU1,2));
-	T.add(to_string_prec(t_U1xU1/t_SU2xU1,2));
+	T.add(to_string_prec(t_U1/t_SU2xU1,false,2));
+	T.add(to_string_prec(t_U1xU1/t_SU2xU1,false,2));
 	T.add("1");
-	T.add(to_string_prec(t_U0xSU2/t_SU2xU1,2));
+	T.add(to_string_prec(t_U0xSU2/t_SU2xU1,false,2));
 	T.endOfRow();
 	
 	if (CORR)
@@ -514,7 +525,7 @@ int main (int argc, char* argv[])
 		
 		T.add("<d> diff");
 		T.add(to_string_prec("-"));
-		T.add(to_string_prec((d_U1xU1-d_SU2xU1).norm()));
+		T.add(to_string_prec((d_U1xU1-d_SU2xU1).norm(),true));
 		T.add("0");
 		T.add("-");
 		T.endOfRow();
@@ -528,7 +539,7 @@ int main (int argc, char* argv[])
 		
 		T.add("<SS> diff");
 		T.add(to_string_prec("-"));
-		T.add(to_string_prec((SpinCorr_U1xU1-SpinCorr_SU2xU1).norm()));
+		T.add(to_string_prec((SpinCorr_U1xU1-SpinCorr_SU2xU1).norm(),true));
 		T.add("0");
 		T.add("-");
 		T.endOfRow();
@@ -542,7 +553,7 @@ int main (int argc, char* argv[])
 		
 		T.add("rhoA diff");
 		T.add("-");
-		T.add(to_string_prec((densityMatrixA_U1xU1-densityMatrixA_SU2xU1).norm()));
+		T.add(to_string_prec((densityMatrixA_U1xU1-densityMatrixA_SU2xU1).norm(),true));
 		T.add("0");
 		T.add("-");
 		T.endOfRow();
@@ -556,11 +567,10 @@ int main (int argc, char* argv[])
 		
 		T.add("rhoB diff");
 		T.add("-");
-		T.add(to_string_prec((densityMatrixB_U1xU1-densityMatrixB_SU2xU1).norm()));
+		T.add(to_string_prec((densityMatrixB_U1xU1-densityMatrixB_SU2xU1).norm(),true));
 		T.add("0");
 		T.add("-");
 		T.endOfRow();
-
 	}
 	
 	T.add("Dmax");
