@@ -161,10 +161,10 @@ add_operators (HamiltonianTermsXd<Symmetry> &Terms, const vector<SpinBase<Symmet
 refEnergy Heisenberg::
 ref (const vector<Param> &params, double L)
 {
-	ParamHandler P(params,{{"D",2ul},{"Ly",1ul}});
+	ParamHandler P(params,{{"D",2ul},{"Ly",1ul},{"m",0.}});
 	refEnergy out;
 	
-	if (isinf(L) and P.HAS_NONE_OF({"Bz","Bx","Kx","Kz","Dy","Dyprime"}))
+	if (isinf(L) and P.get<double>("m") == 0. and P.HAS_NONE_OF({"Bz","Bx","Kx","Kz","Dy","Dyprime"}))
 	{
 		out.source = "Tao Xiang, Thermodynamics of quantum Heisenberg spin chains, Phys. Rev. B 58, 9142 (1998)";
 		out.method = "from literature";

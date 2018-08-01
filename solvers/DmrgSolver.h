@@ -453,13 +453,15 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		double t_GRALF = 0;
 		
 		sweep_to_edge(H,Vout,true);
+		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
+		
 		err_state = 0.;
 		
-		vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Nsaved(this->N_sites);
+		vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Nsaved(N_sites);
 		DMRG::DIRECTION::OPTION DIR_N = SweepStat.CURRENT_DIRECTION;
 		
 		// one-site variance
-		for (size_t l=0; l<this->N_sites; ++l)
+		for (size_t l=0; l<N_sites; ++l)
 		{
 			// calculate the nullspace tensor F/G
 			Stopwatch<> NspTimer;
@@ -476,7 +478,8 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			err_state += Err.squaredNorm().sum();
 			
 			// sweep to next site
-			if (l<N_sites-1)
+			if ((l<N_sites-1 and DIR_N == DMRG::DIRECTION::RIGHT) or
+			    (l>0         and DIR_N == DMRG::DIRECTION::LEFT))
 			{
 				Stopwatch<> QRtimer;
 				Vout.state.sweepStep(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, DMRG::BROOM::QR);

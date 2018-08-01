@@ -2448,6 +2448,9 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 	for (size_t s=0; s<qloc[loc].size(); ++s)
 	{
 		Al[s] = Al[s].cleaned();
+	}
+	for (size_t s=0; s<qloc[loc+1].size(); ++s)
+	{
 		Ar[s] = Ar[s].cleaned();
 	}
 	

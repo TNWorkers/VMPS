@@ -51,12 +51,6 @@ public:
 	static qarray<2> singlet (int N) {return qarray<2>{1,N};};
 	static qarray<2> polaron (int L, int N=0) {assert(N%2==0); return qarray<2>{L+1,N};};
 	
-	///@{
-	/**Push params for DMRG algorithms via these functions to an instance of DmrgSolver.*/
-//	DMRG::CONTROL::DYN get_DynParam(const vector<Param> &params={}) const;
-//	DMRG::CONTROL::GLOB get_GlobParam(const vector<Param> &params={}) const;
-	///@}
-	
 	/**
 	 * \describe_set_operators
 	 *
@@ -194,49 +188,6 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
-
-//DMRG::CONTROL::GLOB KondoSU2xU1::
-//get_GlobParam(const vector<Param> &params) const
-//{
-//	ParamHandler P(params,sweep_defaults);
-//	DMRG::CONTROL::GLOB out;
-//	out.min_halfsweeps = P.get<size_t>("min_halfsweeps");
-//	out.max_halfsweeps = P.get<size_t>("max_halfsweeps");
-//	out.Dinit          = P.get<size_t>("Dinit");
-//	out.Qinit          = P.get<size_t>("Qinit");
-//	out.Dlimit         = P.get<size_t>("Dlimit");
-//	out.tol_eigval     = P.get<double>("tol_eigval");
-//	out.tol_state      = P.get<double>("tol_state");
-//	out.savePeriod     = P.get<size_t>("savePeriod");
-//	out.CONVTEST       = P.get<DMRG::CONVTEST::OPTION>("CONVTEST");
-//	out.CALC_S_ON_EXIT = P.get<bool>("CALC_S_ON_EXIT");
-//	return out;
-//}
-
-//DMRG::CONTROL::DYN KondoSU2xU1::
-//get_DynParam(const vector<Param> &params) const
-//{
-//	ParamHandler P(params,sweep_defaults);
-//	DMRG::CONTROL::DYN out;
-//	double tmp1          = P.get<double>("max_alpha");
-//	size_t lim_for_alpha = P.get<size_t>("lim_for_alpha");
-//	out.max_alpha_rsvd   = [tmp1,lim_for_alpha] (size_t i) { return (i<=lim_for_alpha)? tmp1:0; };
-//	tmp1                 = P.get<double>("min_alpha");
-//	out.min_alpha_rsvd   = [tmp1] (size_t i) { return tmp1; };
-//	tmp1                 = P.get<double>("eps_svd");
-//	out.eps_svd          = [tmp1] (size_t i) { return tmp1; };
-//	size_t tmp2          = P.get<size_t>("Dincr_abs");
-//	out.Dincr_abs        = [tmp2] (size_t i) { return tmp2; };
-//	tmp2                 = P.get<size_t>("Dincr_per");
-//	out.Dincr_per        = [tmp2] (size_t i) { return tmp2; };
-//	tmp1                 = P.get<double>("Dincr_rel");
-//	out.Dincr_rel        = [tmp1] (size_t i) { return tmp1; };
-//	tmp2                 = P.get<size_t>("min_Nsv");
-//	out.min_Nsv          = [tmp2] (size_t i) { return tmp2; };
-//	int tmp3             = P.get<int>("max_Nrich");
-//	out.max_Nrich	     = [tmp3] (size_t i) { return tmp3; };
-//	return out;
-//}
 
 bool KondoSU2xU1::
 validate (qType qnum) const

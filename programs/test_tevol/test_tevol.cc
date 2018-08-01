@@ -34,21 +34,6 @@ Logger lout;
 #include "models/HeisenbergU1XXZ.h"
 #include "models/HeisenbergXYZ.h"
 
-VMPS::HeisenbergU1XXZ::StateXcd Neel (const VMPS::HeisenbergU1XXZ &H)
-{
-	vector<qarray<1> > Neel_config(H.length());
-	for (int l=0; l<H.length(); l+=2)
-	{
-		Neel_config[l]   = qarray<1>{+1};
-		Neel_config[l+1] = qarray<1>{-1};
-	}
-	
-	VMPS::HeisenbergU1XXZ::StateXcd Psi; 
-	Psi.setProductState(H,Neel_config);
-	
-	return Psi;
-}
-
 bool CALC_DYNAMICS;
 int M, S;
 size_t D;
@@ -67,7 +52,7 @@ int main (int argc, char* argv[])
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",10);
 	Ly = args.get<size_t>("Ly",1);
-	J = args.get<double>("J",-1.);
+	J = args.get<double>("J",1.);
 	Jprime = args.get<double>("Jprime",0.);
 	M = args.get<int>("M",0);
 	D = args.get<size_t>("D",2);
@@ -100,7 +85,7 @@ int main (int argc, char* argv[])
 	#endif
 	
 	//--------U(1)---------
-	lout << endl << "--------U(1)---------" << endl << endl;
+	lout << termcolor::red << endl << "--------U(1)---------" << termcolor::reset << endl << endl;
 	
 	Stopwatch<> Watch_U1;
 	VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
@@ -115,9 +100,9 @@ int main (int argc, char* argv[])
 	VMPS::HeisenbergU1::StateXd Psi_U1tmp;
 	Psi_U1tmp.eps_svd = 1e-15;
 //	OxV(H_U1.Sz(0), g_U1.state, Psi_U1tmp, DMRG::BROOM::SVD);
-	VMPS::HeisenbergU1::CompressorXd CompadreU1(VERB);
-	
-	CompadreU1.prodCompress(H_U1.Sz(i0), H_U1.Sz(i0), g_U1.state, Psi_U1tmp, {M}, g_U1.state.calc_Dmax());
+//	VMPS::HeisenbergU1::CompressorXd CompadreU1(VERB);
+//	CompadreU1.prodCompress(H_U1.Sz(i0), H_U1.Sz(i0), g_U1.state, Psi_U1tmp, {M}, g_U1.state.calc_Dmax());
+	OxV_exact(H_U1.Sz(i0), g_U1.state, Psi_U1tmp);
 	
 	Psi_U1tmp.max_Nsv = Psi_U1tmp.calc_Dmax();
 	Psi_U1tmp.eps_svd = tol_compr;
@@ -141,9 +126,9 @@ int main (int argc, char* argv[])
 		TDVP_U1.t_step(H_U1, Psi_U1, -1.i*dt, 1,tol_Lanczos);
 		tinfo = Steptimer.info();
 		
-		if (Psi_U1tmp.get_truncWeight().sum() > 0.5*tol_compr)
+		if (Psi_U1.get_truncWeight().sum() > 0.5*tol_compr)
 		{
-			Psi_U1tmp.max_Nsv = min(static_cast<size_t>(max(Psi_U1tmp.max_Nsv*1.1,Psi_U1tmp.max_Nsv+1.)),200ul);
+			Psi_U1.max_Nsv = min(static_cast<size_t>(max(Psi_U1.max_Nsv*1.1,Psi_U1.max_Nsv+1.)),200ul);
 		}
 		
 		if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_U1.info() << endl << Psi_U1.info() << endl;}
@@ -152,7 +137,7 @@ int main (int argc, char* argv[])
 	FilerU1.close();
 	
 	// --------SU(2)---------
-	lout << endl << "--------SU(2)---------" << endl << endl;
+	lout << termcolor::red << endl << "--------SU(2)---------" << termcolor::reset << endl << endl;
 	
 	Stopwatch<> Watch_SU2;
 	VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
@@ -170,7 +155,14 @@ int main (int argc, char* argv[])
 	cout << "avg=" << avg(g_SU2.state, H_SU2.Sdag(i0), H_SU2.S(i0), g_SU2.state, {1}) << endl;
 	cout << "avg=" << avg(g_SU2.state, H_SU2.SS(i0,i0), g_SU2.state) << endl;
 	
-	Compadre.prodCompress(H_SU2.S(i0), H_SU2.Sdag(i0,i0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
+//	Compadre.prodCompress(H_SU2.S(i0), H_SU2.Sdag(i0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
+	OxV_exact(H_SU2.S(i0), g_SU2.state, Psi_SU2tmp);
+	Psi_SU2tmp.sweep(0, DMRG::BROOM::QR);
+	
+	cout << "avg=" << Psi_SU2tmp.dot(Psi_SU2tmp) << endl;
+	
+	cout << g_SU2.state.info() << endl;
+	cout << Psi_SU2tmp.info() << endl;
 	
 	Psi_SU2tmp.max_Nsv = Psi_SU2tmp.calc_Dmax();
 	Psi_SU2tmp.eps_svd = tol_compr;
@@ -185,7 +177,7 @@ int main (int argc, char* argv[])
 	tinfo="";
 	for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
 	{
-		double res = isReal(dot(init_SU2,Psi_SU2));
+		double res = isReal(dot(init_SU2,Psi_SU2))/3.;
 		FilerSU2 << t << "\t" << res << endl;
 		lout << "t=" << t << "\t" << res << "\t" << tinfo << endl;
 		resSU2(i) = res;
@@ -204,9 +196,7 @@ int main (int argc, char* argv[])
 	}
 	FilerSU2.close();
 	
-	cout << resU1/(resSU2/3.) << endl;
-	
-	cout << "Table9j.size()=" << Table9j.size() << ", Table6j.size()=" << Table6j.size() << endl;
+	cout << resU1/resSU2 << endl;
 	
 //	//--------output---------
 //	TextTable T( '-', '|', '+' );

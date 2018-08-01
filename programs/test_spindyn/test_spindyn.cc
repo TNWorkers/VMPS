@@ -37,14 +37,6 @@ Logger lout;
 #include "models/KondoU0xSU2.h"
 #include "models/KondoU0xSU2.h"
 
-template<typename Scalar>
-string to_string_prec (Scalar x, int n=14)
-{
-	ostringstream ss;
-	ss << setprecision(n) << x;
-	return ss.str();
-}
-
 bool CALC_DYNAMICS;
 int N, T, D;
 size_t L, Ly;
@@ -56,6 +48,7 @@ int Dinit, Dlimit, Imin, Imax, Qinit;
 double tol_eigval, tol_state;
 double t, dt, tmax, tol_compr, tol_Lanczos;
 DMRG::VERBOSITY::OPTION VERB;
+bool U1, SU2;
 
 int main (int argc, char* argv[])
 {
@@ -63,7 +56,7 @@ int main (int argc, char* argv[])
 	L = args.get<size_t>("L",10ul);
 	Ly = args.get<size_t>("Ly",1ul);
 	
-	J = args.get<double>("J",-1.);
+	J = args.get<double>("J",1.);
 	U = args.get<double>("U",0.);
 	Bxi = args.get<double>("Bxi",10.);
 	Bzi = args.get<double>("Bzi",0.);
@@ -89,6 +82,9 @@ int main (int argc, char* argv[])
 	Qinit  = args.get<int>("Qinit",2);
 	tol_eigval = args.get<double>("tol_eigval",1e-6);
 	tol_state  = args.get<double>("tol_state",1e-5);
+	
+	U1 = args.get<bool>("U1",true);
+	SU2 = args.get<bool>("SU2",true);
 	
 	string tinfo;
 	
@@ -125,91 +121,96 @@ int main (int argc, char* argv[])
 	params_prop.push_back({"Bz",Bzf,0});
 	
 	//--------U(1)---------
-	lout << endl << "--------U(1)---------" << endl << endl;
-	
-	Stopwatch<> Watch_U1;
-	
-	VMPS::KondoU1 H_U1i(L,params_init);
-	VMPS::KondoU1 H_U1f(L,params_prop);
-	lout << H_U1i.info() << endl;
-	lout << H_U1f.info() << endl;
-	assert(H_U1i.validate({N}) and "Bad total quantum number of the MPS.");
-	Eigenstate<VMPS::KondoU1::StateXd> g_U1;
-	
-	VMPS::KondoU1::Solver DMRG_U1(VERB);
-	DMRG_U1.edgeState(H_U1i, g_U1, {N}, LANCZOS::EDGE::GROUND);
-	g_U1.state.graph("g");
-	
-	t_U1 = Watch_U1.time();
-	
-	VMPS::KondoU1::StateXcd Psi_U1 = g_U1.state.cast<complex<double> >();
-	Psi_U1.eps_svd = tol_compr;
-	TDVPPropagator<VMPS::KondoU1,Sym::U1<Sym::ChargeU1>,double,complex<double>,VMPS::KondoU1::StateXcd> TDVP_U1(H_U1f,Psi_U1);
-	
-	t = 0;
-	ofstream FilerU1(make_string("U1.dat"));
-	tinfo = "";
-	for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
+	if (U1)
 	{
-		double res = isReal(avg(Psi_U1, H_U1f.Simp(SZ,0), Psi_U1));
-		FilerU1 << t << "\t" << res << endl;
-		lout << "t=" << t << "\t" << res << "\t" << tinfo << endl;
-		
-		Stopwatch<> Steptimer;
-		TDVP_U1.t_step(H_U1f, Psi_U1, -1.i*dt, 1,tol_Lanczos);
-		tinfo = Steptimer.info();
-		
-		if (Psi_U1.get_truncWeight().sum() > 0.5*tol_compr)
+		lout << termcolor::red << endl << "--------U(1)---------" << termcolor::reset << endl << endl;
+	
+		Stopwatch<> Watch_U1;
+	
+		VMPS::KondoU1 H_U1i(L,params_init);
+		VMPS::KondoU1 H_U1f(L,params_prop);
+		lout << H_U1i.info() << endl;
+		lout << H_U1f.info() << endl;
+		assert(H_U1i.validate({N}) and "Bad total quantum number of the MPS.");
+		Eigenstate<VMPS::KondoU1::StateXd> g_U1;
+	
+		VMPS::KondoU1::Solver DMRG_U1(VERB);
+		DMRG_U1.edgeState(H_U1i, g_U1, {N}, LANCZOS::EDGE::GROUND);
+		g_U1.state.graph("g");
+	
+		t_U1 = Watch_U1.time();
+	
+		VMPS::KondoU1::StateXcd Psi_U1 = g_U1.state.cast<complex<double> >();
+		Psi_U1.eps_svd = tol_compr;
+		TDVPPropagator<VMPS::KondoU1,Sym::U1<Sym::ChargeU1>,double,complex<double>,VMPS::KondoU1::StateXcd> TDVP_U1(H_U1f,Psi_U1);
+	
+		t = 0;
+		ofstream FilerU1(make_string("U1.dat"));
+		tinfo = "";
+		for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
 		{
-			Psi_U1.max_Nsv = min(static_cast<size_t>(max(Psi_U1.max_Nsv*1.1,Psi_U1.max_Nsv+1.)),200ul);
-		}
+			double res = isReal(avg(Psi_U1, H_U1f.Simp(SZ,0), Psi_U1));
+			FilerU1 << t << "\t" << res << endl;
+			lout << "t=" << t << "\t" << res << "\t" << tinfo << endl;
 		
-		if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_U1.info() << endl << Psi_U1.info() << endl;}
-		t += dt;
+			Stopwatch<> Steptimer;
+			TDVP_U1.t_step0(H_U1f, Psi_U1, -1.i*dt, 1,tol_Lanczos);
+			tinfo = Steptimer.info();
+		
+			if (Psi_U1.get_truncWeight().sum() > 0.5*tol_compr)
+			{
+				Psi_U1.max_Nsv = min(static_cast<size_t>(max(Psi_U1.max_Nsv*1.1,Psi_U1.max_Nsv+1.)),200ul);
+			}
+		
+			if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_U1.info() << endl << Psi_U1.info() << endl;}
+			t += dt;
+		}
+		FilerU1.close();
 	}
-	FilerU1.close();
 	
 	//--------SU(2)---------
-	lout << endl << "--------SU(2)---------" << endl << endl;
-	
-	Stopwatch<> Watch_SU2;
-	
-	VMPS::KondoU0xSU2 H_SU2i(L,params_init);
-	VMPS::KondoU0xSU2 H_SU2f(L,params_prop);
-	lout << H_SU2i.info() << endl;
-	lout << H_SU2f.info() << endl;
-	Eigenstate<VMPS::KondoU0xSU2::StateXd> g_SU2;
-	
-	VMPS::KondoU0xSU2::Solver DMRG_SU2(VERB);
-	DMRG_SU2.edgeState(H_SU2i, g_SU2, {T}, LANCZOS::EDGE::GROUND);
-	
-	t_SU2 = Watch_SU2.time();
-	
-	VMPS::KondoU0xSU2::StateXcd Psi_SU2 = g_SU2.state.cast<complex<double> >();
-	Psi_SU2.eps_svd = tol_compr;
-	TDVPPropagator<VMPS::KondoU0xSU2,Sym::SU2<Sym::ChargeSU2>,double,complex<double>,VMPS::KondoU0xSU2::StateXcd> TDVP_SU2(H_SU2f,Psi_SU2);
-	
-	t = 0;
-	ofstream FilerSU2(make_string("SU2.dat"));
-	tinfo = "";
-	for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
+	if (SU2)
 	{
-		double res = isReal(avg(Psi_SU2, H_SU2f.Simp(SZ,0), Psi_SU2));
-		FilerSU2 << t << "\t" << res << endl;
-		lout << "t=" << t << "\t" << res << "\t" << tinfo << endl;
-		
-		Stopwatch<> Steptimer;
-		TDVP_SU2.t_step(H_SU2f, Psi_SU2, -1.i*dt, 1,tol_Lanczos);
-		tinfo = Steptimer.info();
-		
-		if (Psi_SU2.get_truncWeight().sum() > 0.5*tol_compr)
-		{
-			Psi_SU2.max_Nsv = min(static_cast<size_t>(max(Psi_SU2.max_Nsv*1.1,Psi_SU2.max_Nsv+1.)),200ul);
-		}
-		
-		if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_SU2.info() << endl << Psi_SU2.info() << endl;}
-		t += dt;
-	}
-	FilerSU2.close();
+		lout << termcolor::red << endl << "--------SU(2)---------" << termcolor::reset << endl << endl;
 	
+		Stopwatch<> Watch_SU2;
+	
+		VMPS::KondoU0xSU2 H_SU2i(L,params_init);
+		VMPS::KondoU0xSU2 H_SU2f(L,params_prop);
+		lout << H_SU2i.info() << endl;
+		lout << H_SU2f.info() << endl;
+		Eigenstate<VMPS::KondoU0xSU2::StateXd> g_SU2;
+	
+		VMPS::KondoU0xSU2::Solver DMRG_SU2(VERB);
+		DMRG_SU2.edgeState(H_SU2i, g_SU2, {T}, LANCZOS::EDGE::GROUND);
+	
+		t_SU2 = Watch_SU2.time();
+	
+		VMPS::KondoU0xSU2::StateXcd Psi_SU2 = g_SU2.state.cast<complex<double> >();
+		Psi_SU2.eps_svd = tol_compr;
+		TDVPPropagator<VMPS::KondoU0xSU2,Sym::SU2<Sym::ChargeSU2>,double,complex<double>,VMPS::KondoU0xSU2::StateXcd> TDVP_SU2(H_SU2f,Psi_SU2);
+	
+		t = 0;
+		ofstream FilerSU2(make_string("SU2.dat"));
+		tinfo = "";
+		for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
+		{
+			double res = isReal(avg(Psi_SU2, H_SU2f.Simp(SZ,0), Psi_SU2));
+			FilerSU2 << t << "\t" << res << endl;
+			lout << "t=" << t << "\t" << res << "\t" << tinfo << endl;
+		
+			Stopwatch<> Steptimer;
+			TDVP_SU2.t_step0(H_SU2f, Psi_SU2, -1.i*dt, 1,tol_Lanczos);
+			tinfo = Steptimer.info();
+		
+			if (Psi_SU2.get_truncWeight().sum() > 0.5*tol_compr)
+			{
+				Psi_SU2.max_Nsv = min(static_cast<size_t>(max(Psi_SU2.max_Nsv*1.1,Psi_SU2.max_Nsv+1.)),200ul);
+			}
+		
+			if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_SU2.info() << endl << Psi_SU2.info() << endl;}
+			t += dt;
+		}
+		FilerSU2.close();
+	}
 }

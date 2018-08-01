@@ -347,7 +347,7 @@ template<typename Symmetry, typename MatrixType_>
 void Biped<Symmetry,MatrixType_>::
 try_push_back (std::array<qType,2> quple, const MatrixType_ &M)
 {
-	if (dict.find(quple) == dict.end() and "Block already exists in Biped!")
+	if (dict.find(quple) == dict.end())
 	{
 		in.push_back(quple[0]);
 		out.push_back(quple[1]);

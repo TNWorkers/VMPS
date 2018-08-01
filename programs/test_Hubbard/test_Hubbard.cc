@@ -81,7 +81,7 @@ complex<double> Ptot (const MatrixXd &densityMatrix, int L)
 
 size_t L, Ly;
 int V, Vsq;
-double t, tPrime, U, mu, Bz;
+double t, tPrime, tRung, U, mu, Bz;
 int Nup, Ndn, N;
 double alpha;
 double t_U0, t_U1, t_SU2, t_SU2xSU2;
@@ -125,6 +125,7 @@ int main (int argc, char* argv[])
 	size_t Ly2 = args.get<size_t>("Ly2",Ly);
 	t = args.get<double>("t",1.);
 	tPrime = args.get<double>("tPrime",0.);
+	tRung = args.get<double>("tRung",0.);
 	U = args.get<double>("U",8.);
 	mu = args.get<double>("mu",0.5*U);
 	Nup = args.get<int>("Nup",L*Ly/2);
@@ -247,7 +248,7 @@ int main (int argc, char* argv[])
 		
 		Stopwatch<> Watch_U0;
 		//{"tPara",tParaA,0},{"tPara",tParaB,1}
-		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"tRung",0.},{"Ly",Ly,0},{"Ly",Ly2,1}});
+		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1}});
 //		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"Ly",Ly}});
 		V = H_U0.volume();
 		Vsq = V*V;
@@ -281,7 +282,7 @@ int main (int argc, char* argv[])
 		Stopwatch<> Watch_U1;
 		
 		//,{"tPara",tParaA,0},{"tPara",tParaB,1}
-		HUBBARD H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"tRung",0.},{"Ly",Ly,0},{"Ly",Ly2,1}});
+		HUBBARD H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1}});
 //		VMPS::Hubbard H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
 		V = H_U1.volume();
 		Vsq = V*V;
@@ -343,7 +344,7 @@ int main (int argc, char* argv[])
 		
 		Stopwatch<> Watch_SU2;
 		
-		VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
+		VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1}});
 		V = H_SU2.volume();
 		Vsq = V*V;
 		lout << H_SU2.info() << endl;
@@ -407,8 +408,6 @@ int main (int argc, char* argv[])
 		paramsSU2xSU2.push_back({"t",t,1});
 		paramsSU2xSU2.push_back({"U",U,0});
 		paramsSU2xSU2.push_back({"U",U,1});
-//		paramsSU2xSU2.push_back({"subL",SUB_LATTICE::A,0});
-//		paramsSU2xSU2.push_back({"subL",SUB_LATTICE::B,1});
 		paramsSU2xSU2.push_back({"Ly",Ly,0});
 		paramsSU2xSU2.push_back({"Ly",Ly,1});
 		VMPS::HubbardSU2xSU2 H_SU2xSU2(L,paramsSU2xSU2);
@@ -582,5 +581,5 @@ int main (int argc, char* argv[])
 	
 	lout << endl << T;
 	
-	lout << "ref=" << VMPS::Hubbard::ref({{"n",static_cast<double>((Nup+Ndn)/L)},{"U",U},{"Ly",Ly}}) << endl;
+	lout << "ref=" << VMPS::Hubbard::ref({{"n",static_cast<double>((Nup+Ndn)/V)},{"U",U},{"Ly",Ly},{"tRung",tRung}}) << endl;
 }

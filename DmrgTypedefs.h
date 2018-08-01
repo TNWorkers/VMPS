@@ -350,8 +350,8 @@ std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
 struct refEnergy
 {
 	double value = std::nan("0");
-	string source = "";
-	string method = "";
+	string source = "unknown";
+	string method = "unknown";
 };
 
 std::ostream& operator<< (std::ostream& s, refEnergy r)

@@ -108,14 +108,31 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<FermionBase<Sy
 refEnergy Hubbard::
 ref (const vector<Param> &params, double L)
 {
-	ParamHandler P(params,{{"n",1.},{"Ly",1ul},{"U",0.}});
+	ParamHandler P(params,{{"t",1.},{"U",0.},{"n",1.},{"Ly",1ul},{"tRung",1.}});
 	refEnergy out;
 	
-	if (isinf(L) and P.get<size_t>("Ly") == 1ul and P.get<double>("n") == 1. and P.HAS_NONE_OF({"tPrime","t0","V","Bz","Bx","J","J3site"}))
+	// half-filled chain
+	if (isinf(L) and P.get<size_t>("Ly") == 1ul and P.get<double>("n") == 1. 
+	    and P.HAS_NONE_OF({"tPrime","t0","V","Bz","Bx","J","J3site"}))
 	{
 		out.value = LiebWu_e0(P.get<double>("U"));
 		out.source = "Elliott H. Lieb, F. Y. Wu, Absence of Mott Transition in an Exact Solution of the Short-Range, One-Band Model in One Dimension, Phys. Rev. Lett. 20, 1445 (1968)";
-		out.method = "numerical integration";
+		out.method = "num. integration with gsl";
+	}
+	// U=0 ladder
+	else if (P.get<size_t>("Ly") == 2ul and P.get<double>("U") == 0. and P.get<double>("n") == 1. 
+	         and P.HAS_NONE_OF({"tPrime","t0","V","Bz","Bx","J","J3site"}))
+	{
+		double t     = P.get<double>("t");
+		double tRung = P.get<double>("tRung");
+		
+		if (t/tRung <= 0.5) {out.value = -tRung;}
+		else
+		{
+			if (isinf(L)) {out.value = -tRung-2.*M_1_PI*tRung*(sqrt(pow(2.*t/tRung,2)-1.)-acos(0.5*tRung/t));}
+		}
+		out.source = "Zheng Weihong, J. Oitmaa, C. J. Hamer, R. J. Bursill, Numerical studies of the two-leg Hubbard ladder, J. Phys.: Condens. Matter 13 (2001) 433–448";
+		out.method = "analytical";
 	}
 	
 	return out;

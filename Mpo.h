@@ -837,7 +837,7 @@ string Mpo<Symmetry,Scalar>::
 info() const
 {
 	stringstream ss;
-	ss << termcolor::colorize << termcolor::bold << label << termcolor::reset << ": L=" << N_sites;
+	ss << termcolor::colorize << termcolor::bold << label << termcolor::reset << "→ L=" << N_sites;
 	if (N_phys>N_sites) {ss << ",V=" << N_phys;}
 	ss << ", " << Symmetry::name() << ", ";
 	
@@ -943,11 +943,23 @@ generate_label (size_t Lcell)
 		for (auto c:cells_resort)
 		{
 			ss << " •l=";
-			for (auto s:c.second)
+//			for (auto s:c.second)
+//			{
+//				ss << s << ",";
+//			}
+			if (c.second.size() == 1)
 			{
-				ss << s << ",";
+				ss << *c.second.begin(); // one site
 			}
-			ss.seekp(-1,ios_base::end); // delete last comma
+			else if (c.second.size() == 2)
+			{
+				ss << *c.second.begin() << "," << *c.second.end(); // two sites
+			}
+			else
+			{
+				ss << *c.second.begin() << "-" << *c.second.end(); // range of sites
+			}
+//			ss.seekp(-1,ios_base::end); // delete last comma
 			ss << ": " << c.first << endl;
 		}
 	}
