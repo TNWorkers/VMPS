@@ -264,6 +264,10 @@ public:
 	/**\warning Needs updating to new Mpo scheme.*/
 //	template<typename TimeScalar> Mpo<Symmetry,TimeScalar> BondPropagator (TimeScalar dt, PARITY P) const;
 	
+	void precalc_TwoSiteData();
+	
+	inline bool HAS_TWO_SITE_DATA() const {return GOT_TWO_SITE_DATA;};
+	
 	/**Reconstructs the full two-site Hamiltonian from the Hamiltonian terms entries at \p loc and \p loc+1. Needed for VUMPS.*/
 	boost::multi_array<Scalar,4> H2site (size_t loc, bool HALF_THE_LOCAL_TERM=false) const;
 	///\}
@@ -304,6 +308,9 @@ protected:
 	/**bases*/
 	vector<vector<qarray<Nq> > > qloc, qOp, qOpSq;
 	vector<Qbasis<Symmetry> > qaux;
+	
+	bool GOT_TWO_SITE_DATA = false;
+	vector<vector<TwoSiteData<Symmetry> > > TSD;
 	
 	/**total change in quantum number*/
 	qarray<Nq> Qtot;
@@ -1311,185 +1318,72 @@ transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT)
 	}
 };
 
-//template<typename Symmetry, typename Scalar>
-//template<typename TimeScalar>
-//Mpo<Symmetry,TimeScalar> Mpo<Symmetry,Scalar>::
-//BondPropagator (TimeScalar dt, PARITY P) const
-//{
-//	string TevolLabel = label;
-//	stringstream ss;
-//	ss << ",exp(" << dt << "*H),";
-//	TevolLabel += ss.str();
-//	TevolLabel += (P==EVEN)? "evn" : "odd";
-//	
-//	Mpo<Symmetry,TimeScalar> Mout(N_sites, N_legs, locBasis(), qvacuum<Nq>(), qlabel, TevolLabel, format, true);
-//	Mout.Daux = Gvec[0].auxdim();
-//	
-//	Mout.W.resize(N_sites);
-//	for (size_t l=0; l<N_sites; ++l)
-//	{
-//		Mout.W[l].resize(qloc[l].size());
-//		for (size_t q=0; q<qloc[l].size(); ++q)
-//		{
-//			Mout.W[l][q].resize(qloc[l].size());
-//		}
-//	}
-//	
-//	//----------<set non-bonds to identity>----------
-//	vector<size_t> IdList;
-//	size_t l_frst, l_last;
-//	
-//	if (N_sites%2 == 0)
-//	{
-//		if (P == ODD)
-//		{
-//			IdList.push_back(0);
-//			IdList.push_back(N_sites-1);
-//			l_frst = 1;
-//			l_last = N_sites-3;
-//		}
-//		else
-//		{
-//			l_frst = 0;
-//			l_last = N_sites-2;
-//		}
-//	}
-//	else
-//	{
-//		if (P == ODD)
-//		{
-//			IdList.push_back(0);
-//			l_frst = 1;
-//			l_last = N_sites-2;
-//		}
-//		else
-//		{
-//			IdList.push_back(N_sites-1);
-//			l_frst = 0;
-//			l_last = N_sites-3;
-//		}
-//	}
-//	
-//	for (size_t i=0; i<IdList.size(); ++i)
-//	{
-//		size_t l = IdList[i];
-//		for (size_t s=0; s<qloc[l].size(); ++s)
-//		for (size_t r=0; r<qloc[l].size(); ++r)
-//		{
-//			Mout.W[l][s][r].resize(1,1);
-//			if (s == r)
-//			{
-//				Mout.W[l][s][r].coeffRef(0,0) = 1.;
-//			}
-//		}
-//	}
-//	//----------</set non-bonds to identity>----------
-//	
-//	for (size_t l=l_frst; l<=l_last; l+=2)
-//	{
-//		size_t D1 = qloc[l].size();
-//		size_t D2 = qloc[l+1].size();
-//		
-//		size_t Grow = (l==0)? 0 : Daux-1; // last row
-//		size_t Gcol = 0; // first column
-//		
-//		Matrix<Scalar,Dynamic,Dynamic> Hbond(D1*D2,D1*D2);
-//		Hbond.setZero();
-//		
-//		// local part
-//		// variant 1: distribute local term evenly among the sites
-//		double locFactor1 = (l==0)? 1. : 0.5;
-//		double locFactor2 = (l+1==N_sites-1)? 1. : 0.5;
-//		// variant 2: put local term on the left site of each bond
-////		double locFactor1 = 1.;
-////		double locFactor2 = (l+1==N_sites-1)? 1. : 0.;
-//		SparseMatrixXd IdD1 = MatrixXd::Identity(D1,D1).sparseView();
-//		SparseMatrixXd IdD2 = MatrixXd::Identity(D2,D2).sparseView();
-//		Hbond += locFactor1 * kroneckerProduct(Gvec[l](Grow,0), IdD2);
-//		Hbond += locFactor2 * kroneckerProduct(IdD1, Gvec[l+1](Daux-1,Gcol));
-//		
-//		// tight-binding part
-//		for (size_t a=1; a<Daux-1; ++a)
-//		{
-//			Hbond += kroneckerProduct(Gvec[l](Grow,a), Gvec[l+1](a,Gcol));
-//		}
-//		
-//		SelfAdjointEigenSolver<Matrix<Scalar,Dynamic,Dynamic> > Eugen(Hbond);
-//		Matrix<TimeScalar,Dynamic,Dynamic> Hexp = Eugen.eigenvectors() * 
-//		                                         (Eugen.eigenvalues()*dt).array().exp().matrix().asDiagonal() * 
-//		                                          Eugen.eigenvectors().adjoint();
-//		
-//		Matrix<TimeScalar,Dynamic,Dynamic> HexpPermuted(D1*D1,D2*D2);
-//		
-//		for (size_t s1=0; s1<D1; ++s1)
-//		for (size_t s2=0; s2<D2; ++s2)
-//		for (size_t r1=0; r1<D1; ++r1)
-//		for (size_t r2=0; r2<D2; ++r2)
-//		{
-//			size_t r = s2 + D2*s1;
-//			size_t c = r2 + D2*r1;
-//			size_t a = r1 + D1*s1;
-//			size_t b = r2 + D2*s2;
-//			
-//			HexpPermuted(a,b) = Hexp(r,c);
-//		}
-//		
-////		#ifdef DONT_USE_LAPACK_SVD
-////		BDCSVD<Matrix<TimeScalar,Dynamic,Dynamic> > Jack;
-////		#else
-////		LapackSVD<TimeScalar> Jack;
-////		#endif
-////		
-////		#ifdef DONT_USE_LAPACK_SVD
-////		Jack.compute(HexpPermuted,ComputeThinU|ComputeThinV);
-////		#else
-////		Jack.compute(HexpPermuted);
-////		#endif
-//		// always use Eigen for higher accuracy:
-//		JacobiSVD<Matrix<TimeScalar,Dynamic,Dynamic> > Jack(HexpPermuted,ComputeThinU|ComputeThinV);
-//		Matrix<TimeScalar,Dynamic,Dynamic> U1 = Jack.matrixU() * Jack.singularValues().cwiseSqrt().asDiagonal();
-//		Matrix<TimeScalar,Dynamic,Dynamic> U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixV().adjoint();
-//		
-////		// U:
-////		Matrix<TimeScalar,Dynamic,Dynamic> U1 = Jack.matrixU() * Jack.singularValues().cwiseSqrt().asDiagonal();
-////		// V^T:
-////		#ifdef DONT_USE_LAPACK_SVD
-////		Matrix<TimeScalar,Dynamic,Dynamic> U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixV().adjoint();
-////		#else
-////		Matrix<TimeScalar,Dynamic,Dynamic> U2 = Jack.singularValues().cwiseSqrt().asDiagonal() * Jack.matrixVT();
-////		#endif
-//		
-//		for (size_t s1=0; s1<D1; ++s1)
-//		for (size_t r1=0; r1<D1; ++r1)
-//		{
-//			Mout.W[l][s1][r1].resize(1,U1.cols());
-//			
-//			for (size_t k=0; k<U1.cols(); ++k)
-//			{
-//				if (abs(U1(r1+D1*s1,k)) > 1e-15)
-//				{
-//					Mout.W[l][s1][r1].coeffRef(0,k) = U1(r1+D1*s1,k);
-//				}
-//			}
-//		}
-//		
-//		for (size_t s2=0; s2<D2; ++s2)
-//		for (size_t r2=0; r2<D2; ++r2)
-//		{
-//			Mout.W[l+1][s2][r2].resize(U2.rows(),1);
-//			
-//			for (size_t k=0; k<U2.rows(); ++k)
-//			{
-//				if (abs(U2(k,r2+D2*s2)) > 1e-15)
-//				{
-//					Mout.W[l+1][s2][r2].coeffRef(k,0) = U2(k,r2+D2*s2);
-//				}
-//			}
-//		}
-//	}
-//	
-//	return Mout;
-//}
+
+template<typename Symmetry, typename Scalar>
+void Mpo<Symmetry,Scalar>::
+precalc_TwoSiteData()
+{
+	if (GOT_TWO_SITE_DATA) {return;}
+	
+	TSD.clear();
+	TSD.resize(N_sites-1);
+	
+	for (size_t l=0; l<N_sites-1; ++l)
+	{
+		unordered_map<std::array<size_t,2>, 
+			          std::pair<vector<std::array<size_t,10> >, vector<Scalar> > > lookup;
+		Scalar factor_cgc;
+		
+		auto tensor_basis = Symmetry::tensorProd(qloc[l], qloc[l+1]);
+		
+		for (size_t s1=0; s1<qloc[l].size(); ++s1)
+		for (size_t s2=0; s2<qloc[l].size(); ++s2)
+		for (size_t k12=0; k12<qOp[l].size(); ++k12)
+		{
+			if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc[l][s2], qOp[l][k12], qloc[l][s1]})) {continue;}
+			
+			for (size_t s3=0; s3<qloc[l+1].size(); ++s3)
+			for (size_t s4=0; s4<qloc[l+1].size(); ++s4)
+			for (size_t k34=0; k34<qOp[l+1].size(); ++k34)
+			{
+				if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc[l+1][s4], qOp[l+1][k34], qloc[l+1][s3]})) {continue;}
+				
+				auto qOpMerges = Symmetry::reduceSilent(qOp[l][k12], qOp[l+1][k34]);
+				
+				for (const auto &qOpMerge:qOpMerges)
+				{
+					if (find(qOp[l+1].begin(), qOp[l+1].end(), qOpMerge) == qOp[l+1].end()) {continue;}
+					
+					auto qmerges13 = Symmetry::reduceSilent(qloc[l][s1], qloc[l+1][s3]);
+					auto qmerges24 = Symmetry::reduceSilent(qloc[l][s2], qloc[l+1][s4]);
+					
+					for (const auto &qmerge13:qmerges13)
+					for (const auto &qmerge24:qmerges24)
+					{
+						auto qtensor13 = make_tuple(qloc[l][s1], s1, qloc[l+1][s3], s3, qmerge13);
+						size_t s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
+						
+						auto qtensor24 = make_tuple(qloc[l][s2], s2, qloc[l+1][s4], s4, qmerge24);
+						size_t s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
+						
+						// tensor product of the MPO operators in the physical space
+						Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
+						Symmetry::coeff_buildR(qloc[l][s2], qloc[l+1][s4], qmerge24,
+							                   qOp[l][k12], qOp[l+1][k34], qOpMerge,
+							                   qloc[l][s1], qloc[l+1][s3], qmerge13)
+							                   :1.;
+						if (abs(factor_cgc9) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
+						
+						TwoSiteData<Symmetry> entry({{s1,s2,s3,s4,s1s3,s2s4}}, {{qmerge13,qmerge24}}, {{k12,k34}}, qOpMerge, factor_cgc9);
+						TSD[l].push_back(entry);
+					}
+				}
+			}
+		}
+	}
+	
+	GOT_TWO_SITE_DATA = true;
+}
 
 template<typename Symmetry, typename Scalar>
 boost::multi_array<Scalar,4> Mpo<Symmetry,Scalar>::

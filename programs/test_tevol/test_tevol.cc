@@ -28,7 +28,7 @@ Logger lout;
 
 #include "solvers/DmrgSolver.h"
 #include "solvers/TDVPPropagator.h"
-#include "solvers/MpsCompressor.h"
+//#include "solvers/MpsCompressor.h"
 
 #include "models/HeisenbergSU2.h"
 #include "models/HeisenbergU1XXZ.h"
@@ -89,6 +89,7 @@ int main (int argc, char* argv[])
 	
 	Stopwatch<> Watch_U1;
 	VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
+	H_U1.precalc_TwoSiteData();
 	lout << H_U1.info() << endl;
 	Eigenstate<VMPS::HeisenbergU1::StateXd> g_U1;
 	
@@ -141,6 +142,7 @@ int main (int argc, char* argv[])
 	
 	Stopwatch<> Watch_SU2;
 	VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
+	H_SU2.precalc_TwoSiteData();
 	lout << H_SU2.info() << endl;
 	Eigenstate<VMPS::HeisenbergSU2::StateXd> g_SU2;
 	
@@ -149,20 +151,21 @@ int main (int argc, char* argv[])
 	
 	t_SU2 = Watch_SU2.time();
 	
-	VMPS::HeisenbergSU2::StateXd Psi_SU2tmp;
+	VMPS::HeisenbergSU2::StateXd Psi_SU2tmp_, Psi_SU2tmp;
 	VMPS::HeisenbergSU2::CompressorXd Compadre(VERB);
 	
 	cout << "avg=" << avg(g_SU2.state, H_SU2.Sdag(i0), H_SU2.S(i0), g_SU2.state, {1}) << endl;
 	cout << "avg=" << avg(g_SU2.state, H_SU2.SS(i0,i0), g_SU2.state) << endl;
 	
 //	Compadre.prodCompress(H_SU2.S(i0), H_SU2.Sdag(i0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
-	OxV_exact(H_SU2.S(i0), g_SU2.state, Psi_SU2tmp);
-	Psi_SU2tmp.sweep(0, DMRG::BROOM::QR);
+	OxV_exact(H_SU2.S(i0), g_SU2.state, Psi_SU2tmp_);
+	Compadre.stateCompress(Psi_SU2tmp_, Psi_SU2tmp, g_SU2.state.calc_Dmax()/2, 1e-10);
 	
 	cout << "avg=" << Psi_SU2tmp.dot(Psi_SU2tmp) << endl;
 	
-	cout << g_SU2.state.info() << endl;
-	cout << Psi_SU2tmp.info() << endl;
+	cout << "ground state: " << g_SU2.state.info() << endl;
+	cout << "state after OxV: " << Psi_SU2tmp_.info() << endl;
+	cout << "compressed: " << Psi_SU2tmp.info() << endl;
 	
 	Psi_SU2tmp.max_Nsv = Psi_SU2tmp.calc_Dmax();
 	Psi_SU2tmp.eps_svd = tol_compr;

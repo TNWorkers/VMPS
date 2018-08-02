@@ -572,6 +572,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
               qarray<Symmetry::Nq> Qtot, size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
 {
+	assert(H.HAS_TWO_SITE_DATA() and "You need to call H.precalc_TwoSiteData() before prodCompress!");
 	N_sites = Vin.length();
 	Stopwatch<> Chronos;
 	tol = tol_input;
@@ -815,6 +816,7 @@ prodOptimize2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, const Mps<S
 	Stopwatch<> OheadTimer;
 	precalc_blockStructure (Heff[loc1()].L, ApairOut.data, Heff2.W12, Heff2.W34, ApairIn.data, Heff[loc2()].R, 
 	                        H.locBasis(loc1()), H.locBasis(loc2()), H.opBasis(loc1()), H.opBasis(loc2()), 
+	                        H.TSD[loc1()], 
 	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
 	t_ohead += OheadTimer.time();
 	Stopwatch<> OptTimer;
@@ -870,6 +872,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, 
               size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
 {
+	assert(H.HAS_TWO_SITE_DATA() and "You need to call H.precalc_TwoSiteData() before polyCompress!");
 	N_sites = Vin1.length();
 	tol = tol_input;
 	Stopwatch<> Chronos;

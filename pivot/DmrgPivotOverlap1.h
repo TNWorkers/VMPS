@@ -31,7 +31,7 @@ void LRxV (const PivotOverlap1<Symmetry,Scalar> &H, const PivotVector<Symmetry,S
 	for (size_t qL=0; qL<H.L.dim; ++qL)
 	{
 		vector<tuple<qarray2<Symmetry::Nq>,size_t,size_t> > ix;
-		bool FOUND_MATCH = AA(H.L.in[qL], H.L.out[qL], s, H.qloc, Vout.data, Vin.data, ix);
+		bool FOUND_MATCH = LAA(H.L.in[qL], H.L.out[qL], s, H.qloc, Vout.data, Vin.data, ix);
 		
 		if (FOUND_MATCH)
 		{

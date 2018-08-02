@@ -37,23 +37,24 @@ bool LAWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry:
 	result.clear();
 	
 	auto Routs = Symmetry::reduceSilent(Lin,qloc[s1]);
-	for (const auto& Rout : Routs)
+	for (const auto &Rout:Routs)
 	{
 		qarray2<Symmetry::Nq> cmp1 = {Lin, Rout};
 		auto qAbra = Abra[s1].dict.find(cmp1);
 		if (qAbra != Abra[s1].dict.end())
 		{
 			auto Rins = Symmetry::reduceSilent(Lout,qloc[s2]);
-			for (const auto &Rin : Rins)
+			for (const auto &Rin:Rins)
 			{
 				qarray2<Symmetry::Nq> cmp2 = {Lout, Rin};
 				auto qAket = Aket[s2].dict.find(cmp2);
 				if (qAket != Aket[s2].dict.end())
 				{
 					auto Rmids = Symmetry::reduceSilent(Lmid,qOp[k]);
-					for (const auto &Rmid : Rmids)
+					for (const auto &Rmid:Rmids)
 					{
-						if (Symmetry::validate(qarray3<Symmetry::Nq>{Rin,Rmid,Rout}))
+						if (Symmetry::validate(qarray3<Symmetry::Nq>{Rin,Rmid,Rout}) and 
+						    find(qOp.begin(), qOp.end(), Rmid) != qOp.end())
 						{
 							result.push_back(make_tuple(qarray3<Symmetry::Nq>{Rin,Rout,Rmid}, qAbra->second, qAket->second));
 							out = true;
@@ -94,7 +95,8 @@ bool AWAR (qarray<Symmetry::Nq> Rin, qarray<Symmetry::Nq> Rout, qarray<Symmetry:
 					auto Lmids = Symmetry::reduceSilent(Rmid,Symmetry::flip(qOp[k]));
 					for (const auto &Lmid : Lmids)
 					{
-						if (Symmetry::validate(qarray3<Symmetry::Nq>{Lout,Lmid,Lin}))
+						if (Symmetry::validate(qarray3<Symmetry::Nq>{Lout,Lmid,Lin}) and
+						    find(qOp.begin(), qOp.end(), Lmid) != qOp.end())
 						{
 							result.push_back(make_tuple(qarray3<Symmetry::Nq>{Lin,Lout,Lmid}, qAbra->second, qAket->second));
 							out = true;
@@ -119,20 +121,22 @@ bool LAA (qarray<Symmetry::Nq> Lin,
 	bool out = false;
 	result.clear();
 	
-	auto Rins = Symmetry::reduceSilent(Lin,qloc[s]);
-	for (const auto& Rin : Rins)
+	qarray<Symmetry::Nq> Linout = Lin; // Lin = Lout = Linout;
+	
+	auto Rinouts = Symmetry::reduceSilent(Linout,qloc[s]);
+	
+	for (const auto &Rinout : Rinouts)
 	{
-		qarray2<Symmetry::Nq> cmp1 = {Lin, Rin};
-		auto qAket = Aket[s].dict.find(cmp1);
+		qarray2<Symmetry::Nq> cmp = {Linout, Rinout};
+		auto qAket = Aket[s].dict.find(cmp);
 		
 		if (qAket != Aket[s].dict.end())
 		{
-			qarray2<Symmetry::Nq> cmp2 = {Lin, Rin};
-			auto qAbra = Abra[s].dict.find(cmp1);
+			auto qAbra = Abra[s].dict.find(cmp);
 			
 			if (qAbra != Abra[s].dict.end())
 			{
-				result.push_back(make_tuple(qarray2<Symmetry::Nq>{Rin,Rin}, qAbra->second, qAket->second));
+				result.push_back(make_tuple(qarray2<Symmetry::Nq>{Rinout,Rinout}, qAbra->second, qAket->second));
 				out = true;
 			}
 		}
@@ -152,20 +156,22 @@ bool AAR (qarray<Symmetry::Nq> Rin,
 	bool out = false;
 	result.clear();
 	
-	auto Lins = Symmetry::reduceSilent(Rin, Symmetry::flip(qloc[s]));
-	for (const auto& Lin : Lins)
+	qarray<Symmetry::Nq> Rinout = Rin; // Rin = Rout = Rinout;
+	
+	auto Linouts = Symmetry::reduceSilent(Rinout, Symmetry::flip(qloc[s]));
+	
+	for (const auto &Linout : Linouts)
 	{
-		qarray2<Symmetry::Nq> cmp1 = {Lin, Rin};
-		auto qAket = Aket[s].dict.find(cmp1);
+		qarray2<Symmetry::Nq> cmp = {Linout, Rinout};
+		auto qAket = Aket[s].dict.find(cmp);
 		
 		if (qAket != Aket[s].dict.end())
 		{
-			qarray2<Symmetry::Nq> cmp2 = {Lin, Rin};
-			auto qAbra = Abra[s].dict.find(cmp1);
+			auto qAbra = Abra[s].dict.find(cmp);
 			
 			if (qAbra != Abra[s].dict.end())
 			{
-				result.push_back(make_tuple(qarray2<Symmetry::Nq>{Lin,Lin}, qAbra->second, qAket->second));
+				result.push_back(make_tuple(qarray2<Symmetry::Nq>{Linout,Linout}, qAbra->second, qAket->second));
 				out = true;
 			}
 		}
@@ -173,12 +179,6 @@ bool AAR (qarray<Symmetry::Nq> Rin,
 	return out;
 }
 
-//template<typename Symmetry, typename MatrixType>
-//bool AAWWAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid, 
-//             size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc12, size_t k12, vector<qarray<Symmetry::Nq> > qOp12,
-//             size_t s3, size_t s4, vector<qarray<Symmetry::Nq> > qloc34, size_t k34, vector<qarray<Symmetry::Nq> > qOp34,
-//             const vector<Biped<Symmetry,MatrixType> > &AA13, const vector<Biped<Symmetry,MatrixType> > &AA24, 
-//             vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > &result)
 template<typename Symmetry, typename MatrixType>
 bool AAWWAA (const qarray<Symmetry::Nq> &Lin, 
              const qarray<Symmetry::Nq> &Lout, 
@@ -195,32 +195,21 @@ bool AAWWAA (const qarray<Symmetry::Nq> &Lin,
              const vector<Biped<Symmetry,MatrixType> > &AA24, 
              vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > &result)
 {
-//	qarray<Symmetry::Nq> qRout = Lin + qloc12[s1] + qloc34[s3];
-//	qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
-//	auto q13 = AA13[s1][s3].dict.find(cmp1);
-//	
-//	if (q13 != AA13[s1][s3].dict.end())
-//	{
-//		qarray<Symmetry::Nq> qRin = Lout + qloc12[s2] + qloc34[s4];
-//		qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
-//		auto q24 = AA24[s2][s4].dict.find(cmp2);
-//		
-//		if (q24 != AA24[s2][s4].dict.end())
-//		{
-//			qarray<Symmetry::Nq> qRmid = Lmid + qloc12[s1] + qloc34[s3] - qloc12[s2] - qloc34[s4];
-//			
-//			result = make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, q13->second, q24->second);
-//			return true;
-//		}
-//	}
-//	return false;
-	
 	bool out = false;
 	result.clear();
 	
-	auto qRouts = Symmetry::reduceSilent(Lin, qmerge13);
-	auto qRins = Symmetry::reduceSilent(Lout, qmerge24);
-	auto qWs = Symmetry::reduceSilent(Lmid, qOp12[k12]);
+	auto qRouts = Symmetry::reduceSilent(Lin,  qmerge13);
+	auto qRins  = Symmetry::reduceSilent(Lout, qmerge24);
+	
+	auto qWcandidates = Symmetry::reduceSilent(Lmid, qOp12[k12]);
+	vector<qarray<Symmetry::Nq> > qWs;
+	for (const auto &qW:qWcandidates)
+	{
+		if (find(qOp12.begin(), qOp12.end(), qW) != qOp12.end())
+		{
+			qWs.push_back(qW);
+		}
+	}
 	
 	for (const auto &qRout:qRouts)
 	{
@@ -242,7 +231,8 @@ bool AAWWAA (const qarray<Symmetry::Nq> &Lin,
 						
 						for (const auto &qRmid:qRmids)
 						{
-							if (Symmetry::validate(qarray3<Symmetry::Nq>{qRin,qRmid,qRout}))
+							if (Symmetry::validate(qarray3<Symmetry::Nq>{qRin,qRmid,qRout}) and
+							    find(qOp34.begin(), qOp34.end(), qRmid) != qOp34.end())
 							{
 								result.push_back(make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, qW, q13->second, q24->second));
 								out = true;
@@ -550,6 +540,148 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 			}
 		}
 	}
+	
+	qlhs.clear();
+	qrhs.clear();
+	factor_cgcs.clear();
+	
+	qlhs.reserve(lookup.size());
+	qrhs.reserve(lookup.size());
+	factor_cgcs.reserve(lookup.size());
+	
+	for (auto it=lookup.begin(); it!=lookup.end(); ++it)
+	{
+		qlhs.push_back(it->first);
+		qrhs.push_back((it->second).first);
+		factor_cgcs.push_back((it->second).second);
+	}
+}
+
+/**Prepares a PivotMatrix2 by filling PivotMatrix::qlhs and PivotMatrix::qrhs with the corresponding subspace indices.
+Uses OpenMP.*/
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L, 
+                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                             const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W12, 
+                             const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W34, 
+                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+                             const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
+                             const vector<qarray<Symmetry::Nq> > &qloc12,
+                             const vector<qarray<Symmetry::Nq> > &qloc34,
+                             const vector<qarray<Symmetry::Nq> > &qOp12,
+                             const vector<qarray<Symmetry::Nq> > &qOp34,
+                             const vector<TwoSiteData<Symmetry> > &TSD, 
+                             vector<std::array<size_t,2> > &qlhs, 
+                             vector<vector<std::array<size_t,10> > > &qrhs,
+                             vector<vector<Scalar> > &factor_cgcs)
+{
+	unordered_map<std::array<size_t,2>, 
+	              std::pair<vector<std::array<size_t,10> >, vector<Scalar> > > lookup;
+	Scalar factor_cgc;
+	
+//	auto tensor_basis = Symmetry::tensorProd(qloc12, qloc34);
+//	
+//	for (size_t s1=0; s1<qloc12.size(); ++s1)
+//	for (size_t s2=0; s2<qloc12.size(); ++s2)
+//	for (size_t k12=0; k12<qOp12.size(); ++k12)
+//	{
+//		if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc12[s2], qOp12[k12], qloc12[s1]})) {continue;}
+//		
+//		for (size_t s3=0; s3<qloc34.size(); ++s3)
+//		for (size_t s4=0; s4<qloc34.size(); ++s4)
+//		for (size_t k34=0; k34<qOp34.size(); ++k34)
+//		{
+//			if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc34[s4], qOp34[k34], qloc34[s3]})) {continue;}
+//			
+//			vector<qarray<Symmetry::Nq> > qOps;
+//			if constexpr (Symmetry::NON_ABELIAN)
+//			{
+//				if (qOp12[k12] == qOp34[k34])
+//				{
+//					qOps.push_back(Symmetry::qvacuum());
+//				}
+//				else
+//				{
+//					qOps.push_back({3});
+//				}
+//			}
+//			else
+//			{
+//				qOps = Symmetry::reduceSilent(qOp12[k12], qOp34[k34]);
+//			}
+//			
+//			for (const auto &qOp:qOps)
+//			{
+//				if (find(qOp34.begin(), qOp34.end(), qOp) == qOp34.end()) {continue;}
+//				
+//				auto qmerges13 = Symmetry::reduceSilent(qloc12[s1], qloc34[s3]);
+//				auto qmerges24 = Symmetry::reduceSilent(qloc12[s2], qloc34[s4]);
+//				
+//				for (const auto &qmerge13:qmerges13)
+//				for (const auto &qmerge24:qmerges24)
+//				{
+//					auto qtensor13 = make_tuple(qloc12[s1], s1, qloc34[s3], s3, qmerge13);
+//					auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
+//					
+//					auto qtensor24 = make_tuple(qloc12[s2], s2, qloc34[s4], s4, qmerge24);
+//					auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
+//					
+//					// tensor product of the MPO operators in the physical space
+//					Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
+//					Symmetry::coeff_buildR(qloc12[s2], qloc34[s4], qmerge24,
+//					                       qOp12[k12], qOp34[k34], qOp,
+//					                       qloc12[s1], qloc34[s3], qmerge13)
+//					                       :1.;
+//					if (abs(factor_cgc9) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
+					
+					
+					for (const auto &tsd:TSD)
+					for (size_t qL=0; qL<L.dim; ++qL)
+					{
+						vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > ixs;
+						bool FOUND_MATCH = AAWWAA(L.in(qL), L.out(qL), L.mid(qL), 
+						                          tsd.k12, qOp12, tsd.k34, qOp34,
+						                          tsd.s1s3, tsd.qmerge13, tsd.s2s4, tsd.qmerge24,
+						                          Abra, Aket, ixs);
+						
+						if (FOUND_MATCH)
+						{
+							for (const auto &ix:ixs)
+							{
+								auto qR = R.dict.find(get<0>(ix));
+								auto qW     = get<1>(ix);
+								size_t qA13 = get<2>(ix);
+								size_t qA24 = get<3>(ix);
+								
+								// multiplication of Op12, Op34 in the auxiliary space
+								Scalar factor_cgc6 = (Symmetry::NON_ABELIAN)? 
+								Symmetry::coeff_Apair(L.mid(qL), qOp12[tsd.k12], qW,
+								                      qOp34[tsd.k34], get<0>(ix)[2], tsd.qOp)
+								                      :1.;
+								if (abs(factor_cgc6) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
+								
+								if (qR != R.dict.end())
+								{
+									// standard coefficient for H*Psi with environments
+									Scalar factor_cgcHPsi = (Symmetry::NON_ABELIAN)?
+									Symmetry::coeff_HPsi(Aket[tsd.s2s4].out[qA24], tsd.qmerge24, Aket[tsd.s2s4].in[qA24],
+									                     R.mid(qR->second), tsd.qOp, L.mid(qL),
+									                     Abra[tsd.s1s3].out[qA13], tsd.qmerge13, Abra[tsd.s1s3].in[qA13])
+									                     :1.;
+									
+									std::array<size_t,2>  key = {static_cast<size_t>(tsd.s1s3), qA13};
+									std::array<size_t,10> val = {static_cast<size_t>(tsd.s2s4), qA24, qL, qR->second, 
+									                             tsd.s1, tsd.s2, tsd.k12, tsd.s3, tsd.s4, tsd.k34};
+									lookup[key].first.push_back(val);
+									lookup[key].second.push_back(factor_cgc6 * tsd.cgc9 * factor_cgcHPsi);
+								}
+							}
+						}
+					}
+//				}
+//			}
+//		}
+//	}
 	
 	qlhs.clear();
 	qrhs.clear();

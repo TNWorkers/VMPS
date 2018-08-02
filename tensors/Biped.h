@@ -495,7 +495,7 @@ contract (const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE) const
 	{
 		if (this->out[q1] == A.in[q2])
 		{
-//			if (this->in[q1] == A.out[q2]) // Warning: Only for true Bipeds, not with qloc!
+			if (this->in[q1] == A.out[q2])
 			{
 				if (this->block[q1].size() != 0 and A.block[q2].size() != 0)
 				{

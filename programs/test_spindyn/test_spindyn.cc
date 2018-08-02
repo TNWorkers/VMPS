@@ -124,11 +124,12 @@ int main (int argc, char* argv[])
 	if (U1)
 	{
 		lout << termcolor::red << endl << "--------U(1)---------" << termcolor::reset << endl << endl;
-	
+		
 		Stopwatch<> Watch_U1;
-	
+		
 		VMPS::KondoU1 H_U1i(L,params_init);
 		VMPS::KondoU1 H_U1f(L,params_prop);
+		H_U1f.precalc_TwoSiteData();
 		lout << H_U1i.info() << endl;
 		lout << H_U1f.info() << endl;
 		assert(H_U1i.validate({N}) and "Bad total quantum number of the MPS.");
@@ -154,7 +155,7 @@ int main (int argc, char* argv[])
 			lout << "t=" << t << "\t" << res << "\t" << tinfo << endl;
 		
 			Stopwatch<> Steptimer;
-			TDVP_U1.t_step0(H_U1f, Psi_U1, -1.i*dt, 1,tol_Lanczos);
+			TDVP_U1.t_step(H_U1f, Psi_U1, -1.i*dt, 1,tol_Lanczos);
 			tinfo = Steptimer.info();
 		
 			if (Psi_U1.get_truncWeight().sum() > 0.5*tol_compr)
@@ -177,6 +178,7 @@ int main (int argc, char* argv[])
 	
 		VMPS::KondoU0xSU2 H_SU2i(L,params_init);
 		VMPS::KondoU0xSU2 H_SU2f(L,params_prop);
+		H_SU2f.precalc_TwoSiteData();
 		lout << H_SU2i.info() << endl;
 		lout << H_SU2f.info() << endl;
 		Eigenstate<VMPS::KondoU0xSU2::StateXd> g_SU2;
@@ -200,7 +202,7 @@ int main (int argc, char* argv[])
 			lout << "t=" << t << "\t" << res << "\t" << tinfo << endl;
 		
 			Stopwatch<> Steptimer;
-			TDVP_SU2.t_step0(H_SU2f, Psi_SU2, -1.i*dt, 1,tol_Lanczos);
+			TDVP_SU2.t_step(H_SU2f, Psi_SU2, -1.i*dt, 1,tol_Lanczos);
 			tinfo = Steptimer.info();
 		
 			if (Psi_SU2.get_truncWeight().sum() > 0.5*tol_compr)

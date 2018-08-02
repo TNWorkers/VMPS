@@ -167,11 +167,11 @@ ref (const vector<Param> &params, double L)
 	if (isinf(L) and P.get<double>("m") == 0. and P.HAS_NONE_OF({"Bz","Bx","Kx","Kz","Dy","Dyprime"}))
 	{
 		out.source = "Tao Xiang, Thermodynamics of quantum Heisenberg spin chains, Phys. Rev. B 58, 9142 (1998)";
-		out.method = "from literature";
+		out.method = "literature";
 		
 		if (P.get<size_t>("D") == 2)
 		{
-			if (P.get<size_t>("Ly") == 1) {out.value = 0.25-log(2);}
+			if (P.get<size_t>("Ly") == 1) {out.value = 0.25-log(2); out.method = "analytical";}
 			if (P.get<size_t>("Ly") == 2) {out.value = -0.578043140180;}
 			if (P.get<size_t>("Ly") == 3) {out.value = -0.600537;}
 			if (P.get<size_t>("Ly") == 4) {out.value = -0.618566;}

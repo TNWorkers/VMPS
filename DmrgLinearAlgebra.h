@@ -408,7 +408,7 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)//, typename Symmetry::qType Qtot)
+void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 {
 	size_t L = Vin.length();
 	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), O.Qtarget(), O.volume(), Vin.calc_Nqmax());
@@ -430,6 +430,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	Vout.update_inbase();
 	Vout.update_outbase();
 	Vout.calc_Qlimits();
+	Vout.sweep(0, DMRG::BROOM::QR);
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>

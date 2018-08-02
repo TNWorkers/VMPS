@@ -21,7 +21,7 @@ enum CONTRACT_LR_MODE {FULL, TRIANGULAR, FIXED};
  * \param qloc : local basis
  * \param qOp : operator basis
  * \param Lnew : new transfer matrix to be written to
- * \param RANDOMIZE : if \p true, set right blocks but fill result with random numbers
+ * \param RANDOMIZE : if \p true, set right blocks but fill result with random numbersAA
  * \param MODE_input : if \p FULL, simple contraction, 
  *                     if \p TRIANGULAR, contract only the lower triangle \f$a<b\f$, 
  *                     if \p FIXED contract with fixed \f$a\f$
@@ -486,61 +486,57 @@ void contract_L (const Biped<Symmetry,MatrixType2> &Lold,
                  Biped<Symmetry,MatrixType2> &Lnew,
                  bool RANDOMIZE=false)
 {
-//	Lnew.clear();
-	Lnew = Lold;
-	Lnew.setZero();
+	Lnew.clear();
 	
 	for (size_t s=0; s<qloc.size(); ++s)
+	for (size_t qL=0; qL<Lold.dim; ++qL)
 	{
-		for (size_t qL=0; qL<Lold.dim; ++qL)
+		vector<tuple<qarray2<Symmetry::Nq>,size_t,size_t> > ix;
+		bool FOUND_MATCH = LAA(Lold.in[qL], Lold.out[qL], s, qloc, Abra, Aket, ix);
+		
+		if (FOUND_MATCH)
 		{
-			vector<tuple<qarray2<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = LAA(Lold.in[qL], Lold.out[qL], s, qloc, Abra, Aket, ix);
-			
-			if (FOUND_MATCH)
+			for (size_t n=0; n<ix.size(); n++)
 			{
-				for (size_t n=0; n<ix.size(); n++)
+				qarray2<Symmetry::Nq> quple = get<0>(ix[n]);
+				swap(quple[0], quple[1]);
+				if (!Symmetry::validate(quple)) {continue;}
+				size_t qAbra = get<1>(ix[n]);
+				size_t qAket = get<2>(ix[n]);
+				
+				if (Lold.block[qL].rows() != 0)
 				{
-					qarray2<Symmetry::Nq> quple = get<0>(ix[n]);
-					swap(quple[0], quple[1]);
-					if (!Symmetry::validate(quple)) {continue;}
-					size_t qAbra = get<1>(ix[n]);
-					size_t qAket = get<2>(ix[n]);
-					
-					if (Lold.block[qL].rows() != 0)
+					MatrixType2 Mtmp;
+					if (RANDOMIZE)
 					{
-						MatrixType2 Mtmp;
-						if (RANDOMIZE)
+						Mtmp.resize(Abra[s].block[qAbra].cols(), Aket[s].block[qAket].cols());
+						Mtmp.setRandom();
+					}
+					else
+					{
+						optimal_multiply(1.,
+						                 Abra[s].block[qAbra].adjoint(),
+						                 Lold.block[qL],
+						                 Aket[s].block[qAket],
+						                 Mtmp);
+					}
+					
+					auto it = Lnew.dict.find(quple);
+					if (it != Lnew.dict.end())
+					{
+						if (Lnew.block[it->second].rows() != Mtmp.rows() or 
+							Lnew.block[it->second].cols() != Mtmp.cols())
 						{
-							Mtmp.resize(Abra[s].block[qAbra].cols(), Aket[s].block[qAket].cols());
-							Mtmp.setRandom();
+							Lnew.block[it->second] = Mtmp;
 						}
 						else
 						{
-							optimal_multiply(1.,
-							                 Abra[s].block[qAbra].adjoint(),
-							                 Lold.block[qL],
-							                 Aket[s].block[qAket],
-							                 Mtmp);
+							Lnew.block[it->second] += Mtmp;
 						}
-						
-						auto it = Lnew.dict.find(quple);
-						if (it != Lnew.dict.end())
-						{
-							if (Lnew.block[it->second].rows() != Mtmp.rows() or 
-								Lnew.block[it->second].cols() != Mtmp.cols())
-							{
-								Lnew.block[it->second] = Mtmp;
-							}
-							else
-							{
-								Lnew.block[it->second] += Mtmp;
-							}
-						}
-						else
-						{
-							Lnew.push_back(quple, Mtmp);
-						}
+					}
+					else
+					{
+						Lnew.push_back(quple, Mtmp);
 					}
 				}
 			}
@@ -556,130 +552,60 @@ void contract_R (const Biped<Symmetry,MatrixType2> &Rold,
                  Biped<Symmetry,MatrixType2> &Rnew,
                  bool RANDOMIZE=false)
 {
-//	Rnew.clear();
-	Rnew = Rold;
-	Rnew.setZero();
-	
-//	for (size_t s=0; s<qloc.size(); ++s)
-//	{
-//		for (size_t qR=0; qR<Rold.dim; ++qR)
-//		{
-//			auto qRouts = Symmetry::reduceSilent(Rold.out[qR],Symmetry::flip(qloc[s]));
-//			auto qRins = Symmetry::reduceSilent(Rold.in[qR],Symmetry::flip(qloc[s]));
-//			
-//			for(const auto& qRout : qRouts)
-//			for(const auto& qRin : qRins)
-//			{
-//				qarray2<Symmetry::Nq> cmp1 = {qRout, Rold.out[qR]};
-//				qarray2<Symmetry::Nq> cmp2 = {qRin, Rold.in[qR]};
-//				auto q1 = Abra[s].dict.find(cmp1);
-//				auto q2 = Aket[s].dict.find(cmp2);
-//				
-//				if (q1!=Abra[s].dict.end() and 
-//				    q2!=Aket[s].dict.end())
-//				{
-//					qarray<Symmetry::Nq> new_qin  = Aket[s].in[q2->second]; // A.in
-//					qarray<Symmetry::Nq> new_qout = Abra[s].in[q1->second]; // A†.out = A.in
-//					qarray2<Symmetry::Nq> quple = {new_qin, new_qout};
-//					if (!Symmetry::validate(quple)) {continue;}
-//					
-//					double factor_cgc = Symmetry::coeff_rightOrtho(Abra[s].out[q1->second],
-//					                                               Abra[s].in[q1->second]);
-//					
-//					if (Rold.block[qR].rows() != 0)
-//					{
-//						MatrixType2 Mtmp;
-//						if(RANDOMIZE)
-//						{
-//							Mtmp.resize(Aket[s].block[q2->second].rows(), Abra[s].block[q1->second].rows());
-//							Mtmp.setRandom();
-//						}
-//						else
-//						{
-//							optimal_multiply(factor_cgc,
-//						                 Aket[s].block[q2->second],
-//						                 Rold.block[qR],
-//						                 Abra[s].block[q1->second].adjoint(),
-//						                 Mtmp);
-//						}
-//						
-//						auto it = Rnew.dict.find(quple);
-//						if (it != Rnew.dict.end())
-//						{
-//							if (Rnew.block[it->second].rows() != Mtmp.rows() or 
-//								Rnew.block[it->second].cols() != Mtmp.cols())
-//							{
-//								Rnew.block[it->second] = Mtmp;
-//							}
-//							else
-//							{
-//								Rnew.block[it->second] += Mtmp;
-//							}
-//						}
-//						else
-//						{
-//							Rnew.push_back(quple, Mtmp);
-//						}
-//					}
-//				}
-//			}
-//		}
-//	}
+	Rnew.clear();
 	
 	for (size_t s=0; s<qloc.size(); ++s)
+	for (size_t qR=0; qR<Rold.dim; ++qR)
 	{
-		for (size_t qR=0; qR<Rold.dim; ++qR)
+		vector<tuple<qarray2<Symmetry::Nq>,size_t,size_t> > ix;
+		bool FOUND_MATCH = AAR(Rold.in[qR], Rold.out[qR], s, qloc, Abra, Aket, ix);
+		
+		if (FOUND_MATCH)
 		{
-			vector<tuple<qarray2<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = AAR(Rold.in[qR], Rold.out[qR], s, qloc, Abra, Aket, ix);
-			
-			if (FOUND_MATCH)
+			for (size_t n=0; n<ix.size(); n++)
 			{
-				for (size_t n=0; n<ix.size(); n++)
+				qarray2<Symmetry::Nq> quple = get<0>(ix[n]);
+				swap(quple[0], quple[1]);
+				if (!Symmetry::validate(quple)) {continue;}
+				size_t qAbra = get<1>(ix[n]);
+				size_t qAket = get<2>(ix[n]);
+				
+				double factor_cgc = Symmetry::coeff_rightOrtho(Abra[s].out[qAbra],
+				                                               Abra[s].in [qAbra]);
+				
+				if (Rold.block[qR].rows() != 0)
 				{
-					qarray2<Symmetry::Nq> quple = get<0>(ix[n]);
-					swap(quple[0], quple[1]);
-					if (!Symmetry::validate(quple)) {continue;}
-					size_t qAbra = get<1>(ix[n]);
-					size_t qAket = get<2>(ix[n]);
-					
-					double factor_cgc = Symmetry::coeff_rightOrtho(Abra[s].out[qAbra],
-					                                               Abra[s].in [qAbra]);
-					
-					if (Rold.block[qR].rows() != 0)
+					MatrixType2 Mtmp;
+					if (RANDOMIZE)
 					{
-						MatrixType2 Mtmp;
-						if (RANDOMIZE)
+						Mtmp.resize(Aket[s].block[qAket].rows(), Abra[s].block[qAbra].rows());
+						Mtmp.setRandom();
+					}
+					else
+					{
+						optimal_multiply(factor_cgc,
+					                     Aket[s].block[qAket],
+					                     Rold.block[qR],
+					                     Abra[s].block[qAbra].adjoint(),
+					                     Mtmp);
+					}
+					
+					auto it = Rnew.dict.find(quple);
+					if (it != Rnew.dict.end())
+					{
+						if (Rnew.block[it->second].rows() != Mtmp.rows() or 
+							Rnew.block[it->second].cols() != Mtmp.cols())
 						{
-							Mtmp.resize(Aket[s].block[qAket].rows(), Abra[s].block[qAbra].rows());
-							Mtmp.setRandom();
+							Rnew.block[it->second] = Mtmp;
 						}
 						else
 						{
-							optimal_multiply(factor_cgc,
-						                     Aket[s].block[qAket],
-						                     Rold.block[qR],
-						                     Abra[s].block[qAbra].adjoint(),
-						                     Mtmp);
+							Rnew.block[it->second] += Mtmp;
 						}
-						
-						auto it = Rnew.dict.find(quple);
-						if (it != Rnew.dict.end())
-						{
-							if (Rnew.block[it->second].rows() != Mtmp.rows() or 
-								Rnew.block[it->second].cols() != Mtmp.cols())
-							{
-								Rnew.block[it->second] = Mtmp;
-							}
-							else
-							{
-								Rnew.block[it->second] += Mtmp;
-							}
-						}
-						else
-						{
-							Rnew.push_back(quple, Mtmp);
-						}
+					}
+					else
+					{
+						Rnew.push_back(quple, Mtmp);
 					}
 				}
 			}

@@ -108,6 +108,7 @@ TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
 TDVPPropagator (const Hamiltonian &H, VectorType &Vinout)
 {
 	set_blocks(H,Vinout);
+	assert(H.HAS_TWO_SITE_DATA() and "You need to call H.precalc_TwoSiteData() before dynamics!");
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>
@@ -226,6 +227,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		Stopwatch<> Woh2;
 		precalc_blockStructure (Heff[loc1].L, Apair.data, Heff2.W12, Heff2.W34, Apair.data, Heff[loc2].R, 
 		                        H.locBasis(loc1), H.locBasis(loc2), H.opBasis(loc1), H.opBasis(loc2), 
+		                        H.TSD[loc1], 
 		                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
 		t_ohead += Woh2.time(SECONDS);
 		
