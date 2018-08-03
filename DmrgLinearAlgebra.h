@@ -407,11 +407,13 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::
 	Vinout = Vtmp;
 }
 
+//Comment needed
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, double tol_compr = 1e-7)
 {
 	size_t L = Vin.length();
-	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), O.Qtarget(), O.volume(), Vin.calc_Nqmax());
+	qarray<Symmetry::Nq> Qtarget = Symmetry::reduceSilent(Vin.Qtarget(),O.Qtarget())[0];
+	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qtarget, O.volume(), Vin.calc_Nqmax());
 	
 	for (size_t l=0; l<L; ++l)
 	{

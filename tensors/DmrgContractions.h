@@ -95,7 +95,15 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 
 						//0 is the Hamiltonian block. Only singlett couplings are neccessary.
 						if(b == 0 and quple[2] != Symmetry::qvacuum()) {continue;}
-						
+						if(a == 0 and quple[0] == Symmetry::qvacuum() and quple[1] == Symmetry::qvacuum() and quple[2] == Symmetry::qvacuum())
+						{
+							cout << "factor_cgc=" << factor_cgc << ", iW=" << iW.value() << endl;
+							cout << "Rold=" << endl << fixed << Rold.block[qR][b][0] << endl;
+							cout << "Abra[s1].out[qAbra]=" << Abra[s1].out[qAbra] << ", Abra[s1].in[qAbra]=" << Abra[s1].in[qAbra] << ", qloc[s1]=" << qloc[s1] << endl;
+							cout << "Aket[s2].out[qAket]=" << Aket[s2].out[qAket] << ", Aket[s2].in[qAket]=" << Aket[s2].in[qAket] << ", qloc[s2]=" << qloc[s2] << endl;
+							cout << "Lold.mid(qL)=" << Lold.mid(qL) << ", quple[2]=" << quple[2] << ", qOp[k]=" << qOp[k] << endl;
+						}
+
 						if (MODE == FULL or
 						   (MODE == TRIANGULAR and a>fixed_b) or
 						   (MODE == FIXED and b==fixed_b))
@@ -238,7 +246,14 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 						size_t b = iW.col();
 						//Daux-1 is the Hamiltonian block. Only singlett couplings are neccessary.
 						if(a == W[s1][s2][k].cols()-1 and quple[2] != Symmetry::qvacuum()) {continue;}
-
+						// if(a == 0 and quple[0] == Symmetry::qvacuum() and quple[1] == Symmetry::qvacuum() and quple[2] == Symmetry::qvacuum())
+						// {
+						// 	cout << "factor_cgc=" << factor_cgc << ", iW=" << iW.value() << endl;
+						// 	cout << "Rold=" << endl << fixed << Rold.block[qR][b][0] << endl;
+						// 	cout << "Abra[s1].out[qAbra]=" << Abra[s1].out[qAbra] << ", Abra[s1].in[qAbra]=" << Abra[s1].in[qAbra] << ", qloc[s1]=" << qloc[s1] << endl;
+						// 	cout << "Aket[s2].out[qAket]=" << Aket[s2].out[qAket] << ", Aket[s2].in[qAket]=" << Aket[s2].in[qAket] << ", qloc[s2]=" << qloc[s2] << endl;
+						// 	cout << "Rold.mid(qR)=" << Rold.mid(qR) << ", quple[2]=" << quple[2] << ", qOp[k]=" << qOp[k] << endl;
+						// }
 						if (MODE == FULL or
 						   (MODE == TRIANGULAR and fixed_a>b) or
 						   (MODE == FIXED and a==fixed_a))
@@ -954,7 +969,7 @@ Scalar contract_LR (size_t fixed_b,
 					if (L.block[qL][fixed_b][0].size() != 0 and
 					    R.block[qR->second].size() != 0)
 					{
-						res += (L.block[qL][fixed_b][0] * R.block[qR->second]).trace() * Symmetry::coeff_dot(L.out(qL));
+						res += (L.block[qL][fixed_b][0] * R.block[qR->second]).trace();// * Symmetry::coeff_dot(L.out(qL));
 					}
 				}
 			}
@@ -986,7 +1001,7 @@ Scalar contract_LR (size_t fixed_a,
 					if (R.block[qR][fixed_a][0].size() != 0 and
 					    L.block[qL->second].size() != 0)
 					{
-						res += (L.block[qL->second] * R.block[qR][fixed_a][0]).trace() * Symmetry::coeff_dot(R.out(qR));
+						res += (L.block[qL->second] * R.block[qR][fixed_a][0]).trace();// * Symmetry::coeff_dot(R.out(qR));
 					}
 				}
 			}

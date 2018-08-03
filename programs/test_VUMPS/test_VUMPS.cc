@@ -35,7 +35,6 @@ Logger lout;
 #include "models/HeisenbergXXZ.h"
 #include "models/HeisenbergSU2.h"
 #include "models/HubbardU1.h"
-#include "models/HubbardU1xU1NM.h"
 #include "models/Hubbard.h"
 //#include "models/HeisenbergXXZ.h"
 //#include "models/Hubbard.h"
@@ -220,7 +219,6 @@ int main (int argc, char* argv[])
 			<< endl;
 		}
 		
-//		typedef VMPS::HubbardU1xU1NM HUBBARD_U1;
 ////		typedef VMPS::HubbardU1 HUBBARD_U1;
 //		HUBBARD_U1 Hubb_U1(L,{{"U",U},{"OPEN_BC",false}});
 //		qarray<2> Qc = {N,0};

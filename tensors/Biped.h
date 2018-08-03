@@ -502,7 +502,8 @@ contract (const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE) const
 					factor_cgc = Scalar(1);
 					if (MODE == contract::MODE::OORR)
 					{
-						factor_cgc = Symmetry::coeff_rightOrtho(this->out[q1],this->in[q2]);
+						// factor_cgc = Symmetry::coeff_rightOrtho(this->out[q1],this->in[q2]);
+						factor_cgc = Symmetry::coeff_rightOrtho(this->out[q1],this->in[q1]);
 					}
 					else if (MODE == contract::MODE::DOT)
 					{
