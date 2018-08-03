@@ -376,4 +376,5 @@ int main (int argc, char* argv[])
 	lout << endl << T;
 	
 	lout << "ref=" << VMPS::Heisenberg::ref({{"J",J},{"D",D},{"Ly",Ly}}) << endl;
+//	lout << "ref(XX)=" << VMPS::Heisenberg::ref({{"Jxy",1.},{"Jz",0.},{"D",2ul},{"Ly",1ul}}) << endl;
 }

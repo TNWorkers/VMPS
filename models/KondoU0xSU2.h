@@ -27,10 +27,12 @@ namespace VMPS
   * \note If the nnn-hopping is positive, the ground state energy is lowered.
   * \warning \f$J<0\f$ is antiferromagnetic
   */
-class KondoU0xSU2 : public Mpo<Sym::SU2<Sym::ChargeSU2>,double>
+class KondoU0xSU2 : public Mpo<Sym::SU2<Sym::ChargeSU2>,double>, public ParamReturner
 {
 public:
 	typedef Sym::SU2<Sym::ChargeSU2> Symmetry;
+	MAKE_TYPEDEFS(KondoU0xSU2)
+	
 private:
 	typedef Eigen::Index Index;
 	typedef Symmetry::qType qType;
@@ -77,7 +79,8 @@ const std::map<string,std::any> KondoU0xSU2::defaults =
 
 KondoU0xSU2::
 KondoU0xSU2 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", true)
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", true),
+ ParamReturner()
 {
 	ParamHandler P(params,defaults);
 	
@@ -106,6 +109,7 @@ KondoU0xSU2 (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->precalc_TwoSiteData();
 }
 
 HamiltonianTermsXd<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::

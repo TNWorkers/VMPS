@@ -33,6 +33,9 @@ public:
 	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
 	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
 	
+	typedef DmrgSolver<Symmetry,HeisenbergSU2,double>  Solver;
+	typedef VumpsSolver<Symmetry,HeisenbergSU2,double> uSolver;
+	
 private:
 	
 	typedef Eigen::Index Index;
@@ -91,10 +94,10 @@ const std::map<string,std::any> HeisenbergSU2::defaults =
 const std::map<string,std::any> HeisenbergSU2::sweep_defaults = 
 {
 	{"max_alpha",100.}, {"min_alpha",1.e-11}, {"eps_svd",1.e-7},
-	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
+	{"Dincr_abs", 2ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",20ul}, {"min_halfsweeps",6ul},
-	{"Dinit",4ul}, {"Qinit",10ul}, {"Dlimit",100ul},
+	{"Dinit",5ul}, {"Qinit",10ul}, {"Dlimit",100ul},
 	{"tol_eigval",1.e-7}, {"tol_state",1.e-6},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
 };

@@ -33,6 +33,7 @@ class Heisenberg : public Mpo<Sym::U0,double>, public HeisenbergObservables<Sym:
 {
 public:
 	typedef Sym::U0 Symmetry;
+	MAKE_TYPEDEFS(Heisenberg)
 	
 private:
 	typedef typename Symmetry::qType qType;
@@ -100,6 +101,7 @@ Heisenberg (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->precalc_TwoSiteData();
 }
 
 void Heisenberg::
@@ -161,17 +163,19 @@ add_operators (HamiltonianTermsXd<Symmetry> &Terms, const vector<SpinBase<Symmet
 refEnergy Heisenberg::
 ref (const vector<Param> &params, double L)
 {
-	ParamHandler P(params,{{"D",2ul},{"Ly",1ul},{"m",0.}});
+	ParamHandler P(params,{{"D",2ul},{"Ly",1ul},{"m",0.},{"J",1.},{"Jxy",1.},{"Jz",1.}});
 	refEnergy out;
 	
-	if (isinf(L) and P.get<double>("m") == 0. and P.HAS_NONE_OF({"Bz","Bx","Kx","Kz","Dy","Dyprime"}))
+	if (isinf(L) and P.get<double>("m") == 0. and P.get<double>("J") > 0.
+	    and P.HAS_NONE_OF({"Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}) )
 	{
 		out.source = "Tao Xiang, Thermodynamics of quantum Heisenberg spin chains, Phys. Rev. B 58, 9142 (1998)";
 		out.method = "literature";
+		double J = P.get<double>("J");
 		
 		if (P.get<size_t>("D") == 2)
 		{
-			if (P.get<size_t>("Ly") == 1) {out.value = 0.25-log(2); out.method = "analytical";}
+			if (P.get<size_t>("Ly") == 1) {out.value = -log(2)+0.25; out.method = "analytical";}
 			if (P.get<size_t>("Ly") == 2) {out.value = -0.578043140180;}
 			if (P.get<size_t>("Ly") == 3) {out.value = -0.600537;}
 			if (P.get<size_t>("Ly") == 4) {out.value = -0.618566;}
@@ -214,6 +218,17 @@ ref (const vector<Param> &params, double L)
 			if (P.get<size_t>("Ly") == 5) {out.value = -12.08;}
 			if (P.get<size_t>("Ly") == 6) {out.value = -12.1;}
 		}
+		
+		out.value *= J;
+	}
+	
+	if (isinf(L) and P.get<double>("m") == 0. and P.get<size_t>("D") == 2 and P.get<double>("Jxy") > 0. and P.get<double>("Jz") == 0. and
+	    P.HAS_NONE_OF({"J","Bz","Bx","Kx","Kz","Dy","Dyprime"}))
+	{
+		double Jxy =  P.get<double>("Jxy");
+		out.value = -M_1_PI*Jxy;
+		out.source = "S. Paul, A.K. Ghosh, Ground state properties of the bond alternating spin-1/2 anisotropic Heisenberg chain, Condensed Matter Physics, 2017, Vol. 20, No 2, 23701: 1–16";
+		out.method = "analytical";
 	}
 	
 	return out;

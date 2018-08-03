@@ -31,10 +31,11 @@ namespace VMPS
  * \warning \f$J>0\f$ is antiferromagnetic
  * \todo Implement spin and pseudo-spin observables.
  */
-class HubbardSU2xSU2 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > ,double>
+class HubbardSU2xSU2 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > ,double>, public ParamReturner
 {
 public:
 	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > Symmetry;
+	MAKE_TYPEDEFS(HubbardSU2xSU2)
 	
 private:
 	
@@ -84,7 +85,8 @@ const map<string,any> HubbardSU2xSU2::defaults =
 
 HubbardSU2xSU2::
 HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,1}), "", true)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,1}), "", true),
+ ParamReturner()
 {
 	ParamHandler P(params,defaults);
 	
@@ -111,6 +113,7 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->precalc_TwoSiteData();
 }
 
 HamiltonianTermsXd<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::

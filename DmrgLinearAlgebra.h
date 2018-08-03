@@ -408,19 +408,13 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
+void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, double tol_compr = 1e-7)
 {
 	size_t L = Vin.length();
 	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), O.Qtarget(), O.volume(), Vin.calc_Nqmax());
 	
 	for (size_t l=0; l<L; ++l)
 	{
-		// cout << "l=" << l << endl;
-		// auto tensorBase_l = Vin.inBasis(l).combine(O.inBasis(l));
-		// cout << tensorBase_l << endl << tensorBase_l.printHistory() << endl;
-		// auto tensorBase_r = Vin.outBasis(l).combine(O.outBasis(l));
-		// cout << tensorBase_r << endl << tensorBase_r.printHistory() << endl;
-		
 		contract_AW(Vin.A_at(l), Vin.locBasis(l), O.W_at(l), O.opBasis(l),
 		            Vin.inBasis(l) , O.inBasis(l) ,
 		            Vin.outBasis(l), O.outBasis(l),
@@ -430,14 +424,35 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	Vout.update_inbase();
 	Vout.update_outbase();
 	Vout.calc_Qlimits();
-	Vout.sweep(0, DMRG::BROOM::QR);
+	
+	lout << endl;
+	lout << termcolor::bold << "OxV_exact" << termcolor::reset << endl;
+	lout << "input:\t" << Vin.info() << endl;
+	lout << "exact:\t" << Vout.info() << endl;
+	
+	if (tol_compr < 1.)
+	{
+		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(DMRG::VERBOSITY::SILENT);
+		Mps<Symmetry,Scalar> Vtmp;
+		Compadre.stateCompress(Vout, Vtmp, Vin.calc_Dmax(), tol_compr, 200);
+		
+		Vout = Vtmp;
+		// shouldn't matter, but just to be sure:
+		Vout.update_inbase();
+		Vout.update_outbase();
+		Vout.calc_Qlimits();
+		
+		lout << "compressed:\t" << Vout.info() << endl;
+		lout << "\t" << Compadre.info() << endl;
+	}
+	lout << endl;
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout)
+void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, double tol_compr = 1e-7)
 {
 	Mps<Symmetry,Scalar> Vtmp;
-	OxV_exact(O,Vinout,Vtmp);
+	OxV_exact(O,Vinout,Vtmp,tol_compr);
 	Vinout = Vtmp;
 }
 

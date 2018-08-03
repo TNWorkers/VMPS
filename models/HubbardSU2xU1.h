@@ -36,11 +36,12 @@ namespace VMPS
   * \warning \f$J>0\f$ is antiferromagnetic
   * \todo Implement more observables.
   */
-class HubbardSU2xU1 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > ,double>
+class HubbardSU2xU1 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > ,double>, public ParamReturner
 {
 public:
 	
 	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > Symmetry;
+	MAKE_TYPEDEFS(HubbardSU2xU1)
 	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
 	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
 	
@@ -107,7 +108,8 @@ const map<string,any> HubbardSU2xU1::defaults =
 
 HubbardSU2xU1::
 HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,0}), "", true)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,0}), "", true),
+ ParamReturner()
 {
 	ParamHandler P(params,defaults);
 	
@@ -133,6 +135,7 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->precalc_TwoSiteData();
 }
 
 HamiltonianTermsXd<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::

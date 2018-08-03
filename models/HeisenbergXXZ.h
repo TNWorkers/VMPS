@@ -11,6 +11,7 @@ class HeisenbergXXZ : public Mpo<Sym::U0,double>, public HeisenbergObservables<S
 {
 public:
 	typedef Sym::U0 Symmetry;
+	MAKE_TYPEDEFS(HeisenbergXXZ)
 	
 private:
 	
@@ -69,6 +70,7 @@ HeisenbergXXZ (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->precalc_TwoSiteData();
 }
 
 } // end namespace VMPS

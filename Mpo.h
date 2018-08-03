@@ -23,9 +23,8 @@ using namespace Eigen;
 #include "DmrgJanitor.h"
 #include "DmrgExternal.h"
 #include "DmrgHamiltonianTerms.h"
-// #if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
-// 	#include "LapackWrappers.h"
-// #endif
+#include "ParamHandler.h" // from TOOLS
+#include "util/macros.h"
 
 /**Namespace VMPS to distinguish names from ED equivalents.*/
 namespace VMPS{};
@@ -68,6 +67,8 @@ class Mpo
 //	          DMRG::BROOM::OPTION TOOL); //=DMRG::BROOM::SVD
 	
 public:
+	
+	typedef Scalar Scalar_;
 	
 	//---constructors---
 	
@@ -154,6 +155,8 @@ public:
 	 * Results in a new \p Qtot = \p qvacuum, useful for IDMRG and VUMPS. The scaling with \p L avoids fractions.
 	 */
 	void transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT = true);
+	
+	void precalc_TwoSiteData();
 	///\}
 	
 	//---info stuff---
@@ -252,6 +255,9 @@ public:
 	/**Checks if the square of the Mpo was calculated and stored.*/
 	inline bool check_SQUARE() const {return GOT_SQUARE;}
 	
+	/**Checks if the Mpo has the two-site data necessary for TDVPPropagator, MpsCompressor.*/
+	inline bool HAS_TWO_SITE_DATA() const {return GOT_TWO_SITE_DATA;};
+	
 	/**Returns the W-matrix at a given site by const reference.*/
 	inline const vector<vector<vector<SparseMatrix<Scalar> > > > &W_at   (size_t loc) const {return W[loc];};
 	
@@ -261,14 +267,9 @@ public:
 	inline const unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<Scalar> > 
 	&Vsq_at (size_t loc) const {return Vsq[loc];};
 	
-	/**\warning Needs updating to new Mpo scheme.*/
-//	template<typename TimeScalar> Mpo<Symmetry,TimeScalar> BondPropagator (TimeScalar dt, PARITY P) const;
-	
-	void precalc_TwoSiteData();
-	
-	inline bool HAS_TWO_SITE_DATA() const {return GOT_TWO_SITE_DATA;};
-	
-	/**Reconstructs the full two-site Hamiltonian from the Hamiltonian terms entries at \p loc and \p loc+1. Needed for VUMPS.*/
+	/**Reconstructs the full two-site Hamiltonian from the Hamiltonian terms entries at \p loc and \p loc+1. Needed for VUMPS.
+	* \warning Not for SU(2)!
+	*/
 	boost::multi_array<Scalar,4> H2site (size_t loc, bool HALF_THE_LOCAL_TERM=false) const;
 	///\}
 	
@@ -293,8 +294,6 @@ public:
 	typedef Mps<Symmetry,double>                              StateXd;
 	typedef Umps<Symmetry,double>                             StateUd;
 	typedef Mps<Symmetry,complex<double> >                    StateXcd;
-	typedef DmrgSolver<Symmetry,Mpo<Symmetry,Scalar>,Scalar>  Solver;
-	typedef VumpsSolver<Symmetry,Mpo<Symmetry,Scalar>,Scalar> uSolver;
 	typedef MpsCompressor<Symmetry,double,double>             CompressorXd;
 	typedef MpsCompressor<Symmetry,complex<double>,double>    CompressorXcd;
 	typedef Mpo<Symmetry>                                     Operator;
@@ -310,7 +309,7 @@ protected:
 	vector<Qbasis<Symmetry> > qaux;
 	
 	bool GOT_TWO_SITE_DATA = false;
-	vector<vector<TwoSiteData<Symmetry> > > TSD;
+	vector<vector<TwoSiteData<Symmetry,Scalar> > > TSD;
 	
 	/**total change in quantum number*/
 	qarray<Nq> Qtot;
@@ -1330,8 +1329,9 @@ precalc_TwoSiteData()
 	
 	for (size_t l=0; l<N_sites-1; ++l)
 	{
+		cout << "l=" << l << endl;
 		unordered_map<std::array<size_t,2>, 
-			          std::pair<vector<std::array<size_t,10> >, vector<Scalar> > > lookup;
+		              std::pair<vector<std::array<size_t,10> >, vector<Scalar> > > lookup;
 		Scalar factor_cgc;
 		
 		auto tensor_basis = Symmetry::tensorProd(qloc[l], qloc[l+1]);
@@ -1374,7 +1374,7 @@ precalc_TwoSiteData()
 							                   :1.;
 						if (abs(factor_cgc9) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 						
-						TwoSiteData<Symmetry> entry({{s1,s2,s3,s4,s1s3,s2s4}}, {{qmerge13,qmerge24}}, {{k12,k34}}, qOpMerge, factor_cgc9);
+						TwoSiteData<Symmetry,Scalar> entry({{s1,s2,s3,s4,s1s3,s2s4}}, {{qmerge13,qmerge24}}, {{k12,k34}}, qOpMerge, factor_cgc9);
 						TSD[l].push_back(entry);
 					}
 				}

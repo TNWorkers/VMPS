@@ -360,12 +360,12 @@ std::ostream& operator<< (std::ostream& s, refEnergy r)
 	return s;
 }
 
-template<typename Symmetry>
+template<typename Symmetry, typename Scalar>
 struct TwoSiteData
 {
 	TwoSiteData(){};
 	
-	TwoSiteData (std::array<size_t,6> s, qarray2<Symmetry::Nq> qm, std::array<size_t,2> k, qarray<Symmetry::Nq> qOp_, double cgc9_)
+	TwoSiteData (std::array<size_t,6> s, qarray2<Symmetry::Nq> qm, std::array<size_t,2> k, qarray<Symmetry::Nq> qOp_, Scalar cgc9_)
 	:s1(s[0]), s2(s[1]), s3(s[2]), s4(s[3]), s1s3(s[4]), s2s4(s[5]), qmerge13(qm[0]), qmerge24(qm[1]), k12(k[0]), k34(k[1]), qOp(qOp_), cgc9(cgc9_)
 	{};
 	
@@ -374,7 +374,7 @@ struct TwoSiteData
 	qarray<Symmetry::Nq> qmerge13, qmerge24;
 	size_t k12, k34;
 	qarray<Symmetry::Nq> qOp;
-	double cgc9 = 1.;
+	Scalar cgc9 = 1.;
 };
 
 #endif

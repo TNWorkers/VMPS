@@ -131,7 +131,7 @@ private:
 		
 		void build_L (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE=false);
 		
-        void build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE=false);
+		void build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE=false);
 		
 	// for |Vout> ≈ H*|Vin>
 		vector<PivotMatrix1<Symmetry,Scalar,MpoScalar> > Heff;

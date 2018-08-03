@@ -39,7 +39,9 @@ namespace VMPS
 class HeisenbergU1 : public Mpo<Sym::U1<Sym::SpinU1>,double>, public HeisenbergObservables<Sym::U1<Sym::SpinU1> >, public ParamReturner
 {
 public:
+	
 	typedef Sym::U1<Sym::SpinU1> Symmetry;
+	MAKE_TYPEDEFS(HeisenbergU1)
 	
 private:
 	typedef Symmetry::qType qType;
@@ -86,7 +88,7 @@ const std::map<string,std::any> HeisenbergU1::sweep_defaults =
 	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",20ul}, {"min_halfsweeps",6ul},
-	{"Dinit",4ul}, {"Qinit",10ul}, {"Dlimit",100ul},
+	{"Dinit",5ul}, {"Qinit",10ul}, {"Dlimit",100ul},
 	{"tol_eigval",1.e-7}, {"tol_state",1.e-6},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
 };
@@ -125,6 +127,7 @@ HeisenbergU1 (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->precalc_TwoSiteData();
 }
 
 bool HeisenbergU1::

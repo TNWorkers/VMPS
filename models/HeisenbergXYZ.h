@@ -33,6 +33,7 @@ class HeisenbergXYZ : public Mpo<Sym::U0,complex<double> >, public HeisenbergObs
 {
 public:
 	typedef Sym::U0 Symmetry;
+	MAKE_TYPEDEFS(HeisenbergXYZ)
 	
 private:
 	typedef typename Symmetry::qType qType;
@@ -99,6 +100,7 @@ HeisenbergXYZ (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->precalc_TwoSiteData();
 }
 
 template<typename Symmetry_>

@@ -29,14 +29,14 @@ public:
 	string info() const;
 	string eigeninfo() const;
 	double memory (MEMUNIT memunit=GB) const;
-	// = LANCZOS::EDGE::GROUND
+	
 	void edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	                qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE);
 	
 	DMRG::CONTROL::GLOB GlobParam;
 	DMRG::CONTROL::DYN  DynParam;
 	DMRG::CONTROL::LANCZOS LanczosParam;
-
+	
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
 	void prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
@@ -93,7 +93,7 @@ private:
 		size_t N_halfsweeps;
 	};
 	
-	SweepStatus SweepStat;	
+	SweepStatus SweepStat;
 	
 	void LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE);
 	void sweep_to_edge (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, bool MAKE_ENVIRONMENT);
@@ -218,6 +218,9 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	
 	N_sites = H.length();
 	N_phys  = H.volume();
+	
+	GlobParam = H.get_GlobParam();
+	DynParam  = H.get_DynParam();
 	
 	Stopwatch<> PrepTimer;
 	if (!USE_STATE)

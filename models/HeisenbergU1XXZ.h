@@ -30,6 +30,7 @@ class HeisenbergU1XXZ : public HeisenbergU1
 {
 public:
 	typedef Sym::U1<Sym::SpinU1> Symmetry;
+	MAKE_TYPEDEFS(HeisenbergU1XXZ)
 	
 public:
 	
@@ -84,6 +85,7 @@ HeisenbergU1XXZ (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->precalc_TwoSiteData();
 }
 
 template<typename Symmetry_>

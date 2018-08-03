@@ -103,7 +103,7 @@ int main (int argc, char* argv[])
 //	OxV(H_U1.Sz(0), g_U1.state, Psi_U1tmp, DMRG::BROOM::SVD);
 //	VMPS::HeisenbergU1::CompressorXd CompadreU1(VERB);
 //	CompadreU1.prodCompress(H_U1.Sz(i0), H_U1.Sz(i0), g_U1.state, Psi_U1tmp, {M}, g_U1.state.calc_Dmax());
-	OxV_exact(H_U1.Sz(i0), g_U1.state, Psi_U1tmp);
+	OxV_exact(H_U1.Sz(i0), g_U1.state, Psi_U1tmp, 1e-7);
 	
 	Psi_U1tmp.max_Nsv = Psi_U1tmp.calc_Dmax();
 	Psi_U1tmp.eps_svd = tol_compr;
@@ -151,21 +151,15 @@ int main (int argc, char* argv[])
 	
 	t_SU2 = Watch_SU2.time();
 	
-	VMPS::HeisenbergSU2::StateXd Psi_SU2tmp_, Psi_SU2tmp;
+	VMPS::HeisenbergSU2::StateXd Psi_SU2tmp;
 	VMPS::HeisenbergSU2::CompressorXd Compadre(VERB);
 	
 	cout << "avg=" << avg(g_SU2.state, H_SU2.Sdag(i0), H_SU2.S(i0), g_SU2.state, {1}) << endl;
 	cout << "avg=" << avg(g_SU2.state, H_SU2.SS(i0,i0), g_SU2.state) << endl;
 	
 //	Compadre.prodCompress(H_SU2.S(i0), H_SU2.Sdag(i0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
-	OxV_exact(H_SU2.S(i0), g_SU2.state, Psi_SU2tmp_);
-	Compadre.stateCompress(Psi_SU2tmp_, Psi_SU2tmp, g_SU2.state.calc_Dmax()/2, 1e-10);
-	
-	cout << "avg=" << Psi_SU2tmp.dot(Psi_SU2tmp) << endl;
-	
-	cout << "ground state: " << g_SU2.state.info() << endl;
-	cout << "state after OxV: " << Psi_SU2tmp_.info() << endl;
-	cout << "compressed: " << Psi_SU2tmp.info() << endl;
+	OxV_exact(H_SU2.S(i0), g_SU2.state, Psi_SU2tmp, 1e-7);
+//	Compadre.stateCompress(Psi_SU2tmp_, Psi_SU2tmp, g_SU2.state.calc_Dmax()/2, 1e-10);
 	
 	Psi_SU2tmp.max_Nsv = Psi_SU2tmp.calc_Dmax();
 	Psi_SU2tmp.eps_svd = tol_compr;

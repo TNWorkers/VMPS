@@ -21,10 +21,11 @@ namespace VMPS
  * but is mainly needed for VUMPS.
  * \note The default variable settings can be seen in \p Hubbard::defaults.
  */
-class Hubbard : public Mpo<Sym::U0,double>, public HubbardObservables<Sym::U0>
+class Hubbard : public Mpo<Sym::U0,double>, public HubbardObservables<Sym::U0>, public ParamReturner
 {
 public:
 	typedef Sym::U0 Symmetry;
+	MAKE_TYPEDEFS(Hubbard)
 	
 	Hubbard() : Mpo() {};
 	Hubbard (const size_t &L, const vector<Param> &params);
@@ -53,6 +54,7 @@ Hubbard::
 Hubbard (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry> (L, qarray<0>({}), "", true),
  HubbardObservables(L,params,Hubbard::defaults)
+ ParamReturner()
 {
 	ParamHandler P(params,Hubbard::defaults);
 	
@@ -76,6 +78,7 @@ Hubbard (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->precalc_TwoSiteData();
 }
 
 template<typename Symmetry_>

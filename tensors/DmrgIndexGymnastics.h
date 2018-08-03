@@ -570,7 +570,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
                              const vector<qarray<Symmetry::Nq> > &qloc34,
                              const vector<qarray<Symmetry::Nq> > &qOp12,
                              const vector<qarray<Symmetry::Nq> > &qOp34,
-                             const vector<TwoSiteData<Symmetry> > &TSD, 
+                             const vector<TwoSiteData<Symmetry,MpoScalar> > &TSD, 
                              vector<std::array<size_t,2> > &qlhs, 
                              vector<vector<std::array<size_t,10> > > &qrhs,
                              vector<vector<Scalar> > &factor_cgcs)

@@ -7,7 +7,31 @@ class ParamReturner
 {
 public:
 	
-	ParamReturner(){};
+	ParamReturner()
+	{
+		std::map<string,std::any> global_defaults = 
+		{
+			{"max_alpha", DMRG::CONTROL::DEFAULT::max_alpha_rsvd},
+			{"min_alpha", DMRG::CONTROL::DEFAULT::min_alpha_rsvd},
+			{"eps_svd", DMRG::CONTROL::DEFAULT::eps_svd},
+			{"Dincr_abs", DMRG::CONTROL::DEFAULT::Dincr_abs},
+			{"Dincr_per", DMRG::CONTROL::DEFAULT::Dincr_per},
+			{"Dincr_rel", DMRG::CONTROL::DEFAULT::Dincr_rel},
+			{"min_Nsv", DMRG::CONTROL::DEFAULT::min_Nsv},
+			{"max_Nrich", DMRG::CONTROL::DEFAULT::max_Nrich},
+			{"max_halfsweeps", DMRG::CONTROL::DEFAULT::max_halfsweeps},
+			{"min_halfsweeps", DMRG::CONTROL::DEFAULT::min_halfsweeps},
+			{"Dinit", DMRG::CONTROL::DEFAULT::Dinit},
+			{"Qinit", DMRG::CONTROL::DEFAULT::Qinit},
+			{"Dlimit", DMRG::CONTROL::DEFAULT::Dlimit},
+			{"tol_eigval", DMRG::CONTROL::DEFAULT::tol_eigval},
+			{"tol_state", DMRG::CONTROL::DEFAULT::tol_state},
+			{"savePeriod", DMRG::CONTROL::DEFAULT::savePeriod},
+			{"CALC_S_ON_EXIT", DMRG::CONTROL::DEFAULT::CALC_S_ON_EXIT},
+			{"CONVTEST", DMRG::CONTROL::DEFAULT::CONVTEST}
+		};
+		defaults = global_defaults;
+	};
 	
 	ParamReturner (const std::map<string,std::any> &defaults_input)
 	:defaults(defaults_input)

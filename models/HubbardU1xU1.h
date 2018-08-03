@@ -43,11 +43,13 @@ namespace VMPS
  * \warning \f$J>0\f$ is antiferromagnetic
  */
 class HubbardU1xU1 : public Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> >,double>,
-                     public HubbardObservables<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > >
+                     public HubbardObservables<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > >, 
+                     public ParamReturner
 {
 public:
 	
 	typedef Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > Symmetry;
+	MAKE_TYPEDEFS(HubbardU1xU1)
 	
 	///@{
 	HubbardU1xU1() : Mpo(){};
@@ -76,7 +78,8 @@ const std::map<string,std::any> HubbardU1xU1::defaults =
 HubbardU1xU1::
 HubbardU1xU1 (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry> (L, Symmetry::qvacuum(), "", true),
- HubbardObservables(L,params,HubbardU1xU1::defaults)
+ HubbardObservables(L,params,HubbardU1xU1::defaults),
+ ParamReturner
 {
 	ParamHandler P(params,HubbardU1xU1::defaults);
 	
@@ -99,6 +102,7 @@ HubbardU1xU1 (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
+	this->precalc_TwoSiteData();
 }
 
 template<typename Symmetry_>

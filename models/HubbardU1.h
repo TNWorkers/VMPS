@@ -11,11 +11,12 @@
 namespace VMPS
 {
 
-class HubbardU1 : public Mpo<Sym::U1<Sym::ChargeU1>,double>, public HubbardObservables<Sym::U1<Sym::ChargeU1> >
+class HubbardU1 : public Mpo<Sym::U1<Sym::ChargeU1>,double>, public HubbardObservables<Sym::U1<Sym::ChargeU1> >, public ParamReturner
 {
 public:
 	
 	typedef Sym::U1<Sym::ChargeU1> Symmetry;
+	MAKE_TYPEDEFS(HubbardU1)
 	
 	///@{
 	HubbardU1() : Mpo(){};
@@ -40,7 +41,8 @@ const std::map<string,std::any> HubbardU1::defaults =
 HubbardU1::
 HubbardU1 (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry> (L, Symmetry::qvacuum(), "", true),
- HubbardObservables(L,params,HubbardU1::defaults)
+ HubbardObservables(L,params,HubbardU1::defaults),
+ ParamReturner()
 {
 	ParamHandler P(params,HubbardU1::defaults);
 	
@@ -63,6 +65,7 @@ HubbardU1 (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
+	this->precalc_TwoSiteData();
 }
 
 } // end namespace VMPS::models

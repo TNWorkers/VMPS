@@ -32,11 +32,13 @@ namespace VMPS
   * \note The multi-impurity model can be received, by setting D=1 (S=0) for all sites without an impurity.
   */
 class KondoU1xU1 : public Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>,
-                   public KondoObservables<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > >
+                   public KondoObservables<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > >,
+                   public ParamReturner
 
 {
 public:
 	typedef Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > Symmetry;
+	MAKE_TYPEDEFS(KondoU1xU1)
 	
 private:
 	typedef typename Symmetry::qType qType;
@@ -83,7 +85,8 @@ const map<string,any> KondoU1xU1::defaults =
 KondoU1xU1::
 KondoU1xU1 (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0,0}), "", true),
- KondoObservables(L,params,defaults)
+ KondoObservables(L,params,defaults),
+ ParamReturner()
 {
 	ParamHandler P(params,defaults);
 	
@@ -106,6 +109,7 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->precalc_TwoSiteData();
 }
 
 bool KondoU1xU1::
