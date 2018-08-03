@@ -223,6 +223,12 @@ public:
 	static Scalar coeff_buildR(const qType& q1, const qType& q2, const qType& q3,
 							   const qType& q4, const qType& q5, const qType& q6,
 							   const qType& q7, const qType& q8, const qType& q9);
+	static Scalar coeff_buildL_V(const qType& q1, const qType& q2, const qType& q3,
+							   const qType& q4, const qType& q5, const qType& q6,
+							   const qType& q7, const qType& q8, const qType& q9);
+	static Scalar coeff_buildR_V(const qType& q1, const qType& q2, const qType& q3,
+							   const qType& q4, const qType& q5, const qType& q6,
+							   const qType& q7, const qType& q8, const qType& q9);
 	static Scalar coeff_HPsi(const qType& q1, const qType& q2, const qType& q3,
 							 const qType& q4, const qType& q5, const qType& q6,
 							 const qType& q7, const qType& q8, const qType& q9);
@@ -492,19 +498,48 @@ coeff_buildR(const qType& q1, const qType& q2, const qType& q3,
 //	return out;
 }
 
- template<typename Kind, typename Scalar>
- Scalar SU2<Kind,Scalar>::
- coeff_test(const qType& q1, const qType& q2, const qType& q3,
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_buildR_V(const qType& q1, const qType& q2, const qType& q3,
+			   const qType& q4, const qType& q5, const qType& q6,
+			   const qType& q7, const qType& q8, const qType& q9)
+{
+	return coupling_9j(q1[0],q2[0],q3[0],q4[0],q5[0],q6[0],q7[0],q8[0],q9[0]) * std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]));
+	
+//	Scalar out = gsl_sf_coupling_9j(q1[0]-1,q2[0]-1,q3[0]-1,
+//									q4[0]-1,q5[0]-1,q6[0]-1,
+//									q7[0]-1,q8[0]-1,q9[0]-1)*
+//		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]));
+//	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_test(const qType& q1, const qType& q2, const qType& q3,
  		   const qType& q4, const qType& q5, const qType& q6,
  		   const qType& q7, const qType& q8, const qType& q9)
- {
+{
 	Scalar out = gsl_sf_coupling_9j(q1[0]-1,q2[0]-1,q3[0]-1,
 									q4[0]-1,q5[0]-1,q6[0]-1,
 									q7[0]-1,q8[0]-1,q9[0]-1)*
 		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]))*
 		static_cast<Scalar>(q7[0]) / static_cast<Scalar>(q9[0]);
 	return out;
- }
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_buildL_V(const qType& q1, const qType& q2, const qType& q3,
+			   const qType& q4, const qType& q5, const qType& q6,
+			   const qType& q7, const qType& q8, const qType& q9)
+{
+	Scalar out = gsl_sf_coupling_9j(q1[0]-1,q2[0]-1,q3[0]-1,
+									q4[0]-1,q5[0]-1,q6[0]-1,
+									q7[0]-1,q8[0]-1,q9[0]-1)*
+		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]))*
+		static_cast<Scalar>(q9[0]) / static_cast<Scalar>(q7[0]);
+	return out;
+}
 
 template<typename Kind, typename Scalar>
 Scalar SU2<Kind,Scalar>::

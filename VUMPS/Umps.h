@@ -1,9 +1,9 @@
 #ifndef VANILLA_Umps
 #define VANILLA_Umps
 
-#if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
-	#include "LapackWrappers.h"
-#endif
+// #if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
+// 	#include "LapackWrappers.h"
+// #endif
 
 #include <set>
 #include <numeric>
@@ -20,9 +20,9 @@
 #include "ArnoldiSolver.h" // from LANCZOS
 #include "Mpo.h"
 #include "tensors/DmrgConglutinations.h"
-#if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
-	#include "LapackWrappers.h"
-#endif
+// #if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
+// 	#include "LapackWrappers.h"
+// #endif
 #include "PolychromaticConsole.h" // from HELPERS
 #include "RandomVector.h" // from LANCZOS
 
@@ -647,7 +647,17 @@ test_ortho (double tol) const
 		{
 			Test += A[GAUGE::R][l][s].contract(A[GAUGE::R][l][s].adjoint(), contract::MODE::OORR);
 		}
-		
+
+		vector<bool> B_CHECK(Test.dim);
+		vector<double> B_infnorm(Test.dim);
+		for (size_t q=0; q<Test.dim; ++q)
+		{
+			Test.block[q] -= MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
+			B_CHECK[q]     = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
+			B_infnorm[q]   = Test.block[q].template lpNorm<Infinity>();
+//			cout << "q=" << q << ", B_infnorm[q]=" << B_infnorm[q] << endl;
+		}
+
 		// check for AL*C = AC
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
@@ -718,17 +728,7 @@ test_ortho (double tol) const
 				     << termcolor::red << "false" << termcolor::reset << ", normsum=" << normsum << endl;
 			}
 		}
-		
-		vector<bool> B_CHECK(Test.dim);
-		vector<double> B_infnorm(Test.dim);
-		for (size_t q=0; q<Test.dim; ++q)
-		{
-			Test.block[q] -= MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
-			B_CHECK[q]     = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
-			B_infnorm[q]   = Test.block[q].template lpNorm<Infinity>();
-//			cout << "q=" << q << ", B_infnorm[q]=" << B_infnorm[q] << endl;
-		}
-		
+				
 		norm(l) = (C[l].contract(C[l].adjoint())).trace();
 		
 		// interpret result
@@ -1136,7 +1136,7 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 	for (size_t s=0; s<qloc[loc].size(); ++s)
 	for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
 	{
-		std::array<qarray3<Symmetry::Nq>,3> quple;
+		std::array<qarray2<Symmetry::Nq>,3> quple;
 		for (size_t g=0; g<3; ++g)
 		{
 			quple[g] = {A[g][loc][s].in[q], A[g][loc][s].out[q]};
@@ -1153,16 +1153,17 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 		vector<Biped<Symmetry,MatrixType> > Atmp(qloc[loc].size());
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		{
-			Atmp[s] = A[GAUGE::C][loc][s].contract(C[loc].adjoint());
+			// Atmp[s] = A[GAUGE::C][loc][s].contract(C[loc].adjoint());
+			Atmp[s] = A[GAUGE::C][loc][s] * C[loc].adjoint();
 		}
 		
 //		cout << "svdDecompose AL from C at " << loc << endl;
 		for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
 		{
-//			qarray2<Symmetry::Nq> quple = {outbase[loc][qout], outbase[loc][qout]};
-//			auto it = C[loc].dict.find(quple);
-//			assert(it != C[loc].dict.end());
-//			size_t qC = it->second;
+			// qarray2<Symmetry::Nq> quple = {outbase[loc][qout], outbase[loc][qout]};
+			// auto it = C[loc].dict.find(quple);
+			// assert(it != C[loc].dict.end());
+			// size_t qC = it->second;
 			
 			// Determine how many A's to glue together
 			vector<size_t> svec, qvec, Nrowsvec;
@@ -1220,7 +1221,8 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 		vector<Biped<Symmetry,MatrixType> > Atmp(qloc[loc].size());
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		{
-			Atmp[s] = C[locC].adjoint().contract(A[GAUGE::C][loc][s]);
+			// Atmp[s] = C[locC].adjoint().contract(A[GAUGE::C][loc][s]);
+			Atmp[s] = C[locC].adjoint() * A[GAUGE::C][loc][s];
 		}
 		
 //		cout << "svdDecompose AR from C at " << locC << endl;

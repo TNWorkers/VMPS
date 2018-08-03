@@ -458,6 +458,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	{
 		Vout.state.svdDecompose(l);
 	}
+	cout << Vout.state.test_ortho() << endl;
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
 	// initial energy
@@ -544,11 +545,11 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	Qbasis<Symmetry> outbase;
 	outbase.pullData(AL[N_sites-1],1);
 	
-	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(dW, 1, inbase);
-	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW, 1, outbase);
+	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(dW, 1, inbase, true, false);
+	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW, 1, outbase, false, true);
 	L.insert(dW-1, IdL);
 	R.insert(0,    IdR);
-	
+	// cout << "b=" << dW-1 << ", L:" << endl << L.print(false) << endl;
 //	auto Wsum = [&W, &qlocCell, &qOpCell] (size_t a, size_t b)
 //	{
 //		double res = 0;
@@ -577,17 +578,22 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 			for (int b=dW-2; b>=0; --b)
 			{
 				YL[b] = make_YL(b, L, AL, W, AL, qloc, qOp);
-				
+
+				// cout << "b=" << b << ", YL[b]:" << endl << YL[b].print(false) << endl;
+
 //				if (Wsum(b,b) == 0.)
 				if (b > 0)
 				{
 					L.insert(b,YL[b]);
+					// cout << "b=" << b << ", L:" << endl << L.print(false) << endl;
 				}
 				else
 				{
+					// cout << YL[b].print(false) << endl;
 					Tripod<Symmetry,MatrixType> Ltmp;
 					solve_linear(GAUGE::L, b, AL, YL[b], Reigen, W, qloc, qOp, contract_LR(b,YL[b],Reigen), Ltmp);
 					L.insert(b,Ltmp);
+					// cout << "b=" << b << ", L:" << endl << L.print(false) << endl;
 					
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and b == 0)
 					{
@@ -612,6 +618,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 				else
 				{
 					Tripod<Symmetry,MatrixType> Rtmp;
+					
 					solve_linear(GAUGE::R, a, AR, YR[a], Leigen, W, qloc, qOp, contract_LR(a,Leigen,YR[a]), Rtmp);
 					R.insert(a,Rtmp);
 					
@@ -632,13 +639,27 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	YLlast = YL[0];
 	YRfrst = YR[dW-1];
 	
-//	Tripod<Symmetry,MatrixType> Lcheck;
-//	contract_L(L, AL, W, AL, qlocCell, qOpCell, Lcheck);
-//	Tripod<Symmetry,MatrixType> Rcheck;
-//	contract_R(R, AR, W, AR, qlocCell, qOpCell, Rcheck);
-//	
-//	cout << termcolor::magenta << "CHECK=" << L.compare(Lcheck) << ", " << R.compare(Rcheck) << termcolor::reset << endl;
-//	cout << (R-Rcheck).print(true,13) << endl;
+	// Tripod<Symmetry,MatrixType> Lcheck;
+	// Tripod<Symmetry,MatrixType> Ltmp1=L;
+
+	// Tripod<Symmetry,MatrixType> Ltmp2;
+	// for(int l=0; l<N_sites; l++)
+	// {
+	// 	contract_L(Ltmp1, AL[l], W[l], AL[l], qloc[l], qOp[l], Ltmp2, false, make_pair(FULL,0),true);
+	// 	Ltmp1.clear();
+	// 	Ltmp1 = Ltmp2;
+	// }
+	// Lcheck = Ltmp2;
+	// Tripod<Symmetry,MatrixType> Rcheck;
+	// contract_R(R, AR, W, AR, qloc, qOp, Rcheck);
+	// cout << "Lcheck:" << endl;
+	// cout << Lcheck.print(true,13) << endl << endl;
+	// cout << "-------------------------------------------------------------------------------------------" << endl;
+	// cout << endl << "L:" << endl;
+	// cout << L.print(true,13) << endl;
+
+	// cout << termcolor::magenta << "CHECK=" << L.compare(Lcheck) << termcolor::reset << endl; //", " << R.compare(Rcheck) << termcolor::reset << endl;
+	// cout << (L-Lcheck).print(true,13) << endl;
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -700,7 +721,7 @@ build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	build_LR (Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::R], Vout.state.C, 
 	          H.W, H.qloc, H.qOp, 
 	          HeffA[0].L, HeffA[N_sites-1].R);
-	
+
 	// Make environment for each site of the unit cell
 	for (size_t l=1; l<N_sites; ++l)
 	{

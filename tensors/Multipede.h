@@ -92,7 +92,7 @@ typedef typename MatrixType::Scalar Scalar;
 	
 	/**Sets all matrices in Multipede<Nlegs,Symmetry,MatrixType>::block to zero, preserving the rows and columns.*/
 	void setZero();
-	
+
 	/**
 	 * Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers to the vacuum (all of them).
 	 * Needed in for the transfer matrix to the first site in matrix element calculations.
@@ -109,7 +109,7 @@ typedef typename MatrixType::Scalar Scalar;
 	/***/
 	void setIdentity (size_t Drows, size_t Dcols, size_t amax=1, size_t bmax=1);
 	
-	void setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base, bool factor=false);
+	void setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base, bool factor1=false, bool factor2=false);
 	///@}
 	
 	///@{
@@ -383,7 +383,7 @@ setIdentity (size_t Drows, size_t Dcols, size_t amax, size_t bmax)
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
 void Multipede<Nlegs,Symmetry,MatrixType>::
-setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base, bool factor)
+setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base, bool factor1, bool factor2)
 {
 	static_assert(Nlegs == 3);
 	
@@ -395,7 +395,8 @@ setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base, bool factor
 		{
 			MatrixType Mtmp(base.inner_dim(base[q]), base.inner_dim(base[q]));
 			Mtmp.setIdentity();
-			if (factor) {Mtmp *= Symmetry::degeneracy(base[q]);}
+			if (factor1) {Mtmp /= Symmetry::degeneracy(base[q]);}
+			if (factor2) {Mtmp *= Symmetry::degeneracy(base[q]);}			
 			Mtmparray[a][b] = Mtmp;
 		}
 		

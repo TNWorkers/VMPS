@@ -1,5 +1,5 @@
-#define DONT_USE_LAPACK_SVD
-#define DONT_USE_LAPACK_QR
+// #define DONT_USE_LAPACK_SVD
+// #define DONT_USE_LAPACK_QR
 #define LANCZOS_MAX_ITERATIONS 1e2
 //#define DONT_USE_BDCSVD
 
@@ -17,7 +17,7 @@ using namespace std;
 Logger lout;
 #include "ArgParser.h"
 
-//#include "util/LapackManager.h"
+#include "util/LapackManager.h"
 
 //#include "LanczosWrappers.h"
 #include "StringStuff.h"
@@ -42,7 +42,7 @@ Logger lout;
 
 // integration files not included in git
 //#include "gsl/gsl_integration.h"
-#include "LiebWu.h"
+// #include "LiebWu.h"
 
 double Jxy, Jz, J, Bx, Bz;
 double U, mu;
@@ -124,9 +124,9 @@ int main (int argc, char* argv[])
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",1);
 	Ly = args.get<size_t>("Ly",1);
-	Jxy = args.get<double>("Jxy",-1.);
-	Jz = args.get<double>("Jz",-1.);
-	J = args.get<double>("J",-1.);
+	Jxy = args.get<double>("Jxy",1.);
+	Jz = args.get<double>("Jz",1.);
+	J = args.get<double>("J",1.);
 	Bx = args.get<double>("Bx",1.);
 	Bz = args.get<double>("Bz",0.);
 	U = args.get<double>("U",10.);
@@ -180,13 +180,14 @@ int main (int argc, char* argv[])
 //	Eigenstate<Umps<Sym::U0,double> > g;
 	
 	typedef VMPS::HeisenbergSU2 HEISENBERG_SU2;
-	HEISENBERG_SU2 Heis_SU2(L,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG_SU2 Heis_SU2(L,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
 
 	HEISENBERG_SU2::uSolver DMRG_SU2(VERB);
 	Eigenstate<HEISENBERG_SU2::StateUd> g_SU2;
 	if (CALC_SU2)
 	{
 		lout << Heis_SU2.info() << endl;
+		// DMRG_SU2.set_algorithm(UMPS_ALG::PARALLEL);
 		DMRG_SU2.set_log(L,"e_Heis_SU2.dat","err_eigval_Heis_SU2.dat","err_var_Heis_SU2.dat");
 		DMRG_SU2.edgeState(Heis_SU2, g_SU2, {1}, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 	}
