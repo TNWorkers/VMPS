@@ -24,6 +24,7 @@ using namespace Eigen;
 #include "DmrgExternal.h"
 #include "DmrgHamiltonianTerms.h"
 #include "ParamHandler.h" // from TOOLS
+#include "models/ParamReturner.h"
 #include "util/macros.h"
 
 /**Namespace VMPS to distinguish names from ED equivalents.*/
@@ -1329,7 +1330,6 @@ precalc_TwoSiteData()
 	
 	for (size_t l=0; l<N_sites-1; ++l)
 	{
-		cout << "l=" << l << endl;
 		unordered_map<std::array<size_t,2>, 
 		              std::pair<vector<std::array<size_t,10> >, vector<Scalar> > > lookup;
 		Scalar factor_cgc;

@@ -32,7 +32,6 @@ int main (int argc, char* argv[])
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",4);
 	N = args.get<size_t>("N",L);
-//	qarray<2> Qi = MODEL::singlet(N);
 	M = args.get<size_t>("M",0);
 	#ifdef USING_SU2
 	qarray<2> Qi = {M+1,N};

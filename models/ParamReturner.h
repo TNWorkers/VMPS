@@ -11,14 +11,15 @@ public:
 	{
 		std::map<string,std::any> global_defaults = 
 		{
-			{"max_alpha", DMRG::CONTROL::DEFAULT::max_alpha_rsvd},
-			{"min_alpha", DMRG::CONTROL::DEFAULT::min_alpha_rsvd},
-			{"eps_svd", DMRG::CONTROL::DEFAULT::eps_svd},
-			{"Dincr_abs", DMRG::CONTROL::DEFAULT::Dincr_abs},
-			{"Dincr_per", DMRG::CONTROL::DEFAULT::Dincr_per},
-			{"Dincr_rel", DMRG::CONTROL::DEFAULT::Dincr_rel},
-			{"min_Nsv", DMRG::CONTROL::DEFAULT::min_Nsv},
-			{"max_Nrich", DMRG::CONTROL::DEFAULT::max_Nrich},
+			{"max_alpha", 100.},
+			{"min_alpha", 1e-11},
+			{"eps_svd", 1e-7},
+			{"Dincr_abs", 4ul},
+			{"Dincr_rel", 1.1},
+			{"Dincr_per", 2ul},
+			{"min_Nsv", 0ul},
+			{"max_Nrich", -1},
+			
 			{"max_halfsweeps", DMRG::CONTROL::DEFAULT::max_halfsweeps},
 			{"min_halfsweeps", DMRG::CONTROL::DEFAULT::min_halfsweeps},
 			{"Dinit", DMRG::CONTROL::DEFAULT::Dinit},

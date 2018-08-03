@@ -79,7 +79,7 @@ HubbardU1xU1::
 HubbardU1xU1 (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry> (L, Symmetry::qvacuum(), "", true),
  HubbardObservables(L,params,HubbardU1xU1::defaults),
- ParamReturner
+ ParamReturner()
 {
 	ParamHandler P(params,HubbardU1xU1::defaults);
 	

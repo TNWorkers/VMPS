@@ -302,15 +302,15 @@ struct DMRG
 		
 		struct DYN
 		{
-			function<double(size_t)> max_alpha_rsvd  = CONTROL::DEFAULT::max_alpha_rsvd;
-			function<double(size_t)> min_alpha_rsvd	 = CONTROL::DEFAULT::min_alpha_rsvd;
-			function<double(size_t)> eps_svd		 = CONTROL::DEFAULT::eps_svd;
-			function<size_t(size_t)> Dincr_abs		 = CONTROL::DEFAULT::Dincr_abs;
-			function<double(size_t)> Dincr_rel		 = CONTROL::DEFAULT::Dincr_rel;
-			function<size_t(size_t)> Dincr_per		 = CONTROL::DEFAULT::Dincr_per;
-			function<size_t(size_t)> min_Nsv		 = CONTROL::DEFAULT::min_Nsv;
-			function<int(size_t)> max_Nrich			 = CONTROL::DEFAULT::max_Nrich;
-			function<void(size_t)> doSomething		 = CONTROL::DEFAULT::doSomething;
+			function<double(size_t)> max_alpha_rsvd = CONTROL::DEFAULT::max_alpha_rsvd;
+			function<double(size_t)> min_alpha_rsvd = CONTROL::DEFAULT::min_alpha_rsvd;
+			function<double(size_t)> eps_svd        = CONTROL::DEFAULT::eps_svd;
+			function<size_t(size_t)> Dincr_abs      = CONTROL::DEFAULT::Dincr_abs;
+			function<double(size_t)> Dincr_rel      = CONTROL::DEFAULT::Dincr_rel;
+			function<size_t(size_t)> Dincr_per      = CONTROL::DEFAULT::Dincr_per;
+			function<size_t(size_t)> min_Nsv        = CONTROL::DEFAULT::min_Nsv;
+			function<int(size_t)> max_Nrich         = CONTROL::DEFAULT::max_Nrich;
+			function<void(size_t)> doSomething      = CONTROL::DEFAULT::doSomething;
 		};
 		
 		struct LANCZOS

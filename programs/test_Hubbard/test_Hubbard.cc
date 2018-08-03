@@ -38,7 +38,7 @@ Logger lout;
 
 #include "models/Hubbard.h"
 #include "models/HubbardU1xU1.h"
-#include "models/HubbardU1xU1NM.h"
+#include "models/HubbardU1xU1MN.h"
 #include "models/HubbardU1.h"
 #include "models/HubbardSU2xU1.h"
 #ifdef SU2XSU2
