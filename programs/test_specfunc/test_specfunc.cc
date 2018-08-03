@@ -18,7 +18,7 @@ using namespace std;
 
 size_t L;
 int N, M, Nup, Ndn;
-double U, V, tPrime;
+double t, U, V, tPrime;
 vector<int> Msave;
 int Mmax;
 string spec, wd, outfile, Efilename;
@@ -42,6 +42,7 @@ int main (int argc, char* argv[])
 	#endif
 	qarray<2> Qc;
 	spec = args.get<string>("spec","AES");
+	t = args.get<double>("t",1.);
 	U = args.get<double>("U",6.);
 	tPrime = args.get<double>("tPrime",0);
 	V = args.get<double>("V",0.);
@@ -66,7 +67,8 @@ int main (int argc, char* argv[])
 	#endif
 	
 	//--------------<Hamiltonian & transition operator>---------------
-	MODEL H(L,{{"U",U},{"tPrime",tPrime},{"V",V},{"CALC_SQUARE",true}});
+	//,{"tPrime",tPrime},{"V",V},{"CALC_SQUARE",true}
+	MODEL H(L,{{"t",t},{"U",U}});
 	lout << H.info() << endl << endl;
 	
 	MODEL::Operator A, Adag;
@@ -74,13 +76,29 @@ int main (int argc, char* argv[])
 	{
 		A = H.cc(L/2);
 		Adag = H.cdagcdag(L/2);
-		Qc = qarray<2>({Nup-1,Ndn-1});
+		#ifdef USING_SU2
+		{
+			Qc = qarray<2>({M+1,N-2});
+		}
+		#else
+		{
+			Qc = qarray<2>({Nup-1,Ndn-1});
+		}
+		#endif
 	}
 	else if (spec == "APS")
 	{
 		A = H.cdagcdag(L/2);
 		Adag = H.cc(L/2);
-		Qc = qarray<2>({Nup+1,Ndn+1});
+		#ifdef USING_SU2
+		{
+			Qc = qarray<2>({M+1,N+2});
+		}
+		#else
+		{
+			Qc = qarray<2>({Nup+1,Ndn+1});
+		}
+		#endif
 	}
 	else if (spec == "PES")
 	{
@@ -151,12 +169,14 @@ int main (int argc, char* argv[])
 		}
 		#endif
 	}
+	A.get_TwoSiteData(H);
+	Adag.get_TwoSiteData(H);
 	lout << A.info() << endl;
 	lout << Adag.info() << endl;
 	//--------------</Hamiltonian & transition operator>---------------
 	
 	#include "programs/snippets/groundstate.txt"
-	#include "programs/snippets/state_compression.txt"
+//	#include "programs/snippets/state_compression.txt"
 	#include "programs/snippets/AxInit.txt"
 	#include "programs/snippets/KPS.txt"
 }
