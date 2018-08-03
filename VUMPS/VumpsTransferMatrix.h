@@ -246,15 +246,12 @@ inline Scalar dot (const TransferVector<Symmetry,Scalar> &V1, const TransferVect
 	Scalar res = 0;
 	for (size_t q=0; q<V1.data.size(); ++q)
 	{
-		if(V1.data.mid(q) == Symmetry::qvacuum() and V2.data.mid(q) == Symmetry::qvacuum())
-		{
 			assert(V1.data.in(q) == V2.data.in(q));
 			assert(V1.data.out(q) == V2.data.out(q));
 			assert(V1.data.mid(q) == V2.data.mid(q) and V1.data.mid(q) == Symmetry::qvacuum());
 ////		cout << V1.data.in(q) << ", " << V1.data.out(q) << ", " << V1.data.mid(q) << " | " 
 ////		     << V2.data.in(q) << ", " << V2.data.out(q) << ", " << V2.data.mid(q) << endl;
 			res += (V1.data.block[q][V1.ab][0].adjoint() * V2.data.block[q][V2.ab][0]).trace() * Symmetry::coeff_dot(V1.data.out(q));
-		}
 	}
 	return res;
 }
