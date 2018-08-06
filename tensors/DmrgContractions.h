@@ -35,8 +35,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
                  Tripod<Symmetry,MatrixType> &Lnew,
                  bool RANDOMIZE = false,
-                 tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0),
-				 bool CALLED_FROM_VUMPS=false)
+                 tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0))
 {
 	MpoScalar factor_cgc;
 	Lnew.clear();
@@ -68,25 +67,16 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 					
 					if constexpr ( Symmetry::NON_ABELIAN )
 					{
-						if(CALLED_FROM_VUMPS)
-						{
-							factor_cgc = Symmetry::coeff_buildL_V(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
-																quple[2],            qOp[k],   Lold.mid(qL),
-																Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
-						}
-						else
-						{
-							factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
-																quple[2],            qOp[k],   Lold.mid(qL),
-																Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
-						}
+						factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
+															quple[2],            qOp[k],   Lold.mid(qL),
+															Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
 					}
 					else
 					{
 						factor_cgc = 1.;
 					}
 					if (abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) {continue;}
-					
+
 					for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
 					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
 					{
@@ -94,15 +84,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 						size_t b = iW.col();
 
 						//0 is the Hamiltonian block. Only singlett couplings are neccessary.
-						if(b == 0 and quple[2] != Symmetry::qvacuum()) {continue;}
-						// if(b == W[s1][s2][k].cols()-1 and quple[0] == Symmetry::qvacuum() and quple[1] == Symmetry::qvacuum() and quple[2] == Symmetry::qvacuum())
-						// {
-						// 	cout << "factor_cgc=" << factor_cgc << ", iW=" << iW.value() << endl;
-						// 	cout << "Lold=" << endl << fixed << Lold.block[qL][a][0] << endl;
-						// 	cout << "Abra[s1].out[qAbra]=" << Abra[s1].out[qAbra] << ", Abra[s1].in[qAbra]=" << Abra[s1].in[qAbra] << ", qloc[s1]=" << qloc[s1] << endl;
-						// 	cout << "Aket[s2].out[qAket]=" << Aket[s2].out[qAket] << ", Aket[s2].in[qAket]=" << Aket[s2].in[qAket] << ", qloc[s2]=" << qloc[s2] << endl;
-						// 	cout << "Lold.mid(qL)=" << Lold.mid(qL) << ", quple[2]=" << quple[2] << ", qOp[k]=" << qOp[k] << endl;
-						// }
+						// if(b == 0 and quple[2] != Symmetry::qvacuum()) {continue;}
 
 						if (MODE == FULL or
 						   (MODE == TRIANGULAR and a>fixed_b) or
@@ -123,15 +105,6 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 									                 Lold.block[qL][a][0],
 									                 Aket[s2].block[qAket],
 									                 Mtmp);
-									// if(b == W[s1][s2][k].cols()-1)
-									// {
-									// 	cout << termcolor::bold << termcolor::red << "last col entry:" << termcolor::reset << endl;
-									// 	assert(qOp[k] == Symmetry::qvacuum());
-									// 	cout << "Mpo factor=" << iW.value() << " times cgc=" << factor_cgc << endl;
-									// 	cout << "Abra=" << endl << std::fixed << Abra[s1].block[qAbra].adjoint() << endl;
-									// 	cout << "Aket=" << endl << std::fixed << Aket[s2].block[qAket] << endl;
-									// 	cout << "res=" << endl << std::fixed << Mtmp << endl;
-									// }
 								}
 								
 								auto it = Lnew.dict.find(quple);
@@ -187,8 +160,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
                  Tripod<Symmetry,MatrixType> &Rnew,
                  bool RANDOMIZE = false,
-                 tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0),
-				 bool CALLED_FROM_VUMPS=false)
+                 tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0))
 {
 	MpoScalar factor_cgc;
 	Rnew.clear();
@@ -220,18 +192,9 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 					
 					if constexpr (Symmetry::NON_ABELIAN)
 					{
-						if(CALLED_FROM_VUMPS)
-						{
-							factor_cgc = Symmetry::coeff_buildR_V(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
-																  Rold.mid(qR),        qOp[k],   quple[2],
-																  Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);							
-						}
-						else
-						{
-							factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
-																Rold.mid(qR),        qOp[k],   quple[2],
-																Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
-						}
+						factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
+															Rold.mid(qR),        qOp[k],   quple[2],
+															Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
 					}
 					else
 					{
@@ -245,15 +208,8 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 						size_t a = iW.row();
 						size_t b = iW.col();
 						//Daux-1 is the Hamiltonian block. Only singlett couplings are neccessary.
-						if(a == W[s1][s2][k].cols()-1 and quple[2] != Symmetry::qvacuum()) {continue;}
-						// if(a == 0 and quple[0] == Symmetry::qvacuum() and quple[1] == Symmetry::qvacuum() and quple[2] == Symmetry::qvacuum())
-						// {
-						// 	cout << "factor_cgc=" << factor_cgc << ", iW=" << iW.value() << endl;
-						// 	cout << "Rold=" << endl << fixed << Rold.block[qR][b][0] << endl;
-						// 	cout << "Abra[s1].out[qAbra]=" << Abra[s1].out[qAbra] << ", Abra[s1].in[qAbra]=" << Abra[s1].in[qAbra] << ", qloc[s1]=" << qloc[s1] << endl;
-						// 	cout << "Aket[s2].out[qAket]=" << Aket[s2].out[qAket] << ", Aket[s2].in[qAket]=" << Aket[s2].in[qAket] << ", qloc[s2]=" << qloc[s2] << endl;
-						// 	cout << "Rold.mid(qR)=" << Rold.mid(qR) << ", quple[2]=" << quple[2] << ", qOp[k]=" << qOp[k] << endl;
-						// }
+						// if(a == W[s1][s2][k].cols()-1 and quple[2] != Symmetry::qvacuum()) {continue;}
+
 						if (MODE == FULL or
 						   (MODE == TRIANGULAR and fixed_a>b) or
 						   (MODE == FIXED and a==fixed_a))
@@ -1020,6 +976,8 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 	for (size_t qL=0; qL<L.dim; ++qL)
 	{
 		qarray3<Symmetry::Nq> quple = {L.in(qL), L.out(qL), L.mid(qL)};
+		// qarray3<Symmetry::Nq> quple = {L.out(qL), L.in(qL), L.mid(qL)};
+
 		auto qR = R.dict.find(quple);
 		
 		if (qR != R.dict.end())

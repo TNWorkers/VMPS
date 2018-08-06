@@ -53,8 +53,9 @@ bool LAWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry:
 					auto Rmids = Symmetry::reduceSilent(Lmid,qOp[k]);
 					for (const auto &Rmid:Rmids)
 					{
-						if (Symmetry::validate(qarray3<Symmetry::Nq>{Rin,Rmid,Rout}) and 
-						    find(qOp.begin(), qOp.end(), Rmid) != qOp.end())
+						// if (Symmetry::validate(qarray3<Symmetry::Nq>{Rin,Rmid,Rout}) and 
+						//     find(qOp.begin(), qOp.end(), Rmid) != qOp.end())
+						if (Symmetry::validate(qarray3<Symmetry::Nq>{Rin,Rmid,Rout}))
 						{
 							result.push_back(make_tuple(qarray3<Symmetry::Nq>{Rin,Rout,Rmid}, qAbra->second, qAket->second));
 							out = true;
@@ -95,8 +96,9 @@ bool AWAR (qarray<Symmetry::Nq> Rin, qarray<Symmetry::Nq> Rout, qarray<Symmetry:
 					auto Lmids = Symmetry::reduceSilent(Rmid,Symmetry::flip(qOp[k]));
 					for (const auto &Lmid : Lmids)
 					{
-						if (Symmetry::validate(qarray3<Symmetry::Nq>{Lout,Lmid,Lin}) and
-						    find(qOp.begin(), qOp.end(), Lmid) != qOp.end())
+						// if (Symmetry::validate(qarray3<Symmetry::Nq>{Lout,Lmid,Lin}) and
+						//     find(qOp.begin(), qOp.end(), Lmid) != qOp.end())
+						if (Symmetry::validate(qarray3<Symmetry::Nq>{Lout,Lmid,Lin}))
 						{
 							result.push_back(make_tuple(qarray3<Symmetry::Nq>{Lin,Lout,Lmid}, qAbra->second, qAket->second));
 							out = true;

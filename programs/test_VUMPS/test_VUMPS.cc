@@ -36,6 +36,8 @@ Logger lout;
 #include "models/HeisenbergSU2.h"
 #include "models/HubbardU1.h"
 #include "models/Hubbard.h"
+#include "models/HubbardSU2xSU2.h"
+#include "models/KondoU0xSU2.h"
 //#include "models/HeisenbergXXZ.h"
 //#include "models/Hubbard.h"
 
@@ -218,21 +220,21 @@ int main (int argc, char* argv[])
 			     << ", <ψ|φ>=" << dot3 
 			<< endl;
 		}
-		
-////		typedef VMPS::HubbardU1 HUBBARD_U1;
-//		HUBBARD_U1 Hubb_U1(L,{{"U",U},{"OPEN_BC",false}});
-//		qarray<2> Qc = {N,0};
-////		qarray<1> Qc = {N};
+	}
+		// typedef VMPS::HubbardSU2xSU2 HUBBARD_U1;
+		// HUBBARD_U1 Hubb_U1(L,{{"t",1.},{"U",U},{"J",0.},{"OPEN_BC",false}});
+		// qarray<2> Qc = {1,1};
+//		qarray<1> Qc = {1};
 //		Hubb_U1.transform_base(Qc);
-//		cout << Hubb_U1.info() << endl;
-//		HUBBARD_U1::uSolver DMRG_HUBBU1(VERB);
-//		Eigenstate<HUBBARD_U1::StateUd> g_U1Hubb;
+		// cout << Hubb_U1.info() << endl;
+		// HUBBARD_U1::uSolver DMRG_HUBBU1(VERB);
+		// Eigenstate<HUBBARD_U1::StateUd> g_U1Hubb;
 //		DMRG_HUBBU1.set_log(2,"e_Hubb_U1.dat","err_eigval_Hubb_U1.dat","err_var_Hubb_U1.dat");
-//		DMRG_HUBBU1.edgeState(Hubb_U1, g_U1Hubb, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+		// DMRG_HUBBU1.edgeState(Hubb_U1, g_U1Hubb, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 //		g_U1Hubb.state.graph("Hubb");
 ////		cout << "exact=" << -0.2671549218961211 << endl;
-//		double e_exact = LiebWu_E0_L(U,0.01*tol_eigval);
-//		cout << "e_exact=" << e_exact << ", diff=" << abs(e_exact-g_U1Hubb.energy) << endl;
+		// double e_exact = VMPS::Hubbard::ref({{"U",U}},L).value;
+		// cout << "e_exact=" << e_exact << ", diff=" << abs(e_exact-g_U1Hubb.energy) << endl;
 		
 //		ArrayXd nvec(L), dvec(L), Szvec(L);
 //		for (size_t l=0; l<L; ++l)
@@ -252,7 +254,7 @@ int main (int argc, char* argv[])
 //		cout << "davg=" << dvec.sum()/L << endl;
 //		cout << "Szavg=" << Szvec.sum()/L << endl;
 //		cout << "n(0)n(1)=" << avg(g_U1Hubb.state, Hubb_U1.nn<UPDN,UPDN>(0,1), g_U1Hubb.state) << endl;
-	}
+	
 	
 	typedef VMPS::HeisenbergXXZ HEISENBERG0;
 	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
@@ -303,38 +305,11 @@ int main (int argc, char* argv[])
 	}
 	
 	cout << setprecision(13);
-	double eref = std::nan("1");
-	if (D==2)
-	{
-		if (Jz==0.)
-		{
-			eref = -1./M_PI;
-		}
-		else
-		{
-			eref = 0.25-log(2);
-		}
-	}
-	else if (D==3)
-	{
-		eref = -1.401484038971;
-	}
-	else if (D==4)
-	{
-		eref = -2.828337;
-	}
-	else if (D==5)
-	{
-		eref = -4.761248;
-	}
-	else if (D==6)
-	{
-		eref = -7.1924;
-	}
-	cout << "e(ref)=" << eref << endl;
-	if (CALC_SU2) {cout << "e0(SU2)=" << g_SU2.energy << ", diff=" << abs(eref-g_SU2.energy) << endl;}
-	if (CALC_U1)  {cout << "e0(U1) =" << g_U1.energy << ", diff=" << abs(eref-g_U1.energy) << endl;}
-	if (CALC_U0)  {cout << "e0(U0) =" << g0.energy << ", diff=" << abs(eref-g0.energy) << endl;}
+	refEnergy lit = VMPS::Heisenberg::ref({{"J",J},{"Ly",Ly},{"D",D}}); 
+	cout << "e(ref)=" << lit.value << "\t from: " << lit.source << endl;
+	if (CALC_SU2) {cout << "e0(SU2)=" << g_SU2.energy << ", diff=" << abs(lit.value-g_SU2.energy) << endl;}
+	if (CALC_U1)  {cout << "e0(U1) =" << g_U1.energy << ", diff=" << abs(lit.value-g_U1.energy) << endl;}
+	if (CALC_U0)  {cout << "e0(U0) =" << g0.energy << ", diff=" << abs(lit.value-g0.energy) << endl;}
 	
 	if (CALC_U0)
 	{
@@ -372,7 +347,7 @@ int main (int argc, char* argv[])
 		size_t dmax = 10;
 		for (size_t d=1; d<dmax; ++d)
 		{
-			HEISENBERG_SU2 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
+			HEISENBERG_SU2 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
 			double SvecSvec = avg(g_SU2.state,Htmp.SS(0,d),g_SU2.state);
 			// double SvecSvec = Htmp.SvecSvecAvg(g.state,0,d);
 			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;

@@ -424,7 +424,7 @@ outerprod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Sy
 			for ( const auto& q1: reduce1 )
 				for ( const auto& q2: reduce2 )
 				{
-					factor_cgc = Symmetry::coeff_buildR( O1.data().out[nu], O2.data().out[mu], q2,
+					factor_cgc = Symmetry::coeff_buildL( O1.data().out[nu], O2.data().out[mu], q2,
 														 O1.Q(), O2.Q(), target,
 														 O1.data().in[nu], O2.data().in[mu], q1);
 					if ( std::abs(factor_cgc) < ::numeric_limits<Scalar>::epsilon() ) { continue; }

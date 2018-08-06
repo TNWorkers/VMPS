@@ -13,15 +13,16 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
 	
 	auto Obs = O;
-	Obs.transform_base(Vket.Qtarget(),false);
+	if constexpr (!Symmetry::NON_ABELIAN) {Obs.transform_base(Vket.Qtarget(),false);} //transform_base only works for abelian symmetries.
 	
 //	B.setIdentity(Vket.get_frst_rows(),Vbra.get_frst_rows(),1,1);
 	B.setIdentity(Obs.auxdim(), 1, Vket.inBasis(0));
+
 	for (size_t l=0; l<Obs.length(); ++l)
 	{
 		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
 		contract_L(B, Vbra.A_at(g,l%Vket.length()), Obs.W_at(l), Vket.A_at(g,l%Vket.length()), Obs.locBasis(l), Obs.opBasis(l), Bnext);
-		
+
 		B.clear();
 		B = Bnext;
 		Bnext.clear();
@@ -29,7 +30,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdR;
 	IdR.setIdentity(Obs.auxdim(), 1, Vket.outBasis((Obs.length()-1)%Vket.length()));
-	
+	// cout << IdR.print(false) << endl << B.print(false) << endl;
 	return contract_LR(B,IdR);
 	
 //	if (B.dim == 1)

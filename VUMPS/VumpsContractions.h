@@ -211,15 +211,15 @@ Tripod<Symmetry,MatrixType> make_YL (size_t b,
 	{
 		if (l==Lcell-1)
 		{
-			contract_L(L, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(FIXED,b),true);
+			contract_L(L, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(FIXED,b));
 		}
 		else if (l==0)
 		{
-			contract_L(L, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(TRIANGULAR,b),true);
+			contract_L(L, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(TRIANGULAR,b));
 		}
 		else
 		{
-			contract_L(L, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(FULL,0),true);
+			contract_L(L, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(FULL,0));
 		}
 		L.clear();
 		L = Lnext;
@@ -245,15 +245,15 @@ Tripod<Symmetry,MatrixType> make_YR (size_t a,
 	{
 		if (l==0)
 		{
-			contract_R(R, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(FIXED,a),true);
+			contract_R(R, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(FIXED,a));
 		}
 		else if (l==Lcell-1)
 		{
-			contract_R(R, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(TRIANGULAR,a),true);
+			contract_R(R, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(TRIANGULAR,a));
 		}
 		else
 		{
-			contract_R(R, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(FULL,0),true);
+			contract_R(R, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(FULL,0));
 		}
 		R.clear();
 		R = Rnext;

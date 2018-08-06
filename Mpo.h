@@ -688,7 +688,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 								for(const auto& qln : qlns)
 								for(const auto& qrn : qrns)
 								{
-									Scalar factor_merge = Symmetry::coeff_buildR(qr1       , qr2       , qrn,
+									Scalar factor_merge = Symmetry::coeff_buildL(qr1       , qr2       , qrn,
 									                                             qOp[l][k2], qOp[l][k1], qK ,
 									                                             ql1       , ql2       , qln);
 									
@@ -1371,7 +1371,7 @@ precalc_TwoSiteData()
 						
 						// tensor product of the MPO operators in the physical space
 						Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
-						Symmetry::coeff_buildR(qloc[l][s2], qloc[l+1][s4], qmerge24,
+						Symmetry::coeff_buildL(qloc[l][s2], qloc[l+1][s4], qmerge24,
 							                   qOp[l][k12], qOp[l+1][k34], qOpMerge,
 							                   qloc[l][s1], qloc[l+1][s3], qmerge13)
 							                   :1.;

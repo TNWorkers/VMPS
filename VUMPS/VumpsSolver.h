@@ -55,15 +55,15 @@ public:
 	double memory (MEMUNIT memunit=GB) const;
 	
 	/**Setup a logfile of the iterations.
-	* \param N_log_input : save the log every \p N_log_input half-sweeps
-	* \param file_e_input : file for the ground-state energy in the format [min(eL,eR), eL, eR]
-	* \param file_err_eigval_input : file for the energy error
-	* \param file_err_var_input : file for the variational error
-	*/
+	 * \param N_log_input : save the log every \p N_log_input half-sweeps
+	 * \param file_e_input : file for the ground-state energy in the format [min(eL,eR), eL, eR]
+	 * \param file_err_eigval_input : file for the energy error
+	 * \param file_err_var_input : file for the variational error
+	 */
 	void set_log (int N_log_input, string file_e_input, string file_err_eigval_input, string file_err_var_input);
 	///\}
 	
-	/**Calculates the highest or lowest eigenstate with an MPO (algorithm 6). Works also for a 2- and 4-site unit cell. Simply create an MPO on 2 or 4 sites.*/
+	/**Calculates the highest or lowest eigenstate with an MPO (algorithm 6).*/
 	void edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
 	                qarray<Symmetry::Nq> Qtot_input, 
 	                double tol_eigval_input=1e-7, double tol_var_input=1e-6, 
@@ -79,7 +79,10 @@ private:
 	                     qarray<Symmetry::Nq> Qtot_input,
 	                     size_t M, size_t Nqmax);
 	
-	/**Performs an iteration with 1-site unit cell. Used with an explicit 2-site Hamiltonian.*/
+	/**
+	 * Performs an iteration with 1-site unit cell. Used with an explicit 2-site Hamiltonian.
+	 * \warning : This function is not implemented for SU(2).
+	 */
 	void iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	///\}
 	
@@ -95,7 +98,10 @@ private:
 	///\}
 	
 	///\{
-	/**Performs an IDMRG iteration with a 1-site unit cell.*/
+	/**
+	 * Performs an IDMRG iteration with a 2-site unit cell.
+	 * \warning : This function is not implemented for SU(2).
+	 */
 	void iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
 	/**Prepares the class, setting up the environments for IDMRG.*/
@@ -157,17 +163,17 @@ private:
 	double eL, eR, eoldR, eoldL;
 	
 	/**Solves the linear system (eq. C25ab) using GMRES.
-	* \param gauge : L or R
-	* \param ab : fixed index \p a (rows) or \p b (cols)
-	* \param A : contracted A-tensor of the cell
-	* \param Y_LR : |Y_Ra), (Y_La| for eq. C25ab
-	* \param LReigen : (L| or |R)
-	* \param W : Mpo tensor for the transfer matrix
-	* \param qloc : local basis
-	* \param qOp : operator basis
-	* \param LRdotY : (Y_La|R), (L|Y_Ra) for eq. C25ab
-	* \param LRres : resulting (H_L| or |H_R)
-	*/
+	 * \param gauge : L or R
+	 * \param ab : fixed index \p a (rows) or \p b (cols)
+	 * \param A : contracted A-tensor of the cell
+	 * \param Y_LR : |Y_Ra), (Y_La| for eq. C25ab
+	 * \param LReigen : (L| or |R)
+	 * \param W : Mpo tensor for the transfer matrix
+	 * \param qloc : local basis
+	 * \param qOp : operator basis
+	 * \param LRdotY : (Y_La|R), (L|Y_Ra) for eq. C25ab
+	 * \param LRres : resulting (H_L| or |H_R)
+	 */
 	void solve_linear (GAUGE::OPTION gauge, 
 	                   size_t ab, 
 	                   const vector<vector<Biped<Symmetry,MatrixType> > > &A, 
@@ -180,13 +186,14 @@ private:
 	                   Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LRres);
 	
 	/**Solves the linear system (eq. 15) using GMRES.
-	* \param gauge : L or R
-	* \param A : contracted A-tensor of the cell
-	* \param hLR : (h_L|, |h_R) for eq. 15
-	* \param LReigen : (L| or |R) 
-	* \param qloc : local basis
-	* \param hLRdotLR : (h_L|R), (L|h_R) for eq. 15
-	* \param LRres : resulting (H_L| or |H_R)*/
+	 * \param gauge : L or R
+	 * \param A : contracted A-tensor of the cell
+	 * \param hLR : (h_L|, |h_R) for eq. 15
+	 * \param LReigen : (L| or |R) 
+	 * \param qloc : local basis
+	 * \param hLRdotLR : (h_L|R), (L|h_R) for eq. 15
+	 * \param LRres : resulting (H_L| or |H_R)
+	 */
 	void solve_linear (GAUGE::OPTION gauge, 
 	                   const vector<vector<Biped<Symmetry,MatrixType> > > &A, 
 	                   const Biped<Symmetry,MatrixType> &hLR, 
@@ -226,8 +233,8 @@ private:
 	vector<double> eL_mem, eR_mem, err_eigval_mem, err_var_mem;
 	
 	/**Function to write out the logfiles.
-	* \param FORCE : if \p true, forced write without checking any conditions
-	*/
+	 * \param FORCE : if \p true, forced write without checking any conditions
+	 */
 	void write_log (bool FORCE = false);
 	///\}
 };
@@ -545,11 +552,12 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	Qbasis<Symmetry> outbase;
 	outbase.pullData(AL[N_sites-1],1);
 	
-	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(dW, 1, inbase, false, false);
-	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW, 1, outbase, false, false);
+	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(dW, 1, inbase);
+	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW, 1, outbase);
 	L.insert(dW-1, IdL);
 	R.insert(0,    IdR);
-	// cout << "b=" << dW-1 << ", L:" << endl << L.print(false) << endl;
+
+//  Todo: Rewrite this function!
 //	auto Wsum = [&W, &qlocCell, &qOpCell] (size_t a, size_t b)
 //	{
 //		double res = 0;
@@ -579,21 +587,16 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 			{
 				YL[b] = make_YL(b, L, AL, W, AL, qloc, qOp);
 
-				// cout << "b=" << b << ", YL[b]:" << endl << YL[b].print(false) << endl;
-
 //				if (Wsum(b,b) == 0.)
-				if (b > 0)
+				if (b > 0) //Attention: This is not valid for next-nearest neighbour terms in the MPO!
 				{
 					L.insert(b,YL[b]);
-					// cout << "b=" << b << ", L:" << endl << L.print(false) << endl;
 				}
 				else
 				{
-					// cout << YL[b].print(false) << endl;
 					Tripod<Symmetry,MatrixType> Ltmp;
 					solve_linear(GAUGE::L, b, AL, YL[b], Reigen, W, qloc, qOp, contract_LR(b,YL[b],Reigen), Ltmp);
 					L.insert(b,Ltmp);
-					// cout << "b=" << b << ", L:" << endl << L.print(false) << endl;
 					
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and b == 0)
 					{
@@ -611,7 +614,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 				YR[a] = make_YR(a, R, AR, W, AR, qloc, qOp);
 				
 //				if (Wsum(a,a) == 0.)
-				if (a < dW-1)
+				if (a < dW-1) //Attention: This is not valid for next-nearest neighbour terms in the MPO!
 				{
 					R.insert(a,YR[a]);
 				}
@@ -671,46 +674,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
-{
-//	// Pre-contract A-tensors and W-tensors
-//	vector<vector<vector<SparseMatrix<Scalar> > > > Wcell = H.W_at(0);
-//	vector<qarray<Symmetry::Nq> > qOpCell                 = H.opBasis(0);
-//	
-//	for (size_t g=0; g<2; ++g)
-//	{
-//		Vout.state.Acell[g] = Vout.state.A[g][0];
-//	}
-//	Vout.state.qlocCell = H.locBasis(0);
-//	
-//	for (size_t l=0; l<N_sites-1; ++l)
-//	{
-//		for (size_t g=0; g<2; ++g)
-//		{
-//			vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Atmp;
-//			contract_AA (Vout.state.Acell[g], Vout.state.qlocCell, 
-//			             Vout.state.A[g][l+1], H.locBasis(l+1), 
-//			             Vout.state.Qtop(l), Vout.state.Qbot(l),
-//			             Atmp);
-//			for (size_t s=0; s<Atmp.size(); ++s)
-//			{
-//				Atmp[s] = Atmp[s].cleaned();
-//			}
-//			Vout.state.Acell[g] = Atmp;
-//		}
-//		
-//		vector<vector<vector<SparseMatrix<Scalar> > > > Wtmp;
-//		vector<qarray<Symmetry::Nq> > qlocTmp;
-//		vector<qarray<Symmetry::Nq> > qOpTmp;
-//		
-//		contract_WW<Symmetry,Scalar> (Wcell, Vout.state.qlocCell, qOpCell, 
-//		                              H.W_at(l+1), H.locBasis(l+1), H.opBasis(l+1),
-//		                              Wtmp, qlocTmp, qOpTmp);
-//		
-//		Wcell = Wtmp;
-//		Vout.state.qlocCell = qlocTmp;
-//		qOpCell = qOpTmp;
-//	}
-	
+{	
 	// With a unit cell, Heff is a vector for each site
 	HeffA.clear();
 	HeffA.resize(N_sites);

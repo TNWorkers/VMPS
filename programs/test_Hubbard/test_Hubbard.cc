@@ -29,7 +29,7 @@ Logger lout;
 
 // ED stuff
 #include "HubbardModel.h"
-#include "LanczosWrappers.h"
+//#include "LanczosWrappers.h"
 #include "LanczosSolver.h"
 #include "Photo.h"
 #include "Auger.h"
@@ -38,7 +38,7 @@ Logger lout;
 
 #include "models/Hubbard.h"
 #include "models/HubbardU1xU1.h"
-#include "models/HubbardU1xU1MN.h"
+//#include "models/HubbardU1xU1MN.h"
 #include "models/HubbardU1.h"
 #include "models/HubbardSU2xU1.h"
 #ifdef SU2XSU2
@@ -291,7 +291,7 @@ int main (int argc, char* argv[])
 		HUBBARD::Solver DMRG_U1(VERB);
 		DMRG_U1.GlobParam = GlobParam;
 		DMRG_U1.DynParam = DynParam;
-		DMRG_U1.edgeState(H_U1, g_U1, {Nup,Ndn}, LANCZOS::EDGE::GROUND);
+		DMRG_U1.edgeState(H_U1, g_U1, {M,N}, LANCZOS::EDGE::GROUND);
 		g_U1.state.graph("U1");
 		
 		t_U1 = Watch_U1.time();
