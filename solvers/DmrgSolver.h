@@ -726,6 +726,12 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 	}
 	
 	Vout.state.set_defaultCutoffs();
+	
+	if (Vout.state.calc_Nqavg() <= 1.5)
+	{
+		Vout.state.min_Nsv = 1;
+		lout << termcolor::blue << "Warning: Setting min_Nsv=1 do deal with small Hilbert space!" << termcolor::reset << endl;
+	}
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>

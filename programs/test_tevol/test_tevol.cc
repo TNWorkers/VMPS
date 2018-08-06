@@ -193,7 +193,7 @@ int main (int argc, char* argv[])
 	}
 	FilerSU2.close();
 	
-	cout << resU1/resSU2 << endl;
+	cout << abs(resU1-resSU2) << endl;
 	
 //	//--------output---------
 //	TextTable T( '-', '|', '+' );

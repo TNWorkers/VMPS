@@ -817,7 +817,6 @@ calc_Qlimits()
 			{
 				QinTop[l][q] = min(QinTop[l][q], QoutTop[l-1][q]);
 				QinBot[l][q]  = max(QinBot[l][q], QoutBot[l-1][q]);
-				
 			}
 		}
 		if (l!=this->N_sites-1)

@@ -448,6 +448,12 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 		lout << "\t" << Compadre.info() << endl;
 	}
 	lout << endl;
+	
+	if (Vout.calc_Nqavg() <= 1.5)
+	{
+		Vout.min_Nsv = 1;
+		lout << termcolor::blue << "Warning: Setting min_Nsv=1 do deal with small Hilbert space!" << termcolor::reset << endl;
+	}
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>

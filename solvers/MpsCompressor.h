@@ -678,8 +678,8 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		++N_halfsweeps;
 		
 		Scalar factor_cgc = 1.;//pow(Symmetry::degeneracy(H.Qtarget()),1);
-		cout << "avgHsqVin=" << avgHsqVin << endl;
-		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+//		cout << "avgHsqVin=" << avgHsqVin << endl;
+//		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		sqdist = abs(avgHsqVin - factor_cgc * factor_cgc * Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		
@@ -819,9 +819,6 @@ prodOptimize2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, const Mps<S
 	precalc_blockStructure (Heff[loc1()].L, ApairOut.data, Heff2.W12, Heff2.W34, ApairIn.data, Heff[loc2()].R, 
 	                        H.locBasis(loc1()), H.locBasis(loc2()), H.opBasis(loc1()), H.opBasis(loc2()), 
 	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
-	cout << "loc1()=" << loc1() << endl;
-	cout << "Heff2.qlhs.size()=" << Heff2.qlhs.size() << endl;
-	cout << "Heff2.qrhs.size()=" << Heff2.qrhs.size() << endl;
 	t_ohead += OheadTimer.time();
 	Stopwatch<> OptTimer;
 	OxV(Heff2, ApairIn, ApairOut);
@@ -1024,11 +1021,11 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-		cout << "avgHsqV1=" << avgHsqV1 
-		     << ", Vout.squaredNorm()=" << Vout.squaredNorm() 
-		     << ", polyB*polyB*sqnormV2=" << polyB*polyB*sqnormV2 
-		     << ", 2.*polyB*overlapV12=" << 2.*polyB*overlapV12 
-		     << endl;
+//		cout << "avgHsqV1=" << avgHsqV1 
+//		     << ", Vout.squaredNorm()=" << Vout.squaredNorm() 
+//		     << ", polyB*polyB*sqnormV2=" << polyB*polyB*sqnormV2 
+//		     << ", 2.*polyB*overlapV12=" << 2.*polyB*overlapV12 
+//		     << endl;
 		sqdist = abs(avgHsqV1 - Vout.squaredNorm() + polyB*polyB*sqnormV2 - 2.*polyB*overlapV12);
 		assert(!std::isnan(sqdist));
 		
