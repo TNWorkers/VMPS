@@ -68,7 +68,7 @@ int main (int argc, char* argv[])
 	
 	//--------------<Hamiltonian & transition operator>---------------
 	//,{"tPrime",tPrime},{"V",V},{"CALC_SQUARE",true}
-	MODEL H(L,{{"t",t},{"U",U}});
+	MODEL H(L,{{"t",t},{"U",U},{"CALC_SQUARE",false}});
 	lout << H.info() << endl << endl;
 	
 	MODEL::Operator A, Adag;
@@ -105,7 +105,7 @@ int main (int argc, char* argv[])
 		#ifdef USING_SU2
 		{
 			A = H.c(L/2, 0, 1.);
-			Adag = H.cdag(L/2, 0, 1./sqrt(2.));
+			Adag = H.cdag(L/2, 0, sqrt(2.));
 			Qc = qarray<2>({2,N-1});
 		}
 		#else
@@ -169,8 +169,8 @@ int main (int argc, char* argv[])
 		}
 		#endif
 	}
-	A.get_TwoSiteData(H);
-	Adag.get_TwoSiteData(H);
+//	A.precalc_TwoSiteData();
+//	Adag.precalc_TwoSiteData();
 	lout << A.info() << endl;
 	lout << Adag.info() << endl;
 	//--------------</Hamiltonian & transition operator>---------------

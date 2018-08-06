@@ -124,7 +124,7 @@ int main (int argc, char* argv[])
 		resU1(i) = res;
 		
 		Stopwatch<> Steptimer;
-		TDVP_U1.t_step(H_U1, Psi_U1, -1.i*dt, 1,tol_Lanczos);
+		TDVP_U1.t_step0(H_U1, Psi_U1, -1.i*dt, 1,tol_Lanczos);
 		tinfo = Steptimer.info();
 		
 		if (Psi_U1.get_truncWeight().sum() > 0.5*tol_compr)
@@ -180,7 +180,7 @@ int main (int argc, char* argv[])
 		resSU2(i) = res;
 		
 		Stopwatch<> Steptimer;
-		TDVP_SU2.t_step(H_SU2, Psi_SU2, -1.i*dt, 1,tol_Lanczos);
+		TDVP_SU2.t_step0(H_SU2, Psi_SU2, -1.i*dt, 1,tol_Lanczos);
 		tinfo = Steptimer.info();
 		
 		if (Psi_SU2.get_truncWeight().sum() > 0.5*tol_compr)

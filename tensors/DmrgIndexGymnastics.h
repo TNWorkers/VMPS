@@ -207,7 +207,7 @@ bool AAWWAA (const qarray<Symmetry::Nq> &Lin,
 	vector<qarray<Symmetry::Nq> > qWs;
 	for (const auto &qW:qWcandidates)
 	{
-		if (find(qOp12.begin(), qOp12.end(), qW) != qOp12.end())
+//		if (find(qOp12.begin(), qOp12.end(), qW) != qOp12.end())
 		{
 			qWs.push_back(qW);
 		}
@@ -233,8 +233,8 @@ bool AAWWAA (const qarray<Symmetry::Nq> &Lin,
 						
 						for (const auto &qRmid:qRmids)
 						{
-							if (Symmetry::validate(qarray3<Symmetry::Nq>{qRin,qRmid,qRout}) and
-							    find(qOp34.begin(), qOp34.end(), qRmid) != qOp34.end())
+							if (Symmetry::validate(qarray3<Symmetry::Nq>{qRin,qRmid,qRout}))
+//							and find(qOp34.begin(), qOp34.end(), qRmid) != qOp34.end())
 							{
 								result.push_back(make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, qW, q13->second, q24->second));
 								out = true;
@@ -559,8 +559,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 	}
 }
 
-/**Prepares a PivotMatrix2 by filling PivotMatrix::qlhs and PivotMatrix::qrhs with the corresponding subspace indices.
-Uses OpenMP.*/
+/**Prepares a PivotMatrix2 by filling PivotMatrix::qlhs and PivotMatrix::qrhs with the corresponding subspace indices.*/
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L, 
                              const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
@@ -581,20 +580,99 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 	              std::pair<vector<std::array<size_t,10> >, vector<Scalar> > > lookup;
 	Scalar factor_cgc;
 	
-//	auto tensor_basis = Symmetry::tensorProd(qloc12, qloc34);
-//	
-//	for (size_t s1=0; s1<qloc12.size(); ++s1)
-//	for (size_t s2=0; s2<qloc12.size(); ++s2)
-//	for (size_t k12=0; k12<qOp12.size(); ++k12)
-//	{
-//		if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc12[s2], qOp12[k12], qloc12[s1]})) {continue;}
-//		
-//		for (size_t s3=0; s3<qloc34.size(); ++s3)
-//		for (size_t s4=0; s4<qloc34.size(); ++s4)
-//		for (size_t k34=0; k34<qOp34.size(); ++k34)
-//		{
-//			if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc34[s4], qOp34[k34], qloc34[s3]})) {continue;}
-//			
+	for (const auto &tsd:TSD)
+	for (size_t qL=0; qL<L.dim; ++qL)
+	{
+		vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > ixs;
+		bool FOUND_MATCH = AAWWAA(L.in(qL), L.out(qL), L.mid(qL), 
+		                          tsd.k12, qOp12, tsd.k34, qOp34,
+		                          tsd.s1s3, tsd.qmerge13, tsd.s2s4, tsd.qmerge24,
+		                          Abra, Aket, ixs);
+		
+		if (FOUND_MATCH)
+		{
+			for (const auto &ix:ixs)
+			{
+				auto qR = R.dict.find(get<0>(ix));
+				auto qW     = get<1>(ix);
+				size_t qA13 = get<2>(ix);
+				size_t qA24 = get<3>(ix);
+				
+				// multiplication of Op12, Op34 in the auxiliary space
+				Scalar factor_cgc6 = (Symmetry::NON_ABELIAN)? 
+				Symmetry::coeff_Apair(L.mid(qL), qOp12[tsd.k12], qW,
+				                      qOp34[tsd.k34], get<0>(ix)[2], tsd.qOp)
+				                      :1.;
+				if (abs(factor_cgc6) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
+				
+				if (qR != R.dict.end())
+				{
+					// standard coefficient for H*Psi with environments
+					Scalar factor_cgcHPsi = (Symmetry::NON_ABELIAN)?
+					Symmetry::coeff_HPsi(Aket[tsd.s2s4].out[qA24], tsd.qmerge24, Aket[tsd.s2s4].in[qA24],
+					                     R.mid(qR->second), tsd.qOp, L.mid(qL),
+					                     Abra[tsd.s1s3].out[qA13], tsd.qmerge13, Abra[tsd.s1s3].in[qA13])
+					                     :1.;
+					
+					std::array<size_t,2>  key = {static_cast<size_t>(tsd.s1s3), qA13};
+					std::array<size_t,10> val = {static_cast<size_t>(tsd.s2s4), qA24, qL, qR->second, 
+					                             tsd.s1, tsd.s2, tsd.k12, tsd.s3, tsd.s4, tsd.k34};
+					lookup[key].first.push_back(val);
+					lookup[key].second.push_back(factor_cgc6 * tsd.cgc9 * factor_cgcHPsi);
+				}
+			}
+		}
+	}
+	
+	qlhs.clear();
+	qrhs.clear();
+	factor_cgcs.clear();
+	
+	qlhs.reserve(lookup.size());
+	qrhs.reserve(lookup.size());
+	factor_cgcs.reserve(lookup.size());
+	
+	for (auto it=lookup.begin(); it!=lookup.end(); ++it)
+	{
+		qlhs.push_back(it->first);
+		qrhs.push_back((it->second).first);
+		factor_cgcs.push_back((it->second).second);
+	}
+}
+
+/**Prepares a PivotMatrix2 by filling PivotMatrix::qlhs and PivotMatrix::qrhs with the corresponding subspace indices.*/
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L, 
+                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                             const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W12, 
+                             const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W34, 
+                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+                             const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
+                             const vector<qarray<Symmetry::Nq> > &qloc12,
+                             const vector<qarray<Symmetry::Nq> > &qloc34,
+                             const vector<qarray<Symmetry::Nq> > &qOp12,
+                             const vector<qarray<Symmetry::Nq> > &qOp34,
+                             vector<std::array<size_t,2> > &qlhs, 
+                             vector<vector<std::array<size_t,10> > > &qrhs,
+                             vector<vector<Scalar> > &factor_cgcs)
+{
+	unordered_map<std::array<size_t,2>, 
+	              std::pair<vector<std::array<size_t,10> >, vector<Scalar> > > lookup;
+	
+	auto tensor_basis = Symmetry::tensorProd(qloc12, qloc34);
+	
+	for (size_t s1=0; s1<qloc12.size(); ++s1)
+	for (size_t s2=0; s2<qloc12.size(); ++s2)
+	for (size_t k12=0; k12<qOp12.size(); ++k12)
+	{
+		if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc12[s2], qOp12[k12], qloc12[s1]})) {continue;}
+		
+		for (size_t s3=0; s3<qloc34.size(); ++s3)
+		for (size_t s4=0; s4<qloc34.size(); ++s4)
+		for (size_t k34=0; k34<qOp34.size(); ++k34)
+		{
+			if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc34[s4], qOp34[k34], qloc34[s3]})) {continue;}
+			
 //			vector<qarray<Symmetry::Nq> > qOps;
 //			if constexpr (Symmetry::NON_ABELIAN)
 //			{
@@ -611,39 +689,38 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 //			{
 //				qOps = Symmetry::reduceSilent(qOp12[k12], qOp34[k34]);
 //			}
-//			
-//			for (const auto &qOp:qOps)
-//			{
+			auto qOps = Symmetry::reduceSilent(qOp12[k12], qOp34[k34]);
+			
+			for (const auto &qOp:qOps)
+			{
 //				if (find(qOp34.begin(), qOp34.end(), qOp) == qOp34.end()) {continue;}
-//				
-//				auto qmerges13 = Symmetry::reduceSilent(qloc12[s1], qloc34[s3]);
-//				auto qmerges24 = Symmetry::reduceSilent(qloc12[s2], qloc34[s4]);
-//				
-//				for (const auto &qmerge13:qmerges13)
-//				for (const auto &qmerge24:qmerges24)
-//				{
-//					auto qtensor13 = make_tuple(qloc12[s1], s1, qloc34[s3], s3, qmerge13);
-//					auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
-//					
-//					auto qtensor24 = make_tuple(qloc12[s2], s2, qloc34[s4], s4, qmerge24);
-//					auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
-//					
-//					// tensor product of the MPO operators in the physical space
-//					Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
-//					Symmetry::coeff_buildR(qloc12[s2], qloc34[s4], qmerge24,
-//					                       qOp12[k12], qOp34[k34], qOp,
-//					                       qloc12[s1], qloc34[s3], qmerge13)
-//					                       :1.;
-//					if (abs(factor_cgc9) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
+				
+				auto qmerges13 = Symmetry::reduceSilent(qloc12[s1], qloc34[s3]);
+				auto qmerges24 = Symmetry::reduceSilent(qloc12[s2], qloc34[s4]);
+				
+				for (const auto &qmerge13:qmerges13)
+				for (const auto &qmerge24:qmerges24)
+				{
+					auto qtensor13 = make_tuple(qloc12[s1], s1, qloc34[s3], s3, qmerge13);
+					auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
 					
+					auto qtensor24 = make_tuple(qloc12[s2], s2, qloc34[s4], s4, qmerge24);
+					auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
 					
-					for (const auto &tsd:TSD)
+					// tensor product of the MPO operators in the physical space
+					Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
+					Symmetry::coeff_buildL(qloc12[s2], qloc34[s4], qmerge24,
+					                       qOp12[k12], qOp34[k34], qOp,
+					                       qloc12[s1], qloc34[s3], qmerge13)
+					                       :1.;
+					if (abs(factor_cgc9) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
+					
 					for (size_t qL=0; qL<L.dim; ++qL)
 					{
 						vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > ixs;
 						bool FOUND_MATCH = AAWWAA(L.in(qL), L.out(qL), L.mid(qL), 
-						                          tsd.k12, qOp12, tsd.k34, qOp34,
-						                          tsd.s1s3, tsd.qmerge13, tsd.s2s4, tsd.qmerge24,
+						                          k12, qOp12, k34, qOp34,
+						                          s1s3, qmerge13, s2s4, qmerge24,
 						                          Abra, Aket, ixs);
 						
 						if (FOUND_MATCH)
@@ -657,8 +734,8 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 								
 								// multiplication of Op12, Op34 in the auxiliary space
 								Scalar factor_cgc6 = (Symmetry::NON_ABELIAN)? 
-								Symmetry::coeff_Apair(L.mid(qL), qOp12[tsd.k12], qW,
-								                      qOp34[tsd.k34], get<0>(ix)[2], tsd.qOp)
+								Symmetry::coeff_Apair(L.mid(qL), qOp12[k12], qW,
+								                      qOp34[k34], get<0>(ix)[2], qOp)
 								                      :1.;
 								if (abs(factor_cgc6) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 								
@@ -666,24 +743,24 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 								{
 									// standard coefficient for H*Psi with environments
 									Scalar factor_cgcHPsi = (Symmetry::NON_ABELIAN)?
-									Symmetry::coeff_HPsi(Aket[tsd.s2s4].out[qA24], tsd.qmerge24, Aket[tsd.s2s4].in[qA24],
-									                     R.mid(qR->second), tsd.qOp, L.mid(qL),
-									                     Abra[tsd.s1s3].out[qA13], tsd.qmerge13, Abra[tsd.s1s3].in[qA13])
+									Symmetry::coeff_HPsi(Aket[s2s4].out[qA24], qmerge24, Aket[s2s4].in[qA24],
+									                     R.mid(qR->second), qOp, L.mid(qL),
+									                     Abra[s1s3].out[qA13], qmerge13, Abra[s1s3].in[qA13])
 									                     :1.;
 									
-									std::array<size_t,2>  key = {static_cast<size_t>(tsd.s1s3), qA13};
-									std::array<size_t,10> val = {static_cast<size_t>(tsd.s2s4), qA24, qL, qR->second, 
-									                             tsd.s1, tsd.s2, tsd.k12, tsd.s3, tsd.s4, tsd.k34};
+									std::array<size_t,2>  key = {static_cast<size_t>(s1s3), qA13};
+									std::array<size_t,10> val = {static_cast<size_t>(s2s4), qA24, qL, qR->second, 
+									                             s1, s2, k12, s3, s4, k34};
 									lookup[key].first.push_back(val);
-									lookup[key].second.push_back(factor_cgc6 * tsd.cgc9 * factor_cgcHPsi);
+									lookup[key].second.push_back(factor_cgc6 * factor_cgc9 * factor_cgcHPsi);
 								}
 							}
 						}
 					}
-//				}
-//			}
-//		}
-//	}
+				}
+			}
+		}
+	}
 	
 	qlhs.clear();
 	qrhs.clear();

@@ -29,7 +29,7 @@ Logger lout;
 
 // ED stuff
 #include "HubbardModel.h"
-//#include "LanczosWrappers.h"
+#include "LanczosWrappers.h"
 #include "LanczosSolver.h"
 #include "Photo.h"
 #include "Auger.h"
@@ -38,7 +38,7 @@ Logger lout;
 
 #include "models/Hubbard.h"
 #include "models/HubbardU1xU1.h"
-//#include "models/HubbardU1xU1MN.h"
+#include "models/HubbardU1xU1MN.h"
 #include "models/HubbardU1.h"
 #include "models/HubbardSU2xU1.h"
 #ifdef SU2XSU2
@@ -82,7 +82,7 @@ complex<double> Ptot (const MatrixXd &densityMatrix, int L)
 size_t L, Ly;
 int V, Vsq;
 double t, tPrime, tRung, U, mu, Bz;
-int Nup, Ndn, N;
+int Nup, Ndn, M, N;
 double alpha;
 double t_U0, t_U1, t_SU2, t_SU2xSU2;
 int Dinit, Dlimit, Imin, Imax, Qinit;
@@ -99,7 +99,7 @@ bool ED, U0, U1, SU2, SU22, CORR, PRINT;
 
 Eigenstate<VectorXd> g_ED;
 Eigenstate<VMPS::Hubbard::StateXd> g_U0;
-typedef VMPS::HubbardU1xU1 HUBBARD;
+typedef VMPS::HubbardU1xU1MN HUBBARD;
 Eigenstate<HUBBARD::StateXd> g_U1;
 Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
@@ -131,6 +131,7 @@ int main (int argc, char* argv[])
 	Nup = args.get<int>("Nup",L*Ly/2);
 	Ndn = args.get<int>("Ndn",L*Ly/2);
 	N = Nup+Ndn;
+	M = Nup-Ndn;
 	
 //	ArrayXXd tParaA(1,2); tParaA = t;
 //	ArrayXXd tParaB(2,1); tParaB = t;

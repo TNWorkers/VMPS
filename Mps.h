@@ -2329,14 +2329,14 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			}
 			if (Aclump.size() == 0)
 			{
-				if (DIR == DMRG::DIRECTION::RIGHT)
-				{
-					this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
-				}
-				else
-				{
-					this->pivot = (loc==0)? 0 : loc;
-				}
+//				if (DIR == DMRG::DIRECTION::RIGHT)
+//				{
+//					this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
+//				}
+//				else
+//				{
+//					this->pivot = (loc==0)? 0 : loc;
+//				}
 				continue;
 			}
 			
@@ -2370,7 +2370,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				{
 					Aright = Jack.singularValues().head(Nret).asDiagonal() * Jack.matrixV().adjoint().topRows(Nret);
 				}
-				this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
+//				this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
 			}
 			else
 			{
@@ -2384,7 +2384,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 				{
 					Aleft = Jack.matrixU().leftCols(Nret) * Jack.singularValues().head(Nret).asDiagonal();
 				}
-				this->pivot = (loc==0)? 0 : loc;
+//				this->pivot = (loc==0)? 0 : loc;
 			}
 			
 			// update Al
@@ -2456,6 +2456,15 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 	
 	update_outbase(loc);
 	update_inbase(loc+1);
+	
+	if (DIR == DMRG::DIRECTION::RIGHT)
+	{
+		this->pivot = (loc==this->N_sites-1)? this->N_sites-1 : loc+1;
+	}
+	else
+	{
+		this->pivot = (loc==0)? 0 : loc;
+	}
 	
 	truncWeight(loc) = truncWeightSub.sum();
 	

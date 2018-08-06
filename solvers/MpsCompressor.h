@@ -572,7 +572,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
               qarray<Symmetry::Nq> Qtot, size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
 {
-	assert(H.HAS_TWO_SITE_DATA() and "You need to call H.precalc_TwoSiteData() before prodCompress!");
+//	assert(H.HAS_TWO_SITE_DATA() and "You need to call H.precalc_TwoSiteData() before prodCompress!");
 	N_sites = Vin.length();
 	Stopwatch<> Chronos;
 	tol = tol_input;
@@ -655,7 +655,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		Stopwatch<> FullSweepTimer;
 		
 		// A 2-site sweep is necessary! Move pivot back to edge.
-		if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
+		if (N_halfsweeps%4 == 0 and N_halfsweeps > 1)
 		{
 			sweep_to_edge(H,Vin,Vin,Vout,false,true); // build_LWRW = true
 		}
@@ -664,7 +664,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		for (size_t j=1; j<=halfSweepRange; ++j)
 		{
 			turnaround(pivot, N_sites, CURRENT_DIRECTION);
-			if ((N_halfsweeps%4 == 0 or N_halfsweeps%4 == 1) and N_halfsweeps > 1)
+			if (N_halfsweeps%4 == 0 and N_halfsweeps > 1)
 			{
 				prodOptimize2(H,Vin,Vout);
 			}
@@ -678,6 +678,8 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		++N_halfsweeps;
 		
 		Scalar factor_cgc = 1.;//pow(Symmetry::degeneracy(H.Qtarget()),1);
+		cout << "avgHsqVin=" << avgHsqVin << endl;
+		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		sqdist = abs(avgHsqVin - factor_cgc * factor_cgc * Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		
@@ -816,8 +818,10 @@ prodOptimize2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, const Mps<S
 	Stopwatch<> OheadTimer;
 	precalc_blockStructure (Heff[loc1()].L, ApairOut.data, Heff2.W12, Heff2.W34, ApairIn.data, Heff[loc2()].R, 
 	                        H.locBasis(loc1()), H.locBasis(loc2()), H.opBasis(loc1()), H.opBasis(loc2()), 
-	                        H.TSD[loc1()], 
 	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
+	cout << "loc1()=" << loc1() << endl;
+	cout << "Heff2.qlhs.size()=" << Heff2.qlhs.size() << endl;
+	cout << "Heff2.qrhs.size()=" << Heff2.qrhs.size() << endl;
 	t_ohead += OheadTimer.time();
 	Stopwatch<> OptTimer;
 	OxV(Heff2, ApairIn, ApairOut);
@@ -841,9 +845,9 @@ prodOptimize2 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetr
 	Stopwatch<> SweepTimer;
 	Vout.sweepStep2(CURRENT_DIRECTION, loc1(), Apair.data);
 	t_sweep += SweepTimer.time();
-	
-	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_LW(loc2(),Vout,H,Vin) : build_RW(loc1(),Vout,H,Vin);
 	pivot = Vout.get_pivot();
+	
+	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_LW(pivot,Vout,H,Vin) : build_RW(pivot,Vout,H,Vin);
 }
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>
@@ -872,7 +876,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, 
               size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
 {
-	assert(H.HAS_TWO_SITE_DATA() and "You need to call H.precalc_TwoSiteData() before polyCompress!");
+//	assert(H.HAS_TWO_SITE_DATA() and "You need to call H.precalc_TwoSiteData() before polyCompress!");
 	N_sites = Vin1.length();
 	tol = tol_input;
 	Stopwatch<> Chronos;
@@ -1020,11 +1024,11 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-//		cout << "avgHsqV1=" << avgHsqV1 
-//		     << ", Vout.squaredNorm()=" << Vout.squaredNorm() 
-//		     << ", polyB*polyB*sqnormV2=" << polyB*polyB*sqnormV2 
-//		     << ", 2.*polyB*overlapV12=" << 2.*polyB*overlapV12 
-//		     << endl;
+		cout << "avgHsqV1=" << avgHsqV1 
+		     << ", Vout.squaredNorm()=" << Vout.squaredNorm() 
+		     << ", polyB*polyB*sqnormV2=" << polyB*polyB*sqnormV2 
+		     << ", 2.*polyB*overlapV12=" << 2.*polyB*overlapV12 
+		     << endl;
 		sqdist = abs(avgHsqV1 - Vout.squaredNorm() + polyB*polyB*sqnormV2 - 2.*polyB*overlapV12);
 		assert(!std::isnan(sqdist));
 		

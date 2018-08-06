@@ -158,9 +158,6 @@ public:
 	void transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT = true);
 	
 	void precalc_TwoSiteData();
-	
-	template<typename OtherSymmetry, typename OtherScalar>
-	void get_TwoSiteData (const Mpo<OtherSymmetry,OtherScalar> &H) {TSD = H.TSD; GOT_TWO_SITE_DATA = true;};
 	///\}
 	
 	//---info stuff---

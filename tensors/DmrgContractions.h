@@ -1276,7 +1276,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 											if(auto it=leftBotQs.find(qleftAuxP) != leftBotQs.end())
 											{
 //												 cout << "checked bot qs" << endl;
-												factor_merge = Symmetry::coeff_buildR(qrightAuxP,qrightAux,Rold.mid(qR),
+												factor_merge = Symmetry::coeff_buildL(qrightAuxP,qrightAux,Rold.mid(qR),
 																					  qOpBot[k2],qOpTop[k1],k,
 																					  qleftAuxP,qleftAux,new_qmid);
 												if (std::abs(factor_merge) < std::abs(::mynumeric_limits<MpoScalar>::epsilon())) { continue; }
