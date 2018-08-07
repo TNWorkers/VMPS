@@ -17,7 +17,7 @@ using namespace std;
 #include "OrthPolyGreen.h"
 
 size_t L;
-int N, M, Nup, Ndn;
+int N, M, S;
 double t, U, V, tPrime;
 vector<int> Msave;
 int Mmax;
@@ -33,12 +33,11 @@ int main (int argc, char* argv[])
 	L = args.get<size_t>("L",4);
 	N = args.get<size_t>("N",L);
 	M = args.get<size_t>("M",0);
+	S = abs(M)+1;
 	#ifdef USING_SU2
-	qarray<2> Qi = {M+1,N};
+	qarray<2> Qi = {S,N};
 	#else
-	Nup = (N+M)/2;
-	Ndn = (N-M)/2;
-	qarray<2> Qi = {Nup,Ndn};
+	qarray<2> Qi = {M,N};
 	#endif
 	qarray<2> Qc;
 	spec = args.get<string>("spec","AES");
@@ -49,10 +48,12 @@ int main (int argc, char* argv[])
 	CHEB = args.get<bool>("CHEB",true);
 	wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
+	constexpr SPIN_INDEX sigma = UP;
 	
 	dE = args.get_list<double>("dE",{0.2});
-	outfile = make_string(spec,"_L=",L,"_N=",N,"_M=",M,"_U=",U);
+	outfile = make_string(spec,"_L=",L,"_M=",M,"_N=",N,"_U=",U);
 	if (V != 0.) {outfile += make_string("_V=",V);}
+	if (tPrime != 0.) {outfile += make_string("_tPrime=",tPrime);}
 	Efilename = outfile;
 	outfile += "_dE=";
 	lout.set(outfile+str(dE)+".log",wd+"log");
@@ -66,115 +67,12 @@ int main (int argc, char* argv[])
 	lout << "not parallelized" << endl;
 	#endif
 	
-	//--------------<Hamiltonian & transition operator>---------------
-	//,{"tPrime",tPrime},{"V",V},{"CALC_SQUARE",true}
-	MODEL H(L,{{"t",t},{"U",U},{"CALC_SQUARE",false}});
+	//--------------<Hamiltonian>---------------
+	MODEL H(L,{{"t",t},{"U",U},{"tPrime",tPrime},{"V",V},{"CALC_SQUARE",false}});
 	lout << H.info() << endl << endl;
+	//--------------</Hamiltonian>---------------
 	
-	MODEL::Operator A, Adag;
-	if (spec == "AES")
-	{
-		A = H.cc(L/2);
-		Adag = H.cdagcdag(L/2);
-		#ifdef USING_SU2
-		{
-			Qc = qarray<2>({M+1,N-2});
-		}
-		#else
-		{
-			Qc = qarray<2>({Nup-1,Ndn-1});
-		}
-		#endif
-	}
-	else if (spec == "APS")
-	{
-		A = H.cdagcdag(L/2);
-		Adag = H.cc(L/2);
-		#ifdef USING_SU2
-		{
-			Qc = qarray<2>({M+1,N+2});
-		}
-		#else
-		{
-			Qc = qarray<2>({Nup+1,Ndn+1});
-		}
-		#endif
-	}
-	else if (spec == "PES")
-	{
-		#ifdef USING_SU2
-		{
-			A = H.c(L/2, 0, 1.);
-			Adag = H.cdag(L/2, 0, sqrt(2.));
-			Qc = qarray<2>({2,N-1});
-		}
-		#else
-		{
-			A = H.c<UP>(L/2);
-			Adag = H.cdag<UP>(L/2);
-			Qc = qarray<2>({Nup-1,Ndn});
-		}
-		#endif
-	}
-	else if (spec == "IPES")
-	{
-		#ifdef USING_SU2
-		{
-			A = H.cdag(L/2, 0, 1.);
-			Adag = H.c(L/2, 0, -1./sqrt(2.));
-			Qc = qarray<2>({2,N+1});
-		}
-		#else
-		{
-			A = H.cdag<UP>(L/2);
-			Adag = H.c<UP>(L/2);
-			Qc = qarray<2>({Nup+1,Ndn});
-		}
-		#endif
-	}
-	else if (spec == "CSF")
-	{
-		A = H.n(L/2);
-		Adag = A;
-		Qc = Qi;
-	}
-	else if (spec == "SSF" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
-	{
-		#ifdef USING_SU2
-		{
-			A = H.S(L/2);
-			Adag = H.Sdag(L/2, 0, 1./sqrt(3.));
-			Qc = {3,N};
-		}
-		#else
-		{
-			if (spec == "SSFM")
-			{
-				A = H.Scomp(SM, L/2, 0, 1./sqrt(2.));
-				Adag = H.Scomp(SP, L/2, 0, 1./sqrt(2.));
-				Qc = Qi+A.Qtarget();
-			}
-			else if (spec == "SSFP")
-			{
-				A = H.Scomp(SP, L/2, 0, 1./sqrt(2.));
-				Adag = H.Scomp(SM, L/2, 0, 1./sqrt(2.));
-				Qc = Qi+A.Qtarget();
-			}
-			else
-			{
-				A = H.Sz(L/2);
-				Adag = H.Sz(L/2);
-				Qc = Qi;
-			}
-		}
-		#endif
-	}
-//	A.precalc_TwoSiteData();
-//	Adag.precalc_TwoSiteData();
-	lout << A.info() << endl;
-	lout << Adag.info() << endl;
-	//--------------</Hamiltonian & transition operator>---------------
-	
+	#include "programs/snippets/A.txt"
 	#include "programs/snippets/groundstate.txt"
 //	#include "programs/snippets/state_compression.txt"
 	#include "programs/snippets/AxInit.txt"

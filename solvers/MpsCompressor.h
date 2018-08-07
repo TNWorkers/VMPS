@@ -1058,7 +1058,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		    N_halfsweeps != max_halfsweeps and
 		    sqdist > tol)
 		{
-			lout << "Warning: Could not reach tolerance, restarting from random!" << endl;
+			lout << termcolor::blue << "Warning: Could not reach tolerance, restarting from random!" << termcolor::reset << endl;
 			prepSweep(H,Vin1,Vin2,Vout,true);
 		}
 		

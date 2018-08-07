@@ -33,6 +33,9 @@ public:
 	///@{
 	Mpo<Symmetry> Simp (SPINOP_LABEL SOP, size_t locx, size_t locy=0, double factor=1.) const;
 	Mpo<Symmetry> Ssub (SPINOP_LABEL SOP, size_t locx, size_t locy=0, double factor=1.) const;
+	// for compatibility:
+	Mpo<Symmetry> Scomp (SPINOP_LABEL SOP, size_t locx, size_t locy=0, double factor=1.) const {return Simp(SOP,locx,locy,factor);};
+	Mpo<Symmetry> Sz (size_t locx, size_t locy=0, double factor=1.) const {return Simp(SZ,locx,locy,factor);};
 	///@}
 	
 	///@{

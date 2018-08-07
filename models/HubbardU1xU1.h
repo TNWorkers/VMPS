@@ -42,13 +42,13 @@ namespace VMPS
  * \note If the NNN-hopping is positive, the ground state energy is lowered.
  * \warning \f$J>0\f$ is antiferromagnetic
  */
-class HubbardU1xU1 : public Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> >,double>,
-                     public HubbardObservables<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > >, 
+class HubbardU1xU1 : public Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>,
+                     public HubbardObservables<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > >, 
                      public ParamReturner
 {
 public:
 	
-	typedef Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > Symmetry;
+	typedef Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > Symmetry;
 	MAKE_TYPEDEFS(HubbardU1xU1)
 	
 	///@{
@@ -252,7 +252,7 @@ set_operators (const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, 
 	return Terms;
 }
 
-////Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> >,complex<double> > HubbardU1xU1::
+////Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardU1xU1::
 ////doublonPacket (complex<double> (*f)(int))
 ////{
 ////	stringstream ss;
@@ -265,7 +265,7 @@ set_operators (const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, 
 ////	return Mout;
 ////}
 
-////Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> >,complex<double> > HubbardU1xU1::
+////Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardU1xU1::
 ////electronPacket (complex<double> (*f)(int))
 ////{
 ////	assert(N_legs==1);
@@ -302,7 +302,7 @@ set_operators (const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, 
 ////	return Mout;
 ////}
 
-////Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> >,complex<double> > HubbardU1xU1::
+////Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardU1xU1::
 ////holePacket (complex<double> (*f)(int))
 ////{
 ////	assert(N_legs==1);
@@ -334,7 +334,7 @@ set_operators (const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, 
 ////	return Mout;
 ////}
 
-////Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
+////Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > > HubbardU1xU1::
 ////triplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 ////{
 ////	assert(locx<N_sites and locy<F[locx].dim());
@@ -367,7 +367,7 @@ set_operators (const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, 
 ////	return Mout;
 ////}
 
-////Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
+////Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > > HubbardU1xU1::
 ////antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy)
 ////{
 ////	assert(locx<N_sites and locy<F[locx].dim());
@@ -400,7 +400,7 @@ set_operators (const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, 
 ////	return Mout;
 ////}
 
-////Mpo<Sym::S1xS2<Sym::U1<Sym::ChargeUp>,Sym::U1<Sym::ChargeDn> > > HubbardU1xU1::
+////Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > > HubbardU1xU1::
 ////quadruplon (size_t locx, size_t locy)
 ////{
 ////	assert(locx<N_sites and locy<F[locx].dim());

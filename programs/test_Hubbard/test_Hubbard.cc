@@ -38,7 +38,6 @@ Logger lout;
 
 #include "models/Hubbard.h"
 #include "models/HubbardU1xU1.h"
-#include "models/HubbardU1xU1MN.h"
 #include "models/HubbardU1.h"
 #include "models/HubbardSU2xU1.h"
 #ifdef SU2XSU2
@@ -79,10 +78,10 @@ complex<double> Ptot (const MatrixXd &densityMatrix, int L)
 	return P;
 }
 
-size_t L, Ly;
+size_t L, Ly, Ly2;
 int V, Vsq;
 double t, tPrime, tRung, U, mu, Bz;
-int Nup, Ndn, M, N;
+int M, N, S, Nup, Ndn;
 double alpha;
 double t_U0, t_U1, t_SU2, t_SU2xSU2;
 int Dinit, Dlimit, Imin, Imax, Qinit;
@@ -99,7 +98,7 @@ bool ED, U0, U1, SU2, SU22, CORR, PRINT;
 
 Eigenstate<VectorXd> g_ED;
 Eigenstate<VMPS::Hubbard::StateXd> g_U0;
-typedef VMPS::HubbardU1xU1MN HUBBARD;
+typedef VMPS::HubbardU1xU1 HUBBARD;
 Eigenstate<HUBBARD::StateXd> g_U1;
 Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
@@ -122,16 +121,18 @@ int main (int argc, char* argv[])
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",4);
 	Ly = args.get<size_t>("Ly",1);
-	size_t Ly2 = args.get<size_t>("Ly2",Ly);
+	Ly2 = args.get<size_t>("Ly2",Ly);
 	t = args.get<double>("t",1.);
 	tPrime = args.get<double>("tPrime",0.);
 	tRung = args.get<double>("tRung",0.);
 	U = args.get<double>("U",8.);
 	mu = args.get<double>("mu",0.5*U);
-	Nup = args.get<int>("Nup",L*Ly/2);
-	Ndn = args.get<int>("Ndn",L*Ly/2);
-	N = Nup+Ndn;
-	M = Nup-Ndn;
+	N = args.get<int>("N",L*Ly);
+	M = args.get<int>("M",0);;
+	S = abs(M)+1;
+	// for ED:
+	Nup = (N+M)/2;
+	Ndn = (N-M)/2;
 	
 //	ArrayXXd tParaA(1,2); tParaA = t;
 //	ArrayXXd tParaB(2,1); tParaB = t;
@@ -353,7 +354,7 @@ int main (int argc, char* argv[])
 		VMPS::HubbardSU2xU1::Solver DMRG_SU2(VERB);
 		DMRG_SU2.GlobParam = GlobParam;
 		DMRG_SU2.DynParam = DynParam;
-		DMRG_SU2.edgeState(H_SU2, g_SU2, {Nup-Ndn+1,N}, LANCZOS::EDGE::GROUND);
+		DMRG_SU2.edgeState(H_SU2, g_SU2, {S,N}, LANCZOS::EDGE::GROUND);
 		g_SU2.state.graph("SU2");
 		
 		t_SU2 = Watch_SU2.time();
@@ -419,11 +420,11 @@ int main (int argc, char* argv[])
 		VMPS::HubbardSU2xSU2::Solver DMRG_SU2xSU2(VERB);
 		DMRG_SU2xSU2.GlobParam = GlobParam;
 		DMRG_SU2xSU2.DynParam = DynParam;
-		DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {abs(Nup-Ndn)+1,V-(Nup+Ndn)+1}, LANCZOS::EDGE::GROUND); 
+		DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {S,V-N+1}, LANCZOS::EDGE::GROUND); 
 		//Todo: check Pseudospin quantum number... (1 <==> half filling)
 		g_SU2xSU2.state.graph("SU2xSU2");
 		
-		Emin_SU2xSU2 = g_SU2xSU2.energy-0.5*U*(V-Nup-Ndn);
+		Emin_SU2xSU2 = g_SU2xSU2.energy-0.5*U*(V-N);
 		emin_SU2xSU2 = Emin_SU2xSU2/V;
 		t_SU2xSU2 = Watch_SU2xSU2.time();
 		
@@ -431,7 +432,7 @@ int main (int argc, char* argv[])
 		{
 //			Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2m;
 //			DMRG_SU2xSU2.set_verbosity(DMRG::VERBOSITY::SILENT);
-//			DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2m, {abs(Nup-1-Ndn)+1,V-(Nup+Ndn)+2}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE,
+//			DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2m, {abs(Nup-1-Ndn)+1,V-(N)+2}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE,
 //			                    tol_eigval,tol_state, Dinit,Dlimit, Imax,Imin, alpha);
 //			lout << "g_SU2xSU2m.energy=" << g_SU2xSU2m.energy-0.5*U*(V-Nup+1-Ndn) << endl;
 //			
@@ -582,5 +583,5 @@ int main (int argc, char* argv[])
 	
 	lout << endl << T;
 	
-	lout << "ref=" << VMPS::Hubbard::ref({{"n",static_cast<double>((Nup+Ndn)/V)},{"U",U},{"Ly",Ly},{"tRung",tRung}}) << endl;
+	lout << "ref=" << VMPS::Hubbard::ref({{"n",static_cast<double>((N)/V)},{"U",U},{"Ly",Ly},{"tRung",tRung}}) << endl;
 }

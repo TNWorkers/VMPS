@@ -1,0 +1,106 @@
+//--------------<transition operator>---------------
+	MODEL::Operator A, Adag;
+	if (spec == "AES")
+	{
+		A = H.cc(L/2);
+		Adag = H.cdagcdag(L/2);
+		#ifdef USING_SU2
+		{
+			Qc = qarray<2>({S,N-2});
+		}
+		#else
+		{
+			Qc = qarray<2>({M,N-2});
+		}
+		#endif
+	}
+	else if (spec == "APS")
+	{
+		A = H.cdagcdag(L/2);
+		Adag = H.cc(L/2);
+		#ifdef USING_SU2
+		{
+			Qc = qarray<2>({S,N+2});
+		}
+		#else
+		{
+			Qc = qarray<2>({M,N+2});
+		}
+		#endif
+	}
+	else if (spec == "PES")
+	{
+		#ifdef USING_SU2
+		{
+			A = H.c(L/2, 0, 1.);
+			Adag = H.cdag(L/2, 0, sqrt(2.));
+			Qc = qarray<2>({S+1,N-1});
+		}
+		#else
+		{
+			A = H.c<UP>(L/2);
+			Adag = H.cdag<UP>(L/2);
+			Qc = (sigma==UP)? qarray<2>({M-1,N+1}):qarray<2>({M+1,N+1});
+		}
+		#endif
+	}
+	else if (spec == "IPES")
+	{
+		#ifdef USING_SU2
+		{
+			A = H.cdag(L/2, 0, 1.);
+			Adag = H.c(L/2, 0, sqrt(2.));
+			Qc = qarray<2>({S+1,N+1});
+		}
+		#else
+		{
+			A = H.cdag<sigma>(L/2);
+			Adag = H.c<sigma>(L/2);
+			Qc = (sigma==UP)? qarray<2>({M+1,N+1}):qarray<2>({M-1,N+1});
+		}
+		#endif
+	}
+	else if (spec == "CSF")
+	{
+		A = H.n(L/2);
+		Adag = A;
+		Qc = Qi;
+	}
+	else if (spec == "SSF" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
+	{
+		#ifdef USING_SU2
+		{
+			A = H.S(L/2);
+			Adag = H.Sdag(L/2, 0, sqrt(3.));
+			Qc = {S+3,N};
+		}
+		#else
+		{
+			if (spec == "SSFM")
+			{
+				A = H.Scomp(SM, L/2, 0, 1./sqrt(2.));
+				Adag = H.Scomp(SP, L/2, 0, 1./sqrt(2.));
+				Qc = Qi+A.Qtarget();
+			}
+			else if (spec == "SSFP")
+			{
+				A = H.Scomp(SP, L/2, 0, 1./sqrt(2.));
+				Adag = H.Scomp(SM, L/2, 0, 1./sqrt(2.));
+				Qc = Qi+A.Qtarget();
+			}
+			else
+			{
+				A = H.Sz(L/2);
+				Adag = H.Sz(L/2);
+				Qc = Qi;
+			}
+		}
+		#endif
+	}
+//	A.precalc_TwoSiteData();
+//	Adag.precalc_TwoSiteData();
+	lout << A.info() << endl;
+	lout << Adag.info() << endl;
+	lout << "Qi=" << Qi << endl;
+	lout << "Qc=" << Qc << endl;
+	//--------------</transition operator>---------------
