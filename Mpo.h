@@ -626,10 +626,10 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			}
 		}
 	}
-
+	
 	// auxiliary Basis
 	calc_auxBasis();
-
+	
 	// make squared Mpo if desired
 	if (CALC_SQUARE == true)
 	{
@@ -666,6 +666,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 					{
 						qCheck = {qloc[l][s3],qK,qloc[l][s1]};
 						if(!Symmetry::validate(qCheck)) {continue;}
+						// product in physical space:
 						Scalar factor_check = Symmetry::coeff_Apair(qloc[l][s1],qOp[l][k2] ,qloc[l][s2],
 																	qOp[l][k1] ,qloc[l][s3],qK);
 						if (std::abs(factor_check) < std::abs(::mynumeric_limits<Scalar>::epsilon())) { continue; }
@@ -685,7 +686,8 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 								for(const auto& qln : qlns)
 								for(const auto& qrn : qrns)
 								{
-									Scalar factor_merge = Symmetry::coeff_buildL(qr1       , qr2       , qrn,
+									// tensor product in auxiliary space:
+									Scalar factor_merge = Symmetry::coeff_tensorProd(qr1       , qr2       , qrn,
 									                                             qOp[l][k2], qOp[l][k1], qK ,
 									                                             ql1       , ql2       , qln);
 									
@@ -1368,10 +1370,10 @@ precalc_TwoSiteData()
 						
 						// tensor product of the MPO operators in the physical space
 						Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
-						Symmetry::coeff_buildL(qloc[l][s2], qloc[l+1][s4], qmerge24,
-							                   qOp[l][k12], qOp[l+1][k34], qOpMerge,
-							                   qloc[l][s1], qloc[l+1][s3], qmerge13)
-							                   :1.;
+						Symmetry::coeff_tensorProd(qloc[l][s2], qloc[l+1][s4], qmerge24,
+							                       qOp[l][k12], qOp[l+1][k34], qOpMerge,
+							                       qloc[l][s1], qloc[l+1][s3], qmerge13)
+							                       :1.;
 						if (abs(factor_cgc9) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 						
 						TwoSiteData<Symmetry,Scalar> entry({{s1,s2,s3,s4,s1s3,s2s4}}, {{qmerge13,qmerge24}}, {{k12,k34}}, qOpMerge, factor_cgc9);

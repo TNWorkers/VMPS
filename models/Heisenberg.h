@@ -169,7 +169,7 @@ ref (const vector<Param> &params, double L)
 	if (isinf(L) and P.get<double>("m") == 0. and P.get<double>("J") > 0.
 	    and P.HAS_NONE_OF({"Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}) )
 	{
-		out.source = "Tao Xiang, Thermodynamics of quantum Heisenberg spin chains, Phys. Rev. B 58, 9142 (1998)";
+		out.source = "T. Xiang, Thermodynamics of quantum Heisenberg spin chains, Phys. Rev. B 58, 9142 (1998)";
 		out.method = "literature";
 		double J = P.get<double>("J");
 		
@@ -227,7 +227,7 @@ ref (const vector<Param> &params, double L)
 	{
 		double Jxy =  P.get<double>("Jxy");
 		out.value = -M_1_PI*Jxy;
-		out.source = "S. Paul, A.K. Ghosh, Ground state properties of the bond alternating spin-1/2 anisotropic Heisenberg chain, Condensed Matter Physics, 2017, Vol. 20, No 2, 23701: 1–16";
+		out.source = "S. Paul, A. K. Ghosh, Ground state properties of the bond alternating spin-1/2 anisotropic Heisenberg chain, Condensed Matter Physics, 2017, Vol. 20, No 2, 23701: 1–16";
 		out.method = "analytical";
 	}
 	

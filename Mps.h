@@ -458,6 +458,8 @@ private:
 	/**total quantum number*/
 	qarray<Nq> Qtot = Symmetry::qvacuum();
 	
+	vector<qarray<Nq> > Qmulti;
+	
 	/**A-tensor*/
 	vector<vector<Biped<Symmetry,MatrixType> > > A; // access: A[l][s].block[q]
 	
@@ -1044,7 +1046,7 @@ innerResize (size_t Dmax)
 	//		}
 	//	}
 	//	cout << endl;
-	
+		
 		fromR[this->N_sites].insert({Qtot,1});
 		for (size_t l=this->N_sites; l-->0;)
 		for (size_t qin=0; qin<inbase[l].Nq(); ++qin)
@@ -3011,18 +3013,18 @@ double Mps<Symmetry,Scalar>::
 squaredNorm() const
 {
 	double res = 0.;
-	// exploit canonical form:
-	if (this->pivot != -1)
-	{
-		Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out = A[this->pivot][0].adjoint().contract(A[this->pivot][0]);
-		for (size_t s=1; s<qloc[this->pivot].size(); s++)
-		{
-			out += A[this->pivot][s].adjoint().contract(A[this->pivot][s]);
-		}
-		res = out.trace();
-	}
-	// use dot product otherwise:
-	else
+//	// exploit canonical form:
+//	if (this->pivot != -1)
+//	{
+//		Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out = A[this->pivot][0].adjoint().contract(A[this->pivot][0]);
+//		for (size_t s=1; s<qloc[this->pivot].size(); s++)
+//		{
+//			out += A[this->pivot][s].adjoint().contract(A[this->pivot][s]);
+//		}
+//		res = out.trace();
+//	}
+//	// use dot product otherwise:
+//	else
 	{
 		res = isReal(dot(*this));
 	}

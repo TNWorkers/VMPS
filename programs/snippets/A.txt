@@ -38,8 +38,8 @@
 		}
 		#else
 		{
-			A = H.c<UP>(L/2);
-			Adag = H.cdag<UP>(L/2);
+			A = H.c<sigma>(L/2);
+			Adag = H.cdag<sigma>(L/2);
 			Qc = (sigma==UP)? qarray<2>({M-1,N+1}):qarray<2>({M+1,N+1});
 		}
 		#endif
@@ -66,37 +66,38 @@
 		Adag = A;
 		Qc = Qi;
 	}
-	else if (spec == "SSF" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
-	{
-		#ifdef USING_SU2
-		{
-			A = H.S(L/2);
-			Adag = H.Sdag(L/2, 0, sqrt(3.));
-			Qc = {S+3,N};
-		}
-		#else
-		{
-			if (spec == "SSFM")
-			{
-				A = H.Scomp(SM, L/2, 0, 1./sqrt(2.));
-				Adag = H.Scomp(SP, L/2, 0, 1./sqrt(2.));
-				Qc = Qi+A.Qtarget();
-			}
-			else if (spec == "SSFP")
-			{
-				A = H.Scomp(SP, L/2, 0, 1./sqrt(2.));
-				Adag = H.Scomp(SM, L/2, 0, 1./sqrt(2.));
-				Qc = Qi+A.Qtarget();
-			}
-			else
-			{
-				A = H.Sz(L/2);
-				Adag = H.Sz(L/2);
-				Qc = Qi;
-			}
-		}
-		#endif
-	}
+//	else if (spec == "SSF" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
+//	{
+//		#ifdef USING_SU2
+//		{
+//			A = H.S(L/2);
+//			Adag = H.Sdag(L/2, 0, sqrt(3.));
+//			Qc = {S+3,N};
+//		}
+//		#else
+//		{
+//			if (spec == "SSFM")
+//			{
+//				A = H.Scomp(SM, L/2, 0, 1./sqrt(2.));
+//				Adag = H.Scomp(SP, L/2, 0, 1./sqrt(2.));
+//				Qc = Qi+A.Qtarget();
+//			}
+//			else if (spec == "SSFP")
+//			{
+//				A = H.Scomp(SP, L/2, 0, 1./sqrt(2.));
+//				Adag = H.Scomp(SM, L/2, 0, 1./sqrt(2.));
+//				Qc = Qi+A.Qtarget();
+//			}
+//			else
+//			{
+//				A = H.Sz(L/2);
+//				Adag = H.Sz(L/2);
+//				Qc = Qi;
+//			}
+//		}
+//		#endif
+//	}
+	
 //	A.precalc_TwoSiteData();
 //	Adag.precalc_TwoSiteData();
 	lout << A.info() << endl;

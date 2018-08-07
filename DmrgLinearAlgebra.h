@@ -412,8 +412,9 @@ template<typename Symmetry, typename MpoScalar, typename Scalar>
 void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, double tol_compr = 1e-7)
 {
 	size_t L = Vin.length();
-	qarray<Symmetry::Nq> Qtarget = Symmetry::reduceSilent(Vin.Qtarget(),O.Qtarget())[0];
-	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qtarget, O.volume(), Vin.calc_Nqmax());
+	auto Qmulti = Symmetry::reduceSilent(Vin.Qtarget(),O.Qtarget());
+	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qmulti[0], O.volume(), Vin.calc_Nqmax());
+	Vout.Qmulti = Qmulti;
 	
 	for (size_t l=0; l<L; ++l)
 	{
@@ -434,7 +435,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	
 	if (tol_compr < 1.)
 	{
-		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(DMRG::VERBOSITY::SILENT);
+		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
 		Mps<Symmetry,Scalar> Vtmp;
 		Compadre.stateCompress(Vout, Vtmp, Vin.calc_Dmax(), tol_compr, 200);
 		

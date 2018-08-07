@@ -7,32 +7,7 @@ class ParamReturner
 {
 public:
 	
-	ParamReturner() : TRIVIAL_CONSTRUCTED(true) {}
-	// {
-		// std::map<string,std::any> global_defaults = 
-		// {
-		// 	{"max_alpha", 100.},
-		// 	{"min_alpha", 1e-11},
-		// 	{"eps_svd", 1e-7},
-		// 	{"Dincr_abs", 4ul},
-		// 	{"Dincr_rel", 1.1},
-		// 	{"Dincr_per", 2ul},
-		// 	{"min_Nsv", 0ul},
-		// 	{"max_Nrich", -1},
-			
-		// 	{"max_halfsweeps", DMRG::CONTROL::DEFAULT::max_halfsweeps},
-		// 	{"min_halfsweeps", DMRG::CONTROL::DEFAULT::min_halfsweeps},
-		// 	{"Dinit", DMRG::CONTROL::DEFAULT::Dinit},
-		// 	{"Qinit", DMRG::CONTROL::DEFAULT::Qinit},
-		// 	{"Dlimit", DMRG::CONTROL::DEFAULT::Dlimit},
-		// 	{"tol_eigval", DMRG::CONTROL::DEFAULT::tol_eigval},
-		// 	{"tol_state", DMRG::CONTROL::DEFAULT::tol_state},
-		// 	{"savePeriod", DMRG::CONTROL::DEFAULT::savePeriod},
-		// 	{"CALC_S_ON_EXIT", DMRG::CONTROL::DEFAULT::CALC_S_ON_EXIT},
-		// 	{"CONVTEST", DMRG::CONTROL::DEFAULT::CONVTEST}
-		// };
-		// defaults = global_defaults;
-	// };
+	ParamReturner() : TRIVIALLY_CONSTRUCTED(true) {}
 	
 	ParamReturner (const std::map<string,std::any> &defaults_input)
 	:defaults(defaults_input)
@@ -45,7 +20,8 @@ public:
 	///@}
 	
 private:
-	bool TRIVIAL_CONSTRUCTED=false;
+	
+	bool TRIVIALLY_CONSTRUCTED = false;
 	std::map<string,std::any> defaults;
 };
 
@@ -53,7 +29,7 @@ DMRG::CONTROL::GLOB ParamReturner::
 get_GlobParam (const vector<Param> &params) const
 {
 	DMRG::CONTROL::GLOB out;
-	if(TRIVIAL_CONSTRUCTED) {return out;} //Return defaults from DmrgTypedefs
+	if(TRIVIALLY_CONSTRUCTED) {return out;} //Return defaults from DmrgTypedefs
 	
 	ParamHandler P(params,defaults);
 	out.min_halfsweeps = P.get<size_t>("min_halfsweeps");
@@ -85,10 +61,10 @@ get_DynParam (const vector<Param> &params) const
 //	return out;
 	
 	DMRG::CONTROL::DYN out;
-	if(TRIVIAL_CONSTRUCTED) {return out;} //Return defaults from DmrgTypedefs
-
+	if(TRIVIALLY_CONSTRUCTED) {return out;} //Return defaults from DmrgTypedefs
+	
 	ParamHandler P(params,defaults);
-
+	
 	double tmp1        = P.get<double>("max_alpha");
 	out.max_alpha_rsvd = [tmp1] (size_t i) {return tmp1;};
 	tmp1               = P.get<double>("min_alpha");

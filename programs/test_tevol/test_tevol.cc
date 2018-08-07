@@ -168,6 +168,7 @@ int main (int argc, char* argv[])
 	VMPS::HeisenbergSU2::StateXcd Psi_SU2 = init_SU2;
 	TDVPPropagator<VMPS::HeisenbergSU2,Sym::SU2<Sym::SpinSU2>,double,complex<double>,VMPS::HeisenbergSU2::StateXcd> TDVP_SU2(H_SU2,Psi_SU2);
 	
+	// --------propagation---------
 	t = 0;
 	ofstream FilerSU2(make_string("SU(2).dat"));
 	ArrayXd resSU2(static_cast<int>(tmax/dt)+1);
@@ -194,84 +195,4 @@ int main (int argc, char* argv[])
 	FilerSU2.close();
 	
 	cout << abs(resU1-resSU2) << endl;
-	
-//	//--------output---------
-//	TextTable T( '-', '|', '+' );
-//	
-//	double V = L*Ly; double Vsq = V*V;
-//	
-//	// header
-//	T.add("");
-//	T.add("U(0)");
-//	T.add("U(1)");
-//	T.add("SU(2)");
-//	T.endOfRow();
-//	
-//	// energy
-//	T.add("E/L");
-//	T.add(to_string_prec(g_U0.energy/V));
-//	T.add(to_string_prec(g_U1.energy/V));
-//	T.add(to_string_prec(g_SU2.energy/V));
-//	T.endOfRow();
-//	
-//	// energy error
-//	T.add("E/L diff");
-//	T.add(to_string_prec(abs(g_U0.energy-g_SU2.energy)/V));
-//	T.add(to_string_prec(abs(g_U1.energy-g_SU2.energy)/V));
-//	T.add("0");
-//	T.endOfRow();
-//	
-//	// Compressor
-//	T.add("E/L Compressor");
-//	T.add(to_string_prec(E_U0_compressor/V));
-//	T.add(to_string_prec(E_U1_compressor/V));
-//	T.add("-"); T.endOfRow();
-//	
-//	// Zipper
-//	T.add("E/L Zipper");
-//	T.add(to_string_prec(E_U0_zipper/V));
-//	T.add(to_string_prec(E_U1_zipper/V));
-//	T.add("-"); T.endOfRow();
-//	
-//	// time
-//	T.add("t/s");
-//	T.add(to_string_prec(t_U0,2));
-//	T.add(to_string_prec(t_U1,2));
-//	T.add(to_string_prec(t_SU2,2));
-//	T.endOfRow();
-//	
-//	// time gain
-//	T.add("t gain");
-//	T.add(to_string_prec(t_U0/t_SU2,2));
-//	T.add(to_string_prec(t_U1/t_SU2,2));
-//	T.add("1");
-//	T.endOfRow();
-//	
-//	// observables
-//	T.add("observables");
-//	T.add(to_string_prec(SpinCorr_U0.sum()));
-//	T.add(to_string_prec(SpinCorr_U1.sum()));
-//	T.add(to_string_prec(SpinCorr_SU2.sum()));
-//	T.endOfRow();
-//	
-//	// observables error
-//	T.add("observables diff");
-//	T.add(to_string_prec((SpinCorr_U0-SpinCorr_SU2).lpNorm<1>()/Vsq));
-//	T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2).lpNorm<1>()/Vsq));
-//	T.add("0");
-//	T.endOfRow();
-//	
-//	// bond dimensions
-//	T.add("Dmax");
-//	T.add(to_string(g_U0.state.calc_Dmax()));
-//	T.add(to_string(g_U1.state.calc_Dmax()));
-//	T.add(to_string(g_SU2.state.calc_Dmax()));
-//	T.endOfRow();
-//	T.add("Mmax");
-//	T.add(to_string(g_U0.state.calc_Dmax()));
-//	T.add(to_string(g_U1.state.calc_Mmax()));
-//	T.add(to_string(g_SU2.state.calc_Mmax()));
-//	T.endOfRow();
-//	
-//	lout << endl << T;
 }

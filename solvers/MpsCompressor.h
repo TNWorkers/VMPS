@@ -347,7 +347,14 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
 	// set L&R edges
 	Env.clear();
 	Env.resize(N_sites);
-	Env[N_sites-1].R.setTarget(Vin.Qtot);
+	if (Vin.Qmulti.size() > 0)
+	{
+		Env[N_sites-1].R.setTarget(Vin.Qmulti);
+	}
+	else
+	{
+		Env[N_sites-1].R.setTarget(Vin.Qtot);
+	}
 	Env[0].L.setVacuum();
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -402,7 +409,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-//		cout << "sqnormVin=" << sqnormVin << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+		cout << "sqnormVin=" << sqnormVin << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		sqdist = abs(sqnormVin-Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		

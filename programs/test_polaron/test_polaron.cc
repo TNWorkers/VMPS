@@ -18,7 +18,7 @@ using namespace std;
 
 size_t L;
 int N, M, S;
-double U, J;
+double t, U, J;
 vector<int> Msave;
 int Mmax;
 string spec, wd, outfile, Efilename;

@@ -351,7 +351,8 @@ setTarget (std::array<qType,Nlegs> Q)
 		cout << termcolor::bold << termcolor::red << "Global SU2 factor in setTarget() from Multipede: " << termcolor::reset
 			 << "√" << Symmetry::coeff_dot(Q[0]) << " • √" << Symmetry::coeff_dot(Q[1]) << " • √" << Symmetry::coeff_dot(Q[2]) << endl;
 #endif
-		Mtmp << sqrt(Symmetry::coeff_dot(Q[0])) * sqrt(Symmetry::coeff_dot(Q[1])) * sqrt(Symmetry::coeff_dot(Q[2]));
+//		Mtmp << sqrt(Symmetry::coeff_dot(Q[0])) * sqrt(Symmetry::coeff_dot(Q[1])) * sqrt(Symmetry::coeff_dot(Q[2]));
+		Mtmp << 1.;
 	// }
 	
 	boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[1][1]);

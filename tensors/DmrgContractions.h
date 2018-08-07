@@ -1229,6 +1229,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 			qCheck = {qloc[s3],k,qloc[s1]};
 			if(!Symmetry::validate(qCheck)) {continue;}
 			
+			// product in physical space:
 			factor_check = Symmetry::coeff_Apair(qloc[s1],qOpBot[k2],qloc[s2],
 			                                     qOpTop[k1],qloc[s3],k);
 			if (std::abs(factor_check) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
@@ -1276,7 +1277,8 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 											if(auto it=leftBotQs.find(qleftAuxP) != leftBotQs.end())
 											{
 //												 cout << "checked bot qs" << endl;
-												factor_merge = Symmetry::coeff_buildL(qrightAuxP,qrightAux,Rold.mid(qR),
+												// tensor product of MPOs in auxiliary space:
+												factor_merge = Symmetry::coeff_tensorProd(qrightAuxP,qrightAux,Rold.mid(qR),
 																					  qOpBot[k2],qOpTop[k1],k,
 																					  qleftAuxP,qleftAux,new_qmid);
 												if (std::abs(factor_merge) < std::abs(::mynumeric_limits<MpoScalar>::epsilon())) { continue; }

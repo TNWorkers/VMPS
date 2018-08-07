@@ -709,10 +709,10 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 					
 					// tensor product of the MPO operators in the physical space
 					Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
-					Symmetry::coeff_buildL(qloc12[s2], qloc34[s4], qmerge24,
-					                       qOp12[k12], qOp34[k34], qOp,
-					                       qloc12[s1], qloc34[s3], qmerge13)
-					                       :1.;
+					Symmetry::coeff_tensorProd(qloc12[s2], qloc34[s4], qmerge24,
+					                           qOp12[k12], qOp34[k34], qOp,
+					                           qloc12[s1], qloc34[s3], qmerge13)
+					                           :1.;
 					if (abs(factor_cgc9) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 					
 					for (size_t qL=0; qL<L.dim; ++qL)

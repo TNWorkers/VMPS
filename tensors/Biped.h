@@ -122,6 +122,8 @@ public:
 	 * Needed in for the transfer matrix from the last site in overlap calculations.
 	 */
 	void setTarget (qType Qtot);
+	
+	void setTarget (vector<qType> Qmulti);
 	///@}
 	
 	///@{
@@ -242,6 +244,19 @@ setTarget (qType Qtot)
 	Mtmp << 1.;
 //	Mtmp << Symmetry::coeff_dot(Qtot);
 	push_back(Qtot, Qtot, Mtmp);
+}
+
+template<typename Symmetry, typename MatrixType_>
+void Biped<Symmetry,MatrixType_>::
+setTarget (vector<qType> Qmulti)
+{
+	MatrixType_ Mtmp(1,1);
+	Mtmp << 1.;
+//	Mtmp << Symmetry::coeff_dot(Qtot);
+	for (const auto &Qtot:Qmulti)
+	{
+		push_back(Qtot, Qtot, Mtmp);
+	}
 }
 
 template<typename Symmetry, typename MatrixType_>

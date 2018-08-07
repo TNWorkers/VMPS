@@ -68,6 +68,7 @@ public:
 	// MpoQ<Symmetry> TTdag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	
 	static const map<string,any> defaults;
+	static const map<string,any> sweep_defaults;
 	
 protected:
 	
@@ -83,14 +84,26 @@ const map<string,any> HubbardSU2xSU2::defaults =
 	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
+const map<string,any> HubbardSU2xSU2::sweep_defaults = 
+{
+	{"max_alpha",100.}, {"min_alpha",1e-11}, {"eps_svd",1e-7},
+	{"Dincr_abs", 2ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
+	{"min_Nsv",0ul}, {"max_Nrich",-1},
+	{"max_halfsweeps",20ul}, {"min_halfsweeps",6ul},
+	{"Dinit",4ul}, {"Qinit",10ul}, {"Dlimit",500ul},
+	{"tol_eigval",1e-6}, {"tol_state",1e-5},
+	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
+};
+
 HubbardSU2xSU2::
 HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,1}), "", true),
- ParamReturner()
+ ParamReturner(HubbardSU2xSU2::sweep_defaults)
 {
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
+	assert(Lcell > 1 and "You need to set a unit cell with at least Lcell=2 for the charge-SU(2) symmetry!");
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 	F.resize(N_sites);
 	

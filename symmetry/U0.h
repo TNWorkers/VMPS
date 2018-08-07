@@ -79,6 +79,9 @@ namespace Sym{
 		inline static double coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 									  const qType& q4, const qType& q5, const qType& q6,
 									  const qType& q7, const qType& q8, const qType& q9) { return 1.; }
+		inline static double coeff_tensorProd(const qType& q1, const qType& q2, const qType& q3,
+										  const qType& q4, const qType& q5, const qType& q6,
+										  const qType& q7, const qType& q8, const qType& q9) { return 1.; }
 		inline static double coeff_buildL(const qType& q1, const qType& q2, const qType& q3,
 										  const qType& q4, const qType& q5, const qType& q6,
 										  const qType& q7, const qType& q8, const qType& q9) { return 1.; }
