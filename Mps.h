@@ -447,7 +447,7 @@ public:
 	inline ArrayXd entropy() const {return S;};
 	///\}
 	
-private:
+//private:
 	
 	/**volume of the system (normally (chain length) * (chain width))*/
 	size_t N_phys;
@@ -1047,7 +1047,17 @@ innerResize (size_t Dmax)
 	//	}
 	//	cout << endl;
 		
-		fromR[this->N_sites].insert({Qtot,1});
+		if (Qmulti.size() > 0)
+		{
+			for (const auto &Qval:Qmulti)
+			{
+				fromR[this->N_sites].insert({Qval,1});
+			}
+		}
+		else
+		{
+			fromR[this->N_sites].insert({Qtot,1});
+		}
 		for (size_t l=this->N_sites; l-->0;)
 		for (size_t qin=0; qin<inbase[l].Nq(); ++qin)
 		{

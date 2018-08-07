@@ -106,6 +106,8 @@ typedef typename MatrixType::Scalar Scalar;
 	 */
 	void setTarget (std::array<qType,Nlegs> Q);
 	
+	void setTarget (vector<std::array<qType,Nlegs> > Q);
+	
 	/***/
 	void setIdentity (size_t Drows, size_t Dcols, size_t amax=1, size_t bmax=1);
 	
@@ -329,28 +331,10 @@ setTarget (std::array<qType,Nlegs> Q)
 {
 	MatrixType Mtmp(1,1);
 	
-// 	if (Q[2] == Symmetry::qvacuum())
-// 	{
-// #ifdef PRINT_SU2_FACTORS
-// 		cout << termcolor::bold << termcolor::red << "Global SU2 factor in setTarget() from Multipede: " << termcolor::reset
-// 			 << "√" << Symmetry::coeff_dot(Q[0]) << " • √" << Symmetry::coeff_dot(Q[1]) << endl;
-// #endif
-// 		Mtmp << sqrt(Symmetry::coeff_dot(Q[0]) * Symmetry::coeff_dot(Q[1]));
-// 	}
-// 	else if (Q[1] == Symmetry::qvacuum())
-// 	{
-// #ifdef PRINT_SU2_FACTORS
-// 		cout << termcolor::bold << termcolor::red << "Global SU2 factor in setTarget() from Multipede: " << termcolor::reset
-// 			 << "√" << Symmetry::coeff_dot(Q[0]) << " • √" << Symmetry::coeff_dot(Q[2]) << endl;
-// #endif
-// 		Mtmp << sqrt(Symmetry::coeff_dot(Q[0]) * Symmetry::coeff_dot(Q[2]));
-// 	}
-// 	else
-// 	{
-#ifdef PRINT_SU2_FACTORS
-		cout << termcolor::bold << termcolor::red << "Global SU2 factor in setTarget() from Multipede: " << termcolor::reset
-			 << "√" << Symmetry::coeff_dot(Q[0]) << " • √" << Symmetry::coeff_dot(Q[1]) << " • √" << Symmetry::coeff_dot(Q[2]) << endl;
-#endif
+//#ifdef PRINT_SU2_FACTORS
+//		cout << termcolor::bold << termcolor::red << "Global SU2 factor in setTarget() from Multipede: " << termcolor::reset
+//			 << "√" << Symmetry::coeff_dot(Q[0]) << " • √" << Symmetry::coeff_dot(Q[1]) << " • √" << Symmetry::coeff_dot(Q[2]) << endl;
+//#endif
 //		Mtmp << sqrt(Symmetry::coeff_dot(Q[0])) * sqrt(Symmetry::coeff_dot(Q[1])) * sqrt(Symmetry::coeff_dot(Q[2]));
 		Mtmp << 1.;
 	// }
@@ -359,6 +343,22 @@ setTarget (std::array<qType,Nlegs> Q)
 	Mtmparray[0][0] = Mtmp;
 	
 	push_back(Q,Mtmparray);
+}
+
+template<size_t Nlegs, typename Symmetry, typename MatrixType>
+void Multipede<Nlegs,Symmetry,MatrixType>::
+setTarget (vector<std::array<qType,Nlegs> > Q)
+{
+	MatrixType Mtmp(1,1);
+	Mtmp << 1.;
+	
+	boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[1][1]);
+	Mtmparray[0][0] = Mtmp;
+	
+	for (const auto &Qval:Q)
+	{
+		push_back(Qval,Mtmparray);
+	}
 }
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>

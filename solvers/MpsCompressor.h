@@ -409,7 +409,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-		cout << "sqnormVin=" << sqnormVin << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+//		cout << "sqnormVin=" << sqnormVin << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		sqdist = abs(sqnormVin-Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		
@@ -579,7 +579,6 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
               qarray<Symmetry::Nq> Qtot, size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
 {
-//	assert(H.HAS_TWO_SITE_DATA() and "You need to call H.precalc_TwoSiteData() before prodCompress!");
 	N_sites = Vin.length();
 	Stopwatch<> Chronos;
 	tol = tol_input;
@@ -600,7 +599,19 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	Heff.clear();
 	Heff.resize(N_sites);
 	Heff[0].L.setVacuum();
-	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin.Qtarget(), Vout.Qtarget(), H.Qtarget()});
+	if (Vin.Qmulti.size() > 0)
+	{
+		vector<qarray3<Symmetry::Nq> > Qmulti;
+		for (const auto &Qval:Vin.Qmulti)
+		{
+			Qmulti.push_back(qarray3<Symmetry::Nq>{Qval, Qval, H.Qtarget()});
+		}
+		Heff[N_sites-1].R.setTarget(Qmulti);
+	}
+	else
+	{
+		Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin.Qtarget(), Vout.Qtarget(), H.Qtarget()});
+	}
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Heff[l].W = H.W[l];
@@ -684,10 +695,9 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-		Scalar factor_cgc = 1.;//pow(Symmetry::degeneracy(H.Qtarget()),1);
 //		cout << "avgHsqVin=" << avgHsqVin << endl;
 //		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
-		sqdist = abs(avgHsqVin - factor_cgc * factor_cgc * Vout.squaredNorm());
+		sqdist = abs(avgHsqVin - Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		
 		if (CHOSEN_VERBOSITY>=2)
@@ -901,7 +911,20 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	Heff.clear();
 	Heff.resize(N_sites);
 	Heff[0].L.setVacuum();
-	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin1.Qtarget(), Vout.Qtarget(), Symmetry::qvacuum()});
+//	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin1.Qtarget(), Vout.Qtarget(), Symmetry::qvacuum()});
+	if (Vin1.Qmulti.size() > 0)
+	{
+		vector<qarray3<Symmetry::Nq> > Qmulti;
+		for (const auto &Qval:Vin1.Qmulti)
+		{
+			Qmulti.push_back(qarray3<Symmetry::Nq>{Qval, Qval, H.Qtarget()});
+		}
+		Heff[N_sites-1].R.setTarget(Qmulti);
+	}
+	else
+	{
+		Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin1.Qtarget(), Vout.Qtarget(), H.Qtarget()});
+	}
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Heff[l].W = H.W[l];
@@ -910,7 +933,15 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	// set L&R edges
 	Env.clear();
 	Env.resize(N_sites);
-	Env[N_sites-1].R.setTarget(Vin2.Qtarget());
+//	Env[N_sites-1].R.setTarget(Vin2.Qtarget());
+	if (Vin2.Qmulti.size() > 0)
+	{
+		Env[N_sites-1].R.setTarget(Vin2.Qmulti);
+	}
+	else
+	{
+		Env[N_sites-1].R.setTarget(Vin2.Qtot);
+	}
 	Env[0].L.setVacuum();
 	for (size_t l=0; l<N_sites; ++l)
 	{

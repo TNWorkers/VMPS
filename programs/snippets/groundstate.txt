@@ -3,6 +3,10 @@
 	
 	Stopwatch<> Chronos;
 	stringstream ginfo, rinfo;
+	
+	ArrayXd Emins(Qc.size());
+	ArrayXd Emaxs(Qc.size());
+	
 	#pragma omp parallel sections
 	{
 		#pragma omp section
@@ -19,34 +23,43 @@
 		#pragma omp section
 		{
 			Stopwatch<> gChronos;
-			Eigenstate<MODEL::StateXd> * g = new Eigenstate<MODEL::StateXd>;
 			
-			MODEL::Solver * gDMRG = new MODEL::Solver(DMRG::VERBOSITY::SILENT);
-			gDMRG->edgeState(H, *g, Qc, LANCZOS::EDGE::GROUND);
-			ginfo << gChronos.info(make_string("ground state ",Qc)) << endl;
-			Emin = g->energy;
-			ginfo << gDMRG->info() << endl;
-			delete gDMRG;
-			delete g;
+			for (size_t i=0; i<Qc.size(); ++i)
+			{
+				Eigenstate<MODEL::StateXd> g;
+				MODEL::Solver gDMRG(DMRG::VERBOSITY::SILENT);
+				gDMRG.edgeState(H, g, Qc[i], LANCZOS::EDGE::GROUND);
+				ginfo << gChronos.info(make_string("ground state ",Qc[i])) << endl;
+				Emins[i] = g.energy;
+				ginfo << gDMRG.info() << endl;
+			}
+//			Emin = energies.maxCoeff();
 		}
 		
 		#pragma omp section
 		{
 			Stopwatch<> rChronos;
-			Eigenstate<MODEL::StateXd> * r = new Eigenstate<MODEL::StateXd>;
-			MODEL::Solver * rDMRG = new MODEL::Solver(DMRG::VERBOSITY::SILENT);
 			
-			rDMRG->edgeState(H, *r, Qc, LANCZOS::EDGE::ROOF);
-			rinfo << rChronos.info(make_string("roof state ",Qc)) << endl;
-			Emax = r->energy;
-			rinfo << rDMRG->info() << endl;
-			delete rDMRG;
-			delete r;
+			for (size_t i=0; i<Qc.size(); ++i)
+			{
+				Eigenstate<MODEL::StateXd> r;
+				MODEL::Solver rDMRG(DMRG::VERBOSITY::SILENT);
+				rDMRG.edgeState(H, r, Qc[i], LANCZOS::EDGE::ROOF);
+				rinfo << rChronos.info(make_string("roof state ",Qc[i])) << endl;
+				Emaxs[i] = r.energy;
+				rinfo << rDMRG.info() << endl;
+			}
+//			Emax = r->energy;
 		}
 	}
 	
+	Emin = Emins.minCoeff();
+	Emax = Emaxs.maxCoeff();
+	
 	lout << ginfo.str() << rinfo.str() << endl;
 	lout << Chronos.info("all edge states") << endl;
+	lout << "Emin=" << Emins.transpose() << endl;
+	lout << "Emax=" << Emaxs.transpose() << endl;
 	lout << termcolor::bold << "E0=" << E0 << ", Emin=" << Emin << ", Emax=" << Emax << termcolor::reset << endl << endl;
 	
 	// save energies

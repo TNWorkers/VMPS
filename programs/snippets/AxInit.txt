@@ -7,5 +7,7 @@
 	OxV_exact(A, init->state, initA);
 	
 	cout << "dot=" << initA.dot(initA) << endl;
+	cout << "dot2=" << avg(initA, Mpo<Symmetry,double>::Identity(initA.locBasis()), initA) << endl;
+	cout << "dot3=" << avg(initA, Mpo<Symmetry,double>::Identity(initA.locBasis()), Mpo<Symmetry,double>::Identity(initA.locBasis()), initA) << endl;
 	delete init;
 	//--------------</A*init>---------------

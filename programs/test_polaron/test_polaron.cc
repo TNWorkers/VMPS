@@ -18,7 +18,7 @@ using namespace std;
 
 size_t L;
 int N, M, S;
-double t, U, J;
+double t, tPrime, U, J;
 vector<int> Msave;
 int Mmax;
 string spec, wd, outfile, Efilename;
@@ -26,6 +26,7 @@ vector<double> dE;
 double Emin, Emax, E0;
 double d, n_sig;
 bool CHEB;
+typedef MODEL::Symmetry Symmetry;
 
 int main (int argc, char* argv[]) 
 {
@@ -35,18 +36,19 @@ int main (int argc, char* argv[])
 	M = args.get<size_t>("M",L);
 	S = abs(M)+1;
 	qarray<2> Qi = MODEL::polaron(L,N);
-	qarray<2> Qc;
+	vector<qarray<2> > Qc;
 	spec = args.get<string>("spec","IPES");
 	t = args.get<double>("t",1.);
+	tPrime = args.get<double>("tPrime",0.);
 	U = args.get<double>("U",0.);
-	J = args.get<double>("J",-1.);
+	J = args.get<double>("J",3.);
 	CHEB = args.get<bool>("CHEB",true);
 	wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
 	constexpr SPIN_INDEX sigma = DN;
 	
 	dE = args.get_list<double>("dE",{0.2});
-	outfile = make_string(spec,"_L=",L,"_M=",M,"_N=",N,"_J=",J,"_U=",U);
+	outfile = make_string(spec,"_L=",L,"_M=",M,"_N=",N,"_J=",J,"_U=",U,"_sigma=",sigma);
 	Efilename = outfile;
 	outfile += "_dE=";
 	lout.set(outfile+str(dE)+".log",wd+"log");
@@ -61,7 +63,7 @@ int main (int argc, char* argv[])
 	#endif
 	
 	//--------------<Hamiltonian>---------------
-	MODEL H(L,{{"t",t},{"J",J},{"U",U},{"CALC_SQUARE",false}});
+	MODEL H(L,{{"t",t},{"J",J},{"U",U},{"tPrime",tPrime},{"CALC_SQUARE",false}});
 	lout << H.info() << endl << endl;
 	//--------------</Hamiltonian>---------------
 	

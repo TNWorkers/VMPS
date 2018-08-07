@@ -66,7 +66,21 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 	}
 	else
 	{
-		B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), O.Qtarget()});
+//		B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), O.Qtarget()});
+		if (Vket.Qmulti.size() > 0)
+		{
+			vector<qarray3<Symmetry::Nq> > Qmulti;
+			for (const auto &Qval:Vket.Qmulti)
+			{
+				Qmulti.push_back(qarray3<Symmetry::Nq>{Qval, Qval, O.Qtarget()});
+			}
+			B.setTarget(Qmulti);
+		}
+		else
+		{
+			B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), O.Qtarget()});
+		}
+		
 //		for (int l=O.length()-1; l>=0; --l)
 		for (size_t l=O.length()-1; l!=-1; --l)
 		{
@@ -175,7 +189,21 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
 		
-		B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), Qtarget});
+//		B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), Qtarget});
+		if (Vket.Qmulti.size() > 0)
+		{
+			vector<qarray3<Symmetry::Nq> > Qmulti;
+			for (const auto &Qval:Vket.Qmulti)
+			{
+				Qmulti.push_back(qarray3<Symmetry::Nq>{Qval, Qval, Qtarget});
+			}
+			B.setTarget(Qmulti);
+		}
+		else
+		{
+			B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), Qtarget});
+		}
+		
 		for (size_t l=O1.length()-1; l!=-1; --l)
 		{
 			contract_R(B, 

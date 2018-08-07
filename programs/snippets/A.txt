@@ -6,11 +6,11 @@
 		Adag = H.cdagcdag(L/2);
 		#ifdef USING_SU2
 		{
-			Qc = qarray<2>({S,N-2});
+			Qc.push_back(qarray<2>({S,N-2}));
 		}
 		#else
 		{
-			Qc = qarray<2>({M,N-2});
+			Qc.push_back(qarray<2>({M,N-2}));
 		}
 		#endif
 	}
@@ -20,11 +20,11 @@
 		Adag = H.cc(L/2);
 		#ifdef USING_SU2
 		{
-			Qc = qarray<2>({S,N+2});
+			Qc.push_back(qarray<2>({S,N+2}));
 		}
 		#else
 		{
-			Qc = qarray<2>({M,N+2});
+			Qc.push_back(qarray<2>({M,N+2}));
 		}
 		#endif
 	}
@@ -34,13 +34,21 @@
 		{
 			A = H.c(L/2, 0, 1.);
 			Adag = H.cdag(L/2, 0, sqrt(2.));
-			Qc = qarray<2>({S+1,N-1});
+			Qc.push_back(qarray<2>({S+1,N-1}));
+			Qc.push_back(qarray<2>({S-1,N-1}));
 		}
 		#else
 		{
 			A = H.c<sigma>(L/2);
 			Adag = H.cdag<sigma>(L/2);
-			Qc = (sigma==UP)? qarray<2>({M-1,N+1}):qarray<2>({M+1,N+1});
+			if (sigma==UP)
+			{
+				Qc.push_back(qarray<2>({M-1,N-1}));
+			}
+			else
+			{
+				Qc.push_back(qarray<2>({M+1,N-1}));
+			}
 		}
 		#endif
 	}
@@ -50,13 +58,21 @@
 		{
 			A = H.cdag(L/2, 0, 1.);
 			Adag = H.c(L/2, 0, sqrt(2.));
-			Qc = qarray<2>({S+1,N+1});
+			Qc.push_back(qarray<2>({S+1,N+1}));
+			Qc.push_back(qarray<2>({S-1,N+1}));
 		}
 		#else
 		{
 			A = H.cdag<sigma>(L/2);
 			Adag = H.c<sigma>(L/2);
-			Qc = (sigma==UP)? qarray<2>({M+1,N+1}):qarray<2>({M-1,N+1});
+			if (sigma==UP)
+			{
+				Qc.push_back(qarray<2>({M+1,N+1}));
+			}
+			else
+			{
+				Qc.push_back(qarray<2>({M-1,N+1}));
+			}
 		}
 		#endif
 	}
@@ -64,7 +80,7 @@
 	{
 		A = H.n(L/2);
 		Adag = A;
-		Qc = Qi;
+		Qc.push_back(Qi);
 	}
 //	else if (spec == "SSF" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
 //	{
@@ -103,5 +119,8 @@
 	lout << A.info() << endl;
 	lout << Adag.info() << endl;
 	lout << "Qi=" << Qi << endl;
-	lout << "Qc=" << Qc << endl;
+	for (size_t i=0; i<Qc.size(); ++i)
+	{
+		lout << "i=" << i << ", Qc=" << Qc[i] << endl;
+	}
 	//--------------</transition operator>---------------
