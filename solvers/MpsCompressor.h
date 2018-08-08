@@ -347,14 +347,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
 	// set L&R edges
 	Env.clear();
 	Env.resize(N_sites);
-	if (Vin.Qmulti.size() > 0)
-	{
-		Env[N_sites-1].R.setTarget(Vin.Qmulti);
-	}
-	else
-	{
-		Env[N_sites-1].R.setTarget(Vin.Qtot);
-	}
+	Env[N_sites-1].R.setTarget(Vin.Qmultitarget());
 	Env[0].L.setVacuum();
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -577,7 +570,7 @@ template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-              qarray<Symmetry::Nq> Qtot, size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
+              qarray<Symmetry::Nq> Qtot_input, size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
 {
 	N_sites = Vin.length();
 	Stopwatch<> Chronos;
@@ -592,26 +585,21 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	}
 	else
 	{
-		Vout = Mps<Symmetry,Scalar>(H, Dcutoff, Qtot, max(Vin.calc_Nqmax(), DMRG::CONTROL::DEFAULT::Qinit));
+		Vout = Mps<Symmetry,Scalar>(H, Dcutoff, Qtot_input, max(Vin.calc_Nqmax(), DMRG::CONTROL::DEFAULT::Qinit));
 	}
 	
 	// prepare edges of LW & RW
 	Heff.clear();
 	Heff.resize(N_sites);
 	Heff[0].L.setVacuum();
-	if (Vin.Qmulti.size() > 0)
+	
+	vector<qarray3<Symmetry::Nq> > Qt;
+	for (size_t i=0; i<Vin.Qmultitarget().size(); ++i)
 	{
-		vector<qarray3<Symmetry::Nq> > Qmulti;
-		for (const auto &Qval:Vin.Qmulti)
-		{
-			Qmulti.push_back(qarray3<Symmetry::Nq>{Qval, Qval, H.Qtarget()});
-		}
-		Heff[N_sites-1].R.setTarget(Qmulti);
+		Qt.push_back(qarray3<Symmetry::Nq>{Vin.Qmultitarget()[i], Vout.Qmultitarget()[i], H.Qtarget()});
 	}
-	else
-	{
-		Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin.Qtarget(), Vout.Qtarget(), H.Qtarget()});
-	}
+	Heff[N_sites-1].R.setTarget(Qt);
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Heff[l].W = H.W[l];
@@ -890,7 +878,6 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, 
               size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
 {
-//	assert(H.HAS_TWO_SITE_DATA() and "You need to call H.precalc_TwoSiteData() before polyCompress!");
 	N_sites = Vin1.length();
 	tol = tol_input;
 	Stopwatch<> Chronos;
@@ -904,27 +891,23 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 //	Vout.setRandom();
 	if (CHOSEN_VERBOSITY>=2)
 	{
-		lout << "Vin: " << Vout.info() << endl;
+		lout << "Vin1: " << Vin1.info() << endl;
+		lout << "Vin2: " << Vin2.info() << endl;
 	}
 	
 	// prepare edges of LW & RW
 	Heff.clear();
 	Heff.resize(N_sites);
 	Heff[0].L.setVacuum();
+	
 //	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin1.Qtarget(), Vout.Qtarget(), Symmetry::qvacuum()});
-	if (Vin1.Qmulti.size() > 0)
+	vector<qarray3<Symmetry::Nq> > Qt;
+	for (size_t i=0; i<Vin1.Qmultitarget().size(); ++i)
 	{
-		vector<qarray3<Symmetry::Nq> > Qmulti;
-		for (const auto &Qval:Vin1.Qmulti)
-		{
-			Qmulti.push_back(qarray3<Symmetry::Nq>{Qval, Qval, H.Qtarget()});
-		}
-		Heff[N_sites-1].R.setTarget(Qmulti);
+		Qt.push_back(qarray3<Symmetry::Nq>{Vin1.Qmultitarget()[i], Vout.Qmultitarget()[i], H.Qtarget()});
 	}
-	else
-	{
-		Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin1.Qtarget(), Vout.Qtarget(), H.Qtarget()});
-	}
+	Heff[N_sites-1].R.setTarget(Qt);
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Heff[l].W = H.W[l];
@@ -933,15 +916,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	// set L&R edges
 	Env.clear();
 	Env.resize(N_sites);
-//	Env[N_sites-1].R.setTarget(Vin2.Qtarget());
-	if (Vin2.Qmulti.size() > 0)
-	{
-		Env[N_sites-1].R.setTarget(Vin2.Qmulti);
-	}
-	else
-	{
-		Env[N_sites-1].R.setTarget(Vin2.Qtot);
-	}
+	Env[N_sites-1].R.setTarget(Vin2.Qmultitarget());
 	Env[0].L.setVacuum();
 	for (size_t l=0; l<N_sites; ++l)
 	{

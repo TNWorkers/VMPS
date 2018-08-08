@@ -4,7 +4,7 @@
 		sort(dE.rbegin(), dE.rend());
 		
 		double spillage = 0.;
-		if (spec == "PES" or spec == "IPES")
+		if (spec == "PES" or spec == "IPES" or spec == "CSF")
 		{
 			spillage = 4.*dE[0];
 		}
@@ -16,7 +16,6 @@
 		
 		for (size_t i=0; i<dE.size(); ++i)
 		{
-//			if (i>0) {assert(dE[i] < dE[i-1]);} // monotoncally decreasing resolution
 			Msave.push_back((Emax-Emin+2.*spillage)/dE[i]);
 			lout << "dE=" << dE[i] << " => M=" << Msave[Msave.size()-1] << endl;
 		}
@@ -31,18 +30,24 @@
 			string datfileJ = make_string(wd+outfile,make_string(dE[i]),".dat");
 			string datfileL = make_string(wd+"Lorentz/"+outfile,make_string(dE[i]),".dat");
 			
-//			if (spec == "AES" or spec == "PES")
-//			{
-//				KPS.add_savepoint(Msave[i], momfile, datfileJ, Emax, true, JACKSON);
-//				KPS.add_savepoint(Msave[i], momfile, datfileL, Emax, true, LORENTZ);
-//			}
-//			else
-//			{
-//				KPS.add_savepoint(Msave[i], momfile, datfileJ, Emin, false, JACKSON);
-//				KPS.add_savepoint(Msave[i], momfile, datfileL, Emin, false, LORENTZ);
-//			}
-			KPS.add_savepoint(Msave[i], momfile, datfileJ, 0, false, JACKSON);
-			KPS.add_savepoint(Msave[i], momfile, datfileL, 0, false, LORENTZ);
+			if (SHIFT)
+			{
+				if (spec == "AES" or spec == "PES")
+				{
+					KPS.add_savepoint(Msave[i], momfile, datfileJ, Emax, true, JACKSON);
+					KPS.add_savepoint(Msave[i], momfile, datfileL, Emax, true, LORENTZ);
+				}
+				else
+				{
+					KPS.add_savepoint(Msave[i], momfile, datfileJ, Emin, false, JACKSON);
+					KPS.add_savepoint(Msave[i], momfile, datfileL, Emin, false, LORENTZ);
+				}
+			}
+			else
+			{
+				KPS.add_savepoint(Msave[i], momfile, datfileJ, 0, false, JACKSON);
+				KPS.add_savepoint(Msave[i], momfile, datfileL, 0, false, LORENTZ);
+			}
 		}
 		
 		KPS.calc_ImAA(H, initA, Mmax, false);

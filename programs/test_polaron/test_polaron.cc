@@ -17,7 +17,7 @@ using namespace std;
 #include "OrthPolyGreen.h"
 
 size_t L;
-int N, M, S;
+int N, M, D;
 double t, tPrime, U, J;
 vector<int> Msave;
 int Mmax;
@@ -25,7 +25,7 @@ string spec, wd, outfile, Efilename;
 vector<double> dE;
 double Emin, Emax, E0;
 double d, n_sig;
-bool CHEB;
+bool CHEB, SHIFT;
 typedef MODEL::Symmetry Symmetry;
 
 int main (int argc, char* argv[]) 
@@ -34,7 +34,7 @@ int main (int argc, char* argv[])
 	L = args.get<size_t>("L",10);
 	N = args.get<size_t>("N",0);
 	M = args.get<size_t>("M",L);
-	S = abs(M)+1;
+	D = abs(M)+1; // D = 2S+1
 	qarray<2> Qi = MODEL::polaron(L,N);
 	vector<qarray<2> > Qc;
 	spec = args.get<string>("spec","IPES");
@@ -43,6 +43,7 @@ int main (int argc, char* argv[])
 	U = args.get<double>("U",0.);
 	J = args.get<double>("J",3.);
 	CHEB = args.get<bool>("CHEB",true);
+	SHIFT = args.get<bool>("SHIFT",false);
 	wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
 	constexpr SPIN_INDEX sigma = DN;

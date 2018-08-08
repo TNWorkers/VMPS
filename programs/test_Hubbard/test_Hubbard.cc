@@ -1,6 +1,8 @@
 //#define USE_HDF5_STORAGE
 //#define EIGEN_USE_THREADS
 
+#include "util/LapackManager.h"
+
 // with Eigen:
 #define DMRG_DONT_USE_OPENMP
 //#define MPSQCOMPRESSOR_DONT_USE_OPENMP
@@ -18,6 +20,7 @@
 #include <fstream>
 #include <complex>
 #include <variant>
+#include <fenv.h> 
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -118,6 +121,7 @@ VectorXd nh_SU2xSU2, ns_SU2xSU2;
 
 int main (int argc, char* argv[])
 {
+//	feenableexcept(FE_INVALID | FE_OVERFLOW);
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",4);
 	Ly = args.get<size_t>("Ly",1);

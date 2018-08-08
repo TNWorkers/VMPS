@@ -67,19 +67,12 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 	else
 	{
 //		B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), O.Qtarget()});
-		if (Vket.Qmulti.size() > 0)
+		vector<qarray3<Symmetry::Nq> > Qt;
+		for (size_t i=0; i<Vket.Qmultitarget().size(); ++i)
 		{
-			vector<qarray3<Symmetry::Nq> > Qmulti;
-			for (const auto &Qval:Vket.Qmulti)
-			{
-				Qmulti.push_back(qarray3<Symmetry::Nq>{Qval, Qval, O.Qtarget()});
-			}
-			B.setTarget(Qmulti);
+			Qt.push_back(qarray3<Symmetry::Nq>{Vket.Qmultitarget()[i], Vbra.Qmultitarget()[i], O.Qtarget()});
 		}
-		else
-		{
-			B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), O.Qtarget()});
-		}
+		B.setTarget(Qt);
 		
 //		for (int l=O.length()-1; l>=0; --l)
 		for (size_t l=O.length()-1; l!=-1; --l)
@@ -190,19 +183,12 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
 		
 //		B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), Qtarget});
-		if (Vket.Qmulti.size() > 0)
+		vector<qarray3<Symmetry::Nq> > Qt;
+		for (size_t i=0; i<Vket.Qmultitarget().size(); ++i)
 		{
-			vector<qarray3<Symmetry::Nq> > Qmulti;
-			for (const auto &Qval:Vket.Qmulti)
-			{
-				Qmulti.push_back(qarray3<Symmetry::Nq>{Qval, Qval, Qtarget});
-			}
-			B.setTarget(Qmulti);
+			Qt.push_back(qarray3<Symmetry::Nq>{Vket.Qmultitarget()[i], Vbra.Qmultitarget()[i], Qtarget});
 		}
-		else
-		{
-			B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), Qtarget});
-		}
+		B.setTarget(Qt);
 		
 		for (size_t l=O1.length()-1; l!=-1; --l)
 		{
@@ -222,11 +208,10 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			double res = B.block[0][0][0].trace();
 			if (Qtarget == Symmetry::qvacuum())
 			{
-#ifdef PRINT_SU2_FACTORS
+				#ifdef PRINT_SU2_FACTORS
 				cout << termcolor::bold << termcolor::red << "Global SU2 factor in avg(Bra,O1,O2,Ket) from DmrgLinearAlgebra: " << termcolor::reset
-					 << "√" << Symmetry::coeff_dot(O1.Qtarget()) << " • √" << Symmetry::coeff_dot(O1.Qtarget()) << endl;
-#endif
-
+				     << "√" << Symmetry::coeff_dot(O1.Qtarget()) << " • √" << Symmetry::coeff_dot(O1.Qtarget()) << endl;
+				#endif
 				res *= sqrt(Symmetry::coeff_dot(O1.Qtarget())*Symmetry::coeff_dot(O2.Qtarget())); // scalar product coeff for SU(2)
 			}
 			return res;
@@ -440,9 +425,9 @@ template<typename Symmetry, typename MpoScalar, typename Scalar>
 void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, double tol_compr = 1e-7)
 {
 	size_t L = Vin.length();
-	auto Qmulti = Symmetry::reduceSilent(Vin.Qtarget(),O.Qtarget());
-	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qmulti[0], O.volume(), Vin.calc_Nqmax());
-	Vout.Qmulti = Qmulti;
+	auto Qt = Symmetry::reduceSilent(Vin.Qtarget(),O.Qtarget());
+	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qt[0], O.volume(), Vin.calc_Nqmax());
+	Vout.set_Qmultitarget(Qt);
 	
 	for (size_t l=0; l<L; ++l)
 	{
@@ -454,7 +439,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	
 	Vout.update_inbase();
 	Vout.update_outbase();
-	Vout.calc_Qlimits();
+	Vout.calc_Qlimits(); // Careful: Depends on Qtot!
 	
 	lout << endl;
 	lout << termcolor::bold << "OxV_exact" << termcolor::reset << endl;
@@ -471,7 +456,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 		// shouldn't matter, but just to be sure:
 		Vout.update_inbase();
 		Vout.update_outbase();
-		Vout.calc_Qlimits();
+		Vout.calc_Qlimits(); // Careful: Depends on Qtot!
 		
 		lout << "compressed:\t" << Vout.info() << endl;
 		lout << "\t" << Compadre.info() << endl;

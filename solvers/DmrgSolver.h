@@ -817,6 +817,8 @@ adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vou
 	Heff[SweepStat.pivot].qOp  = H.opBasis(SweepStat.pivot);
 	HxV(Heff[SweepStat.pivot], Vtmp1, Vtmp2);
 	
+	cout << "dot(Vtmp1,Vtmp2)=" << dot(Vtmp1,Vtmp2) << endl;
+	cout << "Vout.energy=" << Vout.energy << endl;
 	double DeltaEtrunc = dot(Vtmp1,Vtmp2)-Vout.energy;
 	
 //	if (DeltaEtrunc < 0.3*DeltaEopt) {Vout.state.alpha_rsvd *= sqrt(10.);}

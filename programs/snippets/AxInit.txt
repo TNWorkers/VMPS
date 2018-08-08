@@ -4,10 +4,7 @@
 //	MODEL::CompressorXd Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
 //	Compadre.prodCompress(A, Adag, init->state, initA, Qc, init->state.calc_Dmax());
 	
-	OxV_exact(A, init->state, initA);
+	OxV_exact(A, init->state, initA, 1e-7);
 	
-	cout << "dot=" << initA.dot(initA) << endl;
-	cout << "dot2=" << avg(initA, Mpo<Symmetry,double>::Identity(initA.locBasis()), initA) << endl;
-	cout << "dot3=" << avg(initA, Mpo<Symmetry,double>::Identity(initA.locBasis()), Mpo<Symmetry,double>::Identity(initA.locBasis()), initA) << endl;
 	delete init;
 	//--------------</A*init>---------------

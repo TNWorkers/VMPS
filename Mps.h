@@ -198,6 +198,8 @@ public:
 	template<typename SymmetryBig>
 	void reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs);
 	
+	void set_Qmultitarget (const vector<qarray<Nq> > &Qmulti_input) {Qmulti = Qmulti_input;};
+	
 //	/**
 //	 * Takes an Mpo and flattens/purifies it into this Mps (to do time propagation in the Heisenberg picture, for example).
 //	 * \param Op : the Mpo to be flattened
@@ -419,6 +421,9 @@ public:
 	/**Returns the target quantum number.*/
 	inline qarray<Nq> Qtarget() const {return Qtot;};
 	
+	/**Returns the multi-target quantum number for spectral functions.*/
+	inline vector<qarray<Nq> > Qmultitarget() const {return Qmulti;};
+	
 	/**Returns the local basis.*/
 	inline vector<qarray<Nq> > locBasis (size_t loc) const {return qloc[loc];}
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
@@ -447,7 +452,7 @@ public:
 	inline ArrayXd entropy() const {return S;};
 	///\}
 	
-//private:
+private:
 	
 	/**volume of the system (normally (chain length) * (chain width))*/
 	size_t N_phys;
@@ -458,6 +463,7 @@ public:
 	/**total quantum number*/
 	qarray<Nq> Qtot = Symmetry::qvacuum();
 	
+	/**multi-target quantum number for spectral functions*/
 	vector<qarray<Nq> > Qmulti;
 	
 	/**A-tensor*/
@@ -558,6 +564,7 @@ Mps<Symmetry,Scalar>::
 Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Qmax_input)
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input)
 {
+	Qmulti = vector<qarray<Nq> >(1,Qtot);
 	outerResize(L_input, qloc_input, Qtot_input, Qmax_input);
 }
 
@@ -568,6 +575,7 @@ Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, size_t Nqmax_inpu
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >()
 {
 	N_phys = H.volume();
+	Qmulti = vector<qarray<Nq> >(1,Qtot);
 	outerResize(H.length(), H.locBasis(), Qtot_input, Nqmax_input);
 	
 	update_inbase();
@@ -589,8 +597,9 @@ template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
 Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
 	 const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input)
-	:DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input), A(As)
+:DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input), A(As)
 {
+	Qmulti = vector<qarray<Nq> >(1,Qtot);
 	assert(As.size() == L_input and qloc_input.size() == L_input);
 }
 
@@ -612,6 +621,7 @@ outerResize (const Mps<Symmetry,OtherMatrixType> &V)
 	N_phys = V.N_phys;
 	qloc = V.qloc;
 	Qtot = V.Qtot;
+	Qmulti = V.Qmulti;
 	
 	inbase = V.inbase;
 	outbase = V.outbase;
@@ -792,9 +802,9 @@ calc_Qlimits()
 //		cout << "l=" << l << ", QinBotRange.size()=" << QinBotRange.size() << endl;
 	}
 	
-	QoutTop[this->N_sites-1] = Qtot;
-	QoutBot[this->N_sites-1] = Qtot;
-	QoutBotRange[this->N_sites-1] = {Qtot};
+	QoutTop[this->N_sites-1] = *max_element(Qmulti.begin(), Qmulti.end());
+	QoutBot[this->N_sites-1] = *min_element(Qmulti.begin(), Qmulti.end());
+	QoutBotRange[this->N_sites-1] = Qmulti; //{Qtot};
 	for (int l=this->N_sites-2; l>=0; --l)
 	{
 		vector<qarray<Symmetry::Nq> > qlocflip;
@@ -844,6 +854,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 	this->N_sites = L_input;
 	qloc = qloc_input;
 	Qtot = Qtot_input;
+	Qmulti = vector<qarray<Nq> >(1,Qtot);
 	this->pivot = -1;
 	
 	calc_Qlimits();
@@ -1047,16 +1058,9 @@ innerResize (size_t Dmax)
 	//	}
 	//	cout << endl;
 		
-		if (Qmulti.size() > 0)
+		for (const auto &Qval:Qmulti)
 		{
-			for (const auto &Qval:Qmulti)
-			{
-				fromR[this->N_sites].insert({Qval,1});
-			}
-		}
-		else
-		{
-			fromR[this->N_sites].insert({Qtot,1});
+			fromR[this->N_sites].insert({Qval,1});
 		}
 		for (size_t l=this->N_sites; l-->0;)
 		for (size_t qin=0; qin<inbase[l].Nq(); ++qin)
@@ -1124,6 +1128,7 @@ setProductState (const Hamiltonian &H, const vector<qarray<Nq> > &config)
 	N_phys = H.volume();
 	qloc = H.locBasis();
 	Qtot = accumulate(config.begin(),config.end(),Symmetry::qvacuum());
+	Qmulti = vector<qarray<Nq> >(1,Qtot);
 	this->pivot = -1;
 	
 	resize_arrays();
@@ -2943,7 +2948,7 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 		L = Lnext;
 		Lnext.clear();
 	}
-
+	
 	Scalar out = L.trace();
 // #ifdef PRINT_SU2_FACTORS
 // 		cout << termcolor::bold << termcolor::red << "Global SU2 factor in dot(Bra,Ket) from Mps: " << termcolor::reset
@@ -3045,7 +3050,7 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 swap (Mps<Symmetry,Scalar> &V)
 {
-	assert(Qtot == V.Qtarget() and this->N_sites == V.length());
+	assert(Qmulti == V.Qmultitarget() and this->N_sites == V.length());
 	
 	inbase.swap(V.inbase);
 	outbase.swap(V.outbase);
@@ -3240,7 +3245,7 @@ template<typename OtherScalar>
 void Mps<Symmetry,Scalar>::
 addScale (OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, bool SVD_COMPRESS)
 {
-	assert(Qtot == Vin.Qtarget() and 
+	assert(Qmulti == Vin.Qmultitarget() and 
 	       "Mismatched quantum numbers in addition of Mps!");
 	this->pivot = -1;
 	

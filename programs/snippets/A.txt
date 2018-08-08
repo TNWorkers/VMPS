@@ -1,4 +1,4 @@
-//--------------<transition operator>---------------
+	//--------------<transition operator>---------------
 	MODEL::Operator A, Adag;
 	if (spec == "AES")
 	{
@@ -6,7 +6,7 @@
 		Adag = H.cdagcdag(L/2);
 		#ifdef USING_SU2
 		{
-			Qc.push_back(qarray<2>({S,N-2}));
+			Qc.push_back(qarray<2>({D,N-2}));
 		}
 		#else
 		{
@@ -20,7 +20,7 @@
 		Adag = H.cc(L/2);
 		#ifdef USING_SU2
 		{
-			Qc.push_back(qarray<2>({S,N+2}));
+			Qc.push_back(qarray<2>({D,N+2}));
 		}
 		#else
 		{
@@ -34,8 +34,8 @@
 		{
 			A = H.c(L/2, 0, 1.);
 			Adag = H.cdag(L/2, 0, sqrt(2.));
-			Qc.push_back(qarray<2>({S+1,N-1}));
-			Qc.push_back(qarray<2>({S-1,N-1}));
+			Qc.push_back(qarray<2>({D+1,N-1}));
+			if (D>1) {Qc.push_back(qarray<2>({D-1,N-1}));}
 		}
 		#else
 		{
@@ -58,8 +58,8 @@
 		{
 			A = H.cdag(L/2, 0, 1.);
 			Adag = H.c(L/2, 0, sqrt(2.));
-			Qc.push_back(qarray<2>({S+1,N+1}));
-			Qc.push_back(qarray<2>({S-1,N+1}));
+			Qc.push_back(qarray<2>({D+1,N+1}));
+			if (D>1) {Qc.push_back(qarray<2>({D-1,N+1}));}
 		}
 		#else
 		{
@@ -82,40 +82,42 @@
 		Adag = A;
 		Qc.push_back(Qi);
 	}
-//	else if (spec == "SSF" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
-//	{
-//		#ifdef USING_SU2
-//		{
-//			A = H.S(L/2);
-//			Adag = H.Sdag(L/2, 0, sqrt(3.));
-//			Qc = {S+3,N};
-//		}
-//		#else
-//		{
-//			if (spec == "SSFM")
-//			{
-//				A = H.Scomp(SM, L/2, 0, 1./sqrt(2.));
-//				Adag = H.Scomp(SP, L/2, 0, 1./sqrt(2.));
-//				Qc = Qi+A.Qtarget();
-//			}
-//			else if (spec == "SSFP")
-//			{
-//				A = H.Scomp(SP, L/2, 0, 1./sqrt(2.));
-//				Adag = H.Scomp(SM, L/2, 0, 1./sqrt(2.));
-//				Qc = Qi+A.Qtarget();
-//			}
-//			else
-//			{
-//				A = H.Sz(L/2);
-//				Adag = H.Sz(L/2);
-//				Qc = Qi;
-//			}
-//		}
-//		#endif
-//	}
-	
-//	A.precalc_TwoSiteData();
-//	Adag.precalc_TwoSiteData();
+	else if (spec == "SSF" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
+	{
+		#ifdef USING_SU2
+		{
+			A = H.S(L/2);
+			Adag = H.Sdag(L/2, 0, sqrt(3.));
+			Qc.push_back({D+2,N});
+			if (D>1) {Qc.push_back({D,N});}
+			if (D>2) {Qc.push_back({D-2,N});}
+		}
+		#else
+		{
+			if (spec == "SSFM")
+			{
+				A = H.Scomp(SM, L/2, 0, 1./sqrt(2.));
+				Adag = H.Scomp(SP, L/2, 0, 1./sqrt(2.));
+				Qc.push_back(Qi+A.Qtarget());
+			}
+			else if (spec == "SSFP")
+			{
+				A = H.Scomp(SP, L/2, 0, 1./sqrt(2.));
+				Adag = H.Scomp(SM, L/2, 0, 1./sqrt(2.));
+				Qc.push_back(Qi+A.Qtarget());
+			}
+			else
+			{
+				A = H.Sz(L/2);
+				Adag = H.Sz(L/2);
+				Qc.push_back(Qi);
+			}
+		}
+		#endif
+	}
+
+	//	A.precalc_TwoSiteData();
+	//	Adag.precalc_TwoSiteData();
 	lout << A.info() << endl;
 	lout << Adag.info() << endl;
 	lout << "Qi=" << Qi << endl;

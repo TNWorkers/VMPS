@@ -92,6 +92,9 @@ public:
 	Mpo<Symmetry> Simpdag (size_t locx, size_t locy=0, double factor=sqrt(3.));
 	Mpo<Symmetry> Ssub (size_t locx, size_t locy=0, double factor=1.);
 	Mpo<Symmetry> Ssubdag (size_t locx, size_t locy=0, double factor=sqrt(3.));
+	// for compatibility:
+	Mpo<Symmetry> S (size_t locx, size_t locy=0, double factor=1.) {return Simp(locx,locy,factor);};
+	Mpo<Symmetry> Sdag (size_t locx, size_t locy=0, double factor=sqrt(3.)) {return Simpdag(locx,locy,factor);};
 	///@}
 	
 	///@{

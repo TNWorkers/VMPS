@@ -17,7 +17,7 @@ using namespace std;
 #include "OrthPolyGreen.h"
 
 size_t L;
-int N, M, S;
+int N, M, D;
 double t, U, V, tPrime;
 vector<int> Msave;
 int Mmax;
@@ -25,7 +25,7 @@ string spec, wd, outfile, Efilename;
 vector<double> dE;
 double Emin, Emax, E0;
 double d, n_sig;
-bool CHEB;
+bool CHEB, SHIFT;
 
 int main (int argc, char* argv[]) 
 {
@@ -33,19 +33,20 @@ int main (int argc, char* argv[])
 	L = args.get<size_t>("L",4);
 	N = args.get<size_t>("N",L);
 	M = args.get<size_t>("M",0);
-	S = abs(M)+1;
+	D = abs(M)+1;
 	#ifdef USING_SU2
-	qarray<2> Qi = {S,N};
+	qarray<2> Qi = {D,N};
 	#else
 	qarray<2> Qi = {M,N};
 	#endif
-	qarray<2> Qc;
+	vector<qarray<2> > Qc;
 	spec = args.get<string>("spec","AES");
 	t = args.get<double>("t",1.);
 	U = args.get<double>("U",6.);
 	tPrime = args.get<double>("tPrime",0);
 	V = args.get<double>("V",0.);
 	CHEB = args.get<bool>("CHEB",true);
+	SHIFT = args.get<bool>("SHIFT",false);
 	wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
 	constexpr SPIN_INDEX sigma = UP;
