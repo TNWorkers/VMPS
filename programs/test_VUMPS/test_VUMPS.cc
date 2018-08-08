@@ -45,7 +45,7 @@ Logger lout;
 //#include "gsl/gsl_integration.h"
 // #include "LiebWu.h"
 
-double Jxy, Jz, J, Bx, Bz;
+double Jxy, Jz, J, Jprime, Bx, Bz;
 double U, mu;
 double dt;
 double e_exact;
@@ -128,6 +128,7 @@ int main (int argc, char* argv[])
 	Jxy = args.get<double>("Jxy",1.);
 	Jz = args.get<double>("Jz",1.);
 	J = args.get<double>("J",1.);
+	Jprime = args.get<double>("Jprime",0.);
 	Bx = args.get<double>("Bx",1.);
 	Bz = args.get<double>("Bz",0.);
 	U = args.get<double>("U",10.);
@@ -181,7 +182,7 @@ int main (int argc, char* argv[])
 //	Eigenstate<Umps<Sym::U0,double> > g;
 	
 	typedef VMPS::HeisenbergSU2 HEISENBERG_SU2;
-	HEISENBERG_SU2 Heis_SU2(L,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
+	HEISENBERG_SU2 Heis_SU2(L,{{"Ly",Ly},{"J",J},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
 
 	HEISENBERG_SU2::uSolver DMRG_SU2(VERB);
 	Eigenstate<HEISENBERG_SU2::StateUd> g_SU2;
@@ -194,8 +195,8 @@ int main (int argc, char* argv[])
 	}
 	
 	typedef VMPS::HeisenbergU1XXZ HEISENBERG_U1;
-	HEISENBERG_U1 Heis_U1(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
-	HEISENBERG_U1 Heis_U1_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",0.5*Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG_U1 Heis_U1(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG_U1 Heis_U1_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",0.5*Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	
 	HEISENBERG_U1::uSolver DMRG_U1(VERB);
 	Eigenstate<HEISENBERG_U1::StateUd> g_U1;
@@ -257,8 +258,8 @@ int main (int argc, char* argv[])
 	
 	
 	typedef VMPS::HeisenbergXXZ HEISENBERG0;
-	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
-	HEISENBERG0 Heis0_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",0.5*Jz},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG0 Heis0_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",0.5*Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	
 	HEISENBERG0::uSolver DMRG0(VERB);
 	Eigenstate<HEISENBERG0::StateUd> g0;

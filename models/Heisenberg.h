@@ -231,6 +231,14 @@ ref (const vector<Param> &params, double L)
 		out.method = "analytical";
 	}
 	
+	if (P.get<double>("m") == 0. and P.get<size_t>("D") == 2 and P.get<double>("J") > 0. and P.get<double>("Jprime") == 0.5*P.get<double>("J") and
+	    P.HAS_NONE_OF({"Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}))
+	{
+		out.value = -0.375*J;
+		out.source = "https://en.wikipedia.org/wiki/Majumdar-Ghosh_model";
+		out.method = "analytical";
+	}
+	
 	return out;
 }
 

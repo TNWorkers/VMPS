@@ -556,27 +556,30 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW, 1, outbase);
 	L.insert(dW-1, IdL);
 	R.insert(0,    IdR);
-
-//  Todo: Rewrite this function!
-//	auto Wsum = [&W, &qlocCell, &qOpCell] (size_t a, size_t b)
-//	{
-//		double res = 0;
-//		for (size_t l=0; l<N_sites;)
-//		for (size_t s1=0; s1<qlocCell.size(); ++s1)
-//		for (size_t s2=0; s2<qlocCell.size(); ++s2)
-//		for (size_t k=0; k<qOpCell.size(); ++k)
-//		{
-//			for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
-//			for (typename SparseMatrix<Scalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
-//			{
-//				if (iW.row() == a and iW.col() == b)
-//				{
-//					res += abs(iW.value());
-//				}
-//			}
-//		}
-//		return res;
-//	};
+	
+	auto WprodDiag = [&W, &qloc, &qOp] (size_t a)
+	{
+		double res = 1.;
+		for (size_t l=0; l<W.size(); ++l)
+		{
+			double tmp = 0;
+			for (size_t s1=0; s1<qloc[l].size(); ++s1)
+			for (size_t s2=0; s2<qloc[l].size(); ++s2)
+			for (size_t k=0; k<qOp[l].size(); ++k)
+			{
+				for (int r=0; r<W[l][s1][s2][k].outerSize(); ++r)
+				for (typename SparseMatrix<Scalar>::InnerIterator iW(W[l][s1][s2][k],r); iW; ++iW)
+				{
+					if (iW.row() == a and iW.col() == a)
+					{
+						tmp += abs(iW.value());
+					}
+				}
+			}
+			res *= tmp;
+		}
+		return res;
+	};
 	
 //	#pragma omp parallel sections
 	{
@@ -586,9 +589,9 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 			for (int b=dW-2; b>=0; --b)
 			{
 				YL[b] = make_YL(b, L, AL, W, AL, qloc, qOp);
-
-//				if (Wsum(b,b) == 0.)
-				if (b > 0) //Attention: This is not valid for next-nearest neighbour terms in the MPO!
+				
+				if (WprodDiag(b) == 0.)
+//				if (b > 0)
 				{
 					L.insert(b,YL[b]);
 				}
@@ -613,8 +616,8 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 			{
 				YR[a] = make_YR(a, R, AR, W, AR, qloc, qOp);
 				
-//				if (Wsum(a,a) == 0.)
-				if (a < dW-1) //Attention: This is not valid for next-nearest neighbour terms in the MPO!
+				if (WprodDiag(a) == 0.)
+//				if (a < dW-1)
 				{
 					R.insert(a,YR[a]);
 				}
