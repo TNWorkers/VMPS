@@ -75,7 +75,7 @@ const std::map<string,std::any> Heisenberg::sweep_defaults =
 
 Heisenberg::
 Heisenberg (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<0>({}), "", true),
+:Mpo<Symmetry> (L, qarray<0>({}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
  HeisenbergObservables(L,params,Heisenberg::defaults),
  ParamReturner(Heisenberg::sweep_defaults)
 {
@@ -163,10 +163,10 @@ add_operators (HamiltonianTermsXd<Symmetry> &Terms, const vector<SpinBase<Symmet
 refEnergy Heisenberg::
 ref (const vector<Param> &params, double L)
 {
-	ParamHandler P(params,{{"D",2ul},{"Ly",1ul},{"m",0.},{"J",1.},{"Jxy",1.},{"Jz",1.}});
+	ParamHandler P(params,{{"D",2ul},{"Ly",1ul},{"m",0.},{"J",1.},{"Jxy",1.},{"Jz",1.},{"Jprime",0.}});
 	refEnergy out;
 	
-	if (isinf(L) and P.get<double>("m") == 0. and P.get<double>("J") > 0.
+	if (isinf(L) and P.get<double>("m") == 0. and P.get<double>("J") > 0. and P.get<double>("Jprime") == 0.
 	    and P.HAS_NONE_OF({"Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}) )
 	{
 		out.source = "T. Xiang, Thermodynamics of quantum Heisenberg spin chains, Phys. Rev. B 58, 9142 (1998)";
@@ -222,7 +222,7 @@ ref (const vector<Param> &params, double L)
 		out.value *= J;
 	}
 	
-	if (isinf(L) and P.get<double>("m") == 0. and P.get<size_t>("D") == 2 and P.get<double>("Jxy") > 0. and P.get<double>("Jz") == 0. and
+	if (isinf(L) and P.get<double>("m") == 0. and P.get<double>("Jprime") == 0. and P.get<size_t>("D") == 2 and P.get<double>("Jxy") > 0. and P.get<double>("Jz") == 0. and
 	    P.HAS_NONE_OF({"J","Bz","Bx","Kx","Kz","Dy","Dyprime"}))
 	{
 		double Jxy =  P.get<double>("Jxy");
@@ -234,7 +234,7 @@ ref (const vector<Param> &params, double L)
 	if (P.get<double>("m") == 0. and P.get<size_t>("D") == 2 and P.get<double>("J") > 0. and P.get<double>("Jprime") == 0.5*P.get<double>("J") and
 	    P.HAS_NONE_OF({"Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}))
 	{
-		out.value = -0.375*J;
+		out.value = -0.375*P.get<double>("J");
 		out.source = "https://en.wikipedia.org/wiki/Majumdar-Ghosh_model";
 		out.method = "analytical";
 	}

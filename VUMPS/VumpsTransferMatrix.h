@@ -104,11 +104,11 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 		{
 			if (l==0 or l==Lcell-1)
 			{
-				contract_R(R, H.Abra[l], H.W[l], H.Aket[l], H.qloc[l], H.qOp[l], Rnext, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
+				contract_R(R, H.Abra[l], H.W[l], PROP::HAMILTONIAN, H.Aket[l], H.qloc[l], H.qOp[l], Rnext, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
 			}
 			else
 			{
-				contract_R(R, H.Abra[l], H.W[l], H.Aket[l], H.qloc[l], H.qOp[l], Rnext);
+				contract_R(R, H.Abra[l], H.W[l], PROP::HAMILTONIAN, H.Aket[l], H.qloc[l], H.qOp[l], Rnext);
 			}
 			R.clear();
 			R = Rnext;
@@ -124,11 +124,11 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 		{
 			if (l==Lcell-1 or l==0)
 			{
-				contract_L(L, H.Abra[l], H.W[l], H.Aket[l], H.qloc[l], H.qOp[l], Lnext, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
+				contract_L(L, H.Abra[l], H.W[l], PROP::HAMILTONIAN, H.Aket[l], H.qloc[l], H.qOp[l], Lnext, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
 			}
 			else
 			{
-				contract_L(L, H.Abra[l], H.W[l], H.Aket[l], H.qloc[l], H.qOp[l], Lnext);
+				contract_L(L, H.Abra[l], H.W[l], PROP::HAMILTONIAN, H.Aket[l], H.qloc[l], H.qOp[l], Lnext);
 			}
 			L.clear();
 			L = Lnext;
@@ -248,7 +248,7 @@ inline Scalar dot (const TransferVector<Symmetry,Scalar> &V1, const TransferVect
 	{
 			assert(V1.data.in(q) == V2.data.in(q));
 			assert(V1.data.out(q) == V2.data.out(q));
-			if(V1.data.mid(q) == Symmetry::qvacuum() and V2.data.mid(q) == Symmetry::qvacuum())
+//			if (V1.data.mid(q) == Symmetry::qvacuum() and V2.data.mid(q) == Symmetry::qvacuum())
 			{
 				assert(V1.data.mid(q) == V2.data.mid(q) and V1.data.mid(q) == Symmetry::qvacuum());
 ////		cout << V1.data.in(q) << ", " << V1.data.out(q) << ", " << V1.data.mid(q) << " | " 

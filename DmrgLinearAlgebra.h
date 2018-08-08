@@ -53,11 +53,11 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			if (USE_SQUARE == true)
 			{
 				if constexpr (Symmetry::NON_ABELIAN) { contract_L(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
-				else { contract_L(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
+				else { contract_L(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
 			}
 			else
 			{
-				contract_L(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
+				contract_L(B, Vbra.A_at(l), O.W_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
 			}
 			B.clear();
 			B = Bnext;
@@ -80,11 +80,11 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			if (USE_SQUARE == true)
 			{
 				if constexpr (Symmetry::NON_ABELIAN) { contract_R(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
-				else {contract_R(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
+				else {contract_R(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
 			}
 			else
 			{
-				contract_R(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
+				contract_R(B, Vbra.A_at(l), O.W_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
 			}
 			B.clear();
 			B = Bnext;

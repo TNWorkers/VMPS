@@ -377,4 +377,14 @@ struct TwoSiteData
 	Scalar cgc9 = 1.;
 };
 
+namespace PROP
+{
+	const bool HERMITIAN = true;
+	const bool NON_HERMITIAN = false;
+	const bool UNITARY = true;
+	const bool NON_UNITARY = false;
+	const bool HAMILTONIAN = true;
+	const bool NON_HAMILTONIAN = false;
+}
+
 #endif

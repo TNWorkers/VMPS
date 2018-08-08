@@ -1413,6 +1413,18 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 	}
 }
 
+//template<typename Symmetry, typename Scalar>
+//void Umps<Symmetry,Scalar>::
+//truncate()
+//{
+//	for (size_t q=0; q<C[loc].dim; ++q)
+//	{
+//		JacobiSVD<MatrixType> Jack(C[loc].block[q], ComputeThinU|ComputeThinV);
+//		size_t Nret = (Jack.singularValues().array() > eps_svd).count();
+//		
+//	}
+//}
+
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
 expand_basis (size_t DeltaD, const boost::multi_array<Scalar,4> &h2site, double e)

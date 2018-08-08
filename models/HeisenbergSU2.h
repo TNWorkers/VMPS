@@ -104,7 +104,7 @@ const std::map<string,std::any> HeisenbergSU2::sweep_defaults =
 
 HeisenbergSU2::
 HeisenbergSU2 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "", true),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
  ParamReturner(HeisenbergSU2::sweep_defaults)
 {
 	ParamHandler P(params,defaults);

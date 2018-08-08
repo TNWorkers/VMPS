@@ -95,14 +95,14 @@ const std::map<string,std::any> HeisenbergU1::sweep_defaults =
 
 HeisenbergU1::
 HeisenbergU1 (const size_t &L)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", true),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
  HeisenbergObservables(L),
  ParamReturner(HeisenbergU1::sweep_defaults)
 {}
 
 HeisenbergU1::
 HeisenbergU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", true),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
  HeisenbergObservables(L,params,HeisenbergU1::defaults),
  ParamReturner(HeisenbergU1::sweep_defaults)
 {

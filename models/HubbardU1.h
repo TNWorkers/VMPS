@@ -40,7 +40,7 @@ const std::map<string,std::any> HubbardU1::defaults =
 
 HubbardU1::
 HubbardU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", true),
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
  HubbardObservables(L,params,HubbardU1::defaults),
  ParamReturner()
 {

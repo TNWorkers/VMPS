@@ -21,8 +21,8 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	for (size_t l=0; l<Obs.length(); ++l)
 	{
 		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
-		contract_L(B, Vbra.A_at(g,l%Vket.length()), Obs.W_at(l), Vket.A_at(g,l%Vket.length()), Obs.locBasis(l), Obs.opBasis(l), Bnext);
-
+		contract_L(B, Vbra.A_at(g,l%Vket.length()), Obs.W_at(l), O.IS_HAMILTONIAN(), Vket.A_at(g,l%Vket.length()), Obs.locBasis(l), Obs.opBasis(l), Bnext);
+		
 		B.clear();
 		B = Bnext;
 		Bnext.clear();

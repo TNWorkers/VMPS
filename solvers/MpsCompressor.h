@@ -858,7 +858,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 build_LW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE)
 {
 	Stopwatch<> LRtimer;
-	contract_L(Heff[loc-1].L, Vbra.A[loc-1], H.W[loc-1], Vket.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].L, RANDOMIZE);
+	contract_L(Heff[loc-1].L, Vbra.A[loc-1], H.W[loc-1], H.IS_HAMILTONIAN(), Vket.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].L, RANDOMIZE);
 	t_LR += LRtimer.time();
 }
 
@@ -868,7 +868,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 build_RW (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const MpOperator &H, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE)
 {
 	Stopwatch<> LRtimer;
-	contract_R(Heff[loc+1].R, Vbra.A[loc+1], H.W[loc+1], Vket.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R, RANDOMIZE);
+	contract_R(Heff[loc+1].R, Vbra.A[loc+1], H.W[loc+1], H.IS_HAMILTONIAN(), Vket.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R, RANDOMIZE);
 	t_LR += LRtimer.time();
 }
 

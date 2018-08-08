@@ -97,7 +97,7 @@ const map<string,any> HubbardSU2xSU2::sweep_defaults =
 
 HubbardSU2xSU2::
 HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,1}), "", true),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,1}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
  ParamReturner(HubbardSU2xSU2::sweep_defaults)
 {
 	ParamHandler P(params,defaults);

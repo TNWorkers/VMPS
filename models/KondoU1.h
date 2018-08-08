@@ -70,7 +70,7 @@ const std::map<string,std::any> KondoU1::defaults =
 
 KondoU1::
 KondoU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", true),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
  KondoObservables(L,params,defaults),
  ParamReturner()
 {

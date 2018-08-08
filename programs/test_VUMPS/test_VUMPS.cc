@@ -306,7 +306,7 @@ int main (int argc, char* argv[])
 	}
 	
 	cout << setprecision(13);
-	refEnergy lit = VMPS::Heisenberg::ref({{"J",J},{"Ly",Ly},{"D",D}}); 
+	refEnergy lit = VMPS::Heisenberg::ref({{"J",J},{"Jprime",Jprime},{"Ly",Ly},{"D",D}}); 
 	cout << "e(ref)=" << lit.value << "\t from: " << lit.source << endl;
 	if (CALC_SU2) {cout << "e0(SU2)=" << g_SU2.energy << ", diff=" << abs(lit.value-g_SU2.energy) << endl;}
 	if (CALC_U1)  {cout << "e0(U1) =" << g_U1.energy << ", diff=" << abs(lit.value-g_U1.energy) << endl;}

@@ -30,6 +30,7 @@ template<typename Symmetry, typename MatrixType, typename MpoScalar>
 void contract_L (const Tripod<Symmetry,MatrixType> &Lold, 
                  const vector<Biped<Symmetry,MatrixType> > &Abra, 
                  const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
+                 const bool &IS_HAMILTONIAN,
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
@@ -76,16 +77,16 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 						factor_cgc = 1.;
 					}
 					if (abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) {continue;}
-
+					
 					for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
 					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
 					{
 						size_t a = iW.row();
 						size_t b = iW.col();
-
+						
 						//0 is the Hamiltonian block. Only singlett couplings are neccessary.
-						// if(b == 0 and quple[2] != Symmetry::qvacuum()) {continue;}
-
+						if (b == 0 and IS_HAMILTONIAN and quple[2] != Symmetry::qvacuum()) {continue;}
+						
 						if (MODE == FULL or
 						   (MODE == TRIANGULAR and a>fixed_b) or
 						   (MODE == FIXED and b==fixed_b))
@@ -155,6 +156,7 @@ template<typename Symmetry, typename MatrixType, typename MpoScalar>
 void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
                  const vector<Biped<Symmetry,MatrixType> > &Abra, 
                  const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
+                 const bool &IS_HAMILTONIAN,
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
@@ -207,9 +209,10 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 					{
 						size_t a = iW.row();
 						size_t b = iW.col();
+						
 						//Daux-1 is the Hamiltonian block. Only singlett couplings are neccessary.
-						// if(a == W[s1][s2][k].cols()-1 and quple[2] != Symmetry::qvacuum()) {continue;}
-
+						if(a == W[s1][s2][k].cols()-1 and IS_HAMILTONIAN and quple[2] != Symmetry::qvacuum()) {continue;}
+						
 						if (MODE == FULL or
 						   (MODE == TRIANGULAR and fixed_a>b) or
 						   (MODE == FIXED and a==fixed_a))
@@ -230,7 +233,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 									                 Abra[s1].block[qAbra].adjoint(),
 									                 Mtmp);
 								}
-							
+								
 								auto it = Rnew.dict.find(quple);
 								if (it != Rnew.dict.end())
 								{

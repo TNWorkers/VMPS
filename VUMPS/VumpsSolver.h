@@ -588,7 +588,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 		{
 			for (int b=dW-2; b>=0; --b)
 			{
-				YL[b] = make_YL(b, L, AL, W, AL, qloc, qOp);
+				YL[b] = make_YL(b, L, AL, W, PROP::HAMILTONIAN, AL, qloc, qOp);
 				
 				if (WprodDiag(b) == 0.)
 //				if (b > 0)
@@ -614,7 +614,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 		{
 			for (int a=1; a<dW; ++a)
 			{
-				YR[a] = make_YR(a, R, AR, W, AR, qloc, qOp);
+				YR[a] = make_YR(a, R, AR, W, PROP::HAMILTONIAN, AR, qloc, qOp);
 				
 				if (WprodDiag(a) == 0.)
 //				if (a < dW-1)
@@ -677,7 +677,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
-{	
+{
 	// With a unit cell, Heff is a vector for each site
 	HeffA.clear();
 	HeffA.resize(N_sites);
@@ -694,16 +694,16 @@ build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	build_LR (Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::R], Vout.state.C, 
 	          H.W, H.qloc, H.qOp, 
 	          HeffA[0].L, HeffA[N_sites-1].R);
-
+	
 	// Make environment for each site of the unit cell
 	for (size_t l=1; l<N_sites; ++l)
 	{
-		contract_L (HeffA[l-1].L, Vout.state.A[GAUGE::L][l-1], H.W[l-1], Vout.state.A[GAUGE::L][l-1], H.locBasis(l-1), H.opBasis(l-1), HeffA[l].L);
+		contract_L(HeffA[l-1].L, Vout.state.A[GAUGE::L][l-1], H.W[l-1], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][l-1], H.locBasis(l-1), H.opBasis(l-1), HeffA[l].L);
 	}
 	
 	for (int l=N_sites-2; l>=0; --l)
 	{
-		contract_R (HeffA[l+1].R, Vout.state.A[GAUGE::R][l+1], H.W[l+1], Vout.state.A[GAUGE::R][l+1], H.locBasis(l+1), H.opBasis(l+1), HeffA[l].R);
+		contract_R(HeffA[l+1].R, Vout.state.A[GAUGE::R][l+1], H.W[l+1], PROP::HAMILTONIAN, Vout.state.A[GAUGE::R][l+1], H.locBasis(l+1), H.opBasis(l+1), HeffA[l].R);
 	}
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -1143,9 +1143,9 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 	}
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > HeffLtmp, HeffRtmp;
-	contract_L(HeffA[0].L, Vout.state.A[GAUGE::L][0], H.W[0], Vout.state.A[GAUGE::L][0], H.locBasis(0), H.opBasis(0), HeffLtmp);
+	contract_L(HeffA[0].L, Vout.state.A[GAUGE::L][0], H.W[0], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][0], H.locBasis(0), H.opBasis(0), HeffLtmp);
 	HeffA[0].L = HeffLtmp;
-	contract_R(HeffA[0].R, Vout.state.A[GAUGE::R][0], H.W[1], Vout.state.A[GAUGE::R][0], H.locBasis(1), H.opBasis(1), HeffRtmp);
+	contract_R(HeffA[0].R, Vout.state.A[GAUGE::R][0], H.W[1], PROP::HAMILTONIAN, Vout.state.A[GAUGE::R][0], H.locBasis(1), H.opBasis(1), HeffRtmp);
 	HeffA[0].R = HeffRtmp;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)

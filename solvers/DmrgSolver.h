@@ -341,7 +341,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	if (SweepStat.pivot == 0)
 	{
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rtmp;
-		contract_R(Heff[0].R, Vout.state.A[0], H.W[0], Vout.state.A[0], H.locBasis(0), H.opBasis(0), Rtmp);
+		contract_R(Heff[0].R, Vout.state.A[0], H.W[0], H.IS_HAMILTONIAN(), Vout.state.A[0], H.locBasis(0), H.opBasis(0), Rtmp);
 		if (Rtmp.dim == 0)
 		{
 			Eold = 0;
@@ -517,7 +517,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			// pre-contract the right site
 			Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Y;
 			Stopwatch<> LRtimer1;
-			contract_R(Heff[loc2].R, Vout.state.A[loc2], H.W[loc2], N, H.locBasis(loc2), H.opBasis(loc2), Y);
+			contract_R(Heff[loc2].R, Vout.state.A[loc2], H.W[loc2], H.IS_HAMILTONIAN(), N, H.locBasis(loc2), H.opBasis(loc2), Y);
 			t_LR += LRtimer1.time();
 			
 			// complete the contraction in Fig. 4 bottom from Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104
@@ -896,14 +896,14 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 inline void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 build_L (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout, size_t loc)
 {
-	contract_L(Heff[loc-1].L, Vout.state.A[loc-1], H.W[loc-1], Vout.state.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].L);
+	contract_L(Heff[loc-1].L, Vout.state.A[loc-1], H.W[loc-1], H.IS_HAMILTONIAN(), Vout.state.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].L);
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 inline void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 build_R (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout, size_t loc)
 {
-	contract_R(Heff[loc+1].R, Vout.state.A[loc+1], H.W[loc+1], Vout.state.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R);
+	contract_R(Heff[loc+1].R, Vout.state.A[loc+1], H.W[loc+1], H.IS_HAMILTONIAN(), Vout.state.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R);
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>

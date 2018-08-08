@@ -161,7 +161,7 @@ const map<string,any> KondoSU2xU1::sweep_defaults =
 
 KondoSU2xU1::
 KondoSU2xU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", true),
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
  ParamReturner(KondoSU2xU1::sweep_defaults)
 {
 	ParamHandler P(params,defaults);

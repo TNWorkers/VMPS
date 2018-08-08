@@ -377,7 +377,7 @@ build_L (const Hamiltonian &H, const VectorType &Vinout, size_t loc)
 {
 	if (loc != 0)
 	{
-		contract_L(Heff[loc-1].L, Vinout.A[loc-1], H.W[loc-1], Vinout.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].L);
+		contract_L(Heff[loc-1].L, Vinout.A[loc-1], H.W[loc-1], H.IS_HAMILTONIAN(), Vinout.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].L);
 	}
 }
 
@@ -387,7 +387,7 @@ build_R (const Hamiltonian &H, const VectorType &Vinout, size_t loc)
 {
 	if (loc != N_sites-1)
 	{
-		contract_R(Heff[loc+1].R, Vinout.A[loc+1], H.W[loc+1], Vinout.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R);
+		contract_R(Heff[loc+1].R, Vinout.A[loc+1], H.W[loc+1], H.IS_HAMILTONIAN(), Vinout.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R);
 	}
 }
 

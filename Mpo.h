@@ -88,7 +88,8 @@ public:
 	 * \param HERMITIAN_input : if the Mpo is known to be hermitian, this can be further exploited
 	 * \param UNITARY_input : if the Mpo is known to be unitary, this can be further exploited
 	 */
-	Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false);
+	Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input="Mpo", 
+	     bool HERMITIAN_input=false, bool UNITARY_input=false, bool HAMILTONIAN_input=false);
 	
 	/**
 	 * Static function for constructing an identity operator.
@@ -253,6 +254,9 @@ public:
 	/**Checks whether the Mpo is a Hermitian operator.*/
 	inline bool IS_HERMITIAN() const {return HERMITIAN;};
 	
+	/**Checks whether the Mpo is a Hamiltonian.*/
+	inline bool IS_HAMILTONIAN() const {return HAMILTONIAN;};
+	
 	/**Checks if the square of the Mpo was calculated and stored.*/
 	inline bool check_SQUARE() const {return GOT_SQUARE;}
 	
@@ -318,6 +322,7 @@ protected:
 	/**properties and boundary conditions*/
 	bool UNITARY    = false;
 	bool HERMITIAN  = false;
+	bool HAMILTONIAN  = false;
 	bool GOT_SQUARE = false;
 	bool GOT_OPEN_BC = true;
 	
@@ -397,8 +402,8 @@ Mpo (size_t L_input)
 
 template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar>::
-Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input, bool HERMITIAN_input, bool UNITARY_input)
-:N_sites(L_input), Qtot(Qtot_input), label(label_input), HERMITIAN(HERMITIAN_input), UNITARY(UNITARY_input)
+Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input, bool HERMITIAN_input, bool UNITARY_input, bool HAMILTONIAN_input)
+:N_sites(L_input), Qtot(Qtot_input), label(label_input), HERMITIAN(HERMITIAN_input), UNITARY(UNITARY_input), HAMILTONIAN(HAMILTONIAN_input)
 {
 	initialize();
 }

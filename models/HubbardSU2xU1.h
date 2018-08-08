@@ -108,7 +108,7 @@ const map<string,any> HubbardSU2xU1::defaults =
 
 HubbardSU2xU1::
 HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,0}), "", true),
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
  ParamReturner()
 {
 	ParamHandler P(params,defaults);
