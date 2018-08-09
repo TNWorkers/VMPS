@@ -60,7 +60,7 @@ public:
 	/**Returns the current direction of the sweep process.*/
 	inline double get_direction() const {return SweepStat.CURRENT_DIRECTION;};
 	
-	void push_back(const Mps<Symmetry,Scalar> &Psi0_input) {Psi0.push_back(Psi0_input);};
+	void push_back (const Mps<Symmetry,Scalar> &Psi0_input) {Psi0.push_back(Psi0_input);};
 	
 	#ifdef USE_HDF5_STORAGE
 	/**Save the current SweepStatus to <filename>.h5.*/

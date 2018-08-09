@@ -321,6 +321,7 @@ int main (int argc, char* argv[])
 		{
 			HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
 			double SvecSvec = Htmp.SvecSvecAvg(g0.state,0,d);
+			if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << Htmp.SvecSvecAvg(g0.state,d-1,d) << endl;}
 			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
 		}
 	}

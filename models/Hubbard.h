@@ -111,24 +111,26 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<FermionBase<Sy
 refEnergy Hubbard::
 ref (const vector<Param> &params, double L)
 {
-	ParamHandler P(params,{{"t",1.},{"U",0.},{"n",1.},{"Ly",1ul},{"tRung",1.}});
+	ParamHandler P(params,{{"t",1.},{"U",0.},{"n",1.},{"Ly",1ul},{"tRung",1.},{"tPrime",0.},
+	                       {"t0",0.},{"V",0.},{"Bz",0.},{"Bx",0.},{"J",0.},{"J3site",0.}});
 	refEnergy out;
 	
+	size_t Ly = P.get<size_t>("Ly");
+	double n = P.get<double>("n");
+	double U = P.get<double>("U");
+	double t = P.get<double>("t");
+	double tRung = P.get<double>("tRung");
+	
 	// half-filled chain
-	if (isinf(L) and P.get<size_t>("Ly") == 1ul and P.get<double>("n") == 1. 
-	    and P.HAS_NONE_OF({"tPrime","t0","V","Bz","Bx","J","J3site"}))
+	if (isinf(L) and Ly == 1ul and n == 1. and P.ARE_ALL_ZERO<double>({"tPrime","t0","V","Bz","Bx","J","J3site"}))
 	{
-		out.value = LiebWu_e0(P.get<double>("U"));
+		out.value = LiebWu_e0(U);
 		out.source = "Elliott H. Lieb, F. Y. Wu, Absence of Mott Transition in an Exact Solution of the Short-Range, One-Band Model in One Dimension, Phys. Rev. Lett. 20, 1445 (1968)";
 		out.method = "num. integration with gsl";
 	}
 	// U=0 ladder
-	else if (P.get<size_t>("Ly") == 2ul and P.get<double>("U") == 0. and P.get<double>("n") == 1. 
-	         and P.HAS_NONE_OF({"tPrime","t0","V","Bz","Bx","J","J3site"}))
+	else if (Ly == 2ul and n == 1. and P.ARE_ALL_ZERO<double>({"U","tPrime","t0","V","Bz","Bx","J","J3site"}))
 	{
-		double t     = P.get<double>("t");
-		double tRung = P.get<double>("tRung");
-		
 		if (t/tRung <= 0.5) {out.value = -tRung;}
 		else
 		{

@@ -179,6 +179,25 @@ int main (int argc, char* argv[])
 	lout << "not parallelized" << endl;
 	#endif
 	
+	if (CORR)
+	{
+		// resize all to prevent crashes at the end:
+		d_ED.resize(L); d_ED.setZero();
+		h_ED.resize(L); h_ED.setZero();
+		d_U1.resize(L); d_U1.setZero();
+		d_SU2.resize(L); d_SU2.setZero();
+		nh_SU2xSU2.resize(L); nh_SU2xSU2.setZero();
+		ns_SU2xSU2.resize(L); ns_SU2xSU2.setZero();
+		
+		densityMatrix_ED.resize(L,L); densityMatrix_ED.setZero();
+		densityMatrix_U1A.resize(L,L); densityMatrix_U1A.setZero();
+		densityMatrix_U1B.resize(L,L); densityMatrix_U1B.setZero();
+		densityMatrix_SU2A.resize(L,L); densityMatrix_SU2A.setZero();
+		densityMatrix_SU2B.resize(L,L); densityMatrix_SU2B.setZero();
+		densityMatrix_SU2xSU2A.resize(L,L); densityMatrix_SU2xSU2A.setZero();
+		densityMatrix_SU2xSU2B.resize(L,L); densityMatrix_SU2xSU2B.setZero();
+	}
+	
 	//--------ED-----------
 	if (ED)
 	{
@@ -237,8 +256,6 @@ int main (int argc, char* argv[])
 			}
 //			lout << "<cdagc>=" << endl << densityMatrix_ED << endl;
 			
-			d_ED.resize(L); d_ED.setZero();
-			h_ED.resize(L); h_ED.setZero();
 			for (size_t i=0; i<L; ++i) 
 			{
 				d_ED(i) = avg(g_ED.state, H_ED.d(i), g_ED.state);
@@ -264,6 +281,8 @@ int main (int argc, char* argv[])
 		DMRG_U0.GlobParam = GlobParam;
 		DMRG_U0.DynParam = DynParam;
 		DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND);
+		
+		t_U0 = Watch_U0.time();
 		
 		lout << endl;
 		double Ntot = 0.;
@@ -317,7 +336,6 @@ int main (int argc, char* argv[])
 //				cout << "l=" << l << ", <c>=" << c_U1(l) << endl;
 //			}
 			
-			densityMatrix_U1A.resize(L,L); densityMatrix_U1A.setZero();
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{
@@ -325,7 +343,6 @@ int main (int argc, char* argv[])
 				                         avg(g_U1.state, H_U1.cdagc<DN>(i,j), g_U1.state);
 			}
 			
-			densityMatrix_U1B.resize(L,L); densityMatrix_U1B.setZero();
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{
@@ -335,7 +352,6 @@ int main (int argc, char* argv[])
 			
 //			lout << "P U(1): " << Ptot(densityMatrix_U1,L) << "\t" << Ptot(densityMatrix_U1B,L) << endl;
 			
-			d_U1.resize(L); d_U1.setZero();
 			for (size_t i=0; i<L; ++i) 
 			{
 				d_U1(i) = avg(g_U1.state, H_U1.d(i), g_U1.state);
@@ -378,14 +394,12 @@ int main (int argc, char* argv[])
 //				cout << "l=" << l << ", <c>=" << c_SU2(l) << "\t" << c_SU2(l)/c_U1(l) << endl;
 //			}
 			
-			densityMatrix_SU2A.resize(L,L); densityMatrix_SU2A.setZero();
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{
 				densityMatrix_SU2A(i,j) = avg(g_SU2.state, H_SU2.cdagc(i,j), g_SU2.state);
 			}
 			
-			densityMatrix_SU2B.resize(L,L); densityMatrix_SU2B.setZero();
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{
@@ -394,7 +408,6 @@ int main (int argc, char* argv[])
 			
 //			lout << "P SU(2): " << Ptot(densityMatrix_SU2,L) << "\t" << Ptot(densityMatrix_SU2B,L) << endl;
 			
-			d_SU2.resize(L); d_SU2.setZero();
 			for (size_t i=0; i<L; ++i) 
 			{
 				d_SU2(i) = avg(g_SU2.state, H_SU2.d(i), g_SU2.state);
@@ -447,14 +460,12 @@ int main (int argc, char* argv[])
 //				cout << "l=" << l << ", <c>=" << c_SU2xSU2(l) << "\t" << c_SU2xSU2(l)/c_U1(l) << endl;
 //			}
 			
-			densityMatrix_SU2xSU2A.resize(L,L); densityMatrix_SU2xSU2A.setZero();
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{
 				densityMatrix_SU2xSU2A(i,j) = 0.5*avg(g_SU2xSU2.state, H_SU2xSU2.cdagc(i,j), g_SU2xSU2.state);
 			}
 			
-			densityMatrix_SU2xSU2B.resize(L,L); densityMatrix_SU2xSU2B.setZero();
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{
@@ -464,8 +475,6 @@ int main (int argc, char* argv[])
 			
 		//	lout << "P SU(2): " << Ptot(0.5*densityMatrix_SU2xSU2,L) << "\t" << Ptot(0.5*densityMatrix_SU2xSU2B,L) << endl;
 			
-			nh_SU2xSU2.resize(L); nh_SU2xSU2.setZero();
-			ns_SU2xSU2.resize(L); ns_SU2xSU2.setZero();
 			for (size_t i=0; i<L; ++i) 
 			{
 				nh_SU2xSU2(i) = avg(g_SU2xSU2.state, H_SU2xSU2.nh(i), g_SU2xSU2.state);

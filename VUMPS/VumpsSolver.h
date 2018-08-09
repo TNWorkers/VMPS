@@ -183,6 +183,7 @@ private:
 	                   const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
 	                   const vector<vector<qarray<Symmetry::Nq> > > &qOp,
 	                   Scalar LRdotY, 
+	                   const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LRguess, 
 	                   Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LRres);
 	
 	/**Solves the linear system (eq. 15) using GMRES.
@@ -474,6 +475,9 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	err_eigval = 1.;
 	err_var    = 1.;
 	
+	HeffA.clear();
+	HeffA.resize(N_sites);
+	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		lout << PrepTimer.info("prepare") << endl; 
@@ -535,6 +539,8 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 {
 	Stopwatch<> GMresTimer;
 	
+	auto Lguess = L;
+	auto Rguess = R;
 	L.clear();
 	R.clear();
 	
@@ -598,7 +604,8 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 				else
 				{
 					Tripod<Symmetry,MatrixType> Ltmp;
-					solve_linear(GAUGE::L, b, AL, YL[b], Reigen, W, qloc, qOp, contract_LR(b,YL[b],Reigen), Ltmp);
+					Tripod<Symmetry,MatrixType> Ltmp_guess; Ltmp_guess.insert(b,Lguess);
+					solve_linear(GAUGE::L, b, AL, YL[b], Reigen, W, qloc, qOp, contract_LR(b,YL[b],Reigen), Ltmp_guess, Ltmp);
 					L.insert(b,Ltmp);
 					
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and b == 0)
@@ -624,8 +631,8 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 				else
 				{
 					Tripod<Symmetry,MatrixType> Rtmp;
-					
-					solve_linear(GAUGE::R, a, AR, YR[a], Leigen, W, qloc, qOp, contract_LR(a,Leigen,YR[a]), Rtmp);
+					Tripod<Symmetry,MatrixType> Rtmp_guess; Rtmp_guess.insert(a,Rguess);
+					solve_linear(GAUGE::R, a, AR, YR[a], Leigen, W, qloc, qOp, contract_LR(a,Leigen,YR[a]), Rtmp_guess, Rtmp);
 					R.insert(a,Rtmp);
 					
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and a == dW-1)
@@ -679,8 +686,8 @@ void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 {
 	// With a unit cell, Heff is a vector for each site
-	HeffA.clear();
-	HeffA.resize(N_sites);
+//	HeffA.clear();
+//	HeffA.resize(N_sites);
 	HeffC.clear();
 	HeffC.resize(N_sites);
 	
@@ -698,12 +705,18 @@ build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	// Make environment for each site of the unit cell
 	for (size_t l=1; l<N_sites; ++l)
 	{
-		contract_L(HeffA[l-1].L, Vout.state.A[GAUGE::L][l-1], H.W[l-1], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][l-1], H.locBasis(l-1), H.opBasis(l-1), HeffA[l].L);
+		contract_L(HeffA[l-1].L, 
+		           Vout.state.A[GAUGE::L][l-1], H.W[l-1], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][l-1], 
+		           H.locBasis(l-1), H.opBasis(l-1), 
+		           HeffA[l].L);
 	}
 	
 	for (int l=N_sites-2; l>=0; --l)
 	{
-		contract_R(HeffA[l+1].R, Vout.state.A[GAUGE::R][l+1], H.W[l+1], PROP::HAMILTONIAN, Vout.state.A[GAUGE::R][l+1], H.locBasis(l+1), H.opBasis(l+1), HeffA[l].R);
+		contract_R(HeffA[l+1].R, 
+		           Vout.state.A[GAUGE::R][l+1], H.W[l+1], PROP::HAMILTONIAN, Vout.state.A[GAUGE::R][l+1], 
+		           H.locBasis(l+1), H.opBasis(l+1), 
+		           HeffA[l].R);
 	}
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -1279,7 +1292,8 @@ solve_linear (GAUGE::OPTION gauge,
               const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
               const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
               const vector<vector<qarray<Symmetry::Nq> > > &qOp,
-              Scalar LRdotY, 
+              Scalar LRdotY,
+              const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LRguess,  
               Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LRres)
 {
 	TransferMatrix<Symmetry,Scalar> T(gauge, A, A, LReigen, W, qloc, qOp, ab);
@@ -1288,19 +1302,18 @@ solve_linear (GAUGE::OPTION gauge,
 	// Solve linear system
 	GMResSolver<TransferMatrix<Symmetry,Scalar>,TransferVector<Symmetry,Scalar> > Gimli;
 	
-//	size_t dimK = GMRes_dimK[gauge];
-//	if      (GMRes_Niter[gauge] > 1 and dimK < 200) {dimK += 10;}
-//	else if (GMRes_Niter[gauge] == 1 and dimK > 10) {dimK -= 10;}
-//	Gimli.set_dimK(min(dimK,dim(bvec)));
-//	Gimli.set_dimK(max(dimK,10ul));
-	
 	Gimli.set_dimK(min(100ul,dim(bvec)));
 	TransferVector<Symmetry,Scalar> LRres_tmp;
-	Gimli.solve_linear(T, bvec, LRres_tmp);
+	if (N_iterations == 0)
+	{
+		Gimli.solve_linear(T, bvec, LRres_tmp, 1e-14, true);
+	}
+	else
+	{
+		LRres_tmp = TransferVector<Symmetry,Scalar>(LRguess, ab, 0.);
+		Gimli.solve_linear(T, bvec, LRres_tmp, 1e-14, false);
+	}
 	LRres = LRres_tmp.data;
-	
-//	GMRes_Niter[gauge] = Gimli.get_Niter();
-//	GMRes_dimK [gauge] = Gimli.get_dimK();
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
@@ -1332,19 +1345,10 @@ solve_linear (GAUGE::OPTION gauge,
 	// Solve linear system
 	GMResSolver<TransferMatrixAA<Symmetry,Scalar>,PivotVector<Symmetry,Scalar> > Gimli;
 	
-//	size_t dimK = GMRes_dimK[gauge];
-//	if      (GMRes_Niter[gauge] > 1 and dimK < 100) {dimK += 10;}
-//	else if (GMRes_Niter[gauge] == 1 and dimK > 10) {dimK -= 10;}
-//	Gimli.set_dimK(min(dimK,dim(bvec)));
-//	Gimli.set_dimK(max(dimK,10ul));
-	
 	Gimli.set_dimK(min(100ul,dim(bvec)));
 	PivotVector<Symmetry,Scalar> LRres_tmp;
 	Gimli.solve_linear(T,bvec,LRres_tmp);
 	LRres = LRres_tmp.data[0];
-	
-//	GMRes_Niter[gauge] = Gimli.get_Niter();
-//	GMRes_dimK[gauge]  = Gimli.get_dimK();
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{

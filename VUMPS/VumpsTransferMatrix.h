@@ -58,16 +58,12 @@ struct TransferVector
 	TransferVector (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &T, const size_t &ab_input, const Scalar &LRdotY)
 	:data(T), ab(ab_input)
 	{
-		for (size_t q=0; q<data.dim; ++q)
+		if (LRdotY != 0.)
 		{
-			if (data.mid(q) == Symmetry::qvacuum())
+			for (size_t q=0; q<data.dim; ++q)
 			{
 				data.block[q][ab][0] -= LRdotY * Matrix<Scalar,Dynamic,Dynamic>::Identity(data.block[q][ab][0].rows(),
-				                                                                          data.block[q][ab][0].cols());
-			}
-			else
-			{
-				// cout << termcolor::red << "ELSE" << termcolor::reset << endl;
+					                                                                      data.block[q][ab][0].cols());
 			}
 		}
 	};
@@ -156,12 +152,8 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 		if (it != Vin.data.dict.end())
 		{
 			Mtmp = Vin.data.block[it->second][H.ab][0] - TxV.data.block[q][H.ab][0];
-			
-			if (quple[2] == Symmetry::qvacuum())
-			{
-				Mtmp += LdotR * Matrix<Scalar2,Dynamic,Dynamic>::Identity(Vin.data.block[it->second][H.ab][0].rows(),
-				                                                          Vin.data.block[it->second][H.ab][0].cols());
-			}
+			Mtmp += LdotR * Matrix<Scalar2,Dynamic,Dynamic>::Identity(Vin.data.block[it->second][H.ab][0].rows(),
+			                                                          Vin.data.block[it->second][H.ab][0].cols());
 		}
 		
 		if (Mtmp.size() != 0)

@@ -101,8 +101,7 @@ typedef typename MatrixType::Scalar Scalar;
 	
 	/**
 	 * Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers according to the input \p Q.
-	 * Needed in for the transfer matrix from the last site in matrix element calculations.
-	 * \todo : setTarget for non abelian symmetries may have a bug. Calculations of avg(Mps,Mpo,Mps) for Mpo = c habe a wrong factor.
+	 * Needed for the transfer matrix from the last site in matrix element calculations.
 	 */
 	void setTarget (std::array<qType,Nlegs> Q);
 	
@@ -330,14 +329,7 @@ void Multipede<Nlegs,Symmetry,MatrixType>::
 setTarget (std::array<qType,Nlegs> Q)
 {
 	MatrixType Mtmp(1,1);
-	
-//#ifdef PRINT_SU2_FACTORS
-//		cout << termcolor::bold << termcolor::red << "Global SU2 factor in setTarget() from Multipede: " << termcolor::reset
-//			 << "√" << Symmetry::coeff_dot(Q[0]) << " • √" << Symmetry::coeff_dot(Q[1]) << " • √" << Symmetry::coeff_dot(Q[2]) << endl;
-//#endif
-//		Mtmp << sqrt(Symmetry::coeff_dot(Q[0])) * sqrt(Symmetry::coeff_dot(Q[1])) * sqrt(Symmetry::coeff_dot(Q[2]));
-		Mtmp << 1.;
-	// }
+	Mtmp << 1.;
 	
 	boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[1][1]);
 	Mtmparray[0][0] = Mtmp;
@@ -414,6 +406,8 @@ insert (size_t ab, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs)
 	
 	for (size_t q=0; q<Trhs.dim; ++q)
 	{
+		if (Trhs.block[q][ab][0].size() == 0) {continue;}
+		
 		qarray3<Symmetry::Nq> quple = {Trhs.in(q), Trhs.out(q), Trhs.mid(q)};
 		auto it = dict.find(quple);
 		if (it != dict.end())

@@ -256,7 +256,7 @@ struct DMRG
 		struct DEFAULT
 		{
 			//GLOB DEFAULTS
-			constexpr static size_t min_halfsweeps = 1;
+			constexpr static size_t min_halfsweeps = 6;
 			constexpr static size_t max_halfsweeps = 20;
 			constexpr static double tol_eigval = 1e-6;
 			constexpr static double tol_state = 1e-5;

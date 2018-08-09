@@ -31,7 +31,8 @@ bool LAWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry:
           size_t k, vector<qarray<Symmetry::Nq> > qOp,
           const vector<Biped<Symmetry,MatrixType> > &Abra, 
           const vector<Biped<Symmetry,MatrixType> > &Aket, 
-          vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > &result)
+          vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > &result,
+          const bool &IS_HAMILTONIAN = false)
 {
 	bool out = false;
 	result.clear();
@@ -53,10 +54,9 @@ bool LAWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry:
 					auto Rmids = Symmetry::reduceSilent(Lmid,qOp[k]);
 					for (const auto &Rmid:Rmids)
 					{
-						// if (Symmetry::validate(qarray3<Symmetry::Nq>{Rin,Rmid,Rout}) and 
-						//     find(qOp.begin(), qOp.end(), Rmid) != qOp.end())
 						if (Symmetry::validate(qarray3<Symmetry::Nq>{Rin,Rmid,Rout}))
 						{
+							if (IS_HAMILTONIAN and find(qOp.begin(), qOp.end(), Rmid) == qOp.end()) {continue;}
 							result.push_back(make_tuple(qarray3<Symmetry::Nq>{Rin,Rout,Rmid}, qAbra->second, qAket->second));
 							out = true;
 						}
@@ -74,7 +74,8 @@ bool AWAR (qarray<Symmetry::Nq> Rin, qarray<Symmetry::Nq> Rout, qarray<Symmetry:
           size_t k, vector<qarray<Symmetry::Nq> > qOp,
           const vector<Biped<Symmetry,MatrixType> > &Abra, 
           const vector<Biped<Symmetry,MatrixType> > &Aket, 
-          vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > &result)
+          vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > &result,
+          const bool &IS_HAMILTONIAN = false)
 {
 	bool out = false;
 	result.clear();
@@ -96,10 +97,9 @@ bool AWAR (qarray<Symmetry::Nq> Rin, qarray<Symmetry::Nq> Rout, qarray<Symmetry:
 					auto Lmids = Symmetry::reduceSilent(Rmid,Symmetry::flip(qOp[k]));
 					for (const auto &Lmid : Lmids)
 					{
-						// if (Symmetry::validate(qarray3<Symmetry::Nq>{Lout,Lmid,Lin}) and
-						//     find(qOp.begin(), qOp.end(), Lmid) != qOp.end())
 						if (Symmetry::validate(qarray3<Symmetry::Nq>{Lout,Lmid,Lin}))
 						{
+							if (IS_HAMILTONIAN and find(qOp.begin(), qOp.end(), Lmid) == qOp.end()) {continue;}
 							result.push_back(make_tuple(qarray3<Symmetry::Nq>{Lin,Lout,Lmid}, qAbra->second, qAket->second));
 							out = true;
 						}
@@ -495,7 +495,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 		for (size_t qL=0; qL<L.dim; ++qL)
 		{
 			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = LAWA(L.in(qL), L.out(qL), L.mid(qL), s1,s2, qloc, k, qOp, Abra,Aket, ix);
+			bool FOUND_MATCH = LAWA(L.in(qL), L.out(qL), L.mid(qL), s1,s2, qloc, k, qOp, Abra, Aket, ix);
 			
 			if (FOUND_MATCH == true)
 			{

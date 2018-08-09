@@ -163,78 +163,82 @@ add_operators (HamiltonianTermsXd<Symmetry> &Terms, const vector<SpinBase<Symmet
 refEnergy Heisenberg::
 ref (const vector<Param> &params, double L)
 {
-	ParamHandler P(params,{{"D",2ul},{"Ly",1ul},{"m",0.},{"J",1.},{"Jxy",1.},{"Jz",1.},{"Jprime",0.}});
+	ParamHandler P(params,{{"D",2ul},{"Ly",1ul},{"m",0.},{"J",1.},{"Jxy",0.},{"Jz",0.},
+	                       {"Jprime",0.},{"Bz",0.},{"Bx",0.},{"Kx",0.},{"Kz",0.},{"Dy",0.},{"Dyprime",0.}});
 	refEnergy out;
 	
-	if (isinf(L) and P.get<double>("m") == 0. and P.get<double>("J") > 0. and P.get<double>("Jprime") == 0.
-	    and P.HAS_NONE_OF({"Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}) )
+	size_t Ly = P.get<size_t>("Ly");
+	size_t D = P.get<size_t>("D");
+	double J = P.get<double>("J");
+	double Jxy = P.get<double>("Jxy");
+	double Jz = P.get<double>("Jz");
+	double Jprime = P.get<double>("Jprime");
+	
+	// Heisenberg chain and ladder
+	if (isinf(L) and J > 0. and P.ARE_ALL_ZERO<double>({"m","Jprime","Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}))
 	{
 		out.source = "T. Xiang, Thermodynamics of quantum Heisenberg spin chains, Phys. Rev. B 58, 9142 (1998)";
 		out.method = "literature";
-		double J = P.get<double>("J");
 		
-		if (P.get<size_t>("D") == 2)
+		if (D == 2)
 		{
-			if (P.get<size_t>("Ly") == 1) {out.value = -log(2)+0.25; out.method = "analytical";}
-			if (P.get<size_t>("Ly") == 2) {out.value = -0.578043140180;}
-			if (P.get<size_t>("Ly") == 3) {out.value = -0.600537;}
-			if (P.get<size_t>("Ly") == 4) {out.value = -0.618566;}
-			if (P.get<size_t>("Ly") == 5) {out.value = -0.62776;}
-			if (P.get<size_t>("Ly") == 6) {out.value = -0.6346;}
+			if (Ly == 1) {out.value = -log(2)+0.25; out.method = "analytical";}
+			if (Ly == 2) {out.value = -0.578043140180; out.method = "IDMRG high precision";}
+			if (Ly == 3) {out.value = -0.600537;}
+			if (Ly == 4) {out.value = -0.618566;}
+			if (Ly == 5) {out.value = -0.62776;}
+			if (Ly == 6) {out.value = -0.6346;}
 		}
-		else if (P.get<size_t>("D") == 3)
+		else if (D == 3)
 		{
-			if (P.get<size_t>("Ly") == 1) {out.value = -1.40148403897;}
-			if (P.get<size_t>("Ly") == 2) {out.value = -1.878372746;}
-			if (P.get<size_t>("Ly") == 3) {out.value = -2.0204;}
-			if (P.get<size_t>("Ly") == 4) {out.value = -2.0957;}
-			if (P.get<size_t>("Ly") == 5) {out.value = -2.141;}
-			if (P.get<size_t>("Ly") == 6) {out.value = -2.169;}
+			if (Ly == 1) {out.value = -1.40148403897;}
+			if (Ly == 2) {out.value = -1.878372746;}
+			if (Ly == 3) {out.value = -2.0204;}
+			if (Ly == 4) {out.value = -2.0957;}
+			if (Ly == 5) {out.value = -2.141;}
+			if (Ly == 6) {out.value = -2.169;}
 		}
-		else if (P.get<size_t>("D") == 4)
+		else if (D == 4)
 		{
-			if (P.get<size_t>("Ly") == 1) {out.value = -2.828337;}
-			if (P.get<size_t>("Ly") == 2) {out.value = -3.930067;}
-			if (P.get<size_t>("Ly") == 3) {out.value = -4.2718;}
-			if (P.get<size_t>("Ly") == 4) {out.value = -4.446;}
-			if (P.get<size_t>("Ly") == 5) {out.value = -4.553;}
-			if (P.get<size_t>("Ly") == 6) {out.value = -4.60;}
+			if (Ly == 1) {out.value = -2.828337;}
+			if (Ly == 2) {out.value = -3.930067;}
+			if (Ly == 3) {out.value = -4.2718;}
+			if (Ly == 4) {out.value = -4.446;}
+			if (Ly == 5) {out.value = -4.553;}
+			if (Ly == 6) {out.value = -4.60;}
 		}
-		else if (P.get<size_t>("D") == 5)
+		else if (D == 5)
 		{
-			if (P.get<size_t>("Ly") == 1) {out.value = -4.761248;}
-			if (P.get<size_t>("Ly") == 2) {out.value = -6.73256;}
-			if (P.get<size_t>("Ly") == 3) {out.value = -7.3565;}
-			if (P.get<size_t>("Ly") == 4) {out.value = -7.669;}
-			if (P.get<size_t>("Ly") == 5) {out.value = -7.865;}
-			if (P.get<size_t>("Ly") == 6) {out.value = -7.94;}
+			if (Ly == 1) {out.value = -4.761248;}
+			if (Ly == 2) {out.value = -6.73256;}
+			if (Ly == 3) {out.value = -7.3565;}
+			if (Ly == 4) {out.value = -7.669;}
+			if (Ly == 5) {out.value = -7.865;}
+			if (Ly == 6) {out.value = -7.94;}
 		}
-		else if (P.get<size_t>("D") == 6)
+		else if (D == 6)
 		{
-			if (P.get<size_t>("Ly") == 1) {out.value = -7.1924;}
-			if (P.get<size_t>("Ly") == 2) {out.value = -10.2852;}
-			if (P.get<size_t>("Ly") == 3) {out.value = -11.274;}
-			if (P.get<size_t>("Ly") == 4) {out.value = -11.76;}
-			if (P.get<size_t>("Ly") == 5) {out.value = -12.08;}
-			if (P.get<size_t>("Ly") == 6) {out.value = -12.1;}
+			if (Ly == 1) {out.value = -7.1924;}
+			if (Ly == 2) {out.value = -10.2852;}
+			if (Ly == 3) {out.value = -11.274;}
+			if (Ly == 4) {out.value = -11.76;}
+			if (Ly == 5) {out.value = -12.08;}
+			if (Ly == 6) {out.value = -12.1;}
 		}
 		
 		out.value *= J;
 	}
-	
-	if (isinf(L) and P.get<double>("m") == 0. and P.get<double>("Jprime") == 0. and P.get<size_t>("D") == 2 and P.get<double>("Jxy") > 0. and P.get<double>("Jz") == 0. and
-	    P.HAS_NONE_OF({"J","Bz","Bx","Kx","Kz","Dy","Dyprime"}))
+	// XX chain
+	else if (isinf(L) and D == 2 and Jxy > 0. and P.ARE_ALL_ZERO<double>({"m","J","Jprime","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}))
 	{
-		double Jxy =  P.get<double>("Jxy");
 		out.value = -M_1_PI*Jxy;
 		out.source = "S. Paul, A. K. Ghosh, Ground state properties of the bond alternating spin-1/2 anisotropic Heisenberg chain, Condensed Matter Physics, 2017, Vol. 20, No 2, 23701: 1–16";
 		out.method = "analytical";
 	}
-	
-	if (P.get<double>("m") == 0. and P.get<size_t>("D") == 2 and P.get<double>("J") > 0. and P.get<double>("Jprime") == 0.5*P.get<double>("J") and
-	    P.HAS_NONE_OF({"Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}))
+	// Majumdar-Ghosh chain
+	else if (D == 2 and J > 0. and Jprime == 0.5*J and P.ARE_ALL_ZERO<double>({"m","Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}))
 	{
-		out.value = -0.375*P.get<double>("J");
+		out.value = -0.375*J;
 		out.source = "https://en.wikipedia.org/wiki/Majumdar-Ghosh_model";
 		out.method = "analytical";
 	}

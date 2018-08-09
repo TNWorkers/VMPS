@@ -52,7 +52,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 		for (size_t qL=0; qL<Lold.dim; ++qL)
 		{
 			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = LAWA(Lold.in(qL), Lold.out(qL), Lold.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
+			bool FOUND_MATCH = LAWA(Lold.in(qL), Lold.out(qL), Lold.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix, IS_HAMILTONIAN);
 			
 			if (FOUND_MATCH)
 			{
@@ -178,7 +178,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 		for (size_t qR=0; qR<Rold.dim; ++qR)
 		{
 			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = AWAR(Rold.in(qR), Rold.out(qR), Rold.mid(qR), s1, s2, qloc, k, qOp, Abra, Aket, ix);
+			bool FOUND_MATCH = AWAR(Rold.in(qR), Rold.out(qR), Rold.mid(qR), s1, s2, qloc, k, qOp, Abra, Aket, ix, IS_HAMILTONIAN);
 			
 			if (FOUND_MATCH)
 			{
@@ -706,7 +706,7 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 		for (size_t qL=0; qL<L.dim; ++qL)
 		{
 			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = LAWA(L.in(qL), L.out(qL), L.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix);
+			bool FOUND_MATCH = LAWA(L.in(qL), L.out(qL), L.mid(qL), s1, s2, qloc, k, qOp, Abra, Aket, ix, PROP::HAMILTONIAN);
 			
 			if (FOUND_MATCH == true)
 			{
