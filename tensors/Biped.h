@@ -124,6 +124,8 @@ public:
 	void setTarget (qType Qtot);
 	
 	void setTarget (vector<qType> Qmulti);
+	
+	void setIdentity (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2);
 	///@}
 	
 	///@{
@@ -234,6 +236,22 @@ setVacuum()
 {
 	MatrixType_ Mtmp(1,1); Mtmp << 1.;
 	push_back(Symmetry::qvacuum(), Symmetry::qvacuum(), Mtmp);
+}
+
+template<typename Symmetry, typename MatrixType_>
+void Biped<Symmetry,MatrixType_>::
+setIdentity (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2)
+{
+	for (size_t q1=0; q1<base1.Nq(); ++q1)
+	for (size_t q2=0; q2<base2.Nq(); ++q2)
+	{
+		if (base1[q1] == base2[q2])
+		{
+			MatrixType Mtmp(base1.inner_dim(base1[q1]), base2.inner_dim(base2[q2]));
+			Mtmp.setIdentity();
+			push_back(base1[q1], base2[q2], Mtmp);
+		}
+	}
 }
 
 template<typename Symmetry, typename MatrixType_>

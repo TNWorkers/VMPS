@@ -49,6 +49,31 @@ void addRight (const MatrixType1 &Min, MatrixType2 &Mout)
 	}
 }
 
+template<typename MatrixType1, typename MatrixType2>
+void addRight_makeSquare (const MatrixType1 &Min, MatrixType2 &Mout)
+{
+	int r  = Mout.rows();
+	int c1 = Mout.cols();
+	int c2 = Min.cols();
+	
+	/**If Mout empty, set Min = Mout*/
+	if (r == 0 and c2 != 0)
+	{
+		Mout = Min;
+	}
+	else
+	{
+		/**If Min also empty, do nothing.*/
+		if (c2 != 0)
+		{
+			assert(Min.rows() == Mout.rows());
+			Mout.conservativeResize(c1+c2, c1+c2);
+			Mout.block(0,c1, r,c2) = Min;
+			Mout.bottomRows(c1+c2-r).setZero();
+		}
+	}
+}
+
 /**Conglutinates two matrices by adding to the bottom.
 Columns must match or one of the two has to be empty.
 \note Two template parameters are needed in order insert a scaled matrix, which makes a different type in Eigen.
@@ -74,6 +99,31 @@ void addBottom (const MatrixType1 &Min, MatrixType2 &Mout)
 			assert(Min.cols() == Mout.cols());
 			Mout.conservativeResize(r1+r2, c1);
 			Mout.bottomRows(r2) = Min;
+		}
+	}
+}
+
+template<typename MatrixType1, typename MatrixType2>
+void addBottom_makeSquare (const MatrixType1 &Min, MatrixType2 &Mout)
+{
+	int r1 = Mout.rows();
+	int c = Mout.cols();
+	int r2 = Min.rows();
+	
+	/**If Mout empty, set Min = Mout*/
+	if (r1 == 0 and r2 != 0)
+	{
+		Mout = Min;
+	}
+	else
+	{
+		/**If Min also empty, do nothing.*/
+		if (r2 != 0)
+		{
+			assert(Min.cols() == Mout.cols());
+			Mout.conservativeResize(r1+r2, r1+r2);
+			Mout.block(r1,0, r2,c) = Min;
+			Mout.rightCols(r1+r2-c).setZero();
 		}
 	}
 }

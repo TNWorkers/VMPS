@@ -452,7 +452,7 @@ public:
 	inline ArrayXd entropy() const {return S;};
 	///\}
 	
-private:
+//private:
 	
 	/**volume of the system (normally (chain length) * (chain width))*/
 	size_t N_phys;
