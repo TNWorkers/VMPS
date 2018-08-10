@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <set>
+#include <limits>
 
 #include "NestedLoopIterator.h"
 
@@ -110,7 +111,7 @@ template<size_t Nq>
 qarray<Nq> qplusinf()
 {
 	qarray<Nq> aout;
-	for (size_t q=0; q<Nq; ++q) {aout[q] = std::numeric_limits<int>::infinity();}
+	for (size_t q=0; q<Nq; ++q) {aout[q] = numeric_limits<int>::max();}
 	return aout;
 }
 
@@ -118,7 +119,7 @@ template<size_t Nq>
 qarray<Nq> qminusinf()
 {
 	qarray<Nq> aout;
-	for (size_t q=0; q<Nq; ++q) {aout[q] = -std::numeric_limits<int>::infinity();}
+	for (size_t q=0; q<Nq; ++q) {aout[q] = -numeric_limits<int>::max();}
 	return aout;
 }
 

@@ -792,7 +792,6 @@ calc_Qlimits()
 	for (size_t l=1; l<this->N_sites; ++l)
 	{
 		auto new_tops = Symmetry::reduceSilent(qloc[l-1], QinTop[l-1]);
-//		auto new_bots = Symmetry::reduceSilent(qloc[l], QinBot[l-1]);
 		auto new_bots = Symmetry::reduceSilent(qloc[l-1], QinBotRange[l-1], true);
 //		cout << "l=" << l << ", new_bots.size()=" << new_bots.size() << endl;
 		
@@ -813,7 +812,6 @@ calc_Qlimits()
 			qlocflip.push_back(Symmetry::flip(qloc[l+1][q]));
 		}
 		auto new_tops = Symmetry::reduceSilent(qlocflip, QoutTop[l+1]);
-//		auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBot[l+1]);
 		auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBotRange[l+1]);
 		
 		QoutTop[l] = highest_q(new_tops);

@@ -48,7 +48,20 @@ public:
 			push_back(qin,dim);
 		}
 	}
-
+	
+	Qbasis (const vector<qarray<Symmetry::Nq> > &base_input)
+	{
+		map<qarray<Symmetry::Nq>,size_t> counter;
+		for (const auto &b:base_input)
+		{
+			counter[b]++;
+		}
+		for (const auto &[val,count]:counter)
+		{
+			push_back(val,count);
+		}
+	}
+	
 	///\{
 	/**Returns the number of (reduced) basis states.*/
 	std::size_t size() const { std::size_t out = 0; for(const auto& [qVal,num,plain] : data_) { out+=plain.size();} return out; }
@@ -130,7 +143,7 @@ public:
 	 * Returns the tensor product basis, already properly sorted with respect to the resulting irreps.
 	 * This function also saves the history of the combination process for later use. See leftAmount() and rightAmount().
 	 */
-	Qbasis<Symmetry> combine( const Qbasis<Symmetry>& other ) const;
+	Qbasis<Symmetry> combine( const Qbasis<Symmetry>& other, bool FLIP=false) const;
 
 	/**
 	 * Sets the history of a Qbasis which only has one quantum number \p Qval with inner dimension 1 
@@ -461,7 +474,7 @@ setHistoryEntry( const qType &Qval, const qType &Q1, const qType &Q2, Eigen::Ind
 
 template<typename Symmetry>
 Qbasis<Symmetry> Qbasis<Symmetry>::
-combine( const Qbasis<Symmetry>& other ) const
+combine( const Qbasis<Symmetry>& other, bool FLIP) const
 {
 	Qbasis out;
 	//build the history of the combination. Data is relevant for MultipedeQ contractions which includ a fuse of two leg.
@@ -471,6 +484,10 @@ combine( const Qbasis<Symmetry>& other ) const
 		for(const auto& elem2 : other.data_)
 		{
 			auto [q2,num2,plain2] = elem2;
+			if (FLIP)
+			{
+				q2 = Symmetry::flip(q2);
+			}
 			auto qVec = Symmetry::reduceSilent(q1,q2);
 			for (const auto& q: qVec)
 			{

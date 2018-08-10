@@ -138,7 +138,7 @@ private:
 	/**parameter*/
 	size_t N_sites;
 	size_t Dmax, Nqmax;
-	double eps_svd = 1e-7;
+	double eps_svd = 1e-12;
 	size_t N_sv;
 	qarray<Nq> Qtot;
 	
@@ -177,10 +177,10 @@ private:
 	vector<Qbasis<Symmetry> > outbase;
 	
 	/**update basis*/
-	void update_inbase  (size_t loc);
-	void update_outbase (size_t loc);
-	void update_inbase()  { for(size_t l=0; l<this->N_sites; l++) {update_inbase(l); } }
-	void update_outbase() { for(size_t l=0; l<this->N_sites; l++) {update_outbase(l); } }
+	void update_inbase  (size_t loc, GAUGE::OPTION g = GAUGE::C);
+	void update_outbase (size_t loc, GAUGE::OPTION g = GAUGE::C);
+	void update_inbase  (GAUGE::OPTION g = GAUGE::C) {for (size_t l=0; l<this->N_sites; l++) {update_inbase (l,g);}}
+	void update_outbase (GAUGE::OPTION g = GAUGE::C) {for (size_t l=0; l<this->N_sites; l++) {update_outbase(l,g);}}
 };
 
 template<typename Symmetry, typename Scalar>
@@ -284,44 +284,44 @@ calc_fullMmax () const
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-update_inbase (size_t loc)
+update_inbase (size_t loc, GAUGE::OPTION g)
 {
 	inbase[loc].clear();
-	inbase[loc].pullData(A[GAUGE::C][loc],0);
+	inbase[loc].pullData(A[g][loc],0);
 }
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-update_outbase (size_t loc)
+update_outbase (size_t loc, GAUGE::OPTION g)
 {
 	outbase[loc].clear();
-	outbase[loc].pullData(A[GAUGE::C][loc],1);
+	outbase[loc].pullData(A[g][loc],1);
 }
 
 template<typename Symmetry, typename Scalar>
 qarray<Symmetry::Nq> Umps<Symmetry,Scalar>::
 Qtop (size_t loc) const
 {
-	qarray<Symmetry::Nq> res = Symmetry::qvacuum();
-	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
-	{
-		if (outbase[loc][qout] > res) {res = outbase[loc][qout];}
-	}
-	return res;
-//	return qplusinf<Symmetry::Nq>();
+//	qarray<Symmetry::Nq> res = Symmetry::qvacuum();
+//	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
+//	{
+//		if (outbase[loc][qout] > res) {res = outbase[loc][qout];}
+//	}
+//	return res;
+	return qplusinf<Symmetry::Nq>();
 }
 
 template<typename Symmetry, typename Scalar>
 qarray<Symmetry::Nq> Umps<Symmetry,Scalar>::
 Qbot (size_t loc) const
 {
-	qarray<Symmetry::Nq> res = Symmetry::qvacuum();
-	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
-	{
-		if (outbase[loc][qout] < res) {res = outbase[loc][qout];}
-	}
-	return res;
-//	return qminusinf<Symmetry::Nq>();
+//	qarray<Symmetry::Nq> res = Symmetry::qvacuum();
+//	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
+//	{
+//		if (outbase[loc][qout] < res) {res = outbase[loc][qout];}
+//	}
+//	return res;
+	return qminusinf<Symmetry::Nq>();
 }
 
 template<typename Symmetry, typename Scalar>
@@ -639,7 +639,7 @@ test_ortho (double tol) const
 			Test.block[q] -= MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
 			A_CHECK[q]     = Test.block[q].norm()<tol ? true : false;
 			A_infnorm[q]   = Test.block[q].norm();
-			cout << "q=" << Test.in[q] << ", A_infnorm[q]=" << A_infnorm[q] << endl;
+//			cout << "q=" << Test.in[q] << ", A_infnorm[q]=" << A_infnorm[q] << endl;
 		}
 		
 		// check for B
@@ -657,7 +657,7 @@ test_ortho (double tol) const
 			Test.block[q] -= MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
 			B_CHECK[q]     = Test.block[q].template lpNorm<Infinity>()<tol ? true : false;
 			B_infnorm[q]   = Test.block[q].template lpNorm<Infinity>();
-			cout << "q=" << Test.in[q] << ", B_infnorm[q]=" << B_infnorm[q] << endl;
+//			cout << "q=" << Test.in[q] << ", B_infnorm[q]=" << B_infnorm[q] << endl;
 		}
 		
 		// check for AL*C = AC
@@ -1360,6 +1360,26 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 				}
 			}
 		}
+		
+		Qbasis<Symmetry> qloc_(qloc[loc]);
+		Qbasis<Symmetry> qcomb = outbase[loc].combine(qloc_,true);
+		
+		for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
+		for (size_t s=0; s<qloc[loc].size(); ++s)
+		{
+			auto qfulls = Symmetry::reduceSilent(outbase[loc][qout], Symmetry::flip(qloc[loc][s]));
+			for (const auto &qfull:qfulls)
+			{
+				qarray2<Symmetry::Nq> quple = {qfull,outbase[loc][qout]};
+				auto it = N[s].dict.find(quple);
+				if (it == N[s].dict.end())
+				{
+					MatrixType Mtmp(qcomb.inner_dim(qfull), outbase[loc].inner_dim(outbase[loc][qout]));
+					Mtmp.setIdentity();
+					N[s].push_back(quple, Mtmp);
+				}
+			}
+		}
 	}
 	else if (DIR == DMRG::DIRECTION::RIGHT)
 	{
@@ -1409,6 +1429,26 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 						N[svec[i]].try_push_back(A[GAUGE::L][loc][svec[i]].in[qvec[i]], A[GAUGE::L][loc][svec[i]].out[qvec[i]], Mtmp);
 					}
 					stitch += Nrowsvec[i];
+				}
+			}
+		}
+		
+		Qbasis<Symmetry> qloc_(qloc[loc]);
+		Qbasis<Symmetry> qcomb = inbase[loc].combine(qloc_);
+		
+		for (size_t qin=0; qin<inbase[loc].Nq(); ++qin)
+		for (size_t s=0; s<qloc[loc].size(); ++s)
+		{
+			auto qfulls = Symmetry::reduceSilent(inbase[loc][qin], qloc[loc][s]);
+			for (const auto &qfull:qfulls)
+			{
+				qarray2<Symmetry::Nq> quple = {inbase[loc][qin], qfull};
+				auto it = N[s].dict.find(quple);
+				if (it == N[s].dict.end())
+				{
+					MatrixType Mtmp(inbase[loc].inner_dim(inbase[loc][qin]), qcomb.inner_dim(qfull));
+					Mtmp.setIdentity();
+					N[s].push_back(quple, Mtmp);
 				}
 			}
 		}
