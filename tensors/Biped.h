@@ -11,6 +11,9 @@
 #include "symmetry/functions.h"
 #include "DmrgConglutinations.h"
 
+template<typename Symmetry>
+class Qbasis;
+
 namespace contract {
 	enum MODE {UNITY,OORR,DOT};
 }
