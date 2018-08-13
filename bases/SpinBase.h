@@ -68,20 +68,6 @@ public:
 	ArrayXXd ZeroHopping() const { return ArrayXXd::Zero(N_orbitals,N_orbitals); }
 	
 	string alignment (double J) const {return (J<0)? "(AFM)":"(FM)";};
-	
-	/**
-	 * Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
-	 * \param Jxy : \f$J^{xy}\f$
-	 * \param Jz : \f$J^{z}\f$
-	 * \param Bz : \f$B^{z}\f$
-	 * \param Bx : \f$B^{x}\f$
-	 * \param Kz : \f$K^{z}\f$
-	 * \param Kx : \f$K^{x}\f$
-	 * \param Dy : \f$D^{y}\f$
-	 * \param PERIODIC: periodic boundary conditions if \p true
-	 */
-//	OperatorType HeisenbergHamiltonian (double Jxy, double Jz, double Bz=0., double Bx=0., double Kz=0., double Kx=0., double Dy=0., 
-//	                                    bool PERIODIC=false) const;
 
 	/**
 	 * Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
@@ -103,7 +89,6 @@ public:
 	 * \param B : \f$B^{\alpha}_i\f$, \f$\alpha \in \{x,y,z\} \f$
 	 * \param K : \f$K^{\alpha}_i\f$, \f$\alpha \in \{x,y,z\} \f$
 	 * \param D : \f$D^{\alpha}\f$, \f$\alpha \in \{x,y,z\} \f$
-	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
 	SiteOperator<Symmetry,complex<double> > HeisenbergHamiltonian (const std::array<ArrayXXd,3> &J, 
 	                                                               const std::array<ArrayXd,3> &B, 
@@ -211,45 +196,6 @@ HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz,
 	OperatorType Oout(Mout,Symmetry::qvacuum());
 	return Oout;
 }
-
-//template<typename Symmetry>
-//SiteOperator<Symmetry,double> SpinBase<Symmetry>::
-//HeisenbergHamiltonian (double Jxy, double Jz, double Bz, double Bx, double Kz, double Kx, double Dy, bool PERIODIC) const
-//{
-//	ArrayXd Bzorb(N_orbitals); Bzorb = Bz;
-//	ArrayXd Bxorb(N_orbitals); Bxorb = Bx;
-//	ArrayXd Kzorb(N_orbitals); Kzorb = Kz;
-//	ArrayXd Kxorb(N_orbitals); Kxorb = Kx;
-//	
-//	ArrayXXd Jxyhop(N_orbitals,N_orbitals);
-//	Jxyhop = 0;
-//	Jxyhop.matrix().diagonal<1>().setConstant(Jxy);
-//	Jxyhop.matrix().diagonal<-1>() = Jxyhop.matrix().diagonal<1>();
-//	
-//	ArrayXXd Jzhop(N_orbitals,N_orbitals);
-//	Jzhop = 0;
-//	Jzhop.matrix().diagonal<1>().setConstant(Jz);
-//	Jzhop.matrix().diagonal<-1>() = Jzhop.matrix().diagonal<1>();
-//	
-//	ArrayXXd Dyhop(N_orbitals,N_orbitals);
-//	Dyhop = 0;
-//	Dyhop.matrix().diagonal<1>().setConstant(Dy);
-//	Dyhop.matrix().diagonal<-1>() = Dyhop.matrix().diagonal<1>();
-//	
-//	if (PERIODIC and N_orbitals>2)
-//	{
-//		Jxyhop(0,N_orbitals-1) = Jxy;
-//		Jxyhop(N_orbitals-1,0) = Jxy;
-//		
-//		Jzhop(0,N_orbitals-1) = Jz;
-//		Jzhop(N_orbitals-1,0) = Jz;
-//		
-//		Dyhop(0,N_orbitals-1) = Dy;
-//		Dyhop(N_orbitals-1,0) = Dy;
-//	}
-//	
-//	return HeisenbergHamiltonian(Jxyhop, Jzhop, Bzorb, Bxorb, Kzorb, Kxorb, Dyhop, PERIODIC);
-//}
 
 template<typename Symmetry>
 SiteOperator<Symmetry,complex<double> > SpinBase<Symmetry>::

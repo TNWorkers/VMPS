@@ -215,33 +215,20 @@ public:
 	///\}
 	
 	/**
-	 * Creates the full Hubbard Hamiltonian on the supersite.
-	 * \param U : \f$U\f$
-	 * \param t : \f$t\f$
-	 * \param V : \f$V\f$
-	 * \param J : \f$J\f$
-	 * \param Bz : \f$B_z\f$
-	 * \param PERIODIC: periodic boundary conditions if \p true
-	 */
-//	template<typename Scalar> SiteOperator<Symmetry,Scalar>
-//	HubbardHamiltonian (double U, Scalar t=1., double V=0., double J=0., double Bz=0., bool PERIODIC=false) const;
-	
-	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
-	 * \param Uorb : \f$U\f$ for each orbital
+	 * \param U : \f$U\f$ for each orbital
 	 * \param Eorb : \f$E_i\f$ for each orbital (onsite energy)
-	 * \param Bzorb : \f$B_z\f$ for each orbital
-	 * \param Bxorb : \f$B_x\f$ for each orbital
+	 * \param Bz : \f$B_z\f$ for each orbital
+	 * \param Bx : \f$B_x\f$ for each orbital
 	 * \param t : \f$t\f$
 	 * \param V : \f$V\f$
 	 * \param J : \f$J\f$
-	 * \param PERIODIC: periodic boundary conditions if \p true
 	 */
 	template<typename Scalar> SiteOperator<Symmetry,Scalar>
-	HubbardHamiltonian (const Array<Scalar,Dynamic,1> &Uorb, 
+	HubbardHamiltonian (const Array<Scalar,Dynamic,1> &U, 
 	                    const Array<Scalar,Dynamic,1> &Eorb, 
-	                    const Array<Scalar,Dynamic,1> &Bzorb, 
-	                    const Array<Scalar,Dynamic,1> &Bxorb, 
+	                    const Array<Scalar,Dynamic,1> &Bz, 
+	                    const Array<Scalar,Dynamic,1> &Bx, 
 	                    const Array<Scalar,Dynamic,Dynamic> &t, 
 	                    const Array<Scalar,Dynamic,Dynamic> &V, 
 	                    const Array<Scalar,Dynamic,Dynamic> &J) const;
@@ -477,46 +464,6 @@ sign_local (int orbital) const
 	
 	return OperatorType(Mout,Symmetry::qvacuum());
 }
-
-//template<typename Symmetry>
-//template<typename Scalar>
-//SiteOperator<Symmetry,Scalar> FermionBase<Symmetry>::
-//HubbardHamiltonian (double U, Scalar t, double V, double J, double Bz, bool PERIODIC) const
-//{
-//	ArrayXd Uorb(N_orbitals);  Uorb  = U;
-//	ArrayXd Eorb(N_orbitals);  Eorb  = 0;
-//	ArrayXd Bzorb(N_orbitals); Bzorb = Bz;
-//	ArrayXd Bxorb(N_orbitals); Bxorb = 0;
-//	
-//	ArrayXXd tHop(N_orbitals,N_orbitals);
-//	tHop = 0;
-//	tHop.matrix().diagonal<1>().setConstant(t);
-//	tHop.matrix().diagonal<-1>() = tHop.matrix().diagonal<1>();
-//	
-//	ArrayXXd Vhop(N_orbitals,N_orbitals);
-//	Vhop = 0;
-//	Vhop.matrix().diagonal<1>().setConstant(V);
-//	Vhop.matrix().diagonal<-1>() = Vhop.matrix().diagonal<1>();
-//	
-//	ArrayXXd Jhop(N_orbitals,N_orbitals);
-//	Jhop = 0;
-//	Jhop.matrix().diagonal<1>().setConstant(J);
-//	Jhop.matrix().diagonal<-1>() = Jhop.matrix().diagonal<1>();
-//	
-//	if (PERIODIC and N_orbitals>2)
-//	{
-//		tHop(0,N_orbitals-1) = t;
-//		tHop(N_orbitals-1,0) = t;
-//		
-//		Vhop(0,N_orbitals-1) = V;
-//		Vhop(N_orbitals-1,0) = V;
-//		
-//		Jhop(0,N_orbitals-1) = J;
-//		Jhop(N_orbitals-1,0) = J;
-//	}
-//	
-//	return HubbardHamiltonian(Uorb,Eorb,Bzorb,Bxorb,tHop,Vhop,Jhop);
-//}
 
 template<typename Symmetry>
 template<typename Scalar>

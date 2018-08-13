@@ -17,6 +17,7 @@ enum CONTRACT_LR_MODE {FULL, TRIANGULAR, FIXED};
  * \param Lold
  * \param Abra
  * \param W
+ * \param IS_HAMILTONIAN : If the Mpo is a Hamiltonian, the calculation can be optimized
  * \param Aket
  * \param qloc : local basis
  * \param qOp : operator basis
@@ -143,6 +144,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
  * \param Rold
  * \param Abra
  * \param W
+ * \param IS_HAMILTONIAN : If the Mpo is a Hamiltonian, the calculation can be optimized
  * \param Aket
  * \param qloc : local basis
  * \param qOp : operator basis

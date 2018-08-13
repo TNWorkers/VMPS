@@ -60,13 +60,6 @@ public:
 	/**Identity operator.*/
 	Operator Id() const;
 	
-	/**
-	 * Creates the full Heisenberg Hamiltonian on the supersite.
-	 * \param J : \f$J\f$
-	 * \param PERIODIC: periodic boundary conditions if \p true
-	 */
-//	Operator HeisenbergHamiltonian (double J, bool PERIODIC=false) const;
-	
 	/**Returns an array of size dim() with zeros.*/
 	ArrayXd ZeroField() const { return ArrayXd::Zero(N_orbitals); }
 	
@@ -173,33 +166,6 @@ Id() const
 		return out;
 	}
 }
-
-//SiteOperatorQ<Sym::SU2<Sym::SpinSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<Sym::SpinSU2> >::
-//HeisenbergHamiltonian (double J, bool PERIODIC) const
-//{
-//	Operator Mout({1},TensorBasis);
-//	
-//	if( N_orbitals >= 2 and J!=0. )
-//	{
-//		Mout = -std::sqrt(3)*J * Operator::prod(Sdag(0),S(1),{1});
-//	}
-//	
-//	for (int i=1; i<N_orbitals-1; ++i) // for all bonds
-//	{
-//		if (J != 0.)
-//		{
-//			Mout += std::sqrt(3)*J * Operator::prod(Sdag(i),S(i+1),{1});
-//		}
-//	}
-//	if (PERIODIC == true and N_orbitals>2)
-//	{
-//		if (J != 0.)
-//		{
-//			Mout += std::sqrt(3)*J * Operator::prod(Sdag(N_orbitals-1),S(0),{1});
-//		}
-//	}	
-//	return Mout;
-//}
 
 SiteOperatorQ<Sym::SU2<Sym::SpinSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::SU2<Sym::SpinSU2> >::
 HeisenbergHamiltonian (const ArrayXXd &J) const

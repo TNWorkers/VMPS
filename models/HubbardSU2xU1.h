@@ -34,7 +34,6 @@ namespace VMPS
   * \note Makes use of the spin-SU(2) symmetry and the U(1) charge symmetry.
   * \note If the nnn-hopping is positive, the ground state energy is lowered.
   * \warning \f$J>0\f$ is antiferromagnetic
-  * \todo Implement more observables.
   */
 class HubbardSU2xU1 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > ,double>, public ParamReturner
 {

@@ -133,37 +133,12 @@ public:
 	///\}
 	
 	/**
-	 * Creates the full Hubbard Hamiltonian on the supersite.
-	 * \param U : \f$U\f$
-	 * \param t : \f$t\f$
-	 * \param V : \f$V\f$
-	 * \param Jz : \f$Jz\f$
-	 * \param Jxy : \f$Jxy\f$
-	 * \param Bz : \f$B_z\f$
-	 * \param Bx : \f$B_x\f$
-	 * \param PERIODIC: periodic boundary conditions if \p true
-	 */
-//	Operator HubbardHamiltonian (double U, double t=1., double V=0., double Jz=0., double Jxy=0., double Bz=0., double Bx=0., bool PERIODIC=false) const;
-	
-	/**
-	 * Creates the full Hubbard Hamiltonian on the supersite with partially inhomogeneuous parameters.
-	 * \param Uorb : \f$U\f$ for each orbital
-	 * \param t : \f$t\f$ (hopping)
-	 * \param V : \f$V\f$ (nn pseudo-spin pseudo-spin interaction)
-	 * \param Jz : \f$J^{z}\f$ (nn Spin interaction)
-	 * \param Jxy : \f$J^{xy}\f$ (nn Spin interaction)
-	 * \param Bz : \f$B_z\f$ for each orbital
-	 * \param Bx : \f$B_x\f$ for each orbital
-	 */
-//	Operator HubbardHamiltonian (ArrayXd Uorb, Scalar t, Scalar V, Scalar Jz, Scalar Jxy, ArrayXd Bz, ArrayXd Bx) const;
-	
-	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite with inhomogeneuous parameters.
-	 * \param Uorb : \f$U\f$ for each orbital
+	 * \param U : \f$U\f$ for each orbital
 	 * \param t : \f$t_{ij}\f$ (hopping matrix)
 	 * \param V : \f$V_{ij}\f$ (nn pseudo-spin pseudo-spin matrix)
-	 * \param Jz : \f$J^{z}_{ij}\f$ (nn Spin interaction matrix)
 	 * \param Jxy : \f$J^{xy}_{ij}\f$ (nn Spin interaction matrix)
+	 * \param Jz : \f$J^{z}_{ij}\f$ (nn Spin interaction matrix)
 	 * \param Bz : \f$B_z\f$ for each orbital
 	 * \param Bx : \f$B_x\f$ for each orbital
 	 */
@@ -552,38 +527,6 @@ Id () const
 		return out;
 	}
 }
-
-//SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
-//HubbardHamiltonian (double U, double t, double V, double Jz, double Jxy, double Bz, double Bx, bool PERIODIC) const
-//{
-//	Operator Mout({1},TensorBasis);
-//	
-//	for (int i=0; i<N_orbitals-1; ++i) // for all bonds
-//	{
-//		if (t != 0.)
-//		{
-//			Mout += -t*std::sqrt(2.)*(Operator::prod(psidag(UP,i),psi(UP,i+1),{1})+Operator::prod(psidag(DN,i),psi(DN,i+1),{1}));
-//		}
-//		if (V != 0.) { Mout += -V*std::sqrt(3.)*(Operator::prod(Tdag(i),T(i+1),{1})); }
-//		if (Jz != 0.) { Mout += -Jz*Operator::prod(Sz(i),Sz(i+1),{1}); }
-//		if (Jxy != 0.) { Mout += -Jxy*0.5*(Operator::prod(Sp(i),Sm(i+1),{1})+Operator::prod(Sm(i),Sp(i+1),{1})); }
-//	}
-//	if (PERIODIC==true and N_orbitals>2)
-//	{
-//		if (t != 0.)
-//		{
-//			Mout += -t*std::sqrt(2.)*(Operator::prod(psidag(UP,0),psi(UP,N_orbitals-1),{1})+Operator::prod(psidag(DN,0),psi(DN,N_orbitals-1),{1}));
-//		}
-//		if (V != 0.) { Mout += -V*std::sqrt(3.)*(Operator::prod(Tdag(0),T(N_orbitals-1),{1})); }
-//		if (Jz != 0.) { Mout += -Jz*Operator::prod(Sz(0),Sz(N_orbitals-1),{1}); }
-//		if (Jxy != 0.) { Mout += -Jxy*0.5*(Operator::prod(Sp(0),Sm(N_orbitals-1),{1})+Operator::prod(Sm(0),Sp(N_orbitals-1),{1})); }
-//	}
-//	if (U != 0. and U != std::numeric_limits<double>::infinity()) { for (int i=0; i<N_orbitals; ++i) { Mout += 0.5 * U * nh(i); } }
-//	if (Bz != 0.) { for (int i=0; i<N_orbitals; ++i) { Mout += -1. * Bz * Sz(i); } }
-//	if (Bx != 0.) { for (int i=0; i<N_orbitals; ++i) { Mout += -1. * Bx * Sx(i); } }
-//	
-//	return Mout;
-//}
 
 SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
 HubbardHamiltonian (const ArrayXd &U, const ArrayXXd &t, const ArrayXXd &V, 

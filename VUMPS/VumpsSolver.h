@@ -174,6 +174,7 @@ private:
 	 * \param qloc : local basis
 	 * \param qOp : operator basis
 	 * \param LRdotY : (Y_La|R), (L|Y_Ra) for eq. C25ab
+	 * \param LRguess : the starting guess for the linear solver
 	 * \param LRres : resulting (H_L| or |H_R)
 	 */
 	void solve_linear (GAUGE::OPTION gauge, 

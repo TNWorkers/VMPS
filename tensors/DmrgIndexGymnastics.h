@@ -22,6 +22,7 @@
  * \param Abra
  * \param Aket
  * \param result : tuple of: an array with \p Rin, \p Rout, \p Rmid; block index of \p Abra; block index of \p Aket
+ * \param IS_HAMILTONIAN : If the Mpo is a Hamiltonian, the calculation can be optimized
  * \returns \p true if a match is found, \p false if not
  * \warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.
  */

@@ -200,6 +200,7 @@ public:
 	
 	void set_Qmultitarget (const vector<qarray<Nq> > &Qmulti_input) {Qmulti = Qmulti_input;};
 	
+	///@cond INTERNAL
 //	/**
 //	 * Takes an Mpo and flattens/purifies it into this Mps (to do time propagation in the Heisenberg picture, for example).
 //	 * \param Op : the Mpo to be flattened
@@ -208,6 +209,7 @@ public:
 //	 */
 //	template<size_t MpoNq> void setFlattenedMpo (const Mpo<MpoNq,Scalar> &Op, bool USE_SQUARE=false);
 	///\}
+	///@endcond
 	
 	//---print infos---
 	

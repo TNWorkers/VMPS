@@ -87,6 +87,7 @@ public:
 	 * \param label_input : how to label the Mpo in outputs
 	 * \param HERMITIAN_input : if the Mpo is known to be hermitian, this can be further exploited
 	 * \param UNITARY_input : if the Mpo is known to be unitary, this can be further exploited
+	 * \param HAMILTONIAN_input : If the Mpo is a Hamiltonian, some calculations can be optimized
 	 */
 	Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input="Mpo", 
 	     bool HERMITIAN_input=false, bool UNITARY_input=false, bool HAMILTONIAN_input=false);
@@ -158,6 +159,8 @@ public:
 	 */
 	void transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT = true);
 	
+	/** Pre-calculates information for two-site contractions that only depend on the local base, the operator base and the W-tensors for efficiency.
+	*/
 	void precalc_TwoSiteData();
 	///\}
 	
