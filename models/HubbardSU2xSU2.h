@@ -29,7 +29,6 @@ namespace VMPS
  * \note Makes use of the spin-SU(2) symmetry and the charge-SU(2) symmetry.
  * \warning Bipartite hopping structure is mandatory (particle-hole symmetry)!
  * \warning \f$J>0\f$ is antiferromagnetic
- * \todo Implement spin and pseudo-spin observables.
  */
 class HubbardSU2xSU2 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > ,double>, public ParamReturner
 {

@@ -50,6 +50,7 @@ public:
 	 * \param orbital : orbital index
 	 */
 	Operator S( std::size_t orbital=0 ) const;
+	
 	/**
 	 * Hermitian conjugate of quantum spin operator at given orbital.
 	 * For calculating scalar product \f$\mathbf{S}\cdot\mathbf{S}\f$. 
@@ -68,12 +69,9 @@ public:
 	ArrayXXd ZeroHopping() const { return ArrayXXd::Zero(N_orbitals,N_orbitals); }
 	
 	/**
-	 * Creates the full Heisenberg Hamiltonian on the supersite.
-	 * \param J : \f$J\f$
-	 * \param PERIODIC: periodic boundary conditions if \p true
-	 */
-//	Operator HeisenbergHamiltonian (double J, bool PERIODIC=false) const;
-	
+ 	* Creates the full Heisenberg Hamiltonian on the supersite.
+ 	* \param J : \f$J\f$
+ 	*/
 	Operator HeisenbergHamiltonian (const ArrayXXd &J) const;
 	
 	/**Returns the basis.*/
@@ -170,33 +168,6 @@ Id() const
 		return out;
 	}
 }
-
-//SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
-//HeisenbergHamiltonian (double J, bool PERIODIC) const
-//{
-//	Operator Mout({1,0},TensorBasis);
-//	
-//	if (N_orbitals >= 2 and J != 0.)
-//	{
-//		Mout = std::sqrt(3)*J * Operator::prod(Sdag(0),S(1),{1,0});
-//	}
-//	
-//	for (int i=1; i<N_orbitals-1; ++i) // for all bonds
-//	{
-//		if (J != 0.)
-//		{
-//			Mout += std::sqrt(3)*J * Operator::prod(Sdag(i),S(i+1),{1,0});
-//		}
-//	}
-//	if (PERIODIC == true and N_orbitals>2)
-//	{
-//		if (J != 0.)
-//		{
-//			Mout += std::sqrt(3)*J * Operator::prod(Sdag(N_orbitals-1),S(0),{1,0});
-//		}
-//	}	
-//	return Mout;
-//}
 
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 HeisenbergHamiltonian (const ArrayXXd &J) const

@@ -118,32 +118,14 @@ public:
 	
 	/**Returns an array of size dim()xdim() with zeros.*/
 	ArrayXXd ZeroHopping() const { return ArrayXXd::Zero(N_orbitals,N_orbitals); }
-	
-	/**
-	 * Creates the full Hubbard Hamiltonian on the supersite.
-	 * \param U : \f$U\f$
-	 * \param t : \f$t\f$
-	 * \param V : \f$V\f$ (Pseudo-spin pseudo-spin coupling. Acts not as usual nn interaction)
-	 * \param J : \f$J\f$
-	 * \param PERIODIC: periodic boundary conditions if \p true
-	 */
-//	Operator HubbardHamiltonian (double U, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
-
-	/**
-	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
-	 * \param Uorb : \f$U\f$ for each orbital
-	 * \param t : \f$t\f$
-	 * \param V : \f$V\f$ (Pseudo-spin pseudo-spin coupling. Acts not as usual nn interaction)
-	 * \param J : \f$J\f$
-	 * \param PERIODIC: periodic boundary conditions if \p true
-	 */
-//	Operator HubbardHamiltonian (Eigen::ArrayXd Uorb, double t=1., double V=0., double J=0., bool PERIODIC=false) const;
 
 	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U and with arbitrary hopping matrix (bipartite).
 	 * \param U : \f$U\f$ for each orbital
 	 * \param t : \f$t_{ij}\f$ (hopping matrix)
 	 * \warning : The hopping matrix needs to be bipartite!
+	 * \param V
+	 * \param J
 	 * \todo : Add a check, that the hopping matrix is really bipartite.
 	 */
 	Operator HubbardHamiltonian (const ArrayXd &U, const ArrayXXd &t, const ArrayXXd &V, const ArrayXXd &J) const;
@@ -439,59 +421,6 @@ Id (std::size_t orbital) const
 		return out;
 	}
 }
-
-//SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
-//HubbardHamiltonian (double U, double t, double V, double J, bool PERIODIC) const
-//{
-//	Operator Mout({1,1},TensorBasis);
-//	if( N_orbitals >= 2 and t!=0. )
-//	{
-//		Mout = -t*std::sqrt(2.)*std::sqrt(2.)*Operator::prod(cdag(0),c(1),{1,1});
-//	}
-//	for (int i=1; i<N_orbitals-1; ++i)
-//	{
-//		if (t != 0.)
-//		{
-//			Mout += -t*std::sqrt(2.)*std::sqrt(2.)*Operator::prod(cdag(i),c(i+1),{1,1});
-//		}
-//		if (V != 0.) { Mout += -V*std::sqrt(3.)*(Operator::prod(Tdag(i),T(i+1),{1,1})); }
-//		if (J != 0.) { Mout += -J*std::sqrt(3.)*(Operator::prod(Sdag(i),S(i+1),{1,1})); }
-//	}
-//	if (PERIODIC==true and N_orbitals>2)
-//	{
-//		assert(N_orbitals%2==0 and "A ring with an odd number of sites is not bipartite! No SO(4) symmetry.");
-//		if (t != 0.)
-//		{
-//			Mout += -t*std::sqrt(2.)*std::sqrt(2.)*Operator::prod(cdag(0),c(N_orbitals-1),{1,1});
-//		}
-//		if (V != 0.) { Mout += -V*std::sqrt(3.)*(Operator::prod(Tdag(0),T(N_orbitals-1),{1,1})); }
-//		if (J != 0.) { Mout += -J*std::sqrt(3.)*(Operator::prod(Sdag(0),S(N_orbitals-1),{1,1})); }
-//	}
-//	if (U != 0. and U != std::numeric_limits<double>::infinity())
-//	{
-//		for (int i=0; i<N_orbitals; ++i) {Mout += 0.5*U*nh(i);}
-//	}
-
-//	return Mout;
-//}
-
-//SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
-//HubbardHamiltonian (Eigen::ArrayXd Uorb, double t, double V, double J, bool PERIODIC) const
-//{
-//	auto Mout = HubbardHamiltonian(0.,t,V,J,PERIODIC);
-//	
-//	for (int i=0; i<N_orbitals; ++i)
-//	{
-//		if (Uorb.rows() > 0)
-//		{
-//			if (Uorb(i) != 0. and Uorb(i) != std::numeric_limits<double>::infinity())
-//			{
-//				Mout += 0.5*Uorb(i) * nh(i);
-//			}
-//		}
-//	}F
-//	return Mout;
-//}
 
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::
 HubbardHamiltonian (const ArrayXd &U, const ArrayXXd &t, const ArrayXXd &V, const ArrayXXd &J) const

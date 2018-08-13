@@ -17,8 +17,6 @@
  * \p qarray2<Nq> = \p std::array<qarray<Nq>,2> : pair of quantum numbers in a two-legged tensor Biped\n
  * \p qarray3<Nq> = \p std::array<qarray<Nq>,3> : triplet of quantum numbers in a three-legged tensor \p Tripod (see Multipede)\n
  * \p qarray4<Nq> = \p std::array<qarray<Nq>,4> : quadruplet of quantum numbers in a four-legged tensor \p Quadruped (see Multipede)
- * \todo The basic type of the quantum numbers should be replaced by either boost::rational or a custom class to deal with non integer quantumnumbers
- *       which would arise when shifting quantum numbers for VUMPS or also in conventional DMRG.
 */
 template<size_t Nq>
 struct qarray
