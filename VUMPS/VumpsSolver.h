@@ -755,7 +755,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		Stopwatch<> LanczosTimer;
 		LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
 		Lutz(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
-		Lutz.set_dimK(min(30ul, dim(gAC.state)));
+		Lutz.set_dimK(min(100ul, dim(gAC.state)));
 		Lutz.edgeState(HeffA[l], gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -771,7 +771,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		
 		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
 		Lucy(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
-		Lucy.set_dimK(min(30ul, dim(gC.state)));
+		Lucy.set_dimK(min(100ul, dim(gC.state)));
 		Lucy.edgeState(PivotMatrix0(HeffC[l]), gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		
 //		qarray2<Symmetry::Nq> vac = {Symmetry::qvacuum(), Symmetry::qvacuum()};
@@ -816,6 +816,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
+
 	eL = contract_LR(0, YLlast, Reigen) / H.volume();
 	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
 	
@@ -880,7 +881,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		Stopwatch<> LanczosTimer;
 		LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
 		Lutz(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
-		Lutz.set_dimK(min(30ul, dim(gAC.state)));
+		Lutz.set_dimK(min(100ul, dim(gAC.state)));
 		Lutz.edgeState(HeffA[l], gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -896,7 +897,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		
 		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
 		Lucy(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
-		Lucy.set_dimK(min(30ul, dim(gCR.state)));
+		Lucy.set_dimK(min(100ul, dim(gCR.state)));
 		Lucy.edgeState(PivotMatrix0(HeffC[l]), gCR, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -914,7 +915,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		
 		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
 		Luca(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
-		Luca.set_dimK(min(30ul, dim(gCL.state)));
+		Luca.set_dimK(min(100ul, dim(gCL.state)));
 		Luca.edgeState(PivotMatrix0(HeffC[lC]), gCL, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, true);
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -1019,7 +1020,7 @@ iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	
 	Stopwatch<> LanczosTimer;
 	LanczosSolver<PivumpsMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz1(LANCZOS::REORTHO::FULL);
-	Lutz1.set_dimK(min(30ul, dim(gAC.state)));
+	Lutz1.set_dimK(min(100ul, dim(gAC.state)));
 	Lutz1.edgeState(Heff[0],gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -1036,7 +1037,7 @@ iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	gC.state = PivotVector<Symmetry,Scalar>(Vout.state.C[0]);
 	
 	LanczosSolver<PivumpsMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz0(LANCZOS::REORTHO::FULL);
-	Lutz0.set_dimK(min(30ul, dim(gC.state)));
+	Lutz0.set_dimK(min(100ul, dim(gC.state)));
 	Lutz0.edgeState(PivumpsMatrix0(Heff[0]),gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -1118,7 +1119,7 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 	Stopwatch<> LanczosTimer;
 	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
 	Lutz(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
-	Lutz.set_dimK(min(30ul, dim(g.state)));
+	Lutz.set_dimK(min(100ul, dim(g.state)));
 	Lutz.edgeState(HeffA[0], g, LANCZOS::EDGE::GROUND, DMRG::CONTROL::DEFAULT::eps_eigval, DMRG::CONTROL::DEFAULT::eps_coeff, false);
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
@@ -1244,7 +1245,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 			if (CHOSEN_ALGORITHM == UMPS_ALG::PARALLEL)
 			{
 				iteration_parallel(H,Vout);
-				if (err_var < 1e-4 and (err_eigval >= tol_eigval or err_var >= tol_var)) {expand_basis(2,H,Vout);}
+				if (err_var < 1e-3 and (err_eigval >= tol_eigval or err_var >= tol_var)) {expand_basis(2,H,Vout);}
 			}
 			else if (CHOSEN_ALGORITHM == UMPS_ALG::SEQUENTIAL)
 			{
@@ -1261,14 +1262,15 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		}
 		else // dynamical choice: L=1 parallel, L>1 sequential
 		{
-			if (N_sites == 1)
+			if (N_sites == 1 or N_sites != 1)
 			{
 				iteration_parallel(H,Vout);
-				if (err_var < 1e-4 and (err_eigval >= tol_eigval or err_var >= tol_var)) {expand_basis(2,H,Vout);}
+				if (err_var < 1.e-2 and (err_eigval >= tol_eigval or err_var >= tol_var)) {expand_basis(2,H,Vout);}
 			}
 			else
 			{
 				iteration_sequential(H,Vout);
+				if (err_var < 1.e-2 and (err_eigval >= tol_eigval or err_var >= tol_var)) {expand_basis(2,H,Vout);}
 			}
 		}
 		
@@ -1376,254 +1378,327 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 {
-	size_t l = 0;
-	size_t loc = l;
-	
-	// calculate nullspaces
-	vector<Biped<Symmetry,MatrixType> > NL;
-	vector<Biped<Symmetry,MatrixType> > NR;
-	
-	Vout.state.calc_N(DMRG::DIRECTION::RIGHT, l, NL);
-	Vout.state.calc_N(DMRG::DIRECTION::LEFT,  l, NR);
-	
-	// test nullspaces
-//	Biped<Symmetry,MatrixType> TestR = Vout.state.A[GAUGE::R][l][0].contract(NR[0].adjoint());
-//	Biped<Symmetry,MatrixType> TestL = NL[0].adjoint().contract(Vout.state.A[GAUGE::L][l][0]);
-//	for (size_t s=1; s<Vout.state.qloc[l].size(); ++s)
-//	{
-//		TestR += Vout.state.A[GAUGE::R][l][s].contract(NR[s].adjoint());
-//		TestL += NL[s].adjoint().contract(Vout.state.A[GAUGE::L][l][s]);
-//	}
-//	
-//	for (size_t q=0; q<TestL.dim; ++q)
-//	{
-//		cout << "q=" << q << ", TestLR.block[q].norm()=\t" << TestR.block[q].norm() << "\t" << TestL.block[q].norm() << endl;
-//	}
-	
-	// calculate A2C'
-	PivotMatrix2<Symmetry,Scalar> H2(HeffA[0].L, HeffA[0].R, HeffA[0].W, HeffA[0].W, 
-	                                 H.locBasis(0), H.locBasis(0), H.opBasis(0), H.opBasis(0));
-	PivotVector<Symmetry,Scalar> A2C(Vout.state.A[GAUGE::L][0], H.locBasis(0), 
-	                                 Vout.state.A[GAUGE::C][0], H.locBasis(0), 
-	                                 Vout.state.Qtop(0), Vout.state.Qbot(0));
-	precalc_blockStructure (HeffA[0].L, A2C.data, HeffA[0].W, HeffA[0].W, A2C.data, HeffA[0].R, 
-		                    H.locBasis(0), H.locBasis(0), H.opBasis(0), H.opBasis(0), 
-		                    H2.qlhs, H2.qrhs, H2.factor_cgcs);
-	HxV(H2,A2C);
-	
-	vector<vector<qarray<Symmetry::Nq> > > qbasis_tmp(2);
-	qbasis_tmp[0] = H.locBasis()[0];
-	qbasis_tmp[1] = H.locBasis()[0];
-	Mps<Symmetry,Scalar> Vtmp(2, qbasis_tmp, Symmetry::qvacuum(), 2, Vout.state.Nqmax);
-	
-	Vtmp.A[0] = Vout.state.A[GAUGE::L][0];
-	Vtmp.A[1] = Vout.state.A[GAUGE::C][0];
-	
-	Vtmp.QinTop[0] = Vout.state.Qtop(0);
-	Vtmp.QinBot[0] = Vout.state.Qbot(0);
-	Vtmp.QoutTop[0] = Vout.state.Qtop(0);
-	Vtmp.QoutBot[0] = Vout.state.Qbot(0);
-	Vtmp.QinTop[1] = Vout.state.Qtop(0);
-	Vtmp.QinBot[1] = Vout.state.Qbot(0);
-	Vtmp.QoutTop[1] = Vout.state.Qtop(0);
-	Vtmp.QoutBot[1] = Vout.state.Qbot(0);
-	Vtmp.min_Nsv = 1;
-	Vtmp.sweepStep2(DMRG::DIRECTION::RIGHT, 0, A2C.data);
-	
-	Vtmp.update_outbase();
-	Vtmp.update_inbase();
-	Qbasis<Symmetry> NRbasis; NRbasis.pullData(NR,1);
-	Qbasis<Symmetry> NLbasis; NLbasis.pullData(NL,0);
-	
-	// calculate NAAN
-	Biped<Symmetry,MatrixType> IdR; IdR.setIdentity(Vtmp.outBasis(1), NRbasis);
-	Biped<Symmetry,MatrixType> IdL; IdL.setIdentity(NLbasis, Vtmp.inBasis(0));
-	
-	Biped<Symmetry,MatrixType> TR;
-	contract_R(IdR, NR, Vtmp.A[1], H.locBasis(0), TR);
-	
-	Biped<Symmetry,MatrixType> TL;
-	contract_L(IdL, NL, Vtmp.A[0], H.locBasis(0), TL);
-	
-	Biped<Symmetry,MatrixType> NAAN = TL.contract(TR);
-	
-	cout << "norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
-	
-	// SVD-decompose NAAN
-	Biped<Symmetry,MatrixType> U, Vdag;
-	for (size_t q=0; q<NAAN.dim; ++q)
+//	size_t loc = 0;
+	// Umps<Symmetry,Scalar> Vref = Vout.state;
+	vector<vector<Biped<Symmetry,MatrixType> > > AL_ref = Vout.state.A[GAUGE::L];
+	for(size_t loc=0; loc<N_sites; loc++)
 	{
-		JacobiSVD<MatrixType> Jack(NAAN.block[q],ComputeThinU|ComputeThinV);
-		
-		size_t Nret = (Jack.singularValues().array() > Vout.state.eps_svd).count();
-		Nret = min(DeltaD, Nret);
-		cout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
-		
-		U.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixU().leftCols(Nret));
-		Vdag.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixV().adjoint().topRows(Nret));
-	}
+		cout << "expansion: AL at site loc=" << loc << ", outleg. --> need to update inleg of AL at loc=" << (loc+1)%N_sites << endl;
+		cout << "expansion: AR at site (loc+1)%N_sites=" << (loc+1)%N_sites << ", inleg. --> need to update outeg of AR at loc=" << loc << endl;
+		// calculate nullspaces
+		vector<Biped<Symmetry,MatrixType> > NL;
+		vector<Biped<Symmetry,MatrixType> > NR;
 	
-	vector<Biped<Symmetry,MatrixType> > P(Vout.state.qloc[l].size());
+		Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc, NL);
+		Vout.state.calc_N(DMRG::DIRECTION::LEFT,  (loc+1)%N_sites, NR);
 	
-	// expand AR
-	for (size_t s=0; s<Vout.state.qloc[l].size(); ++s)
-	{
-		P[s] = Vdag * NR[s];
-	}
+		// test nullspaces
+// 		vector<bool> A_CHECK(Test.dim);
+// 		vector<double> A_infnorm(Test.dim);
+// 		for (size_t q=0; q<Test.dim; ++q)
+// 		{
+// 			Test.block[q] -= MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
+// 			A_CHECK[q]     = Test.block[q].norm()<1.e-7 ? true : false;
+// 			A_infnorm[q]   = Test.block[q].norm();
+// //			cout << "q=" << Test.in[q] << ", A_infnorm[q]=" << A_infnorm[q] << endl;
+// 		}
+// 		if (!all_of(A_CHECK.begin(),A_CHECK.end(),[](bool x){return x;})) {cout << termcolor::red << termcolor::bold << "Error" << termcolor::reset << endl;}
+
+		// Biped<Symmetry,MatrixType> TestL = NL[0].adjoint().contract(Vout.state.A[GAUGE::L][loc][0]);
+		// Biped<Symmetry,MatrixType> TestR = Vout.state.A[GAUGE::R][(loc+1)%N_sites][0].contract(NR[0].adjoint());
+
+		// for (size_t s=1; s<Vout.state.qloc[(loc+1)%N_sites].size(); ++s)
+		// {
+		// 	TestL += NL[s].adjoint().contract(Vout.state.A[GAUGE::L][(loc+1)%N_sites][s]);
+		// }
+		// for (size_t s=1; s<Vout.state.qloc[loc].size(); ++s)
+		// {
+		// 	TestR += Vout.state.A[GAUGE::R][loc][s].contract(NR[s].adjoint());
+		// }
 	
-	for (size_t s=0; s<Vout.state.qloc[loc].size(); ++s)
-	for (size_t qP=0; qP<P[s].size(); ++qP)
-	{
-		qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
-		auto qA = Vout.state.A[GAUGE::R][l][s].dict.find(quple);
+		// for (size_t q=0; q<TestL.dim; ++q)
+		// {
+		// 	cout << "q=" << q << ", TestLR.block[q].norm()=\t" << TestR.block[q].norm() << "\t" << TestL.block[q].norm() << endl;
+		// }
+	
+		// calculate A2C'
+		PivotMatrix2<Symmetry,Scalar> H2(HeffA[loc].L, HeffA[(loc+1)%N_sites].R, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, 
+										 H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites));
+		// PivotVector<Symmetry,Scalar> A2C(Vout.state.A[GAUGE::L][loc], H.locBasis(loc), 
+		// 								 Vout.state.A[GAUGE::C][(loc+1)%N_sites], H.locBasis((loc+1)%N_sites), 
+		// 								 Vout.state.Qtop(loc), Vout.state.Qbot((loc+1)%N_sites));
+		PivotVector<Symmetry,Scalar> A2C(AL_ref[loc], H.locBasis(loc), 
+										 Vout.state.A[GAUGE::C][(loc+1)%N_sites], H.locBasis((loc+1)%N_sites), 
+										 Vout.state.Qtop(loc), Vout.state.Qbot((loc+1)%N_sites));
+
+		precalc_blockStructure (HeffA[loc].L, A2C.data, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, A2C.data, HeffA[(loc+1)%N_sites].R, 
+								H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites), 
+								H2.qlhs, H2.qrhs, H2.factor_cgcs);
+		HxV(H2,A2C);
+
+		vector<vector<qarray<Symmetry::Nq> > > qbasis_tmp(2);
+		qbasis_tmp[0] = H.locBasis(loc);
+		qbasis_tmp[1] = H.locBasis((loc+1)%N_sites);
+		Mps<Symmetry,Scalar> Vtmp(2, qbasis_tmp, Symmetry::qvacuum(), 2, Vout.state.Nqmax);
+	
+		Vtmp.A[0] = AL_ref[loc]; //Vout.state.A[GAUGE::L][loc];
+		Vtmp.A[1] = Vout.state.A[GAUGE::C][(loc+1)%N_sites];
+	
+		Vtmp.QinTop[0] = Vout.state.Qtop(loc);
+		Vtmp.QinBot[0] = Vout.state.Qbot(loc);
+		Vtmp.QoutTop[0] = Vout.state.Qtop(loc);
+		Vtmp.QoutBot[0] = Vout.state.Qbot(loc);
+		Vtmp.QinTop[1] = Vout.state.Qtop((loc+1)%N_sites);
+		Vtmp.QinBot[1] = Vout.state.Qbot((loc+1)%N_sites);
+		Vtmp.QoutTop[1] = Vout.state.Qtop((loc+1)%N_sites);
+		Vtmp.QoutBot[1] = Vout.state.Qbot((loc+1)%N_sites);
+		Vtmp.min_Nsv = 1;
+		Vtmp.sweepStep2(DMRG::DIRECTION::RIGHT, 0, A2C.data);
+
+		Vtmp.update_outbase();
+		Vtmp.update_inbase();
+		Qbasis<Symmetry> NRbasis; NRbasis.pullData(NR,1);
+		Qbasis<Symmetry> NLbasis; NLbasis.pullData(NL,0);
+	
+		// calculate NAAN
+		Biped<Symmetry,MatrixType> IdL; IdL.setIdentity(NLbasis, Vtmp.inBasis(0));
+		Biped<Symmetry,MatrixType> IdR; IdR.setIdentity(Vtmp.outBasis(1), NRbasis);
 		
-		if (qA != Vout.state.A[GAUGE::R][l][s].dict.end())
+		Biped<Symmetry,MatrixType> TL;
+		contract_L(IdL, NL, Vtmp.A[0], H.locBasis(loc), TL);
+
+		Biped<Symmetry,MatrixType> TR;
+		contract_R(IdR, NR, Vtmp.A[1], H.locBasis((loc+1)%N_sites), TR);
+
+		Biped<Symmetry,MatrixType> NAAN = TL.contract(TR);
+	
+		cout << "norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
+	
+		// SVD-decompose NAAN
+		Biped<Symmetry,MatrixType> U, Vdag;
+		for (size_t q=0; q<NAAN.dim; ++q)
 		{
-			addBottom(P[s].block[qP], Vout.state.A[GAUGE::R][l][s].block[qA->second]);
+            #ifdef DONT_USE_BDCSVD
+			JacobiSVD<MatrixType> Jack; // standard SVD
+            #else
+			BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
+            #endif
+
+			Jack.compute(NAAN.block[q], ComputeThinU|ComputeThinV);
+		
+			size_t Nret = (Jack.singularValues().array() > Vout.state.eps_svd).count();
+			Nret = min(DeltaD, Nret);
+			cout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
+		
+			U.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixU().leftCols(Nret));
+			Vdag.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixV().adjoint().topRows(Nret));
 		}
-		else
+
+		// expand AL
+		vector<Biped<Symmetry,MatrixType> > P(Vout.state.locBasis(loc).size());
+		for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
 		{
-			Vout.state.A[GAUGE::R][l][s].push_back(quple, P[s].block[qP]);
+			P[s] = NL[s] * U;
 		}
-	}
-	
-	// fill AR with extra zeros
-	Qbasis<Symmetry> ExpandedBasis;
-	ExpandedBasis.pullData(P,0);
-	
-	Vout.state.update_inbase(GAUGE::R);
-	Vout.state.update_outbase(GAUGE::R);
-	
-	for (const auto &[qval,qdim,plain]:ExpandedBasis)
-	{
-		for (size_t s=0; s<Vout.state.qloc[loc].size(); ++s)
+
+		for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
+		for (size_t qP=0; qP<P[s].size(); ++qP)
 		{
-			auto qins = Symmetry::reduceSilent(qval, Symmetry::flip(Vout.state.qloc[loc][s]));
-			for (const auto &qin:qins)
+			qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
+			auto qA = Vout.state.A[GAUGE::L][loc][s].dict.find(quple);
+			
+			if (qA != Vout.state.A[GAUGE::L][loc][s].dict.end())
 			{
-				if (Vout.state.inBasis(0).find(qin) == false) {continue;}
-				
-				qarray2<Symmetry::Nq> quple = {qin, qval};
-				auto it = Vout.state.A[GAUGE::R][0][s].dict.find(quple);
-				if (it != Vout.state.A[GAUGE::R][0][s].dict.end())
-				{
-					MatrixType Mtmp(Vout.state.A[GAUGE::R][0][s].block[it->second].rows(),
-					                ExpandedBasis.inner_dim(qval));
-					Mtmp.setZero();
-					addRight(Mtmp, Vout.state.A[GAUGE::R][0][s].block[it->second]);
-				}
-				else
-				{
-					MatrixType Mtmp(Vout.state.inBasis(0).inner_dim(qin), ExpandedBasis.inner_dim(qval));
-					Mtmp.setZero();
-					Vout.state.A[GAUGE::R][0][s].push_back(quple, Mtmp);
-				}
+				addRight(P[s].block[qP], Vout.state.A[GAUGE::L][loc][s].block[qA->second]);
+			}
+			else
+			{
+				Vout.state.A[GAUGE::L][loc][s].push_back(quple, P[s].block[qP]);
 			}
 		}
-	}
-	
-	// expand AL
-	P.clear();
-	P.resize(Vout.state.qloc[l].size());
-	for (size_t s=0; s<Vout.state.qloc[l].size(); ++s)
-	{
-		P[s] = NL[s] * U;
-	}
-	
-	for (size_t s=0; s<Vout.state.qloc[loc].size(); ++s)
-	for (size_t qP=0; qP<P[s].size(); ++qP)
-	{
-		qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
-		auto qA = Vout.state.A[GAUGE::L][l][s].dict.find(quple);
+
+		// update the inleg from AL at site (loc+1)%N_sites with zeros
+		Qbasis<Symmetry> ExpandedBasis;
+		ExpandedBasis.pullData(P,1);
+
+		Vout.state.update_inbase(loc,GAUGE::L);
+		Vout.state.update_outbase(loc,GAUGE::L);
 		
-		if (qA != Vout.state.A[GAUGE::L][l][s].dict.end())
+		for (const auto &[qval,qdim,plain]:ExpandedBasis)
+		for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
 		{
-			addRight(P[s].block[qP], Vout.state.A[GAUGE::L][l][s].block[qA->second]);
-		}
-		else
-		{
-			Vout.state.A[GAUGE::L][l][s].push_back(quple, P[s].block[qP]);
-		}
-	}
-	
-	// fill AL with extra zeros
-	ExpandedBasis.clear();
-	ExpandedBasis.pullData(P,1);
-	
-	Vout.state.update_inbase(GAUGE::L);
-	Vout.state.update_outbase(GAUGE::L);
-	
-	for (const auto &[qval,qdim,plain]:ExpandedBasis)
-	{
-		for (size_t s=0; s<Vout.state.qloc[loc].size(); ++s)
-		{
-			auto qouts = Symmetry::reduceSilent(qval, Vout.state.qloc[loc][s]);
+			auto qouts = Symmetry::reduceSilent(qval, Vout.state.locBasis((loc+1)%N_sites)[s]);
 			for (const auto &qout:qouts)
 			{
-				if (Vout.state.outBasis(0).find(qout) == false) {continue;}
-				
+				if (Vout.state.outBasis((loc+1)%N_sites).find(qout) == false) {continue;}
+
 				qarray2<Symmetry::Nq> quple = {qval, qout};
-				auto it = Vout.state.A[GAUGE::L][0][s].dict.find(quple);
-				if (it != Vout.state.A[GAUGE::L][0][s].dict.end())
+				auto it = Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].dict.find(quple);
+				if (it != Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].dict.end())
 				{
 					MatrixType Mtmp(ExpandedBasis.inner_dim(qval), 
-					                Vout.state.A[GAUGE::L][0][s].block[it->second].cols());
+									Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].block[it->second].cols());
 					Mtmp.setZero();
-					addBottom(Mtmp, Vout.state.A[GAUGE::L][0][s].block[it->second]);
+					addBottom(Mtmp, Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].block[it->second]);
 				}
 				else
 				{
-					MatrixType Mtmp(ExpandedBasis.inner_dim(qval), Vout.state.outBasis(0).inner_dim(qout));
+					MatrixType Mtmp(ExpandedBasis.inner_dim(qval), Vout.state.outBasis((loc+1)%N_sites).inner_dim(qout));
 					Mtmp.setZero();
-					Vout.state.A[GAUGE::L][0][s].push_back(quple, Mtmp);
+					Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].push_back(quple, Mtmp);
 				}
 			}
 		}
-	}
-	
-	// fill C with extra zeros
-	Vout.state.update_inbase(GAUGE::L);
-	Vout.state.update_outbase(GAUGE::L);
-	
-	for (size_t q=0; q<Vout.state.inBasis(0).Nq(); ++q)
-	{
-		qarray2<Symmetry::Nq> quple = {Vout.state.inBasis(0)[q], Vout.state.inBasis(0)[q]};
-		auto qC = Vout.state.C[0].dict.find(quple);
-		size_t r = Vout.state.inBasis(0).inner_dim(Vout.state.inBasis(0)[q]);
-		size_t c = r;
-		if (qC != Vout.state.C[0].dict.end())
+
+		// update the left environment from AL if it is used for the next site
+		// if (loc < N_sites-1)
+		// {
+		// 	cout << termcolor::red << "update left environment" << termcolor::reset << endl;
+		// 	contract_L(HeffA[loc].L, 
+		//                Vout.state.A[GAUGE::L][loc], H.W[loc], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][loc], 
+		//                H.locBasis(loc), H.opBasis(loc), 
+		//                HeffA[loc+1].L);
+		// }
+		
+		// expand AR
+		P.clear();
+		P.resize(Vout.state.locBasis((loc+1)%N_sites).size());
+		for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
 		{
-			int dr = r-Vout.state.C[l].block[q].rows();
-			int dc = c-Vout.state.C[l].block[q].cols();
-			
-			Vout.state.C[l].block[q].conservativeResize(r,c);
-			
-			Vout.state.C[l].block[q].bottomRows(dr).setZero();
-			Vout.state.C[l].block[q].rightCols(dc).setZero();
+			P[s] = Vdag * NR[s];
 		}
-		else
-		{
-			MatrixType Mtmp(r,c);
-			Mtmp.setZero();
-			Vout.state.C[0].push_back(quple, Mtmp);
-		}
-	}
 	
-	// sort
-	for (size_t s=0; s<Vout.state.qloc[l].size(); ++s)
-	{
-		Vout.state.A[GAUGE::L][l][s] = Vout.state.A[GAUGE::L][l][s].sorted();
-		Vout.state.A[GAUGE::R][l][s] = Vout.state.A[GAUGE::R][l][s].sorted();
+		for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
+		for (size_t qP=0; qP<P[s].size(); ++qP)
+		{
+			qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
+			auto qA = Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].dict.find(quple);
+			
+			if (qA != Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].dict.end())
+			{
+				addBottom(P[s].block[qP], Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].block[qA->second]);
+			}
+			else
+			{
+				Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].push_back(quple, P[s].block[qP]);
+			}
+		}
+
+		// update AR at site loc with zeros
+		ExpandedBasis.clear();
+		ExpandedBasis.pullData(P,0);
+	
+		Vout.state.update_inbase((loc+1)%N_sites,GAUGE::R);
+		Vout.state.update_outbase((loc+1)%N_sites,GAUGE::R);
+	
+		for (const auto &[qval,qdim,plain]:ExpandedBasis)
+		for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
+		{
+			auto qins = Symmetry::reduceSilent(qval, Symmetry::flip(Vout.state.locBasis(loc)[s]));
+			for (const auto &qin:qins)
+			{
+				if (Vout.state.inBasis(loc).find(qin) == false) {continue;}
+				
+				qarray2<Symmetry::Nq> quple = {qin, qval};
+				auto it = Vout.state.A[GAUGE::R][loc][s].dict.find(quple);
+				if (it != Vout.state.A[GAUGE::R][loc][s].dict.end())
+				{
+					MatrixType Mtmp(Vout.state.A[GAUGE::R][loc][s].block[it->second].rows(),
+									ExpandedBasis.inner_dim(qval));
+					Mtmp.setZero();
+					addRight(Mtmp, Vout.state.A[GAUGE::R][loc][s].block[it->second]);
+				}
+				else
+				{
+					MatrixType Mtmp(Vout.state.inBasis(loc).inner_dim(qin), ExpandedBasis.inner_dim(qval));
+					Mtmp.setZero();
+					Vout.state.A[GAUGE::R][loc][s].push_back(quple, Mtmp);
+				}
+			}
+		}
+
+		// fill C with extra zeros
+		// Vout.state.update_inbase(GAUGE::L);
+		Vout.state.update_outbase(loc,GAUGE::L);
+
+		for (size_t q=0; q<Vout.state.outBasis(loc).Nq(); ++q)
+		{
+			qarray2<Symmetry::Nq> quple = {Vout.state.outBasis(loc)[q], Vout.state.outBasis(loc)[q]};
+			auto qC = Vout.state.C[loc].dict.find(quple);
+			size_t r = Vout.state.outBasis(loc).inner_dim(Vout.state.outBasis(loc)[q]);
+			size_t c = r;
+			if (qC != Vout.state.C[loc].dict.end())
+			{
+				int dr = r-Vout.state.C[loc].block[qC->second].rows();
+				int dc = c-Vout.state.C[loc].block[qC->second].cols();
+			
+				Vout.state.C[loc].block[qC->second].conservativeResize(r,c);
+			
+				Vout.state.C[loc].block[qC->second].bottomRows(dr).setZero();
+				Vout.state.C[loc].block[qC->second].rightCols(dc).setZero();
+			}
+			else
+			{
+				MatrixType Mtmp(r,c);
+				Mtmp.setZero();
+				Vout.state.C[loc].push_back(quple, Mtmp);
+			}
+		}
+
+
+		// sort
+		for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
+		{
+			Vout.state.A[GAUGE::L][loc][s] = Vout.state.A[GAUGE::L][loc][s].sorted();
+		}
+		for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
+		{
+			Vout.state.A[GAUGE::R][(loc+1)%N_sites][s] = Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].sorted();
+		}
+		Vout.state.C[loc] = Vout.state.C[loc].sorted();
+
+		// cout << "AR" << endl;
+		// for(size_t s=0; s<Vout.state.locBasis(0).size(); s++)
+		// {
+		// 	cout << "s=" << s << endl << Vout.state.A_at(GAUGE::R,0)[s].print(false) << endl;
+		// }
+
+		// cout << "AL at loc" << endl;
+		// for(size_t s=0; s<Vout.state.locBasis(loc).size(); s++)
+		// {
+		// 	cout << "s=" << s << endl << Vout.state.A_at(GAUGE::L,0)[s].print(false) << endl;
+		// }
+
+		// cout << "AL at (loc+1)%N_sites" << endl;
+		// for(size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); s++)
+		// {
+		// 	cout << "s=" << s << endl << Vout.state.A_at(GAUGE::L,(loc+1)%N_sites)[s].print(false) << endl;
+		// }
+
+		// cout << "C" << endl;
+		// cout << Vout.state.C[0].print(false) << endl;
 	}
-	Vout.state.C[l] = Vout.state.C[l].sorted();
+
+	for(size_t l=0; l<N_sites; l++)
+	{
+		for (size_t s=0; s<Vout.state.locBasis(l).size(); ++s)
+		{
+			Vout.state.A[GAUGE::L][l][s] = Vout.state.A[GAUGE::L][l][s].sorted();
+		}
+		for (size_t s=0; s<Vout.state.locBasis(l).size(); ++s)
+		{
+			Vout.state.A[GAUGE::R][l][s] = Vout.state.A[GAUGE::R][l][s].sorted();
+		}
+		Vout.state.C[l] = Vout.state.C[l].sorted();
+	}
 	
 	// set AC
+	for (size_t l=0; l<N_sites; l++)
 	for (size_t s=0; s<Vout.state.qloc[l].size(); ++s)
 	{
 		Vout.state.A[GAUGE::C][l][s] = Vout.state.A[GAUGE::L][l][s];
 		Vout.state.A[GAUGE::C][l][s].setRandom();
 	}
-	
 	Vout.state.update_inbase();
 	Vout.state.update_outbase();
 }

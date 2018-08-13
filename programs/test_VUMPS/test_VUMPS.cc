@@ -3,6 +3,9 @@
 #define LANCZOS_MAX_ITERATIONS 1e2
 //#define DONT_USE_BDCSVD
 
+#define DMRG_DONT_USE_OPENMP
+#define MPSQCOMPRESSOR_DONT_USE_OPENMP
+
 #include <iostream>
 #include <fstream>
 #include <complex>
@@ -146,6 +149,7 @@ int main (int argc, char* argv[])
 	bool CALC_SU2 = args.get<bool>("SU2",false);
 	bool CALC_U1 = args.get<bool>("U1",true);
 	bool CALC_U0 = args.get<bool>("U0",true);
+	bool CALC_HUBB = args.get<bool>("HUBB",false);
 	bool CALC_DOT = args.get<bool>("DOT",false);
 	
 	ISING = args.get<bool>("ISING",true);
@@ -189,7 +193,7 @@ int main (int argc, char* argv[])
 	if (CALC_SU2)
 	{
 		lout << Heis_SU2.info() << endl;
-		// DMRG_SU2.set_algorithm(UMPS_ALG::PARALLEL);
+		DMRG_SU2.set_algorithm(UMPS_ALG::PARALLEL);
 		DMRG_SU2.set_log(L,"e_Heis_SU2.dat","err_eigval_Heis_SU2.dat","err_var_Heis_SU2.dat");
 		DMRG_SU2.edgeState(Heis_SU2, g_SU2, {1}, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 	}
@@ -222,21 +226,24 @@ int main (int argc, char* argv[])
 			<< endl;
 		}
 	}
-		// typedef VMPS::HubbardSU2xSU2 HUBBARD_U1;
-		// HUBBARD_U1 Hubb_U1(L,{{"t",1.},{"U",U},{"J",0.},{"OPEN_BC",false}});
-		// qarray<2> Qc = {1,1};
+	typedef VMPS::HubbardSU2xSU2 HUBBARD_U1;
+	HUBBARD_U1 Hubb_U1(L,{{"t",1.,0},{"t",1.,1},{"U",U},{"J",0.},{"OPEN_BC",false}});
+	qarray<2> Qc = {1,1};
+	HUBBARD_U1::uSolver DMRG_HUBBU1(VERB);
+
 //		qarray<1> Qc = {1};
 //		Hubb_U1.transform_base(Qc);
-		// cout << Hubb_U1.info() << endl;
-		// HUBBARD_U1::uSolver DMRG_HUBBU1(VERB);
-		// Eigenstate<HUBBARD_U1::StateUd> g_U1Hubb;
-//		DMRG_HUBBU1.set_log(2,"e_Hubb_U1.dat","err_eigval_Hubb_U1.dat","err_var_Hubb_U1.dat");
-		// DMRG_HUBBU1.edgeState(Hubb_U1, g_U1Hubb, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+	if (CALC_HUBB)
+	{
+		cout << Hubb_U1.info() << endl;
+		Eigenstate<HUBBARD_U1::StateUd> g_U1Hubb;
+		DMRG_HUBBU1.set_log(2,"e_Hubb_U1.dat","err_eigval_Hubb_U1.dat","err_var_Hubb_U1.dat");
+		DMRG_HUBBU1.edgeState(Hubb_U1, g_U1Hubb, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 //		g_U1Hubb.state.graph("Hubb");
 ////		cout << "exact=" << -0.2671549218961211 << endl;
-		// double e_exact = VMPS::Hubbard::ref({{"U",U}},L).value;
-		// cout << "e_exact=" << e_exact << ", diff=" << abs(e_exact-g_U1Hubb.energy) << endl;
-		
+		double e_exact = VMPS::Hubbard::ref({{"U",U}}).value;
+		cout << "e_exact=" << e_exact << ", diff=" << abs(e_exact-g_U1Hubb.energy) << endl;
+	}
 //		ArrayXd nvec(L), dvec(L), Szvec(L);
 //		for (size_t l=0; l<L; ++l)
 //		{

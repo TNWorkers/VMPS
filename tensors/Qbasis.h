@@ -48,7 +48,10 @@ public:
 			push_back(qin,dim);
 		}
 	}
-	
+
+	/**
+	 * Construct the basis from an object as used in Mpo, Mps for qloc.
+	 */
 	Qbasis (const vector<qarray<Symmetry::Nq> > &base_input)
 	{
 		map<qarray<Symmetry::Nq>,size_t> counter;

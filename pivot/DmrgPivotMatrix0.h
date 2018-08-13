@@ -58,6 +58,9 @@ void HxV (const PivotMatrix0<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 						if (H.L.block[qL][a][0].size() != 0 and
 						    H.R.block[qR->second][a][0].size() !=0)
 						{
+							// print_size(H.L.block[qL][a][0], "H.L.block[qL][a][0]");
+							// print_size(Vin.data[0].block[qAin->second], "Vin.data[0].block[qAin->second]");
+							// print_size(H.R.block[qR->second][a][0], "H.R.block[qR->second][a][0]");
 							optimal_multiply(1., 
 							                 H.L.block[qL][a][0],
 							                 Vin.data[0].block[qAin->second],

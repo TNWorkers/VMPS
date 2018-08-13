@@ -834,7 +834,13 @@ calc_entropy (size_t loc, bool PRINT)
 	}
 	for (size_t q=0; q<C[loc].dim; ++q)
 	{
-		JacobiSVD<MatrixType> Jack(C[loc].block[q]);
+        #ifdef DONT_USE_BDCSVD
+		JacobiSVD<MatrixType> Jack; // standard SVD
+        #else
+		BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
+        #endif
+
+		Jack.compute(C[loc].block[q], ComputeThinU|ComputeThinV);
 //		Csingular[loc] += Jack.singularValues();
 		
 		size_t Nnz = (Jack.singularValues().array() > 0.).count();
@@ -1360,10 +1366,10 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 				}
 			}
 		}
-		
+
 		Qbasis<Symmetry> qloc_(qloc[loc]);
 		Qbasis<Symmetry> qcomb = outbase[loc].combine(qloc_,true);
-		
+
 		for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		{
@@ -1376,6 +1382,7 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 				{
 					MatrixType Mtmp(qcomb.inner_dim(qfull), outbase[loc].inner_dim(outbase[loc][qout]));
 					Mtmp.setIdentity();
+					Mtmp *= Symmetry::coeff_sign( outbase[loc][qout], qfull, qloc[loc][s] );
 					N[s].push_back(quple, Mtmp);
 				}
 			}
