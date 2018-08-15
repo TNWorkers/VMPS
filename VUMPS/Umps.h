@@ -226,19 +226,6 @@ Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, si
 }
 
 template<typename Symmetry, typename Scalar>
-size_t Umps<Symmetry,Scalar>::
-calc_Dmax() const
-{
-	size_t res = 0;
-	for (size_t l=0; l<this->N_sites; ++l)
-	{
-		if (inbase[l].Dmax()  > res) {res = inbase[l].Dmax();}
-		if (outbase[l].Dmax() > res) {res = outbase[l].Dmax();}
-	}
-	return res;
-}
-
-template<typename Symmetry, typename Scalar>
 double Umps<Symmetry,Scalar>::
 memory (MEMUNIT memunit) const
 {
@@ -251,6 +238,32 @@ memory (MEMUNIT memunit) const
 		{
 			res += A[g][l][s].memory(memunit);
 		}
+	}
+	return res;
+}
+
+template<typename Symmetry, typename Scalar>
+size_t Umps<Symmetry,Scalar>::
+calc_Nqmax() const
+{
+	size_t res = 0;
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		if (inbase[l].Nq()  > res) {res = inbase[l].Nq();}
+		if (outbase[l].Nq() > res) {res = outbase[l].Nq();}
+	}
+	return res;
+}
+
+template<typename Symmetry, typename Scalar>
+size_t Umps<Symmetry,Scalar>::
+calc_Dmax() const
+{
+	size_t res = 0;
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		if (inbase[l].Dmax()  > res) {res = inbase[l].Dmax();}
+		if (outbase[l].Dmax() > res) {res = outbase[l].Dmax();}
 	}
 	return res;
 }
