@@ -22,7 +22,6 @@ Logger lout;
 
 #include "util/LapackManager.h"
 
-//#include "LanczosWrappers.h"
 #include "StringStuff.h"
 #include "Stopwatch.h"
 
@@ -31,24 +30,20 @@ Logger lout;
 
 #include "VUMPS/VumpsSolver.h"
 #include "VUMPS/VumpsLinearAlgebra.h"
-//#include "solvers/DmrgSolver.h"
 #include "models/Heisenberg.h"
 #include "models/HeisenbergU1.h"
 #include "models/HeisenbergU1XXZ.h"
 #include "models/HeisenbergXXZ.h"
 #include "models/HeisenbergSU2.h"
-#include "models/HubbardU1.h"
+#include "models/HubbardU1xU1.h"
 #include "models/Hubbard.h"
 #include "models/HubbardSU2xSU2.h"
+#include "models/HubbardSU2xU1.h"
+#include "models/KondoSU2xU1.h"
+#include "models/KondoU1xU1.h"
 #include "models/KondoU0xSU2.h"
-//#include "models/HeisenbergXXZ.h"
-//#include "models/Hubbard.h"
 
-// integration files not included in git
-//#include "gsl/gsl_integration.h"
-// #include "LiebWu.h"
-
-double Jxy, Jz, J, Jprime, Bx, Bz;
+double Jxy, Jz, J, Jprime, tPrime, Bx, Bz;
 double U, mu;
 double dt;
 double e_exact;
@@ -56,7 +51,7 @@ size_t L, Ly;
 int N;
 size_t M, max_iter;
 double tol_eigval, tol_var;
-bool ISING, HEIS2, HEIS3, HUBB, SSH, ALL;
+bool ISING, HEIS2, HEIS3, SSH, ALL;
 
 // Ising model integrations
 // reference: Pfeuty, Annals of Physics 57, 79-90, 1970
@@ -132,6 +127,7 @@ int main (int argc, char* argv[])
 	Jz = args.get<double>("Jz",1.);
 	J = args.get<double>("J",1.);
 	Jprime = args.get<double>("Jprime",0.);
+	tPrime = args.get<double>("tPrime",0.);
 	Bx = args.get<double>("Bx",1.);
 	Bz = args.get<double>("Bz",0.);
 	U = args.get<double>("U",10.);
@@ -150,23 +146,18 @@ int main (int argc, char* argv[])
 	bool CALC_U1 = args.get<bool>("U1",true);
 	bool CALC_U0 = args.get<bool>("U0",true);
 	bool CALC_HUBB = args.get<bool>("HUBB",false);
+	bool CALC_KOND = args.get<bool>("KOND",false);
 	bool CALC_DOT = args.get<bool>("DOT",false);
-	
-	ISING = args.get<bool>("ISING",true);
-	HEIS2 = args.get<bool>("HEIS2",false);
-	HEIS3 = args.get<bool>("HEIS3",false);
-	HUBB  = args.get<bool>("HUBB",false);
-	SSH   = args.get<bool>("SSH",false);
 	ALL   = args.get<bool>("ALL",false);
 	if (ALL)
 	{
-		ISING = true;
-		HEIS2 = true;
-		HEIS3 = true;
-		HUBB  = true;
-		SSH   = true;
+		CALC_SU2  = true;
+		CALC_U1   = true;
+		CALC_U0   = true;
+		CALC_HUBB = true;
+		CALC_KOND = true;
 	}
-	
+		
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
 	lout << args.info() << endl;
@@ -186,12 +177,12 @@ int main (int argc, char* argv[])
 //	Eigenstate<Umps<Sym::U0,double> > g;
 	
 	typedef VMPS::HeisenbergSU2 HEISENBERG_SU2;
-	HEISENBERG_SU2 Heis_SU2(L,{{"Ly",Ly},{"J",J},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
 
 	HEISENBERG_SU2::uSolver DMRG_SU2(VERB);
 	Eigenstate<HEISENBERG_SU2::StateUd> g_SU2;
 	if (CALC_SU2)
 	{
+		HEISENBERG_SU2 Heis_SU2(L,{{"Ly",Ly},{"J",J},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
 		lout << Heis_SU2.info() << endl;
 		DMRG_SU2.set_algorithm(UMPS_ALG::PARALLEL);
 		DMRG_SU2.set_log(L,"e_Heis_SU2.dat","err_eigval_Heis_SU2.dat","err_var_Heis_SU2.dat");
@@ -226,42 +217,80 @@ int main (int argc, char* argv[])
 			<< endl;
 		}
 	}
-	typedef VMPS::HubbardSU2xSU2 HUBBARD_U1;
-	HUBBARD_U1 Hubb_U1(L,{{"t",1.,0},{"t",1.,1},{"U",U},{"J",0.},{"OPEN_BC",false}});
-	qarray<2> Qc = {1,1};
-	HUBBARD_U1::uSolver DMRG_HUBBU1(VERB);
 
-//		qarray<1> Qc = {1};
-//		Hubb_U1.transform_base(Qc);
+	typedef VMPS::KondoSU2xU1 KONDO;
+	KONDO Kond(L,{{"t",1.},{"tPrime",tPrime},{"U",U},{"J",J},{"OPEN_BC",false}});
+	KONDO::uSolver DMRG_KOND(VERB);
+
+	if (CALC_KOND)
+	{
+		cout << Kond.info() << endl;
+
+		qarray<2> Qc = {1,N};
+		Kond.transform_base(Qc);
+		Eigenstate<KONDO::StateUd> g_U1Kond;
+		DMRG_KOND.set_log(2,"e_Kond.dat","err_eigval_Kond.dat","err_var_Kond.dat");
+		DMRG_KOND.edgeState(Kond, g_U1Kond, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+
+		cout << termcolor::bold << "e0=" << g_U1Kond.energy << termcolor::reset << endl;
+		ArrayXd nvec(L), dvec(L);
+		for (size_t l=0; l<L; ++l)
+		{
+			cout << "l=" << l << endl;
+			
+			nvec(l) = avg(g_U1Kond.state, Kond.n(l), g_U1Kond.state);
+			cout << "n=" << nvec(l) << endl;
+			
+			dvec(l) = avg(g_U1Kond.state, Kond.d(l), g_U1Kond.state);
+			cout << "d=" << dvec(l) << endl;	
+		}
+		cout << "SimpSimp(0,1)=" <<  avg(g_U1Kond.state, Kond.SimpSimp(0,1), g_U1Kond.state) << endl;
+		cout << "SimpSimp(1,0)=" <<  avg(g_U1Kond.state, Kond.SimpSimp(1,0), g_U1Kond.state) << endl;
+		cout << "SimpSimp(1,2)=" <<  avg(g_U1Kond.state, Kond.SimpSimp(1,2), g_U1Kond.state) << endl;
+		cout << "SimpSimp(2,3)=" <<  avg(g_U1Kond.state, Kond.SimpSimp(2,3), g_U1Kond.state) << endl;
+		cout << "SimpSimp(0,2)=" <<  avg(g_U1Kond.state, Kond.SimpSimp(0,2), g_U1Kond.state) << endl;
+
+		// HUBBARD Kond_4(4,{{"t",1.},{"tPrime",tPrime},{"U",U},{"J",J},{"OPEN_BC",false}});
+		// cout << "SimpSimp(0,1)=" <<  avg(g_U1Kond.state, Kond_4.SimpSimp(0,1), g_U1Kond.state) << endl;
+		// cout << "SimpSimp(1,2)=" <<  avg(g_U1Kond.state, Kond_4.SimpSimp(1,2), g_U1Kond.state) << endl;
+		// cout << "SimpSimp(2,3)=" <<  avg(g_U1Kond.state, Kond_4.SimpSimp(2,3), g_U1Kond.state) << endl;
+		// cout << "SimpSimp(0,2)=" <<  avg(g_U1Kond.state, Kond_4.SimpSimp(0,2), g_U1Kond.state) << endl;
+		
+		cout << "navg=" << nvec.sum()/L << endl;
+		cout << "davg=" << dvec.sum()/L << endl;
+	}
+
+	typedef VMPS::HubbardSU2xU1 HUBBARD;
+	HUBBARD Hubb(L,{{"t",1.},{"tPrime",tPrime},{"U",U},{"J",J},{"OPEN_BC",false}});
+	HUBBARD::uSolver DMRG_HUBB(VERB);
+
 	if (CALC_HUBB)
 	{
-		cout << Hubb_U1.info() << endl;
-		Eigenstate<HUBBARD_U1::StateUd> g_U1Hubb;
-		DMRG_HUBBU1.set_log(2,"e_Hubb_U1.dat","err_eigval_Hubb_U1.dat","err_var_Hubb_U1.dat");
-		DMRG_HUBBU1.edgeState(Hubb_U1, g_U1Hubb, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
-//		g_U1Hubb.state.graph("Hubb");
-////		cout << "exact=" << -0.2671549218961211 << endl;
+		cout << Hubb.info() << endl;
+		
+		qarray<2> Qc = {1,N};
+		Hubb.transform_base(Qc);
+		Eigenstate<HUBBARD::StateUd> g_U1Hubb;
+		DMRG_HUBB.set_log(2,"e_Hubb.dat","err_eigval_Hubb.dat","err_var_Hubb.dat");
+		DMRG_HUBB.edgeState(Hubb, g_U1Hubb, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 		double e_exact = VMPS::Hubbard::ref({{"U",U}}).value;
+		cout << "e0=" << g_U1Hubb.energy << endl;
 		cout << "e_exact=" << e_exact << ", diff=" << abs(e_exact-g_U1Hubb.energy) << endl;
+		ArrayXd nvec(L), dvec(L);
+		for (size_t l=0; l<L; ++l)
+		{
+			cout << "l=" << l << endl;
+			
+			nvec(l) = avg(g_U1Hubb.state, Hubb.n(l), g_U1Hubb.state);
+			cout << "n=" << nvec(l) << endl;
+			
+			dvec(l) = avg(g_U1Hubb.state, Hubb.d(l), g_U1Hubb.state);
+			cout << "d=" << dvec(l) << endl;	
+		}
+		
+		cout << "navg=" << nvec.sum()/L << endl;
+		cout << "davg=" << dvec.sum()/L << endl;
 	}
-//		ArrayXd nvec(L), dvec(L), Szvec(L);
-//		for (size_t l=0; l<L; ++l)
-//		{
-//			cout << "l=" << l << endl;
-//			
-//			nvec(l) = avg(g_U1Hubb.state, Hubb_U1.n(l), g_U1Hubb.state);
-//			cout << "n=" << nvec(l) << endl;
-//			
-//			dvec(l) = avg(g_U1Hubb.state, Hubb_U1.d(l), g_U1Hubb.state);
-//			cout << "d=" << dvec(l) << endl;
-//			
-//			Szvec(l) = avg(g_U1Hubb.state, Hubb_U1.Sz(l), g_U1Hubb.state);
-//			cout << "Sz=" << Szvec(l) << endl;
-//		}
-//		cout << "navg=" << nvec.sum()/L << endl;
-//		cout << "davg=" << dvec.sum()/L << endl;
-//		cout << "Szavg=" << Szvec.sum()/L << endl;
-//		cout << "n(0)n(1)=" << avg(g_U1Hubb.state, Hubb_U1.nn<UPDN,UPDN>(0,1), g_U1Hubb.state) << endl;
 	
 	
 	typedef VMPS::HeisenbergXXZ HEISENBERG0;

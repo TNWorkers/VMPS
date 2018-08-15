@@ -462,7 +462,8 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	dW = H.auxdim();
 	
 	// resize Vout
-	Vout.state = Umps<Symmetry,Scalar>(H.locBasis(0), Qtot, N_sites, M, Nqmax);
+	// Vout.state = Umps<Symmetry,Scalar>(H.locBasis(0), Qtot, N_sites, M, Nqmax);
+	Vout.state = Umps<Symmetry,Scalar>(H, Qtot, N_sites, M, Nqmax);
 	Vout.state.N_sv = M;
 	Vout.state.setRandom();
 	for (size_t l=0; l<N_sites; ++l)
@@ -1266,12 +1267,13 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 			if (N_sites == 1 or N_sites != 1)
 			{
 				iteration_parallel(H,Vout);
-				if (err_var < 1.e-2 and (err_eigval >= tol_eigval or err_var >= tol_var)) {expand_basis(2,H,Vout);}
+				if (err_var < 1.e-2 and (err_eigval >= tol_eigval or err_var >= tol_var)
+					and N_iterations%4 == 0 and N_iterations < 80 and N_iterations < max_iterations-1) {expand_basis(2,H,Vout);}
 			}
 			else
 			{
 				iteration_sequential(H,Vout);
-				if (err_var < 1.e-2 and (err_eigval >= tol_eigval or err_var >= tol_var)) {expand_basis(2,H,Vout);}
+				if (err_var < 1.e-2 and (err_eigval >= tol_eigval or err_var >= tol_var) and N_iterations < max_iterations-1) {expand_basis(2,H,Vout);}
 			}
 		}
 		
@@ -1298,6 +1300,11 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		lout << Vout.state.info() << endl;
 		lout << endl;
 	}
+	// for (size_t l=0; l<N_sites; l++)
+	// for (size_t s=0; s<Vout.state.locBasis(l).size(); s++)
+	// {
+	// 	cout << "l=" << l << ", s=" << s << endl << Vout.state.A_at(GAUGE::C,l)[s].print(false) << endl;
+	// }		
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -1392,7 +1399,7 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 	
 		Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc, NL);
 		Vout.state.calc_N(DMRG::DIRECTION::LEFT,  (loc+1)%N_sites, NR);
-	
+
 		// test nullspaces
 // 		vector<bool> A_CHECK(Test.dim);
 // 		vector<double> A_infnorm(Test.dim);
@@ -1490,9 +1497,11 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 			size_t Nret = (Jack.singularValues().array() > Vout.state.eps_svd).count();
 			Nret = min(DeltaD, Nret);
 			cout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
-		
-			U.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixU().leftCols(Nret));
-			Vdag.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixV().adjoint().topRows(Nret));
+			if(Nret > 0)
+			{
+				U.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixU().leftCols(Nret));
+				Vdag.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixV().adjoint().topRows(Nret));
+			}
 		}
 
 		// expand AL

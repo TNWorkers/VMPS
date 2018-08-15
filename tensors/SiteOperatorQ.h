@@ -404,7 +404,7 @@ SiteOperatorQ<Symmetry,MatrixType_> SiteOperatorQ<Symmetry,MatrixType_>::
 outerprod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2, const qType& target )
 {
 	std::array<qType,3> checkIndex = {O1.Q(),O2.Q(),target};
-	assert( Symmetry::validate(checkIndex) and "Operators O1 and O2 cannot get multiplied to a operator with quantum number = target" );
+	assert( Symmetry::validate(checkIndex) and "Operators O1 and O2 cannot get multiplied to an operator with quantum number = target" );
 
 	auto TensorBasis = O1.basis().combine(O2.basis());
 

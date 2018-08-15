@@ -1323,7 +1323,10 @@ transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT)
 		for (size_t i=0; i<qOp[l].size(); ++i)
 		for (size_t q=0; q<Symmetry::Nq; ++q)
 		{
-			qOp[l][i][q] = qOp[l][i][q] * static_cast<int>(qloc.size());
+			if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non Abelian symmetries
+			{
+				qOp[l][i][q] = qOp[l][i][q] * static_cast<int>(qloc.size());
+			}
 		}
 	}
 };

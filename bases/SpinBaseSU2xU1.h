@@ -172,14 +172,14 @@ Id() const
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > SpinBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 HeisenbergHamiltonian (const ArrayXXd &J) const
 {
-	Operator Mout({1},TensorBasis);
+	Operator Mout({1,0},TensorBasis);
 	
 	for (int i=0; i<N_orbitals; ++i)
 	for (int j=0; j<i; ++j)
 	{
 		if (J(i,j) != 0.)
 		{
-			Mout += J(i,j)*std::sqrt(3) * Operator::prod(Sdag(i),S(j),{1});
+			Mout += J(i,j)*std::sqrt(3) * Operator::prod(Sdag(i),S(j),{1,0});
 		}
 	}
 	

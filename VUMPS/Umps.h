@@ -212,7 +212,6 @@ Umps (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, 
 {
 	qloc = H.locBasis();
 	resize(Dmax,Nqmax);
-	::transform_base<Symmetry>(qloc,Qtot); // from DmrgExternal.h
 }
 
 template<typename Symmetry, typename Scalar>
