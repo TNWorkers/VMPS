@@ -196,8 +196,8 @@ info() const
 	{
 		ss << "full=" << calc_fullMmax() << ", ";
 	}
-	ss << "Dmax=" << Dmax << "), ";
-	ss << "Nqmax=" << Nqmax << ", ";
+	ss << "Dmax=" << calc_Dmax() << "), ";
+	ss << "Nqmax=" << calc_Nqmax() << ", ";
 	ss << "S=(" << S.transpose() << "), ";
 	ss << "mem=" << round(memory(GB),3) << "GB";
 	
