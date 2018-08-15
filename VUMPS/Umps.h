@@ -101,17 +101,35 @@ public:
 	
 	/**Calculates the left and right decomposition error as \f$\epsilon_L=\big|A_C-A_LC\big|^2\f$ and \f$\epsilon_R=\big|A_C-CA_R\big|^2\f$ (eq. (18)).*/
 	Scalar calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const;
+
 	
-	/**Calculates the appropriate bond dimension.*/
-	size_t calc_Dmax() const;
+	/**
+	 * Determines the maximal bond dimension per site (sum of \p A.rows or \p A.cols over all subspaces).
+	 */
 	size_t calc_Mmax() const;
+	
+	/**
+	 * For SU(2) symmetries, determines the equivalent U(1) bond dimension.
+	 */
 	size_t calc_fullMmax() const;
+	
+	/**
+	 * Determines the maximal amount of rows or columns per site and per subspace.
+	 */
+	size_t calc_Dmax() const;
+	
+	/**
+	 * Determines the maximal amount of subspaces per site.
+	 */
+	size_t calc_Nqmax() const;
 	
 	/**\describe_memory*/
 	double memory (MEMUNIT memunit) const;
 	
-	/**Calculates the scalar product with another Umps by finding the dominant eigenvalue of the transfer matrix. 
-	See arXiv:0804.2509 and Phys. Rev. B 78, 155117.*/
+	/**
+	 * Calculates the scalar product with another Umps by finding the dominant eigenvalue of the transfer matrix. 
+	 * See arXiv:0804.2509 and Phys. Rev. B 78, 155117.
+	 */
 	double dot (const Umps<Symmetry,Scalar> &Vket) const;
 	
 	/**Returns \f$A_L\f$, \f$A_R\f$ or \f$A_C\f$ at site \p loc as const ref.*/
