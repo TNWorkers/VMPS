@@ -661,7 +661,6 @@ test_ortho (double tol) const
 		{
 			Test += A[GAUGE::L][l][s].adjoint().contract(A[GAUGE::L][l][s]);
 		}
-		
 		vector<bool> A_CHECK(Test.dim);
 		vector<double> A_infnorm(Test.dim);
 		for (size_t q=0; q<Test.dim; ++q)
@@ -771,6 +770,7 @@ test_ortho (double tol) const
 		}
 		else
 		{
+			assert(1!=1 and "AL is wrong");
 			sout << TCOLOR(GREEN);
 			sout << normal_token[2]; // M
 		}
@@ -782,6 +782,7 @@ test_ortho (double tol) const
 		}
 		else
 		{
+			assert(1!=1 and "AR is wrong");
 			sout << TCOLOR(GREEN);
 			sout << normal_token[2]; // M
 		}
@@ -1407,8 +1408,8 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 			for (const auto &qfull:qfulls)
 			{
 				qarray2<Symmetry::Nq> quple = {qfull,outbase[loc][qout]};
-				auto it = N[s].dict.find(quple);
-				if (it == N[s].dict.end())
+				auto it = A[GAUGE::R][loc][s].dict.find(quple);
+				if (it == A[GAUGE::R][loc][s].dict.end())
 				{
 					MatrixType Mtmp(qcomb.inner_dim(qfull), outbase[loc].inner_dim(outbase[loc][qout]));
 					Mtmp.setIdentity();
@@ -1420,7 +1421,7 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 	}
 	else if (DIR == DMRG::DIRECTION::RIGHT)
 	{
-		for (size_t qout=0; qout<outbase[loc].size(); ++qout)
+		for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
 		{
 			// determine how many A's to glue together
 			vector<size_t> svec, qvec, Nrowsvec;
@@ -1480,8 +1481,8 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 			for (const auto &qfull:qfulls)
 			{
 				qarray2<Symmetry::Nq> quple = {inbase[loc][qin], qfull};
-				auto it = N[s].dict.find(quple);
-				if (it == N[s].dict.end())
+				auto it = A[GAUGE::L][loc][s].dict.find(quple);
+				if (it == A[GAUGE::L][loc][s].dict.end())
 				{
 					MatrixType Mtmp(inbase[loc].inner_dim(inbase[loc][qin]), qcomb.inner_dim(qfull));
 					Mtmp.setIdentity();

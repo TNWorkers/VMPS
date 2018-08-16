@@ -470,7 +470,6 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	{
 		Vout.state.svdDecompose(l);
 	}
-	cout << Vout.state.test_ortho() << endl;
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
 	// initial energy
@@ -1264,7 +1263,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		}
 		else // dynamical choice: L=1 parallel, L>1 sequential
 		{
-			if (N_sites == 1 or N_sites != 1)
+			if (N_sites == 1)
 			{
 				iteration_parallel(H,Vout);
 				if (err_var < 1.e-2 and (err_eigval >= tol_eigval or err_var >= tol_var)
@@ -1273,7 +1272,8 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 			else
 			{
 				iteration_sequential(H,Vout);
-				if (err_var < 1.e-2 and (err_eigval >= tol_eigval or err_var >= tol_var) and N_iterations < max_iterations-1) {expand_basis(2,H,Vout);}
+				if (err_var < 1.e-2 and (err_eigval >= tol_eigval or err_var >= tol_var)
+					and N_iterations%10 == 0 and N_iterations < 80 and N_iterations < max_iterations-1) {expand_basis(2,H,Vout);}
 			}
 		}
 		
@@ -1386,55 +1386,42 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 {
-//	size_t loc = 0;
-	// Umps<Symmetry,Scalar> Vref = Vout.state;
+	//Save a reference of AL for computing the two-site A-matrix at different sites without using partially updated A-Matrices.
+	//Check: Is this correct or should we use always the updated versions of AL. If so, should we also use updated AC or C*AR respectively?
 	vector<vector<Biped<Symmetry,MatrixType> > > AL_ref = Vout.state.A[GAUGE::L];
+	
 	for(size_t loc=0; loc<N_sites; loc++)
 	{
-		cout << "expansion: AL at site loc=" << loc << ", outleg. --> need to update inleg of AL at loc=" << (loc+1)%N_sites << endl;
-		cout << "expansion: AR at site (loc+1)%N_sites=" << (loc+1)%N_sites << ", inleg. --> need to update outeg of AR at loc=" << loc << endl;
+		// cout << "expansion: AL at site loc=" << loc << ", outleg. --> need to update inleg of AL at loc=" << (loc+1)%N_sites << endl;
+		// cout << "expansion: AR at site (loc+1)%N_sites=" << (loc+1)%N_sites << ", inleg. --> need to update outeg of AR at loc=" << loc << endl;
 		// calculate nullspaces
 		vector<Biped<Symmetry,MatrixType> > NL;
 		vector<Biped<Symmetry,MatrixType> > NR;
-	
-		Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc, NL);
+		
+		Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc,             NL);
 		Vout.state.calc_N(DMRG::DIRECTION::LEFT,  (loc+1)%N_sites, NR);
-
+		
 		// test nullspaces
-// 		vector<bool> A_CHECK(Test.dim);
-// 		vector<double> A_infnorm(Test.dim);
-// 		for (size_t q=0; q<Test.dim; ++q)
-// 		{
-// 			Test.block[q] -= MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
-// 			A_CHECK[q]     = Test.block[q].norm()<1.e-7 ? true : false;
-// 			A_infnorm[q]   = Test.block[q].norm();
-// //			cout << "q=" << Test.in[q] << ", A_infnorm[q]=" << A_infnorm[q] << endl;
-// 		}
-// 		if (!all_of(A_CHECK.begin(),A_CHECK.end(),[](bool x){return x;})) {cout << termcolor::red << termcolor::bold << "Error" << termcolor::reset << endl;}
-
 		// Biped<Symmetry,MatrixType> TestL = NL[0].adjoint().contract(Vout.state.A[GAUGE::L][loc][0]);
-		// Biped<Symmetry,MatrixType> TestR = Vout.state.A[GAUGE::R][(loc+1)%N_sites][0].contract(NR[0].adjoint());
-
-		// for (size_t s=1; s<Vout.state.qloc[(loc+1)%N_sites].size(); ++s)
-		// {
-		// 	TestL += NL[s].adjoint().contract(Vout.state.A[GAUGE::L][(loc+1)%N_sites][s]);
-		// }
+		// Biped<Symmetry,MatrixType> TestR = Vout.state.A[GAUGE::R][(loc+1)%N_sites][0].contract(NR[0].adjoint(), contract::MODE::OORR);
+		
 		// for (size_t s=1; s<Vout.state.qloc[loc].size(); ++s)
 		// {
-		// 	TestR += Vout.state.A[GAUGE::R][loc][s].contract(NR[s].adjoint());
+		// 	TestL += NL[s].adjoint().contract(Vout.state.A[GAUGE::L][loc][s]);
 		// }
-	
+		// for (size_t s=1; s<Vout.state.qloc[(loc+1)%N_sites].size(); ++s)
+		// {
+		// 	TestR += Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].contract(NR[s].adjoint(), contract::MODE::OORR);
+		// }
+		
 		// for (size_t q=0; q<TestL.dim; ++q)
 		// {
-		// 	cout << "q=" << q << ", TestLR.block[q].norm()=\t" << TestR.block[q].norm() << "\t" << TestL.block[q].norm() << endl;
+		// 	cout << "q=" << TestR.in[q] << "," << TestL.in[q] << ", TestLR.block[q].norm()=\t" << TestR.block[q].norm() << "\t" << TestL.block[q].norm() << endl;
 		// }
-	
+		
 		// calculate A2C'
 		PivotMatrix2<Symmetry,Scalar> H2(HeffA[loc].L, HeffA[(loc+1)%N_sites].R, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, 
 										 H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites));
-		// PivotVector<Symmetry,Scalar> A2C(Vout.state.A[GAUGE::L][loc], H.locBasis(loc), 
-		// 								 Vout.state.A[GAUGE::C][(loc+1)%N_sites], H.locBasis((loc+1)%N_sites), 
-		// 								 Vout.state.Qtop(loc), Vout.state.Qbot((loc+1)%N_sites));
 		PivotVector<Symmetry,Scalar> A2C(AL_ref[loc], H.locBasis(loc), 
 										 Vout.state.A[GAUGE::C][(loc+1)%N_sites], H.locBasis((loc+1)%N_sites), 
 										 Vout.state.Qtop(loc), Vout.state.Qbot((loc+1)%N_sites));
@@ -1449,7 +1436,7 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 		qbasis_tmp[1] = H.locBasis((loc+1)%N_sites);
 		Mps<Symmetry,Scalar> Vtmp(2, qbasis_tmp, Symmetry::qvacuum(), 2, Vout.state.Nqmax);
 	
-		Vtmp.A[0] = AL_ref[loc]; //Vout.state.A[GAUGE::L][loc];
+		Vtmp.A[0] = AL_ref[loc];
 		Vtmp.A[1] = Vout.state.A[GAUGE::C][(loc+1)%N_sites];
 	
 		Vtmp.QinTop[0] = Vout.state.Qtop(loc);
@@ -1479,9 +1466,12 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 		contract_R(IdR, NR, Vtmp.A[1], H.locBasis((loc+1)%N_sites), TR);
 
 		Biped<Symmetry,MatrixType> NAAN = TL.contract(TR);
-	
-		cout << "norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
-	
+
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+		{
+			cout << "norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
+		}
+		
 		// SVD-decompose NAAN
 		Biped<Symmetry,MatrixType> U, Vdag;
 		for (size_t q=0; q<NAAN.dim; ++q)
@@ -1496,7 +1486,10 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 		
 			size_t Nret = (Jack.singularValues().array() > Vout.state.eps_svd).count();
 			Nret = min(DeltaD, Nret);
-			cout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+			{
+				cout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
+			}
 			if(Nret > 0)
 			{
 				U.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixU().leftCols(Nret));
@@ -1526,7 +1519,7 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 				Vout.state.A[GAUGE::L][loc][s].push_back(quple, P[s].block[qP]);
 			}
 		}
-
+		
 		// update the inleg from AL at site (loc+1)%N_sites with zeros
 		Qbasis<Symmetry> ExpandedBasis;
 		ExpandedBasis.pullData(P,1);
@@ -1561,6 +1554,7 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 		}
 
 		// update the left environment from AL if it is used for the next site
+		// This step would be necessary, if we don't use a copy of AL for computing the two-site A-tensor. See begin of this function.
 		// if (loc < N_sites-1)
 		// {
 		// 	cout << termcolor::red << "update left environment" << termcolor::reset << endl;
@@ -1666,27 +1660,6 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 			Vout.state.A[GAUGE::R][(loc+1)%N_sites][s] = Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].sorted();
 		}
 		Vout.state.C[loc] = Vout.state.C[loc].sorted();
-
-		// cout << "AR" << endl;
-		// for(size_t s=0; s<Vout.state.locBasis(0).size(); s++)
-		// {
-		// 	cout << "s=" << s << endl << Vout.state.A_at(GAUGE::R,0)[s].print(false) << endl;
-		// }
-
-		// cout << "AL at loc" << endl;
-		// for(size_t s=0; s<Vout.state.locBasis(loc).size(); s++)
-		// {
-		// 	cout << "s=" << s << endl << Vout.state.A_at(GAUGE::L,0)[s].print(false) << endl;
-		// }
-
-		// cout << "AL at (loc+1)%N_sites" << endl;
-		// for(size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); s++)
-		// {
-		// 	cout << "s=" << s << endl << Vout.state.A_at(GAUGE::L,(loc+1)%N_sites)[s].print(false) << endl;
-		// }
-
-		// cout << "C" << endl;
-		// cout << Vout.state.C[0].print(false) << endl;
 	}
 
 	for(size_t l=0; l<N_sites; l++)
@@ -1712,5 +1685,4 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 	Vout.state.update_inbase();
 	Vout.state.update_outbase();
 }
-
 #endif

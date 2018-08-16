@@ -1700,8 +1700,8 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		enrich_right(loc,H);
 	}
 	
-	ArrayXd truncWeightSub(outbase[loc].size()); truncWeightSub.setZero();
-	ArrayXd entropySub(outbase[loc].size()); entropySub.setZero();
+	ArrayXd truncWeightSub(outbase[loc].Nq()); truncWeightSub.setZero();
+	ArrayXd entropySub(outbase[loc].Nq()); entropySub.setZero();
 	
 	vector<Biped<Symmetry,MatrixType> > Aloc(qloc[loc].size());
 	vector<Biped<Symmetry,MatrixType> > Anext; 
@@ -1947,7 +1947,7 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixTyp
 	}
 	else if (DIR == DMRG::DIRECTION::RIGHT)
 	{
-		for (size_t qout=0; qout<outbase[loc].size(); ++qout)
+		for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
 		{
 			// determine how many A's to glue together
 			vector<size_t> svec, qvec, Nrowsvec;
