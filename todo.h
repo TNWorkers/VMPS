@@ -1,10 +1,5 @@
 namespace Project{
 /**
-\todo - VmpsSolver::expand_basis für Einheitszellen ist in einer ersten Version implementiert. Diese muss aber noch überdacht werden.
-        Wie berechnet man den Zweiplatz-MPS: 
-		-# AL[i] * AC[i+1] <- Problem: AL wird während des Prozesses verändert, AC nicht.
-		-# AL[i] * C[i]AR[i+1] <- Hier sind alle drei objekte beteiligt die verändert werden. <- Problem: Umgebungen währenddessen updaten?
-
 \todo - effizienter Lanczos-Fehler, damit ein Ausgang bei jedem Schritt möglich ist
 
 \todo - fehlende Blöcke in Mps::calc_N genau wie in Umps::calc_N (ist das überhaupt nötig?)
@@ -20,7 +15,10 @@ namespace Project{
 #define MPS_PROJECT
 
 /**
-\todo - VmpsSolver::expand_basis für Einheitszellen
+\todo - VmpsSolver::expand_basis für Einheitszellen ist implementiert. Folgende Frage ist aber offen:
+        Wie berechnet man den Zweiplatz-A-Tensor: 
+		-# AL[i] * AC[i+1] <- Problem: AL wird während des Prozesses verändert, AC nicht.
+		-# AL[i] * C[i]AR[i+1] <- Hier sind alle drei objekte beteiligt die verändert werden. <- Problem: Umgebungen währenddessen updaten?
 
 \todo - Rücktransformation der Basis und bessere print-Anzeige der transformierten Basis mit boost::rational
 */

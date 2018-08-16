@@ -168,14 +168,7 @@ int main (int argc, char* argv[])
 	#else
 	lout << "not parallelized" << endl;
 	#endif
-	
-//	typedef VMPS::Heisenberg    HEISENBERG;
-//	typedef VMPS::HeisenbergXXZ XXZ;
-//	typedef VMPS::Hubbard       HUBBARD;
-//	HEISENBERG::uSolver DMRG(VERB);
-//	HUBBARD::uSolver DMRG_HUBB(VERB);
-//	Eigenstate<Umps<Sym::U0,double> > g;
-	
+		
 	typedef VMPS::HeisenbergSU2 HEISENBERG_SU2;
 
 	HEISENBERG_SU2::uSolver DMRG_SU2(VERB);
@@ -184,7 +177,7 @@ int main (int argc, char* argv[])
 	{
 		HEISENBERG_SU2 Heis_SU2(L,{{"Ly",Ly},{"J",J},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
 		lout << Heis_SU2.info() << endl;
-		DMRG_SU2.set_algorithm(UMPS_ALG::PARALLEL);
+		// DMRG_SU2.set_algorithm(UMPS_ALG::PARALLEL);
 		DMRG_SU2.set_log(L,"e_Heis_SU2.dat","err_eigval_Heis_SU2.dat","err_var_Heis_SU2.dat");
 		DMRG_SU2.edgeState(Heis_SU2, g_SU2, {1}, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 	}
