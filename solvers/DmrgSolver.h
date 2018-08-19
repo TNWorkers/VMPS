@@ -765,7 +765,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
 		Vout.state.eps_svd = DynParam.eps_svd(j);
 		if (j%DynParam.Dincr_per(j) == 0 and 
-		    (totalTruncWeight >= Vout.state.eps_svd or err_state > 1e2*GlobParam.tol_state))
+		    (totalTruncWeight >= Vout.state.eps_svd or err_state > 10.*GlobParam.tol_state))
 		{
 			// increase by Dincr_abs, but by no more than Dincr_rel (e.g. 10%)
 			size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Dincr_rel(j) * Vout.state.max_Nsv), 

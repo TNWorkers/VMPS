@@ -2,6 +2,7 @@
 #define STRAWBERRY_BIPED
 
 #include <unordered_map>
+#include <unordered_set>
 
 #include "macros.h"
 #include "PolychromaticConsole.h" // from HELPERS
@@ -142,7 +143,12 @@ public:
 	 * \p in \f$\to\f$ \p out and vice versa.
 	 */
 	Biped<Symmetry,MatrixType_> adjoint() const;
-	
+
+	/**
+	 * Transforms in and out.
+	 */
+	Biped<Symmetry,MatrixType_> transform_base (const size_t number_cells);
+
 	/**
 	 * Adds another tensor to the current one. 
 	 * If quantum numbers match, the block is updated (block rows and columns must match), otherwise a new block is created.
@@ -477,6 +483,24 @@ adjoint() const
 		Aout.block[q] = block[q].adjoint();
 	}
 	
+	return Aout;
+}
+
+template<typename Symmetry, typename MatrixType_>
+Biped<Symmetry,MatrixType_> Biped<Symmetry,MatrixType_>::
+transform_base (const size_t number_cells)
+{
+	Biped<Symmetry,MatrixType_> Aout;
+	Aout.dim = dim;
+	Aout.block = block;
+	Aout.in.resize(dim);
+	Aout.out.resize(dim);
+	for (std::size_t q=0; q<dim; ++q)
+	{
+		Aout.in[q] = ::retransform<Symmetry>(in[q],number_cells);
+		Aout.out[q] = ::retransform<Symmetry>(out[q],number_cells);
+		Aout.dict.insert({{Aout.in[q],Aout.out[q]},q});
+	}
 	return Aout;
 }
 

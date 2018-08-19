@@ -150,8 +150,13 @@ public:
 	void calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixType> > &N);
 	
 	void truncate();
-	
-private:
+
+	/**
+	 * Transforms the local base and the A-matrices.
+	 */
+	void retransform (const size_t number_cells);
+
+//private:
 	
 	/**parameter*/
 	size_t N_sites;
@@ -430,7 +435,7 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 			vector<qarray<Symmetry::Nq> > qinvec(qinset[l].size());
 			copy(qinset[l].begin(), qinset[l].end(), qinvec.begin());
 			
-			auto tmp = Symmetry::reduceSilent(qinvec, qloc[l]);
+			auto tmp = Symmetry::reduceSilent(qinvec, qloc[l], true);
 			tmp = take_first_elems(tmp);
 			for (const auto &t:tmp)
 			{
@@ -1492,6 +1497,28 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 		}
 	}
 }
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+retransform (const size_t number_cells)
+{
+	//transform quantum number in all Bipeds
+	for (size_t g=0; g<3; ++g)
+	for (size_t l=0; l<N_sites; ++l)
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	{
+		A[g][l][s] = A[g][l][s].transform_base(number_cells);
+	}
+
+	//transform physical quantum numbers
+	for (size_t l=0; l<N_sites; ++l)
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	{
+		qloc[l][s] = ::retransform<Symmetry>(qloc[l][s],number_cells);
+	}
+	update_inbase();
+	update_outbase();
+};
 
 //template<typename Symmetry, typename Scalar>
 //void Umps<Symmetry,Scalar>::

@@ -1,11 +1,11 @@
-#define DONT_USE_LAPACK_SVD
-#define DONT_USE_LAPACK_QR
-//#define USE_HDF5_STORAGE
-//#define EIGEN_USE_THREADS
+#ifdef BLAS
+#include "util/LapackManager.h"
+#pragma message("LapackManager")
+#endif
 
 // with Eigen:
 #define DMRG_DONT_USE_OPENMP
-//#define MPSQCOMPRESSOR_DONT_USE_OPENMP
+#define MPSQCOMPRESSOR_DONT_USE_OPENMP
 
 // with own parallelization:
 //#define EIGEN_DONT_PARALLELIZE
@@ -26,6 +26,7 @@ using namespace std;
 Logger lout;
 #include "ArgParser.h"
 
+#include "DmrgTypedefs.h"
 #include "solvers/DmrgSolver.h"
 
 #include "models/KondoU1xU1.h"
@@ -89,6 +90,7 @@ int main (int argc, char* argv[])
 	
 	J = args.get<double>("J",1.);
 	t = args.get<double>("t",1.);
+	double tRung = args.get<double>("tRung",1.);
 	tPrime = args.get<double>("tPrime",0.);
 	U = args.get<double>("U",0.);
 	Bx = args.get<double>("Bx",0.);
@@ -148,18 +150,20 @@ int main (int argc, char* argv[])
 	#else
 	lout << "not parallelized" << endl;
 	#endif
-	
+	ArrayXXd tPara(2,2); tPara.setZero(); tPara(0,0)=t; tPara(1,1)=t;
 	vector<Param> params;
 	params.push_back({"Ly",Ly});
 	params.push_back({"J",J});
-	params.push_back({"t",t});
-	params.push_back({"tPrime",tPrime});
+	// params.push_back({"t",t});
+	params.push_back({"tRung",tRung});
+	params.push_back({"tPara",tPara});
+	// params.push_back({"tPrime",tPrime});
 	params.push_back({"U",U});
 	//params.push_back({"Bz",Bz,0});
 	//params.push_back({"Bx",Bx,0});
-	params.push_back({"D",2ul,0});
-	params.push_back({"D",1ul,1});
-	params.push_back({"CALC_SQUARE",true});
+	params.push_back({"D",2ul});
+	// params.push_back({"D",1ul,1});
+	// params.push_back({"CALC_SQUARE",true});
 	
 //	for (size_t l=1; l<L; ++l)
 //	{
@@ -219,8 +223,8 @@ int main (int argc, char* argv[])
 			n_U1xU1.resize(L); n_U1xU1.setZero();
 			for (size_t i=0; i<L; i++)
 			{
-				d_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.d(i), g_U1xU1.state);
-				n_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.n(i), g_U1xU1.state);
+				// d_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.d(i), g_U1xU1.state);
+				// n_U1xU1(i) = avg(g_U1xU1.state, H_U1xU1.n(i), g_U1xU1.state);
 			}
 			
 			SpinCorr_U1xU1.resize(L,L);
@@ -228,7 +232,7 @@ int main (int argc, char* argv[])
 			for (size_t i=0; i<L; i++)
 			for (size_t j=0; j<L; j++)
 			{
-				SpinCorr_U1xU1(i,j) = 3.*avg(g_U1xU1.state, H_U1xU1.SimpSsub(SZ,SZ,i,j), g_U1xU1.state);
+				// SpinCorr_U1xU1(i,j) = 3.*avg(g_U1xU1.state, H_U1xU1.SimpSsub(SZ,SZ,i,j), g_U1xU1.state);
 			}
 			
 			nCorr_U1xU1.resize(L,L);
@@ -236,7 +240,7 @@ int main (int argc, char* argv[])
 			for (size_t i=0; i<L; i++)
 			for (size_t j=0; j<L; j++)
 			{
-				nCorr_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.nn(i,j), g_U1xU1.state);
+// 				nCorr_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.nn(i,j), g_U1xU1.state);
 			}
 			
 			densityMatrixA_U1xU1.resize(L,L);
@@ -244,8 +248,8 @@ int main (int argc, char* argv[])
 			for (size_t i=0; i<L; i++)
 			for (size_t j=0; j<L; j++)
 			{
-				densityMatrixA_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdagc<UP>(i,j), g_U1xU1.state)+
-				                            avg(g_U1xU1.state, H_U1xU1.cdagc<DN>(i,j), g_U1xU1.state);
+				// densityMatrixA_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdagc<UP>(i,j), g_U1xU1.state)+
+				//                             avg(g_U1xU1.state, H_U1xU1.cdagc<DN>(i,j), g_U1xU1.state);
 			}
 			
 			densityMatrixB_U1xU1.resize(L,L);
@@ -253,8 +257,8 @@ int main (int argc, char* argv[])
 			for (size_t i=0; i<L; i++)
 			for (size_t j=0; j<L; j++)
 			{
-				densityMatrixB_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdag<UP>(i), H_U1xU1.c<UP>(j), g_U1xU1.state)
-					                      + avg(g_U1xU1.state, H_U1xU1.cdag<DN>(i), H_U1xU1.c<DN>(j), g_U1xU1.state);
+				// densityMatrixB_U1xU1(i,j) = avg(g_U1xU1.state, H_U1xU1.cdag<UP>(i), H_U1xU1.c<UP>(j), g_U1xU1.state)
+				// 	                      + avg(g_U1xU1.state, H_U1xU1.cdag<DN>(i), H_U1xU1.c<DN>(j), g_U1xU1.state);
 			}
 			
 			if (SINGLE_OP)
@@ -321,6 +325,7 @@ int main (int argc, char* argv[])
 		
 		if (CORR)
 		{
+			cout << "corr" << endl;
 			d_SU2xU1.resize(L); d_SU2xU1.setZero();
 			n_SU2xU1.resize(L); n_SU2xU1.setZero();
 			for (size_t i=0; i<L; i++)
@@ -334,68 +339,69 @@ int main (int argc, char* argv[])
 			for (size_t i=0; i<L; i++)
 			for (size_t j=0; j<L; j++)
 			{
-				SpinCorr_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.SimpSsub(i,j), g_SU2xU1.state);
+				SpinCorr_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.SimpSimp(i,j), g_SU2xU1.state);
 			}
+			cout << "corr" << endl;
 			
-			nCorr_SU2xU1.resize(L,L);
-			nCorr_SU2xU1.setZero();
-			for (size_t i=0; i<L; i++)
-			for (size_t j=0; j<L; j++)
-			{
-				nCorr_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.nn(i,j), g_SU2xU1.state);
-			}
+			// nCorr_SU2xU1.resize(L,L);
+			// nCorr_SU2xU1.setZero();
+			// for (size_t i=0; i<L; i++)
+			// for (size_t j=0; j<L; j++)
+			// {
+			// 	nCorr_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.nn(i,j), g_SU2xU1.state);
+			// }
 			
-			densityMatrixA_SU2xU1.resize(L,L);
-			densityMatrixA_SU2xU1.setZero();
-			for (size_t i=0; i<L; i++)
-			for (size_t j=0; j<L; j++)
-			{
-				densityMatrixA_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdagc(i,j), g_SU2xU1.state);
-			}
+			// densityMatrixA_SU2xU1.resize(L,L);
+			// densityMatrixA_SU2xU1.setZero();
+			// for (size_t i=0; i<L; i++)
+			// for (size_t j=0; j<L; j++)
+			// {
+			// 	densityMatrixA_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdagc(i,j), g_SU2xU1.state);
+			// }
 			
-			densityMatrixB_SU2xU1.resize(L,L);
-			densityMatrixB_SU2xU1.setZero();
-			for (size_t i=0; i<L; i++)
-			for (size_t j=0; j<L; j++)
-			{
-				densityMatrixB_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdag(i,0,sqrt(2.)), H_SU2xU1.c(j,0,1.), g_SU2xU1.state);
-			}
+			// densityMatrixB_SU2xU1.resize(L,L);
+			// densityMatrixB_SU2xU1.setZero();
+			// for (size_t i=0; i<L; i++)
+			// for (size_t j=0; j<L; j++)
+			// {
+			// 	densityMatrixB_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdag(i,0,sqrt(2.)), H_SU2xU1.c(j,0,1.), g_SU2xU1.state);
+			// }
 			
-			if (SINGLE_OP)
-			{
-				auto SingleOp = [&H_SU2xU1, factor](size_t i) -> Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,double>
-				{
-					if (OP=="Simp") {return H_SU2xU1.Simp(i,0,factor);}
-					if (OP=="Ssub") {return H_SU2xU1.Ssub(i,0,factor);}
-					if (OP=="cUP" or OP == "cDN") {return H_SU2xU1.c(i,0,factor);}
-				};
-				auto SingleOp_dag = [&H_SU2xU1, factor](size_t i) -> Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,double>
-				{
-					if (OP=="Simp") {return H_SU2xU1.Simpdag(i,0,factor);}
-					if (OP=="Ssub") {return H_SU2xU1.Ssubdag(i,0,factor);}
-					if (OP=="cUP" or OP == "cDN") {return H_SU2xU1.cdag(i,0,factor);}
-				};
+			// if (SINGLE_OP)
+			// {
+			// 	auto SingleOp = [&H_SU2xU1, factor](size_t i) -> Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,double>
+			// 	{
+			// 		if (OP=="Simp") {return H_SU2xU1.Simp(i,0,factor);}
+			// 		if (OP=="Ssub") {return H_SU2xU1.Ssub(i,0,factor);}
+			// 		if (OP=="cUP" or OP == "cDN") {return H_SU2xU1.c(i,0,factor);}
+			// 	};
+			// 	auto SingleOp_dag = [&H_SU2xU1, factor](size_t i) -> Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,double>
+			// 	{
+			// 		if (OP=="Simp") {return H_SU2xU1.Simpdag(i,0,factor);}
+			// 		if (OP=="Ssub") {return H_SU2xU1.Ssubdag(i,0,factor);}
+			// 		if (OP=="cUP" or OP == "cDN") {return H_SU2xU1.cdag(i,0,factor);}
+			// 	};
 				
-				if(OP == "Simp" or OP == "Ssub") { Qc_SU2xU1 = {S+2,N}; }
-				else if (OP == "cUP" or OP == "cDN") { Qc_SU2xU1 = {S+1,N-1}; }
+			// 	if(OP == "Simp" or OP == "Ssub") { Qc_SU2xU1 = {S+2,N}; }
+			// 	else if (OP == "cUP" or OP == "cDN") { Qc_SU2xU1 = {S+1,N-1}; }
 				
-				VMPS::KondoSU2xU1::Solver DMRG_SU2xU1_(DMRG::VERBOSITY::SILENT);
-				Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1_;
-				DMRG_SU2xU1_.edgeState(H_SU2xU1, g_SU2xU1_, Qc_SU2xU1, LANCZOS::EDGE::GROUND);
-				expS_SU2xU1.resize(L);
-				expSdag_SU2xU1.resize(L);
-				for (size_t i=0; i<L; i++)
-				{
-					expS_SU2xU1(i) = avg(g_SU2xU1_.state, SingleOp(i), g_SU2xU1.state);
-					expSdag_SU2xU1(i) = avg(g_SU2xU1.state, SingleOp_dag(i), g_SU2xU1_.state);
-				}
-				// VMPS::KondoSU2xU1::StateXd ket;
-				// MpsCompressor<VMPS::KondoSU2xU1::Symmetry,double,double> Compadre(DMRG::VERBOSITY::SILENT);
-				// Compadre.prodCompress(H_SU2xU1.Simp(0,0,1.), H_SU2xU1.Simpdag(0,0,sqrt(3.)), g_SU2xU1.state, ket, Qc_SU2xU1, g_SU2xU1.state.calc_Dmax());
-				// VMPS::KondoSU2xU1::StateXd bra;;
-				// Compadre.prodCompress(H_SU2xU1.Simpdag(1,0,1.), H_SU2xU1.Simp(1,0,sqrt(3.)), g_SU2xU1.state, bra, Qc_SU2xU1, g_SU2xU1.state.calc_Dmax());
-				// cout << "check=" << ket.dot(bra) << "=" << avg(g_SU2xU1.state,H_SU2xU1.SimpSimp(1,0),g_SU2xU1.state) << endl;
-			}
+			// 	VMPS::KondoSU2xU1::Solver DMRG_SU2xU1_(DMRG::VERBOSITY::SILENT);
+			// 	Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1_;
+			// 	DMRG_SU2xU1_.edgeState(H_SU2xU1, g_SU2xU1_, Qc_SU2xU1, LANCZOS::EDGE::GROUND);
+			// 	expS_SU2xU1.resize(L);
+			// 	expSdag_SU2xU1.resize(L);
+			// 	for (size_t i=0; i<L; i++)
+			// 	{
+			// 		expS_SU2xU1(i) = avg(g_SU2xU1_.state, SingleOp(i), g_SU2xU1.state);
+			// 		expSdag_SU2xU1(i) = avg(g_SU2xU1.state, SingleOp_dag(i), g_SU2xU1_.state);
+			// 	}
+			// 	// VMPS::KondoSU2xU1::StateXd ket;
+			// 	// MpsCompressor<VMPS::KondoSU2xU1::Symmetry,double,double> Compadre(DMRG::VERBOSITY::SILENT);
+			// 	// Compadre.prodCompress(H_SU2xU1.Simp(0,0,1.), H_SU2xU1.Simpdag(0,0,sqrt(3.)), g_SU2xU1.state, ket, Qc_SU2xU1, g_SU2xU1.state.calc_Dmax());
+			// 	// VMPS::KondoSU2xU1::StateXd bra;;
+			// 	// Compadre.prodCompress(H_SU2xU1.Simpdag(1,0,1.), H_SU2xU1.Simp(1,0,sqrt(3.)), g_SU2xU1.state, bra, Qc_SU2xU1, g_SU2xU1.state.calc_Dmax());
+			// 	// cout << "check=" << ket.dot(bra) << "=" << avg(g_SU2xU1.state,H_SU2xU1.SimpSimp(1,0),g_SU2xU1.state) << endl;
+			// }
 		}
 	}
 	// --------U(0)xSU(2)---------
@@ -421,29 +427,29 @@ int main (int argc, char* argv[])
 	{
 		lout << endl << termcolor::blue << "--------Observables---------" << termcolor::reset << endl << endl;
 		
-		cout << "<SS> U(1)⊗U(1):" << endl;
-		cout << SpinCorr_U1xU1 << endl;
-		cout << endl;
+		// cout << "<SS> U(1)⊗U(1):" << endl;
+		// cout << SpinCorr_U1xU1 << endl;
+		// cout << endl;
 		cout << "<SS> SU(2)⊗U(1):" << endl;
 		cout << SpinCorr_SU2xU1 << endl;
 		cout << endl;
 		
-		cout << "<nn> U(1)⊗U(1):" << endl;
-		cout << nCorr_U1xU1 << endl;
-		cout << endl;
-		cout << "<nn> SU(2)⊗U(1):" << endl;
-		cout << nCorr_SU2xU1 << endl;
-		cout << endl;
+		// cout << "<nn> U(1)⊗U(1):" << endl;
+		// cout << nCorr_U1xU1 << endl;
+		// cout << endl;
+		// cout << "<nn> SU(2)⊗U(1):" << endl;
+		// cout << nCorr_SU2xU1 << endl;
+		// cout << endl;
 		
-		cout << "density matrixA U(1)⊗U(1): " << endl;
-		cout << densityMatrixA_U1xU1 << endl << endl;
-		cout << "density matrixA SU(2)⊗U(1): " << endl;
-		cout << densityMatrixA_SU2xU1 << endl << endl;
+		// cout << "density matrixA U(1)⊗U(1): " << endl;
+		// cout << densityMatrixA_U1xU1 << endl << endl;
+		// cout << "density matrixA SU(2)⊗U(1): " << endl;
+		// cout << densityMatrixA_SU2xU1 << endl << endl;
 
-		cout << "density matrixB U(1)⊗U(1): " << endl;
-		cout << densityMatrixB_U1xU1 << endl << endl;
-		cout << "density matrixB SU(2)⊗U(1): " << endl;
-		cout << densityMatrixB_SU2xU1 << endl << endl;
+		// cout << "density matrixB U(1)⊗U(1): " << endl;
+		// cout << densityMatrixB_U1xU1 << endl << endl;
+		// cout << "density matrixB SU(2)⊗U(1): " << endl;
+		// cout << densityMatrixB_SU2xU1 << endl << endl;
 
 		if(SINGLE_OP)
 		{

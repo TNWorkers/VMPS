@@ -239,15 +239,12 @@ int main (int argc, char* argv[])
 		}
 		cout << "SimpSimp(0,1)=" <<  avg(g_U1Kond.state, Kond.SimpSimp(0,1), g_U1Kond.state) << endl;
 		cout << "SimpSimp(1,0)=" <<  avg(g_U1Kond.state, Kond.SimpSimp(1,0), g_U1Kond.state) << endl;
-		cout << "SimpSimp(1,2)=" <<  avg(g_U1Kond.state, Kond.SimpSimp(1,2), g_U1Kond.state) << endl;
-		cout << "SimpSimp(2,3)=" <<  avg(g_U1Kond.state, Kond.SimpSimp(2,3), g_U1Kond.state) << endl;
-		cout << "SimpSimp(0,2)=" <<  avg(g_U1Kond.state, Kond.SimpSimp(0,2), g_U1Kond.state) << endl;
 
-		// HUBBARD Kond_4(4,{{"t",1.},{"tPrime",tPrime},{"U",U},{"J",J},{"OPEN_BC",false}});
-		// cout << "SimpSimp(0,1)=" <<  avg(g_U1Kond.state, Kond_4.SimpSimp(0,1), g_U1Kond.state) << endl;
-		// cout << "SimpSimp(1,2)=" <<  avg(g_U1Kond.state, Kond_4.SimpSimp(1,2), g_U1Kond.state) << endl;
-		// cout << "SimpSimp(2,3)=" <<  avg(g_U1Kond.state, Kond_4.SimpSimp(2,3), g_U1Kond.state) << endl;
-		// cout << "SimpSimp(0,2)=" <<  avg(g_U1Kond.state, Kond_4.SimpSimp(0,2), g_U1Kond.state) << endl;
+		KONDO Kond_4(8,{{"t",1.},{"tPrime",tPrime},{"U",U},{"J",J},{"OPEN_BC",false}});
+		cout << "SimpSimp(0,1)=" <<  avg(g_U1Kond.state, Kond_4.SimpSimp(0,1), g_U1Kond.state) << endl;
+		cout << "SimpSimp(1,2)=" <<  avg(g_U1Kond.state, Kond_4.SimpSimp(1,2), g_U1Kond.state) << endl;
+		cout << "SimpSimp(2,3)=" <<  avg(g_U1Kond.state, Kond_4.SimpSimp(2,3), g_U1Kond.state) << endl;
+		cout << "SimpSimp(0,2)=" <<  avg(g_U1Kond.state, Kond_4.SimpSimp(0,2), g_U1Kond.state) << endl;
 		
 		cout << "navg=" << nvec.sum()/L << endl;
 		cout << "davg=" << dvec.sum()/L << endl;

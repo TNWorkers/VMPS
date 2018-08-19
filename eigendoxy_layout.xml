@@ -3,7 +3,11 @@
   <!-- Navigation index tabs for HTML output -->
   <navindex>
     <!-- <tab type="user" url="index.html" title="Overview" /> -->
-	<tab type="user" url="todo.html" title="Todo-Liste"/>
+	<tab type="usergroup" title="Todos">
+	  <tab type="user" url="todo.html" title="Long/ midterm Todo-Liste"/>
+	  <tab type="user" url="todo2.html" title="Kosmetic Todo-Liste"/>
+	  <tab type="user" url="todo3.html" title="Minor Todo-Liste"/>
+    </tab>
     <tab type="modules" visible="yes" title="Modules" intro=""/>
     <tab type="classlist" visible="yes" title="Classes" intro=""/>
     <!-- <tab type="namespaces" visible="yes" title="Namespaces"/> -->

@@ -43,7 +43,11 @@ public:
 	
 	/**Resets a custom algorithm.*/
 	inline void set_algorithm (UMPS_ALG::OPTION ALGORITHM) {CHOSEN_ALGORITHM = ALGORITHM; USER_SET_ALGORITHM = true;};
-	
+
+	// VUMPS::CONTROL::GLOB GlobParam;
+	// VUMPS::CONTROL::DYN  DynParam;
+	// VUMPS::CONTROL::LANCZOS LanczosParam;
+
 	///\{
 	/**\describe_info*/
 	string info() const;
@@ -54,7 +58,8 @@ public:
 	/**\describe_memory*/
 	double memory (MEMUNIT memunit=GB) const;
 	
-	/**Setup a logfile of the iterations.
+	/**
+	 * Setup a logfile of the iterations.
 	 * \param N_log_input : save the log every \p N_log_input half-sweeps
 	 * \param file_e_input : file for the ground-state energy in the format [min(eL,eR), eL, eR]
 	 * \param file_err_eigval_input : file for the energy error
@@ -125,7 +130,11 @@ private:
 	/**Builds environments for each site of the unit cell.*/
 	void build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	///\}
-	
+
+	/**
+	 * This function adds orthogonal information to the UMPS and enlarge therewith the bond dimension and the number of symmetry blocks.
+	 * For information see appendix B in Zauner-Stauber et al. 2018.
+	 */
 	void expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
 	/**Cleans up after the iteration process.*/
@@ -236,7 +245,8 @@ private:
 	/**log data*/
 	vector<double> eL_mem, eR_mem, err_eigval_mem, err_var_mem;
 	
-	/**Function to write out the logfiles.
+	/**
+	 * Function to write out the logfiles.
 	 * \param FORCE : if \p true, forced write without checking any conditions
 	 */
 	void write_log (bool FORCE = false);
@@ -1152,7 +1162,7 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 	
 	for (size_t s=0; s<H.locBasis(0).size(); ++s)
 	{
-		Vout.state.A[GAUGE::C][0][s] = Vout.state.A[GAUGE::L][0][s].contract(Vout.state.C[0]);
+		Vout.state.A[GAUGE::C][0][s] = Vout.state.A[GAUGE::L][0][s] *Vout.state.C[0];
 //		Vout.state.A[GAUGE::C][0][s] = Vout.state.C[0].contract(Vout.state.A[GAUGE::R][0][s]);
 	}
 	
@@ -1263,10 +1273,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		}
 		else // dynamical choice: L=1 parallel, L>1 sequential
 		{
-			if (N_sites == 1)
+			if (N_sites == 1 or N_sites != 1)
 			{
 				iteration_parallel(H,Vout);
-				if (err_var < 1.e-2 and (err_eigval >= tol_eigval or err_var >= tol_var)
+				if (err_var < 1.e-1 and (err_eigval >= tol_eigval or err_var >= tol_var)
 					and N_iterations%4 == 0 and N_iterations < 80 and N_iterations < max_iterations-1) {expand_basis(2,H,Vout);}
 			}
 			else

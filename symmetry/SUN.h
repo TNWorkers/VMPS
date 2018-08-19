@@ -23,7 +23,7 @@ namespace Sym{
  * \describe_Scalar
  * \tparam N : the \p N in SU(N) 
  * \warning Use the the external CGC-Library: https://homepages.physik.uni-muenchen.de/~vondelft/Papers/ClebschGordan/
- * \todo To use general SU(N) symmetries, several adjustions are necessary in the code, concerning the innermultiplicity.
+ * \todo1 To use general SU(N) symmetries, several adjustions are necessary in the code, concerning the innermultiplicity.
  */
 template<std::size_t N, typename Scalar>
 class SUN // : SymmetryBase<SUN<N,Scalar> >

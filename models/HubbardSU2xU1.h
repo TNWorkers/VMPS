@@ -195,7 +195,7 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 		
 		auto cF    = OperatorType::prod(F[loc].c(),    F[loc].sign(),{2,-1});
 		auto cdagF = OperatorType::prod(F[loc].cdag(), F[loc].sign(),{2,+1});
-		/**\todo: think about crazy fermionic signs here:*/
+		/**\todo3 Think about crazy fermionic signs here:*/
 		
 		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cdagF.plain<double>(), F[loc].c().plain<double>(),    F[loc].sign().plain<double>()));
 		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cF.plain<double>()   , F[loc].cdag().plain<double>(), F[loc].sign().plain<double>()));
@@ -283,30 +283,12 @@ d (size_t locx, size_t locy)
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 c (size_t locx, size_t locy, double factor)
 {
-//	assert(locx<N_sites and locy<F[locx].dim());
-//	stringstream ss;
-//	ss << "c(" << locx << "," << locy << ")";
-//	
-//	Mpo<Symmetry> Mout(N_sites, {2,-1}, ss.str());
-//	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
-//	/**\todo: think about crazy fermionic signs here:*/
-//	Mout.setLocal(locx, factor*pow(-1.,locx+1)*F[locx].c(locy).plain<double>(), F[0].sign().plain<double>());
-//	return Mout;
 	return make_local("c", locx,locy, F[locx].c(locy), factor, true, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 cdag (size_t locx, size_t locy, double factor)
 {
-//	assert(locx<N_sites and locy<F[locx].dim());
-//	stringstream ss;
-//	ss << "c†(" << locx << "," << locy << ")";
-//	
-//	Mpo<Symmetry> Mout(N_sites, {2,+1}, ss.str());
-//	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
-//	/**\todo: think about crazy fermionic signs here:*/
-//	Mout.setLocal(locx, factor*pow(-1.,locx+1)*F[locx].cdag(locy).plain<double>(), F[0].sign().plain<double>());
-//	return Mout;
 	return make_local("c†", locx,locy, F[locx].cdag(locy), factor, true, false);
 }
 
@@ -435,7 +417,7 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	{
 		Mout.setLocal(locx1, sqrt(2.) * OperatorType::prod(cdag, c, Symmetry::qvacuum()).plain<double>());
 	}
-	/**\todo: think about crazy fermionic signs here:*/
+	/**\todo3 think about crazy fermionic signs here:*/
 	else if (locx1<locx2)
 	{
 		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), {2,+1}).plain<double>(), 

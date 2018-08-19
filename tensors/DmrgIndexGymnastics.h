@@ -4,6 +4,7 @@
 #include <tuple>
 
 #include "symmetry/qarray.h"
+#include "DmrgTypedefs.h"
 #include "tensors/Biped.h"
 #include "tensors/Multipede.h"
 #include "numeric_limits.h" // from HELPERS
@@ -250,9 +251,9 @@ bool AAWWAA (const qarray<Symmetry::Nq> &Lin,
 }
 
 template<typename Symmetry, typename Scalar>
-vector<qarray<Symmetry::Nq> > calc_qsplit (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
+vector<qarray<Symmetry::Nq> > calc_qsplit (const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
                                            const vector<qarray<Symmetry::Nq> > &qloc1, 
-                                           const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
+                                           const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
                                            vector<qarray<Symmetry::Nq> > qloc2,
                                            const qarray<Symmetry::Nq> &Qtop, 
                                            const qarray<Symmetry::Nq> &Qbot)
@@ -405,8 +406,8 @@ bool AWWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry:
 /**Updates the quantum Numbers of a right environment when a new site with quantum numbers qloc and qOp is added.*/
 template<typename Symmetry, typename Scalar>
 void updateInset (const std::vector<std::array<typename Symmetry::qType,3> > &insetOld, 
-                  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-                  const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+                  const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                  const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
                   const vector<qarray<Symmetry::Nq> > &qloc,
                   const vector<qarray<Symmetry::Nq> > &qOp,
                   std::vector<std::array<typename Symmetry::qType,3> > &insetNew)
@@ -463,11 +464,11 @@ void updateInset (const std::vector<std::array<typename Symmetry::qType,3> > &in
 /**Prepares a PivotMatrix by filling PivotMatrix::qlhs and PivotMatrix::qrhs with the corresponding subspace indices.
 Uses OpenMP.*/
 template<typename Symmetry, typename Scalar, typename MpoScalar>
-void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L, 
-                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-                             const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
-                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
-                             const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
+void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > &L, 
+                             const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                             const vector<vector<vector<Eigen::SparseMatrix<MpoScalar> > > > &W, 
+                             const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+                             const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > &R, 
                              const vector<qarray<Symmetry::Nq> > &qloc,
                              const vector<qarray<Symmetry::Nq> > &qOp, 
                              vector<std::array<size_t,2> > &qlhs, 
@@ -511,7 +512,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 						bool ALL_BLOCKS_ARE_EMPTY = true;
 						
 						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
-						for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+						for (typename Eigen::SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
 						{
 							if (L.block[qL][iW.row()][0].size() != 0 and 
 							    R.block[qR->second][iW.col()][0].size() != 0)
@@ -562,12 +563,12 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 
 /**Prepares a PivotMatrix2 by filling PivotMatrix::qlhs and PivotMatrix::qrhs with the corresponding subspace indices.*/
 template<typename Symmetry, typename Scalar, typename MpoScalar>
-void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L, 
-                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-                             const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W12, 
-                             const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W34, 
-                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
-                             const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
+void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > &L, 
+                             const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                             const vector<vector<vector<Eigen::SparseMatrix<MpoScalar> > > > &W12, 
+                             const vector<vector<vector<Eigen::SparseMatrix<MpoScalar> > > > &W34, 
+                             const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+                             const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > &R, 
                              const vector<qarray<Symmetry::Nq> > &qloc12,
                              const vector<qarray<Symmetry::Nq> > &qloc34,
                              const vector<qarray<Symmetry::Nq> > &qOp12,
@@ -643,12 +644,12 @@ void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic
 
 /**Prepares a PivotMatrix2 by filling PivotMatrix::qlhs and PivotMatrix::qrhs with the corresponding subspace indices.*/
 template<typename Symmetry, typename Scalar, typename MpoScalar>
-void precalc_blockStructure (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L, 
-                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-                             const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W12, 
-                             const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W34, 
-                             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
-                             const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
+void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > &L, 
+                             const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
+                             const vector<vector<vector<Eigen::SparseMatrix<MpoScalar> > > > &W12, 
+                             const vector<vector<vector<Eigen::SparseMatrix<MpoScalar> > > > &W34, 
+                             const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
+                             const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > &R, 
                              const vector<qarray<Symmetry::Nq> > &qloc12,
                              const vector<qarray<Symmetry::Nq> > &qloc34,
                              const vector<qarray<Symmetry::Nq> > &qOp12,

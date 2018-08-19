@@ -108,7 +108,7 @@ public:
 	
 	/**
 	 * Orbital pseudo-spin† 
-	 * \param orbital : orbital index
+	 * \param orbital orbital index
 	 */
 	Operator Tdag (std::size_t orbital=0) const;
 	///\}
@@ -121,12 +121,12 @@ public:
 
 	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U and with arbitrary hopping matrix (bipartite).
-	 * \param U : \f$U\f$ for each orbital
-	 * \param t : \f$t_{ij}\f$ (hopping matrix)
-	 * \warning : The hopping matrix needs to be bipartite!
+	 * \param U \f$U\f$ for each orbital
+	 * \param t \f$t_{ij}\f$ (hopping matrix)
+	 * \warning The hopping matrix needs to be bipartite!
 	 * \param V
 	 * \param J
-	 * \todo : Add a check, that the hopping matrix is really bipartite.
+	 * \todo3 Add a check, that the hopping matrix is really bipartite.
 	 */
 	Operator HubbardHamiltonian (const ArrayXd &U, const ArrayXXd &t, const ArrayXXd &V, const ArrayXXd &J) const;
 	

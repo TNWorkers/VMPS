@@ -37,7 +37,7 @@
  * By chaining this, it is in principle possible, to get a class for three or more symmetries, 
  * but until now there is no physical model for this szenario (see \ref Models).
  *
- * \todo  
+ * \todo2
  * 1. The compare function, can be defined outside of the classes, since it is the same for all symmetries.
  * 2. The reduceSilent() functions for vectors of irreps or three or more irreps can be defined outside the classes.
  *   Only the basic function, taking to irreps, is dependent on the symmetry. 

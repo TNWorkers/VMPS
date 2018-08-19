@@ -119,8 +119,8 @@ public:
 
 	/** 
 	 * This function checks if the array \p qs contains quantum-numbers which match together, with respect to the flow equations.
-	 * \todo Write multiple functions, for different sizes of the array and rename them, to have a more clear interface.
-	 *       Example: For 3-array: triangular(...) or something similar.
+	 * \todo2 Write multiple functions, for different sizes of the array and rename them, to have a more clear interface.
+	 *        Example: For 3-array: triangular(...) or something similar.
 	 */
 	template<std::size_t M>
 	static bool validate( const std::array<qType,M>& qs );

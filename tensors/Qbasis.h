@@ -10,8 +10,10 @@
 
 #include "macros.h"
 
+#include "DmrgTypedefs.h"
 #include "tensors/Basis.h"
-#include "tensors/Biped.h"
+#include "symmetry/qarray.h"
+// #include "tensors/Biped.h"
 
 template<typename Symmetry, typename MatrixType_> struct Biped;
 
@@ -103,12 +105,12 @@ public:
 
 	/**
 	 * Returns the quantum number of the state with ident \p ident.
-	 * \todo Bad name for this function...
+	 * \todo2 Bad name for this function...
 	 */
 	qType find( const std::string& ident ) const;
 	/**
 	 * Returns the quantum number of the state with number \p num.
-	 * \todo Bad name for this function...
+	 * \todo2 Bad name for this function...
 	 */
 	qType find( const Eigen::Index& num ) const;
 	/**Checks whether states with quantum number \p q are in the basis. Returns true if the state is present.*/
@@ -571,6 +573,7 @@ print() const
 	{
 		auto [q_Phys,curr_num,plain] = entry;
 		std::stringstream ss, tt, uu;
+		// ss << Sym::format<Symmetry>(q_Phys);
 		ss << q_Phys;
 		tt << plain.size();
 		// uu << "(";

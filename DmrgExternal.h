@@ -8,7 +8,7 @@
 typedef boost::rational<int> frac;
 
 #include "symmetry/qarray.h"
-#include "DmrgTypedefs.h"
+// #include "DmrgTypedefs.h"
 
 /**Prints a boost fraction in such a way, that a "1" in the denominator is omitted.*/
 std::string print_frac_nice (frac r)
@@ -228,34 +228,34 @@ Scalar localSumTrivial (int i)
 	return 1.;
 }
 
-template<typename Symmetry>
-void transform_base (vector<vector<qarray<Symmetry::Nq> > > &qloc, qarray<Symmetry::Nq> Qtot, bool PRINT = false)
-{
-	if (Qtot != Symmetry::qvacuum())
-	{
-		for (size_t l=0; l<qloc.size(); ++l)
-		for (size_t i=0; i<qloc[l].size(); ++i)
-		for (size_t q=0; q<Symmetry::Nq; ++q)
-		{
-			if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non Abelian symmetries
-			{
-				qloc[l][i][q] = qloc[l][i][q] * static_cast<int>(qloc.size()) - Qtot[q];
-			}
-		}
+// template<typename Symmetry>
+// void transform_base (vector<vector<qarray<Symmetry::Nq> > > &qloc, qarray<Symmetry::Nq> Qtot, bool PRINT = false)
+// {
+// 	if (Qtot != Symmetry::qvacuum())
+// 	{
+// 		for (size_t l=0; l<qloc.size(); ++l)
+// 		for (size_t i=0; i<qloc[l].size(); ++i)
+// 		for (size_t q=0; q<Symmetry::Nq; ++q)
+// 		{
+// 			if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non Abelian symmetries
+// 			{
+// 				qloc[l][i][q] = qloc[l][i][q] * static_cast<int>(qloc.size()) - Qtot[q];
+// 			}
+// 		}
 		
-		if (PRINT)
-		{
-			lout << "transformed base:" << endl;
-			for (size_t l=0; l<qloc.size(); ++l)
-			{
-				lout << "l=" << l << endl;
-				for (size_t i=0; i<qloc[l].size(); ++i)
-				{
-					cout << "qloc: " << qloc[l][i] << endl;
-				}
-			}
-		}
-	}
-};
+// 		if (PRINT)
+// 		{
+// 			lout << "transformed base:" << endl;
+// 			for (size_t l=0; l<qloc.size(); ++l)
+// 			{
+// 				lout << "l=" << l << endl;
+// 				for (size_t i=0; i<qloc[l].size(); ++i)
+// 				{
+// 					cout << "qloc: " << qloc[l][i] << endl;
+// 				}
+// 			}
+// 		}
+// 	}
+// };
 
 #endif
