@@ -493,6 +493,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
+		lout << Vout.state.info() << endl;
 		lout << PrepTimer.info("prepare") << endl; 
 	}
 }

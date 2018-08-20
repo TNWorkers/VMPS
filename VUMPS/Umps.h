@@ -152,9 +152,13 @@ public:
 	void truncate();
 
 	/**
-	 * Transforms the local base and the A-matrices.
+	 * This functions transforms all quantum numbers in the Umps (Umps::qloc and QN in Umps::A) by \f$q \rightarrow q * N_{cells}\f$.
+	 * It is used for avg(Umps V, Mpo O, Umps V) in VumpsLinearAlgebra.h when O.length() > V.length(). 
+	 * In this case the quantum numbers in the Umps are transformed in correspondence with V.length()
+	 * and this is incompatible with the quantum numbers in O.length() which are transformed in correspondence to O.length().
+	 * \param number_cells : \f$N_{cells}\f$
 	 */
-	void retransform (const size_t number_cells);
+	void adjustQN (const size_t number_cells);
 
 //private:
 	
@@ -1500,14 +1504,14 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-retransform (const size_t number_cells)
+adjustQN (const size_t number_cells)
 {
 	//transform quantum number in all Bipeds
 	for (size_t g=0; g<3; ++g)
 	for (size_t l=0; l<N_sites; ++l)
 	for (size_t s=0; s<qloc[l].size(); ++s)
 	{
-		A[g][l][s] = A[g][l][s].transform_base(number_cells);
+		A[g][l][s] = A[g][l][s].adjustQN(number_cells);
 	}
 
 	//transform physical quantum numbers

@@ -145,9 +145,13 @@ public:
 	Biped<Symmetry,MatrixType_> adjoint() const;
 
 	/**
-	 * Transforms in and out.
+	 * This functions transforms all quantum numbers in Biped::in and Biped::out by \f$q \rightarrow q * N_{cells}\f$.
+	 * It is used for avg(Umps V, Mpo O, Umps V) in VumpsLinearAlgebra.h when O.length() > V.length(). 
+	 * In this case the quantum numbers in the Bipeds are transformed in correspondence with V.length()
+	 * and this is incompatible with the quantum numbers in O.length() which are transformed in correspondence to O.length().
+	 * \param number_cells : \f$N_{cells}\f$
 	 */
-	Biped<Symmetry,MatrixType_> transform_base (const size_t number_cells);
+	Biped<Symmetry,MatrixType_> adjustQN (const size_t number_cells);
 
 	/**
 	 * Adds another tensor to the current one. 
@@ -488,7 +492,7 @@ adjoint() const
 
 template<typename Symmetry, typename MatrixType_>
 Biped<Symmetry,MatrixType_> Biped<Symmetry,MatrixType_>::
-transform_base (const size_t number_cells)
+adjustQN (const size_t number_cells)
 {
 	Biped<Symmetry,MatrixType_> Aout;
 	Aout.dim = dim;

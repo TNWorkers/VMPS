@@ -119,7 +119,7 @@ void transform_base (vector<vector<qarray<Symmetry::Nq> > > &qloc, qarray<Symmet
 };
 
 template<typename Symmetry>
-qarray<Symmetry::Nq> retransform(const qarray<Symmetry::Nq> &qin, const size_t number_cells)
+qarray<Symmetry::Nq> adjustQN(const qarray<Symmetry::Nq> &qin, const size_t number_cells)
 {
 	qarray<Symmetry::Nq> out;
 	for (size_t q=0; q<Symmetry::Nq; ++q)

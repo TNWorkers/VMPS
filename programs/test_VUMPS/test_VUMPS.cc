@@ -377,6 +377,14 @@ int main (int argc, char* argv[])
 		{
 			HEISENBERG_SU2 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
 			double SvecSvec = avg(g_SU2.state,Htmp.SS(0,d),g_SU2.state);
+			if (d == L)
+			{
+				lout << "l=" << d-4 << ", " << d-3 << ", <SvecSvec>=" << avg(g_SU2.state,Htmp.SS(d-4,d-3),g_SU2.state) << endl;
+				lout << "l=" << d-3 << ", " << d-2 << ", <SvecSvec>=" << avg(g_SU2.state,Htmp.SS(d-3,d-2),g_SU2.state) << endl;
+				lout << "l=" << d-2 << ", " << d-1 << ", <SvecSvec>=" << avg(g_SU2.state,Htmp.SS(d-2,d-1),g_SU2.state) << endl;
+				lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << avg(g_SU2.state,Htmp.SS(d-1,d),g_SU2.state) << endl;
+			}
+
 			// double SvecSvec = Htmp.SvecSvecAvg(g.state,0,d);
 			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
 		}
