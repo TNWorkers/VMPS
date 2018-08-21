@@ -1518,7 +1518,7 @@ adjustQN (const size_t number_cells)
 	for (size_t l=0; l<N_sites; ++l)
 	for (size_t s=0; s<qloc[l].size(); ++s)
 	{
-		qloc[l][s] = ::retransform<Symmetry>(qloc[l][s],number_cells);
+		qloc[l][s] = ::adjustQN<Symmetry>(qloc[l][s],number_cells);
 	}
 	update_inbase();
 	update_outbase();

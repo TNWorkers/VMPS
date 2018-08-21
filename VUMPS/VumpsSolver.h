@@ -393,19 +393,19 @@ calc_errors (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 		{
 			epsLRsq[g](l) = Vout.state.calc_epsLRsq(g,l);
 			
-			bool GAUGE_FLIP = false;
-			// If wrong phase, flip sign of C and recalculate:
-			if (epsLRsq[g](l) > 1.)
-			{
-				size_t lC = (g==GAUGE::R)? Vout.state.minus1modL(l):l;
-				Vout.state.C[lC] = -1. * Vout.state.C[lC];
-				GAUGE_FLIP = true;
-//				cout << "GAUGE FLIP: " << "l=" << lC << endl;
-			}
-			if (GAUGE_FLIP)
-			{
-				epsLRsq[g](l) = Vout.state.calc_epsLRsq(g,l);
-			}
+// 			bool GAUGE_FLIP = false;
+// 			// If wrong phase, flip sign of C and recalculate:
+// 			if (epsLRsq[g](l) > 1.)
+// 			{
+// 				size_t lC = (g==GAUGE::R)? Vout.state.minus1modL(l):l;
+// 				Vout.state.C[lC] = -1. * Vout.state.C[lC];
+// 				GAUGE_FLIP = true;
+// //				cout << "GAUGE FLIP: " << "l=" << lC << endl;
+// 			}
+// 			if (GAUGE_FLIP)
+// 			{
+// 				epsLRsq[g](l) = Vout.state.calc_epsLRsq(g,l);
+// 			}
 		}
 	}
 	
@@ -785,19 +785,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		Lucy(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
 		Lucy.set_dimK(min(100ul, dim(gC.state)));
 		Lucy.edgeState(PivotMatrix0(HeffC[l]), gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
-		
-//		qarray2<Symmetry::Nq> vac = {Symmetry::qvacuum(), Symmetry::qvacuum()};
-//		auto it = gC.state.data[0].dict.find(vac);
-//		double maxnorm = 0.;
-//		double maxq;
-//		for (size_t q=0; q<gC.state.data[0].size(); ++q)
-//		{
-//			double norm = gC.state.data[0].block[q].norm();
-//			if (norm > maxnorm) {maxnorm = norm; maxq = q;}
-//		}
-//		gC.state.data[0].block[it->second].swap(gC.state.data[0].block[maxq]);
-//		cout << "swapped: " << it->second << " and " << maxq << endl;
-		
+				
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
 			lout << "l=" << l << ", C" << ", time" << LanczosTimer.info() << ", " << Lucy.info() << endl;
@@ -841,13 +829,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		lout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
 		lout << test_LReigen(Vout) << endl;
 	}
-	
-//	if (err_var < 1e-5 and M<50)
-//	{
-//		Vout.state.expand_basis(5,H.H2site(0,true),Vout.energy);
-//		M += 5;
-//	}
-	
+		
 //	if (N_iterations%10 == 0 and N_iterations>0 and Vout.state.Nqmax<=50)
 //	{
 //		Vout.state.resize(Vout.state.Dmax,Vout.state.Nqmax+1);
@@ -911,6 +893,8 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		Lucy(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
 		Lucy.set_dimK(min(100ul, dim(gCR.state)));
 		Lucy.edgeState(PivotMatrix0(HeffC[l]), gCR, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
+		//ensure phase convention: first element is positive
+		if (gCR.state.data[0].block[0](0,0) < 0.) { gCR.state.data[0] = (-1.) * gCR.state.data[0]; }
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -929,6 +913,8 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		Luca(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
 		Luca.set_dimK(min(100ul, dim(gCL.state)));
 		Luca.edgeState(PivotMatrix0(HeffC[lC]), gCL, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, true);
+		//ensure phase convention: first element is positive
+		if (gCL.state.data[0].block[0](0,0) < 0.) { gCL.state.data[0] = (-1.) * gCL.state.data[0]; }
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -1274,7 +1260,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		}
 		else // dynamical choice: L=1 parallel, L>1 sequential
 		{
-			if (N_sites == 1 or N_sites != 1)
+			if (N_sites == 1)
 			{
 				iteration_parallel(H,Vout);
 				if (err_var < 1.e-1 and (err_eigval >= tol_eigval or err_var >= tol_var)
@@ -1291,14 +1277,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		write_log();
 	}
 	write_log(true); // force log on exit
-	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-	{
-		lout << GlobalTimer.info("total runtime") << endl;
-	}
-	
+		
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
+		lout << GlobalTimer.info("total runtime") << endl;
 		size_t standard_precision = cout.precision();
 		lout << termcolor::bold
 		     << "iterations=" << N_iterations

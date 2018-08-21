@@ -16,7 +16,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	if(Obs.length() != Vket.length())
 	{
 		amount_of_cells = static_cast<size_t>(Obs.length()/Vket.length());
-		qarray<Symmetry::Nq> transformed_Qtot = ::retransform<Symmetry>(Vket.Qtarget(),amount_of_cells);
+		qarray<Symmetry::Nq> transformed_Qtot = ::adjustQN<Symmetry>(Vket.Qtarget(),amount_of_cells);
 		Obs.transform_base(transformed_Qtot,false);
 	}
 	else
@@ -27,8 +27,8 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	auto Vket_copy = Vket;
 	if(Obs.length() != Vket.length())
 	{
-		Vbra_copy.retransform(amount_of_cells);
-		Vket_copy.retransform(amount_of_cells);
+		Vbra_copy.adjustQN(amount_of_cells);
+		Vket_copy.adjustQN(amount_of_cells);
 	}
 	
 	// for(size_t g=0; g<1; g++)

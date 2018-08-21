@@ -501,8 +501,8 @@ adjustQN (const size_t number_cells)
 	Aout.out.resize(dim);
 	for (std::size_t q=0; q<dim; ++q)
 	{
-		Aout.in[q] = ::retransform<Symmetry>(in[q],number_cells);
-		Aout.out[q] = ::retransform<Symmetry>(out[q],number_cells);
+		Aout.in[q] = ::adjustQN<Symmetry>(in[q],number_cells);
+		Aout.out[q] = ::adjustQN<Symmetry>(out[q],number_cells);
 		Aout.dict.insert({{Aout.in[q],Aout.out[q]},q});
 	}
 	return Aout;
