@@ -15,12 +15,15 @@ namespace Project{
 #define MPS_PROJECT
 
 /**
-\todo - VmpsSolver::expand_basis für Einheitszellen ist implementiert. Folgende Frage ist aber offen:
+\todo - Rücktransformation der Basis und bessere print-Anzeige der transformierten Basis mit boost::rational
+
+\todo - Die Parallelisierung in VUMPS muss neu überdacht werden. Momentan laufen Programme auf mehreren Kernen (insbesondere mit SU(2)) äußerst instabil.
+
+\todo - VmpsSolver::expand_basis für Einheitszellen ist implementiert. Folgende Frage sollte aber nochmal analysiert werden:
         Wie berechnet man den Zweiplatz-A-Tensor: 
 		-# AL[i] * AC[i+1] <- Problem: AL wird während des Prozesses verändert, AC nicht.
 		-# AL[i] * C[i]AR[i+1] <- Hier sind alle drei objekte beteiligt die verändert werden. <- Problem: Umgebungen währenddessen updaten?
 
-\todo - Rücktransformation der Basis und bessere print-Anzeige der transformierten Basis mit boost::rational
 */
 #define VUMPS_PROJECT
 
