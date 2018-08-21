@@ -4,7 +4,7 @@
 #include <cstddef>
 
 #include "DmrgTypedefs.h"
-#include "symmetry/qarray.h"
+//include "symmetry/qarray.h"
 
 /**Dummies for models without symmetries.*/
 const std::array<qarray<0>,1> qloc1dummy {qarray<0>{}};

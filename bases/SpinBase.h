@@ -8,11 +8,14 @@
 #include <unsupported/Eigen/KroneckerProduct>
 
 #include "DmrgTypedefs.h" // for SPIN_INDEX, SPINOP_LABEL
-#include "symmetry/qarray.h"
-#include "NestedLoopIterator.h" // from HELPERS
+#include "symmetry/kind_dummies.h"
+//include "symmetry/qarray.h"
+//include "NestedLoopIterator.h" // from HELPERS
 
-#include "symmetry/U0.h"
-#include "symmetry/U1.h"
+//include "symmetry/U0.h"
+//include "symmetry/U1.h"
+
+#include "tensors/SiteOperator.h"
 
 /** 
  * \class SpinBase

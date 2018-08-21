@@ -1,13 +1,15 @@
 #ifndef KONDOMODELSU2XU1_H_
 #define KONDOMODELSU2XU1_H_
 
-#include "ParamHandler.h" // from HELPERS
+//include "ParamHandler.h" // from HELPERS
 #include "ParamReturner.h"
-
+#include "symmetry/S1xS2.h"
+#include "symmetry/SU2.h"
+#include "symmetry/U1.h"
 #include "bases/SpinBaseSU2xU1.h"
 #include "bases/FermionBaseSU2xU1.h"
-#include "Mpo.h"
-#include "models/HubbardSU2xU1.h"
+//include "Mpo.h"
+//include "models/HubbardSU2xU1.h"
 #include "models/KondoObservables.h"
 
 namespace VMPS

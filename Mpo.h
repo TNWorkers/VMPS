@@ -12,20 +12,26 @@
 typedef Eigen::SparseMatrix<double,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXd;
 using namespace Eigen;
 
-#include "Stopwatch.h" // from TOOLS
-#include "SuperMatrix.h"
-#include "symmetry/qarray.h"
-#include "tensors/Qbasis.h"
-#include "symmetry/functions.h"
-#include "tensors/Biped.h"
-#include "pivot/DmrgPivotMatrix1.h"
 #include <unsupported/Eigen/KroneckerProduct>
-#include "DmrgJanitor.h"
-#include "DmrgExternal.h"
-#include "DmrgHamiltonianTerms.h"
-#include "ParamHandler.h" // from TOOLS
-#include "models/ParamReturner.h"
+
 #include "util/macros.h"
+//include "models/ParamReturner.h"
+#include "SuperMatrix.h"
+//include "DmrgJanitor.h"
+#include "tensors/Qbasis.h"
+#include "DmrgTypedefs.h"
+
+//include "Stopwatch.h" // from TOOLS
+//include "ParamHandler.h" // from TOOLS
+//include "symmetry/qarray.h"
+//include "symmetry/functions.h"
+//include "tensors/Biped.h"
+//include "pivot/DmrgPivotMatrix1.h"
+//include "DmrgExternal.h"
+//include "DmrgHamiltonianTerms.h"
+
+
+
 
 /**Namespace VMPS to distinguish names from ED equivalents.*/
 namespace VMPS{};
@@ -644,7 +650,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 		if constexpr (Symmetry::NON_ABELIAN)
 		{
 			std::array<typename Symmetry::qType,3> qCheck;
-			Stopwatch<> square;
+			//Stopwatch<> square;
 			Vsq.clear();
 			Vsq.resize(N_sites);
 			qOpSq.clear();
@@ -731,7 +737,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 				}
 			}
 			GOT_SQUARE = true;
-			cout << square.info("H^2 time") << endl;
+			//cout << square.info("H^2 time") << endl;
 		}
 		else
 		{

@@ -2,7 +2,9 @@
 #define SPINBASESU2XU1_H_
 
 #include "symmetry/S1xS2.h"
-#include "tensors/Qbasis.h"
+#include "symmetry/SU2.h"
+#include "symmetry/U1.h"
+//include "tensors/Qbasis.h"
 #include "tensors/SiteOperatorQ.h"
 
 #include "bases/SpinBase.h"

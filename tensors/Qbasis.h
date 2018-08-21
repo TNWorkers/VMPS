@@ -10,9 +10,10 @@
 
 #include "macros.h"
 
-#include "DmrgTypedefs.h"
+//include "DmrgTypedefs.h"
 #include "tensors/Basis.h"
-#include "symmetry/qarray.h"
+#include "symmetry/functions.h"
+//include "symmetry/qarray.h"
 // #include "tensors/Biped.h"
 
 template<typename Symmetry, typename MatrixType_> struct Biped;
@@ -573,8 +574,8 @@ print() const
 	{
 		auto [q_Phys,curr_num,plain] = entry;
 		std::stringstream ss, tt, uu;
-		// ss << Sym::format<Symmetry>(q_Phys);
-		ss << q_Phys;
+		ss << Sym::format<Symmetry>(q_Phys);
+		//ss << q_Phys;
 		tt << plain.size();
 		// uu << "(";
 		// if( idents.size() > 0 )

@@ -1,15 +1,15 @@
 #ifndef STRAWBERRY_HEISENBERGU1
 #define STRAWBERRY_HEISENBERGU1
 
-#include <array>
+//include <array>
 
-#include "Mpo.h"
-#include "symmetry/U1.h"
-#include "bases/SpinBase.h"
-#include "DmrgExternal.h"
-#include "ParamHandler.h" // from HELPERS
 #include "models/HeisenbergObservables.h"
-#include "symmetry/kind_dummies.h"
+//include "Mpo.h"
+#include "symmetry/U1.h"
+//include "bases/SpinBase.h"
+//include "DmrgExternal.h"
+//include "ParamHandler.h" // from HELPERS
+//include "symmetry/kind_dummies.h"
 #include "ParamReturner.h"
 
 namespace VMPS

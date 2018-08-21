@@ -3,16 +3,17 @@
 
 #include <utility>
 #include <unordered_map>
+#include <unordered_set>
 #include <iostream>
 
-#include "symmetry/qarray.h"
+//include "symmetry/qarray.h"
 #include "DmrgTypedefs.h"
 #include "DmrgExternal.h"
-#include "symmetry/kind_dummies.h"
+//include "symmetry/kind_dummies.h"
 
-#include "symmetry/U0.h"
-#include "symmetry/U1.h"
-#include "symmetry/SU2.h"
+//include "symmetry/U0.h"
+//include "symmetry/U1.h"
+//include "symmetry/SU2.h"
 
 namespace Sym{
 	

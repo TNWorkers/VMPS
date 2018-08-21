@@ -1,11 +1,13 @@
 #ifndef STRAWBERRY_HUBBARDMODEL
 #define STRAWBERRY_HUBBARDMODEL
 
-#include "bases/FermionBase.h"
+//include "bases/FermionBase.h"
 #include "symmetry/S1xS2.h"
-#include "Mpo.h"
-#include "ParamHandler.h" // from HELPERS
+#include "symmetry/U1.h"
+//include "Mpo.h"
+//include "ParamHandler.h" // from HELPERS
 #include "models/HubbardObservables.h"
+#include "ParamReturner.h"
 
 namespace VMPS
 {

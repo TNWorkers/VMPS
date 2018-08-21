@@ -4,11 +4,13 @@
 #include <array>
 #include <vector>
 #include <functional>
+#include "symmetry/qarray.h"
 
-#include "tensors/SiteOperatorQ.h"
-#include "tensors/SiteOperator.h"
+//include "tensors/SiteOperatorQ.h"
+//include "tensors/SiteOperator.h"
 
-#include "LanczosSolver.h" // from ALGS
+//include "LanczosSolver.h" // from ALGS
+#include "LanczosTypedefs.h"
 
 #ifndef IS_REAL_FUNCTION
 #define IS_REAL_FUNCTION

@@ -2,7 +2,7 @@
 #define STRAWBERRY_TRANSVERSEKONDOMODEL
 
 #include "models/KondoU1xU1.h"
-#include "symmetry/U1.h"
+//include "symmetry/U1.h"
 
 namespace VMPS
 {

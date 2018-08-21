@@ -1,12 +1,13 @@
 #ifndef HUBBARDOBSERVABLES
 #define HUBBARDOBSERVABLES
 
+#include "bases/FermionBase.h"
 #include "Mpo.h"
 #include "ParamHandler.h" // from HELPERS
-#include "bases/SpinBase.h"
-#include "DmrgLinearAlgebra.h"
-#include "DmrgExternal.h"
-#include "tensors/SiteOperator.h"
+
+//include "DmrgLinearAlgebra.h"
+//include "DmrgExternal.h"
+//include "tensors/SiteOperator.h"
 
 template<typename Symmetry>
 class HubbardObservables
