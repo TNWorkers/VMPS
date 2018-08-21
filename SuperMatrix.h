@@ -1,10 +1,13 @@
 #ifndef SUPERMATRIX
 #define SUPERMATRIX
 
-#include "DmrgTypedefs.h"
-#include "MemCalc.h"
+#include <set>
+#include <boost/multi_array.hpp>
+
+#include "MemCalc.h" // from TOOLS
+//include "DmrgTypedefs.h"
 #include "DmrgHamiltonianTerms.h"
-#include "boost/multi_array.hpp"
+
 
 /**Auxiliary matrix of matrices to create an Mpo and MpoQ.*/
 template<typename Symmetry, typename Scalar=double>

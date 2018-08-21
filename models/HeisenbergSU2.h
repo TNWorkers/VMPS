@@ -4,9 +4,10 @@
 #include "symmetry/SU2.h"
 #include "bases/SpinBaseSU2.h"
 #include "Mpo.h"
-#include "DmrgExternal.h"
-#include "ParamHandler.h" // from TOOLS
+//include "DmrgExternal.h"
+//include "ParamHandler.h" // from TOOLS
 #include "ParamReturner.h"
+//include "symmetry/kind_dummies.h"
 
 namespace VMPS
 {

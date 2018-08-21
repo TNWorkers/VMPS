@@ -2,10 +2,10 @@
 #define SPINBASESU2_H_
 
 #include "symmetry/SU2.h"
-#include "tensors/Qbasis.h"
+//include "tensors/Qbasis.h"
 #include "tensors/SiteOperatorQ.h"
 
-#include "symmetry/kind_dummies.h"
+//include "symmetry/kind_dummies.h"
 #include "bases/SpinBase.h"
 
 //Note: Don't put a name in this documentation with \class .. because doxygen gets confused with template symbols

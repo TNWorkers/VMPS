@@ -4,6 +4,8 @@
 #include <array>
 #include <cstddef>
 #include <unordered_set>
+#include <unordered_map>
+#include <functional>
 
 #include <gsl/gsl_sf_coupling.h>
 
@@ -11,11 +13,10 @@
 
 #include "DmrgTypedefs.h"
 #include "DmrgExternal.h"
-#include "qarray.h"
+//include "qarray.h"
 #include "symmetry/functions.h"
 
-#include <unordered_map>
-#include <functional>
+
 
 namespace std
 {

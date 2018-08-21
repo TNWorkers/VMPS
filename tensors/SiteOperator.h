@@ -6,10 +6,10 @@ template<typename Symmetry, typename MatrixType_> class SiteOperatorQ;
 template<typename Symmetry> class Qbasis;
 template<typename Symmetry, typename MatrixType_> struct Biped;
 
-#include "tensors/Qbasis.h"
-#include "tensors/Biped.h"
 #include <Eigen/Sparse>
-#include "tensors/SiteOperatorQ.h"
+//include "tensors/Qbasis.h"
+//include "tensors/Biped.h"
+//include "tensors/SiteOperatorQ.h"
 
 /** \struct SiteOperator
  *

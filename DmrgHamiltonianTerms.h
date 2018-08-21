@@ -5,6 +5,7 @@
 #include <tuple>
 #include <string>
 #include "numeric_limits.h" // from ALGS
+#include "tensors/SiteOperator.h"
 
 template<typename Symmetry, typename Scalar> using LocalTerms = 
 std::vector<std::tuple<Scalar, SiteOperator<Symmetry,Scalar> > >;

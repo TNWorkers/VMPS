@@ -3,10 +3,14 @@
 
 #include <algorithm>
 #include <iterator>
-#include <boost/dynamic_bitset.hpp>
 
+#include <boost/dynamic_bitset.hpp>
 #include <Eigen/Core>
+
+#include "symmetry/kind_dummies.h"
 #include "DmrgTypedefs.h" // for SPIN_INDEX, SPINOP_LABEL
+#include "tensors/SiteOperator.h"
+
 
 /** 
  * \class FermionBase
@@ -15,7 +19,7 @@
  * This class provides the local operators for fermions.
  *
  * The class is implemented for all combinations of U1 symmetries in the file FermionBase.h.
- * For the different non abelian symmetries, their are template specialisations in the files FermionBase!Symmetry!.h
+ * For the different non abelian symmetries, there are template specialisations in the files FermionBase!Symmetry!.h
  *
  * \describe_Symmetry
  *

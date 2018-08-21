@@ -1,6 +1,11 @@
 #ifndef KONDOOBSERVABLES
 #define KONDOOBSERVABLES
 
+#include "bases/FermionBase.h"
+#include "bases/SpinBase.h"
+#include "Mpo.h"
+#include "ParamHandler.h" // from TOOLS
+
 enum KONDO_SUBSYSTEM {IMP, SUB, IMPSUB};
 
 template<typename Symmetry>

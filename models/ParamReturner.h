@@ -2,6 +2,7 @@
 #define PARAMRETURNER
 
 #include "ParamHandler.h"
+#include "DmrgTypedefs.h"
 
 class ParamReturner
 {

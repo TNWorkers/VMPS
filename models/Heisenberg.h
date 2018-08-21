@@ -2,6 +2,7 @@
 #define VANILLA_HEISENBERG
 
 #include "models/HeisenbergU1.h"
+#include "symmetry/U0.h"
 
 namespace VMPS
 {

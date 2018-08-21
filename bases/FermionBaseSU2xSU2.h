@@ -4,11 +4,14 @@
 #include <algorithm>
 #include <iterator>
 
-#include "tensors/SiteOperatorQ.h"
-#include "tensors/Qbasis.h"
 #include "symmetry/S1xS2.h"
-
+#include "symmetry/SU2.h"
 #include "bases/FermionBase.h"
+#include "tensors/SiteOperatorQ.h"
+//include "tensors/Qbasis.h"
+
+
+
 
 //Note: Don't put a name in this documentation with \class .. because doxygen gets confused with template symbols
 /** 

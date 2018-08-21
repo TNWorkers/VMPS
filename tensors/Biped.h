@@ -4,11 +4,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "macros.h"
-#include "PolychromaticConsole.h" // from HELPERS
-#include "MemCalc.h" // from HELPERS
+#include "macros.h" // from TOOLS
+#include "PolychromaticConsole.h" // from TOOLS
+#include "MemCalc.h" // from TOOLS
 
-#include "DmrgExternal.h"
+//include "DmrgExternal.h"
 #include "symmetry/functions.h"
 #include "DmrgConglutinations.h"
 

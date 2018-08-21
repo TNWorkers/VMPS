@@ -4,12 +4,15 @@
 #include "Mpo.h"
 #include "ParamHandler.h" // from HELPERS
 #include "bases/SpinBase.h"
-#include "DmrgLinearAlgebra.h"
-#include "DmrgExternal.h"
+//include "DmrgLinearAlgebra.h"
+//include "DmrgExternal.h"
+
 
 template<typename Symmetry>
 class HeisenbergObservables
 {
+typedef SiteOperator<Symmetry,double> OperatorType;
+
 public:
 	
 	///@{
@@ -36,7 +39,7 @@ public:
 	// = 0.5*<S+S-> + 0.5*<S-S+> + <SzSz>
 	// = Re<S+S-> + <SzSz> for complex states
 	// = <S+S-> + <SzSz> for real states
-	template<typename MpsType> double SvecSvecAvg (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	//template<typename MpsType> double SvecSvecAvg (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	
 protected:
 	
@@ -72,7 +75,7 @@ Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 	stringstream ss;
 	ss << Sa << "(" << locx << "," << locy << ")";
 	
-	SiteOperator Op = factor * B[locx].Scomp(Sa,locy);
+	OperatorType Op = factor * B[locx].Scomp(Sa,locy);
 	
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
 	
@@ -91,8 +94,8 @@ ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size
 	stringstream ss;
 	ss << Sa1 << "(" << locx1 << "," << locy1 << ")" << Sa2 << "(" << locx2 << "," << locy2 << ")";
 	
-	SiteOperator Op1 = B[locx1].Scomp(Sa1,locy1);
-	SiteOperator Op2 = B[locx2].Scomp(Sa2,locy2);
+	OperatorType Op1 = B[locx1].Scomp(Sa1,locy1);
+	OperatorType Op2 = B[locx2].Scomp(Sa2,locy2);
 	
 	bool HERMITIAN = (Sa1==Sa2 and (Sa1==SZ or Sa1==SX) and locx1==locx2 and locy1==locy2)? true:false;
 	
@@ -103,7 +106,7 @@ ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size
 	return Mout;
 }
 
-template<typename Symmetry>
+/*template<typename Symmetry>
 template<typename MpsType>
 double HeisenbergObservables<Symmetry>::
 SvecSvecAvg (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
@@ -111,6 +114,6 @@ SvecSvecAvg (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1, size_
 	return isReal(avg(Psi,SzSz(locx1,locx2,locy1,locy2),Psi))+
 	       0.5*(isReal(avg(Psi,SpSm(locx1,locx2,locy1,locy2),Psi))+
 	            isReal(avg(Psi,SmSp(locx1,locx2,locy1,locy2),Psi)));
-}
+}*/
 
 #endif

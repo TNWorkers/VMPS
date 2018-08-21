@@ -1,11 +1,13 @@
 #ifndef U1_H_
 #define U1_H_
 
-#include <array>
-#include <cstddef>
+//include <array>
+//include <cstddef>
+#include <unordered_set>
 
 #include "DmrgTypedefs.h"
-#include "qarray.h"
+#include "DmrgExternal.h"
+//include "qarray.h"
 
 namespace Sym{
 

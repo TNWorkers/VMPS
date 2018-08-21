@@ -1,12 +1,14 @@
 #ifndef STRAWBERRY_KONDOMODEL
 #define STRAWBERRY_KONDOMODEL
 
-#include "bases/FermionBase.h"
-#include "bases/SpinBase.h"
-#include "symmetry/S1xS2.h"
-#include "Mpo.h"
-#include "ParamHandler.h" // from TOOLS
 #include "models/KondoObservables.h"
+//include "bases/FermionBase.h"
+//include "bases/SpinBase.h"
+#include "symmetry/S1xS2.h"
+#include "symmetry/U1.h"
+//include "Mpo.h"
+//include "ParamHandler.h" // from TOOLS
+#include "ParamReturner.h"
 
 namespace VMPS
 {
