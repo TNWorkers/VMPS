@@ -1,9 +1,12 @@
 #ifndef DMRG_TYPEDEFS
 #define DMRG_TYPEDEFS
 
+/// \cond
 #include <array>
 #include <vector>
 #include <functional>
+/// \endcond
+
 #include "symmetry/qarray.h"
 
 //include "tensors/SiteOperatorQ.h"
@@ -170,8 +173,11 @@ std::ostream& operator<< (std::ostream& s, SUB_LATTICE sublat)
 //	size_t Ly;
 //};
 
+/// \cond
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>
+/// \endcond
+
 #ifndef EIGEN_DEFAULT_SPARSE_INDEX_TYPE
 #define EIGEN_DEFAULT_SPARSE_INDEX_TYPE int
 #endif

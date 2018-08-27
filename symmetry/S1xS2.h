@@ -1,10 +1,12 @@
 #ifndef S1xS2_H_
 #define S1xS2_H_
 
+/// \cond
 #include <utility>
 #include <unordered_map>
 #include <unordered_set>
 #include <iostream>
+/// \endcond
 
 //include "symmetry/qarray.h"
 #include "DmrgTypedefs.h"

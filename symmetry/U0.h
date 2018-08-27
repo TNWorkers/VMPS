@@ -1,7 +1,9 @@
 #ifndef U0_H_
 #define U0_H_
 
+/// \cond
 #include <cstddef>
+/// \endcond
 
 #include "DmrgTypedefs.h"
 //include "symmetry/qarray.h"

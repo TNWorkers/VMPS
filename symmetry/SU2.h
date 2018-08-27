@@ -1,6 +1,7 @@
 #ifndef SU2_H_
 #define SU2_H_
 
+/// \cond
 #include <array>
 #include <cstddef>
 #include <unordered_set>
@@ -10,6 +11,8 @@
 #include <gsl/gsl_sf_coupling.h>
 
 #include <boost/rational.hpp>
+/// \endcond
+
 
 #include "DmrgTypedefs.h"
 #include "DmrgExternal.h"

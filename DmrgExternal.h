@@ -1,10 +1,13 @@
 #ifndef STRAWBERRY_DMRGEXTERNALQ
 #define STRAWBERRY_DMRGEXTERNALQ
 
+/// \cond
 #include <sstream>
 #include <array>
 #include <boost/functional/hash.hpp>
 #include <boost/rational.hpp>
+/// \endcond
+
 typedef boost::rational<int> frac;
 
 #include "symmetry/qarray.h"

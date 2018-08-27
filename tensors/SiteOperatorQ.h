@@ -1,7 +1,9 @@
 #ifndef SITEOPERATORQ_H_
 #define SITEOPERATORQ_H_
 
+/// \cond
 #include <unsupported/Eigen/KroneckerProduct>
+/// \endcond
 
 #include "tensors/Qbasis.h"
 #include "tensors/Biped.h"

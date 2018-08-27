@@ -1,12 +1,15 @@
 #ifndef SITEOPERATOR_H_
 #define SITEOPERATOR_H_
 
+/// \cond
+#include <Eigen/Sparse>
+/// \endcond
+
 //forward declarations
 template<typename Symmetry, typename MatrixType_> class SiteOperatorQ;
 template<typename Symmetry> class Qbasis;
 template<typename Symmetry, typename MatrixType_> struct Biped;
 
-#include <Eigen/Sparse>
 //include "tensors/Qbasis.h"
 //include "tensors/Biped.h"
 //include "tensors/SiteOperatorQ.h"

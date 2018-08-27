@@ -1,11 +1,13 @@
 #ifndef SPINBASE
 #define SPINBASE
 
+/// \cond
 #include <complex>
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <unsupported/Eigen/KroneckerProduct>
+/// \endcond
 
 #include "DmrgTypedefs.h" // for SPIN_INDEX, SPINOP_LABEL
 #include "symmetry/kind_dummies.h"

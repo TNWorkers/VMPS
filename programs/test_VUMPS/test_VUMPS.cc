@@ -118,6 +118,14 @@ void print_mag (const Hamiltonian &H, const Eigenstate &g)
 	lout << "<Sx>=" << SXcell.sum() << endl;
 }
 
+template<typename MpsType, typename MpoType>
+double SvecSvecAvg (const MpsType &Psi, const MpoType &H, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0)
+{
+	return isReal(avg(Psi,H.SzSz(locx1,locx2,locy1,locy2),Psi))+
+	       0.5*(isReal(avg(Psi,H.SpSm(locx1,locx2,locy1,locy2),Psi))+
+	            isReal(avg(Psi,H.SmSp(locx1,locx2,locy1,locy2),Psi)));
+}
+
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
@@ -159,7 +167,7 @@ int main (int argc, char* argv[])
 	}
 		
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
-	
+	UMPS_ALG::OPTION ALG = static_cast<UMPS_ALG::OPTION>(args.get<int>("ALG",0));
 	lout << args.info() << endl;
 //	lout.set(make_string("L=",L,"_Nup=",Nup,"_Ndn=",Ndn,".log"),"log");
 	
@@ -177,7 +185,7 @@ int main (int argc, char* argv[])
 	{
 		HEISENBERG_SU2 Heis_SU2(L,{{"Ly",Ly},{"J",J},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
 		lout << Heis_SU2.info() << endl;
-		// DMRG_SU2.set_algorithm(UMPS_ALG::PARALLEL);
+		DMRG_SU2.set_algorithm(ALG);
 		DMRG_SU2.set_log(L,"e_Heis_SU2.dat","err_eigval_Heis_SU2.dat","err_var_Heis_SU2.dat");
 		DMRG_SU2.edgeState(Heis_SU2, g_SU2, {1}, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 	}
@@ -192,6 +200,7 @@ int main (int argc, char* argv[])
 	{
 		lout << Heis_U1.info() << endl;
 		DMRG_U1.set_log(2,"e_Heis_U1.dat","err_eigval_Heis_U1.dat","err_var_Heis_U1.dat");
+		DMRG_U1.set_algorithm(ALG);
 //		DMRG_U1.set_algorithm(UMPS_ALG::IDMRG);
 		DMRG_U1.edgeState(Heis_U1, g_U1, {0}, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 		
@@ -292,6 +301,7 @@ int main (int argc, char* argv[])
 	if (CALC_U0)
 	{
 		lout << Heis0.info() << endl;
+		DMRG0.set_algorithm(ALG);
 		DMRG0.set_log(2,"e_Heis_U0.dat","err_eigval_Heis_U0.dat","err_var_Heis_U0.dat");
 		DMRG0.edgeState(Heis0, g0, {}, tol_eigval,tol_var, M, 1, max_iter,1);
 		cout << g0.state.info() << endl;
@@ -346,8 +356,8 @@ int main (int argc, char* argv[])
 		for (size_t d=1; d<dmax; ++d)
 		{
 			HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
-			double SvecSvec = Htmp.SvecSvecAvg(g0.state,0,d);
-			if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << Htmp.SvecSvecAvg(g0.state,d-1,d) << endl;}
+			double SvecSvec = SvecSvecAvg(g0.state,Htmp,0,d);
+			if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
 			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
 		}
 	}
@@ -360,7 +370,7 @@ int main (int argc, char* argv[])
 		for (size_t d=1; d<dmax; ++d)
 		{
 			HEISENBERG_U1 Htmp(d+1,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
-			double SvecSvec = Htmp.SvecSvecAvg(g_U1.state,0,d);
+			double SvecSvec = SvecSvecAvg(g_U1.state,Htmp,0,d);
 			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
 		}
 		

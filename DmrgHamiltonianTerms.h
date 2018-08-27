@@ -1,10 +1,13 @@
 #ifndef DMRG_HAMILTONIAN_TERMS
 #define DMRG_HAMILTONIAN_TERMS
 
+/// \cond
 #include <vector>
 #include <tuple>
 #include <string>
-#include "numeric_limits.h" // from ALGS
+/// \endcond
+
+#include "numeric_limits.h" // from TOOLS
 #include "tensors/SiteOperator.h"
 
 template<typename Symmetry, typename Scalar> using LocalTerms = 

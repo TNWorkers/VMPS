@@ -1,8 +1,10 @@
 #ifndef STRAWBERRY_BIPED
 #define STRAWBERRY_BIPED
 
+/// \cond
 #include <unordered_map>
 #include <unordered_set>
+/// \endcond
 
 #include "macros.h" // from TOOLS
 #include "PolychromaticConsole.h" // from TOOLS

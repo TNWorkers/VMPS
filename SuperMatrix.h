@@ -1,8 +1,10 @@
 #ifndef SUPERMATRIX
 #define SUPERMATRIX
 
+/// \cond
 #include <set>
 #include <boost/multi_array.hpp>
+/// \endcond
 
 #include "MemCalc.h" // from TOOLS
 //include "DmrgTypedefs.h"

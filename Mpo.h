@@ -1,18 +1,25 @@
 #ifndef STRAWBERRY_Mpo_WITH_Q
 #define STRAWBERRY_Mpo_WITH_Q
 
+/// \cond
 #include "boost/multi_array.hpp"
+/// \endcond
 
 #include "termcolor.hpp" //from https://github.com/ikalnytskyi/termcolor
 
+/// \cond
 #include <Eigen/SparseCore>
+/// \endcond
+
 #ifndef EIGEN_DEFAULT_SPARSE_INDEX_TYPE
 #define EIGEN_DEFAULT_SPARSE_INDEX_TYPE int
 #endif
 typedef Eigen::SparseMatrix<double,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXd;
 using namespace Eigen;
 
+/// \cond
 #include <unsupported/Eigen/KroneckerProduct>
+/// \endcond
 
 #include "util/macros.h"
 //include "models/ParamReturner.h"
@@ -29,9 +36,6 @@ using namespace Eigen;
 //include "pivot/DmrgPivotMatrix1.h"
 //include "DmrgExternal.h"
 //include "DmrgHamiltonianTerms.h"
-
-
-
 
 /**Namespace VMPS to distinguish names from ED equivalents.*/
 namespace VMPS{};

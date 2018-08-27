@@ -1,11 +1,13 @@
 #ifndef FERMIONBASE
 #define FERMIONBASE
 
+/// \cond
 #include <algorithm>
 #include <iterator>
 
 #include <boost/dynamic_bitset.hpp>
 #include <Eigen/Core>
+/// \endcond
 
 #include "symmetry/kind_dummies.h"
 #include "DmrgTypedefs.h" // for SPIN_INDEX, SPINOP_LABEL

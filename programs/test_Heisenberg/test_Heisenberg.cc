@@ -6,7 +6,7 @@
 #include "util/LapackManager.h"
 #pragma message("LapackManager")
 #endif
-
+//#define DONT_COLORIZE
 // with Eigen:
 #define DMRG_DONT_USE_OPENMP
 //#define MPSQCOMPRESSOR_DONT_USE_OPENMP

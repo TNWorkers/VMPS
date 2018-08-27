@@ -1,7 +1,7 @@
 #ifndef VANILLA_HEISENBERGXXZ
 #define VANILLA_HEISENBERGXXZ
 
-#include "models/Heisenberg.h"
+// #include "models/Heisenberg.h"
 #include "models/HeisenbergU1XXZ.h"
 
 namespace VMPS

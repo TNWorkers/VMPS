@@ -160,12 +160,15 @@ public:
 	 */
 	void adjustQN (const size_t number_cells);
 
-//private:
+private:
 	
 	/**parameter*/
 	size_t N_sites;
 	size_t Dmax, Nqmax;
 	double eps_svd = 1e-12;
+	size_t max_Nsv=100000ul, min_Nsv=1ul;
+	int max_Nrich;
+
 	size_t N_sv;
 	qarray<Nq> Qtot;
 	
@@ -174,7 +177,10 @@ public:
 	
 	/**Calculate entropy for all sites.*/
 	void calc_entropy (bool PRINT=false) {for (size_t l=0; l<N_sites; ++l) calc_entropy(l,PRINT);};
-	
+
+	/**truncated weight*/
+	ArrayXd truncWeight;
+
 	/**Sets of all unique incoming & outgoing indices for convenience*/
 	vector<vector<qarray<Symmetry::Nq> > > inset;
 	vector<vector<qarray<Symmetry::Nq> > > outset;
@@ -367,6 +373,7 @@ template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
 resize (size_t Dmax_input, size_t Nqmax_input)
 {
+	truncWeight.resize(N_sites);
 	Dmax = Dmax_input;
 	Nqmax = Nqmax_input;
 	if (Symmetry::IS_TRIVIAL) {Nqmax = 1;}
@@ -670,6 +677,7 @@ test_ortho (double tol) const
 		{
 			Test += A[GAUGE::L][l][s].adjoint().contract(A[GAUGE::L][l][s]);
 		}
+		// cout << Test.print(true) << endl;
 		vector<bool> A_CHECK(Test.dim);
 		vector<double> A_infnorm(Test.dim);
 		for (size_t q=0; q<Test.dim; ++q)
@@ -677,7 +685,7 @@ test_ortho (double tol) const
 			Test.block[q] -= MatrixType::Identity(Test.block[q].rows(), Test.block[q].cols());
 			A_CHECK[q]     = Test.block[q].norm()<tol ? true : false;
 			A_infnorm[q]   = Test.block[q].norm();
-//			cout << "q=" << Test.in[q] << ", A_infnorm[q]=" << A_infnorm[q] << endl;
+			// cout << "q=" << Test.in[q] << ", A_infnorm[q]=" << A_infnorm[q] << endl;
 		}
 		
 		// check for B
@@ -687,7 +695,7 @@ test_ortho (double tol) const
 		{
 			Test += A[GAUGE::R][l][s].contract(A[GAUGE::R][l][s].adjoint(), contract::MODE::OORR);
 		}
-		
+		// cout << Test.print(true) << endl;
 		vector<bool> B_CHECK(Test.dim);
 		vector<double> B_infnorm(Test.dim);
 		for (size_t q=0; q<Test.dim; ++q)
@@ -1198,6 +1206,8 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 	
 	if (gauge == GAUGE::L or gauge == GAUGE::C)
 	{
+		ArrayXd truncWeightSub(outbase[loc].Nq()); truncWeightSub.setZero();
+
 		vector<Biped<Symmetry,MatrixType> > Atmp(qloc[loc].size());
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		{
@@ -1248,9 +1258,16 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 			BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
 			#endif
 			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
+			VectorXd SV = Jack.singularValues();
 			
+			//Here is probably the place for truncations of the Mps by taking Nret dependent on singluarValues() < eps_svd
 			size_t Nret = Jack.singularValues().rows();
-			
+			// size_t Nret = (SV.array() > this->eps_svd).count();
+			// Nret = max(Nret, this->min_Nsv);
+			// Nret = min(Nret, this->max_Nsv);
+			// cout << "L: Nret=" << Nret << ", full=" << Jack.singularValues().rows() << endl;
+			// truncWeightSub(qout) = Symmetry::degeneracy(outbase[loc][qout]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
+
 			// Update AL
 			stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
@@ -1260,12 +1277,14 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 				stitch += Nrowsvec[i];
 			}
 		}
+		truncWeight(loc) = truncWeightSub.sum();
 	}
 	
 	size_t locC = minus1modL(loc);
 	
 	if (gauge == GAUGE::R or gauge == GAUGE::C)
 	{
+		ArrayXd truncWeightSub(inbase[loc].Nq()); truncWeightSub.setZero();
 		vector<Biped<Symmetry,MatrixType> > Atmp(qloc[loc].size());
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		{
@@ -1321,9 +1340,16 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 			BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
 			#endif
 			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
+			VectorXd SV = Jack.singularValues();
 			
+			//Here is probably the place for truncations of the Mps by taking Nret dependent on singluarValues() < eps_svd
 			size_t Nret = Jack.singularValues().rows();
-			
+			// size_t Nret = (SV.array() > this->eps_svd).count();
+			// Nret = max(Nret, this->min_Nsv);
+			// Nret = min(Nret, this->max_Nsv);
+			// cout << "R: Nret=" << Nret << ", full=" << Jack.singularValues().rows() << endl;
+			// truncWeightSub(qin) = Symmetry::degeneracy(inbase[loc][qin]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
+
 			// Update AR
 			stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
@@ -1338,6 +1364,7 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 				stitch += Ncolsvec[i];
 			}
 		}
+		truncWeight(loc) = truncWeightSub.sum();
 	}
 }
 
@@ -1421,9 +1448,27 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 				if (it == A[GAUGE::R][loc][s].dict.end())
 				{
 					MatrixType Mtmp(qcomb.inner_dim(qfull), outbase[loc].inner_dim(outbase[loc][qout]));
-					Mtmp.setIdentity();
-					Mtmp *= Symmetry::coeff_sign( outbase[loc][qout], qfull, qloc[loc][s] );
+					Mtmp.setZero();
+					Index down=qcomb.leftAmount(qfull,{outbase[loc][qout], Symmetry::flip(qloc[loc][s])});
+
+					size_t source_dim;
+					auto it = qcomb.history.find(qfull);
+					for (size_t i=0; i<(it->second).size(); i++)
+					{
+						if ((it->second)[i].source == qarray2<Nq>{outbase[loc][qout], Symmetry::flip(qloc[loc][s])})
+						{
+							source_dim = (it->second)[i].dim;
+						}
+					}
+					Mtmp.block(down,0,source_dim,outbase[loc].inner_dim(outbase[loc][qout])).setIdentity();
+					Mtmp.block(down,0,source_dim,outbase[loc].inner_dim(outbase[loc][qout])) *= Symmetry::coeff_sign( outbase[loc][qout], qfull, qloc[loc][s] );
+					// Mtmp.setIdentity();
+					// cout << "push_back with q=" << quple[0] << "," << quple[1] << endl;
 					N[s].push_back(quple, Mtmp);
+
+					// Mtmp.setIdentity();
+					// Mtmp *= Symmetry::coeff_sign( outbase[loc][qout], qfull, qloc[loc][s] );
+					// N[s].push_back(quple, Mtmp);
 				}
 			}
 		}
@@ -1460,7 +1505,6 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 					Aclump.block(stitch,0, Nrowsvec[i],Ncols) = A[GAUGE::L][loc][svec[i]].block[qvec[i]];
 					stitch += Nrowsvec[i];
 				}
-				
 				HouseholderQR<MatrixType> Quirinus(Aclump);
 				MatrixType Qmatrix = Quirinus.householderQ();
 				size_t Nret = Ncols; // retained states
@@ -1482,7 +1526,7 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 		
 		Qbasis<Symmetry> qloc_(qloc[loc]);
 		Qbasis<Symmetry> qcomb = inbase[loc].combine(qloc_);
-		
+
 		for (size_t qin=0; qin<inbase[loc].Nq(); ++qin)
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		{
@@ -1494,11 +1538,24 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 				if (it == A[GAUGE::L][loc][s].dict.end())
 				{
 					MatrixType Mtmp(inbase[loc].inner_dim(inbase[loc][qin]), qcomb.inner_dim(qfull));
-					Mtmp.setIdentity();
+					Mtmp.setZero();
+					Index left=qcomb.leftAmount(qfull,{inbase[loc][qin], qloc[loc][s]});
+
+					size_t source_dim;
+					auto it = qcomb.history.find(qfull);
+					for (size_t i=0; i<(it->second).size(); i++)
+					{
+						if ((it->second)[i].source == qarray2<Nq>{inbase[loc][qin], qloc[loc][s]})
+						{
+							source_dim = (it->second)[i].dim;
+						}
+					}
+					Mtmp.block(0,left,inbase[loc].inner_dim(inbase[loc][qin]),source_dim).setIdentity();
+					// Mtmp.setIdentity();
 					N[s].push_back(quple, Mtmp);
 				}
 			}
-		}
+		}		
 	}
 }
 

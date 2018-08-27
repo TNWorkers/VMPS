@@ -1,7 +1,9 @@
 #ifndef STRAWBERRY_DMRGCONTRACTIONS_WITH_Q
 #define STRAWBERRY_DMRGCONTRACTIONS_WITH_Q
 
+/// \cond
 #include <unordered_set>
+/// \endcond
 
 #include "Biped.h"
 #include "Multipede.h"

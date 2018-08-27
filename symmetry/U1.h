@@ -3,7 +3,9 @@
 
 //include <array>
 //include <cstddef>
+/// \cond
 #include <unordered_set>
+/// \endcond
 
 #include "DmrgTypedefs.h"
 #include "DmrgExternal.h"

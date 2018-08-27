@@ -3,9 +3,11 @@
 
 #define LEGLIMIT 2
 
+/// \cond
 #include <unordered_map>
 
 #include "boost/multi_array.hpp"
+/// \endcond
 
 #include "DmrgExternal.h"
 #include "MemCalc.h"

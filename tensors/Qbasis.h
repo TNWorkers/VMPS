@@ -1,12 +1,14 @@
 #ifndef QBASIS_H_
 #define QBASIS_H_
 
+/// \cond
 #include <unordered_set>
 #include <set>
 #include <unordered_map>
 #include <numeric>
 
 #include <Eigen/Eigen>
+/// \endcond
 
 #include "macros.h"
 
@@ -27,7 +29,7 @@ template<typename Symmetry, typename MatrixType_> struct Biped;
   * For each irreducible representation irrep of the global symmetry (for each quantum number), 
   * the states of the Hilbert states that transforms under that irrep are collected together in a plain Basis object.
   *
-  * One central function is the combine() method, which combine two intances of Qbasis to the tensor product basis, 
+  * One central function is the combine() method, which combine two instances of Qbasis to the tensor product basis, 
   * already proper sorted into irreps.
   *
   * \note Optionally an ident string can be added to each basis state, which give a convinient access for SiteOperatorQ instances.
@@ -176,7 +178,7 @@ public:
 	/**Swaps with another Qbasis.*/
 	void swap (Qbasis<Symmetry> &other) { this->data.swap(other.data()); }
 
-private:
+//private:
 	struct fuseData
 	{
 		Eigen::Index dim;

@@ -1,7 +1,9 @@
 #ifndef STRAWBERRY_DMRGINDEXGYMNASTICS
 #define STRAWBERRY_DMRGINDEXGYMNASTICS
 
+/// \cond
 #include <tuple>
+/// \endcond
 
 #include "symmetry/qarray.h"
 #include "DmrgTypedefs.h"

@@ -1,9 +1,6 @@
 #ifndef FERMIONBASESU2XSU2_H_
 #define FERMIONBASESU2XSU2_H_
 
-#include <algorithm>
-#include <iterator>
-
 #include "symmetry/S1xS2.h"
 #include "symmetry/SU2.h"
 #include "bases/FermionBase.h"

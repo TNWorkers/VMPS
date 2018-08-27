@@ -1,11 +1,13 @@
 #ifndef STRAWBERRY_QARRAY
 #define STRAWBERRY_QARRAY
 
+/// \cond
 #include <iostream>
 #include <algorithm>
 #include <array>
 #include <set>
 #include <limits>
+/// \endcond
 
 #include "NestedLoopIterator.h"
 
