@@ -43,7 +43,7 @@ namespace VMPS{};
 //Forward declarations
 template<typename Symmetry, typename Scalar> class Mps;
 template<typename Symmetry, typename Scalar> class Umps;
-template<typename Symmetry, typename Scalar> class Mpo;
+//template<typename Symmetry, typename Scalar> class Mpo;
 template<typename Symmetry, typename MpHamiltonian, typename Scalar> class DmrgSolver;
 template<typename Symmetry, typename Scalar, typename MpoScalar> class MpsCompressor;
 template<typename Symmetry, typename MpHamiltonian, typename Scalar> class VumpsSolver;

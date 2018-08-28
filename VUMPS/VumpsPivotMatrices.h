@@ -1,8 +1,9 @@
 #ifndef VUMPSPIVOTSTUFF
 #define VUMPSPIVOTSTUFF
 
-#include "tensors/Biped.h"
 #include "pivot/DmrgPivotVector.h"
+//include "tensors/Biped.h"
+
 
 //-----------<definitions>-----------
 

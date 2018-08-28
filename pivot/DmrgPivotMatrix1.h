@@ -1,10 +1,10 @@
 #ifndef DMRGPIVOTMATRIX1
 #define DMRGPIVOTMATRIX1
 
-#include "DmrgTypedefs.h"
-#include "tensors/Biped.h"
-#include "tensors/Multipede.h"
 #include "pivot/DmrgPivotVector.h"
+//include "DmrgTypedefs.h"
+//include "tensors/Biped.h"
+//include "tensors/Multipede.h"
 
 //-----------<definitions>-----------
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>

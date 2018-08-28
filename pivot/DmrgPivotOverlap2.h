@@ -1,7 +1,8 @@
 #ifndef DMRGPIVOTOVERLAP2
 #define DMRGPIVOTOVERLAP2
 
-#include "pivot/DmrgPivotOverlap1.h"
+//#include "pivot/DmrgPivotOverlap1.h"
+#include "pivot/DmrgPivotVector.h"
 
 template<typename Symmetry, typename Scalar>
 struct PivotOverlap2

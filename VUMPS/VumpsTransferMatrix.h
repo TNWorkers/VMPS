@@ -1,13 +1,17 @@
 #ifndef VANILLA_VUMPSTRANSFERMATRIX
 #define VANILLA_VUMPSTRANSFERMATRIX
 
+/// \cond
 #include "termcolor.hpp"
+/// \endcond
 
 #include "VUMPS/VumpsTypedefs.h"
-#include "tensors/Biped.h"
-#include "tensors/Multipede.h"
-#include "tensors/DmrgContractions.h"
 #include "pivot/DmrgPivotVector.h"
+
+//include "tensors/Biped.h"
+//include "tensors/Multipede.h"
+//include "tensors/DmrgContractions.h"
+//include "RandomVector.h"
 
 /**
 Operators \f$1-T_L+|R)(1|\f$, \f$1-T_R+|1)(R|\f$ for solving eq. C25ab.
@@ -346,7 +350,7 @@ inline void setZero (TransferVector<Symmetry,Scalar> &V)
 
 //-----------</vector arithmetics>-----------
 
-#include "RandomVector.h"
+
 
 template<typename Symmetry, typename Scalar>
 struct GaussianRandomVector<TransferVector<Symmetry,Scalar>,Scalar>

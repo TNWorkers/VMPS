@@ -1,9 +1,9 @@
 #ifndef DMRGPIVOTOVERLAP1
 #define DMRGPIVOTOVERLAP1
 
-#include "DmrgTypedefs.h"
-#include "tensors/Biped.h"
-#include "tensors/Multipede.h"
+//include "DmrgTypedefs.h"
+//include "tensors/Biped.h"
+//include "tensors/Multipede.h"
 #include "pivot/DmrgPivotVector.h"
 
 template<typename Symmetry, typename Scalar>

@@ -1,10 +1,13 @@
 #ifndef STRAWBERRY_DMRGEXTERNAL_WITH_Q
 #define STRAWBERRY_DMRGEXTERNAL_WITH_Q
 
+#include "Stopwatch.h" // from HELPERS
+
 #include "Mps.h"
 #include "Mpo.h"
-#include "tensors/DmrgContractions.h"
-#include "Stopwatch.h" // from HELPERS
+//include "tensors/DmrgContractions.h"
+#include "solvers/MpsCompressor.h"
+
 
 /**@file
 \brief External functions to manipulate Mps and Mpo objects.*/

@@ -1,11 +1,14 @@
 #ifndef STRAWBERRY_DMRG_HEFF_STUFF_2SITE_WITH_Q
 #define STRAWBERRY_DMRG_HEFF_STUFF_2SITE_WITH_Q
 
+/// \cond
 #include <vector>
-#include "DmrgTypedefs.h"
-#include "tensors/Biped.h"
-#include "tensors/Multipede.h"
-#include "Mps.h"
+/// \endcond
+
+//include "DmrgTypedefs.h"
+//include "tensors/Biped.h"
+//include "tensors/Multipede.h"
+//include "Mps.h"
 #include "pivot/DmrgPivotVector.h"
 
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>
