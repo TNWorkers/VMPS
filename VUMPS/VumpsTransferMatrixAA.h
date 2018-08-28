@@ -1,6 +1,11 @@
 #ifndef VANILLA_VUMPSTRANSFERMATRIXAA
 #define VANILLA_VUMPSTRANSFERMATRIXAA
 
+
+#include "VUMPS/VumpsTypedefs.h"
+#include "pivot/DmrgPivotVector.h"
+
+
 /**
 Operators \f$T_L\f$, \f$T_R\f$ for solving the linear systems eq. 14.
 \ingroup VUMPS

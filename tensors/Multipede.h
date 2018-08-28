@@ -9,11 +9,12 @@
 #include "boost/multi_array.hpp"
 /// \endcond
 
-#include "DmrgExternal.h"
-#include "MemCalc.h"
 
+#include "MemCalc.h" // from TOOLS
 #include "symmetry/functions.h"
-#include "symmetry/qarray.h"
+
+//include "symmetry/qarray.h"
+//include "DmrgExternal.h"
 
 /**
  * \ingroup Tensors

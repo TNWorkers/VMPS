@@ -1,10 +1,8 @@
 #ifndef VANILLA_Umps
 #define VANILLA_Umps
 
-// #if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
-// 	#include "LapackWrappers.h"
-// #endif
 
+/// \cond
 #include <set>
 #include <numeric>
 #include <algorithm>
@@ -12,19 +10,21 @@
 #include <type_traits>
 #include <iostream>
 #include <fstream>
+/// \endcond
+
+#include "RandomVector.h" // from ALGS
 
 #include "VUMPS/VumpsTypedefs.h"
-#include "VUMPS/VumpsTransferMatrix.h"
-#include "tensors/Biped.h"
-#include "LanczosSolver.h" // from LANCZOS
-#include "ArnoldiSolver.h" // from LANCZOS
-#include "Mpo.h"
-#include "tensors/DmrgConglutinations.h"
-// #if !defined DONT_USE_LAPACK_SVD || !defined DONT_USE_LAPACK_QR
-// 	#include "LapackWrappers.h"
-// #endif
-#include "PolychromaticConsole.h" // from HELPERS
-#include "RandomVector.h" // from LANCZOS
+#include "VumpsContractions.h"
+
+//include "PolychromaticConsole.h" // from TOOLS
+//include "tensors/Biped.h"
+//include "LanczosSolver.h" // from ALGS
+//include "ArnoldiSolver.h" // from ALGS
+//include "VUMPS/VumpsTransferMatrix.h"
+//include "Mpo.h"
+//include "tensors/DmrgConglutinations.h"
+
 
 /**Uniform Matrix Product State. Analogue of the Mps class.
 \ingroup VUMPS

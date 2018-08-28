@@ -1,11 +1,13 @@
 #ifndef TDVP_PROPAGATOR
 #define TDVP_PROPAGATOR
 
-#include "tensors/DmrgContractions.h"
-#include "LanczosPropagator.h" // from HELPERS
+#include "Stopwatch.h" // from TOOLS
+#include "LanczosPropagator.h" // from ALGS
+
+
 #include "pivot/DmrgPivotMatrix0.h"
 #include "pivot/DmrgPivotMatrix2.h"
-#include "Stopwatch.h" // from HELPERS
+//include "tensors/DmrgContractions.h"
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>
 class TDVPPropagator

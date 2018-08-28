@@ -1,22 +1,29 @@
 #ifndef VANILLA_VUMPSSOLVER
 #define VANILLA_VUMPSSOLVER
 
+/// \cond
 #include "unsupported/Eigen/IterativeSolvers"
 #include "termcolor.hpp"
+/// \endcond
 
-#include "Mpo.h"
+#include "LanczosSolver.h" // from ALGS
+#include "GMResSolver.h" // from ALGS
+
+
 #include "VUMPS/Umps.h"
 #include "VUMPS/VumpsPivotMatrices.h"
 #include "pivot/DmrgPivotMatrix0.h"
-#include "pivot/DmrgPivotMatrix1.h"
 #include "pivot/DmrgPivotMatrix2.h"
-#include "tensors/DmrgIndexGymnastics.h"
-#include "DmrgLinearAlgebra.h"
-#include "LanczosSolver.h" // from LANCZOS
-#include "VUMPS/VumpsContractions.h"
-#include "GMResSolver.h" // from LANCZOS
+//include "VUMPS/VumpsContractions.h"
 #include "VUMPS/VumpsTransferMatrix.h"
 #include "VUMPS/VumpsTransferMatrixAA.h"
+
+//include "pivot/DmrgPivotMatrix1.h"
+//include "Mpo.h"
+//include "tensors/DmrgIndexGymnastics.h"
+//include "DmrgLinearAlgebra.h"
+
+#include "Mps.h" // temp.
 
 /**
  * Solver that calculates the ground state of a UMPS. Analogue of the DmrgSolver class.

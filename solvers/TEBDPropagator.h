@@ -1,7 +1,9 @@
 #ifndef TEBD_PROPAGATOR
 #define TEBD_PROPAGATOR
 
+/// \cond
 #include <cmath>
+/// \endcond
 
 const static tuple<int,double> optTEBDstep (double tmax, double dtmax, double tol_accu=0.05)
 {

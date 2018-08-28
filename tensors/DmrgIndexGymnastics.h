@@ -5,7 +5,7 @@
 #include <tuple>
 /// \endcond
 
-#include "symmetry/qarray.h"
+//include "symmetry/qarray.h"
 #include "DmrgTypedefs.h"
 #include "tensors/Biped.h"
 #include "tensors/Multipede.h"

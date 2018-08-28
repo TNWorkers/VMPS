@@ -13,17 +13,21 @@
 #define DMRG_POLYCOMPRESS_MAX 16
 #endif
 
+/// \cond
 #include "termcolor.hpp" //from https://github.com/ikalnytskyi/termcolor
+/// \endcond
 
-#include "tensors/Biped.h"
-#include "tensors/Multipede.h"
+#include "Stopwatch.h" // from TOOLS
 #include "LanczosSolver.h" // from ALGS
-#include "tensors/DmrgContractions.h"
+
 #include "pivot/DmrgPivotMatrix1.h"
 #include "pivot/DmrgPivotMatrix2.h"
-#include "Stopwatch.h" // from TOOLS
 #include "pivot/DmrgPivotOverlap1.h"
 #include "pivot/DmrgPivotOverlap2.h"
+
+//include "tensors/Biped.h"
+//include "tensors/Multipede.h"
+//include "tensors/DmrgContractions.h"
 
 /**
  * Compressor for MPS. Needed to obtain various operations containing MPSs and MPOs with a variational approach.

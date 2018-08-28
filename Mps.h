@@ -1,7 +1,7 @@
 #ifndef STRAWBERRY_MPS_WITH_Q
 #define STRAWBERRY_MPS_WITH_Q
 
-
+/// \cond
 #include <set>
 #include <numeric>
 #include <algorithm>
@@ -9,19 +9,27 @@
 #include <type_traits>
 #include <iostream>
 #include <fstream>
+/// \endcond
 
-#include "tensors/Biped.h"
-#include "tensors/Multipede.h"
-#include "Mpo.h"
-#include "pivot/DmrgPivotMatrix1.h"
-#include "DmrgJanitor.h"
-#include "tensors/DmrgConglutinations.h"
 #ifdef USE_HDF5_STORAGE
 	#include <HDF5Interface.h>
 #endif
-#include "PolychromaticConsole.h" // from TOOLS
-#include "RandomVector.h" // from ALGS
-#include "numeric_limits.h" // from TOOLS
+
+
+
+#include "pivot/DmrgPivotMatrix1.h"
+#include "DmrgJanitor.h"
+
+//include "PolychromaticConsole.h" // from TOOLS
+//include "RandomVector.h" // from ALGS
+//include "tensors/DmrgConglutinations.h"
+//include "tensors/Multipede.h"
+//include "Mpo.h"
+//include "numeric_limits.h" // from TOOLS
+//include "tensors/Biped.h"
+
+// Forward Declaration
+template<typename Symmetry, typename Scalar> class Mpo;
 
 /**
  * Matrix Product State with conserved quantum numbers (Abelian and non abelian symmetries).
@@ -320,14 +328,14 @@ public:
 	 */
 	double squaredNorm() const;
 	
-	/** 
-	 * Calculates the expectation value with a local operator at the pivot site. 
-	 * \param O : local Mpo acting on the pivot side.
-	 * \warning Not implemented for non-abelian symmetries.
-	 */
-	template<typename MpoScalar> Scalar locAvg (const Mpo<Symmetry,MpoScalar> &O) const;
+	//** 
+	 //* Calculates the expectation value with a local operator at the pivot site. 
+	 //* \param O : local Mpo acting on the pivot side.
+	 //* \warning Not implemented for non-abelian symmetries.
+	 //*/
+	//template<typename MpoScalar> Scalar locAvg (const Mpo<Symmetry,MpoScalar> &O) const;
 	
-	/**Calculates the expectation value with a local operator at pivot and pivot+1.*/
+	//**Calculates the expectation value with a local operator at pivot and pivot+1.*/
 	// template<typename MpoScalar> Scalar locAvg2 (const Mpo<Nq,MpoScalar> &O) const;
 	
 	/**Swaps with another Mps.*/
@@ -2959,7 +2967,7 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 	return out;
 }
 
-template<typename Symmetry, typename Scalar>
+/*template<typename Symmetry, typename Scalar>
 template<typename MpoScalar>
 Scalar Mps<Symmetry,Scalar>::
 locAvg (const Mpo<Symmetry,MpoScalar> &O) const
@@ -2986,7 +2994,7 @@ locAvg (const Mpo<Symmetry,MpoScalar> &O) const
 	}
 	
 	return res;
-}
+}*/
 
 // template<typename Symmetry, typename Scalar>
 // template<typename MpoScalar>

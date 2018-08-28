@@ -1,9 +1,10 @@
 #ifndef STRAWBERRY_DMRG_HEFF_STUFF_0SITE_WITH_Q
 #define STRAWBERRY_DMRG_HEFF_STUFF_0SITE_WITH_Q
 
-#include "DmrgExternal.h"
-#include "tensors/Biped.h"
+//include "DmrgExternal.h"
+//include "tensors/Biped.h"
 #include "pivot/DmrgPivotMatrix1.h"
+//include "pivot/DmrgPivotVector.h"
 
 //-----------<definitions>-----------
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>

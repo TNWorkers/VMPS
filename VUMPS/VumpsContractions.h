@@ -1,12 +1,14 @@
 #ifndef VANILLA_VUMPSCONTRACTIONS
 #define VANILLA_VUMPSCONTRACTIONS
 
+/// \cond
 #include "boost/multi_array.hpp"
+/// \endcond
 
 #include "tensors/DmrgContractions.h"
-#include "VUMPS/Umps.h"
-#include "VUMPS/VumpsTransferMatrixAA.h"
-#include "Mpo.h"
+//include "VUMPS/Umps.h"
+//include "VUMPS/VumpsTransferMatrixAA.h"
+//include "Mpo.h"
 
 template<typename Symmetry, typename Scalar>
 Eigenstate<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > >

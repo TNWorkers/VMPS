@@ -5,10 +5,10 @@
 #include <unordered_set>
 /// \endcond
 
-#include "Biped.h"
-#include "Multipede.h"
+//include "Biped.h"
+//include "Multipede.h"
 #include "tensors/DmrgIndexGymnastics.h"
-#include "symmetry/functions.h"
+//include "symmetry/functions.h"
 
 enum CONTRACT_LR_MODE {FULL, TRIANGULAR, FIXED};
 

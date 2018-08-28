@@ -25,8 +25,8 @@ Logger lout;
 #include "StringStuff.h"
 #include "Stopwatch.h"
 
-#include "tensors/Biped.h"
-#include "VUMPS/Umps.h"
+//include "tensors/Biped.h"
+//include "VUMPS/Umps.h"
 
 #include "VUMPS/VumpsSolver.h"
 #include "VUMPS/VumpsLinearAlgebra.h"

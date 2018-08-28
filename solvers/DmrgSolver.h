@@ -1,19 +1,27 @@
 #ifndef STRAWBERRY_DMRGSOLVER_WITH_Q
 #define STRAWBERRY_DMRGSOLVER_WITH_Q
 
+/// \cond
 #include "termcolor.hpp" //from https://github.com/ikalnytskyi/termcolor
+/// \endcond
 
-#include "Mpo.h"
-#include "Mps.h"
-#include "pivot/DmrgPivotMatrix1.h"
-#include "tensors/DmrgContractions.h"
-#include "DmrgLinearAlgebra.h" // for avg()
-#include "LanczosSolver.h" // from ALGS
-#include "Stopwatch.h" // from TOOLS
 #ifdef USE_HDF5_STORAGE
 	#include <HDF5Interface.h> // from TOOLS
 #endif
-#include "solvers/MpsCompressor.h"
+
+#include "LanczosSolver.h" // from ALGS
+#include "Stopwatch.h" // from TOOLS
+
+
+#include "Mps.h"
+#include "DmrgLinearAlgebra.h" // for avg()
+//include "solvers/MpsCompressor.h"
+//include "pivot/DmrgPivotMatrix1.h"
+//include "tensors/DmrgContractions.h"
+//include "Mpo.h"
+
+
+
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar = double>
 class DmrgSolver
