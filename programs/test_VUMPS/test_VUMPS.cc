@@ -1,7 +1,4 @@
-// #define DONT_USE_LAPACK_SVD
-// #define DONT_USE_LAPACK_QR
 #define LANCZOS_MAX_ITERATIONS 1e2
-//#define DONT_USE_BDCSVD
 
 #define DMRG_DONT_USE_OPENMP
 #define MPSQCOMPRESSOR_DONT_USE_OPENMP
@@ -9,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <complex>
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif

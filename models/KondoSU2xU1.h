@@ -415,7 +415,7 @@ make_corr (KONDO_SUBSYSTEM SUBSYS,
 		Op1Ext = OperatorType::outerprod(Op1, F[locx1].Id(), Op1.Q());
 		Op2Ext = OperatorType::outerprod(Op2, F[locx2].Id(), Op2.Q());
 	}
-	else if (SUBSYS = IMPSUB)
+	else if (SUBSYS == IMPSUB)
 	{
 		Op2Ext = OperatorType::outerprod(Op1, F[locx1].Id(), Op1.Q());
 		Op1Ext = OperatorType::outerprod(B[locx2].Id(), Op2, Op2.Q());

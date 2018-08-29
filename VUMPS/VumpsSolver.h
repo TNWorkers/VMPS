@@ -335,7 +335,7 @@ write_log (bool FORCE)
 		err_var_mem.push_back(err_var);
 	}
 	
-	if (N_log>0 and N_iterations%N_log==0 or FORCE==true)
+	if ((N_log>0 and N_iterations%N_log==0) or FORCE==true)
 	{
 		// write out energy
 		ofstream Filer(file_e);
@@ -1201,8 +1201,8 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 string VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 test_LReigen (const Eigenstate<Umps<Symmetry,Scalar> > &Vout) const
 {
-	TransferMatrixAA TR(GAUGE::R, Vout.state.A[GAUGE::R], Vout.state.A[GAUGE::R], Vout.state.qloc);
-	TransferMatrixAA TL(GAUGE::L, Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::L], Vout.state.qloc);
+	TransferMatrixAA<Symmetry,Scalar> TR(GAUGE::R, Vout.state.A[GAUGE::R], Vout.state.A[GAUGE::R], Vout.state.qloc);
+	TransferMatrixAA<Symmetry,Scalar> TL(GAUGE::L, Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::L], Vout.state.qloc);
 	
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);

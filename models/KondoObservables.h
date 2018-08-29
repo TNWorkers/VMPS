@@ -163,7 +163,7 @@ make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2,
 		Op1Ext = kroneckerProduct(Op1, F[locx1].Id());
 		Op2Ext = kroneckerProduct(Op2, F[locx2].Id());
 	}
-	else if (SUBSYS = IMPSUB)
+	else if (SUBSYS == IMPSUB)
 	{
 		Op2Ext = kroneckerProduct(Op1, F[locx1].Id());
 		Op1Ext = kroneckerProduct(B[locx2].Id(), Op2);
