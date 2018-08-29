@@ -1,6 +1,7 @@
 #ifndef VANILLA_GRANDHUBBARDMODEL
 #define VANILLA_GRANDHUBBARDMODEL
 
+#include "symmetry/U0.h"
 #include "HubbardU1xU1.h"
 #include "LiebWu.h" // from TOOLS, depends on gsl
 

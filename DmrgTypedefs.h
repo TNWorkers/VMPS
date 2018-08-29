@@ -290,8 +290,8 @@ struct DMRG
 			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO = LANCZOS::REORTHO::FULL;
 			constexpr static ::LANCZOS::CONVTEST::OPTION LANCZOS_CONVTEST = LANCZOS::CONVTEST::COEFFWISE;
 			constexpr static double eps_eigval = 1e-7;
-			constexpr static double eps_coeff = 1e-4;
-			constexpr static size_t dimK = 200ul;
+			constexpr static double eps_coeff  = 1e-7;
+			constexpr static size_t dimK       = 200ul;
 		};
 		
 		struct GLOB
