@@ -227,12 +227,12 @@ int main (int argc, char* argv[])
 			lout << H_ED.info() << endl;
 			LanczosSolver<HubbardModel,VectorXd,double> Lutz;
 			Lutz.edgeState(H_ED,g_ED,LANCZOS::EDGE::GROUND);
-	
+			
 		//	HubbardModel H_EDm(L*Ly,Nup-1,Ndn,U,BondMatrix.sparseView(), BC_DANGLING);
 			HubbardModel H_EDm(L*Ly,Nup-1,Ndn,params, BC_DANGLING);
 			Eigenstate<VectorXd> g_EDm;
 			Lutz.edgeState(H_EDm,g_EDm,LANCZOS::EDGE::GROUND);
-	
+			
 		//	HubbardModel H_EDmm(L*Ly,Nup-1,Ndn-1,U,BondMatrix.sparseView(), BC_DANGLING);
 			HubbardModel H_EDmm(L*Ly,Nup-1,Ndn-1,params, BC_DANGLING);
 			Eigenstate<VectorXd> g_EDmm;
@@ -247,19 +247,23 @@ int main (int argc, char* argv[])
 			VectorXd OxV_ED = A.Operator() * g_ED.state;
 			double overlap_ED = g_EDmm.state.dot(OxV_ED);
 			
-			densityMatrix_ED.resize(L,L); densityMatrix_ED.setZero();
-			for (size_t i=0; i<L; ++i) 
-			for (size_t j=0; j<L; ++j)
+			if (CORR)
 			{
-				densityMatrix_ED(i,j) = avg(g_ED.state, H_ED.hopping_element(j,i,UP), g_ED.state)+
-				                        avg(g_ED.state, H_ED.hopping_element(j,i,DN), g_ED.state);
-			}
-//			lout << "<cdagc>=" << endl << densityMatrix_ED << endl;
-			
-			for (size_t i=0; i<L; ++i) 
-			{
-				d_ED(i) = avg(g_ED.state, H_ED.d(i), g_ED.state);
-				h_ED(i) = 1.-avg(g_ED.state, H_ED.n(i), g_ED.state)+d_ED(i);
+				densityMatrix_ED.resize(L,L); densityMatrix_ED.setZero();
+				for (size_t i=0; i<L; ++i) 
+				for (size_t j=0; j<L; ++j)
+				{
+					densityMatrix_ED(i,j) = avg(g_ED.state, H_ED.hopping_element(j,i,UP), g_ED.state)+
+						                    avg(g_ED.state, H_ED.hopping_element(j,i,DN), g_ED.state);
+				}
+	//			lout << "<cdagc>=" << endl << densityMatrix_ED << endl;
+				
+				
+				for (size_t i=0; i<L; ++i) 
+				{
+					d_ED(i) = avg(g_ED.state, H_ED.d(i), g_ED.state);
+					h_ED(i) = 1.-avg(g_ED.state, H_ED.n(i), g_ED.state)+d_ED(i);
+				}
 			}
 		}
 	}
