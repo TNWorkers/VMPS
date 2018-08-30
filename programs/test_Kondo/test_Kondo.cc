@@ -154,10 +154,10 @@ int main (int argc, char* argv[])
 	vector<Param> params;
 	params.push_back({"Ly",Ly});
 	params.push_back({"J",J});
-	// params.push_back({"t",t});
-	params.push_back({"tRung",tRung});
-	params.push_back({"tPara",tPara});
-	// params.push_back({"tPrime",tPrime});
+	params.push_back({"t",t});
+	// params.push_back({"tRung",tRung});
+	// params.push_back({"tPara",tPara});
+	params.push_back({"tPrime",tPrime});
 	params.push_back({"U",U});
 	//params.push_back({"Bz",Bz,0});
 	//params.push_back({"Bx",Bx,0});

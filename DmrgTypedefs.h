@@ -257,7 +257,18 @@ struct DMRG
 			VAR_FULL /**< This computes the norm of the full resolvent: \f$\left\Vert H |\Psi\rangle - E |\Psi\rangle \right\Vert \f$.*/
 		};
 	};
-	
+
+	/**Iteration to perform in the solver.*/
+	struct ITERATION
+	{
+		enum OPTION
+		{
+			ZERO_SITE, /**<Zero site algorithm (center matrix formalism)*/
+			ONE_SITE,  /**<One site algorithm (Ac is optimized)*/
+			TWO_SITE   /**<Two site algorithm (Very surprising)*/
+		};
+	};
+
 	/**Default configuration values for various solvers.*/
 	struct CONTROL
 	{
@@ -276,22 +287,23 @@ struct DMRG
 			constexpr static bool CALC_S_ON_EXIT = true;
 			
 			//DYN DEFAULTS
-			static double max_alpha_rsvd (size_t i) {return (i<=10)? 1e2:0;}
-			static double min_alpha_rsvd (size_t i) {return (i<=10)? 1e-11:0;}
-			static double eps_svd        (size_t i) {return 1e-7;}
-			static size_t Dincr_abs      (size_t i) {return 4;} // increase D by at least Dincr_abs
-			static double Dincr_rel      (size_t i) {return 1.1;} // increase D by at least 10%
-			static size_t Dincr_per      (size_t i) {return 2;} // increase D every 2 half-sweeps
-			static size_t min_Nsv        (size_t i) {return 0;}
-			static int    max_Nrich      (size_t i) {return -1;} // -1 = infinity
-			static void   doSomething    (size_t i) {return;} // -1 = infinity
+			static double max_alpha_rsvd             (size_t i) {return (i<=10)? 1e2:0;}
+			static double min_alpha_rsvd             (size_t i) {return (i<=10)? 1e-11:0;}
+			static double eps_svd                    (size_t i) {return 1e-7;}
+			static size_t Dincr_abs                  (size_t i) {return 4;} // increase D by at least Dincr_abs
+			static double Dincr_rel                  (size_t i) {return 1.1;} // increase D by at least 10%
+			static size_t Dincr_per                  (size_t i) {return 2;} // increase D every 2 half-sweeps
+			static size_t min_Nsv                    (size_t i) {return 0;}
+			static int    max_Nrich                  (size_t i) {return -1;} // -1 = infinity
+			static void   doSomething                (size_t i) {return;} // -1 = infinity
+			static DMRG::ITERATION::OPTION iteration (size_t i) {return DMRG::ITERATION::ONE_SITE;}
 			
 			//LANCZOS DEFAULTS
 			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO = LANCZOS::REORTHO::FULL;
 			constexpr static ::LANCZOS::CONVTEST::OPTION LANCZOS_CONVTEST = LANCZOS::CONVTEST::COEFFWISE;
 			constexpr static double eps_eigval = 1e-7;
 			constexpr static double eps_coeff  = 1e-7;
-			constexpr static size_t dimK       = 200ul;
+			constexpr static size_t dimK       = 500ul;
 		};
 		
 		struct GLOB
@@ -310,15 +322,16 @@ struct DMRG
 		
 		struct DYN
 		{
-			function<double(size_t)> max_alpha_rsvd = CONTROL::DEFAULT::max_alpha_rsvd;
-			function<double(size_t)> min_alpha_rsvd = CONTROL::DEFAULT::min_alpha_rsvd;
-			function<double(size_t)> eps_svd        = CONTROL::DEFAULT::eps_svd;
-			function<size_t(size_t)> Dincr_abs      = CONTROL::DEFAULT::Dincr_abs;
-			function<double(size_t)> Dincr_rel      = CONTROL::DEFAULT::Dincr_rel;
-			function<size_t(size_t)> Dincr_per      = CONTROL::DEFAULT::Dincr_per;
-			function<size_t(size_t)> min_Nsv        = CONTROL::DEFAULT::min_Nsv;
-			function<int(size_t)> max_Nrich         = CONTROL::DEFAULT::max_Nrich;
-			function<void(size_t)> doSomething      = CONTROL::DEFAULT::doSomething;
+			function<double(size_t)> max_alpha_rsvd             = CONTROL::DEFAULT::max_alpha_rsvd;
+			function<double(size_t)> min_alpha_rsvd             = CONTROL::DEFAULT::min_alpha_rsvd;
+			function<double(size_t)> eps_svd                    = CONTROL::DEFAULT::eps_svd;
+			function<size_t(size_t)> Dincr_abs                  = CONTROL::DEFAULT::Dincr_abs;
+			function<double(size_t)> Dincr_rel                  = CONTROL::DEFAULT::Dincr_rel;
+			function<size_t(size_t)> Dincr_per                  = CONTROL::DEFAULT::Dincr_per;
+			function<size_t(size_t)> min_Nsv                    = CONTROL::DEFAULT::min_Nsv;
+			function<int(size_t)> max_Nrich                     = CONTROL::DEFAULT::max_Nrich;
+			function<void(size_t)> doSomething                  = CONTROL::DEFAULT::doSomething;
+			function<DMRG::ITERATION::OPTION(size_t)> iteration = CONTROL::DEFAULT::iteration;
 		};
 		
 		struct LANCZOS
@@ -352,6 +365,14 @@ std::ostream& operator<< (std::ostream& s, DMRG::DIRECTION::OPTION DIR)
 {
 	if (DIR==DMRG::DIRECTION::LEFT) {s << "LEFT";}
 	else                            {s << "RIGHT";}
+	return s;
+}
+
+std::ostream& operator<< (std::ostream& s, DMRG::ITERATION::OPTION ITER)
+{
+	if (ITER==DMRG::ITERATION::ZERO_SITE)     {s << "0-site";}
+	else if (ITER==DMRG::ITERATION::ONE_SITE) {s << "1-site";}
+	else if (ITER==DMRG::ITERATION::TWO_SITE) {s << "2-site";}
 	return s;
 }
 

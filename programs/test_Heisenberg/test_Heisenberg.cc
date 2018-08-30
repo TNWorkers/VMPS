@@ -1,7 +1,4 @@
-//#define DONT_USE_LAPACK_SVD
-//#define DONT_USE_LAPACK_QR
 //#define USE_HDF5_STORAGE
-//#define EIGEN_USE_THREADS
 #ifdef BLAS
 #include "util/LapackManager.h"
 #pragma message("LapackManager")

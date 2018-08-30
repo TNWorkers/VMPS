@@ -15,13 +15,11 @@
 
 #include "Mps.h"
 #include "DmrgLinearAlgebra.h" // for avg()
+#include "pivot/DmrgPivotMatrix0.h"
+
 //include "solvers/MpsCompressor.h"
-//include "pivot/DmrgPivotMatrix1.h"
 //include "tensors/DmrgContractions.h"
 //include "Mpo.h"
-
-
-
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar = double>
 class DmrgSolver
@@ -55,7 +53,33 @@ public:
 	
 	void cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	              LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND);
-	
+
+	///\{
+	/**
+	 * Performs an 0-site iteration, 
+	 * e.g. solves the effective eigenvalue problem of the 0-site effective Hamiltonian and updates therewith the center-matrix C.
+	 * \warning This iteration is not extensively tested and there is no guarantee that the sweep protocol is correct.
+	 * \warning No subspace expansion scheme is included. -> bad convergence.
+	 */
+	void iteration_zero (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
+						 double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead);
+	/**
+	 * Performs an 1-site iteration, 
+	 * e.g. solves the effective eigenvalue problem of the 1-site effective Hamiltonian and updates therewith the A-tensors directly.
+	 * \note Standard iteration. Best tested and suited with an expansion scheme to enlarge the bond dimension.
+	 */
+	void iteration_one  (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
+						 double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead);
+	/**
+	 * Performs an 2-site iteration, 
+	 * e.g. solves the effective eigenvalue problem of the 2-site effective Hamiltonian and updates therewith the two-site wavefunction.
+	 * \note Bond dimension gets enlarged automatically. The truncated weight is a good convergence measure here and can also be used for extrapolations.
+	 * \note This algorithm is quite slow for challenging problems.
+	 */	
+	void iteration_two  (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
+						 double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead);
+	///\}
+
 	/**Returns the current error of the eigenvalue while the sweep process.*/
 	inline double get_errEigval() const {return err_eigval;};
 	
@@ -102,7 +126,10 @@ private:
 	};
 	
 	SweepStatus SweepStat;
-	
+
+	inline size_t loc1() const {return (SweepStat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? SweepStat.pivot : SweepStat.pivot-1;};
+	inline size_t loc2() const {return (SweepStat.CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? SweepStat.pivot+1 : SweepStat.pivot;};
+
 	void LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE);
 	void sweep_to_edge (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, bool MAKE_ENVIRONMENT);
 	
@@ -144,14 +171,15 @@ string DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 eigeninfo() const
 {
 	stringstream ss;
-	ss << termcolor::colorize << termcolor::underline << "half-sweeps=";
-	if ((SweepStat.N_sweepsteps-1)/(N_sites-1)>0)
-	{
-		ss << (SweepStat.N_sweepsteps-1)/(N_sites-1);
-		if ((SweepStat.N_sweepsteps-1)%(N_sites-1)!=0) {ss << "+";}
-	}
+	ss << termcolor::colorize << termcolor::underline << "half-sweeps=" << SweepStat.N_halfsweeps;
+	// if ((SweepStat.N_sweepsteps-1)/(N_sites-1)>0)
+	// {
+	// 	ss << (SweepStat.N_sweepsteps-1)/(N_sites-1);
+	// 	if ((SweepStat.N_sweepsteps-1)%(N_sites-1)!=0) {ss << "+";}
+	// }
+	// if ((SweepStat.N_sweepsteps-1)%(N_sites-1)!=0) {ss << (SweepStat.N_sweepsteps-1)%(N_sites-1) << "/" << (N_sites-1);}
 	ss << termcolor::reset;
-	if ((SweepStat.N_sweepsteps-1)%(N_sites-1)!=0) {ss << (SweepStat.N_sweepsteps-1)%(N_sites-1) << "/" << (N_sites-1);}
+	ss << ", algorithm=" << DynParam.iteration(SweepStat.N_halfsweeps);
 	ss << ", ";
 	
 	ss << "err_eigval=" << err_eigval << ", err_state=" << err_state << ", ";
@@ -220,7 +248,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	if (CHOSEN_VERBOSITY>=2)
 	{
 		lout << endl << termcolor::colorize << termcolor::bold
-		 << "——————————————————————————————————————————DMRG 1site Algorithm——————————————————————————————————————————"
+		 << "————————————————————————————————————————————DMRG Algorithm————————————————————————————————————————————"
 		 <<  termcolor::reset << endl;
 	}
 	
@@ -405,29 +433,29 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	double t_Lanczos = 0;
 	double t_sweep = 0;
 	double t_LR = 0;
+	double t_overhead = 0;
 	double t_err = 0;
-	
+
+	// If the next sweep is a 2-site or a 0-site sweep, move pivot back to edge. not sure if this is necessary for a 0-site sweep...
+	if (DynParam.iteration(SweepStat.N_halfsweeps) == DMRG::ITERATION::TWO_SITE or
+		DynParam.iteration(SweepStat.N_halfsweeps) == DMRG::ITERATION::ZERO_SITE)
+	{
+		sweep_to_edge(H,Vout,true); // build_LR = true
+	}
+
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
 		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
-		
-		Stopwatch<> LanczosTimer;
-		LanczosStep(H, Vout, EDGE);
-		t_Lanczos += LanczosTimer.time();
-		
-		Vout.state.min_Nsv = DynParam.min_Nsv(SweepStat.N_halfsweeps);
-		Vout.state.max_Nrich = DynParam.max_Nrich(SweepStat.N_halfsweeps);
-		Stopwatch<> SweepTimer;
-		Vout.state.sweepStep(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, DMRG::BROOM::RICH_SVD, &Heff[SweepStat.pivot]);
-		t_sweep += SweepTimer.time();
-		
-		Stopwatch<> LRtimer;
-		(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
-		(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
-		t_LR += LRtimer.time();
-		
-		adapt_alpha_rsvd(H,Vout,EDGE);
-		
+
+		switch ( DynParam.iteration(SweepStat.N_halfsweeps) )
+		{
+		case DMRG::ITERATION::ZERO_SITE:
+			iteration_zero(H, Vout, EDGE, t_Lanczos, t_sweep, t_LR, t_overhead); break;
+		case DMRG::ITERATION::ONE_SITE:
+			iteration_one (H, Vout, EDGE, t_Lanczos, t_sweep, t_LR, t_overhead); break;
+		case DMRG::ITERATION::TWO_SITE:
+			iteration_two (H, Vout, EDGE, t_Lanczos, t_sweep, t_LR, t_overhead); break;
+		}		
 		++SweepStat.N_sweepsteps;
 	}
 	++SweepStat.N_halfsweeps;
@@ -482,7 +510,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			// contract Fig. 4 top from Hubig, Haegeman, Schollwöck (PRB 97, 2018), arXiv:1711.01104
 			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err;
 			Stopwatch<> GRALFtimer;
-			contract_GRALF (Heff[SweepStat.pivot].L, Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].W, 
+			contract_GRALF (Heff[SweepStat.pivot].L, Vout.state.A[SweepStat.pivot], H.W[SweepStat.pivot], 
 			                Nsaved[SweepStat.pivot], Heff[SweepStat.pivot].R, 
 			                H.locBasis(SweepStat.pivot), H.opBasis(SweepStat.pivot), Err, SweepStat.CURRENT_DIRECTION);
 			t_GRALF += GRALFtimer.time();
@@ -542,7 +570,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			}
 			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Err2;
 			Stopwatch<> GRALFtimer;
-			contract_GRALF (Heff[loc1].L, Vout.state.A[loc1], Heff[loc1].W, N, Y, 
+			contract_GRALF (Heff[loc1].L, Vout.state.A[loc1], H.W[loc1], N, Y, 
 			                H.locBasis(loc1), H.opBasis(loc1), Err2, DMRG::DIRECTION::RIGHT);
 			t_GRALF += GRALFtimer.time();
 			err_state += Err2.squaredNorm().sum();
@@ -659,6 +687,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		     << "Lanczos=" << round(t_Lanczos/t_halfsweep*100.,0) << "%"
 		     << ", sweeps=" << round(t_sweep/t_halfsweep*100.,0) << "%"
 		     << ", LR=" << round(t_LR/t_halfsweep*100.,0) << "%"
+			 << ", overhead=" << round(t_overhead/t_halfsweep*100.,0) << "%"
 		     << ", err=" << round(t_err/t_halfsweep*100.,0) << "%"
 		     << ")"
 		     << endl;
@@ -684,9 +713,176 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
+iteration_zero (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
+				double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead)
+{	
+	//*********************************************************LanczosStep******************************************************
+	double Ei = Vout.energy;
+
+	Stopwatch<> OheadTimer;
+	Eigenstate<PivotVector<Symmetry,Scalar> > g;
+	int old_pivot = SweepStat.pivot;
+	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Vout.state.rightSplitStep(SweepStat.pivot,g.state.data[0]):
+		                                           Vout.state.leftSplitStep(SweepStat.pivot,g.state.data[0]);
+	SweepStat.pivot = Vout.state.get_pivot();
+	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,SweepStat.pivot) : build_R(H,Vout,SweepStat.pivot);
+
+	PivotMatrix0<Symmetry,Scalar,Scalar> Heff0;
+	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)?
+		Heff0 = PivotMatrix0<Symmetry,Scalar,Scalar>(Heff[old_pivot+1].L, Heff[old_pivot].R):
+		Heff0 = PivotMatrix0<Symmetry,Scalar,Scalar>(Heff[old_pivot].L, Heff[old_pivot-1].R);
+	time_overhead += OheadTimer.time();
+
+	Stopwatch<> LanczosTimer;
+	LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LanczosParam.REORTHO);
+	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
+	Lutz.edgeState(Heff0,g, EDGE, LanczosParam.eps_eigval, LanczosParam.eps_coeff, false);
+
+	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << "loc=" << SweepStat.pivot << "\t" << Lutz.info() << endl;
+		lout << Vout.state.test_ortho() << ", " << g.energy << endl;
+	}
+	
+	Vout.energy = g.energy;
+	Vout.state.absorb(SweepStat.pivot, SweepStat.CURRENT_DIRECTION, g.state.data[0]);
+
+	DeltaEopt = Ei-Vout.energy;
+	time_lanczos += LanczosTimer.time();
+	//**************************************************************************************************************************
+	
+	// Vout.state.min_Nsv = DynParam.min_Nsv(SweepStat.N_halfsweeps);
+	// Vout.state.max_Nrich = DynParam.max_Nrich(SweepStat.N_halfsweeps);
+	// Stopwatch<> SweepTimer;
+	// Vout.state.sweepStep(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, DMRG::BROOM::RICH_SVD, &Heff[SweepStat.pivot]);
+	// time_sweep += SweepTimer.time();
+		
+	// Stopwatch<> LRtimer;
+	// (SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
+	// (SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
+	// time_LR += LRtimer.time();
+		
+	adapt_alpha_rsvd(H,Vout,EDGE);
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
+iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
+			   double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead)
+{
+	//*********************************************************LanczosStep******************************************************
+	double Ei = Vout.energy;
+	
+	Stopwatch<> OheadTimer;
+	Heff[SweepStat.pivot].W = H.W[SweepStat.pivot];
+	precalc_blockStructure (Heff[SweepStat.pivot].L, Vout.state.A[SweepStat.pivot], 
+							Heff[SweepStat.pivot].W, Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].R, 
+							H.locBasis(SweepStat.pivot), H.opBasis(SweepStat.pivot), Heff[SweepStat.pivot].qlhs, Heff[SweepStat.pivot].qrhs,
+							Heff[SweepStat.pivot].factor_cgcs);
+	Heff[SweepStat.pivot].qloc = H.locBasis(SweepStat.pivot);
+	Heff[SweepStat.pivot].qOp = H.opBasis(SweepStat.pivot);
+	
+	Eigenstate<PivotVector<Symmetry,Scalar> > g;
+	g.state = PivotVector<Symmetry,Scalar>(Vout.state.A[SweepStat.pivot]);
+	time_overhead += OheadTimer.time();
+	
+	Stopwatch<> LanczosTimer;
+	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LanczosParam.REORTHO);
+	
+	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
+	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LanczosParam.eps_eigval, LanczosParam.eps_coeff, false);
+	
+	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << "loc=" << SweepStat.pivot << "\t" << Lutz.info() << endl;
+		lout << Vout.state.test_ortho() << ", " << g.energy << endl;
+	}
+	
+	Vout.energy = g.energy;
+	Vout.state.A[SweepStat.pivot] = g.state.data;
+	DeltaEopt = Ei-Vout.energy;
+	// LanczosStep(H, Vout, EDGE);
+	time_lanczos += LanczosTimer.time();
+	//**************************************************************************************************************************
+
+	Vout.state.min_Nsv = DynParam.min_Nsv(SweepStat.N_halfsweeps);
+	Vout.state.max_Nrich = DynParam.max_Nrich(SweepStat.N_halfsweeps);
+	Stopwatch<> SweepTimer;
+	Vout.state.sweepStep(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, DMRG::BROOM::RICH_SVD, &Heff[SweepStat.pivot]);
+	time_sweep += SweepTimer.time();
+		
+	Stopwatch<> LRtimer;
+	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
+	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
+	time_LR += LRtimer.time();
+		
+	adapt_alpha_rsvd(H,Vout,EDGE);
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
+iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
+			   double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead)
+{
+	//*********************************************************LanczosStep******************************************************
+	double Ei = Vout.energy;
+
+	Stopwatch<> OheadTimer;
+	Eigenstate<PivotVector<Symmetry,Scalar> > g;
+	g.state = PivotVector<Symmetry,Scalar>(Vout.state.A[loc1()], Vout.state.locBasis(loc1()), 
+										   Vout.state.A[loc2()], Vout.state.locBasis(loc2()),
+										   Vout.state.QoutTop[loc1()], Vout.state.QoutBot[loc1()]);	
+
+	PivotMatrix2<Symmetry,Scalar,Scalar> Heff2(Heff[loc1()].L, Heff[loc2()].R, 
+											   H.W[loc1()], H.W[loc2()], 
+											   H.locBasis(loc1()), H.locBasis(loc2()), 
+											   H.opBasis (loc1()), H.opBasis (loc2()));
+
+	precalc_blockStructure (Heff2.L, g.state.data, Heff2.W12, Heff2.W34, g.state.data, Heff2.R, 
+	                        H.locBasis(loc1()), H.locBasis(loc2()), H.opBasis(loc1()), H.opBasis(loc2()), 
+	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
+	time_overhead += OheadTimer.time();
+
+	Stopwatch<> LanczosTimer;
+	LanczosSolver<PivotMatrix2<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LanczosParam.REORTHO);
+	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
+	Lutz.edgeState(Heff2, g, EDGE, LanczosParam.eps_eigval, LanczosParam.eps_coeff, false);
+	time_lanczos += LanczosTimer.time();
+	
+	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
+	{
+		lout << "loc=" << SweepStat.pivot << "\t" << Lutz.info() << endl;
+		lout << Vout.state.test_ortho() << ", " << g.energy << endl;
+	}
+	
+	Vout.energy = g.energy;
+	for (size_t s=0; s<g.state.data.size(); ++s)
+	{
+		g.state.data[s] = g.state.data[s].cleaned();
+	}
+
+	DeltaEopt = Ei-Vout.energy;
+	//**************************************************************************************************************************
+	
+	Vout.state.min_Nsv = DynParam.min_Nsv(SweepStat.N_halfsweeps);
+	Vout.state.max_Nrich = DynParam.max_Nrich(SweepStat.N_halfsweeps);
+	Stopwatch<> SweepTimer;
+	Vout.state.sweepStep2(SweepStat.CURRENT_DIRECTION, loc1(), g.state.data);
+	time_sweep += SweepTimer.time();
+
+	Stopwatch<> LRtimer;
+	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
+	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
+	time_LR += LRtimer.time();
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 sweep_to_edge (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, bool MAKE_ENVIRONMENT)
 {
-	assert(SweepStat.pivot==1 or SweepStat.pivot==N_sites-2);
+	assert(SweepStat.pivot == 0 or SweepStat.pivot==1 or SweepStat.pivot==N_sites-2 or SweepStat.pivot==N_sites-1);
+
+	// assert(SweepStat.pivot==1 or SweepStat.pivot==N_sites-2);
 	
 	if (SweepStat.pivot==1)
 	{

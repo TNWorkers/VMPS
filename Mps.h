@@ -2369,17 +2369,17 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			#else
 			BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
 			#endif
-			
 			Jack.compute(Aclump,ComputeThinU|ComputeThinV);
+			VectorXd SV = Jack.singularValues();
 			
 			// retained states:
-			size_t Nret = (Jack.singularValues().array().abs() > this->eps_svd).count();
+			size_t Nret = (SV.array().abs() > this->eps_svd).count();
 			Nret = max(Nret, this->min_Nsv);
 			Nret = min(Nret, this->max_Nsv);
-			
-			truncWeightSub(qmid) = Jack.singularValues().tail(Jack.singularValues().rows()-Nret).cwiseAbs2().sum();
+			truncWeightSub(qmid) = Symmetry::degeneracy(midset[qmid]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
 			size_t Nnz = (Jack.singularValues().array() > 0.).count();
-			entropySub(qmid) = -(Jack.singularValues().head(Nnz).array().square() * Jack.singularValues().head(Nnz).array().square().log()).sum();
+			entropySub(qmid) = -Symmetry::degeneracy(midset[qmid]) *
+                 			   (SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
 			
 			MatrixType Aleft, Aright, Cmatrix;
 			if (DIR == DMRG::DIRECTION::RIGHT)

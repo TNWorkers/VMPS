@@ -165,28 +165,30 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 double TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
 x (int alg, size_t l, int N_stages)
 {
+	double out;
 	int N_updates = (alg==2)? N_sites-1 : N_sites;
 	
 	if (N_stages == 1)
 	{
-		return 0.5;
+		out = 0.5;
 	}
 	else if (N_stages == 2)
 	{
-		if      (l<N_updates)                      {return 0.25;}
-		else if (l>=N_updates and l<2*N_updates)   {return 0.25;}
-		else if (l>=2*N_updates and l<3*N_updates) {return 0.25;}
-		else if (l>=3*N_updates)                   {return 0.25;}
+		if      (l<N_updates)                      {out = 0.25;}
+		else if (l>=N_updates and l<2*N_updates)   {out = 0.25;}
+		else if (l>=2*N_updates and l<3*N_updates) {out = 0.25;}
+		else if (l>=3*N_updates)                   {out = 0.25;}
 	}
 	else if (N_stages == 3)
 	{
 		double tripleJump1 = 1./(2.-pow(2.,1./3.));
 		double tripleJump2 = 1.-2.*tripleJump1;
 		
-		if      (l< 2*N_updates)                   {return 0.5*tripleJump1;}
-		else if (l>=2*N_updates and l<4*N_updates) {return 0.5*tripleJump2;}
-		else if (l>=4*N_updates)                   {return 0.5*tripleJump1;}
+		if      (l< 2*N_updates)                   {out = 0.5*tripleJump1;}
+		else if (l>=2*N_updates and l<4*N_updates) {out = 0.5*tripleJump2;}
+		else if (l>=4*N_updates)                   {out = 0.5*tripleJump1;}
 	}
+	return out;
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>
