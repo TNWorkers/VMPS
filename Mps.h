@@ -15,18 +15,8 @@
 	#include <HDF5Interface.h>
 #endif
 
-
-
 #include "pivot/DmrgPivotMatrix1.h"
 #include "DmrgJanitor.h"
-
-//include "PolychromaticConsole.h" // from TOOLS
-//include "RandomVector.h" // from ALGS
-//include "tensors/DmrgConglutinations.h"
-//include "tensors/Multipede.h"
-//include "Mpo.h"
-//include "numeric_limits.h" // from TOOLS
-//include "tensors/Biped.h"
 
 // Forward Declaration
 template<typename Symmetry, typename Scalar> class Mpo;
@@ -3279,41 +3269,41 @@ addScale (OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, bool SVD_COMPRESS)
 		}
 		
 		// mend the blocks without match
-		for (size_t l=1; l<this->N_sites-1; ++l)
-		for (size_t s=0; s<qloc[l].size(); ++s)
-		for (size_t q=0; q<A[l][s].dim; ++q)
-		{
-			size_t rows = A[l][s].block[q].rows();
-			size_t cols = A[l][s].block[q].cols();
-			size_t rows_old = rows;
-			size_t cols_old = cols;
-			
-			for (size_t snext=0; snext<qloc[l+1].size(); ++snext)
-			for (size_t qnext=0; qnext<A[l+1][snext].dim; ++qnext)
-			{
-				if (A[l+1][snext].in[qnext] == A[l][s].out[q] and
-				    A[l+1][snext].block[qnext].rows() > A[l][s].block[q].cols())
-				{
-					cols = A[l+1][snext].block[qnext].rows();
-					break;
-				}
-			}
-			
-			for (size_t sprev=0; sprev<qloc[l-1].size(); ++sprev)
-			for (size_t qprev=0; qprev<A[l-1][sprev].dim; ++qprev)
-			{
-				if (A[l-1][sprev].out[qprev] == A[l][s].in[q] and
-				    A[l-1][sprev].block[qprev].cols() > A[l][s].block[q].rows())
-				{
-					rows = A[l-1][sprev].block[qprev].cols();
-					break;
-				}
-			}
-			
-			A[l][s].block[q].conservativeResize(rows,cols);
-			A[l][s].block[q].bottomRows(rows-rows_old).setZero();
-			A[l][s].block[q].rightCols(cols-cols_old).setZero();
-		}
+/*		for (size_t l=1; l<this->N_sites-1; ++l)*/
+/*		for (size_t s=0; s<qloc[l].size(); ++s)*/
+/*		for (size_t q=0; q<A[l][s].dim; ++q)*/
+/*		{*/
+/*			size_t rows = A[l][s].block[q].rows();*/
+/*			size_t cols = A[l][s].block[q].cols();*/
+/*			size_t rows_old = rows;*/
+/*			size_t cols_old = cols;*/
+/*			*/
+/*			for (size_t snext=0; snext<qloc[l+1].size(); ++snext)*/
+/*			for (size_t qnext=0; qnext<A[l+1][snext].dim; ++qnext)*/
+/*			{*/
+/*				if (A[l+1][snext].in[qnext] == A[l][s].out[q] and*/
+/*				    A[l+1][snext].block[qnext].rows() > A[l][s].block[q].cols())*/
+/*				{*/
+/*					cols = A[l+1][snext].block[qnext].rows();*/
+/*					break;*/
+/*				}*/
+/*			}*/
+/*			*/
+/*			for (size_t sprev=0; sprev<qloc[l-1].size(); ++sprev)*/
+/*			for (size_t qprev=0; qprev<A[l-1][sprev].dim; ++qprev)*/
+/*			{*/
+/*				if (A[l-1][sprev].out[qprev] == A[l][s].in[q] and*/
+/*				    A[l-1][sprev].block[qprev].cols() > A[l][s].block[q].rows())*/
+/*				{*/
+/*					rows = A[l-1][sprev].block[qprev].cols();*/
+/*					break;*/
+/*				}*/
+/*			}*/
+/*			*/
+/*			A[l][s].block[q].conservativeResize(rows,cols);*/
+/*			A[l][s].block[q].bottomRows(rows-rows_old).setZero();*/
+/*			A[l][s].block[q].rightCols(cols-cols_old).setZero();*/
+/*		}*/
 	}
 }
 

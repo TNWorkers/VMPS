@@ -8,10 +8,15 @@
 		{
 			spillage = 4.*dE[0];
 		}
+		else if ((spec == "AES" and N==L) or (spec == "APS" and N==0))
+		{
+			spillage = 2.*dE[0];
+		}
 		else if (spec == "SSF" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
 		{
 			spillage = 10.*dE[0]; //0.5*(Emax-Emin);
 		}
+		lout << "spillage=" << spillage << endl;
 		OrthPolyGreen<MODEL,MODEL::StateXd,CHEBYSHEV> KPS(Emin-spillage, Emax+spillage);
 		
 		for (size_t i=0; i<dE.size(); ++i)
