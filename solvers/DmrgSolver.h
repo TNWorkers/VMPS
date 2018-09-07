@@ -172,20 +172,11 @@ eigeninfo() const
 {
 	stringstream ss;
 	ss << termcolor::colorize << termcolor::underline << "half-sweeps=" << SweepStat.N_halfsweeps;
-	// if ((SweepStat.N_sweepsteps-1)/(N_sites-1)>0)
-	// {
-	// 	ss << (SweepStat.N_sweepsteps-1)/(N_sites-1);
-	// 	if ((SweepStat.N_sweepsteps-1)%(N_sites-1)!=0) {ss << "+";}
-	// }
-	// if ((SweepStat.N_sweepsteps-1)%(N_sites-1)!=0) {ss << (SweepStat.N_sweepsteps-1)%(N_sites-1) << "/" << (N_sites-1);}
 	ss << termcolor::reset;
 	ss << ", algorithm=" << DynParam.iteration(SweepStat.N_halfsweeps);
 	ss << ", ";
-	
 	ss << "err_eigval=" << err_eigval << ", err_state=" << err_state << ", ";
-	
 	ss << "mem=" << round(memory(GB),3) << "GB";
-	
 	return ss.str();
 }
 
@@ -922,6 +913,7 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 		lout << termcolor::bold << Eedge << "=" << setprecision(13) << Vout.energy << ", "
 			 << Eedge << "/L=" << Vout.energy/N_phys << setprecision(standard_precision) << termcolor::reset << endl;
 		lout << Vout.state.info() << endl;
+		
 		if (GlobParam.CALC_S_ON_EXIT)
 		{
 			size_t standard_precision = cout.precision();

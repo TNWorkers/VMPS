@@ -10,7 +10,7 @@
 #endif
 
 #ifndef DMRG_POLYCOMPRESS_MAX
-#define DMRG_POLYCOMPRESS_MAX 16
+#define DMRG_POLYCOMPRESS_MAX 64
 #endif
 
 /// \cond
@@ -24,10 +24,6 @@
 #include "pivot/DmrgPivotMatrix2.h"
 #include "pivot/DmrgPivotOverlap1.h"
 #include "pivot/DmrgPivotOverlap2.h"
-
-//include "tensors/Biped.h"
-//include "tensors/Multipede.h"
-//include "tensors/DmrgContractions.h"
 
 /**
  * Compressor for MPS. Needed to obtain various operations containing MPSs and MPOs with a variational approach.
@@ -118,6 +114,8 @@ public:
 private:
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
+	
+	string print_dist() const;
 	
 	// for |Vout> ≈ |Vin>
 		vector<PivotOverlap1<Symmetry,Scalar> > Env;
@@ -224,7 +222,7 @@ info() const
 	
 	ss << "|Vlhs-Vrhs|^2=";
 	if (sqdist <= tol) {ss << termcolor::green;}
-	else               {ss << termcolor::red;}
+	else               {ss << termcolor::yellow;}
 	ss << termcolor::reset << sqdist << ", ";
 	ss << "halfsweeps=" << N_halfsweeps << ", ";
 	ss << "mem=" << round(memory(GB),3) << "GB";
@@ -414,7 +412,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
 		{
 			lout << " distance^2=";
 			if (sqdist <= tol) {lout << termcolor::green;}
-			else               {lout << termcolor::red;}
+			else               {lout << termcolor::yellow;}
 			lout << sqdist << termcolor::reset << ", ";
 			t_tot = FullSweepTimer.time();
 			lout << t_info() << endl;
@@ -696,7 +694,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		{
 			lout << " distance^2=";
 			if (sqdist <= tol) {lout << termcolor::green;}
-			else               {lout << termcolor::red;}
+			else               {lout << termcolor::yellow;}
 			lout << sqdist << termcolor::reset << ", ";
 			t_tot = FullSweepTimer.time();
 			lout << t_info() << endl;
@@ -1050,7 +1048,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		{
 			lout << " distance^2=";
 			if (sqdist <= tol) {lout << termcolor::green;}
-			else               {lout << termcolor::red;}
+			else               {lout << termcolor::yellow;}
 			lout << sqdist << termcolor::reset << ", ";
 			t_tot = FullSweepTimer.time();
 			lout << t_info() << endl;
@@ -1070,14 +1068,13 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 			}
 		}
 		
-		if (N_halfsweeps%8 == 0 and
-		    N_halfsweeps > 1 and 
-		    N_halfsweeps != max_halfsweeps and
-		    sqdist > tol)
-		{
-			lout << termcolor::blue << "Warning: Could not reach tolerance, restarting from random!" << termcolor::reset << endl;
-			prepSweep(H,Vin1,Vin2,Vout,true);
-		}
+/*		if (N_halfsweeps == 8 and*/
+/*		    N_halfsweeps != max_halfsweeps and*/
+/*		    sqdist > tol)*/
+/*		{*/
+/*			lout << termcolor::blue << "Warning: Could not reach tolerance, restarting from random!" << termcolor::reset << endl;*/
+/*			prepSweep(H,Vin1,Vin2,Vout,true);*/
+/*		}*/
 		
 		Mmax_new = Vout.calc_Mmax();
 	}
