@@ -13,7 +13,6 @@
 		{
 			Stopwatch<> nChronos;
 			MODEL::Solver * DMRG = new MODEL::Solver(DMRG::VERBOSITY::HALFSWEEPWISE);
-			
 			DMRG->edgeState(H, *init, Qi, LANCZOS::EDGE::GROUND);
 			lout << endl << nChronos.info(make_string("ground state ",Qi)) << endl;
 			lout << DMRG->info() << endl;
@@ -22,10 +21,9 @@
 		}
 		#pragma omp section
 		{
-			Stopwatch<> gChronos;
-			
 			for (size_t i=0; i<Qc.size(); ++i)
 			{
+				Stopwatch<> gChronos;
 				Eigenstate<MODEL::StateXd> g;
 				MODEL::Solver gDMRG(DMRG::VERBOSITY::SILENT);
 				gDMRG.edgeState(H, g, Qc[i], LANCZOS::EDGE::GROUND);
@@ -33,15 +31,13 @@
 				Emins[i] = g.energy;
 				ginfo << gDMRG.info() << endl;
 			}
-//			Emin = energies.maxCoeff();
 		}
 		
 		#pragma omp section
 		{
-			Stopwatch<> rChronos;
-			
 			for (size_t i=0; i<Qc.size(); ++i)
 			{
+				Stopwatch<> rChronos;
 				Eigenstate<MODEL::StateXd> r;
 				MODEL::Solver rDMRG(DMRG::VERBOSITY::SILENT);
 				rDMRG.edgeState(H, r, Qc[i], LANCZOS::EDGE::ROOF);
@@ -49,7 +45,6 @@
 				Emaxs[i] = r.energy;
 				rinfo << rDMRG.info() << endl;
 			}
-//			Emax = r->energy;
 		}
 	}
 	

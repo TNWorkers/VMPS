@@ -169,36 +169,17 @@ int main (int argc, char* argv[])
 		DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND);
 		
 		t_U0 = Watch_U0.time();
-		
-	//	
-	//	// observables
-	//	
-	//	SpinCorr_U0.resize(L,L); SpinCorr_U0.setZero();
-	//	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_U0(i,j) = 3.*avg(g_U0.state, H_U0.SzSz(i,j), g_U0.state); }
-	//	
-	//	// compressor
-	//	
-	//	VMPS::Heisenberg::StateXd Hxg_U0;
-	//	HxV(H_U0,g_U0.state,Hxg_U0,VERB);
-	//	E_U0_compressor = g_U0.state.dot(Hxg_U0);
-	//	
-	//	// zipper
-	//	
-	//	VMPS::Heisenberg::StateXd Oxg_U0;
-	//	Oxg_U0.eps_svd = 1e-15;
-	//	OxV(H_U0,g_U0.state,Oxg_U0,DMRG::BROOM::SVD);
-	//	E_U0_zipper = g_U0.state.dot(Oxg_U0);
 	}
 	
 	//--------U(1)---------
 	if (U1)
 	{
 		lout << endl << "--------U(1)---------" << endl << endl;
-	
+		
 		Stopwatch<> Watch_U1;
 		VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
 		lout << H_U1.info() << endl;
-	
+		
 		VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
 		DMRG_U1.GlobParam = H_U1.get_GlobParam(SweepParams);
 		DMRG_U1.DynParam = H_U1.get_DynParam(SweepParams);
@@ -207,30 +188,13 @@ int main (int argc, char* argv[])
 		
 		t_U1 = Watch_U1.time();
 		
-		// observables
-	//	MatrixXd SpinCorr_U1(L,L); SpinCorr_U1.setZero();
-	//	for(size_t i=0; i<L; i++) for (size_t j=0; j<L; j++) { SpinCorr_U1(i,j) = 3.*avg(g_U1.state, H_U1.SzSz(i,j), g_U1.state); }
-	
-	//	// compressor
-	//	
-	//	VMPS::HeisenbergU1::StateXd Hxg_U1;
-	//	HxV(H_U1,g_U1.state,Hxg_U1,VERB);
-	//	double E_U1_compressor = g_U1.state.dot(Hxg_U1);
-	
-		// zipper
-	
-	//	VMPS::HeisenbergU1::StateXd Oxg_U1;
-	//	Oxg_U1.eps_svd = 1e-15;
-	//	OxV(H_U1,g_U1.state,Oxg_U1,DMRG::BROOM::SVD);
-	//	double E_U1_zipper = g_U1.state.dot(Oxg_U1);
-	
 		// dynamics (of Néel state)
 		if (CALC_DYNAMICS)
 		{
 			lout << "-------DYNAMICS-------" << endl;
 			vector<double> Jz_list = {0., -1., -2., -4.};
 	//		vector<double> Jz_list = {0.};
-		
+			
 			for (const auto& Jz:Jz_list)
 			{
 				VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
@@ -275,21 +239,6 @@ int main (int argc, char* argv[])
 		g_SU2.state.graph("SU2");
 		
 		t_SU2 = Watch_SU2.time();
-	//	
-	//	MatrixXd SpinCorr_SU2(L,L); SpinCorr_SU2.setZero();
-	//	for(size_t i=0; i<L; i++) for(size_t j=0; j<L; j++) { SpinCorr_SU2(i,j) = avg(g_SU2.state, H_SU2.SS(i,j), g_SU2.state); }
-		
-	//	 --------SU(2) time propagation---------
-	//	VMPS::HeisenbergSU2::StateXcd Psi = g_SU2.state.cast<complex<double> >();
-	//	TDVPPropagator<VMPS::HeisenbergSU2,Sym::SU2<Sym::SpinSU2>,double,complex<double>,VMPS::HeisenbergSU2::StateXcd> TDVP(H_SU2,Psi);
-	//	TDVP.t_step0(H_SU2,Psi, -1.i*dt, 1,1e-8);
-	//	cout << TDVP.info() << endl;
-	//	complex<double> phi_tp = g_SU2.state.cast<complex<double> >().dot(Psi);
-	//	complex<double> phi_ex = exp(-1.i*g_SU2.energy*dt);
-	//	cout << "phase: " << phi_tp << ", " << phi_ex << ", diff=" << abs(phi_tp-phi_ex) << endl;
-	//	double E_tp = isReal(avg(Psi,H_SU2,Psi));
-	//	double E_ex = isReal(avg(g_SU2.state,H_SU2,g_SU2.state));
-	//	cout << "energy: " << E_tp << ", " << E_ex << ", diff=" << abs(E_tp-E_ex) << endl;
 	}
 	
 	//--------output---------
@@ -344,20 +293,6 @@ int main (int argc, char* argv[])
 	T.add("1");
 	T.endOfRow();
 	
-//	// observables
-//	T.add("observables");
-//	T.add(to_string_prec(SpinCorr_U0.sum()));
-//	T.add(to_string_prec(SpinCorr_U1.sum()));
-//	T.add(to_string_prec(SpinCorr_SU2.sum()));
-//	T.endOfRow();
-//	
-//	// observables error
-//	T.add("observables diff");
-//	T.add(to_string_prec((SpinCorr_U0-SpinCorr_SU2).lpNorm<1>()/Vsq));
-//	T.add(to_string_prec((SpinCorr_U1-SpinCorr_SU2).lpNorm<1>()/Vsq));
-//	T.add("0");
-//	T.endOfRow();
-	
 	// bond dimensions
 	T.add("Dmax");
 	T.add(to_string(g_U0.state.calc_Dmax()));
@@ -373,5 +308,4 @@ int main (int argc, char* argv[])
 	lout << endl << T;
 	
 	lout << "ref=" << VMPS::Heisenberg::ref({{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"m",static_cast<double>(M/(L*Ly))}}) << endl;
-//	lout << "ref(XX)=" << VMPS::Heisenberg::ref({{"Jxy",1.},{"Jz",0.},{"D",2ul},{"Ly",1ul}}) << endl;
 }
