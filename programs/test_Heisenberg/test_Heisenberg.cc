@@ -1,9 +1,10 @@
-//#define USE_HDF5_STORAGE
 #ifdef BLAS
 #include "util/LapackManager.h"
 #pragma message("LapackManager")
 #endif
-//#define DONT_COLORIZE
+
+//#define USE_HDF5_STORAGE
+
 // with Eigen:
 #define DMRG_DONT_USE_OPENMP
 //#define MPSQCOMPRESSOR_DONT_USE_OPENMP

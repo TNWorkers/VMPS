@@ -49,7 +49,10 @@ inline double coupl_3j_base (const int q1  , const int q2  , const int q3,
 #endif
 
 #ifdef OWN_HASH_CGC
-//assert(OMP_NUM_THREADS == 1 and "Hashing the cgcs is not treadsafe!");
+#ifdef _OPENMP
+assert(omp_get_max_threads() == 1 and "Hashing the cgcs is not treadsafe!");
+#endif
+
 std::unordered_map<std::array<int,9>,double > Table9j;
 std::unordered_map<std::array<int,6>,double > Table6j;
 

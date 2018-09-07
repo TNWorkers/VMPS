@@ -1,4 +1,4 @@
-#external libs
+# External libs
 DMRG		= 
 ALGS		= 
 TOOLS		= 
@@ -6,10 +6,9 @@ BOOST       =
 GSL         = 
 HDF5		= 
 EIGEN		= 
-TEXTTABLE	= 
+TEXTTABLE	=  # only necessary if intel mkl routines should be used, but a modern opneblas implementation has the same perfomance.
 LAPACK		= 
 MKLROOT		= 
-OPENMP		= 
 TERMCOLOR	= 
 
 # General
@@ -19,7 +18,16 @@ RM			= rm -rf
 RMDIR		= rmdir
 INSTALL		= install
 DEBUG		= -ggdb -O0 -march=native -ftrapv -fopenmp
-OPTIMIZE	= -O3 -march=native -m64 -fopenmp -fmax-errors=5
+OPTIMIZE	= -O3 -march=native -m64 -fopenmp
+ifeq ($(CC),g++)
+	DEBUG    += -fmax-errors=5
+	OPTIMIZE += -fmax-errors=5
+else
+ifeq ($(CC),clang++)
+	DEBUG	 += -ferror-limit=5 -Wno-parentheses
+	OPTIMIZE += -ferror-limit=5 -Wno-parentheses
+endif
+endif
 
 ## CHANGE THIS ##
 TARGET		= <EXE_NAME>
