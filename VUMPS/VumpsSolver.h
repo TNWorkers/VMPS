@@ -80,7 +80,8 @@ public:
 	                qarray<Symmetry::Nq> Qtot_input, 
 	                double tol_eigval_input=1e-7, double tol_var_input=1e-6, 
 	                size_t M=10, size_t Nqmax=4, 
-	                size_t max_iterations=50, size_t min_iterations=6);
+	                size_t max_iterations=50, size_t min_iterations=6,
+					bool USE_STATE=false);
 	
 private:
 	
@@ -89,7 +90,7 @@ private:
 	void prepare_h2site (const TwoSiteHamiltonian &h2site, const vector<qarray<Symmetry::Nq> > &qloc_input, 
 	                     Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
 	                     qarray<Symmetry::Nq> Qtot_input,
-	                     size_t M, size_t Nqmax);
+	                     size_t M, size_t Nqmax, bool USE_STATE=false);
 	
 	/**
 	 * Performs an iteration with 1-site unit cell. Used with an explicit 2-site Hamiltonian.
@@ -100,7 +101,7 @@ private:
 	
 	///\{
 	/**Prepares the class setting up the environments. Used with an Mpo.*/
-	void prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M, size_t Nqmax);
+	void prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M, size_t Nqmax, bool USE_STATE=false);
 	
 	/**Performs an iteration with an n-site unit cell (in parallel, algorithm 3). Used with an MPO.*/
 	void iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
@@ -117,7 +118,8 @@ private:
 	void iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
 	/**Prepares the class, setting up the environments for IDMRG.*/
-	void prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax);
+	void prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot,
+						size_t M_input, size_t Nqmax, bool USE_STATE=false);
 	
 	/**old energy for comparison in IDMRG.*/
 	double Eold = std::nan("1");
@@ -429,7 +431,7 @@ calc_errors (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 prepare_h2site (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symmetry::Nq> > &qloc_input, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
-                qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax)
+                qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax, bool USE_STATE)
 {
 	Stopwatch<> PrepTimer;
 	
@@ -445,12 +447,16 @@ prepare_h2site (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symm
 	h2site = h2site_input;
 	
 	// resize Vout
-	Vout.state = Umps<Symmetry,Scalar>(qloc_input, Qtot, N_sites, M, Nqmax);
-	Vout.state.N_sv = M;
-	Vout.state.setRandom();
-	for (size_t l=0; l<N_sites; ++l)
+
+	if (!USE_STATE)
 	{
-		Vout.state.svdDecompose(l);
+		Vout.state = Umps<Symmetry,Scalar>(qloc_input, Qtot, N_sites, M, Nqmax);
+		Vout.state.N_sv = M;
+		Vout.state.setRandom();
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			Vout.state.svdDecompose(l);
+		}
 	}
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
@@ -468,7 +474,7 @@ prepare_h2site (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symm
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax)
+prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax, bool USE_STATE)
 {
 	N_sites = H.length();
 	N_iterations = 0;
@@ -482,12 +488,15 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	
 	// resize Vout
 	// Vout.state = Umps<Symmetry,Scalar>(H.locBasis(0), Qtot, N_sites, M, Nqmax);
-	Vout.state = Umps<Symmetry,Scalar>(H, Qtot, N_sites, M, Nqmax);
-	Vout.state.N_sv = M;
-	Vout.state.setRandom();
-	for (size_t l=0; l<N_sites; ++l)
+	if (!USE_STATE)
 	{
-		Vout.state.svdDecompose(l);
+		Vout.state = Umps<Symmetry,Scalar>(H, Qtot, N_sites, M, Nqmax);
+		Vout.state.N_sv = M;
+		Vout.state.setRandom();
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			Vout.state.svdDecompose(l);
+		}
 	}
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
@@ -509,7 +518,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax)
+prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax, bool USE_STATE)
 {
 	Stopwatch<> PrepTimer;
 	
@@ -520,12 +529,15 @@ prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout,
 	dW = H.auxdim();
 	
 	// resize Vout
-	Vout.state = Umps<Symmetry,Scalar>(H.locBasis(0), Qtot, N_sites, M, Nqmax);
-	Vout.state.N_sv = M;
-	Vout.state.setRandom();
-	for (size_t l=0; l<N_sites; ++l)
+	if (!USE_STATE)
 	{
-		Vout.state.svdDecompose(l);
+		Vout.state = Umps<Symmetry,Scalar>(H.locBasis(0), Qtot, N_sites, M, Nqmax);
+		Vout.state.N_sv = M;
+		Vout.state.setRandom();
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			Vout.state.svdDecompose(l);
+		}
 	}
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
@@ -1223,7 +1235,7 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, 
            double tol_eigval_input, double tol_var_input, size_t M, size_t Nqmax, 
-           size_t max_iterations, size_t min_iterations)
+           size_t max_iterations, size_t min_iterations, bool USE_STATE)
 {
 	if (CHOSEN_VERBOSITY>=2)
 	{
@@ -1237,16 +1249,16 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 	
 	if (USER_SET_ALGORITHM and CHOSEN_ALGORITHM == UMPS_ALG::IDMRG)
 	{
-		prepare_idmrg(H, Vout, Qtot, M, Nqmax);
+		prepare_idmrg(H, Vout, Qtot, M, Nqmax, USE_STATE);
 	}
 	else if (USER_SET_ALGORITHM and CHOSEN_ALGORITHM == UMPS_ALG::H2SITE)
 	{
 		assert(H.length() == 2 and "Need L=2 for H2SITE!");
-		prepare_h2site(H.H2site(0,true), H.locBasis(0), Vout, Qtot, M, Nqmax);
+		prepare_h2site(H.H2site(0,true), H.locBasis(0), Vout, Qtot, M, Nqmax, USE_STATE);
 	}
 	else
 	{
-		prepare(H, Vout, Qtot, M, Nqmax);
+		prepare(H, Vout, Qtot, M, Nqmax, USE_STATE);
 	}
 	
 	Stopwatch<> GlobalTimer;
@@ -1277,8 +1289,6 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 			if (N_sites == 1)
 			{
 				iteration_parallel(H,Vout);
-				// if (err_var < 1.e-1 and (err_eigval >= tol_eigval or err_var >= tol_var)
-				// 	and N_iterations%4 == 0 and N_iterations < 80 and N_iterations < max_iterations-1) {expand_basis(2,H,Vout);}
 			}
 			else
 			{

@@ -1306,32 +1306,6 @@ save (string filename, string info)
 	target.close();
 }
 
-// template<typename Symmetry, typename Scalar>
-// size_t Mps<Symmetry,Scalar>::
-// loadDmax (string filename)
-// {
-// 	filename+=".h5";
-// 	HDF5Interface source(filename, READ);
-
-// 	string DmaxLabel = "Dmax";
-// 	size_t Dmax;
-// 	source.load_scalar(Dmax,DmaxLabel);
-// 	return Dmax;
-// }
-
-// template<typename Symmetry, typename Scalar>
-// size_t Mps<Symmetry,Scalar>::
-// loadNqmax (string filename)
-// {
-// 	filename+=".h5";
-// 	HDF5Interface source(filename, READ);
-
-// 	string NqmaxLabel = "Nqmax";
-// 	size_t Nqmax;
-// 	source.load_scalar(Nqmax,NqmaxLabel);
-// 	return Nqmax;
-// }
-
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 load (string filename)

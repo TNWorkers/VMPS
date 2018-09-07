@@ -48,7 +48,16 @@ public:
 	
 	/**Constructs a Umps with fixed bond dimension with a given basis.*/
 	Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
-	
+
+#ifdef USE_HDF5_STORAGE
+	/**
+	 * Construct from an external HDF5 file named <FILENAME>.h5.
+	 * \param filename : The format is fixed to .h5, just enter the name without the format.
+	 * \warning This method requires hdf5. For more information see https://www.hdfgroup.org/.
+	 */
+	Umps (string filename) {load(filename);}
+#endif //USE_HDF5_STORAGE
+
 	/**\describe_info*/
 	string info() const;
 	
@@ -64,9 +73,12 @@ public:
 	/**Normalizes the state, so that \f$Tr C^{\dagger} C = 1\f$*/
 	void normalize_C();
 	
-	/**Resizes all containers to \p N_sites, the bond dimension to \p Dmax and sets \p Nqmax blocks per site.*/
+	/**Resizes the bond dimension to \p Dmax and sets \p Nqmax blocks per site.*/
 	void resize (size_t Dmax_input, size_t Nqmax_input);
-	
+
+	/**Shorthand to resize all the relevant arrays: \p A, \p inbase, \p outbase, \p truncWeight, \p S.*/
+	void resize_arrays();
+
 	/**Calculates \f$A_L\f$ and \f$A_R\f$ from \f$A_C\f$ and \f$C\f$ at site \p loc using SVD (eqs. (19),(20)). 
 	* This is supposed to be optimal, but not accurate.*/
 	void svdDecompose (size_t loc, GAUGE::OPTION gauge = GAUGE::C);
@@ -102,7 +114,25 @@ public:
 	/**Calculates the left and right decomposition error as \f$\epsilon_L=\big|A_C-A_LC\big|^2\f$ and \f$\epsilon_R=\big|A_C-CA_R\big|^2\f$ (eq. (18)).*/
 	Scalar calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const;
 
+#ifdef USE_HDF5_STORAGE
+	///\{
+	/**
+	 * Save all information of the Umps to the file <FILENAME>.h5.
+	 * \param filename : The format is fixed to .h5, Just enter the name without the format.
+	 * \param info : Additional information about the used model. Enter the info()-method of the used Mpo here.
+	 * \warning This method requires hdf5. For more information see https://www.hdfgroup.org/.
+	 * \note For the filename you should use the info string of the currently used Mpo.
+	 */
+	void save (string filename,string info="none");
 	
+	/**
+	 * Reads all information of the Mps from the file <FILENAME>.h5.
+	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
+	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
+	 */
+	void load (string filename);
+#endif //USE_HDF5_STORAGE
+
 	/**
 	 * Determines the maximal bond dimension per site (sum of \p A.rows or \p A.cols over all subspaces).
 	 */
@@ -161,7 +191,6 @@ public:
 	void adjustQN (const size_t number_cells);
 
 private:
-	
 	/**parameter*/
 	size_t N_sites;
 	size_t Dmax, Nqmax;
@@ -180,23 +209,13 @@ private:
 
 	/**truncated weight*/
 	ArrayXd truncWeight;
-
-	/**Sets of all unique incoming & outgoing indices for convenience*/
-	vector<vector<qarray<Symmetry::Nq> > > inset;
-	vector<vector<qarray<Symmetry::Nq> > > outset;
 	
 	/**local basis*/
 	vector<vector<qarray<Symmetry::Nq> > > qloc;
 	
 	/**A-tensors in the three gauges \p L, \p R, \p C*/
-	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> A; // A[L/R/C][l][s].block[q]
-	
-	/**Contracted and saved A-tensors (\p L and \p R) of the whole unit cell.*/
-	std::array<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >,2> Acell;
-	
-	/**Basis of the whole unit cell.*/
-	vector<qarray<Symmetry::Nq> > qlocCell;
-	
+	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> A; // A[L/R/C][l][s].block[q]	
+		
 	/**center matrix \p C*/
 	vector<Biped<Symmetry,MatrixType> >                        C; // zero-site part C[l]
 	
@@ -347,12 +366,6 @@ template<typename Symmetry, typename Scalar>
 qarray<Symmetry::Nq> Umps<Symmetry,Scalar>::
 Qtop (size_t loc) const
 {
-//	qarray<Symmetry::Nq> res = Symmetry::qvacuum();
-//	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
-//	{
-//		if (outbase[loc][qout] > res) {res = outbase[loc][qout];}
-//	}
-//	return res;
 	return qplusinf<Symmetry::Nq>();
 }
 
@@ -360,32 +373,14 @@ template<typename Symmetry, typename Scalar>
 qarray<Symmetry::Nq> Umps<Symmetry,Scalar>::
 Qbot (size_t loc) const
 {
-//	qarray<Symmetry::Nq> res = Symmetry::qvacuum();
-//	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
-//	{
-//		if (outbase[loc][qout] < res) {res = outbase[loc][qout];}
-//	}
-//	return res;
 	return qminusinf<Symmetry::Nq>();
 }
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-resize (size_t Dmax_input, size_t Nqmax_input)
+resize_arrays ()
 {
 	truncWeight.resize(N_sites);
-	Dmax = Dmax_input;
-	Nqmax = Nqmax_input;
-	if (Symmetry::IS_TRIVIAL) {Nqmax = 1;}
-	
-//	C.clear();
-//	inbase.clear();
-//	outbase.clear();
-//	for (size_t g=0; g<3; ++g)
-//	{
-//		A[g].clear();
-//	}
-	
 	for (size_t g=0; g<3; ++g)
 	{
 		A[g].resize(N_sites);
@@ -403,6 +398,18 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	C.resize(N_sites);
 	inbase.resize(N_sites);
 	outbase.resize(N_sites);
+	S.resize(N_sites);
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+resize (size_t Dmax_input, size_t Nqmax_input)
+{
+	Dmax = Dmax_input;
+	Nqmax = Nqmax_input;
+	if (Symmetry::IS_TRIVIAL) {Nqmax = 1;}
+
+	resize_arrays();
 	
 	auto take_first_elems = [this] (const vector<qarray<Nq> > &qs) -> vector<qarray<Nq> >
 	{
@@ -460,7 +467,6 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	}
 	
 	// symmetrization
-	// check later for particles!
 	if (Qtot == Symmetry::qvacuum())
 	{
 		for (size_t l=0; l<N_sites; ++l)
@@ -533,10 +539,7 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		C[l] = C[l].sorted();
-	}
-	
-	S.resize(N_sites);
-	
+	}	
 	graph("init");
 }
 
@@ -864,9 +867,10 @@ dot (const Umps<Symmetry,Scalar> &Vket) const
 //	
 //	return lambda;
 	
-	double outL = calc_LReigen(GAUGE::L, Acell[GAUGE::L], Vket.Acell[GAUGE::L], C[N_sites-1], qlocCell).energy;
-	cout << "from AL: " << outL << endl;
-	double out = calc_LReigen(GAUGE::R, Acell[GAUGE::R], Vket.Acell[GAUGE::R], C[N_sites-1], qlocCell).energy;
+	// double outL = calc_LReigen(GAUGE::L, Acell[GAUGE::L], Vket.Acell[GAUGE::L], C[N_sites-1], qlocCell).energy;
+	// cout << "from AL: " << outL << endl;
+	// double out = calc_LReigen(GAUGE::R, Acell[GAUGE::R], Vket.Acell[GAUGE::R], C[N_sites-1], qlocCell).energy;
+	double out=0.;
 	return out;
 }
 
@@ -1580,6 +1584,186 @@ adjustQN (const size_t number_cells)
 	update_inbase();
 	update_outbase();
 };
+
+#ifdef USE_HDF5_STORAGE
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+save (string filename, string info)
+{
+	filename+=".h5";
+	HDF5Interface target(filename, WRITE);
+	target.create_group("As");
+	target.create_group("Cs");
+	target.create_group("qloc");
+	target.create_group("Qtot");
+	
+	string add_infoLabel = "add_info";
+
+	//save scalar values
+	target.save_scalar(this->N_sites,"L");
+	for (size_t q=0; q<Nq; q++)
+	{
+		stringstream ss; ss << "q=" << q;
+		target.save_scalar(this->Qtot[q],ss.str(),"Qtot");
+	}
+	target.save_scalar(this->calc_Dmax(),"Dmax");
+	target.save_scalar(this->calc_Nqmax(),"Nqmax");	
+	target.save_scalar(this->min_Nsv,"min_Nsv");
+	target.save_scalar(this->max_Nsv,"max_Nsv");
+	target.save_scalar(this->eps_svd,"eps_svd");
+	target.save_char(info,add_infoLabel.c_str());
+	
+	//save qloc
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		stringstream ss; ss << "l=" << l;
+		target.save_scalar(qloc[l].size(),ss.str(),"qloc");
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		for (size_t q=0; q<Nq; q++)
+		{
+			stringstream tt; tt << "l=" << l << ",s=" << s << ",q=" << q;
+			target.save_scalar((qloc[l][s])[q],tt.str(),"qloc");
+		}
+	}
+
+	//save the A-matrices
+	string label;
+	for (size_t g=0; g<3; ++g)
+	for (size_t l=0; l<this->N_sites; ++l)
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	{
+		stringstream tt; tt << "g=" << g << ",l=" << l << ",s=" << s;
+		target.save_scalar(A[g][l][s].dim,tt.str());
+		for (size_t q=0; q<A[g][l][s].dim; ++q)
+		{
+			for (size_t p=0; p<Nq; p++)
+			{
+				stringstream in; in << "in,g=" << g << ",l=" << l << ",s=" << s << ",q=" << q << ",p=" << p;
+				stringstream out; out << "out,g=" << g << ",l=" << l << ",s=" << s << ",q=" << q << ",p=" << p;
+				target.save_scalar((A[g][l][s].in[q])[p],in.str(),"As");
+				target.save_scalar((A[g][l][s].out[q])[p],out.str(),"As");
+			}
+			stringstream ss;			
+			ss << g << "_" << l << "_" << s << "_" << "(" << A[g][l][s].in[q] << "," << A[g][l][s].out[q] << ")";
+			label = ss.str();
+			target.save_matrix(A[g][l][s].block[q],label,"As");
+		}
+	}
+
+	//save the C-matrices
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		stringstream tt; tt << "l=" << l;
+		target.save_scalar(C[l].dim,tt.str());
+		for (size_t q=0; q<C[l].dim; ++q)
+		{
+			for (size_t p=0; p<Nq; p++)
+			{
+				stringstream in; in << "l=" << l << ",q=" << q << ",p=" << p;
+				target.save_scalar((C[l].in[q])[p],in.str(),"Cs");
+			}
+			stringstream ss;			
+			ss << l << "_"  << "(" << C[l].in[q] << ")";
+			label = ss.str();
+			target.save_matrix(C[l].block[q],label,"Cs");			
+		}
+	}
+	target.close();
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+load (string filename)
+{
+	filename+=".h5";
+	HDF5Interface source(filename, READ);
+	
+	//load the scalars
+	source.load_scalar(this->N_sites,"L");
+	for (size_t q=0; q<Nq; q++)
+	{
+		stringstream ss; ss << "q=" << q;
+		source.load_scalar(this->Qtot[q],ss.str(),"Qtot");
+	}
+	source.load_scalar(this->eps_svd,"eps_svd");
+	source.load_scalar(this->min_Nsv,"min_Nsv");
+	source.load_scalar(this->max_Nsv,"max_Nsv");
+
+	//load qloc
+	qloc.resize(this->N_sites);
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		stringstream ss; ss << "l=" << l;
+		size_t qloc_size;
+		source.load_scalar(qloc_size,ss.str(),"qloc");
+		qloc[l].resize(qloc_size);
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		for (size_t q=0; q<Nq; q++)
+		{
+			stringstream tt; tt << "l=" << l << ",s=" << s << ",q=" << q;
+			int Q;
+			source.load_scalar(Q,tt.str(),"qloc");
+			(qloc[l][s])[q] = Q;
+		}
+	}
+	this->resize_arrays();
+
+	//load the A-matrices
+	string label;
+	for (size_t g=0; g<3; ++g)
+	for (size_t l=0; l<this->N_sites; ++l)
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	{
+		size_t Asize;
+		stringstream tt; tt << "g=" << g << ",l=" << l << ",s=" << s;
+		source.load_scalar(Asize,tt.str());
+		for (size_t q=0; q<Asize; ++q)
+		{
+			qarray<Nq> qin,qout;
+			for (size_t p=0; p<Nq; p++)
+			{
+				stringstream in; in << "in,g=" << g << ",l=" << l << ",s=" << s << ",q=" << q << ",p=" << p;
+				stringstream out; out << "out,g=" << g << ",l=" << l << ",s=" << s << ",q=" << q << ",p=" << p;
+				source.load_scalar(qin[p],in.str(),"As");
+				source.load_scalar(qout[p],out.str(),"As");
+			}
+			stringstream ss;
+			ss << g << "_" << l << "_" << s << "_" << "(" << qin << "," << qout << ")";
+			label = ss.str();
+			MatrixType mat;
+			source.load_matrix(mat, label, "As");
+			A[g][l][s].push_back(qin,qout,mat);
+		}
+	}
+
+	//load the C-matrices
+	label.clear();
+	for (size_t l=0; l<this->N_sites; ++l)
+	{
+		size_t Asize;
+		stringstream tt; tt << "l=" << l;
+		source.load_scalar(Asize,tt.str());
+		for (size_t q=0; q<Asize; ++q)
+		{
+			qarray<Nq> qVal;
+			for (size_t p=0; p<Nq; p++)
+			{
+				stringstream qq; qq << "l=" << l << ",q=" << q << ",p=" << p;
+				source.load_scalar(qVal[p],qq.str(),"Cs");
+			}
+			stringstream ss;
+			ss << l << "_" << "(" << qVal << ")";
+			label = ss.str();
+			MatrixType mat;
+			source.load_matrix(mat, label, "Cs");
+			C[l].push_back(qVal,qVal,mat);
+		}
+	}
+	source.close();
+	update_inbase();
+	update_outbase();
+}
+#endif
 
 //template<typename Symmetry, typename Scalar>
 //void Umps<Symmetry,Scalar>::

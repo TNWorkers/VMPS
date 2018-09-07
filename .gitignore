@@ -13,3 +13,4 @@ makefile
 Makefile
 *.dot
 *.d
+*.h5
