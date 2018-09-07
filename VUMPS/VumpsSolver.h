@@ -1890,10 +1890,7 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 
 		Biped<Symmetry,MatrixType> NAAN = TL.contract(TR);
 
-		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
-		{
-			cout << "norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
-		}
+		lout << "l=" << loc << ", norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
 		
 		// SVD-decompose NAAN
 		Biped<Symmetry,MatrixType> U, Vdag;
@@ -1911,7 +1908,7 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 			Nret = min(DeltaD, Nret);
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 			{
-				cout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
+				lout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
 			}
 			if(Nret > 0)
 			{
@@ -2084,27 +2081,46 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 		}
 		Vout.state.C[loc] = Vout.state.C[loc].sorted();
 	}
-
-	for(size_t l=0; l<N_sites; l++)
+	
+	// set AC and sort
+	for (size_t loc=0; loc<N_sites; loc++)
 	{
-		for (size_t s=0; s<Vout.state.locBasis(l).size(); ++s)
+		for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
 		{
-			Vout.state.A[GAUGE::L][l][s] = Vout.state.A[GAUGE::L][l][s].sorted();
+			for (size_t q=0; q<Vout.state.A[GAUGE::L][loc][s].size(); ++q)
+			{
+				qarray2<Symmetry::Nq> quple = {Vout.state.A[GAUGE::L][loc][s].in[q], Vout.state.A[GAUGE::L][loc][s].out[q]};
+				auto it = Vout.state.A[GAUGE::C][loc][s].dict.find(quple);
+				if (it != Vout.state.A[GAUGE::C][loc][s].dict.end())
+				{
+					int dr = Vout.state.A[GAUGE::L][loc][s].block[q].rows() - Vout.state.A[GAUGE::C][loc][s].block[it->second].rows();
+					int dc = Vout.state.A[GAUGE::L][loc][s].block[q].cols() - Vout.state.A[GAUGE::C][loc][s].block[it->second].cols();
+					assert(dr >= 0 and dc >= 0 and "Something went wrong in expand_basis during the VUMPS Algorithm.");
+					MatrixType Mtmp(dr,Vout.state.A[GAUGE::C][loc][s].block[it->second].cols()); Mtmp.setZero();
+					addBottom(Mtmp, Vout.state.A[GAUGE::C][loc][s].block[it->second]);
+					Mtmp.resize(Vout.state.A[GAUGE::C][loc][s].block[it->second].rows(),dc); Mtmp.setZero();
+					addRight(Mtmp, Vout.state.A[GAUGE::C][loc][s].block[it->second]);
+				}
+				else
+				{
+					MatrixType Mtmp(Vout.state.A[GAUGE::L][loc][s].block[q].rows(), Vout.state.A[GAUGE::L][loc][s].block[q].cols());
+					Mtmp.setZero();
+					Vout.state.A[GAUGE::C][loc][s].push_back(quple,Mtmp);
+				}
+			}
+			Vout.state.A[GAUGE::L][loc][s] = Vout.state.A[GAUGE::L][loc][s].sorted();
+			Vout.state.A[GAUGE::R][loc][s] = Vout.state.A[GAUGE::R][loc][s].sorted();
+			Vout.state.A[GAUGE::C][loc][s] = Vout.state.A[GAUGE::C][loc][s].sorted();
 		}
-		for (size_t s=0; s<Vout.state.locBasis(l).size(); ++s)
-		{
-			Vout.state.A[GAUGE::R][l][s] = Vout.state.A[GAUGE::R][l][s].sorted();
-		}
-		Vout.state.C[l] = Vout.state.C[l].sorted();
+		Vout.state.C[loc] = Vout.state.C[loc].sorted();
 	}
 	
-	// set AC
-	for (size_t l=0; l<N_sites; l++)
-	for (size_t s=0; s<Vout.state.qloc[l].size(); ++s)
-	{
-		Vout.state.A[GAUGE::C][l][s] = Vout.state.A[GAUGE::L][l][s];
-		Vout.state.A[GAUGE::C][l][s].setRandom();
-	}
+	// for (size_t l=0; l<N_sites; l++)
+	// for (size_t s=0; s<Vout.state.qloc[l].size(); ++s)
+	// {
+	// 	Vout.state.A[GAUGE::C][l][s] = Vout.state.A[GAUGE::L][l][s];
+	// 	Vout.state.A[GAUGE::C][l][s].setRandom();
+	// }
 	Vout.state.update_inbase();
 	Vout.state.update_outbase();
 }
