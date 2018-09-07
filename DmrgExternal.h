@@ -24,6 +24,24 @@ std::string print_frac_nice (frac r)
 
 namespace std
 {
+	/**Hashes an array of ints using boost's \p hash_combine for hashing the \f$(3n)j\f$-symbols in SU2Wrappers.h.*/
+	template<size_t N>
+	struct hash<std::array<int,N> >
+	{
+		inline size_t operator()(const std::array<int,N> &a) const
+		{
+			size_t seed = 0;
+			for (size_t i=0; i<N; ++i)
+			{
+				boost::hash_combine(seed, a[i]);
+			}
+			return seed;
+		}
+	};	
+}
+
+namespace std
+{
 /**Hashes an array of quantum numbers using boost's \p hash_combine for the dictionaries in Biped, Multipede.*/
 template<size_t Nq, size_t Nlegs>
 struct hash<std::array<qarray<Nq>,Nlegs> >

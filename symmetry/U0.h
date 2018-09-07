@@ -24,7 +24,7 @@ namespace Sym{
  * Dummy class for no symmetry.
  *
  */
-	class U0 // : SymmetryBase<SymSUN<N,Scalar> >
+	class U0
 	{
 	public:
 		typedef qarray<0> qType;
@@ -99,8 +99,10 @@ namespace Sym{
 										 const qType& q7, const qType& q8, const qType& q9,
 										 const qType& q10, const qType& q11, const qType& q12) { return 1.; }
 
-		template<std::size_t M> inline static bool validate( const std::array<qType,M>& qs ) { return true; }
+		inline static bool triangle( const std::array<qType,3>& qs ) { return true; }
+		inline static bool pair( const std::array<qType,2>& qs ) { return true; }
 
+		template<std::size_t M> inline static bool validate( const std::array<qType,M>& qs ) { return true; }
 	};
 
 } //end namespace Sym
