@@ -758,7 +758,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	double tolLanczosEigval, tolLanczosState;
 	set_LanczosTolerances(tolLanczosEigval,tolLanczosState);
 
-	if (err_var < 1.e-1 and N_iterations%4 == 0 and N_iterations < 80) {expand_basis(2,H,Vout);}
+	if (err_var < 1.e-1 and N_iterations%10 == 0 and N_iterations < 80) {expand_basis(2,H,Vout);}
 
 //	Vout.state.truncate();
 	build_cellEnv(H,Vout);
@@ -854,6 +854,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		size_t standard_precision = cout.precision();
 		lout << "S=" << Vout.state.entropy().transpose() << endl;
 		lout << termcolor::bold << eigeninfo() << termcolor::reset << endl;
+		lout << Vout.state.info() << endl;
 		lout << IterationTimer.info("full iteration") << endl;
 		lout << endl;
 	}
