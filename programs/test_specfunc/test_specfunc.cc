@@ -1,3 +1,8 @@
+#ifdef BLAS
+#include "util/LapackManager.h"
+#pragma message("LapackManager")
+#endif
+
 #include <iostream>
 #include <fstream>
 #include <complex>

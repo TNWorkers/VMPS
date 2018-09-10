@@ -231,6 +231,7 @@ int main (int argc, char* argv[])
 		Kond.transform_base(Qc);
 		Eigenstate<KONDO::StateUd> g_U1Kond;
 		DMRG_KOND.set_log(2,"e_Kond.dat","err_eigval_Kond.dat","err_var_Kond.dat");
+		DMRG_KOND.set_algorithm(ALG);
 		DMRG_KOND.edgeState(Kond, g_U1Kond, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
 
 		cout << termcolor::bold << "e0=" << g_U1Kond.energy << termcolor::reset << endl;

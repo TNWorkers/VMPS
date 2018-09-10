@@ -1,7 +1,9 @@
-//#define USE_HDF5_STORAGE
-//#define EIGEN_USE_THREADS
-
+#ifdef BLAS
 #include "util/LapackManager.h"
+#pragma message("LapackManager")
+#endif
+
+//#define USE_HDF5_STORAGE
 
 // with Eigen:
 #define DMRG_DONT_USE_OPENMP
@@ -518,9 +520,9 @@ int main (int argc, char* argv[])
 	T.add("");
 	T.add("ED");
 	T.add("U(0)");
-	T.add("U(1)xU(1)");
-	T.add("SU(2)xU(1)");
-	T.add("SU(2)xSU(2)");
+	T.add("U(1)⊗U(1)");
+	T.add("SU(2)⊗U(1)");
+	T.add("SU(2)⊗SU(2)");
 	T.endOfRow();
 	
 	T.add("E/V");

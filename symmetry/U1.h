@@ -21,12 +21,13 @@ namespace Sym{
   * \describe_Scalar
   */
 template<typename Kind, typename Scalar=double>
-class U1 // : SymmetryBase<SymSUN<N,Scalar> >
+class U1
 {
 public:
 	typedef Scalar Scalar_;
 	
 	static constexpr size_t Nq=1;
+	
 	static constexpr bool HAS_CGC = false;
 	static constexpr bool NON_ABELIAN = false;
 	static constexpr bool IS_TRIVIAL = false;
@@ -68,7 +69,7 @@ public:
 	/**
 	 * Various coeffecients, all resulting from contractions or traces of the Clebsch-Gordon coefficients.
 	 * \note All coefficients are trivial for U(1) and could be represented by a bunch of Kronecker deltas.
-	 *       Here we return simply 1, because the algorythm only allows valid combinations of quantumnumbers,
+	 *       Here we return simply 1, because the algorithm only allows valid combinations of quantumnumbers,
 	 *       for which the Kronecker deltas are not necessary.  
 	 */
 	inline static Scalar coeff_unity();
@@ -128,9 +129,11 @@ public:
 	 */
 	template<std::size_t M>
 	static bool validate( const std::array<qType,M>& qs );
-};
 
-// template<typename Scalar> bool operator== (const typename U1<Scalar>::qType& lhs, const typename U1<Scalar>::qType& rhs) {return lhs == rhs;}
+	static bool triangle( const std::array<qType,3>& qs );
+	static bool pair( const std::array<qType,2>& qs );
+
+};
 	
 template<typename Kind, typename Scalar>
 std::vector<typename U1<Kind,Scalar>::qType> U1<Kind,Scalar>::
@@ -396,31 +399,32 @@ compare ( const std::array<U1<Kind,Scalar>::qType,M>& q1, const std::array<U1<Ki
 }
 
 template<typename Kind, typename Scalar>
+bool U1<Kind,Scalar>::
+triangle ( const std::array<U1<Kind,Scalar>::qType,3>& qs )
+{
+	//check the triangle rule for U1 quantum numbers
+	if (qs[0][0] + qs[1][0] == qs[2][0]) {return true;}
+	return false;
+}
+
+template<typename Kind, typename Scalar>
+bool U1<Kind,Scalar>::
+pair ( const std::array<U1<Kind,Scalar>::qType,2>& qs )
+{
+	//check if two quantum numbers fulfill the flow equations: simply qin = qout
+	if (qs[0] == qs[1]) {return true;}
+	return false;
+}
+
+template<typename Kind, typename Scalar>
 template<std::size_t M>
 bool U1<Kind,Scalar>::
 validate ( const std::array<U1<Kind,Scalar>::qType,M>& qs )
 {
-	if constexpr( M == 1 or M > 3 ) { return true; }
-	else if constexpr( M == 2 )
-				{
-					std::vector<U1<Kind,Scalar>::qType> decomp = U1<Kind,Scalar>::reduceSilent(qs[0],U1<Kind,Scalar>::flip(qs[1]));
-					for (std::size_t i=0; i<decomp.size(); i++)
-					{
-						if ( decomp[i] == U1<Kind,Scalar>::qvacuum() ) { return true; }
-					}
-					return false;
-				}
-	else if constexpr( M==3 )
-					 {
-						 //todo: check here triangle rule
-						 std::vector<U1<Kind,Scalar>::qType> qTarget = U1<Kind,Scalar>::reduceSilent(qs[0],qs[1]);
-						 if( qTarget[0] == qs[2] ) { return true; }
-						 else { return false; }
-						 // for (std::size_t i=2; i<M; i++)
-						 // {
-						 // 	 decomp = SU2xU1<Kind,Scalar>::reduceSilent(decomp,qs[i]);
-						 // }						 
-					 }
+	if constexpr( M == 1 ) { return true; }
+	else if constexpr( M == 2 ) { return U1<Kind,Scalar>::pair(qs); }
+	else if constexpr( M==3 ) { return U1<Kind,Scalar>::triangle(qs); }
+	else { cout << "This should not be printed out!" << endl; return true; }
 }
 
 } //end namespace Sym

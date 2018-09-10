@@ -46,7 +46,7 @@ public:
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
 	void prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
-	              qarray<Nq> Qtot_input, bool useState=false);
+	              qarray<Nq> Qtot_input, bool USE_STATE=false);
 	
 	void halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	                LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND);

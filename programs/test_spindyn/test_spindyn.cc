@@ -1,7 +1,8 @@
-#define DONT_USE_LAPACK_SVD
-#define DONT_USE_LAPACK_QR
+#ifdef BLAS
+#include "util/LapackManager.h"
+#pragma message("LapackManager")
+#endif
 //#define USE_HDF5_STORAGE
-//#define EIGEN_USE_THREADS
 
 // with Eigen:
 #define DMRG_DONT_USE_OPENMP

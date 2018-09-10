@@ -8,11 +8,11 @@
 #include <iostream>
 /// \endcond
 
-//include "symmetry/qarray.h"
 #include "DmrgTypedefs.h"
 #include "DmrgExternal.h"
-//include "symmetry/kind_dummies.h"
 
+//include "symmetry/kind_dummies.h"
+//include "symmetry/qarray.h"
 //include "symmetry/U0.h"
 //include "symmetry/U1.h"
 //include "symmetry/SU2.h"
@@ -23,7 +23,7 @@ namespace Sym{
  * \class S1xS2
  * \ingroup Symmetry
  *
- * This class combines two symmetries and puts a label to each of them.
+ * This class combines two symmetries.
  *
  */
 template<typename S1, typename S2>
@@ -35,9 +35,10 @@ public:
 	S1xS2() {};
 	
 	static std::string name() { return S1::name()+"⊗"+S2::name(); }
-	
-	static constexpr bool HAS_CGC = false;
+
 	static constexpr std::size_t Nq=S1::Nq+S2::Nq;
+
+	static constexpr bool HAS_CGC = false;
 	static constexpr bool NON_ABELIAN = S1::NON_ABELIAN or S2::NON_ABELIAN;
 	static constexpr bool IS_TRIVIAL = S1::IS_TRIVIAL and S2::IS_TRIVIAL;
 	
@@ -135,6 +136,10 @@ public:
 	 */
 	template<std::size_t M>
 	static bool validate( const std::array<qType,M>& qs );
+
+	static bool triangle( const std::array<qType,3>& qs );
+	static bool pair( const std::array<qType,2>& qs );
+
 };
 
 template<typename S1, typename S2>
@@ -446,31 +451,34 @@ compare ( const std::array<S1xS2<S1,S2>::qType,M>& q1, const std::array<S1xS2<S1
 }
 
 template<typename S1, typename S2>
+bool S1xS2<S1,S2>::
+triangle ( const std::array<S1xS2<S1,S2>::qType,3>& qs )
+{
+	qarray3<S1::Nq> q_frstSym; q_frstSym[0][0] = qs[0][0]; q_frstSym[1][0] = qs[1][0]; q_frstSym[2][0] = qs[2][0];
+	qarray3<S1::Nq> q_secdSym; q_secdSym[0][0] = qs[0][1]; q_secdSym[1][0] = qs[1][1]; q_secdSym[2][0] = qs[2][1];
+
+	return (S1::triangle(q_frstSym) and S2::triangle(q_secdSym));
+}
+
+template<typename S1, typename S2>
+bool S1xS2<S1,S2>::
+pair ( const std::array<S1xS2<S1,S2>::qType,2>& qs )
+{
+	qarray2<S1::Nq> q_frstSym; q_frstSym[0][0] = qs[0][0]; q_frstSym[1][0] = qs[1][0];
+	qarray2<S1::Nq> q_secdSym; q_secdSym[0][0] = qs[0][1]; q_secdSym[1][0] = qs[1][1];
+
+	return (S1::pair(q_frstSym) and S2::pair(q_secdSym));
+}
+
+template<typename S1, typename S2>
 template<std::size_t M>
 bool S1xS2<S1,S2>::
 validate ( const std::array<S1xS2<S1,S2>::qType,M>& qs )
 {
-	if constexpr( M == 1 or M > 3 ) { return true; }
-	else if constexpr( M == 2 )
-				{
-					std::vector<S1xS2<S1,S2>::qType> decomp = S1xS2<S1,S2>::reduceSilent(qs[0],S1xS2<S1,S2>::flip(qs[1]));
-					for (std::size_t i=0; i<decomp.size(); i++)
-					{
-						if ( decomp[i] == S1xS2<S1,S2>::qvacuum() ) { return true; }
-					}
-					return false;
-				}
-	else if constexpr( M==3 )
-					 {
-						 //todo: check here triangle rule
-						 std::vector<S1xS2<S1,S2>::qType> qTarget = S1xS2<S1,S2>::reduceSilent(qs[0],qs[1]);
-						 bool CHECK=false;
-						 for( const auto& q : qTarget )
-						 {
-							 if(q == qs[2]) {CHECK = true;}
-						 }
-						 return CHECK;
-					 }
+	if constexpr( M == 1 ) { return true; }
+	else if constexpr( M == 2 ) { return S1xS2<S1,S2>::pair(qs); }
+	else if constexpr( M==3 ) { return S1xS2<S1,S2>::triangle(qs); }
+	else { cout << "This should not be printed out!" << endl; return true; }
 }
 
 } //end namespace Sym
