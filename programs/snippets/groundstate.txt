@@ -42,7 +42,14 @@
 				MODEL::Solver rDMRG(DMRG::VERBOSITY::SILENT);
 				rDMRG.edgeState(H, r, Qc[i], LANCZOS::EDGE::ROOF);
 				rinfo << rChronos.info(make_string("roof state ",Qc[i])) << endl;
-				Emaxs[i] = r.energy;
+				if (rDMRG.get_errState() > rDMRG.GlobParam.tol_state)
+				{
+					Emaxs[i] = 2.*r.energy;
+				}
+				else
+				{
+					Emaxs[i] = r.energy;
+				}
 				rinfo << rDMRG.info() << endl;
 			}
 		}
@@ -53,8 +60,8 @@
 	
 	lout << ginfo.str() << rinfo.str() << endl;
 	lout << Chronos.info("all edge states") << endl;
-	lout << "Emin=" << Emins.transpose() << endl;
-	lout << "Emax=" << Emaxs.transpose() << endl;
+	lout << "Emins=" << Emins.transpose() << endl;
+	lout << "Emaxs=" << Emaxs.transpose() << endl;
 	lout << termcolor::bold << "E0=" << E0 << ", Emin=" << Emin << ", Emax=" << Emax << termcolor::reset << endl << endl;
 	
 	// save energies

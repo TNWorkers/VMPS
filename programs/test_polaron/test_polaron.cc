@@ -19,6 +19,7 @@ using namespace std;
 size_t L;
 int N, M, D;
 double t, tPrime, U, J;
+int i0;
 vector<int> Msave;
 int Mmax;
 string spec, wd, outfile, Efilename;
@@ -46,7 +47,8 @@ int main (int argc, char* argv[])
 	SHIFT = args.get<bool>("SHIFT",false);
 	wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
-	constexpr SPIN_INDEX sigma = DN;
+	SPIN_INDEX sigma = static_cast<SPIN_INDEX>(args.get<bool>("sigma",1)); // UP=0 DN=1
+	i0 = args.get<int>("i0",L/2);
 	
 	dE = args.get_list<double>("dE",{0.2});
 	outfile = make_string(spec,"_L=",L,"_M=",M,"_N=",N,"_J=",J,"_U=",U,"_sigma=",sigma);
