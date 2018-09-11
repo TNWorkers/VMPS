@@ -33,13 +33,13 @@ class KondoU0xSU2 : public Mpo<Sym::SU2<Sym::ChargeSU2>,double>, public ParamRet
 {
 public:
 	typedef Sym::SU2<Sym::ChargeSU2> Symmetry;
+	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
+	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
 	MAKE_TYPEDEFS(KondoU0xSU2)
 	
 private:
 	typedef Eigen::Index Index;
 	typedef Symmetry::qType qType;
-	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
-	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
 	
 public:
 	///@{
@@ -59,10 +59,17 @@ public:
 	                                                    const ParamHandler &P, size_t loc=0);
 	
 	Mpo<Symmetry> Simp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	
+	Mpo<Symmetry> SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	static const std::map<string,std::any> defaults;
 	
 protected:
+	
+	Mpo<Symmetry> make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, const OperatorType &Op1, const OperatorType &Op2, bool BOTH_HERMITIAN=false) const;
 	
 	vector<FermionBase<Symmetry> > F;
 	vector<SpinBase<Symmetry> > B;
@@ -283,7 +290,6 @@ Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 {
 	assert(locx < this->N_sites);
 	std::stringstream ss;
-//	ss << "S(" << loc1x << "," << loc1y << ")" << "S(" << loc2x << "," << loc2y << ")";
 	
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l); }
@@ -292,6 +298,110 @@ Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 	
 	Mout.setLocal(locx, Sop.plain<double>());
 	return Mout;
+}
+
+Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+{
+	assert(locx < this->N_sites);
+	std::stringstream ss;
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	for (std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l); }
+	
+	auto Sop = OperatorType::outerprod(B[locx].Id().structured(), F[locx].Scomp(Sa,locy), {1});
+	
+	Mout.setLocal(locx, Sop.plain<double>());
+	return Mout;
+}
+
+/*Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::*/
+/*SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const*/
+/*{*/
+/*	assert(locx1 < this->N_sites and locx2 < this->N_sites);*/
+/*	std::stringstream ss;*/
+/*	*/
+/*	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());*/
+/*	for (std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l); }*/
+/*	*/
+/*	auto Sop1 = OperatorType::outerprod(B[locx1].Scomp(SOP1,locy1).structured(), F[locx2].Id(), {1});*/
+/*	auto Sop2 = OperatorType::outerprod(B[locx1].Id().structured(), F[locx2].Scomp(SOP2,locy2), {1});*/
+/*	*/
+/*	Mout.setLocal({locx1,locx2}, {Sop1.plain<double>(),Sop2.plain<double>()});*/
+/*	return Mout;*/
+/*}*/
+
+Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2, 
+           size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
+           const OperatorType &Op1, const OperatorType &Op2, 
+           bool BOTH_HERMITIAN) const
+{
+	assert(locx1<F.size() and locx2<F.size() and locy1<F[locx1].dim() and locy2<F[locx2].dim());
+	stringstream ss;
+	ss << name1 << "(" << locx1 << "," << locy1 << ")"
+	   << name2 << "(" << locx2 << "," << locy2 << ")";
+	
+	bool HERMITIAN = (BOTH_HERMITIAN and locx1==locx2 and locy1==locy2)? true:false;
+	
+	OperatorType Op1Ext;
+	OperatorType Op2Ext;
+	
+	Mpo<Symmetry> Mout(F.size(), Symmetry::qvacuum(), ss.str(), HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l);}
+	
+	if (SUBSYS == SUB)
+	{
+		Op1Ext = OperatorType::outerprod(B[locx1].Id().structured(), Op1, {1});
+		Op2Ext = OperatorType::outerprod(B[locx2].Id().structured(), Op2, {1});
+	}
+	else if (SUBSYS == IMP)
+	{
+		Op1Ext = OperatorType::outerprod(Op1, F[locx1].Id(), {1});
+		Op2Ext = OperatorType::outerprod(Op2, F[locx2].Id(), {1});
+	}
+	else if (SUBSYS == IMPSUB and locx1 != locx2)
+	{
+		Op1Ext = OperatorType::outerprod(Op1, F[locx1].Id(), {1});
+		Op2Ext = OperatorType::outerprod(B[locx2].Id().structured(), Op2, {1});
+	}
+	else if (SUBSYS == IMPSUB and locx1 == locx2)
+	{
+		OperatorType OpExt = OperatorType::outerprod(Op1, Op2, {1});
+		
+		Mout.setLocal(locx1, OpExt.plain<double>());
+		return Mout;
+	}
+	
+	Mout.setLocal({locx1,locx2}, {Op1Ext.plain<double>(),Op2Ext.plain<double>()});
+	return Mout;
+}
+
+Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss1; ss1 << SOP1 << "imp";
+	stringstream ss2; ss2 << SOP2 << "sub";
+	
+	return make_corr(IMPSUB, ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, B[locx1].Scomp(SOP1,locy1).structured(), F[locx2].Scomp(SOP2,locy2));
+}
+
+Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss1; ss1 << SOP1 << "imp";
+	stringstream ss2; ss2 << SOP2 << "imp";
+	
+	return make_corr(IMP, ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, B[locx1].Scomp(SOP1,locy1).structured(), B[locx2].Scomp(SOP2,locy2).structured());
+}
+
+Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss1; ss1 << SOP1 << "sub";
+	stringstream ss2; ss2 << SOP2 << "sub";
+	
+	return make_corr(SUB, ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, F[locx1].Scomp(SOP1,locy1), F[locx2].Scomp(SOP2,locy2));
 }
 
 } //end namespace VMPS

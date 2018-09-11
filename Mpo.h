@@ -57,7 +57,6 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar> class Vumps
 template<typename Symmetry, typename Scalar=double>
 class Mpo
 {
-	typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 	typedef SparseMatrixXd SparseMatrixType;
 	typedef SiteOperator<Symmetry,Scalar> OperatorType;
 	static constexpr size_t Nq = Symmetry::Nq;
@@ -79,6 +78,7 @@ class Mpo
 	
 public:
 	
+	typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 	typedef Scalar Scalar_;
 	
 	//---constructors---

@@ -6,8 +6,6 @@
 #include "Mpo.h"
 #include "ParamHandler.h" // from TOOLS
 
-enum KONDO_SUBSYSTEM {IMP, SUB, IMPSUB};
-
 template<typename Symmetry>
 class KondoObservables
 {
@@ -165,8 +163,8 @@ make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2,
 	}
 	else if (SUBSYS == IMPSUB)
 	{
-		Op2Ext = kroneckerProduct(Op1, F[locx1].Id());
-		Op1Ext = kroneckerProduct(B[locx2].Id(), Op2);
+		Op1Ext = kroneckerProduct(Op1, F[locx1].Id());
+		Op2Ext = kroneckerProduct(B[locx2].Id(), Op2);
 	}
 	
 	Mpo<Symmetry> Mout(F.size(), Op1.Q+Op2.Q, ss.str(), HERMITIAN);

@@ -103,6 +103,13 @@ public:
 	 * \param orbital : orbital index
 	 */
 	Operator Sx (std::size_t orbital=0) const;
+	
+	
+	/**
+	 * i*Sy
+	 * \param orbital : orbital index
+	 */
+	Operator iSy (std::size_t orbital=0) const;
 
 	/**
 	 * Sp
@@ -115,6 +122,12 @@ public:
 	 * \param orbital : orbital index
 	 */
 	Operator Sm (std::size_t orbital=0) const;
+	
+	/**
+	 * \param Sa
+	 * \param orbital
+	*/
+	Operator Scomp (SPINOP_LABEL Sa, int orbital=0) const;
 	///\}
 	
 	///\{
@@ -189,6 +202,7 @@ private:
 	Operator T_1s; //orbital pseudo spin
 	Operator Sz_1s; //spin z operator
 	Operator Sx_1s; //spin x operator
+	Operator iSy_1s; //spin y operator times imaginary unit
 	Operator Sp_1s; //raising spin operator
 	Operator Sm_1s; //lowering spin operator
 	Operator p_1s; //pairing
@@ -241,7 +255,8 @@ FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in)
 	Sp_1s = -std::sqrt(0.5) * Operator::prod(psidag_1sA(UP),psi_1sA(DN),{1});
 	Sm_1s = Sp_1s.adjoint();
 	
-	Sx_1s = 0.5*(Sp_1s + Sm_1s);
+	Sx_1s  = 0.5*(Sp_1s + Sm_1s);
+	iSy_1s = 0.5*(Sp_1s - Sm_1s);
 	
 	//create basis for N_orbitals fermionic sites
 	if (N_orbitals == 1) { TensorBasis = basis_1s; }
@@ -458,6 +473,28 @@ Sx (std::size_t orbital) const
 }
 
 SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
+iSy (std::size_t orbital) const
+{
+	if(N_orbitals == 1) { return iSy_1s; }
+	else
+	{
+		Operator out;
+		if(orbital == 0) { out = Operator::outerprod(iSy_1s,Id_1s,{1}); }
+		else
+		{
+			if( orbital == 1 ) { out = Operator::outerprod(Id_1s,iSy_1s,{1}); }
+			else { out = Operator::outerprod(Id_1s,Id_1s,{1}); }
+		}
+		for(std::size_t o=2; o<N_orbitals; o++)
+		{
+			if(orbital == o) { out = Operator::outerprod(out,iSy_1s,{1}); }
+			else { out = Operator::outerprod(out,Id_1s,{1}); }
+		}
+		return out;
+	}
+}
+
+SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
 Sp (std::size_t orbital) const
 {
 	if(N_orbitals == 1) { return Sp_1s; }
@@ -483,6 +520,19 @@ SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen
 Sm (std::size_t orbital) const
 {
 	return Sp(orbital).adjoint();
+}
+
+SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
+Scomp (SPINOP_LABEL Sa, int orbital) const
+{
+	assert(Sa != SY);
+	Operator out;
+	if      (Sa==SX)  { out = Sx(orbital); }
+	else if (Sa==iSY) { out = iSy(orbital); }
+	else if (Sa==SZ)  { out = Sz(orbital); }
+	else if (Sa==SP)  { out = Sp(orbital); }
+	else if (Sa==SM)  { out = Sm(orbital); }
+	return out;
 }
 
 SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::

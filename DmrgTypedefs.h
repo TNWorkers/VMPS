@@ -83,6 +83,8 @@ enum PARITY {EVEN=0, ODD=1};
 
 enum SUB_LATTICE {A=0,B=1};
 
+enum KONDO_SUBSYSTEM {IMP, SUB, IMPSUB};
+
 std::ostream& operator<< (std::ostream& s, SUB_LATTICE sublat)
 {
 	if      (sublat==A)  {s << "A";}
