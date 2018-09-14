@@ -5,6 +5,7 @@
 #include <array>
 #include <vector>
 #include <functional>
+#include <complex>
 /// \endcond
 
 #include "symmetry/qarray.h"

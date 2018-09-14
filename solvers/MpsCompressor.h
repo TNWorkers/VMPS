@@ -10,7 +10,7 @@
 #endif
 
 #ifndef DMRG_POLYCOMPRESS_MAX
-#define DMRG_POLYCOMPRESS_MAX 64
+#define DMRG_POLYCOMPRESS_MAX 32
 #endif
 
 /// \cond

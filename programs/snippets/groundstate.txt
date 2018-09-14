@@ -12,20 +12,21 @@
 		#pragma omp section
 		{
 			Stopwatch<> nChronos;
-			MODEL::Solver * DMRG = new MODEL::Solver(DMRG::VERBOSITY::HALFSWEEPWISE);
+			MODEL::Solver * DMRG = new MODEL::Solver(VERB1);
 			DMRG->edgeState(H, *init, Qi, LANCZOS::EDGE::GROUND);
 			lout << endl << nChronos.info(make_string("ground state ",Qi)) << endl;
 			lout << DMRG->info() << endl;
 			E0 = init->energy;
 			delete DMRG;
 		}
+		
 		#pragma omp section
 		{
 			for (size_t i=0; i<Qc.size(); ++i)
 			{
 				Stopwatch<> gChronos;
 				Eigenstate<MODEL::StateXd> g;
-				MODEL::Solver gDMRG(DMRG::VERBOSITY::SILENT);
+				MODEL::Solver gDMRG(VERB2);
 				gDMRG.edgeState(H, g, Qc[i], LANCZOS::EDGE::GROUND);
 				ginfo << gChronos.info(make_string("ground state ",Qc[i])) << endl;
 				Emins[i] = g.energy;
@@ -39,12 +40,14 @@
 			{
 				Stopwatch<> rChronos;
 				Eigenstate<MODEL::StateXd> r;
-				MODEL::Solver rDMRG(DMRG::VERBOSITY::SILENT);
+				MODEL::Solver rDMRG(VERB3);
 				rDMRG.edgeState(H, r, Qc[i], LANCZOS::EDGE::ROOF);
 				rinfo << rChronos.info(make_string("roof state ",Qc[i])) << endl;
 				if (rDMRG.get_errState() > rDMRG.GlobParam.tol_state)
 				{
 					Emaxs[i] = 2.*r.energy;
+					lout << termcolor::red << "Bad convergence of roof state! Doubling the energy value from " 
+					     << r.energy << " to " << Emaxs[i] << " to be safe!" << termcolor::reset << endl;
 				}
 				else
 				{

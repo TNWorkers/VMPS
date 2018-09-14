@@ -1,0 +1,13 @@
+	//--------------<A*init>---------------
+	vector<MODEL::StateXd> initA(L);
+	
+//	MODEL::CompressorXd Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
+//	Compadre.prodCompress(A, Adag, init->state, initA, Qc, init->state.calc_Dmax());
+	
+	for (size_t l=0; l<L; ++l)
+	{
+		OxV_exact(A[l], init->state, initA[l], 1e-7);
+	}
+	
+	delete init;
+	//--------------</A*init>---------------

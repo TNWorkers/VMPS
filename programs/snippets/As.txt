@@ -1,0 +1,148 @@
+	//--------------<transition operator>---------------
+	vector<MODEL::Operator> A(L), Adag(L);
+	vector<array<MODEL::Operator,2> > cs(L);
+	vector<array<MODEL::Operator,2> > csdag(L);
+	
+	set<qarray<2> > Qc_set;
+	
+	for (size_t l=0; l<L; ++l)
+	{
+		if (spec == "PES" or spec == "IPES")
+		{
+			cs[l][0]    = H.c<UP>(l);
+			cs[l][1]    = H.c<DN>(l);
+			csdag[l][0] = H.cdag<UP>(l);
+			csdag[l][1] = H.cdag<DN>(l);
+		}
+		
+		if (spec == "AES")
+		{
+			A[l] = H.cc(l);
+			Adag[l] = H.cdagcdag(l);
+			#ifdef USING_SU2
+			{
+				Qc_set.insert(qarray<2>({D,N-2}));
+			}
+			#else
+			{
+				Qc_set.insert(qarray<2>({M,N-2}));
+			}
+			#endif
+		}
+		else if (spec == "APS")
+		{
+			A[l] = H.cdagcdag(l);
+			Adag[l] = H.cc(l);
+			
+			#ifdef USING_SU2
+			{
+				Qc_set.insert(qarray<2>({D,N+2}));
+			}
+			#else
+			{
+				Qc_set.insert(qarray<2>({M,N+2}));
+			}
+			#endif
+		}
+		else if (spec == "PES")
+		{
+			#ifdef USING_SU2
+			{
+				A[l] = H.c(l, 0, 1.);
+				Adag[l] = H.cdag(l, 0, sqrt(2.));
+				Qc_set.insert(qarray<2>({D+1,N-1}));
+				if (D>1) {Qc_set.insert(qarray<2>({D-1,N-1}));}
+			}
+			#else
+			{
+				A[l]    = cs[l][sigma];
+				Adag[l] = csdag[l][sigma];
+				
+				if (sigma==UP)
+				{
+					Qc_set.insert(qarray<2>({M-1,N-1}));
+				}
+				else
+				{
+					Qc_set.insert(qarray<2>({M+1,N-1}));
+				}
+			}
+			#endif
+		}
+		else if (spec == "IPES")
+		{
+			#ifdef USING_SU2
+			{
+				A[l] = H.cdag(l, 0, 1.);
+				Adag[l] = H.c(l, 0, sqrt(2.));
+				Qc_set.insert(qarray<2>({D+1,N+1}));
+				if (D>1) {Qc_set.insert(qarray<2>({D-1,N+1}));}
+			}
+			#else
+			{
+				A[l]    = csdag[l][sigma];
+				Adag[l] = cs[l][sigma];
+				
+				if (sigma==UP)
+				{
+					Qc_set.insert(qarray<2>({M+1,N+1}));
+				}
+				else
+				{
+					Qc_set.insert(qarray<2>({M-1,N+1}));
+				}
+			}
+			#endif
+		}
+		else if (spec == "CSF")
+		{
+			A[l] = H.n(l);
+			Adag[l] = A[l];
+			Qc_set.insert(Qi);
+		}
+		else if (spec == "SSF" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
+		{
+			#ifdef USING_SU2
+			{
+				A[l] = H.S(l);
+				Adag[l] = H.Sdag(l, 0, sqrt(3.));
+				Qc_set.insert({D+2,N});
+				if (D>1) {Qc_set.insert({D,N});}
+				if (D>2) {Qc_set.insert({D-2,N});}
+			}
+			#else
+			{
+				if (spec == "SSFM")
+				{
+					A[l] = H.Scomp(SM, l, 0, 1./sqrt(2.));
+					Adag[l] = H.Scomp(SP, l, 0, 1./sqrt(2.));
+					Qc_set.insert(Qi+A[l].Qtarget());
+				}
+				else if (spec == "SSFP")
+				{
+					A[l] = H.Scomp(SP, l, 0, 1./sqrt(2.));
+					Adag[l] = H.Scomp(SM, l, 0, 1./sqrt(2.));
+					Qc_set.insert(Qi+A[l].Qtarget());
+				}
+				else
+				{
+					A[l] = H.Sz(l);
+					Adag[l] = H.Sz(l);
+					Qc_set.insert(Qi);
+				}
+			}
+			#endif
+		}
+	}
+	
+	copy(Qc_set.begin(), Qc_set.end(), back_inserter(Qc));
+	
+	lout << A[0].info() << endl;
+	lout << Adag[0].info() << endl;
+	
+	lout << "Qi=" << Qi << endl;
+	for (size_t i=0; i<Qc.size(); ++i)
+	{
+		lout << "i=" << i << ", Qc=" << Qc[i] << endl;
+	}
+	//--------------</transition operator>---------------

@@ -1,0 +1,7 @@
+	//--------------<KernelPolynomialSolver>---------------
+	if (CHEB)
+	{
+		KPS.calc_ImAB(H, initA, initA[i0], Mmax);
+		lout << "Chebyshev iteration done!" << endl;
+	}
+	//--------------</KernelPolynomialSolver>---------------
