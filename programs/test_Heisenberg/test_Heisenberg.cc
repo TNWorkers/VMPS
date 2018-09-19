@@ -182,6 +182,8 @@ int main (int argc, char* argv[])
 		lout << H_U1.info() << endl;
 		
 		VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
+		DMRG_U1.userSetGlobParam();
+		DMRG_U1.userSetDynParam();
 		DMRG_U1.GlobParam = H_U1.get_GlobParam(SweepParams);
 		DMRG_U1.DynParam = H_U1.get_DynParam(SweepParams);
 		DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND);

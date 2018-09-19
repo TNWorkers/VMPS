@@ -38,11 +38,16 @@ public:
 	
 	void edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	                qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE);
-	
+
+	//call this function if you want to set the parameters for the solver by yourself
+	void userSetGlobParam    () { USER_SET_GLOBPARAM     = true; }
+	void userSetDynParam     () { USER_SET_DYNPARAM      = true; }
+	void userSetLanczosParam () { USER_SET_LANCZOSPARAM  = true; }
+
 	DMRG::CONTROL::GLOB GlobParam;
 	DMRG::CONTROL::DYN  DynParam;
 	DMRG::CONTROL::LANCZOS LanczosParam;
-	
+
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
 	void prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
@@ -116,7 +121,11 @@ private:
 	
 	double DeltaEopt;
 	double max_alpha_rsvd;
-	
+
+	bool USER_SET_GLOBPARAM    = false;
+	bool USER_SET_DYNPARAM     = false;
+	bool USER_SET_LANCZOSPARAM = false;
+
 	struct SweepStatus
 	{
 		int pivot=-1;
@@ -245,9 +254,9 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	
 	N_sites = H.length();
 	N_phys  = H.volume();
-	
-	GlobParam = H.get_GlobParam();
-	DynParam  = H.get_DynParam();
+
+	if (!USER_SET_GLOBPARAM) { GlobParam = H.get_GlobParam(); }
+	if (!USER_SET_DYNPARAM)  { DynParam  = H.get_DynParam(); }
 	
 	Stopwatch<> PrepTimer;
 	if (!USE_STATE)
