@@ -67,9 +67,10 @@ get_DynParam (const vector<Param> &params) const
 	ParamHandler P(params,defaults);
 	
 	double tmp1        = P.get<double>("max_alpha");
-	out.max_alpha_rsvd = [tmp1] (size_t i) {return tmp1;};
+	size_t lim         = P.get<size_t>("lim_alpha");
+	out.max_alpha_rsvd = [tmp1,lim] (size_t i) {return (i<lim)? tmp1:0.;};
 	tmp1               = P.get<double>("min_alpha");
-	out.min_alpha_rsvd = [tmp1] (size_t i) {return tmp1;};
+	out.min_alpha_rsvd = [tmp1,lim] (size_t i) {return (i<lim)? tmp1:0.;};
 	tmp1               = P.get<double>("eps_svd");
 	out.eps_svd        = [tmp1] (size_t i) {return tmp1;};
 	size_t tmp2        = P.get<size_t>("Dincr_abs");

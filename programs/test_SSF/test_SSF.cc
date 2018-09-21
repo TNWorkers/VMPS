@@ -24,13 +24,16 @@ using namespace std;
 size_t L;
 int M, Sc;
 double J;
+size_t D;
 vector<int> Msave;
 int Mmax;
 string spec, wd, outfile, Efilename;
 vector<double> dE;
 double Emin, Emax, E0;
-bool CHEB;
+bool CHEB, SHIFT;
+DMRG::VERBOSITY::OPTION VERB1, VERB2, VERB3;
 int Qinit, Dinit;
+int N=0;
 
 int main (int argc, char* argv[])
 {
@@ -40,21 +43,40 @@ int main (int argc, char* argv[])
 	Sc = args.get<size_t>("Sc",3);
 	Qinit = args.get<int>("Qinit",1000);
 	Dinit = args.get<int>("Dinit",1000);
-
+	D = args.get<size_t>("D",2ul);
+	
 	#ifdef USING_SU2
 	qarray<1> Qi = {M+1};
 	#else
-	qarray<1> Qi = {M};
+		#ifdef USING_U0
+		qarray<0> Qi = {};
+		#else
+		qarray<1> Qi = {M};
+		#endif
 	#endif
-	qarray<1> Qc;
+	#ifndef USING_U0
+	vector<qarray<1> > Qc;
+	#else
+	vector<qarray<0> > Qc;
+	#endif
 	spec = args.get<string>("spec","SSF");
-	J = args.get<double>("J",-1.);
+	J = args.get<double>("J",1.);
 	CHEB = args.get<bool>("CHEB",true);
+	SHIFT = args.get<bool>("SHIFT",true);
 	wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
 	
+	VERB1 = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB1",2));
+	VERB2 = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB2",0));
+	VERB3 = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB3",0));
+	
 	dE = args.get_list<double>("dE",{0.2});
-	outfile = make_string(spec,"_L=",L,"_J=",J,"_M=",M,"_Sc=",Sc);
+	outfile = make_string(spec,"_L=",L,"_J=",J,"_M=",M,"_D=",D);
+	#ifdef USING_SU2
+	{
+		outfile += make_string("_Sc=",Sc);
+	}
+	#endif
 	Efilename = outfile;
 	outfile += "_dE=";
 	lout.set(outfile+str(dE)+".log",wd+"log");
@@ -69,7 +91,7 @@ int main (int argc, char* argv[])
 	#endif
 	
 	//--------------<Hamiltonian & transition operator>---------------
-	MODEL H(L,{{"J",J},{"CALC_SQUARE",true}});
+	MODEL H(L,{{"J",J},{"D",D},{"CALC_SQUARE",true}});
 	lout << H.info() << endl << endl;
 	
 	MODEL::Operator A, Adag;
@@ -77,7 +99,7 @@ int main (int argc, char* argv[])
 	{
 		A = H.S(L/2);
 		Adag = H.Sdag(L/2, 0, sqrt(3.));
-		Qc = {Sc};
+		Qc.push_back(qarray<1>{Sc});
 	}
 	#else
 	{
@@ -85,28 +107,49 @@ int main (int argc, char* argv[])
 		{
 			A = H.Scomp(SP, L/2, 0, 1./sqrt(2));
 			Adag = H.Scomp(SM, L/2, 0, 1./sqrt(2));
-			Qc = Qi+A.Qtarget();
+			Qc.push_back(Qi+A.Qtarget());
 		}
 		else if (spec == "SSFM")
 		{
 			A = H.Scomp(SM, L/2, 0, 1./sqrt(2));
 			Adag = H.Scomp(SP, L/2, 0, 1./sqrt(2));
-			Qc = Qi+A.Qtarget();
+			Qc.push_back(Qi+A.Qtarget());
 		}
+		#ifdef USING_U0
+		else if (spec == "SSFX")
+		{
+			A = H.Sx(L/2);
+			Adag = H.Sx(L/2);
+			Qc.push_back(Qi);
+		}
+		else if (spec == "SSFY")
+		{
+			A = H.Scomp(iSY,L/2);
+			Adag = H.Scomp(iSY,L/2,0,-1.);
+			Qc.push_back(Qi);
+		}
+		#endif
 		else
 		{
 			A = H.Sz(L/2);
 			Adag = H.Sz(L/2);
-			Qc = Qi;
+			Qc.push_back(Qi);
 		}
 	}
 	#endif
+	
 	lout << A.info() << endl;
 	lout << Adag.info() << endl;
+	lout << "Qi=" << Qi << endl;
+	for (size_t i=0; i<Qc.size(); ++i)
+	{
+		lout << "i=" << i << ", Qc=" << Qc[i] << endl;
+	}
 	//--------------</Hamiltonian & transition operator>---------------
 	
 	#include "programs/snippets/groundstate.txt"
 	#include "programs/snippets/state_compression.txt"
 	#include "programs/snippets/AxInit.txt"
 	#include "programs/snippets/KPS.txt"
+	#include "programs/snippets/ImAA.txt"
 }

@@ -9,10 +9,14 @@
 	{
 		if (spec == "PES" or spec == "IPES")
 		{
-			cs[l][0]    = H.c<UP>(l);
-			cs[l][1]    = H.c<DN>(l);
-			csdag[l][0] = H.cdag<UP>(l);
-			csdag[l][1] = H.cdag<DN>(l);
+			#ifndef USING_SU2
+			{
+				cs[l][0]    = H.c<UP>(l);
+				cs[l][1]    = H.c<DN>(l);
+				csdag[l][0] = H.cdag<UP>(l);
+				csdag[l][1] = H.cdag<DN>(l);
+			}
+			#endif
 		}
 		
 		if (spec == "AES")

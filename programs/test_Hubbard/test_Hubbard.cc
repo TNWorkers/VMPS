@@ -205,6 +205,13 @@ int main (int argc, char* argv[])
 	{
 		lout << endl << termcolor::red << "--------ED---------" << termcolor::reset << endl << endl;
 		
+		HubbardModel Test(2,1,1,12.,BC_DANGLING);
+		Test.print_basis();
+		cout << Test.Hmatrix() << endl;
+		cout << Test.eigenvalues().transpose() << endl;
+		cout << endl;
+		cout << Test.eigenvectors() << endl;
+		
 		if (L <= 12)
 		{
 			InteractionParams params;

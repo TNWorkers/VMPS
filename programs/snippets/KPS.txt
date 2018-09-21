@@ -10,9 +10,9 @@
 	{
 		spillage = 2.*dE[0];
 	}
-	else if (spec == "SSF" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
+	else if (spec == "SSF" or spec == "SSFX" or spec == "SSFY" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
 	{
-		spillage = 10.*dE[0]; //0.5*(Emax-Emin);
+		spillage = 5.*dE[0]; //0.5*(Emax-Emin);
 	}
 	
 	OrthPolyGreen<MODEL,MODEL::StateXd,CHEBYSHEV> KPS(Emin-spillage, Emax+spillage);
@@ -41,8 +41,8 @@
 			{
 				if (spec == "AES" or spec == "PES")
 				{
-					KPS.add_savepoint(Msave[i], momfile, datfileJ, Emax, true, JACKSON);
-					KPS.add_savepoint(Msave[i], momfile, datfileL, Emax, true, LORENTZ);
+					KPS.add_savepoint(Msave[i], momfile, datfileJ, Emax, true, JACKSON); // REVERSE = true
+					KPS.add_savepoint(Msave[i], momfile, datfileL, Emax, true, LORENTZ); // REVERSE = true
 				}
 				else
 				{
