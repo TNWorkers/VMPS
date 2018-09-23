@@ -204,7 +204,7 @@ validate (qType qnum) const
 	for (size_t l=0; l<N_sites; ++l) { Smax+=static_cast<int>(B[l].orbitals())*frac(B[l].get_D()-1,2); } //add local spins to Smax
 	
 	frac S_tot(qnum[0]-1,2);
-	if (Smax.denominator()==S_tot.denominator() and S_tot<=Smax and qnum[0]<=2*static_cast<int>(this->N_phys) and qnum[0]>0) {return true;}
+	if (Smax.denominator()==S_tot.denominator() and S_tot<=Smax and qnum[0]<=2*2*static_cast<int>(this->N_phys) and qnum[0]>0) {return true;}
 	else {return false;}
 }
 
