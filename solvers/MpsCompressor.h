@@ -86,7 +86,7 @@ public:
 	template<typename MpOperator>
 	void prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
 	                   qarray<Symmetry::Nq> Qtot_input,
-	                   size_t Dcutoff_input, double tol=1e-8, size_t max_halfsweeps=42, size_t min_halfsweeps=1);
+	                   size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=42, size_t min_halfsweeps=1);
 	
 	/**
 	 * Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. 

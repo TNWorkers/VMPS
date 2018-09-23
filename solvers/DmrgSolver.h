@@ -947,22 +947,19 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 	
 	Stopwatch<> TotalTimer;
 	
-	// lambda function to print tolerances
-	auto print_alpha_eps = [this,&Vout] ()
-	{
-		if (CHOSEN_VERBOSITY>=2)
-		{
-			lout << "α_rsvd=" << Vout.state.alpha_rsvd << ", "
-			     << "ε_svd=" << Vout.state.eps_svd 
-			     << endl;
-		}
-	};
-	
-	// print_alpha_eps(); lout << endl;
+	bool MESSAGE_ALPHA = false;
 	
 	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and SweepStat.N_halfsweeps < GlobParam.max_halfsweeps) or
 	       SweepStat.N_halfsweeps < GlobParam.min_halfsweeps)
 	{
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and 
+		    DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps) == 0. and
+		    MESSAGE_ALPHA == false)
+		{
+			lout << "α_rsvd is turned off now!" << endl << endl;
+			MESSAGE_ALPHA = true;
+		}
+		
 		// sweep
 		halfsweep(H,Vout,EDGE);
 		
@@ -988,7 +985,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 			}
 			lout << endl;
 		}
-
+		
 		DynParam.doSomething(j);
 		
 		#ifdef USE_HDF5_STORAGE
