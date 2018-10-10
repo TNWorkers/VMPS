@@ -71,7 +71,8 @@ VMPS::HeisenbergU1XXZ::StateXcd Neel (const VMPS::HeisenbergU1XXZ &H)
 }
 
 bool CALC_DYNAMICS;
-int M, S;
+int M, Dtot;
+double Stot;
 size_t D, D1;
 size_t L, Ly, Ldyn;
 double J, Jprime, Jrung;
@@ -108,7 +109,8 @@ int main (int argc, char* argv[])
 	M = args.get<int>("M",0);
 	D = args.get<size_t>("D",2);
 	D1 = args.get<size_t>("D1",D);
-	S = abs(M)+1;
+	Dtot = abs(M)+1;
+	Stot = (Dtot-1.)/2.;
 	size_t min_Nsv = args.get<size_t>("min_Nsv",0ul);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
@@ -191,6 +193,20 @@ int main (int argc, char* argv[])
 		
 		t_U1 = Watch_U1.time();
 		
+		for (size_t l=0; l<L; ++l)
+		{
+			lout << "l=" << l << "\t" 
+			     << isReal(avg(g_U1.state, H_U1.Scomp(SX,l), g_U1.state)) << "\t"
+			     << isReal(-1.i * avg(g_U1.state, H_U1.Scomp(iSY,l), g_U1.state)) << "\t"
+			     << isReal(avg(g_U1.state, H_U1.Scomp(SZ,l), g_U1.state))
+			     << endl;
+		}
+		
+		for (size_t l=0; l<L-1; ++l)
+		{
+			lout << "l=" << l << "\t" << isReal(avg(g_U1.state, H_U1.SpSm(l,l+1), g_U1.state)) + isReal(avg(g_U1.state, H_U1.SzSz(l,l+1), g_U1.state)) << endl;
+		}
+		
 		// dynamics (of Néel state)
 		if (CALC_DYNAMICS)
 		{
@@ -238,10 +254,31 @@ int main (int argc, char* argv[])
 		VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
 		DMRG_SU2.GlobParam = H_SU2.get_GlobParam(SweepParams);
 		DMRG_SU2.DynParam = H_SU2.get_DynParam(SweepParams);
-		DMRG_SU2.edgeState(H_SU2, g_SU2, {S}, LANCZOS::EDGE::GROUND);
+		DMRG_SU2.edgeState(H_SU2, g_SU2, {Dtot}, LANCZOS::EDGE::GROUND);
 		g_SU2.state.graph("SU2");
 		
 		t_SU2 = Watch_SU2.time();
+		
+		double C = Stot/sqrt(Stot*(Stot+1.));
+		cout << "C=" << C << ", Stot=" << Stot << endl;
+		
+		for (size_t l=0; l<L; ++l)
+		{
+			double val = isReal(avg(g_SU2.state, H_SU2.S(l), g_SU2.state));
+			lout << "l=" << l << "\t" 
+			     << val << "\t" 
+			     << val*C << "\t" 
+			     << val/C << "\t" 
+			     << Sym::SU2<Sym::SpinSU2>::coeff_CGC(qarray<1>{Dtot},qarray<1>{3},qarray<1>{Dtot}, Dtot,1,Dtot) << "\t"
+			     << endl;
+		}
+		
+		lout << endl;
+		
+		for (size_t l=0; l<L-1; ++l)
+		{
+			lout << "l=" << l << "\t" << isReal(avg(g_SU2.state, H_SU2.SS(l,l+1), g_SU2.state)) << endl;
+		}
 	}
 	
 	//--------output---------

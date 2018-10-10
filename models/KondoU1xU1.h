@@ -283,8 +283,6 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 	
 	Terms.name = "Kondo";
 	
-	cout << "Hloc=" << Hloc.data << endl;
-	
 	Terms.local.push_back(make_tuple(1.,Hloc));
 	
 	return Terms;

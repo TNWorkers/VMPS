@@ -317,7 +317,7 @@ void polyIter (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin
 	{
 		lout << Compadre.info() << endl;
 		lout << termcolor::bold << Chronos.info(make_string("polyIter B=",polyB)) << termcolor::reset << endl;
-		lout << "Vout: " << Vout.info() << endl << endl;
+		lout << "Vout: " << Vout.info() << endl;
 	}
 }
 
@@ -426,7 +426,8 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::
 
 //Comment needed
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, double tol_compr = 1e-7)
+void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
+                double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	size_t L = Vin.length();
 	auto Qt = Symmetry::reduceSilent(Vin.Qtarget(),O.Qtarget());
@@ -445,14 +446,17 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	Vout.update_outbase();
 	Vout.calc_Qlimits(); // Careful: Depends on Qtot!
 	
-	lout << endl;
-	lout << termcolor::bold << "OxV_exact" << termcolor::reset << endl;
-	lout << "input:\t" << Vin.info() << endl;
-	lout << "exact:\t" << Vout.info() << endl;
+	if (VERBOSITY > DMRG::VERBOSITY::SILENT)
+	{
+		lout << endl;
+		lout << termcolor::bold << "OxV_exact" << termcolor::reset << endl;
+		lout << "input:\t" << Vin.info() << endl;
+		lout << "exact:\t" << Vout.info() << endl;
+	}
 	
 	if (tol_compr < 1.)
 	{
-		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
+		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 		Mps<Symmetry,Scalar> Vtmp;
 		Compadre.stateCompress(Vout, Vtmp, Vin.calc_Dmax(), tol_compr, 200);
 		
@@ -462,15 +466,18 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 		Vout.update_outbase();
 		Vout.calc_Qlimits(); // Careful: Depends on Qtot!
 		
-		lout << "compressed:\t" << Vout.info() << endl;
-		lout << "\t" << Compadre.info() << endl;
+		if (VERBOSITY > DMRG::VERBOSITY::SILENT)
+		{
+			lout << "compressed:\t" << Vout.info() << endl;
+			lout << "\t" << Compadre.info() << endl;
+		}
 	}
-	lout << endl;
+	if (VERBOSITY > DMRG::VERBOSITY::SILENT) lout << endl;
 	
 	if (Vout.calc_Nqavg() <= 1.5)
 	{
 		Vout.min_Nsv = 1;
-		lout << termcolor::blue << "Warning: Setting min_Nsv=1 do deal with small Hilbert space!" << termcolor::reset << endl;
+		lout << termcolor::blue << "Warning: Setting min_Nsv=1 do deal with small Hilbert space after OxV_exact!" << termcolor::reset << endl;
 	}
 }
 
