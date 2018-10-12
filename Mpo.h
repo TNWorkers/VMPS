@@ -972,19 +972,20 @@ generate_label (size_t Lcell)
 			ss << " •l=";
 //			for (auto s:c.second)
 //			{
-//				ss << s << ",";
+//				cout << s << ",";
 //			}
+//			cout << endl;
 			if (c.second.size() == 1)
 			{
 				ss << *c.second.begin(); // one site
 			}
 			else if (c.second.size() == 2)
 			{
-				ss << *c.second.begin() << "," << *c.second.end(); // two sites
+				ss << *c.second.begin() << "," << *c.second.rbegin(); // two sites
 			}
 			else
 			{
-				ss << *c.second.begin() << "-" << *c.second.end(); // range of sites
+				ss << *c.second.begin() << "-" << *c.second.rbegin(); // range of sites
 			}
 //			ss.seekp(-1,ios_base::end); // delete last comma
 			ss << ": " << c.first << endl;

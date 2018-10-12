@@ -81,6 +81,7 @@ const map<string,any> KondoU1xU1::defaults =
 	{"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.},
+	{"I1",0.}, {"I2",0.},
 	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
@@ -156,6 +157,12 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
 	save_label(Vlabel);
 	
+	auto [I1,I1Para,I1label] = P.fill_array2d<double>("I1","I1Para",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
+	save_label(I1label);
+	
+	auto [I2,I2Para,I2label] = P.fill_array2d<double>("I2","I2Para",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
+	save_label(I1label);
+	
 	for (int i=0; i<F[loc].orbitals(); ++i)
 	for (int j=0; j<F[lp1].orbitals(); ++j)
 	{
@@ -183,6 +190,35 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 				                                 kroneckerProduct(B[loc].Id(),F[loc].n(i)), 
 				                                 kroneckerProduct(B[loc].Id(),F[loc].n(i))));
 			}
+		}
+		
+		if (I1Para(i,j) != 0.)
+		{
+			Terms.tight.push_back(make_tuple(0.5*I1Para(i,j),
+			                                 kroneckerProduct(B[loc].Scomp(SP,i), F[loc].Id()),
+			                                 kroneckerProduct(B[loc].Id(), F[loc].Sm(i))));
+			Terms.tight.push_back(make_tuple(0.5*I1Para(i,j),
+			                                 kroneckerProduct(B[loc].Scomp(SM,i), F[loc].Id()),
+			                                 kroneckerProduct(B[loc].Id(), F[loc].Sp(i))));
+			Terms.tight.push_back(make_tuple(I1Para(i,j),
+			                                 kroneckerProduct(B[loc].Scomp(SZ,i), F[loc].Id()),
+			                                 kroneckerProduct(B[loc].Id(), F[loc].Sz(i))));
+		}
+		
+		if (I2Para(i,j) != 0.)
+		{
+			Terms.tight.push_back(make_tuple(+0.5*I2Para(i,j),
+			                                 kroneckerProduct(B[loc].Scomp(SP,i), F[loc].cdag(DN,i) * F[loc].sign()),
+			                                 kroneckerProduct(B[loc].Id(), F[loc].c(UP,i))));
+			Terms.tight.push_back(make_tuple(+0.5*I2Para(i,j),
+			                                 kroneckerProduct(B[loc].Scomp(SM,i), F[loc].cdag(UP,i) * F[loc].sign()),
+			                                 kroneckerProduct(B[loc].Id(), F[loc].c(DN,i))));
+			Terms.tight.push_back(make_tuple(+0.5*I2Para(i,j),
+			                                 kroneckerProduct(B[loc].Scomp(SZ,i), F[loc].cdag(UP,i) * F[loc].sign()),
+			                                 kroneckerProduct(B[loc].Id(), F[loc].c(UP,i))));
+			Terms.tight.push_back(make_tuple(-0.5*I2Para(i,j),
+			                                 kroneckerProduct(B[loc].Scomp(SZ,i), F[loc].cdag(DN,i) * F[loc].sign()),
+			                                 kroneckerProduct(B[loc].Id(), F[loc].c(DN,i))));
 		}
 	}
 	
