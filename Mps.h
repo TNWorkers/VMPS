@@ -838,10 +838,10 @@ calc_Qlimits()
 			}
 		}
 		
-//		cout << "l=" << l 
-//		     << ", QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] 
-//		     << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] 
-//		     << endl;
+/*		cout << "l=" << l */
+/*		     << ", QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] */
+/*		     << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] */
+/*		     << endl;*/
 	}
 }
 

@@ -265,9 +265,9 @@ private:
 template<typename Symmetry>
 FermionBase<Symmetry>::
 FermionBase (size_t L_input, bool U_IS_INFINITE)
-	:N_orbitals(L_input)
+:N_orbitals(L_input)
 {
-	assert(N_orbitals>=1);
+//	assert(N_orbitals>=1);
 	
 	size_t locdim = (U_IS_INFINITE)? 3 : 4;
 	N_states = pow(locdim,N_orbitals);
@@ -291,9 +291,19 @@ FermionBase (size_t L_input, bool U_IS_INFINITE)
 		}
 	}
 	
-//	 cout << "basis:" << endl;
-//	 for (size_t i=0; i<N_states; i++) {cout << basis[i] << endl;}
-//	 cout << endl;
+	// set to vacuum for N_orbitals=0, reset to N_orbitals=1 to avoid segfaults
+	if (N_states == 1)
+	{
+		N_orbitals = 1;
+		basis[0].resize(2);
+		basis[0][0] = 0;
+		basis[0][1] = 0;
+	}
+//	
+//	cout << "L_input=" << L_input << ", N_states=" << N_states << endl;
+//	cout << "basis:" << endl;
+//	for (size_t i=0; i<N_states; i++) {cout << basis[i] << endl;}
+//	cout << endl;
 }
 
 template<typename Symmetry>

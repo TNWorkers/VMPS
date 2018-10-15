@@ -92,7 +92,7 @@ KondoObservables (const size_t &L, const vector<Param> &params, const map<string
 	for (size_t l=0; l<L; ++l)
 	{
 		B[l] = SpinBase<Symmetry> (P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
-		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
+		F[l] = FermionBase<Symmetry>(P.get<size_t>("LyF",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
 	}
 }
 

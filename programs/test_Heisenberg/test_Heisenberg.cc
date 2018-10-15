@@ -252,6 +252,8 @@ int main (int argc, char* argv[])
 		lout << H_SU2.info() << endl;
 		
 		VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
+		DMRG_SU2.userSetGlobParam();
+		DMRG_SU2.userSetDynParam();
 		DMRG_SU2.GlobParam = H_SU2.get_GlobParam(SweepParams);
 		DMRG_SU2.DynParam = H_SU2.get_DynParam(SweepParams);
 		DMRG_SU2.edgeState(H_SU2, g_SU2, {Dtot}, LANCZOS::EDGE::GROUND);

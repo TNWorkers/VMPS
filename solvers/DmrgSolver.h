@@ -633,7 +633,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 //		<< ", ratio=" << err_state/err_exact
 //		     << ", " << HsqTimer_.info("‖H|Ψ>-E|Ψ>‖") << TCOLOR(BLACK) << endl;
 	}
-	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_FULL)
+	else if (GlobParam.CONVTEST == DMRG::CONVTEST::VAR_FULL and SweepStat.N_halfsweeps > GlobParam.min_halfsweeps)
 	{
 		Stopwatch<> HsqTimer;
 		
@@ -646,12 +646,15 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		ExPsi *= Vout.energy;
 		HxPsi -= ExPsi;
 		
-		double err_state = HxPsi.dot(HxPsi) / this->N_sites;
+		err_state = HxPsi.dot(HxPsi) / this->N_sites;
+		double t_tot = HsqTimer.time();
 		
 		if (CHOSEN_VERBOSITY >= 2)
 		{
 			errorCalcInfo << HsqTimer.info("‖H|Ψ>-E|Ψ>‖") << endl;
 		}
+		
+		t_err += t_tot;
 	}
 	
 	Eold = Vout.energy;

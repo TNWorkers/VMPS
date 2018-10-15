@@ -979,13 +979,64 @@ generate_label (size_t Lcell)
 			{
 				ss << *c.second.begin(); // one site
 			}
-			else if (c.second.size() == 2)
-			{
-				ss << *c.second.begin() << "," << *c.second.rbegin(); // two sites
-			}
 			else
 			{
-				ss << *c.second.begin() << "-" << *c.second.rbegin(); // range of sites
+				// check mod 2
+				if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==0;}))  
+				{
+					ss << "even";
+				}
+				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==1;}))  
+				{
+					ss << "odd";
+				}
+				// check mod 4
+				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==0;}))  
+				{
+					ss << "0mod4";
+				}
+				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==1;}))  
+				{
+					ss << "1mod4";
+				}
+				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==2;}))  
+				{
+					ss << "2mod4";
+				}
+				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==3;}))  
+				{
+					ss << "3mod4";
+				}
+				else
+				{
+					if (c.second.size() == 2)
+					{
+						ss << *c.second.begin() << "," << *c.second.rbegin(); // two sites
+					}
+					else
+					{
+						bool CONSECUTIVE = true;
+						for (auto it=c.second.begin(); it!=c.second.end(); ++it)
+						{
+							if (next(it) != c.second.end() and *next(it)!=*it+1ul)
+							{
+								CONSECUTIVE = false;
+							}
+						}
+						if (CONSECUTIVE)
+						{
+							ss << *c.second.begin() << "-" << *c.second.rbegin(); // range of sites
+						}
+						else
+						{
+							for (auto it=c.second.begin(); it!=c.second.end(); ++it)
+							{
+								ss << *it << ","; // some unknown order
+							}
+							ss.seekp(-1,ios_base::end); // delete last comma
+						}
+					}
+				}
 			}
 //			ss.seekp(-1,ios_base::end); // delete last comma
 			ss << ": " << c.first << endl;

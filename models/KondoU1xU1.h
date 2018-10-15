@@ -81,8 +81,8 @@ const map<string,any> KondoU1xU1::defaults =
 	{"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.},
-	{"I1",0.}, {"I2",0.},
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
+	{"I",0.}, {"I3site",0.},
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, {"LyF",1ul}
 };
 
 KondoU1xU1::
@@ -98,7 +98,7 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		N_phys += P.get<size_t>("Ly",l%Lcell);
+		N_phys += P.get<size_t>("LyF",l%Lcell);
 		setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);
 	}
 	
@@ -107,7 +107,7 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
 		Terms[l] = set_operators(B,F,P,l%Lcell);
 		
 		stringstream ss;
-		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
+		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell) << ",LyF=" << P.get<size_t>("LyF",l%Lcell);
 		Terms[l].info.push_back(ss.str());
 	}
 	
@@ -157,11 +157,11 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
 	save_label(Vlabel);
 	
-	auto [I1,I1Para,I1label] = P.fill_array2d<double>("I1","I1Para",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
-	save_label(I1label);
+	auto [I,Ipara,Ilabel] = P.fill_array2d<double>("I","Ipara",{{B[loc].orbitals(),F[lp1].orbitals()}},loc);
+	save_label(Ilabel);
 	
-	auto [I2,I2Para,I2label] = P.fill_array2d<double>("I2","I2Para",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
-	save_label(I1label);
+	auto [I3site,I3sitePara,I3sitelabel] = P.fill_array2d<double>("I3site","I3sitePara",{{B[loc].orbitals(),F[lp1].orbitals()}},loc);
+	save_label(I3sitelabel);
 	
 	for (int i=0; i<F[loc].orbitals(); ++i)
 	for (int j=0; j<F[lp1].orbitals(); ++j)
@@ -191,32 +191,37 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 				                                 kroneckerProduct(B[loc].Id(),F[loc].n(i))));
 			}
 		}
-		
-		if (I1Para(i,j) != 0.)
+	}
+	
+	for (int i=0; i<B[loc].orbitals(); ++i)
+	for (int j=0; j<F[lp1].orbitals(); ++j)
+	{
+//		cout << "Ipara=" << Ipara(i,j) << " between " << loc << " and " << lp1 << endl;
+		if (Ipara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(0.5*I1Para(i,j),
+			Terms.tight.push_back(make_tuple(0.5*Ipara(i,j),
 			                                 kroneckerProduct(B[loc].Scomp(SP,i), F[loc].Id()),
 			                                 kroneckerProduct(B[loc].Id(), F[loc].Sm(i))));
-			Terms.tight.push_back(make_tuple(0.5*I1Para(i,j),
+			Terms.tight.push_back(make_tuple(0.5*Ipara(i,j),
 			                                 kroneckerProduct(B[loc].Scomp(SM,i), F[loc].Id()),
 			                                 kroneckerProduct(B[loc].Id(), F[loc].Sp(i))));
-			Terms.tight.push_back(make_tuple(I1Para(i,j),
+			Terms.tight.push_back(make_tuple(Ipara(i,j),
 			                                 kroneckerProduct(B[loc].Scomp(SZ,i), F[loc].Id()),
 			                                 kroneckerProduct(B[loc].Id(), F[loc].Sz(i))));
 		}
 		
-		if (I2Para(i,j) != 0.)
+		if (I3sitePara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(+0.5*I2Para(i,j),
+			Terms.tight.push_back(make_tuple(+0.5*I3sitePara(i,j),
 			                                 kroneckerProduct(B[loc].Scomp(SP,i), F[loc].cdag(DN,i) * F[loc].sign()),
 			                                 kroneckerProduct(B[loc].Id(), F[loc].c(UP,i))));
-			Terms.tight.push_back(make_tuple(+0.5*I2Para(i,j),
+			Terms.tight.push_back(make_tuple(+0.5*I3sitePara(i,j),
 			                                 kroneckerProduct(B[loc].Scomp(SM,i), F[loc].cdag(UP,i) * F[loc].sign()),
 			                                 kroneckerProduct(B[loc].Id(), F[loc].c(DN,i))));
-			Terms.tight.push_back(make_tuple(+0.5*I2Para(i,j),
+			Terms.tight.push_back(make_tuple(+0.5*I3sitePara(i,j),
 			                                 kroneckerProduct(B[loc].Scomp(SZ,i), F[loc].cdag(UP,i) * F[loc].sign()),
 			                                 kroneckerProduct(B[loc].Id(), F[loc].c(UP,i))));
-			Terms.tight.push_back(make_tuple(-0.5*I2Para(i,j),
+			Terms.tight.push_back(make_tuple(-0.5*I3sitePara(i,j),
 			                                 kroneckerProduct(B[loc].Scomp(SZ,i), F[loc].cdag(DN,i) * F[loc].sign()),
 			                                 kroneckerProduct(B[loc].Id(), F[loc].c(DN,i))));
 		}
@@ -229,7 +234,7 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 	
 	if (tPrime.x!=0)
 	{
-		assert(F[loc].orbitals() == 1 and "Cannot do a ladder with t' terms!");
+		assert(F[loc].orbitals() <= 1 and "Cannot do a ladder with t' terms!");
 		
 		Terms.nextn.push_back(make_tuple(-tPrime.x,
 		                                 kroneckerProduct(B[loc].Id(),F[loc].cdag(UP,0) * F[loc].sign()),
@@ -239,12 +244,12 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		                                 kroneckerProduct(B[loc].Id(),F[loc].cdag(DN,0) * F[loc].sign()),
 		                                 kroneckerProduct(B[loc].Id(),F[loc].c(DN,0)),
 		                                 kroneckerProduct(B[loc].Id(),F[loc].sign())));
-		Terms.nextn.push_back(make_tuple(+tPrime.x,
-		                                 kroneckerProduct(B[loc].Id(),F[loc].c(UP,0) * F[loc].sign()),
+		Terms.nextn.push_back(make_tuple(-tPrime.x,
+		                                 kroneckerProduct(B[loc].Id(),-1.*F[loc].c(UP,0) * F[loc].sign()),
 		                                 kroneckerProduct(B[loc].Id(),F[loc].cdag(UP,0)),
 		                                 kroneckerProduct(B[loc].Id(),F[loc].sign())));
-		Terms.nextn.push_back(make_tuple(+tPrime.x,
-		                                 kroneckerProduct(B[loc].Id(),F[loc].c(DN,0) * F[loc].sign()),
+		Terms.nextn.push_back(make_tuple(-tPrime.x,
+		                                 kroneckerProduct(B[loc].Id(),-1.*F[loc].c(DN,0) * F[loc].sign()),
 		                                 kroneckerProduct(B[loc].Id(),F[loc].cdag(DN,0)),
 		                                 kroneckerProduct(B[loc].Id(),F[loc].sign())));
 	}
@@ -299,27 +304,30 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 	ArrayXXd Dyperp   = B[loc].ZeroHopping();
 	ArrayXXd Jperp    = F[loc].ZeroHopping();
 	
-	auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp), F[loc].Id());
-	auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].template HubbardHamiltonian<double>(Uorb,t0orb-muorb,Bzsuborb,Bxsuborb,tPerp,Vperp,Jperp));
-	auto Hloc = Himp + Hsub;
-	
-	// Kondo-J
-	auto [J,Jorb,Jlabel] = P.fill_array1d<double>("J","Jorb",F[loc].orbitals(),loc);
-	save_label(Jlabel);
-	
-	for (int i=0; i<F[loc].orbitals(); ++i)
+	if (B[loc].orbitals() > 0 and F[loc].orbitals() > 0)
 	{
-		if (Jorb(i) != 0.)
+		auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp), F[loc].Id());
+		auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].template HubbardHamiltonian<double>(Uorb,t0orb-muorb,Bzsuborb,Bxsuborb,tPerp,Vperp,Jperp));
+		auto Hloc = Himp + Hsub;
+		
+		// Kondo-J
+		auto [J,Jorb,Jlabel] = P.fill_array1d<double>("J","Jorb",F[loc].orbitals(),loc);
+		save_label(Jlabel);
+		
+		for (int i=0; i<F[loc].orbitals(); ++i)
 		{
-			Hloc += 0.5*Jorb(i) * kroneckerProduct(B[loc].Scomp(SP,i), F[loc].Sm(i));
-			Hloc += 0.5*Jorb(i) * kroneckerProduct(B[loc].Scomp(SM,i), F[loc].Sp(i));
-			Hloc +=     Jorb(i) * kroneckerProduct(B[loc].Scomp(SZ,i), F[loc].Sz(i));
+			if (Jorb(i) != 0.)
+			{
+				Hloc += 0.5*Jorb(i) * kroneckerProduct(B[loc].Scomp(SP,i), F[loc].Sm(i));
+				Hloc += 0.5*Jorb(i) * kroneckerProduct(B[loc].Scomp(SM,i), F[loc].Sp(i));
+				Hloc +=     Jorb(i) * kroneckerProduct(B[loc].Scomp(SZ,i), F[loc].Sz(i));
+			}
 		}
+		
+		Terms.local.push_back(make_tuple(1.,Hloc));
 	}
 	
 	Terms.name = "Kondo";
-	
-	Terms.local.push_back(make_tuple(1.,Hloc));
 	
 	return Terms;
 }
