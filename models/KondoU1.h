@@ -44,7 +44,9 @@ public:
 	KondoU1 () : Mpo(){};
 	KondoU1 (const size_t &L, const vector<Param> &params);
 	///@}
-		
+	
+	static qarray<1> singlet (int N) {return qarray<1>{N};}; // not a real singlet, but useful for consistency when switching symmetries
+	
 	template<typename Symmetry_>
 	static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, 
 	                           const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<Symmetry_> > &F, 
@@ -65,7 +67,7 @@ const std::map<string,std::any> KondoU1::defaults =
 	{"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bx",0.}, {"Bzsub",0.}, {"Bxsub",0.}, {"Kz",0.}, {"Kx",0.},
-	{"I",0.}, {"I3site",0.},
+	{"Inext",0.}, {"Iprev",0.}, {"I3next",0.}, {"I3prev",0.}, {"I3loc",0.},
 	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, {"LyF",1ul}
 };
 

@@ -150,27 +150,27 @@ const map<string,any> KondoSU2xU1::defaults =
 	{"D",2ul}, {"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
-const map<string,any> KondoSU2xU1::sweep_defaults = 
-{
-	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",20ul}, {"eps_svd",1.e-7},
-	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
-	{"min_Nsv",0ul}, {"max_Nrich",-1},
-	{"max_halfsweeps",30ul}, {"min_halfsweeps",6ul},
-	{"Dinit",80ul}, {"Qinit",30ul}, {"Dlimit",1000ul},
-	{"tol_eigval",1.e-7}, {"tol_state",1.e-6},
-	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
-};
-
-//const map<string,any> VMPS::KondoSU2xU1::sweep_defaults = 
+//const map<string,any> KondoSU2xU1::sweep_defaults = 
 //{
-//	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",10ul}, {"eps_svd",1.e-7},
+//	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",20ul}, {"eps_svd",1.e-7},
 //	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 //	{"min_Nsv",0ul}, {"max_Nrich",-1},
 //	{"max_halfsweeps",30ul}, {"min_halfsweeps",6ul},
-//	{"Dinit",5ul}, {"Qinit",15ul}, {"Dlimit",100ul},
+//	{"Dinit",80ul}, {"Qinit",30ul}, {"Dlimit",1000ul},
 //	{"tol_eigval",1.e-7}, {"tol_state",1.e-6},
-//	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
+//	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_HSQ}
 //};
+
+const map<string,any> VMPS::KondoSU2xU1::sweep_defaults = 
+{
+	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",10ul}, {"eps_svd",1.e-7},
+	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
+	{"min_Nsv",0ul}, {"max_Nrich",-1},
+	{"max_halfsweeps",30ul}, {"min_halfsweeps",6ul},
+	{"Dinit",5ul}, {"Qinit",15ul}, {"Dlimit",100ul},
+	{"tol_eigval",1.e-7}, {"tol_state",1.e-6},
+	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
+};
 
 KondoSU2xU1::
 KondoSU2xU1 (const size_t &L, const vector<Param> &params)

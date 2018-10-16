@@ -446,7 +446,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
 		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
-
+		
 		switch ( DynParam.iteration(SweepStat.N_halfsweeps) )
 		{
 		case DMRG::ITERATION::ZERO_SITE:

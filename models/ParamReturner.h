@@ -30,7 +30,7 @@ DMRG::CONTROL::GLOB ParamReturner::
 get_GlobParam (const vector<Param> &params) const
 {
 	DMRG::CONTROL::GLOB out;
-	if(TRIVIALLY_CONSTRUCTED) {return out;} //Return defaults from DmrgTypedefs
+	if (TRIVIALLY_CONSTRUCTED) {return out;} //Return defaults from DmrgTypedefs
 	
 	ParamHandler P(params,defaults);
 	out.min_halfsweeps = P.get<size_t>("min_halfsweeps");

@@ -13,6 +13,7 @@
 		{
 			Stopwatch<> nChronos;
 			MODEL::Solver * DMRG = new MODEL::Solver(VERB1);
+			cout << "Qi=" << Qi[0] << "\t" << Qi[1] << endl;
 			DMRG->edgeState(H, *init, Qi, LANCZOS::EDGE::GROUND);
 			lout << endl << nChronos.info(make_string("ground state ",Qi)) << endl;
 			lout << DMRG->info() << endl;

@@ -154,7 +154,7 @@ int main (int argc, char* argv[])
 	vector<Param> params;
 	params.push_back({"Ly",Ly});
 	params.push_back({"J",0.});
-	params.push_back({"I",J});
+	params.push_back({"Inext",J});
 	params.push_back({"t",0.});
 	// params.push_back({"tRung",tRung});
 	// params.push_back({"tPara",tPara});
