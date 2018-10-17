@@ -226,7 +226,7 @@ struct DMRG
 			STEPWISE=3, /**<level 3, prints as much info as possible*/
 		};
 	};
-
+	
 	/**Choice of initial guess for variational compression in MpsCompressor.*/
 	struct COMPRESSION
 	{
@@ -248,7 +248,7 @@ struct DMRG
 			DECR /**<non-conservative decrease: cut all blocks according to a given \p Dmax*/
 		};
 	};
-
+	
 	/**Choice of how to check convergence of a state.*/
 	struct CONVTEST
 	{
@@ -260,7 +260,7 @@ struct DMRG
 			VAR_FULL /**< This computes the norm of the full resolvent: \f$\left\Vert H |\Psi\rangle - E |\Psi\rangle \right\Vert \f$.*/
 		};
 	};
-
+	
 	/**Iteration to perform in the solver.*/
 	struct ITERATION
 	{
@@ -271,7 +271,7 @@ struct DMRG
 			TWO_SITE   /**<Two site algorithm (Very surprising)*/
 		};
 	};
-
+	
 	/**Default configuration values for various solvers.*/
 	struct CONTROL
 	{

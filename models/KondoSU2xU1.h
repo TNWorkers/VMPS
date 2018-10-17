@@ -147,19 +147,9 @@ const map<string,any> KondoSU2xU1::defaults =
 	{"U",0.},
 	{"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
-	{"D",2ul}, {"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
+	{"Inext",0.}, {"Iprev",0.}, {"I3next",0.}, {"I3prev",0.}, {"I3loc",0.}, 
+	{"D",2ul}, {"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, {"LyF",1ul}
 };
-
-//const map<string,any> KondoSU2xU1::sweep_defaults = 
-//{
-//	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",20ul}, {"eps_svd",1.e-7},
-//	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
-//	{"min_Nsv",0ul}, {"max_Nrich",-1},
-//	{"max_halfsweeps",30ul}, {"min_halfsweeps",6ul},
-//	{"Dinit",80ul}, {"Qinit",30ul}, {"Dlimit",1000ul},
-//	{"tol_eigval",1.e-7}, {"tol_state",1.e-6},
-//	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_HSQ}
-//};
 
 const map<string,any> VMPS::KondoSU2xU1::sweep_defaults = 
 {
@@ -186,9 +176,9 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		N_phys += P.get<size_t>("Ly",l%Lcell);
+		N_phys += P.get<size_t>("LyF",l%Lcell);
 		
-		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
+		F[l] = FermionBase<Symmetry>(P.get<size_t>("LyF",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		
 		setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);
@@ -199,7 +189,7 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 		Terms[l] = set_operators(B,F,P,l%Lcell);
 		
 		stringstream ss;
-		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
+		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell) << ",LyF=" << P.get<size_t>("LyF",l%Lcell);
 		Terms[l].info.push_back(ss.str());
 	}
 	
@@ -286,6 +276,42 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		}
 	}
 	
+	// NN Kondo terms
+	
+	auto [Inext,InextPara,InextLabel] = P.fill_array2d<double>("Inext","InextPara",{{B[loc].orbitals(),F[lp1].orbitals()}},loc);
+	save_label(InextLabel);
+	
+	for (int i=0; i<B[loc].orbitals(); ++i)
+	for (int j=0; j<F[lp1].orbitals(); ++j)
+	{
+		if (InextPara(i,j) != 0.)
+		{
+			qarray<Symmetry::Nq> qnum1 = (B[loc].orbitals()==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
+			qarray<Symmetry::Nq> qnum2 = (F[loc].orbitals()==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
+			Terms.tight.push_back(make_tuple(sqrt(3.)*InextPara(i,j),
+			                                 OperatorType::outerprod(B[loc].Sdag(i), F[loc].Id(), qnum1).plain<double>(),
+			                                 OperatorType::outerprod(B[loc].Id(), F[loc].S(i), qnum2).plain<double>()
+			                                 ));
+		}
+	}
+	
+	auto [Iprev,IprevPara,IprevLabel] = P.fill_array2d<double>("Iprev","IprevPara",{{B[loc].orbitals(),F[lp1].orbitals()}},loc);
+	save_label(IprevLabel);
+	
+	for (int i=0; i<F[loc].orbitals(); ++i)
+	for (int j=0; j<B[lp1].orbitals(); ++j)
+	{
+		if (IprevPara(i,j) != 0.)
+		{
+			qarray<Symmetry::Nq> qnum1 = (B[loc].orbitals()==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
+			qarray<Symmetry::Nq> qnum2 = (F[loc].orbitals()==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
+			Terms.tight.push_back(make_tuple(sqrt(3.)*IprevPara(i,j),
+			                                 OperatorType::outerprod(B[loc].Id(), F[loc].Sdag(i), qnum1).plain<double>(),
+			                                 OperatorType::outerprod(B[loc].S(i), F[loc].Id(), qnum2).plain<double>()
+			                                 ));
+		}
+	}
+	
 	// NNN terms
 	
 	param0d tPrime = P.fill_array0d<double>("tPrime","tPrime",loc);
@@ -293,21 +319,25 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 	
 	if (tPrime.x != 0.)
 	{
-		assert(F[loc].orbitals() == 1 and "Cannot do a ladder with t'!");
+		assert(F[loc].orbitals() <= 1 and "Cannot do a ladder with t'!");
 		
-		auto cF = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(), {2,-1}),
-		                             OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0}),{2,-1});
-		auto cdagF = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(), {2,+1}),
-		                                OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0}),{2,+1});
+		qarray<Symmetry::Nq> qnum = (F[loc].orbitals()==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,-1};
+		auto cF    = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(), qnum),
+		                                OperatorType::outerprod(B[loc].Id(), F[loc].sign(), Symmetry::qvacuum()), qnum);
+		qnum = (F[loc].orbitals()==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,+1};
+		auto cdagF = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(), qnum),
+		                                OperatorType::outerprod(B[loc].Id(), F[loc].sign(), Symmetry::qvacuum()), qnum);
 		
+		qnum = (F[loc].orbitals()==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,-1};
 		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.),
 										 cdagF.plain<double>(),
-										 OperatorType::outerprod(B[loc].Id(), F[loc].c(), {2,-1}).plain<double>(),
-										 OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0}).plain<double>()));
+										 OperatorType::outerprod(B[loc].Id(), F[loc].c(), qnum).plain<double>(),
+										 OperatorType::outerprod(B[loc].Id(), F[loc].sign(), Symmetry::qvacuum()).plain<double>()));
+		qnum = (F[loc].orbitals()==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,+1};
 		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.),
 										 cF.plain<double>(),
-										 OperatorType::outerprod(B[loc].Id(), F[loc].cdag(), {2,+1}).plain<double>(),
-										 OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0}).plain<double>()));
+										 OperatorType::outerprod(B[loc].Id(), F[loc].cdag(), qnum).plain<double>(),
+										 OperatorType::outerprod(B[loc].Id(), F[loc].sign(), Symmetry::qvacuum()).plain<double>()));
 	}
 	
 	// local terms
@@ -332,29 +362,34 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 	auto [t0,t0orb,t0label] = P.fill_array1d<double>("t0","t0orb",F[loc].orbitals(),loc);
 	save_label(t0label);
 	
-	OperatorType KondoHamiltonian({1,0}, B[loc].get_basis().combine(F[loc].get_basis()));
-	
-	ArrayXXd Jperp    = B[loc].ZeroHopping();
-	ArrayXXd Jperpsub = F[loc].ZeroHopping();
-	
-	//set Hubbard part of Kondo Hamiltonian
-	KondoHamiltonian = OperatorType::outerprod(B[loc].Id(), F[loc].HubbardHamiltonian(Uorb,t0orb-muorb,tPerp,Vperp,Jperpsub), {1,0});
-	
-	//set Heisenberg part of Hamiltonian
-	KondoHamiltonian += OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jperp), F[loc].Id(), {1,0});
-	
-	// Kondo-J
-	auto [J,Jorb,Jlabel] = P.fill_array1d<double>("J","Jorb",F[loc].orbitals(),loc);
-	save_label(Jlabel);
-	
-	//set interaction part of Hamiltonian.
-	for (int i=0; i<F[loc].orbitals(); ++i)
+	if (F[loc].dim() > 1)
 	{
-		KondoHamiltonian += Jorb(i)*sqrt(3.) * OperatorType::outerprod(B[loc].Sdag(i), F[loc].S(i), {1,0});
+		OperatorType KondoHamiltonian({1,0}, B[loc].get_basis().combine(F[loc].get_basis()));
+		
+		ArrayXXd Jperp    = B[loc].ZeroHopping();
+		ArrayXXd Jperpsub = F[loc].ZeroHopping();
+		
+		//set Hubbard part of Kondo Hamiltonian
+		KondoHamiltonian = OperatorType::outerprod(B[loc].Id(), F[loc].HubbardHamiltonian(Uorb,t0orb-muorb,tPerp,Vperp,Jperpsub), {1,0});
+		
+		//set Heisenberg part of Hamiltonian
+		KondoHamiltonian += OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jperp), F[loc].Id(), {1,0});
+		
+		// Kondo-J
+		auto [J,Jorb,Jlabel] = P.fill_array1d<double>("J","Jorb",F[loc].orbitals(),loc);
+		save_label(Jlabel);
+		
+		//set interaction part of Hamiltonian.
+		
+		for (int i=0; i<F[loc].orbitals(); ++i)
+		{
+			KondoHamiltonian += Jorb(i)*sqrt(3.) * OperatorType::outerprod(B[loc].Sdag(i), F[loc].S(i), {1,0});
+		}
+		
+		Terms.local.push_back(make_tuple(1.,KondoHamiltonian.plain<double>()));
 	}
 	
 	Terms.name = "Kondo";
-	Terms.local.push_back(make_tuple(1.,KondoHamiltonian.plain<double>()));
 	
 	return Terms;
 }

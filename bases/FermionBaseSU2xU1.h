@@ -155,6 +155,7 @@ private:
 	Qbasis<Symmetry> TensorBasis; //Final basis for N_orbital sites
 
 	//operators defined on one orbital
+	Operator Id_vac, Zero_vac;
 	Operator Id_1s; //identity
 	Operator F_1s; //Fermionic sign
 	Operator c_1s; //annihilation
@@ -172,56 +173,66 @@ FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 FermionBase (std::size_t L_input, bool U_IS_INFINITE)
 :N_orbitals(L_input)
 {
-	assert(N_orbitals>=1);
+//	assert(N_orbitals>=1);
 	
 	std::size_t locdim = (U_IS_INFINITE)? 2 : 3;
 	N_states = std::pow(locdim,N_orbitals);
-
+	
 	//create basis for one Fermionic Site
 	typename Symmetry::qType Q={1,0}; //empty occupied state
 	Eigen::Index inner_dim = 1;
 	std::vector<std::string> ident;
+	
 	ident.push_back("empty");
 	basis_1s.push_back(Q,inner_dim,ident);
-	ident.clear();	
-	Q={2,1}; //single occupied state
+	Qbasis<Symmetry> vacuum = basis_1s;
+	ident.clear();
+	
+	Q={2,1}; //singly occupied state
 	inner_dim = 1;
 	ident.push_back("single");
 	basis_1s.push_back(Q,inner_dim,ident);
 	ident.clear();
-	Q={1,2}; //double occupied state
+	
+	Q={1,2}; //doubly occupied state
 	inner_dim = 1;
 	ident.push_back("double");
 	basis_1s.push_back(Q,inner_dim,ident);
 	ident.clear();
-
+	
+	Id_vac = Operator({1,0},basis_1s);
+	Zero_vac = Operator({1,0},basis_1s);
+	
 	Id_1s = Operator({1,0},basis_1s);
 	F_1s = Operator({1,0},basis_1s);
 	c_1s = Operator({2,-1},basis_1s);
 	a_1s = Operator({2,-1},basis_1s);
 	d_1s = Operator({1,0},basis_1s);
 	S_1s = Operator({3,0},basis_1s);
-
-	//create operators for one orbital
-	Id_1s( "empty", "empty" ) = 1.;
-	Id_1s( "double", "double" ) = 1.;
-	Id_1s( "single", "single" ) = 1.;
-
-	F_1s( "empty", "empty" ) = 1.;
-	F_1s( "double", "double" ) = 1.;
-	F_1s( "single", "single" ) = -1.;
-
-	c_1s( "empty", "single" ) = -std::sqrt(2.);
-	c_1s( "single", "double" ) = 1.;
+	
+	//create operators for zero and one orbitals
+	Id_vac("empty", "empty") = 1.;
+	Zero_vac("empty", "empty") = 0.;
+	
+	Id_1s("empty", "empty") = 1.;
+	Id_1s("double", "double") = 1.;
+	Id_1s("single", "single") = 1.;
+	
+	F_1s("empty", "empty") = 1.;
+	F_1s("double", "double") = 1.;
+	F_1s("single", "single") = -1.;
+	
+	c_1s("empty", "single") = -std::sqrt(2.);
+	c_1s("single", "double") = 1.;
 	
 //	a_1s( "empty", "single" ) = std::sqrt(2.);
 //	a_1s( "single", "double" ) = 1.;
-
+	
 	adag_1s = Operator({2,+1},basis_1s);
 	adag_1s( "single", "empty" ) = 1.;//std::sqrt(2.);
 	adag_1s( "double", "single" ) = +std::sqrt(2.); //1.;
 	a_1s = adag_1s.adjoint();
-
+	
 	cdag_1s = c_1s.adjoint();
 //	adag_1s = a_1s.adjoint();
 	n_1s = std::sqrt(2.) * Operator::prod(cdag_1s,c_1s,{1,0});
@@ -229,9 +240,16 @@ FermionBase (std::size_t L_input, bool U_IS_INFINITE)
 	S_1s( "single", "single" ) = std::sqrt(0.75);
 	p_1s = -std::sqrt(0.5) * Operator::prod(c_1s,c_1s,{1,-2}); //The sign convention corresponds to c_DN c_UP
 	pdag_1s = p_1s.adjoint(); //The sign convention corresponds to (c_DN c_UP)†=c_UP† c_DN†
-
+	
+	if (N_states == 1)
+	{
+		basis_1s = vacuum;
+		N_orbitals = 1;
+	}
+	
 	//create basis for N_orbitals fermionic sites
-	if (N_orbitals == 1) { TensorBasis = basis_1s; }
+	if      (N_orbitals == 1) {TensorBasis = basis_1s;}
+	else if (N_orbitals == 0) {TensorBasis = vacuum;}
 	else
 	{
 		TensorBasis = basis_1s.combine(basis_1s);
@@ -245,22 +263,23 @@ FermionBase (std::size_t L_input, bool U_IS_INFINITE)
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 c (std::size_t orbital) const
 {
-	if(N_orbitals == 1) { return c_1s; }
+	if (N_orbitals == 1) {return c_1s;}
+	else if (N_orbitals == 0) {return Zero_vac;}
 	else
 	{
 		Operator out;
 		bool TOGGLE=false;
-		if(orbital == 0) { out = Operator::outerprod(c_1s,Id_1s,{2,-1}); TOGGLE=true; }
+		if (orbital == 0) {out = Operator::outerprod(c_1s,Id_1s,{2,-1}); TOGGLE=true;}
 		else
 		{
-			if( orbital == 1 ) { out = Operator::outerprod(F_1s,c_1s,{2,-1}); TOGGLE=true; }
-			else { out = Operator::outerprod(F_1s,F_1s,{1,0}); }
+			if (orbital == 1) {out = Operator::outerprod(F_1s,c_1s,{2,-1}); TOGGLE=true;}
+			else {out = Operator::outerprod(F_1s,F_1s,{1,0});}
 		}
 		for(std::size_t o=2; o<N_orbitals; o++)
 		{
-			if(orbital == o) { out = Operator::outerprod(out,c_1s,{2,-1}); TOGGLE=true; }
-			else if(TOGGLE==false) { out = Operator::outerprod(out,F_1s,{1,0}); }
-			else if(TOGGLE==true) { out = Operator::outerprod(out,Id_1s,{2,-1}); }
+			if      (orbital == o)  {out = Operator::outerprod(out,c_1s,{2,-1}); TOGGLE=true; }
+			else if (TOGGLE==false) {out = Operator::outerprod(out,F_1s,{1,0});}
+			else if (TOGGLE==true)  {out = Operator::outerprod(out,Id_1s,{2,-1});}
 		}
 		return out;
 	}
@@ -281,7 +300,8 @@ cdag2 (std::size_t orbital) const
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 a (std::size_t orbital) const
 {
-	if(N_orbitals == 1) { return a_1s; }
+	if (N_orbitals == 1) {return a_1s;}
+	else if (N_orbitals == 0) {return Zero_vac;}
 	else
 	{
 		Operator out;
@@ -311,7 +331,8 @@ adag (std::size_t orbital) const
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 sign (std::size_t orb1, std::size_t orb2) const
 {
-	if(N_orbitals == 1) { return F_1s; }
+	if (N_orbitals == 1) {return F_1s;}
+	else if (N_orbitals == 0) {return Zero_vac;}
 	else
 	{
 		Operator out = Id();
@@ -325,7 +346,7 @@ sign (std::size_t orb1, std::size_t orb2) const
 			// out = Operator::prod(out,sign_local(i),{1}); // * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
 			out = Operator::prod(out, (Id()-2.*n(i)+4.*d(i)),{1,0});
 		}
-
+		
 		return out;
 	}
 }
@@ -333,7 +354,8 @@ sign (std::size_t orb1, std::size_t orb2) const
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 sign_local (std::size_t orbital) const
 {
-	if(N_orbitals == 1) { return F_1s; }
+	if (N_orbitals == 1) {return F_1s;}
+	else if (N_orbitals == 0) {return Zero_vac;}
 	else
 	{
 		Operator out;
@@ -355,7 +377,8 @@ sign_local (std::size_t orbital) const
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 n (std::size_t orbital) const
 {
-	if(N_orbitals == 1) { return n_1s; }
+	if (N_orbitals == 1) {return n_1s;}
+	else if (N_orbitals == 0) {return Zero_vac;}
 	else
 	{
 		Operator out;
@@ -377,7 +400,8 @@ n (std::size_t orbital) const
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 d (std::size_t orbital) const
 {
-	if(N_orbitals == 1) { return d_1s; }
+	if (N_orbitals == 1) {return d_1s;}
+	else if (N_orbitals == 0) {return Zero_vac;}
 	else
 	{
 		Operator out;
@@ -399,7 +423,8 @@ d (std::size_t orbital) const
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 S (std::size_t orbital) const
 {
-	if(N_orbitals == 1) { return S_1s; }
+	if (N_orbitals == 1) {return S_1s;}
+	else if (N_orbitals == 0) {return Zero_vac;}
 	else
 	{
 		Operator out;
@@ -459,7 +484,8 @@ Etadag (std::size_t orbital) const
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 Id (std::size_t orbital) const
 {
-	if(N_orbitals == 1) { return Id_1s; }
+	if (N_orbitals == 1) {return Id_1s;}
+	else if (N_orbitals == 0) {return Id_vac;}
 	else
 	{
 		Operator out = Operator::outerprod(Id_1s,Id_1s,{1,0});

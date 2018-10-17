@@ -410,9 +410,11 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 			 << ", " << "ε_svd=" << Vout.state.eps_svd << endl << endl;
 //		Vout.state.graph("init");
 	}
-
+	
 	err_eigval = 1.;
 	err_state  = 1.;
+	
+	Vout.state.graph("init");
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -1052,7 +1054,7 @@ adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vou
 	// limit between [min_alpha_rsvd,max_alpha_rsvd]:
 	double alpha_min = min(DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps), 
 	                       DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps)); // for the accidental case alpha_min > alpha_max
-	Vout.state.alpha_rsvd = max(alpha_min, min(DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps), Vout.state.alpha_rsvd)); 
+	Vout.state.alpha_rsvd = max(alpha_min, min(DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps), Vout.state.alpha_rsvd));
 	
 //	cout << "ΔEopt=" << DeltaEopt << ", ΔEtrunc=" << DeltaEtrunc << ", f=" << f << ", alpha=" << Vout.state.alpha_rsvd << endl;
 	

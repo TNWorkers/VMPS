@@ -100,8 +100,8 @@ const map<string,any> VMPS::KondoU1xU1::sweep_defaults =
 KondoU1xU1::
 KondoU1xU1 (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0,0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
- KondoObservables(L,params,defaults),
- ParamReturner(VMPS::KondoU1xU1::sweep_defaults)
+ KondoObservables(L,params,KondoU1xU1::defaults),
+ ParamReturner(KondoU1xU1::sweep_defaults)
 {
 	ParamHandler P(params,defaults);
 	

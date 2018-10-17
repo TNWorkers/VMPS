@@ -49,40 +49,38 @@ get_GlobParam (const vector<Param> &params) const
 DMRG::CONTROL::DYN ParamReturner::
 get_DynParam (const vector<Param> &params) const
 {
-//	ParamHandler P(params,Heisenberg::sweep_defaults);
-//	DMRG::CONTROL::DYN out;
-//	out.max_alpha_rsvd = [&P] (size_t i) {return P.get<double>("max_alpha");};
-//	out.min_alpha_rsvd = [&P] (size_t i) {return P.get<double>("min_alpha");};
-//	out.eps_svd        = [&P] (size_t i) {return P.get<double>("eps_svd");};
-//	out.Dincr_abs      = [&P] (size_t i) {return P.get<size_t>("Dincr_abs");};
-//	out.Dincr_per      = [&P] (size_t i) {return P.get<size_t>("Dincr_per");};
-//	out.Dincr_rel      = [&P] (size_t i) {return P.get<double>("Dincr_rel");};
-//	out.min_Nsv        = [&P] (size_t i) {return P.get<size_t>("min_Nsv");};
-//	out.max_Nrich      = [&P] (size_t i) {return P.get<int>   ("max_Nrich");};
-//	return out;
-	
 	DMRG::CONTROL::DYN out;
-	if(TRIVIALLY_CONSTRUCTED) {return out;} //Return defaults from DmrgTypedefs
+	if (TRIVIALLY_CONSTRUCTED) {return out;} //Return defaults from DmrgTypedefs
 	
 	ParamHandler P(params,defaults);
 	
 	double tmp1        = P.get<double>("max_alpha");
 	size_t lim         = P.get<size_t>("lim_alpha");
 	out.max_alpha_rsvd = [tmp1,lim] (size_t i) {return (i<lim)? tmp1:0.;};
+	
 	tmp1               = P.get<double>("min_alpha");
 	out.min_alpha_rsvd = [tmp1,lim] (size_t i) {return (i<lim)? tmp1:0.;};
+	
 	tmp1               = P.get<double>("eps_svd");
 	out.eps_svd        = [tmp1] (size_t i) {return tmp1;};
+	
 	size_t tmp2        = P.get<size_t>("Dincr_abs");
 	out.Dincr_abs      = [tmp2] (size_t i) {return tmp2;};
+	
 	tmp2               = P.get<size_t>("Dincr_per");
 	out.Dincr_per      = [tmp2] (size_t i) {return tmp2;};
+	
 	tmp1               = P.get<double>("Dincr_rel");
 	out.Dincr_rel      = [tmp1] (size_t i) {return tmp1;};
+	
 	tmp2               = P.get<size_t>("min_Nsv");
 	out.min_Nsv        = [tmp2] (size_t i) {return tmp2;};
+	
 	int tmp3           = P.get<int>("max_Nrich");
 	out.max_Nrich      = [tmp3] (size_t i) {return tmp3;};
+	
+//	out.iteration = P.get<function<DMRG::ITERATION::OPTION(size_t)> >("iteration");
+	
 	return out;
 }
 

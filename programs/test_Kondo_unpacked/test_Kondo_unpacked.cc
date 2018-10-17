@@ -82,6 +82,16 @@ Eigenstate<VMPS::KondoU1xU1::StateXd> g_U1xU1;
 Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1;
 Eigenstate<VMPS::KondoU0xSU2::StateXd> g_U0xSU2;
 
+static DMRG::ITERATION::OPTION myiteration (size_t i)
+{
+	cout << "myiteration" << endl;
+	if (i <= 2)
+	{
+		return DMRG::ITERATION::TWO_SITE;
+	}
+	return DMRG::ITERATION::ONE_SITE;
+}
+
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
@@ -150,11 +160,13 @@ int main (int argc, char* argv[])
 	#else
 	lout << "not parallelized" << endl;
 	#endif
+	
 	ArrayXXd tPara(2,2); tPara.setZero(); tPara(0,0)=t; tPara(1,1)=t;
+	
 	vector<Param> params;
+	params.push_back({"CALC_SQUARE",true});
 	params.push_back({"Ly",Ly});
 	params.push_back({"J",0.});
-	params.push_back({"Inext",J});
 	params.push_back({"t",0.});
 	// params.push_back({"tRung",tRung});
 	// params.push_back({"tPara",tPara});
@@ -162,37 +174,24 @@ int main (int argc, char* argv[])
 	params.push_back({"U",U});
 	//params.push_back({"Bz",Bz,0});
 	//params.push_back({"Bx",Bx,0});
-	for (size_t l=0; l<L; ++l)
+	for (size_t l=0; l<2*L; ++l)
 	{
 		if (l%2 == 0)
 		{
 			params.push_back({"D",2ul,l});
+			params.push_back({"LyF",0ul,l});
+			params.push_back({"Inext",J,l});
+			params.push_back({"tPrime",1e-300,l});
 		}
 		else
 		{
 			params.push_back({"D",1ul,l});
-		}
-		
-		if (l%2 == 0)
-		{
-			params.push_back({"LyF",0ul,l});
-		}
-		else
-		{
 			params.push_back({"LyF",1ul,l});
-		}
-		
-		if (l%2 == 1)
-		{
+			params.push_back({"Inext",1e-300,l});
 			params.push_back({"tPrime",t,l});
-		}
-		else
-		{
-			params.push_back({"tPrime",1e-300,l});
 		}
 	}
 	// params.push_back({"D",1ul,1});
-	// params.push_back({"CALC_SQUARE",true});
 	
 //	for (size_t l=1; l<L; ++l)
 //	{
@@ -200,6 +199,10 @@ int main (int argc, char* argv[])
 //		// params.push_back({"Bz",0.,l});
 //		// params.push_back({"Bx",0.,l});
 //	}
+	
+	vector<Param> SweepParams;
+	SweepParams.push_back({"CONVTEST",DMRG::CONVTEST::VAR_HSQ});
+	SweepParams.push_back({"min_halfsweeps",6ul});
 	
 	//--------U(1)---------
 //	if (U1)
@@ -225,11 +228,17 @@ int main (int argc, char* argv[])
 		
 		Stopwatch<> Watch_U1xU1;
 		
-		VMPS::KondoU1xU1 H_U1xU1(L,params);
+		VMPS::KondoU1xU1 H_U1xU1(2*L,params);
 		lout << H_U1xU1.info() << endl;
 		assert(H_U1xU1.validate({M,N}) and "Bad total quantum number of the MPS.");
 		
 		VMPS::KondoU1xU1::Solver DMRG_U1xU1(VERB);
+		vector<Param> SweepParams_U1xU1 = SweepParams;
+		SweepParams_U1xU1.push_back({"Qinit",10ul});
+		DMRG_U1xU1.DynParam = H_U1xU1.get_DynParam(SweepParams_U1xU1);
+		DMRG_U1xU1.GlobParam = H_U1xU1.get_GlobParam(SweepParams_U1xU1);
+		DMRG_U1xU1.userSetDynParam();
+		DMRG_U1xU1.userSetGlobParam();
 		DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {M,N}, LANCZOS::EDGE::GROUND);
 		g_U1xU1.state.graph("U1xU1");
 		
@@ -339,20 +348,26 @@ int main (int argc, char* argv[])
 //		}
 	}
 	// --------SU(2)---------
-//	if (SU2)
-//	{
-//		lout << endl << termcolor::red << "--------SU(2)---------" << termcolor::reset << endl << endl;
-//		
-//		Stopwatch<> Watch_SU2xU1;
-//		VMPS::KondoSU2xU1 H_SU2xU1(L,params);
-//		lout << H_SU2xU1.info() << endl;
-//		assert(H_SU2xU1.validate({S,N}) and "Bad total quantum number of the MPS.");
-//		
-//		VMPS::KondoSU2xU1::Solver DMRG_SU2xU1(VERB);
-//		DMRG_SU2xU1.edgeState(H_SU2xU1, g_SU2xU1, {S,N}, LANCZOS::EDGE::GROUND);
-//		
-//		t_SU2xU1 = Watch_SU2xU1.time();
-//		
+	if (SU2)
+	{
+		lout << endl << termcolor::red << "--------SU(2)---------" << termcolor::reset << endl << endl;
+		
+		Stopwatch<> Watch_SU2xU1;
+		VMPS::KondoSU2xU1 H_SU2xU1(2*L,params);
+		lout << H_SU2xU1.info() << endl;
+		assert(H_SU2xU1.validate({S,N}) and "Bad total quantum number of the MPS.");
+		
+		VMPS::KondoSU2xU1::Solver DMRG_SU2xU1(VERB);
+		vector<Param> SweepParams_SU2xU1 = SweepParams;
+		SweepParams_SU2xU1.push_back({"Qinit",15ul});
+		DMRG_SU2xU1.DynParam = H_SU2xU1.get_DynParam(SweepParams_SU2xU1);
+		DMRG_SU2xU1.GlobParam = H_SU2xU1.get_GlobParam(SweepParams_SU2xU1);
+		DMRG_SU2xU1.userSetDynParam();
+		DMRG_SU2xU1.userSetGlobParam();
+		DMRG_SU2xU1.edgeState(H_SU2xU1, g_SU2xU1, {S,N}, LANCZOS::EDGE::GROUND);
+		
+		t_SU2xU1 = Watch_SU2xU1.time();
+		
 //		if (CORR)
 //		{
 //			cout << "corr" << endl;
@@ -433,7 +448,7 @@ int main (int argc, char* argv[])
 //			// 	// cout << "check=" << ket.dot(bra) << "=" << avg(g_SU2xU1.state,H_SU2xU1.SimpSimp(1,0),g_SU2xU1.state) << endl;
 //			// }
 //		}
-//	}
+	}
 //	// --------U(0)xSU(2)---------
 //	if (U0SU2)
 //	{
@@ -514,7 +529,7 @@ int main (int argc, char* argv[])
 	
 	TextTable T( '-', '|', '+' );
 	
-	double V = L*Ly/2; double Vsq = V*V;
+	double V = L*Ly; double Vsq = V*V;
 	
 	T.add("");
 	T.add("U(1)");
