@@ -25,6 +25,79 @@
 
 #include "Mps.h" // temp.
 
+struct VUMPS
+{
+	struct CONTROL
+	{
+		struct DEFAULT
+		{
+			//GLOB DEFAULTS
+			constexpr static size_t min_iterations = 6;
+			constexpr static size_t max_iterations = 20;
+			constexpr static double tol_eigval     = 1e-6;
+			constexpr static double tol_var        = 1e-5;
+			constexpr static size_t Dinit          = 20;
+			constexpr static size_t Dlimit         = 500;
+			constexpr static size_t Qinit          = 20;
+			constexpr static size_t savePeriod     = 0;
+
+			//DYN DEFAULTS
+			static size_t deltaD (size_t i)
+				{
+					size_t out;
+					if      (i<=80)            {out = 5ul;}
+					else if (i> 80 and i<=120) { out=0ul; }
+					else if (i>120 and i<=160) { out=5ul; }
+					else if (i>160 and i<=200) { out=0ul; }
+					else if (i>200 and i<=240) { out=4ul; }
+					else if (i>240 and i<=280) { out=0ul; }
+					else if (i>280 and i<=300) { out=2ul; }
+					else if (i>300)            { out=0ul; }    
+					return out;
+				}
+			static double errLimit_for_flucts (size_t i) {return 1.e-1;}
+			static double eps_svd        (size_t i)      {return 1.e-7;}
+			static void   doSomething    (size_t i)      {return;}
+			
+			//LANCZOS DEFAULTS
+			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO           = LANCZOS::REORTHO::FULL;
+			constexpr static ::LANCZOS::CONVTEST::OPTION LANCZOS_CONVTEST = LANCZOS::CONVTEST::COEFFWISE;
+			constexpr static double eps_eigval                            = 1.e-7;
+			constexpr static double eps_coeff                             = 1.e-4;
+			constexpr static size_t dimK                                  = 200ul;
+		};
+		
+		struct GLOB
+		{
+			size_t min_iterations           = CONTROL::DEFAULT::min_iterations;
+			size_t max_iterations           = CONTROL::DEFAULT::max_iterations;
+			double tol_eigval               = CONTROL::DEFAULT::tol_eigval;
+			double tol_cvar                 = CONTROL::DEFAULT::tol_var;
+			size_t Dinit                    = CONTROL::DEFAULT::Dinit;
+			size_t Dlimit                   = CONTROL::DEFAULT::Dlimit;
+			size_t Qinit                    = CONTROL::DEFAULT::Qinit;
+			size_t savePeriod               = CONTROL::DEFAULT::savePeriod;
+		};
+		
+		struct DYN
+		{
+			function<size_t(size_t)> deltaD              = CONTROL::DEFAULT::deltaD;
+			function<double(size_t)> errLimit_for_flucts = CONTROL::DEFAULT::errLimit_for_flucts;
+			function<double(size_t)> eps_svd             = CONTROL::DEFAULT::eps_svd;
+			function<void(size_t)>   doSomething         = CONTROL::DEFAULT::doSomething;
+		};
+		
+		struct LANCZOS
+		{
+			::LANCZOS::REORTHO::OPTION REORTHO   = CONTROL::DEFAULT::REORTHO;
+			::LANCZOS::CONVTEST::OPTION CONVTEST = CONTROL::DEFAULT::LANCZOS_CONVTEST;
+			double eps_eigval                    = CONTROL::DEFAULT::eps_eigval;
+			double eps_coeff                     = CONTROL::DEFAULT::eps_coeff;
+			size_t dimK                          = CONTROL::DEFAULT::dimK;
+		};
+	};
+};
+
 /**
  * Solver that calculates the ground state of a UMPS. Analogue of the DmrgSolver class.
  * \ingroup VUMPS
@@ -51,9 +124,9 @@ public:
 	/**Resets a custom algorithm.*/
 	inline void set_algorithm (UMPS_ALG::OPTION ALGORITHM) {CHOSEN_ALGORITHM = ALGORITHM; USER_SET_ALGORITHM = true;};
 
-	// VUMPS::CONTROL::GLOB GlobParam;
-	// VUMPS::CONTROL::DYN  DynParam;
-	// VUMPS::CONTROL::LANCZOS LanczosParam;
+	VUMPS::CONTROL::GLOB GlobParam;
+	VUMPS::CONTROL::DYN  DynParam;
+	VUMPS::CONTROL::LANCZOS LanczosParam;
 
 	///\{
 	/**\describe_info*/
@@ -83,7 +156,7 @@ public:
 	                size_t max_iterations=50, size_t min_iterations=6,
 					bool USE_STATE=false);
 	
-private:
+// private:
 	
 	///\{
 	/**Prepares the class, setting up the environments. Used with an explicit 2-site Hamiltonian.*/
@@ -770,7 +843,12 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	double tolLanczosEigval, tolLanczosState;
 	set_LanczosTolerances(tolLanczosEigval,tolLanczosState);
 
-	if (err_var < 1.e-1 and N_iterations%10 == 0 and N_iterations < 80) {expand_basis(2,H,Vout);}
+	if ( (err_eigval >= tol_eigval or err_var >= tol_var) and N_iterations%10 == 0 and N_iterations > 0 )
+	{
+		expand_basis(DynParam.deltaD(N_iterations),H,Vout);
+	}
+
+	// if (err_var < 1.e-1 and N_iterations%10 == 0 and N_iterations < 80) {expand_basis(2,H,Vout);}
 
 //	Vout.state.truncate();
 	build_cellEnv(H,Vout);
@@ -1286,9 +1364,11 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		}
 		else // dynamical choice: L=1 parallel, L>1 sequential
 		{
-			if (N_sites == 1)
+			if (N_sites == 1 or N_sites != 1)
 			{
 				iteration_parallel(H,Vout);
+				DynParam.doSomething(N_iterations);
+				Vout.state.save("umps",H.info());
 			}
 			else
 			{
@@ -1401,6 +1481,7 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t loc)
 {
+	if(DeltaD == 0ul) {return;}
 	vector<Biped<Symmetry,MatrixType> > NL;
 	vector<Biped<Symmetry,MatrixType> > NR;
 		

@@ -326,9 +326,13 @@ coeff_CGC(const qType& q1, const qType& q2, const qType& q3,
 		  int        q1_z, int        q2_z,        int q3_z)
 {
 
+	// Scalar out = coupling_3j(q1[0], q2[0], q3[0],
+	// 						 q1_z , q2_z , -q3_z) *
+	// 	phase<Scalar>((-q1[0]+q2[0]-q3_z-2)/2) * sqrt(q3[0]);
 	Scalar out = coupling_3j(q1[0], q2[0], q3[0],
 							 q1_z , q2_z , -q3_z) *
-		phase<Scalar>((-q1[0]+q2[0]-q3_z-2)/2) * sqrt(q3[0]);
+		phase<Scalar>((q1[0]-q2[0]+q3_z)/2) * sqrt(q3[0]);
+
 	return out;
 }
 

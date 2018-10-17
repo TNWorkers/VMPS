@@ -86,6 +86,7 @@ public:
 	///@}
 	
 	static const map<string,any> defaults;
+	static const map<string,any> sweep_defaults;
 	
 protected:
 	
@@ -108,10 +109,21 @@ const map<string,any> HubbardSU2xU1::defaults =
 	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
+const map<string,any> HubbardSU2xU1::sweep_defaults = 
+{
+	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",20ul}, {"eps_svd",1.e-7},
+	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
+	{"min_Nsv",0ul}, {"max_Nrich",-1},
+	{"max_halfsweeps",40ul}, {"min_halfsweeps",6ul},
+	{"Dinit",20ul}, {"Qinit",10ul}, {"Dlimit",1000ul},
+	{"tol_eigval",1.e-7}, {"tol_state",1.e-6},
+	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
+};
+
 HubbardSU2xU1::
 HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
- ParamReturner()
+ ParamReturner(HubbardSU2xU1::sweep_defaults)
 {
 	ParamHandler P(params,defaults);
 	
