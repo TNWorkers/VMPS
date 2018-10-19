@@ -15,9 +15,9 @@
 
 /*
  * First, we have the wrappers to the implementation of the used external libraries, called coupl_Xj_base.
- * All of these functions take values in the format q=2S+1 which is always of type integer.
+ * All of these functions take values in the format q=2S+1 and q_z=2M which is always of type integer.
  * Internally these values are converted to the respective convention of the used library.
- * For example gsl uses the convention q_gsl=2S, so that we have to use q_gsl = q-1.
+ * For example gsl uses the convention q_gsl=2S and q_z_gsl=2M, so that we have to use q_gsl = q-1 and q_gsl_z = q_z.
  * Second, we have a naive hash implementation which uses the coupl_Xj_base-functions but also handles a std::unordered_map for hashing the symbols.
  * Note that this implmentation is not thread-safe!
  * This is turned off per default but can be used by definng OWN_HASH_CGC.
