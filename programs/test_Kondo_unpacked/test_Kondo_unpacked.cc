@@ -33,6 +33,7 @@ Logger lout;
 #include "models/KondoU1.h"
 #include "models/KondoSU2xU1.h"
 #include "models/KondoU0xSU2.h"
+#include "ParamCollection.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, bool COLOR=false, int n=14)
@@ -174,24 +175,8 @@ int main (int argc, char* argv[])
 	params.push_back({"U",U});
 	//params.push_back({"Bz",Bz,0});
 	//params.push_back({"Bx",Bx,0});
-	for (size_t l=0; l<2*L; ++l)
-	{
-		if (l%2 == 0)
-		{
-			params.push_back({"D",2ul,l});
-			params.push_back({"LyF",0ul,l});
-			params.push_back({"Inext",J,l});
-			params.push_back({"tPrime",1e-300,l});
-		}
-		else
-		{
-			params.push_back({"D",1ul,l});
-			params.push_back({"LyF",1ul,l});
-			params.push_back({"Inext",1e-300,l});
-			params.push_back({"tPrime",t,l});
-		}
-	}
 	// params.push_back({"D",1ul,1});
+	params.push_back_KondoUnpacked(L,J,t,D);
 	
 //	for (size_t l=1; l<L; ++l)
 //	{
@@ -201,7 +186,7 @@ int main (int argc, char* argv[])
 //	}
 	
 	vector<Param> SweepParams;
-	SweepParams.push_back({"CONVTEST",DMRG::CONVTEST::VAR_HSQ});
+	SweepParams.push_back({"CONVTEST",DMRG::CONVTEST::VAR_2SITE});
 	SweepParams.push_back({"min_halfsweeps",6ul});
 	
 	//--------U(1)---------

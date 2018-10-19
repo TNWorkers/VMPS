@@ -44,7 +44,7 @@
 				MODEL::Solver rDMRG(VERB3);
 				rDMRG.edgeState(H, r, Qc[i], LANCZOS::EDGE::ROOF);
 				rinfo << rChronos.info(make_string("roof state ",Qc[i])) << endl;
-				if (rDMRG.get_errState() > rDMRG.GlobParam.tol_state)
+				if (rDMRG.get_errState() > 10.*rDMRG.GlobParam.tol_state)
 				{
 					Emaxs[i] = 2.*r.energy;
 					lout << termcolor::red << "Bad convergence of roof state! Doubling the energy value from " 
