@@ -400,14 +400,39 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	// initial cutoffs
 	Vout.state.eps_svd    = DynParam.eps_svd(0);
 	Vout.state.alpha_rsvd = DynParam.max_alpha_rsvd(0);
-
+	
 	if (CHOSEN_VERBOSITY>=2)
 	{
-		lout << PrepTimer.info("initial state & sweep") << endl;
-		lout <<                "initial energy       : E₀=" << Eold << endl;
-		lout <<                "initial state        : " << Vout.state.info() << endl;
-		lout <<                "initial fluctuations : α_rsvd=" << Vout.state.alpha_rsvd
-			 << ", " << "ε_svd=" << Vout.state.eps_svd << endl << endl;
+		lout << PrepTimer.info("• initial state & sweep") << endl;
+		lout <<                "• initial energy        : E₀=" << Eold << endl;
+		lout <<                "• initial state         : " << Vout.state.info() << endl;
+		lout <<                "• initial fluctuation strength  : α_rsvd=" << termcolor::underline << Vout.state.alpha_rsvd << termcolor::reset << endl;
+		lout <<                "• initial singular value cutoff : ε_svd=" << termcolor::underline << Vout.state.eps_svd << termcolor::reset << endl;
+		int i_alpha_switchoff=0;
+		for (int i=0; i<GlobParam.max_halfsweeps; ++i)
+		{
+			if (DynParam.max_alpha_rsvd(i) == 0.) {i_alpha_switchoff = i; break;}
+		}
+		lout <<                "• fluctutations turned off after " << termcolor::underline << i_alpha_switchoff << termcolor::reset << " half-sweeps" << endl;
+		if (Vout.state.max_Nrich == -1)
+		{
+			lout <<            "• fluctuations use " << termcolor::underline << "all" << termcolor::reset << " additional states" << endl;
+		}
+		else
+		{
+			lout <<            "• fluctuations use " << Vout.state.max_Nrich << " additional states" << endl;
+		}
+		lout << "• initial bond dim. increase by " << termcolor::underline << static_cast<int>((DynParam.Dincr_rel(0)-1.)*100.) 
+		     << "%" << termcolor::reset << " and at least by " << termcolor::underline << DynParam.Dincr_abs(0) << termcolor::reset
+		     << " every " << termcolor::underline << DynParam.Dincr_per(0) << termcolor::reset << " half-sweeps" << endl;
+		lout << "• keep at least " << termcolor::underline << Vout.state.min_Nsv << termcolor::reset << " singular values per block" << endl;
+		lout << "• make between " << termcolor::underline << GlobParam.min_halfsweeps << termcolor::reset << " and " 
+		     << termcolor::underline << GlobParam.max_halfsweeps << termcolor::reset << " half-sweep iterations" << endl;
+		lout << "• eigenvalue tolerance: " << termcolor::underline << GlobParam.tol_eigval << termcolor::reset << endl;
+		lout << "• state tolerance: " << termcolor::underline << GlobParam.tol_state << termcolor::reset << " using " 
+		     << termcolor::underline << GlobParam.CONVTEST << termcolor::reset << endl;
+		lout << "• calculate entropy on exit: " << boolalpha << termcolor::underline << GlobParam.CALC_S_ON_EXIT << termcolor::reset << endl;
+		lout << endl;
 //		Vout.state.graph("init");
 	}
 	
@@ -653,7 +678,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		
 		if (CHOSEN_VERBOSITY >= 2)
 		{
-			errorCalcInfo << HsqTimer.info("‖H|Ψ>-E|Ψ>‖") << endl;
+			errorCalcInfo << HsqTimer.info("‖H|Ψ>-E|Ψ>‖/L") << endl;
 		}
 		
 		t_err += t_tot;
@@ -974,7 +999,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		if (j%DynParam.Dincr_per(j) == 0 and 
 		    (totalTruncWeight >= Vout.state.eps_svd or err_state > 10.*GlobParam.tol_state))
 		{
-			// increase by Dincr_abs, but by no more than Dincr_rel (e.g. 10%)
+			// increase by Dincr_abs for small Dmax and by Dincr_rel for large Dmax(e.g. add 10% of current Dmax)
 			size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Dincr_rel(j) * Vout.state.max_Nsv), 
 			                                             Vout.state.max_Nsv + DynParam.Dincr_abs(j));
 			// do not increase beyond Dlimit

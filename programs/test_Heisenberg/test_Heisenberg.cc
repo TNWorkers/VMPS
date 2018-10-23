@@ -196,15 +196,13 @@ int main (int argc, char* argv[])
 		for (size_t l=0; l<L; ++l)
 		{
 			lout << "l=" << l << "\t" 
-			     << isReal(avg(g_U1.state, H_U1.Scomp(SX,l), g_U1.state)) << "\t"
-			     << isReal(-1.i * avg(g_U1.state, H_U1.Scomp(iSY,l), g_U1.state)) << "\t"
-			     << isReal(avg(g_U1.state, H_U1.Scomp(SZ,l), g_U1.state))
+			     << "<S^z>=" << isReal(avg(g_U1.state, H_U1.Scomp(SZ,l), g_U1.state))
 			     << endl;
 		}
 		
 		for (size_t l=0; l<L-1; ++l)
 		{
-			lout << "l=" << l << "\t" << isReal(avg(g_U1.state, H_U1.SpSm(l,l+1), g_U1.state)) + isReal(avg(g_U1.state, H_U1.SzSz(l,l+1), g_U1.state)) << endl;
+			lout << "l=" << l << ", <S(i)S(i+1)>=" << isReal(avg(g_U1.state, H_U1.SpSm(l,l+1), g_U1.state)) + isReal(avg(g_U1.state, H_U1.SzSz(l,l+1), g_U1.state)) << endl;
 		}
 		
 		// dynamics (of Néel state)
@@ -261,25 +259,23 @@ int main (int argc, char* argv[])
 		
 		t_SU2 = Watch_SU2.time();
 		
-		double C = Stot/sqrt(Stot*(Stot+1.));
-		cout << "C=" << C << ", Stot=" << Stot << endl;
+		double sgc_avgS = Stot/sqrt(Stot*(Stot+1.));
+		cout << "sgc_avgS=" << sgc_avgS << ", " << Sym::SU2<Sym::SpinSU2>::coeff_CGC(qarray<1>{Dtot},qarray<1>{3},qarray<1>{Dtot}, M, 0, M) << ", Stot=" << Stot << endl;
 		
 		for (size_t l=0; l<L; ++l)
 		{
-			double val = sqrt(3.)*isReal(avg(g_SU2.state, H_SU2.S(l), g_SU2.state));
-
+			double val = sqrt(3.) * sgc_avgS * isReal(avg(g_SU2.state, H_SU2.S(l), g_SU2.state));
+			
 			lout << "l=" << l << "\t" 
-				 << val << "\t"
-				 << val*C << "\t" 
-			     << Sym::SU2<Sym::SpinSU2>::coeff_CGC(qarray<1>{Dtot},qarray<1>{3},qarray<1>{Dtot}, M, 0, M) << "\t"
-			     << endl;
+				 << "<S>=" << val << "\t"
+				 << endl;
 		}
 		
 		lout << endl;
 		
 		for (size_t l=0; l<L-1; ++l)
 		{
-			lout << "l=" << l << "\t" << isReal(avg(g_SU2.state, H_SU2.SS(l,l+1), g_SU2.state)) << endl;
+			lout << "l=" << l << ", <S(i)S(i+1)>=" << isReal(avg(g_SU2.state, H_SU2.SS(l,l+1), g_SU2.state)) << endl;
 		}
 	}
 	
@@ -349,5 +345,5 @@ int main (int argc, char* argv[])
 	
 	lout << endl << T;
 	
-	lout << "ref=" << VMPS::Heisenberg::ref({{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"m",static_cast<double>(M/(L*Ly))}}) << endl;
+	lout << "ref=" << VMPS::Heisenberg::ref({{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"m",static_cast<double>(M)/(L*Ly)}}) << endl;
 }

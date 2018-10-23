@@ -90,12 +90,12 @@ const std::map<string,std::any> KondoU0xSU2::defaults =
 
 const map<string,any> KondoU0xSU2::sweep_defaults = 
 {
-	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",10ul}, {"eps_svd",1e-7},
-	{"Dincr_abs",4ul}, {"Dincr_per",2ul}, {"Dincr_rel",1.1},
+	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",16ul}, {"eps_svd",1e-7},
+	{"Dincr_abs",5ul}, {"Dincr_per",2ul}, {"Dincr_rel",1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",30ul}, {"min_halfsweeps",10ul},
 	{"Dinit",5ul}, {"Qinit",6ul}, {"Dlimit",200ul},
-	{"tol_eigval",1e-7}, {"tol_state",1e-6},
+	{"tol_eigval",1e-6}, {"tol_state",1e-5},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
 };
 

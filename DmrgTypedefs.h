@@ -350,10 +350,19 @@ struct DMRG
 
 std::ostream& operator<< (std::ostream& s, DMRG::VERBOSITY::OPTION VERB)
 {
-	if (VERB==DMRG::VERBOSITY::SILENT) {s << "SILENT";}
-	else if (VERB==DMRG::VERBOSITY::ON_EXIT) {s << "ON_EXIT";}
+	if      (VERB==DMRG::VERBOSITY::SILENT)        {s << "SILENT";}
+	else if (VERB==DMRG::VERBOSITY::ON_EXIT)       {s << "ON_EXIT";}
 	else if (VERB==DMRG::VERBOSITY::HALFSWEEPWISE) {s << "HALFSWEEPWISE";}
-	else if (VERB==DMRG::VERBOSITY::STEPWISE) {s << "STEPWSIE";}
+	else if (VERB==DMRG::VERBOSITY::STEPWISE)      {s << "STEPWSIE";}
+	return s;
+}
+
+std::ostream& operator<< (std::ostream& s, DMRG::CONVTEST::OPTION TEST)
+{
+	if      (TEST==DMRG::CONVTEST::VAR_2SITE) {s << "2-site variance";}
+	else if (TEST==DMRG::CONVTEST::VAR_HSQ)   {s << "|<H^2>-<H>^2|/L";}
+	else if (TEST==DMRG::CONVTEST::NORM_TEST) {s << "norm comparison";}
+	else if (TEST==DMRG::CONVTEST::VAR_FULL)  {s << "‖H|Ψ>-E|Ψ>‖/L";}
 	return s;
 }
 

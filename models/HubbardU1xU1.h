@@ -58,7 +58,7 @@ public:
 	HubbardU1xU1 (const size_t &L, const vector<Param> &params);
 	///@}
 	
-	static qarray<2> singlet (int N) {return qarray<2>{N/2,N/2};};
+	static qarray<2> singlet (int N) {return qarray<2>{0,N};};
 	
 	template<typename Symmetry_> 
 	static HamiltonianTermsXd<Symmetry_> set_operators (const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, size_t loc=0);
