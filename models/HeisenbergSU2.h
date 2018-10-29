@@ -229,7 +229,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, size
 		if (Jpara(i,j) != 0.)
 		{
 			Terms.tight.push_back(make_tuple(std::sqrt(3)*Jpara(i,j), B[loc].Sdag(i).plain<double>(), 
-			                                                          B[loc].S(i).plain<double>()));
+			                                                          B[loc].S(j).plain<double>()));
 		}
 	}
 	

@@ -159,8 +159,6 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
 	save_label(Vlabel);
 	
-	
-	
 	for (int i=0; i<F[loc].orbitals(); ++i)
 	for (int j=0; j<F[lp1].orbitals(); ++j)
 	{

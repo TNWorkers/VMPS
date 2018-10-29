@@ -167,9 +167,9 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const ParamHandler &P, siz
 	{
 		if (Jpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), B[loc].Scomp(SP,i), B[loc].Scomp(SM,i)));
-			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), B[loc].Scomp(SM,i), B[loc].Scomp(SP,i)));
-			Terms.tight.push_back(make_tuple(    Jpara(i,j), B[loc].Scomp(SZ,i), B[loc].Scomp(SZ,i)));
+			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), B[loc].Scomp(SP,i), B[loc].Scomp(SM,j)));
+			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), B[loc].Scomp(SM,i), B[loc].Scomp(SP,j)));
+			Terms.tight.push_back(make_tuple(    Jpara(i,j), B[loc].Scomp(SZ,i), B[loc].Scomp(SZ,j)));
 		}
 	}
 	

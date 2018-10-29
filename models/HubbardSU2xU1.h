@@ -90,7 +90,7 @@ public:
 	
 protected:
 	
-	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > 
+	Mpo<Symmetry>
 	make_local (string name, 
 	            size_t locx, size_t locy, 
 	            const OperatorType &Op, 
@@ -111,12 +111,12 @@ const map<string,any> HubbardSU2xU1::defaults =
 
 const map<string,any> HubbardSU2xU1::sweep_defaults = 
 {
-	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",20ul}, {"eps_svd",1.e-7},
-	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
+	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",12ul}, {"eps_svd",1e-7},
+	{"Dincr_abs", 5ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
-	{"max_halfsweeps",40ul}, {"min_halfsweeps",6ul},
-	{"Dinit",20ul}, {"Qinit",10ul}, {"Dlimit",1000ul},
-	{"tol_eigval",1.e-7}, {"tol_state",1.e-6},
+	{"max_halfsweeps",24ul}, {"min_halfsweeps",6ul},
+	{"Dinit",8ul}, {"Qinit",10ul}, {"Dlimit",500ul},
+	{"tol_eigval",1e-7}, {"tol_state",1e-6},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
 };
 
@@ -261,37 +261,19 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 	
 	(FERMIONIC)? Mout.setLocal(locx, (factor * pow(-1.,locx+1) * Op).plain<double>(), F[0].sign().plain<double>())
 		: Mout.setLocal(locx, Op.plain<double>());
-
+	
 	return Mout;
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 n (size_t locx, size_t locy)
 {
-//	assert(locx<N_sites and locy<F[locx].dim());
-//	stringstream ss;
-//	ss << "n(" << locx << "," << locy << ")";
-//	
-//	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, Symmetry::qvacuum(), ss.str());
-//	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
-//	
-//	Mout.setLocal(locx, F[locx].n(locy).plain<double>());
-//	return Mout;
 	return make_local("n", locx,locy, F[locx].n(locy), 1., false, true);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 d (size_t locx, size_t locy)
 {
-//	assert(locx<N_sites and locy<F[locx].dim());
-//	stringstream ss;
-//	ss << "double_occ(" << locx << "," << locy << ")";
-//	
-//	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, Symmetry::qvacuum(), ss.str());
-//	for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
-//	
-//	Mout.setLocal(locx, F[locx].d(locy).plain<double>());
-//	return Mout;
 	return make_local("d", locx,locy, F[locx].d(locy), 1., false, true);
 }
 
@@ -329,47 +311,18 @@ cdag2 (size_t locx, size_t locy, double factor)
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 S (size_t locx, size_t locy)
 {
-//	assert(locx<N_sites and locy<F[locx].dim());
-//	stringstream ss;
-//	ss << "S(" << locx << "," << locy << ")";
-//	
-//	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, {3,0}, ss.str());
-//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
-//	
-//	Mout.setLocal(locx, F[locx].S(locy).plain<double>());
-//	return Mout;
 	return make_local("S", locx,locy, F[locx].S(locy), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 Sdag (size_t locx, size_t locy, double factor)
 {
-//	assert(locx<N_sites and locy<F[locx].dim());
-//	stringstream ss;
-//	ss << "S†(" << locx << "," << locy << ")";
-//	
-//	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, {3,0}, ss.str());
-//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
-//	
-//	Mout.setLocal(locx, factor*F[locx].Sdag(locy).plain<double>());
-//	return Mout;
 	return make_local("S†", locx,locy, F[locx].Sdag(locy), factor, false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 cc (size_t locx, size_t locy)
 {
-//	assert(locx<N_sites and locy<F[locx].dim());
-//	stringstream ss;
-//	ss << "c(" << locx << "," << locy << "," << UP << ")"
-//	   << "c(" << locx << "," << locy << "," << DN << ")";
-//	
-//	Mpo<Symmetry> Mout(N_sites, {1,-2}, ss.str());
-//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
-//	
-//	Mout.setLocal(locx, F[locx].Eta(locy).plain<double>());
-//	return Mout;
-	
 	stringstream ss;
 	ss << "c" << UP << "c" << DN;
 	return make_local(ss.str(), locx,locy, F[locx].Eta(locy), 1., false, false);
@@ -378,17 +331,6 @@ cc (size_t locx, size_t locy)
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 cdagcdag (size_t locx, size_t locy)
 {
-//	assert(locx<N_sites and locy<F[locx].dim());
-//	stringstream ss;
-//	ss << "c†(" << locx << "," << locy << "," << DN << ")"
-//	   << "c†(" << locx << "," << locy << "," << UP << ")";
-//	
-//	Mpo<Symmetry> Mout(N_sites, {1,+2}, ss.str());
-//	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
-//	
-//	Mout.setLocal(locx, F[locx].Etadag(locy).plain<double>());
-//	return Mout;
-	
 	stringstream ss;
 	ss << "c†" << DN << "c†" << UP;
 	return make_local(ss.str(), locx,locy, F[locx].Etadag(locy), 1., false, false);

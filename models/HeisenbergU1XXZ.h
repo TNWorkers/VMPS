@@ -112,13 +112,13 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<SpinBase<Symme
 	{
 		if (Jxypara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(0.5*Jxypara(i,j), B[loc].Scomp(SP,i), B[loc].Scomp(SM,i)));
-			Terms.tight.push_back(make_tuple(0.5*Jxypara(i,j), B[loc].Scomp(SM,i), B[loc].Scomp(SP,i)));
+			Terms.tight.push_back(make_tuple(0.5*Jxypara(i,j), B[loc].Scomp(SP,i), B[loc].Scomp(SM,j)));
+			Terms.tight.push_back(make_tuple(0.5*Jxypara(i,j), B[loc].Scomp(SM,i), B[loc].Scomp(SP,j)));
 		}
 		
 		if (Jzpara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(Jzpara(i,j), B[loc].Scomp(SZ,i), B[loc].Scomp(SZ,i)));
+			Terms.tight.push_back(make_tuple(Jzpara(i,j), B[loc].Scomp(SZ,i), B[loc].Scomp(SZ,j)));
 		}
 	}
 	

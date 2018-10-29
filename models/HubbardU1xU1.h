@@ -136,10 +136,10 @@ set_operators (const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, 
 	{
 		if (tPara(i,j) != 0.)
 		{
-			Terms.tight.push_back(make_tuple(-tPara(i,j), F[loc].cdag(UP,i)  * F[loc].sign(), F[loc].c(UP,i)));
-			Terms.tight.push_back(make_tuple(-tPara(i,j), F[loc].cdag(DN,i)  * F[loc].sign(), F[loc].c(DN,i)));
-			Terms.tight.push_back(make_tuple(-tPara(i,j), -1.*F[loc].c(UP,i) * F[loc].sign(), F[loc].cdag(UP,i)));
-			Terms.tight.push_back(make_tuple(-tPara(i,j), -1.*F[loc].c(DN,i) * F[loc].sign(), F[loc].cdag(DN,i)));
+			Terms.tight.push_back(make_tuple(-tPara(i,j), F[loc].cdag(UP,i)  * F[loc].sign(), F[loc].c(UP,j)));
+			Terms.tight.push_back(make_tuple(-tPara(i,j), F[loc].cdag(DN,i)  * F[loc].sign(), F[loc].c(DN,j)));
+			Terms.tight.push_back(make_tuple(-tPara(i,j), -1.*F[loc].c(UP,i) * F[loc].sign(), F[loc].cdag(UP,j)));
+			Terms.tight.push_back(make_tuple(-tPara(i,j), -1.*F[loc].c(DN,i) * F[loc].sign(), F[loc].cdag(DN,j)));
 		}
 		
 		if (Vpara(i,j) != 0.)
