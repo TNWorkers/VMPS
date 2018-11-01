@@ -48,7 +48,7 @@ double dt;
 double e_exact;
 size_t L, Ly;
 int N;
-size_t M, max_iter;
+size_t M, max_iter, min_iter;
 double tol_eigval, tol_var;
 bool ISING, HEIS2, HEIS3, SSH, ALL;
 
@@ -146,6 +146,7 @@ int main (int argc, char* argv[])
 	tol_eigval = args.get<double>("tol_eigval",1e-9);
 	tol_var = args.get<double>("tol_var",1e-9);
 	max_iter = args.get<size_t>("max_iter",100);
+	min_iter = args.get<size_t>("min_iter",1ul);
 	size_t Nqmax = args.get<size_t>("Nqmax",6);
 	size_t D = args.get<size_t>("D",3);
 	
@@ -186,7 +187,7 @@ int main (int argc, char* argv[])
 		lout << Heis_SU2.info() << endl;
 		DMRG_SU2.set_algorithm(ALG);
 		DMRG_SU2.set_log(L,"e_Heis_SU2.dat","err_eigval_Heis_SU2.dat","err_var_Heis_SU2.dat");
-		DMRG_SU2.edgeState(Heis_SU2, g_SU2, {1}, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+		DMRG_SU2.edgeState(Heis_SU2, g_SU2, {1}, tol_eigval,tol_var, M, Nqmax, max_iter, min_iter);
 	}
 	
 	typedef VMPS::HeisenbergU1XXZ HEISENBERG_U1;
@@ -201,14 +202,14 @@ int main (int argc, char* argv[])
 		DMRG_U1.set_log(2,"e_Heis_U1.dat","err_eigval_Heis_U1.dat","err_var_Heis_U1.dat");
 		DMRG_U1.set_algorithm(ALG);
 //		DMRG_U1.set_algorithm(UMPS_ALG::IDMRG);
-		DMRG_U1.edgeState(Heis_U1, g_U1, {0}, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+		DMRG_U1.edgeState(Heis_U1, g_U1, {0}, tol_eigval,tol_var, M, Nqmax, max_iter, min_iter);
 		
 		if (CALC_DOT)
 		{
 			HEISENBERG_U1::uSolver DMRG_U1_(DMRG::VERBOSITY::ON_EXIT);
 			Eigenstate<HEISENBERG_U1::StateUd> g_U1_;
 			DMRG_U1_.set_log(2,"e_Heis_U1_.dat","err_eigval_Heis_U1_.dat","err_var_Heis_U1_.dat");
-			DMRG_U1_.edgeState(Heis_U1_, g_U1_, {0}, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+			DMRG_U1_.edgeState(Heis_U1_, g_U1_, {0}, tol_eigval,tol_var, M, Nqmax, max_iter, min_iter);
 			double dot1 = g_U1.state.dot(g_U1.state);
 			double dot2 = g_U1_.state.dot(g_U1_.state);
 			double dot3 = g_U1.state.dot(g_U1_.state);
@@ -232,7 +233,7 @@ int main (int argc, char* argv[])
 		Eigenstate<KONDO::StateUd> g_U1Kond;
 		DMRG_KOND.set_log(2,"e_Kond.dat","err_eigval_Kond.dat","err_var_Kond.dat");
 		DMRG_KOND.set_algorithm(ALG);
-		DMRG_KOND.edgeState(Kond, g_U1Kond, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+		DMRG_KOND.edgeState(Kond, g_U1Kond, Qc, tol_eigval,tol_var, M, Nqmax, max_iter, min_iter);
 
 		cout << termcolor::bold << "e0=" << g_U1Kond.energy << termcolor::reset << endl;
 		ArrayXd nvec(L), dvec(L);
@@ -271,7 +272,7 @@ int main (int argc, char* argv[])
 		Hubb.transform_base(Qc);
 		Eigenstate<HUBBARD::StateUd> g_U1Hubb;
 		DMRG_HUBB.set_log(2,"e_Hubb.dat","err_eigval_Hubb.dat","err_var_Hubb.dat");
-		DMRG_HUBB.edgeState(Hubb, g_U1Hubb, Qc, tol_eigval,tol_var, M, Nqmax, max_iter,1);
+		DMRG_HUBB.edgeState(Hubb, g_U1Hubb, Qc, tol_eigval,tol_var, M, Nqmax, max_iter, min_iter);
 		double e_exact = VMPS::Hubbard::ref({{"U",U}}).value;
 		cout << "e0=" << g_U1Hubb.energy << endl;
 		cout << "e_exact=" << e_exact << ", diff=" << abs(e_exact-g_U1Hubb.energy) << endl;
@@ -303,14 +304,13 @@ int main (int argc, char* argv[])
 		lout << Heis0.info() << endl;
 		DMRG0.set_algorithm(ALG);
 		DMRG0.set_log(2,"e_Heis_U0.dat","err_eigval_Heis_U0.dat","err_var_Heis_U0.dat");
-		DMRG0.edgeState(Heis0, g0, {}, tol_eigval,tol_var, M, 1, max_iter,1);
+		DMRG0.edgeState(Heis0, g0, {}, tol_eigval,tol_var, M, 1, max_iter, min_iter);
 		cout << g0.state.info() << endl;
-		
 		if (CALC_DOT)
 		{
 			HEISENBERG0::uSolver DMRG0_(DMRG::VERBOSITY::ON_EXIT);
 			Eigenstate<HEISENBERG0::StateUd> g0_;
-			DMRG0_.edgeState(Heis0_, g0_, {}, tol_eigval,tol_var, M, 1, max_iter,1);
+			DMRG0_.edgeState(Heis0_, g0_, {}, tol_eigval,tol_var, M, 1, max_iter, min_iter);
 			double dot1 = g0.state.dot(g0.state);
 			double dot2 = g0_.state.dot(g0_.state);
 			double dot3 = g0.state.dot(g0_.state);
@@ -352,6 +352,12 @@ int main (int argc, char* argv[])
 	{
 		cout << "-----U0-----" << endl;
 		print_mag(Heis0,g0);
+		cout << g0.state.info() << endl;
+		g0.state.truncate();
+		cout << "after truncation" << endl;
+		cout << g0.state.info() << endl;
+		print_mag(Heis0,g0);
+
 		size_t dmax = 10;
 		for (size_t d=1; d<dmax; ++d)
 		{

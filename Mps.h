@@ -318,11 +318,11 @@ public:
 	 */
 	double squaredNorm() const;
 	
-	//** 
-	 //* Calculates the expectation value with a local operator at the pivot site. 
-	 //* \param O : local Mpo acting on the pivot side.
-	 //* \warning Not implemented for non-abelian symmetries.
-	 //*/
+	/** 
+	 * Calculates the expectation value with a local operator at the pivot site. 
+	 * \param O : local Mpo acting on the pivot side.
+	 * \warning Not implemented for non-abelian symmetries.
+	 */
 	template<typename MpoScalar> Scalar locAvg (const Mpo<Symmetry,MpoScalar> &O) const;
 	
 	//**Calculates the expectation value with a local operator at pivot and pivot+1.*/
@@ -2922,12 +2922,6 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 	}
 	
 	Scalar out = L.trace();
-// #ifdef PRINT_SU2_FACTORS
-// 		cout << termcolor::bold << termcolor::red << "Global SU2 factor in dot(Bra,Ket) from Mps: " << termcolor::reset
-// 			 << Symmetry::coeff_dot(Qtot) << endl;
-// #endif
-
-// 		out *= Symmetry::coeff_dot(Qtot);
 	return out;
 }
 
@@ -2936,24 +2930,20 @@ template<typename MpoScalar>
 Scalar Mps<Symmetry,Scalar>::
 locAvg (const Mpo<Symmetry,MpoScalar> &O) const
 {
-	assert(this->pivot != -1);
+	assert(this->pivot != -1 and "This function can only compute averages for Mps in mixed canonical form. Use avg() instead.");
+	assert(O.Qtarget() == Symmetry::qvacuum() and "This function can only calculate averages with local singlet operators. Use avg() instead.");
 	Scalar res = 0.;
-	
-	for (size_t s1=0; s1<qloc[this->pivot].size(); ++s1)
-	for (size_t s2=0; s2<qloc[this->pivot].size(); ++s2)
+	for (size_t s=0; s<qloc[this->pivot].size(); ++s)
+	for (size_t k=0; k<O.opBasis(this->pivot).size(); ++k)		
+	for (size_t q=0; q<A[this->pivot][s].size(); ++q)
 	{
-		for (size_t k=0; k<O.opBasis(this->pivot).size(); ++k)
-		for (int r=0; r<O.W_at(this->pivot)[s1][s2][k].outerSize(); ++r)
-		for (typename SparseMatrix<MpoScalar>::InnerIterator iW(O.W_at(this->pivot)[s1][s2][k],r); iW; ++iW)
+		if (A[this->pivot][s].block[q].size() > 0)
 		{
-			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Aprod = A[this->pivot][s1].adjoint() * A[this->pivot][s2];
-			Scalar trace = 0.;
-			for (size_t q=0; q<Aprod.dim; ++q)
+			for (int r=0; r<O.W_at(this->pivot)[s][s][k].outerSize(); ++r)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(O.W_at(this->pivot)[s][s][k],r); iW; ++iW)
 			{
-				trace += Aprod.block[q].trace();
+				res += (A[this->pivot][s].block[q].adjoint() * A[this->pivot][s].block[q]).trace() * Symmetry::coeff_dot(A[this->pivot][s].out[q]) * iW.value();				
 			}
-			
-			res += iW.value() * trace;
 		}
 	}
 	

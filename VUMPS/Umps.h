@@ -1765,52 +1765,52 @@ load (string filename)
 }
 #endif
 
-//template<typename Symmetry, typename Scalar>
-//void Umps<Symmetry,Scalar>::
-//truncate()
-//{
-//	vector<Biped<Symmetry,MatrixType> > U(N_sites);
-//	vector<Biped<Symmetry,MatrixType> > Vdag(N_sites);
-//	
-//	for (size_t l=0; l<N_sites; ++l)
-//	{
-//		for (size_t q=0; q<C[l].dim; ++q)
-//		{
-//			JacobiSVD<MatrixType> Jack(C[l].block[q], ComputeThinU|ComputeThinV);
-////			size_t Nret = (Jack.singularValues().array() > eps_svd).count();
-//			size_t Nret = Jack.singularValues().rows();
-//			Nret = max(Nret,1ul);
-//			cout << "q=" << C[l].in[q] << ", Nret=" << Nret << endl;
-//	//		C[l].block[q] = Jack.matrixU().leftCols(Nret) * 
-//	//		                  Jack.singularValues().head(Nret).asDiagonal() * 
-//	//		                  Jack.matrixV().adjoint().topRows(Nret);
-//			C[l].block[q] = Jack.singularValues().head(Nret).asDiagonal();
-//			U[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixU().leftCols(Nret));
-//			Vdag[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixV().adjoint().topRows(Nret));
-//		}
-//		
-////		cout << "U=" << endl;
-////		cout << (U[l].adjoint().contract(U[l])).print(true) << endl;
-////		cout << endl;
-////		
-////		cout << "Vdag=" << endl;
-////		cout << (Vdag[l].contract(Vdag[l].adjoint())).print(true) << endl;
-////		cout << endl;
-//	}
-//	
-//	for (size_t l=0; l<N_sites; ++l)
-//	{
-//		cout << "cutting A_LR, l=" << l << endl;
-//		for (size_t s=0; s<qloc[l].size(); ++s)
-//		{
-//			A[GAUGE::L][l][s] = Vdag[minus1modL(l)] * A[GAUGE::L][l][s] * U[l];
-//			A[GAUGE::R][l][s] = Vdag[minus1modL(l)] * A[GAUGE::R][l][s] * U[l];
-//			
-//			A[GAUGE::C][l][s] = A[GAUGE::L][l][s];
-//			A[GAUGE::C][l][s].setRandom();
-//		}
-//	}
-//	
-//	cout << test_ortho() << endl;
-//}
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+truncate()
+{
+	vector<Biped<Symmetry,MatrixType> > U(N_sites);
+	vector<Biped<Symmetry,MatrixType> > Vdag(N_sites);
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		for (size_t q=0; q<C[l].dim; ++q)
+		{
+			JacobiSVD<MatrixType> Jack(C[l].block[q], ComputeThinU|ComputeThinV);
+			// size_t Nret = (Jack.singularValues().array() > eps_svd).count();
+			size_t Nret = Jack.singularValues().rows();
+			Nret = max(Nret,1ul);
+			cout << "q=" << C[l].in[q] << ", Nret=" << Nret << endl;
+	//		C[l].block[q] = Jack.matrixU().leftCols(Nret) * 
+	//		                  Jack.singularValues().head(Nret).asDiagonal() * 
+	//		                  Jack.matrixV().adjoint().topRows(Nret);
+			C[l].block[q] = Jack.singularValues().head(Nret).asDiagonal();
+			U[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixU().leftCols(Nret));
+			Vdag[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixV().adjoint().topRows(Nret));
+		}
+		
+		// cout << "U=" << endl;
+		// cout << (U[l].adjoint().contract(U[l])).print(true) << endl;
+		// cout << endl;
+		
+		// cout << "Vdag=" << endl;
+		// cout << (Vdag[l].contract(Vdag[l].adjoint())).print(true) << endl;
+		// cout << endl;
+	}
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		cout << "cutting A_LR, l=" << l << endl;
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		{
+			A[GAUGE::L][l][s] = U[minus1modL(l)].adjoint() * A[GAUGE::L][l][s] * U[l];
+			A[GAUGE::R][l][s] = Vdag[minus1modL(l)] * A[GAUGE::R][l][s] * Vdag[l].adjoint();
+			
+			A[GAUGE::C][l][s] = A[GAUGE::L][l][s];
+			A[GAUGE::C][l][s].setRandom();
+		}
+	}
+	
+	cout << test_ortho() << endl;
+}
 #endif

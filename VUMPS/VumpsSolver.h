@@ -52,7 +52,7 @@ struct VUMPS
 					else if (i>200 and i<=240) { out=4ul; }
 					else if (i>240 and i<=280) { out=0ul; }
 					else if (i>280 and i<=300) { out=2ul; }
-					else if (i>300)            { out=0ul; }    
+					else if (i>300)            { out=10ul; }    
 					return out;
 				}
 			static double errLimit_for_flucts (size_t i) {return 1.e-1;}
@@ -850,7 +850,6 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 
 	// if (err_var < 1.e-1 and N_iterations%10 == 0 and N_iterations < 80) {expand_basis(2,H,Vout);}
 
-//	Vout.state.truncate();
 	build_cellEnv(H,Vout);
 	
 	// See Algorithm 4
@@ -1368,7 +1367,9 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 			{
 				iteration_parallel(H,Vout);
 				DynParam.doSomething(N_iterations);
+#ifdef USE_HDF5_STORAGE
 				Vout.state.save("umps",H.info());
+#endif
 			}
 			else
 			{
