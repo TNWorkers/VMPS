@@ -323,10 +323,10 @@ public:
 	 //* \param O : local Mpo acting on the pivot side.
 	 //* \warning Not implemented for non-abelian symmetries.
 	 //*/
-	//template<typename MpoScalar> Scalar locAvg (const Mpo<Symmetry,MpoScalar> &O) const;
+	template<typename MpoScalar> Scalar locAvg (const Mpo<Symmetry,MpoScalar> &O) const;
 	
 	//**Calculates the expectation value with a local operator at pivot and pivot+1.*/
-	// template<typename MpoScalar> Scalar locAvg2 (const Mpo<Nq,MpoScalar> &O) const;
+	template<typename MpoScalar> Scalar locAvg2 (const Mpo<Symmetry,MpoScalar> &O) const;
 	
 	/**Swaps with another Mps.*/
 	void swap (Mps<Symmetry,Scalar> &V);
@@ -2931,7 +2931,7 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 	return out;
 }
 
-/*template<typename Symmetry, typename Scalar>
+template<typename Symmetry, typename Scalar>
 template<typename MpoScalar>
 Scalar Mps<Symmetry,Scalar>::
 locAvg (const Mpo<Symmetry,MpoScalar> &O) const
@@ -2941,59 +2941,61 @@ locAvg (const Mpo<Symmetry,MpoScalar> &O) const
 	
 	for (size_t s1=0; s1<qloc[this->pivot].size(); ++s1)
 	for (size_t s2=0; s2<qloc[this->pivot].size(); ++s2)
-	for (size_t k=0; k<O.opBasis(this->pivot).size(); ++k)
 	{
-		Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Aprod = A[this->pivot][s1].adjoint() * A[this->pivot][s2];
-		Scalar trace = 0.;
-		for (size_t q=0; q<Aprod.dim; ++q)
-		{
-			trace += Aprod.block[q].trace();
-		}
-		
+		for (size_t k=0; k<O.opBasis(this->pivot).size(); ++k)
 		for (int r=0; r<O.W_at(this->pivot)[s1][s2][k].outerSize(); ++r)
 		for (typename SparseMatrix<MpoScalar>::InnerIterator iW(O.W_at(this->pivot)[s1][s2][k],r); iW; ++iW)
 		{
+			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Aprod = A[this->pivot][s1].adjoint() * A[this->pivot][s2];
+			Scalar trace = 0.;
+			for (size_t q=0; q<Aprod.dim; ++q)
+			{
+				trace += Aprod.block[q].trace();
+			}
+			
 			res += iW.value() * trace;
 		}
 	}
 	
 	return res;
-}*/
+}
 
-// template<typename Symmetry, typename Scalar>
-// template<typename MpoScalar>
-// Scalar Mps<Symmetry,Scalar>::
-// locAvg2 (const Mpo<Nq,MpoScalar> &O) const
-// {
-// 	assert(this->pivot != -1);
-// 	Scalar res = 0;
+template<typename Symmetry, typename Scalar>
+template<typename MpoScalar>
+Scalar Mps<Symmetry,Scalar>::
+locAvg2 (const Mpo<Symmetry,MpoScalar> &O) const
+{
+	assert(this->pivot != -1);
+	Scalar res = 0;
 	
-// 	for (size_t s1=0; s1<qloc[this->pivot].size(); ++s1)
-// 	for (size_t s2=0; s2<qloc[this->pivot].size(); ++s2)
-// 	for (size_t s3=0; s3<qloc[this->pivot+1].size(); ++s3)
-// 	for (size_t s4=0; s4<qloc[this->pivot+1].size(); ++s4)
-// 	{
-// 		for (int k12=0; k12<O.W_at(this->pivot)[s1][s2].outerSize(); ++k12)
-// 		for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(O.W_at(this->pivot)[s1][s2],k12); iW12; ++iW12)
-// 		for (int k34=0; k34<O.W_at(this->pivot+1)[s3][s4].outerSize(); ++k34)
-// 		for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(O.W_at(this->pivot+1)[s3][s4],k34); iW34; ++iW34)
-// 		{
-// 			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Aprod12 = A[this->pivot][s1].adjoint() * A[this->pivot][s2];
-// 			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Aprod123 = A[this->pivot+1][s3].adjoint() * Aprod12;
-// 			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Aprod1234 = Aprod123 * A[this->pivot+1][s4];
+	for (size_t s1=0; s1<qloc[this->pivot].size(); ++s1)
+	for (size_t s2=0; s2<qloc[this->pivot].size(); ++s2)
+	for (size_t s3=0; s3<qloc[this->pivot+1].size(); ++s3)
+	for (size_t s4=0; s4<qloc[this->pivot+1].size(); ++s4)
+	{
+		for (size_t k12=0; k12<O.opBasis(this->pivot).size(); ++k12)
+		for (int r12=0; r12<O.W_at(this->pivot)[s1][s2][k12].outerSize(); ++r12)
+		for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(O.W_at(this->pivot)[s1][s2][k12],r12); iW12; ++iW12)
+		for (size_t k34=0; k34<O.opBasis(this->pivot+1).size(); ++k34)
+		for (int r34=0; r34<O.W_at(this->pivot+1)[s3][s4][k34].outerSize(); ++r34)
+		for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(O.W_at(this->pivot+1)[s3][s4][k34],r34); iW34; ++iW34)
+		{
+			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Aprod12 = A[this->pivot][s1].adjoint() * A[this->pivot][s2];
+			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Aprod123 = A[this->pivot+1][s3].adjoint() * Aprod12;
+			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Aprod1234 = Aprod123 * A[this->pivot+1][s4];
 			
-// 			Scalar trace = 0;
-// 			for (size_t q=0; q<Aprod1234.dim; ++q)
-// 			{
-// 				trace += Aprod1234.block[q].trace();
-// 			}
+			Scalar trace = 0;
+			for (size_t q=0; q<Aprod1234.dim; ++q)
+			{
+				trace += Aprod1234.block[q].trace();
+			}
 			
-// 			res += iW12.value() * iW34.value() * trace;
-// 		}
-// 	}
+			res += iW12.value() * iW34.value() * trace;
+		}
+	}
 	
-// 	return res;
-// }
+	return res;
+}
 
 template<typename Symmetry, typename Scalar>
 double Mps<Symmetry,Scalar>::
@@ -3200,14 +3202,14 @@ add_site (size_t loc, OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin)
 	{
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		{
-			A[loc][s].addScale(1., Vin.A[loc][s], BOTTOM);
+			A[loc][s].addScale(static_cast<OtherScalar>(1.), Vin.A[loc][s], BOTTOM);
 		}
 	}
 	else
 	{
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		{
-			A[loc][s].addScale(1., Vin.A[loc][s], BOTTOM_RIGHT);
+			A[loc][s].addScale(static_cast<OtherScalar>(1.), Vin.A[loc][s], BOTTOM_RIGHT);
 		}
 	}
 }

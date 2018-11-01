@@ -3,6 +3,7 @@
 	array<MODEL::Operator,2> cs;
 	array<MODEL::Operator,2> csdag;
 	
+	#ifndef USING_SU2
 	if (spec == "PES" or spec == "IPES")
 	{
 		cs[0]    = H.c<UP>(i0);
@@ -10,6 +11,7 @@
 		csdag[0] = H.cdag<UP>(i0);
 		csdag[1] = H.cdag<DN>(i0);
 	}
+	#endif
 	
 	if (spec == "AES")
 	{

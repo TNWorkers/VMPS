@@ -12,13 +12,11 @@
 		#pragma omp section
 		{
 			Stopwatch<> nChronos;
-			MODEL::Solver * DMRG = new MODEL::Solver(VERB1);
-			cout << "Qi=" << Qi[0] << "\t" << Qi[1] << endl;
-			DMRG->edgeState(H, *init, Qi, LANCZOS::EDGE::GROUND);
+			MODEL::Solver DMRG(VERB1);
+			DMRG.edgeState(H, *init, Qi, LANCZOS::EDGE::GROUND);
 			lout << endl << nChronos.info(make_string("ground state ",Qi)) << endl;
-			lout << DMRG->info() << endl;
+			lout << DMRG.info() << endl;
 			E0 = init->energy;
-			delete DMRG;
 		}
 		
 		#pragma omp section
@@ -44,13 +42,13 @@
 				MODEL::Solver rDMRG(VERB3);
 				rDMRG.edgeState(H, r, Qc[i], LANCZOS::EDGE::ROOF);
 				rinfo << rChronos.info(make_string("roof state ",Qc[i])) << endl;
-				if (rDMRG.get_errState() > 10.*rDMRG.GlobParam.tol_state)
-				{
-					Emaxs[i] = 2.*r.energy;
-					lout << termcolor::red << "Bad convergence of roof state! Doubling the energy value from " 
-					     << r.energy << " to " << Emaxs[i] << " to be safe!" << termcolor::reset << endl;
-				}
-				else
+//				if (rDMRG.get_errState() > 10.*rDMRG.GlobParam.tol_state)
+//				{
+//					Emaxs[i] = 2.*r.energy;
+//					lout << termcolor::red << "Bad convergence of roof state! Doubling the energy value from " 
+//					     << r.energy << " to " << Emaxs[i] << " to be safe!" << termcolor::reset << endl;
+//				}
+//				else
 				{
 					Emaxs[i] = r.energy;
 				}

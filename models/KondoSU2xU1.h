@@ -426,7 +426,7 @@ make_local (KONDO_SUBSYSTEM SUBSYS,
 		: Mout.setLocal(locx, (factor * OpExt).plain<double>());
 	// (FERMIONIC)? Mout.setLocal(locx, (factor * OpExt).plain<double>(), SignExt.plain<double>())
 	// 	: Mout.setLocal(locx, (factor * OpExt).plain<double>());
-
+	
 	return Mout;
 }
 
@@ -645,7 +645,6 @@ ccdag (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	}
 	return Mout;
 }
-
 
 // Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
 // cdagcdagcc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)

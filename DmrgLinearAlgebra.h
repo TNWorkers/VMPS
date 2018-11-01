@@ -427,7 +427,7 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::
 //Comment needed
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-                double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
+                double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	size_t L = Vin.length();
 	auto Qt = Symmetry::reduceSilent(Vin.Qtarget(),O.Qtarget());
@@ -474,7 +474,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	}
 	if (VERBOSITY > DMRG::VERBOSITY::SILENT) lout << endl;
 	
-	if (Vout.calc_Nqavg() <= 1.5)
+	if (Vout.calc_Nqavg() <= 1.5 and Vout.min_Nsv == 0)
 	{
 		Vout.min_Nsv = 1;
 		lout << termcolor::blue << "Warning: Setting min_Nsv=1 do deal with small Hilbert space after OxV_exact!" << termcolor::reset << endl;
@@ -482,10 +482,11 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, double tol_compr = 1e-7)
+void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, 
+                double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	Mps<Symmetry,Scalar> Vtmp;
-	OxV_exact(O,Vinout,Vtmp,tol_compr);
+	OxV_exact(O,Vinout,Vtmp,tol_compr,VERBOSITY);
 	Vinout = Vtmp;
 }
 

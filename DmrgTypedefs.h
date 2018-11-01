@@ -22,6 +22,9 @@ inline double isReal (double x) {return x;}
 inline double isReal (std::complex<double> x) {return x.real();}
 #endif
 
+inline double conjIfcomplex (double x) {return x;}
+inline std::complex<double> conjIfcomplex (std::complex<double> x) {return conj(x);}
+
 #ifndef SPIN_INDEX_ENUM
 #define SPIN_INDEX_ENUM
 	enum SPIN_INDEX

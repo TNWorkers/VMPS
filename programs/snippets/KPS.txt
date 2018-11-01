@@ -56,8 +56,5 @@
 				KPS.add_savepoint(Msave[i], momfile, datfileL, 0, false, LORENTZ);
 			}
 		}
-		
-//		KPS.calc_ImAA(H, initA, Mmax, false);
-//		lout << "Chebyshev iteration done!" << endl;
 	}
 	//--------------</KernelPolynomialSolver>---------------

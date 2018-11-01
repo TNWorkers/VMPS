@@ -111,6 +111,9 @@ public:
 	                   size_t max_halfsweeps=DMRG_POLYCOMPRESS_MAX, size_t min_halfsweeps=DMRG_POLYCOMPRESS_MIN);
 	///\}
 	
+	void lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar> &factors, Mps<Symmetry,Scalar> &Vout, 
+	                       size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
+	
 private:
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
@@ -168,6 +171,27 @@ private:
 		
 		template<typename MpOperator>
 		void build_LRW (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout);
+		
+	// for |Vout> ≈ \sum_i alpha_i |Vin>
+		vector<vector<PivotOverlap1<Symmetry,Scalar> > > Envs;
+		
+		void prepSweep (const vector<Mps<Symmetry,Scalar> > &Vin, Mps<Symmetry,Scalar> &Vout);
+		
+		void stateOptimize1 (const vector<Mps<Symmetry,Scalar> > &Vin, const Mps<Symmetry,Scalar> &Vout, vector<PivotVector<Symmetry,Scalar> > &Aout);
+		
+//		void stateOptimize1 (const vector<Mps<Symmetry,Scalar> > &Vin, Mps<Symmetry,Scalar> &Vout);
+		
+		void stateOptimize2 (const vector<Mps<Symmetry,Scalar> > &Vin, const Mps<Symmetry,Scalar> &Vout, 
+		                     vector<PivotVector<Symmetry,Scalar> > &ApairOut);
+		
+//		void stateOptimize2 (const vector<Mps<Symmetry,Scalar> > &Vin, Mps<Symmetry,Scalar> &Vout);
+		
+		void build_L (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const vector<Mps<Symmetry,Scalar> > &Vket, bool RANDOMIZE=false);
+		
+		void build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const vector<Mps<Symmetry,Scalar> > &Vket, bool RANDOMIZE=false);
+		
+		void build_LR (const vector<Mps<Symmetry,Scalar> > &Vin, Mps<Symmetry,Scalar> &Vout);
+	
 	
 	inline size_t loc1() const {return (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;};
 	inline size_t loc2() const {return (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;};
@@ -177,6 +201,8 @@ private:
 	template<typename MpOperator>
 	void sweep_to_edge (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, 
 	                    Mps<Symmetry,Scalar> &Vout, bool BUILD_LR, bool BUILD_LWRW);
+	
+	void sweep_to_edge (const vector<Mps<Symmetry,Scalar> > &Vin, Mps<Symmetry,Scalar> &Vout, bool BUILD_LR);
 	
 	size_t N_sites;
 	size_t N_sweepsteps, N_halfsweeps;
@@ -306,6 +332,32 @@ sweep_to_edge (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 sweep_to_edge (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool BUILD_LR)
+{
+	assert(pivot == 0 or pivot==1 or pivot==N_sites-2 or pivot==N_sites-1);
+	
+	if (pivot==1)
+	{
+		Vout.sweep(0,DMRG::BROOM::QR);
+		pivot = 0;
+		if (BUILD_LR)
+		{
+			build_R(0,Vout,Vin);
+		}
+	}
+	else if (pivot==N_sites-2)
+	{
+		Vout.sweep(N_sites-1,DMRG::BROOM::QR);
+		pivot = N_sites-1;
+		if (BUILD_LR)
+		{
+			build_L(N_sites-1,Vout,Vin);
+		}
+	}
+}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+sweep_to_edge (const vector<Mps<Symmetry,Scalar> > &Vin, Mps<Symmetry,Scalar> &Vout, bool BUILD_LR)
 {
 	assert(pivot == 0 or pivot==1 or pivot==N_sites-2 or pivot==N_sites-1);
 	
@@ -562,6 +614,307 @@ build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar
 	Stopwatch<> LRtimer;
 	contract_R(Env[loc+1].R, Vbra.A[loc+1], Vket.A[loc+1], Vket.locBasis(loc+1), Env[loc].R, RANDOMIZE);
 	t_LR += LRtimer.time();
+}
+
+//---------------------------compression of \sum_n \alpha_n |Psi_n>---------------------------
+// |Vout> ≈ Σₙ αₙ |Ψₙ>
+// convention in program: <Vout|H|Vin>
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar> &factors, Mps<Symmetry,Scalar> &Vout, 
+                  size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
+{
+	Stopwatch<> Chronos;
+	N_sites = Vin[0].length();
+	tol = tol_input;
+	size_t N_vecs = Vin.size();
+	N_halfsweeps = 0;
+	N_sweepsteps = 0;
+	Dcutoff = Dcutoff_new = Dcutoff_input;
+	
+	// Calculate Hermitian overlap matrix Σₙₘ αₘ* αₙ <Ψₘ|Ψₙ>
+	Matrix<Scalar,Dynamic,Dynamic> overlapsVin(N_vecs,N_vecs);
+	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
+	#pragma omp parallel for
+	#endif
+	for (int i=0; i<N_vecs; ++i)
+	for (int j=0; j<=i; ++j)
+	{
+		overlapsVin(i,j) = conjIfcomplex(factors[i]) * factors[j] * dot(Vin[i],Vin[j]);
+	}
+	overlapsVin.template triangularView<Upper>() = overlapsVin.adjoint();
+	double overlapsVinSum = isReal(overlapsVin.sum());
+//	cout << endl << overlapsVin << endl << endl;
+	
+	// set L&R edges
+	Envs.resize(N_vecs);
+	for (int i=0; i<N_vecs; ++i)
+	{
+		Envs[i].clear();
+		Envs[i].resize(N_sites);
+		Envs[i][N_sites-1].R.setTarget(Vin[i].Qmultitarget());
+		Envs[i][0].L.setVacuum();
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			Envs[i][l].qloc = Vin[i].locBasis(l);
+		}
+	}
+	
+	// set initial guess
+	Vout = Vin[0];
+	Vout.innerResize(Dcutoff);
+	Vout.max_Nsv = Dcutoff;
+	
+	Mmax = Vout.calc_Mmax();
+	prepSweep(Vin,Vout);
+	sqdist = 1.;
+	size_t halfSweepRange = N_sites;
+	
+	if (CHOSEN_VERBOSITY>=2)
+	{
+		lout << Chronos.info("preparation") << endl;
+	}
+	
+	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
+	while ((sqdist > tol and N_halfsweeps < max_halfsweeps) or N_halfsweeps < min_halfsweeps or N_halfsweeps%2 != 0)
+	{
+		t_opt = 0;
+		t_AA = 0;
+		t_sweep = 0;
+		t_LR = 0;
+		t_ohead = 0;
+		t_tot = 0;
+		Stopwatch<> FullSweepTimer;
+		
+		// A 2-site sweep is necessary! Move pivot back to edge.
+		if (N_halfsweeps%4 == 0 and N_halfsweeps > 1)
+		{
+			sweep_to_edge(Vin,Vout,true); // BUILD_LR = true
+		}
+		
+		for (size_t j=1; j<=halfSweepRange; ++j)
+		{
+			turnaround(pivot, N_sites, CURRENT_DIRECTION);
+			Stopwatch<> Chronos;
+			
+			if (N_halfsweeps%4 == 0 and N_halfsweeps > 1)
+			{
+				vector<PivotVector<Symmetry,Scalar> > Apair(N_vecs);
+				stateOptimize2(Vin,Vout,Apair);
+				
+				PivotVector<Symmetry,Scalar> Asum;
+				Asum.outerResize(Apair[0]);
+				
+				for (int i=0; i<N_vecs; ++i)
+				for (size_t s=0; s<Asum.size(); ++s)
+				{
+					Asum[s].addScale(factors[i], Apair[i][s]);
+				}
+				
+				for (size_t s=0; s<Asum.size(); ++s)
+				{
+					Asum[s] = Asum[s].cleaned();
+				}
+				
+				Stopwatch<> SweepTimer;
+				Vout.sweepStep2(CURRENT_DIRECTION, loc1(), Asum.data);
+				t_sweep += SweepTimer.time();
+				pivot = Vout.get_pivot();
+			}
+			else
+			{
+				vector<PivotVector<Symmetry,Scalar> > Ares(N_vecs);
+				stateOptimize1(Vin,Vout,Ares);
+				
+				if (Vout.squaredNorm() < 1e-7)
+				{
+					if (CHOSEN_VERBOSITY > 0)
+					{
+						lout << termcolor::bold << termcolor::red << "WARNING: small norm encountered at pivot=" << pivot << "!" << termcolor::reset << endl;
+					}
+					Vout /= sqrt(Vout.squaredNorm());
+				}
+				
+				PivotVector<Symmetry,Scalar> Asum;
+				Asum.outerResize(Ares[0]);
+				
+				for (int i=0; i<N_vecs; ++i)
+				for (size_t s=0; s<Asum.size(); ++s)
+				{
+					Asum[s].addScale(factors[i], Ares[i][s]);
+				}
+				
+				for (size_t s=0; s<Asum.size(); ++s)
+				{
+					Asum[s] = Asum[s].cleaned();
+				}
+				
+				Vout.A[pivot] = Asum.data;
+				
+				Stopwatch<> SweepTimer;
+				Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::SVD);
+				t_sweep += SweepTimer.time();
+				pivot = Vout.get_pivot();
+			}
+			
+			build_LR(Vin,Vout);
+			++N_sweepsteps;
+		}
+		halfSweepRange = N_sites-1;
+		++N_halfsweeps;
+		
+//		cout << "sqnormVin=" << overlapsVin.sum() << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+		sqdist = abs(overlapsVinSum-Vout.squaredNorm());
+		assert(!std::isnan(sqdist));
+		
+		if (CHOSEN_VERBOSITY>=2)
+		{
+			lout << " distance^2=";
+			if (sqdist <= tol) {lout << termcolor::green;}
+			else               {lout << termcolor::yellow;}
+			lout << sqdist << termcolor::reset << ", ";
+			t_tot = FullSweepTimer.time();
+			lout << t_info() << endl;
+		}
+		
+		if (N_halfsweeps%4 == 0 and 
+		    N_halfsweeps > 1 and 
+		    N_halfsweeps != max_halfsweeps and 
+		    sqdist > tol)
+		{
+			Vout.max_Nsv += 1;
+			Dcutoff_new = Vout.max_Nsv;
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+			{
+				lout << "resize: " << Vout.max_Nsv-1 << "→" << Vout.max_Nsv << endl;
+			}
+		}
+		
+		Mmax_new = Vout.calc_Mmax();
+	}
+	
+	// last sweep
+	sweep_to_edge(Vin,Vout,false);
+}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+prepSweep (const vector<Mps<Symmetry,Scalar> > &Vin, Mps<Symmetry,Scalar> &Vout)
+{
+	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
+	Vout.setRandom();
+	
+	if (Vout.pivot == N_sites-1 or
+	    Vout.pivot == -1)
+	{
+		for (size_t l=N_sites-1; l>0; --l)
+		{
+			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
+			build_R(l-1,Vout,Vin,true); // true: randomize Env[l].R
+		}
+		CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
+	}
+	else if (Vout.pivot == 0)
+	{
+		for (size_t l=0; l<N_sites-1; ++l)
+		{
+			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
+			build_L(l+1,Vout,Vin,true); // true: randomize Env[l].L
+		}
+		CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
+	}
+	pivot = Vout.pivot;
+}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+stateOptimize1 (const vector<Mps<Symmetry,Scalar> > &Vin, const Mps<Symmetry,Scalar> &Vout, vector<PivotVector<Symmetry,Scalar> > &Aout)
+{
+	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
+	#pragma omp parallel for
+	#endif
+	for (int i=0; i<Vin.size(); ++i)
+	{
+		PivotVector<Symmetry,Scalar> Ain(Vin[i].A[pivot]);
+		Stopwatch<> OptTimer;
+		LRxV(Envs[i][pivot], Ain, Aout[i]);
+		t_opt += OptTimer.time();
+		
+		for (size_t s=0; s<Aout[i].size(); ++s)
+		{
+			Aout[i][s] = Aout[i][s].cleaned();
+		}
+	}
+}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+stateOptimize2 (const vector<Mps<Symmetry,Scalar> > &Vin, const Mps<Symmetry,Scalar> &Vout, vector<PivotVector<Symmetry,Scalar> > &ApairOut)
+{
+	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
+	#pragma omp parallel for
+	#endif
+	for (int i=0; i<Vin.size(); ++i)
+	{
+		Stopwatch<> AAtimer;
+		PivotVector<Symmetry,Scalar> ApairIn(Vin[i].A[loc1()], Vin[i].locBasis(loc1()), 
+		                                     Vin[i].A[loc2()], Vin[i].locBasis(loc2()),
+		                                     Vin[i].QoutTop[loc1()], Vin[i].QoutBot[loc1()]);
+		
+		ApairOut[i] = PivotVector<Symmetry,Scalar>(Vout.A[loc1()], Vout.locBasis(loc1()), 
+		                                           Vout.A[loc2()], Vout.locBasis(loc2()),
+		                                           Vout.QoutTop[loc1()], Vout.QoutBot[loc1()],
+		                                           true);  // dry run: do not multiply matrices, just set blocks
+		t_AA += AAtimer.time();
+		
+		Stopwatch<> OptTimer;
+		PivotOverlap2<Symmetry,Scalar> Env2(Envs[i][loc1()].L, Envs[i][loc2()].R, Vin[i].locBasis(loc1()), Vin[i].locBasis(loc2()));
+		LRxV(Env2, ApairIn, ApairOut[i]);
+		t_opt += OptTimer.time();
+		
+		for (size_t s=0; s<ApairOut[i].data.size(); ++s)
+		{
+			ApairOut[i].data[s] = ApairOut[i].data[s].cleaned();
+		}
+	}
+}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+build_L (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const vector<Mps<Symmetry,Scalar> > &Vket, bool RANDOMIZE)
+{
+	Stopwatch<> LRtimer;
+	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
+	#pragma omp parallel for
+	#endif
+	for (int i=0; i<Vket.size(); ++i)
+	{
+		contract_L(Envs[i][loc-1].L, Vbra.A[loc-1], Vket[i].A[loc-1], Vket[i].locBasis(loc-1), Envs[i][loc].L, RANDOMIZE);
+	}
+	t_LR += LRtimer.time();
+}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const vector<Mps<Symmetry,Scalar> > &Vket, bool RANDOMIZE)
+{
+	Stopwatch<> LRtimer;
+	#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
+	#pragma omp parallel for
+	#endif
+	for (int i=0; i<Vket.size(); ++i)
+	{
+		contract_R(Envs[i][loc+1].R, Vbra.A[loc+1], Vket[i].A[loc+1], Vket[i].locBasis(loc+1), Envs[i][loc].R, RANDOMIZE);
+	}
+	t_LR += LRtimer.time();
+}
+
+template<typename Symmetry, typename Scalar, typename MpoScalar>
+void MpsCompressor<Symmetry,Scalar,MpoScalar>::
+build_LR (const vector<Mps<Symmetry,Scalar> > &Vin, Mps<Symmetry,Scalar> &Vout)
+{
+	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L (pivot,Vout,Vin) : build_R(pivot,Vout,Vin);
 }
 
 //---------------------------compression of H*|Psi>---------------------------
