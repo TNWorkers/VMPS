@@ -2932,17 +2932,22 @@ locAvg (const Mpo<Symmetry,MpoScalar> &O) const
 {
 	assert(this->pivot != -1 and "This function can only compute averages for Mps in mixed canonical form. Use avg() instead.");
 	assert(O.Qtarget() == Symmetry::qvacuum() and "This function can only calculate averages with local singlet operators. Use avg() instead.");
+	
+	size_t loc = this->pivot;
 	Scalar res = 0.;
-	for (size_t s=0; s<qloc[this->pivot].size(); ++s)
-	for (size_t k=0; k<O.opBasis(this->pivot).size(); ++k)		
-	for (size_t q=0; q<A[this->pivot][s].size(); ++q)
+	
+	for (size_t s=0; s<qloc[loc].size(); ++s)
+	for (size_t k=0; k<O.opBasis(loc).size(); ++k)
+	for (size_t q=0; q<A[loc][s].size(); ++q)
 	{
-		if (A[this->pivot][s].block[q].size() > 0)
+		if (A[loc][s].block[q].size() > 0)
 		{
-			for (int r=0; r<O.W_at(this->pivot)[s][s][k].outerSize(); ++r)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(O.W_at(this->pivot)[s][s][k],r); iW; ++iW)
+			for (int r=0; r<O.W_at(loc)[s][s][k].outerSize(); ++r)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(O.W_at(loc)[s][s][k],r); iW; ++iW)
 			{
-				res += (A[this->pivot][s].block[q].adjoint() * A[this->pivot][s].block[q]).trace() * Symmetry::coeff_dot(A[this->pivot][s].out[q]) * iW.value();				
+				res += (A[loc][s].block[q].adjoint() * A[loc][s].block[q]).trace() * 
+				       Symmetry::coeff_dot(A[loc][s].out[q]) * 
+				       iW.value();
 			}
 		}
 	}
@@ -2955,36 +2960,24 @@ template<typename MpoScalar>
 Scalar Mps<Symmetry,Scalar>::
 locAvg2 (const Mpo<Symmetry,MpoScalar> &O) const
 {
-	assert(this->pivot != -1);
-	Scalar res = 0;
+	assert(this->pivot != -1 and "This function can only compute averages for Mps in mixed canonical form. Use avg() instead.");
+	assert(O.Qtarget() == Symmetry::qvacuum() and "This function can only calculate averages with local singlet operators. Use avg() instead.");
 	
-	for (size_t s1=0; s1<qloc[this->pivot].size(); ++s1)
-	for (size_t s2=0; s2<qloc[this->pivot].size(); ++s2)
-	for (size_t s3=0; s3<qloc[this->pivot+1].size(); ++s3)
-	for (size_t s4=0; s4<qloc[this->pivot+1].size(); ++s4)
-	{
-		for (size_t k12=0; k12<O.opBasis(this->pivot).size(); ++k12)
-		for (int r12=0; r12<O.W_at(this->pivot)[s1][s2][k12].outerSize(); ++r12)
-		for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(O.W_at(this->pivot)[s1][s2][k12],r12); iW12; ++iW12)
-		for (size_t k34=0; k34<O.opBasis(this->pivot+1).size(); ++k34)
-		for (int r34=0; r34<O.W_at(this->pivot+1)[s3][s4][k34].outerSize(); ++r34)
-		for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(O.W_at(this->pivot+1)[s3][s4][k34],r34); iW34; ++iW34)
-		{
-			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Aprod12 = A[this->pivot][s1].adjoint() * A[this->pivot][s2];
-			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Aprod123 = A[this->pivot+1][s3].adjoint() * Aprod12;
-			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Aprod1234 = Aprod123 * A[this->pivot+1][s4];
-			
-			Scalar trace = 0;
-			for (size_t q=0; q<Aprod1234.dim; ++q)
-			{
-				trace += Aprod1234.block[q].trace();
-			}
-			
-			res += iW12.value() * iW34.value() * trace;
-		}
-	}
+	size_t loc1 = this->pivot;
+	size_t loc2 = this->pivot+1;
 	
-	return res;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
+	L.setIdentity(1,1,inBasis (loc1));
+	R.setIdentity(1,1,outBasis(loc2));
+	
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lnext;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rprev;
+	
+	contract_L(L, A[loc1], O.W_at(loc1), O.IS_HAMILTONIAN(), A[loc1], O.locBasis(loc1), O.opBasis(loc1), Lnext);
+	contract_R(R, A[loc2], O.W_at(loc2), O.IS_HAMILTONIAN(), A[loc2], O.locBasis(loc2), O.opBasis(loc2), Rprev);
+	
+	return contract_LR(Lnext,Rprev);
 }
 
 template<typename Symmetry, typename Scalar>

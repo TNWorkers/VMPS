@@ -982,9 +982,9 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 	
 	for (size_t qL=0; qL<L.dim; ++qL)
 	{
-		qarray3<Symmetry::Nq> quple = {L.in(qL), L.out(qL), L.mid(qL)};
-		// qarray3<Symmetry::Nq> quple = {L.out(qL), L.in(qL), L.mid(qL)};
-
+//		qarray3<Symmetry::Nq> quple = {L.in(qL), L.out(qL), L.mid(qL)};
+		qarray3<Symmetry::Nq> quple = {L.out(qL), L.in(qL), L.mid(qL)};
+		
 		auto qR = R.dict.find(quple);
 		
 		if (qR != R.dict.end())
