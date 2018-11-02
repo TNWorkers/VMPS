@@ -323,10 +323,10 @@ public:
 	 * \param O : local Mpo acting on the pivot side.
 	 * \warning Not implemented for non-abelian symmetries.
 	 */
-	template<typename MpoScalar> Scalar locAvg (const Mpo<Symmetry,MpoScalar> &O) const;
+	template<typename MpoScalar> Scalar locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance=0) const;
 	
 	//**Calculates the expectation value with a local operator at pivot and pivot+1.*/
-	template<typename MpoScalar> Scalar locAvg2 (const Mpo<Symmetry,MpoScalar> &O) const;
+//	template<typename MpoScalar> Scalar locAvg2 (const Mpo<Symmetry,MpoScalar> &O) const;
 	
 	/**Swaps with another Mps.*/
 	void swap (Mps<Symmetry,Scalar> &V);
@@ -2925,59 +2925,72 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 	return out;
 }
 
-template<typename Symmetry, typename Scalar>
-template<typename MpoScalar>
-Scalar Mps<Symmetry,Scalar>::
-locAvg (const Mpo<Symmetry,MpoScalar> &O) const
-{
-	assert(this->pivot != -1 and "This function can only compute averages for Mps in mixed canonical form. Use avg() instead.");
-	assert(O.Qtarget() == Symmetry::qvacuum() and "This function can only calculate averages with local singlet operators. Use avg() instead.");
-	
-	size_t loc = this->pivot;
-	Scalar res = 0.;
-	
-	for (size_t s=0; s<qloc[loc].size(); ++s)
-	for (size_t k=0; k<O.opBasis(loc).size(); ++k)
-	for (size_t q=0; q<A[loc][s].size(); ++q)
-	{
-		if (A[loc][s].block[q].size() > 0)
-		{
-			for (int r=0; r<O.W_at(loc)[s][s][k].outerSize(); ++r)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(O.W_at(loc)[s][s][k],r); iW; ++iW)
-			{
-				res += (A[loc][s].block[q].adjoint() * A[loc][s].block[q]).trace() * 
-				       Symmetry::coeff_dot(A[loc][s].out[q]) * 
-				       iW.value();
-			}
-		}
-	}
-	
-	return res;
-}
+//template<typename Symmetry, typename Scalar>
+//template<typename MpoScalar>
+//Scalar Mps<Symmetry,Scalar>::
+//locAvg (const Mpo<Symmetry,MpoScalar> &O) const
+//{
+//	assert(this->pivot != -1 and "This function can only compute averages for Mps in mixed canonical form. Use avg() instead.");
+//	assert(O.Qtarget() == Symmetry::qvacuum() and "This function can only calculate averages with local singlet operators. Use avg() instead.");
+//	
+//	size_t loc = this->pivot;
+//	
+////	Scalar res = 0.;
+////	for (size_t s=0; s<qloc[loc].size(); ++s)
+////	for (size_t k=0; k<O.opBasis(loc).size(); ++k)
+////	for (size_t q=0; q<A[loc][s].size(); ++q)
+////	{
+////		if (A[loc][s].block[q].size() > 0)
+////		{
+////			for (int r=0; r<O.W_at(loc)[s][s][k].outerSize(); ++r)
+////			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(O.W_at(loc)[s][s][k],r); iW; ++iW)
+////			{
+////				res += (A[loc][s].block[q].adjoint() * A[loc][s].block[q]).trace() * 
+////				       Symmetry::coeff_dot(A[loc][s].out[q]) * 
+////				       iW.value();
+////			}
+////		}
+////	}
+////	
+////	return res;
+//	
+//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
+//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
+//	L.setIdentity(1,1,inBasis (loc));
+//	R.setIdentity(1,1,outBasis(loc));
+//	
+//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lnext;
+//	
+//	contract_L(L, A[loc], O.W_at(loc), O.IS_HAMILTONIAN(), A[loc], O.locBasis(loc), O.opBasis(loc), Lnext);
+//	
+//	return contract_LR(Lnext,R);
+//}
 
 template<typename Symmetry, typename Scalar>
 template<typename MpoScalar>
 Scalar Mps<Symmetry,Scalar>::
-locAvg2 (const Mpo<Symmetry,MpoScalar> &O) const
+locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance) const
 {
 	assert(this->pivot != -1 and "This function can only compute averages for Mps in mixed canonical form. Use avg() instead.");
 	assert(O.Qtarget() == Symmetry::qvacuum() and "This function can only calculate averages with local singlet operators. Use avg() instead.");
 	
 	size_t loc1 = this->pivot;
-	size_t loc2 = this->pivot+1;
+	size_t loc2 = this->pivot+distance;
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
 	L.setIdentity(1,1,inBasis (loc1));
 	R.setIdentity(1,1,outBasis(loc2));
 	
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lnext;
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rprev;
+	for (size_t l=0; l<distance+1; ++l)
+	{
+		contract_L(L, A[loc1], O.W_at(loc1), O.IS_HAMILTONIAN(), A[loc1], O.locBasis(loc1), O.opBasis(loc1), Lnext);
+		L = Lnext;
+		Lnext.clear();
+	}
 	
-	contract_L(L, A[loc1], O.W_at(loc1), O.IS_HAMILTONIAN(), A[loc1], O.locBasis(loc1), O.opBasis(loc1), Lnext);
-	contract_R(R, A[loc2], O.W_at(loc2), O.IS_HAMILTONIAN(), A[loc2], O.locBasis(loc2), O.opBasis(loc2), Rprev);
-	
-	return contract_LR(Lnext,Rprev);
+	return contract_LR(L,R);
 }
 
 template<typename Symmetry, typename Scalar>
