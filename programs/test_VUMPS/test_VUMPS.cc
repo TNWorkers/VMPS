@@ -143,8 +143,8 @@ int main (int argc, char* argv[])
 	
 	dt = args.get<double>("dt",0.5); // hopping-offset for SSH model
 	M = args.get<double>("M",5);    // bond dimension
-	tol_eigval = args.get<double>("tol_eigval",1e-9);
-	tol_var = args.get<double>("tol_var",1e-9);
+	tol_eigval = args.get<double>("tol_eigval",1e-7);
+	tol_var = args.get<double>("tol_var",1e-7);
 	max_iter = args.get<size_t>("max_iter",100);
 	min_iter = args.get<size_t>("min_iter",1ul);
 	size_t Nqmax = args.get<size_t>("Nqmax",6);
@@ -192,7 +192,7 @@ int main (int argc, char* argv[])
 	
 	typedef VMPS::HeisenbergU1XXZ HEISENBERG_U1;
 	HEISENBERG_U1 Heis_U1(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
-	HEISENBERG_U1 Heis_U1_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",0.5*Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG_U1 Heis_U1_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",1.2*Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	
 	HEISENBERG_U1::uSolver DMRG_U1(VERB);
 	Eigenstate<HEISENBERG_U1::StateUd> g_U1;
@@ -206,7 +206,7 @@ int main (int argc, char* argv[])
 		
 		if (CALC_DOT)
 		{
-			HEISENBERG_U1::uSolver DMRG_U1_(DMRG::VERBOSITY::ON_EXIT);
+			HEISENBERG_U1::uSolver DMRG_U1_(VERB);
 			Eigenstate<HEISENBERG_U1::StateUd> g_U1_;
 			DMRG_U1_.set_log(2,"e_Heis_U1_.dat","err_eigval_Heis_U1_.dat","err_var_Heis_U1_.dat");
 			DMRG_U1_.edgeState(Heis_U1_, g_U1_, {0}, tol_eigval,tol_var, M, Nqmax, max_iter, min_iter);
@@ -295,7 +295,7 @@ int main (int argc, char* argv[])
 	
 	typedef VMPS::HeisenbergXXZ HEISENBERG0;
 	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
-	HEISENBERG0 Heis0_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",0.5*Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG0 Heis0_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",1.2*Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	
 	HEISENBERG0::uSolver DMRG0(VERB);
 	Eigenstate<HEISENBERG0::StateUd> g0;
@@ -308,7 +308,7 @@ int main (int argc, char* argv[])
 		cout << g0.state.info() << endl;
 		if (CALC_DOT)
 		{
-			HEISENBERG0::uSolver DMRG0_(DMRG::VERBOSITY::ON_EXIT);
+			HEISENBERG0::uSolver DMRG0_(VERB);
 			Eigenstate<HEISENBERG0::StateUd> g0_;
 			DMRG0_.edgeState(Heis0_, g0_, {}, tol_eigval,tol_var, M, 1, max_iter, min_iter);
 			double dot1 = g0.state.dot(g0.state);

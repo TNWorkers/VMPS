@@ -140,10 +140,12 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 	Scalar2 LdotR;
 	if (H.gauge == GAUGE::R)
 	{
+//		LdotR = contract_LR(H.ab, H.LReigen.template cast<Scalar2>(), Vin.data);
 		LdotR = contract_LR(H.ab, H.LReigen, Vin.data);
 	}
 	else if (H.gauge == GAUGE::L)
 	{
+//		LdotR = contract_LR(H.ab, Vin.data, H.LReigen.template cast<Scalar2>());
 		LdotR = contract_LR(H.ab, Vin.data, H.LReigen);
 	}
 	

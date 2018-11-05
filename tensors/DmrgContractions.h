@@ -498,7 +498,9 @@ void contract_L (const Biped<Symmetry,MatrixType2> &Lold,
                  Biped<Symmetry,MatrixType2> &Lnew,
                  bool RANDOMIZE=false)
 {
-	Lnew.clear();
+//	Lnew.clear();
+	Lnew.outerResize(Lold);
+	Lnew.setZero();
 	
 	for (size_t s=0; s<qloc.size(); ++s)
 	for (size_t qL=0; qL<Lold.dim; ++qL)
@@ -564,7 +566,9 @@ void contract_R (const Biped<Symmetry,MatrixType2> &Rold,
                  Biped<Symmetry,MatrixType2> &Rnew,
                  bool RANDOMIZE=false)
 {
-	Rnew.clear();
+//	Rnew.clear();
+	Rnew.outerResize(Rold);
+	Rnew.setZero();
 	
 	for (size_t s=0; s<qloc.size(); ++s)
 	for (size_t qR=0; qR<Rold.dim; ++qR)

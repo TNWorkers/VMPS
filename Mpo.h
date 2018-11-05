@@ -277,6 +277,9 @@ public:
 	inline bool HAS_TWO_SITE_DATA() const {return GOT_TWO_SITE_DATA;};
 	
 	/**Returns the W-matrix at a given site by const reference.*/
+	inline const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W_full() const {return W;};
+	
+	/**Returns the W-matrix at a given site by const reference.*/
 	inline const vector<vector<vector<SparseMatrix<Scalar> > > > &W_at   (size_t loc) const {return W[loc];};
 	
 	/**Returns the W-matrix of the squared operator at a given site by const reference.*/

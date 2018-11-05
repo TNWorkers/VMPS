@@ -88,7 +88,7 @@ const std::map<string,std::any> HeisenbergU1::sweep_defaults =
 	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",20ul}, {"min_halfsweeps",4ul},
-	{"Dinit",5ul}, {"Qinit",10ul}, {"Dlimit",100ul},
+	{"Dinit",8ul}, {"Qinit",7ul}, {"Dlimit",100ul},
 	{"tol_eigval",1e-7}, {"tol_state",1e-6},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
 };

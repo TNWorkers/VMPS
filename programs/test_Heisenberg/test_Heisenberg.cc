@@ -1,7 +1,8 @@
-#ifdef BLAS
+//#ifdef BLAS
+//#include "util/LapackManager.h"
+//#pragma message("LapackManager")
+//#endif
 #include "util/LapackManager.h"
-#pragma message("LapackManager")
-#endif
 
 //#define USE_HDF5_STORAGE
 
@@ -33,6 +34,7 @@ Logger lout;
 #include "solvers/MpsCompressor.h"
 
 #include "models/HeisenbergSU2.h"
+#include "models/HeisenbergU1.h"
 #include "models/HeisenbergU1XXZ.h"
 #include "models/HeisenbergXYZ.h"
 
@@ -123,7 +125,7 @@ int main (int argc, char* argv[])
 	
 	Dinit  = args.get<size_t>("Dinit",2ul);
 	Dlimit = args.get<size_t>("Dmax",100ul);
-	Qinit  = args.get<size_t>("Qinit",10ul);
+	Qinit  = args.get<size_t>("Qinit",7ul);
 	Imin   = args.get<size_t>("Imin",2ul);
 	Imax   = args.get<size_t>("Imax",50ul);
 	tol_eigval = args.get<double>("tol_eigval",1e-7);
@@ -204,6 +206,12 @@ int main (int argc, char* argv[])
 		{
 			lout << "l=" << l << ", <S(i)S(i+1)>=" << isReal(avg(g_U1.state, H_U1.SpSm(l,l+1), g_U1.state)) + isReal(avg(g_U1.state, H_U1.SzSz(l,l+1), g_U1.state)) << endl;
 		}
+		
+		VMPS::HeisenbergU1XXZ H_U1XXZ(L,{{"Jxy",J},{"Jz",1.2*J},{"Jprime",Jprime},{"Jxyrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
+		VMPS::HeisenbergU1XXZ::Solver DMRG_U1XXZ(VERB);
+		Eigenstate<VMPS::HeisenbergU1XXZ::StateXd>  g_U1XXZ;
+		DMRG_U1XXZ.edgeState(H_U1XXZ, g_U1XXZ, {M}, LANCZOS::EDGE::GROUND);
+		cout << "dot=" << dot(g_U1.state,g_U1XXZ.state) << endl;
 		
 		// dynamics (of Néel state)
 		if (CALC_DYNAMICS)

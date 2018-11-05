@@ -905,18 +905,19 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	}
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
-	// Calculate energies
-//	Biped<Symmetry,ComplexMatrixType> Reigen = calc_LReigen(GAUGE::R, Vout.state.Acell[GAUGE::R], Vout.state.Acell[GAUGE::R], 
-//	                                                        Vout.state.C[N_sites-1], Vout.state.qlocCell).state;
-//	Biped<Symmetry,ComplexMatrixType> Leigen = calc_LReigen(GAUGE::L, Vout.state.Acell[GAUGE::L], Vout.state.Acell[GAUGE::L],
-//	                                                        Vout.state.C[N_sites-1], Vout.state.qlocCell).state;
-//	eL = abs(contract_LR(0,    YLlast.template cast<ComplexMatrixType>(), Reigen)) / H.volume();
-//	eR = abs(contract_LR(dW-1, Leigen, YRfrst.template cast<ComplexMatrixType>())) / H.volume();
-//	cout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
+//	// Calculate energies
+//	Biped<Symmetry,ComplexMatrixType> Reigen_ = calc_LReigen(GAUGE::L, Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::L], 
+//	                                                         Vout.state.outBasis(N_sites-1), Vout.state.outBasis(N_sites-1), Vout.state.qloc).state;
+//	Biped<Symmetry,ComplexMatrixType> Leigen_ = calc_LReigen(GAUGE::R, Vout.state.A[GAUGE::R], Vout.state.A[GAUGE::R],
+//	                                                         Vout.state.inBasis(0), Vout.state.inBasis(0), Vout.state.qloc).state;
+//	complex<double> eL_ = contract_LR(0,    YLlast.template cast<ComplexMatrixType>(), Reigen_) / static_cast<double>(H.volume());
+//	complex<double> eR_ = contract_LR(dW-1, Leigen_, YRfrst.template cast<ComplexMatrixType>()) / static_cast<double>(H.volume());
+////	complex<double> eL_ = contract_LR(YLlast.template cast<ComplexMatrixType>(), Reigen_) / static_cast<double>(H.volume());
+////	complex<double> eR_ = contract_LR(Leigen_, YRfrst.template cast<ComplexMatrixType>()) / static_cast<double>(H.volume());
+//	cout << termcolor::blue << "eL_=" << eL_ << ", eR_=" << eR_ << termcolor::reset << endl;
 	
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
-
 	eL = contract_LR(0, YLlast, Reigen) / H.volume();
 	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
 	
@@ -1572,7 +1573,7 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
-		cout << "norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
+		lout << "norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
 	}
 		
 	// SVD-decompose NAAN
@@ -1971,8 +1972,11 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 		contract_R(IdR, NR, Vtmp.A[1], H.locBasis((loc+1)%N_sites), TR);
 
 		Biped<Symmetry,MatrixType> NAAN = TL.contract(TR);
-
-		lout << "l=" << loc << ", norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
+		
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+		{
+			lout << "l=" << loc << ", norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
+		}
 		
 		// SVD-decompose NAAN
 		Biped<Symmetry,MatrixType> U, Vdag;

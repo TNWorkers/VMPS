@@ -41,7 +41,7 @@ private:
 public:
 	typedef MatrixType_ MatrixType;
 private:
-	typedef typename MatrixType::Scalar Scalar;
+	typedef typename MatrixType_::Scalar Scalar;
 	
 public:
 	

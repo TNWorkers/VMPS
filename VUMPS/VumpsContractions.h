@@ -7,37 +7,76 @@
 
 #include "tensors/DmrgContractions.h"
 //include "VUMPS/Umps.h"
-//include "VUMPS/VumpsTransferMatrixAA.h"
+#include "VUMPS/VumpsTransferMatrixAA.h"
 //include "Mpo.h"
+#include "ArnoldiSolver.h" // from ALGS
+#include "Mpo.h"
+#include "VUMPS/VumpsTransferMatrix.h"
 
 template<typename Symmetry, typename Scalar>
 Eigenstate<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > >
 calc_LReigen (GAUGE::OPTION gauge, 
-              const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket,
-              const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra,
-              const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C,
-              const vector<qarray<Symmetry::Nq> > &qlocCell,
+              const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Abra,
+              const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Aket,
+//              const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &guess,
+              const Qbasis<Symmetry> &basisBra, 
+              const Qbasis<Symmetry> &basisKet, 
+              const vector<vector<qarray<Symmetry::Nq> > > &qloc,
               size_t dimK = 100ul)
 {
-//	TransferMatrixAA<Symmetry,Scalar> T(gauge, Abra, Aket, qlocCell);
-//	PivotVector<Symmetry,complex<double> > LRtmp(C.template cast<MatrixXcd>());
+	TransferMatrixAA<Symmetry,Scalar> T(gauge, Abra, Aket, qloc);
+	
+	PivotVector<Symmetry,complex<double> > LRtmp;
+	if (gauge == GAUGE::L)
+	{
+		LRtmp.data[0].setIdentity(basisKet,basisBra);
+	}
+	else
+	{
+		LRtmp.data[0].setIdentity(basisBra,basisKet);
+	}
+	
+	ArnoldiSolver<TransferMatrixAA<Symmetry,double>,PivotVector<Symmetry,complex<double> > > Arnie;
+	Arnie.set_dimK(dimK);
+	
+	complex<double> lambda;
+	
+	Arnie.calc_dominant(T,LRtmp,lambda);
+	lout << Arnie.info() << endl;
+	
+	if (abs(lambda.imag()) > 1e-10)
+	{
+		lout << termcolor::red << "Non-zero imaginary part of dominant eigenvalue λ=" << lambda << ", |λ|=" << abs(lambda) << termcolor::reset << endl;
+	}
+	
+	Eigenstate<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > > out;
+	out.energy = lambda.real();
+	out.state  = LRtmp.data[0];
+	
+	return out;
+	
+//	auto Id = Mpo<Symmetry,Scalar>::Identity(qloc);
+//	TransferMatrix<Symmetry,Scalar> T(gauge, Abra, Aket, guess, Id.W_full(), qloc, Id.opBasis(), 0);
+//	TransferVector<Symmetry,complex<double> > LRtmp;
 //	
-//	ArnoldiSolver<TransferMatrixAA<Symmetry,double>,PivotVector<Symmetry,complex<double> > > Arnie;
+//	ArnoldiSolver<TransferMatrix<Symmetry,Scalar>,TransferVector<Symmetry,complex<double> > > Arnie;
 //	Arnie.set_dimK(dimK);
 //	
 //	complex<double> lambda;
 //	
 //	Arnie.calc_dominant(T,LRtmp,lambda);
 //	
-	Eigenstate<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > > out;
-//	out.energy = lambda.real();
-//	out.state = LRtmp.data[0];
+//	cout << "λ=" << lambda << endl;
 //	if (abs(lambda.imag()) > 1e-10)
 //	{
 //		lout << termcolor::red << "Non-zero imaginary part of dominant eigenvalue λ=" << lambda << ", |λ|=" << abs(lambda) << termcolor::reset << endl;
 //	}
 //	
-	return out;
+//	Eigenstate<Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > > out;
+//	out.energy = lambda.real();
+//	out.state  = LRtmp.data;
+//	
+//	return out;
 }
 
 ///**Calculates the tensor \f$h_L\f$ (eq. (12)) from the explicit 4-legged 2-site Hamiltonian and \f$A_L\f$.*/

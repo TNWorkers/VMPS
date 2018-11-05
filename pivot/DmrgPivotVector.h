@@ -130,13 +130,24 @@ PivotVector<Symmetry,Scalar>& PivotVector<Symmetry,Scalar>::operator+= (const Pi
 	for (size_t s=0; s<data.size(); s++)
 	for (size_t q=0; q<data[s].dim; ++q)
 	{
-		if (data[s].block[q].size() == 0)
+		
+//		qarray2<Symmetry::Nq> quple = {data[s].in[q], data[s].out[q]};
+//		auto it = Vrhs.data[s].dict.find(quple);
+//		if (it != Vrhs.data[s].dict.end())
 		{
-			data[s].block[q] = Vrhs.data[s].block[q];
-		}
-		else if (data[s].block[q].size() != 0 and Vrhs.data[s].block[q].size() != 0)
-		{
-			data[s].block[q] += Vrhs.data[s].block[q];
+//			cout << "+=" << endl;
+//			print_size(data[s].block[q],"data[s].block[q]");
+//			print_size(Vrhs.data[s].block[it->second],"Vrhs.data[s].block[it->second]");
+//			cout << endl;
+			
+			if (data[s].block[q].size() == 0)
+			{
+				data[s].block[q] = Vrhs.data[s].block[q];
+			}
+			else if (data[s].block[q].size() != 0 and Vrhs.data[s].block[q].size() != 0)
+			{
+				data[s].block[q] += Vrhs.data[s].block[q];
+			}
 		}
 	}
 	return *this;
@@ -169,13 +180,23 @@ operator-= (const PivotVector<Symmetry,Scalar> &Vrhs)
 //		print_size(data[s].block[q],"data[s].block[q]");
 //		print_size(Vrhs.data[s].block[q],"Vrhs.data[s].block[q]");
 		
-		if (data[s].block[q].size() == 0)
+//		qarray2<Symmetry::Nq> quple = {data[s].in[q], data[s].out[q]};
+//		auto it = Vrhs.data[s].dict.find(quple);
+//		if (it != Vrhs.data[s].dict.end())
 		{
-			data[s].block[q] = -Vrhs.data[s].block[q];
-		}
-		else if (data[s].block[q].size() != 0 and Vrhs.data[s].block[q].size() != 0)
-		{
-			data[s].block[q] -= Vrhs.data[s].block[q];
+//			cout << "-=" << endl;
+//			print_size(data[s].block[q],"data[s].block[q]");
+//			print_size(Vrhs.data[s].block[it->second],"Vrhs.data[s].block[it->second]");
+//			cout << endl;
+			
+			if (data[s].block[q].size() == 0)
+			{
+				data[s].block[q] = -Vrhs.data[s].block[q];
+			}
+			else if (data[s].block[q].size() != 0 and Vrhs.data[s].block[q].size() != 0)
+			{
+				data[s].block[q] -= Vrhs.data[s].block[q];
+			}
 		}
 	}
 	return *this;
@@ -250,16 +271,16 @@ Scalar dot (const PivotVector<Symmetry,Scalar> &V1, const PivotVector<Symmetry,S
 	for (size_t s=0; s<V2.data.size(); ++s)
 	for (size_t q=0; q<V2.data[s].dim; ++q)
 	{
-//		if (V1.data[s].in[q] != V2.data[s].in[q] or V1.data[s].out[q] != V2.data[s].out[q])
-//		{
-////			cout << "s=" << s << ", q=" << q << endl;
-////			cout << "V1 inout=" << V1.data[s].in[q] << ", " << V1.data[s].out[q] << endl;
-////			cout << "V2 inout=" << V2.data[s].in[q] << ", " << V2.data[s].out[q] << endl;
-////			print_size(V1.data[s].block[q],"V1.data[s].block[q]");
-////			print_size(V2.data[s].block[q],"V2.data[s].block[q]");
-////			cout << endl;
-//			cout << termcolor::red << "Mismatching blocks in dot(PivotVector)" << termcolor::reset << endl;
-//		}
+		if (V1.data[s].in[q] != V2.data[s].in[q] or V1.data[s].out[q] != V2.data[s].out[q])
+		{
+			cout << "s=" << s << ", q=" << q << endl;
+			cout << "V1 inout=" << V1.data[s].in[q] << ", " << V1.data[s].out[q] << endl;
+			cout << "V2 inout=" << V2.data[s].in[q] << ", " << V2.data[s].out[q] << endl;
+			print_size(V1.data[s].block[q],"V1.data[s].block[q]");
+			print_size(V2.data[s].block[q],"V2.data[s].block[q]");
+			cout << endl;
+			cout << termcolor::red << "Mismatching blocks in dot(PivotVector)" << termcolor::reset << endl;
+		}
 		
 		if (V1.data[s].block[q].size() > 0 and 
 		    V2.data[s].block[q].size() > 0)
@@ -269,7 +290,15 @@ Scalar dot (const PivotVector<Symmetry,Scalar> &V1, const PivotVector<Symmetry,S
 		
 //		qarray2<Symmetry::Nq> quple = {V2.data[s].in[q], V2.data[s].out[q]};
 //		auto it = V1.data[s].dict.find(quple);
-//		res += (V1.data[s].block[it->second].adjoint() * V2.data[s].block[q]).trace() * Symmetry::coeff_dot(V1.data[s].out[it->second]);
+//		if (it != V1.data[s].dict.end())
+//		{
+////			cout << "dot" << endl;
+////			print_size(V1.data[s].block[it->second],"V1.data[s].block[it->second]");
+////			print_size(V2.data[s].block[q],"V2.data[s].block[q]");
+////			cout << endl;
+////			
+//			res += (V1.data[s].block[it->second].adjoint() * V2.data[s].block[q]).trace() * Symmetry::coeff_dot(V1.data[s].out[it->second]);
+//		}
 	}
 	return res;
 }
