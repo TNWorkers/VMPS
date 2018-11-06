@@ -24,8 +24,13 @@ Logger lout;
 #include "StringStuff.h"
 #include "Stopwatch.h"
 
-//include "tensors/Biped.h"
-//include "VUMPS/Umps.h"
+#include <Eigen/Core>
+using namespace Eigen;
+
+//-------- Test of the ArnoldiSolver:
+//size_t dim (const MatrixXcd &A) {return A.rows();}
+//#include "LanczosWrappers.h"
+//#include "HxV.h"
 
 #include "VUMPS/VumpsSolver.h"
 #include "VUMPS/VumpsLinearAlgebra.h"
@@ -52,7 +57,7 @@ size_t M, max_iter, min_iter;
 double tol_eigval, tol_var;
 bool ISING, HEIS2, HEIS3, SSH, ALL;
 
-// Ising model integrations
+//-------- Ising model integrations:
 // reference: Pfeuty, Annals of Physics 57, 79-90, 1970
 //double IsingGroundIntegrand (double x, void*)
 //{
@@ -149,6 +154,17 @@ int main (int argc, char* argv[])
 	min_iter = args.get<size_t>("min_iter",1ul);
 	size_t Nqmax = args.get<size_t>("Nqmax",6);
 	size_t D = args.get<size_t>("D",3);
+	
+//	-------- Test of the ArnoldiSolver:
+//	MatrixXd A(100,100);
+//	A.setRandom();
+//	A.triangularView<Upper>() = A.adjoint();
+//	SelfAdjointEigenSolver<MatrixXd> Eugen(A);
+//	cout << Eugen.eigenvalues().head(5).transpose() << endl;
+//	complex<double> lambda;
+//	VectorXcd v(100);
+//	ArnoldiSolver<MatrixXd,VectorXcd> Arnie(A,v,lambda);
+//	cout << Arnie.info() << endl;
 	
 	bool CALC_SU2 = args.get<bool>("SU2",false);
 	bool CALC_U1 = args.get<bool>("U1",true);

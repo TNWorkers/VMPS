@@ -310,9 +310,8 @@ struct DMRG
 			
 			//LANCZOS DEFAULTS
 			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO = LANCZOS::REORTHO::FULL;
-			constexpr static ::LANCZOS::CONVTEST::OPTION LANCZOS_CONVTEST = LANCZOS::CONVTEST::COEFFWISE;
-			constexpr static double eps_eigval = 1e-7;
-			constexpr static double eps_coeff  = 1e-7;
+			constexpr static double tol_eigval_Lanczos = 1e-8;
+			constexpr static double tol_state_Lanczos  = 1e-7;
 			constexpr static size_t dimK       = 500ul;
 		};
 		
@@ -347,9 +346,8 @@ struct DMRG
 		struct LANCZOS
 		{
 			::LANCZOS::REORTHO::OPTION REORTHO   = CONTROL::DEFAULT::REORTHO;
-			::LANCZOS::CONVTEST::OPTION CONVTEST = CONTROL::DEFAULT::LANCZOS_CONVTEST;
-			double eps_eigval                    = CONTROL::DEFAULT::eps_eigval;
-			double eps_coeff                     = CONTROL::DEFAULT::eps_coeff;
+			double tol_eigval                    = CONTROL::DEFAULT::tol_eigval_Lanczos;
+			double tol_state                     = CONTROL::DEFAULT::tol_state_Lanczos;
 			size_t dimK                          = CONTROL::DEFAULT::dimK;
 		};
 	};

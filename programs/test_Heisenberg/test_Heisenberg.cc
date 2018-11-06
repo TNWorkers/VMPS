@@ -267,12 +267,12 @@ int main (int argc, char* argv[])
 		
 		t_SU2 = Watch_SU2.time();
 		
-		double sgc_avgS = Stot/sqrt(Stot*(Stot+1.));
-		cout << "sgc_avgS=" << sgc_avgS << ", " << Sym::SU2<Sym::SpinSU2>::coeff_CGC(qarray<1>{Dtot},qarray<1>{3},qarray<1>{Dtot}, M, 0, M) << ", Stot=" << Stot << endl;
+		double cgc_avgS = (Stot==0)? 1:Stot/sqrt(Stot*(Stot+1.));
+		cout << "cgc_avgS=" << cgc_avgS << ", " << Sym::SU2<Sym::SpinSU2>::coeff_CGC(qarray<1>{Dtot},qarray<1>{3},qarray<1>{Dtot}, M, 0, M) << ", Stot=" << Stot << endl;
 		
 		for (size_t l=0; l<L; ++l)
 		{
-			double val = sqrt(3.) * sgc_avgS * isReal(avg(g_SU2.state, H_SU2.S(l), g_SU2.state));
+			double val = sqrt(3.) * cgc_avgS * isReal(avg(g_SU2.state, H_SU2.S(l), g_SU2.state));
 			
 			lout << "l=" << l << "\t" 
 				 << "<S>=" << val << "\t"
