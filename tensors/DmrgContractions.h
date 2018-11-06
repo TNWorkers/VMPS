@@ -215,7 +215,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 						size_t b = iW.col();
 						
 						//Daux-1 is the Hamiltonian block. Only singlett couplings are neccessary.
-						if(a == W[s1][s2][k].cols()-1 and IS_HAMILTONIAN and quple[2] != Symmetry::qvacuum()) {continue;}
+						if(a == W[s1][s2][k].rows()-1 and IS_HAMILTONIAN and quple[2] != Symmetry::qvacuum()) {continue;}
 						
 						if (MODE == FULL or
 						   (MODE == TRIANGULAR and fixed_a>b) or
