@@ -25,79 +25,6 @@
 
 #include "Mps.h" // temp.
 
-struct VUMPS
-{
-	struct CONTROL
-	{
-		struct DEFAULT
-		{
-			//GLOB DEFAULTS
-			constexpr static size_t min_iterations = 6;
-			constexpr static size_t max_iterations = 20;
-			constexpr static double tol_eigval     = 1e-6;
-			constexpr static double tol_var        = 1e-5;
-			constexpr static size_t Dinit          = 20;
-			constexpr static size_t Dlimit         = 500;
-			constexpr static size_t Qinit          = 20;
-			constexpr static size_t savePeriod     = 0;
-
-			//DYN DEFAULTS
-			static size_t deltaD (size_t i)
-				{
-					size_t out;
-					if      (i<=80)            {out = 5ul;}
-					else if (i> 80 and i<=120) { out=0ul; }
-					else if (i>120 and i<=160) { out=5ul; }
-					else if (i>160 and i<=200) { out=0ul; }
-					else if (i>200 and i<=240) { out=4ul; }
-					else if (i>240 and i<=280) { out=0ul; }
-					else if (i>280 and i<=300) { out=2ul; }
-					else if (i>300)            { out=10ul; }    
-					return out;
-				}
-			static double errLimit_for_flucts (size_t i) {return 1.e-1;}
-			static double eps_svd        (size_t i)      {return 1.e-7;}
-			static void   doSomething    (size_t i)      {return;}
-			
-			//LANCZOS DEFAULTS
-			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO           = LANCZOS::REORTHO::FULL;
-			constexpr static ::LANCZOS::CONVTEST::OPTION LANCZOS_CONVTEST = LANCZOS::CONVTEST::COEFFWISE;
-			constexpr static double eps_eigval                            = 1.e-7;
-			constexpr static double eps_coeff                             = 1.e-4;
-			constexpr static size_t dimK                                  = 200ul;
-		};
-		
-		struct GLOB
-		{
-			size_t min_iterations           = CONTROL::DEFAULT::min_iterations;
-			size_t max_iterations           = CONTROL::DEFAULT::max_iterations;
-			double tol_eigval               = CONTROL::DEFAULT::tol_eigval;
-			double tol_cvar                 = CONTROL::DEFAULT::tol_var;
-			size_t Dinit                    = CONTROL::DEFAULT::Dinit;
-			size_t Dlimit                   = CONTROL::DEFAULT::Dlimit;
-			size_t Qinit                    = CONTROL::DEFAULT::Qinit;
-			size_t savePeriod               = CONTROL::DEFAULT::savePeriod;
-		};
-		
-		struct DYN
-		{
-			function<size_t(size_t)> deltaD              = CONTROL::DEFAULT::deltaD;
-			function<double(size_t)> errLimit_for_flucts = CONTROL::DEFAULT::errLimit_for_flucts;
-			function<double(size_t)> eps_svd             = CONTROL::DEFAULT::eps_svd;
-			function<void(size_t)>   doSomething         = CONTROL::DEFAULT::doSomething;
-		};
-		
-		struct LANCZOS
-		{
-			::LANCZOS::REORTHO::OPTION REORTHO   = CONTROL::DEFAULT::REORTHO;
-			::LANCZOS::CONVTEST::OPTION CONVTEST = CONTROL::DEFAULT::LANCZOS_CONVTEST;
-			double eps_eigval                    = CONTROL::DEFAULT::eps_eigval;
-			double eps_coeff                     = CONTROL::DEFAULT::eps_coeff;
-			size_t dimK                          = CONTROL::DEFAULT::dimK;
-		};
-	};
-};
-
 /**
  * Solver that calculates the ground state of a UMPS. Analogue of the DmrgSolver class.
  * \ingroup VUMPS
@@ -147,8 +74,13 @@ public:
 	 */
 	void set_log (int N_log_input, string file_e_input, string file_err_eigval_input, string file_err_var_input);
 	///\}
-	
-	/**Calculates the highest or lowest eigenstate with an MPO (algorithm 6).*/
+
+	/**
+	 * Calculates the highest or lowest eigenstate with an MPO (algorithm 6).
+	 */
+	// void edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
+	//                 qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE=LANCZOS::EDGE::GROUND);
+
 	void edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
 	                qarray<Symmetry::Nq> Qtot_input, 
 	                double tol_eigval_input=1e-7, double tol_var_input=1e-6, 
@@ -587,6 +519,42 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 		lout << Vout.state.info() << endl;
 		lout << PrepTimer.info("prepare") << endl; 
 	}
+	
+// 	if (CHOSEN_VERBOSITY>=2)
+// 	{
+// 		lout << PrepTimer.info("• initial state & sweep") << endl;
+// 		lout <<                "• initial energy        : E₀=" << Eold << endl;
+// 		lout <<                "• initial state         : " << Vout.state.info() << endl;
+// 		lout <<                "• initial fluctuation strength  : α_rsvd=" << termcolor::underline << Vout.state.alpha_rsvd << termcolor::reset << endl;
+// 		lout <<                "• initial singular value cutoff : ε_svd=" << termcolor::underline << Vout.state.eps_svd << termcolor::reset << endl;
+// 		int i_alpha_switchoff=0;
+// 		for (int i=0; i<GlobParam.max_halfsweeps; ++i)
+// 		{
+// 			if (DynParam.max_alpha_rsvd(i) == 0.) {i_alpha_switchoff = i; break;}
+// 		}
+// 		lout <<                "• fluctutations turned off after " << termcolor::underline << i_alpha_switchoff << termcolor::reset << " half-sweeps" << endl;
+// 		if (Vout.state.max_Nrich == -1)
+// 		{
+// 			lout <<            "• fluctuations use " << termcolor::underline << "all" << termcolor::reset << " additional states" << endl;
+// 		}
+// 		else
+// 		{
+// 			lout <<            "• fluctuations use " << Vout.state.max_Nrich << " additional states" << endl;
+// 		}
+// 		lout << "• initial bond dim. increase by " << termcolor::underline << static_cast<int>((DynParam.Dincr_rel(0)-1.)*100.) 
+// 		     << "%" << termcolor::reset << " and at least by " << termcolor::underline << DynParam.Dincr_abs(0) << termcolor::reset
+// 		     << " every " << termcolor::underline << DynParam.Dincr_per(0) << termcolor::reset << " half-sweeps" << endl;
+// 		lout << "• keep at least " << termcolor::underline << Vout.state.min_Nsv << termcolor::reset << " singular values per block" << endl;
+// 		lout << "• make between " << termcolor::underline << GlobParam.min_halfsweeps << termcolor::reset << " and " 
+// 		     << termcolor::underline << GlobParam.max_halfsweeps << termcolor::reset << " half-sweep iterations" << endl;
+// 		lout << "• eigenvalue tolerance: " << termcolor::underline << GlobParam.tol_eigval << termcolor::reset << endl;
+// 		lout << "• state tolerance: " << termcolor::underline << GlobParam.tol_state << termcolor::reset << " using " 
+// 		     << termcolor::underline << GlobParam.CONVTEST << termcolor::reset << endl;
+// 		lout << "• calculate entropy on exit: " << boolalpha << termcolor::underline << GlobParam.CALC_S_ON_EXIT << termcolor::reset << endl;
+// 		lout << endl;
+// //		Vout.state.graph("init");
+// 	}
+
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -1311,6 +1279,8 @@ test_LReigen (const Eigenstate<Umps<Symmetry,Scalar> > &Vout) const
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+// edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE);
+
 edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, 
            double tol_eigval_input, double tol_var_input, size_t M, size_t Nqmax, 
            size_t max_iterations, size_t min_iterations, bool USE_STATE)

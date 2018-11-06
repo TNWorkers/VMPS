@@ -13,7 +13,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
 	size_t amount_of_cells = 1;
 	auto Obs = O;
-	if(Obs.length() != Vket.length())
+	if(Obs.length() != Vket.length() and Vket.Qtarget() != Symmetry::qvacuum())
 	{
 		amount_of_cells = static_cast<size_t>(Obs.length()/Vket.length());
 		qarray<Symmetry::Nq> transformed_Qtot = ::adjustQN<Symmetry>(Vket.Qtarget(),amount_of_cells);
@@ -25,7 +25,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	}
 	auto Vbra_copy = Vbra;
 	auto Vket_copy = Vket;
-	if(Obs.length() != Vket.length())
+	if(Obs.length() != Vket.length() and Vket.Qtarget() != Symmetry::qvacuum())
 	{
 		Vbra_copy.adjustQN(amount_of_cells);
 		Vket_copy.adjustQN(amount_of_cells);
