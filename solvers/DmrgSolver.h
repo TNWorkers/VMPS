@@ -745,10 +745,10 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 iteration_zero (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
 				double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead)
-{	
+{
 	//*********************************************************LanczosStep******************************************************
 	double Ei = Vout.energy;
-
+	
 	Stopwatch<> OheadTimer;
 	Eigenstate<PivotVector<Symmetry,Scalar> > g;
 	int old_pivot = SweepStat.pivot;
@@ -756,18 +756,18 @@ iteration_zero (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 		                                           Vout.state.leftSplitStep(SweepStat.pivot,g.state.data[0]);
 	SweepStat.pivot = Vout.state.get_pivot();
 	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,SweepStat.pivot) : build_R(H,Vout,SweepStat.pivot);
-
+	
 	PivotMatrix0<Symmetry,Scalar,Scalar> Heff0;
 	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)?
 		Heff0 = PivotMatrix0<Symmetry,Scalar,Scalar>(Heff[old_pivot+1].L, Heff[old_pivot].R):
 		Heff0 = PivotMatrix0<Symmetry,Scalar,Scalar>(Heff[old_pivot].L, Heff[old_pivot-1].R);
 	time_overhead += OheadTimer.time();
-
+	
 	Stopwatch<> LanczosTimer;
 	LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LanczosParam.REORTHO);
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
-	Lutz.edgeState(Heff0,g, EDGE, LanczosParam.eps_eigval, LanczosParam.eps_coeff, false);
-
+	Lutz.edgeState(Heff0,g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << "loc=" << SweepStat.pivot << "\t" << Lutz.info() << endl;
@@ -776,7 +776,7 @@ iteration_zero (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 	
 	Vout.energy = g.energy;
 	Vout.state.absorb(SweepStat.pivot, SweepStat.CURRENT_DIRECTION, g.state.data[0]);
-
+	
 	DeltaEopt = Ei-Vout.energy;
 	time_lanczos += LanczosTimer.time();
 	//**************************************************************************************************************************
@@ -820,7 +820,7 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LanczosParam.REORTHO);
 	
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
-	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LanczosParam.eps_eigval, LanczosParam.eps_coeff, false);
+	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
@@ -876,7 +876,7 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	Stopwatch<> LanczosTimer;
 	LanczosSolver<PivotMatrix2<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LanczosParam.REORTHO);
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
-	Lutz.edgeState(Heff2, g, EDGE, LanczosParam.eps_eigval, LanczosParam.eps_coeff, false);
+	Lutz.edgeState(Heff2, g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
 	time_lanczos += LanczosTimer.time();
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
@@ -1111,7 +1111,7 @@ LanczosStep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LA
 	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LanczosParam.REORTHO);
 	
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
-	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LanczosParam.eps_eigval, LanczosParam.eps_coeff, false);
+	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
 	
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{

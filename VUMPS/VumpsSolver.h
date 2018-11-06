@@ -61,7 +61,6 @@ struct VUMPS
 			
 			//LANCZOS DEFAULTS
 			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO           = LANCZOS::REORTHO::FULL;
-			constexpr static ::LANCZOS::CONVTEST::OPTION LANCZOS_CONVTEST = LANCZOS::CONVTEST::COEFFWISE;
 			constexpr static double eps_eigval                            = 1.e-7;
 			constexpr static double eps_coeff                             = 1.e-4;
 			constexpr static size_t dimK                                  = 200ul;
@@ -90,7 +89,6 @@ struct VUMPS
 		struct LANCZOS
 		{
 			::LANCZOS::REORTHO::OPTION REORTHO   = CONTROL::DEFAULT::REORTHO;
-			::LANCZOS::CONVTEST::OPTION CONVTEST = CONTROL::DEFAULT::LANCZOS_CONVTEST;
 			double eps_eigval                    = CONTROL::DEFAULT::eps_eigval;
 			double eps_coeff                     = CONTROL::DEFAULT::eps_coeff;
 			size_t dimK                          = CONTROL::DEFAULT::dimK;
@@ -866,7 +864,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		
 		Stopwatch<> LanczosTimer;
 		LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-		Lutz(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
+		Lutz(LANCZOS::REORTHO::FULL);
 		Lutz.set_dimK(min(200ul, dim(gAC.state)));
 		Lutz.edgeState(HeffA[l], gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -882,7 +880,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		gC.state = PivotVector<Symmetry,Scalar>(Vout.state.C[l]);
 		
 		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-		Lucy(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
+		Lucy(LANCZOS::REORTHO::FULL);
 		Lucy.set_dimK(min(200ul, dim(gC.state)));
 		Lucy.edgeState(PivotMatrix0(HeffC[l]), gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 				
@@ -979,7 +977,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		
 		Stopwatch<> LanczosTimer;
 		LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-		Lutz(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
+		Lutz(LANCZOS::REORTHO::FULL);
 		Lutz.set_dimK(min(200ul, dim(gAC.state)));
 		Lutz.edgeState(HeffA[l], gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -995,7 +993,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		gCR.state = PivotVector<Symmetry,Scalar>(Vout.state.C[l]);
 		
 		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-		Lucy(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
+		Lucy(LANCZOS::REORTHO::FULL);
 		Lucy.set_dimK(min(200ul, dim(gCR.state)));
 		Lucy.edgeState(PivotMatrix0(HeffC[l]), gCR, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		//ensure phase convention: first element is positive
@@ -1015,7 +1013,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		gCL.state = PivotVector<Symmetry,Scalar>(Vout.state.C[lC]);
 		
 		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-		Luca(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
+		Luca(LANCZOS::REORTHO::FULL);
 		Luca.set_dimK(min(200ul, dim(gCL.state)));
 		Luca.edgeState(PivotMatrix0(HeffC[lC]), gCL, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		//ensure phase convention: first element is positive
@@ -1221,7 +1219,7 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 	
 	Stopwatch<> LanczosTimer;
 	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-	Lutz(LANCZOS::REORTHO::FULL, LANCZOS::CONVTEST::SQ_TEST);
+	Lutz(LANCZOS::REORTHO::FULL);
 	Lutz.set_dimK(min(200ul, dim(g.state)));
 	Lutz.edgeState(HeffA[0], g, LANCZOS::EDGE::GROUND, DMRG::CONTROL::DEFAULT::eps_eigval, DMRG::CONTROL::DEFAULT::eps_coeff, false);
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
