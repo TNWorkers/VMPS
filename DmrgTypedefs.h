@@ -191,6 +191,17 @@ using namespace Eigen;
 typedef SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXd;
 typedef SparseMatrix<std::complex<double>,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXcd;
 
+namespace VMPS
+{
+	struct DIRECTION
+	{
+		enum OPTION
+		{
+			LEFT, /**<sweep to the left, obviously*/
+			RIGHT /**<sweep to the right, duh*/
+		};
+	};	
+}
 /**Namespace imitation for various enums.*/
 struct DMRG
 {
@@ -328,7 +339,7 @@ struct DMRG
 			DMRG::CONVTEST::OPTION CONVTEST = CONTROL::DEFAULT::CONVTEST;
 			bool CALC_S_ON_EXIT             = CONTROL::DEFAULT::CALC_S_ON_EXIT;
 		};
-		
+
 		struct DYN
 		{
 			function<double(size_t)> max_alpha_rsvd             = CONTROL::DEFAULT::max_alpha_rsvd;

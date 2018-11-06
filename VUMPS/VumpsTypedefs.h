@@ -39,32 +39,23 @@ struct VUMPS
 		struct DEFAULT
 		{
 			//GLOB DEFAULTS
-			constexpr static size_t min_iterations = 6;
-			constexpr static size_t max_iterations = 20;
-			constexpr static double tol_eigval     = 1e-6;
-			constexpr static double tol_var        = 1e-5;
-			constexpr static size_t Dinit          = 20;
+			constexpr static size_t min_iterations = 1;
+			constexpr static size_t max_iterations = 300;
+			constexpr static double tol_eigval     = 1e-10;
+			constexpr static double tol_state      = 1e-10;
+			constexpr static double tol_var        = 1e-3;
+			constexpr static size_t Dinit          = 4;
 			constexpr static size_t Dlimit         = 500;
-			constexpr static size_t Qinit          = 20;
+			constexpr static size_t Qinit          = 4;
 			constexpr static size_t savePeriod     = 0;
 
 			//DYN DEFAULTS
-			static size_t deltaD (size_t i)
-				{
-					size_t out;
-					if      (i<=80)            { out=5ul; }
-					else if (i> 80 and i<=120) { out=0ul; }
-					else if (i>120 and i<=160) { out=5ul; }
-					else if (i>160 and i<=200) { out=0ul; }
-					else if (i>200 and i<=240) { out=4ul; }
-					else if (i>240 and i<=280) { out=0ul; }
-					else if (i>280 and i<=300) { out=2ul; }
-					else if (i>300)            { out=10ul; }    
-					return out;
-				}
-			static double errLimit_for_flucts (size_t i) {return 1.e-1;}
-			static double eps_svd        (size_t i)      {return 1.e-7;}
-			static void   doSomething    (size_t i)      {return;}
+			static size_t max_deltaD          (size_t i) {return (i<200)? 100ul:0ul;} // Maximum expansion by 100 and turn off expansion completely after 200 iterations
+			static size_t Dincr_abs           (size_t i) {return 2ul;} // increase D by at least Dincr_abs
+			static double Dincr_rel           (size_t i) {return 1.04;} // increase D by at least 4%
+			static size_t Dincr_per           (size_t i) {return 10ul;} // increase D every 10 iterations
+			static void   doSomething         (size_t i) {return;}
+			static UMPS_ALG::OPTION iteration (size_t i) {return UMPS_ALG::PARALLEL;}
 			
 			//LANCZOS DEFAULTS
 			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO           = LANCZOS::REORTHO::FULL;
@@ -78,7 +69,8 @@ struct VUMPS
 			size_t min_iterations           = CONTROL::DEFAULT::min_iterations;
 			size_t max_iterations           = CONTROL::DEFAULT::max_iterations;
 			double tol_eigval               = CONTROL::DEFAULT::tol_eigval;
-			double tol_cvar                 = CONTROL::DEFAULT::tol_var;
+			double tol_var                  = CONTROL::DEFAULT::tol_var;
+			double tol_state                = CONTROL::DEFAULT::tol_state;
 			size_t Dinit                    = CONTROL::DEFAULT::Dinit;
 			size_t Dlimit                   = CONTROL::DEFAULT::Dlimit;
 			size_t Qinit                    = CONTROL::DEFAULT::Qinit;
@@ -87,10 +79,13 @@ struct VUMPS
 		
 		struct DYN
 		{
-			function<size_t(size_t)> deltaD              = CONTROL::DEFAULT::deltaD;
-			function<double(size_t)> errLimit_for_flucts = CONTROL::DEFAULT::errLimit_for_flucts;
-			function<double(size_t)> eps_svd             = CONTROL::DEFAULT::eps_svd;
+			function<size_t(size_t)> max_deltaD          = CONTROL::DEFAULT::max_deltaD;
+			function<size_t(size_t)> Dincr_abs           = CONTROL::DEFAULT::Dincr_abs;
+			function<double(size_t)> Dincr_rel           = CONTROL::DEFAULT::Dincr_rel;
+			function<size_t(size_t)> Dincr_per           = CONTROL::DEFAULT::Dincr_per;
+			// function<double(size_t)> eps_svd             = CONTROL::DEFAULT::eps_svd;
 			function<void(size_t)>   doSomething         = CONTROL::DEFAULT::doSomething;
+			function<size_t(size_t)> iteration           = CONTROL::DEFAULT::iteration;
 		};
 		
 		struct LANCZOS

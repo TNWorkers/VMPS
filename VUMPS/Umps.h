@@ -198,7 +198,6 @@ private:
 	size_t max_Nsv=100000ul, min_Nsv=1ul;
 	int max_Nrich;
 
-	size_t N_sv;
 	qarray<Nq> Qtot;
 	
 	/**Calculate entropy at site \p loc.*/

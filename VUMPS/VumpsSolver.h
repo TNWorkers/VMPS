@@ -49,8 +49,10 @@ public:
 	/**Resets the verbosity level.*/
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
 	
-	/**Resets a custom algorithm.*/
-	inline void set_algorithm (UMPS_ALG::OPTION ALGORITHM) {CHOSEN_ALGORITHM = ALGORITHM; USER_SET_ALGORITHM = true;};
+	//call this function if you want to set the parameters for the solver by yourself
+	void userSetGlobParam    () { USER_SET_GLOBPARAM     = true; }
+	void userSetDynParam     () { USER_SET_DYNPARAM      = true; }
+	void userSetLanczosParam () { USER_SET_LANCZOSPARAM  = true; }
 
 	VUMPS::CONTROL::GLOB GlobParam;
 	VUMPS::CONTROL::DYN  DynParam;
@@ -79,15 +81,8 @@ public:
 	/**
 	 * Calculates the highest or lowest eigenstate with an MPO (algorithm 6).
 	 */
-	// void edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
-	//                 qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE=LANCZOS::EDGE::GROUND);
-
 	void edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
-	                qarray<Symmetry::Nq> Qtot_input, 
-	                double tol_eigval_input=1e-7, double tol_var_input=1e-6, 
-	                size_t M=10, size_t Nqmax=4, 
-	                size_t max_iterations=50, size_t min_iterations=6,
-					bool USE_STATE=false);
+	                qarray<Symmetry::Nq> Qtot, LANCZOS::EDGE::OPTION EDGE=LANCZOS::EDGE::GROUND, bool USE_STATE=false);
 	
 // private:
 	
@@ -107,7 +102,7 @@ public:
 	
 	///\{
 	/**Prepares the class setting up the environments. Used with an Mpo.*/
-	void prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M, size_t Nqmax, bool USE_STATE=false);
+	void prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, bool USE_STATE=false);
 	
 	/**Performs an iteration with an n-site unit cell (in parallel, algorithm 3). Used with an MPO.*/
 	void iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
@@ -124,8 +119,7 @@ public:
 	void iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
 	/**Prepares the class, setting up the environments for IDMRG.*/
-	void prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot,
-						size_t M_input, size_t Nqmax, bool USE_STATE=false);
+	void prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, bool USE_STATE=false);
 	
 	/**old energy for comparison in IDMRG.*/
 	double Eold = std::nan("1");
@@ -159,9 +153,13 @@ public:
 	
 	/**chain length*/
 	size_t N_sites;
-	
+
+	bool USER_SET_GLOBPARAM    = false;
+	bool USER_SET_DYNPARAM     = false;
+	bool USER_SET_LANCZOSPARAM = false;
+
 	/**tolerances*/
-	double tol_eigval, tol_var;
+	// double tol_eigval, tol_var;
 	
 	/**keeping track of iterations*/
 	size_t N_iterations;
@@ -234,8 +232,6 @@ public:
 	
 	/**control of verbosity and algorithms*/
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
-	UMPS_ALG::OPTION CHOSEN_ALGORITHM = UMPS_ALG::DYNAMIC;
-	bool USER_SET_ALGORITHM = false;
 	
 	/**Sets the Lanczos tolerances adaptively, depending on the current errors.*/
 	void set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState);
@@ -440,7 +436,7 @@ prepare_h2site (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symm
                 qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax, bool USE_STATE)
 {
 	Stopwatch<> PrepTimer;
-	
+
 	// general
 	N_sites = 1;
 	N_iterations = 0;
@@ -457,7 +453,6 @@ prepare_h2site (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symm
 	if (!USE_STATE)
 	{
 		Vout.state = Umps<Symmetry,Scalar>(qloc_input, Qtot, N_sites, M, Nqmax);
-		Vout.state.N_sv = M;
 		Vout.state.setRandom();
 		for (size_t l=0; l<N_sites; ++l)
 		{
@@ -480,7 +475,7 @@ prepare_h2site (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symm
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax, bool USE_STATE)
+prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, bool USE_STATE)
 {
 	N_sites = H.length();
 	N_iterations = 0;
@@ -489,15 +484,14 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	
 	// effective Hamiltonian
 	D = H.locBasis(0).size();
-	M = M_input;
 	dW = H.auxdim();
 	
 	// resize Vout
-	// Vout.state = Umps<Symmetry,Scalar>(H.locBasis(0), Qtot, N_sites, M, Nqmax);
 	if (!USE_STATE)
 	{
-		Vout.state = Umps<Symmetry,Scalar>(H, Qtot, N_sites, M, Nqmax);
-		Vout.state.N_sv = M;
+		Vout.state = Umps<Symmetry,Scalar>(H, Qtot, N_sites, GlobParam.Dinit, GlobParam.Qinit);
+		Vout.state.max_Nsv = GlobParam.Dlimit;
+		// Vout.state.min_Nsv = DynParam.min_Nsv(0);
 		Vout.state.setRandom();
 		for (size_t l=0; l<N_sites; ++l)
 		{
@@ -517,64 +511,72 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
-		lout << Vout.state.info() << endl;
-		lout << PrepTimer.info("prepare") << endl; 
+		lout << PrepTimer.info("• initial decomposition") << endl;
+		lout <<                "• initial state        : " << Vout.state.info() << endl;
+		int i_expansion_switchoff=0;
+		for (int i=0; i<GlobParam.max_iterations; ++i)
+		{
+			if (DynParam.max_deltaD(i) == 0.) {i_expansion_switchoff = i; break;}
+		}
+		lout << "• expansion turned off after " << termcolor::underline << i_expansion_switchoff << termcolor::reset << " iterations" << endl;
+		lout << "• initial bond dim. increase by " << termcolor::underline << static_cast<int>((DynParam.Dincr_rel(0)-1.)*100.) 
+		     << "%" << termcolor::reset << " and at least by " << termcolor::underline << DynParam.Dincr_abs(0) << termcolor::reset
+		     << " every " << termcolor::underline << DynParam.Dincr_per(0) << termcolor::reset << " iterations" << endl;
+		lout << "• keep at least " << termcolor::underline << Vout.state.min_Nsv << termcolor::reset << " singular values per block" << endl;
+		lout << "• make between " << termcolor::underline << GlobParam.min_iterations << termcolor::reset << " and " 
+		     << termcolor::underline << GlobParam.max_iterations << termcolor::reset << " iterations" << endl;
+		bool USE_PARALLEL=false, USE_SEQUENTIAL=false, USE_DYNAMIC=false;
+		for (int i=0; i<GlobParam.max_iterations; ++i)
+		{
+			if (DynParam.iteration(i) == UMPS_ALG::PARALLEL)   {USE_PARALLEL=true;}
+			if (DynParam.iteration(i) == UMPS_ALG::SEQUENTIAL) {USE_SEQUENTIAL=true;}
+			if (DynParam.iteration(i) == UMPS_ALG::DYNAMIC) {USE_DYNAMIC=true;}
+		}
+		if (USE_DYNAMIC and N_sites == 1)
+		{
+			lout << "• use the parallel algorithm" << endl;
+		}
+		else if (USE_DYNAMIC and N_sites > 1)
+		{
+			lout << "• use the sequential algorithm" << endl;
+		}
+		else if (USE_PARALLEL and USE_SEQUENTIAL)
+		{
+			lout << "• use a combination of sequential and parallel algorithm" << endl;
+		}
+		else if (USE_PARALLEL)
+		{
+			lout << "• use the parallel algorithm" << endl;
+		}
+		else if (USE_SEQUENTIAL)
+		{
+			lout << "• use the sequential algorithm" << endl;
+		}
+		lout << "• eigenvalue tolerance : " << termcolor::underline << GlobParam.tol_eigval << termcolor::reset << endl;
+		lout << "• variational tolerance: " << termcolor::underline << GlobParam.tol_var << termcolor::reset << endl;
+		lout << "• state tolerance: " << termcolor::underline << GlobParam.tol_state << termcolor::reset << endl;
+		lout << endl;
+//		Vout.state.graph("init");
 	}
-	
-// 	if (CHOSEN_VERBOSITY>=2)
-// 	{
-// 		lout << PrepTimer.info("• initial state & sweep") << endl;
-// 		lout <<                "• initial energy        : E₀=" << Eold << endl;
-// 		lout <<                "• initial state         : " << Vout.state.info() << endl;
-// 		lout <<                "• initial fluctuation strength  : α_rsvd=" << termcolor::underline << Vout.state.alpha_rsvd << termcolor::reset << endl;
-// 		lout <<                "• initial singular value cutoff : ε_svd=" << termcolor::underline << Vout.state.eps_svd << termcolor::reset << endl;
-// 		int i_alpha_switchoff=0;
-// 		for (int i=0; i<GlobParam.max_halfsweeps; ++i)
-// 		{
-// 			if (DynParam.max_alpha_rsvd(i) == 0.) {i_alpha_switchoff = i; break;}
-// 		}
-// 		lout <<                "• fluctutations turned off after " << termcolor::underline << i_alpha_switchoff << termcolor::reset << " half-sweeps" << endl;
-// 		if (Vout.state.max_Nrich == -1)
-// 		{
-// 			lout <<            "• fluctuations use " << termcolor::underline << "all" << termcolor::reset << " additional states" << endl;
-// 		}
-// 		else
-// 		{
-// 			lout <<            "• fluctuations use " << Vout.state.max_Nrich << " additional states" << endl;
-// 		}
-// 		lout << "• initial bond dim. increase by " << termcolor::underline << static_cast<int>((DynParam.Dincr_rel(0)-1.)*100.) 
-// 		     << "%" << termcolor::reset << " and at least by " << termcolor::underline << DynParam.Dincr_abs(0) << termcolor::reset
-// 		     << " every " << termcolor::underline << DynParam.Dincr_per(0) << termcolor::reset << " half-sweeps" << endl;
-// 		lout << "• keep at least " << termcolor::underline << Vout.state.min_Nsv << termcolor::reset << " singular values per block" << endl;
-// 		lout << "• make between " << termcolor::underline << GlobParam.min_halfsweeps << termcolor::reset << " and " 
-// 		     << termcolor::underline << GlobParam.max_halfsweeps << termcolor::reset << " half-sweep iterations" << endl;
-// 		lout << "• eigenvalue tolerance: " << termcolor::underline << GlobParam.tol_eigval << termcolor::reset << endl;
-// 		lout << "• state tolerance: " << termcolor::underline << GlobParam.tol_state << termcolor::reset << " using " 
-// 		     << termcolor::underline << GlobParam.CONVTEST << termcolor::reset << endl;
-// 		lout << "• calculate entropy on exit: " << boolalpha << termcolor::underline << GlobParam.CALC_S_ON_EXIT << termcolor::reset << endl;
-// 		lout << endl;
-// //		Vout.state.graph("init");
-// 	}
 
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax, bool USE_STATE)
+prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, bool USE_STATE)
 {
 	Stopwatch<> PrepTimer;
 	
 	// general
 	N_sites = 1;
 	N_iterations = 0;
-	M = M_input; // bond dimension
 	dW = H.auxdim();
 	
 	// resize Vout
 	if (!USE_STATE)
 	{
-		Vout.state = Umps<Symmetry,Scalar>(H.locBasis(0), Qtot, N_sites, M, Nqmax);
-		Vout.state.N_sv = M;
+		Vout.state = Umps<Symmetry,Scalar>(H.locBasis(0), Qtot, N_sites, GlobParam.Dinit, GlobParam.Qinit);
+		Vout.state.max_Nsv = GlobParam.Dlimit;
 		Vout.state.setRandom();
 		for (size_t l=0; l<N_sites; ++l)
 		{
@@ -808,17 +810,17 @@ void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 {
 	Stopwatch<> IterationTimer;
-	
 	double tolLanczosEigval, tolLanczosState;
 	set_LanczosTolerances(tolLanczosEigval,tolLanczosState);
 
-	if ( (err_eigval >= tol_eigval or err_var >= tol_var) and N_iterations%10 == 0 and N_iterations > 0 )
+	if (err_var < GlobParam.tol_var and N_iterations%DynParam.Dincr_per(N_iterations) == 0 )
 	{
-		expand_basis(DynParam.deltaD(N_iterations),H,Vout);
+		size_t deltaD = min(max(static_cast<size_t>(DynParam.Dincr_rel(N_iterations) * Vout.state.max_Nsv-Vout.state.max_Nsv), DynParam.Dincr_abs(N_iterations)),
+							DynParam.max_deltaD(N_iterations));
+		if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
+		expand_basis(deltaD,H,Vout);
 	}
-
-	// if (err_var < 1.e-1 and N_iterations%10 == 0 and N_iterations < 80) {expand_basis(2,H,Vout);}
-
+	
 	build_cellEnv(H,Vout);
 	
 	// See Algorithm 4
@@ -899,11 +901,6 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		lout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
 		lout << test_LReigen(Vout) << endl;
 	}
-		
-//	if (N_iterations%10 == 0 and N_iterations>0 and Vout.state.Nqmax<=50)
-//	{
-//		Vout.state.resize(Vout.state.Dmax,Vout.state.Nqmax+1);
-//	}
 	
 	++N_iterations;
 	
@@ -931,9 +928,14 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	// See Algorithm 3
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		// if (N_iterations%10 == 0 and N_iterations > 0 and N_iterations < 80) {expand_basis(4,H,Vout,l);}
-		if (err_var < 1.e-9 and N_iterations < 150) {expand_basis(4,H,Vout,l);}
-
+		if (err_var < GlobParam.tol_var and N_iterations%DynParam.Dincr_per(N_iterations) == 0 )
+		{
+			size_t deltaD = min(max(static_cast<size_t>(DynParam.Dincr_rel(N_iterations) * Vout.state.max_Nsv-Vout.state.max_Nsv), DynParam.Dincr_abs(N_iterations)),
+								DynParam.max_deltaD(N_iterations));
+			if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
+			expand_basis(deltaD,H,Vout,l);
+		}
+		
 		build_cellEnv(H,Vout);
 		
 		precalc_blockStructure (HeffA[l].L, Vout.state.A[GAUGE::C][l], HeffA[l].W, Vout.state.A[GAUGE::C][l], HeffA[l].R, 
@@ -1024,10 +1026,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		lout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
 		lout << test_LReigen(Vout) << endl;
 	}
-	
-//	Vout.state.expand_basis(2,H.H2site(0,true),Vout.energy);
-//	M += 2;
-	
+		
 	++N_iterations;
 	
 	// print stuff
@@ -1280,76 +1279,71 @@ test_LReigen (const Eigenstate<Umps<Symmetry,Scalar> > &Vout) const
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-// edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE);
-
-edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, 
-           double tol_eigval_input, double tol_var_input, size_t M, size_t Nqmax, 
-           size_t max_iterations, size_t min_iterations, bool USE_STATE)
+edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, LANCZOS::EDGE::OPTION EDGE, bool USE_STATE)
 {
 	if (CHOSEN_VERBOSITY>=2)
 	{
 		lout << endl << termcolor::colorize << termcolor::bold
-		 << "——————————————————————————————————————————VUMPS algorithm " << CHOSEN_ALGORITHM << "——————————————————————————————————————————"
+		 << "———————————————————————————————————————————————VUMPS algorithm—————————————————————————————————————————————————————————"
 		 <<  termcolor::reset << endl;
 	}
+
+	if (!USER_SET_GLOBPARAM) { GlobParam = H.get_VumpsGlobParam(); }
+	if (!USER_SET_DYNPARAM)  { DynParam  = H.get_VumpsDynParam(); }
+
+	// tol_eigval = tol_eigval_input;
+	// tol_var = tol_var_input;
 	
-	tol_eigval = tol_eigval_input;
-	tol_var = tol_var_input;
-	
-	if (USER_SET_ALGORITHM and CHOSEN_ALGORITHM == UMPS_ALG::IDMRG)
+	if (DynParam.iteration(0) == UMPS_ALG::IDMRG)
 	{
-		prepare_idmrg(H, Vout, Qtot, M, Nqmax, USE_STATE);
+		prepare_idmrg(H, Vout, Qtot, USE_STATE);
 	}
-	else if (USER_SET_ALGORITHM and CHOSEN_ALGORITHM == UMPS_ALG::H2SITE)
+	else if (DynParam.iteration(0) == UMPS_ALG::H2SITE)
 	{
 		assert(H.length() == 2 and "Need L=2 for H2SITE!");
-		prepare_h2site(H.H2site(0,true), H.locBasis(0), Vout, Qtot, M, Nqmax, USE_STATE);
+		for (size_t i=0; i<GlobParam.max_iterations; i++) {assert(DynParam.iteration(i) == UMPS_ALG::H2SITE and "iteration H2SITE can not be mixed with other iterations"); }
+		prepare_h2site(H.H2site(0,true), H.locBasis(0), Vout, Qtot, GlobParam.Dinit, GlobParam.Qinit, USE_STATE);
 	}
 	else
 	{
-		prepare(H, Vout, Qtot, M, Nqmax, USE_STATE);
+		prepare(H, Vout, Qtot, USE_STATE);
 	}
 	
 	Stopwatch<> GlobalTimer;
 	
-	while (((err_eigval >= tol_eigval or err_var >= tol_var) and N_iterations < max_iterations) or N_iterations < min_iterations)
+	while (((err_eigval >= GlobParam.tol_eigval or err_var >= GlobParam.tol_state) and
+			N_iterations < GlobParam.max_iterations) or N_iterations < GlobParam.min_iterations)
 	{
-		if (USER_SET_ALGORITHM) // custom choice of algorithm
+		if (DynParam.iteration(N_iterations) == UMPS_ALG::PARALLEL)
 		{
-			if (CHOSEN_ALGORITHM == UMPS_ALG::PARALLEL)
-			{
-				iteration_parallel(H,Vout);
-			}
-			else if (CHOSEN_ALGORITHM == UMPS_ALG::SEQUENTIAL)
-			{
-				iteration_sequential(H,Vout);
-			}
-			else if (CHOSEN_ALGORITHM == UMPS_ALG::H2SITE)
-			{
-				iteration_h2site(Vout);
-			}
-			else if (CHOSEN_ALGORITHM == UMPS_ALG::IDMRG)
-			{
-				iteration_idmrg(H,Vout);
-			}
+			iteration_parallel(H,Vout);
+		}
+		else if (DynParam.iteration(N_iterations) == UMPS_ALG::SEQUENTIAL)
+		{
+			iteration_sequential(H,Vout);
+		}
+		else if (DynParam.iteration(N_iterations) == UMPS_ALG::IDMRG)
+		{
+			iteration_idmrg(H,Vout);
+		}
+		else if (DynParam.iteration(N_iterations) == UMPS_ALG::H2SITE)
+		{
+			iteration_h2site(Vout);
 		}
 		else // dynamical choice: L=1 parallel, L>1 sequential
 		{
-			if (N_sites == 1 or N_sites != 1)
-			{
-				iteration_parallel(H,Vout);
-				DynParam.doSomething(N_iterations);
-#ifdef USE_HDF5_STORAGE
-				Vout.state.save("umps",H.info());
-#endif
-			}
-			else
-			{
-				iteration_sequential(H,Vout);
-			}
+			if (N_sites == 1) { iteration_parallel(H,Vout); }
+			else { iteration_sequential(H,Vout); }
 		}
 		
+		DynParam.doSomething(N_iterations);
 		write_log();
+		#ifdef USE_HDF5_STORAGE
+		if (GlobParam.savePeriod != 0 and j%GlobParam.savePeriod == 0)
+		{
+			Vout.state.save("UmpsBackup",H.info());
+		}
+        #endif
 	}
 	write_log(true); // force log on exit
 		
@@ -1368,11 +1362,6 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		lout << Vout.state.info() << endl;
 		lout << endl;
 	}
-	// for (size_t l=0; l<N_sites; l++)
-	// for (size_t s=0; s<Vout.state.locBasis(l).size(); s++)
-	// {
-	// 	cout << "l=" << l << ", s=" << s << endl << Vout.state.A_at(GAUGE::C,l)[s].print(false) << endl;
-	// }		
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -1863,6 +1852,8 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 {
+	if (DeltaD == 0) {return;} //early exit if the dimension to increase is zero.
+	
 	//Save a reference of AL for computing the two-site A-matrix at different sites without using partially updated A-Matrices.
 	//Check: Is this correct or should we use always the updated versions of AL. If so, should we also use updated AC or C*AR respectively?
 	vector<vector<Biped<Symmetry,MatrixType> > > AL_ref = Vout.state.A[GAUGE::L];

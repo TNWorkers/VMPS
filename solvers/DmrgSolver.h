@@ -37,7 +37,7 @@ public:
 	double memory (MEMUNIT memunit=GB) const;
 	
 	void edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
-	                qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE);
+	                qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE = LANCZOS::EDGE::GROUND, bool USE_STATE=false);
 
 	//call this function if you want to set the parameters for the solver by yourself
 	void userSetGlobParam    () { USER_SET_GLOBPARAM     = true; }
@@ -255,8 +255,8 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	N_sites = H.length();
 	N_phys  = H.volume();
 
-	if (!USER_SET_GLOBPARAM) { GlobParam = H.get_GlobParam(); }
-	if (!USER_SET_DYNPARAM)  { DynParam  = H.get_DynParam(); }
+	if (!USER_SET_GLOBPARAM) { GlobParam = H.get_DmrgGlobParam(); }
+	if (!USER_SET_DYNPARAM)  { DynParam  = H.get_DmrgDynParam(); }
 	
 	Stopwatch<> PrepTimer;
 	if (!USE_STATE)
@@ -283,6 +283,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		SweepStat.N_sweepsteps = SweepStat.N_halfsweeps = 0;
 		for (size_t l=N_sites-1; l>0; --l)
 		{
+			Vout.state.setRandom(l); //avoid overflow for large chains.
 			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
 			build_R(H,Vout,l-1);
 		}
@@ -971,9 +972,9 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
-edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE)
+edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray<Nq> Qtot_input, LANCZOS::EDGE::OPTION EDGE, bool USE_STATE)
 {
-	prepare(H, Vout, Qtot_input, false);
+	prepare(H, Vout, Qtot_input, USE_STATE);
 	
 	Stopwatch<> TotalTimer;
 	
@@ -1021,7 +1022,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		#ifdef USE_HDF5_STORAGE
 		if (GlobParam.savePeriod != 0 and j%GlobParam.savePeriod == 0)
 		{
-			Vout.state.save("mpsBackup");
+			Vout.state.save("mpsBackup",H.info());
 		}
 		#endif
 	}
