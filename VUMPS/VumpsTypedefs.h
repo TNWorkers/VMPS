@@ -68,7 +68,6 @@ struct VUMPS
 			
 			//LANCZOS DEFAULTS
 			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO           = LANCZOS::REORTHO::FULL;
-			constexpr static ::LANCZOS::CONVTEST::OPTION LANCZOS_CONVTEST = LANCZOS::CONVTEST::COEFFWISE;
 			constexpr static double eps_eigval                            = 1.e-7;
 			constexpr static double eps_coeff                             = 1.e-4;
 			constexpr static size_t dimK                                  = 200ul;
@@ -97,7 +96,6 @@ struct VUMPS
 		struct LANCZOS
 		{
 			::LANCZOS::REORTHO::OPTION REORTHO   = CONTROL::DEFAULT::REORTHO;
-			::LANCZOS::CONVTEST::OPTION CONVTEST = CONTROL::DEFAULT::LANCZOS_CONVTEST;
 			double eps_eigval                    = CONTROL::DEFAULT::eps_eigval;
 			double eps_coeff                     = CONTROL::DEFAULT::eps_coeff;
 			size_t dimK                          = CONTROL::DEFAULT::dimK;

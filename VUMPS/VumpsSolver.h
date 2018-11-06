@@ -1192,7 +1192,7 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
 	Lutz(LANCZOS::REORTHO::FULL);
 	Lutz.set_dimK(min(200ul, dim(g.state)));
-	Lutz.edgeState(HeffA[0], g, LANCZOS::EDGE::GROUND, DMRG::CONTROL::DEFAULT::eps_eigval, DMRG::CONTROL::DEFAULT::eps_coeff, false);
+	Lutz.edgeState(HeffA[0], g, LANCZOS::EDGE::GROUND, DMRG::CONTROL::DEFAULT::tol_eigval_Lanczos, DMRG::CONTROL::DEFAULT::tol_state_Lanczos, false);
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		lout << "time" << LanczosTimer.info() << ", " << Lutz.info() << endl;
