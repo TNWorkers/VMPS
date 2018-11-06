@@ -23,7 +23,7 @@
 //include "tensors/DmrgIndexGymnastics.h"
 //include "DmrgLinearAlgebra.h"
 
-#include "Mps.h" // temp.
+// #include "Mps.h" // temp.
 
 
 /**
@@ -84,7 +84,7 @@ public:
 	void edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
 	                qarray<Symmetry::Nq> Qtot, LANCZOS::EDGE::OPTION EDGE=LANCZOS::EDGE::GROUND, bool USE_STATE=false);
 	
-// private:
+private:
 	
 	///\{
 	/**Prepares the class, setting up the environments. Used with an explicit 2-site Hamiltonian.*/
@@ -1199,23 +1199,31 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 	
 	auto Cref = Vout.state.C[0];
 	
-	Mps<Symmetry,Scalar> Vtmp(2, H.locBasis(), Symmetry::qvacuum(), 2, Vout.state.Nqmax);
-	Vtmp.min_Nsv = M;
-	Vtmp.max_Nsv = M;
-	Vtmp.A[0] = Vout.state.A[GAUGE::C][0];
-	Vtmp.A[1] = Vout.state.A[GAUGE::C][0];
-	Vtmp.QinTop[0] = Vout.state.Qtop(0);
-	Vtmp.QinBot[0] = Vout.state.Qbot(0);
-	Vtmp.QoutTop[0] = Vout.state.Qtop(0);
-	Vtmp.QoutBot[0] = Vout.state.Qbot(0);
-	Vtmp.QinTop[1] = Vout.state.Qtop(1);
-	Vtmp.QinBot[1] = Vout.state.Qbot(1);
-	Vtmp.QoutTop[1] = Vout.state.Qtop(1);
-	Vtmp.QoutBot[1] = Vout.state.Qbot(1);
-	Vtmp.sweepStep2(DMRG::DIRECTION::RIGHT, 0, g.state.data, 
-	                Vout.state.A[GAUGE::L][0], Vout.state.A[GAUGE::R][0], Vout.state.C[0],
-	                true);
+	// Mps<Symmetry,Scalar> Vtmp(2, H.locBasis(), Symmetry::qvacuum(), 2, Vout.state.Nqmax);
+	// Vtmp.min_Nsv = M;
+	// Vtmp.max_Nsv = M;
+	// Vtmp.A[0] = Vout.state.A[GAUGE::C][0];
+	// Vtmp.A[1] = Vout.state.A[GAUGE::C][0];
+	// Vtmp.QinTop[0] = Vout.state.Qtop(0);
+	// Vtmp.QinBot[0] = Vout.state.Qbot(0);
+	// Vtmp.QoutTop[0] = Vout.state.Qtop(0);
+	// Vtmp.QoutBot[0] = Vout.state.Qbot(0);
+	// Vtmp.QinTop[1] = Vout.state.Qtop(1);
+	// Vtmp.QinBot[1] = Vout.state.Qbot(1);
+	// Vtmp.QoutTop[1] = Vout.state.Qtop(1);
+	// Vtmp.QoutBot[1] = Vout.state.Qbot(1);
+	// Vtmp.sweepStep2(DMRG::DIRECTION::RIGHT, 0, g.state.data, 
+	//                 Vout.state.A[GAUGE::L][0], Vout.state.A[GAUGE::R][0], Vout.state.C[0],
+	//                 true);
 	
+	double truncDump, Sdump;
+	
+	split_AA(DMRG::DIRECTION::RIGHT, g.state.data,
+			 Vout.state.locBasis(0), Vout.state.A[GAUGE::L][0],
+			 Vout.state.locBasis(0), Vout.state.A[GAUGE::R][0],
+			 Vout.state.Qtop(0), Vout.state.Qbot(0),
+			 Vout.state.C[0], true, truncDump, Sdump,
+			 Vout.state.eps_svd,Vout.state.min_Nsv,Vout.state.max_Nsv);
 	Vout.state.C[0] = 1./sqrt((Vout.state.C[0].contract(Vout.state.C[0].adjoint())).trace()) * Vout.state.C[0];
 	
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
@@ -1495,39 +1503,51 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 							H2.qlhs, H2.qrhs, H2.factor_cgcs);
 	HxV(H2,A2C);
 
-	vector<vector<qarray<Symmetry::Nq> > > qbasis_tmp(2);
-	qbasis_tmp[0] = H.locBasis(loc);
-	qbasis_tmp[1] = H.locBasis((loc+1)%N_sites);
-	Mps<Symmetry,Scalar> Vtmp(2, qbasis_tmp, Symmetry::qvacuum(), 2, Vout.state.Nqmax);
+	// vector<vector<qarray<Symmetry::Nq> > > qbasis_tmp(2);
+	// qbasis_tmp[0] = H.locBasis(loc);
+	// qbasis_tmp[1] = H.locBasis((loc+1)%N_sites);
+	// Mps<Symmetry,Scalar> Vtmp(2, qbasis_tmp, Symmetry::qvacuum(), 2, Vout.state.Nqmax);
 	
-	Vtmp.A[0] = Vout.state.A[GAUGE::L][loc];
-	Vtmp.A[1] = Vout.state.A[GAUGE::C][(loc+1)%N_sites];
+	// Vtmp.A[0] = Vout.state.A[GAUGE::L][loc];
+	// Vtmp.A[1] = Vout.state.A[GAUGE::C][(loc+1)%N_sites];
 	
-	Vtmp.QinTop[0] = Vout.state.Qtop(loc);
-	Vtmp.QinBot[0] = Vout.state.Qbot(loc);
-	Vtmp.QoutTop[0] = Vout.state.Qtop(loc);
-	Vtmp.QoutBot[0] = Vout.state.Qbot(loc);
-	Vtmp.QinTop[1] = Vout.state.Qtop((loc+1)%N_sites);
-	Vtmp.QinBot[1] = Vout.state.Qbot((loc+1)%N_sites);
-	Vtmp.QoutTop[1] = Vout.state.Qtop((loc+1)%N_sites);
-	Vtmp.QoutBot[1] = Vout.state.Qbot((loc+1)%N_sites);
-	Vtmp.min_Nsv = 1;
-	Vtmp.sweepStep2(DMRG::DIRECTION::RIGHT, 0, A2C.data);
+	// Vtmp.QinTop[0] = Vout.state.Qtop(loc);
+	// Vtmp.QinBot[0] = Vout.state.Qbot(loc);
+	// Vtmp.QoutTop[0] = Vout.state.Qtop(loc);
+	// Vtmp.QoutBot[0] = Vout.state.Qbot(loc);
+	// Vtmp.QinTop[1] = Vout.state.Qtop((loc+1)%N_sites);
+	// Vtmp.QinBot[1] = Vout.state.Qbot((loc+1)%N_sites);
+	// Vtmp.QoutTop[1] = Vout.state.Qtop((loc+1)%N_sites);
+	// Vtmp.QoutBot[1] = Vout.state.Qbot((loc+1)%N_sites);
+	// Vtmp.min_Nsv = 1;
+	// Vtmp.sweepStep2(DMRG::DIRECTION::RIGHT, 0, A2C.data);
+	// Vtmp.update_outbase();
+	// Vtmp.update_inbase();
+	Biped<Symmetry,MatrixType> Cdump;
+	double truncDump, Sdump;
+	vector<Biped<Symmetry,MatrixType> > AL=Vout.state.A[GAUGE::L][loc];
+	vector<Biped<Symmetry,MatrixType> > AR=Vout.state.A[GAUGE::C][(loc+1)%N_sites];
+	split_AA(DMRG::DIRECTION::RIGHT, A2C.data, H.locBasis(loc), AL, H.locBasis((loc+1)%N_sites), AR,
+			 Vout.state.Qtop(loc), Vout.state.Qbot(loc),
+			 Cdump, false, truncDump, Sdump,
+			 Vout.state.eps_svd,Vout.state.min_Nsv,Vout.state.max_Nsv);
 
-	Vtmp.update_outbase();
-	Vtmp.update_inbase();
 	Qbasis<Symmetry> NRbasis; NRbasis.pullData(NR,1);
 	Qbasis<Symmetry> NLbasis; NLbasis.pullData(NL,0);
+	Qbasis<Symmetry> ARbasis; ARbasis.pullData(AR,1);
+	Qbasis<Symmetry> ALbasis; ALbasis.pullData(AL,0);
 	
 	// calculate NAAN
-	Biped<Symmetry,MatrixType> IdL; IdL.setIdentity(NLbasis, Vtmp.inBasis(0));
-	Biped<Symmetry,MatrixType> IdR; IdR.setIdentity(Vtmp.outBasis(1), NRbasis);
+	Biped<Symmetry,MatrixType> IdL; IdL.setIdentity(NLbasis, ALbasis);
+	Biped<Symmetry,MatrixType> IdR; IdR.setIdentity(ARbasis, NRbasis);
 		
 	Biped<Symmetry,MatrixType> TL;
-	contract_L(IdL, NL, Vtmp.A[0], H.locBasis(loc), TL);
+	// contract_L(IdL, NL, Vtmp.A[0], H.locBasis(loc), TL);
+	contract_L(IdL, NL, AL, H.locBasis(loc), TL);
 
 	Biped<Symmetry,MatrixType> TR;
-	contract_R(IdR, NR, Vtmp.A[1], H.locBasis((loc+1)%N_sites), TR);
+	// contract_R(IdR, NR, Vtmp.A[1], H.locBasis((loc+1)%N_sites), TR);
+	contract_R(IdR, NR, AR, H.locBasis((loc+1)%N_sites), TR);
 
 	Biped<Symmetry,MatrixType> NAAN = TL.contract(TR);
 
@@ -1902,36 +1922,50 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 		vector<vector<qarray<Symmetry::Nq> > > qbasis_tmp(2);
 		qbasis_tmp[0] = H.locBasis(loc);
 		qbasis_tmp[1] = H.locBasis((loc+1)%N_sites);
-		Mps<Symmetry,Scalar> Vtmp(2, qbasis_tmp, Symmetry::qvacuum(), 2, Vout.state.Nqmax);
+		// Mps<Symmetry,Scalar> Vtmp(2, qbasis_tmp, Symmetry::qvacuum(), 2, Vout.state.Nqmax);
 	
-		Vtmp.A[0] = AL_ref[loc];
-		Vtmp.A[1] = Vout.state.A[GAUGE::C][(loc+1)%N_sites];
+		// Vtmp.A[0] = AL_ref[loc];
+		// Vtmp.A[1] = Vout.state.A[GAUGE::C][(loc+1)%N_sites];
 	
-		Vtmp.QinTop[0] = Vout.state.Qtop(loc);
-		Vtmp.QinBot[0] = Vout.state.Qbot(loc);
-		Vtmp.QoutTop[0] = Vout.state.Qtop(loc);
-		Vtmp.QoutBot[0] = Vout.state.Qbot(loc);
-		Vtmp.QinTop[1] = Vout.state.Qtop((loc+1)%N_sites);
-		Vtmp.QinBot[1] = Vout.state.Qbot((loc+1)%N_sites);
-		Vtmp.QoutTop[1] = Vout.state.Qtop((loc+1)%N_sites);
-		Vtmp.QoutBot[1] = Vout.state.Qbot((loc+1)%N_sites);
-		Vtmp.min_Nsv = 1;
-		Vtmp.sweepStep2(DMRG::DIRECTION::RIGHT, 0, A2C.data);
+		// Vtmp.QinTop[0] = Vout.state.Qtop(loc);
+		// Vtmp.QinBot[0] = Vout.state.Qbot(loc);
+		// Vtmp.QoutTop[0] = Vout.state.Qtop(loc);
+		// Vtmp.QoutBot[0] = Vout.state.Qbot(loc);
+		// Vtmp.QinTop[1] = Vout.state.Qtop((loc+1)%N_sites);
+		// Vtmp.QinBot[1] = Vout.state.Qbot((loc+1)%N_sites);
+		// Vtmp.QoutTop[1] = Vout.state.Qtop((loc+1)%N_sites);
+		// Vtmp.QoutBot[1] = Vout.state.Qbot((loc+1)%N_sites);
+		// Vtmp.min_Nsv = 1;
+		// Vtmp.sweepStep2(DMRG::DIRECTION::RIGHT, 0, A2C.data);
 
-		Vtmp.update_outbase();
-		Vtmp.update_inbase();
+		// Vtmp.update_outbase();
+		// Vtmp.update_inbase();
+		Biped<Symmetry,MatrixType> Cdump;
+		double truncDump, Sdump;
+		vector<Biped<Symmetry,MatrixType> > AL=AL_ref[loc];
+		vector<Biped<Symmetry,MatrixType> > AR=Vout.state.A[GAUGE::C][(loc+1)%N_sites];
+
+		split_AA(DMRG::DIRECTION::RIGHT, A2C.data, H.locBasis(loc), AL, H.locBasis((loc+1)%N_sites), AR,
+				 Vout.state.Qtop(loc), Vout.state.Qbot(loc),
+				 Cdump, false, truncDump, Sdump,
+				 Vout.state.eps_svd,Vout.state.min_Nsv,Vout.state.max_Nsv);
+
 		Qbasis<Symmetry> NRbasis; NRbasis.pullData(NR,1);
 		Qbasis<Symmetry> NLbasis; NLbasis.pullData(NL,0);
+		Qbasis<Symmetry> ARbasis; ARbasis.pullData(AR,1);
+		Qbasis<Symmetry> ALbasis; ALbasis.pullData(AL,0);
 	
 		// calculate NAAN
-		Biped<Symmetry,MatrixType> IdL; IdL.setIdentity(NLbasis, Vtmp.inBasis(0));
-		Biped<Symmetry,MatrixType> IdR; IdR.setIdentity(Vtmp.outBasis(1), NRbasis);
+		Biped<Symmetry,MatrixType> IdL; IdL.setIdentity(NLbasis, ALbasis);
+		Biped<Symmetry,MatrixType> IdR; IdR.setIdentity(ARbasis, NRbasis);
 		
 		Biped<Symmetry,MatrixType> TL;
-		contract_L(IdL, NL, Vtmp.A[0], H.locBasis(loc), TL);
+		// contract_L(IdL, NL, Vtmp.A[0], H.locBasis(loc), TL);
+		contract_L(IdL, NL, AL, H.locBasis(loc), TL);
 
 		Biped<Symmetry,MatrixType> TR;
-		contract_R(IdR, NR, Vtmp.A[1], H.locBasis((loc+1)%N_sites), TR);
+		// contract_R(IdR, NR, Vtmp.A[1], H.locBasis((loc+1)%N_sites), TR);
+		contract_R(IdR, NR, AR, H.locBasis((loc+1)%N_sites), TR);
 
 		Biped<Symmetry,MatrixType> NAAN = TL.contract(TR);
 		
