@@ -24,6 +24,4 @@ void push_back_KondoUnpacked (vector<Param> &params, size_t L, double J, double 
 	}
 }
 
-} // end namespace VMPS
-
 #endif

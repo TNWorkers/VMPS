@@ -85,8 +85,8 @@ int main (int argc, char* argv[])
 		SweepParams.push_back({"max_alpha",10.});
 
 		VMPS::KondoSU2xU1::Solver Lana(DMRG::VERBOSITY::ON_EXIT);
-		// Lana.GlobParam = H_SU2.get_GlobParam(SweepParams);
-		// Lana.DynParam = H_SU2.get_DynParam(SweepParams);
+		// Lana.GlobParam = H_SU2.get_DmrgGlobParam(SweepParams);
+		// Lana.DynParam = H_SU2.get_DmrgDynParam(SweepParams);
 		Lana.edgeState(H_SU2, g, {S,N}, LANCZOS::EDGE::GROUND);
 
 
@@ -128,8 +128,8 @@ int main (int argc, char* argv[])
 
 
 		VMPS::KondoU1xU1::Solver Jim(DMRG::VERBOSITY::ON_EXIT);
-		// Lana.GlobParam = H_SU2.get_GlobParam(SweepParams);
-		// Lana.DynParam = H_SU2.get_DynParam(SweepParams);
+		// Lana.GlobParam = H_SU2.get_DmrgGlobParam(SweepParams);
+		// Lana.DynParam = H_SU2.get_DmrgDynParam(SweepParams);
 		Jim.edgeState(H_U1, h, {M,N}, LANCZOS::EDGE::GROUND);
 
 

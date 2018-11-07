@@ -33,7 +33,7 @@ Logger lout;
 #include "models/KondoU1.h"
 #include "models/KondoSU2xU1.h"
 #include "models/KondoU0xSU2.h"
-#include "ParamCollection.h"
+#include "models/ParamCollection.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, bool COLOR=false, int n=14)
@@ -176,7 +176,7 @@ int main (int argc, char* argv[])
 	//params.push_back({"Bz",Bz,0});
 	//params.push_back({"Bx",Bx,0});
 	// params.push_back({"D",1ul,1});
-	params.push_back_KondoUnpacked(L,J,t,D);
+	push_back_KondoUnpacked(params, L,J,t,D);
 	
 //	for (size_t l=1; l<L; ++l)
 //	{
@@ -220,8 +220,8 @@ int main (int argc, char* argv[])
 		VMPS::KondoU1xU1::Solver DMRG_U1xU1(VERB);
 		vector<Param> SweepParams_U1xU1 = SweepParams;
 		SweepParams_U1xU1.push_back({"Qinit",10ul});
-		DMRG_U1xU1.DynParam = H_U1xU1.get_DynParam(SweepParams_U1xU1);
-		DMRG_U1xU1.GlobParam = H_U1xU1.get_GlobParam(SweepParams_U1xU1);
+		DMRG_U1xU1.DynParam = H_U1xU1.get_DmrgDynParam(SweepParams_U1xU1);
+		DMRG_U1xU1.GlobParam = H_U1xU1.get_DmrgGlobParam(SweepParams_U1xU1);
 		DMRG_U1xU1.userSetDynParam();
 		DMRG_U1xU1.userSetGlobParam();
 		DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {M,N}, LANCZOS::EDGE::GROUND);
@@ -345,8 +345,8 @@ int main (int argc, char* argv[])
 		VMPS::KondoSU2xU1::Solver DMRG_SU2xU1(VERB);
 		vector<Param> SweepParams_SU2xU1 = SweepParams;
 		SweepParams_SU2xU1.push_back({"Qinit",15ul});
-		DMRG_SU2xU1.DynParam = H_SU2xU1.get_DynParam(SweepParams_SU2xU1);
-		DMRG_SU2xU1.GlobParam = H_SU2xU1.get_GlobParam(SweepParams_SU2xU1);
+		DMRG_SU2xU1.DynParam = H_SU2xU1.get_DmrgDynParam(SweepParams_SU2xU1);
+		DMRG_SU2xU1.GlobParam = H_SU2xU1.get_DmrgGlobParam(SweepParams_SU2xU1);
 		DMRG_SU2xU1.userSetDynParam();
 		DMRG_SU2xU1.userSetGlobParam();
 		DMRG_SU2xU1.edgeState(H_SU2xU1, g_SU2xU1, {S,N}, LANCZOS::EDGE::GROUND);

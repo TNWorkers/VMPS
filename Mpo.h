@@ -208,7 +208,8 @@ public:
 	inline size_t volume() const {return N_phys;}
 	
 	/**\describe_Daux*/
-	inline size_t auxdim() const {return Daux;}
+	inline size_t auxrows (size_t loc) const {return Daux(loc,0);}
+	inline size_t auxcols (size_t loc) const {return Daux(loc,1);}
 	
 	/**Returns the total quantum number of the Mpo.*/
 	inline qarray<Nq> Qtarget() const {return Qtot;};
@@ -349,7 +350,7 @@ protected:
 	size_t N_phys = 0;
 	
 	/**Mpo bond dimension*/
-	size_t Daux;
+	ArrayXXi Daux;
 	
 	/**Resizes the relevant containers with \p N_sites.*/
 	void initialize();
@@ -364,12 +365,14 @@ protected:
 	/**Construct with \p vector<SuperMatrix> and input \p qOp. Most general of the construct routines, all the source code is here.*/
 	void calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 	                       vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+	                       ArrayXXi &Daux_store,
 	                       bool CALC_SQUARE = false, 
 	                       bool OPEN_BC = true);
 	
 	/**Construct with \p SuperMatrix (homogeneously extended) and input \p qOp.*/
 	void calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G_input,
 	                    vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+	                    ArrayXXi &Daux_store,
 	                    const vector<vector<qType> > &qOp_in,
 	                    bool CALC_SQUARE = false, 
 	                    bool OPEN_BC = true);
@@ -377,12 +380,14 @@ protected:
 	/**Construct with \p SuperMatrix and stored \p qOp.*/
 	void calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G_input,
 	                    vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+	                    ArrayXXi &Daux_store,
 	                    bool CALC_SQUARE = false, 
 	                    bool OPEN_BC = true);
 	
 	/**Construct with \p vector<SuperMatrix> and stored \p qOp.*/
 	void calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
 	                       vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+	                       ArrayXXi &Daux_store,
 	                       const vector<vector<qType> > &qOp_in,
 	                       bool CALC_SQUARE = false, 
 	                       bool OPEN_BC = true);
@@ -431,6 +436,7 @@ initialize()
 	qloc.resize(N_sites);
 	qOp.resize(N_sites);
 	W.resize(N_sites);
+	Daux.resize(N_sites,2);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -448,12 +454,12 @@ initialize()
 
 template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
-Identity(const vector<vector<qarray<Nq> > > &qloc)
+Identity (const vector<vector<qarray<Nq> > > &qloc)
 {
 	Mpo<Symmetry,Scalar> out(qloc.size(), Symmetry::qvacuum(), "Identity", true, true);
 	out.qloc = qloc;
 	out.initialize();
-	out.Daux = 1;
+	
 	for(size_t l=0; l<out.N_sites; l++)
 	{
 		out.qOp[l].resize(1);
@@ -463,6 +469,7 @@ Identity(const vector<vector<qarray<Nq> > > &qloc)
 			out.W[l][s][s][0] = MatrixXd::Identity(1,1).sparseView();
 		}
 	}
+	
 	out.calc_auxBasis();
 	return out;
 }
@@ -473,14 +480,15 @@ construct_from_Terms (const vector<HamiltonianTerms<Symmetry,Scalar> > &Terms_in
                       size_t Lcell, bool CALC_SQUARE, bool OPEN_BC)
 {
 	Terms = Terms_input;
-	Daux = Terms[0].auxdim();
 	vector<SuperMatrix<Symmetry,Scalar> > G;
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		G.push_back(Generator(Terms[l]));
 		setOpBasis(G[l].calc_qOp(),l);
 	}
-	calc_W_from_Gvec(G, W, CALC_SQUARE, OPEN_BC);
+	
+	calc_W_from_Gvec(G, W, Daux, CALC_SQUARE, OPEN_BC);
 	generate_label(Lcell);
 }
 
@@ -488,26 +496,29 @@ template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G,
                vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+               ArrayXXi &Daux_store,
                bool CALC_SQUARE,
                bool OPEN_BC)
 {
-	calc_W_from_G(G, Wstore, this->qOp, CALC_SQUARE, OPEN_BC);
+	calc_W_from_G(G, Wstore, Daux_store, this->qOp, CALC_SQUARE, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
                   vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
+                  ArrayXXi &Daux_store,
                   bool CALC_SQUARE,
                   bool OPEN_BC)
 {
-	calc_W_from_Gvec(Gvec, Wstore, this->qOp, CALC_SQUARE, OPEN_BC);
+	calc_W_from_Gvec(Gvec, Wstore, Daux_store, this->qOp, CALC_SQUARE, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G_input,
                vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+               ArrayXXi &Daux_store,
                const vector<vector<qType> > &qOp_in,
                bool CALC_SQUARE,
                bool OPEN_BC)
@@ -521,7 +532,7 @@ calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G_input,
 		Gvec[l] = G_input;
 	}
 	
-	calc_W_from_Gvec(Gvec, Wstore, qOp_in, false, OPEN_BC);
+	calc_W_from_Gvec(Gvec, Wstore, Daux_store, qOp_in, false, OPEN_BC);
 	
 	// make squared Mpo if desired
 	if (CALC_SQUARE == true)
@@ -540,6 +551,7 @@ template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
                   vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
+                  ArrayXXi &Daux_store,
                   const vector<vector<qType> > &qOp_in,
                   bool CALC_SQUARE,
                   bool OPEN_BC)
@@ -554,6 +566,18 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 		{
 			Wstore[l][s1].resize(qloc[l].size());
 		}
+	}
+	
+	Daux_store.resize(N_sites,2);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Daux_store(l,0) = Gvec[l].rows();
+		Daux_store(l,1) = Gvec[l].cols();
+	}
+	if (OPEN_BC)
+	{
+		Daux_store(0,0) = 1;
+		Daux_store(N_sites-1,1) = 1;
 	}
 	
 	// open boundary conditions: use only last row
@@ -753,10 +777,11 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			for (size_t l=0; l<N_sites; ++l)
 			{
 				qOpSq[l] = Symmetry::reduceSilent(qOp[l],qOp[l],true);
-				GvecSq[l].setMatrix(Gvec[l].auxdim()*Gvec[l].auxdim(), Gvec[l].D());
+				GvecSq[l].setMatrix(max(Daux(l,0),Daux(l,1)) * max(Daux(l,0),Daux(l,1)), Gvec[l].D());
 				GvecSq[l] = tensor_product(Gvec[l], Gvec[l]);
 			}
-			calc_W_from_Gvec(GvecSq, Wsq, qOpSq, false, OPEN_BC); //use false here, otherwise one would also calclate H⁴.
+			ArrayXXi Daux_dummy;
+			calc_W_from_Gvec(GvecSq, Wsq, Daux_dummy, qOpSq, false, OPEN_BC); //use false here, otherwise one would also calclate H⁴.
 			GOT_SQUARE = true;
 		}
 	}	
@@ -819,14 +844,14 @@ calc_auxBasis()
 		// {
 		// 	qauxtmp.push_back(qOp[l][k],auxdim());
 		// }
-		for(const auto &qtmp : qtmps)
+		for (const auto &qtmp : qtmps)
 		{
-			if(auto it=find(qOp[l].begin(),qOp[l].end(),qtmp); it != qOp[l].end())
+			if (auto it=find(qOp[l].begin(), qOp[l].end(), qtmp); it != qOp[l].end())
 			{
-				qauxtmp.push_back(qtmp,auxdim());
+				qauxtmp.push_back(qtmp,Daux(l,0));
 			}
 		}
-		if(qauxtmp.Nq() == 0) {qauxtmp.push_back(qtmps[0],auxdim());}
+		if(qauxtmp.Nq() == 0) {qauxtmp.push_back(qtmps[0],Daux(l,0));}
 		// std::unordered_set<qType> uniqueControl;
 		// int lprev = l-1;
 		// int lnext = l+1;
@@ -857,6 +882,7 @@ calc_auxBasis()
 		// 		}
 		// 	}
 		// }
+		
 		qaux[l] = qauxtmp;
 	}
 
@@ -876,7 +902,19 @@ info() const
 	ss << "SQUARE=" << boolalpha << GOT_SQUARE << ", ";
 	ss << "OPEN_BC=" << boolalpha << GOT_OPEN_BC << ", ";
 	
-	ss << "Daux=" << Daux << ", ";
+	set<pair<int,int> > Daux_set;
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Daux_set.insert(make_pair(Daux(l,0),Daux(l,1)));
+	}
+	ss << "Daux=";
+	for (const auto &Dauxpair:Daux_set)
+	{
+		ss << Dauxpair.first << "x" << Dauxpair.second;
+		ss << ",";
+	}
+	ss << " ";
+	
 //	ss << "trunc_weight=" << truncWeight.sum() << ", ";
 	ss << "mem=" << round(memory(GB),3) << "GB";
 	ss << ", sparsity=" << sparsity();
@@ -1054,7 +1092,7 @@ void Mpo<Symmetry,Scalar>::
 setLocal (size_t loc, const OperatorType &Op, bool OPEN_BC)
 {
 	auto Gvec = make_localGvec(loc,Op);
-	calc_W_from_Gvec(Gvec, W, false, OPEN_BC);
+	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1063,7 +1101,7 @@ setLocal (size_t loc, const OperatorType &Op, const OperatorType &SignOp, bool O
 {
 	auto Gvec = make_localGvec(loc,Op);
 	for (size_t l=0; l<loc; ++l) {Gvec[l](0,0) = SignOp;}
-	calc_W_from_Gvec(Gvec, W, false, OPEN_BC);
+	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1079,12 +1117,11 @@ make_localGvec (size_t loc, const OperatorType &Op)
 		qOp[l][0] = (l==loc) ? Op.Q : Symmetry::qvacuum();
 	}
 	
-	Daux = 1;
 	vector<SuperMatrix<Symmetry,Scalar> > Gvec(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		Gvec[l].setMatrix(Daux,qloc[l].size());
+		Gvec[l].setMatrix(1,qloc[l].size());
 		if (l==loc) {Gvec[l](0,0) = Op;}
 		else        {Gvec[l](0,0).data.setIdentity(); Gvec[l](0,0).Q = Symmetry::qvacuum();}
 	}
@@ -1097,7 +1134,7 @@ void Mpo<Symmetry,Scalar>::
 setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, bool OPEN_BC)
 {
 	auto Gvec = make_localGvec(loc,Op);
-	calc_W_from_Gvec(Gvec, W, false, OPEN_BC);
+	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1124,7 +1161,6 @@ setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const Opera
 //	locMin = loc[min-loc.begin()];
 //	locMax = loc[max-loc.begin()];
 //	
-//	Daux = 1;
 //	vector<SuperMatrix<Symmetry,Scalar> > G(N_sites);
 //	
 //	for (size_t l=0; l<N_sites; l++)
@@ -1140,7 +1176,7 @@ setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const Opera
 //	
 //	for (size_t l=0; l<N_sites; ++l)
 //	{
-//		G[l].setMatrix(Daux,qloc[l].size());
+//		G[l].setMatrix(1,qloc[l].size());
 //		if (auto it=find(loc.begin(),loc.end(),l) == loc.end())
 //		{
 //			if (l>locMin and l<locMax) {G[l](0,0) = SignOp;}
@@ -1168,7 +1204,7 @@ setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const Opera
 	size_t locMax = loc[max-loc.begin()];
 	for (size_t l=locMin+1; l<locMax; ++l) {Gvec[l](0,0) = SignOp;}
 	
-	calc_W_from_Gvec(Gvec, W, false, OPEN_BC);
+	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1190,9 +1226,8 @@ make_localGvec (const vector<size_t> &loc, const vector<OperatorType> &Op)
 		}
 	}
 	
-	Daux = 1;
 	vector<SuperMatrix<Symmetry,Scalar> > Gvec(N_sites);
-
+	
 	for (size_t l=0; l<N_sites; l++) { qOp[l].resize(1); qOp[l][0] = Symmetry::qvacuum(); }
 	// for (size_t l=0; l<N_sites; l++)
 	// {
@@ -1205,7 +1240,7 @@ make_localGvec (const vector<size_t> &loc, const vector<OperatorType> &Op)
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		Gvec[l].setMatrix(Daux,qloc[l].size());
+		Gvec[l].setMatrix(1,qloc[l].size());
 		Gvec[l](0,0).data.setIdentity();
 		Gvec[l](0,0).Q = Symmetry::qvacuum();
 	}
@@ -1240,23 +1275,26 @@ setLocalSum (const OperatorType &Op, Scalar (*f)(int), bool OPEN_BC)
 		}
 	}
 	
-	Daux = 2;
 	vector<SuperMatrix<Symmetry,Scalar> > Gvec(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		Gvec[l].setMatrix(Daux,qloc[l].size());
+		Gvec[l].setMatrix(2,qloc[l].size());
+		
 		Gvec[l](0,0).data.setIdentity();
 		Gvec[l](0,0).Q = Symmetry::qvacuum();
+		
 		Gvec[l](0,1).data.setZero();
 		Gvec[l](0,1).Q = Symmetry::qvacuum();
+		
 		Gvec[l](1,0).data = f(l) * Op.data;
 		Gvec[l](1,0).Q = Op.Q;
+		
 		Gvec[l](1,1).data.setIdentity();
 		Gvec[l](1,1).Q = Symmetry::qvacuum();
 	}
 	
-	calc_W_from_Gvec(Gvec, W, false, OPEN_BC);
+	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
 }
 
 // O1(1)*O2(2)+O1(2)*O1(3)+...+O1(L-1)*O2(L)
@@ -1293,12 +1331,11 @@ setProductSum (const OperatorType &Op1, const OperatorType &Op2, bool OPEN_BC)
 		}
 	}
 	
-	Daux = 3;
 	vector<SuperMatrix<Symmetry,Scalar> > Gvec(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		Gvec[l].setMatrix(Daux,qloc[l].size());
+		Gvec[l].setMatrix(3,qloc[l].size());
 		Gvec[l].setZero();
 		Gvec[l](0,0).data.setIdentity();
 		Gvec[l](0,0).Q = Symmetry::qvacuum();
@@ -1309,7 +1346,7 @@ setProductSum (const OperatorType &Op1, const OperatorType &Op2, bool OPEN_BC)
 		Gvec[l](2,2).Q = Symmetry::qvacuum();
 	}
 	
-	calc_W_from_Gvec(Gvec, W, false, OPEN_BC);
+	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1346,9 +1383,9 @@ scale (double factor, double offset)
 //	
 //	if (abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
 //	{
-//		size_t last = Daux-1;
+//		size_t last = Daux(l,0)-1;
 //		for (size_t l=0; l<N_sites; ++l)
-//		for (size_t a2=0; a2<Daux-1; ++a2)
+//		for (size_t a2=0; a2<last; ++a2)
 //		{
 //			Gvec_tmp[l](last,a2).data *= factor;
 //		}
@@ -1356,7 +1393,7 @@ scale (double factor, double offset)
 //	
 //	if (abs(offset) > ::mynumeric_limits<double>::epsilon())
 //	{
-//		size_t last = Daux-1;
+//		size_t last = Daux(l,0)-1;
 //		for (size_t l=0; l<N_sites; ++l)
 //		{
 //			MatrixType Id = MatrixType::Identity(Gvec_tmp[l](last,0).data.rows(), Gvec_tmp[l](last,0).data.cols());
@@ -1373,7 +1410,7 @@ scale (double factor, double offset)
 		Gvec.push_back(Generator(Terms[l]));
 	}
 	
-	calc_W_from_Gvec(Gvec, W, qOp, GOT_SQUARE, GOT_OPEN_BC);
+	calc_W_from_Gvec(Gvec, W, Daux, qOp, GOT_SQUARE, GOT_OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1473,8 +1510,8 @@ H2site (size_t loc, bool HALF_THE_LOCAL_TERM) const
 	size_t D2 = qloc[loc].size();
 //	size_t D2 = qloc[loc+1].size();
 	
-	size_t Grow = Daux-1; // last row
-	size_t Gcol = 0;      // first column
+	size_t Grow = Daux(loc,0)-1; // last row
+	size_t Gcol = 0;             // first column
 	
 	Matrix<Scalar,Dynamic,Dynamic> Hfull(D1*D2,D1*D2);
 	Hfull.setZero();
@@ -1870,7 +1907,8 @@ template<typename Symmetry, typename Scalar>
 ostream &operator<< (ostream& os, const Mpo<Symmetry,Scalar> &O)
 {
 	os << setfill('-') << setw(30) << "-" << setfill(' ');
-	os << "Mpo: L=" << O.length() << ", Daux=" << O.auxdim();
+	os << "Mpo: L=" << O.length();
+//	 << ", Daux=" << O.auxdim();
 	os << setfill('-') << setw(30) << "-" << endl << setfill(' ');
 	
 	for (size_t l=0; l<O.length(); ++l)
@@ -1897,7 +1935,8 @@ template<typename Symmetry, typename Scalar1, typename Scalar2>
 void compare (const Mpo<Symmetry,Scalar1> &O1, const Mpo<Symmetry,Scalar2> &O2)
 {
 	lout << setfill('-') << setw(30) << "-" << setfill(' ');
-	lout << "Mpo: L=" << O1.length() << ", Daux=" << O1.auxdim();
+	lout << "Mpo: L=" << O1.length();
+//	 << ", Daux=" << O1.auxdim();
 	lout << setfill('-') << setw(30) << "-" << endl << setfill(' ');
 	
 	for (size_t l=0; l<O1.length(); ++l)

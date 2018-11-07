@@ -2147,7 +2147,7 @@ void Mps<Symmetry,Scalar>::
 sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, bool SEPARATE_SV)
 {
 	Biped<Symmetry,MatrixType> Cdump;
-	double entropy
+	double entropy;
 	split_AA(DIR, Apair, qloc[loc], A[loc], qloc[loc+1], A[loc+1],
 			 QoutTop[loc], QoutBot[loc],
 			 Cdump, false, truncWeight(loc), entropy,

@@ -3,6 +3,7 @@
 
 #include "ParamHandler.h"
 #include "DmrgTypedefs.h"
+#include "VUMPS/VumpsTypedefs.h"
 
 class ParamReturner
 {

@@ -169,8 +169,8 @@ int main (int argc, char* argv[])
 		lout << H_U0.info() << endl;
 		
 		VMPS::Heisenberg::Solver DMRG_U0(VERB);
-		DMRG_U0.GlobParam = H_U0.get_GlobParam(SweepParams);
-		DMRG_U0.DynParam = H_U0.get_DynParam(SweepParams);
+		DMRG_U0.GlobParam = H_U0.get_DmrgGlobParam(SweepParams);
+		DMRG_U0.DynParam = H_U0.get_DmrgDynParam(SweepParams);
 		DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND);
 		
 		t_U0 = Watch_U0.time();
@@ -188,8 +188,8 @@ int main (int argc, char* argv[])
 		VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
 		DMRG_U1.userSetGlobParam();
 		DMRG_U1.userSetDynParam();
-		DMRG_U1.GlobParam = H_U1.get_GlobParam(SweepParams);
-		DMRG_U1.DynParam = H_U1.get_DynParam(SweepParams);
+		DMRG_U1.GlobParam = H_U1.get_DmrgGlobParam(SweepParams);
+		DMRG_U1.DynParam = H_U1.get_DmrgDynParam(SweepParams);
 		DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND);
 		g_U1.state.graph("U1");
 		
@@ -254,14 +254,14 @@ int main (int argc, char* argv[])
 		lout << endl << "--------SU(2)---------" << endl << endl;
 		
 		Stopwatch<> Watch_SU2;
-		VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",false}});
+		VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
 		lout << H_SU2.info() << endl;
 		
 		VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
 		DMRG_SU2.userSetGlobParam();
 		DMRG_SU2.userSetDynParam();
-		DMRG_SU2.GlobParam = H_SU2.get_GlobParam(SweepParams);
-		DMRG_SU2.DynParam = H_SU2.get_DynParam(SweepParams);
+		DMRG_SU2.GlobParam = H_SU2.get_DmrgGlobParam(SweepParams);
+		DMRG_SU2.DynParam = H_SU2.get_DmrgDynParam(SweepParams);
 		DMRG_SU2.edgeState(H_SU2, g_SU2, {Dtot}, LANCZOS::EDGE::GROUND);
 		g_SU2.state.graph("SU2");
 		
