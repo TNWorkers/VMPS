@@ -1919,9 +1919,9 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 								H2.qlhs, H2.qrhs, H2.factor_cgcs);
 		HxV(H2,A2C);
 
-		vector<vector<qarray<Symmetry::Nq> > > qbasis_tmp(2);
-		qbasis_tmp[0] = H.locBasis(loc);
-		qbasis_tmp[1] = H.locBasis((loc+1)%N_sites);
+		// vector<vector<qarray<Symmetry::Nq> > > qbasis_tmp(2);
+		// qbasis_tmp[0] = H.locBasis(loc);
+		// qbasis_tmp[1] = H.locBasis((loc+1)%N_sites);
 		// Mps<Symmetry,Scalar> Vtmp(2, qbasis_tmp, Symmetry::qvacuum(), 2, Vout.state.Nqmax);
 	
 		// Vtmp.A[0] = AL_ref[loc];
@@ -2207,4 +2207,54 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 	Vout.state.update_outbase();
 }
 
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, Biped<Symmetry,MatrixType>& B2) const
+{
+	vector<Biped<Symmetry,MatrixType> > NL;
+	vector<Biped<Symmetry,MatrixType> > NR;
+	
+	Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc,             NL);
+	Vout.state.calc_N(DMRG::DIRECTION::LEFT,  (loc+1)%N_sites, NR);
+
+	PivotMatrix2<Symmetry,Scalar> H2(HeffA[loc].L, HeffA[(loc+1)%N_sites].R, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, 
+									 H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites));
+	PivotVector<Symmetry,Scalar> A2C(Vout.state.A[GAUGE::L][loc], H.locBasis(loc), 
+									 Vout.state.A[GAUGE::C][(loc+1)%N_sites], H.locBasis((loc+1)%N_sites), 
+									 Vout.state.Qtop(loc), Vout.state.Qbot((loc+1)%N_sites));
+
+	precalc_blockStructure (HeffA[loc].L, A2C.data, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, A2C.data, HeffA[(loc+1)%N_sites].R, 
+							H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites), 
+							H2.qlhs, H2.qrhs, H2.factor_cgcs);
+	HxV(H2,A2C);
+
+	Biped<Symmetry,MatrixType> Cdump;
+	double truncDump, Sdump;
+	vector<Biped<Symmetry,MatrixType> > AL=AL_ref[loc];
+	vector<Biped<Symmetry,MatrixType> > AR=Vout.state.A[GAUGE::C][(loc+1)%N_sites];
+
+	split_AA(DMRG::DIRECTION::RIGHT, A2C.data, H.locBasis(loc), AL, H.locBasis((loc+1)%N_sites), AR,
+			 Vout.state.Qtop(loc), Vout.state.Qbot(loc),
+			 Cdump, false, truncDump, Sdump,
+			 Vout.state.eps_svd,Vout.state.min_Nsv,Vout.state.max_Nsv);
+
+	Qbasis<Symmetry> NRbasis; NRbasis.pullData(NR,1);
+	Qbasis<Symmetry> NLbasis; NLbasis.pullData(NL,0);
+	Qbasis<Symmetry> ARbasis; ARbasis.pullData(AR,1);
+	Qbasis<Symmetry> ALbasis; ALbasis.pullData(AL,0);
+	
+	// calculate NAAN
+	Biped<Symmetry,MatrixType> IdL; IdL.setIdentity(NLbasis, ALbasis);
+	Biped<Symmetry,MatrixType> IdR; IdR.setIdentity(ARbasis, NRbasis);
+		
+	Biped<Symmetry,MatrixType> TL;
+	// contract_L(IdL, NL, Vtmp.A[0], H.locBasis(loc), TL);
+	contract_L(IdL, NL, AL, H.locBasis(loc), TL);
+
+	Biped<Symmetry,MatrixType> TR;
+	// contract_R(IdR, NR, Vtmp.A[1], H.locBasis((loc+1)%N_sites), TR);
+	contract_R(IdR, NR, AR, H.locBasis((loc+1)%N_sites), TR);
+
+	B2 = TL.contract(TR);
+}
 #endif
