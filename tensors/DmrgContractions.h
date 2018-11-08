@@ -1901,6 +1901,18 @@ template<typename Symmetry, typename Scalar>
 void split_AA (DMRG::DIRECTION::OPTION DIR, const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair,
 			   const vector<qarray<Symmetry::Nq> >& qloc_l, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Al,
 			   const vector<qarray<Symmetry::Nq> >& qloc_r, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Ar,
+			   const qarray<Symmetry::Nq>& qtop, const qarray<Symmetry::Nq>& qbot, double eps_svd, size_t min_Nsv, size_t max_Nsv)
+{
+	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Cdump;
+	double truncDump, Sdump;
+	split_AA(DIR, Apair, qloc_l, Al, qloc_r, Ar, qtop, qbot,
+			 Cdump, false, truncDump, Sdump, eps_svd,min_Nsv,max_Nsv);
+}
+			   
+template<typename Symmetry, typename Scalar>
+void split_AA (DMRG::DIRECTION::OPTION DIR, const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair,
+			   const vector<qarray<Symmetry::Nq> >& qloc_l, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Al,
+			   const vector<qarray<Symmetry::Nq> >& qloc_r, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Ar,
 			   const qarray<Symmetry::Nq>& qtop, const qarray<Symmetry::Nq>& qbot,
 			   Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C, bool SEPARATE_SV, double truncWeight, double S, double eps_svd, size_t min_Nsv, size_t max_Nsv)
 {

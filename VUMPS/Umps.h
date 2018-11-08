@@ -190,6 +190,9 @@ public:
 	 */
 	void adjustQN (const size_t number_cells);
 
+	void sort_A(size_t loc, GAUGE::OPTION g);
+
+	void updateC(size_t loc);
 private:
 	/**parameter*/
 	size_t N_sites;
@@ -1712,7 +1715,46 @@ load (string filename)
 	update_inbase();
 	update_outbase();
 }
-#endif
+#endif //USE_HDF5_STORAGE
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+sort_A(size_t loc, GAUGE::OPTION g)
+{
+	for (size_t s=0; s<locBasis(loc).size(); ++s)
+	{
+		A[g][loc][s] = A[g][loc][s].sorted();
+	}
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+updateC(size_t loc)
+{
+	for (size_t q=0; q<outBasis(loc).Nq(); ++q)
+	{
+		qarray2<Symmetry::Nq> quple = {outBasis(loc)[q], outBasis(loc)[q]};
+		auto qC = C[loc].dict.find(quple);
+		size_t r = outBasis(loc).inner_dim(outBasis(loc)[q]);
+		size_t c = r;
+		if (qC != C[loc].dict.end())
+		{
+			int dr = r-C[loc].block[qC->second].rows();
+			int dc = c-C[loc].block[qC->second].cols();
+			
+			C[loc].block[qC->second].conservativeResize(r,c);
+			
+			C[loc].block[qC->second].bottomRows(dr).setZero();
+			C[loc].block[qC->second].rightCols(dc).setZero();
+		}
+		else
+		{
+			MatrixType Mtmp(r,c);
+			Mtmp.setZero();
+			C[loc].push_back(quple, Mtmp);
+		}
+	}
+}
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
@@ -1762,4 +1804,4 @@ truncate()
 	
 	cout << test_ortho() << endl;
 }
-#endif
+#endif //VANILLA_Umps
