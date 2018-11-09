@@ -8,8 +8,6 @@
 //include "ParamHandler.h" // from HELPERS
 #include "ParamReturner.h"
 
-
-
 namespace VMPS
 {
 /** \class KondoU0xSU2
@@ -47,6 +45,8 @@ public:
 	KondoU0xSU2 (): Mpo(), ParamReturner(KondoU0xSU2::sweep_defaults) {};
 	KondoU0xSU2 (const size_t &L, const vector<Param> &params);
 	///@}
+	
+	static qarray<1> singlet (int N) {return qarray<1>{1};};
 	
 	/**
 	 * \describe_set_operators

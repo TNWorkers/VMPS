@@ -66,7 +66,7 @@ public:
 	 * \param[in] min_halfsweeps : minimal amount of half-sweeps
 	 */
 	void stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-	                    size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
+	                    size_t Dcutoff_input, double tol=1e-4, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
 	
 	/**
 	 * Compresses a matrix-vector product \f$\left|V_{out}\right> \approx H \left|V_{in}\right>\f$. 
@@ -86,7 +86,7 @@ public:
 	template<typename MpOperator>
 	void prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
 	                   qarray<Symmetry::Nq> Qtot_input,
-	                   size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=42, size_t min_halfsweeps=1);
+	                   size_t Dcutoff_input, double tol=1e-4, size_t max_halfsweeps=100, size_t min_halfsweeps=1);
 	
 	/**
 	 * Compresses an orthogonal iteration step \f$V_{out} \approx (C_n H - A_n) \cdot V_{in1} - B_n V_{in2}\f$. 
@@ -112,7 +112,7 @@ public:
 	///\}
 	
 	void lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar> &factors, Mps<Symmetry,Scalar> &Vout, 
-	                       size_t Dcutoff_input, double tol=1e-5, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
+	                       size_t Dcutoff_input, double tol=1e-4, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
 	
 private:
 	
@@ -420,7 +420,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
 	
 	if (CHOSEN_VERBOSITY>=2)
 	{
-		lout << Chronos.info("preparation") << endl;
+		lout << Chronos.info("preparation stateCompress") << endl;
 	}
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
@@ -500,7 +500,7 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 	if (Vout.pivot == N_sites-1 or
 	    Vout.pivot == -1)
 	{
-		for (size_t l=N_sites-1; l>0; --l)
+		for (int l=N_sites-1; l>0; --l)
 		{
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			build_R(l-1,Vout,Vin,true); //true randomize Env[l].R
@@ -673,7 +673,7 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 	
 	if (CHOSEN_VERBOSITY>=2)
 	{
-		lout << Chronos.info("preparation") << endl;
+		lout << Chronos.info("preparation lincomboCompress") << endl;
 	}
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
@@ -808,7 +808,7 @@ prepSweep (const vector<Mps<Symmetry,Scalar> > &Vin, Mps<Symmetry,Scalar> &Vout)
 	if (Vout.pivot == N_sites-1 or
 	    Vout.pivot == -1)
 	{
-		for (size_t l=N_sites-1; l>0; --l)
+		for (int l=N_sites-1; l>0; --l)
 		{
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
 			build_R(l-1,Vout,Vin,true); // true: randomize Env[l].R
@@ -1001,7 +1001,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 	
 	if (CHOSEN_VERBOSITY>=2)
 	{
-		lout << Chronos.info("preparation") << endl;
+		lout << Chronos.info("preparation prodCompress") << endl;
 	}
 	
 	// must achieve sqdist > tol or break off after max_halfsweeps, do at least min_halfsweeps
@@ -1059,11 +1059,12 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		    N_halfsweeps != max_halfsweeps and 
 		    sqdist > tol)
 		{
-			Vout.max_Nsv += 1;
+			size_t Delta_Nsv = (sqdist>10.*tol)? 2:1;
+			Vout.max_Nsv += Delta_Nsv;
 			Dcutoff_new = Vout.max_Nsv;
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
-				lout << "resize: " << Vout.max_Nsv-1 << "→" << Vout.max_Nsv << endl;
+				lout << "resize: " << Vout.max_Nsv-Delta_Nsv << "→" << Vout.max_Nsv << endl;
 			}
 		}
 		
@@ -1085,13 +1086,23 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Sc
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
 	Vout.setRandom();
+	bool RANDOMIZE;
+	if (H.IS_HERMITIAN())
+	{
+		Vout = Vin;
+		RANDOMIZE = false;
+	}
+	else
+	{
+		RANDOMIZE = true;
+	}
 	
 	if (Vout.pivot == N_sites-1 or Vout.pivot == -1)
 	{
-		for (size_t l=N_sites-1; l>0; --l)
+		for (int l=N_sites-1; l>0; --l)
 		{
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
-			build_RW(l-1,Vout,H,Vin,true);
+			build_RW(l-1,Vout,H,Vin,RANDOMIZE);
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
 	}
@@ -1100,7 +1111,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Sc
 		for (size_t l=0; l<N_sites-1; ++l)
 		{
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
-			build_LW(l+1,Vout,H,Vin,true);
+			build_LW(l+1,Vout,H,Vin,RANDOMIZE);
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
 	}
@@ -1309,7 +1320,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 	
 	if (CHOSEN_VERBOSITY>=2)
 	{
-		lout << Chronos.info("preparation") << endl;
+		lout << Chronos.info("preparation polyCompress") << endl;
 	}
 	
 	Mmax = Vout.calc_Mmax();
@@ -1446,7 +1457,7 @@ prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symm
 	
 	if (Vout.pivot == N_sites-1)
 	{
-		for (size_t l=N_sites-1; l>0; --l)
+		for (int l=N_sites-1; l>0; --l)
 		{
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,RANDOMIZE);
 			#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP

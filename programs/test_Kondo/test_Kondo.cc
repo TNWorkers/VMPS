@@ -33,6 +33,7 @@ Logger lout;
 #include "models/KondoU1.h"
 #include "models/KondoSU2xU1.h"
 #include "models/KondoU0xSU2.h"
+//#include "models/KondoSU2xSU2.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, bool COLOR=false, int n=14)
@@ -60,12 +61,12 @@ size_t L, Ly;
 int N, T;
 double J, U, t, tPrime, Bx, Bz;
 double alpha;
-double t_U1, t_U1xU1, t_SU2xU1, t_U0xSU2;
+double t_U1, t_U1xU1, t_SU2xU1, t_U0xSU2, t_SU2xSU2;
 int Dinit, Dlimit, Imin, Imax;
 double tol_eigval, tol_state;
 double dt;
 DMRG::VERBOSITY::OPTION VERB;
-bool U1, U1U1, SU2, U0SU2, CORR, SINGLE_OP, PRINT;
+bool U1, U1U1, SU2, U0SU2, SO4, CORR, SINGLE_OP, PRINT;
 string OP;
 
 MatrixXd SpinCorr_U1xU1, nCorr_U1xU1, densityMatrixA_U1xU1, densityMatrixB_U1xU1;
@@ -81,6 +82,7 @@ Eigenstate<VMPS::KondoU1::StateXd> g_U1;
 Eigenstate<VMPS::KondoU1xU1::StateXd> g_U1xU1;
 Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1;
 Eigenstate<VMPS::KondoU0xSU2::StateXd> g_U0xSU2;
+//Eigenstate<VMPS::KondoSU2xSU2::StateXd> g_SU2xSU2;
 
 int main (int argc, char* argv[])
 {
@@ -106,6 +108,7 @@ int main (int argc, char* argv[])
 	U1U1 = args.get<bool>("U1U1",true);
 	SU2 = args.get<bool>("SU2",true);
 	U0SU2 = args.get<bool>("U0SU2",true);
+	SO4 = args.get<bool>("SO4",true);
 	CORR = args.get<bool>("CORR",false);
 	SINGLE_OP = args.get<bool>("SINGLE_OP",false);
 	PRINT = args.get<bool>("PRINT",false);
@@ -422,6 +425,23 @@ int main (int argc, char* argv[])
 		t_U0xSU2 = Watch_U0xSU2.time();
 	}
 	
+	if (SO4)
+	{
+//		lout << endl << termcolor::red << "--------U(0)⊗SU(2)---------" << termcolor::reset << endl << endl;
+//		
+//		params.push_back({"subL",SUB_LATTICE::A,0});
+//		params.push_back({"subL",SUB_LATTICE::B,1});
+//		
+//		Stopwatch<> Watch_SU2xSU2;
+//		VMPS::KondoSU2xSU2 H_SU2xSU2(L,params);
+//		lout << H_SU2xSU2.info() << endl;
+//		
+//		VMPS::KondoSU2xSU2::Solver DMRG_SU2xSU2(VERB);
+//		DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {S,T}, LANCZOS::EDGE::GROUND);
+//		
+//		t_SU2xSU2 = Watch_SU2xSU2.time();
+	}
+	
 	//-------------correlations-----------------
 	if (PRINT)
 	{
@@ -450,7 +470,7 @@ int main (int argc, char* argv[])
 		// cout << densityMatrixB_U1xU1 << endl << endl;
 		// cout << "density matrixB SU(2)⊗U(1): " << endl;
 		// cout << densityMatrixB_SU2xU1 << endl << endl;
-
+		
 		if(SINGLE_OP)
 		{
 			cout << termcolor::green << "Operator: " << OP << termcolor::reset << endl;
@@ -470,13 +490,12 @@ int main (int argc, char* argv[])
 			cout << factor_SU2_dag << "*<g(" << Sym::format<VMPS::KondoSU2xU1::Symmetry>(qarray<2>{S,N}) << ")|" << OP << "†|g("
 				 << Sym::format<VMPS::KondoSU2xU1::Symmetry>(Qc_SU2xU1) << ")> SU(2)⊗U(1): " << endl;
 			cout << factor_SU2_dag * expSdag_SU2xU1 << endl << endl;
-
+			
 			lout << endl << termcolor::red << "--------ratios---------" << termcolor::reset << endl << endl;
 			cout << "ratio:" << endl;
 			cout << factor_SU2 * expS_SU2xU1.array()/(factor_U1*expS1_U1xU1.array()) << endl << endl;
 			cout << "ratio dag:" << endl;
 			cout << factor_SU2_dag * expSdag_SU2xU1.array()/(factor_U1_dag*expS1dag_U1xU1.array()) << endl << endl;
-
 		}
 	}
 	

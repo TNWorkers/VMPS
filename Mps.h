@@ -42,7 +42,7 @@ class Mps : public DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >
 	template<typename Symmetry_, typename S1, typename S2> friend 
 	void OxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 	template<typename Symmetry_, typename S1, typename S2> friend 
-	void OxV_exact (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, double tol_compr);
+	void OxV_exact (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, double tol_compr, DMRG::VERBOSITY::OPTION VERBOSITY);
 	
 	template<typename Symmetry_, typename S_> friend class Mps; // in order to exchange data between real & complex Mps
 	
@@ -3119,6 +3119,14 @@ Mps<Symmetry,OtherScalar> operator* (const OtherScalar &alpha, const Mps<Symmetr
 {
 	Mps<Symmetry,OtherScalar> Vout = Vin.template cast<OtherScalar>();
 	Vout *= alpha;
+	return Vout;
+}
+
+template<typename Symmetry, typename Scalar, typename OtherScalar>
+Mps<Symmetry,OtherScalar> operator/ (const Mps<Symmetry,Scalar> &Vin, const OtherScalar &alpha)
+{
+	Mps<Symmetry,OtherScalar> Vout = Vin.template cast<OtherScalar>();
+	Vout /= alpha;
 	return Vout;
 }
 
