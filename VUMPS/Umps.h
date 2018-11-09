@@ -177,7 +177,7 @@ public:
 	
 //	void expand_basis (size_t DeltaD, const boost::multi_array<Scalar,4> &h2site, double e);
 	
-	void calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixType> > &N);
+	void calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixType> > &N) const;
 	
 	void truncate();
 
@@ -190,9 +190,33 @@ public:
 	 */
 	void adjustQN (const size_t number_cells);
 
-	void sort_A(size_t loc, GAUGE::OPTION g);
+	/**
+	 * Sorts the A tensors of a specific gauge. If SORT_ALL_GAUGES is true, then obviously all A tensors get sorted.
+	 */
+	void sort_A(size_t loc, GAUGE::OPTION g, bool SORT_ALL_GAUGES=false);
 
+	/**
+	 * Updates the tensor C with zeros if the auxiallary basis has changed, e.g. after an enrichment process
+	 * \param loc : location of the C tensor for the update.
+	 */
 	void updateC(size_t loc);
+	/**
+	 * Updates the tensor AC with zeros if the auxiallary basis has changed, e.g. after an enrichment process
+	 * \param loc : location of the C tensor for the update.
+	 * \param g : Pull information about changed dimension from either A[GAUGE::L] or A[GAUGE::R]. 
+	 * \warning Do not insert \p g = GAUGE::C here.
+	 */
+	void updateAC(size_t loc, GAUGE::OPTION g);
+
+	/**
+	 * Enlarges the tensors of the Umps with an enrichment tensor \p P and resizes everything necessary with zeros.
+	 * The tensor \p P needs to be calculated in advance. This is done directly in the VumpsSolver.
+	 * \param loc : location of the site to enrich.
+	 * \param g : The gauge to enrich. L means, we need to update site tensor at loc+1 accordingly. R means updating site loc-1 with zeros.
+	 * \param P : the tensor with the enrichment. It is calculated after Eq. (A31).
+	 */	
+	void enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P);
+
 private:
 	/**parameter*/
 	size_t N_sites;
@@ -1326,7 +1350,7 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &N)
+calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &N) const
 {
 	N.clear();
 	N.resize(qloc[loc].size());
@@ -1719,11 +1743,22 @@ load (string filename)
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-sort_A(size_t loc, GAUGE::OPTION g)
+sort_A(size_t loc, GAUGE::OPTION g, bool SORT_ALL_GAUGES)
 {
-	for (size_t s=0; s<locBasis(loc).size(); ++s)
+	if (SORT_ALL_GAUGES)
 	{
-		A[g][loc][s] = A[g][loc][s].sorted();
+		for (size_t gP=0; gP<3; ++gP)
+		for (size_t s=0; s<locBasis(loc).size(); ++s)
+		{
+			A[gP][loc][s] = A[gP][loc][s].sorted();
+		}
+	}
+	else
+	{
+		for (size_t s=0; s<locBasis(loc).size(); ++s)
+		{
+			A[g][loc][s] = A[g][loc][s].sorted();
+		}
 	}
 }
 
@@ -1754,6 +1789,118 @@ updateC(size_t loc)
 			C[loc].push_back(quple, Mtmp);
 		}
 	}
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+updateAC(size_t loc, GAUGE::OPTION g)
+{
+	assert(g != GAUGE::C and "Oouuhh.. you tried to update AC with itself, but we have no bootstrap implemented ;). Use AL or AR.");
+	for (size_t s=0; s<locBasis(loc).size(); ++s)
+	for (size_t q=0; q<A[g][loc][s].size(); ++q)
+	{
+		qarray2<Symmetry::Nq> quple = {A[g][loc][s].in[q], A[g][loc][s].out[q]};
+		auto it = A[GAUGE::C][loc][s].dict.find(quple);
+		if (it != A[GAUGE::C][loc][s].dict.end())
+		{
+			int dr = A[g][loc][s].block[q].rows() - A[GAUGE::C][loc][s].block[it->second].rows();
+			int dc = A[g][loc][s].block[q].cols() - A[GAUGE::C][loc][s].block[it->second].cols();
+			assert(dr >= 0 and dc >= 0 and "Something went wrong in expand_basis during the VUMPS Algorithm.");
+			MatrixType Mtmp(dr,A[GAUGE::C][loc][s].block[it->second].cols()); Mtmp.setZero();
+			addBottom(Mtmp, A[GAUGE::C][loc][s].block[it->second]);
+			Mtmp.resize(A[GAUGE::C][loc][s].block[it->second].rows(),dc); Mtmp.setZero();
+			addRight(Mtmp, A[GAUGE::C][loc][s].block[it->second]);
+		}
+		else
+		{
+			MatrixType Mtmp(A[g][loc][s].block[q].rows(), A[g][loc][s].block[q].cols());
+			Mtmp.setZero();
+			A[GAUGE::C][loc][s].push_back(quple,Mtmp);
+		}
+	}
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P)
+{
+	size_t loc1,loc2;
+	if (g == GAUGE::L) {loc1 = loc; loc2 = (loc+1)%N_sites;}
+	else if (g == GAUGE::R) {loc1 = (loc+1)%N_sites; loc2 = loc;}
+	
+	for (size_t s=0; s<locBasis(loc1).size(); ++s)
+	for (size_t qP=0; qP<P[s].size(); ++qP)
+	{
+		qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
+		auto qA = A[g][loc1][s].dict.find(quple);
+		
+		if (qA != A[g][loc1][s].dict.end())
+		{
+			if (g == GAUGE::L) {addRight(P[s].block[qP], A[g][loc1][s].block[qA->second]);}
+			else if (g == GAUGE::R) {addBottom(P[s].block[qP], A[g][loc1][s].block[qA->second]);}			
+		}
+		else
+		{
+			A[g][loc1][s].push_back(quple, P[s].block[qP]);
+		}
+	}
+
+	// update the inleg from AL at site loc2 with zeros
+	Qbasis<Symmetry> ExpandedBasis;
+	if (g == GAUGE::L) {ExpandedBasis.pullData(P,1);}
+	else if (g == GAUGE::R) {ExpandedBasis.pullData(P,0);}
+	
+	update_inbase(loc1,g);
+	update_outbase(loc1,g);
+		
+	for (const auto &[qval,qdim,plain]:ExpandedBasis)
+	for (size_t s=0; s<locBasis(loc2).size(); ++s)
+	{
+		std::vector<qarray<Symmetry::Nq> > qins_outs;
+		if (g == GAUGE::L) {qins_outs = Symmetry::reduceSilent(qval, locBasis(loc2)[s]);}
+		else if (g == GAUGE::R) {qins_outs = Symmetry::reduceSilent(qval, Symmetry::flip(locBasis(loc2)[s]));}
+		for (const auto &qin_out:qins_outs)
+		{
+			qarray2<Symmetry::Nq> quple;
+			if (g == GAUGE::L)
+			{
+				if (outBasis(loc2).find(qin_out) == false) {continue;}
+				quple = {qval, qin_out};
+			}
+			else if (g == GAUGE::R)
+			{
+				if (inBasis(loc2).find(qin_out) == false) {continue;}
+				quple = {qin_out, qval};
+			}
+			auto it = A[g][loc2][s].dict.find(quple);
+			if (it != A[g][loc2][s].dict.end())
+			{
+				if (g == GAUGE::L)
+				{
+					MatrixType Mtmp(ExpandedBasis.inner_dim(qval), 
+									A[g][loc2][s].block[it->second].cols());
+					Mtmp.setZero();
+					addBottom(Mtmp, A[g][loc2][s].block[it->second]);
+				}
+				else if (g == GAUGE::R)
+				{
+					MatrixType Mtmp(A[g][loc2][s].block[it->second].rows(),
+									ExpandedBasis.inner_dim(qval));
+					Mtmp.setZero();
+					addRight(Mtmp, A[g][loc2][s].block[it->second]);
+				}
+			}
+			else
+			{
+				MatrixType Mtmp;
+				if (g == GAUGE::L)      {Mtmp.resize(ExpandedBasis.inner_dim(qval), outBasis(loc2).inner_dim(qin_out));}
+				else if (g == GAUGE::R) {Mtmp.resize(inBasis(loc2).inner_dim(qin_out), ExpandedBasis.inner_dim(qval));}
+				Mtmp.setZero();
+				A[g][loc2][s].push_back(quple, Mtmp);
+			}
+		}
+	}
+
 }
 
 template<typename Symmetry, typename Scalar>
