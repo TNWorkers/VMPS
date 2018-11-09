@@ -1909,7 +1909,8 @@ truncate()
 {
 	vector<Biped<Symmetry,MatrixType> > U(N_sites);
 	vector<Biped<Symmetry,MatrixType> > Vdag(N_sites);
-	
+
+	//decompose C by SVD and write results to U and V.
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		for (size_t q=0; q<C[l].dim; ++q)
@@ -1935,7 +1936,8 @@ truncate()
 		// cout << (Vdag[l].contract(Vdag[l].adjoint())).print(true) << endl;
 		// cout << endl;
 	}
-	
+
+	//update AL and AR
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		cout << "cutting A_LR, l=" << l << endl;
@@ -1949,6 +1951,6 @@ truncate()
 		}
 	}
 	
-	cout << test_ortho() << endl;
+	// cout << test_ortho() << endl;
 }
 #endif //VANILLA_Umps
