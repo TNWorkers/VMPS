@@ -33,6 +33,15 @@ std::ostream& operator<< (std::ostream& s, UMPS_ALG::OPTION a)
 /**Namespace imitation for various enums.*/
 struct VUMPS
 {
+	struct TWOSITE_A
+	{
+		enum OPTION
+		{
+			ALxAC,
+			ACxAR,
+			ALxCxAR
+		};
+	};
 	/**Default configuration values for the VUMPS solver.*/
 	struct CONTROL
 	{
