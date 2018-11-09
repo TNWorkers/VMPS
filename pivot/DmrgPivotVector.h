@@ -265,7 +265,7 @@ PivotVector<Symmetry,Scalar> operator- (const PivotVector<Symmetry,Scalar> &V1, 
 template<typename Symmetry, typename Scalar, typename OtherScalar>
 void addScale (const OtherScalar alpha, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
 {
-	Vout = alpha * Vin;
+	Vout += alpha * Vin;
 }
 
 //-----------<dot & vector norms>-----------
