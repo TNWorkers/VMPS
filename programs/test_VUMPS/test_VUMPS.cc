@@ -393,6 +393,7 @@ int main (int argc, char* argv[])
 		cout << "-----U0-----" << endl;
 		print_mag(Heis0,g0);
 		cout << g0.state.info() << endl;
+		g0.state.eps_svd = 1.e-4;
 		g0.state.truncate();
 		cout << endl << endl << "after truncation" << endl;
 		cout << g0.state.info() << endl;
@@ -411,7 +412,12 @@ int main (int argc, char* argv[])
 	{
 		cout << endl;
 		cout << "-----U1-----" << endl;
-		// print_mag(Heis_U1,g_U1);
+		print_mag(Heis_U1,g_U1);
+		g_U1.state.truncate();
+		cout << endl << endl << "after truncation" << endl;
+		cout << g_U1.state.info() << endl;
+		print_mag(Heis_U1,g_U1);
+
 		size_t dmax = 10;
 		for (size_t d=1; d<dmax; ++d)
 		{

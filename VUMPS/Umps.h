@@ -217,7 +217,7 @@ public:
 	 */	
 	void enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P);
 
-private:
+//private:
 	/**parameter*/
 	size_t N_sites;
 	size_t Dmax, Nqmax;
@@ -706,6 +706,7 @@ test_ortho (double tol) const
 		{
 			Test += A[GAUGE::L][l][s].adjoint().contract(A[GAUGE::L][l][s]);
 		}
+		cout << "l=" << l << endl << Test.print(true) << endl << endl; 
 		// cout << Test.print(true) << endl;
 		vector<bool> A_CHECK(Test.dim);
 		vector<double> A_infnorm(Test.dim);
@@ -1191,7 +1192,6 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 		vector<Biped<Symmetry,MatrixType> > Atmp(qloc[loc].size());
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		{
-			// Atmp[s] = A[GAUGE::C][loc][s].contract(C[loc].adjoint());
 			Atmp[s] = A[GAUGE::C][loc][s] * C[loc].adjoint();
 		}
 		
@@ -1900,7 +1900,6 @@ enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P
 			}
 		}
 	}
-
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1909,23 +1908,26 @@ truncate()
 {
 	vector<Biped<Symmetry,MatrixType> > U(N_sites);
 	vector<Biped<Symmetry,MatrixType> > Vdag(N_sites);
-
-	//decompose C by SVD and write results to U and V.
+	cout << "eps_svd=" << eps_svd << endl;
+	//decompose C by SVD and write isometries to U and V and the Schmidt values into C.
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		for (size_t q=0; q<C[l].dim; ++q)
 		{
 			JacobiSVD<MatrixType> Jack(C[l].block[q], ComputeThinU|ComputeThinV);
-			// size_t Nret = (Jack.singularValues().array() > eps_svd).count();
-			size_t Nret = Jack.singularValues().rows();
+			size_t Nret = (Jack.singularValues().array() > eps_svd).count();
+			// size_t Nret = Jack.singularValues().rows();
 			Nret = max(Nret,1ul);
 			cout << "q=" << C[l].in[q] << ", Nret=" << Nret << endl;
 	//		C[l].block[q] = Jack.matrixU().leftCols(Nret) * 
 	//		                  Jack.singularValues().head(Nret).asDiagonal() * 
 	//		                  Jack.matrixV().adjoint().topRows(Nret);
-			C[l].block[q] = Jack.singularValues().head(Nret).asDiagonal();
-			U[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixU().leftCols(Nret));
-			Vdag[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixV().adjoint().topRows(Nret));
+			if (Nret > 0)
+			{
+				C[l].block[q] = Jack.singularValues().head(Nret).asDiagonal();
+				U[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixU().leftCols(Nret));
+				Vdag[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixV().adjoint().topRows(Nret));
+			}
 		}
 		
 		// cout << "U=" << endl;
@@ -1940,17 +1942,18 @@ truncate()
 	//update AL and AR
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		cout << "cutting A_LR, l=" << l << endl;
+		cout << "cutting A_LR, l=" << l << ", minus1modL(l)=" << minus1modL(l) << endl;
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
 			A[GAUGE::L][l][s] = U[minus1modL(l)].adjoint() * A[GAUGE::L][l][s] * U[l];
 			A[GAUGE::R][l][s] = Vdag[minus1modL(l)] * A[GAUGE::R][l][s] * Vdag[l].adjoint();
 			
-			A[GAUGE::C][l][s] = A[GAUGE::L][l][s];
-			A[GAUGE::C][l][s].setRandom();
+			A[GAUGE::C][l][s] = A[GAUGE::L][l][s] * C[l];
+			// A[GAUGE::C][l][s].setRandom();
 		}
 	}
-	
-	// cout << test_ortho() << endl;
+	update_outbase();
+	update_inbase();
+	cout << test_ortho() << endl;
 }
 #endif //VANILLA_Umps
