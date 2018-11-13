@@ -37,7 +37,8 @@ class Umps
 	static constexpr size_t Nq = Symmetry::Nq;
 	
 	template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
-	
+	template<typename Symmetry_, typename S1, typename S2> friend class MpsCompressor;
+
 public:
 	
 	/**Does nothing.*/
@@ -45,9 +46,12 @@ public:
 	
 	/**Constructs a Umps with fixed bond dimension with the info from the Hamiltonian.*/
 	template<typename Hamiltonian> Umps (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
-	
-	/**Constructs a Umps with fixed bond dimension with a given basis.*/
+
+	/**Constructs a Umps with fixed bond dimension with a uniform given basis.*/
 	Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
+
+	/**Constructs a Umps with fixed bond dimension with a given basis.*/
+	Umps (const vector<vector<qarray<Symmetry::Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
 
 #ifdef USE_HDF5_STORAGE
 	/**
@@ -76,6 +80,13 @@ public:
 	/**Resizes the bond dimension to \p Dmax and sets \p Nqmax blocks per site.*/
 	void resize (size_t Dmax_input, size_t Nqmax_input);
 
+	/**
+	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. 
+	 * Pulls info from another Mps.
+	 * \param V : chain length, local basis and target quantum number will be equal to this umps
+	 */
+	template<typename OtherMatrixType> void resize (const Umps<Symmetry,OtherMatrixType> &V);
+
 	/**Shorthand to resize all the relevant arrays: \p A, \p inbase, \p outbase, \p truncWeight, \p S.*/
 	void resize_arrays();
 
@@ -89,7 +100,18 @@ public:
 	
 	/**Returns the entropy for all sites.*/
 	VectorXd entropy() const {return S;};
-	
+
+	/**
+	 * Casts the matrices from \p Scalar to \p OtherScalar.
+	 */
+	template<typename OtherScalar> Umps<Symmetry,OtherScalar> cast() const;
+
+	/**
+	 * Returns a real Umps containing the real part of this.
+	 * \warning Does not check, whether the imaginary part is zero.
+	 */
+	Umps<Symmetry,double> real() const;
+
 	/**Returns the local basis.*/
 	inline vector<qarray<Symmetry::Nq> > locBasis (size_t loc) const {return qloc[loc];}
 	inline vector<vector<qarray<Symmetry::Nq> > > locBasis()   const {return qloc;}
@@ -304,6 +326,17 @@ Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, si
 }
 
 template<typename Symmetry, typename Scalar>
+Umps<Symmetry,Scalar>::
+Umps (const vector<vector<qarray<Symmetry::Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax)
+:N_sites(L_input), Qtot(Qtot_input)
+{
+	qloc.resize(N_sites);
+	for (size_t l=0; l<N_sites; ++l) {qloc[l] = qloc_input[l];}
+	resize(Dmax,Nqmax);
+	::transform_base<Symmetry>(qloc,Qtot); // from DmrgExternal.h
+}
+
+template<typename Symmetry, typename Scalar>
 double Umps<Symmetry,Scalar>::
 memory (MEMUNIT memunit) const
 {
@@ -425,6 +458,46 @@ resize_arrays ()
 	inbase.resize(N_sites);
 	outbase.resize(N_sites);
 	S.resize(N_sites);
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename OtherMatrixType> 
+void Umps<Symmetry,Scalar>::
+resize (const Umps<Symmetry,OtherMatrixType> &V)
+{
+	N_sites = V.N_sites;
+	// N_phys = V.N_phys;
+	qloc = V.qloc;
+	Qtot = V.Qtot;
+	
+	inbase = V.inbase;
+	outbase = V.outbase;
+	
+	for (size_t g=0; g<3; g++) {A[g].resize(this->N_sites);}
+	C.resize(this->N_sites);
+	
+	truncWeight.resize(this->N_sites); truncWeight.setZero();
+	S.resize(this->N_sites-1); S.setConstant(numeric_limits<double>::quiet_NaN());
+	
+	for (size_t g=0; g<3; g++)
+	for (size_t l=0; l<V.N_sites; ++l)
+	{
+		A[g][l].resize(qloc[l].size());
+		
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		{
+			A[g][l][s].in = V.A[g][l][s].in;
+			A[g][l][s].out = V.A[g][l][s].out;
+			A[g][l][s].block.resize(V.A[g][l][s].dim);
+			A[g][l][s].dict = V.A[g][l][s].dict;
+			A[g][l][s].dim = V.A[g][l][s].dim;
+		}
+		C[l].in = V.C[l].in;
+		C[l].out = V.C[l].out;
+		C[l].block.resize(V.C[l].dim);
+		C[l].dict = V.C[l].dict;
+		C[l].dim = V.C[l].dim;
+	}
 }
 
 template<typename Symmetry, typename Scalar>
@@ -696,17 +769,16 @@ test_ortho (double tol) const
 	stringstream sout;
 	std::array<string,4> normal_token  = {"A","B","M","X"};
 	std::array<string,4> special_token = {"\e[4mA\e[0m","\e[4mB\e[0m","\e[4mM\e[0m","\e[4mX\e[0m"};
-	ArrayXd norm(N_sites);
+	Array<Scalar,Dynamic,1> norm(N_sites);
 	
 	for (int l=0; l<N_sites; ++l)
 	{
 		// check for A
-		Biped<Symmetry,MatrixType> Test = A[GAUGE::L][l][0].adjoint().contract(A[GAUGE::L][l][0]);
+		Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Test = A[GAUGE::L][l][0].adjoint().contract(A[GAUGE::L][l][0]);
 		for (size_t s=1; s<qloc[l].size(); ++s)
 		{
 			Test += A[GAUGE::L][l][s].adjoint().contract(A[GAUGE::L][l][s]);
 		}
-		cout << "l=" << l << endl << Test.print(true) << endl << endl; 
 		// cout << Test.print(true) << endl;
 		vector<bool> A_CHECK(Test.dim);
 		vector<double> A_infnorm(Test.dim);
@@ -739,7 +811,7 @@ test_ortho (double tol) const
 		// check for AL*C = AC
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
-			Biped<Symmetry,MatrixType> Test = A[GAUGE::L][l][s] * C[l];
+			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Test = A[GAUGE::L][l][s] * C[l];
 			for (size_t q=0; q<Test.dim; ++q)
 			{
 				qarray2<Symmetry::Nq> quple = {Test.in[q], Test.out[q]};
@@ -775,7 +847,7 @@ test_ortho (double tol) const
 		size_t locC = minus1modL(l);
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
-			Biped<Symmetry,MatrixType> Test = C[locC] * A[GAUGE::R][l][s];
+			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Test = C[locC] * A[GAUGE::R][l][s];
 			for (size_t q=0; q<Test.dim; ++q)
 			{
 				qarray2<Symmetry::Nq> quple = {Test.in[q], Test.out[q]};
@@ -1535,8 +1607,59 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 					N[s].push_back(quple, Mtmp);
 				}
 			}
-		}		
+		}
 	}
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename OtherScalar>
+Umps<Symmetry,OtherScalar> Umps<Symmetry,Scalar>::
+cast() const
+{
+	Umps<Symmetry,OtherScalar> Vout;
+	Vout.resize(*this);
+	
+	for (size_t g=0; g<3; ++g)
+	for (size_t l=0; l<this->N_sites; ++l)
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	for (size_t q=0; q<A[g][l][s].dim; ++q)
+	{
+		Vout.A[g][l][s].block[q] = A[g][l][s].block[q].template cast<OtherScalar>();
+	}
+	for (size_t l=0; l<this->N_sites; ++l)
+	for (size_t q=0; q<C[l].dim; ++q)
+	{
+		Vout.C[l].block[q] = C[l].block[q].template cast<OtherScalar>();
+	}
+	Vout.eps_svd = this->eps_svd;
+	Vout.truncWeight = truncWeight;
+	
+	return Vout;
+}
+
+template<typename Symmetry, typename Scalar>
+Umps<Symmetry,double> Umps<Symmetry,Scalar>::
+real() const
+{
+	Umps<Symmetry,double> Vout;
+	Vout.resize(*this);
+	
+	for (size_t g=0; g<3; ++g)
+	for (size_t l=0; l<this->N_sites; ++l)
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	for (size_t q=0; q<A[g][l][s].dim; ++q)
+	{
+		Vout.A[g][l][s].block[q] = A[g][l][s].block[q].real();
+	}
+	for (size_t l=0; l<this->N_sites; ++l)
+	for (size_t q=0; q<C[l].dim; ++q)
+	{
+		Vout.C[l].block[q] = C[l].block[q].real();
+	}
+	Vout.eps_svd = this->eps_svd;
+	Vout.truncWeight = truncWeight;
+	
+	return Vout;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1909,35 +2032,57 @@ truncate()
 	vector<Biped<Symmetry,MatrixType> > U(N_sites);
 	vector<Biped<Symmetry,MatrixType> > Vdag(N_sites);
 	cout << "eps_svd=" << eps_svd << endl;
-	//decompose C by SVD and write isometries to U and V and the Schmidt values into C.
+	//decompose C by SVD and write isometries to U and Vdag and the Schmidt values into C.
 	for (size_t l=0; l<N_sites; ++l)
 	{
+		cout << "**********************l=" << l << "*************************" << endl;
 		for (size_t q=0; q<C[l].dim; ++q)
 		{
-			JacobiSVD<MatrixType> Jack(C[l].block[q], ComputeThinU|ComputeThinV);
+			JacobiSVD<MatrixType> Jack(C[l].block[q], ComputeFullU|ComputeFullV);
 			size_t Nret = (Jack.singularValues().array() > eps_svd).count();
 			// size_t Nret = Jack.singularValues().rows();
 			Nret = max(Nret,1ul);
-			cout << "q=" << C[l].in[q] << ", Nret=" << Nret << endl;
+			cout << "q=" << C[l].in[q] << ", Nret=" << Nret  << " states from " << Jack.singularValues().rows() << endl;
 	//		C[l].block[q] = Jack.matrixU().leftCols(Nret) * 
 	//		                  Jack.singularValues().head(Nret).asDiagonal() * 
 	//		                  Jack.matrixV().adjoint().topRows(Nret);
-			if (Nret > 0)
-			{
-				C[l].block[q] = Jack.singularValues().head(Nret).asDiagonal();
-				U[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixU().leftCols(Nret));
-				Vdag[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixV().adjoint().topRows(Nret));
-			}
+			C[l].block[q] = Jack.singularValues().head(Nret).asDiagonal();
+			U[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixU().leftCols(Nret));
+			Vdag[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixV().adjoint().topRows(Nret));
 		}
-		
-		// cout << "U=" << endl;
+
+		// for (size_t s=0; s<qloc[l].size(); ++s)
+		// {
+		// 	A[GAUGE::L][l][s] = A[GAUGE::L][l][s] * U[l];
+		// 	A[GAUGE::R][(l+1)%N_sites][s] = Vdag[l] * A[GAUGE::R][(l+1)%N_sites][s];
+		// }
+		// IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ", ", ", ", "", "", "[", "]");
+		// cout << "U: (" << U[l].rows().format(CommaInitFmt) << "x" << U[l].cols().format(CommaInitFmt) << ")" << endl;
+		// cout << "Udag: (" << U[l].adjoint().rows().format(CommaInitFmt) << "x" << U[l].adjoint().cols().format(CommaInitFmt) << ")" << endl;
+
 		// cout << (U[l].adjoint().contract(U[l])).print(true) << endl;
+		// cout << (U[l].contract(U[l].adjoint())).print(true) << endl;
 		// cout << endl;
-		
-		// cout << "Vdag=" << endl;
+
+		// cout << "V: (" << Vdag[l].adjoint().rows().format(CommaInitFmt) << "x" << Vdag[l].adjoint().cols().format(CommaInitFmt) << ")" << endl;
+		// cout << "Vdag: (" << Vdag[l].rows().format(CommaInitFmt) << "x" << Vdag[l].cols().format(CommaInitFmt) << ")" << endl;
 		// cout << (Vdag[l].contract(Vdag[l].adjoint())).print(true) << endl;
+		// cout << (Vdag[l].adjoint().contract(Vdag[l])).print(true) << endl;		
 		// cout << endl;
 	}
+
+	// vector<Biped<Symmetry,MatrixType> > test_AL(qloc[0].size());
+	// for (size_t s=0; s<qloc[0].size(); ++s)
+	// {
+	// 	test_AL[s] = A[GAUGE::L][0][s] * U[0];
+	// }
+	// Biped<Symmetry,MatrixType> Test = test_AL[0].adjoint().contract(test_AL[0]);
+	// for (size_t s=1; s<qloc[0].size(); ++s)
+	// {
+	// 	Test += test_AL[s].adjoint().contract(test_AL[s]);
+	// }
+	// cout << termcolor::red << "Testing AL multiplied by a matrix from GL(n)." << endl;
+	// cout << Test.print(true) << endl;
 
 	//update AL and AR
 	for (size_t l=0; l<N_sites; ++l)

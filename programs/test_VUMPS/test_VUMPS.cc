@@ -34,6 +34,7 @@ using namespace Eigen;
 
 #include "VUMPS/VumpsSolver.h"
 #include "VUMPS/VumpsLinearAlgebra.h"
+#include "VUMPS/UmpsCompressor.h"
 #include "models/Heisenberg.h"
 #include "models/HeisenbergU1.h"
 #include "models/HeisenbergU1XXZ.h"
@@ -392,13 +393,6 @@ int main (int argc, char* argv[])
 	{
 		cout << "-----U0-----" << endl;
 		print_mag(Heis0,g0);
-		cout << g0.state.info() << endl;
-		g0.state.eps_svd = 1.e-4;
-		g0.state.truncate();
-		cout << endl << endl << "after truncation" << endl;
-		cout << g0.state.info() << endl;
-		print_mag(Heis0,g0);
-
 		size_t dmax = 10;
 		for (size_t d=1; d<dmax; ++d)
 		{
@@ -407,6 +401,22 @@ int main (int argc, char* argv[])
 			// if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
 			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
 		}
+
+		Umps<Sym::U0,complex<double> > g0_compl = g0.state.template cast<complex<double> >();
+		Umps<Sym::U0,complex<double> > g0_trunc_compl;
+		UmpsCompressor<Sym::U0,complex<double>, complex<double> > Lana(DMRG::VERBOSITY::HALFSWEEPWISE);
+		Lana.stateCompress(g0_compl, g0_trunc_compl, g0_compl.calc_Dmax(), 1ul, 1.e-5, 50ul);
+		Umps<Sym::U0,double> g0_trunc = g0_trunc_compl.real();
+		cout << endl << endl << "after truncation" << endl;
+		cout << g0_trunc_compl.info() << endl;
+		for (size_t d=1; d<dmax; ++d)
+		{
+			HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
+			double SvecSvec = SvecSvecAvg(g0_trunc_compl,Htmp,0,d);
+			// if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
+			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		}
+
 	}
 	if (CALC_U1)
 	{
@@ -433,6 +443,11 @@ int main (int argc, char* argv[])
 	{
 		cout << endl;
 		cout << "-----SU2-----" << endl;
+		cout << g_SU2.state.info() << endl;
+		g_SU2.state.truncate();
+		cout << endl << endl << "after truncation" << endl;
+		cout << g_SU2.state.info() << endl;
+
 		// print_mag(Heis,g);
 		size_t dmax = 10;
 		for (size_t d=1; d<dmax; ++d)
