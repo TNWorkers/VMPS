@@ -495,7 +495,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
-	Vout.setRandom();
+//	Vout.setRandom();
 	
 	if (Vout.pivot == N_sites-1 or
 	    Vout.pivot == -1)
@@ -503,7 +503,7 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 		for (int l=N_sites-1; l>0; --l)
 		{
 			Vout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR, NULL,true);
-			build_R(l-1,Vout,Vin,true); //true randomize Env[l].R
+			build_R(l-1,Vout,Vin,true); //true: randomize Env[l].R
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
 	}
@@ -512,7 +512,7 @@ prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 		for (size_t l=0; l<N_sites-1; ++l)
 		{
 			Vout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR, NULL,true);
-			build_L(l+1,Vout,Vin,true); //true randomize Env[l].L
+			build_L(l+1,Vout,Vin,true); //true: randomize Env[l].L
 		}
 		CURRENT_DIRECTION = DMRG::DIRECTION::LEFT;
 	}
@@ -541,6 +541,7 @@ stateOptimize1 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 	PivotVector<Symmetry,Scalar> Aout;
 	stateOptimize1(Vin,Vout,Aout);
 	Vout.A[pivot] = Aout.data;
+	
 	// safeguard against sudden norm loss:
 	if (Vout.squaredNorm() < 1e-7)
 	{
@@ -603,7 +604,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 build_L (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE)
 {
 	Stopwatch<> LRtimer;
-	contract_L(Env[loc-1].L, Vbra.A[loc-1], Vket.A[loc-1], Vket.locBasis(loc-1), Env[loc].L, RANDOMIZE);
+	contract_L(Env[loc-1].L, Vbra.A[loc-1], Vket.A[loc-1], Vket.locBasis(loc-1), Env[loc].L, RANDOMIZE, true); // CLEAR=true
 	t_LR += LRtimer.time();
 }
 
@@ -612,7 +613,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket, bool RANDOMIZE)
 {
 	Stopwatch<> LRtimer;
-	contract_R(Env[loc+1].R, Vbra.A[loc+1], Vket.A[loc+1], Vket.locBasis(loc+1), Env[loc].R, RANDOMIZE);
+	contract_R(Env[loc+1].R, Vbra.A[loc+1], Vket.A[loc+1], Vket.locBasis(loc+1), Env[loc].R, RANDOMIZE, true); // CLEAR=true
 	t_LR += LRtimer.time();
 }
 
@@ -803,7 +804,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prepSweep (const vector<Mps<Symmetry,Scalar> > &Vin, Mps<Symmetry,Scalar> &Vout)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
-	Vout.setRandom();
+//	Vout.setRandom();
 	
 	if (Vout.pivot == N_sites-1 or
 	    Vout.pivot == -1)
@@ -890,7 +891,7 @@ build_L (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const vector<Mps<Symmetry
 	#endif
 	for (int i=0; i<Vket.size(); ++i)
 	{
-		contract_L(Envs[i][loc-1].L, Vbra.A[loc-1], Vket[i].A[loc-1], Vket[i].locBasis(loc-1), Envs[i][loc].L, RANDOMIZE);
+		contract_L(Envs[i][loc-1].L, Vbra.A[loc-1], Vket[i].A[loc-1], Vket[i].locBasis(loc-1), Envs[i][loc].L, RANDOMIZE, true); // CLEAR=true
 	}
 	t_LR += LRtimer.time();
 }
@@ -905,7 +906,7 @@ build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const vector<Mps<Symmetry
 	#endif
 	for (int i=0; i<Vket.size(); ++i)
 	{
-		contract_R(Envs[i][loc+1].R, Vbra.A[loc+1], Vket[i].A[loc+1], Vket[i].locBasis(loc+1), Envs[i][loc].R, RANDOMIZE);
+		contract_R(Envs[i][loc+1].R, Vbra.A[loc+1], Vket[i].A[loc+1], Vket[i].locBasis(loc+1), Envs[i][loc].R, RANDOMIZE, true); // CLEAR=true
 	}
 	t_LR += LRtimer.time();
 }
@@ -1085,7 +1086,8 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
-	Vout.setRandom();
+//	Vout.setRandom();
+	
 	bool RANDOMIZE;
 	if (H.IS_HERMITIAN())
 	{
@@ -1453,7 +1455,7 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, const Mps<Symmetry,Scalar> &Vin2, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
-	if (RANDOMIZE) {Vout.setRandom();}
+//	if (RANDOMIZE) {Vout.setRandom();}
 	
 	if (Vout.pivot == N_sites-1)
 	{

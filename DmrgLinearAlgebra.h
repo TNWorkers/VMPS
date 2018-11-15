@@ -444,7 +444,6 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 		            Vin.outBasis(l), O.outBasis(l),
 		            Vout.A_at(l));
 	}
-//	Vout.sweep(0,DMRG::BROOM::QR);
 	
 	Vout.update_inbase();
 	Vout.update_outbase();
@@ -476,6 +475,11 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 			lout << "\t" << Compadre.info() << endl;
 		}
 	}
+	else
+	{
+		Vout.sweep(0,DMRG::BROOM::QR);
+	}
+	
 	if (VERBOSITY > DMRG::VERBOSITY::SILENT) lout << endl;
 	
 	if (Vout.calc_Nqavg() <= 1.5 and Vout.min_Nsv == 0)

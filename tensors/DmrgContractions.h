@@ -496,11 +496,18 @@ void contract_L (const Biped<Symmetry,MatrixType2> &Lold,
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  Biped<Symmetry,MatrixType2> &Lnew,
-                 bool RANDOMIZE=false)
+                 bool RANDOMIZE = false,
+                 bool CLEAR = false)
 {
-//	Lnew.clear();
-	Lnew.outerResize(Lold);
-	Lnew.setZero();
+	if (CLEAR)
+	{
+		Lnew.clear();
+	}
+	else
+	{
+		Lnew.outerResize(Lold);
+		Lnew.setZero();
+	}
 	
 	for (size_t s=0; s<qloc.size(); ++s)
 	for (size_t qL=0; qL<Lold.dim; ++qL)
@@ -564,11 +571,18 @@ void contract_R (const Biped<Symmetry,MatrixType2> &Rold,
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  Biped<Symmetry,MatrixType2> &Rnew,
-                 bool RANDOMIZE=false)
+                 bool RANDOMIZE = false,
+                 bool CLEAR = false)
 {
-//	Rnew.clear();
-	Rnew.outerResize(Rold);
-	Rnew.setZero();
+	if (CLEAR)
+	{
+		Rnew.clear();
+	}
+	else
+	{
+		Rnew.outerResize(Rold);
+		Rnew.setZero();
+	}
 	
 	for (size_t s=0; s<qloc.size(); ++s)
 	for (size_t qR=0; qR<Rold.dim; ++qR)
