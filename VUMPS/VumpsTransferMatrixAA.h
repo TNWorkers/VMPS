@@ -57,7 +57,7 @@ void HxV (const TransferMatrixAA<Symmetry,Scalar1> &H, const PivotVector<Symmetr
 			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > R = Vin.data[0];
 			for (int l=Lcell-1; l>=0; --l)
 			{
-				contract_R(R, H.Abra[l], H.Aket[l], H.qloc[l], Rnext);
+				contract_R(R, H.Abra[l], H.Aket[l], H.qloc[l], Rnext, false, false); // RANDOMIZE=false, CLEAR=false
 				R.clear();
 				R = Rnext;
 				Rnext.clear();
@@ -70,7 +70,7 @@ void HxV (const TransferMatrixAA<Symmetry,Scalar1> &H, const PivotVector<Symmetr
 			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > L = Vin.data[0];
 			for (size_t l=0; l<Lcell; ++l)
 			{
-				contract_L(L, H.Abra[l], H.Aket[l], H.qloc[l], Lnext);
+				contract_L(L, H.Abra[l], H.Aket[l], H.qloc[l], Lnext, false, false); // RANDOMIZE=false, CLEAR=false
 				L.clear();
 				L = Lnext;
 				Lnext.clear();

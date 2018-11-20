@@ -59,11 +59,27 @@ void LRxV (const PivotOverlap2<Symmetry,Scalar> &H, const PivotVector<Symmetry,S
 							    H.R.block[qR->second].size() !=0 and
 							    Vin.data[s1s2].block[qAket].size() != 0)
 							{
-								optimal_multiply(1., 
-								                 H.L.block[qL],
-								                 Vin.data[s1s2].block[qAket],
-								                 H.R.block[qR->second],
-								                 Mtmp);
+								if (H.L.block[qL].cols() == Vin.data[s1s2].block[qAket].rows() and
+								    Vin.data[s1s2].block[qAket].cols() == H.R.block[qR->second].rows())
+								{
+									optimal_multiply(1., 
+									                 H.L.block[qL],
+									                 Vin.data[s1s2].block[qAket],
+									                 H.R.block[qR->second],
+									                 Mtmp);
+								}
+								else
+								{
+									lout << termcolor::red << "Warning: Mismatching matrix dimensions in LRxV (PivotOverlap2)!" << termcolor::reset << endl;
+									print_size(H.L.block[qL],"H.L.block[qL]");
+									print_size(Vin.data[s1s2].block[qAket],"Vin.data[s1s2].block[qAket]");
+									print_size(H.R.block[qR->second],"H.R.block[qR->second]");
+									lout << "qnums: " << H.L.in[qL] << "-" << H.L.out[qL] << ", " 
+												      << Vin.data[s1s2].in[qAket] << "-" << Vin.data[s1s2].out[qAket] << ", " 
+												      << H.R.in[qR->second] << "-" << H.R.out[qR->second]
+												      << endl;
+									lout << endl;
+								}
 							}
 							
 							if (Mtmp.size() != 0)

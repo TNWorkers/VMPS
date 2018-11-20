@@ -1490,7 +1490,9 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t q=0; q<A[loc][s].dim; ++q)
 		{
-			if (A[loc][s].in[q] == inbase[loc][qin])
+			if (A[loc][s].in[q] == inbase[loc][qin] and
+			    A[loc][s].block[q].rows() > 0 and
+			    A[loc][s].block[q].cols() > 0)
 			{
 				svec.push_back(s);
 				qvec.push_back(q);
@@ -1502,10 +1504,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		{
 			// do the glue
 			size_t Nrows = A[loc][svec[0]].block[qvec[0]].rows();
-			for (size_t i=1; i<svec.size(); ++i)
-			{
-				assert(A[loc][svec[i]].block[qvec[i]].rows() == Nrows);
-			}
+			for (size_t i=1; i<svec.size(); ++i) assert(A[loc][svec[i]].block[qvec[i]].rows() == Nrows);
 			size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
 			
 			MatrixType Aclump(Nrows,Ncols);
@@ -1692,7 +1691,9 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t q=0; q<A[loc][s].dim; ++q)
 		{
-			if (A[loc][s].out[q] == outbase[loc][qout])
+			if (A[loc][s].out[q] == outbase[loc][qout] and
+			    A[loc][s].block[q].rows() > 0 and
+			    A[loc][s].block[q].cols() > 0)
 			{
 				svec.push_back(s);
 				qvec.push_back(q);
@@ -1781,7 +1782,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 					}
 					stitch += Nrowsvec[i];
 				}
-			
+				
 				// update A[loc+1]
 				if (loc != this->N_sites-1 and DISCARD_V == false)
 				{
