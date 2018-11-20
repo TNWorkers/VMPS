@@ -23,9 +23,6 @@
 //include "tensors/DmrgIndexGymnastics.h"
 //include "DmrgLinearAlgebra.h"
 
-// #include "Mps.h" // temp.
-
-
 /**
  * Solver that calculates the ground state of a UMPS. Analogue of the DmrgSolver class.
  * \ingroup VUMPS
@@ -74,8 +71,9 @@ public:
 	 * \param file_e_input : file for the ground-state energy in the format [min(eL,eR), eL, eR]
 	 * \param file_err_eigval_input : file for the energy error
 	 * \param file_err_var_input : file for the variational error
+	 * \param file_err_state_input : file for the global state error
 	 */
-	void set_log (int N_log_input, string file_e_input, string file_err_eigval_input, string file_err_var_input);
+	void set_log (int N_log_input, string file_e_input, string file_err_eigval_input, string file_err_var_input, string file_err_state_input);
 	///\}
 
 	/**
@@ -139,15 +137,40 @@ private:
 	/**Builds environments for each site of the unit cell.*/
 	void build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	///\}
-
+	
+	///\{
+	/**
+	 * This function adds orthogonal information to the UMPS in the unit cell at site loc and enlarge therewith the bond dimension and the number of symmetry blocks.
+	 * For information see appendix B in Zauner-Stauber et al. 2018.
+	 */
+	void expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option = VUMPS::TWOSITE_A::ALxAC);
 	/**
 	 * This function adds orthogonal information to the UMPS and enlarge therewith the bond dimension and the number of symmetry blocks.
 	 * For information see appendix B in Zauner-Stauber et al. 2018.
+	 * Just calls expand_basis() for all positions in the unit cell.
 	 */
-	void expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
-
-	void expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t loc);
-
+	void expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option = VUMPS::TWOSITE_A::ALxAC);
+	///\}
+	
+	///\{
+	/**
+	 * Calculates the two-site B-tensor (from double tangent space). It is relevant for orthogonal information in the Umps as well as for the global state error.
+	 * \param loc : Calculate the two-site B-tensor at sites loc and loc+1
+	 * \param H : Mpo
+	 * \param Vout : Umps
+	 * \param option : how to calculate the two-site A-tensor (ALxAC, ARxAC or ALxCxAR)
+	 * \param B2 : The two-site B-tensor as the return value. 
+	 * \param NL : The left nullspace, which is calculated during the routine and returned for later use. (Needed when performing the enrichment)
+	 * \param NR : You can guess what this is, probably.
+	 */
+	void calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option,
+				  Biped<Symmetry,MatrixType>& B2, vector<Biped<Symmetry,MatrixType> > &NL, vector<Biped<Symmetry,MatrixType> > &NR) const;
+	/**
+	 * A wrapper, if you want to discard the nullspaces when calculating B2.
+	 */
+	void calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option, Biped<Symmetry,MatrixType>& B2) const;
+    ///\}
+	
 	/**Cleans up after the iteration process.*/
 	void cleanup (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
@@ -236,8 +259,8 @@ private:
 	/**Sets the Lanczos tolerances adaptively, depending on the current errors.*/
 	void set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState);
 	
-	/**Calculates the errors and sets the right sign for \p C.*/
-	void calc_errors (Eigenstate<Umps<Symmetry,Scalar> > &Vout);
+	/**Calculates the errors.*/
+	void calc_errors (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option = VUMPS::TWOSITE_A::ALxAC);
 	
 	/**saved \f$Y_{L_{0}}\f$, see eq. (C26), (C27)*/
 	Tripod<Symmetry,MatrixType> YLlast;
@@ -253,10 +276,10 @@ private:
 	size_t N_log = 0;
 	
 	/**log filenames*/
-	string file_e, file_err_eigval, file_err_var;
+	string file_e, file_err_eigval, file_err_var, file_err_state;
 	
 	/**log data*/
-	vector<double> eL_mem, eR_mem, err_eigval_mem, err_var_mem;
+	vector<double> eL_mem, eR_mem, err_eigval_mem, err_var_mem, err_state_mem;
 	
 	/**
 	 * Function to write out the logfiles.
@@ -314,16 +337,18 @@ memory (MEMUNIT memunit) const
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-set_log (int N_log_input, string file_e_input, string file_err_eigval_input, string file_err_var_input)
+set_log (int N_log_input, string file_e_input, string file_err_eigval_input, string file_err_var_input, string file_err_state_input)
 {
 	N_log           = N_log_input;
 	file_e          = file_e_input;
 	file_err_eigval = file_err_eigval_input;
 	file_err_var    = file_err_var_input;
+	file_err_state  = file_err_state_input;
 	eL_mem.clear();
 	eR_mem.clear();
 	err_eigval_mem.clear();
 	err_var_mem.clear();
+	err_state_mem.clear();
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -337,6 +362,7 @@ write_log (bool FORCE)
 		eR_mem.push_back(eR);
 		err_eigval_mem.push_back(err_eigval);
 		err_var_mem.push_back(err_var);
+		err_state_mem.push_back(err_state);
 	}
 	
 	if ((N_log>0 and N_iterations%N_log==0) or FORCE==true)
@@ -364,6 +390,15 @@ write_log (bool FORCE)
 			Filer << i << "\t" << setprecision(13) << err_var_mem[i] << endl;
 		}
 		Filer.close();
+
+		// write out global state error
+		Filer.open(file_err_state);
+		for (int i=0; i<err_state_mem.size(); ++i)
+		{
+			Filer << i << "\t" << setprecision(13) << err_state_mem[i] << endl;
+		}
+		Filer.close();
+
 	}
 }
 
@@ -393,41 +428,38 @@ set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState)
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-calc_errors (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
+calc_errors (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option)
 {
 	std::array<VectorXd,2> epsLRsq;
 	std::array<GAUGE::OPTION,2> gs = {GAUGE::L, GAUGE::R};
-	
 	for (const auto &g:gs)
 	{
 		epsLRsq[g].resize(N_sites);
-		
 		for (size_t l=0; l<N_sites; ++l)
 		{
-			epsLRsq[g](l) = Vout.state.calc_epsLRsq(g,l);
-			
-// 			bool GAUGE_FLIP = false;
-// 			// If wrong phase, flip sign of C and recalculate:
-// 			if (epsLRsq[g](l) > 1.)
-// 			{
-// 				size_t lC = (g==GAUGE::R)? Vout.state.minus1modL(l):l;
-// 				Vout.state.C[lC] = -1. * Vout.state.C[lC];
-// 				GAUGE_FLIP = true;
-// //				cout << "GAUGE FLIP: " << "l=" << lC << endl;
-// 			}
-// 			if (GAUGE_FLIP)
-// 			{
-// 				epsLRsq[g](l) = Vout.state.calc_epsLRsq(g,l);
-// 			}
+			epsLRsq[g](l) = Vout.state.calc_epsLRsq(g,l);			
 		}
 	}
-	
 	err_var = max(sqrt(epsLRsq[GAUGE::L].sum()), 
 	              sqrt(epsLRsq[GAUGE::R].sum()));
+	
 	err_eigval = max(abs(eoldR-eR), 
 	                 abs(eoldL-eL));
 	eoldR = eR;
 	eoldL = eL;
+	
+	//set the global state error to the largest norm of NAAN (=B2) in the unit cell.
+	err_state = 0.;
+	for(size_t loc=0; loc<N_sites; loc++)
+	{
+		vector<Biped<Symmetry,MatrixType> > NL;
+		vector<Biped<Symmetry,MatrixType> > NR;
+		Biped<Symmetry,MatrixType> NAAN;
+		calc_B2(loc, H, Vout, option, NAAN, NL, NR);
+		double norm_NAAN = sqrt(NAAN.squaredNorm().sum());
+		if (norm_NAAN > err_state) {err_state = norm_NAAN;}
+	}
+
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -484,7 +516,8 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	
 	// effective Hamiltonian
 	D = H.locBasis(0).size();
-	dW = H.auxdim();
+	assert(H.auxrows(0) == H.auxcols(N_sites-1) and "You insert a strange MPO not consistent with the unit cell");
+	dW = H.auxrows(0);
 	
 	// resize Vout
 	if (!USE_STATE)
@@ -570,7 +603,8 @@ prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout,
 	// general
 	N_sites = 1;
 	N_iterations = 0;
-	dW = H.auxdim();
+	assert(H.auxrows(0) == H.auxcols(N_sites-1) and "You insert a strange MPO not consistent with the unit cell");
+	dW = H.auxrows(0);
 	
 	// resize Vout
 	if (!USE_STATE)
@@ -817,10 +851,15 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	{
 		size_t deltaD = min(max(static_cast<size_t>(DynParam.Dincr_rel(N_iterations) * Vout.state.max_Nsv-Vout.state.max_Nsv), DynParam.Dincr_abs(N_iterations)),
 							DynParam.max_deltaD(N_iterations));
-		if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
-		expand_basis(deltaD,H,Vout);
+		// if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
+		expand_basis(deltaD, H, Vout, VUMPS::TWOSITE_A::ALxCxAR);
 	}
-	
+
+	if (err_var < GlobParam.tol_var and (N_iterations+1)%DynParam.Dincr_per(N_iterations) == 0 )
+	{
+		Vout.state.truncate();
+	}
+
 	build_cellEnv(H,Vout);
 	
 	// See Algorithm 4
@@ -892,7 +931,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	eL = contract_LR(0, YLlast, Reigen) / H.volume();
 	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
 	
-	calc_errors(Vout);
+	calc_errors(H, Vout);
 	Vout.energy = min(eL,eR);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
@@ -911,7 +950,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		lout << "S=" << Vout.state.entropy().transpose() << endl;
 		lout << termcolor::bold << eigeninfo() << termcolor::reset << endl;
 		lout << Vout.state.info() << endl;
-		lout << IterationTimer.info("full iteration") << endl;
+		lout << IterationTimer.info("full parallel iteration") << endl;
 		lout << endl;
 	}
 }
@@ -933,7 +972,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 			size_t deltaD = min(max(static_cast<size_t>(DynParam.Dincr_rel(N_iterations) * Vout.state.max_Nsv-Vout.state.max_Nsv), DynParam.Dincr_abs(N_iterations)),
 								DynParam.max_deltaD(N_iterations));
 			if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
-			expand_basis(deltaD,H,Vout,l);
+			expand_basis(l,deltaD,H,Vout,VUMPS::TWOSITE_A::ALxAC);
 		}
 		
 		build_cellEnv(H,Vout);
@@ -1017,7 +1056,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	eL = contract_LR(0, YLlast, Reigen) / H.volume();
 	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
 	
-	calc_errors(Vout);
+	calc_errors(H, Vout);
 	Vout.energy = min(eL,eR);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
@@ -1035,7 +1074,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		size_t standard_precision = cout.precision();
 		lout << "S=" << Vout.state.entropy().transpose() << endl;
 		lout << termcolor::bold << eigeninfo() << termcolor::reset << endl;
-		lout << IterationTimer.info("full iteration") << endl;
+		lout << IterationTimer.info("full sequential iteration") << endl;
 		lout << endl;
 	}
 }
@@ -1127,7 +1166,7 @@ iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
-	calc_errors(Vout);
+	// calc_errors(Vout);
 	Vout.energy = min(eL,eR);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
@@ -1238,7 +1277,7 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 	
 	Vout.energy = 0.5*g.energy-Eold;
 	err_eigval = abs(Vout.energy-eL); // the energy density is the contribution of the new site
-	err_state = (Cref-Vout.state.C[0]).norm().sum();
+	err_state = (Cref-Vout.state.C[0]).norm();
 	err_var = err_state;
 	Eold = 0.5*g.energy;
 	eL = Vout.energy;
@@ -1281,7 +1320,7 @@ test_LReigen (const Eigenstate<Umps<Symmetry,Scalar> > &Vout) const
 	HxV(TR,PsiL);
 	
 	stringstream ss;
-	ss << "ReigenTest=" << (Reigen-PsiR.data[0]).norm().sum() << ", LeigenTest=" << (Leigen-PsiL.data[0]).norm().sum() << endl;
+	ss << "ReigenTest=" << (Reigen-PsiR.data[0]).norm() << ", LeigenTest=" << (Leigen-PsiL.data[0]).norm() << endl;
 	return ss.str();
 }
 
@@ -1319,7 +1358,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 	
 	Stopwatch<> GlobalTimer;
 	
-	while (((err_eigval >= GlobParam.tol_eigval or err_var >= GlobParam.tol_state) and
+	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and
 			N_iterations < GlobParam.max_iterations) or N_iterations < GlobParam.min_iterations)
 	{
 		if (DynParam.iteration(N_iterations) == UMPS_ALG::PARALLEL)
@@ -1361,9 +1400,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		size_t standard_precision = cout.precision();
 		lout << termcolor::bold
 		     << "iterations=" << N_iterations
-		     << ", e0=" << setprecision(13) << Vout.energy 
+		     << ", e0=" << setprecision(14) << Vout.energy 
 		     << ", err_eigval=" << err_eigval 
-		     << ", err_var=" << err_var 
+		     << ", err_var=" << err_var
+			 << ", err_state=" << err_state
 		     << setprecision(standard_precision)
 		     << termcolor::reset
 		     << endl;
@@ -1449,111 +1489,18 @@ solve_linear (GAUGE::OPTION gauge,
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t loc)
+expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option)
 {
-	if(DeltaD == 0ul) {return;}
 	vector<Biped<Symmetry,MatrixType> > NL;
 	vector<Biped<Symmetry,MatrixType> > NR;
-		
-	Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc            , NL);
-	Vout.state.calc_N(DMRG::DIRECTION::LEFT , (loc+1)%N_sites, NR);
-
-	// test nullspaces
-	// Biped<Symmetry,MatrixType> TestL  = NL[0].adjoint().contract(Vout.state.A[GAUGE::L][loc][0]);
-	// Biped<Symmetry,MatrixType> TestR  = Vout.state.A[GAUGE::R][(loc+1)%N_sites][0].contract(NR[0].adjoint(), contract::MODE::OORR);
-	// Biped<Symmetry,MatrixType> TestLI = NL[0].adjoint().contract(NL[0]);
-	// Biped<Symmetry,MatrixType> TestRI = NR[0].contract(NR[0].adjoint(), contract::MODE::OORR);
-		
-	// for (size_t s=1; s<Vout.state.qloc[loc].size(); ++s)
-	// {
-	// 	TestL += NL[s].adjoint().contract(Vout.state.A[GAUGE::L][loc][s]);
-	// }
-	// for (size_t s=1; s<NL.size(); ++s)
-	// {
-	// 	TestLI += NL[s].adjoint().contract(NL[s]);
-	// }
-	// for (size_t s=1; s<Vout.state.qloc[(loc+1)%N_sites].size(); ++s)
-	// {
-	// 	TestR += Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].contract(NR[s].adjoint(), contract::MODE::OORR);
-	// }
-	// for (size_t s=1; s<NR.size(); ++s)
-	// {
-	// 	TestRI += NR[s].contract(NR[s].adjoint(), contract::MODE::OORR);
-	// }
-	// cout << "NR at loc+1" << endl << TestRI.print(true) << endl;
-	// cout << "NL at loc" << endl << TestLI.print(true) << endl;
-	// for (size_t q=0; q<TestL.dim; ++q)
-	// {
-	// 	cout << "q=" << TestL.in[q] << ", TestL.block[q].norm()=\t" << TestL.block[q].norm() << endl;
-	// }
-	// for (size_t q=0; q<TestR.dim; ++q)
-	// {
-	// 	cout << "q=" << TestR.in[q] << ", TestR.block[q].norm()=\t" << TestR.block[q].norm() << endl;
-	// }
-
-	// calculate A2C'
-	PivotMatrix2<Symmetry,Scalar> H2(HeffA[loc].L, HeffA[(loc+1)%N_sites].R, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, 
-									 H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites));
-	PivotVector<Symmetry,Scalar> A2C(Vout.state.A[GAUGE::L][loc], H.locBasis(loc), 
-									 Vout.state.A[GAUGE::C][(loc+1)%N_sites], H.locBasis((loc+1)%N_sites), 
-									 Vout.state.Qtop(loc), Vout.state.Qbot((loc+1)%N_sites));
-
-	precalc_blockStructure (HeffA[loc].L, A2C.data, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, A2C.data, HeffA[(loc+1)%N_sites].R, 
-							H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites), 
-							H2.qlhs, H2.qrhs, H2.factor_cgcs);
-	HxV(H2,A2C);
-
-	// vector<vector<qarray<Symmetry::Nq> > > qbasis_tmp(2);
-	// qbasis_tmp[0] = H.locBasis(loc);
-	// qbasis_tmp[1] = H.locBasis((loc+1)%N_sites);
-	// Mps<Symmetry,Scalar> Vtmp(2, qbasis_tmp, Symmetry::qvacuum(), 2, Vout.state.Nqmax);
+	Biped<Symmetry,MatrixType> NAAN;
 	
-	// Vtmp.A[0] = Vout.state.A[GAUGE::L][loc];
-	// Vtmp.A[1] = Vout.state.A[GAUGE::C][(loc+1)%N_sites];
-	
-	// Vtmp.QinTop[0] = Vout.state.Qtop(loc);
-	// Vtmp.QinBot[0] = Vout.state.Qbot(loc);
-	// Vtmp.QoutTop[0] = Vout.state.Qtop(loc);
-	// Vtmp.QoutBot[0] = Vout.state.Qbot(loc);
-	// Vtmp.QinTop[1] = Vout.state.Qtop((loc+1)%N_sites);
-	// Vtmp.QinBot[1] = Vout.state.Qbot((loc+1)%N_sites);
-	// Vtmp.QoutTop[1] = Vout.state.Qtop((loc+1)%N_sites);
-	// Vtmp.QoutBot[1] = Vout.state.Qbot((loc+1)%N_sites);
-	// Vtmp.min_Nsv = 1;
-	// Vtmp.sweepStep2(DMRG::DIRECTION::RIGHT, 0, A2C.data);
-	// Vtmp.update_outbase();
-	// Vtmp.update_inbase();
-	Biped<Symmetry,MatrixType> Cdump;
-	double truncDump, Sdump;
-	vector<Biped<Symmetry,MatrixType> > AL=Vout.state.A[GAUGE::L][loc];
-	vector<Biped<Symmetry,MatrixType> > AR=Vout.state.A[GAUGE::C][(loc+1)%N_sites];
-	split_AA(DMRG::DIRECTION::RIGHT, A2C.data, H.locBasis(loc), AL, H.locBasis((loc+1)%N_sites), AR,
-			 Vout.state.Qtop(loc), Vout.state.Qbot(loc),
-			 Cdump, false, truncDump, Sdump,
-			 Vout.state.eps_svd,Vout.state.min_Nsv,Vout.state.max_Nsv);
-
-	Qbasis<Symmetry> NRbasis; NRbasis.pullData(NR,1);
-	Qbasis<Symmetry> NLbasis; NLbasis.pullData(NL,0);
-	Qbasis<Symmetry> ARbasis; ARbasis.pullData(AR,1);
-	Qbasis<Symmetry> ALbasis; ALbasis.pullData(AL,0);
-	
-	// calculate NAAN
-	Biped<Symmetry,MatrixType> IdL; IdL.setIdentity(NLbasis, ALbasis);
-	Biped<Symmetry,MatrixType> IdR; IdR.setIdentity(ARbasis, NRbasis);
-		
-	Biped<Symmetry,MatrixType> TL;
-	// contract_L(IdL, NL, Vtmp.A[0], H.locBasis(loc), TL);
-	contract_L(IdL, NL, AL, H.locBasis(loc), TL);
-
-	Biped<Symmetry,MatrixType> TR;
-	// contract_R(IdR, NR, Vtmp.A[1], H.locBasis((loc+1)%N_sites), TR);
-	contract_R(IdR, NR, AR, H.locBasis((loc+1)%N_sites), TR);
-
-	Biped<Symmetry,MatrixType> NAAN = TL.contract(TR);
+	//calculate two-site B-Tensor (double tangent space) and obtain simultaneously NL and NR (nullspaces)
+	calc_B2(loc, H, Vout, option, NAAN, NL, NR);
 
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
-		lout << "norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
+		lout << "l=" << loc << ", norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
 	}
 		
 	// SVD-decompose NAAN
@@ -1572,7 +1519,7 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 		Nret = min(DeltaD, Nret);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 		{
-			cout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
+			lout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
 		}
 		if(Nret > 0)
 		{
@@ -1580,631 +1527,252 @@ expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Sc
 			Vdag.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixV().adjoint().topRows(Nret));
 		}
 	}
-
-	// expand AL
+		
+	//calc P
 	vector<Biped<Symmetry,MatrixType> > P(Vout.state.locBasis(loc).size());
 	for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
 	{
 		P[s] = NL[s] * U;
 	}
+	Vout.state.enrich(loc, GAUGE::L, P);
 
-	for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
-	for (size_t qP=0; qP<P[s].size(); ++qP)
+	//Update the left environment if AL is involved in calculating the two site A-tensor, because we need correct environments for the effective two-site Hamiltonian.
+	if (option == VUMPS::TWOSITE_A::ALxAC or option == VUMPS::TWOSITE_A::ALxCxAR)
 	{
-		qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
-		auto qA = Vout.state.A[GAUGE::L][loc][s].dict.find(quple);
-			
-		if (qA != Vout.state.A[GAUGE::L][loc][s].dict.end())
-		{
-			addRight(P[s].block[qP], Vout.state.A[GAUGE::L][loc][s].block[qA->second]);
-		}
-		else
-		{
-			Vout.state.A[GAUGE::L][loc][s].push_back(quple, P[s].block[qP]);
-		}
-	}
-		
-	// update the inleg from AL at site (loc+1)%N_sites with zeros
-	Qbasis<Symmetry> ExpandedBasis;
-	ExpandedBasis.pullData(P,1);
-
-	Vout.state.update_inbase(loc,GAUGE::L);
-	Vout.state.update_outbase(loc,GAUGE::L);
-		
-	for (const auto &[qval,qdim,plain]:ExpandedBasis)
-	for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
-	{
-		auto qouts = Symmetry::reduceSilent(qval, Vout.state.locBasis((loc+1)%N_sites)[s]);
-		for (const auto &qout:qouts)
-		{
-			if (Vout.state.outBasis((loc+1)%N_sites).find(qout) == false) {continue;}
-
-			qarray2<Symmetry::Nq> quple = {qval, qout};
-			auto it = Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].dict.find(quple);
-			if (it != Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].dict.end())
-			{
-				MatrixType Mtmp(ExpandedBasis.inner_dim(qval), 
-								Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].block[it->second].cols());
-				Mtmp.setZero();
-				addBottom(Mtmp, Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].block[it->second]);
-			}
-			else
-			{
-				MatrixType Mtmp(ExpandedBasis.inner_dim(qval), Vout.state.outBasis((loc+1)%N_sites).inner_dim(qout));
-				Mtmp.setZero();
-				Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].push_back(quple, Mtmp);
-			}
-		}
-	}
-
-	// update the left environment from AL if it is used for the next site
-	// This step would be necessary, if we don't use a copy of AL for computing the two-site A-tensor. See begin of this function.
-	// if (loc < N_sites-1)
-	// {
-		// cout << termcolor::red << "update left environment" << termcolor::reset << endl;
 		contract_L(HeffA[loc].L, 
-	               Vout.state.A[GAUGE::L][loc], H.W[loc], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][loc], 
-	               H.locBasis(loc), H.opBasis(loc), 
-	               HeffA[(loc+1)%N_sites].L);
-	// }
-
-	// expand AR at site (loc+1)%N_sites (inleg)
+				   Vout.state.A[GAUGE::L][loc], H.W[loc], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][loc], 
+				   H.locBasis(loc), H.opBasis(loc), 
+				   HeffA[(loc+1)%N_sites].L);
+	}
+		
 	P.clear();
 	P.resize(Vout.state.locBasis((loc+1)%N_sites).size());
 	for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
 	{
 		P[s] = Vdag * NR[s];
 	}
-	
-	// auto Test = P[0].contract(P[0].adjoint(), contract::MODE::OORR);
-	// for (size_t s=1; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
-	// {
-	// 	Test += P[s].contract(P[s].adjoint(), contract::MODE::OORR);
-	// }
-	// cout << "P test at loc+1" << endl << Test.print(true) << endl;
+	Vout.state.enrich(loc, GAUGE::R, P);
 
-	for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
-	for (size_t qP=0; qP<P[s].size(); ++qP)
+	//Update the right environment if AR is involved in calculating the two site A-tensor, because we need correct environments for the effective two-site Hamiltonian.
+	//Note: maybe we only have to update the right environment if loc=0, since we need the updated environment only when loc=N_sites-1 and consequentially loc+1=0.
+	if (option == VUMPS::TWOSITE_A::ACxAR or option == VUMPS::TWOSITE_A::ALxCxAR)
 	{
-		qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
-		auto qA = Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].dict.find(quple);
-			
-		if (qA != Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].dict.end())
-		{
-			addBottom(P[s].block[qP], Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].block[qA->second]);
-		}
-		else
-		{
-			Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].push_back(quple, P[s].block[qP]);
-		}
-	}
-	// Test.clear();
-	// Test = Vout.state.A[GAUGE::R][(loc+1)%N_sites][0].contract(Vout.state.A[GAUGE::R][(loc+1)%N_sites][0].adjoint(), contract::MODE::OORR);
-	// for (size_t s=1; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
-	// {
-	// 	Test += Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].contract(Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].adjoint(), contract::MODE::OORR);
-	// }
-	// cout << "directly after loc+1" << endl << Test.print(true) << endl;
-	
-	// update AR at site loc with zeros (outleg)
-	ExpandedBasis.clear();
-	ExpandedBasis.pullData(P,0);
-	
-	Vout.state.update_inbase((loc+1)%N_sites,GAUGE::R);
-	Vout.state.update_outbase((loc+1)%N_sites,GAUGE::R);
-	
-	for (const auto &[qval,qdim,plain]:ExpandedBasis)
-	for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
-	{
-		auto qins = Symmetry::reduceSilent(qval, Symmetry::flip(Vout.state.locBasis(loc)[s]));
-		for (const auto &qin:qins)
-		{
-			if (Vout.state.inBasis(loc).find(qin) == false) {continue;}
-				
-			qarray2<Symmetry::Nq> quple = {qin, qval};
-			auto it = Vout.state.A[GAUGE::R][loc][s].dict.find(quple);
-			if (it != Vout.state.A[GAUGE::R][loc][s].dict.end())
-			{
-				MatrixType Mtmp(Vout.state.A[GAUGE::R][loc][s].block[it->second].rows(),
-								ExpandedBasis.inner_dim(qval));
-				Mtmp.setZero();
-				addRight(Mtmp, Vout.state.A[GAUGE::R][loc][s].block[it->second]);
-			}
-			else
-			{
-				MatrixType Mtmp(Vout.state.inBasis(loc).inner_dim(qin), ExpandedBasis.inner_dim(qval));
-				Mtmp.setZero();
-				Vout.state.A[GAUGE::R][loc][s].push_back(quple, Mtmp);
-			}
-		}
-	}
-	// Test.clear();
-	// Test = Vout.state.A[GAUGE::R][loc][0].contract(Vout.state.A[GAUGE::R][loc][0].adjoint(), contract::MODE::OORR);
-	// for (size_t s=1; s<Vout.state.locBasis(loc).size(); ++s)
-	// {
-	// 	Test += Vout.state.A[GAUGE::R][loc][s].contract(Vout.state.A[GAUGE::R][loc][s].adjoint(), contract::MODE::OORR);
-	// }
-	// cout << "directly after loc" << endl << Test.print(true) << endl;
-
-	// update the right environment from loc
-	// if (loc < N_sites-1)
-	// {
-	// 	cout << termcolor::red << "update right environment" << termcolor::reset << endl;
 		contract_R(HeffA[(loc+1)%N_sites].R,
-	               Vout.state.A[GAUGE::R][(loc+1)%N_sites], H.W[(loc+1)%N_sites], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][(loc+1)%N_sites], 
-	               H.locBasis((loc+1)%N_sites), H.opBasis((loc+1)%N_sites), 
-	               HeffA[loc].R);
-	// }
-
-	// fill C with extra zeros
-	// Vout.state.update_inbase(GAUGE::L);
+				   Vout.state.A[GAUGE::R][(loc+1)%N_sites], H.W[(loc+1)%N_sites], PROP::HAMILTONIAN, Vout.state.A[GAUGE::R][(loc+1)%N_sites], 
+				   H.locBasis((loc+1)%N_sites), H.opBasis((loc+1)%N_sites), 
+				   HeffA[loc].R);
+	}
+		
 	Vout.state.update_outbase(loc,GAUGE::L);
 
-	for (size_t q=0; q<Vout.state.outBasis(loc).Nq(); ++q)
-	{
-		qarray2<Symmetry::Nq> quple = {Vout.state.outBasis(loc)[q], Vout.state.outBasis(loc)[q]};
-		auto qC = Vout.state.C[loc].dict.find(quple);
-		size_t r = Vout.state.outBasis(loc).inner_dim(Vout.state.outBasis(loc)[q]);
-		size_t c = r;
-		if (qC != Vout.state.C[loc].dict.end())
-		{
-			int dr = r-Vout.state.C[loc].block[qC->second].rows();
-			int dc = c-Vout.state.C[loc].block[qC->second].cols();
-			
-			Vout.state.C[loc].block[qC->second].conservativeResize(r,c);
-			
-			Vout.state.C[loc].block[qC->second].bottomRows(dr).setZero();
-			Vout.state.C[loc].block[qC->second].rightCols(dc).setZero();
-		}
-		else
-		{
-			MatrixType Mtmp(r,c);
-			Mtmp.setZero();
-			Vout.state.C[loc].push_back(quple, Mtmp);
-		}
-	}
+	//update C with zeros
+	Vout.state.updateC(loc);
 
-	//update AC with zeros at loc
-	for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
-	for (size_t q=0; q<Vout.state.A[GAUGE::L][loc][s].size(); ++q)
-	{
-		qarray2<Symmetry::Nq> quple = {Vout.state.A[GAUGE::L][loc][s].in[q], Vout.state.A[GAUGE::L][loc][s].out[q]};
-		auto it = Vout.state.A[GAUGE::C][loc][s].dict.find(quple);
-		if (it != Vout.state.A[GAUGE::C][loc][s].dict.end())
-		{
-			int dr = Vout.state.A[GAUGE::L][loc][s].block[q].rows() - Vout.state.A[GAUGE::C][loc][s].block[it->second].rows();
-			int dc = Vout.state.A[GAUGE::L][loc][s].block[q].cols() - Vout.state.A[GAUGE::C][loc][s].block[it->second].cols();
-			assert(dr >= 0 and dc >= 0 and "Something went wrong in expand_basis during the VUMPS Algorithm.");
-			MatrixType Mtmp(dr,Vout.state.A[GAUGE::C][loc][s].block[it->second].cols()); Mtmp.setZero();
-			addBottom(Mtmp, Vout.state.A[GAUGE::C][loc][s].block[it->second]);
-			Mtmp.resize(Vout.state.A[GAUGE::C][loc][s].block[it->second].rows(),dc); Mtmp.setZero();
-			addRight(Mtmp, Vout.state.A[GAUGE::C][loc][s].block[it->second]);
-		}
-		else
-		{
-			MatrixType Mtmp(Vout.state.A[GAUGE::L][loc][s].block[q].rows(), Vout.state.A[GAUGE::L][loc][s].block[q].cols());
-			Mtmp.setZero();
-			Vout.state.A[GAUGE::C][loc][s].push_back(quple,Mtmp);
-		}
-	}
-
-	//update AC with zeros at (loc+1)%N_sites
-	for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
-	for (size_t q=0; q<Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].size(); ++q)
-	{
-		qarray2<Symmetry::Nq> quple = {Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].in[q], Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].out[q]};
-		auto it = Vout.state.A[GAUGE::C][(loc+1)%N_sites][s].dict.find(quple);
-		if (it != Vout.state.A[GAUGE::C][(loc+1)%N_sites][s].dict.end())
-		{
-			int dr = Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].block[q].rows() - Vout.state.A[GAUGE::C][(loc+1)%N_sites][s].block[it->second].rows();
-			int dc = Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].block[q].cols() - Vout.state.A[GAUGE::C][(loc+1)%N_sites][s].block[it->second].cols();
-			assert(dr >= 0 and dc >= 0 and "Something went wrong in expand_basis during the VUMPS Algorithm.");
-			MatrixType Mtmp(dr,Vout.state.A[GAUGE::C][(loc+1)%N_sites][s].block[it->second].cols()); Mtmp.setZero();
-			addBottom(Mtmp, Vout.state.A[GAUGE::C][(loc+1)%N_sites][s].block[it->second]);
-			Mtmp.resize(Vout.state.A[GAUGE::C][(loc+1)%N_sites][s].block[it->second].rows(),dc); Mtmp.setZero();
-			addRight(Mtmp, Vout.state.A[GAUGE::C][(loc+1)%N_sites][s].block[it->second]);
-		}
-		else
-		{
-			MatrixType Mtmp(Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].block[q].rows(), Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].block[q].cols());
-			Mtmp.setZero();
-			Vout.state.A[GAUGE::C][(loc+1)%N_sites][s].push_back(quple,Mtmp);
-		}
-	}
+	//update AC with zeros at sites loc and loc+1
+	Vout.state.updateAC(loc,GAUGE::L);
+	Vout.state.updateAC((loc+1)%N_sites,GAUGE::L);
 
 	// sort
-	for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
-	{
-		Vout.state.A[GAUGE::L][loc][s] = Vout.state.A[GAUGE::L][loc][s].sorted();
-		Vout.state.A[GAUGE::R][loc][s] = Vout.state.A[GAUGE::R][loc][s].sorted();
-		Vout.state.A[GAUGE::C][loc][s] = Vout.state.A[GAUGE::C][loc][s].sorted();
-	}
-	for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
-	{
-		Vout.state.A[GAUGE::L][(loc+1)%N_sites][s] = Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].sorted();
-		Vout.state.A[GAUGE::R][(loc+1)%N_sites][s] = Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].sorted();
-		Vout.state.A[GAUGE::C][(loc+1)%N_sites][s] = Vout.state.A[GAUGE::C][(loc+1)%N_sites][s].sorted();
-	}
 	Vout.state.C[loc] = Vout.state.C[loc].sorted();
-	
-	Vout.state.update_inbase(loc);
-	Vout.state.update_outbase(loc);
+	Vout.state.sort_A(loc, GAUGE::L, true); //true means sort all gauges, the parameter GAUGE::L has no impact here.
+	Vout.state.sort_A((loc+1)%N_sites, GAUGE::L, true); //true means sort all gauges, the parameter GAUGE::L has no impact here.
 }
-
-// template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-// void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-// expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
-// {
-// 	//Save a reference of AL for computing the two-site A-matrix at different sites without using partially updated A-Matrices.
-// 	//Check: Is this correct or should we use always the updated versions of AL. If so, should we also use updated AC or C*AR respectively?
-// 	// vector<vector<Biped<Symmetry,MatrixType> > > AL_ref = Vout.state.A[GAUGE::L];
-	
-// 	for(size_t loc=0; loc<N_sites; loc++)
-// 	{
-// 		expand_basis (DeltaD, H, Vout, loc);
-// 	}
-
-// 	// for(size_t l=0; l<N_sites; l++)
-// 	// {
-// 	// 	for (size_t s=0; s<Vout.state.locBasis(l).size(); ++s)
-// 	// 	{
-// 	// 		Vout.state.A[GAUGE::L][l][s] = Vout.state.A[GAUGE::L][l][s].sorted();
-// 	// 	}
-// 	// 	for (size_t s=0; s<Vout.state.locBasis(l).size(); ++s)
-// 	// 	{
-// 	// 		Vout.state.A[GAUGE::R][l][s] = Vout.state.A[GAUGE::R][l][s].sorted();
-// 	// 	}
-// 	// 	Vout.state.C[l] = Vout.state.C[l].sorted();
-// 	// }
-	
-// 	// set AC
-// 	// for (size_t l=0; l<N_sites; l++)
-// 	// for (size_t s=0; s<Vout.state.qloc[l].size(); ++s)
-// 	// {
-// 	// 	Vout.state.A[GAUGE::C][l][s] = Vout.state.A[GAUGE::L][l][s];
-// 	// 	Vout.state.A[GAUGE::C][l][s].setRandom();
-// 	// }
-// 	// Vout.state.update_inbase();
-// 	// Vout.state.update_outbase();
-// }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
-{
-	if (DeltaD == 0) {return;} //early exit if the dimension to increase is zero.
-	
-	//Save a reference of AL for computing the two-site A-matrix at different sites without using partially updated A-Matrices.
-	//Check: Is this correct or should we use always the updated versions of AL. If so, should we also use updated AC or C*AR respectively?
-	vector<vector<Biped<Symmetry,MatrixType> > > AL_ref = Vout.state.A[GAUGE::L];
-	
+expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option)
+{	
 	for(size_t loc=0; loc<N_sites; loc++)
 	{
-		// cout << "expansion: AL at site loc=" << loc << ", outleg. --> need to update inleg of AL at loc=" << (loc+1)%N_sites << endl;
-		// cout << "expansion: AR at site (loc+1)%N_sites=" << (loc+1)%N_sites << ", inleg. --> need to update outeg of AR at loc=" << loc << endl;
-		// calculate nullspaces
-		vector<Biped<Symmetry,MatrixType> > NL;
-		vector<Biped<Symmetry,MatrixType> > NR;
-		
-		Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc,             NL);
-		Vout.state.calc_N(DMRG::DIRECTION::LEFT,  (loc+1)%N_sites, NR);
-		
-		// test nullspaces
-		// Biped<Symmetry,MatrixType> TestL = NL[0].adjoint().contract(Vout.state.A[GAUGE::L][loc][0]);
-		// Biped<Symmetry,MatrixType> TestR = Vout.state.A[GAUGE::R][(loc+1)%N_sites][0].contract(NR[0].adjoint(), contract::MODE::OORR);
-		
-		// for (size_t s=1; s<Vout.state.qloc[loc].size(); ++s)
-		// {
-		// 	TestL += NL[s].adjoint().contract(Vout.state.A[GAUGE::L][loc][s]);
-		// }
-		// for (size_t s=1; s<Vout.state.qloc[(loc+1)%N_sites].size(); ++s)
-		// {
-		// 	TestR += Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].contract(NR[s].adjoint(), contract::MODE::OORR);
-		// }
-		
-		// for (size_t q=0; q<TestL.dim; ++q)
-		// {
-		// 	cout << "q=" << TestR.in[q] << "," << TestL.in[q] << ", TestLR.block[q].norm()=\t" << TestR.block[q].norm() << "\t" << TestL.block[q].norm() << endl;
-		// }
-		
-		// calculate A2C'
-		PivotMatrix2<Symmetry,Scalar> H2(HeffA[loc].L, HeffA[(loc+1)%N_sites].R, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, 
-										 H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites));
-		PivotVector<Symmetry,Scalar> A2C(AL_ref[loc], H.locBasis(loc), 
-										 Vout.state.A[GAUGE::C][(loc+1)%N_sites], H.locBasis((loc+1)%N_sites), 
-										 Vout.state.Qtop(loc), Vout.state.Qbot((loc+1)%N_sites));
-
-		precalc_blockStructure (HeffA[loc].L, A2C.data, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, A2C.data, HeffA[(loc+1)%N_sites].R, 
-								H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites), 
-								H2.qlhs, H2.qrhs, H2.factor_cgcs);
-		HxV(H2,A2C);
-
-		vector<vector<qarray<Symmetry::Nq> > > qbasis_tmp(2);
-		qbasis_tmp[0] = H.locBasis(loc);
-		qbasis_tmp[1] = H.locBasis((loc+1)%N_sites);
-		// Mps<Symmetry,Scalar> Vtmp(2, qbasis_tmp, Symmetry::qvacuum(), 2, Vout.state.Nqmax);
-	
-		// Vtmp.A[0] = AL_ref[loc];
-		// Vtmp.A[1] = Vout.state.A[GAUGE::C][(loc+1)%N_sites];
-	
-		// Vtmp.QinTop[0] = Vout.state.Qtop(loc);
-		// Vtmp.QinBot[0] = Vout.state.Qbot(loc);
-		// Vtmp.QoutTop[0] = Vout.state.Qtop(loc);
-		// Vtmp.QoutBot[0] = Vout.state.Qbot(loc);
-		// Vtmp.QinTop[1] = Vout.state.Qtop((loc+1)%N_sites);
-		// Vtmp.QinBot[1] = Vout.state.Qbot((loc+1)%N_sites);
-		// Vtmp.QoutTop[1] = Vout.state.Qtop((loc+1)%N_sites);
-		// Vtmp.QoutBot[1] = Vout.state.Qbot((loc+1)%N_sites);
-		// Vtmp.min_Nsv = 1;
-		// Vtmp.sweepStep2(DMRG::DIRECTION::RIGHT, 0, A2C.data);
-
-		// Vtmp.update_outbase();
-		// Vtmp.update_inbase();
-		Biped<Symmetry,MatrixType> Cdump;
-		double truncDump, Sdump;
-		vector<Biped<Symmetry,MatrixType> > AL=AL_ref[loc];
-		vector<Biped<Symmetry,MatrixType> > AR=Vout.state.A[GAUGE::C][(loc+1)%N_sites];
-
-		split_AA(DMRG::DIRECTION::RIGHT, A2C.data, H.locBasis(loc), AL, H.locBasis((loc+1)%N_sites), AR,
-				 Vout.state.Qtop(loc), Vout.state.Qbot(loc),
-				 Cdump, false, truncDump, Sdump,
-				 Vout.state.eps_svd,Vout.state.min_Nsv,Vout.state.max_Nsv);
-
-		Qbasis<Symmetry> NRbasis; NRbasis.pullData(NR,1);
-		Qbasis<Symmetry> NLbasis; NLbasis.pullData(NL,0);
-		Qbasis<Symmetry> ARbasis; ARbasis.pullData(AR,1);
-		Qbasis<Symmetry> ALbasis; ALbasis.pullData(AL,0);
-	
-		// calculate NAAN
-		Biped<Symmetry,MatrixType> IdL; IdL.setIdentity(NLbasis, ALbasis);
-		Biped<Symmetry,MatrixType> IdR; IdR.setIdentity(ARbasis, NRbasis);
-		
-		Biped<Symmetry,MatrixType> TL;
-		// contract_L(IdL, NL, Vtmp.A[0], H.locBasis(loc), TL);
-		contract_L(IdL, NL, AL, H.locBasis(loc), TL);
-
-		Biped<Symmetry,MatrixType> TR;
-		// contract_R(IdR, NR, Vtmp.A[1], H.locBasis((loc+1)%N_sites), TR);
-		contract_R(IdR, NR, AR, H.locBasis((loc+1)%N_sites), TR);
-
-		Biped<Symmetry,MatrixType> NAAN = TL.contract(TR);
-		
-		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
-		{
-			lout << "l=" << loc << ", norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
-		}
-		
-		// SVD-decompose NAAN
-		Biped<Symmetry,MatrixType> U, Vdag;
-		for (size_t q=0; q<NAAN.dim; ++q)
-		{
-            #ifdef DONT_USE_BDCSVD
-			JacobiSVD<MatrixType> Jack; // standard SVD
-            #else
-			BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
-            #endif
-
-			Jack.compute(NAAN.block[q], ComputeThinU|ComputeThinV);
-		
-			size_t Nret = (Jack.singularValues().array() > Vout.state.eps_svd).count();
-			Nret = min(DeltaD, Nret);
-			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
-			{
-				lout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
-			}
-			if(Nret > 0)
-			{
-				U.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixU().leftCols(Nret));
-				Vdag.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixV().adjoint().topRows(Nret));
-			}
-		}
-
-		// expand AL
-		vector<Biped<Symmetry,MatrixType> > P(Vout.state.locBasis(loc).size());
-		for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
-		{
-			P[s] = NL[s] * U;
-		}
-
-		for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
-		for (size_t qP=0; qP<P[s].size(); ++qP)
-		{
-			qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
-			auto qA = Vout.state.A[GAUGE::L][loc][s].dict.find(quple);
-			
-			if (qA != Vout.state.A[GAUGE::L][loc][s].dict.end())
-			{
-				addRight(P[s].block[qP], Vout.state.A[GAUGE::L][loc][s].block[qA->second]);
-			}
-			else
-			{
-				Vout.state.A[GAUGE::L][loc][s].push_back(quple, P[s].block[qP]);
-			}
-		}
-		
-		// update the inleg from AL at site (loc+1)%N_sites with zeros
-		Qbasis<Symmetry> ExpandedBasis;
-		ExpandedBasis.pullData(P,1);
-
-		Vout.state.update_inbase(loc,GAUGE::L);
-		Vout.state.update_outbase(loc,GAUGE::L);
-		
-		for (const auto &[qval,qdim,plain]:ExpandedBasis)
-		for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
-		{
-			auto qouts = Symmetry::reduceSilent(qval, Vout.state.locBasis((loc+1)%N_sites)[s]);
-			for (const auto &qout:qouts)
-			{
-				if (Vout.state.outBasis((loc+1)%N_sites).find(qout) == false) {continue;}
-
-				qarray2<Symmetry::Nq> quple = {qval, qout};
-				auto it = Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].dict.find(quple);
-				if (it != Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].dict.end())
-				{
-					MatrixType Mtmp(ExpandedBasis.inner_dim(qval), 
-									Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].block[it->second].cols());
-					Mtmp.setZero();
-					addBottom(Mtmp, Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].block[it->second]);
-				}
-				else
-				{
-					MatrixType Mtmp(ExpandedBasis.inner_dim(qval), Vout.state.outBasis((loc+1)%N_sites).inner_dim(qout));
-					Mtmp.setZero();
-					Vout.state.A[GAUGE::L][(loc+1)%N_sites][s].push_back(quple, Mtmp);
-				}
-			}
-		}
-
-		// update the left environment from AL if it is used for the next site
-		// This step would be necessary, if we don't use a copy of AL for computing the two-site A-tensor. See begin of this function.
-		// if (loc < N_sites-1)
-		// {
-		// 	cout << termcolor::red << "update left environment" << termcolor::reset << endl;
-		// 	contract_L(HeffA[loc].L, 
-		//                Vout.state.A[GAUGE::L][loc], H.W[loc], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][loc], 
-		//                H.locBasis(loc), H.opBasis(loc), 
-		//                HeffA[loc+1].L);
-		// }
-		
-		// expand AR
-		P.clear();
-		P.resize(Vout.state.locBasis((loc+1)%N_sites).size());
-		for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
-		{
-			P[s] = Vdag * NR[s];
-		}
-	
-		for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
-		for (size_t qP=0; qP<P[s].size(); ++qP)
-		{
-			qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
-			auto qA = Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].dict.find(quple);
-			
-			if (qA != Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].dict.end())
-			{
-				addBottom(P[s].block[qP], Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].block[qA->second]);
-			}
-			else
-			{
-				Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].push_back(quple, P[s].block[qP]);
-			}
-		}
-
-		// update AR at site loc with zeros
-		ExpandedBasis.clear();
-		ExpandedBasis.pullData(P,0);
-	
-		Vout.state.update_inbase((loc+1)%N_sites,GAUGE::R);
-		Vout.state.update_outbase((loc+1)%N_sites,GAUGE::R);
-	
-		for (const auto &[qval,qdim,plain]:ExpandedBasis)
-		for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
-		{
-			auto qins = Symmetry::reduceSilent(qval, Symmetry::flip(Vout.state.locBasis(loc)[s]));
-			for (const auto &qin:qins)
-			{
-				if (Vout.state.inBasis(loc).find(qin) == false) {continue;}
-				
-				qarray2<Symmetry::Nq> quple = {qin, qval};
-				auto it = Vout.state.A[GAUGE::R][loc][s].dict.find(quple);
-				if (it != Vout.state.A[GAUGE::R][loc][s].dict.end())
-				{
-					MatrixType Mtmp(Vout.state.A[GAUGE::R][loc][s].block[it->second].rows(),
-									ExpandedBasis.inner_dim(qval));
-					Mtmp.setZero();
-					addRight(Mtmp, Vout.state.A[GAUGE::R][loc][s].block[it->second]);
-				}
-				else
-				{
-					MatrixType Mtmp(Vout.state.inBasis(loc).inner_dim(qin), ExpandedBasis.inner_dim(qval));
-					Mtmp.setZero();
-					Vout.state.A[GAUGE::R][loc][s].push_back(quple, Mtmp);
-				}
-			}
-		}
-
-		// fill C with extra zeros
-		// Vout.state.update_inbase(GAUGE::L);
-		Vout.state.update_outbase(loc,GAUGE::L);
-
-		for (size_t q=0; q<Vout.state.outBasis(loc).Nq(); ++q)
-		{
-			qarray2<Symmetry::Nq> quple = {Vout.state.outBasis(loc)[q], Vout.state.outBasis(loc)[q]};
-			auto qC = Vout.state.C[loc].dict.find(quple);
-			size_t r = Vout.state.outBasis(loc).inner_dim(Vout.state.outBasis(loc)[q]);
-			size_t c = r;
-			if (qC != Vout.state.C[loc].dict.end())
-			{
-				int dr = r-Vout.state.C[loc].block[qC->second].rows();
-				int dc = c-Vout.state.C[loc].block[qC->second].cols();
-			
-				Vout.state.C[loc].block[qC->second].conservativeResize(r,c);
-			
-				Vout.state.C[loc].block[qC->second].bottomRows(dr).setZero();
-				Vout.state.C[loc].block[qC->second].rightCols(dc).setZero();
-			}
-			else
-			{
-				MatrixType Mtmp(r,c);
-				Mtmp.setZero();
-				Vout.state.C[loc].push_back(quple, Mtmp);
-			}
-		}
-
-
-		// sort
-		for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
-		{
-			Vout.state.A[GAUGE::L][loc][s] = Vout.state.A[GAUGE::L][loc][s].sorted();
-		}
-		for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
-		{
-			Vout.state.A[GAUGE::R][(loc+1)%N_sites][s] = Vout.state.A[GAUGE::R][(loc+1)%N_sites][s].sorted();
-		}
-		Vout.state.C[loc] = Vout.state.C[loc].sorted();
+		expand_basis (loc, DeltaD, H, Vout, option);
 	}
-	
-	// set AC and sort
-	for (size_t loc=0; loc<N_sites; loc++)
-	{
-		for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
-		{
-			for (size_t q=0; q<Vout.state.A[GAUGE::L][loc][s].size(); ++q)
-			{
-				qarray2<Symmetry::Nq> quple = {Vout.state.A[GAUGE::L][loc][s].in[q], Vout.state.A[GAUGE::L][loc][s].out[q]};
-				auto it = Vout.state.A[GAUGE::C][loc][s].dict.find(quple);
-				if (it != Vout.state.A[GAUGE::C][loc][s].dict.end())
-				{
-					int dr = Vout.state.A[GAUGE::L][loc][s].block[q].rows() - Vout.state.A[GAUGE::C][loc][s].block[it->second].rows();
-					int dc = Vout.state.A[GAUGE::L][loc][s].block[q].cols() - Vout.state.A[GAUGE::C][loc][s].block[it->second].cols();
-					assert(dr >= 0 and dc >= 0 and "Something went wrong in expand_basis during the VUMPS Algorithm.");
-					MatrixType Mtmp(dr,Vout.state.A[GAUGE::C][loc][s].block[it->second].cols()); Mtmp.setZero();
-					addBottom(Mtmp, Vout.state.A[GAUGE::C][loc][s].block[it->second]);
-					Mtmp.resize(Vout.state.A[GAUGE::C][loc][s].block[it->second].rows(),dc); Mtmp.setZero();
-					addRight(Mtmp, Vout.state.A[GAUGE::C][loc][s].block[it->second]);
-				}
-				else
-				{
-					MatrixType Mtmp(Vout.state.A[GAUGE::L][loc][s].block[q].rows(), Vout.state.A[GAUGE::L][loc][s].block[q].cols());
-					Mtmp.setZero();
-					Vout.state.A[GAUGE::C][loc][s].push_back(quple,Mtmp);
-				}
-			}
-			Vout.state.A[GAUGE::L][loc][s] = Vout.state.A[GAUGE::L][loc][s].sorted();
-			Vout.state.A[GAUGE::R][loc][s] = Vout.state.A[GAUGE::R][loc][s].sorted();
-			Vout.state.A[GAUGE::C][loc][s] = Vout.state.A[GAUGE::C][loc][s].sorted();
-		}
-		Vout.state.C[loc] = Vout.state.C[loc].sorted();
-	}
-	
-	// for (size_t l=0; l<N_sites; l++)
-	// for (size_t s=0; s<Vout.state.qloc[l].size(); ++s)
-	// {
-	// 	Vout.state.A[GAUGE::C][l][s] = Vout.state.A[GAUGE::L][l][s];
-	// 	Vout.state.A[GAUGE::C][l][s].setRandom();
-	// }
-	Vout.state.update_inbase();
-	Vout.state.update_outbase();
 }
 
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option,
+		 Biped<Symmetry,MatrixType>& B2, vector<Biped<Symmetry,MatrixType> > &NL, vector<Biped<Symmetry,MatrixType> > &NR) const
+{	
+	Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc,             NL);
+	Vout.state.calc_N(DMRG::DIRECTION::LEFT,  (loc+1)%N_sites, NR);
+
+	PivotMatrix2<Symmetry,Scalar> H2(HeffA[loc].L, HeffA[(loc+1)%N_sites].R, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, 
+									 H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites));
+
+	vector<Biped<Symmetry,MatrixType> > AL;
+	vector<Biped<Symmetry,MatrixType> > AR;
+	if (option == VUMPS::TWOSITE_A::ALxAC)
+	{
+		AL=Vout.state.A[GAUGE::L][loc];
+		AR=Vout.state.A[GAUGE::C][(loc+1)%N_sites];
+	}
+	else if (option == VUMPS::TWOSITE_A::ACxAR)
+	{
+		AL=Vout.state.A[GAUGE::C][loc];
+		AR=Vout.state.A[GAUGE::R][(loc+1)%N_sites];
+	}
+	else if (option == VUMPS::TWOSITE_A::ALxCxAR)
+	{
+		AL.resize(Vout.state.A[GAUGE::L][loc].size());
+		//Set AL to A[GAUGE::L]*C
+		for (size_t s=0; s<Vout.state.A[GAUGE::L][loc].size(); ++s)
+		{
+			AL[s] = Vout.state.A[GAUGE::L][loc][s] * Vout.state.C[loc];
+		}
+		AR=Vout.state.A[GAUGE::R][(loc+1)%N_sites];
+	}
+	else
+	{
+		assert(1!=1 and "You inserted an invalid value for enum VUMPS::TWOSITEA::OPTION in calc_B2 from VumpsSolver.");
+	}
+	
+	PivotVector<Symmetry,Scalar> A2C(AL, H.locBasis(loc), 
+									 AR, H.locBasis((loc+1)%N_sites), 
+									 Vout.state.Qtop(loc), Vout.state.Qbot((loc+1)%N_sites));
+
+	precalc_blockStructure (HeffA[loc].L, A2C.data, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, A2C.data, HeffA[(loc+1)%N_sites].R, 
+							H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites), 
+							H2.qlhs, H2.qrhs, H2.factor_cgcs);
+	HxV(H2,A2C);
+
+	split_AA(DMRG::DIRECTION::RIGHT, A2C.data, H.locBasis(loc), AL, H.locBasis((loc+1)%N_sites), AR,
+			 Vout.state.Qtop(loc), Vout.state.Qbot(loc),
+			 Vout.state.eps_svd,Vout.state.min_Nsv,Vout.state.max_Nsv);
+
+	Qbasis<Symmetry> NRbasis; NRbasis.pullData(NR,1);
+	Qbasis<Symmetry> NLbasis; NLbasis.pullData(NL,0);
+	Qbasis<Symmetry> ARbasis; ARbasis.pullData(AR,1);
+	Qbasis<Symmetry> ALbasis; ALbasis.pullData(AL,0);
+	
+	// calculate B2 = NAAN
+	Biped<Symmetry,MatrixType> IdL; IdL.setIdentity(NLbasis, ALbasis);
+	Biped<Symmetry,MatrixType> IdR; IdR.setIdentity(ARbasis, NRbasis);
+		
+	Biped<Symmetry,MatrixType> TL;
+	contract_L(IdL, NL, AL, H.locBasis(loc), TL);
+
+	Biped<Symmetry,MatrixType> TR;
+	contract_R(IdR, NR, AR, H.locBasis((loc+1)%N_sites), TR);
+
+	B2 = TL.contract(TR);
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option, Biped<Symmetry,MatrixType>& B2) const
+{
+	vector<Biped<Symmetry,MatrixType> > NL_dump, NR_dump;
+	calc_B2(loc,H,Vout,option,B2,NL_dump,NR_dump);
+}
+
+//*******************************************************************************************************************************************************************************
+//This  function is expand_basis for the whole unit cell, but with updating AC only at the end.
+//This could be slightly more efficient than the variant used above, so if you want you can try this function.
+//It is basically the same code as in expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option)
+//but without updating AC. This is here done after the loop over the unit cell.
+//*******************************************************************************************************************************************************************************
+
+// template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+// void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+// expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option)
+// {
+// 	if (DeltaD == 0) {return;} //early exit if the dimension to increase is zero.
+	
+// 	for(size_t loc=0; loc<N_sites; loc++)
+// 	{
+// 		vector<Biped<Symmetry,MatrixType> > NL;
+// 		vector<Biped<Symmetry,MatrixType> > NR;
+// 		Biped<Symmetry,MatrixType> NAAN;
+// 		//calculate two-site B-Tensor (double tangent space) and obtain simultaneously NL and NR (nullspaces)
+// 		calc_B2(loc, H, Vout, option, NAAN, NL, NR);
+
+// 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+// 		{
+// 			lout << "l=" << loc << ", norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
+// 		}
+		
+// 		// SVD-decompose NAAN
+// 		Biped<Symmetry,MatrixType> U, Vdag;
+// 		for (size_t q=0; q<NAAN.dim; ++q)
+// 		{
+//             #ifdef DONT_USE_BDCSVD
+// 			JacobiSVD<MatrixType> Jack; // standard SVD
+//             #else
+// 			BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
+//             #endif
+
+// 			Jack.compute(NAAN.block[q], ComputeThinU|ComputeThinV);
+		
+// 			size_t Nret = (Jack.singularValues().array() > Vout.state.eps_svd).count();
+// 			Nret = min(DeltaD, Nret);
+// 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+// 			{
+// 				lout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
+// 			}
+// 			if(Nret > 0)
+// 			{
+// 				U.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixU().leftCols(Nret));
+// 				Vdag.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixV().adjoint().topRows(Nret));
+// 			}
+// 		}
+		
+// 		//calc P
+// 		vector<Biped<Symmetry,MatrixType> > P(Vout.state.locBasis(loc).size());
+// 		for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
+// 		{
+// 			P[s] = NL[s] * U;
+// 		}
+
+// 		Vout.state.enrich(loc, GAUGE::L, P);
+
+// 		//Update the left environment if AL is involved in calculating the two site A-tensor, because we need correct environments for the effective two-site Hamiltonian.
+// 		if (option == VUMPS::TWOSITE_A::ALxAC or option == VUMPS::TWOSITE_A::ALxCxAR)
+// 		{
+// 			contract_L(HeffA[loc].L, 
+// 					   Vout.state.A[GAUGE::L][loc], H.W[loc], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][loc], 
+// 					   H.locBasis(loc), H.opBasis(loc), 
+// 					   HeffA[(loc+1)%N_sites].L);
+// 		}
+		
+// 		P.clear();
+// 		P.resize(Vout.state.locBasis((loc+1)%N_sites).size());
+// 		for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
+// 		{
+// 			P[s] = Vdag * NR[s];
+// 		}
+		
+// 		Vout.state.enrich(loc, GAUGE::R, P);
+
+// 		//Update the right environment if AR is involved in calculating the two site A-tensor, because we need correct environments for the effective two-site Hamiltonian.
+// 		//Note: maybe we only have to update the right environment if loc=0, since we need the updated environment only when loc=N_sites-1 and consequentially loc+1=0.
+// 		if (option == VUMPS::TWOSITE_A::ACxAR or option == VUMPS::TWOSITE_A::ALxCxAR)
+// 		{
+// 			contract_R(HeffA[(loc+1)%N_sites].R,
+// 					   Vout.state.A[GAUGE::R][(loc+1)%N_sites], H.W[(loc+1)%N_sites], PROP::HAMILTONIAN, Vout.state.A[GAUGE::R][(loc+1)%N_sites], 
+// 					   H.locBasis((loc+1)%N_sites), H.opBasis((loc+1)%N_sites), 
+// 					   HeffA[loc].R);
+// 		}
+		
+// 		Vout.state.update_outbase(loc,GAUGE::L);
+
+// 		//update C with zeros
+// 		Vout.state.updateC(loc);
+		
+// 		// sort
+// 		Vout.state.sort_A(loc, GAUGE::L);
+// 		Vout.state.sort_A((loc+1)%N_sites, GAUGE::R);
+// 		Vout.state.C[loc] = Vout.state.C[loc].sorted();
+// 	}
+	
+// 	// update AC with zeros and sort
+// 	for (size_t loc=0; loc<N_sites; loc++)
+// 	{
+// 		Vout.state.updateAC(loc,GAUGE::L);
+// 		Vout.state.sort_A(loc, GAUGE::L, true); //true means sort all gauges, the parameter GAUGE::L has no impact here.
+// 		Vout.state.C[loc] = Vout.state.C[loc].sorted();
+// 	}
+	
+// 	Vout.state.update_inbase();
+// 	Vout.state.update_outbase();
+// }
 #endif

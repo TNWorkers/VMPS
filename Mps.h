@@ -42,7 +42,7 @@ class Mps : public DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >
 	template<typename Symmetry_, typename S1, typename S2> friend 
 	void OxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, DMRG::BROOM::OPTION TOOL);
 	template<typename Symmetry_, typename S1, typename S2> friend 
-	void OxV_exact (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, double tol_compr);
+	void OxV_exact (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, double tol_compr, DMRG::VERBOSITY::OPTION VERBOSITY);
 	
 	template<typename Symmetry_, typename S_> friend class Mps; // in order to exchange data between real & complex Mps
 	
@@ -321,7 +321,7 @@ public:
 	/** 
 	 * Calculates the expectation value with a local operator at the pivot site. 
 	 * \param O : local Mpo acting on the pivot side.
-	 * \warning Not implemented for non-abelian symmetries.
+	 * \param distance : distance to the end of the support of \p O.
 	 */
 	template<typename MpoScalar> Scalar locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance=0) const;
 	
@@ -382,16 +382,15 @@ public:
 	 */
 	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, bool SEPARATE_SV=false);
 	
-	/**
-	 * Performs a two-site sweep and writes the result into \p Al, \p Ar and \p C (useful for IDMRG).
-	 * \param DIR : direction of the sweep, either LEFT or RIGHT.
-	 * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1 or \p loc+1
-	 * \param Apair : pair of two Mps site tensors which are split via an SVD
-	 * \param Al : left-orthogonal part goes here
-	 * \param Ar : right-orthogonal part goes here
-	 * \param C : singular values go here
-	 * \param SEPARATE_SV: if \p true, the singular value matrix is discarded (iseful for IDMRG)
-	 */
+	
+	 // * Performs a two-site sweep and writes the result into \p Al, \p Ar and \p C (useful for IDMRG).
+	 // * \param DIR : direction of the sweep, either LEFT or RIGHT.
+	 // * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1 or \p loc+1
+	 // * \param Apair : pair of two Mps site tensors which are split via an SVD
+	 // * \param Al : left-orthogonal part goes here
+	 // * \param Ar : right-orthogonal part goes here
+	 // * \param C : singular values go here
+	 // * \param SEPARATE_SV: if \p true, the singular value matrix is discarded (iseful for IDMRG)
 	// void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, 
 	//                  vector<Biped<Symmetry,MatrixType> > &Al, vector<Biped<Symmetry,MatrixType> > &Ar, Biped<Symmetry,MatrixType> &C, 
 	//                  bool SEPARATE_SV);
@@ -1490,7 +1489,9 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t q=0; q<A[loc][s].dim; ++q)
 		{
-			if (A[loc][s].in[q] == inbase[loc][qin])
+			if (A[loc][s].in[q] == inbase[loc][qin] and
+			    A[loc][s].block[q].rows() > 0 and
+			    A[loc][s].block[q].cols() > 0)
 			{
 				svec.push_back(s);
 				qvec.push_back(q);
@@ -1502,10 +1503,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		{
 			// do the glue
 			size_t Nrows = A[loc][svec[0]].block[qvec[0]].rows();
-			for (size_t i=1; i<svec.size(); ++i)
-			{
-				assert(A[loc][svec[i]].block[qvec[i]].rows() == Nrows);
-			}
+			for (size_t i=1; i<svec.size(); ++i) assert(A[loc][svec[i]].block[qvec[i]].rows() == Nrows);
 			size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
 			
 			MatrixType Aclump(Nrows,Ncols);
@@ -1692,7 +1690,9 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		for (size_t q=0; q<A[loc][s].dim; ++q)
 		{
-			if (A[loc][s].out[q] == outbase[loc][qout])
+			if (A[loc][s].out[q] == outbase[loc][qout] and
+			    A[loc][s].block[q].rows() > 0 and
+			    A[loc][s].block[q].cols() > 0)
 			{
 				svec.push_back(s);
 				qvec.push_back(q);
@@ -1781,7 +1781,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 					}
 					stitch += Nrowsvec[i];
 				}
-			
+				
 				// update A[loc+1]
 				if (loc != this->N_sites-1 and DISCARD_V == false)
 				{
@@ -3119,6 +3119,14 @@ Mps<Symmetry,OtherScalar> operator* (const OtherScalar &alpha, const Mps<Symmetr
 {
 	Mps<Symmetry,OtherScalar> Vout = Vin.template cast<OtherScalar>();
 	Vout *= alpha;
+	return Vout;
+}
+
+template<typename Symmetry, typename Scalar, typename OtherScalar>
+Mps<Symmetry,OtherScalar> operator/ (const Mps<Symmetry,Scalar> &Vin, const OtherScalar &alpha)
+{
+	Mps<Symmetry,OtherScalar> Vout = Vin.template cast<OtherScalar>();
+	Vout /= alpha;
 	return Vout;
 }
 

@@ -34,6 +34,7 @@ using namespace Eigen;
 
 #include "VUMPS/VumpsSolver.h"
 #include "VUMPS/VumpsLinearAlgebra.h"
+#include "VUMPS/UmpsCompressor.h"
 #include "models/Heisenberg.h"
 #include "models/HeisenbergU1.h"
 #include "models/HeisenbergU1XXZ.h"
@@ -54,7 +55,7 @@ double e_exact;
 size_t L, Ly;
 int N;
 size_t Dinit, max_iter, min_iter;
-double tol_eigval, tol_var;
+double tol_eigval, tol_var, tol_state;
 bool ISING, HEIS2, HEIS3, SSH, ALL;
 
 //-------- Ising model integrations:
@@ -148,8 +149,10 @@ int main (int argc, char* argv[])
 	
 	dt = args.get<double>("dt",0.5); // hopping-offset for SSH model
 	Dinit = args.get<double>("Dinit",5);    // bond dimension
-	tol_eigval = args.get<double>("tol_eigval",1e-7);
-	tol_var = args.get<double>("tol_var",1e-7);
+	tol_eigval = args.get<double>("tol_eigval",1e-9);
+	tol_var = args.get<double>("tol_var",1e-8);
+	tol_state = args.get<double>("tol_state",1e-7);
+
 	max_iter = args.get<size_t>("max_iter",300ul);
 	min_iter = args.get<size_t>("min_iter",1ul);
 	size_t Qinit = args.get<size_t>("Qinit",6);
@@ -161,7 +164,8 @@ int main (int argc, char* argv[])
 	GlobParams.Dinit = Dinit;
 	GlobParams.Qinit = Qinit;
 	GlobParams.tol_eigval = tol_eigval;
-	GlobParams.tol_state = tol_var;
+	GlobParams.tol_var = tol_var;
+	GlobParams.tol_state = tol_state;
 
 	// VUMPS::CONTROL::DYN DynParams;
 	// DynParams.max_deltaD = [] (size_t i) {return (i<lim)? tmp1:0.;};
@@ -213,7 +217,7 @@ int main (int argc, char* argv[])
 	{
 		HEISENBERG_SU2 Heis_SU2(L,{{"Ly",Ly},{"J",J},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
 		lout << Heis_SU2.info() << endl;
-		DMRG_SU2.set_log(L,"e_Heis_SU2.dat","err_eigval_Heis_SU2.dat","err_var_Heis_SU2.dat");
+		DMRG_SU2.set_log(L,"e_Heis_SU2.dat","err_eigval_Heis_SU2.dat","err_var_Heis_SU2.dat","err_state_Heis_SU2.dat");
 		DMRG_SU2.userSetGlobParam();
 		DMRG_SU2.GlobParam = GlobParams;
 		DMRG_SU2.edgeState(Heis_SU2, g_SU2, {1});
@@ -228,7 +232,7 @@ int main (int argc, char* argv[])
 	if (CALC_U1)
 	{
 		lout << Heis_U1.info() << endl;
-		DMRG_U1.set_log(2,"e_Heis_U1.dat","err_eigval_Heis_U1.dat","err_var_Heis_U1.dat");
+		DMRG_U1.set_log(2,"e_Heis_U1.dat","err_eigval_Heis_U1.dat","err_var_Heis_U1.dat","err_state_Heis_U1.dat");
 		DMRG_U1.userSetGlobParam();
 		DMRG_U1.GlobParam = GlobParams;
 		DMRG_U1.edgeState(Heis_U1, g_U1, {0});
@@ -237,7 +241,7 @@ int main (int argc, char* argv[])
 		{
 			HEISENBERG_U1::uSolver DMRG_U1_(VERB);
 			Eigenstate<HEISENBERG_U1::StateUd> g_U1_;
-			DMRG_U1_.set_log(2,"e_Heis_U1_.dat","err_eigval_Heis_U1_.dat","err_var_Heis_U1_.dat");
+			DMRG_U1_.set_log(2,"e_Heis_U1_.dat","err_eigval_Heis_U1_.dat","err_var_Heis_U1_.dat","err_state_Heis_U1_.dat");
 			DMRG_U1_.userSetGlobParam();
 			DMRG_U1_.GlobParam = GlobParams;
 			DMRG_U1_.edgeState(Heis_U1_, g_U1_, {0});
@@ -262,7 +266,7 @@ int main (int argc, char* argv[])
 		qarray<2> Qc = {1,N};
 		Kond.transform_base(Qc);
 		Eigenstate<KONDO::StateUd> g_Kond;
-		DMRG_KOND.set_log(2,"e_Kond.dat","err_eigval_Kond.dat","err_var_Kond.dat");
+		DMRG_KOND.set_log(2,"e_Kond.dat","err_eigval_Kond.dat","err_var_Kond.dat","err_state_Kond.dat");
 		DMRG_KOND.userSetGlobParam();
 		DMRG_KOND.GlobParam = GlobParams;
 		DMRG_KOND.edgeState(Kond, g_Kond, Qc);
@@ -303,7 +307,7 @@ int main (int argc, char* argv[])
 		qarray<2> Qc = {1,N};
 		Hubb.transform_base(Qc);
 		Eigenstate<HUBBARD::StateUd> g_Hubb;
-		DMRG_HUBB.set_log(2,"e_Hubb.dat","err_eigval_Hubb.dat","err_var_Hubb.dat");
+		DMRG_HUBB.set_log(2,"e_Hubb.dat","err_eigval_Hubb.dat","err_var_Hubb.dat","err_state_Hubb.dat");
 		DMRG_HUBB.userSetGlobParam();
 		DMRG_HUBB.GlobParam = GlobParams;
 		DMRG_HUBB.edgeState(Hubb, g_Hubb, Qc);
@@ -336,7 +340,7 @@ int main (int argc, char* argv[])
 	if (CALC_U0)
 	{
 		lout << Heis0.info() << endl;
-		DMRG0.set_log(2,"e_Heis_U0.dat","err_eigval_Heis_U0.dat","err_var_Heis_U0.dat");
+		DMRG0.set_log(2,"e_Heis_U0.dat","err_eigval_Heis_U0.dat","err_var_Heis_U0.dat","err_state_Heis_U0.dat");
 		DMRG0.userSetGlobParam();
 		DMRG0.GlobParam = GlobParams;
 		DMRG0.edgeState(Heis0, g0, {});
@@ -388,13 +392,7 @@ int main (int argc, char* argv[])
 	if (CALC_U0)
 	{
 		cout << "-----U0-----" << endl;
-		// print_mag(Heis0,g0);
-		// cout << g0.state.info() << endl;
-		// g0.state.truncate();
-		// cout << "after truncation" << endl;
-		// cout << g0.state.info() << endl;
-		// print_mag(Heis0,g0);
-
+		print_mag(Heis0,g0);
 		size_t dmax = 10;
 		for (size_t d=1; d<dmax; ++d)
 		{
@@ -403,13 +401,56 @@ int main (int argc, char* argv[])
 			// if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
 			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
 		}
+
+		g0.state.truncate();
+		cout << endl << endl << "after truncation" << endl;
+		cout << g0.state.info() << endl;
+		print_mag(Heis0,g0);
+
+		// print_mag(Heis0,g0);
+		// for (size_t d=1; d<dmax; ++d)
+		// {
+		// 	HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
+		// 	double SvecSvec = SvecSvecAvg(g0.state,Htmp,0,d);
+		// 	// if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
+		// 	lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		// }
+
+		// Umps<Sym::U0,complex<double> > g0_compl = g0.state.template cast<complex<double> >();
+		// Umps<Sym::U0,complex<double> > g0_trunc_compl;
+		// UmpsCompressor<Sym::U0,complex<double>, complex<double> > Lana(DMRG::VERBOSITY::HALFSWEEPWISE);
+		// Lana.stateCompress(g0_compl, g0_trunc_compl, 25ul, 1ul, 1.e-5, 50ul);
+		// Umps<Sym::U0,double> g0_trunc = g0_trunc_compl.real();
+		// cout << endl << endl << "after truncation" << endl;
+		// cout << g0_trunc_compl.info() << endl;
+		
+		for (size_t d=1; d<dmax; ++d)
+		{
+			HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
+			double SvecSvec = SvecSvecAvg(g0.state,Htmp,0,d);
+			// if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
+			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		}
+
 	}
 	if (CALC_U1)
 	{
 		cout << endl;
 		cout << "-----U1-----" << endl;
-		// print_mag(Heis_U1,g_U1);
+		print_mag(Heis_U1,g_U1);
 		size_t dmax = 10;
+		for (size_t d=1; d<dmax; ++d)
+		{
+			HEISENBERG_U1 Htmp(d+1,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
+			double SvecSvec = SvecSvecAvg(g_U1.state,Htmp,0,d);
+			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		}
+
+		g_U1.state.truncate();
+		cout << endl << endl << "after truncation" << endl;
+		cout << g_U1.state.info() << endl;
+		print_mag(Heis_U1,g_U1);
+
 		for (size_t d=1; d<dmax; ++d)
 		{
 			HEISENBERG_U1 Htmp(d+1,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
@@ -424,8 +465,29 @@ int main (int argc, char* argv[])
 	{
 		cout << endl;
 		cout << "-----SU2-----" << endl;
-		// print_mag(Heis,g);
+		cout << g_SU2.state.info() << endl;
 		size_t dmax = 10;
+		for (size_t d=1; d<dmax; ++d)
+		{
+			HEISENBERG_SU2 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
+			double SvecSvec = avg(g_SU2.state,Htmp.SS(0,d),g_SU2.state);
+			// if (d == L)
+			// {
+			// 	lout << "l=" << d-4 << ", " << d-3 << ", <SvecSvec>=" << avg(g_SU2.state,Htmp.SS(d-4,d-3),g_SU2.state) << endl;
+			// 	lout << "l=" << d-3 << ", " << d-2 << ", <SvecSvec>=" << avg(g_SU2.state,Htmp.SS(d-3,d-2),g_SU2.state) << endl;
+			// 	lout << "l=" << d-2 << ", " << d-1 << ", <SvecSvec>=" << avg(g_SU2.state,Htmp.SS(d-2,d-1),g_SU2.state) << endl;
+			// 	lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << avg(g_SU2.state,Htmp.SS(d-1,d),g_SU2.state) << endl;
+			// }
+
+			// double SvecSvec = Htmp.SvecSvecAvg(g.state,0,d);
+			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		}
+
+		g_SU2.state.truncate(false);
+		cout << endl << endl << "after truncation" << endl;
+		cout << g_SU2.state.info() << endl;
+
+		// print_mag(Heis,g);
 		for (size_t d=1; d<dmax; ++d)
 		{
 			HEISENBERG_SU2 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});

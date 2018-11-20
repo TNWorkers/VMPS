@@ -40,7 +40,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	// 	cout << Vket.A[g][l][s].print(false) << endl;
 	// }
 	
-	B.setIdentity(Obs.auxdim(), 1, Vket_copy.inBasis(0));
+	B.setIdentity(Obs.auxrows(0), 1, Vket_copy.inBasis(0));
 	for (size_t l=0; l<Obs.length(); ++l)
 	{
 		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
@@ -69,7 +69,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdR;
 	// IdR.setIdentity(Obs.auxdim(), 1, Vket.outBasis((Obs.length()-1)%Vket.length()));
-	IdR.setIdentity(Obs.auxdim(), 1, Vket_copy.outBasis((Obs.length()-1)%Vket.length()));
+	IdR.setIdentity(Obs.auxcols(Obs.length()-1), 1, Vket_copy.outBasis((Obs.length()-1)%Vket.length()));
 
 	// cout << IdR.print(false) << endl << B.print(false) << endl;
 	return contract_LR(B,IdR);

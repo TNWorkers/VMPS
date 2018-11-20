@@ -262,6 +262,12 @@ PivotVector<Symmetry,Scalar> operator- (const PivotVector<Symmetry,Scalar> &V1, 
 	return Vout;
 }
 
+template<typename Symmetry, typename Scalar, typename OtherScalar>
+void addScale (const OtherScalar alpha, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
+{
+	Vout += alpha * Vin;
+}
+
 //-----------<dot & vector norms>-----------
 template<typename Symmetry, typename Scalar>
 Scalar dot (const PivotVector<Symmetry,Scalar> &V1, const PivotVector<Symmetry,Scalar> &V2)

@@ -81,9 +81,11 @@ public:
 	Eigen::VectorXi rows(bool FULL=false) const;
 	/**Returns an Eigen vector of size \p dim containing all Matrix cols for every block nu.*/
 	Eigen::VectorXi cols(bool FULL=false) const;
-	/**Returns an Eigen vector of size \p dim containing all Matrix norm for every block nu.*/
-	Eigen::VectorXd norm() const;
-	/**Returns an Eigen vector of size \p dim containing all Matrix squared norm for every block nu.*/
+	/**Returns the total operator norm of the Biped. This norm is 1 for Identity Bipeds, whether the following two are not.*/
+	double operatorNorm(bool COLWISE=true) const;
+	/**Returns the total Frobenius norm of the Biped. This is equivalent to std::sqrt(squaredNorm().sum()).*/
+	double norm() const;
+	/**Returns an Eigen vector of size \p dim containing all Frobenius Matrix squared norm for every block nu.*/
 	Eigen::VectorXd squaredNorm() const;
 	///@}
 	
@@ -132,6 +134,8 @@ public:
 	void setTarget (vector<qType> Qmulti);
 	
 	void setIdentity (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2);
+
+	void setRandom (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2);
 	///@}
 	
 	///@{
@@ -155,6 +159,8 @@ public:
 	 */
 	Biped<Symmetry,MatrixType_> adjustQN (const size_t number_cells);
 
+	void cholesky(Biped<Symmetry,MatrixType> &res) const;
+	
 	/**
 	 * Adds another tensor to the current one. 
 	 * If quantum numbers match, the block is updated (block rows and columns must match), otherwise a new block is created.
@@ -271,6 +277,26 @@ setIdentity (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2)
 
 template<typename Symmetry, typename MatrixType_>
 void Biped<Symmetry,MatrixType_>::
+setRandom (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2)
+{
+	for (size_t q1=0; q1<base1.Nq(); ++q1)
+	for (size_t q2=0; q2<base2.Nq(); ++q2)
+	{
+		if (base1[q1] == base2[q2])
+		{
+			MatrixType Mtmp(base1.inner_dim(base1[q1]), base2.inner_dim(base2[q2]));
+			for (size_t a1=0; a1<Mtmp.rows(); ++a1)
+			for (size_t a2=0; a2<Mtmp.cols(); ++a2)
+			{
+				Mtmp(a1,a2) = threadSafeRandUniform<typename MatrixType_::Scalar>(-1.,1.);
+			}
+			push_back(base1[q1], base2[q2], Mtmp);
+		}
+	}
+}
+
+template<typename Symmetry, typename MatrixType_>
+void Biped<Symmetry,MatrixType_>::
 setTarget (qType Qtot)
 {
 	MatrixType_ Mtmp(1,1);
@@ -348,12 +374,29 @@ cols (bool FULL) const
 }
 
 template<typename Symmetry, typename MatrixType_>
-Eigen::VectorXd Biped<Symmetry,MatrixType_>::
+double Biped<Symmetry,MatrixType_>::
+operatorNorm (bool COLWISE) const
+{
+	double norm = 0.;
+	for (size_t q=0; q<dim; q++)
+	{
+		if (COLWISE)
+		{
+			if (block[q].cwiseAbs().colwise().sum().maxCoeff() > norm) { norm=block[q].cwiseAbs().colwise().sum().maxCoeff(); }
+		}
+		else { if (block[q].cwiseAbs().rowwise().sum().maxCoeff() > norm) { norm=block[q].cwiseAbs().rowwise().sum().maxCoeff(); } }
+	}
+	return norm;
+}
+
+template<typename Symmetry, typename MatrixType_>
+double Biped<Symmetry,MatrixType_>::
 norm () const
 {
-	Eigen::VectorXd Vout(size());
-	for (std::size_t nu=0; nu<size(); nu++) { Vout[nu] = block[nu].norm(); }
-	return Vout;
+	return std::sqrt(squaredNorm().sum());
+	// Eigen::VectorXd Vout(size());
+	// for (std::size_t nu=0; nu<size(); nu++) { Vout[nu] = block[nu].norm(); }
+	// return Vout;
 }
 
 template<typename Symmetry, typename MatrixType_>
@@ -511,6 +554,20 @@ adjustQN (const size_t number_cells)
 }
 
 template<typename Symmetry, typename MatrixType_>
+void Biped<Symmetry,MatrixType_>::
+cholesky(Biped<Symmetry,MatrixType> &res) const
+{
+	res = *this;
+	for (size_t q=0; q<res.dim; q++)
+	{
+		MatrixType Mtmp = res.block[q];
+		Eigen::LLT Jim(Mtmp);
+		res.block[q] = Jim.matrixL();
+	}
+	return;
+}
+
+template<typename Symmetry, typename MatrixType_>
 typename MatrixType_::Scalar Biped<Symmetry,MatrixType_>::
 trace() const
 {
@@ -590,7 +647,7 @@ contract (const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE) const
 	return Ares;
 }
 
-// Note: wrong! Use contract instead
+// Note: multiplication of Bipes which are not neccesarily singlets. So on does not have qin = qout.
 template<typename Symmetry, typename MatrixType_>
 Biped<Symmetry,MatrixType_> operator* (const Biped<Symmetry,MatrixType_> &A1, const Biped<Symmetry,MatrixType_> &A2)
 {

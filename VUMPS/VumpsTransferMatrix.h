@@ -350,6 +350,12 @@ inline void setZero (TransferVector<Symmetry,Scalar> &V)
 	V.data.setZero();
 }
 
+template<typename Symmetry, typename Scalar, typename OtherScalar>
+inline void addScale (const OtherScalar alpha, const TransferVector<Symmetry,Scalar> &Vin, TransferVector<Symmetry,Scalar> &Vout)
+{
+	Vout += alpha * Vin;
+}
+
 //-----------</vector arithmetics>-----------
 
 

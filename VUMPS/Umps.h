@@ -16,7 +16,7 @@
 
 #include "VUMPS/VumpsTypedefs.h"
 #include "VumpsContractions.h"
-
+#include "Blocker.h"
 //include "PolychromaticConsole.h" // from TOOLS
 //include "tensors/Biped.h"
 //include "LanczosSolver.h" // from ALGS
@@ -26,10 +26,12 @@
 //include "tensors/DmrgConglutinations.h"
 
 
-/**Uniform Matrix Product State. Analogue of the Mps class.
-\ingroup VUMPS
-\describe_Symmetry
-\describe_Scalar*/
+/**
+ * \ingroup VUMPS
+ * Uniform Matrix Product State. Analogue of the Mps class.
+ * \describe_Symmetry
+ * \describe_Scalar
+ */
 template<typename Symmetry, typename Scalar=double>
 class Umps
 {
@@ -37,7 +39,8 @@ class Umps
 	static constexpr size_t Nq = Symmetry::Nq;
 	
 	template<typename Symmetry_, typename MpHamiltonian, typename Scalar_> friend class VumpsSolver;
-	
+	template<typename Symmetry_, typename S1, typename S2> friend class MpsCompressor;
+
 public:
 	
 	/**Does nothing.*/
@@ -45,9 +48,12 @@ public:
 	
 	/**Constructs a Umps with fixed bond dimension with the info from the Hamiltonian.*/
 	template<typename Hamiltonian> Umps (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
-	
-	/**Constructs a Umps with fixed bond dimension with a given basis.*/
+
+	/**Constructs a Umps with fixed bond dimension with a uniform given basis.*/
 	Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
+
+	/**Constructs a Umps with fixed bond dimension with a given basis.*/
+	Umps (const vector<vector<qarray<Symmetry::Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
 
 #ifdef USE_HDF5_STORAGE
 	/**
@@ -76,6 +82,13 @@ public:
 	/**Resizes the bond dimension to \p Dmax and sets \p Nqmax blocks per site.*/
 	void resize (size_t Dmax_input, size_t Nqmax_input);
 
+	/**
+	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. 
+	 * Pulls info from another Mps.
+	 * \param V : chain length, local basis and target quantum number will be equal to this umps
+	 */
+	template<typename OtherMatrixType> void resize (const Umps<Symmetry,OtherMatrixType> &V);
+
 	/**Shorthand to resize all the relevant arrays: \p A, \p inbase, \p outbase, \p truncWeight, \p S.*/
 	void resize_arrays();
 
@@ -89,7 +102,18 @@ public:
 	
 	/**Returns the entropy for all sites.*/
 	VectorXd entropy() const {return S;};
-	
+
+	/**
+	 * Casts the matrices from \p Scalar to \p OtherScalar.
+	 */
+	template<typename OtherScalar> Umps<Symmetry,OtherScalar> cast() const;
+
+	/**
+	 * Returns a real Umps containing the real part of this.
+	 * \warning Does not check, whether the imaginary part is zero.
+	 */
+	Umps<Symmetry,double> real() const;
+
 	/**Returns the local basis.*/
 	inline vector<qarray<Symmetry::Nq> > locBasis (size_t loc) const {return qloc[loc];}
 	inline vector<vector<qarray<Symmetry::Nq> > > locBasis()   const {return qloc;}
@@ -174,12 +198,40 @@ public:
 	
 	/**Returns the total quantum number of the Umps.*/
 	inline qarray<Nq> Qtarget() const {return Qtot;};
-	
-//	void expand_basis (size_t DeltaD, const boost::multi_array<Scalar,4> &h2site, double e);
-	
-	void calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixType> > &N);
-	
-	void truncate();
+		
+	void calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixType> > &N) const;
+
+	/**
+	 * Performs a truncation of an Umps by the singular values of the center-matrix C.
+	 * Updates AL and AR with the truncated isometries from the SVD and reorthogonalize them afterwards.
+	 * \param SET_AC_RANDOM : bool to decide, whether to set AC to random or to C*AR.
+	 * Truncation of a converged Umps can be done with \p SET_AC_RANDOM=false to evaluate e.g. observables after the truncation.
+	 * Truncation during the variational optimization should be done with \p SET_AC_RANDOM=true because otherwise this would be a bias.
+	 */
+	void truncate(bool SET_AC_RANDOM=true);
+
+	/**
+	 * Orthogonalize the tensor with GAUGE \p g to be left-orthonormal using algorithm 2 from https://arxiv.org/abs/1810.07006.
+	 * \param g : GAUGE to orthogonalize.
+	 * \param G_L : Gauge-Transformation which performs the orthogonalization: \f$A[g] \rightarrow G_L*A[g]*G_L^{-1}\f$
+	 * \note : Call this function with GAUGE::L to reorthogonalize AL.
+	 */
+	void orthogonalize_left (GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_L);
+	/**
+	 * Orthogonalize the tensor with GAUGE \p g to be right-orthonormal using the analogue to algorithm 2 from https://arxiv.org/abs/1810.07006.
+	 * \param g : GAUGE to orthogonalize.
+	 * \param G_R : Gauge-Transformation which performs the orthogonalization: \f$A[g] \rightarrow G_R^{-1}*A[g]*G_R\f$
+	 * \note : Call this function with GAUGE::R to reorthogonalize AR.
+	 */
+	void orthogonalize_right(GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_R);
+
+	/**
+	 * Calculates either the right or the left fixed point of the transfer-matrix build up with A-tensors in GAUGE \p g.
+	 * \param g : GAUGE to orthogonalize.
+	 * \param DIR : LEFT or RIGHT fixed point.
+	 * \note The return values are of type complex<double>. Can we choose them sometimes to be real?
+	 */
+	std::pair<complex<double>, Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > calc_dominant(GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const;
 
 	/**
 	 * This functions transforms all quantum numbers in the Umps (Umps::qloc and QN in Umps::A) by \f$q \rightarrow q * N_{cells}\f$.
@@ -190,11 +242,38 @@ public:
 	 */
 	void adjustQN (const size_t number_cells);
 
+	/**
+	 * Sorts the A tensors of a specific gauge. If SORT_ALL_GAUGES is true, then obviously all A tensors get sorted.
+	 */
+	void sort_A(size_t loc, GAUGE::OPTION g, bool SORT_ALL_GAUGES=false);
+
+	/**
+	 * Updates the tensor C with zeros if the auxiallary basis has changed, e.g. after an enrichment process
+	 * \param loc : location of the C tensor for the update.
+	 */
+	void updateC(size_t loc);
+	/**
+	 * Updates the tensor AC with zeros if the auxiallary basis has changed, e.g. after an enrichment process
+	 * \param loc : location of the C tensor for the update.
+	 * \param g : Pull information about changed dimension from either A[GAUGE::L] or A[GAUGE::R]. 
+	 * \warning Do not insert \p g = GAUGE::C here.
+	 */
+	void updateAC(size_t loc, GAUGE::OPTION g);
+
+	/**
+	 * Enlarges the tensors of the Umps with an enrichment tensor \p P and resizes everything necessary with zeros.
+	 * The tensor \p P needs to be calculated in advance. This is done directly in the VumpsSolver.
+	 * \param loc : location of the site to enrich.
+	 * \param g : The gauge to enrich. L means, we need to update site tensor at loc+1 accordingly. R means updating site loc-1 with zeros.
+	 * \param P : the tensor with the enrichment. It is calculated after Eq. (A31).
+	 */	
+	void enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P);
+
 private:
 	/**parameter*/
 	size_t N_sites;
 	size_t Dmax, Nqmax;
-	double eps_svd = 1e-12;
+	double eps_svd = 1e-13;
 	size_t max_Nsv=100000ul, min_Nsv=1ul;
 	int max_Nrich;
 
@@ -219,7 +298,7 @@ private:
 	vector<Biped<Symmetry,MatrixType> >                        C; // zero-site part C[l]
 	
 	/**null space (see eq. (25) and surrounding text)*/
-	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> N; // N[L/R/C][l][s].block[q]
+	// std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> N; // N[L/R/C][l][s].block[q]
 	
 	VectorXd S;
 	
@@ -272,6 +351,17 @@ Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, si
 {
 	qloc.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l) {qloc[l] = qloc_input;}
+	resize(Dmax,Nqmax);
+	::transform_base<Symmetry>(qloc,Qtot); // from DmrgExternal.h
+}
+
+template<typename Symmetry, typename Scalar>
+Umps<Symmetry,Scalar>::
+Umps (const vector<vector<qarray<Symmetry::Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax)
+:N_sites(L_input), Qtot(Qtot_input)
+{
+	qloc.resize(N_sites);
+	for (size_t l=0; l<N_sites; ++l) {qloc[l] = qloc_input[l];}
 	resize(Dmax,Nqmax);
 	::transform_base<Symmetry>(qloc,Qtot); // from DmrgExternal.h
 }
@@ -388,16 +478,56 @@ resize_arrays ()
 			A[g][l].resize(qloc[l].size());
 		}
 		
-		N[g].resize(N_sites);
-		for (size_t l=0; l<N_sites; ++l)
-		{
-			N[g][l].resize(qloc[l].size());
-		}
+		// N[g].resize(N_sites);
+		// for (size_t l=0; l<N_sites; ++l)
+		// {
+		// 	N[g][l].resize(qloc[l].size());
+		// }
 	}
 	C.resize(N_sites);
 	inbase.resize(N_sites);
 	outbase.resize(N_sites);
 	S.resize(N_sites);
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename OtherMatrixType> 
+void Umps<Symmetry,Scalar>::
+resize (const Umps<Symmetry,OtherMatrixType> &V)
+{
+	N_sites = V.N_sites;
+	// N_phys = V.N_phys;
+	qloc = V.qloc;
+	Qtot = V.Qtot;
+	
+	inbase = V.inbase;
+	outbase = V.outbase;
+	
+	for (size_t g=0; g<3; g++) {A[g].resize(this->N_sites);}
+	C.resize(this->N_sites);
+	
+	truncWeight.resize(this->N_sites); truncWeight.setZero();
+	S.resize(this->N_sites-1); S.setConstant(numeric_limits<double>::quiet_NaN());
+	
+	for (size_t g=0; g<3; g++)
+	for (size_t l=0; l<V.N_sites; ++l)
+	{
+		A[g][l].resize(qloc[l].size());
+		
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		{
+			A[g][l][s].in = V.A[g][l][s].in;
+			A[g][l][s].out = V.A[g][l][s].out;
+			A[g][l][s].block.resize(V.A[g][l][s].dim);
+			A[g][l][s].dict = V.A[g][l][s].dict;
+			A[g][l][s].dim = V.A[g][l][s].dim;
+		}
+		C[l].in = V.C[l].in;
+		C[l].out = V.C[l].out;
+		C[l].block.resize(V.C[l].dim);
+		C[l].dict = V.C[l].dict;
+		C[l].dim = V.C[l].dim;
+	}
 }
 
 template<typename Symmetry, typename Scalar>
@@ -669,17 +799,17 @@ test_ortho (double tol) const
 	stringstream sout;
 	std::array<string,4> normal_token  = {"A","B","M","X"};
 	std::array<string,4> special_token = {"\e[4mA\e[0m","\e[4mB\e[0m","\e[4mM\e[0m","\e[4mX\e[0m"};
-	ArrayXd norm(N_sites);
+	Array<Scalar,Dynamic,1> norm(N_sites);
 	
 	for (int l=0; l<N_sites; ++l)
 	{
 		// check for A
-		Biped<Symmetry,MatrixType> Test = A[GAUGE::L][l][0].adjoint().contract(A[GAUGE::L][l][0]);
+		Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Test = A[GAUGE::L][l][0].adjoint().contract(A[GAUGE::L][l][0]);
 		for (size_t s=1; s<qloc[l].size(); ++s)
 		{
 			Test += A[GAUGE::L][l][s].adjoint().contract(A[GAUGE::L][l][s]);
 		}
-		// cout << Test.print(true) << endl;
+		// cout << "AL test:" << endl << Test.print(true) << endl;
 		vector<bool> A_CHECK(Test.dim);
 		vector<double> A_infnorm(Test.dim);
 		for (size_t q=0; q<Test.dim; ++q)
@@ -711,7 +841,7 @@ test_ortho (double tol) const
 		// check for AL*C = AC
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
-			Biped<Symmetry,MatrixType> Test = A[GAUGE::L][l][s] * C[l];
+			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Test = A[GAUGE::L][l][s] * C[l];
 			for (size_t q=0; q<Test.dim; ++q)
 			{
 				qarray2<Symmetry::Nq> quple = {Test.in[q], Test.out[q]};
@@ -747,7 +877,7 @@ test_ortho (double tol) const
 		size_t locC = minus1modL(l);
 		for (size_t s=0; s<qloc[l].size(); ++s)
 		{
-			Biped<Symmetry,MatrixType> Test = C[locC] * A[GAUGE::R][l][s];
+			Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Test = C[locC] * A[GAUGE::R][l][s];
 			for (size_t q=0; q<Test.dim; ++q)
 			{
 				qarray2<Symmetry::Nq> quple = {Test.in[q], Test.out[q]};
@@ -789,7 +919,7 @@ test_ortho (double tol) const
 		}
 		else
 		{
-			assert(1!=1 and "AL is wrong");
+			// assert(1!=1 and "AL is wrong");
 			sout << TCOLOR(GREEN);
 			sout << normal_token[2]; // M
 		}
@@ -801,7 +931,7 @@ test_ortho (double tol) const
 		}
 		else
 		{
-			assert(1!=1 and "AR is wrong");
+			// assert(1!=1 and "AR is wrong");
 			sout << TCOLOR(GREEN);
 			sout << normal_token[2]; // M
 		}
@@ -1164,7 +1294,6 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 		vector<Biped<Symmetry,MatrixType> > Atmp(qloc[loc].size());
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		{
-			// Atmp[s] = A[GAUGE::C][loc][s].contract(C[loc].adjoint());
 			Atmp[s] = A[GAUGE::C][loc][s] * C[loc].adjoint();
 		}
 		
@@ -1323,7 +1452,7 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &N)
+calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &N) const
 {
 	N.clear();
 	N.resize(qloc[loc].size());
@@ -1508,8 +1637,59 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 					N[s].push_back(quple, Mtmp);
 				}
 			}
-		}		
+		}
 	}
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename OtherScalar>
+Umps<Symmetry,OtherScalar> Umps<Symmetry,Scalar>::
+cast() const
+{
+	Umps<Symmetry,OtherScalar> Vout;
+	Vout.resize(*this);
+	
+	for (size_t g=0; g<3; ++g)
+	for (size_t l=0; l<this->N_sites; ++l)
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	for (size_t q=0; q<A[g][l][s].dim; ++q)
+	{
+		Vout.A[g][l][s].block[q] = A[g][l][s].block[q].template cast<OtherScalar>();
+	}
+	for (size_t l=0; l<this->N_sites; ++l)
+	for (size_t q=0; q<C[l].dim; ++q)
+	{
+		Vout.C[l].block[q] = C[l].block[q].template cast<OtherScalar>();
+	}
+	Vout.eps_svd = this->eps_svd;
+	Vout.truncWeight = truncWeight;
+	
+	return Vout;
+}
+
+template<typename Symmetry, typename Scalar>
+Umps<Symmetry,double> Umps<Symmetry,Scalar>::
+real() const
+{
+	Umps<Symmetry,double> Vout;
+	Vout.resize(*this);
+	
+	for (size_t g=0; g<3; ++g)
+	for (size_t l=0; l<this->N_sites; ++l)
+	for (size_t s=0; s<qloc[l].size(); ++s)
+	for (size_t q=0; q<A[g][l][s].dim; ++q)
+	{
+		Vout.A[g][l][s].block[q] = A[g][l][s].block[q].real();
+	}
+	for (size_t l=0; l<this->N_sites; ++l)
+	for (size_t q=0; q<C[l].dim; ++q)
+	{
+		Vout.C[l].block[q] = C[l].block[q].real();
+	}
+	Vout.eps_svd = this->eps_svd;
+	Vout.truncWeight = truncWeight;
+	
+	return Vout;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1712,54 +1892,402 @@ load (string filename)
 	update_inbase();
 	update_outbase();
 }
-#endif
+#endif //USE_HDF5_STORAGE
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-truncate()
+sort_A(size_t loc, GAUGE::OPTION g, bool SORT_ALL_GAUGES)
 {
+	if (SORT_ALL_GAUGES)
+	{
+		for (size_t gP=0; gP<3; ++gP)
+		for (size_t s=0; s<locBasis(loc).size(); ++s)
+		{
+			A[gP][loc][s] = A[gP][loc][s].sorted();
+		}
+	}
+	else
+	{
+		for (size_t s=0; s<locBasis(loc).size(); ++s)
+		{
+			A[g][loc][s] = A[g][loc][s].sorted();
+		}
+	}
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+updateC(size_t loc)
+{
+	for (size_t q=0; q<outBasis(loc).Nq(); ++q)
+	{
+		qarray2<Symmetry::Nq> quple = {outBasis(loc)[q], outBasis(loc)[q]};
+		auto qC = C[loc].dict.find(quple);
+		size_t r = outBasis(loc).inner_dim(outBasis(loc)[q]);
+		size_t c = r;
+		if (qC != C[loc].dict.end())
+		{
+			int dr = r-C[loc].block[qC->second].rows();
+			int dc = c-C[loc].block[qC->second].cols();
+			
+			C[loc].block[qC->second].conservativeResize(r,c);
+			
+			C[loc].block[qC->second].bottomRows(dr).setZero();
+			C[loc].block[qC->second].rightCols(dc).setZero();
+		}
+		else
+		{
+			MatrixType Mtmp(r,c);
+			Mtmp.setZero();
+			C[loc].push_back(quple, Mtmp);
+		}
+	}
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+updateAC(size_t loc, GAUGE::OPTION g)
+{
+	assert(g != GAUGE::C and "Oouuhh.. you tried to update AC with itself, but we have no bootstrap implemented ;). Use AL or AR.");
+	for (size_t s=0; s<locBasis(loc).size(); ++s)
+	for (size_t q=0; q<A[g][loc][s].size(); ++q)
+	{
+		qarray2<Symmetry::Nq> quple = {A[g][loc][s].in[q], A[g][loc][s].out[q]};
+		auto it = A[GAUGE::C][loc][s].dict.find(quple);
+		if (it != A[GAUGE::C][loc][s].dict.end())
+		{
+			int dr = A[g][loc][s].block[q].rows() - A[GAUGE::C][loc][s].block[it->second].rows();
+			int dc = A[g][loc][s].block[q].cols() - A[GAUGE::C][loc][s].block[it->second].cols();
+			assert(dr >= 0 and dc >= 0 and "Something went wrong in expand_basis during the VUMPS Algorithm.");
+			MatrixType Mtmp(dr,A[GAUGE::C][loc][s].block[it->second].cols()); Mtmp.setZero();
+			addBottom(Mtmp, A[GAUGE::C][loc][s].block[it->second]);
+			Mtmp.resize(A[GAUGE::C][loc][s].block[it->second].rows(),dc); Mtmp.setZero();
+			addRight(Mtmp, A[GAUGE::C][loc][s].block[it->second]);
+		}
+		else
+		{
+			MatrixType Mtmp(A[g][loc][s].block[q].rows(), A[g][loc][s].block[q].cols());
+			Mtmp.setZero();
+			A[GAUGE::C][loc][s].push_back(quple,Mtmp);
+		}
+	}
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P)
+{
+	size_t loc1,loc2;
+	if (g == GAUGE::L) {loc1 = loc; loc2 = (loc+1)%N_sites;}
+	else if (g == GAUGE::R) {loc1 = (loc+1)%N_sites; loc2 = loc;}
+	
+	for (size_t s=0; s<locBasis(loc1).size(); ++s)
+	for (size_t qP=0; qP<P[s].size(); ++qP)
+	{
+		qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
+		auto qA = A[g][loc1][s].dict.find(quple);
+		
+		if (qA != A[g][loc1][s].dict.end())
+		{
+			if (g == GAUGE::L) {addRight(P[s].block[qP], A[g][loc1][s].block[qA->second]);}
+			else if (g == GAUGE::R) {addBottom(P[s].block[qP], A[g][loc1][s].block[qA->second]);}			
+		}
+		else
+		{
+			A[g][loc1][s].push_back(quple, P[s].block[qP]);
+		}
+	}
+
+	// update the inleg from AL at site loc2 with zeros
+	Qbasis<Symmetry> ExpandedBasis;
+	if (g == GAUGE::L) {ExpandedBasis.pullData(P,1);}
+	else if (g == GAUGE::R) {ExpandedBasis.pullData(P,0);}
+	
+	update_inbase(loc1,g);
+	update_outbase(loc1,g);
+		
+	for (const auto &[qval,qdim,plain]:ExpandedBasis)
+	for (size_t s=0; s<locBasis(loc2).size(); ++s)
+	{
+		std::vector<qarray<Symmetry::Nq> > qins_outs;
+		if (g == GAUGE::L) {qins_outs = Symmetry::reduceSilent(qval, locBasis(loc2)[s]);}
+		else if (g == GAUGE::R) {qins_outs = Symmetry::reduceSilent(qval, Symmetry::flip(locBasis(loc2)[s]));}
+		for (const auto &qin_out:qins_outs)
+		{
+			qarray2<Symmetry::Nq> quple;
+			if (g == GAUGE::L)
+			{
+				if (outBasis(loc2).find(qin_out) == false) {continue;}
+				quple = {qval, qin_out};
+			}
+			else if (g == GAUGE::R)
+			{
+				if (inBasis(loc2).find(qin_out) == false) {continue;}
+				quple = {qin_out, qval};
+			}
+			auto it = A[g][loc2][s].dict.find(quple);
+			if (it != A[g][loc2][s].dict.end())
+			{
+				if (g == GAUGE::L)
+				{
+					MatrixType Mtmp(ExpandedBasis.inner_dim(qval), 
+									A[g][loc2][s].block[it->second].cols());
+					Mtmp.setZero();
+					addBottom(Mtmp, A[g][loc2][s].block[it->second]);
+				}
+				else if (g == GAUGE::R)
+				{
+					MatrixType Mtmp(A[g][loc2][s].block[it->second].rows(),
+									ExpandedBasis.inner_dim(qval));
+					Mtmp.setZero();
+					addRight(Mtmp, A[g][loc2][s].block[it->second]);
+				}
+			}
+			else
+			{
+				MatrixType Mtmp;
+				if (g == GAUGE::L)      {Mtmp.resize(ExpandedBasis.inner_dim(qval), outBasis(loc2).inner_dim(qin_out));}
+				else if (g == GAUGE::R) {Mtmp.resize(inBasis(loc2).inner_dim(qin_out), ExpandedBasis.inner_dim(qval));}
+				Mtmp.setZero();
+				A[g][loc2][s].push_back(quple, Mtmp);
+			}
+		}
+	}
+
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+orthogonalize_right(GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_R)
+{
+	vector<vector<Biped<Symmetry,MatrixType> > > A_ortho(N_sites);
+	for (size_t l=0; l<N_sites; l++)
+	{
+		A_ortho[l].resize(qloc[l].size());
+	}
+
+	vector<Biped<Symmetry,MatrixType> > Rprev(N_sites);
+	Biped<Symmetry,MatrixType> Xnext;
+	Rprev[N_sites-1].setRandom(outbase[N_sites-1],outbase[N_sites-1]);
+	Rprev[0] = 1./sqrt(Rprev[0].squaredNorm().sum()) * Rprev[0];
+	
+	vector<vector<Biped<Symmetry,MatrixType> > > AxR(N_sites);
+	for (size_t loc=0; loc<N_sites; loc++)
+	{
+		AxR[loc].resize(qloc[loc].size());
+	}
+	double tol = 1.e-10, err=1.;
+	size_t i=0, imax = 10001;
+	while (err > tol and i < imax)
+	{
+		for (size_t loc=N_sites-1; loc!=-1; --loc)
+		{
+			for (size_t s=0; s<qloc[loc].size(); s++)
+			{
+				AxR[loc][s] = A[g][loc][s] * Rprev[loc];
+			}
+			Blocker<Symmetry,Scalar> Jim(AxR[loc], qloc[loc], inbase[loc], outbase[loc]);
+			auto A_blocked = Jim.Aclump(DMRG::DIRECTION::RIGHT);
+			Biped<Symmetry,MatrixType> Q,R;
+			for (size_t q=0; q<A_blocked.dim; ++q)
+			{
+				HouseholderQR<MatrixType> Quirinus;
+				Quirinus.compute(A_blocked.block[q].adjoint());
+
+				MatrixType Qmat = Quirinus.householderQ();
+
+				MatrixType Rmat = Quirinus.matrixQR().template triangularView<Upper>();
+				MatrixType Sign(Rmat.rows(),Rmat.rows()); Sign.setZero();
+				
+				for (size_t kk=0; kk<min(Rmat.rows(),Rmat.cols()); kk++) {Sign(kk,kk) = Rmat(kk,kk)/abs(Rmat(kk,kk));}
+				Rmat = Sign*Rmat;
+				Qmat = Qmat*Sign;
+
+
+				Q.push_back(A_blocked.in[q], A_blocked.out[q], (Qmat * MatrixType::Identity(A_blocked.block[q].cols(),A_blocked.block[q].rows())).adjoint());
+				R.push_back(A_blocked.in[q], A_blocked.out[q],
+							(MatrixType::Identity(A_blocked.block[q].rows(),A_blocked.block[q].cols()) * Rmat).adjoint() );
+				// }
+			}
+			R = 1./R.operatorNorm(false) * R;
+			if (loc>0) {Rprev[loc-1] = R;}
+			else {Xnext = R;}
+			A_ortho[loc] = Jim.reblock(Q, DMRG::DIRECTION::RIGHT);
+		}
+		err = (Xnext - Rprev[N_sites-1]).norm();
+		Rprev[N_sites-1] = Xnext;
+		i++;
+		// cout << "iteration number=" << i << ", err=" << err << endl << endl;
+	}
+	G_R = Rprev;
+	cout << "iteration number=" << i << ", err=" << err << endl << endl;
+
+	A[g] = A_ortho;
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+orthogonalize_left(GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_L)
+{
+	vector<vector<Biped<Symmetry,MatrixType> > > A_ortho(N_sites);
+	for (size_t l=0; l<N_sites; l++)
+	{
+		A_ortho[l].resize(qloc[l].size());
+	}
+	
+	vector<Biped<Symmetry,MatrixType> > Lprev(N_sites);
+	Biped<Symmetry,MatrixType> Lnext;
+	Lprev[0].setRandom(inbase[0],inbase[0]);
+	Lprev[0] = 1./sqrt(Lprev[0].squaredNorm().sum()) * Lprev[0];
+	vector<vector<Biped<Symmetry,MatrixType> > > LxA(N_sites);
+	for (size_t loc=0; loc<N_sites; loc++)
+	{
+		LxA[loc].resize(qloc[loc].size());
+	}
+	double tol = 1.e-10, err=1.;
+	size_t i=0, imax = 10001;
+	while (err > tol and i < imax)
+	{
+		for (size_t loc=0; loc<N_sites; loc++)
+		{
+			for (size_t s=0; s<qloc[loc].size(); s++)
+			{
+				LxA[loc][s] = Lprev[loc] * A[g][loc][s];
+			}
+			Blocker<Symmetry,Scalar> Jim(LxA[loc], qloc[loc], inbase[loc], outbase[loc]);
+			auto A_blocked = Jim.Aclump(DMRG::DIRECTION::LEFT);
+			Biped<Symmetry,MatrixType> Q,R;
+			for (size_t q=0; q<A_blocked.dim; ++q)
+			{
+				HouseholderQR<MatrixType> Quirinus;
+				Quirinus.compute(A_blocked.block[q]);
+
+				MatrixType Qmat = Quirinus.householderQ();
+
+				MatrixType Rmat = Quirinus.matrixQR().template triangularView<Upper>();
+				MatrixType Sign(Rmat.rows(),Rmat.rows()); Sign.setZero();
+				for (size_t kk=0; kk<min(Rmat.rows(),Rmat.cols()); kk++) {Sign(kk,kk) = Rmat(kk,kk)/abs(Rmat(kk,kk));}
+				Rmat = Sign*Rmat;
+				Qmat = Qmat*Sign;
+
+				Q.push_back(A_blocked.in[q], A_blocked.out[q], Qmat * MatrixType::Identity(A_blocked.block[q].rows(),A_blocked.block[q].cols()));
+				R.push_back(A_blocked.in[q], A_blocked.out[q],
+							MatrixType::Identity(A_blocked.block[q].cols(),A_blocked.block[q].rows()) * Rmat );
+			}
+			R = 1./R.operatorNorm(false) * R;
+			if (loc<N_sites-1) {Lprev[loc+1] = R;}
+			else {Lnext = R;}
+			A_ortho[loc] = Jim.reblock(Q, DMRG::DIRECTION::LEFT);
+		}
+		err = (Lnext - Lprev[0]).norm();
+		Lprev[0] = Lnext;
+		i++;
+		// cout << "iteration number=" << i << ", err=" << err << endl << endl;
+	}
+	G_L = Lprev;
+	A[g] = A_ortho;
+	cout << "iteration number=" << i << ", err=" << err << endl << endl;
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+truncate(bool SET_AC_RANDOM)
+{
+	//isometries from the truncated SVD from the center-matrix C
 	vector<Biped<Symmetry,MatrixType> > U(N_sites);
 	vector<Biped<Symmetry,MatrixType> > Vdag(N_sites);
-	
+
+	//decompose C by SVD and write isometries to U and Vdag and the singular (Schmidt) values into C.
 	for (size_t l=0; l<N_sites; ++l)
 	{
+		cout << "**********************l=" << l << "*************************" << endl;
 		for (size_t q=0; q<C[l].dim; ++q)
 		{
-			JacobiSVD<MatrixType> Jack(C[l].block[q], ComputeThinU|ComputeThinV);
-			// size_t Nret = (Jack.singularValues().array() > eps_svd).count();
-			size_t Nret = Jack.singularValues().rows();
-			Nret = max(Nret,1ul);
-			cout << "q=" << C[l].in[q] << ", Nret=" << Nret << endl;
-	//		C[l].block[q] = Jack.matrixU().leftCols(Nret) * 
-	//		                  Jack.singularValues().head(Nret).asDiagonal() * 
-	//		                  Jack.matrixV().adjoint().topRows(Nret);
+			JacobiSVD<MatrixType> Jack(C[l].block[q], ComputeFullU|ComputeFullV);
+			size_t Nret = (Jack.singularValues().array() > eps_svd).count();
+			cout << "q=" << C[l].in[q] << ", Nret=" << Nret  << " states from " << Jack.singularValues().rows() << endl;
 			C[l].block[q] = Jack.singularValues().head(Nret).asDiagonal();
 			U[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixU().leftCols(Nret));
 			Vdag[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixV().adjoint().topRows(Nret));
 		}
-		
-		// cout << "U=" << endl;
-		// cout << (U[l].adjoint().contract(U[l])).print(true) << endl;
-		// cout << endl;
-		
-		// cout << "Vdag=" << endl;
-		// cout << (Vdag[l].contract(Vdag[l].adjoint())).print(true) << endl;
-		// cout << endl;
 	}
-	
+
+	//update AL and AR
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		cout << "cutting A_LR, l=" << l << endl;
 		for (size_t s=0; s<qloc[l].size(); ++s)
-		{
+		{			
 			A[GAUGE::L][l][s] = U[minus1modL(l)].adjoint() * A[GAUGE::L][l][s] * U[l];
 			A[GAUGE::R][l][s] = Vdag[minus1modL(l)] * A[GAUGE::R][l][s] * Vdag[l].adjoint();
-			
-			A[GAUGE::C][l][s] = A[GAUGE::L][l][s];
-			A[GAUGE::C][l][s].setRandom();
 		}
 	}
+	update_outbase(GAUGE::L);
+	update_inbase(GAUGE::L);
+
+	//Orthogonalize AL and AR again and safe gauge transformation into L and R. (AL -> L*AL*Linv, AR -> Rinv*AR*R)
+	//L and R need to be multiplied into the center matrix afterwards
+	vector<Biped<Symmetry,MatrixType> > L(N_sites),R(N_sites);
+	orthogonalize_right(GAUGE::R,R);
+	orthogonalize_left(GAUGE::L,L);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		C[l] = L[(l+1)%N_sites] * C[l] * R[l];
+		C[l] = C[l].sorted();
+	}
 	
-	cout << test_ortho() << endl;
+	//normalize the state to get rid off small norm changes due to the truncation
+	normalize_C();
+
+	//Update AC so that it has the truncated sizes and sort the A tensors.
+	for (size_t l=0; l<N_sites; l++)
+	{
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		{
+			A[GAUGE::C][l][s] = C[minus1modL(l)] * A[GAUGE::R][l][s];
+			if (SET_AC_RANDOM) { A[GAUGE::C][l][s].setRandom(); }
+		}
+		sort_A(l,GAUGE::L,true); //true means sort all GAUGES. First parameter has no consequences
+	}
+	calc_entropy();	
+	// cout << test_ortho() << endl;
 }
-#endif
+
+template<typename Symmetry, typename Scalar>
+std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > Umps<Symmetry,Scalar>::
+calc_dominant(GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const
+{
+	Umps<Symmetry,complex<double> > Compl = this->template cast<complex<double> > ();
+	complex<double> lambda;
+	
+	TransferMatrixAA<Symmetry,complex<double> > T;
+	if (DIR == DMRG::DIRECTION::LEFT)
+	{
+		T = TransferMatrixAA<Symmetry,complex<double> >(GAUGE::R, Compl.A[g], Compl.A[g], Compl.locBasis());
+	}
+	else
+	{
+		T = TransferMatrixAA<Symmetry,complex<double> >(GAUGE::L, Compl.A[g], Compl.A[g], Compl.locBasis());		
+	}
+
+	Biped<Symmetry,Matrix<complex<double>, Dynamic,Dynamic> > RandBiped;
+	if (DIR == DMRG::DIRECTION::LEFT)
+	{
+		RandBiped.setRandom(Compl.inBasis(0), Compl.inBasis(0));
+	}
+	else
+	{
+		RandBiped.setRandom(Compl.outBasis(N_sites-1), Compl.outBasis(N_sites-1));
+	}
+	RandBiped = 1./RandBiped.norm() * RandBiped;
+	PivotVector<Symmetry,complex<double> > x(RandBiped);
+	
+	ArnoldiSolver<TransferMatrixAA<Symmetry,complex<double>>,PivotVector<Symmetry,complex<double> > > John(T,x,lambda);
+
+	lout << "fixed point: " << John.info() << endl;
+	//Normalize the Fixed point and try to make it real.
+	x.data[0] = exp(-1i*arg(x.data[0].block[0](0,0))) * (1./x.data[0].norm()) * x.data[0];
+	
+	return std::make_pair(lambda,x.data[0]);
+}
+
+#endif //VANILLA_Umps

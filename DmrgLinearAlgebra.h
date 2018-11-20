@@ -273,7 +273,7 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 	Stopwatch<> Chronos;
 	
 	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
-	Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax());
+	Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax(), 1e-4);
 	
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
 	{
@@ -328,10 +328,13 @@ void addScale (const OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, Mps<Sym
 	Stopwatch<> Chronos;
 	MpsCompressor<Symmetry,Scalar,OtherScalar> Compadre(VERBOSITY);
 	size_t Dstart = Vout.calc_Dmax();
-	Mps<Symmetry,Scalar> Vtmp = Vout;
-	Vtmp.addScale(alpha,Vin,false);
-//	Compadre.stateCompress(Vtmp, Vout, Dstart, 1e-3, 100, 1, DMRG::COMPRESSION::RANDOM);
-	Compadre.stateCompress(Vtmp, Vout, Dstart);
+	vector<Mps<Symmetry,Scalar> > V(2);
+	vector<double> c(2);
+	V[0] = Vout;
+	V[1] = Vin;
+	c[0] = 1.;
+	c[1] = alpha;
+	Compadre.lincomboCompress(V, c, Vout, Vout.calc_Dmax());
 	
 	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
 	{
@@ -472,6 +475,11 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 			lout << "\t" << Compadre.info() << endl;
 		}
 	}
+	else
+	{
+		Vout.sweep(0,DMRG::BROOM::QR);
+	}
+	
 	if (VERBOSITY > DMRG::VERBOSITY::SILENT) lout << endl;
 	
 	if (Vout.calc_Nqavg() <= 1.5 and Vout.min_Nsv == 0)

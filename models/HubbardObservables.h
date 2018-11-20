@@ -310,7 +310,7 @@ ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size
 {
 	stringstream ss1; ss1 << Sa1;
 	stringstream ss2; ss2 << Sa2;
-	bool HERMITIAN = ((Sa1==SX or Sa2==SZ) and (Sa2==SX or Sa2==SZ))? true:false;
+	bool HERMITIAN = false;
 	return make_corr(ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, F[locx1].Scomp(Sa1,locy1), F[locx2].Scomp(Sa2,locy2), HERMITIAN);
 }
 
