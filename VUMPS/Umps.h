@@ -16,7 +16,7 @@
 
 #include "VUMPS/VumpsTypedefs.h"
 #include "VumpsContractions.h"
-
+#include "Blocker.h"
 //include "PolychromaticConsole.h" // from TOOLS
 //include "tensors/Biped.h"
 //include "LanczosSolver.h" // from ALGS
@@ -196,12 +196,15 @@ public:
 	
 	/**Returns the total quantum number of the Umps.*/
 	inline qarray<Nq> Qtarget() const {return Qtot;};
-	
-//	void expand_basis (size_t DeltaD, const boost::multi_array<Scalar,4> &h2site, double e);
-	
+		
 	void calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixType> > &N) const;
 	
-	void truncate();
+	void truncate(bool SET_AC_RANDOM=true);
+
+	void orthogonalize_left (GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_L);
+	void orthogonalize_right(GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_R);
+
+	std::pair<complex<double>, Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > calc_dominant(GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const;
 
 	/**
 	 * This functions transforms all quantum numbers in the Umps (Umps::qloc and QN in Umps::A) by \f$q \rightarrow q * N_{cells}\f$.
@@ -239,11 +242,11 @@ public:
 	 */	
 	void enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P);
 
-//private:
+private:
 	/**parameter*/
 	size_t N_sites;
 	size_t Dmax, Nqmax;
-	double eps_svd = 1e-12;
+	double eps_svd = 1e-13;
 	size_t max_Nsv=100000ul, min_Nsv=1ul;
 	int max_Nrich;
 
@@ -779,7 +782,7 @@ test_ortho (double tol) const
 		{
 			Test += A[GAUGE::L][l][s].adjoint().contract(A[GAUGE::L][l][s]);
 		}
-		// cout << Test.print(true) << endl;
+		// cout << "AL test:" << endl << Test.print(true) << endl;
 		vector<bool> A_CHECK(Test.dim);
 		vector<double> A_infnorm(Test.dim);
 		for (size_t q=0; q<Test.dim; ++q)
@@ -889,7 +892,7 @@ test_ortho (double tol) const
 		}
 		else
 		{
-			assert(1!=1 and "AL is wrong");
+			// assert(1!=1 and "AL is wrong");
 			sout << TCOLOR(GREEN);
 			sout << normal_token[2]; // M
 		}
@@ -901,7 +904,7 @@ test_ortho (double tol) const
 		}
 		else
 		{
-			assert(1!=1 and "AR is wrong");
+			// assert(1!=1 and "AR is wrong");
 			sout << TCOLOR(GREEN);
 			sout << normal_token[2]; // M
 		}
@@ -2023,16 +2026,151 @@ enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P
 			}
 		}
 	}
+
 }
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-truncate()
+orthogonalize_right(GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_R)
 {
+	vector<vector<Biped<Symmetry,MatrixType> > > A_ortho(N_sites);
+	for (size_t l=0; l<N_sites; l++)
+	{
+		A_ortho[l].resize(qloc[l].size());
+	}
+
+	vector<Biped<Symmetry,MatrixType> > Rprev(N_sites);
+	Biped<Symmetry,MatrixType> Xnext;
+	Rprev[N_sites-1].setRandom(outbase[N_sites-1],outbase[N_sites-1]);
+	Rprev[0] = 1./sqrt(Rprev[0].squaredNorm().sum()) * Rprev[0];
+	
+	vector<vector<Biped<Symmetry,MatrixType> > > AxR(N_sites);
+	for (size_t loc=0; loc<N_sites; loc++)
+	{
+		AxR[loc].resize(qloc[loc].size());
+	}
+	double tol = 1.e-10, err=1.;
+	size_t i=0, imax = 10001;
+	while (err > tol and i < imax)
+	{
+		for (size_t loc=N_sites-1; loc!=-1; --loc)
+		{
+			for (size_t s=0; s<qloc[loc].size(); s++)
+			{
+				AxR[loc][s] = A[g][loc][s] * Rprev[loc];
+			}
+			Blocker<Symmetry,Scalar> Jim(AxR[loc], qloc[loc], inbase[loc], outbase[loc]);
+			auto A_blocked = Jim.Aclump(DMRG::DIRECTION::RIGHT);
+			Biped<Symmetry,MatrixType> Q,R;
+			for (size_t q=0; q<A_blocked.dim; ++q)
+			{
+				HouseholderQR<MatrixType> Quirinus;
+				Quirinus.compute(A_blocked.block[q].adjoint());
+
+				MatrixType Qmat = Quirinus.householderQ();
+
+				MatrixType Rmat = Quirinus.matrixQR().template triangularView<Upper>();
+				MatrixType Sign(Rmat.rows(),Rmat.rows()); Sign.setZero();
+				
+				for (size_t kk=0; kk<min(Rmat.rows(),Rmat.cols()); kk++) {Sign(kk,kk) = Rmat(kk,kk)/abs(Rmat(kk,kk));}
+				Rmat = Sign*Rmat;
+				Qmat = Qmat*Sign;
+
+
+				Q.push_back(A_blocked.in[q], A_blocked.out[q], (Qmat * MatrixType::Identity(A_blocked.block[q].cols(),A_blocked.block[q].rows())).adjoint());
+				R.push_back(A_blocked.in[q], A_blocked.out[q],
+							(MatrixType::Identity(A_blocked.block[q].rows(),A_blocked.block[q].cols()) * Rmat).adjoint() );
+				// }
+			}
+			R = 1./R.operatorNorm(false) * R;
+			if (loc>0) {Rprev[loc-1] = R;}
+			else {Xnext = R;}
+			A_ortho[loc] = Jim.reblock(Q, DMRG::DIRECTION::RIGHT);
+		}
+		err = (Xnext - Rprev[N_sites-1]).norm();
+		Rprev[N_sites-1] = Xnext;
+		i++;
+		// cout << "iteration number=" << i << ", err=" << err << endl << endl;
+	}
+	G_R = Rprev;
+	cout << "iteration number=" << i << ", err=" << err << endl << endl;
+
+	A[g] = A_ortho;
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+orthogonalize_left(GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_L)
+{
+	vector<vector<Biped<Symmetry,MatrixType> > > A_ortho(N_sites);
+	for (size_t l=0; l<N_sites; l++)
+	{
+		A_ortho[l].resize(qloc[l].size());
+	}
+	
+	vector<Biped<Symmetry,MatrixType> > Lprev(N_sites);
+	Biped<Symmetry,MatrixType> Lnext;
+	Lprev[0].setRandom(inbase[0],inbase[0]);
+	Lprev[0] = 1./sqrt(Lprev[0].squaredNorm().sum()) * Lprev[0];
+	vector<vector<Biped<Symmetry,MatrixType> > > LxA(N_sites);
+	for (size_t loc=0; loc<N_sites; loc++)
+	{
+		LxA[loc].resize(qloc[loc].size());
+	}
+	double tol = 1.e-10, err=1.;
+	size_t i=0, imax = 10001;
+	while (err > tol and i < imax)
+	{
+		for (size_t loc=0; loc<N_sites; loc++)
+		{
+			for (size_t s=0; s<qloc[loc].size(); s++)
+			{
+				LxA[loc][s] = Lprev[loc] * A[g][loc][s];
+			}
+			Blocker<Symmetry,Scalar> Jim(LxA[loc], qloc[loc], inbase[loc], outbase[loc]);
+			auto A_blocked = Jim.Aclump(DMRG::DIRECTION::LEFT);
+			Biped<Symmetry,MatrixType> Q,R;
+			for (size_t q=0; q<A_blocked.dim; ++q)
+			{
+				HouseholderQR<MatrixType> Quirinus;
+				Quirinus.compute(A_blocked.block[q]);
+
+				MatrixType Qmat = Quirinus.householderQ();
+
+				MatrixType Rmat = Quirinus.matrixQR().template triangularView<Upper>();
+				MatrixType Sign(Rmat.rows(),Rmat.rows()); Sign.setZero();
+				for (size_t kk=0; kk<min(Rmat.rows(),Rmat.cols()); kk++) {Sign(kk,kk) = Rmat(kk,kk)/abs(Rmat(kk,kk));}
+				Rmat = Sign*Rmat;
+				Qmat = Qmat*Sign;
+
+				Q.push_back(A_blocked.in[q], A_blocked.out[q], Qmat * MatrixType::Identity(A_blocked.block[q].rows(),A_blocked.block[q].cols()));
+				R.push_back(A_blocked.in[q], A_blocked.out[q],
+							MatrixType::Identity(A_blocked.block[q].cols(),A_blocked.block[q].rows()) * Rmat );
+			}
+			R = 1./R.operatorNorm(false) * R;
+			if (loc<N_sites-1) {Lprev[loc+1] = R;}
+			else {Lnext = R;}
+			A_ortho[loc] = Jim.reblock(Q, DMRG::DIRECTION::LEFT);
+		}
+		err = (Lnext - Lprev[0]).norm();
+		Lprev[0] = Lnext;
+		i++;
+		// cout << "iteration number=" << i << ", err=" << err << endl << endl;
+	}
+	G_L = Lprev;
+	A[g] = A_ortho;
+	cout << "iteration number=" << i << ", err=" << err << endl << endl;
+}
+
+template<typename Symmetry, typename Scalar>
+void Umps<Symmetry,Scalar>::
+truncate(bool SET_AC_RANDOM)
+{
+	//isometries from the truncated SVD from the center-matrix C
 	vector<Biped<Symmetry,MatrixType> > U(N_sites);
 	vector<Biped<Symmetry,MatrixType> > Vdag(N_sites);
-	cout << "eps_svd=" << eps_svd << endl;
-	//decompose C by SVD and write isometries to U and Vdag and the Schmidt values into C.
+
+	//decompose C by SVD and write isometries to U and Vdag and the singular (Schmidt) values into C.
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		cout << "**********************l=" << l << "*************************" << endl;
@@ -2040,65 +2178,89 @@ truncate()
 		{
 			JacobiSVD<MatrixType> Jack(C[l].block[q], ComputeFullU|ComputeFullV);
 			size_t Nret = (Jack.singularValues().array() > eps_svd).count();
-			// size_t Nret = Jack.singularValues().rows();
-			Nret = max(Nret,1ul);
 			cout << "q=" << C[l].in[q] << ", Nret=" << Nret  << " states from " << Jack.singularValues().rows() << endl;
-	//		C[l].block[q] = Jack.matrixU().leftCols(Nret) * 
-	//		                  Jack.singularValues().head(Nret).asDiagonal() * 
-	//		                  Jack.matrixV().adjoint().topRows(Nret);
 			C[l].block[q] = Jack.singularValues().head(Nret).asDiagonal();
 			U[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixU().leftCols(Nret));
 			Vdag[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixV().adjoint().topRows(Nret));
 		}
-
-		// for (size_t s=0; s<qloc[l].size(); ++s)
-		// {
-		// 	A[GAUGE::L][l][s] = A[GAUGE::L][l][s] * U[l];
-		// 	A[GAUGE::R][(l+1)%N_sites][s] = Vdag[l] * A[GAUGE::R][(l+1)%N_sites][s];
-		// }
-		// IOFormat CommaInitFmt(StreamPrecision, DontAlignCols, ", ", ", ", "", "", "[", "]");
-		// cout << "U: (" << U[l].rows().format(CommaInitFmt) << "x" << U[l].cols().format(CommaInitFmt) << ")" << endl;
-		// cout << "Udag: (" << U[l].adjoint().rows().format(CommaInitFmt) << "x" << U[l].adjoint().cols().format(CommaInitFmt) << ")" << endl;
-
-		// cout << (U[l].adjoint().contract(U[l])).print(true) << endl;
-		// cout << (U[l].contract(U[l].adjoint())).print(true) << endl;
-		// cout << endl;
-
-		// cout << "V: (" << Vdag[l].adjoint().rows().format(CommaInitFmt) << "x" << Vdag[l].adjoint().cols().format(CommaInitFmt) << ")" << endl;
-		// cout << "Vdag: (" << Vdag[l].rows().format(CommaInitFmt) << "x" << Vdag[l].cols().format(CommaInitFmt) << ")" << endl;
-		// cout << (Vdag[l].contract(Vdag[l].adjoint())).print(true) << endl;
-		// cout << (Vdag[l].adjoint().contract(Vdag[l])).print(true) << endl;		
-		// cout << endl;
 	}
-
-	// vector<Biped<Symmetry,MatrixType> > test_AL(qloc[0].size());
-	// for (size_t s=0; s<qloc[0].size(); ++s)
-	// {
-	// 	test_AL[s] = A[GAUGE::L][0][s] * U[0];
-	// }
-	// Biped<Symmetry,MatrixType> Test = test_AL[0].adjoint().contract(test_AL[0]);
-	// for (size_t s=1; s<qloc[0].size(); ++s)
-	// {
-	// 	Test += test_AL[s].adjoint().contract(test_AL[s]);
-	// }
-	// cout << termcolor::red << "Testing AL multiplied by a matrix from GL(n)." << endl;
-	// cout << Test.print(true) << endl;
 
 	//update AL and AR
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		cout << "cutting A_LR, l=" << l << ", minus1modL(l)=" << minus1modL(l) << endl;
 		for (size_t s=0; s<qloc[l].size(); ++s)
-		{
+		{			
 			A[GAUGE::L][l][s] = U[minus1modL(l)].adjoint() * A[GAUGE::L][l][s] * U[l];
 			A[GAUGE::R][l][s] = Vdag[minus1modL(l)] * A[GAUGE::R][l][s] * Vdag[l].adjoint();
-			
-			A[GAUGE::C][l][s] = A[GAUGE::L][l][s] * C[l];
-			// A[GAUGE::C][l][s].setRandom();
 		}
 	}
-	update_outbase();
-	update_inbase();
-	cout << test_ortho() << endl;
+	update_outbase(GAUGE::L);
+	update_inbase(GAUGE::L);
+
+	//Orthogonalize AL and AR again and safe gauge transformation into L and R. (AL -> L*AL*Linv, AR -> Rinv*AR*R)
+	//L and R need to be multiplied into the center matrix afterwards
+	vector<Biped<Symmetry,MatrixType> > L(N_sites),R(N_sites);
+	orthogonalize_right(GAUGE::R,R);
+	orthogonalize_left(GAUGE::L,L);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		C[l] = L[(l+1)%N_sites] * C[l] * R[l];
+		C[l] = C[l].sorted();
+	}
+	
+	//normalize the state to get rid off small norm changes due to the truncation
+	normalize_C();
+
+	//Update AC so that it has the truncated sizes and sort the A tensors.
+	for (size_t l=0; l<N_sites; l++)
+	{
+		for (size_t s=0; s<qloc[l].size(); ++s)
+		{
+			A[GAUGE::C][l][s] = C[minus1modL(l)] * A[GAUGE::R][l][s];
+			if (SET_AC_RANDOM) { A[GAUGE::C][l][s].setRandom(); }
+		}
+		sort_A(l,GAUGE::L,true); //true means sort all GAUGES. First parameter has no consequences
+	}
+	calc_entropy();	
+	// cout << test_ortho() << endl;
 }
+
+template<typename Symmetry, typename Scalar>
+std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > Umps<Symmetry,Scalar>::
+calc_dominant(GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const
+{
+	Umps<Symmetry,complex<double> > Compl = this->template cast<complex<double> > ();
+	complex<double> lambda;
+	
+	TransferMatrixAA<Symmetry,complex<double> > T;
+	if (DIR == DMRG::DIRECTION::LEFT)
+	{
+		T = TransferMatrixAA<Symmetry,complex<double> >(GAUGE::R, Compl.A[g], Compl.A[g], Compl.locBasis());
+	}
+	else
+	{
+		T = TransferMatrixAA<Symmetry,complex<double> >(GAUGE::L, Compl.A[g], Compl.A[g], Compl.locBasis());		
+	}
+
+	Biped<Symmetry,Matrix<complex<double>, Dynamic,Dynamic> > RandBiped;
+	if (DIR == DMRG::DIRECTION::LEFT)
+	{
+		RandBiped.setRandom(Compl.inBasis(0), Compl.inBasis(0));
+	}
+	else
+	{
+		RandBiped.setRandom(Compl.outBasis(N_sites-1), Compl.outBasis(N_sites-1));
+	}
+	RandBiped = 1./RandBiped.norm() * RandBiped;
+	PivotVector<Symmetry,complex<double> > x(RandBiped);
+	
+	ArnoldiSolver<TransferMatrixAA<Symmetry,complex<double>>,PivotVector<Symmetry,complex<double> > > John(T,x,lambda);
+
+	lout << "fixed point: " << John.info() << endl;
+	//Normalize the Fixed point and try to make it real.
+	x.data[0] = exp(-1i*arg(x.data[0].block[0](0,0))) * (1./x.data[0].norm()) * x.data[0];
+	
+	return std::make_pair(lambda,x.data[0]);
+}
+
 #endif //VANILLA_Umps

@@ -402,17 +402,32 @@ int main (int argc, char* argv[])
 			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
 		}
 
-		Umps<Sym::U0,complex<double> > g0_compl = g0.state.template cast<complex<double> >();
-		Umps<Sym::U0,complex<double> > g0_trunc_compl;
-		UmpsCompressor<Sym::U0,complex<double>, complex<double> > Lana(DMRG::VERBOSITY::HALFSWEEPWISE);
-		Lana.stateCompress(g0_compl, g0_trunc_compl, g0_compl.calc_Dmax(), 1ul, 1.e-5, 50ul);
-		Umps<Sym::U0,double> g0_trunc = g0_trunc_compl.real();
+		g0.state.truncate();
 		cout << endl << endl << "after truncation" << endl;
-		cout << g0_trunc_compl.info() << endl;
+		cout << g0.state.info() << endl;
+		print_mag(Heis0,g0);
+
+		// print_mag(Heis0,g0);
+		// for (size_t d=1; d<dmax; ++d)
+		// {
+		// 	HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
+		// 	double SvecSvec = SvecSvecAvg(g0.state,Htmp,0,d);
+		// 	// if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
+		// 	lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		// }
+
+		// Umps<Sym::U0,complex<double> > g0_compl = g0.state.template cast<complex<double> >();
+		// Umps<Sym::U0,complex<double> > g0_trunc_compl;
+		// UmpsCompressor<Sym::U0,complex<double>, complex<double> > Lana(DMRG::VERBOSITY::HALFSWEEPWISE);
+		// Lana.stateCompress(g0_compl, g0_trunc_compl, 25ul, 1ul, 1.e-5, 50ul);
+		// Umps<Sym::U0,double> g0_trunc = g0_trunc_compl.real();
+		// cout << endl << endl << "after truncation" << endl;
+		// cout << g0_trunc_compl.info() << endl;
+		
 		for (size_t d=1; d<dmax; ++d)
 		{
 			HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
-			double SvecSvec = SvecSvecAvg(g0_trunc_compl,Htmp,0,d);
+			double SvecSvec = SvecSvecAvg(g0.state,Htmp,0,d);
 			// if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
 			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
 		}
@@ -423,12 +438,19 @@ int main (int argc, char* argv[])
 		cout << endl;
 		cout << "-----U1-----" << endl;
 		print_mag(Heis_U1,g_U1);
+		size_t dmax = 10;
+		for (size_t d=1; d<dmax; ++d)
+		{
+			HEISENBERG_U1 Htmp(d+1,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
+			double SvecSvec = SvecSvecAvg(g_U1.state,Htmp,0,d);
+			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		}
+
 		g_U1.state.truncate();
 		cout << endl << endl << "after truncation" << endl;
 		cout << g_U1.state.info() << endl;
 		print_mag(Heis_U1,g_U1);
 
-		size_t dmax = 10;
 		for (size_t d=1; d<dmax; ++d)
 		{
 			HEISENBERG_U1 Htmp(d+1,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
@@ -444,12 +466,28 @@ int main (int argc, char* argv[])
 		cout << endl;
 		cout << "-----SU2-----" << endl;
 		cout << g_SU2.state.info() << endl;
-		g_SU2.state.truncate();
+		size_t dmax = 10;
+		for (size_t d=1; d<dmax; ++d)
+		{
+			HEISENBERG_SU2 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
+			double SvecSvec = avg(g_SU2.state,Htmp.SS(0,d),g_SU2.state);
+			// if (d == L)
+			// {
+			// 	lout << "l=" << d-4 << ", " << d-3 << ", <SvecSvec>=" << avg(g_SU2.state,Htmp.SS(d-4,d-3),g_SU2.state) << endl;
+			// 	lout << "l=" << d-3 << ", " << d-2 << ", <SvecSvec>=" << avg(g_SU2.state,Htmp.SS(d-3,d-2),g_SU2.state) << endl;
+			// 	lout << "l=" << d-2 << ", " << d-1 << ", <SvecSvec>=" << avg(g_SU2.state,Htmp.SS(d-2,d-1),g_SU2.state) << endl;
+			// 	lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << avg(g_SU2.state,Htmp.SS(d-1,d),g_SU2.state) << endl;
+			// }
+
+			// double SvecSvec = Htmp.SvecSvecAvg(g.state,0,d);
+			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		}
+
+		g_SU2.state.truncate(false);
 		cout << endl << endl << "after truncation" << endl;
 		cout << g_SU2.state.info() << endl;
 
 		// print_mag(Heis,g);
-		size_t dmax = 10;
 		for (size_t d=1; d<dmax; ++d)
 		{
 			HEISENBERG_SU2 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});

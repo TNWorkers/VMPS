@@ -853,7 +853,12 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		// if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
 		expand_basis(deltaD, H, Vout, VUMPS::TWOSITE_A::ALxCxAR);
 	}
-	
+
+	if (err_var < GlobParam.tol_var and (N_iterations+1)%DynParam.Dincr_per(N_iterations) == 0 )
+	{
+		Vout.state.truncate();
+	}
+
 	build_cellEnv(H,Vout);
 	
 	// See Algorithm 4
@@ -1271,7 +1276,7 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 	
 	Vout.energy = 0.5*g.energy-Eold;
 	err_eigval = abs(Vout.energy-eL); // the energy density is the contribution of the new site
-	err_state = (Cref-Vout.state.C[0]).norm().sum();
+	err_state = (Cref-Vout.state.C[0]).norm();
 	err_var = err_state;
 	Eold = 0.5*g.energy;
 	eL = Vout.energy;
@@ -1314,7 +1319,7 @@ test_LReigen (const Eigenstate<Umps<Symmetry,Scalar> > &Vout) const
 	HxV(TR,PsiL);
 	
 	stringstream ss;
-	ss << "ReigenTest=" << (Reigen-PsiR.data[0]).norm().sum() << ", LeigenTest=" << (Leigen-PsiL.data[0]).norm().sum() << endl;
+	ss << "ReigenTest=" << (Reigen-PsiR.data[0]).norm() << ", LeigenTest=" << (Leigen-PsiL.data[0]).norm() << endl;
 	return ss.str();
 }
 
