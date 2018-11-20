@@ -321,7 +321,7 @@ public:
 	/** 
 	 * Calculates the expectation value with a local operator at the pivot site. 
 	 * \param O : local Mpo acting on the pivot side.
-	 * \warning Not implemented for non-abelian symmetries.
+	 * \param distance : distance to the end of the support of \p O.
 	 */
 	template<typename MpoScalar> Scalar locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance=0) const;
 	
@@ -382,16 +382,15 @@ public:
 	 */
 	void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, bool SEPARATE_SV=false);
 	
-	/**
-	 * Performs a two-site sweep and writes the result into \p Al, \p Ar and \p C (useful for IDMRG).
-	 * \param DIR : direction of the sweep, either LEFT or RIGHT.
-	 * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1 or \p loc+1
-	 * \param Apair : pair of two Mps site tensors which are split via an SVD
-	 * \param Al : left-orthogonal part goes here
-	 * \param Ar : right-orthogonal part goes here
-	 * \param C : singular values go here
-	 * \param SEPARATE_SV: if \p true, the singular value matrix is discarded (iseful for IDMRG)
-	 */
+	
+	 // * Performs a two-site sweep and writes the result into \p Al, \p Ar and \p C (useful for IDMRG).
+	 // * \param DIR : direction of the sweep, either LEFT or RIGHT.
+	 // * \param loc : site to perform the sweep on; afterwards the pivot is shifted to \p loc-1 or \p loc+1
+	 // * \param Apair : pair of two Mps site tensors which are split via an SVD
+	 // * \param Al : left-orthogonal part goes here
+	 // * \param Ar : right-orthogonal part goes here
+	 // * \param C : singular values go here
+	 // * \param SEPARATE_SV: if \p true, the singular value matrix is discarded (iseful for IDMRG)
 	// void sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry,MatrixType> > &Apair, 
 	//                  vector<Biped<Symmetry,MatrixType> > &Al, vector<Biped<Symmetry,MatrixType> > &Ar, Biped<Symmetry,MatrixType> &C, 
 	//                  bool SEPARATE_SV);

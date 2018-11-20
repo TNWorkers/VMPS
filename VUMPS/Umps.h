@@ -26,10 +26,12 @@
 //include "tensors/DmrgConglutinations.h"
 
 
-/**Uniform Matrix Product State. Analogue of the Mps class.
-\ingroup VUMPS
-\describe_Symmetry
-\describe_Scalar*/
+/**
+ * \ingroup VUMPS
+ * Uniform Matrix Product State. Analogue of the Mps class.
+ * \describe_Symmetry
+ * \describe_Scalar
+ */
 template<typename Symmetry, typename Scalar=double>
 class Umps
 {
@@ -198,12 +200,37 @@ public:
 	inline qarray<Nq> Qtarget() const {return Qtot;};
 		
 	void calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixType> > &N) const;
-	
+
+	/**
+	 * Performs a truncation of an Umps by the singular values of the center-matrix C.
+	 * Updates AL and AR with the truncated isometries from the SVD and reorthogonalize them afterwards.
+	 * \param SET_AC_RANDOM : bool to decide, whether to set AC to random or to C*AR.
+	 * Truncation of a converged Umps can be done with \p SET_AC_RANDOM=false to evaluate e.g. observables after the truncation.
+	 * Truncation during the variational optimization should be done with \p SET_AC_RANDOM=true because otherwise this would be a bias.
+	 */
 	void truncate(bool SET_AC_RANDOM=true);
 
+	/**
+	 * Orthogonalize the tensor with GAUGE \p g to be left-orthonormal using algorithm 2 from https://arxiv.org/abs/1810.07006.
+	 * \param g : GAUGE to orthogonalize.
+	 * \param G_L : Gauge-Transformation which performs the orthogonalization: \f$A[g] \rightarrow G_L*A[g]*G_L^{-1}\f$
+	 * \note : Call this function with GAUGE::L to reorthogonalize AL.
+	 */
 	void orthogonalize_left (GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_L);
+	/**
+	 * Orthogonalize the tensor with GAUGE \p g to be right-orthonormal using the analogue to algorithm 2 from https://arxiv.org/abs/1810.07006.
+	 * \param g : GAUGE to orthogonalize.
+	 * \param G_R : Gauge-Transformation which performs the orthogonalization: \f$A[g] \rightarrow G_R^{-1}*A[g]*G_R\f$
+	 * \note : Call this function with GAUGE::R to reorthogonalize AR.
+	 */
 	void orthogonalize_right(GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_R);
 
+	/**
+	 * Calculates either the right or the left fixed point of the transfer-matrix build up with A-tensors in GAUGE \p g.
+	 * \param g : GAUGE to orthogonalize.
+	 * \param DIR : LEFT or RIGHT fixed point.
+	 * \note The return values are of type complex<double>. Can we choose them sometimes to be real?
+	 */
 	std::pair<complex<double>, Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > calc_dominant(GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const;
 
 	/**
@@ -271,7 +298,7 @@ private:
 	vector<Biped<Symmetry,MatrixType> >                        C; // zero-site part C[l]
 	
 	/**null space (see eq. (25) and surrounding text)*/
-	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> N; // N[L/R/C][l][s].block[q]
+	// std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> N; // N[L/R/C][l][s].block[q]
 	
 	VectorXd S;
 	
@@ -451,11 +478,11 @@ resize_arrays ()
 			A[g][l].resize(qloc[l].size());
 		}
 		
-		N[g].resize(N_sites);
-		for (size_t l=0; l<N_sites; ++l)
-		{
-			N[g][l].resize(qloc[l].size());
-		}
+		// N[g].resize(N_sites);
+		// for (size_t l=0; l<N_sites; ++l)
+		// {
+		// 	N[g][l].resize(qloc[l].size());
+		// }
 	}
 	C.resize(N_sites);
 	inbase.resize(N_sites);

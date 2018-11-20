@@ -71,6 +71,7 @@ public:
 	 * \param file_e_input : file for the ground-state energy in the format [min(eL,eR), eL, eR]
 	 * \param file_err_eigval_input : file for the energy error
 	 * \param file_err_var_input : file for the variational error
+	 * \param file_err_state_input : file for the global state error
 	 */
 	void set_log (int N_log_input, string file_e_input, string file_err_eigval_input, string file_err_var_input, string file_err_state_input);
 	///\}

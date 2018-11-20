@@ -1,6 +1,11 @@
 #ifndef BLOCKER_H_
 #define BLOCKER_H_
 
+/**
+ * Performs blocking of Mps site-tensors.
+ * \describe_Symmetry
+ * \describe_Scalar
+ */
 template<typename Symmetry, typename Scalar=double>
 class Blocker
 {

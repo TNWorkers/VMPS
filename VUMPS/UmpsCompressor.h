@@ -15,6 +15,8 @@
  * \describe_Scalar
  * \describe_MpoScalar
  * \note Until now, only support for compressing a state.
+ * \warning This is class is nearly untested and probably just works for Lcell=1 because the parallel algorithm implemented for Lcell>1 does not work well.
+ * \todo1 Implemented a sequential algorithm and test the comporession more seriously.
  */
 template<typename Symmetry, typename Scalar, typename MpoScalar=double>
 class UmpsCompressor
@@ -39,19 +41,19 @@ public:
 	//---compression schemes---
 	///\{
 	/**
-	 * Compresses a given uMps \f$V_{out} \approx V_{in}\f$. If convergence is not reached after 2 half-sweeps, 
-	 * the bond dimension of \p Vout is increased and it is set to random.
+	 * Compresses a given uMps \f$V_{out} \approx V_{in}\f$.
 	 * \param[in] Vin : input state to be compressed
 	 * \param[out] Vout : compressed output state
-	 * \param[in] Dinit : matrix size cutoff per site and subspace for \p Vout
-	 * \param[in] Qinit : symmetry block cutoff per site for \p Vout
-	 * \param[in] tol : tolerance for the variational error
+	 * \param[in] Dinit_input : matrix size cutoff per site and subspace for \p Vout
+	 * \param[in] Qinit_input : symmetry block cutoff per site for \p Vout
+	 * \param[in] tol_input : tolerance for the variational error
 	 * \param[in] max_iterations : maximal amount of iterations; break if exceeded
 	 * \param[in] min_iterations : minimal amount of iterations
 	 */
 	void stateCompress (const Umps<Symmetry,Scalar> &Vin, Umps<Symmetry,Scalar> &Vout, 
 						size_t Dinit_input, size_t Qinit_input, double tol_input, size_t max_iterations=100ul, size_t min_iterations=10ul);
-
+    ///\}
+	
 private:
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
