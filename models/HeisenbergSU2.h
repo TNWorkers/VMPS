@@ -65,7 +65,7 @@ public:
 	 * \param P : The parameters
 	 * \param loc : The location in the chain
 	*/
-	static HamiltonianTermsXd<Symmetry> set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, size_t loc=0);
+    static void set_operators(const std::vector<SpinBase<Symmetry> > &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
 	
 	///@{
 	/**Observables.*/
@@ -108,30 +108,21 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
  ParamReturner(HeisenbergSU2::sweep_defaults)
 {
-	ParamHandler P(params,defaults);
-	
-	size_t Lcell = P.size();
-	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
-	B.resize(N_sites);
-	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		N_phys += P.get<size_t>("Ly",l%Lcell);
-		
-		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
-		setLocBasis(B[l].get_basis().qloc(),l);
-	}
-	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Terms[l] = set_operators(B,P,l%Lcell);
-		
-		stringstream ss;
-		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
-		Terms[l].info.push_back(ss.str());
-	}
-	
-	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+    ParamHandler P(params,defaults);
+    
+    size_t Lcell = P.size();
+    B.resize(N_sites);
+    for (size_t l=0; l<N_sites; ++l)
+    {
+        N_phys += P.get<size_t>("Ly",l%Lcell);
+        
+        B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
+        setLocBasis(B[l].get_basis().qloc(),l);
+    }
+    
+    HamiltonianTerms<Symmetry, double> Terms(N_sites);
+    set_operators(B,P,Terms);
+    this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
@@ -201,63 +192,74 @@ validate (qarray<1> qnum) const
 	else {return false;}
 }
 
-HamiltonianTermsXd<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
-set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, size_t loc)
+void HeisenbergSU2::
+set_operators(const vector<SpinBase<Symmetry>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
 {
-	HamiltonianTermsXd<Symmetry> Terms;
-	Terms.name = "Heisenberg";
-	
-	auto save_label = [&Terms] (string label)
-	{
-		if (label!="") {Terms.info.push_back(label);}
-	};
-	
-	stringstream ss;
-	ss << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc)-1,2));
-	save_label(ss.str());
-	
-	size_t lp1 = (loc+1)%B.size();
-	
-	// J-terms
-	
-	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",{{B[loc].orbitals(),B[lp1].orbitals()}},loc);
-	save_label(Jlabel);
-	
-	for (int i=0; i<B[loc].orbitals(); ++i)
-	for (int j=0; j<B[lp1].orbitals(); ++j)
-	{
-		if (Jpara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(std::sqrt(3)*Jpara(i,j), B[loc].Sdag(i).plain<double>(), 
-			                                                          B[loc].S(j).plain<double>()));
-		}
-	}
-	
-	// J'-terms
-	
-	param0d Jprime = P.fill_array0d<double>("Jprime","Jprime",loc);
-	save_label(Jprime.label);
-	
-	assert((B[loc].orbitals() == 1 or Jprime.x == 0) and "Cannot interpret Ly>1 and J'!=0");
-	
-	if (Jprime.x != 0)
-	{
-		Terms.nextn.push_back(make_tuple(std::sqrt(3)*Jprime.x, B[loc].Sdag(0).plain<double>(), 
-		                                                        B[loc].S(0).plain<double>(), 
-		                                                        B[loc].Id().plain<double>()));
-	}
-	
-	// perp terms
-	
-	auto [Jrung,Jperp,Jperplabel] = P.fill_array2d<double>("Jrung","J","Jperp",B[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(Jperplabel);
-	
-	if (B[loc].orbitals() > 1)
-	{
-		Terms.local.push_back(make_tuple(1., B[loc].HeisenbergHamiltonian(Jperp).plain<double>()));
-	}
-	
-	return Terms;
+    std::size_t Lcell = P.size();
+    std::size_t N_sites = Terms.size();
+    Terms.set_name("HeisenbergSU2");
+    for(std::size_t loc=0; loc<N_sites; ++loc)
+    {
+        std::size_t orbitals = B[loc].orbitals();
+        std::size_t next_orbitals = B[(loc+1)%N_sites].orbitals();
+        std::size_t nextn_orbitals = B[(loc+2)%N_sites].orbitals();
+        
+        stringstream ss1, ss2;
+        ss1 << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc%Lcell)-1,2));
+        ss2 << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
+        Terms.save_label(loc, ss1.str());
+        Terms.save_label(loc, ss2.str());
+        
+        // Local Terms: J⟂
+
+        param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+        Terms.save_label(loc, Jperp.label);
+        
+        for(int alpha=0; alpha<orbitals; ++alpha)
+        {
+            for(int beta=0; beta<orbitals; ++beta)
+            {
+                Terms.push_local(loc, std::sqrt(3.)*Jperp.a(alpha), OperatorType::prod(B[loc].Sdag(alpha), B[loc].S(beta), {1}).plain<double>());
+            }
+        }
+        
+        // Nearest-neighbour terms: J
+        
+        param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
+        Terms.save_label(loc, Jpara.label);
+        
+        if(loc < N_sites-1 || !P.get<bool>("OPEN_BC"))
+        {
+            for(std::size_t alpha=0; alpha<orbitals; ++alpha)
+            {
+                for(std::size_t beta=0; beta<next_orbitals; ++beta)
+                {
+                    Terms.push_tight(loc,std::sqrt(3.)*Jpara.a(alpha,beta),
+                                     B[loc].Sdag(alpha).plain<double>(),
+                                     B[(loc+1)%N_sites].S(beta).plain<double>());
+                }
+            }
+        }
+        
+        // Next-nearest-neighbour terms: J'
+        
+        param2d Jprime = P.fill_array2d<double>("Jprime", "Jprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
+        Terms.save_label(loc, Jprime.label);
+        
+        if(loc < N_sites-2 || !P.get<bool>("OPEN_BC"))
+        {
+            for(std::size_t alpha=0; alpha<orbitals; ++alpha)
+            {
+                for(std::size_t beta=0; beta<nextn_orbitals; ++beta)
+                {
+                    Terms.push_nextn(loc,std::sqrt(3.)*Jprime.a(alpha, beta),
+                                     B[loc].Sdag(alpha).plain<double>(),
+                                     B[(loc+1)%N_sites].Id().plain<double>(),
+                                     B[(loc+2)%N_sites].S(beta).plain<double>());
+                }
+            }
+        }
+    }
 }
 
 } //end namespace VMPS

@@ -22,11 +22,13 @@ using namespace Eigen;
 /// \endcond
 
 #include "util/macros.h"
+#include "DmrgHamiltonianTerms.h"
 //include "models/ParamReturner.h"
 #include "SuperMatrix.h"
 //include "DmrgJanitor.h"
 #include "tensors/Qbasis.h"
 #include "DmrgTypedefs.h"
+
 
 //include "Stopwatch.h" // from TOOLS
 //include "ParamHandler.h" // from TOOLS
@@ -324,7 +326,7 @@ public:
 protected:
 	
 	/**stored terms of the Hamiltonian*/
-	vector<HamiltonianTerms<Symmetry,Scalar> > Terms;
+	HamiltonianTerms<Symmetry,Scalar> Terms;
 	
 	/**bases*/
 	vector<vector<qarray<Nq> > > qloc, qOp, qOpSq;
@@ -359,7 +361,7 @@ protected:
 	void calc_auxBasis();
 	
 	/**Calculates the W-matrices from given \p HamiltonianTerms. Used to construct Hamiltonians.*/
-	void construct_from_Terms (const vector<HamiltonianTerms<Symmetry,Scalar> > &Terms_input,
+	void construct_from_Terms (const HamiltonianTerms<Symmetry,Scalar> &Terms_input,
 	                           size_t Lcell=1ul, bool CALC_SQUARE=false, bool OPEN_BC=true);
 	
 	/**Construct with \p vector<SuperMatrix> and input \p qOp. Most general of the construct routines, all the source code is here.*/
@@ -476,20 +478,17 @@ Identity (const vector<vector<qarray<Nq> > > &qloc)
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
-construct_from_Terms (const vector<HamiltonianTerms<Symmetry,Scalar> > &Terms_input,
+construct_from_Terms (const HamiltonianTerms<Symmetry,Scalar> &Terms_input,
                       size_t Lcell, bool CALC_SQUARE, bool OPEN_BC)
 {
-	Terms = Terms_input;
-	vector<SuperMatrix<Symmetry,Scalar> > G;
-	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		G.push_back(Generator(Terms[l]));
-		setOpBasis(G[l].calc_qOp(),l);
-	}
-	
-	calc_W_from_Gvec(G, W, Daux, CALC_SQUARE, OPEN_BC);
-	generate_label(Lcell);
+    Terms = Terms_input;
+    std::vector<SuperMatrix<Symmetry,Scalar>> G = Terms.construct_Matrix();
+    for (size_t loc=0; loc<N_sites; ++loc)
+    {
+        setOpBasis(G[loc].calc_qOp(),loc);
+    }
+    calc_W_from_Gvec(G, W, Daux, CALC_SQUARE, OPEN_BC);
+    generate_label(Lcell);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -528,7 +527,7 @@ calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G_input,
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		Gvec[l].setMatrix(G_input.auxdim(),D);
+		Gvec[l].set(G_input.rows(),G_input.cols(), D);
 		Gvec[l] = G_input;
 	}
 	
@@ -777,7 +776,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			for (size_t l=0; l<N_sites; ++l)
 			{
 				qOpSq[l] = Symmetry::reduceSilent(qOp[l],qOp[l],true);
-				GvecSq[l].setMatrix(max(Daux(l,0),Daux(l,1)) * max(Daux(l,0),Daux(l,1)), Gvec[l].D());
+				GvecSq[l].set(Daux(l,0)*Daux(l,0), Daux(l,1)*Daux(l,1), Gvec[l].D());         //  Non-quadratic!
 				GvecSq[l] = tensor_product(Gvec[l], Gvec[l]);
 			}
 			ArrayXXi Daux_dummy;
@@ -982,109 +981,111 @@ template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 generate_label (size_t Lcell)
 {
-	stringstream ss;
-	ss << Terms[0].name;
-	
-	map<string,set<size_t> > cells;
-	
-	for (size_t l=0; l<Terms.size(); ++l)
-	{
-		cells[Terms[l%Lcell].get_info()].insert(l%Lcell);
-	}
-	
-	if (cells.size() == 1)
-	{
-		ss << "(" << Terms[0].get_info() << ")";
-	}
-	else
-	{
-		vector<pair<string,set<size_t> > > cells_resort(cells.begin(), cells.end());
-		
-		// sort according to smallest l, not according to label
-		sort(cells_resort.begin(), cells_resort.end(), 
-		[](const pair<string,set<size_t> > &a, const pair<string,set<size_t> > &b) -> bool
-		{
-			return *min_element(a.second.begin(),a.second.end()) < *min_element(b.second.begin(),b.second.end());
-		});
-		
-		ss << ":" << endl;
-		for (auto c:cells_resort)
-		{
-			ss << " •l=";
-//			for (auto s:c.second)
-//			{
-//				cout << s << ",";
-//			}
-//			cout << endl;
-			if (c.second.size() == 1)
-			{
-				ss << *c.second.begin(); // one site
-			}
-			else
-			{
-				// check mod 2
-				if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==0;}))  
-				{
-					ss << "even";
-				}
-				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==1;}))  
-				{
-					ss << "odd";
-				}
-				// check mod 4
-				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==0;}))  
-				{
-					ss << "0mod4";
-				}
-				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==1;}))  
-				{
-					ss << "1mod4";
-				}
-				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==2;}))  
-				{
-					ss << "2mod4";
-				}
-				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==3;}))  
-				{
-					ss << "3mod4";
-				}
-				else
-				{
-					if (c.second.size() == 2)
-					{
-						ss << *c.second.begin() << "," << *c.second.rbegin(); // two sites
-					}
-					else
-					{
-						bool CONSECUTIVE = true;
-						for (auto it=c.second.begin(); it!=c.second.end(); ++it)
-						{
-							if (next(it) != c.second.end() and *next(it)!=*it+1ul)
-							{
-								CONSECUTIVE = false;
-							}
-						}
-						if (CONSECUTIVE)
-						{
-							ss << *c.second.begin() << "-" << *c.second.rbegin(); // range of sites
-						}
-						else
-						{
-							for (auto it=c.second.begin(); it!=c.second.end(); ++it)
-							{
-								ss << *it << ","; // some unknown order
-							}
-							ss.seekp(-1,ios_base::end); // delete last comma
-						}
-					}
-				}
-			}
-//			ss.seekp(-1,ios_base::end); // delete last comma
-			ss << ": " << c.first << endl;
-		}
-	}
-	
-	label = ss.str();
+    std::stringstream ss;
+    ss << Terms.name();
+    std::vector<std::string> info = Terms.get_info();
+    
+    
+    std::map<std::string,std::set<std::size_t> > cells;
+    
+    for (std::size_t loc=0; loc<info.size(); ++loc)
+    {
+        cells[info[loc]].insert(loc%Lcell);
+    }
+    
+    if (cells.size() == 1)
+    {
+        ss << "(" << info[0] << ")";
+    }
+    else
+    {
+        std::vector<std::pair<std::string,std::set<std::size_t> > > cells_resort(cells.begin(), cells.end());
+        
+        // sort according to smallest l, not according to label
+        sort(cells_resort.begin(), cells_resort.end(),
+             [](const std::pair<std::string,std::set<std::size_t> > &a, const std::pair<std::string,std::set<std::size_t> > &b) -> bool
+             {
+                 return *min_element(a.second.begin(),a.second.end()) < *min_element(b.second.begin(),b.second.end());
+             });
+        
+        ss << ":" << std::endl;
+        for (auto c:cells_resort)
+        {
+            ss << " •l=";
+            //            for (auto s:c.second)
+            //            {
+            //                cout << s << ",";
+            //            }
+            //            cout << endl;
+            if (c.second.size() == 1)
+            {
+                ss << *c.second.begin(); // one site
+            }
+            else
+            {
+                // check mod 2
+                if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==0;}))
+                {
+                    ss << "even";
+                }
+                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==1;}))
+                {
+                    ss << "odd";
+                }
+                // check mod 4
+                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==0;}))
+                {
+                    ss << "0mod4";
+                }
+                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==1;}))
+                {
+                    ss << "1mod4";
+                }
+                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==2;}))
+                {
+                    ss << "2mod4";
+                }
+                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==3;}))
+                {
+                    ss << "3mod4";
+                }
+                else
+                {
+                    if (c.second.size() == 2)
+                    {
+                        ss << *c.second.begin() << "," << *c.second.rbegin(); // two sites
+                    }
+                    else
+                    {
+                        bool CONSECUTIVE = true;
+                        for (auto it=c.second.begin(); it!=c.second.end(); ++it)
+                        {
+                            if (next(it) != c.second.end() and *next(it)!=*it+1ul)
+                            {
+                                CONSECUTIVE = false;
+                            }
+                        }
+                        if (CONSECUTIVE)
+                        {
+                            ss << *c.second.begin() << "-" << *c.second.rbegin(); // range of sites
+                        }
+                        else
+                        {
+                            for (auto it=c.second.begin(); it!=c.second.end(); ++it)
+                            {
+                                ss << *it << ","; // some unknown order
+                            }
+                            ss.seekp(-1,ios_base::end); // delete last comma
+                        }
+                    }
+                }
+            }
+            //            ss.seekp(-1,ios_base::end); // delete last comma
+            ss << ": " << c.first << std::endl;
+        }
+    }
+    
+    label = ss.str();
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1403,14 +1404,17 @@ scale (double factor, double offset)
 	
 	assert(Terms.size() == N_sites and "Got no Terms, cannot scale!");
 	
-	vector<SuperMatrix<Symmetry,Scalar> > Gvec;
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Terms[l].scale(factor,offset/N_sites);
-		Gvec.push_back(Generator(Terms[l]));
-	}
-	
-	calc_W_from_Gvec(Gvec, W, Daux, qOp, GOT_SQUARE, GOT_OPEN_BC);
+//	vector<SuperMatrix<Symmetry,Scalar> > Gvec;
+//	for (size_t l=0; l<N_sites; ++l)
+//	{
+//		Terms[l].scale(factor,offset/N_sites);
+//		Gvec.push_back(Generator(Terms[l]));
+//	}
+//	calc_W_from_Gvec(Gvec, W, Daux, qOp, GOT_SQUARE, GOT_OPEN_BC);
+    
+    Terms.scale(factor, offset/N_sites);
+    std::vector<SuperMatrix<Symmetry,Scalar>> Gvec = Terms.construct_Matrix();
+    calc_W_from_Gvec(Gvec, W, qOp, GOT_SQUARE, GOT_OPEN_BC);
 }
 
 template<typename Symmetry, typename Scalar>

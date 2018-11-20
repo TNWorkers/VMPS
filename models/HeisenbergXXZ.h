@@ -47,7 +47,7 @@ HeisenbergXXZ (const size_t &L, const vector<Param> &params)
  HeisenbergObservables(L,params,HeisenbergXXZ::defaults),
  ParamReturner(Heisenberg::sweep_defaults)
 {
-	ParamHandler P(params,HeisenbergXXZ::defaults);
+	/*ParamHandler P(params,HeisenbergXXZ::defaults);
 	
 	size_t Lcell = P.size();
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
@@ -70,7 +70,25 @@ HeisenbergXXZ (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-	this->precalc_TwoSiteData();
+	this->precalc_TwoSiteData();*/
+    
+    ParamHandler P(params,HeisenbergXXZ::defaults);
+    
+    size_t Lcell = P.size();
+    HamiltonianTermsXd<Symmetry> Terms(N_sites);
+    
+    for (size_t l=0; l<N_sites; ++l)
+    {
+        N_phys += P.get<size_t>("Ly",l%Lcell);
+        setLocBasis(B[l].get_basis(),l);
+    }
+    
+    HeisenbergU1::set_operators(B,P,Terms);
+    Heisenberg::add_operators(B,P,Terms);
+    HeisenbergU1XXZ::add_operators(B,P,Terms);
+    
+    this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+    this->precalc_TwoSiteData();
 }
 
 } // end namespace VMPS

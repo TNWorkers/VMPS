@@ -38,8 +38,9 @@ public:
 	HeisenbergU1XXZ (const size_t &L, const vector<Param> &params);
 	
 	template<typename Symmetry_>
-	static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<SpinBase<Symmetry_> > &B, const ParamHandler &P, size_t loc=0);
-	
+	//static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<SpinBase<Symmetry_> > &B, const ParamHandler &P, size_t loc=0);
+    static void add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);
+    
 	static const std::map<string,std::any> defaults;
 };
 
@@ -60,7 +61,7 @@ HeisenbergU1XXZ::
 HeisenbergU1XXZ (const size_t &L, const vector<Param> &params)
 :HeisenbergU1(L)
 {
-	ParamHandler P(params,HeisenbergU1XXZ::defaults);
+	/*ParamHandler P(params,HeisenbergU1XXZ::defaults);
 	
 	size_t Lcell = P.size();
 	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
@@ -85,10 +86,30 @@ HeisenbergU1XXZ (const size_t &L, const vector<Param> &params)
 	}
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-	this->precalc_TwoSiteData();
+	this->precalc_TwoSiteData();*/
+    
+    ParamHandler P(params,HeisenbergU1XXZ::defaults);
+    
+    size_t Lcell = P.size();
+    HamiltonianTermsXd<Symmetry> Terms(N_sites);
+    B.resize(N_sites);
+    
+    for (size_t l=0; l<N_sites; ++l)
+    {
+        N_phys += P.get<size_t>("Ly",l%Lcell);
+        
+        B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
+        setLocBasis(B[l].get_basis(),l);
+    }
+    
+    set_operators(B,P,Terms);
+    add_operators(B,P,Terms);
+    
+    this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+    this->precalc_TwoSiteData();
 }
 
-template<typename Symmetry_>
+/*template<typename Symmetry_>
 void HeisenbergU1XXZ::
 add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<SpinBase<Symmetry_> > &B, const ParamHandler &P, size_t loc)
 {
@@ -168,6 +189,107 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<SpinBase<Symme
 	Terms.local.push_back(make_tuple(1., B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp)));
 	
 	Terms.name = (P.HAS_ANY_OF({"Jxy","Jxypara","Jxyperp"},loc))? "XXZ":"Ising";
+}*/
+    
+template<typename Symmetry_>
+void HeisenbergU1XXZ::
+add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)
+{
+    std::size_t Lcell = P.size();
+    std::size_t N_sites = Terms.size();
+    if(P.HAS_ANY_OF({"Jxy", "Jxypara", "Jxyperp"}))
+    {
+        Terms.set_name("XXZ");
+    }
+    else
+    {
+        Terms.set_name("Ising");
+    }
+    for(std::size_t loc=0; loc<N_sites; ++loc)
+    {
+        std::size_t orbitals = B[loc].orbitals();
+        std::size_t next_orbitals = B[(loc+1)%N_sites].orbitals();
+        std::size_t nextn_orbitals = B[(loc+2)%N_sites].orbitals();
+        
+        stringstream ss1, ss2;
+        ss1 << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc%Lcell)-1,2));
+        ss2 << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
+        Terms.save_label(loc, ss1.str());
+        Terms.save_label(loc, ss2.str());
+    
+        // Local terms: J⟂
+        
+        param2d Jxyperp = P.fill_array2d<double>("Jxyrung", "Jxy", "Jxyperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+        param2d Jzperp  = P.fill_array2d<double>("Jzrung",  "Jz",  "Jzperp",  orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+
+        Terms.save_label(loc, Jxyperp.label);
+        Terms.save_label(loc, Jzperp.label);
+        
+        ArrayXd Bz_array   = B[loc].ZeroField();
+        ArrayXd Bx_array   = B[loc].ZeroField();
+        ArrayXd Kz_array   = B[loc].ZeroField();
+        ArrayXd Kx_array   = B[loc].ZeroField();
+        ArrayXXd Dyperp_array = B[loc].ZeroHopping();
+        
+        Terms.push_local(loc, 1., B[loc].HeisenbergHamiltonian(Jxyperp.a, Jzperp.a, Bz_array, Bx_array, Kz_array, Kx_array, Dyperp_array));
+        
+        // Nearest-neighbour terms: J
+        
+        param2d Jxypara = P.fill_array2d<double>("Jxy", "Jxypara", {orbitals, next_orbitals}, loc%Lcell);
+        param2d Jzpara  = P.fill_array2d<double>("Jz",  "Jzpara",  {orbitals, next_orbitals}, loc%Lcell);
+        
+        Terms.save_label(loc, Jxypara.label);
+        Terms.save_label(loc, Jzpara.label);
+        if(loc < N_sites-1 || !P.get<bool>("OPEN_BC"))
+        {
+            for(std::size_t alpha=0; alpha < orbitals; ++alpha)
+            {
+                for(std::size_t beta=0; beta < next_orbitals; ++beta)
+                {
+                    Terms.push_tight(loc, 0.5*Jxypara.a(alpha,beta),
+                                     B[loc].Scomp(SP,alpha),
+                                     B[(loc+1)%N_sites].Scomp(SM,beta));
+                    Terms.push_tight(loc, 0.5*Jxypara.a(alpha,beta),
+                                     B[loc].Scomp(SM,alpha),
+                                     B[(loc+1)%N_sites].Scomp(SP,beta));
+                    Terms.push_tight(loc, Jzpara.a(alpha,beta),
+                                     B[loc].Scomp(SZ,alpha),
+                                     B[(loc+1)%N_sites].Scomp(SZ,beta));
+                }
+            }
+        }
+    
+        // Next-nearest-neighbour terms: J
+    
+        param2d Jxyprime = P.fill_array2d<double>("Jxyprime", "Jxyprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
+        param2d Jzprime  = P.fill_array2d<double>("Jzprime",  "Jzprime_array",  {orbitals, nextn_orbitals}, loc%Lcell);
+
+        Terms.save_label(loc, Jxyprime.label);
+        Terms.save_label(loc, Jzprime.label);
+
+        if(loc < N_sites-2 || !P.get<bool>("OPEN_BC"))
+        {
+            for(std::size_t alpha=0; alpha < orbitals; ++alpha)
+            {
+                for(std::size_t beta=0; beta < nextn_orbitals; ++beta)
+                {
+                    Terms.push_nextn(loc, 0.5*Jxyprime.a(alpha,beta),
+                                     B[loc].Scomp(SP,alpha),
+                                     B[(loc+1)%N_sites].Id(),
+                                     B[(loc+2)%N_sites].Scomp(SM,beta));
+                    Terms.push_nextn(loc, 0.5*Jxyprime.a(alpha,beta),
+                                     B[loc].Scomp(SM,alpha),
+                                     B[(loc+1)%N_sites].Id(),
+                                     B[(loc+2)%N_sites].Scomp(SP,beta));
+                    Terms.push_nextn(loc, Jzprime.a(alpha,beta),
+                                     B[loc].Scomp(SZ,alpha),
+                                     B[(loc+1)%N_sites].Id(),
+                                     B[(loc+2)%N_sites].Scomp(SZ,beta));
+                }
+            }
+        }
+    }
+    
 }
 
 } //end namespace VMPS

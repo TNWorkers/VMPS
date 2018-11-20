@@ -5,6 +5,8 @@
 #include <Eigen/Sparse>
 /// \endcond
 
+#include "numeric_limits.h"
+
 //forward declarations
 template<typename Symmetry, typename MatrixType_> class SiteOperatorQ;
 template<typename Symmetry> class Qbasis;
@@ -131,4 +133,82 @@ SiteOperator<Symmetry,Scalar> kroneckerProduct (const SiteOperator<Symmetry,Scal
 	return Oout;
 }
 
+template<typename Symmetry, typename Scalar>
+bool operator== (const SiteOperator<Symmetry,Scalar> &O1, const SiteOperator<Symmetry,Scalar> &O2)
+{
+    if(O1.Q == O2.Q)
+    {
+        return ((O1.data - O2.data).norm() < ::mynumeric_limits<double>::epsilon());
+    }
+    return false;
+}
+
+template<typename Symmetry, typename Scalar>
+SiteOperator<Symmetry, Scalar> operator*(const SiteOperator<Symmetry,Scalar> &op, const Scalar &lambda)
+{
+    return lambda*op;
+}
+
+template<typename Symmetry, typename Scalar>
+std::vector<SiteOperator<Symmetry,Scalar>> operator*(const std::vector<SiteOperator<Symmetry,Scalar>> &ops, const Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> &mat)
+{
+    assert(ops.size() == mat.rows() and "Dimensions of vector and matrix do not match!");
+    std::vector<SiteOperator<Symmetry, Scalar>> out;
+    for(std::size_t j=0; j<mat.cols(); ++j)
+    {
+        SiteOperator<Symmetry, Scalar> temp;
+        std::size_t i=0;
+        for(; std::abs(mat(i,j)) < ::mynumeric_limits<double>::epsilon() && i<mat.rows(); ++i){}
+        if(i == mat.rows()-1)
+        {
+            temp = 0*ops[j];
+        }
+        else
+        {
+            temp = ops[i]*mat(i,j);
+            ++i;
+        }
+        for(; i<mat.rows(); ++i)
+        {
+            if(std::abs(mat(i,j)) > ::mynumeric_limits<double>::epsilon())
+            {
+                temp += ops[i]*mat(i,j);
+            }
+        }
+        out.push_back(temp);
+    }
+    return out;
+}
+
+template<typename Symmetry, typename Scalar>
+std::vector<SiteOperator<Symmetry,Scalar>> operator*(const Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> &mat, const std::vector<SiteOperator<Symmetry,Scalar>> &ops)
+{
+    assert(ops.size() == mat.cols() and "Dimensions of matrix and vector do not match!");
+    std::vector<SiteOperator<Symmetry, Scalar>> out;
+    for(std::size_t i=0; i<mat.rows(); ++i)
+    {
+        SiteOperator<Symmetry, Scalar> temp;
+        std::size_t j=0;
+        for(; std::abs(mat(i,j)) < ::mynumeric_limits<double>::epsilon() && j<mat.cols(); ++j){}
+        if(j == mat.cols()-1)
+        {
+            temp = 0*ops[i];
+        }
+        else
+        {
+            temp = mat(i,j)*ops[j];
+            ++j;
+        }
+        
+        for(; j<mat.cols(); ++j)
+        {
+            if(std::abs(mat(i,j)) > ::mynumeric_limits<double>::epsilon())
+            {
+                temp += mat(i,j)*ops[j];
+            }
+        }
+        out.push_back(temp);
+    }
+    return out;
+}
 #endif

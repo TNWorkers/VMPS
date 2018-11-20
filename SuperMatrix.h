@@ -8,7 +8,8 @@
 
 #include "MemCalc.h" // from TOOLS
 //include "DmrgTypedefs.h"
-#include "DmrgHamiltonianTerms.h"
+//include "DmrgHamiltonianTerms.h"
+#include "tensors/SiteOperator.h"
 
 
 /**Auxiliary matrix of matrices to create an Mpo and MpoQ.*/
@@ -54,8 +55,8 @@ public:
 	SuperMatrix<Symmetry,Scalar> row (size_t i)
 	{
 		SuperMatrix<Symmetry,Scalar> Mout;
-		Mout.setRowVector(auxdim(),D());
-		for (size_t j=0; j<N_rows; ++j)
+		Mout.setRowVector(N_cols,D());        // instead of auxdim
+		for (size_t j=0; j<N_cols; ++j)        //   Bug? N_rows
 		{
 			Mout(0,j) = data[i][j];
 		}
@@ -66,8 +67,8 @@ public:
 	SuperMatrix<Symmetry,Scalar> col (size_t i)
 	{
 		SuperMatrix<Symmetry,Scalar> Mout;
-		Mout.setColVector(auxdim(),D());
-		for (size_t j=0; j<N_cols; ++j)
+		Mout.setColVector(N_rows,D());          // instead of auxdim
+		for (size_t j=0; j<N_rows; ++j)         //  Bug? N_cols
 		{
 			Mout(j,0) = data[j][i];
 		}
@@ -90,6 +91,7 @@ public:
 	/**\describe_Daux*/
 	inline size_t auxdim() const
 	{
+        assert(N_rows == N_cols and "auxdim called although SuperMatrix is not quadratic");
 		return std::max(N_rows,N_cols);
 	}
 	
@@ -160,15 +162,15 @@ SuperMatrix<Symmetry,Scalar> tensor_product (const SuperMatrix<Symmetry,Scalar> 
 	
 	if (M1.rows() == 1)
 	{
-		Mout.setRowVector(M1.auxdim()*M2.auxdim(), M1.D());
+		Mout.setRowVector(M1.cols()*M2.cols(), M1.D());             // instead of auxdim
 	}
 	else if (M1.cols() == 1)
 	{
-		Mout.setColVector(M1.auxdim()*M2.auxdim(), M1.D());
+		Mout.setColVector(M1.rows()*M2.rows(), M1.D());             // instead of auxdim
 	}
 	else
 	{
-		Mout.setMatrix(M1.auxdim()*M2.auxdim(), M1.D());
+		Mout.set(M1.rows()*M2.rows(), M1.cols()*M2.cols(), M1.D()); // instead of auxdim
 	}
 	
 	for (size_t r1=0; r1<M1.rows(); ++r1)
@@ -192,19 +194,19 @@ SuperMatrix<Symmetry,Scalar> directSum (const SuperMatrix<Symmetry,Scalar> &M1, 
 	
 	if (M1.rows()==1 and M2.rows()==1)
 	{
-		Mout.setRowVector(M1.auxdim()+M2.auxdim(), M1.D());
+		Mout.setRowVector(M1.cols()+M2.cols(), M1.D());         // instead of auxdim
 		R = 0;
 		C = M1.cols();
 	}
 	else if (M1.cols()==1 and M2.cols()==1)
 	{
-		Mout.setColVector(M1.auxdim()+M2.auxdim(), M1.D());
+		Mout.setColVector(M1.rows()+M2.rows(), M1.D());     // instead of auxdim
 		R = M1.rows();
 		C = 0;
 	}
 	else
 	{
-		Mout.setMatrix(M1.auxdim()+M2.auxdim(), M1.D());
+        Mout.set(M1.rows()+M2.rows(), M1.cols()+M2.cols(), M1.D());            // instead of auxdim
 		R = M1.rows();
 		C = M1.cols();
 	}
@@ -248,7 +250,7 @@ std::ostream &operator<< (std::ostream& os, const SuperMatrix<Symmetry,Scalar> &
 	return os;
 }
 
-template<typename Symmetry, typename Scalar>
+/*template<typename Symmetry, typename Scalar>
 SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar> &Terms)
 {
 	typedef SiteOperator<Symmetry,Scalar> OperatorType;
@@ -330,6 +332,6 @@ SuperMatrix<Symmetry, Scalar> Generator (const HamiltonianTerms<Symmetry, Scalar
 	}
 	
 	return Gout;
-}
+}*/
 
 #endif
