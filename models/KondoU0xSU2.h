@@ -56,8 +56,10 @@ public:
 	 * \param P : The parameters
 	 * \param loc : The location in the chain
 	 */
-	static HamiltonianTermsXd<Symmetry> set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F,
-	                                                    const ParamHandler &P, size_t loc=0);
+//	static HamiltonianTermsXd<Symmetry> set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F,
+//	                                                    const ParamHandler &P, size_t loc=0);
+	static void set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F,
+	                           const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
 	
 	Mpo<Symmetry> Simp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
@@ -107,7 +109,7 @@ KondoU0xSU2 (const size_t &L, const vector<Param> &params)
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
-	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
+//	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 	B.resize(N_sites);
 	F.resize(N_sites);
 	
@@ -121,180 +123,316 @@ KondoU0xSU2 (const size_t &L, const vector<Param> &params)
 		
 		setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l);
 	}
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Terms[l] = set_operators(B,F,P,l%Lcell);
-		
-		stringstream ss;
-		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
-		Terms[l].info.push_back(ss.str());
-	}
+//	for (size_t l=0; l<N_sites; ++l)
+//	{
+//		Terms[l] = set_operators(B,F,P,l%Lcell);
+//		
+//		stringstream ss;
+//		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
+//		Terms[l].info.push_back(ss.str());
+//	}
+	
+	HamiltonianTermsXd<Symmetry> Terms(N_sites);
+	set_operators(B,F,P,Terms);
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 	this->precalc_TwoSiteData();
 }
 
-HamiltonianTermsXd<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
-set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc)
+void KondoU0xSU2::
+set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
 {
-	HamiltonianTermsXd<Symmetry> Terms;
+	std::size_t Lcell = P.size();
+	std::size_t N_sites = Terms.size();
 	
-	frac S = frac(B[loc].get_D()-1,2);
-	stringstream Slabel;
-	Slabel << "S=" << print_frac_nice(S);
-	Terms.info.push_back(Slabel.str());
+	Terms.set_name("Kondo U(0)⊗SU(2)");
 	
-	auto save_label = [&Terms] (string label)
+	for (std::size_t loc=0; loc<N_sites; ++loc)
 	{
-		if (label!="") {Terms.info.push_back(label);}
-	};
-	
-	size_t lp1 = (loc+1)%F.size();
-	
-	// NN terms
-	
-	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
-	save_label(tlabel);
-	
-	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
-	save_label(Vlabel);
-	
-	for (int i=0; i<F[loc].orbitals(); ++i)
-	for (int j=0; j<F[lp1].orbitals(); ++j)
-	{
-		if (tPara(i,j) != 0.)
+		size_t lp1 = (loc+1)%N_sites;
+		size_t lp2 = (loc+2)%N_sites;
+		
+		std::size_t Forbitals       = F[loc].orbitals();
+		std::size_t Fnext_orbitals  = F[(loc+1)%N_sites].orbitals();
+		std::size_t Fnextn_orbitals = F[(loc+2)%N_sites].orbitals();
+		
+		std::size_t Borbitals       = B[loc].orbitals();
+		std::size_t Bnext_orbitals  = B[(loc+1)%N_sites].orbitals();
+		std::size_t Bnextn_orbitals = B[(loc+2)%N_sites].orbitals();
+		
+		frac S = frac(B[loc].get_D()-1,2);
+		stringstream Slabel;
+		Slabel << "S=" << print_frac_nice(S);
+		Terms.save_label(loc, Slabel.str());
+		
+		// local terms
+		
+		// Kondo-J
+		param1d J = P.fill_array1d<double>("J", "Jorb", Forbitals, loc%Lcell);
+		Terms.save_label(loc, J.label);
+		
+		// t⟂
+		param2d tPerp = P.fill_array2d<double>("tRung", "t", "tPerp", Forbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		Terms.save_label(loc, tPerp.label);
+		
+		// Hubbard-U
+		param1d U = P.fill_array1d<double>("U", "Uorb", Forbitals, loc%Lcell);
+		Terms.save_label(loc, U.label);
+		
+		// Bx substrate
+		param1d Bxsub = P.fill_array1d<double>("Bxsub", "Bxsuborb", Forbitals, loc%Lcell);
+		Terms.save_label(loc, Bxsub.label);
+		
+		// Bx impurities
+		param1d Bx = P.fill_array1d<double>("Bx","Bxorb", Borbitals, loc%Lcell);
+		Terms.save_label(loc, Bx.label);
+		
+		// Kx anisotropy
+		param1d Kx = P.fill_array1d<double>("Kx","Kxorb", Borbitals, loc%Lcell);
+		Terms.save_label(loc, Kx.label);
+		
+		// Bz substrate
+		param1d Bzsub = P.fill_array1d<double>("Bzsub", "Bzsuborb", Forbitals, loc%Lcell);
+		Terms.save_label(loc, Bzsub.label);
+		
+		// Bz impurities
+		param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", Borbitals, loc%Lcell);
+		Terms.save_label(loc, Bz.label);
+		
+		// Kz anisotropy
+		param1d Kz = P.fill_array1d<double>("Kz","Kzorb", Borbitals, loc%Lcell);
+		Terms.save_label(loc, Kz.label);
+		
+		ArrayXXd Jxyperp = B[loc].ZeroHopping();
+		ArrayXXd Jzperp  = B[loc].ZeroHopping();
+		ArrayXXd Dyperp  = B[loc].ZeroHopping();
+		
+		//set Heisenberg part of Kondo Hamiltonian
+		auto KondoHamiltonian = OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,Bx.a,Kz.a,Kx.a,Dyperp).structured(),
+			                                            F[loc].Id(),
+			                                            {1});
+		
+		ArrayXXd Vperp      = F[loc].ZeroHopping();
+		ArrayXXd Jxysubperp = F[loc].ZeroHopping();
+		ArrayXXd Jzsubperp  = F[loc].ZeroHopping();
+		
+		//set Hubbard part of Kondo Hamiltonian
+		KondoHamiltonian += OperatorType::outerprod(B[loc].Id().structured(),
+			                                        F[loc].HubbardHamiltonian(U.a,tPerp.a,Vperp,Jxysubperp,Jzsubperp,Bzsub.a,Bxsub.a),
+			                                        {1});
+		
+		//set Kondo part of Hamiltonian
+		for (int alfa=0; alfa<Forbitals; ++alfa)
 		{
-			//-------------------------------------------------------------------------------------------------------------------------------------//
-			// Terms.tight.push_back(make_tuple(-tPara(i,j),
-			//                                  kroneckerProduct(B.Id(), F.cdag(UP,i) * F.sign()),
-			//                                  kroneckerProduct(B.Id(), F.c(UP,j))));
-			// Terms.tight.push_back(make_tuple(-tPara(i,j),
-			//                                  kroneckerProduct(B.Id(), F.cdag(DN,i) * F.sign()),
-			//                                  kroneckerProduct(B.Id(), F.c(DN,j))));
-			// Terms.tight.push_back(make_tuple(-tPara(i,j),
-			//                                  kroneckerProduct(B.Id(), -1.*F.c(UP,i) * F.sign()),
-			//                                  kroneckerProduct(B.Id(), F.cdag(UP,j))));
-			// Terms.tight.push_back(make_tuple(-tPara(i,j),
-			//                                  kroneckerProduct(B.Id(), -1.*F.c(DN,i) * F.sign()),
-			//                                  kroneckerProduct(B.Id(), F.cdag(DN,j))));
-			
-			// Mout += -t*std::sqrt(2.)*(Operator::prod(psidag(UP,i),psi(UP,i+1),{1})+Operator::prod(psidag(DN,i),psi(DN,i+1),{1}));
-			//-------------------------------------------------------------------------------------------------------------------------------------//
-			
-			//c†UPcUP
-			
-			auto Otmp = OperatorType::prod(OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,i), {2}),
-										   OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign()      , {1}),
-										   {2});
-			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
-											 Otmp.plain<double>(),
-											 OperatorType::outerprod(B[loc].Id().structured(), F[loc].psi(UP,i), {2}).plain<double>()));
-			
-			//c†DNcDN
-			Otmp = OperatorType::prod(OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,i), {2}),
-									  OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign()      , {1}),
-									  {2});
-			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
-											 Otmp.plain<double>(),
-											 OperatorType::outerprod(B[loc].Id().structured(), F[loc].psi(DN,i), {2}).plain<double>()));
-			
-			//-cUPc†UP
-			// Otmp = OperatorType::prod(OperatorType::outerprod(B.Id().structured(),F.psi(UP,i),{2}),
-			// 						  OperatorType::outerprod(B.Id().structured(),F.sign()   ,{1}),
-			// 						  {2});
-			// Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.),
-			// 								 Otmp.plain<double>(),
-			// 								 OperatorType::outerprod(B.Id().structured(),F.psidag(UP,j),{2}).plain<double>()));
-			
-			//-cDNc†DN
-			// Otmp = OperatorType::prod(OperatorType::outerprod(B.Id().structured(),F.psi(DN,i),{2}),
-			// 						  OperatorType::outerprod(B.Id().structured(),F.sign()   ,{1}),
-			// 						  {2});
-			// Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.),
-			// 								 Otmp.plain<double>(),
-			// 								 OperatorType::outerprod(B.Id().structured(),F.psidag(DN,j),{2}).plain<double>()));
-			
-			//-------------------------------------------------------------------------------------------------------------------------------------//
+			if (J(alfa) != 0.)
+			{
+				KondoHamiltonian +=     J(alfa) * OperatorType::outerprod(B[loc].Scomp(SZ,alfa).structured(), F[loc].Sz(alfa), {1});
+				KondoHamiltonian += 0.5*J(alfa) * OperatorType::outerprod(B[loc].Scomp(SP,alfa).structured(), F[loc].Sm(alfa), {1});
+				KondoHamiltonian += 0.5*J(alfa) * OperatorType::outerprod(B[loc].Scomp(SM,alfa).structured(), F[loc].Sp(alfa), {1});
+			}
+		}
+		
+		Terms.push_local(loc, 1., KondoHamiltonian.plain<double>());
+		
+		// NN terms
+		
+		// t∥
+		param2d tPara = P.fill_array2d<double>("t", "tPara", {Forbitals, Fnext_orbitals}, loc%Lcell);
+		Terms.save_label(loc, tPara.label);
+		
+		// V∥
+		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {Forbitals, Fnext_orbitals}, loc%Lcell);
+		Terms.save_label(loc, tPara.label);
+		
+		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		{
+			for (int alfa=0; alfa<Forbitals;      ++alfa)
+			for (int beta=0; beta<Fnext_orbitals; ++beta)
+			{
+				auto Otmp_loc = OperatorType::prod(OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,alfa), {2}),
+				                                   OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(),          {1}),
+				                                   {2});
+				
+				Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.),
+				                 Otmp_loc.plain<double>(),
+				                 OperatorType::outerprod(B[loc].Id().structured(), F[lp1].psi(UP,beta), {2}).plain<double>()
+				                );
+				
+				//c†DNcDN
+				Otmp_loc = OperatorType::prod(OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,alfa), {2}),
+				                              OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign()      , {1}),
+				                              {2});
+				
+				Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.),
+				                 Otmp_loc.plain<double>(),
+				                 OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].psi(DN,beta), {2}).plain<double>()
+				                );
+			}
 		}
 	}
-	
-	// local terms
-	
-	// t⟂
-	auto [tRung,tPerp,tPerplabel] = P.fill_array2d<double>("tRung","t","tPerp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(tPerplabel);
-	
-	// Hubbard U
-	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F[loc].orbitals(),loc);
-	save_label(Ulabel);
-
-	// Bx substrate
-	auto [Bxsub,Bxsuborb,Bxsublabel] = P.fill_array1d<double>("Bxsub","Bxsuborb",F[loc].orbitals(),loc);
-	save_label(Bxsublabel);
-	
-	// Bx impurities
-	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",F[loc].orbitals(),loc);
-	save_label(Bxlabel);
-	
-	// Kx anisotropy
-	auto [Kx,Kxorb,Kxlabel] = P.fill_array1d<double>("Kx","Kxorb",B[loc].orbitals(),loc);
-	save_label(Kxlabel);
-	
-	// Bz substrate
-	auto [Bzsub,Bzsuborb,Bzsublabel] = P.fill_array1d<double>("Bzsub","Bzsuborb",F[loc].orbitals(),loc);
-	save_label(Bzsublabel);
-	
-	// Bz impurities
-	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F[loc].orbitals(),loc);
-	save_label(Bzlabel);
-	
-	// Kx anisotropy
-	auto [Kz,Kzorb,Kzlabel] = P.fill_array1d<double>("Kz","Kzorb",B[loc].orbitals(),loc);
-	save_label(Kzlabel);
-	
-	// OperatorType KondoHamiltonian({1},B[loc].get_structured_basis().combine(F[loc].get_basis()));
-	
-	ArrayXXd Jxyperp = B[loc].ZeroHopping();
-	ArrayXXd Jzperp  = B[loc].ZeroHopping();
-	ArrayXXd Dyperp  = B[loc].ZeroHopping();
-	
-	//set Heisenberg part of Kondo Hamiltonian
-	auto KondoHamiltonian = OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp).structured(),
-	                                                F[loc].Id(),
-	                                                {1});
-	
-	ArrayXXd Vperp      = F[loc].ZeroHopping();
-	ArrayXXd Jxysubperp = F[loc].ZeroHopping();
-	ArrayXXd Jzsubperp  = F[loc].ZeroHopping();
-	
-	//set Hubbard part of Kondo Hamiltonian
-	KondoHamiltonian += OperatorType::outerprod(B[loc].Id().structured(),
-	                                            F[loc].HubbardHamiltonian(Uorb,tPerp,Vperp,Jxysubperp,Jzsubperp,Bzsuborb,Bxsuborb),
-	                                            {1});
-	
-	//set Heisenberg part of Hamiltonian
-//	KondoHamiltonian += OperatorType::outerprod(B.HeisenbergHamiltonian(0.,P.get<bool>("CYLINDER")),F[loc].Id(),{1,0});
-	
-	// Kondo-J
-	auto [J,Jorb,Jlabel] = P.fill_array1d<double>("J","Jorb",F[loc].orbitals(),loc);
-	save_label(Jlabel);
-	
-	//set interaction part of Hamiltonian.
-	for (int i=0; i<F[loc].orbitals(); ++i)
-	{
-		if (Jorb(i) != 0.)
-		{
-			KondoHamiltonian +=     Jorb(i) * OperatorType::outerprod(B[loc].Scomp(SZ,i).structured(), F[loc].Sz(i), {1});
-			KondoHamiltonian += 0.5*Jorb(i) * OperatorType::outerprod(B[loc].Scomp(SP,i).structured(), F[loc].Sm(i), {1});
-			KondoHamiltonian += 0.5*Jorb(i) * OperatorType::outerprod(B[loc].Scomp(SM,i).structured(), F[loc].Sp(i), {1});
-		}
-	}
-	
-	Terms.name = "Kondo U(0)⊗SU(2)";
-	Terms.local.push_back(make_tuple(1.,KondoHamiltonian.plain<double>()));
-	
-	return Terms;
 }
+
+//HamiltonianTermsXd<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+//set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc)
+//{
+//	HamiltonianTermsXd<Symmetry> Terms;
+//	
+//	frac S = frac(B[loc].get_D()-1,2);
+//	stringstream Slabel;
+//	Slabel << "S=" << print_frac_nice(S);
+//	Terms.info.push_back(Slabel.str());
+//	
+//	auto save_label = [&Terms] (string label)
+//	{
+//		if (label!="") {Terms.info.push_back(label);}
+//	};
+//	
+//	size_t lp1 = (loc+1)%F.size();
+//	
+//	// NN terms
+//	
+//	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
+//	save_label(tlabel);
+//	
+//	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
+//	save_label(Vlabel);
+//	
+//	for (int i=0; i<F[loc].orbitals(); ++i)
+//	for (int j=0; j<F[lp1].orbitals(); ++j)
+//	{
+//		if (tPara(i,j) != 0.)
+//		{
+//			//-------------------------------------------------------------------------------------------------------------------------------------//
+//			// Terms.tight.push_back(make_tuple(-tPara(i,j),
+//			//                                  kroneckerProduct(B.Id(), F.cdag(UP,i) * F.sign()),
+//			//                                  kroneckerProduct(B.Id(), F.c(UP,j))));
+//			// Terms.tight.push_back(make_tuple(-tPara(i,j),
+//			//                                  kroneckerProduct(B.Id(), F.cdag(DN,i) * F.sign()),
+//			//                                  kroneckerProduct(B.Id(), F.c(DN,j))));
+//			// Terms.tight.push_back(make_tuple(-tPara(i,j),
+//			//                                  kroneckerProduct(B.Id(), -1.*F.c(UP,i) * F.sign()),
+//			//                                  kroneckerProduct(B.Id(), F.cdag(UP,j))));
+//			// Terms.tight.push_back(make_tuple(-tPara(i,j),
+//			//                                  kroneckerProduct(B.Id(), -1.*F.c(DN,i) * F.sign()),
+//			//                                  kroneckerProduct(B.Id(), F.cdag(DN,j))));
+//			
+//			// Mout += -t*std::sqrt(2.)*(Operator::prod(psidag(UP,i),psi(UP,i+1),{1})+Operator::prod(psidag(DN,i),psi(DN,i+1),{1}));
+//			//-------------------------------------------------------------------------------------------------------------------------------------//
+//			
+//			//c†UPcUP
+//			
+//			auto Otmp = OperatorType::prod(OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,i), {2}),
+//										   OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign()      , {1}),
+//										   {2});
+//			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
+//											 Otmp.plain<double>(),
+//											 OperatorType::outerprod(B[loc].Id().structured(), F[loc].psi(UP,i), {2}).plain<double>()));
+//			
+//			//c†DNcDN
+//			Otmp = OperatorType::prod(OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,i), {2}),
+//									  OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign()      , {1}),
+//									  {2});
+//			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.),
+//											 Otmp.plain<double>(),
+//											 OperatorType::outerprod(B[loc].Id().structured(), F[loc].psi(DN,i), {2}).plain<double>()));
+//			
+//			//-cUPc†UP
+//			// Otmp = OperatorType::prod(OperatorType::outerprod(B.Id().structured(),F.psi(UP,i),{2}),
+//			// 						  OperatorType::outerprod(B.Id().structured(),F.sign()   ,{1}),
+//			// 						  {2});
+//			// Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.),
+//			// 								 Otmp.plain<double>(),
+//			// 								 OperatorType::outerprod(B.Id().structured(),F.psidag(UP,j),{2}).plain<double>()));
+//			
+//			//-cDNc†DN
+//			// Otmp = OperatorType::prod(OperatorType::outerprod(B.Id().structured(),F.psi(DN,i),{2}),
+//			// 						  OperatorType::outerprod(B.Id().structured(),F.sign()   ,{1}),
+//			// 						  {2});
+//			// Terms.tight.push_back(make_tuple(tPara(i,j)*sqrt(2.),
+//			// 								 Otmp.plain<double>(),
+//			// 								 OperatorType::outerprod(B.Id().structured(),F.psidag(DN,j),{2}).plain<double>()));
+//			
+//			//-------------------------------------------------------------------------------------------------------------------------------------//
+//		}
+//	}
+//	
+//	// local terms
+//	
+//	// t⟂
+//	auto [tRung,tPerp,tPerplabel] = P.fill_array2d<double>("tRung","t","tPerp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
+//	save_label(tPerplabel);
+//	
+//	// Hubbard U
+//	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F[loc].orbitals(),loc);
+//	save_label(Ulabel);
+
+//	// Bx substrate
+//	auto [Bxsub,Bxsuborb,Bxsublabel] = P.fill_array1d<double>("Bxsub","Bxsuborb",F[loc].orbitals(),loc);
+//	save_label(Bxsublabel);
+//	
+//	// Bx impurities
+//	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",F[loc].orbitals(),loc);
+//	save_label(Bxlabel);
+//	
+//	// Kx anisotropy
+//	auto [Kx,Kxorb,Kxlabel] = P.fill_array1d<double>("Kx","Kxorb",B[loc].orbitals(),loc);
+//	save_label(Kxlabel);
+//	
+//	// Bz substrate
+//	auto [Bzsub,Bzsuborb,Bzsublabel] = P.fill_array1d<double>("Bzsub","Bzsuborb",F[loc].orbitals(),loc);
+//	save_label(Bzsublabel);
+//	
+//	// Bz impurities
+//	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F[loc].orbitals(),loc);
+//	save_label(Bzlabel);
+//	
+//	// Kz anisotropy
+//	auto [Kz,Kzorb,Kzlabel] = P.fill_array1d<double>("Kz","Kzorb",B[loc].orbitals(),loc);
+//	save_label(Kzlabel);
+//	
+//	// OperatorType KondoHamiltonian({1},B[loc].get_structured_basis().combine(F[loc].get_basis()));
+//	
+//	ArrayXXd Jxyperp = B[loc].ZeroHopping();
+//	ArrayXXd Jzperp  = B[loc].ZeroHopping();
+//	ArrayXXd Dyperp  = B[loc].ZeroHopping();
+//	
+//	//set Heisenberg part of Kondo Hamiltonian
+//	auto KondoHamiltonian = OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp).structured(),
+//	                                                F[loc].Id(),
+//	                                                {1});
+//	
+//	ArrayXXd Vperp      = F[loc].ZeroHopping();
+//	ArrayXXd Jxysubperp = F[loc].ZeroHopping();
+//	ArrayXXd Jzsubperp  = F[loc].ZeroHopping();
+//	
+//	//set Hubbard part of Kondo Hamiltonian
+//	KondoHamiltonian += OperatorType::outerprod(B[loc].Id().structured(),
+//	                                            F[loc].HubbardHamiltonian(Uorb,tPerp,Vperp,Jxysubperp,Jzsubperp,Bzsuborb,Bxsuborb),
+//	                                            {1});
+//	
+//	//set Heisenberg part of Hamiltonian
+////	KondoHamiltonian += OperatorType::outerprod(B.HeisenbergHamiltonian(0.,P.get<bool>("CYLINDER")),F[loc].Id(),{1,0});
+//	
+//	// Kondo-J
+//	auto [J,Jorb,Jlabel] = P.fill_array1d<double>("J","Jorb",F[loc].orbitals(),loc);
+//	save_label(Jlabel);
+//	
+//	//set interaction part of Hamiltonian.
+//	for (int i=0; i<F[loc].orbitals(); ++i)
+//	{
+//		if (Jorb(i) != 0.)
+//		{
+//			KondoHamiltonian +=     Jorb(i) * OperatorType::outerprod(B[loc].Scomp(SZ,i).structured(), F[loc].Sz(i), {1});
+//			KondoHamiltonian += 0.5*Jorb(i) * OperatorType::outerprod(B[loc].Scomp(SP,i).structured(), F[loc].Sm(i), {1});
+//			KondoHamiltonian += 0.5*Jorb(i) * OperatorType::outerprod(B[loc].Scomp(SM,i).structured(), F[loc].Sp(i), {1});
+//		}
+//	}
+//	
+//	Terms.name = "Kondo U(0)⊗SU(2)";
+//	Terms.local.push_back(make_tuple(1.,KondoHamiltonian.plain<double>()));
+//	
+//	return Terms;
+//}
 
 Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
 Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
