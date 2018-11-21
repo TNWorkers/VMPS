@@ -594,7 +594,7 @@ template<typename OtherScalar>
 HamiltonianTerms<Symmetry, OtherScalar> HamiltonianTerms<Symmetry,Scalar>::
 cast()
 {
-    HamiltonianTerms<Symmetry, OtherScalar> other(N_sites);
+    HamiltonianTerms<Symmetry, OtherScalar> other(N_sites, open_bc);
     other.set_name(label);
     for(std::size_t loc=0; loc<N_sites; ++loc)
     {

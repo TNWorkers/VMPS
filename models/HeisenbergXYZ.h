@@ -106,7 +106,7 @@ HeisenbergXYZ (const size_t &L, const vector<Param> &params)
     ParamHandler P(params,HeisenbergXYZ::defaults);
     
     size_t Lcell = P.size();
-    HamiltonianTerms<Symmetry,std::complex<double>> Terms(N_sites);
+    HamiltonianTerms<Symmetry,std::complex<double>> Terms(N_sites, P.get<bool>("OPEN_BC"));
     
     for (size_t l=0; l<N_sites; ++l)
     {
@@ -114,7 +114,7 @@ HeisenbergXYZ (const size_t &L, const vector<Param> &params)
         setLocBasis(B[l].get_basis(),l);
     }
     
-    HamiltonianTermsXd<Symmetry> Terms_aux(N_sites);
+    HamiltonianTermsXd<Symmetry> Terms_aux(N_sites, P.get<bool>("OPEN_BC"));
     HeisenbergU1::set_operators(B,P,Terms_aux);
     Heisenberg::add_operators(B,P,Terms_aux);
     Terms = Terms_aux.cast<std::complex<double>>();
