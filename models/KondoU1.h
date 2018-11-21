@@ -99,7 +99,7 @@ KondoU1 (const size_t &L, const vector<Param> &params)
 //		Terms[l].info.push_back(ss.str());
 //	}
 	
-	HamiltonianTermsXd<Symmetry> Terms(N_sites);
+	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	KondoU1xU1::set_operators(B,F,P,Terms);
 	add_operators(B,F,P,Terms);
 	

@@ -178,7 +178,37 @@ public:
      *  @param lambda   Scalar of interaction strength that is multiplied to the operator
      */
     void push_nextn(std::size_t loc, Scalar lambda, OperatorType Op1, OperatorType Trans, OperatorType Op2);
-    
+
+	/**
+	 * Const reference to the local terms at lattice site \p loc.
+	 */
+	OperatorType const& localOps(std::size_t loc) const {return local[loc];}
+
+	/**
+	 * Const reference to the tight_in terms at lattice site \p loc.
+	 */
+	std::vector<OperatorType> const& tight_inOps(std::size_t loc) const {return tight_in[loc];}
+
+	/**
+	 * Const reference to the tight_out terms at lattice site \p loc.
+	 */
+	std::vector<OperatorType> const& tight_outOps(std::size_t loc) const {return tight_out[loc];}
+
+	/**
+	 * Const reference to the nextn_in terms at lattice site \p loc.
+	 */
+	std::vector<std::vector<OperatorType>> const& nextn_inOps(std::size_t loc) const {return nextn_in[loc];}
+
+	/**
+	 * Const reference to the nextn_out terms at lattice site \p loc.
+	 */
+	std::vector<std::vector<OperatorType>> const& nextn_outOps(std::size_t loc) const {return nextn_out[loc];}
+
+	/**
+	 * Const reference to the nextn terms.
+	 */
+	vector<OperatorType> const& localOps() const {return local;}
+
     /**
      *  @param loc      Lattice site
      *  @param label    Information

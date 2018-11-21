@@ -120,7 +120,7 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
         setLocBasis(B[l].get_basis().qloc(),l);
     }
     
-    HamiltonianTerms<Symmetry, double> Terms(N_sites);
+    HamiltonianTerms<Symmetry, double> Terms(N_sites, P.get<bool>("OPEN_BC"));
     set_operators(B,P,Terms);
     this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }

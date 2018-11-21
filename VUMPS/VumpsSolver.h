@@ -1386,7 +1386,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		DynParam.doSomething(N_iterations);
 		write_log();
 		#ifdef USE_HDF5_STORAGE
-		if (GlobParam.savePeriod != 0 and j%GlobParam.savePeriod == 0)
+		if (GlobParam.savePeriod != 0 and N_iterations%GlobParam.savePeriod == 0)
 		{
 			Vout.state.save("UmpsBackup",H.info());
 		}

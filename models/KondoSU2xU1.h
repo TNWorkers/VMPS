@@ -195,7 +195,7 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 //		Terms[l].info.push_back(ss.str());
 //	}
 	
-	HamiltonianTermsXd<Symmetry> Terms(N_sites);
+	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	set_operators(B,F,P,Terms);
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));

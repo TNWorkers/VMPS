@@ -106,7 +106,7 @@ HeisenbergXYZ (const size_t &L, const vector<Param> &params)
     ParamHandler P(params,HeisenbergXYZ::defaults);
     
     size_t Lcell = P.size();
-    HamiltonianTerms<Symmetry,std::complex<double>> Terms(N_sites);
+    HamiltonianTerms<Symmetry,std::complex<double>> Terms(N_sites, P.get<bool>("OPEN_BC"));
     
     for (size_t l=0; l<N_sites; ++l)
     {
