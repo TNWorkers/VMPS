@@ -2094,20 +2094,16 @@ orthogonalize_right(GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_R)
 				HouseholderQR<MatrixType> Quirinus;
 				Quirinus.compute(A_blocked.block[q].adjoint());
 
-				MatrixType Qmat = Quirinus.householderQ();
+				MatrixType Qmat = Quirinus.householderQ() * MatrixType::Identity(A_blocked.block[q].cols(),A_blocked.block[q].rows());
+				MatrixType Rmat = MatrixType::Identity(A_blocked.block[q].rows(),A_blocked.block[q].cols()) * Quirinus.matrixQR().template triangularView<Upper>();
+				//make the QR decomposition unique by enforcing the diagonal of R to be positive.
+				DiagonalMatrix<Scalar,Dynamic> Sign = Rmat.diagonal().cwiseSign().matrix().asDiagonal();
 
-				MatrixType Rmat = Quirinus.matrixQR().template triangularView<Upper>();
-				MatrixType Sign(Rmat.rows(),Rmat.rows()); Sign.setZero();
-				
-				for (size_t kk=0; kk<min(Rmat.rows(),Rmat.cols()); kk++) {Sign(kk,kk) = Rmat(kk,kk)/abs(Rmat(kk,kk));}
 				Rmat = Sign*Rmat;
 				Qmat = Qmat*Sign;
 
-
-				Q.push_back(A_blocked.in[q], A_blocked.out[q], (Qmat * MatrixType::Identity(A_blocked.block[q].cols(),A_blocked.block[q].rows())).adjoint());
-				R.push_back(A_blocked.in[q], A_blocked.out[q],
-							(MatrixType::Identity(A_blocked.block[q].rows(),A_blocked.block[q].cols()) * Rmat).adjoint() );
-				// }
+				Q.push_back(A_blocked.in[q], A_blocked.out[q], (Qmat.adjoint()));
+				R.push_back(A_blocked.in[q], A_blocked.out[q], Rmat.adjoint());
 			}
 			R = 1./R.operatorNorm(false) * R;
 			if (loc>0) {Rprev[loc-1] = R;}
@@ -2162,17 +2158,16 @@ orthogonalize_left(GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_L)
 				HouseholderQR<MatrixType> Quirinus;
 				Quirinus.compute(A_blocked.block[q]);
 
-				MatrixType Qmat = Quirinus.householderQ();
+				MatrixType Qmat = Quirinus.householderQ() * MatrixType::Identity(A_blocked.block[q].rows(),A_blocked.block[q].cols());
+				MatrixType Rmat = MatrixType::Identity(A_blocked.block[q].cols(),A_blocked.block[q].rows()) * Quirinus.matrixQR().template triangularView<Upper>();
+				//make the QR decomposition unique by enforcing the diagonal of R to be positive.
+				DiagonalMatrix<Scalar,Dynamic> Sign = Rmat.diagonal().cwiseSign().matrix().asDiagonal();
 
-				MatrixType Rmat = Quirinus.matrixQR().template triangularView<Upper>();
-				MatrixType Sign(Rmat.rows(),Rmat.rows()); Sign.setZero();
-				for (size_t kk=0; kk<min(Rmat.rows(),Rmat.cols()); kk++) {Sign(kk,kk) = Rmat(kk,kk)/abs(Rmat(kk,kk));}
 				Rmat = Sign*Rmat;
 				Qmat = Qmat*Sign;
 
-				Q.push_back(A_blocked.in[q], A_blocked.out[q], Qmat * MatrixType::Identity(A_blocked.block[q].rows(),A_blocked.block[q].cols()));
-				R.push_back(A_blocked.in[q], A_blocked.out[q],
-							MatrixType::Identity(A_blocked.block[q].cols(),A_blocked.block[q].rows()) * Rmat );
+				Q.push_back(A_blocked.in[q], A_blocked.out[q], Qmat);
+				R.push_back(A_blocked.in[q], A_blocked.out[q], Rmat);
 			}
 			R = 1./R.operatorNorm(false) * R;
 			if (loc<N_sites-1) {Lprev[loc+1] = R;}
