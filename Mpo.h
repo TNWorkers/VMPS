@@ -1527,16 +1527,22 @@ H2site (size_t loc, bool HALF_THE_LOCAL_TERM) const
 	// local part
 //	double factor = (HALF_THE_LOCAL_TERM==true)? 0.5:1.;
 	double factor = 1.;
-	for (int i=0; i<Terms[loc].local.size(); ++i)
-	{
-		Hfull += factor * get<0>(Terms[loc].local[i]) * kroneckerProduct(get<1>(Terms[loc].local[i]).data, IdD2);
-	}
+	Hfull += factor * kroneckerProduct(Terms.localOps(loc).data, IdD2);
+	// for (int i=0; i<Terms[loc].local.size(); ++i)
+	// {
+	// 	Hfull += factor * get<0>(Terms[loc].local[i]) * kroneckerProduct(get<1>(Terms[loc].local[i]).data, IdD2);
+	// }
 //	for (int i=0; i<Terms[loc+1].local.size(); ++i)
 //	{
 //		Hfull += factor * get<0>(Terms[loc+1].local[i]) * kroneckerProduct(IdD1, get<1>(Terms[loc+1].local[i]).data);
 //	}
 	
 	// tight-binding part
+	// for (size_t i=0; i<Terms.tight_outOps(loc).size(); ++i)
+	// {
+	// 	Hfull += get<0>(Terms[loc].tight[i]) * kroneckerProduct(get<1>(Terms[loc].tight[i]).data, get<2>(Terms[loc].tight[i]).data);
+	// }
+
 	for (size_t i=0; i<Terms[loc].tight.size(); ++i)
 	{
 		Hfull += get<0>(Terms[loc].tight[i]) * kroneckerProduct(get<1>(Terms[loc].tight[i]).data, get<2>(Terms[loc].tight[i]).data);

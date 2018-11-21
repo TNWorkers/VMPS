@@ -109,7 +109,7 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
 	size_t Lcell = P.size();
 	assert(Lcell > 1 and "You need to set a unit cell with at least Lcell=2 for the charge-SU(2) symmetry!");
 	//vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
-    HamiltonianTermsXd<Symmetry> Terms(N_sites);
+    HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
     F.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)

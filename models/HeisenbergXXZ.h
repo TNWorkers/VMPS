@@ -75,7 +75,7 @@ HeisenbergXXZ (const size_t &L, const vector<Param> &params)
     ParamHandler P(params,HeisenbergXXZ::defaults);
     
     size_t Lcell = P.size();
-    HamiltonianTermsXd<Symmetry> Terms(N_sites);
+    HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
     
     for (size_t l=0; l<N_sites; ++l)
     {
