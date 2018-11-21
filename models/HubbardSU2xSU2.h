@@ -63,11 +63,11 @@ public:
 	
 	Mpo<Symmetry> S (size_t locx, size_t locy=0);
 	Mpo<Symmetry> Sdag (size_t locx, size_t locy=0, double factor=sqrt(3.));
-	// Mpo<Symmetry> SSdag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	
 	Mpo<Symmetry> T (size_t locx, size_t locy=0);
 	Mpo<Symmetry> Tdag (size_t locx, size_t locy=0, double factor=1.);
-	// Mpo<Symmetry> TTdag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> TdagT (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	
 	static const map<string,any> defaults;
 	static const map<string,any> sweep_defaults;
@@ -77,6 +77,9 @@ protected:
 	vector<FermionBase<Symmetry> > F;
 	
 	Mpo<Symmetry> make_local (string name, size_t locx, size_t locy, const OperatorType &Op, double factor, bool FERMIONIC, bool HERMITIAN) const;
+	Mpo<Symmetry> make_corr  (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
+							  const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
+							  double factor, bool FERMIONIC, bool HERMITIAN) const;
 };
 
 const map<string,any> HubbardSU2xSU2::defaults = 
@@ -287,94 +290,112 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
+make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
+		   const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
+		   double factor, bool FERMIONIC, bool HERMITIAN) const
+{
+	assert(locx1<F.size() and locy1<F[locx1].dim());
+	assert(locx2<F.size() and locy2<F[locx2].dim());
+
+	stringstream ss;
+	ss << name1 << "(" << locx1 << "," << locy1 << ")"
+	   << name2 << "(" << locx2 << "," << locy2 << ")";
+	
+	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > Mout(N_sites, Qtot, ss.str(), HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+
+	if (FERMIONIC)
+	{
+		if (locx1 == locx2)
+		{
+			//The diagonal element is actually 2*unity by the symmetry. But we may leave this as a check.
+			Mout.setLocal(locx1, factor * OperatorType::prod(Op1,Op2,Qtot).plain<double>());
+		}
+		else if (locx1<locx2)
+		{
+			Mout.setLocal({locx1, locx2}, {factor * OperatorType::prod(Op1, F[locx1].sign(), Op1.Q()).plain<double>(), 
+										   Op2.plain<double>()}, 
+				F[0].sign().plain<double>());
+		}
+		else if (locx1>locx2)
+		{
+			Mout.setLocal({locx2, locx1}, {factor * OperatorType::prod(Op2, F[locx2].sign(), Op2.Q()).plain<double>(), 
+										   -1. * Op2.plain<double>()}, 
+				F[0].sign().plain<double>());
+		}
+	}
+	else
+	{
+		if (locx1 == locx2)
+		{
+			auto product = factor*OperatorType::prod(Op1, Op2, Qtot);
+			Mout.setLocal(locx1, product.plain<double>());
+		}
+		else
+		{
+			Mout.setLocal({locx1, locx2}, {(factor*Op1).plain<double>(), Op2.plain<double>()});
+		}
+	}
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 c (size_t locx, size_t locy, double factor)
 {
-//	assert(locx<N_sites and locy<F[locx].dim());
-//	stringstream ss;
-//	ss << "c(" << locx << "," << locy << ")";
-//	
-//	Mpo<Symmetry> Mout(N_sites, {2,2}, ss.str());
-//	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
-//	Mout.setLocal(locx, factor*F[locx].c(locy).plain<double>(), F[0].sign().plain<double>());
-//	return Mout;
 	return make_local("c", locx,locy, F[locx].c(locy), factor, true, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 cdag (size_t locx, size_t locy, double factor)
 {
-//	assert(locx<N_sites and locy<F[locx].dim());
-//	stringstream ss;
-//	ss << "c†(" << locx << "," << locy << ")";
-//	
-//	Mpo<Symmetry> Mout(N_sites, {2,2}, ss.str());
-//	for (size_t l=0; l<N_sites; ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
-//	Mout.setLocal(locx, factor*F[locx].cdag(locy).plain<double>(), F[0].sign().plain<double>());
-//	return Mout;
 	return make_local("c†", locx,locy, F[locx].cdag(locy), factor, true, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
-	assert(locx1<this->N_sites and locx2<this->N_sites);
-	stringstream ss;
-	ss << "c†(" << locx1 << "," << locy1 << ")" << "c(" << locx2 << "," << locy2 << ")";
+	return make_corr("c†", "c", locx1, locx2, locy1, locy2, F[locx1].S(locy1), F[locx2].S(locy2), Symmetry::qvacuum(), 2., PROP::FERMIONIC, PROP::HERMITIAN); //2 = sqrt(2)*sqrt(2)
 	
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
-	for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
+	// assert(locx1<this->N_sites and locx2<this->N_sites);
+	// stringstream ss;
+	// ss << "c†(" << locx1 << "," << locy1 << ")" << "c(" << locx2 << "," << locy2 << ")";
 	
-	auto cdag = F[locx1].cdag(locy1);
-	auto c    = F[locx2].c   (locy2);
+	// Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	// for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
 	
-	if (locx1 == locx2)
-	{
-		//The diagonal element is actually 2*unity by the symmetry. But we may leave this as a check.
-		Mout.setLocal(locx1, sqrt(2.) * sqrt(2.) * OperatorType::prod(cdag,c,Symmetry::qvacuum()).plain<double>());
-	}
-	else if (locx1<locx2)
-	{
-		Mout.setLocal({locx1, locx2}, {sqrt(2.) * sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), {2,2}).plain<double>(), 
-		                               c.plain<double>()}, 
-		                               F[0].sign().plain<double>());
-	}
-	else if (locx1>locx2)
-	{
-		Mout.setLocal({locx2, locx1}, {sqrt(2.) * sqrt(2.) * OperatorType::prod(c, F[locx2].sign(), {2,2}).plain<double>(), 
-		                               -1. * cdag.plain<double>()}, 
-		                               F[0].sign().plain<double>());
-	}
-	return Mout;
+	// auto cdag = F[locx1].cdag(locy1);
+	// auto c    = F[locx2].c   (locy2);
+	
+	// if (locx1 == locx2)
+	// {
+	// 	//The diagonal element is actually 2*unity by the symmetry. But we may leave this as a check.
+	// 	Mout.setLocal(locx1, sqrt(2.) * sqrt(2.) * OperatorType::prod(cdag,c,Symmetry::qvacuum()).plain<double>());
+	// }
+	// else if (locx1<locx2)
+	// {
+	// 	Mout.setLocal({locx1, locx2}, {sqrt(2.) * sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), {2,2}).plain<double>(), 
+	// 	                               c.plain<double>()}, 
+	// 	                               F[0].sign().plain<double>());
+	// }
+	// else if (locx1>locx2)
+	// {
+	// 	Mout.setLocal({locx2, locx1}, {sqrt(2.) * sqrt(2.) * OperatorType::prod(c, F[locx2].sign(), {2,2}).plain<double>(), 
+	// 	                               -1. * cdag.plain<double>()}, 
+	// 	                               F[0].sign().plain<double>());
+	// }
+	// return Mout;
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 nh (size_t locx, size_t locy)
 {
-//	assert(locx<N_sites and locy<F[locx].dim());
-//	stringstream ss;
-//	ss << "holon_occ(" << locx << "," << locy << ")";
-//	
-//	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
-//	for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
-//	
-//	Mout.setLocal(locx, F[locx].nh(locy).plain<double>());
-//	return Mout;
 	return make_local("nh", locx,locy, F[locx].nh(locy), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 ns (size_t locx, size_t locy)
 {
-//	assert(locx<N_sites and locy<F[locx].dim());
-//	stringstream ss;
-//	ss << "spinon_occ(" << locx << "," << locy << ")";
-//	
-//	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
-//	for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
-//	
-//	Mout.setLocal(locx, F[locx].ns(locy).plain<double>());
-//	return Mout;
-	return make_local("ns", locx,locy, F[locx].nh(locy), 1., false, false);
+	return make_local("ns", locx,locy, F[locx].ns(locy), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
@@ -399,6 +420,18 @@ Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU
 Tdag (size_t locx, size_t locy, double factor)
 {
 	return make_local("T†", locx,locy, F[locx].Tdag(locy), factor, false, false);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
+SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
+{
+	return make_corr("S†", "S", locx1, locx2, locy1, locy2, F[locx1].Sdag(locy1), F[locx2].S(locy2), Symmetry::qvacuum(), std::sqrt(3.), PROP::NON_FERMIONIC, PROP::HERMITIAN);	
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
+TdagT (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
+{
+	return make_corr("T†", "T", locx1, locx2, locy1, locy2, F[locx1].Tdag(locy1), F[locx2].T(locy2), Symmetry::qvacuum(), std::sqrt(3.), PROP::NON_FERMIONIC, PROP::HERMITIAN);	
 }
 
 } //end namespace VMPS

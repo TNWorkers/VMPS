@@ -1543,10 +1543,10 @@ H2site (size_t loc, bool HALF_THE_LOCAL_TERM) const
 	// 	Hfull += get<0>(Terms[loc].tight[i]) * kroneckerProduct(get<1>(Terms[loc].tight[i]).data, get<2>(Terms[loc].tight[i]).data);
 	// }
 
-	for (size_t i=0; i<Terms[loc].tight.size(); ++i)
-	{
-		Hfull += get<0>(Terms[loc].tight[i]) * kroneckerProduct(get<1>(Terms[loc].tight[i]).data, get<2>(Terms[loc].tight[i]).data);
-	}
+	// for (size_t i=0; i<Terms[loc].tight.size(); ++i)
+	// {
+	// 	Hfull += get<0>(Terms[loc].tight[i]) * kroneckerProduct(get<1>(Terms[loc].tight[i]).data, get<2>(Terms[loc].tight[i]).data);
+	// }
 	
 	boost::multi_array<Scalar,4> Mout(boost::extents[D1][D1][D2][D2]);
 	

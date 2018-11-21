@@ -48,15 +48,17 @@ struct VUMPS
 		struct DEFAULT
 		{
 			//GLOB DEFAULTS
-			constexpr static size_t min_iterations = 1;
-			constexpr static size_t max_iterations = 300;
-			constexpr static double tol_eigval     = 1e-10;
-			constexpr static double tol_state      = 1e-10;
-			constexpr static double tol_var        = 1e-3;
-			constexpr static size_t Dinit          = 4;
-			constexpr static size_t Dlimit         = 500;
-			constexpr static size_t Qinit          = 4;
-			constexpr static size_t savePeriod     = 0;
+			constexpr static size_t min_iterations             = 1;
+			constexpr static size_t max_iterations             = 300;
+			constexpr static size_t min_iter_without_expansion = 10;
+			constexpr static size_t max_iter_without_expansion = 50;
+			constexpr static double tol_eigval                 = 1e-8;
+			constexpr static double tol_state                  = 1e-7;
+			constexpr static double tol_var                    = 1e-7;
+			constexpr static size_t Dinit                      = 4;
+			constexpr static size_t Dlimit                     = 500;
+			constexpr static size_t Qinit                      = 4;
+			constexpr static size_t savePeriod                 = 0;
 
 			//DYN DEFAULTS
 			static size_t max_deltaD          (size_t i) {return (i<200)? 100ul:0ul;} // Maximum expansion by 100 and turn off expansion completely after 200 iterations
@@ -75,15 +77,17 @@ struct VUMPS
 		
 		struct GLOB
 		{
-			size_t min_iterations           = CONTROL::DEFAULT::min_iterations;
-			size_t max_iterations           = CONTROL::DEFAULT::max_iterations;
-			double tol_eigval               = CONTROL::DEFAULT::tol_eigval;
-			double tol_var                  = CONTROL::DEFAULT::tol_var;
-			double tol_state                = CONTROL::DEFAULT::tol_state;
-			size_t Dinit                    = CONTROL::DEFAULT::Dinit;
-			size_t Dlimit                   = CONTROL::DEFAULT::Dlimit;
-			size_t Qinit                    = CONTROL::DEFAULT::Qinit;
-			size_t savePeriod               = CONTROL::DEFAULT::savePeriod;
+			size_t min_iterations             = CONTROL::DEFAULT::min_iterations;
+			size_t max_iterations             = CONTROL::DEFAULT::max_iterations;
+			size_t min_iter_without_expansion = CONTROL::DEFAULT::min_iter_without_expansion;
+			size_t max_iter_without_expansion = CONTROL::DEFAULT::max_iter_without_expansion;
+			double tol_eigval                 = CONTROL::DEFAULT::tol_eigval;
+			double tol_var                    = CONTROL::DEFAULT::tol_var;
+			double tol_state                  = CONTROL::DEFAULT::tol_state;
+			size_t Dinit                      = CONTROL::DEFAULT::Dinit;
+			size_t Dlimit                     = CONTROL::DEFAULT::Dlimit;
+			size_t Qinit                      = CONTROL::DEFAULT::Qinit;
+			size_t savePeriod                 = CONTROL::DEFAULT::savePeriod;
 		};
 		
 		struct DYN

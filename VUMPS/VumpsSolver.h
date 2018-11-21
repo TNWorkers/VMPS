@@ -45,7 +45,10 @@ public:
 	
 	/**Resets the verbosity level.*/
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
-	
+
+	/**Returnx the verbosity level.*/
+	inline DMRG::VERBOSITY::OPTION get_verbosity () {return CHOSEN_VERBOSITY;};
+
 	//call this function if you want to set the parameters for the solver by yourself
 	void userSetGlobParam    () { USER_SET_GLOBPARAM     = true; }
 	void userSetDynParam     () { USER_SET_DYNPARAM      = true; }
@@ -81,7 +84,11 @@ public:
 	 */
 	void edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
 	                qarray<Symmetry::Nq> Qtot, LANCZOS::EDGE::OPTION EDGE=LANCZOS::EDGE::GROUND, bool USE_STATE=false);
-	
+
+	const double& errVar() {return err_var;}
+	const double& errState() {return err_state;}
+	const double& errEigval() {return err_eigval;}
+
 private:
 	
 	///\{
@@ -185,7 +192,7 @@ private:
 	// double tol_eigval, tol_var;
 	
 	/**keeping track of iterations*/
-	size_t N_iterations;
+	size_t N_iterations, N_iterations_without_expansion;
 	
 	/**errors*/
 	double err_eigval, err_var, err_state=std::nan("1");
@@ -511,6 +518,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 {
 	N_sites = H.length();
 	N_iterations = 0;
+	N_iterations_without_expansion = 0;
 	
 	Stopwatch<> PrepTimer;
 	
@@ -847,21 +855,39 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	double tolLanczosEigval, tolLanczosState;
 	set_LanczosTolerances(tolLanczosEigval,tolLanczosState);
 
-	if (err_var < GlobParam.tol_var and N_iterations%DynParam.Dincr_per(N_iterations) == 0 )
+	double t_exp=0.;
+	double t_trunc=0.;
+	// cout << "N_iterations_without_expansion=" << N_iterations_without_expansion
+	// 	 << ", max_iter_without_expansion=" << GlobParam.max_iter_without_expansion
+	// 	 << ", min_iter_without_expansion=" << GlobParam.min_iter_without_expansion
+	// 	 << boolalpha
+	// 	 << ", err_var cond: " << (err_var < GlobParam.tol_var)
+	// 	 << ", min cond: " << (N_iterations_without_expansion > GlobParam.min_iter_without_expansion)
+	// 	 << ", max cond: " << (N_iterations_without_expansion > GlobParam.max_iter_without_expansion) << endl;
+	if ((err_var < GlobParam.tol_var and N_iterations_without_expansion > GlobParam.min_iter_without_expansion) or
+		N_iterations_without_expansion > GlobParam.max_iter_without_expansion)
 	{
+		Stopwatch<> ExpansionTimer;
 		size_t deltaD = min(max(static_cast<size_t>(DynParam.Dincr_rel(N_iterations) * Vout.state.max_Nsv-Vout.state.max_Nsv), DynParam.Dincr_abs(N_iterations)),
 							DynParam.max_deltaD(N_iterations));
 		// if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
 		expand_basis(deltaD, H, Vout, VUMPS::TWOSITE_A::ALxCxAR);
+		t_exp = ExpansionTimer.time();
+		N_iterations_without_expansion = 0;
 	}
 
 	if (err_var < GlobParam.tol_var and (N_iterations+1)%DynParam.Dincr_per(N_iterations) == 0 )
 	{
+		Stopwatch<> TruncationTimer;
 		Vout.state.truncate();
+		t_trunc = TruncationTimer.time();
 	}
 
+	Stopwatch<> EnvironmentTimer;
 	build_cellEnv(H,Vout);
-	
+	double t_env = EnvironmentTimer.time();
+
+	Stopwatch<> OptimizationTimer;
 	// See Algorithm 4
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -908,13 +934,15 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		Vout.state.A[GAUGE::C][l] = gAC.state.data;
 		Vout.state.C[l] = gC.state.data[0];
 	}
-	
+	double t_opt = OptimizationTimer.time();
+
+	Stopwatch<> SweepTimer;
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		(err_var>0.01)? Vout.state.svdDecompose(l) : Vout.state.polarDecompose(l);
 	}
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
-	
+	double t_sweep = SweepTimer.time();
 //	// Calculate energies
 //	Biped<Symmetry,ComplexMatrixType> Reigen_ = calc_LReigen(GAUGE::L, Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::L], 
 //	                                                         Vout.state.outBasis(N_sites-1), Vout.state.outBasis(N_sites-1), Vout.state.qloc).state;
@@ -942,15 +970,23 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	}
 	
 	++N_iterations;
+	++N_iterations_without_expansion;
 	
+	double t_tot = IterationTimer.time();
 	// print stuff
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		size_t standard_precision = cout.precision();
-		lout << "S=" << Vout.state.entropy().transpose() << endl;
 		lout << termcolor::bold << eigeninfo() << termcolor::reset << endl;
+		
 		lout << Vout.state.info() << endl;
-		lout << IterationTimer.info("full parallel iteration") << endl;
+		lout << IterationTimer.info("full parallel iteration") <<
+			" (environment=" << round(t_env/t_tot*100.,0)  << "%" <<
+			", optimization=" << round(t_opt/t_tot*100.,0)  << "%" <<
+			", sweep=" << round(t_sweep/t_tot*100.,0) << "%";
+		if (t_exp != 0.) {lout << ", basis expansion=" << round(t_exp/t_tot*100.,0) << "%";}
+		if (t_trunc != 0) {lout << ", basis truncation=" << round(t_trunc/t_tot*100.,0) << "%";}
+		lout << ")"<< endl;
 		lout << endl;
 	}
 }

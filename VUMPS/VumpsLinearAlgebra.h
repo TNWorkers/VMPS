@@ -11,7 +11,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
-	size_t amount_of_cells = 1;
+	size_t amount_of_cells = 1; 
 	auto Obs = O;
 	if(Obs.length() != Vket.length() and Vket.Qtarget() != Symmetry::qvacuum())
 	{

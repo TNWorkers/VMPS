@@ -20,6 +20,7 @@ Logger lout;
 
 #include "solvers/DmrgSolver.h"
 #include "VUMPS/VumpsSolver.h"
+#include "VUMPS/VumpsLinearAlgebra.h"
 #include "models/HubbardSU2xSU2.h"
 
 template<typename Scalar>
@@ -56,7 +57,26 @@ complex<double> Ptot (const MatrixXd &densityMatrix, int L)
 	return P;
 }
 
-size_t L, Ly, Ly2;
+struct Obs{
+	Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> nh;
+	Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> ns;
+	Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> SdagS;
+	Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> TdagT;
+	Eigen::MatrixXd entropy;
+
+	void resize(size_t Lcell, size_t Lobs)
+		{
+			nh.resize(Lcell,1); nh.setZero();
+			ns.resize(Lcell,1); ns.setZero();
+			entropy.resize(Lcell,1); entropy.setZero();
+			SdagS.resize(Lobs*Lcell,Lobs*Lcell); SdagS.setZero();
+			TdagT.resize(Lobs*Lcell,Lobs*Lcell); TdagT.setZero();
+		}
+};
+
+Obs obs;
+
+size_t L, L_obs, Ly, Ly2;
 int volume;
 double t, tPrime, tRung, U, mu, Bz, J, V;
 int M, N, S, Nup, Ndn;
@@ -76,6 +96,8 @@ int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",4);
+	L_obs = args.get<size_t>("Lobs",40);
+
 	Ly = args.get<size_t>("Ly",1);
 	Ly2 = args.get<size_t>("Ly2",Ly);
 	t = args.get<double>("t",1.);
@@ -153,14 +175,81 @@ int main (int argc, char* argv[])
 	volume = H.volume();
 	int T = volume-N+1;
 
+	obs.resize(L,L_obs);
+	
 	if (VUMPS)
 	{
 		VMPS::HubbardSU2xSU2::uSolver Foxy(VERB);
+		HDF5Interface target;
+		auto measure_and_save = [&H,&target,&params,&Foxy](size_t j) -> void
+		{
+			if (Foxy.errVar() < 1.e-6)
+			{
+				std::stringstream bond;
+				target = HDF5Interface("obs/observables.h5",REWRITE);
+				bond << g_foxy.state.calc_fullMmax();
+				if (target.HAS_GROUP(bond.str())) {return;}
+				
+				Stopwatch<> SaveAndMeasure;
+				for(size_t c=0; c<L; c++)
+				{
+					obs.nh(c) = avg(g_foxy.state,H.nh(c,0),g_foxy.state);
+					obs.ns(c) = avg(g_foxy.state,H.ns(c,0),g_foxy.state);					
+				}
+				obs.entropy = g_foxy.state.entropy();
 
+				for (std::size_t j=0; j<L_obs; j++)
+				{
+					VMPS::HubbardSU2xSU2 Htmp((j+1)*L,params);
+					for(size_t c1=0; c1<L; c1++)
+					for(size_t c2=0; c2<L; c2++)
+					{
+						obs.SdagS(0+c1,j*L+c2) = avg(g_foxy.state, Htmp.SdagS(0+c1,j*L+c2), g_foxy.state);
+						obs.TdagT(0+c1,j*L+c2) = avg(g_foxy.state, Htmp.TdagT(0+c1,j*L+c2), g_foxy.state);
+					}
+				}
+				for(std::size_t i=1; i<L_obs; i++)
+				for(std::size_t j=i; j<L_obs; j++)
+				{
+					for(size_t c1=0; c1<L; c1++)
+					for(size_t c2=0; c2<L; c2++)
+					{
+						obs.SdagS(i*L+c1,j*L+c2) = obs.SdagS(0+c1,(j-i)*L+c2);
+						obs.TdagT(i*L+c1,j*L+c2) = obs.TdagT(0+c1,(j-i)*L+c2);
+					}
+				}
+				
+				for(std::size_t i=0; i<L_obs*L; i++)
+				for(std::size_t j=0; j<i; j++)
+				{
+					obs.SdagS(i,j) = obs.SdagS(j,i);
+					obs.TdagT(i,j) = obs.TdagT(j,i);
+				}
+				
+				target.create_group(bond.str());
+				std::stringstream Dmax;
+				Dmax << g_foxy.state.calc_Dmax();
+				std::stringstream Mmax;
+				Mmax << g_foxy.state.calc_Mmax();
+				target.save_scalar("Dmax",Dmax.str(),bond.str());
+				target.save_scalar("Mmax",Mmax.str(),bond.str());
+				target.save_scalar("full Mmax",bond.str(),bond.str());
+				target.save_matrix(obs.nh,"nh",bond.str());
+				target.save_matrix(obs.ns,"ns",bond.str());
+				target.save_matrix(obs.entropy,"Entropy",bond.str());
+				target.save_matrix(obs.SdagS,"SiSj",bond.str());
+				target.save_matrix(obs.TdagT,"TiTj",bond.str());
+				target.close();
+				stringstream ss;
+				ss << "Calcuated and saved observables for M=" << g_foxy.state.calc_fullMmax();
+				if(Foxy.get_verbosity() >= DMRG::VERBOSITY::HALFSWEEPWISE) {lout << SaveAndMeasure.info(ss.str()) << endl << endl;}
+			}
+		};
 		Foxy.userSetGlobParam();
 		Foxy.userSetDynParam();
 		Foxy.GlobParam = GlobParam_foxy;
 		Foxy.DynParam = DynParam_foxy;
+		Foxy.DynParam.doSomething = measure_and_save;
 		Foxy.edgeState(H, g_foxy, {0,0});
 
 		emin = g_foxy.energy;
@@ -181,7 +270,19 @@ int main (int argc, char* argv[])
 	t_tot = Watch.time();
 	lout << "emin=" << emin << endl;
 
-	if (VUMPS) {}
+	if (VUMPS)
+	{
+		size_t dmax = 40;
+		for (size_t d=1; d<dmax; ++d)
+		{
+			VMPS::HubbardSU2xSU2 Htmp(d+1,params);
+			double SdagS = avg(g_foxy.state,Htmp.SdagS(0,d),g_foxy.state);
+			double TdagT = avg(g_foxy.state,Htmp.TdagT(0,d),g_foxy.state);
+
+			lout << "d=" << d << ", <S†S>=" << SdagS << ", <T†T>=" << TdagT << endl;
+		}
+
+	}
 	else
 	{
 		for (size_t l=0; l<L; ++l)
