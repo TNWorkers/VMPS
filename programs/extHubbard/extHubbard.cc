@@ -193,6 +193,7 @@ int main (int argc, char* argv[])
 				std::stringstream bond;
 				target = HDF5Interface("obs/observables.h5",REWRITE);
 				bond << g_foxy.state.calc_fullMmax();
+				cout << termcolor::red << "Measure at M=" << bond.str() << ", if possible" << termcolor::reset << endl;
 				if (target.HAS_GROUP(bond.str())) {return;}
 				
 				Stopwatch<> SaveAndMeasure;
@@ -236,9 +237,13 @@ int main (int argc, char* argv[])
 				Dmax << g_foxy.state.calc_Dmax();
 				std::stringstream Mmax;
 				Mmax << g_foxy.state.calc_Mmax();
-				target.save_scalar("Dmax",Dmax.str(),bond.str());
-				target.save_scalar("Mmax",Mmax.str(),bond.str());
-				target.save_scalar("full Mmax",bond.str(),bond.str());
+				target.save_scalar(g_foxy.state.calc_Dmax(),"Dmax",bond.str());
+				target.save_scalar(g_foxy.state.calc_Mmax(),"Mmax",bond.str());
+				target.save_scalar(g_foxy.state.calc_fullMmax(),"full Mmax",bond.str());
+				target.save_scalar(Foxy.errEigval(),"err_eigval",bond.str());
+				target.save_scalar(Foxy.errState(),"err_state",bond.str());
+				target.save_scalar(Foxy.errVar(),"err_var",bond.str());
+
 				target.save_matrix(obs.nh,"nh",bond.str());
 				target.save_matrix(obs.ns,"ns",bond.str());
 				target.save_matrix(obs.entropy,"Entropy",bond.str());
@@ -255,6 +260,7 @@ int main (int argc, char* argv[])
 		Foxy.GlobParam = GlobParam_foxy;
 		Foxy.DynParam = DynParam_foxy;
 		Foxy.DynParam.doSomething = measure_and_save;
+		Foxy.set_log(2,"e0.dat","err_eigval.dat","err_var.dat","err_state.dat");
 		Foxy.edgeState(H, g_foxy, {0,0});
 
 		emin = g_foxy.energy;

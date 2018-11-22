@@ -198,8 +198,19 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	set_operators(B,F,P,Terms);
 //	cout << Terms.print_info() << endl;
-	
-	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+
+	//Workaround for wrong qOp/auxBasis if we have a Kondo_anpacked case
+	bool RESET_Q_OP=false;
+	for (size_t l=0; l<N_sites; l++)
+	{
+		if (P.get<size_t>("LyF",l%Lcell) == 0ul)
+		{
+			RESET_Q_OP = true;
+			break;
+		}
+	}
+
+	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"),RESET_Q_OP);
 	this->precalc_TwoSiteData();
 }
 

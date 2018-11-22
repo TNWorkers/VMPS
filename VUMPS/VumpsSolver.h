@@ -870,6 +870,8 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		Stopwatch<> ExpansionTimer;
 		size_t deltaD = min(max(static_cast<size_t>(DynParam.Dincr_rel(N_iterations) * Vout.state.max_Nsv-Vout.state.max_Nsv), DynParam.Dincr_abs(N_iterations)),
 							DynParam.max_deltaD(N_iterations));
+		//make sure to perform at least one measurement before expanding the basis
+		DynParam.doSomething(N_iterations);
 		// if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
 		expand_basis(deltaD, H, Vout, VUMPS::TWOSITE_A::ALxCxAR);
 		t_exp = ExpansionTimer.time();
@@ -953,14 +955,16 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 ////	complex<double> eL_ = contract_LR(YLlast.template cast<ComplexMatrixType>(), Reigen_) / static_cast<double>(H.volume());
 ////	complex<double> eR_ = contract_LR(Leigen_, YRfrst.template cast<ComplexMatrixType>()) / static_cast<double>(H.volume());
 //	cout << termcolor::blue << "eL_=" << eL_ << ", eR_=" << eR_ << termcolor::reset << endl;
-	
+
+	Stopwatch<> ErrorTimer;
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
 	eL = contract_LR(0, YLlast, Reigen) / H.volume();
 	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
-	
+
 	calc_errors(H, Vout);
 	Vout.energy = min(eL,eR);
+	double t_err = ErrorTimer.time();
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
@@ -983,7 +987,8 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		lout << IterationTimer.info("full parallel iteration") <<
 			" (environment=" << round(t_env/t_tot*100.,0)  << "%" <<
 			", optimization=" << round(t_opt/t_tot*100.,0)  << "%" <<
-			", sweep=" << round(t_sweep/t_tot*100.,0) << "%";
+			", sweep=" << round(t_sweep/t_tot*100.,0) << "%" <<
+			", error=" << round(t_err/t_tot*100.,0) << "%";
 		if (t_exp != 0.) {lout << ", basis expansion=" << round(t_exp/t_tot*100.,0) << "%";}
 		if (t_trunc != 0) {lout << ", basis truncation=" << round(t_trunc/t_tot*100.,0) << "%";}
 		lout << ")"<< endl;
@@ -1527,6 +1532,9 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option)
 {
+	//early return if one actually wants to do nothing.
+	if (DeltaD == 0ul) {return;}
+	
 	vector<Biped<Symmetry,MatrixType> > NL;
 	vector<Biped<Symmetry,MatrixType> > NR;
 	Biped<Symmetry,MatrixType> NAAN;

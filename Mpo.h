@@ -362,7 +362,7 @@ protected:
 	
 	/**Calculates the W-matrices from given \p HamiltonianTerms. Used to construct Hamiltonians.*/
 	void construct_from_Terms (const HamiltonianTerms<Symmetry,Scalar> &Terms_input,
-	                           size_t Lcell=1ul, bool CALC_SQUARE=false, bool OPEN_BC=true);
+	                           size_t Lcell=1ul, bool CALC_SQUARE=false, bool OPEN_BC=true, bool WORKAROUND_FOR_UNPACKED=false);
 	
 	/**Construct with \p vector<SuperMatrix> and input \p qOp. Most general of the construct routines, all the source code is here.*/
 	void calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
@@ -479,13 +479,14 @@ Identity (const vector<vector<qarray<Nq> > > &qloc)
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 construct_from_Terms (const HamiltonianTerms<Symmetry,Scalar> &Terms_input,
-                      size_t Lcell, bool CALC_SQUARE, bool OPEN_BC)
+                      size_t Lcell, bool CALC_SQUARE, bool OPEN_BC, bool WORKAROUND_FOR_UNPACKED)
 {
 	Terms = Terms_input;
 	std::vector<SuperMatrix<Symmetry,Scalar>> G = Terms.construct_Matrix();
 	for (size_t loc=0; loc<N_sites; ++loc)
 	{
-		setOpBasis(G[loc].calc_qOp(),loc);
+		if (WORKAROUND_FOR_UNPACKED) {setOpBasis(G[1].calc_qOp(),loc);}
+		else {setOpBasis(G[loc].calc_qOp(),loc);}
 	}
 	calc_W_from_Gvec(G, W, Daux, CALC_SQUARE, OPEN_BC);
 	generate_label(Lcell);

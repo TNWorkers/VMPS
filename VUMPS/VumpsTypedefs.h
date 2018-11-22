@@ -61,7 +61,7 @@ struct VUMPS
 			constexpr static size_t savePeriod                 = 0;
 
 			//DYN DEFAULTS
-			static size_t max_deltaD          (size_t i) {return (i<200)? 100ul:0ul;} // Maximum expansion by 100 and turn off expansion completely after 200 iterations
+			static size_t max_deltaD          (size_t i) {return (i<1800)? 100ul:0ul;} // Maximum expansion by 100 and turn off expansion completely after 1800 iterations
 			static size_t Dincr_abs           (size_t i) {return 2ul;} // increase D by at least Dincr_abs
 			static double Dincr_rel           (size_t i) {return 1.04;} // increase D by at least 4%
 			static size_t Dincr_per           (size_t i) {return 10ul;} // increase D every 10 iterations
