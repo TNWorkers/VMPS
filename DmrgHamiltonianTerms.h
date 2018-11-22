@@ -419,7 +419,7 @@ push_nextn(std::size_t loc, Scalar lambda, OperatorType Op1, OperatorType Trans,
 		       "Dimensions of transfer operator and local Hilbert space do not match");
 		assert(hilbert_dimension[(loc+2)%N_sites] == 0 or hilbert_dimension[(loc+2)%N_sites] == Op2.data.rows() and 
 		       "Dimensions of second operator and local Hilbert space do not match");
-		assert(Trans.Q == qvac and "Transfer operator is not a singlet");
+		//assert(Trans.Q == qvac and "Transfer operator is not a singlet");
 		COMPRESSED = false;
 		
 		std::ptrdiff_t transit = std::distance(nextn_TransOps[(loc+1)%N_sites].begin(), 

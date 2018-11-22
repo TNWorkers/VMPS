@@ -367,27 +367,45 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
             }
         }
     
-       /* param0d J3site = P.fill_array0d<double>("J3site","J3site",loc);
-        save_label(J3site.label);
-        
-        if (J3site.x != 0.)
-        {
-            lout << "Warning! J3site has to be tested against ED!" << endl;
-            
-            assert(F[loc].orbitals() == 1 and "Cannot do a ladder with 3-site J terms!");
-            
-            // three-site terms without spinflip
-            Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F[loc].cdag(UP)  * F[loc].sign(), F[loc].c(UP),    F[loc].n(DN)*F[loc].sign()));
-            Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F[loc].cdag(DN)  * F[loc].sign(), F[loc].c(DN),    F[loc].n(UP)*F[loc].sign()));
-            Terms.nextn.push_back(make_tuple(-0.25*J3site.x, -1.*F[loc].c(UP) * F[loc].sign(), F[loc].cdag(UP), F[loc].n(DN)*F[loc].sign()));
-            Terms.nextn.push_back(make_tuple(-0.25*J3site.x, -1.*F[loc].c(DN) * F[loc].sign(), F[loc].cdag(DN), F[loc].n(UP)*F[loc].sign()));
-            
-            // three-site terms with spinflip
-            Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F[loc].cdag(DN)  * F[loc].sign(), F[loc].c(UP),    F[loc].Sp()*F[loc].sign()));
-            Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F[loc].cdag(UP)  * F[loc].sign(), F[loc].c(DN),    F[loc].Sm()*F[loc].sign()));
-            Terms.nextn.push_back(make_tuple(+0.25*J3site.x, -1.*F[loc].c(DN) * F[loc].sign(), F[loc].cdag(UP), F[loc].Sm()*F[loc].sign()));
-            Terms.nextn.push_back(make_tuple(+0.25*J3site.x, -1.*F[loc].c(UP) * F[loc].sign(), F[loc].cdag(DN), F[loc].Sp()*F[loc].sign()));
-        }*/
+    	param0d J3site = P.fill_array0d<double>("J3site", "J3site", loc%Lcell);
+		Terms.save_label(loc, J3site.label);
+
+		if (J3site.x != 0.)
+		{
+		    lout << "Warning! J3site has to be tested against ED!" << endl;
+    
+    		assert(orbitals == 1 and "Cannot do a ladder with 3-site J terms!");
+			if(loc < N_sites-2 || !P.get<bool>("OPEN_BC"))
+			{
+				
+				SiteOperator<Symmetry, double> cup_sign_local = F[loc].c(UP) * F[loc].sign();
+				SiteOperator<Symmetry, double> cdn_sign_local = F[loc].c(DN) * F[loc].sign();
+				SiteOperator<Symmetry, double> cupdag_sign_local = F[loc].cdag(UP) * F[loc].sign();
+				SiteOperator<Symmetry, double> cdndag_sign_local = F[loc].cdag(DN) * F[loc].sign();
+				
+				SiteOperator<Symmetry, double> nup_sign_tight = F[(loc+1)%N_sites].n(UP) * F[(loc+1)%N_sites].sign();
+				SiteOperator<Symmetry, double> ndn_sign_tight = F[(loc+1)%N_sites].n(UP) * F[(loc+1)%N_sites].sign();
+				SiteOperator<Symmetry, double> Sp_sign_tight = F[(loc+1)%N_sites].Sp() * F[(loc+1)%N_sites].sign();
+				SiteOperator<Symmetry, double> Sm_sign_tight = F[(loc+1)%N_sites].Sm() * F[(loc+1)%N_sites].sign();
+				
+				SiteOperator<Symmetry, double> cup_nextn = F[(loc+2)%N_sites].c(UP);
+				SiteOperator<Symmetry, double> cdn_nextn = F[(loc+2)%N_sites].c(DN);
+				SiteOperator<Symmetry, double> cupdag_nextn = F[(loc+2)%N_sites].cdag(UP);
+				SiteOperator<Symmetry, double> cdndag_nextn = F[(loc+2)%N_sites].cdag(DN);
+				
+				// three-site terms without spinflip
+				Terms.push_nextn(loc, -0.25*J3site.x, cupdag_sign_local, ndn_sign_tight, cup_nextn);
+				Terms.push_nextn(loc, -0.25*J3site.x, cdndag_sign_local, nup_sign_tight, cdn_nextn);
+				Terms.push_nextn(loc, +0.25*J3site.x, cup_sign_local, ndn_sign_tight, cupdag_nextn);
+				Terms.push_nextn(loc, +0.25*J3site.x, cdn_sign_local, nup_sign_tight, cdndag_nextn);
+				
+				// three-site terms with spinflip
+				Terms.push_nextn(loc, -0.25*J3site.x, cupdag_sign_local, Sm_sign_tight, cdn_nextn);
+				Terms.push_nextn(loc, -0.25*J3site.x, cdndag_sign_local, Sp_sign_tight, cup_nextn);
+				Terms.push_nextn(loc, +0.25*J3site.x, cup_sign_local, Sp_sign_tight, cdndag_nextn);
+				Terms.push_nextn(loc, +0.25*J3site.x, cdn_sign_local, Sm_sign_tight, cupdag_nextn);
+			}
+		}
     }
     
     if (!U_infinite)
