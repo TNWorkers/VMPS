@@ -481,14 +481,14 @@ void Mpo<Symmetry,Scalar>::
 construct_from_Terms (const HamiltonianTerms<Symmetry,Scalar> &Terms_input,
                       size_t Lcell, bool CALC_SQUARE, bool OPEN_BC)
 {
-    Terms = Terms_input;
-    std::vector<SuperMatrix<Symmetry,Scalar>> G = Terms.construct_Matrix();
-    for (size_t loc=0; loc<N_sites; ++loc)
-    {
-        setOpBasis(G[loc].calc_qOp(),loc);
-    }
-    calc_W_from_Gvec(G, W, Daux, CALC_SQUARE, OPEN_BC);
-    generate_label(Lcell);
+	Terms = Terms_input;
+	std::vector<SuperMatrix<Symmetry,Scalar>> G = Terms.construct_Matrix();
+	for (size_t loc=0; loc<N_sites; ++loc)
+	{
+		setOpBasis(G[loc].calc_qOp(),loc);
+	}
+	calc_W_from_Gvec(G, W, Daux, CALC_SQUARE, OPEN_BC);
+	generate_label(Lcell);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -913,6 +913,10 @@ info() const
 		ss << ",";
 	}
 	ss << " ";
+	
+//	cout << endl;
+//	cout << Daux << endl;
+//	cout << endl;
 	
 //	ss << "trunc_weight=" << truncWeight.sum() << ", ";
 	ss << "mem=" << round(memory(GB),3) << "GB";

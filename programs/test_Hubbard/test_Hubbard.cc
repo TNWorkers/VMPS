@@ -609,5 +609,5 @@ int main (int argc, char* argv[])
 	
 	lout << endl << T;
 	
-	lout << "ref=" << VMPS::Hubbard::ref({{"n",static_cast<double>((N)/V)},{"U",U},{"t",t},{"Ly",Ly},{"tRung",tRung}}) << endl;
+	lout << "ref=" << VMPS::Hubbard::ref({{"n",static_cast<double>((N)/V)},{"U",U},{"t",t},{"Ly",Ly},{"tRung",tRung},{"tPrime",tPrime}}) << endl;
 }

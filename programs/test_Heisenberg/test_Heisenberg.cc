@@ -36,7 +36,8 @@ Logger lout;
 #include "models/HeisenbergSU2.h"
 #include "models/HeisenbergU1.h"
 #include "models/HeisenbergU1XXZ.h"
-#include "models/HeisenbergXYZ.h"
+#include "models/Heisenberg.h"
+//#include "models/HeisenbergXYZ.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, bool COLOR=false, int n=14)

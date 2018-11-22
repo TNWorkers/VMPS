@@ -126,6 +126,7 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
 	
 	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	set_operators(B,F,P,Terms);
+//	cout << Terms.print_info() << endl;
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 	this->precalc_TwoSiteData();
@@ -237,7 +238,7 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 			{
 				if (J(alfa) != 0.)
 				{
-					assert(Forbitals == Borbitals);
+					assert(Forbitals == Borbitals and "Can only do a Kondo ladder with the same amount of spins and fermionic orbitals in y-direction!");
 					Hloc += 0.5*J(alfa) * kroneckerProduct(B[loc].Scomp(SP,alfa), F[loc].Sm(alfa));
 					Hloc += 0.5*J(alfa) * kroneckerProduct(B[loc].Scomp(SM,alfa), F[loc].Sp(alfa));
 					Hloc +=     J(alfa) * kroneckerProduct(B[loc].Scomp(SZ,alfa), F[loc].Sz(alfa));
@@ -248,7 +249,7 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 			{
 				if (I3loc(alfa) != 0.)
 				{
-					assert(Forbitals == Borbitals);
+					assert(Forbitals == Borbitals and "Can only do a Kondo ladder with the same amount of spins and fermionic orbitals in y-direction!");
 					Hloc += I3loc(alfa) * kroneckerProduct(B[loc].Scomp(SZ,alfa), F[loc].Sz(alfa));
 				}
 			}
@@ -264,7 +265,7 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		
 		// V∥
 		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {Forbitals, Fnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, tPara.label);
+		Terms.save_label(loc, Vpara.label);
 		
 		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
 		{
@@ -421,7 +422,6 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 			for (std::size_t alfa=0; alfa<Forbitals;       ++alfa)
 			for (std::size_t beta=0; beta<Fnextn_orbitals; ++beta)
 			{
-//				cout << "push 4 nextn at loc=" << loc << " with " << -tPrime(alfa,beta) << endl;
 				Terms.push_nextn(loc, -tPrime(alfa,beta),
 				                 kroneckerProduct(B[loc].Id(), F[loc].cdag(UP,alfa) * F[loc].sign()),
 				                 kroneckerProduct(B[lp1].Id(), F[lp1].sign()),

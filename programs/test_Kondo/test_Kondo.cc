@@ -272,6 +272,7 @@ int main (int argc, char* argv[])
 					if (OP=="Ssub") {return H_U1xU1.Ssub(SP,i);}
 					if (OP=="cUP") {return H_U1xU1.c<UP>(i);}
 					if (OP=="cDN") {return H_U1xU1.c<DN>(i);}
+					return H_U1xU1.Identity(H_U1xU1.locBasis());
 				};
 				auto SingleOp_dag = [&H_U1xU1](size_t i) -> Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,double>
 				{
@@ -279,6 +280,7 @@ int main (int argc, char* argv[])
 					if (OP=="Ssub") {return H_U1xU1.Ssub(SM,i);}
 					if (OP=="cUP") {return H_U1xU1.cdag<UP>(i);}
 					if (OP=="cDN") {return H_U1xU1.cdag<DN>(i);}
+					return H_U1xU1.Identity(H_U1xU1.locBasis());
 				};
 				
 				if (OP == "Simp" or OP == "Ssub") { Qc_U1xU1 = {M+2,N}; }

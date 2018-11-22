@@ -119,6 +119,7 @@ HubbardU1xU1 (const size_t &L, const vector<Param> &params)
     }
     
     set_operators(F,P,Terms);
+    cout << Terms.print_info() << endl;
     
     this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
     this->precalc_TwoSiteData();
@@ -312,7 +313,7 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
         
         Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U.a, t0.a - mu.a, Bz.a, Bx_array, tperp.a, Vperp.a, Jperp.a));
         
-        if(isfinite(U.a.sum()))
+        if (isfinite(U.a.sum()))
         {
             U_infinite = false;
         }
@@ -393,7 +394,7 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
     {
         Terms.set_name("Hubbard");
     }
-    else if(P.HAS_ANY_OF({"J", "J3site"}))
+    else if (P.HAS_ANY_OF({"J", "J3site"}))
     {
         Terms.set_name("t-J");
     }

@@ -47,7 +47,7 @@ public:
 	
 	template<typename Symmetry_>
 	//void add_operators (HamiltonianTerms<Symmetry_,complex<double> > &Terms, const vector<SpinBase<Symmetry_> > &B, const ParamHandler &P, size_t loc=0);
-    void add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, HamiltonianTerms<Symmetry_, std::complex<double>> &Terms);
+    void add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, HamiltonianTerms<Symmetry_,std::complex<double>> &Terms);
     
 	static const std::map<string,std::any> defaults;
 };
@@ -106,7 +106,6 @@ HeisenbergXYZ (const size_t &L, const vector<Param> &params)
     ParamHandler P(params,HeisenbergXYZ::defaults);
     
     size_t Lcell = P.size();
-    HamiltonianTerms<Symmetry,std::complex<double>> Terms(N_sites, P.get<bool>("OPEN_BC"));
     
     for (size_t l=0; l<N_sites; ++l)
     {
@@ -117,7 +116,7 @@ HeisenbergXYZ (const size_t &L, const vector<Param> &params)
     HamiltonianTermsXd<Symmetry> Terms_aux(N_sites, P.get<bool>("OPEN_BC"));
     HeisenbergU1::set_operators(B,P,Terms_aux);
     Heisenberg::add_operators(B,P,Terms_aux);
-    Terms = Terms_aux.cast<std::complex<double>>();
+    HamiltonianTermsXcd<Symmetry> Terms = Terms_aux.cast<std::complex<double>>();
     add_operators(B,P,Terms);
     
     this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));

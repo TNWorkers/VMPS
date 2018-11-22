@@ -72,8 +72,8 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 					if constexpr ( Symmetry::NON_ABELIAN )
 					{
 						factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
-															quple[2],            qOp[k],   Lold.mid(qL),
-															Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
+						                                    quple[2],            qOp[k],   Lold.mid(qL),
+						                                    Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
 					}
 					else
 					{
@@ -87,7 +87,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 						size_t a = iW.row();
 						size_t b = iW.col();
 						
-						//0 is the Hamiltonian block. Only singlett couplings are neccessary.
+						//0 is the Hamiltonian block. Only singlet couplings are neccessary.
 						if (b == 0 and IS_HAMILTONIAN and quple[2] != Symmetry::qvacuum()) {continue;}
 						
 						if (MODE == FULL or
@@ -199,8 +199,8 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 					if constexpr (Symmetry::NON_ABELIAN)
 					{
 						factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
-															Rold.mid(qR),        qOp[k],   quple[2],
-															Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
+						                                    Rold.mid(qR),        qOp[k],   quple[2],
+						                                    Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
 					}
 					else
 					{
@@ -214,8 +214,8 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 						size_t a = iW.row();
 						size_t b = iW.col();
 						
-						//Daux-1 is the Hamiltonian block. Only singlett couplings are neccessary.
-						if(a == W[s1][s2][k].rows()-1 and IS_HAMILTONIAN and quple[2] != Symmetry::qvacuum()) {continue;}
+						//Daux-1 is the Hamiltonian block. Only singlet couplings are neccessary.
+						if (a == W[s1][s2][k].rows()-1 and IS_HAMILTONIAN and quple[2] != Symmetry::qvacuum()) {continue;}
 						
 						if (MODE == FULL or
 						   (MODE == TRIANGULAR and fixed_a>b) or

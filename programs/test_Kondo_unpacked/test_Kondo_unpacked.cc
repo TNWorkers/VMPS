@@ -176,7 +176,7 @@ int main (int argc, char* argv[])
 	//params.push_back({"Bz",Bz,0});
 	//params.push_back({"Bx",Bx,0});
 	// params.push_back({"D",1ul,1});
-	push_back_KondoUnpacked(params, L,J,t,D);
+	push_back_KondoUnpacked(params, L,J,t,D, true);
 	
 //	for (size_t l=1; l<L; ++l)
 //	{
@@ -186,8 +186,8 @@ int main (int argc, char* argv[])
 //	}
 	
 	vector<Param> SweepParams;
-	SweepParams.push_back({"CONVTEST",DMRG::CONVTEST::VAR_2SITE});
-	SweepParams.push_back({"min_halfsweeps",6ul});
+	SweepParams.push_back({"CONVTEST",DMRG::CONVTEST::VAR_HSQ});
+	SweepParams.push_back({"min_halfsweeps",1ul});
 	
 	//--------U(1)---------
 //	if (U1)

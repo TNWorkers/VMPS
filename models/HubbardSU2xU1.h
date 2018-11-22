@@ -130,8 +130,8 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 	
 	size_t Lcell = P.size();
 	//vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
-    HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
-    F.resize(N_sites);
+	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
+	F.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -149,8 +149,9 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
 		Terms[l].info.push_back(ss.str());
 	}*/
-    
-    set_operators(F, P, Terms);
+	
+	set_operators(F, P, Terms);
+	cout << Terms.print_info() << endl;
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 	this->precalc_TwoSiteData();
@@ -299,11 +300,11 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
         Terms.save_label(loc, Vpara.label);
         Terms.save_label(loc, Jpara.label);
         
-        if(loc < N_sites-1 || !P.get<bool>("OPEN_BC"))
+        if (loc < N_sites-1 || !P.get<bool>("OPEN_BC"))
         {
-            for(std::size_t alpha=0; alpha<orbitals; ++alpha)
+            for (std::size_t alpha=0; alpha<orbitals; ++alpha)
             {
-                for(std::size_t beta=0; beta<next_orbitals; ++beta)
+                for (std::size_t beta=0; beta<next_orbitals; ++beta)
                 {
                     SiteOperator<Symmetry, double> c_sign_local = OperatorType::prod(F[loc].c(alpha), F[loc].sign(), {2,-1}).plain<double>();
                     SiteOperator<Symmetry, double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alpha), F[loc].sign(), {2,1}).plain<double>();
@@ -317,10 +318,10 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
                     SiteOperator<Symmetry, double> Sdag_local = F[loc].Sdag(alpha).plain<double>();
                     SiteOperator<Symmetry, double> S_tight = F[(loc+1)%N_sites].S(beta).plain<double>();
                     
-                    Terms.push_tight(loc, -tpara.a(alpha, beta) * std::sqrt(2.), cdag_sign_local, c_tight);
-                    Terms.push_tight(loc, -tpara.a(alpha, beta) * std::sqrt(2.), c_sign_local, cdag_tight);
-                    Terms.push_tight(loc, Vpara.a(alpha, beta), n_local, n_tight);
-                    Terms.push_tight(loc, Jpara.a(alpha, beta) * std::sqrt(3.), Sdag_local, S_tight);
+                    Terms.push_tight(loc, -tpara(alpha, beta) * std::sqrt(2.), cdag_sign_local, c_tight);
+                    Terms.push_tight(loc, -tpara(alpha, beta) * std::sqrt(2.), c_sign_local, cdag_tight);
+                    Terms.push_tight(loc, Vpara(alpha, beta), n_local, n_tight);
+                    Terms.push_tight(loc, Jpara(alpha, beta) * std::sqrt(3.), Sdag_local, S_tight);
                 }
             }
         }
@@ -331,11 +332,11 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
         param2d tprime = P.fill_array2d<double>("tPrime", "tPrime_array", {orbitals, nextn_orbitals}, loc%Lcell);
         Terms.save_label(loc, tprime.label);
         
-        if(loc < N_sites-2 || !P.get<bool>("OPEN_BC"))
+        if (loc < N_sites-2 || !P.get<bool>("OPEN_BC"))
         {
-            for(std::size_t alpha=0; alpha<orbitals; ++alpha)
+            for (std::size_t alpha=0; alpha<orbitals; ++alpha)
             {
-                for(std::size_t beta=0; beta<nextn_orbitals; ++beta)
+                for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
                 {
                     SiteOperator<Symmetry, double> c_sign_local = OperatorType::prod(F[loc].c(alpha), F[loc].sign(), {2,-1}).plain<double>();
                     SiteOperator<Symmetry, double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alpha), F[loc].sign(), {2,1}).plain<double>();
@@ -345,8 +346,8 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
                     SiteOperator<Symmetry, double> c_nextn = F[(loc+2)%N_sites].c(beta).plain<double>();
                     SiteOperator<Symmetry, double> cdag_nextn = F[(loc+2)%N_sites].cdag(beta).plain<double>();
                     
-                    Terms.push_nextn(loc, tprime.a(alpha, beta) * std::sqrt(2.), cdag_sign_local, sign_tight, c_nextn);
-                    Terms.push_nextn(loc, tprime.a(alpha, beta) * std::sqrt(2.), c_sign_local, sign_tight, cdag_nextn);
+                    Terms.push_nextn(loc, tprime(alpha, beta) * std::sqrt(2.), cdag_sign_local, sign_tight, c_nextn);
+                    Terms.push_nextn(loc, tprime(alpha, beta) * std::sqrt(2.), c_sign_local,    sign_tight, cdag_nextn);
                 }
             }
         }

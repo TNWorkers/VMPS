@@ -197,6 +197,7 @@ KondoSU2xU1 (const size_t &L, const vector<Param> &params)
 	
 	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	set_operators(B,F,P,Terms);
+//	cout << Terms.print_info() << endl;
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 	this->precalc_TwoSiteData();
@@ -281,7 +282,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			//set interaction part of Hamiltonian.
 			for (int alfa=0; alfa<Forbitals; ++alfa)
 			{
-				assert(Borbitals == Forbitals);
+				assert(Borbitals == Forbitals and "Can only do a Kondo ladder with the same amount of spins and fermionic orbitals in y-direction!");
 				KondoHamiltonian += J(alfa) * sqrt(3.) * OperatorType::outerprod(B[loc].Sdag(alfa), F[loc].S(alfa), {1,0});
 			}
 			
@@ -296,7 +297,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		
 		// V∥
 		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {Forbitals, Fnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, tPara.label);
+		Terms.save_label(loc, Vpara.label);
 		
 		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
 		{
@@ -369,23 +370,23 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			{
 				qarray<Symmetry::Nq> qnum = (Forbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,-1};
 				
-				auto cF    = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(), qnum),
-				                                OperatorType::outerprod(B[lp2].Id(), F[loc].sign(), Symmetry::qvacuum()), qnum);
+				auto cF_loc    = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(), qnum),
+				                                    OperatorType::outerprod(B[loc].Id(), F[loc].sign(), Symmetry::qvacuum()), qnum);
 				
 				qnum = (Forbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,+1};
-				auto cdagF = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(), qnum),
-				                                OperatorType::outerprod(B[loc].Id(), F[loc].sign(), Symmetry::qvacuum()), qnum);
+				auto cdagF_loc = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(), qnum),
+				                                    OperatorType::outerprod(B[loc].Id(), F[loc].sign(), Symmetry::qvacuum()), qnum);
 				
 				qnum = (Forbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,-1};
 				Terms.push_nextn(loc, +tPrime(alfa,beta) * sqrt(2.),
-				                 cdagF.plain<double>(),
+				                 cdagF_loc.plain<double>(),
 				                 OperatorType::outerprod(B[lp1].Id(), F[lp1].sign(), Symmetry::qvacuum()).plain<double>(),
 				                 OperatorType::outerprod(B[lp2].Id(), F[lp2].c(), qnum).plain<double>()
 				                );
 				
 				qnum = (Forbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,+1};
 				Terms.push_nextn(loc, +tPrime(alfa,beta) * sqrt(2.),
-				                 cF.plain<double>(),
+				                 cF_loc.plain<double>(),
 				                 OperatorType::outerprod(B[lp1].Id(), F[lp1].sign(), Symmetry::qvacuum()).plain<double>(),
 				                 OperatorType::outerprod(B[lp2].Id(), F[lp2].cdag(), qnum).plain<double>()
 				                );

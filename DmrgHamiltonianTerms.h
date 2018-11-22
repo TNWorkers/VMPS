@@ -11,7 +11,6 @@
 #include "tensors/SiteOperator.h"
 #include "symmetry/qarray.h"
 
-
 template<typename Symmetry, typename Scalar> class HamiltonianTerms
 {
 private:
@@ -122,7 +121,7 @@ private:
     /**
      *    Stores, whether the compressed Term vectors are up to date
      */
-    bool compressed;
+    bool COMPRESSED;
     
     /**
      *  A given name for the HamiltonianTerms, such as Heisenberg
@@ -132,7 +131,7 @@ private:
     /**
      *  Stores whether to use periodic boundary conditions or not
      */
-    bool open_bc;
+    bool OPEN_BC;
     
     /**
      *  Takes the plain interaction vectors and compresses them by singular value decomposition
@@ -144,6 +143,24 @@ public:
      *  Default constructor, does nothing
      */
     HamiltonianTerms() {HamiltonianTerms(0);}
+    
+    string print_info() const
+    {
+    	stringstream ss;
+    	for (size_t l=0; l<N_sites; ++l)
+    	{
+			for (size_t i=0; i<info[l].size(); ++i)
+			{
+				ss << info[l][i] << "\t";
+			}
+			ss << "tight_in=" << tight_in[l].size() << "\t"
+			   << "tight_out=" << tight_out[l].size() << "\t"
+			   << "nextn_in=" << nextn_in[l].size() << "\t"
+			   << "nextn_out=" << nextn_out[l].size();
+			ss << endl;
+    	}
+    	return ss.str();
+    }
     
     /**
      *  Constructor
@@ -263,7 +280,7 @@ public:
 };
 
 template<typename Symmetry, typename Scalar> HamiltonianTerms<Symmetry,Scalar>::
-HamiltonianTerms(std::size_t L, bool bc) : N_sites(L)
+HamiltonianTerms(std::size_t L, bool BC) : N_sites(L)
 {
     info.resize(N_sites);
     hilbert_dimension.resize(N_sites);
@@ -282,7 +299,7 @@ HamiltonianTerms(std::size_t L, bool bc) : N_sites(L)
         tight_coupl[loc].resize(0,0);
         localSet[loc] = false;
     }
-    open_bc = bc;
+    OPEN_BC = BC;
 }
 
 template<typename Symmetry, typename Scalar> void HamiltonianTerms<Symmetry,Scalar>::
@@ -314,12 +331,21 @@ get_info() const
         while (res[loc].find("Para") != std::string::npos) res[loc].replace(res[loc].find("Para"), 4, "∥");
         while (res[loc].find("Prime") != std::string::npos) res[loc].replace(res[loc].find("Prime"), 5, "'");
         while (res[loc].find("mu") != std::string::npos) res[loc].replace(res[loc].find("mu"), 2, "µ");
+        while (res[loc].find("next") != std::string::npos) res[loc].replace(res[loc].find("next"), 4, "ₙₑₓₜ");
+        while (res[loc].find("prev") != std::string::npos) res[loc].replace(res[loc].find("prev"), 4, "ₚᵣₑᵥ");
+        while (res[loc].find("3site") != std::string::npos) res[loc].replace(res[loc].find("3site"), 5, "₃ₛᵢₜₑ");
+        while (res[loc].find("sub") != std::string::npos) res[loc].replace(res[loc].find("sub"), 3, "ˢᵘᵇ");
+        while (res[loc].find("rung") != std::string::npos) res[loc].replace(res[loc].find("rung"), 4, "ʳᵘⁿᵍ");
+         while (res[loc].find("t0") != std::string::npos) res[loc].replace(res[loc].find("t0"), 2, "t₀");
+        
+        //⁰ ¹ ² ³ ⁴ ⁵ ⁶ ⁷ ⁸ ⁹ ⁺ ⁻ ⁼ ⁽ ⁾ ₀ ₁ ₂ ₃ ₄ ₅ ₆ ₇ ₈ ₉ ₊ ₋ ₌ ₍ ₎
+        //ᵃ ᵇ ᶜ ᵈ ᵉ ᶠ ᵍ ʰ ⁱ ʲ ᵏ ˡ ᵐ ⁿ ᵒ ᵖ ʳ ˢ ᵗ ᵘ ᵛ ʷ ˣ ʸ ᶻ
+        //ᴬ ᴮ ᴰ ᴱ ᴳ ᴴ ᴵ ᴶ ᴷ ᴸ ᴹ ᴺ ᴼ ᴾ ᴿ ᵀ ᵁ ⱽ ᵂ
+        //ₐ ₑ ₕ ᵢ ⱼ ₖ ₗ ₘ ₙ ₒ ₚ ᵣ ₛ ₜ ᵤ ᵥ ₓ
+        //ᵅ ᵝ ᵞ ᵟ ᵋ ᶿ ᶥ ᶲ ᵠ ᵡ ᵦ ᵧ ᵨ ᵩ ᵪ
     }
     return res;
 }
-
-
-
 
 template<typename Symmetry, typename Scalar> std::size_t HamiltonianTerms<Symmetry,Scalar>::
 Hilbert_dimension(std::size_t loc) const
@@ -327,8 +353,6 @@ Hilbert_dimension(std::size_t loc) const
     assert(loc < N_sites and "Chosen lattice site out of bounds");
     return hilbert_dimension[loc];
 }
-
-
 
 template<typename Symmetry, typename Scalar> void HamiltonianTerms<Symmetry,Scalar>::
 push_local(std::size_t loc, Scalar lambda, OperatorType Op)
@@ -357,10 +381,10 @@ push_tight(std::size_t loc, Scalar lambda, OperatorType Op1, OperatorType Op2)
     if(lambda != 0.)
     {
         assert(loc < N_sites and "Chosen lattice site out of bounds");
-        assert((!open_bc || loc+1 < N_sites) and "Chosen lattice site out of bounds");
+        assert((!OPEN_BC || loc+1 < N_sites) and "Chosen lattice site out of bounds");
         assert(hilbert_dimension[loc] == 0 || hilbert_dimension[loc] == Op1.data.rows() and "Dimensions of first operator and local Hilbert space do not match");
         assert(hilbert_dimension[(loc+1)%N_sites] == 0 || hilbert_dimension[(loc+1)%N_sites] == Op2.data.rows() and "Dimensions of second operator and local Hilbert space do not match");
-        compressed = false;
+        COMPRESSED = false;
         std::ptrdiff_t firstit = std::distance(tight_out[loc].begin(), find(tight_out[loc].begin(), tight_out[loc].end(), Op1));
         if(firstit >= tight_out[loc].size())    // If the operator cannot be found, push it to the corresponding terms and resize the interaction matrix
         {
@@ -385,155 +409,183 @@ push_tight(std::size_t loc, Scalar lambda, OperatorType Op1, OperatorType Op2)
 template<typename Symmetry, typename Scalar> void HamiltonianTerms<Symmetry,Scalar>::
 push_nextn(std::size_t loc, Scalar lambda, OperatorType Op1, OperatorType Trans, OperatorType Op2)
 {
-    if(lambda != 0.)
-    {
-        assert(loc < N_sites and "Chosen lattice site out of bounds");
-        assert((!open_bc || loc+2 < N_sites) and "Chosen lattice site out of bounds");
-        assert(hilbert_dimension[loc] == 0 || hilbert_dimension[loc] == Op1.data.rows() and "Dimensions of first operator and local Hilbert space do not match");
-        assert(hilbert_dimension[(loc+1)%N_sites] == 0 || hilbert_dimension[(loc+1)%N_sites] == Trans.data.rows() and "Dimensions of transfer operator and local Hilbert space do not match");
-        assert(hilbert_dimension[(loc+2)%N_sites] == 0 || hilbert_dimension[(loc+2)%N_sites] == Op2.data.rows() and "Dimensions of second operator and local Hilbert space do not match");
-        assert(Trans.Q == qvac and "Transfer operator is not a singlet");
-        compressed = false;
-        
-        std::ptrdiff_t transit = std::distance(nextn_TransOps[(loc+1)%N_sites].begin(), find(nextn_TransOps[(loc+1)%N_sites].begin(), nextn_TransOps[(loc+1)%N_sites].end(), Trans));
-        if(transit >= nextn_TransOps[(loc+1)%N_sites].size())   // If the operator cannot be found, push it to the corresponding terms and create a new container for interactions mediated by this transfer operator
-        {
-            nextn_TransOps[(loc+1)%N_sites].push_back(Trans);
-            hilbert_dimension[(loc+1)%N_sites] = Trans.data.rows();
-            Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> matrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>::Zero(1,1);
-            nextn_coupl[(loc+1)%N_sites].push_back(matrix);
-            std::vector<OperatorType> temp;
-            nextn_out[loc].push_back(temp);
-            nextn_in[(loc+2)%N_sites].push_back(temp);
-        }
-        
-        
-        std::ptrdiff_t firstit = std::distance(nextn_out[loc][transit].begin(), find(nextn_out[loc][transit].begin(), nextn_out[loc][transit].end(), Op1));
-        if(firstit >= nextn_out[loc][transit].size())   // If the operator cannot be found, push it to the corresponding terms and resize the interaction matrix
-        {
-            nextn_out[loc][transit].push_back(Op1);
-            nextn_coupl[(loc+1)%N_sites][transit].conservativeResize(nextn_out[loc][transit].size(), nextn_in[(loc+2)%N_sites][transit].size());
-            nextn_coupl[(loc+1)%N_sites][transit].bottomRows(1).setZero();
-            hilbert_dimension[loc] = Op1.data.rows();
-        }
-        std::ptrdiff_t secondit = std::distance(nextn_in[(loc+2)%N_sites][transit].begin(), find(nextn_in[(loc+2)%N_sites][transit].begin(), nextn_in[(loc+2)%N_sites][transit].end(), Op2));
-        if(secondit >= nextn_in[(loc+2)%N_sites][transit].size())   // If the operator cannot be found, push it to the corresponding terms and resize the interaction matrix
-        {
-            nextn_in[(loc+2)%N_sites][transit].push_back(Op2);
-            nextn_coupl[(loc+1)%N_sites][transit].conservativeResize(nextn_out[loc][transit].size(), nextn_in[(loc+2)%N_sites][transit].size());
-            nextn_coupl[(loc+1)%N_sites][transit].rightCols(1).setZero();
-            hilbert_dimension[(loc+2)%N_sites] = Op2.data.rows();
-        }
-        nextn_coupl[(loc+1)%N_sites][transit](firstit, secondit) += lambda;
-    }
+	if (lambda != 0.)
+	{
+		assert(loc < N_sites and "Chosen lattice site out of bounds");
+		assert((!OPEN_BC || loc+2 < N_sites) and "Chosen lattice site out of bounds");
+		assert(hilbert_dimension[loc] == 0 or hilbert_dimension[loc] == Op1.data.rows() and 
+		       "Dimensions of first operator and local Hilbert space do not match");
+		assert(hilbert_dimension[(loc+1)%N_sites] == 0 or hilbert_dimension[(loc+1)%N_sites] == Trans.data.rows() and 
+		       "Dimensions of transfer operator and local Hilbert space do not match");
+		assert(hilbert_dimension[(loc+2)%N_sites] == 0 or hilbert_dimension[(loc+2)%N_sites] == Op2.data.rows() and 
+		       "Dimensions of second operator and local Hilbert space do not match");
+		assert(Trans.Q == qvac and "Transfer operator is not a singlet");
+		COMPRESSED = false;
+		
+		std::ptrdiff_t transit = std::distance(nextn_TransOps[(loc+1)%N_sites].begin(), 
+		                                       find(nextn_TransOps[(loc+1)%N_sites].begin(),
+		                                            nextn_TransOps[(loc+1)%N_sites].end(), Trans));
+		// If the operator cannot be found, push it to the corresponding terms and create a new container for interactions mediated by this transfer operator
+		if (transit >= nextn_TransOps[(loc+1)%N_sites].size())
+		{
+			nextn_TransOps[(loc+1)%N_sites].push_back(Trans);
+			hilbert_dimension[(loc+1)%N_sites] = Trans.data.rows();
+			Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> matrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>::Zero(1,1);
+			nextn_coupl[(loc+1)%N_sites].push_back(matrix);
+			std::vector<OperatorType> temp;
+			nextn_out[loc].push_back(temp);
+			nextn_in[(loc+2)%N_sites].push_back(temp);
+		}
+		
+		std::ptrdiff_t firstit = std::distance(nextn_out[loc][transit].begin(), 
+		                                       find(nextn_out[loc][transit].begin(), 
+		                                            nextn_out[loc][transit].end(), Op1));
+		// If the operator cannot be found, push it to the corresponding terms and resize the interaction matrix
+		if (firstit >= nextn_out[loc][transit].size())
+		{
+			nextn_out[loc][transit].push_back(Op1);
+			nextn_coupl[(loc+1)%N_sites][transit].conservativeResize(nextn_out[loc][transit].size(), nextn_in[(loc+2)%N_sites][transit].size());
+			nextn_coupl[(loc+1)%N_sites][transit].bottomRows(1).setZero();
+			hilbert_dimension[loc] = Op1.data.rows();
+		}
+		
+		std::ptrdiff_t secondit = std::distance(nextn_in[(loc+2)%N_sites][transit].begin(), 
+		                                        find(nextn_in[(loc+2)%N_sites][transit].begin(), 
+		                                             nextn_in[(loc+2)%N_sites][transit].end(), Op2));
+		// If the operator cannot be found, push it to the corresponding terms and resize the interaction matrix
+		if (secondit >= nextn_in[(loc+2)%N_sites][transit].size())
+		{
+			nextn_in[(loc+2)%N_sites][transit].push_back(Op2);
+			nextn_coupl[(loc+1)%N_sites][transit].conservativeResize(nextn_out[loc][transit].size(), nextn_in[(loc+2)%N_sites][transit].size());
+			nextn_coupl[(loc+1)%N_sites][transit].rightCols(1).setZero();
+			hilbert_dimension[(loc+2)%N_sites] = Op2.data.rows();
+		}
+		nextn_coupl[(loc+1)%N_sites][transit](firstit, secondit) += lambda;
+	}
 }
 
 template<typename Symmetry, typename Scalar> std::vector<SuperMatrix<Symmetry, Scalar>> HamiltonianTerms<Symmetry,Scalar>::
 construct_Matrix()
 {
-    if(!compressed) compress();
-    std::vector<SuperMatrix<Symmetry,Scalar> > G;
-    for (std::size_t loc=0; loc<N_sites; ++loc)
-    {
-        SuperMatrix<Symmetry,Scalar> S;
-        if(hilbert_dimension[loc] == 0)     //  Create a trivial SuperMatrix if no operator has been set.
-        {
-            hilbert_dimension[loc] = 1;
-            OperatorType Id(Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView(),Symmetry::qvacuum());
-            S.set(2,2,hilbert_dimension[loc]);
-            S(0,0) = Id;
-            S(1,1) = Id;
-        }
-        else
-        {
-            std::size_t transfer = 0;   //  Stores the total number of transfer operators at lattice site loc
-            std::size_t nextn_rows = 0; //  Stores the total number of next-nearest-neighbour interaction terms with loc-2
-            std::size_t nextn_cols = 0; //  Stores the total number of next-nearest-neighbour interaction terms with loc+2
-            for(std::size_t t=0; t<nextn_in_compressed[loc].size(); ++t)
-            {
-                nextn_rows += nextn_in_compressed[loc][t].size();
-            }
-            for(std::size_t t=0; t<nextn_out_compressed[loc].size(); ++t)
-            {
-                nextn_cols += nextn_out_compressed[loc][t].size();
-            }
-            for(std::size_t t=0; t<nextn_trans_compressed[loc].size(); ++t)
-            {
-                transfer += nextn_trans_compressed[loc][t].size();
-            }
-            std::size_t rows = 2 + tight_in_compressed[loc].size() + nextn_rows + transfer;     //  Total number of rows
-            std::size_t cols = 2 + tight_out_compressed[loc].size() + nextn_cols + transfer;    //  Total number of columns
-            S.set(rows,cols,hilbert_dimension[loc]);
-            OperatorType Id(Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView(),Symmetry::qvacuum());
-            std::size_t current = 0;
-            S(current++,0) = Id;        //  Upper left corner: identity
-            
-            for(std::size_t i=0; i<tight_in_compressed[loc].size(); ++i)
-            {
-                S(current++,0) = tight_in_compressed[loc][i];   //  First column: Incoming nearest-neighbour terms
-            }
-            for(std::size_t t=0; t<nextn_in_compressed[loc].size(); ++t)
-            {
-                for(std::size_t i=0; i<nextn_in_compressed[loc][t].size(); ++i)
-                {
-                    S(current++,0) = nextn_in_compressed[loc][t][i];    //  First column: Incoming next-nearest-neighbour terms, ordered w.r.t. their transfer operators
-                }
-            }
-            
-            // First column: A sufficient number of rows is skipped for the transfer operators
-            
-            current = 0;
-            if(!localSet[loc])  //  If no local interaction has been added, the local interaction becomes a dummy SiteOperator with correct dimension
-            {
-                local[loc] = 0*Id;
-            }
-            
-            S(rows-1,current++) = local[loc];   //  Lower left corner: Local interaction
-            
-            
-            for(std::size_t t=0; t<tight_out_compressed[loc].size(); ++t)
-            {
-                S(rows-1, current++) = tight_out_compressed[loc][t];    //  Last row: Outgoing nearest-neighbour terms
-            }
-            
-            current += transfer;    // Last row: A sufficient number of columns is skipped for the transfer operators
-            
-            for(std::size_t t=0; t<nextn_out_compressed[loc].size(); ++t)
-            {
-                for(std::size_t i=0; i<nextn_out_compressed[loc][t].size(); ++i)
-                {
-                    S(rows-1,current++) = nextn_out_compressed[loc][t][i];  // Last row: Outgoing next-nearest-neighbour terms, ordered w.r.t. their transfer operators
-                }
-            }
-            S(rows-1,cols-1) = Id;  // Lower right corner: Identity
-            
-            std::size_t row_start = 1 + tight_in_compressed[loc].size() + nextn_rows;   //  Where does the block of transfer operators start?
-            std::size_t col_start = 1 + tight_out_compressed[loc].size();
-            
-            current = 0;
-            for(std::size_t t=0; t<nextn_trans_compressed[loc].size(); ++t)
-            {
-                for(std::size_t i=0; i<nextn_trans_compressed[loc][t].size(); ++i)
-                {
-                    S(row_start+current,col_start+current) = nextn_trans_compressed[loc][t][i]; //  Since the interaction for each transfer operator is diagonal: only diagonal elements of the transfer block are set.
-                    current++;
-                }
-            }
-        }
-        if(open_bc && loc==0)
-        {
-            G.push_back(S.row(S.rows()-1));
-        }
-        else if(open_bc && loc==N_sites-1)
-        {
-            G.push_back(S.col(0));
-        }
-        else
-        {
-            G.push_back(S);
-        }
-    }
-    return G;
+	if (!COMPRESSED) compress();
+	std::vector<SuperMatrix<Symmetry,Scalar> > G;
+	
+	for (std::size_t loc=0; loc<N_sites; ++loc)
+	{
+		SuperMatrix<Symmetry,Scalar> S;
+		if (hilbert_dimension[loc] == 0) // Create a trivial SuperMatrix if no operator has been set.
+		{
+			hilbert_dimension[loc] = 1;
+			OperatorType Id(Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView(),Symmetry::qvacuum());
+			S.set(2,2,hilbert_dimension[loc]);
+			S(0,0) = Id;
+			S(1,1) = Id;
+		}
+		else
+		{
+			// Stores the total number of transfer operators at lattice site loc
+			std::size_t transfer = 0;
+			// Stores the total number of next-nearest-neighbour interaction terms with loc-2
+			std::size_t nextn_rows = 0;
+			// Stores the total number of next-nearest-neighbour interaction terms with loc+2
+			std::size_t nextn_cols = 0;
+			for (std::size_t t=0; t<nextn_in_compressed[loc].size(); ++t)
+			{
+				nextn_rows += nextn_in_compressed[loc][t].size();
+			}
+			for (std::size_t t=0; t<nextn_out_compressed[loc].size(); ++t)
+			{
+				nextn_cols += nextn_out_compressed[loc][t].size();
+			}
+			for (std::size_t t=0; t<nextn_trans_compressed[loc].size(); ++t)
+			{
+				transfer += nextn_trans_compressed[loc][t].size();
+			}
+			
+			std::size_t rows = 2 + tight_in_compressed[loc].size()  + nextn_rows + transfer; // Total number of rows
+			std::size_t cols = 2 + tight_out_compressed[loc].size() + nextn_cols + transfer; // Total number of columns
+//			cout << "tight_in_compressed[loc].size()=" << tight_in_compressed[loc].size() << ", nextn_rows=" << nextn_rows << ", transfer=" << transfer << endl;
+//			cout << "tight_out_compressed[loc].size()=" << tight_out_compressed[loc].size() << ", nextn_rows=" << nextn_cols << ", transfer=" << transfer << endl;
+//			cout << "rows=" << rows << ", cols=" << cols << endl;
+			S.set(rows,cols,hilbert_dimension[loc]);
+			OperatorType Id(Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView(),Symmetry::qvacuum());
+			std::size_t current = 0;
+			S(current++,0) = Id; // Upper left corner: identity
+			
+			for (std::size_t i=0; i<tight_in_compressed[loc].size(); ++i)
+			{
+				// First column: Incoming tight-binding terms
+				S(current++,0) = tight_in_compressed[loc][i]; 
+			}
+			for (std::size_t t=0; t<nextn_in_compressed[loc].size(); ++t)
+			for (std::size_t i=0; i<nextn_in_compressed[loc][t].size(); ++i)
+			{
+//				cout << "loc=" << loc << ", r=" << current << "/last=" << rows-1 << ", c=" << 0 << "/last=" << cols-1
+//				     << endl
+//				     << "nextn_in_compressed=" << endl << MatrixXd(nextn_in_compressed[loc][t][i].data) << endl << endl;
+				// First column: Incoming NNN terms, ordered w.r.t. their transfer operators
+				S(current++,0) = nextn_in_compressed[loc][t][i];
+			}
+			
+			// First column: A sufficient number of rows is skipped for the transfer operators
+			
+			current = 0;
+			if (!localSet[loc]) // If no local interaction has been added, the local interaction becomes a dummy SiteOperator with correct dimension
+			{
+				local[loc] = 0*Id;
+			}
+			
+			S(rows-1,current++) = local[loc]; // Lower left corner: Local interaction
+			
+			for (std::size_t t=0; t<tight_out_compressed[loc].size(); ++t)
+			{
+				S(rows-1, current++) = tight_out_compressed[loc][t]; //  Last row: Outgoing tight-binding terms
+			}
+			
+			current += transfer; // Last row: A sufficient number of columns is skipped for the transfer operators
+			
+			for (std::size_t t=0; t<nextn_out_compressed[loc].size(); ++t)
+			for (std::size_t i=0; i<nextn_out_compressed[loc][t].size(); ++i)
+			{
+//				cout << "loc=" << loc << ", r=" << rows-1 << "/last=" << rows-1 << ", c=" << current << "/last=" << cols-1
+//				     << endl
+//				     << "nextn_out_compressed=" << endl << MatrixXd(nextn_out_compressed[loc][t][i].data) << endl << endl;
+				// Last row: Outgoing NNN terms, ordered w.r.t. their transfer operators
+				S(rows-1,current++) = nextn_out_compressed[loc][t][i];
+			}
+			S(rows-1,cols-1) = Id; // Lower right corner: Identity
+			
+			std::size_t row_start = 1 + tight_in_compressed[loc].size() + nextn_rows; // Where does the block of transfer operators start?
+			std::size_t col_start = 1 + tight_out_compressed[loc].size();
+			
+			current = 0;
+			for (std::size_t t=0; t<nextn_trans_compressed[loc].size(); ++t)
+			for (std::size_t i=0; i<nextn_trans_compressed[loc][t].size(); ++i)
+			{
+				// Since the interaction for each transfer operator is diagonal: only diagonal elements of the transfer block are set.
+				S(row_start+current,col_start+current) = nextn_trans_compressed[loc][t][i];
+//				cout << endl 
+//				     << "loc=" << loc
+//				     << ", row_start+current=" << row_start+current << "/last=" << rows-1 << ", col_start+current=" << col_start+current << "/last=" << cols-1
+//				     << endl << MatrixXd(nextn_trans_compressed[loc][t][i].data) << endl << endl;
+				current++;
+			}
+		}
+		
+		if (OPEN_BC and loc==0)
+		{
+			G.push_back(S.row(S.rows()-1));
+		}
+		else if (OPEN_BC and loc==N_sites-1)
+		{
+			G.push_back(S.col(0));
+		}
+		else
+		{
+			G.push_back(S);
+		}
+	}
+	return G;
 }
 
 template<typename Symmetry, typename Scalar> void HamiltonianTerms<Symmetry,Scalar>::
@@ -585,13 +637,13 @@ compress()
             }
         }
     }
-    compressed = true;
+    COMPRESSED = true;
 }
 
 template<typename Symmetry, typename Scalar> void HamiltonianTerms<Symmetry,Scalar>::
-scale(double factor, double offset)
+scale (double factor, double offset)
 {
-    compressed = false;
+    COMPRESSED = false;
     if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
     {
         for (std::size_t loc=0; loc<N_sites; ++loc)
@@ -624,7 +676,7 @@ template<typename OtherScalar>
 HamiltonianTerms<Symmetry, OtherScalar> HamiltonianTerms<Symmetry,Scalar>::
 cast()
 {
-    HamiltonianTerms<Symmetry, OtherScalar> other(N_sites, open_bc);
+    HamiltonianTerms<Symmetry, OtherScalar> other(N_sites, OPEN_BC);
     other.set_name(label);
     for(std::size_t loc=0; loc<N_sites; ++loc)
     {
@@ -655,8 +707,6 @@ cast()
     }
     return other;
 }
-
-
 
 template<typename Symmetry> using HamiltonianTermsXd  = HamiltonianTerms<Symmetry,double>;
 template<typename Symmetry> using HamiltonianTermsXcd = HamiltonianTerms<Symmetry,std::complex<double> >;
