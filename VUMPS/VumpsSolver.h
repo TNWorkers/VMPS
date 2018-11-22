@@ -1533,11 +1533,6 @@ expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps
 	
 	//calculate two-site B-Tensor (double tangent space) and obtain simultaneously NL and NR (nullspaces)
 	calc_B2(loc, H, Vout, option, NAAN, NL, NR);
-
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
-	{
-		lout << "l=" << loc << ", norm(NAAN)=" << sqrt(NAAN.squaredNorm().sum())  << endl;
-	}
 		
 	// SVD-decompose NAAN
 	Biped<Symmetry,MatrixType> U, Vdag;
@@ -1553,7 +1548,7 @@ expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps
 		
 		size_t Nret = (Jack.singularValues().array() > Vout.state.eps_svd).count();
 		Nret = min(DeltaD, Nret);
-		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
 			lout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
 		}

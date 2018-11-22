@@ -16,7 +16,7 @@ public:
 	size_t end();
 	void operator++();
 	
-	SiteIterator& operator= (const size_t &other_index) {curr_index = static_cast<size_t>(other_index);}
+	SiteIterator& operator= (const size_t &other_index) {curr_index = static_cast<size_t>(other_index); return *this;}
 
 private:
 

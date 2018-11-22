@@ -141,6 +141,8 @@ int main (int argc, char* argv[])
 	GlobParam_foxy.Qinit = args.get<size_t>("Qinit",10ul);
 	GlobParam_foxy.min_iterations = args.get<size_t>("Imin",6);
 	GlobParam_foxy.max_iterations = args.get<size_t>("Imax",1000);
+	GlobParam_foxy.max_iter_without_expansion = args.get<size_t>("max",100);
+
 	GlobParam_foxy.tol_eigval = args.get<double>("tol_eigval",1e-6);
 	GlobParam_foxy.tol_var = args.get<double>("tol_var",1e-6);
 	GlobParam_foxy.tol_state = args.get<double>("tol_state",1e-5);
@@ -181,9 +183,12 @@ int main (int argc, char* argv[])
 	{
 		VMPS::HubbardSU2xSU2::uSolver Foxy(VERB);
 		HDF5Interface target;
+		target = HDF5Interface("obs/observables.h5",WRITE);
+		target.close();
+
 		auto measure_and_save = [&H,&target,&params,&Foxy](size_t j) -> void
 		{
-			if (Foxy.errVar() < 1.e-6)
+			if (Foxy.errVar() < 1.e-8)
 			{
 				std::stringstream bond;
 				target = HDF5Interface("obs/observables.h5",REWRITE);
@@ -194,7 +199,7 @@ int main (int argc, char* argv[])
 				for(size_t c=0; c<L; c++)
 				{
 					obs.nh(c) = avg(g_foxy.state,H.nh(c,0),g_foxy.state);
-					obs.ns(c) = avg(g_foxy.state,H.ns(c,0),g_foxy.state);					
+					obs.ns(c) = avg(g_foxy.state,H.ns(c,0),g_foxy.state);
 				}
 				obs.entropy = g_foxy.state.entropy();
 

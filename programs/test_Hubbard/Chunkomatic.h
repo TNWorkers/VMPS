@@ -12,7 +12,7 @@ public:
 	IntType value1();
 	IntType value2();
 	
-	Chunkomatic& operator = (const int &comp) {curr_index=comp;}
+	Chunkomatic& operator = (const int &comp) {curr_index=comp; return *this;}
 	
 	bool operator <  (const int &comp) {return(curr_index< comp)?true:false;}
 	bool operator >  (const int &comp) {return(curr_index> comp)?true:false;}

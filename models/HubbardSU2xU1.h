@@ -151,7 +151,7 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 	}*/
 	
 	set_operators(F, P, Terms);
-	cout << Terms.print_info() << endl;
+	// cout << Terms.print_info() << endl;
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 	this->precalc_TwoSiteData();

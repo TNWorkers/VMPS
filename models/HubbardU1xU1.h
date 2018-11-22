@@ -119,7 +119,7 @@ HubbardU1xU1 (const size_t &L, const vector<Param> &params)
     }
     
     set_operators(F,P,Terms);
-    cout << Terms.print_info() << endl;
+    // cout << Terms.print_info() << endl;
     
     this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
     this->precalc_TwoSiteData();
@@ -361,8 +361,8 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
                 {
                     Terms.push_nextn(loc, -tprime.a(alpha, beta), F[loc].cdag(UP, alpha)*F[loc].sign(), F[(loc+1)%N_sites].sign(), F[(loc+2)%N_sites].c(UP, beta));
                     Terms.push_nextn(loc, -tprime.a(alpha, beta), F[loc].cdag(DN, alpha)*F[loc].sign(), F[(loc+1)%N_sites].sign(), F[(loc+2)%N_sites].c(DN, beta));
-                    Terms.push_nextn(loc, -tprime.a(alpha, beta), F[loc].c(UP, alpha)*F[loc].sign(), F[(loc+1)%N_sites].sign(), F[(loc+2)%N_sites].cdag(UP, beta));
-                    Terms.push_nextn(loc, -tprime.a(alpha, beta), F[loc].c(DN, alpha)*F[loc].sign(), F[(loc+1)%N_sites].sign(), F[(loc+2)%N_sites].cdag(DN, beta));
+                    Terms.push_nextn(loc, -tprime.a(alpha, beta), -1.*F[loc].c(UP, alpha)*F[loc].sign(), F[(loc+1)%N_sites].sign(), F[(loc+2)%N_sites].cdag(UP, beta));
+                    Terms.push_nextn(loc, -tprime.a(alpha, beta), -1.*F[loc].c(DN, alpha)*F[loc].sign(), F[(loc+1)%N_sites].sign(), F[(loc+2)%N_sites].cdag(DN, beta));
                 }
             }
         }

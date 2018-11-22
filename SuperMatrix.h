@@ -229,7 +229,7 @@ SuperMatrix<Symmetry,Scalar> directSum (const SuperMatrix<Symmetry,Scalar> &M1, 
 template<typename Symmetry, typename Scalar>
 std::ostream &operator<< (std::ostream& os, const SuperMatrix<Symmetry,Scalar> &M)
 {
-	os << std::showpos << std::fixed;
+	os << std::showpos << std::setprecision(1) << std::fixed;
 	for (int i=0; i<M.rows(); ++i)
 	{
 		for (int n=0; n<M.D(); ++n)
@@ -238,13 +238,14 @@ std::ostream &operator<< (std::ostream& os, const SuperMatrix<Symmetry,Scalar> &
 			{
 				for (int m=0; m<M.D(); ++m)
 				{
-					os << M(i,j).data(n,m);
+					
+					os << Matrix<Scalar,Dynamic,Dynamic>(M(i,j).data)(n,m);
 				}
-				os << "\t";
+				os << " ";
 			}
 			if (n!=M.D()-1) {os << std::endl;}
 		}
-		if (i!=M.rows()-1) {os << std::endl;}
+		if (i!=M.rows()-1) {os << std::endl << std::endl;}
 	}
 	os << noshowpos;
 	return os;

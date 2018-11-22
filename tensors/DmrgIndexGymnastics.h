@@ -60,7 +60,7 @@ bool LAWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry:
 					{
 						if (Symmetry::validate(qarray3<Symmetry::Nq>{Rin,Rmid,Rout}))
 						{
-//							if (IS_HAMILTONIAN and find(qOp.begin(), qOp.end(), Rmid) == qOp.end()) {continue;}
+							if (IS_HAMILTONIAN and find(qOp.begin(), qOp.end(), Rmid) == qOp.end()) {continue;}
 							result.push_back(make_tuple(qarray3<Symmetry::Nq>{Rin,Rout,Rmid}, qAbra->second, qAket->second));
 							out = true;
 						}
@@ -103,7 +103,7 @@ bool AWAR (qarray<Symmetry::Nq> Rin, qarray<Symmetry::Nq> Rout, qarray<Symmetry:
 					{
 						if (Symmetry::validate(qarray3<Symmetry::Nq>{Lout,Lmid,Lin}))
 						{
-//							if (IS_HAMILTONIAN and find(qOp.begin(), qOp.end(), Lmid) == qOp.end()) {continue;}
+							if (IS_HAMILTONIAN and find(qOp.begin(), qOp.end(), Lmid) == qOp.end()) {continue;}
 							result.push_back(make_tuple(qarray3<Symmetry::Nq>{Lin,Lout,Lmid}, qAbra->second, qAket->second));
 							out = true;
 						}
