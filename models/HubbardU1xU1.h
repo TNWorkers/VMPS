@@ -378,20 +378,20 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
 			if(loc < N_sites-2 || !P.get<bool>("OPEN_BC"))
 			{
 				
-				SiteOperator<Symmetry, double> cup_sign_local = F[loc].c(UP) * F[loc].sign();
-				SiteOperator<Symmetry, double> cdn_sign_local = F[loc].c(DN) * F[loc].sign();
-				SiteOperator<Symmetry, double> cupdag_sign_local = F[loc].cdag(UP) * F[loc].sign();
-				SiteOperator<Symmetry, double> cdndag_sign_local = F[loc].cdag(DN) * F[loc].sign();
+				SiteOperator<Symmetry_, double> cup_sign_local = F[loc].c(UP) * F[loc].sign();
+				SiteOperator<Symmetry_, double> cdn_sign_local = F[loc].c(DN) * F[loc].sign();
+				SiteOperator<Symmetry_, double> cupdag_sign_local = F[loc].cdag(UP) * F[loc].sign();
+				SiteOperator<Symmetry_, double> cdndag_sign_local = F[loc].cdag(DN) * F[loc].sign();
 				
-				SiteOperator<Symmetry, double> nup_sign_tight = F[(loc+1)%N_sites].n(UP) * F[(loc+1)%N_sites].sign();
-				SiteOperator<Symmetry, double> ndn_sign_tight = F[(loc+1)%N_sites].n(UP) * F[(loc+1)%N_sites].sign();
-				SiteOperator<Symmetry, double> Sp_sign_tight = F[(loc+1)%N_sites].Sp() * F[(loc+1)%N_sites].sign();
-				SiteOperator<Symmetry, double> Sm_sign_tight = F[(loc+1)%N_sites].Sm() * F[(loc+1)%N_sites].sign();
+				SiteOperator<Symmetry_, double> nup_sign_tight = F[(loc+1)%N_sites].n(UP) * F[(loc+1)%N_sites].sign();
+				SiteOperator<Symmetry_, double> ndn_sign_tight = F[(loc+1)%N_sites].n(UP) * F[(loc+1)%N_sites].sign();
+				SiteOperator<Symmetry_, double> Sp_sign_tight = F[(loc+1)%N_sites].Sp() * F[(loc+1)%N_sites].sign();
+				SiteOperator<Symmetry_, double> Sm_sign_tight = F[(loc+1)%N_sites].Sm() * F[(loc+1)%N_sites].sign();
 				
-				SiteOperator<Symmetry, double> cup_nextn = F[(loc+2)%N_sites].c(UP);
-				SiteOperator<Symmetry, double> cdn_nextn = F[(loc+2)%N_sites].c(DN);
-				SiteOperator<Symmetry, double> cupdag_nextn = F[(loc+2)%N_sites].cdag(UP);
-				SiteOperator<Symmetry, double> cdndag_nextn = F[(loc+2)%N_sites].cdag(DN);
+				SiteOperator<Symmetry_, double> cup_nextn = F[(loc+2)%N_sites].c(UP);
+				SiteOperator<Symmetry_, double> cdn_nextn = F[(loc+2)%N_sites].c(DN);
+				SiteOperator<Symmetry_, double> cupdag_nextn = F[(loc+2)%N_sites].cdag(UP);
+				SiteOperator<Symmetry_, double> cdndag_nextn = F[(loc+2)%N_sites].cdag(DN);
 				
 				// three-site terms without spinflip
 				Terms.push_nextn(loc, -0.25*J3site.x, cupdag_sign_local, ndn_sign_tight, cup_nextn);
