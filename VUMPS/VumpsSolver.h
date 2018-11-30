@@ -89,6 +89,7 @@ public:
 	const double& errState() {return err_state;}
 	const double& errEigval() {return err_eigval;}
 
+	bool FORCE_DO_SOMETHING = false;
 private:
 	
 	///\{
@@ -187,9 +188,6 @@ private:
 	bool USER_SET_GLOBPARAM    = false;
 	bool USER_SET_DYNPARAM     = false;
 	bool USER_SET_LANCZOSPARAM = false;
-
-	/**tolerances*/
-	// double tol_eigval, tol_var;
 	
 	/**keeping track of iterations*/
 	size_t N_iterations, N_iterations_without_expansion;
@@ -871,7 +869,9 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		size_t deltaD = min(max(static_cast<size_t>(DynParam.Dincr_rel(N_iterations) * Vout.state.max_Nsv-Vout.state.max_Nsv), DynParam.Dincr_abs(N_iterations)),
 							DynParam.max_deltaD(N_iterations));
 		//make sure to perform at least one measurement before expanding the basis
+		FORCE_DO_SOMETHING = true;
 		DynParam.doSomething(N_iterations);
+		FORCE_DO_SOMETHING = false;
 		// if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
 		expand_basis(deltaD, H, Vout, VUMPS::TWOSITE_A::ALxCxAR);
 		t_exp = ExpansionTimer.time();

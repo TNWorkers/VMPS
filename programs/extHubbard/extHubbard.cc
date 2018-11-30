@@ -188,7 +188,7 @@ int main (int argc, char* argv[])
 
 		auto measure_and_save = [&H,&target,&params,&Foxy](size_t j) -> void
 		{
-			if (Foxy.errVar() < 1.e-8)
+			if (Foxy.errVar() < 1.e-8 or Foxy.FORCE_DO_SOMETHING == true)
 			{
 				std::stringstream bond;
 				target = HDF5Interface("obs/observables.h5",REWRITE);
@@ -260,6 +260,7 @@ int main (int argc, char* argv[])
 		Foxy.GlobParam = GlobParam_foxy;
 		Foxy.DynParam = DynParam_foxy;
 		Foxy.DynParam.doSomething = measure_and_save;
+		Foxy.DynParam.iteration = [](size_t i) -> UMPS_ALG::OPTION {return UMPS_ALG::PARALLEL;};
 		Foxy.set_log(2,"e0.dat","err_eigval.dat","err_var.dat","err_state.dat");
 		Foxy.edgeState(H, g_foxy, {0,0});
 
