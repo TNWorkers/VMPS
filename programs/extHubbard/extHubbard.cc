@@ -101,12 +101,10 @@ int main (int argc, char* argv[])
 	Ly = args.get<size_t>("Ly",1);
 	Ly2 = args.get<size_t>("Ly2",Ly);
 	t = args.get<double>("t",1.);
-	tPrime = args.get<double>("tPrime",0.);
 	tRung = args.get<double>("tRung",0.);
 	U = args.get<double>("U",8.);
 	J = args.get<double>("J",0.);
 	V = args.get<double>("V",0.);
-	mu = args.get<double>("mu",0.5*U);
 	N = args.get<int>("N",L*Ly);
 	M = args.get<int>("M",0);;
 	S = abs(M)+1;
@@ -148,7 +146,7 @@ int main (int argc, char* argv[])
 	GlobParam_foxy.tol_state = args.get<double>("tol_state",1e-5);
 
 	lout << args.info() << endl;
-	lout.set(make_string("L=",L,"_Ly=",Ly,"_t=",t,"_t'=",tPrime,"_U=",U,".log"),"log");
+	lout.set(make_string("L=",L,"_Ly=",Ly,"_t=",t,"_V=",V,"_U=",U,"_J=",J,".log"),"log");
 	
 	#ifdef _OPENMP
 	lout << "threads=" << omp_get_max_threads() << endl;
@@ -169,7 +167,7 @@ int main (int argc, char* argv[])
 	params.push_back({"J",J,1});
 	params.push_back({"Ly",Ly,0});
 	params.push_back({"Ly",Ly,1});
-	if (VUMPS) {cout << "set open bc to false." << endl; params.push_back({"OPEN_BC",false});}
+	if (VUMPS) {params.push_back({"OPEN_BC",false});}
 	
 	VMPS::HubbardSU2xSU2 H(L,params);
 	lout << H.info() << endl;
@@ -183,15 +181,17 @@ int main (int argc, char* argv[])
 	{
 		VMPS::HubbardSU2xSU2::uSolver Foxy(VERB);
 		HDF5Interface target;
-		target = HDF5Interface("obs/observables.h5",WRITE);
+		string obsfile = make_string("obs/U=",U,"_V=",V,"_J=",J,".h5");
+		cout << obsfile << endl;
+		target = HDF5Interface(obsfile,WRITE);
 		target.close();
 
-		auto measure_and_save = [&H,&target,&params,&Foxy](size_t j) -> void
+		auto measure_and_save = [&H,&target,&params,&Foxy,&obsfile](size_t j) -> void
 		{
 			if (Foxy.errVar() < 1.e-8 or Foxy.FORCE_DO_SOMETHING == true)
 			{
 				std::stringstream bond;
-				target = HDF5Interface("obs/observables.h5",REWRITE);
+				target = HDF5Interface(obsfile,REWRITE);
 				bond << g_foxy.state.calc_fullMmax();
 				cout << termcolor::red << "Measure at M=" << bond.str() << ", if possible" << termcolor::reset << endl;
 				if (target.HAS_GROUP(bond.str())) {return;}

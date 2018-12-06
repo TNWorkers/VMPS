@@ -873,7 +873,8 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		DynParam.doSomething(N_iterations);
 		FORCE_DO_SOMETHING = false;
 		// if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
-		expand_basis(deltaD, H, Vout, VUMPS::TWOSITE_A::ALxCxAR);
+		cout << "performing expansion with " << VUMPS::TWOSITE_A::ALxCxAR << endl;
+		expand_basis(deltaD, H, Vout, VUMPS::TWOSITE_A::ALxCxAR);//);
 		t_exp = ExpansionTimer.time();
 		N_iterations_without_expansion = 0;
 	}
@@ -1647,6 +1648,7 @@ calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scal
 	}
 	else if (option == VUMPS::TWOSITE_A::ACxAR)
 	{
+		assert(1!=1 and "The option ACxAR causes bugs. Fix them first to use it.");
 		AL=Vout.state.A[GAUGE::C][loc];
 		AR=Vout.state.A[GAUGE::R][(loc+1)%N_sites];
 	}

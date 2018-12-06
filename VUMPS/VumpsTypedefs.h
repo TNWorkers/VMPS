@@ -37,9 +37,9 @@ struct VUMPS
 	{
 		enum OPTION
 		{
-			ALxAC,
-			ACxAR,
-			ALxCxAR
+			ALxAC=0,
+			ACxAR=1,
+			ALxCxAR=2
 		};
 	};
 	/**Default configuration values for the VUMPS solver.*/
@@ -110,5 +110,13 @@ struct VUMPS
 		};
 	};
 };
+
+std::ostream& operator<< (std::ostream& s, VUMPS::TWOSITE_A::OPTION a)
+{
+	if      (a==VUMPS::TWOSITE_A::ALxAC)   {s << "ALxAC";}
+	else if (a==VUMPS::TWOSITE_A::ACxAR)   {s << "ACxAR";}
+	else if (a==VUMPS::TWOSITE_A::ALxCxAR) {s << "ALxCxAR";}
+	return s;
+}
 
 #endif
