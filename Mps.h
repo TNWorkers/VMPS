@@ -245,6 +245,9 @@ public:
 	 */
 	size_t calc_Mmax() const;
 	
+	size_t get_Min  (size_t loc) const;
+	size_t get_Mout (size_t loc) const;
+	
 	/**
 	 * For SU(2) symmetries, determines the equivalent U(1) bond dimension.
 	 */
@@ -1394,6 +1397,20 @@ calc_Mmax () const
 
 template<typename Symmetry, typename Scalar>
 std::size_t Mps<Symmetry,Scalar>::
+get_Min (size_t loc) const
+{
+	return inbase[loc].M();
+}
+
+template<typename Symmetry, typename Scalar>
+std::size_t Mps<Symmetry,Scalar>::
+get_Mout (size_t loc) const
+{
+	return outbase[loc].M();
+}
+
+template<typename Symmetry, typename Scalar>
+std::size_t Mps<Symmetry,Scalar>::
 calc_fullMmax () const
 {
 	size_t res = 0;
@@ -1547,11 +1564,9 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				truncWeightSub(qin) = Symmetry::degeneracy(inbase[loc][qin]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy
-//				cout << inbase[loc][qin] << ": SV=" << SV.transpose() << endl;
 				size_t Nnz = (SV.array() > 0.).count();
 				entropySub(qin) = -Symmetry::degeneracy(inbase[loc][qin]) * 
 				                  (SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
-//				cout << "loc=" << loc << ", qin=" << inbase[loc][qin] << ", S=" << entropySub(qin) << endl;
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{
@@ -1745,11 +1760,9 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 				truncWeightSub(qout) = Symmetry::degeneracy(outbase[loc][qout]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy
-//				cout << outbase[loc][qout] << ": SV=" << SV.transpose() << endl;
 				size_t Nnz = (SV.array() > 0.).count();
 				entropySub(qout) = -Symmetry::degeneracy(outbase[loc][qout]) * 
 				                   (SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
-//				cout << "loc=" << loc << ", qout=" << outbase[loc][qout] << ", S=" << entropySub(qout) << endl;
 			}
 			else if (TOOL == DMRG::BROOM::QR)
 			{

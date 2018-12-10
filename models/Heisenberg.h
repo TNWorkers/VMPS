@@ -2,6 +2,7 @@
 #define VANILLA_HEISENBERG
 
 #include "models/HeisenbergU1.h"
+#include "models/KitaevChain.h"
 #include "symmetry/U0.h"
 
 namespace VMPS
@@ -46,9 +47,8 @@ public:
 	Heisenberg (const size_t &L, const vector<Param> &params);
 	///@}
 	
-    //static void add_operators (HamiltonianTermsXd<Symmetry> &Terms, const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, size_t loc=0);
-    static void add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
-    
+	static void add_operators (const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
+	
 	static const std::map<string,std::any> defaults;
 	static const std::map<string,std::any> sweep_defaults;
 	
@@ -61,6 +61,7 @@ const std::map<string,std::any> Heisenberg::defaults =
 	{"Bz",0.}, {"Bx",0.},
 	{"Kz",0.}, {"Kx",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.}, // Dzialoshinsky-Moriya terms
+	{"t",0.}, {"mu",0.}, {"Delta",0.}, // Kitaev chain terms
 	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
@@ -77,14 +78,13 @@ const std::map<string,std::any> Heisenberg::sweep_defaults =
 
 Heisenberg::
 Heisenberg (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<0>({}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
  HeisenbergObservables(L,params,Heisenberg::defaults),
  ParamReturner(Heisenberg::sweep_defaults)
 {
-	/*ParamHandler P(params,Heisenberg::defaults);
-	
+	ParamHandler P(params,Heisenberg::defaults);
 	size_t Lcell = P.size();
-	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
+	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -92,177 +92,85 @@ Heisenberg (const size_t &L, const vector<Param> &params)
 		setLocBasis(B[l].get_basis(),l);
 	}
 	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Terms[l] = HeisenbergU1::set_operators(B,P,l%Lcell);
-		add_operators(Terms[l],B,P,l%Lcell);
-		
-		stringstream ss;
-		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
-		Terms[l].info.push_back(ss.str());
-	}
+	HeisenbergU1::set_operators(B,P,Terms);
+	KitaevChain::add_operators(B,P,Terms);
+	add_operators(B,P,Terms);
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-	this->precalc_TwoSiteData();*/
-    
-    ParamHandler P(params,Heisenberg::defaults);
-    size_t Lcell = P.size();
-    HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
-    
-    for (size_t l=0; l<N_sites; ++l)
-    {
-        N_phys += P.get<size_t>("Ly",l%Lcell);
-        setLocBasis(B[l].get_basis(),l);
-    }
-    
-    HeisenbergU1::set_operators(B,P,Terms);
-    add_operators(B,P,Terms);
-    
-    this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-    this->precalc_TwoSiteData();
+	this->precalc_TwoSiteData();
 }
 
-/*void Heisenberg::
-add_operators (HamiltonianTermsXd<Symmetry> &Terms, const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, size_t loc)
-{
-	auto save_label = [&Terms] (string label)
-	{
-		if (label!="") {Terms.info.push_back(label);}
-	};
-	
-	size_t lp1 = (loc+1)%B.size();
-	
-	// Dzyaloshinsky-Moriya terms
-	
-	auto [Dy,Dypara,Dylabel] = P.fill_array2d<double>("Dy","Dypara",{{B[loc].orbitals(),B[lp1].orbitals()}},loc);
-	save_label(Dylabel);
-	
-	for (int i=0; i<B[loc].orbitals(); ++i)
-	for (int j=0; j<B[lp1].orbitals(); ++j)
-	{
-		if (Dypara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(+Dypara(i,j), B[loc].Scomp(SX), B[loc].Scomp(SZ)));
-			Terms.tight.push_back(make_tuple(-Dypara(i,j), B[loc].Scomp(SZ), B[loc].Scomp(SX)));
-		}
-	}
-	
-	param0d Dyprime = P.fill_array0d<double>("Dyprime","Dyprime",loc);
-	save_label(Dyprime.label);
-	
-	if (Dyprime.x != 0.)
-	{
-		assert(B[loc].orbitals() == 1 and "Cannot do a ladder with Dy' terms!");
-		
-		Terms.nextn.push_back(make_tuple(+Dyprime.x, B[loc].Scomp(SX), B[loc].Scomp(SZ), B[loc].Id()));
-		Terms.nextn.push_back(make_tuple(-Dyprime.x, B[loc].Scomp(SZ), B[loc].Scomp(SX), B[loc].Id()));
-	}
-	
-	// local terms
-	
-	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",B[loc].orbitals(),loc);
-	save_label(Bxlabel);
-	
-	auto [Kx,Kxorb,Kxlabel] = P.fill_array1d<double>("Kx","Kxorb",B[loc].orbitals(),loc);
-	save_label(Kxlabel);
-	
-	auto [Dyrung,Dyperp,Dyperplabel] = P.fill_array2d<double>("Dyrung","Dy","Dyperp",B[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(Dyperplabel);
-	
-	Terms.name = (P.HAS_ANY_OF({"Dy","Dyperp","Dyprime"},loc))? "Dzyaloshinsky-Moriya":"Heisenberg";
-	
-	ArrayXd Bzorb = B[loc].ZeroField();
-	ArrayXd Kzorb = B[loc].ZeroField();
-	ArrayXXd Jperp = B[loc].ZeroHopping();
-	
-	Terms.local.push_back(make_tuple(1., B[loc].HeisenbergHamiltonian(Jperp,Jperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp)));
-}*/
-    
 void Heisenberg::
 add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
 {
-    std::size_t Lcell = P.size();
-    std::size_t N_sites = Terms.size();
-    if(P.HAS_ANY_OF({"Dy", "Dyperp", "Dyprime"}))
-    {
-        Terms.set_name("Dzyaloshinsky-Moriya");
-    }
-    else
-    {
-        Terms.set_name("Heisenberg");
-    }
-    for(std::size_t loc=0; loc<N_sites; ++loc)
-    {
-        std::size_t orbitals = B[loc].orbitals();
-        std::size_t next_orbitals = B[(loc+1)%N_sites].orbitals();
-        std::size_t nextn_orbitals = B[(loc+2)%N_sites].orbitals();
-        
-        stringstream ss1, ss2;
-        ss1 << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc%Lcell)-1,2));
-        ss2 << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
-        Terms.save_label(loc, ss1.str());
-        Terms.save_label(loc, ss2.str());
-        
-        // Local terms: B, K, DM⟂
-        
-        param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
-        param1d Kx = P.fill_array1d<double>("Kx", "Kxorb", orbitals, loc%Lcell);
-        param2d Dyperp = P.fill_array2d<double>("Dyrung", "Dy", "Dyperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-        
-        Terms.save_label(loc, Bx.label);
-        Terms.save_label(loc, Kx.label);
-        Terms.save_label(loc, Dyperp.label);
-
-        ArrayXd Bz_array = B[loc].ZeroField();
-        ArrayXd Kz_array = B[loc].ZeroField();
-        ArrayXXd Jperp_array = B[loc].ZeroHopping();
-        
-        Terms.push_local(loc, 1., B[loc].HeisenbergHamiltonian(Jperp_array, Jperp_array, Bz_array, Bx.a, Kz_array, Kx.a, Dyperp.a));
-        
-        // Nearest-neighbour terms: DM=Dzyaloshinsky-Moriya
-        
-        param2d Dypara = P.fill_array2d<double>("Dy", "Dypara", {orbitals, next_orbitals}, loc%Lcell);
-        Terms.save_label(loc, Dypara.label);
-        
-        if(loc < N_sites-1 || !P.get<bool>("OPEN_BC"))
-        {
-            for (std::size_t alpha=0; alpha < orbitals; ++alpha)
-            {
-                for (std::size_t beta=0; beta < next_orbitals; ++beta)
-                {
-                    Terms.push_tight(loc, Dypara.a(alpha,beta),
-                                     B[loc].Scomp(SX, alpha),
-                                     B[(loc+1)%N_sites].Scomp(SZ, beta));
-                    Terms.push_tight(loc, -Dypara.a(alpha,beta),
-                                     B[loc].Scomp(SZ, alpha),
-                                     B[(loc+1)%N_sites].Scomp(SX, beta));
-                }
-            }
-        }
-        
-        // Next-nearest-neighbour terms: DM
-        
-        param2d Dyprime = P.fill_array2d<double>("Dyprime", "Dyprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
-        Terms.save_label(loc, Dyprime.label);
-        
-        if(loc < N_sites-2 || !P.get<bool>("OPEN_BC"))
-        {
-            for (std::size_t alpha=0; alpha < orbitals; ++alpha)
-            {
-                for (std::size_t beta=0; beta < nextn_orbitals; ++beta)
-                {
-                    Terms.push_nextn(loc, Dypara.a(alpha,beta),
-                                     B[loc].Scomp(SX, alpha),
-                                     B[(loc+1)%N_sites].Id(),
-                                     B[(loc+2)%N_sites].Scomp(SZ, beta));
-                    Terms.push_nextn(loc, -Dypara.a(alpha,beta),
-                                     B[loc].Scomp(SZ, alpha),
-                                     B[(loc+1)%N_sites].Id(),
-                                     B[(loc+2)%N_sites].Scomp(SX, beta));
-                }
-            }
-        }
-    }
+	std::size_t Lcell = P.size();
+	std::size_t N_sites = Terms.size();
+	
+	if(P.HAS_ANY_OF({"Dy", "Dyperp", "Dyprime"}))
+	{
+		Terms.set_name("Dzyaloshinsky-Moriya");
+	}
+	else
+	{
+		Terms.set_name("Heisenberg");
+	}
+	
+	for(std::size_t loc=0; loc<N_sites; ++loc)
+	{
+		size_t lp1 = (loc+1)%N_sites;
+		size_t lp2 = (loc+2)%N_sites;
+		
+		std::size_t orbitals = B[loc].orbitals();
+		std::size_t next_orbitals = B[lp1].orbitals();
+		std::size_t nextn_orbitals = B[lp2].orbitals();
+		
+		// Local terms: B, K, DM⟂
+		
+		param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
+		param1d Kx = P.fill_array1d<double>("Kx", "Kxorb", orbitals, loc%Lcell);
+		param2d Dyperp = P.fill_array2d<double>("Dyrung", "Dy", "Dyperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		
+		Terms.save_label(loc, Bx.label);
+		Terms.save_label(loc, Kx.label);
+		Terms.save_label(loc, Dyperp.label);
+		
+		ArrayXd Bz_array = B[loc].ZeroField();
+		ArrayXd mu_array = B[loc].ZeroField();
+		ArrayXd Kz_array = B[loc].ZeroField();
+		ArrayXXd Jperp_array = B[loc].ZeroHopping();
+		
+		Terms.push_local(loc, 1., B[loc].HeisenbergHamiltonian(Jperp_array, Jperp_array, Bz_array, Bx.a, mu_array, Kz_array, Kx.a, Dyperp.a));
+		
+		// Nearest-neighbour terms: DM=Dzyaloshinsky-Moriya
+		
+		param2d Dypara = P.fill_array2d<double>("Dy", "Dypara", {orbitals, next_orbitals}, loc%Lcell);
+		Terms.save_label(loc, Dypara.label);
+		
+		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		{
+			for (std::size_t alfa=0; alfa<orbitals; alfa++)
+			for (std::size_t beta=0; beta<next_orbitals; ++beta)
+			{
+				Terms.push_tight(loc, +Dypara.a(alfa,beta), B[loc].Scomp(SX,alfa), B[lp1].Scomp(SZ,beta));
+				Terms.push_tight(loc, -Dypara.a(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SX,beta));
+			}
+		}
+		
+		// Next-nearest-neighbour terms: DM
+		
+		param2d Dyprime = P.fill_array2d<double>("Dyprime", "Dyprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
+		Terms.save_label(loc, Dyprime.label);
+		
+		if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
+		{
+			for (std::size_t alfa=0; alfa<orbitals; ++alfa)
+			for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
+			{
+				Terms.push_nextn(loc, +Dypara.a(alfa,beta), B[loc].Scomp(SX,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta));
+				Terms.push_nextn(loc, -Dypara.a(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SX,beta));
+			}
+		}
+	}
 }
 
 refEnergy Heisenberg::

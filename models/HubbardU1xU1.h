@@ -84,33 +84,9 @@ HubbardU1xU1 (const size_t &L, const vector<Param> &params)
  HubbardObservables(L,params,HubbardU1xU1::defaults),
  ParamReturner()
 {
-	/*ParamHandler P(params,HubbardU1xU1::defaults);
-	
-	size_t Lcell = P.size();
-	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
-	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		N_phys += P.get<size_t>("Ly",l%Lcell);
-		setLocBasis(F[l].get_basis(),l);
-	}
-	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Terms[l] = set_operators(F,P,l%Lcell);
-		
-		stringstream ss;
-		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
-		Terms[l].info.push_back(ss.str());
-	}
-	
-	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
-	this->precalc_TwoSiteData();*/
-    
     ParamHandler P(params, HubbardU1xU1::defaults);
     
     size_t Lcell = P.size();
-    HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
     
     for (size_t l=0; l<N_sites; ++l)
     {
@@ -118,159 +94,12 @@ HubbardU1xU1 (const size_t &L, const vector<Param> &params)
         setLocBasis(F[l].get_basis(),l);
     }
     
+    HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
     set_operators(F,P,Terms);
-    // cout << Terms.print_info() << endl;
     
     this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
     this->precalc_TwoSiteData();
 }
-
-/*template<typename Symmetry_>
-HamiltonianTermsXd<Symmetry_> HubbardU1xU1::
-set_operators (const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, size_t loc)
-{
-	HamiltonianTermsXd<Symmetry_> Terms;
-	
-	auto save_label = [&Terms] (string label)
-	{
-		if (label!="") {Terms.info.push_back(label);}
-	};
-	
-	size_t lp1 = (loc+1)%F.size();
-	
-	// NN terms
-	
-	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
-	save_label(tlabel);
-	
-	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
-	save_label(Vlabel);
-	
-	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
-	save_label(Jlabel);
-	
-	for (int i=0; i<F[loc].orbitals(); ++i)
-	for (int j=0; j<F[lp1].orbitals(); ++j)
-	{
-		if (tPara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(-tPara(i,j), F[loc].cdag(UP,i)  * F[loc].sign(), F[loc].c(UP,j)));
-			Terms.tight.push_back(make_tuple(-tPara(i,j), F[loc].cdag(DN,i)  * F[loc].sign(), F[loc].c(DN,j)));
-			Terms.tight.push_back(make_tuple(-tPara(i,j), -1.*F[loc].c(UP,i) * F[loc].sign(), F[loc].cdag(UP,j)));
-			Terms.tight.push_back(make_tuple(-tPara(i,j), -1.*F[loc].c(DN,i) * F[loc].sign(), F[loc].cdag(DN,j)));
-		}
-		
-		if (Vpara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(Vpara(i,j), F[loc].n(i), F[loc].n(i)));
-		}
-		
-		if (Jpara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), F[loc].Sp(i), F[loc].Sm(i)));
-			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), F[loc].Sm(i), F[loc].Sp(i)));
-			Terms.tight.push_back(make_tuple(Jpara(i,j),     F[loc].Sz(i), F[loc].Sz(i)));
-		}
-	}
-	
-	// NNN terms
-	
-	param0d tPrime = P.fill_array0d<double>("tPrime","tPrime",loc);
-	save_label(tPrime.label);
-	
-	if (tPrime.x != 0.)
-	{
-		assert(F[loc].orbitals() == 1 and "Cannot do a ladder with t'!");
-		
-		Terms.nextn.push_back(make_tuple(-tPrime.x, F[loc].cdag(UP)  * F[loc].sign(), F[loc].c(UP),    F[loc].sign()));
-		Terms.nextn.push_back(make_tuple(-tPrime.x, F[loc].cdag(DN)  * F[loc].sign(), F[loc].c(DN),    F[loc].sign()));
-		Terms.nextn.push_back(make_tuple(-tPrime.x, -1.*F[loc].c(UP) * F[loc].sign(), F[loc].cdag(UP), F[loc].sign()));
-		Terms.nextn.push_back(make_tuple(-tPrime.x, -1.*F[loc].c(DN) * F[loc].sign(), F[loc].cdag(DN), F[loc].sign()));
-	}
-	
-	param0d J3site = P.fill_array0d<double>("J3site","J3site",loc);
-	save_label(J3site.label);
-	
-	if (J3site.x != 0.)
-	{
-		lout << "Warning! J3site has to be tested against ED!" << endl;
-		
-		assert(F[loc].orbitals() == 1 and "Cannot do a ladder with 3-site J terms!");
-		
-		// old and probably wrong:
-		
-//		// three-site terms without spinflip
-//		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.cdag(UP), F.sign()*F.c(UP),    F.n(DN)*F.sign()));
-//		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.cdag(DN), F.sign()*F.c(DN),    F.n(UP)*F.sign()));
-//		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F.c(UP),    F.sign()*F.cdag(UP), F.n(DN)*F.sign()));
-//		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F.c(DN),    F.sign()*F.cdag(DN), F.n(UP)*F.sign()));
-//		
-//		// three-site terms with spinflip
-//		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F.cdag(DN), F.sign()*F.c(UP),    F.Sp()*F.sign()));
-//		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F.cdag(UP), F.sign()*F.c(DN),    F.Sm()*F.sign()));
-//		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.c(DN),    F.sign()*F.cdag(UP), F.Sm()*F.sign()));
-//		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F.c(UP),    F.sign()*F.cdag(DN), F.Sp()*F.sign()));
-		
-		// new:
-		
-		// three-site terms without spinflip
-		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F[loc].cdag(UP)  * F[loc].sign(), F[loc].c(UP),    F[loc].n(DN)*F[loc].sign()));
-		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, F[loc].cdag(DN)  * F[loc].sign(), F[loc].c(DN),    F[loc].n(UP)*F[loc].sign()));
-		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, -1.*F[loc].c(UP) * F[loc].sign(), F[loc].cdag(UP), F[loc].n(DN)*F[loc].sign()));
-		Terms.nextn.push_back(make_tuple(-0.25*J3site.x, -1.*F[loc].c(DN) * F[loc].sign(), F[loc].cdag(DN), F[loc].n(UP)*F[loc].sign()));
-		
-		// three-site terms with spinflip
-		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F[loc].cdag(DN)  * F[loc].sign(), F[loc].c(UP),    F[loc].Sp()*F[loc].sign()));
-		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, F[loc].cdag(UP)  * F[loc].sign(), F[loc].c(DN),    F[loc].Sm()*F[loc].sign()));
-		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, -1.*F[loc].c(DN) * F[loc].sign(), F[loc].cdag(UP), F[loc].Sm()*F[loc].sign()));
-		Terms.nextn.push_back(make_tuple(+0.25*J3site.x, -1.*F[loc].c(UP) * F[loc].sign(), F[loc].cdag(DN), F[loc].Sp()*F[loc].sign()));
-	}
-	
-	// local terms
-	
-	// Hubbard-U
-	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F[loc].orbitals(),loc);
-	save_label(Ulabel);
-	
-	// t0
-	auto [t0,t0orb,t0label] = P.fill_array1d<double>("t0","t0orb",F[loc].orbitals(),loc);
-	save_label(t0label);
-	
-	// μ
-	auto [mu,muorb,mulabel] = P.fill_array1d<double>("mu","muorb",F[loc].orbitals(),loc);
-	save_label(mulabel);
-	
-	// Bz
-	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",F[loc].orbitals(),loc);
-	save_label(Bzlabel);
-	
-	// t⟂
-	auto [tRung,tPerp,tPerplabel] = P.fill_array2d<double>("tRung","t","tPerp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(tPerplabel);
-	
-	// V⟂
-	auto [Vrung,Vperp,Vperplabel] = P.fill_array2d<double>("Vrung","V","Vperp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(Vperplabel);
-	
-	// J⟂
-	auto [Jrung,Jperp,Jperplabel] = P.fill_array2d<double>("Jrung","J","Jperp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(Jperplabel);
-	
-	if (isfinite(Uorb.sum()))
-	{
-		Terms.name = "Hubbard";
-	}
-	else
-	{
-		Terms.name = (P.HAS_ANY_OF({"J","J3site"}))? "t-J":"U=∞-Hubbard";
-	}
-	
-	ArrayXd Bxorb = F[loc].ZeroField();
-	
-	Terms.local.push_back(make_tuple(1., F[loc].template HubbardHamiltonian<double>(Uorb,t0orb-muorb,Bzorb,Bxorb,tPerp,Vperp,Jperp)));
-	
-	return Terms;
-}*/
 
 template<typename Symmetry_>
 void HubbardU1xU1::
@@ -289,7 +118,6 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
         stringstream ss;
         ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
         Terms.save_label(loc, ss.str());
-        
         
         // Local terms: U, t0, μ, Bz, t⟂, V⟂, J⟂
         

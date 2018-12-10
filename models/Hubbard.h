@@ -3,6 +3,7 @@
 
 #include "symmetry/U0.h"
 #include "HubbardU1xU1.h"
+#include "HubbardKitaev.h"
 #include "LiebWu.h" // from TOOLS, depends on gsl
 
 namespace VMPS
@@ -33,9 +34,8 @@ public:
 	
 	template<typename Symmetry_>
 	//static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, size_t loc=0);
-    static void add_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);
-
-    
+	static void add_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);
+	
 	static const std::map<string,std::any> defaults;
 	
 	static refEnergy ref (const vector<Param> &params, double L=numeric_limits<double>::infinity());
@@ -50,39 +50,32 @@ const std::map<string,std::any> Hubbard::defaults =
 	{"Bz",0.}, {"Bx",0.}, 
 	{"J",0.}, {"Jrung",0.},
 	{"J3site",0.},
+	{"Delta",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
 Hubbard::
 Hubbard (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<0>({}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
  HubbardObservables(L,params,Hubbard::defaults),
  ParamReturner()
 {
 	ParamHandler P(params,Hubbard::defaults);
 	
 	size_t Lcell = P.size();
-	//vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
-    HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
-    
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		setLocBasis(F[l].get_basis(),l);
 	}
 	
-	/*for (size_t l=0; l<N_sites; ++l)
-	{
-		Terms[l] = HubbardU1xU1::set_operators(F,P,l%Lcell);
-		add_operators(Terms[l],F,P,l%Lcell);
-		
-		stringstream ss;
-		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
-		Terms[l].info.push_back(ss.str());
-	}*/
-    
-    HubbardU1xU1::set_operators(F, P, Terms);
-    add_operators(F, P, Terms);
+	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
+	HubbardU1xU1::set_operators(F,P,Terms);
+	#ifdef HUBBARD_KITAEV_CHAIN
+	HubbardKitaev::add_operators(F,P,Terms);
+	#endif
+	add_operators(F,P,Terms);
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 	this->precalc_TwoSiteData();
@@ -117,7 +110,7 @@ add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<FermionBase<Sy
     
 template<typename Symmetry_>
 void Hubbard::
-add_operators(const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)
+add_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)
 {
     std::size_t Lcell = P.size();
     std::size_t N_sites = Terms.size();
@@ -125,9 +118,9 @@ add_operators(const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &
     {
         std::size_t orbitals = F[loc].orbitals();
         
-        stringstream ss;
-        ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
-        Terms.save_label(loc, ss.str());
+//        stringstream ss;
+//        ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
+//        Terms.save_label(loc, ss.str());
     
         param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
         Terms.save_label(loc, Bx.label);

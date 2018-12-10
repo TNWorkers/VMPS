@@ -13,7 +13,6 @@
 #include "DmrgTypedefs.h" // for SPIN_INDEX, SPINOP_LABEL
 #include "tensors/SiteOperator.h"
 
-
 /** 
  * \class FermionBase
  * \ingroup Bases
@@ -571,13 +570,14 @@ qNums (size_t index) const
 	if constexpr (Symmetry::IS_TRIVIAL) { return qarray<0>{}; }
 	else if constexpr (Symmetry::Nq == 1)
 	{
-		if constexpr (Symmetry::kind()[0] == Sym::KIND::N) {return qarray<1>{N};}
-		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) {return qarray<1>{M};}
+		if constexpr      (Symmetry::kind()[0] == Sym::KIND::N)  {return qarray<1>{N};}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M)  {return qarray<1>{M};}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Z2) {return qarray<1>{posmod<2>(N)};}
 		else {assert(false and "Ill defined KIND of the used Symmetry.");}
 	}
 	else if constexpr (Symmetry::Nq == 2)
 	{
-		if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M) {return qarray<Symmetry::Nq>{N,M};}
+		if constexpr      (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M) {return qarray<Symmetry::Nq>{N,M};}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N) {return qarray<Symmetry::Nq>{M,N};}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Nup and Symmetry::kind()[1] == Sym::KIND::Ndn) {return qarray<Symmetry::Nq>{Nup,Ndn};}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Ndn and Symmetry::kind()[1] == Sym::KIND::Nup) {return qarray<Symmetry::Nq>{Ndn,Nup};}
@@ -625,8 +625,17 @@ getQ (SPIN_INDEX sigma, int Delta) const
 			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
 			return out;
 		}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Z2) //return parity as good quantum number.
+		{
+			typename Symmetry::qType out;
+			if      (sigma==UP)     {out = {posmod<2>(Delta)};}
+			else if (sigma==DN)     {out = {posmod<2>(-Delta)};}
+			else if (sigma==UPDN)   {out = Symmetry::qvacuum();}
+			else if (sigma==NOSPIN) {out = Symmetry::qvacuum();}
+			return out;
+		}
 		else {assert(false and "Ill defined KIND of the used Symmetry.");}
-
+	
 	}
 	else if constexpr (Symmetry::Nq == 2)
 	{
@@ -676,7 +685,8 @@ getQ (SPINOP_LABEL Sa) const
 	if constexpr (Symmetry::IS_TRIVIAL) {return {};}
 	else if constexpr (Symmetry::Nq == 1)
 	{
-		if constexpr (Symmetry::kind()[0] == Sym::KIND::N) //return particle number as good quantum number.
+		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or 
+		              Symmetry::kind()[0] == Sym::KIND::Z2) //return particle number as good quantum number.
 		{
 			return Symmetry::qvacuum();
 		}

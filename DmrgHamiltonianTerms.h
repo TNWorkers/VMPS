@@ -331,6 +331,7 @@ get_info() const
         while (res[loc].find("Para") != std::string::npos) res[loc].replace(res[loc].find("Para"), 4, "∥");
         while (res[loc].find("Prime") != std::string::npos) res[loc].replace(res[loc].find("Prime"), 5, "'");
         while (res[loc].find("mu") != std::string::npos) res[loc].replace(res[loc].find("mu"), 2, "µ");
+        while (res[loc].find("Delta") != std::string::npos) res[loc].replace(res[loc].find("Delta"), 5, "Δ");
         while (res[loc].find("next") != std::string::npos) res[loc].replace(res[loc].find("next"), 4, "ₙₑₓₜ");
         while (res[loc].find("prev") != std::string::npos) res[loc].replace(res[loc].find("prev"), 4, "ₚᵣₑᵥ");
         while (res[loc].find("3site") != std::string::npos) res[loc].replace(res[loc].find("3site"), 5, "₃ₛᵢₜₑ");
@@ -381,9 +382,10 @@ push_tight(std::size_t loc, Scalar lambda, OperatorType Op1, OperatorType Op2)
     if(lambda != 0.)
     {
         assert(loc < N_sites and "Chosen lattice site out of bounds");
-        assert((!OPEN_BC || loc+1 < N_sites) and "Chosen lattice site out of bounds");
-        assert(hilbert_dimension[loc] == 0 || hilbert_dimension[loc] == Op1.data.rows() and "Dimensions of first operator and local Hilbert space do not match");
-        assert(hilbert_dimension[(loc+1)%N_sites] == 0 || hilbert_dimension[(loc+1)%N_sites] == Op2.data.rows() and "Dimensions of second operator and local Hilbert space do not match");
+        assert((!OPEN_BC or loc+1 < N_sites) and "Chosen lattice site out of bounds");
+        assert(hilbert_dimension[loc] == 0 or hilbert_dimension[loc] == Op1.data.rows() and "Dimensions of first operator and local Hilbert space do not match");
+        assert(hilbert_dimension[(loc+1)%N_sites] == 0 or hilbert_dimension[(loc+1)%N_sites] == Op2.data.rows() and 
+               "Dimensions of second operator and local Hilbert space do not match");
         COMPRESSED = false;
         std::ptrdiff_t firstit = std::distance(tight_out[loc].begin(), find(tight_out[loc].begin(), tight_out[loc].end(), Op1));
         if(firstit >= tight_out[loc].size())    // If the operator cannot be found, push it to the corresponding terms and resize the interaction matrix

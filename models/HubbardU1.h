@@ -47,25 +47,15 @@ HubbardU1 (const size_t &L, const vector<Param> &params)
 	ParamHandler P(params,HubbardU1::defaults);
 	
 	size_t Lcell = P.size();
-	//vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
-    HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
-    
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		setLocBasis(F[l].get_basis(),l);
 	}
 	
-	/*for (size_t l=0; l<N_sites; ++l)
-	{
-		Terms[l] = HubbardU1xU1::set_operators(F,P,l%Lcell);
-		
-		stringstream ss;
-		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
-		Terms[l].info.push_back(ss.str());
-	}*/
-    
-    HubbardU1xU1::set_operators(F,P,Terms);
+	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
+	HubbardU1xU1::set_operators(F,P,Terms);
 	
 	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
 	this->precalc_TwoSiteData();

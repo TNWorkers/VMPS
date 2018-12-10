@@ -29,6 +29,7 @@ public:
 	///@{
 	Mpo<Symmetry> Sz (size_t locx, size_t locy=0) const {return Scomp(SZ,locx,locy);};
 	Mpo<Symmetry> Sx (size_t locx, size_t locy=0) const {return Scomp(SX,locx,locy);};
+	Mpo<Symmetry> n  (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2);};
 	Mpo<Symmetry> SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2);};
 	Mpo<Symmetry> SmSp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SM,SP,locx1,locx2,locy1,locy2);};
@@ -80,6 +81,23 @@ Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
 	
 	Mpo<Symmetry> Mout(B.size(), Op.Q, ss.str(), HERMITIAN);
+	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
+	
+	Mout.setLocal(locx,Op);
+	return Mout;
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HeisenbergObservables<Symmetry>::
+n (size_t locx, size_t locy) const
+{
+	assert(locx<B.size() and locy<B[locx].dim());
+	stringstream ss;
+	ss << "n(" << locx << "," << locy << ")";
+	
+	OperatorType Op = B[locx].n(locy);
+	
+	Mpo<Symmetry> Mout(B.size(), Op.Q, ss.str(), true);
 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
 	Mout.setLocal(locx,Op);

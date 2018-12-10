@@ -64,6 +64,10 @@ public:
 	
 	OperatorType Scomp (SPINOP_LABEL Sa, int orbital=0) const;
 	
+	OperatorType n (int orbital=0) const;
+	
+	OperatorType sign (int orb1=0, int orb2=0) const;
+	
 	OperatorType Id() const;
 	
 	/**Returns an array of size dim() with zeros.*/
@@ -80,12 +84,13 @@ public:
 	 * \param Jz : \f$J^{z}\f$
 	 * \param Bz : \f$B^{z}_i\f$
 	 * \param Bx : \f$B^{x}_i\f$
+	 * \param mu : \f$\mu\f$ (for spinless fermions, couples to n=1/2-Sz)
 	 * \param Kz : \f$K^{z}_i\f$
 	 * \param Kx : \f$K^{x}_i\f$
 	 * \param Dy : \f$D^{y}\f$
 	 */
 	OperatorType HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz, 
-	                                    const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &Kz, const ArrayXd &Kx, 
+	                                    const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &mu, const ArrayXd &Kz, const ArrayXd &Kx, 
 	                                    const ArrayXXd &Dy) const;
 
 	/**
@@ -146,6 +151,43 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 
 template<typename Symmetry>
 SiteOperator<Symmetry,double> SpinBase<Symmetry>::
+n (int orbital) const
+{
+	assert(orbital<N_orbitals);
+	
+	size_t R = ScompSingleSite(SZ).rows();
+	size_t Nl = pow(R,orbital);
+	size_t Nr = pow(R,N_orbitals-orbital-1);
+	
+	SparseMatrixXd Il = MatrixXd::Identity(Nl,Nl).sparseView();
+	SparseMatrixXd Ir = MatrixXd::Identity(Nr,Nr).sparseView();
+	SparseMatrixXd I  = MatrixXd::Identity(R,R).sparseView();
+	SparseMatrixXd Mout = kroneckerProduct(Il,kroneckerProduct(0.5*I-ScompSingleSite(SZ),Ir));
+	
+	return OperatorType(Mout,getQ(SZ));
+}
+
+template<typename Symmetry>
+SiteOperator<Symmetry,double> SpinBase<Symmetry>::
+sign (int orb1, int orb2) const
+{
+	SparseMatrixXd Id = MatrixXd::Identity(N_states,N_states).sparseView();
+	SparseMatrixXd Mout = Id;
+	
+	for (int i=orb1; i<N_orbitals; ++i)
+	{
+		Mout = Mout * (2.*Scomp(SZ,i).data);
+	}
+	for (int i=0; i<orb2; ++i)
+	{
+		Mout = Mout * (2.*Scomp(SZ,i).data);
+	}
+	
+	return OperatorType(Mout,Symmetry::qvacuum());
+}
+
+template<typename Symmetry>
+SiteOperator<Symmetry,double> SpinBase<Symmetry>::
 Id() const
 {
 	SparseMatrixXd mat = MatrixXd::Identity(N_states,N_states).sparseView();
@@ -156,7 +198,7 @@ Id() const
 template<typename Symmetry>
 SiteOperator<Symmetry,double> SpinBase<Symmetry>::
 HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz, 
-                       const ArrayXd &Bz, const ArrayXd &Bx, 
+                       const ArrayXd &Bz, const ArrayXd &Bx, const ArrayXd &mu, 
                        const ArrayXd &Kz, const ArrayXd &Kx,
                        const ArrayXXd &Dy) const
 {
@@ -191,6 +233,10 @@ HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz,
 	}
 	for (int i=0; i<N_orbitals; ++i)
 	{
+		if (mu(i) != 0.) {Mout -= mu(i) * (0.5*Id().data-Scomp(SZ,i).data);}
+	}
+	for (int i=0; i<N_orbitals; ++i)
+	{
 		if (Kz(i)!=0.) {Mout += Kz(i) * Scomp(SZ,i).data * Scomp(SZ,i).data;}
 	}
 	for (int i=0; i<N_orbitals; ++i)
@@ -210,7 +256,7 @@ HeisenbergHamiltonian (const std::array<ArrayXXd,3> &J,
                        const std::array<ArrayXXd,3> &D) const
 {
 	SiteOperator<Symmetry,complex<double> > Oout = 
-	HeisenbergHamiltonian(ZeroHopping(),J[2],B[2],B[0],K[2],K[0],D[1]).template cast<complex<double> >();
+	HeisenbergHamiltonian(ZeroHopping(),J[2],B[2],B[0],0.,K[2],K[0],D[1]).template cast<complex<double> >();
 	
 	for (size_t i=0; i<N_orbitals; ++i)
 	for (size_t j=0; j<i; ++j)
@@ -253,20 +299,25 @@ template<typename Symmetry>
 qarray<Symmetry::Nq> SpinBase<Symmetry>::
 qNums (size_t index) const
 {
-	NestedLoopIterator Nelly(N_orbitals,D);
 	int M = 0;
-	Nelly = index;
+	int Ndn = 0;
 	
+	NestedLoopIterator Nelly(N_orbitals,D);
+	Nelly = index;
 	for (size_t i=0; i<N_orbitals; i++)
 	{
 		M += D-(2*(Nelly(i)+1)-1);
+		Ndn += Nelly(i);
+		// for D=2: Ndn=Nelly(i), Nup=1-Nelly(i)
 	}
+//	cout << "index=" << index << ", M=" << M << ", Ndn=" << Ndn << ", parity=" << posmod<2>(Ndn) << endl;
 	
 	if constexpr (Symmetry::IS_TRIVIAL) {return qarray<0>{};}
 	else if constexpr (Symmetry::Nq == 1) //return either a dummy quantum number or the magnetic quantum number
 	{
 		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T) {return Symmetry::qvacuum();}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) {return qarray<1>{M};}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Z2) {return qarray<1>{posmod<2>(Ndn)};} // number of Ndn spins is the number of fermions
 		else {assert(false and "Ill-defined KIND of the used Symmetry.");}
 	}
 	else if constexpr(Symmetry::Nq==2) //return a dummy quantum number for a second symmetry. Either at first place or at second.
@@ -307,7 +358,7 @@ getQ (SPINOP_LABEL Sa) const
 	typename Symmetry::qType out;
 	
 	if constexpr(Symmetry::IS_TRIVIAL) {return {};}
-	else if constexpr (Symmetry::Nq == 1) //return either a dummy quantum number or the magnetic quantum number
+	else if constexpr (Symmetry::Nq == 1) //return either a dummy quantum number, the magnetic quantum number or the parity
 	{
 		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T) {return Symmetry::qvacuum();}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M)
@@ -318,6 +369,17 @@ getQ (SPINOP_LABEL Sa) const
 			else if (Sa==SZ)  {out = {0};}
 			else if (Sa==SP)  {out = {+2};}
 			else if (Sa==SM)  {out = {-2};}
+			return out;
+		}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Z2)
+		{
+			if      (Sa==SX)  {out = {0};}
+			else if (Sa==SY)  {out = {0};}
+			else if (Sa==iSY) {out = {0};}
+			else if (Sa==SZ)  {out = {0};}
+			// these operators change the parity:
+			else if (Sa==SP)  {out = {posmod<2>(-1)};} // =1
+			else if (Sa==SM)  {out = {posmod<2>(+1)};} // =1
 			return out;
 		}
 		else {assert(false and "Ill defined KIND of the used Symmetry.");}

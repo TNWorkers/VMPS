@@ -227,11 +227,12 @@ add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, 
         
         ArrayXd Bz_array   = B[loc].ZeroField();
         ArrayXd Bx_array   = B[loc].ZeroField();
+        ArrayXd mu_array   = B[loc].ZeroField();
         ArrayXd Kz_array   = B[loc].ZeroField();
         ArrayXd Kx_array   = B[loc].ZeroField();
         ArrayXXd Dyperp_array = B[loc].ZeroHopping();
         
-        Terms.push_local(loc, 1., B[loc].HeisenbergHamiltonian(Jxyperp.a, Jzperp.a, Bz_array, Bx_array, Kz_array, Kx_array, Dyperp_array));
+        Terms.push_local(loc, 1., B[loc].HeisenbergHamiltonian(Jxyperp.a, Jzperp.a, Bz_array, Bx_array, mu_array, Kz_array, Kx_array, Dyperp_array));
         
         // Nearest-neighbour terms: J
         

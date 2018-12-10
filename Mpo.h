@@ -784,7 +784,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			calc_W_from_Gvec(GvecSq, Wsq, Daux_dummy, qOpSq, false, OPEN_BC); //use false here, otherwise one would also calclate H⁴.
 			GOT_SQUARE = true;
 		}
-	}	
+	}
 }
 
 template<typename Symmetry, typename Scalar>

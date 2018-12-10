@@ -34,6 +34,11 @@ namespace Sym{
 	{
 		static const KIND name=KIND::Ndn;
 	};
+	
+	struct ChargeZ2
+	{
+		static const KIND name=KIND::Z2;
+	};
 
 }//end namespace Sym
 #endif //LABEL_DUMMIES_H

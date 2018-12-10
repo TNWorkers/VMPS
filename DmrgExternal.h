@@ -13,6 +13,16 @@ typedef boost::rational<int> frac;
 #include "symmetry/qarray.h"
 // #include "DmrgTypedefs.h"
 
+/**Calculates mod N ensuring the result is positive for positive N*/
+#ifndef POSMOD_FUNCTION
+#define POSMOD_FUNCTION
+template<int N>
+inline int posmod (int x)
+{
+	return (x%N+N)%N;
+}
+#endif
+
 /**Prints a boost fraction in such a way, that a "1" in the denominator is omitted.*/
 std::string print_frac_nice (frac r)
 {

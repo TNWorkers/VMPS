@@ -117,6 +117,11 @@ int main (int argc, char* argv[])
 	size_t min_Nsv = args.get<size_t>("min_Nsv",0ul);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
+	int a = 2;
+	int b = 3;
+	int c = 2;
+	cout << (a+b)%c << "\t" << (a-b)%c << endl;
+	
 	U0 = args.get<bool>("U0",false);
 	U1 = args.get<bool>("U1",true);
 	SU2 = args.get<bool>("SU2",true);

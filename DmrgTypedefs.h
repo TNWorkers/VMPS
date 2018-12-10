@@ -68,7 +68,7 @@ std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 #ifndef KIND_ENUM
 #define KIND_ENUM
 namespace Sym{
-	enum KIND {S,T,N,M,Nup,Ndn};
+	enum KIND {S,T,N,M,Nup,Ndn,Z2};
 }
 #endif
 
@@ -80,6 +80,7 @@ std::ostream& operator<< (std::ostream& s, Sym::KIND l)
 	else if (l==Sym::KIND::M)   {s << "M";}
 	else if (l==Sym::KIND::Nup) {s << "N↑";}
 	else if (l==Sym::KIND::Ndn) {s << "N↓";}
+	else if (l==Sym::KIND::Z2)  {s << "P";}
 	return s;
 }
 

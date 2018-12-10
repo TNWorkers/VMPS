@@ -257,10 +257,11 @@ set_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
         Terms.save_label(loc, Jperp.label);
         
         Eigen::ArrayXd Bx_array = B[loc].ZeroField();
+        Eigen::ArrayXd mu_array = B[loc].ZeroField();
         Eigen::ArrayXd Kx_array = B[loc].ZeroField();
         Eigen::ArrayXXd Dyperp_array = B[loc].ZeroHopping();
         
-        Terms.push_local(loc, 1., B[loc].HeisenbergHamiltonian(Jperp.a, Jperp.a, Bz.a, Bx_array, Kz.a, Kx_array, Dyperp_array));
+        Terms.push_local(loc, 1., B[loc].HeisenbergHamiltonian(Jperp.a, Jperp.a, Bz.a, Bx_array, mu_array, Kz.a, Kx_array, Dyperp_array));
         
         // Nearest-neighbour terms: J
     
@@ -269,19 +270,11 @@ set_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
         if(loc < N_sites-1 || !P.get<bool>("OPEN_BC"))
         {
             for (std::size_t alpha=0; alpha < orbitals; ++alpha)
+            for (std::size_t beta=0; beta < next_orbitals; ++beta)
             {
-                for (std::size_t beta=0; beta < next_orbitals; ++beta)
-                {
-                    Terms.push_tight(loc, 0.5*Jpara.a(alpha,beta),
-                                     B[loc].Scomp(SP,alpha),
-                                     B[(loc+1)%N_sites].Scomp(SM,beta));
-                    Terms.push_tight(loc, 0.5*Jpara.a(alpha,beta),
-                                     B[loc].Scomp(SM,alpha),
-                                     B[(loc+1)%N_sites].Scomp(SP,beta));
-                    Terms.push_tight(loc, Jpara.a(alpha,beta),
-                                     B[loc].Scomp(SZ,alpha),
-                                     B[(loc+1)%N_sites].Scomp(SZ,beta));
-                }
+                Terms.push_tight(loc, 0.5*Jpara.a(alpha,beta), B[loc].Scomp(SP,alpha), B[(loc+1)%N_sites].Scomp(SM,beta));
+                Terms.push_tight(loc, 0.5*Jpara.a(alpha,beta), B[loc].Scomp(SM,alpha), B[(loc+1)%N_sites].Scomp(SP,beta));
+                Terms.push_tight(loc, Jpara.a(alpha,beta), B[loc].Scomp(SZ,alpha), B[(loc+1)%N_sites].Scomp(SZ,beta));
             }
         }
         

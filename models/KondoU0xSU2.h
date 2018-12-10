@@ -73,7 +73,8 @@ public:
 	
 protected:
 	
-	Mpo<Symmetry> make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, const OperatorType &Op1, const OperatorType &Op2, bool BOTH_HERMITIAN=false) const;
+	Mpo<Symmetry> make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
+	                         const OperatorType &Op1, const OperatorType &Op2, bool BOTH_HERMITIAN=false) const;
 	
 	vector<FermionBase<Symmetry> > F;
 	vector<SpinBase<Symmetry> > B;
@@ -109,7 +110,6 @@ KondoU0xSU2 (const size_t &L, const vector<Param> &params)
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
-//	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 	B.resize(N_sites);
 	F.resize(N_sites);
 	
@@ -123,14 +123,6 @@ KondoU0xSU2 (const size_t &L, const vector<Param> &params)
 		
 		setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l);
 	}
-//	for (size_t l=0; l<N_sites; ++l)
-//	{
-//		Terms[l] = set_operators(B,F,P,l%Lcell);
-//		
-//		stringstream ss;
-//		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
-//		Terms[l].info.push_back(ss.str());
-//	}
 	
 	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	set_operators(B,F,P,Terms);
@@ -153,12 +145,12 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		size_t lp2 = (loc+2)%N_sites;
 		
 		std::size_t Forbitals       = F[loc].orbitals();
-		std::size_t Fnext_orbitals  = F[(loc+1)%N_sites].orbitals();
-		std::size_t Fnextn_orbitals = F[(loc+2)%N_sites].orbitals();
+		std::size_t Fnext_orbitals  = F[lp1].orbitals();
+		std::size_t Fnextn_orbitals = F[lp2].orbitals();
 		
 		std::size_t Borbitals       = B[loc].orbitals();
-		std::size_t Bnext_orbitals  = B[(loc+1)%N_sites].orbitals();
-		std::size_t Bnextn_orbitals = B[(loc+2)%N_sites].orbitals();
+		std::size_t Bnext_orbitals  = B[lp1].orbitals();
+		std::size_t Bnextn_orbitals = B[lp2].orbitals();
 		
 		frac S = frac(B[loc].get_D()-1,2);
 		stringstream Slabel;
@@ -209,8 +201,8 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		
 		//set Heisenberg part of Kondo Hamiltonian
 		auto KondoHamiltonian = OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,Bx.a,Kz.a,Kx.a,Dyperp).structured(),
-			                                            F[loc].Id(),
-			                                            {1});
+		                                                F[loc].Id(),
+		                                                {1});
 		
 		ArrayXXd Vperp      = F[loc].ZeroHopping();
 		ArrayXXd Jxysubperp = F[loc].ZeroHopping();
@@ -218,8 +210,8 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		
 		//set Hubbard part of Kondo Hamiltonian
 		KondoHamiltonian += OperatorType::outerprod(B[loc].Id().structured(),
-			                                        F[loc].HubbardHamiltonian(U.a,tPerp.a,Vperp,Jxysubperp,Jzsubperp,Bzsub.a,Bxsub.a),
-			                                        {1});
+		                                            F[loc].HubbardHamiltonian(U.a,tPerp.a,Vperp,Jxysubperp,Jzsubperp,Bzsub.a,Bxsub.a),
+		                                            {1});
 		
 		//set Kondo part of Hamiltonian
 		for (int alfa=0; alfa<Forbitals; ++alfa)
@@ -256,7 +248,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 				
 				Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.),
 				                 Otmp_loc.plain<double>(),
-				                 OperatorType::outerprod(B[loc].Id().structured(), F[lp1].psi(UP,beta), {2}).plain<double>()
+				                 OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].psi(UP,beta), {2}).plain<double>()
 				                );
 				
 				//c†DNcDN
