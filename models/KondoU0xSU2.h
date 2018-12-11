@@ -195,12 +195,13 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		param1d Kz = P.fill_array1d<double>("Kz","Kzorb", Borbitals, loc%Lcell);
 		Terms.save_label(loc, Kz.label);
 		
+		ArrayXXd muPerp  = B[loc].ZeroHopping();
 		ArrayXXd Jxyperp = B[loc].ZeroHopping();
 		ArrayXXd Jzperp  = B[loc].ZeroHopping();
-		ArrayXXd Dyperp  = B[loc].ZeroHopping();
+		ArrayXXd DyPerp  = B[loc].ZeroHopping();
 		
 		//set Heisenberg part of Kondo Hamiltonian
-		auto KondoHamiltonian = OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,Bx.a,Kz.a,Kx.a,Dyperp).structured(),
+		auto KondoHamiltonian = OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,Bx.a,muPerp,Kz.a,Kx.a,DyPerp).structured(),
 		                                                F[loc].Id(),
 		                                                {1});
 		
@@ -219,9 +220,9 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			if (J(alfa) != 0.)
 			{
 				assert(Borbitals == Forbitals and "Can only do a Kondo ladder with the same amount of spins and fermionic orbitals in y-direction!");
-				KondoHamiltonian +=     J(alfa) * OperatorType::outerprod(B[loc].Scomp(SZ,alfa).structured(), F[loc].Sz(alfa), {1});
 				KondoHamiltonian += 0.5*J(alfa) * OperatorType::outerprod(B[loc].Scomp(SP,alfa).structured(), F[loc].Sm(alfa), {1});
 				KondoHamiltonian += 0.5*J(alfa) * OperatorType::outerprod(B[loc].Scomp(SM,alfa).structured(), F[loc].Sp(alfa), {1});
+				KondoHamiltonian +=     J(alfa) * OperatorType::outerprod(B[loc].Scomp(SZ,alfa).structured(), F[loc].Sz(alfa), {1});
 			}
 		}
 		

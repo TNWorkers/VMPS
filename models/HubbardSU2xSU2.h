@@ -51,9 +51,8 @@ public:
 	HubbardSU2xSU2() : Mpo(){};
 	HubbardSU2xSU2 (const size_t &L, const vector<Param> &params);
 	
-	//static HamiltonianTermsXd<Symmetry> set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc=0);
-    static void set_operators(const std::vector<FermionBase<Symmetry>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
-    
+	static void set_operators(const std::vector<FermionBase<Symmetry>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
+	
 	Mpo<Symmetry> c (size_t locx, size_t locy=0, double factor=sqrt(2.));
 	Mpo<Symmetry> cdag (size_t locx, size_t locy=0, double factor=sqrt(2.));
 	
@@ -78,8 +77,8 @@ protected:
 	
 	Mpo<Symmetry> make_local (string name, size_t locx, size_t locy, const OperatorType &Op, double factor, bool FERMIONIC, bool HERMITIAN) const;
 	Mpo<Symmetry> make_corr  (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
-							  const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
-							  double factor, bool FERMIONIC, bool HERMITIAN) const;
+	                          const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
+	                          double factor, bool FERMIONIC, bool HERMITIAN) const;
 };
 
 const map<string,any> HubbardSU2xSU2::defaults = 
@@ -111,9 +110,8 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
 	
 	size_t Lcell = P.size();
 	assert(Lcell > 1 and "You need to set a unit cell with at least Lcell=2 for the charge-SU(2) symmetry!");
-	//vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
-    HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
-    F.resize(N_sites);
+	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
+	F.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -124,153 +122,77 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
 	
-	/*for (size_t l=0; l<N_sites; ++l)
-	{
-		Terms[l] = set_operators(F,P,l%Lcell);
-		
-		stringstream ss;
-		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
-		Terms[l].info.push_back(ss.str());
-	}*/
-    
-    set_operators(F, P, Terms);
+	set_operators(F, P, Terms);
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 	this->precalc_TwoSiteData();
 }
 
-/*HamiltonianTermsXd<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc)
-{
-	HamiltonianTermsXd<Symmetry> Terms;
-	
-	auto save_label = [&Terms] (string label)
-	{
-		if (label!="") {Terms.info.push_back(label);}
-	};
-	
-	size_t lp1 = (loc+1)%F.size();
-	
-	// NN terms
-	
-	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
-	save_label(tlabel);
-	
-	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
-	save_label(Vlabel);
-	
-	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
-	save_label(Jlabel);
-	
-	for (int i=0; i<F[loc].orbitals(); ++i)
-	for (int j=0; j<F[lp1].orbitals(); ++j)
-	{
-		if (tPara(i,j) != 0.)
-		{
-			// Only works with both times loc: strange??
-			auto cdagF = OperatorType::prod(F[loc].cdag(i), F[loc].sign(), {2,2});
-			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.)*sqrt(2.), cdagF.plain<double>(), F[loc].c(i).plain<double>()));
-		}
-		
-		// Warning: Needs testing! Especially if correct with [loc] both times.
-		
-		if (Vpara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(Vpara(i,j)*sqrt(3.), F[loc].Tdag(i).plain<double>(), F[loc].T(i).plain<double>()));
-		}
-		
-		if (Jpara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(Jpara(i,j)*sqrt(3.), F[loc].Sdag(i).plain<double>(), F[loc].S(i).plain<double>()));
-		}
-	}
-	
-	// local terms
-	
-	// Hubbard-U
-	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F[loc].orbitals(),loc);
-	save_label(Ulabel);
-	
-	// t⟂
-	auto [tRung,tPerp,tPerplabel] = P.fill_array2d<double>("tRung","t","tPerp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(tPerplabel);
-	
-	// V⟂
-	auto [Vrung,Vperp,Vperplabel] = P.fill_array2d<double>("Vrung","V","Vperp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(Vperplabel);
-	
-	// J⟂
-	auto [Jrung,Jperp,Jperplabel] = P.fill_array2d<double>("Jrung","J","Jperp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(Jperplabel);
-	
-	Terms.local.push_back(make_tuple(1., F[loc].HubbardHamiltonian(Uorb,tPerp,Vperp,Jperp).plain<double>()));
-	Terms.name = "Hubbard SU(2)⊗SU(2)";
-	
-	return Terms;
-}*/
-    
 void HubbardSU2xSU2::
 set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
 {
-    std::size_t Lcell = P.size();
-    std::size_t N_sites = Terms.size();
-    Terms.set_name("Hubbard SU(2)⊗SU(2)");
-    
-    for(std::size_t loc=0; loc<N_sites; ++loc)
-    {
-        std::size_t orbitals = F[loc].orbitals();
-        std::size_t next_orbitals = F[(loc+1)%N_sites].orbitals();
-        std::size_t nextn_orbitals = F[(loc+2)%N_sites].orbitals();
-        
-        stringstream ss;
-        ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
-        Terms.save_label(loc, ss.str());
-        
-        // Local terms: Hubbard-U, t⟂, V⟂, J⟂
-        
-        param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
-        param2d tperp = P.fill_array2d<double>("tRung", "t", "tPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-        param2d Vperp = P.fill_array2d<double>("Vrung", "V", "Vperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-        param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-        
-        Terms.save_label(loc, U.label);
-        Terms.save_label(loc, tperp.label);
-        Terms.save_label(loc, Vperp.label);
-        Terms.save_label(loc, Jperp.label);
-        
-        Terms.push_local(loc, 1., F[loc].HubbardHamiltonian(U.a, tperp.a, Vperp.a, Jperp.a).plain<double>());
-        
-        // Nearest-neighbour terms: t, V, J
-        
-        param2d tpara = P.fill_array2d<double>("t", "tPara", {orbitals, next_orbitals}, loc%Lcell);
-        Terms.save_label(loc, tpara.label);
-        
-        param2d Vpara = P.fill_array2d<double>("V", "Vpara", {orbitals, next_orbitals}, loc%Lcell);
-        Terms.save_label(loc, Vpara.label);
-        
-        param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
-        Terms.save_label(loc, Jpara.label);
-        
-        if(loc < N_sites-1 || !P.get<bool>("OPEN_BC"))
-        {
-            for (std::size_t alpha=0; alpha<orbitals; ++alpha)
-            {
-                for(std::size_t beta=0; beta<next_orbitals; ++beta)
-                {
-                    SiteOperator<Symmetry, double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alpha), F[loc].sign(), {2,2}).plain<double>();
-                    SiteOperator<Symmetry, double> c_tight = F[(loc+1)%N_sites].c(beta).plain<double>();
-                    SiteOperator<Symmetry, double> Tdag_local = F[loc].Tdag(alpha).plain<double>();
-                    SiteOperator<Symmetry, double> T_tight = F[(loc+1)%N_sites].T(beta).plain<double>();
-                    SiteOperator<Symmetry, double> Sdag_local = F[loc].Sdag(alpha).plain<double>();
-                    SiteOperator<Symmetry, double> S_tight = F[(loc+1)%N_sites].S(beta).plain<double>();
-                    
-                    Terms.push_tight(loc, -tpara.a(alpha, beta) * std::sqrt(2.) * std::sqrt(2.), cdag_sign_local, c_tight);
-                    Terms.push_tight(loc, Vpara.a(alpha, beta) * std::sqrt(3.), Tdag_local, T_tight);
-                    Terms.push_tight(loc, Jpara.a(alpha, beta) * std::sqrt(3.), Sdag_local, S_tight);
-                }
-            }
-        }
-    }
+	std::size_t Lcell = P.size();
+	std::size_t N_sites = Terms.size();
+	Terms.set_name("Hubbard");
+	
+	for(std::size_t loc=0; loc<N_sites; ++loc)
+	{
+		size_t lp1 = (loc+1)%N_sites;
+		size_t lp2 = (loc+2)%N_sites;
+		
+		std::size_t orbitals       = F[loc].orbitals();
+		std::size_t next_orbitals  = F[lp1].orbitals();
+		std::size_t nextn_orbitals = F[lp2].orbitals();
+		
+		stringstream ss;
+		ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
+		Terms.save_label(loc, ss.str());
+		
+		// Local terms: Hubbard-U, t⟂, V⟂, J⟂
+		
+		param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
+		param2d tperp = P.fill_array2d<double>("tRung", "t", "tPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		param2d Vperp = P.fill_array2d<double>("Vrung", "V", "Vperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		
+		Terms.save_label(loc, U.label);
+		Terms.save_label(loc, tperp.label);
+		Terms.save_label(loc, Vperp.label);
+		Terms.save_label(loc, Jperp.label);
+		
+		Terms.push_local(loc, 1., F[loc].HubbardHamiltonian(U.a, tperp.a, Vperp.a, Jperp.a).plain<double>());
+		
+		// Nearest-neighbour terms: t, V, J
+		
+		param2d tpara = P.fill_array2d<double>("t", "tPara", {orbitals, next_orbitals}, loc%Lcell);
+		Terms.save_label(loc, tpara.label);
+		
+		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {orbitals, next_orbitals}, loc%Lcell);
+		Terms.save_label(loc, Vpara.label);
+		
+		param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
+		Terms.save_label(loc, Jpara.label);
+		
+		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		{
+			for (std::size_t alfa=0; alfa<orbitals;      ++alfa)
+			for (std::size_t beta=0; beta<next_orbitals; ++beta)
+			{
+				SiteOperator<Symmetry, double> cdag_sign_loc = OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,2}).plain<double>();
+				SiteOperator<Symmetry, double> c_tight       = F[lp1].c(beta).plain<double>();
+				
+				SiteOperator<Symmetry, double> Tdag_lol = F[loc].Tdag(alfa).plain<double>();
+				SiteOperator<Symmetry, double> T_tight  = F[lp1].T(beta).plain<double>();
+				
+				SiteOperator<Symmetry, double> Sdag_loc = F[loc].Sdag(alfa).plain<double>();
+				SiteOperator<Symmetry, double> S_tight  = F[lp1].S(beta).plain<double>();
+				
+				Terms.push_tight(loc, -tpara(alfa,beta) * std::sqrt(2.) * std::sqrt(2.), cdag_sign_loc, c_tight);
+				Terms.push_tight(loc,  Vpara(alfa,beta) * std::sqrt(3.), Tdag_loc, T_tight);
+				Terms.push_tight(loc,  Jpara(alfa,beta) * std::sqrt(3.), Sdag_loc, S_tight);
+			}
+		}
+	}
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::

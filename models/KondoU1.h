@@ -141,6 +141,7 @@ add_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		ArrayXXd Jxyperp = B[loc].ZeroHopping();
 		ArrayXXd Jzperp  = B[loc].ZeroHopping();
 		ArrayXd  Bzorb   = B[loc].ZeroField();
+		ArrayXd  muorb   = B[loc].ZeroField();
 		ArrayXd  Kzorb   = B[loc].ZeroField();
 		ArrayXXd Dyperp  = B[loc].ZeroHopping();
 		
@@ -151,7 +152,7 @@ add_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		ArrayXXd Vperp   = F[loc].ZeroHopping();
 		ArrayXXd Jperp   = F[loc].ZeroHopping();
 		
-		auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bx.a,Kzorb,Kx.a,Dyperp), F[loc].Id());
+		auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bx.a,muorb,Kzorb,Kx.a,Dyperp), F[loc].Id());
 		auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].HubbardHamiltonian(Uorb,Eorb,Bzsuborb,Bxsub.a,tPerp,Vperp,Jperp));
 		
 		Terms.push_local(loc, 1., Himp+Hsub);

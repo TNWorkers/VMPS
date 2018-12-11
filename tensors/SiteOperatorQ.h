@@ -406,53 +406,51 @@ SiteOperatorQ<Symmetry,MatrixType_> SiteOperatorQ<Symmetry,MatrixType_>::
 outerprod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2, const qType& target )
 {
 	std::array<qType,3> checkIndex = {O1.Q(),O2.Q(),target};
-	assert( Symmetry::validate(checkIndex) and "Operators O1 and O2 cannot get multiplied to an operator with quantum number = target" );
-
+	assert(Symmetry::validate(checkIndex) and "Operators O1 and O2 cannot get multiplied to an operator with quantum number = target");
+	
 	auto TensorBasis = O1.basis().combine(O2.basis());
-
-	SiteOperatorQ out( target, TensorBasis );
-
+	
+	SiteOperatorQ out(target,TensorBasis);
+	
 	std::array<qType,2> totIndex;
 	MatrixType Atmp,A;
 	Index rows,cols;
 	Scalar factor_cgc;
-
+	
 	for (std::size_t nu=0; nu<O1.data().size(); nu++)
+	for (std::size_t mu=0; mu<O2.data().size(); mu++)
 	{
-		for (std::size_t mu=0; mu<O2.data().size(); mu++)
+		auto reduce1 = Symmetry::reduceSilent(O1.data().in[nu],  O2.data().in[mu]);
+		auto reduce2 = Symmetry::reduceSilent(O1.data().out[nu], O2.data().out[mu]);
+		for (const auto& q1:reduce1)
+		for (const auto& q2:reduce2)
 		{
-			auto reduce1 = Symmetry::reduceSilent(O1.data().in[nu], O2.data().in[mu]);
-			auto reduce2 = Symmetry::reduceSilent(O1.data().out[nu], O2.data().out[mu]);
-			for ( const auto& q1: reduce1 )
-				for ( const auto& q2: reduce2 )
-				{
-					factor_cgc = Symmetry::coeff_tensorProd( O1.data().out[nu], O2.data().out[mu], q2,
-														 O1.Q(), O2.Q(), target,
-														 O1.data().in[nu], O2.data().in[mu], q1);
-					if ( std::abs(factor_cgc) < ::numeric_limits<Scalar>::epsilon() ) { continue; }
-					totIndex = { q1, q2 };
-					rows = O1.data().block[nu].rows()*O2.data().block[mu].rows();
-					cols = O1.data().block[nu].cols()*O2.data().block[mu].cols();
-					Atmp.resize(rows,cols);
-
-					Atmp = kroneckerProduct(O1.data().block[nu],O2.data().block[mu]);
-					Index left1=TensorBasis.leftAmount(q1,{O1.data().in[nu], O2.data().in[mu]});
-					Index right1=TensorBasis.rightAmount(q1,{O1.data().in[nu], O2.data().in[mu]});
-					Index left2=TensorBasis.leftAmount(q2,{O1.data().out[nu], O2.data().out[mu]});
-					Index right2=TensorBasis.rightAmount(q2,{O1.data().out[nu], O2.data().out[mu]});
-					A.resize(rows+left1+right1,cols+left2+right2); A.setZero();
-					A.block(left1,left2,rows,cols) = Atmp;
-
-					auto it = out.data().dict.find(totIndex);
-					if ( it == out.data().dict.end() )
-					{
-						out.data().push_back(totIndex, factor_cgc*A);
-					}
-					else
-					{
-						out.data().block[it->second] += factor_cgc * A;
-					}
-				}
+			factor_cgc = Symmetry::coeff_tensorProd(O1.data().out[nu], O2.data().out[mu], q2,
+			                                        O1.Q(), O2.Q(), target,
+			                                        O1.data().in[nu], O2.data().in[mu], q1);
+			if (std::abs(factor_cgc) < ::numeric_limits<Scalar>::epsilon()) {continue;}
+			totIndex = { q1, q2 };
+			rows = O1.data().block[nu].rows() * O2.data().block[mu].rows();
+			cols = O1.data().block[nu].cols() * O2.data().block[mu].cols();
+			Atmp.resize(rows,cols);
+			
+			Atmp = kroneckerProduct(O1.data().block[nu], O2.data().block[mu]);
+			Index left1  = TensorBasis.leftAmount (q1,{O1.data().in[nu],  O2.data().in[mu]});
+			Index right1 = TensorBasis.rightAmount(q1,{O1.data().in[nu],  O2.data().in[mu]});
+			Index left2  = TensorBasis.leftAmount (q2,{O1.data().out[nu], O2.data().out[mu]});
+			Index right2 = TensorBasis.rightAmount(q2,{O1.data().out[nu], O2.data().out[mu]});
+			A.resize(rows+left1+right1,cols+left2+right2); A.setZero();
+			A.block(left1,left2,rows,cols) = Atmp;
+			
+			auto it = out.data().dict.find(totIndex);
+			if (it == out.data().dict.end())
+			{
+				out.data().push_back(totIndex, factor_cgc*A);
+			}
+			else
+			{
+				out.data().block[it->second] += factor_cgc * A;
+			}
 		}
 	}
 	return out;

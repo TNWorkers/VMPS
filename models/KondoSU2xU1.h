@@ -288,7 +288,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			KondoHamiltonian = OperatorType::outerprod(B[loc].Id(), F[loc].HubbardHamiltonian(U.a,t0.a-mu.a,tPerp.a,Vperp.a,Jperpsub), {1,0});
 			
 			//set Heisenberg part of Hamiltonian
-			KondoHamiltonian += OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jperp), F[loc].Id(), {1,0});
+//			KondoHamiltonian += OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jperp), F[loc].Id(), {1,0});
 			
 			//set interaction part of Hamiltonian.
 			for (int alfa=0; alfa<Forbitals; ++alfa)

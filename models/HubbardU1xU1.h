@@ -105,151 +105,149 @@ template<typename Symmetry_>
 void HubbardU1xU1::
 set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)
 {
-    std::size_t Lcell = P.size();
-    std::size_t N_sites = Terms.size();
-    bool U_infinite = true;
-    
-    for(std::size_t loc=0; loc<N_sites; ++loc)
-    {
-        std::size_t orbitals = F[loc].orbitals();
-        std::size_t next_orbitals = F[(loc+1)%N_sites].orbitals();
-        std::size_t nextn_orbitals = F[(loc+2)%N_sites].orbitals();
-        
-        stringstream ss;
-        ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
-        Terms.save_label(loc, ss.str());
-        
-        // Local terms: U, t0, μ, Bz, t⟂, V⟂, J⟂
-        
-        param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
-        param1d t0 = P.fill_array1d<double>("t0", "t0orb", orbitals, loc%Lcell);
-        param1d mu = P.fill_array1d<double>("mu", "muorb", orbitals, loc%Lcell);
-        param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", orbitals, loc%Lcell);
-        param2d tperp = P.fill_array2d<double>("tRung", "t", "tPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-        param2d Vperp = P.fill_array2d<double>("Vrung", "V", "Vperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-        param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-        
-        Terms.save_label(loc, U.label);
-        Terms.save_label(loc, t0.label);
-        Terms.save_label(loc, mu.label);
-        Terms.save_label(loc, Bz.label);
-        Terms.save_label(loc, tperp.label);
-        Terms.save_label(loc, Vperp.label);
-        Terms.save_label(loc, Jperp.label);
-        
-        ArrayXd Bx_array = F[loc].ZeroField();
-        
-        Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U.a, t0.a - mu.a, Bz.a, Bx_array, tperp.a, Vperp.a, Jperp.a));
-        
-        if (isfinite(U.a.sum()))
-        {
-            U_infinite = false;
-        }
-    
-        // Nearest-neighbour terms: t, V, J
-    
-        param2d tpara = P.fill_array2d<double>("t", "tPara", {orbitals, next_orbitals}, loc%Lcell);
-        param2d Vpara = P.fill_array2d<double>("V", "Vpara", {orbitals, next_orbitals}, loc%Lcell);
-        param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
-        
-        Terms.save_label(loc, tpara.label);
-        Terms.save_label(loc, Vpara.label);
-        Terms.save_label(loc, Jpara.label);
-        
-        if(loc < N_sites-1 || !P.get<bool>("OPEN_BC"))
-        {
-            for (std::size_t alpha=0; alpha<orbitals; ++alpha)
-            {
-                for (std::size_t beta=0; beta<next_orbitals; ++beta)
-                {
-                    Terms.push_tight(loc, -tpara.a(alpha, beta), F[loc].cdag(UP, alpha)*F[loc].sign(), F[(loc+1)%N_sites].c(UP, beta));
-                    Terms.push_tight(loc, -tpara.a(alpha, beta), F[loc].cdag(DN, alpha)*F[loc].sign(), F[(loc+1)%N_sites].c(DN, beta));
-                    Terms.push_tight(loc, +tpara.a(alpha, beta), F[loc].c(UP, alpha)*F[loc].sign(), F[(loc+1)%N_sites].cdag(UP, beta));
-                    Terms.push_tight(loc, +tpara.a(alpha, beta), F[loc].c(DN, alpha)*F[loc].sign(), F[(loc+1)%N_sites].cdag(DN, beta));
-                    
-                    Terms.push_tight(loc, Vpara.a(alpha, beta), F[loc].n(alpha), F[(loc+1)%N_sites].n(beta));
-                    
-                    Terms.push_tight(loc, 0.5*Jpara.a(alpha, beta), F[loc].Sp(alpha), F[(loc+1)%N_sites].Sm(beta));
-                    Terms.push_tight(loc, 0.5*Jpara.a(alpha, beta), F[loc].Sm(alpha), F[(loc+1)%N_sites].Sp(beta));
-                    Terms.push_tight(loc, Jpara.a(alpha, beta), F[loc].Sz(alpha), F[(loc+1)%N_sites].Sz(beta));
-                }
-            }
-        }
-    
-        // Next-nearest-neighbour terms: t'
-    
-        param2d tprime = P.fill_array2d<double>("tPrime", "tPrime_array", {orbitals, nextn_orbitals}, loc%Lcell);
-        Terms.save_label(loc, tprime.label);
-        
-        if(loc < N_sites-2 || !P.get<bool>("OPEN_BC"))
-        {
-            for (std::size_t alpha=0; alpha<orbitals; ++alpha)
-            {
-                for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
-                {
-                    Terms.push_nextn(loc, -tprime.a(alpha, beta), F[loc].cdag(UP, alpha)*F[loc].sign(), F[(loc+1)%N_sites].sign(), F[(loc+2)%N_sites].c(UP, beta));
-                    Terms.push_nextn(loc, -tprime.a(alpha, beta), F[loc].cdag(DN, alpha)*F[loc].sign(), F[(loc+1)%N_sites].sign(), F[(loc+2)%N_sites].c(DN, beta));
-                    Terms.push_nextn(loc, -tprime.a(alpha, beta), -1.*F[loc].c(UP, alpha)*F[loc].sign(), F[(loc+1)%N_sites].sign(), F[(loc+2)%N_sites].cdag(UP, beta));
-                    Terms.push_nextn(loc, -tprime.a(alpha, beta), -1.*F[loc].c(DN, alpha)*F[loc].sign(), F[(loc+1)%N_sites].sign(), F[(loc+2)%N_sites].cdag(DN, beta));
-                }
-            }
-        }
-    
-    	param0d J3site = P.fill_array0d<double>("J3site", "J3site", loc%Lcell);
+	std::size_t Lcell = P.size();
+	std::size_t N_sites = Terms.size();
+	bool U_infinite = true;
+	
+	for(std::size_t loc=0; loc<N_sites; ++loc)
+	{
+		size_t lp1 = (loc+1)%N_sites;
+		size_t lp2 = (loc+2)%N_sites;
+		
+		std::size_t orbitals = F[loc].orbitals();
+		std::size_t next_orbitals = F[lp1].orbitals();
+		std::size_t nextn_orbitals = F[lp2].orbitals();
+		
+		stringstream ss;
+		ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
+		Terms.save_label(loc, ss.str());
+		
+		// local terms: U, t0, μ, Bz, t⟂, V⟂, J⟂
+		
+		param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
+		param1d t0 = P.fill_array1d<double>("t0", "t0orb", orbitals, loc%Lcell);
+		param1d mu = P.fill_array1d<double>("mu", "muorb", orbitals, loc%Lcell);
+		param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", orbitals, loc%Lcell);
+		param2d tperp = P.fill_array2d<double>("tRung", "t", "tPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		param2d Vperp = P.fill_array2d<double>("Vrung", "V", "Vperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		
+		Terms.save_label(loc, U.label);
+		Terms.save_label(loc, t0.label);
+		Terms.save_label(loc, mu.label);
+		Terms.save_label(loc, Bz.label);
+		Terms.save_label(loc, tperp.label);
+		Terms.save_label(loc, Vperp.label);
+		Terms.save_label(loc, Jperp.label);
+		
+		ArrayXd Bx_array = F[loc].ZeroField();
+		
+		Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U.a, t0.a - mu.a, Bz.a, Bx_array, tperp.a, Vperp.a, Jperp.a));
+		
+		if (isfinite(U.a.sum()))
+		{
+			U_infinite = false;
+		}
+		
+		// Nearest-neighbour terms: t, V, J
+		
+		param2d tpara = P.fill_array2d<double>("t", "tPara", {orbitals, next_orbitals}, loc%Lcell);
+		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {orbitals, next_orbitals}, loc%Lcell);
+		param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
+		
+		Terms.save_label(loc, tpara.label);
+		Terms.save_label(loc, Vpara.label);
+		Terms.save_label(loc, Jpara.label);
+		
+		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		{
+			for (std::size_t alfa=0; alfa<orbitals;      ++alfa)
+			for (std::size_t beta=0; beta<next_orbitals; ++beta)
+			{
+				Terms.push_tight(loc, -tpara(alfa,beta), F[loc].cdag(UP,alfa)*F[loc].sign(), F[lp1].c(UP,beta));
+				Terms.push_tight(loc, -tpara(alfa,beta), F[loc].cdag(DN,alfa)*F[loc].sign(), F[lp1].c(DN,beta));
+				Terms.push_tight(loc, +tpara(alfa,beta), F[loc].c(UP,alfa)   *F[loc].sign(), F[lp1].cdag(UP,beta));
+				Terms.push_tight(loc, +tpara(alfa,beta), F[loc].c(DN,alfa)   *F[loc].sign(), F[lp1].cdag(DN,beta));
+				
+				Terms.push_tight(loc, Vpara.a(alpha, beta), F[loc].n(alpha), F[lp1].n(beta));
+				
+				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), F[loc].Sp(alpha), F[lp1].Sm(beta));
+				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), F[loc].Sm(alpha), F[lp1].Sp(beta));
+				Terms.push_tight(loc,     Jpara(alfa,beta), F[loc].Sz(alpha), F[lp1].Sz(beta));
+			}
+		}
+		
+		// Next-nearest-neighbour terms: t'
+		
+		param2d tprime = P.fill_array2d<double>("tPrime", "tPrime_array", {orbitals, nextn_orbitals}, loc%Lcell);
+		Terms.save_label(loc, tprime.label);
+		
+		if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
+		{
+			for (std::size_t alfa=0; alfa<orbitals;       ++alfa)
+			for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
+			{
+				Terms.push_nextn(loc, -tprime(alfa,beta),     F[loc].cdag(UP,alfa)*F[loc].sign(), F[lp1].sign(), F[lp2].c(UP,beta));
+				Terms.push_nextn(loc, -tprime(alfa,beta),     F[loc].cdag(DN,alfa)*F[loc].sign(), F[lp1].sign(), F[lp2].c(DN,beta));
+				Terms.push_nextn(loc, -tprime(alfa,beta), -1.*F[loc].c(UP,alfa)*F[loc].sign(),    F[lp1].sign(), F[lp2].cdag(UP,beta));
+				Terms.push_nextn(loc, -tprime(alfa,beta), -1.*F[loc].c(DN,alfa)*F[loc].sign(),    F[lp1].sign(), F[lp2].cdag(DN,beta));
+			}
+		}
+		
+		param0d J3site = P.fill_array0d<double>("J3site", "J3site", loc%Lcell);
 		Terms.save_label(loc, J3site.label);
-
+		
 		if (J3site.x != 0.)
 		{
-		    lout << "Warning! J3site has to be tested against ED!" << endl;
-    
-    		assert(orbitals == 1 and "Cannot do a ladder with 3-site J terms!");
-			if(loc < N_sites-2 || !P.get<bool>("OPEN_BC"))
+			lout << "Warning! J3site has to be tested against ED!" << endl;
+			
+			assert(orbitals == 1 and "Cannot do a ladder with 3-site J terms!");
+			if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
 			{
-				
-				SiteOperator<Symmetry_, double> cup_sign_local = F[loc].c(UP) * F[loc].sign();
-				SiteOperator<Symmetry_, double> cdn_sign_local = F[loc].c(DN) * F[loc].sign();
+				SiteOperator<Symmetry_, double> cup_sign_local    = F[loc].c(UP)    * F[loc].sign();
+				SiteOperator<Symmetry_, double> cdn_sign_local    = F[loc].c(DN)    * F[loc].sign();
 				SiteOperator<Symmetry_, double> cupdag_sign_local = F[loc].cdag(UP) * F[loc].sign();
 				SiteOperator<Symmetry_, double> cdndag_sign_local = F[loc].cdag(DN) * F[loc].sign();
 				
-				SiteOperator<Symmetry_, double> nup_sign_tight = F[(loc+1)%N_sites].n(UP) * F[(loc+1)%N_sites].sign();
-				SiteOperator<Symmetry_, double> ndn_sign_tight = F[(loc+1)%N_sites].n(UP) * F[(loc+1)%N_sites].sign();
-				SiteOperator<Symmetry_, double> Sp_sign_tight = F[(loc+1)%N_sites].Sp() * F[(loc+1)%N_sites].sign();
-				SiteOperator<Symmetry_, double> Sm_sign_tight = F[(loc+1)%N_sites].Sm() * F[(loc+1)%N_sites].sign();
+				SiteOperator<Symmetry_, double> nup_sign_tight = F[lp1].n(UP) * F[lp1].sign();
+				SiteOperator<Symmetry_, double> ndn_sign_tight = F[lp1].n(UP) * F[lp1].sign();
+				SiteOperator<Symmetry_, double> Sp_sign_tight  = F[lp1].Sp()  * F[lp1].sign();
+				SiteOperator<Symmetry_, double> Sm_sign_tight  = F[lp1].Sm()  * F[lp1].sign();
 				
-				SiteOperator<Symmetry_, double> cup_nextn = F[(loc+2)%N_sites].c(UP);
-				SiteOperator<Symmetry_, double> cdn_nextn = F[(loc+2)%N_sites].c(DN);
-				SiteOperator<Symmetry_, double> cupdag_nextn = F[(loc+2)%N_sites].cdag(UP);
-				SiteOperator<Symmetry_, double> cdndag_nextn = F[(loc+2)%N_sites].cdag(DN);
+				SiteOperator<Symmetry_, double> cup_nextn    = F[lp2].c(UP);
+				SiteOperator<Symmetry_, double> cdn_nextn    = F[lp2].c(DN);
+				SiteOperator<Symmetry_, double> cupdag_nextn = F[lp2].cdag(UP);
+				SiteOperator<Symmetry_, double> cdndag_nextn = F[lp2].cdag(DN);
 				
 				// three-site terms without spinflip
 				Terms.push_nextn(loc, -0.25*J3site.x, cupdag_sign_local, ndn_sign_tight, cup_nextn);
 				Terms.push_nextn(loc, -0.25*J3site.x, cdndag_sign_local, nup_sign_tight, cdn_nextn);
-				Terms.push_nextn(loc, +0.25*J3site.x, cup_sign_local, ndn_sign_tight, cupdag_nextn);
-				Terms.push_nextn(loc, +0.25*J3site.x, cdn_sign_local, nup_sign_tight, cdndag_nextn);
+				Terms.push_nextn(loc, +0.25*J3site.x, cup_sign_local,    ndn_sign_tight, cupdag_nextn);
+				Terms.push_nextn(loc, +0.25*J3site.x, cdn_sign_local,    nup_sign_tight, cdndag_nextn);
 				
 				// three-site terms with spinflip
 				Terms.push_nextn(loc, -0.25*J3site.x, cupdag_sign_local, Sm_sign_tight, cdn_nextn);
 				Terms.push_nextn(loc, -0.25*J3site.x, cdndag_sign_local, Sp_sign_tight, cup_nextn);
-				Terms.push_nextn(loc, +0.25*J3site.x, cup_sign_local, Sp_sign_tight, cdndag_nextn);
-				Terms.push_nextn(loc, +0.25*J3site.x, cdn_sign_local, Sm_sign_tight, cupdag_nextn);
+				Terms.push_nextn(loc, +0.25*J3site.x, cup_sign_local,    Sp_sign_tight, cdndag_nextn);
+				Terms.push_nextn(loc, +0.25*J3site.x, cdn_sign_local,    Sm_sign_tight, cupdag_nextn);
 			}
 		}
-    }
-    
-    if (!U_infinite)
-    {
-        Terms.set_name("Hubbard");
-    }
-    else if (P.HAS_ANY_OF({"J", "J3site"}))
-    {
-        Terms.set_name("t-J");
-    }
-    else
-    {
-        Terms.set_name("U=∞-Hubbard");
-    }
+	}
+	
+	if (!U_infinite)
+	{
+		Terms.set_name("Hubbard");
+	}
+	else if (P.HAS_ANY_OF({"J", "J3site"}))
+	{
+		Terms.set_name("t-J");
+	}
+	else
+	{
+		Terms.set_name("U=∞-Hubbard");
+	}
 }
-    
+
 ////Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardU1xU1::
 ////doublonPacket (complex<double> (*f)(int))
 ////{

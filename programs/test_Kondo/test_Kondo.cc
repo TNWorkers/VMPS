@@ -33,7 +33,7 @@ Logger lout;
 #include "models/KondoU1.h"
 #include "models/KondoSU2xU1.h"
 #include "models/KondoU0xSU2.h"
-//#include "models/KondoSU2xSU2.h"
+#include "models/KondoSU2xSU2.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, bool COLOR=false, int n=14)
@@ -61,7 +61,7 @@ size_t L, Ly;
 int N, T;
 double J, U, t, tPrime, Bx, Bz;
 double alpha;
-double t_U1, t_U1xU1, t_SU2xU1, t_U0xSU2, t_SU2xSU2;
+double t_U1, t_U1xU1, t_SU2xU1, t_U0xSU2, t_SO4;
 int Dinit, Dlimit, Imin, Imax;
 double tol_eigval, tol_state;
 double dt;
@@ -82,7 +82,7 @@ Eigenstate<VMPS::KondoU1::StateXd> g_U1;
 Eigenstate<VMPS::KondoU1xU1::StateXd> g_U1xU1;
 Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1;
 Eigenstate<VMPS::KondoU0xSU2::StateXd> g_U0xSU2;
-//Eigenstate<VMPS::KondoSU2xSU2::StateXd> g_SU2xSU2;
+Eigenstate<VMPS::KondoSU2xSU2::StateXd> g_SO4;
 
 int main (int argc, char* argv[])
 {
@@ -414,11 +414,12 @@ int main (int argc, char* argv[])
 	{
 		lout << endl << termcolor::red << "--------U(0)⊗SU(2)---------" << termcolor::reset << endl << endl;
 		
-		params.push_back({"subL",SUB_LATTICE::A,0});
-		params.push_back({"subL",SUB_LATTICE::B,1});
+		auto params_ = params;
+		params_.push_back({"subL",SUB_LATTICE::A,0});
+		params_.push_back({"subL",SUB_LATTICE::B,1});
 		
 		Stopwatch<> Watch_U0xSU2;
-		VMPS::KondoU0xSU2 H_U0xSU2(L,params);
+		VMPS::KondoU0xSU2 H_U0xSU2(L,params_);
 		lout << H_U0xSU2.info() << endl;
 		
 		VMPS::KondoU0xSU2::Solver DMRG_U0xSU2(VERB);
@@ -429,19 +430,20 @@ int main (int argc, char* argv[])
 	
 	if (SO4)
 	{
-//		lout << endl << termcolor::red << "--------U(0)⊗SU(2)---------" << termcolor::reset << endl << endl;
-//		
-//		params.push_back({"subL",SUB_LATTICE::A,0});
-//		params.push_back({"subL",SUB_LATTICE::B,1});
-//		
-//		Stopwatch<> Watch_SU2xSU2;
-//		VMPS::KondoSU2xSU2 H_SU2xSU2(L,params);
-//		lout << H_SU2xSU2.info() << endl;
-//		
-//		VMPS::KondoSU2xSU2::Solver DMRG_SU2xSU2(VERB);
-//		DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {S,T}, LANCZOS::EDGE::GROUND);
-//		
-//		t_SU2xSU2 = Watch_SU2xSU2.time();
+		lout << endl << termcolor::red << "--------SU(2)⊗SU(2)---------" << termcolor::reset << endl << endl;
+		
+		auto params_ = params;
+		params_.push_back({"subL",SUB_LATTICE::A,0});
+		params_.push_back({"subL",SUB_LATTICE::B,1});
+		
+		Stopwatch<> Watch_SO4;
+		VMPS::KondoSU2xSU2 H_SO4(L,params_);
+		lout << H_SO4.info() << endl;
+		
+		VMPS::KondoSU2xSU2::Solver DMRG_SO4(VERB);
+		DMRG_SO4.edgeState(H_SO4, g_SO4, {S,T}, LANCZOS::EDGE::GROUND);
+		
+		t_SO4 = Watch_SO4.time();
 	}
 	
 	//-------------correlations-----------------
@@ -512,6 +514,7 @@ int main (int argc, char* argv[])
 	T.add("U(1)xU(1)");
 	T.add("SU(2)xU(1)");
 	T.add("U(0)xSU(2)");
+	T.add("SO(4)");
 	T.endOfRow();
 	
 	T.add("E/L");
@@ -519,6 +522,7 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(g_U1xU1.energy/V));
 	T.add(to_string_prec(g_SU2xU1.energy/V));
 	T.add(to_string_prec(g_U0xSU2.energy/V));
+	T.add(to_string_prec(g_SO4.energy/V));
 	T.endOfRow();
 	
 	T.add("E/L diff");
@@ -526,6 +530,7 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(abs(g_U1xU1.energy-g_SU2xU1.energy)/V,true));
 	T.add("0");
 	T.add(to_string_prec(abs(g_U0xSU2.energy-g_SU2xU1.energy)/V,true));
+	T.add(to_string_prec(abs(g_SO4.energy-g_SU2xU1.energy)/V,true));
 	T.endOfRow();
 	
 	T.add("t/s");
@@ -533,6 +538,7 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(t_U1xU1,false,2));
 	T.add(to_string_prec(t_SU2xU1,false,2));
 	T.add(to_string_prec(t_U0xSU2,false,2));
+	T.add(to_string_prec(t_SO4,false,2));
 	T.endOfRow();
 	
 	T.add("t gain");
@@ -540,6 +546,7 @@ int main (int argc, char* argv[])
 	T.add(to_string_prec(t_U1xU1/t_SU2xU1,false,2));
 	T.add("1");
 	T.add(to_string_prec(t_U0xSU2/t_SU2xU1,false,2));
+	T.add(to_string_prec(t_SO4/t_SU2xU1,false,2));
 	T.endOfRow();
 	
 	if (CORR)
@@ -606,6 +613,7 @@ int main (int argc, char* argv[])
 	T.add(to_string(g_U1xU1.state.calc_Dmax()));
 	T.add(to_string(g_SU2xU1.state.calc_Dmax()));
 	T.add(to_string(g_U0xSU2.state.calc_Dmax()));
+	T.add(to_string(g_SO4.state.calc_Dmax()));
 	T.endOfRow();
 	
 	T.add("Mmax");
@@ -613,6 +621,7 @@ int main (int argc, char* argv[])
 	T.add(to_string(g_U1xU1.state.calc_Mmax()));
 	T.add(to_string(g_SU2xU1.state.calc_Mmax()));
 	T.add(to_string(g_U0xSU2.state.calc_Mmax()));
+	T.add(to_string(g_SO4.state.calc_Mmax()));
 	T.endOfRow();
 	
 	lout << T << endl;

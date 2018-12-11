@@ -166,20 +166,20 @@ FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in)
 	assert(N_orbitals>=1);
 	
 	std::size_t locdim = 2;
-
+	
 	//create basis for one Fermionic Site
 	typename Symmetry::qType Q={1,2}; //holon state
 	Eigen::Index inner_dim = 1;
 	std::vector<std::string> ident;
 	ident.push_back("holon");
 	basis_1s.push_back(Q,inner_dim,ident);
-	ident.clear();	
+	ident.clear();
 	Q={2,1}; //spinon state
 	inner_dim = 1;
 	ident.push_back("spinon");
 	basis_1s.push_back(Q,inner_dim,ident);
 	ident.clear();
-
+	
 	Id_1s = Operator({1,1},basis_1s);
 	F_1s = Operator({1,1},basis_1s);
 	c_1sA = Operator({2,2},basis_1s);
@@ -188,32 +188,32 @@ FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in)
 	ns_1s = Operator({1,1},basis_1s);
 	S_1s = Operator({3,1},basis_1s);
 	T_1s = Operator({1,3},basis_1s);
-
+	
 	//create operators for one orbital
 	Id_1s( "holon", "holon" ) = 1.;
 	Id_1s( "spinon", "spinon" ) = 1.;
-
+	
 	F_1s( "holon", "holon" ) = 1.;
 	F_1s( "spinon", "spinon" ) = -1.;
-
+	
 	c_1sA( "spinon", "holon" ) = std::sqrt(2.);
 	c_1sA( "holon", "spinon" ) = std::sqrt(2.);
 	cdag_1sA = c_1sA.adjoint();
 	c_1sB( "spinon", "holon" ) = std::sqrt(2.);
 	c_1sB( "holon", "spinon" ) = -std::sqrt(2.);
 	cdag_1sB = c_1sB.adjoint();
-
+	
 	nh_1s( "holon", "holon" ) = 1.;
 	ns_1s( "spinon", "spinon" ) = 1.;
 	S_1s( "spinon", "spinon" ) = std::sqrt(0.75);
 	T_1s( "holon", "holon" )   = std::sqrt(0.75);
-
+	
 	//create basis for N_orbitals fermionic sites
-	if (N_orbitals == 1) { TensorBasis = basis_1s; }
+	if (N_orbitals == 1) {TensorBasis = basis_1s;}
 	else
 	{
 		TensorBasis = basis_1s.combine(basis_1s);
-		for(std::size_t o=2; o<N_orbitals; o++)
+		for (std::size_t o=2; o<N_orbitals; o++)
 		{
 			TensorBasis = TensorBasis.combine(basis_1s);
 		}

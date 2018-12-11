@@ -234,6 +234,7 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		ArrayXXd Jxyperp  = B[loc].ZeroHopping();
 		ArrayXXd Jzperp   = B[loc].ZeroHopping();
 		ArrayXd  Bxorb    = B[loc].ZeroField();
+		ArrayXd  muorb    = B[loc].ZeroField();
 		ArrayXd  Bxsuborb = F[loc].ZeroField();
 		ArrayXd  Kxorb    = B[loc].ZeroField();
 		ArrayXXd Dyperp   = B[loc].ZeroHopping();
@@ -241,7 +242,7 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		
 		if (Borbitals > 0 and Forbitals > 0)
 		{
-			auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,Bxorb,Kz.a,Kxorb,Dyperp), F[loc].Id());
+			auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,Bxorb,muorb,Kz.a,Kxorb,Dyperp), F[loc].Id());
 			auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].template HubbardHamiltonian<double>(U.a,t0.a-mu.a,Bzsub.a,Bxsuborb,tPerp.a,Vperp.a,Jperp));
 			auto Hloc = Himp + Hsub;
 			

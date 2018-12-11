@@ -87,7 +87,7 @@ double emin_U0 = 0.;
 double Emin_U0 = 0.;
 double Emin_SU2xSU2 = 0.;
 double emin_SU2xSU2 = 0.;
-bool ED, U0, U1, SU2, SU22, Z_2, CORR, PRINT;
+bool ED, U0, U1, SU2, SU22, Z2, CORR, PRINT;
 
 Eigenstate<VectorXd> g_ED;
 Eigenstate<VMPS::Heisenberg::StateXd> g_U0;
@@ -134,7 +134,7 @@ int main (int argc, char* argv[])
 //	ArrayXXd tParaB(2,1); tParaB = t;
 	
 	U0 = args.get<bool>("U0",false);
-	Z_2 = args.get<bool>("Z_2",true);
+	Z2 = args.get<bool>("Z_2",true);
 	CORR = args.get<bool>("CORR",false);
 //	PRINT = args.get<bool>("PRINT",false);
 //	if (CORR == false) {PRINT = false;}
@@ -219,7 +219,7 @@ int main (int argc, char* argv[])
 	}
 	
 	//--------Z(2)---------
-	if (Z_2)
+	if (Z2)
 	{
 		lout << endl << termcolor::red << "--------Z(2)---------" << termcolor::reset << endl << endl;
 		
