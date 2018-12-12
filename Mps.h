@@ -193,8 +193,8 @@ public:
 	 * \param PsiRhs: the Mps with the larger symmetry as input, writes to this Mps
 	 * \warning: Does not really work. Unclear if possible at all.
 	 */
-	template<typename SymmetryBig>
-	void reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs);
+//	template<typename SymmetryBig>
+//	void reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs);
 	
 	void set_Qmultitarget (const vector<qarray<Nq> > &Qmulti_input) {Qmulti = Qmulti_input;};
 	
@@ -452,6 +452,12 @@ public:
 	
 	/**Returns the entropy for all bonds.*/
 	inline ArrayXd entropy() const {return S;};
+	
+	/**Return the full entanglement spectrum, resolved by subspace quantum number.*/
+	inline vector<map<qarray<Nq>,ArrayXd> > entanglementSpectrum() const {return SVspec;};
+	
+	/**Return the entanglement spectrum at the site l (values all subspaces merged and sorted).*/
+	ArrayXd entanglementSpectrumLoc (size_t l) const;
 	///\}
 	
 private:
@@ -476,6 +482,8 @@ private:
 	
 	/**entropy*/
 	ArrayXd S;
+	
+	vector<map<qarray<Nq>,ArrayXd> > SVspec;
 	
 	/**bases on all ingoing and outgoing legs of the Mps*/
 	vector<Qbasis<Symmetry> > inbase;
@@ -637,6 +645,7 @@ outerResize (const Mps<Symmetry,OtherMatrixType> &V)
 	
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
 	S.resize(this->N_sites-1); S.setConstant(numeric_limits<double>::quiet_NaN());
+	SVspec.resize(this->N_sites-1);
 	
 	for (size_t l=0; l<V.N_sites; ++l)
 	{
@@ -669,6 +678,7 @@ resize_arrays()
 	
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
 	S.resize(this->N_sites-1); S.setConstant(numeric_limits<double>::quiet_NaN());
+	SVspec.resize(this->N_sites-1);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1487,6 +1497,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 	
 	ArrayXd truncWeightSub(inbase[loc].Nq()); truncWeightSub.setZero();
 	ArrayXd entropySub(inbase[loc].Nq()); entropySub.setZero();
+	if (loc != 0) {SVspec[loc-1].clear();}
 	
 	vector<Biped<Symmetry,MatrixType> > Aloc;
 	Aloc.resize(qloc[loc].size());
@@ -1548,8 +1559,10 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 			if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 			{
 				Jack.compute(Aclump,ComputeThinU|ComputeThinV);
-				VectorXd SV = Jack.singularValues();
-				// sqrt(Symmetry::degeneracy(inbase[loc][qin])) 
+				ArrayXd SV = Jack.singularValues();
+				// sqrt(Symmetry::degeneracy(inbase[loc][qin]))
+				
+				if (loc != 0) {SVspec[loc-1].insert(pair<qarray<Symmetry::Nq>,ArrayXd>(outbase[loc][qin],SV));}
 				
 				if (TOOL == DMRG::BROOM::BRUTAL_SVD)
 				{
@@ -1557,14 +1570,14 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				}
 				else
 				{
-					Nret = (SV.array() > this->eps_svd).count();
+					Nret = (SV > this->eps_svd).count();
 				}
 				Nret = max(Nret, this->min_Nsv);
 				Nret = min(Nret, this->max_Nsv);
 				truncWeightSub(qin) = Symmetry::degeneracy(inbase[loc][qin]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy
-				size_t Nnz = (SV.array() > 0.).count();
+				size_t Nnz = (SV > 0.).count();
 				entropySub(qin) = -Symmetry::degeneracy(inbase[loc][qin]) * 
 				                  (SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
 			}
@@ -1687,6 +1700,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 	
 	ArrayXd truncWeightSub(outbase[loc].Nq()); truncWeightSub.setZero();
 	ArrayXd entropySub(outbase[loc].Nq()); entropySub.setZero();
+	SVspec[loc].clear();
 	
 	vector<Biped<Symmetry,MatrixType> > Aloc(qloc[loc].size());
 	vector<Biped<Symmetry,MatrixType> > Anext; 
@@ -1744,8 +1758,10 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 			if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 			{
 				Jack.compute(Aclump,ComputeThinU|ComputeThinV);
-				VectorXd SV = Jack.singularValues();
+				ArrayXd SV = Jack.singularValues();
 				// sqrt(Symmetry::degeneracy(outbase[loc][qout]))
+				
+				SVspec[loc].insert(pair<qarray<Symmetry::Nq>,ArrayXd>(outbase[loc][qout],SV));
 				
 				if (TOOL == DMRG::BROOM::BRUTAL_SVD)
 				{
@@ -1753,14 +1769,14 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 				}
 				else
 				{
-					Nret = (SV.array() > this->eps_svd).count();
+					Nret = (SV > this->eps_svd).count();
 				}
 				Nret = max(Nret, this->min_Nsv);
 				Nret = min(Nret, this->max_Nsv);
 				truncWeightSub(qout) = Symmetry::degeneracy(outbase[loc][qout]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy
-				size_t Nnz = (SV.array() > 0.).count();
+				size_t Nnz = (SV > 0.).count();
 				entropySub(qout) = -Symmetry::degeneracy(outbase[loc][qout]) * 
 				                   (SV.head(Nnz).array().square() * SV.head(Nnz).array().square().log()).sum();
 			}
@@ -3320,161 +3336,161 @@ addScale (OtherScalar alpha, const Mps<Symmetry,Scalar> &Vin, bool SVD_COMPRESS)
 	}
 }
 
-template<typename Symmetry, typename Scalar>
-template<typename SymmetryBig>
-void Mps<Symmetry,Scalar>::
-reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs)
-{
-	assert(SymmetryBig::Nq == Nq+1);
-	
-	for (size_t l=0; l<PsiRhs.length(); ++l)
-	for (size_t s=0; s<PsiRhs.qloc[l].size(); ++s)
-	{
-//		cout << "l=" << l << ", s=" << PsiRhs.qloc[l][s] << endl;
-		A[l][s].clear();
-		
-//		set<qarray2<Nq> > qset;
-		map<qarray2<Nq>,vector<qarray2<1> > > qmap;
-		map<qarray2<Nq>,vector<qarray2<SymmetryBig::Nq> > > qmapFull;
-		
-		for (size_t q=0; q<PsiRhs.A[l][s].dim; ++q)
-		{
-			qarray<Nq> qred_in;
-			qarray<Nq> qred_out;
-			
-			qarray<1> qblock_in;
-			qarray<1> qblock_out;
-			
-			size_t index = 0;
-			for (size_t r=0; r<SymmetryBig::Nq; ++r)
-			{
-				if (r != iq)
-				{
-					qred_in[index] = PsiRhs.A[l][s].in[q][r];
-					qred_out[index] = PsiRhs.A[l][s].out[q][r];
-					++index;
-				}
-				else
-				{
-					qblock_in[0] = PsiRhs.A[l][s].in[q][r];
-					qblock_out[0] = PsiRhs.A[l][s].out[q][r];
-				}
-			}
-//			qset.insert(qarray2<Nq>{qred_in,qred_out});
-			
-			qmap[qarray2<Nq>{qred_in,qred_out}].push_back(qarray2<Nq>{qblock_in, qblock_out});
-			qmapFull[qarray2<Nq>{qred_in,qred_out}].push_back(qarray2<SymmetryBig::Nq>{PsiRhs.A[l][s].in[q], PsiRhs.A[l][s].out[q]});
-		}
-		
-//		for (auto it=qset.begin(); it!=qset.end(); ++it)
+//template<typename Symmetry, typename Scalar>
+//template<typename SymmetryBig>
+//void Mps<Symmetry,Scalar>::
+//reduce_symmetry (size_t iq, const Mps<SymmetryBig,Scalar> &PsiRhs)
+//{
+//	assert(SymmetryBig::Nq == Nq+1);
+//	
+//	for (size_t l=0; l<PsiRhs.length(); ++l)
+//	for (size_t s=0; s<PsiRhs.qloc[l].size(); ++s)
+//	{
+////		cout << "l=" << l << ", s=" << PsiRhs.qloc[l][s] << endl;
+//		A[l][s].clear();
+//		
+////		set<qarray2<Nq> > qset;
+//		map<qarray2<Nq>,vector<qarray2<1> > > qmap;
+//		map<qarray2<Nq>,vector<qarray2<SymmetryBig::Nq> > > qmapFull;
+//		
+//		for (size_t q=0; q<PsiRhs.A[l][s].dim; ++q)
 //		{
-//			A[l][s].try_create_block(*it);
-//		}
-		for (auto it=qmap.begin(); it!=qmap.end(); ++it)
-		{
-			qarray<Nq> qval_in = it->first[0];
-			qarray<Nq> qval_out = it->first[1];
-			vector<array<qarray<1>,2> > b = it->second;
-			
-			A[l][s].try_create_block(qarray2<Nq>{qval_in,qval_out});
-//			cout << qval_in << ", " << qval_out << endl;
+//			qarray<Nq> qred_in;
+//			qarray<Nq> qred_out;
 //			
-//			cout << "b:" << endl;
+//			qarray<1> qblock_in;
+//			qarray<1> qblock_out;
+//			
+//			size_t index = 0;
+//			for (size_t r=0; r<SymmetryBig::Nq; ++r)
+//			{
+//				if (r != iq)
+//				{
+//					qred_in[index] = PsiRhs.A[l][s].in[q][r];
+//					qred_out[index] = PsiRhs.A[l][s].out[q][r];
+//					++index;
+//				}
+//				else
+//				{
+//					qblock_in[0] = PsiRhs.A[l][s].in[q][r];
+//					qblock_out[0] = PsiRhs.A[l][s].out[q][r];
+//				}
+//			}
+////			qset.insert(qarray2<Nq>{qred_in,qred_out});
+//			
+//			qmap[qarray2<Nq>{qred_in,qred_out}].push_back(qarray2<Nq>{qblock_in, qblock_out});
+//			qmapFull[qarray2<Nq>{qred_in,qred_out}].push_back(qarray2<SymmetryBig::Nq>{PsiRhs.A[l][s].in[q], PsiRhs.A[l][s].out[q]});
+//		}
+//		
+////		for (auto it=qset.begin(); it!=qset.end(); ++it)
+////		{
+////			A[l][s].try_create_block(*it);
+////		}
+//		for (auto it=qmap.begin(); it!=qmap.end(); ++it)
+//		{
+//			qarray<Nq> qval_in = it->first[0];
+//			qarray<Nq> qval_out = it->first[1];
+//			vector<array<qarray<1>,2> > b = it->second;
+//			
+//			A[l][s].try_create_block(qarray2<Nq>{qval_in,qval_out});
+////			cout << qval_in << ", " << qval_out << endl;
+////			
+////			cout << "b:" << endl;
+////			for (size_t j=0; j<b.size(); ++j) // block index, in, out
+////			{
+////				cout << b[j][0] << ", " << b[j][1] << endl;
+////			}
+////			cout << endl;
+//			
 //			for (size_t j=0; j<b.size(); ++j) // block index, in, out
 //			{
-//				cout << b[j][0] << ", " << b[j][1] << endl;
-//			}
-//			cout << endl;
-			
-			for (size_t j=0; j<b.size(); ++j) // block index, in, out
-			{
-				auto itl = A[l][s].dict.find(it->first);
-				
-//				qarray<SymmetryBig::Nq> quple_in;
-//				qarray<SymmetryBig::Nq> quple_out;
-//				size_t index = 0;
-//				for (size_t r=0; r<SymmetryBig::Nq; ++r)
+//				auto itl = A[l][s].dict.find(it->first);
+//				
+////				qarray<SymmetryBig::Nq> quple_in;
+////				qarray<SymmetryBig::Nq> quple_out;
+////				size_t index = 0;
+////				for (size_t r=0; r<SymmetryBig::Nq; ++r)
+////				{
+////					if (r != iq)
+////					{
+////						quple_in[r] = qval_in[index];
+////						quple_out[r] = qval_out[index];
+////						++index;
+////					}
+////					else
+////					{
+////						quple_in[r] = b[j][0][r];
+////						quple_out[r] = b[j][1][r];
+////					}
+////				}
+//				
+//				qarray<SymmetryBig::Nq> quple_in  = qmapFull[qarray2<Nq>{qval_in, qval_out}][j][0];
+//				qarray<SymmetryBig::Nq> quple_out = qmapFull[qarray2<Nq>{qval_in, qval_out}][j][1];
+//				
+//				auto itr = PsiRhs.A[l][s].dict.find(qarray2<SymmetryBig::Nq>{quple_in,quple_out});
+//				
+////				cout << "block: " << quple_in << ", " << quple_out << " -> " << qval_in << ", " << qval_out << endl;
+//				if (itl != A[l][s].dict.end() and itr != PsiRhs.A[l][s].dict.end())
 //				{
-//					if (r != iq)
+////					cout << "adding: " << quple_in << ", " << quple_out << " -> " << qval_in << ", " << qval_out 
+////					     << ", size=" << PsiRhs.A[l][s].block[itr->second].rows() << "x" << PsiRhs.A[l][s].block[itr->second].cols() << endl;
+//					if (l==0)
 //					{
-//						quple_in[r] = qval_in[index];
-//						quple_out[r] = qval_out[index];
-//						++index;
+//						addRight(PsiRhs.A[l][s].block[itr->second], A[l][s].block[itl->second]);
+//					}
+//					else if (l==this->N_sites-1)
+//					{
+//						addBottom(PsiRhs.A[l][s].block[itr->second], A[l][s].block[itl->second]);
 //					}
 //					else
 //					{
-//						quple_in[r] = b[j][0][r];
-//						quple_out[r] = b[j][1][r];
+//						addBottomRight(PsiRhs.A[l][s].block[itr->second], A[l][s].block[itl->second]);
 //					}
 //				}
-				
-				qarray<SymmetryBig::Nq> quple_in  = qmapFull[qarray2<Nq>{qval_in, qval_out}][j][0];
-				qarray<SymmetryBig::Nq> quple_out = qmapFull[qarray2<Nq>{qval_in, qval_out}][j][1];
-				
-				auto itr = PsiRhs.A[l][s].dict.find(qarray2<SymmetryBig::Nq>{quple_in,quple_out});
-				
-//				cout << "block: " << quple_in << ", " << quple_out << " -> " << qval_in << ", " << qval_out << endl;
-				if (itl != A[l][s].dict.end() and itr != PsiRhs.A[l][s].dict.end())
-				{
-//					cout << "adding: " << quple_in << ", " << quple_out << " -> " << qval_in << ", " << qval_out 
-//					     << ", size=" << PsiRhs.A[l][s].block[itr->second].rows() << "x" << PsiRhs.A[l][s].block[itr->second].cols() << endl;
-					if (l==0)
-					{
-						addRight(PsiRhs.A[l][s].block[itr->second], A[l][s].block[itl->second]);
-					}
-					else if (l==this->N_sites-1)
-					{
-						addBottom(PsiRhs.A[l][s].block[itr->second], A[l][s].block[itl->second]);
-					}
-					else
-					{
-						addBottomRight(PsiRhs.A[l][s].block[itr->second], A[l][s].block[itl->second]);
-					}
-				}
-			}
-		}
-	}
-	
-	for (size_t l=0; l<this->N_sites-1; ++l)
-	for (size_t s=0; s<qloc[l].size(); ++s)
-	for (size_t q=0; q<A[l][s].dim; ++q)
-	{
-		for (size_t snext=0; snext<qloc[l+1].size(); ++snext)
-		for (size_t qnext=0; qnext<A[l+1][snext].dim; ++qnext)
-		{
-			if (A[l][s].out[q] == A[l+1][snext].in[qnext])
-			{
-				if (A[l][s].block[q].cols() < A[l+1][snext].block[qnext].rows())
-				{
-					size_t dc = A[l+1][snext].block[qnext].rows() - A[l][s].block[q].cols();
-					A[l][s].block[q].conservativeResize(A[l][s].block[q].rows(),
-					                                    A[l+1][snext].block[qnext].rows());
-					A[l][s].block[q].rightCols(dc).setZero();
-				}
-			}
-		}
-	}
-	
-	for (size_t l=this->N_sites-1; l>0; --l)
-	for (size_t s=0; s<qloc[l].size(); ++s)
-	for (size_t q=0; q<A[l][s].dim; ++q)
-	{
-		for (size_t sprev=0; sprev<qloc[l-1].size(); ++sprev)
-		for (size_t qprev=0; qprev<A[l-1][sprev].dim; ++qprev)
-		{
-			if (A[l][s].in[q] == A[l-1][sprev].out[qprev])
-			{
-				if (A[l][s].block[q].rows() < A[l-1][sprev].block[qprev].cols())
-				{
-					size_t dr = A[l-1][sprev].block[qprev].cols() - A[l][s].block[q].rows();
-					A[l][s].block[q].conservativeResize(A[l-1][sprev].block[qprev].cols(),
-					                                    A[l][s].block[q].cols());
-					A[l][s].block[q].bottomRows(dr).setZero();
-				}
-			}
-		}
-	}
-}
+//			}
+//		}
+//	}
+//	
+//	for (size_t l=0; l<this->N_sites-1; ++l)
+//	for (size_t s=0; s<qloc[l].size(); ++s)
+//	for (size_t q=0; q<A[l][s].dim; ++q)
+//	{
+//		for (size_t snext=0; snext<qloc[l+1].size(); ++snext)
+//		for (size_t qnext=0; qnext<A[l+1][snext].dim; ++qnext)
+//		{
+//			if (A[l][s].out[q] == A[l+1][snext].in[qnext])
+//			{
+//				if (A[l][s].block[q].cols() < A[l+1][snext].block[qnext].rows())
+//				{
+//					size_t dc = A[l+1][snext].block[qnext].rows() - A[l][s].block[q].cols();
+//					A[l][s].block[q].conservativeResize(A[l][s].block[q].rows(),
+//					                                    A[l+1][snext].block[qnext].rows());
+//					A[l][s].block[q].rightCols(dc).setZero();
+//				}
+//			}
+//		}
+//	}
+//	
+//	for (size_t l=this->N_sites-1; l>0; --l)
+//	for (size_t s=0; s<qloc[l].size(); ++s)
+//	for (size_t q=0; q<A[l][s].dim; ++q)
+//	{
+//		for (size_t sprev=0; sprev<qloc[l-1].size(); ++sprev)
+//		for (size_t qprev=0; qprev<A[l-1][sprev].dim; ++qprev)
+//		{
+//			if (A[l][s].in[q] == A[l-1][sprev].out[qprev])
+//			{
+//				if (A[l][s].block[q].rows() < A[l-1][sprev].block[qprev].cols())
+//				{
+//					size_t dr = A[l-1][sprev].block[qprev].cols() - A[l][s].block[q].rows();
+//					A[l][s].block[q].conservativeResize(A[l-1][sprev].block[qprev].cols(),
+//					                                    A[l][s].block[q].cols());
+//					A[l][s].block[q].bottomRows(dr).setZero();
+//				}
+//			}
+//		}
+//	}
+//}
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
@@ -3980,6 +3996,27 @@ test_ortho (double tol) const
 	}
 	sout += TCOLOR(BLACK);
 	return sout;
+}
+
+template<typename Symmetry, typename Scalar>
+ArrayXd Mps<Symmetry,Scalar>::
+entanglementSpectrumLoc (size_t l) const
+{
+	vector<double> Svals;
+	for (const auto &x : SVspec[l])
+	for (int i=0; i<x.second.size(); ++i)
+	{
+		Svals.push_back(x.second(i));
+	}
+	sort(Svals.begin(), Svals.end());
+	reverse(Svals.begin(), Svals.end());
+	
+	ArrayXd out(Svals.size());
+	for (int i=0; i<Svals.size(); ++i)
+	{
+		out(i) = Svals[i];
+	}
+	return out;
 }
 
 template<typename Symmetry, typename Scalar>

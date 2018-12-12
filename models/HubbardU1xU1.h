@@ -169,11 +169,11 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
 				Terms.push_tight(loc, +tpara(alfa,beta), F[loc].c(UP,alfa)   *F[loc].sign(), F[lp1].cdag(UP,beta));
 				Terms.push_tight(loc, +tpara(alfa,beta), F[loc].c(DN,alfa)   *F[loc].sign(), F[lp1].cdag(DN,beta));
 				
-				Terms.push_tight(loc, Vpara.a(alpha, beta), F[loc].n(alpha), F[lp1].n(beta));
+				Terms.push_tight(loc, Vpara.a(alfa, beta), F[loc].n(alfa), F[lp1].n(beta));
 				
-				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), F[loc].Sp(alpha), F[lp1].Sm(beta));
-				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), F[loc].Sm(alpha), F[lp1].Sp(beta));
-				Terms.push_tight(loc,     Jpara(alfa,beta), F[loc].Sz(alpha), F[lp1].Sz(beta));
+				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), F[loc].Sp(alfa), F[lp1].Sm(beta));
+				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), F[loc].Sm(alfa), F[lp1].Sp(beta));
+				Terms.push_tight(loc,     Jpara(alfa,beta), F[loc].Sz(alfa), F[lp1].Sz(beta));
 			}
 		}
 		

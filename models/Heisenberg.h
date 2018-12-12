@@ -106,9 +106,13 @@ add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, H
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = Terms.size();
 	
-	if(P.HAS_ANY_OF({"Dy", "Dyperp", "Dyprime"}))
+	if (P.HAS_ANY_OF({"Dy", "Dyperp", "Dyprime"}))
 	{
 		Terms.set_name("Dzyaloshinsky-Moriya");
+	}
+	else if (P.HAS_ANY_OF({"t", "mu", "Delta"}))
+	{
+		Terms.set_name("KitaevChain");
 	}
 	else
 	{

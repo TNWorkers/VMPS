@@ -233,7 +233,7 @@ HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz,
 	}
 	for (int i=0; i<N_orbitals; ++i)
 	{
-		if (mu(i) != 0.) {Mout -= mu(i) * (0.5*Id().data-Scomp(SZ,i).data);}
+		if (mu(i) != 0.) {Mout -= mu(i) * (0.5*Id().data-Scomp(SZ,i).data);} // for Kitaev chain: -mu*n = -mu*(1/2-Sz)
 	}
 	for (int i=0; i<N_orbitals; ++i)
 	{
@@ -363,6 +363,7 @@ getQ (SPINOP_LABEL Sa) const
 		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T) {return Symmetry::qvacuum();}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M)
 		{
+			cout << "M" << endl;
 			if      (Sa==SX)  {out = {0};}
 			else if (Sa==SY)  {out = {0};}
 			else if (Sa==iSY) {out = {0};}
@@ -373,13 +374,12 @@ getQ (SPINOP_LABEL Sa) const
 		}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Z2)
 		{
-			if      (Sa==SX)  {out = {0};}
-			else if (Sa==SY)  {out = {0};}
-			else if (Sa==iSY) {out = {0};}
+			if      (Sa==SX)  {out = {1};}
+			else if (Sa==SY)  {out = {1};}
+			else if (Sa==iSY) {out = {1};}
 			else if (Sa==SZ)  {out = {0};}
-			// these operators change the parity:
-			else if (Sa==SP)  {out = {posmod<2>(-1)};} // =1
-			else if (Sa==SM)  {out = {posmod<2>(+1)};} // =1
+			else if (Sa==SP)  {out = {1};}
+			else if (Sa==SM)  {out = {1};}
 			return out;
 		}
 		else {assert(false and "Ill defined KIND of the used Symmetry.");}

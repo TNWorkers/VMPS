@@ -600,12 +600,20 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 				{
 					qType Q = Gvec[l](Gvec[l].rows()-1,a2).Q;
 					size_t match;
+					bool FOUND_MATCH = false;
 					for (size_t k=0; k<qOp_in[l].size(); ++k)
 					{
-						if (qOp_in[l][k] == Q) {match=k; break;}
+						if (qOp_in[l][k] == Q) {match=k; FOUND_MATCH=true; break;}
 						// assert(k == qOp[l].size()-1 and "The SuperMatrix is not well defined.");
 					}
-					Wstore[l][s1][s2][match].insert(0,a2) = val;
+					if (FOUND_MATCH)
+					{
+						Wstore[l][s1][s2][match].insert(0,a2) = val;
+					}
+					else
+					{
+						lout << termcolor::red << "Warning: error in calc_W_from_Gvec" << termcolor::reset << endl;
+					}
 				}
 			}
 		}
@@ -631,12 +639,20 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			{
 				qType Q = Gvec[l](a1,a2).Q;
 				size_t match;
+				bool FOUND_MATCH = false;
 				for(size_t k=0; k<qOp_in[l].size(); ++k)
 				{
-					if (qOp_in[l][k] == Q) {match=k; break;}
+					if (qOp_in[l][k] == Q) {match=k; FOUND_MATCH=true; break;}
 					// assert(k == qOp[l].size()-1 and "The SuperMatrix is not well-defined.");
 				}
-				Wstore[l][s1][s2][match].insert(a1,a2) = val;
+				if (FOUND_MATCH)
+				{
+					Wstore[l][s1][s2][match].insert(a1,a2) = val;
+				}
+				else
+				{
+					lout << termcolor::red << "Warning: error in calc_W_from_Gvec" << termcolor::reset << endl;
+				}
 			}
 		}
 	}
@@ -661,12 +677,20 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 				{
 					qType Q = Gvec[l](a1,0).Q;
 					size_t match;
+					bool FOUND_MATCH = false;
 					for(size_t k=0; k<qOp_in[l].size(); ++k)
 					{
-						if (qOp_in[l][k] == Q) {match=k; break;}
+						if (qOp_in[l][k] == Q) {match=k; FOUND_MATCH=true;break;}
 						// assert(k == qOp[l].size()-1 and "The SuperMatrix is not well defined.");
 					}
-					Wstore[l][s1][s2][match].insert(a1,0) = val;
+					if (FOUND_MATCH)
+					{
+						Wstore[l][s1][s2][match].insert(a1,0) = val;
+					}
+					else
+					{
+						lout << termcolor::red << "Warning: error in calc_W_from_Gvec" << termcolor::reset << endl;
+					}
 				}
 			}
 		}
@@ -686,6 +710,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			Vsq.resize(N_sites);
 			qOpSq.clear();
 			qOpSq.resize(N_sites);
+			
 			for(size_t l=0; l<N_sites; l++)
 			{
 				auto TensorBaseRight = qaux[l+1].combine(qaux[l+1]);
@@ -713,7 +738,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 						if(!Symmetry::validate(qCheck)) {continue;}
 						// product in physical space:
 						Scalar factor_check = Symmetry::coeff_Apair(qloc[l][s1],qOp[l][k2] ,qloc[l][s2],
-																	qOp[l][k1] ,qloc[l][s3],qK);
+						                                            qOp[l][k1] ,qloc[l][s3],qK);
 						if (std::abs(factor_check) < std::abs(::mynumeric_limits<Scalar>::epsilon())) { continue; }
 						auto K = distance(qOpSq[l].begin(), find(qOpSq[l].begin(), qOpSq[l].end(), qK));
 						for(const auto& ql1: qauxLeft)
@@ -777,11 +802,11 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			for (size_t l=0; l<N_sites; ++l)
 			{
 				qOpSq[l] = Symmetry::reduceSilent(qOp[l],qOp[l],true);
-				GvecSq[l].set(Daux(l,0)*Daux(l,0), Daux(l,1)*Daux(l,1), Gvec[l].D());         //  Non-quadratic!
+				GvecSq[l].set(Daux(l,0)*Daux(l,0), Daux(l,1)*Daux(l,1), Gvec[l].D()); // Non-quadratic!
 				GvecSq[l] = tensor_product(Gvec[l], Gvec[l]);
 			}
 			ArrayXXi Daux_dummy;
-			calc_W_from_Gvec(GvecSq, Wsq, Daux_dummy, qOpSq, false, OPEN_BC); //use false here, otherwise one would also calclate H⁴.
+			calc_W_from_Gvec(GvecSq, Wsq, Daux_dummy, qOpSq, false, OPEN_BC); // use false here, otherwise one would also calclate H⁴.
 			GOT_SQUARE = true;
 		}
 	}

@@ -3,7 +3,6 @@
 
 #include "symmetry/U0.h"
 #include "HubbardU1xU1.h"
-#include "HubbardKitaev.h"
 #include "LiebWu.h" // from TOOLS, depends on gsl
 
 namespace VMPS
@@ -72,9 +71,6 @@ Hubbard (const size_t &L, const vector<Param> &params)
 	
 	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	HubbardU1xU1::set_operators(F,P,Terms);
-	#ifdef HUBBARD_KITAEV_CHAIN
-	HubbardKitaev::add_operators(F,P,Terms);
-	#endif
 	add_operators(F,P,Terms);
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));

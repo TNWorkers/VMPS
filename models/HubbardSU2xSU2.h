@@ -181,7 +181,7 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 				SiteOperator<Symmetry, double> cdag_sign_loc = OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,2}).plain<double>();
 				SiteOperator<Symmetry, double> c_tight       = F[lp1].c(beta).plain<double>();
 				
-				SiteOperator<Symmetry, double> Tdag_lol = F[loc].Tdag(alfa).plain<double>();
+				SiteOperator<Symmetry, double> Tdag_loc = F[loc].Tdag(alfa).plain<double>();
 				SiteOperator<Symmetry, double> T_tight  = F[lp1].T(beta).plain<double>();
 				
 				SiteOperator<Symmetry, double> Sdag_loc = F[loc].Sdag(alfa).plain<double>();

@@ -141,14 +141,30 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 		
 		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
 		{
-			for (std::size_t alpha=0; alpha < orbitals; ++alpha)
+			for (std::size_t alfa=0; alfa < orbitals;      ++alfa)
 			for (std::size_t beta=0; beta < next_orbitals; ++beta)
 			{
-				Terms.push_tight(loc, +DeltaPara(alpha,beta), B[loc].Scomp(SP,alpha)*B[loc].sign(), B[lp1].Scomp(SP,beta));
-				Terms.push_tight(loc, -DeltaPara(alpha,beta), B[loc].Scomp(SM,alpha)*B[loc].sign(), B[lp1].Scomp(SM,beta));
+				// variant 1:
+//				Terms.push_tight(loc, +DeltaPara(alfa,beta), B[loc].Scomp(SP,alfa)*B[loc].sign(), B[lp1].Scomp(SP,beta));
+//				Terms.push_tight(loc, -DeltaPara(alfa,beta), B[loc].Scomp(SM,alfa)*B[loc].sign(), B[lp1].Scomp(SM,beta));
+//				
+//				Terms.push_tight(loc, -tPara(alfa,beta), B[loc].Scomp(SP,alfa)*B[loc].sign(), B[lp1].Scomp(SM,beta));
+//				Terms.push_tight(loc, +tPara(alfa,beta), B[loc].Scomp(SM,alfa)*B[loc].sign(), B[lp1].Scomp(SP,beta));
 				
-				Terms.push_tight(loc, -tPara(alpha,beta), B[loc].Scomp(SP,alpha)*B[loc].sign(), B[lp1].Scomp(SM,beta));
-				Terms.push_tight(loc, +tPara(alpha,beta), B[loc].Scomp(SM,alpha)*B[loc].sign(), B[lp1].Scomp(SP,beta));
+				// variant 2:
+				// t=-Delta is mappable to Ising chain: S^x_i*S^x_j = 1/4*(S^+_i+S^-_j)*(S^+_j+S^-_i) = 1/4*(c†^i*c^j + c^i*c^j + h.c.)
+				if ((tPara.a+DeltaPara.a).matrix().norm() < 1e-14)
+				{
+					Terms.push_tight(loc, +4.*DeltaPara(alfa,beta), B[loc].Scomp(SX,alfa), B[lp1].Scomp(SX,beta));
+				}
+				else
+				{
+					Terms.push_tight(loc, +DeltaPara(alfa,beta), B[loc].Scomp(SP,alfa), B[lp1].Scomp(SP,beta));
+					Terms.push_tight(loc, +DeltaPara(alfa,beta), B[loc].Scomp(SM,alfa), B[lp1].Scomp(SM,beta));
+					
+					Terms.push_tight(loc, -tPara(alfa,beta), B[loc].Scomp(SP,alfa), B[lp1].Scomp(SM,beta));
+					Terms.push_tight(loc, -tPara(alfa,beta), B[loc].Scomp(SM,alfa), B[lp1].Scomp(SP,beta));
+				}
 			}
 		}
 	}

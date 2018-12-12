@@ -179,7 +179,10 @@ SuperMatrix<Symmetry,Scalar> tensor_product (const SuperMatrix<Symmetry,Scalar> 
 	for (size_t c2=0; c2<M2.cols(); ++c2)
 	{
 		Mout(r1*M2.rows()+r2, c1*M2.cols()+c2).data = M1(r1,c1).data * M2(r2,c2).data;
-		Mout(r1*M2.rows()+r2, c1*M2.cols()+c2).Q = M1(r1,c1).Q + M2(r2,c2).Q;
+		auto Qsum = Symmetry::reduceSilent(M1(r1,c1).Q, M2(r2,c2).Q);
+		// should be only one term, non-Abelian symmetries have a different code
+		assert(Qsum.size() == 1 and "tensor_product of SuperMatrices called with wrong symmetry!");
+		Mout(r1*M2.rows()+r2, c1*M2.cols()+c2).Q = Qsum[0];
 	}
 	
 	return Mout;

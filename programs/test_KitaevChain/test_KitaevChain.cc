@@ -52,6 +52,8 @@ Logger lout;
 #include "models/KitaevChain.h"
 #include "models/Heisenberg.h"
 
+#include "IntervalIterator.h"
+
 template<typename Scalar>
 string to_string_prec (Scalar x, bool COLOR=false, int n=14)
 {
@@ -121,10 +123,10 @@ int main (int argc, char* argv[])
 	tRung = args.get<double>("tRung",0.);
 	U = args.get<double>("U",8.);
 	mu = args.get<double>("mu",1.);
-	Delta = args.get<double>("Delta",1.5);
+	Delta = args.get<double>("Delta",-1.);
 	Nup = args.get<int>("Nup",L*Ly);
 	Ndn = args.get<int>("Ndn",0);
-	M = args.get<int>("M",0);;
+	M = args.get<int>("M",0);
 	S = abs(M)+1;
 	// for ED:
 	N = Nup+Ndn;
@@ -134,7 +136,7 @@ int main (int argc, char* argv[])
 //	ArrayXXd tParaB(2,1); tParaB = t;
 	
 	U0 = args.get<bool>("U0",false);
-	Z2 = args.get<bool>("Z_2",true);
+	Z2 = args.get<bool>("Z2",true);
 	CORR = args.get<bool>("CORR",false);
 //	PRINT = args.get<bool>("PRINT",false);
 //	if (CORR == false) {PRINT = false;}
@@ -150,7 +152,7 @@ int main (int argc, char* argv[])
 	
 	i0 = args.get<int>("i0",L/2);
 	
-	GlobParam.Dinit  = args.get<int>("Dmin",2);
+	GlobParam.Dinit  = args.get<int>("Dmin",6);
 	GlobParam.Dlimit = args.get<int>("Dmax",100);
 	GlobParam.Qinit = args.get<int>("Qinit",10);
 	GlobParam.min_halfsweeps = args.get<int>("Imin",1);
@@ -186,70 +188,106 @@ int main (int argc, char* argv[])
 		densityMatrix_SU2xSU2B.resize(L,L); densityMatrix_SU2xSU2B.setZero();
 	}
 	
+	IntervalIterator muit(-4.,0.,51);
+	
 	//--------U(0)---------
 	if (U0)
 	{
-		lout << endl << termcolor::red << "--------U(0)---------" << termcolor::reset << endl << endl;
-		
-		Stopwatch<> Watch_U0;
-		VMPS::Heisenberg H_U0(L,{{"J",0.},{"t",t},{"Delta",Delta},{"mu",mu}});
-		lout << H_U0.info() << endl;
-		V = H_U0.volume();
-		Vsq = V*V;
-		
-		VMPS::Heisenberg::Solver DMRG_U0(VERB);
-		DMRG_U0.GlobParam = GlobParam;
-		DMRG_U0.DynParam = DynParam;
-		DMRG_U0.userSetGlobParam();
-		DMRG_U0.userSetDynParam();
-		DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND);
-		
-		t_U0 = Watch_U0.time();
-		
-		lout << endl;
-		double Ntot = 0.;
-		for (size_t lx=0; lx<L; ++lx)
-		for (size_t ly=0; ly<Ly; ++ly)
+		for (muit=muit.begin(4); muit!=muit.end(); ++muit)
 		{
-			double n_l = avg(g_U0.state, H_U0.n(lx,ly), g_U0.state);
-			cout << "lx=" << lx << ", ly=" << ly << "\tn=" << n_l << endl;
-			Ntot += n_l;
+			lout << endl << termcolor::red << "--------U(0)---------" << termcolor::reset << endl << endl;
+			
+			Stopwatch<> Watch_U0;
+			VMPS::Heisenberg H_U0(L,{{"J",0.},{"Jrung",0.},{"t",t},{"Delta",Delta},{"mu",*muit}});
+			lout << H_U0.info() << endl;
+			V = H_U0.volume();
+			Vsq = V*V;
+			
+			VMPS::Heisenberg::Solver DMRG_U0(VERB);
+			DMRG_U0.GlobParam = GlobParam;
+			DMRG_U0.DynParam = DynParam;
+			DMRG_U0.userSetGlobParam();
+			DMRG_U0.userSetDynParam();
+			DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND);
+			
+			t_U0 = Watch_U0.time();
+			
+			lout << endl;
+			double Ntot = 0.;
+			for (size_t lx=0; lx<L; ++lx)
+			for (size_t ly=0; ly<Ly; ++ly)
+			{
+				double n_l = avg(g_U0.state, H_U0.n(lx,ly), g_U0.state);
+//				cout << "lx=" << lx << ", ly=" << ly << "\tn=" << n_l << endl;
+				Ntot += n_l;
+			}
+			cout << "Ntot=" << Ntot << endl;
+			
+			g_U0.state.eps_svd = 0.;
+			g_U0.state.skim(DMRG::BROOM::SVD);
+			int n = min(4,g_U0.state.entanglementSpectrumLoc(L/2-1).rows());
+			ArrayXd SV(4); SV = 0;
+			SV.head(n) = g_U0.state.entanglementSpectrumLoc(L/2-1).head(n);
+			muit << SV(0), SV(1), SV(2), SV(3);
+			cout << "SV=" << SV.head(n).transpose() << endl;
+			
+//			cout << "<Hsq>=" << abs(avg(g_U0.state, H_U0, g_U0.state, true)-pow(g_U0.energy,2)) << endl;
 		}
-		cout << "Ntot=" << Ntot << endl;
+		
+		muit.save("SV_Sym=U0.dat");
 	}
 	
 	//--------Z(2)---------
 	if (Z2)
 	{
-		lout << endl << termcolor::red << "--------Z(2)---------" << termcolor::reset << endl << endl;
-		
-		Stopwatch<> Watch_Z2;
-		
-		VMPS::KitaevChain H_Z2(L,{{"J",0.},{"t",t},{"Delta",Delta},{"mu",mu},{"CALC_SQUARE",false}});
-		cout << H_Z2.info() << endl;
-		V = H_Z2.volume();
-		Vsq = V*V;
-		
-		VMPS::KitaevChain::Solver DMRG_Z2(VERB);
-		DMRG_Z2.GlobParam = GlobParam;
-		DMRG_Z2.DynParam = DynParam;
-		DMRG_Z2.userSetGlobParam();
-		DMRG_Z2.userSetDynParam();
-		DMRG_Z2.edgeState(H_Z2, g_Z2, {0}, LANCZOS::EDGE::GROUND);
-		g_Z2.state.graph("Z2");
-		
-		t_Z2 = Watch_Z2.time();
-		
-		lout << endl;
-		double Ntot = 0.;
-		for (size_t lx=0; lx<L; ++lx)
-		for (size_t ly=0; ly<Ly; ++ly)
+//		for (int P=0; P<=1; ++P)
+		int P = 0;
 		{
-			double n_l = avg(g_Z2.state, H_Z2.n(lx,ly), g_Z2.state);
-			cout << "lx=" << lx << ", ly=" << ly << "\tn=" << n_l << endl;
-			Ntot += n_l;
+			for (muit=muit.begin(4); muit!=muit.end(); ++muit)
+			{
+				lout << endl << termcolor::red << "--------Z(2)---------" << termcolor::reset << endl << endl;
+				
+				Stopwatch<> Watch_Z2;
+				
+				VMPS::KitaevChain H_Z2(L,{{"J",0.},{"t",t},{"Delta",Delta},{"mu",*muit},{"CALC_SQUARE",true}});
+				cout << H_Z2.info() << endl;
+				V = H_Z2.volume();
+				Vsq = V*V;
+				
+				VMPS::KitaevChain::Solver DMRG_Z2(VERB);
+				DMRG_Z2.GlobParam = GlobParam;
+				DMRG_Z2.DynParam = DynParam;
+				DMRG_Z2.userSetGlobParam();
+				DMRG_Z2.userSetDynParam();
+				DMRG_Z2.edgeState(H_Z2, g_Z2, {P}, LANCZOS::EDGE::GROUND);
+				g_Z2.state.graph("Z2");
+				
+				t_Z2 = Watch_Z2.time();
+				
+				lout << endl;
+				double Ntot = 0.;
+				for (size_t lx=0; lx<L; ++lx)
+				for (size_t ly=0; ly<Ly; ++ly)
+				{
+					double n_l = avg(g_Z2.state, H_Z2.n(lx,ly), g_Z2.state);
+	//				cout << "lx=" << lx << ", ly=" << ly << "\tn=" << n_l << endl;
+					Ntot += n_l;
+				}
+				cout << "Ntot=" << Ntot << endl;
+				
+				g_U0.state.eps_svd = 0.;
+				g_Z2.state.skim(DMRG::BROOM::SVD);
+				int n = min(4,g_Z2.state.entanglementSpectrumLoc(L/2-1).rows());
+				ArrayXd SV(4); SV = 0;
+				SV.head(n) = g_Z2.state.entanglementSpectrumLoc(L/2-1).head(n);
+				muit << SV(0), SV(1), SV(2), SV(3);
+				cout << "SV=" << SV.head(n).transpose() << endl;
+				
+//				cout << "<Hsq>=" << abs(avg(g_Z2.state, H_Z2, g_Z2.state, true)-pow(g_Z2.energy,2)) << endl;
+			}
+			
+			muit.save(make_string("SV_Sym=Z2_P=",P,".dat"));
 		}
-		cout << "Ntot=" << Ntot << endl;
 		
 //		if (CORR)
 //		{
@@ -379,5 +417,5 @@ int main (int argc, char* argv[])
 	
 	lout << endl << T;
 	
-	lout << "ref=" << VMPS::Hubbard::ref({{"n",static_cast<double>((N)/V)},{"U",U},{"t",t},{"Ly",Ly},{"tRung",tRung},{"tPrime",tPrime},{"Delta",Delta}}) << endl;
+//	lout << "ref=" << VMPS::Hubbard::ref({{"n",static_cast<double>((N)/V)},{"U",U},{"t",t},{"Ly",Ly},{"tRung",tRung},{"tPrime",tPrime},{"Delta",Delta}}) << endl;
 }
