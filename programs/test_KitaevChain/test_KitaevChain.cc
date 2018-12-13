@@ -54,6 +54,8 @@ Logger lout;
 
 #include "IntervalIterator.h"
 
+#include "VUMPS/VumpsSolver.h"
+
 template<typename Scalar>
 string to_string_prec (Scalar x, bool COLOR=false, int n=14)
 {
@@ -89,12 +91,13 @@ double emin_U0 = 0.;
 double Emin_U0 = 0.;
 double Emin_SU2xSU2 = 0.;
 double emin_SU2xSU2 = 0.;
-bool ED, U0, U1, SU2, SU22, Z2, CORR, PRINT;
+bool ED, U0, U1, SU2, SU22, Z2, Z2V, CORR, PRINT;
 
 Eigenstate<VectorXd> g_ED;
 Eigenstate<VMPS::Heisenberg::StateXd> g_U0;
 Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1;
 Eigenstate<VMPS::KitaevChain::StateXd> g_Z2;
+Eigenstate<VMPS::KitaevChain::StateUd> g_Z2VUMPS;
 Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
 
@@ -137,7 +140,8 @@ int main (int argc, char* argv[])
 	
 	U0 = args.get<bool>("U0",false);
 	Z2 = args.get<bool>("Z2",true);
-	CORR = args.get<bool>("CORR",false);
+	Z2V = args.get<bool>("Z2V",true);
+//	CORR = args.get<bool>("CORR",false);
 //	PRINT = args.get<bool>("PRINT",false);
 //	if (CORR == false) {PRINT = false;}
 	
@@ -154,7 +158,7 @@ int main (int argc, char* argv[])
 	
 	GlobParam.Dinit  = args.get<int>("Dmin",6);
 	GlobParam.Dlimit = args.get<int>("Dmax",100);
-	GlobParam.Qinit = args.get<int>("Qinit",10);
+	GlobParam.Qinit = args.get<int>("Qinit",2);
 	GlobParam.min_halfsweeps = args.get<int>("Imin",1);
 	GlobParam.max_halfsweeps = args.get<int>("Imax",20);
 	GlobParam.tol_eigval = args.get<double>("tol_eigval",1e-6);
@@ -188,7 +192,7 @@ int main (int argc, char* argv[])
 		densityMatrix_SU2xSU2B.resize(L,L); densityMatrix_SU2xSU2B.setZero();
 	}
 	
-	IntervalIterator muit(-4.,0.,51);
+	IntervalIterator muit(-4.,0.,151);
 	
 	//--------U(0)---------
 	if (U0)
@@ -232,9 +236,9 @@ int main (int argc, char* argv[])
 			cout << "SV=" << SV.head(n).transpose() << endl;
 			
 //			cout << "<Hsq>=" << abs(avg(g_U0.state, H_U0, g_U0.state, true)-pow(g_U0.energy,2)) << endl;
+			
+			muit.save("SV_Sym=U0.dat");
 		}
-		
-		muit.save("SV_Sym=U0.dat");
 	}
 	
 	//--------Z(2)---------
@@ -284,10 +288,47 @@ int main (int argc, char* argv[])
 				cout << "SV=" << SV.head(n).transpose() << endl;
 				
 //				cout << "<Hsq>=" << abs(avg(g_Z2.state, H_Z2, g_Z2.state, true)-pow(g_Z2.energy,2)) << endl;
+				
+				muit.save(make_string("SV_Sym=Z2_P=",P,".dat"));
 			}
-			
-			muit.save(make_string("SV_Sym=Z2_P=",P,".dat"));
 		}
+	}
+	
+	if (Z2V)
+	{
+//		for (int P=0; P<=1; ++P)
+		int P = 0;
+		{
+			for (muit=muit.begin(4); muit!=muit.end(); ++muit)
+			{
+				lout << endl << termcolor::red << "--------Z(2)---------" << termcolor::reset << endl << endl;
+				
+				Stopwatch<> Watch_Z2;
+				
+				VMPS::KitaevChain H_Z2(1,{{"J",0.},{"t",t},{"Delta",Delta},{"mu",*muit},{"OPEN_BC",false},{"CALC_SQUARE",false}});
+				cout << H_Z2.info() << endl;
+				
+				VMPS::KitaevChain::uSolver DMRG_Z2(VERB);
+				VUMPS::CONTROL::GLOB GlobParams;
+				GlobParams.tol_eigval = 1e-7;
+				GlobParams.tol_var = 1e-7;
+				GlobParams.tol_state = 1e-3;
+				GlobParams.min_iterations = 10;
+				GlobParams.Qinit = 3;
+				DMRG_Z2.userSetGlobParam();
+				DMRG_Z2.GlobParam = GlobParams;
+				DMRG_Z2.edgeState(H_Z2, g_Z2VUMPS, {}, LANCZOS::EDGE::GROUND);
+				
+				int n = min(4,g_Z2VUMPS.state.entanglementSpectrumLoc(0).rows());
+				ArrayXd SV(4); SV = 0;
+				SV.head(n) = g_Z2VUMPS.state.entanglementSpectrumLoc(0).head(n);
+				muit << SV(0), SV(1), SV(2), SV(3);
+				cout << "SV=" << SV.head(n).transpose() << endl;
+				
+				muit.save(make_string("SV_VUMPS_Sym=Z2_P=",P,".dat"));
+			}
+		}
+	}
 		
 //		if (CORR)
 //		{
@@ -325,7 +366,7 @@ int main (int argc, char* argv[])
 //				d_U1(i) = avg(g_U1.state, H_U1.d(i), g_U1.state);
 //			}
 //		}
-	}
+//	}
 	
 //	if (PRINT)
 //	{

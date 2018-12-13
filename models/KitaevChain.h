@@ -62,7 +62,7 @@ const std::map<string,std::any> KitaevChain::sweep_defaults =
 	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",40ul}, {"min_halfsweeps",1ul},
-	{"Dinit",10ul}, {"Qinit",10ul}, {"Dlimit",1000ul},
+	{"Dinit",10ul}, {"Qinit",2ul}, {"Dlimit",1000ul},
 	{"tol_eigval",1.e-5}, {"tol_state",1.e-5},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
 };

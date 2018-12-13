@@ -456,8 +456,8 @@ public:
 	/**Return the full entanglement spectrum, resolved by subspace quantum number.*/
 	inline vector<map<qarray<Nq>,ArrayXd> > entanglementSpectrum() const {return SVspec;};
 	
-	/**Return the entanglement spectrum at the site l (values all subspaces merged and sorted).*/
-	ArrayXd entanglementSpectrumLoc (size_t l) const;
+	/**Return the entanglement spectrum at the site \p loc (values all subspaces merged and sorted).*/
+	ArrayXd entanglementSpectrumLoc (size_t loc) const;
 	///\}
 	
 private:
@@ -4000,10 +4000,10 @@ test_ortho (double tol) const
 
 template<typename Symmetry, typename Scalar>
 ArrayXd Mps<Symmetry,Scalar>::
-entanglementSpectrumLoc (size_t l) const
+entanglementSpectrumLoc (size_t loc) const
 {
 	vector<double> Svals;
-	for (const auto &x : SVspec[l])
+	for (const auto &x : SVspec[loc])
 	for (int i=0; i<x.second.size(); ++i)
 	{
 		Svals.push_back(x.second(i));

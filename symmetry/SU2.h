@@ -42,6 +42,8 @@ public:
 	static constexpr bool HAS_CGC = false;
 	static constexpr bool NON_ABELIAN = true;
 	static constexpr bool IS_TRIVIAL = false;
+	static constexpr bool IS_MODULAR = false;
+	static constexpr int MOD_N = 0;
 
 	typedef qarray<Nq> qType;
 	

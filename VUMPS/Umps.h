@@ -102,18 +102,24 @@ public:
 	
 	/**Returns the entropy for all sites.*/
 	VectorXd entropy() const {return S;};
-
+	
+	/**Return the full entanglement spectrum, resolved by subspace quantum number.*/
+	inline vector<map<qarray<Nq>,ArrayXd> > entanglementSpectrum() const {return SVspec;};
+	
+	/**Return the entanglement spectrum at the site \p loc (values all subspaces merged and sorted).*/
+	ArrayXd entanglementSpectrumLoc (size_t loc) const;
+	
 	/**
 	 * Casts the matrices from \p Scalar to \p OtherScalar.
 	 */
 	template<typename OtherScalar> Umps<Symmetry,OtherScalar> cast() const;
-
+	
 	/**
 	 * Returns a real Umps containing the real part of this.
 	 * \warning Does not check, whether the imaginary part is zero.
 	 */
 	Umps<Symmetry,double> real() const;
-
+	
 	/**Returns the local basis.*/
 	inline vector<qarray<Symmetry::Nq> > locBasis (size_t loc) const {return qloc[loc];}
 	inline vector<vector<qarray<Symmetry::Nq> > > locBasis()   const {return qloc;}
@@ -200,7 +206,7 @@ public:
 	inline qarray<Nq> Qtarget() const {return Qtot;};
 		
 	void calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixType> > &N) const;
-
+	
 	/**
 	 * Performs a truncation of an Umps by the singular values of the center-matrix C.
 	 * Updates AL and AR with the truncated isometries from the SVD and reorthogonalize them afterwards.
@@ -209,7 +215,7 @@ public:
 	 * Truncation during the variational optimization should be done with \p SET_AC_RANDOM=true because otherwise this would be a bias.
 	 */
 	void truncate(bool SET_AC_RANDOM=true);
-
+	
 	/**
 	 * Orthogonalize the tensor with GAUGE \p g to be left-orthonormal using algorithm 2 from https://arxiv.org/abs/1810.07006.
 	 * \param g : GAUGE to orthogonalize.
@@ -224,7 +230,7 @@ public:
 	 * \note : Call this function with GAUGE::R to reorthogonalize AR.
 	 */
 	void orthogonalize_right(GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_R);
-
+	
 	/**
 	 * Calculates either the right or the left fixed point of the transfer-matrix build up with A-tensors in GAUGE \p g.
 	 * \param g : GAUGE to orthogonalize.
@@ -232,7 +238,7 @@ public:
 	 * \note The return values are of type complex<double>. Can we choose them sometimes to be real?
 	 */
 	std::pair<complex<double>, Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > calc_dominant(GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const;
-
+	
 	/**
 	 * This functions transforms all quantum numbers in the Umps (Umps::qloc and QN in Umps::A) by \f$q \rightarrow q * N_{cells}\f$.
 	 * It is used for avg(Umps V, Mpo O, Umps V) in VumpsLinearAlgebra.h when O.length() > V.length(). 
@@ -241,12 +247,12 @@ public:
 	 * \param number_cells : \f$N_{cells}\f$
 	 */
 	void adjustQN (const size_t number_cells);
-
+	
 	/**
 	 * Sorts the A tensors of a specific gauge. If SORT_ALL_GAUGES is true, then obviously all A tensors get sorted.
 	 */
 	void sort_A(size_t loc, GAUGE::OPTION g, bool SORT_ALL_GAUGES=false);
-
+	
 	/**
 	 * Updates the tensor C with zeros if the auxiallary basis has changed, e.g. after an enrichment process
 	 * \param loc : location of the C tensor for the update.
@@ -259,7 +265,7 @@ public:
 	 * \warning Do not insert \p g = GAUGE::C here.
 	 */
 	void updateAC(size_t loc, GAUGE::OPTION g);
-
+	
 	/**
 	 * Enlarges the tensors of the Umps with an enrichment tensor \p P and resizes everything necessary with zeros.
 	 * The tensor \p P needs to be calculated in advance. This is done directly in the VumpsSolver.
@@ -268,15 +274,16 @@ public:
 	 * \param P : the tensor with the enrichment. It is calculated after Eq. (A31).
 	 */	
 	void enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P);
-
+	
 private:
+	
 	/**parameter*/
 	size_t N_sites;
 	size_t Dmax, Nqmax;
 	double eps_svd = 1e-13;
 	size_t max_Nsv=100000ul, min_Nsv=1ul;
 	int max_Nrich;
-
+	
 	qarray<Nq> Qtot;
 	
 	/**Calculate entropy at site \p loc.*/
@@ -284,7 +291,7 @@ private:
 	
 	/**Calculate entropy for all sites.*/
 	void calc_entropy (bool PRINT=false) {for (size_t l=0; l<N_sites; ++l) calc_entropy(l,PRINT);};
-
+	
 	/**truncated weight*/
 	ArrayXd truncWeight;
 	
@@ -301,6 +308,8 @@ private:
 	// std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> N; // N[L/R/C][l][s].block[q]
 	
 	VectorXd S;
+	
+	vector<map<qarray<Nq>,ArrayXd> > SVspec;
 	
 	/**bases on all ingoing and outgoing legs of the Umps*/
 	vector<Qbasis<Symmetry> > inbase;
@@ -488,6 +497,7 @@ resize_arrays ()
 	inbase.resize(N_sites);
 	outbase.resize(N_sites);
 	S.resize(N_sites);
+	SVspec.resize(N_sites);
 }
 
 template<typename Symmetry, typename Scalar>
@@ -508,6 +518,7 @@ resize (const Umps<Symmetry,OtherMatrixType> &V)
 	
 	truncWeight.resize(this->N_sites); truncWeight.setZero();
 	S.resize(this->N_sites-1); S.setConstant(numeric_limits<double>::quiet_NaN());
+	SVspec.resize(N_sites);
 	
 	for (size_t g=0; g<3; g++)
 	for (size_t l=0; l<V.N_sites; ++l)
@@ -536,8 +547,9 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 {
 	Dmax = Dmax_input;
 	Nqmax = Nqmax_input;
-	if (Symmetry::IS_TRIVIAL) {Nqmax = 1;}
-
+	if      (Symmetry::IS_TRIVIAL) {Nqmax = 1;}
+	else if (Symmetry::IS_MODULAR) {Nqmax = Symmetry::MOD_N;}
+	
 	resize_arrays();
 	
 	auto take_first_elems = [this] (const vector<qarray<Nq> > &qs) -> vector<qarray<Nq> >
@@ -958,6 +970,7 @@ void Umps<Symmetry,Scalar>::
 calc_entropy (size_t loc, bool PRINT)
 {
 	S(loc) = 0;
+	SVspec[loc].clear();
 	
 	if (PRINT)
 	{
@@ -965,12 +978,12 @@ calc_entropy (size_t loc, bool PRINT)
 	}
 	for (size_t q=0; q<C[loc].dim; ++q)
 	{
-        #ifdef DONT_USE_BDCSVD
+		#ifdef DONT_USE_BDCSVD
 		JacobiSVD<MatrixType> Jack; // standard SVD
-        #else
+		#else
 		BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
-        #endif
-
+		 #endif
+		
 		Jack.compute(C[loc].block[q], ComputeThinU|ComputeThinV);
 //		Csingular[loc] += Jack.singularValues();
 		
@@ -982,9 +995,13 @@ calc_entropy (size_t loc, bool PRINT)
 		
 		S(loc) += Scontrib;
 		
+		SVspec[loc].insert(pair<qarray<Symmetry::Nq>,ArrayXd>(C[loc].in[q],Jack.singularValues()));
+		
 		if (PRINT)
 		{
-			lout << termcolor::magenta << "S(" << C[loc].in[q] << "," << C[loc].out[q] << ")\t=\t" << Scontrib << ", size=" << C[loc].block[q].rows() << "x" << C[loc].block[q].cols() << termcolor::reset << endl;
+			lout << termcolor::magenta << "S(" << C[loc].in[q] << "," 
+			     << C[loc].out[q] << ")\t=\t" << Scontrib 
+			     << ", size=" << C[loc].block[q].rows() << "x" << C[loc].block[q].cols() << termcolor::reset << endl;
 		}
 	}
 	if (PRINT)
@@ -2243,7 +2260,7 @@ truncate(bool SET_AC_RANDOM)
 		}
 		sort_A(l,GAUGE::L,true); //true means sort all GAUGES. First parameter has no consequences
 	}
-	calc_entropy();	
+	calc_entropy();
 	// cout << test_ortho() << endl;
 }
 
@@ -2263,7 +2280,7 @@ calc_dominant(GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const
 	{
 		T = TransferMatrixAA<Symmetry,complex<double> >(GAUGE::L, Compl.A[g], Compl.A[g], Compl.locBasis());		
 	}
-
+	
 	Biped<Symmetry,Matrix<complex<double>, Dynamic,Dynamic> > RandBiped;
 	if (DIR == DMRG::DIRECTION::LEFT)
 	{
@@ -2277,12 +2294,33 @@ calc_dominant(GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const
 	PivotVector<Symmetry,complex<double> > x(RandBiped);
 	
 	ArnoldiSolver<TransferMatrixAA<Symmetry,complex<double>>,PivotVector<Symmetry,complex<double> > > John(T,x,lambda);
-
+	
 	lout << "fixed point: " << John.info() << endl;
 	//Normalize the Fixed point and try to make it real.
 	x.data[0] = exp(-1i*arg(x.data[0].block[0](0,0))) * (1./x.data[0].norm()) * x.data[0];
 	
 	return std::make_pair(lambda,x.data[0]);
+}
+
+template<typename Symmetry, typename Scalar>
+ArrayXd Umps<Symmetry,Scalar>::
+entanglementSpectrumLoc (size_t loc) const
+{
+	vector<double> Svals;
+	for (const auto &x : SVspec[loc])
+	for (int i=0; i<x.second.size(); ++i)
+	{
+		Svals.push_back(x.second(i));
+	}
+	sort(Svals.begin(), Svals.end());
+	reverse(Svals.begin(), Svals.end());
+	
+	ArrayXd out(Svals.size());
+	for (int i=0; i<Svals.size(); ++i)
+	{
+		out(i) = Svals[i];
+	}
+	return out;
 }
 
 #endif //VANILLA_Umps

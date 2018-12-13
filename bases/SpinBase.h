@@ -363,7 +363,6 @@ getQ (SPINOP_LABEL Sa) const
 		if constexpr (Symmetry::kind()[0] == Sym::KIND::N or Symmetry::kind()[0] == Sym::KIND::T) {return Symmetry::qvacuum();}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M)
 		{
-			cout << "M" << endl;
 			if      (Sa==SX)  {out = {0};}
 			else if (Sa==SY)  {out = {0};}
 			else if (Sa==iSY) {out = {0};}

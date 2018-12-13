@@ -37,6 +37,8 @@ namespace Sym{
 		static constexpr std::size_t Nq=0;
 		static constexpr bool NON_ABELIAN = false;
 		static constexpr bool IS_TRIVIAL = true;
+		static constexpr bool IS_MODULAR = false;
+		static constexpr int MOD_N = 0;
 
 		inline static constexpr std::array<KIND,Nq> kind() { return {}; }
 

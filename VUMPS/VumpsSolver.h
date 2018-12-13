@@ -879,12 +879,12 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		N_iterations_without_expansion = 0;
 	}
 
-	if (err_var < GlobParam.tol_var and (N_iterations+1)%DynParam.Dincr_per(N_iterations) == 0 )
-	{
-		Stopwatch<> TruncationTimer;
-		Vout.state.truncate();
-		t_trunc = TruncationTimer.time();
-	}
+//	if (err_var < GlobParam.tol_var and (N_iterations+1)%DynParam.Dincr_per(N_iterations) == 0 )
+//	{
+//		Stopwatch<> TruncationTimer;
+//		Vout.state.truncate();
+//		t_trunc = TruncationTimer.time();
+//	}
 
 	Stopwatch<> EnvironmentTimer;
 	build_cellEnv(H,Vout);
@@ -956,13 +956,13 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 ////	complex<double> eL_ = contract_LR(YLlast.template cast<ComplexMatrixType>(), Reigen_) / static_cast<double>(H.volume());
 ////	complex<double> eR_ = contract_LR(Leigen_, YRfrst.template cast<ComplexMatrixType>()) / static_cast<double>(H.volume());
 //	cout << termcolor::blue << "eL_=" << eL_ << ", eR_=" << eR_ << termcolor::reset << endl;
-
+	
 	Stopwatch<> ErrorTimer;
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
 	eL = contract_LR(0, YLlast, Reigen) / H.volume();
 	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
-
+	
 	calc_errors(H, Vout);
 	Vout.energy = min(eL,eR);
 	double t_err = ErrorTimer.time();
@@ -1376,10 +1376,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		 << "———————————————————————————————————————————————VUMPS algorithm—————————————————————————————————————————————————————————"
 		 <<  termcolor::reset << endl;
 	}
-
-	if (!USER_SET_GLOBPARAM) { GlobParam = H.get_VumpsGlobParam(); }
-	if (!USER_SET_DYNPARAM)  { DynParam  = H.get_VumpsDynParam(); }
-
+	
+	if (!USER_SET_GLOBPARAM) {GlobParam = H.get_VumpsGlobParam();}
+	if (!USER_SET_DYNPARAM)  {DynParam  = H.get_VumpsDynParam();}
+	
 	// tol_eigval = tol_eigval_input;
 	// tol_var = tol_var_input;
 	
@@ -1390,7 +1390,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 	else if (DynParam.iteration(0) == UMPS_ALG::H2SITE)
 	{
 		assert(H.length() == 2 and "Need L=2 for H2SITE!");
-		for (size_t i=0; i<GlobParam.max_iterations; i++) {assert(DynParam.iteration(i) == UMPS_ALG::H2SITE and "iteration H2SITE can not be mixed with other iterations"); }
+		for (size_t i=0; i<GlobParam.max_iterations; i++) 
+		{
+			assert(DynParam.iteration(i) == UMPS_ALG::H2SITE and "iteration H2SITE can not be mixed with other iterations");
+		}
 		prepare_h2site(H.H2site(0,true), H.locBasis(0), Vout, Qtot, GlobParam.Dinit, GlobParam.Qinit, USE_STATE);
 	}
 	else
@@ -1401,7 +1404,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 	Stopwatch<> GlobalTimer;
 	
 	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and
-			N_iterations < GlobParam.max_iterations) or N_iterations < GlobParam.min_iterations)
+	        N_iterations < GlobParam.max_iterations) or N_iterations < GlobParam.min_iterations)
 	{
 		if (DynParam.iteration(N_iterations) == UMPS_ALG::PARALLEL)
 		{
