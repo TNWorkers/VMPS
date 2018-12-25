@@ -37,8 +37,8 @@ struct TransferMatrix
 	GAUGE::OPTION gauge;
 	
 	///\{
-	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Aket;
 	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Abra;
+	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Aket;
 	vector<vector<vector<vector<SparseMatrix<Scalar> > > > > W;
 	///\}
 	
@@ -54,9 +54,11 @@ struct TransferMatrix
 Vector \f$(L_a|\f$, \f$|R_a)\f$ that is obtained in eq. (C25ab).
 \ingroup VUMPS
 */
-template<typename Symmetry, typename Scalar>
+template<typename Symmetry, typename Scalar_>
 struct TransferVector
 {
+	typedef Scalar_ Scalar;
+	
 	TransferVector(){};
 	
 	TransferVector (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &T, const size_t &ab_input, const Scalar &LRdotY)
@@ -140,12 +142,10 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 	Scalar2 LdotR;
 	if (H.gauge == GAUGE::R)
 	{
-//		LdotR = contract_LR(H.ab, H.LReigen.template cast<Scalar2>(), Vin.data);
 		LdotR = contract_LR(H.ab, H.LReigen, Vin.data);
 	}
 	else if (H.gauge == GAUGE::L)
 	{
-//		LdotR = contract_LR(H.ab, Vin.data, H.LReigen.template cast<Scalar2>());
 		LdotR = contract_LR(H.ab, Vin.data, H.LReigen);
 	}
 	

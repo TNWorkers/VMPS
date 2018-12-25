@@ -52,14 +52,16 @@ struct SiteOperator
 		Oout.data = data.template cast<OtherScalar>();
 		return Oout;
 	}
-
+	
 	SiteOperator<Symmetry,Scalar>& operator+= ( const SiteOperator<Symmetry,Scalar>& Op );
 	SiteOperator<Symmetry,Scalar>& operator-= ( const SiteOperator<Symmetry,Scalar>& Op );
-
+	
 	/**
 	 * Returns a trivial SiteOperatorQ for an object with has essentialy no symmetry.
 	 */
 	SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > structured();
+	
+	void setIdentity();
 };
 
 template<typename Symmetry,typename Scalar>
@@ -150,6 +152,14 @@ SiteOperator<Symmetry, Scalar> operator*(const SiteOperator<Symmetry,Scalar> &op
 }
 
 template<typename Symmetry, typename Scalar>
+void SiteOperator<Symmetry,Scalar>::
+setIdentity()
+{
+	Q = Symmetry::qvacuum();
+	data.setIdentity();
+}
+
+template<typename Symmetry, typename Scalar>
 std::vector<SiteOperator<Symmetry,Scalar>> operator*(const std::vector<SiteOperator<Symmetry,Scalar>> &ops, const Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> &mat)
 {
     assert(ops.size() == mat.rows() and "Dimensions of vector and matrix do not match!");
@@ -211,4 +221,5 @@ std::vector<SiteOperator<Symmetry,Scalar>> operator*(const Eigen::Matrix<Scalar,
     }
     return out;
 }
+
 #endif

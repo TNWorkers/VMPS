@@ -212,9 +212,9 @@ add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, 
         std::size_t nextn_orbitals = B[(loc+2)%N_sites].orbitals();
         
         stringstream ss1, ss2;
-        ss1 << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc%Lcell)-1,2));
+//        ss1 << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc%Lcell)-1,2));
         ss2 << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
-        Terms.save_label(loc, ss1.str());
+//        Terms.save_label(loc, ss1.str());
         Terms.save_label(loc, ss2.str());
     
         // Local terms: J⟂

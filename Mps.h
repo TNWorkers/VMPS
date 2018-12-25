@@ -3028,9 +3028,7 @@ locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance) const
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lnext;
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
 	L.setIdentity(1,1,inBasis (loc1));
-	R.setIdentity(1,1,outBasis(loc2));
 	
 	for (size_t l=0; l<distance+1; ++l)
 	{
@@ -3038,6 +3036,9 @@ locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance) const
 		L = Lnext;
 		Lnext.clear();
 	}
+	
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
+	R.setIdentity(1,1,outBasis(loc2));
 	
 	return contract_LR(L,R);
 }

@@ -11,17 +11,19 @@ Operators \f$T_L\f$, \f$T_R\f$ for solving the linear systems eq. 14.
 template<typename Symmetry, typename Scalar>
 struct TransferMatrixAA
 {
-	TransferMatrixAA(){};
+	TransferMatrixAA(VMPS::DIRECTION::OPTION DIR_input)
+	:DIR(DIR_input)
+	{};
 	
-	TransferMatrixAA (GAUGE::OPTION gauge_input, 
+	TransferMatrixAA (VMPS::DIRECTION::OPTION DIR_input, 
 	                  const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Abra_input, 
 	                  const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &Aket_input, 
 	                  const vector<vector<qarray<Symmetry::Nq> > > &qloc_input,
 	                  bool SHIFTED_input = false)
-	:gauge(gauge_input), Abra(Abra_input), Aket(Aket_input), qloc(qloc_input), SHIFTED(SHIFTED_input)
+	:DIR(DIR_input), Abra(Abra_input), Aket(Aket_input), qloc(qloc_input), SHIFTED(SHIFTED_input)
 	{}
 	
-	GAUGE::OPTION gauge;
+	VMPS::DIRECTION::OPTION DIR;
 	
 	///\{
 	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Aket;
@@ -51,7 +53,7 @@ void HxV (const TransferMatrixAA<Symmetry,Scalar1> &H, const PivotVector<Symmetr
 	
 	if (H.SHIFTED == false)
 	{
-		if (H.gauge == GAUGE::L)
+		if (H.DIR == VMPS::DIRECTION::RIGHT)
 		{
 			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > Rnext;
 			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > R = Vin.data[0];
@@ -64,7 +66,7 @@ void HxV (const TransferMatrixAA<Symmetry,Scalar1> &H, const PivotVector<Symmetr
 			}
 			Vout.data[0] = R;
 		}
-		else if (H.gauge == GAUGE::R)
+		else if (H.DIR == VMPS::DIRECTION::LEFT)
 		{
 			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > Lnext;
 			Biped<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > L = Vin.data[0];

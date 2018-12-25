@@ -78,18 +78,19 @@ public:
 	 */
 	void set_log (int N_log_input, string file_e_input, string file_err_eigval_input, string file_err_var_input, string file_err_state_input);
 	///\}
-
+	
 	/**
 	 * Calculates the highest or lowest eigenstate with an MPO (algorithm 6).
 	 */
 	void edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
 	                qarray<Symmetry::Nq> Qtot, LANCZOS::EDGE::OPTION EDGE=LANCZOS::EDGE::GROUND, bool USE_STATE=false);
-
+	
 	const double& errVar() {return err_var;}
 	const double& errState() {return err_state;}
 	const double& errEigval() {return err_eigval;}
-
+	
 	bool FORCE_DO_SOMETHING = false;
+	
 private:
 	
 	///\{
@@ -250,7 +251,7 @@ private:
 	 * \param hLRdotLR : (h_L|R), (L|h_R) for eq. 15
 	 * \param LRres : resulting (H_L| or |H_R)
 	 */
-	void solve_linear (GAUGE::OPTION gauge, 
+	void solve_linear (VMPS::DIRECTION::OPTION DIR, 
 	                   const vector<vector<Biped<Symmetry,MatrixType> > > &A, 
 	                   const Biped<Symmetry,MatrixType> &hLR, 
 	                   const Biped<Symmetry,MatrixType> &LReigen, 
@@ -442,7 +443,7 @@ calc_errors (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &V
 		epsLRsq[g].resize(N_sites);
 		for (size_t l=0; l<N_sites; ++l)
 		{
-			epsLRsq[g](l) = Vout.state.calc_epsLRsq(g,l);			
+			epsLRsq[g](l) = Vout.state.calc_epsLRsq(g,l);
 		}
 	}
 	err_var = max(sqrt(epsLRsq[GAUGE::L].sum()), 
@@ -985,12 +986,12 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		lout << termcolor::bold << eigeninfo() << termcolor::reset << endl;
 		
 		lout << Vout.state.info() << endl;
-		lout << IterationTimer.info("full parallel iteration") <<
-			" (environment=" << round(t_env/t_tot*100.,0)  << "%" <<
-			", optimization=" << round(t_opt/t_tot*100.,0)  << "%" <<
-			", sweep=" << round(t_sweep/t_tot*100.,0) << "%" <<
-			", error=" << round(t_err/t_tot*100.,0) << "%";
-		if (t_exp != 0.) {lout << ", basis expansion=" << round(t_exp/t_tot*100.,0) << "%";}
+		lout << IterationTimer.info("full parallel iteration") 
+		     << " (environment=" << round(t_env/t_tot*100.,0)  << "%" 
+		     << ", optimization=" << round(t_opt/t_tot*100.,0)  << "%" 
+		     << ", sweep=" << round(t_sweep/t_tot*100.,0) << "%" 
+		     << ", error=" << round(t_err/t_tot*100.,0) << "%";
+		if (t_exp != 0.)  {lout << ", basis expansion="  << round(t_exp/t_tot*100.,0)   << "%";}
 		if (t_trunc != 0) {lout << ", basis truncation=" << round(t_trunc/t_tot*100.,0) << "%";}
 		lout << ")"<< endl;
 		lout << endl;
@@ -1012,7 +1013,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		if (err_var < GlobParam.tol_var and N_iterations%DynParam.Dincr_per(N_iterations) == 0 )
 		{
 			size_t deltaD = min(max(static_cast<size_t>(DynParam.Dincr_rel(N_iterations) * Vout.state.max_Nsv-Vout.state.max_Nsv), DynParam.Dincr_abs(N_iterations)),
-								DynParam.max_deltaD(N_iterations));
+			                    DynParam.max_deltaD(N_iterations));
 			if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
 			expand_basis(l,deltaD,H,Vout,VUMPS::TWOSITE_A::ALxAC);
 		}
@@ -1144,8 +1145,8 @@ iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	
 	// Solve the linear systems in eq. 14
 	Stopwatch<> GMresTimer;
-	solve_linear(GAUGE::L, Vout.state.A[GAUGE::L], hL, Reigen, Vout.state.locBasis(), eR, HL);
-	solve_linear(GAUGE::R, Vout.state.A[GAUGE::R], hR, Leigen, Vout.state.locBasis(), eL, HR);
+	solve_linear(VMPS::DIRECTION::LEFT,  Vout.state.A[GAUGE::L], hL, Reigen, Vout.state.locBasis(), eR, HL);
+	solve_linear(VMPS::DIRECTION::RIGHT, Vout.state.A[GAUGE::R], hR, Leigen, Vout.state.locBasis(), eL, HR);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
@@ -1349,8 +1350,8 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 string VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 test_LReigen (const Eigenstate<Umps<Symmetry,Scalar> > &Vout) const
 {
-	TransferMatrixAA<Symmetry,Scalar> TR(GAUGE::R, Vout.state.A[GAUGE::R], Vout.state.A[GAUGE::R], Vout.state.qloc);
-	TransferMatrixAA<Symmetry,Scalar> TL(GAUGE::L, Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::L], Vout.state.qloc);
+	TransferMatrixAA<Symmetry,Scalar> TR(VMPS::DIRECTION::RIGHT, Vout.state.A[GAUGE::R], Vout.state.A[GAUGE::R], Vout.state.qloc);
+	TransferMatrixAA<Symmetry,Scalar> TL(VMPS::DIRECTION::LEFT,  Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::L], Vout.state.qloc);
 	
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
@@ -1435,10 +1436,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		{
 			Vout.state.save("UmpsBackup",H.info());
 		}
-        #endif
+		#endif
 	}
 	write_log(true); // force log on exit
-		
+	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
 		lout << GlobalTimer.info("total runtime") << endl;
@@ -1499,7 +1500,7 @@ solve_linear (GAUGE::OPTION gauge,
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-solve_linear (GAUGE::OPTION gauge, 
+solve_linear (VMPS::DIRECTION::OPTION DIR, 
               const vector<vector<Biped<Symmetry,MatrixType> > > &A, 
               const Biped<Symmetry,MatrixType> &hLR, 
               const Biped<Symmetry,MatrixType> &LReigen, 
@@ -1507,7 +1508,7 @@ solve_linear (GAUGE::OPTION gauge,
               Scalar hLRdotLR, 
               Biped<Symmetry,MatrixType> &LRres)
 {
-	TransferMatrixAA<Symmetry,Scalar> T(gauge,A,A,qloc,true);
+	TransferMatrixAA<Symmetry,Scalar> T(DIR,A,A,qloc,true);
 	T.LReigen = LReigen;
 	PivotVector<Symmetry,Scalar> bvec(hLR);
 	
@@ -1528,7 +1529,7 @@ solve_linear (GAUGE::OPTION gauge,
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
-		lout << gauge << ": " << Gimli.info() << endl;
+		lout << DIR << ": " << Gimli.info() << endl;
 	}
 }
 
@@ -1819,4 +1820,5 @@ calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scal
 // 	Vout.state.update_inbase();
 // 	Vout.state.update_outbase();
 // }
+
 #endif

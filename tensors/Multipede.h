@@ -183,7 +183,19 @@ typedef typename MatrixType::Scalar Scalar;
 		return res;
 	}
 	
-	
+	Biped<Symmetry,MatrixType> BipedSlice (qType qslice = Symmetry::qvacuum()) const
+	{
+		Biped<Symmetry,MatrixType> Bout;
+		for (size_t q=0; q<dim; ++q)
+		for (size_t a=0; a<block[q].shape()[0]; ++a)
+		{
+			if (mid(q) == qslice)
+			{
+				Bout.push_back(in(q), out(q), block[q][a][0]);
+			}
+		}
+		return Bout;
+	}
 };
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>

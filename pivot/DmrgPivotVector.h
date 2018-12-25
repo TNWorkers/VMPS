@@ -5,9 +5,11 @@
 #include "tensors/DmrgContractions.h" // for contract_AA
 //include "numeric_limits.h"
 
-template<typename Symmetry, typename Scalar>
+template<typename Symmetry, typename Scalar_>
 struct PivotVector
 {
+	typedef Scalar_ Scalar;
+	
 	static constexpr std::size_t Nq = Symmetry::Nq;
 	
 	PivotVector()
@@ -16,21 +18,21 @@ struct PivotVector
 	};
 	
 	/**Set from a center matrix.*/
-	PivotVector (const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C)
+	PivotVector (const Biped<Symmetry,Matrix<Scalar_,Dynamic,Dynamic> > &C)
 	{
 		data.resize(1);
 		data[0] = C;
 	}
 	
 	/**Set from one A-tensor.*/
-	PivotVector (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A12)
+	PivotVector (const vector<Biped<Symmetry,Matrix<Scalar_,Dynamic,Dynamic> > > &A12)
 	:data(A12)
 	{}
 	
 	/**Make contraction of two A-tensors.*/
-	PivotVector (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A12,
+	PivotVector (const vector<Biped<Symmetry,Matrix<Scalar_,Dynamic,Dynamic> > > &A12,
 	             const vector<qarray<Symmetry::Nq> > &qloc12,
-	             const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A34,
+	             const vector<Biped<Symmetry,Matrix<Scalar_,Dynamic,Dynamic> > > &A34,
 	             const vector<qarray<Symmetry::Nq> > &qloc34,
 	             const qarray<Symmetry::Nq> &Qtop, 
                  const qarray<Symmetry::Nq> &Qbot, 
@@ -95,23 +97,23 @@ struct PivotVector
 		}
 	}
 	
-	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &operator[] (size_t i) {return data[i];}
-	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &operator() (size_t i) {return data[i];}
-	const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &operator[] (size_t i) const {return data[i];}
-	const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &operator() (size_t i) const {return data[i];}
+	Biped<Symmetry,Matrix<Scalar_,Dynamic,Dynamic> > &operator[] (size_t i) {return data[i];}
+	Biped<Symmetry,Matrix<Scalar_,Dynamic,Dynamic> > &operator() (size_t i) {return data[i];}
+	const Biped<Symmetry,Matrix<Scalar_,Dynamic,Dynamic> > &operator[] (size_t i) const {return data[i];}
+	const Biped<Symmetry,Matrix<Scalar_,Dynamic,Dynamic> > &operator() (size_t i) const {return data[i];}
 	
-	PivotVector<Symmetry,Scalar>& operator+= (const PivotVector<Symmetry,Scalar> &Vrhs);
-	PivotVector<Symmetry,Scalar>& operator-= (const PivotVector<Symmetry,Scalar> &Vrhs);
-	template<typename OtherScalar> PivotVector<Symmetry,Scalar>& operator*= (const OtherScalar &alpha);
-	template<typename OtherScalar> PivotVector<Symmetry,Scalar>& operator/= (const OtherScalar &alpha);
+	PivotVector<Symmetry,Scalar_>& operator+= (const PivotVector<Symmetry,Scalar_> &Vrhs);
+	PivotVector<Symmetry,Scalar_>& operator-= (const PivotVector<Symmetry,Scalar_> &Vrhs);
+	template<typename OtherScalar> PivotVector<Symmetry,Scalar_>& operator*= (const OtherScalar &alpha);
+	template<typename OtherScalar> PivotVector<Symmetry,Scalar_>& operator/= (const OtherScalar &alpha);
 	
-	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > data;
+	vector<Biped<Symmetry,Matrix<Scalar_,Dynamic,Dynamic> > > data;
 };
 //-----------</definitions>-----------
 
 //-----------<vector arithmetics>-----------
-template<typename Symmetry, typename Scalar>
-PivotVector<Symmetry,Scalar>& PivotVector<Symmetry,Scalar>::operator+= (const PivotVector<Symmetry,Scalar> &Vrhs)
+template<typename Symmetry, typename Scalar_>
+PivotVector<Symmetry,Scalar_>& PivotVector<Symmetry,Scalar_>::operator+= (const PivotVector<Symmetry,Scalar_> &Vrhs)
 {
 //	for (std::size_t s=0; s<data.size(); s++)
 //	{
@@ -153,9 +155,9 @@ PivotVector<Symmetry,Scalar>& PivotVector<Symmetry,Scalar>::operator+= (const Pi
 	return *this;
 }
 
-template<typename Symmetry, typename Scalar>
-PivotVector<Symmetry,Scalar>& PivotVector<Symmetry,Scalar>::
-operator-= (const PivotVector<Symmetry,Scalar> &Vrhs)
+template<typename Symmetry, typename Scalar_>
+PivotVector<Symmetry,Scalar_>& PivotVector<Symmetry,Scalar_>::
+operator-= (const PivotVector<Symmetry,Scalar_> &Vrhs)
 {
 //	for (std::size_t s=0; s<data.size(); s++)
 //	{
@@ -202,9 +204,9 @@ operator-= (const PivotVector<Symmetry,Scalar> &Vrhs)
 	return *this;
 }
 
-template<typename Symmetry, typename Scalar>
+template<typename Symmetry, typename Scalar_>
 template<typename OtherScalar>
-PivotVector<Symmetry,Scalar>& PivotVector<Symmetry,Scalar>::
+PivotVector<Symmetry,Scalar_>& PivotVector<Symmetry,Scalar_>::
 operator*= (const OtherScalar &alpha)
 {
 	for (size_t s=0; s<data.size(); ++s)
@@ -215,9 +217,9 @@ operator*= (const OtherScalar &alpha)
 	return *this;
 }
 
-template<typename Symmetry, typename Scalar>
+template<typename Symmetry, typename Scalar_>
 template<typename OtherScalar>
-PivotVector<Symmetry,Scalar>& PivotVector<Symmetry,Scalar>::
+PivotVector<Symmetry,Scalar_>& PivotVector<Symmetry,Scalar_>::
 operator/= (const OtherScalar &alpha)
 {
 	for (size_t s=0; s<data.size(); ++s)
@@ -228,52 +230,52 @@ operator/= (const OtherScalar &alpha)
 	return *this;
 }
 
-template<typename Symmetry, typename Scalar, typename OtherScalar>
-PivotVector<Symmetry,Scalar> operator* (const OtherScalar &alpha, PivotVector<Symmetry,Scalar> V)
+template<typename Symmetry, typename Scalar_, typename OtherScalar>
+PivotVector<Symmetry,Scalar_> operator* (const OtherScalar &alpha, PivotVector<Symmetry,Scalar_> V)
 {
 	return V *= alpha;
 }
 
-template<typename Symmetry, typename Scalar, typename OtherScalar>
-PivotVector<Symmetry,Scalar> operator* (PivotVector<Symmetry,Scalar> V, const OtherScalar &alpha)
+template<typename Symmetry, typename Scalar_, typename OtherScalar>
+PivotVector<Symmetry,Scalar_> operator* (PivotVector<Symmetry,Scalar_> V, const OtherScalar &alpha)
 {
 	return V *= alpha;
 }
 
-template<typename Symmetry, typename Scalar, typename OtherScalar>
-PivotVector<Symmetry,Scalar> operator/ (PivotVector<Symmetry,Scalar> V, const OtherScalar &alpha)
+template<typename Symmetry, typename Scalar_, typename OtherScalar>
+PivotVector<Symmetry,Scalar_> operator/ (PivotVector<Symmetry,Scalar_> V, const OtherScalar &alpha)
 {
 	return V /= alpha;
 }
 
-template<typename Symmetry, typename Scalar>
-PivotVector<Symmetry,Scalar> operator+ (const PivotVector<Symmetry,Scalar> &V1, const PivotVector<Symmetry,Scalar> &V2)
+template<typename Symmetry, typename Scalar_>
+PivotVector<Symmetry,Scalar_> operator+ (const PivotVector<Symmetry,Scalar_> &V1, const PivotVector<Symmetry,Scalar_> &V2)
 {
-	PivotVector<Symmetry,Scalar> Vout = V1;
+	PivotVector<Symmetry,Scalar_> Vout = V1;
 	Vout += V2;
 	return Vout;
 }
 
-template<typename Symmetry, typename Scalar>
-PivotVector<Symmetry,Scalar> operator- (const PivotVector<Symmetry,Scalar> &V1, const PivotVector<Symmetry,Scalar> &V2)
+template<typename Symmetry, typename Scalar_>
+PivotVector<Symmetry,Scalar_> operator- (const PivotVector<Symmetry,Scalar_> &V1, const PivotVector<Symmetry,Scalar_> &V2)
 {
-	PivotVector<Symmetry,Scalar> Vout = V1;
+	PivotVector<Symmetry,Scalar_> Vout = V1;
 	Vout -= V2;
 	return Vout;
 }
 
-template<typename Symmetry, typename Scalar, typename OtherScalar>
-void addScale (const OtherScalar alpha, const PivotVector<Symmetry,Scalar> &Vin, PivotVector<Symmetry,Scalar> &Vout)
+template<typename Symmetry, typename Scalar_, typename OtherScalar>
+void addScale (const OtherScalar alpha, const PivotVector<Symmetry,Scalar_> &Vin, PivotVector<Symmetry,Scalar_> &Vout)
 {
 	Vout += alpha * Vin;
 }
 
 //-----------<dot & vector norms>-----------
-template<typename Symmetry, typename Scalar>
-Scalar dot (const PivotVector<Symmetry,Scalar> &V1, const PivotVector<Symmetry,Scalar> &V2)
+template<typename Symmetry, typename Scalar_>
+Scalar_ dot (const PivotVector<Symmetry,Scalar_> &V1, const PivotVector<Symmetry,Scalar_> &V2)
 {
 //	cout << "sizes in dot: " << V1.data.size() << ", " << V2.data.size() << endl;
-	Scalar res = 0;
+	Scalar_ res = 0;
 	for (size_t s=0; s<V2.data.size(); ++s)
 	for (size_t q=0; q<V2.data[s].dim; ++q)
 	{
@@ -309,27 +311,27 @@ Scalar dot (const PivotVector<Symmetry,Scalar> &V1, const PivotVector<Symmetry,S
 	return res;
 }
 
-template<typename Symmetry, typename Scalar>
-double squaredNorm (const PivotVector<Symmetry,Scalar> &V)
+template<typename Symmetry, typename Scalar_>
+double squaredNorm (const PivotVector<Symmetry,Scalar_> &V)
 {
 	double res = isReal(dot(V,V));
 	return res;
 }
 
-template<typename Symmetry, typename Scalar>
-inline double norm (const PivotVector<Symmetry,Scalar> &V)
+template<typename Symmetry, typename Scalar_>
+inline double norm (const PivotVector<Symmetry,Scalar_> &V)
 {
 	return sqrt(squaredNorm(V));
 }
 
-template<typename Symmetry, typename Scalar>
-inline void normalize (PivotVector<Symmetry,Scalar> &V)
+template<typename Symmetry, typename Scalar_>
+inline void normalize (PivotVector<Symmetry,Scalar_> &V)
 {
 	V /= norm(V);
 }
 
-template<typename Symmetry, typename Scalar>
-inline size_t dim (const PivotVector<Symmetry,Scalar> &V)
+template<typename Symmetry, typename Scalar_>
+inline size_t dim (const PivotVector<Symmetry,Scalar_> &V)
 {
 	size_t out = 0;
 	for (size_t s=0; s<V.data.size(); ++s)
@@ -340,8 +342,8 @@ inline size_t dim (const PivotVector<Symmetry,Scalar> &V)
 	return out;
 }
 
-template<typename Symmetry, typename Scalar>
-double infNorm (const PivotVector<Symmetry,Scalar> &V1, const PivotVector<Symmetry,Scalar> &V2)
+template<typename Symmetry, typename Scalar_>
+double infNorm (const PivotVector<Symmetry,Scalar_> &V1, const PivotVector<Symmetry,Scalar_> &V2)
 {
 	double res = 0.;
 	for (size_t s=0; s<V1.data.size(); ++s)
@@ -356,8 +358,8 @@ double infNorm (const PivotVector<Symmetry,Scalar> &V1, const PivotVector<Symmet
 	return res;
 }
 
-template<typename Symmetry, typename Scalar>
-void swap (PivotVector<Symmetry,Scalar> &V1, PivotVector<Symmetry,Scalar> &V2)
+template<typename Symmetry, typename Scalar_>
+void swap (PivotVector<Symmetry,Scalar_> &V1, PivotVector<Symmetry,Scalar_> &V2)
 {
 //	for (size_t s=0; s<V1.data.size(); ++s)
 //	{
@@ -366,8 +368,8 @@ void swap (PivotVector<Symmetry,Scalar> &V1, PivotVector<Symmetry,Scalar> &V2)
 	swap(V1.data, V2.data);
 }
 
-template<typename Symmetry, typename Scalar>
-void setZero (PivotVector<Symmetry,Scalar> &V)
+template<typename Symmetry, typename Scalar_>
+void setZero (PivotVector<Symmetry,Scalar_> &V)
 {
 	for (size_t s=0; s<V.data.size(); ++s)
 	for (size_t q=0; q<V.data[s].dim; ++q)
@@ -378,17 +380,17 @@ void setZero (PivotVector<Symmetry,Scalar> &V)
 
 #include "RandomVector.h"
 
-template<typename Symmetry, typename Scalar>
-struct GaussianRandomVector<PivotVector<Symmetry,Scalar>,Scalar>
+template<typename Symmetry, typename Scalar_>
+struct GaussianRandomVector<PivotVector<Symmetry,Scalar_>,Scalar_>
 {
-	static void fill (size_t N, PivotVector<Symmetry,Scalar> &Vout)
+	static void fill (size_t N, PivotVector<Symmetry,Scalar_> &Vout)
 	{
 		for (size_t s=0; s<Vout.data.size(); ++s)
 		for (size_t q=0; q<Vout.data[s].dim; ++q)
 		for (size_t a1=0; a1<Vout.data[s].block[q].rows(); ++a1)
 		for (size_t a2=0; a2<Vout.data[s].block[q].cols(); ++a2)
 		{
-			Vout.data[s].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
+			Vout.data[s].block[q](a1,a2) = threadSafeRandUniform<Scalar_>(-1.,1.);
 		}
 		normalize(Vout);
 	}

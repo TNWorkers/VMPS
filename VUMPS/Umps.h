@@ -17,6 +17,7 @@
 #include "VUMPS/VumpsTypedefs.h"
 #include "VumpsContractions.h"
 #include "Blocker.h"
+#include "VumpsTransferMatrixSF.h"
 //include "PolychromaticConsole.h" // from TOOLS
 //include "tensors/Biped.h"
 //include "LanczosSolver.h" // from ALGS
@@ -272,8 +273,11 @@ public:
 	 * \param loc : location of the site to enrich.
 	 * \param g : The gauge to enrich. L means, we need to update site tensor at loc+1 accordingly. R means updating site loc-1 with zeros.
 	 * \param P : the tensor with the enrichment. It is calculated after Eq. (A31).
-	 */	
+	 */
 	void enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P);
+	
+	Array<complex<Scalar>,Dynamic,1> structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, 
+	                                                   double kmin=0., double kmax=2.*M_PI, int kpoints=51, bool INFO=true);
 	
 private:
 	
@@ -548,7 +552,7 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	Dmax = Dmax_input;
 	Nqmax = Nqmax_input;
 	if      (Symmetry::IS_TRIVIAL) {Nqmax = 1;}
-	else if (Symmetry::IS_MODULAR) {Nqmax = Symmetry::MOD_N;}
+	else if (Symmetry::IS_MODULAR) {Nqmax = min(static_cast<size_t>(Symmetry::MOD_N),Nqmax_input);}
 	
 	resize_arrays();
 	
@@ -958,9 +962,9 @@ template<typename Symmetry, typename Scalar>
 double Umps<Symmetry,Scalar>::
 dot (const Umps<Symmetry,Scalar> &Vket) const
 {
-	double outL = calc_LReigen(GAUGE::L, A[GAUGE::L], Vket.A[GAUGE::L], outBasis(N_sites-1), Vket.outBasis(N_sites-1), qloc).energy;
+	double outL = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::L], Vket.A[GAUGE::L], outBasis(N_sites-1), Vket.outBasis(N_sites-1), qloc).energy;
 	// for testing:
-	double outR = calc_LReigen(GAUGE::R, A[GAUGE::R], Vket.A[GAUGE::R], inBasis(0), Vket.inBasis(0), qloc).energy;
+	double outR = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::R], Vket.A[GAUGE::R], inBasis(0), Vket.inBasis(0), qloc).energy;
 	cout << "dot consistency check: from AL: " << outL << ", from AR: " << outR << endl;
 	return outL;
 }
@@ -2321,6 +2325,120 @@ entanglementSpectrumLoc (size_t loc) const
 		out(i) = Svals[i];
 	}
 	return out;
+}
+
+template<typename Symmetry, typename Scalar>
+Array<complex<Scalar>,Dynamic,1> Umps<Symmetry,Scalar>::
+structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, double kmin, double kmax, int kpoints, bool INFO)
+{
+	assert(N_sites == 1);
+	double t_tot=0.;
+	double t_LReigen=0.;
+	double t_GMRES=0.;
+	double t_contraction=0.;
+	
+	Stopwatch<> TotTimer;
+	
+	Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > Reigen_TketL, Leigen_TketL, Reigen_TketR, Leigen_TketR;
+	
+	Stopwatch<> LReigenTimer;
+	
+	// ket gauge R, right eigenvector
+	Reigen_TketR = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::L], A[GAUGE::R], inBasis(0), inBasis(0), qloc).state;
+	// ket gauge R, left eigenvector
+	Leigen_TketR = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::L], A[GAUGE::R], inBasis(0), inBasis(0), qloc).state;
+	// ket gauge L, right eigenvector
+	Reigen_TketL = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::R], A[GAUGE::L], outBasis(N_sites-1), outBasis(N_sites-1), qloc).state;
+	// ket gauge L, left eigenvector
+	Leigen_TketL = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::R], A[GAUGE::L], outBasis(N_sites-1), outBasis(N_sites-1), qloc).state;
+	
+	t_LReigen += LReigenTimer.time();
+	
+	// bvec
+	
+	PivotVector<Symmetry,complex<Scalar> > bLalfa;
+	PivotVector<Symmetry,complex<Scalar> > bRalfa;
+	
+	Stopwatch<> ContractionTimer;
+	
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rid;
+	Rid.setIdentity(1,1,outBasis(0));
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > bLalfaTripod;
+	contract_R(Rid, A[GAUGE::R][0], Oalfa.W_at(0), Oalfa.IS_HAMILTONIAN(), A[GAUGE::C][0], Oalfa.locBasis(0), Oalfa.opBasis(0), bLalfaTripod);
+	bLalfa = PivotVector<Symmetry,complex<Scalar> >(bLalfaTripod.BipedSlice().template cast<MatrixXcd>());
+	
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lid;
+	Lid.setIdentity(1,1,inBasis(0));
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > bRalfaTripod;
+	contract_L(Lid, A[GAUGE::L][0], Oalfa.W_at(0), Oalfa.IS_HAMILTONIAN(), A[GAUGE::C][0], Oalfa.locBasis(0), Oalfa.opBasis(0), bRalfaTripod);
+	bRalfa = PivotVector<Symmetry,complex<Scalar> >(bRalfaTripod.BipedSlice().template cast<MatrixXcd >());
+	
+	t_contraction += ContractionTimer.time();
+	
+	Array<complex<Scalar>,Dynamic,1> SFout(kpoints);
+	if (kmin==kmax) {SFout.resize(1);} // only one k-point requested
+	
+//	#pragma omp parallel for
+	for (int i=0; i<SFout.rows(); ++i)
+	{
+		double k = (kmin==kmax)? kmin : kmin + i*(kmax-kmin)/(kpoints-1);
+		
+		GMResSolver<TransferMatrixSF<Symmetry,Scalar>,PivotVector<Symmetry,complex<Scalar> > > Gimli;
+		
+		Stopwatch<> GMRES_Timer;
+		
+		// Ralfa, ket gauge R
+		
+		TransferMatrixSF<Symmetry,Scalar> TketR(GAUGE::R, A[GAUGE::L], A[GAUGE::R], Leigen_TketR, Reigen_TketR, qloc, Oalfa.opBasis(), k);
+		
+		// Solve linear system
+		Gimli.set_dimK(min(100ul,dim(bRalfa)));
+		PivotVector<Symmetry,complex<Scalar> > Ralfa;
+		Gimli.solve_linear(TketR, bRalfa, Ralfa, 1e-14, true);
+	//	lout << Gimli.info() << endl;
+		
+		// Lalfa, ket gauge L
+		
+		TransferMatrixSF<Symmetry,Scalar> TketL(GAUGE::L, A[GAUGE::R], A[GAUGE::L], Leigen_TketL, Reigen_TketL, qloc, Oalfa.opBasis(), k);
+		
+		// Solve linear system
+		Gimli.set_dimK(min(100ul,dim(bLalfa)));
+		PivotVector<Symmetry,complex<Scalar> > Lalfa;
+		Gimli.solve_linear(TketL, bLalfa, Lalfa, 1e-14, true);
+	//	lout << Gimli.info() << endl;
+		
+		t_GMRES += GMRES_Timer.time();
+		
+		// contractions
+		
+		Stopwatch<> ContractionTimer;
+		
+		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > bRbeta;
+		contract_R(Rid, A[GAUGE::C][0], Obeta.W_at(0), Obeta.IS_HAMILTONIAN(), A[GAUGE::R][0], Obeta.locBasis(0), Obeta.opBasis(0), bRbeta);
+		
+		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > bLbeta;
+		contract_L(Lid, A[GAUGE::C][0], Obeta.W_at(0), Obeta.IS_HAMILTONIAN(), A[GAUGE::L][0], Obeta.locBasis(0), Obeta.opBasis(0), bLbeta);
+		
+		SFout(i) = exp(-1.i*k) * contract_LR(0, Ralfa.data[0], bRbeta.template cast<MatrixXcd>()) 
+		          +exp(+1.i*k) * contract_LR(0, bLbeta.template cast<MatrixXcd>(), Lalfa.data[0]);
+		
+		t_contraction += ContractionTimer.time();
+	}
+	
+	t_tot = TotTimer.time();
+	
+	if (INFO)
+	{
+		lout << TotTimer.info("StructureFactor")
+			 << " (LReigen=" << round(t_LReigen/t_tot*100.,0) << "%, "
+			 << "GMRES=" << round(t_GMRES/t_tot*100.,0) << "%, "
+			 << "contractions=" << round(t_contraction/t_tot*100.,0) << "%)"
+			 << ", kmin/π=" << kmin/M_PI << ", kmax/π=" << kmax/M_PI << ", kpoints=" << SFout.rows() << endl;
+		lout << "\t" << Oalfa.info() << endl;
+		lout << "\t" << Obeta.info() << endl;
+	}
+	
+	return SFout;
 }
 
 #endif //VANILLA_Umps
