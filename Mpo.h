@@ -213,6 +213,8 @@ public:
 	inline size_t auxrows (size_t loc) const {return Daux(loc,0);}
 	inline size_t auxcols (size_t loc) const {return Daux(loc,1);}
 	
+	inline int locality() const {return LocalSite;}
+	
 	/**Returns the total quantum number of the Mpo.*/
 	inline qarray<Nq> Qtarget() const {return Qtot;};
 	

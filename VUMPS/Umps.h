@@ -26,7 +26,6 @@
 //include "Mpo.h"
 //include "tensors/DmrgConglutinations.h"
 
-
 /**
  * \ingroup VUMPS
  * Uniform Matrix Product State. Analogue of the Mps class.
@@ -2270,19 +2269,19 @@ truncate(bool SET_AC_RANDOM)
 
 template<typename Symmetry, typename Scalar>
 std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > Umps<Symmetry,Scalar>::
-calc_dominant(GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const
+calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const
 {
 	Umps<Symmetry,complex<double> > Compl = this->template cast<complex<double> > ();
 	complex<double> lambda;
 	
-	TransferMatrixAA<Symmetry,complex<double> > T;
+	TransferMatrix<Symmetry,complex<double> > T;
 	if (DIR == DMRG::DIRECTION::LEFT)
 	{
-		T = TransferMatrixAA<Symmetry,complex<double> >(GAUGE::R, Compl.A[g], Compl.A[g], Compl.locBasis());
+		T = TransferMatrix<Symmetry,complex<double> >(GAUGE::R, Compl.A[g], Compl.A[g], Compl.locBasis());
 	}
 	else
 	{
-		T = TransferMatrixAA<Symmetry,complex<double> >(GAUGE::L, Compl.A[g], Compl.A[g], Compl.locBasis());		
+		T = TransferMatrix<Symmetry,complex<double> >(GAUGE::L, Compl.A[g], Compl.A[g], Compl.locBasis());		
 	}
 	
 	Biped<Symmetry,Matrix<complex<double>, Dynamic,Dynamic> > RandBiped;
@@ -2295,9 +2294,9 @@ calc_dominant(GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const
 		RandBiped.setRandom(Compl.outBasis(N_sites-1), Compl.outBasis(N_sites-1));
 	}
 	RandBiped = 1./RandBiped.norm() * RandBiped;
-	PivotVector<Symmetry,complex<double> > x(RandBiped);
+	TransferVector<Symmetry,complex<double> > x(RandBiped);
 	
-	ArnoldiSolver<TransferMatrixAA<Symmetry,complex<double>>,PivotVector<Symmetry,complex<double> > > John(T,x,lambda);
+	ArnoldiSolver<TransferMatrix<Symmetry,complex<double> >,TransferVector<Symmetry,complex<double> > > John(T,x,lambda);
 	
 	lout << "fixed point: " << John.info() << endl;
 	//Normalize the Fixed point and try to make it real.
@@ -2331,7 +2330,6 @@ template<typename Symmetry, typename Scalar>
 Array<complex<Scalar>,Dynamic,1> Umps<Symmetry,Scalar>::
 structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, double kmin, double kmax, int kpoints, bool INFO)
 {
-	assert(N_sites == 1);
 	double t_tot=0.;
 	double t_LReigen=0.;
 	double t_GMRES=0.;
@@ -2339,91 +2337,110 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 	
 	Stopwatch<> TotTimer;
 	
-	Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > Reigen_TketL, Leigen_TketL, Reigen_TketR, Leigen_TketR;
+	Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > Reigen_LR, Leigen_LR, Reigen_RL, Leigen_RL;
 	
 	Stopwatch<> LReigenTimer;
 	
-	// ket gauge R, right eigenvector
-	Reigen_TketR = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::L], A[GAUGE::R], inBasis(0), inBasis(0), qloc).state;
-	// ket gauge R, left eigenvector
-	Leigen_TketR = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::L], A[GAUGE::R], inBasis(0), inBasis(0), qloc).state;
-	// ket gauge L, right eigenvector
-	Reigen_TketL = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::R], A[GAUGE::L], outBasis(N_sites-1), outBasis(N_sites-1), qloc).state;
-	// ket gauge L, left eigenvector
-	Leigen_TketL = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::R], A[GAUGE::L], outBasis(N_sites-1), outBasis(N_sites-1), qloc).state;
+	// T_L^R, right eigenvector
+	Reigen_LR = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::L], A[GAUGE::R], outBasis(N_sites-1), outBasis(N_sites-1), qloc).state;
+	// T_L^R, left eigenvector
+	Leigen_LR = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::L], A[GAUGE::R], inBasis(0), inBasis(0), qloc).state;
+	// T_R^L, right eigenvector
+	Reigen_RL = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::R], A[GAUGE::L], outBasis(N_sites-1), outBasis(N_sites-1), qloc).state;
+	// T_R^L, left eigenvector
+	Leigen_RL = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::R], A[GAUGE::L], inBasis(0), inBasis(0), qloc).state;
 	
 	t_LReigen += LReigenTimer.time();
 	
-	// bvec
-	
-	PivotVector<Symmetry,complex<Scalar> > bLalfa;
-	PivotVector<Symmetry,complex<Scalar> > bRalfa;
+	// b (edge tensor of contraction) for alfa, beta and exp(-i*k), exp(+i*k)
 	
 	Stopwatch<> ContractionTimer;
 	
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rid;
-	Rid.setIdentity(1,1,outBasis(0));
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > bLalfaTripod;
-	contract_R(Rid, A[GAUGE::R][0], Oalfa.W_at(0), Oalfa.IS_HAMILTONIAN(), A[GAUGE::C][0], Oalfa.locBasis(0), Oalfa.opBasis(0), bLalfaTripod);
-	bLalfa = PivotVector<Symmetry,complex<Scalar> >(bLalfaTripod.BipedSlice().template cast<MatrixXcd>());
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lid; Lid.setIdentity(1,1,inBasis(0));
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rid; Rid.setIdentity(1,1,outBasis(N_sites-1));
 	
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lid;
-	Lid.setIdentity(1,1,inBasis(0));
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > bRalfaTripod;
-	contract_L(Lid, A[GAUGE::L][0], Oalfa.W_at(0), Oalfa.IS_HAMILTONIAN(), A[GAUGE::C][0], Oalfa.locBasis(0), Oalfa.opBasis(0), bRalfaTripod);
-	bRalfa = PivotVector<Symmetry,complex<Scalar> >(bRalfaTripod.BipedSlice().template cast<MatrixXcd >());
+	// term exp(-i*k), alfa
+	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bmalfaTripod(N_sites);
+	contract_L(Lid, A[GAUGE::L][0], Oalfa.W_at(0), Oalfa.IS_HAMILTONIAN(), A[GAUGE::C][0], 
+	           Oalfa.locBasis(0), Oalfa.opBasis(0), bmalfaTripod[0]);
+		// shift forward in cell
+		for (size_t l=1; l<N_sites; ++l)
+		{
+			contract_L(bmalfaTripod[l-1], A[GAUGE::L][l], Oalfa.W_at(l), Oalfa.IS_HAMILTONIAN(), A[GAUGE::R][l], 
+			           Oalfa.locBasis(l), Oalfa.opBasis(l), bmalfaTripod[l]);
+		}
+	
+	// term exp(+i*k), alfa
+	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bpalfaTripod(N_sites);
+	contract_R(Rid, A[GAUGE::R][N_sites-1], Oalfa.W_at(N_sites-1), Oalfa.IS_HAMILTONIAN(), A[GAUGE::C][N_sites-1], 
+	           Oalfa.locBasis(N_sites-1), Oalfa.opBasis(N_sites-1), bpalfaTripod[N_sites-1]);
+		// shift backward in cell
+		for (int l=N_sites-2; l>=0; --l)
+		{
+			contract_R(bpalfaTripod[l+1], A[GAUGE::R][l], Oalfa.W_at(l), Oalfa.IS_HAMILTONIAN(), A[GAUGE::L][l], 
+			           Oalfa.locBasis(l), Oalfa.opBasis(l), bpalfaTripod[l]);
+		}
+	
+	// term exp(-i*k), beta
+	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bmbeta(N_sites);
+	contract_R(Rid, A[GAUGE::C][N_sites-1], Obeta.W_at(N_sites-1), Obeta.IS_HAMILTONIAN(), A[GAUGE::R][N_sites-1], 
+	           Obeta.locBasis(N_sites-1), Obeta.opBasis(N_sites-1), bmbeta[N_sites-1]);
+		// shift backward in cell
+		for (int l=N_sites-2; l>=0; --l)
+		{
+			contract_R(bmbeta[l+1], A[GAUGE::L][l], Oalfa.W_at(l), Oalfa.IS_HAMILTONIAN(), A[GAUGE::R][l], 
+			           Obeta.locBasis(l), Obeta.opBasis(l), bmbeta[l]);
+		}
+	
+	// term exp(+i*k), beta
+	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bpbeta(N_sites);
+	contract_L(Lid, A[GAUGE::C][0], Obeta.W_at(0), Obeta.IS_HAMILTONIAN(), A[GAUGE::L][0], 
+	           Obeta.locBasis(0), Obeta.opBasis(0), bpbeta[0]);
+		// shift forward in cell
+		for (size_t l=1; l<N_sites; ++l)
+		{
+			contract_L(bpbeta[l-1], A[GAUGE::R][l], Obeta.W_at(l), Obeta.IS_HAMILTONIAN(), A[GAUGE::L][l], 
+			           Obeta.locBasis(l), Obeta.opBasis(l), bpbeta[l]);
+		}
 	
 	t_contraction += ContractionTimer.time();
 	
-	Array<complex<Scalar>,Dynamic,1> SFout(kpoints);
-	if (kmin==kmax) {SFout.resize(1);} // only one k-point requested
+	// convert bmalfa, bpalfa to Biped wrapped by TransferVector for GMRES
+	TransferVector<Symmetry,complex<Scalar> > bmalfa(bmalfaTripod[N_sites-1].BipedSlice().template cast<MatrixXcd >());
+	TransferVector<Symmetry,complex<Scalar> > bpalfa(bpalfaTripod[0].BipedSlice().template cast<MatrixXcd>());
 	
-//	#pragma omp parallel for
-	for (int i=0; i<SFout.rows(); ++i)
+	Array<complex<Scalar>,Dynamic,1> out(kpoints);
+	if (kmin==kmax) {out.resize(1);} // only one k-point needed in case of kmin=kmax
+	
+	// solve linear systems
+	Stopwatch<> GMRES_Timer;
+	#pragma omp parallel for
+	for (int i=0; i<out.rows(); ++i)
 	{
 		double k = (kmin==kmax)? kmin : kmin + i*(kmax-kmin)/(kpoints-1);
 		
-		GMResSolver<TransferMatrixSF<Symmetry,Scalar>,PivotVector<Symmetry,complex<Scalar> > > Gimli;
+		GMResSolver<TransferMatrixSF<Symmetry,Scalar>,TransferVector<Symmetry,complex<Scalar> > > Gimli;
 		
-		Stopwatch<> GMRES_Timer;
+		// term exp(-i*k)
+		TransferMatrixSF<Symmetry,Scalar> Tm(VMPS::DIRECTION::LEFT, A[GAUGE::L], A[GAUGE::R], Leigen_LR, Reigen_LR, qloc, k);
+		Gimli.set_dimK(min(100ul,dim(bmalfa)));
+		TransferVector<Symmetry,complex<Scalar> > Fmalfa;
+		Gimli.solve_linear(Tm, bmalfa, Fmalfa, 1e-14, true);
+//		lout << "i=" << i << "\t" << Gimli.info() << endl;
 		
-		// Ralfa, ket gauge R
+		// term exp(+i*k)
+		TransferMatrixSF<Symmetry,Scalar> Tp(VMPS::DIRECTION::RIGHT, A[GAUGE::R], A[GAUGE::L], Leigen_RL, Reigen_RL, qloc, k);
+		Gimli.set_dimK(min(100ul,dim(bpalfa)));
+		TransferVector<Symmetry,complex<Scalar> > Fpalfa;
+		Gimli.solve_linear(Tp, bpalfa, Fpalfa, 1e-14, true);
+//		lout << "i=" << i << "\t" << Gimli.info() << endl;
 		
-		TransferMatrixSF<Symmetry,Scalar> TketR(GAUGE::R, A[GAUGE::L], A[GAUGE::R], Leigen_TketR, Reigen_TketR, qloc, Oalfa.opBasis(), k);
-		
-		// Solve linear system
-		Gimli.set_dimK(min(100ul,dim(bRalfa)));
-		PivotVector<Symmetry,complex<Scalar> > Ralfa;
-		Gimli.solve_linear(TketR, bRalfa, Ralfa, 1e-14, true);
-	//	lout << Gimli.info() << endl;
-		
-		// Lalfa, ket gauge L
-		
-		TransferMatrixSF<Symmetry,Scalar> TketL(GAUGE::L, A[GAUGE::R], A[GAUGE::L], Leigen_TketL, Reigen_TketL, qloc, Oalfa.opBasis(), k);
-		
-		// Solve linear system
-		Gimli.set_dimK(min(100ul,dim(bLalfa)));
-		PivotVector<Symmetry,complex<Scalar> > Lalfa;
-		Gimli.solve_linear(TketL, bLalfa, Lalfa, 1e-14, true);
-	//	lout << Gimli.info() << endl;
-		
-		t_GMRES += GMRES_Timer.time();
-		
-		// contractions
-		
-		Stopwatch<> ContractionTimer;
-		
-		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > bRbeta;
-		contract_R(Rid, A[GAUGE::C][0], Obeta.W_at(0), Obeta.IS_HAMILTONIAN(), A[GAUGE::R][0], Obeta.locBasis(0), Obeta.opBasis(0), bRbeta);
-		
-		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > bLbeta;
-		contract_L(Lid, A[GAUGE::C][0], Obeta.W_at(0), Obeta.IS_HAMILTONIAN(), A[GAUGE::L][0], Obeta.locBasis(0), Obeta.opBasis(0), bLbeta);
-		
-		SFout(i) = exp(-1.i*k) * contract_LR(0, Ralfa.data[0], bRbeta.template cast<MatrixXcd>()) 
-		          +exp(+1.i*k) * contract_LR(0, bLbeta.template cast<MatrixXcd>(), Lalfa.data[0]);
-		
-		t_contraction += ContractionTimer.time();
+		// result
+		out(i) = exp(-1.i*k) * contract_LR(0, Fmalfa.data, bmbeta[0].template cast<MatrixXcd>()) 
+		        +exp(+1.i*k) * contract_LR(0, bpbeta[N_sites-1].template cast<MatrixXcd>(), Fpalfa.data); // contract Biped & Tripod (qmid=0)
 	}
+	
+	t_GMRES += GMRES_Timer.time();
 	
 	t_tot = TotTimer.time();
 	
@@ -2433,12 +2450,12 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 			 << " (LReigen=" << round(t_LReigen/t_tot*100.,0) << "%, "
 			 << "GMRES=" << round(t_GMRES/t_tot*100.,0) << "%, "
 			 << "contractions=" << round(t_contraction/t_tot*100.,0) << "%)"
-			 << ", kmin/π=" << kmin/M_PI << ", kmax/π=" << kmax/M_PI << ", kpoints=" << SFout.rows() << endl;
+			 << ", kmin/π=" << kmin/M_PI << ", kmax/π=" << kmax/M_PI << ", kpoints=" << out.rows() << endl;
 		lout << "\t" << Oalfa.info() << endl;
 		lout << "\t" << Obeta.info() << endl;
 	}
 	
-	return SFout;
+	return out;
 }
 
 #endif //VANILLA_Umps

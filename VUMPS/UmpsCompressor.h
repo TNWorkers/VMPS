@@ -5,7 +5,7 @@
 #include "termcolor.hpp" //from https://github.com/ikalnytskyi/termcolor
 /// \endcond
 
-#include "VumpsTransferMatrixAA.h"
+#include "VumpsTransferMatrix.h"
 
 #include "pivot/DmrgPivotOverlap1.h"
 
@@ -188,17 +188,17 @@ build_LR (const Umps<Symmetry,Scalar> &Vin, const Umps<Symmetry,Scalar> &Vout)
 {
 	vector<vector<qarray<Symmetry::Nq> > > qloc_complete(N_sites);
 	for (size_t loc=0; loc<N_sites; loc++) { qloc_complete[loc] = Env[loc].qloc; }
-	TransferMatrixAA<Symmetry,Scalar> TL(GAUGE::R, Vout.A[GAUGE::L], Vin.A[GAUGE::L], qloc_complete);
-	TransferMatrixAA<Symmetry,Scalar> TR(GAUGE::L, Vout.A[GAUGE::R], Vin.A[GAUGE::R], qloc_complete);
+	TransferMatrix<Symmetry,Scalar> TL(GAUGE::R, Vout.A[GAUGE::L], Vin.A[GAUGE::L], qloc_complete);
+	TransferMatrix<Symmetry,Scalar> TR(GAUGE::L, Vout.A[GAUGE::R], Vin.A[GAUGE::R], qloc_complete);
 	Scalar eigval_dump=0.;
 	Scalar eigval_used=0.;
-	PivotVector<Symmetry,Scalar> xL(Env[0].L);
-	PivotVector<Symmetry,Scalar> xR(Env[N_sites-1].R);
+	TransferVector<Symmetry,Scalar> xL(Env[0].L);
+	TransferVector<Symmetry,Scalar> xR(Env[N_sites-1].R);
 	Stopwatch<> FixedR;
-	ArnoldiSolver<TransferMatrixAA<Symmetry,Scalar>,PivotVector<Symmetry,Scalar> > John(TR,xR,eigval_dump);
+	ArnoldiSolver<TransferMatrix<Symmetry,Scalar>,TransferVector<Symmetry,Scalar> > John(TR,xR,eigval_dump);
 	t_fixedR = FixedR.time();
 	Stopwatch<> FixedL;
-	ArnoldiSolver<TransferMatrixAA<Symmetry,Scalar>,PivotVector<Symmetry,Scalar> > Lucy(TL,xL,eigval_used);
+	ArnoldiSolver<TransferMatrix<Symmetry,Scalar>,TransferVector<Symmetry,Scalar> > Lucy(TL,xL,eigval_used);
 	t_fixedL = FixedL.time();
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{

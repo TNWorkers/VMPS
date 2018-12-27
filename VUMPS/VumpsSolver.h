@@ -15,8 +15,8 @@
 #include "pivot/DmrgPivotMatrix0.h"
 #include "pivot/DmrgPivotMatrix2.h"
 //include "VUMPS/VumpsContractions.h"
+#include "VUMPS/VumpsMpoTransferMatrix.h"
 #include "VUMPS/VumpsTransferMatrix.h"
-#include "VUMPS/VumpsTransferMatrixAA.h"
 
 //include "pivot/DmrgPivotMatrix1.h"
 //include "Mpo.h"
@@ -230,7 +230,7 @@ private:
 	 * \param LRguess : the starting guess for the linear solver
 	 * \param LRres : resulting (H_L| or |H_R)
 	 */
-	void solve_linear (GAUGE::OPTION gauge, 
+	void solve_linear (VMPS::DIRECTION::OPTION gauge, 
 	                   size_t ab, 
 	                   const vector<vector<Biped<Symmetry,MatrixType> > > &A, 
 	                   const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Y_LR, 
@@ -725,7 +725,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 				{
 					Tripod<Symmetry,MatrixType> Ltmp;
 					Tripod<Symmetry,MatrixType> Ltmp_guess; Ltmp_guess.insert(b,Lguess);
-					solve_linear(GAUGE::L, b, AL, YL[b], Reigen, W, qloc, qOp, contract_LR(b,YL[b],Reigen), Ltmp_guess, Ltmp);
+					solve_linear(VMPS::DIRECTION::LEFT, b, AL, YL[b], Reigen, W, qloc, qOp, contract_LR(b,YL[b],Reigen), Ltmp_guess, Ltmp);
 					L.insert(b,Ltmp);
 					
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and b == 0)
@@ -752,7 +752,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 				{
 					Tripod<Symmetry,MatrixType> Rtmp;
 					Tripod<Symmetry,MatrixType> Rtmp_guess; Rtmp_guess.insert(a,Rguess);
-					solve_linear(GAUGE::R, a, AR, YR[a], Leigen, W, qloc, qOp, contract_LR(a,Leigen,YR[a]), Rtmp_guess, Rtmp);
+					solve_linear(VMPS::DIRECTION::RIGHT, a, AR, YR[a], Leigen, W, qloc, qOp, contract_LR(a,Leigen,YR[a]), Rtmp_guess, Rtmp);
 					R.insert(a,Rtmp);
 					
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and a == dW-1)
@@ -948,9 +948,9 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	double t_sweep = SweepTimer.time();
 //	// Calculate energies
-//	Biped<Symmetry,ComplexMatrixType> Reigen_ = calc_LReigen(GAUGE::L, Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::L], 
+//	Biped<Symmetry,ComplexMatrixType> Reigen_ = calc_LReigen(VMPS::DIRECTION::RIGHT, Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::L], 
 //	                                                         Vout.state.outBasis(N_sites-1), Vout.state.outBasis(N_sites-1), Vout.state.qloc).state;
-//	Biped<Symmetry,ComplexMatrixType> Leigen_ = calc_LReigen(GAUGE::R, Vout.state.A[GAUGE::R], Vout.state.A[GAUGE::R],
+//	Biped<Symmetry,ComplexMatrixType> Leigen_ = calc_LReigen(VMPS::DIRECTION::LEFT, Vout.state.A[GAUGE::R], Vout.state.A[GAUGE::R],
 //	                                                         Vout.state.inBasis(0), Vout.state.inBasis(0), Vout.state.qloc).state;
 //	complex<double> eL_ = contract_LR(0,    YLlast.template cast<ComplexMatrixType>(), Reigen_) / static_cast<double>(H.volume());
 //	complex<double> eR_ = contract_LR(dW-1, Leigen_, YRfrst.template cast<ComplexMatrixType>()) / static_cast<double>(H.volume());
@@ -1350,20 +1350,20 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 string VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 test_LReigen (const Eigenstate<Umps<Symmetry,Scalar> > &Vout) const
 {
-	TransferMatrixAA<Symmetry,Scalar> TR(VMPS::DIRECTION::RIGHT, Vout.state.A[GAUGE::R], Vout.state.A[GAUGE::R], Vout.state.qloc);
-	TransferMatrixAA<Symmetry,Scalar> TL(VMPS::DIRECTION::LEFT,  Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::L], Vout.state.qloc);
+	TransferMatrix<Symmetry,Scalar> TR(VMPS::DIRECTION::RIGHT, Vout.state.A[GAUGE::R], Vout.state.A[GAUGE::R], Vout.state.qloc);
+	TransferMatrix<Symmetry,Scalar> TL(VMPS::DIRECTION::LEFT,  Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::L], Vout.state.qloc);
 	
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
 	
-	PivotVector<Symmetry,Scalar> PsiR(Reigen);
-	PivotVector<Symmetry,Scalar> PsiL(Leigen);
+	TransferVector<Symmetry,Scalar> PsiR(Reigen);
+	TransferVector<Symmetry,Scalar> PsiL(Leigen);
 	
 	HxV(TL,PsiR);
 	HxV(TR,PsiL);
 	
 	stringstream ss;
-	ss << "ReigenTest=" << (Reigen-PsiR.data[0]).norm() << ", LeigenTest=" << (Leigen-PsiL.data[0]).norm() << endl;
+	ss << "ReigenTest=" << (Reigen-PsiR.data).norm() << ", LeigenTest=" << (Leigen-PsiL.data).norm() << endl;
 	return ss.str();
 }
 
@@ -1460,7 +1460,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-solve_linear (GAUGE::OPTION gauge, 
+solve_linear (VMPS::DIRECTION::OPTION DIR, 
               size_t ab, 
               const vector<vector<Biped<Symmetry,MatrixType> > > &A, 
               const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Y_LR, 
@@ -1472,29 +1472,20 @@ solve_linear (GAUGE::OPTION gauge,
               const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LRguess,  
               Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LRres)
 {
-	TransferMatrix<Symmetry,Scalar> T(gauge, A, A, LReigen, W, qloc, qOp, ab);
-	TransferVector<Symmetry,Scalar> bvec(Y_LR, ab, LRdotY); // right-hand site vector |Y_LR)-e*1
+	MpoTransferMatrix<Symmetry,Scalar> T(DIR, A, A, LReigen, W, qloc, qOp, ab);
+	MpoTransferVector<Symmetry,Scalar> bvec(Y_LR, ab, LRdotY); // right-hand site vector |Y_LR)-e*1
 	
 	// Solve linear system
-	GMResSolver<TransferMatrix<Symmetry,Scalar>,TransferVector<Symmetry,Scalar> > Gimli;
+	GMResSolver<MpoTransferMatrix<Symmetry,Scalar>,MpoTransferVector<Symmetry,Scalar> > Gimli;
 	
 	Gimli.set_dimK(min(100ul,dim(bvec)));
-	TransferVector<Symmetry,Scalar> LRres_tmp;
-//	if (N_iterations == 0)
-//	{
-//		Gimli.solve_linear(T, bvec, LRres_tmp, 1e-14, true);
-//	}
-//	else
-//	{
-//		LRres_tmp = TransferVector<Symmetry,Scalar>(LRguess, ab, 0.);
-//		Gimli.solve_linear(T, bvec, LRres_tmp, 1e-14, false);
-//	}
+	MpoTransferVector<Symmetry,Scalar> LRres_tmp;
 	Gimli.solve_linear(T, bvec, LRres_tmp, 1e-14, true);
 	LRres = LRres_tmp.data;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
-		lout << gauge << ": " << Gimli.info() << endl;
+		lout << DIR << ": " << Gimli.info() << endl;
 	}
 }
 
@@ -1508,24 +1499,23 @@ solve_linear (VMPS::DIRECTION::OPTION DIR,
               Scalar hLRdotLR, 
               Biped<Symmetry,MatrixType> &LRres)
 {
-	TransferMatrixAA<Symmetry,Scalar> T(DIR,A,A,qloc,true);
+	TransferMatrix<Symmetry,Scalar> T(DIR,A,A,qloc,true);
 	T.LReigen = LReigen;
-	PivotVector<Symmetry,Scalar> bvec(hLR);
+	TransferVector<Symmetry,Scalar> bvec(hLR);
 	
-	for (size_t s=0; s<bvec.data.size(); ++s)
-	for (size_t q=0; q<bvec.data[s].dim; ++q)
+	for (size_t q=0; q<bvec.data.dim; ++q)
 	{
-		bvec.data[s].block[q] -= hLRdotLR * Matrix<Scalar,Dynamic,Dynamic>::Identity(bvec.data[s].block[q].rows(),
-		                                                                             bvec.data[s].block[q].cols());
+		bvec.data.block[q] -= hLRdotLR * Matrix<Scalar,Dynamic,Dynamic>::Identity(bvec.data.block[q].rows(),
+		                                                                          bvec.data.block[q].cols());
 	}
 	
 	// Solve linear system
-	GMResSolver<TransferMatrixAA<Symmetry,Scalar>,PivotVector<Symmetry,Scalar> > Gimli;
+	GMResSolver<TransferMatrix<Symmetry,Scalar>,TransferVector<Symmetry,Scalar> > Gimli;
 	
 	Gimli.set_dimK(min(100ul,dim(bvec)));
-	PivotVector<Symmetry,Scalar> LRres_tmp;
+	TransferVector<Symmetry,Scalar> LRres_tmp;
 	Gimli.solve_linear(T,bvec,LRres_tmp);
-	LRres = LRres_tmp.data[0];
+	LRres = LRres_tmp.data;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{

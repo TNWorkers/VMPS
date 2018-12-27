@@ -7,11 +7,10 @@
 
 #include "tensors/DmrgContractions.h"
 //include "VUMPS/Umps.h"
-#include "VUMPS/VumpsTransferMatrixAA.h"
+#include "VUMPS/VumpsTransferMatrix.h"
 //include "Mpo.h"
 #include "ArnoldiSolver.h" // from ALGS
 #include "Mpo.h"
-#include "VUMPS/VumpsTransferMatrix.h"
 
 template<typename Symmetry, typename Scalar>
 Eigenstate<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > >
@@ -23,23 +22,23 @@ calc_LReigen (VMPS::DIRECTION::OPTION DIR,
               const vector<vector<qarray<Symmetry::Nq> > > &qloc,
               size_t dimK = 100ul)
 {
-	TransferMatrixAA<Symmetry,Scalar> T(DIR, Abra, Aket, qloc);
+	TransferMatrix<Symmetry,Scalar> T(DIR, Abra, Aket, qloc);
 	
-	PivotVector<Symmetry,complex<double> > LRtmp;
+	TransferVector<Symmetry,complex<double> > LRtmp;
 	if (DIR == VMPS::DIRECTION::LEFT)
 	{
-		LRtmp.data[0].setIdentity(basisKet,basisBra);
+		LRtmp.data.setIdentity(basisBra,basisKet); // For contract_L: bra is in, ket is out
 	}
 	else if (DIR == VMPS::DIRECTION::RIGHT)
 	{
-		LRtmp.data[0].setIdentity(basisBra,basisKet);
+		LRtmp.data.setIdentity(basisKet,basisBra); // For contract_R: bra is out, ket is in
 	}
 	else
 	{
-		throw;
+		assert(1!=0 and "Unknown direction in VMPS::DIRECTION::OPTION in calc_LReigen!");
 	}
 	
-	ArnoldiSolver<TransferMatrixAA<Symmetry,double>,PivotVector<Symmetry,complex<double> > > Arnie;
+	ArnoldiSolver<TransferMatrix<Symmetry,double>,TransferVector<Symmetry,complex<double> > > Arnie;
 	Arnie.set_dimK(dimK);
 	
 	complex<double> lambda;
@@ -54,7 +53,7 @@ calc_LReigen (VMPS::DIRECTION::OPTION DIR,
 	
 	Eigenstate<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > > out;
 	out.energy = lambda.real();
-	out.state  = LRtmp.data[0];
+	out.state  = LRtmp.data;
 	
 	return out;
 }
