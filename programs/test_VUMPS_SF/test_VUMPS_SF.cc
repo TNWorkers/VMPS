@@ -138,7 +138,7 @@ int main (int argc, char* argv[])
 	#endif
 	
 	VUMPS::CONTROL::GLOB GlobParams;
-	GlobParams.tol_eigval = 1e-7;
+	GlobParams.tol_eigval = 1e-5;
 	GlobParams.tol_var = 1e-5;
 	GlobParams.tol_state = 1e-2;
 	GlobParams.min_iterations = 10;
@@ -258,12 +258,12 @@ int main (int argc, char* argv[])
 	
 	if (SU2)
 	{
-//		typedef VMPS::HubbardSU2xU1 MODEL;
-//		MODEL H(L,{{"U",20.},{"OPEN_BC",false},{"CALC_SQUARE",false}});
-//		qarray<2> Qc = {1,N};
-		typedef VMPS::HeisenbergSU2 MODEL;
-		MODEL H(L,{{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false}});
-		qarray<1> Qc = {1};
+		typedef VMPS::HubbardSU2xU1 MODEL;
+		MODEL H(L,{{"U",20.},{"OPEN_BC",false},{"CALC_SQUARE",false}});
+		qarray<2> Qc = {1,L};
+//		typedef VMPS::HeisenbergSU2 MODEL;
+//		MODEL H(L,{{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false}});
+//		qarray<1> Qc = {1};
 		
 		H.transform_base(Qc);
 		lout << H.info() << endl;
@@ -276,7 +276,6 @@ int main (int argc, char* argv[])
 		DMRG.edgeState(H, g, Qc);
 		
 		int N = 51;
-		ofstream Filer(make_string("SF_Sym=",MODEL::Symmetry::name(),"_L=",L,"_i0=",i0,"_j0=",j0,".dat"));
 		
 		ArrayXcd SF(N); SF=0;
 		
@@ -291,20 +290,20 @@ int main (int argc, char* argv[])
 			O[l]    = H.S(l);
 			Odag[l] = H.Sdag(l);
 			
-			O[l].transform_base(Qc);
-			Odag[l].transform_base(Qc);
+//			O[l]    = H.n(l);
+//			Odag[l] = H.n(l);
 		}
 		
 		for (size_t l=0; l<L; ++l)
 		{
-//			Oavg(l)    = avg(g.state, H.n(l), g.state);
-//			Odagavg(l) = Oavg(l);
-			
-			Oavg(l)    = avg(g.state, H.S(l), g.state);
-			Odagavg(l) = avg(g.state, H.Sdag(l), g.state);
+			Oavg(l)    = avg(g.state, O[l], g.state);
+			Odagavg(l) = avg(g.state, Odag[l], g.state);
 			
 			O[l].scale(1.,-Oavg(l));
 			Odag[l].scale(1.,-Odagavg(l));
+			
+			O[l].transform_base(Qc);
+			Odag[l].transform_base(Qc);
 			
 			cout << "l=" << l << endl;
 			cout << "<O>="    << avg(g.state, O[l],    g.state) << ", shifted by " << Oavg(l)    << endl;
@@ -336,31 +335,28 @@ int main (int argc, char* argv[])
 		
 		SF += g.state.structure_factor(Odag[i0],O[j0]);
 		
+		ofstream Filer(make_string("SF_Sym=",MODEL::Symmetry::name(),"_L=",L,"_i0=",i0,"_j0=",j0,".dat"));
 		for (int ik=0; ik<SF.rows(); ++ik)
 		{
 			Filer << ik*2.*M_PI/(SF.rows()-1) << "\t" 
 			      << abs(SF(ik)) << endl;
 		}
 		Filer.close();
-		lout << "SF saved!" << endl;
+		lout << make_string("SF_Sym=",MODEL::Symmetry::name(),"_L=",L,"_i0=",i0,"_j0=",j0,".dat") << " saved!" << endl;
 		
 		N = 100; // Ncell (number of unit cells), L=Lcell (size of unit cell)
 		
 		MODEL Htmp(L*N,{{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false}});
 		ArrayXd OdagO_R(N); OdagO_R=0;
-		#pragma omp parallel for
-		for (size_t n=1; n<N; ++n)
-		{
-			size_t l = L*n;
-//			OdagO_R(n) = avg(g.state, Htmp.nn(i0,j0+l), g.state) - Odagavg(i0%L)*Oavg((j0+l)%L);
-			OdagO_R(n) = avg(g.state, Htmp.SdagS(i0,j0+l), g.state) - Odagavg(i0%L)*Oavg((j0+l)%L);
-		}
-		
 		ArrayXd OdagO_L(N); OdagO_L=0;
 		#pragma omp parallel for
 		for (size_t n=1; n<N; ++n)
 		{
 			size_t l = L*n;
+			
+//			OdagO_R(n) = avg(g.state, Htmp.nn(i0,j0+l), g.state) - Odagavg(i0%L)*Oavg((j0+l)%L);
+			OdagO_R(n) = avg(g.state, Htmp.SdagS(i0,j0+l), g.state) - Odagavg(i0%L)*Oavg((j0+l)%L);
+			
 //			OdagO_L(n) = avg(g.state, Htmp.nn(i0+l,j0), g.state) - Odagavg((i0+l)%L)*Oavg(j0%L);
 			OdagO_L(n) = avg(g.state, Htmp.SdagS(i0+l,j0), g.state) - Odagavg((i0+l)%L)*Oavg(j0%L);
 		}
@@ -374,9 +370,6 @@ int main (int argc, char* argv[])
 			for (size_t n=1; n<N; ++n)
 			{
 				Ok(ik) += OdagO_R(n) * exp(-1.i*k*static_cast<double>(n));
-			}
-			for (size_t n=1; n<N; ++n)
-			{
 				Ok(ik) += OdagO_L(n) * exp(+1.i*k*static_cast<double>(n));
 			}
 		}
@@ -388,6 +381,6 @@ int main (int argc, char* argv[])
 			FilerFT << k << "\t" << abs(Ok(i)) << endl;
 		}
 		FilerFT.close();
-		lout << "FT saved!" << endl;
+		lout << make_string("SF_FT","_L=",L,"_i0=",i0,"_j0=",j0,".dat") << " saved!" << endl;
 	}
 }

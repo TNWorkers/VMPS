@@ -535,6 +535,14 @@ void contract_L (const Biped<Symmetry,MatrixType2> &Lold,
 					}
 					else
 					{
+//						print_size(Abra[s].block[qAbra].adjoint(), "Abra[s].block[qAbra].adjoint()");
+//						print_size(Lold.block[qL], "Lold.block[qL]");
+//						print_size(Aket[s].block[qAket], "Aket[s].block[qAket]");
+//						cout << Abra[s].out[qAbra] << ", " << Abra[s].in[qAbra] << endl;
+//						cout << Lold.in[qL] << ", " << Lold.out[qL] << endl;
+//						cout << Aket[s].in[qAket] << ", " << Aket[s].out[qAket] << endl;
+//						cout << endl;
+						
 						optimal_multiply(1.,
 						                 Abra[s].block[qAbra].adjoint(),
 						                 Lold.block[qL],

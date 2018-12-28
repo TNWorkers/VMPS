@@ -127,6 +127,7 @@ bool LAA (qarray<Symmetry::Nq> Lin,
 	bool out = false;
 	result.clear();
 	
+	assert(Lin == Lout);
 	qarray<Symmetry::Nq> Linout = Lin; // Lin = Lout = Linout;
 	
 	auto Rinouts = Symmetry::reduceSilent(Linout,qloc[s]);
@@ -162,6 +163,7 @@ bool AAR (qarray<Symmetry::Nq> Rin,
 	bool out = false;
 	result.clear();
 	
+	assert(Rin == Rout);
 	qarray<Symmetry::Nq> Rinout = Rin; // Rin = Rout = Rinout;
 	
 	auto Linouts = Symmetry::reduceSilent(Rinout, Symmetry::flip(qloc[s]));

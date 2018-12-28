@@ -183,7 +183,7 @@ typedef typename MatrixType::Scalar Scalar;
 		return res;
 	}
 	
-	Biped<Symmetry,MatrixType> BipedSlice (qType qslice = Symmetry::qvacuum()) const
+	Biped<Symmetry,MatrixType> BipedSliceQmid (qType qslice = Symmetry::qvacuum()) const
 	{
 		Biped<Symmetry,MatrixType> Bout;
 		for (size_t q=0; q<dim; ++q)

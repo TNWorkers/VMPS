@@ -49,7 +49,7 @@ void HxV (const TransferMatrixSF<Symmetry,Scalar> &H, const TransferVector<Symme
 		Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > R = Vin.data;
 		for (int l=Lcell-1; l>=0; --l)
 		{
-			contract_R(R, H.Abra[l], H.Aket[l], H.qloc[l], Rnext); // RANDOMIZE=false, CLEAR=false
+			contract_R(R, H.Abra[l], H.Aket[l], H.qloc[l], Rnext, false, true); // RANDOMIZE=false, CLEAR=true
 			R.clear();
 			R = Rnext;
 			Rnext.clear();
@@ -62,7 +62,7 @@ void HxV (const TransferMatrixSF<Symmetry,Scalar> &H, const TransferVector<Symme
 		Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > L = Vin.data;
 		for (size_t l=0; l<Lcell; ++l)
 		{
-			contract_L(L, H.Abra[l], H.Aket[l], H.qloc[l], Lnext); // RANDOMIZE=false, CLEAR=false
+			contract_L(L, H.Abra[l], H.Aket[l], H.qloc[l], Lnext, false, true); // RANDOMIZE=false, CLEAR=true
 			L.clear();
 			L = Lnext;
 			Lnext.clear();
@@ -78,12 +78,10 @@ void HxV (const TransferMatrixSF<Symmetry,Scalar> &H, const TransferVector<Symme
 	if (H.DIR == VMPS::DIRECTION::RIGHT)
 	{
 		LdotR = H.Leigen.contract(Vin.data).trace();
-//		LdotR = (H.Leigen * Vin.data).trace();
 	}
 	else if (H.DIR == VMPS::DIRECTION::LEFT)
 	{
 		LdotR = Vin.data.contract(H.Reigen).trace();
-//		LdotR = (Vin.data * H.Reigen).trace();
 	}
 	
 	Vout = Vin;

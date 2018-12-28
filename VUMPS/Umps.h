@@ -2382,32 +2382,36 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 	}
 	
 	// term exp(-i*k), beta
-	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bmbeta(N_sites);
+	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bmbetaTripod(N_sites);
 	contract_R(Rid, A[GAUGE::C][N_sites-1], Obeta.W_at(N_sites-1), Obeta.IS_HAMILTONIAN(), A[GAUGE::R][N_sites-1], 
-	           Obeta.locBasis(N_sites-1), Obeta.opBasis(N_sites-1), bmbeta[N_sites-1]);
+	           Obeta.locBasis(N_sites-1), Obeta.opBasis(N_sites-1), bmbetaTripod[N_sites-1]);
 	// shift backward in cell
 	for (int l=N_sites-2; l>=0; --l)
 	{
-		contract_R(bmbeta[l+1], A[GAUGE::L][l], Obeta.W_at(l), Obeta.IS_HAMILTONIAN(), A[GAUGE::R][l], 
-		           Obeta.locBasis(l), Obeta.opBasis(l), bmbeta[l]);
+		contract_R(bmbetaTripod[l+1], A[GAUGE::L][l], Obeta.W_at(l), Obeta.IS_HAMILTONIAN(), A[GAUGE::R][l], 
+		           Obeta.locBasis(l), Obeta.opBasis(l), bmbetaTripod[l]);
 	}
 	
 	// term exp(+i*k), beta
-	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bpbeta(N_sites);
+	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bpbetaTripod(N_sites);
 	contract_L(Lid, A[GAUGE::C][0], Obeta.W_at(0), Obeta.IS_HAMILTONIAN(), A[GAUGE::L][0], 
-	           Obeta.locBasis(0), Obeta.opBasis(0), bpbeta[0]);
+	           Obeta.locBasis(0), Obeta.opBasis(0), bpbetaTripod[0]);
 	// shift forward in cell
 	for (size_t l=1; l<N_sites; ++l)
 	{
-		contract_L(bpbeta[l-1], A[GAUGE::R][l], Obeta.W_at(l), Obeta.IS_HAMILTONIAN(), A[GAUGE::L][l], 
-		           Obeta.locBasis(l), Obeta.opBasis(l), bpbeta[l]);
+		contract_L(bpbetaTripod[l-1], A[GAUGE::R][l], Obeta.W_at(l), Obeta.IS_HAMILTONIAN(), A[GAUGE::L][l], 
+		           Obeta.locBasis(l), Obeta.opBasis(l), bpbetaTripod[l]);
 	}
 	
-	t_contraction += ContractionTimer.time();
-	
 	// convert bmalfa, bpalfa to Biped wrapped by TransferVector for GMRES
-	TransferVector<Symmetry,complex<Scalar> > bmalfa(bmalfaTripod[N_sites-1].BipedSlice().template cast<MatrixXcd >());
-	TransferVector<Symmetry,complex<Scalar> > bpalfa(bpalfaTripod[0].BipedSlice().template cast<MatrixXcd>());
+	TransferVector<Symmetry,complex<Scalar> > bmalfa(bmalfaTripod[N_sites-1].BipedSliceQmid(Oalfa.Qtarget()).template cast<MatrixXcd >());
+	TransferVector<Symmetry,complex<Scalar> > bpalfa(bpalfaTripod[0].BipedSliceQmid(Oalfa.Qtarget()).template cast<MatrixXcd>());
+	
+	// convert bmbeta, bpbeta to Biped for final contraction
+	Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > bmbeta(bmbetaTripod[0].BipedSliceQmid(Obeta.Qtarget()).template cast<MatrixXcd >());
+	Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > bpbeta(bpbetaTripod[N_sites-1].BipedSliceQmid(Obeta.Qtarget()).template cast<MatrixXcd>());
+	
+	t_contraction += ContractionTimer.time();
 	
 	Array<complex<Scalar>,Dynamic,1> out(kpoints);
 	if (kmin==kmax) {out.resize(1);} // only one k-point needed in case of kmin=kmax
@@ -2424,11 +2428,10 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 		// term exp(-i*k)
 		TransferMatrixSF<Symmetry,Scalar> Tm(VMPS::DIRECTION::LEFT, A[GAUGE::L], A[GAUGE::R], Leigen_LR, Reigen_LR, qloc, k);
 		Gimli.set_dimK(min(100ul,dim(bmalfa)));
-//		Gimli.set_dimK(100ul);
 		assert(dim(bmalfa) > 0);
 		TransferVector<Symmetry,complex<Scalar> > Fmalfa;
 		Gimli.solve_linear(Tm, bmalfa, Fmalfa, 1e-14, true);
-//		lout << "i=" << i << " exp(-i*k) " << Gimli.info() << endl;
+//		lout << "i=" << i << " exp(-i*k) term " << Gimli.info() << endl;
 		
 		// term exp(+i*k)
 		TransferMatrixSF<Symmetry,Scalar> Tp(VMPS::DIRECTION::RIGHT, A[GAUGE::R], A[GAUGE::L], Leigen_RL, Reigen_RL, qloc, k);
@@ -2436,11 +2439,13 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 		assert(dim(bpalfa) > 0);
 		TransferVector<Symmetry,complex<Scalar> > Fpalfa;
 		Gimli.solve_linear(Tp, bpalfa, Fpalfa, 1e-14, true);
-//		lout << "i=" << i << " exp(+i*k) " << Gimli.info() << endl;
+//		lout << "i=" << i << " exp(+i*k) term " << Gimli.info() << endl;
+		
+		complex<double> resm = Fmalfa.data.contract(bmbeta).trace();
+		complex<double> resp = bpbeta.contract(Fpalfa.data).trace();
 		
 		// result
-		out(i) = exp(-1.i*k) * contract_LR(0, Fmalfa.data, bmbeta[0].template cast<MatrixXcd>()) 
-		        +exp(+1.i*k) * contract_LR(0, bpbeta[N_sites-1].template cast<MatrixXcd>(), Fpalfa.data); // contract Biped & Tripod (qmid=0)
+		out(i) = exp(-1.i*k) * resm + exp(+1.i*k) * resp;
 	}
 	
 	t_GMRES += GMRES_Timer.time();
