@@ -44,6 +44,7 @@ public:
 	Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
 	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2>
 	Mpo<Symmetry> nn (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> nn (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> hh (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
@@ -283,6 +284,13 @@ Mpo<Symmetry> HubbardObservables<Symmetry>::
 nn (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	return make_corr ("n","n", locx1,locx2,locy1,locy2, F[locx1].n(sigma1,locy1), F[locx2].n(sigma2,locy2), true);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+nn (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr ("n","n", locx1,locx2,locy1,locy2, F[locx1].n(locy1), F[locx2].n(locy2), true);
 }
 
 template<typename Symmetry>

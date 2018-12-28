@@ -323,7 +323,7 @@ int main (int argc, char* argv[])
 			cout << "n=" << nvec(l) << endl;
 			
 			dvec(l) = avg(g_Hubb.state, Hubb.d(l), g_Hubb.state);
-			cout << "d=" << dvec(l) << endl;	
+			cout << "d=" << dvec(l) << endl;
 		}
 		
 		cout << "navg=" << nvec.sum()/L << endl;

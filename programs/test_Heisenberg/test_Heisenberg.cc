@@ -210,7 +210,8 @@ int main (int argc, char* argv[])
 		
 		for (size_t l=0; l<L-1; ++l)
 		{
-			lout << "l=" << l << ", <S(i)S(i+1)>=" << isReal(avg(g_U1.state, H_U1.SpSm(l,l+1), g_U1.state)) + isReal(avg(g_U1.state, H_U1.SzSz(l,l+1), g_U1.state)) << endl;
+			lout << "l=" << l << ", <S(i)S(i+1)>=" << isReal(avg(g_U1.state, H_U1.SpSm(l,l+1), g_U1.state)) + 
+			                                          isReal(avg(g_U1.state, H_U1.SzSz(l,l+1), g_U1.state)) << endl;
 		}
 		
 		VMPS::HeisenbergU1XXZ H_U1XXZ(L,{{"Jxy",J},{"Jz",1.2*J},{"Jprime",Jprime},{"Jxyrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
@@ -289,7 +290,7 @@ int main (int argc, char* argv[])
 		
 		for (size_t l=0; l<L-1; ++l)
 		{
-			lout << "l=" << l << ", <S(i)S(i+1)>=" << isReal(avg(g_SU2.state, H_SU2.SS(l,l+1), g_SU2.state)) << endl;
+			lout << "l=" << l << ", <S(i)S(i+1)>=" << isReal(avg(g_SU2.state, H_SU2.SdagS(l,l+1), g_SU2.state)) << endl;
 		}
 	}
 	

@@ -35,7 +35,7 @@ calc_LReigen (VMPS::DIRECTION::OPTION DIR,
 	}
 	else
 	{
-		assert(1!=0 and "Unknown direction in VMPS::DIRECTION::OPTION in calc_LReigen!");
+		assert(1!=0 and "Unknown VMPS::DIRECTION::OPTION in calc_LReigen!");
 	}
 	
 	ArnoldiSolver<TransferMatrix<Symmetry,double>,TransferVector<Symmetry,complex<double> > > Arnie;

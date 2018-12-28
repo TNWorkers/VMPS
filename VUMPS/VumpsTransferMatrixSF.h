@@ -71,17 +71,19 @@ void HxV (const TransferMatrixSF<Symmetry,Scalar> &H, const TransferVector<Symme
 	}
 	else
 	{
-		assert(1!=0 and "Unknown direction in VMPS::DIRECTION::OPTION in TransferMatrixSF!");
+		assert(1!=0 and "Unknown VMPS::DIRECTION::OPTION in TransferMatrixSF!");
 	}
 	
 	complex<Scalar> LdotR;
 	if (H.DIR == VMPS::DIRECTION::RIGHT)
 	{
 		LdotR = H.Leigen.contract(Vin.data).trace();
+//		LdotR = (H.Leigen * Vin.data).trace();
 	}
 	else if (H.DIR == VMPS::DIRECTION::LEFT)
 	{
 		LdotR = Vin.data.contract(H.Reigen).trace();
+//		LdotR = (Vin.data * H.Reigen).trace();
 	}
 	
 	Vout = Vin;

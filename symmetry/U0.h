@@ -31,7 +31,7 @@ namespace Sym{
 		
 		U0() {};
 
-		static std::string name() { return "U(0) (no Symmetry)"; }
+		static std::string name() { return "noSymmetry"; }
 
 		static constexpr bool HAS_CGC = false;
 		static constexpr std::size_t Nq=0;

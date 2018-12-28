@@ -201,7 +201,14 @@ namespace VMPS
 			LEFT, /**<sweep to the left, obviously*/
 			RIGHT /**<sweep to the right, duh*/
 		};
-	};	
+	};
+	
+	std::ostream& operator<< (std::ostream& s, VMPS::DIRECTION::OPTION DIR)
+	{
+		if (DIR==VMPS::DIRECTION::LEFT) {s << "LEFT";}
+		else                            {s << "RIGHT";}
+		return s;
+	}
 }
 /**Namespace imitation for various enums.*/
 struct DMRG

@@ -65,13 +65,13 @@ public:
 	 * \param P : The parameters
 	 * \param loc : The location in the chain
 	*/
-    static void set_operators(const std::vector<SpinBase<Symmetry> > &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
+	static void set_operators(const std::vector<SpinBase<Symmetry> > &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
 	
 	///@{
 	/**Observables.*/
 	Mpo<Symmetry,double> S (std::size_t locx, std::size_t locy=0);
 	Mpo<Symmetry,double> Sdag (std::size_t locx, std::size_t locy=0, double factor=sqrt(3.));
-	Mpo<Symmetry,double> SS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
+	Mpo<Symmetry,double> SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
 	///@}
 	
 	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an MpsQ.
@@ -158,7 +158,7 @@ Sdag (std::size_t locx, std::size_t locy, double factor)
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
-SS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
+SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
 	std::stringstream ss;

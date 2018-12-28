@@ -58,8 +58,8 @@ public:
 	HubbardSU2xU1 (const size_t &L, const vector<Param> &params);
 	
 	//static HamiltonianTermsXd<Symmetry> set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc=0);
-    static void set_operators(const std::vector<FermionBase<Symmetry>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
-    
+	static void set_operators(const std::vector<FermionBase<Symmetry>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
+	
 	static qarray<2> singlet (int N) {return qarray<2>{1,N};};
 	
 	///@{
@@ -84,6 +84,8 @@ public:
 	
 	///@{
 	Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> nn    (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	///@}
 	
 	static const map<string,any> defaults;
@@ -364,8 +366,9 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, Op.Q(), ss.str(), HERMITIAN);
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
-	(FERMIONIC)? Mout.setLocal(locx, (factor * pow(-1.,locx+1) * Op).plain<double>(), F[0].sign().plain<double>())
-		: Mout.setLocal(locx, Op.plain<double>());
+	(FERMIONIC)? 
+	 Mout.setLocal(locx, (factor * pow(-1.,locx+1) * Op).plain<double>(), F[0].sign().plain<double>())
+	:Mout.setLocal(locx, Op.plain<double>());
 	
 	return Mout;
 }
@@ -492,6 +495,46 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 		                               pow(-1.,locx1-locx2+1) * cdag.plain<double>()}, 
 		                               F[0].sign().plain<double>());
 	}
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+nn (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	assert(locx1<this->N_sites and locx2<this->N_sites);
+	stringstream ss;
+	ss << "n(" << locx1 << "," << locy1 << ")" << "n(" << locx2 << "," << locy2 << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	Mout.setLocal({locx1, locx2}, {F[locx1].n(locy1).plain<double>(), F[locx2].n(locy2).plain<double>()});
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	assert(locx1<this->N_sites and locx2<this->N_sites);
+	stringstream ss;
+	ss << "S†(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	auto Op1 = F[locx1].Sdag(locy1);
+	auto Op2 = F[locx2].Sdag(locy2);
+	
+	if (locx1 == locx2)
+	{
+		auto product = std::sqrt(3.) * OperatorType::prod(Op1, Op2, Symmetry::qvacuum());
+		Mout.setLocal(locx1, product.plain<double>());
+	}
+	else
+	{
+		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.) * Op1).plain<double>(), Op2.plain<double>()});
+	}
+	
 	return Mout;
 }
 

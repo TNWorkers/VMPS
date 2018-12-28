@@ -65,7 +65,7 @@ int main (int argc, char* argv[])
 	Ly = args.get<size_t>("Ly",1);
 	Jxy = args.get<double>("Jxy",0.);
 	Jz = args.get<double>("Jz",-1.);
-	J = args.get<double>("J",0.);
+	J = args.get<double>("J",1.);
 	Jprime = args.get<double>("Jprime",0.);
 	tPrime = args.get<double>("tPrime",0.);
 	Bx = args.get<double>("Bx",0.25);
@@ -74,8 +74,8 @@ int main (int argc, char* argv[])
 	mu = args.get<double>("mu",0.5*U);
 	N = args.get<int>("N",L);
 	
-	size_t i0 = args.get<int>("i0",0);
-	size_t j0 = args.get<int>("j0",0);
+	size_t i0 = (args.get<int>("i0",0))%L;
+	size_t j0 = (args.get<int>("j0",0))%L;
 	
 	dt = args.get<double>("dt",0.5); // hopping-offset for SSH model
 	Dinit = args.get<double>("Dinit",5);    // bond dimension
@@ -116,22 +116,16 @@ int main (int argc, char* argv[])
 //	cout << "GMRes: " << (A*y-b).norm() << endl;
 //	assert(1!=1);
 	
-	bool CALC_SU2 = args.get<bool>("SU2",false);
-	bool CALC = args.get<bool>("U1",true);
-	bool CALC_U0 = args.get<bool>("U0",true);
-	bool CALC_HUBB = args.get<bool>("HUBB",false);
-	bool CALC_KOND = args.get<bool>("KOND",false);
-	bool CALC_DOT = args.get<bool>("DOT",false);
-	ALL   = args.get<bool>("ALL",false);
+	bool SU2 = args.get<bool>("SU2",true);
+	bool U1  = args.get<bool>("U1",false);
+	bool U0  = args.get<bool>("U0",false);
 	if (ALL)
 	{
-		CALC_SU2  = true;
-		CALC   = true;
-		CALC_U0   = true;
-		CALC_HUBB = true;
-		CALC_KOND = true;
+		SU2 = true;
+		U1  = true;
+		U0  = true;
 	}
-		
+	
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	UMPS_ALG::OPTION ALG = static_cast<UMPS_ALG::OPTION>(args.get<int>("ALG",0));
 	lout << args.info() << endl;
@@ -146,125 +140,254 @@ int main (int argc, char* argv[])
 	VUMPS::CONTROL::GLOB GlobParams;
 	GlobParams.tol_eigval = 1e-7;
 	GlobParams.tol_var = 1e-5;
-	GlobParams.tol_state = 1e-3;
-	GlobParams.min_iterations = 24;
-	GlobParams.max_iterations = 150;
+	GlobParams.tol_state = 1e-2;
+	GlobParams.min_iterations = 10;
+	GlobParams.max_iterations = 120;
 	GlobParams.Dinit = 10;
 	
-	typedef VMPS::HeisenbergU1XXZ MODEL;
-	MODEL Heis(L,{{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false}}); //{"Bx",Bx},
-	
-	MODEL::uSolver DMRG(VERB);
-	Eigenstate<MODEL::StateUd> g;
-	lout << Heis.info() << endl;
-	DMRG.set_log(2,"e_Heis.dat","err_eigval_Heis.dat","err_var_Heis.dat","err_state_Heis.dat");
-	DMRG.userSetGlobParam();
-	DMRG.GlobParam = GlobParams;
-//		DMRG.set_verbosity(DMRG::VERBOSITY::SILENT);
-	DMRG.edgeState(Heis, g, {});
-	
-	int N = 51;
-	ofstream Filer(make_string("SF_Sym=",MODEL::Symmetry::name(),"_L=",L,"_i0=",i0,"_j0=",j0,".dat"));
-	
-	ArrayXcd SFzz(N); SFzz=0;
-	ArrayXcd SFxx(N); SFxx=0;
-	
-	ArrayXd Szavg(L);
-	ArrayXd Sxavg(L);
-	
-	vector<Mpo<MODEL::Symmetry> > Sz(L); 
-	vector<Mpo<MODEL::Symmetry> > Sx(L);
-	
-	for (size_t i=0; i<L; ++i)
+	if (U0)
 	{
-		Szavg(i) = avg(g.state, Heis.Sz(i), g.state);
-		Sxavg(i) = avg(g.state, Heis.Sx(i), g.state);
+	//	typedef VMPS::HeisenbergU1XXZ MODEL;
+	//	MODEL Heis(L,{{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false}});
+		typedef VMPS::HeisenbergXXZ MODEL;
+		MODEL Heis(L,{{"Bx",Bx},{"Jz",Jz},{"OPEN_BC",false}});
+		lout << Heis.info() << endl;
 		
-		Sz[i] = Heis.Sz(i);
-		Sx[i] = Heis.Sx(i);
+		MODEL::uSolver DMRG(VERB);
+		Eigenstate<MODEL::StateUd> g;
+		DMRG.userSetGlobParam();
+		DMRG.GlobParam = GlobParams;
+		DMRG.edgeState(Heis, g, {MODEL::Symmetry::qvacuum()});
 		
-		Sz[i].scale(1.,-Szavg(i));
-		Sx[i].scale(1.,-Sxavg(i));
+		int N = 51;
+		ofstream Filer(make_string("SF_Sym=",MODEL::Symmetry::name(),"_L=",L,"_i0=",i0,"_j0=",j0,".dat"));
 		
-		cout << "i=" << i << endl;
-		cout << "<Sz>=" << avg(g.state, Sz[i], g.state) << ", shifted by " << Szavg(i) << endl;
-		cout << "<Sx>=" << avg(g.state, Sx[i], g.state) << ", shifted by " << Sxavg(i) << endl;
+		ArrayXcd SFzz(N); SFzz=0;
+		ArrayXcd SFxx(N); SFxx=0;
+		
+		ArrayXd Szavg(L);
+		ArrayXd Sxavg(L);
+		
+		vector<Mpo<MODEL::Symmetry> > Sz(L); 
+		vector<Mpo<MODEL::Symmetry> > Sx(L);
+		
+		for (size_t i=0; i<L; ++i)
+		{
+			Szavg(i) = avg(g.state, Heis.Sz(i), g.state);
+			Sxavg(i) = avg(g.state, Heis.Sx(i), g.state);
+			
+			Sz[i] = Heis.Sz(i); Sz[i].scale(1.,-Szavg(i));
+			Sx[i] = Heis.Sx(i); Sx[i].scale(1.,-Sxavg(i));
+			
+			cout << "i=" << i << endl;
+			cout << "<Sz>=" << avg(g.state, Sz[i], g.state) << ", shifted by " << Szavg(i) << endl;
+			cout << "<Sx>=" << avg(g.state, Sx[i], g.state) << ", shifted by " << Sxavg(i) << endl;
+		}
+		
+		SFzz += g.state.structure_factor(Sz[i0],Sz[j0]);
+		SFxx += g.state.structure_factor(Sx[i0],Sx[j0]);
+		
+		for (int ik=0; ik<SFzz.rows(); ++ik)
+		{
+			Filer << ik*2.*M_PI/(SFzz.rows()-1) << "\t" 
+	//		      << SFzz(ik).real() << "\t" << SFzz(ik).imag() << "\t" 
+	//		      << SFxx(ik).real() << "\t" << SFxx(ik).imag() << endl;
+	//		      << abs(SFzz(ik)) << endl;
+				  << abs(SFzz(ik)) << "\t" << abs(SFxx(ik)) << endl;
+		}
+		Filer.close();
+		
+		N = 100; // Ncell (number of unit cells), L=Lcell (size of unit cell)
+		
+		MODEL Htmp(L*N,{{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false}}); // ,{"Bx",Bx}
+		ArrayXd SzSzR(N);
+		ArrayXd SxSxR(N);
+		#pragma omp parallel for
+		for (size_t n=0; n<N; ++n)
+		{
+			size_t l = L*n;
+			SzSzR(n) = avg(g.state, Htmp.SzSz(i0,j0+l), g.state) - Szavg(i0%L)*Szavg((j0+l)%L);
+			SxSxR(n) = avg(g.state, Htmp.SxSx(i0,j0+l), g.state) - Sxavg(i0%L)*Sxavg((j0+l)%L);
+		}
+		
+		ArrayXd SzSzL(N);
+		ArrayXd SxSxL(N);
+		#pragma omp parallel for
+		for (size_t n=0; n<N; ++n)
+		{
+			size_t l = L*n;
+			SzSzL(n) = avg(g.state, Htmp.SzSz(i0+l,j0), g.state) - Szavg((i0+l)%L)*Szavg(j0%L);
+			SxSxL(n) = avg(g.state, Htmp.SxSx(i0+l,j0), g.state) - Sxavg((i0+l)%L)*Sxavg(j0%L);
+		}
+		
+		ArrayXcd Szk(2*N);
+		ArrayXcd Sxk(2*N);
+		
+		for (size_t ik=0; ik<2*N; ++ik)
+		{
+			Szk(ik) = 0;
+			Sxk(ik) = 0;
+			double k = ik * 2.*M_PI/(2*N);
+			for (size_t n=0; n<N; ++n)
+			{
+				if (n!=0)
+				{
+					Szk(ik) += SzSzR(n) * exp(-1.i*k*static_cast<double>(n));
+					Sxk(ik) += SxSxR(n) * exp(-1.i*k*static_cast<double>(n));
+				}
+			}
+			for (size_t n=0; n<N; ++n)
+			{
+				if (n!=0)
+				{
+					Szk(ik) += SzSzL(n) * exp(+1.i*k*static_cast<double>(n));
+					Sxk(ik) += SxSxL(n) * exp(+1.i*k*static_cast<double>(n));
+				}
+			}
+		}
+		
+		ofstream FilerFT(make_string("SF_FT","_L=",L,"_i0=",i0,"_j0=",j0,".dat"));
+		for (size_t i=0; i<2*N; i++)
+		{
+			double k = i * 2.*M_PI/(2*N);
+	//		FilerFT << k << "\t" << Szk(i).real() << "\t" << Szk(i).imag() << "\t" << Sxk(i).real() << "\t" << Sxk(i).imag() << endl;
+			FilerFT << k << "\t" << abs(Szk(i)) << "\t" << abs(Sxk(i)) << endl;
+		}
+		FilerFT.close();
 	}
 	
-//		for (size_t i=0; i<L; ++i)
-//		for (size_t j=0; j<L; ++j)
+	if (SU2)
+	{
+//		typedef VMPS::HubbardSU2xU1 MODEL;
+//		MODEL H(L,{{"U",20.},{"OPEN_BC",false},{"CALC_SQUARE",false}});
+//		qarray<2> Qc = {1,N};
+		typedef VMPS::HeisenbergSU2 MODEL;
+		MODEL H(L,{{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false}});
+		qarray<1> Qc = {1};
+		
+		H.transform_base(Qc);
+		lout << H.info() << endl;
+		
+		MODEL::uSolver DMRG(VERB);
+		Eigenstate<MODEL::StateUd> g;
+		GlobParams.Qinit = 6;
+		DMRG.userSetGlobParam();
+		DMRG.GlobParam = GlobParams;
+		DMRG.edgeState(H, g, Qc);
+		
+		int N = 51;
+		ofstream Filer(make_string("SF_Sym=",MODEL::Symmetry::name(),"_L=",L,"_i0=",i0,"_j0=",j0,".dat"));
+		
+		ArrayXcd SF(N); SF=0;
+		
+		vector<Mpo<MODEL::Symmetry> > O(L); 
+		vector<Mpo<MODEL::Symmetry> > Odag(L);
+		
+		ArrayXd Oavg(L);
+		ArrayXd Odagavg(L);
+		
+		for (size_t l=0; l<L; ++l)
+		{
+			O[l]    = H.S(l);
+			Odag[l] = H.Sdag(l);
+			
+			O[l].transform_base(Qc);
+			Odag[l].transform_base(Qc);
+		}
+		
+		for (size_t l=0; l<L; ++l)
+		{
+//			Oavg(l)    = avg(g.state, H.n(l), g.state);
+//			Odagavg(l) = Oavg(l);
+			
+			Oavg(l)    = avg(g.state, H.S(l), g.state);
+			Odagavg(l) = avg(g.state, H.Sdag(l), g.state);
+			
+			O[l].scale(1.,-Oavg(l));
+			Odag[l].scale(1.,-Odagavg(l));
+			
+			cout << "l=" << l << endl;
+			cout << "<O>="    << avg(g.state, O[l],    g.state) << ", shifted by " << Oavg(l)    << endl;
+			cout << "<Odag>=" << avg(g.state, Odag[l], g.state) << ", shifted by " << Odagavg(l) << endl;
+		}
+		
+//		vector<vector<qarray<MODEL::Symmetry::Nq> > > fullBasis(L);
+//		
+//		for (size_t l=0; l<L; ++l)
 //		{
-//			SFzz += g.state.structure_factor(Sz[i],Sz[j]);
-//			SFxx += g.state.structure_factor(Sx[i],Sx[j]);
+////			lout << "O[0].opBasis(l).size()=" << O[0].opBasis(l).size() << endl;
+//			for (size_t r=0; r<L; ++r)
+//			for (size_t i=0; i<O[0].opBasis(l).size(); ++i)
+//			{
+////				cout << "l=" << l << ", i=" << i << ", O[0].opBasis(l)=" << O[0].opBasis(l)[i] << endl;
+//				fullBasis[l].push_back(O[l].opBasis(r)[i]);
+//			}
 //		}
-	SFzz += g.state.structure_factor(Sz[i0],Sz[j0]);
-//	SFxx += g.state.structure_factor(Sx[i0],Sx[j0]);
-	
-	for (int ik=0; ik<SFzz.rows(); ++ik)
-	{
-		Filer << ik*2.*M_PI/(SFzz.rows()-1) << "\t" 
-//		      << SFzz(ik).real() << "\t" << SFzz(ik).imag() << "\t" 
-//		      << SFxx(ik).real() << "\t" << SFxx(ik).imag() << endl;
-		      << abs(SFzz(ik)) << endl;
-//		      << abs(SFxx(ik)) << endl;
-	}
-	Filer.close();
-	
-	N = 100; // Ncell (number of unit cells), L=Lcell (size of unit cell)
-	
-	MODEL Htmp(L*N,{{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false}}); // ,{"Bx",Bx}
-	ArrayXd SzSzR(N);
-	ArrayXd SxSxR(N);
-	#pragma omp parallel for
-	for (size_t n=0; n<N; ++n)
-	{
-		size_t l = L*n;
-		SzSzR(n) = avg(g.state, Htmp.SzSz(i0,j0+l), g.state) - Szavg(i0%L)*Szavg((j0+l)%L);
-		SxSxR(n) = avg(g.state, Htmp.SxSx(i0,j0+l), g.state) - Sxavg(i0%L)*Sxavg((j0+l)%L);
-	}
-	
-	ArrayXd SzSzL(N);
-	ArrayXd SxSxL(N);
-	#pragma omp parallel for
-	for (size_t n=0; n<N; ++n)
-	{
-		size_t l = L*n;
-		SzSzL(n) = avg(g.state, Htmp.SzSz(i0+l,j0), g.state) - Szavg((i0+l)%L)*Szavg(j0%L);
-		SxSxL(n) = avg(g.state, Htmp.SxSx(i0+l,j0), g.state) - Sxavg((i0+l)%L)*Sxavg(j0%L);
-	}
-	
-	ArrayXcd Szk(2*N);
-	ArrayXcd Sxk(2*N);
-	
-	for (size_t ik=0; ik<2*N; ++ik)
-	{
-		Szk(ik) = 0;
-		Sxk(ik) = 0;
-		double k = ik * 2.*M_PI/(2*N);
-		for (size_t n=0; n<N; ++n)
+//		
+//		for (size_t l=0; l<L; ++l)
+//		{
+//			for (size_t r=0; r<L; ++r)
+//			{
+//				O[l].setOpBasis(fullBasis[l],r);
+//				Odag[l].setOpBasis(fullBasis[l],r);
+//				cout << "l=" << l << ", r=" << r << ", O[l].opBasis(r).size()=" << O[l].opBasis(r).size() << endl;
+//			}
+//		}
+		
+		SF += g.state.structure_factor(Odag[i0],O[j0]);
+		
+		for (int ik=0; ik<SF.rows(); ++ik)
 		{
-			if (n!=0)
+			Filer << ik*2.*M_PI/(SF.rows()-1) << "\t" 
+			      << abs(SF(ik)) << endl;
+		}
+		Filer.close();
+		lout << "SF saved!" << endl;
+		
+		N = 100; // Ncell (number of unit cells), L=Lcell (size of unit cell)
+		
+		MODEL Htmp(L*N,{{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false}});
+		ArrayXd OdagO_R(N); OdagO_R=0;
+		#pragma omp parallel for
+		for (size_t n=1; n<N; ++n)
+		{
+			size_t l = L*n;
+//			OdagO_R(n) = avg(g.state, Htmp.nn(i0,j0+l), g.state) - Odagavg(i0%L)*Oavg((j0+l)%L);
+			OdagO_R(n) = avg(g.state, Htmp.SdagS(i0,j0+l), g.state) - Odagavg(i0%L)*Oavg((j0+l)%L);
+		}
+		
+		ArrayXd OdagO_L(N); OdagO_L=0;
+		#pragma omp parallel for
+		for (size_t n=1; n<N; ++n)
+		{
+			size_t l = L*n;
+//			OdagO_L(n) = avg(g.state, Htmp.nn(i0+l,j0), g.state) - Odagavg((i0+l)%L)*Oavg(j0%L);
+			OdagO_L(n) = avg(g.state, Htmp.SdagS(i0+l,j0), g.state) - Odagavg((i0+l)%L)*Oavg(j0%L);
+		}
+		
+		ArrayXcd Ok(2*N);
+		
+		for (size_t ik=0; ik<2*N; ++ik)
+		{
+			Ok(ik) = 0;
+			double k = ik * 2.*M_PI/(2*N);
+			for (size_t n=1; n<N; ++n)
 			{
-				Szk(ik) += SzSzR(n) * exp(-1.i*k*static_cast<double>(n));
-				Sxk(ik) += SxSxR(n) * exp(-1.i*k*static_cast<double>(n));
+				Ok(ik) += OdagO_R(n) * exp(-1.i*k*static_cast<double>(n));
+			}
+			for (size_t n=1; n<N; ++n)
+			{
+				Ok(ik) += OdagO_L(n) * exp(+1.i*k*static_cast<double>(n));
 			}
 		}
-		for (size_t n=0; n<N; ++n)
+		
+		ofstream FilerFT(make_string("SF_FT","_L=",L,"_i0=",i0,"_j0=",j0,".dat"));
+		for (size_t i=0; i<2*N; i++)
 		{
-			if (n!=0)
-			{
-				Szk(ik) += SzSzL(n) * exp(+1.i*k*static_cast<double>(n));
-				Sxk(ik) += SxSxL(n) * exp(+1.i*k*static_cast<double>(n));
-			}
+			double k = i * 2.*M_PI/(2*N);
+			FilerFT << k << "\t" << abs(Ok(i)) << endl;
 		}
+		FilerFT.close();
+		lout << "FT saved!" << endl;
 	}
-	
-	ofstream FilerFT(make_string("SF_FT","_L=",L,"_i0=",i0,"_j0=",j0,".dat"));
-	for (size_t i=0; i<2*N; i++)
-	{
-		double k = i * 2.*M_PI/(2*N);
-//		FilerFT << k << "\t" << Szk(i).real() << "\t" << Szk(i).imag() << "\t" << Sxk(i).real() << "\t" << Sxk(i).imag() << endl;
-		FilerFT << k << "\t" << abs(Szk(i)) << "\t" << abs(Sxk(i)) << endl;
-	}
-	FilerFT.close();
 }

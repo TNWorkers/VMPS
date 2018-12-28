@@ -931,6 +931,10 @@ info() const
 	ss << "HERMITIAN=" << boolalpha << HERMITIAN << ", ";
 	ss << "SQUARE=" << boolalpha << GOT_SQUARE << ", ";
 	ss << "OPEN_BC=" << boolalpha << GOT_OPEN_BC << ", ";
+	if (LocalSite != -1)
+	{
+		ss << "locality=" << LocalSite << ", ";
+	}
 	
 	set<pair<int,int> > Daux_set;
 	for (size_t l=0; l<N_sites; ++l)

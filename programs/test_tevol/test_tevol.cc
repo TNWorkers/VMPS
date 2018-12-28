@@ -156,7 +156,7 @@ int main (int argc, char* argv[])
 	VMPS::HeisenbergSU2::CompressorXd Compadre(VERB);
 	
 	cout << "avg=" << avg(g_SU2.state, H_SU2.Sdag(i0), H_SU2.S(i0), g_SU2.state, {1}) << endl;
-	cout << "avg=" << avg(g_SU2.state, H_SU2.SS(i0,i0), g_SU2.state) << endl;
+	cout << "avg=" << avg(g_SU2.state, H_SU2.SdagS(i0,i0), g_SU2.state) << endl;
 	
 //	Compadre.prodCompress(H_SU2.S(i0), H_SU2.Sdag(i0), g_SU2.state, Psi_SU2tmp, {3}, g_SU2.state.calc_Dmax());
 	OxV_exact(H_SU2.S(i0), g_SU2.state, Psi_SU2tmp, 1e-7);

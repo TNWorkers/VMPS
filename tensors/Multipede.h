@@ -85,7 +85,7 @@ typedef typename MatrixType::Scalar Scalar;
 	/**Prints Multipede<Nlegs,Symmetry,MatrixType>::dict into a string.*/
 	string dict_info() const;
 
-	string print(const bool &SHOW_MATRICES=false, const size_t &precision=3) const;
+	string print (const bool &SHOW_MATRICES=false, const size_t &precision=3) const;
 //	void rebuild_dict();
 	///@}
 	

@@ -230,7 +230,10 @@ inline void normalize (TransferVector<Symmetry,Scalar> &V)
 template<typename Symmetry, typename Scalar>
 inline Scalar dot (const TransferVector<Symmetry,Scalar> &V1, const TransferVector<Symmetry,Scalar> &V2)
 {
-	return (V1.data.adjoint() * V2.data).trace();
+//	cout << "begin dot" << endl;
+//	cout << "dot res=" << (V1.data.adjoint() * V2.data).trace() << endl;
+//	return (V1.data.adjoint() * V2.data).trace();
+	return V1.data.adjoint().contract(V2.data).trace();
 }
 
 template<typename Symmetry, typename Scalar>

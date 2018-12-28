@@ -684,7 +684,7 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	{
 		C[l] = C[l].sorted();
 	}	
-	graph("init");
+//	graph("init");
 }
 
 template<typename Symmetry, typename Scalar>
@@ -2363,45 +2363,45 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bmalfaTripod(N_sites);
 	contract_L(Lid, A[GAUGE::L][0], Oalfa.W_at(0), Oalfa.IS_HAMILTONIAN(), A[GAUGE::C][0], 
 	           Oalfa.locBasis(0), Oalfa.opBasis(0), bmalfaTripod[0]);
-		// shift forward in cell
-		for (size_t l=1; l<N_sites; ++l)
-		{
-			contract_L(bmalfaTripod[l-1], A[GAUGE::L][l], Oalfa.W_at(l), Oalfa.IS_HAMILTONIAN(), A[GAUGE::R][l], 
-			           Oalfa.locBasis(l), Oalfa.opBasis(l), bmalfaTripod[l]);
-		}
+	// shift forward in cell
+	for (size_t l=1; l<N_sites; ++l)
+	{
+		contract_L(bmalfaTripod[l-1], A[GAUGE::L][l], Oalfa.W_at(l), Oalfa.IS_HAMILTONIAN(), A[GAUGE::R][l], 
+		           Oalfa.locBasis(l), Oalfa.opBasis(l), bmalfaTripod[l]);
+	}
 	
 	// term exp(+i*k), alfa
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bpalfaTripod(N_sites);
 	contract_R(Rid, A[GAUGE::R][N_sites-1], Oalfa.W_at(N_sites-1), Oalfa.IS_HAMILTONIAN(), A[GAUGE::C][N_sites-1], 
 	           Oalfa.locBasis(N_sites-1), Oalfa.opBasis(N_sites-1), bpalfaTripod[N_sites-1]);
-		// shift backward in cell
-		for (int l=N_sites-2; l>=0; --l)
-		{
-			contract_R(bpalfaTripod[l+1], A[GAUGE::R][l], Oalfa.W_at(l), Oalfa.IS_HAMILTONIAN(), A[GAUGE::L][l], 
-			           Oalfa.locBasis(l), Oalfa.opBasis(l), bpalfaTripod[l]);
-		}
+	// shift backward in cell
+	for (int l=N_sites-2; l>=0; --l)
+	{
+		contract_R(bpalfaTripod[l+1], A[GAUGE::R][l], Oalfa.W_at(l), Oalfa.IS_HAMILTONIAN(), A[GAUGE::L][l], 
+		           Oalfa.locBasis(l), Oalfa.opBasis(l), bpalfaTripod[l]);
+	}
 	
 	// term exp(-i*k), beta
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bmbeta(N_sites);
 	contract_R(Rid, A[GAUGE::C][N_sites-1], Obeta.W_at(N_sites-1), Obeta.IS_HAMILTONIAN(), A[GAUGE::R][N_sites-1], 
 	           Obeta.locBasis(N_sites-1), Obeta.opBasis(N_sites-1), bmbeta[N_sites-1]);
-		// shift backward in cell
-		for (int l=N_sites-2; l>=0; --l)
-		{
-			contract_R(bmbeta[l+1], A[GAUGE::L][l], Oalfa.W_at(l), Oalfa.IS_HAMILTONIAN(), A[GAUGE::R][l], 
-			           Obeta.locBasis(l), Obeta.opBasis(l), bmbeta[l]);
-		}
+	// shift backward in cell
+	for (int l=N_sites-2; l>=0; --l)
+	{
+		contract_R(bmbeta[l+1], A[GAUGE::L][l], Obeta.W_at(l), Obeta.IS_HAMILTONIAN(), A[GAUGE::R][l], 
+		           Obeta.locBasis(l), Obeta.opBasis(l), bmbeta[l]);
+	}
 	
 	// term exp(+i*k), beta
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bpbeta(N_sites);
 	contract_L(Lid, A[GAUGE::C][0], Obeta.W_at(0), Obeta.IS_HAMILTONIAN(), A[GAUGE::L][0], 
 	           Obeta.locBasis(0), Obeta.opBasis(0), bpbeta[0]);
-		// shift forward in cell
-		for (size_t l=1; l<N_sites; ++l)
-		{
-			contract_L(bpbeta[l-1], A[GAUGE::R][l], Obeta.W_at(l), Obeta.IS_HAMILTONIAN(), A[GAUGE::L][l], 
-			           Obeta.locBasis(l), Obeta.opBasis(l), bpbeta[l]);
-		}
+	// shift forward in cell
+	for (size_t l=1; l<N_sites; ++l)
+	{
+		contract_L(bpbeta[l-1], A[GAUGE::R][l], Obeta.W_at(l), Obeta.IS_HAMILTONIAN(), A[GAUGE::L][l], 
+		           Obeta.locBasis(l), Obeta.opBasis(l), bpbeta[l]);
+	}
 	
 	t_contraction += ContractionTimer.time();
 	
@@ -2424,16 +2424,19 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 		// term exp(-i*k)
 		TransferMatrixSF<Symmetry,Scalar> Tm(VMPS::DIRECTION::LEFT, A[GAUGE::L], A[GAUGE::R], Leigen_LR, Reigen_LR, qloc, k);
 		Gimli.set_dimK(min(100ul,dim(bmalfa)));
+//		Gimli.set_dimK(100ul);
+		assert(dim(bmalfa) > 0);
 		TransferVector<Symmetry,complex<Scalar> > Fmalfa;
 		Gimli.solve_linear(Tm, bmalfa, Fmalfa, 1e-14, true);
-//		lout << "i=" << i << "\t" << Gimli.info() << endl;
+//		lout << "i=" << i << " exp(-i*k) " << Gimli.info() << endl;
 		
 		// term exp(+i*k)
 		TransferMatrixSF<Symmetry,Scalar> Tp(VMPS::DIRECTION::RIGHT, A[GAUGE::R], A[GAUGE::L], Leigen_RL, Reigen_RL, qloc, k);
 		Gimli.set_dimK(min(100ul,dim(bpalfa)));
+		assert(dim(bpalfa) > 0);
 		TransferVector<Symmetry,complex<Scalar> > Fpalfa;
 		Gimli.solve_linear(Tp, bpalfa, Fpalfa, 1e-14, true);
-//		lout << "i=" << i << "\t" << Gimli.info() << endl;
+//		lout << "i=" << i << " exp(+i*k) " << Gimli.info() << endl;
 		
 		// result
 		out(i) = exp(-1.i*k) * contract_LR(0, Fmalfa.data, bmbeta[0].template cast<MatrixXcd>()) 
