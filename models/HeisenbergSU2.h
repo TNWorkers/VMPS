@@ -146,7 +146,7 @@ Sdag (std::size_t locx, std::size_t locy, double factor)
 {
 	assert(locx<this->N_sites);
 	std::stringstream ss;
-	ss << "Sdag(" << locx << "," << locy << ")";
+	ss << "S†(" << locx << "," << locy << ")";
 	
 	SiteOperator Op = factor * B[locx].Sdag(locy).plain<double>();
 	
@@ -162,7 +162,7 @@ SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
 	std::stringstream ss;
-	ss << "S(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
+	ss << "S†(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
 	
 	Mpo<Symmetry> Mout(N_sites,Symmetry::qvacuum(),ss.str());
 	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }

@@ -29,15 +29,15 @@ enum CONTRACT_LR_MODE {FULL, TRIANGULAR, FIXED};
  *                     if \p TRIANGULAR, contract only the lower triangle \f$a<b\f$, 
  *                     if \p FIXED contract with fixed \f$a\f$
  */
-template<typename Symmetry, typename MatrixType, typename MpoScalar>
-void contract_L (const Tripod<Symmetry,MatrixType> &Lold, 
+template<typename Symmetry, typename MatrixType, typename MatrixType2, typename MpoScalar>
+void contract_L (const Tripod<Symmetry,MatrixType2> &Lold, 
                  const vector<Biped<Symmetry,MatrixType> > &Abra, 
                  const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
                  const bool &IS_HAMILTONIAN,
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
-                 Tripod<Symmetry,MatrixType> &Lnew,
+                 Tripod<Symmetry,MatrixType2> &Lnew,
                  bool RANDOMIZE = false,
                  tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0))
 {
@@ -96,7 +96,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 						{
 							if (Lold.block[qL][a][0].size() != 0)
 							{
-								MatrixType Mtmp;
+								MatrixType2 Mtmp;
 								if (RANDOMIZE)
 								{
 									Mtmp.resize(Abra[s1].block[qAbra].cols(), Aket[s2].block[qAket].cols());
@@ -126,7 +126,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 								}
 								else
 								{
-									boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].cols()][1]);
+									boost::multi_array<MatrixType2,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].cols()][1]);
 									Mtmpvec[b][0] = Mtmp;
 									Lnew.push_back(quple, Mtmpvec);
 								}
@@ -156,15 +156,15 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
  *                     if \p TRIANGULAR, contract only the lower triangle \f$a<b\f$, 
  *                     if \p FIXED contract with fixed \f$a\f$
  */
-template<typename Symmetry, typename MatrixType, typename MpoScalar>
-void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
+template<typename Symmetry, typename MatrixType, typename MatrixType2, typename MpoScalar>
+void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
                  const vector<Biped<Symmetry,MatrixType> > &Abra, 
                  const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
                  const bool &IS_HAMILTONIAN,
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
-                 Tripod<Symmetry,MatrixType> &Rnew,
+                 Tripod<Symmetry,MatrixType2> &Rnew,
                  bool RANDOMIZE = false,
                  tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0))
 {
@@ -223,7 +223,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 						{
 							if (Rold.block[qR][b][0].rows() != 0)
 							{
-								MatrixType Mtmp;
+								MatrixType2 Mtmp;
 								if (RANDOMIZE)
 								{
 									Mtmp.resize(Aket[s2].block[qAket].rows(), Abra[s1].block[qAbra].rows());
@@ -253,7 +253,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 								}
 								else
 								{
-									boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].rows()][1]);
+									boost::multi_array<MatrixType2,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].rows()][1]);
 									Mtmpvec[a][0] = Mtmp;
 									Rnew.push_back(quple, Mtmpvec);
 								}
@@ -945,10 +945,12 @@ Scalar contract_LR (size_t fixed_b,
 	
 	for (size_t qL=0; qL<L.dim; ++qL)
 	{
-		if (L.mid(qL) == Symmetry::qvacuum())
+		// Not necessarily vacuum for the structure factor, just fixed!
+//		assert(L.out(qL) == L.in(qL) and "contract_LR(Tripod,Biped) error!");
+		
+//		if (L.mid(qL) == Symmetry::qvacuum())
 		{
 			qarray2<Symmetry::Nq> quple = {L.out(qL), L.in(qL)};
-			assert(L.out(qL) == L.in(qL) and "contract_LR(Tripod,Biped) error!");
 			auto qR = R.dict.find(quple);
 			
 			if (qR != R.dict.end())
@@ -977,10 +979,12 @@ Scalar contract_LR (size_t fixed_a,
 	
 	for (size_t qR=0; qR<R.dim; ++qR)
 	{
-		if (R.mid(qR) == Symmetry::qvacuum())
+		// Not necessarily vacuum for the structure factor, just fixed!
+//		assert(R.out(qR) == R.in(qR) and "contract_LR(Biped,Tripod) error!");
+		
+//		if (R.mid(qR) == Symmetry::qvacuum())
 		{
 			qarray2<Symmetry::Nq> quple = {R.out(qR), R.in(qR)};
-			assert(R.out(qR) == R.in(qR) and "contract_LR(Biped,Tripod) error!");
 			auto qL = L.dict.find(quple);
 			
 			if (qL != L.dict.end())

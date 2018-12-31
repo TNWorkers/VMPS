@@ -907,7 +907,7 @@ Biped<Symmetry,MatrixType_> operator- (const Biped<Symmetry,MatrixType_> &M1, co
 
 
 
-/**Subtracts two Bipeds block- and coefficient-wise.*/
+/**Adds two Bipeds block- and coefficient-wise.*/
 template<typename Symmetry, typename MatrixType_>
 void Biped<Symmetry,MatrixType_>::
 addScale (const Scalar &factor, const Biped<Symmetry,MatrixType_> &Mrhs, BLOCK_POSITION POS)

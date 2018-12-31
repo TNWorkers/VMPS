@@ -33,17 +33,30 @@ struct Multipede
 typedef typename Symmetry::qType qType;
 typedef typename MatrixType::Scalar Scalar;
 	
-	Multipede(){dim=0;}
-
+	Multipede(){}
+	
+	/**Converts a Biped to a Tripod, adding a trivial middle leg equal to the vacuum.*/
+	Multipede (const Biped<Symmetry,MatrixType> &B)
+	{
+		assert(Nlegs == 3);
+		for (size_t q=0; q<B.dim; ++q)
+		{
+			assert(B.in[q] == B.out[q]);
+			boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[1][1]);
+			Mtmpvec[0][0] = B.block[q];
+			push_back(qarray3<Symmetry::Nq>{B.in[q], B.out[q], Symmetry::qvacuum()}, Mtmpvec);
+		}
+	}
+	
 	/**Const reference to the number of legs \p Nlegs */
 	inline constexpr size_t rank() const {return Nlegs;}
-
+	
 	///@{
 	/**
 	 * Convenience access to the amount of blocks.
 	 * Equal to either of the following: \p index.size(), \p block.size()
 	 */
-	size_t dim;
+	size_t dim = 0;
 	inline std::size_t size() const {return dim;}
 
 	/**
@@ -114,6 +127,8 @@ typedef typename MatrixType::Scalar Scalar;
 	void setIdentity (size_t Drows, size_t Dcols, size_t amax=1, size_t bmax=1);
 	
 	void setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base);
+	
+	void addScale (const Scalar &factor, const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs);
 	///@}
 	
 	///@{
@@ -124,6 +139,7 @@ typedef typename MatrixType::Scalar Scalar;
 	inline qType in  (size_t q) const {return index[q][0];}
 	inline qType out (size_t q) const {return index[q][1];}
 	inline qType mid (size_t q) const {return index[q][2];}
+	
 	inline qType bot (size_t q) const {return index[q][2];}
 	inline qType top (size_t q) const {return index[q][3];}
 	///@}
@@ -183,8 +199,10 @@ typedef typename MatrixType::Scalar Scalar;
 		return res;
 	}
 	
+	/** Takes Biped-slice from a Tripod over the middle quantum number \p qslice.*/
 	Biped<Symmetry,MatrixType> BipedSliceQmid (qType qslice = Symmetry::qvacuum()) const
 	{
+		assert(Nlegs == 3);
 		Biped<Symmetry,MatrixType> Bout;
 		for (size_t q=0; q<dim; ++q)
 		for (size_t a=0; a<block[q].shape()[0]; ++a)
@@ -198,22 +216,93 @@ typedef typename MatrixType::Scalar Scalar;
 	}
 };
 
+//template<size_t Nlegs, typename Symmetry, typename MatrixType>
+//Multipede<Nlegs,Symmetry,MatrixType> operator- (const Multipede<Nlegs,Symmetry,MatrixType> &M1, const Multipede<Nlegs,Symmetry,MatrixType> &M2)
+//{
+//	Multipede<Nlegs,Symmetry,MatrixType> Mout;
+//	for (size_t q=0; q<M1.dim; ++q)
+//	{
+//		qarray3<Symmetry::Nq> quple = {M1.in(q), M1.out(q), M1.mid(q)};
+//		auto it = M2.dict.find(quple);
+//		boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[M1.block[q].shape()[0]][1]);
+//		for (size_t a=0; a<M1.block[q].shape()[0]; ++a)
+//		{
+//			Mtmpvec[a][0] = M1.block[q][a][0]-M2.block[it->second][a][0];
+//		}
+//		Mout.push_back(quple, Mtmpvec);
+//	}
+//	return Mout;
+//}
+
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
-Multipede<Nlegs,Symmetry,MatrixType> operator- (const Multipede<Nlegs,Symmetry,MatrixType> &M1, const Multipede<Nlegs,Symmetry,MatrixType> &M2)
+void Multipede<Nlegs,Symmetry,MatrixType>::
+addScale (const Scalar &factor, const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs)
 {
+	vector<size_t> blocks_in_Mrhs;
 	Multipede<Nlegs,Symmetry,MatrixType> Mout;
-	for (size_t q=0; q<M1.dim; ++q)
+	
+	for (size_t q=0; q<dim; ++q)
 	{
-		qarray3<Symmetry::Nq> quple = {M1.in(q), M1.out(q), M1.mid(q)};
-		auto it = M2.dict.find(quple);
-		boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[M1.block[q].shape()[0]][1]);
-		for (size_t a=0; a<M1.block[q].shape()[0]; ++a)
+		auto it = Mrhs.dict.find({{in(q), out(q), mid(q)}});
+		if (it != Mrhs.dict.end())
 		{
-			Mtmpvec[a][0] = M1.block[q][a][0]-M2.block[it->second][a][0];
+			blocks_in_Mrhs.push_back(it->second);
 		}
-		Mout.push_back(quple, Mtmpvec);
+		for (size_t a=0; a<block[q].shape()[0]; ++a)
+		{
+			MatrixType Mtmp;
+			if (it != Mrhs.dict.end())
+			{
+				assert(block[q].shape()[0] == Mrhs.block[it->second].shape()[0]);
+				if (block[q][a][0].size() != 0 and Mrhs.block[it->second][a][0].size() != 0)
+				{
+					Mtmp = block[q][a][0] + factor * Mrhs.block[it->second][a][0]; // M1+factor*Mrhs
+				}
+				else if (block[q][a][0].size() == 0 and Mrhs.block[it->second][a][0].size() != 0)
+				{
+					Mtmp = factor * Mrhs.block[it->second][a][0]; // 0+factor*Mrhs
+				}
+				else if (block[q].size() != 0 and Mrhs.block[it->second][a][0].size() == 0)
+				{
+					Mtmp = block[q][a][0]; // M1+0
+				}
+				// else: block[q].size() == 0 and Mrhs.block[it->second][a][0].size() == 0 -> do nothing -> Mtmp.size() = 0
+			}
+			else
+			{
+				Mtmp = block[q][a][0]; // M1+0
+			}
+			
+			if (Mtmp.size() != 0)
+			{
+				boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[block[q].shape()[0]][1]);
+				Mtmpvec[a][0] = Mtmp;
+				Mout.push_back(qarray3<Symmetry::Nq>{in(q), out(q), mid(q)}, Mtmpvec);
+			}
+		}
 	}
-	return Mout;
+	
+	if (blocks_in_Mrhs.size() != Mrhs.dim)
+	{
+		for (size_t q=0; q<Mrhs.size(); ++q)
+		{
+			auto it = find(blocks_in_Mrhs.begin(), blocks_in_Mrhs.end(), q);
+			if (it == blocks_in_Mrhs.end())
+			{
+				for (size_t a=0; a<Mrhs.block[q].shape()[0]; ++a)
+				{
+					if (Mrhs.block[q][a][0].size() != 0)
+					{
+						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[Mrhs.block[q].shape()[0]][1]);
+						Mtmpvec[a][0] = factor * Mrhs.block[q][a][0];
+						Mout.push_back(qarray3<Symmetry::Nq>{Mrhs.in(q), Mrhs.out(q), Mrhs.mid(q)}, Mtmpvec); // 0+factor*Mrhs
+					}
+				}
+			}
+		}
+	}
+	
+	*this = Mout;
 }
 
 template<typename Symmetry, typename MatrixType> using Tripod    = Multipede<3,Symmetry,MatrixType>;
@@ -404,7 +493,7 @@ setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base)
 			MatrixType Mtmp(base.inner_dim(base[q]), base.inner_dim(base[q]));
 			Mtmp.setIdentity();
 			Mtmparray[a][b] = Mtmp;
-		}		
+		}
 		qarray3<Symmetry::Nq> quple = {base[q], base[q], Symmetry::qvacuum()};
 		push_back(quple, Mtmparray);
 	}

@@ -275,8 +275,24 @@ public:
 	 */
 	void enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P);
 	
+	/**
+	Calculates the static structure factor according to Tangent-space methods for uniform matrix product states (2018), chapter 2.5.
+	\note For unit cells, the Fourier transform is done between cells only, the sublattice indices are fixed by the Mpos \p Oalfa, \p Obeta.
+	\param Oalfa : first operator of correlation
+	\param Obeta : second operator of correlation
+	\param kmin : start with this k-value
+	\param kmax : end with this k-value (include it)
+	\param kpoints : number of equidistant points in interval
+	\param VERB : how much information to print
+	*/
 	Array<complex<Scalar>,Dynamic,1> structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, 
-	                                                   double kmin=0., double kmax=2.*M_PI, int kpoints=51, bool INFO=true);
+	                                                   double kmin=0., double kmax=2.*M_PI, int kpoints=51, 
+	                                                   DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT);
+	
+	/**
+	Calculates the static structure factor for one k-point only. See the more general function above.
+	*/
+	complex<Scalar> structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, double kval, DMRG::VERBOSITY::OPTION VERB);
 	
 private:
 	
@@ -2328,7 +2344,7 @@ entanglementSpectrumLoc (size_t loc) const
 
 template<typename Symmetry, typename Scalar>
 Array<complex<Scalar>,Dynamic,1> Umps<Symmetry,Scalar>::
-structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, double kmin, double kmax, int kpoints, bool INFO)
+structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, double kmin, double kmax, int kpoints, DMRG::VERBOSITY::OPTION VERB)
 {
 	double t_tot=0.;
 	double t_LReigen=0.;
@@ -2403,13 +2419,13 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 		           Obeta.locBasis(l), Obeta.opBasis(l), bpbetaTripod[l]);
 	}
 	
-	// convert bmalfa, bpalfa to Biped wrapped by TransferVector for GMRES
-	TransferVector<Symmetry,complex<Scalar> > bmalfa(bmalfaTripod[N_sites-1].BipedSliceQmid(Oalfa.Qtarget()).template cast<MatrixXcd >());
-	TransferVector<Symmetry,complex<Scalar> > bpalfa(bpalfaTripod[0].BipedSliceQmid(Oalfa.Qtarget()).template cast<MatrixXcd>());
+	// wrap bmalfa, bpalfa by MpoTransferVector for GMRES
+	MpoTransferVector<Symmetry,complex<Scalar> > bmalfa(bmalfaTripod[N_sites-1].template cast<MatrixXcd >());
+	MpoTransferVector<Symmetry,complex<Scalar> > bpalfa(bpalfaTripod[0].template cast<MatrixXcd>());
 	
-	// convert bmbeta, bpbeta to Biped for final contraction
-	Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > bmbeta(bmbetaTripod[0].BipedSliceQmid(Obeta.Qtarget()).template cast<MatrixXcd >());
-	Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > bpbeta(bpbetaTripod[N_sites-1].BipedSliceQmid(Obeta.Qtarget()).template cast<MatrixXcd>());
+	// cast bmbeta, bpbeta to complex Tripod for final contraction
+	Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > bmbeta = bmbetaTripod[0].template cast<MatrixXcd >();
+	Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > bpbeta = bpbetaTripod[N_sites-1].template cast<MatrixXcd>();
 	
 	t_contraction += ContractionTimer.time();
 	
@@ -2423,26 +2439,32 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 	{
 		double k = (kmin==kmax)? kmin : kmin + i*(kmax-kmin)/(kpoints-1);
 		
-		GMResSolver<TransferMatrixSF<Symmetry,Scalar>,TransferVector<Symmetry,complex<Scalar> > > Gimli;
+		GMResSolver<TransferMatrixSF<Symmetry,Scalar>,MpoTransferVector<Symmetry,complex<Scalar> > > Gimli;
 		
 		// term exp(-i*k)
 		TransferMatrixSF<Symmetry,Scalar> Tm(VMPS::DIRECTION::LEFT, A[GAUGE::L], A[GAUGE::R], Leigen_LR, Reigen_LR, qloc, k);
 		Gimli.set_dimK(min(100ul,dim(bmalfa)));
 		assert(dim(bmalfa) > 0);
-		TransferVector<Symmetry,complex<Scalar> > Fmalfa;
+		MpoTransferVector<Symmetry,complex<Scalar> > Fmalfa;
 		Gimli.solve_linear(Tm, bmalfa, Fmalfa, 1e-14, true);
-//		lout << "i=" << i << " exp(-i*k) term " << Gimli.info() << endl;
+		if (VERB >= DMRG::VERBOSITY::STEPWISE)
+		{
+			lout << "i=" << i << " exp(-i*k), " << Gimli.info() << "; dim(bmalfa)=" << dim(bmalfa) << endl;
+		}
 		
 		// term exp(+i*k)
 		TransferMatrixSF<Symmetry,Scalar> Tp(VMPS::DIRECTION::RIGHT, A[GAUGE::R], A[GAUGE::L], Leigen_RL, Reigen_RL, qloc, k);
 		Gimli.set_dimK(min(100ul,dim(bpalfa)));
 		assert(dim(bpalfa) > 0);
-		TransferVector<Symmetry,complex<Scalar> > Fpalfa;
+		MpoTransferVector<Symmetry,complex<Scalar> > Fpalfa;
 		Gimli.solve_linear(Tp, bpalfa, Fpalfa, 1e-14, true);
-//		lout << "i=" << i << " exp(+i*k) term " << Gimli.info() << endl;
+		if (VERB >= DMRG::VERBOSITY::STEPWISE)
+		{
+			lout << "i=" << i << " exp(+i*k), " << Gimli.info() << "; dim(bpalfa)=" << dim(bpalfa) << endl;
+		}
 		
-		complex<double> resm = Fmalfa.data.contract(bmbeta).trace();
-		complex<double> resp = bpbeta.contract(Fpalfa.data).trace();
+		complex<double> resm = contract_LR(Fmalfa.data, bmbeta);
+		complex<double> resp = contract_LR(bpbeta, Fpalfa.data);
 		
 		// result
 		out(i) = exp(-1.i*k) * resm + exp(+1.i*k) * resp;
@@ -2452,7 +2474,7 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 	
 	t_tot = TotTimer.time();
 	
-	if (INFO)
+	if (VERB >= DMRG::VERBOSITY::ON_EXIT)
 	{
 		lout << TotTimer.info("StructureFactor")
 			 << " (LReigen=" << round(t_LReigen/t_tot*100.,0) << "%, "
@@ -2464,6 +2486,14 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 	}
 	
 	return out;
+}
+
+template<typename Symmetry, typename Scalar>
+complex<Scalar> Umps<Symmetry,Scalar>::
+structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, double kval, DMRG::VERBOSITY::OPTION VERB)
+{
+	Array<complex<Scalar>,Dynamic,1> res = structure_factor(Oalfa, Obeta, kval, kval, 1, VERB);
+	return res(0);
 }
 
 #endif //VANILLA_Umps

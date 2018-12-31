@@ -61,6 +61,7 @@ struct MpoTransferVector
 	
 	MpoTransferVector(){};
 	
+	// When called for the VUMPS ground state algorithm
 	MpoTransferVector (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &T, const size_t &ab_input, const Scalar &LRdotY)
 	:data(T), ab(ab_input)
 	{
@@ -73,6 +74,11 @@ struct MpoTransferVector
 			}
 		}
 	};
+	
+	// When called with StructureFactor
+	MpoTransferVector (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &T)
+	:data(T), ab(0)
+	{}
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > data;
 	size_t ab;
@@ -221,13 +227,13 @@ inline size_t dim (const MpoTransferVector<Symmetry,Scalar> &V)
 }
 
 template<typename Symmetry, typename Scalar>
-inline Scalar squaredNorm (const MpoTransferVector<Symmetry,Scalar> &V)
+inline double squaredNorm (const MpoTransferVector<Symmetry,Scalar> &V)
 {
-	return dot(V,V);
+	return isReal(dot(V,V));
 }
 
 template<typename Symmetry, typename Scalar>
-inline Scalar norm (const MpoTransferVector<Symmetry,Scalar> &V)
+inline double norm (const MpoTransferVector<Symmetry,Scalar> &V)
 {
 	return sqrt(squaredNorm(V));
 }
@@ -241,14 +247,17 @@ inline void normalize (MpoTransferVector<Symmetry,Scalar> &V)
 template<typename Symmetry, typename Scalar>
 inline Scalar dot (const MpoTransferVector<Symmetry,Scalar> &V1, const MpoTransferVector<Symmetry,Scalar> &V2)
 {
+	// Note: qmid is not necessarily the vacuum for the structure factor (TransferMatrixSF)!
 	Scalar res = 0;
 	for (size_t q=0; q<V1.data.size(); ++q)
 	{
-			assert(V1.data.in(q) == V2.data.in(q));
-			assert(V1.data.out(q) == V2.data.out(q));
+//			assert(V1.data.in(q) == V2.data.in(q));
+//			assert(V1.data.out(q) == V2.data.out(q));
 //			if (V1.data.mid(q) == Symmetry::qvacuum() and V2.data.mid(q) == Symmetry::qvacuum())
 			{
-				assert(V1.data.mid(q) == V2.data.mid(q) and V1.data.mid(q) == Symmetry::qvacuum());
+//				assert(V1.data.mid(q) == V2.data.mid(q) and V1.data.mid(q) == Symmetry::qvacuum());
+				assert(V1.data.mid(q) == V2.data.mid(q));
+				
 ////		cout << V1.data.in(q) << ", " << V1.data.out(q) << ", " << V1.data.mid(q) << " | " 
 ////		     << V2.data.in(q) << ", " << V2.data.out(q) << ", " << V2.data.mid(q) << endl;
 				res += (V1.data.block[q][V1.ab][0].adjoint() * V2.data.block[q][V2.ab][0]).trace() * Symmetry::coeff_dot(V1.data.out(q));

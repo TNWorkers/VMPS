@@ -463,11 +463,16 @@ template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
 Identity (const vector<vector<qarray<Nq> > > &qloc)
 {
-	Mpo<Symmetry,Scalar> out(qloc.size(), Symmetry::qvacuum(), "Identity", true, true);
+	Mpo<Symmetry,Scalar> out(qloc.size(), Symmetry::qvacuum(), "Identity", true, true, false); // HAMILTONIAN=false or true?
 	out.qloc = qloc;
 	out.initialize();
+	for (size_t l=0; l<out.N_sites; l++)
+	{
+		out.Daux(l,0) = 1;
+		out.Daux(l,1) = 1;
+	}
 	
-	for(size_t l=0; l<out.N_sites; l++)
+	for (size_t l=0; l<out.N_sites; l++)
 	{
 		out.qOp[l].resize(1);
 		out.qOp[l][0] = Symmetry::qvacuum();
@@ -868,20 +873,20 @@ calc_auxBasis()
 	for (size_t l=1; l<this->N_sites; ++l)
 	{
 		Qbasis<Symmetry> qauxtmp;
-		auto qtmps = Symmetry::reduceSilent(qaux[l-1].qs(),qOp[l-1],true);
+		auto qtmps = Symmetry::reduceSilent(qaux[l-1].qs(), qOp[l-1], true);
 		
 		// for(size_t k=0; k<qOp[l].size(); ++k)
 		// {
 		// 	qauxtmp.push_back(qOp[l][k],auxdim());
 		// }
-		for (const auto &qtmp : qtmps)
+		for (const auto &qtmp:qtmps)
 		{
 			if (auto it=find(qOp[l].begin(), qOp[l].end(), qtmp); it != qOp[l].end())
 			{
-				qauxtmp.push_back(qtmp,Daux(l,0));
+				qauxtmp.push_back(qtmp, Daux(l,0));
 			}
 		}
-		if(qauxtmp.Nq() == 0) {qauxtmp.push_back(qtmps[0],Daux(l,0));}
+		if (qauxtmp.Nq() == 0) {qauxtmp.push_back(qtmps[0],Daux(l,0));}
 		// std::unordered_set<qType> uniqueControl;
 		// int lprev = l-1;
 		// int lnext = l+1;
