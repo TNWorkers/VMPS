@@ -6,7 +6,6 @@
 /// \endcond
 
 #include "VUMPS/VumpsTypedefs.h"
-#include "pivot/DmrgPivotVector.h"
 
 //include "tensors/Biped.h"
 //include "tensors/Multipede.h"
@@ -14,7 +13,7 @@
 //include "RandomVector.h"
 
 /**
-Operators \f$1-T_L+|R)(1|\f$, \f$1-T_R+|1)(R|\f$ for solving eq. C25ab.
+Operators \f$1-T_L+|R><1|\f$, \f$1-T_R+|1><R|\f$ for solving eq. C25ab.
 \ingroup VUMPS
 */
 template<typename Symmetry, typename Scalar>
@@ -51,7 +50,7 @@ struct MpoTransferMatrix
 };
 
 /**
-Vector \f$(L_a|\f$, \f$|R_a)\f$ that is obtained in eq. (C25ab).
+Vector \f$<L_a|\f$, \f$|R_a>\f$ that is obtained in eq. (C25ab).
 \ingroup VUMPS
 */
 template<typename Symmetry, typename Scalar_>
@@ -61,8 +60,9 @@ struct MpoTransferVector
 	
 	MpoTransferVector(){};
 	
-	// When called for the VUMPS ground state algorithm
-	MpoTransferVector (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &T, const size_t &ab_input, const Scalar &LRdotY)
+	// When called for the VUMPS ground state algorithm, ab_input and LRdotY are set.
+	// When called with StructureFactor, they are equal to zero.
+	MpoTransferVector (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &T, const size_t &ab_input=0, const Scalar &LRdotY=0.)
 	:data(T), ab(ab_input)
 	{
 		if (LRdotY != 0.)
@@ -74,11 +74,6 @@ struct MpoTransferVector
 			}
 		}
 	};
-	
-	// When called with StructureFactor
-	MpoTransferVector (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &T)
-	:data(T), ab(0)
-	{}
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > data;
 	size_t ab;
@@ -205,13 +200,6 @@ void HxV (const MpoTransferMatrix<Symmetry,Scalar1> &H, MpoTransferVector<Symmet
 template<typename Symmetry, typename Scalar>
 inline size_t dim (const MpoTransferMatrix<Symmetry,Scalar> &H)
 {
-//	size_t out = 0;
-//	for (size_t s=0; s<H.Aket.size(); ++s)
-//	for (size_t q=0; q<H.Aket[s].dim; ++q)
-//	{
-//		out += H.Aket[s].block[q].size();
-//	}
-//	return out;
 	return 0;
 }
 
@@ -247,26 +235,20 @@ inline void normalize (MpoTransferVector<Symmetry,Scalar> &V)
 template<typename Symmetry, typename Scalar>
 inline Scalar dot (const MpoTransferVector<Symmetry,Scalar> &V1, const MpoTransferVector<Symmetry,Scalar> &V2)
 {
-	// Note: qmid is not necessarily the vacuum for the structure factor (TransferMatrixSF)!
 	Scalar res = 0;
 	for (size_t q=0; q<V1.data.size(); ++q)
 	{
-//			assert(V1.data.in(q) == V2.data.in(q));
-//			assert(V1.data.out(q) == V2.data.out(q));
-//			if (V1.data.mid(q) == Symmetry::qvacuum() and V2.data.mid(q) == Symmetry::qvacuum())
-			{
-//				assert(V1.data.mid(q) == V2.data.mid(q) and V1.data.mid(q) == Symmetry::qvacuum());
-				assert(V1.data.mid(q) == V2.data.mid(q));
-				
-////		cout << V1.data.in(q) << ", " << V1.data.out(q) << ", " << V1.data.mid(q) << " | " 
-////		     << V2.data.in(q) << ", " << V2.data.out(q) << ", " << V2.data.mid(q) << endl;
-				res += (V1.data.block[q][V1.ab][0].adjoint() * V2.data.block[q][V2.ab][0]).trace() * Symmetry::coeff_dot(V1.data.out(q));
-			}
+		// Note: qmid is not necessarily the vacuum for the structure factor (TransferMatrixSF)!
+		qarray3<Symmetry::Nq> quple = {V1.data.in(q), V1.data.out(q), V1.data.mid(q)};
+		auto it = V2.data.dict.find(quple);
+		if (it != V2.data.dict.end())
+		{
+			res += (V1.data.block[q][V1.ab][0].adjoint() * V2.data.block[it->second][V2.ab][0]).trace() * Symmetry::coeff_dot(V1.data.out(q));
+		}
 	}
 	return res;
 }
 
-//-----------<vector arithmetics>-----------
 template<typename Symmetry, typename Scalar>
 MpoTransferVector<Symmetry,Scalar>& MpoTransferVector<Symmetry,Scalar>::
 operator+= (const MpoTransferVector<Symmetry,Scalar> &Vrhs)
@@ -289,8 +271,6 @@ operator-= (const MpoTransferVector<Symmetry,Scalar> &Vrhs)
 {
 	for (size_t q=0; q<Vrhs.data.dim; ++q)
 	{
-//		cout << data.in(q) << ", " << data.out(q) << ", " << data.mid(q) << " | " 
-//		     << Vrhs.data.in(q) << ", " << Vrhs.data.out(q) << ", " << Vrhs.data.mid(q) << endl;
 		qarray3<Symmetry::Nq> quple = {Vrhs.data.in(q), Vrhs.data.out(q), Vrhs.data.mid(q)};
 		auto it = data.dict.find(quple);
 		if (it != data.dict.end())
@@ -359,15 +339,11 @@ inline void setZero (MpoTransferVector<Symmetry,Scalar> &V)
 	V.data.setZero();
 }
 
-template<typename Symmetry, typename Scalar, typename OtherScalar>
-inline void addScale (const OtherScalar alpha, const MpoTransferVector<Symmetry,Scalar> &Vin, MpoTransferVector<Symmetry,Scalar> &Vout)
-{
-	Vout += alpha * Vin;
-}
-
-//-----------</vector arithmetics>-----------
-
-
+//template<typename Symmetry, typename Scalar, typename OtherScalar>
+//inline void addScale (const OtherScalar alpha, const MpoTransferVector<Symmetry,Scalar> &Vin, MpoTransferVector<Symmetry,Scalar> &Vout)
+//{
+//	Vout += alpha * Vin;
+//}
 
 template<typename Symmetry, typename Scalar>
 struct GaussianRandomVector<MpoTransferVector<Symmetry,Scalar>,Scalar>

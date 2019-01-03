@@ -63,8 +63,8 @@ int main (int argc, char* argv[])
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",1);
 	Ly = args.get<size_t>("Ly",1);
-	Jxy = args.get<double>("Jxy",0.);
-	Jz = args.get<double>("Jz",-1.);
+	Jxy = args.get<double>("Jxy",0.1);
+	Jz = args.get<double>("Jz",1.);
 	J = args.get<double>("J",1.);
 	Jprime = args.get<double>("Jprime",0.);
 	tPrime = args.get<double>("tPrime",0.);

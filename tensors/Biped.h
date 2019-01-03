@@ -905,14 +905,12 @@ Biped<Symmetry,MatrixType_> operator- (const Biped<Symmetry,MatrixType_> &M1, co
 	return Mout;
 }
 
-
-
 /**Adds two Bipeds block- and coefficient-wise.*/
 template<typename Symmetry, typename MatrixType_>
 void Biped<Symmetry,MatrixType_>::
 addScale (const Scalar &factor, const Biped<Symmetry,MatrixType_> &Mrhs, BLOCK_POSITION POS)
 {
-	vector<size_t> blocks_in_Mrhs;
+	vector<size_t> matching_blocks;
 	Biped<Symmetry,MatrixType_> Mout;
 	
 	for (size_t q=0; q<dim; ++q)
@@ -920,7 +918,7 @@ addScale (const Scalar &factor, const Biped<Symmetry,MatrixType_> &Mrhs, BLOCK_P
 		auto it = Mrhs.dict.find({{in[q], out[q]}});
 		if (it != Mrhs.dict.end())
 		{
-			blocks_in_Mrhs.push_back(it->second);
+			matching_blocks.push_back(it->second);
 		}
 		
 		MatrixType_ Mtmp;
@@ -959,12 +957,12 @@ addScale (const Scalar &factor, const Biped<Symmetry,MatrixType_> &Mrhs, BLOCK_P
 		}
 	}
 	
-	if (blocks_in_Mrhs.size() != Mrhs.dim)
+	if (matching_blocks.size() != Mrhs.dim)
 	{
 		for (size_t q=0; q<Mrhs.size(); ++q)
 		{
-			auto it = find(blocks_in_Mrhs.begin(), blocks_in_Mrhs.end(), q);
-			if (it == blocks_in_Mrhs.end())
+			auto it = find(matching_blocks.begin(), matching_blocks.end(), q);
+			if (it == matching_blocks.end())
 			{
 				if (Mrhs.block[q].size() != 0)
 				{

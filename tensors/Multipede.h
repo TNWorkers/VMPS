@@ -238,64 +238,91 @@ template<size_t Nlegs, typename Symmetry, typename MatrixType>
 void Multipede<Nlegs,Symmetry,MatrixType>::
 addScale (const Scalar &factor, const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs)
 {
-	vector<size_t> blocks_in_Mrhs;
+	vector<qarray3<Symmetry::Nq> > matching_blocks;
 	Multipede<Nlegs,Symmetry,MatrixType> Mout;
 	
 	for (size_t q=0; q<dim; ++q)
 	{
-		auto it = Mrhs.dict.find({{in(q), out(q), mid(q)}});
+		qarray3<Symmetry::Nq> quple = {in(q), out(q), mid(q)};
+		auto it = Mrhs.dict.find(quple);
 		if (it != Mrhs.dict.end())
 		{
-			blocks_in_Mrhs.push_back(it->second);
+			matching_blocks.push_back(quple);
 		}
+		
 		for (size_t a=0; a<block[q].shape()[0]; ++a)
 		{
 			MatrixType Mtmp;
 			if (it != Mrhs.dict.end())
 			{
 				assert(block[q].shape()[0] == Mrhs.block[it->second].shape()[0]);
+				
 				if (block[q][a][0].size() != 0 and Mrhs.block[it->second][a][0].size() != 0)
 				{
+//					cout << "M1+factor*Mrhs" << endl;
 					Mtmp = block[q][a][0] + factor * Mrhs.block[it->second][a][0]; // M1+factor*Mrhs
 				}
 				else if (block[q][a][0].size() == 0 and Mrhs.block[it->second][a][0].size() != 0)
 				{
+//					cout << "0+factor*Mrhs" << endl;
 					Mtmp = factor * Mrhs.block[it->second][a][0]; // 0+factor*Mrhs
 				}
 				else if (block[q].size() != 0 and Mrhs.block[it->second][a][0].size() == 0)
 				{
+//					cout << "M1+0" << endl;
 					Mtmp = block[q][a][0]; // M1+0
 				}
 				// else: block[q].size() == 0 and Mrhs.block[it->second][a][0].size() == 0 -> do nothing -> Mtmp.size() = 0
 			}
 			else
 			{
+//				cout << "M1+0" << endl;
 				Mtmp = block[q][a][0]; // M1+0
 			}
 			
 			if (Mtmp.size() != 0)
 			{
-				boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[block[q].shape()[0]][1]);
-				Mtmpvec[a][0] = Mtmp;
-				Mout.push_back(qarray3<Symmetry::Nq>{in(q), out(q), mid(q)}, Mtmpvec);
+				auto ip = Mout.dict.find(quple);
+				if (ip != Mout.dict.end())
+				{
+					assert(1==0 and "Error in Multipede::addScale, block already exists!");
+				}
+				else
+				{
+					boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[block[q].shape()[0]][1]);
+					Mtmpvec[a][0] = Mtmp;
+					Mout.push_back(quple, Mtmpvec);
+				}
 			}
 		}
 	}
 	
-	if (blocks_in_Mrhs.size() != Mrhs.dim)
+	// Mrhs has additional blocks which are not in *this
+	if (matching_blocks.size() != Mrhs.dim)
 	{
-		for (size_t q=0; q<Mrhs.size(); ++q)
+		for (size_t qrhs=0; qrhs<Mrhs.size(); ++qrhs)
 		{
-			auto it = find(blocks_in_Mrhs.begin(), blocks_in_Mrhs.end(), q);
-			if (it == blocks_in_Mrhs.end())
+			qarray3<Symmetry::Nq> quple = {Mrhs.in(qrhs), Mrhs.out(qrhs), Mrhs.mid(qrhs)};
+			auto it = find(matching_blocks.begin(), matching_blocks.end(), quple);
+			if (it == matching_blocks.end())
 			{
-				for (size_t a=0; a<Mrhs.block[q].shape()[0]; ++a)
+				for (size_t a=0; a<Mrhs.block[qrhs].shape()[0]; ++a)
 				{
-					if (Mrhs.block[q][a][0].size() != 0)
+					if (Mrhs.block[qrhs][a][0].size() != 0)
 					{
-						boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[Mrhs.block[q].shape()[0]][1]);
-						Mtmpvec[a][0] = factor * Mrhs.block[q][a][0];
-						Mout.push_back(qarray3<Symmetry::Nq>{Mrhs.in(q), Mrhs.out(q), Mrhs.mid(q)}, Mtmpvec); // 0+factor*Mrhs
+						MatrixType Mtmp = factor * Mrhs.block[qrhs][a][0]; // 0+factor*Mrhs
+						
+						auto ip = Mout.dict.find(quple);
+						if (ip != Mout.dict.end())
+						{
+							assert(1==0 and "Error in Multipede::addScale, block already exists!");
+						}
+						else
+						{
+							boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[Mrhs.block[qrhs].shape()[0]][1]);
+							Mtmpvec[a][0] = Mtmp;
+							Mout.push_back(quple, Mtmpvec);
+						}
 					}
 				}
 			}

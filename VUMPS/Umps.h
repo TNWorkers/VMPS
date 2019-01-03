@@ -2435,9 +2435,9 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 	// solve linear systems
 	Stopwatch<> GMRES_Timer;
 	#pragma omp parallel for
-	for (int i=0; i<out.rows(); ++i)
+	for (int ik=0; ik<out.rows(); ++ik)
 	{
-		double k = (kmin==kmax)? kmin : kmin + i*(kmax-kmin)/(kpoints-1);
+		double k = (kmin==kmax)? kmin : kmin + ik*(kmax-kmin)/(kpoints-1);
 		
 		GMResSolver<TransferMatrixSF<Symmetry,Scalar>,MpoTransferVector<Symmetry,complex<Scalar> > > Gimli;
 		
@@ -2449,7 +2449,7 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 		Gimli.solve_linear(Tm, bmalfa, Fmalfa, 1e-14, true);
 		if (VERB >= DMRG::VERBOSITY::STEPWISE)
 		{
-			lout << "i=" << i << " exp(-i*k), " << Gimli.info() << "; dim(bmalfa)=" << dim(bmalfa) << endl;
+			lout << ik << ", k/π=" << k/M_PI << ", term exp(-i*k), " << Gimli.info() << "; dim(bmalfa)=" << dim(bmalfa) << endl;
 		}
 		
 		// term exp(+i*k)
@@ -2460,14 +2460,14 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 		Gimli.solve_linear(Tp, bpalfa, Fpalfa, 1e-14, true);
 		if (VERB >= DMRG::VERBOSITY::STEPWISE)
 		{
-			lout << "i=" << i << " exp(+i*k), " << Gimli.info() << "; dim(bpalfa)=" << dim(bpalfa) << endl;
+			lout << ik << ", k/π=" << k/M_PI << ", term exp(+i*k), " << Gimli.info() << "; dim(bpalfa)=" << dim(bpalfa) << endl;
 		}
 		
 		complex<double> resm = contract_LR(Fmalfa.data, bmbeta);
 		complex<double> resp = contract_LR(bpbeta, Fpalfa.data);
 		
 		// result
-		out(i) = exp(-1.i*k) * resm + exp(+1.i*k) * resp;
+		out(ik) = exp(-1.i*k) * resm + exp(+1.i*k) * resp;
 	}
 	
 	t_GMRES += GMRES_Timer.time();

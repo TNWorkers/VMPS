@@ -87,7 +87,7 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
 						size_t a = iW.row();
 						size_t b = iW.col();
 						
-						//0 is the Hamiltonian block. Only singlet couplings are neccessary.
+						// 0 is the Hamiltonian block. Only singlet couplings are neccessary.
 						if (b == 0 and IS_HAMILTONIAN and quple[2] != Symmetry::qvacuum()) {continue;}
 						
 						if (MODE == FULL or
@@ -945,23 +945,20 @@ Scalar contract_LR (size_t fixed_b,
 	
 	for (size_t qL=0; qL<L.dim; ++qL)
 	{
-		// Not necessarily vacuum for the structure factor, just fixed!
-//		assert(L.out(qL) == L.in(qL) and "contract_LR(Tripod,Biped) error!");
+		// Not necessarily vacuum for the structure factor, so this function cannot be used!
+		assert(L.out(qL) == L.in(qL) and "contract_LR(Tripod,Biped) error!");
 		
-//		if (L.mid(qL) == Symmetry::qvacuum())
+		if (L.mid(qL) == Symmetry::qvacuum())
 		{
 			qarray2<Symmetry::Nq> quple = {L.out(qL), L.in(qL)};
 			auto qR = R.dict.find(quple);
 			
 			if (qR != R.dict.end())
 			{
-//				for (size_t b=0; b<L.block[qL].shape()[0]; ++b)
+				if (L.block[qL][fixed_b][0].size() != 0 and
+				    R.block[qR->second].size() != 0)
 				{
-					if (L.block[qL][fixed_b][0].size() != 0 and
-					    R.block[qR->second].size() != 0)
-					{
-						res += (L.block[qL][fixed_b][0] * R.block[qR->second]).trace() * Symmetry::coeff_dot(L.out(qL));
-					}
+					res += (L.block[qL][fixed_b][0] * R.block[qR->second]).trace() * Symmetry::coeff_dot(L.out(qL));
 				}
 			}
 		}
@@ -979,23 +976,20 @@ Scalar contract_LR (size_t fixed_a,
 	
 	for (size_t qR=0; qR<R.dim; ++qR)
 	{
-		// Not necessarily vacuum for the structure factor, just fixed!
-//		assert(R.out(qR) == R.in(qR) and "contract_LR(Biped,Tripod) error!");
+		// Not necessarily vacuum for the structure facto, so this function cannot be used!
+		assert(R.out(qR) == R.in(qR) and "contract_LR(Biped,Tripod) error!");
 		
-//		if (R.mid(qR) == Symmetry::qvacuum())
+		if (R.mid(qR) == Symmetry::qvacuum())
 		{
 			qarray2<Symmetry::Nq> quple = {R.out(qR), R.in(qR)};
 			auto qL = L.dict.find(quple);
 			
 			if (qL != L.dict.end())
 			{
-//				for (size_t a=0; a<R.block[qR].shape()[0]; ++a)
+				if (R.block[qR][fixed_a][0].size() != 0 and
+				    L.block[qL->second].size() != 0)
 				{
-					if (R.block[qR][fixed_a][0].size() != 0 and
-					    L.block[qL->second].size() != 0)
-					{
-						res += (L.block[qL->second] * R.block[qR][fixed_a][0]).trace() * Symmetry::coeff_dot(R.out(qR));
-					}
+					res += (L.block[qL->second] * R.block[qR][fixed_a][0]).trace() * Symmetry::coeff_dot(R.out(qR));
 				}
 			}
 		}
@@ -1012,13 +1006,13 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 	
 	for (size_t qL=0; qL<L.dim; ++qL)
 	{
-//		qarray3<Symmetry::Nq> quple = {L.in(qL), L.out(qL), L.mid(qL)};
 		qarray3<Symmetry::Nq> quple = {L.out(qL), L.in(qL), L.mid(qL)};
-		
 		auto qR = R.dict.find(quple);
 		
 		if (qR != R.dict.end())
 		{
+			assert(L.block[qL].shape()[0] == R.block[qR->second].shape()[0]);
+			
 			for (size_t a=0; a<L.block[qL].shape()[0]; ++a)
 			{
 				if (L.block[qL][a][0].size() != 0 and

@@ -463,7 +463,8 @@ template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
 Identity (const vector<vector<qarray<Nq> > > &qloc)
 {
-	Mpo<Symmetry,Scalar> out(qloc.size(), Symmetry::qvacuum(), "Identity", true, true, false); // HAMILTONIAN=false or true?
+	// HERMITIAN=true, UNITARY=true, HAMILTONIAN=false (or should it be true)?
+	Mpo<Symmetry,Scalar> out(qloc.size(), Symmetry::qvacuum(), "Identity", true, true, false);
 	out.qloc = qloc;
 	out.initialize();
 	for (size_t l=0; l<out.N_sites; l++)
@@ -483,6 +484,7 @@ Identity (const vector<vector<qarray<Nq> > > &qloc)
 	}
 	
 	out.calc_auxBasis();
+	
 	return out;
 }
 

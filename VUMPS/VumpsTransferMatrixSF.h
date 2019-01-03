@@ -16,10 +16,11 @@ struct TransferMatrixSF
 	                  const vector<vector<qarray<Symmetry::Nq> > > &qloc_input,
 	                  double k_input)
 	:DIR(DIR_input), Abra(Abra_input), Aket(Aket_input), 
-	 Leigen(Leigen_input), Reigen(Leigen_input),
 	 qloc(qloc_input), k(k_input)
 	{
 		Id = Mpo<Symmetry,Scalar>::Identity(qloc);
+		Leigen = Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> >(Leigen_input);
+		Reigen = Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> >(Reigen_input);
 	}
 	
 	VMPS::DIRECTION::OPTION DIR;
@@ -33,8 +34,8 @@ struct TransferMatrixSF
 	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > Aket;
 	///\}
 	
-	Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > Leigen;
-	Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > Reigen;
+	Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > Leigen;
+	Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > Reigen;
 	
 	vector<vector<qarray<Symmetry::Nq> > > qloc;
 };
@@ -49,11 +50,14 @@ void HxV (const TransferMatrixSF<Symmetry,Scalar> &H, const MpoTransferVector<Sy
 	
 	if (H.DIR == VMPS::DIRECTION::RIGHT)
 	{
+		// Calculate T*|Vin>
 		Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > Rnext;
 		Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > R = Vin.data;
 		for (int l=Lcell-1; l>=0; --l)
 		{
-			contract_R(R, H.Abra[l], H.Id.W_at(l), H.Id.IS_HAMILTONIAN(), H.Aket[l], H.qloc[l], H.Id.opBasis(l), Rnext);
+			// The identity can be regarded as a Hamiltonian, but HAMILTONIAN ist still forced to false 
+			// because there can be a mid quantum number carried through the contraction.
+			contract_R(R, H.Abra[l], H.Id.W_at(l), false, H.Aket[l], H.qloc[l], H.Id.opBasis(l), Rnext);
 			R.clear();
 			R = Rnext;
 			Rnext.clear();
@@ -62,11 +66,12 @@ void HxV (const TransferMatrixSF<Symmetry,Scalar> &H, const MpoTransferVector<Sy
 	}
 	else if (H.DIR == VMPS::DIRECTION::LEFT)
 	{
+		// Calculate <Vin|*T
 		Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > Lnext;
 		Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > L = Vin.data;
 		for (size_t l=0; l<Lcell; ++l)
 		{
-			contract_L(L, H.Abra[l], H.Id.W_at(l), H.Id.IS_HAMILTONIAN(), H.Aket[l], H.qloc[l], H.Id.opBasis(l), Lnext);
+			contract_L(L, H.Abra[l], H.Id.W_at(l), false, H.Aket[l], H.qloc[l], H.Id.opBasis(l), Lnext);
 			L.clear();
 			L = Lnext;
 			Lnext.clear();
@@ -78,28 +83,27 @@ void HxV (const TransferMatrixSF<Symmetry,Scalar> &H, const MpoTransferVector<Sy
 		assert(1==0 and "Unknown VMPS::DIRECTION::OPTION in TransferMatrixSF!");
 	}
 	
-	complex<Scalar> LdotR;
-	if (H.DIR == VMPS::DIRECTION::RIGHT)
-	{
-		LdotR = contract_LR(0, H.Leigen, Vin.data);
-	}
-	else if (H.DIR == VMPS::DIRECTION::LEFT)
-	{
-		LdotR = contract_LR(0, Vin.data, H.Reigen);
-	}
+	// result must be:
+	// RIGHT: [1-exp(+i*k)*(T-|R><L|)] * |Vin>
+	// LEFT : <Vin| * [1-exp(-i*k)*(T-|R><L|)]
 	
-	Vout = Vin;
+	Vout = Vin; // multiply 1
+	
 	if (H.DIR == VMPS::DIRECTION::RIGHT)
 	{
+		// subtract exp(+i*k)*T*|Vin>
 		Vout.data.addScale(-exp(+1.i*H.k), TxV.template cast<Matrix<complex<Scalar>,Dynamic,Dynamic> >());
-		Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > ReigenTripod(H.Reigen);
-		Vout.data.addScale(+exp(+1.i*H.k)*LdotR, ReigenTripod);
+		// add <L|Vin>*exp(+i*k)*|R>
+		complex<Scalar> LdotV = contract_LR(H.Leigen, Vin.data);
+		Vout.data.addScale(+exp(+1.i*H.k)*LdotV, H.Reigen);
 	}
 	else if (H.DIR == VMPS::DIRECTION::LEFT)
 	{
+		// subtract exp(-i*k)*<Vin|*T
 		Vout.data.addScale(-exp(-1.i*H.k), TxV.template cast<Matrix<complex<Scalar>,Dynamic,Dynamic> >());
-		Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > LeigenTripod(H.Leigen);
-		Vout.data.addScale(+exp(-1.i*H.k)*LdotR, LeigenTripod);
+		// add <Vin|R>*exp(-i*k)*<L|
+		complex<Scalar> VdotR = contract_LR(Vin.data, H.Reigen);
+		Vout.data.addScale(+exp(-1.i*H.k)*VdotR, H.Leigen);
 	}
 }
 
