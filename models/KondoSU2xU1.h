@@ -236,6 +236,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 	
 	for (std::size_t loc=0; loc<N_sites; ++loc)
 	{
+		size_t lm1 = (loc==0)? N_sites-1 : loc-1;
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;
 		
@@ -357,16 +358,19 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		param2d IprevPara = P.fill_array2d<double>("Iprev", "IprevPara", {Forbitals, Bnext_orbitals}, loc%Lcell);
 		Terms.save_label(loc, IprevPara.label);
 		
-		for (int alfa=0; alfa<Forbitals;      ++alfa)
-		for (int beta=0; beta<Bnext_orbitals; ++beta)
+		if (lm1 < N_sites-1 or !P.get<bool>("OPEN_BC"))
 		{
-			qarray<Symmetry::Nq> qnum1 = (Forbitals==0)?      Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
-			qarray<Symmetry::Nq> qnum2 = (Bnext_orbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
-			
-			Terms.push_tight(loc, sqrt(3.) * IprevPara(alfa,beta),
-			                 OperatorType::outerprod(B[loc].Id(),    F[loc].Sdag(alfa), qnum1).plain<double>(),
-			                 OperatorType::outerprod(B[lp1].S(beta), F[lp1].Id(),       qnum2).plain<double>()
-			                );
+			for (int alfa=0; alfa<Forbitals;      ++alfa)
+			for (int beta=0; beta<Bnext_orbitals; ++beta)
+			{
+				qarray<Symmetry::Nq> qnum1 = (Forbitals==0)?      Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
+				qarray<Symmetry::Nq> qnum2 = (Bnext_orbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
+				
+				Terms.push_tight(lm1, sqrt(3.) * IprevPara(alfa,beta),
+					             OperatorType::outerprod(B[lm1].Id(),    F[lm1].Sdag(alfa), qnum1).plain<double>(),
+					             OperatorType::outerprod(B[loc].S(beta), F[loc].Id(),       qnum2).plain<double>()
+					            );
+			}
 		}
 		
 		// NNN terms

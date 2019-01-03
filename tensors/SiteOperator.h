@@ -168,8 +168,8 @@ std::vector<SiteOperator<Symmetry,Scalar>> operator*(const std::vector<SiteOpera
     {
         SiteOperator<Symmetry, Scalar> temp;
         std::size_t i=0;
-        for(; std::abs(mat(i,j)) < ::mynumeric_limits<double>::epsilon() && i<mat.rows(); ++i){}
-        if(i == mat.rows()-1)
+        for(; std::abs(mat(i,j)) < ::mynumeric_limits<double>::epsilon() and i<mat.rows()-1; ++i){}
+        if(i == mat.rows()-1 and mat.row(i).norm() < ::mynumeric_limits<double>::epsilon())
         {
             temp = 0*ops[j];
         }
@@ -199,8 +199,8 @@ std::vector<SiteOperator<Symmetry,Scalar>> operator*(const Eigen::Matrix<Scalar,
     {
         SiteOperator<Symmetry, Scalar> temp;
         std::size_t j=0;
-        for(; std::abs(mat(i,j)) < ::mynumeric_limits<double>::epsilon() && j<mat.cols(); ++j){}
-        if(j == mat.cols()-1)
+        for(; std::abs(mat(i,j)) < ::mynumeric_limits<double>::epsilon() and j<mat.cols()-1; ++j){}
+        if(j == mat.cols()-1 and mat.row(i).norm() < ::mynumeric_limits<double>::epsilon())
         {
             temp = 0*ops[i];
         }

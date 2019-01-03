@@ -126,10 +126,9 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
 	
 	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	set_operators(B,F,P,Terms);
-//	cout << Terms.print_info() << endl;
-
+	
 	//Workaround for wrong qOp/auxBasis if we have a Kondo_anpacked case
-	bool RESET_Q_OP=false;
+	bool RESET_Q_OP = false;
 	for (size_t l=0; l<N_sites; l++)
 	{
 		if (P.get<size_t>("LyF",l%Lcell) == 0ul)
@@ -138,7 +137,7 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
 			break;
 		}
 	}
-
+	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"), RESET_Q_OP);
 	this->precalc_TwoSiteData();
 }
@@ -170,16 +169,19 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 	
 	for (std::size_t loc=0; loc<N_sites; ++loc)
 	{
+		size_t lm1 = (loc==0)? N_sites-1 : loc-1;
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;
 		
+		std::size_t Fprev_orbitals  = F[lm1].orbitals();
 		std::size_t Forbitals       = F[loc].orbitals();
-		std::size_t Fnext_orbitals  = F[(loc+1)%N_sites].orbitals();
-		std::size_t Fnextn_orbitals = F[(loc+2)%N_sites].orbitals();
+		std::size_t Fnext_orbitals  = F[lp1].orbitals();
+		std::size_t Fnextn_orbitals = F[lp2].orbitals();
 		
+		std::size_t Bprev_orbitals  = B[lm1].orbitals();
 		std::size_t Borbitals       = B[loc].orbitals();
-		std::size_t Bnext_orbitals  = B[(loc+1)%N_sites].orbitals();
-		std::size_t Bnextn_orbitals = B[(loc+2)%N_sites].orbitals();
+		std::size_t Bnext_orbitals  = B[lp1].orbitals();
+		std::size_t Bnextn_orbitals = B[lp2].orbitals();
 		
 		stringstream Slabel, LyLabel, LyFlabel;
 		Slabel << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc%Lcell)-1,2));
@@ -333,25 +335,25 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 			}
 		}
 		
-		param2d IprevPara = P.fill_array2d<double>("Iprev", "IprevPara", {Forbitals, Bnext_orbitals}, loc%Lcell);
+		param2d IprevPara = P.fill_array2d<double>("Iprev", "IprevPara", {Fprev_orbitals, Borbitals}, loc%Lcell);
 		Terms.save_label(loc, IprevPara.label);
 		
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (lm1 < N_sites-1 or !P.get<bool>("OPEN_BC"))
 		{
-			for (std::size_t alfa=0; alfa<Borbitals;  ++alfa)
-			for (std::size_t beta=0; beta<Fnext_orbitals; ++beta)
+			for (std::size_t alfa=0; alfa<Fprev_orbitals;  ++alfa)
+			for (std::size_t beta=0; beta<Borbitals;       ++beta)
 			{
-				Terms.push_tight(loc, 0.5*IprevPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), F[loc].Sm(alfa)),
-				                 kroneckerProduct(B[lp1].Scomp(SP,beta), F[lp1].Id())
+				Terms.push_tight(lm1, 0.5*IprevPara(alfa,beta),
+				                 kroneckerProduct(B[lm1].Id(), F[lm1].Sm(alfa)),
+				                 kroneckerProduct(B[loc].Scomp(SP,beta), F[loc].Id())
 				                );
-				Terms.push_tight(loc, 0.5*IprevPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), F[loc].Sp(alfa)),
-				                 kroneckerProduct(B[lp1].Scomp(SM,beta), F[lp1].Id())
+				Terms.push_tight(lm1, 0.5*IprevPara(alfa,beta),
+				                 kroneckerProduct(B[lm1].Id(), F[lm1].Sp(alfa)),
+				                 kroneckerProduct(B[loc].Scomp(SM,beta), F[loc].Id())
 				                );
-				Terms.push_tight(loc, IprevPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), F[loc].Sz(alfa)),
-				                 kroneckerProduct(B[lp1].Scomp(SZ,beta), F[lp1].Id())
+				Terms.push_tight(lm1, IprevPara(alfa,beta),
+				                 kroneckerProduct(B[lm1].Id(), F[lm1].Sz(alfa)),
+				                 kroneckerProduct(B[loc].Scomp(SZ,beta), F[loc].Id())
 				                );
 			}
 		}
@@ -363,63 +365,63 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		
 		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
 		{
-			for (std::size_t alfa=0; alfa<Fnext_orbitals;  ++alfa)
+			for (std::size_t alfa=0; alfa<Forbitals;      ++alfa)
 			for (std::size_t beta=0; beta<Fnext_orbitals; ++beta)
 			{
 				assert(Borbitals == 1);
 				
 				Terms.push_tight(loc, 0.5*I3nextPara(alfa,beta),
-					                  kroneckerProduct(B[loc].Scomp(SM,0), F[loc].cdag(UP,alfa) * F[loc].sign()),
-					                  kroneckerProduct(B[lp1].Id(), F[lp1].c(DN,beta))
-					                 );
+				                      kroneckerProduct(B[loc].Scomp(SM,0), F[loc].cdag(UP,alfa) * F[loc].sign()),
+				                      kroneckerProduct(B[lp1].Id(), F[lp1].c(DN,beta))
+				                );
 				Terms.push_tight(loc, 0.5*I3nextPara(alfa,beta),
-						                         kroneckerProduct(B[loc].Scomp(SP,0), F[loc].cdag(DN,alfa) * F[loc].sign()),
-						                         kroneckerProduct(B[lp1].Id(), F[lp1].c(UP,beta))
-						                         );
+				                      kroneckerProduct(B[loc].Scomp(SP,0), F[loc].cdag(DN,alfa) * F[loc].sign()),
+				                      kroneckerProduct(B[lp1].Id(), F[lp1].c(UP,beta))
+				                );
 				Terms.push_tight(loc, 0.5*I3nextPara(alfa,beta),
-						                         kroneckerProduct(B[loc].Scomp(SM,0), -1.*F[loc].c(DN,alfa) * F[loc].sign()),
-						                         kroneckerProduct(B[lp1].Id(), F[lp1].cdag(UP,beta))
-						             );
+				                      kroneckerProduct(B[loc].Scomp(SM,0), -1.*F[loc].c(DN,alfa) * F[loc].sign()),
+				                      kroneckerProduct(B[lp1].Id(), F[lp1].cdag(UP,beta))
+				                );
 				Terms.push_tight(loc, 0.5*I3nextPara(alfa,beta),
-						                         kroneckerProduct(B[loc].Scomp(SP,0), -1.*F[loc].c(UP,alfa) * F[loc].sign()),
-						                         kroneckerProduct(B[lp1].Id(), F[lp1].cdag(DN,beta))
-						             );
+				                      kroneckerProduct(B[loc].Scomp(SP,0), -1.*F[loc].c(UP,alfa) * F[loc].sign()),
+				                      kroneckerProduct(B[lp1].Id(), F[lp1].cdag(DN,beta))
+				                );
 				Terms.push_tight(loc, I3nextPara(alfa,beta),
-						                         kroneckerProduct(B[loc].Scomp(SZ,0), F[loc].Id()),
-						                         kroneckerProduct(B[lp1].Id(), F[lp1].Sz(beta))
-						             );
+				                      kroneckerProduct(B[loc].Scomp(SZ,0), F[loc].Id()),
+				                      kroneckerProduct(B[lp1].Id(), F[lp1].Sz(beta))
+				                );
 			}
 		}
 		
-		param2d I3prevPara = P.fill_array2d<double>("I3prev", "I3prevPara", {Forbitals, Bnext_orbitals}, loc%Lcell);
+		param2d I3prevPara = P.fill_array2d<double>("I3prev", "I3prevPara", {Fprev_orbitals, Forbitals}, loc%Lcell);
 		Terms.save_label(loc, I3prevPara.label);
 		
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (lm1 < N_sites-1 or !P.get<bool>("OPEN_BC"))
 		{
-			for (std::size_t alfa=0; alfa<Borbitals;  ++alfa)
-			for (std::size_t beta=0; beta<Fnext_orbitals; ++beta)
+			for (std::size_t alfa=0; alfa<Fprev_orbitals;  ++alfa)
+			for (std::size_t beta=0; beta<Forbitals;       ++beta)
 			{
-				assert(Bnext_orbitals == 1);
+				assert(Borbitals == 1);
 				
-				Terms.push_tight(loc, 0.5*I3prevPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), F[loc].cdag(UP,alfa) * F[loc].sign()),
-				                 kroneckerProduct(B[lp1].Scomp(SM,0), F[lp1].c(DN,beta))
+				Terms.push_tight(lm1, 0.5*I3prevPara(alfa,beta),
+				                 kroneckerProduct(B[lm1].Id(), F[lm1].cdag(UP,alfa) * F[lm1].sign()),
+				                 kroneckerProduct(B[loc].Scomp(SM,0), F[loc].c(DN,beta))
 				                );
-				Terms.push_tight(loc, 0.5*I3prevPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), F[loc].cdag(DN,alfa) * F[loc].sign()),
-				                 kroneckerProduct(B[lp1].Scomp(SP,0), F[lp1].c(UP,beta))
+				Terms.push_tight(lm1, 0.5*I3prevPara(alfa,beta),
+				                 kroneckerProduct(B[lm1].Id(), F[lm1].cdag(DN,alfa) * F[lm1].sign()),
+				                 kroneckerProduct(B[loc].Scomp(SP,0), F[loc].c(UP,beta))
 				                );
-				Terms.push_tight(loc, 0.5*I3prevPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), -1.*F[loc].c(DN,alfa) * F[loc].sign()),
-				                 kroneckerProduct(B[lp1].Scomp(SM,0), F[lp1].cdag(UP,beta))
+				Terms.push_tight(lm1, 0.5*I3prevPara(alfa,beta),
+				                 kroneckerProduct(B[lm1].Id(), -1.*F[lm1].c(DN,alfa) * F[lm1].sign()),
+				                 kroneckerProduct(B[loc].Scomp(SM,0), F[loc].cdag(UP,beta))
 				                );
-				Terms.push_tight(loc, 0.5*I3prevPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), -1.*F[loc].c(UP,alfa) * F[loc].sign()),
-				                 kroneckerProduct(B[lp1].Scomp(SP,0), F[lp1].cdag(DN,beta))
+				Terms.push_tight(lm1, 0.5*I3prevPara(alfa,beta),
+				                 kroneckerProduct(B[lm1].Id(), -1.*F[lm1].c(UP,alfa) * F[lm1].sign()),
+				                 kroneckerProduct(B[loc].Scomp(SP,0), F[loc].cdag(DN,beta))
 				                );
-				Terms.push_tight(loc, I3prevPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), F[loc].Sz(alfa)),
-				                 kroneckerProduct(B[lp1].Scomp(SZ,0), F[lp1].Id())
+				Terms.push_tight(lm1, I3prevPara(alfa,beta),
+				                 kroneckerProduct(B[lm1].Id(), F[lm1].Sz(alfa)),
+				                 kroneckerProduct(B[loc].Scomp(SZ,0), F[loc].Id())
 				                );
 			}
 		}

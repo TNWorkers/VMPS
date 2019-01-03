@@ -122,6 +122,7 @@ int main (int argc, char* argv[])
 	PRINT = args.get<bool>("PRINT",false);
 	if (CORR == false) {PRINT = false;}
 	OP = args.get<string>("OP","Simp");
+	bool PARITY = args.get<bool>("PARITY",true);
 	
 	double factor = args.get<double>("factor",1.);
 	double factor_U1 = args.get<double>("factor_U1",1.);
@@ -176,7 +177,7 @@ int main (int argc, char* argv[])
 	//params.push_back({"Bz",Bz,0});
 	//params.push_back({"Bx",Bx,0});
 	// params.push_back({"D",1ul,1});
-	push_back_KondoUnpacked(params, L,J,t,D, true);
+	push_back_KondoUnpacked(params, L,J,t,D, PARITY);
 	
 //	for (size_t l=1; l<L; ++l)
 //	{

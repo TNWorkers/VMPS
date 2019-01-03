@@ -29,7 +29,6 @@ using namespace Eigen;
 #include "tensors/Qbasis.h"
 #include "DmrgTypedefs.h"
 
-
 //include "Stopwatch.h" // from TOOLS
 //include "ParamHandler.h" // from TOOLS
 //include "symmetry/qarray.h"
@@ -494,7 +493,7 @@ construct_from_Terms (const HamiltonianTerms<Symmetry,Scalar> &Terms_input,
                       size_t Lcell, bool CALC_SQUARE, bool OPEN_BC, bool WORKAROUND_FOR_UNPACKED)
 {
 	Terms = Terms_input;
-	std::vector<SuperMatrix<Symmetry,Scalar>> G = Terms.construct_Matrix();
+	std::vector<SuperMatrix<Symmetry,Scalar> > G = Terms.construct_Matrix();
 	for (size_t loc=0; loc<N_sites; ++loc)
 	{
 		if (WORKAROUND_FOR_UNPACKED) {setOpBasis(G[1].calc_qOp(),loc);}
@@ -1070,28 +1069,28 @@ generate_label (size_t Lcell)
             else
             {
                 // check mod 2
-                if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==0;}))
+                if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==0;}) and c.second.size() == N_sites/2)
                 {
                     ss << "even";
                 }
-                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==1;}))
+                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==1;}) and c.second.size() == N_sites/2)
                 {
                     ss << "odd";
                 }
                 // check mod 4
-                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==0;}))
+                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==0;}) and c.second.size() == N_sites/4)
                 {
                     ss << "0mod4";
                 }
-                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==1;}))
+                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==1;}) and c.second.size() == N_sites/4)
                 {
                     ss << "1mod4";
                 }
-                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==2;}))
+                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==2;}) and c.second.size() == N_sites/4)
                 {
                     ss << "2mod4";
                 }
-                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==3;}))
+                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==3;}) and c.second.size() == N_sites/4)
                 {
                     ss << "3mod4";
                 }
