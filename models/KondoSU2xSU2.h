@@ -29,6 +29,8 @@ public:
 	KondoSU2xSU2 (const size_t &L, const vector<Param> &params);
 	///@}
 	
+	static qarray<2> singlet (int N) {return qarray<2>{1,1};};
+	
 //	static qarray<1> singlet (int N) {return qarray<1>{1};};
 	
 	/**
@@ -47,16 +49,21 @@ public:
 //	Mpo<Symmetry> Simp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
 //	Mpo<Symmetry> Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
 //	
-//	Mpo<Symmetry> SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-//	Mpo<Symmetry> SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-//	Mpo<Symmetry> SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> SimpSsub (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> SsubSsub (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> SimpSimp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	static const std::map<string,std::any> defaults;
 	static const map<string,any> sweep_defaults;
 	
 protected:
-//	
-//	Mpo<Symmetry> make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, const OperatorType &Op1, const OperatorType &Op2, bool BOTH_HERMITIAN=false) const;
+	
+	Mpo<Symmetry> make_corr (KONDO_SUBSYSTEM SUBSYS,
+	           string name1, string name2, 
+	           size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
+	           const OperatorType &Op1, const OperatorType &Op2, 
+	           qarray<Symmetry::Nq> Qtot, double factor,
+	           bool BOTH_HERMITIAN=false) const;
 	
 	vector<FermionBase<Symmetry> > F;
 	vector<SpinBase   <Symmetry> > B;
@@ -99,8 +106,8 @@ KondoSU2xSU2 (const size_t &L, const vector<Param> &params)
 		
 		F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), SUB_LATTICE::A) 
 		                  : FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), SUB_LATTICE::B);
-		B[l] = (l%2 == 0) ? SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell), SUB_LATTICE::A)
-		                  : SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell), SUB_LATTICE::B);
+		B[l] = (l%2 == 0) ? SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell), SUB_LATTICE::B)
+		                  : SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell), SUB_LATTICE::A);
 		
 		setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);
 	}
@@ -192,19 +199,86 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			for (int beta=0; beta<Fnext_orbitals; ++beta)
 			{
 				auto cdag_sign_loc = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(alfa), {2,2}),
-				                                        OperatorType::outerprod(B[loc].Id(), F[loc].sign() ,    {1,1}),
+				                                        OperatorType::outerprod(B[loc].Id(), F[loc].sign(),     {1,1}),
 				                                        {2,2}).plain<double>();
 				Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.) * sqrt(2.),
-				                      cdag_sign_loc,
-				                      OperatorType::outerprod(B[loc].Id(), F[lp1].c(beta), {2,2}).plain<double>());
+				                      cdag_sign_loc, OperatorType::outerprod(B[lp1].Id(), F[lp1].c(beta), {2,2}).plain<double>());
 				
 				auto Tdag_loc = OperatorType::outerprod(B[loc].Id(), F[loc].Tdag(alfa), {1,3}).plain<double>();
-				auto T_tight  = OperatorType::outerprod(B[loc].Id(), F[lp1].T   (beta), {1,3}).plain<double>();
+				auto T_lp1    = OperatorType::outerprod(B[lp1].Id(), F[lp1].T   (beta), {1,3}).plain<double>();
 				
-				Terms.push_tight(loc, Vpara(alfa,beta) * std::sqrt(3.), Tdag_loc, T_tight);
+				Terms.push_tight(loc, Vpara(alfa,beta) * std::sqrt(3.), Tdag_loc, T_lp1);
 			}
 		}
 	}
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > KondoSU2xSU2::
+make_corr (KONDO_SUBSYSTEM SUBSYS,
+           string name1, string name2, 
+           size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
+           const OperatorType &Op1, const OperatorType &Op2, 
+           qarray<Symmetry::Nq> Qtot, 
+           double factor,
+           bool BOTH_HERMITIAN) const
+{
+	assert(locx1<this->N_sites and locx2<this->N_sites);
+	stringstream ss;
+	ss << name1 << "(" << locx1 << "," << locy1 << ")" << name2 << "(" << locx2 << "," << locy2 << ")";
+	
+	bool HERMITIAN = (BOTH_HERMITIAN and locx1==locx2 and locy1==locy2)? true:false;
+	
+	Mpo<Symmetry> Mout(N_sites, Qtot, ss.str(), HERMITIAN);
+	for(size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);}
+	
+	OperatorType Op1Ext;
+	OperatorType Op2Ext;
+	
+	if (SUBSYS == SUB)
+	{
+		Op1Ext = OperatorType::outerprod(B[locx1].Id(), Op1, Op1.Q());
+		Op2Ext = OperatorType::outerprod(B[locx2].Id(), Op2, Op2.Q());
+	}
+	else if (SUBSYS == IMP)
+	{
+		Op1Ext = OperatorType::outerprod(Op1, F[locx1].Id(), Op1.Q());
+		Op2Ext = OperatorType::outerprod(Op2, F[locx2].Id(), Op2.Q());
+	}
+	else if (SUBSYS == IMPSUB)
+	{
+		Op2Ext = OperatorType::outerprod(Op1, F[locx1].Id(), Op1.Q());
+		Op1Ext = OperatorType::outerprod(B[locx2].Id(), Op2, Op2.Q());
+	}
+	
+	if (locx1 == locx2)
+	{
+		auto LocProd = OperatorType::prod(Op1Ext, Op2Ext, Qtot);
+		Mout.setLocal(locx1, factor * LocProd.plain<double>());
+	}
+	else
+	{
+		Mout.setLocal({locx1, locx2}, {factor * Op1Ext.plain<double>(), Op2Ext.plain<double>()});
+	}
+	
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > KondoSU2xSU2::
+SsubSsub (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr (SUB, "Ssub","Ssub", locx1,locx2,locy1,locy2, F[locx1].Sdag(locy1),F[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), false);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > KondoSU2xSU2::
+SimpSimp (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr (IMP, "Simp","Simp", locx1,locx2,locy1,locy2, B[locx1].Sdag(locy1),B[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), false);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > KondoSU2xSU2::
+SimpSsub (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr (IMPSUB, "Simp","Ssub", locx1,locx2,locy1,locy2, B[locx1].Sdag(locy1),F[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), false);
 }
 
 //HamiltonianTermsXd<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > KondoSU2xSU2::

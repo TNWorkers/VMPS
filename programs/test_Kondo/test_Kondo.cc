@@ -87,7 +87,7 @@ Eigenstate<VMPS::KondoSU2xSU2::StateXd> g_SO4;
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
-	L = args.get<size_t>("L",10ul);
+	L = args.get<size_t>("L",4ul);
 	Ly = args.get<size_t>("Ly",1ul);
 	
 	J = args.get<double>("J",1.);
@@ -97,6 +97,7 @@ int main (int argc, char* argv[])
 	U = args.get<double>("U",0.);
 	Bx = args.get<double>("Bx",0.);
 	Bz = args.get<double>("Bz",0.);
+	vector<size_t> imps = args.get_list<size_t>("imps",{1,2});
 	
 	N = args.get<int>("N",L*Ly);
 	M = args.get<int>("M",0);
@@ -164,9 +165,22 @@ int main (int argc, char* argv[])
 	params.push_back({"U",U});
 	//params.push_back({"Bz",Bz,0});
 	//params.push_back({"Bx",Bx,0});
-	params.push_back({"D",2ul});
+//	params.push_back({"D",2ul});
 	// params.push_back({"D",1ul,1});
 	// params.push_back({"CALC_SQUARE",true});
+	
+	for (size_t l=0; l<L; ++l)
+	{
+		auto it = find(imps.begin(), imps.end(), l);
+		if (it != imps.end())
+		{
+			params.push_back({"D",D,l});
+		}
+		else
+		{
+			params.push_back({"D",1ul,l});
+		}
+	}
 	
 //	for (size_t l=1; l<L; ++l)
 //	{
@@ -184,7 +198,7 @@ int main (int argc, char* argv[])
 		
 		VMPS::KondoU1 H_U1(L,params);
 		lout << H_U1.info() << endl;
-		assert(H_U1.validate({N}) and "Bad total quantum number of the MPS.");
+//		assert(H_U1.validate({N}) and "Bad total quantum number of the MPS.");
 		
 		VMPS::KondoU1::Solver DMRG_U1(VERB);
 		DMRG_U1.edgeState(H_U1, g_U1, {N}, LANCZOS::EDGE::GROUND);
@@ -201,7 +215,7 @@ int main (int argc, char* argv[])
 		
 		VMPS::KondoU1xU1 H_U1xU1(L,params);
 		lout << H_U1xU1.info() << endl;
-		assert(H_U1xU1.validate({M,N}) and "Bad total quantum number of the MPS.");
+//		assert(H_U1xU1.validate({M,N}) and "Bad total quantum number of the MPS.");
 		
 		VMPS::KondoU1xU1::Solver DMRG_U1xU1(VERB);
 		DMRG_U1xU1.edgeState(H_U1xU1, g_U1xU1, {M,N}, LANCZOS::EDGE::GROUND);
@@ -321,7 +335,7 @@ int main (int argc, char* argv[])
 		Stopwatch<> Watch_SU2xU1;
 		VMPS::KondoSU2xU1 H_SU2xU1(L,params);
 		lout << H_SU2xU1.info() << endl;
-		assert(H_SU2xU1.validate({S,N}) and "Bad total quantum number of the MPS.");
+//		assert(H_SU2xU1.validate({S,N}) and "Bad total quantum number of the MPS.");
 		
 		VMPS::KondoSU2xU1::Solver DMRG_SU2xU1(VERB);
 		DMRG_SU2xU1.edgeState(H_SU2xU1, g_SU2xU1, {S,N}, LANCZOS::EDGE::GROUND);
@@ -414,12 +428,12 @@ int main (int argc, char* argv[])
 	{
 		lout << endl << termcolor::red << "--------U(0)⊗SU(2)---------" << termcolor::reset << endl << endl;
 		
-		auto params_ = params;
-		params_.push_back({"subL",SUB_LATTICE::A,0});
-		params_.push_back({"subL",SUB_LATTICE::B,1});
+//		auto params_ = params;
+//		params_.push_back({"subL",SUB_LATTICE::A,0});
+//		params_.push_back({"subL",SUB_LATTICE::B,1});
 		
 		Stopwatch<> Watch_U0xSU2;
-		VMPS::KondoU0xSU2 H_U0xSU2(L,params_);
+		VMPS::KondoU0xSU2 H_U0xSU2(L,params);
 		lout << H_U0xSU2.info() << endl;
 		
 		VMPS::KondoU0xSU2::Solver DMRG_U0xSU2(VERB);
@@ -432,12 +446,12 @@ int main (int argc, char* argv[])
 	{
 		lout << endl << termcolor::red << "--------SU(2)⊗SU(2)---------" << termcolor::reset << endl << endl;
 		
-		auto params_ = params;
-		params_.push_back({"subL",SUB_LATTICE::A,0});
-		params_.push_back({"subL",SUB_LATTICE::B,1});
+//		auto params_ = params;
+//		params_.push_back({"subL",SUB_LATTICE::A,0});
+//		params_.push_back({"subL",SUB_LATTICE::B,1});
 		
 		Stopwatch<> Watch_SO4;
-		VMPS::KondoSU2xSU2 H_SO4(L,params_);
+		VMPS::KondoSU2xSU2 H_SO4(L,params);
 		lout << H_SO4.info() << endl;
 		
 		VMPS::KondoSU2xSU2::Solver DMRG_SO4(VERB);

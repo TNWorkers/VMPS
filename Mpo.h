@@ -607,7 +607,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			for (size_t a2=0; a2<Gvec[l].cols(); ++a2)
 			{
 				Scalar val = Gvec[l](Gvec[l].rows()-1,a2).data.coeffRef(s1,s2);
-				if (abs(val) > 1e-15)
+				if (abs(val) > ::mynumeric_limits<double>::epsilon())
 				{
 					qType Q = Gvec[l](Gvec[l].rows()-1,a2).Q;
 					size_t match;
@@ -646,7 +646,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 		for (size_t a2=0; a2<Gvec[l].cols(); ++a2)
 		{
 			Scalar val = Gvec[l](a1,a2).data.coeffRef(s1,s2);
-			if (abs(val) > 1e-15)
+			if (abs(val) > ::mynumeric_limits<double>::epsilon())
 			{
 				qType Q = Gvec[l](a1,a2).Q;
 				size_t match;
@@ -684,7 +684,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			for (size_t a1=0; a1<Gvec[l].rows(); ++a1)
 			{
 				Scalar val = Gvec[l](a1,0).data.coeffRef(s1,s2);
-				if (abs(val) > 1e-15)
+				if (abs(val) > ::mynumeric_limits<double>::epsilon())
 				{
 					qType Q = Gvec[l](a1,0).Q;
 					size_t match;
