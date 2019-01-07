@@ -952,6 +952,7 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 		string Eedge = (EDGE == LANCZOS::EDGE::GROUND)? "Emin" : "Emax";
 		lout << termcolor::bold << Eedge << "=" << setprecision(13) << Vout.energy << ", "
 			 << Eedge << "/L=" << Vout.energy/N_phys << setprecision(standard_precision) << termcolor::reset << endl;
+		lout << eigeninfo() << endl;
 		lout << Vout.state.info() << endl;
 		
 		if (GlobParam.CALC_S_ON_EXIT)
@@ -1027,7 +1028,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		#endif
 	}
 	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
 		lout << TotalTimer.info("total runtime") << endl;
 	}

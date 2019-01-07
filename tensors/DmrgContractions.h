@@ -969,8 +969,8 @@ Scalar contract_LR (size_t fixed_b,
 
 template<typename Symmetry, typename Scalar>
 Scalar contract_LR (size_t fixed_a, 
-                    const Biped <Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
-                    const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R)
+					 const Biped <Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
+					 const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R)
 {
 	Scalar res = 0;
 	
@@ -994,7 +994,6 @@ Scalar contract_LR (size_t fixed_a,
 			}
 		}
 	}
-	
 	return res;
 }
 
@@ -1018,7 +1017,7 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 				if (L.block[qL][a][0].size() != 0 and
 				    R.block[qR->second][a][0].size() != 0)
 				{
-					res += (L.block[qL][a][0] * R.block[qR->second][a][0]).trace() * Symmetry::coeff_dot(L.out(qL));
+					res += (L.block[qL][a][0] * R.block[qR->second][a][0]).trace() * Symmetry::coeff_dot(L.in(qL));
 				}
 			}
 		}

@@ -214,14 +214,17 @@ set_operators(const vector<SpinBase<Symmetry>> &B, const ParamHandler &P, Hamilt
 
         param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
         Terms.save_label(loc, Jperp.label);
-        
-        for(int alpha=0; alpha<orbitals; ++alpha)
-        {
-            for(int beta=0; beta<orbitals; ++beta)
-            {
-                Terms.push_local(loc, std::sqrt(3.)*Jperp.a(alpha), OperatorType::prod(B[loc].Sdag(alpha), B[loc].S(beta), {1}).plain<double>());
-            }
-        }
+
+		Terms.push_local(loc, 1., (B[loc].HeisenbergHamiltonian(Jperp.a)).plain<double>());
+
+        // for(int alpha=0; alpha<orbitals; ++alpha)
+        // {
+        //     for(int beta=0; beta<orbitals; ++beta)
+        //     {
+		// 		cout << "alpha=" << alpha << ", beta=" << beta << ", J=" << Jperp.a(alpha) << endl;
+        //         Terms.push_local(loc, std::sqrt(3.)*Jperp.a(alpha), OperatorType::prod(B[loc].Sdag(alpha), B[loc].S(beta), {1}).plain<double>());
+        //     }
+        // }
         
         // Nearest-neighbour terms: J
         
