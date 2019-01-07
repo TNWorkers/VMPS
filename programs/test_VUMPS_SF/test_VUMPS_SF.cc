@@ -139,9 +139,9 @@ int main (int argc, char* argv[])
 	#endif
 	
 	VUMPS::CONTROL::GLOB GlobParams;
-	GlobParams.tol_eigval = 1e-5;
-	GlobParams.tol_var = 1e-5;
-	GlobParams.tol_state = 1e-2;
+	GlobParams.tol_eigval = 1e-8;
+	GlobParams.tol_var = 1e-8;
+	GlobParams.tol_state = 1e-5;
 	GlobParams.min_iterations = 10;
 	GlobParams.max_iterations = 120;
 	GlobParams.Dinit = 10;
@@ -149,7 +149,7 @@ int main (int argc, char* argv[])
 	if (U1)
 	{
 		typedef VMPS::HeisenbergU1XXZ MODEL;
-		MODEL H(L,{{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false}});
+		MODEL H(L,{{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D},{"Ly",Ly}});
 		qarray<1> Qc = {0};
 //		typedef VMPS::HeisenbergXXZ MODEL;
 //		MODEL H(L,{{"Bx",Bx},{"Jz",Jz},{"OPEN_BC",false}});
@@ -203,7 +203,7 @@ int main (int argc, char* argv[])
 		
 		N = 100; // Ncell (number of unit cells), L=Lcell (size of unit cell)
 		
-		MODEL Htmp(L*N,{{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false}}); // ,{"Bx",Bx}
+		MODEL Htmp(L*N,{{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D},{"Ly",Ly}}); // ,{"Bx",Bx}
 		ArrayXd OdagO_R(N); OdagO_R=0;
 		#pragma omp parallel for
 		for (size_t n=0; n<N; ++n)
@@ -250,7 +250,7 @@ int main (int argc, char* argv[])
 //		MODEL H(L,{{"U",20.},{"OPEN_BC",false},{"CALC_SQUARE",false}});
 //		qarray<2> Qc = {1,N};
 		typedef VMPS::HeisenbergSU2 MODEL;
-		MODEL H(L,{{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false}});
+		MODEL H(L,{{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"Ly",Ly},{"D",D}});
 		qarray<1> Qc = {1};
 		
 		H.transform_base(Qc);
@@ -332,7 +332,7 @@ int main (int argc, char* argv[])
 		
 		N = 100; // Ncell (number of unit cells), L=Lcell (size of unit cell)
 		
-		MODEL Htmp(L*N,{{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false}});
+		MODEL Htmp(L*N,{{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"Ly",Ly},{"D",D}});
 		ArrayXd OdagO_R(N); OdagO_R=0;
 		ArrayXd OdagO_L(N); OdagO_L=0;
 		#pragma omp parallel for

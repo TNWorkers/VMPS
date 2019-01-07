@@ -74,7 +74,7 @@ struct MpoTransferVector
 			}
 		}
 	};
-	
+
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > data;
 	size_t ab;
 	
@@ -149,7 +149,7 @@ void HxV (const MpoTransferMatrix<Symmetry,Scalar1> &H, const MpoTransferVector<
 	{
 		LdotR = contract_LR(H.ab, Vin.data, H.LReigen);
 	}
-	
+
 	for (size_t q=0; q<TxV.data.dim; ++q)
 	{
 		qarray3<Symmetry::Nq> quple = {TxV.data.in(q), TxV.data.out(q), TxV.data.mid(q)};
@@ -243,7 +243,7 @@ inline Scalar dot (const MpoTransferVector<Symmetry,Scalar> &V1, const MpoTransf
 		auto it = V2.data.dict.find(quple);
 		if (it != V2.data.dict.end())
 		{
-			res += (V1.data.block[q][V1.ab][0].adjoint() * V2.data.block[it->second][V2.ab][0]).trace() * Symmetry::coeff_dot(V1.data.out(q));
+			res += (V1.data.block[q][V1.ab][0].adjoint() * V2.data.block[it->second][V2.ab][0]).trace() * Symmetry::coeff_dot(V2.data.out(q));
 		}
 	}
 	return res;
@@ -253,32 +253,38 @@ template<typename Symmetry, typename Scalar>
 MpoTransferVector<Symmetry,Scalar>& MpoTransferVector<Symmetry,Scalar>::
 operator+= (const MpoTransferVector<Symmetry,Scalar> &Vrhs)
 {
-	for (size_t q=0; q<Vrhs.data.dim; ++q)
-	{
-		qarray3<Symmetry::Nq> quple = {Vrhs.data.in(q), Vrhs.data.out(q), Vrhs.data.mid(q)};
-		auto it = data.dict.find(quple);
-		if (it != data.dict.end())
-		{
-			data.block[it->second][ab][0] += Vrhs.data.block[q][ab][0];
-		}
-	}
+	data.addScale(1.,Vrhs.data);
 	return *this;
+
+	// for (size_t q=0; q<Vrhs.data.dim; ++q)
+	// {
+	// 	qarray3<Symmetry::Nq> quple = {Vrhs.data.in(q), Vrhs.data.out(q), Vrhs.data.mid(q)};
+	// 	auto it = data.dict.find(quple);
+	// 	if (it != data.dict.end())
+	// 	{
+	// 		data.block[it->second][ab][0] += Vrhs.data.block[q][ab][0];
+	// 	}
+	// }
+	// return *this;
 }
 
 template<typename Symmetry, typename Scalar>
 MpoTransferVector<Symmetry,Scalar>& MpoTransferVector<Symmetry,Scalar>::
 operator-= (const MpoTransferVector<Symmetry,Scalar> &Vrhs)
 {
-	for (size_t q=0; q<Vrhs.data.dim; ++q)
-	{
-		qarray3<Symmetry::Nq> quple = {Vrhs.data.in(q), Vrhs.data.out(q), Vrhs.data.mid(q)};
-		auto it = data.dict.find(quple);
-		if (it != data.dict.end())
-		{
-			data.block[it->second][ab][0] -= Vrhs.data.block[q][ab][0];
-		}
-	}
+	data.addScale(-1.,Vrhs.data);
 	return *this;
+
+	// for (size_t q=0; q<Vrhs.data.dim; ++q)
+	// {
+	// 	qarray3<Symmetry::Nq> quple = {Vrhs.data.in(q), Vrhs.data.out(q), Vrhs.data.mid(q)};
+	// 	auto it = data.dict.find(quple);
+	// 	if (it != data.dict.end())
+	// 	{
+	// 		data.block[it->second][ab][0] -= Vrhs.data.block[q][ab][0];
+	// 	}
+	// }
+	// return *this;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -339,11 +345,12 @@ inline void setZero (MpoTransferVector<Symmetry,Scalar> &V)
 	V.data.setZero();
 }
 
-//template<typename Symmetry, typename Scalar, typename OtherScalar>
-//inline void addScale (const OtherScalar alpha, const MpoTransferVector<Symmetry,Scalar> &Vin, MpoTransferVector<Symmetry,Scalar> &Vout)
-//{
-//	Vout += alpha * Vin;
-//}
+template<typename Symmetry, typename Scalar, typename OtherScalar>
+inline void addScale (const OtherScalar alpha, const MpoTransferVector<Symmetry,Scalar> &Vin, MpoTransferVector<Symmetry,Scalar> &Vout)
+{
+	Vout.data.addScale(alpha,Vin.data);
+	// Vout += alpha * Vin;
+}
 
 template<typename Symmetry, typename Scalar>
 struct GaussianRandomVector<MpoTransferVector<Symmetry,Scalar>,Scalar>
