@@ -9,6 +9,7 @@
 #include "macros.h" // from TOOLS
 #include "PolychromaticConsole.h" // from TOOLS
 #include "MemCalc.h" // from TOOLS
+#include "RandomVector.h"
 
 //include "DmrgExternal.h"
 #include "symmetry/functions.h"
