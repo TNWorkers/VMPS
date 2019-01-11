@@ -4,7 +4,7 @@
 //#endif
 #include "util/LapackManager.h"
 
-//#define USE_HDF5_STORAGE
+#define USE_HDF5_STORAGE
 
 // with Eigen:
 #define DMRG_DONT_USE_OPENMP
@@ -38,6 +38,7 @@ Logger lout;
 #include "models/HeisenbergU1XXZ.h"
 #include "models/Heisenberg.h"
 //#include "models/HeisenbergXYZ.h"
+#include "HDF5Interface.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, bool COLOR=false, int n=14)
@@ -78,7 +79,7 @@ int M, Dtot;
 double Stot;
 size_t D, D1;
 size_t L, Ly, Ldyn;
-double J, Jprime, Jrung;
+double J, Jprime, Jrung, Jloc, Jtri;
 double alpha;
 double t_U0, t_U1, t_SU2;
 size_t Dinit, Dlimit, Qinit, Imin, Imax;
@@ -109,6 +110,9 @@ int main (int argc, char* argv[])
 	J = args.get<double>("J",1.);
 	Jrung = args.get<double>("Jrung",J);
 	Jprime = args.get<double>("Jprime",0.);
+	Jloc = args.get<double>("Jloc",0.);
+	Jtri = args.get<double>("Jtri",0.);
+
 	M = args.get<int>("M",0);
 	D = args.get<size_t>("D",2);
 	D1 = args.get<size_t>("D1",D);
@@ -117,15 +121,15 @@ int main (int argc, char* argv[])
 	size_t min_Nsv = args.get<size_t>("min_Nsv",0ul);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
-	int a = 2;
-	int b = 3;
-	int c = 2;
-	cout << (a+b)%c << "\t" << (a-b)%c << endl;
-	
+	double sigma = args.get<double>("sigma",1.);
 	U0 = args.get<bool>("U0",false);
 	U1 = args.get<bool>("U1",true);
 	SU2 = args.get<bool>("SU2",true);
-	
+
+	bool PERIODIC = args.get<bool>("PER",false);
+	bool RKKY = args.get<bool>("RKKY",false);
+	bool ED_RKKY = args.get<bool>("ED",false);
+
 	eps_svd = args.get<double>("eps_svd",1e-7);
 	alpha = args.get<double>("alpha",1e2);
 	
@@ -150,7 +154,7 @@ int main (int argc, char* argv[])
 	// SweepParams.push_back({"tol_eigval",tol_eigval});
 	// SweepParams.push_back({"tol_state",tol_state});
 	// SweepParams.push_back({"max_Nrich",max_Nrich});
-//	SweepParams.push_back({"CONVTEST",DMRG::CONVTEST::VAR_HSQ});
+	SweepParams.push_back({"CONVTEST",DMRG::CONVTEST::VAR_HSQ});
 	
 	CALC_DYNAMICS = args.get<bool>("CALC_DYN",0);
 	dt = args.get<double>("dt",0.1);
@@ -259,9 +263,57 @@ int main (int argc, char* argv[])
 	if (SU2)
 	{
 		lout << endl << "--------SU(2)---------" << endl << endl;
+		typedef Sym::SU2<Sym::SpinSU2> Symmetry;
 		
 		Stopwatch<> Watch_SU2;
-		VMPS::HeisenbergSU2 H_SU2(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
+		
+		ArrayXXd Jfull;
+		VMPS::HeisenbergSU2 H_SU2;
+		if (RKKY)
+		{
+			stringstream ss;
+			if(PERIODIC) {ss << "periodic-L" << L << "-t1-tP1.h5";}
+			else {ss << "L" << L << "-t1-tP1.h5";}
+			HDF5Interface source(ss.str(),FILE_ACCESS_MODE::READ);
+			MatrixXd Jfull_mat;
+			source.load_matrix(Jfull_mat,"SpinSus");
+			source.close();
+				// cout << "Jfull_mat=" << endl << Jfull_mat << endl;
+			for (size_t i=0; i<Jfull_mat.rows(); i++)
+			for (size_t j=i+1; j<Jfull_mat.rows(); j++)
+			{
+				Jfull_mat(i,j) = Jfull_mat(i,j) + Jfull_mat(j,i);
+				Jfull_mat(j,i) = 0.;
+			}
+			ArrayXXd Jfull = Jfull_mat.array();
+			Jfull *=sigma;
+
+			H_SU2 = VMPS::HeisenbergSU2(L,{{"Jfull",Jfull},{"D",D}});
+
+			if (ED_RKKY)
+			{
+				SpinBase<Symmetry> B(L);
+				cout << B.get_basis().print() << endl;
+				auto H = B.HeisenbergHamiltonian(Jfull);
+				// std::vector<Symmetry::qType> blocks(2);
+				// blocks[0] = {L+1};
+				// blocks[1] = {L-1};
+				EDSolver<SiteOperatorQ<Symmetry,MatrixXd> > John(H);
+				// cout << John.eigenvalues().data().print(true) << endl;
+				for (size_t q=0; q<John.eigenvalues().data().size(); q++)
+				{
+					cout << "q=" << John.eigenvalues().data().in[q] << endl;
+					cout << "E=" << endl << John.eigenvalues().data().block[q] << endl << endl;
+				}
+				assert(1!=1 and "Finished ED for RKKY couplings.");
+			}
+		}
+		else
+		{
+			H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
+		}
+		
+
 		lout << H_SU2.info() << endl;
 		
 		VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
@@ -274,24 +326,13 @@ int main (int argc, char* argv[])
 		
 		t_SU2 = Watch_SU2.time();
 		
-		double cgc_avgS = (Stot==0)? 1:Stot/sqrt(Stot*(Stot+1.));
-		cout << "cgc_avgS=" << cgc_avgS << ", " << Sym::SU2<Sym::SpinSU2>::coeff_CGC(qarray<1>{Dtot},qarray<1>{3},qarray<1>{Dtot}, M, 0, M) << ", Stot=" << Stot << endl;
-		
+		SpinCorr_SU2.resize(L,L); SpinCorr_SU2.setZero();
 		for (size_t l=0; l<L; ++l)
+		for (size_t lp=0; lp<L; ++lp)
 		{
-			double val = sqrt(3.) * cgc_avgS * isReal(avg(g_SU2.state, H_SU2.S(l), g_SU2.state));
-			
-			lout << "l=" << l << "\t" 
-				 << "<S>=" << val << "\t"
-				 << endl;
+			SpinCorr_SU2(l,lp) = avg(g_SU2.state,H_SU2.SdagS(l,lp),g_SU2.state);
 		}
-		
-		lout << endl;
-		
-		for (size_t l=0; l<L-1; ++l)
-		{
-			lout << "l=" << l << ", <S(i)S(i+1)>=" << isReal(avg(g_SU2.state, H_SU2.SdagS(l,l+1), g_SU2.state)) << endl;
-		}
+		cout << "Spin correlations" << endl << SpinCorr_SU2 << endl;
 	}
 	
 	//--------output---------
