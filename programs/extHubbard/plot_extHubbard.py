@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function #python2 is then compatible with python3 print syntax. The other way around is not possible.
+
 import os, sys
 import numpy as np
 #from termcolor import colored, cprint
@@ -12,7 +14,23 @@ import h5py
 
 sys.path.insert(0, '../PYSNIP')
 #import folders
-import StringStuff
+# import StringStuff
+
+def myRound(x):
+    if x==0.:
+        return 0
+    elif x==1.:
+        return 1
+    elif x==2.:
+        return 2
+    elif x==3.:
+        return 3
+    elif x==4.:
+        return 4
+    elif x==int(x):
+        return int(x)
+    else:
+        return x
 
 rc('text', usetex=True)
 rc('font', **{'family':'sans-serif','sans-serif':['DejaVu Sans']})
@@ -27,9 +45,9 @@ parser.add_argument('-set', action='store', default='SiSj')
 parser.add_argument('-save', action='store', default=False)
 args = parser.parse_args()
 
-U = StringStuff.round(float(args.U))
-V = StringStuff.round(float(args.V))
-J = StringStuff.round(float(args.J))
+U = myRound(float(args.U))
+V = myRound(float(args.V))
+J = myRound(float(args.J))
 
 f = h5py.File('./toydata/obs/U='+str(U)+'_V='+str(V)+'_J='+str(J)+'.h5','r')
 
@@ -38,7 +56,7 @@ logChis = []
 S0 = []
 S1 = []
 
-for Chi in np.array(f.keys()):
+for Chi in np.array(list(map(int,list(f)))):
 	Chis.append(int(Chi))
 Chis.sort()
 
@@ -49,9 +67,9 @@ for Chi in Chis:
 
 fit0 = np.poly1d(np.polyfit(logChis, S0, 1))
 fit1 = np.poly1d(np.polyfit(logChis, S1, 1))
-print 'fit S=c/3*log(χ)+γ:'
-print 'c=',np.real(fit0(0))/3, 'γ=',np.real(fit0(1))
-print 'c=',np.real(fit1(0))/3, 'γ=',np.real(fit1(1))
+print('fit S=c/3*log(χ)+γ:')
+print('c=',np.real(fit0(0))/3, 'γ=',np.real(fit0(1)))
+print('c=',np.real(fit1(0))/3, 'γ=',np.real(fit1(1)))
 
 #plt.xlabel('$\ln \chi$')
 #plt.ylabel('$S$')
@@ -61,18 +79,18 @@ print 'c=',np.real(fit1(0))/3, 'γ=',np.real(fit1(1))
 #plt.plot(logChis, fit1(logChis), marker='.', label='fit1')
 #plt.legend()
 
-print 'χs=',Chis
+print('χs=',Chis)
 Chi = str(max(Chis))
-print 'using χ=', Chi
+print('using χ=', Chi)
 
-print 'Dmax=', f[Chi]['Dmax'][0]
-print 'Mmax=', f[Chi]['Mmax'][0]
-print 'err_eigval=', f[Chi]['err_eigval'][0]
-print 'err_state=', f[Chi]['err_state'][0]
-print 'err_var=', f[Chi]['err_var'][0]
-print 'S=', f[Chi]['Entropy'][0], f[Chi]['Entropy'][1]
-print 'nh=', f[Chi]['nh'][0], f[Chi]['nh'][1]
-print 'ns=', f[Chi]['ns'][0], f[Chi]['ns'][1]
+print('Dmax=', f[Chi]['Dmax'][0])
+print('Mmax=', f[Chi]['Mmax'][0])
+print('err_eigval=', f[Chi]['err_eigval'][0])
+print('err_state=', f[Chi]['err_state'][0])
+print('err_var=', f[Chi]['err_var'][0])
+print('S=', f[Chi]['Entropy'][0], f[Chi]['Entropy'][1])
+print('nh=', f[Chi]['nh'][0], f[Chi]['nh'][1])
+print('ns=', f[Chi]['ns'][0], f[Chi]['ns'][1])
 
 datasets = ['SiSj', 'TiTj']
 labels = {'SiSj':'$S(k)$', 'TiTj':'$T(k)$'}
@@ -105,7 +123,7 @@ for dataset in datasets:
 		setk[n] = np.real(fftres[n%N,(N-n)%N]) # fft uses exp(-i*k1*Ri)*exp(-i*k2*Ri), need k1=k, k2=-k
 	
 	plt.plot(kvals, setk, ls='-', marker='.', label=labels[dataset])
-	print dataset, 'max at k/π=', k(np.argmax(setk),N)/pi
+	print(dataset, 'max at k/π=', k(np.argmax(setk),N)/pi)
 	
 #	plt.ylabel('', fontsize=14)
 	plt.xlabel('$k$', fontsize=14)

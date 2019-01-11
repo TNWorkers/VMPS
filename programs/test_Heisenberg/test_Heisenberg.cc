@@ -288,24 +288,42 @@ int main (int argc, char* argv[])
 			ArrayXXd Jfull = Jfull_mat.array();
 			Jfull *=sigma;
 
-			H_SU2 = VMPS::HeisenbergSU2(L,{{"Jfull",Jfull},{"D",D}});
 
 			if (ED_RKKY)
 			{
+				cout << "L=" << L << endl;
+				assert(L<=16 and "Cannot perform exact diagonalization for L>16.");
+				cout << "L=" << L << endl;
 				SpinBase<Symmetry> B(L);
 				cout << B.get_basis().print() << endl;
 				auto H = B.HeisenbergHamiltonian(Jfull);
-				// std::vector<Symmetry::qType> blocks(2);
-				// blocks[0] = {L+1};
-				// blocks[1] = {L-1};
-				EDSolver<SiteOperatorQ<Symmetry,MatrixXd> > John(H);
+				cout << "Computed Hamiltonian" << endl;
+				std::vector<Symmetry::qType> blocks;
+				blocks.push_back({Dtot});
+				// blocks.push_back({L+1});
+				// blocks.push_back({L-1});
+				EDSolver<SiteOperatorQ<Symmetry,MatrixXd> > John(H,blocks,Eigen::DecompositionOptions::ComputeEigenvectors);
 				// cout << John.eigenvalues().data().print(true) << endl;
 				for (size_t q=0; q<John.eigenvalues().data().size(); q++)
 				{
 					cout << "q=" << John.eigenvalues().data().in[q] << endl;
 					cout << "E=" << endl << John.eigenvalues().data().block[q] << endl << endl;
 				}
+				SpinCorr_SU2.resize(L,L); SpinCorr_SU2.setZero();
+				for(size_t i=0; i<L; i++)
+				for(size_t j=0; j<L; j++)
+				{
+					auto SQ1i = SiteOperatorQ<Symmetry,MatrixXd>::prod(B.S(i), John.groundstate({Dtot}), {3});
+					auto SQ1j = SiteOperatorQ<Symmetry,MatrixXd>::prod(B.S(j), John.groundstate({Dtot}), {3});
+					auto res  = SiteOperatorQ<Symmetry,MatrixXd>::prod(SQ1i.adjoint(), SQ1j, {1});
+					SpinCorr_SU2(i,j) = res.data().block[0](0,0);
+				}
+				cout << "Spin correlations" << endl << sqrt(3.)*SpinCorr_SU2 << endl;
 				assert(1!=1 and "Finished ED for RKKY couplings.");
+			}
+			else
+			{
+				H_SU2 = VMPS::HeisenbergSU2(L,{{"Jfull",Jfull},{"D",D}});
 			}
 		}
 		else
