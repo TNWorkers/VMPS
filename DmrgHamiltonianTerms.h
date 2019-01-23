@@ -16,64 +16,23 @@ template<typename Symmetry, typename Scalar> class HamiltonianTerms
 private:
     typedef SiteOperator<Symmetry,Scalar> OperatorType;
     typename Symmetry::qType qvac = Symmetry::qvacuum();
+    typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> MatrixType;
     
     /**
-     *  Local terms of Hamiltonian, a simple vector
-     *  Index structure (Lattice Site)
+     *  Local terms of Hamiltonian
+     *  Index structure: [Lattice Site]
      */
     std::vector<OperatorType> local;
     
     /**
-     *    Stores whether the local operator has been set yet, a simple vector
-     *    Index structure (Lattice Site)
+     *    Stores whether the local operator has been set yet
+     *    Index structure: [Lattice Site]
      */
     std::vector<bool> localSet;
     
     /**
-     *    Incoming nearest-neighbour terms, a twofold vector
-     *    Index structure (Lattice Site i, Index incoming operator at i)
-     */
-    std::vector<std::vector<OperatorType>> tight_in;
-    
-    /**
-     *    Outgoing nearest-neighbour terms, a twofold vector
-     *    Index structure (Lattice Site i, Index outgoing operator at i)
-     */
-    std::vector<std::vector<OperatorType>> tight_out;
-    
-    /**
-     *    Nearest-neighbour interactions, a vector of matrices
-     *    Index structure (Lattice Site i, Index outgoing operator at i, Index incoming operator at i+1)
-     */
-    std::vector<Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>> tight_coupl;
-    
-    /**
-     *    Incoming next-nearest-neighbour terms, a threefold vector
-     *    Index structure (Lattice Site i, Index transfer operator at i-1, Index incoming operator at i)
-     */
-    std::vector<std::vector<std::vector<OperatorType>>> nextn_in;
-    
-    /**
-     *    Outgoing next-nearest-neighbour terms, a threefold vector
-     *    Index structure (Lattice Site i, Index transfer operator at i+1, Index outgoing operator at i)
-     */
-    std::vector<std::vector<std::vector<OperatorType>>> nextn_out;
-    
-    /**
-     *    Transfer operators for next-nearest-neighbour interaction, a twofold vector
-     *    Index structure (Lattice Site i, Index transfer operator at i)
-     */
-    std::vector<std::vector<OperatorType>> nextn_TransOps;
-    
-    /**
-     *    Next-nearest-neighbour interactions, a twofold vector of matrices
-     *    Index structure (Lattice Site i, transfer operator at i+1, Index outgoing operator at i, Index incoming operator at i+2)
-     */
-    std::vector<std::vector<Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>>> nextn_coupl;
-    
-    /**
-     *    Local hilbert space dimensions, a simple vector
-     *    Index structure (Lattice Site). Initialized with 0 and set whenever a operator is added at a given site
+     *    Local hilbert space dimensions. Initialized with 0 and set whenever a operator is added at a given site
+     *    Index structure: [Lattice Site]
      */
     std::vector<int> hilbert_dimension;
     
@@ -83,45 +42,10 @@ private:
     std::size_t N_sites;
     
     /**
-     *    All informations stored about the HamiltonianTerms, twofold vector
-     *    Index structure (Lattice Site i, Index of information string)
+     *    All informations stored about the HamiltonianTerms
+     *    Index structure [Lattice Site i][Index of information string]
      */
     std::vector<std::vector<std::string>> info;
-    
-    /**
-     *    Compressed incoming nearest-neighbour terms, a twofold vector
-     *    Index structure (Lattice Site i, Index incoming operator at i)
-     */
-    std::vector<std::vector<OperatorType>> tight_in_compressed;
-    
-    /**
-     *    Compressed outgoing nearest-neighbour terms, a twofold vector
-     *    Index structure (Lattice Site i, Index outgoing operator at i)
-     */
-    std::vector<std::vector<OperatorType>> tight_out_compressed;
-    
-    /**
-     *    Compressed incoming next-nearest-neighbour terms, a threefold vector
-     *    Index structure (Lattice Site i, Index transfer operator at i-1, Index incoming operator at i)
-     */
-    std::vector<std::vector<std::vector<OperatorType>>> nextn_in_compressed;
-    
-    /**
-     *    Compressed outgoing next-nearest-neighbour terms, a threefold vector
-     *    Index structure (Lattice Site i, Index transfer operator at i+1, Index outgoing operator at i)
-     */
-    std::vector<std::vector<std::vector<OperatorType>>> nextn_out_compressed;
-    
-    /**
-     *    "Compressed" transfer operators for next-nearest-neighbour interaction, a threefold vector
-     *    Index structure (Lattice Site i, Index transfer operator at i, Index repetition of operator)
-     */
-    std::vector<std::vector<std::vector<OperatorType>>> nextn_trans_compressed;
-    
-    /**
-     *    Stores, whether the compressed Term vectors are up to date
-     */
-    bool COMPRESSED;
     
     /**
      *  A given name for the HamiltonianTerms, such as Heisenberg
@@ -134,33 +58,52 @@ private:
     bool OPEN_BC;
     
     /**
-     *  Takes the plain interaction vectors and compresses them by singular value decomposition
+     *  Collection of all outgoing operators, needed for n site wide interactions starting between lattice site loc and loc+n
+     *  Index structure: [Distance n-1][Lattice site loc][Number of transfer operator set t][Number of outgoing local operator i]
+     **/
+    std::vector<std::vector<std::vector<std::vector<OperatorType>>>> outgoing;
+    
+    /**
+     *  Collection of all incoming operators, needed for n site wide interactions starting between lattice site loc-n and loc
+     *  Index structure: [Distance n-1][Lattice site loc][Number of transfer operator set t][Number of incoming local operator j]
+     **/
+    std::vector<std::vector<std::vector<std::vector<OperatorType>>>> incoming;
+    
+    /**
+     *  Collection of all transfer operators, needed for n site wide interactions starting between lattice site loc and loc+n
+     *  Index structure: [Distance n-1][Lattice site loc][Number of transfer operator set t][Number k of transfer operator acting on site loc+k+1]
+     **/
+    std::vector<std::vector<std::vector<std::vector<OperatorType>>>> transfer;
+    
+    /**
+     *  Collection of all interaction strengths, needed for n site wide interactions interactions starting between lattice site loc and loc+n
+     *  Index structure: [Distance n-1][Lattice site loc][Number of transfer operator set t](Number of outgoing operators at site loc, Number of incoming operators at site loc+n)
+     **/
+    std::vector<std::vector<std::vector<MatrixType>>> coupling;
+    
+    /**
+     *  Stores the currently widest interaction within the system. Is increased, when a wider interaction is added. (E.g. n_max = 4 refers to a 4 sites wide interaction between lattice sites 0 and 4)
+     **/
+    std::size_t n_max = 0;
+    
+    /**
+     *  Checks whether the dimension of an operator matches the local Hilbert space dimension. Sets the latter if it has not been set yet.
+     *  @param loc  Lattice site
+     *  @param dim  Assumed dimension of local Hilbert space
+     **/
+    void assert_hilbert(std::size_t loc, int dim);
+    
+    /**
+     *  Takes the plain interaction operator vectors and matrices and compresses them (Todo: by singular value decomposition)
      */
-    void compress();
+    void compress(std::vector<std::vector<std::vector<std::vector<OperatorType>>>> &incoming_compressed, std::vector<std::vector<std::vector<std::vector<OperatorType>>>> &outgoing_compressed);
     
 public:
+    
     /**
      *  Default constructor, does nothing
      */
     HamiltonianTerms() {HamiltonianTerms(0);}
-    
-    string print_info() const
-    {
-    	stringstream ss;
-    	for (size_t l=0; l<N_sites; ++l)
-    	{
-			for (size_t i=0; i<info[l].size(); ++i)
-			{
-				ss << info[l][i] << "\t";
-			}
-			ss << "tight_in=" << tight_in[l].size() << "\t"
-			   << "tight_out=" << tight_out[l].size() << "\t"
-			   << "nextn_in=" << nextn_in[l].size() << "\t"
-			   << "nextn_out=" << nextn_out[l].size();
-			ss << endl;
-    	}
-    	return ss.str();
-    }
     
     /**
      *  Constructor
@@ -170,10 +113,23 @@ public:
     HamiltonianTerms(std::size_t L, bool bc = true);
     
     /**
+     *  Adds an interaction between lattice sites loc and loc+n to the HamiltonianTerms.
+     *  @param n        Distance (n=1 means next-neighbour)
+     *  @param loc      Lattice site where the interaction starts
+     *  @param lambda   Interaction strength
+     *  @param outOp    Outgoing operator at site loc
+     *  @param trans    Vector of transfer operators at sites loc+1, ..., loc+n-1
+     *  @param inOp     Incoming operator at site loc+m
+     */
+    void push(std::size_t n, std::size_t loc, Scalar lambda, OperatorType outOp, std::vector<OperatorType> trans, OperatorType inOp);
+    
+    /**
      *  Adds a new local interaction to the HamiltonianTerms
      *  @param loc      Lattice site
      *  @param Op       SiteOperator acting on the local Hilbert space of site \p loc
      *  @param lambda   Scalar of interaction strength that is multiplied to the operator
+     *
+     *  For convenience, redirects to push(0, loc, lambda, Op, ...)
      */
     void push_local(std::size_t loc, Scalar lambda, OperatorType Op);
     
@@ -183,6 +139,8 @@ public:
      *  @param Op1      SiteOperator acting on the local Hilbert space of site \p loc
      *  @param Op2      SiteOperator acting on the local Hilbert space of site \p loc+1
      *  @param lambda   Scalar of interaction strength that is multiplied to the operator
+     *
+     *  For convenience, redirects to push(1, loc, lambda, Op1, ..., Op2)
      */
     void push_tight(std::size_t loc, Scalar lambda, OperatorType Op1, OperatorType Op2);
     
@@ -193,38 +151,10 @@ public:
      *  @param Trans    SiteOperator acting as transfer operator on the local Hilbert space of site \p loc+1
      *  @param Op2      SiteOperator acting on the local Hilbert space of site \p loc+2
      *  @param lambda   Scalar of interaction strength that is multiplied to the operator
+     *
+     *  For convenience, redirects to push(2, loc, lambda, Op1, {Trans}, Op2)
      */
     void push_nextn(std::size_t loc, Scalar lambda, OperatorType Op1, OperatorType Trans, OperatorType Op2);
-
-	/**
-	 * Const reference to the local terms at lattice site \p loc.
-	 */
-	OperatorType const& localOps(std::size_t loc) const {return local[loc];}
-
-	/**
-	 * Const reference to the tight_in terms at lattice site \p loc.
-	 */
-	std::vector<OperatorType> const& tight_inOps(std::size_t loc) const {return tight_in[loc];}
-
-	/**
-	 * Const reference to the tight_out terms at lattice site \p loc.
-	 */
-	std::vector<OperatorType> const& tight_outOps(std::size_t loc) const {return tight_out[loc];}
-
-	/**
-	 * Const reference to the nextn_in terms at lattice site \p loc.
-	 */
-	std::vector<std::vector<OperatorType>> const& nextn_inOps(std::size_t loc) const {return nextn_in[loc];}
-
-	/**
-	 * Const reference to the nextn_out terms at lattice site \p loc.
-	 */
-	std::vector<std::vector<OperatorType>> const& nextn_outOps(std::size_t loc) const {return nextn_out[loc];}
-
-	/**
-	 * Const reference to the nextn terms.
-	 */
-	vector<OperatorType> const& localOps() const {return local;}
 
     /**
      *  @param loc      Lattice site
@@ -243,14 +173,15 @@ public:
     std::vector<std::string> get_info() const;
     
     /**
-     *  @param loc  Lattice site
-     *  @return The dimension of the local Hilbert space. If not set yet, this will return 0
+     *  @param  loc  Lattice site
+     *  @return The dimension of the local Hilbert space. If not set yet, this will return 0.
      */
     std::size_t Hilbert_dimension(std::size_t loc) const;
     
     /**
-     *  Constructs a vector of SuperMatrix from the compressed interactions. Compresses the interaction if necessary.
-     *  Resizes the first and last SuperMatrix to row/column for open boundary conditions
+     *  Constructs a vector of SuperMatrix from interactions. Compresses the interaction before.
+     *  Resizes the first and last SuperMatrix to row/column for open boundary conditions.
+     *  @return Vector of constructed SuperMatrix
      */
     std::vector<SuperMatrix<Symmetry,Scalar>> construct_Matrix();
     
@@ -261,44 +192,181 @@ public:
     
     
     /**
-     *  Scales all interactions by a given factor
+     *  Scales all interactions by a given factor.
      *  @param factor   The factor to scale the interactions with
      *  @param offset
      */
     void scale(double factor, double offset=0.);
     
     /**
-     *  Returns the number of lattice sites
-     *  @return N_sites
+     *  @return Number of lattice sites \p N_sites
      */
     std::size_t size() const {return N_sites;}
     
     /**
-     *  Casts instance of HamiltonianTerms to an instance with another scalar type
+     *  @return Cast instance of HamiltonianTerms with another scalar type
      */
     template<typename OtherScalar> HamiltonianTerms<Symmetry, OtherScalar> cast();
+    
+    /**
+     *  @return Const reference to the local terms at lattice site \p loc
+     */
+    OperatorType const& localOps(std::size_t loc) const {return local[loc];}
+    
+    /**
+     *  @return Const reference to the incoming \p n.-neighbour interaction terms at lattice site \p loc
+     */
+    std::vector<std::vector<OperatorType>> const& inOps(std::size_t n, std::size_t loc) const {assert(n > 1 and "Only possible for interactions with ranges > 1"); return incoming[n-1][loc];}
+    
+    /**
+     *  @return Const reference to the outgoing \p n.-neighbour interaction terms at lattice site \p loc
+     */
+    std::vector<std::vector<OperatorType>> const& outOps(std::size_t n, std::size_t loc) const {assert(n > 1 and "Only possible for interactions with ranges > 1"); return outgoing[n-1][loc];}
+    
+    /**
+     * Const reference to the transfer operator lists of \p n.-neighbour interactions starting at lattice site \p loc
+     */
+    std::vector<std::vector<OperatorType>> const& transferOps(std::size_t n, std::size_t loc) const {assert(n > 1 and "Only possible for interactions with ranges > 1"); return transfer[n-1][loc];}
+    
+    /**
+     *  @return Const reference to the incoming nearest-neighbour terms at lattice site \p loc
+     */
+    std::vector<OperatorType> const& tight_inOps(std::size_t loc) const {return incoming[0][loc][0];}
+    
+    /**
+     *  @return Const reference to the outgoing nearest-neighbour terms at lattice site \p loc
+     */
+    std::vector<OperatorType> const& tight_outOps(std::size_t loc) const {return outgoing[0][loc][0];}
+    
+    /**
+     * Const reference to the incoming next-nearest-neighbour terms at lattice site \p loc
+     */
+    std::vector<std::vector<OperatorType>> const& nextn_inOps(std::size_t loc) const {return incoming[1][loc];}
+    
+    /**
+     * Const reference to the outgoing next-nearest-neighbour terms at lattice site \p loc
+     */
+    std::vector<std::vector<OperatorType>> const& nextn_outOps(std::size_t loc) const {return outgoing[1][loc];}
 };
+
+template<typename Symmetry, typename Scalar> void HamiltonianTerms<Symmetry, Scalar>::assert_hilbert(std::size_t loc, int dim)
+{
+    if(hilbert_dimension[loc] == 0)
+    {
+        hilbert_dimension[loc] = dim;
+    }
+    else
+    {
+        assert(hilbert_dimension[loc] == dim and "Dimensions of operator and local Hilbert space do not match!");
+    }
+}
+
+template<typename Symmetry, typename Scalar> void HamiltonianTerms<Symmetry,Scalar>::
+push(std::size_t n, std::size_t loc, Scalar lambda, OperatorType outOp, std::vector<OperatorType> transOps, OperatorType inOp)
+{
+    assert(loc < N_sites and "Chosen lattice site out of bounds");
+    if(lambda != 0.)
+    {
+        if(n == 0)
+        {
+            //std::cout << "Local interaction at site " << loc << std::endl;
+            assert(outOp.Q == qvac and "Local operator is not a singlet");
+            assert_hilbert(loc, outOp.data.rows());
+            if(localSet[loc])
+            {
+                local[loc] += lambda * outOp;
+            }
+            else
+            {
+                local[loc] = lambda * outOp;
+                localSet[loc] = true;
+            }
+        }
+        else
+        {
+            //std::cout << n << ".-neighbour interaction between the sites " << loc << " and " << (loc+n)%N_sites << std::endl;
+            assert(transOps.size() == n-1 and "Distance does not match to number of transfer operators!");
+            if(n > n_max)
+            {
+                for(int i=n_max; i<n; ++i)
+                {
+                    std::vector<std::vector<MatrixType>> temp_coup(N_sites);
+                    coupling.push_back(temp_coup);
+                    std::vector<std::vector<std::vector<OperatorType>>> temp_ops(N_sites);
+                    outgoing.push_back(temp_ops);
+                    incoming.push_back(temp_ops);
+                    transfer.push_back(temp_ops);
+                }
+                n_max = n;
+            }
+            
+            std::ptrdiff_t transptr;
+            if(n == 1)
+            {
+                transptr = 0;
+                if(coupling[0][loc].size() == 0)
+                {
+                    Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> matrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>::Zero(1,1);
+                    std::vector<OperatorType> temp;
+                    
+                    coupling[0][loc].push_back(matrix);
+                    outgoing[0][loc].push_back(temp);
+                    incoming[0][(loc+1)%N_sites].push_back(temp);
+                }
+            }
+            else
+            {
+                transptr = std::distance(transfer[n-1][loc].begin(), find(transfer[n-1][loc].begin(), transfer[n-1][loc].end(), transOps));
+                if(transptr >= transfer[n-1][loc].size())    // If the operator cannot be found, push it to the corresponding terms and resize the interaction matrix
+                {
+                    transfer[n-1][loc].push_back(transOps);
+                    for(std::size_t t=0; t<n-1; ++t)
+                    {
+                        assert_hilbert((loc+t+1)%N_sites, transOps[t].data.rows());
+                    }
+                    
+                    Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> matrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>::Zero(1,1);
+                    std::vector<OperatorType> temp;
+                    
+                    coupling[n-1][loc].push_back(matrix);
+                    outgoing[n-1][loc].push_back(temp);
+                    incoming[n-1][(loc+n)%N_sites].push_back(temp);
+                }
+            }
+            
+            std::ptrdiff_t outptr = std::distance(outgoing[n-1][loc][transptr].begin(), find(outgoing[n-1][loc][transptr].begin(), outgoing[n-1][loc][transptr].end(), outOp));
+            if(outptr >= outgoing[n-1][loc][transptr].size())
+            {
+                assert_hilbert(loc, outOp.data.rows());
+                outgoing[n-1][loc][transptr].push_back(outOp);
+                coupling[n-1][loc][transptr].conservativeResize(outgoing[n-1][loc][transptr].size(), incoming[n-1][(loc+n)%N_sites][transptr].size());
+                coupling[n-1][loc][transptr].bottomRows(1).setZero();
+                hilbert_dimension[loc] = outOp.data.rows();
+                //std::cout << "Outgoing operator for " << n << ".-neighbour interaction between the sites " << loc << " and " << (loc+n)%N_sites << " was not found, so a new row is added to the coupling matrix and a " << outOp.Q << "-operator is pushed" << std::endl;
+            }
+            std::ptrdiff_t inptr = std::distance(incoming[n-1][(loc+n)%N_sites][transptr].begin(), find(incoming[n-1][(loc+n)%N_sites][transptr].begin(), incoming[n-1][(loc+n)%N_sites][transptr].end(), inOp));
+            if(inptr >= incoming[n-1][(loc+n)%N_sites][transptr].size())
+            {
+                assert_hilbert((loc+n)%N_sites, inOp.data.rows());
+                incoming[n-1][(loc+n)%N_sites][transptr].push_back(inOp);
+                coupling[n-1][loc][transptr].conservativeResize(outgoing[n-1][loc][transptr].size(), incoming[n-1][(loc+n)%N_sites][transptr].size());
+                coupling[n-1][loc][transptr].rightCols(1).setZero();
+                hilbert_dimension[(loc+n)%N_sites] = inOp.data.rows();
+                //std::cout << "Incoming operator for " << n << ".-neighbour interaction between the sites " << loc << " and " << (loc+n)%N_sites << " was not found, so no new column is added to the coupling matrix and a " << inOp.Q << "-operator is pushed" << std::endl;
+
+            }
+            coupling[n-1][loc][transptr](outptr, inptr) += lambda;
+        }
+    }
+}
 
 template<typename Symmetry, typename Scalar> HamiltonianTerms<Symmetry,Scalar>::
 HamiltonianTerms(std::size_t L, bool BC) : N_sites(L)
 {
     info.resize(N_sites);
-    hilbert_dimension.resize(N_sites);
+    hilbert_dimension.resize(N_sites, 0);
     local.resize(N_sites);
-    localSet.resize(N_sites);
-    tight_in.resize(N_sites);
-    tight_out.resize(N_sites);
-    tight_coupl.resize(N_sites);
-    nextn_in.resize(N_sites);
-    nextn_out.resize(N_sites);
-    nextn_TransOps.resize(N_sites);
-    nextn_coupl.resize(N_sites);
-    for(std::size_t loc=0; loc<N_sites; ++loc)
-    {
-        hilbert_dimension[loc] = 0;
-        tight_coupl[loc].resize(0,0);
-        localSet[loc] = false;
-    }
+    localSet.resize(N_sites, false);
     OPEN_BC = BC;
 }
 
@@ -358,303 +426,299 @@ Hilbert_dimension(std::size_t loc) const
 template<typename Symmetry, typename Scalar> void HamiltonianTerms<Symmetry,Scalar>::
 push_local(std::size_t loc, Scalar lambda, OperatorType Op)
 {
-    if(lambda != 0.)
-    {
-        assert(loc < N_sites and "Chosen lattice site out of bounds");
-        assert(Op.Q == qvac and "Local operator is not a singlet");
-        if(!localSet[loc])
-        {
-            localSet[loc] = true;
-            local[loc] = lambda*Op;
-            hilbert_dimension[loc] = Op.data.rows();
-        }
-        else
-        {
-            assert(hilbert_dimension[loc] == Op.data.rows() and "Dimensions of operator and local Hilbert space do not match!");
-            local[loc] += lambda*Op;
-        }
-    }
+    push(0, loc, lambda, Op, {}, Op);
 }
 
 template<typename Symmetry, typename Scalar> void HamiltonianTerms<Symmetry,Scalar>::
 push_tight(std::size_t loc, Scalar lambda, OperatorType Op1, OperatorType Op2)
 {
-    if(lambda != 0.)
-    {
-        assert(loc < N_sites and "Chosen lattice site out of bounds");
-        assert((!OPEN_BC or loc+1 < N_sites) and "Chosen lattice site out of bounds");
-        assert(hilbert_dimension[loc] == 0 or hilbert_dimension[loc] == Op1.data.rows() and "Dimensions of first operator and local Hilbert space do not match");
-        assert(hilbert_dimension[(loc+1)%N_sites] == 0 or hilbert_dimension[(loc+1)%N_sites] == Op2.data.rows() and 
-               "Dimensions of second operator and local Hilbert space do not match");
-        COMPRESSED = false;
-        std::ptrdiff_t firstit = std::distance(tight_out[loc].begin(), find(tight_out[loc].begin(), tight_out[loc].end(), Op1));
-        if(firstit >= tight_out[loc].size())    // If the operator cannot be found, push it to the corresponding terms and resize the interaction matrix
-        {
-            tight_out[loc].push_back(Op1);
-            tight_coupl[loc].conservativeResize(tight_out[loc].size(), tight_in[(loc+1)%N_sites].size());
-            tight_coupl[loc].bottomRows(1).setZero();
-            
-            hilbert_dimension[loc] = Op1.data.rows();
-        }
-        std::ptrdiff_t secondit = std::distance(tight_in[(loc+1)%N_sites].begin(), find(tight_in[(loc+1)%N_sites].begin(), tight_in[(loc+1)%N_sites].end(), Op2));
-        if(secondit >= tight_in[(loc+1)%N_sites].size())    // If the operator cannot be found, push it to the corresponding terms and resize the interaction matrix
-        {
-            tight_in[(loc+1)%N_sites].push_back(Op2);
-            tight_coupl[loc].conservativeResize(tight_out[loc].size(), tight_in[(loc+1)%N_sites].size());
-            tight_coupl[loc].rightCols(1).setZero();
-            hilbert_dimension[(loc+1)%N_sites] = Op2.data.rows();
-        }
-        tight_coupl[loc](firstit, secondit) += lambda;
-    }
+    push(1, loc, lambda, Op1, {}, Op2);
 }
 
 template<typename Symmetry, typename Scalar> void HamiltonianTerms<Symmetry,Scalar>::
 push_nextn(std::size_t loc, Scalar lambda, OperatorType Op1, OperatorType Trans, OperatorType Op2)
 {
-	if (lambda != 0.)
-	{
-		assert(loc < N_sites and "Chosen lattice site out of bounds");
-		assert((!OPEN_BC || loc+2 < N_sites) and "Chosen lattice site out of bounds");
-		assert(hilbert_dimension[loc] == 0 or hilbert_dimension[loc] == Op1.data.rows() and 
-		       "Dimensions of first operator and local Hilbert space do not match");
-		assert(hilbert_dimension[(loc+1)%N_sites] == 0 or hilbert_dimension[(loc+1)%N_sites] == Trans.data.rows() and 
-		       "Dimensions of transfer operator and local Hilbert space do not match");
-		assert(hilbert_dimension[(loc+2)%N_sites] == 0 or hilbert_dimension[(loc+2)%N_sites] == Op2.data.rows() and 
-		       "Dimensions of second operator and local Hilbert space do not match");
-		//assert(Trans.Q == qvac and "Transfer operator is not a singlet");
-		COMPRESSED = false;
-		
-		std::ptrdiff_t transit = std::distance(nextn_TransOps[(loc+1)%N_sites].begin(), 
-		                                       find(nextn_TransOps[(loc+1)%N_sites].begin(),
-		                                            nextn_TransOps[(loc+1)%N_sites].end(), Trans));
-		// If the operator cannot be found, push it to the corresponding terms and create a new container for interactions mediated by this transfer operator
-		if (transit >= nextn_TransOps[(loc+1)%N_sites].size())
-		{
-			nextn_TransOps[(loc+1)%N_sites].push_back(Trans);
-			hilbert_dimension[(loc+1)%N_sites] = Trans.data.rows();
-			Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> matrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>::Zero(1,1);
-			nextn_coupl[(loc+1)%N_sites].push_back(matrix);
-			std::vector<OperatorType> temp;
-			nextn_out[loc].push_back(temp);
-			nextn_in[(loc+2)%N_sites].push_back(temp);
-		}
-		
-		std::ptrdiff_t firstit = std::distance(nextn_out[loc][transit].begin(), 
-		                                       find(nextn_out[loc][transit].begin(), 
-		                                            nextn_out[loc][transit].end(), Op1));
-		// If the operator cannot be found, push it to the corresponding terms and resize the interaction matrix
-		if (firstit >= nextn_out[loc][transit].size())
-		{
-			nextn_out[loc][transit].push_back(Op1);
-			nextn_coupl[(loc+1)%N_sites][transit].conservativeResize(nextn_out[loc][transit].size(), nextn_in[(loc+2)%N_sites][transit].size());
-			nextn_coupl[(loc+1)%N_sites][transit].bottomRows(1).setZero();
-			hilbert_dimension[loc] = Op1.data.rows();
-		}
-		
-		std::ptrdiff_t secondit = std::distance(nextn_in[(loc+2)%N_sites][transit].begin(), 
-		                                        find(nextn_in[(loc+2)%N_sites][transit].begin(), 
-		                                             nextn_in[(loc+2)%N_sites][transit].end(), Op2));
-		// If the operator cannot be found, push it to the corresponding terms and resize the interaction matrix
-		if (secondit >= nextn_in[(loc+2)%N_sites][transit].size())
-		{
-			nextn_in[(loc+2)%N_sites][transit].push_back(Op2);
-			nextn_coupl[(loc+1)%N_sites][transit].conservativeResize(nextn_out[loc][transit].size(), nextn_in[(loc+2)%N_sites][transit].size());
-			nextn_coupl[(loc+1)%N_sites][transit].rightCols(1).setZero();
-			hilbert_dimension[(loc+2)%N_sites] = Op2.data.rows();
-		}
-		nextn_coupl[(loc+1)%N_sites][transit](firstit, secondit) += lambda;
-	}
+    push(2, loc, lambda, Op1, {Trans}, Op2);
 }
 
-template<typename Symmetry, typename Scalar> std::vector<SuperMatrix<Symmetry, Scalar>> HamiltonianTerms<Symmetry,Scalar>::
-construct_Matrix()
+template<typename Symmetry, typename Scalar> void HamiltonianTerms<Symmetry, Scalar>::
+compress(std::vector<std::vector<std::vector<std::vector<OperatorType>>>> &outgoing_compressed, std::vector<std::vector<std::vector<std::vector<OperatorType>>>> &incoming_compressed)
 {
-	if (!COMPRESSED) compress();
-	std::vector<SuperMatrix<Symmetry,Scalar> > G;
-	
-	for (std::size_t loc=0; loc<N_sites; ++loc)
-	{
-		SuperMatrix<Symmetry,Scalar> S;
-		if (hilbert_dimension[loc] == 0) // Create a trivial SuperMatrix if no operator has been set.
-		{
-			hilbert_dimension[loc] = 1;
-			OperatorType Id(Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView(),Symmetry::qvacuum());
-			S.set(2,2,hilbert_dimension[loc]);
-			S(0,0) = Id;
-			S(1,1) = Id;
-		}
-		else
-		{
-			// Stores the total number of transfer operators at lattice site loc
-			std::size_t transfer = 0;
-			// Stores the total number of next-nearest-neighbour interaction terms with loc-2
-			std::size_t nextn_rows = 0;
-			// Stores the total number of next-nearest-neighbour interaction terms with loc+2
-			std::size_t nextn_cols = 0;
-			for (std::size_t t=0; t<nextn_in_compressed[loc].size(); ++t)
-			{
-				nextn_rows += nextn_in_compressed[loc][t].size();
-			}
-			for (std::size_t t=0; t<nextn_out_compressed[loc].size(); ++t)
-			{
-				nextn_cols += nextn_out_compressed[loc][t].size();
-			}
-			for (std::size_t t=0; t<nextn_trans_compressed[loc].size(); ++t)
-			{
-				transfer += nextn_trans_compressed[loc][t].size();
-			}
-			
-			std::size_t rows = 2 + tight_in_compressed[loc].size()  + nextn_rows + transfer; // Total number of rows
-			std::size_t cols = 2 + tight_out_compressed[loc].size() + nextn_cols + transfer; // Total number of columns
-//			cout << "tight_in_compressed[loc].size()=" << tight_in_compressed[loc].size() << ", nextn_rows=" << nextn_rows << ", transfer=" << transfer << endl;
-//			cout << "tight_out_compressed[loc].size()=" << tight_out_compressed[loc].size() << ", nextn_rows=" << nextn_cols << ", transfer=" << transfer << endl;
-//			cout << "rows=" << rows << ", cols=" << cols << endl;
-			S.set(rows,cols,hilbert_dimension[loc]);
-			OperatorType Id(Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView(),Symmetry::qvacuum());
-			std::size_t current = 0;
-			S(current++,0) = Id; // Upper left corner: identity
-			
-			for (std::size_t i=0; i<tight_in_compressed[loc].size(); ++i)
-			{
-				// First column: Incoming tight-binding terms
-				S(current++,0) = tight_in_compressed[loc][i]; 
-			}
-			for (std::size_t t=0; t<nextn_in_compressed[loc].size(); ++t)
-			for (std::size_t i=0; i<nextn_in_compressed[loc][t].size(); ++i)
-			{
-//				cout << "loc=" << loc << ", r=" << current << "/last=" << rows-1 << ", c=" << 0 << "/last=" << cols-1
-//				     << endl
-//				     << "nextn_in_compressed=" << endl << MatrixXd(nextn_in_compressed[loc][t][i].data) << endl << endl;
-				// First column: Incoming NNN terms, ordered w.r.t. their transfer operators
-				S(current++,0) = nextn_in_compressed[loc][t][i];
-			}
-			
-			// First column: A sufficient number of rows is skipped for the transfer operators
-			
-			current = 0;
-			if (!localSet[loc]) // If no local interaction has been added, the local interaction becomes a dummy SiteOperator with correct dimension
-			{
-				local[loc] = 0*Id;
-			}
-			
-			S(rows-1,current++) = local[loc]; // Lower left corner: Local interaction
-			
-			for (std::size_t t=0; t<tight_out_compressed[loc].size(); ++t)
-			{
-				S(rows-1, current++) = tight_out_compressed[loc][t]; //  Last row: Outgoing tight-binding terms
-			}
-			
-			current += transfer; // Last row: A sufficient number of columns is skipped for the transfer operators
-			
-			for (std::size_t t=0; t<nextn_out_compressed[loc].size(); ++t)
-			for (std::size_t i=0; i<nextn_out_compressed[loc][t].size(); ++i)
-			{
-//				cout << "loc=" << loc << ", r=" << rows-1 << "/last=" << rows-1 << ", c=" << current << "/last=" << cols-1
-//				     << endl
-//				     << "nextn_out_compressed=" << endl << MatrixXd(nextn_out_compressed[loc][t][i].data) << endl << endl;
-				// Last row: Outgoing NNN terms, ordered w.r.t. their transfer operators
-				S(rows-1,current++) = nextn_out_compressed[loc][t][i];
-			}
-			S(rows-1,cols-1) = Id; // Lower right corner: Identity
-			
-			std::size_t row_start = 1 + tight_in_compressed[loc].size() + nextn_rows; // Where does the block of transfer operators start?
-			std::size_t col_start = 1 + tight_out_compressed[loc].size();
-			
-			current = 0;
-			for (std::size_t t=0; t<nextn_trans_compressed[loc].size(); ++t)
-			for (std::size_t i=0; i<nextn_trans_compressed[loc][t].size(); ++i)
-			{
-				// Since the interaction for each transfer operator is diagonal: only diagonal elements of the transfer block are set.
-				S(row_start+current,col_start+current) = nextn_trans_compressed[loc][t][i];
-//				cout << endl 
-//				     << "loc=" << loc
-//				     << ", row_start+current=" << row_start+current << "/last=" << rows-1 << ", col_start+current=" << col_start+current << "/last=" << cols-1
-//				     << endl << MatrixXd(nextn_trans_compressed[loc][t][i].data) << endl << endl;
-				current++;
-			}
-		}
-		
-		if (OPEN_BC and loc==0)
-		{
-			G.push_back(S.row(S.rows()-1));
-		}
-		else if (OPEN_BC and loc==N_sites-1)
-		{
-			G.push_back(S.col(0));
-		}
-		else
-		{
-			G.push_back(S);
-		}
-	}
-	return G;
-}
-
-template<typename Symmetry, typename Scalar> void HamiltonianTerms<Symmetry,Scalar>::
-compress()
-{
-    tight_in_compressed.resize(N_sites);
-    tight_out_compressed.resize(N_sites);
-    nextn_in_compressed.resize(N_sites);
-    nextn_out_compressed.resize(N_sites);
-    nextn_trans_compressed.resize(N_sites);
+    outgoing_compressed.resize(n_max);
+    incoming_compressed.resize(n_max);
+    outgoing_compressed[0].resize(N_sites);
+    incoming_compressed[0].resize(N_sites);
     for(std::size_t loc=0; loc<N_sites; ++loc)
     {
-        nextn_in_compressed[loc].resize(nextn_in[loc].size());
-        nextn_out_compressed[loc].resize(nextn_out[loc].size());
-        nextn_trans_compressed[loc].resize(nextn_coupl[loc].size());
-    }
-    for(std::size_t loc=0; loc<N_sites; ++loc)
-    {
-        if(tight_coupl[loc].rows() > tight_coupl[loc].cols())
+        outgoing_compressed[0][loc].resize(outgoing[0][loc].size());
+        incoming_compressed[0][(loc+1)%N_sites].resize(incoming[0][(loc+1)%N_sites].size());
+        if(outgoing[0][loc].size() > 0)
         {
-            tight_out_compressed[loc] = tight_out[loc] * tight_coupl[loc];
-            tight_in_compressed[(loc+1)%N_sites] = tight_in[(loc+1)%N_sites];
-        }
-        else
-        {
-            tight_out_compressed[loc] = tight_out[loc];
-            tight_in_compressed[(loc+1)%N_sites] = tight_coupl[loc] * tight_in[(loc+1)%N_sites];
-        }
-        for(std::size_t t=0; t<nextn_coupl[(loc+1)%N_sites].size(); ++t)
-        {
-            if(nextn_coupl[(loc+1)%N_sites][t].rows() > nextn_coupl[(loc+1)%N_sites][t].cols())
+            if(outgoing[0][loc][0].size() < incoming[0][(loc+1)%N_sites][0].size())
             {
-                nextn_out_compressed[loc][t] = nextn_out[loc][t] * nextn_coupl[(loc+1)%N_sites][t];
-                nextn_in_compressed[(loc+2)%N_sites][t] = nextn_in[(loc+2)%N_sites][t];
-                
-                for(std::size_t i=0; i<nextn_coupl[(loc+1)%N_sites][t].cols(); ++i)
-                {
-                    nextn_trans_compressed[(loc+1)%N_sites][t].push_back(nextn_TransOps[(loc+1)%N_sites][t]);
-                }
+                //outgoing_compressed[0][loc].push_back(outgoing[0][loc][0]);
+                //incoming_compressed[0][(loc+1)%N_sites].push_back(coupling[0][loc][0] * incoming[0][(loc+1)%N_sites][0]);
+                outgoing_compressed[0][loc][0] = outgoing[0][loc][0];
+                incoming_compressed[0][(loc+1)%N_sites][0] = coupling[0][loc][0] * incoming[0][(loc+1)%N_sites][0];
             }
             else
             {
-                nextn_out_compressed[loc][t] = nextn_out[loc][t];
-                nextn_in_compressed[(loc+2)%N_sites][t] = nextn_coupl[(loc+1)%N_sites][t] * nextn_in[(loc+2)%N_sites][t];
-                for(std::size_t i=0; i<nextn_coupl[(loc+1)%N_sites][t].rows(); ++i)
+                //outgoing_compressed[0][loc].push_back(outgoing[0][loc][0] * coupling[0][loc][0]);
+                //incoming_compressed[0][(loc+1)%N_sites].push_back(incoming[0][(loc+1)%N_sites][0]);
+                outgoing_compressed[0][loc][0] = outgoing[0][loc][0] * coupling[0][loc][0];
+                incoming_compressed[0][(loc+1)%N_sites][0] = incoming[0][(loc+1)%N_sites][0];
+            }
+        }
+    }
+    for(std::size_t n=1; n<n_max; ++n)
+    {
+        outgoing_compressed[n].resize(N_sites);
+        incoming_compressed[n].resize(N_sites);
+        for(std::size_t loc=0; loc<N_sites; ++loc)
+        {
+            outgoing_compressed[n][loc].resize(transfer[n][loc].size());
+            incoming_compressed[n][(loc+n+1)%N_sites].resize(transfer[n][loc].size());
+            for(std::size_t t=0; t<transfer[n][loc].size(); ++t)
+            {
+                if(outgoing[n][loc][t].size() < incoming[n][(loc+n+1)%N_sites][t].size())
                 {
-                    nextn_trans_compressed[(loc+1)%N_sites][t].push_back(nextn_TransOps[(loc+1)%N_sites][t]);
+                    outgoing_compressed[n][loc][t] = outgoing[n][loc][t];
+                    incoming_compressed[n][(loc+n+1)%N_sites][t] = coupling[n][loc][t] * incoming[n][(loc+n+1)%N_sites][t];
+                }
+                else
+                {
+                    outgoing_compressed[n][loc][t] = outgoing[n][loc][t] * coupling[n][loc][t];
+                    incoming_compressed[n][(loc+n+1)%N_sites][t] = incoming[n][(loc+n+1)%N_sites][t];
                 }
             }
         }
     }
-    COMPRESSED = true;
 }
+
+template<typename Symmetry, typename Scalar> std::vector<SuperMatrix<Symmetry, Scalar>> HamiltonianTerms<Symmetry, Scalar>::
+construct_Matrix()
+{
+    std::vector<std::vector<std::vector<std::vector<OperatorType>>>> outgoing_compressed;
+    std::vector<std::vector<std::vector<std::vector<OperatorType>>>> incoming_compressed;
+    compress(outgoing_compressed, incoming_compressed);
+
+    std::vector<SuperMatrix<Symmetry, Scalar>> G;
+    for (std::size_t loc=0; loc<N_sites; ++loc)
+    {
+        SuperMatrix<Symmetry,Scalar> S;
+        if(hilbert_dimension[loc] == 0) // Create a trivial SuperMatrix if no operator has been set.
+        {
+            hilbert_dimension[loc] = 1;
+            OperatorType Id(Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView(),Symmetry::qvacuum());
+            S.set(2,2,hilbert_dimension[loc]);
+            S(0,0) = Id;
+            S(1,1) = Id;
+            //std::cout << "SuperMatrix at site " << loc << " is trivial (no operators have been added there)\n" << std::endl;
+        }
+        else if(n_max == 0)
+        {
+            //std::cout << "Filling the SuperMatrix at site " << loc << ":" << std::endl;
+            OperatorType Id(Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView(),Symmetry::qvacuum());
+            S.set(2,2,hilbert_dimension[loc]);
+            S(0,0) = Id;
+            //std::cout << "\tEntry (0,0): Identity" << std::endl;
+            S(1,0) = local[loc];
+            //std::cout << "\tEntry (1,0): Local term" << std::endl;
+            S(1,1) = Id;
+            //std::cout << "\tEntry (1,1): Identity" << std::endl;
+
+            //std::cout << "SuperMatrix at site " << loc << " has dimension 2x2, dimension of local Hilbert space: " << hilbert_dimension[loc] << "\n" << std::endl;
+        }
+        else
+        {
+            //std::cout << "Filling the SuperMatrix at site " << loc << ":" << std::endl;
+            
+            std::size_t rows = 2;
+            std::size_t cols = 2;
+            if(incoming_compressed[0][loc].size() > 0)
+            {
+                rows += incoming_compressed[0][loc][0].size();
+            }
+            if(outgoing_compressed[0][loc].size() > 0)
+            {
+                cols += outgoing_compressed[0][loc][0].size();
+            }
+            for(std::size_t n=1; n<n_max; ++n)
+            {
+                for(std::size_t t=0; t<incoming_compressed[n][loc].size(); ++t)
+                {
+                    rows += incoming_compressed[n][loc][t].size();
+                }
+                for(std::size_t t=0; t<outgoing_compressed[n][loc].size(); ++t)
+                {
+                    cols += outgoing_compressed[n][loc][t].size();
+                }
+
+                for(std::size_t m=0; m<n; ++m)
+                {
+                    for(std::size_t t=0; t<transfer[n][(N_sites+loc-m-1)%N_sites].size(); ++t)
+                    {
+                        rows += outgoing_compressed[n][(N_sites+loc-m-1)%N_sites][t].size();
+                        cols += outgoing_compressed[n][(N_sites+loc-m-1)%N_sites][t].size();
+                    }
+                }
+            }
+            
+            OperatorType Id(Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView(),Symmetry::qvacuum());
+            S.set(rows, cols, hilbert_dimension[loc]);
+            S(0,0) = Id;
+            //std::cout << "\tEntry (0,0): Identity" << std::endl;
+
+            
+            std::size_t current = 1;
+            if(incoming_compressed[0][loc].size() > 0)
+            {
+                for(std::size_t i=0; i<incoming_compressed[0][loc][0].size(); ++i)
+                {
+                    //std::cout << "\tEntry (" << current << ",0): Incoming next-neighbour interaction term" << std::endl;
+                    S(current++, 0) = incoming_compressed[0][loc][0][i];
+                }
+            }
+            
+            for(std::size_t n=1; n<n_max; ++n)
+            {
+                for(std::size_t t=0; t<incoming_compressed[n][loc].size(); ++t)
+                {
+                    for(std::size_t i=0; i<incoming_compressed[n][loc][t].size(); ++i)
+                    {
+                        //std::cout << "\tEntry (" << current << ",0): Incoming " << n+1 << ".-neighbour interaction term" << std::endl;
+                        S(current++, 0) = incoming_compressed[n][loc][t][i];
+                    }
+                }
+                std::size_t temp = current;
+                
+                for(std::size_t m=0; m<n; ++m)
+                {
+                    for(std::size_t t=0; t<transfer[n][(N_sites+loc-m-1)%N_sites].size(); ++t)
+                    {
+                        current += outgoing_compressed[n][(N_sites+loc-m-1)%N_sites][t].size();
+                    }
+                }
+                if(temp < current)
+                {
+                    //std::cout << "\tEntries (" << temp << ",0)-(" << current-1 << ",0): Skipped due to transfer operators of " << n+1 << ".-neighbour interactions" << std::endl;
+                }
+            }
+            
+            if (!localSet[loc]) // If no local interaction has been added, the local interaction becomes a dummy SiteOperator with correct dimension
+            {
+                local[loc] = 0*Id;
+            }
+            S(rows-1,0) = local[loc];
+            
+            //std::cout << "\tEntry (" << rows-1 << ",0): Local term" << std::endl;
+            
+            current = 1;
+            
+            if(outgoing_compressed[0][loc].size() > 0)
+            {
+                for(std::size_t i=0; i<outgoing_compressed[0][loc][0].size(); ++i)
+                {
+                    //std::cout << "\tEntry (" << rows-1 << "," << current << "): Outgoing next-neighbour interaction term" << std::endl;
+                    S(rows-1, current++) = outgoing_compressed[0][loc][0][i];
+                }
+            }
+            
+            for(std::size_t n=1; n<n_max; ++n)
+            {
+                std::size_t temp = current;
+                
+                for(std::size_t m=0; m<n; ++m)
+                {
+                    for(std::size_t t=0; t<transfer[n][(N_sites+loc-m-1)%N_sites].size(); ++t)
+                    {
+                        current += outgoing_compressed[n][(N_sites+loc-m-1)%N_sites][t].size();
+                    }
+                }
+                if(temp < current)
+                {
+                    //std::cout << "\tEntries (" << rows-1 << "," << temp << ")-(" << rows-1  << "," << current-1 << "): Skipped due to transfer operators of " << n+1 << ".-neighbour interactions" << std::endl;
+                }
+                for(std::size_t t=0; t<outgoing_compressed[n][loc].size(); ++t)
+                {
+                    for(std::size_t i=0; i<outgoing_compressed[n][loc][t].size(); ++i)
+                    {
+                        //std::cout << "\tEntry (" << rows-1 << "," << current << "): Outgoing " << n+1 << ".-neighbour interaction term" << std::endl;
+                        S(rows-1, current++) = outgoing_compressed[n][loc][t][i];
+                    }
+                }
+            }
+            
+            S(rows-1,cols-1) = Id;
+            //std::cout << "\tEntry (" << rows-1 << "," << cols-1 << "): Identity" << std::endl;
+            
+            std::size_t current_row = 1;
+            std::size_t current_col = 1;
+            if(incoming_compressed[0][loc].size() > 0)
+            {
+                current_row += incoming_compressed[0][loc][0].size();
+
+            }
+            if(outgoing_compressed[0][loc].size() > 0)
+            {
+                current_col += outgoing_compressed[0][loc][0].size();
+            }
+            for(std::size_t n=1; n<n_max; ++n)
+            {
+                for(std::size_t t=0; t<incoming_compressed[n][loc].size(); ++t)
+                {
+                    current_row += incoming_compressed[n][loc][t].size();
+                }
+                for(std::size_t m=0; m<n; ++m)
+                {
+                    for(std::size_t t=0; t<transfer[n][(N_sites + loc - n + m) % N_sites].size(); ++t)
+                    {
+                        for(std::size_t i=0; i<outgoing_compressed[n][(N_sites + loc - n + m)%N_sites][t].size(); ++i)
+                        {
+                            //std::cout << "\tEntry (" << current_row << "," << current_col << "): Transfer operator for a " << n+1 << ".-neighbour interaction ranging from site " << (N_sites + loc - n + m)%N_sites << " to site " << (loc + 1 + m)%N_sites << std::endl;
+                            S(current_row++, current_col++) = transfer[n][(N_sites + loc - n + m)%N_sites][t][n-1-m];
+                        }
+                    }
+                }
+                for(std::size_t t=0; t<outgoing_compressed[n][loc].size(); ++t)
+                {
+                    current_col += outgoing_compressed[n][loc][t].size();
+                }
+            }
+            
+            //std::cout << "SuperMatrix at site " << loc << " has dimension " << rows << "x" << cols << ", dimension of local Hilbert space: " << hilbert_dimension[loc] << "\n" << std::endl;
+        }
+        if (OPEN_BC and loc==0)
+        {
+            G.push_back(S.row(S.rows()-1));
+        }
+        else if (OPEN_BC and loc==N_sites-1)
+        {
+            G.push_back(S.col(0));
+        }
+        else
+        {
+            G.push_back(S);
+        }
+    }
+    return G;
+}
+
 
 template<typename Symmetry, typename Scalar> void HamiltonianTerms<Symmetry,Scalar>::
 scale (double factor, double offset)
 {
-    COMPRESSED = false;
     if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
     {
         for (std::size_t loc=0; loc<N_sites; ++loc)
         {
-            local[loc] *= factor;
-            tight_coupl[loc] *= factor;
-            for(std::size_t t=0; t<nextn_coupl[loc].size(); ++t)
+            local[loc] = factor * local[loc];
+            for(std::size_t n=0; n<n_max; ++n)
             {
-                nextn_coupl[loc][t] *= factor;
+                for(std::size_t t=0; t<coupling[n][loc].size(); ++t)
+                {
+                    coupling[n][loc][t] *= factor;
+                }
             }
         }
     }
@@ -667,7 +731,7 @@ scale (double factor, double offset)
             {
                 SiteOperator<Symmetry,Scalar> Id;
                 Id.data = Matrix<Scalar,Dynamic,Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView();
-                push_local(offset, Id);
+                push_local(loc, offset, Id);
             }
         }
     }
@@ -687,22 +751,38 @@ cast()
             other.save_label(loc, info[loc][i]);
         }
         other.push_local(loc, 1., local[loc].template cast<OtherScalar>());
-        Eigen::Matrix<OtherScalar, Eigen::Dynamic, Eigen::Dynamic> other_tight_coupl = tight_coupl[loc].template cast<OtherScalar>();
-        for(std::size_t i=0; i<tight_out[loc].size(); ++i)
+        
+        if(outgoing[0][loc].size() > 0)
         {
-            for(std::size_t j=0; j<tight_in[(loc+1)%N_sites].size(); ++j)
+            Eigen::Matrix<OtherScalar, Eigen::Dynamic, Eigen::Dynamic> other_coupling = coupling[0][loc][0].template cast<OtherScalar>();
+            for(std::size_t i=0; i<other_coupling.rows(); ++i)
             {
-                other.push_tight(loc, other_tight_coupl(i,j), tight_out[loc][i].template cast<OtherScalar>(), tight_in[(loc+1)%N_sites][j].template cast<OtherScalar>());
+                for(std::size_t j=0; j<other_coupling.cols(); ++j)
+                {
+                    SiteOperator<Symmetry, OtherScalar> other_out = outgoing[0][loc][0][i].template cast<OtherScalar>();
+                    SiteOperator<Symmetry, OtherScalar> other_in = incoming[0][(loc+1)%N_sites][0][j].template cast<OtherScalar>();
+                    other.push_tight(loc, other_coupling(i,j), other_out, other_in);
+                }
             }
         }
-        for(std::size_t t=0; t<nextn_out[loc].size(); ++t)
+        for(std::size_t n=1; n<n_max; ++n)
         {
-            Eigen::Matrix<OtherScalar, Eigen::Dynamic, Eigen::Dynamic> other_nextn_coupl = nextn_coupl[loc][t].template cast<OtherScalar>();
-            for(std::size_t i=0; i<nextn_out[loc][t].size(); ++i)
+            for(std::size_t t=0; t<transfer[n][loc].size(); ++t)
             {
-                for(std::size_t j=0; j<nextn_in[(loc+2)%N_sites][t].size(); ++j)
+                Eigen::Matrix<OtherScalar, Eigen::Dynamic, Eigen::Dynamic> other_coupling = coupling[n][loc][t].template cast<OtherScalar>();
+                for(std::size_t i=0; i<other_coupling.rows(); ++i)
                 {
-                    other.push_nextn(loc, other_nextn_coupl(i,j), nextn_out[loc][t][i].template cast<OtherScalar>(), nextn_TransOps[(loc+1)%N_sites][t].template cast<OtherScalar>(), nextn_in[(loc+2)%N_sites][t][j].template cast<OtherScalar>());
+                    for(std::size_t j=0; j<other_coupling.cols(); ++j)
+                    {
+                        SiteOperator<Symmetry, OtherScalar> other_out = outgoing[n][loc][t][i].template cast<OtherScalar>();
+                        SiteOperator<Symmetry, OtherScalar> other_in = incoming[n][(loc+1+n)%N_sites][t][j].template cast<OtherScalar>();
+                        std::vector<SiteOperator<Symmetry, OtherScalar>> other_transfer;
+                        for(std::size_t k=0; k<transfer[n][loc][t].size(); ++k)
+                        {
+                            other_transfer.push_back(transfer[n][loc][t][k].template cast<OtherScalar>());
+                        }
+                        other.push(n+1, loc, other_coupling(i,j), other_out, other_transfer, other_in);
+                    }
                 }
             }
         }

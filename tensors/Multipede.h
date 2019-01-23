@@ -35,16 +35,22 @@ typedef typename MatrixType::Scalar Scalar;
 	
 	Multipede(){}
 	
-	/**Converts a Biped to a Tripod, adding a trivial middle leg equal to the vacuum.*/
-	Multipede (const Biped<Symmetry,MatrixType> &B)
+	/**
+	 * Converts a Biped to a Tripod, adding a trivial middle leg equal to the vacuum.
+	 * Made explicit to prohibit automatic conversion between Biped and Multipede.
+	 */
+	explicit Multipede (const Biped<Symmetry,MatrixType> &B, qType Q = Symmetry::qvacuum())
 	{
 		assert(Nlegs == 3);
 		for (size_t q=0; q<B.dim; ++q)
 		{
-			assert(B.in[q] == B.out[q]);
-			boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[1][1]);
-			Mtmpvec[0][0] = B.block[q];
-			push_back(qarray3<Symmetry::Nq>{B.in[q], B.out[q], Symmetry::qvacuum()}, Mtmpvec);
+			// assert(B.in[q] == B.out[q]);
+			if (Symmetry::triangle(qarray3<Symmetry::Nq>{B.in[q], Q, B.out[q]}))
+			{
+				boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[1][1]);
+				Mtmpvec[0][0] = B.block[q];
+				push_back(qarray3<Symmetry::Nq>{B.in[q], B.out[q], Q}, Mtmpvec);
+			}
 		}
 	}
 	
@@ -238,6 +244,7 @@ template<size_t Nlegs, typename Symmetry, typename MatrixType>
 void Multipede<Nlegs,Symmetry,MatrixType>::
 addScale (const Scalar &factor, const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs)
 {
+	if (abs(factor) < 1.e-14) {return;}
 	vector<qarray3<Symmetry::Nq> > matching_blocks;
 	Multipede<Nlegs,Symmetry,MatrixType> Mout;
 	

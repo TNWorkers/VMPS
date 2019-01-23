@@ -44,6 +44,7 @@ parser.add_argument('-save', action='store', default=False)
 parser.add_argument('-set', action='store', default='001')
 args = parser.parse_args()
 
+<<<<<<< HEAD
 def obsFilename(U,V,J):
     return "U="+str(U)+"_V="+str(abs(V))+"_J="+str(J)
 
@@ -158,6 +159,96 @@ ax6 = fig.add_subplot(236)
 im6 = ax6.imshow(error, interpolation='nearest', origin='lower', norm=LogNorm(), cmap=cmap, extent=[Vs[0],Vs[-1],Us[0],Us[-1]])
 ax6.set_title('state error')
 fig.colorbar(im6)
+=======
+U = myRound(float(args.U))
+V = myRound(float(args.V))
+J = myRound(float(args.J))
+
+f = h5py.File('./toydata/obs/U='+str(U)+'_V='+str(V)+'_J='+str(J)+'.h5','r')
+
+Chis = []
+logChis = []
+S0 = []
+S1 = []
+
+for Chi in np.array(list(map(int,list(f)))):
+	Chis.append(int(Chi))
+Chis.sort()
+
+for Chi in Chis:
+	S0.append(f[str(Chi)]['Entropy'][0][0])
+	S1.append(f[str(Chi)]['Entropy'][1][0])
+	logChis.append(log(Chi))
+
+fit0 = np.poly1d(np.polyfit(logChis, S0, 1))
+fit1 = np.poly1d(np.polyfit(logChis, S1, 1))
+print('fit S=c/3*log(χ)+γ:')
+print('c=',np.real(fit0(0))/3, 'γ=',np.real(fit0(1)))
+print('c=',np.real(fit1(0))/3, 'γ=',np.real(fit1(1)))
+
+#plt.xlabel('$\ln \chi$')
+#plt.ylabel('$S$')
+#plt.plot(logChis, S0, marker='.', label='S0')
+#plt.plot(logChis, S1, marker='.', label='S1')
+#plt.plot(logChis, fit0(logChis), marker='.', label='fit0')
+#plt.plot(logChis, fit1(logChis), marker='.', label='fit1')
+#plt.legend()
+
+print('χs=',Chis)
+Chi = str(max(Chis))
+print('using χ=', Chi)
+
+print('Dmax=', f[Chi]['Dmax'][0])
+print('Mmax=', f[Chi]['Mmax'][0])
+print('err_eigval=', f[Chi]['err_eigval'][0])
+print('err_state=', f[Chi]['err_state'][0])
+print('err_var=', f[Chi]['err_var'][0])
+print('S=', f[Chi]['Entropy'][0], f[Chi]['Entropy'][1])
+print('nh=', f[Chi]['nh'][0], f[Chi]['nh'][1])
+print('ns=', f[Chi]['ns'][0], f[Chi]['ns'][1])
+
+datasets = ['SiSj', 'TiTj']
+labels = {'SiSj':'$S(k)$', 'TiTj':'$T(k)$'}
+
+def k (n,N):
+	#return 2.*pi/N*(n-N/2) # from -pi to pi
+	return 2.*pi/N*n # from 0 to 2*pi
+
+for dataset in datasets:
+	
+	data = np.array(f[Chi][dataset])
+	
+	N = min(200,len(data[:,0]))
+	
+	setk = [0.j] * (N+1)
+	kvals = [0] * (N+1)
+	for n in range(N+1):
+		kvals[n] = k(n,N)
+	
+	# to test the fft:
+#	for n in range(N+1):
+#		for i in range(N):
+#			for j in range(N):
+#				setk[n] = setk[n] + data[i,j] * exp(-1.j*kvals[n]*(i-j)) / N
+#	setk = np.real(setk)
+	
+	fftres = np.fft.fft2(data) / N
+	
+	for n in range(N+1):
+		setk[n] = np.real(fftres[n%N,(N-n)%N]) # fft uses exp(-i*k1*Ri)*exp(-i*k2*Ri), need k1=k, k2=-k
+	
+	plt.plot(kvals, setk, ls='-', marker='.', label=labels[dataset])
+	print(dataset, 'max at k/π=', k(np.argmax(setk),N)/pi)
+	
+#	plt.ylabel('', fontsize=14)
+	plt.xlabel('$k$', fontsize=14)
+	plt.xticks([0, pi/2, pi, 3*pi/2, 2*pi], [r'$0$', r'$\frac{\pi}{2}$', r'$\pi$', r'$\frac{3\pi}{2}$', r'$2\pi$'])
+
+plt.xlim(k(0,N), k(N,N))
+plt.ylim(0)
+plt.grid()
+plt.legend()
+>>>>>>> 1f3a73b142d71487d4925efea7a7732b675329c6
 
 if args.save:
     outfile = 'PhaseDiagram'

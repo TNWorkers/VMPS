@@ -173,7 +173,7 @@ HeisenbergHamiltonian (const ArrayXXd &J) const
 	Operator Mout({1},TensorBasis);
 	
 	for (int i=0; i<N_orbitals; ++i)
-	for (int j=0; j<i; ++j)
+	for (int j=0; j<N_orbitals; ++j)
 	{
 		if (J(i,j) != 0.)
 		{

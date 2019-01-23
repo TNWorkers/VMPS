@@ -9,6 +9,7 @@
 #include "macros.h" // from TOOLS
 #include "PolychromaticConsole.h" // from TOOLS
 #include "MemCalc.h" // from TOOLS
+#include "RandomVector.h"
 
 //include "DmrgExternal.h"
 #include "symmetry/functions.h"
@@ -133,9 +134,11 @@ public:
 	
 	void setTarget (vector<qType> Qmulti);
 	
-	void setIdentity (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2);
+	void setIdentity (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2, qType Q = Symmetry::qvacuum());
 
-	void setRandom (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2);
+	void setRandom (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2, qType Q = Symmetry::qvacuum());
+
+	void setZero (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2, qType Q = Symmetry::qvacuum());
 	///@}
 	
 	///@{
@@ -261,12 +264,13 @@ setVacuum()
 
 template<typename Symmetry, typename MatrixType_>
 void Biped<Symmetry,MatrixType_>::
-setIdentity (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2)
+setIdentity (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2, qType Q)
 {
 	for (size_t q1=0; q1<base1.Nq(); ++q1)
 	for (size_t q2=0; q2<base2.Nq(); ++q2)
 	{
-		if (base1[q1] == base2[q2])
+		if (Symmetry::triangle(qarray3<Symmetry::Nq>{base1[q1],Q,base2[q2]}))
+		// if (base1[q1] == base2[q2])
 		{
 			MatrixType Mtmp(base1.inner_dim(base1[q1]), base2.inner_dim(base2[q2]));
 			Mtmp.setIdentity();
@@ -277,12 +281,12 @@ setIdentity (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2)
 
 template<typename Symmetry, typename MatrixType_>
 void Biped<Symmetry,MatrixType_>::
-setRandom (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2)
+setRandom (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2, qType Q)
 {
 	for (size_t q1=0; q1<base1.Nq(); ++q1)
 	for (size_t q2=0; q2<base2.Nq(); ++q2)
 	{
-		if (base1[q1] == base2[q2])
+		if (Symmetry::triangle(qarray3<Symmetry::Nq>{base1[q1],Q,base2[q2]}))
 		{
 			MatrixType Mtmp(base1.inner_dim(base1[q1]), base2.inner_dim(base2[q2]));
 			for (size_t a1=0; a1<Mtmp.rows(); ++a1)
@@ -290,6 +294,27 @@ setRandom (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2)
 			{
 				Mtmp(a1,a2) = threadSafeRandUniform<typename MatrixType_::Scalar>(-1.,1.);
 			}
+			push_back(base1[q1], base2[q2], Mtmp);
+		}
+	}
+}
+
+template<typename Symmetry, typename MatrixType_>
+void Biped<Symmetry,MatrixType_>::
+setZero (const Qbasis<Symmetry> &base1, const Qbasis<Symmetry> &base2, qType Q)
+{
+	for (size_t q1=0; q1<base1.Nq(); ++q1)
+	for (size_t q2=0; q2<base2.Nq(); ++q2)
+	{
+		if (Symmetry::triangle(qarray3<Symmetry::Nq>{base1[q1],Q,base2[q2]}))
+		{
+			MatrixType Mtmp(base1.inner_dim(base1[q1]), base2.inner_dim(base2[q2]));
+			Mtmp.setZero();
+			// for (size_t a1=0; a1<Mtmp.rows(); ++a1)
+			// for (size_t a2=0; a2<Mtmp.cols(); ++a2)
+			// {
+			// 	Mtmp(a1,a2) = threadSafeRandUniform<typename MatrixType_::Scalar>(-1.,1.);
+			// }
 			push_back(base1[q1], base2[q2], Mtmp);
 		}
 	}

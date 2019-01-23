@@ -74,7 +74,7 @@ public:
 	Mpo<Symmetry,double> SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
 	///@}
 	
-	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an MpsQ.
+	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an Mps.
 	\returns \p true if valid, \p false if not*/
 	bool validate (qarray<1> qnum) const;
 	
@@ -203,25 +203,46 @@ set_operators(const vector<SpinBase<Symmetry>> &B, const ParamHandler &P, Hamilt
         std::size_t orbitals = B[loc].orbitals();
         std::size_t next_orbitals = B[(loc+1)%N_sites].orbitals();
         std::size_t nextn_orbitals = B[(loc+2)%N_sites].orbitals();
-        
+		
         stringstream ss1, ss2;
         ss1 << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc%Lcell)-1,2));
         ss2 << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
         Terms.save_label(loc, ss1.str());
         Terms.save_label(loc, ss2.str());
-        
+
+        // Case, where a full coupling-matrix is provided: Jᵢⱼ
+		if  ( P.HAS("Jfull") )
+		{
+			for (size_t loc2=loc; loc2<N_sites; loc2++)
+			{
+				assert(loc2>=loc);
+				size_t numberTransOps;
+				if (loc2 == loc) {numberTransOps=0;} else {numberTransOps=loc2-loc-1;}
+				vector<SiteOperator<Symmetry,double> > TransOps(numberTransOps);
+				for (size_t i=0; i<numberTransOps; i++) {TransOps[i] = B[loc+i+1].Id().plain<double>();}
+				if (loc2 == loc)
+				{
+					SiteOperator<Symmetry,double> Ssqrt = SiteOperatorQ<Symmetry,MatrixXd>::prod(B[loc].Sdag(0),B[loc].S(0),Symmetry::qvacuum()).plain<double>();
+					Terms.push_local(loc,std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc),Ssqrt);
+				}
+				else
+				{
+					Terms.push(loc2-loc,loc,std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc2),
+							   B[loc].Sdag(0).plain<double>(),
+							   TransOps,
+							   B[loc2].S(0).plain<double>());
+				}
+			}
+			Terms.save_label(loc, "Jᵢⱼ");
+			continue;
+		}
+
         // Local Terms: J⟂
 
         param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
         Terms.save_label(loc, Jperp.label);
-        
-        for(int alpha=0; alpha<orbitals; ++alpha)
-        {
-            for(int beta=0; beta<orbitals; ++beta)
-            {
-                Terms.push_local(loc, std::sqrt(3.)*Jperp.a(alpha), OperatorType::prod(B[loc].Sdag(alpha), B[loc].S(beta), {1}).plain<double>());
-            }
-        }
+
+		Terms.push_local(loc, 1., (B[loc].HeisenbergHamiltonian(Jperp.a)).plain<double>());
         
         // Nearest-neighbour terms: J
         
