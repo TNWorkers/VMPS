@@ -413,8 +413,10 @@ void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState)
 {
 	// Set less accuracy for the first iterations
-	tolLanczosEigval = max(max(1e-2*err_eigval,1e-13),1e-13); // 1e-7
-	tolLanczosState  = max(max(1e-2*err_var,   1e-13),1e-13); // 1e-4
+	// tolLanczosEigval = max(max(1.e-2*err_eigval,1.e-13),1.e-13); // 1e-7
+	// tolLanczosState  = max(max(1.e-2*err_var,   1.e-13),1.e-13); // 1e-4
+	tolLanczosEigval = max(max(1.e-2*err_eigval,LanczosParam.eps_eigval),LanczosParam.eps_eigval); // 1e-7
+	tolLanczosState  = max(max(1.e-2*err_var,   LanczosParam.eps_coeff) ,LanczosParam.eps_coeff); // 1e-4
 	
 	if (std::isnan(tolLanczosEigval))
 	{
@@ -906,8 +908,8 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		
 		Stopwatch<> LanczosTimer;
 		LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-		Lutz(LANCZOS::REORTHO::FULL);
-		Lutz.set_dimK(min(200ul, dim(gAC.state)));
+		Lutz(LanczosParam.REORTHO);
+		Lutz.set_dimK(min(LanczosParam.dimK, dim(gAC.state)));
 		Lutz.edgeState(HeffA[l], gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -922,8 +924,8 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		gC.state = PivotVector<Symmetry,Scalar>(Vout.state.C[l]);
 		
 		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-		Lucy(LANCZOS::REORTHO::FULL);
-		Lucy.set_dimK(min(200ul, dim(gC.state)));
+		Lucy(LanczosParam.REORTHO);
+		Lucy.set_dimK(min(LanczosParam.dimK, dim(gC.state)));
 		Lucy.edgeState(PivotMatrix0(HeffC[l]), gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 				
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -1032,8 +1034,8 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		
 		Stopwatch<> LanczosTimer;
 		LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-		Lutz(LANCZOS::REORTHO::FULL);
-		Lutz.set_dimK(min(200ul, dim(gAC.state)));
+		Lutz(LanczosParam.REORTHO);
+		Lutz.set_dimK(min(LanczosParam.dimK, dim(gAC.state)));
 		Lutz.edgeState(HeffA[l], gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -1048,8 +1050,8 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		gCR.state = PivotVector<Symmetry,Scalar>(Vout.state.C[l]);
 		
 		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-		Lucy(LANCZOS::REORTHO::FULL);
-		Lucy.set_dimK(min(200ul, dim(gCR.state)));
+		Lucy(LanczosParam.REORTHO);
+		Lucy.set_dimK(min(LanczosParam.dimK, dim(gCR.state)));
 		Lucy.edgeState(PivotMatrix0(HeffC[l]), gCR, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		//ensure phase convention: first element is positive
 		if (gCR.state.data[0].block[0](0,0) < 0.) { gCR.state.data[0] = (-1.) * gCR.state.data[0]; }
@@ -1068,8 +1070,8 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		gCL.state = PivotVector<Symmetry,Scalar>(Vout.state.C[lC]);
 		
 		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-		Luca(LANCZOS::REORTHO::FULL);
-		Luca.set_dimK(min(200ul, dim(gCL.state)));
+		Luca(LanczosParam.REORTHO);
+		Luca.set_dimK(min(LanczosParam.dimK, dim(gCL.state)));
 		Luca.edgeState(PivotMatrix0(HeffC[lC]), gCL, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 		//ensure phase convention: first element is positive
 		if (gCL.state.data[0].block[0](0,0) < 0.) { gCL.state.data[0] = (-1.) * gCL.state.data[0]; }
@@ -1172,8 +1174,8 @@ iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	gAC.state = PivotVector<Symmetry,Scalar>(Vout.state.A[GAUGE::C][0]);
 	
 	Stopwatch<> LanczosTimer;
-	LanczosSolver<PivumpsMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz1(LANCZOS::REORTHO::FULL);
-	Lutz1.set_dimK(min(200ul, dim(gAC.state)));
+	LanczosSolver<PivumpsMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz1(LanczosParam.REORTHO);
+	Lutz1.set_dimK(min(LanczosParam.dimK, dim(gAC.state)));
 	Lutz1.edgeState(Heff[0],gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -1189,8 +1191,8 @@ iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	Eigenstate<PivotVector<Symmetry,Scalar> > gC;
 	gC.state = PivotVector<Symmetry,Scalar>(Vout.state.C[0]);
 	
-	LanczosSolver<PivumpsMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz0(LANCZOS::REORTHO::FULL);
-	Lutz0.set_dimK(min(200ul, dim(gC.state)));
+	LanczosSolver<PivumpsMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz0(LanczosParam.REORTHO);
+	Lutz0.set_dimK(min(LanczosParam.dimK, dim(gC.state)));
 	Lutz0.edgeState(PivumpsMatrix0(Heff[0]),gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -1271,8 +1273,8 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 	
 	Stopwatch<> LanczosTimer;
 	LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-	Lutz(LANCZOS::REORTHO::FULL);
-	Lutz.set_dimK(min(200ul, dim(g.state)));
+	Lutz(LanczosParam.REORTHO);
+	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
 	Lutz.edgeState(HeffA[0], g, LANCZOS::EDGE::GROUND, DMRG::CONTROL::DEFAULT::tol_eigval_Lanczos, DMRG::CONTROL::DEFAULT::tol_state_Lanczos, false);
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
