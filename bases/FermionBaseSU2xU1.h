@@ -48,12 +48,29 @@ public:
 	/**
 	 * Annihilation operator
 	 * \param orbital : orbital index
+	 * \note The annihilation spinor is build as follows 	 
+	 * \f$c^{1/2} = \left(
+	 * \begin{array}{c}
+	 * -c_{\downarrow} \\
+	 *  c_{\uparrow} \\
+	 * \end{array}
+	 * \right)\f$
+	 * where the upper component corresponds to \f$ m=+1/2\f$ and the lower to \f$ m=-1/2\f$.
 	 */
 	Operator c (std::size_t orbital=0) const;
 	
 	/**
 	 * Creation operator.
 	 * \param orbital : orbital index
+	 * \note The creation spinor is computed as \f$ \left(c^{1/2}\right)^\dagger\f$.
+	 * The definition of cdag which is consistent with this computation is:
+	 * \f$\left(c^{\dagger}\right)^{1/2} = \left(
+	 * \begin{array}{c}
+	 *  c^\dagger_{\uparrow} \\
+	 *  c^\dagger_{\downarrow} \\
+	 * \end{array}
+	 * \right)\f$
+	 * where the upper component corresponds to \f$ m=+1/2\f$ and the lower to \f$ m=-1/2\f$.
 	 */
 	Operator cdag (std::size_t orbital=0) const;
 	Operator cdag2 (std::size_t orbital=0) const;
