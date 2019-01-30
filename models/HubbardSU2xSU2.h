@@ -242,7 +242,7 @@ make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1,
 		else if (locx1>locx2)
 		{
 			Mout.setLocal({locx2, locx1}, {factor * OperatorType::prod(Op2, F[locx2].sign(), Op2.Q()).plain<double>(), 
-										   -1. * Op2.plain<double>()}, 
+										   -1. * Op1.plain<double>()}, 
 				F[0].sign().plain<double>());
 		}
 	}
@@ -276,8 +276,8 @@ cdag (size_t locx, size_t locy, double factor)
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
-	return make_corr("c†", "c", locx1, locx2, locy1, locy2, F[locx1].S(locy1), F[locx2].S(locy2), Symmetry::qvacuum(), 2., PROP::FERMIONIC, PROP::HERMITIAN); //2 = sqrt(2)*sqrt(2)
-	
+	return make_corr("c†", "c", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].c(locy2), Symmetry::qvacuum(), 2., PROP::FERMIONIC, PROP::HERMITIAN);
+	// 2 = sqrt(2)*sqrt(2)
 	// assert(locx1<this->N_sites and locx2<this->N_sites);
 	// stringstream ss;
 	// ss << "c†(" << locx1 << "," << locy1 << ")" << "c(" << locx2 << "," << locy2 << ")";

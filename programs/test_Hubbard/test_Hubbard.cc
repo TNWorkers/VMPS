@@ -140,9 +140,6 @@ int main (int argc, char* argv[])
 	Nup = (N+M)/2;
 	Ndn = (N-M)/2;
 	
-//	ArrayXXd tParaA(1,2); tParaA = t;
-//	ArrayXXd tParaB(2,1); tParaB = t;
-	
 	ED = args.get<bool>("ED",false);
 	U0 = args.get<bool>("U0",false);
 	U1 = args.get<bool>("U1",true);
@@ -291,6 +288,8 @@ int main (int argc, char* argv[])
 		lout << H_U0.info() << endl;
 		
 		VMPS::Hubbard::Solver DMRG_U0(VERB);
+		DMRG_U0.userSetGlobParam();
+		DMRG_U0.userSetDynParam();
 		DMRG_U0.GlobParam = GlobParam;
 		DMRG_U0.DynParam = DynParam;
 		DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND);
@@ -327,6 +326,8 @@ int main (int argc, char* argv[])
 		lout << H_U1.info() << endl;
 		
 		HUBBARD::Solver DMRG_U1(VERB);
+		DMRG_U1.userSetGlobParam();
+		DMRG_U1.userSetDynParam();
 		DMRG_U1.GlobParam = GlobParam;
 		DMRG_U1.DynParam = DynParam;
 		DMRG_U1.edgeState(H_U1, g_U1, {M,N}, LANCZOS::EDGE::GROUND);
@@ -385,6 +386,8 @@ int main (int argc, char* argv[])
 		lout << H_SU2.info() << endl;
 		
 		VMPS::HubbardSU2xU1::Solver DMRG_SU2(VERB);
+		DMRG_SU2.userSetGlobParam();
+		DMRG_SU2.userSetDynParam();
 		DMRG_SU2.GlobParam = GlobParam;
 		DMRG_SU2.DynParam = DynParam;
 		DMRG_SU2.edgeState(H_SU2, g_SU2, {S,N}, LANCZOS::EDGE::GROUND);
@@ -448,6 +451,8 @@ int main (int argc, char* argv[])
 		lout << H_SU2xSU2.info() << endl;
 		
 		VMPS::HubbardSU2xSU2::Solver DMRG_SU2xSU2(VERB);
+		DMRG_SU2xSU2.userSetGlobParam();
+		DMRG_SU2xSU2.userSetDynParam();
 		DMRG_SU2xSU2.GlobParam = GlobParam;
 		DMRG_SU2xSU2.DynParam = DynParam;
 		DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {S,V-N+1}, LANCZOS::EDGE::GROUND); 

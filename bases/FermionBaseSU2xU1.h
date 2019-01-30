@@ -222,7 +222,7 @@ FermionBase (std::size_t L_input, bool U_IS_INFINITE)
 	F_1s("double", "double") = 1.;
 	F_1s("single", "single") = -1.;
 	
-	c_1s("empty", "single") = -std::sqrt(2.);
+	c_1s("empty", "single")  = std::sqrt(2.); //-1*
 	c_1s("single", "double") = 1.;
 	
 //	a_1s( "empty", "single" ) = std::sqrt(2.);
