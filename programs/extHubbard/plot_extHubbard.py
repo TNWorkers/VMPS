@@ -115,7 +115,7 @@ for iU in range(len(Us)):
                 Chi = str(max(Chis))
                 print('using χ=', Chi)
                 
-                #print("Keys: %s" % f[Chi].keys())
+                print("Keys: %s" % f[Chi].keys())
                 print('Dmax=', f[Chi]['Dmax'][0])
                 print('Mmax=', f[Chi]['Mmax'][0])
                 print('err_eigval=', f[Chi]['err_eigval'][0])
@@ -124,20 +124,21 @@ for iU in range(len(Us)):
                 print('entropy=', f[Chi]['Entropy'][0][0], f[Chi]['Entropy'][1][0])
                 print('nh=', f[Chi]['nh'][0][0], f[Chi]['nh'][1][0])
                 print('ns=', f[Chi]['ns'][0][0], f[Chi]['ns'][1][0])
-                print('nh+ns=', f[Chi]['nh'][0][0]+f[Chi]['ns'][0][0], f[Chi]['nh'][1][0]+f[Chi]['ns'][1][0])
+                print('nh+ns-1=', f[Chi]['nh'][0][0]+f[Chi]['ns'][0][0]-1, f[Chi]['nh'][1][0]+f[Chi]['ns'][1][0]-1)
                 print('S(π)=', f[Chi]['S_pi'][0], 'S(0)=', f[Chi]['S_0'][0])
                 print('S(π)=', f[Chi]['S_pi'][1], 'S(0)=', f[Chi]['S_0'][1])
                 print('T(π)=', f[Chi]['T_pi'][0], 'T(0)=', f[Chi]['T_0'][0])
                 print('T(π)=', f[Chi]['T_pi'][1], 'T(0)=', f[Chi]['T_0'][1])
                 
-                S1pi[iU][iV] = f[Chi]['S_pi'][0][0] #max(setk) #
-                T1pi[iU][iV] = f[Chi]['T_pi'][0][0] #max(setk) #
-                S0pi[iU][iV] = f[Chi]['S_0'][0][0] #max(setk) #
-                T0pi[iU][iV] = f[Chi]['T_0'][0][0] #max(setk) #
+                S1pi[iU][iV] = f[Chi]['S_pi'][0][0]-f[Chi]['S_pi'][0][1]
+                T1pi[iU][iV] = f[Chi]['T_pi'][0][0]-f[Chi]['T_pi'][0][1]
+                S0pi[iU][iV] = f[Chi]['S_0'][0][0]+f[Chi]['S_0'][0][1]
+                T0pi[iU][iV] = f[Chi]['T_0'][0][0]+f[Chi]['S_0'][0][1]
                 spinon[iU][iV] = f[Chi]['ns'][0][0] 
                 holon[iU][iV] = f[Chi]['nh'][0][0]
                 entropy[iU][iV] = f[Chi]['Entropy'][0][0]
                 error[iU][iV] =  f[Chi]['err_state'][0]
+                
                 if   max(S1pi[iU][iV], T1pi[iU][iV], T0pi[iU][iV], S0pi[iU][iV]) == S0pi[iU][iV]:
                     PD[iU][iV] = 1.5
                 elif max(S1pi[iU][iV], T1pi[iU][iV], T0pi[iU][iV], S0pi[iU][iV]) == S1pi[iU][iV]:

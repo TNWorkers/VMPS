@@ -276,8 +276,9 @@ public:
 	void enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P);
 	
 	/**
-	Calculates the static structure factor according to Tangent-space methods for uniform matrix product states (2018), chapter 2.5.
+	Calculates the static structure factor between cells according to "Tangent-space methods for uniform matrix product states" (2018), chapter 2.5.
 	\note For unit cells, the Fourier transform is done between cells only, the sublattice indices are fixed by the Mpos \p Oalfa, \p Obeta.
+	\note The result has the k-values as the first column and the SSF as the second column.
 	\param Oalfa : first operator of correlation
 	\param Obeta : second operator of correlation
 	\param kmin : start with this k-value
@@ -285,14 +286,35 @@ public:
 	\param kpoints : number of equidistant points in interval
 	\param VERB : how much information to print
 	*/
-	Array<complex<Scalar>,Dynamic,1> structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, 
-	                                                   double kmin=0., double kmax=2.*M_PI, int kpoints=51, 
-	                                                   DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT);
+	ArrayXXcd intercellSF (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, 
+	                       double kmin=0., double kmax=2.*M_PI, int kpoints=51, 
+	                       DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT);
 	
 	/**
-	Calculates the static structure factor for one k-point only. See the more general function above.
+	Calculates the static structure factor between cells for one k-point only. See the more general function above.
 	*/
-	complex<Scalar> structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, double kval, DMRG::VERBOSITY::OPTION VERB);
+	complex<Scalar> intercellSFpoint (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, double kval, 
+	                                  DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT);
+	
+	/**
+	Calculates the full static structure factor for a range of k-points.
+	\param cellAvg : all expectation values <Oalfa_i Obeta_j> within unit cell
+	\param Oalfa : first operator of correlation at each cell point
+	\param Obeta : second operator of correlation at each cell point
+	\param kmin : start with this k-value
+	\param kmax : end with this k-value (include it)
+	\param kpoints : number of equidistant points in interval
+	\param VERB : how much information to print
+	*/
+	ArrayXXcd SF (const ArrayXXd &cellAvg, const vector<Mpo<Symmetry,Scalar> > &Oalfa, const vector<Mpo<Symmetry,Scalar> > &Obeta, 
+	              double kmin, double kmax, int kpoints, 
+	              DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT);
+	
+	/**
+	Calculates the full static structure factor between cells for one k-point only. See the more general function above.
+	**/
+	complex<Scalar> SFpoint (const ArrayXXd &cellAvg, const vector<Mpo<Symmetry,Scalar> > &Oalfa, const vector<Mpo<Symmetry,Scalar> > &Obeta, double kval, 
+	                         DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT);
 	
 private:
 	
@@ -2343,8 +2365,8 @@ entanglementSpectrumLoc (size_t loc) const
 }
 
 template<typename Symmetry, typename Scalar>
-Array<complex<Scalar>,Dynamic,1> Umps<Symmetry,Scalar>::
-structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, double kmin, double kmax, int kpoints, DMRG::VERBOSITY::OPTION VERB)
+ArrayXXcd Umps<Symmetry,Scalar>::
+intercellSF (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, double kmin, double kmax, int kpoints, DMRG::VERBOSITY::OPTION VERB)
 {
 	double t_tot=0.;
 	double t_LReigen=0.;
@@ -2368,14 +2390,14 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 	
 	t_LReigen += LReigenTimer.time();
 	
-	// b (edge tensor of contraction) for alfa, beta and exp(-i*k), exp(+i*k)
+	// b (edge tensor of contraction) for alfa, beta and exp(-i*Lcell*k), exp(+i*Lcell*k)
 	
 	Stopwatch<> ContractionTimer;
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lid; Lid.setIdentity(1,1,inBasis(0));
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rid; Rid.setIdentity(1,1,outBasis(N_sites-1));
 	
-	// term exp(-i*k), alfa
+	// term exp(-i*Lcell*k), alfa
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bmalfaTripod(N_sites);
 	contract_L(Lid, A[GAUGE::L][0], Oalfa.W_at(0), Oalfa.IS_HAMILTONIAN(), A[GAUGE::C][0], 
 	           Oalfa.locBasis(0), Oalfa.opBasis(0), bmalfaTripod[0]);
@@ -2386,7 +2408,7 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 		           Oalfa.locBasis(l), Oalfa.opBasis(l), bmalfaTripod[l]);
 	}
 	
-	// term exp(+i*k), alfa
+	// term exp(+i*Lcell*k), alfa
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bpalfaTripod(N_sites);
 	contract_R(Rid, A[GAUGE::R][N_sites-1], Oalfa.W_at(N_sites-1), Oalfa.IS_HAMILTONIAN(), A[GAUGE::C][N_sites-1], 
 	           Oalfa.locBasis(N_sites-1), Oalfa.opBasis(N_sites-1), bpalfaTripod[N_sites-1]);
@@ -2397,7 +2419,7 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 		           Oalfa.locBasis(l), Oalfa.opBasis(l), bpalfaTripod[l]);
 	}
 	
-	// term exp(-i*k), beta
+	// term exp(-i*Lcell*k), beta
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bmbetaTripod(N_sites);
 	contract_R(Rid, A[GAUGE::C][N_sites-1], Obeta.W_at(N_sites-1), Obeta.IS_HAMILTONIAN(), A[GAUGE::R][N_sites-1], 
 	           Obeta.locBasis(N_sites-1), Obeta.opBasis(N_sites-1), bmbetaTripod[N_sites-1]);
@@ -2408,7 +2430,7 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 		           Obeta.locBasis(l), Obeta.opBasis(l), bmbetaTripod[l]);
 	}
 	
-	// term exp(+i*k), beta
+	// term exp(+i*Lcell*k), beta
 	vector<Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > bpbetaTripod(N_sites);
 	contract_L(Lid, A[GAUGE::C][0], Obeta.W_at(0), Obeta.IS_HAMILTONIAN(), A[GAUGE::L][0], 
 	           Obeta.locBasis(0), Obeta.opBasis(0), bpbetaTripod[0]);
@@ -2429,45 +2451,47 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 	
 	t_contraction += ContractionTimer.time();
 	
-	Array<complex<Scalar>,Dynamic,1> out(kpoints);
-	if (kmin==kmax) {out.resize(1);} // only one k-point needed in case of kmin=kmax
+	ArrayXXcd out(kpoints,2);
+	if (kmin==kmax) {out.resize(1,2);} // only one k-point needed in case of kmin=kmax
 	
 	// solve linear systems
 	Stopwatch<> GMRES_Timer;
 	#pragma omp parallel for
 	for (int ik=0; ik<out.rows(); ++ik)
 	{
-		double k = (kmin==kmax)? kmin : kmin + ik*(kmax-kmin)/(kpoints-1);
+		// the last k-point is repeated, therefore kpoints-1 independent points:
+		double kval = (kmin==kmax)? kmin : kmin + ik*(kmax-kmin)/(kpoints-1);
 		
 		GMResSolver<TransferMatrixSF<Symmetry,Scalar>,MpoTransferVector<Symmetry,complex<Scalar> > > Gimli;
 		
-		// term exp(-i*k)
-		TransferMatrixSF<Symmetry,Scalar> Tm(VMPS::DIRECTION::LEFT, A[GAUGE::L], A[GAUGE::R], Leigen_LR, Reigen_LR, qloc, k);
+		// term exp(-i*Lcell*k)
+		TransferMatrixSF<Symmetry,Scalar> Tm(VMPS::DIRECTION::LEFT, A[GAUGE::L], A[GAUGE::R], Leigen_LR, Reigen_LR, qloc, N_sites*kval);
 		Gimli.set_dimK(min(100ul,dim(bmalfa)));
 		assert(dim(bmalfa) > 0);
 		MpoTransferVector<Symmetry,complex<Scalar> > Fmalfa;
 		Gimli.solve_linear(Tm, bmalfa, Fmalfa, 1e-14, true);
 		if (VERB >= DMRG::VERBOSITY::STEPWISE)
 		{
-			lout << ik << ", k/π=" << k/M_PI << ", term exp(-i*k), " << Gimli.info() << "; dim(bmalfa)=" << dim(bmalfa) << endl;
+			lout << ik << ", k/π=" << kval/M_PI << ", term exp(-i*Lcell*k), " << Gimli.info() << "; dim(bmalfa)=" << dim(bmalfa) << endl;
 		}
 		
-		// term exp(+i*k)
-		TransferMatrixSF<Symmetry,Scalar> Tp(VMPS::DIRECTION::RIGHT, A[GAUGE::R], A[GAUGE::L], Leigen_RL, Reigen_RL, qloc, k);
+		// term exp(+i*Lcell*k)
+		TransferMatrixSF<Symmetry,Scalar> Tp(VMPS::DIRECTION::RIGHT, A[GAUGE::R], A[GAUGE::L], Leigen_RL, Reigen_RL, qloc, N_sites*kval);
 		Gimli.set_dimK(min(100ul,dim(bpalfa)));
 		assert(dim(bpalfa) > 0);
 		MpoTransferVector<Symmetry,complex<Scalar> > Fpalfa;
 		Gimli.solve_linear(Tp, bpalfa, Fpalfa, 1e-14, true);
 		if (VERB >= DMRG::VERBOSITY::STEPWISE)
 		{
-			lout << ik << ", k/π=" << k/M_PI << ", term exp(+i*k), " << Gimli.info() << "; dim(bpalfa)=" << dim(bpalfa) << endl;
+			lout << ik << ", k/π=" << kval/M_PI << ", term exp(+i*Lcell*k), " << Gimli.info() << "; dim(bpalfa)=" << dim(bpalfa) << endl;
 		}
 		
 		complex<double> resm = contract_LR(Fmalfa.data, bmbeta);
 		complex<double> resp = contract_LR(bpbeta, Fpalfa.data);
 		
 		// result
-		out(ik) = exp(-1.i*k) * resm + exp(+1.i*k) * resp;
+		out(ik,0) = kval;
+		out(ik,1) = exp(-1.i*static_cast<double>(N_sites)*kval) * resm + exp(+1.i*static_cast<double>(N_sites)*kval) * resp;
 	}
 	
 	t_GMRES += GMRES_Timer.time();
@@ -2490,10 +2514,76 @@ structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> 
 
 template<typename Symmetry, typename Scalar>
 complex<Scalar> Umps<Symmetry,Scalar>::
-structure_factor (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, double kval, DMRG::VERBOSITY::OPTION VERB)
+intercellSFpoint (const Mpo<Symmetry,Scalar> &Oalfa, const Mpo<Symmetry,Scalar> &Obeta, double kval, DMRG::VERBOSITY::OPTION VERB)
 {
-	Array<complex<Scalar>,Dynamic,1> res = structure_factor(Oalfa, Obeta, kval, kval, 1, VERB);
-	return res(0);
+	ArrayXXcd res = intercellSF(Oalfa, Obeta, kval, kval, 1, VERB);
+	return res(0,1);
+}
+
+template<typename Symmetry, typename Scalar>
+complex<Scalar> Umps<Symmetry,Scalar>::
+SFpoint (const ArrayXXd &cellAvg, const vector<Mpo<Symmetry,Scalar> > &Oalfa, const vector<Mpo<Symmetry,Scalar> > &Obeta, double kval, DMRG::VERBOSITY::OPTION VERB)
+{
+	assert(Oalfa.size() == N_sites and Obeta.size() == N_sites and cellAvg.rows() == N_sites and cellAvg.cols() == N_sites);
+	
+	complex<double> res = 0;
+	
+	ArrayXXcd Sijk = cellAvg;
+	
+	#pragma omp parallel for collapse(2)
+	for (size_t i0=0; i0<N_sites; ++i0)
+	for (size_t j0=0; j0<N_sites; ++j0)
+	{
+		Sijk(i0,j0) += intercellSFpoint(Oalfa[i0],Obeta[j0], kval, VERB);
+	}
+	
+	for (size_t i0=0; i0<N_sites; ++i0)
+	for (size_t j0=0; j0<N_sites; ++j0)
+	{
+		res += exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk(i0,j0);
+	}
+	
+	return res;
+}
+
+template<typename Symmetry, typename Scalar>
+ArrayXXcd Umps<Symmetry,Scalar>::
+SF (const ArrayXXd &cellAvg, const vector<Mpo<Symmetry,Scalar> > &Oalfa, const vector<Mpo<Symmetry,Scalar> > &Obeta, 
+    double kmin, double kmax, int kpoints, DMRG::VERBOSITY::OPTION VERB)
+{
+	assert(Oalfa.size() == N_sites and Obeta.size() == N_sites and cellAvg.rows() == N_sites and cellAvg.cols() == N_sites);
+	
+	vector<vector<ArrayXXcd> > Sijk(N_sites);
+	for (size_t i0=0; i0<N_sites; ++i0)
+	{
+		Sijk[i0].resize(N_sites);
+		for (size_t j0=0; j0<N_sites; ++j0)
+		{
+			Sijk[i0][j0].resize(kpoints,2);
+			Sijk[i0][j0] = 0;
+		}
+	}
+	
+	#pragma omp parallel for collapse(2)
+	for (size_t i0=0; i0<N_sites; ++i0)
+	for (size_t j0=0; j0<N_sites; ++j0)
+	{
+		Sijk[i0][j0] = intercellSF(Oalfa[i0],Obeta[j0], kmin,kmax,kpoints, VERB);
+		Sijk[i0][j0].col(1) += cellAvg(i0,j0);
+	}
+	
+	ArrayXXcd res(kpoints,2); res=0;
+	
+	for (size_t ik=0; ik<kpoints; ++ik)
+	for (size_t i0=0; i0<N_sites; ++i0)
+	for (size_t j0=0; j0<N_sites; ++j0)
+	{
+		double kval = Sijk[i0][j0](ik,0).real();
+		res(ik,0) = kval;
+		res(ik,1) += exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk[i0][j0](ik,1);
+	}
+	
+	return res;
 }
 
 #endif //VANILLA_Umps
