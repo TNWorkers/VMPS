@@ -62,7 +62,6 @@ public:
 	///@{
 	/**
 	 * Calls the next sweep step from site \p loc according to the direction \p DIR.
-	 * Switches from DMRG::BROOM::RDM to DMRG::BROOM::SVD if DmrgJanitor::alpha_noise < 1e-15 or DmrgJanitor::alpha_rsvd < 1e-15.
 	 */
 	void sweepStep (DMRG::DIRECTION::OPTION DIR, size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrixType *H = NULL, bool DISCARD_U_or_V=false);
 	

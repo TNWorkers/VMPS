@@ -440,7 +440,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	err_eigval = 1.;
 	err_state  = 1.;
 	
-	Vout.state.graph("init");
+//	Vout.state.graph("init");
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>

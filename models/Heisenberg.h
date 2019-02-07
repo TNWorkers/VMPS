@@ -194,7 +194,8 @@ ref (const vector<Param> &params, double L)
 	// Heisenberg chain and ladder
 	if (isinf(L) and J > 0. and P.ARE_ALL_ZERO<double>({"m","Jprime","Jxy","Jz","Bz","Bx","Kx","Kz","Dy","Dyprime"}))
 	{
-		out.source = "T. Xiang, Thermodynamics of quantum Heisenberg spin chains, Phys. Rev. B 58, 9142 (1998)";
+		// out.source = "T. Xiang, Thermodynamics of quantum Heisenberg spin chains, Phys. Rev. B 58, 9142 (1998)";
+		out.source = "F. B. Ramos and J. C. Xavier, N-leg spin-S Heisenberg ladders, Phys. Rev. B 89, 094424 (2014)";
 		out.method = "literature";
 		
 		if (D == 2)
