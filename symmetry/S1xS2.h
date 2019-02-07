@@ -98,6 +98,8 @@ public:
 								  const qType& q4, const qType& q5, const qType& q6);
 	inline static Scalar coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 									 const qType& q4, const qType& q5, const qType& q6);
+	inline static Scalar coeff_prod(const qType& q1, const qType& q2, const qType& q3,
+									const qType& q4, const qType& q5, const qType& q6);
 	
 	inline static Scalar coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6,
@@ -328,6 +330,18 @@ coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 							   {q4[0]},{q5[0]},{q6[0]})*
 		       S2::coeff_Apair({q1[1]},{q2[1]},{q3[1]},
 							   {q4[1]},{q5[1]},{q6[1]});
+	return out;
+}
+
+template<typename S1, typename S2>
+typename S1::Scalar_ S1xS2<S1,S2>::
+coeff_prod(const qType& q1, const qType& q2, const qType& q3,
+		   const qType& q4, const qType& q5, const qType& q6)
+{
+	Scalar out=S1::coeff_prod({q1[0]},{q2[0]},{q3[0]},
+							  {q4[0]},{q5[0]},{q6[0]})*
+		       S2::coeff_prod({q1[1]},{q2[1]},{q3[1]},
+							  {q4[1]},{q5[1]},{q6[1]});
 	return out;
 }
 

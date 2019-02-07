@@ -167,6 +167,9 @@ int main (int argc, char* argv[])
 	GlobParams.tol_var = tol_var;
 	GlobParams.tol_state = tol_state;
 
+	VUMPS::CONTROL::LANCZOS LanczosParams;
+	LanczosParams.eps_eigval = 1.e-12;
+	LanczosParams.eps_coeff = 1.e-12;
 	// VUMPS::CONTROL::DYN DynParams;
 	// DynParams.max_deltaD = [] (size_t i) {return (i<lim)? tmp1:0.;};
 	// DynParams.Dincr_abs  = [] (size_t i) {return Dabs;};
@@ -182,7 +185,7 @@ int main (int argc, char* argv[])
 //	ArnoldiSolver<MatrixXd,VectorXcd> Arnie(A,v,lambda);
 //	cout << Arnie.info() << endl;
 	
-	bool CALC_SU2 = args.get<bool>("SU2",false);
+	bool CALC_SU2 = args.get<bool>("SU2",true);
 	bool CALC_U1 = args.get<bool>("U1",true);
 	bool CALC_U0 = args.get<bool>("U0",true);
 	bool CALC_HUBB = args.get<bool>("HUBB",false);
@@ -219,6 +222,8 @@ int main (int argc, char* argv[])
 		lout << Heis_SU2.info() << endl;
 		DMRG_SU2.set_log(L,"e_Heis_SU2.dat","err_eigval_Heis_SU2.dat","err_var_Heis_SU2.dat","err_state_Heis_SU2.dat");
 		DMRG_SU2.userSetGlobParam();
+		DMRG_SU2.userSetLanczosParam();
+		DMRG_SU2.LanczosParam = LanczosParams;
 		DMRG_SU2.GlobParam = GlobParams;
 		DMRG_SU2.edgeState(Heis_SU2, g_SU2, {1});
 	}
@@ -234,6 +239,8 @@ int main (int argc, char* argv[])
 		lout << Heis_U1.info() << endl;
 		DMRG_U1.set_log(2,"e_Heis_U1.dat","err_eigval_Heis_U1.dat","err_var_Heis_U1.dat","err_state_Heis_U1.dat");
 		DMRG_U1.userSetGlobParam();
+		DMRG_U1.userSetLanczosParam();
+		DMRG_U1.LanczosParam = LanczosParams;
 		DMRG_U1.GlobParam = GlobParams;
 		DMRG_U1.edgeState(Heis_U1, g_U1, {0});
 		

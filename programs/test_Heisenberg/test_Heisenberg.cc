@@ -97,9 +97,9 @@ Eigenstate<VMPS::HeisenbergSU2::StateXd> g_SU2;
 
 double E_U1_compressor=0;
 double E_U1_zipper=0;
-MatrixXd SpinCorr_U1;
+MatrixXd SpinCorr_U1,SpinCorr_U1B;
 
-MatrixXd SpinCorr_SU2;
+MatrixXd SpinCorr_SU2, SpinCorr_SU2B;
 
 int main (int argc, char* argv[])
 {
@@ -129,7 +129,8 @@ int main (int argc, char* argv[])
 	bool PERIODIC = args.get<bool>("PER",false);
 	bool RKKY = args.get<bool>("RKKY",false);
 	bool ED_RKKY = args.get<bool>("ED",false);
-
+	bool CALC_SQUARE = args.get<bool>("SQUARE",false);
+	
 	eps_svd = args.get<double>("eps_svd",1e-7);
 	alpha = args.get<double>("alpha",1e2);
 	
@@ -147,7 +148,7 @@ int main (int argc, char* argv[])
 	// SweepParams.push_back({"eps_svd",eps_svd});
 	SweepParams.push_back({"max_halfsweeps",Imax});
 	SweepParams.push_back({"min_halfsweeps",Imin});
-	// SweepParams.push_back({"Dinit",Dinit});
+	SweepParams.push_back({"Dinit",Dinit});
 	SweepParams.push_back({"Qinit",Qinit});
 	SweepParams.push_back({"min_Nsv",min_Nsv});
 	// SweepParams.push_back({"Dlimit",Dlimit});
@@ -184,6 +185,15 @@ int main (int argc, char* argv[])
 		DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND);
 		
 		t_U0 = Watch_U0.time();
+		for (size_t l=0; l<L; ++l)
+		for (size_t lp=0; lp<L; ++lp)
+		for (size_t c=0; c<Ly; ++c)
+		for (size_t cp=0; cp<Ly; ++cp)
+		{
+			// cout << "(" << l << "," << c << "); " << "(" << lp << "," << cp << "): " << 3*avg(g_U0.state,H_U0.SzSz(l,lp,c,cp),g_U0.state) << endl;
+			// SpinCorr_U1(l,lp) = 3*avg(g_U1.state,H_U1.SzSz(l,lp),g_U1.state);
+		}
+
 	}
 	
 	//--------U(1)---------
@@ -204,25 +214,46 @@ int main (int argc, char* argv[])
 		g_U1.state.graph("U1");
 		
 		t_U1 = Watch_U1.time();
-		
+
+		SpinCorr_U1.resize(L,L); SpinCorr_U1.setZero();
 		for (size_t l=0; l<L; ++l)
+		for (size_t lp=0; lp<L; ++lp)
+		for (size_t c=0; c<Ly; ++c)
+		for (size_t cp=0; cp<Ly; ++cp)
 		{
-			lout << "l=" << l << "\t" 
-			     << "<S^z>=" << isReal(avg(g_U1.state, H_U1.Scomp(SZ,l), g_U1.state))
-			     << endl;
+			SpinCorr_U1(l,lp) = avg(g_U1.state,H_U1.SzSz(l,lp,c,cp),g_U1.state);
 		}
-		
-		for (size_t l=0; l<L-1; ++l)
+		cout << "Spin correlations" << endl << SpinCorr_U1 << endl;
+		SpinCorr_U1B.resize(L,L); SpinCorr_U1B.setZero();
+		for (size_t l=0; l<L; ++l)
+		for (size_t lp=0; lp<L; ++lp)
 		{
-			lout << "l=" << l << ", <S(i)S(i+1)>=" << isReal(avg(g_U1.state, H_U1.SpSm(l,l+1), g_U1.state)) + 
-			                                          isReal(avg(g_U1.state, H_U1.SzSz(l,l+1), g_U1.state)) << endl;
+			VMPS::HeisenbergU1::StateXd Smg;
+			OxV_exact(H_U1.Scomp(SZ,l),g_U1.state,Smg,10.,DMRG::VERBOSITY::SILENT);
+			VMPS::HeisenbergU1::StateXd Spg;
+			OxV_exact(H_U1.Scomp(SZ,lp),g_U1.state,Spg,10.,DMRG::VERBOSITY::SILENT);
+			SpinCorr_U1B(l,lp) = Spg.dot(Smg); 
 		}
+		cout << "Spin correlations check" << endl << SpinCorr_U1B << endl;
+
+		// for (size_t l=0; l<L; ++l)
+		// {
+		// 	lout << "l=" << l << "\t" 
+		// 	     << "<S^z>=" << isReal(avg(g_U1.state, H_U1.Scomp(SZ,l), g_U1.state))
+		// 	     << endl;
+		// }
 		
-		VMPS::HeisenbergU1XXZ H_U1XXZ(L,{{"Jxy",J},{"Jz",1.2*J},{"Jprime",Jprime},{"Jxyrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
-		VMPS::HeisenbergU1XXZ::Solver DMRG_U1XXZ(VERB);
-		Eigenstate<VMPS::HeisenbergU1XXZ::StateXd>  g_U1XXZ;
-		DMRG_U1XXZ.edgeState(H_U1XXZ, g_U1XXZ, {M}, LANCZOS::EDGE::GROUND);
-		cout << "dot=" << dot(g_U1.state,g_U1XXZ.state) << endl;
+		// for (size_t l=0; l<L-1; ++l)
+		// {
+		// 	lout << "l=" << l << ", <S(i)S(i+1)>=" << isReal(avg(g_U1.state, H_U1.SpSm(l,l+1), g_U1.state)) + 
+		// 	                                          isReal(avg(g_U1.state, H_U1.SzSz(l,l+1), g_U1.state)) << endl;
+		// }
+		
+		// VMPS::HeisenbergU1XXZ H_U1XXZ(L,{{"Jxy",J},{"Jz",1.2*J},{"Jprime",Jprime},{"Jxyrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
+		// VMPS::HeisenbergU1XXZ::Solver DMRG_U1XXZ(VERB);
+		// Eigenstate<VMPS::HeisenbergU1XXZ::StateXd>  g_U1XXZ;
+		// DMRG_U1XXZ.edgeState(H_U1XXZ, g_U1XXZ, {M}, LANCZOS::EDGE::GROUND);
+		// cout << "dot=" << dot(g_U1.state,g_U1XXZ.state) << endl;
 		
 		// dynamics (of Néel state)
 		if (CALC_DYNAMICS)
@@ -328,12 +359,12 @@ int main (int argc, char* argv[])
 		}
 		else
 		{
-			H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
+			H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",CALC_SQUARE}});
 		}
 		
 
 		lout << H_SU2.info() << endl;
-		
+		H_SU2.precalc_TwoSiteData();
 		VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
 		DMRG_SU2.userSetGlobParam();
 		DMRG_SU2.userSetDynParam();
@@ -347,10 +378,23 @@ int main (int argc, char* argv[])
 		SpinCorr_SU2.resize(L,L); SpinCorr_SU2.setZero();
 		for (size_t l=0; l<L; ++l)
 		for (size_t lp=0; lp<L; ++lp)
+		for (size_t c=0; c<Ly; ++c)
+		for (size_t cp=0; cp<Ly; ++cp)
 		{
-			SpinCorr_SU2(l,lp) = avg(g_SU2.state,H_SU2.SdagS(l,lp),g_SU2.state);
+			SpinCorr_SU2(l,lp) = avg(g_SU2.state,H_SU2.SdagS(l,lp,c,cp),g_SU2.state);
 		}
 		cout << "Spin correlations" << endl << SpinCorr_SU2 << endl;
+		SpinCorr_SU2B.resize(L,L); SpinCorr_SU2B.setZero();
+		for (size_t l=0; l<L; ++l)
+		for (size_t lp=0; lp<L; ++lp)
+		{
+			VMPS::HeisenbergSU2::StateXd Sg;
+			OxV_exact(H_SU2.S(l),g_SU2.state,Sg,10.,DMRG::VERBOSITY::SILENT);
+			VMPS::HeisenbergSU2::StateXd Sdagg;
+			OxV_exact(H_SU2.S(lp),g_SU2.state,Sdagg,10.,DMRG::VERBOSITY::SILENT);
+			SpinCorr_SU2B(l,lp) = Sdagg.dot(Sg); 
+		}
+		cout << "Spin correlations check" << endl << SpinCorr_SU2B << endl;
 	}
 	
 	//--------output---------

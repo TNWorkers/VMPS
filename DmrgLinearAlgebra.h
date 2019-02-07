@@ -209,14 +209,14 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		if (B.dim == 1)
 		{
 			double res = B.block[0][0][0].trace();
-			if (Qtarget == Symmetry::qvacuum())
-			{
-				#ifdef PRINT_SU2_FACTORS
-				cout << termcolor::bold << termcolor::red << "Global SU2 factor in avg(Bra,O1,O2,Ket) from DmrgLinearAlgebra: " << termcolor::reset
-				     << "√" << Symmetry::coeff_dot(O1.Qtarget()) << " • √" << Symmetry::coeff_dot(O1.Qtarget()) << endl;
-				#endif
-				res *= sqrt(Symmetry::coeff_dot(O1.Qtarget())*Symmetry::coeff_dot(O2.Qtarget())); // scalar product coeff for SU(2)
-			}
+			// if (Qtarget == Symmetry::qvacuum())
+			// {
+			// 	#ifdef PRINT_SU2_FACTORS
+			// 	cout << termcolor::bold << termcolor::red << "Global SU2 factor in avg(Bra,O1,O2,Ket) from DmrgLinearAlgebra: " << termcolor::reset
+			// 	     << "√" << Symmetry::coeff_dot(O1.Qtarget()) << " • √" << Symmetry::coeff_dot(O1.Qtarget()) << endl;
+			// 	#endif
+			// 	res *= sqrt(Symmetry::coeff_dot(O1.Qtarget())*Symmetry::coeff_dot(O2.Qtarget())); // scalar product coeff for SU(2)
+			// }
 			return res;
 		}
 		else
@@ -456,7 +456,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 		lout << "input:\t" << Vin.info() << endl;
 		lout << "exact:\t" << Vout.info() << endl;
 	}
-	
+
 	if (tol_compr < 1.)
 	{
 		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
@@ -479,7 +479,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	{
 		Vout.sweep(0,DMRG::BROOM::QR);
 	}
-	
+
 	if (VERBOSITY > DMRG::VERBOSITY::SILENT) lout << endl;
 	
 	if (Vout.calc_Nqavg() <= 1.5 and Vout.min_Nsv == 0)

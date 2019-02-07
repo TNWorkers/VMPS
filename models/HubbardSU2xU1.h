@@ -367,7 +367,7 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
 	(FERMIONIC)? 
-	 Mout.setLocal(locx, (factor * pow(-1.,locx+1) * Op).plain<double>(), F[0].sign().plain<double>())
+		Mout.setLocal(locx, (factor * Op).plain<double>(), F[0].sign().plain<double>()) //* pow(-1.,locx+1)
 	:Mout.setLocal(locx, Op.plain<double>());
 	
 	return Mout;
@@ -486,14 +486,14 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	else if (locx1<locx2)
 	{
 		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), {2,+1}).plain<double>(), 
-		                               pow(-1.,locx2-locx1+1) * c.plain<double>()}, 
-		                               F[0].sign().plain<double>());
+		                               c.plain<double>()},
+			                           F[0].sign().plain<double>());//pow(-1.,locx2-locx1+1) * 
 	}
 	else if (locx1>locx2)
 	{
 		Mout.setLocal({locx2, locx1}, {sqrt(2.) * OperatorType::prod(c, F[locx2].sign(), {2,-1}).plain<double>(), 
-		                               pow(-1.,locx1-locx2+1) * cdag.plain<double>()}, 
-		                               F[0].sign().plain<double>());
+		                               cdag.plain<double>()}, 
+			                           F[0].sign().plain<double>());//pow(-1.,locx1-locx2+1) * 
 	}
 	return Mout;
 }

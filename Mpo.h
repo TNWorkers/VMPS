@@ -742,14 +742,14 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 					if(!Symmetry::validate(qCheck)) {continue;}
 					qCheck = {qloc[l][s2],qOp[l][k2],qloc[l][s1]};
 					if(!Symmetry::validate(qCheck)) {continue;}
-					auto qKs = Symmetry::reduceSilent(qOp[l][k1],qOp[l][k2]);
+					auto qKs = Symmetry::reduceSilent(qOp[l][k2],qOp[l][k1]);
 					for(const auto qK : qKs)
 					{
 						qCheck = {qloc[l][s3],qK,qloc[l][s1]};
 						if(!Symmetry::validate(qCheck)) {continue;}
 						// product in physical space:
-						Scalar factor_check = Symmetry::coeff_Apair(qloc[l][s1],qOp[l][k2] ,qloc[l][s2],
-						                                            qOp[l][k1] ,qloc[l][s3],qK);
+						Scalar factor_check = Symmetry::coeff_prod(qloc[l][s1], qOp[l][k2] , qloc[l][s2],
+																   qOp[l][k1] , qloc[l][s3], qK);
 						if (std::abs(factor_check) < std::abs(::mynumeric_limits<Scalar>::epsilon())) { continue; }
 						auto K = distance(qOpSq[l].begin(), find(qOpSq[l].begin(), qOpSq[l].end(), qK));
 						for(const auto& ql1: qauxLeft)
@@ -768,9 +768,12 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 								for(const auto& qrn : qrns)
 								{
 									// tensor product in auxiliary space:
-									Scalar factor_merge = Symmetry::coeff_tensorProd(qr1       , qr2       , qrn,
-									                                             qOp[l][k2], qOp[l][k1], qK ,
-									                                             ql1       , ql2       , qln);
+									// Scalar factor_merge = Symmetry::coeff_tensorProd(qr1       , qr2       , qrn,
+									// 												 qOp[l][k2], qOp[l][k1], qK ,
+									// 												 ql1       , ql2       , qln);
+									Scalar factor_merge = Symmetry::coeff_tensorProd(ql1       , ql2       , qln,
+																					 qOp[l][k2], qOp[l][k1], qK ,
+																					 qr1       , qr2       , qrn);
 									
 									Eigen::Index left1=TensorBaseLeft.leftAmount(qln,{ql1, ql2});
 									Eigen::Index left2=TensorBaseRight.leftAmount(qrn,{qr1, qr2});
@@ -1558,7 +1561,7 @@ precalc_TwoSiteData()
 			}
 		}
 	}
-	
+	cout << "calculated TSD" << endl;
 	GOT_TWO_SITE_DATA = true;
 }
 

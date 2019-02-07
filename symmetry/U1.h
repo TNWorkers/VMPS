@@ -91,6 +91,8 @@ public:
 								  const qType& q4, const qType& q5, const qType& q6);
 	inline static Scalar coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 									 const qType& q4, const qType& q5, const qType& q6);
+	inline static Scalar coeff_prod(const qType& q1, const qType& q2, const qType& q3,
+									const qType& q4, const qType& q5, const qType& q6);
 
 	inline static Scalar coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6,
@@ -301,6 +303,15 @@ template<typename Kind, typename Scalar>
 Scalar U1<Kind,Scalar>::
 coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 			const qType& q4, const qType& q5, const qType& q6)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar U1<Kind,Scalar>::
+coeff_prod(const qType& q1, const qType& q2, const qType& q3,
+		   const qType& q4, const qType& q5, const qType& q6)
 {
 	Scalar out = Scalar(1.);
 	return out;

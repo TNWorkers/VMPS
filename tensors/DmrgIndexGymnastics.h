@@ -526,11 +526,17 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 						}
 						if (ALL_BLOCKS_ARE_EMPTY == false)
 						{
+							// factor_cgc = (Symmetry::NON_ABELIAN)? 
+							// Symmetry::coeff_HPsi(Aket[s2].out[get<2>(ix[n])], qloc[s2], Aket[s2].in[get<2>(ix[n])],
+							//                      get<0>(ix[n])[2], qOp[k], L.mid(qL),
+							//                      Abra[s1].out[get<1>(ix[n])], qloc[s1], Abra[s1].in[get<1>(ix[n])])
+							//                      :1.;
 							factor_cgc = (Symmetry::NON_ABELIAN)? 
-							Symmetry::coeff_HPsi(Aket[s2].out[get<2>(ix[n])], qloc[s2], Aket[s2].in[get<2>(ix[n])],
-							                     get<0>(ix[n])[2], qOp[k], L.mid(qL),
-							                     Abra[s1].out[get<1>(ix[n])], qloc[s1], Abra[s1].in[get<1>(ix[n])])
+							Symmetry::coeff_HPsi(Aket[s2].in[get<2>(ix[n])], qloc[s2], Aket[s2].out[get<2>(ix[n])],
+							                     L.mid(qL), qOp[k], get<0>(ix[n])[2],
+							                     Abra[s1].in[get<1>(ix[n])], qloc[s1], Abra[s1].out[get<1>(ix[n])])
 							                     :1.;
+
 							if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 							
 							std::array<size_t,2> key = {s1, get<1>(ix[n])};
@@ -585,7 +591,6 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 	unordered_map<std::array<size_t,2>, 
 	              std::pair<vector<std::array<size_t,10> >, vector<Scalar> > > lookup;
 	Scalar factor_cgc;
-	
 	for (const auto &tsd:TSD)
 	for (size_t qL=0; qL<L.dim; ++qL)
 	{
@@ -609,17 +614,25 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 				Symmetry::coeff_Apair(L.mid(qL), qOp12[tsd.k12], qW,
 				                      qOp34[tsd.k34], get<0>(ix)[2], tsd.qOp)
 				                      :1.;
+				// Symmetry::coeff_Apair(L.mid(qL), qOp34[tsd.k34], qW,
+				//                       qOp12[tsd.k12], get<0>(ix)[2], tsd.qOp)
+				//                       :1.;
 				if (abs(factor_cgc6) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 				
 				if (qR != R.dict.end())
 				{
 					// standard coefficient for H*Psi with environments
+					// Scalar factor_cgcHPsi = (Symmetry::NON_ABELIAN)?
+					// Symmetry::coeff_HPsi(Aket[tsd.s2s4].out[qA24], tsd.qmerge24, Aket[tsd.s2s4].in[qA24],
+					//                      R.mid(qR->second), tsd.qOp, L.mid(qL),
+					//                      Abra[tsd.s1s3].out[qA13], tsd.qmerge13, Abra[tsd.s1s3].in[qA13])
+					//                      :1.;
 					Scalar factor_cgcHPsi = (Symmetry::NON_ABELIAN)?
-					Symmetry::coeff_HPsi(Aket[tsd.s2s4].out[qA24], tsd.qmerge24, Aket[tsd.s2s4].in[qA24],
-					                     R.mid(qR->second), tsd.qOp, L.mid(qL),
-					                     Abra[tsd.s1s3].out[qA13], tsd.qmerge13, Abra[tsd.s1s3].in[qA13])
+					Symmetry::coeff_HPsi(Aket[tsd.s2s4].in[qA24], tsd.qmerge24, Aket[tsd.s2s4].out[qA24],
+					                     L.mid(qL), tsd.qOp, R.mid(qR->second),
+					                     Abra[tsd.s1s3].in[qA13], tsd.qmerge13, Abra[tsd.s1s3].out[qA13])
 					                     :1.;
-					
+
 					std::array<size_t,2>  key = {static_cast<size_t>(tsd.s1s3), qA13};
 					std::array<size_t,10> val = {static_cast<size_t>(tsd.s2s4), qA24, qL, qR->second, 
 					                             tsd.s1, tsd.s2, tsd.k12, tsd.s3, tsd.s4, tsd.k34};
@@ -743,15 +756,25 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 								Symmetry::coeff_Apair(L.mid(qL), qOp12[k12], qW,
 								                      qOp34[k34], get<0>(ix)[2], qOp)
 								                      :1.;
+								// Scalar factor_cgc6 = (Symmetry::NON_ABELIAN)? 
+								// Symmetry::coeff_Apair(get<0>(ix)[2], qOp34[k34], qW,
+								//                       qOp12[k12]   , L.mid(qL) , qOp)
+								//                       :1.;
+
 								if (abs(factor_cgc6) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 								
 								if (qR != R.dict.end())
 								{
 									// standard coefficient for H*Psi with environments
+									// Scalar factor_cgcHPsi = (Symmetry::NON_ABELIAN)?
+									// Symmetry::coeff_HPsi(Aket[s2s4].out[qA24], qmerge24, Aket[s2s4].in[qA24],
+									//                      R.mid(qR->second), qOp, L.mid(qL),
+									//                      Abra[s1s3].out[qA13], qmerge13, Abra[s1s3].in[qA13])
+									//                      :1.;
 									Scalar factor_cgcHPsi = (Symmetry::NON_ABELIAN)?
-									Symmetry::coeff_HPsi(Aket[s2s4].out[qA24], qmerge24, Aket[s2s4].in[qA24],
-									                     R.mid(qR->second), qOp, L.mid(qL),
-									                     Abra[s1s3].out[qA13], qmerge13, Abra[s1s3].in[qA13])
+									Symmetry::coeff_HPsi(Aket[s2s4].in[qA24], qmerge24, Aket[s2s4].out[qA24],
+									                     L.mid(qL), qOp, R.mid(qR->second),
+									                     Abra[s1s3].in[qA13], qmerge13, Abra[s1s3].out[qA13])
 									                     :1.;
 									
 									std::array<size_t,2>  key = {static_cast<size_t>(s1s3), qA13};

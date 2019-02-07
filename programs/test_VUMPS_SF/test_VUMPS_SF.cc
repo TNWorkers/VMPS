@@ -310,7 +310,11 @@ int main (int argc, char* argv[])
 	GlobParams.min_iterations = args.get<size_t>("min_iter",10);
 	GlobParams.max_iterations = args.get<size_t>("max_iter",100);
 	GlobParams.Dinit = args.get<size_t>("Dinit",10);
-	
+
+	VUMPS::CONTROL::LANCZOS LanczosParams;
+	LanczosParams.eps_eigval = 1.e-12;
+	LanczosParams.eps_coeff = 1.e-12;
+
 //	if (U1)
 //	{
 //		typedef VMPS::HeisenbergU1XXZ MODEL;
@@ -478,6 +482,8 @@ int main (int argc, char* argv[])
 		GlobParams.Qinit = 6;
 		DMRG.userSetGlobParam();
 		DMRG.GlobParam = GlobParams;
+		DMRG.userSetLanczosParam();
+		DMRG.LanczosParam = LanczosParams;
 		DMRG.edgeState(H, g, Qc);
 		
 		vector<Mpo<MODEL::Symmetry> > Odag(L);

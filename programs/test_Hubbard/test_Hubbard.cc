@@ -380,7 +380,7 @@ int main (int argc, char* argv[])
 		
 		Stopwatch<> Watch_SU2;
 		
-		VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly,0},{"Ly",Ly2,1}}); //{"tRung",tRung}
+		VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly,0},{"Ly",Ly2,1},{"tRung",tRung}}); //
 		V = H_SU2.volume();
 		Vsq = V*V;
 		lout << H_SU2.info() << endl;

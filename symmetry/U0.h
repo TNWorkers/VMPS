@@ -79,6 +79,8 @@ namespace Sym{
 									  const qType& q4, const qType& q5, const qType& q6) { return 1.; }
 		inline static double coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 										 const qType& q4, const qType& q5, const qType& q6) { return 1.; }
+		inline static double coeff_prod(const qType& q1, const qType& q2, const qType& q3,
+										const qType& q4, const qType& q5, const qType& q6) { return 1.; }
 
 		inline static double coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 									  const qType& q4, const qType& q5, const qType& q6,

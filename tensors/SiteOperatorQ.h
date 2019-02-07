@@ -354,8 +354,8 @@ prod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetr
 			auto it = O2.data().dict.find(index);
 			if (it == O2.data().dict.end()) {continue;}
 			std::size_t mu = it->second;
-			factor_cgc = Symmetry::coeff_Apair( O1.data().in[nu], O1.Q(), O1.data().out[nu],
-												O2.Q(), O2.data().out[mu], target);
+			factor_cgc = Symmetry::coeff_prod( O1.data().in[nu], O1.Q(), O1.data().out[nu],
+											   O2.Q(), O2.data().out[mu], target);
 			// factor_cgc = Symmetry::coeff_Apair( O2.data().out[mu], O2.Q(), O1.data().out[nu],
 			// 									O1.Q(), O1.data().in[nu], target);
 			if ( std::abs(factor_cgc) < ::numeric_limits<Scalar>::epsilon() ) { continue; }
