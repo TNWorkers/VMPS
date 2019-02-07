@@ -82,7 +82,7 @@ protected:
 
 const std::map<string,std::any> KondoU0xSU2::defaults =
 {
-	{"t",1.}, {"tRung",0.}, {"t0",0.},
+	{"t",1.}, {"tRung",0.}, {"tPrimePrime",0.},
 	{"J",1.}, {"U",0.}, 
 	{"V",0.}, {"Vrung",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.}, {"Bx",0.}, {"Bxsub",0.}, {"Kx",0.},
@@ -92,7 +92,7 @@ const std::map<string,std::any> KondoU0xSU2::defaults =
 
 const map<string,any> KondoU0xSU2::sweep_defaults = 
 {
-	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",16ul}, {"eps_svd",1e-7},
+	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",15ul}, {"eps_svd",1e-7},
 	{"Dincr_abs",5ul}, {"Dincr_per",2ul}, {"Dincr_rel",1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",30ul}, {"min_halfsweeps",10ul},
@@ -143,16 +143,19 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		size_t lm1 = (loc==0)? N_sites-1 : loc-1;
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;
+		size_t lp3 = (loc+3)%N_sites;
 		
 		std::size_t Fprev_orbitals  = F[lm1].orbitals();
 		std::size_t Forbitals       = F[loc].orbitals();
 		std::size_t Fnext_orbitals  = F[lp1].orbitals();
 		std::size_t Fnextn_orbitals = F[lp2].orbitals();
+		std::size_t F3next_orbitals = F[lp3].orbitals();
 		
 		std::size_t Bprev_orbitals  = B[lm1].orbitals();
 		std::size_t Borbitals       = B[loc].orbitals();
 		std::size_t Bnext_orbitals  = B[lp1].orbitals();
 		std::size_t Bnextn_orbitals = B[lp2].orbitals();
+		std::size_t B3next_orbitals = B[lp3].orbitals();
 		
 		frac S = frac(B[loc].get_D()-1,2);
 		stringstream Slabel;
@@ -168,10 +171,6 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		// t⟂
 		param2d tPerp = P.fill_array2d<double>("tRung", "t", "tPerp", Forbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		Terms.save_label(loc, tPerp.label);
-		
-		// t0
-//		param1d t0 = P.fill_array1d<double>("t0", "t0orb", Forbitals, loc%Lcell);
-//		Terms.save_label(loc, t0.label);
 		
 		// Hubbard-U
 		param1d U = P.fill_array1d<double>("U", "Uorb", Forbitals, loc%Lcell);
@@ -375,6 +374,36 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 				                      OperatorType::outerprod(B[lm1].Scomp(SZ,0).structured(), F[lm1].Id(), {1}).plain<double>(),
 				                      OperatorType::outerprod(B[loc].Id().structured(), F[loc].Sz(beta), {1}).plain<double>()
 				                );
+			}
+		}
+		
+		// tPrimePrime
+		param2d tPrimePrime = P.fill_array2d<double>("tPrimePrime", "tPrimePrime_array", {Forbitals, F3next_orbitals}, loc%Lcell);
+		Terms.save_label(loc, tPrimePrime.label);
+		
+		if (loc < N_sites-3 or !P.get<bool>("OPEN_BC"))
+		{
+			auto Sign_loc     = OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(), {1});
+			auto Sign_lp1     = OperatorType::outerprod(B[lp1].Id().structured(), F[loc].sign(), {1});
+			auto Sign_lp2     = OperatorType::outerprod(B[lp2].Id().structured(), F[loc].sign(), {1});
+			
+			vector<SiteOperator<Symmetry,double> > TransOps(2);
+			TransOps[0] = Sign_lp1.plain<double>();
+			TransOps[1] = Sign_lp2.plain<double>();
+			
+			for (std::size_t alfa=0; alfa<Forbitals;       ++alfa)
+			for (std::size_t beta=0; beta<F3next_orbitals; ++beta)
+			{
+				auto PsiDagUp_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,alfa), {2});
+				auto PsiDagDn_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,alfa), {2});
+				auto PsiUp_lp3    = OperatorType::outerprod(B[lp3].Id().structured(), F[lp1].psi(UP,beta), {2});
+				auto PsiDn_lp3    = OperatorType::outerprod(B[lp3].Id().structured(), F[lp1].psi(DN,beta), {2});
+				
+				auto PsiDagUp_loc_signed = OperatorType::prod(PsiDagUp_loc, Sign_loc, {2});
+				auto PsiDagDn_loc_signed = OperatorType::prod(PsiDagDn_loc, Sign_loc, {2});
+				
+				Terms.push(3, loc, -tPrimePrime(alfa,beta)*sqrt(2.), PsiDagUp_loc_signed.plain<double>(), TransOps, PsiUp_lp3.plain<double>());
+				Terms.push(3, loc, -tPrimePrime(alfa,beta)*sqrt(2.), PsiDagDn_loc_signed.plain<double>(), TransOps, PsiDn_lp3.plain<double>());
 			}
 		}
 	}

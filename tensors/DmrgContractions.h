@@ -1933,7 +1933,7 @@ void split_AA (DMRG::DIRECTION::OPTION DIR, const vector<Biped<Symmetry,Matrix<S
 			   const vector<qarray<Symmetry::Nq> >& qloc_l, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Al,
 			   const vector<qarray<Symmetry::Nq> >& qloc_r, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Ar,
 			   const qarray<Symmetry::Nq>& qtop, const qarray<Symmetry::Nq>& qbot,
-			   Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C, bool SEPARATE_SV, double truncWeight, double S, double eps_svd, size_t min_Nsv, size_t max_Nsv)
+			   Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C, bool SEPARATE_SV, double &truncWeight, double &S, double eps_svd, size_t min_Nsv, size_t max_Nsv)
 {
 	vector<qarray<Symmetry::Nq> > midset = calc_qsplit(Al, qloc_l, Ar, qloc_r, qtop, qbot);
 
