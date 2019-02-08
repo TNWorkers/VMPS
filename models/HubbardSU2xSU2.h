@@ -83,7 +83,7 @@ protected:
 
 const map<string,any> HubbardSU2xSU2::defaults = 
 {
-	{"t",1.}, {"tRung",1.},
+	{"t",1.}, {"tRung",1.}, {"tPrimePrime",0.}, 
 	{"U",0.},
 	{"V",0.}, {"Vrung",0.},
 	{"J",0.}, {"Jrung",0.},
@@ -129,7 +129,7 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params)
 }
 
 void HubbardSU2xSU2::
-set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
+set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
 {
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = Terms.size();
@@ -139,10 +139,11 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 	{
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;
+		size_t lp3 = (loc+3)%N_sites;
 		
 		std::size_t orbitals       = F[loc].orbitals();
 		std::size_t next_orbitals  = F[lp1].orbitals();
-		std::size_t nextn_orbitals = F[lp2].orbitals();
+		std::size_t next3_orbitals = F[lp3].orbitals();
 		
 		stringstream ss;
 		ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
@@ -190,6 +191,26 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 				Terms.push_tight(loc, -tpara(alfa,beta) * std::sqrt(2.) * std::sqrt(2.), cdag_sign_loc, c_tight);
 				Terms.push_tight(loc,  Vpara(alfa,beta) * std::sqrt(3.), Tdag_loc, T_tight);
 				Terms.push_tight(loc,  Jpara(alfa,beta) * std::sqrt(3.), Sdag_loc, S_tight);
+			}
+		}
+		
+		// tPrimePrime
+		param2d tPrimePrime = P.fill_array2d<double>("tPrimePrime", "tPrimePrime_array", {orbitals, next3_orbitals}, loc%Lcell);
+		Terms.save_label(loc, tPrimePrime.label);
+		
+		if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
+		{
+			vector<SiteOperator<Symmetry,double> > TransOps(2);
+			TransOps[0] = F[lp1].sign().plain<double>();
+			TransOps[1] = F[lp2].sign().plain<double>();
+			
+			for (std::size_t alfa=0; alfa<orbitals;       ++alfa)
+			for (std::size_t beta=0; beta<next3_orbitals; ++beta)
+			{
+				SiteOperator<Symmetry, double> cdag_loc_sign = OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,2}).plain<double>();
+				SiteOperator<Symmetry, double> c_lp3         = F[lp3].c(beta).plain<double>();
+				
+				Terms.push(3, loc, -tPrimePrime(alfa,beta) * std::sqrt(2.) * std::sqrt(2.), cdag_loc_sign, TransOps, c_lp3);
 			}
 		}
 	}

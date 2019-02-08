@@ -384,8 +384,8 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		if (loc < N_sites-3 or !P.get<bool>("OPEN_BC"))
 		{
 			auto Sign_loc     = OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(), {1});
-			auto Sign_lp1     = OperatorType::outerprod(B[lp1].Id().structured(), F[loc].sign(), {1});
-			auto Sign_lp2     = OperatorType::outerprod(B[lp2].Id().structured(), F[loc].sign(), {1});
+			auto Sign_lp1     = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].sign(), {1});
+			auto Sign_lp2     = OperatorType::outerprod(B[lp2].Id().structured(), F[lp2].sign(), {1});
 			
 			vector<SiteOperator<Symmetry,double> > TransOps(2);
 			TransOps[0] = Sign_lp1.plain<double>();
