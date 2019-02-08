@@ -77,9 +77,8 @@ public:
 	inline static Scalar coeff_unity();
 	inline static Scalar coeff_dot(const qType& q1);
 	inline static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
-	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3);
-	inline static Scalar coeff_sign(const qType& q1, const qType& q2, const qType& q3);
-	inline static Scalar coeff_sign2(const qType& q1, const qType& q2, const qType& q3) {return 1.;};
+	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2);
+
 	inline static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
 
 	inline static Scalar coeff_3j(const qType& q1, const qType& q2, const qType& q3,
@@ -98,8 +97,8 @@ public:
 								  const qType& q4, const qType& q5, const qType& q6,
 								  const qType& q7, const qType& q8, const qType& q9);
 	inline static Scalar coeff_tensorProd(const qType& q1, const qType& q2, const qType& q3,
-									  const qType& q4, const qType& q5, const qType& q6,
-									  const qType& q7, const qType& q8, const qType& q9);
+										  const qType& q4, const qType& q5, const qType& q6,
+										  const qType& q7, const qType& q8, const qType& q9);
 	inline static Scalar coeff_buildL(const qType& q1, const qType& q2, const qType& q3,
 									  const qType& q4, const qType& q5, const qType& q6,
 									  const qType& q7, const qType& q8, const qType& q9);
@@ -112,11 +111,6 @@ public:
 	inline static Scalar coeff_AW(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6,
 								  const qType& q7, const qType& q8, const qType& q9);
-
-	inline static Scalar coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
-									 const qType& q4, const qType& q5, const qType& q6,
-									 const qType& q7, const qType& q8, const qType& q9,
-									 const qType& q10, const qType& q11, const qType& q12);
 	///@}
 
 	/** 
@@ -247,15 +241,7 @@ coeff_rightOrtho(const qType& q1, const qType& q2)
 
 template<typename Kind, typename Scalar>
 Scalar U1<Kind,Scalar>::
-coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3)
-{
-	Scalar out = Scalar(1.);
-	return out;
-}
-
-template<typename Kind, typename Scalar>
-Scalar U1<Kind,Scalar>::
-coeff_sign(const qType& q1, const qType& q2, const qType& q3)
+coeff_leftSweep(const qType& q1, const qType& q2)
 {
 	Scalar out = Scalar(1.);
 	return out;
@@ -382,17 +368,6 @@ Scalar U1<Kind,Scalar>::
 coeff_AW(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q4, const qType& q5, const qType& q6,
 		 const qType& q7, const qType& q8, const qType& q9)
-{
-	Scalar out = Scalar(1.);
-	return out;
-}
-
-template<typename Kind, typename Scalar>
-Scalar U1<Kind,Scalar>::
-coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
-			const qType& q4, const qType& q5, const qType& q6,
-			const qType& q7, const qType& q8, const qType& q9,
-			const qType& q10, const qType& q11, const qType& q12)
 {
 	Scalar out = Scalar(1.);
 	return out;

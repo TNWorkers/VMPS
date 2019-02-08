@@ -28,6 +28,9 @@ enum CONTRACT_LR_MODE {FULL, TRIANGULAR, FIXED};
  * \param MODE_input : if \p FULL, simple contraction, 
  *                     if \p TRIANGULAR, contract only the lower triangle \f$a<b\f$, 
  *                     if \p FIXED contract with fixed \f$a\f$
+ * \note The quantum number flow for the left environment is \f$i+a=j\f$ where \f$i\f$ is the index L.out (ket layer),
+ * \f$a\f$ the index L.mid (MPO layer) and \f$j\f$ the index L.in (bra layer).
+ * This corresponds to the CGC \f$C^{i,a\rightarrow j}_{m_i,m_a\rightarrow m_j}\f$.
  */
 template<typename Symmetry, typename MatrixType, typename MatrixType2, typename MpoScalar>
 void contract_L (const Tripod<Symmetry,MatrixType2> &Lold, 
@@ -71,9 +74,6 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
 					
 					if constexpr ( Symmetry::NON_ABELIAN )
 					{
-						// factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
-						//                                     quple[2],            qOp[k],   Lold.mid(qL),
-						//                                     Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
 						factor_cgc = Symmetry::coeff_buildL(Aket[s2].in[qAket], qloc[s2], Aket[s2].out[qAket],
 						                                    Lold.mid(qL),            qOp[k],   quple[2],
 						                                    Abra[s1].in[qAbra], qloc[s1], Abra[s1].out[qAbra]);
@@ -158,6 +158,9 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
  * \param MODE_input : if \p FULL, simple contraction, 
  *                     if \p TRIANGULAR, contract only the lower triangle \f$a<b\f$, 
  *                     if \p FIXED contract with fixed \f$a\f$
+ * \note The quantum number flow for the right environment is \f$i+a=j\f$ where \f$i\f$ is the index R.in (ket layer),
+ * \f$a\f$ the index R.mid (MPO layer) and \f$j\f$ the index R.out (bra layer).
+ * This corresponds to the CGC \f$C^{i,a\rightarrow j}_{m_i,m_a\rightarrow m_j}\f$.
  */
 template<typename Symmetry, typename MatrixType, typename MatrixType2, typename MpoScalar>
 void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
@@ -201,9 +204,6 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
 					
 					if constexpr (Symmetry::NON_ABELIAN)
 					{
-						// factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
-						//                                     Rold.mid(qR),        qOp[k],   quple[2],
-						//                                     Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
 						factor_cgc = Symmetry::coeff_buildR(Aket[s2].in[qAket], qloc[s2], Aket[s2].out[qAket],
 						                                    quple[2]          , qOp[k],   Rold.mid(qR),
 						                                    Abra[s1].in[qAbra], qloc[s1], Abra[s1].out[qAbra]);
@@ -319,9 +319,6 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 					size_t qAket = get<2>(ix[n]);
 					if constexpr ( Symmetry::NON_ABELIAN )
 						{
-							// factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket],qloc[s2],Aket[s2].in[qAket],
-							//                                     quple[2]           ,qOp[k]  ,Lold.mid(qL),
-							//                                     Abra[s1].out[qAbra],qloc[s1],Abra[s1].in[qAbra]);
 							factor_cgc = Symmetry::coeff_buildL(Aket[s2].in[qAket], qloc[s2], Aket[s2].out[qAket],
 																Lold.mid(qL),            qOp[k],   quple[2],
 																Abra[s1].in[qAbra], qloc[s1], Abra[s1].out[qAbra]);
@@ -439,9 +436,6 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 						qarray3<Symmetry::Nq> quple = {new_qin, new_qout, new_qmid};
 						if constexpr (Symmetry::NON_ABELIAN)
 						{
-							// factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[q2->second],qloc[s2],Aket[s2].in[q2->second],
-							//                                     Rold.mid(qR),qOp[k],quple[2],
-							//                                     Abra[s1].out[q1->second],qloc[s1],Abra[s1].in[q1->second]);
 							factor_cgc = Symmetry::coeff_buildR(Aket[s2].in[q2->second], qloc[s2], Aket[s2].out[q2->second],
 																quple[2]          , qOp[k],   Rold.mid(qR),
 																Abra[s1].in[q1->second], qloc[s1], Abra[s1].out[q1->second]);
@@ -768,24 +762,20 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 						{
 							if (DIR == DMRG::DIRECTION::RIGHT)
 							{
-								// factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
-								// 									quple[2], qOp[k], L.mid(qL),
-								// 									Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
 								factor_cgc = Symmetry::coeff_buildL(Aket[s2].in[qAket], qloc[s2], Aket[s2].out[qAket],
 																	L.mid(qL)         , qOp[k]  , quple[2],
 																	Abra[s1].in[qAbra], qloc[s1], Abra[s1].out[qAbra]);
 
-								factor_merge = Symmetry::coeff_rightOrtho(Abra[s1].out[qAbra],Aket[s2].out[qAket]);
+								factor_merge = Symmetry::coeff_rightOrtho(Abra[s1].out[qAbra],
+																		  Aket[s2].out[qAket]);
 							}
 							else if (DIR == DMRG::DIRECTION::LEFT)
 							{
-								// factor_cgc = Symmetry::coeff_buildR(Aket[s2].out[qAket], qloc[s2], Aket[s2].in[qAket],
-								// 									quple[2], qOp[k], L.mid(qL),
-								// 									Abra[s1].out[qAbra], qloc[s1], Abra[s1].in[qAbra]);
 								factor_cgc = Symmetry::coeff_buildR(Aket[s2].in[qAket], qloc[s2], Aket[s2].out[qAket],
 																	L.mid(qL)         , qOp[k]  , quple[2],
 																	Abra[s1].in[qAbra], qloc[s1], Abra[s1].out[qAbra]);
-								factor_merge = Symmetry::coeff_rightOrtho(L.in(qL),L.out(qL));
+								factor_merge = Symmetry::coeff_rightOrtho(L.in(qL),
+																		  L.out(qL));
 							}
 						}
 						else
@@ -912,9 +902,6 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 						size_t qAket = get<2>(ix[n]);
 						if constexpr ( Symmetry::NON_ABELIAN )
 						{
-							// factor_cgc = Symmetry::coeff_buildL(Aket[s2].out[qAket],qloc[s2],Aket[s2].in[qAket],
-							// 									quple[2],qOp[k],L.mid(qL),
-							// 									Abra[s1].out[qAbra],qloc[s1],Abra[s1].in[qAbra]);
 							factor_cgc = Symmetry::coeff_buildL(Aket[s2].in[qAket], qloc[s2], Aket[s2].out[qAket],
 																L.mid(qL)         , qOp[k]  , quple[2],
 																Abra[s1].in[qAbra], qloc[s1], Abra[s1].out[qAbra]);
@@ -1285,7 +1272,6 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 			factor_check = Symmetry::coeff_prod(qloc[s1],qOpBot[k2],qloc[s2],
 												qOpTop[k1],qloc[s3],k);
 			if (std::abs(factor_check) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
-//			cout << "checked physical" << endl;
 			for (size_t qR=0; qR<Rold.dim; ++qR)
 			{
 				auto qRouts = Symmetry::reduceSilent(Rold.out(qR),Symmetry::flip(qloc[s1]));
@@ -1299,14 +1285,10 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 					auto q3 = Aket[s3].dict.find({qRin, Rold.in(qR)});
 					if (q1!=Abra[s1].dict.end() and q3!=Aket[s3].dict.end())
 					{
-//						cout << "checked MPS" << endl;
 						auto qRmids = Symmetry::reduceSilent(Rold.mid(qR),Symmetry::flip(k));
 						for(const auto& new_qmid : qRmids)
 						{
 							qarray3<Symmetry::Nq> quple = {Aket[s3].in[q3->second], Abra[s1].in[q1->second], new_qmid};
-							// factor_cgc = Symmetry::coeff_buildR(Aket[s3].out[q3->second],qloc[s3],Aket[s3].in[q3->second],
-							// 									Rold.mid(qR),k,new_qmid,
-							// 									Abra[s1].out[q1->second],qloc[s1],Abra[s1].in[q1->second]);
 							factor_cgc = Symmetry::coeff_buildR(Aket[s3].in[q3->second], qloc[s3], Aket[s3].out[q3->second],
 																new_qmid               , k       , Rold.mid(qR),
 																Abra[s1].in[q1->second], qloc[s1], Abra[s1].out[q1->second]);
@@ -1318,30 +1300,17 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 								auto qleftAuxs = Symmetry::reduceSilent(qrightAux,Symmetry::flip(qOpTop[k1]));
 								for(const auto& qleftAux : qleftAuxs)
 								{
-									// cout << "leftTopQs="; for(const auto& qlt:leftTopQs) {cout << qlt << " ";} cout << endl;
-									// cout << "qleftAux=" << qleftAux << endl;
 									if(auto it=leftTopQs.find(qleftAux) != leftTopQs.end())
 									{
-//										 cout << "checked top qs" << endl;
-										// cout << "qrightAuxP=" << qrightAuxP << ", qOpBot[k2]=" << qOpBot[k2] << endl;
 										auto qleftAuxPs = Symmetry::reduceSilent(qrightAuxP,Symmetry::flip(qOpBot[k2]));
 										for(const auto& qleftAuxP : qleftAuxPs)
-										{
-											// cout << "leftBotQs="; for(const auto& qlt:leftBotQs) {cout << qlt << " ";} cout << endl;
-											// cout << "qleftAuxP=" << qleftAuxP << endl;
-											
+										{											
 											if(auto it=leftBotQs.find(qleftAuxP) != leftBotQs.end())
 											{
-//												 cout << "checked bot qs" << endl;
-												// tensor product of MPOs in auxiliary space:
-												// factor_merge = Symmetry::coeff_tensorProd(qrightAuxP,qrightAux,Rold.mid(qR),
-												// 										  qOpBot[k2],qOpTop[k1],k,
-												// 										  qleftAuxP,qleftAux,new_qmid);
 												factor_merge = Symmetry::coeff_tensorProd(qleftAuxP,qleftAux,new_qmid,
 																						  qOpBot[k2],qOpTop[k1],k,
 																						  qrightAuxP,qrightAux,Rold.mid(qR));
 												if (std::abs(factor_merge) < std::abs(::mynumeric_limits<MpoScalar>::epsilon())) { continue; }
-//												 cout << "multiplying the tensors" << endl;
 												Eigen::Index left1=TensorBaseLeft.leftAmount(new_qmid,{qleftAuxP, qleftAux});
 												for (int ktop=0; ktop<Wtop[s2][s3][k1].outerSize(); ++ktop)
 												for (typename SparseMatrix<MpoScalar>::InnerIterator iWtop(Wtop[s2][s3][k1],ktop); iWtop; ++iWtop)
@@ -1732,9 +1701,6 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 					if (tensorBasis_r.find(qmerge_r) == false) {continue;}
 					if constexpr (Symmetry::NON_ABELIAN)
 								 {
-									 // factor_cgc = Symmetry::coeff_AW(Ain[s2].in[q] , qWl   , qmerge_l,
-									 // 								 qloc[s2]      , qOp[k], qloc[s1],
-									 // 								 Ain[s2].out[q], qWr   , qmerge_r);
 									 factor_cgc = Symmetry::coeff_AW(Ain[s2].in[q], qloc[s2], Ain[s2].out[q],
 									 								 qWl          , qOp[k]  , qWr,
 									 								 qmerge_l     , qloc[s1], qmerge_r);
@@ -2020,7 +1986,8 @@ void split_AA (DMRG::DIRECTION::OPTION DIR, const vector<Biped<Symmetry,Matrix<S
 							                                          qloc_r[s3], Apair[s1s3].out[q13], qmerge);
 							if (DIR==DMRG::DIRECTION::LEFT)
 							{
-								factor_cgc *= sqrt(Symmetry::coeff_rightOrtho(Apair[s1s3].out[q13], midset[qmid]));
+								factor_cgc *= Symmetry::coeff_leftSweep(Apair[s1s3].out[q13],
+																		midset[qmid]);
 							}
 							
 							cgcmap[make_tuple(s1,Apair[s1s3].in[q13],s3,Apair[s1s3].out[q13])].push_back(factor_cgc);
@@ -2216,7 +2183,8 @@ void split_AA (DMRG::DIRECTION::OPTION DIR, const vector<Biped<Symmetry,Matrix<S
 				
 				qarray2<Symmetry::Nq> quple = {midset[qmid], get_qr[i]};
 				auto q = Ar[s3].dict.find(quple);
-				Scalar factor_cgc3 = (DIR==DMRG::DIRECTION::LEFT)? sqrt(Symmetry::coeff_rightOrtho(midset[qmid], get_qr[i])):1.;
+				Scalar factor_cgc3 = (DIR==DMRG::DIRECTION::LEFT)? Symmetry::coeff_leftSweep(midset[qmid],
+																							 get_qr[i]):1.;
 				if (q != Ar[s3].dict.end())
 				{
 					Ar[s3].block[q->second] += factor_cgc3 * Aright.block(0,jstitch, Nret,Ncols);

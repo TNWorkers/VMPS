@@ -25,6 +25,10 @@ template<typename Symmetry, typename Scalar> class Mpo;
  * Matrix Product State with conserved quantum numbers (Abelian and non abelian symmetries).
  * \describe_Symmetry
  * \describe_Scalar
+ * \note We define the quantum number flow for the \f$A\f$-tensors as follows: 
+ * left auxiliary leg \f$i\f$ is combined with the physical index \f$\sigma\f$ to obtain the right auxiliary leg \f$j\f$.
+ * For U(1) this means that \f$i+\sigma=j \f$. 
+ * For SU(2) this means that the \f$A\f$-tensor decompose with the CGC \f$C^{i,\sigma\rightarrow j}_{m_i,m_\sigma\rightarrow m_j}\f$.
  */
 template<typename Symmetry, typename Scalar=double>
 class Mps : public DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >
@@ -1541,8 +1545,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]]*
 					                                        Symmetry::coeff_leftSweep(
 					                                         A[loc][svec[i]].out[qvec[i]],
-					                                         A[loc][svec[i]].in[qvec[i]],
-					                                         qloc[loc][svec[i]]);
+					                                         A[loc][svec[i]].in[qvec[i]]);
 				stitch += Ncolsvec[i];
 			}
 			
@@ -1599,18 +1602,16 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 					if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 					{
 						Mtmp = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])*
-								                         Symmetry::coeff_sign(
-								                          A[loc][svec[i]].out[qvec[i]],
+								                         Symmetry::coeff_leftSweep(
 								                          A[loc][svec[i]].in[qvec[i]],
-								                          qloc[loc][svec[i]]);
+								                          A[loc][svec[i]].out[qvec[i]]);
 					}
 					else if (TOOL == DMRG::BROOM::QR)
 					{
 						Mtmp = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i])*
-								                         Symmetry::coeff_sign(
-								                          A[loc][svec[i]].out[qvec[i]],
+								                         Symmetry::coeff_leftSweep(
 								                          A[loc][svec[i]].in[qvec[i]],
-								                          qloc[loc][svec[i]]);
+								                          A[loc][svec[i]].out[qvec[i]]);
 					}
 					
 					if (Mtmp.size() != 0)
@@ -1918,8 +1919,7 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixTyp
 					Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]]*
 					                                            Symmetry::coeff_leftSweep(
 					                                            A[loc][svec[i]].out[qvec[i]],
-					                                            A[loc][svec[i]].in[qvec[i]],
-					                                            qloc[loc][svec[i]]);
+					                                            A[loc][svec[i]].in[qvec[i]]);
 					stitch += Ncolsvec[i];
 				}
 				
@@ -1935,10 +1935,9 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixTyp
 					{
 						size_t Nnull = Qmatrix.rows()-Nret;
 						MatrixType Mtmp = Qmatrix.block(Nret,stitch, Nnull,Ncolsvec[i])*
-						                  Symmetry::coeff_sign(
-						                  A[loc][svec[i]].out[qvec[i]],
+						                  Symmetry::coeff_leftSweep(
 						                  A[loc][svec[i]].in[qvec[i]],
-						                  qloc[loc][svec[i]]);
+						                  A[loc][svec[i]].out[qvec[i]]);
 						N[svec[i]].try_push_back(A[loc][svec[i]].in[qvec[i]], A[loc][svec[i]].out[qvec[i]], Mtmp);
 					}
 					stitch += Ncolsvec[i];
@@ -2034,8 +2033,7 @@ leftSplitStep (size_t loc, Biped<Symmetry,MatrixType> &C)
 		{
 			Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]] *
 			                                            Symmetry::coeff_leftSweep(A[loc][svec[i]].out[qvec[i]],
-			                                                                      A[loc][svec[i]].in[qvec[i]],
-			                                                                      qloc[loc][svec[i]]);
+			                                                                      A[loc][svec[i]].in[qvec[i]]);
 			stitch += Ncolsvec[i];
 		}
 		
@@ -2050,9 +2048,8 @@ leftSplitStep (size_t loc, Biped<Symmetry,MatrixType> &C)
 		for (size_t i=0; i<svec.size(); ++i)
 		{
 			A[loc][svec[i]].block[qvec[i]] = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i])*
-			                                 Symmetry::coeff_sign(A[loc][svec[i]].out[qvec[i]],
-			                                                      A[loc][svec[i]].in[qvec[i]],
-			                                                      qloc[loc][svec[i]]);
+			                                 Symmetry::coeff_leftSweep(A[loc][svec[i]].in[qvec[i]],
+																	   A[loc][svec[i]].out[qvec[i]]);
 			stitch += Ncolsvec[i];
 		}
 		
@@ -2575,9 +2572,10 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 							{
 								if (qP > QinTop[loc] or qP < QinBot[loc]) {continue;}
 								
-								Scalar factor_cgc = Symmetry::coeff_HPsi(A[loc][s2].out[itA->second], qloc[loc][s2], A[loc][s2].in[itA->second],
-								                                         H->R.mid(qR), H->qOp[k], qW,
-								                                         H->R.out(qR), qloc[loc][s1], qP);
+								Scalar factor_cgc = Symmetry::coeff_HPsi(A[loc][s2].in[itA->second], qloc[loc][s2], A[loc][s2].out[itA->second],
+								                                         qW, H->qOp[k], H->R.mid(qR),
+								                                         qP, qloc[loc][s1], H->R.out(qR));
+
 								if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 								
 								for (int spInd=0; spInd<H->W[s1][s2][k].outerSize(); ++spInd)
@@ -2787,9 +2785,10 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 							{
 								if (qP > QoutTop[loc] or qP < QoutBot[loc]) {continue;}
 								
-								Scalar factor_cgc = Symmetry::coeff_HPsi(A[loc][s2].out[itA->second], qloc[loc][s2], A[loc][s2].in[itA->second],
-								                                         qW, H->qOp[k], H->L.mid(qL),
-								                                         qP, qloc[loc][s1], H->L.in(qL));
+								Scalar factor_cgc = Symmetry::coeff_HPsi(A[loc][s2].in[itA->second], qloc[loc][s2], A[loc][s2].out[itA->second],
+								                                         H->L.mid(qL), H->qOp[k], qW,
+								                                         H->L.in(qL), qloc[loc][s1], qP);
+
 								if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 								
 								for (int spInd=0; spInd<H->W[s1][s2][k].outerSize(); ++spInd)
@@ -2973,47 +2972,6 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 	Scalar out = L.trace();
 	return out;
 }
-
-//template<typename Symmetry, typename Scalar>
-//template<typename MpoScalar>
-//Scalar Mps<Symmetry,Scalar>::
-//locAvg (const Mpo<Symmetry,MpoScalar> &O) const
-//{
-//	assert(this->pivot != -1 and "This function can only compute averages for Mps in mixed canonical form. Use avg() instead.");
-//	assert(O.Qtarget() == Symmetry::qvacuum() and "This function can only calculate averages with local singlet operators. Use avg() instead.");
-//	
-//	size_t loc = this->pivot;
-//	
-////	Scalar res = 0.;
-////	for (size_t s=0; s<qloc[loc].size(); ++s)
-////	for (size_t k=0; k<O.opBasis(loc).size(); ++k)
-////	for (size_t q=0; q<A[loc][s].size(); ++q)
-////	{
-////		if (A[loc][s].block[q].size() > 0)
-////		{
-////			for (int r=0; r<O.W_at(loc)[s][s][k].outerSize(); ++r)
-////			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(O.W_at(loc)[s][s][k],r); iW; ++iW)
-////			{
-////				res += (A[loc][s].block[q].adjoint() * A[loc][s].block[q]).trace() * 
-////				       Symmetry::coeff_dot(A[loc][s].out[q]) * 
-////				       iW.value();
-////			}
-////		}
-////	}
-////	
-////	return res;
-//	
-//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
-//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
-//	L.setIdentity(1,1,inBasis (loc));
-//	R.setIdentity(1,1,outBasis(loc));
-//	
-//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lnext;
-//	
-//	contract_L(L, A[loc], O.W_at(loc), O.IS_HAMILTONIAN(), A[loc], O.locBasis(loc), O.opBasis(loc), Lnext);
-//	
-//	return contract_LR(Lnext,R);
-//}
 
 template<typename Symmetry, typename Scalar>
 template<typename MpoScalar>

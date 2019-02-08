@@ -325,7 +325,7 @@ struct DMRG
 			static size_t min_Nsv                    (size_t i) {return DMRG_CONTROL_DEFAULT_MIN_NSV;}
 			static int    max_Nrich                  (size_t i) {return -1;} // -1 = infinity
 			static void   doSomething                (size_t i) {return;} // -1 = infinity
-			static DMRG::ITERATION::OPTION iteration (size_t i) {return DMRG::ITERATION::ONE_SITE;}
+			static DMRG::ITERATION::OPTION iteration (size_t i) {return DMRG::ITERATION::TWO_SITE;}
 			
 			//LANCZOS DEFAULTS
 			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO = LANCZOS::REORTHO::FULL;

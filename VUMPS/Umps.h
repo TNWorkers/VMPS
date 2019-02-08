@@ -1152,15 +1152,14 @@ calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const
 			for (size_t i=0; i<svec.size(); ++i)
 			{
 				Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[GAUGE::C][loc][svec[i]].block[qvec[i]]*
-					                                        Symmetry::coeff_sign(
-					                                         A[GAUGE::C][loc][svec[i]].out[qvec[i]],
+					                                        Symmetry::coeff_leftSweep(
 					                                         A[GAUGE::C][loc][svec[i]].in[qvec[i]],
-					                                         qloc[loc][svec[i]]);
+					                                         A[GAUGE::C][loc][svec[i]].out[qvec[i]]);
+				
 				Acmp.block  (0,stitch, Nrows,Ncolsvec[i]) = A[GAUGE::R][loc][svec[i]].block[qvec[i]]*
-					                                        Symmetry::coeff_sign(
-					                                         A[GAUGE::R][loc][svec[i]].out[qvec[i]],
+					                                        Symmetry::coeff_leftSweep(
 					                                         A[GAUGE::R][loc][svec[i]].in[qvec[i]],
-					                                         qloc[loc][svec[i]]);
+					                                         A[GAUGE::R][loc][svec[i]].out[qvec[i]]);
 				stitch += Ncolsvec[i];
 			}
 			
@@ -1298,8 +1297,7 @@ polarDecompose (size_t loc, GAUGE::OPTION gauge)
 				Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[GAUGE::C][loc][svec[i]].block[qvec[i]]*
 					                                         Symmetry::coeff_leftSweep(
 					                                          A[GAUGE::C][loc][svec[i]].out[qvec[i]],
-					                                          A[GAUGE::C][loc][svec[i]].in[qvec[i]],
-					                                          qloc[loc][svec[i]]);;
+					                                          A[GAUGE::C][loc][svec[i]].in[qvec[i]]);
 				stitch += Ncolsvec[i];
 			}
 			
@@ -1315,10 +1313,9 @@ polarDecompose (size_t loc, GAUGE::OPTION gauge)
 			for (size_t i=0; i<svec.size(); ++i)
 			{
 				A[GAUGE::R][loc][svec[i]].block[qvec[i]] = UC[qC].adjoint() * UR.block(0,stitch, Nrows,Ncolsvec[i])*
-					                                       Symmetry::coeff_sign(
-					                                        A[GAUGE::C][loc][svec[i]].out[qvec[i]],
+					                                       Symmetry::coeff_leftSweep(
 					                                        A[GAUGE::C][loc][svec[i]].in[qvec[i]],
-					                                        qloc[loc][svec[i]]);
+					                                        A[GAUGE::C][loc][svec[i]].out[qvec[i]]);
 				stitch += Ncolsvec[i];
 			}
 		}
@@ -1467,8 +1464,7 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 				Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = Atmp[svec[i]].block[qvec[i]]*
 				                                            Symmetry::coeff_leftSweep(
 				                                             Atmp[svec[i]].out[qvec[i]],
-				                                             Atmp[svec[i]].in[qvec[i]],
-				                                             qloc[loc][svec[i]]);
+				                                             Atmp[svec[i]].in[qvec[i]]);
 				stitch += Ncolsvec[i];
 			}
 			
@@ -1497,10 +1493,9 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 				A[GAUGE::R][loc][svec[i]].block[qvec[i]] = Jack.matrixU().leftCols(Nret) * 
 				                                           Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])
 				                                           *
-				                                           Symmetry::coeff_sign(
-				                                            Atmp[svec[i]].out[qvec[i]],
+				                                           Symmetry::coeff_leftSweep(
 				                                            Atmp[svec[i]].in[qvec[i]],
-				                                            qloc[loc][svec[i]]);
+				                                            Atmp[svec[i]].out[qvec[i]]);
 				stitch += Ncolsvec[i];
 			}
 		}
@@ -1546,8 +1541,7 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 					Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[GAUGE::R][loc][svec[i]].block[qvec[i]]*
 					                                            Symmetry::coeff_leftSweep(
 					                                            A[GAUGE::R][loc][svec[i]].out[qvec[i]],
-					                                            A[GAUGE::R][loc][svec[i]].in[qvec[i]],
-					                                            qloc[loc][svec[i]]);
+					                                            A[GAUGE::R][loc][svec[i]].in[qvec[i]]);
 					stitch += Ncolsvec[i];
 				}
 				
@@ -1563,10 +1557,9 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 					{
 						size_t Nnull = Qmatrix.rows()-Nret;
 						MatrixType Mtmp = Qmatrix.block(Nret,stitch, Nnull,Ncolsvec[i])*
-						                  Symmetry::coeff_sign(
-						                  A[GAUGE::R][loc][svec[i]].out[qvec[i]],
+						                  Symmetry::coeff_leftSweep(
 						                  A[GAUGE::R][loc][svec[i]].in[qvec[i]],
-						                  qloc[loc][svec[i]]);
+						                  A[GAUGE::R][loc][svec[i]].out[qvec[i]]);
 						N[svec[i]].try_push_back(A[GAUGE::R][loc][svec[i]].in[qvec[i]], A[GAUGE::R][loc][svec[i]].out[qvec[i]], Mtmp);
 					}
 					stitch += Ncolsvec[i];
@@ -1601,7 +1594,8 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 						}
 					}
 					Mtmp.block(down,0,source_dim,outbase[loc].inner_dim(outbase[loc][qout])).setIdentity();
-					Mtmp.block(down,0,source_dim,outbase[loc].inner_dim(outbase[loc][qout])) *= Symmetry::coeff_sign( outbase[loc][qout], qfull, qloc[loc][s] );
+					Mtmp.block(down,0,source_dim,outbase[loc].inner_dim(outbase[loc][qout])) *= Symmetry::coeff_leftSweep( qfull,
+																														   outbase[loc][qout]);
 					// Mtmp.setIdentity();
 					// cout << "push_back with q=" << quple[0] << "," << quple[1] << endl;
 					N[s].push_back(quple, Mtmp);

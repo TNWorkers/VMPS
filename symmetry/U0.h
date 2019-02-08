@@ -71,8 +71,8 @@ namespace Sym{
 		inline static double coeff_unity() { return 1.; }
 		inline static double coeff_dot(const qType& q1) { return 1.; }
 		inline static double coeff_rightOrtho(const qType& q1, const qType& q2) { return 1.; }
-		inline static double coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3) { return 1.; }
-		inline static double coeff_sign(const qType& q1, const qType& q2, const qType& q3) { return 1.; }
+		inline static double coeff_leftSweep(const qType& q1, const qType& q2) { return 1.; }
+
 		inline static double coeff_adjoint(const qType& q1, const qType& q2, const qType& q3) { return 1.; }
 
 		inline static double coeff_6j(const qType& q1, const qType& q2, const qType& q3,
@@ -97,11 +97,6 @@ namespace Sym{
 		inline static double coeff_HPsi(const qType& q1, const qType& q2, const qType& q3,
 										const qType& q4, const qType& q5, const qType& q6,
 										const qType& q7, const qType& q8, const qType& q9) { return 1.; }
-
-		inline static double coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
-										 const qType& q4, const qType& q5, const qType& q6,
-										 const qType& q7, const qType& q8, const qType& q9,
-										 const qType& q10, const qType& q11, const qType& q12) { return 1.; }
 
 		inline static bool triangle( const std::array<qType,3>& qs ) { return true; }
 		inline static bool pair( const std::array<qType,2>& qs ) { return true; }

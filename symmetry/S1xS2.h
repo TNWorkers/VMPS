@@ -85,8 +85,8 @@ public:
 	inline static Scalar coeff_unity();
 	inline static Scalar coeff_dot(const qType& q1);
 	inline static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
-	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3);
-	inline static Scalar coeff_sign(const qType& q1, const qType& q2, const qType& q3);
+	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2);
+
 	inline static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
 
 	static Scalar coeff_3j(const qType& q1, const qType& q2, const qType& q3,
@@ -118,12 +118,7 @@ public:
 									const qType& q7, const qType& q8, const qType& q9);
 	inline static Scalar coeff_AW(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6,
-								  const qType& q7, const qType& q8, const qType& q9);
-	
-	inline static Scalar coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
-									 const qType& q4, const qType& q5, const qType& q6,
-									 const qType& q7, const qType& q8, const qType& q9,
-									 const qType& q10, const qType& q11, const qType& q12);
+								  const qType& q7, const qType& q8, const qType& q9);	
 	///@}
 	
 	/** 
@@ -269,17 +264,9 @@ coeff_rightOrtho(const qType& q1, const qType& q2)
 
 template<typename S1, typename S2>
 typename S1::Scalar_ S1xS2<S1,S2>::
-coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3)
+coeff_leftSweep(const qType& q1, const qType& q2)
 {
-	Scalar out = S1::coeff_leftSweep({q1[0]},{q2[0]},{q3[0]})*S2::coeff_leftSweep({q1[1]},{q2[1]},{q3[1]});
-	return out;
-}
-
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
-coeff_sign(const qType& q1, const qType& q2, const qType& q3)
-{
-	Scalar out = S1::coeff_sign({q1[0]},{q2[0]},{q3[0]})*S2::coeff_sign({q1[1]},{q2[1]},{q3[1]});
+	Scalar out = S1::coeff_leftSweep({q1[0]},{q2[0]})*S2::coeff_leftSweep({q1[1]},{q2[1]});
 	return out;
 }
 
@@ -432,24 +419,6 @@ coeff_AW(const qType& q1, const qType& q2, const qType& q3,
 		       S2::coeff_AW({q1[1]},{q2[1]},{q3[1]},
 							{q4[1]},{q5[1]},{q6[1]},
 							{q7[1]},{q8[1]},{q9[1]});
-	return out;
-}
-
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
-coeff_Wpair(const qType& q1, const qType& q2, const qType& q3,
-			const qType& q4, const qType& q5, const qType& q6,
-			const qType& q7, const qType& q8, const qType& q9,
-			const qType& q10, const qType& q11, const qType& q12)
-{
-	Scalar out=S1::coeff_Wpair({q1[0]},{q2[0]},{q3[0]},
-							   {q4[0]},{q5[0]},{q6[0]},
-							   {q7[0]},{q8[0]},{q9[0]},
-							   {q10[0]},{q11[0]},{q12[0]})*
-		       S2::coeff_Wpair({q1[1]},{q2[1]},{q3[1]},
-							   {q4[1]},{q5[1]},{q6[1]},
-							   {q7[1]},{q8[1]},{q9[1]},
-							   {q10[0]},{q11[0]},{q12[0]});
 	return out;
 }
 

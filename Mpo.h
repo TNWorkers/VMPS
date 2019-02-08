@@ -54,6 +54,11 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar> class Vumps
  * Just adds a target quantum number and a bunch of labels on top of Mpo.
  * \describe_Symmetry
  * \describe_Scalar
+ * \note We define the quantum number flow for the \f$W\f$-tensors as follows: 
+ * left auxiliary leg \f$a\f$ is combined with the operator quantum number \f$k\f$ to obtain the right auxiliary leg \f$b\f$.
+ * upper physical index \f$\sigma_2\f$ is combined with the operator quantum number \f$k\f$ to obtain the lower physical index \f$\sigma_1\f$.
+ * For U(1) this means that \f$a+k=b \f$ and \f$\sigma_2+k=\sigma_1 \f$. 
+ * For SU(2) this means that the \f$W\f$-tensor decompose with the CGCs \f$C^{a,k\rightarrow b}_{m_a,m_k\rightarrow m_b}\cdot C^{\sigma_2,k\rightarrow \sigma_1}_{m_{\sigma_2},m_k\rightarrow m_{\sigma_1}}\f$.
  */
 template<typename Symmetry, typename Scalar=double>
 class Mpo
