@@ -37,7 +37,7 @@ Logger lout;
 #include "models/HeisenbergU1.h"
 #include "models/HeisenbergU1XXZ.h"
 #include "models/Heisenberg.h"
-//#include "models/HeisenbergXYZ.h"
+#include "models/HeisenbergXYZ.h"
 #include "HDF5Interface.h"
 
 template<typename Scalar>

@@ -32,6 +32,7 @@ vector<double> dE;
 double Emin, Emax, E0;
 double d, n_sig;
 bool CHEB, SHIFT;
+DMRG::VERBOSITY::OPTION VERB1, VERB2, VERB3;
 typedef MODEL::Symmetry Symmetry;
 
 int main (int argc, char* argv[]) 
@@ -54,6 +55,10 @@ int main (int argc, char* argv[])
 	if (wd.back() != '/') {wd += "/";}
 	SPIN_INDEX sigma = static_cast<SPIN_INDEX>(args.get<bool>("sigma",1)); // UP=0 DN=1
 	i0 = args.get<int>("i0",L/2);
+	
+	VERB1 = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB1",0));
+	VERB2 = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB2",0));
+	VERB3 = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB3",2));
 	
 	dE = args.get_list<double>("dE",{0.2});
 	outfile = make_string(spec,"_L=",L,"_M=",M,"_N=",N,"_J=",J,"_U=",U,"_sigma=",sigma);
@@ -80,4 +85,5 @@ int main (int argc, char* argv[])
 //	#include "programs/snippets/state_compression.txt"
 	#include "programs/snippets/AxInit.txt"
 	#include "programs/snippets/KPS.txt"
+	#include "programs/snippets/ImAA.txt"
 }

@@ -1460,22 +1460,22 @@ scale (double factor, double offset)
 		if (offset != 0.) {LocalOp += offset * Id;}
 		setLocal(LocalSite, LocalOp, GOT_OPEN_BC);
 	}
-//	else
-//	{
-//		assert(Terms.size() == N_sites and "Got no Terms, cannot scale!");
-//		
-//	//	vector<SuperMatrix<Symmetry,Scalar> > Gvec;
-//	//	for (size_t l=0; l<N_sites; ++l)
-//	//	{
-//	//		Terms[l].scale(factor,offset/N_sites);
-//	//		Gvec.push_back(Generator(Terms[l]));
-//	//	}
-//	//	calc_W_from_Gvec(Gvec, W, Daux, qOp, GOT_SQUARE, GOT_OPEN_BC);
-//		
-//		Terms.scale(factor, offset/N_sites);
-//		std::vector<SuperMatrix<Symmetry,Scalar>> Gvec = Terms.construct_Matrix();
-//		calc_W_from_Gvec(Gvec, W, qOp, GOT_SQUARE, GOT_OPEN_BC);
-//	}
+	else
+	{
+		assert(Terms.size() == N_sites and "Got no Terms, cannot scale!");
+		
+	//	vector<SuperMatrix<Symmetry,Scalar> > Gvec;
+	//	for (size_t l=0; l<N_sites; ++l)
+	//	{
+	//		Terms[l].scale(factor,offset/N_sites);
+	//		Gvec.push_back(Generator(Terms[l]));
+	//	}
+	//	calc_W_from_Gvec(Gvec, W, Daux, qOp, GOT_SQUARE, GOT_OPEN_BC);
+		
+		Terms.scale(factor, offset/N_sites);
+		std::vector<SuperMatrix<Symmetry,Scalar>> Gvec = Terms.construct_Matrix();
+		calc_W_from_Gvec(Gvec, W, Daux, qOp, GOT_SQUARE, GOT_OPEN_BC);
+	}
 }
 
 template<typename Symmetry, typename Scalar>

@@ -12,6 +12,7 @@
 #include "symmetry/kind_dummies.h"
 #include "DmrgTypedefs.h" // for SPIN_INDEX, SPINOP_LABEL
 #include "tensors/SiteOperator.h"
+#include "DmrgExternal.h" // for posmod
 
 /** 
  * \class FermionBase

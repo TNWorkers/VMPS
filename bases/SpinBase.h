@@ -256,7 +256,7 @@ HeisenbergHamiltonian (const std::array<ArrayXXd,3> &J,
                        const std::array<ArrayXXd,3> &D) const
 {
 	SiteOperator<Symmetry,complex<double> > Oout = 
-	HeisenbergHamiltonian(ZeroHopping(),J[2],B[2],B[0],0.,K[2],K[0],D[1]).template cast<complex<double> >();
+	HeisenbergHamiltonian(ZeroHopping(),J[2],B[2],B[0],ZeroField(),K[2],K[0],D[1]).template cast<complex<double> >();
 	
 	for (size_t i=0; i<N_orbitals; ++i)
 	for (size_t j=0; j<i; ++j)
