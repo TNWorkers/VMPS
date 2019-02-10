@@ -29,7 +29,7 @@
  * - a compare function, which defines a strict order for different irreps.
  * - a bunch of coefficients for the different algorithms resulting from contractions or traces over the Clebsch-Gordon spaces.
  *   For abelian symmetries, these coefficients are all trivially equal to unity, but nevertheless they need to be defined! 
- *   For a more detailed description of the different coeffiecients see the class info from Sym::SU2.
+ *   For a more detailed description of the different coefficients see \ref cgcdefs "here".
  *
  * Currently, there exists implementations for the groups U(1) (Sym::U1) and SU(2) (Sym::SU2) and for a dummy class, 
  * which represents no symmetry (Sym::U0).
