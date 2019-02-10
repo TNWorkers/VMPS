@@ -15,3 +15,9 @@ Makefile
 *.dot
 *.d
 *.h5
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.toc
+/docu/auto
