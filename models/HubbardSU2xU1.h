@@ -217,7 +217,6 @@ set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, s
 		
 		auto cF    = OperatorType::prod(F[loc].c(),    F[loc].sign(),{2,-1});
 		auto cdagF = OperatorType::prod(F[loc].cdag(), F[loc].sign(),{2,+1});
-		//todo3 Think about crazy fermionic signs here:
 		
 		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cdagF.plain<double>(), F[loc].c().plain<double>(),    F[loc].sign().plain<double>()));
 		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cF.plain<double>()   , F[loc].cdag().plain<double>(), F[loc].sign().plain<double>()));
@@ -482,18 +481,17 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	{
 		Mout.setLocal(locx1, sqrt(2.) * OperatorType::prod(cdag, c, Symmetry::qvacuum()).plain<double>());
 	}
-	/**\todo3 think about crazy fermionic signs here:*/
 	else if (locx1<locx2)
 	{
 		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), {2,+1}).plain<double>(), 
 		                               c.plain<double>()},
-			                           F[0].sign().plain<double>());//pow(-1.,locx2-locx1+1) * 
+			                           F[0].sign().plain<double>());
 	}
 	else if (locx1>locx2)
 	{
 		Mout.setLocal({locx2, locx1}, {sqrt(2.) * OperatorType::prod(c, F[locx2].sign(), {2,-1}).plain<double>(), 
 		                               cdag.plain<double>()}, 
-			                           F[0].sign().plain<double>());//pow(-1.,locx1-locx2+1) * 
+			                           F[0].sign().plain<double>());
 	}
 	return Mout;
 }

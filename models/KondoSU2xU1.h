@@ -624,9 +624,7 @@ make_local (KONDO_SUBSYSTEM SUBSYS,
 	}
 	
 	(FERMIONIC)? Mout.setLocal(locx, (factor * OpExt).plain<double>(), SignExt.plain<double>())
-		: Mout.setLocal(locx, (factor * OpExt).plain<double>()); //* pow(-1.,locx+1)
-	// (FERMIONIC)? Mout.setLocal(locx, (factor * OpExt).plain<double>(), SignExt.plain<double>())
-	// 	: Mout.setLocal(locx, (factor * OpExt).plain<double>());
+		: Mout.setLocal(locx, (factor * OpExt).plain<double>());
 	
 	return Mout;
 }
@@ -793,21 +791,13 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	{
 		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, sign, {2,+1}).plain<double>(), 
 		                               c.plain<double>()}, 
-			                           sign.plain<double>()); //pow(-1.,locx2-locx1+1)
-		// old:
-		// Mout.setLocal({locx1, locx2}, {-sqrt(2.) * cdag.plain<double>(), 
-		//                                OperatorType::prod(sign, c, {2,-1}).plain<double>()}, 
-		//                                sign.plain<double>());
+			                           sign.plain<double>());
 	}
 	else if(locx1>locx2)
 	{
 		Mout.setLocal({locx2, locx1}, {sqrt(2.) * OperatorType::prod(c, sign, {2,-1}).plain<double>(), 
 		                               cdag.plain<double>()}, 
-			                           sign.plain<double>()); //pow(-1.,locx1-locx2+1) * 
-	// old:
-		// Mout.setLocal({locx1, locx2}, {-sqrt(2.) * OperatorType::prod(sign, cdag, {2,+1}).plain<double>(), 
-		//                                c.plain<double>()}, 
-		//                                sign.plain<double>());
+			                           sign.plain<double>());
 	}
 	return Mout;
 }
@@ -815,7 +805,6 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
 ccdag (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
-	//Not well implemented.. the same problems with sign as in the Hubbard model.
 	assert(locx1<this->N_sites and locx2<this->N_sites);
 	stringstream ss;
 	ss << "c(" << locx1 << "," << locy1 << ")" << "c†(" << locx2 << "," << locy2 << ")";
@@ -835,13 +824,13 @@ ccdag (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	{
 		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(c, sign, {2,+1}).plain<double>(), 
 		                               cdag.plain<double>()}, 
-			                           sign.plain<double>()); //pow(-1.,locx2-locx1+1) * 
+			                           sign.plain<double>());
 	}
 	else if(locx1>locx2)
 	{
 		Mout.setLocal({locx2, locx1}, {sqrt(2.)*OperatorType::prod(cdag, sign, {2,-1}).plain<double>(), 
 		                               c.plain<double>()}, 
-			                           sign.plain<double>()); //pow(-1.,locx1-locx2+1) *
+			                           sign.plain<double>());
 	}
 	return Mout;
 }
