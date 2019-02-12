@@ -22,3 +22,7 @@ Makefile
 *.toc
 /docu/auto
 *.css
+*.bbl
+*.bcf
+*.blg
+*.run.xml

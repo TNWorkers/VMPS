@@ -1,0 +1,76 @@
+\documentclass[12pt,paper=a4,BCOR=16mm]{article}
+\input{./include/header.tex}
+\input{./include/macros.tex}
+%\usepackage{subfiles}
+
+\usepackage[toc]{appendix}
+\usepackage{geometry}
+\geometry{a4paper,total={170mm,257mm},left=25mm,top=15mm,bottom=25mm,right=15mm}
+\pagestyle{plain} % no header on each page
+
+\title{VUMPS-Strukturfaktor mit Einheitszellen}
+
+\begin{document}
+
+\maketitle
+
+\begin{itemize}
+\item $m,n$ geht \"uber verschiedene Einheitszellen
+\item $j,j'$ geht innerhalb der Zelle von $0$ bis $L_c-1$
+\item $L_c$ ist die Zellengr\"o{\ss}e
+\end{itemize}
+
+\begin{equation}
+\begin{split}
+s^{\alpha\beta}\lr{q} &:= \frac{1}{\abs{\mathbb{Z}}} \sum_{m,n\in\mathbb{Z}} \sum_{j,j'\in\text{cell}} e^{-iq\lr{nL_c-mL_c+j-j'}} \avg{O^{\beta\dagger}_{n,j} O^{\alpha}_{m,j'}}\\
+                      &= \sum_{n\in\mathbb{Z}} \sum_{j,j'\in\text{cell}} e^{-iq\lr{nL_c+j-j'}} \avg{O^{\beta\dagger}_{n,j} O^{\alpha}_{0,j'}}\\
+                      &= \sum_{j,j'\in\text{cell}} e^{-iq\lr{j-j'}} \cdot \lr{ \sum_{n\in\mathbb{Z}} e^{-iqnL_c} \avg{O^{\beta\dagger}_{n,j} O^{\alpha}_{0,j'}} }\\
+                      &=: \sum_{j,j'\in\text{cell}} e^{-iq\lr{j-j'}} \cdot s^{\alpha\beta}_{jj'}\lr{q}
+\end{split}
+\end{equation}
+
+Strukturfaktor zwischen Einheitszellen:
+
+\begin{equation}
+s^{\alpha\beta}_{jj'}\lr{q} := \sum_{n\in\mathbb{Z}} e^{-iqnL_c} \avg{O^{\beta\dagger}_{n,j} O^{\alpha}_{0+j'}}
+\end{equation}
+
+Zerf\"allt in $n=0$, $n>0$, $n<0$:
+
+\begin{equation}
+\begin{split}
+s^{\alpha\beta}_{jj'}\lr{q} &= \avg{O^{\beta\dagger}_{0+j} O^{\alpha}_{0,j'}} + 
+                               \sum_{n\in\mathbb{N}} e^{-iqnL_c} \avg{O^{\beta\dagger}_{n,j} O^{\alpha}_{0,j'}} + 
+                               \sum_{n\in\mathbb{N}} e^{+iqnL_c} \avg{O^{\beta\dagger}_{-n,j} O^{\alpha}_{0,j'}} \\
+                            &= \avg{O^{\beta\dagger}_{nL_c+j} O^{\alpha}_{0,j'}} + 
+                               \sum_{n\in\mathbb{N}} e^{-iqnL_c} \avg{O^{\alpha\dagger}_{0,j'} O^{\beta}_{n,j}} + 
+                               \sum_{n\in\mathbb{N}} e^{+iqnL_c} \avg{O^{\beta\dagger}_{0,j} O^{\alpha}_{n,j'}}\\
+                            &= s^{\alpha\beta}_{jj',\text{cell}} + s^{\alpha\beta}_{jj',\text{inter}}\lr{q}
+\end{split}
+\end{equation}
+
+Es wird $s^{\alpha\beta}_{jj',\text{inter}}\lr{q}$ von \texttt{intercellSF} (mehrere $q$-Werte), \texttt{intercellSFpoint} (ein $q$-Wert) berechnet. Die volle Transformation geschieht mit \texttt{SF} und \texttt{SFpoint}. Der Faktor $L_c$ in der Exponentialfunktion hat vorher gefehlt.
+
+Au{\ss}erdem scheint die Annahme $\lr{O^{\alpha,\beta}}^{\dagger}=O^{\alpha,\beta}$, bzw. $O^{\alpha\dagger}O^{\beta} = O^{\beta\dagger}O^{\alpha}$ getroffen zu werden, da nur das Produkt vorkommt und man die konjugierten Operatoren nicht \"ubergibt. In ``Tangent-space methods for uniform matrix product states'' (Kap. 2.5) verschwinden dann einfach die Kreuze...
+
+F\"ur $j=j'$ muss eigentlich nur ein Term berechnet werden:
+
+\begin{equation}
+s^{\alpha\beta}_{jj,\text{inter}}\lr{q} = \sum_{n\in\mathbb{N}} \lr{e^{-iqnL_c}+e^{+iqnL_c}} \avg{O^{\dagger}_j O_j} = 2\text{Re} \sum_{n\in\mathbb{N}} e^{-iqnL_c} \avg{O_j^{\dagger} O_j}
+\end{equation}
+
+Die Gleichheit der Terme sieht man numerisch, wird aber nicht ausgenutzt.
+
+%F\"ur einen AFM sieht das ganze jetzt so aus:
+
+%\begin{center}
+%\includegraphics[scale=0.4]{AFM}
+%\end{center}
+
+%F\"ur einen FM ist das Maximum allerdings nicht ganz bei $q=0$... Liegt es vielleicht daran, dass der Zustand zu schlecht ist (Ferromagnetismus im $S=0$-Unterraum)?...
+
+%\begin{center}
+%\includegraphics[scale=0.4]{FM}
+%\end{center}
+
+\end{document}

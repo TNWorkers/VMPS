@@ -1,0 +1,123 @@
+\usepackage{ifxetex}
+\ifxetex
+	\usepackage{fontspec}
+	\usepackage{libertine}
+\else
+	\usepackage[T1]{fontenc}
+	\usepackage[utf8]{inputenc}
+	\usepackage{lmodern}
+\fi
+
+\usepackage{datetime}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{subfigure}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage[dvips,letterpaper,left=1.0in,top=0.35in,right=1.0in,bottom=0.75in]{geometry}
+\usepackage{dsfont}
+\usepackage{tikz}
+\usepackage{algorithm}
+%\usepackage{url}
+\usepackage[style=authoryear,
+            maxbibnames=99, %list all authors in fullcite
+            citestyle=authoryearbrackets,
+            uniquename=false, %no first names
+            uniquelist=false,  %no first names
+            sorting=nymt, %sorting according to name, year, month, t? (custom scheme in authoryearbrackets.cbx)
+            firstinits=true,
+            url=false,doi=false,isbn=false
+           ]{biblatex}
+\AtEveryCite{\renewcommand{\mkbibnamelast}[1]{\mkbibemph{#1}‌​}} %last names in italics
+\renewbibmacro{in:}{} %suppresses "in:" before journal
+\bibliography{/afs/physnet.uni-hamburg.de/users/th1_po/rrausch/PHDTEX/main/Rausch_2016.bib}
+
+% enumerate bibliography items despite 'authoryear' citation style
+\defbibenvironment{bibliography}
+  {\enumerate
+     {}
+     {\setlength{\leftmargin}{\bibhang}%
+      \setlength{\itemindent}{-\leftmargin}%
+      \setlength{\itemsep}{\bibitemsep}%
+      \setlength{\parsep}{\bibparsep}}}
+  {\endenumerate}
+  {\item}
+
+%\bibliographystyle{eng-own}
+\usepackage[noend]{algpseudocode}
+\usetikzlibrary{decorations.markings}
+\usetikzlibrary{decorations.pathmorphing}
+\usetikzlibrary{decorations.pathreplacing}
+
+%\usepackage{hyperref}
+%\hypersetup{colorlinks=true,bookmarksopen=true,bookmarksopenlevel=3,allcolors=blue}
+%\usepackage{hypcap}
+\usepackage{pdfpages}
+
+\setlength{\parindent}{0ex}
+\setlength{\parskip}{1.3ex plus 0.2ex minus 0.2ex}
+
+%\newcommand{\dirIntro}{/afs/physnet.uni-hamburg.de/users/th1_po/rrausch/PHDTEX/Intro/}
+%\newcommand{\dirED}{/afs/physnet.uni-hamburg.de/users/th1_po/rrausch/PHDTEX/ED/}
+%\newcommand{\dirLanczos}{/afs/physnet.uni-hamburg.de/users/th1_po/rrausch/PHDTEX/Lanczos/}
+%\newcommand{\dirDMRG}{/afs/physnet.uni-hamburg.de/users/th1_po/rrausch/PHDTEX/DMRG/}
+%\newcommand{\dirBetheAnsatz}{/afs/physnet.uni-hamburg.de/users/th1_po/rrausch/PHDTEX/BetheAnsatz/}
+%\newcommand{\dirBetheAES}{/afs/physnet.uni-hamburg.de/users/th1_po/rrausch/PHDTEX/BetheAES/}
+%\newcommand{\dirAESeq}{/afs/physnet.uni-hamburg.de/users/th1_po/rrausch/PHDTEX/AESeq/}
+%\newcommand{\dirDoublonDyn}{/afs/physnet.uni-hamburg.de/users/th1_po/rrausch/PHDTEX/DoublonDyn/}
+%\newcommand{\dirTwoParticleSpec}{/afs/physnet.uni-hamburg.de/users/th1_po/rrausch/PHDTEX/TwoParticleSpec/}
+
+% hyperlinks for citations with biblatex:
+
+\DeclareCiteCommand{\cite}
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \printtext[bibhyperref]{\usebibmacro{cite}}}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+
+\DeclareCiteCommand*{\cite}
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \printtext[bibhyperref]{\usebibmacro{citeyear}}}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+
+\DeclareCiteCommand{\parencite}[\mkbibparens]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+    \printtext[bibhyperref]{\usebibmacro{cite}}}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+
+\DeclareCiteCommand*{\parencite}[\mkbibparens]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+    \printtext[bibhyperref]{\usebibmacro{citeyear}}}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+
+\DeclareCiteCommand{\footcite}[\mkbibfootnote]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+  \printtext[bibhyperref]{ \usebibmacro{cite}}}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+
+\DeclareCiteCommand{\footcitetext}[\mkbibfootnotetext]
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \printtext[bibhyperref]{\usebibmacro{cite}}}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+
+\DeclareCiteCommand{\textcite}
+  {\boolfalse{cbx:parens}}
+  {\usebibmacro{citeindex}%
+   \printtext[bibhyperref]{\usebibmacro{textcite}}}
+  {\ifbool{cbx:parens}
+     {\bibcloseparen\global\boolfalse{cbx:parens}}
+     {}%
+   \multicitedelim}
+  {\usebibmacro{textcite:postnote}}
