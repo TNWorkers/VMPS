@@ -64,14 +64,14 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 		for (size_t p=0; p<H.qrhs[q].size(); ++p)
 		{
 			size_t s2s4 = H.qrhs[q][p][0];
-			size_t q24 = H.qrhs[q][p][1];
-			size_t qL = H.qrhs[q][p][2];
-			size_t qR = H.qrhs[q][p][3];
-			size_t s1  = H.qrhs[q][p][4];
-			size_t s2  = H.qrhs[q][p][5];
+			size_t q24  = H.qrhs[q][p][1];
+			size_t qL   = H.qrhs[q][p][2];
+			size_t qR   = H.qrhs[q][p][3];
+			size_t s1   = H.qrhs[q][p][4];
+			size_t s2   = H.qrhs[q][p][5];
 			size_t k12  = H.qrhs[q][p][6];
-			size_t s3  = H.qrhs[q][p][7];
-			size_t s4  = H.qrhs[q][p][8];
+			size_t s3   = H.qrhs[q][p][7];
+			size_t s4   = H.qrhs[q][p][8];
 			size_t k34  = H.qrhs[q][p][9];
 			
 			for (int r12=0; r12<H.W12[s1][s2][k12].outerSize(); ++r12)
@@ -84,9 +84,12 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 				    Vin.data[s2s4].block[q24].size() != 0 and
 				    iW12.col() == iW34.row())
 				{
+//					cout << "s1s3=" << s1s3 << ", q13=" << q13 << ", qL=" << qL 
+//					     << ", iW12.row()=" << iW12.row() << ", qR=" << qR << ", iW34.col()=" << iW34.col() << endl;
 //					print_size(H.L.block[qL][iW12.row()][0],"H.L.block[qL][iW12.row()][0]");
 //					print_size(Vin.data[s2s4].block[q24],"Vin.data[s2s4].block[q24]");
 //					print_size(H.R.block[qR][iW34.col()][0],"H.R.block[qR][iW34.col()][0]");
+//					cout << endl;
 					
 					if (Vout.data[s1s3].block[q13].rows() != H.L.block[qL][iW12.row()][0].rows() or
 					    Vout.data[s1s3].block[q13].cols() != H.R.block[qR][iW34.col()][0].cols())

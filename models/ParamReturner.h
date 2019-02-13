@@ -12,7 +12,7 @@ public:
 	ParamReturner() : TRIVIALLY_CONSTRUCTED(true) {}
 	
 	ParamReturner (const std::map<string,std::any> &defaults_input)
-		:defaults(defaults_input)
+	:defaults(defaults_input)
 	{}
 	
 	///@{

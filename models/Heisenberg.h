@@ -37,6 +37,8 @@ public:
 	typedef Sym::U0 Symmetry;
 	MAKE_TYPEDEFS(Heisenberg)
 	
+	static qarray<0> singlet() {return qarray<0>{};};
+	
 private:
 	typedef typename Symmetry::qType qType;
 	
@@ -93,7 +95,7 @@ Heisenberg (const size_t &L, const vector<Param> &params)
 	}
 	
 	HeisenbergU1::set_operators(B,P,Terms);
-	KitaevChain::add_operators(B,P,Terms);
+//	KitaevChain::add_operators(B,P,Terms);
 	add_operators(B,P,Terms);
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
@@ -124,8 +126,8 @@ add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, H
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;
 		
-		std::size_t orbitals = B[loc].orbitals();
-		std::size_t next_orbitals = B[lp1].orbitals();
+		std::size_t orbitals       = B[loc].orbitals();
+		std::size_t next_orbitals  = B[lp1].orbitals();
 		std::size_t nextn_orbitals = B[lp2].orbitals();
 		
 		// Local terms: B, K, DM⟂
@@ -155,8 +157,8 @@ add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, H
 			for (std::size_t alfa=0; alfa<orbitals; alfa++)
 			for (std::size_t beta=0; beta<next_orbitals; ++beta)
 			{
-				Terms.push_tight(loc, +Dypara.a(alfa,beta), B[loc].Scomp(SX,alfa), B[lp1].Scomp(SZ,beta));
-				Terms.push_tight(loc, -Dypara.a(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SX,beta));
+				Terms.push_tight(loc, +Dypara(alfa,beta), B[loc].Scomp(SX,alfa), B[lp1].Scomp(SZ,beta));
+				Terms.push_tight(loc, -Dypara(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SX,beta));
 			}
 		}
 		
@@ -170,8 +172,8 @@ add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, H
 			for (std::size_t alfa=0; alfa<orbitals; ++alfa)
 			for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
 			{
-				Terms.push_nextn(loc, +Dypara.a(alfa,beta), B[loc].Scomp(SX,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta));
-				Terms.push_nextn(loc, -Dypara.a(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SX,beta));
+				Terms.push_nextn(loc, +Dypara(alfa,beta), B[loc].Scomp(SX,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta));
+				Terms.push_nextn(loc, -Dypara(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SX,beta));
 			}
 		}
 	}

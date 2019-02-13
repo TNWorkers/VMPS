@@ -1577,6 +1577,7 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 				}
 				Nret = max(Nret, this->min_Nsv);
 				Nret = min(Nret, this->max_Nsv);
+				Nret = min(Nret, static_cast<size_t>(Jack.singularValues().rows()));
 				truncWeightSub(qin) = Symmetry::degeneracy(inbase[loc][qin]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy
@@ -1774,6 +1775,7 @@ rightSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scal
 				}
 				Nret = max(Nret, this->min_Nsv);
 				Nret = min(Nret, this->max_Nsv);
+				Nret = min(Nret, static_cast<size_t>(Jack.singularValues().rows()));
 				truncWeightSub(qout) = Symmetry::degeneracy(outbase[loc][qout]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
 				
 				// calculate entropy

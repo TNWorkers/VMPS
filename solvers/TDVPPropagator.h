@@ -205,7 +205,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 	t_2site = 0;
 	t_ohead = 0;
 	t_contr = 0;
-	t_tot = 0;
+	t_tot   = 0;
 	
 	Stopwatch<> Wtot;
 	

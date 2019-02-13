@@ -1,5 +1,5 @@
 FILES = $(wildcard *.tex)
-FILES_DOXY = cgc.tex
+FILES_DOXY = structure_factor.tex #cgc.tex
 
 XHTMLS = $(patsubst %.tex,../extern-html/%.xhtml,$(FILES_DOXY))
 $(info $$XHTMLS is [${XHTMLS}])

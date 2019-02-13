@@ -945,6 +945,8 @@ info() const
 	ss << "HERMITIAN=" << boolalpha << HERMITIAN << ", ";
 	ss << "SQUARE=" << boolalpha << GOT_SQUARE << ", ";
 	ss << "OPEN_BC=" << boolalpha << GOT_OPEN_BC << ", ";
+	ss << "2SITE_DATA=" << boolalpha << GOT_TWO_SITE_DATA << ", ";
+//	ss << "HAMILTONIAN=" << boolalpha << HAMILTONIAN << ", ";
 	if (LocalSite != -1)
 	{
 		ss << "locality=" << LocalSite << ", ";
@@ -1566,7 +1568,8 @@ precalc_TwoSiteData()
 			}
 		}
 	}
-	cout << "calculated TSD" << endl;
+	
+//	cout << "calculated two-site data" << endl;
 	GOT_TWO_SITE_DATA = true;
 }
 

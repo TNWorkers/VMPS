@@ -38,6 +38,8 @@ public:
 private:
 	typedef typename Symmetry::qType qType;
 	
+	static qarray<0> singlet() {return qarray<0>{};};
+	
 public:
 	
 	///\{

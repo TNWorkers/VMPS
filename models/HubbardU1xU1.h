@@ -62,8 +62,8 @@ public:
 	
 	template<typename Symmetry_> 
 	//static HamiltonianTermsXd<Symmetry_> set_operators (const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, size_t loc=0);
-    static void set_operators(const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);
-    
+	static void set_operators(const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);
+	
 	/**Default parameters.*/
 	static const std::map<string,std::any> defaults;
 };

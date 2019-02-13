@@ -43,6 +43,8 @@ public:
 	typedef Sym::U1<Sym::SpinU1> Symmetry;
 	MAKE_TYPEDEFS(HeisenbergU1)
 	
+	static qarray<1> singlet() {return qarray<1>{0};};
+	
 private:
 	typedef Symmetry::qType qType;
 	typedef SiteOperator<Symmetry,SparseMatrix<double> > OperatorType;
@@ -84,7 +86,7 @@ const std::map<string,std::any> HeisenbergU1::defaults =
 
 const std::map<string,std::any> HeisenbergU1::sweep_defaults = 
 {
-	{"max_alpha",100.}, {"min_alpha",1.e-11}, {"lim_alpha",10ul}, {"eps_svd",1.e-7},
+	{"max_alfa",100.}, {"min_alfa",1.e-11}, {"lim_alfa",10ul}, {"eps_svd",1.e-7},
 	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",20ul}, {"min_halfsweeps",4ul},
@@ -230,80 +232,74 @@ template<typename Symmetry_>
 void HeisenbergU1::
 set_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)
 {
-
-    std::size_t Lcell = P.size();
-    std::size_t N_sites = Terms.size();
-    Terms.set_name("Heisenberg");
-    for(std::size_t loc=0; loc<N_sites; ++loc)
-    {
-        std::size_t orbitals = B[loc].orbitals();
-        std::size_t next_orbitals = B[(loc+1)%N_sites].orbitals();
-        std::size_t nextn_orbitals = B[(loc+2)%N_sites].orbitals();
-        
-        stringstream ss1, ss2;
-        ss1 << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc%Lcell)-1,2));
-        ss2 << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
-        Terms.save_label(loc, ss1.str());
-        Terms.save_label(loc, ss2.str());
-        
-        // Local terms: B, K and J⟂
-        
-        param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", orbitals, loc%Lcell);
-        param1d Kz = P.fill_array1d<double>("Kz", "Kzorb", orbitals, loc%Lcell);
-        param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-  
-        Terms.save_label(loc, Bz.label);
-        Terms.save_label(loc, Kz.label);
-        Terms.save_label(loc, Jperp.label);
-        
-        Eigen::ArrayXd Bx_array = B[loc].ZeroField();
-        Eigen::ArrayXd mu_array = B[loc].ZeroField();
-        Eigen::ArrayXd Kx_array = B[loc].ZeroField();
-        Eigen::ArrayXXd Dyperp_array = B[loc].ZeroHopping();
-        
-        Terms.push_local(loc, 1., B[loc].HeisenbergHamiltonian(Jperp.a, Jperp.a, Bz.a, Bx_array, mu_array, Kz.a, Kx_array, Dyperp_array));
-        
-        // Nearest-neighbour terms: J
-    
-        param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
-        Terms.save_label(loc, Jpara.label);
-        if(loc < N_sites-1 || !P.get<bool>("OPEN_BC"))
-        {
-            for (std::size_t alpha=0; alpha < orbitals; ++alpha)
-            for (std::size_t beta=0; beta < next_orbitals; ++beta)
-            {
-                Terms.push_tight(loc, 0.5*Jpara.a(alpha,beta), B[loc].Scomp(SP,alpha), B[(loc+1)%N_sites].Scomp(SM,beta));
-                Terms.push_tight(loc, 0.5*Jpara.a(alpha,beta), B[loc].Scomp(SM,alpha), B[(loc+1)%N_sites].Scomp(SP,beta));
-                Terms.push_tight(loc, Jpara.a(alpha,beta), B[loc].Scomp(SZ,alpha), B[(loc+1)%N_sites].Scomp(SZ,beta));
-            }
-        }
-        
-        // Next-nearest-neighbour terms: J
-    
-        param2d Jprime = P.fill_array2d<double>("Jprime", "Jprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
-        Terms.save_label(loc, Jprime.label);
-        if(loc < N_sites-2 || !P.get<bool>("OPEN_BC"))
-        {
-            for (std::size_t alpha=0; alpha < orbitals; ++alpha)
-            {
-                for (std::size_t beta=0; beta < nextn_orbitals; ++beta)
-                {
-                    Terms.push_nextn(loc, 0.5*Jprime.a(alpha,beta),
-                                     B[loc].Scomp(SP,alpha),
-                                     B[(loc+1)%N_sites].Id(),
-                                     B[(loc+2)%N_sites].Scomp(SM,beta));
-                    Terms.push_nextn(loc, 0.5*Jprime.a(alpha,beta),
-                                     B[loc].Scomp(SM,alpha),
-                                     B[(loc+1)%N_sites].Id(),
-                                     B[(loc+2)%N_sites].Scomp(SP,beta));
-                    Terms.push_nextn(loc, Jprime.a(alpha,beta),
-                                     B[loc].Scomp(SZ,alpha),
-                                     B[(loc+1)%N_sites].Id(),
-                                     B[(loc+2)%N_sites].Scomp(SZ,beta));
-                }
-            }
-        }
-    }
+	std::size_t Lcell = P.size();
+	std::size_t N_sites = Terms.size();
+	Terms.set_name("Heisenberg");
+	
+	for(std::size_t loc=0; loc<N_sites; ++loc)
+	{
+		size_t lp1 = (loc+1)%N_sites;
+		size_t lp2 = (loc+2)%N_sites;
+		
+		std::size_t orbitals = B[loc].orbitals();
+		std::size_t next_orbitals = B[lp1].orbitals();
+		std::size_t nextn_orbitals = B[(loc+2)%N_sites].orbitals();
+		
+		stringstream ss1, ss2;
+		ss1 << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc%Lcell)-1,2));
+		ss2 << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
+		Terms.save_label(loc, ss1.str());
+		Terms.save_label(loc, ss2.str());
+		
+		// Local terms: B, K and J⟂
+		
+		param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", orbitals, loc%Lcell);
+		param1d Kz = P.fill_array1d<double>("Kz", "Kzorb", orbitals, loc%Lcell);
+		param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		
+		Terms.save_label(loc, Bz.label);
+		Terms.save_label(loc, Kz.label);
+		Terms.save_label(loc, Jperp.label);
+		
+		Eigen::ArrayXd Bx_array = B[loc].ZeroField();
+		Eigen::ArrayXd mu_array = B[loc].ZeroField();
+		Eigen::ArrayXd Kx_array = B[loc].ZeroField();
+		Eigen::ArrayXXd Dyperp_array = B[loc].ZeroHopping();
+		
+		Terms.push_local(loc, 1., B[loc].HeisenbergHamiltonian(Jperp.a, Jperp.a, Bz.a, Bx_array, mu_array, Kz.a, Kx_array, Dyperp_array));
+		
+		// Nearest-neighbour terms: J
+		
+		param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
+		Terms.save_label(loc, Jpara.label);
+		
+		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		{
+			for (std::size_t alfa=0; alfa < orbitals; ++alfa)
+			for (std::size_t beta=0; beta < next_orbitals; ++beta)
+			{
+				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), B[loc].Scomp(SP,alfa), B[lp1].Scomp(SM,beta));
+				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), B[loc].Scomp(SM,alfa), B[lp1].Scomp(SP,beta));
+				Terms.push_tight(loc,     Jpara(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SZ,beta));
+			}
+		}
+		
+		// Next-nearest-neighbour terms: J
+		
+		param2d Jprime = P.fill_array2d<double>("Jprime", "Jprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
+		Terms.save_label(loc, Jprime.label);
+		
+		if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
+		{
+			for (std::size_t alfa=0; alfa < orbitals; ++alfa)
+			for (std::size_t beta=0; beta < nextn_orbitals; ++beta)
+			{
+				Terms.push_nextn(loc, 0.5*Jprime(alfa,beta), B[loc].Scomp(SP,alfa), B[lp1].Id(), B[lp2].Scomp(SM,beta));
+				Terms.push_nextn(loc, 0.5*Jprime(alfa,beta), B[loc].Scomp(SM,alfa), B[lp1].Id(), B[lp2].Scomp(SP,beta));
+				Terms.push_nextn(loc,     Jprime(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta));
+			}
+		}
+	}
 }
 
 } //end namespace VMPS

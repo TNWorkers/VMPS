@@ -37,6 +37,8 @@ public:
 	typedef DmrgSolver<Symmetry,HeisenbergSU2,double>  Solver;
 	typedef VumpsSolver<Symmetry,HeisenbergSU2,double> uSolver;
 	
+	static qarray<1> singlet() {return qarray<1>{1};};
+	
 private:
 	
 	typedef Eigen::Index Index;

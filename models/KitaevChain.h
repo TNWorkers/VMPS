@@ -15,7 +15,7 @@ namespace VMPS
   * MPO representation of
   * \f[
   * H =  -t \sum_{<ij>} \left(c^\dagger_i c_j + h.c.\right) 
-  *      +\Delta \sum_{<ij>} \left(c^_i c_j + h.c.\right) 
+  *      +\Delta \sum_{<ij>} \left(c^\dagger_i c_j + h.c.\right) 
   *      -\mu \sum_i n_i
   * \f]
   *

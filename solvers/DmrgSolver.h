@@ -463,14 +463,14 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	double t_LR = 0;
 	double t_overhead = 0;
 	double t_err = 0;
-
+	
 	// If the next sweep is a 2-site or a 0-site sweep, move pivot back to edge. not sure if this is necessary for a 0-site sweep...
 	if (DynParam.iteration(SweepStat.N_halfsweeps) == DMRG::ITERATION::TWO_SITE or
 		DynParam.iteration(SweepStat.N_halfsweeps) == DMRG::ITERATION::ZERO_SITE)
 	{
 		sweep_to_edge(H,Vout,true); // build_LR = true
 	}
-
+	
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
 		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
@@ -483,7 +483,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 			iteration_one (H, Vout, EDGE, t_Lanczos, t_sweep, t_LR, t_overhead); break;
 		case DMRG::ITERATION::TWO_SITE:
 			iteration_two (H, Vout, EDGE, t_Lanczos, t_sweep, t_LR, t_overhead); break;
-		}		
+		}
 		++SweepStat.N_sweepsteps;
 	}
 	++SweepStat.N_halfsweeps;
@@ -799,7 +799,7 @@ iteration_zero (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
-			   double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead)
+               double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead)
 {
 	//*********************************************************LanczosStep******************************************************
 	double Ei = Vout.energy;
@@ -964,10 +964,10 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 	
 	Vout.state.set_defaultCutoffs();
 	
-	if (Vout.state.calc_Nqavg() <= 1.5)
+	if (Vout.state.calc_Nqavg() <= 1.5 and !Symmetry::IS_TRIVIAL and Vout.state.min_Nsv == 0)
 	{
 		Vout.state.min_Nsv = 1;
-		lout << termcolor::blue << "Warning: Setting min_Nsv=1 do deal with small Hilbert space!" << termcolor::reset << endl;
+		lout << termcolor::blue << "DmrgSolver::cleanup notice: Setting min_Nsv=1 do deal with small Hilbert space!" << termcolor::reset << endl;
 	}
 }
 
