@@ -48,7 +48,7 @@ using namespace Eigen;
 #include "models/KondoU1xU1.h"
 #include "models/KondoU0xSU2.h"
 
-double Jxy, Jz, J, Jprime, tPrime, Bx, Bz;
+double Jxy, Jz, J, Jprime, Jprimeprime, Jrung, tPrime, Bx, Bz;
 double U, mu;
 double dt;
 double e_exact;
@@ -134,12 +134,14 @@ double SvecSvecAvg (const MpsType &Psi, const MpoType &H, size_t locx1, size_t l
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
-	L = args.get<size_t>("L",1);
+	L = args.get<size_t>("L",2);
 	Ly = args.get<size_t>("Ly",1);
 	Jxy = args.get<double>("Jxy",1.);
 	Jz = args.get<double>("Jz",1.);
 	J = args.get<double>("J",1.);
+	Jrung = args.get<double>("Jrung",J);
 	Jprime = args.get<double>("Jprime",0.);
+	Jprimeprime = args.get<double>("Jprimeprime",0.);
 	tPrime = args.get<double>("tPrime",0.);
 	Bx = args.get<double>("Bx",1.);
 	Bz = args.get<double>("Bz",0.);
@@ -218,7 +220,7 @@ int main (int argc, char* argv[])
 	Eigenstate<HEISENBERG_SU2::StateUd> g_SU2;
 	if (CALC_SU2)
 	{
-		HEISENBERG_SU2 Heis_SU2(L,{{"Ly",Ly},{"J",J},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
+		HEISENBERG_SU2 Heis_SU2(L,{{"Ly",Ly},{"J",J},{"Jrung",Jrung},{"Jprime",Jprime},{"Jprimeprime",Jprimeprime,0},{"Jprimeprime",0.,1},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
 		lout << Heis_SU2.info() << endl;
 		DMRG_SU2.set_log(L,"e_Heis_SU2.dat","err_eigval_Heis_SU2.dat","err_var_Heis_SU2.dat","err_state_Heis_SU2.dat");
 		DMRG_SU2.userSetGlobParam();
