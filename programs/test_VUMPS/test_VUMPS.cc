@@ -47,6 +47,7 @@ using namespace Eigen;
 #include "models/KondoSU2xU1.h"
 #include "models/KondoU1xU1.h"
 #include "models/KondoU0xSU2.h"
+#include "models/ParamCollection.h"
 
 double Jxy, Jz, J, Jprime, Jprimeprime, Jrung, tPrime, Bx, Bz;
 double U, mu;
@@ -220,7 +221,15 @@ int main (int argc, char* argv[])
 	Eigenstate<HEISENBERG_SU2::StateUd> g_SU2;
 	if (CALC_SU2)
 	{
-		HEISENBERG_SU2 Heis_SU2(L,{{"Ly",Ly},{"J",J},{"Jrung",Jrung},{"Jprime",Jprime},{"Jprimeprime",Jprimeprime,0},{"Jprimeprime",0.,1},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
+		HEISENBERG_SU2 Heis_SU2;
+		if (Ly==1)
+		{
+			Heis_SU2 = HEISENBERG_SU2(L,{{"Ly",Ly},{"J",J,0},{"J",0.,1},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
+		}
+		else
+		{
+			Heis_SU2 = HEISENBERG_SU2(L,{{"Ly",Ly},{"J",J},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
+		}
 		lout << Heis_SU2.info() << endl;
 		DMRG_SU2.set_log(L,"e_Heis_SU2.dat","err_eigval_Heis_SU2.dat","err_var_Heis_SU2.dat","err_state_Heis_SU2.dat");
 		DMRG_SU2.userSetGlobParam();
@@ -229,9 +238,17 @@ int main (int argc, char* argv[])
 		DMRG_SU2.GlobParam = GlobParams;
 		DMRG_SU2.edgeState(Heis_SU2, g_SU2, {1});
 	}
-	
+
 	typedef VMPS::HeisenbergU1XXZ HEISENBERG_U1;
-	HEISENBERG_U1 Heis_U1(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG_U1 Heis_U1;
+		if (Ly==1)
+		{
+			Heis_U1 = HEISENBERG_U1(L,{{"Ly",Ly},{"Jxy",Jxy,0},{"Jz",Jz,0},{"Jxy",0.,1},{"Jz",0.,1},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+		}
+		else
+		{
+			Heis_U1 = HEISENBERG_U1(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+		}
 	HEISENBERG_U1 Heis_U1_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",1.2*Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	
 	HEISENBERG_U1::uSolver DMRG_U1(VERB);
@@ -341,7 +358,17 @@ int main (int argc, char* argv[])
 	
 	
 	typedef VMPS::HeisenbergXXZ HEISENBERG0;
-	HEISENBERG0 Heis0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	HEISENBERG0 Heis0;
+	if (Ly==1)
+	{
+		Heis0 = HEISENBERG0(L,{{"Ly",Ly},{"Jxy",Jxy,0},{"Jz",Jz,0},{"Jxy",0.,1},{"Jz",0.,1},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	}
+	else
+	{
+		Heis0 = HEISENBERG0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	}
+
+	// HEISENBERG0 Heis0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	HEISENBERG0 Heis0_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",1.2*Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	
 	HEISENBERG0::uSolver DMRG0(VERB);

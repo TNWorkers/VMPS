@@ -31,7 +31,7 @@
  *   For abelian symmetries, these coefficients are all trivially equal to unity, but nevertheless they need to be defined! 
  *   For a more detailed description of the different coefficients see \ref cgcdefs "here".
  *
- * Currently, there exists implementations for the groups U(1) (Sym::U1) and SU(2) (Sym::SU2) and for a dummy class, 
+ * Currently, there exists implementations for the groups U(1) (Sym::U1), \f$Z_n\f$ (Sym::ZN) and SU(2) (Sym::SU2) and for a dummy class, 
  * which represents no symmetry (Sym::U0).
  * These classes can be combined with the Sym::S1xS2 class, which takes two arbitrary symmetries as template arguments.
  * By chaining this, it is in principle possible, to get a class for three or more symmetries, 

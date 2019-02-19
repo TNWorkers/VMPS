@@ -96,7 +96,7 @@ const std::map<string,std::any> HeisenbergSU2::defaults =
 
 const std::map<string,std::any> HeisenbergSU2::sweep_defaults = 
 {
-	{"max_alfa",100.}, {"min_alfa",1.e-11}, {"lim_alfa",10ul}, {"eps_svd",1.e-7},
+	{"max_alpha",100.}, {"min_alpha",1.e-11}, {"lim_alpha",10ul}, {"eps_svd",1.e-7},
 	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",20ul}, {"min_halfsweeps",4ul},
