@@ -49,7 +49,7 @@ using namespace Eigen;
 #include "models/KondoU0xSU2.h"
 #include "models/ParamCollection.h"
 
-double Jxy, Jz, J, Jprime, Jprimeprime, Jrung, tPrime, Bx, Bz;
+double Jxy, Jz, J, Jprime, Jprimeprime, Jrung, Jsmall, tPrime, Bx, Bz;
 double U, mu;
 double dt;
 double e_exact;
@@ -140,6 +140,7 @@ int main (int argc, char* argv[])
 	Jxy = args.get<double>("Jxy",1.);
 	Jz = args.get<double>("Jz",1.);
 	J = args.get<double>("J",1.);
+	Jsmall = args.get<double>("Jsmall",0.);
 	Jrung = args.get<double>("Jrung",J);
 	Jprime = args.get<double>("Jprime",0.);
 	Jprimeprime = args.get<double>("Jprimeprime",0.);
@@ -224,7 +225,7 @@ int main (int argc, char* argv[])
 		HEISENBERG_SU2 Heis_SU2;
 		if (Ly==1)
 		{
-			Heis_SU2 = HEISENBERG_SU2(L,{{"Ly",Ly},{"J",J,0},{"J",0.,1},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
+			Heis_SU2 = HEISENBERG_SU2(L,{{"Ly",Ly},{"J",J,0},{"J",Jsmall,1},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
 		}
 		else
 		{
