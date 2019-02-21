@@ -74,7 +74,7 @@ struct MpoTransferVector
 			}
 		}
 	};
-
+	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > data;
 	size_t ab;
 	
@@ -105,7 +105,8 @@ void HxV (const MpoTransferMatrix<Symmetry,Scalar1> &H, const MpoTransferVector<
 		Tripod<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > R = Vin.data;
 		for (int l=Lcell-1; l>=0; --l)
 		{
-			if (l==0 or l==Lcell-1)
+//			if (l==0 or l==Lcell-1)
+			if (l==0)
 			{
 				contract_R(R, H.Abra[l], H.W[l], PROP::HAMILTONIAN, H.Aket[l], H.qloc[l], H.qOp[l], Rnext, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
 			}
@@ -118,6 +119,8 @@ void HxV (const MpoTransferMatrix<Symmetry,Scalar1> &H, const MpoTransferVector<
 			Rnext.clear();
 		}
 		TxV.data = R;
+		
+//		cout << "MpoTransferVector R:" << endl << TxV.data.print(true,13) << endl;
 	}
 	else if (H.DIR == VMPS::DIRECTION::LEFT)
 	{
@@ -125,7 +128,8 @@ void HxV (const MpoTransferMatrix<Symmetry,Scalar1> &H, const MpoTransferVector<
 		Tripod<Symmetry,Matrix<Scalar2,Dynamic,Dynamic> > L = Vin.data;
 		for (size_t l=0; l<Lcell; ++l)
 		{
-			if (l==Lcell-1 or l==0)
+//			if (l==Lcell-1 or l==0)
+			if (l==Lcell-1)
 			{
 				contract_L(L, H.Abra[l], H.W[l], PROP::HAMILTONIAN, H.Aket[l], H.qloc[l], H.qOp[l], Lnext, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
 			}
@@ -138,6 +142,8 @@ void HxV (const MpoTransferMatrix<Symmetry,Scalar1> &H, const MpoTransferVector<
 			Lnext.clear();
 		}
 		TxV.data = L;
+		
+//		cout << "MpoTransferVector L:" << endl << TxV.data.print(true,13) << endl;
 	}
 	
 	Scalar2 LdotR;
@@ -149,7 +155,7 @@ void HxV (const MpoTransferMatrix<Symmetry,Scalar1> &H, const MpoTransferVector<
 	{
 		LdotR = contract_LR(H.ab, Vin.data, H.LReigen);
 	}
-
+	
 	for (size_t q=0; q<TxV.data.dim; ++q)
 	{
 		qarray3<Symmetry::Nq> quple = {TxV.data.in(q), TxV.data.out(q), TxV.data.mid(q)};

@@ -222,23 +222,23 @@ typedef typename MatrixType::Scalar Scalar;
 	}
 };
 
-//template<size_t Nlegs, typename Symmetry, typename MatrixType>
-//Multipede<Nlegs,Symmetry,MatrixType> operator- (const Multipede<Nlegs,Symmetry,MatrixType> &M1, const Multipede<Nlegs,Symmetry,MatrixType> &M2)
-//{
-//	Multipede<Nlegs,Symmetry,MatrixType> Mout;
-//	for (size_t q=0; q<M1.dim; ++q)
-//	{
-//		qarray3<Symmetry::Nq> quple = {M1.in(q), M1.out(q), M1.mid(q)};
-//		auto it = M2.dict.find(quple);
-//		boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[M1.block[q].shape()[0]][1]);
-//		for (size_t a=0; a<M1.block[q].shape()[0]; ++a)
-//		{
-//			Mtmpvec[a][0] = M1.block[q][a][0]-M2.block[it->second][a][0];
-//		}
-//		Mout.push_back(quple, Mtmpvec);
-//	}
-//	return Mout;
-//}
+template<size_t Nlegs, typename Symmetry, typename MatrixType>
+Multipede<Nlegs,Symmetry,MatrixType> operator- (const Multipede<Nlegs,Symmetry,MatrixType> &M1, const Multipede<Nlegs,Symmetry,MatrixType> &M2)
+{
+	Multipede<Nlegs,Symmetry,MatrixType> Mout;
+	for (size_t q=0; q<M1.dim; ++q)
+	{
+		qarray3<Symmetry::Nq> quple = {M1.in(q), M1.out(q), M1.mid(q)};
+		auto it = M2.dict.find(quple);
+		boost::multi_array<MatrixType,LEGLIMIT> Mtmpvec(boost::extents[M1.block[q].shape()[0]][1]);
+		for (size_t a=0; a<M1.block[q].shape()[0]; ++a)
+		{
+			Mtmpvec[a][0] = M1.block[q][a][0]-M2.block[it->second][a][0];
+		}
+		Mout.push_back(quple, Mtmpvec);
+	}
+	return Mout;
+}
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
 void Multipede<Nlegs,Symmetry,MatrixType>::

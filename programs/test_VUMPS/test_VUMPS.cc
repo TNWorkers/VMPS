@@ -240,11 +240,11 @@ int main (int argc, char* argv[])
 		DMRG_SU2.edgeState(Heis_SU2, g_SU2, {1});
 	}
 
-	typedef VMPS::HeisenbergU1XXZ HEISENBERG_U1;
+	typedef VMPS::HeisenbergU1 HEISENBERG_U1;
 	HEISENBERG_U1 Heis_U1;
 		if (Ly==1)
 		{
-			Heis_U1 = HEISENBERG_U1(L,{{"Ly",Ly},{"Jxy",Jxy,0},{"Jz",Jz,0},{"Jxy",0.,1},{"Jz",0.,1},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+			Heis_U1 = HEISENBERG_U1(L,{{"Ly",Ly},{"J",J,0},{"J",Jsmall,1},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
 		}
 		else
 		{

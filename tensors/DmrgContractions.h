@@ -97,6 +97,12 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
 						   (MODE == TRIANGULAR and a>fixed_b) or
 						   (MODE == FIXED and b==fixed_b))
 						{
+//							if (MODE == FIXED)
+//							{
+//								cout << "fixed_b=" << fixed_b << ", a=" << a << "/" << W[s1][s2][k].rows() << ", b=" << b << "/" << W[s1][s2][k].cols() << endl;
+//								cout << "Lold.block[qL][a][0].size()=" << Lold.block[qL][a][0].size() << endl;
+//							}
+							
 							if (Lold.block[qL][a][0].size() != 0)
 							{
 								MatrixType2 Mtmp;
@@ -220,13 +226,19 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
 						size_t a = iW.row();
 						size_t b = iW.col();
 						
-						//Daux-1 is the Hamiltonian block. Only singlet couplings are neccessary.
+						// Daux-1 is the Hamiltonian block. Only singlet couplings are neccessary.
 						if (a == W[s1][s2][k].rows()-1 and IS_HAMILTONIAN and quple[2] != Symmetry::qvacuum()) {continue;}
 						
 						if (MODE == FULL or
 						   (MODE == TRIANGULAR and fixed_a>b) or
 						   (MODE == FIXED and a==fixed_a))
 						{
+//							if (MODE == FIXED)
+//							{
+//								cout << "fixed_a=" << fixed_a << ", a=" << a << "/" << W[s1][s2][k].rows() << ", b=" << b << "/" << W[s1][s2][k].cols() << endl;
+//								cout << "Rold.block[qR][b][0].rows()=" << Rold.block[qR][b][0].rows() << endl;
+//							}
+							
 							if (Rold.block[qR][b][0].rows() != 0)
 							{
 								MatrixType2 Mtmp;
@@ -978,14 +990,14 @@ Scalar contract_LR (size_t fixed_b,
 
 template<typename Symmetry, typename Scalar>
 Scalar contract_LR (size_t fixed_a, 
-					 const Biped <Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
-					 const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R)
+                    const Biped <Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
+                    const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R)
 {
 	Scalar res = 0;
 	
 	for (size_t qR=0; qR<R.dim; ++qR)
 	{
-		// Not necessarily vacuum for the structure facto, so this function cannot be used!
+		// Not necessarily vacuum for the structure factor, so this function cannot be used!
 		assert(R.out(qR) == R.in(qR) and "contract_LR(Biped,Tripod) error!");
 		
 		if (R.mid(qR) == Symmetry::qvacuum())

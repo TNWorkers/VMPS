@@ -678,36 +678,36 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	Qbasis<Symmetry> inbase;
 	inbase.pullData(AL[0],0);
 	Qbasis<Symmetry> outbase;
-	outbase.pullData(AL[N_sites-1],1);
+	outbase.pullData(AL[0],0);
 	
 	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(dW, 1, inbase);
 	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW, 1, outbase);
 	L.insert(dW-1, IdL);
 	R.insert(0,    IdR);
 	
-	auto WprodDiag = [&W, &qloc, &qOp] (size_t a)
-	{
-		double res = 1.;
-		for (size_t l=0; l<W.size(); ++l)
-		{
-			double tmp = 0;
-			for (size_t s1=0; s1<qloc[l].size(); ++s1)
-			for (size_t s2=0; s2<qloc[l].size(); ++s2)
-			for (size_t k=0; k<qOp[l].size(); ++k)
-			{
-				for (int r=0; r<W[l][s1][s2][k].outerSize(); ++r)
-				for (typename SparseMatrix<Scalar>::InnerIterator iW(W[l][s1][s2][k],r); iW; ++iW)
-				{
-					if (iW.row() == a and iW.col() == a)
-					{
-						tmp += abs(iW.value());
-					}
-				}
-			}
-			res *= tmp;
-		}
-		return res;
-	};
+//	auto WprodDiag = [&W, &qloc, &qOp] (size_t a)
+//	{
+//		double res = 1.;
+//		for (size_t l=0; l<W.size(); ++l)
+//		{
+//			double tmp = 0.;
+//			for (size_t s1=0; s1<qloc[l].size(); ++s1)
+//			for (size_t s2=0; s2<qloc[l].size(); ++s2)
+//			for (size_t k=0; k<qOp[l].size(); ++k)
+//			{
+//				for (int r=0; r<W[l][s1][s2][k].outerSize(); ++r)
+//				for (typename SparseMatrix<Scalar>::InnerIterator iW(W[l][s1][s2][k],r); iW; ++iW)
+//				{
+//					if (iW.row() == a and iW.col() == a)
+//					{
+//						tmp += abs(iW.value());
+//					}
+//				}
+//			}
+//			res *= tmp;
+//		}
+//		return res;
+//	};
 	
 //	#pragma omp parallel sections
 	{
@@ -718,8 +718,9 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 			{
 				YL[b] = make_YL(b, L, AL, W, PROP::HAMILTONIAN, AL, qloc, qOp);
 				
-				if (WprodDiag(b) == 0.)
-//				if (b > 0)
+//				cout << "dW=" << dW << ", b=" << b << ", WprodDiag(b)=" << WprodDiag(b) << endl;
+//				if (WprodDiag(b) == 0.)
+				if (b > 0)
 				{
 					L.insert(b,YL[b]);
 				}
@@ -745,8 +746,9 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 			{
 				YR[a] = make_YR(a, R, AR, W, PROP::HAMILTONIAN, AR, qloc, qOp);
 				
-				if (WprodDiag(a) == 0.)
-//				if (a < dW-1)
+//				cout << "dW=" << dW << ", a=" << a << ", WprodDiag(a)=" << WprodDiag(a) << endl;
+//				if (WprodDiag(a) == 0.)
+				if (a < dW-1)
 				{
 					R.insert(a,YR[a]);
 				}
@@ -774,33 +776,33 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	YLlast = YL[0];
 	YRfrst = YR[dW-1];
 	
-	// Tripod<Symmetry,MatrixType> Lcheck;
-	// Tripod<Symmetry,MatrixType> Ltmp1=L;
-
-	// Tripod<Symmetry,MatrixType> Ltmp2;
-	// for(int l=0; l<N_sites; l++)
-	// {
-	// 	contract_L(Ltmp1, AL[l], W[l], AL[l], qloc[l], qOp[l], Ltmp2, false, make_pair(FULL,0),true);
-	// 	Ltmp1.clear();
-	// 	Ltmp1 = Ltmp2;
-	// }
-	// Lcheck = Ltmp2;
-	
-	// Tripod<Symmetry,MatrixType> Rcheck;
-	// Tripod<Symmetry,MatrixType> Rtmp1=R;
-
-	// Tripod<Symmetry,MatrixType> Rtmp2;
-	// for(int l=N_sites-1; l>=0; l--)
-	// {
-	// 	contract_R(Rtmp1, AR[l], W[l], AR[l], qloc[l], qOp[l], Rtmp2, false, make_pair(FULL,0),true);
-	// 	Rtmp1.clear();
-	// 	Rtmp1 = Rtmp2;
-	// }
-	// Rcheck = Rtmp2;
-
-	// cout << termcolor::magenta << "CHECK=" << L.compare(Lcheck) << "\t" << R.compare(Rcheck) << termcolor::reset << endl;
-	// cout << (L-Lcheck).print(true,13) << endl;
-	// cout << (R-Rcheck).print(true,13) << endl;
+//	Tripod<Symmetry,MatrixType> Lcheck;
+//	Tripod<Symmetry,MatrixType> Ltmp1=L;
+//	
+//	Tripod<Symmetry,MatrixType> Ltmp2;
+//	for(int l=0; l<N_sites; l++)
+//	{
+//		contract_L(Ltmp1, AL[l], W[l], true, AL[l], qloc[l], qOp[l], Ltmp2, false, make_pair(FULL,0));
+//		Ltmp1.clear();
+//		Ltmp1 = Ltmp2;
+//	}
+//	Lcheck = Ltmp2;
+//	
+//	Tripod<Symmetry,MatrixType> Rcheck;
+//	Tripod<Symmetry,MatrixType> Rtmp1=R;
+//	
+//	Tripod<Symmetry,MatrixType> Rtmp2;
+//	for(int l=N_sites-1; l>=0; l--)
+//	{
+//		contract_R(Rtmp1, AR[l], W[l], true, AR[l], qloc[l], qOp[l], Rtmp2, false, make_pair(FULL,0));
+//		Rtmp1.clear();
+//		Rtmp1 = Rtmp2;
+//	}
+//	Rcheck = Rtmp2;
+//	
+//	cout << termcolor::magenta << "CHECK=" << L.compare(Lcheck) << "\t" << R.compare(Rcheck) << termcolor::reset << endl;
+//	cout << (L-Lcheck).print(true,13) << endl;
+//	cout << (R-Rcheck).print(true,13) << endl;
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
