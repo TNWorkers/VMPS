@@ -10,7 +10,7 @@
 #include "tensors/DmrgIndexGymnastics.h"
 //include "symmetry/functions.h"
 
-enum CONTRACT_LR_MODE {FULL, TRIANGULAR, FIXED};
+enum CONTRACT_LR_MODE {FULL, TRIANGULAR, FIXED_ROWS, FIXED_COLS};
 
 /**
  * \ingroup Tensors
@@ -47,7 +47,7 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
 	MpoScalar factor_cgc;
 	Lnew.clear();
 	Lnew.setZero();
-	auto [MODE,fixed_b] = MODE_input;
+	auto [MODE,fixed_ab] = MODE_input;
 	
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
@@ -94,8 +94,10 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
 						if (b == 0 and IS_HAMILTONIAN and quple[2] != Symmetry::qvacuum()) {continue;}
 						
 						if (MODE == FULL or
-						   (MODE == TRIANGULAR and a>fixed_b) or
-						   (MODE == FIXED and b==fixed_b))
+						   (MODE == TRIANGULAR and a>fixed_ab) or
+						   (MODE == FIXED_COLS and b==fixed_ab) or
+						   (MODE == FIXED_ROWS and a==fixed_ab)
+						   )
 						{
 //							if (MODE == FIXED)
 //							{
@@ -183,7 +185,7 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
 	MpoScalar factor_cgc;
 	Rnew.clear();
 	Rnew.setZero();
-	auto [MODE,fixed_a] = MODE_input;
+	auto [MODE,fixed_ab] = MODE_input;
 	
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
@@ -230,8 +232,10 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
 						if (a == W[s1][s2][k].rows()-1 and IS_HAMILTONIAN and quple[2] != Symmetry::qvacuum()) {continue;}
 						
 						if (MODE == FULL or
-						   (MODE == TRIANGULAR and fixed_a>b) or
-						   (MODE == FIXED and a==fixed_a))
+						   (MODE == TRIANGULAR and fixed_ab>b) or
+						   (MODE == FIXED_ROWS and a==fixed_ab) or
+						   (MODE == FIXED_COLS and b==fixed_ab)
+						   )
 						{
 //							if (MODE == FIXED)
 //							{

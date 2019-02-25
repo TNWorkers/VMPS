@@ -108,7 +108,11 @@ void HxV (const MpoTransferMatrix<Symmetry,Scalar1> &H, const MpoTransferVector<
 //			if (l==0 or l==Lcell-1)
 			if (l==0)
 			{
-				contract_R(R, H.Abra[l], H.W[l], PROP::HAMILTONIAN, H.Aket[l], H.qloc[l], H.qOp[l], Rnext, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
+				contract_R(R, H.Abra[l], H.W[l], PROP::HAMILTONIAN, H.Aket[l], H.qloc[l], H.qOp[l], Rnext, false, make_pair(CONTRACT_LR_MODE::FIXED_ROWS,H.ab));
+			}
+			else if (l==Lcell-1)
+			{
+				contract_R(R, H.Abra[l], H.W[l], PROP::HAMILTONIAN, H.Aket[l], H.qloc[l], H.qOp[l], Rnext, false, make_pair(CONTRACT_LR_MODE::FIXED_COLS,H.ab));
 			}
 			else
 			{
@@ -131,7 +135,11 @@ void HxV (const MpoTransferMatrix<Symmetry,Scalar1> &H, const MpoTransferVector<
 //			if (l==Lcell-1 or l==0)
 			if (l==Lcell-1)
 			{
-				contract_L(L, H.Abra[l], H.W[l], PROP::HAMILTONIAN, H.Aket[l], H.qloc[l], H.qOp[l], Lnext, false, make_pair(CONTRACT_LR_MODE::FIXED,H.ab));
+				contract_L(L, H.Abra[l], H.W[l], PROP::HAMILTONIAN, H.Aket[l], H.qloc[l], H.qOp[l], Lnext, false, make_pair(CONTRACT_LR_MODE::FIXED_COLS,H.ab));
+			}
+			else if (l==0)
+			{
+				contract_L(L, H.Abra[l], H.W[l], PROP::HAMILTONIAN, H.Aket[l], H.qloc[l], H.qOp[l], Lnext, false, make_pair(CONTRACT_LR_MODE::FIXED_ROWS,H.ab));
 			}
 			else
 			{

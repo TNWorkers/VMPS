@@ -83,95 +83,13 @@ HeisenbergU1XXZ (const size_t &L, const vector<Param> &params)
 	this->precalc_TwoSiteData();
 }
 
-/*template<typename Symmetry_>
-void HeisenbergU1XXZ::
-add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<SpinBase<Symmetry_> > &B, const ParamHandler &P, size_t loc)
-{
-	auto save_label = [&Terms] (string label)
-	{
-		if (label!="") {Terms.info.push_back(label);}
-	};
-	
-	size_t lp1 = (loc+1)%B.size();
-	
-	// Jxy/Jz terms
-	
-	auto [Jxy,Jxypara,Jxylabel] = P.fill_array2d<double>("Jxy","Jxypara",{{B[loc].orbitals(),B[lp1].orbitals()}},loc);
-	save_label(Jxylabel);
-	
-	auto [Jz,Jzpara,Jzlabel] = P.fill_array2d<double>("Jz","Jzpara",{{B[loc].orbitals(),B[lp1].orbitals()}},loc);
-	save_label(Jzlabel);
-	
-	for (int i=0; i<B[loc].orbitals(); ++i)
-	for (int j=0; j<B[lp1].orbitals(); ++j)
-	{
-		if (Jxypara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(0.5*Jxypara(i,j), B[loc].Scomp(SP,i), B[loc].Scomp(SM,j)));
-			Terms.tight.push_back(make_tuple(0.5*Jxypara(i,j), B[loc].Scomp(SM,i), B[loc].Scomp(SP,j)));
-		}
-		
-		if (Jzpara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(Jzpara(i,j), B[loc].Scomp(SZ,i), B[loc].Scomp(SZ,j)));
-		}
-	}
-	
-	// Jxy'/Jz' terms
-	
-	param0d Jxyprime = P.fill_array0d<double>("Jxyprime","Jxyprime",loc);
-	save_label(Jxyprime.label);
-	
-	if (Jxyprime.x != 0.)
-	{
-		assert(B[loc].orbitals() == 1 and "Cannot do a ladder with Jxy' terms!");
-		
-		Terms.nextn.push_back(make_tuple(0.5*Jxyprime.x, B[loc].Scomp(SP), B[loc].Scomp(SM), B[loc].Id()));
-		Terms.nextn.push_back(make_tuple(0.5*Jxyprime.x, B[loc].Scomp(SM), B[loc].Scomp(SP), B[loc].Id()));
-	}
-	
-	param0d Jzprime = P.fill_array0d<double>("Jzprime","Jzprime",loc);
-	save_label(Jzprime.label);
-	
-	if (Jzprime.x != 0.)
-	{
-		assert(B[loc].orbitals() == 1 and "Cannot do a ladder with Jz' terms!");
-		
-		Terms.nextn.push_back(make_tuple(Jzprime.x, B[loc].Scomp(SZ), B[loc].Scomp(SZ), B[loc].Id()));
-	}
-	
-	// local terms
-	
-//	param0d Jxyperp = P.fill_array0d<double>("Jxy","Jxyperp",loc);
-//	save_label(Jxyperp.label);
-//	
-//	param0d Jzperp = P.fill_array0d<double>("Jz","Jzperp",loc);
-//	save_label(Jzperp.label);
-	
-	auto [Jxy_,Jxyperp,Jxyperplabel] = P.fill_array2d<double>("Jxyrung","Jxy","Jxyperp",B[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(Jxyperplabel);
-	
-	auto [Jz_,Jzperp,Jzperplabel] = P.fill_array2d<double>("Jzrung","Jz","Jzperp",B[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(Jzperplabel);
-	
-	ArrayXd Bzorb   = B[loc].ZeroField();
-	ArrayXd Bxorb   = B[loc].ZeroField();
-	ArrayXd Kzorb   = B[loc].ZeroField();
-	ArrayXd Kxorb   = B[loc].ZeroField();
-	ArrayXXd Dyperp = B[loc].ZeroHopping();
-	
-	Terms.local.push_back(make_tuple(1., B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp)));
-	
-	Terms.name = (P.HAS_ANY_OF({"Jxy","Jxypara","Jxyperp"},loc))? "XXZ":"Ising";
-}*/
-
 template<typename Symmetry_>
 void HeisenbergU1XXZ::
 add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)
 {
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = Terms.size();
-	if (P.HAS_ANY_OF({"Jxy", "Jxypara", "Jxyperp"}))
+	if (P.HAS_ANY_OF({"Jxy", "Jxypara", "Jxyperp", "Jxyfull"}))
 	{
 		Terms.set_name("XXZ");
 	}
@@ -192,6 +110,59 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 //		stringstream ss1, ss2;
 //		ss2 << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
 //		Terms.save_label(loc, ss2.str());
+		
+		// Case, where a full coupling-matrix is provided: Jᵢⱼ
+		if (P.HAS("Jxyfull"))
+		{
+			for (size_t loc2=loc; loc2<N_sites; loc2++)
+			{
+				assert(loc2>=loc);
+				size_t numberTransOps;
+				if (loc2 == loc) {numberTransOps=0;} else {numberTransOps=loc2-loc-1;}
+				vector<SiteOperator<Symmetry_,double> > TransOps(numberTransOps);
+				for (size_t i=0; i<numberTransOps; i++) {TransOps[i] = B[loc+i+1].Id();}
+				
+				if (loc2 == loc)
+				{
+//					SiteOperator<Symmetry,double> Ssqrt = SiteOperatorQ<Symmetry,MatrixXd>::prod(B[loc].Sdag(0),B[loc].S(0),Symmetry::qvacuum()).plain<double>();
+//					Terms.push_local(loc,std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc),Ssqrt);
+				}
+				else
+				{
+					Terms.push(loc2-loc, loc, 0.5*P.get<Eigen::ArrayXXd>("Jxyfull")(loc,loc2), 
+					                          B[loc].Scomp(SP,0), TransOps, B[loc2].Scomp(SM,0));
+					Terms.push(loc2-loc, loc, 0.5*P.get<Eigen::ArrayXXd>("Jxyfull")(loc,loc2), 
+					                          B[loc].Scomp(SM,0), TransOps, B[loc2].Scomp(SP,0));
+				}
+			}
+			Terms.save_label(loc, "Jxyᵢⱼ");
+		}
+		
+		if (P.HAS("Jzfull"))
+		{
+			for (size_t loc2=loc; loc2<N_sites; loc2++)
+			{
+				assert(loc2>=loc);
+				size_t numberTransOps;
+				if (loc2 == loc) {numberTransOps=0;} else {numberTransOps=loc2-loc-1;}
+				vector<SiteOperator<Symmetry_,double> > TransOps(numberTransOps);
+				for (size_t i=0; i<numberTransOps; i++) {TransOps[i] = B[loc+i+1].Id();}
+				
+				if (loc2 == loc)
+				{
+//					SiteOperator<Symmetry,double> Ssqrt = SiteOperatorQ<Symmetry,MatrixXd>::prod(B[loc].Sdag(0),B[loc].S(0),Symmetry::qvacuum()).plain<double>();
+//					Terms.push_local(loc,std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc),Ssqrt);
+				}
+				else
+				{
+					Terms.push(loc2-loc, loc, P.get<Eigen::ArrayXXd>("Jzfull")(loc,loc2), 
+					                          B[loc].Scomp(SZ,0), TransOps, B[loc2].Scomp(SZ,0));
+				}
+			}
+			Terms.save_label(loc, "Jzᵢⱼ");
+		}
+		
+		if (P.HAS("Jxyfull") or P.HAS("Jzfull")) continue;
 		
 		// Local terms: J⟂
 		

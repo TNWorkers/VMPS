@@ -227,7 +227,7 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const ParamHandler &P, siz
 	
 	return Terms;
 }*/
-    
+
 template<typename Symmetry_>
 void HeisenbergU1::
 set_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)
@@ -236,7 +236,7 @@ set_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 	std::size_t N_sites = Terms.size();
 	Terms.set_name("Heisenberg");
 	
-	for(std::size_t loc=0; loc<N_sites; ++loc)
+	for (std::size_t loc=0; loc<N_sites; ++loc)
 	{
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;

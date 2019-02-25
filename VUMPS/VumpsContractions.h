@@ -232,7 +232,7 @@ Tripod<Symmetry,MatrixType> make_YL (size_t b,
 	{
 		if (l==Lcell-1)
 		{
-			contract_L(L, Abra[l], W[l], IS_HAMILTONIAN, Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(FIXED,b));
+			contract_L(L, Abra[l], W[l], IS_HAMILTONIAN, Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(FIXED_COLS,b));
 		}
 		else if (l==0)
 		{
@@ -267,7 +267,7 @@ Tripod<Symmetry,MatrixType> make_YR (size_t a,
 	{
 		if (l==0)
 		{
-			contract_R(R, Abra[l], W[l], IS_HAMILTONIAN, Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(FIXED,a));
+			contract_R(R, Abra[l], W[l], IS_HAMILTONIAN, Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(FIXED_ROWS,a));
 		}
 		else if (l==Lcell-1)
 		{
