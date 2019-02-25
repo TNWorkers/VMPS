@@ -2,6 +2,7 @@
 #define FUNCTIONS_H_
 
 // #include "DmrgTypedefs.h"
+#include "SU2Wrappers.h"
 #include "DmrgExternal.h"
 
 namespace Sym
@@ -89,6 +90,57 @@ namespace Sym
 				if(auto it = std::find(Qs.begin(),Qs.end(),Q) != Qs.end()) {vout.push_back({q1,q2});}
 			}
 		return vout;
+	}
+
+	/** 
+	 * This routine initializes the relevant objects for the calculation of \f$3nj\f$-symbols.
+	 * The specific code varies from library to library:
+	 * 1. GSL: Nothing to to do.
+	 * 2. WIGXJPF: The tables for the prime factorization need to get build. The parameter \p maxJ is the maximum angular momentum.
+	 * It should be chosen high enough. The required memory for the prime factorization table is negligible.
+	 * 3. FASTWIGXJ: Same initialization as WIGXJPF for fallback to symbols which are not precomputed (\p maxJ).
+	 * Additionaly the filenames to the precalculated symbols are required. \p f_3j for \f$3j\f$-symbol, \p f_6j for \f$6j\f$-symbol
+	 * and \p f_9j for \f$9j\f$-symbol. For the creation of the precomputed values see manual http://fy.chalmers.se/subatom/fastwigxj/README.
+	 * The precomputed symbols (especially 9j) can be quite large in memory. Therefore, this library should only be used
+	 * when performance gains are clearly present.
+	 *
+	 * \warning The current initialize() method is for a single thread. WIGXJPF and FASTWIGXJ can both be used in multi-tread applications.
+	 * The initialize function however needs to get adapted accordingly. The details can be found on the websites above.
+	 */
+	void initialize(int maxJ=1, std::string f_3j="", std::string f_6j="", std::string f_9j="")
+	{
+#ifdef USE_WIG_SU2_COEFFS
+		wig_table_init(2*maxJ,9);
+		wig_temp_init(2*maxJ);
+#endif
+
+#ifdef USE_FAST_WIG_SU2_COEFFS
+		fastwigxj_load(f_3j.c_str(), 3, NULL);
+		fastwigxj_load(f_6j.c_str(), 6, NULL);
+		fastwigxj_load(f_9j.c_str(), 9, NULL);
+		
+		wig_table_init(2*maxJ,9);
+		wig_temp_init(2*maxJ);
+#endif
+	}
+
+	void finalize(bool PRINT_STATS=false)
+	{
+#ifdef USE_WIG_SU2_COEFFS
+		wig_temp_free();
+		wig_table_free();
+#endif
+
+#ifdef USE_FAST_WIG_SU2_COEFFS
+		if (PRINT_STATS) {std::cout << std::endl; fastwigxj_print_stats();}
+		
+		fastwigxj_unload(3);
+		fastwigxj_unload(6);
+		fastwigxj_unload(9);
+
+		wig_temp_free();
+		wig_table_free();
+#endif
 	}
 
 } //end namespace Sym

@@ -26,3 +26,6 @@ Makefile
 *.bcf
 *.blg
 *.run.xml
+*.3j
+*.6j
+*.9j

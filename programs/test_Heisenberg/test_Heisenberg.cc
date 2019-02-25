@@ -103,6 +103,8 @@ MatrixXd SpinCorr_SU2, SpinCorr_SU2B;
 
 int main (int argc, char* argv[])
 {
+	Sym::initialize(100,"cgc_hash/table_50.3j","cgc_hash/table_40.6j","cgc_hash/table_24.9j");
+
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",10);
 	Ly = args.get<size_t>("Ly",1);
@@ -215,26 +217,26 @@ int main (int argc, char* argv[])
 		
 		t_U1 = Watch_U1.time();
 
-		SpinCorr_U1.resize(L,L); SpinCorr_U1.setZero();
-		for (size_t l=0; l<L; ++l)
-		for (size_t lp=0; lp<L; ++lp)
-		for (size_t c=0; c<Ly; ++c)
-		for (size_t cp=0; cp<Ly; ++cp)
-		{
-			SpinCorr_U1(l,lp) = avg(g_U1.state,H_U1.SzSz(l,lp,c,cp),g_U1.state);
-		}
-		cout << "Spin correlations" << endl << SpinCorr_U1 << endl;
-		SpinCorr_U1B.resize(L,L); SpinCorr_U1B.setZero();
-		for (size_t l=0; l<L; ++l)
-		for (size_t lp=0; lp<L; ++lp)
-		{
-			VMPS::HeisenbergU1::StateXd Smg;
-			OxV_exact(H_U1.Scomp(SZ,l),g_U1.state,Smg,10.,DMRG::VERBOSITY::SILENT);
-			VMPS::HeisenbergU1::StateXd Spg;
-			OxV_exact(H_U1.Scomp(SZ,lp),g_U1.state,Spg,10.,DMRG::VERBOSITY::SILENT);
-			SpinCorr_U1B(l,lp) = Spg.dot(Smg); 
-		}
-		cout << "Spin correlations check" << endl << SpinCorr_U1B << endl;
+		// SpinCorr_U1.resize(L,L); SpinCorr_U1.setZero();
+		// for (size_t l=0; l<L; ++l)
+		// for (size_t lp=0; lp<L; ++lp)
+		// for (size_t c=0; c<Ly; ++c)
+		// for (size_t cp=0; cp<Ly; ++cp)
+		// {
+		// 	SpinCorr_U1(l,lp) = avg(g_U1.state,H_U1.SzSz(l,lp,c,cp),g_U1.state);
+		// }
+		// cout << "Spin correlations" << endl << SpinCorr_U1 << endl;
+		// SpinCorr_U1B.resize(L,L); SpinCorr_U1B.setZero();
+		// for (size_t l=0; l<L; ++l)
+		// for (size_t lp=0; lp<L; ++lp)
+		// {
+		// 	VMPS::HeisenbergU1::StateXd Smg;
+		// 	OxV_exact(H_U1.Scomp(SZ,l),g_U1.state,Smg,10.,DMRG::VERBOSITY::SILENT);
+		// 	VMPS::HeisenbergU1::StateXd Spg;
+		// 	OxV_exact(H_U1.Scomp(SZ,lp),g_U1.state,Spg,10.,DMRG::VERBOSITY::SILENT);
+		// 	SpinCorr_U1B(l,lp) = Spg.dot(Smg); 
+		// }
+		// cout << "Spin correlations check" << endl << SpinCorr_U1B << endl;
 
 		// for (size_t l=0; l<L; ++l)
 		// {
@@ -374,27 +376,29 @@ int main (int argc, char* argv[])
 		g_SU2.state.graph("SU2");
 		
 		t_SU2 = Watch_SU2.time();
-		
-		SpinCorr_SU2.resize(L,L); SpinCorr_SU2.setZero();
-		for (size_t l=0; l<L; ++l)
-		for (size_t lp=0; lp<L; ++lp)
-		for (size_t c=0; c<Ly; ++c)
-		for (size_t cp=0; cp<Ly; ++cp)
-		{
-			SpinCorr_SU2(l,lp) = avg(g_SU2.state,H_SU2.SdagS(l,lp,c,cp),g_SU2.state);
-		}
-		cout << "Spin correlations" << endl << SpinCorr_SU2 << endl;
-		SpinCorr_SU2B.resize(L,L); SpinCorr_SU2B.setZero();
-		for (size_t l=0; l<L; ++l)
-		for (size_t lp=0; lp<L; ++lp)
-		{
-			VMPS::HeisenbergSU2::StateXd Sg;
-			OxV_exact(H_SU2.S(l),g_SU2.state,Sg,10.,DMRG::VERBOSITY::SILENT);
-			VMPS::HeisenbergSU2::StateXd Sdagg;
-			OxV_exact(H_SU2.S(lp),g_SU2.state,Sdagg,10.,DMRG::VERBOSITY::SILENT);
-			SpinCorr_SU2B(l,lp) = Sdagg.dot(Sg); 
-		}
-		cout << "Spin correlations check" << endl << SpinCorr_SU2B << endl;
+
+		cout << "E0=" << avg(g_SU2.state,H_SU2.SdagS(L/2,L/2+1),g_SU2.state) << endl;
+
+		// SpinCorr_SU2.resize(L,L); SpinCorr_SU2.setZero();
+		// for (size_t l=0; l<L; ++l)
+		// for (size_t lp=0; lp<L; ++lp)
+		// for (size_t c=0; c<Ly; ++c)
+		// for (size_t cp=0; cp<Ly; ++cp)
+		// {
+		// 	SpinCorr_SU2(l,lp) = avg(g_SU2.state,H_SU2.SdagS(l,lp,c,cp),g_SU2.state);
+		// }
+		// cout << "Spin correlations" << endl << SpinCorr_SU2 << endl;
+		// SpinCorr_SU2B.resize(L,L); SpinCorr_SU2B.setZero();
+		// for (size_t l=0; l<L; ++l)
+		// for (size_t lp=0; lp<L; ++lp)
+		// {
+		// 	VMPS::HeisenbergSU2::StateXd Sg;
+		// 	OxV_exact(H_SU2.S(l),g_SU2.state,Sg,10.,DMRG::VERBOSITY::SILENT);
+		// 	VMPS::HeisenbergSU2::StateXd Sdagg;
+		// 	OxV_exact(H_SU2.S(lp),g_SU2.state,Sdagg,10.,DMRG::VERBOSITY::SILENT);
+		// 	SpinCorr_SU2B(l,lp) = Sdagg.dot(Sg); 
+		// }
+		// cout << "Spin correlations check" << endl << SpinCorr_SU2B << endl;
 	}
 	
 	//--------output---------
@@ -464,4 +468,6 @@ int main (int argc, char* argv[])
 	lout << endl << T;
 	
 	lout << "ref=" << VMPS::Heisenberg::ref({{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"m",static_cast<double>(M)/(L*Ly)}}) << endl;
+
+	Sym::finalize(true);
 }
