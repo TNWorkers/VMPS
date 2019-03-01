@@ -191,6 +191,50 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		Terms.save_label(loc, LyLabel.str());
 		Terms.save_label(loc, LyFlabel.str());
 		
+		if (P.HAS("tFull"))
+		{
+			for (size_t hop=loc; hop<N_sites; hop++)
+			{
+				size_t numberTransOps;
+				if (hop == loc) {numberTransOps=0;} else {numberTransOps=hop-loc-1;}
+				vector<SiteOperator<Symmetry_,double> > TransOps(numberTransOps);
+				for (size_t i=0; i<numberTransOps; i++)
+				{
+					TransOps[i] = kroneckerProduct(B[loc+i+1].Id(), F[loc+i+1].sign());
+				}
+				
+				if (hop == loc)
+				{
+//					SiteOperator<Symmetry,double> Ssqrt = SiteOperatorQ<Symmetry,MatrixXd>::prod(B[loc].Sdag(0),B[loc].S(0),Symmetry::qvacuum()).plain<double>();
+//					Terms.push_local(loc,std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc),Ssqrt);
+				}
+				else
+				{
+					Terms.push(hop-loc, loc, -P.get<Eigen::ArrayXXd>("tFull")(loc,hop),
+						             kroneckerProduct(B[loc].Id(), F[loc].cdag(UP,0) * F[loc].sign()),
+						             TransOps,
+						             kroneckerProduct(B[hop].Id(), F[hop].c(UP,0))
+						            );
+					Terms.push(hop-loc, loc, -P.get<Eigen::ArrayXXd>("tFull")(loc,hop),
+						             kroneckerProduct(B[loc].Id(), F[loc].cdag(DN,0) * F[loc].sign()),
+						             TransOps,
+						             kroneckerProduct(B[hop].Id(), F[hop].c(DN,0))
+						            );
+					Terms.push(hop-loc, loc, -P.get<Eigen::ArrayXXd>("tFull")(loc,hop),
+						             kroneckerProduct(B[loc].Id(), -1.*F[loc].c(UP,0) * F[loc].sign()),
+						             TransOps,
+						             kroneckerProduct(B[hop].Id(), F[hop].cdag(UP,0))
+						            );
+					Terms.push(hop-loc, loc, -P.get<Eigen::ArrayXXd>("tFull")(loc,hop),
+						             kroneckerProduct(B[loc].Id(), -1.*F[loc].c(DN,0) * F[loc].sign()),
+						             TransOps,
+						             kroneckerProduct(B[hop].Id(), F[hop].cdag(DN,0))
+						            );
+				}
+			}
+			Terms.save_label(loc, "tᵢⱼ");
+		}
+		
 		// local terms
 		
 		// Kondo-J

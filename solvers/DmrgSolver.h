@@ -414,7 +414,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		{
 			if (DynParam.max_alpha_rsvd(i) == 0.) {i_alpha_switchoff = i; break;}
 		}
-		lout <<                "• fluctutations turned off after " << termcolor::underline << i_alpha_switchoff << termcolor::reset << " half-sweeps" << endl;
+		lout <<                "• fluctuations turned off after " << termcolor::underline << i_alpha_switchoff << termcolor::reset << " half-sweeps" << endl;
 		if (Vout.state.max_Nrich == -1)
 		{
 			lout <<            "• fluctuations use " << termcolor::underline << "all" << termcolor::reset << " additional states" << endl;

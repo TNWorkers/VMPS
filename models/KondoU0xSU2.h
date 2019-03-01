@@ -235,33 +235,75 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		
 		// NN terms
 		
-		// t∥
-		param2d tPara = P.fill_array2d<double>("t", "tPara", {Forbitals, Fnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, tPara.label);
+		if (P.HAS("tFull"))
+		{
+			for (size_t hop=loc; hop<N_sites; ++hop)
+			{
+				size_t N_TransOps;
+				if (hop == loc) {N_TransOps=0;} else {N_TransOps=hop-loc-1;}
+				vector<SiteOperator<Symmetry,double> > TransOps(N_TransOps);
+				for (size_t i=0; i<N_TransOps; i++)
+				{
+					TransOps[i] = OperatorType::outerprod(B[loc+i+1].Id().structured(), F[loc+i+1].sign(), {1}).plain<double>();
+				}
+				
+				if (hop == loc)
+				{
+//					SiteOperator<Symmetry,double> Ssqrt = SiteOperatorQ<Symmetry,MatrixXd>::prod(B[loc].Sdag(0),B[loc].S(0),Symmetry::qvacuum()).plain<double>();
+//					Terms.push_local(loc,std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc),Ssqrt);
+				}
+				else
+				{
+					auto PsiDagUp_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,0), {2});
+					auto PsiDagDn_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,0), {2});
+					auto Sign_loc     = OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(), {1});
+					auto PsiUp_hop    = OperatorType::outerprod(B[hop].Id().structured(), F[hop].psi(UP,0), {2});
+					auto PsiDn_hop    = OperatorType::outerprod(B[hop].Id().structured(), F[hop].psi(DN,0), {2});
+					
+					auto Otmp_loc = OperatorType::prod(PsiDagUp_loc, Sign_loc, {2});
+					
+					Terms.push(hop-loc, loc, -P.get<Eigen::ArrayXXd>("tFull")(loc,hop) * sqrt(2.),
+					           Otmp_loc.plain<double>(), TransOps, PsiUp_hop.plain<double>());
+					
+					Otmp_loc = OperatorType::prod(PsiDagDn_loc, Sign_loc, {2});
+					
+					Terms.push(hop-loc, loc, -P.get<Eigen::ArrayXXd>("tFull")(loc,hop) * sqrt(2.),
+					           Otmp_loc.plain<double>(), TransOps, PsiDn_hop.plain<double>());
+				}
+			}
+			Terms.save_label(loc, "tᵢⱼ");
+		}
 		
 		// V∥
 		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {Forbitals, Fnext_orbitals}, loc%Lcell);
 		Terms.save_label(loc, Vpara.label);
 		
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (!P.HAS("tFull"))
 		{
-			for (int alfa=0; alfa<Forbitals;      ++alfa)
-			for (int beta=0; beta<Fnext_orbitals; ++beta)
+			// t∥
+			param2d tPara = P.fill_array2d<double>("t", "tPara", {Forbitals, Fnext_orbitals}, loc%Lcell);
+			Terms.save_label(loc, tPara.label);
+			
+			if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
 			{
-				auto PsiDagUp_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,alfa), {2});
-				auto PsiDagDn_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,alfa), {2});
-				auto Sign_loc     = OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(), {1});
-				auto PsiUp_lp1    = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].psi(UP,beta), {2});
-				auto PsiDn_lp1    = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].psi(DN,beta), {2});
-				
-				auto Otmp_loc = OperatorType::prod(PsiDagUp_loc, Sign_loc, {2});
-				
-				Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.), Otmp_loc.plain<double>(), PsiUp_lp1.plain<double>());
-				
-				//c†DNcDN
-				Otmp_loc = OperatorType::prod(PsiDagDn_loc, Sign_loc, {2});
-				
-				Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.), Otmp_loc.plain<double>(), PsiDn_lp1.plain<double>());
+				for (int alfa=0; alfa<Forbitals;      ++alfa)
+				for (int beta=0; beta<Fnext_orbitals; ++beta)
+				{
+					auto PsiDagUp_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,alfa), {2});
+					auto PsiDagDn_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,alfa), {2});
+					auto Sign_loc     = OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(), {1});
+					auto PsiUp_lp1    = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].psi(UP,beta), {2});
+					auto PsiDn_lp1    = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].psi(DN,beta), {2});
+					
+					auto Otmp_loc = OperatorType::prod(PsiDagUp_loc, Sign_loc, {2});
+					
+					Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.), Otmp_loc.plain<double>(), PsiUp_lp1.plain<double>());
+					
+					//c†DNcDN
+					Otmp_loc = OperatorType::prod(PsiDagDn_loc, Sign_loc, {2});
+					
+					Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.), Otmp_loc.plain<double>(), PsiDn_lp1.plain<double>());
+				}
 			}
 		}
 		
@@ -378,32 +420,35 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		}
 		
 		// tPrimePrime
-		param2d tPrimePrime = P.fill_array2d<double>("tPrimePrime", "tPrimePrime_array", {Forbitals, F3next_orbitals}, loc%Lcell);
-		Terms.save_label(loc, tPrimePrime.label);
-		
-		if (loc < N_sites-3 or !P.get<bool>("OPEN_BC"))
+		if (!P.HAS("tFull"))
 		{
-			auto Sign_loc     = OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(), {1});
-			auto Sign_lp1     = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].sign(), {1});
-			auto Sign_lp2     = OperatorType::outerprod(B[lp2].Id().structured(), F[lp2].sign(), {1});
+			param2d tPrimePrime = P.fill_array2d<double>("tPrimePrime", "tPrimePrime_array", {Forbitals, F3next_orbitals}, loc%Lcell);
+			Terms.save_label(loc, tPrimePrime.label);
 			
-			vector<SiteOperator<Symmetry,double> > TransOps(2);
-			TransOps[0] = Sign_lp1.plain<double>();
-			TransOps[1] = Sign_lp2.plain<double>();
-			
-			for (std::size_t alfa=0; alfa<Forbitals;       ++alfa)
-			for (std::size_t beta=0; beta<F3next_orbitals; ++beta)
+			if (loc < N_sites-3 or !P.get<bool>("OPEN_BC"))
 			{
-				auto PsiDagUp_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,alfa), {2});
-				auto PsiDagDn_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,alfa), {2});
-				auto PsiUp_lp3    = OperatorType::outerprod(B[lp3].Id().structured(), F[lp1].psi(UP,beta), {2});
-				auto PsiDn_lp3    = OperatorType::outerprod(B[lp3].Id().structured(), F[lp1].psi(DN,beta), {2});
+				auto Sign_loc     = OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(), {1});
+				auto Sign_lp1     = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].sign(), {1});
+				auto Sign_lp2     = OperatorType::outerprod(B[lp2].Id().structured(), F[lp2].sign(), {1});
 				
-				auto PsiDagUp_loc_signed = OperatorType::prod(PsiDagUp_loc, Sign_loc, {2});
-				auto PsiDagDn_loc_signed = OperatorType::prod(PsiDagDn_loc, Sign_loc, {2});
+				vector<SiteOperator<Symmetry,double> > TransOps(2);
+				TransOps[0] = Sign_lp1.plain<double>();
+				TransOps[1] = Sign_lp2.plain<double>();
 				
-				Terms.push(3, loc, -tPrimePrime(alfa,beta)*sqrt(2.), PsiDagUp_loc_signed.plain<double>(), TransOps, PsiUp_lp3.plain<double>());
-				Terms.push(3, loc, -tPrimePrime(alfa,beta)*sqrt(2.), PsiDagDn_loc_signed.plain<double>(), TransOps, PsiDn_lp3.plain<double>());
+				for (std::size_t alfa=0; alfa<Forbitals;       ++alfa)
+				for (std::size_t beta=0; beta<F3next_orbitals; ++beta)
+				{
+					auto PsiDagUp_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,alfa), {2});
+					auto PsiDagDn_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,alfa), {2});
+					auto PsiUp_lp3    = OperatorType::outerprod(B[lp3].Id().structured(), F[lp1].psi(UP,beta), {2});
+					auto PsiDn_lp3    = OperatorType::outerprod(B[lp3].Id().structured(), F[lp1].psi(DN,beta), {2});
+					
+					auto PsiDagUp_loc_signed = OperatorType::prod(PsiDagUp_loc, Sign_loc, {2});
+					auto PsiDagDn_loc_signed = OperatorType::prod(PsiDagDn_loc, Sign_loc, {2});
+					
+					Terms.push(3, loc, -tPrimePrime(alfa,beta)*sqrt(2.), PsiDagUp_loc_signed.plain<double>(), TransOps, PsiUp_lp3.plain<double>());
+					Terms.push(3, loc, -tPrimePrime(alfa,beta)*sqrt(2.), PsiDagDn_loc_signed.plain<double>(), TransOps, PsiDn_lp3.plain<double>());
+				}
 			}
 		}
 	}

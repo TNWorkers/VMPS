@@ -33,11 +33,11 @@ from matplotlib.colors import LogNorm
 #    else:
 #        return x
 
-#def round(x):
-#	if x==int(x):
-#		return int(x)
-#	else:
-#		return x
+def round(x):
+	if x==int(x):
+		return int(x)
+	else:
+		return x
 
 rc('text', usetex=True)
 rc('font', **{'family':'sans-serif','sans-serif':['DejaVu Sans']})
@@ -45,19 +45,23 @@ rc('font', size=12)
 
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('-J', action='store', default=0.5)
+parser.add_argument('-J', action='store', default=0.)
+parser.add_argument('-Ly', action='store', default=1)
 parser.add_argument('-save', action='store', default=False)
 parser.add_argument('-set', action='store', default='004')
 args = parser.parse_args()
 
 def folderName(U,V,J):
-    return '../../../cluster-calcHUBB/g++-U'+str(U)+'.0-V'+str(V)+'.0-J'+str(J)+'-L2-Ly1-a32ea3e6-'+str(args.set)
+	if int(args.set) < 500:
+		return '/home/rrausch/DATA/cluster-calcHUBB/g++-U'+str(U)+'-V'+str(V)+'-J'+str(J)+'-L2-Ly1-'+str(args.set)
+	else:
+		return '/home/rrausch/DATA/kyoto-calcHUBB/'+str(args.set)
 
 def obsFilename(U,V,J):
-    return "U="+str(U)+"_V="+str(V)+"_J="+str(J)+'.h5'
+	return 'U='+str(round(U))+'_V='+str(round(V))+'_J='+str(round(J))+'_Ly='+str(round(Ly))+'.h5'
 
-Vs = np.arange(-5,5+1,1)
-Us = np.arange(0,8+1,1)
+Vs = np.linspace(-5, 5, num=11, endpoint=True)
+Us = np.linspace(0 , 5, num=11, endpoint=True)
 
 T1pi    = [[0 for x in range(len(Vs))] for y in range(len(Us))]
 S1pi    = [[0 for x in range(len(Vs))] for y in range(len(Us))]
@@ -75,8 +79,10 @@ for iU in range(len(Us)):
         U = Us[iU]
         V = Vs[iV]
         J = args.J
+        Ly = args.Ly
         
         filename = folderName(U,V,J)+'/obs/'+obsFilename(U,V,J)
+        print(filename)
         
         if os.path.isfile(filename):
             f = h5py.File(filename,'r')
@@ -126,27 +132,27 @@ for iU in range(len(Us)):
                 print('ns=', f[Chi]['ns'][0][0], f[Chi]['ns'][1][0])
                 print('nh+ns-1=', f[Chi]['nh'][0][0]+f[Chi]['ns'][0][0]-1, f[Chi]['nh'][1][0]+f[Chi]['ns'][1][0]-1)
                 print('S(π)=', f[Chi]['S_pi'][0], 'S(0)=', f[Chi]['S_0'][0])
-                print('S(π)=', f[Chi]['S_pi'][1], 'S(0)=', f[Chi]['S_0'][1])
+#                print('S(π)=', f[Chi]['S_pi'][1], 'S(0)=', f[Chi]['S_0'][1])
                 print('T(π)=', f[Chi]['T_pi'][0], 'T(0)=', f[Chi]['T_0'][0])
-                print('T(π)=', f[Chi]['T_pi'][1], 'T(0)=', f[Chi]['T_0'][1])
+#                print('T(π)=', f[Chi]['T_pi'][1], 'T(0)=', f[Chi]['T_0'][1])
                 
-                S1pi[iU][iV] = f[Chi]['S_pi'][0][0]-f[Chi]['S_pi'][0][1]
-                T1pi[iU][iV] = f[Chi]['T_pi'][0][0]-f[Chi]['T_pi'][0][1]
-                S0pi[iU][iV] = f[Chi]['S_0'][0][0]+f[Chi]['S_0'][0][1]
-                T0pi[iU][iV] = f[Chi]['T_0'][0][0]+f[Chi]['S_0'][0][1]
-                spinon[iU][iV] = f[Chi]['ns'][0][0] 
+                S1pi[iU][iV] = f[Chi]['S_pi'][0]
+                T1pi[iU][iV] = f[Chi]['T_pi'][0]
+                S0pi[iU][iV] = f[Chi]['S_0'][0]
+                T0pi[iU][iV] = f[Chi]['T_0'][0]
+                spinon[iU][iV] = f[Chi]['ns'][0][0]
                 holon[iU][iV] = f[Chi]['nh'][0][0]
                 entropy[iU][iV] = f[Chi]['Entropy'][0][0]
                 error[iU][iV] =  f[Chi]['err_state'][0]
                 
                 if   max(S1pi[iU][iV], T1pi[iU][iV], T0pi[iU][iV], S0pi[iU][iV]) == S0pi[iU][iV]:
-                    PD[iU][iV] = 1.5
+                    PD[iU][iV] = 1.5 # FM
                 elif max(S1pi[iU][iV], T1pi[iU][iV], T0pi[iU][iV], S0pi[iU][iV]) == S1pi[iU][iV]:
-                    PD[iU][iV] = 2.5
+                    PD[iU][iV] = 2.5 # AFM
                 elif max(S1pi[iU][iV], T1pi[iU][iV], T0pi[iU][iV], S0pi[iU][iV]) == T0pi[iU][iV]:
-                    PD[iU][iV] = 3.5
+                    PD[iU][iV] = 3.5 # s-wave
                 elif max(S1pi[iU][iV], T1pi[iU][iV], T0pi[iU][iV], S0pi[iU][iV]) == T1pi[iU][iV]:
-                    PD[iU][iV] = 4.5
+                    PD[iU][iV] = 4.5 # eta-wave
                 print("")
         else:
             print("no file for U=",U,"V=",V)

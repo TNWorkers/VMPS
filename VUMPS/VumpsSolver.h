@@ -145,13 +145,15 @@ private:
 	 * This function adds orthogonal information to the UMPS in the unit cell at site loc and enlarge therewith the bond dimension and the number of symmetry blocks.
 	 * For information see appendix B in Zauner-Stauber et al. 2018.
 	 */
-	void expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option = VUMPS::TWOSITE_A::ALxAC);
+	void expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
+	                   VUMPS::TWOSITE_A::OPTION option = VUMPS::TWOSITE_A::ALxAC);
 	/**
 	 * This function adds orthogonal information to the UMPS and enlarge therewith the bond dimension and the number of symmetry blocks.
 	 * For information see appendix B in Zauner-Stauber et al. 2018.
 	 * Just calls expand_basis() for all positions in the unit cell.
 	 */
-	void expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option = VUMPS::TWOSITE_A::ALxAC);
+	void expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
+	                   VUMPS::TWOSITE_A::OPTION option = VUMPS::TWOSITE_A::ALxAC);
 	///\}
 	
 	///\{
@@ -1604,13 +1606,13 @@ expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps
 		{
 			lout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
 		}
-		if(Nret > 0)
+		if (Nret > 0)
 		{
 			U.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixU().leftCols(Nret));
 			Vdag.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixV().adjoint().topRows(Nret));
 		}
 	}
-		
+	
 	//calc P
 	vector<Biped<Symmetry,MatrixType> > P(Vout.state.locBasis(loc).size());
 	for (size_t s=0; s<Vout.state.locBasis(loc).size(); ++s)
@@ -1618,16 +1620,16 @@ expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps
 		P[s] = NL[s] * U;
 	}
 	Vout.state.enrich(loc, GAUGE::L, P);
-
+	
 	//Update the left environment if AL is involved in calculating the two site A-tensor, because we need correct environments for the effective two-site Hamiltonian.
 	if (option == VUMPS::TWOSITE_A::ALxAC or option == VUMPS::TWOSITE_A::ALxCxAR)
 	{
 		contract_L(HeffA[loc].L, 
-				   Vout.state.A[GAUGE::L][loc], H.W[loc], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][loc], 
-				   H.locBasis(loc), H.opBasis(loc), 
-				   HeffA[(loc+1)%N_sites].L);
+		           Vout.state.A[GAUGE::L][loc], H.W[loc], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][loc], 
+		           H.locBasis(loc), H.opBasis(loc), 
+		           HeffA[(loc+1)%N_sites].L);
 	}
-		
+	
 	P.clear();
 	P.resize(Vout.state.locBasis((loc+1)%N_sites).size());
 	for (size_t s=0; s<Vout.state.locBasis((loc+1)%N_sites).size(); ++s)
@@ -1635,26 +1637,26 @@ expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps
 		P[s] = Vdag * NR[s];
 	}
 	Vout.state.enrich(loc, GAUGE::R, P);
-
+	
 	//Update the right environment if AR is involved in calculating the two site A-tensor, because we need correct environments for the effective two-site Hamiltonian.
 	//Note: maybe we only have to update the right environment if loc=0, since we need the updated environment only when loc=N_sites-1 and consequentially loc+1=0.
 	if (option == VUMPS::TWOSITE_A::ACxAR or option == VUMPS::TWOSITE_A::ALxCxAR)
 	{
 		contract_R(HeffA[(loc+1)%N_sites].R,
-				   Vout.state.A[GAUGE::R][(loc+1)%N_sites], H.W[(loc+1)%N_sites], PROP::HAMILTONIAN, Vout.state.A[GAUGE::R][(loc+1)%N_sites], 
-				   H.locBasis((loc+1)%N_sites), H.opBasis((loc+1)%N_sites), 
-				   HeffA[loc].R);
+		           Vout.state.A[GAUGE::R][(loc+1)%N_sites], H.W[(loc+1)%N_sites], PROP::HAMILTONIAN, Vout.state.A[GAUGE::R][(loc+1)%N_sites], 
+		           H.locBasis((loc+1)%N_sites), H.opBasis((loc+1)%N_sites), 
+		           HeffA[loc].R);
 	}
-		
+	
 	Vout.state.update_outbase(loc,GAUGE::L);
-
+	
 	//update C with zeros
 	Vout.state.updateC(loc);
-
+	
 	//update AC with zeros at sites loc and loc+1
 	Vout.state.updateAC(loc,GAUGE::L);
 	Vout.state.updateAC((loc+1)%N_sites,GAUGE::L);
-
+	
 	// sort
 	Vout.state.C[loc] = Vout.state.C[loc].sorted();
 	Vout.state.sort_A(loc, GAUGE::L, true); //true means sort all gauges, the parameter GAUGE::L has no impact here.
@@ -1664,10 +1666,10 @@ expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 expand_basis (size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option)
-{	
-	for(size_t loc=0; loc<N_sites; loc++)
+{
+	for (size_t loc=0; loc<N_sites; loc++)
 	{
-		expand_basis (loc, DeltaD, H, Vout, option);
+		expand_basis(loc, DeltaD, H, Vout, option);
 	}
 }
 
