@@ -897,12 +897,12 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		N_iterations_without_expansion = 0;
 	}
 	
-//	if (err_var < GlobParam.tol_var and (N_iterations+1)%DynParam.Dincr_per(N_iterations) == 0 )
-//	{
-//		Stopwatch<> TruncationTimer;
-//		Vout.state.truncate();
-//		t_trunc = TruncationTimer.time();
-//	}
+	if (err_var < GlobParam.tol_var and (N_iterations+1)%DynParam.Dincr_per(N_iterations) == 0 )
+	{
+		Stopwatch<> TruncationTimer;
+		Vout.state.truncate();
+		t_trunc = TruncationTimer.time();
+	}
 	
 	Stopwatch<> EnvironmentTimer;
 	build_cellEnv(H,Vout);

@@ -2545,7 +2545,7 @@ ArrayXXcd Umps<Symmetry,Scalar>::
 SF (const ArrayXXd &cellAvg, const vector<Mpo<Symmetry,Scalar> > &Oalfa, const vector<Mpo<Symmetry,Scalar> > &Obeta, 
     double kmin, double kmax, int kpoints, DMRG::VERBOSITY::OPTION VERB)
 {
-	assert(Oalfa.size() == N_sites and Obeta.size() == N_sites and cellAvg.rows() == N_sites and cellAvg.cols() == N_sites);
+	assert(Oalfa.size() == cellAvg.rows() and Obeta.size() == cellAvg.cols());
 	
 	vector<vector<ArrayXXcd> > Sijk(N_sites);
 	for (size_t i0=0; i0<N_sites; ++i0)

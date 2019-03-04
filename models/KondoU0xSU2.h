@@ -82,12 +82,13 @@ protected:
 
 const std::map<string,std::any> KondoU0xSU2::defaults =
 {
-	{"t",1.}, {"tRung",0.}, {"tPrimePrime",0.},
+	{"t",1.}, {"tRung",0.}, {"tPrime",0.}, {"tPrimePrime",0.},
 	{"J",1.}, {"U",0.}, 
 	{"V",0.}, {"Vrung",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.}, {"Bx",0.}, {"Bxsub",0.}, {"Kx",0.},
 	{"Inext",0.}, {"Iprev",0.}, {"I3next",0.}, {"I3prev",0.}, {"I3loc",0.}, 
-	{"D",2ul}, {"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
+	{"D",2ul}, {"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul},
+	{"subL",SUB_LATTICE::A}
 };
 
 const map<string,any> KondoU0xSU2::sweep_defaults = 
@@ -116,8 +117,18 @@ KondoU0xSU2 (const size_t &L, const vector<Param> &params)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		
-		F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), SUB_LATTICE::A) 
-		                  : FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), SUB_LATTICE::B);
+		
+		if (P.HAS("subL",l%Lcell))
+		{
+//			cout << "l=" << l << ", " << P.get<SUB_LATTICE>("subL",l%Lcell) << endl;
+			F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<SUB_LATTICE>("subL",l%Lcell));
+		}
+		else
+		{
+//			cout << "l=" << l << ", " << "make default A/B" << endl;
+			F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), SUB_LATTICE::A) 
+			                  : FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), SUB_LATTICE::B);
+		}
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		
 		setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l);
@@ -161,6 +172,10 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		stringstream Slabel;
 		Slabel << "S=" << print_frac_nice(S);
 		Terms.save_label(loc, Slabel.str());
+		
+		stringstream sublabel;
+		sublabel << "lat=" << F[loc].sublattice();
+		Terms.save_label(loc, sublabel.str());
 		
 		// local terms
 		
@@ -278,9 +293,9 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {Forbitals, Fnext_orbitals}, loc%Lcell);
 		Terms.save_label(loc, Vpara.label);
 		
+		// t∥
 		if (!P.HAS("tFull"))
 		{
-			// t∥
 			param2d tPara = P.fill_array2d<double>("t", "tPara", {Forbitals, Fnext_orbitals}, loc%Lcell);
 			Terms.save_label(loc, tPara.label);
 			
@@ -298,6 +313,11 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 					auto Otmp_loc = OperatorType::prod(PsiDagUp_loc, Sign_loc, {2});
 					
 					Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.), Otmp_loc.plain<double>(), PsiUp_lp1.plain<double>());
+					
+					if (tPara(alfa,beta) != 0.)
+					{
+						assert(F[loc].sublattice() != F[lp1].sublattice());
+					}
 					
 					//c†DNcDN
 					Otmp_loc = OperatorType::prod(PsiDagDn_loc, Sign_loc, {2});
@@ -419,9 +439,44 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			}
 		}
 		
-		// tPrimePrime
-		if (!P.HAS("tFull"))
+		// tPrime
+		if (!P.HAS("tFull") and P.HAS("tPrime",loc%Lcell))
 		{
+			assert(F[loc].sublattice() != F[lp2].sublattice());
+			
+			param2d tPrime = P.fill_array2d<double>("tPrime", "tPrime_array", {Forbitals, F3next_orbitals}, loc%Lcell);
+			Terms.save_label(loc, tPrime.label);
+			
+			if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
+			{
+				auto Sign_loc     = OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(), {1});
+				auto Sign_lp1     = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].sign(), {1});
+				
+				vector<SiteOperator<Symmetry,double> > TransOps(1);
+				TransOps[0] = Sign_lp1.plain<double>();
+				
+				for (std::size_t alfa=0; alfa<Forbitals;       ++alfa)
+				for (std::size_t beta=0; beta<F3next_orbitals; ++beta)
+				{
+					auto PsiDagUp_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,alfa), {2});
+					auto PsiDagDn_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,alfa), {2});
+					auto PsiUp_lp2    = OperatorType::outerprod(B[lp2].Id().structured(), F[lp2].psi(UP,beta), {2});
+					auto PsiDn_lp2    = OperatorType::outerprod(B[lp2].Id().structured(), F[lp2].psi(DN,beta), {2});
+					
+					auto PsiDagUp_loc_signed = OperatorType::prod(PsiDagUp_loc, Sign_loc, {2});
+					auto PsiDagDn_loc_signed = OperatorType::prod(PsiDagDn_loc, Sign_loc, {2});
+					
+					Terms.push(2, loc, -tPrime(alfa,beta)*sqrt(2.), PsiDagUp_loc_signed.plain<double>(), TransOps, PsiUp_lp2.plain<double>());
+					Terms.push(2, loc, -tPrime(alfa,beta)*sqrt(2.), PsiDagDn_loc_signed.plain<double>(), TransOps, PsiDn_lp2.plain<double>());
+				}
+			}
+		}
+		
+		// tPrimePrime
+		if (!P.HAS("tFull") and P.HAS("tPrimePrime",loc%Lcell))
+		{
+			assert(F[loc].sublattice() != F[lp3].sublattice());
+			
 			param2d tPrimePrime = P.fill_array2d<double>("tPrimePrime", "tPrimePrime_array", {Forbitals, F3next_orbitals}, loc%Lcell);
 			Terms.save_label(loc, tPrimePrime.label);
 			
@@ -440,8 +495,8 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 				{
 					auto PsiDagUp_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,alfa), {2});
 					auto PsiDagDn_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,alfa), {2});
-					auto PsiUp_lp3    = OperatorType::outerprod(B[lp3].Id().structured(), F[lp1].psi(UP,beta), {2});
-					auto PsiDn_lp3    = OperatorType::outerprod(B[lp3].Id().structured(), F[lp1].psi(DN,beta), {2});
+					auto PsiUp_lp3    = OperatorType::outerprod(B[lp3].Id().structured(), F[lp3].psi(UP,beta), {2});
+					auto PsiDn_lp3    = OperatorType::outerprod(B[lp3].Id().structured(), F[lp3].psi(DN,beta), {2});
 					
 					auto PsiDagUp_loc_signed = OperatorType::prod(PsiDagUp_loc, Sign_loc, {2});
 					auto PsiDagDn_loc_signed = OperatorType::prod(PsiDagDn_loc, Sign_loc, {2});
