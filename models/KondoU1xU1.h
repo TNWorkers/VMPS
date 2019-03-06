@@ -90,11 +90,11 @@ const map<string,any> KondoU1xU1::defaults =
 
 const map<string,any> VMPS::KondoU1xU1::sweep_defaults = 
 {
-	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",10ul}, {"eps_svd",1e-7},
-	{"Dincr_abs",4ul}, {"Dincr_per",2ul}, {"Dincr_rel",1.1},
+	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",11ul}, {"eps_svd",1e-7},
+	{"Dincr_abs",5ul}, {"Dincr_per",2ul}, {"Dincr_rel",1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",20ul}, {"min_halfsweeps",6ul},
-	{"Dinit",5ul}, {"Qinit",10ul}, {"Dlimit",100ul},
+	{"Dinit",5ul}, {"Qinit",18ul}, {"Dlimit",100ul},
 	{"tol_eigval",1e-7}, {"tol_state",1e-6},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT",true}, {"CONVTEST",DMRG::CONVTEST::VAR_2SITE}
 };

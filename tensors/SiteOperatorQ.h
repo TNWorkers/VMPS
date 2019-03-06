@@ -15,7 +15,7 @@ template<typename Operator>
 class EDSolver
 {
 	typedef typename Operator::qType qType;
-	typedef typename Operator::MatrixType MatrixType;	
+	typedef typename Operator::MatrixType MatrixType;
 public:
 	EDSolver(){};
 	EDSolver(const Operator &Op_in, const std::vector<qType> &blocks_in={}, Eigen::DecompositionOptions opt_in=Eigen::DecompositionOptions::EigenvaluesOnly)

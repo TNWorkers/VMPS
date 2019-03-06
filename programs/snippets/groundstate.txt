@@ -4,8 +4,12 @@
 	Stopwatch<> Chronos;
 	stringstream ginfo, rinfo;
 	
-	ArrayXd Emins(Qc.size());
-	ArrayXd Emaxs(Qc.size());
+//	ArrayXd Emins(Qc.size());
+//	ArrayXd Emaxs(Qc.size());
+	MatrixXd Eminmax(2,Qc.size());
+	bool CONVERGED1 = false;
+	bool CONVERGED2 = false;
+	bool CONVERGED3 = false;
 	
 	#pragma omp parallel sections
 	{
@@ -13,10 +17,21 @@
 		{
 			Stopwatch<> nChronos;
 			MODEL::Solver DMRG(VERB1);
+			
+			DMRG.GlobParam = H.get_DmrgGlobParam(SweepParams);
+			DMRG.DynParam  = H.get_DmrgDynParam(SweepParams);
+			DMRG.userSetGlobParam();
+			DMRG.userSetDynParam();
+			
 			DMRG.edgeState(H, *init, Qi, LANCZOS::EDGE::GROUND);
 			lout << endl << nChronos.info(make_string("ground state ",Qi)) << endl;
 			lout << DMRG.info() << endl;
 			E0 = init->energy;
+			
+			if (DMRG.get_errState() < DMRG.GlobParam.tol_state)
+			{
+				CONVERGED1 = true;
+			}
 		}
 		
 		#pragma omp section
@@ -25,11 +40,26 @@
 			{
 				Stopwatch<> gChronos;
 				Eigenstate<MODEL::StateXd> g;
-				MODEL::Solver gDMRG(VERB2);
-				gDMRG.edgeState(H, g, Qc[i], LANCZOS::EDGE::GROUND);
+				MODEL::Solver DMRG(VERB2);
+				
+				DMRG.GlobParam = H.get_DmrgGlobParam(SweepParams);
+				DMRG.DynParam  = H.get_DmrgDynParam(SweepParams);
+				DMRG.userSetGlobParam();
+				DMRG.userSetDynParam();
+				
+				DMRG.LanczosParam.tol_state = 1e-3;
+				DMRG.userSetLanczosParam();
+				lout << endl << "Note: DMRG.LanczosParam.tol_state=" << DMRG.LanczosParam.tol_state << endl;
+				
+				DMRG.edgeState(H, g, Qc[i], LANCZOS::EDGE::GROUND);
 				ginfo << gChronos.info(make_string("ground state ",Qc[i])) << endl;
-				Emins[i] = g.energy;
-				ginfo << gDMRG.info() << endl;
+				Eminmax(0,i) = g.energy;
+				ginfo << DMRG.info() << endl;
+				
+				if (DMRG.get_errState() < DMRG.GlobParam.tol_state)
+				{
+					CONVERGED2 = true;
+				}
 			}
 		}
 		
@@ -39,37 +69,53 @@
 			{
 				Stopwatch<> rChronos;
 				Eigenstate<MODEL::StateXd> r;
-				MODEL::Solver rDMRG(VERB3);
-				rDMRG.edgeState(H, r, Qc[i], LANCZOS::EDGE::ROOF);
+				MODEL::Solver DMRG(VERB3);
+				
+				DMRG.GlobParam = H.get_DmrgGlobParam(SweepParams);
+				DMRG.DynParam  = H.get_DmrgDynParam(SweepParams);
+				DMRG.userSetGlobParam();
+				DMRG.userSetDynParam();
+				
+				DMRG.LanczosParam.tol_state = 1e-3;
+				DMRG.userSetLanczosParam();
+				lout << endl << "Note: DMRG.LanczosParam.tol_state=" << DMRG.LanczosParam.tol_state << endl;
+				
+				DMRG.edgeState(H, r, Qc[i], LANCZOS::EDGE::ROOF);
+				
 				rinfo << rChronos.info(make_string("roof state ",Qc[i])) << endl;
-//				if (rDMRG.get_errState() > 10.*rDMRG.GlobParam.tol_state)
-//				{
-//					Emaxs[i] = 2.*r.energy;
-//					lout << termcolor::red << "Bad convergence of roof state! Doubling the energy value from " 
-//					     << r.energy << " to " << Emaxs[i] << " to be safe!" << termcolor::reset << endl;
-//				}
-//				else
+				if (DMRG.get_errState() > 10.*DMRG.GlobParam.tol_state)
 				{
-					Emaxs[i] = r.energy;
+//					Emaxs(i) = 2.*r.energy;
+					lout << termcolor::red << "Warning: Bad convergence of roof state!" << endl;
 				}
-				rinfo << rDMRG.info() << endl;
+				
+				Eminmax(1,i) = r.energy;
+				rinfo << DMRG.info() << endl;
+				
+				if (DMRG.get_errState() < DMRG.GlobParam.tol_state)
+				{
+					CONVERGED3 = true;
+				}
 			}
 		}
 	}
 	
-	Emin = Emins.minCoeff();
-	Emax = Emaxs.maxCoeff();
+	Emin = Eminmax.row(0).minCoeff();
+	Emax = Eminmax.row(1).maxCoeff();
 	
 	lout << ginfo.str() << rinfo.str() << endl;
 	lout << Chronos.info("all edge states") << endl;
-	lout << "Emins=" << Emins.transpose() << endl;
-	lout << "Emaxs=" << Emaxs.transpose() << endl;
+	lout << "Emins=" << Eminmax.row(0) << endl;
+	lout << "Emaxs=" << Eminmax.row(1) << endl;
 	lout << termcolor::bold << "E0=" << E0 << ", Emin=" << Emin << ", Emax=" << Emax << termcolor::reset << endl << endl;
 	
 	// save energies
-	ofstream Efile(make_string(wd+"energies/"+Efilename,".dat"));
-	Efile << E0 << endl;
-	Efile << Emin << endl;
-	Efile << Emax << endl;
-	Efile.close();
+	if (!filesystem::exists(wd+"energies/"+EminmaxFile) and 
+	    CONVERGED1 == true and 
+	    CONVERGED2 == true and 
+	    CONVERGED3 == true)
+	{
+		saveMatrix(Eminmax, wd+"energies/"+EminmaxFile);
+		lout << wd+"energies/"+EminmaxFile " saved!" << endl;
+	}
 	//--------------</ground state>---------------

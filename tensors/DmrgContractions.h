@@ -82,7 +82,7 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
 					{
 						factor_cgc = 1.;
 					}
-					if (abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) {continue;}
+					if (abs(factor_cgc) < ::mynumeric_limits<double>::epsilon()) {continue;}
 					
 					for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
 					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
@@ -220,7 +220,7 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
 					{
 						factor_cgc = 1.;
 					}
-					if (abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) {continue;}
+					if (abs(factor_cgc) < ::mynumeric_limits<double>::epsilon()) {continue;}
 					
 					for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
 					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
@@ -343,7 +343,7 @@ void contract_L (const Tripod<Symmetry,MatrixType> &Lold,
 					{
 						factor_cgc = 1.;
 					}
-					if (std::abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+					if (std::abs(factor_cgc) < ::mynumeric_limits<double>::epsilon()) { continue; }
 					auto key = make_tuple(s1,s2,k,Lold.mid(qL),quple[2]);
 					if(auto it=V.find(key); it == V.end()) { continue; }
 					for (int r=0; r<V.at(key).outerSize(); ++r)
@@ -460,7 +460,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 						{
 							factor_cgc = 1.;
 						}
-						if (std::abs(factor_cgc) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+						if (std::abs(factor_cgc) < ::mynumeric_limits<double>::epsilon()) { continue; }
 						auto key = make_tuple(s1,s2,k,quple[2],Rold.mid(qR));
 						if(auto it=V.find(key); it == V.end()) { continue; }
 						for (int r=0; r<V.at(key).outerSize(); ++r)
@@ -926,7 +926,7 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 						{
 							factor_cgc = 1.;
 						}
-						if (std::abs(factor_cgc) < ::mynumeric_limits<Scalar>::epsilon()) { continue; }
+						if (std::abs(factor_cgc) < ::mynumeric_limits<double>::epsilon()) { continue; }
 						
 						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
 						for (SparseMatrixXd::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
@@ -1287,7 +1287,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 			// product in physical space:
 			factor_check = Symmetry::coeff_prod(qloc[s1],qOpBot[k2],qloc[s2],
 												qOpTop[k1],qloc[s3],k);
-			if (std::abs(factor_check) < ::mynumeric_limits<MpoScalar>::epsilon()) { continue; }
+			if (std::abs(factor_check) < ::mynumeric_limits<double>::epsilon()) { continue; }
 			for (size_t qR=0; qR<Rold.dim; ++qR)
 			{
 				auto qRouts = Symmetry::reduceSilent(Rold.out(qR),Symmetry::flip(qloc[s1]));
@@ -1309,7 +1309,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 																new_qmid               , k       , Rold.mid(qR),
 																Abra[s1].in[q1->second], qloc[s1], Abra[s1].out[q1->second]);
 							
-							if (std::abs(factor_cgc) < std::abs(::mynumeric_limits<MpoScalar>::epsilon())) { continue; }
+							if (std::abs(factor_cgc) < std::abs(::mynumeric_limits<double>::epsilon())) { continue; }
 							for(const auto& [qrightAux,qrightAuxP] : qrightAuxs)
 							{
 								Eigen::Index left2=TensorBaseRight.leftAmount(Rold.mid(qR),{qrightAuxP, qrightAux});
@@ -1326,7 +1326,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 												factor_merge = Symmetry::coeff_tensorProd(qleftAuxP,qleftAux,new_qmid,
 																						  qOpBot[k2],qOpTop[k1],k,
 																						  qrightAuxP,qrightAux,Rold.mid(qR));
-												if (std::abs(factor_merge) < std::abs(::mynumeric_limits<MpoScalar>::epsilon())) { continue; }
+												if (std::abs(factor_merge) < std::abs(::mynumeric_limits<double>::epsilon())) { continue; }
 												Eigen::Index left1=TensorBaseLeft.leftAmount(new_qmid,{qleftAuxP, qleftAux});
 												for (int ktop=0; ktop<Wtop[s2][s3][k1].outerSize(); ++ktop)
 												for (typename SparseMatrix<MpoScalar>::InnerIterator iWtop(Wtop[s2][s3][k1],ktop); iWtop; ++iWtop)
@@ -1645,7 +1645,7 @@ void contract_C (vector<qarray<Symmetry::Nq> > qloc,
 //						Scalar factor_cgc = Symmetry::coeff_Apair(A1[s1].in[q1], qloc1[s1], A1[s1].out[q1], 
 //						                                          qloc2[s2], A2[s2].out[q2->second], qmerge);
 //						
-//						if (abs(factor_cgc) > abs(mynumeric_limits<Scalar>::epsilon()))
+//						if (abs(factor_cgc) > abs(mynumeric_limits<double>::epsilon()))
 //						{
 //							Matrix<Scalar,Dynamic,Dynamic> Mtmp = factor_cgc * A1[s1].block[q1] * A2[s2].block[q2->second];
 //							
@@ -1723,7 +1723,7 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 								 }
 					else { factor_cgc = MpoScalar(1); }
 
-					if (abs(factor_cgc) < abs(mynumeric_limits<MpoScalar>::epsilon())) { continue; }
+					if (abs(factor_cgc) < abs(mynumeric_limits<double>::epsilon())) { continue; }
 
 					Matrix<Scalar,Dynamic,Dynamic> Mtmp(tensorBasis_l.inner_dim(qmerge_l), tensorBasis_r.inner_dim(qmerge_r)); Mtmp.setZero();
 					int left_l = tensorBasis_l.leftAmount(qmerge_l, { Ain[s2].in[q] , qWl } );
@@ -1837,7 +1837,7 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 					{
 						Scalar factor_cgc = Symmetry::coeff_Apair(A1[s1].in[q1], qloc1[s1], A1[s1].out[q1], 
 						                                          qloc2[s2], A2[s2].out[q2->second], qmerge);						
-						if (abs(factor_cgc) > abs(mynumeric_limits<Scalar>::epsilon()))
+						if (abs(factor_cgc) > abs(mynumeric_limits<double>::epsilon()))
 						{
 							Matrix<Scalar,Dynamic,Dynamic> Mtmp;
 							if (!DRY)

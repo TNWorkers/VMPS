@@ -16,50 +16,64 @@
 
 \begin{itemize}
 \item $m,n$ geht \"uber verschiedene Einheitszellen
-\item $j,j'$ geht innerhalb der Zelle von $0$ bis $L_c-1$
-\item $L_c$ ist die Zellengr\"o{\ss}e
+\item $j_x,j'_x,j_y,j'_y$ gehen innerhalb der Zelle der Gr\"o{\ss}e $L_c=L_x \cdot L_y$
+%\item $L_c$ ist die Zellengr\"o{\ss}e
 \end{itemize}
 
 \begin{equation}
 \begin{split}
-s^{\alpha\beta}\lr{q} &:= \frac{1}{\abs{\mathbb{Z}}} \sum_{m,n\in\mathbb{Z}} \sum_{j,j'\in\text{cell}} e^{-iq\lr{nL_c-mL_c+j-j'}} \avg{O^{\beta\dagger}_{n,j} O^{\alpha}_{m,j'}}\\
-                      &= \sum_{n\in\mathbb{Z}} \sum_{j,j'\in\text{cell}} e^{-iq\lr{nL_c+j-j'}} \avg{O^{\beta\dagger}_{n,j} O^{\alpha}_{0,j'}}\\
-                      &= \sum_{j,j'\in\text{cell}} e^{-iq\lr{j-j'}} \cdot \lr{ \sum_{n\in\mathbb{Z}} e^{-iqnL_c} \avg{O^{\beta\dagger}_{n,j} O^{\alpha}_{0,j'}} }\\
-                      &=: \sum_{j,j'\in\text{cell}} e^{-iq\lr{j-j'}} \cdot s^{\alpha\beta}_{jj'}\lr{q}
+s^{\alpha\beta}\lr{\v{q}} &:=\frac{1}{\abs{\mathbb{Z}}}  \frac{1}{L_xL_y} \sum_{m,n\in\mathbb{Z}} \sum_{j_x,j'_x} \sum_{j_y,j'_y} e^{-iq_x\lr{nL_x-mL_x+j_x-j'_x}} e^{-iq_y\lr{j_y-j'_y}} \avg{O^{\beta\dagger}_{n,j_x,j_y} O^{\alpha}_{m,j'_x,j'_y}}\\
+                      &= \frac{1}{\abs{\mathbb{Z}}} \sum_{m,n\in\mathbb{Z}} \frac{1}{L_x} \sum_{j_x,j'_x} e^{-iq_x\lr{nL_x-mL_x+j_x-j'_x}} \avg{O^{\beta\dagger}_{n,j_x}\lr{q_y} O^{\alpha}_{m,j'_x}\lr{q_y}}\\
+                      &= \sum_{n\in\mathbb{Z}} \frac{1}{L_x} \sum_{j_x,j'_x} e^{-iq_x\lr{nL_x+j_x-j'_x}} \avg{O^{\beta\dagger}_{n,j_x}\lr{q_y} O^{\alpha}_{0,j'_x}\lr{q_y}}\\
+                      &= \frac{1}{L_x} \sum_{j_x,j'_x} e^{-iq_x\lr{j_x-j'_x}} \cdot \lr{ \sum_{n\in\mathbb{Z}} e^{-iqnL_x} \avg{O^{\beta\dagger}_{n,j_x}\lr{q_y} O^{\alpha}_{0,j'_x}\lr{q_y}} }\\
+                      &=: \frac{1}{L_x} \sum_{j_x,j'_x} e^{-iq_x\lr{j_x-j'_x}} \cdot s^{\alpha\beta}_{j_xj'_x}\lr{\v{q}}
 \end{split}
+\end{equation}
+
+Fourier-Transformation bzgl. $y$:
+
+\begin{equation}
+O^{\alpha,\beta}_{n,j'_x}\lr{q_y} := \frac{1}{\sqrt{L_y}} \sum_{j'_y} e^{+iq_yj'_y} O^{\alpha,\beta}_{n,j'_x,j'_y}
 \end{equation}
 
 Strukturfaktor zwischen Einheitszellen:
 
 \begin{equation}
-s^{\alpha\beta}_{jj'}\lr{q} := \sum_{n\in\mathbb{Z}} e^{-iqnL_c} \avg{O^{\beta\dagger}_{n,j} O^{\alpha}_{0+j'}}
+s^{\alpha\beta}_{j_xj'_x}\lr{\v{q}} := \sum_{n\in\mathbb{Z}} e^{-iq_xnL_x} \avg{O^{\beta\dagger}_{n,j_x}\lr{q_y} O^{\alpha}_{0,j'_x}\lr{q_y}}
 \end{equation}
 
 Zerf\"allt in $n=0$, $n>0$, $n<0$:
 
 \begin{equation}
 \begin{split}
-s^{\alpha\beta}_{jj'}\lr{q} &= \avg{O^{\beta\dagger}_{0+j} O^{\alpha}_{0,j'}} + 
-                               \sum_{n\in\mathbb{N}} e^{-iqnL_c} \avg{O^{\beta\dagger}_{n,j} O^{\alpha}_{0,j'}} + 
-                               \sum_{n\in\mathbb{N}} e^{+iqnL_c} \avg{O^{\beta\dagger}_{-n,j} O^{\alpha}_{0,j'}} \\
-                            &= \avg{O^{\beta\dagger}_{nL_c+j} O^{\alpha}_{0,j'}} + 
-                               \sum_{n\in\mathbb{N}} e^{-iqnL_c} \avg{O^{\alpha\dagger}_{0,j'} O^{\beta}_{n,j}} + 
-                               \sum_{n\in\mathbb{N}} e^{+iqnL_c} \avg{O^{\beta\dagger}_{0,j} O^{\alpha}_{n,j'}}\\
-                            &= s^{\alpha\beta}_{jj',\text{cell}} + s^{\alpha\beta}_{jj',\text{inter}}\lr{q}
+&s^{\alpha\beta}_{j_xj'_x}\lr{\v{q}} =\\
+                           &= \avg{O^{\beta\dagger}_{0,j_x}\lr{q_y} O^{\alpha}_{0,j'_x}\lr{q_y}} + 
+                               \sum_{n\in\mathbb{N}} e^{-iq_xnL_x} \avg{O^{\beta\dagger}_{n,j_x}\lr{q_y} O^{\alpha}_{0,j'_x}\lr{q_y}} +
+                               \sum_{n\in\mathbb{N}} e^{+iq_xnL_x} \avg{O^{\beta\dagger}_{-n,j_x}\lr{q_y} O^{\alpha}_{0,j'_x}\lr{q_y}} \\
+                            &= \avg{O^{\beta\dagger}_{0,j_x}\lr{q_y} O^{\alpha}_{0,j'_x}\lr{q_y}} + 
+                               \sum_{n\in\mathbb{N}} e^{-iq_xnL_x} \avg{O^{\alpha\dagger}_{0,j'_x}\lr{q_y} O^{\beta}_{n,j_x}\lr{q_y}}^* + 
+                               \sum_{n\in\mathbb{N}} e^{+iq_xnL_x} \avg{O^{\beta\dagger}_{0,j_x}\lr{q_y} O^{\alpha}_{n,j'_x}\lr{q_y}}\\
+                            &= s^{\alpha\beta}_{j_xj'_x,\text{cell}}\lr{q_y} + s^{\alpha\beta}_{j_xj'_x,\text{inter}}\lr{\v{q}}
 \end{split}
 \end{equation}
 
-Es wird $s^{\alpha\beta}_{jj',\text{inter}}\lr{q}$ von \texttt{intercellSF} (mehrere $q$-Werte), \texttt{intercellSFpoint} (ein $q$-Wert) berechnet. Die volle Transformation geschieht mit \texttt{SF} und \texttt{SFpoint}. Der Faktor $L_c$ in der Exponentialfunktion hat vorher gefehlt.
+Es wird $s^{\alpha\beta}_{j_xj'_x,\text{inter}}\lr{\v{q}}$ von \texttt{intercellSF} (mehrere $q$-Werte), \texttt{intercellSFpoint} (ein $q$-Wert) berechnet. Die volle Transformation geschieht mit \texttt{SF} und \texttt{SFpoint}.
 
 Au{\ss}erdem scheint die Annahme $\lr{O^{\alpha,\beta}}^{\dagger}=O^{\alpha,\beta}$, bzw. $O^{\alpha\dagger}O^{\beta} = O^{\beta\dagger}O^{\alpha}$ getroffen zu werden, da nur das Produkt vorkommt und man die konjugierten Operatoren nicht \"ubergibt. In ``Tangent-space methods for uniform matrix product states'' (Kap. 2.5) verschwinden dann einfach die Kreuze...
 
-F\"ur $j=j'$ muss eigentlich nur ein Term berechnet werden:
+F\"ur $j_x=j'_x$ muss eigentlich nur ein Term berechnet werden:
 
 \begin{equation}
-s^{\alpha\beta}_{jj,\text{inter}}\lr{q} = \sum_{n\in\mathbb{N}} \lr{e^{-iqnL_c}+e^{+iqnL_c}} \avg{O^{\dagger}_j O_j} = 2\text{Re} \sum_{n\in\mathbb{N}} e^{-iqnL_c} \avg{O_j^{\dagger} O_j}
+\begin{split}
+s_{j_xj_x,\text{inter}}\lr{\v{q}} &= \sum_{n\in\mathbb{N}} \lr{e^{-iq_xnL_x}\avg{O^{\dagger}_{0,j_x}\lr{q_y} O_{n,j_x}\lr{q_y}}^* + e^{+iq_xnL_x}\avg{O^{\dagger}_{0,j_x}\lr{q_y} O_{n,j_x}\lr{q_y}}}\\
+                                                &= 2\text{Re} \sum_{n\in\mathbb{N}} e^{+iq_xnL_x} \avg{O_{0,j_x}^{\dagger}\lr{q_y} O_{n,j_x}\lr{q_y}}
+\end{split}
 \end{equation}
 
 Die Gleichheit der Terme sieht man numerisch, wird aber nicht ausgenutzt.
+
+
+
 
 %F\"ur einen AFM sieht das ganze jetzt so aus:
 

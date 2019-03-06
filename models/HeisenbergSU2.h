@@ -8,6 +8,7 @@
 //include "ParamHandler.h" // from TOOLS
 #include "ParamReturner.h"
 //include "symmetry/kind_dummies.h"
+#include "Geometry2D.h" // from TOOLS
 
 namespace VMPS
 {
@@ -67,14 +68,17 @@ public:
 	 * \param P : The parameters
 	 * \param loc : The location in the chain
 	*/
-	static void set_operators(const std::vector<SpinBase<Symmetry> > &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
+	static void set_operators (const std::vector<SpinBase<Symmetry> > &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
 	
 	///@{
 	/**Observables.*/
-	Mpo<Symmetry,double> S (std::size_t locx, std::size_t locy=0);
-	Mpo<Symmetry,double> Sdag (std::size_t locx, std::size_t locy=0, double factor=sqrt(3.));
+	Mpo<Symmetry,double> S     (std::size_t locx,  std::size_t locy=0);
+	Mpo<Symmetry,double> Sdag  (std::size_t locx,  std::size_t locy=0, double factor=sqrt(3.));
 	Mpo<Symmetry,double> SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
 	///@}
+	
+	Mpo<Symmetry,complex<double> > S_ky    (const vector<complex<double> > &phases);
+	Mpo<Symmetry,complex<double> > Sdag_ky (const vector<complex<double> > &phases, double factor=sqrt(3.));
 	
 	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an Mps.
 	\returns \p true if valid, \p false if not*/
@@ -110,21 +114,21 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 :Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
  ParamReturner(HeisenbergSU2::sweep_defaults)
 {
-    ParamHandler P(params,defaults);
-    
-    size_t Lcell = P.size();
-    B.resize(N_sites);
-    for (size_t l=0; l<N_sites; ++l)
-    {
-        N_phys += P.get<size_t>("Ly",l%Lcell);
-        
-        B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
-        setLocBasis(B[l].get_basis().qloc(),l);
-    }
-    
-    HamiltonianTerms<Symmetry, double> Terms(N_sites, P.get<bool>("OPEN_BC"));
-    set_operators(B,P,Terms);
-    this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	ParamHandler P(params,defaults);
+	
+	size_t Lcell = P.size();
+	B.resize(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		N_phys += P.get<size_t>("Ly",l%Lcell);
+		
+		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
+		setLocBasis(B[l].get_basis().qloc(),l);
+	}
+	
+	HamiltonianTerms<Symmetry, double> Terms(N_sites, P.get<bool>("OPEN_BC"));
+	set_operators(B,P,Terms);
+	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
@@ -184,24 +188,96 @@ SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy
 	}
 }
 
+Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HeisenbergSU2::
+S_ky (const vector<complex<double> > &phases)
+{
+	stringstream ss;
+	ss << "S" << "_ky(";
+	for (int l=0; l<phases.size(); ++l)
+	{
+		ss << phases[l];
+		if (l!=phases.size()-1) {ss << ",";}
+		else                    {ss << ")";}
+	}
+	
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = B[l].S(0);
+	}
+	
+	// all Ops[l].Q() must match
+	Mpo<Symmetry,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), false);
+	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
+	
+	vector<SiteOperator<Symmetry,complex<double> > > OpsPlain(Ops.size());
+	for (int l=0; l<OpsPlain.size(); ++l)
+	{
+		OpsPlain[l] = Ops[l].plain<double>().cast<complex<double> >();
+	}
+	
+	Mout.setLocalSum(OpsPlain, phases);
+	
+	return Mout;
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HeisenbergSU2::
+Sdag_ky (const vector<complex<double> > &phases, double factor)
+{
+	stringstream ss;
+	ss << "S†" << "_ky(";
+	for (int l=0; l<phases.size(); ++l)
+	{
+		ss << phases[l];
+		if (l!=phases.size()-1) {ss << ",";}
+		else                    {ss << ")";}
+	}
+	
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = B[l].Sdag(0);
+	}
+	
+	// all Ops[l].Q() must match
+	Mpo<Symmetry,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), false);
+	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
+	
+	vector<complex<double> > phases_x_factor = phases;
+	for (int l=0; l<phases.size(); ++l)
+	{
+		phases_x_factor[l] = phases[l] * factor;
+	}
+	
+	vector<SiteOperator<Symmetry,complex<double> > > OpsPlain(Ops.size());
+	for (int l=0; l<OpsPlain.size(); ++l)
+	{
+		OpsPlain[l] = Ops[l].plain<double>().cast<complex<double> >();
+	}
+	
+	Mout.setLocalSum(OpsPlain, phases_x_factor);
+	
+	return Mout;
+}
+
 bool HeisenbergSU2::
 validate (qarray<1> qnum) const
 {
 	frac Smax(0,1);
 	frac q_in(qnum[0]-1,2);
 	for (size_t l=0; l<N_sites; ++l) { Smax+=frac(B[l].get_D()-1,2); }
-	if(Smax.denominator()==q_in.denominator() and q_in <= Smax) {return true;}
+	if (Smax.denominator()==q_in.denominator() and q_in <= Smax) {return true;}
 	else {return false;}
 }
 
 void HeisenbergSU2::
-set_operators(const vector<SpinBase<Symmetry>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
+set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
 {
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = Terms.size();
 	Terms.set_name("HeisenbergSU2");
 	
-	for(std::size_t loc=0; loc<N_sites; ++loc)
+	for (std::size_t loc=0; loc<N_sites; ++loc)
 	{
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;
@@ -218,29 +294,64 @@ set_operators(const vector<SpinBase<Symmetry>> &B, const ParamHandler &P, Hamilt
 		Terms.save_label(loc, ss1.str());
 		Terms.save_label(loc, ss2.str());
 		
-		// Case, where a full coupling-matrix is provided: Jᵢⱼ
+		// Case where a full coupling matrix is provided: Jᵢⱼ
+//		if (P.HAS("Jfull"))
+//		{
+//			for (size_t loc2=loc; loc2<N_sites; loc2++)
+//			{
+//				assert(loc2>=loc);
+//				size_t numberTransOps;
+//				if (loc2 == loc) {numberTransOps=0;} else {numberTransOps=loc2-loc-1;}
+//				vector<SiteOperator<Symmetry,double> > TransOps(numberTransOps);
+//				for (size_t i=0; i<numberTransOps; i++) {TransOps[i] = B[loc+i+1].Id().plain<double>();}
+//				
+//				if (loc2 == loc)
+//				{
+//					SiteOperator<Symmetry,double> Ssqrt = SiteOperatorQ<Symmetry,MatrixXd>::prod(B[loc].Sdag(0),B[loc].S(0),Symmetry::qvacuum()).plain<double>();
+//					Terms.push_local(loc,std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc),Ssqrt);
+//				}
+//				else
+//				{
+//					Terms.push(loc2-loc, loc, std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc2),
+//					           B[loc].Sdag(0).plain<double>(), TransOps, B[loc2].S(0).plain<double>());
+//				}
+//			}
+//			Terms.save_label(loc, "Jᵢⱼ");
+//			continue;
+//		}
 		if (P.HAS("Jfull"))
 		{
-			for (size_t loc2=loc; loc2<N_sites; loc2++)
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Jfull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
 			{
-				assert(loc2>=loc);
-				size_t numberTransOps;
-				if (loc2 == loc) {numberTransOps=0;} else {numberTransOps=loc2-loc-1;}
-				vector<SiteOperator<Symmetry,double> > TransOps(numberTransOps);
-				for (size_t i=0; i<numberTransOps; i++) {TransOps[i] = B[loc+i+1].Id().plain<double>();}
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
 				
-				if (loc2 == loc)
+				size_t Ntrans = (range == 0)? 0:range-1;
+				vector<SiteOperator<Symmetry,double> > TransOps(Ntrans);
+				for (size_t i=0; i<Ntrans; ++i)
 				{
-					SiteOperator<Symmetry,double> Ssqrt = SiteOperatorQ<Symmetry,MatrixXd>::prod(B[loc].Sdag(0),B[loc].S(0),Symmetry::qvacuum()).plain<double>();
-					Terms.push_local(loc,std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc),Ssqrt);
+					TransOps[i] = B[(loc+i+1)%N_sites].Id().plain<double>();
 				}
-				else
+				
+				if (range != 0)
 				{
-					Terms.push(loc2-loc, loc, std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc2),
-					           B[loc].Sdag(0).plain<double>(), TransOps, B[loc2].S(0).plain<double>());
+					auto Sdag_loc = B[loc].Sdag(0);
+					auto S_hop    = B[(loc+range)%N_sites].S(0);
+					
+					Terms.push(range, loc, std::sqrt(3.) * value,
+					           Sdag_loc.plain<double>(), TransOps, S_hop.plain<double>());
 				}
 			}
-			Terms.save_label(loc, "Jᵢⱼ");
+			
+			stringstream ss;
+			ss << "Jᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			Terms.save_label(loc, ss.str());
 			continue;
 		}
 		

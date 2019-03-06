@@ -265,6 +265,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		Vout.state = Mps<Symmetry,Scalar>(H, GlobParam.Dinit, Qtot_input, GlobParam.Qinit);
 		Vout.state.max_Nsv = GlobParam.Dinit;
 		Vout.state.min_Nsv = DynParam.min_Nsv(0);
+		Vout.state.max_Nrich = DynParam.max_Nrich(0);
 		Vout.state.setRandom();
 	}
 //	Vout.state.graph("ginit");
@@ -421,7 +422,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		}
 		else
 		{
-			lout <<            "• fluctuations use " << Vout.state.max_Nrich << " additional states" << endl;
+			lout <<            "• fluctuations use " << termcolor::underline << Vout.state.max_Nrich << termcolor::reset << " additional states" << endl;
 		}
 		lout << "• initial bond dim. increase by " << termcolor::underline << static_cast<int>((DynParam.Dincr_rel(0)-1.)*100.) 
 		     << "%" << termcolor::reset << " and at least by " << termcolor::underline << DynParam.Dincr_abs(0) << termcolor::reset
@@ -835,13 +836,13 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	// LanczosStep(H, Vout, EDGE);
 	time_lanczos += LanczosTimer.time();
 	//**************************************************************************************************************************
-
+	
 	Vout.state.min_Nsv = DynParam.min_Nsv(SweepStat.N_halfsweeps);
 	Vout.state.max_Nrich = DynParam.max_Nrich(SweepStat.N_halfsweeps);
 	Stopwatch<> SweepTimer;
 	Vout.state.sweepStep(SweepStat.CURRENT_DIRECTION, SweepStat.pivot, DMRG::BROOM::RICH_SVD, &Heff[SweepStat.pivot]);
 	time_sweep += SweepTimer.time();
-		
+	
 	Stopwatch<> LRtimer;
 	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
 	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);

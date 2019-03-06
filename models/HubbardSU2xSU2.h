@@ -67,6 +67,11 @@ public:
 	Mpo<Symmetry> Tdag (size_t locx, size_t locy=0, double factor=1.);
 	Mpo<Symmetry> TdagT (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	
+	Mpo<Symmetry,complex<double> > S_ky    (vector<complex<double> > phases) const;
+	Mpo<Symmetry,complex<double> > Sdag_ky (vector<complex<double> > phases, double factor=sqrt(3.)) const;
+	Mpo<Symmetry,complex<double> > T_ky    (vector<complex<double> > phases) const;
+	Mpo<Symmetry,complex<double> > Tdag_ky (vector<complex<double> > phases, double factor=1.) const;
+	
 	static const map<string,any> defaults;
 	static const map<string,any> sweep_defaults;
 	
@@ -78,6 +83,9 @@ protected:
 	Mpo<Symmetry> make_corr  (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
 	                          const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
 	                          double factor, bool FERMIONIC, bool HERMITIAN) const;
+	
+	Mpo<Symmetry,complex<double> >
+	make_FourierYSum (string name, const vector<OperatorType> &Ops, double factor, bool HERMITIAN, const vector<complex<double> > &phases) const;
 };
 
 const map<string,any> HubbardSU2xSU2::defaults = 
@@ -154,7 +162,7 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
 			
 			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
-			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2N_sites)x(2N_sites) hopping matrix for infinite BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
 			
 			for (size_t h=0; h<R[loc].size(); ++h)
 			{
@@ -192,7 +200,7 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
 			
 			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
-			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2N_sites)x(2N_sites) hopping matrix for infinite BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
 			
 			for (size_t h=0; h<R[loc].size(); ++h)
 			{
@@ -227,7 +235,7 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
 			
 			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
-			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2N_sites)x(2N_sites) hopping matrix for infinite BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
 			
 			for (size_t h=0; h<R[loc].size(); ++h)
 			{
@@ -367,10 +375,44 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 	return Mout;
 }
 
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,complex<double> > HubbardSU2xSU2::
+make_FourierYSum (string name, const vector<OperatorType> &Ops, 
+                  double factor, bool HERMITIAN, const vector<complex<double> > &phases) const
+{
+	stringstream ss;
+	ss << name << "_ky(";
+	for (int l=0; l<phases.size(); ++l)
+	{
+		ss << phases[l];
+		if (l!=phases.size()-1) {ss << ",";}
+		else                    {ss << ")";}
+	}
+	
+	// all Ops[l].Q() must match
+	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	vector<complex<double> > phases_x_factor = phases;
+	for (int l=0; l<phases.size(); ++l)
+	{
+		phases_x_factor[l] = phases[l] * factor;
+	}
+	
+	vector<SiteOperator<Symmetry,complex<double> > > OpsPlain(Ops.size());
+	for (int l=0; l<OpsPlain.size(); ++l)
+	{
+		OpsPlain[l] = Ops[l].plain<double>().cast<complex<double> >();
+	}
+	
+	Mout.setLocalSum(OpsPlain, phases_x_factor);
+	
+	return Mout;
+}
+
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
-		   const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
-		   double factor, bool FERMIONIC, bool HERMITIAN) const
+           const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
+           double factor, bool FERMIONIC, bool HERMITIAN) const
 {
 	assert(locx1<F.size() and locy1<F[locx1].dim());
 	assert(locx2<F.size() and locy2<F[locx2].dim());
@@ -392,14 +434,14 @@ make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1,
 		else if (locx1<locx2)
 		{
 			Mout.setLocal({locx1, locx2}, {factor * OperatorType::prod(Op1, F[locx1].sign(), Op1.Q()).plain<double>(), 
-										   Op2.plain<double>()}, 
-				F[0].sign().plain<double>());
+			                               Op2.plain<double>()}, 
+			                               F[0].sign().plain<double>());
 		}
 		else if (locx1>locx2)
 		{
 			Mout.setLocal({locx2, locx1}, {factor * OperatorType::prod(Op2, F[locx2].sign(), Op2.Q()).plain<double>(), 
-										   -1. * Op1.plain<double>()}, 
-				F[0].sign().plain<double>());
+			                               -1. * Op1.plain<double>()}, 
+			                               F[0].sign().plain<double>());
 		}
 	}
 	else
@@ -433,6 +475,7 @@ Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU
 cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
 	return make_corr("c†", "c", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].c(locy2), Symmetry::qvacuum(), 2., PROP::FERMIONIC, PROP::HERMITIAN);
+	
 	// 2 = sqrt(2)*sqrt(2)
 	// assert(locx1<this->N_sites and locx2<this->N_sites);
 	// stringstream ss;
@@ -512,6 +555,50 @@ TdagT (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy
 {
 	return make_corr("T†", "T", locx1, locx2, locy1, locy2, F[locx1].Tdag(locy1), F[locx2].T(locy2), 
 	                 Symmetry::qvacuum(), std::sqrt(3.), PROP::NON_FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,complex<double> > HubbardSU2xSU2::
+S_ky (vector<complex<double> > phases) const
+{
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = F[l].S(0);
+	}
+	return make_FourierYSum("S", Ops, 1., false, phases);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,complex<double> > HubbardSU2xSU2::
+Sdag_ky (vector<complex<double> > phases, double factor) const
+{
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = F[l].Sdag(0);
+	}
+	return make_FourierYSum("S†", Ops, factor, false, phases);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,complex<double> > HubbardSU2xSU2::
+T_ky (vector<complex<double> > phases) const
+{
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = F[l].T(0);
+	}
+	return make_FourierYSum("T", Ops, 1., false, phases);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,complex<double> > HubbardSU2xSU2::
+Tdag_ky (vector<complex<double> > phases, double factor) const
+{
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = F[l].Tdag(0);
+	}
+	return make_FourierYSum("T†", Ops, factor, false, phases);
 }
 
 } //end namespace VMPS

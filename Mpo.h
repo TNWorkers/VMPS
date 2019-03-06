@@ -160,6 +160,14 @@ public:
 	void setLocalSum (const OperatorType &Op, Scalar (*f)(int)=localSumTrivial, bool OPEN_BC=true);
 	
 	/**
+	 * Set to a sum of of local operators \f$\sum_i c(i) O_i\f$. Needed for example to perform a Fourier transform in y-direction for d=2.
+	 * \param Op : the local operator in question
+	 * \param coeffs : coefficients of the linear combination
+	 * \param OPEN_BC : if \p true, open boundary conditions are applied
+	 */
+	void setLocalSum (const vector<OperatorType> &Op, vector<Scalar> coeffs, bool OPEN_BC=true);
+	
+	/**
 	 * Set to a sum of nearest-neighbour products of local operators \f$\sum_i O^1_i O^2_{i+1}\f$
 	 * \param Op1 : first local operator
 	 * \param Op2 : second local operator
@@ -797,10 +805,10 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 										Scalar Wfactor = factor_check * factor_merge * iWbot.value() * iWtop.value();
 										size_t a1 = left1+br*W[l][s2][s3][k1].rows()+tr;
 										size_t a2 = left2+bc*W[l][s2][s3][k1].cols()+tc;
-										if(auto it = Vsq[l].find(key); it != Vsq[l].end()) { Vsq[l][it->first].coeffRef(a1,a2) += Wfactor; }
+										if (auto it = Vsq[l].find(key); it != Vsq[l].end()) {Vsq[l][it->first].coeffRef(a1,a2) += Wfactor;}
 										else
 										{
-											SparseMatrixType M(TensorBaseLeft.inner_dim(qln),TensorBaseRight.inner_dim(qrn));
+											SparseMatrix<Scalar> M(TensorBaseLeft.inner_dim(qln),TensorBaseRight.inner_dim(qrn));
 											M.insert(a1,a2) = Wfactor;
 											Vsq[l].insert({key,M});
 										}
@@ -1199,62 +1207,6 @@ template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const OperatorType &SignOp, bool OPEN_BC)
 {
-//	assert(loc.size() >= 1 and Op.size() == loc.size());
-//	
-//	// For non-abelian symmetries, the operators have to be on different sites,
-//	// since multiplication of the operators is only possible in the format of SiteOperatorQ and here SiteOperator is used.
-//	// --> The multiplication has to be done in the model-classes, before calling setLocal().
-//	if constexpr( Symmetry::NON_ABELIAN )
-//	{
-//		for(size_t pos1=0; pos1<loc.size(); pos1++)
-//		for(size_t pos2=pos1+1; pos2<loc.size(); pos2++)
-//		{
-//			assert(loc[pos1] != loc[pos2] and
-//				   "setLocal() can only be called with several operators on different sites, when using non-abelian symmetries.");
-//		}
-//	}
-//	
-//	auto [min,max] = std::minmax_element(loc.begin(),loc.end());
-//	size_t locMin,locMax;
-//	locMin = loc[min-loc.begin()];
-//	locMax = loc[max-loc.begin()];
-//	
-//	vector<SuperMatrix<Symmetry,Scalar> > G(N_sites);
-//	
-//	for (size_t l=0; l<N_sites; l++)
-//	{
-//		qOp[l].resize(1);
-//		bool GATE = true;
-//		for (size_t pos=0; pos<loc.size(); pos++)
-//		{
-//			if (l==loc[pos]) {qOp[l][0] = Op[pos].Q; GATE=false;}
-//			if (GATE)        {qOp[l][0] = Symmetry::qvacuum();}
-//		}
-//	}
-//	
-//	for (size_t l=0; l<N_sites; ++l)
-//	{
-//		G[l].setMatrix(1,qloc[l].size());
-//		if (auto it=find(loc.begin(),loc.end(),l) == loc.end())
-//		{
-//			if (l>locMin and l<locMax) {G[l](0,0) = SignOp;}
-//			else {G[l](0,0).data.setIdentity(); G[l](0,0).Q = Symmetry::qvacuum();}
-//		}
-//		else
-//		{
-//			G[l](0,0).data.setIdentity(); G[l](0,0).Q = Symmetry::qvacuum();
-//		}
-//	}
-//	
-//	for (size_t i=0; i<loc.size(); ++i)
-//	{
-//		assert(loc[i] < N_sites);
-//		assert(Op[i].data.rows() == qloc[loc[i]].size() and Op[i].data.cols() == qloc[loc[i]].size());
-//		
-//		G[loc[i]](0,0).data = G[loc[i]](0,0).data * Op[i].data;
-//		G[loc[i]](0,0).Q = Symmetry::reduceSilent(G[loc[i]](0,0).Q, Op[i].Q)[0]; // We can use the 0th component here.
-//	}
-	
 	auto Gvec = make_localGvec(loc,Op);
 	
 	auto [min,max] = minmax_element(loc.begin(),loc.end());
@@ -1324,11 +1276,13 @@ setLocalSum (const OperatorType &Op, Scalar (*f)(int), bool OPEN_BC)
 		assert(Op.data.rows() == qloc[l].size() and Op.data.cols() == qloc[l].size());
 		if (Op.Q == Symmetry::qvacuum())
 		{
-			qOp[l].resize(1); qOp[l][0] = Symmetry::qvacuum();
+			qOp[l].resize(1);
+			qOp[l][0] = Symmetry::qvacuum();
 		}
 		else
 		{
-			qOp[l].resize(2); qOp[l][0] ==Symmetry::qvacuum();
+			qOp[l].resize(2);
+			qOp[l][0] = Symmetry::qvacuum();
 			qOp[l][1] = Op.Q;
 		}
 	}
@@ -1347,6 +1301,53 @@ setLocalSum (const OperatorType &Op, Scalar (*f)(int), bool OPEN_BC)
 		
 		Gvec[l](1,0).data = f(l) * Op.data;
 		Gvec[l](1,0).Q = Op.Q;
+		
+		Gvec[l](1,1).data.setIdentity();
+		Gvec[l](1,1).Q = Symmetry::qvacuum();
+	}
+	
+	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
+}
+
+// sum_i coeffs(i)*O(i)
+template<typename Symmetry, typename Scalar>
+void Mpo<Symmetry,Scalar>::
+setLocalSum (const vector<OperatorType> &Op, vector<Scalar> coeffs, bool OPEN_BC)
+{
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		assert(Op[l].data.rows() == qloc[l].size() and Op[l].data.cols() == qloc[l].size());
+		
+		if (Op[l].Q == Symmetry::qvacuum())
+		{
+			qOp[l].resize(1);
+			qOp[l][0] = Symmetry::qvacuum();
+		}
+		else
+		{
+			qOp[l].resize(2);
+			qOp[l][0] = Symmetry::qvacuum();
+			qOp[l][1] = Symmetry::reduceSilent(Symmetry::qvacuum(), Op[l].Q)[0];
+		}
+	}
+	
+	vector<SuperMatrix<Symmetry,Scalar> > Gvec(N_sites);
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Gvec[l].setMatrix(2,qloc[l].size());
+		
+		Gvec[l](0,0).data.setIdentity();
+		Gvec[l](0,0).Q = Symmetry::qvacuum();
+		
+		Gvec[l](0,1).data.setZero();
+		Gvec[l](0,1).Q = Symmetry::qvacuum();
+		
+//		cout << "setLocalSum l=" << l << ", coeff=" <<  coeffs[l] << endl;
+//		cout << Matrix<Scalar,Dynamic,Dynamic>(Op[l].data) << endl << endl;
+		
+		Gvec[l](1,0).data = coeffs[l] * Op[l].data;
+		Gvec[l](1,0).Q = Symmetry::reduceSilent(Symmetry::qvacuum(), Op[l].Q)[0];
 		
 		Gvec[l](1,1).data.setIdentity();
 		Gvec[l](1,1).Q = Symmetry::qvacuum();
