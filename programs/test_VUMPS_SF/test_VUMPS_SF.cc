@@ -411,11 +411,13 @@ int main (int argc, char* argv[])
 	
 	if (SU2)
 	{
-		Geometry2D Geo    (SNAKE,  L,Ly,1.,true);
-		Geometry2D Geo_big(SNAKE,2*L,Ly,1.,true);
-		cout << Geo_big.hopping() << endl;
+		Geometry2D Geo1cell(SNAKE,  L,Ly,1.,true);
+		Geometry2D Geo2cell(SNAKE,2*L,Ly,1.,true);
 		
-		ArrayXXd Jarray = J * Geo_big.hopping();
+		ArrayXXd Jarray = J * Geo2cell.hopping();
+		
+		cout << endl << Geo1cell.hopping() << endl << endl;
+		cout << endl << Geo2cell.hopping() << endl << endl;
 		
 		vector<Param> params;
 		params.push_back({"Jfull",Jarray});
@@ -429,9 +431,8 @@ int main (int argc, char* argv[])
 		typedef VMPS::HeisenbergSU2 MODEL;
 //		MODEL H(L,{{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"Ly",Ly},{"D",D}});
 		MODEL H(L*Ly,params);
-		lout << H.info() << endl;
-		qarray<1> Qc = {1};
 		
+		qarray<1> Qc = {1};
 		H.transform_base(Qc);
 		lout << H.info() << endl;
 		
@@ -442,8 +443,22 @@ int main (int argc, char* argv[])
 		DMRG.GlobParam = GlobParams;
 		DMRG.edgeState(H, g, Qc);
 		
-		for (int iky=1; iky<Ly; ++iky)
+//		for (int iky=0; iky<Ly; ++iky)
+		int iky = Ly/2;
 		{
+			Geometry2D GeoSnake(SNAKE,     L,Ly,1.,true);
+			Geometry2D GeoChess(CHESSBOARD,L,Ly,1.,true);
+			for (size_t x=0; x<L; ++x)
+			{
+				auto phasesSnake = GeoSnake.FTy_phases(x,iky,0);
+				auto phasesChess = GeoChess.FTy_phases(x,iky,0);
+				
+				for (int i=0; i<phasesSnake.size(); ++i)
+				{
+					cout << "i=" << i << ", x=" << x << ", iky=" << iky << ", snake=" << phasesSnake[i] << ", chess=" << phasesChess[i] << endl;
+				}
+			}
+			
 			vector<Mpo<MODEL::Symmetry> > Odag(L*Ly);
 			vector<Mpo<MODEL::Symmetry> > O(L*Ly); 
 			
@@ -455,13 +470,8 @@ int main (int argc, char* argv[])
 			
 			for (size_t x=0; x<L; ++x)
 			{
-				vector<complex<double> > phases_p = Geo.FTy_phases(x,iky,0);
-				vector<complex<double> > phases_m = Geo.FTy_phases(x,iky,1);
-				
-				for (int i=0; i<phases_p.size(); ++i)
-				{
-					cout << "x=" << x << ", iky=" << iky << ", i=" << i << ", p=" << phases_p[i] << ", m=" << phases_m[i] << endl;
-				}
+				vector<complex<double> > phases_p = Geo1cell.FTy_phases(x,iky,0);
+				vector<complex<double> > phases_m = Geo1cell.FTy_phases(x,iky,1);
 				
 				O_ky[x]    = H.S_ky   (phases_p);
 				Odag_ky[x] = H.Sdag_ky(phases_m);
@@ -494,19 +504,18 @@ int main (int argc, char* argv[])
 			ArrayXXcd Sij_cell(L,L); Sij_cell = 0;
 			
 			// new 2d:
-			for (size_t x1=0; x1<L; ++x1)
-			for (size_t x2=0; x2<L; ++x2)
+			for (int x1=0; x1<L; ++x1)
+			for (int x2=0; x2<L; ++x2)
 			{
-				auto phases_p1 = Geo.FTy_phases(x1,iky,0);
-				auto phases_m1 = Geo.FTy_phases(x1,iky,1);
-				auto phases_p2 = Geo.FTy_phases(x2,iky,0);
-				auto phases_m2 = Geo.FTy_phases(x2,iky,1);
+				auto phases_m1 = Geo1cell.FTy_phases(x1,iky,1);
+				auto phases_p2 = Geo1cell.FTy_phases(x2,iky,0);
 				
-				for (size_t y1=0; y1<Ly; ++y1)
-				for (size_t y2=0; y2<Ly; ++y2)
+				for (int y1=0; y1<Ly; ++y1)
+				for (int y2=0; y2<Ly; ++y2)
 				{
-					int index1 = Geo(x1,y1);
-					int index2 = Geo(x2,y2);
+					int index1 = Geo1cell(x1,y1);
+					cout << "x1=" << x1 << ", y1=" << y1 << ", index1=" << index1 << endl;
+					int index2 = Geo1cell(x2,y2);
 					
 					if (phases_m1[index1] * phases_p2[index2] != 0.)
 					{
