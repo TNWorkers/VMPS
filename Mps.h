@@ -1264,6 +1264,7 @@ save (string filename, string info)
 	target.create_group("mps");
 	target.create_group("qloc");
 	target.create_group("Qtot");
+	target.create_group("Qmulti");
 	
 	string DmaxLabel = "Dmax";
 	string NqmaxLabel = "Nqmax";
@@ -1279,12 +1280,20 @@ save (string filename, string info)
 		stringstream ss; ss << "q=" << q;
 		target.save_scalar(this->Qtot[q],ss.str(),"Qtot");
 	}
+	target.save_scalar(Qmulti.size(),"QmultiSize");
+	for (size_t i=0; i<Qmulti.size(); i++)
+	for (size_t q=0; q<Nq; q++)
+	{
+		stringstream ss; ss << "q=" << q << ",i=" << i;
+		target.save_scalar(this->Qmulti[i][q],ss.str(),"Qmulti");
+	}
 	target.save_scalar(this->calc_Dmax(),DmaxLabel);
 	target.save_scalar(this->calc_Nqmax(),NqmaxLabel);	
 	target.save_scalar(this->min_Nsv,"min_Nsv");
 	target.save_scalar(this->max_Nsv,"max_Nsv");
 	target.save_scalar(this->eps_svd,eps_svdLabel);
 	target.save_scalar(this->alpha_rsvd,alpha_rsvdLabel);
+	target.save_scalar(this->get_pivot(),"pivot");
 	target.save_char(info,add_infoLabel.c_str());
 	
 	//save qloc
@@ -1334,6 +1343,7 @@ load (string filename)
 	
 	string eps_svdLabel = "eps_svd";
 	string alpha_rsvdLabel = "alpha_rsvd";
+	size_t QmultiSize;
 	//load the scalars
 	source.load_scalar(this->N_sites,"L");
 	source.load_scalar(this->N_phys,"Nphys");
@@ -1342,8 +1352,19 @@ load (string filename)
 		stringstream ss; ss << "q=" << q;
 		source.load_scalar(this->Qtot[q],ss.str(),"Qtot");
 	}
+	source.load_scalar(QmultiSize,"QmultiSize");
+	cout << "QmultiSize=" << QmultiSize << endl;
+	this->Qmulti.resize(QmultiSize);
+	for (size_t i=0; i<QmultiSize; i++)
+	for (size_t q=0; q<Nq; q++)
+	{
+		stringstream ss; ss << "q=" << q << ",i=" << i;
+		cout << "q=" << q << ", i=" << i << endl;
+		source.load_scalar(this->Qmulti[i][q],ss.str(),"Qmulti");
+	}
 	source.load_scalar(this->eps_svd,eps_svdLabel);
 	source.load_scalar(this->alpha_rsvd,alpha_rsvdLabel);
+	source.load_scalar(this->pivot,"pivot");
 	source.load_scalar(this->min_Nsv,"min_Nsv");
 	source.load_scalar(this->max_Nsv,"max_Nsv");
 
