@@ -189,6 +189,14 @@ double coupling_6j (const int q1, const int q2, const int q3,
 		return out;
 	}
 }
+
+inline double coupling_3j (const int q1  , const int q2  , const int q3,
+						   const int q1_z, const int q2_z, const int q3_z)
+{
+	return coupl_3j_base(q1  ,q2  ,q3,
+						 q1_z,q2_z,q3_z);
+}
+
 #else //no OWN_HASH_CGC
 inline double coupling_9j (const int q1, const int q2, const int q3, 
 						   const int q4, const int q5, const int q6, 

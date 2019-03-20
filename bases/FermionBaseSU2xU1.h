@@ -48,7 +48,7 @@ public:
 	/**
 	 * Annihilation operator
 	 * \param orbital : orbital index
-	 * \note The annihilation spinor is build as follows 	 
+	 * \note The annihilation spinor is build as follows
 	 * \f$c^{1/2} = \left(
 	 * \begin{array}{c}
 	 * -c_{\downarrow} \\

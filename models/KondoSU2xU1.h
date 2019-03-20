@@ -52,7 +52,7 @@ public:
 	///@}
 	
 	static qarray<2> singlet (int N) {return qarray<2>{1,N};};
-	static qarray<2> polaron (int L, int N=0) {assert(N%2==0); return qarray<2>{L+1,N};};
+	static qarray<2> polaron (int L, int N=0) {return qarray<2>{L-N+1,N};};
 	
 	/**
 	 * \describe_set_operators
@@ -119,7 +119,7 @@ public:
 	static const map<string,any> defaults;
 	static const map<string,any> sweep_defaults;
 	
-protected:
+//protected:
 	
 	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >
 	make_local (KONDO_SUBSYSTEM SUBSYS, 
@@ -145,7 +145,7 @@ protected:
 const map<string,any> KondoSU2xU1::defaults =
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",0.},
-	{"J",1.}, 
+	{"J",1.}, {"Jdir",0.}, 
 	{"U",0.},
 	{"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
@@ -311,6 +311,10 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {Forbitals, Fnext_orbitals}, loc%Lcell);
 		Terms.save_label(loc, Vpara.label);
 		
+		// JdirPara∥
+		param2d JdirPara = P.fill_array2d<double>("Jdir", "JdirPara", {Borbitals, Bnext_orbitals}, loc%Lcell);
+		Terms.save_label(loc, JdirPara.label);
+		
 		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
 		{
 			for (int alfa=0; alfa<Forbitals;      ++alfa)
@@ -332,6 +336,15 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 				Terms.push_tight(loc, Vpara(alfa,beta),
 				                 OperatorType::outerprod(B[loc].Id(), F[loc].n(alfa), {1,0}).plain<double>(),
 				                 OperatorType::outerprod(B[lp1].Id(), F[lp1].n(beta), {1,0}).plain<double>());
+			}
+			
+			for (int alfa=0; alfa<Borbitals;      ++alfa)
+			for (int beta=0; beta<Bnext_orbitals; ++beta)
+			{
+				auto Sdag_loc = OperatorType::outerprod(B[loc].Sdag(alfa), F[loc].Id(), {3,0});
+				auto S_tight  = OperatorType::outerprod(B[lp1].S(beta),    F[lp1].Id(), {3,0});
+				
+				Terms.push_tight(loc, JdirPara(alfa,beta) * std::sqrt(3.), Sdag_loc.plain<double>(), S_tight.plain<double>());
 			}
 		}
 		
@@ -406,6 +419,84 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 				                 OperatorType::outerprod(B[lp2].Id(), F[lp2].cdag(), qnum).plain<double>()
 				                );
 			}
+		}
+		
+		if (P.HAS("tFull"))
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("tFull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				size_t Ntrans = (range == 0)? 0:range-1;
+				vector<SiteOperator<Symmetry,double> > TransOps(Ntrans);
+				for (size_t i=0; i<Ntrans; ++i)
+				{
+					TransOps[i] = OperatorType::outerprod(B[(loc+i+1)%N_sites].Id(), F[(loc+i+1)%N_sites].sign(), {1,0}).plain<double>();
+				}
+				
+				if (range != 0)
+				{
+					int hop = (loc+range)%N_sites;
+					
+					auto sign_loc  = OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0});
+					
+					auto cF_loc    = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(0),    {2,-1}), sign_loc, {2,-1});
+					auto cdagF_loc = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(0), {2,+1}), sign_loc, {2,+1});
+					
+					auto c_hop     = OperatorType::outerprod(B[hop].Id(), F[hop].c(0),    {2,-1});
+					auto cdag_hop  = OperatorType::outerprod(B[hop].Id(), F[hop].cdag(0), {2,+1});
+					
+					Terms.push(range, loc, -value*sqrt(2.), cdagF_loc.plain<double>(), TransOps, c_hop.plain<double>());
+					Terms.push(range, loc, -value*sqrt(2.), cF_loc.plain<double>(),    TransOps, cdag_hop.plain<double>());
+				}
+			}
+			
+			stringstream ss;
+			ss << "tᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			Terms.save_label(loc,ss.str());
+		}
+		
+		if (P.HAS("JdirFull"))
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("tFull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				size_t Ntrans = (range == 0)? 0:range-1;
+				vector<SiteOperator<Symmetry,double> > TransOps(Ntrans);
+				for (size_t i=0; i<Ntrans; ++i)
+				{
+					TransOps[i] = OperatorType::outerprod(B[(loc+i+1)%N_sites].Id(), F[(loc+i+1)%N_sites].Id(), {1,0}).plain<double>();
+				}
+				
+				if (range != 0)
+				{
+					int hop = (loc+range)%N_sites;
+					
+					auto Sdag_loc = OperatorType::outerprod(B[loc].Sdag(0), F[loc].Id(), {3,0});
+					auto S_hop    = OperatorType::outerprod(B[hop].S(0),    F[hop].Id(), {3,0});
+					
+					Terms.push(range, loc, value*sqrt(3.), Sdag_loc.plain<double>(), TransOps, S_hop.plain<double>());
+				}
+			}
+			
+			stringstream ss;
+			ss << "tᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			Terms.save_label(loc,ss.str());
 		}
 	}
 }

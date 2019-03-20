@@ -1,7 +1,13 @@
 	//--------------<KernelPolynomialSolver>---------------
 	if (CHEB)
 	{
-		KPS.calc_ImAB(H, initA, initA[i0], Mmax);
+		#pragma omp parallel for
+		for (int ii0=0; ii0<i0_list.size(); ++ii0)
+		{
+			int i0 = i0_list[ii0];
+			auto H_scaled = H;
+			KPS[ii0].calc_ImAB(H_scaled, initA, initA[i0], Mmax);
+		}
 		lout << "Chebyshev iteration done!" << endl;
 	}
 	//--------------</KernelPolynomialSolver>---------------

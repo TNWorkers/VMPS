@@ -854,10 +854,10 @@ calc_Qlimits()
 			}
 		}
 		
-/*		cout << "l=" << l */
-/*		     << ", QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] */
-/*		     << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] */
-/*		     << endl;*/
+//		cout << "l=" << l 
+//		     << ", QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] 
+//		     << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] 
+//		     << endl;
 	}
 }
 
@@ -906,6 +906,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 	for (size_t l=1; l<this->N_sites; l++)
 	{
 		auto new_qs = Symmetry::reduceSilent(Qin_trunc[l-1], qloc[l-1], true);
+		assert(new_qs.size() > 0);
 		array<double,Nq> mean;
 		for (size_t q=0; q<Nq; q++)
 		{
@@ -914,6 +915,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 		
 		// check if within ranges (QinBot,QinTop) for all q:
 		auto candidates = take_first_elems(new_qs,mean,l);
+		assert(candidates.size() > 0);
 		for (const auto &candidate:candidates)
 		{
 			array<bool,Nq> WITHIN_RANGE;
@@ -926,6 +928,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 				Qin_trunc[l].push_back(candidate);
 			}
 		}
+		assert(Qin_trunc[l].size() > 0);
 	}
 	Qin_trunc[this->N_sites].push_back(Qtot);
 	
@@ -2980,6 +2983,7 @@ template<typename MpoScalar>
 Scalar Mps<Symmetry,Scalar>::
 locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance) const
 {
+//	cout << O.info() << endl;
 	assert(this->pivot != -1 and "This function can only compute averages for Mps in mixed canonical form. Use avg() instead.");
 	assert(O.Qtarget() == Symmetry::qvacuum() and "This function can only calculate averages with local singlet operators. Use avg() instead.");
 	

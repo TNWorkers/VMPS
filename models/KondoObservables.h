@@ -5,6 +5,7 @@
 #include "bases/SpinBase.h"
 #include "Mpo.h"
 #include "ParamHandler.h" // from TOOLS
+#include "Geometry2D.h" // from TOOLS
 
 template<typename Symmetry>
 class KondoObservables

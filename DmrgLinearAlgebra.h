@@ -30,6 +30,82 @@ void swap (Mps<Symmetry,Scalar> &V1, Mps<Symmetry,Scalar> &V2)
 	V1.swap(V2);
 }
 
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+Array<Scalar,Dynamic,1> matrix_element (int iL, 
+                                         int iR,
+                                         const Mps<Symmetry,Scalar> &Vbra, 
+                                         const Mpo<Symmetry,MpoScalar> &O, 
+                                         const Mps<Symmetry,Scalar> &Vket, 
+                                         bool USE_SQUARE = false)
+{
+	assert(iL<O.length() and iR<O.length() and iL<iR);
+	
+	Array<Scalar,Dynamic,1> res(Vket.Qmultitarget().size());
+	
+	for (size_t i=0; i<Vket.Qmultitarget().size(); ++i)
+	{
+		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
+		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
+		
+		vector<qarray3<Symmetry::Nq> > Qt;
+		Qt.push_back(qarray3<Symmetry::Nq>{Vket.Qmultitarget()[i], Vbra.Qmultitarget()[i], O.Qtarget()});
+		B.setTarget(Qt);
+		
+		for (int l=iR; l>=iL; --l)
+		{
+			if (USE_SQUARE == true)
+			{
+				if constexpr (Symmetry::NON_ABELIAN)
+				{
+					contract_R(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
+				}
+				else
+				{
+					contract_R(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
+				}
+			}
+			else
+			{
+				contract_R(B, Vbra.A_at(l), O.W_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
+			}
+			B.clear();
+			B = Bnext;
+			Bnext.clear();
+		}
+		
+		if (B.dim == 1)
+		{
+			res[i] = B.block[0][0][0].trace();
+		}
+		else
+		{
+			res[i] = 0;
+		}
+	}
+	
+	return res;
+}
+
+template<typename Symmetry, typename Scalar>
+ArrayXd dot_green (const Mps<Symmetry,Scalar> &V1, const Mps<Symmetry,Scalar>&V2)
+{
+	assert(V1.length() == V2.length() and V1.locBasis() == V2.locBasis());
+	assert(V1.Qmultitarget().size() == V2.Qmultitarget().size());
+	
+	return matrix_element(0, V1.length()-1, V1, Mpo<Symmetry,double>::Identity(V1.locBasis()), V2);
+}
+
+//template<typename Symmetry, typename Scalar>
+//complex<double> dot (const Mps<Symmetry,Scalar> &V1, const Mps<Symmetry,Scalar>&V2)
+//{
+//	assert(V1.length() == V2.length() and V1.locBasis() == V2.locBasis());
+//	assert(V1.Qmultitarget().size() == 2 and V2.Qmultitarget().size() == 2);
+//	
+//	VectorXd res = matrix_element(0, V1.length()-1, V1, Mpo<Symmetry,double>::Identity(V1.locBasis()), V2);
+//	
+//	return res(0) + 1.i * res(1);
+//}
+
 /**
  * Calculates the expectation value \f$\left<\Psi_{bra}|O|\Psi_{ket}\right>\f$
  * \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
@@ -82,8 +158,14 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		{
 			if (USE_SQUARE == true)
 			{
-				if constexpr (Symmetry::NON_ABELIAN) { contract_R(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
-				else {contract_R(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
+				if constexpr (Symmetry::NON_ABELIAN)
+				{
+					contract_R(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
+				}
+				else
+				{
+					contract_R(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
+				}
 			}
 			else
 			{

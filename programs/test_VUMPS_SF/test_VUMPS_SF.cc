@@ -55,33 +55,8 @@ size_t D;
 
 vector<vector<vector<vector<ArrayXd> > > > OdagO;
 
-//void fill_OdagO_SU2 (const Eigenstate<VMPS::HeisenbergSU2::StateUd> &g, const ArrayXd &Oavg, const ArrayXd &Odagavg)
-//{
-//	vector<Param> params;
-//	VMPS::HeisenbergSU2 Htmp(2*N*L*Ly+4,{{"OPEN_BC",false},{"D",D},{"CALC_SQUARE",false}});
-//	
-//	OdagO.resize(L*Ly);
-//	for (size_t i0=0; i0<L*Ly; ++i0)
-//	{
-//		OdagO[i0].resize(L*Ly);
-//		for (size_t j0=0; j0<L*Ly; ++j0)
-//		{
-//			OdagO[i0][j0].resize(N);
-//		}
-//	}
-//	
-//	#pragma omp parallel for collapse(3)
-//	for (size_t i0=0; i0<L*Ly; ++i0)
-//	for (size_t j0=0; j0<L*Ly; ++j0)
-//	for (size_t n=0; n<N; ++n)
-//	{
-//		OdagO[i0][j0](n) = avg(g.state, Htmp.SdagS(i0,j0+L*Ly*n), g.state) - Odagavg(i0%(L*Ly))*Oavg((j0+L*Ly*n)%(L*Ly));
-//	}
-//}
-
-void fill_OdagO_SU2 (const Eigenstate<VMPS::HeisenbergSU2::StateUd> &g, const ArrayXd &Oavg, const ArrayXd &Odagavg)
+void fill_OdagO_SU2 (const Eigenstate<VMPS::HeisenbergSU2::StateUd> &g)
 {
-	vector<Param> params;
 	VMPS::HeisenbergSU2 Htmp(2*N*L*Ly+4,{{"OPEN_BC",false},{"D",D},{"CALC_SQUARE",false}});
 	
 	OdagO.resize(L);
@@ -118,34 +93,18 @@ void fill_OdagO_SU2 (const Eigenstate<VMPS::HeisenbergSU2::StateUd> &g, const Ar
 	}
 }
 
-ArrayXXcd calc_FT (double kx, int iky)
+complex<double> calc_FT (double kx, int iky)
 {
-//	ArrayXXcd res(L*Ly,L*Ly); res = 0;
-	
-//	for (size_t i0=0; i0<L*Ly; ++i0)
-//	for (size_t j0=0; j0<L*Ly; ++j0)
-//	{
-//		res(i0,j0) = OdagO[i0][j0](0);
-//		
-//		for (size_t n=1; n<N; ++n)
-//		{
-//			res(i0,j0) += OdagO[i0][j0](n) * exp(-1.i*kx*static_cast<double>(L*n)) 
-//			            + OdagO[j0][i0](n) * exp(+1.i*kx*static_cast<double>(L*n));
-//		}
-//	}
-	
-	ArrayXXcd res(L,L);
+	ArrayXXcd FTintercell(L,L);
 	
 	Geometry2D Geo(SNAKE,L,Ly,1.,true);
 	
 	for (size_t x0=0; x0<L; ++x0)
 	for (size_t x1=0; x1<L; ++x1)
 	{
-		res(x0,x1) = 0;
+		FTintercell(x0,x1) = 0;
 		vector<complex<double> > phases_m0 = Geo.FTy_phases(x0,iky,1);
 		vector<complex<double> > phases_p1 = Geo.FTy_phases(x1,iky,0);
-		
-		//		cout << "x0=" << x0 << ", x1=" << x1 << ", phases=" << phases_m0[i0] * phases_p1[i1] << endl;
 		
 		for (size_t y0=0; y0<Ly; ++y0)
 		for (size_t y1=0; y1<Ly; ++y1)
@@ -153,39 +112,20 @@ ArrayXXcd calc_FT (double kx, int iky)
 			int i0 = Geo(x0,y0);
 			int i1 = Geo(x1,y1);
 			
-			res(x0,x1) += phases_m0[i0] * phases_p1[i1] * OdagO[x0][y0][x1][y1](0);
+			FTintercell(x0,x1) += phases_m0[i0] * phases_p1[i1] * OdagO[x0][y0][x1][y1](0);
 			
 			for (size_t n=1; n<N; ++n)
 			{
-				res(x0,x1) += phases_m0[i0] * phases_p1[i1] *
-					          (
-					           OdagO[x0][y0][x1][y1](n) * exp(-1.i*kx*static_cast<double>(L*n)) + 
-					           OdagO[x1][y1][x0][y0](n) * exp(+1.i*kx*static_cast<double>(L*n)) // careful: 0-1 exchange here!
-					          );
+				FTintercell(x0,x1) += phases_m0[i0] * phases_p1[i1] *
+				                      (
+				                       OdagO[x0][y0][x1][y1](n) * exp(-1.i*kx*static_cast<double>(L*n)) + 
+				                       OdagO[x1][y1][x0][y0](n) * exp(+1.i*kx*static_cast<double>(L*n)) // careful: 0-1 exchange here!
+				                      );
 			}
 		}
 	}
 	
-	return res;
-}
-
-complex<double> calc_FT_full (double kx, int iky)
-{
 	complex<double> res = 0;
-	
-	ArrayXXcd s_ky = calc_FT(kx,iky);
-	
-//	for (size_t i0=0; i0<L*Ly; ++i0)
-//	for (size_t j0=0; j0<L*Ly; ++j0)
-//	{
-//		double i0xd = Geo(i0).first;
-//		double j0xd = Geo(j0).first;
-//		
-//		vector<complex<double> > phases_m = Geo.FTy_phases(Geo(i0).first,iky,1);
-//		vector<complex<double> > phases_p = Geo.FTy_phases(Geo(j0).first,iky,0);
-//		
-//		res += 1./L * exp(-1.i*kx*(i0xd-j0xd)) * phases_m[i0] * phases_p[j0] * CFT(i0,j0);
-//	}
 	
 	for (size_t x0=0; x0<L; ++x0)
 	for (size_t x1=0; x1<L; ++x1)
@@ -193,12 +133,13 @@ complex<double> calc_FT_full (double kx, int iky)
 		double x0d = x0;
 		double x1d = x1;
 		
-		res += 1./L * exp(-1.i*kx*(x0d-x1d)) * s_ky(x0,x1);
+		res += 1./L * exp(-1.i*kx*(x0d-x1d)) * FTintercell(x0,x1);
 	}
 	
 	return res;
 }
 
+//==============================
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
@@ -443,8 +384,8 @@ int main (int argc, char* argv[])
 		DMRG.GlobParam = GlobParams;
 		DMRG.edgeState(H, g, Qc);
 		
-//		for (int iky=0; iky<Ly; ++iky)
-		int iky = Ly/2;
+		for (int iky=0; iky<Ly; ++iky)
+//		int iky = Ly/2;
 		{
 			Geometry2D GeoSnake(SNAKE,     L,Ly,1.,true);
 			Geometry2D GeoChess(CHESSBOARD,L,Ly,1.,true);
@@ -551,7 +492,7 @@ int main (int argc, char* argv[])
 			N = 20;
 			ArrayXXcd FT(N+1,2);
 			cout << "beginning fill_OdagO_SU2..." << endl;
-			fill_OdagO_SU2(g,Oavg,Odagavg);
+			fill_OdagO_SU2(g);
 			cout << "fill_OdagO_SU2 done!" << endl;
 			
 			#pragma omp parallel for
@@ -559,7 +500,7 @@ int main (int argc, char* argv[])
 			{
 				double kx = ikx * 2.*M_PI/N;
 				
-				complex<double> val_FT = calc_FT_full(kx,iky);
+				complex<double> val_FT = calc_FT(kx,iky);
 				
 				#pragma omp critical
 				{

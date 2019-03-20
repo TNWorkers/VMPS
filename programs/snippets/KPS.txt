@@ -15,7 +15,11 @@
 		spillage = 5.*dE[0]; //0.5*(Emax-Emin);
 	}
 	
-	OrthPolyGreen<MODEL,MODEL::StateXd,CHEBYSHEV> KPS(Emin-spillage, Emax+spillage);
+	vector<OrthPolyGreen<MODEL,MODEL::StateXd,ArrayXd,CHEBYSHEV> > KPS(i0_list.size());
+	for (int ii0=0; ii0<i0_list.size(); ++ii0)
+	{
+		KPS[ii0] = OrthPolyGreen<MODEL,MODEL::StateXd,ArrayXd,CHEBYSHEV>(Emin-spillage, Emax+spillage);
+	}
 	
 	if (CHEB)
 	{
@@ -29,31 +33,36 @@
 		lout << endl;
 		
 		Mmax = args.get<int>("Mmax",*max_element(Msave.begin(),Msave.end()));
-		lout << KPS.info() << endl;
+		lout << KPS[0].info() << endl;
 		
-		string momfile = make_string(wd+"moments/"+outfile,str(dE),".dat");
 		for (int i=0; i<Msave.size(); ++i)
 		{
-			string datfileJ = make_string(wd+outfile,make_string(dE[i]),".dat");
-			string datfileL = make_string(wd+"Lorentz/"+outfile,make_string(dE[i]),".dat");
-			
-			if (SHIFT)
+			for (int ii0=0; ii0<i0_list.size(); ++ii0)
 			{
-				if (spec == "AES" or spec == "PES")
+				int i0 = i0_list[ii0];
+				string momfile = make_string(wd,"moments/",outfile,"_i0=",i0,"_dE=",str(dE),".dat");
+				string datfileJ = make_string(wd,outfile,"_i0=",i0,"_dE=",make_string(dE[i]),".dat");
+				string datfileL = make_string(wd,"Lorentz/",outfile,"_i0=",i0,"_dE=",make_string(dE[i]),".dat");
+				
+				if (SHIFT)
 				{
-					KPS.add_savepoint(Msave[i], momfile, datfileJ, Emax, true, JACKSON); // REVERSE = true
-					KPS.add_savepoint(Msave[i], momfile, datfileL, Emax, true, LORENTZ); // REVERSE = true
+					if (spec == "AES" or spec == "PES")
+					{
+						KPS[ii0].add_savepoint(Msave[i], momfile, datfileJ, Eminmax.row(1).array(), true, JACKSON); // REVERSE = true
+						KPS[ii0].add_savepoint(Msave[i], momfile, datfileL, Eminmax.row(1).array(), true, LORENTZ); // REVERSE = true
+					}
+					else
+					{
+						KPS[ii0].add_savepoint(Msave[i], momfile, datfileJ, Eminmax.row(0).array(), false, JACKSON);
+						KPS[ii0].add_savepoint(Msave[i], momfile, datfileL, Eminmax.row(0).array(), false, LORENTZ);
+					}
 				}
 				else
 				{
-					KPS.add_savepoint(Msave[i], momfile, datfileJ, Emin, false, JACKSON);
-					KPS.add_savepoint(Msave[i], momfile, datfileL, Emin, false, LORENTZ);
+					ArrayXd Zero(1); Zero << 0;
+					KPS[ii0].add_savepoint(Msave[i], momfile, datfileJ, Zero, false, JACKSON);
+					KPS[ii0].add_savepoint(Msave[i], momfile, datfileL, Zero, false, LORENTZ);
 				}
-			}
-			else
-			{
-				KPS.add_savepoint(Msave[i], momfile, datfileJ, 0, false, JACKSON);
-				KPS.add_savepoint(Msave[i], momfile, datfileL, 0, false, LORENTZ);
 			}
 		}
 	}
