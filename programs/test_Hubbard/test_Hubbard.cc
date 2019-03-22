@@ -84,8 +84,8 @@ complex<double> Ptot (const MatrixXd &densityMatrix, int L)
 }
 
 size_t L, Ly, Ly2;
-int V, Vsq;
-double t, tPrime, tRung, U, mu, Bz;
+int Vol, Vsq;
+double t, tPrime, tRung, U, mu, Bz, V;
 int M, N, S, Nup, Ndn;
 double alpha;
 double t_U0, t_U1, t_SU2, t_SU2xSU2;
@@ -132,6 +132,9 @@ int main (int argc, char* argv[])
 	tPrime = args.get<double>("tPrime",0.);
 	tRung = args.get<double>("tRung",0.);
 	U = args.get<double>("U",8.);
+	V = args.get<double>("V",0.);
+	double Vz = args.get<double>("Vz",V);
+	double Vxy = args.get<double>("Vxy",V);
 	mu = args.get<double>("mu",0.5*U);
 	N = args.get<int>("N",L*Ly);
 	M = args.get<int>("M",0);;
@@ -283,7 +286,7 @@ int main (int argc, char* argv[])
 		//{"tPara",tParaA,0},{"tPara",tParaB,1}
 		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1}});
 //		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"Ly",Ly}});
-		V = H_U0.volume();
+		Vol = H_U0.volume();
 		Vsq = V*V;
 		lout << H_U0.info() << endl;
 		
@@ -321,7 +324,7 @@ int main (int argc, char* argv[])
 		//,{"tPara",tParaA,0},{"tPara",tParaB,1}
 		HUBBARD H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1}});
 //		VMPS::Hubbard H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
-		V = H_U1.volume();
+		Vol = H_U1.volume();
 		Vsq = V*V;
 		lout << H_U1.info() << endl;
 		
@@ -380,9 +383,9 @@ int main (int argc, char* argv[])
 		
 		Stopwatch<> Watch_SU2;
 		
-		VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly,0},{"Ly",Ly2,1},{"tRung",tRung}}); //
-		V = H_SU2.volume();
-		Vsq = V*V;
+		VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly,0},{"Ly",Ly2,1},{"tRung",tRung},{"Vz",Vz},{"Vxy",Vxy}}); //
+		Vol = H_SU2.volume();
+		Vsq = Vol*Vol;
 		lout << H_SU2.info() << endl;
 		
 		VMPS::HubbardSU2xU1::Solver DMRG_SU2(VERB);
@@ -443,11 +446,13 @@ int main (int argc, char* argv[])
 		paramsSU2xSU2.push_back({"t",t,1});
 		paramsSU2xSU2.push_back({"U",U,0});
 		paramsSU2xSU2.push_back({"U",U,1});
+		paramsSU2xSU2.push_back({"V",V,0});
+		paramsSU2xSU2.push_back({"V",V,1});
 		paramsSU2xSU2.push_back({"Ly",Ly,0});
 		paramsSU2xSU2.push_back({"Ly",Ly,1});
 		VMPS::HubbardSU2xSU2 H_SU2xSU2(L,paramsSU2xSU2);
-		V = H_SU2xSU2.volume();
-		Vsq = V*V;
+		Vol = H_SU2xSU2.volume();
+		Vsq = Vol*Vol;
 		lout << H_SU2xSU2.info() << endl;
 		
 		VMPS::HubbardSU2xSU2::Solver DMRG_SU2xSU2(VERB);
@@ -455,12 +460,12 @@ int main (int argc, char* argv[])
 		DMRG_SU2xSU2.userSetDynParam();
 		DMRG_SU2xSU2.GlobParam = GlobParam;
 		DMRG_SU2xSU2.DynParam = DynParam;
-		DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {S,V-N+1}, LANCZOS::EDGE::GROUND); 
+		DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {S,Vol-N+1}, LANCZOS::EDGE::GROUND); 
 		//Todo: check Pseudospin quantum number... (1 <==> half filling)
 		g_SU2xSU2.state.graph("SU2xSU2");
 		
-		Emin_SU2xSU2 = g_SU2xSU2.energy-0.5*U*(V-N);
-		emin_SU2xSU2 = Emin_SU2xSU2/V;
+		Emin_SU2xSU2 = g_SU2xSU2.energy-0.5*U*(Vol-N);
+		emin_SU2xSU2 = Emin_SU2xSU2/Vol;
 		t_SU2xSU2 = Watch_SU2xSU2.time();
 		
 		if (CORR)
@@ -538,19 +543,19 @@ int main (int argc, char* argv[])
 	T.endOfRow();
 	
 	T.add("E/V");
-	T.add(to_string_prec(g_ED.energy/V));
+	T.add(to_string_prec(g_ED.energy/Vol));
 	T.add(to_string_prec(emin_U0));
-	T.add(to_string_prec(g_U1.energy/V));
-	T.add(to_string_prec(g_SU2.energy/V));
+	T.add(to_string_prec(g_U1.energy/Vol));
+	T.add(to_string_prec(g_SU2.energy/Vol));
 	T.add(to_string_prec(emin_SU2xSU2));
 	T.endOfRow();
 	
 	T.add("E/V diff");
 	T.add("-");
-	T.add(to_string_prec(abs(Emin_U0-g_ED.energy)/V,true));
-	T.add(to_string_prec(abs(g_U1.energy-g_ED.energy)/V,true));
-	T.add(to_string_prec(abs(g_SU2.energy-g_ED.energy)/V,true));
-	T.add(to_string_prec(abs(Emin_SU2xSU2-g_ED.energy)/V,true));
+	T.add(to_string_prec(abs(Emin_U0-g_ED.energy)/Vol,true));
+	T.add(to_string_prec(abs(g_U1.energy-g_ED.energy)/Vol,true));
+	T.add(to_string_prec(abs(g_SU2.energy-g_ED.energy)/Vol,true));
+	T.add(to_string_prec(abs(Emin_SU2xSU2-g_ED.energy)/Vol,true));
 	T.endOfRow();
 	
 	T.add("t/s");

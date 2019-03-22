@@ -11,6 +11,7 @@
 //include "DmrgExternal.h"
 //include "ParamHandler.h"
 #include "ParamReturner.h"
+#include "Geometry2D.h" // from TOOLS
 
 namespace VMPS
 {
@@ -65,9 +66,6 @@ public:
 	///@{
 	Mpo<Symmetry> c (size_t locx, size_t locy=0, double factor=1.);
 	Mpo<Symmetry> cdag (size_t locx, size_t locy=0, double factor=sqrt(2.));
-	Mpo<Symmetry> a (size_t locx, size_t locy=0, double factor=1.);
-	Mpo<Symmetry> adag (size_t locx, size_t locy=0, double factor=sqrt(2.));
-	Mpo<Symmetry> cdag2 (size_t locx, size_t locy=0, double factor=sqrt(2.));
 	Mpo<Symmetry> n (size_t locx, size_t locy=0);
 	Mpo<Symmetry> d (size_t locx, size_t locy=0);
 	///@}
@@ -102,12 +100,15 @@ protected:
 	vector<FermionBase<Symmetry> > F;
 };
 
+// V is standard next-nearest neighbour density interaction
+// Vz and Vxy are anisotropic isospin-isospin next-nearest neighbour interaction
 const map<string,any> HubbardSU2xU1::defaults = 
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",1.},
 	{"mu",0.}, {"t0",0.}, 
 	{"U",0.},
-	{"V",0.}, {"Vrung",0.}, 
+	{"V",0.}, {"Vrung",0.},
+	{"Vz",0.}, {"Vzrung",0.}, {"Vxy",0.}, {"Vxyrung",0.}, 
 	{"J",0.}, {"Jperp",0.},
 	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
@@ -131,7 +132,6 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
-	//vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	F.resize(N_sites);
 	
@@ -142,118 +142,12 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
-	
-	/*for (size_t l=0; l<N_sites; ++l)
-	{
-		Terms[l] = set_operators(F,P,l%Lcell);
 		
-		stringstream ss;
-		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
-		Terms[l].info.push_back(ss.str());
-	}*/
-	
 	set_operators(F, P, Terms);
-	// cout << Terms.print_info() << endl;
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 	this->precalc_TwoSiteData();
 }
-
-/*HamiltonianTermsXd<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc)
-{
-	HamiltonianTermsXd<Symmetry> Terms;
-	
-	auto save_label = [&Terms] (string label)
-	{
-		if (label!="") {Terms.info.push_back(label);}
-	};
-	
-	size_t lp1 = (loc+1)%F.size();
-	
-	// NN terms
-	
-	auto [t,tPara,tlabel] = P.fill_array2d<double>("t","tPara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
-	save_label(tlabel);
-	
-	auto [V,Vpara,Vlabel] = P.fill_array2d<double>("V","Vpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
-	save_label(Vlabel);
-	
-	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",{{F[loc].orbitals(),F[lp1].orbitals()}},loc);
-	save_label(Jlabel);
-	
-	for (int i=0; i<F[loc].orbitals(); ++i)
-	for (int j=0; j<F[lp1].orbitals(); ++j)
-	{
-		if (tPara(i,j) != 0.)
-		{
-			auto cdagF = OperatorType::prod(F[loc].cdag(i), F[loc].sign(),{2,+1});
-			auto cF    = OperatorType::prod(F[loc].c(i),    F[loc].sign(),{2,-1});
-			
-			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cdagF.plain<double>(), F[loc].c(i).plain<double>()));
-			// SU(2) spinors commute on different sites, hence no sign flip here:
-			Terms.tight.push_back(make_tuple(-tPara(i,j)*sqrt(2.), cF.plain<double>(),    F[loc].cdag(i).plain<double>()));
-		}
-		
-		if (Vpara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(Vpara(i,j), F[loc].n(i).plain<double>(), F[loc].n(i).plain<double>()));
-		}
-		
-		if (Jpara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(sqrt(3.)*Jpara(i,j), F[loc].Sdag(i).plain<double>(), F[loc].S(i).plain<double>()));
-		}
-	}
-	
-	// NNN terms
-	
-	param0d tPrime = P.fill_array0d<double>("tPrime","tPrime",loc);
-	save_label(tPrime.label);
-	
-	if (tPrime.x != 0.)
-	{
-		assert(F[loc].orbitals() == 1 and "Cannot do a ladder with t'!");
-		
-		auto cF    = OperatorType::prod(F[loc].c(),    F[loc].sign(),{2,-1});
-		auto cdagF = OperatorType::prod(F[loc].cdag(), F[loc].sign(),{2,+1});
-		
-		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cdagF.plain<double>(), F[loc].c().plain<double>(),    F[loc].sign().plain<double>()));
-		Terms.nextn.push_back(make_tuple(+tPrime.x*sqrt(2.), cF.plain<double>()   , F[loc].cdag().plain<double>(), F[loc].sign().plain<double>()));
-	}
-	
-	// local terms
-	
-	// Hubbard-U
-	auto [U,Uorb,Ulabel] = P.fill_array1d<double>("U","Uorb",F[loc].orbitals(),loc);
-	save_label(Ulabel);
-	
-	// t0
-	auto [t0,t0orb,t0label] = P.fill_array1d<double>("t0","t0orb",F[loc].orbitals(),loc);
-	save_label(t0label);
-	
-	// μ
-	auto [mu,muorb,mulabel] = P.fill_array1d<double>("mu","muorb",F[loc].orbitals(),loc);
-	save_label(mulabel);
-	
-	// t⟂
-	auto [tRung,tPerp,tPerplabel] = P.fill_array2d<double>("tRung","t","tPerp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(tPerplabel);
-	
-	// V⟂
-	auto [Vrung,Vperp,Vperplabel] = P.fill_array2d<double>("Vrung","V","Vperp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(Vperplabel);
-	
-	// J⟂
-	auto [Jrung,Jperp,Jperplabel] = P.fill_array2d<double>("Jrung","J","Jperp",F[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(Jperplabel);
-	
-	Terms.local.push_back(make_tuple(1., F[loc].HubbardHamiltonian(Uorb,t0orb-muorb,tPerp,Vperp,Jperp).plain<double>()));
-	
-	Terms.name = "Hubbard";
-	
-	return Terms;
-}*/
     
 void HubbardSU2xU1::
 set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
@@ -271,87 +165,266 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
         stringstream ss;
         ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
         Terms.save_label(loc, ss.str());
-        
+
+
+		if (P.HAS("tFull"))
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("tFull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				size_t Ntrans = (range == 0)? 0:range-1;
+				vector<SiteOperator<Symmetry,double> > TransOps(Ntrans);
+				for (size_t i=0; i<Ntrans; ++i)
+				{
+					TransOps[i] = F[(loc+i+1)%N_sites].sign().plain<double>();
+				}
+				
+				if (range != 0)
+				{
+					SiteOperator<Symmetry, double> c_sign_local = OperatorType::prod(F[loc].c(0), F[loc].sign(), {2,-1}).plain<double>();
+                    SiteOperator<Symmetry, double> cdag_sign_local = OperatorType::prod(F[loc].cdag(0), F[loc].sign(), {2,1}).plain<double>();
+					SiteOperator<Symmetry, double> c_range = F[(loc+range)%N_sites].c(0).plain<double>();
+                    SiteOperator<Symmetry, double> cdag_range = F[(loc+range)%N_sites].cdag(0).plain<double>();
+					
+					//hopping
+					//cout << "loc=" << loc << ", pushing at range=" << range << ", value=" << value << endl;
+                    Terms.push(range, loc, -value * std::sqrt(2.), cdag_sign_local, TransOps, c_range);
+					Terms.push(range, loc, -value * std::sqrt(2.), c_sign_local, TransOps, cdag_range);
+				}
+			}
+			
+			stringstream ss;
+			ss << "tᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			Terms.save_label(loc,ss.str());
+		}
+		
+		if (P.HAS("Vzfull"))
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Vzfull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				size_t Ntrans = (range == 0)? 0:range-1;
+				vector<SiteOperator<Symmetry,double> > TransOps(Ntrans);
+				for (size_t i=0; i<Ntrans; ++i)
+				{
+					TransOps[i] = F[(loc+i+1)%N_sites].Id().plain<double>();
+				}
+				
+				if (range != 0)
+				{
+					
+					auto Tz_loc = F[loc].Tz(0);
+					auto Tz_hop    = F[(loc+range)%N_sites].Tz(0);
+					
+					Terms.push(range, loc, value,
+					           Tz_loc.plain<double>(), TransOps, Tz_hop.plain<double>());
+				}
+			}
+			
+			stringstream ss;
+			ss << "Vzᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			Terms.save_label(loc,ss.str());
+		}
+
+		if (P.HAS("Vxyfull"))
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Vxyfull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				size_t Ntrans = (range == 0)? 0:range-1;
+				vector<SiteOperator<Symmetry,double> > TransOps(Ntrans);
+				for (size_t i=0; i<Ntrans; ++i)
+				{
+					TransOps[i] = F[(loc+i+1)%N_sites].Id().plain<double>();
+				}
+				
+				if (range != 0)
+				{
+					//The sign is hardcoded here.. maybe include this in Geometry class.
+					auto Tp_loc    = pow(-1,loc)*F[loc].Tp(0);
+					auto Tm_hop    = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].Tm(0);
+					auto Tm_loc    = pow(-1,loc)*F[loc].Tm(0);
+					auto Tp_hop    = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].Tp(0);
+					
+					Terms.push(range, loc, 0.5 * value,
+					           Tp_loc.plain<double>(), TransOps, Tm_hop.plain<double>());
+					Terms.push(range, loc, 0.5 * value,
+					           Tm_loc.plain<double>(), TransOps, Tp_hop.plain<double>());
+				}
+			}
+			
+			stringstream ss;
+			ss << "Vxyᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			Terms.save_label(loc,ss.str());
+		}
+
+		if (P.HAS("Jfull"))
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Jfull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				size_t Ntrans = (range == 0)? 0:range-1;
+				vector<SiteOperator<Symmetry,double> > TransOps(Ntrans);
+				for (size_t i=0; i<Ntrans; ++i)
+				{
+					TransOps[i] = F[(loc+i+1)%N_sites].Id().plain<double>();
+				}
+				
+				if (range != 0)
+				{
+					auto Sdag_loc = F[loc].Sdag(0);
+					auto S_hop    = F[(loc+range)%N_sites].S(0);
+					
+					Terms.push(range, loc, std::sqrt(3.) * value,
+					           Sdag_loc.plain<double>(), TransOps, S_hop.plain<double>());
+				}
+			}
+			
+			stringstream ss;
+			ss << "Jᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			Terms.save_label(loc,ss.str());
+		}
+
         // Local terms: U, t0, μ, t⟂, V⟂, J⟂
         
         param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
         param1d t0 = P.fill_array1d<double>("t0", "t0orb", orbitals, loc%Lcell);
         param1d mu = P.fill_array1d<double>("mu", "muorb", orbitals, loc%Lcell);
         param2d tperp = P.fill_array2d<double>("tRung", "t", "tPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-        param2d Vperp = P.fill_array2d<double>("VRung", "V", "VPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		param2d Vperp = P.fill_array2d<double>("VRung", "V", "VPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+        param2d Vzperp = P.fill_array2d<double>("VzRung", "Vz", "VzPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		param2d Vxyperp = P.fill_array2d<double>("VxyRung", "Vxy", "VxyPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
         param2d Jperp = P.fill_array2d<double>("JRung", "J", "JPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
         
         Terms.save_label(loc, U.label);
         Terms.save_label(loc, t0.label);
         Terms.save_label(loc, mu.label);
         Terms.save_label(loc, tperp.label);
-        Terms.save_label(loc, Vperp.label);
+		Terms.save_label(loc, Vperp.label);
+        Terms.save_label(loc, Vzperp.label);
+		Terms.save_label(loc, Vxyperp.label);
         Terms.save_label(loc, Jperp.label);
         
-        Terms.push_local(loc, 1., F[loc].HubbardHamiltonian(U.a, t0.a - mu.a, tperp.a, Vperp.a, Jperp.a).plain<double>());
+        Terms.push_local(loc, 1., F[loc].HubbardHamiltonian(U.a, t0.a - mu.a, tperp.a, Vperp.a, Vzperp.a, Vxyperp.a, Jperp.a).plain<double>());
         
         
         // Nearest-neighbour terms: t, V, J
+
+		if (!P.HAS("tFull") and !P.HAS("Vzfull") and !P.HAS("Vxyfull") and !P.HAS("Jfull"))
+		{
+			param2d tpara = P.fill_array2d<double>("t", "tPara", {orbitals, next_orbitals}, loc%Lcell);
+			param2d Vpara = P.fill_array2d<double>("V", "Vpara", {orbitals, next_orbitals}, loc%Lcell);
+			param2d Vzpara = P.fill_array2d<double>("Vz", "Vzpara", {orbitals, next_orbitals}, loc%Lcell);
+			param2d Vxypara = P.fill_array2d<double>("Vxy", "Vxypara", {orbitals, next_orbitals}, loc%Lcell);
+			param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
         
-        param2d tpara = P.fill_array2d<double>("t", "tPara", {orbitals, next_orbitals}, loc%Lcell);
-        param2d Vpara = P.fill_array2d<double>("V", "Vpara", {orbitals, next_orbitals}, loc%Lcell);
-        param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
+			Terms.save_label(loc, tpara.label);
+			Terms.save_label(loc, Vpara.label);
+			Terms.save_label(loc, Vzpara.label);
+			Terms.save_label(loc, Vxypara.label);
+			Terms.save_label(loc, Jpara.label);
         
-        Terms.save_label(loc, tpara.label);
-        Terms.save_label(loc, Vpara.label);
-        Terms.save_label(loc, Jpara.label);
-        
-        if (loc < N_sites-1 || !P.get<bool>("OPEN_BC"))
-        {
-            for (std::size_t alpha=0; alpha<orbitals; ++alpha)
-            {
-                for (std::size_t beta=0; beta<next_orbitals; ++beta)
-                {
-                    SiteOperator<Symmetry, double> c_sign_local = OperatorType::prod(F[loc].c(alpha), F[loc].sign(), {2,-1}).plain<double>();
-                    SiteOperator<Symmetry, double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alpha), F[loc].sign(), {2,1}).plain<double>();
+			if (loc < N_sites-1 || !P.get<bool>("OPEN_BC"))
+			{
+				for (std::size_t alpha=0; alpha<orbitals; ++alpha)
+				{
+					for (std::size_t beta=0; beta<next_orbitals; ++beta)
+					{
+						SiteOperator<Symmetry, double> c_sign_local = OperatorType::prod(F[loc].c(alpha), F[loc].sign(), {2,-1}).plain<double>();
+						SiteOperator<Symmetry, double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alpha), F[loc].sign(), {2,1}).plain<double>();
                     
-                    SiteOperator<Symmetry, double> c_tight = F[(loc+1)%N_sites].c(beta).plain<double>();
-                    SiteOperator<Symmetry, double> cdag_tight = F[(loc+1)%N_sites].cdag(beta).plain<double>();
+						SiteOperator<Symmetry, double> c_tight = F[(loc+1)%N_sites].c(beta).plain<double>();
+						SiteOperator<Symmetry, double> cdag_tight = F[(loc+1)%N_sites].cdag(beta).plain<double>();
                     
-                    SiteOperator<Symmetry, double> n_local = F[loc].n(alpha).plain<double>();
-                    SiteOperator<Symmetry, double> n_tight = F[(loc+1)%N_sites].n(beta).plain<double>();
+						SiteOperator<Symmetry, double> n_local = F[loc].n(alpha).plain<double>();
+						SiteOperator<Symmetry, double> n_tight = F[(loc+1)%N_sites].n(beta).plain<double>();
+
+						SiteOperator<Symmetry, double> tz_local = F[loc].Tz(alpha).plain<double>();
+						SiteOperator<Symmetry, double> tz_tight = F[(loc+1)%N_sites].Tz(beta).plain<double>();
+
+						SiteOperator<Symmetry, double> tp_local = pow(-1,loc)*F[loc].Tp(alpha).plain<double>();
+						SiteOperator<Symmetry, double> tm_tight = pow(-1,loc+1)*F[(loc+1)%N_sites].Tm(beta).plain<double>();
+
+						SiteOperator<Symmetry, double> tm_local = pow(-1,loc)*F[loc].Tm(alpha).plain<double>();
+						SiteOperator<Symmetry, double> tp_tight = pow(-1,loc+1)*F[(loc+1)%N_sites].Tp(beta).plain<double>();
                     
-                    SiteOperator<Symmetry, double> Sdag_local = F[loc].Sdag(alpha).plain<double>();
-                    SiteOperator<Symmetry, double> S_tight = F[(loc+1)%N_sites].S(beta).plain<double>();
-                    
-                    Terms.push_tight(loc, -tpara(alpha, beta) * std::sqrt(2.), cdag_sign_local, c_tight);
-                    Terms.push_tight(loc, -tpara(alpha, beta) * std::sqrt(2.), c_sign_local, cdag_tight);
-                    Terms.push_tight(loc, Vpara(alpha, beta), n_local, n_tight);
-                    Terms.push_tight(loc, Jpara(alpha, beta) * std::sqrt(3.), Sdag_local, S_tight);
-                }
-            }
+						SiteOperator<Symmetry, double> Sdag_local = F[loc].Sdag(alpha).plain<double>();
+						SiteOperator<Symmetry, double> S_tight = F[(loc+1)%N_sites].S(beta).plain<double>();
+
+						//nn hopping
+						Terms.push_tight(loc, -tpara(alpha, beta) * std::sqrt(2.), cdag_sign_local, c_tight);
+						Terms.push_tight(loc, -tpara(alpha, beta) * std::sqrt(2.), c_sign_local, cdag_tight);
+						//nn density interaction
+						Terms.push_tight(loc, Vpara(alpha, beta), n_local, n_tight);
+						//nn isospin-isopsin interaction
+						Terms.push_tight(loc, Vzpara(alpha, beta), tz_local, tz_tight);
+						Terms.push_tight(loc, 0.5*Vxypara(alpha, beta), tp_local, tm_tight);
+						Terms.push_tight(loc, 0.5*Vxypara(alpha, beta), tm_local, tp_tight);
+						//nn spin-spin interaction
+						Terms.push_tight(loc, Jpara(alpha, beta) * std::sqrt(3.), Sdag_local, S_tight);
+					}
+				}
+			}
         }
-        
         
         // Next-nearest-neighbour terms: t'
+        if (!P.HAS("tFull"))
+		{
+			param2d tprime = P.fill_array2d<double>("tPrime", "tPrime_array", {orbitals, nextn_orbitals}, loc%Lcell);
+			Terms.save_label(loc, tprime.label);
         
-        param2d tprime = P.fill_array2d<double>("tPrime", "tPrime_array", {orbitals, nextn_orbitals}, loc%Lcell);
-        Terms.save_label(loc, tprime.label);
-        
-        if (loc < N_sites-2 || !P.get<bool>("OPEN_BC"))
-        {
-            for (std::size_t alpha=0; alpha<orbitals; ++alpha)
-            {
-                for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
-                {
-                    SiteOperator<Symmetry, double> c_sign_local = OperatorType::prod(F[loc].c(alpha), F[loc].sign(), {2,-1}).plain<double>();
-                    SiteOperator<Symmetry, double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alpha), F[loc].sign(), {2,1}).plain<double>();
+			if (loc < N_sites-2 || !P.get<bool>("OPEN_BC"))
+			{
+				for (std::size_t alpha=0; alpha<orbitals; ++alpha)
+				{
+					for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
+					{
+						SiteOperator<Symmetry, double> c_sign_local = OperatorType::prod(F[loc].c(alpha), F[loc].sign(), {2,-1}).plain<double>();
+						SiteOperator<Symmetry, double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alpha), F[loc].sign(), {2,1}).plain<double>();
                     
-                    SiteOperator<Symmetry, double> sign_tight = F[(loc+1)%N_sites].sign().plain<double>();
+						SiteOperator<Symmetry, double> sign_tight = F[(loc+1)%N_sites].sign().plain<double>();
                     
-                    SiteOperator<Symmetry, double> c_nextn = F[(loc+2)%N_sites].c(beta).plain<double>();
-                    SiteOperator<Symmetry, double> cdag_nextn = F[(loc+2)%N_sites].cdag(beta).plain<double>();
+						SiteOperator<Symmetry, double> c_nextn = F[(loc+2)%N_sites].c(beta).plain<double>();
+						SiteOperator<Symmetry, double> cdag_nextn = F[(loc+2)%N_sites].cdag(beta).plain<double>();
                     
-                    Terms.push_nextn(loc, tprime(alpha, beta) * std::sqrt(2.), cdag_sign_local, sign_tight, c_nextn);
-                    Terms.push_nextn(loc, tprime(alpha, beta) * std::sqrt(2.), c_sign_local,    sign_tight, cdag_nextn);
-                }
-            }
-        }
+						Terms.push_nextn(loc, tprime(alpha, beta) * std::sqrt(2.), cdag_sign_local, sign_tight, c_nextn);
+						Terms.push_nextn(loc, tprime(alpha, beta) * std::sqrt(2.), c_sign_local,    sign_tight, cdag_nextn);
+					}
+				}
+			}
+		}
     }
 }
 
@@ -394,25 +467,6 @@ Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 cdag (size_t locx, size_t locy, double factor)
 {
 	return make_local("c†", locx,locy, F[locx].cdag(locy), factor, true, false);
-}
-
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-a (size_t locx, size_t locy, double factor)
-{
-	return make_local("a", locx,locy, F[locx].a(locy), factor, true, false);
-}
-
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-adag (size_t locx, size_t locy, double factor)
-{
-	return make_local("a†", locx,locy, F[locx].adag(locy), factor, true, false);
-}
-
-
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-cdag2 (size_t locx, size_t locy, double factor)
-{
-	return make_local("c†", locx,locy, F[locx].cdag2(locy), factor, true, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::

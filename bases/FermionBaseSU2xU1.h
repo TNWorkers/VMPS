@@ -73,19 +73,6 @@ public:
 	 * where the upper component corresponds to \f$ m=+1/2\f$ and the lower to \f$ m=-1/2\f$.
 	 */
 	Operator cdag (std::size_t orbital=0) const;
-	Operator cdag2 (std::size_t orbital=0) const;
-
-	/**
-	 * Annihilation operator
-	 * \param orbital : orbital index
-	 */
-	Operator a (std::size_t orbital=0) const;
-	
-	/**
-	 * Creation operator.
-	 * \param orbital : orbital index
-	 */
-	Operator adag (std::size_t orbital=0) const;
 
 	/**
 	 * Fermionic sign for the hopping between two orbitals of nearest-neighbour supersites of a ladder.
@@ -105,7 +92,7 @@ public:
 	 * \param orbital : orbital index
 	 */
 	Operator n (std::size_t orbital=0) const;
-		
+
 	/**
 	 * Double occupation
 	 * \param orbital : orbital index
@@ -127,6 +114,26 @@ public:
 	Operator Sdag (std::size_t orbital=0) const;
 	///\}
 
+	///\{
+	/**
+	 * Isospin z-component
+	 * \param orbital : orbital index
+	 */
+	Operator Tz (std::size_t orbital=0) const;
+
+	/**
+	 * Isospin ladder operator +
+	 * \param orbital : orbital index
+	 */
+	Operator Tp (std::size_t orbital=0) const;
+	
+	/**
+	 * Isospin ladder operator -
+	 * \param orbital : orbital index
+	 */
+	Operator Tm (std::size_t orbital=0) const;
+	///\}
+	
 	///\{
 	/**
 	 * Orbital pairing η
@@ -153,9 +160,12 @@ public:
 	 * \param Eorb : \f$\varepsilon\f$ onsite energy for each orbital
 	 * \param t : \f$t\f$
 	 * \param V : \f$V\f$
+	 * \param Vz : \f$V_z\f$
+	 * \param Vxy : \f$V_{xy}\f$
 	 * \param J : \f$J\f$
 	 */
-	Operator HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Eorb, const ArrayXXd &t, const ArrayXXd &V, const ArrayXXd &J) const;
+	Operator HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Eorb, const ArrayXXd &t, const ArrayXXd &V,
+								 const ArrayXXd &Vz, const ArrayXXd &Vxy, const ArrayXXd &J) const;
 	
 	/**Identity*/
 	Operator Id (std::size_t orbital=0) const;
@@ -177,8 +187,6 @@ private:
 	Operator F_1s; //Fermionic sign
 	Operator c_1s; //annihilation
 	Operator cdag_1s; //creation
-	Operator a_1s; //annihilation
-	Operator adag_1s; //creation
 	Operator n_1s; //particle number
 	Operator d_1s; //double occupancy
 	Operator S_1s; //orbital spin
@@ -223,7 +231,6 @@ FermionBase (std::size_t L_input, bool U_IS_INFINITE)
 	Id_1s = Operator({1,0},basis_1s);
 	F_1s = Operator({1,0},basis_1s);
 	c_1s = Operator({2,-1},basis_1s);
-	a_1s = Operator({2,-1},basis_1s);
 	d_1s = Operator({1,0},basis_1s);
 	S_1s = Operator({3,0},basis_1s);
 	
@@ -239,19 +246,10 @@ FermionBase (std::size_t L_input, bool U_IS_INFINITE)
 	F_1s("double", "double") = 1.;
 	F_1s("single", "single") = -1.;
 	
-	c_1s("empty", "single")  = std::sqrt(2.); //-1*
+	c_1s("empty", "single")  = std::sqrt(2.);
 	c_1s("single", "double") = 1.;
-	
-//	a_1s( "empty", "single" ) = std::sqrt(2.);
-//	a_1s( "single", "double" ) = 1.;
-	
-	adag_1s = Operator({2,+1},basis_1s);
-	adag_1s( "single", "empty" ) = 1.;//std::sqrt(2.);
-	adag_1s( "double", "single" ) = +std::sqrt(2.); //1.;
-	a_1s = adag_1s.adjoint();
-	
+		
 	cdag_1s = c_1s.adjoint();
-//	adag_1s = a_1s.adjoint();
 	n_1s = std::sqrt(2.) * Operator::prod(cdag_1s,c_1s,{1,0});
 	d_1s( "double", "double" ) = 1.;
 	S_1s( "single", "single" ) = std::sqrt(0.75);
@@ -309,43 +307,6 @@ cdag (std::size_t orbital) const
 }
 
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
-cdag2 (std::size_t orbital) const
-{
-	return c(orbital).hermitian_conj();
-}
-
-SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
-a (std::size_t orbital) const
-{
-	if (N_orbitals == 1) {return a_1s;}
-	else if (N_orbitals == 0) {return Zero_vac;}
-	else
-	{
-		Operator out;
-		bool TOGGLE=false;
-		if(orbital == 0) { out = Operator::outerprod(c_1s,Id_1s,{2,-1}); TOGGLE=true; }
-		else
-		{
-			if( orbital == 1 ) { out = Operator::outerprod(F_1s,c_1s,{2,-1}); TOGGLE=true; }
-			else { out = Operator::outerprod(F_1s,F_1s,{1,0}); }
-		}
-		for(std::size_t o=2; o<N_orbitals; o++)
-		{
-			if(orbital == o) { out = Operator::outerprod(out,c_1s,{2,-1}); TOGGLE=true; }
-			else if(TOGGLE==false) { out = Operator::outerprod(out,F_1s,{1,0}); }
-			else if(TOGGLE==true) { out = Operator::outerprod(out,Id_1s,{2,-1}); }
-		}
-		return out;
-	}
-}
-
-SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
-adag (std::size_t orbital) const
-{
-	return a(orbital).adjoint();
-}
-
-SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 sign (std::size_t orb1, std::size_t orb2) const
 {
 	if (N_orbitals == 1) {return F_1s;}
@@ -355,12 +316,10 @@ sign (std::size_t orb1, std::size_t orb2) const
 		Operator out = Id();
 		for (int i=orb1; i<N_orbitals; ++i)
 		{
-			// out = Operator::prod(out,sign_local(i),{1}); // * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
 			out = Operator::prod(out, (Id()-2.*n(i)+4.*d(i)),{1,0});
 		}
 		for (int i=0; i<orb2; ++i)
 		{
-			// out = Operator::prod(out,sign_local(i),{1}); // * (Id-2.*n(UP,i))*(Id-2.*n(DN,i));
 			out = Operator::prod(out, (Id()-2.*n(i)+4.*d(i)),{1,0});
 		}
 		
@@ -499,6 +458,24 @@ Etadag (std::size_t orbital) const
 }
 
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
+Tp (std::size_t orbital) const
+{
+	return Eta(orbital);
+}
+
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
+Tm (std::size_t orbital) const
+{
+	return Eta(orbital).adjoint();
+}
+
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
+Tz (std::size_t orbital) const
+{
+	return 0.5*(n(orbital)-Id());
+}
+
+SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
 Id (std::size_t orbital) const
 {
 	if (N_orbitals == 1) {return Id_1s;}
@@ -512,7 +489,7 @@ Id (std::size_t orbital) const
 }
 
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
-HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Eorb, const ArrayXXd &t, const ArrayXXd &V, const ArrayXXd &J) const
+HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Eorb, const ArrayXXd &t, const ArrayXXd &V, const ArrayXXd &Vz, const ArrayXXd &Vxy, const ArrayXXd &J) const
 {
 	Operator Mout({1,0},TensorBasis);
 	
@@ -526,6 +503,14 @@ HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Eorb, const ArrayXXd &t, co
 		if (V(i,j) != 0.)
 		{
 			Mout += V(i,j) * (Operator::prod(n(i),n(j),{1,0}));
+		}
+		if (Vz(i,j) != 0.)
+		{
+			Mout += Vz(i,j) * (Operator::prod(Tz(i),Tz(j),{1,0}));
+		}
+		if (Vxy(i,j) != 0.)
+		{
+			Mout += 0.5*Vxy(i,j) * (Operator::prod(Tp(i),Tm(j),{1,0}) + Operator::prod(Tm(i),Tp(j),{1,0}));
 		}
 		if (J(i,j) != 0.)
 		{
