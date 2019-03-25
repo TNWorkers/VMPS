@@ -18,7 +18,8 @@
 	vector<OrthPolyGreen<MODEL,MODEL::StateXd,ArrayXd,CHEBYSHEV> > KPS(i0_list.size());
 	for (int ii0=0; ii0<i0_list.size(); ++ii0)
 	{
-		KPS[ii0] = OrthPolyGreen<MODEL,MODEL::StateXd,ArrayXd,CHEBYSHEV>(Emin-spillage, Emax+spillage);
+		bool VERBOSE = (ii0==0)? true:false;
+		KPS[ii0] = OrthPolyGreen<MODEL,MODEL::StateXd,ArrayXd,CHEBYSHEV>(Emin-spillage, Emax+spillage, VERBOSE);
 	}
 	
 	if (CHEB)

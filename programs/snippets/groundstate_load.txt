@@ -2,29 +2,35 @@
 	Eigenstate<MODEL::StateXd> * init = new Eigenstate<MODEL::StateXd>;
 	
 	Stopwatch<> Chronos;
-	stringstream ginfo, rinfo;
+//	stringstream ginfo, rinfo;
+	stringstream einfo;
 	
-//	ArrayXd Emins(Qc.size());
-//	ArrayXd Emaxs(Qc.size());
 	MatrixXd Eminmax(2,Qc.size());
 	bool CONVERGED1 = false;
-	bool CONVERGED2 = false;
-	bool CONVERGED3 = false;
+	vector<bool> CONVERGED2;
+	vector<tuple<int,qarray<2>,LANCZOS::EDGE::OPTION> > edges;
+	for (size_t i=0; i<Qc.size(); ++i)
+	{
+		edges.push_back(make_tuple(i,Qc[i],LANCZOS::EDGE::GROUND));
+		edges.push_back(make_tuple(i,Qc[i],LANCZOS::EDGE::ROOF  ));
+		CONVERGED2.push_back(false);
+		CONVERGED2.push_back(false);
+	}
 	
-//	#pragma omp parallel sections
+//	#pragma omp parallel num_threads(5)
 	{
 //		#pragma omp section
 		{
-			Stopwatch<> nChronos;
+			Stopwatch<> Chronos;
 			MODEL::Solver DMRG(VERB1);
 			
 			DMRG.GlobParam = H.get_DmrgGlobParam(SweepParams);
-			DMRG.DynParam  = H.get_DmrgDynParam(SweepParams);
+			DMRG.DynParam  = H.get_DmrgDynParam (SweepParams);
 			DMRG.userSetGlobParam();
 			DMRG.userSetDynParam();
 			
 			DMRG.edgeState(H, *init, Qi, LANCZOS::EDGE::GROUND);
-			lout << endl << nChronos.info(make_string("ground state ",Qi)) << endl;
+			lout << endl << Chronos.info(make_string("ground state ",Qi)) << endl;
 			lout << DMRG.info() << endl;
 			E0 = init->energy;
 			
@@ -33,79 +39,142 @@
 				CONVERGED1 = true;
 			}
 		}
-		if (filesystem::exists(wd+"energies/"+EminmaxFile))
+//		#pragma omp section
 		{
-			Eminmax = readMatrix(wd+"energies/"+EminmaxFile);
-			lout << wd+"energies/"+EminmaxFile << " loaded!" << endl;
-		}
-		else
-		{
-			for (size_t i=0; i<Qc.size(); ++i)
+			if (filesystem::exists(wd+"energies/"+EminmaxFile))
 			{
-				Stopwatch<> gChronos;
-				Eigenstate<MODEL::StateXd> g;
-				MODEL::Solver DMRG(VERB2);
-				
-				DMRG.GlobParam = H.get_DmrgGlobParam(SweepParams);
-				DMRG.DynParam  = H.get_DmrgDynParam(SweepParams);
-				DMRG.userSetGlobParam();
-				DMRG.userSetDynParam();
-				
-				DMRG.LanczosParam.tol_state = 1e-3;
-				DMRG.userSetLanczosParam();
-				lout << termcolor::blue << endl << "Note: DMRG.LanczosParam.tol_state=" << DMRG.LanczosParam.tol_state << termcolor::reset << endl;
-				
-				DMRG.edgeState(H, g, Qc[i], LANCZOS::EDGE::GROUND);
-				ginfo << gChronos.info(make_string("ground state ",Qc[i])) << endl;
-				Eminmax(0,i) = g.energy;
-				ginfo << DMRG.info() << endl;
-				
-				if (DMRG.get_errState() < DMRG.GlobParam.tol_state)
-				{
-					CONVERGED2 = true;
-				}
+				Eminmax = readMatrix(wd+"energies/"+EminmaxFile);
+				lout << termcolor::blue << wd+"energies/"+EminmaxFile << " loaded!" << termcolor::reset << endl;
 			}
-			
-			for (size_t i=0; i<Qc.size(); ++i)
+			else
 			{
-				Stopwatch<> rChronos;
-				Eigenstate<MODEL::StateXd> r;
-				MODEL::Solver DMRG(VERB3);
-				
-				DMRG.GlobParam = H.get_DmrgGlobParam(SweepParams);
-				DMRG.DynParam  = H.get_DmrgDynParam(SweepParams);
-				DMRG.userSetGlobParam();
-				DMRG.userSetDynParam();
-				
-				DMRG.LanczosParam.tol_state = 1e-3;
-				DMRG.userSetLanczosParam();
-				lout << termcolor::blue << endl << "Note: DMRG.LanczosParam.tol_state=" << DMRG.LanczosParam.tol_state << termcolor::reset << endl;
-				
-				DMRG.edgeState(H, r, Qc[i], LANCZOS::EDGE::ROOF);
-				
-				rinfo << rChronos.info(make_string("roof state ",Qc[i])) << endl;
-				if (DMRG.get_errState() > 10.*DMRG.GlobParam.tol_state)
+				#pragma omp parallel for
+				for (int e=0; e<edges.size(); ++e)
 				{
-//					Emaxs(i) = 2.*r.energy;
-					lout << termcolor::red << "Warning: Bad convergence of roof state: " << DMRG.get_errState() << termcolor::reset << endl;
+					Stopwatch<> Chronos;
+					Eigenstate<MODEL::StateXd> edge;
+					MODEL::Solver DMRG(VERB2);
+					
+					DMRG.GlobParam = H.get_DmrgGlobParam(SweepParams);
+					DMRG.DynParam  = H.get_DmrgDynParam (SweepParams);
+					DMRG.userSetGlobParam();
+					DMRG.userSetDynParam();
+					
+					DMRG.LanczosParam.tol_state = 1e-3;
+					DMRG.userSetLanczosParam();
+					#pragma omp critical
+					{
+						lout << termcolor::blue << endl << "Note: DMRG.LanczosParam.tol_state=" 
+						     << DMRG.LanczosParam.tol_state << termcolor::reset << endl;
+					}
+					
+					DMRG.edgeState(H, edge, get<1>(edges[e]), get<2>(edges[e]));
+					#pragma omp critical
+					{
+						einfo << Chronos.info(make_string("ground state ",get<1>(edges[e]))) << endl;
+						einfo << DMRG.info() << endl;
+					}
+					if (get<2>(edges[e]) == LANCZOS::EDGE::GROUND)
+					{
+						Eminmax(0,get<0>(edges[e])) = edge.energy;
+					}
+					else
+					{
+						Eminmax(1,get<0>(edges[e])) = edge.energy;
+					}
+					
+					if (DMRG.get_errState() < DMRG.GlobParam.tol_state)
+					{
+						CONVERGED2[e] = true;
+					}
 				}
-				Eminmax(1,i) = r.energy;
-				rinfo << DMRG.info() << endl;
 				
-				if (DMRG.get_errState() < DMRG.GlobParam.tol_state)
-				{
-					CONVERGED3 = true;
-				}
+//				#pragma omp parallel sections
+//				{
+//					#pragma omp section
+//					{
+//						for (size_t i=0; i<Qc.size(); ++i)
+//						{
+//							Stopwatch<> gChronos;
+//							Eigenstate<MODEL::StateXd> g;
+//							MODEL::Solver DMRG(VERB2);
+//							
+//							DMRG.GlobParam = H.get_DmrgGlobParam(SweepParams);
+//							DMRG.DynParam  = H.get_DmrgDynParam(SweepParams);
+//							DMRG.userSetGlobParam();
+//							DMRG.userSetDynParam();
+//							
+//							DMRG.LanczosParam.tol_state = 1e-3;
+//							DMRG.userSetLanczosParam();
+//							#pragma omp critical
+//							{
+//								lout << termcolor::blue << endl << "Note: DMRG.LanczosParam.tol_state=" 
+//								     << DMRG.LanczosParam.tol_state << termcolor::reset << endl;
+//							}
+//							
+//							DMRG.edgeState(H, g, Qc[i], LANCZOS::EDGE::GROUND);
+//							ginfo << gChronos.info(make_string("ground state ",Qc[i])) << endl;
+//							Eminmax(0,i) = g.energy;
+//							ginfo << DMRG.info() << endl;
+//							
+//							if (DMRG.get_errState() < DMRG.GlobParam.tol_state)
+//							{
+//								CONVERGED2 = true;
+//							}
+//						}
+//					}
+//					#pragma omp section
+//					{
+//						for (size_t i=0; i<Qc.size(); ++i)
+//						{
+//							Stopwatch<> rChronos;
+//							Eigenstate<MODEL::StateXd> r;
+//							MODEL::Solver DMRG(VERB3);
+//							
+//							DMRG.GlobParam = H.get_DmrgGlobParam(SweepParams);
+//							DMRG.DynParam  = H.get_DmrgDynParam(SweepParams);
+//							DMRG.userSetGlobParam();
+//							DMRG.userSetDynParam();
+//							
+//							DMRG.LanczosParam.tol_state = 1e-3;
+//							DMRG.userSetLanczosParam();
+//							#pragma omp critical
+//							{
+//								lout << termcolor::blue << endl << "Note: DMRG.LanczosParam.tol_state=" << DMRG.LanczosParam.tol_state 
+//								     << termcolor::reset << endl;
+//							}
+//							
+//							DMRG.edgeState(H, r, Qc[i], LANCZOS::EDGE::ROOF);
+//							
+//							rinfo << rChronos.info(make_string("roof state ",Qc[i])) << endl;
+//							if (DMRG.get_errState() > 10.*DMRG.GlobParam.tol_state)
+//							{
+//								#pragma omp critical
+//								{
+//									lout << termcolor::red << "Warning: Bad convergence of roof state: " 
+//									     << DMRG.get_errState() << termcolor::reset << endl;
+//								}
+//							}
+//							Eminmax(1,i) = r.energy;
+//							rinfo << DMRG.info() << endl;
+//							
+//							if (DMRG.get_errState() < DMRG.GlobParam.tol_state)
+//							{
+//								CONVERGED3 = true;
+//							}
+//						}
+//					}
+//				}
 			}
 			
 			// save energies
 			if (!filesystem::exists(wd+"energies/"+EminmaxFile) and 
 				CONVERGED1 == true and 
-				CONVERGED2 == true and 
-				CONVERGED3 == true)
+				all_of(CONVERGED2.begin(), CONVERGED2.end(), [] (bool x) {return x;})
+				)
 			{
 				saveMatrix(Eminmax, wd+"energies/"+EminmaxFile);
-				lout << wd+"energies/"+EminmaxFile << " saved!" << endl;
+				lout << termcolor::blue << wd+"energies/"+EminmaxFile << " saved!" << termcolor::reset << endl;
 			}
 		}
 	}
@@ -115,7 +184,8 @@
 	Emin = Eminmax.row(0).minCoeff();
 	Emax = Eminmax.row(1).maxCoeff();
 	
-	lout << ginfo.str() << rinfo.str() << endl;
+//	lout << ginfo.str() << rinfo.str() << endl;
+	lout << einfo.str() << endl;
 	lout << Chronos.info("all edge states") << endl;
 	lout << "Emins=" << Eminmax.row(0) << endl;
 	lout << "Emaxs=" << Eminmax.row(1) << endl;

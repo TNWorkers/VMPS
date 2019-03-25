@@ -1,0 +1,23 @@
+	//--------------<A*init>---------------
+	vector<SiteOperator<MODEL::Symmetry,double>> localOperators(L);
+	vector<double> stag_sum(L);
+	
+	for (int l=0; l<L; ++l)
+	{
+		localOperators[l] = A[l].localOperator();
+		stag_sum[l]       = pow(-1.,l);
+	}
+	
+	Mpo<MODEL::Symmetry,double> Asum(L, A[0].Qtarget(), "Asum");
+	for (int l=0; l<L; ++l)
+	{
+		Asum.setLocBasis(A[l].locBasis(l), l);
+	}
+	Asum.setLocalSum(localOperators, stag_sum);
+	
+	MODEL::StateXd initA;
+	
+	OxV_exact(Asum, init->state, initA, 1e-7, DMRG::VERBOSITY::SILENT);
+	
+	delete init;
+	//--------------</A*init>---------------

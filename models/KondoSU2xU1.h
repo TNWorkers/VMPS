@@ -284,9 +284,13 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			
 			ArrayXXd Jperp    = B[loc].ZeroHopping();
 			ArrayXXd Jperpsub = F[loc].ZeroHopping();
+			ArrayXXd Vz       = F[loc].ZeroHopping();
+			ArrayXXd Vxy      = F[loc].ZeroHopping();
 			
 			//set Hubbard part of Kondo Hamiltonian
-			KondoHamiltonian = OperatorType::outerprod(B[loc].Id(), F[loc].HubbardHamiltonian(U.a,t0.a-mu.a,tPerp.a,Vperp.a,Jperpsub), {1,0});
+			KondoHamiltonian = OperatorType::outerprod(B[loc].Id(), 
+			                                           F[loc].HubbardHamiltonian(U.a,t0.a-mu.a,tPerp.a,Vperp.a,Vz,Vxy,Jperpsub),
+			                                           {1,0});
 			
 			//set Heisenberg part of Hamiltonian
 //			KondoHamiltonian += OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jperp), F[loc].Id(), {1,0});
@@ -465,7 +469,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		
 		if (P.HAS("JdirFull"))
 		{
-			ArrayXXd Full = P.get<Eigen::ArrayXXd>("tFull");
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("JdirFull");
 			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
 			
 			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
@@ -495,7 +499,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			}
 			
 			stringstream ss;
-			ss << "tᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			ss << "Jdirᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
 			Terms.save_label(loc,ss.str());
 		}
 	}
@@ -714,8 +718,11 @@ make_local (KONDO_SUBSYSTEM SUBSYS,
 		OpExt = OperatorType::outerprod(Op, F[locx].Id(), Op.Q());
 	}
 	
+	Mout.set_locality(locx);
+	Mout.set_localOperator(OpExt.plain<double>());
+	
 	(FERMIONIC)? Mout.setLocal(locx, (factor * OpExt).plain<double>(), SignExt.plain<double>())
-		: Mout.setLocal(locx, (factor * OpExt).plain<double>());
+	           : Mout.setLocal(locx, (factor * OpExt).plain<double>());
 	
 	return Mout;
 }

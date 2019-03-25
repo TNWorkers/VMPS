@@ -1,0 +1,27 @@
+	//--------------<A*init>---------------
+	vector<SiteOperator<MODEL::Symmetry,double>> localOperators(L);
+	vector<double> stag_sum(L);
+	vector<double> sum(L);
+	
+	for (int l=0; l<L; ++l)
+	{
+		localOperators[l] = A[l].localOperator();
+		stag_sum[l]       = pow(-1.,l)/sqrt(L);
+		sum[l]            = 1./sqrt(L);
+	}
+	
+	Mpo<MODEL::Symmetry,double> A_0(L, A[0].Qtarget(), "A_0");
+	A_0.setLocBasis(H.locBasis());
+	A_0.setLocalSum(localOperators, sum);
+	
+	Mpo<MODEL::Symmetry,double> A_pi(L, A[0].Qtarget(), "A_pi");
+	A_pi.setLocBasis(H.locBasis());
+	A_pi.setLocalSum(localOperators, stag_sum);
+	
+	vector<MODEL::StateXd> initA(2);
+	
+	OxV_exact(A_0 , init->state, initA[0], 1e-7, DMRG::VERBOSITY::SILENT);
+	OxV_exact(A_pi, init->state, initA[1], 1e-7, DMRG::VERBOSITY::SILENT);
+	
+	delete init;
+	//--------------</A*init>---------------

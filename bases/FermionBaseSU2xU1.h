@@ -8,9 +8,6 @@
 #include "tensors/SiteOperatorQ.h"
 //include "tensors/Qbasis.h"
 
-
-
-
 //Note: Don't put a name in this documentation with \class .. because doxygen gets confused with template symbols
 /** 
  * \ingroup Bases
@@ -165,7 +162,7 @@ public:
 	 * \param J : \f$J\f$
 	 */
 	Operator HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Eorb, const ArrayXXd &t, const ArrayXXd &V,
-								 const ArrayXXd &Vz, const ArrayXXd &Vxy, const ArrayXXd &J) const;
+	                             const ArrayXXd &Vz, const ArrayXXd &Vxy, const ArrayXXd &J) const;
 	
 	/**Identity*/
 	Operator Id (std::size_t orbital=0) const;

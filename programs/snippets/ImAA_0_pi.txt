@@ -1,0 +1,20 @@
+	//--------------<KernelPolynomialSolver>---------------
+	if (CHEB)
+	{
+		cout << "KPS.size()=" << KPS.size() << endl;
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			{
+				auto H_scaled = H;
+				KPS[0].calc_ImAA(H_scaled, initA[0], Mmax, false);
+			}
+			#pragma omp section
+			{
+				auto H_scaled = H;
+				KPS[1].calc_ImAA(H_scaled, initA[1], Mmax, false);
+			}
+		}
+		lout << "Chebyshev iteration done!" << endl;
+	}
+	//--------------</KernelPolynomialSolver>---------------

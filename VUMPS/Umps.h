@@ -2381,13 +2381,13 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 	Stopwatch<> LReigenTimer;
 	
 	// T_L^R, right eigenvector
-	Reigen_LR = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::L], A[GAUGE::R], outBasis(N_sites-1), outBasis(N_sites-1), qloc).state;
+	Reigen_LR = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::L], A[GAUGE::R], outBasis(N_sites-1), outBasis(N_sites-1), qloc, 100ul, 1e-7).state;
 	// T_L^R, left eigenvector
-	Leigen_LR = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::L], A[GAUGE::R], inBasis(0), inBasis(0), qloc).state;
+	Leigen_LR = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::L], A[GAUGE::R], inBasis(0), inBasis(0), qloc, 100ul, 1e-7).state;
 	// T_R^L, right eigenvector
-	Reigen_RL = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::R], A[GAUGE::L], outBasis(N_sites-1), outBasis(N_sites-1), qloc).state;
+	Reigen_RL = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::R], A[GAUGE::L], outBasis(N_sites-1), outBasis(N_sites-1), qloc, 100ul, 1e-7).state;
 	// T_R^L, left eigenvector
-	Leigen_RL = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::R], A[GAUGE::L], inBasis(0), inBasis(0), qloc).state;
+	Leigen_RL = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::R], A[GAUGE::L], inBasis(0), inBasis(0), qloc, 100ul, 1e-7).state;
 	
 	t_LReigen += LReigenTimer.time();
 	
@@ -2470,7 +2470,7 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 		Gimli.set_dimK(min(100ul,dim(bmalfa)));
 		assert(dim(bmalfa) > 0);
 		MpoTransferVector<Symmetry,complex<Scalar> > Fmalfa;
-		Gimli.solve_linear(Tm, bmalfa, Fmalfa, 1e-14, true);
+		Gimli.solve_linear(Tm, bmalfa, Fmalfa, 1e-7, true);
 		if (VERB >= DMRG::VERBOSITY::STEPWISE)
 		{
 			lout << ik << ", k/π=" << kval/M_PI << ", term exp(-i*Lcell*k), " << Gimli.info() << "; dim(bmalfa)=" << dim(bmalfa) << endl;
@@ -2481,7 +2481,7 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 		Gimli.set_dimK(min(100ul,dim(bpalfa)));
 		assert(dim(bpalfa) > 0);
 		MpoTransferVector<Symmetry,complex<Scalar> > Fpalfa;
-		Gimli.solve_linear(Tp, bpalfa, Fpalfa, 1e-14, true);
+		Gimli.solve_linear(Tp, bpalfa, Fpalfa, 1e-7, true);
 		if (VERB >= DMRG::VERBOSITY::STEPWISE)
 		{
 			lout << ik << ", k/π=" << kval/M_PI << ", term exp(+i*Lcell*k), " << Gimli.info() << "; dim(bpalfa)=" << dim(bpalfa) << endl;

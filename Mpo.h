@@ -226,6 +226,9 @@ public:
 	inline size_t auxcols (size_t loc) const {return Daux(loc,1);}
 	
 	inline int locality() const {return LocalSite;}
+	inline void set_locality (size_t LocalSite_input) {LocalSite = LocalSite_input;}
+	inline OperatorType localOperator() const {return LocalOp;}
+	inline void set_localOperator (OperatorType LocalOp_input) {LocalOp = LocalOp_input;}
 	
 	/**Returns the total quantum number of the Mpo.*/
 	inline qarray<Nq> Qtarget() const {return Qtot;};
@@ -1274,6 +1277,7 @@ setLocalSum (const OperatorType &Op, Scalar (*f)(int), bool OPEN_BC)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		assert(Op.data.rows() == qloc[l].size() and Op.data.cols() == qloc[l].size());
+		
 		if (Op.Q == Symmetry::qvacuum())
 		{
 			qOp[l].resize(1);
