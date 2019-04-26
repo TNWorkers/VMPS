@@ -18,10 +18,19 @@
 	A_pi.setLocBasis(H.locBasis());
 	A_pi.setLocalSum(localOperators, stag_sum);
 	
-	vector<MODEL::StateXd> initA(2);
+//	vector<MODEL::StateXd> initA(2);
 	
-	OxV_exact(A_0 , init->state, initA[0], 1e-7, DMRG::VERBOSITY::SILENT);
-	OxV_exact(A_pi, init->state, initA[1], 1e-7, DMRG::VERBOSITY::SILENT);
+	MpsCompressor<MODEL::Symmetry,double> Compadre(DMRG::VERBOSITY::HALFSWEEPWISE);
+	MODEL::StateXd A_0_tmp, A_pi_tmp;
 	
-	delete init;
+	Compadre.lincomboCompress(initA, sum, A_0_tmp, 100, 1e-7, 120);
+	initA[0] = A_0_tmp;
+	
+	Compadre.lincomboCompress(initA, stag_sum, A_pi_tmp, 100, 1e-7, 120);
+	initA[1] = A_pi_tmp;
+	
+//	OxV_exact(A_0 , init->state, initA[0], 1e-7, DMRG::VERBOSITY::HALFSWEEPWISE);
+//	OxV_exact(A_pi, init->state, initA[1], 1e-7, DMRG::VERBOSITY::SILENT);
+	
+//	delete init;
 	//--------------</A*init>---------------

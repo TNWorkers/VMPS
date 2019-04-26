@@ -21,7 +21,7 @@ calc_LReigen (VMPS::DIRECTION::OPTION DIR,
               const Qbasis<Symmetry> &basisKet, 
               const vector<vector<qarray<Symmetry::Nq> > > &qloc,
               size_t dimK = 100ul,
-              double tol_input = 1e-14)
+              double tol_input = 1e-12)
 {
 	TransferMatrix<Symmetry,Scalar> T(DIR, Abra, Aket, qloc);
 	
@@ -45,15 +45,15 @@ calc_LReigen (VMPS::DIRECTION::OPTION DIR,
 	complex<double> lambda;
 	
 	Arnie.calc_dominant(T,LRtmp,lambda,tol_input);
-//	lout << Arnie.info() << endl;
 	
 	if (abs(lambda.imag()) > tol_input)
 	{
+		lout << Arnie.info() << endl;
 		lout << termcolor::red << "Non-zero imaginary part of dominant eigenvalue λ=" << lambda << ", |λ|=" << abs(lambda) << termcolor::reset << endl;
 	}
 	
 	Eigenstate<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > > out;
-	out.energy = lambda.real();
+	out.energy = abs(lambda);
 	out.state  = LRtmp.data;
 	
 	return out;

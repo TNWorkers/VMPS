@@ -290,7 +290,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		
 		if (B.dim == 1)
 		{
-			double res = B.block[0][0][0].trace();
+			return B.block[0][0][0].trace();
 			// if (Qtarget == Symmetry::qvacuum())
 			// {
 			// 	#ifdef PRINT_SU2_FACTORS
@@ -299,7 +299,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			// 	#endif
 			// 	res *= sqrt(Symmetry::coeff_dot(O1.Qtarget())*Symmetry::coeff_dot(O2.Qtarget())); // scalar product coeff for SU(2)
 			// }
-			return res;
+//			return res;
 		}
 		else
 		{
@@ -349,28 +349,32 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
  * \param VERBOSITY : verbosity level
  */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
-          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
+void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool VERBOSE = true)
 {
 	Stopwatch<> Chronos;
 	
-	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
+	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre((VERBOSE)?
+	                                                  DMRG::VERBOSITY::HALFSWEEPWISE
+	                                                  :DMRG::VERBOSITY::SILENT);
 	Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax(), 1e-4);
 	
-	if (VERBOSITY != DMRG::VERBOSITY::SILENT)
+////	double tol_compr = (Vin.calc_Nqavg() <= 4.)? 1.:1e-7;
+//	double tol_compr = 1e-7;
+//	OxV_exact(H, Vin, Vout, tol_compr, (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT);
+	
+	if (VERBOSE)
 	{
-		lout << Compadre.info() << endl;
+//		lout << Compadre.info() << endl;
 		lout << Chronos.info("HxV") << endl;
 		lout << "Vout: " << Vout.info() << endl << endl;
 	}
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-void HxV (const Mpo<Symmetry,MpoScalar> &H, Mps<Symmetry,Scalar> &Vinout, 
-          DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::HALFSWEEPWISE)
+void HxV (const Mpo<Symmetry,MpoScalar> &H, Mps<Symmetry,Scalar> &Vinout, bool VERBOSE = true)
 {
 	Mps<Symmetry,Scalar> Vtmp;
-	HxV(H,Vinout,Vtmp,VERBOSITY);
+	HxV(H,Vinout,Vtmp,VERBOSE);
 	Vinout = Vtmp;
 }
 
@@ -518,8 +522,9 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 {
 	size_t L = Vin.length();
 	auto Qt = Symmetry::reduceSilent(Vin.Qtarget(),O.Qtarget());
-	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qt[0], O.volume(), Vin.calc_Nqmax());
+	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qt[0], O.volume(), 100ul);
 	Vout.set_Qmultitarget(Qt);
+	Vout.min_Nsv = Vin.min_Nsv;
 	
 	for (size_t l=0; l<L; ++l)
 	{
@@ -540,7 +545,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 		lout << "input:\t" << Vin.info() << endl;
 		lout << "exact:\t" << Vout.info() << endl;
 	}
-
+	
 	if (tol_compr < 1.)
 	{
 		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
@@ -559,11 +564,16 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 			lout << "\t" << Compadre.info() << endl;
 		}
 	}
-	else
-	{
-		Vout.sweep(0,DMRG::BROOM::QR);
-	}
-
+//	else
+//	{
+//		Vout.sweep(0,DMRG::BROOM::QR);
+//		
+//		if (VERBOSITY > DMRG::VERBOSITY::SILENT)
+//		{
+//			lout << "swept:\t" << Vout.info() << endl;
+//		}
+//	}
+	
 	if (VERBOSITY > DMRG::VERBOSITY::SILENT) lout << endl;
 	
 	if (Vout.calc_Nqavg() <= 1.5 and Vout.min_Nsv == 0)

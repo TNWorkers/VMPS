@@ -61,6 +61,8 @@ public:
 	/**\describe_memory*/
 	double memory (MEMUNIT memunit=GB) const;
 	
+	inline size_t iterations() {return N_iterations;};
+	
 	/**
 	 * Setup a logfile of the iterations.
 	 * \param N_log_input : save the log every \p N_log_input half-sweeps
@@ -1012,11 +1014,17 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	{
 		calc_errors(H, Vout);
 		t_err = ErrorTimer.time();
-		lout << ErrorTimer.info("error calculation") << endl;
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			lout << ErrorTimer.info("error calculation") << endl;
+		}
 	}
 	else
 	{
-		lout << "State error seems converged and will be not recalculated until the next expansion!" << endl;
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			lout << "State error seems converged and will be not recalculated until the next expansion!" << endl;
+		}
 	}
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)

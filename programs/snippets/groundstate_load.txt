@@ -53,7 +53,7 @@
 				{
 					Stopwatch<> Chronos;
 					Eigenstate<MODEL::StateXd> edge;
-					MODEL::Solver DMRG(VERB2);
+					MODEL::Solver DMRG((e==0)?VERB2:VERB3);
 					
 					DMRG.GlobParam = H.get_DmrgGlobParam(SweepParams);
 					DMRG.DynParam  = H.get_DmrgDynParam (SweepParams);

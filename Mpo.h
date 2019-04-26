@@ -134,6 +134,8 @@ public:
 	 */
 	void setLocal (size_t loc, const OperatorType& Op, const OperatorType &SignOp, bool OPEN_BC=true);
 	
+	void setLocal (size_t loc, const OperatorType& Op, const vector<OperatorType> &SignOp, bool OPEN_BC=true);
+	
 	/**
 	 * Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$
 	 * \param loc : list of locations
@@ -149,7 +151,8 @@ public:
 	 * \param SignOp : elementary operator for the sign chain.
 	 * \param OPEN_BC : if \p true, open boundary conditions are applied
 	 */
-	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const OperatorType& SignOp, bool OPEN_BC=true);
+	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const OperatorType &SignOp, bool OPEN_BC=true);
+	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const vector<OperatorType> &SignOp, bool OPEN_BC=true);
 	
 	/**
 	 * Set to a sum of of local operators \f$\sum_i f(i) O_i\f$
@@ -1174,6 +1177,15 @@ setLocal (size_t loc, const OperatorType &Op, const OperatorType &SignOp, bool O
 }
 
 template<typename Symmetry, typename Scalar>
+void Mpo<Symmetry,Scalar>::
+setLocal (size_t loc, const OperatorType &Op, const vector<OperatorType> &SignOp, bool OPEN_BC)
+{
+	auto Gvec = make_localGvec(loc,Op);
+	for (size_t l=0; l<loc; ++l) {Gvec[l](0,0) = SignOp[l];}
+	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
+}
+
+template<typename Symmetry, typename Scalar>
 vector<SuperMatrix<Symmetry,Scalar> > Mpo<Symmetry,Scalar>::
 make_localGvec (size_t loc, const OperatorType &Op)
 {
@@ -1203,6 +1215,20 @@ void Mpo<Symmetry,Scalar>::
 setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, bool OPEN_BC)
 {
 	auto Gvec = make_localGvec(loc,Op);
+	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
+}
+
+template<typename Symmetry, typename Scalar>
+void Mpo<Symmetry,Scalar>::
+setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const vector<OperatorType> &SignOp, bool OPEN_BC)
+{
+	auto Gvec = make_localGvec(loc,Op);
+	
+	auto [min,max] = minmax_element(loc.begin(),loc.end());
+	size_t locMin = loc[min-loc.begin()];
+	size_t locMax = loc[max-loc.begin()];
+	for (size_t l=locMin+1; l<locMax; ++l) {Gvec[l](0,0) = SignOp[l];}
+	
 	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
 }
 

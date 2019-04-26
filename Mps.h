@@ -267,6 +267,8 @@ public:
 	 */
 	size_t calc_Nqmax() const;
 	
+	size_t Nqout (size_t l) {return outbase[l].Nq();}
+	
 	/**
 	 * Determines the average amount of subspaces per site.
 	 */
@@ -1207,7 +1209,7 @@ setRandom()
 	for (size_t a1=0; a1<A[l][s].block[q].rows(); ++a1)
 	for (size_t a2=0; a2<A[l][s].block[q].cols(); ++a2)
 	{
-		A[l][s].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
+		A[l][s].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.,true);
 	}
 	
 	this->pivot = -1;
@@ -1222,7 +1224,7 @@ setRandom (size_t loc)
 	for (size_t a1=0; a1<A[loc][s].block[q].rows(); ++a1)
 	for (size_t a2=0; a2<A[loc][s].block[q].cols(); ++a2)
 	{
-		A[loc][s].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
+		A[loc][s].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.,true);
 	}
 }
 

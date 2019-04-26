@@ -43,26 +43,34 @@
 				int i0 = i0_list[ii0];
 				string momfile = make_string(wd,"moments/",outfile,"_i0=",i0,"_dE=",str(dE),".dat");
 				string datfileJ = make_string(wd,outfile,"_i0=",i0,"_dE=",make_string(dE[i]),".dat");
-				string datfileL = make_string(wd,"Lorentz/",outfile,"_i0=",i0,"_dE=",make_string(dE[i]),".dat");
+//				string datfileL = make_string(wd,"Lorentz/",outfile,"_i0=",i0,"_dE=",make_string(dE[i]),".dat");
 				
 				if (SHIFT)
 				{
 					if (spec == "AES" or spec == "PES")
 					{
 						KPS[ii0].add_savepoint(Msave[i], momfile, datfileJ, Eminmax.row(1).array(), true, JACKSON); // REVERSE = true
-						KPS[ii0].add_savepoint(Msave[i], momfile, datfileL, Eminmax.row(1).array(), true, LORENTZ); // REVERSE = true
+//						KPS[ii0].add_savepoint(Msave[i], momfile, datfileL, Eminmax.row(1).array(), true, LORENTZ); // REVERSE = true
 					}
 					else
 					{
 						KPS[ii0].add_savepoint(Msave[i], momfile, datfileJ, Eminmax.row(0).array(), false, JACKSON);
-						KPS[ii0].add_savepoint(Msave[i], momfile, datfileL, Eminmax.row(0).array(), false, LORENTZ);
+//						KPS[ii0].add_savepoint(Msave[i], momfile, datfileL, Eminmax.row(0).array(), false, LORENTZ);
 					}
 				}
 				else
 				{
 					ArrayXd Zero(1); Zero << 0;
-					KPS[ii0].add_savepoint(Msave[i], momfile, datfileJ, Zero, false, JACKSON);
-					KPS[ii0].add_savepoint(Msave[i], momfile, datfileL, Zero, false, LORENTZ);
+					if (spec == "AES" or spec == "PES")
+					{
+						KPS[ii0].add_savepoint(Msave[i], momfile, datfileJ, Zero, true, JACKSON);
+//						KPS[ii0].add_savepoint(Msave[i], momfile, datfileL, Zero, true, LORENTZ);
+					}
+					else
+					{
+						KPS[ii0].add_savepoint(Msave[i], momfile, datfileJ, Zero, false, JACKSON);
+//						KPS[ii0].add_savepoint(Msave[i], momfile, datfileL, Zero, false, LORENTZ);
+					}
 				}
 			}
 		}

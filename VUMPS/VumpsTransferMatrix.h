@@ -50,7 +50,7 @@ struct TransferVector
 	
 	TransferVector(){};
 	
-	TransferVector(const Biped<Symmetry,Matrix<Scalar_,Dynamic,Dynamic> > &data_input)
+	TransferVector (const Biped<Symmetry,Matrix<Scalar_,Dynamic,Dynamic> > &data_input)
 	{
 		data = data_input;
 	};
