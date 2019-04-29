@@ -68,6 +68,8 @@ public:
 	Mpo<Symmetry> cdag (size_t locx, size_t locy=0, double factor=sqrt(2.));
 	Mpo<Symmetry> n (size_t locx, size_t locy=0);
 	Mpo<Symmetry> d (size_t locx, size_t locy=0);
+	Mpo<Symmetry> nh (size_t locx, size_t locy=0);
+	Mpo<Symmetry> ns (size_t locx, size_t locy=0);
 	///@}
 	
 	///@{
@@ -84,7 +86,18 @@ public:
 	Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	Mpo<Symmetry> nn    (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	Mpo<Symmetry> SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> TzTz  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> TpTm  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> TmTp  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> TdagT (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	///@}
+
+	Mpo<Symmetry,complex<double> > S_ky    (vector<complex<double> > phases) const;
+	Mpo<Symmetry,complex<double> > Sdag_ky (vector<complex<double> > phases, double factor=sqrt(3.)) const;
+	Mpo<Symmetry,complex<double> > T_ky    (vector<complex<double> > phases) const;
+	Mpo<Symmetry,complex<double> > Tdag_ky (vector<complex<double> > phases, double factor=1.) const;
+	Mpo<Symmetry,complex<double> > c_ky    (vector<complex<double> > phases, double factor=sqrt(2.)) const;
+	Mpo<Symmetry,complex<double> > cdag_ky (vector<complex<double> > phases, double factor=sqrt(2.)) const;
 	
 	static const map<string,any> defaults;
 	static const map<string,any> sweep_defaults;
@@ -96,6 +109,9 @@ protected:
 	            size_t locx, size_t locy, 
 	            const OperatorType &Op, 
 	            double factor, bool FERMIONIC, bool HERMITIAN) const;
+
+	Mpo<Symmetry,complex<double> >
+	make_FourierYSum (string name, const vector<OperatorType> &Ops, double factor, bool HERMITIAN, const vector<complex<double> > &phases) const;
 	
 	vector<FermionBase<Symmetry> > F;
 };
@@ -452,6 +468,18 @@ n (size_t locx, size_t locy)
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+nh (size_t locx, size_t locy)
+{
+	return make_local("nh", locx,locy, F[locx].n(locy), 1., false, true);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+ns (size_t locx, size_t locy)
+{
+	return make_local("ns", locx,locy, F[locx].n(locy), 1., false, true);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 d (size_t locx, size_t locy)
 {
 	return make_local("d", locx,locy, F[locx].d(locy), 1., false, true);
@@ -565,6 +593,81 @@ nn (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+TzTz (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	assert(locx1<this->N_sites and locx2<this->N_sites);
+	stringstream ss;
+	ss << "Tz(" << locx1 << "," << locy1 << ")" << "Tz(" << locx2 << "," << locy2 << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+
+	auto Op1 = F[locx1].Tz(locy1);
+	auto Op2 = F[locx2].Tz(locy2);
+	
+	if (locx1 == locx2)
+	{
+		auto product = OperatorType::prod(Op1, Op2, Symmetry::qvacuum());
+		Mout.setLocal(locx1, product.plain<double>());
+	}
+	else
+	{
+		Mout.setLocal({locx1, locx2}, {F[locx1].Tz(locy1).plain<double>(), F[locx2].Tz(locy2).plain<double>()});
+	}
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	assert(locx1<this->N_sites and locx2<this->N_sites);
+	stringstream ss;
+	ss << "Tp(" << locx1 << "," << locy1 << ")" << "Tm(" << locx2 << "," << locy2 << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+
+	auto Op1 = F[locx1].Tp(locy1);
+	auto Op2 = F[locx2].Tm(locy2);
+	
+	if (locx1 == locx2)
+	{
+		auto product = OperatorType::prod(Op1, Op2, Symmetry::qvacuum());
+		Mout.setLocal(locx1, product.plain<double>());
+	}
+	else
+	{
+		Mout.setLocal({locx1, locx2}, {F[locx1].Tp(locy1).plain<double>(), F[locx2].Tm(locy2).plain<double>()});
+	}
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	assert(locx1<this->N_sites and locx2<this->N_sites);
+	stringstream ss;
+	ss << "Tm(" << locx1 << "," << locy1 << ")" << "Tp(" << locx2 << "," << locy2 << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+
+	auto Op1 = F[locx1].Tm(locy1);
+	auto Op2 = F[locx2].Tp(locy2);
+	
+	if (locx1 == locx2)
+	{
+		auto product = OperatorType::prod(Op1, Op2, Symmetry::qvacuum());
+		Mout.setLocal(locx1, product.plain<double>());
+	}
+	else
+	{
+		Mout.setLocal({locx1, locx2}, {F[locx1].Tm(locy1).plain<double>(), F[locx2].Tp(locy2).plain<double>()});
+	}
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
@@ -575,7 +678,7 @@ SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
 	auto Op1 = F[locx1].Sdag(locy1);
-	auto Op2 = F[locx2].Sdag(locy2);
+	auto Op2 = F[locx2].S(locy2);
 	
 	if (locx1 == locx2)
 	{
@@ -588,6 +691,132 @@ SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	}
 	
 	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+TdagT (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	assert(locx1<this->N_sites and locx2<this->N_sites);
+	stringstream ss;
+	ss << "T†(" << locx1 << "," << locy1 << ")" << "T(" << locx2 << "," << locy2 << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	auto Op1 = F[locx1].Sdag(locy1);
+	auto Op2 = F[locx2].S(locy2);
+	
+	if (locx1 == locx2)
+	{
+		auto product = std::sqrt(3.) * OperatorType::prod(Op1, Op2, Symmetry::qvacuum());
+		Mout.setLocal(locx1, product.plain<double>());
+	}
+	else
+	{
+		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.) * Op1).plain<double>(), Op2.plain<double>()});
+	}
+	
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+make_FourierYSum (string name, const vector<OperatorType> &Ops, 
+                  double factor, bool HERMITIAN, const vector<complex<double> > &phases) const
+{
+	stringstream ss;
+	ss << name << "_ky(";
+	for (int l=0; l<phases.size(); ++l)
+	{
+		ss << phases[l];
+		if (l!=phases.size()-1) {ss << ",";}
+		else                    {ss << ")";}
+	}
+	
+	// all Ops[l].Q() must match
+	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	vector<complex<double> > phases_x_factor = phases;
+	for (int l=0; l<phases.size(); ++l)
+	{
+		phases_x_factor[l] = phases[l] * factor;
+	}
+	
+	vector<SiteOperator<Symmetry,complex<double> > > OpsPlain(Ops.size());
+	for (int l=0; l<OpsPlain.size(); ++l)
+	{
+		OpsPlain[l] = Ops[l].plain<double>().cast<complex<double> >();
+	}
+	
+	Mout.setLocalSum(OpsPlain, phases_x_factor);
+	
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+S_ky (vector<complex<double> > phases) const
+{
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = F[l].S(0);
+	}
+	return make_FourierYSum("S", Ops, 1., false, phases);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+Sdag_ky (vector<complex<double> > phases, double factor) const
+{
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = F[l].Sdag(0);
+	}
+	return make_FourierYSum("S†", Ops, 1., false, phases);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+T_ky (vector<complex<double> > phases) const
+{
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = F[l].S(0);
+	}
+	return make_FourierYSum("T", Ops, 1., false, phases);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+Tdag_ky (vector<complex<double> > phases, double factor) const
+{
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = F[l].S(0);
+	}
+	return make_FourierYSum("T†", Ops, 1., false, phases);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+c_ky (vector<complex<double> > phases, double factor) const
+{
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = F[l].S(0);
+	}
+	return make_FourierYSum("c", Ops, 1., false, phases);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+cdag_ky (vector<complex<double> > phases, double factor) const
+{
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = F[l].Sdag(0);
+	}
+	return make_FourierYSum("c†", Ops, 1., false, phases);
 }
 
 //Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::

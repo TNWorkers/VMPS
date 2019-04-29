@@ -1698,7 +1698,7 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 		if (!Symmetry::validate(qCheck_)) { continue; }
 		// if(W[s1][s2][k].size() == 0) { continue; } //Checks whether QNs s1, s2 and k fit together.
 		for (size_t q=0; q<Ain[s2].size(); q++)
-		// for (const auto &[qWl,qWl_dim,qWl_plain] : qauxWl) // cpp is to stupid to call cbegin() and cend() here... 
+		// for (const auto &[qWl,qWl_dim,qWl_plain] : qauxWl) // cpp is too stupid to call cbegin() and cend() here... 
 		for (auto it=qauxWl.cbegin(); it != qauxWl.cend(); it++)
 		{
 			auto [qWl, qWl_dim, qWl_plain] = *it;

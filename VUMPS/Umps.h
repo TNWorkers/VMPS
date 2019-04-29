@@ -18,6 +18,10 @@
 #include "VumpsContractions.h"
 #include "Blocker.h"
 #include "VumpsTransferMatrixSF.h"
+
+#ifdef USE_HDF5_STORAGE
+	#include <HDF5Interface.h>
+#endif
 //include "PolychromaticConsole.h" // from TOOLS
 //include "tensors/Biped.h"
 //include "LanczosSolver.h" // from ALGS

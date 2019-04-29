@@ -114,10 +114,10 @@ VectorXd d_ED, h_ED;
 MatrixXd densityMatrix_U1A, densityMatrix_U1B;
 VectorXd d_U1;
 
-MatrixXd densityMatrix_SU2A, densityMatrix_SU2B;
+MatrixXd densityMatrix_SU2A, densityMatrix_SU2B, spin_SU2, isospin_SU2;
 VectorXd d_SU2;
 
-MatrixXd densityMatrix_SU2xSU2A, densityMatrix_SU2xSU2B;
+MatrixXd densityMatrix_SU2xSU2A, densityMatrix_SU2xSU2B, spin_SU2xSU2, isospin_SU2xSU2;
 
 VectorXd nh_SU2xSU2, ns_SU2xSU2;
 
@@ -196,8 +196,12 @@ int main (int argc, char* argv[])
 		densityMatrix_U1B.resize(L,L); densityMatrix_U1B.setZero();
 		densityMatrix_SU2A.resize(L,L); densityMatrix_SU2A.setZero();
 		densityMatrix_SU2B.resize(L,L); densityMatrix_SU2B.setZero();
+		spin_SU2.resize(L,L); spin_SU2.setZero();
+		isospin_SU2.resize(L,L); isospin_SU2.setZero();
 		densityMatrix_SU2xSU2A.resize(L,L); densityMatrix_SU2xSU2A.setZero();
 		densityMatrix_SU2xSU2B.resize(L,L); densityMatrix_SU2xSU2B.setZero();
+		spin_SU2xSU2.resize(L,L); spin_SU2xSU2.setZero();
+		isospin_SU2xSU2.resize(L,L); isospin_SU2xSU2.setZero();
 	}
 	
 	//--------ED-----------
@@ -424,7 +428,18 @@ int main (int argc, char* argv[])
 			{
 				densityMatrix_SU2B(i,j) = avg(g_SU2.state, H_SU2.cdag(i), H_SU2.c(j), g_SU2.state);
 			}
-			
+
+			for (size_t i=0; i<L; ++i) 
+			for (size_t j=0; j<L; ++j)
+			{
+				spin_SU2(i,j) = avg(g_SU2.state, H_SU2.SdagS(i,j), g_SU2.state);
+			}
+			for (size_t i=0; i<L; ++i) 
+			for (size_t j=0; j<L; ++j)
+			{
+				isospin_SU2(i,j) = avg(g_SU2.state, H_SU2.TzTz(i,j), g_SU2.state) + 0.5*(avg(g_SU2.state, H_SU2.TpTm(i,j), g_SU2.state) + avg(g_SU2.state, H_SU2.TmTp(i,j), g_SU2.state));
+			}
+
 //			lout << "P SU(2): " << Ptot(densityMatrix_SU2,L) << "\t" << Ptot(densityMatrix_SU2B,L) << endl;
 			
 			for (size_t i=0; i<L; ++i) 
@@ -463,7 +478,7 @@ int main (int argc, char* argv[])
 		DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {S,Vol-N+1}, LANCZOS::EDGE::GROUND); 
 		//Todo: check Pseudospin quantum number... (1 <==> half filling)
 		g_SU2xSU2.state.graph("SU2xSU2");
-		
+		cout << "vol=" << Vol << ", N=" << N << endl;
 		Emin_SU2xSU2 = g_SU2xSU2.energy-0.5*U*(Vol-N);
 		emin_SU2xSU2 = Emin_SU2xSU2/Vol;
 		t_SU2xSU2 = Watch_SU2xSU2.time();
@@ -495,7 +510,17 @@ int main (int argc, char* argv[])
 				//factor 1/2 because we have computed cdagc+cdagc
 				densityMatrix_SU2xSU2B(i,j) = 0.5*avg(g_SU2xSU2.state, H_SU2xSU2.cdag(i), H_SU2xSU2.c(j), g_SU2xSU2.state);
 			}
-			
+
+			for (size_t i=0; i<L; ++i) 
+			for (size_t j=0; j<L; ++j)
+			{
+				spin_SU2xSU2(i,j) = avg(g_SU2xSU2.state, H_SU2xSU2.SdagS(i,j), g_SU2xSU2.state);
+			}
+			for (size_t i=0; i<L; ++i) 
+			for (size_t j=0; j<L; ++j)
+			{
+				isospin_SU2xSU2(i,j) = avg(g_SU2xSU2.state, H_SU2xSU2.TdagT(i,j), g_SU2xSU2.state);
+			}
 		//	lout << "P SU(2): " << Ptot(0.5*densityMatrix_SU2xSU2,L) << "\t" << Ptot(0.5*densityMatrix_SU2xSU2B,L) << endl;
 			
 			for (size_t i=0; i<L; ++i) 
@@ -512,23 +537,25 @@ int main (int argc, char* argv[])
 	{
 		lout << endl << termcolor::blue << "--------Observables---------" << termcolor::reset << endl << endl;
 		
-		cout << "density matrix ED: " << endl;
-		cout << densityMatrix_ED << endl << endl;
+		// cout << "density matrix ED: " << endl;
+		// cout << densityMatrix_ED << endl << endl;
 		
-		cout << "density matrix U(1)⊗U(1) A: " << endl;
-		cout << densityMatrix_U1A << endl << endl;
-		cout << "density matrix U(1)⊗U(1) B: " << endl;
-		cout << densityMatrix_U1B << endl << endl;
+		// cout << "density matrix U(1)⊗U(1) A: " << endl;
+		// cout << densityMatrix_U1A << endl << endl;
+		// cout << "density matrix U(1)⊗U(1) B: " << endl;
+		// cout << densityMatrix_U1B << endl << endl;
 		
-		cout << "density matrix SU(2)⊗U(1) A: " << endl;
-		cout << densityMatrix_SU2A << endl << endl;
-		cout << "density matrix SU(2)⊗U(1) B: " << endl;
-		cout << densityMatrix_SU2B << endl << endl;
+		cout << "spin matrix SU(2)⊗U(1) A: " << endl;
+		cout << spin_SU2 << endl << endl;
+		cout << isospin_SU2 << endl << endl;
+		// cout << "density matrix SU(2)⊗U(1) B: " << endl;
+		// cout << densityMatrix_SU2B << endl << endl;
 		
-		cout << "density matrix SU(2)⊗SU(2) A: " << endl;
-		cout << densityMatrix_SU2xSU2A << endl << endl;
-		cout << "density matrix SU(2)⊗SU(2) B: " << endl;
-		cout << densityMatrix_SU2xSU2B << endl << endl;
+		cout << "spin matrix SU(2)⊗SU(2) A: " << endl;
+		cout << spin_SU2xSU2 << endl << endl;
+		cout << isospin_SU2xSU2 << endl << endl;
+		// cout << "density matrix SU(2)⊗SU(2) B: " << endl;
+		// cout << densityMatrix_SU2xSU2B << endl << endl;
 	}
 	
 	//--------output---------

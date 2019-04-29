@@ -21,7 +21,7 @@ namespace VMPS
  * 
  * \f[
  * H = -t \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
- *     +U \sum_i \left[\left(n_{i\uparrow}-\frac{1}{2}\right)\left(n_{i\downarrow}-\frac{1}{2}\right) -\frac{1}{4}\right]
+ *     +U \sum_i \left[\left(n_{i\uparrow}-\frac{1}{2}\right)\left(n_{i\downarrow}-\frac{1}{2}\right) +\frac{1}{4}\right]
  *     +V \sum_{<ij>} \mathbf{T}_i \mathbf{T}_j
  *     +J \sum_{<ij>} \mathbf{S}_i \mathbf{S}_j
  * \f]
