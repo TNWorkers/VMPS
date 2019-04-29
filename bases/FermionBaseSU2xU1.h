@@ -245,7 +245,7 @@ FermionBase (std::size_t L_input, bool U_IS_INFINITE)
 	
 	c_1s("empty", "single")  = std::sqrt(2.);
 	c_1s("single", "double") = 1.;
-		
+	
 	cdag_1s = c_1s.adjoint();
 	n_1s = std::sqrt(2.) * Operator::prod(cdag_1s,c_1s,{1,0});
 	d_1s( "double", "double" ) = 1.;

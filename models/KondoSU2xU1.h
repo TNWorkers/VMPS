@@ -705,12 +705,16 @@ make_local (KONDO_SUBSYSTEM SUBSYS,
 	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, Op.Q(), ss.str(), HERMITIAN);
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);}
 	
-	OperatorType OpExt, SignExt;
+	OperatorType OpExt;
+	vector<SiteOperator<Symmetry,MatrixType::Scalar> > SignExt(locx);
 	
 	if (SUBSYS == SUB)
 	{
 		OpExt   = OperatorType::outerprod(B[locx].Id(), Op, Op.Q());
-		SignExt = OperatorType::outerprod(B[locx].Id(), F[locx].sign(), Symmetry::qvacuum());
+		for (size_t l=0; l<locx; ++l)
+		{
+			SignExt[l] = OperatorType::outerprod(B[l].Id(), F[l].sign(), Symmetry::qvacuum()).plain<double>();
+		}
 	}
 	else if (SUBSYS == IMP)
 	{
@@ -721,7 +725,7 @@ make_local (KONDO_SUBSYSTEM SUBSYS,
 	Mout.set_locality(locx);
 	Mout.set_localOperator(OpExt.plain<double>());
 	
-	(FERMIONIC)? Mout.setLocal(locx, (factor * OpExt).plain<double>(), SignExt.plain<double>())
+	(FERMIONIC)? Mout.setLocal(locx, (factor * OpExt).plain<double>(), SignExt)
 	           : Mout.setLocal(locx, (factor * OpExt).plain<double>());
 	
 	return Mout;
@@ -743,7 +747,7 @@ make_corr (KONDO_SUBSYSTEM SUBSYS,
 	bool HERMITIAN = (BOTH_HERMITIAN and locx1==locx2 and locy1==locy2)? true:false;
 	
 	Mpo<Symmetry> Mout(N_sites, Qtot, ss.str(), HERMITIAN);
-	for(size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);}
+	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);}
 	
 	OperatorType Op1Ext;
 	OperatorType Op2Ext;
@@ -875,27 +879,30 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	ss << "c†(" << locx1 << "," << locy1 << ")" << "c(" << locx2 << "," << locy2 << ")";
 	
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
-	for(size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);}
+	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);}
 	
 	auto cdag = OperatorType::outerprod(B[locx1].Id(), F[locx1].cdag(locy1),{2,+1});
 	auto c    = OperatorType::outerprod(B[locx2].Id(), F[locx2].c(locy2),   {2,-1});
-	auto sign = OperatorType::outerprod(B[locx2].Id(), F[locx2].sign(),     {1, 0});
+	auto sign1 = OperatorType::outerprod(B[locx1].Id(), F[locx1].sign(),    {1, 0});
+	auto sign2 = OperatorType::outerprod(B[locx2].Id(), F[locx2].sign(),    {1, 0});
+	
+	vector<SiteOperator<Symmetry,MatrixType::Scalar> > signs;
+	for (size_t l=min(locx1,locx2)+1; l<max(locx1,locx2); l++)
+	{
+		signs.push_back(OperatorType::outerprod(B[l].Id(), F[l].sign(), {1, 0}).plain<double>());
+	}
 	
 	if (locx1 == locx2)
 	{
 		Mout.setLocal(locx1, sqrt(2.) * OperatorType::prod(cdag,c,Symmetry::qvacuum()).plain<double>());
 	}
-	else if(locx1<locx2)
+	else if (locx1<locx2)
 	{
-		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, sign, {2,+1}).plain<double>(), 
-		                               c.plain<double>()}, 
-			                           sign.plain<double>());
+		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, sign1, {2,+1}).plain<double>(), c.plain<double>()}, signs);
 	}
-	else if(locx1>locx2)
+	else if (locx1>locx2)
 	{
-		Mout.setLocal({locx2, locx1}, {sqrt(2.) * OperatorType::prod(c, sign, {2,-1}).plain<double>(), 
-		                               cdag.plain<double>()}, 
-			                           sign.plain<double>());
+		Mout.setLocal({locx2, locx1}, {sqrt(2.) * OperatorType::prod(c, sign2, {2,-1}).plain<double>(), cdag.plain<double>()}, signs);
 	}
 	return Mout;
 }

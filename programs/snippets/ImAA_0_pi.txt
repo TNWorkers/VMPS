@@ -1,7 +1,6 @@
 	//--------------<KernelPolynomialSolver>---------------
 	if (CHEB)
 	{
-		cout << "KPS.size()=" << KPS.size() << endl;
 		#pragma omp parallel sections
 		{
 			#pragma omp section

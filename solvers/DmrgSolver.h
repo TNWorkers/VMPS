@@ -669,7 +669,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		Mps<Symmetry,Scalar> HxPsi;
 		Mps<Symmetry,Scalar> Psi = Vout.state;
 		Psi.sweep(0,DMRG::BROOM::QR);
-		HxV(H, Psi, HxPsi, DMRG::VERBOSITY::SILENT);
+		HxV(H, Psi, HxPsi, false);
 		
 		Mps<Symmetry,Scalar> ExPsi = Vout.state;
 		ExPsi *= Vout.energy;

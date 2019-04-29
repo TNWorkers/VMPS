@@ -53,17 +53,27 @@ public:
 	Mpo<Symmetry> SsubSsub (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> SimpSimp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
+	Mpo<Symmetry> ns (size_t locx, size_t locy=0);
+	Mpo<Symmetry> nh (size_t locx, size_t locy=0);
+	Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	
 	static const std::map<string,std::any> defaults;
 	static const map<string,any> sweep_defaults;
 	
 protected:
 	
 	Mpo<Symmetry> make_corr (KONDO_SUBSYSTEM SUBSYS,
-	           string name1, string name2, 
-	           size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
-	           const OperatorType &Op1, const OperatorType &Op2, 
-	           qarray<Symmetry::Nq> Qtot, double factor,
-	           bool BOTH_HERMITIAN=false) const;
+	                         string name1, string name2, 
+	                         size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
+	                         const OperatorType &Op1, const OperatorType &Op2, 
+	                         qarray<Symmetry::Nq> Qtot, double factor,
+	                         bool BOTH_HERMITIAN=false) const;
+	
+	Mpo<Symmetry>  make_local (KONDO_SUBSYSTEM SUBSYS, 
+	                           string name, 
+	                           size_t locx, size_t locy, 
+	                           const OperatorType &Op, 
+	                           double factor, bool FERMIONIC, bool HERMITIAN) const;
 	
 	vector<FermionBase<Symmetry> > F;
 	vector<SpinBase   <Symmetry> > B;
@@ -214,6 +224,59 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > KondoSU2xSU2::
+make_local (KONDO_SUBSYSTEM SUBSYS, 
+            string name, 
+            size_t locx, size_t locy, 
+            const OperatorType &Op, 
+            double factor, bool FERMIONIC, bool HERMITIAN) const
+{
+	assert(locx<F.size() and locy<F[locx].dim());
+	assert(SUBSYS != IMPSUB);
+	stringstream ss;
+	ss << name << "(" << locx << "," << locy << ")";
+	
+	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > Mout(N_sites, Op.Q(), ss.str(), HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);}
+	
+	OperatorType OpExt;
+	vector<SiteOperator<Symmetry,MatrixType::Scalar> > SignExt(locx);
+	
+	if (SUBSYS == SUB)
+	{
+		OpExt   = OperatorType::outerprod(B[locx].Id(), Op, Op.Q());
+		for (size_t l=0; l<locx; ++l)
+		{
+			SignExt[l] = OperatorType::outerprod(B[l].Id(), F[l].sign(), Symmetry::qvacuum()).plain<double>();
+		}
+	}
+	else if (SUBSYS == IMP)
+	{
+		assert(!FERMIONIC and "Impurity cannot be fermionic!");
+		OpExt = OperatorType::outerprod(Op, F[locx].Id(), Op.Q());
+	}
+	
+	Mout.set_locality(locx);
+	Mout.set_localOperator(OpExt.plain<double>());
+	
+	(FERMIONIC)? Mout.setLocal(locx, (factor * OpExt).plain<double>(), SignExt)
+	           : Mout.setLocal(locx, (factor * OpExt).plain<double>());
+	
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > KondoSU2xSU2::
+nh (size_t locx, size_t locy)
+{
+	return make_local(SUB, "nh", locx,locy, F[locx].nh(locy), 1., false, false);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > KondoSU2xSU2::
+ns (size_t locx, size_t locy)
+{
+	return make_local(SUB, "ns", locx,locy, F[locx].ns(locy), 1., false, false);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > KondoSU2xSU2::
 make_corr (KONDO_SUBSYSTEM SUBSYS,
            string name1, string name2, 
            size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
@@ -279,6 +342,42 @@ Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > KondoSU2xSU2:
 SimpSsub (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	return make_corr (IMPSUB, "Simp","Ssub", locx1,locx2,locy1,locy2, B[locx1].Sdag(locy1),F[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), false);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > KondoSU2xSU2::
+cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	assert(locx1<this->N_sites and locx2<this->N_sites);
+	stringstream ss;
+	ss << "c†(" << locx1 << "," << locy1 << ")" << "c(" << locx2 << "," << locy2 << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);}
+	
+	auto cdag  = OperatorType::outerprod(B[locx1].Id(), F[locx1].cdag(locy1),{2,2});
+	auto c     = OperatorType::outerprod(B[locx2].Id(), F[locx2].c(locy2),   {2,2});
+	auto sign1 = OperatorType::outerprod(B[locx2].Id(), F[locx1].sign(),     {1,1});
+	auto sign2 = OperatorType::outerprod(B[locx2].Id(), F[locx2].sign(),     {1,1});
+	
+	vector<SiteOperator<Symmetry,MatrixType::Scalar> > signs;
+	for (size_t l=min(locx1,locx2)+1; l<max(locx1,locx2); l++)
+	{
+		signs.push_back(OperatorType::outerprod(B[l].Id(), F[l].sign(), {1,1}).plain<double>());
+	}
+	
+	if (locx1 == locx2)
+	{
+		Mout.setLocal(locx1, sqrt(2.) * OperatorType::prod(cdag,c,Symmetry::qvacuum()).plain<double>());
+	}
+	else if(locx1<locx2)
+	{
+		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, sign1, {2,2}).plain<double>(), c.plain<double>()}, signs);
+	}
+	else if(locx1>locx2)
+	{
+		Mout.setLocal({locx2, locx1}, {sqrt(2.) * OperatorType::prod(c, sign2, {2,2}).plain<double>(), cdag.plain<double>()}, signs);
+	}
+	return Mout;
 }
 
 //HamiltonianTermsXd<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > KondoSU2xSU2::

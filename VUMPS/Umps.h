@@ -1009,11 +1009,35 @@ template<typename Symmetry, typename Scalar>
 double Umps<Symmetry,Scalar>::
 dot (const Umps<Symmetry,Scalar> &Vket) const
 {
-	double outL = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::L], Vket.A[GAUGE::L], outBasis(N_sites-1), Vket.outBasis(N_sites-1), qloc).energy;
-	// for testing:
-	double outR = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::R], Vket.A[GAUGE::R], inBasis(0), Vket.inBasis(0), qloc).energy;
-	cout << "dot consistency check: from AL: " << outL << ", from AR: " << outR << endl;
-	return outL;
+//	double outL = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::L], Vket.A[GAUGE::L], inBasis(0), Vket.inBasis(0),  qloc).energy;
+//	// for testing:
+//	double outR = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::R], Vket.A[GAUGE::R], outBasis(N_sites-1), Vket.outBasis(N_sites-1), qloc).energy;
+//	lout << "dot consistency check: using AL: " << outL << ", using AR: " << outR << endl;
+//	return outL;
+	
+	Eigenstate<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > > Leigen, Reigen;
+	
+	#pragma omp parallel sections
+	{
+		#pragma omp section
+		{
+			Leigen = calc_LReigen(VMPS::DIRECTION::LEFT,  A[GAUGE::L], Vket.A[GAUGE::L], inBasis(0), Vket.inBasis(0), qloc);
+		}
+		#pragma omp section
+		{
+			Reigen = calc_LReigen(VMPS::DIRECTION::RIGHT, A[GAUGE::R], Vket.A[GAUGE::R], outBasis(N_sites-1), Vket.outBasis(N_sites-1), qloc);
+		}
+	}
+	
+	auto LxCket = Leigen.state.contract(Vket.C[N_sites-1].template cast<MatrixXcd>());
+	auto RxCdag = Reigen.state.contract(     C[N_sites-1].adjoint().template cast<MatrixXcd>());
+	auto mixed = RxCdag.contract(LxCket).trace();
+	
+	lout << "dot: L gauge: " << Leigen.energy 
+	     << ", R gauge: " << Reigen.energy 
+	     << ", diff=" << abs(Leigen.energy-Reigen.energy) 
+	     << ", mixed gauge (?): " << mixed << endl;
+	return Leigen.energy;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -2120,7 +2144,7 @@ enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-orthogonalize_right(GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_R)
+orthogonalize_right (GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_R)
 {
 	vector<vector<Biped<Symmetry,MatrixType> > > A_ortho(N_sites);
 	for (size_t l=0; l<N_sites; l++)
@@ -2248,7 +2272,7 @@ orthogonalize_left(GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_L)
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-truncate(bool SET_AC_RANDOM)
+truncate (bool SET_AC_RANDOM)
 {
 	//isometries from the truncated SVD from the center-matrix C
 	vector<Biped<Symmetry,MatrixType> > U(N_sites);
@@ -2323,7 +2347,7 @@ calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const
 	}
 	else
 	{
-		T = TransferMatrix<Symmetry,complex<double> >(GAUGE::L, Compl.A[g], Compl.A[g], Compl.locBasis());		
+		T = TransferMatrix<Symmetry,complex<double> >(GAUGE::L, Compl.A[g], Compl.A[g], Compl.locBasis());
 	}
 	
 	Biped<Symmetry,Matrix<complex<double>, Dynamic,Dynamic> > RandBiped;

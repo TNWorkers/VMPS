@@ -168,21 +168,20 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 void HubbardSU2xU1::
 set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
 {
-    std::size_t Lcell = P.size();
-    std::size_t N_sites = Terms.size();
-    Terms.set_name("Hubbard");
-    
-    for(std::size_t loc=0; loc<N_sites; ++loc)
-    {
-        std::size_t orbitals = F[loc].orbitals();
-        std::size_t next_orbitals = F[(loc+1)%N_sites].orbitals();
-        std::size_t nextn_orbitals = F[(loc+2)%N_sites].orbitals();
-        
-        stringstream ss;
-        ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
-        Terms.save_label(loc, ss.str());
-
-
+	std::size_t Lcell = P.size();
+	std::size_t N_sites = Terms.size();
+	Terms.set_name("Hubbard");
+	
+	for(std::size_t loc=0; loc<N_sites; ++loc)
+	{
+		std::size_t orbitals = F[loc].orbitals();
+		std::size_t next_orbitals = F[(loc+1)%N_sites].orbitals();
+		std::size_t nextn_orbitals = F[(loc+2)%N_sites].orbitals();
+		
+		stringstream ss;
+		ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
+		Terms.save_label(loc, ss.str());
+		
 		if (P.HAS("tFull"))
 		{
 			ArrayXXd Full = P.get<Eigen::ArrayXXd>("tFull");
@@ -206,13 +205,13 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 				if (range != 0)
 				{
 					SiteOperator<Symmetry, double> c_sign_local = OperatorType::prod(F[loc].c(0), F[loc].sign(), {2,-1}).plain<double>();
-                    SiteOperator<Symmetry, double> cdag_sign_local = OperatorType::prod(F[loc].cdag(0), F[loc].sign(), {2,1}).plain<double>();
+					SiteOperator<Symmetry, double> cdag_sign_local = OperatorType::prod(F[loc].cdag(0), F[loc].sign(), {2,1}).plain<double>();
 					SiteOperator<Symmetry, double> c_range = F[(loc+range)%N_sites].c(0).plain<double>();
-                    SiteOperator<Symmetry, double> cdag_range = F[(loc+range)%N_sites].cdag(0).plain<double>();
+					SiteOperator<Symmetry, double> cdag_range = F[(loc+range)%N_sites].cdag(0).plain<double>();
 					
 					//hopping
 					//cout << "loc=" << loc << ", pushing at range=" << range << ", value=" << value << endl;
-                    Terms.push(range, loc, -value * std::sqrt(2.), cdag_sign_local, TransOps, c_range);
+					Terms.push(range, loc, -value * std::sqrt(2.), cdag_sign_local, TransOps, c_range);
 					Terms.push(range, loc, -value * std::sqrt(2.), c_sign_local, TransOps, cdag_range);
 				}
 			}
@@ -257,7 +256,7 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 			ss << "Vzᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
 			Terms.save_label(loc,ss.str());
 		}
-
+		
 		if (P.HAS("Vxyfull"))
 		{
 			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Vxyfull");
@@ -297,7 +296,7 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 			ss << "Vxyᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
 			Terms.save_label(loc,ss.str());
 		}
-
+		
 		if (P.HAS("Jfull"))
 		{
 			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Jfull");
@@ -332,7 +331,7 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 			ss << "Jᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
 			Terms.save_label(loc,ss.str());
 		}
-
+		
         // Local terms: U, t0, μ, t⟂, V⟂, J⟂
         
         param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
@@ -567,13 +566,13 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	{
 		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), {2,+1}).plain<double>(), 
 		                               c.plain<double>()},
-			                           F[0].sign().plain<double>());
+		                               F[0].sign().plain<double>());
 	}
 	else if (locx1>locx2)
 	{
 		Mout.setLocal({locx2, locx1}, {sqrt(2.) * OperatorType::prod(c, F[locx2].sign(), {2,-1}).plain<double>(), 
 		                               cdag.plain<double>()}, 
-			                           F[0].sign().plain<double>());
+		                               F[0].sign().plain<double>());
 	}
 	return Mout;
 }

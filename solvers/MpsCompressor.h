@@ -142,7 +142,7 @@ private:
 		vector<PivotMatrix1<Symmetry,Scalar,MpoScalar> > Heff;
 		
 		template<typename MpOperator>
-		void prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout);
+		void prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE = false);
 		
 		template<typename MpOperator>
 		void prodOptimize1 (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, const Mps<Symmetry,Scalar> &Vout, 
@@ -1070,6 +1070,12 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 		}
 		
 		Mmax_new = Vout.calc_Mmax();
+		
+		if (N_halfsweeps == max_halfsweeps/2 and sqdist > tol)
+		{
+			lout << termcolor::red << "Warning: Could not reach tolerance, restarting from random!" << termcolor::reset << endl;
+			prepSweep(H,Vin,Vout,true);
+		}
 	}
 	
 	// move pivot to edge at the end
@@ -1083,21 +1089,21 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 template<typename MpOperator>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
-prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
+prepSweep (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool RANDOMIZE)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
 //	Vout.setRandom();
 	
-	bool RANDOMIZE;
-	if (H.IS_HERMITIAN())
-	{
-		Vout = Vin;
-		RANDOMIZE = false;
-	}
-	else
-	{
-		RANDOMIZE = true;
-	}
+//	bool RANDOMIZE;
+//	if (H.IS_HERMITIAN())
+//	{
+//		Vout = Vin;
+//		RANDOMIZE = false;
+//	}
+//	else
+//	{
+//		RANDOMIZE = true;
+//	}
 	
 	if (Vout.pivot == N_sites-1 or Vout.pivot == -1)
 	{
@@ -1434,13 +1440,11 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 			}
 		}
 		
-/*		if (N_halfsweeps == 8 and*/
-/*		    N_halfsweeps != max_halfsweeps and*/
-/*		    sqdist > tol)*/
-/*		{*/
-/*			lout << termcolor::blue << "Warning: Could not reach tolerance, restarting from random!" << termcolor::reset << endl;*/
-/*			prepSweep(H,Vin1,Vin2,Vout,true);*/
-/*		}*/
+		if (N_halfsweeps == max_halfsweeps/2 and sqdist > tol)
+		{
+			lout << termcolor::red << "Warning: Could not reach tolerance, restarting from random!" << termcolor::reset << endl;
+			prepSweep(H,Vin1,Vin2,Vout,true);
+		}
 		
 		Mmax_new = Vout.calc_Mmax();
 	}

@@ -80,8 +80,8 @@ public:
 const map<string,any> KondoU1xU1::defaults =
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",0.},
-	{"J",1.}, {"U",0.}, 
-	{"V",0.}, {"Vrung",0.}, 
+	{"J",1.}, {"Jdir",0.},
+	{"U",0.}, {"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.},
 	{"Inext",0.}, {"Iprev",0.}, {"I3next",0.}, {"I3prev",0.}, {"I3loc",0.}, 
@@ -235,6 +235,49 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 			Terms.save_label(loc, "tᵢⱼ");
 		}
 		
+		if (P.HAS("JdirFull"))
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("JdirFull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				size_t Ntrans = (range == 0)? 0:range-1;
+				vector<SiteOperator<Symmetry_,double> > TransOps(Ntrans);
+				for (size_t i=0; i<Ntrans; ++i)
+				{
+					TransOps[i] = kroneckerProduct(B[(loc+i+1)%N_sites].Id(), F[(loc+i+1)%N_sites].Id());
+				}
+				
+				if (range != 0)
+				{
+					int hop = (loc+range)%N_sites;
+					
+					auto S_loc = kroneckerProduct(B[loc].Scomp(SP,0), F[loc].Id());
+					auto S_hop = kroneckerProduct(B[hop].Scomp(SM,0), F[hop].Id());
+					Terms.push(range, loc, 0.5*value, S_loc, TransOps, S_hop);
+					
+					S_loc = kroneckerProduct(B[loc].Scomp(SM,0), F[loc].Id());
+					S_hop = kroneckerProduct(B[hop].Scomp(SP,0), F[hop].Id());
+					Terms.push(range, loc, 0.5*value, S_loc, TransOps, S_hop);
+					
+					S_loc = kroneckerProduct(B[loc].Scomp(SZ,0), F[loc].Id());
+					S_hop = kroneckerProduct(B[hop].Scomp(SZ,0), F[hop].Id());
+					Terms.push(range, loc, value, S_loc, TransOps, S_hop);
+				}
+			}
+			
+			stringstream ss;
+			ss << "Jdirᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			Terms.save_label(loc,ss.str());
+		}
+		
 		// local terms
 		
 		// Kondo-J
@@ -325,6 +368,10 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {Forbitals, Fnext_orbitals}, loc%Lcell);
 		Terms.save_label(loc, Vpara.label);
 		
+		// JdirPara∥
+		param2d JdirPara = P.fill_array2d<double>("Jdir", "JdirPara", {Borbitals, Bnext_orbitals}, loc%Lcell);
+		Terms.save_label(loc, JdirPara.label);
+		
 		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
 		{
 			for (std::size_t alfa=0; alfa<Forbitals;      ++alfa)
@@ -350,6 +397,23 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 				Terms.push_tight(loc, Vpara(alfa,beta), 
 				                 kroneckerProduct(B[loc].Id(),F[loc].n(alfa)), 
 				                 kroneckerProduct(B[lp1].Id(),F[lp1].n(beta))
+				                );
+			}
+			
+			for (int alfa=0; alfa<Borbitals;      ++alfa)
+			for (int beta=0; beta<Bnext_orbitals; ++beta)
+			{
+				Terms.push_tight(loc, 0.5 * JdirPara(alfa,beta), 
+				                 kroneckerProduct(B[loc].Scomp(SP,alfa), F[loc].Id()),
+				                 kroneckerProduct(B[lp1].Scomp(SM,beta), F[lp1].Id())
+				                );
+				Terms.push_tight(loc, 0.5 * JdirPara(alfa,beta), 
+				                 kroneckerProduct(B[loc].Scomp(SM,alfa), F[loc].Id()),
+				                 kroneckerProduct(B[lp1].Scomp(SP,beta), F[lp1].Id())
+				                );
+				Terms.push_tight(loc, JdirPara(alfa,beta), 
+				                 kroneckerProduct(B[loc].Scomp(SZ,alfa), F[loc].Id()),
+				                 kroneckerProduct(B[lp1].Scomp(SZ,beta), F[lp1].Id())
 				                );
 			}
 		}

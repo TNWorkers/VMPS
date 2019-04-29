@@ -528,7 +528,7 @@ HubbardHamiltonian (const Array<Scalar,Dynamic,1> &U,
 		}
 		if (Bz(i) != 0.)
 		{
-			Mout += Bz(i) * Sz(i).data.template cast<Scalar>();
+			Mout -= Bz(i) * Sz(i).data.template cast<Scalar>();
 		}
 		if (Bx(i) != 0.)
 		{
