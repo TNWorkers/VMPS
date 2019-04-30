@@ -122,7 +122,7 @@ const map<string,any> HubbardSU2xU1::defaults =
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",1.},
 	{"mu",0.}, {"t0",0.}, 
-	{"U",0.},
+	{"U",0.}, {"Uph",0.},
 	{"V",0.}, {"Vrung",0.},
 	{"Vz",0.}, {"Vzrung",0.}, {"Vxy",0.}, {"Vxyrung",0.}, 
 	{"J",0.}, {"Jperp",0.},
@@ -335,6 +335,7 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
         // Local terms: U, t0, μ, t⟂, V⟂, J⟂
         
         param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
+        param1d Uph = P.fill_array1d<double>("Uph", "Uphorb", orbitals, loc%Lcell);
         param1d t0 = P.fill_array1d<double>("t0", "t0orb", orbitals, loc%Lcell);
         param1d mu = P.fill_array1d<double>("mu", "muorb", orbitals, loc%Lcell);
         param2d tperp = P.fill_array2d<double>("tRung", "t", "tPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
@@ -344,6 +345,7 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
         param2d Jperp = P.fill_array2d<double>("JRung", "J", "JPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
         
         Terms.save_label(loc, U.label);
+        Terms.save_label(loc, Uph.label);
         Terms.save_label(loc, t0.label);
         Terms.save_label(loc, mu.label);
         Terms.save_label(loc, tperp.label);
@@ -352,7 +354,7 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 		Terms.save_label(loc, Vxyperp.label);
         Terms.save_label(loc, Jperp.label);
         
-        Terms.push_local(loc, 1., F[loc].HubbardHamiltonian(U.a, t0.a - mu.a, tperp.a, Vperp.a, Vzperp.a, Vxyperp.a, Jperp.a).plain<double>());
+        Terms.push_local(loc, 1., F[loc].HubbardHamiltonian(U.a, Uph.a, t0.a - mu.a, tperp.a, Vperp.a, Vzperp.a, Vxyperp.a, Jperp.a).plain<double>());
         
         
         // Nearest-neighbour terms: t, V, J

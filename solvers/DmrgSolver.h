@@ -1024,7 +1024,8 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		#ifdef USE_HDF5_STORAGE
 		if (GlobParam.savePeriod != 0 and j%GlobParam.savePeriod == 0)
 		{
-			Vout.state.save("mpsBackup",H.info());
+			lout << termcolor::green << "saving state to: " << GlobParam.saveName << termcolor::reset << endl;
+			Vout.state.save(GlobParam.saveName,H.info());
 		}
 		#endif
 	}

@@ -161,7 +161,7 @@ public:
 	 * \param Vxy : \f$V_{xy}\f$
 	 * \param J : \f$J\f$
 	 */
-	Operator HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Eorb, const ArrayXXd &t, const ArrayXXd &V,
+	Operator HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Uph, const ArrayXd &Eorb, const ArrayXXd &t, const ArrayXXd &V,
 	                             const ArrayXXd &Vz, const ArrayXXd &Vxy, const ArrayXXd &J) const;
 	
 	/**Identity*/
@@ -486,7 +486,7 @@ Id (std::size_t orbital) const
 }
 
 SiteOperatorQ<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >::
-HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Eorb, const ArrayXXd &t, const ArrayXXd &V, const ArrayXXd &Vz, const ArrayXXd &Vxy, const ArrayXXd &J) const
+HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Uph, const ArrayXd &Eorb, const ArrayXXd &t, const ArrayXXd &V, const ArrayXXd &Vz, const ArrayXXd &Vxy, const ArrayXXd &J) const
 {
 	Operator Mout({1,0},TensorBasis);
 	
@@ -520,6 +520,10 @@ HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Eorb, const ArrayXXd &t, co
 		if (U(i) != 0. and U(i) != std::numeric_limits<double>::infinity())
 		{
 			Mout += U(i) * d(i);
+		}
+		if (Uph(i) != 0. and Uph(i) != std::numeric_limits<double>::infinity())
+		{
+			Mout += Uph(i) * (d(i)-0.5*n(i)+0.5*Id());
 		}
 		if (Eorb(i) != 0.)
 		{

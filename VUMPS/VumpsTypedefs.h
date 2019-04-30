@@ -59,7 +59,8 @@ struct VUMPS
 			constexpr static size_t Dlimit                     = 500;
 			constexpr static size_t Qinit                      = 4;
 			constexpr static size_t savePeriod                 = 0;
-
+			constexpr static char saveName[] = "UmpsBackup";
+			
 			//DYN DEFAULTS
 			static size_t max_deltaD          (size_t i) {return (i<1800)? 100ul:0ul;} // Maximum expansion by 100 and turn off expansion completely after 1800 iterations
 			static size_t Dincr_abs           (size_t i) {return 2ul;} // increase D by at least Dincr_abs
@@ -88,6 +89,7 @@ struct VUMPS
 			size_t Dlimit                     = CONTROL::DEFAULT::Dlimit;
 			size_t Qinit                      = CONTROL::DEFAULT::Qinit;
 			size_t savePeriod                 = CONTROL::DEFAULT::savePeriod;
+			std::string saveName              = std::string(CONTROL::DEFAULT::saveName);
 		};
 		
 		struct DYN

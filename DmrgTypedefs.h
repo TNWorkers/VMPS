@@ -308,6 +308,7 @@ struct DMRG
 			constexpr static size_t Dlimit = 500;
 			constexpr static size_t Qinit = 10;
 			constexpr static size_t savePeriod = 0;
+			constexpr static char saveName[] = "MpsBackup";
 			constexpr static DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
 			constexpr static bool CALC_S_ON_EXIT = true;
 			
@@ -344,6 +345,7 @@ struct DMRG
 			size_t Dlimit                   = CONTROL::DEFAULT::Dlimit;
 			size_t Qinit                    = CONTROL::DEFAULT::Qinit;
 			size_t savePeriod               = CONTROL::DEFAULT::savePeriod;
+			std::string saveName            = std::string(CONTROL::DEFAULT::saveName);
 			DMRG::CONVTEST::OPTION CONVTEST = CONTROL::DEFAULT::CONVTEST;
 			bool CALC_S_ON_EXIT             = CONTROL::DEFAULT::CALC_S_ON_EXIT;
 		};

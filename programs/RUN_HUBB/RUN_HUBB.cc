@@ -226,6 +226,10 @@ int main (int argc, char* argv[])
 	
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
+	string base = make_string("U=",U,"_V=",V,"_J=",J,"_Ly=",Ly);
+	string obsfile = make_string(wd,"obs/",base,".h5");
+	string statefile = make_string(wd,"state/",base);
+	
 	GlobParam_fix.Dinit  = args.get<size_t>("Dinit",2ul);
 	GlobParam_fix.Dlimit = args.get<size_t>("Dlimit",200ul);
 	GlobParam_fix.Qinit = args.get<size_t>("Qinit",10ul);
@@ -234,6 +238,7 @@ int main (int argc, char* argv[])
 	GlobParam_fix.tol_eigval = args.get<double>("tol_eigval",1e-6);
 	GlobParam_fix.tol_state = args.get<double>("tol_state",1e-5);
 	GlobParam_fix.savePeriod = args.get<size_t>("savePeriod",4ul);
+	GlobParam_fix.saveName = args.get<string>("saveName",statefile);
 	
 	GlobParam_foxy.Dinit  = args.get<size_t>("Dinit",10ul);
 	GlobParam_foxy.Dlimit = args.get<size_t>("Dlimit",200ul);
@@ -251,6 +256,7 @@ int main (int argc, char* argv[])
 	correct_foldername(wd);
 	
 	lout << args.info() << endl;
+	lout << "wd=" << wd << endl;
 	
 	lout.set(make_string("L=",L,"_Ly=",Ly,"_t=",t,"_V=",V,"_U=",U,"_J=",J,".log"),wd+"log");
 	
@@ -307,7 +313,8 @@ int main (int argc, char* argv[])
 		params.push_back({"Vzfull",Varray});
 		params.push_back({"Vxyfull",Varray});
 		params.push_back({"Jfull",Jarray});
-		params.push_back({"U",U});
+		params.push_back({"Uph",U});
+		params.push_back({"U",0.});
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc = {S,N};
 	}
@@ -321,6 +328,7 @@ int main (int argc, char* argv[])
 	dHdV_params.push_back({"tFull",ZeroArray});
 	dHdV_params.push_back({"Jfull",ZeroArray});
 	dHdV_params.push_back({"U",0.});
+	dHdV_params.push_back({"Uph",0.});
 	if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
 	{
 		dHdV_params.push_back({"Vfull",OneArray});
@@ -350,7 +358,6 @@ int main (int argc, char* argv[])
 	{
 		MODEL::uSolver Foxy(VERB);
 		HDF5Interface target;
-		string obsfile = make_string(wd+"obs/U=",U,"_V=",V,"_J=",J,"_Ly=",Ly,".h5");
 		cout << obsfile << endl;
 		target = HDF5Interface(obsfile,WRITE);
 		target.close();
@@ -607,49 +614,60 @@ int main (int argc, char* argv[])
 		Fix.DynParam = DynParam_fix;
 		Fix.edgeState(H, g_fix, Qc, LANCZOS::EDGE::GROUND); 
 		
-		Emin = g_fix.energy-0.5*U*(V-N);
+		// U-correction of energy: unnecessery with particle-hole symmetric Uph
+//		if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
+//		{
+//			Emin = g_fix.energy-0.5*U*(volume-N);
+//		}
+//		else
+//		{
+//			Emin = g_fix.energy;
+//		}
+		Emin = g_fix.energy;
 		emin = Emin/volume;
 		
 		obs.energy = emin;
 		obs.dedV = avg(g_fix.state, dHdV, g_fix.state)/volume;
 		
+		#pragma omp parallel for collapse(2)
 		for (size_t x=0; x<L; ++x)
 		for (size_t y=0; y<Ly; ++y)
 		{
-			obs.nh(x,y)      = avg(g_fix.state, H.nh(Geo1cell(x,y)), g_fix.state);
-			obs.ns(x,y)      = avg(g_fix.state, H.ns(Geo1cell(x,y)), g_fix.state);
+			obs.nh(x,y) = avg(g_fix.state, H.nh(Geo1cell(x,y)), g_fix.state);
+			obs.ns(x,y) = avg(g_fix.state, H.ns(Geo1cell(x,y)), g_fix.state);
 		}
 		obs.entropy_bipart = g_fix.state.entropy()(volume/2);
 		lout << "bipartition entropy=" << obs.entropy_bipart << endl;
 		
-		obs.Tsq = 0.;
-		obs.Ssq = 0.;
+		double Tsq = 0.;
+		double Ssq = 0.;
+		#pragma omp parallel for collapse(2) reduction(+:Ssq) reduction(+:Tsq)
 		for (int i=0; i<volume; ++i)
 		for (int j=0; j<volume; ++j)
 		{
 			//if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
 			#ifdef USING_SO4
 			{
-				obs.Tsq += avg(g_fix.state, H.TdagT(i,j), g_fix.state);
+				Tsq += avg(g_fix.state, H.TdagT(i,j), g_fix.state);
 			}
 //			else
 			#else
 			{
-				obs.Tsq += 0.5 * avg(g_fix.state, H.TpTm(i,j), g_fix.state);
-				obs.Tsq += 0.5 * avg(g_fix.state, H.TmTp(i,j), g_fix.state);
-				obs.Tsq +=       avg(g_fix.state, H.TzTz(i,j), g_fix.state);
+				Tsq += 0.5 * avg(g_fix.state, H.TpTm(i,j), g_fix.state);
+				Tsq += 0.5 * avg(g_fix.state, H.TmTp(i,j), g_fix.state);
+				Tsq +=       avg(g_fix.state, H.TzTz(i,j), g_fix.state);
 			}
 			#endif
 			
-			obs.Ssq += avg(g_fix.state, H.SdagS(i,j), g_fix.state);
+			Ssq += avg(g_fix.state, H.SdagS(i,j), g_fix.state);
 		}
+		obs.Tsq = Tsq;
+		obs.Ssq = Ssq;
 		lout << "Tsq=" << obs.Tsq  << ", Ssq=" << obs.Ssq << endl;
 		lout << "ns=" << obs.ns.sum()/volume << endl;
 		lout << "nh=" << obs.nh.sum()/volume << endl;
 		
 		HDF5Interface target;
-		string obsfile = make_string(wd+"obs/U=",U,"_V=",V,"_J=",J,"_L=",L,"_Ly=",Ly,".h5");
-		cout << obsfile << endl;
 		std::stringstream bond;
 		target = HDF5Interface(obsfile,WRITE);
 		bond << g_fix.state.calc_fullMmax();
@@ -657,7 +675,6 @@ int main (int argc, char* argv[])
 		
 		target.save_scalar(obs.energy,"energy",bond.str());
 		target.save_scalar(obs.dedV,"dedV",bond.str());
-		target.save_scalar(obs.Tsq,"Tsq",bond.str());
 		target.save_scalar(g_fix.state.calc_Dmax(),"Dmax",bond.str());
 		target.save_scalar(g_fix.state.calc_Mmax(),"Mmax",bond.str());
 		target.save_scalar(g_fix.state.calc_fullMmax(),"full Mmax",bond.str());
