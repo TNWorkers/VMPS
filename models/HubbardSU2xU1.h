@@ -469,13 +469,13 @@ n (size_t locx, size_t locy)
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 nh (size_t locx, size_t locy)
 {
-	return make_local("nh", locx,locy, F[locx].n(locy), 1., false, true);
+	return make_local("nh", locx,locy, 2.*F[locx].d(locy)-F[locx].n(locy)+F[locx].Id(locy), 1., false, true);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 ns (size_t locx, size_t locy)
 {
-	return make_local("ns", locx,locy, F[locx].n(locy), 1., false, true);
+	return make_local("ns", locx,locy, F[locx].n(locy)-2.*F[locx].d(locy), 1., false, true);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
@@ -600,7 +600,7 @@ TzTz (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
-
+	
 	auto Op1 = F[locx1].Tz(locy1);
 	auto Op2 = F[locx2].Tz(locy2);
 	
@@ -625,7 +625,7 @@ TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
-
+	
 	auto Op1 = F[locx1].Tp(locy1);
 	auto Op2 = F[locx2].Tm(locy2);
 	
@@ -636,7 +636,7 @@ TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	}
 	else
 	{
-		Mout.setLocal({locx1, locx2}, {F[locx1].Tp(locy1).plain<double>(), F[locx2].Tm(locy2).plain<double>()});
+		Mout.setLocal({locx1, locx2}, {Op1.plain<double>(), Op2.plain<double>()});
 	}
 	return Mout;
 }
@@ -650,7 +650,7 @@ TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
-
+	
 	auto Op1 = F[locx1].Tm(locy1);
 	auto Op2 = F[locx2].Tp(locy2);
 	
@@ -661,7 +661,7 @@ TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	}
 	else
 	{
-		Mout.setLocal({locx1, locx2}, {F[locx1].Tm(locy1).plain<double>(), F[locx2].Tp(locy2).plain<double>()});
+		Mout.setLocal({locx1, locx2}, {Op1.plain<double>(), Op2.plain<double>()});
 	}
 	return Mout;
 }

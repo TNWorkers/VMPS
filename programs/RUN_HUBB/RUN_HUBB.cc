@@ -15,8 +15,6 @@
 #endif
 using namespace std;
 
-#include "Logger.h"
-Logger lout;
 #include "ArgParser.h"
 
 #include "solvers/DmrgSolver.h"
@@ -30,7 +28,7 @@ Logger lout;
 
 size_t L, N_cell, Ly;
 int volume;
-double t, tRung, U, J, V;
+double t, tRung, U, J, V, dV;
 int M, N, S, T;
 double alpha;
 DMRG::VERBOSITY::OPTION VERB;
@@ -39,8 +37,6 @@ double emin = 0.;
 bool UMPS_STRUCTURE_FACTOR, VUMPS;
 string wd; // working directory
 
-typedef VMPS::HubbardSU2xU1 MODEL;
-// typedef VMPS::HubbardSU2xSU2 MODEL;
 Eigenstate<MODEL::StateXd> g_fix;
 Eigenstate<MODEL::StateUd> g_foxy;
 
@@ -49,6 +45,11 @@ struct Obs
 	Eigen::MatrixXd nh;
 	Eigen::MatrixXd ns;
 	Eigen::MatrixXd entropy;
+	double energy;
+	double dedV;
+	double entropy_bipart; // for finite systems
+	double Tsq; // T^2
+	double Ssq; // S^2
 	
 	double S_M;
 	double T_M;
@@ -208,6 +209,7 @@ int main (int argc, char* argv[])
 	U = args.get<double>("U",8.);
 	J = args.get<double>("J",0.);
 	V = args.get<double>("V",0.);
+	dV = args.get<double>("dV",0.01);
 	M = args.get<int>("M",0);
 	S = abs(M)+1;
 	UMPS_STRUCTURE_FACTOR = args.get<bool>("STRUCTURE",true);
@@ -224,11 +226,11 @@ int main (int argc, char* argv[])
 	
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
-	GlobParam_fix.Dinit  = args.get<size_t>("Dinit",10ul);
+	GlobParam_fix.Dinit  = args.get<size_t>("Dinit",2ul);
 	GlobParam_fix.Dlimit = args.get<size_t>("Dlimit",200ul);
 	GlobParam_fix.Qinit = args.get<size_t>("Qinit",10ul);
-	GlobParam_fix.min_halfsweeps = args.get<size_t>("Imin",6);
-	GlobParam_fix.max_halfsweeps = args.get<size_t>("Imax",40);
+	GlobParam_fix.min_halfsweeps = args.get<size_t>("Imin",1);
+	GlobParam_fix.max_halfsweeps = args.get<size_t>("Imax",22);
 	GlobParam_fix.tol_eigval = args.get<double>("tol_eigval",1e-6);
 	GlobParam_fix.tol_state = args.get<double>("tol_state",1e-5);
 	GlobParam_fix.savePeriod = args.get<size_t>("savePeriod",4ul);
@@ -264,21 +266,41 @@ int main (int argc, char* argv[])
 	Geometry2D Geo2cell(SNAKE,2*L,Ly,1.,true);
 	
 	// save to temporary, otherwise std::bad_any_cast
-	ArrayXXd tArray = t * Geo2cell.hopping();
-	ArrayXXd Varray = V * Geo2cell.hopping();
-	ArrayXXd Jarray = J * Geo2cell.hopping();
-
+	ArrayXXd tArray, Varray, dVarray, VxyArray, VzArray, dVxyArray, dVzArray, Jarray, ZeroArray, OneArray;
+	if (VUMPS)
+	{
+		tArray    = t * Geo2cell.hopping();
+		Varray    = V * Geo2cell.hopping();
+		dVarray   = (V+dV) * Geo2cell.hopping();
+		Jarray    = J * Geo2cell.hopping();
+		ZeroArray = 0. * Geo2cell.hopping();
+		OneArray  = 1. * Geo2cell.hopping();
+		lout << "t=" << t << ", V=" << V << ", dV=" << dV << ", J=" << J << endl;
+		lout << "hopping=" << endl << Geo2cell.hopping() << endl << endl;
+	}
+	else
+	{
+		ArrayXXd tFull = Geo1cell.hopping();
+		tArray    = t * tFull;
+		Varray    = V * tFull;
+		dVarray   = (V+dV) * tFull;
+		Jarray    = J * tFull;
+		ZeroArray = 0. * tFull;
+		OneArray  = 1. * tFull;
+		lout << "hopping=" << endl << tFull << endl << endl;
+	}
+	
 	vector<Param> params;
 	qarray<2> Qc;
-	if constexpr ( std::is_same<MODEL, VMPS::HubbardSU2xSU2>::value )
-				 {
-					 params.push_back({"tFull",tArray});
-					 params.push_back({"Vfull",Varray});
-					 params.push_back({"Jfull",Jarray});
-					 params.push_back({"U",U});
-					 if (VUMPS) {params.push_back({"OPEN_BC",false});}
-					 Qc = {S,T};
-				 }
+	if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
+	{
+		params.push_back({"tFull",tArray});
+		params.push_back({"Vfull",Varray});
+		params.push_back({"Jfull",Jarray});
+		params.push_back({"U",U});
+		if (VUMPS) {params.push_back({"OPEN_BC",false});}
+		Qc = {S,T};
+	}
 	else
 	{
 		params.push_back({"tFull",tArray});
@@ -289,9 +311,38 @@ int main (int argc, char* argv[])
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc = {S,N};
 	}
+	
 	MODEL H(volume,params);
-	H.transform_base(Qc);
+	if (VUMPS) H.transform_base(Qc);
 	lout << H.info() << endl;
+	
+	// To calculate de/dV for finite systems as exp. value of Hamiltonian with only V=1
+	vector<Param> dHdV_params;
+	dHdV_params.push_back({"tFull",ZeroArray});
+	dHdV_params.push_back({"Jfull",ZeroArray});
+	dHdV_params.push_back({"U",0.});
+	if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
+	{
+		dHdV_params.push_back({"Vfull",OneArray});
+	}
+	else
+	{
+		dHdV_params.push_back({"Vxyfull",OneArray});
+		dHdV_params.push_back({"Vzfull",OneArray});
+	}
+	
+	MODEL dHdV;
+	if (VUMPS)
+	{
+		// For VUMPS: Hamiltonian with two unit cells for contractions across the cell
+		dHdV = MODEL(2*volume,{{"OPEN_BC",false},{"CALC_SQUARE",false}});
+		dHdV.transform_base(Qc);
+	}
+	else
+	{
+		dHdV = MODEL(volume,dHdV_params);
+	}
+	lout << dHdV.info() << endl;
 	
 	obs.resize(L,Ly,N_cell);
 	
@@ -304,7 +355,7 @@ int main (int argc, char* argv[])
 		target = HDF5Interface(obsfile,WRITE);
 		target.close();
 		
-		auto measure_and_save = [&H,&target,&params,&Geo1cell,&Foxy,&obsfile](size_t j) -> void
+		auto measure_and_save = [&H,&dHdV,&target,&params,&Geo1cell,&Geo2cell,&Foxy,&obsfile](size_t j) -> void
 		{
 			if (Foxy.errVar() < 1e-8 or Foxy.FORCE_DO_SOMETHING == true)
 			{
@@ -324,6 +375,52 @@ int main (int argc, char* argv[])
 					obs.entropy(x,y) = g_foxy.state.entropy()(Geo1cell(x,y));
 				}
 				
+				obs.energy = g_foxy.energy;
+				
+				//----------de/dV----------
+				obs.dedV = 0;
+				for (size_t x=0; x<L;  ++x)
+				for (size_t y=0; y<Ly; ++y)
+				{
+					// horizontal
+					//if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
+					#ifdef USING_SO4
+					{
+						obs.dedV += avg(g_foxy.state, dHdV.TdagT(Geo2cell(x,y),Geo2cell(x+1,y)), g_foxy.state);
+					}
+					//else
+					#else
+					{
+						obs.dedV += 0.5 * avg(g_foxy.state, dHdV.TpTm(Geo2cell(x,y),Geo2cell(x+1,y)), g_foxy.state);
+						obs.dedV += 0.5 * avg(g_foxy.state, dHdV.TmTp(Geo2cell(x,y),Geo2cell(x+1,y)), g_foxy.state);
+						obs.dedV += avg(g_foxy.state, dHdV.TzTz(Geo2cell(x,y),Geo2cell(x+1,y)), g_foxy.state);
+					}
+					#endif
+					
+					// vertical
+					if (Ly > 1)
+					{
+						double edge_corr = (Ly==2)? 0.5:1.;
+//						if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
+						#ifdef USING_SO4
+						{
+							obs.dedV += edge_corr * avg(g_foxy.state, dHdV.TdagT(Geo2cell(x,y),Geo2cell(x,(y+1)%L)), g_foxy.state);
+						}
+//						else
+						#else
+						{
+							obs.dedV += edge_corr * 0.5 * avg(g_foxy.state, dHdV.TpTm(Geo2cell(x,y),Geo2cell(x,(y+1)%L)), g_foxy.state);
+							obs.dedV += edge_corr * 0.5 * avg(g_foxy.state, dHdV.TmTp(Geo2cell(x,y),Geo2cell(x,(y+1)%L)), g_foxy.state);
+							obs.dedV += edge_corr * avg(g_foxy.state, dHdV.TzTz(Geo2cell(x,y),Geo2cell(x,(y+1)%L)), g_foxy.state);
+						}
+						#endif
+					}
+				}
+				lout << "done!" << endl;
+				obs.dedV /= (L*Ly);
+				//----------de/dV----------
+				
+				//----------k-points to calculate----------
 				vector<pair<double,int> > kxy;
 				if (Ly == 1)
 				{
@@ -338,11 +435,6 @@ int main (int argc, char* argv[])
 				
 				if (UMPS_STRUCTURE_FACTOR)
 				{
-//					ArrayXcd S_0_y(Ly);
-//					ArrayXcd S_pi_y(Ly);
-//					ArrayXcd T_0_y(Ly);
-//					ArrayXcd T_pi_y(Ly);
-					
 					for (int i=0; i<kxy.size(); ++i)
 					{
 						double kx = kxy[i].first;
@@ -393,28 +485,21 @@ int main (int argc, char* argv[])
 						}
 						
 						// Calculate full structure factor
-//						ArrayXXcd Sk, Tk;
 						complex<double> SF_S, SF_T;
 						#pragma omp parallel sections
 						{
 							#pragma omp section
 							{
-//								SF_S = g_foxy.state.SF(Sij_cell, Sdag_ky,S_ky, L, 0.,M_PI,2);
 								SF_S = g_foxy.state.SFpoint(Sij_cell, Sdag_ky,S_ky, L, kx, DMRG::VERBOSITY::ON_EXIT);
 							}
 							#pragma omp section
 							{
-//								SF_T = g_foxy.state.SF(Tij_cell, Tdag_ky,T_ky, L, 0.,M_PI,2);
 								SF_T = g_foxy.state.SFpoint(Tij_cell, Tdag_ky,T_ky, L, kx, DMRG::VERBOSITY::ON_EXIT);
 							}
 						}
 						// Umps::SF returns 2x2 array with rows in the format:
 						// 0,SF(0)
 						// π,SF(π)
-//						S_0_y(iky)  = SF_S(0,1);
-//						S_pi_y(iky) = SF_S(1,1);
-//						T_0_y(iky)  = SF_T(0,1);
-//						T_pi_y(iky) = SF_T(1,1);
 						
 						// Γ point
 						if (kx == 0. and iky == 0)
@@ -431,19 +516,6 @@ int main (int argc, char* argv[])
 							lout << termcolor::red << "S_M=" << SF_S << ", T_M=" << SF_T << termcolor::reset << endl;
 						}
 					}
-					
-//					cout << "S_0_y=" << endl << S_0_y << endl;
-//					cout << "T_0_y=" << endl << T_0_y << endl;
-//					cout << "S_pi_y=" << endl << S_pi_y << endl;
-//					cout << "T_pi_y=" << endl << T_pi_y << endl;
-					
-//					// k=(0,0)
-//					obs.S_0  = isReal(S_0_y(0));
-//					obs.T_0  = isReal(T_0_y(0));
-//					// k=(pi,pi)
-//					obs.S_pi = isReal(S_pi_y(1));
-//					obs.T_pi = isReal(T_pi_y(1));
-//					lout << "S_pi=" << obs.S_pi << ", S_0=" << obs.S_0 << ", T_pi=" << obs.T_pi << ", T_0=" << obs.T_0 << endl;
 				}
 				else
 				{
@@ -488,6 +560,8 @@ int main (int argc, char* argv[])
 				target.save_scalar(Foxy.errEigval(),"err_eigval",bond.str());
 				target.save_scalar(Foxy.errState(),"err_state",bond.str());
 				target.save_scalar(Foxy.errVar(),"err_var",bond.str());
+				target.save_scalar(obs.energy,"energy",bond.str());
+				target.save_scalar(obs.dedV,"dedV",bond.str());
 				
 				target.save_matrix(obs.nh,"nh",bond.str());
 				target.save_matrix(obs.ns,"ns",bond.str());
@@ -520,7 +594,7 @@ int main (int argc, char* argv[])
 		Foxy.DynParam.doSomething = measure_and_save;
 		Foxy.DynParam.iteration = [](size_t i) -> UMPS_ALG::OPTION {return UMPS_ALG::PARALLEL;};
 		Foxy.set_log(2,"e0.dat","err_eigval.dat","err_var.dat","err_state.dat");
-		Foxy.edgeState(H, g_foxy, {S,T});
+		Foxy.edgeState(H, g_foxy, Qc);
 		
 		emin = g_foxy.energy;
 	}
@@ -531,24 +605,85 @@ int main (int argc, char* argv[])
 		Fix.userSetDynParam();
 		Fix.GlobParam = GlobParam_fix;
 		Fix.DynParam = DynParam_fix;
-		Fix.edgeState(H, g_fix, {S,T}, LANCZOS::EDGE::GROUND); 
+		Fix.edgeState(H, g_fix, Qc, LANCZOS::EDGE::GROUND); 
 		
 		Emin = g_fix.energy-0.5*U*(V-N);
 		emin = Emin/volume;
+		
+		obs.energy = emin;
+		obs.dedV = avg(g_fix.state, dHdV, g_fix.state)/volume;
+		
+		for (size_t x=0; x<L; ++x)
+		for (size_t y=0; y<Ly; ++y)
+		{
+			obs.nh(x,y)      = avg(g_fix.state, H.nh(Geo1cell(x,y)), g_fix.state);
+			obs.ns(x,y)      = avg(g_fix.state, H.ns(Geo1cell(x,y)), g_fix.state);
+		}
+		obs.entropy_bipart = g_fix.state.entropy()(volume/2);
+		lout << "bipartition entropy=" << obs.entropy_bipart << endl;
+		
+		obs.Tsq = 0.;
+		obs.Ssq = 0.;
+		for (int i=0; i<volume; ++i)
+		for (int j=0; j<volume; ++j)
+		{
+			//if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
+			#ifdef USING_SO4
+			{
+				obs.Tsq += avg(g_fix.state, H.TdagT(i,j), g_fix.state);
+			}
+//			else
+			#else
+			{
+				obs.Tsq += 0.5 * avg(g_fix.state, H.TpTm(i,j), g_fix.state);
+				obs.Tsq += 0.5 * avg(g_fix.state, H.TmTp(i,j), g_fix.state);
+				obs.Tsq +=       avg(g_fix.state, H.TzTz(i,j), g_fix.state);
+			}
+			#endif
+			
+			obs.Ssq += avg(g_fix.state, H.SdagS(i,j), g_fix.state);
+		}
+		lout << "Tsq=" << obs.Tsq  << ", Ssq=" << obs.Ssq << endl;
+		lout << "ns=" << obs.ns.sum()/volume << endl;
+		lout << "nh=" << obs.nh.sum()/volume << endl;
+		
+		HDF5Interface target;
+		string obsfile = make_string(wd+"obs/U=",U,"_V=",V,"_J=",J,"_L=",L,"_Ly=",Ly,".h5");
+		cout << obsfile << endl;
+		std::stringstream bond;
+		target = HDF5Interface(obsfile,WRITE);
+		bond << g_fix.state.calc_fullMmax();
+		target.create_group(bond.str());
+		
+		target.save_scalar(obs.energy,"energy",bond.str());
+		target.save_scalar(obs.dedV,"dedV",bond.str());
+		target.save_scalar(obs.Tsq,"Tsq",bond.str());
+		target.save_scalar(g_fix.state.calc_Dmax(),"Dmax",bond.str());
+		target.save_scalar(g_fix.state.calc_Mmax(),"Mmax",bond.str());
+		target.save_scalar(g_fix.state.calc_fullMmax(),"full Mmax",bond.str());
+		target.save_scalar(Fix.get_errEigval(),"err_eigval",bond.str());
+		target.save_scalar(Fix.get_errState(),"err_state",bond.str());
+		
+		target.save_matrix(obs.nh,"nh",bond.str());
+		target.save_matrix(obs.ns,"ns",bond.str());
+		target.save_scalar(obs.entropy_bipart,"entropy_bipart",bond.str());
+		target.save_scalar(obs.Tsq,"Tsq",bond.str());
+		target.save_scalar(obs.Ssq,"Ssq",bond.str());
+		target.close();
 	}
 	
 	lout << Watch.info("total time") << endl;
 	lout << "emin=" << emin << endl;
 	
-	size_t Nmax = (VUMPS)? N_cell:1;
-	Geometry2D GeoNcell(SNAKE,Nmax*L,Ly,1.,true);
-	for (size_t l=0; l<L*Ly*Nmax; ++l)
-	{
-		MODEL Htmp(L*Ly*Nmax+1,{});
-		
-		double SdagS = avg(g_foxy.state, Htmp.SdagS(0,l), g_foxy.state);
-		double TdagT = avg(g_foxy.state, Htmp.TdagT(0,l), g_foxy.state);
-		
-		cout << "x=" << GeoNcell(l).first << ", y=" << GeoNcell(l).second << ", <S†S>=" << SdagS << ", <T†T>=" << TdagT << endl;
-	}
+//	size_t Nmax = (VUMPS)? N_cell:1;
+//	Geometry2D GeoNcell(SNAKE,Nmax*L,Ly,1.,true);
+//	for (size_t l=0; l<L*Ly*Nmax; ++l)
+//	{
+//		MODEL Htmp(L*Ly*Nmax+1,{});
+//		
+//		double SdagS = avg(g_foxy.state, Htmp.SdagS(0,l), g_foxy.state);
+//		double TdagT = avg(g_foxy.state, Htmp.TdagT(0,l), g_foxy.state);
+//		
+//		cout << "x=" << GeoNcell(l).first << ", y=" << GeoNcell(l).second << ", <S†S>=" << SdagS << ", <T†T>=" << TdagT << endl;
+//	}
 }
