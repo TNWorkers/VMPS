@@ -628,8 +628,8 @@ TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
-	auto Op1 = F[locx1].Tp(locy1);
-	auto Op2 = F[locx2].Tm(locy2);
+	auto Op1 = pow(-1.,locx1+locy1) * F[locx1].Tp(locy1);
+	auto Op2 = pow(-1.,locx2+locy2) * F[locx2].Tm(locy2);
 	
 	if (locx1 == locx2)
 	{
@@ -653,8 +653,8 @@ TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
-	auto Op1 = F[locx1].Tm(locy1);
-	auto Op2 = F[locx2].Tp(locy2);
+	auto Op1 = pow(-1.,locx1+locy1) * F[locx1].Tm(locy1);
+	auto Op2 = pow(-1.,locx2+locy2) * F[locx2].Tp(locy2);
 	
 	if (locx1 == locx2)
 	{

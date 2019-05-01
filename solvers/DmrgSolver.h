@@ -1030,6 +1030,14 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		#endif
 	}
 	
+	#ifdef USE_HDF5_STORAGE
+	if (GlobParam.savePeriod != 0)
+	{
+		lout << termcolor::green << "saving final state to: " << GlobParam.saveName << termcolor::reset << endl;
+		Vout.state.save(GlobParam.saveName,H.info());
+	}
+	#endif
+	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
 		lout << TotalTimer.info("total runtime") << endl;

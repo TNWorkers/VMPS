@@ -47,7 +47,7 @@ struct Obs
 	Eigen::MatrixXd entropy;
 	double energy;
 	double dedV;
-	double entropy_bipart; // for finite systems
+	Eigen::MatrixXd finite_entropy; // for finite systems
 	double Tsq; // T^2
 	double Ssq; // S^2
 	
@@ -65,6 +65,7 @@ struct Obs
 		ns.resize(Lx,Ly); ns.setZero();
 		
 		entropy.resize(Lx,Ly); entropy.setZero();
+		finite_entropy.resize(Lx-1,Ly);
 		
 		// format:
 		// n x0 y0 x1 y1 value
@@ -226,7 +227,7 @@ int main (int argc, char* argv[])
 	
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
-	string base = make_string("U=",U,"_V=",V,"_J=",J,"_Ly=",Ly);
+	string base = make_string("U=",U,"_V=",V,"_J=",J,"_L=",L,"_Ly=",Ly);
 	string obsfile = make_string(wd,"obs/",base,".h5");
 	string statefile = make_string(wd,"state/",base);
 	
@@ -251,6 +252,7 @@ int main (int argc, char* argv[])
 	GlobParam_foxy.tol_var = args.get<double>("tol_var",1e-6);
 	GlobParam_foxy.tol_state = args.get<double>("tol_state",1e-5);
 	GlobParam_foxy.savePeriod = args.get<size_t>("savePeriod",4ul);
+	GlobParam_foxy.saveName = args.get<string>("saveName",statefile);
 	
 	wd = args.get<string>("wd","./");
 	correct_foldername(wd);
@@ -588,7 +590,7 @@ int main (int argc, char* argv[])
 				}
 				target.close();
 				stringstream ss;
-				ss << "Calcuated and saved observables for M=" << g_foxy.state.calc_fullMmax();
+				ss << "Calcuated and saved observables for M=" << g_foxy.state.calc_fullMmax() << " to " << obsfile;
 				
 				if (Foxy.get_verbosity() >= DMRG::VERBOSITY::HALFSWEEPWISE) {lout << SaveAndMeasure.info(ss.str()) << endl << endl;}
 			}
@@ -636,8 +638,13 @@ int main (int argc, char* argv[])
 			obs.nh(x,y) = avg(g_fix.state, H.nh(Geo1cell(x,y)), g_fix.state);
 			obs.ns(x,y) = avg(g_fix.state, H.ns(Geo1cell(x,y)), g_fix.state);
 		}
-		obs.entropy_bipart = g_fix.state.entropy()(volume/2);
-		lout << "bipartition entropy=" << obs.entropy_bipart << endl;
+		
+		for (size_t x=0; x<L-1; ++x)
+		for (size_t y=0; y<Ly; ++y)
+		{
+			obs.finite_entropy(x,y) = g_fix.state.entropy()(Geo1cell(x,y%Ly));
+		}
+		lout << "bipartition entropy=" << obs.finite_entropy(L/2,Ly/2) << endl;
 		
 		double Tsq = 0.;
 		double Ssq = 0.;
@@ -683,10 +690,11 @@ int main (int argc, char* argv[])
 		
 		target.save_matrix(obs.nh,"nh",bond.str());
 		target.save_matrix(obs.ns,"ns",bond.str());
-		target.save_scalar(obs.entropy_bipart,"entropy_bipart",bond.str());
+		target.save_matrix(obs.finite_entropy,"finite_entropy",bond.str());
 		target.save_scalar(obs.Tsq,"Tsq",bond.str());
 		target.save_scalar(obs.Ssq,"Ssq",bond.str());
 		target.close();
+		lout << "saved to: " << obsfile << endl;
 	}
 	
 	lout << Watch.info("total time") << endl;
