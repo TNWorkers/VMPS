@@ -412,7 +412,7 @@ Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, si
 	qloc.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l) {qloc[l] = qloc_input;}
 	resize(Dmax,Nqmax);
-	::transform_base<Symmetry>(qloc,Qtot); // from DmrgExternal.h
+	::transform_base<Symmetry>(qloc,Qtot); // from symmetry/functions.h
 }
 
 template<typename Symmetry, typename Scalar>
@@ -423,7 +423,7 @@ Umps (const vector<vector<qarray<Symmetry::Nq> > > &qloc_input, qarray<Nq> Qtot_
 	qloc.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l) {qloc[l] = qloc_input[l];}
 	resize(Dmax,Nqmax);
-	::transform_base<Symmetry>(qloc,Qtot); // from DmrgExternal.h
+	::transform_base<Symmetry>(qloc,Qtot); // from symmetry/functions.h
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1864,7 +1864,7 @@ save (string filename, string info)
 			target.save_matrix(A[g][l][s].block[q],label,"As");
 		}
 	}
-
+	
 	//save the C-matrices
 	for (size_t l=0; l<this->N_sites; ++l)
 	{

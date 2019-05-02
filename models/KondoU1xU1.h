@@ -274,7 +274,7 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 			}
 			
 			stringstream ss;
-			ss << "Jdirᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			ss << "Jdirᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
 			Terms.save_label(loc,ss.str());
 		}
 		

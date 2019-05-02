@@ -1520,7 +1520,7 @@ template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT)
 {
-	::transform_base<Symmetry>(qloc,Qtot,PRINT); // from DmrgExternal.h
+	::transform_base<Symmetry>(qloc,Qtot,PRINT); // from symmery/functions.h
 	
 	if (Qtot != Symmetry::qvacuum())
 	{

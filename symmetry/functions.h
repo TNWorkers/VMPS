@@ -150,25 +150,32 @@ void transform_base (vector<vector<qarray<Symmetry::Nq> > > &qloc, qarray<Symmet
 {
 	if (Qtot != Symmetry::qvacuum())
 	{
+		if (PRINT) lout << "•old base:" << endl;
 		for (size_t l=0; l<qloc.size(); ++l)
-		for (size_t i=0; i<qloc[l].size(); ++i)
-		for (size_t q=0; q<Symmetry::Nq; ++q)
 		{
-			if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non Abelian symmetries
+			if (PRINT) lout << "l=" << l << endl;
+			for (size_t i=0; i<qloc[l].size(); ++i)
 			{
-				qloc[l][i][q] = qloc[l][i][q] * static_cast<int>(qloc.size()) - Qtot[q];
+				if (PRINT) lout << "qloc: " << qloc[l][i] << endl;
+				for (size_t q=0; q<Symmetry::Nq; ++q)
+				{
+					if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non Abelian symmetries
+					{
+						qloc[l][i][q] = qloc[l][i][q] * static_cast<int>(qloc.size()) - Qtot[q];
+					}
+				}
 			}
 		}
 		
 		if (PRINT)
 		{
-			lout << "transformed base:" << endl;
+			lout << "•transformed base:" << endl;
 			for (size_t l=0; l<qloc.size(); ++l)
 			{
 				lout << "l=" << l << endl;
 				for (size_t i=0; i<qloc[l].size(); ++i)
 				{
-					cout << "qloc: " << qloc[l][i] << endl;
+					lout << "qloc: " << qloc[l][i] << endl;
 				}
 			}
 		}

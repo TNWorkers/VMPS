@@ -217,7 +217,7 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 			}
 			
 			stringstream ss;
-			ss << "tᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			ss << "tᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
 			Terms.save_label(loc,ss.str());
 		}
 		
@@ -253,7 +253,7 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 			}
 			
 			stringstream ss;
-			ss << "Vzᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			ss << "Vzᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
 			Terms.save_label(loc,ss.str());
 		}
 		
@@ -293,7 +293,7 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 			}
 			
 			stringstream ss;
-			ss << "Vxyᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			ss << "Vxyᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
 			Terms.save_label(loc,ss.str());
 		}
 		
@@ -328,7 +328,7 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 			}
 			
 			stringstream ss;
-			ss << "Jᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			ss << "Jᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
 			Terms.save_label(loc,ss.str());
 		}
 		

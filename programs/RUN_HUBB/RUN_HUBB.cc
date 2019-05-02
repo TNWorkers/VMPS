@@ -299,7 +299,7 @@ int main (int argc, char* argv[])
 	}
 	
 	vector<Param> params;
-	qarray<2> Qc;
+	qarray<2> Qc, Qc2;
 	if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
 	{
 		params.push_back({"tFull",tArray});
@@ -307,7 +307,8 @@ int main (int argc, char* argv[])
 		params.push_back({"Jfull",Jarray});
 		params.push_back({"U",U});
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
-		Qc = {S,T};
+		Qc  = {S,T};
+		Qc2 = {S,T};
 	}
 	else
 	{
@@ -318,11 +319,13 @@ int main (int argc, char* argv[])
 		params.push_back({"Uph",U});
 		params.push_back({"U",0.});
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
-		Qc = {S,N};
+		Qc  = {S,N};
+		Qc2 = {S,2*N}; // for 2 unit cells
 	}
 	
 	MODEL H(volume,params);
 	if (VUMPS) H.transform_base(Qc);
+	lout << "•H for ground state:" << endl;
 	lout << H.info() << endl;
 	
 	// To calculate de/dV for finite systems as exp. value of Hamiltonian with only V=1
@@ -346,12 +349,13 @@ int main (int argc, char* argv[])
 	{
 		// For VUMPS: Hamiltonian with two unit cells for contractions across the cell
 		dHdV = MODEL(2*volume,{{"OPEN_BC",false},{"CALC_SQUARE",false}});
-		dHdV.transform_base(Qc);
+		dHdV.transform_base(Qc2,false); // PRINT=false
 	}
 	else
 	{
 		dHdV = MODEL(volume,dHdV_params);
 	}
+	lout << "•H to calculate de/dV:" << endl;
 	lout << dHdV.info() << endl;
 	
 	obs.resize(L,Ly,N_cell);
@@ -364,7 +368,7 @@ int main (int argc, char* argv[])
 		target = HDF5Interface(obsfile,WRITE);
 		target.close();
 		
-		auto measure_and_save = [&H,&dHdV,&target,&params,&Geo1cell,&Geo2cell,&Foxy,&obsfile](size_t j) -> void
+		auto measure_and_save = [&H,&dHdV,&target,&params,&Geo1cell,&Geo2cell,&Foxy,&obsfile,&Qc](size_t j) -> void
 		{
 			if (Foxy.errVar() < 1e-8 or Foxy.FORCE_DO_SOMETHING == true)
 			{
@@ -464,6 +468,11 @@ int main (int argc, char* argv[])
 							S_ky[x]    = H.S_ky   (phases_p);
 							Tdag_ky[x] = H.Tdag_ky(phases_m);
 							T_ky[x]    = H.T_ky   (phases_p);
+							
+							Sdag_ky[x].transform_base(Qc,false); // PRINT=false
+							S_ky[x].transform_base(Qc,false);
+							Tdag_ky[x].transform_base(Qc,false);
+							T_ky[x].transform_base(Qc,false);
 						}
 						
 						
@@ -644,33 +653,33 @@ int main (int argc, char* argv[])
 		{
 			obs.finite_entropy(x,y) = g_fix.state.entropy()(Geo1cell(x,y%Ly));
 		}
-		lout << "bipartition entropy=" << obs.finite_entropy(L/2,Ly/2) << endl;
+		lout << "finite_entropy=" << obs.finite_entropy(L/2,Ly/2) << endl;
 		
-		double Tsq = 0.;
-		double Ssq = 0.;
-		#pragma omp parallel for collapse(2) reduction(+:Ssq) reduction(+:Tsq)
-		for (int i=0; i<volume; ++i)
-		for (int j=0; j<volume; ++j)
-		{
-			//if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
-			#ifdef USING_SO4
-			{
-				Tsq += avg(g_fix.state, H.TdagT(i,j), g_fix.state);
-			}
-//			else
-			#else
-			{
-				Tsq += 0.5 * avg(g_fix.state, H.TpTm(i,j), g_fix.state);
-				Tsq += 0.5 * avg(g_fix.state, H.TmTp(i,j), g_fix.state);
-				Tsq +=       avg(g_fix.state, H.TzTz(i,j), g_fix.state);
-			}
-			#endif
-			
-			Ssq += avg(g_fix.state, H.SdagS(i,j), g_fix.state);
-		}
-		obs.Tsq = Tsq;
-		obs.Ssq = Ssq;
-		lout << "Tsq=" << obs.Tsq  << ", Ssq=" << obs.Ssq << endl;
+//		double Tsq = 0.;
+//		double Ssq = 0.;
+//		#pragma omp parallel for collapse(2) reduction(+:Ssq) reduction(+:Tsq)
+//		for (int i=0; i<volume; ++i)
+//		for (int j=0; j<volume; ++j)
+//		{
+//			//if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
+//			#ifdef USING_SO4
+//			{
+//				Tsq += avg(g_fix.state, H.TdagT(i,j), g_fix.state);
+//			}
+////			else
+//			#else
+//			{
+//				Tsq += 0.5 * avg(g_fix.state, H.TpTm(i,j), g_fix.state);
+//				Tsq += 0.5 * avg(g_fix.state, H.TmTp(i,j), g_fix.state);
+//				Tsq +=       avg(g_fix.state, H.TzTz(i,j), g_fix.state);
+//			}
+//			#endif
+//			
+//			Ssq += avg(g_fix.state, H.SdagS(i,j), g_fix.state);
+//		}
+//		obs.Tsq = Tsq;
+//		obs.Ssq = Ssq;
+//		lout << "Tsq=" << obs.Tsq  << ", Ssq=" << obs.Ssq << endl;
 		lout << "ns=" << obs.ns.sum()/volume << endl;
 		lout << "nh=" << obs.nh.sum()/volume << endl;
 		

@@ -350,7 +350,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Hami
 			}
 			
 			stringstream ss;
-			ss << "Jᵢⱼ(avg=" << Geometry2D::avg(Full) << ",σ=" << Geometry2D::sigma(Full) << ",max=" << Geometry2D::max(Full) << ")";
+			ss << "Jᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
 			Terms.save_label(loc, ss.str());
 			continue;
 		}
