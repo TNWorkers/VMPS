@@ -34,7 +34,7 @@ double alpha;
 DMRG::VERBOSITY::OPTION VERB;
 double Emin = 0.;
 double emin = 0.;
-bool UMPS_STRUCTURE_FACTOR, VUMPS;
+bool UMPS_STRUCTURE_FACTOR, UMPS_CONTRACTIONS, VUMPS;
 string wd; // working directory
 
 Eigenstate<MODEL::StateXd> g_fix;
@@ -51,6 +51,9 @@ struct Obs
 	double Tsq; // T^2
 	double Ssq; // S^2
 	
+	double energyS;
+	double energyT;
+	
 	double S_M;
 	double T_M;
 	double S_Gamma;
@@ -58,6 +61,8 @@ struct Obs
 	
 	Eigen::MatrixXd SdagS;
 	Eigen::MatrixXd TdagT;
+	
+	vector<vector<Eigen::MatrixXd> > spectrum;
 	
 	void resize (size_t Lx, size_t Ly, size_t Lobs)
 	{
@@ -71,6 +76,9 @@ struct Obs
 		// n x0 y0 x1 y1 value
 		SdagS.resize(N_cell*Lx*Ly*Lx*Ly,6); SdagS.setZero();
 		TdagT.resize(N_cell*Lx*Ly*Lx*Ly,6); TdagT.setZero();
+		
+		spectrum.resize(Lx);
+		for (int l=0; l<L; ++l) spectrum[l].resize(Ly);
 	}
 };
 
@@ -213,7 +221,8 @@ int main (int argc, char* argv[])
 	dV = args.get<double>("dV",0.01);
 	M = args.get<int>("M",0);
 	S = abs(M)+1;
-	UMPS_STRUCTURE_FACTOR = args.get<bool>("STRUCTURE",true);
+	UMPS_STRUCTURE_FACTOR = args.get<bool>("STRUCTURE",false);
+	UMPS_CONTRACTIONS = args.get<bool>("CONTRACTIONS",false);
 	VUMPS = args.get<bool>("VUMPS",true);
 	
 	DMRG::CONTROL::GLOB GlobParam_fix;
@@ -227,7 +236,18 @@ int main (int argc, char* argv[])
 	
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
-	string base = make_string("U=",U,"_V=",V,"_J=",J,"_L=",L,"_Ly=",Ly);
+	wd = args.get<string>("wd","./");
+	correct_foldername(wd);
+	
+	lout << args.info() << endl;
+	lout << "wd=" << wd << endl;
+	
+	string base;
+	#ifdef USING_SO4
+	base = make_string("U=",U,"_V=",V,"_J=",J,"_L=",L,"_Ly=",Ly);
+	#else
+	base = make_string("N=",N,"_U=",U,"_V=",V,"_J=",J,"_L=",L,"_Ly=",Ly);
+	#endif
 	string obsfile = make_string(wd,"obs/",base,".h5");
 	string statefile = make_string(wd,"state/",base);
 	
@@ -254,13 +274,11 @@ int main (int argc, char* argv[])
 	GlobParam_foxy.savePeriod = args.get<size_t>("savePeriod",4ul);
 	GlobParam_foxy.saveName = args.get<string>("saveName",statefile);
 	
-	wd = args.get<string>("wd","./");
-	correct_foldername(wd);
-	
-	lout << args.info() << endl;
-	lout << "wd=" << wd << endl;
-	
+	#ifdef USING_SO4
 	lout.set(make_string("L=",L,"_Ly=",Ly,"_t=",t,"_V=",V,"_U=",U,"_J=",J,".log"),wd+"log");
+	#else
+	lout.set(make_string("L=",L,"_N=",N,"_Ly=",Ly,"_t=",t,"_V=",V,"_U=",U,"_J=",J,".log"),wd+"log");
+	#endif
 	
 	#ifdef _OPENMP
 	lout << "threads=" << omp_get_max_threads() << endl;
@@ -284,7 +302,7 @@ int main (int argc, char* argv[])
 		ZeroArray = 0. * Geo2cell.hopping();
 		OneArray  = 1. * Geo2cell.hopping();
 		lout << "t=" << t << ", V=" << V << ", dV=" << dV << ", J=" << J << endl;
-		lout << "hopping=" << endl << Geo2cell.hopping() << endl << endl;
+		if (volume <= 100) lout << "hopping=" << endl << Geo2cell.hopping() << endl << endl;
 	}
 	else
 	{
@@ -295,11 +313,11 @@ int main (int argc, char* argv[])
 		Jarray    = J * tFull;
 		ZeroArray = 0. * tFull;
 		OneArray  = 1. * tFull;
-		lout << "hopping=" << endl << tFull << endl << endl;
+		if (volume <= 100) lout << "hopping=" << endl << tFull << endl << endl;
 	}
 	
 	vector<Param> params;
-	qarray<2> Qc, Qc2;
+	qarray<2> Qc, Qc2, QcSpin, QcCharge;
 	if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
 	{
 		params.push_back({"tFull",tArray});
@@ -309,6 +327,8 @@ int main (int argc, char* argv[])
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {S,T};
 		Qc2 = {S,T};
+		QcSpin   = {S+2,T};
+		QcCharge = {S,T+2};
 	}
 	else
 	{
@@ -386,6 +406,7 @@ int main (int argc, char* argv[])
 					obs.nh(x,y)      = avg(g_foxy.state, H.nh(Geo1cell(x,y)), g_foxy.state);
 					obs.ns(x,y)      = avg(g_foxy.state, H.ns(Geo1cell(x,y)), g_foxy.state);
 					obs.entropy(x,y) = g_foxy.state.entropy()(Geo1cell(x,y));
+					obs.spectrum[x][y] = g_foxy.state.entanglementSpectrumLoc(Geo1cell(x,y));
 				}
 				
 				obs.energy = g_foxy.energy;
@@ -396,12 +417,10 @@ int main (int argc, char* argv[])
 				for (size_t y=0; y<Ly; ++y)
 				{
 					// horizontal
-					//if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
 					#ifdef USING_SO4
 					{
 						obs.dedV += avg(g_foxy.state, dHdV.TdagT(Geo2cell(x,y),Geo2cell(x+1,y)), g_foxy.state);
 					}
-					//else
 					#else
 					{
 						obs.dedV += 0.5 * avg(g_foxy.state, dHdV.TpTm(Geo2cell(x,y),Geo2cell(x+1,y)), g_foxy.state);
@@ -414,12 +433,10 @@ int main (int argc, char* argv[])
 					if (Ly > 1)
 					{
 						double edge_corr = (Ly==2)? 0.5:1.;
-//						if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
 						#ifdef USING_SO4
 						{
 							obs.dedV += edge_corr * avg(g_foxy.state, dHdV.TdagT(Geo2cell(x,y),Geo2cell(x,(y+1)%L)), g_foxy.state);
 						}
-//						else
 						#else
 						{
 							obs.dedV += edge_corr * 0.5 * avg(g_foxy.state, dHdV.TpTm(Geo2cell(x,y),Geo2cell(x,(y+1)%L)), g_foxy.state);
@@ -429,7 +446,6 @@ int main (int argc, char* argv[])
 						#endif
 					}
 				}
-				lout << "done!" << endl;
 				obs.dedV /= (L*Ly);
 				//----------de/dV----------
 				
@@ -535,7 +551,7 @@ int main (int argc, char* argv[])
 						}
 					}
 				}
-				else
+				if (UMPS_CONTRACTIONS)
 				{
 					fill_OdagO(L, Ly, N_cell, g_foxy);
 					
@@ -585,6 +601,13 @@ int main (int argc, char* argv[])
 				target.save_matrix(obs.ns,"ns",bond.str());
 				target.save_matrix(obs.entropy,"Entropy",bond.str());
 				
+				for (size_t x=0; x<L; ++x)
+				for (size_t y=0; y<Ly; ++y)
+				{
+					target.save_matrix(obs.spectrum[x][y],make_string("spectrum_x=",x,"_y=",y),bond.str());
+//					lout << "x=" << x << ", y=" << y << ", spec=" << obs.spectrum[x][y].transpose() << endl;
+				}
+				
 				if (UMPS_STRUCTURE_FACTOR)
 				{
 					target.save_scalar(obs.S_Gamma,"S_Gamma",bond.str());
@@ -619,26 +642,44 @@ int main (int argc, char* argv[])
 	else
 	{
 		MODEL::Solver Fix(VERB);
-		Fix.userSetGlobParam();
-		Fix.userSetDynParam();
-		Fix.GlobParam = GlobParam_fix;
-		Fix.DynParam = DynParam_fix;
-		Fix.edgeState(H, g_fix, Qc, LANCZOS::EDGE::GROUND); 
+		Eigenstate<MODEL::StateXd> g_fix_spin;
+		Eigenstate<MODEL::StateXd> g_fix_charge;
 		
-		// U-correction of energy: unnecessery with particle-hole symmetric Uph
-//		if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
-//		{
-//			Emin = g_fix.energy-0.5*U*(volume-N);
-//		}
-//		else
-//		{
-//			Emin = g_fix.energy;
-//		}
-		Emin = g_fix.energy;
-		emin = Emin/volume;
+//		#pragma omp parallel sections
+		{
+//			#pragma omp section
+			{
+				Fix.userSetGlobParam();
+				Fix.userSetDynParam();
+				Fix.GlobParam = GlobParam_fix;
+				Fix.DynParam = DynParam_fix;
+				Fix.edgeState(H, g_fix, Qc, LANCZOS::EDGE::GROUND);
+			}
+//			#pragma omp section
+//			{
+//				MODEL::Solver Fix_(DMRG::VERBOSITY::ON_EXIT);
+//				Fix_.userSetGlobParam();
+//				Fix_.userSetDynParam();
+//				Fix_.GlobParam = GlobParam_fix;
+//				Fix_.DynParam = DynParam_fix;
+//				Fix_.edgeState(H, g_fix_spin, QcSpin, LANCZOS::EDGE::GROUND);
+//			}
+//			#pragma omp section
+//			{
+//				MODEL::Solver Fix_(DMRG::VERBOSITY::ON_EXIT);
+//				Fix_.userSetGlobParam();
+//				Fix_.userSetDynParam();
+//				Fix_.GlobParam = GlobParam_fix;
+//				Fix_.DynParam = DynParam_fix;
+//				Fix_.edgeState(H, g_fix_charge, QcCharge, LANCZOS::EDGE::GROUND);
+//			}
+		}
 		
-		obs.energy = emin;
+		obs.energy = g_fix.energy/volume;
 		obs.dedV = avg(g_fix.state, dHdV, g_fix.state)/volume;
+		
+		obs.energyS = g_fix_spin.energy/volume;
+		obs.energyT = g_fix_charge.energy/volume;
 		
 		#pragma omp parallel for collapse(2)
 		for (size_t x=0; x<L; ++x)
@@ -653,7 +694,7 @@ int main (int argc, char* argv[])
 		{
 			obs.finite_entropy(x,y) = g_fix.state.entropy()(Geo1cell(x,y%Ly));
 		}
-		lout << "finite_entropy=" << obs.finite_entropy(L/2,Ly/2) << endl;
+		lout << "bipartition entropy=" << obs.finite_entropy(L/2,Ly/2) << endl;
 		
 //		double Tsq = 0.;
 //		double Ssq = 0.;
@@ -683,6 +724,9 @@ int main (int argc, char* argv[])
 		lout << "ns=" << obs.ns.sum()/volume << endl;
 		lout << "nh=" << obs.nh.sum()/volume << endl;
 		
+		lout << "spin gap=" << g_fix_spin.energy-g_fix.energy << endl;
+		lout << "charge gap=" << g_fix_charge.energy-g_fix.energy << endl;
+		
 		HDF5Interface target;
 		std::stringstream bond;
 		target = HDF5Interface(obsfile,WRITE);
@@ -707,7 +751,7 @@ int main (int argc, char* argv[])
 	}
 	
 	lout << Watch.info("total time") << endl;
-	lout << "emin=" << emin << endl;
+	lout << "emin=" << obs.energy << endl;
 	
 //	size_t Nmax = (VUMPS)? N_cell:1;
 //	Geometry2D GeoNcell(SNAKE,Nmax*L,Ly,1.,true);

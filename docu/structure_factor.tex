@@ -27,7 +27,7 @@
 s^{\alpha\beta}\lr{\v{k}} &:=\frac{1}{\abs{\mathbb{Z}}}  \frac{1}{L_xL_y} \sum_{m,n\in\mathbb{Z}} \sum_{j_x,j'_x} \sum_{j_y,j'_y} e^{-ik_x\lr{nL_x-mL_x+j_x-j'_x}} e^{-ik_y\lr{j_y-j'_y}} \avg{O^{\beta\dagger}_{n,j_x,j_y} O^{\alpha}_{m,j'_x,j'_y}}\\
                       &= \frac{1}{\abs{\mathbb{Z}}} \sum_{m,n\in\mathbb{Z}} \frac{1}{L_x} \sum_{j_x,j'_x} e^{-ik_x\lr{nL_x-mL_x+j_x-j'_x}} \avg{O^{\beta\dagger}_{n,j_x}\lr{k_y} O^{\alpha}_{m,j'_x}\lr{k_y}}\\
                       &= \sum_{n\in\mathbb{Z}} \frac{1}{L_x} \sum_{j_x,j'_x} e^{-ik_x\lr{nL_x+j_x-j'_x}} \avg{O^{\beta\dagger}_{n,j_x}\lr{k_y} O^{\alpha}_{0,j'_x}\lr{k_y}}\\
-                      &= \frac{1}{L_x} \sum_{j_x,j'_x} e^{-ik_x\lr{j_x-j'_x}} \cdot \lr{ \sum_{n\in\mathbb{Z}} e^{-iqnL_x} \avg{O^{\beta\dagger}_{n,j_x}\lr{k_y} O^{\alpha}_{0,j'_x}\lr{k_y}} }\\
+                      &= \frac{1}{L_x} \sum_{j_x,j'_x} e^{-ik_x\lr{j_x-j'_x}} \cdot \lr{ \sum_{n\in\mathbb{Z}} e^{-ik_xnL_x} \avg{O^{\beta\dagger}_{n,j_x}\lr{k_y} O^{\alpha}_{0,j'_x}\lr{k_y}} }\\
                       &=: \frac{1}{L_x} \sum_{j_x,j'_x} e^{-ik_x\lr{j_x-j'_x}} \cdot s^{\alpha\beta}_{j_xj'_x}\lr{\v{k}}
 \end{split}
 \end{equation}

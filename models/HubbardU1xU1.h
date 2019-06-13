@@ -84,21 +84,21 @@ HubbardU1xU1 (const size_t &L, const vector<Param> &params)
  HubbardObservables(L,params,HubbardU1xU1::defaults),
  ParamReturner()
 {
-    ParamHandler P(params, HubbardU1xU1::defaults);
-    
-    size_t Lcell = P.size();
-    
-    for (size_t l=0; l<N_sites; ++l)
-    {
-        N_phys += P.get<size_t>("Ly",l%Lcell);
-        setLocBasis(F[l].get_basis(),l);
-    }
-    
-    HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
-    set_operators(F,P,Terms);
-    
-    this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
-    this->precalc_TwoSiteData();
+	ParamHandler P(params, HubbardU1xU1::defaults);
+	
+	size_t Lcell = P.size();
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		N_phys += P.get<size_t>("Ly",l%Lcell);
+		setLocBasis(F[l].get_basis(),l);
+	}
+	
+	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
+	set_operators(F,P,Terms);
+	
+	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
+	this->precalc_TwoSiteData();
 }
 
 template<typename Symmetry_>

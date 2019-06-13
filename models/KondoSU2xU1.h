@@ -146,7 +146,7 @@ const map<string,any> KondoSU2xU1::defaults =
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",0.},
 	{"J",1.}, {"Jdir",0.}, 
-	{"U",0.},
+	{"U",0.}, {"Uph",0.},
 	{"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
 	{"Inext",0.}, {"Iprev",0.}, {"I3next",0.}, {"I3prev",0.}, {"I3loc",0.}, 
@@ -270,6 +270,10 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		param1d U = P.fill_array1d<double>("U", "Uorb", Forbitals, loc%Lcell);
 		Terms.save_label(loc, U.label);
 		
+		// Hubbard-U
+		param1d Uph = P.fill_array1d<double>("Uph", "Uphorb", Forbitals, loc%Lcell);
+		Terms.save_label(loc, Uph.label);
+		
 		// mu
 		param1d mu = P.fill_array1d<double>("mu", "muorb", Forbitals, loc%Lcell);
 		Terms.save_label(loc, mu.label);
@@ -289,7 +293,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			
 			//set Hubbard part of Kondo Hamiltonian
 			KondoHamiltonian = OperatorType::outerprod(B[loc].Id(), 
-			                                           F[loc].HubbardHamiltonian(U.a,t0.a-mu.a,tPerp.a,Vperp.a,Vz,Vxy,Jperpsub),
+			                                           F[loc].HubbardHamiltonian(U.a,Uph.a,t0.a-mu.a,tPerp.a,Vperp.a,Vz,Vxy,Jperpsub),
 			                                           {1,0});
 			
 			//set Heisenberg part of Hamiltonian
@@ -812,7 +816,7 @@ cc (size_t locx, size_t locy)
 {
 	stringstream ss;
 	ss << "c" << UP << "c" << DN;
-	return make_local(SUB, ss.str(), locx,locy, F[locx].Eta(locy), 1., false, false);
+	return make_local(SUB, ss.str(), locx,locy, F[locx].cc(locy), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
@@ -820,7 +824,7 @@ cdagcdag (size_t locx, size_t locy)
 {
 	stringstream ss;
 	ss << "c†" << UP << "c†" << DN;
-	return make_local(SUB, ss.str(), locx,locy, F[locx].Etadag(locy), 1., false, false);
+	return make_local(SUB, ss.str(), locx,locy, F[locx].cdagcdag(locy), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
@@ -950,8 +954,8 @@ ccdag (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 // 	Mpo<Symmetry> Mout(N_sites, N_legs);
 // 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(Spins.basis().combine(F.basis()),l); }
 
-// 	auto Etadag = Operator::outerprod(Spins.Id(),F.Etadag(locy1),{1,2});
-// 	auto Eta = Operator::outerprod(Spins.Id(),F.Eta(locy2),{1,-2});
+// 	auto Etadag = Operator::outerprod(Spins.Id(),F.cdagcdag(locy1),{1,2});
+// 	auto Eta = Operator::outerprod(Spins.Id(),F.cc(locy2),{1,-2});
 // 	Mout.label = ss.str();
 // 	Mout.setQtarget(Symmetry::qvacuum());
 // 	Mout.qlabel = KondoSU2xU1::SNlabel;

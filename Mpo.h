@@ -76,11 +76,11 @@ class Mpo
 	
 //	template<typename Symmetry_, typename S1, typename S2> friend 
 //	void HxV  (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, 
-//	           DMRG::VERBOSITY::OPTION VERBOSITY); //=DMRG::VERBOSITY::HALFSWEEPWISE
+//			   DMRG::VERBOSITY::OPTION VERBOSITY); //=DMRG::VERBOSITY::HALFSWEEPWISE
 //	
 //	template<typename Symmetry_, typename S1, typename S2> friend 
 //	void OxV (const Mpo<Symmetry_,S1> &H, const Mps<Symmetry_,S2> &Vin, Mps<Symmetry_,S2> &Vout, 
-//	          DMRG::BROOM::OPTION TOOL); //=DMRG::BROOM::SVD
+//			  DMRG::BROOM::OPTION TOOL); //=DMRG::BROOM::SVD
 	
 public:
 	
@@ -106,7 +106,7 @@ public:
 	 * \param HAMILTONIAN_input : If the Mpo is a Hamiltonian, some calculations can be optimized
 	 */
 	Mpo (size_t L_input, qarray<Nq> Qtot_input, string label_input="Mpo", 
-	     bool HERMITIAN_input=false, bool UNITARY_input=false, bool HAMILTONIAN_input=false);
+		 bool HERMITIAN_input=false, bool UNITARY_input=false, bool HAMILTONIAN_input=false);
 	
 	/**
 	 * Static function for constructing an identity operator.
@@ -243,13 +243,13 @@ public:
 	inline vector<qarray<Nq> > locBasis   (size_t loc) const {return qloc[loc];}
 	
 	/**Returns the right auxiliary basis at \p loc.*/
-	inline Qbasis<Symmetry>    auxBasis   (size_t loc) const {return qaux[loc];}
+	inline Qbasis<Symmetry>	auxBasis   (size_t loc) const {return qaux[loc];}
 	
 	/**Returns the auxiliary ingoing basis at \p loc.*/
-	inline Qbasis<Symmetry>    inBasis   (size_t loc) const {return qaux[loc];}
+	inline Qbasis<Symmetry>	inBasis   (size_t loc) const {return qaux[loc];}
 	
 	/**Returns the auxiliary outgoing basis at \p loc.*/
-	inline Qbasis<Symmetry>    outBasis   (size_t loc) const {return qaux[loc+1];}
+	inline Qbasis<Symmetry>	outBasis   (size_t loc) const {return qaux[loc+1];}
 	
 	/**Returns the operator basis at \p loc.*/
 	inline vector<qarray<Nq> > opBasis   (size_t loc) const {return qOp[loc];}
@@ -261,7 +261,7 @@ public:
 	inline vector<vector<qarray<Nq> > > locBasis()   const {return qloc;}
 	
 	/**Returns the full auxiliary basis.*/
-	inline vector<Qbasis<Symmetry> >    auxBasis()   const {return qaux;}
+	inline vector<Qbasis<Symmetry> >	auxBasis()   const {return qaux;}
 	
 	/**Returns the full operator basis.*/
 	inline vector<vector<qarray<Nq> > > opBasis()   const {return qOp;}
@@ -270,16 +270,16 @@ public:
 	inline vector<vector<qarray<Nq> > > opBasisSq() const {return qOpSq;}
 	
 	/**Sets the local basis at \p loc.*/
-	inline void setLocBasis (const vector<qType> &q,    size_t loc) {qloc[loc]=q;}
+	inline void setLocBasis (const vector<qType> &q,	size_t loc) {qloc[loc]=q;}
 	
 	/**Sets the operator basis at \p loc.*/
 	inline void setOpBasis (const vector<qType>& q, size_t loc) {qOp[loc] = q;}
 	
 	/**Sets the full local basis.*/
-	inline void setLocBasis (const vector<vector<qType> >    &q) {qloc=q;}
+	inline void setLocBasis (const vector<vector<qType> >	&q) {qloc=q;}
 	
 	/**Sets the full operator basis.*/
-	inline void setOpBasis   (const vector<vector<qType> > &q)        {qOp=q;}
+	inline void setOpBasis   (const vector<vector<qType> > &q)		{qOp=q;}
 	
 	/**Sets the full operator basis of the squared Mpo.*/
 	inline void setOpBasisSq (const vector<vector<qType> > &qOpSq_in) {qOpSq=qOpSq_in;}
@@ -335,12 +335,12 @@ public:
 	
 	///@{
 	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
-	typedef Mps<Symmetry,double>                              StateXd;
-	typedef Umps<Symmetry,double>                             StateUd;
-	typedef Mps<Symmetry,complex<double> >                    StateXcd;
-	typedef MpsCompressor<Symmetry,double,double>             CompressorXd;
-	typedef MpsCompressor<Symmetry,complex<double>,double>    CompressorXcd;
-	typedef Mpo<Symmetry>                                     Operator;
+	typedef Mps<Symmetry,double>							  StateXd;
+	typedef Umps<Symmetry,double>							 StateUd;
+	typedef Mps<Symmetry,complex<double> >					StateXcd;
+	typedef MpsCompressor<Symmetry,double,double>			 CompressorXd;
+	typedef MpsCompressor<Symmetry,complex<double>,double>	CompressorXcd;
+	typedef Mpo<Symmetry>									 Operator;
 	///@}
 	
 protected:
@@ -359,7 +359,7 @@ protected:
 	qarray<Nq> Qtot;
 	
 	/**properties and boundary conditions*/
-	bool UNITARY    = false;
+	bool UNITARY	= false;
 	bool HERMITIAN  = false;
 	bool HAMILTONIAN  = false;
 	bool GOT_SQUARE = false;
@@ -385,37 +385,37 @@ protected:
 	
 	/**Calculates the W-matrices from given \p HamiltonianTerms. Used to construct Hamiltonians.*/
 	void construct_from_Terms (const HamiltonianTerms<Symmetry,Scalar> &Terms_input,
-	                           size_t Lcell=1ul, bool CALC_SQUARE=false, bool OPEN_BC=true, bool WORKAROUND_FOR_UNPACKED=false);
+							   size_t Lcell=1ul, bool CALC_SQUARE=false, bool OPEN_BC=true, bool WORKAROUND_FOR_UNPACKED=false);
 	
 	/**Construct with \p vector<SuperMatrix> and input \p qOp. Most general of the construct routines, all the source code is here.*/
 	void calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
-	                       vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
-	                       ArrayXXi &Daux_store,
-	                       bool CALC_SQUARE = false, 
-	                       bool OPEN_BC = true);
+						   vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+						   ArrayXXi &Daux_store,
+						   bool CALC_SQUARE = false, 
+						   bool OPEN_BC = true);
 	
 	/**Construct with \p SuperMatrix (homogeneously extended) and input \p qOp.*/
 	void calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G_input,
-	                    vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
-	                    ArrayXXi &Daux_store,
-	                    const vector<vector<qType> > &qOp_in,
-	                    bool CALC_SQUARE = false, 
-	                    bool OPEN_BC = true);
+						vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+						ArrayXXi &Daux_store,
+						const vector<vector<qType> > &qOp_in,
+						bool CALC_SQUARE = false, 
+						bool OPEN_BC = true);
 	
 	/**Construct with \p SuperMatrix and stored \p qOp.*/
 	void calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G_input,
-	                    vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
-	                    ArrayXXi &Daux_store,
-	                    bool CALC_SQUARE = false, 
-	                    bool OPEN_BC = true);
+						vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+						ArrayXXi &Daux_store,
+						bool CALC_SQUARE = false, 
+						bool OPEN_BC = true);
 	
 	/**Construct with \p vector<SuperMatrix> and stored \p qOp.*/
 	void calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec_input,
-	                       vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
-	                       ArrayXXi &Daux_store,
-	                       const vector<vector<qType> > &qOp_in,
-	                       bool CALC_SQUARE = false, 
-	                       bool OPEN_BC = true);
+						   vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+						   ArrayXXi &Daux_store,
+						   const vector<vector<qType> > &qOp_in,
+						   bool CALC_SQUARE = false, 
+						   bool OPEN_BC = true);
 	
 	/**Makes a \p vector<SuperMatrix> from the local operator \p Op. Core of setLocal.*/
 	vector<SuperMatrix<Symmetry,Scalar> > make_localGvec (size_t loc, const OperatorType &Op);
@@ -509,7 +509,7 @@ Identity (const vector<vector<qarray<Nq> > > &qloc)
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 construct_from_Terms (const HamiltonianTerms<Symmetry,Scalar> &Terms_input,
-                      size_t Lcell, bool CALC_SQUARE, bool OPEN_BC, bool WORKAROUND_FOR_UNPACKED)
+					  size_t Lcell, bool CALC_SQUARE, bool OPEN_BC, bool WORKAROUND_FOR_UNPACKED)
 {
 	Terms = Terms_input;
 	std::vector<SuperMatrix<Symmetry,Scalar> > G = Terms.construct_Matrix();
@@ -525,10 +525,10 @@ construct_from_Terms (const HamiltonianTerms<Symmetry,Scalar> &Terms_input,
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G,
-               vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
-               ArrayXXi &Daux_store,
-               bool CALC_SQUARE,
-               bool OPEN_BC)
+			   vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+			   ArrayXXi &Daux_store,
+			   bool CALC_SQUARE,
+			   bool OPEN_BC)
 {
 	calc_W_from_G(G, Wstore, Daux_store, this->qOp, CALC_SQUARE, OPEN_BC);
 }
@@ -536,10 +536,10 @@ calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G,
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
-                  vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
-                  ArrayXXi &Daux_store,
-                  bool CALC_SQUARE,
-                  bool OPEN_BC)
+				  vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
+				  ArrayXXi &Daux_store,
+				  bool CALC_SQUARE,
+				  bool OPEN_BC)
 {
 	calc_W_from_Gvec(Gvec, Wstore, Daux_store, this->qOp, CALC_SQUARE, OPEN_BC);
 }
@@ -547,11 +547,11 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G_input,
-               vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
-               ArrayXXi &Daux_store,
-               const vector<vector<qType> > &qOp_in,
-               bool CALC_SQUARE,
-               bool OPEN_BC)
+			   vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &Wstore,
+			   ArrayXXi &Daux_store,
+			   const vector<vector<qType> > &qOp_in,
+			   bool CALC_SQUARE,
+			   bool OPEN_BC)
 {
 	vector<SuperMatrix<Symmetry,Scalar> > Gvec(N_sites);
 	size_t D = G_input(0,0).data.rows();
@@ -580,11 +580,11 @@ calc_W_from_G (const SuperMatrix<Symmetry,Scalar> &G_input,
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
-                  vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
-                  ArrayXXi &Daux_store,
-                  const vector<vector<qType> > &qOp_in,
-                  bool CALC_SQUARE,
-                  bool OPEN_BC)
+				  vector<vector<vector<vector<SparseMatrix<Scalar> > > > >  &Wstore,
+				  ArrayXXi &Daux_store,
+				  const vector<vector<qType> > &qOp_in,
+				  bool CALC_SQUARE,
+				  bool OPEN_BC)
 {
 	GOT_OPEN_BC = OPEN_BC;
 	Wstore.resize(N_sites);
@@ -625,7 +625,8 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			}
 			for (size_t a2=0; a2<Gvec[l].cols(); ++a2)
 			{
-				Scalar val = Gvec[l](Gvec[l].rows()-1,a2).data.coeffRef(s1,s2);
+				Scalar val = (s1<Gvec[l](Gvec[l].rows()-1,a2).data.rows() and s2<Gvec[l](Gvec[l].rows()-1,a2).data.cols())? 
+							 Gvec[l](Gvec[l].rows()-1,a2).data.coeffRef(s1,s2):0;
 				if (abs(val) > ::mynumeric_limits<double>::epsilon())
 				{
 					qType Q = Gvec[l](Gvec[l].rows()-1,a2).Q;
@@ -664,7 +665,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 		for (size_t a1=0; a1<Gvec[l].rows(); ++a1)
 		for (size_t a2=0; a2<Gvec[l].cols(); ++a2)
 		{
-			Scalar val = Gvec[l](a1,a2).data.coeffRef(s1,s2);
+			Scalar val = (s1<Gvec[l](a1,a2).data.rows() and s2<Gvec[l](a1,a2).data.cols())? Gvec[l](a1,a2).data.coeffRef(s1,s2):0;
 			if (abs(val) > ::mynumeric_limits<double>::epsilon())
 			{
 				qType Q = Gvec[l](a1,a2).Q;
@@ -702,7 +703,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			}
 			for (size_t a1=0; a1<Gvec[l].rows(); ++a1)
 			{
-				Scalar val = Gvec[l](a1,0).data.coeffRef(s1,s2);
+				Scalar val = (s1<Gvec[l](a1,0).data.rows() and s2<Gvec[l](a1,0).data.cols())? Gvec[l](a1,0).data.coeffRef(s1,s2):0;
 				if (abs(val) > ::mynumeric_limits<double>::epsilon())
 				{
 					qType Q = Gvec[l](a1,0).Q;
@@ -787,12 +788,12 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 								for(const auto& qrn : qrns)
 								{
 									// tensor product in auxiliary space:
-									// Scalar factor_merge = Symmetry::coeff_tensorProd(qr1       , qr2       , qrn,
+									// Scalar factor_merge = Symmetry::coeff_tensorProd(qr1	   , qr2	   , qrn,
 									// 												 qOp[l][k2], qOp[l][k1], qK ,
-									// 												 ql1       , ql2       , qln);
-									Scalar factor_merge = Symmetry::coeff_tensorProd(ql1       , ql2       , qln,
+									// 												 ql1	   , ql2	   , qln);
+									Scalar factor_merge = Symmetry::coeff_tensorProd(ql1	   , ql2	   , qln,
 																					 qOp[l][k2], qOp[l][k1], qK ,
-																					 qr1       , qr2       , qrn);
+																					 qr1	   , qr2	   , qrn);
 									
 									Eigen::Index left1=TensorBaseLeft.leftAmount(qln,{ql1, ql2});
 									Eigen::Index left2=TensorBaseRight.leftAmount(qrn,{qr1, qr2});
@@ -943,7 +944,6 @@ calc_auxBasis()
 		
 		qaux[l] = qauxtmp;
 	}
-
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1050,111 +1050,110 @@ template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 generate_label (size_t Lcell)
 {
-    std::stringstream ss;
-    ss << Terms.name();
-    std::vector<std::string> info = Terms.get_info();
-    
-    
-    std::map<std::string,std::set<std::size_t> > cells;
-    
-    for (std::size_t loc=0; loc<info.size(); ++loc)
-    {
-        cells[info[loc]].insert(loc%Lcell);
-    }
-    
-    if (cells.size() == 1)
-    {
-        ss << "(" << info[0] << ")";
-    }
-    else
-    {
-        std::vector<std::pair<std::string,std::set<std::size_t> > > cells_resort(cells.begin(), cells.end());
-        
-        // sort according to smallest l, not according to label
-        sort(cells_resort.begin(), cells_resort.end(),
-             [](const std::pair<std::string,std::set<std::size_t> > &a, const std::pair<std::string,std::set<std::size_t> > &b) -> bool
-             {
-                 return *min_element(a.second.begin(),a.second.end()) < *min_element(b.second.begin(),b.second.end());
-             });
-        
-        ss << ":" << std::endl;
-        for (auto c:cells_resort)
-        {
-            ss << " •l=";
-            //            for (auto s:c.second)
-            //            {
-            //                cout << s << ",";
-            //            }
-            //            cout << endl;
-            if (c.second.size() == 1)
-            {
-                ss << *c.second.begin(); // one site
-            }
-            else
-            {
-                // check mod 2
-                if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==0;}) and c.second.size() == N_sites/2)
-                {
-                    ss << "even";
-                }
-                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==1;}) and c.second.size() == N_sites/2)
-                {
-                    ss << "odd";
-                }
-                // check mod 4
-                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==0;}) and c.second.size() == N_sites/4)
-                {
-                    ss << "0mod4";
-                }
-                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==1;}) and c.second.size() == N_sites/4)
-                {
-                    ss << "1mod4";
-                }
-                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==2;}) and c.second.size() == N_sites/4)
-                {
-                    ss << "2mod4";
-                }
-                else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==3;}) and c.second.size() == N_sites/4)
-                {
-                    ss << "3mod4";
-                }
-                else
-                {
-                    if (c.second.size() == 2)
-                    {
-                        ss << *c.second.begin() << "," << *c.second.rbegin(); // two sites
-                    }
-                    else
-                    {
-                        bool CONSECUTIVE = true;
-                        for (auto it=c.second.begin(); it!=c.second.end(); ++it)
-                        {
-                            if (next(it) != c.second.end() and *next(it)!=*it+1ul)
-                            {
-                                CONSECUTIVE = false;
-                            }
-                        }
-                        if (CONSECUTIVE)
-                        {
-                            ss << *c.second.begin() << "-" << *c.second.rbegin(); // range of sites
-                        }
-                        else
-                        {
-                            for (auto it=c.second.begin(); it!=c.second.end(); ++it)
-                            {
-                                ss << *it << ","; // some unknown order
-                            }
-                            ss.seekp(-1,ios_base::end); // delete last comma
-                        }
-                    }
-                }
-            }
-            //            ss.seekp(-1,ios_base::end); // delete last comma
-            ss << ": " << c.first << std::endl;
-        }
-    }
-    
-    label = ss.str();
+	std::stringstream ss;
+	ss << Terms.name();
+	std::vector<std::string> info = Terms.get_info();
+	
+	std::map<std::string,std::set<std::size_t> > cells;
+	
+	for (std::size_t loc=0; loc<info.size(); ++loc)
+	{
+		cells[info[loc]].insert(loc%Lcell);
+	}
+	
+	if (cells.size() == 1)
+	{
+		ss << "(" << info[0] << ")";
+	}
+	else
+	{
+		std::vector<std::pair<std::string,std::set<std::size_t> > > cells_resort(cells.begin(), cells.end());
+		
+		// sort according to smallest l, not according to label
+		sort(cells_resort.begin(), cells_resort.end(),
+			 [](const std::pair<std::string,std::set<std::size_t> > &a, const std::pair<std::string,std::set<std::size_t> > &b) -> bool
+			 {
+				 return *min_element(a.second.begin(),a.second.end()) < *min_element(b.second.begin(),b.second.end());
+			 });
+		
+		ss << ":" << std::endl;
+		for (auto c:cells_resort)
+		{
+			ss << " •l=";
+			//			for (auto s:c.second)
+			//			{
+			//				cout << s << ",";
+			//			}
+			//			cout << endl;
+			if (c.second.size() == 1)
+			{
+				ss << *c.second.begin(); // one site
+			}
+			else
+			{
+				// check mod 2
+				if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==0;}) and c.second.size() == N_sites/2)
+				{
+					ss << "even";
+				}
+				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%2==1;}) and c.second.size() == N_sites/2)
+				{
+					ss << "odd";
+				}
+				// check mod 4
+				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==0;}) and c.second.size() == N_sites/4)
+				{
+					ss << "0mod4";
+				}
+				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==1;}) and c.second.size() == N_sites/4)
+				{
+					ss << "1mod4";
+				}
+				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==2;}) and c.second.size() == N_sites/4)
+				{
+					ss << "2mod4";
+				}
+				else if (std::all_of(c.second.cbegin(), c.second.cend(), [](int i){ return i%4==3;}) and c.second.size() == N_sites/4)
+				{
+					ss << "3mod4";
+				}
+				else
+				{
+					if (c.second.size() == 2)
+					{
+						ss << *c.second.begin() << "," << *c.second.rbegin(); // two sites
+					}
+					else
+					{
+						bool CONSECUTIVE = true;
+						for (auto it=c.second.begin(); it!=c.second.end(); ++it)
+						{
+							if (next(it) != c.second.end() and *next(it)!=*it+1ul)
+							{
+								CONSECUTIVE = false;
+							}
+						}
+						if (CONSECUTIVE)
+						{
+							ss << *c.second.begin() << "-" << *c.second.rbegin(); // range of sites
+						}
+						else
+						{
+							for (auto it=c.second.begin(); it!=c.second.end(); ++it)
+							{
+								ss << *it << ","; // some unknown order
+							}
+							ss.seekp(-1,ios_base::end); // delete last comma
+						}
+					}
+				}
+			}
+			//			ss.seekp(-1,ios_base::end); // delete last comma
+			ss << ": " << c.first << std::endl;
+		}
+	}
+	
+	label = ss.str();
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1204,7 +1203,7 @@ make_localGvec (size_t loc, const OperatorType &Op)
 	{
 		Gvec[l].setMatrix(1,qloc[l].size());
 		if (l==loc) {Gvec[l](0,0) = Op;}
-		else        {Gvec[l](0,0).data.setIdentity(); Gvec[l](0,0).Q = Symmetry::qvacuum();}
+		else		{Gvec[l](0,0).data.setIdentity(); Gvec[l](0,0).Q = Symmetry::qvacuum();}
 	}
 	
 	return Gvec;
@@ -1261,7 +1260,7 @@ make_localGvec (const vector<size_t> &loc, const vector<OperatorType> &Op)
 		for(size_t pos2=pos1+1; pos2<loc.size(); pos2++)
 		{
 			assert(loc[pos1] != loc[pos2] and
-			       "setLocal() can only be called with several operators on different sites, when using non-abelian symmetries.");
+				   "setLocal() can only be called with several operators on different sites, when using non-abelian symmetries.");
 		}
 	}
 	
@@ -1398,7 +1397,7 @@ setProductSum (const OperatorType &Op1, const OperatorType &Op2, bool OPEN_BC)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		assert(Op1.data.rows() == qloc[l].size() and Op1.data.cols() == qloc[l].size() and 
-		       Op2.data.rows() == qloc[l].size() and Op2.data.cols() == qloc[l].size());
+			   Op2.data.rows() == qloc[l].size() and Op2.data.cols() == qloc[l].size());
 		
 		if (BOTH_VACUUM)
 		{
@@ -1549,7 +1548,7 @@ precalc_TwoSiteData()
 	for (size_t l=0; l<N_sites-1; ++l)
 	{
 		unordered_map<std::array<size_t,2>, 
-		              std::pair<vector<std::array<size_t,10> >, vector<Scalar> > > lookup;
+					  std::pair<vector<std::array<size_t,10> >, vector<Scalar> > > lookup;
 		Scalar factor_cgc;
 		
 		auto tensor_basis = Symmetry::tensorProd(qloc[l], qloc[l+1]);
@@ -1587,9 +1586,9 @@ precalc_TwoSiteData()
 						// tensor product of the MPO operators in the physical space
 						Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
 						Symmetry::coeff_tensorProd(qloc[l][s2], qloc[l+1][s4], qmerge24,
-							                       qOp[l][k12], qOp[l+1][k34], qOpMerge,
-							                       qloc[l][s1], qloc[l+1][s3], qmerge13)
-							                       :1.;
+												   qOp[l][k12], qOp[l+1][k34], qOpMerge,
+												   qloc[l][s1], qloc[l+1][s3], qmerge13)
+												   :1.;
 						if (abs(factor_cgc9) < abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 						
 						TwoSiteData<Symmetry,Scalar> entry({{s1,s2,s3,s4,s1s3,s2s4}}, {{qmerge13,qmerge24}}, {{k12,k34}}, qOpMerge, factor_cgc9);
@@ -1615,7 +1614,7 @@ H2site (size_t loc, bool HALF_THE_LOCAL_TERM) const
 //	size_t D2 = qloc[loc+1].size();
 	
 	size_t Grow = Daux(loc,0)-1; // last row
-	size_t Gcol = 0;             // first column
+	size_t Gcol = 0;			 // first column
 	
 	Matrix<Scalar,Dynamic,Dynamic> Hfull(D1*D2,D1*D2);
 	Hfull.setZero();
@@ -2056,7 +2055,7 @@ void compare (const Mpo<Symmetry,Scalar1> &O1, const Mpo<Symmetry,Scalar2> &O2)
 		for (size_t k=0; k<O1.opBasis(l).size(); ++k)
 		{
 			lout << "[l=" << l << "]\t|" << Sym::format<Symmetry>(O1.locBasis(l)[s1]) << "><" 
-			                             << Sym::format<Symmetry>(O1.locBasis(l)[s2]) << "|:" << endl;
+										 << Sym::format<Symmetry>(O1.locBasis(l)[s2]) << "|:" << endl;
 			auto M1 = Matrix<Scalar1,Dynamic,Dynamic>(O1.W_at(l)[s1][s2][k]);
 			auto Mtmp = Matrix<Scalar2,Dynamic,Dynamic>(O2.W_at(l)[s1][s2][k]);
 			auto M2 = Mtmp.template cast<Scalar1>();

@@ -280,10 +280,10 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 				if (range != 0)
 				{
 					//The sign is hardcoded here.. maybe include this in Geometry class.
-					auto Tp_loc    = pow(-1,loc)*F[loc].Tp(0);
-					auto Tm_hop    = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].Tm(0);
-					auto Tm_loc    = pow(-1,loc)*F[loc].Tm(0);
-					auto Tp_hop    = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].Tp(0);
+					auto Tp_loc    = pow(-1,loc)*F[loc].cc(0);
+					auto Tm_hop    = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cdagcdag(0);
+					auto Tm_loc    = pow(-1,loc)*F[loc].cdagcdag(0);
+					auto Tp_hop    = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cc(0);
 					
 					Terms.push(range, loc, 0.5 * value,
 					           Tp_loc.plain<double>(), TransOps, Tm_hop.plain<double>());
@@ -391,11 +391,11 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 						SiteOperator<Symmetry, double> tz_local = F[loc].Tz(alpha).plain<double>();
 						SiteOperator<Symmetry, double> tz_tight = F[(loc+1)%N_sites].Tz(beta).plain<double>();
 
-						SiteOperator<Symmetry, double> tp_local = pow(-1,loc)*F[loc].Tp(alpha).plain<double>();
-						SiteOperator<Symmetry, double> tm_tight = pow(-1,loc+1)*F[(loc+1)%N_sites].Tm(beta).plain<double>();
+						SiteOperator<Symmetry, double> tp_local = pow(-1,loc)*F[loc].cc(alpha).plain<double>();
+						SiteOperator<Symmetry, double> tm_tight = pow(-1,loc+1)*F[(loc+1)%N_sites].cdagcdag(beta).plain<double>();
 
-						SiteOperator<Symmetry, double> tm_local = pow(-1,loc)*F[loc].Tm(alpha).plain<double>();
-						SiteOperator<Symmetry, double> tp_tight = pow(-1,loc+1)*F[(loc+1)%N_sites].Tp(beta).plain<double>();
+						SiteOperator<Symmetry, double> tm_local = pow(-1,loc)*F[loc].cdagcdag(alpha).plain<double>();
+						SiteOperator<Symmetry, double> tp_tight = pow(-1,loc+1)*F[(loc+1)%N_sites].cc(beta).plain<double>();
                     
 						SiteOperator<Symmetry, double> Sdag_local = F[loc].Sdag(alpha).plain<double>();
 						SiteOperator<Symmetry, double> S_tight = F[(loc+1)%N_sites].S(beta).plain<double>();
@@ -515,7 +515,7 @@ cc (size_t locx, size_t locy)
 {
 	stringstream ss;
 	ss << "c" << UP << "c" << DN;
-	return make_local(ss.str(), locx,locy, F[locx].Eta(locy), 1., false, false);
+	return make_local(ss.str(), locx,locy, F[locx].cc(locy), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
@@ -523,7 +523,7 @@ cdagcdag (size_t locx, size_t locy)
 {
 	stringstream ss;
 	ss << "c†" << DN << "c†" << UP;
-	return make_local(ss.str(), locx,locy, F[locx].Etadag(locy), 1., false, false);
+	return make_local(ss.str(), locx,locy, F[locx].cdagcdag(locy), 1., false, false);
 }
 
 //Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
@@ -628,8 +628,8 @@ TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
-	auto Op1 = pow(-1.,locx1+locy1) * F[locx1].Tp(locy1);
-	auto Op2 = pow(-1.,locx2+locy2) * F[locx2].Tm(locy2);
+	auto Op1 = pow(-1.,locx1+locy1) * F[locx1].cc(locy1);
+	auto Op2 = pow(-1.,locx2+locy2) * F[locx2].cdagcdag(locy2);
 	
 	if (locx1 == locx2)
 	{
@@ -653,8 +653,8 @@ TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
-	auto Op1 = pow(-1.,locx1+locy1) * F[locx1].Tm(locy1);
-	auto Op2 = pow(-1.,locx2+locy2) * F[locx2].Tp(locy2);
+	auto Op1 = pow(-1.,locx1+locy1) * F[locx1].cdagcdag(locy1);
+	auto Op2 = pow(-1.,locx2+locy2) * F[locx2].cc(locy2);
 	
 	if (locx1 == locx2)
 	{
@@ -858,8 +858,8 @@ cdag_ky (vector<complex<double> > phases, double factor) const
 //	Mpo<Symmetry> Mout(N_sites, N_legs);
 //	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis(),l); }
 
-//	auto Etadag = F.Etadag(locy1);
-//	auto Eta = F.Eta(locy2);
+//	auto Etadag = F.cdagcdag(locy1);
+//	auto Eta = F.cc(locy2);
 //	Mout.label = ss.str();
 //	Mout.setQtarget(Symmetry::qvacuum());
 //	Mout.qlabel = HubbardSU2xU1::Slabel;

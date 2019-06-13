@@ -77,7 +77,7 @@ public:
 	ArrayXXd ZeroHopping() const { return ArrayXXd::Zero(N_orbitals,N_orbitals); }
 	
 	string alignment (double J) const {return (J<0)? "(AFM)":"(FM)";};
-
+	
 	/**
 	 * Creates the full Heisenberg (XXZ) Hamiltonian on the supersite.
 	 * \param Jxy : \f$J^{xy}\f$

@@ -37,6 +37,7 @@ public:
 public:
 	
 	HeisenbergU1XXZ() : HeisenbergU1() {};
+	HeisenbergU1XXZ (const size_t &L);
 	HeisenbergU1XXZ (const size_t &L, const vector<Param> &params);
 	
 	template<typename Symmetry_>
@@ -57,6 +58,11 @@ const std::map<string,std::any> HeisenbergU1XXZ::defaults =
 	// for consistency during inheritance (should not be set for XXZ!):
 	{"J",0.}, {"Jprime",0.}
 };
+
+HeisenbergU1XXZ::
+HeisenbergU1XXZ (const size_t &L)
+:HeisenbergU1(L)
+{}
 
 HeisenbergU1XXZ::
 HeisenbergU1XXZ (const size_t &L, const vector<Param> &params)

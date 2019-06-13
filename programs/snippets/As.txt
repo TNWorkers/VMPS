@@ -3,13 +3,13 @@
 	vector<array<MODEL::Operator,2> > cs(L);
 	vector<array<MODEL::Operator,2> > csdag(L);
 	
-	set<qarray<2> > Qc_set;
+	set<qarray<MODEL::Symmetry::Nq> > Qc_set;
 	
 	for (size_t l=0; l<L; ++l)
 	{
 		if (spec == "PES" or spec == "IPES")
 		{
-			#ifndef USING_SU2
+			#ifdef USING_U1
 			{
 				cs[l][0]    = H.c<UP>(l);
 				cs[l][1]    = H.c<DN>(l);
@@ -21,13 +21,17 @@
 		
 		if (spec == "AES")
 		{
-			A[l] = H.cc(l);
-			Adag[l] = H.cdagcdag(l);
+			#ifdef USING_SU2 || USING_U1
+			{
+				A[l] = H.cc(l);
+				Adag[l] = H.cdagcdag(l);
+			}
+			#endif
 			#ifdef USING_SU2
 			{
 				Qc_set.insert(qarray<2>({D,N-2}));
 			}
-			#else
+			#elif defined(USING_U1)
 			{
 				Qc_set.insert(qarray<2>({M,N-2}));
 			}
@@ -35,14 +39,17 @@
 		}
 		else if (spec == "APS")
 		{
-			A[l] = H.cdagcdag(l);
-			Adag[l] = H.cc(l);
-			
+			#ifdef USING_SU2 || USING_U1
+			{
+				A[l] = H.cdagcdag(l);
+				Adag[l] = H.cc(l);
+			}
+			#endif
 			#ifdef USING_SU2
 			{
 				Qc_set.insert(qarray<2>({D,N+2}));
 			}
-			#else
+			#elif defined(USING_U1)
 			{
 				Qc_set.insert(qarray<2>({M,N+2}));
 			}
@@ -57,7 +64,21 @@
 				Qc_set.insert(qarray<2>({D+1,N-1}));
 				if (D>1) {Qc_set.insert(qarray<2>({D-1,N-1}));}
 			}
-			#else
+			#elif defined(USING_SO4)
+			{
+				A[l] = H.c(l, 0, 1.);
+				Adag[l] = H.cdag(l, 0, sqrt(2.));
+				Qc_set.insert(qarray<2>({D+1,T+1}));
+				if      (D>1  and T==1) {Qc_set.insert(qarray<2>({D-1,T+1}));}
+				else if (D==1 and T>1)  {Qc_set.insert(qarray<2>({D+1,T-1}));}
+				else if (D>1  and T>1)
+				{
+					Qc_set.insert(qarray<2>({D+1,T-1}));
+					Qc_set.insert(qarray<2>({D-1,T+1}));
+					Qc_set.insert(qarray<2>({D-1,T-1}));
+				}
+			}
+			#elif defined(USING_U1)
 			{
 				A[l]    = cs[l][sigma];
 				Adag[l] = csdag[l][sigma];
@@ -82,7 +103,21 @@
 				Qc_set.insert(qarray<2>({D+1,N+1}));
 				if (D>1) {Qc_set.insert(qarray<2>({D-1,N+1}));}
 			}
-			#else
+			#elif defined(USING_SO4)
+			{
+				A[l] = H.cdag(l, 0, 1.);
+				Adag[l] = H.c(l, 0, sqrt(2.));
+				Qc_set.insert(qarray<2>({D+1,T+1}));
+				if      (D>1  and T==1) {Qc_set.insert(qarray<2>({D-1,T+1}));}
+				else if (D==1 and T>1)  {Qc_set.insert(qarray<2>({D+1,T-1}));}
+				else if (D>1  and T>1)
+				{
+					Qc_set.insert(qarray<2>({D+1,T-1}));
+					Qc_set.insert(qarray<2>({D-1,T+1}));
+					Qc_set.insert(qarray<2>({D-1,T-1}));
+				}
+			}
+			#elif defined(USING_U1)
 			{
 				A[l]    = csdag[l][sigma];
 				Adag[l] = cs[l][sigma];
@@ -100,9 +135,13 @@
 		}
 		else if (spec == "CSF")
 		{
-			A[l] = H.n(l);
-			Adag[l] = A[l];
-			Qc_set.insert(Qi);
+			#ifdef USING_SU2 || USING_U1
+			{
+				A[l] = H.n(l);
+				Adag[l] = A[l];
+				Qc_set.insert(Qi);
+			}
+			#endif
 		}
 		else if (spec == "SSF" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
 		{
@@ -114,7 +153,7 @@
 				if (D>1) {Qc_set.insert({D,N});}
 				if (D>2) {Qc_set.insert({D-2,N});}
 			}
-			#else
+			#elif defined(USING_U1) || defined(USING_U0)
 			{
 				if (spec == "SSFM")
 				{

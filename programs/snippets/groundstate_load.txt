@@ -8,11 +8,11 @@
 	MatrixXd Eminmax(2,Qc.size());
 	bool CONVERGED1 = false;
 	vector<bool> CONVERGED2;
-	vector<tuple<int,qarray<2>,LANCZOS::EDGE::OPTION> > edges;
+	vector<tuple<int,qarray<MODEL::Symmetry::Nq>,LANCZOS::EDGE::OPTION> > edges;
 	for (size_t i=0; i<Qc.size(); ++i)
 	{
-		edges.push_back(make_tuple(i,Qc[i],LANCZOS::EDGE::GROUND));
-		edges.push_back(make_tuple(i,Qc[i],LANCZOS::EDGE::ROOF  ));
+		edges.push_back(make_tuple(i, Qc[i], LANCZOS::EDGE::GROUND));
+		edges.push_back(make_tuple(i, Qc[i], LANCZOS::EDGE::ROOF  ));
 		CONVERGED2.push_back(false);
 		CONVERGED2.push_back(false);
 	}

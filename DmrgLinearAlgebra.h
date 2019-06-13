@@ -521,7 +521,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
                 double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE)
 {
 	size_t L = Vin.length();
-	auto Qt = Symmetry::reduceSilent(Vin.Qtarget(),O.Qtarget());
+	auto Qt = Symmetry::reduceSilent(Vin.Qtarget(), O.Qtarget());
 	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qt[0], O.volume(), 100ul);
 	Vout.set_Qmultitarget(Qt);
 	Vout.min_Nsv = Vin.min_Nsv;

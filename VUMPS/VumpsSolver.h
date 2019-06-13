@@ -1494,8 +1494,9 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		#ifdef USE_HDF5_STORAGE
 		if (GlobParam.savePeriod != 0 and N_iterations%GlobParam.savePeriod == 0)
 		{
-			lout << termcolor::green << "saving state to: " << GlobParam.saveName << termcolor::reset << endl;
-			Vout.state.save(GlobParam.saveName,H.info());
+			string filename = make_string(GlobParam.saveName,"_fullMmax=",Vout.state.calc_fullMmax());
+			lout << termcolor::green << "saving state to: " << filename << termcolor::reset << endl;
+			Vout.state.save(filename,H.info());
 		}
 		#endif
 	}
