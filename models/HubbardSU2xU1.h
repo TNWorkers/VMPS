@@ -123,7 +123,7 @@ const map<string,any> HubbardSU2xU1::defaults =
 	{"t",1.}, {"tPrime",0.}, {"tRung",1.},
 	{"mu",0.}, {"t0",0.}, 
 	{"U",0.}, {"Uph",0.},
-	{"V",0.}, {"Vrung",0.},
+	{"V",0.}, {"Vext",0.}, {"Vrung",0.},
 	{"Vz",0.}, {"Vzrung",0.}, {"Vxy",0.}, {"Vxyrung",0.}, 
 	{"J",0.}, {"Jperp",0.},
 	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
@@ -164,7 +164,7 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 	this->precalc_TwoSiteData();
 }
-    
+
 void HubbardSU2xU1::
 set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
 {
@@ -245,7 +245,7 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 				{
 					
 					auto Tz_loc = F[loc].Tz(0);
-					auto Tz_hop    = F[(loc+range)%N_sites].Tz(0);
+					auto Tz_hop = F[(loc+range)%N_sites].Tz(0);
 					
 					Terms.push(range, loc, value,
 					           Tz_loc.plain<double>(), TransOps, Tz_hop.plain<double>());
@@ -294,6 +294,41 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 			
 			stringstream ss;
 			ss << "Vxyᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
+			Terms.save_label(loc,ss.str());
+		}
+		
+		if (P.HAS("VextFull"))
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("VextFull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				size_t Ntrans = (range == 0)? 0:range-1;
+				vector<SiteOperator<Symmetry,double> > TransOps(Ntrans);
+				for (size_t i=0; i<Ntrans; ++i)
+				{
+					TransOps[i] = F[(loc+i+1)%N_sites].Id().plain<double>();
+				}
+				
+				if (range != 0)
+				{
+					
+					auto n_loc = F[loc].n(0);
+					auto n_hop = F[(loc+range)%N_sites].n(0);
+					
+					Terms.push(range, loc, value, n_loc.plain<double>(), TransOps, n_hop.plain<double>());
+				}
+			}
+			
+			stringstream ss;
+			ss << "Vextᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
 			Terms.save_label(loc,ss.str());
 		}
 		

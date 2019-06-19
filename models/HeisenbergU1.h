@@ -23,11 +23,11 @@ namespace VMPS
   * MPO representation of
   * \f[
   * H =  J \sum_{<ij>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right) 
-  *     +J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right)
-  *     -B_z \sum_i S^z_i
-  *     +K_z \sum_i \left(S^z_i\right)^2
-  *     -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
-  *     -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
+  *	 +J' \sum_{<<ij>>} \left(\mathbf{S_i} \cdot \mathbf{S_j}\right)
+  *	 -B_z \sum_i S^z_i
+  *	 +K_z \sum_i \left(S^z_i\right)^2
+  *	 -D_y \sum_{<ij>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
+  *	 -D_y' \sum_{<<ij>>} \left(\mathbf{S_i} \times \mathbf{S_j}\right)_y
   * \f]
   *
   * \param D : \f$D=2S+1\f$ where \f$S\f$ is the spin
@@ -66,7 +66,7 @@ public:
 	 */
 	template<typename Symmetry_>
 	//static HamiltonianTermsXd<Symmetry_> set_operators (const vector<SpinBase<Symmetry_> > &B, const ParamHandler &P, size_t loc=0);
-    static void set_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);
+	static void set_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);
 	/**
 	 * Validates whether a given total quantum number \p qnum is a possible target quantum number for an Mps.
 	 * \returns \p true if valid, \p false if not
@@ -108,10 +108,11 @@ HeisenbergU1 (const size_t &L, const vector<Param> &params)
  HeisenbergObservables(L,params,HeisenbergU1::defaults),
  ParamReturner(HeisenbergU1::sweep_defaults)
 {
-	/*ParamHandler P(params,defaults);
+	ParamHandler P(params,defaults);
+	
 	
 	size_t Lcell = P.size();
-	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
+	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -119,34 +120,10 @@ HeisenbergU1 (const size_t &L, const vector<Param> &params)
 		setLocBasis(B[l].get_basis(),l);
 	}
 	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Terms[l] = set_operators(B,P,l%Lcell);
-		
-		stringstream ss;
-		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
-		Terms[l].info.push_back(ss.str());
-	}
+	set_operators(B,P,Terms);
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-	this->precalc_TwoSiteData();*/
-    
-    ParamHandler P(params,defaults);
-    
-    
-    size_t Lcell = P.size();
-    HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
-    
-    for (size_t l=0; l<N_sites; ++l)
-    {
-        N_phys += P.get<size_t>("Ly",l%Lcell);
-        setLocBasis(B[l].get_basis(),l);
-    }
-    
-    set_operators(B,P,Terms);
-    
-    this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-    this->precalc_TwoSiteData();
+	this->precalc_TwoSiteData();
 }
 
 bool HeisenbergU1::
@@ -158,75 +135,6 @@ validate (qarray<1> qnum) const
 	if (Smax.denominator()==q_in.denominator() and q_in <= Smax) {return true;}
 	else {return false;}
 }
-
-/*template<typename Symmetry_>
-HamiltonianTermsXd<Symmetry_> HeisenbergU1::
-set_operators (const vector<SpinBase<Symmetry_> > &B, const ParamHandler &P, size_t loc)
-{
-	HamiltonianTermsXd<Symmetry_> Terms;
-	
-	auto save_label = [&Terms] (string label)
-	{
-		if (label!="") {Terms.info.push_back(label);}
-	};
-	
-	stringstream ss;
-	ss << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc)-1,2));
-	save_label(ss.str());
-	
-	size_t lp1 = (loc+1)%B.size();
-	
-	// J terms
-	
-	auto [J,Jpara,Jlabel] = P.fill_array2d<double>("J","Jpara",{{B[loc].orbitals(),B[lp1].orbitals()}},loc);
-	save_label(Jlabel);
-	
-	for (int i=0; i<B[loc].orbitals(); ++i)
-	for (int j=0; j<B[lp1].orbitals(); ++j)
-	{
-		if (Jpara(i,j) != 0.)
-		{
-			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), B[loc].Scomp(SP,i), B[loc].Scomp(SM,j)));
-			Terms.tight.push_back(make_tuple(0.5*Jpara(i,j), B[loc].Scomp(SM,i), B[loc].Scomp(SP,j)));
-			Terms.tight.push_back(make_tuple(    Jpara(i,j), B[loc].Scomp(SZ,i), B[loc].Scomp(SZ,j)));
-		}
-	}
-	
-	// J' terms
-	
-	param0d Jprime = P.fill_array0d<double>("Jprime","Jprime",loc);
-	save_label(Jprime.label);
-	
-	if (Jprime.x != 0.)
-	{
-		assert(B[loc].orbitals() == 1 and "Cannot do a ladder with J' terms!");
-		
-		Terms.nextn.push_back(make_tuple(0.5*Jprime.x, B[loc].Scomp(SP), B[loc].Scomp(SM), B[loc].Id()));
-		Terms.nextn.push_back(make_tuple(0.5*Jprime.x, B[loc].Scomp(SM), B[loc].Scomp(SP), B[loc].Id()));
-		Terms.nextn.push_back(make_tuple(    Jprime.x, B[loc].Scomp(SZ), B[loc].Scomp(SZ), B[loc].Id()));
-	}
-	
-	// local terms
-	
-	auto [Jrung,Jperp,Jperplabel] = P.fill_array2d<double>("Jrung","J","Jperp",B[loc].orbitals(),loc,P.get<bool>("CYLINDER"));
-	save_label(Jperplabel);
-	
-	auto [Bz,Bzorb,Bzlabel] = P.fill_array1d<double>("Bz","Bzorb",B[loc].orbitals(),loc);
-	save_label(Bzlabel);
-	
-	auto [Kz,Kzorb,Kzlabel] = P.fill_array1d<double>("Kz","Kzorb",B[loc].orbitals(),loc);
-	save_label(Kzlabel);
-	
-	Terms.name = "Heisenberg";
-	
-	ArrayXd Bxorb   = B[loc].ZeroField();
-	ArrayXd Kxorb   = B[loc].ZeroField();
-	ArrayXXd Dyperp = B[loc].ZeroHopping();
-	
-	Terms.local.push_back(make_tuple(1., B[loc].HeisenbergHamiltonian(Jperp,Jperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp)));
-	
-	return Terms;
-}*/
 
 template<typename Symmetry_>
 void HeisenbergU1::
@@ -280,7 +188,7 @@ set_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 			{
 				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), B[loc].Scomp(SP,alfa), B[lp1].Scomp(SM,beta));
 				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), B[loc].Scomp(SM,alfa), B[lp1].Scomp(SP,beta));
-				Terms.push_tight(loc,     Jpara(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SZ,beta));
+				Terms.push_tight(loc,	 Jpara(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SZ,beta));
 			}
 		}
 		
@@ -296,7 +204,7 @@ set_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 			{
 				Terms.push_nextn(loc, 0.5*Jprime(alfa,beta), B[loc].Scomp(SP,alfa), B[lp1].Id(), B[lp2].Scomp(SM,beta));
 				Terms.push_nextn(loc, 0.5*Jprime(alfa,beta), B[loc].Scomp(SM,alfa), B[lp1].Id(), B[lp2].Scomp(SP,beta));
-				Terms.push_nextn(loc,     Jprime(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta));
+				Terms.push_nextn(loc,	 Jprime(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta));
 			}
 		}
 	}

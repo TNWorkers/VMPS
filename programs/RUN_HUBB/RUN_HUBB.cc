@@ -28,17 +28,38 @@ using namespace std;
 
 size_t L, N_cell, Ly;
 int volume;
-double t, tRung, U, J, V, dV;
+double t, tRung, U, J, V, Vxy, Vz, Vext;
 int M, N, S, T;
 double alpha;
 DMRG::VERBOSITY::OPTION VERB;
 double Emin = 0.;
 double emin = 0.;
-bool UMPS_STRUCTURE_FACTOR, UMPS_CONTRACTIONS, VUMPS;
+bool UMPS_STRUCTURE_FACTOR, UMPS_CONTRACTIONS, CALC_TSQ, CALC_BOW, VUMPS;
 string wd; // working directory
 
 Eigenstate<MODEL::StateXd> g_fix;
 Eigenstate<MODEL::StateUd> g_foxy;
+
+double z()
+{
+	if (VUMPS)
+	{
+		if      (Ly==1) return 2.;
+		else if (Ly==2) return 3.;
+		else            return 4.;
+	}
+	else
+	{
+		if      (Ly==1) return 2.-2./L;
+		else if (Ly==2) return 3.-2./L;
+		else            return 4.-2./L;
+	}
+}
+
+double e_empty()
+{
+	return 0.125*z()*V+0.5*U;
+}
 
 struct Obs
 {
@@ -50,6 +71,7 @@ struct Obs
 	Eigen::MatrixXd finite_entropy; // for finite systems
 	double Tsq; // T^2
 	double Ssq; // S^2
+	double BOW;
 	
 	double energyS;
 	double energyT;
@@ -218,11 +240,15 @@ int main (int argc, char* argv[])
 	U = args.get<double>("U",8.);
 	J = args.get<double>("J",0.);
 	V = args.get<double>("V",0.);
-	dV = args.get<double>("dV",0.01);
+	Vxy = args.get<double>("Vxy",V);
+	Vz = args.get<double>("Vz",V);
+	Vext = args.get<double>("Vext",0.);
 	M = args.get<int>("M",0);
 	S = abs(M)+1;
 	UMPS_STRUCTURE_FACTOR = args.get<bool>("STRUCTURE",false);
 	UMPS_CONTRACTIONS = args.get<bool>("CONTRACTIONS",false);
+	CALC_TSQ = args.get<bool>("CALC_TSQ",false);
+	CALC_BOW = args.get<bool>("CALC_BOW",false);
 	VUMPS = args.get<bool>("VUMPS",true);
 	
 	DMRG::CONTROL::GLOB GlobParam_fix;
@@ -244,9 +270,24 @@ int main (int argc, char* argv[])
 	
 	string base;
 	#ifdef USING_SO4
-	base = make_string("U=",U,"_V=",V,"_J=",J,"_L=",L,"_Ly=",Ly);
+//	base = make_string("U=",U,"_V=",V,"_J=",J,"_L=",L,"_Ly=",Ly);
+	base = make_string("L=",L,"_Ly=",Ly,"_t=",t,"_U=",U,"_V=",V,"_J=",J);
 	#else
-	base = make_string("N=",N,"_U=",U,"_V=",V,"_J=",J,"_L=",L,"_Ly=",Ly);
+	if (abs(Vext) > 0.)
+	{
+		base = make_string("L=",L,"_Ly=",Ly,"_N=",N,"_t=",t,"_U=",U,"_Vext=",Vext,"_J=",J);
+	}
+	else
+	{
+		if (Vxy==Vz)
+		{
+			base = make_string("L=",L,"_Ly=",Ly,"_N=",N,"_t=",t,"_U=",U,"_V=",V,"_J=",J);
+		}
+		else
+		{
+			base = make_string("L=",L,"_Ly=",Ly,"_N=",N,"_t=",t,"_U=",U,"_Vxy=",Vxy,"_Vz=",Vz,"_J=",J);
+		}
+	}
 	#endif
 	string obsfile = make_string(wd,"obs/",base,".h5");
 	string statefile = make_string(wd,"state/",base);
@@ -275,9 +316,9 @@ int main (int argc, char* argv[])
 	GlobParam_foxy.saveName = args.get<string>("saveName",statefile);
 	
 	#ifdef USING_SO4
-	lout.set(make_string("L=",L,"_Ly=",Ly,"_t=",t,"_V=",V,"_U=",U,"_J=",J,".log"),wd+"log");
+	lout.set(base+".log",wd+"log");
 	#else
-	lout.set(make_string("L=",L,"_N=",N,"_Ly=",Ly,"_t=",t,"_V=",V,"_U=",U,"_J=",J,".log"),wd+"log");
+	lout.set(base+".log",wd+"log");
 	#endif
 	
 	#ifdef _OPENMP
@@ -286,22 +327,26 @@ int main (int argc, char* argv[])
 	lout << "not parallelized" << endl;
 	#endif
 	
+	lout << "e_empty=" << e_empty() << endl;
+	
 	Stopwatch<> Watch;
 	
 	Geometry2D Geo1cell(SNAKE,1*L,Ly,1.,true); // periodic BC in y = true
 	Geometry2D Geo2cell(SNAKE,2*L,Ly,1.,true);
 	
 	// save to temporary, otherwise std::bad_any_cast
-	ArrayXXd tArray, Varray, dVarray, VxyArray, VzArray, dVxyArray, dVzArray, Jarray, ZeroArray, OneArray;
+	ArrayXXd tArray, Varray, Vxyarray, Vzarray, Jarray, ZeroArray, OneArray, VextArray;
 	if (VUMPS)
 	{
 		tArray    = t * Geo2cell.hopping();
 		Varray    = V * Geo2cell.hopping();
-		dVarray   = (V+dV) * Geo2cell.hopping();
+		Vxyarray  = Vxy * Geo2cell.hopping();
+		Vzarray   = Vz * Geo2cell.hopping();
+		VextArray = Vext * Geo2cell.hopping();
 		Jarray    = J * Geo2cell.hopping();
 		ZeroArray = 0. * Geo2cell.hopping();
 		OneArray  = 1. * Geo2cell.hopping();
-		lout << "t=" << t << ", V=" << V << ", dV=" << dV << ", J=" << J << endl;
+		lout << "t=" << t << ", V=" << V << ", J=" << J << endl;
 		if (volume <= 100) lout << "hopping=" << endl << Geo2cell.hopping() << endl << endl;
 	}
 	else
@@ -309,7 +354,9 @@ int main (int argc, char* argv[])
 		ArrayXXd tFull = Geo1cell.hopping();
 		tArray    = t * tFull;
 		Varray    = V * tFull;
-		dVarray   = (V+dV) * tFull;
+		Vxyarray  = Vxy * tFull;
+		Vzarray   = Vz * tFull;
+		VextArray = Vext * tFull;
 		Jarray    = J * tFull;
 		ZeroArray = 0. * tFull;
 		OneArray  = 1. * tFull;
@@ -333,11 +380,21 @@ int main (int argc, char* argv[])
 	else
 	{
 		params.push_back({"tFull",tArray});
-		params.push_back({"Vzfull",Varray});
-		params.push_back({"Vxyfull",Varray});
+		params.push_back({"Vxyfull",Vxyarray});
+		params.push_back({"Vzfull",Vzarray});
+		params.push_back({"VextFull",VextArray});
 		params.push_back({"Jfull",Jarray});
-		params.push_back({"Uph",U});
-		params.push_back({"U",0.});
+		if (abs(Vext) > 0.)
+		{
+			params.push_back({"U",U});
+			params.push_back({"Uph",0.});
+			lout << termcolor::blue << "Warning: Setting U instead of particle-hole-symmetric Uph, since Vext is specified!" << termcolor::reset << endl;
+		}
+		else
+		{
+			params.push_back({"Uph",U});
+			params.push_back({"U",0.});
+		}
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {S,N};
 		Qc2 = {S,2*N}; // for 2 unit cells
@@ -360,8 +417,9 @@ int main (int argc, char* argv[])
 	}
 	else
 	{
-		dHdV_params.push_back({"Vxyfull",OneArray});
-		dHdV_params.push_back({"Vzfull",OneArray});
+		if (abs(Vxy) > 0.) dHdV_params.push_back({"Vxyfull",OneArray});
+		if (abs(Vz)  > 0.) dHdV_params.push_back({"Vzfull", OneArray});
+		if (abs(Vext)  > 0.) dHdV_params.push_back({"VextFull", OneArray});
 	}
 	
 	MODEL dHdV;
@@ -642,51 +700,25 @@ int main (int argc, char* argv[])
 	else
 	{
 		MODEL::Solver Fix(VERB);
-		Eigenstate<MODEL::StateXd> g_fix_spin;
-		Eigenstate<MODEL::StateXd> g_fix_charge;
 		
-//		#pragma omp parallel sections
-		{
-//			#pragma omp section
-			{
-				Fix.userSetGlobParam();
-				Fix.userSetDynParam();
-				Fix.GlobParam = GlobParam_fix;
-				Fix.DynParam = DynParam_fix;
-				Fix.edgeState(H, g_fix, Qc, LANCZOS::EDGE::GROUND);
-			}
-//			#pragma omp section
-//			{
-//				MODEL::Solver Fix_(DMRG::VERBOSITY::ON_EXIT);
-//				Fix_.userSetGlobParam();
-//				Fix_.userSetDynParam();
-//				Fix_.GlobParam = GlobParam_fix;
-//				Fix_.DynParam = DynParam_fix;
-//				Fix_.edgeState(H, g_fix_spin, QcSpin, LANCZOS::EDGE::GROUND);
-//			}
-//			#pragma omp section
-//			{
-//				MODEL::Solver Fix_(DMRG::VERBOSITY::ON_EXIT);
-//				Fix_.userSetGlobParam();
-//				Fix_.userSetDynParam();
-//				Fix_.GlobParam = GlobParam_fix;
-//				Fix_.DynParam = DynParam_fix;
-//				Fix_.edgeState(H, g_fix_charge, QcCharge, LANCZOS::EDGE::GROUND);
-//			}
-		}
+		Fix.userSetGlobParam();
+		Fix.userSetDynParam();
+		Fix.GlobParam = GlobParam_fix;
+		Fix.DynParam = DynParam_fix;
+		Fix.edgeState(H, g_fix, Qc, LANCZOS::EDGE::GROUND);
+		
+		Stopwatch<> ObsWatch;
 		
 		obs.energy = g_fix.energy/volume;
 		obs.dedV = avg(g_fix.state, dHdV, g_fix.state)/volume;
 		
-		obs.energyS = g_fix_spin.energy/volume;
-		obs.energyT = g_fix_charge.energy/volume;
-		
 		#pragma omp parallel for collapse(2)
-		for (size_t x=0; x<L; ++x)
+		for (size_t x=0; x<L-1; ++x)
 		for (size_t y=0; y<Ly; ++y)
 		{
 			obs.nh(x,y) = avg(g_fix.state, H.nh(Geo1cell(x,y)), g_fix.state);
 			obs.ns(x,y) = avg(g_fix.state, H.ns(Geo1cell(x,y)), g_fix.state);
+			obs.spectrum[x][y] = g_fix.state.entanglementSpectrumLoc(Geo1cell(x,y));
 		}
 		
 		for (size_t x=0; x<L-1; ++x)
@@ -696,36 +728,84 @@ int main (int argc, char* argv[])
 		}
 		lout << "bipartition entropy=" << obs.finite_entropy(L/2,Ly/2) << endl;
 		
-//		double Tsq = 0.;
-//		double Ssq = 0.;
-//		#pragma omp parallel for collapse(2) reduction(+:Ssq) reduction(+:Tsq)
-//		for (int i=0; i<volume; ++i)
-//		for (int j=0; j<volume; ++j)
-//		{
-//			//if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
-//			#ifdef USING_SO4
-//			{
-//				Tsq += avg(g_fix.state, H.TdagT(i,j), g_fix.state);
-//			}
-////			else
-//			#else
-//			{
-//				Tsq += 0.5 * avg(g_fix.state, H.TpTm(i,j), g_fix.state);
-//				Tsq += 0.5 * avg(g_fix.state, H.TmTp(i,j), g_fix.state);
-//				Tsq +=       avg(g_fix.state, H.TzTz(i,j), g_fix.state);
-//			}
-//			#endif
-//			
-//			Ssq += avg(g_fix.state, H.SdagS(i,j), g_fix.state);
-//		}
-//		obs.Tsq = Tsq;
-//		obs.Ssq = Ssq;
-//		lout << "Tsq=" << obs.Tsq  << ", Ssq=" << obs.Ssq << endl;
+		if (CALC_TSQ)
+		{
+			double Tsq = 0.;
+			double Ssq = 0.;
+			#pragma omp parallel for reduction(+:Ssq) reduction(+:Tsq)
+			for (int i=0; i<volume; ++i)
+			for (int j=0; j<=i; ++j)
+			{
+				double symfactor = (i==j)? 1.:2.;
+				#ifdef USING_SO4
+				{
+					Tsq += symfactor * avg(g_fix.state, H.TdagT(i,j), g_fix.state);
+				}
+				#else
+				{
+					Tsq += symfactor * 0.5 * avg(g_fix.state, H.TpTm(i,j), g_fix.state);
+					Tsq += symfactor * 0.5 * avg(g_fix.state, H.TmTp(i,j), g_fix.state);
+					Tsq += symfactor *       avg(g_fix.state, H.TzTz(i,j), g_fix.state);
+				}
+				#endif
+				
+				Ssq += symfactor * avg(g_fix.state, H.SdagS(i,j), g_fix.state);
+			}
+			obs.Tsq = Tsq;
+			obs.Ssq = Ssq;
+			lout << "Tsq=" << obs.Tsq << ", Ssq=" << obs.Ssq << endl;
+		}
+		if (CALC_BOW)
+		{
+			double BOW = 0.;
+			
+			VectorXd BOWloc(volume-1);
+			#pragma omp parallel for
+			for (int i=0; i<volume-1; ++i)
+			{
+				#ifdef USING_SO4
+				{
+					BOWloc(i) = avg(g_fix.state, H.cdagc(i,i+1), g_fix.state);
+				}
+				#else
+				{
+					BOWloc(i) = avg(g_fix.state, H.cdagc(i,i+1), g_fix.state) 
+					           +avg(g_fix.state, H.cdagc(i+1,i), g_fix.state);
+				}
+				#endif
+			}
+//			lout << "BOWloc=" << BOWloc.transpose() << endl;
+			
+			#pragma omp parallel for reduction(+:BOW)
+			for (int i=0; i<volume-1; ++i)
+			for (int j=0; j<=i; ++j)
+			{
+				double symfactor = (i==j)? 1.:2.;
+				#ifdef USING_SO4
+				{
+					BOW += symfactor * pow(-1.,i+j) * (
+					                         avg(g_fix.state, H.cdagc(i,i+1), H.cdagc(j,j+1), g_fix.state)
+					                       - pow(BOWloc(i),2)
+					                      );
+				}
+				#else
+				{
+					BOW += symfactor * pow(-1.,i+j) * (
+					                         avg(g_fix.state, H.cdagc(i,i+1), H.cdagc(j,j+1), g_fix.state)
+					                       + avg(g_fix.state, H.cdagc(i,i+1), H.cdagc(j+1,j), g_fix.state)
+					                       + avg(g_fix.state, H.cdagc(i+1,i), H.cdagc(j,j+1), g_fix.state)
+					                       + avg(g_fix.state, H.cdagc(i+1,i), H.cdagc(j+1,j), g_fix.state)
+					                       - pow(BOWloc(i),2)
+					                      );
+				}
+				#endif
+			}
+			obs.BOW = BOW/volume;
+			lout << "BOW=" << obs.BOW << endl;
+		}
+		
 		lout << "ns=" << obs.ns.sum()/volume << endl;
 		lout << "nh=" << obs.nh.sum()/volume << endl;
-		
-		lout << "spin gap=" << g_fix_spin.energy-g_fix.energy << endl;
-		lout << "charge gap=" << g_fix_charge.energy-g_fix.energy << endl;
 		
 		HDF5Interface target;
 		std::stringstream bond;
@@ -743,15 +823,23 @@ int main (int argc, char* argv[])
 		
 		target.save_matrix(obs.nh,"nh",bond.str());
 		target.save_matrix(obs.ns,"ns",bond.str());
+		for (size_t x=0; x<L; ++x)
+		for (size_t y=0; y<Ly; ++y)
+		{
+			target.save_matrix(obs.spectrum[x][y],make_string("spectrum_x=",x,"_y=",y),bond.str());
+		}
 		target.save_matrix(obs.finite_entropy,"finite_entropy",bond.str());
 		target.save_scalar(obs.Tsq,"Tsq",bond.str());
 		target.save_scalar(obs.Ssq,"Ssq",bond.str());
+		target.save_scalar(obs.BOW,"BOW",bond.str());
 		target.close();
+		
+		lout << ObsWatch.info("observables") << endl;
 		lout << "saved to: " << obsfile << endl;
 	}
 	
 	lout << Watch.info("total time") << endl;
-	lout << "emin=" << obs.energy << endl;
+	lout << "emin=" << obs.energy << ", e_empty=" << e_empty() << endl;
 	
 //	size_t Nmax = (VUMPS)? N_cell:1;
 //	Geometry2D GeoNcell(SNAKE,Nmax*L,Ly,1.,true);

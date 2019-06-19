@@ -2,7 +2,6 @@
 #define VANILLA_HEISENBERG
 
 #include "models/HeisenbergU1.h"
-#include "models/KitaevChain.h"
 #include "symmetry/U0.h"
 
 namespace VMPS

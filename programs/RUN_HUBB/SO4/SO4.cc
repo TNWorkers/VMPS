@@ -13,4 +13,4 @@ Logger lout;
 typedef VMPS::HubbardSU2xSU2 MODEL;
 #define USING_SO4
 
-#include "../RUN_HUBB.cc"
+#include "../DMRG/programs/RUN_HUBB/RUN_HUBB.cc"

@@ -176,13 +176,9 @@ int main (int argc, char* argv[])
 	lout << endl;
 	
 	SelfAdjointEigenSolver<MatrixXd> Eugen(-RandomHopping.matrix());
-	double E0_exact = 0.;
-//	cout << "eigenvalues: " << Eugen.eigenvalues().transpose() << endl;
+	double E0_exact = Eugen.eigenvalues().head(N).sum(); // fill up the Fermi sea
+	cout << "1-particle energies: " << Eugen.eigenvalues().transpose() << endl;
 //	cout << "eigenvalues: " << H_ED.eigenvalues().transpose() << endl;
-	for (int k=0; k<N; ++k) // fill up the Fermi sea
-	{
-		E0_exact += Eugen.eigenvalues()(k);
-	}
 	cout << "E0 exact for V=0: " << E0_exact 
 	     << ", diffDMRG=" << abs(E0_exact-g_U1.energy) 
 	     << ", diffED(Lanczos)=" << abs(E0_exact-g_ED.energy) 
