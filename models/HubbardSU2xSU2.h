@@ -50,7 +50,7 @@ public:
 	HubbardSU2xSU2() : Mpo(){};
 	HubbardSU2xSU2 (const size_t &L, const vector<Param> &params);
 	
-	static void set_operators(const std::vector<FermionBase<Symmetry>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
+	static void set_operators (const std::vector<FermionBase<Symmetry>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
 	
 	Mpo<Symmetry> c (size_t locx, size_t locy=0, double factor=sqrt(2.));
 	Mpo<Symmetry> cdag (size_t locx, size_t locy=0, double factor=sqrt(2.));
@@ -71,8 +71,6 @@ public:
 	Mpo<Symmetry,complex<double> > Sdag_ky (vector<complex<double> > phases, double factor=sqrt(3.)) const;
 	Mpo<Symmetry,complex<double> > T_ky    (vector<complex<double> > phases) const;
 	Mpo<Symmetry,complex<double> > Tdag_ky (vector<complex<double> > phases, double factor=1.) const;
-	Mpo<Symmetry,complex<double> > c_ky    (vector<complex<double> > phases, double factor=sqrt(2.)) const;
-	Mpo<Symmetry,complex<double> > cdag_ky (vector<complex<double> > phases, double factor=sqrt(2.)) const;
 	
 	static const map<string,any> defaults;
 	static const map<string,any> sweep_defaults;
@@ -477,36 +475,6 @@ Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU
 cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 {
 	return make_corr("c†", "c", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].c(locy2), Symmetry::qvacuum(), 2., PROP::FERMIONIC, PROP::HERMITIAN);
-	
-	// 2 = sqrt(2)*sqrt(2)
-	// assert(locx1<this->N_sites and locx2<this->N_sites);
-	// stringstream ss;
-	// ss << "c†(" << locx1 << "," << locy1 << ")" << "c(" << locx2 << "," << locy2 << ")";
-	
-	// Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
-	// for (size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis(F[l].get_basis().qloc(),l); }
-	
-	// auto cdag = F[locx1].cdag(locy1);
-	// auto c    = F[locx2].c   (locy2);
-	
-	// if (locx1 == locx2)
-	// {
-	// 	//The diagonal element is actually 2*unity by the symmetry. But we may leave this as a check.
-	// 	Mout.setLocal(locx1, sqrt(2.) * sqrt(2.) * OperatorType::prod(cdag,c,Symmetry::qvacuum()).plain<double>());
-	// }
-	// else if (locx1<locx2)
-	// {
-	// 	Mout.setLocal({locx1, locx2}, {sqrt(2.) * sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), {2,2}).plain<double>(), 
-	// 	                               c.plain<double>()}, 
-	// 	                               F[0].sign().plain<double>());
-	// }
-	// else if (locx1>locx2)
-	// {
-	// 	Mout.setLocal({locx2, locx1}, {sqrt(2.) * sqrt(2.) * OperatorType::prod(c, F[locx2].sign(), {2,2}).plain<double>(), 
-	// 	                               -1. * cdag.plain<double>()}, 
-	// 	                               F[0].sign().plain<double>());
-	// }
-	// return Mout;
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
@@ -601,28 +569,6 @@ Tdag_ky (vector<complex<double> > phases, double factor) const
 		Ops[l] = F[l].Tdag(0);
 	}
 	return make_FourierYSum("T†", Ops, factor, false, phases);
-}
-
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,complex<double> > HubbardSU2xSU2::
-c_ky (vector<complex<double> > phases, double factor) const
-{
-	vector<OperatorType> Ops(N_sites);
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Ops[l] = F[l].c(0);
-	}
-	return make_FourierYSum("c", Ops, factor, false, phases);
-}
-
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> >,complex<double> > HubbardSU2xSU2::
-cdag_ky (vector<complex<double> > phases, double factor) const
-{
-	vector<OperatorType> Ops(N_sites);
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Ops[l] = F[l].cdag(0);
-	}
-	return make_FourierYSum("c†", Ops, factor, false, phases);
 }
 
 } //end namespace VMPS

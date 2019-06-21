@@ -26,15 +26,17 @@ using namespace std;
 #include "Geometry2D.h" // from TOOLS
 #include "NestedLoopIterator.h" // from TOOLS
 
-size_t L, N_cell, Ly;
+size_t L, Ncells, Ly;
 int volume;
 double t, tRung, U, J, V, Vxy, Vz, Vext;
+int fullMmax;
 int M, N, S, T;
 double alpha;
+double str_tol;
 DMRG::VERBOSITY::OPTION VERB;
 double Emin = 0.;
 double emin = 0.;
-bool UMPS_STRUCTURE_FACTOR, UMPS_CONTRACTIONS, CALC_TSQ, CALC_BOW, VUMPS;
+bool STRUCTURE, CONTRACTIONS, CALC_TSQ, CALC_BOW, VUMPS;
 string wd; // working directory
 
 Eigenstate<MODEL::StateXd> g_fix;
@@ -78,11 +80,14 @@ struct Obs
 	
 	double S_M;
 	double T_M;
+	double B_M;
 	double S_Gamma;
 	double T_Gamma;
+	double B_Gamma;
 	
 	Eigen::MatrixXd SdagS;
 	Eigen::MatrixXd TdagT;
+	Eigen::MatrixXd BdagB;
 	
 	vector<vector<Eigen::MatrixXd> > spectrum;
 	
@@ -96,8 +101,9 @@ struct Obs
 		
 		// format:
 		// n x0 y0 x1 y1 value
-		SdagS.resize(N_cell*Lx*Ly*Lx*Ly,6); SdagS.setZero();
-		TdagT.resize(N_cell*Lx*Ly*Lx*Ly,6); TdagT.setZero();
+		SdagS.resize(Ncells*Lx*Ly*Lx*Ly,6); SdagS.setZero();
+		TdagT.resize(Ncells*Lx*Ly*Lx*Ly,6); TdagT.setZero();
+		BdagB.resize(Ncells*Lx*Ly*Lx*Ly,6); BdagB.setZero();
 		
 		spectrum.resize(Lx);
 		for (int l=0; l<L; ++l) spectrum[l].resize(Ly);
@@ -108,36 +114,57 @@ Obs obs;
 
 vector<vector<vector<vector<ArrayXd> > > > SdagS;
 vector<vector<vector<vector<ArrayXd> > > > TdagT;
+vector<vector<vector<vector<ArrayXd> > > > BdagB;
 
-void fill_OdagO (size_t L, size_t Ly, size_t N_cell, const Eigenstate<MODEL::StateUd> &g)
+void resize_OdagO (size_t Ncells)
 {
-	MODEL Htmp(2*N_cell*L*Ly+4,{{"OPEN_BC",false},{"CALC_SQUARE",false}});
-	Geometry2D Geo(SNAKE,L,Ly,1.,true);
-	
 	SdagS.resize(L);
 	TdagT.resize(L);
+	BdagB.resize(L);
 	for (size_t x0=0; x0<L; ++x0)
 	{
 		SdagS[x0].resize(Ly);
 		TdagT[x0].resize(Ly);
+		BdagB[x0].resize(Ly);
 		for (size_t y0=0; y0<Ly; ++y0)
 		{
 			SdagS[x0][y0].resize(L);
 			TdagT[x0][y0].resize(L);
+			BdagB[x0][y0].resize(L);
 			for (size_t x1=0; x1<L; ++x1)
 			{
 				SdagS[x0][y0][x1].resize(Ly);
 				TdagT[x0][y0][x1].resize(Ly);
+				BdagB[x0][y0][x1].resize(Ly);
 				for (size_t y1=0; y1<Ly; ++y1)
 				{
-					SdagS[x0][y0][x1][y1].resize(N_cell);
-					TdagT[x0][y0][x1][y1].resize(N_cell);
+					SdagS[x0][y0][x1][y1].resize(Ncells);
+					TdagT[x0][y0][x1][y1].resize(Ncells);
+					BdagB[x0][y0][x1][y1].resize(Ncells);
 				}
 			}
 		}
 	}
+}
+
+void fill_OdagO (size_t L, size_t Ly, size_t n, const Eigenstate<MODEL::StateUd> &g)
+{
+	Geometry2D Geo(SNAKE,L,Ly,1.,true);
 	
-	for (size_t n=0; n<N_cell; ++n)
+	VectorXd Bavg(L*Ly);
+	MODEL H1cell(L*Ly+Ly,{{"OPEN_BC",false},{"CALC_SQUARE",false}});
+	#pragma omp parallel for collapse(2)
+	for (size_t x0=0; x0<L; ++x0)
+	for (size_t y0=0; y0<Ly; ++y0)
+	{
+		int i0 = Geo(x0,y0);
+		
+		Bavg(i0) = avg(g.state, H1cell.cdagc(i0,i0+Ly), g.state);
+	}
+	
+	Stopwatch<> CellTimer;
+	MODEL Hncell((n+1)*L*Ly+Ly,{{"OPEN_BC",false},{"CALC_SQUARE",false}});
+	
 	#pragma omp parallel for collapse(4)
 	for (size_t x0=0; x0<L; ++x0)
 	for (size_t x1=0; x1<L; ++x1)
@@ -147,12 +174,20 @@ void fill_OdagO (size_t L, size_t Ly, size_t N_cell, const Eigenstate<MODEL::Sta
 		int i0 = Geo(x0,y0);
 		int i1 = Geo(x1,y1);
 		
-		SdagS[x0][y0][x1][y1](n) = avg(g.state, Htmp.SdagS(i0,L*Ly*n+i1), g.state);
-		TdagT[x0][y0][x1][y1](n) = avg(g.state, Htmp.TdagT(i0,L*Ly*n+i1), g.state);
+		SdagS[x0][y0][x1][y1](n) = avg(g.state, Hncell.SdagS(i0,L*Ly*n+i1), g.state);
+		TdagT[x0][y0][x1][y1](n) = avg(g.state, Hncell.TdagT(i0,L*Ly*n+i1), g.state);
+		BdagB[x0][y0][x1][y1](n) = avg(g.state, Hncell.cdagc(i0,i0+Ly), Hncell.cdagc(L*Ly*n+i1,L*Ly*n+i1+Ly), g.state)-Bavg(i0)*Bavg(i1);
 	}
 	
+	lout << CellTimer.info(make_string("n=",n)) << endl;
+}
+
+void save_OdagO (size_t Ncells)
+{
+	Geometry2D Geo(SNAKE,L,Ly,1.,true);
+	
 	// save to obs
-	NestedLoopIterator Nelly(5,{N_cell,L,Ly,L,Ly});
+	NestedLoopIterator Nelly(5,{Ncells,L,Ly,L,Ly});
 	for (Nelly=Nelly.begin(); Nelly!=Nelly.end(); ++Nelly)
 	{
 		int n  = Nelly(0);
@@ -177,10 +212,17 @@ void fill_OdagO (size_t L, size_t Ly, size_t N_cell, const Eigenstate<MODEL::Sta
 		obs.TdagT(Nelly.index(),3) = x1;
 		obs.TdagT(Nelly.index(),4) = y1;
 		obs.TdagT(Nelly.index(),5) = TdagT[x0][y0][x1][y1](n);
+		
+		obs.BdagB(Nelly.index(),0) = n;
+		obs.BdagB(Nelly.index(),1) = x0;
+		obs.BdagB(Nelly.index(),2) = y0;
+		obs.BdagB(Nelly.index(),3) = x1;
+		obs.BdagB(Nelly.index(),4) = y1;
+		obs.BdagB(Nelly.index(),5) = BdagB[x0][y0][x1][y1](n);
 	}
 }
 
-complex<double> calc_FT (double kx, int iky, const vector<vector<vector<vector<ArrayXd> > > > &OdagO)
+complex<double> calc_FT (double kx, int iky, size_t Ncells, const vector<vector<vector<vector<ArrayXd> > > > &OdagO)
 {
 	ArrayXXcd FTintercell(L,L);
 	Geometry2D Geo(SNAKE,L,Ly,1.,true);
@@ -200,7 +242,7 @@ complex<double> calc_FT (double kx, int iky, const vector<vector<vector<vector<A
 			
 			FTintercell(x0,x1) += phases_m0[i0] * phases_p1[i1] * OdagO[x0][y0][x1][y1](0);
 			
-			for (size_t n=1; n<N; ++n)
+			for (size_t n=1; n<Ncells; ++n)
 			{
 				FTintercell(x0,x1) += phases_m0[i0] * phases_p1[i1] *
 				                       (
@@ -234,7 +276,8 @@ int main (int argc, char* argv[])
 	volume = L*Ly;
 	N = args.get<int>("N",volume);
 	T = volume-N+1;
-	N_cell = args.get<size_t>("Lobs",40); // Amount of unit cells for explicit contraction
+	Ncells = args.get<size_t>("Ncells",40); // maximal amount of unit cells for explicit contractions
+	str_tol = args.get<double>("str_tol",1e-2); // SF convergence tolerance with explicit contractions
 	t = args.get<double>("t",1.);
 	tRung = args.get<double>("tRung",t); // tRung != t for testing only
 	U = args.get<double>("U",8.);
@@ -245,11 +288,12 @@ int main (int argc, char* argv[])
 	Vext = args.get<double>("Vext",0.);
 	M = args.get<int>("M",0);
 	S = abs(M)+1;
-	UMPS_STRUCTURE_FACTOR = args.get<bool>("STRUCTURE",false);
-	UMPS_CONTRACTIONS = args.get<bool>("CONTRACTIONS",false);
+	STRUCTURE = args.get<bool>("STRUCTURE",false);
+	CONTRACTIONS = args.get<bool>("CONTRACTIONS",false);
 	CALC_TSQ = args.get<bool>("CALC_TSQ",false);
 	CALC_BOW = args.get<bool>("CALC_BOW",false);
 	VUMPS = args.get<bool>("VUMPS",true);
+	fullMmax = args.get<int>("fullMmax",0);
 	
 	DMRG::CONTROL::GLOB GlobParam_fix;
 	DMRG::CONTROL::DYN  DynParam_fix;
@@ -436,7 +480,7 @@ int main (int argc, char* argv[])
 	lout << "•H to calculate de/dV:" << endl;
 	lout << dHdV.info() << endl;
 	
-	obs.resize(L,Ly,N_cell);
+	obs.resize(L,Ly,Ncells);
 	
 	if (VUMPS)
 	{
@@ -454,6 +498,237 @@ int main (int argc, char* argv[])
 				target = HDF5Interface(obsfile,REWRITE);
 				bond << g_foxy.state.calc_fullMmax();
 				cout << termcolor::red << "Measure at M=" << bond.str() << ", if possible" << termcolor::reset << endl;
+				
+				//----------k-points to calculate----------
+				vector<pair<double,int> > kxy;
+				if (Ly == 1)
+				{
+//					kxy.push_back(make_pair(0.,0));
+					kxy.push_back(make_pair(M_PI,0));
+				}
+				else
+				{
+//					kxy.push_back(make_pair(0.,0)); // Γ point (0,0)
+					kxy.push_back(make_pair(M_PI,Ly/2)); // M point (π,π)
+				}
+				
+				if (STRUCTURE)
+				{
+					for (int i=0; i<kxy.size(); ++i)
+					{
+						double kx = kxy[i].first;
+						int   iky = kxy[i].second;
+						
+						vector<Mpo<MODEL::Symmetry,complex<double> > > Sdag_ky(L);
+						vector<Mpo<MODEL::Symmetry,complex<double> > > S_ky   (L);
+						vector<Mpo<MODEL::Symmetry,complex<double> > > Tdag_ky(L);
+						vector<Mpo<MODEL::Symmetry,complex<double> > > T_ky   (L);
+						vector<Mpo<MODEL::Symmetry,complex<double> > > B_ky   (L);
+						vector<Mpo<MODEL::Symmetry,complex<double> > > Bdag_ky(L);
+						
+						MODEL Htmp(volume+1,{});
+						
+						ArrayXd Bavg(L);
+						for (size_t x=0; x<L; ++x)
+						{
+							Bavg(x) = avg(g_foxy.state, Htmp.cdagc(x,x+1), g_foxy.state);
+//							lout << "x=" << x << ", Bavg(x)=" << Bavg(x) << endl;
+						}
+						
+						// Fourier transform of operators in y-direction
+						for (size_t x=0; x<L; ++x)
+						{
+							vector<complex<double> > phases_p = Geo1cell.FTy_phases(x,iky,0);
+							vector<complex<double> > phases_m = Geo1cell.FTy_phases(x,iky,1);
+							
+							Sdag_ky[x] = H.Sdag_ky(phases_m);
+							S_ky[x]    = H.S_ky   (phases_p);
+							
+							Tdag_ky[x] = H.Tdag_ky(phases_m);
+							T_ky[x]    = H.T_ky   (phases_p);
+							
+							Bdag_ky[x] = VMPS::HubbardSU2xSU2BondOperator<complex<double> >(volume+1,{{"x",x},{"shift",-Bavg(x)}});
+							B_ky[x]    = VMPS::HubbardSU2xSU2BondOperator<complex<double> >(volume+1,{{"x",x},{"shift",-Bavg(x)}});
+							
+							Sdag_ky[x].transform_base(Qc,false); // PRINT=false
+							S_ky[x].transform_base(Qc,false);
+							
+							Tdag_ky[x].transform_base(Qc,false);
+							T_ky[x].transform_base(Qc,false);
+							
+							Bdag_ky[x].transform_base(Qc,false);
+							B_ky[x].transform_base(Qc,false);
+						}
+						lout << "Fourier transform in y-direction done!" << endl;
+						
+						// Calculate expectation values within the cell
+						ArrayXXcd Sij_cell(L,L); Sij_cell = 0;
+						ArrayXXcd Tij_cell(L,L); Tij_cell = 0;
+						ArrayXXcd Bij_cell(L,L); Bij_cell = 0;
+						
+						for (size_t x1=0; x1<L; ++x1)
+						for (size_t x2=0; x2<L; ++x2)
+						{
+							auto phases_m1 = Geo1cell.FTy_phases(x1,iky,1);
+							auto phases_p2 = Geo1cell.FTy_phases(x2,iky,0);
+							
+							for (size_t y1=0; y1<Ly; ++y1)
+							for (size_t y2=0; y2<Ly; ++y2)
+							{
+								size_t index1 = Geo1cell(x1,y1);
+								size_t index2 = Geo1cell(x2,y2);
+								
+								if (phases_m1[index1] * phases_p2[index2] != 0.)
+								{
+									Sij_cell(x1,x2) += phases_m1[index1] * phases_p2[index2] * 
+									                   avg(g_foxy.state, H.SdagS(index1,index2), g_foxy.state);
+									Tij_cell(x1,x2) += phases_m1[index1] * phases_p2[index2] * 
+									                   avg(g_foxy.state, H.TdagT(index1,index2), g_foxy.state);
+//									Bij_cell(x1,x2) += phases_m1[index1] * phases_p2[index2] * 
+//									                    avg(
+//									                      g_foxy.state, 
+//									                       VMPS::HubbardSU2xSU2BondOperator<double>(volume+1,{{"x",index1},{"shift",-Bavg(index1)}}),
+//									                       VMPS::HubbardSU2xSU2BondOperator<double>(volume+1,{{"x",index2},{"shift",-Bavg(index2)}}), 
+//									                      g_foxy.state
+//									                       );
+									Bij_cell(x1,x2) += phases_m1[index1] * phases_p2[index2] * 
+									                   (avg(g_foxy.state, Htmp.cdagc(index1,index1+1), Htmp.cdagc(index2,index2+1), g_foxy.state)
+									                    -Bavg(index1)*Bavg(index2));
+								}
+							}
+						}
+						
+						cout << "Bij_cell=" << endl << Bij_cell << endl << endl;
+						
+						cout << avg(g_foxy.state, H.cdagc(0,1), H.cdagc(0,1), g_foxy.state) - Bavg(0)*Bavg(0) << endl;
+						cout << avg(g_foxy.state, H.cdagc(0,1), H.cdagc(1,2), g_foxy.state) - Bavg(0)*Bavg(1) << endl;
+						cout << avg(g_foxy.state, H.cdagc(0,1), H.cdagc(2,3), g_foxy.state) - Bavg(0)*Bavg(2) << endl;
+						
+						cout << sqrt(3.)*avg(g_foxy.state, H.Tdag(0), H.T(1), g_foxy.state) << "\t" << avg(g_foxy.state, H.TdagT(0,1), g_foxy.state) << endl;
+						cout << sqrt(3.)*avg(g_foxy.state, H.Sdag(0), H.S(1), g_foxy.state) << "\t" << avg(g_foxy.state, H.SdagS(0,1), g_foxy.state) << endl;
+						
+						cout << "should give zero:" << endl;
+						cout << avg(g_foxy.state, VMPS::HubbardSU2xSU2BondOperator<double>(volume+1,{{"x",1ul},{"shift",-Bavg(1)}}), g_foxy.state) << endl;
+						cout << "should be same:" << endl;
+						cout << Bavg(0) << "\t" 
+						     << avg(g_foxy.state, VMPS::HubbardSU2xSU2BondOperator<double>(volume+1,{{"x",0ul},{"shift",1e-15}}), g_foxy.state) << endl;
+						cout << Bavg(1) << "\t" 
+						     << avg(g_foxy.state, VMPS::HubbardSU2xSU2BondOperator<double>(volume+1,{{"x",1ul},{"shift",1e-15}}), g_foxy.state) << endl;
+						
+						cout << "<O*O>:" << endl;
+						cout << avg(g_foxy.state, 
+						            VMPS::HubbardSU2xSU2BondOperator<double>(volume+1,{{"x",1ul},{"shift",0.}}),
+						            VMPS::HubbardSU2xSU2BondOperator<double>(volume+1,{{"x",2ul},{"shift",0.}}), 
+						            g_foxy.state)
+						     << "\t" << avg(g_foxy.state, H.cdagc(1,2), H.cdagc(2,3), g_foxy.state) << endl;
+						cout << "tests done!" << endl;
+						
+//						cout << VMPS::HubbardSU2xSU2BondOperator<double>(volume+1,{{"x",1ul},{"shift",0.}}) << endl;
+						
+						// Calculate full structure factor
+						complex<double> SF_S, SF_T, SF_B;
+						#pragma omp parallel sections
+						{
+//							#pragma omp section
+//							{
+//								SF_S = g_foxy.state.SFpoint(Sij_cell, Sdag_ky,S_ky, L, kx, DMRG::VERBOSITY::ON_EXIT);
+//							}
+//							#pragma omp section
+//							{
+//								SF_T = g_foxy.state.SFpoint(Tij_cell, Tdag_ky,T_ky, L, kx, DMRG::VERBOSITY::ON_EXIT);
+//							}
+//							#pragma omp section
+							{
+								SF_B = g_foxy.state.SFpoint(Bij_cell, Bdag_ky,B_ky, L, kx, DMRG::VERBOSITY::STEPWISE);
+							}
+						}
+						// Umps::SF returns 2x2 array with rows in the format:
+						// 0,SF(0)
+						// π,SF(π)
+						
+						// Γ point
+						if (kx == 0. and iky == 0)
+						{
+							obs.S_Gamma = isReal(SF_S);
+							obs.T_Gamma = isReal(SF_T);
+							obs.B_Gamma = isReal(SF_B);
+							lout << termcolor::red << "S_Γ=" << SF_S << ", T_Γ=" << SF_T << ", B_Γ=" << SF_B << termcolor::reset << endl;
+						}
+						// M point
+						else if (kx == M_PI and iky == Ly/2)
+						{
+							obs.S_M = isReal(SF_S);
+							obs.T_M = isReal(SF_T);
+							obs.B_M = isReal(SF_B);
+							lout << termcolor::red << "S_M=" << SF_S << ", T_M=" << SF_T << ", B_M=" << SF_B << termcolor::reset << endl;
+						}
+					}
+				}
+				
+				if (CONTRACTIONS)
+				{
+					resize_OdagO(Ncells);
+					
+					for (int i=0; i<kxy.size(); ++i)
+					{
+						double kx  = kxy[i].first;
+						int    iky = kxy[i].second;
+						
+						// fill contractions within the cell and for the first neighbour cell
+						fill_OdagO(L, Ly, 0, g_foxy); 
+						fill_OdagO(L, Ly, 1, g_foxy);
+						complex<double> SF_S = calc_FT(kx, iky, 1, SdagS);
+						complex<double> SF_T = calc_FT(kx, iky, 1, TdagT);
+						complex<double> SF_B = calc_FT(kx, iky, 1, BdagB);
+						
+						for (int n=2; n<Ncells; ++n)
+						{
+							fill_OdagO(L, Ly, n, g_foxy); // add contractions for n-th unit cell
+							
+							// FT for n unit cells
+							complex<double> SF_S_new = calc_FT(kx, iky, n, SdagS);
+							complex<double> SF_T_new = calc_FT(kx, iky, n, TdagT);
+							complex<double> SF_B_new = calc_FT(kx, iky, n, BdagB);
+							
+							lout << "S: " << SF_S << ", "  << SF_S_new << ", " << abs(SF_S-SF_S_new) << ", " << abs(SF_S-SF_S_new)/abs(SF_S) << endl;
+							lout << "T: " << SF_T << ", "  << SF_T_new << ", " << abs(SF_T-SF_T_new) << ", " << abs(SF_T-SF_T_new)/abs(SF_T) << endl;
+							lout << "B: " << SF_B << ", "  << SF_B_new << ", " << abs(SF_B-SF_B_new) << ", " << abs(SF_B-SF_B_new)/abs(SF_B) << endl;
+							
+							swap(SF_S,SF_S_new);
+							swap(SF_T,SF_T_new);
+							swap(SF_B,SF_B_new);
+							
+							// exit if absolute or relative change smaller than str_tol
+							if (min(abs(SF_S-SF_S_new)/abs(SF_S), abs(SF_S-SF_S_new)) < str_tol and 
+							    min(abs(SF_T-SF_T_new)/abs(SF_T), abs(SF_S-SF_S_new)) < str_tol and 
+							    min(abs(SF_B-SF_B_new)/abs(SF_B), abs(SF_B-SF_B_new)) < str_tol)
+							{
+								save_OdagO(n);
+								lout << "SF convergence after n=" << n << " unit cells or " << (n+1)*L*Ly << " sites" << endl;
+								break;
+							}
+						}
+						
+						// Γ point
+						if (kx == 0. and iky == 0)
+						{
+							obs.S_Gamma = isReal(SF_S);
+							obs.T_Gamma = isReal(SF_T);
+							obs.B_Gamma = isReal(SF_B);
+							
+							lout << termcolor::red << "S(Γ)=" << SF_S << ", T(Γ)=" << SF_T << ", B(Γ)=" << SF_B << termcolor::reset << endl;
+						}
+						// M point
+						else if (kx == M_PI and iky == Ly/2)
+						{
+							obs.S_M = isReal(SF_S);
+							obs.T_M = isReal(SF_T);
+							obs.B_M = isReal(SF_B);
+							
+							lout << termcolor::red << "S(M)=" << SF_S << ", T(M)=" << SF_T << ", B(M)=" << SF_B << termcolor::reset << endl;
+						}
+					}
+				}
 				
 				if (target.HAS_GROUP(bond.str())) {return;}
 				
@@ -507,139 +782,6 @@ int main (int argc, char* argv[])
 				obs.dedV /= (L*Ly);
 				//----------de/dV----------
 				
-				//----------k-points to calculate----------
-				vector<pair<double,int> > kxy;
-				if (Ly == 1)
-				{
-					kxy.push_back(make_pair(0.,0));
-					kxy.push_back(make_pair(M_PI,0));
-				}
-				else
-				{
-					kxy.push_back(make_pair(0.,0)); // Γ point (0,0)
-					kxy.push_back(make_pair(M_PI,Ly/2)); // M point (π,π)
-				}
-				
-				if (UMPS_STRUCTURE_FACTOR)
-				{
-					for (int i=0; i<kxy.size(); ++i)
-					{
-						double kx = kxy[i].first;
-						int   iky = kxy[i].second;
-						
-						vector<Mpo<MODEL::Symmetry,complex<double> > > Sdag_ky(L);
-						vector<Mpo<MODEL::Symmetry,complex<double> > > S_ky   (L);
-						vector<Mpo<MODEL::Symmetry,complex<double> > > Tdag_ky(L);
-						vector<Mpo<MODEL::Symmetry,complex<double> > > T_ky   (L);
-						
-						// Fourier transform of operators in y-direction
-						for (size_t x=0; x<L; ++x)
-						{
-							vector<complex<double> > phases_p = Geo1cell.FTy_phases(x,iky,0);
-							vector<complex<double> > phases_m = Geo1cell.FTy_phases(x,iky,1);
-							
-							Sdag_ky[x] = H.Sdag_ky(phases_m);
-							S_ky[x]    = H.S_ky   (phases_p);
-							Tdag_ky[x] = H.Tdag_ky(phases_m);
-							T_ky[x]    = H.T_ky   (phases_p);
-							
-							Sdag_ky[x].transform_base(Qc,false); // PRINT=false
-							S_ky[x].transform_base(Qc,false);
-							Tdag_ky[x].transform_base(Qc,false);
-							T_ky[x].transform_base(Qc,false);
-						}
-						
-						
-						// Calculate expectation values within the cell
-						ArrayXXcd Sij_cell(L,L); Sij_cell = 0;
-						ArrayXXcd Tij_cell(L,L); Tij_cell = 0;
-						
-						for (size_t x1=0; x1<L; ++x1)
-						for (size_t x2=0; x2<L; ++x2)
-						{
-							auto phases_m1 = Geo1cell.FTy_phases(x1,iky,1);
-							auto phases_p2 = Geo1cell.FTy_phases(x2,iky,0);
-							
-							for (size_t y1=0; y1<Ly; ++y1)
-							for (size_t y2=0; y2<Ly; ++y2)
-							{
-								int index1 = Geo1cell(x1,y1);
-								int index2 = Geo1cell(x2,y2);
-								
-								if (phases_m1[index1] * phases_p2[index2] != 0.)
-								{
-									Sij_cell(x1,x2) += phases_m1[index1] * phases_p2[index2] * 
-									                   avg(g_foxy.state, H.SdagS(index1,index2), g_foxy.state);
-									Tij_cell(x1,x2) += phases_m1[index1] * phases_p2[index2] * 
-									                   avg(g_foxy.state, H.TdagT(index1,index2), g_foxy.state);
-								}
-							}
-						}
-						
-						// Calculate full structure factor
-						complex<double> SF_S, SF_T;
-						#pragma omp parallel sections
-						{
-							#pragma omp section
-							{
-								SF_S = g_foxy.state.SFpoint(Sij_cell, Sdag_ky,S_ky, L, kx, DMRG::VERBOSITY::ON_EXIT);
-							}
-							#pragma omp section
-							{
-								SF_T = g_foxy.state.SFpoint(Tij_cell, Tdag_ky,T_ky, L, kx, DMRG::VERBOSITY::ON_EXIT);
-							}
-						}
-						// Umps::SF returns 2x2 array with rows in the format:
-						// 0,SF(0)
-						// π,SF(π)
-						
-						// Γ point
-						if (kx == 0. and iky == 0)
-						{
-							obs.S_Gamma = isReal(SF_S);
-							obs.T_Gamma = isReal(SF_T);
-							lout << termcolor::red << "S_Γ=" << SF_S << ", T_Γ=" << SF_T << termcolor::reset << endl;
-						}
-						// M point
-						else if (kx == M_PI and iky == Ly/2)
-						{
-							obs.S_M = isReal(SF_S);
-							obs.T_M = isReal(SF_T);
-							lout << termcolor::red << "S_M=" << SF_S << ", T_M=" << SF_T << termcolor::reset << endl;
-						}
-					}
-				}
-				if (UMPS_CONTRACTIONS)
-				{
-					fill_OdagO(L, Ly, N_cell, g_foxy);
-					
-					for (int i=0; i<kxy.size(); ++i)
-					{
-						double kx = kxy[i].first;
-						int iky   = kxy[i].second;
-						
-						complex<double> SF_S = calc_FT(kx,iky,SdagS);
-						complex<double> SF_T = calc_FT(kx,iky,TdagT);
-						
-						// Γ point
-						if (kx == 0. and iky == 0)
-						{
-							obs.S_Gamma = isReal(SF_S);
-							obs.T_Gamma = isReal(SF_T);
-							
-							lout << termcolor::red << "S_Γ=" << SF_S << ", T_Γ=" << SF_T << termcolor::reset << endl;
-						}
-						// M point
-						else if (kx == M_PI and iky == Ly/2)
-						{
-							obs.S_M = isReal(SF_S);
-							obs.T_M = isReal(SF_T);
-							
-							lout << termcolor::red << "S_M=" << SF_S << ", T_M=" << SF_T << termcolor::reset << endl;
-						}
-					}
-				}
-				
 				target.create_group(bond.str());
 				std::stringstream Dmax;
 				Dmax << g_foxy.state.calc_Dmax();
@@ -666,7 +808,7 @@ int main (int argc, char* argv[])
 //					lout << "x=" << x << ", y=" << y << ", spec=" << obs.spectrum[x][y].transpose() << endl;
 				}
 				
-				if (UMPS_STRUCTURE_FACTOR)
+				if (STRUCTURE)
 				{
 					target.save_scalar(obs.S_Gamma,"S_Gamma",bond.str());
 					target.save_scalar(obs.T_Gamma,"T_Gamma",bond.str());
@@ -686,14 +828,22 @@ int main (int argc, char* argv[])
 			}
 		};
 		
-		Foxy.userSetGlobParam();
-		Foxy.userSetDynParam();
-		Foxy.GlobParam = GlobParam_foxy;
-		Foxy.DynParam = DynParam_foxy;
-		Foxy.DynParam.doSomething = measure_and_save;
-		Foxy.DynParam.iteration = [](size_t i) -> UMPS_ALG::OPTION {return UMPS_ALG::PARALLEL;};
-		Foxy.set_log(2,"e0.dat","err_eigval.dat","err_var.dat","err_state.dat");
-		Foxy.edgeState(H, g_foxy, Qc);
+		if (fullMmax > 0)
+		{
+			g_foxy.state.load(make_string(statefile,"_fullMmax=",fullMmax));
+			measure_and_save(0);
+		}
+		else
+		{
+			Foxy.userSetGlobParam();
+			Foxy.userSetDynParam();
+			Foxy.GlobParam = GlobParam_foxy;
+			Foxy.DynParam = DynParam_foxy;
+			Foxy.DynParam.doSomething = measure_and_save;
+			Foxy.DynParam.iteration = [](size_t i) -> UMPS_ALG::OPTION {return UMPS_ALG::PARALLEL;};
+			Foxy.set_log(2,"e0.dat","err_eigval.dat","err_var.dat","err_state.dat");
+			Foxy.edgeState(H, g_foxy, Qc);
+		}
 		
 		emin = g_foxy.energy;
 	}
@@ -774,7 +924,7 @@ int main (int argc, char* argv[])
 				}
 				#endif
 			}
-//			lout << "BOWloc=" << BOWloc.transpose() << endl;
+			lout << "BOWloc=" << BOWloc.transpose() << endl;
 			
 			#pragma omp parallel for reduction(+:BOW)
 			for (int i=0; i<volume-1; ++i)
@@ -841,7 +991,7 @@ int main (int argc, char* argv[])
 	lout << Watch.info("total time") << endl;
 	lout << "emin=" << obs.energy << ", e_empty=" << e_empty() << endl;
 	
-//	size_t Nmax = (VUMPS)? N_cell:1;
+//	size_t Nmax = (VUMPS)? Ncells:1;
 //	Geometry2D GeoNcell(SNAKE,Nmax*L,Ly,1.,true);
 //	for (size_t l=0; l<L*Ly*Nmax; ++l)
 //	{

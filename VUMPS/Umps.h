@@ -326,7 +326,7 @@ public:
 	                         double kval,
 	                         DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT);
 	
-private:
+//private:
 	
 	/**parameter*/
 	size_t N_sites;
@@ -2517,6 +2517,7 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 		
 		complex<double> resm = contract_LR(Fmalfa.data, bmbeta);
 		complex<double> resp = contract_LR(bpbeta, Fpalfa.data);
+		cout << "resm=" << resm << ", resp=" << resp << endl;
 		
 		// result
 		out(ik,0) = kval;

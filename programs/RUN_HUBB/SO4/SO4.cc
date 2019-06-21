@@ -9,6 +9,7 @@ using namespace std;
 Logger lout;
 
 #include "models/HubbardSU2xSU2.h"
+#include "models/HubbardSU2xSU2BondOperator.h"
 
 typedef VMPS::HubbardSU2xSU2 MODEL;
 #define USING_SO4

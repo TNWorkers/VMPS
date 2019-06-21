@@ -262,7 +262,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
             const Mps<Symmetry,Scalar> &Vket,
             typename Symmetry::qType Qtarget = Symmetry::qvacuum())
 {
-	if constexpr (Symmetry::NON_ABELIAN )
+	if constexpr (Symmetry::NON_ABELIAN)
 	{
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;

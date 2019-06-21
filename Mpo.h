@@ -114,6 +114,8 @@ public:
 	 */
 	static Mpo<Symmetry,Scalar> Identity (const vector<vector<qarray<Nq> > > &qloc);
 	
+	static Mpo<Symmetry,Scalar> Zero (const vector<vector<qarray<Nq> > > &qloc);
+	
 	//---set whole Mpo for special cases, modify---
 	
 	///\{
@@ -270,16 +272,16 @@ public:
 	inline vector<vector<qarray<Nq> > > opBasisSq() const {return qOpSq;}
 	
 	/**Sets the local basis at \p loc.*/
-	inline void setLocBasis (const vector<qType> &q,	size_t loc) {qloc[loc]=q;}
+	inline void setLocBasis (const vector<qType> &q, size_t loc) {qloc[loc]=q;}
 	
 	/**Sets the operator basis at \p loc.*/
 	inline void setOpBasis (const vector<qType>& q, size_t loc) {qOp[loc] = q;}
 	
 	/**Sets the full local basis.*/
-	inline void setLocBasis (const vector<vector<qType> >	&q) {qloc=q;}
+	inline void setLocBasis (const vector<vector<qType> > &q) {qloc=q;}
 	
 	/**Sets the full operator basis.*/
-	inline void setOpBasis   (const vector<vector<qType> > &q)		{qOp=q;}
+	inline void setOpBasis   (const vector<vector<qType> > &q) {qOp=q;}
 	
 	/**Sets the full operator basis of the squared Mpo.*/
 	inline void setOpBasisSq (const vector<vector<qType> > &qOpSq_in) {qOpSq=qOpSq_in;}
@@ -497,7 +499,36 @@ Identity (const vector<vector<qarray<Nq> > > &qloc)
 		out.qOp[l][0] = Symmetry::qvacuum();
 		for (size_t s=0; s<out.qloc[l].size(); ++s)
 		{
-			out.W[l][s][s][0] = MatrixXd::Identity(1,1).sparseView();
+			out.W[l][s][s][0] = Matrix<Scalar,Dynamic,Dynamic>::Identity(1,1).sparseView();
+		}
+	}
+	
+	out.calc_auxBasis();
+	
+	return out;
+}
+
+template<typename Symmetry, typename Scalar>
+Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
+Zero (const vector<vector<qarray<Nq> > > &qloc)
+{
+	// HERMITIAN=true, UNITARY=true, HAMILTONIAN=false (or should it be true)?
+	Mpo<Symmetry,Scalar> out(qloc.size(), Symmetry::qvacuum(), "Zero", true, true, false);
+	out.qloc = qloc;
+	out.initialize();
+	for (size_t l=0; l<out.N_sites; l++)
+	{
+		out.Daux(l,0) = 1;
+		out.Daux(l,1) = 1;
+	}
+	
+	for (size_t l=0; l<out.N_sites; l++)
+	{
+		out.qOp[l].resize(1);
+		out.qOp[l][0] = Symmetry::qvacuum();
+		for (size_t s=0; s<out.qloc[l].size(); ++s)
+		{
+			out.W[l][s][s][0] = 0 * Matrix<Scalar,Dynamic,Dynamic>::Identity(1,1).sparseView();
 		}
 	}
 	
@@ -626,7 +657,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			for (size_t a2=0; a2<Gvec[l].cols(); ++a2)
 			{
 				Scalar val = (s1<Gvec[l](Gvec[l].rows()-1,a2).data.rows() and s2<Gvec[l](Gvec[l].rows()-1,a2).data.cols())? 
-							 Gvec[l](Gvec[l].rows()-1,a2).data.coeffRef(s1,s2):0;
+				              Gvec[l](Gvec[l].rows()-1,a2).data.coeffRef(s1,s2):0;
 				if (abs(val) > ::mynumeric_limits<double>::epsilon())
 				{
 					qType Q = Gvec[l](Gvec[l].rows()-1,a2).Q;
@@ -665,7 +696,8 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 		for (size_t a1=0; a1<Gvec[l].rows(); ++a1)
 		for (size_t a2=0; a2<Gvec[l].cols(); ++a2)
 		{
-			Scalar val = (s1<Gvec[l](a1,a2).data.rows() and s2<Gvec[l](a1,a2).data.cols())? Gvec[l](a1,a2).data.coeffRef(s1,s2):0;
+			Scalar val = (s1<Gvec[l](a1,a2).data.rows() and s2<Gvec[l](a1,a2).data.cols())? 
+			              Gvec[l](a1,a2).data.coeffRef(s1,s2):0;
 			if (abs(val) > ::mynumeric_limits<double>::epsilon())
 			{
 				qType Q = Gvec[l](a1,a2).Q;
@@ -703,7 +735,8 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 			}
 			for (size_t a1=0; a1<Gvec[l].rows(); ++a1)
 			{
-				Scalar val = (s1<Gvec[l](a1,0).data.rows() and s2<Gvec[l](a1,0).data.cols())? Gvec[l](a1,0).data.coeffRef(s1,s2):0;
+				Scalar val = (s1<Gvec[l](a1,0).data.rows() and s2<Gvec[l](a1,0).data.cols())? 
+				              Gvec[l](a1,0).data.coeffRef(s1,s2):0;
 				if (abs(val) > ::mynumeric_limits<double>::epsilon())
 				{
 					qType Q = Gvec[l](a1,0).Q;

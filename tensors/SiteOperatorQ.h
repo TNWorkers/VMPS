@@ -358,7 +358,7 @@ prod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetr
 											   O2.Q(), O2.data().out[mu], target);
 			// factor_cgc = Symmetry::coeff_Apair( O2.data().out[mu], O2.Q(), O1.data().out[nu],
 			// 									O1.Q(), O1.data().in[nu], target);
-			if ( std::abs(factor_cgc) < ::numeric_limits<Scalar>::epsilon() ) { continue; }
+			if ( std::abs(factor_cgc) < std::abs(::numeric_limits<Scalar>::epsilon()) ) { continue; }
 			totIndex = { O1.data().in[nu], O2.data().out[mu] };
 			A = O1.data().block[nu] * O2.data().block[mu] * factor_cgc;
 			// A = O2.data().block[mu] * O1.data().block[nu] * factor_cgc;
