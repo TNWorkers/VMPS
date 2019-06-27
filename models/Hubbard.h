@@ -44,7 +44,7 @@ const std::map<string,std::any> Hubbard::defaults =
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",1.},
 	{"mu",0.}, {"t0",0.}, 
-	{"U",0.},
+	{"U",0.}, {"Uph",0.},
 	{"V",0.}, {"Vrung",0.}, 
 	{"Bz",0.}, {"Bx",0.}, 
 	{"J",0.}, {"Jrung",0.},
@@ -124,13 +124,14 @@ add_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
         // Can also implement superconductivity terms c*c & cdag*cdag here
     
         ArrayXd  U_array  = F[loc].ZeroField();
+        ArrayXd  Uph_array  = F[loc].ZeroField();
         ArrayXd  E_array  = F[loc].ZeroField();
         ArrayXd  Bz_array = F[loc].ZeroField();
         ArrayXXd tperp_array = F[loc].ZeroHopping();
         ArrayXXd Vperp_array = F[loc].ZeroHopping();
         ArrayXXd Jperp_array = F[loc].ZeroHopping();
     
-        Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U_array, E_array, Bz_array, Bx.a, tperp_array, Vperp_array, Jperp_array));
+        Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U_array, Uph_array, E_array, Bz_array, Bx.a, tperp_array, Vperp_array, Jperp_array));
     }
 }
 

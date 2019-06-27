@@ -62,7 +62,7 @@ public:
 	 *
 	 * \param B : Base class from which the local operators are received
 	 * \param P : The parameters
-	 * \param loc : The location in the chain
+	 * \param Terms : \p HamiltonianTerms instance
 	 */
 	template<typename Symmetry_>
 	//static HamiltonianTermsXd<Symmetry_> set_operators (const vector<SpinBase<Symmetry_> > &B, const ParamHandler &P, size_t loc=0);

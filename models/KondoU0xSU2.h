@@ -54,7 +54,7 @@ public:
 	 * \param B : Base class from which the local spin-operators are received
 	 * \param F : Base class from which the local fermion-operators are received
 	 * \param P : The parameters
-	 * \param loc : The location in the chain
+	 * \param Terms : \p HamiltonianTerms instance
 	 */
 //	static HamiltonianTermsXd<Symmetry> set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F,
 //	                                                    const ParamHandler &P, size_t loc=0);

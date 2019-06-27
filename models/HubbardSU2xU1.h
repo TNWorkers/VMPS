@@ -28,6 +28,7 @@ namespace VMPS
   * - t^{\prime} \sum_{<<ij>>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
   * + U \sum_i n_{i\uparrow} n_{i\downarrow}
   * + V \sum_{<ij>} n_{i} n_{j}
+  * - X \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) \left(n_{i,-\sigma}-n_{j,-\sigma}\right)^2
   * +H_{tJ}
   * \f$.
   * with
@@ -126,6 +127,7 @@ const map<string,any> HubbardSU2xU1::defaults =
 	{"V",0.}, {"Vext",0.}, {"Vrung",0.},
 	{"Vz",0.}, {"Vzrung",0.}, {"Vxy",0.}, {"Vxyrung",0.}, 
 	{"J",0.}, {"Jperp",0.},
+	{"X",0.}, {"Xrung",0.},
 	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
@@ -174,9 +176,12 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 	
 	for(std::size_t loc=0; loc<N_sites; ++loc)
 	{
-		std::size_t orbitals = F[loc].orbitals();
-		std::size_t next_orbitals = F[(loc+1)%N_sites].orbitals();
-		std::size_t nextn_orbitals = F[(loc+2)%N_sites].orbitals();
+		size_t lp1 = (loc+1)%N_sites;
+		size_t lp2 = (loc+2)%N_sites;
+		
+		std::size_t orbitals       = F[loc].orbitals();
+		std::size_t next_orbitals  = F[lp1].orbitals();
+		std::size_t nextn_orbitals = F[lp2].orbitals();
 		
 		stringstream ss;
 		ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
@@ -204,10 +209,10 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 				
 				if (range != 0)
 				{
-					SiteOperator<Symmetry, double> c_sign_local = OperatorType::prod(F[loc].c(0), F[loc].sign(), {2,-1}).plain<double>();
-					SiteOperator<Symmetry, double> cdag_sign_local = OperatorType::prod(F[loc].cdag(0), F[loc].sign(), {2,1}).plain<double>();
-					SiteOperator<Symmetry, double> c_range = F[(loc+range)%N_sites].c(0).plain<double>();
-					SiteOperator<Symmetry, double> cdag_range = F[(loc+range)%N_sites].cdag(0).plain<double>();
+					SiteOperator<Symmetry,double> c_sign_local = OperatorType::prod(F[loc].c(0), F[loc].sign(), {2,-1}).plain<double>();
+					SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(0), F[loc].sign(), {2,1}).plain<double>();
+					SiteOperator<Symmetry,double> c_range = F[(loc+range)%N_sites].c(0).plain<double>();
+					SiteOperator<Symmetry,double> cdag_range = F[(loc+range)%N_sites].cdag(0).plain<double>();
 					
 					//hopping
 					//cout << "loc=" << loc << ", pushing at range=" << range << ", value=" << value << endl;
@@ -367,110 +372,201 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 			Terms.save_label(loc,ss.str());
 		}
 		
-        // Local terms: U, t0, μ, t⟂, V⟂, J⟂
-        
-        param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
-        param1d Uph = P.fill_array1d<double>("Uph", "Uphorb", orbitals, loc%Lcell);
-        param1d t0 = P.fill_array1d<double>("t0", "t0orb", orbitals, loc%Lcell);
-        param1d mu = P.fill_array1d<double>("mu", "muorb", orbitals, loc%Lcell);
-        param2d tperp = P.fill_array2d<double>("tRung", "t", "tPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		if (P.HAS("Xfull"))
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Xfull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				size_t Ntrans = (range == 0)? 0:range-1;
+				vector<SiteOperator<Symmetry,double> > TransOps(Ntrans);
+				for (size_t i=0; i<Ntrans; ++i)
+				{
+					TransOps[i] = F[(loc+i+1)%N_sites].sign().plain<double>();
+				}
+				
+				if (range != 0)
+				{
+					size_t ran = (loc+range)%N_sites;
+					
+					SiteOperator<Symmetry,double> PsiLloc = OperatorType::prod(F[loc].ns(),
+					                                        OperatorType::prod(F[loc].c(), F[loc].sign(), {2,-1}),
+					                                        {2,-1}).plain<double>();
+					SiteOperator<Symmetry,double> PsiRloc = OperatorType::prod(
+					                                        OperatorType::prod(F[loc].c(), F[loc].sign(), {2,-1}),
+					                                        F[loc].ns(),
+					                                        {2,-1}).plain<double>();
+					SiteOperator<Symmetry,double> PsiLran = OperatorType::prod(F[ran].ns(), F[ran].c(),
+					                                        {2,-1}).plain<double>();
+					SiteOperator<Symmetry,double> PsiRran = OperatorType::prod(F[ran].c(), F[ran].ns(),
+					                                        {2,-1}).plain<double>();
+					SiteOperator<Symmetry,double> PsidagLloc = OperatorType::prod(
+					                                           OperatorType::prod(F[loc].cdag(), F[loc].sign(), {2,1}),
+					                                           F[loc].ns(),
+					                                           {2,1}).plain<double>();
+					SiteOperator<Symmetry,double> PsidagRloc = OperatorType::prod(F[loc].ns(),
+					                                           OperatorType::prod(F[loc].cdag(), F[loc].sign(), {2,1}),
+					                                           {2,1}).plain<double>();
+					SiteOperator<Symmetry,double> PsidagLran = OperatorType::prod(F[ran].cdag(), F[ran].ns(),
+					                                           {2,1}).plain<double>();
+					SiteOperator<Symmetry,double> PsidagRran = OperatorType::prod(F[ran].ns(), F[ran].cdag(),
+					                                           {2,1}).plain<double>();
+					
+					//hopping
+					Terms.push(range, loc, -value * std::sqrt(2.), PsidagLloc, TransOps, PsiRran);
+					Terms.push(range, loc, -value * std::sqrt(2.), PsidagRloc, TransOps, PsiLran);
+					Terms.push(range, loc, -value * std::sqrt(2.), PsiLloc, TransOps, PsidagRran); // why no sign flip?
+					Terms.push(range, loc, -value * std::sqrt(2.), PsiRloc, TransOps, PsidagLran); // why no sign flip?
+				}
+			}
+			
+			stringstream ss;
+			ss << "Xᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
+			Terms.save_label(loc,ss.str());
+		}
+		
+		// Local terms: U, t0, μ, t⟂, V⟂, J⟂
+		
+		param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
+		param1d Uph = P.fill_array1d<double>("Uph", "Uphorb", orbitals, loc%Lcell);
+		param1d t0 = P.fill_array1d<double>("t0", "t0orb", orbitals, loc%Lcell);
+		param1d mu = P.fill_array1d<double>("mu", "muorb", orbitals, loc%Lcell);
+		param2d tperp = P.fill_array2d<double>("tRung", "t", "tPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		param2d Vperp = P.fill_array2d<double>("VRung", "V", "VPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-        param2d Vzperp = P.fill_array2d<double>("VzRung", "Vz", "VzPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		param2d Vzperp = P.fill_array2d<double>("VzRung", "Vz", "VzPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		param2d Vxyperp = P.fill_array2d<double>("VxyRung", "Vxy", "VxyPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-        param2d Jperp = P.fill_array2d<double>("JRung", "J", "JPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-        
-        Terms.save_label(loc, U.label);
-        Terms.save_label(loc, Uph.label);
-        Terms.save_label(loc, t0.label);
-        Terms.save_label(loc, mu.label);
-        Terms.save_label(loc, tperp.label);
+		param2d Jperp = P.fill_array2d<double>("JRung", "J", "JPerp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		
+		Terms.save_label(loc, U.label);
+		Terms.save_label(loc, Uph.label);
+		Terms.save_label(loc, t0.label);
+		Terms.save_label(loc, mu.label);
+		Terms.save_label(loc, tperp.label);
 		Terms.save_label(loc, Vperp.label);
-        Terms.save_label(loc, Vzperp.label);
+		Terms.save_label(loc, Vzperp.label);
 		Terms.save_label(loc, Vxyperp.label);
-        Terms.save_label(loc, Jperp.label);
-        
-        Terms.push_local(loc, 1., F[loc].HubbardHamiltonian(U.a, Uph.a, t0.a - mu.a, tperp.a, Vperp.a, Vzperp.a, Vxyperp.a, Jperp.a).plain<double>());
-        
-        
-        // Nearest-neighbour terms: t, V, J
-
-		if (!P.HAS("tFull") and !P.HAS("Vzfull") and !P.HAS("Vxyfull") and !P.HAS("Jfull"))
+		Terms.save_label(loc, Jperp.label);
+		
+		Terms.push_local(loc, 1., F[loc].HubbardHamiltonian(U.a, Uph.a, t0.a - mu.a, tperp.a, Vperp.a, Vzperp.a, Vxyperp.a, Jperp.a).plain<double>());
+		
+		// Nearest-neighbour terms: t, V, J
+		
+		if (!P.HAS("tFull") and !P.HAS("Vzfull") and !P.HAS("Vxyfull") and !P.HAS("Jfull") and !P.HAS("Xfull"))
 		{
 			param2d tpara = P.fill_array2d<double>("t", "tPara", {orbitals, next_orbitals}, loc%Lcell);
 			param2d Vpara = P.fill_array2d<double>("V", "Vpara", {orbitals, next_orbitals}, loc%Lcell);
 			param2d Vzpara = P.fill_array2d<double>("Vz", "Vzpara", {orbitals, next_orbitals}, loc%Lcell);
 			param2d Vxypara = P.fill_array2d<double>("Vxy", "Vxypara", {orbitals, next_orbitals}, loc%Lcell);
 			param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
-        
+			param2d Xpara = P.fill_array2d<double>("X", "Xpara", {orbitals, next_orbitals}, loc%Lcell);
+			
 			Terms.save_label(loc, tpara.label);
 			Terms.save_label(loc, Vpara.label);
 			Terms.save_label(loc, Vzpara.label);
 			Terms.save_label(loc, Vxypara.label);
 			Terms.save_label(loc, Jpara.label);
-        
-			if (loc < N_sites-1 || !P.get<bool>("OPEN_BC"))
+			Terms.save_label(loc, Xpara.label);
+			
+			if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
 			{
-				for (std::size_t alpha=0; alpha<orbitals; ++alpha)
+				for (std::size_t alfa=0; alfa<orbitals;      ++alfa)
+				for (std::size_t beta=0; beta<next_orbitals; ++beta)
 				{
-					for (std::size_t beta=0; beta<next_orbitals; ++beta)
-					{
-						SiteOperator<Symmetry, double> c_sign_local = OperatorType::prod(F[loc].c(alpha), F[loc].sign(), {2,-1}).plain<double>();
-						SiteOperator<Symmetry, double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alpha), F[loc].sign(), {2,1}).plain<double>();
-                    
-						SiteOperator<Symmetry, double> c_tight = F[(loc+1)%N_sites].c(beta).plain<double>();
-						SiteOperator<Symmetry, double> cdag_tight = F[(loc+1)%N_sites].cdag(beta).plain<double>();
-                    
-						SiteOperator<Symmetry, double> n_local = F[loc].n(alpha).plain<double>();
-						SiteOperator<Symmetry, double> n_tight = F[(loc+1)%N_sites].n(beta).plain<double>();
-
-						SiteOperator<Symmetry, double> tz_local = F[loc].Tz(alpha).plain<double>();
-						SiteOperator<Symmetry, double> tz_tight = F[(loc+1)%N_sites].Tz(beta).plain<double>();
-
-						SiteOperator<Symmetry, double> tp_local = pow(-1,loc)*F[loc].cc(alpha).plain<double>();
-						SiteOperator<Symmetry, double> tm_tight = pow(-1,loc+1)*F[(loc+1)%N_sites].cdagcdag(beta).plain<double>();
-
-						SiteOperator<Symmetry, double> tm_local = pow(-1,loc)*F[loc].cdagcdag(alpha).plain<double>();
-						SiteOperator<Symmetry, double> tp_tight = pow(-1,loc+1)*F[(loc+1)%N_sites].cc(beta).plain<double>();
-                    
-						SiteOperator<Symmetry, double> Sdag_local = F[loc].Sdag(alpha).plain<double>();
-						SiteOperator<Symmetry, double> S_tight = F[(loc+1)%N_sites].S(beta).plain<double>();
-
-						//nn hopping
-						Terms.push_tight(loc, -tpara(alpha, beta) * std::sqrt(2.), cdag_sign_local, c_tight);
-						Terms.push_tight(loc, -tpara(alpha, beta) * std::sqrt(2.), c_sign_local, cdag_tight);
-						//nn density interaction
-						Terms.push_tight(loc, Vpara(alpha, beta), n_local, n_tight);
-						//nn isospin-isopsin interaction
-						Terms.push_tight(loc, Vzpara(alpha, beta), tz_local, tz_tight);
-						Terms.push_tight(loc, 0.5*Vxypara(alpha, beta), tp_local, tm_tight);
-						Terms.push_tight(loc, 0.5*Vxypara(alpha, beta), tm_local, tp_tight);
-						//nn spin-spin interaction
-						Terms.push_tight(loc, Jpara(alpha, beta) * std::sqrt(3.), Sdag_local, S_tight);
-					}
+					SiteOperator<Symmetry,double> c_sign_local    = OperatorType::prod(F[loc].c(alfa),    F[loc].sign(), {2,-1}).plain<double>();
+					SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,+1}).plain<double>();
+					
+					SiteOperator<Symmetry,double> c_tight    = F[lp1].c   (beta).plain<double>();
+					SiteOperator<Symmetry,double> cdag_tight = F[lp1].cdag(beta).plain<double>();
+					
+					SiteOperator<Symmetry,double> n_local = F[loc].n(alfa).plain<double>();
+					SiteOperator<Symmetry,double> n_tight = F[lp1].n(beta).plain<double>();
+					
+					SiteOperator<Symmetry,double> tz_local = F[loc].Tz(alfa).plain<double>();
+					SiteOperator<Symmetry,double> tz_tight = F[lp1].Tz(beta).plain<double>();
+					
+					SiteOperator<Symmetry,double> tp_local = pow(-1,loc) * F[loc].cc      (alfa).plain<double>();
+					SiteOperator<Symmetry,double> tm_tight = pow(-1,lp1) * F[lp1].cdagcdag(beta).plain<double>();
+					
+					SiteOperator<Symmetry,double> tm_local = pow(-1,loc) * F[loc].cdagcdag(alfa).plain<double>();
+					SiteOperator<Symmetry,double> tp_tight = pow(-1,lp1) * F[lp1].cc      (beta).plain<double>();
+					
+					SiteOperator<Symmetry,double> Sdag_local = F[loc].Sdag(alfa).plain<double>();
+					SiteOperator<Symmetry,double> S_tight    = F[lp1].S   (beta).plain<double>();
+					
+					SiteOperator<Symmetry,double> PsiLloc = OperatorType::prod(F[loc].ns(alfa),
+					                                        OperatorType::prod(F[loc].c(alfa), F[loc].sign(), {2,-1}),
+					                                        {2,-1}).plain<double>();
+					SiteOperator<Symmetry,double> PsiRloc = OperatorType::prod(
+					                                        OperatorType::prod(F[loc].c(alfa), F[loc].sign(), {2,-1}),
+					                                        F[loc].ns(alfa),
+					                                        {2,-1}).plain<double>();
+					SiteOperator<Symmetry,double> PsiLlp1 = OperatorType::prod(F[lp1].ns(beta), F[lp1].c(beta),
+					                                        {2,-1}).plain<double>();
+					SiteOperator<Symmetry,double> PsiRlp1 = OperatorType::prod(F[lp1].c(beta), F[lp1].ns(beta),
+					                                        {2,-1}).plain<double>();
+					SiteOperator<Symmetry,double> PsidagLloc = OperatorType::prod(
+					                                           OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,1}),
+					                                           F[loc].ns(alfa),
+					                                           {2,1}).plain<double>();
+					SiteOperator<Symmetry,double> PsidagRloc = OperatorType::prod(F[loc].ns(alfa),
+					                                           OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,1}),
+					                                           {2,1}).plain<double>();
+					SiteOperator<Symmetry,double> PsidagLlp1 = OperatorType::prod(F[lp1].cdag(beta), F[lp1].ns(beta),
+					                                           {2,1}).plain<double>();
+					SiteOperator<Symmetry,double> PsidagRlp1 = OperatorType::prod(F[lp1].ns(beta), F[lp1].cdag(beta),
+					                                           {2,1}).plain<double>();
+					
+					//hopping
+					Terms.push_tight(loc, -tpara(alfa,beta) * std::sqrt(2.), cdag_sign_local, c_tight);
+					Terms.push_tight(loc, -tpara(alfa,beta) * std::sqrt(2.), c_sign_local, cdag_tight);
+					
+					//density-density interaction
+					Terms.push_tight(loc, Vpara(alfa,beta), n_local, n_tight);
+					
+					//isospin-isopsin interaction
+					Terms.push_tight(loc, 0.5*Vxypara(alfa,beta), tp_local, tm_tight);
+					Terms.push_tight(loc, 0.5*Vxypara(alfa,beta), tm_local, tp_tight);
+					Terms.push_tight(loc,     Vzpara (alfa,beta), tz_local, tz_tight);
+					
+					//spin-spin interaction
+					Terms.push_tight(loc, Jpara(alfa, beta) * std::sqrt(3.), Sdag_local, S_tight);
+					
+					//correlated hopping
+					Terms.push_tight(loc, -Xpara(alfa,beta) * std::sqrt(2.), PsidagLloc, PsiRlp1);
+					Terms.push_tight(loc, -Xpara(alfa,beta) * std::sqrt(2.), PsidagRloc, PsiLlp1);
+					Terms.push_tight(loc, -Xpara(alfa,beta) * std::sqrt(2.), PsiLloc, PsidagRlp1); // why no sign flip?
+					Terms.push_tight(loc, -Xpara(alfa,beta) * std::sqrt(2.), PsiRloc, PsidagLlp1); // why no sign flip?
 				}
 			}
-        }
-        
-        // Next-nearest-neighbour terms: t'
-        if (!P.HAS("tFull"))
+		}
+		
+		// Next-nearest-neighbour terms: t'
+		if (!P.HAS("tFull"))
 		{
 			param2d tprime = P.fill_array2d<double>("tPrime", "tPrime_array", {orbitals, nextn_orbitals}, loc%Lcell);
 			Terms.save_label(loc, tprime.label);
-        
-			if (loc < N_sites-2 || !P.get<bool>("OPEN_BC"))
+		
+			if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
 			{
 				for (std::size_t alpha=0; alpha<orbitals; ++alpha)
 				{
 					for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
 					{
-						SiteOperator<Symmetry, double> c_sign_local = OperatorType::prod(F[loc].c(alpha), F[loc].sign(), {2,-1}).plain<double>();
-						SiteOperator<Symmetry, double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alpha), F[loc].sign(), {2,1}).plain<double>();
-                    
-						SiteOperator<Symmetry, double> sign_tight = F[(loc+1)%N_sites].sign().plain<double>();
-                    
-						SiteOperator<Symmetry, double> c_nextn = F[(loc+2)%N_sites].c(beta).plain<double>();
-						SiteOperator<Symmetry, double> cdag_nextn = F[(loc+2)%N_sites].cdag(beta).plain<double>();
-                    
+						SiteOperator<Symmetry,double> c_sign_local = OperatorType::prod(F[loc].c(alpha), F[loc].sign(), {2,-1}).plain<double>();
+						SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alpha), F[loc].sign(), {2,1}).plain<double>();
+				    
+						SiteOperator<Symmetry,double> sign_tight = F[(loc+1)%N_sites].sign().plain<double>();
+				    
+						SiteOperator<Symmetry,double> c_nextn = F[(loc+2)%N_sites].c(beta).plain<double>();
+						SiteOperator<Symmetry,double> cdag_nextn = F[(loc+2)%N_sites].cdag(beta).plain<double>();
+				    
 						Terms.push_nextn(loc, tprime(alpha, beta) * std::sqrt(2.), cdag_sign_local, sign_tight, c_nextn);
 						Terms.push_nextn(loc, tprime(alpha, beta) * std::sqrt(2.), c_sign_local,    sign_tight, cdag_nextn);
 					}
@@ -506,13 +602,13 @@ n (size_t locx, size_t locy)
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 nh (size_t locx, size_t locy)
 {
-	return make_local("nh", locx,locy, 2.*F[locx].d(locy)-F[locx].n(locy)+F[locx].Id(locy), 1., false, true);
+	return make_local("nh", locx,locy, F[locx].nh(locy), 1., false, true);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 ns (size_t locx, size_t locy)
 {
-	return make_local("ns", locx,locy, F[locx].n(locy)-2.*F[locx].d(locy), 1., false, true);
+	return make_local("ns", locx,locy, F[locx].ns(locy), 1., false, true);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::

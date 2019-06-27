@@ -346,7 +346,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
  * \param H : input Hamiltonian
  * \param Vin : input \f$\left|\Psi_{in}\right>\f$
  * \param Vout : output \f$\left|\Psi_{out}\right>\f$
- * \param VERBOSITY : verbosity level
+ * \param VERBOSE : print info if \p true
  */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool VERBOSE = true)
@@ -387,7 +387,7 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, Mps<Symmetry,Scalar> &Vinout, bool V
  * \param polyB : the coefficient before the subtracted vector
  * \param Vin2 : input Mps \f$\left|T_{n-2}\right>\f$
  * \param Vout : output Mps \f$\left|T_{n}\right>\f$
- * \param VERBOSITY : verbosity level
+ * \param VERBOSE : print info if \p true
  */
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void polyIter (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin1, double polyB, 

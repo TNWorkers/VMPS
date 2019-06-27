@@ -83,18 +83,36 @@ public:
 	 * \param orbital : orbital index
 	 */
 	Operator sign_local (std::size_t orbital=0) const;
-
+	
 	/**
 	 * Occupation number operator
 	 * \param orbital : orbital index
 	 */
 	Operator n (std::size_t orbital=0) const;
-
+	
 	/**
 	 * Double occupation
 	 * \param orbital : orbital index
 	 */
 	Operator d (std::size_t orbital=0) const;
+	
+	/**
+	 * Spinon density \f$n_s=n-2d\f$
+	 * \param orbital : orbital index
+	 */
+	Operator ns (std::size_t orbital=0) const
+	{
+		return n(orbital)-2.*d(orbital);
+	};
+	
+	/**
+	 * Holon density \f$n_h=2d-n-1=1-n_s\f$
+	 * \param orbital : orbital index
+	 */
+	Operator nh (std::size_t orbital=0) const
+	{
+		return 2.*d(orbital)-n(orbital)+Id(orbital);
+	};
 	///\}
 	
 	///\{
@@ -154,6 +172,7 @@ public:
 	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
 	 * \param U : \f$U\f$ for each orbital
+	 * \param Uph : particle-hole symmetric \f$U\f$ for each orbital (times \f$(n_{\uparrow}-1/2)(n_{\downarrow}-1/2)+1/4\f$)
 	 * \param Eorb : \f$\varepsilon\f$ onsite energy for each orbital
 	 * \param t : \f$t\f$
 	 * \param V : \f$V\f$

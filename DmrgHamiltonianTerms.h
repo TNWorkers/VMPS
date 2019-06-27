@@ -163,7 +163,7 @@ public:
 	void save_label(std::size_t loc, const std::string &label);
 	
 	/**
-	 *  @param label	Name to be given to this instance of HamiltonianTerms
+	 *  @param label_in	Name to be given to this instance of HamiltonianTerms
 	 */
 	void set_name(const std::string &label_in) {label = label_in;}
 	

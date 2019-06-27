@@ -39,6 +39,8 @@ public:
 	///@{
 	Mpo<Symmetry> d (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> dtot() const;
+	Mpo<Symmetry> ns (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> nh (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> s (size_t locx, size_t locy=0) const;
 	template<SPIN_INDEX sigma> Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
@@ -275,6 +277,22 @@ Mpo<Symmetry> HubbardObservables<Symmetry>::
 n (size_t locx, size_t locy) const
 {
 	return make_local("n", locx,locy, F[locx].n(locy), false, true);
+	// FERMIONIC=false, HERMITIAN=true
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+ns (size_t locx, size_t locy) const
+{
+	return make_local("ns", locx,locy, F[locx].ns(locy), false, true);
+	// FERMIONIC=false, HERMITIAN=true
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+nh (size_t locx, size_t locy) const
+{
+	return make_local("nh", locx,locy, F[locx].nh(locy), false, true);
 	// FERMIONIC=false, HERMITIAN=true
 }
 

@@ -94,7 +94,6 @@ Heisenberg (const size_t &L, const vector<Param> &params)
 	}
 	
 	HeisenbergU1::set_operators(B,P,Terms);
-//	KitaevChain::add_operators(B,P,Terms);
 	add_operators(B,P,Terms);
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));

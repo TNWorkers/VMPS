@@ -33,6 +33,7 @@ public:
 	/**
 	 * \param L_input : amount of sites
 	 * \param D_input : \f$D=2S+1\f$
+	 * \param subLattice_in : sublattice, can be SUB_LATTICE::A or SUB_LATTICE::B
 	 */
 	SpinBase (std::size_t L_input, std::size_t D_input, SUB_LATTICE subLattice_in = SUB_LATTICE::A);
 

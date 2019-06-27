@@ -112,6 +112,24 @@ public:
 	 * \right)\f$
 	 */
 	OperatorType d (int orbital=0) const;
+	
+	/**
+	 * Spinon density \f$n_s=n-2d\f$
+	 * \param orbital : orbital index
+	 */
+	OperatorType ns (int orbital=0) const
+	{
+		return n(orbital)-2.*d(orbital);
+	};
+	
+	/**
+	 * Holon density \f$n_h=2d-n-1=1-n_s\f$
+	 * \param orbital : orbital index
+	 */
+	OperatorType nh (int orbital=0) const
+	{
+		return 2.*d(orbital)-n(orbital)-Id(orbital);
+	};
 	///\}
 	
 	///\{
@@ -223,6 +241,7 @@ public:
 	/**
 	 * Creates the full Hubbard Hamiltonian on the supersite with orbital-dependent U.
 	 * \param U : \f$U\f$ for each orbital
+	 * \param Uph : particle-hole symmetric \f$U\f$ for each orbital (times \f$(n_{\uparrow}-1/2)(n_{\downarrow}-1/2)+1/4\f$)
 	 * \param Eorb : \f$E_i\f$ for each orbital (onsite energy)
 	 * \param Bz : \f$B_z\f$ for each orbital
 	 * \param Bx : \f$B_x\f$ for each orbital
@@ -232,6 +251,7 @@ public:
 	 */
 	template<typename Scalar> SiteOperator<Symmetry,Scalar>
 	HubbardHamiltonian (const Array<Scalar,Dynamic,1> &U, 
+	                    const Array<Scalar,Dynamic,1> &Uph, 
 	                    const Array<Scalar,Dynamic,1> &Eorb, 
 	                    const Array<Scalar,Dynamic,1> &Bz, 
 	                    const Array<Scalar,Dynamic,1> &Bx, 
@@ -485,6 +505,7 @@ template<typename Symmetry>
 template<typename Scalar>
 SiteOperator<Symmetry,Scalar> FermionBase<Symmetry>::
 HubbardHamiltonian (const Array<Scalar,Dynamic,1> &U, 
+                    const Array<Scalar,Dynamic,1> &Uph, 
                     const Array<Scalar,Dynamic,1> &Eorb, 
                     const Array<Scalar,Dynamic,1> &Bz, 
                     const Array<Scalar,Dynamic,1> &Bx, 
@@ -521,6 +542,17 @@ HubbardHamiltonian (const Array<Scalar,Dynamic,1> &U,
 		if (U(i) != 0. and U(i) != numeric_limits<double>::infinity())
 		{
 			Mout += U(i) * d(i).data.template cast<Scalar>();
+		}
+		if (Uph(i) != 0.)
+		{
+			if (Uph(i) != std::numeric_limits<double>::infinity())
+			{
+				Mout += Uph(i) * (d(i)-0.5*n(i)+0.5*Id()).data.template cast<Scalar>();
+			}
+			else
+			{
+				Mout += Uph(i) * (-0.5*n(i)+0.5*Id()).data.template cast<Scalar>();
+			}
 		}
 		if (Eorb(i) != 0.)
 		{

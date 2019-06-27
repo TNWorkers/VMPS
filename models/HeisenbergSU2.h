@@ -66,7 +66,7 @@ public:
 	 *
 	 * \param B : Base class from which the local operators are received
 	 * \param P : The parameters
-	 * \param loc : The location in the chain
+	 * \param Terms : \p HamiltonianTerms instance
 	*/
 	static void set_operators (const std::vector<SpinBase<Symmetry> > &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
 	

@@ -20,10 +20,11 @@ namespace VMPS
  * MPO representation of 
  * 
  * \f[
- * H = -t \sum_{<ij>\sigma} c^\dagger_{i\sigma}c_{j\sigma} 
+ * H = -t \sum_{<ij>\sigma} (c^\dagger_{i\sigma}c_{j\sigma} + h.c.)
  *     +U \sum_i \left[\left(n_{i\uparrow}-\frac{1}{2}\right)\left(n_{i\downarrow}-\frac{1}{2}\right) +\frac{1}{4}\right]
  *     +V \sum_{<ij>} \mathbf{T}_i \mathbf{T}_j
  *     +J \sum_{<ij>} \mathbf{S}_i \mathbf{S}_j
+ *     -X \sum_{<ij>\sigma} \left(c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) \left(n_{i,-\sigma}-n_{j,-\sigma}\right)^2
  * \f]
  * with \f$T^+_i = (-1)^i c^{\dagger}_{i\uparrow} c^{\dagger}_{i\downarrow}\f$, \f$Q^-_i = (T^+_i)^{\dagger}\f$, \f$T^z_i = 0.5(n_{i}-1)\f$
  *
@@ -94,6 +95,7 @@ const map<string,any> HubbardSU2xSU2::defaults =
 	{"U",0.},
 	{"V",0.}, {"Vrung",0.},
 	{"J",0.}, {"Jrung",0.},
+	{"X",0.}, {"Xrung",0.},
 	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
@@ -264,6 +266,50 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 			Terms.save_label(loc,ss.str());
 		}
 		
+		if (P.HAS("Xfull"))
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Xfull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				size_t Ntrans = (range == 0)? 0:range-1;
+				vector<SiteOperator<Symmetry,double> > TransOps(Ntrans);
+				for (size_t i=0; i<Ntrans; ++i)
+				{
+					TransOps[i] = F[(loc+i+1)%N_sites].sign().plain<double>();
+				}
+				
+				if (range != 0)
+				{
+					size_t lpr = (loc+range)%N_sites;
+					
+					SiteOperator<Symmetry,double> Psi1dag_loc = OperatorType::prod(F[loc].ns(),
+					                                            OperatorType::prod(F[loc].cdag(), F[loc].sign(), {2,2}),
+					                                            {2,2}).plain<double>();
+					SiteOperator<Symmetry,double> Psi1_range = OperatorType::prod(F[lpr].c(), F[lpr].ns(), {2,2}).plain<double>();
+					
+					SiteOperator<Symmetry,double> Psi2dag_loc = OperatorType::prod(OperatorType::prod(F[loc].cdag(), F[loc].sign(), {2,2}),
+					                                            F[loc].ns(),
+					                                            {2,2}).plain<double>();
+					SiteOperator<Symmetry,double> Psi2_range = OperatorType::prod(F[lpr].ns(), F[lpr].c(), {2,2}).plain<double>();
+					
+					Terms.push(range, loc, -2.*value, Psi2dag_loc, TransOps, Psi1_range);
+					Terms.push(range, loc, -2.*value, Psi1dag_loc, TransOps, Psi2_range);
+				}
+			}
+			
+			stringstream ss;
+			ss << "Xᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
+			Terms.save_label(loc,ss.str());
+		}
+		
 		// Local terms: Hubbard-U, t⟂, V⟂, J⟂
 		
 		param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
@@ -278,7 +324,7 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 		
 		Terms.push_local(loc, 1., F[loc].HubbardHamiltonian(U.a, tperp.a, Vperp.a, Jperp.a).plain<double>());
 		
-		// Nearest-neighbour terms: t, V, J
+		// Nearest-neighbour terms: t, V, J, X
 		
 		if (!P.HAS("tFull"))
 		{
@@ -293,7 +339,7 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 					SiteOperator<Symmetry,double> cdag_sign_loc = OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,2}).plain<double>();
 					SiteOperator<Symmetry,double> c_tight       = F[lp1].c(beta).plain<double>();
 					
-					Terms.push_tight(loc, -tpara(alfa,beta) * 2., cdag_sign_loc, c_tight); // std::sqrt(2.) * std::sqrt(2.)
+					Terms.push_tight(loc, -2.*tpara(alfa,beta), cdag_sign_loc, c_tight); // std::sqrt(2.) * std::sqrt(2.)
 				}
 			}
 		}
@@ -329,7 +375,33 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 					SiteOperator<Symmetry,double> Sdag_loc = F[loc].Sdag(alfa).plain<double>();
 					SiteOperator<Symmetry,double> S_tight  = F[lp1].S(beta).plain<double>();
 					
-					Terms.push_tight(loc,  Jpara(alfa,beta) * std::sqrt(3.), Sdag_loc, S_tight);
+					Terms.push_tight(loc, Jpara(alfa,beta) * std::sqrt(3.), Sdag_loc, S_tight);
+				}
+			}
+		}
+		
+		if (!P.HAS("Xfull"))
+		{
+			param2d Xpara = P.fill_array2d<double>("X", "Xpara", {orbitals, next_orbitals}, loc%Lcell);
+			Terms.save_label(loc, Xpara.label);
+			
+			if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+			{
+				for (std::size_t alfa=0; alfa<orbitals;      ++alfa)
+				for (std::size_t beta=0; beta<next_orbitals; ++beta)
+				{
+					SiteOperator<Symmetry,double> PsiRdag_loc = OperatorType::prod(F[loc].ns(alfa),
+					                                            OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,2}),
+					                                            {2,2}).plain<double>();
+					SiteOperator<Symmetry,double> PsiR_tight = OperatorType::prod(F[lp1].c(beta), F[lp1].ns(beta), {2,2}).plain<double>();
+					
+					SiteOperator<Symmetry,double> PsiLdag_loc = OperatorType::prod(OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,2}),
+					                                            F[loc].ns(alfa),
+					                                            {2,2}).plain<double>();
+					SiteOperator<Symmetry,double> PsiL_tight = OperatorType::prod(F[lp1].ns(beta), F[lp1].c(beta), {2,2}).plain<double>();
+					
+					Terms.push_tight(loc, -2.*Xpara(alfa,beta), PsiLdag_loc, PsiR_tight);
+					Terms.push_tight(loc, -2.*Xpara(alfa,beta), PsiRdag_loc, PsiL_tight);
 				}
 			}
 		}

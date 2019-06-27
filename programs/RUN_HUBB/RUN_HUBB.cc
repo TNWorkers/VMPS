@@ -28,7 +28,7 @@ using namespace std;
 
 size_t L, Ncells, Ly;
 int volume;
-double t, tRung, U, J, V, Vxy, Vz, Vext;
+double t, tRung, U, J, V, Vxy, Vz, Vext, X;
 int fullMmax;
 int M, N, S, T;
 double alpha;
@@ -73,7 +73,8 @@ struct Obs
 	Eigen::MatrixXd finite_entropy; // for finite systems
 	double Tsq; // T^2
 	double Ssq; // S^2
-	double BOW;
+	
+	double BOW, CDW, SDW;
 	
 	double energyS;
 	double energyT;
@@ -282,6 +283,7 @@ int main (int argc, char* argv[])
 	tRung = args.get<double>("tRung",t); // tRung != t for testing only
 	U = args.get<double>("U",8.);
 	J = args.get<double>("J",0.);
+	X = args.get<double>("X",0.);
 	V = args.get<double>("V",0.);
 	Vxy = args.get<double>("Vxy",V);
 	Vz = args.get<double>("Vz",V);
@@ -333,6 +335,10 @@ int main (int argc, char* argv[])
 		}
 	}
 	#endif
+	if (X != 0.)
+	{
+		base += make_string("_X=",X);
+	}
 	string obsfile = make_string(wd,"obs/",base,".h5");
 	string statefile = make_string(wd,"state/",base);
 	
@@ -379,7 +385,7 @@ int main (int argc, char* argv[])
 	Geometry2D Geo2cell(SNAKE,2*L,Ly,1.,true);
 	
 	// save to temporary, otherwise std::bad_any_cast
-	ArrayXXd tArray, Varray, Vxyarray, Vzarray, Jarray, ZeroArray, OneArray, VextArray;
+	ArrayXXd tArray, Varray, Vxyarray, Vzarray, Jarray, Xarray, ZeroArray, OneArray, VextArray;
 	if (VUMPS)
 	{
 		tArray    = t * Geo2cell.hopping();
@@ -388,6 +394,7 @@ int main (int argc, char* argv[])
 		Vzarray   = Vz * Geo2cell.hopping();
 		VextArray = Vext * Geo2cell.hopping();
 		Jarray    = J * Geo2cell.hopping();
+		Xarray    = X * Geo2cell.hopping();
 		ZeroArray = 0. * Geo2cell.hopping();
 		OneArray  = 1. * Geo2cell.hopping();
 		lout << "t=" << t << ", V=" << V << ", J=" << J << endl;
@@ -402,24 +409,24 @@ int main (int argc, char* argv[])
 		Vzarray   = Vz * tFull;
 		VextArray = Vext * tFull;
 		Jarray    = J * tFull;
+		Xarray    = X * tFull;
 		ZeroArray = 0. * tFull;
 		OneArray  = 1. * tFull;
 		if (volume <= 100) lout << "hopping=" << endl << tFull << endl << endl;
 	}
 	
 	vector<Param> params;
-	qarray<2> Qc, Qc2, QcSpin, QcCharge;
+	qarray<2> Qc, Qc2;
 	if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
 	{
 		params.push_back({"tFull",tArray});
 		params.push_back({"Vfull",Varray});
 		params.push_back({"Jfull",Jarray});
+		params.push_back({"Xfull",Xarray});
 		params.push_back({"U",U});
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {S,T};
 		Qc2 = {S,T};
-		QcSpin   = {S+2,T};
-		QcCharge = {S,T+2};
 	}
 	else
 	{
@@ -428,6 +435,7 @@ int main (int argc, char* argv[])
 		params.push_back({"Vzfull",Vzarray});
 		params.push_back({"VextFull",VextArray});
 		params.push_back({"Jfull",Jarray});
+		params.push_back({"Xfull",Xarray});
 		if (abs(Vext) > 0.)
 		{
 			params.push_back({"U",U});
@@ -453,6 +461,7 @@ int main (int argc, char* argv[])
 	vector<Param> dHdV_params;
 	dHdV_params.push_back({"tFull",ZeroArray});
 	dHdV_params.push_back({"Jfull",ZeroArray});
+	dHdV_params.push_back({"Xfull",ZeroArray});
 	dHdV_params.push_back({"U",0.});
 	dHdV_params.push_back({"Uph",0.});
 	if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
@@ -461,8 +470,8 @@ int main (int argc, char* argv[])
 	}
 	else
 	{
-		if (abs(Vxy) > 0.) dHdV_params.push_back({"Vxyfull",OneArray});
-		if (abs(Vz)  > 0.) dHdV_params.push_back({"Vzfull", OneArray});
+		if (abs(Vxy)   > 0.) dHdV_params.push_back({"Vxyfull",OneArray});
+		if (abs(Vz)    > 0.) dHdV_params.push_back({"Vzfull", OneArray});
 		if (abs(Vext)  > 0.) dHdV_params.push_back({"VextFull", OneArray});
 	}
 	
@@ -477,7 +486,7 @@ int main (int argc, char* argv[])
 	{
 		dHdV = MODEL(volume,dHdV_params);
 	}
-	lout << "•H to calculate de/dV:" << endl;
+	lout << "•H to calculate de/dV (needs no params in VUMPS case, V=1 in finite case):" << endl;
 	lout << dHdV.info() << endl;
 	
 	obs.resize(L,Ly,Ncells);
@@ -547,8 +556,10 @@ int main (int argc, char* argv[])
 							Tdag_ky[x] = H.Tdag_ky(phases_m);
 							T_ky[x]    = H.T_ky   (phases_p);
 							
+							#ifdef USING_SO4
 							Bdag_ky[x] = VMPS::HubbardSU2xSU2BondOperator<complex<double> >(volume+1,{{"x",x},{"shift",-Bavg(x)}});
 							B_ky[x]    = VMPS::HubbardSU2xSU2BondOperator<complex<double> >(volume+1,{{"x",x},{"shift",-Bavg(x)}});
+							#endif
 							
 							Sdag_ky[x].transform_base(Qc,false); // PRINT=false
 							S_ky[x].transform_base(Qc,false);
@@ -556,8 +567,10 @@ int main (int argc, char* argv[])
 							Tdag_ky[x].transform_base(Qc,false);
 							T_ky[x].transform_base(Qc,false);
 							
+							#ifdef USING_SO4
 							Bdag_ky[x].transform_base(Qc,false);
 							B_ky[x].transform_base(Qc,false);
+							#endif
 						}
 						lout << "Fourier transform in y-direction done!" << endl;
 						
@@ -598,6 +611,7 @@ int main (int argc, char* argv[])
 							}
 						}
 						
+						#ifdef USING_SO4
 						cout << "Bij_cell=" << endl << Bij_cell << endl << endl;
 						
 						cout << avg(g_foxy.state, H.cdagc(0,1), H.cdagc(0,1), g_foxy.state) - Bavg(0)*Bavg(0) << endl;
@@ -622,6 +636,7 @@ int main (int argc, char* argv[])
 						            g_foxy.state)
 						     << "\t" << avg(g_foxy.state, H.cdagc(1,2), H.cdagc(2,3), g_foxy.state) << endl;
 						cout << "tests done!" << endl;
+						#endif
 						
 //						cout << VMPS::HubbardSU2xSU2BondOperator<double>(volume+1,{{"x",1ul},{"shift",0.}}) << endl;
 						
@@ -639,7 +654,9 @@ int main (int argc, char* argv[])
 //							}
 //							#pragma omp section
 							{
+								#ifdef USING_SO4
 								SF_B = g_foxy.state.SFpoint(Bij_cell, Bdag_ky,B_ky, L, kx, DMRG::VERBOSITY::STEPWISE);
+								#endif
 							}
 						}
 						// Umps::SF returns 2x2 array with rows in the format:
@@ -908,6 +925,8 @@ int main (int argc, char* argv[])
 		if (CALC_BOW)
 		{
 			double BOW = 0.;
+			double CDW = 0.;
+			double SDW = 0.;
 			
 			VectorXd BOWloc(volume-1);
 			#pragma omp parallel for
@@ -937,6 +956,8 @@ int main (int argc, char* argv[])
 					                         avg(g_fix.state, H.cdagc(i,i+1), H.cdagc(j,j+1), g_fix.state)
 					                       - pow(BOWloc(i),2)
 					                      );
+					CDW += symfactor * pow(-1.,i+j) * avg(g_fix.state, H.TdagT(i,j), g_fix.state);
+					SDW += symfactor * pow(-1.,i+j) * avg(g_fix.state, H.SdagS(i,j), g_fix.state);
 				}
 				#else
 				{
@@ -951,7 +972,11 @@ int main (int argc, char* argv[])
 				#endif
 			}
 			obs.BOW = BOW/volume;
+			obs.CDW = CDW/volume;
+			obs.SDW = SDW/volume;
 			lout << "BOW=" << obs.BOW << endl;
+			lout << "CDW=" << obs.CDW << endl;
+			lout << "SDW=" << obs.SDW << endl;
 		}
 		
 		lout << "ns=" << obs.ns.sum()/volume << endl;
@@ -982,6 +1007,8 @@ int main (int argc, char* argv[])
 		target.save_scalar(obs.Tsq,"Tsq",bond.str());
 		target.save_scalar(obs.Ssq,"Ssq",bond.str());
 		target.save_scalar(obs.BOW,"BOW",bond.str());
+		target.save_scalar(obs.CDW,"CDW",bond.str());
+		target.save_scalar(obs.SDW,"SDW",bond.str());
 		target.close();
 		
 		lout << ObsWatch.info("observables") << endl;

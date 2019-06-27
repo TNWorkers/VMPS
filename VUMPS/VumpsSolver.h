@@ -240,7 +240,7 @@ private:
 	                   Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LRres);
 	
 	/**Solves the linear system (eq. 15) using GMRES.
-	 * \param gauge : L or R
+	 * \param DIR : L or R
 	 * \param A : contracted A-tensor of the cell
 	 * \param hLR : (h_L|, |h_R) for eq. 15
 	 * \param LReigen : (L| or |R) 

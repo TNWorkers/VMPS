@@ -60,7 +60,7 @@ public:
 	 * \param B : Base class from which the local spin-operators are received
 	 * \param F : Base class from which the local fermion-operators are received
 	 * \param P : The parameters
-	 * \param loc : The location in the chain
+	 * \param Terms : \p HamiltonianTerms instance
 	 */
 //	static HamiltonianTermsXd<Symmetry> set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F,
 //	                                                    const ParamHandler &P, size_t loc=0);
@@ -119,7 +119,7 @@ public:
 	static const map<string,any> defaults;
 	static const map<string,any> sweep_defaults;
 	
-//protected:
+protected:
 	
 	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > >
 	make_local (KONDO_SUBSYSTEM SUBSYS, 

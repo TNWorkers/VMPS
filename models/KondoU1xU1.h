@@ -61,7 +61,7 @@ public:
 	 * \param B : Base class from which the local spin-operators are received
 	 * \param F : Base class from which the local fermion-operators are received
 	 * \param P : The parameters
-	 * \param loc : The location in the chain
+	 * \param Terms : \p HamiltonianTerms instance
 	 */
 	template<typename Symmetry_> 
 //	static HamiltonianTermsXd<Symmetry_> set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<Symmetry_> > &F,
@@ -81,7 +81,7 @@ const map<string,any> KondoU1xU1::defaults =
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",0.},
 	{"J",1.}, {"Jdir",0.},
-	{"U",0.}, {"V",0.}, {"Vrung",0.}, 
+	{"U",0.}, {"Uph",0.}, {"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.},
 	{"Inext",0.}, {"Iprev",0.}, {"I3next",0.}, {"I3prev",0.}, {"I3loc",0.}, 
@@ -288,6 +288,10 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		param1d U = P.fill_array1d<double>("U", "Uorb", Forbitals, loc%Lcell);
 		Terms.save_label(loc, U.label);
 		
+		// Hubbard-Uph
+		param1d Uph = P.fill_array1d<double>("Uph", "Uphorb", Forbitals, loc%Lcell);
+		Terms.save_label(loc, Uph.label);
+		
 		// t⟂
 		param2d tPerp = P.fill_array2d<double>("tRung", "t", "tPerp", Forbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		Terms.save_label(loc, tPerp.label);
@@ -332,7 +336,7 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		if (Borbitals > 0 and Forbitals > 0)
 		{
 			auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,Bxorb,muorb,Kz.a,Kxorb,Dyperp), F[loc].Id());
-			auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].template HubbardHamiltonian<double>(U.a,t0.a-mu.a,Bzsub.a,Bxsuborb,tPerp.a,Vperp.a,Jperp));
+			auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].template HubbardHamiltonian<double>(U.a,Uph.a,t0.a-mu.a,Bzsub.a,Bxsuborb,tPerp.a,Vperp.a,Jperp));
 			auto Hloc = Himp + Hsub;
 			
 			for (int alfa=0; alfa<Forbitals; ++alfa)

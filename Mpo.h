@@ -131,11 +131,18 @@ public:
 	 * Set to a local operator \f$O_i\f$ but add a chain of sign operators (useful for fermionic operators)
 	 * \param loc : site index
 	 * \param Op : the local operator in question
-	 * \param SignOp : elementary operator for the sign chain
+	 * \param SignOp : elementary operator for the sign chain (homogenenous)
 	 * \param OPEN_BC : if \p true, open boundary conditions are applied
 	 */
 	void setLocal (size_t loc, const OperatorType& Op, const OperatorType &SignOp, bool OPEN_BC=true);
 	
+	/**
+	 * Set to a local operator \f$O_i\f$ but add a chain of sign operators (useful for fermionic operators)
+	 * \param loc : site index
+	 * \param Op : the local operator in question
+	 * \param SignOp : elementary operator for the sign chain (for each site)
+	 * \param OPEN_BC : if \p true, open boundary conditions are applied
+	 */
 	void setLocal (size_t loc, const OperatorType& Op, const vector<OperatorType> &SignOp, bool OPEN_BC=true);
 	
 	/**
@@ -150,10 +157,18 @@ public:
 	 * Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$ with sign chains in between
 	 * \param loc : list of locations
 	 * \param Op : list of operators
-	 * \param SignOp : elementary operator for the sign chain.
+	 * \param SignOp : elementary operator for the sign chain (homogeneous)
 	 * \param OPEN_BC : if \p true, open boundary conditions are applied
 	 */
 	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const OperatorType &SignOp, bool OPEN_BC=true);
+	
+	/**
+	 * Set to a product of local operators \f$O^1_i O^2_j O^3_k \ldots\f$ with sign chains in between
+	 * \param loc : list of locations
+	 * \param Op : list of operators
+	 * \param SignOp : elementary operator for the sign chain (for each site in between)
+	 * \param OPEN_BC : if \p true, open boundary conditions are applied
+	 */
 	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const vector<OperatorType> &SignOp, bool OPEN_BC=true);
 	
 	/**

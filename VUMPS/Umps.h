@@ -285,6 +285,7 @@ public:
 	\note The result has the k-values as the first column and the SSF as the second column.
 	\param Oalfa : first operator of correlation
 	\param Obeta : second operator of correlation
+	\param Lx : length of the unit cell in x-direction
 	\param kmin : start with this k-value
 	\param kmax : end with this k-value (include it)
 	\param kpoints : number of equidistant points in interval
@@ -305,9 +306,10 @@ public:
 	
 	/**
 	Calculates the full static structure factor for a range of k-points.
-	\param cellAvg : all expectation values <Oalfa_i Obeta_j> within unit cell
+	\param cellAvg : all expectation values \f$<Oalfa_i Obeta_j>\f$ within unit cell
 	\param Oalfa : first operator of correlation at each cell point
 	\param Obeta : second operator of correlation at each cell point
+	\param Lx : length of the unit cell in x-direction
 	\param kmin : start with this k-value
 	\param kmax : end with this k-value (include it)
 	\param kpoints : number of equidistant points in interval

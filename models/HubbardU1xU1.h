@@ -24,6 +24,7 @@ namespace VMPS
  * 	    +U \sum_i n_{i\uparrow} n_{i\downarrow}
  * 	    +V \sum_{<ij>} n_{i} n_{j}
  * 	    -B_z \sum_{i} \left(n_{i\uparrow}-n_{i\downarrow}\right)
+ *      -X \sum_{<ij>\sigma} \left( c^\dagger_{i\sigma}c_{j\sigma} + h.c.\right) \left(n_{i,-\sigma}-n_{j,-\sigma}\right)^2
  * 	    +H_{tJ}
  * 	    +H_{3-site}
  * \f]
@@ -72,9 +73,10 @@ const std::map<string,std::any> HubbardU1xU1::defaults =
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",1.},
 	{"mu",0.}, {"t0",0.}, 
-	{"U",0.}, {"V",0.}, {"Vrung",0.}, 
+	{"U",0.}, {"Uph",0.}, {"V",0.}, {"Vrung",0.}, 
 	{"Bz",0.}, 
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
+	{"X",0.}, {"Xperp",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
@@ -122,9 +124,10 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
 		ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
 		Terms.save_label(loc, ss.str());
 		
-		// local terms: U, t0, μ, Bz, t⟂, V⟂, J⟂
+		// local terms: U, t0, μ, Bz, t⟂, V⟂, J⟂, X⟂
 		
 		param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
+		param1d Uph = P.fill_array1d<double>("Uph", "Uorb", orbitals, loc%Lcell);
 		param1d t0 = P.fill_array1d<double>("t0", "t0orb", orbitals, loc%Lcell);
 		param1d mu = P.fill_array1d<double>("mu", "muorb", orbitals, loc%Lcell);
 		param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", orbitals, loc%Lcell);
@@ -133,6 +136,7 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
 		param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		
 		Terms.save_label(loc, U.label);
+		Terms.save_label(loc, Uph.label);
 		Terms.save_label(loc, t0.label);
 		Terms.save_label(loc, mu.label);
 		Terms.save_label(loc, Bz.label);
@@ -142,38 +146,81 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
 		
 		ArrayXd Bx_array = F[loc].ZeroField();
 		
-		Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U.a, t0.a - mu.a, Bz.a, Bx_array, tperp.a, Vperp.a, Jperp.a));
+		Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U.a, Uph.a, t0.a - mu.a, Bz.a, Bx_array, tperp.a, Vperp.a, Jperp.a));
 		
 		if (isfinite(U.a.sum()))
 		{
 			U_infinite = false;
 		}
 		
-		// Nearest-neighbour terms: t, V, J
+		// Nearest-neighbour terms: t, V, J, X
 		
 		param2d tpara = P.fill_array2d<double>("t", "tPara", {orbitals, next_orbitals}, loc%Lcell);
 		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {orbitals, next_orbitals}, loc%Lcell);
 		param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
+		param2d Xpara = P.fill_array2d<double>("X", "Xpara", {orbitals, next_orbitals}, loc%Lcell);
 		
 		Terms.save_label(loc, tpara.label);
 		Terms.save_label(loc, Vpara.label);
 		Terms.save_label(loc, Jpara.label);
+		Terms.save_label(loc, Xpara.label);
 		
 		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
 		{
 			for (std::size_t alfa=0; alfa<orbitals;      ++alfa)
 			for (std::size_t beta=0; beta<next_orbitals; ++beta)
 			{
+				// t
 				Terms.push_tight(loc, -tpara(alfa,beta), F[loc].cdag(UP,alfa)*F[loc].sign(), F[lp1].c(UP,beta));
 				Terms.push_tight(loc, -tpara(alfa,beta), F[loc].cdag(DN,alfa)*F[loc].sign(), F[lp1].c(DN,beta));
 				Terms.push_tight(loc, +tpara(alfa,beta), F[loc].c(UP,alfa)   *F[loc].sign(), F[lp1].cdag(UP,beta));
 				Terms.push_tight(loc, +tpara(alfa,beta), F[loc].c(DN,alfa)   *F[loc].sign(), F[lp1].cdag(DN,beta));
 				
-				Terms.push_tight(loc, Vpara.a(alfa, beta), F[loc].n(alfa), F[lp1].n(beta));
+				// V
+				Terms.push_tight(loc, Vpara.a(alfa,beta), F[loc].n(alfa), F[lp1].n(beta));
 				
+				// J
 				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), F[loc].Sp(alfa), F[lp1].Sm(beta));
 				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), F[loc].Sm(alfa), F[lp1].Sp(beta));
 				Terms.push_tight(loc,     Jpara(alfa,beta), F[loc].Sz(alfa), F[lp1].Sz(beta));
+				
+				// X, uncompressed variant with 12 operators
+//				Terms.push_tight(loc, -Xpara(alfa,beta), F[loc].cdag(UP,alfa)*F[loc].sign() * F[loc].n(DN,alfa), F[lp1].c(UP,beta));
+//				Terms.push_tight(loc, -Xpara(alfa,beta), F[loc].cdag(UP,alfa)*F[loc].sign(), F[lp1].c(UP,beta) * F[lp1].n(DN,beta));
+//				Terms.push_tight(loc, +2.*Xpara(alfa,beta), F[loc].cdag(UP,alfa)*F[loc].sign() * F[loc].n(DN,alfa), F[lp1].c(UP,beta) * F[lp1].n(DN,beta));
+//				
+//				Terms.push_tight(loc, -Xpara(alfa,beta), F[loc].cdag(DN,alfa)*F[loc].sign() * F[loc].n(UP,alfa), F[lp1].c(DN,beta));
+//				Terms.push_tight(loc, -Xpara(alfa,beta), F[loc].cdag(DN,alfa)*F[loc].sign(), F[lp1].c(DN,beta) * F[lp1].n(UP,beta));
+//				Terms.push_tight(loc, +2.*Xpara(alfa,beta), F[loc].cdag(DN,alfa)*F[loc].sign() * F[loc].n(UP,alfa), F[lp1].c(DN,beta) * F[lp1].n(UP,beta));
+//				
+//				Terms.push_tight(loc, +Xpara(alfa,beta), F[loc].c(UP,alfa)*F[loc].sign() * F[loc].n(DN,alfa), F[lp1].cdag(UP,beta));
+//				Terms.push_tight(loc, +Xpara(alfa,beta), F[loc].c(UP,alfa)*F[loc].sign(), F[lp1].cdag(UP,beta) * F[lp1].n(DN,beta));
+//				Terms.push_tight(loc, -2.*Xpara(alfa,beta), F[loc].c(UP,alfa)*F[loc].sign() * F[loc].n(DN,alfa), F[lp1].cdag(UP,beta) * F[lp1].n(DN,beta));
+//				
+//				Terms.push_tight(loc, +Xpara(alfa,beta), F[loc].c(DN,alfa)*F[loc].sign() * F[loc].n(UP,alfa), F[lp1].cdag(DN,beta));
+//				Terms.push_tight(loc, +Xpara(alfa,beta), F[loc].c(DN,alfa)*F[loc].sign(), F[lp1].cdag(DN,beta) * F[lp1].n(UP,beta));
+//				Terms.push_tight(loc, -2.*Xpara(alfa,beta), F[loc].c(DN,alfa)*F[loc].sign() * F[loc].n(UP,alfa), F[lp1].cdag(DN,beta) * F[lp1].n(UP,beta));
+				
+				// X, compressed variant with 8 operators
+				Terms.push_tight(loc, -Xpara(alfa,beta), F[loc].cdag(UP,alfa)*F[loc].sign() * F[loc].n(DN,alfa), 
+				                                         F[lp1].c(UP,beta) * (F[lp1].Id()-2.*F[lp1].n(DN,alfa)));
+				Terms.push_tight(loc, -Xpara(alfa,beta), F[loc].cdag(UP,alfa)*F[loc].sign(), 
+				                                         F[lp1].c(UP,beta) * F[lp1].n(DN,beta));
+				
+				Terms.push_tight(loc, -Xpara(alfa,beta), F[loc].cdag(DN,alfa)*F[loc].sign() * F[loc].n(UP,alfa), 
+				                                         F[lp1].c(DN,beta) * (F[lp1].Id()-2.*F[lp1].n(UP,alfa)));
+				Terms.push_tight(loc, -Xpara(alfa,beta), F[loc].cdag(DN,alfa)*F[loc].sign(), 
+				                                         F[lp1].c(DN,beta) * F[lp1].n(UP,beta));
+				
+				Terms.push_tight(loc, +Xpara(alfa,beta), F[loc].c(UP,alfa)*F[loc].sign() * F[loc].n(DN,alfa), 
+				                                         F[lp1].cdag(UP,beta) * (F[lp1].Id()-2.*F[lp1].n(DN,alfa)));
+				Terms.push_tight(loc, +Xpara(alfa,beta), F[loc].c(UP,alfa)*F[loc].sign(), 
+				                                         F[lp1].cdag(UP,beta) * F[lp1].n(DN,beta));
+				
+				Terms.push_tight(loc, +Xpara(alfa,beta), F[loc].c(DN,alfa)*F[loc].sign() * F[loc].n(UP,alfa), 
+				                                         F[lp1].cdag(DN,beta) * (F[lp1].Id()-2.*F[lp1].n(UP,alfa)));
+				Terms.push_tight(loc, +Xpara(alfa,beta), F[loc].c(DN,alfa)*F[loc].sign(), 
+				                                         F[lp1].cdag(DN,beta) * F[lp1].n(UP,beta));
 			}
 		}
 		
