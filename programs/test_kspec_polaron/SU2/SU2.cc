@@ -1,7 +1,11 @@
-#define DONT_USE_LAPACK_SVD
-#define DONT_USE_LAPACK_QR
+#include "util/LapackManager.h"
+#pragma message("LapackManager")
+
 #define DMRG_DONT_USE_OPENMP
 #define EIGEN_DONT_PARALLELIZE
+
+//#define USE_FAST_WIG_SU2_COEFFS
+//#define OWN_HASH_CGC
 
 using namespace std;
 
