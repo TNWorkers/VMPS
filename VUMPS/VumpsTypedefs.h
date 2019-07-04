@@ -59,6 +59,7 @@ struct VUMPS
 			constexpr static size_t Dlimit                     = 500;
 			constexpr static size_t Qinit                      = 4;
 			constexpr static size_t savePeriod                 = 0;
+			constexpr static size_t fullMmaxBreakoff           = 1e5;
 			constexpr static char saveName[] = "UmpsBackup";
 			
 			//DYN DEFAULTS
@@ -89,6 +90,7 @@ struct VUMPS
 			size_t Dlimit                     = CONTROL::DEFAULT::Dlimit;
 			size_t Qinit                      = CONTROL::DEFAULT::Qinit;
 			size_t savePeriod                 = CONTROL::DEFAULT::savePeriod;
+			size_t fullMmaxBreakoff           = CONTROL::DEFAULT::fullMmaxBreakoff;
 			std::string saveName              = std::string(CONTROL::DEFAULT::saveName);
 		};
 		

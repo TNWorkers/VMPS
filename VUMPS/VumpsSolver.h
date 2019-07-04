@@ -191,7 +191,7 @@ private:
 	size_t N_iterations, N_iterations_without_expansion;
 	
 	/**errors*/
-	double err_eigval, err_var, err_state=std::nan("1"), err_state_old=std::nan("1");
+	double err_eigval, err_eigval_old, err_var, err_var_old, err_state=std::nan("1"), err_state_old=std::nan("1");
 	
 	/**environment for the 2-site Hamiltonian version*/
 	vector<PivumpsMatrix1<Symmetry,Scalar,Scalar> > Heff;
@@ -263,7 +263,8 @@ private:
 	void set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState);
 	
 	/**Calculates the errors.*/
-	void calc_errors (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option = VUMPS::TWOSITE_A::ALxAC);
+	void calc_errors (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
+	                  bool CALC_ERR_STATE=true, VUMPS::TWOSITE_A::OPTION option = VUMPS::TWOSITE_A::ALxAC);
 	
 	/**saved \f$Y_{L_{0}}\f$, see eq. (C26), (C27)*/
 	Tripod<Symmetry,MatrixType> YLlast;
@@ -433,7 +434,7 @@ set_LanczosTolerances (double &tolLanczosEigval, double &tolLanczosState)
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-calc_errors (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option)
+calc_errors (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, bool CALC_ERR_STATE, VUMPS::TWOSITE_A::OPTION option)
 {
 	std::array<VectorXd,2> epsLRsq;
 	std::array<GAUGE::OPTION,2> gs = {GAUGE::L, GAUGE::R};
@@ -445,29 +446,34 @@ calc_errors (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &V
 			epsLRsq[g](l) = Vout.state.calc_epsLRsq(g,l);
 		}
 	}
+	err_var_old = err_var;
 	err_var = max(sqrt(epsLRsq[GAUGE::L].sum()), sqrt(epsLRsq[GAUGE::R].sum()));
 	
+	err_eigval_old = err_eigval;
 	err_eigval = max(abs(eoldR-eR), abs(eoldL-eL));
 	eoldR = eR;
 	eoldL = eL;
 	
-	//set the global state error to the largest norm of NAAN (=B2) in the unit cell.
-	err_state_old = err_state;
-	err_state = 0.;
-	vector<double> norm_NAAN(N_sites);
-	#pragma omp parallel for
-	for (size_t l=0; l<N_sites; ++l)
+	if (CALC_ERR_STATE)
 	{
-		vector<Biped<Symmetry,MatrixType> > NL;
-		vector<Biped<Symmetry,MatrixType> > NR;
-		Biped<Symmetry,MatrixType> NAAN;
-		calc_B2(l, H, Vout, option, NAAN, NL, NR);
-		norm_NAAN[l] = sqrt(NAAN.squaredNorm().sum());
-	}
-	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		if (norm_NAAN[l] > err_state) {err_state = norm_NAAN[l];}
+		//set the global state error to the largest norm of NAAN (=B2) in the unit cell.
+		err_state_old = err_state;
+		err_state = 0.;
+		vector<double> norm_NAAN(N_sites);
+		#pragma omp parallel for
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			vector<Biped<Symmetry,MatrixType> > NL;
+			vector<Biped<Symmetry,MatrixType> > NR;
+			Biped<Symmetry,MatrixType> NAAN;
+			calc_B2(l, H, Vout, option, NAAN, NL, NR);
+			norm_NAAN[l] = sqrt(NAAN.squaredNorm().sum());
+		}
+		
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			if (norm_NAAN[l] > err_state) {err_state = norm_NAAN[l];}
+		}
 	}
 }
 
@@ -875,15 +881,19 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	
 	double t_exp   = 0.;
 	double t_trunc = 0.;
-	// cout << "N_iterations_without_expansion=" << N_iterations_without_expansion
-	// 	 << ", max_iter_without_expansion=" << GlobParam.max_iter_without_expansion
-	// 	 << ", min_iter_without_expansion=" << GlobParam.min_iter_without_expansion
-	// 	 << boolalpha
-	// 	 << ", err_var cond: " << (err_var < GlobParam.tol_var)
-	// 	 << ", min cond: " << (N_iterations_without_expansion > GlobParam.min_iter_without_expansion)
-	// 	 << ", max cond: " << (N_iterations_without_expansion > GlobParam.max_iter_without_expansion) << endl;
+//	cout << "N_iterations_without_expansion=" << N_iterations_without_expansion
+//	     << ", max_iter_without_expansion=" << GlobParam.max_iter_without_expansion
+//	     << ", min_iter_without_expansion=" << GlobParam.min_iter_without_expansion
+//	     << boolalpha
+//	     << ", err_var cond: " << (err_var < GlobParam.tol_var)
+//	     << ", min cond: " << (N_iterations_without_expansion > GlobParam.min_iter_without_expansion)
+//	     << ", max cond: " << (N_iterations_without_expansion > GlobParam.max_iter_without_expansion) << endl;
+	
+	// If: a) err_var has converged and minimal iteration number exceeded
+	//     b) maximal iteration number exceeded
 	if ((err_var < GlobParam.tol_var and N_iterations_without_expansion > GlobParam.min_iter_without_expansion) or
-		N_iterations_without_expansion > GlobParam.max_iter_without_expansion)
+	    N_iterations_without_expansion > GlobParam.max_iter_without_expansion
+	   )
 	{
 		Stopwatch<> ExpansionTimer;
 		size_t deltaD = min(max(static_cast<size_t>(DynParam.Dincr_rel(N_iterations) * Vout.state.max_Nsv-Vout.state.max_Nsv), DynParam.Dincr_abs(N_iterations)),
@@ -1010,9 +1020,10 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	
 	Stopwatch<> ErrorTimer;
 	double t_err = 0;
-	if (abs(err_state_old-err_state)/err_state_old > 0.001 or N_iterations_without_expansion<=1 or N_iterations<=6)
+	cout << "err_state_rel=" << abs(err_state_old-err_state)/err_state << endl;
+	if (abs(err_state_old-err_state)/err_state > 1e-3 or N_iterations_without_expansion<=1 or N_iterations<=6)
 	{
-		calc_errors(H, Vout);
+		calc_errors(H, Vout, true);
 		t_err = ErrorTimer.time();
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -1021,6 +1032,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	}
 	else
 	{
+		calc_errors(H, Vout, false);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
 			lout << "State error seems converged and will be not recalculated until the next expansion!" << endl;
@@ -1145,7 +1157,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		Vout.state.A[GAUGE::C][l] = gAC.state.data;
 		Vout.state.C[lC]          = gCL.state.data[0]; // C(l-1 mod L) = CL
 		Vout.state.C[l]           = gCR.state.data[0]; // C(l)         = CR
-
+		
 		(err_var>0.01)? Vout.state.svdDecompose(l,GAUGE::R) : Vout.state.polarDecompose(l,GAUGE::R); // AR from AC, CL
 		(err_var>0.01)? Vout.state.svdDecompose(l,GAUGE::L) : Vout.state.polarDecompose(l,GAUGE::L); // AL from AC, CR
 	}
@@ -1158,8 +1170,27 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	eL = contract_LR(0, YLlast, Reigen) / H.volume();
 	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
 	
-	calc_errors(H, Vout);
 	Vout.energy = min(eL,eR);
+	
+	Stopwatch<> ErrorTimer;
+	double t_err = 0;
+	if (abs(err_state_old-err_state)/err_state_old > 0.001 or N_iterations_without_expansion<=1 or N_iterations<=6)
+	{
+		calc_errors(H, Vout, true);
+		t_err = ErrorTimer.time();
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			lout << ErrorTimer.info("error calculation") << endl;
+		}
+	}
+	else
+	{
+		calc_errors(H, Vout, false);
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			lout << "State error seems converged and will be not recalculated until the next expansion!" << endl;
+		}
+	}
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
@@ -1463,8 +1494,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 	
 	Stopwatch<> GlobalTimer;
 	
-	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and
-	        N_iterations < GlobParam.max_iterations) or N_iterations < GlobParam.min_iterations)
+	cout << boolalpha << "state cond=" << (err_state >= GlobParam.tol_state) << endl;
+	
+	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and N_iterations < GlobParam.max_iterations) or 
+	       N_iterations < GlobParam.min_iterations)
 	{
 		if (DynParam.iteration(N_iterations) == UMPS_ALG::PARALLEL)
 		{
@@ -1485,7 +1518,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		else // dynamical choice: L=1 parallel, L>1 sequential
 		{
 			if (N_sites == 1) { iteration_parallel(H,Vout); }
-			else { iteration_sequential(H,Vout); }
+			else              { iteration_sequential(H,Vout); }
 		}
 		
 		DynParam.doSomething(N_iterations);
@@ -1499,6 +1532,13 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 			Vout.state.save(filename,H.info());
 		}
 		#endif
+		
+		if (Vout.state.calc_fullMmax() > GlobParam.fullMmaxBreakoff)
+		{
+			lout << "Terminating because the bond dimension " << Vout.state.calc_fullMmax() 
+			     << " exceeds " << GlobParam.fullMmaxBreakoff << "!" << endl;
+			break;
+		}
 	}
 	write_log(true); // force log on exit
 	
@@ -1615,7 +1655,7 @@ expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps
 		Nret = min(DeltaD, Nret);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
-			lout << "q=" << NAAN.in[q] << ", Nret=" << Nret << endl;
+			lout << "q=" << NAAN.in[q] << ": Nret=" << Nret << ", ";
 		}
 		if (Nret > 0)
 		{
@@ -1623,6 +1663,7 @@ expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps
 			Vdag.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixV().adjoint().topRows(Nret));
 		}
 	}
+	lout << endl << endl;
 	
 	//calc P
 	vector<Biped<Symmetry,MatrixType> > P(Vout.state.locBasis(loc).size());

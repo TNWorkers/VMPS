@@ -38,6 +38,7 @@ double Emin = 0.;
 double emin = 0.;
 bool STRUCTURE, CONTRACTIONS, CALC_TSQ, CALC_BOW, VUMPS;
 string wd; // working directory
+string base;
 
 Eigenstate<MODEL::StateXd> g_fix;
 Eigenstate<MODEL::StateUd> g_foxy;
@@ -297,24 +298,11 @@ int main (int argc, char* argv[])
 	VUMPS = args.get<bool>("VUMPS",true);
 	fullMmax = args.get<int>("fullMmax",0);
 	
-	DMRG::CONTROL::GLOB GlobParam_fix;
-	DMRG::CONTROL::DYN  DynParam_fix;
-	VUMPS::CONTROL::GLOB GlobParam_foxy;
-	VUMPS::CONTROL::DYN  DynParam_foxy;
-	
-	size_t min_Nsv = args.get<size_t>("min_Nsv",0ul);
-	DynParam_fix.min_Nsv = [min_Nsv] (size_t i) {return min_Nsv;};
-	alpha = args.get<double>("alpha",100.);
-	
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
 	wd = args.get<string>("wd","./");
 	correct_foldername(wd);
 	
-	lout << args.info() << endl;
-	lout << "wd=" << wd << endl;
-	
-	string base;
 	#ifdef USING_SO4
 //	base = make_string("U=",U,"_V=",V,"_J=",J,"_L=",L,"_Ly=",Ly);
 	base = make_string("L=",L,"_Ly=",Ly,"_t=",t,"_U=",U,"_V=",V,"_J=",J);
@@ -342,6 +330,15 @@ int main (int argc, char* argv[])
 	string obsfile = make_string(wd,"obs/",base,".h5");
 	string statefile = make_string(wd,"state/",base);
 	
+	DMRG::CONTROL::GLOB GlobParam_fix;
+	DMRG::CONTROL::DYN  DynParam_fix;
+	VUMPS::CONTROL::GLOB GlobParam_foxy;
+	VUMPS::CONTROL::DYN  DynParam_foxy;
+	
+	size_t min_Nsv = args.get<size_t>("min_Nsv",0ul);
+	DynParam_fix.min_Nsv = [min_Nsv] (size_t i) {return min_Nsv;};
+	alpha = args.get<double>("alpha",100.);
+	
 	GlobParam_fix.Dinit  = args.get<size_t>("Dinit",2ul);
 	GlobParam_fix.Dlimit = args.get<size_t>("Dlimit",200ul);
 	GlobParam_fix.Qinit = args.get<size_t>("Qinit",10ul);
@@ -355,9 +352,10 @@ int main (int argc, char* argv[])
 	GlobParam_foxy.Dinit  = args.get<size_t>("Dinit",10ul);
 	GlobParam_foxy.Dlimit = args.get<size_t>("Dlimit",200ul);
 	GlobParam_foxy.Qinit = args.get<size_t>("Qinit",10ul);
-	GlobParam_foxy.min_iterations = args.get<size_t>("Imin",6);
-	GlobParam_foxy.max_iterations = args.get<size_t>("Imax",1000);
-	GlobParam_foxy.max_iter_without_expansion = args.get<size_t>("max",30);
+	GlobParam_foxy.min_iterations = args.get<size_t>("Imin",6ul);
+	GlobParam_foxy.max_iterations = args.get<size_t>("Imax",1000ul);
+	GlobParam_foxy.max_iter_without_expansion = args.get<size_t>("max",30ul);
+	GlobParam_foxy.fullMmaxBreakoff = args.get<size_t>("Chimax",45000ul);
 	
 	GlobParam_foxy.tol_eigval = args.get<double>("tol_eigval",1e-6);
 	GlobParam_foxy.tol_var = args.get<double>("tol_var",1e-6);
@@ -370,6 +368,9 @@ int main (int argc, char* argv[])
 	#else
 	lout.set(base+".log",wd+"log");
 	#endif
+	
+	lout << args.info() << endl;
+	lout << "wd=" << wd << endl;
 	
 	#ifdef _OPENMP
 	lout << "threads=" << omp_get_max_threads() << endl;
@@ -858,7 +859,10 @@ int main (int argc, char* argv[])
 			Foxy.DynParam = DynParam_foxy;
 			Foxy.DynParam.doSomething = measure_and_save;
 			Foxy.DynParam.iteration = [](size_t i) -> UMPS_ALG::OPTION {return UMPS_ALG::PARALLEL;};
-			Foxy.set_log(2,"e0.dat","err_eigval.dat","err_var.dat","err_state.dat");
+			Foxy.set_log(1, wd+"log/e0_"+base+".log",
+			                wd+"log/err-eigval_"+base+".log",
+			                wd+"log/err-var_"+base+".log",
+			                wd+"log/err-state_"+base+".log");
 			Foxy.edgeState(H, g_foxy, Qc);
 		}
 		
