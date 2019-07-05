@@ -80,11 +80,13 @@ public:
 	void edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
 	                qarray<Symmetry::Nq> Qtot, LANCZOS::EDGE::OPTION EDGE=LANCZOS::EDGE::GROUND, bool USE_STATE=false);
 	
-	const double& errVar() {return err_var;}
-	const double& errState() {return err_state;}
+	const double& errVar()    {return err_var;}
+	const double& errState()  {return err_state;}
 	const double& errEigval() {return err_eigval;}
 	
 	bool FORCE_DO_SOMETHING = false;
+	
+	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &V);
 	
 private:
 	
@@ -175,7 +177,7 @@ private:
 	 * A wrapper, if you want to discard the nullspaces when calculating B2.
 	 */
 	void calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option, Biped<Symmetry,MatrixType>& B2) const;
-    ///\}
+	///\}
 	
 	/**Cleans up after the iteration process.*/
 	void cleanup (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
@@ -532,13 +534,14 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	
 	// effective Hamiltonian
 	D = H.locBasis(0).size();
-	assert(H.auxrows(0) == H.auxcols(N_sites-1) and "You insert a strange MPO not consistent with the unit cell");
+	assert(H.auxrows(0) == H.auxcols(N_sites-1) and "You've inserted a strange MPO not consistent with the unit cell");
 	dW = H.auxrows(0);
 	
 	// resize Vout
 	if (!USE_STATE)
 	{
 		Vout.state = Umps<Symmetry,Scalar>(H, Qtot, N_sites, GlobParam.Dinit, GlobParam.Qinit);
+		Vout.state.graph("init");
 		Vout.state.max_Nsv = GlobParam.Dlimit;
 		// Vout.state.min_Nsv = DynParam.min_Nsv(0);
 		Vout.state.setRandom();
@@ -692,30 +695,6 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	L.insert(dW-1, IdL);
 	R.insert(0,    IdR);
 	
-//	auto WprodDiag = [&W, &qloc, &qOp] (size_t a)
-//	{
-//		double res = 1.;
-//		for (size_t l=0; l<W.size(); ++l)
-//		{
-//			double tmp = 0.;
-//			for (size_t s1=0; s1<qloc[l].size(); ++s1)
-//			for (size_t s2=0; s2<qloc[l].size(); ++s2)
-//			for (size_t k=0; k<qOp[l].size(); ++k)
-//			{
-//				for (int r=0; r<W[l][s1][s2][k].outerSize(); ++r)
-//				for (typename SparseMatrix<Scalar>::InnerIterator iW(W[l][s1][s2][k],r); iW; ++iW)
-//				{
-//					if (iW.row() == a and iW.col() == a)
-//					{
-//						tmp += abs(iW.value());
-//					}
-//				}
-//			}
-//			res *= tmp;
-//		}
-//		return res;
-//	};
-	
 	#pragma omp parallel sections
 	{
 		// Eq. C19
@@ -725,8 +704,6 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 			{
 				YL[b] = make_YL(b, L, AL, W, PROP::HAMILTONIAN, AL, qloc, qOp);
 				
-//				cout << "dW=" << dW << ", b=" << b << ", WprodDiag(b)=" << WprodDiag(b) << endl;
-//				if (WprodDiag(b) == 0.)
 				if (b > 0)
 				{
 					L.insert(b,YL[b]);
@@ -756,8 +733,6 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 			{
 				YR[a] = make_YR(a, R, AR, W, PROP::HAMILTONIAN, AR, qloc, qOp);
 				
-//				cout << "dW=" << dW << ", a=" << a << ", WprodDiag(a)=" << WprodDiag(a) << endl;
-//				if (WprodDiag(a) == 0.)
 				if (a < dW-1)
 				{
 					R.insert(a,YR[a]);
@@ -779,6 +754,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 				}
 			}
 		}
+		cout << "e" << endl;
 	}
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -909,163 +885,166 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		N_iterations_without_expansion = 0;
 	}
 	
-	if (err_var < GlobParam.tol_var and (N_iterations+1)%DynParam.Dincr_per(N_iterations) == 0 )
+	if (Vout.state.calc_fullMmax() <= GlobParam.fullMmaxBreakoff) // Don't need an extra iteration if fullMmaxBreakoff exceeded
 	{
-		Stopwatch<> TruncationTimer;
-		Vout.state.truncate();
-		t_trunc = TruncationTimer.time();
-	}
-	
-	Stopwatch<> EnvironmentTimer;
-	build_cellEnv(H,Vout);
-	double t_env = EnvironmentTimer.time();
-	
-	Stopwatch<> OptimizationTimer;
-	// See Algorithm 4
-	#pragma omp parallel for
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		precalc_blockStructure (HeffA[l].L, Vout.state.A[GAUGE::C][l], HeffA[l].W, Vout.state.A[GAUGE::C][l], HeffA[l].R, 
-		                        H.locBasis(l), H.opBasis(l), HeffA[l].qlhs, HeffA[l].qrhs, HeffA[l].factor_cgcs);
-		
-		Eigenstate<PivotVector<Symmetry,Scalar> > gAC;
-		Eigenstate<PivotVector<Symmetry,Scalar> > gC;
-		
-		// Solve for AC
-		gAC.state = PivotVector<Symmetry,Scalar>(Vout.state.A[GAUGE::C][l]);
-		
-		Stopwatch<> LanczosTimer;
-		LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-		Lutz(LanczosParam.REORTHO);
-		Lutz.set_dimK(min(LanczosParam.dimK, dim(gAC.state)));
-		Lutz.edgeState(HeffA[l], gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
-		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		if (err_var < GlobParam.tol_var and (N_iterations+1)%DynParam.Dincr_per(N_iterations) == 0 )
 		{
-			#pragma omp critical
+			Stopwatch<> TruncationTimer;
+			Vout.state.truncate();
+			t_trunc = TruncationTimer.time();
+		}
+		
+		Stopwatch<> EnvironmentTimer;
+		build_cellEnv(H,Vout);
+		double t_env = EnvironmentTimer.time();
+		
+		Stopwatch<> OptimizationTimer;
+		// See Algorithm 4
+		#pragma omp parallel for
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			precalc_blockStructure (HeffA[l].L, Vout.state.A[GAUGE::C][l], HeffA[l].W, Vout.state.A[GAUGE::C][l], HeffA[l].R, 
+				                    H.locBasis(l), H.opBasis(l), HeffA[l].qlhs, HeffA[l].qrhs, HeffA[l].factor_cgcs);
+			
+			Eigenstate<PivotVector<Symmetry,Scalar> > gAC;
+			Eigenstate<PivotVector<Symmetry,Scalar> > gC;
+			
+			// Solve for AC
+			gAC.state = PivotVector<Symmetry,Scalar>(Vout.state.A[GAUGE::C][l]);
+			
+			Stopwatch<> LanczosTimer;
+			LanczosSolver<PivotMatrix1<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
+			Lutz(LanczosParam.REORTHO);
+			Lutz.set_dimK(min(LanczosParam.dimK, dim(gAC.state)));
+			Lutz.edgeState(HeffA[l], gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
-				lout << "l=" << l << ", AC" << ", time" << LanczosTimer.info() << ", " << Lutz.info() << endl;
+				#pragma omp critical
+				{
+					lout << "l=" << l << ", AC" << ", time" << LanczosTimer.info() << ", " << Lutz.info() << endl;
+				}
+			}
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+			{
+				#pragma omp critical
+				{
+					lout << "e0(AC)=" << setprecision(13) << gAC.energy << ", ratio=" << gAC.energy/Vout.energy << endl;
+				}
+			}
+			
+			// Solve for C
+			gC.state = PivotVector<Symmetry,Scalar>(Vout.state.C[l]);
+			
+			LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
+			Lucy(LanczosParam.REORTHO);
+			Lucy.set_dimK(min(LanczosParam.dimK, dim(gC.state)));
+			Lucy.edgeState(PivotMatrix0(HeffC[l]), gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
+			
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+			{
+				#pragma omp critical
+				{
+					lout << "l=" << l << ", C" << ", time" << LanczosTimer.info() << ", " << Lucy.info() << endl;
+				}
+			}
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+			{
+				#pragma omp critical
+				{
+					lout << "e0(C)=" << setprecision(13) << gC.energy << ", ratio=" << gC.energy/Vout.energy << endl;
+				}
+			}
+			
+			Vout.state.A[GAUGE::C][l] = gAC.state.data;
+			Vout.state.C[l] = gC.state.data[0];
+		}
+		double t_opt = OptimizationTimer.time();
+		
+		Stopwatch<> SweepTimer;
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			(err_var>0.01)? Vout.state.svdDecompose(l) : Vout.state.polarDecompose(l);
+		}
+		Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
+		
+	//	// Calculate energies
+	//	Biped<Symmetry,ComplexMatrixType> Reigen_ = calc_LReigen(VMPS::DIRECTION::RIGHT, Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::L], 
+	//	                                                         Vout.state.outBasis(N_sites-1), Vout.state.outBasis(N_sites-1), Vout.state.qloc).state;
+	//	Biped<Symmetry,ComplexMatrixType> Leigen_ = calc_LReigen(VMPS::DIRECTION::LEFT, Vout.state.A[GAUGE::R], Vout.state.A[GAUGE::R],
+	//	                                                         Vout.state.inBasis(0), Vout.state.inBasis(0), Vout.state.qloc).state;
+	//	complex<double> eL_ = contract_LR(0,    YLlast.template cast<ComplexMatrixType>(), Reigen_) / static_cast<double>(H.volume());
+	//	complex<double> eR_ = contract_LR(dW-1, Leigen_, YRfrst.template cast<ComplexMatrixType>()) / static_cast<double>(H.volume());
+	////	complex<double> eL_ = contract_LR(YLlast.template cast<ComplexMatrixType>(), Reigen_) / static_cast<double>(H.volume());
+	////	complex<double> eR_ = contract_LR(Leigen_, YRfrst.template cast<ComplexMatrixType>()) / static_cast<double>(H.volume());
+	//	cout << termcolor::blue << "eL_=" << eL_ << ", eR_=" << eR_ << termcolor::reset << endl;
+		
+		Biped<Symmetry,MatrixType> Reigen, Leigen;
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			{
+				Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
+				eL = contract_LR(0, YLlast, Reigen) / H.volume();
+			}
+			#pragma omp section
+			{
+				Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
+				eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
 			}
 		}
+		Vout.energy = min(eL,eR);
+		
+		double t_sweep = SweepTimer.time();
+		
+		Stopwatch<> ErrorTimer;
+		double t_err = 0;
+		cout << "err_state_rel=" << abs(err_state_old-err_state)/err_state << endl;
+		if (abs(err_state_old-err_state)/err_state > 1e-3 or N_iterations_without_expansion<=1 or N_iterations<=6)
+		{
+			calc_errors(H, Vout, true);
+			t_err = ErrorTimer.time();
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+			{
+				lout << ErrorTimer.info("error calculation") << endl;
+			}
+		}
+		else
+		{
+			calc_errors(H, Vout, false);
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+			{
+				lout << "State error seems converged and will be not recalculated until the next expansion!" << endl;
+			}
+		}
+		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 		{
-			#pragma omp critical
-			{
-				lout << "e0(AC)=" << setprecision(13) << gAC.energy << ", ratio=" << gAC.energy/Vout.energy << endl;
-			}
+			lout << Vout.state.test_ortho() << endl;
+			lout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
+			lout << test_LReigen(Vout) << endl;
 		}
 		
-		// Solve for C
-		gC.state = PivotVector<Symmetry,Scalar>(Vout.state.C[l]);
+		++N_iterations;
+		++N_iterations_without_expansion;
 		
-		LanczosSolver<PivotMatrix0<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> 
-		Lucy(LanczosParam.REORTHO);
-		Lucy.set_dimK(min(LanczosParam.dimK, dim(gC.state)));
-		Lucy.edgeState(PivotMatrix0(HeffC[l]), gC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
-		
+		double t_tot = IterationTimer.time();
+		// print stuff
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
-			#pragma omp critical
-			{
-				lout << "l=" << l << ", C" << ", time" << LanczosTimer.info() << ", " << Lucy.info() << endl;
-			}
+			size_t standard_precision = cout.precision();
+			lout << termcolor::bold << eigeninfo() << termcolor::reset << endl;
+			
+			lout << Vout.state.info() << endl;
+			lout << IterationTimer.info("full parallel iteration") 
+				 << " (environment=" << round(t_env/t_tot*100.,0)  << "%" 
+				 << ", optimization=" << round(t_opt/t_tot*100.,0)  << "%" 
+				 << ", sweep=" << round(t_sweep/t_tot*100.,0) << "%" 
+				 << ", error=" << round(t_err/t_tot*100.,0) << "%";
+			if (t_exp != 0.)  {lout << ", basis expansion="  << round(t_exp/t_tot*100.,0)   << "%";}
+			if (t_trunc != 0) {lout << ", basis truncation=" << round(t_trunc/t_tot*100.,0) << "%";}
+			lout << ")"<< endl;
+			lout << endl;
 		}
-		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
-		{
-			#pragma omp critical
-			{
-				lout << "e0(C)=" << setprecision(13) << gC.energy << ", ratio=" << gC.energy/Vout.energy << endl;
-			}
-		}
-		
-		Vout.state.A[GAUGE::C][l] = gAC.state.data;
-		Vout.state.C[l] = gC.state.data[0];
-	}
-	double t_opt = OptimizationTimer.time();
-	
-	Stopwatch<> SweepTimer;
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		(err_var>0.01)? Vout.state.svdDecompose(l) : Vout.state.polarDecompose(l);
-	}
-	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
-	
-//	// Calculate energies
-//	Biped<Symmetry,ComplexMatrixType> Reigen_ = calc_LReigen(VMPS::DIRECTION::RIGHT, Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::L], 
-//	                                                         Vout.state.outBasis(N_sites-1), Vout.state.outBasis(N_sites-1), Vout.state.qloc).state;
-//	Biped<Symmetry,ComplexMatrixType> Leigen_ = calc_LReigen(VMPS::DIRECTION::LEFT, Vout.state.A[GAUGE::R], Vout.state.A[GAUGE::R],
-//	                                                         Vout.state.inBasis(0), Vout.state.inBasis(0), Vout.state.qloc).state;
-//	complex<double> eL_ = contract_LR(0,    YLlast.template cast<ComplexMatrixType>(), Reigen_) / static_cast<double>(H.volume());
-//	complex<double> eR_ = contract_LR(dW-1, Leigen_, YRfrst.template cast<ComplexMatrixType>()) / static_cast<double>(H.volume());
-////	complex<double> eL_ = contract_LR(YLlast.template cast<ComplexMatrixType>(), Reigen_) / static_cast<double>(H.volume());
-////	complex<double> eR_ = contract_LR(Leigen_, YRfrst.template cast<ComplexMatrixType>()) / static_cast<double>(H.volume());
-//	cout << termcolor::blue << "eL_=" << eL_ << ", eR_=" << eR_ << termcolor::reset << endl;
-	
-	Biped<Symmetry,MatrixType> Reigen, Leigen;
-	#pragma omp parallel sections
-	{
-		#pragma omp section
-		{
-			Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
-			eL = contract_LR(0, YLlast, Reigen) / H.volume();
-		}
-		#pragma omp section
-		{
-			Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
-			eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
-		}
-	}
-	Vout.energy = min(eL,eR);
-	
-	double t_sweep = SweepTimer.time();
-	
-	Stopwatch<> ErrorTimer;
-	double t_err = 0;
-	cout << "err_state_rel=" << abs(err_state_old-err_state)/err_state << endl;
-	if (abs(err_state_old-err_state)/err_state > 1e-3 or N_iterations_without_expansion<=1 or N_iterations<=6)
-	{
-		calc_errors(H, Vout, true);
-		t_err = ErrorTimer.time();
-		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-		{
-			lout << ErrorTimer.info("error calculation") << endl;
-		}
-	}
-	else
-	{
-		calc_errors(H, Vout, false);
-		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-		{
-			lout << "State error seems converged and will be not recalculated until the next expansion!" << endl;
-		}
-	}
-	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
-	{
-		lout << Vout.state.test_ortho() << endl;
-		lout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
-		lout << test_LReigen(Vout) << endl;
-	}
-	
-	++N_iterations;
-	++N_iterations_without_expansion;
-	
-	double t_tot = IterationTimer.time();
-	// print stuff
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-	{
-		size_t standard_precision = cout.precision();
-		lout << termcolor::bold << eigeninfo() << termcolor::reset << endl;
-		
-		lout << Vout.state.info() << endl;
-		lout << IterationTimer.info("full parallel iteration") 
-		     << " (environment=" << round(t_env/t_tot*100.,0)  << "%" 
-		     << ", optimization=" << round(t_opt/t_tot*100.,0)  << "%" 
-		     << ", sweep=" << round(t_sweep/t_tot*100.,0) << "%" 
-		     << ", error=" << round(t_err/t_tot*100.,0) << "%";
-		if (t_exp != 0.)  {lout << ", basis expansion="  << round(t_exp/t_tot*100.,0)   << "%";}
-		if (t_trunc != 0) {lout << ", basis truncation=" << round(t_trunc/t_tot*100.,0) << "%";}
-		lout << ")"<< endl;
-		lout << endl;
 	}
 }
 
@@ -1494,8 +1473,6 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 	
 	Stopwatch<> GlobalTimer;
 	
-	cout << boolalpha << "state cond=" << (err_state >= GlobParam.tol_state) << endl;
-	
 	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and N_iterations < GlobParam.max_iterations) or 
 	       N_iterations < GlobParam.min_iterations)
 	{
@@ -1546,14 +1523,13 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 	{
 		lout << GlobalTimer.info("total runtime") << endl;
 		size_t standard_precision = cout.precision();
-		lout << termcolor::bold
+		lout << termcolor::bold << setprecision(14)
 		     << "iterations=" << N_iterations
-		     << ", e0=" << setprecision(14) << Vout.energy 
+		     << ", e0=" << Vout.energy 
 		     << ", err_eigval=" << err_eigval 
 		     << ", err_var=" << err_var
-			 << ", err_state=" << err_state
-		     << setprecision(standard_precision)
-		     << termcolor::reset
+		     << ", err_state=" << err_state
+		     << setprecision(standard_precision) << termcolor::reset
 		     << endl;
 		lout << Vout.state.info() << endl;
 		lout << endl;
@@ -1801,6 +1777,38 @@ calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scal
 	vector<Biped<Symmetry,MatrixType> > NL_dump, NR_dump;
 	calc_B2(loc,H,Vout,option,B2,NL_dump,NR_dump);
 }
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+create_Mps (size_t Ncells, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &V)
+{
+	size_t Lhetero = Ncells * V.state.length();
+	
+	vector<vector<Biped<Symmetry,MatrixType> > > As(Lhetero);
+	As[0] = V.state.A[GAUGE::C][0];
+	for (size_t l=1; l<Lhetero; ++l)
+	{
+		As[l] = V.state.A[GAUGE::R][l%N_sites];
+	}
+//		As[Lhetero-1] = V.state.A[GAUGE::C][(Lhetero-1)%N_sites];
+//		for (int l=Lhetero-2; l>=0; --l)
+//		{
+//			As[l] = V.state.A[GAUGE::L][l%N_sites];
+//		}
+	
+	vector<vector<qarray<Symmetry::Nq> > > qloc(Lhetero);
+	for (size_t l=0; l<Lhetero; ++l)
+	{
+		qloc[l] = V.state.locBasis(l%N_sites);
+	}
+	
+	Mps<Symmetry,Scalar> Mout(Lhetero, As, qloc, V.state.Qtarget(), Lhetero);
+	
+	Mout.BoundaryL = HeffA[0].L;
+	Mout.BoundaryR = HeffA[N_sites-1].R;
+	
+	return Mout;
+};
 
 //*******************************************************************************************************************************************************************************
 //This  function is expand_basis for the whole unit cell, but with updating AC only at the end.

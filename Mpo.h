@@ -1581,6 +1581,22 @@ transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT)
 			}
 		}
 	}
+	
+//	if (Qtot != Symmetry::qvacuum())
+//	{
+//		for (int i=0; i<qloc[this->N_sites-1].size(); ++i)
+//		{
+//			lout << "original: " << qloc[this->N_sites-1][i] << endl;
+//		}
+//		
+//		auto qnew = Symmetry::reduceSilent(qloc[N_sites-1], Symmetry::flip(Qtot));
+//		qloc[N_sites-1] = qnew;
+//		
+//		for (int i=0; i<qloc[this->N_sites-1].size(); ++i)
+//		{
+//			lout << "transformed: " << qloc[this->N_sites-1][i] << endl;
+//		}
+//	}
 };
 
 

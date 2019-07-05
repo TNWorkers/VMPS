@@ -457,7 +457,43 @@ public:
 	ArrayXd entanglementSpectrumLoc (size_t loc) const;
 	///\}
 	
-private:
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > BoundaryL;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > BoundaryR;
+	
+	void set_open_bc()
+	{
+		BoundaryL.setVacuum();
+		BoundaryR.setTarget(qarray3<Symmetry::Nq>{Qtot, Qtot, Symmetry::qvacuum()});
+	}
+	
+	void transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT=false)
+	{
+		if (Qtot != Symmetry::qvacuum())
+		{
+//			::transform_base<Symmetry>(qloc,Qtot);
+			
+			for (int i=0; i<qloc[this->N_sites-1].size(); ++i)
+			{
+				lout << "original: " << qloc[this->N_sites-1][i] << endl;
+			}
+			
+			auto qnew = Symmetry::reduceSilent(qloc[this->N_sites-1], Symmetry::flip(Qtot));
+			qloc[this->N_sites-1] = qnew;
+			Qtot = Symmetry::qvacuum();
+			update_outbase(this->N_sites-1);
+			
+			for (int i=0; i<qloc[this->N_sites-1].size(); ++i)
+			{
+				lout << "transformed: " << qloc[this->N_sites-1][i] << endl;
+			}
+//			
+//			cout << "Qtot before=" << Qtot << endl;
+//			update_outbase(this->N_sites-1);
+//			cout << "Qtot after=" << Qtot << endl;
+		}
+	};
+	
+//private:
 	
 	/**volume of the system (normally (chain length) * (chain width))*/
 	size_t N_phys;
@@ -498,8 +534,8 @@ private:
 	/**Update the bases in case new blocks have appeared or old ones have disappeared*/
 	void update_inbase (size_t loc);
 	void update_outbase (size_t loc);
-	void update_inbase()  {for(size_t l=0; l<this->N_sites; l++) update_inbase(l);}
-	void update_outbase() {for(size_t l=0; l<this->N_sites; l++) update_outbase(l);}
+	void update_inbase()  {for (size_t l=0; l<this->N_sites; l++) update_inbase(l);}
+	void update_outbase() {for (size_t l=0; l<this->N_sites; l++) update_outbase(l);}
 	
 	/**Shorthand to resize all the relevant arrays: \p A, \p inbase, \p outbase, \p truncWeight, \p S.*/
 	void resize_arrays();
@@ -564,13 +600,16 @@ template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
 Mps()
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar>>()
-{}
+{
+	set_open_bc();
+}
 
 template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
 Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Qmax_input)
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input)
 {
+	set_open_bc();
 	Qmulti = vector<qarray<Nq> >(1,Qtot);
 	outerResize(L_input, qloc_input, Qtot_input, Qmax_input);
 }
@@ -581,6 +620,7 @@ Mps<Symmetry,Scalar>::
 Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, size_t Nqmax_input)
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >()
 {
+	set_open_bc();
 	N_phys = H.volume();
 	Qmulti = vector<qarray<Nq> >(1,Qtot);
 	outerResize(H.length(), H.locBasis(), Qtot_input, Nqmax_input);
@@ -603,11 +643,15 @@ Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, size_t Nqmax_inpu
 template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
 Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
-	 const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input)
+     const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input)
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input), A(As)
 {
+	set_open_bc();
 	Qmulti = vector<qarray<Nq> >(1,Qtot);
 	assert(As.size() == L_input and qloc_input.size() == L_input);
+	resize_arrays();
+	update_inbase();
+	update_outbase();
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1378,8 +1422,8 @@ load (string filename)
 			(qloc[l][s])[q] = Q;
 		}
 	}
-	this->resize_arrays();
-
+	resize_arrays();
+	
 	//load the A-matrices
 	string label;
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -1505,6 +1549,15 @@ update_outbase (size_t loc)
 {
 	outbase[loc].clear();
 	outbase[loc].pullData(A[loc],1);
+	
+//	if (loc == this->N_sites-1)
+//	{
+//		vector<qarray<Symmetry::Nq> > Qtot_vector;
+//		Qtot_vector.push_back(Symmetry::flip(Qtot));
+//		Qbasis<Symmetry> Qtot_flow_out(Qtot_vector);
+//		outbase[loc].add(Qtot_flow_out);
+//		Qtot = Symmetry::qvacuum();
+//	}
 }
 
 template<typename Symmetry, typename Scalar>
@@ -3158,6 +3211,9 @@ cast() const
 	Vout.max_Nsv = this->max_Nsv;
 	Vout.pivot = this->pivot;
 	Vout.truncWeight = truncWeight;
+	
+	Vout.BoundaryL = BoundaryL.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
+	Vout.BoundaryR = BoundaryR.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
 	
 	return Vout;
 }

@@ -173,6 +173,7 @@ typedef typename MatrixType::Scalar Scalar;
 		Multipede<Nlegs,Symmetry,OtherMatrixType> Vout;
 		
 		Vout.dict = dict;
+		Vout.block.clear();
 		Vout.block.resize(block.size());
 		Vout.index = index;
 		Vout.dim = dim;
@@ -188,6 +189,28 @@ typedef typename MatrixType::Scalar Scalar;
 		}
 		
 		return Vout;
+	}
+	
+	// Needs to be implemented explicitly because multi_array doesn't resize when assigning A=B.
+	Multipede<Nlegs,Symmetry,MatrixType>& operator= (const Multipede<Nlegs,Symmetry,MatrixType> &Vin)
+	{
+		dict = Vin.dict;
+		block.clear();
+		block.resize(Vin.block.size());
+		index = Vin.index;
+		dim = Vin.dim;
+		
+		for (size_t q=0; q<dim; ++q)
+		{
+			block[q].resize(boost::extents[Vin.block[q].shape()[0]][Vin.block[q].shape()[1]]);
+			for (size_t a=0; a<block[q].shape()[0]; ++a)
+			for (size_t b=0; b<block[q].shape()[1]; ++b)
+			{
+				block[q][a][b] = Vin.block[q][a][b];
+			}
+		}
+		
+		return *this;
 	}
 	
 	Scalar compare (const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs) const 

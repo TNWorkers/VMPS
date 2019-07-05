@@ -29,7 +29,6 @@ public:
 	
 private:
 	
-	
 	void t_step_pivot  (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, double tol_Lanczos=1e-8);
 	void t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, double tol_Lanczos=1e-8);
 	
@@ -142,28 +141,17 @@ set_blocks (const Hamiltonian &H, VectorType &Vinout)
 	// set edges
 	Heff.clear();
 	Heff.resize(N_sites);
-	Heff[0].L.setVacuum();
-	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vinout.Qtarget(), Vinout.Qtarget(), Symmetry::qvacuum()});
-	
-//	Heff2.clear();
-//	Heff2.resize(N_sites-1);
-//	Heff2[0].L = Heff[0].L;
-//	Heff2[N_sites-2].R = Heff[N_sites-1].R;
+//	Heff[0].L.setVacuum();
+//	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vinout.Qtarget(), Vinout.Qtarget(), Symmetry::qvacuum()});
+	Heff[0].L         = Vinout.BoundaryL;
+	Heff[N_sites-1].R = Vinout.BoundaryR;
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Heff[l].W = H.W[l];
 	}
 	
-//	for (size_t l=0; l<N_sites-1; ++l)
-//	{
-//		Heff2[l].W12 = H.W[l];
-//		Heff2[l].W34 = H.W[l+1];
-//		Heff2[l].qloc12 = H.locBasis(l);
-//		Heff2[l].qloc34 = H.locBasis(l+1);
-//	}
-	
-	// initial sweep, left-to-right:
+	// initial sweep, right-to-left:
 	for (size_t l=N_sites-1; l>0; --l)
 	{
 		Vinout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
@@ -172,6 +160,7 @@ set_blocks (const Hamiltonian &H, VectorType &Vinout)
 	CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
 	pivot = 0;
 	
+	// initial sweep, left-to-right:
 //	for (size_t l=0; l<N_sites-1; ++l)
 //	{
 //		Vinout.sweepStep(DMRG::DIRECTION::RIGHT, l, DMRG::BROOM::QR);
@@ -578,7 +567,6 @@ t_step_adaptive (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, const 
 	
 	for (size_t l=0; l<N_sites-1; ++l)
 	{
-//		cout << ">>>>>>>>" << endl;
 		if (TWO_STEP_AT[l] == true)
 		{
 			t_step_pivot(x(1,0,N_stages),H,Vinout,dt,tol_Lanczos);
@@ -587,7 +575,6 @@ t_step_adaptive (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, const 
 		{
 			t0_step_pivot(true,x(1,0,N_stages),H,Vinout,dt,tol_Lanczos);
 		}
-//		cout << "<<<<<<<<<" << endl;
 	}
 	
 	if (TWO_STEP_AT[N_sites-2])
@@ -602,7 +589,6 @@ t_step_adaptive (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, const 
 	
 	for (int l=N_sites-3; l>=0; --l)
 	{
-//		cout << ">>>>>>>>" << endl;
 		if (TWO_STEP_AT[l] == true)
 		{
 			t_step_pivot(x(1,0,N_stages),H,Vinout,dt,tol_Lanczos);
@@ -611,7 +597,6 @@ t_step_adaptive (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, const 
 		{
 			t0_step_pivot(true,x(1,0,N_stages),H,Vinout,dt,tol_Lanczos);
 		}
-//		cout << "<<<<<<<<<" << endl;
 	}
 	
 	if (!TWO_STEP_AT[0])

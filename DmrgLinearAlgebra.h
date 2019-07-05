@@ -5,9 +5,7 @@
 
 #include "Mps.h"
 #include "Mpo.h"
-//include "tensors/DmrgContractions.h"
 #include "solvers/MpsCompressor.h"
-
 
 /**@file
 \brief External functions to manipulate Mps and Mpo objects.*/
@@ -124,9 +122,11 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
 	
+	// Note DMRG::DIRECTION::RIGHT now adapted for infinite boundary conditions
 	if (DIR == DMRG::DIRECTION::RIGHT)
 	{
-		B.setVacuum();
+//		B.setVacuum();
+		B.setIdentity(1,1,Vket.inBasis(0));
 		for (size_t l=0; l<O.length(); ++l)
 		{
 			if (USE_SQUARE == true)
@@ -142,6 +142,10 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			B = Bnext;
 			Bnext.clear();
 		}
+		
+		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdR;
+		IdR.setIdentity(O.auxcols(O.length()-1), 1, Vket.outBasis((O.length()-1)));
+		return contract_LR(B,IdR);
 	}
 	else
 	{
@@ -152,6 +156,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			Qt.push_back(qarray3<Symmetry::Nq>{Vket.Qmultitarget()[i], Vbra.Qmultitarget()[i], O.Qtarget()});
 		}
 		B.setTarget(Qt);
+//		B.setIdentity(1,1,Vket.outBasis(Vket.length()-1));
 		
 //		for (int l=O.length()-1; l>=0; --l)
 		for (size_t l=O.length()-1; l!=-1; --l)
@@ -525,6 +530,8 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qt[0], O.volume(), 100ul);
 	Vout.set_Qmultitarget(Qt);
 	Vout.min_Nsv = Vin.min_Nsv;
+	Vout.BoundaryL = Vin.BoundaryL;
+	Vout.BoundaryR = Vin.BoundaryR;
 	
 	for (size_t l=0; l<L; ++l)
 	{
@@ -576,7 +583,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	
 	if (VERBOSITY > DMRG::VERBOSITY::SILENT) lout << endl;
 	
-	if (Vout.calc_Nqavg() <= 1.5 and Vout.min_Nsv == 0)
+	if (Vout.calc_Nqavg() <= 1.5 and Vout.min_Nsv == 0 and Symmetry::IS_TRIVIAL == false)
 	{
 		Vout.min_Nsv = 1;
 		lout << termcolor::blue << "Warning: Setting min_Nsv=1 do deal with small Hilbert space after OxV_exact!" << termcolor::reset << endl;

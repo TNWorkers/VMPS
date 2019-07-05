@@ -468,7 +468,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 						{
 							size_t a1 = iW.row();
 							size_t a2 = iW.col();
-								
+							
 							if (Rold.block[qR][a2][0].rows() != 0)
 							{
 								MatrixType Mtmp;

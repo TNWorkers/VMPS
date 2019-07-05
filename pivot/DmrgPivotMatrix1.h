@@ -26,6 +26,32 @@ struct PivotMatrix1
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PR; // PL[n]
 	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0; // A0[n][s]
 	double Epenalty = 0;
+	
+	template<typename OtherScalar>
+	PivotMatrix1<Symmetry,OtherScalar,OtherScalar> cast() const
+	{
+		PivotMatrix1<Symmetry,OtherScalar,OtherScalar> Pout;
+		
+		Pout.L = L.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
+		Pout.R = R.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
+//		Pout.W = W;
+		
+		Pout.qlhs = qlhs;
+		Pout.qrhs = qrhs;
+		Pout.factor_cgcs.resize(factor_cgcs.size());
+		for (int i=0; i<factor_cgcs.size(); ++i) Pout.factor_cgcs[i].resize(factor_cgcs[i].size());
+		
+		for (int i=0; i<factor_cgcs.size(); ++i)
+		for (int j=0; j<factor_cgcs[i].size(); ++j)
+		{
+			Pout.factor_cgcs[i][j] = factor_cgcs[i][j];
+		}
+		
+		Pout.qloc = qloc;
+		Pout.qOp = qOp;
+		
+		return Pout;
+	}
 };
 
 template<typename Symmetry, typename Scalar, typename MpoScalar>

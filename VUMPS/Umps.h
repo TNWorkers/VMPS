@@ -1791,13 +1791,14 @@ adjustQN (const size_t number_cells)
 	{
 		A[g][l][s] = A[g][l][s].adjustQN(number_cells);
 	}
-
+	
 	//transform physical quantum numbers
 	for (size_t l=0; l<N_sites; ++l)
 	for (size_t s=0; s<qloc[l].size(); ++s)
 	{
 		qloc[l][s] = ::adjustQN<Symmetry>(qloc[l][s],number_cells);
 	}
+	
 	update_inbase();
 	update_outbase();
 };
