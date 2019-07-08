@@ -39,10 +39,9 @@ using namespace Eigen;
 #include "models/Heisenberg.h"
 #include "models/HeisenbergU1.h"
 #include "models/HeisenbergSU2.h"
-#include "models/HubbardU1xU1.h"
-#include "models/HubbardSU2xU1.h"
 #include "DmrgLinearAlgebra.h"
 #include "solvers/TDVPPropagator.h"
+#include "solvers/EntropyObserver.h"
 
 #include "IntervalIterator.h"
 
@@ -56,11 +55,12 @@ int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",2);
-	Ncells = args.get<size_t>("Ncells",20);
+	Ncells = args.get<size_t>("Ncells",30);
 	J = args.get<double>("J",1.);
 	M = args.get<int>("M",0);
 	Dtot = abs(M)+1;
 	N = args.get<int>("N",L/2);
+	D = args.get<size_t>("D",3ul);
 	
 	dt = args.get<double>("dt",0.1);
 	double tol_compr = 1e-4;
@@ -73,7 +73,6 @@ int main (int argc, char* argv[])
 	max_iter = args.get<size_t>("max_iter",100ul);
 	min_iter = args.get<size_t>("min_iter",1ul);
 	Qinit = args.get<size_t>("Qinit",6ul);
-	D = args.get<size_t>("D",3ul);
 	
 	VUMPS::CONTROL::GLOB GlobParams;
 	GlobParams.min_iterations = min_iter;
@@ -103,14 +102,12 @@ int main (int argc, char* argv[])
 	
 	
 	
-	
 	typedef VMPS::HeisenbergU1 MODEL;
-	qarray<MODEL::Symmetry::Nq> Qg = {0};
-	qarray<MODEL::Symmetry::Nq> Qc = {1};
+	qarray<MODEL::Symmetry::Nq> Qg = MODEL::Symmetry::qvacuum();
 	
-	MODEL H(L,{{"J",1.},{"D",D},{"OPEN_BC",false}});
-	H.transform_base(Qg);
+	MODEL H(L,{{"J",J},{"D",D},{"OPEN_BC",false}});
 	lout << H.info() << endl;
+//	H.transform_base(Qg);
 	
 	MODEL::uSolver uDMRG(DMRG::VERBOSITY::HALFSWEEPWISE);
 	Eigenstate<MODEL::StateUd> g;
@@ -119,20 +116,23 @@ int main (int argc, char* argv[])
 	uDMRG.GlobParam = GlobParams;
 	uDMRG.edgeState(H, g, Qg);
 	
-	Mps<MODEL::Symmetry,double> Psi = uDMRG.create_Mps(Ncells, H, g);
+	Mps<MODEL::Symmetry,double> Psi = uDMRG.create_Mps(Ncells, H, g, true);
 	lout << Psi.info() << endl;
-//	lout << Psi.BoundaryL.print() << endl;
 	
 	MODEL::StateXd PsiTmp;
 	
-	MODEL H_hetero(L*Ncells,{{"J",1.},{"D",D},{"OPEN_BC",false}});
-	OxV_exact(H_hetero.Scomp(SP,Ncells-1), Psi, PsiTmp, 2., DMRG::VERBOSITY::HALFSWEEPWISE);
-	PsiTmp.graph("after_prod");
+	size_t Lhetero = L*Ncells+1;
+	
+	MODEL H_hetero(Lhetero,{{"J",1.},{"D",D},{"OPEN_BC",false}});
+	Psi.graph("before");
+	OxV_exact(H_hetero.Scomp(SP,Ncells), Psi, PsiTmp, 2., DMRG::VERBOSITY::HALFSWEEPWISE);
+//	OxV_exact(H_hetero.S(Ncells), Psi, PsiTmp, 2., DMRG::VERBOSITY::HALFSWEEPWISE);
+	PsiTmp.graph("after");
 	PsiTmp.sweep(0,DMRG::BROOM::QR);
 	lout << PsiTmp.info() << endl << endl;
 	Psi = PsiTmp;
 	
-	IntervalIterator x(-double(L*Ncells)/2.+1., L*Ncells/2., L*Ncells);
+	IntervalIterator x(-0.5*Lhetero, 0.5*Lhetero, Lhetero);
 	for (x=x.begin(); x!=x.end(); ++x)
 	{
 		double res = avg(Psi, H_hetero.Scomp(SZ,x.index()), Psi, false, DMRG::DIRECTION::RIGHT);
@@ -140,30 +140,25 @@ int main (int argc, char* argv[])
 		x << res;
 	}
 	lout << endl;
-	x.save(make_string("Sz_L=",L*Ncells,"_t=0.dat"));
+	x.save(make_string("Sz_L=",Lhetero,"_t=0.dat"));
 	
 	Mps<MODEL::Symmetry,complex<double> > Psit;
 	Psit = Psi.cast<complex<double> >();
 	Psit.eps_svd = tol_compr;
 	Psit.max_Nsv = Psi.calc_Dmax();
 	
-//	Psit.transform_base(Qc);
-//	H_hetero.transform_base(Qc);
-//	Psit.graph("after_transform");
-	
-//	lout << Psit.BoundaryL.print() << endl;
-	
-	TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,MODEL::StateXcd> TDVP(H_hetero, Psit);
-	
 	IntervalIterator t(0,1,20);
+	TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,MODEL::StateXcd> TDVP(H_hetero, Psit);
+	EntropyObserver<MODEL::StateXcd> Sobs(Lhetero,20*10,DMRG::VERBOSITY::HALFSWEEPWISE);
+	vector<bool> TWO_SITE = Sobs.TWO_SITE(0,Psit);
+	
 	double tval = 0.;
 	
 	for (int j=0; j<10; ++j)
 	{
 		for (t=t.begin(); t!=t.end(); ++t)
 		{
-			TDVP.t_step0(H_hetero, Psit, -1.i*dt, 1,1e-8);
-			Psit.graph("Psit");
+			TDVP.t_step_adaptive(H_hetero, Psit, -1.i*dt, TWO_SITE, 1,1e-8);
 			tval += dt;
 			
 			if (Psit.get_truncWeight().sum() > 0.5*tol_compr)
@@ -177,6 +172,11 @@ int main (int argc, char* argv[])
 			lout << TDVP.info() << endl;
 			lout << Psit.info() << endl;
 			lout << endl;
+			
+			auto PsiTmp = Psit;
+			PsiTmp.eps_svd = 1e-15;
+			PsiTmp.skim(DMRG::BROOM::SVD);
+			TWO_SITE = Sobs.TWO_SITE(t.index()+10*j,PsiTmp);
 		}
 		
 		for (x=x.begin(); x!=x.end(); ++x)
@@ -185,7 +185,7 @@ int main (int argc, char* argv[])
 			lout << "x=" << x.index() << ", <Sz>=" << res << endl;
 			x << res;
 		}
-		x.save(make_string("Sz_L=",L*Ncells,"_t=",tval,".dat"));
+		x.save(make_string("Sz_L=",Lhetero,"_t=",tval,".dat"));
 	}
 	
 	

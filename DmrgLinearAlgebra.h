@@ -530,8 +530,10 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qt[0], O.volume(), 100ul);
 	Vout.set_Qmultitarget(Qt);
 	Vout.min_Nsv = Vin.min_Nsv;
+	
 	Vout.BoundaryL = Vin.BoundaryL;
 	Vout.BoundaryR = Vin.BoundaryR;
+	Vout.BoundaryR.shift_Q(Qt[0]);
 	
 	for (size_t l=0; l<L; ++l)
 	{

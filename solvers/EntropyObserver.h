@@ -59,26 +59,33 @@ TWO_SITE (int it, const MpsType &Psi)
 		{
 			res[b] = (abs(DeltaSb) > DeltaS)? true:false;
 		}
-		
-		if (CHOSEN_VERBOSITY > DMRG::VERBOSITY::HALFSWEEPWISE)
-		{
-			lout << "it=" << it << ", b=" << b << ": " << boolalpha << res[b] << ", S=" << data(it,b) << ", ΔS=" << DeltaSb << endl;
-		}
 	}
 	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
+		lout << "EntropyObserver: ";
+		for (int b=0; b<L-1; ++b)
+		{
+			if (res[b])
+			{
+				lout << termcolor::red << 2 << termcolor::reset;
+			}
+			else
+			{
+				lout << termcolor::blue << 1 << termcolor::reset;
+			}
+		}
 		int trues = std::count(res.begin(), res.end(), true);
-		lout << "2-site steps=" << trues << endl;
+		lout << " N_steps(2-site)=" << trues << " (" << trues*100./(L-1) << "%)" << endl;
 	}
 	
 	if (res[0] == true and it>0 and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)
 	{
-		lout << termcolor::yellow << "Wavepacket has reached left edge!" << termcolor::reset << endl;
+		lout << termcolor::yellow << "Entropy increase at the left edge!" << termcolor::reset << endl;
 	}
 	else if (res[L-2] == true and it>0 and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)
 	{
-		lout << termcolor::yellow << "Wavepacket has reached right edge!" << termcolor::reset << endl;
+		lout << termcolor::yellow << "Entropy increase at the right edge!" << termcolor::reset << endl;
 	}
 	
 	return res;

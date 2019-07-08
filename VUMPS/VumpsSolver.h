@@ -86,7 +86,7 @@ public:
 	
 	bool FORCE_DO_SOMETHING = false;
 	
-	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &V);
+	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &V, bool ADD_ODD_SITE=false);
 	
 private:
 	
@@ -754,7 +754,6 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 				}
 			}
 		}
-		cout << "e" << endl;
 	}
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -1780,9 +1779,10 @@ calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scal
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-create_Mps (size_t Ncells, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &V)
+create_Mps (size_t Ncells, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &V, bool ADD_ODD_SITE)
 {
-	size_t Lhetero = Ncells * V.state.length();
+	size_t add = (ADD_ODD_SITE)? 1:0;
+	size_t Lhetero = Ncells * V.state.length() + add;
 	
 	vector<vector<Biped<Symmetry,MatrixType> > > As(Lhetero);
 	As[0] = V.state.A[GAUGE::C][0];
@@ -1805,7 +1805,7 @@ create_Mps (size_t Ncells, const MpHamiltonian &H, const Eigenstate<Umps<Symmetr
 	Mps<Symmetry,Scalar> Mout(Lhetero, As, qloc, V.state.Qtarget(), Lhetero);
 	
 	Mout.BoundaryL = HeffA[0].L;
-	Mout.BoundaryR = HeffA[N_sites-1].R;
+	Mout.BoundaryR = HeffA[(Lhetero-1)%N_sites].R;
 	
 	return Mout;
 };

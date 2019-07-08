@@ -103,7 +103,7 @@ typedef typename MatrixType::Scalar Scalar;
 	
 	/**Prints Multipede<Nlegs,Symmetry,MatrixType>::dict into a string.*/
 	string dict_info() const;
-
+	
 	string print (const bool &SHOW_MATRICES=false, const size_t &precision=3) const;
 //	void rebuild_dict();
 	///@}
@@ -114,7 +114,7 @@ typedef typename MatrixType::Scalar Scalar;
 	
 	/**Sets all matrices in Multipede<Nlegs,Symmetry,MatrixType>::block to zero, preserving the rows and columns.*/
 	void setZero();
-
+	
 	/**
 	 * Creates a single block of size 1x1 containing 1 and the corresponding quantum numbers to the vacuum (all of them).
 	 * Needed in for the transfer matrix to the first site in matrix element calculations.
@@ -167,6 +167,8 @@ typedef typename MatrixType::Scalar Scalar;
 	void insert (size_t ab, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs);
 	///@}
 	
+	///@{
+	/** Casts tensors to \p OtherMatrixType, i.e. usually from real to complex.*/
 	template<typename OtherMatrixType>
 	Multipede<Nlegs,Symmetry,OtherMatrixType> cast() const
 	{
@@ -191,6 +193,15 @@ typedef typename MatrixType::Scalar Scalar;
 		return Vout;
 	}
 	
+	/** Shifts \p qin and \p qout by \p Q, \p qmid unchanged*/
+	void shift_Q (const qarray<Symmetry::Nq> &Q);
+	
+	Scalar compare (const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs) const;
+	
+	/** Takes Biped-slice from a Tripod over the middle quantum number \p qslice.*/
+	Biped<Symmetry,MatrixType> BipedSliceQmid (qType qslice = Symmetry::qvacuum()) const;
+	///@}
+	
 	// Needs to be implemented explicitly because multi_array doesn't resize when assigning A=B.
 	Multipede<Nlegs,Symmetry,MatrixType>& operator= (const Multipede<Nlegs,Symmetry,MatrixType> &Vin)
 	{
@@ -211,37 +222,6 @@ typedef typename MatrixType::Scalar Scalar;
 		}
 		
 		return *this;
-	}
-	
-	Scalar compare (const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs) const 
-	{
-		double res = 0;
-		for (size_t q=0; q<dim; ++q)
-		{
-			qarray3<Symmetry::Nq> quple = {in(q), out(q), mid(q)};
-			auto it = Mrhs.dict.find(quple);
-			for (size_t a=0; a<block[q].shape()[0]; ++a)
-			{
-				res += (block[q][a][0]-Mrhs.block[it->second][a][0]).norm();
-			}
-		}
-		return res;
-	}
-	
-	/** Takes Biped-slice from a Tripod over the middle quantum number \p qslice.*/
-	Biped<Symmetry,MatrixType> BipedSliceQmid (qType qslice = Symmetry::qvacuum()) const
-	{
-		assert(Nlegs == 3);
-		Biped<Symmetry,MatrixType> Bout;
-		for (size_t q=0; q<dim; ++q)
-		for (size_t a=0; a<block[q].shape()[0]; ++a)
-		{
-			if (mid(q) == qslice)
-			{
-				Bout.push_back(in(q), out(q), block[q][a][0]);
-			}
-		}
-		return Bout;
 	}
 };
 
@@ -594,7 +574,7 @@ insert (size_t ab, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs)
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
 std::string Multipede<Nlegs,Symmetry,MatrixType>::
-print(const bool &SHOW_MATRICES, const std::size_t &precision) const
+print (const bool &SHOW_MATRICES, const std::size_t &precision) const
 {
 #ifndef HELPERS_IO_TABLE
 	std::stringstream out;
@@ -602,7 +582,7 @@ print(const bool &SHOW_MATRICES, const std::size_t &precision) const
 	return out.str();
 #else //Use TextTable library for nicer output.
 	std::stringstream out;
-
+	
 	TextTable t( '-', '|', '+' );
 	t.add("ν");
 	t.add("Q_ν");
@@ -636,7 +616,7 @@ print(const bool &SHOW_MATRICES, const std::size_t &precision) const
 	}
 	t.setAlignment( 0, TextTable::Alignment::RIGHT );
 	out << t;
-
+	
 	if (SHOW_MATRICES)
 	{
 		out << TCOLOR(BLUE) << "\e[4mA-tensors:\e[0m" << std::endl;
@@ -651,8 +631,65 @@ print(const bool &SHOW_MATRICES, const std::size_t &precision) const
 		}
 		out << TCOLOR(BLACK) << std::endl;
 	}
-
+	
 	return out.str();
 #endif
 }
+
+template<size_t Nlegs, typename Symmetry, typename MatrixType>
+void Multipede<Nlegs,Symmetry,MatrixType>::
+shift_Q (const qarray<Symmetry::Nq> &Q)
+{
+	assert(Nlegs == 3);
+	
+	auto index_tmp = index;
+	auto block_tmp = block;
+	auto dim_tmp = dim;
+	
+	index.clear();
+	block.clear();
+	dict.clear();
+	dim = 0;
+	
+	for (size_t q=0; q<dim_tmp; ++q)
+	{
+		push_back({index_tmp[q][0]+Q, index_tmp[q][1]+Q, index_tmp[q][2]}, block_tmp[q]);
+	}
+}
+
+template<size_t Nlegs, typename Symmetry, typename MatrixType>
+typename MatrixType::Scalar Multipede<Nlegs,Symmetry,MatrixType>::
+compare (const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs) const 
+{
+	double res = 0;
+	for (size_t q=0; q<dim; ++q)
+	{
+		qarray3<Symmetry::Nq> quple = {in(q), out(q), mid(q)};
+		auto it = Mrhs.dict.find(quple);
+		for (size_t a=0; a<block[q].shape()[0]; ++a)
+		{
+			res += (block[q][a][0]-Mrhs.block[it->second][a][0]).norm();
+		}
+	}
+	return res;
+}
+
+template<size_t Nlegs, typename Symmetry, typename MatrixType>
+Biped<Symmetry,MatrixType> Multipede<Nlegs,Symmetry,MatrixType>::
+BipedSliceQmid (qType qslice) const
+{
+	assert(Nlegs == 3);
+	
+	Biped<Symmetry,MatrixType> Bout;
+	for (size_t q=0; q<dim; ++q)
+	for (size_t a=0; a<block[q].shape()[0]; ++a)
+	{
+		if (mid(q) == qslice)
+		{
+			Bout.push_back(in(q), out(q), block[q][a][0]);
+		}
+	}
+	return Bout;
+}
+
 #endif

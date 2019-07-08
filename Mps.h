@@ -839,62 +839,77 @@ calc_Qlimits()
 	QoutTop.resize(this->N_sites);
 	QoutBot.resize(this->N_sites);
 	
-	QinTop[0] = Symmetry::qvacuum();
-	QinBot[0] = Symmetry::qvacuum();
-	QinBotRange[0] = {Symmetry::qvacuum()};
-	for (size_t l=1; l<this->N_sites; ++l)
+	// If non-trivial boundaries: we have a hetergeneous infinite state, no Qlimits
+	if (BoundaryL.dim > 1 and BoundaryR.dim > 1)
 	{
-		auto new_tops = Symmetry::reduceSilent(qloc[l-1], QinTop[l-1]);
-		auto new_bots = Symmetry::reduceSilent(qloc[l-1], QinBotRange[l-1], true);
-//		cout << "l=" << l << ", new_bots.size()=" << new_bots.size() << endl;
-		
-		QinTop[l] = highest_q(new_tops);
-		QinBot[l] = lowest_q(new_bots);
-		QinBotRange[l] = lowest_qs(new_bots);
-//		cout << "l=" << l << ", QinBotRange.size()=" << QinBotRange.size() << endl;
+		for (size_t l=0; l<this->N_sites; ++l)
+		for (size_t q=0; q<Nq; q++)
+		{
+			QinTop[l][q]  = +10000;
+			QinBot[l][q]  = -10000;
+			QoutTop[l][q] = +10000;
+			QoutBot[l][q] = -10000;
+		}
 	}
-	
-	QoutTop[this->N_sites-1] = *max_element(Qmulti.begin(), Qmulti.end());
-	QoutBot[this->N_sites-1] = *min_element(Qmulti.begin(), Qmulti.end());
-	QoutBotRange[this->N_sites-1] = Qmulti; //{Qtot};
-	for (int l=this->N_sites-2; l>=0; --l)
+	else
 	{
-		vector<qarray<Symmetry::Nq> > qlocflip;
-		for (size_t q=0; q<qloc[l+1].size(); ++q)
+		QinTop[0] = Symmetry::qvacuum();
+		QinBot[0] = Symmetry::qvacuum();
+		QinBotRange[0] = {Symmetry::qvacuum()};
+		for (size_t l=1; l<this->N_sites; ++l)
 		{
-			qlocflip.push_back(Symmetry::flip(qloc[l+1][q]));
-		}
-		auto new_tops = Symmetry::reduceSilent(qlocflip, QoutTop[l+1]);
-		auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBotRange[l+1]);
-		
-		QoutTop[l] = highest_q(new_tops);
-		QoutBot[l] = lowest_q(new_bots);
-		QoutBotRange[l] = lowest_qs(new_bots);
-	}
-	
-	for (size_t l=0; l<this->N_sites; ++l)
-	{
-		if (l!=0)
-		{
-			for (size_t q=0; q<Nq; q++)
-			{
-				QinTop[l][q] = min(QinTop[l][q], QoutTop[l-1][q]);
-				QinBot[l][q]  = max(QinBot[l][q], QoutBot[l-1][q]);
-			}
-		}
-		if (l!=this->N_sites-1)
-		{
-			for (size_t q=0; q<Nq; q++)
-			{
-				QoutTop[l][q] = min(QoutTop[l][q], QinTop[l+1][q]);
-				QoutBot[l][q]  = max(QoutBot[l][q], QinBot[l+1][q]);
-			}
+			auto new_tops = Symmetry::reduceSilent(qloc[l-1], QinTop[l-1]);
+			auto new_bots = Symmetry::reduceSilent(qloc[l-1], QinBotRange[l-1], true);
+	//		cout << "l=" << l << ", new_bots.size()=" << new_bots.size() << endl;
+			
+			QinTop[l] = highest_q(new_tops);
+			QinBot[l] = lowest_q(new_bots);
+			QinBotRange[l] = lowest_qs(new_bots);
+	//		cout << "l=" << l << ", QinBotRange.size()=" << QinBotRange.size() << endl;
 		}
 		
-//		cout << "l=" << l 
-//		     << ", QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] 
-//		     << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] 
-//		     << endl;
+		QoutTop[this->N_sites-1] = *max_element(Qmulti.begin(), Qmulti.end());
+		QoutBot[this->N_sites-1] = *min_element(Qmulti.begin(), Qmulti.end());
+		QoutBotRange[this->N_sites-1] = Qmulti; //{Qtot};
+		for (int l=this->N_sites-2; l>=0; --l)
+		{
+			vector<qarray<Symmetry::Nq> > qlocflip;
+			for (size_t q=0; q<qloc[l+1].size(); ++q)
+			{
+				qlocflip.push_back(Symmetry::flip(qloc[l+1][q]));
+			}
+			auto new_tops = Symmetry::reduceSilent(qlocflip, QoutTop[l+1]);
+			auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBotRange[l+1]);
+			
+			QoutTop[l] = highest_q(new_tops);
+			QoutBot[l] = lowest_q(new_bots);
+			QoutBotRange[l] = lowest_qs(new_bots);
+		}
+		
+		for (size_t l=0; l<this->N_sites; ++l)
+		{
+			if (l!=0)
+			{
+				for (size_t q=0; q<Nq; q++)
+				{
+					QinTop[l][q] = min(QinTop[l][q], QoutTop[l-1][q]);
+					QinBot[l][q]  = max(QinBot[l][q], QoutBot[l-1][q]);
+				}
+			}
+			if (l!=this->N_sites-1)
+			{
+				for (size_t q=0; q<Nq; q++)
+				{
+					QoutTop[l][q] = min(QoutTop[l][q], QinTop[l+1][q]);
+					QoutBot[l][q]  = max(QoutBot[l][q], QinBot[l+1][q]);
+				}
+			}
+			
+	//		cout << "l=" << l 
+	//		     << ", QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] 
+	//		     << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] 
+	//		     << endl;
+		}
 	}
 }
 
