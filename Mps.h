@@ -3046,7 +3046,9 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 		return 0.;
 	}
 	
-	Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > L; L.setVacuum();
+	Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > L; 
+	//L.setVacuum();
+	L.setIdentity(inBasis(0), inBasis(0));
 	Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > Lnext;
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
@@ -3056,8 +3058,10 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 		Lnext.clear();
 	}
 	
-	Scalar out = L.trace();
-	return out;
+//	Scalar out = L.trace();
+//	return out;
+	Lnext.setIdentity(outBasis(this->N_sites-1), outBasis(this->N_sites-1));
+	return L.contract(Lnext).trace();
 }
 
 template<typename Symmetry, typename Scalar>

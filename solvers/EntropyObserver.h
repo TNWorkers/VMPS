@@ -8,13 +8,14 @@ class EntropyObserver
 {
 public:
 	
+	EntropyObserver(){};
 	EntropyObserver (size_t L_input, size_t tpoints_input, DMRG::VERBOSITY::OPTION VERBOSITY=DMRG::VERBOSITY::SILENT, double DeltaS_input=1e-2)
 	:L(L_input), tpoints(tpoints_input), DeltaS(DeltaS_input), CHOSEN_VERBOSITY(VERBOSITY)
 	{
 		data.resize(tpoints,L-1);
 	}
 	
-	vector<bool> TWO_SITE (int it, const MpsType &Psi);
+	vector<bool> TWO_SITE (int it, const MpsType &Psi, double r=1.);
 	
 	void save (string filename);
 	void save (int it, string filename);
@@ -30,7 +31,7 @@ private:
 
 template<typename MpsType>
 vector<bool> EntropyObserver<MpsType>::
-TWO_SITE (int it, const MpsType &Psi)
+TWO_SITE (int it, const MpsType &Psi, double r)
 {
 	vector<bool> res(L-1);
 	
@@ -48,7 +49,9 @@ TWO_SITE (int it, const MpsType &Psi)
 		else if (it > 1)
 		{
 			// backward derivative using 2 points
-			DeltaSb = 0.5*(-3.*data(it,b)+4.*data(it-1,b)-data(it-2,b))/data(it-2,b);
+			// 0.5*(1.+r): heuristic correction factor for arbitrary timestep
+			// r=dt(-2)/dt(-1)
+			DeltaSb = 0.5*(-3.*data(it,b)+4.*data(it-1,b)-data(it-2,b)) * 0.5*(1.+r) /data(it-2,b);
 		}
 		
 		if (it == 0)

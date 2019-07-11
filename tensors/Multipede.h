@@ -196,6 +196,8 @@ typedef typename MatrixType::Scalar Scalar;
 	/** Shifts \p qin and \p qout by \p Q, \p qmid unchanged*/
 	void shift_Q (const qarray<Symmetry::Nq> &Q);
 	
+	void shift_Qmid (const qarray<Symmetry::Nq> &Q);
+	
 	Scalar compare (const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs) const;
 	
 	/** Takes Biped-slice from a Tripod over the middle quantum number \p qslice.*/
@@ -654,6 +656,27 @@ shift_Q (const qarray<Symmetry::Nq> &Q)
 	for (size_t q=0; q<dim_tmp; ++q)
 	{
 		push_back({index_tmp[q][0]+Q, index_tmp[q][1]+Q, index_tmp[q][2]}, block_tmp[q]);
+	}
+}
+
+template<size_t Nlegs, typename Symmetry, typename MatrixType>
+void Multipede<Nlegs,Symmetry,MatrixType>::
+shift_Qmid (const qarray<Symmetry::Nq> &Q)
+{
+	assert(Nlegs == 3);
+	
+	auto index_tmp = index;
+	auto block_tmp = block;
+	auto dim_tmp = dim;
+	
+	index.clear();
+	block.clear();
+	dict.clear();
+	dim = 0;
+	
+	for (size_t q=0; q<dim_tmp; ++q)
+	{
+		push_back({index_tmp[q][0], index_tmp[q][1]+Q, index_tmp[q][2]+Q}, block_tmp[q]);
 	}
 }
 

@@ -541,7 +541,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	if (!USE_STATE)
 	{
 		Vout.state = Umps<Symmetry,Scalar>(H, Qtot, N_sites, GlobParam.Dinit, GlobParam.Qinit);
-		Vout.state.graph("init");
+//		Vout.state.graph("init");
 		Vout.state.max_Nsv = GlobParam.Dlimit;
 		// Vout.state.min_Nsv = DynParam.min_Nsv(0);
 		Vout.state.setRandom();

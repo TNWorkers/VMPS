@@ -125,8 +125,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 	// Note DMRG::DIRECTION::RIGHT now adapted for infinite boundary conditions
 	if (DIR == DMRG::DIRECTION::RIGHT)
 	{
-//		B.setVacuum();
-		B.setIdentity(1,1,Vket.inBasis(0));
+		B.setVacuum();
 		for (size_t l=0; l<O.length(); ++l)
 		{
 			if (USE_SQUARE == true)
@@ -142,10 +141,6 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			B = Bnext;
 			Bnext.clear();
 		}
-		
-		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdR;
-		IdR.setIdentity(O.auxcols(O.length()-1), 1, Vket.outBasis((O.length()-1)));
-		return contract_LR(B,IdR);
 	}
 	else
 	{
@@ -249,6 +244,46 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 //	{
 //		return contract_LR(L, Vbra.A_at(last), O.W_at(last), Vket.A_at(last), R, O.locBasis());
 //	}
+}
+
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra, 
+                   const Mpo<Symmetry,MpoScalar> &O, 
+                   const Mps<Symmetry,Scalar> &Vket, 
+                   bool USE_BOUNDARY = false, 
+                   bool USE_SQUARE = false)
+{
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
+	
+	if (USE_BOUNDARY) {B=Vket.BoundaryL;}
+	else              {B.setIdentity(O.auxrows(0), 1, Vket.inBasis(0));}
+	
+	for (size_t l=0; l<O.length(); ++l)
+	{
+		if (USE_SQUARE == true)
+		{
+			if constexpr (Symmetry::NON_ABELIAN) { contract_L(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
+			else { contract_L(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
+		}
+		else
+		{
+			contract_L(B, Vbra.A_at(l), O.W_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
+		}
+		B.clear();
+		B = Bnext;
+		Bnext.clear();
+		
+//		cout << "l=" << l << endl;
+//		cout << "B=" << B.print() << endl << endl;
+	}
+	
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > BR;
+	if (USE_BOUNDARY) {BR = Vket.BoundaryR;}
+	else              {BR.setIdentity(O.auxcols(O.length()-1), 1, Vket.outBasis((O.length()-1)));}
+	BR.shift_Qmid(O.Qtarget());
+	
+	return contract_LR(B,BR);
 }
 
 /**
