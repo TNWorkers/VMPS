@@ -95,18 +95,18 @@ int main (int argc, char* argv[])
 	
 	Stopwatch<> Watch_U1;
 	
-	ArrayXXd RandomHopping(L,L); RandomHopping.setZero();
-	for (int i=0; i<L; ++i)
-	for (int j=0; j<i; ++j)
-	{
-		RandomHopping(i,j) = fRand(0.,1.);
-		RandomHopping(j,i) = RandomHopping(i,j);
-	}
+//	ArrayXXd RandomHopping(L,L); RandomHopping.setZero();
+//	for (int i=0; i<L; ++i)
+//	for (int j=0; j<i; ++j)
+//	{
+//		RandomHopping(i,j) = fRand(0.,1.);
+//		RandomHopping(j,i) = RandomHopping(i,j);
+//	}
+//	
+//	cout << RandomHopping << endl << endl;
 	
-	cout << RandomHopping << endl << endl;
-	
-//	VMPS::SpinlessFermionsU1 H_U1(L,{{"t",t},{"tPrime",tPrime},{"V",V},{"Vprime",Vprime},{"Vph",Vph}});
-	VMPS::SpinlessFermionsU1 H_U1(L,{{"tFull",RandomHopping}});
+	VMPS::SpinlessFermionsU1 H_U1(L,{{"t",t},{"tPrime",tPrime},{"V",V},{"Vprime",Vprime},{"Vph",Vph}});
+//	VMPS::SpinlessFermionsU1 H_U1(L,{{"tFull",RandomHopping}});
 	lout << H_U1.info() << endl;
 	
 	VMPS::SpinlessFermionsU1::Solver DMRG_U1(DMRG::VERBOSITY::HALFSWEEPWISE);
@@ -126,75 +126,75 @@ int main (int argc, char* argv[])
 	lout << "(rhoA-rhoB).norm()=" << (rhoA-rhoB).norm() << endl;
 	
 	
-	InteractionParams params;
-	(tPrime!=0.) ? params.set_hoppings({-t,-tPrime}):params.set_hoppings({-t});
-	
-//	HoppingParticles H_ED(L, N, params, BC_DANGLING, BS_FULL, DIM1, FERMIONS);
-	HoppingParticles H_ED(L, N, -RandomHopping.matrix().sparseView());
-	H_ED.switch_Vnn(V);
-	lout << H_ED.info() << endl;
-	LanczosSolver<HoppingParticles,VectorXd,double> Lutz;
-	Lutz.edgeState(H_ED, g_ED, LANCZOS::EDGE::GROUND);
-	lout << Lutz.info() << endl;
-	
-	lout << endl;
-	lout << "E_ED=" << g_ED.energy << ", diff=" << abs(g_ED.energy-g_U1.energy) << endl;
-	lout << endl;
-	
-//	cout << H_ED.eigenvalues() << endl;
-	
-	MatrixXd rhoED_A(L,L);
-	MatrixXd rhoED_B(L,L);
-	#pragma omp parallel for collapse(2)
-	for (int i=0; i<L; ++i)
-	for (int j=0; j<L; ++j)
-	{
-		if (i == j)
-		{
-			rhoED_A(i,j) = g_ED.state.dot(H_ED.n(i) * g_ED.state);
-			rhoED_B(i,j) = H_ED.eigenvectors().col(0).dot(H_ED.n(i) * H_ED.eigenvectors().col(0));
-		}
-		else
-		{
-			rhoED_A(i,j) = g_ED.state.dot(H_ED.hopping_element(i,j,1.,false) * g_ED.state);
-			rhoED_B(i,j) = H_ED.eigenvectors().col(0).dot(H_ED.hopping_element(i,j,1.,false) * H_ED.eigenvectors().col(0));
-		}
-	}
-	
-	cout << rhoA << endl << endl;
-	cout << rhoB << endl << endl;
-	cout << rhoED_A << endl << endl;
-	cout << rhoED_B << endl << endl;
-	
-	lout << endl;
-	lout << "(rhoA-rhoB).norm()=" << (rhoA-rhoB).norm() << endl;
-	lout << "(rhoED_A-rhoED_B).norm()=" << (rhoA-rhoB).norm() << endl;
-	lout << "(rhoA-rhoED_Lanczos).norm()=" << (rhoA-rhoED_A).norm() << endl;
-	lout << "(rhoA-rhoED_fullDiag).norm()=" << (rhoB-rhoED_B).norm() << endl;
-	lout << endl;
-	
-	lout << endl;
-	
-	SelfAdjointEigenSolver<MatrixXd> Eugen(-RandomHopping.matrix());
-	double E0_exact = Eugen.eigenvalues().head(N).sum(); // fill up the Fermi sea
-	cout << "1-particle energies: " << Eugen.eigenvalues().transpose() << endl;
-//	cout << "eigenvalues: " << H_ED.eigenvalues().transpose() << endl;
-	cout << "E0 exact for V=0: " << E0_exact 
-	     << ", diffDMRG=" << abs(E0_exact-g_U1.energy) 
-	     << ", diffED(Lanczos)=" << abs(E0_exact-g_ED.energy) 
-	     << ", diffED(full)=" << abs(E0_exact-H_ED.eigenvalues()(0)) 
-	     << endl;
-	
-	
-	MatrixXd rhoED_free(L,L); rhoED_free.setZero();
-	for (int i=0; i<L; ++i)
-	for (int j=0; j<L; ++j)
-	for (int k=0; k<N; ++k)
-	{
-		rhoED_free(i,j) += Eugen.eigenvectors().col(k)(i) * Eugen.eigenvectors().col(k)(j);
-	}
-	
-	cout << endl << rhoED_free << endl << endl;
+//	InteractionParams params;
+//	(tPrime!=0.) ? params.set_hoppings({-t,-tPrime}):params.set_hoppings({-t});
+//	
+////	HoppingParticles H_ED(L, N, params, BC_DANGLING, BS_FULL, DIM1, FERMIONS);
+//	HoppingParticles H_ED(L, N, -RandomHopping.matrix().sparseView());
+//	H_ED.switch_Vnn(V);
+//	lout << H_ED.info() << endl;
+//	LanczosSolver<HoppingParticles,VectorXd,double> Lutz;
+//	Lutz.edgeState(H_ED, g_ED, LANCZOS::EDGE::GROUND);
+//	lout << Lutz.info() << endl;
+//	
+//	lout << endl;
+//	lout << "E_ED=" << g_ED.energy << ", diff=" << abs(g_ED.energy-g_U1.energy) << endl;
+//	lout << endl;
+//	
+////	cout << H_ED.eigenvalues() << endl;
+//	
+//	MatrixXd rhoED_A(L,L);
+//	MatrixXd rhoED_B(L,L);
+//	#pragma omp parallel for collapse(2)
+//	for (int i=0; i<L; ++i)
+//	for (int j=0; j<L; ++j)
+//	{
+//		if (i == j)
+//		{
+//			rhoED_A(i,j) = g_ED.state.dot(H_ED.n(i) * g_ED.state);
+//			rhoED_B(i,j) = H_ED.eigenvectors().col(0).dot(H_ED.n(i) * H_ED.eigenvectors().col(0));
+//		}
+//		else
+//		{
+//			rhoED_A(i,j) = g_ED.state.dot(H_ED.hopping_element(i,j,1.,false) * g_ED.state);
+//			rhoED_B(i,j) = H_ED.eigenvectors().col(0).dot(H_ED.hopping_element(i,j,1.,false) * H_ED.eigenvectors().col(0));
+//		}
+//	}
+//	
+//	cout << rhoA << endl << endl;
+//	cout << rhoB << endl << endl;
+//	cout << rhoED_A << endl << endl;
+//	cout << rhoED_B << endl << endl;
+//	
+//	lout << endl;
+//	lout << "(rhoA-rhoB).norm()=" << (rhoA-rhoB).norm() << endl;
+//	lout << "(rhoED_A-rhoED_B).norm()=" << (rhoA-rhoB).norm() << endl;
+//	lout << "(rhoA-rhoED_Lanczos).norm()=" << (rhoA-rhoED_A).norm() << endl;
+//	lout << "(rhoA-rhoED_fullDiag).norm()=" << (rhoB-rhoED_B).norm() << endl;
+//	lout << endl;
+//	
+//	lout << endl;
+//	
+//	SelfAdjointEigenSolver<MatrixXd> Eugen(-RandomHopping.matrix());
+//	double E0_exact = Eugen.eigenvalues().head(N).sum(); // fill up the Fermi sea
+//	cout << "1-particle energies: " << Eugen.eigenvalues().transpose() << endl;
+////	cout << "eigenvalues: " << H_ED.eigenvalues().transpose() << endl;
+//	cout << "E0 exact for V=0: " << E0_exact 
+//	     << ", diffDMRG=" << abs(E0_exact-g_U1.energy) 
+//	     << ", diffED(Lanczos)=" << abs(E0_exact-g_ED.energy) 
+//	     << ", diffED(full)=" << abs(E0_exact-H_ED.eigenvalues()(0)) 
+//	     << endl;
+//	
+//	
+//	MatrixXd rhoED_free(L,L); rhoED_free.setZero();
+//	for (int i=0; i<L; ++i)
+//	for (int j=0; j<L; ++j)
+//	for (int k=0; k<N; ++k)
+//	{
+//		rhoED_free(i,j) += Eugen.eigenvectors().col(k)(i) * Eugen.eigenvectors().col(k)(j);
+//	}
+//	
+//	cout << endl << rhoED_free << endl << endl;
 	
 //	VMPS::SpinlessFermionsZ2 H_Z2(L,{{"t",t},{"tPrime",tPrime},{"V",V},{"Vprime",Vprime},{"Vph",Vph},{"Delta",-t}});
 //	lout << H_Z2.info() << endl;

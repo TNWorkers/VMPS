@@ -146,8 +146,10 @@ namespace Sym
 } //end namespace Sym
 
 template<typename Symmetry>
-void transform_base (vector<vector<qarray<Symmetry::Nq> > > &qloc, qarray<Symmetry::Nq> Qtot, bool PRINT = false)
+void transform_base (vector<vector<qarray<Symmetry::Nq> > > &qloc, qarray<Symmetry::Nq> Qtot, bool PRINT=false, bool BACK=false, int L=-1)
 {
+	int length = (L==-1)? static_cast<int>(qloc.size()):L;
+	
 	if (Qtot != Symmetry::qvacuum())
 	{
 		if (PRINT) lout << "•old base:" << endl;
@@ -161,7 +163,14 @@ void transform_base (vector<vector<qarray<Symmetry::Nq> > > &qloc, qarray<Symmet
 				{
 					if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non Abelian symmetries
 					{
-						qloc[l][i][q] = qloc[l][i][q] * static_cast<int>(qloc.size()) - Qtot[q];
+						if (BACK) // back transform
+						{
+							qloc[l][i][q] = (qloc[l][i][q] + Qtot[q]) / length;
+						}
+						else // forward transform
+						{
+							qloc[l][i][q] = qloc[l][i][q] * length - Qtot[q];
+						}
 					}
 				}
 			}
@@ -183,14 +192,21 @@ void transform_base (vector<vector<qarray<Symmetry::Nq> > > &qloc, qarray<Symmet
 };
 
 template<typename Symmetry>
-qarray<Symmetry::Nq> adjustQN(const qarray<Symmetry::Nq> &qin, const size_t number_cells)
+qarray<Symmetry::Nq> adjustQN (const qarray<Symmetry::Nq> &qin, const size_t number_cells, bool BACK=false)
 {
 	qarray<Symmetry::Nq> out;
 	for (size_t q=0; q<Symmetry::Nq; ++q)
 	{
-		if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non Abelian symmetries
+		if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non-Abelian symmetries
 		{
-			out[q] = qin[q] * number_cells;
+			if (BACK)
+			{
+				out[q] = qin[q] / number_cells;
+			}
+			else
+			{
+				out[q] = qin[q] * number_cells;
+			}
 		}
 		else
 		{

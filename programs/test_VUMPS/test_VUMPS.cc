@@ -240,17 +240,17 @@ int main (int argc, char* argv[])
 		DMRG_SU2.GlobParam = GlobParams;
 		DMRG_SU2.edgeState(Heis_SU2, g_SU2, {1});
 	}
-
+	
 	typedef VMPS::HeisenbergU1 HEISENBERG_U1;
 	HEISENBERG_U1 Heis_U1;
-		if (Ly==1)
-		{
-			Heis_U1 = HEISENBERG_U1(L,{{"Ly",Ly},{"J",J,0},{"J",Jsmall,1},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
-		}
-		else
-		{
-			Heis_U1 = HEISENBERG_U1(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
-		}
+	if (Ly==1)
+	{
+		Heis_U1 = HEISENBERG_U1(L,{{"Ly",Ly},{"J",J,0},{"J",Jsmall,1},{"Jprime",Jprime},{"OPEN_BC",false},{"CALC_SQUARE",false},{"D",D}});
+	}
+	else
+	{
+		Heis_U1 = HEISENBERG_U1(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
+	}
 	HEISENBERG_U1 Heis_U1_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",1.2*Jz},{"Jprime",Jprime},{"Bz",Bz},{"OPEN_BC",false},{"D",D}});
 	
 	HEISENBERG_U1::uSolver DMRG_U1(VERB);

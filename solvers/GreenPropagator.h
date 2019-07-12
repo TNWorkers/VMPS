@@ -29,10 +29,8 @@ public:
 	\param[in] tol_compr_input : compression tolerance during time propagation
 	\param[in] GAUSSIAN_input : if \p true, compute Gaussian integration weights for the cutoff function
 	*/
-	GreenPropagator (double tmax_input, int Nt_input, double wmin_input, double wmax_input, int Nw_input=1000, double tol_compr_input=1e-4, 
-	                 bool GAUSSIAN_input=true)
-	:tmax(tmax_input), Nt(Nt_input), wmin(wmin_input), wmax(wmax_input), Nw(Nw_input), tol_compr(tol_compr_input),
-	 USE_GAUSSIAN_INTEGRATION(GAUSSIAN_input)
+	GreenPropagator (double tmax_input, int Nt_input, double wmin_input, double wmax_input, int Nw_input=1000, double tol_compr_input=1e-4, bool GAUSSINT=true)
+	:tmax(tmax_input), Nt(Nt_input), wmin(wmin_input), wmax(wmax_input), Nw(Nw_input), tol_compr(tol_compr_input), USE_GAUSSIAN_INTEGRATION(GAUSSINT)
 	{
 		GreenPropagatorCutoff::tmax = tmax;
 		tinfo  = make_string("tmax=",tmax,"_Nt=",Nt);
@@ -54,6 +52,17 @@ public:
 	\param[in] Nw_new : amount of frequency points
 	*/
 	void recalc_FTw (double wmin_new, double wmax_new, int Nw_new=1000);
+	
+	/**
+	Set a Hermitian operator to be measured in the time-propagated state for testing purposes.
+	\param[in] Measure_input : vector of operators, length must be \p Lhetero
+	\param[in] measure_interval_input : measure after that many timesteps (it is always measured at zero)
+	*/
+	void set_measurement (const vector<Mpo<Symmetry,MpoScalar>> &Measure_input, int measure_interval_input=10)
+	{
+		Measure = Measure_input;
+		measure_interval = measure_interval_input;
+	}
 	
 private:
 	
@@ -80,6 +89,9 @@ private:
 	void propagate (const Hamiltonian &H_hetero, const Mps<Symmetry,double> &Phi, const Mps<Symmetry,double> &OjxPhi, const vector<Mpo<Symmetry,MpoScalar> > &Odagi);
 	void FT_xq();
 	void FT_tw();
+	
+	vector<Mpo<Symmetry,MpoScalar>> Measure;
+	int measure_interval;
 };
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
@@ -92,18 +104,24 @@ compute (const Hamiltonian &H_hetero, const Mps<Symmetry,double> &Phi, const Mpo
 	Nq = Lhetero;
 	
 	Mps<Symmetry,double> OjxPhi;
+	Phi.graph("before");
 	OxV_exact(Oj, Phi, OjxPhi, 2., DMRG::VERBOSITY::HALFSWEEPWISE);
+	OjxPhi.graph("after");
 	OjxPhi.sweep(0,DMRG::BROOM::QR);
 	
 	propagate(H_hetero, Phi, OjxPhi, Odagi);
 	
 	saveMatrix(Gtx.real(),"GtxRe_"+tinfo+".dat");
 	saveMatrix(Gtx.imag(),"GtxIm_"+tinfo+".dat");
+	lout << "saved to: " << "GtxRe_"+tinfo+".dat" << endl;
+	lout << "saved to: " << "GtxIm_"+tinfo+".dat" << endl;
 	
 	FT_xq();
 	FT_tw();
 	saveMatrix(Gwq.real(),"GwqRe_"+twinfo+".dat");
 	saveMatrix(Gwq.imag(),"GwqIm_"+twinfo+".dat");
+	lout << "saved to: " << "GwqRe_"+twinfo+".dat" << endl;
+	lout << "saved to: " << "GwqIm_"+twinfo+".dat" << endl;
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
@@ -151,14 +169,15 @@ void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 propagate (const Hamiltonian &H_hetero, const Mps<Symmetry,double> &Phi, const Mps<Symmetry,double> &OjxPhi, const vector<Mpo<Symmetry,MpoScalar>> &Odagi)
 {
 	Eg = avg_hetero(Phi, H_hetero, Phi, true);
+	cout << "Eg=" << Eg << endl;
 	
 	Mps<Symmetry,complex<double> > Psi = OjxPhi.template cast<complex<double> >();
 	Psi.eps_svd = tol_compr;
 	Psi.max_Nsv = Psi.calc_Dmax();
 	
 	TDVP = TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double> >>(H_hetero, Psi);
-	Sobs = EntropyObserver<Mps<Symmetry,complex<double>>>(Lhetero,Nt,DMRG::VERBOSITY::HALFSWEEPWISE);
-	TWO_SITE = Sobs.TWO_SITE(0,Psi);
+	Sobs = EntropyObserver<Mps<Symmetry,complex<double>>>(Lhetero, Nt, DMRG::VERBOSITY::HALFSWEEPWISE);
+	TWO_SITE = Sobs.TWO_SITE(0, Psi);
 	lout << endl;
 	
 	Gtx.resize(Nt,Lhetero); Gtx.setZero();
@@ -166,7 +185,6 @@ propagate (const Hamiltonian &H_hetero, const Mps<Symmetry,double> &Phi, const M
 	IntervalIterator x(-0.5*(Lhetero-1), 0.5*(Lhetero-1), Lhetero);
 	IntervalIterator t(0.,tmax,Nt);
 	double tval = 0.;
-	double Eg = avg_hetero(Phi, H_hetero, Phi, true);
 	auto Phic = Phi.template cast<complex<double> >();
 	
 	// If no (open) integration weights, measure at t=0
@@ -174,6 +192,7 @@ propagate (const Hamiltonian &H_hetero, const Mps<Symmetry,double> &Phi, const M
 	{
 		lout << "measure at t=0" << endl;
 		Stopwatch<> ContractionTimer;
+		#pragma omp parallel for
 		for (size_t l=0; l<Lhetero; ++l)
 		{
 			Gtx(0,l) = -1.i * exp(1.i*Eg*tval) * avg_hetero(Phic, Odagi[l], Psi);
@@ -182,11 +201,20 @@ propagate (const Hamiltonian &H_hetero, const Mps<Symmetry,double> &Phi, const M
 		lout << endl;
 	}
 	
+	if (Measure.size() != 0)
+	{
+		for (x=x.begin(); x!=x.end(); ++x)
+		{
+			x << avg_hetero(OjxPhi, Measure[x.index()], OjxPhi);
+		}
+		x.save(make_string("Mx_",tinfo,"_t=0.dat"));
+	}
+	
 	Stopwatch<> TimePropagationTimer;
 	for (t=t.begin(); t!=t.end(); ++t)
 	{
 		// 1. propagate
-		TDVP.t_step_adaptive(H_hetero, Psi, -1.i*tsteps(t.index()), TWO_SITE, 1,1e-6);
+		TDVP.t_step_adaptive(H_hetero, Psi, -1.i*tsteps(t.index()), TWO_SITE, 1,1e-8);
 		tval += tsteps(t.index());
 		
 		if (Psi.get_truncWeight().sum() > 0.5*tol_compr)
@@ -201,9 +229,18 @@ propagate (const Hamiltonian &H_hetero, const Mps<Symmetry,double> &Phi, const M
 		
 		// 2. measure
 		Stopwatch<> ContractionTimer;
+		#pragma omp parallel for
 		for (size_t l=0; l<Lhetero; ++l)
 		{
 			Gtx(t.index(),l) = -1.i * exp(1.i*Eg*tval) * avg_hetero(Phic, Odagi[l], Psi);
+		}
+		if (Measure.size() != 0 and t.index()%measure_interval==0)
+		{
+			for (x=x.begin(); x!=x.end(); ++x)
+			{
+				x << avg_hetero(Psi, Measure[x.index()], Psi).real();
+			}
+			x.save(make_string("Mx_",tinfo,"_t=",tval,".dat"));
 		}
 		lout << ContractionTimer.info("contractions") << endl;
 		
@@ -290,5 +327,6 @@ recalc_FTw (double wmin_new, double wmax_new, int Nw_new)
 	twinfo = make_string(tinfo,"_wmin=",wmin,"_wmax=",wmax,"_Nw=",Nw);
 	FT_tw();
 }
+
 
 #endif

@@ -38,10 +38,12 @@ template<typename Symmetry>
 class Qbasis
 {
 	typedef typename Symmetry::qType qType;
+	
 public:
+	
 	/**Does nothing.*/
 	Qbasis() {};
-
+	
 	/**
 	 * Inserts all quantum numbers in the Container \p qins with constant dimension \p dim into the basis.
 	 */
@@ -53,7 +55,7 @@ public:
 			push_back(qin,dim);
 		}
 	}
-
+	
 	/**
 	 * Construct the basis from an object as used in Mpo, Mps for qloc.
 	 */
@@ -73,44 +75,46 @@ public:
 	///\{
 	/**Returns the number of (reduced) basis states.*/
 	std::size_t size() const { std::size_t out = 0; for(const auto& [qVal,num,plain] : data_) { out+=plain.size();} return out; }
+	
 	/**Convinient name for the size() function, when the basis is used for the auxilary legs of an Mps tensor.*/
 	std::size_t M() const { return size(); }
-
+	
 	/**
 	 * Returns the full number of basis states.
 	 * If irreps has internal states, the basis states transforming under this irreps are multiplied by this degeneracy.
 	 */
 	std::size_t fullM() const { std::size_t out = 0; for(const auto& [qVal,num,plain] : data_) { out+=plain.size()*Symmetry::degeneracy(qVal);} return out; }
-
+	
 	/**Returns the largest state sector.*/
 	std::size_t Dmax() const;
-
+	
 	/**Returns the number of quantum numbers (irreps) contained in this basis.*/
 	std::size_t Nq() const { return data_.size(); }
 	///\}
-
+	
 	///\{
 	/**Returns a vector of size size(), where for every entry of the vector the quantum number (irrep) is inserted to the vector.*/
 	const std::vector<qType> qloc() const;
-
-    /**Returns a vector containing all quantum numbers (irreps) contained in the basis. The size of the vector is Nq().*/
+	
+	/**Returns a vector containing all quantum numbers (irreps) contained in the basis. The size of the vector is Nq().*/
 	const std::vector<qType> qs() const;
-
+	
 	/**Same as qs(), but the quantum numbers are inserted to an std::unordered_set.*/
 	const std::unordered_set<qType> unordered_qs() const;
 	///\}
-
+	
 	///\{
 	/**Returns the quantum number which is located at \p index in the data_ member.*/
 	qType operator[] ( const std::size_t index ) const { return std::get<0>(data_[index]); }
 	qType& operator[] ( const std::size_t index ) { return std::get<0>(data_[index]); }
 	///\}
-
+	
 	/**
 	 * Returns the quantum number of the state with ident \p ident.
 	 * \todo2 Bad name for this function...
 	 */
 	qType find( const std::string& ident ) const;
+	
 	/**
 	 * Returns the quantum number of the state with number \p num.
 	 * \todo2 Bad name for this function...
@@ -118,16 +122,16 @@ public:
 	qType find( const Eigen::Index& num ) const;
 	/**Checks whether states with quantum number \p q are in the basis. Returns true if the state is present.*/
 	bool find( const qType& q ) const;
-
+	
 	Eigen::Index inner_num( const Eigen::Index& outer_num ) const;
 	Eigen::Index location( const std::string& ident ) const;
-
+	
 	Eigen::Index inner_dim( const Eigen::Index& num_in ) const;
 	Eigen::Index inner_dim( const qType& q ) const;
-
+	
 	Eigen::Index leftAmount( const qType& qnew, const std::array<qType,2>& qold ) const;
 	Eigen::Index rightAmount( const qType& qnew, const std::array<qType,2>& qold ) const;
-
+	
 	///\{
 	/**Insert the \p state into the basis.*/
 	void push_back( const std::tuple<qType,Eigen::Index,std::vector<std::string> >& state );
@@ -137,47 +141,48 @@ public:
 	
 	/**Completely clear the basis.*/
 	void clear() {data_.clear(); history.clear();}
-
+	
 	/**
 	 * Pulls the info from a given MPS site tensor \p A. 
 	 * If \p leg=0 the basis from the incoming leg is pulled. If \p leg=1 from the outgoing.
 	 */
 	template<typename Scalar>
-	void pullData( const vector<Biped<Symmetry,Scalar> >& A, const Eigen::Index& leg );
-
-	void pullData( const std::vector<std::array<qType,3> > &qvec, const std::size_t& leg, const Eigen::Index &inner_dim_in );
-
+	void pullData (const vector<Biped<Symmetry,Scalar> >& A, const Eigen::Index& leg);
+	
+	void pullData (const std::vector<std::array<qType,3> > &qvec, const std::size_t& leg, const Eigen::Index &inner_dim_in);
+	
 	/**
 	 * Returns the tensor product basis, already properly sorted with respect to the resulting irreps.
 	 * This function also saves the history of the combination process for later use. See leftAmount() and rightAmount().
 	 */
-	Qbasis<Symmetry> combine( const Qbasis<Symmetry>& other, bool FLIP=false) const;
-
+	Qbasis<Symmetry> combine (const Qbasis<Symmetry>& other, bool FLIP=false) const;
+	
 	/**
 	 * Sets the history of a Qbasis which only has one quantum number \p Qval with inner dimension 1 
 	 * so that the quantum number is arised from combining \p Q1 and \p Q2 
 	 */
-	void setHistoryEntry( const qType& Qval, const qType &Q1, const qType &Q2, Eigen::Index dim );
-
+	void setHistoryEntry (const qType& Qval, const qType &Q1, const qType &Q2, Eigen::Index dim);
+	
 	/**Adds to bases together.*/
-	Qbasis<Symmetry> add( const Qbasis<Symmetry>& other ) const;
-
+	Qbasis<Symmetry> add (const Qbasis<Symmetry>& other) const;
+	
 	/**Prints the basis.*/
 	std::string print() const;
+	
 	/**Prints the history.*/
 	std::string printHistory() const;
 	
-	bool operator==( const Qbasis<Symmetry>& other ) const;
-
-	typename std::vector<std::tuple<qType,Eigen::Index,Basis> >::iterator begin() { return data_.begin(); }
-	typename std::vector<std::tuple<qType,Eigen::Index,Basis> >::iterator end() { return data_.end(); }
-
-	typename std::vector<std::tuple<qType,Eigen::Index,Basis> >::const_iterator cbegin() const { return data_.cbegin(); }
-	typename std::vector<std::tuple<qType,Eigen::Index,Basis> >::const_iterator cend() const { return data_.cend(); }
-
+	bool operator== (const Qbasis<Symmetry>& other) const;
+	
+	typename std::vector<std::tuple<qType,Eigen::Index,Basis> >::iterator begin() {return data_.begin();}
+	typename std::vector<std::tuple<qType,Eigen::Index,Basis> >::iterator end()   {return data_.end();}
+	
+	typename std::vector<std::tuple<qType,Eigen::Index,Basis> >::const_iterator cbegin() const {return data_.cbegin();}
+	typename std::vector<std::tuple<qType,Eigen::Index,Basis> >::const_iterator cend()   const {return data_.cend();}
+	
 	/**Swaps with another Qbasis.*/
 	void swap (Qbasis<Symmetry> &other) { this->data.swap(other.data()); }
-
+	
 //private:
 	struct fuseData
 	{
@@ -386,7 +391,7 @@ leftAmount(const qType& qnew, const std::array<qType,2>& qold) const
 template<typename Symmetry>
 template<typename Scalar>
 void Qbasis<Symmetry>::
-pullData(const vector<Biped<Symmetry,Scalar> >& A, const Eigen::Index& leg)
+pullData (const vector<Biped<Symmetry,Scalar> > &A, const Eigen::Index &leg)
 {
 	std::unordered_set<qType> unique_controller;
 	for (std::size_t s=0; s<A.size(); s++)
@@ -412,14 +417,14 @@ pullData(const vector<Biped<Symmetry,Scalar> >& A, const Eigen::Index& leg)
 				Eigen::Index inner_dim = A[s].block[q].cols();
 				push_back(q_number,inner_dim);
 				unique_controller.insert(q_number);
-			}			
+			}
 		}
 	}
 }
 
 template<typename Symmetry>
 void Qbasis<Symmetry>::
-pullData(const std::vector<std::array<qType,3> > &qvec, const std::size_t& leg, const Eigen::Index &inner_dim_in)
+pullData (const std::vector<std::array<qType,3> > &qvec, const std::size_t &leg, const Eigen::Index &inner_dim_in)
 {
 	std::unordered_set<qType> unique_controller;
 	Eigen::Index inner_dim = inner_dim_in;

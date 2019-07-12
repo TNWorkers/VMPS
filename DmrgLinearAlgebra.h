@@ -568,7 +568,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	
 	Vout.BoundaryL = Vin.BoundaryL;
 	Vout.BoundaryR = Vin.BoundaryR;
-	Vout.BoundaryR.shift_Q(Qt[0]);
+	Vout.BoundaryR.shift_Qin(Qt[0]);
 	
 	for (size_t l=0; l<L; ++l)
 	{
@@ -576,11 +576,25 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 		            Vin.inBasis(l) , O.inBasis(l) ,
 		            Vin.outBasis(l), O.outBasis(l),
 		            Vout.A_at(l));
+		
+//		cout << "l=" << l << endl;
+//		for (int i=0; i< Vout.A_at(l).size(); ++i)
+//		{
+//			cout << Vout.A_at(l)[i].print() << endl;
+//		}
+		
+//		for (const auto &q : Vin.locBasis(l)) cout << "Vin.locBasis(l)=" << q << endl;
+//		for (const auto &q : O.opBasis(l)) cout << "O.opBasis(l)=" << q << endl;
+//		cout << "Vin.inBasis(l)=" << endl << Vin.inBasis(l).print() << endl;
+//		cout << "Vin.outBasis(l)=" << endl << Vin.outBasis(l).print() << endl;
+//		cout << "O.inBasis(l)=" << endl << O.inBasis(l).print() << endl;
+//		cout << "O.outBasis(l)=" << endl << O.outBasis(l).print() << endl;
+//		cout << endl;
 	}
 	
 	Vout.update_inbase();
 	Vout.update_outbase();
-	Vout.calc_Qlimits(); // Careful: Depends on Qtot!
+	Vout.calc_Qlimits(); // Must be called here, depends on Qtot!
 	
 	if (VERBOSITY > DMRG::VERBOSITY::SILENT)
 	{

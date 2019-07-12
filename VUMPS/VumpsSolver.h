@@ -86,7 +86,13 @@ public:
 	
 	bool FORCE_DO_SOMETHING = false;
 	
-	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &V, bool ADD_ODD_SITE=false);
+	/**
+	Creates an Mps from the VUMPS solution with a heterogeneous section and infinite boundary conditions.
+	\param Ncells : amount of cells to generate the heterogeneous section, the total length becomes Lcell*Ncells
+	\param V : converged ground state to generate from
+	\param ADD_ODD_SITE : if \p true, add one more site in order to have site-oriented inversion symmetry
+	*/
+	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, bool ADD_ODD_SITE=false);
 	
 private:
 	
@@ -1779,17 +1785,19 @@ calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scal
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-create_Mps (size_t Ncells, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &V, bool ADD_ODD_SITE)
+create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, bool ADD_ODD_SITE)
 {
 	size_t add = (ADD_ODD_SITE)? 1:0;
 	size_t Lhetero = Ncells * V.state.length() + add;
 	
+	// AC*AL...AL
 	vector<vector<Biped<Symmetry,MatrixType> > > As(Lhetero);
 	As[0] = V.state.A[GAUGE::C][0];
 	for (size_t l=1; l<Lhetero; ++l)
 	{
 		As[l] = V.state.A[GAUGE::R][l%N_sites];
 	}
+	// AR...AR*AC
 //		As[Lhetero-1] = V.state.A[GAUGE::C][(Lhetero-1)%N_sites];
 //		for (int l=Lhetero-2; l>=0; --l)
 //		{
@@ -1802,7 +1810,7 @@ create_Mps (size_t Ncells, const MpHamiltonian &H, const Eigenstate<Umps<Symmetr
 		qloc[l] = V.state.locBasis(l%N_sites);
 	}
 	
-	Mps<Symmetry,Scalar> Mout(Lhetero, As, qloc, V.state.Qtarget(), Lhetero);
+	Mps<Symmetry,Scalar> Mout(Lhetero, As, qloc, Symmetry::qvacuum(), Lhetero);
 	
 	Mout.BoundaryL = HeffA[0].L;
 	Mout.BoundaryR = HeffA[(Lhetero-1)%N_sites].R;

@@ -112,8 +112,6 @@ template<typename Symmetry>
 Mpo<Symmetry> SpinlessFermionsObservables<Symmetry>::
 c (size_t locx, size_t locy) const
 {
-	stringstream ss;
-	ss << "c";
 	return make_local("c", locx,locy, F[locx].c(locy), true);
 }
 
@@ -121,9 +119,14 @@ template<typename Symmetry>
 Mpo<Symmetry> SpinlessFermionsObservables<Symmetry>::
 cdag (size_t locx, size_t locy) const
 {
-	stringstream ss;
-	ss << "c†";
-	return make_local(ss.str(), locx,locy, F[locx].cdag(locy), true);
+	return make_local("c†", locx,locy, F[locx].cdag(locy), true);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> SpinlessFermionsObservables<Symmetry>::
+n (size_t locx, size_t locy) const
+{
+	return make_local("n", locx,locy, F[locx].n(locy), false, true);
 }
 
 template<typename Symmetry>

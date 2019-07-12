@@ -466,30 +466,19 @@ public:
 		BoundaryR.setTarget(qarray3<Symmetry::Nq>{Qtot, Qtot, Symmetry::qvacuum()});
 	}
 	
-	void transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT=false)
+	void transform_base (qarray<Symmetry::Nq> Qtot, int L, bool PRINT = false)
 	{
 		if (Qtot != Symmetry::qvacuum())
 		{
-//			::transform_base<Symmetry>(qloc,Qtot);
-			
-			for (int i=0; i<qloc[this->N_sites-1].size(); ++i)
+			for (size_t l=0; l<qloc.size(); ++l)
+			for (size_t i=0; i<qloc[l].size(); ++i)
+			for (size_t q=0; q<Symmetry::Nq; ++q)
 			{
-				lout << "original: " << qloc[this->N_sites-1][i] << endl;
+				if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non Abelian symmetries
+				{
+					qloc[l][i][q] = qloc[l][i][q] * L - Qtot[q];
+				}
 			}
-			
-			auto qnew = Symmetry::reduceSilent(qloc[this->N_sites-1], Symmetry::flip(Qtot));
-			qloc[this->N_sites-1] = qnew;
-			Qtot = Symmetry::qvacuum();
-			update_outbase(this->N_sites-1);
-			
-			for (int i=0; i<qloc[this->N_sites-1].size(); ++i)
-			{
-				lout << "transformed: " << qloc[this->N_sites-1][i] << endl;
-			}
-//			
-//			cout << "Qtot before=" << Qtot << endl;
-//			update_outbase(this->N_sites-1);
-//			cout << "Qtot after=" << Qtot << endl;
 		}
 	};
 	
@@ -845,10 +834,10 @@ calc_Qlimits()
 		for (size_t l=0; l<this->N_sites; ++l)
 		for (size_t q=0; q<Nq; q++)
 		{
-			QinTop[l][q]  = +10000;
-			QinBot[l][q]  = -10000;
-			QoutTop[l][q] = +10000;
-			QoutBot[l][q] = -10000;
+			QinTop[l][q]  = std::numeric_limits<int>::max();
+			QinBot[l][q]  = std::numeric_limits<int>::min();
+			QoutTop[l][q] = std::numeric_limits<int>::max();
+			QoutBot[l][q] = std::numeric_limits<int>::min();
 		}
 	}
 	else

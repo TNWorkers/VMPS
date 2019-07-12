@@ -195,7 +195,6 @@ int main (int argc, char* argv[])
 			// cout << "(" << l << "," << c << "); " << "(" << lp << "," << cp << "): " << 3*avg(g_U0.state,H_U0.SzSz(l,lp,c,cp),g_U0.state) << endl;
 			// SpinCorr_U1(l,lp) = 3*avg(g_U1.state,H_U1.SzSz(l,lp),g_U1.state);
 		}
-
 	}
 	
 	//--------U(1)---------
@@ -320,8 +319,7 @@ int main (int argc, char* argv[])
 			}
 			ArrayXXd Jfull = Jfull_mat.array();
 			Jfull *=sigma;
-
-
+			
 			if (ED_RKKY)
 			{
 				cout << "L=" << L << endl;
@@ -364,7 +362,6 @@ int main (int argc, char* argv[])
 			H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",CALC_SQUARE}});
 		}
 		
-
 		lout << H_SU2.info() << endl;
 		H_SU2.precalc_TwoSiteData();
 		VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
@@ -376,9 +373,9 @@ int main (int argc, char* argv[])
 		g_SU2.state.graph("SU2");
 		
 		t_SU2 = Watch_SU2.time();
-
+		
 		cout << "E0=" << avg(g_SU2.state,H_SU2.SdagS(L/2,L/2+1),g_SU2.state) << endl;
-
+		
 		// SpinCorr_SU2.resize(L,L); SpinCorr_SU2.setZero();
 		// for (size_t l=0; l<L; ++l)
 		// for (size_t lp=0; lp<L; ++lp)

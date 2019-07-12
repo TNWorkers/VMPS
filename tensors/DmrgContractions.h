@@ -1684,9 +1684,9 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 	{
 		Aout[s].clear();
 	}
-
+	
 	MpoScalar factor_cgc;
-
+	
 	auto tensorBasis_l = qauxAl.combine(qauxWl);
 	auto tensorBasis_r = qauxAr.combine(qauxWr);
 	
@@ -1697,38 +1697,44 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 		qarray3<Symmetry::Nq> qCheck_ = {qloc[s2],qOp[k],qloc[s1]};
 		if (!Symmetry::validate(qCheck_)) { continue; }
 		// if(W[s1][s2][k].size() == 0) { continue; } //Checks whether QNs s1, s2 and k fit together.
+		
 		for (size_t q=0; q<Ain[s2].size(); q++)
 		// for (const auto &[qWl,qWl_dim,qWl_plain] : qauxWl) // cpp is too stupid to call cbegin() and cend() here... 
 		for (auto it=qauxWl.cbegin(); it != qauxWl.cend(); it++)
 		{
 			auto [qWl, qWl_dim, qWl_plain] = *it;
 			auto qWrs = Symmetry::reduceSilent(qWl,qOp[k]);
+			
 			for (const auto &qWr : qWrs)
 			{
 				if (qauxWr.find(qWr) == false) {continue;}
+				
 				auto qmerge_ls = Symmetry::reduceSilent(Ain[s2].in[q] ,qWl);
 				auto qmerge_rs = Symmetry::reduceSilent(Ain[s2].out[q],qWr);
+				
 				for (const auto qmerge_l : qmerge_ls)
 				for (const auto qmerge_r : qmerge_rs)
 				{
 					qarray3<Symmetry::Nq> qCheck = {qmerge_l,qloc[s1],qmerge_r};
+					
 					if (!Symmetry::validate(qCheck)) { continue; }
 					if (tensorBasis_l.find(qmerge_l) == false) {continue;}
 					if (tensorBasis_r.find(qmerge_r) == false) {continue;}
+					
 					if constexpr (Symmetry::NON_ABELIAN)
-								 {
-									 factor_cgc = Symmetry::coeff_AW(Ain[s2].in[q], qloc[s2], Ain[s2].out[q],
-									 								 qWl          , qOp[k]  , qWr,
-									 								 qmerge_l     , qloc[s1], qmerge_r);
-								 }
+					{
+						factor_cgc = Symmetry::coeff_AW(Ain[s2].in[q], qloc[s2], Ain[s2].out[q],
+						                                qWl          , qOp[k]  , qWr,
+						                                qmerge_l     , qloc[s1], qmerge_r);
+					}
 					else { factor_cgc = MpoScalar(1); }
-
+					
 					if (abs(factor_cgc) < abs(mynumeric_limits<double>::epsilon())) { continue; }
-
+					
 					Matrix<Scalar,Dynamic,Dynamic> Mtmp(tensorBasis_l.inner_dim(qmerge_l), tensorBasis_r.inner_dim(qmerge_r)); Mtmp.setZero();
 					int left_l = tensorBasis_l.leftAmount(qmerge_l, { Ain[s2].in[q] , qWl } );
 					int left_r = tensorBasis_r.leftAmount(qmerge_r, { Ain[s2].out[q], qWr } );
-
+					
 					for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
 					for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
 					{
@@ -1736,8 +1742,10 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 						size_t wc = iW.col();
 						Mtmp.block(wr+left_l,wc+left_r,Ain[s2].block[q].rows(),Ain[s2].block[q].cols()) += Ain[s2].block[q] * iW.value() * factor_cgc;
 					}
+					
 					qarray2<Symmetry::Nq> cmp = qarray2<Symmetry::Nq>{qmerge_l, qmerge_r}; //auxiliary quantum numbers of Aout
 					auto it = Aout[s1].dict.find(cmp);
+					
 					if (it == Aout[s1].dict.end())
 					{
 						Aout[s1].push_back(cmp,Mtmp);

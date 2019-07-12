@@ -201,7 +201,7 @@ public:
 	/**Transforms the local base in the follwing manner: \f$ qloc \rightarrow L \cdot qloc-Qtot\f$, \f$ qOp \rightarrow L \cdot qOp\f$.
 	 * Results in a new \p Qtot = \p qvacuum, useful for IDMRG and VUMPS. The scaling with \p L avoids fractions.
 	 */
-	void transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT = true);
+	void transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT=true, int L=-1);
 	
 	/** Pre-calculates information for two-site contractions that only depend on the local base, the operator base and the W-tensors for efficiency.
 	*/
@@ -1565,11 +1565,12 @@ scale (double factor, double offset)
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
-transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT)
+transform_base (qarray<Symmetry::Nq> Qshift, bool PRINT, int L)
 {
-	::transform_base<Symmetry>(qloc,Qtot,PRINT); // from symmery/functions.h
+	int length = (L==-1)? static_cast<int>(qloc.size()):L;
+	::transform_base<Symmetry>(qloc,Qshift,PRINT,false,length); // from symmery/functions.h, BACK=false
 	
-	if (Qtot != Symmetry::qvacuum())
+	if (Qshift != Symmetry::qvacuum())
 	{
 		for (size_t l=0; l<qOp.size(); ++l)
 		for (size_t i=0; i<qOp[l].size(); ++i)
@@ -1577,10 +1578,17 @@ transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT)
 		{
 			if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non Abelian symmetries
 			{
-				qOp[l][i][q] = qOp[l][i][q] * static_cast<int>(qloc.size());
+				qOp[l][i][q] = qOp[l][i][q] * length;
 			}
 		}
+		
+		for (size_t q=0; q<Symmetry::Nq; ++q)
+		{
+			Qtot[q] *= length;
+		}
 	}
+	
+	calc_auxBasis();
 	
 //	if (Qtot != Symmetry::qvacuum())
 //	{
@@ -1598,7 +1606,6 @@ transform_base (qarray<Symmetry::Nq> Qtot, bool PRINT)
 //		}
 //	}
 };
-
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::

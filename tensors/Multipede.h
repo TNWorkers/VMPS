@@ -193,9 +193,10 @@ typedef typename MatrixType::Scalar Scalar;
 		return Vout;
 	}
 	
-	/** Shifts \p qin and \p qout by \p Q, \p qmid unchanged*/
-	void shift_Q (const qarray<Symmetry::Nq> &Q);
+	/** Shifts \p qin and \p qout by \p Q, \p qmid is unchanged*/
+	void shift_Qin (const qarray<Symmetry::Nq> &Q);
 	
+	/** Shifts \p qmid and \p qout by \p Q, \p qin is unchanged*/
 	void shift_Qmid (const qarray<Symmetry::Nq> &Q);
 	
 	Scalar compare (const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs) const;
@@ -640,7 +641,7 @@ print (const bool &SHOW_MATRICES, const std::size_t &precision) const
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
 void Multipede<Nlegs,Symmetry,MatrixType>::
-shift_Q (const qarray<Symmetry::Nq> &Q)
+shift_Qin (const qarray<Symmetry::Nq> &Q)
 {
 	assert(Nlegs == 3);
 	
