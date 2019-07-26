@@ -25,15 +25,18 @@ public:
 	///@{
 	template<SPIN_INDEX sigma>
 	Mpo<Symmetry> c (size_t locx, size_t locy=0) const;
+	
 	template<SPIN_INDEX sigma>
 	Mpo<Symmetry> cdag (size_t locx, size_t locy=0) const;
+	
+	/**Jordan-Wigner string on the full length of the chain. Needed for VUMPS + spectral functions.*/
+	Mpo<Symmetry> JordanWignerString() const;
 	///@}
 	
 	///@{
 	Mpo<Symmetry> cc (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> cdagcdag (size_t locx, size_t locy=0) const;
 	template<SPIN_INDEX sigma> Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> eta() const;
 	///@}
 	
 	///@{
@@ -152,7 +155,7 @@ c (size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << "c" << sigma;
-	return make_local("c", locx,locy, F[locx].c(sigma,locy), true);
+	return make_local("c", locx,locy, F[locx].c(sigma,locy), true); // FERMIONIC = true
 }
 
 template<typename Symmetry>
@@ -162,7 +165,7 @@ cdag (size_t locx, size_t locy) const
 {
 	stringstream ss;
 	ss << "c†" << sigma;
-	return make_local(ss.str(), locx,locy, F[locx].cdag(sigma,locy), true);
+	return make_local(ss.str(), locx,locy, F[locx].cdag(sigma,locy), true); // FERMIONIC = true
 }
 
 template<typename Symmetry>
@@ -217,16 +220,18 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 
 template<typename Symmetry>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
-eta() const
+JordanWignerString() const
 {
-	for (size_t l=0; l<F.size(); ++l) {assert(F.orbitals()==1);}
+	stringstream ss;
+	ss << "JordanWignerStringFull";
 	
-	OperatorType Op = F[0].c(UP)*F[0].c(DN);
+	auto Id = F[0].Id();
 	
-	Mpo<Symmetry> Mout(F.size(), Op.Q, "eta");
+	Mpo<Symmetry> Mout(F.size(), Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
 	
-	Mout.setLocalSum(Op,stagger);
+	Mout.setLocal({0, F.size()-1}, {F[0].sign(), F[F.size()-1].sign()}, F[0].sign());
+	
 	return Mout;
 }
 

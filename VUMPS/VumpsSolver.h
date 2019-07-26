@@ -92,7 +92,19 @@ public:
 	\param V : converged ground state to generate from
 	\param ADD_ODD_SITE : if \p true, add one more site in order to have site-oriented inversion symmetry
 	*/
-	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, bool ADD_ODD_SITE=false);
+	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, bool ADD_ODD_SITE=true);
+	
+	/**
+	Creates an Mps from the VUMPS solution with a heterogeneous section and infinite boundary conditions for a fermionic operator.
+	The Jordan-Wigner string is absorbed into the left environment.
+	\param Ncells : amount of cells to generate the heterogeneous section, the total length becomes Lcell*Ncells
+	\param V : converged ground state to generate from
+	\param H : Hamiltonian of the VUMPS ground state, needed to recalculate environment
+	\param JWstring : Jordan-Wigner string on the unit cell in MPO form
+	\param ADD_ODD_SITE : if \p true, add one more site in order to have site-oriented inversion symmetry
+	*/
+	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, 
+	                                 const MpHamiltonian &H, const Mpo<Symmetry,Scalar> &JWstring, bool ADD_ODD_SITE=true);
 	
 private:
 	
@@ -178,11 +190,12 @@ private:
 	 * \param NR : You can guess what this is, probably.
 	 */
 	void calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option,
-				  Biped<Symmetry,MatrixType>& B2, vector<Biped<Symmetry,MatrixType> > &NL, vector<Biped<Symmetry,MatrixType> > &NR) const;
+	              Biped<Symmetry,MatrixType>& B2, vector<Biped<Symmetry,MatrixType> > &NL, vector<Biped<Symmetry,MatrixType> > &NR) const;
 	/**
 	 * A wrapper, if you want to discard the nullspaces when calculating B2.
 	 */
-	void calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, VUMPS::TWOSITE_A::OPTION option, Biped<Symmetry,MatrixType>& B2) const;
+	void calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, 
+	              VUMPS::TWOSITE_A::OPTION option, Biped<Symmetry,MatrixType>& B2) const;
 	///\}
 	
 	/**Cleans up after the iteration process.*/
@@ -299,6 +312,17 @@ private:
 	 */
 	void write_log (bool FORCE = false);
 	///\}
+	
+	/**
+	Assembles an Mps from the VUMPS solution with a heterogeneous section and infinite boundary conditions with known environments.
+	\param Ncells : amount of cells to generate the heterogeneous section, the total length becomes Lcell*Ncells
+	\param V : converged ground state to generate from
+	\param L : left environment with the Hamiltonian
+	\param R : right environment with the Hamiltonian
+	\param ADD_ODD_SITE : if \p true, add one more site in order to have site-oriented inversion symmetry
+	*/
+	Mps<Symmetry,Scalar> assemble_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, 
+	                                   const Tripod<Symmetry,MatrixType> &L, const Tripod<Symmetry,MatrixType> &R, bool ADD_ODD_SITE);
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -804,8 +828,6 @@ void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 {
 	// With a unit cell, Heff is a vector for each site
-//	HeffA.clear();
-//	HeffA.resize(N_sites);
 	HeffC.clear();
 	HeffC.resize(N_sites);
 	
@@ -1790,19 +1812,53 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, bool ADD
 	size_t add = (ADD_ODD_SITE)? 1:0;
 	size_t Lhetero = Ncells * V.state.length() + add;
 	
-	// AC*AL...AL
+	return assemble_Mps(Ncells, V, HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, ADD_ODD_SITE);
+};
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, const Mpo<Symmetry,Scalar> &JWstring, bool ADD_ODD_SITE)
+{
+	size_t add = (ADD_ODD_SITE)? 1:0;
+	size_t Lhetero = Ncells * V.state.length() + add;
+	
+	Tripod<Symmetry,MatrixType> L_with_JWstring;
+	Tripod<Symmetry,MatrixType> R_throwaway;
+	
+	vector<vector<Biped<Symmetry,MatrixType> > > ALxJWstring = V.state.A[GAUGE::L];
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		contract_AW(V.state.A[GAUGE::L][l], V.state.locBasis(l), JWstring.W_at(l), JWstring.opBasis(l),
+		            V.state.inBasis(l) , JWstring.inBasis(l) ,
+		            V.state.outBasis(l), JWstring.outBasis(l),
+		            ALxJWstring[l]);
+	}
+	
+	build_LR(ALxJWstring, V.state.A[GAUGE::R], V.state.C, H.W, H.qloc, H.qOp, L_with_JWstring, R_throwaway);
+	
+	return assemble_Mps(Ncells, V, L_with_JWstring, HeffA[(Lhetero-1)%N_sites].R, ADD_ODD_SITE);
+};
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+assemble_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Tripod<Symmetry,MatrixType> &L, const Tripod<Symmetry,MatrixType> &R, bool ADD_ODD_SITE)
+{
+	size_t add = (ADD_ODD_SITE)? 1:0;
+	size_t Lhetero = Ncells * V.state.length() + add;
+	
+	// AC*AR...AR
 	vector<vector<Biped<Symmetry,MatrixType> > > As(Lhetero);
 	As[0] = V.state.A[GAUGE::C][0];
 	for (size_t l=1; l<Lhetero; ++l)
 	{
 		As[l] = V.state.A[GAUGE::R][l%N_sites];
 	}
-	// AR...AR*AC
-//		As[Lhetero-1] = V.state.A[GAUGE::C][(Lhetero-1)%N_sites];
-//		for (int l=Lhetero-2; l>=0; --l)
-//		{
-//			As[l] = V.state.A[GAUGE::L][l%N_sites];
-//		}
+	// AL...AL*AC
+//	As[Lhetero-1] = V.state.A[GAUGE::C][(Lhetero-1)%N_sites];
+//	for (int l=Lhetero-2; l>=0; --l)
+//	{
+//		As[l] = V.state.A[GAUGE::L][l%N_sites];
+//	}
 	
 	vector<vector<qarray<Symmetry::Nq> > > qloc(Lhetero);
 	for (size_t l=0; l<Lhetero; ++l)
@@ -1812,11 +1868,14 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, bool ADD
 	
 	Mps<Symmetry,Scalar> Mout(Lhetero, As, qloc, Symmetry::qvacuum(), Lhetero);
 	
-	Mout.BoundaryL = HeffA[0].L;
-	Mout.BoundaryR = HeffA[(Lhetero-1)%N_sites].R;
+	Mout.BoundaryL = L;
+	Mout.BoundaryR = R;
+	
+	Mout.update_inbase();
+	Mout.update_outbase();
 	
 	return Mout;
-};
+}
 
 //*******************************************************************************************************************************************************************************
 //This  function is expand_basis for the whole unit cell, but with updating AC only at the end.

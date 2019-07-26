@@ -353,7 +353,7 @@ public:
 	
 	/**A-tensors in the three gauges \p L, \p R, \p C*/
 	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> A; // A[L/R/C][l][s].block[q]	
-		
+	
 	/**center matrix \p C*/
 	vector<Biped<Symmetry,MatrixType> >                        C; // zero-site part C[l]
 	

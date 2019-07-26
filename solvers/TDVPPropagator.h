@@ -290,7 +290,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		}
 	}
 	
-//	cout << "final pivot=" << pivot << endl;
+//	lout << "final pivot=" << pivot << endl;
 	
 	t_tot = Wtot.time(SECONDS);
 	
@@ -339,7 +339,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 		                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 		t_ohead += Woh1.time(SECONDS);
 		
-//		cout << "1site at: " << pivot << endl;
+//		lout << "1site at: " << pivot << endl;
 		LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 		
 		Stopwatch<> W1;
@@ -362,11 +362,11 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 			
 //			if (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)
 //			{
-//				cout << "0site between " << old_pivot << "," << old_pivot+1 << endl;
+//				lout << "0site between " << old_pivot << "," << old_pivot+1 << endl;
 //			}
 //			else
 //			{
-//				cout << "0site between " << old_pivot-1 << "," << old_pivot << endl;
+//				lout << "0site between " << old_pivot-1 << "," << old_pivot << endl;
 //			}
 			LanczosPropagator<PivotMatrix0<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz0(tol_Lanczos);
 			
@@ -387,7 +387,7 @@ t_step0 (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, 
 		}
 	}
 	
-//	cout << "final pivot=" << pivot << endl;
+//	lout << "final pivot=" << pivot << endl;
 	
 	t_tot = Wtot.time(SECONDS);
 	

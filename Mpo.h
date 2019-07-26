@@ -205,7 +205,7 @@ public:
 	
 	/** Pre-calculates information for two-site contractions that only depend on the local base, the operator base and the W-tensors for efficiency.
 	*/
-	void precalc_TwoSiteData();
+	void precalc_TwoSiteData (bool FORCE=false);
 	///\}
 	
 	//---info stuff---
@@ -1609,9 +1609,9 @@ transform_base (qarray<Symmetry::Nq> Qshift, bool PRINT, int L)
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
-precalc_TwoSiteData()
+precalc_TwoSiteData (bool FORCE)
 {
-	if (GOT_TWO_SITE_DATA) {return;}
+	if (GOT_TWO_SITE_DATA and !FORCE) {return;}
 	
 	TSD.clear();
 	TSD.resize(N_sites-1);

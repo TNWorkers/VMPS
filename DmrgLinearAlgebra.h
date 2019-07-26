@@ -282,6 +282,7 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	if (USE_BOUNDARY) {BR = Vket.BoundaryR;}
 	else              {BR.setIdentity(O.auxcols(O.length()-1), 1, Vket.outBasis((O.length()-1)));}
 	BR.shift_Qmid(O.Qtarget());
+//	lout << termcolor::red << "O.Qtarget()=" << O.Qtarget() << termcolor::reset << endl;
 	
 	return contract_LR(B,BR);
 }
@@ -569,6 +570,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	Vout.BoundaryL = Vin.BoundaryL;
 	Vout.BoundaryR = Vin.BoundaryR;
 	Vout.BoundaryR.shift_Qin(Qt[0]);
+//	lout << termcolor::red << "shift Qin by: " << Qt[0] << termcolor::reset << endl;
 	
 	for (size_t l=0; l<L; ++l)
 	{
@@ -576,20 +578,6 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 		            Vin.inBasis(l) , O.inBasis(l) ,
 		            Vin.outBasis(l), O.outBasis(l),
 		            Vout.A_at(l));
-		
-//		cout << "l=" << l << endl;
-//		for (int i=0; i< Vout.A_at(l).size(); ++i)
-//		{
-//			cout << Vout.A_at(l)[i].print() << endl;
-//		}
-		
-//		for (const auto &q : Vin.locBasis(l)) cout << "Vin.locBasis(l)=" << q << endl;
-//		for (const auto &q : O.opBasis(l)) cout << "O.opBasis(l)=" << q << endl;
-//		cout << "Vin.inBasis(l)=" << endl << Vin.inBasis(l).print() << endl;
-//		cout << "Vin.outBasis(l)=" << endl << Vin.outBasis(l).print() << endl;
-//		cout << "O.inBasis(l)=" << endl << O.inBasis(l).print() << endl;
-//		cout << "O.outBasis(l)=" << endl << O.outBasis(l).print() << endl;
-//		cout << endl;
 	}
 	
 	Vout.update_inbase();

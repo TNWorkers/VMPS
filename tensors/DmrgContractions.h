@@ -1257,16 +1257,16 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 	// cout << baseRightTop << endl << baseLeftTop << endl;
 	auto leftTopQs = baseLeftTop.unordered_qs();
 	auto leftBotQs = baseLeftBot.unordered_qs();
-
+	
 	auto TensorBaseRight = baseRightBot.combine(baseRightTop);
 	auto TensorBaseLeft = baseLeftBot.combine(baseLeftTop);
-
+	
 	std::array<typename Symmetry::qType,3> qCheck;
-
+	
 	MpoScalar factor_cgc, factor_merge, factor_check;
 	Rnew.clear();
 	Rnew.setZero();
-
+	
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t s3=0; s3<qloc.size(); ++s3)
@@ -1277,7 +1277,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 		if(!Symmetry::validate(qCheck)) {continue;}
 		qCheck = {qloc[s2],qOpBot[k2],qloc[s1]};
 		if(!Symmetry::validate(qCheck)) {continue;}
-
+		
 		auto ks = Symmetry::reduceSilent(qOpTop[k2],qOpBot[k1]);
 		for(const auto& k : ks)
 		{
@@ -1402,7 +1402,7 @@ void contract_L (const Multipede<4,Symmetry,MatrixType> &Lold,
                  Multipede<4,Symmetry,MatrixType> &Lnew)
 {
 	std::array<typename Symmetry::qType,3> qCheck;
-
+	
 	Lnew.setZero();
 	
 	for (size_t s1=0; s1<qloc.size(); ++s1)

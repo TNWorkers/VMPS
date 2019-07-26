@@ -99,7 +99,7 @@ double emin_U0 = 0.;
 double Emin_U0 = 0.;
 double Emin_SU2xSU2 = 0.;
 double emin_SU2xSU2 = 0.;
-bool ED, U0, U1, SU2, SU22, CORR, PRINT;
+bool ED, U0, U1, SU2, SO4, CORR, PRINT;
 
 Eigenstate<VectorXd> g_ED;
 Eigenstate<VMPS::Hubbard::StateXd> g_U0;
@@ -147,7 +147,7 @@ int main (int argc, char* argv[])
 	U0 = args.get<bool>("U0",false);
 	U1 = args.get<bool>("U1",true);
 	SU2 = args.get<bool>("SU2",true);
-	SU22 = args.get<bool>("SU22",true);
+	SO4 = args.get<bool>("SO4",true);
 	CORR = args.get<bool>("CORR",false);
 	if (CORR) {ED = true;}
 	PRINT = args.get<bool>("PRINT",false);
@@ -378,6 +378,31 @@ int main (int argc, char* argv[])
 				d_U1(i) = avg(g_U1.state, H_U1.d(i), g_U1.state);
 			}
 		}
+		
+		//////////
+		HUBBARD::StateXd cPhi;
+		auto C1 = H_U1.c<UP>(L/2);
+		OxV_exact(C1, g_U1.state, cPhi, 2., DMRG::VERBOSITY::SILENT);
+		
+		HUBBARD::StateXd cdagPhi;
+		auto C2 = H_U1.c<UP>(L/2);
+		OxV_exact(C2, g_U1.state, cdagPhi, 2., DMRG::VERBOSITY::SILENT);
+		
+		HUBBARD::StateXd aPhi;
+		auto A1 = H_U1.a<UP>(L/2);
+		OxV_exact(A1, g_U1.state, aPhi, 2., DMRG::VERBOSITY::SILENT);
+		
+		HUBBARD::StateXd adagPhi;
+		auto A2 = H_U1.a<UP>(L/2);
+		OxV_exact(A2, g_U1.state, adagPhi, 2., DMRG::VERBOSITY::SILENT);
+		
+		auto String = H_U1.JWstring(L/2,L/2);
+		cout << "cmp=" << avg(adagPhi, String, aPhi) << ", " << dot(cdagPhi, cPhi) << endl;
+		cout << "string left=" << avg(adagPhi, String, H_U1, aPhi) << endl;
+		cout << "string right=" << avg(adagPhi, H_U1, String, aPhi) << endl;
+		cout << "no string=" << avg(adagPhi, H_U1, aPhi) << endl;
+		cout << "with c,cdag=" << avg(cdagPhi, H_U1, cPhi) << endl;
+		//////////
 	}
 	
 //	// --------SU(2)---------
@@ -450,7 +475,7 @@ int main (int argc, char* argv[])
 	}
 	
 //	// --------SU(2)xSU(2)---------
-	if (SU22)
+	if (SO4)
 	{
 		lout << endl << termcolor::red << "--------SU(2)xSU(2)---------" << termcolor::reset << endl << endl;
 		
@@ -510,7 +535,7 @@ int main (int argc, char* argv[])
 				//factor 1/2 because we have computed cdagc+cdagc
 				densityMatrix_SU2xSU2B(i,j) = 0.5*avg(g_SU2xSU2.state, H_SU2xSU2.cdag(i), H_SU2xSU2.c(j), g_SU2xSU2.state);
 			}
-
+			
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{
