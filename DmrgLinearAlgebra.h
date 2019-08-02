@@ -21,6 +21,39 @@ Scalar dot (const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket)
 	return Vbra.dot(Vket);
 }
 
+/**
+ * Calculates the scalar product \f$\left<\Psi_{bra}|\Psi_{ket}\right>\f$ for a heterogenic MPS.
+ * \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
+ * \param Vket : input \f$\left|\Psi_{ket}\right>\f$
+ * \param shift : Shift \p Vbra by this many unit cells (negative=left-shift, positive=right-shift).
+ */
+template<typename Symmetry, typename Scalar>
+Scalar dot_hetero (const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket, int Ncellshift=0)
+{
+	if (Ncellshift==0)
+	{
+		return Vbra.dot(Vket);
+	}
+	else
+	{
+		auto Vbral = Vbra;
+		auto Vketl = Vket;
+		
+		if (Ncellshift < 0) // shift Vbra to the left = elongate Vbra on the right, elongate Vket on the left
+		{
+			Vbral.elongate(0,abs(Ncellshift));
+			Vketl.elongate(abs(Ncellshift),0);
+		}
+		else
+		{
+			Vbral.elongate(abs(Ncellshift),0);
+			Vketl.elongate(0,abs(Ncellshift));
+		}
+		
+		return Vbral.dot(Vketl);
+	}
+}
+
 /**Swaps two Mps.*/
 template<typename Symmetry, typename Scalar> 
 void swap (Mps<Symmetry,Scalar> &V1, Mps<Symmetry,Scalar> &V2)
@@ -30,11 +63,11 @@ void swap (Mps<Symmetry,Scalar> &V1, Mps<Symmetry,Scalar> &V2)
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 Array<Scalar,Dynamic,1> matrix_element (int iL, 
-                                         int iR,
-                                         const Mps<Symmetry,Scalar> &Vbra, 
-                                         const Mpo<Symmetry,MpoScalar> &O, 
-                                         const Mps<Symmetry,Scalar> &Vket, 
-                                         bool USE_SQUARE = false)
+                                        int iR,
+                                        const Mps<Symmetry,Scalar> &Vbra, 
+                                        const Mpo<Symmetry,MpoScalar> &O, 
+                                        const Mps<Symmetry,Scalar> &Vket, 
+                                        bool USE_SQUARE = false)
 {
 	assert(iL<O.length() and iR<O.length() and iL<iR);
 	
@@ -256,8 +289,15 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
 	
-	if (USE_BOUNDARY) {B=Vket.BoundaryL;}
-	else              {B.setIdentity(O.auxrows(0), 1, Vket.inBasis(0));}
+	if (USE_BOUNDARY)
+	{
+		B=Vket.get_boundaryTensor(DMRG::DIRECTION::LEFT);
+		assert(O.Qtarget() == Symmetry::qvacuum() and "Can only do avg_hetero with vacuum targets. Try OxV_exact followed by dot instead.");
+	}
+	else
+	{
+		B.setIdentity(O.auxrows(0), 1, Vket.inBasis(0));
+	}
 	
 	for (size_t l=0; l<O.length(); ++l)
 	{
@@ -274,15 +314,15 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 		B = Bnext;
 		Bnext.clear();
 		
-//		cout << "l=" << l << endl;
+//		cout << "l=" << l << ", B.dim=" << B.dim << endl;
 //		cout << "B=" << B.print() << endl << endl;
 	}
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > BR;
-	if (USE_BOUNDARY) {BR = Vket.BoundaryR;}
+	if (USE_BOUNDARY) {BR = Vket.get_boundaryTensor(DMRG::DIRECTION::RIGHT);}
 	else              {BR.setIdentity(O.auxcols(O.length()-1), 1, Vket.outBasis((O.length()-1)));}
-	BR.shift_Qmid(O.Qtarget());
-//	lout << termcolor::red << "O.Qtarget()=" << O.Qtarget() << termcolor::reset << endl;
+	
+//	BR.shift_Qmid(O.Qtarget()); // deprecated
 	
 	return contract_LR(B,BR);
 }
@@ -556,7 +596,14 @@ void OxV (const Mpo<Symmetry,MpoScalar> &O, Mps<Symmetry,Scalar> &Vinout, DMRG::
 	Vinout = Vtmp;
 }
 
-//Comment needed
+/**
+ * Performs an exact MPO-MPS product.
+ * \param O : input MPO
+ * \param Vin : input MPS
+ * \param Vout : output MPS
+ * \param tol_compr : if \f$tol_compr < 1\f$, compresses the result with this tolerance
+ * \param VERBOSITY : verbosity level, which is also passed on to the MpsCompressor class
+*/
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, 
                 double tol_compr = 1e-7, DMRG::VERBOSITY::OPTION VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -566,16 +613,49 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qt[0], O.volume(), 100ul);
 	Vout.set_Qmultitarget(Qt);
 	Vout.min_Nsv = Vin.min_Nsv;
+	Vout.Boundaries = Vin.Boundaries;
 	
-	Vout.BoundaryL = Vin.BoundaryL;
-	Vout.BoundaryR = Vin.BoundaryR;
-	Vout.BoundaryR.shift_Qin(Qt[0]);
-//	lout << termcolor::red << "shift Qin by: " << Qt[0] << termcolor::reset << endl;
+//	for (size_t l=0; l<Vout.Boundaries.A[1].size(); ++l)
+//	for (size_t s=0; s<Vout.Boundaries.A[1][l].size(); ++s)
+//	{
+//		Vout.Boundaries.A[1][l][s].shift_Qin(Qt[0]); // only shift AR, as the quantum number propagates to the right
+//	}
+	
+	// alternative to shift_Qin of Biped, O.W_at(L-1) must be identity
+//	for (size_t l=0; l<Vout.Boundaries.A[1].size(); ++l)
+//	{
+//		Qbasis<Symmetry> inBasis;  inBasis. pullData(Vin.Boundaries.A[1][l],0);
+//		Qbasis<Symmetry> outBasis; outBasis.pullData(Vin.Boundaries.A[1][l],1);
+//		
+//		contract_AW(Vin.Boundaries.A[1][l], Vin.Boundaries.qloc[l], O.W_at(L-1), O.opBasis(L-1),
+//		            inBasis , O.inBasis(L-1),
+//		            outBasis, O.outBasis(L-1),
+//		            Vout.Boundaries.A[1][l]);
+//	}
+	
+//	Vout.Boundaries.R.shift_Qin(Qt[0]);
+//	cout << "OxV_exact shift by: Qt[0]=" << Qt[0] << endl;
+	
+//	// alternative to shift_Qin of Tripod, doesn't work
+//	cout << termcolor::red << "--------before--------" << termcolor::reset << endl;
+//	cout << Vout.Boundaries.R.print() << endl;
+//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rtmp;
+//	int i = Vout.Boundaries.index;
+//	cout << "Vout.Boundaries.qloc[1].size()=" << Vout.Boundaries.qloc[1].size() << endl;
+//	cout << "Vout.Boundaries.qOp.size()=" << Vin.Boundaries.qOp.size() << endl;
+//	cout << "Vout.Boundaries.qOp[1].size()=" << Vout.Boundaries.qOp[1].size() << endl;
+//	contract_L(Vout.Boundaries.R, Vout.Boundaries.A[1][1], Vout.Boundaries.W[1], false, Vout.Boundaries.A[1][1], 
+//	           Vout.Boundaries.qloc[1], Vout.Boundaries.qOp[1], Rtmp);
+//	Vout.Boundaries.R = Rtmp;
+//	cout << termcolor::red << "--------after--------" << termcolor::reset << endl;
+//	cout << Vout.Boundaries.R.print() << endl;
+	
+	
 	
 	for (size_t l=0; l<L; ++l)
 	{
 		contract_AW(Vin.A_at(l), Vin.locBasis(l), O.W_at(l), O.opBasis(l),
-		            Vin.inBasis(l) , O.inBasis(l) ,
+		            Vin.inBasis(l) , O.inBasis(l),
 		            Vin.outBasis(l), O.outBasis(l),
 		            Vout.A_at(l));
 	}
@@ -610,22 +690,24 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 			lout << "\t" << Compadre.info() << endl;
 		}
 	}
-//	else
-//	{
-//		Vout.sweep(0,DMRG::BROOM::QR);
-//		
-//		if (VERBOSITY > DMRG::VERBOSITY::SILENT)
-//		{
-//			lout << "swept:\t" << Vout.info() << endl;
-//		}
-//	}
+	else
+	{
+		Vout.sweep(0,DMRG::BROOM::QR);
+		
+		if (VERBOSITY > DMRG::VERBOSITY::SILENT)
+		{
+			lout << "swept:\t" << Vout.info() << endl;
+		}
+	}
 	
 	if (VERBOSITY > DMRG::VERBOSITY::SILENT) lout << endl;
 	
-	if (Vout.calc_Nqavg() <= 1.5 and Vout.min_Nsv == 0 and Symmetry::IS_TRIVIAL == false)
+	if (Vout.calc_Nqavg() <= 1.5 and Vout.min_Nsv == 0 and 
+	    Symmetry::IS_TRIVIAL == false and 
+	    Vout.Boundaries.IS_TRIVIAL() == true)
 	{
 		Vout.min_Nsv = 1;
-		lout << termcolor::blue << "Warning: Setting min_Nsv=1 do deal with small Hilbert space after OxV_exact!" << termcolor::reset << endl;
+		lout << termcolor::blue << "Warning: Setting min_Nsv=1 to deal with small Hilbert space after OxV_exact!" << termcolor::reset << endl;
 	}
 }
 

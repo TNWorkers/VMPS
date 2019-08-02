@@ -581,7 +581,9 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 {
 	assert(locx<F.size() and locy<F[locx].dim());
 	stringstream ss;
-	ss << name << "(" << locx << "," << locy << ")";
+	ss << name << "(" << locx << "," << locy;
+	if (factor != 1.) ss << ",factor=" << factor;
+	ss << ")";
 	
 	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, Op.Q(), ss.str(), HERMITIAN);
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}

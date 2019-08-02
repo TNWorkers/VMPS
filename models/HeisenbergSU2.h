@@ -72,7 +72,7 @@ public:
 	
 	///@{
 	/**Observables.*/
-	Mpo<Symmetry,double> S     (std::size_t locx,  std::size_t locy=0);
+	Mpo<Symmetry,double> S     (std::size_t locx,  std::size_t locy=0, double factor=1.);
 	Mpo<Symmetry,double> Sdag  (std::size_t locx,  std::size_t locy=0, double factor=sqrt(3.));
 	Mpo<Symmetry,double> SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
 	///@}
@@ -132,13 +132,13 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
-S (std::size_t locx, std::size_t locy)
+S (std::size_t locx, std::size_t locy, double factor)
 {
 	assert(locx<this->N_sites);
 	std::stringstream ss;
-	ss << "S(" << locx << "," << locy << ")";
+	ss << "S(" << locx << "," << locy << ",factor=" << factor << ")";
 	
-	SiteOperator Op = B[locx].S(locy).plain<double>();
+	SiteOperator Op = factor * B[locx].S(locy).plain<double>();
 	
 	Mpo<Symmetry> Mout(N_sites, Op.Q, ss.str());
 	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
@@ -152,7 +152,7 @@ Sdag (std::size_t locx, std::size_t locy, double factor)
 {
 	assert(locx<this->N_sites);
 	std::stringstream ss;
-	ss << "S†(" << locx << "," << locy << ")";
+	ss << "S†(" << locx << "," << locy << ",factor=" << factor << ")";
 	
 	SiteOperator Op = factor * B[locx].Sdag(locy).plain<double>();
 	

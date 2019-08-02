@@ -227,6 +227,26 @@ public:
 		
 		return Vout;
 	}
+	
+	void shift_Qin (const qarray<Symmetry::Nq> &Q)
+	{
+		auto in_tmp = in;
+		auto out_tmp = out;
+		auto block_tmp = block;
+		auto dim_tmp = dim;
+		
+		in.clear();
+		out.clear();
+		block.clear();
+		dict.clear();
+		dim = 0;
+		
+		for (size_t q=0; q<dim_tmp; ++q)
+		{
+//			cout << "q=" << ", in=" << in[q]+Q << ", out=" << out[q]+Q << endl;
+			push_back({in[q]+Q, out[q]+Q}, block_tmp[q]);
+		}
+	}
 };
 
 template<typename Symmetry, typename MatrixType_>

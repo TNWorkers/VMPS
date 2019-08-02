@@ -21,6 +21,11 @@ inline int posmod (int x)
 {
 	return (x%N+N)%N;
 }
+
+inline int posmod (int x, int N)
+{
+	return (x%N+N)%N;
+}
 #endif
 
 /**Prints a boost fraction in such a way, that a "1" in the denominator is omitted.*/

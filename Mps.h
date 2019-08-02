@@ -17,6 +17,7 @@
 
 #include "pivot/DmrgPivotMatrix1.h"
 #include "DmrgJanitor.h"
+#include "MpsBoundaries.h"
 
 // Forward Declaration
 template<typename Symmetry, typename Scalar> class Mpo;
@@ -457,13 +458,63 @@ public:
 	ArrayXd entanglementSpectrumLoc (size_t loc) const;
 	///\}
 	
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > BoundaryL;
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > BoundaryR;
+//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > BoundaryL;
+//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > BoundaryR;
+//	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,2> A_LR;
+//	vector<vector<qarray<Symmetry::Nq> > > qlocLR;
+	MpsBoundaries<Symmetry,Scalar> Boundaries;
 	
 	void set_open_bc()
 	{
-		BoundaryL.setVacuum();
-		BoundaryR.setTarget(qarray3<Symmetry::Nq>{Qtot, Qtot, Symmetry::qvacuum()});
+		Boundaries.set_open_bc(Qtot);
+	}
+	
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > get_boundaryTensor (DMRG::DIRECTION::OPTION DIR) const
+	{
+		if (DIR == DMRG::DIRECTION::LEFT) {return Boundaries.L;}
+		else                              {return Boundaries.R;}
+	}
+	
+	void elongate (size_t Nleft = 0, size_t Nright = 0)
+	{
+		if (Nleft>0 or Nright>0)
+		{
+			size_t Lcell = Boundaries.length();
+			size_t Lleft = Nleft * Lcell;
+			size_t Lright = Nright * Lcell;
+			size_t Lnew = this->N_sites + Lleft + Lright;
+			
+			vector<vector<Biped<Symmetry,MatrixType> > > Anew(Lnew);
+			vector<vector<qarray<Nq> > > qloc_new(Lnew);
+			
+			for (size_t l=0; l<Lleft; ++l)
+			{
+//				cout << "adding AL at: l=" << l << " from cell index=" << posmod(-l,Lcell) << endl;
+				Anew    [l] = Boundaries.A[0][posmod(-l,Lcell)];
+				qloc_new[l] = Boundaries.qloc[posmod(-l,Lcell)];
+			}
+			for (size_t l=0; l<this->N_sites; ++l)
+			{
+//				cout << "using old A at: l=" << Lleft+l << " old index=" << l << endl;
+				Anew    [Lleft+l] = A[l];
+				qloc_new[Lleft+l] = qloc[l];
+			}
+			for (size_t l=0; l<Lright; ++l)
+			{
+//				cout << "adding AR at: l=" << Lleft+this->N_sites+l << " from cell index=" << l%Lcell << endl;
+				Anew    [Lleft+this->N_sites+l] = Boundaries.A[1][l%Lcell];
+				qloc_new[Lleft+this->N_sites+l] = Boundaries.qloc[l%Lcell];
+			}
+			
+			A = Anew;
+			qloc = qloc_new;
+			this->N_sites = Lnew;
+			
+			resize_arrays();
+			update_inbase();
+			update_outbase();
+			calc_Qlimits();
+		}
 	}
 	
 	void transform_base (qarray<Symmetry::Nq> Qtot, int L, bool PRINT = false)
@@ -829,8 +880,9 @@ calc_Qlimits()
 	QoutBot.resize(this->N_sites);
 	
 	// If non-trivial boundaries: we have a hetergeneous infinite state, no Qlimits
-	if (BoundaryL.dim > 1 and BoundaryR.dim > 1)
+	if (!Boundaries.IS_TRIVIAL())
 	{
+//		cout << termcolor::red << "set infinite boundaries" << termcolor::reset << endl;
 		for (size_t l=0; l<this->N_sites; ++l)
 		for (size_t q=0; q<Nq; q++)
 		{
@@ -2250,10 +2302,11 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 {
 	Biped<Symmetry,MatrixType> Cdump;
 	double entropy;
+	
 	split_AA(DIR, Apair, qloc[loc], A[loc], qloc[loc+1], A[loc+1],
-			 QoutTop[loc], QoutBot[loc],
-			 Cdump, false, truncWeight(loc), entropy,
-			 this->eps_svd,this->min_Nsv,this->max_Nsv);
+	         QoutTop[loc], QoutBot[loc],
+	         Cdump, false, truncWeight(loc), entropy,
+	         this->eps_svd, this->min_Nsv, this->max_Nsv);
 	update_outbase(loc);
 	update_inbase(loc+1);
 	
@@ -2281,7 +2334,6 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 			S(loc-1) = entropy;
 		}
 	}
-
 }
 
 // template<typename Symmetry, typename Scalar>
@@ -3045,11 +3097,15 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 		L.clear();
 		L = Lnext;
 		Lnext.clear();
+//		cout << "l=" << l << ", L.dim=" << L.dim << endl;
+//		cout << "L=" << endl;
+//		cout << L << endl;
 	}
 	
 //	Scalar out = L.trace();
 //	return out;
 	Lnext.setIdentity(outBasis(this->N_sites-1), outBasis(this->N_sites-1));
+	
 	return L.contract(Lnext).trace();
 }
 
@@ -3220,8 +3276,7 @@ cast() const
 	Vout.pivot = this->pivot;
 	Vout.truncWeight = truncWeight;
 	
-	Vout.BoundaryL = BoundaryL.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
-	Vout.BoundaryR = BoundaryR.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
+	Vout.Boundaries = Boundaries.template cast<OtherScalar>();
 	
 	return Vout;
 }
@@ -3754,14 +3809,14 @@ validate (string name) const
 {
 	stringstream ss;
 	
-	for (size_t s=0; s<qloc[0].size(); ++s)
-	for (size_t q=0; q<A[0][s].dim; ++q)
-	{
-		if (A[0][s].block[q].rows() != 1)
-		{
-			ss << name << " has wrong dimensions at: l=0: rows=" << A[0][s].block[q].rows() << " != 1" << endl;
-		}
-	}
+//	for (size_t s=0; s<qloc[0].size(); ++s)
+//	for (size_t q=0; q<A[0][s].dim; ++q)
+//	{
+//		if (A[0][s].block[q].rows() != 1)
+//		{
+//			ss << name << " has wrong dimensions at: l=0: rows=" << A[0][s].block[q].rows() << " != 1" << endl;
+//		}
+//	}
 	
 	for (size_t l=0; l<this->N_sites-1; ++l)
 	for (size_t s1=0; s1<qloc[l].size(); ++s1)
@@ -3788,14 +3843,14 @@ validate (string name) const
 		}
 	}
 	
-	for (size_t s=0; s<qloc[this->N_sites-1].size(); ++s)
-	for (size_t q=0; q<A[this->N_sites-1][s].dim; ++q)
-	{
-		if (A[this->N_sites-1][s].block[q].cols() != 1)
-		{
-			ss << name << " has wrong dimensions at: l=" << this->N_sites-1 << ": cols=" << A[this->N_sites-1][s].block[q].cols() << " != 1" << endl;
-		}
-	}
+//	for (size_t s=0; s<qloc[this->N_sites-1].size(); ++s)
+//	for (size_t q=0; q<A[this->N_sites-1][s].dim; ++q)
+//	{
+//		if (A[this->N_sites-1][s].block[q].cols() != 1)
+//		{
+//			ss << name << " has wrong dimensions at: l=" << this->N_sites-1 << ": cols=" << A[this->N_sites-1][s].block[q].cols() << " != 1" << endl;
+//		}
+//	}
 	
 	if (ss.str().size() == 0)
 	{

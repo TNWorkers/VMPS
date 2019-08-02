@@ -16,6 +16,8 @@
 #include "VUMPS/VumpsMpoTransferMatrix.h"
 #include "VUMPS/VumpsTransferMatrix.h"
 
+#include "MpsBoundaries.h"
+
 /**
  * Solver that calculates the ground state of a UMPS. Analogue of the DmrgSolver class.
  * \ingroup VUMPS
@@ -90,21 +92,32 @@ public:
 	Creates an Mps from the VUMPS solution with a heterogeneous section and infinite boundary conditions.
 	\param Ncells : amount of cells to generate the heterogeneous section, the total length becomes Lcell*Ncells
 	\param V : converged ground state to generate from
+	\param H : Hamiltonian of the VUMPS ground state, needed to recalculate environment
+	\param x0 : Puts \f$A_C\f$ on this site
 	\param ADD_ODD_SITE : if \p true, add one more site in order to have site-oriented inversion symmetry
 	*/
-	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, bool ADD_ODD_SITE=true);
+	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
+	                                 size_t x0, bool ADD_ODD_SITE=false);
 	
 	/**
-	Creates an Mps from the VUMPS solution with a heterogeneous section and infinite boundary conditions for a fermionic operator.
-	The Jordan-Wigner string is absorbed into the left environment.
+	Creates an Mps from the VUMPS solution with a heterogeneous section and infinite boundary conditions for a local operator. 
+	Already performs mutliplication with the operator. 
+	A possible Jordan-Wigner string on the left and a shifted quantum number on the right are absorbed into the environments.
 	\param Ncells : amount of cells to generate the heterogeneous section, the total length becomes Lcell*Ncells
 	\param V : converged ground state to generate from
 	\param H : Hamiltonian of the VUMPS ground state, needed to recalculate environment
-	\param JWstring : Jordan-Wigner string on the unit cell in MPO form
+	\param O : Operator to get the boundaries from. Should be local, with the excitation centre away from the boundaries.
+	\param Omult : Operator to multiply the state with
 	\param ADD_ODD_SITE : if \p true, add one more site in order to have site-oriented inversion symmetry
 	*/
-	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, 
-	                                 const MpHamiltonian &H, const Mpo<Symmetry,Scalar> &JWstring, bool ADD_ODD_SITE=true);
+	vector<Mps<Symmetry,Scalar>> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
+	                                         const Mpo<Symmetry,Scalar> &O, const vector<Mpo<Symmetry,Scalar>> &Omult, bool ADD_ODD_SITE=false);
+	
+	/**
+	Variant of create_Mps without a vector, with a single MPO/MPS.
+	*/
+	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
+	                                 const Mpo<Symmetry,Scalar> &O, const Mpo<Symmetry,Scalar> &Omult, bool ADD_ODD_SITE=false);
 	
 private:
 	
@@ -157,6 +170,20 @@ private:
 	               const vector<vector<qarray<Symmetry::Nq> > > &qOp,
 	               Tripod<Symmetry,MatrixType> &L,
 	               Tripod<Symmetry,MatrixType> &R);
+	
+	void build_R (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AR,
+	              const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &C,
+	              const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
+	              const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
+	              const vector<vector<qarray<Symmetry::Nq> > > &qOp,
+	              Tripod<Symmetry,MatrixType> &R);
+	
+	void build_L (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AL,
+	              const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &C,
+	              const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
+	              const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
+	              const vector<vector<qarray<Symmetry::Nq> > > &qOp,
+	              Tripod<Symmetry,MatrixType> &L);
 	
 	/**Builds environments for each site of the unit cell.*/
 	void build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
@@ -321,8 +348,17 @@ private:
 	\param R : right environment with the Hamiltonian
 	\param ADD_ODD_SITE : if \p true, add one more site in order to have site-oriented inversion symmetry
 	*/
-	Mps<Symmetry,Scalar> assemble_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, 
-	                                   const Tripod<Symmetry,MatrixType> &L, const Tripod<Symmetry,MatrixType> &R, bool ADD_ODD_SITE);
+	Mps<Symmetry,Scalar> assemble_Mps (size_t Ncells,
+	                                   const MpHamiltonian &H,
+	                                   const Umps<Symmetry,Scalar> &V,
+	                                   const vector<vector<Biped<Symmetry,MatrixType> > > &AL,
+	                                   const vector<vector<Biped<Symmetry,MatrixType> > > &AR,
+	                                   const vector<vector<Biped<Symmetry,MatrixType> > > &AC,
+	                                   const vector<vector<qarray<Symmetry::Nq> > > &qloc_input,
+	                                   const Tripod<Symmetry,MatrixType> &L,
+	                                   const Tripod<Symmetry,MatrixType> &R,
+	                                   int x0,
+	                                   bool ADD_ODD_SITE);
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -685,6 +721,103 @@ prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout,
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		lout << PrepTimer.info("prepare") << endl; 
+	}
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+build_L (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AL,
+         const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &C,
+         const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
+         const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
+         const vector<vector<qarray<Symmetry::Nq> > > &qOp,
+         Tripod<Symmetry,MatrixType> &L)
+{
+	Stopwatch<> GMresTimer;
+	
+	auto Lguess = L;
+	L.clear();
+	
+	// |R) and (L|
+	Biped<Symmetry,MatrixType> Reigen = C[N_sites-1].contract(C[N_sites-1].adjoint());
+	
+	// |YRa) and (YLa|
+	vector<Tripod<Symmetry,MatrixType> > YL(dW);
+	
+	// |Ra) and (La|
+	Qbasis<Symmetry> inbase; inbase.pullData(AL[0],0);
+	Qbasis<Symmetry> outbase; outbase.pullData(AL[0],0);
+	
+	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(dW, 1, inbase);
+	L.insert(dW-1,IdL);
+	
+	for (int b=dW-2; b>=0; --b)
+	{
+		YL[b] = make_YL(b, L, AL, W, PROP::HAMILTONIAN, AL, qloc, qOp);
+		
+		if (b > 0)
+		{
+			L.insert(b,YL[b]);
+		}
+		else
+		{
+			Tripod<Symmetry,MatrixType> Ltmp;
+			Tripod<Symmetry,MatrixType> Ltmp_guess; Ltmp_guess.insert(b,Lguess);
+			solve_linear(VMPS::DIRECTION::LEFT, b, AL, YL[b], Reigen, W, qloc, qOp, contract_LR(b,YL[b],Reigen), Ltmp_guess, Ltmp);
+			L.insert(b,Ltmp);
+		}
+	}
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+build_R (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AR,
+         const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &C,
+         const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
+         const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
+         const vector<vector<qarray<Symmetry::Nq> > > &qOp,
+         Tripod<Symmetry,MatrixType> &R)
+{
+	Stopwatch<> GMresTimer;
+	
+	auto Rguess = R;
+	R.clear();
+	
+	// |R) and (L|
+	Biped<Symmetry,MatrixType> Leigen = C[N_sites-1].adjoint().contract(C[N_sites-1]);
+	
+//	cout << "Leigen from C=" << endl;
+//	cout << Leigen.print(true) << endl;
+	
+	// |YRa) and (YLa|
+	vector<Tripod<Symmetry,MatrixType> > YR(dW);
+	
+	// |Ra) and (La|
+	Qbasis<Symmetry> inbase; inbase.pullData(AR[N_sites-1],1);
+	Qbasis<Symmetry> outbase; outbase.pullData(AR[N_sites-1],1);
+	
+//	Biped<Symmetry,ComplexMatrixType> Leigen_ = calc_LReigen(VMPS::DIRECTION::LEFT, AR, AR, inbase, inbase, qloc).state;
+//	cout << "Leigen from Arnoldi=" << endl;
+//	cout << Leigen_.print(true) << endl;
+	
+	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW, 1, outbase);
+	R.insert(0,IdR);
+	
+	for (int a=1; a<dW; ++a)
+	{
+		YR[a] = make_YR(a, R, AR, W, PROP::HAMILTONIAN, AR, qloc, qOp);
+		
+		if (a < dW-1)
+		{
+			R.insert(a,YR[a]);
+		}
+		else
+		{
+			Tripod<Symmetry,MatrixType> Rtmp;
+			Tripod<Symmetry,MatrixType> Rtmp_guess; Rtmp_guess.insert(a,Rguess);
+			solve_linear(VMPS::DIRECTION::RIGHT, a, AR, YR[a], Leigen, W, qloc, qOp, contract_LR(a,Leigen,YR[a]), Rtmp_guess, Rtmp);
+			R.insert(a,Rtmp);
+		}
 	}
 }
 
@@ -1807,69 +1940,250 @@ calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scal
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, bool ADD_ODD_SITE)
+create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, size_t x0, bool ADD_ODD_SITE)
 {
 	size_t add = (ADD_ODD_SITE)? 1:0;
 	size_t Lhetero = Ncells * V.state.length() + add;
 	
-	return assemble_Mps(Ncells, V, HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, ADD_ODD_SITE);
+	return assemble_Mps(Ncells, H, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.A[GAUGE::C], V.state.qloc, 
+	                    HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, x0, ADD_ODD_SITE);
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
-Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, const Mpo<Symmetry,Scalar> &JWstring, bool ADD_ODD_SITE)
+vector<Mps<Symmetry,Scalar>> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
+            const Mpo<Symmetry,Scalar> &O, const vector<Mpo<Symmetry,Scalar>> &Omult, bool ADD_ODD_SITE)
 {
 	size_t add = (ADD_ODD_SITE)? 1:0;
-	size_t Lhetero = Ncells * V.state.length() + add;
+	size_t Lhetero = Ncells * N_sites + add;
+	assert(Lhetero == Omult.size());
 	
-	Tripod<Symmetry,MatrixType> L_with_JWstring;
-	Tripod<Symmetry,MatrixType> R_throwaway;
+	Tripod<Symmetry,MatrixType> L_with_O;
+	Tripod<Symmetry,MatrixType> R_with_O;
 	
-	vector<vector<Biped<Symmetry,MatrixType> > > ALxJWstring = V.state.A[GAUGE::L];
+	vector<vector<Biped<Symmetry,MatrixType> > > ALxO = V.state.A[GAUGE::L];
+	vector<vector<Biped<Symmetry,MatrixType> > > ARxO = V.state.A[GAUGE::R];
+	vector<vector<Biped<Symmetry,MatrixType> > > ACxO = V.state.A[GAUGE::C];
+	
+//	cout << "V.state.locBasis(0).size()=" << V.state.locBasis(0).size() << endl;
+//	cout << "O.opBasis(O.length()-1).size()=" << O.opBasis(O.length()-1).size() << endl;
+//	cout << "O.inBasis(O.length()-1).size()=" << O.inBasis(O.length()-1).size() << endl;
+//	cout << "O.outBasis(O.length()-1).size()=" << O.outBasis(O.length()-1).size() << endl;
+//	
+//	cout << "inBasis at 0:" << endl;
+//	cout << O.inBasis(0).print() << endl;
+//	cout << O.outBasis(0).print() << endl;
+//	cout << "inBasis at L-1:" << endl;
+//	cout << O.inBasis(O.length()-1).print() << endl;
+//	cout << O.outBasis(O.length()-1).print() << endl;
+//	cout << "inBasis at L-2:" << endl;
+//	cout << O.inBasis(O.length()-2).print() << endl;
+//	cout << O.outBasis(O.length()-2).print() << endl;
+//	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		contract_AW(V.state.A[GAUGE::L][l], V.state.locBasis(l), JWstring.W_at(l), JWstring.opBasis(l),
-		            V.state.inBasis(l) , JWstring.inBasis(l) ,
-		            V.state.outBasis(l), JWstring.outBasis(l),
-		            ALxJWstring[l]);
+		Qbasis<Symmetry> inbase;
+		Qbasis<Symmetry> outbase;
+		
+		inbase.pullData (V.state.A[GAUGE::L][l],0);
+		outbase.pullData(V.state.A[GAUGE::L][l],1);
+		contract_AW(V.state.A[GAUGE::L][l], V.state.locBasis(l), O.W_at(l), 
+		            O.opBasis(l), inbase, O.inBasis(l), outbase, O.outBasis(l),
+		            ALxO[l]);
+//		cout << "ALxO done!" << endl;
+		
+//		size_t last_cell = O.length()-N_sites;
+		inbase.pullData (V.state.A[GAUGE::R][l],0);
+		outbase.pullData(V.state.A[GAUGE::R][l],1);
+		contract_AW(V.state.A[GAUGE::R][l], V.state.locBasis(l), O.W_at(O.length()-2), 
+		            O.opBasis(O.length()-2), inbase, O.inBasis(O.length()-2), outbase, O.outBasis(O.length()-2),
+		            ARxO[l]);
+//		cout << "ARxO done!" << endl;
+		
+		inbase.pullData (V.state.A[GAUGE::C][l],0);
+		outbase.pullData(V.state.A[GAUGE::C][l],1);
+		contract_AW(V.state.A[GAUGE::C][l], V.state.locBasis(l), O.W_at(O.length()-2), 
+		            O.opBasis(O.length()-2), inbase, O.inBasis(O.length()-2), outbase, O.outBasis(O.length()-2),
+		            ACxO[l]);
+//		cout << "ACxO done!" << endl;
+		
+//		cout << "AC=" << endl;
+//		for (size_t s=0; s<ACxO[l].size(); ++s)
+//		{
+//			cout << ACxO[l][s].print() << endl;
+//		}
+//		cout << "AR=" << endl;
+//		for (size_t s=0; s<ARxO[l].size(); ++s)
+//		{
+//			cout << ARxO[l][s].print() << endl;
+//		}
+//		cout << "AL=" << endl;
+//		for (size_t s=0; s<ALxO[l].size(); ++s)
+//		{
+//			cout << ALxO[l][s].print() << endl;
+//		}
 	}
 	
-	build_LR(ALxJWstring, V.state.A[GAUGE::R], V.state.C, H.W, H.qloc, H.qOp, L_with_JWstring, R_throwaway);
+	vector<vector<Biped<Symmetry,MatrixType> > > As(N_sites);
+	for (size_t l=0; l<N_sites; ++l) As[l] = ACxO[l];
+	Mps<Symmetry,Scalar> Maux(N_sites, As, V.state.locBasis(), Symmetry::qvacuum(), N_sites);
+	auto Cshift = V.state.C;
+	for (size_t s=0; s<Cshift.size(); ++s) Cshift[s].clear();
+	Maux.leftSplitStep(0, Cshift[N_sites-1]);
 	
-	return assemble_Mps(Ncells, V, L_with_JWstring, HeffA[(Lhetero-1)%N_sites].R, ADD_ODD_SITE);
+//	cout << Maux.test_ortho() << endl;
+//	cout << Maux.validate() << endl;
+//	cout << "V.state.C[N_sites-1]=" << endl;
+//	cout << V.state.C[N_sites-1].print(true) << endl << endl;
+//	cout << "Cshift[N_sites-1]=" << endl;
+//	cout << Cshift[N_sites-1].print(true) << endl << endl;
+//	
+//	cout << "building L & R..." << endl;
+	#pragma omp parallel sections
+	{
+		#pragma omp section
+		{
+			build_L(ALxO, V.state.C, H.W, H.qloc, H.qOp, L_with_O);
+		}
+		#pragma omp section
+		{
+			build_R(ARxO, Cshift,    H.W, H.qloc, H.qOp, R_with_O);
+		}
+	}
+	
+//	cout << R_with_O.print() << endl;
+//	auto R = HeffA[N_sites-1].R;
+//	R.shift_Qmid(O.Qtarget());
+//	cout << R.print() << endl;
+	
+//	cout << "R_with_O=" << L_with_O.print() << endl;
+//	cout << "HeffA[0].L=" << HeffA[0].L.print() << endl;
+	
+//	cout << "HeffA[0].L=" << endl;
+//	cout << HeffA[0].L.print() << endl;
+	
+//	for (int s=0; s<V.state.A[GAUGE::L][0].size(); ++s)
+//	{
+//		cout << "AL[0], s=" << s << endl;
+//		cout << V.state.A[GAUGE::L][0][s].print() << endl;
+//	}
+	
+//	return assemble_Mps(Ncells, H, V.state, ALxO, ARxO, V.state.A[GAUGE::C], V.state.qloc, 
+//	                    L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
+//	return assemble_Mps(Ncells, H, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.A[GAUGE::C], V.state.qloc, 
+//	                    HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, O.locality(), ADD_ODD_SITE);
+	
+	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, H, V.state, ALxO, ARxO, V.state.A[GAUGE::C], V.state.qloc, 
+	                                         L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
+	vector<Mps<Symmetry,Scalar>> Mres(Lhetero);
+	#pragma omp parallel for
+	for (size_t l=0; l<Lhetero; ++l)
+	{
+		OxV_exact(Omult[l], Mtmp, Mres[l], 2., DMRG::VERBOSITY::SILENT);
+	}
+	return Mres;
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-assemble_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Tripod<Symmetry,MatrixType> &L, const Tripod<Symmetry,MatrixType> &R, bool ADD_ODD_SITE)
+create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
+            const Mpo<Symmetry,Scalar> &O, const Mpo<Symmetry,Scalar> &Omult, bool ADD_ODD_SITE)
+{
+	Tripod<Symmetry,MatrixType> L_with_O;
+	Tripod<Symmetry,MatrixType> R_with_O;
+	
+	vector<vector<Biped<Symmetry,MatrixType> > > ALxO = V.state.A[GAUGE::L];
+	vector<vector<Biped<Symmetry,MatrixType> > > ARxO = V.state.A[GAUGE::R];
+	vector<vector<Biped<Symmetry,MatrixType> > > ACxO = V.state.A[GAUGE::C];
+	
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Qbasis<Symmetry> inbase;
+		Qbasis<Symmetry> outbase;
+		
+		inbase.pullData (V.state.A[GAUGE::L][l],0);
+		outbase.pullData(V.state.A[GAUGE::L][l],1);
+		contract_AW(V.state.A[GAUGE::L][l], V.state.locBasis(l), O.W_at(l), 
+		            O.opBasis(l), inbase, O.inBasis(l), outbase, O.outBasis(l),
+		            ALxO[l]);
+		
+		inbase.pullData (V.state.A[GAUGE::R][l],0);
+		outbase.pullData(V.state.A[GAUGE::R][l],1);
+		contract_AW(V.state.A[GAUGE::R][l], V.state.locBasis(l), O.W_at(O.length()-2), 
+		            O.opBasis(O.length()-2), inbase, O.inBasis(O.length()-2), outbase, O.outBasis(O.length()-2),
+		            ARxO[l]);
+		
+		inbase.pullData (V.state.A[GAUGE::C][l],0);
+		outbase.pullData(V.state.A[GAUGE::C][l],1);
+		contract_AW(V.state.A[GAUGE::C][l], V.state.locBasis(l), O.W_at(O.length()-2), 
+		            O.opBasis(O.length()-2), inbase, O.inBasis(O.length()-2), outbase, O.outBasis(O.length()-2),
+		            ACxO[l]);
+	}
+	
+	vector<vector<Biped<Symmetry,MatrixType> > > As(N_sites);
+	for (size_t l=0; l<N_sites; ++l) As[l] = ACxO[l];
+	Mps<Symmetry,Scalar> Maux(N_sites, As, V.state.locBasis(), Symmetry::qvacuum(), N_sites);
+	auto Cshift = V.state.C;
+	for (size_t s=0; s<Cshift.size(); ++s) Cshift[s].clear();
+	Maux.leftSplitStep(0, Cshift[N_sites-1]);
+	
+	#pragma omp parallel sections
+	{
+		#pragma omp section
+		{
+			build_L(ALxO, V.state.C, H.W, H.qloc, H.qOp, L_with_O);
+		}
+		#pragma omp section
+		{
+			build_R(ARxO, Cshift,    H.W, H.qloc, H.qOp, R_with_O);
+		}
+	}
+	
+	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, H, V.state, ALxO, ARxO, V.state.A[GAUGE::C], V.state.qloc, 
+	                                         L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
+	Mps<Symmetry,Scalar> Mres;
+	OxV_exact(Omult, Mtmp, Mres, 2., DMRG::VERBOSITY::STEPWISE);
+	
+	return Mres;
+};
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+assemble_Mps (size_t Ncells,
+              const MpHamiltonian &H,
+              const Umps<Symmetry,Scalar> &V,
+              const vector<vector<Biped<Symmetry,MatrixType> > > &AL,
+              const vector<vector<Biped<Symmetry,MatrixType> > > &AR,
+              const vector<vector<Biped<Symmetry,MatrixType> > > &AC,
+              const vector<vector<qarray<Symmetry::Nq> > > &qloc_input,
+              const Tripod<Symmetry,MatrixType> &L,
+              const Tripod<Symmetry,MatrixType> &R,
+              int x0,
+              bool ADD_ODD_SITE)
 {
 	size_t add = (ADD_ODD_SITE)? 1:0;
-	size_t Lhetero = Ncells * V.state.length() + add;
+	size_t Lhetero = Ncells * AL.size() + add;
 	
-	// AC*AR...AR
-	vector<vector<Biped<Symmetry,MatrixType> > > As(Lhetero);
-	As[0] = V.state.A[GAUGE::C][0];
-	for (size_t l=1; l<Lhetero; ++l)
+	vector<vector<Biped<Symmetry,MatrixType>>> As(Lhetero);
+	for (size_t l=0; l<x0; ++l)
 	{
-		As[l] = V.state.A[GAUGE::R][l%N_sites];
+		As[l] = V.A[GAUGE::L][l%N_sites];
 	}
-	// AL...AL*AC
-//	As[Lhetero-1] = V.state.A[GAUGE::C][(Lhetero-1)%N_sites];
-//	for (int l=Lhetero-2; l>=0; --l)
-//	{
-//		As[l] = V.state.A[GAUGE::L][l%N_sites];
-//	}
+	As[x0] = V.A[GAUGE::C][x0%N_sites];
+	for (size_t l=x0+1; l<Lhetero; ++l)
+	{
+		As[l] = V.A[GAUGE::R][l%N_sites];
+	}
 	
-	vector<vector<qarray<Symmetry::Nq> > > qloc(Lhetero);
+	vector<vector<qarray<Symmetry::Nq>>> qloc(Lhetero);
 	for (size_t l=0; l<Lhetero; ++l)
 	{
-		qloc[l] = V.state.locBasis(l%N_sites);
+		qloc[l] = qloc_input[l%N_sites];
 	}
 	
 	Mps<Symmetry,Scalar> Mout(Lhetero, As, qloc, Symmetry::qvacuum(), Lhetero);
 	
-	Mout.BoundaryL = L;
-	Mout.BoundaryR = R;
+	Mout.Boundaries = MpsBoundaries<Symmetry,Scalar>(L, R, AL, AR, qloc_input);
 	
 	Mout.update_inbase();
 	Mout.update_outbase();

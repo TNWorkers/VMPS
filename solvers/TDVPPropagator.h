@@ -143,8 +143,11 @@ set_blocks (const Hamiltonian &H, VectorType &Vinout)
 	Heff.resize(N_sites);
 //	Heff[0].L.setVacuum();
 //	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vinout.Qtarget(), Vinout.Qtarget(), Symmetry::qvacuum()});
-	Heff[0].L         = Vinout.BoundaryL;
-	Heff[N_sites-1].R = Vinout.BoundaryR;
+	Heff[0].L         = Vinout.get_boundaryTensor(DMRG::DIRECTION::LEFT);
+	Heff[N_sites-1].R = Vinout.get_boundaryTensor(DMRG::DIRECTION::RIGHT);
+	
+//	cout << "Heff[0].L=" << endl;
+//	cout << Heff[0].L.print() << endl;
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -252,6 +255,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		LanczosPropagator<PivotMatrix2<Symmetry,TimeScalar,MpoScalar>,PivotVector<Symmetry,TimeScalar> > Lutz2(tol_Lanczos);
 		Stopwatch<> W2;
 		Lutz2.t_step(Heff2, Apair, -x(2,l,N_stages)*dt.imag()); // 2-site algorithm
+//		cout << Lutz2.info() << endl;
 		t_2site += W2.time(SECONDS);
 		
 		dimK2_log.push_back(Lutz2.get_dimK());
@@ -280,6 +284,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 			LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 			Stopwatch<> W1;
 			Lutz.t_step(Heff[pivot], Asingle, +x(2,l,N_stages)*dt.imag()); // 1-site algorithm
+//			cout << Lutz.info() << endl;
 			t_1site += W1.time(SECONDS);
 			
 			dimK1_log.push_back(Lutz2.get_dimK());
@@ -420,7 +425,6 @@ t_step_pivot (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt,
 	// 2-site propagation
 	size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
 	size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
-	
 //	cout << "2site between: " << loc1 << "," << loc2 << ", pivot=" << pivot << endl;
 	
 	Stopwatch<> Wc;
@@ -443,6 +447,7 @@ t_step_pivot (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt,
 	LanczosPropagator<PivotMatrix2<Symmetry,TimeScalar,MpoScalar>,PivotVector<Symmetry,TimeScalar> > Lutz2(tol_Lanczos);
 	Stopwatch<> W2;
 	Lutz2.t_step(Heff2, Apair, -x*dt.imag()); // 2-site algorithm
+//	cout << Lutz2.info() << endl;
 	t_2site += W2.time(SECONDS);
 	
 	dimK2_log.push_back(Lutz2.get_dimK());
@@ -452,6 +457,7 @@ t_step_pivot (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt,
 	Stopwatch<> Ws;
 	Vinout.sweepStep2(CURRENT_DIRECTION, loc1, Apair.data);
 	t_contr += Ws.time(SECONDS);
+	
 	(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vinout,loc2) : build_R(H,Vinout,loc1);
 	pivot = Vinout.get_pivot();
 	
@@ -471,6 +477,7 @@ t_step_pivot (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt,
 		LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 		Stopwatch<> W1;
 		Lutz.t_step(Heff[pivot], Asingle, +x*dt.imag()); // 1-site algorithm
+//		cout << Lutz.info() << endl;
 		t_1site += W1.time(SECONDS);
 		
 		dimK1_log.push_back(Lutz.get_dimK());

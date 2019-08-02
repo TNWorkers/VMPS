@@ -23,28 +23,35 @@ rc('font',size=14)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-save', action='store_true', default=False)
-parser.add_argument('-Nt', action='store', default=100)
-parser.add_argument('-Nq', action='store', default=41)
+#parser.add_argument('-Nt', action='store', default=40)
+parser.add_argument('-Nq', action='store', default=40)
+parser.add_argument('-x0', action='store', default=20)
 parser.add_argument('-Nw', action='store', default=1000)
-parser.add_argument('-tmax', action='store', default=10)
-parser.add_argument('-wmin', action='store', default=0)
-parser.add_argument('-wmax', action='store', default=3)
+parser.add_argument('-tmax', action='store', default=4)
+parser.add_argument('-wmin', action='store', default=-4)
+parser.add_argument('-wmax', action='store', default=2)
 args = parser.parse_args()
 
 wmin = float(args.wmin)
 wmax = float(args.wmax)
+tmax = int(args.tmax)
 Nq = int(args.Nq)
-Nt = int(args.Nt)
+Nt = int(tmax/0.1)
 Nw = int(args.Nw)
+x0 = int(args.x0)
 
-filename = 'GwqIm_tmax='+str(args.tmax)+'_Nt='+str(Nt)+'_wmin='+str(args.wmin)+'_wmax='+str(args.wmax)+'_Nw='+str(Nw)+'_Nq='+str(Nq)+'.dat'
+filename = 'SigmawqIm_x0='+str(x0)+'_L='+str(2*x0)+\
+                      '_tmax='+str(args.tmax)+'_Nt='+str(Nt)+\
+                      '_qmin='+str(-1)+'_qmax='+str(1)+'_Nq='+str(Nq)+\
+                      '_wmin='+str(args.wmin)+'_wmax='+str(args.wmax)+'_Nw='+str(Nw)+\
+                      '.dat'
 data = loadtxt(filename)
 Nw = len(data[:,0])
 # G: Nw x Nq
 print('Nw=',Nw,'Nq=',Nq,'wmax=',wmax)
 
-#norm=mcolors.LogNorm(vmin=0.1, vmax=10), 
-im = imshow(abs(-1./pi*data), origin='lower', interpolation='none', norm=mcolors.LogNorm(vmin=1e-3, vmax=10), cmap=cm.inferno, aspect='auto', extent=[-pi,pi,wmin,wmax])
+#norm=mcolors.LogNorm(vmin=1e-3, vmax=10), , 
+im = imshow(abs(-1./pi*data), origin='lower', interpolation='none', cmap=cm.inferno, aspect='auto', extent=[-pi,pi,wmin,wmax])
 colorbar()
 
 maxs = []

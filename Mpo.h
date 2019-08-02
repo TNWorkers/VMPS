@@ -260,13 +260,13 @@ public:
 	inline vector<qarray<Nq> > locBasis   (size_t loc) const {return qloc[loc];}
 	
 	/**Returns the right auxiliary basis at \p loc.*/
-	inline Qbasis<Symmetry>	auxBasis   (size_t loc) const {return qaux[loc];}
+	inline Qbasis<Symmetry> auxBasis   (size_t loc) const {return qaux[loc];}
 	
 	/**Returns the auxiliary ingoing basis at \p loc.*/
-	inline Qbasis<Symmetry>	inBasis   (size_t loc) const {return qaux[loc];}
+	inline Qbasis<Symmetry> inBasis   (size_t loc) const {return qaux[loc];}
 	
 	/**Returns the auxiliary outgoing basis at \p loc.*/
-	inline Qbasis<Symmetry>	outBasis   (size_t loc) const {return qaux[loc+1];}
+	inline Qbasis<Symmetry> outBasis   (size_t loc) const {return qaux[loc+1];}
 	
 	/**Returns the operator basis at \p loc.*/
 	inline vector<qarray<Nq> > opBasis   (size_t loc) const {return qOp[loc];}
@@ -1218,6 +1218,8 @@ template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 setLocal (size_t loc, const OperatorType &Op, const OperatorType &SignOp, bool OPEN_BC)
 {
+	LocalOp   = Op;
+	LocalSite = loc;
 	auto Gvec = make_localGvec(loc,Op);
 	for (size_t l=0; l<loc; ++l) {Gvec[l](0,0) = SignOp;}
 	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
@@ -1227,6 +1229,8 @@ template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
 setLocal (size_t loc, const OperatorType &Op, const vector<OperatorType> &SignOp, bool OPEN_BC)
 {
+	LocalOp   = Op;
+	LocalSite = loc;
 	auto Gvec = make_localGvec(loc,Op);
 	for (size_t l=0; l<loc; ++l) {Gvec[l](0,0) = SignOp[l];}
 	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
@@ -1584,7 +1588,10 @@ transform_base (qarray<Symmetry::Nq> Qshift, bool PRINT, int L)
 		
 		for (size_t q=0; q<Symmetry::Nq; ++q)
 		{
-			Qtot[q] *= length;
+			if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non Abelian symmetries
+			{
+				Qtot[q] *= length;
+			}
 		}
 	}
 	
@@ -1613,6 +1620,7 @@ precalc_TwoSiteData (bool FORCE)
 {
 	if (GOT_TWO_SITE_DATA and !FORCE) {return;}
 	
+//	cout << termcolor::red << "precalc_TwoSiteData" << termcolor::reset << endl;
 	TSD.clear();
 	TSD.resize(N_sites-1);
 	
