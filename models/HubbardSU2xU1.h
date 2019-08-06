@@ -573,7 +573,7 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 				}
 			}
 		}
-    }
+	}
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::

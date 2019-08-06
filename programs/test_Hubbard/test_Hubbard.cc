@@ -380,28 +380,28 @@ int main (int argc, char* argv[])
 		}
 		
 		//////////
-		HUBBARD::StateXd cPhi;
-		auto C1 = H_U1.c<UP>(L/2);
-		OxV_exact(C1, g_U1.state, cPhi, 2., DMRG::VERBOSITY::SILENT);
-		
-		HUBBARD::StateXd cdagPhi;
-		auto C2 = H_U1.c<UP>(L/2);
-		OxV_exact(C2, g_U1.state, cdagPhi, 2., DMRG::VERBOSITY::SILENT);
-		
-		HUBBARD::StateXd aPhi;
-		auto A1 = H_U1.a<UP>(L/2);
-		OxV_exact(A1, g_U1.state, aPhi, 2., DMRG::VERBOSITY::SILENT);
-		
-		HUBBARD::StateXd adagPhi;
-		auto A2 = H_U1.a<UP>(L/2);
-		OxV_exact(A2, g_U1.state, adagPhi, 2., DMRG::VERBOSITY::SILENT);
-		
-		auto String = H_U1.JWstring(L/2,L/2);
-		cout << "cmp=" << avg(adagPhi, String, aPhi) << ", " << dot(cdagPhi, cPhi) << endl;
-		cout << "string left=" << avg(adagPhi, String, H_U1, aPhi) << endl;
-		cout << "string right=" << avg(adagPhi, H_U1, String, aPhi) << endl;
-		cout << "no string=" << avg(adagPhi, H_U1, aPhi) << endl;
-		cout << "with c,cdag=" << avg(cdagPhi, H_U1, cPhi) << endl;
+//		HUBBARD::StateXd cPhi;
+//		auto C1 = H_U1.c<UP>(L/2);
+//		OxV_exact(C1, g_U1.state, cPhi, 2., DMRG::VERBOSITY::SILENT);
+//		
+//		HUBBARD::StateXd cdagPhi;
+//		auto C2 = H_U1.c<UP>(L/2);
+//		OxV_exact(C2, g_U1.state, cdagPhi, 2., DMRG::VERBOSITY::SILENT);
+//		
+//		HUBBARD::StateXd aPhi;
+//		auto A1 = H_U1.a<UP>(L/2);
+//		OxV_exact(A1, g_U1.state, aPhi, 2., DMRG::VERBOSITY::SILENT);
+//		
+//		HUBBARD::StateXd adagPhi;
+//		auto A2 = H_U1.a<UP>(L/2);
+//		OxV_exact(A2, g_U1.state, adagPhi, 2., DMRG::VERBOSITY::SILENT);
+//		
+//		auto String = H_U1.JWstring(L/2,L/2);
+//		cout << "cmp=" << avg(adagPhi, String, aPhi) << ", " << dot(cdagPhi, cPhi) << endl;
+//		cout << "string left=" << avg(adagPhi, String, H_U1, aPhi) << endl;
+//		cout << "string right=" << avg(adagPhi, H_U1, String, aPhi) << endl;
+//		cout << "no string=" << avg(adagPhi, H_U1, aPhi) << endl;
+//		cout << "with c,cdag=" << avg(cdagPhi, H_U1, cPhi) << endl;
 		//////////
 	}
 	
@@ -453,7 +453,7 @@ int main (int argc, char* argv[])
 			{
 				densityMatrix_SU2B(i,j) = avg(g_SU2.state, H_SU2.cdag(i), H_SU2.c(j), g_SU2.state);
 			}
-
+			
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{
@@ -462,10 +462,12 @@ int main (int argc, char* argv[])
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{
-				isospin_SU2(i,j) = avg(g_SU2.state, H_SU2.TzTz(i,j), g_SU2.state) + 0.5*(avg(g_SU2.state, H_SU2.TpTm(i,j), g_SU2.state) + avg(g_SU2.state, H_SU2.TmTp(i,j), g_SU2.state));
+				isospin_SU2(i,j) = avg(g_SU2.state, H_SU2.TzTz(i,j), g_SU2.state) + 
+				                   0.5*(avg(g_SU2.state, H_SU2.TpTm(i,j), g_SU2.state) + 
+				                        avg(g_SU2.state, H_SU2.TmTp(i,j), g_SU2.state));
 			}
-
-//			lout << "P SU(2): " << Ptot(densityMatrix_SU2,L) << "\t" << Ptot(densityMatrix_SU2B,L) << endl;
+			
+			cout << "(densityMatrix_SU2A-densityMatrix_SU2B).norm()=" << (densityMatrix_SU2A-densityMatrix_SU2B).norm() << endl;
 			
 			for (size_t i=0; i<L; ++i) 
 			{

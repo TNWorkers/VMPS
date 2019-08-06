@@ -353,7 +353,6 @@ private:
 	                                   const Umps<Symmetry,Scalar> &V,
 	                                   const vector<vector<Biped<Symmetry,MatrixType> > > &AL,
 	                                   const vector<vector<Biped<Symmetry,MatrixType> > > &AR,
-	                                   const vector<vector<Biped<Symmetry,MatrixType> > > &AC,
 	                                   const vector<vector<qarray<Symmetry::Nq> > > &qloc_input,
 	                                   const Tripod<Symmetry,MatrixType> &L,
 	                                   const Tripod<Symmetry,MatrixType> &R,
@@ -1945,7 +1944,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	size_t add = (ADD_ODD_SITE)? 1:0;
 	size_t Lhetero = Ncells * V.state.length() + add;
 	
-	return assemble_Mps(Ncells, H, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.A[GAUGE::C], V.state.qloc, 
+	return assemble_Mps(Ncells, H, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.qloc, 
 	                    HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, x0, ADD_ODD_SITE);
 };
 
@@ -2039,6 +2038,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 //	cout << Cshift[N_sites-1].print(true) << endl << endl;
 //	
 //	cout << "building L & R..." << endl;
+	
 	#pragma omp parallel sections
 	{
 		#pragma omp section
@@ -2073,7 +2073,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 //	return assemble_Mps(Ncells, H, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.A[GAUGE::C], V.state.qloc, 
 //	                    HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, O.locality(), ADD_ODD_SITE);
 	
-	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, H, V.state, ALxO, ARxO, V.state.A[GAUGE::C], V.state.qloc, 
+	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, H, V.state, ALxO, ARxO, V.state.qloc, 
 	                                         L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
 	vector<Mps<Symmetry,Scalar>> Mres(Lhetero);
 	#pragma omp parallel for
@@ -2139,7 +2139,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 		}
 	}
 	
-	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, H, V.state, ALxO, ARxO, V.state.A[GAUGE::C], V.state.qloc, 
+	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, H, V.state, ALxO, ARxO, V.state.qloc, 
 	                                         L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
 	Mps<Symmetry,Scalar> Mres;
 	OxV_exact(Omult, Mtmp, Mres, 2., DMRG::VERBOSITY::STEPWISE);
@@ -2154,7 +2154,6 @@ assemble_Mps (size_t Ncells,
               const Umps<Symmetry,Scalar> &V,
               const vector<vector<Biped<Symmetry,MatrixType> > > &AL,
               const vector<vector<Biped<Symmetry,MatrixType> > > &AR,
-              const vector<vector<Biped<Symmetry,MatrixType> > > &AC,
               const vector<vector<qarray<Symmetry::Nq> > > &qloc_input,
               const Tripod<Symmetry,MatrixType> &L,
               const Tripod<Symmetry,MatrixType> &R,

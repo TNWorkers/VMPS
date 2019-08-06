@@ -41,13 +41,13 @@ Scalar dot_hetero (const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> 
 		
 		if (Ncellshift < 0) // shift Vbra to the left = elongate Vbra on the right, elongate Vket on the left
 		{
-			Vbral.elongate(0,abs(Ncellshift));
-			Vketl.elongate(abs(Ncellshift),0);
+			Vbral.elongate_hetero(0,abs(Ncellshift));
+			Vketl.elongate_hetero(abs(Ncellshift),0);
 		}
 		else
 		{
-			Vbral.elongate(abs(Ncellshift),0);
-			Vketl.elongate(0,abs(Ncellshift));
+			Vbral.elongate_hetero(abs(Ncellshift),0);
+			Vketl.elongate_hetero(0,abs(Ncellshift));
 		}
 		
 		return Vbral.dot(Vketl);

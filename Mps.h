@@ -475,7 +475,7 @@ public:
 		else                              {return Boundaries.R;}
 	}
 	
-	void elongate (size_t Nleft = 0, size_t Nright = 0)
+	void elongate_hetero (size_t Nleft = 0, size_t Nright = 0)
 	{
 		if (Nleft>0 or Nright>0)
 		{
@@ -3093,13 +3093,28 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 	Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > Lnext;
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
+//		cout << "l=" << l << ", L.dim=" << L.dim << endl;
+//		cout << "L=" << endl;
+//		cout << L.print() << endl;
+//		
+//		cout << "A=" << endl;
+//		for (size_t s=0; s<A[l].size(); ++s)
+//		{
+//			cout << "s=" << s << endl;
+//			cout << A[l][s].print() << endl;
+//		}
+//		
+//		cout << "Aket=" << endl;
+//		for (size_t s=0; s<Vket.A_at(l).size(); ++s)
+//		{
+//			cout << "s=" << s << endl;
+//			cout << Vket.A_at(l)[s].print() << endl;
+//		}
+		
 		contract_L(L, A[l], Vket.A_at(l), qloc[l], Lnext);
 		L.clear();
 		L = Lnext;
 		Lnext.clear();
-//		cout << "l=" << l << ", L.dim=" << L.dim << endl;
-//		cout << "L=" << endl;
-//		cout << L << endl;
 	}
 	
 //	Scalar out = L.trace();

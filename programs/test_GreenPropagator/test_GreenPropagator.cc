@@ -70,9 +70,18 @@ double wmin, wmax;
 typedef VMPS::HeisenbergSU2 MODEL;
 #elif defined(FERMIONS)
 //typedef VMPS::SpinlessFermionsU1 MODEL; // spinless
-typedef VMPS::HubbardSU2xU1 MODEL; // spinful
-//typedef VMPS::HubbardSU2xU1 MODEL; // spinful
+typedef VMPS::HubbardSU2xU1 MODEL; double spinfac=1.; // spinful
+//typedef VMPS::HubbardU1xU1 MODEL; double spinfac=2.; // spinful
 #endif
+
+std::array<GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>>,2> Green;
+GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>> Gfull;
+
+#include "RootFinder.h" // from ALGS
+double n_mu (double mu, void*)
+{
+	return spinfac * Gfull.integrate_Glocw(mu) - N/L;
+}
 
 int main (int argc, char* argv[])
 {
@@ -92,8 +101,13 @@ int main (int argc, char* argv[])
 	GAUSSINT = static_cast<bool>(args.get<int>("GAUSSINT",true));
 	
 	RELOAD = static_cast<bool>(args.get<int>("RELOAD",false));
-	wmin = args.get<double>("wmin",-2.);
-	wmax = args.get<double>("wmax",+3.);
+	#ifdef HEISENBERG
+	wmin = args.get<double>("wmin",-1.);
+	wmax = args.get<double>("wmax",+6.);
+	#elif defined(FERMIONS)
+	wmin = args.get<double>("wmin",-5.);
+	wmax = args.get<double>("wmax",+10.);
+	#endif
 	
 	dt = args.get<double>("dt",0.1);
 	tmax = args.get<double>("tmax",10.);
@@ -126,18 +140,29 @@ int main (int argc, char* argv[])
 	{
 		cout << "tmax=" << ", Nt=" << Nt << ", Ncells=" << Ncells << ", wmin=" << wmin << ", wmax=" << wmax << endl;
 		#ifdef HEISENBERG
-		K_RANGE KR = ZERO_2PI;
+		Q_RANGE QR = ZERO_2PI;
 		#elif defined(FERMIONS)
-		K_RANGE KR = MPI_PPI;
+		Q_RANGE QR = MPI_PPI;
 		#endif
-		GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> > 
-		Green(tmax,Nt,x0,loadMatrix(make_string("GtxRe_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat")),
-			             loadMatrix(make_string("GtxIm_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat")),
-			  true,KR);
-		Green.recalc_FTw(wmin,wmax,1000);
+		Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >
+		("A1P",tmax,Nt,x0,loadMatrix(make_string("PES_GtxRe_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat"))+
+		                  loadMatrix(make_string("IPE_GtxRe_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat")),
+		                  loadMatrix(make_string("PES_GtxIm_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat"))+
+		                  loadMatrix(make_string("IPE_GtxIm_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat")),
+		true,QR); // GAUSSINT=true
+		Gfull.recalc_FTw(wmin,wmax,1000);
 		
 		#ifdef FERMIONS
-		Green.save_Sigma();
+		Gfull.save_selfenergy();
+		IntervalIterator mu(wmin,wmax,101);
+		for (mu=mu.begin(); mu!=mu.end(); ++mu)
+		{
+			double res = spinfac * Gfull.integrate_Glocw(*mu);
+			mu << res;
+		}
+		mu.save("n(mu).dat");
+		RootFinder R(n_mu,wmin,wmax);
+		lout << "mu=" << R.root() << endl;
 		#endif
 	}
 	else
@@ -171,8 +196,15 @@ int main (int argc, char* argv[])
 		#if defined(FERMIONS)
 		for (int l=0; l<L; ++l)
 		{
-			lout << "l=" << l << " n=" << avg(g.state, H.n(l), g.state) << endl;
-	//		<< ", d=" << avg(g.state, H.d(l), g.state) << endl;
+//			lout << "l=" << l 
+//			     << " n=" << avg(g.state, H.n<UP>(l), g.state) 
+//			     << ", "  << avg(g.state, H.n<DN>(l), g.state) 
+//			     << ", d=" << avg(g.state, H.d(l), g.state) 
+//			     << endl;
+			lout << "l=" << l 
+			     << " n=" << avg(g.state, H.n(l), g.state) 
+			     << ", d=" << avg(g.state, H.d(l), g.state) 
+			     << endl;
 		}
 		#endif
 		
@@ -187,57 +219,74 @@ int main (int argc, char* argv[])
 		H_hetero.precalc_TwoSiteData(true); // FORCE=true
 		
 		// create vector of O
-		vector<Mpo<MODEL::Symmetry,double>> Obra(Lhetero);
+		std::array<vector<Mpo<MODEL::Symmetry,double>>,2> Obra;
+		Obra[0].resize(Lhetero);
+		Obra[1].resize(Lhetero);
 		for (int l=0; l<Lhetero; ++l)
 		{
 			#ifdef HEISENBERG
 //			Obra[l] = H_hetero.Scomp(SP,l);
-			Obra[l]= H_hetero.S(l,0,sqrt(3.));
+			Obra[0][l]= H_hetero.S(l,0,sqrt(3.));
 			#elif defined(FERMIONS)
-			Obra[l] = H_hetero.c(l,0,sqrt(2.));
+			Obra[0][l] = H_hetero.c(l,0,1.);
+			Obra[1][l] = H_hetero.cdag(l,0,1.);
 			#endif
-			Obra[l].transform_base(Q,false,L); // PRINT=false
+			Obra[0][l].transform_base(Q,false,L); // PRINT=false
+			Obra[1][l].transform_base(Q,false,L);
 		}
 		#ifdef HEISENBERG
 		Mpo<MODEL::Symmetry,double> Oket = H_hetero.S(x0);
 		#elif defined(FERMIONS)
-		Mpo<MODEL::Symmetry,double> Oket = H_hetero.c(x0);
+//		Mpo<MODEL::Symmetry,double> Oket = H_hetero.c(x0,0,1.);
+		std::array<Mpo<MODEL::Symmetry,double>,2> Oket;
+		Oket[0] = H_hetero.c(x0,0,1.);
+		Oket[1] = H_hetero.cdag(x0,0,1.);
 		#endif
-		Oket.transform_base(Q,false,L); // PRINT=false
-		lout << "Oket: " << Oket.info() << endl;
+		Oket[0].transform_base(Q,false,L); // PRINT=false
+		Oket[1].transform_base(Q,false,L);
 		
 		// OxV for all sites
 		Stopwatch<> OxVTimer;
-		vector<Mps<MODEL::Symmetry,complex<double>>> OxPhi(Lhetero);
-		vector<Mps<MODEL::Symmetry,double>> OxPhi_tmp = uDMRG.create_Mps(Ncells, g, H, Obra[x0], Obra, false);
+		Mps<MODEL::Symmetry,double> Phi = uDMRG.create_Mps(Ncells, g, H, x0, false); // ground state as heterogenic MPS
+		//---
+		std::array<vector<Mps<MODEL::Symmetry,complex<double>>>,2> OxPhi;
+		OxPhi[0].resize(Lhetero);
+		OxPhi[1].resize(Lhetero);
+		std::array<vector<Mps<MODEL::Symmetry,double>>,2> OxPhi_tmp;
+		OxPhi_tmp[0] = uDMRG.create_Mps(Ncells, g, H, Obra[0][x0], Obra[0], false);
+		OxPhi_tmp[1] = uDMRG.create_Mps(Ncells, g, H, Obra[1][x0], Obra[1], false);
 		for (int l=0; l<Lhetero; ++l)
 		{
-			OxPhi[l] = OxPhi_tmp[l].template cast<complex<double> >();
+			OxPhi[0][l] = OxPhi_tmp[0][l].template cast<complex<double>>();
+			OxPhi[1][l] = OxPhi_tmp[1][l].template cast<complex<double>>();
 		}
-		Mps<MODEL::Symmetry,complex<double>> OxPhi0 = uDMRG.create_Mps(Ncells, g, H, Oket, Oket, false).template cast<complex<double> >();
-		cout << "norm(OxPhi0)=" << OxPhi0.squaredNorm() << endl;
+		std::array<Mps<MODEL::Symmetry,complex<double>>,2> OxPhi0;
+		OxPhi0[0] = uDMRG.create_Mps(Ncells, g, H, Oket[0], Oket[0], false).template cast<complex<double>>();
+		OxPhi0[1] = uDMRG.create_Mps(Ncells, g, H, Oket[1], Oket[1], false).template cast<complex<double>>();
+		lout << "dot_hetero(OxPhi0[0],OxPhi0[0])=" << isReal(dot_hetero(OxPhi0[0],OxPhi0[0])) << endl;
+		lout << "dot_hetero(OxPhi0[1],OxPhi0[1])=" << isReal(dot_hetero(OxPhi0[1],OxPhi0[1])) << endl;
 		lout << OxVTimer.info("OxV for all sites") << endl;
 		
-		// some testing
-	//	#ifdef FERMIONS
-	//	cout << "Ncells=" << Ncells << endl;
-	//	auto Op1 = H_hetero.cdagc<UP>(Ncells-2*L,Ncells); Op1.transform_base(Q,false,L);
-	//	auto Op3 = H_hetero.n(Ncells); Op3.transform_base(Q,false,L);
-	//	cout << "cdagc=" << avg_hetero(Phi, Op1, Phi) << ", n=" << avg_hetero(Phi, Op3, Phi) << endl;
-	//	MODEL::StateXd OxPhi;
-	//	auto Op2 = H_hetero.c<UP>(Ncells); Op2.transform_base(Q,false,L);
-	//	OxV_exact(Op2, Phi, OxPhi, 2., DMRG::VERBOSITY::SILENT);
-	//	OxPhi.graph("OxPhi");
-	//	cout << dot_hetero(OxPhi,OxPhi,-2) << endl;
-	//	cout << dot_hetero(OxPhi,OxPhi,+2) << endl;
-	//	#endif
+//		// some testing
+//		#ifdef FERMIONS
+//		int DeltaCells = 4;
+//		cout << "Ncells=" << Ncells << endl;
+//		auto Op1 = H_hetero.nn(Ncells-DeltaCells*L,Ncells); Op1.transform_base(Q,false,L);
+//		cout << "nn=" << avg_hetero(Phi, Op1, Phi) << endl;
+//		//---
+//		auto Op2 = H_hetero.n(Ncells); Op2.transform_base(Q,false,L);
+//		MODEL::StateXd O2xPhi = uDMRG.create_Mps(Ncells, g, H, Op2, Op2, false);
+//		cout << "dot(shift=-)" << DeltaCells << ": " << dot_hetero(O2xPhi,O2xPhi,-DeltaCells) << endl;
+//		cout << "dot(shift=+)" << DeltaCells << ": " << dot_hetero(O2xPhi,O2xPhi,+DeltaCells) << endl;
+//		#endif
 		
 		// GreenPropagator
-		GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> > Green;
 		#ifdef HEISENBERG
-		Green = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(tmax,Nt,x0,-1.,6.,1000,1e-4,GAUSSINT,ZERO_2PI);
-		#elif defined(FERMIONS)
-		Green = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(tmax,Nt,x0,-4.,4.,1000,1e-4,GAUSSINT,MPI_PPI);
+		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("SSF",tmax,Nt,x0,wmin,wmax,1000,1e-4,GAUSSINT,ZERO_2PI);
+		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("SSF",tmax,Nt,x0,wmin,wmax,1000,1e-4,GAUSSINT,ZERO_2PI);
+		#elif defined(FERMIONS) // TIME_FORWARDS=true/false
+		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("PES",tmax,Nt,x0,wmin,wmax,1000,1e-4,GAUSSINT,MPI_PPI);
+		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("IPE",tmax,Nt,x0,wmin,wmax,1000,1e-4,GAUSSINT,MPI_PPI);
 		#endif
 		
 		// set operator to measure
@@ -257,15 +306,45 @@ int main (int argc, char* argv[])
 			#endif
 			Measure[l].transform_base(Q,false,L); // PRINT=false
 		}
-		Green.set_measurement(Measure,10);
+		Green[0].set_measurement(Measure,10);
+		Green[1].set_measurement(Measure,10);
 		
-		Mps<MODEL::Symmetry,double> Phi = uDMRG.create_Mps(Ncells, g, H, x0, false); // ground state as heterogenic MPS
 		double Eg = avg_hetero(Phi, H_hetero, Phi, true);
 		lout << setprecision(14) << "Eg=" << Eg << ", (Lhetero+1)*e0=" << g.energy*(Lhetero+1) << ", diff=" << abs(Eg-g.energy*(Lhetero+1)) << endl;
-		Green.compute(H_hetero, OxPhi, OxPhi0, Eg);
+		
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			{
+				// PES
+				auto H_hetero_copy = H_hetero;
+				Green[0].compute(H_hetero_copy, OxPhi[0], OxPhi0[0], Eg, false); // TIME_FORWARDS=true
+			}
+			#pragma omp section
+			{
+				// IPE
+				auto H_hetero_copy = H_hetero;
+				Green[1].compute(H_hetero_copy, OxPhi[1], OxPhi0[1], Eg, true); // TIME_FORWARDS=true
+			}
+		}
+		
+		Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >
+		("A1P",tmax,Nt,x0,Green[0].get_Gtx().real()+Green[1].get_Gtx().real(),
+		                  Green[0].get_Gtx().imag()+Green[1].get_Gtx().imag(),
+		true,MPI_PPI); // GAUSSINT=true
+		Gfull.recalc_FTw(wmin,wmax,1000);
 		
 		#ifdef FERMIONS
-		Green.save_Sigma();
+		Gfull.save_selfenergy();
+		IntervalIterator mu(wmin,wmax,101);
+		for (mu=mu.begin(); mu!=mu.end(); ++mu)
+		{
+			double res = spinfac * Gfull.integrate_Glocw(*mu);
+			mu << res;
+		}
+		mu.save("n(mu).dat");
+		RootFinder R(n_mu,wmin,wmax);
+		lout << "mu=" << R.root() << endl;
 		#endif
 	}
 }
