@@ -475,7 +475,7 @@ public:
 		else                              {return Boundaries.R;}
 	}
 	
-	void elongate_hetero (size_t Nleft = 0, size_t Nright = 0)
+	void elongate_hetero (size_t Nleft=0, size_t Nright=0)
 	{
 		if (Nleft>0 or Nright>0)
 		{
@@ -487,6 +487,7 @@ public:
 			vector<vector<Biped<Symmetry,MatrixType> > > Anew(Lnew);
 			vector<vector<qarray<Nq> > > qloc_new(Lnew);
 			
+//			cout << "Nleft=" << Nleft << ", Nright=" << Nright << endl;
 			for (size_t l=0; l<Lleft; ++l)
 			{
 //				cout << "adding AL at: l=" << l << " from cell index=" << posmod(-l,Lcell) << endl;
@@ -505,10 +506,53 @@ public:
 				Anew    [Lleft+this->N_sites+l] = Boundaries.A[1][l%Lcell];
 				qloc_new[Lleft+this->N_sites+l] = Boundaries.qloc[l%Lcell];
 			}
+//			cout << endl;
 			
 			A = Anew;
 			qloc = qloc_new;
 			this->N_sites = Lnew;
+			
+			resize_arrays();
+			update_inbase();
+			update_outbase();
+			calc_Qlimits();
+		}
+	}
+	
+	void shift_hetero (int Nshift=0)
+	{
+		if (Nshift!=0)
+		{
+			size_t Lcell = Boundaries.length();
+			size_t Lleft = (Nshift<0)? 0:Nshift*Lcell;
+			size_t Lright = (Nshift<0)? abs(Nshift)*Lcell:0;
+			
+			vector<vector<Biped<Symmetry,MatrixType>>> Anew(this->N_sites);
+			vector<vector<qarray<Nq>>> qloc_new(this->N_sites);
+			
+//			cout << "Nshift=" << Nshift << endl;
+			for (size_t l=0; l<Lleft; ++l)
+			{
+//				cout << "adding AL at: l=" << l << " from cell index=" << posmod(-l,Lcell) << endl;
+				Anew    [l] = Boundaries.A[0][posmod(-l,Lcell)];
+				qloc_new[l] = Boundaries.qloc[posmod(-l,Lcell)];
+			}
+			for (size_t l=0; l<this->N_sites-abs(Nshift)*Lcell; ++l)
+			{
+//				cout << "using old A at: l=" << Lleft+l << " old index=" << l+Lright << endl;
+				Anew    [Lleft+l] = A[l+Lright];
+				qloc_new[Lleft+l] = qloc[l+Lright];
+			}
+			for (size_t l=0; l<Lright; ++l)
+			{
+//				cout << "adding AR at: l=" << Lleft+this->N_sites-abs(Nshift)*Lcell+l << " from cell index=" << l%Lcell << endl;
+				Anew    [Lleft+this->N_sites-abs(Nshift)*Lcell+l] = Boundaries.A[1][l%Lcell];
+				qloc_new[Lleft+this->N_sites-abs(Nshift)*Lcell+l] = Boundaries.qloc[l%Lcell];
+			}
+//			cout << endl;
+			
+			A = Anew;
+			qloc = qloc_new;
 			
 			resize_arrays();
 			update_inbase();

@@ -49,6 +49,7 @@ Scalar dot_hetero (const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> 
 			Vbral.elongate_hetero(abs(Ncellshift),0);
 			Vketl.elongate_hetero(0,abs(Ncellshift));
 		}
+//		Vbral.shift_hetero(Ncellshift);
 		
 		return Vbral.dot(Vketl);
 	}

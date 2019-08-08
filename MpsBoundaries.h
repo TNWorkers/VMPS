@@ -48,6 +48,9 @@ public:
 		Bout.A[0].resize(A[0].size());
 		Bout.A[1].resize(A[1].size());
 		
+		Bout.N_sites = N_sites;
+		Bout.TRIVIAL_BOUNDARIES = TRIVIAL_BOUNDARIES;
+		
 		for (size_t g=0; g<2; ++g)
 		for (size_t l=0; l<A[g].size(); ++l)
 		{

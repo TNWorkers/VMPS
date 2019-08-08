@@ -79,7 +79,7 @@ TWO_SITE (int it, const MpsType &Psi, double r)
 			}
 		}
 		int trues = std::count(res.begin(), res.end(), true);
-		lout << " N_steps(2-site)=" << trues << " (" << trues*100./(L-1) << "%)" << endl;
+		lout << " N_steps(2-site)=" << trues << " (" << round(trues*100./(L-1),1) << "%)" << endl;
 	}
 	
 	if (res[0] == true and it>0 and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)

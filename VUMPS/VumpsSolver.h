@@ -1955,7 +1955,6 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 {
 	size_t add = (ADD_ODD_SITE)? 1:0;
 	size_t Lhetero = Ncells * N_sites + add;
-	assert(Lhetero == Omult.size());
 	
 	Tripod<Symmetry,MatrixType> L_with_O;
 	Tripod<Symmetry,MatrixType> R_with_O;
@@ -2075,9 +2074,10 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	
 	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, H, V.state, ALxO, ARxO, V.state.qloc, 
 	                                         L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
-	vector<Mps<Symmetry,Scalar>> Mres(Lhetero);
+	
+	vector<Mps<Symmetry,Scalar>> Mres(Omult.size());
 	#pragma omp parallel for
-	for (size_t l=0; l<Lhetero; ++l)
+	for (size_t l=0; l<Omult.size(); ++l)
 	{
 		OxV_exact(Omult[l], Mtmp, Mres[l], 2., DMRG::VERBOSITY::SILENT);
 	}

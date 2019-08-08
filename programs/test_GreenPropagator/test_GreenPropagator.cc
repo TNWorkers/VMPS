@@ -83,6 +83,11 @@ double n_mu (double mu, void*)
 	return spinfac * Gfull.integrate_Glocw(mu) - N/L;
 }
 
+double eps1d (double q)
+{
+	return -2.*cos(q);
+}
+
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
@@ -109,7 +114,7 @@ int main (int argc, char* argv[])
 	wmax = args.get<double>("wmax",+10.);
 	#endif
 	
-	dt = args.get<double>("dt",0.1);
+	dt = args.get<double>("dt",0.2);
 	tmax = args.get<double>("tmax",10.);
 	Nt = static_cast<int>(tmax/dt);
 	tol_compr = 1e-4;
@@ -145,15 +150,15 @@ int main (int argc, char* argv[])
 		Q_RANGE QR = MPI_PPI;
 		#endif
 		Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >
-		("A1P",tmax,Nt,x0,loadMatrix(make_string("PES_GtxRe_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat"))+
-		                  loadMatrix(make_string("IPE_GtxRe_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat")),
-		                  loadMatrix(make_string("PES_GtxIm_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat"))+
-		                  loadMatrix(make_string("IPE_GtxIm_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat")),
+		("A1P",L,tmax,Nt,x0,loadMatrix(make_string("PES_GtxRe_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat"))+
+		                    loadMatrix(make_string("IPE_GtxRe_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat")),
+		                    loadMatrix(make_string("PES_GtxIm_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat"))+
+		                    loadMatrix(make_string("IPE_GtxIm_x0=",Ncells,"_L=",Lhetero,"_tmax=",tmax,"_Nt=",Nt,".dat")),
 		true,QR); // GAUSSINT=true
 		Gfull.recalc_FTw(wmin,wmax,1000);
 		
 		#ifdef FERMIONS
-		Gfull.save_selfenergy();
+//		Gfull.save_selfenergy(eps1d);
 		IntervalIterator mu(wmin,wmax,101);
 		for (mu=mu.begin(); mu!=mu.end(); ++mu)
 		{
@@ -220,19 +225,21 @@ int main (int argc, char* argv[])
 		
 		// create vector of O
 		std::array<vector<Mpo<MODEL::Symmetry,double>>,2> Obra;
-		Obra[0].resize(Lhetero);
-		Obra[1].resize(Lhetero);
-		for (int l=0; l<Lhetero; ++l)
+		Obra[0].resize(L);
+		Obra[1].resize(L);
+		for (int l=0; l<Obra[0].size(); ++l)
 		{
 			#ifdef HEISENBERG
 //			Obra[l] = H_hetero.Scomp(SP,l);
-			Obra[0][l]= H_hetero.S(l,0,sqrt(3.));
+			Obra[0][l]= H_hetero.S(L*(Ncells-1)/2+l,0,sqrt(3.));
 			#elif defined(FERMIONS)
-			Obra[0][l] = H_hetero.c(l,0,1.);
-			Obra[1][l] = H_hetero.cdag(l,0,1.);
+			Obra[0][l] = H_hetero.c(L*(Ncells-1)/2+l,0,1.);
+			Obra[1][l] = H_hetero.cdag(L*(Ncells-1)/2+l,0,1.);
 			#endif
 			Obra[0][l].transform_base(Q,false,L); // PRINT=false
 			Obra[1][l].transform_base(Q,false,L);
+			
+			cout << "l=" << l << ", loc=" << L*(Ncells-1)/2 << ", x0=" << x0 << endl;
 		}
 		#ifdef HEISENBERG
 		Mpo<MODEL::Symmetry,double> Oket = H_hetero.S(x0);
@@ -250,12 +257,12 @@ int main (int argc, char* argv[])
 		Mps<MODEL::Symmetry,double> Phi = uDMRG.create_Mps(Ncells, g, H, x0, false); // ground state as heterogenic MPS
 		//---
 		std::array<vector<Mps<MODEL::Symmetry,complex<double>>>,2> OxPhi;
-		OxPhi[0].resize(Lhetero);
-		OxPhi[1].resize(Lhetero);
+		OxPhi[0].resize(L);
+		OxPhi[1].resize(L);
 		std::array<vector<Mps<MODEL::Symmetry,double>>,2> OxPhi_tmp;
-		OxPhi_tmp[0] = uDMRG.create_Mps(Ncells, g, H, Obra[0][x0], Obra[0], false);
-		OxPhi_tmp[1] = uDMRG.create_Mps(Ncells, g, H, Obra[1][x0], Obra[1], false);
-		for (int l=0; l<Lhetero; ++l)
+		OxPhi_tmp[0] = uDMRG.create_Mps(Ncells, g, H, Obra[0][0], Obra[0], false);
+		OxPhi_tmp[1] = uDMRG.create_Mps(Ncells, g, H, Obra[1][0], Obra[1], false);
+		for (int l=0; l<OxPhi_tmp[0].size(); ++l)
 		{
 			OxPhi[0][l] = OxPhi_tmp[0][l].template cast<complex<double>>();
 			OxPhi[1][l] = OxPhi_tmp[1][l].template cast<complex<double>>();
@@ -263,8 +270,6 @@ int main (int argc, char* argv[])
 		std::array<Mps<MODEL::Symmetry,complex<double>>,2> OxPhi0;
 		OxPhi0[0] = uDMRG.create_Mps(Ncells, g, H, Oket[0], Oket[0], false).template cast<complex<double>>();
 		OxPhi0[1] = uDMRG.create_Mps(Ncells, g, H, Oket[1], Oket[1], false).template cast<complex<double>>();
-		lout << "dot_hetero(OxPhi0[0],OxPhi0[0])=" << isReal(dot_hetero(OxPhi0[0],OxPhi0[0])) << endl;
-		lout << "dot_hetero(OxPhi0[1],OxPhi0[1])=" << isReal(dot_hetero(OxPhi0[1],OxPhi0[1])) << endl;
 		lout << OxVTimer.info("OxV for all sites") << endl;
 		
 //		// some testing
@@ -289,6 +294,8 @@ int main (int argc, char* argv[])
 		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("IPE",tmax,Nt,x0,wmin,wmax,1000,1e-4,GAUSSINT,MPI_PPI);
 		#endif
 		
+		Green[1].set_verbosity(DMRG::VERBOSITY::ON_EXIT);
+		
 		// set operator to measure
 		vector<Mpo<MODEL::Symmetry,double>> Measure;
 		#ifdef HEISENBERG
@@ -309,42 +316,45 @@ int main (int argc, char* argv[])
 		Green[0].set_measurement(Measure,10);
 		Green[1].set_measurement(Measure,10);
 		
-		double Eg = avg_hetero(Phi, H_hetero, Phi, true);
-		lout << setprecision(14) << "Eg=" << Eg << ", (Lhetero+1)*e0=" << g.energy*(Lhetero+1) << ", diff=" << abs(Eg-g.energy*(Lhetero+1)) << endl;
+		double Eg = avg_hetero(Phi, H_hetero, Phi, true); // USE_BOUNDARY=true
+		lout << setprecision(14) << "Eg=" << Eg << endl;
 		
-		#pragma omp parallel sections
+//		#pragma omp parallel sections
 		{
-			#pragma omp section
+//			#pragma omp section
 			{
 				// PES
 				auto H_hetero_copy = H_hetero;
-				Green[0].compute(H_hetero_copy, OxPhi[0], OxPhi0[0], Eg, false); // TIME_FORWARDS=true
+//				Green[0].compute(H_hetero_copy, OxPhi[0], OxPhi0[0], Eg, false); // TIME_FORWARDS=false
+				Green[0].compute_cell(H_hetero_copy, OxPhi[0], Eg, false); // TIME_FORWARDS=false
+				Green[0].FT_allSites();
 			}
-			#pragma omp section
+//			#pragma omp section
 			{
 				// IPE
-				auto H_hetero_copy = H_hetero;
-				Green[1].compute(H_hetero_copy, OxPhi[1], OxPhi0[1], Eg, true); // TIME_FORWARDS=true
+//				auto H_hetero_copy = H_hetero;
+//				Green[1].compute(H_hetero_copy, OxPhi[1], OxPhi0[1], Eg, true); // TIME_FORWARDS=true
+//				Green[1].compute_cell(H_hetero_copy, OxPhi[1], Eg, true); // TIME_FORWARDS=true
 			}
 		}
 		
-		Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >
-		("A1P",tmax,Nt,x0,Green[0].get_Gtx().real()+Green[1].get_Gtx().real(),
-		                  Green[0].get_Gtx().imag()+Green[1].get_Gtx().imag(),
-		true,MPI_PPI); // GAUSSINT=true
-		Gfull.recalc_FTw(wmin,wmax,1000);
-		
-		#ifdef FERMIONS
-		Gfull.save_selfenergy();
-		IntervalIterator mu(wmin,wmax,101);
-		for (mu=mu.begin(); mu!=mu.end(); ++mu)
-		{
-			double res = spinfac * Gfull.integrate_Glocw(*mu);
-			mu << res;
-		}
-		mu.save("n(mu).dat");
-		RootFinder R(n_mu,wmin,wmax);
-		lout << "mu=" << R.root() << endl;
-		#endif
+//		Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >
+//		("A1P",L,tmax,Nt,x0,Green[0].get_Gtx().real()+Green[1].get_Gtx().real(),
+//		                    Green[0].get_Gtx().imag()+Green[1].get_Gtx().imag(),
+//		true,MPI_PPI); // GAUSSINT=true
+//		Gfull.recalc_FTw(wmin,wmax,1000);
+//		
+//		#ifdef FERMIONS
+//		Gfull.save_selfenergy(eps1d);
+//		IntervalIterator mu(wmin,wmax,101);
+//		for (mu=mu.begin(); mu!=mu.end(); ++mu)
+//		{
+//			double res = spinfac * Gfull.integrate_Glocw(*mu);
+//			mu << res;
+//		}
+//		mu.save("n(mu).dat");
+//		RootFinder R(n_mu,wmin,wmax);
+//		lout << "mu=" << R.root() << endl;
+//		#endif
 	}
 }
