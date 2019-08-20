@@ -342,14 +342,18 @@ private:
 	
 	/**
 	Assembles an Mps from the VUMPS solution with a heterogeneous section and infinite boundary conditions with known environments.
+	This is a low-lever work function that is called from the higher-level \p create_Mps.
 	\param Ncells : amount of cells to generate the heterogeneous section, the total length becomes Lcell*Ncells
 	\param V : converged ground state to generate from
+	\param AL : This left-orthogonal tensor is put into the environment (can contain Jordan-Wigner string)
+	\param AR : This right-orthogonal tensor is put into the environment (can contain quantum number shift)
+	\param qloc_input : This local basis of the unit cell is put into the environment
 	\param L : left environment with the Hamiltonian
 	\param R : right environment with the Hamiltonian
+	\param x0 : put the pivot site here
 	\param ADD_ODD_SITE : if \p true, add one more site in order to have site-oriented inversion symmetry
 	*/
 	Mps<Symmetry,Scalar> assemble_Mps (size_t Ncells,
-	                                   const MpHamiltonian &H,
 	                                   const Umps<Symmetry,Scalar> &V,
 	                                   const vector<vector<Biped<Symmetry,MatrixType> > > &AL,
 	                                   const vector<vector<Biped<Symmetry,MatrixType> > > &AR,
@@ -1944,7 +1948,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	size_t add = (ADD_ODD_SITE)? 1:0;
 	size_t Lhetero = Ncells * V.state.length() + add;
 	
-	return assemble_Mps(Ncells, H, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.qloc, 
+	return assemble_Mps(Ncells, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.qloc, 
 	                    HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, x0, ADD_ODD_SITE);
 };
 
@@ -2067,19 +2071,23 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 //		cout << V.state.A[GAUGE::L][0][s].print() << endl;
 //	}
 	
-//	return assemble_Mps(Ncells, H, V.state, ALxO, ARxO, V.state.A[GAUGE::C], V.state.qloc, 
+//	return assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.A[GAUGE::C], V.state.qloc, 
 //	                    L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
-//	return assemble_Mps(Ncells, H, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.A[GAUGE::C], V.state.qloc, 
+//	return assemble_Mps(Ncells, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.A[GAUGE::C], V.state.qloc, 
 //	                    HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, O.locality(), ADD_ODD_SITE);
 	
-	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, H, V.state, ALxO, ARxO, V.state.qloc, 
+	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.qloc, 
 	                                         L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
 	
 	vector<Mps<Symmetry,Scalar>> Mres(Omult.size());
 	#pragma omp parallel for
 	for (size_t l=0; l<Omult.size(); ++l)
 	{
-		OxV_exact(Omult[l], Mtmp, Mres[l], 2., DMRG::VERBOSITY::SILENT);
+//		#pragma omp critical
+//		{
+//			lout << "l=" << l << ", locality=" << Omult[l].locality() << endl;
+//		}
+		OxV_exact(Omult[l], Mtmp, Mres[l], 2., DMRG::VERBOSITY::ON_EXIT);
 	}
 	return Mres;
 };
@@ -2139,10 +2147,10 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 		}
 	}
 	
-	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, H, V.state, ALxO, ARxO, V.state.qloc, 
+	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.qloc, 
 	                                         L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
 	Mps<Symmetry,Scalar> Mres;
-	OxV_exact(Omult, Mtmp, Mres, 2., DMRG::VERBOSITY::STEPWISE);
+	OxV_exact(Omult, Mtmp, Mres, 2., DMRG::VERBOSITY::SILENT);
 	
 	return Mres;
 };
@@ -2150,7 +2158,6 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 assemble_Mps (size_t Ncells,
-              const MpHamiltonian &H,
               const Umps<Symmetry,Scalar> &V,
               const vector<vector<Biped<Symmetry,MatrixType> > > &AL,
               const vector<vector<Biped<Symmetry,MatrixType> > > &AR,

@@ -25,7 +25,7 @@ Scalar dot (const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket)
  * Calculates the scalar product \f$\left<\Psi_{bra}|\Psi_{ket}\right>\f$ for a heterogenic MPS.
  * \param Vbra : input \f$\left<\Psi_{bra}\right|\f$
  * \param Vket : input \f$\left|\Psi_{ket}\right>\f$
- * \param shift : Shift \p Vbra by this many unit cells (negative=left-shift, positive=right-shift).
+ * \param Ncellshift : Shift \p Vbra by this many unit cells (negative=left-shift, positive=right-shift).
  */
 template<typename Symmetry, typename Scalar>
 Scalar dot_hetero (const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar> &Vket, int Ncellshift=0)
@@ -665,12 +665,16 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	Vout.update_outbase();
 	Vout.calc_Qlimits(); // Must be called here, depends on Qtot!
 	
+	string input_info, exact_info, swept_info, compressed_info, Compressor_info;
+	
 	if (VERBOSITY > DMRG::VERBOSITY::SILENT)
 	{
-		lout << endl;
-		lout << termcolor::bold << "OxV_exact" << termcolor::reset << endl;
-		lout << "input:\t" << Vin.info() << endl;
-		lout << "exact:\t" << Vout.info() << endl;
+//		lout << endl;
+//		lout << termcolor::bold << "OxV_exact" << termcolor::reset << endl;
+		input_info = Vin.info();
+		exact_info = Vout.info();
+//		lout << "input:\t" << Vin.info() << endl;
+//		lout << "exact:\t" << Vout.info() << endl;
 	}
 	
 	if (tol_compr < 1.)
@@ -687,8 +691,10 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 		
 		if (VERBOSITY > DMRG::VERBOSITY::SILENT)
 		{
-			lout << "compressed:\t" << Vout.info() << endl;
-			lout << "\t" << Compadre.info() << endl;
+			compressed_info = Vout.info();
+			Compressor_info = Compadre.info();
+//			lout << "compressed:\t" << Vout.info() << endl;
+//			lout << "\t" << Compadre.info() << endl;
 		}
 	}
 	else
@@ -697,11 +703,31 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 		
 		if (VERBOSITY > DMRG::VERBOSITY::SILENT)
 		{
-			lout << "swept:\t" << Vout.info() << endl;
+//			lout << "swept:\t" << Vout.info() << endl;
+			swept_info = Vout.info();
 		}
 	}
 	
-	if (VERBOSITY > DMRG::VERBOSITY::SILENT) lout << endl;
+	if (VERBOSITY > DMRG::VERBOSITY::SILENT)
+	{
+		#pragma omp critical
+		{
+			lout << endl;
+			lout << termcolor::bold << "OxV_exact" << termcolor::reset << endl;
+			lout << "input:\t" << input_info << endl;
+			lout << "exact:\t" << exact_info << endl;
+			if (tol_compr < 1.)
+			{
+				lout << "compressed:\t" << compressed_info << endl;
+				lout << "\t" << Compressor_info << endl;
+			}
+			else
+			{
+				lout << "swept:\t" << swept_info << endl;
+			}
+			lout << endl;
+		}
+	}
 	
 	if (Vout.calc_Nqavg() <= 1.5 and Vout.min_Nsv == 0 and 
 	    Symmetry::IS_TRIVIAL == false and 

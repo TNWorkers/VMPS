@@ -398,27 +398,29 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
 	N_sweepsteps = 0;
 	Dcutoff = Dcutoff_new = Dcutoff_input;
 	
-	// set L&R edges
-	Env.clear();
-	Env.resize(N_sites);
-	Env[N_sites-1].R.setTarget(Vin.Qmultitarget());
-	Env[0].L.setVacuum();
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Env[l].qloc = Vin.locBasis(l);
-	}
-	
 	// set initial guess
 	Vout = Vin;
 	Vout.innerResize(Dcutoff);
 	Vout.max_Nsv = Dcutoff;
+	
+	// set L&R edges
+	Env.clear();
+	Env.resize(N_sites);
+//	Env[N_sites-1].R.setTarget(Vin.Qmultitarget());
+//	Env[0].L.setVacuum();
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Env[l].qloc = Vin.locBasis(l);
+	}
+	Env[N_sites-1].R.setIdentity(Vout.outBasis(N_sites-1), Vin.outBasis(N_sites-1));
+	Env[0].L.setIdentity(Vout.inBasis(0), Vin.inBasis(0));
 	
 	Mmax = Vout.calc_Mmax();
 	prepSweep(Vin,Vout);
 	sqdist = 1.;
 	size_t halfSweepRange = N_sites;
 	
-	if (CHOSEN_VERBOSITY>=2)
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		lout << Chronos.info("preparation stateCompress") << endl;
 	}
@@ -460,7 +462,7 @@ stateCompress (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout,
 		sqdist = abs(sqnormVin-Vout.squaredNorm());
 		assert(!std::isnan(sqdist));
 		
-		if (CHOSEN_VERBOSITY>=2)
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
 			lout << " distance^2=";
 			if (sqdist <= tol) {lout << termcolor::green;}
@@ -495,10 +497,8 @@ void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 prepSweep (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 {
 	assert(Vout.pivot == 0 or Vout.pivot == N_sites-1 or Vout.pivot == -1);
-//	Vout.setRandom();
 	
-	if (Vout.pivot == N_sites-1 or
-	    Vout.pivot == -1)
+	if (Vout.pivot == N_sites-1 or Vout.pivot == -1)
 	{
 		for (int l=N_sites-1; l>0; --l)
 		{
@@ -542,15 +542,16 @@ stateOptimize1 (const Mps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout)
 	stateOptimize1(Vin,Vout,Aout);
 	Vout.A[pivot] = Aout.data;
 	
-	// safeguard against sudden norm loss:
-	if (Vout.squaredNorm() < 1e-7)
-	{
-		if (CHOSEN_VERBOSITY > 0)
-		{
-			lout << termcolor::bold << termcolor::red << "WARNING: small norm encountered at pivot=" << pivot << "!" << termcolor::reset << endl;
-		}
-		Vout /= sqrt(Vout.squaredNorm());
-	}
+//	// safeguard against sudden norm loss:
+//	if (Vout.squaredNorm() < 1e-7)
+//	{
+//		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
+//		if (CHOSEN_VERBOSITY > 0)
+//		{
+//			lout << termcolor::bold << termcolor::red << "WARNING: small norm encountered at pivot=" << pivot << "!" << termcolor::reset << endl;
+//		}
+//		Vout /= sqrt(Vout.squaredNorm());
+//	}
 	
 	Stopwatch<> SweepTimer;
 	Vout.sweepStep(CURRENT_DIRECTION, pivot, DMRG::BROOM::SVD);

@@ -550,9 +550,9 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 		// Next-nearest-neighbour terms: t'
 		if (!P.HAS("tFull"))
 		{
-			param2d tprime = P.fill_array2d<double>("tPrime", "tPrime_array", {orbitals, nextn_orbitals}, loc%Lcell);
-			Terms.save_label(loc, tprime.label);
-		
+			param2d tPrime = P.fill_array2d<double>("tPrime", "tPrime_array", {orbitals, nextn_orbitals}, loc%Lcell);
+			Terms.save_label(loc, tPrime.label);
+			
 			if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
 			{
 				for (std::size_t alpha=0; alpha<orbitals; ++alpha)
@@ -561,14 +561,14 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 					{
 						SiteOperator<Symmetry,double> c_sign_local = OperatorType::prod(F[loc].c(alpha), F[loc].sign(), {2,-1}).plain<double>();
 						SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alpha), F[loc].sign(), {2,1}).plain<double>();
-				    
+						
 						SiteOperator<Symmetry,double> sign_tight = F[(loc+1)%N_sites].sign().plain<double>();
-				    
+						
 						SiteOperator<Symmetry,double> c_nextn = F[(loc+2)%N_sites].c(beta).plain<double>();
 						SiteOperator<Symmetry,double> cdag_nextn = F[(loc+2)%N_sites].cdag(beta).plain<double>();
-				    
-						Terms.push_nextn(loc, tprime(alpha, beta) * std::sqrt(2.), cdag_sign_local, sign_tight, c_nextn);
-						Terms.push_nextn(loc, tprime(alpha, beta) * std::sqrt(2.), c_sign_local,    sign_tight, cdag_nextn);
+						
+						Terms.push_nextn(loc, -tPrime(alpha, beta) * std::sqrt(2.), cdag_sign_local, sign_tight, c_nextn);
+						Terms.push_nextn(loc, -tPrime(alpha, beta) * std::sqrt(2.), c_sign_local,    sign_tight, cdag_nextn);
 					}
 				}
 			}

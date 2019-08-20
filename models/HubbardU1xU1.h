@@ -226,18 +226,18 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
 		
 		// Next-nearest-neighbour terms: t'
 		
-		param2d tprime = P.fill_array2d<double>("tPrime", "tPrime_array", {orbitals, nextn_orbitals}, loc%Lcell);
-		Terms.save_label(loc, tprime.label);
+		param2d tPrime = P.fill_array2d<double>("tPrime", "tPrime_array", {orbitals, nextn_orbitals}, loc%Lcell);
+		Terms.save_label(loc, tPrime.label);
 		
 		if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
 		{
 			for (std::size_t alfa=0; alfa<orbitals;       ++alfa)
 			for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
 			{
-				Terms.push_nextn(loc, -tprime(alfa,beta),     F[loc].cdag(UP,alfa)*F[loc].sign(), F[lp1].sign(), F[lp2].c(UP,beta));
-				Terms.push_nextn(loc, -tprime(alfa,beta),     F[loc].cdag(DN,alfa)*F[loc].sign(), F[lp1].sign(), F[lp2].c(DN,beta));
-				Terms.push_nextn(loc, -tprime(alfa,beta), -1.*F[loc].c(UP,alfa)*F[loc].sign(),    F[lp1].sign(), F[lp2].cdag(UP,beta));
-				Terms.push_nextn(loc, -tprime(alfa,beta), -1.*F[loc].c(DN,alfa)*F[loc].sign(),    F[lp1].sign(), F[lp2].cdag(DN,beta));
+				Terms.push_nextn(loc, -tPrime(alfa,beta),     F[loc].cdag(UP,alfa)*F[loc].sign(), F[lp1].sign(), F[lp2].c(UP,beta));
+				Terms.push_nextn(loc, -tPrime(alfa,beta),     F[loc].cdag(DN,alfa)*F[loc].sign(), F[lp1].sign(), F[lp2].c(DN,beta));
+				Terms.push_nextn(loc, -tPrime(alfa,beta), -1.*F[loc].c(UP,alfa)*F[loc].sign(),    F[lp1].sign(), F[lp2].cdag(UP,beta));
+				Terms.push_nextn(loc, -tPrime(alfa,beta), -1.*F[loc].c(DN,alfa)*F[loc].sign(),    F[lp1].sign(), F[lp2].cdag(DN,beta));
 			}
 		}
 		

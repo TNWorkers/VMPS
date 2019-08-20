@@ -15,7 +15,7 @@ public:
 		data.resize(tpoints,L-1);
 	}
 	
-	vector<bool> TWO_SITE (int it, const MpsType &Psi, double r=1.);
+	vector<bool> TWO_SITE (int it, const MpsType &Psi, double r=1., vector<int> overrides={});
 	
 	void save (string filename);
 	void save (int it, string filename);
@@ -31,7 +31,7 @@ private:
 
 template<typename MpsType>
 vector<bool> EntropyObserver<MpsType>::
-TWO_SITE (int it, const MpsType &Psi, double r)
+TWO_SITE (int it, const MpsType &Psi, double r, vector<int> overrides)
 {
 	vector<bool> res(L-1);
 	
@@ -64,6 +64,11 @@ TWO_SITE (int it, const MpsType &Psi, double r)
 		}
 	}
 	
+	for (int ib=0; ib<overrides.size(); ++ib)
+	{
+		res[overrides[ib]] = true;
+	}
+	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 	{
 		lout << "EntropyObserver: ";
@@ -71,13 +76,16 @@ TWO_SITE (int it, const MpsType &Psi, double r)
 		{
 			if (res[b])
 			{
-				lout << termcolor::red << 2 << termcolor::reset;
+				cout << termcolor::red;
+				lout << 2;
 			}
 			else
 			{
-				lout << termcolor::blue << 1 << termcolor::reset;
+				cout << termcolor::blue;
+				lout << 1;
 			}
 		}
+		cout << termcolor::reset;
 		int trues = std::count(res.begin(), res.end(), true);
 		lout << " N_steps(2-site)=" << trues << " (" << round(trues*100./(L-1),1) << "%)" << endl;
 	}
