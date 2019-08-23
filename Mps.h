@@ -487,20 +487,21 @@ public:
 			vector<vector<Biped<Symmetry,MatrixType> > > Anew(Lnew);
 			vector<vector<qarray<Nq> > > qloc_new(Lnew);
 			
+//			cout << "Lcell=" << Lcell << endl;
 //			cout << "Nleft=" << Nleft << ", Nright=" << Nright << endl;
-			for (size_t l=0; l<Lleft; ++l)
+			for (int l=0; l<Lleft; ++l)
 			{
-//				cout << "adding AL at: l=" << l << " from cell index=" << posmod(-l,Lcell) << endl;
-				Anew    [l] = Boundaries.A[0][posmod(-l,Lcell)];
-				qloc_new[l] = Boundaries.qloc[posmod(-l,Lcell)];
+//				cout << "adding AL at: l=" << l << " from cell index=" << l%Lcell << endl;
+				Anew    [l] = Boundaries.A[0][l%Lcell];
+				qloc_new[l] = Boundaries.qloc[l%Lcell];
 			}
-			for (size_t l=0; l<this->N_sites; ++l)
+			for (int l=0; l<this->N_sites; ++l)
 			{
 //				cout << "using old A at: l=" << Lleft+l << " old index=" << l << endl;
 				Anew    [Lleft+l] = A[l];
 				qloc_new[Lleft+l] = qloc[l];
 			}
-			for (size_t l=0; l<Lright; ++l)
+			for (int l=0; l<Lright; ++l)
 			{
 //				cout << "adding AR at: l=" << Lleft+this->N_sites+l << " from cell index=" << l%Lcell << endl;
 				Anew    [Lleft+this->N_sites+l] = Boundaries.A[1][l%Lcell];
@@ -684,9 +685,7 @@ template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
 Mps()
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar>>()
-{
-	set_open_bc();
-}
+{}
 
 template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
@@ -743,6 +742,7 @@ template<typename Hamiltonian>
 void Mps<Symmetry,Scalar>::
 outerResize (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t Nqmax_input)
 {
+	set_open_bc();
 	N_phys = H.volume();
 	outerResize(H.length(), H.locBasis(), Qtot_input, Nqmax_input);
 }
@@ -756,6 +756,7 @@ outerResize (const Mps<Symmetry,OtherMatrixType> &V)
 	N_phys = V.N_phys;
 	qloc = V.qloc;
 	Qtot = V.Qtot;
+	set_open_bc();
 	Qmulti = V.Qmulti;
 	
 	inbase = V.inbase;
@@ -3182,7 +3183,7 @@ locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance) const
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lnext;
-	L.setIdentity(1,1,inBasis (loc1));
+	L.setIdentity(1,1,inBasis(loc1));
 	
 	for (size_t l=0; l<distance+1; ++l)
 	{

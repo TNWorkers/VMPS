@@ -30,7 +30,9 @@ public:
 	
 	void set_open_bc (qarray<Symmetry::Nq> &Qtot)
 	{
+		L.clear();
 		L.setVacuum();
+		R.clear();
 		R.setTarget(qarray3<Symmetry::Nq>{Qtot, Qtot, Symmetry::qvacuum()});
 		TRIVIAL_BOUNDARIES = true;
 	}

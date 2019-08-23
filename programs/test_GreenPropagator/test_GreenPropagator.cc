@@ -102,11 +102,11 @@ int main (int argc, char* argv[])
 	Ncells = args.get<size_t>("Ncells",30);
 	cout << "Ncells=" << Ncells << endl;
 	Lhetero = L*Ncells;
-	x0 = Ncells;
+	x0 = Lhetero/2;
 	tPrime = args.get<double>("tPrime",0.);
 	J = args.get<double>("J",1.);
 	V = args.get<double>("V",4.);
-	U = args.get<double>("U",6.);
+	U = args.get<double>("U",0.);
 	M = args.get<int>("M",0);
 	Dtot = abs(M)+1;
 	N = args.get<int>("N",L);
@@ -123,11 +123,19 @@ int main (int argc, char* argv[])
 	wmax = args.get<double>("wmax",+10.);
 	#endif
 	
-	dt = args.get<double>("dt",0.1);
+	if (CELL)
+	{
+		dt = args.get<double>("dt",0.2);
+	}
+	else
+	{
+		dt = args.get<double>("dt",0.1);
+	}
 	tmax = args.get<double>("tmax",10.);
 	Nt = static_cast<int>(tmax/dt);
-	tol_compr = 1e-4;
+	tol_compr =  args.get<double>("tol_compr",1e-4);
 	lout << "Nt=" << Nt << endl;
+	lout << "tol_compr=" << tol_compr << endl;
 	
 	Chi = args.get<size_t>("Chi",2);
 	tol_eigval = args.get<double>("tol_eigval",1e-5);
@@ -335,11 +343,11 @@ int main (int argc, char* argv[])
 		
 		// GreenPropagator
 		#ifdef HEISENBERG
-		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("SSF",tmax,Nt,wmin,wmax,1000,1e-4,GAUSSINT,ZERO_2PI);
-		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("SSF",tmax,Nt,wmin,wmax,1000,1e-4,GAUSSINT,ZERO_2PI);
+		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("SSF",tmax,Nt,wmin,wmax,1000,tol_compr,GAUSSINT,ZERO_2PI);
+		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("SSF",tmax,Nt,wmin,wmax,1000,tol_compr,GAUSSINT,ZERO_2PI);
 		#elif defined(FERMIONS) // TIME_FORWARDS=true/false
-		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("PES",tmax,Nt,wmin,wmax,1000,1e-4,GAUSSINT,ZERO_2PI);
-		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("IPE",tmax,Nt,wmin,wmax,1000,1e-4,GAUSSINT,ZERO_2PI);
+		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("PES",tmax,Nt,wmin,wmax,1000,tol_compr,GAUSSINT,ZERO_2PI);
+		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("IPE",tmax,Nt,wmin,wmax,1000,tol_compr,GAUSSINT,ZERO_2PI);
 		#endif
 		
 		Green[0].set_verbosity(DMRG::VERBOSITY::ON_EXIT);

@@ -473,7 +473,6 @@ write_log (bool FORCE)
 			Filer << i << "\t" << setprecision(13) << err_state_mem[i] << endl;
 		}
 		Filer.close();
-
 	}
 }
 
@@ -651,7 +650,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 		{
 			if (DynParam.iteration(i) == UMPS_ALG::PARALLEL)   {USE_PARALLEL=true;}
 			if (DynParam.iteration(i) == UMPS_ALG::SEQUENTIAL) {USE_SEQUENTIAL=true;}
-			if (DynParam.iteration(i) == UMPS_ALG::DYNAMIC) {USE_DYNAMIC=true;}
+			if (DynParam.iteration(i) == UMPS_ALG::DYNAMIC)    {USE_DYNAMIC=true;}
 		}
 		if (USE_DYNAMIC and N_sites == 1)
 		{
@@ -679,7 +678,6 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 		lout << endl;
 //		Vout.state.graph("init");
 	}
-
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -1220,6 +1218,36 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	double tolLanczosEigval, tolLanczosState;
 	set_LanczosTolerances(tolLanczosEigval,tolLanczosState);
 	
+	double t_exp   = 0.;
+	double t_trunc = 0.;
+//	cout << "N_iterations_without_expansion=" << N_iterations_without_expansion
+//	     << ", max_iter_without_expansion=" << GlobParam.max_iter_without_expansion
+//	     << ", min_iter_without_expansion=" << GlobParam.min_iter_without_expansion
+//	     << boolalpha
+//	     << ", err_var cond: " << (err_var < GlobParam.tol_var)
+//	     << ", min cond: " << (N_iterations_without_expansion > GlobParam.min_iter_without_expansion)
+//	     << ", max cond: " << (N_iterations_without_expansion > GlobParam.max_iter_without_expansion) << endl;
+	
+	// If: a) err_var has converged and minimal iteration number exceeded
+	//     b) maximal iteration number exceeded
+	if ((err_var < GlobParam.tol_var and N_iterations_without_expansion > GlobParam.min_iter_without_expansion) or
+	    N_iterations_without_expansion > GlobParam.max_iter_without_expansion
+	   )
+	{
+		Stopwatch<> ExpansionTimer;
+		size_t deltaD = min(max(static_cast<size_t>(DynParam.Dincr_rel(N_iterations) * Vout.state.max_Nsv-Vout.state.max_Nsv), DynParam.Dincr_abs(N_iterations)),
+		                    DynParam.max_deltaD(N_iterations));
+		//make sure to perform at least one measurement before expanding the basis
+		FORCE_DO_SOMETHING = true;
+		DynParam.doSomething(N_iterations);
+		FORCE_DO_SOMETHING = false;
+		// if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
+		cout << "performing expansion with " << VUMPS::TWOSITE_A::ALxCxAR << endl;
+		expand_basis(deltaD, H, Vout, VUMPS::TWOSITE_A::ALxCxAR);//);
+		t_exp = ExpansionTimer.time();
+		N_iterations_without_expansion = 0;
+	}
+	
 	// See Algorithm 3
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -1228,7 +1256,7 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 			size_t deltaD = min(max(static_cast<size_t>(DynParam.Dincr_rel(N_iterations) * Vout.state.max_Nsv-Vout.state.max_Nsv), DynParam.Dincr_abs(N_iterations)),
 			                    DynParam.max_deltaD(N_iterations));
 			if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
-			expand_basis(l,deltaD,H,Vout,VUMPS::TWOSITE_A::ALxAC);
+//			expand_basis(l,deltaD,H,Vout,VUMPS::TWOSITE_A::ALxAC);
 		}
 		
 		build_cellEnv(H,Vout);
@@ -1340,8 +1368,9 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		lout << termcolor::blue << "eL=" << eL << ", eR=" << eR << termcolor::reset << endl;
 		lout << test_LReigen(Vout) << endl;
 	}
-		
+	
 	++N_iterations;
+	++N_iterations_without_expansion;
 	
 	// print stuff
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -2148,7 +2177,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	}
 	
 	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.qloc, 
-	                                         L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
+	                                         L_with_O, R_with_O, N_sites*Ncells/2, ADD_ODD_SITE);
 	Mps<Symmetry,Scalar> Mres;
 	OxV_exact(Omult, Mtmp, Mres, 2., DMRG::VERBOSITY::SILENT);
 	
@@ -2171,6 +2200,7 @@ assemble_Mps (size_t Ncells,
 	size_t Lhetero = Ncells * AL.size() + add;
 	
 	vector<vector<Biped<Symmetry,MatrixType>>> As(Lhetero);
+	// variant 1: put pivot at x0
 	for (size_t l=0; l<x0; ++l)
 	{
 		As[l] = V.A[GAUGE::L][l%N_sites];
@@ -2180,6 +2210,14 @@ assemble_Mps (size_t Ncells,
 	{
 		As[l] = V.A[GAUGE::R][l%N_sites];
 	}
+	
+	// variant 2: put pivot at Lhetero-1
+//	for (size_t l=0; l<Lhetero-1; ++l)
+//	{
+//		As[l] = V.A[GAUGE::L][l%N_sites];
+//	}
+//	As[Lhetero-1] = V.A[GAUGE::C][(Lhetero-1)%N_sites];
+	
 	
 	vector<vector<qarray<Symmetry::Nq>>> qloc(Lhetero);
 	for (size_t l=0; l<Lhetero; ++l)

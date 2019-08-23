@@ -83,6 +83,7 @@ public:
 	Mpo<Symmetry> d (size_t locx, size_t locy=0);
 	Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	Mpo<Symmetry> ccdag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> dh_excitation (size_t locx);
 	///@}
 	
 	///@{
@@ -924,23 +925,43 @@ ccdag (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 	auto cdag = OperatorType::outerprod(B[locx1].Id(),F[locx1].cdag(locy1),{2,+1});
 	auto c    = OperatorType::outerprod(B[locx2].Id(),F[locx2].c(locy2),{2,-1});
 	auto sign = OperatorType::outerprod(B[locx2].Id(),F[locx2].sign(),{1,0});
-	if(locx1 == locx2)
+	
+	if (locx1 == locx2)
 	{
 		auto product = sqrt(2.)*OperatorType::prod(c,cdag,Symmetry::qvacuum());
 		Mout.setLocal(locx1,product.plain<double>());
 	}
-	else if(locx1<locx2)
+	else if (locx1<locx2)
 	{
-		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(c, sign, {2,+1}).plain<double>(), 
+		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(c, sign, {2,-1}).plain<double>(), 
 		                               cdag.plain<double>()}, 
-			                           sign.plain<double>());
+		                               sign.plain<double>());
 	}
-	else if(locx1>locx2)
+	else if (locx1>locx2)
 	{
-		Mout.setLocal({locx2, locx1}, {sqrt(2.)*OperatorType::prod(cdag, sign, {2,-1}).plain<double>(), 
+		Mout.setLocal({locx2, locx1}, {sqrt(2.)*OperatorType::prod(cdag, sign, {2,+1}).plain<double>(), 
 		                               c.plain<double>()}, 
 			                           sign.plain<double>());
 	}
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
+dh_excitation (size_t loc)
+{
+	size_t lp1 = loc+1;
+	
+	OperatorType PsiRloc = OperatorType::prod(OperatorType::prod(F[loc].c(0), F[loc].sign(), {2,-1}), F[loc].ns(0), {2,-1});
+	OperatorType PsidagLlp1 = OperatorType::prod(F[lp1].cdag(0), F[lp1].ns(0),{2,1});
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), "dh");
+	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l); }
+	
+	OperatorType Op1Ext = OperatorType::outerprod(B[loc].Id(), PsiRloc, PsiRloc.Q());
+	OperatorType Op2Ext = OperatorType::outerprod(B[lp1].Id(), PsidagLlp1, PsidagLlp1.Q());
+	
+	Mout.setLocal({loc, lp1}, {Op1Ext.plain<double>(), Op2Ext.plain<double>()});
+	
 	return Mout;
 }
 

@@ -1147,8 +1147,15 @@ calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const
 				stitch += Nrowsvec[i];
 			}
 			
-			res += (Aclump-Acmp*C[loc].block[qC]).squaredNorm() * Symmetry::coeff_dot(C[loc].in[qC]);
-//			cout << "contrib L, l=" << loc << ", " << (Aclump-Acmp*C[loc].block[qC]).squaredNorm() * Symmetry::coeff_dot(C[loc].in[qC]) << endl;
+			double diff = (Aclump-Acmp*C[loc].block[qC]).squaredNorm() * Symmetry::coeff_dot(C[loc].in[qC]);
+			double summ = (Aclump+Acmp*C[loc].block[qC]).squaredNorm() * Symmetry::coeff_dot(C[loc].in[qC]);
+//			res += (Aclump-Acmp*C[loc].block[qC]).squaredNorm() * Symmetry::coeff_dot(C[loc].in[qC]);
+			res += min(diff,summ);
+//			cout << "L, loc=" << loc
+//			     << ", qout=" << qout 
+//			     << ", diff=" << (Aclump-Acmp*C[loc].block[qC]).squaredNorm() * Symmetry::coeff_dot(C[loc].in[qC])
+//			     << ", summ=" << (Aclump+Acmp*C[loc].block[qC]).squaredNorm() * Symmetry::coeff_dot(C[loc].in[qC])
+//			     << endl;
 		}
 	}
 	else if (gauge == GAUGE::R)
@@ -1199,8 +1206,15 @@ calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const
 				stitch += Ncolsvec[i];
 			}
 			
-			res += (Aclump-C[locC].block[qC]*Acmp).squaredNorm() * Symmetry::coeff_dot(C[locC].in[qC]);
-//			cout << "contrib R=" << (Aclump-C[locC].block[qC]*Acmp).squaredNorm() * Symmetry::coeff_dot(C[locC].in[qC]) << endl;
+			double diff = (Aclump-C[locC].block[qC]*Acmp).squaredNorm() * Symmetry::coeff_dot(C[locC].in[qC]);
+			double summ = (Aclump+C[locC].block[qC]*Acmp).squaredNorm() * Symmetry::coeff_dot(C[locC].in[qC]);
+//			res += (Aclump-C[locC].block[qC]*Acmp).squaredNorm() * Symmetry::coeff_dot(C[locC].in[qC]);
+			res += min(diff,summ);
+//			cout << "R, loc=" << loc
+//			     << ", qin=" << qin 
+//			     << ", diff=" << (Aclump-C[locC].block[qC]*Acmp).squaredNorm() * Symmetry::coeff_dot(C[locC].in[qC])
+//			     << ", summ=" << (Aclump+C[locC].block[qC]*Acmp).squaredNorm() * Symmetry::coeff_dot(C[locC].in[qC])
+//			     << endl;
 		}
 	}
 	

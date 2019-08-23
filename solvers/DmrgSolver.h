@@ -408,33 +408,93 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		lout << PrepTimer.info("• initial state & sweep") << endl;
 		lout <<                "• initial energy        : E₀=" << Eold << endl;
 		lout <<                "• initial state         : " << Vout.state.info() << endl;
-		lout <<                "• initial fluctuation strength  : α_rsvd=" << termcolor::underline << Vout.state.alpha_rsvd << termcolor::reset << endl;
-		lout <<                "• initial singular value cutoff : ε_svd=" << termcolor::underline << Vout.state.eps_svd << termcolor::reset << endl;
+		lout <<                "• initial fluctuation strength  : α_rsvd=";
+		cout << termcolor::underline;
+		lout << Vout.state.alpha_rsvd;
+		cout << termcolor::reset << endl;
+		
+		lout << "• initial singular value cutoff : ε_svd=";
+		cout << termcolor::underline;
+		lout << Vout.state.eps_svd;
+		cout << termcolor::reset << endl;
+		
 		int i_alpha_switchoff=0;
 		for (int i=0; i<GlobParam.max_halfsweeps; ++i)
 		{
 			if (DynParam.max_alpha_rsvd(i) == 0.) {i_alpha_switchoff = i; break;}
 		}
-		lout <<                "• fluctuations turned off after " << termcolor::underline << i_alpha_switchoff << termcolor::reset << " half-sweeps" << endl;
+		lout << "• fluctuations turned off after ";
+		cout << termcolor::underline;
+		lout << i_alpha_switchoff;
+		cout << termcolor::reset;
+		lout << " half-sweeps" << endl;
 		if (Vout.state.max_Nrich == -1)
 		{
-			lout <<            "• fluctuations use " << termcolor::underline << "all" << termcolor::reset << " additional states" << endl;
+			lout <<            "• fluctuations use ";
+			cout << termcolor::underline;
+			lout << "all";
+			cout << termcolor::reset;
+			lout << " additional states" << endl;
 		}
 		else
 		{
-			lout <<            "• fluctuations use " << termcolor::underline << Vout.state.max_Nrich << termcolor::reset << " additional states" << endl;
+			lout << "• fluctuations use ";
+			cout << termcolor::underline;
+			lout << Vout.state.max_Nrich;
+			cout << termcolor::reset;
+			lout << " additional states" << endl;
 		}
-		lout << "• initial bond dim. increase by " << termcolor::underline << static_cast<int>((DynParam.Dincr_rel(0)-1.)*100.) 
-		     << "%" << termcolor::reset << " and at least by " << termcolor::underline << DynParam.Dincr_abs(0) << termcolor::reset
-		     << " every " << termcolor::underline << DynParam.Dincr_per(0) << termcolor::reset << " half-sweeps" << endl;
-		lout << "• keep at least " << termcolor::underline << Vout.state.min_Nsv << termcolor::reset << " singular values per block" << endl;
-		lout << "• make between " << termcolor::underline << GlobParam.min_halfsweeps << termcolor::reset << " and " 
-		     << termcolor::underline << GlobParam.max_halfsweeps << termcolor::reset << " half-sweep iterations" << endl;
-		lout << "• eigenvalue tolerance: " << termcolor::underline << GlobParam.tol_eigval << termcolor::reset << endl;
-		lout << "• state tolerance: " << termcolor::underline << GlobParam.tol_state << termcolor::reset << " using " 
-		     << termcolor::underline << GlobParam.CONVTEST << termcolor::reset << endl;
-		lout << "• calculate entropy on exit: " << boolalpha << termcolor::underline << GlobParam.CALC_S_ON_EXIT << termcolor::reset << endl;
+		lout << "• initial bond dim. increase by ";
+		cout << termcolor::underline;
+		lout << static_cast<int>((DynParam.Dincr_rel(0)-1.)*100.) << "%";
+		cout << termcolor::reset;
+		lout << " and at least by ";
+		cout << termcolor::underline;
+		lout << DynParam.Dincr_abs(0);
+		cout << termcolor::reset;
+		lout << " every ";
+		cout << termcolor::underline;
+		lout << DynParam.Dincr_per(0);
+		cout << termcolor::reset;
+		lout << " half-sweeps" << endl;
+		
+		lout << "• keep at least ";
+		cout << termcolor::underline;
+		lout << Vout.state.min_Nsv;
+		cout << termcolor::reset;
+		lout << " singular values per block" << endl;
+		
+		lout << "• make between ";
+		cout << termcolor::underline;
+		lout << GlobParam.min_halfsweeps;
+		cout << termcolor::reset;
+		lout << " and ";
+		cout << termcolor::underline;
+		lout << GlobParam.max_halfsweeps;
+		cout << termcolor::reset;
+		lout << " half-sweep iterations" << endl;
+		lout << "• eigenvalue tolerance: ";
+		cout << termcolor::underline;
+		lout << GlobParam.tol_eigval;
+		cout << termcolor::reset;
 		lout << endl;
+		
+		lout << "• state tolerance: ";
+		cout << termcolor::underline;
+		lout << GlobParam.tol_state;
+		cout << termcolor::reset;
+		lout << " using ";
+		cout << termcolor::underline;
+		lout << GlobParam.CONVTEST;
+		cout << termcolor::reset;
+		lout << endl;
+		
+		lout << "• calculate entropy on exit: " << boolalpha;
+		cout << termcolor::underline;
+		lout << GlobParam.CALC_S_ON_EXIT;
+		cout << termcolor::reset << endl;
+		lout << endl;
+		
 //		Vout.state.graph("init");
 	}
 	

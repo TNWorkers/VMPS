@@ -26,6 +26,8 @@ public:
 	template<typename Symmetry_>
 	static void set_operators (const std::vector<SpinlessFermionBase<Symmetry_> > &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);
 	
+	static qarray<1> singlet (int N) {return qarray<1>{N};};
+	
 	static const std::map<string,std::any> defaults;
 	static const std::map<string,std::any> sweep_defaults;
 };

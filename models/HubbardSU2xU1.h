@@ -76,6 +76,7 @@ public:
 	///@{
 	Mpo<Symmetry> cc (size_t locx, size_t locy=0);
 	Mpo<Symmetry> cdagcdag (size_t locx, size_t locy=0);
+	Mpo<Symmetry> dh_excitation (size_t locx);
 	///@}
 	
 	///@{
@@ -541,8 +542,8 @@ set_operators(const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &
 					//correlated hopping
 					Terms.push_tight(loc, -Xpara(alfa,beta) * std::sqrt(2.), PsidagLloc, PsiRlp1);
 					Terms.push_tight(loc, -Xpara(alfa,beta) * std::sqrt(2.), PsidagRloc, PsiLlp1);
-					Terms.push_tight(loc, -Xpara(alfa,beta) * std::sqrt(2.), PsiLloc, PsidagRlp1); // why no sign flip?
-					Terms.push_tight(loc, -Xpara(alfa,beta) * std::sqrt(2.), PsiRloc, PsidagLlp1); // why no sign flip?
+					Terms.push_tight(loc, -Xpara(alfa,beta) * std::sqrt(2.), PsiLloc, PsidagRlp1);
+					Terms.push_tight(loc, -Xpara(alfa,beta) * std::sqrt(2.), PsiRloc, PsidagLlp1);
 				}
 			}
 		}
@@ -709,6 +710,22 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 		                               cdag.plain<double>()}, 
 		                               F[0].sign().plain<double>());
 	}
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+dh_excitation (size_t loc)
+{
+	size_t lp1 = loc+1;
+	
+	OperatorType PsiRloc = OperatorType::prod(OperatorType::prod(F[loc].c(0), F[loc].sign(), {2,-1}), F[loc].ns(0), {2,-1});
+	OperatorType PsidagLlp1 = OperatorType::prod(F[lp1].cdag(0), F[lp1].ns(0),{2,1});
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), "dh");
+	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((F[l].get_basis()).qloc(),l); }
+	
+	Mout.setLocal({loc, lp1}, {PsiRloc.plain<double>(), PsidagLlp1.plain<double>()});
+	
 	return Mout;
 }
 

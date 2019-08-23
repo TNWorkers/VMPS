@@ -146,9 +146,6 @@ set_blocks (const Hamiltonian &H, VectorType &Vinout)
 	Heff[0].L         = Vinout.get_boundaryTensor(DMRG::DIRECTION::LEFT);
 	Heff[N_sites-1].R = Vinout.get_boundaryTensor(DMRG::DIRECTION::RIGHT);
 	
-//	cout << "Heff[0].L=" << endl;
-//	cout << Heff[0].L.print() << endl;
-	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Heff[l].W = H.W[l];

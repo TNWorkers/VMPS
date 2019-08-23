@@ -184,7 +184,7 @@ public:
 	\param SAVE_G0 : whether to save the free Green's function G₀(q,ω) as well
 	\param eta : broadening for G₀(q,ω).
 	*/
-	void save_selfenergy_band (int i, double (*eps)(double), bool SAVE_G0=true, double eta=0.1) const;
+	void save_selfenergy_band (int i, double (*eps)(double), double eta=0.1) const;
 	
 	/**Integrates the QDOS up to a given chemical potential μ (or the Fermi energy, since T=0). 
 	   Can be used to find the right μ which gives the chosen filling n.
@@ -250,9 +250,12 @@ private:
 	vector<vector<MatrixXcd>> GtxCell, GtqCell, GwqCell;
 	vector<VectorXcd> GloctCell, GlocwCell;
 	
-	void calc_Green (int tindex, complex<double> phase, const vector<Mps<Symmetry,complex<double>>> &OxPhi, const Mps<Symmetry,complex<double>> &Psi);
-	void calc_GreenCell (int tindex, complex<double> phase, const vector<Mps<Symmetry,complex<double>>> &OxPhi, const vector<Mps<Symmetry,complex<double>>> &Psi);
-	void calc_GreenCell (int tindex, complex<double> phase, const std::array<vector<Mps<Symmetry,complex<double>>>,2> &Psi);
+	void calc_Green (const int &tindex, const complex<double> &phase, 
+	                 const vector<Mps<Symmetry,complex<double>>> &OxPhi, const Mps<Symmetry,complex<double>> &Psi);
+	void calc_GreenCell (const int &tindex, const complex<double> &phase, 
+	                     const vector<Mps<Symmetry,complex<double>>> &OxPhi, const vector<Mps<Symmetry,complex<double>>> &Psi);
+	void calc_GreenCell (const int &tindex, const complex<double> &phase, 
+	                     const std::array<vector<Mps<Symmetry,complex<double>>>,2> &Psi);
 	
 	void calc_intweights();
 	void make_xarrays (int Lhetero_input, int Lcell_input);
@@ -720,7 +723,7 @@ counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,co
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-calc_Green (int tindex, complex<double> phase, const vector<Mps<Symmetry,complex<double>>> &OxPhi, const Mps<Symmetry,complex<double>> &Psi)
+calc_Green (const int &tindex, const complex<double> &phase, const vector<Mps<Symmetry,complex<double>>> &OxPhi, const Mps<Symmetry,complex<double>> &Psi)
 {
 //	MatrixXcd Gtx_(Gtx.rows(),Gtx.cols());
 	
@@ -749,12 +752,12 @@ calc_Green (int tindex, complex<double> phase, const vector<Mps<Symmetry,complex
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-calc_GreenCell (int tindex, complex<double> phase, 
+calc_GreenCell (const int &tindex, const complex<double> &phase, 
                 const vector<Mps<Symmetry,complex<double>>> &OxPhi,
                 const vector<Mps<Symmetry,complex<double>>> &Psi)
 {
 	// variant: Use cell shift
-	#pragma omp parallel for collapse(3)
+	#pragma omp parallel for collapse(2)
 	for (size_t i=0; i<Lcell; ++i)
 	for (size_t j=0; j<Lcell; ++j)
 	for (size_t n=0; n<Nqc; ++n)
@@ -783,10 +786,10 @@ calc_GreenCell (int tindex, complex<double> phase,
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-calc_GreenCell (int tindex, complex<double> phase, 
+calc_GreenCell (const int &tindex, const complex<double> &phase, 
                 const std::array<vector<Mps<Symmetry,complex<double>>>,2> &Psi)
 {
-	#pragma omp parallel for collapse(3)
+	#pragma omp parallel for collapse(2)
 	for (size_t i=0; i<Lcell; ++i)
 	for (size_t j=0; j<Lcell; ++j)
 	for (size_t n=0; n<Nqc; ++n)
@@ -1312,7 +1315,7 @@ FTbands() const
 		if (Lcell>1)
 		{
 			double diff = abs(eig(0)-eig(1));
-			if (diff < 1e-4)
+			if (diff < 1e-3)
 			{
 				cout << "q=" << qval << ", w=" << wval << ", eig=" << eig.transpose() << ", diff=" << diff << endl;
 			}
@@ -1413,14 +1416,11 @@ save_selfenergy (double (*eps)(double), bool SAVE_G0, double eta) const
 	MatrixXcd Swq(Nw,Nq);
 	MatrixXcd G0wq(Nw,Nq);
 	
-	if (Q_RANGE_CHOICE == MPI_PPI)
+	for (int iw=0; iw<wvals.rows(); ++iw)
+	for (int iq=0; iq<Nq; ++iq)
 	{
-		for (int iw=0; iw<wvals.rows(); ++iw)
-		for (int iq=0; iq<Nq; ++iq)
-		{
-			Swq(iw,iq) = wvals(iw)-eps(qvals(iq))-pow(Gwq(iw,iq),-1); // Σ(ω,q) = ω-ε(q)-1/G(ω,q)
-			G0wq(iw,iq) = pow(wvals(iw)-eps(qvals(iq))+1.i*eta,-1); // G₀(ω,q) = 1/(ω-ε(q)+iη)
-		}
+		Swq(iw,iq) = wvals(iw)-eps(qvals(iq))-pow(Gwq(iw,iq),-1); // Σ(ω,q) = ω-ε(q)-1/G(ω,q)
+		G0wq(iw,iq) = pow(wvals(iw)-eps(qvals(iq))+1.i*eta,-1); // G₀(ω,q) = 1/(ω-ε(q)+iη)
 	}
 	
 	bool PRINT = (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)? true:false;
@@ -1439,7 +1439,7 @@ save_selfenergy (double (*eps)(double), bool SAVE_G0, double eta) const
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-save_selfenergy_band (int i, double (*eps)(double), bool SAVE_G0, double eta) const
+save_selfenergy_band (int i, double (*eps)(double), double eta) const
 {
 	IntervalIterator w(wmin,wmax,Nw);
 	ArrayXd wvals = w.get_abscissa();
@@ -1456,16 +1456,18 @@ save_selfenergy_band (int i, double (*eps)(double), bool SAVE_G0, double eta) co
 	ArrayXd qvals = q.get_abscissa();
 	
 	MatrixXcd Swq(Nw,Nqc);
-	MatrixXcd Gfreewq(Nw,Nqc);
 	
-	if (Q_RANGE_CHOICE == MPI_PPI)
+	for (int iw=0; iw<wvals.rows(); ++iw)
+	for (int iq=0; iq<Nqc; ++iq)
 	{
-		for (int iw=0; iw<wvals.rows(); ++iw)
-		for (int iq=0; iq<Nqc; ++iq)
+		MatrixXcd Gint(Lcell,Lcell);
+		for (int i=0; i<Lcell; ++i)
+		for (int j=0; j<Lcell; ++j)
 		{
-			Swq(iw,iq) = wvals(iw)-eps(qvals(iq))-pow(GwqCell[i][i](iw,iq),-1); // Σ(ω,q) = ω-ε(q)-1/G(ω,q)
-			Gfreewq(iw,iq) = pow(wvals(iw)-eps(qvals(iq))+1.i*eta,-1); // G₀(ω,q) = 1/(ω-ε(q)+iη)
+			Gint(i,j) = GwqCell[i][j](iw,iq);
 		}
+		
+		Swq(iw,iq) = wvals(iw)+1.i*eta-eps(qvals(iq))-Gint.inverse()(i,i); // Σ(ω,q) = ω-ε(q)-1/G(ω,q)
 	}
 	
 	bool PRINT = (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)? true:false;
@@ -1473,13 +1475,6 @@ save_selfenergy_band (int i, double (*eps)(double), bool SAVE_G0, double eta) co
 	saveMatrix(Swq.real(), make_string(label,"_G=Σ",i,i,"ωqRe_",xtqw_info(),".dat"), PRINT);
 	saveMatrix(Swq.imag(), make_string(label,"_G=Σ",i,i,"ωqIm_",xtqw_info(),".dat"), PRINT);
 //	saveMatrix_cpython(Swq, make_string(label,"_G=Σ",i,i,"ωq_",xtqw_info(),".dat"), PRINT);
-	
-	if (SAVE_G0)
-	{
-		saveMatrix(Gfreewq.real(), make_string(label,"_G=",i,i,"ωqfreeRe_",xtqw_info(),".dat"), PRINT);
-		saveMatrix(Gfreewq.imag(), make_string(label,"_G=",i,i,"ωqfreeIm_",xtqw_info(),".dat"), PRINT);
-//		saveMatrix_cpython(Gfreewq, make_string(label,"_G=",i,i,"ωqfree_",xtqw_info(),".dat"), PRINT);
-	}
 }
 
 #endif
