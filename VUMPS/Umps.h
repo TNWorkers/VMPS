@@ -1070,6 +1070,16 @@ calc_entropy (size_t loc, bool PRINT)
 		                    Jack.singularValues().head(Nnz).array().square().log()
 		                   ).sum();
 		
+//		lout << "loc=" << loc << ", q=" << q << endl;
+//		for (int i=0; i<Nnz; ++i)
+//		{
+//			lout << "i=" << i << ", " 
+//			     << pow(Jack.singularValues()(i),2) << ", " 
+//			     << log(pow(Jack.singularValues()(i),2)) << ", " 
+//			     << -pow(Jack.singularValues()(i),2) * log(pow(Jack.singularValues()(i),2)) 
+//			     << endl;
+//		}
+//		lout << endl;
 		S(loc) += Scontrib;
 		
 		SVspec[loc].insert(pair<qarray<Symmetry::Nq>,ArrayXd>(C[loc].in[q],Jack.singularValues()));
@@ -1085,6 +1095,7 @@ calc_entropy (size_t loc, bool PRINT)
 	{
 		lout << endl;
 	}
+//	lout << termcolor::blue << "S=" << S << termcolor::reset << endl;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1830,7 +1841,7 @@ save (string filename, string info)
 	target.create_group("Qtot");
 	
 	string add_infoLabel = "add_info";
-
+	
 	//save scalar values
 	target.save_scalar(this->N_sites,"L");
 	for (size_t q=0; q<Nq; q++)
@@ -1857,7 +1868,7 @@ save (string filename, string info)
 			target.save_scalar((qloc[l][s])[q],tt.str(),"qloc");
 		}
 	}
-
+	
 	//save the A-matrices
 	string label;
 	for (size_t g=0; g<3; ++g)

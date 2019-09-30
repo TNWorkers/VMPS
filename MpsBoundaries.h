@@ -30,11 +30,13 @@ public:
 	
 	void set_open_bc (qarray<Symmetry::Nq> &Qtot)
 	{
-		L.clear();
-		L.setVacuum();
-		R.clear();
-		R.setTarget(qarray3<Symmetry::Nq>{Qtot, Qtot, Symmetry::qvacuum()});
-		TRIVIAL_BOUNDARIES = true;
+		if (TRIVIAL_BOUNDARIES)
+		{
+			L.clear();
+			L.setVacuum();
+			R.clear();
+			R.setTarget(qarray3<Symmetry::Nq>{Qtot, Qtot, Symmetry::qvacuum()});
+		}
 	}
 	
 	template<typename OtherScalar>
@@ -47,13 +49,15 @@ public:
 		Bout.L = L.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
 		Bout.R = R.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
 		
-		Bout.A[0].resize(A[0].size());
-		Bout.A[1].resize(A[1].size());
+		for (size_t g=0; g<A.size(); ++g)
+		{
+			Bout.A[g].resize(A[g].size());
+		}
 		
 		Bout.N_sites = N_sites;
 		Bout.TRIVIAL_BOUNDARIES = TRIVIAL_BOUNDARIES;
 		
-		for (size_t g=0; g<2; ++g)
+		for (size_t g=0; g<A.size(); ++g)
 		for (size_t l=0; l<A[g].size(); ++l)
 		{
 			Bout.A[g][l].resize(A[g][l].size());
@@ -62,10 +66,10 @@ public:
 			{
 				Bout.A[g][l][s].in = A[g][l][s].in;
 				Bout.A[g][l][s].out = A[g][l][s].out;
-				Bout.A[g][l][s].block.resize(A[g][l][s].dim);
 				Bout.A[g][l][s].dict = A[g][l][s].dict;
 				Bout.A[g][l][s].dim = A[g][l][s].dim;
 				
+				Bout.A[g][l][s].block.resize(A[g][l][s].dim);
 				for (size_t q=0; q<A[g][l][s].dim; ++q)
 				{
 					Bout.A[g][l][s].block[q] = A[g][l][s].block[q].template cast<OtherScalar>();
@@ -107,7 +111,7 @@ public:
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
 	
-	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,2> A;
+	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> A;
 	
 	vector<vector<qarray<Symmetry::Nq> > > qloc;
 };

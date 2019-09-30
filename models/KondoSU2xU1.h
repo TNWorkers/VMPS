@@ -715,7 +715,7 @@ make_local (KONDO_SUBSYSTEM SUBSYS,
 	
 	if (SUBSYS == SUB)
 	{
-		OpExt   = OperatorType::outerprod(B[locx].Id(), Op, Op.Q());
+		OpExt = OperatorType::outerprod(B[locx].Id(), Op, Op.Q());
 		for (size_t l=0; l<locx; ++l)
 		{
 			SignExt[l] = OperatorType::outerprod(B[l].Id(), F[l].sign(), Symmetry::qvacuum()).plain<double>();

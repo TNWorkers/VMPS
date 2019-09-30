@@ -40,19 +40,19 @@ public:
 	
 	/**Resets the verbosity level.*/
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
-
+	
 	/**Returnx the verbosity level.*/
 	inline DMRG::VERBOSITY::OPTION get_verbosity () {return CHOSEN_VERBOSITY;};
-
+	
 	//call this function if you want to set the parameters for the solver by yourself
 	void userSetGlobParam    () { USER_SET_GLOBPARAM     = true; }
 	void userSetDynParam     () { USER_SET_DYNPARAM      = true; }
 	void userSetLanczosParam () { USER_SET_LANCZOSPARAM  = true; }
-
+	
 	VUMPS::CONTROL::GLOB GlobParam;
 	VUMPS::CONTROL::DYN  DynParam;
 	VUMPS::CONTROL::LANCZOS LanczosParam;
-
+	
 	///\{
 	/**\describe_info*/
 	string info() const;
@@ -119,6 +119,14 @@ public:
 	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
 	                                 const Mpo<Symmetry,Scalar> &O, const Mpo<Symmetry,Scalar> &Omult, bool ADD_ODD_SITE=false);
 	
+	void set_boundary (const Umps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool LEFT=false, bool RIGHT=true);
+	
+	/**Prepares the class setting up the environments. Used with an Mpo.*/
+	void prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, bool USE_STATE=false);
+	
+	/**Builds environments for each site of the unit cell.*/
+	void build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout);
+	
 private:
 	
 	///\{
@@ -136,9 +144,6 @@ private:
 	///\}
 	
 	///\{
-	/**Prepares the class setting up the environments. Used with an Mpo.*/
-	void prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, bool USE_STATE=false);
-	
 	/**Performs an iteration with an n-site unit cell (in parallel, algorithm 3). Used with an MPO.*/
 	void iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
@@ -172,21 +177,18 @@ private:
 	               Tripod<Symmetry,MatrixType> &R);
 	
 	void build_R (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AR,
-	              const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &C,
+	              const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Cintercell,
 	              const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
 	              const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
 	              const vector<vector<qarray<Symmetry::Nq> > > &qOp,
 	              Tripod<Symmetry,MatrixType> &R);
 	
 	void build_L (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AL,
-	              const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &C,
+	              const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Cintercell,
 	              const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
 	              const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
 	              const vector<vector<qarray<Symmetry::Nq> > > &qOp,
 	              Tripod<Symmetry,MatrixType> &L);
-	
-	/**Builds environments for each site of the unit cell.*/
-	void build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	///\}
 	
 	///\{
@@ -553,7 +555,7 @@ prepare_h2site (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symm
                 qarray<Symmetry::Nq> Qtot, size_t M_input, size_t Nqmax, bool USE_STATE)
 {
 	Stopwatch<> PrepTimer;
-
+	
 	// general
 	N_sites = 1;
 	N_iterations = 0;
@@ -638,13 +640,43 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 		{
 			if (DynParam.max_deltaD(i) == 0.) {i_expansion_switchoff = i; break;}
 		}
-		lout << "• expansion turned off after " << termcolor::underline << i_expansion_switchoff << termcolor::reset << " iterations" << endl;
-		lout << "• initial bond dim. increase by " << termcolor::underline << static_cast<int>((DynParam.Dincr_rel(0)-1.)*100.) 
-		     << "%" << termcolor::reset << " and at least by " << termcolor::underline << DynParam.Dincr_abs(0) << termcolor::reset
-		     << " every " << termcolor::underline << DynParam.Dincr_per(0) << termcolor::reset << " iterations" << endl;
-		lout << "• keep at least " << termcolor::underline << Vout.state.min_Nsv << termcolor::reset << " singular values per block" << endl;
-		lout << "• make between " << termcolor::underline << GlobParam.min_iterations << termcolor::reset << " and " 
-		     << termcolor::underline << GlobParam.max_iterations << termcolor::reset << " iterations" << endl;
+		
+		lout << "• expansion turned off after ";
+		cout << termcolor::underline;
+		lout << i_expansion_switchoff;
+		cout << termcolor::reset;
+		lout << " iterations" << endl;
+		
+		lout << "• initial bond dim. increase by ";
+		cout << termcolor::underline;
+		lout << static_cast<int>((DynParam.Dincr_rel(0)-1.)*100.) << "%";
+		cout << termcolor::reset;
+		lout << " and at least by ";
+		cout << termcolor::underline;
+		lout << DynParam.Dincr_abs(0);
+		cout << termcolor::reset;
+		lout << " every ";
+		cout << termcolor::underline;
+		lout << DynParam.Dincr_per(0);
+		cout << termcolor::reset;
+		lout << " iterations" << endl;
+		
+		lout << "• keep at least ";
+		cout << termcolor::underline;
+		lout << Vout.state.min_Nsv;
+		cout << termcolor::reset;
+		lout << " singular values per block" << endl;
+		
+		lout << "• make between ";
+		cout << termcolor::underline;
+		lout << GlobParam.min_iterations;
+		cout << termcolor::reset;
+		lout << " and ";
+		cout << termcolor::underline;
+		lout << GlobParam.max_iterations;
+		cout << termcolor::reset;
+		lout << " iterations" << endl;
+		
 		bool USE_PARALLEL=false, USE_SEQUENTIAL=false, USE_DYNAMIC=false;
 		for (int i=0; i<GlobParam.max_iterations; ++i)
 		{
@@ -672,10 +704,23 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 		{
 			lout << "• use the sequential algorithm" << endl;
 		}
-		lout << "• eigenvalue tolerance : " << termcolor::underline << GlobParam.tol_eigval << termcolor::reset << endl;
-		lout << "• variational tolerance: " << termcolor::underline << GlobParam.tol_var << termcolor::reset << endl;
-		lout << "• state tolerance: " << termcolor::underline << GlobParam.tol_state << termcolor::reset << endl;
+		lout << "• eigenvalue tolerance : ";
+		cout << termcolor::underline;
+		lout << GlobParam.tol_eigval;
+		cout << termcolor::reset;
 		lout << endl;
+		lout << "• variational tolerance: ";
+		cout << termcolor::underline;
+		lout << GlobParam.tol_var;
+		cout << termcolor::reset;
+		lout << endl;
+		lout << "• state tolerance: ";
+		cout << termcolor::underline;
+		lout << GlobParam.tol_state;
+		cout << termcolor::reset;
+		lout << endl;
+		lout << endl;
+		
 //		Vout.state.graph("init");
 	}
 }
@@ -728,7 +773,7 @@ prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout,
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 build_L (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AL,
-         const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &C,
+         const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Cintercell,
          const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
          const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
          const vector<vector<qarray<Symmetry::Nq> > > &qOp,
@@ -740,7 +785,7 @@ build_L (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > >
 	L.clear();
 	
 	// |R) and (L|
-	Biped<Symmetry,MatrixType> Reigen = C[N_sites-1].contract(C[N_sites-1].adjoint());
+	Biped<Symmetry,MatrixType> Reigen = Cintercell.contract(Cintercell.adjoint());
 	
 	// |YRa) and (YLa|
 	vector<Tripod<Symmetry,MatrixType> > YL(dW);
@@ -773,7 +818,7 @@ build_L (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > >
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 build_R (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AR,
-         const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &C,
+         const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Cintercell,
          const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
          const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
          const vector<vector<qarray<Symmetry::Nq> > > &qOp,
@@ -785,10 +830,7 @@ build_R (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > >
 	R.clear();
 	
 	// |R) and (L|
-	Biped<Symmetry,MatrixType> Leigen = C[N_sites-1].adjoint().contract(C[N_sites-1]);
-	
-//	cout << "Leigen from C=" << endl;
-//	cout << Leigen.print(true) << endl;
+	Biped<Symmetry,MatrixType> Leigen = Cintercell.adjoint().contract(Cintercell);
 	
 	// |YRa) and (YLa|
 	vector<Tripod<Symmetry,MatrixType> > YR(dW);
@@ -796,10 +838,6 @@ build_R (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > >
 	// |Ra) and (La|
 	Qbasis<Symmetry> inbase; inbase.pullData(AR[N_sites-1],1);
 	Qbasis<Symmetry> outbase; outbase.pullData(AR[N_sites-1],1);
-	
-//	Biped<Symmetry,ComplexMatrixType> Leigen_ = calc_LReigen(VMPS::DIRECTION::LEFT, AR, AR, inbase, inbase, qloc).state;
-//	cout << "Leigen from Arnoldi=" << endl;
-//	cout << Leigen_.print(true) << endl;
 	
 	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW, 1, outbase);
 	R.insert(0,IdR);
@@ -959,7 +997,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-build_cellEnv (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout)
+build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 {
 	// With a unit cell, Heff is a vector for each site
 	HeffC.clear();
@@ -1977,6 +2015,15 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	size_t add = (ADD_ODD_SITE)? 1:0;
 	size_t Lhetero = Ncells * V.state.length() + add;
 	
+	// If ground state loaded from file, need to recalculate environments
+	if (HeffA.size() == 0)
+	{
+		lout << termcolor::blue << "create_Mps: Environments are empty, recalculating!..." << termcolor::reset << endl;
+		auto Vtmp = V;
+		prepare(H, Vtmp, V.state.Qtarget(), true); // USE_STATE = true
+		build_cellEnv(H,V);
+	}
+	
 	return assemble_Mps(Ncells, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.qloc, 
 	                    HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, x0, ADD_ODD_SITE);
 };
@@ -2001,16 +2048,16 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 //	cout << "O.inBasis(O.length()-1).size()=" << O.inBasis(O.length()-1).size() << endl;
 //	cout << "O.outBasis(O.length()-1).size()=" << O.outBasis(O.length()-1).size() << endl;
 //	
-//	cout << "inBasis at 0:" << endl;
+//	cout << "in/outBasis at 0:" << endl;
 //	cout << O.inBasis(0).print() << endl;
 //	cout << O.outBasis(0).print() << endl;
-//	cout << "inBasis at L-1:" << endl;
+//	cout << "in/outBasis at L-1:" << endl;
 //	cout << O.inBasis(O.length()-1).print() << endl;
 //	cout << O.outBasis(O.length()-1).print() << endl;
-//	cout << "inBasis at L-2:" << endl;
+//	cout << "in/outBasis at L-2:" << endl;
 //	cout << O.inBasis(O.length()-2).print() << endl;
 //	cout << O.outBasis(O.length()-2).print() << endl;
-//	
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Qbasis<Symmetry> inbase;
@@ -2055,55 +2102,33 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 //		}
 	}
 	
+	// calc Cshift: q-number sectors to the right of perturbation are shifted
 	vector<vector<Biped<Symmetry,MatrixType> > > As(N_sites);
 	for (size_t l=0; l<N_sites; ++l) As[l] = ACxO[l];
 	Mps<Symmetry,Scalar> Maux(N_sites, As, V.state.locBasis(), Symmetry::qvacuum(), N_sites);
-	auto Cshift = V.state.C;
-	for (size_t s=0; s<Cshift.size(); ++s) Cshift[s].clear();
-	Maux.leftSplitStep(0, Cshift[N_sites-1]);
+	auto Cshift = V.state.C[0];
+	Cshift.clear();
+	Maux.rightSplitStep(N_sites-1, Cshift);
 	
+	// test Cshift
 //	cout << Maux.test_ortho() << endl;
 //	cout << Maux.validate() << endl;
 //	cout << "V.state.C[N_sites-1]=" << endl;
 //	cout << V.state.C[N_sites-1].print(true) << endl << endl;
 //	cout << "Cshift[N_sites-1]=" << endl;
 //	cout << Cshift[N_sites-1].print(true) << endl << endl;
-//	
-//	cout << "building L & R..." << endl;
 	
 	#pragma omp parallel sections
 	{
 		#pragma omp section
 		{
-			build_L(ALxO, V.state.C, H.W, H.qloc, H.qOp, L_with_O);
+			build_L(ALxO, V.state.C[N_sites-1], H.W, H.qloc, H.qOp, L_with_O);
 		}
 		#pragma omp section
 		{
-			build_R(ARxO, Cshift,    H.W, H.qloc, H.qOp, R_with_O);
+			build_R(ARxO, Cshift,               H.W, H.qloc, H.qOp, R_with_O);
 		}
 	}
-	
-//	cout << R_with_O.print() << endl;
-//	auto R = HeffA[N_sites-1].R;
-//	R.shift_Qmid(O.Qtarget());
-//	cout << R.print() << endl;
-	
-//	cout << "R_with_O=" << L_with_O.print() << endl;
-//	cout << "HeffA[0].L=" << HeffA[0].L.print() << endl;
-	
-//	cout << "HeffA[0].L=" << endl;
-//	cout << HeffA[0].L.print() << endl;
-	
-//	for (int s=0; s<V.state.A[GAUGE::L][0].size(); ++s)
-//	{
-//		cout << "AL[0], s=" << s << endl;
-//		cout << V.state.A[GAUGE::L][0][s].print() << endl;
-//	}
-	
-//	return assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.A[GAUGE::C], V.state.qloc, 
-//	                    L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
-//	return assemble_Mps(Ncells, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.A[GAUGE::C], V.state.qloc, 
-//	                    HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, O.locality(), ADD_ODD_SITE);
 	
 	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.qloc, 
 	                                         L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
@@ -2112,11 +2137,8 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	#pragma omp parallel for
 	for (size_t l=0; l<Omult.size(); ++l)
 	{
-//		#pragma omp critical
-//		{
-//			lout << "l=" << l << ", locality=" << Omult[l].locality() << endl;
-//		}
-		OxV_exact(Omult[l], Mtmp, Mres[l], 2., DMRG::VERBOSITY::ON_EXIT);
+		DMRG::VERBOSITY::OPTION VERB = (Omult.size()>4)? DMRG::VERBOSITY::SILENT : DMRG::VERBOSITY::ON_EXIT;
+		OxV_exact(Omult[l], Mtmp, Mres[l], 2., VERB);
 	}
 	return Mres;
 };
@@ -2160,9 +2182,9 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	vector<vector<Biped<Symmetry,MatrixType> > > As(N_sites);
 	for (size_t l=0; l<N_sites; ++l) As[l] = ACxO[l];
 	Mps<Symmetry,Scalar> Maux(N_sites, As, V.state.locBasis(), Symmetry::qvacuum(), N_sites);
-	auto Cshift = V.state.C;
-	for (size_t s=0; s<Cshift.size(); ++s) Cshift[s].clear();
-	Maux.leftSplitStep(0, Cshift[N_sites-1]);
+	auto Cshift = V.state.C[0];
+	Cshift.clear();
+	Maux.rightSplitStep(N_sites-1, Cshift);
 	
 	#pragma omp parallel sections
 	{
@@ -2176,8 +2198,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 		}
 	}
 	
-	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.qloc, 
-	                                         L_with_O, R_with_O, N_sites*Ncells/2, ADD_ODD_SITE);
+	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.qloc, L_with_O, R_with_O, N_sites*Ncells/2, ADD_ODD_SITE);
 	Mps<Symmetry,Scalar> Mres;
 	OxV_exact(Omult, Mtmp, Mres, 2., DMRG::VERBOSITY::SILENT);
 	
@@ -2210,14 +2231,12 @@ assemble_Mps (size_t Ncells,
 	{
 		As[l] = V.A[GAUGE::R][l%N_sites];
 	}
-	
 	// variant 2: put pivot at Lhetero-1
 //	for (size_t l=0; l<Lhetero-1; ++l)
 //	{
 //		As[l] = V.A[GAUGE::L][l%N_sites];
 //	}
 //	As[Lhetero-1] = V.A[GAUGE::C][(Lhetero-1)%N_sites];
-	
 	
 	vector<vector<qarray<Symmetry::Nq>>> qloc(Lhetero);
 	for (size_t l=0; l<Lhetero; ++l)
@@ -2227,12 +2246,53 @@ assemble_Mps (size_t Ncells,
 	
 	Mps<Symmetry,Scalar> Mout(Lhetero, As, qloc, Symmetry::qvacuum(), Lhetero);
 	
-	Mout.Boundaries = MpsBoundaries<Symmetry,Scalar>(L, R, AL, AR, qloc_input);
+	Mout.Boundaries = MpsBoundaries<Symmetry,Scalar>(L,R,AL,AR,qloc_input);
 	
 	Mout.update_inbase();
 	Mout.update_outbase();
+	Mout.calc_Qlimits();
 	
 	return Mout;
+}
+
+template<typename Symmetry, typename MpHamiltonian, typename Scalar>
+void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
+set_boundary (const Umps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool LEFT, bool RIGHT)
+{
+	if (LEFT or RIGHT)
+	{
+		Vout.Boundaries.TRIVIAL_BOUNDARIES = false;
+		
+		if (LEFT)
+		{
+			Vout.Boundaries.L = HeffA[0].L;
+		}
+		else
+		{
+			Vout.Boundaries.L.clear();
+			Vout.Boundaries.L.setVacuum();
+		}
+		if (RIGHT)
+		{
+			Vout.Boundaries.R = HeffA[N_sites-1].R;
+		}
+		else
+		{
+			Vout.Boundaries.R.clear();
+			Vout.Boundaries.R.setTarget(qarray3<Symmetry::Nq>{Vin.Qtarget(), Vin.Qtarget(), Symmetry::qvacuum()});
+		}
+		
+		Vout.Boundaries.A[0] = Vin.A[GAUGE::L];
+		Vout.Boundaries.A[1] = Vin.A[GAUGE::R];
+		Vout.Boundaries.A[2] = Vin.A[GAUGE::C];
+		
+		Vout.Boundaries.qloc = Vin.qloc;
+		Vout.Boundaries.N_sites = Vin.qloc.size();
+		
+//		Vout.update_inbase();
+//		Vout.update_outbase();
+//		Vout.calc_Qlimits();
+	}
 }
 
 //*******************************************************************************************************************************************************************************

@@ -927,7 +927,7 @@ calc_Qlimits()
 	// If non-trivial boundaries: we have a hetergeneous infinite state, no Qlimits
 	if (!Boundaries.IS_TRIVIAL())
 	{
-//		cout << termcolor::red << "set infinite boundaries" << termcolor::reset << endl;
+//		cout << termcolor::red << "Boundaries.IS_TRIVIAL()==false, infinite limits" << termcolor::reset << endl;
 		for (size_t l=0; l<this->N_sites; ++l)
 		for (size_t q=0; q<Nq; q++)
 		{
@@ -1397,6 +1397,8 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 save (string filename, string info)
 {
+	assert(Boundaries.IS_TRIVIAL());
+	
 	filename+=".h5";
 	HDF5Interface target(filename, WRITE);
 	target.create_group("mps");
@@ -1409,7 +1411,7 @@ save (string filename, string info)
 	string eps_svdLabel = "eps_svd";
 	string alpha_rsvdLabel = "alpha_rsvd";
 	string add_infoLabel = "add_info";
-
+	
 	//save scalar values
 	target.save_scalar(this->N_sites,"L");
 	target.save_scalar(this->N_phys,"Nphys");
@@ -1446,7 +1448,7 @@ save (string filename, string info)
 			target.save_scalar((qloc[l][s])[q],tt.str(),"qloc");
 		}
 	}
-
+	
 	//save the A-matrices
 	string label;
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -1463,7 +1465,7 @@ save (string filename, string info)
 				target.save_scalar((A[l][s].in[q])[p],in.str(),"mps");
 				target.save_scalar((A[l][s].out[q])[p],out.str(),"mps");
 			}
-			stringstream ss;			
+			stringstream ss;
 			ss << l << "_" << s << "_" << "(" << A[l][s].in[q] << "," << A[l][s].out[q] << ")";
 			label = ss.str();
 			target.save_matrix(A[l][s].block[q],label,"mps");
@@ -1555,6 +1557,7 @@ load (string filename)
 	update_inbase();
 	update_outbase();
 	calc_Qlimits();
+	Boundaries.set_open_bc(Qtot);
 }
 #endif
 
@@ -2177,9 +2180,9 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 leftSplitStep (size_t loc, Biped<Symmetry,MatrixType> &C)
 {
-	#ifndef DMRG_DONT_USE_OPENMP
-	#pragma omp parallel for
-	#endif
+//	#ifndef DMRG_DONT_USE_OPENMP
+//	#pragma omp parallel for
+//	#endif
 	for (size_t qin=0; qin<inbase[loc].Nq(); ++qin)
 	{
 		// determine how many A's to glue together
@@ -2195,48 +2198,51 @@ leftSplitStep (size_t loc, Biped<Symmetry,MatrixType> &C)
 			}
 		}
 		
-		// do the glue
-		size_t Nrows = A[loc][svec[0]].block[qvec[0]].rows();
-		for (size_t i=1; i<svec.size(); ++i) {assert(A[loc][svec[i]].block[qvec[i]].rows() == Nrows);}
-		size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
-		
-		MatrixType Aclump(Nrows,Ncols);
-		size_t stitch = 0;
-		for (size_t i=0; i<svec.size(); ++i)
+		if (svec.size() > 0)
 		{
-			Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]] *
-			                                            Symmetry::coeff_leftSweep(A[loc][svec[i]].out[qvec[i]],
-			                                                                      A[loc][svec[i]].in[qvec[i]]);
-			stitch += Ncolsvec[i];
-		}
-		
-		HouseholderQR<MatrixType> Quirinus; MatrixType Qmatrix, Rmatrix; // Eigen QR
-		
-		Quirinus.compute(Aclump.adjoint());
-		Qmatrix = (Quirinus.householderQ() * MatrixType::Identity(Aclump.cols(),Aclump.rows())).adjoint();
-		Rmatrix = (MatrixType::Identity(Aclump.rows(),Aclump.cols()) * Quirinus.matrixQR().template triangularView<Upper>()).adjoint();
-		
-		// update A[loc]
-		stitch = 0;
-		for (size_t i=0; i<svec.size(); ++i)
-		{
-			A[loc][svec[i]].block[qvec[i]] = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i])*
-			                                 Symmetry::coeff_leftSweep(A[loc][svec[i]].in[qvec[i]],
-																	   A[loc][svec[i]].out[qvec[i]]);
-			stitch += Ncolsvec[i];
-		}
-		
-		// write to C
-		qarray2<Nq> quple = {inbase[loc][qin], inbase[loc][qin]};
-		auto qC = C.dict.find(quple);
-		
-		if (qC != C.dict.end())
-		{
-			C.block[qC->second] += Rmatrix;
-		}
-		else
-		{
-			C.push_back(quple,Rmatrix);
+			// do the glue
+			size_t Nrows = A[loc][svec[0]].block[qvec[0]].rows();
+			for (size_t i=1; i<svec.size(); ++i) {assert(A[loc][svec[i]].block[qvec[i]].rows() == Nrows);}
+			size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
+			
+			MatrixType Aclump(Nrows,Ncols);
+			size_t stitch = 0;
+			for (size_t i=0; i<svec.size(); ++i)
+			{
+				Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]] *
+					                                        Symmetry::coeff_leftSweep(A[loc][svec[i]].out[qvec[i]],
+					                                                                  A[loc][svec[i]].in[qvec[i]]);
+				stitch += Ncolsvec[i];
+			}
+			
+			HouseholderQR<MatrixType> Quirinus; MatrixType Qmatrix, Rmatrix; // Eigen QR
+			
+			Quirinus.compute(Aclump.adjoint());
+			Qmatrix = (Quirinus.householderQ() * MatrixType::Identity(Aclump.cols(),Aclump.rows())).adjoint();
+			Rmatrix = (MatrixType::Identity(Aclump.rows(),Aclump.cols()) * Quirinus.matrixQR().template triangularView<Upper>()).adjoint();
+			
+			// update A[loc]
+			stitch = 0;
+			for (size_t i=0; i<svec.size(); ++i)
+			{
+				A[loc][svec[i]].block[qvec[i]] = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i])*
+				                                 Symmetry::coeff_leftSweep(A[loc][svec[i]].in[qvec[i]],
+				                                                           A[loc][svec[i]].out[qvec[i]]);
+				stitch += Ncolsvec[i];
+			}
+			
+			// write to C
+			qarray2<Nq> quple = {inbase[loc][qin], inbase[loc][qin]};
+			auto qC = C.dict.find(quple);
+			
+			if (qC != C.dict.end())
+			{
+				C.block[qC->second] += Rmatrix;
+			}
+			else
+			{
+				C.push_back(quple,Rmatrix);
+			}
 		}
 	}
 	
@@ -2265,45 +2271,48 @@ rightSplitStep (size_t loc, Biped<Symmetry,MatrixType> &C)
 			}
 		}
 		
-		// do the glue
-		size_t Ncols = A[loc][svec[0]].block[qvec[0]].cols();
-		for (size_t i=1; i<svec.size(); ++i) {assert(A[loc][svec[i]].block[qvec[i]].cols() == Ncols);}
-		size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
-		
-		MatrixType Aclump(Nrows,Ncols);
-		Aclump.setZero();
-		size_t stitch = 0;
-		for (size_t i=0; i<svec.size(); ++i)
+		if (svec.size() > 0)
 		{
-			Aclump.block(stitch,0, Nrowsvec[i],Ncols) = A[loc][svec[i]].block[qvec[i]];
-			stitch += Nrowsvec[i];
-		}
-		
-		HouseholderQR<MatrixType> Quirinus; MatrixType Qmatrix, Rmatrix; // Eigen QR
-		
-		Quirinus.compute(Aclump);
-		Qmatrix = Quirinus.householderQ() * MatrixType::Identity(Aclump.rows(),Aclump.cols());
-		Rmatrix = MatrixType::Identity(Aclump.cols(),Aclump.rows()) * Quirinus.matrixQR().template triangularView<Upper>();
-		
-		// update A[loc]
-		stitch = 0;
-		for (size_t i=0; i<svec.size(); ++i)
-		{
-			A[loc][svec[i]].block[qvec[i]] = Qmatrix.block(stitch,0, Nrowsvec[i],Ncols);
-			stitch += Nrowsvec[i];
-		}
-		
-		// write to C
-		qarray2<Nq> quple = {outbase[loc][qout], outbase[loc][qout]};
-		auto qC = C.dict.find(quple);
-		
-		if (qC != C.dict.end())
-		{
-			C.block[qC->second] += Rmatrix;
-		}
-		else
-		{
-			C.push_back(quple,Rmatrix);
+			// do the glue
+			size_t Ncols = A[loc][svec[0]].block[qvec[0]].cols();
+			for (size_t i=1; i<svec.size(); ++i) {assert(A[loc][svec[i]].block[qvec[i]].cols() == Ncols);}
+			size_t Nrows = accumulate(Nrowsvec.begin(),Nrowsvec.end(),0);
+			
+			MatrixType Aclump(Nrows,Ncols);
+			Aclump.setZero();
+			size_t stitch = 0;
+			for (size_t i=0; i<svec.size(); ++i)
+			{
+				Aclump.block(stitch,0, Nrowsvec[i],Ncols) = A[loc][svec[i]].block[qvec[i]];
+				stitch += Nrowsvec[i];
+			}
+			
+			HouseholderQR<MatrixType> Quirinus; MatrixType Qmatrix, Rmatrix; // Eigen QR
+			
+			Quirinus.compute(Aclump);
+			Qmatrix = Quirinus.householderQ() * MatrixType::Identity(Aclump.rows(),Aclump.cols());
+			Rmatrix = MatrixType::Identity(Aclump.cols(),Aclump.rows()) * Quirinus.matrixQR().template triangularView<Upper>();
+			
+			// update A[loc]
+			stitch = 0;
+			for (size_t i=0; i<svec.size(); ++i)
+			{
+				A[loc][svec[i]].block[qvec[i]] = Qmatrix.block(stitch,0, Nrowsvec[i],Ncols);
+				stitch += Nrowsvec[i];
+			}
+			
+			// write to C
+			qarray2<Nq> quple = {outbase[loc][qout], outbase[loc][qout]};
+			auto qC = C.dict.find(quple);
+			
+			if (qC != C.dict.end())
+			{
+				C.block[qC->second] += Rmatrix;
+			}
+			else
+			{
+				C.push_back(quple,Rmatrix);
+			}
 		}
 	}
 	
@@ -3136,6 +3145,7 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 	//L.setVacuum();
 	L.setIdentity(inBasis(0), inBasis(0));
 	Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > Lnext;
+	
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
 //		cout << "l=" << l << ", L.dim=" << L.dim << endl;
@@ -3180,6 +3190,9 @@ locAvg (const Mpo<Symmetry,MpoScalar> &O, size_t distance) const
 	
 	size_t loc1 = this->pivot;
 	size_t loc2 = this->pivot+distance;
+	
+//	assert(O.locality() >= loc1 and O.locality() <= loc2);
+//	lout << "loc1=" << loc1 << ", O.locality()=" << O.locality() << ", loc2=" << loc2 << endl;
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lnext;
@@ -3336,7 +3349,15 @@ cast() const
 	Vout.pivot = this->pivot;
 	Vout.truncWeight = truncWeight;
 	
+	Vout.QinTop = QinTop;
+	Vout.QinBot = QinBot;
+	Vout.QoutTop = QoutTop;
+	Vout.QoutBot = QoutBot;
+	
 	Vout.Boundaries = Boundaries.template cast<OtherScalar>();
+	
+	Vout.update_inbase();
+	Vout.update_outbase();
 	
 	return Vout;
 }

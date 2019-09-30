@@ -549,6 +549,7 @@ HubbardHamiltonian (const ArrayXd &U, const ArrayXd &Uph, const ArrayXd &Eorb, c
 			Mout += Eorb(i) * n(i);
 		}
 	}
+	
 	return Mout;
 }
 

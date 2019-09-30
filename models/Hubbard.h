@@ -46,10 +46,12 @@ const std::map<string,std::any> Hubbard::defaults =
 	{"mu",0.}, {"t0",0.}, 
 	{"U",0.}, {"Uph",0.},
 	{"V",0.}, {"Vrung",0.}, 
+	{"Vxy",0.}, {"Vz",0.},
 	{"Bz",0.}, {"Bx",0.}, 
 	{"J",0.}, {"Jrung",0.},
 	{"J3site",0.},
 	{"Delta",0.},
+	{"X",0.}, {"Xperp",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
@@ -77,33 +79,6 @@ Hubbard (const size_t &L, const vector<Param> &params)
 	this->precalc_TwoSiteData();
 }
 
-/*template<typename Symmetry_>
-void Hubbard::
-add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, size_t loc)
-{
-	auto save_label = [&Terms] (string label)
-	{
-		if (label!="") {Terms.info.push_back(label);}
-	};
-	
-	// Bx
-	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",F[loc].orbitals(),loc);
-	save_label(Bxlabel);
-	
-	// Can also implement superconductivity terms c*c & cdag*cdag here
-	
-	Terms.name = "Hubbard";
-	
-	ArrayXd  Uorb  = F[loc].ZeroField();
-	ArrayXd  Eorb  = F[loc].ZeroField();
-	ArrayXd  Bzorb = F[loc].ZeroField();
-	ArrayXXd tPerp = F[loc].ZeroHopping();
-	ArrayXXd Vperp = F[loc].ZeroHopping();
-	ArrayXXd Jperp = F[loc].ZeroHopping();
-	
-	Terms.local.push_back(make_tuple(1., F[loc].template HubbardHamiltonian<double>(Uorb,Eorb,Bzorb,Bxorb,tPerp,Vperp,Jperp)));
-}*/
-    
 template<typename Symmetry_>
 void Hubbard::
 add_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)

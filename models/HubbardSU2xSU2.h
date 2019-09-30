@@ -59,6 +59,11 @@ public:
 	Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	Mpo<Symmetry> nh (size_t locx, size_t locy=0);
 	Mpo<Symmetry> ns (size_t locx, size_t locy=0);
+	Mpo<Symmetry> nhsq (size_t locx, size_t locy=0);
+	Mpo<Symmetry> nssq (size_t locx, size_t locy=0);
+	
+	Mpo<Symmetry> B (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) {return cdagc(locx1,locx2,locy1,locy2);};
+	Mpo<Symmetry> C (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	
 	Mpo<Symmetry> S (size_t locx, size_t locy=0);
 	Mpo<Symmetry> Sdag (size_t locx, size_t locy=0, double factor=sqrt(3.));
@@ -550,6 +555,12 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
+C (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	return make_corr("c†", "c", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].c(locy2), {3,1}, 2., PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
 nh (size_t locx, size_t locy)
 {
 	return make_local("nh", locx,locy, F[locx].nh(locy), 1., false, false);
@@ -559,6 +570,18 @@ Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU
 ns (size_t locx, size_t locy)
 {
 	return make_local("ns", locx,locy, F[locx].ns(locy), 1., false, false);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
+nhsq (size_t locx, size_t locy)
+{
+	return make_local("nh^2", locx,locy, OperatorType::prod(F[locx].nh(locy), F[locx].nh(locy), {1,1}), 1., false, false);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
+nssq (size_t locx, size_t locy)
+{
+	return make_local("ns^2", locx,locy, OperatorType::prod(F[locx].ns(locy), F[locx].ns(locy), {1,1}), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::

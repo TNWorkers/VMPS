@@ -376,11 +376,13 @@ protected:
 	qarray<Nq> Qtot;
 	
 	/**properties and boundary conditions*/
-	bool UNITARY	= false;
+	bool UNITARY = false;
 	bool HERMITIAN  = false;
-	bool HAMILTONIAN  = false;
+	bool HAMILTONIAN = false;
 	bool GOT_SQUARE = false;
 	bool GOT_OPEN_BC = true;
+	bool GOT_SEMIOPEN_LEFT = false;
+	bool GOT_SEMIOPEN_RIGHT = false;
 	
 	OperatorType LocalOp;
 	int LocalSite = -1;
@@ -650,14 +652,17 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 		Daux_store(l,0) = Gvec[l].rows();
 		Daux_store(l,1) = Gvec[l].cols();
 	}
-	if (OPEN_BC)
+	if (OPEN_BC or GOT_SEMIOPEN_LEFT)
 	{
 		Daux_store(0,0) = 1;
+	}
+	if (OPEN_BC or GOT_SEMIOPEN_LEFT)
+	{
 		Daux_store(N_sites-1,1) = 1;
 	}
 	
 	// open boundary conditions: use only last row
-	if (OPEN_BC)
+	if (OPEN_BC or GOT_SEMIOPEN_LEFT)
 	{
 		size_t l=0;
 		
@@ -696,8 +701,8 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 		}
 	}
 	
-	size_t l_frst = (OPEN_BC)? 1:0;
-	size_t l_last = (OPEN_BC)? N_sites-1:N_sites;
+	size_t l_frst = (OPEN_BC or GOT_SEMIOPEN_LEFT)? 1:0;
+	size_t l_last = (OPEN_BC or GOT_SEMIOPEN_RIGHT)? N_sites-1:N_sites;
 	
 	for (size_t l=l_frst; l<l_last; ++l)
 	for (size_t s1=0; s1<qloc[l].size(); ++s1)
@@ -736,7 +741,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 	}
 	
 	// open boundary conditions: use only first column
-	if (OPEN_BC)
+	if (OPEN_BC or GOT_SEMIOPEN_RIGHT)
 	{
 		size_t l=l_last;
 		
@@ -1596,22 +1601,6 @@ transform_base (qarray<Symmetry::Nq> Qshift, bool PRINT, int L)
 	}
 	
 	calc_auxBasis();
-	
-//	if (Qtot != Symmetry::qvacuum())
-//	{
-//		for (int i=0; i<qloc[this->N_sites-1].size(); ++i)
-//		{
-//			lout << "original: " << qloc[this->N_sites-1][i] << endl;
-//		}
-//		
-//		auto qnew = Symmetry::reduceSilent(qloc[N_sites-1], Symmetry::flip(Qtot));
-//		qloc[N_sites-1] = qnew;
-//		
-//		for (int i=0; i<qloc[this->N_sites-1].size(); ++i)
-//		{
-//			lout << "transformed: " << qloc[this->N_sites-1][i] << endl;
-//		}
-//	}
 };
 
 template<typename Symmetry, typename Scalar>

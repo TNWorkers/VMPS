@@ -21,6 +21,8 @@ public:
 	///@{
 	Mpo<Symmetry> c (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> cdag (size_t locx, size_t locy=0) const;
+	/**1/√2*(c+c†), only possible with Z(2) symmetry or without symmetries*/
+	Mpo<Symmetry> c_plus_cdag (size_t locx, size_t locy=0) const;
 	///@}
 	
 	///@{
@@ -120,6 +122,14 @@ Mpo<Symmetry> SpinlessFermionsObservables<Symmetry>::
 cdag (size_t locx, size_t locy) const
 {
 	return make_local("c†", locx,locy, F[locx].cdag(locy), true);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> SpinlessFermionsObservables<Symmetry>::
+c_plus_cdag (size_t locx, size_t locy) const
+{
+	assert(Symmetry::name() != "U(1)");
+	return make_local("c+c†", locx,locy, 1./sqrt(2.)*(F[locx].c(locy)+F[locx].cdag(locy)), true);
 }
 
 template<typename Symmetry>

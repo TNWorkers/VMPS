@@ -1437,7 +1437,7 @@ void contract_L (const Multipede<4,Symmetry,MatrixType> &Lold,
 					size_t tr = iWtop.row();
 					size_t tc = iWtop.col();
 					MpoScalar Wfactor = iWbot.value() * iWtop.value();
-				
+					
 					if (Lold.block[qL][br][tr].rows() != 0)
 					{
 						MatrixType Mtmp;
