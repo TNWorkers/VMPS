@@ -2253,9 +2253,9 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 rightSplitStep (size_t loc, Biped<Symmetry,MatrixType> &C)
 {
-	#ifndef DMRG_DONT_USE_OPENMP
-	#pragma omp parallel for
-	#endif
+//	#ifndef DMRG_DONT_USE_OPENMP
+//	#pragma omp parallel for
+//	#endif
 	for (size_t qout=0; qout<outbase[loc].Nq(); ++qout)
 	{
 		// determine how many A's to glue together

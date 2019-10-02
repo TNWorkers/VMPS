@@ -235,11 +235,14 @@ FermionBase (std::size_t L_input, bool U_IS_INFINITE)
 	basis_1s.push_back(Q,inner_dim,ident);
 	ident.clear();
 	
-	Q={1,2}; //doubly occupied state
-	inner_dim = 1;
-	ident.push_back("double");
-	basis_1s.push_back(Q,inner_dim,ident);
-	ident.clear();
+	if (!U_IS_INFINITE)
+	{
+		Q={1,2}; //doubly occupied state
+		inner_dim = 1;
+		ident.push_back("double");
+		basis_1s.push_back(Q,inner_dim,ident);
+		ident.clear();
+	}
 	
 	Id_vac = Operator({1,0},basis_1s);
 	Zero_vac = Operator({1,0},basis_1s);
@@ -250,27 +253,37 @@ FermionBase (std::size_t L_input, bool U_IS_INFINITE)
 	d_1s = Operator({1,0},basis_1s);
 	S_1s = Operator({3,0},basis_1s);
 	
-	//create operators for zero and one orbitals
+	// create operators for zero and one orbitals
 	Id_vac("empty", "empty") = 1.;
 	Zero_vac("empty", "empty") = 0.;
 	
 	Id_1s("empty", "empty") = 1.;
-	Id_1s("double", "double") = 1.;
+	if (!U_IS_INFINITE) Id_1s("double", "double") = 1.;
 	Id_1s("single", "single") = 1.;
 	
 	F_1s("empty", "empty") = 1.;
-	F_1s("double", "double") = 1.;
+	if (!U_IS_INFINITE) F_1s("double", "double") = 1.;
 	F_1s("single", "single") = -1.;
 	
 	c_1s("empty", "single")  = std::sqrt(2.);
-	c_1s("single", "double") = 1.;
+	if (!U_IS_INFINITE) c_1s("single", "double") = 1.;
 	
 	cdag_1s = c_1s.adjoint();
 	n_1s = std::sqrt(2.) * Operator::prod(cdag_1s,c_1s,{1,0});
-	d_1s( "double", "double" ) = 1.;
-	S_1s( "single", "single" ) = std::sqrt(0.75);
+	if (!U_IS_INFINITE) d_1s( "double", "double" ) = 1.;
+	S_1s("single", "single") = std::sqrt(0.75);
 	p_1s = -std::sqrt(0.5) * Operator::prod(c_1s,c_1s,{1,-2}); //The sign convention corresponds to c_DN c_UP
 	pdag_1s = p_1s.adjoint(); //The sign convention corresponds to (c_DN c_UP)†=c_UP† c_DN†
+	
+//	if (U_IS_INFINITE)
+//	{
+//		cout << "Id_1s=" << endl << MatrixXd(Id_1s.plain<double>().data) << endl << endl;
+//		cout << "F_1s=" << endl << MatrixXd(F_1s.plain<double>().data) << endl << endl;
+//		cout << "c_1s=" << endl << MatrixXd(c_1s.plain<double>().data) << endl << endl;
+//		cout << "d_1s=" << endl << MatrixXd(d_1s.plain<double>().data) << endl << endl;
+//		cout << "n_1s=" << endl << MatrixXd(n_1s.plain<double>().data) << endl << endl;
+//		cout << "S_1s=" << endl << MatrixXd(S_1s.plain<double>().data) << endl << endl;
+//	}
 	
 	if (N_states == 1)
 	{
@@ -278,7 +291,7 @@ FermionBase (std::size_t L_input, bool U_IS_INFINITE)
 		N_orbitals = 1;
 	}
 	
-	//create basis for N_orbitals fermionic sites
+	// create basis for N_orbitals fermionic sites
 	if      (N_orbitals == 1) {TensorBasis = basis_1s;}
 	else if (N_orbitals == 0) {TensorBasis = vacuum;}
 	else

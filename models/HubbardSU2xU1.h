@@ -161,7 +161,7 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
-		
+	
 	set_operators(F, P, Terms);
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
@@ -588,9 +588,17 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, Op.Q(), ss.str(), HERMITIAN);
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
-	(FERMIONIC)? 
-		Mout.setLocal(locx, (factor * Op).plain<double>(), F[0].sign().plain<double>()) //* pow(-1.,locx+1)
-	:Mout.setLocal(locx, Op.plain<double>());
+	if (FERMIONIC)
+	{
+		vector<SiteOperator<Symmetry,MatrixType::Scalar> > Signs(locx);
+		for (size_t l=0; l<locx; ++l) Signs[l] = F[l].sign().plain<double>();
+		
+		Mout.setLocal(locx, (factor * Op).plain<double>(), Signs);
+	}
+	else
+	{
+		Mout.setLocal(locx, Op.plain<double>());
+	}
 	
 	return Mout;
 }

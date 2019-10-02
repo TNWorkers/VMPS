@@ -568,7 +568,7 @@ prepare_h2site (const TwoSiteHamiltonian &h2site_input, const vector<qarray<Symm
 	h2site = h2site_input;
 	
 	// resize Vout
-
+	
 	if (!USE_STATE)
 	{
 		Vout.state = Umps<Symmetry,Scalar>(qloc_input, Qtot, N_sites, M, Nqmax);
@@ -631,7 +631,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	HeffA.clear();
 	HeffA.resize(N_sites);
 	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
 		lout << PrepTimer.info("• initial decomposition") << endl;
 		lout <<                "• initial state        : " << Vout.state.info() << endl;
@@ -1078,7 +1078,10 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		DynParam.doSomething(N_iterations);
 		FORCE_DO_SOMETHING = false;
 		// if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
-		cout << "performing expansion with " << VUMPS::TWOSITE_A::ALxCxAR << endl;
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			lout << "performing expansion with " << VUMPS::TWOSITE_A::ALxCxAR << endl;
+		}
 		expand_basis(deltaD, H, Vout, VUMPS::TWOSITE_A::ALxCxAR);//);
 		t_exp = ExpansionTimer.time();
 		N_iterations_without_expansion = 0;
@@ -1197,7 +1200,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		
 		Stopwatch<> ErrorTimer;
 		double t_err = 0;
-		cout << "err_state_rel=" << abs(err_state_old-err_state)/err_state << endl;
+//		lout << "err_state_rel=" << abs(err_state_old-err_state)/err_state << endl;
 		if (abs(err_state_old-err_state)/err_state > 1e-3 or N_iterations_without_expansion<=1 or N_iterations<=6)
 		{
 			calc_errors(H, Vout, true);
@@ -1280,7 +1283,10 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		DynParam.doSomething(N_iterations);
 		FORCE_DO_SOMETHING = false;
 		// if (Vout.state.calc_Dmax()+deltaD >= GlobParam.Dlimit) {deltaD = 0ul;}
-		cout << "performing expansion with " << VUMPS::TWOSITE_A::ALxCxAR << endl;
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			lout << "performing expansion with " << VUMPS::TWOSITE_A::ALxCxAR << endl;
+		}
 		expand_basis(deltaD, H, Vout, VUMPS::TWOSITE_A::ALxCxAR);//);
 		t_exp = ExpansionTimer.time();
 		N_iterations_without_expansion = 0;
@@ -1670,7 +1676,7 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, LANCZOS::EDGE::OPTION EDGE, bool USE_STATE)
 {
-	if (CHOSEN_VERBOSITY>=2)
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
 		lout << endl << termcolor::colorize << termcolor::bold
 		 << "———————————————————————————————————————————————VUMPS algorithm—————————————————————————————————————————————————————————"
@@ -1869,7 +1875,7 @@ expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps
 			Vdag.push_back(NAAN.in[q], NAAN.out[q], Jack.matrixV().adjoint().topRows(Nret));
 		}
 	}
-	lout << endl << endl;
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << endl << endl;
 	
 	//calc P
 	vector<Biped<Symmetry,MatrixType> > P(Vout.state.locBasis(loc).size());
@@ -2035,6 +2041,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 {
 	size_t add = (ADD_ODD_SITE)? 1:0;
 	size_t Lhetero = Ncells * N_sites + add;
+	assert(O.length()%N_sites == 0 and "Please choose a heterogeneous region that is commensurate with the unit cell!");
 	
 	Tripod<Symmetry,MatrixType> L_with_O;
 	Tripod<Symmetry,MatrixType> R_with_O;
@@ -2047,7 +2054,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 //	cout << "O.opBasis(O.length()-1).size()=" << O.opBasis(O.length()-1).size() << endl;
 //	cout << "O.inBasis(O.length()-1).size()=" << O.inBasis(O.length()-1).size() << endl;
 //	cout << "O.outBasis(O.length()-1).size()=" << O.outBasis(O.length()-1).size() << endl;
-//	
+	
 //	cout << "in/outBasis at 0:" << endl;
 //	cout << O.inBasis(0).print() << endl;
 //	cout << O.outBasis(0).print() << endl;
@@ -2070,18 +2077,17 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 		            ALxO[l]);
 //		cout << "ALxO done!" << endl;
 		
-//		size_t last_cell = O.length()-N_sites;
 		inbase.pullData (V.state.A[GAUGE::R][l],0);
 		outbase.pullData(V.state.A[GAUGE::R][l],1);
-		contract_AW(V.state.A[GAUGE::R][l], V.state.locBasis(l), O.W_at(O.length()-2), 
-		            O.opBasis(O.length()-2), inbase, O.inBasis(O.length()-2), outbase, O.outBasis(O.length()-2),
+		contract_AW(V.state.A[GAUGE::R][l], V.state.locBasis(l), O.W_at(O.length()-N_sites+l), 
+		            O.opBasis(O.length()-N_sites+l), inbase, O.inBasis(O.length()-N_sites+l), outbase, O.outBasis(O.length()-N_sites+l),
 		            ARxO[l]);
 //		cout << "ARxO done!" << endl;
 		
 		inbase.pullData (V.state.A[GAUGE::C][l],0);
 		outbase.pullData(V.state.A[GAUGE::C][l],1);
-		contract_AW(V.state.A[GAUGE::C][l], V.state.locBasis(l), O.W_at(O.length()-2), 
-		            O.opBasis(O.length()-2), inbase, O.inBasis(O.length()-2), outbase, O.outBasis(O.length()-2),
+		contract_AW(V.state.A[GAUGE::C][l], V.state.locBasis(l), O.W_at(O.length()-N_sites+l), 
+		            O.opBasis(O.length()-N_sites+l), inbase, O.inBasis(O.length()-N_sites+l), outbase, O.outBasis(O.length()-N_sites+l),
 		            ACxO[l]);
 //		cout << "ACxO done!" << endl;
 		
@@ -2105,18 +2111,27 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	// calc Cshift: q-number sectors to the right of perturbation are shifted
 	vector<vector<Biped<Symmetry,MatrixType> > > As(N_sites);
 	for (size_t l=0; l<N_sites; ++l) As[l] = ACxO[l];
-	Mps<Symmetry,Scalar> Maux(N_sites, As, V.state.locBasis(), Symmetry::qvacuum(), N_sites);
-	auto Cshift = V.state.C[0];
+	
+	auto Qt = Symmetry::reduceSilent(V.state.Qtarget(), O.Qtarget());
+	Mps<Symmetry,Scalar> Maux(N_sites, As, V.state.locBasis(), Qt[0], N_sites);
+	Maux.set_Qmultitarget(Qt);
+	Maux.min_Nsv = V.state.min_Nsv;
+	
+	auto Cshift = V.state.C[N_sites-1];
 	Cshift.clear();
 	Maux.rightSplitStep(N_sites-1, Cshift);
+	if (Symmetry::NON_ABELIAN)
+	{
+		Cshift = 1./sqrt(2.) * Cshift;
+	}
 	
-	// test Cshift
+//	// test Cshift
 //	cout << Maux.test_ortho() << endl;
 //	cout << Maux.validate() << endl;
 //	cout << "V.state.C[N_sites-1]=" << endl;
-//	cout << V.state.C[N_sites-1].print(true) << endl << endl;
+//	cout << V.state.C[N_sites-1].print(false) << endl << endl;
 //	cout << "Cshift[N_sites-1]=" << endl;
-//	cout << Cshift[N_sites-1].print(true) << endl << endl;
+//	cout << Cshift.print(false) << endl << endl;
 	
 	#pragma omp parallel sections
 	{

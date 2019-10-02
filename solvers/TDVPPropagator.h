@@ -27,10 +27,15 @@ public:
 	
 	void t_step_adaptive (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, const vector<bool> &TWO_STEP_AT, int N_stages=1, double tol_Lanczos=1e-8);
 	
+	inline VectorXd get_deltaEedge() const {VectorXd res(2); res << EvarL, EvarR; return res;}
+	
 private:
 	
 	void t_step_pivot  (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, double tol_Lanczos=1e-8);
 	void t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, double tol_Lanczos=1e-8, bool TURN_FIRST=true);
+	
+	void test_edge_eigenvector (const PivotVector<Symmetry,TimeScalar> &Asingle);
+	double EvarL, EvarR;
 	
 	vector<PivotMatrix1<Symmetry,TimeScalar,MpoScalar> >  Heff;
 	PivotMatrix1<Symmetry,TimeScalar,MpoScalar> HeffLast;
@@ -72,24 +77,26 @@ info() const
 //	ss << "max(dimK)=" << dimK_max << ", ";
 	if (dimK2_log.size() > 0)
 	{
-		ss << "dimK2=" << *min_element(dimK2_log.begin(), dimK2_log.end()) << ".." << *max_element(dimK2_log.begin(), dimK2_log.end()) << ", ";
+		ss << "dimK2=" << *min_element(dimK2_log.begin(), dimK2_log.end()) << "~" << *max_element(dimK2_log.begin(), dimK2_log.end()) << ", ";
 	}
 	if (dimK1_log.size() > 0)
 	{
-		ss << "dimK1=" << *min_element(dimK1_log.begin(), dimK1_log.end()) << ".." << *max_element(dimK1_log.begin(), dimK1_log.end()) << ", ";
+		ss << "dimK1=" << *min_element(dimK1_log.begin(), dimK1_log.end()) << "~" << *max_element(dimK1_log.begin(), dimK1_log.end()) << ", ";
 	}
 	if (dimK0_log.size() > 0)
 	{
-		ss << "dimK0=" << *min_element(dimK0_log.begin(), dimK0_log.end()) << ".." << *max_element(dimK0_log.begin(), dimK0_log.end()) << ", ";
+		ss << "dimK0=" << *min_element(dimK0_log.begin(), dimK0_log.end()) << "~" << *max_element(dimK0_log.begin(), dimK0_log.end()) << ", ";
 	}
 //	ss << "N_stages=" << N_stages_last << ", ";
-	ss << "mem=" << round(memory(GB),3) << "GB, overhead=" << round(overhead(MB),3) << "MB, ";
-	ss << "t[s]=" << t_tot
-	   << ", t0=" << round(t_0site/t_tot*100.,0) << "%"
-	   << ", t1=" << round(t_1site/t_tot*100.) << "%"
-	   << ", t2=" << round(t_2site/t_tot*100.) << "%"
-	   << ", t_ohead=" << round(t_ohead/t_tot*100.) << "%"
-	   << ", t_contr=" << round(t_contr/t_tot*100.) << "%";
+//	ss << "mem=" << round(memory(GB),3) << "GB, ";
+	ss << "δE@edge: L=" << EvarL << ", R=" << EvarR << ", ";
+	ss << "overhead=" << round(overhead(MB),3) << "MB, ";
+	ss << "t[s]=" << t_tot << ", "
+	   << "t0=" << round(t_0site/t_tot*100.,0) << "%, "
+	   << "t1=" << round(t_1site/t_tot*100.) << "%, "
+	   << "t2=" << round(t_2site/t_tot*100.) << "%, "
+	   << "t_ohead=" << round(t_ohead/t_tot*100.) << "%, "
+	   << "t_contr=" << round(t_contr/t_tot*100.) << "%";
 	return ss.str();
 }
 
@@ -471,6 +478,7 @@ t_step_pivot (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt,
 		t_ohead += Woh1.time(SECONDS);
 		
 		PivotVector<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
+		test_edge_eigenvector(Asingle);
 		
 //		cout << "1site at: " << pivot << endl;
 		LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
@@ -499,6 +507,8 @@ t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, Ti
 	precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
 	                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 	t_ohead += Woh1.time(SECONDS);
+	
+	test_edge_eigenvector(Asingle);
 	
 //	cout << "1site at: " << pivot << endl;
 	LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
@@ -683,6 +693,29 @@ t_step_adaptive (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, const 
 //	cout << "final pivot=" << pivot << endl << endl;
 	
 	t_tot = Wtot.time(SECONDS);
+}
+
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>
+void TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
+test_edge_eigenvector (const PivotVector<Symmetry,TimeScalar> &Asingle)
+{
+	if (pivot == 0 or pivot == N_sites-1)
+	{
+		auto V = Asingle;
+		normalize(V);
+		PivotVector<Symmetry,TimeScalar> HV;
+		HxV(Heff[pivot],V,HV);
+		double res = abs(dot(HV,HV).real()-pow(dot(V,HV).real(),2));
+		if (pivot==0)
+		{
+			EvarL = res;
+		}
+		else
+		{
+			EvarR = res;
+		}
+//		lout << "pivot=" << pivot << ", eigenstate test=" << res << endl;
+	}
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>

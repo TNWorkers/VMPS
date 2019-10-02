@@ -298,12 +298,12 @@ FermionBase (size_t L_input, bool U_IS_INFINITE)
 	N_states = pow(locdim,N_orbitals);
 	basis.resize(N_states);
 	
-	vector<int> nUP(4);
-	vector<int> nDN(4);
+	vector<int> nUP(locdim);
+	vector<int> nDN(locdim);
 	nUP[0] = 0; nDN[0] = 0;
 	nUP[1] = 1; nDN[1] = 0;
 	nUP[2] = 0; nDN[2] = 1;
-	nUP[3] = 1; nDN[3] = 1;
+	if (!U_IS_INFINITE) nUP[3] = 1; nDN[3] = 1;
 	
 	NestedLoopIterator Nelly(N_orbitals,locdim);
 	for (Nelly=Nelly.begin(); Nelly!=Nelly.end(); ++Nelly)
@@ -324,11 +324,11 @@ FermionBase (size_t L_input, bool U_IS_INFINITE)
 		basis[0][0] = 0;
 		basis[0][1] = 0;
 	}
-//	
-//	cout << "L_input=" << L_input << ", N_states=" << N_states << endl;
-//	cout << "basis:" << endl;
-//	for (size_t i=0; i<N_states; i++) {cout << basis[i] << endl;}
-//	cout << endl;
+	
+	cout << "L_input=" << L_input << ", N_states=" << N_states << endl;
+	cout << "basis:" << endl;
+	for (size_t i=0; i<N_states; i++) {cout << basis[i] << endl;}
+	cout << endl;
 }
 
 template<typename Symmetry>
