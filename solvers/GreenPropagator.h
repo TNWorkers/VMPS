@@ -45,7 +45,7 @@ public:
 	GreenPropagator (string label_input, 
 	                 double tmax_input, int Nt_input, 
 	                 double wmin_input, double wmax_input, int Nw_input=501,
-	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=500,
+	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501,
 	                 bool GAUSSINT=true)
 	:label(label_input), tmax(tmax_input), Nt(Nt_input),
 	 wmin(wmin_input), wmax(wmax_input), Nw(Nw_input),
@@ -98,7 +98,7 @@ public:
 	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
 	*/
 	GreenPropagator (string label_input, double tmax_input, const vector<vector<MatrixXcd>> &Gtx_input, 
-	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=500, bool GAUSSINT=true)
+	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, bool GAUSSINT=true)
 	:label(label_input), tmax(tmax_input), USE_GAUSSIAN_INTEGRATION(GAUSSINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
 	{
 		Lcell = Gtx_input.size();
@@ -200,10 +200,16 @@ public:
 	/**Integrates the QDOS up to a given chemical potential μ (or the Fermi energy, since T=0). 
 	   Can be used to find the right μ which gives the chosen filling n.
 	\param mu : chemical potential, upper integration limit
+	\param Nint : amount of Gauss-Legendre integration points
 	*/
-	double integrate_Glocw (double mu);
+	double integrate_Glocw (double mu, int Nint = 1000);
 	
-	double integrate_Glocw_cell (double mu);
+	/**Integrates the QDOS up to a given chemical potential μ for the unit cell. 
+	   The total integral is normalized \f$\sum_{i \in cell} n_i\f$.
+	\param mu : chemical potential, upper integration limit
+	\param Nint : amount of Gauss-Legendre integration points
+	*/
+	double integrate_Glocw_cell (double mu, int Nint = 1000);
 	
 	inline MatrixXcd get_Gtx() const {return Gtx;}
 	
@@ -225,6 +231,7 @@ public:
 	string winfo() const; // w=ω
 	string xt_info() const;
 	string xtqw_info() const;
+	void print_starttext() const;
 	
 	ArrayXd ncell;
 	double mu = std::nan("0");
@@ -266,6 +273,8 @@ private:
 	
 	MatrixXcd Sigmawq;
 	vector<vector<MatrixXcd>> SigmawqCell;
+	VectorXcd Sigma0q;
+	vector<vector<VectorXcd>> Sigma0qCell;
 	
 	void calc_Green (const int &tindex, const complex<double> &phase, 
 	                 const vector<Mps<Symmetry,complex<double>>> &OxPhi, const Mps<Symmetry,complex<double>> &Psi);
@@ -300,12 +309,7 @@ void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 compute (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>> &OxPhi,
          Mps<Symmetry,complex<double>> &OxPhi0, double Eg, bool TIME_FORWARDS)
 {
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
-	{
-		lout << endl << termcolor::colorize << termcolor::bold
-		 << "———————————————————————————————————————————————GreenPropagator—————————————————————————————————————————————————————————"
-		 <<  termcolor::reset << endl;
-	}
+	print_starttext();
 	
 	Lcell = max(OxPhi0.Boundaries.length(),1ul);
 	Lhetero = H_hetero.length();
@@ -426,12 +430,7 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 compute_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS, bool COUNTERPROPAGATE)
 {
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
-	{
-		lout << endl << termcolor::colorize << termcolor::bold
-		 << "———————————————————————————————————————————————GreenPropagator—————————————————————————————————————————————————————————"
-		 <<  termcolor::reset << endl;
-	}
+	print_starttext();
 	
 	Lcell = OxPhi.size();
 	Lhetero = H_hetero.length();
@@ -1002,51 +1001,50 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 FT_xq()
 {
-	IntervalIterator w(wmin,wmax,Nw);
+	IntervalIterator q(qmin,qmax,Nq);
+	ArrayXd qvals = q.get_abscissa();
 	Gtq.resize(Nt,Nq); Gtq.setZero();
 	
 	Stopwatch<> FourierWatch;
 	
-	// Use FFT to transform from x to q
-	Eigen::FFT<double> fft;
-	for (int it=0; it<tvals.rows(); ++it)
-	{
-		VectorXcd vtmp;
-		fft.fwd(vtmp,Gtx.row(it));
-		Gtq.row(it) = vtmp;
-	}
-	// phase shift factor because the origin site is in the middle
-	for (int iq=0; iq<Nq; ++iq)
-	{
-		Gtq.col(iq) *= exp(-1.i*2.*M_PI/double(xvals.size())*xvals[0]*double(iq));
-	}
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
-	{
-		lout << FourierWatch.info("FFT x→q") << endl;
-	}
-	
-//	// Explicit FT for testing
-//	for (int it=0; it<Nt; ++it)
+//	// Use FFT to transform from x to q
+//	Eigen::FFT<double> fft;
+//	for (int it=0; it<tvals.rows(); ++it)
+//	{
+//		VectorXcd vtmp;
+//		fft.fwd(vtmp,Gtx.row(it));
+//		Gtq.row(it) = vtmp;
+//	}
+//	// phase shift factor because the origin site is in the middle
 //	for (int iq=0; iq<Nq; ++iq)
 //	{
-//		double qval = 2.*M_PI/Nq * iq;
-//		
-//		for (int ix=0; ix<Nq; ++ix)
-//		{
-//			Gtq(it,iq) += Gtx(it,ix) * exp(-1.i*qval*xvals[ix]);
-//		}
+//		Gtq.col(iq) *= exp(-1.i*2.*M_PI/double(xvals.size())*xvals[0]*double(iq));
 //	}
-//	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+//	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 //	{
-//		lout << FourierWatch.info("FT x→q") << endl;
+//		lout << FourierWatch.info("FFT x→q") << endl;
 //	}
+	
+	// Explicit FT
+	for (int iq=0; iq<Nq; ++iq)
+	{
+		for (int ix=0; ix<Lhetero; ++ix)
+		{
+			Gtq.col(iq) += Gtx.col(ix) * exp(-1.i*qvals(iq)*xvals[ix]);
+		}
+	}
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	{
+		lout << FourierWatch.info("FT x→q") << endl;
+	}
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 FTcell_xq()
 {
-	IntervalIterator w(wmin,wmax,Nw);
+	IntervalIterator q(qmin,qmax,Nq);
+	ArrayXd qvals = q.get_abscissa();
 	
 	GtqCell.resize(Lcell);
 	for (int i=0; i<Lcell; ++i) GtqCell[i].resize(Lcell);
@@ -1059,13 +1057,9 @@ FTcell_xq()
 		GtqCell[i][j].resize(Nt,Nq); GtqCell[i][j].setZero();
 		
 		for (int iq=0; iq<Nq; ++iq)
+		for (int n=0; n<Ncells; ++n)
 		{
-			double qval = 2.*M_PI/Nq * iq;
-			
-			for (int n=0; n<Ncells; ++n)
-			{
-				GtqCell[i][j].col(iq) += GtxCell[i][j].col(n) * exp(-1.i*qval*double(dcell[n*Lcell]));
-			}
+			GtqCell[i][j].col(iq) += GtxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
 		}
 	}
 	
@@ -1113,25 +1107,25 @@ FT_tw (double wshift)
 		lout << FourierWatch.info(label+" FT t→ω") << endl;
 	}
 	
-	if (Q_RANGE_CHOICE == MPI_PPI)
-	{
-		MatrixXcd Gwq_tmp = Gwq;
-		Gwq_tmp.leftCols (Nq/2) = Gwq.rightCols(Nq/2);
-		Gwq_tmp.rightCols(Nq/2) = Gwq.leftCols (Nq/2);
-		Gwq = Gwq_tmp;
-		
-		VectorXcd G0q_tmp = G0q;
-		G0q_tmp.head(Nq/2) = G0q.tail(Nq/2);
-		G0q_tmp.tail(Nq/2) = G0q.head(Nq/2);
-		G0q = G0q_tmp;
-	}
-	
-	// repeat last q-point for better plotting
-	Gwq.conservativeResize(Nw,Nq+1);
-	Gwq.col(Nq) = Gwq.col(0);
-	
-	G0q.conservativeResize(Nq+1);
-	G0q(Nq) = Gwq(0);
+//	if (Q_RANGE_CHOICE == MPI_PPI)
+//	{
+//		MatrixXcd Gwq_tmp = Gwq;
+//		Gwq_tmp.leftCols (Nq/2) = Gwq.rightCols(Nq/2);
+//		Gwq_tmp.rightCols(Nq/2) = Gwq.leftCols (Nq/2);
+//		Gwq = Gwq_tmp;
+//		
+//		VectorXcd G0q_tmp = G0q;
+//		G0q_tmp.head(Nq/2) = G0q.tail(Nq/2);
+//		G0q_tmp.tail(Nq/2) = G0q.head(Nq/2);
+//		G0q = G0q_tmp;
+//	}
+//	
+//	// repeat last q-point for better plotting
+//	Gwq.conservativeResize(Nw,Nq+1);
+//	Gwq.col(Nq) = Gwq.col(0);
+//	
+//	G0q.conservativeResize(Nq+1);
+//	G0q(Nq) = Gwq(0);
 	
 	// Calculate FT of local Green's function
 	Glocw = FTloc_tw(Gloct,wvals);
@@ -1182,25 +1176,25 @@ FTcell_tw (double wshift)
 			G0qCell[i][j] += weights(it) * damping * GtqCell[i][j].row(it);
 		}
 		
-		if (Q_RANGE_CHOICE == MPI_PPI)
-		{
-			MatrixXcd Gwq_tmp = GwqCell[i][j];
-			Gwq_tmp.leftCols (Nq/2) = GwqCell[i][j].rightCols(Nq/2);
-			Gwq_tmp.rightCols(Nq/2) = GwqCell[i][j].leftCols (Nq/2);
-			GwqCell[i][j] = Gwq_tmp;
-			
-			VectorXcd G0q_tmp = G0qCell[i][j];
-			G0q_tmp.head(Nq/2) = G0qCell[i][j].tail(Nq/2);
-			G0q_tmp.tail(Nq/2) = G0qCell[i][j].head(Nq/2);
-			G0qCell[i][j] = G0q_tmp;
-		}
-		
-		// repeat last q-point for better plotting
-		GwqCell[i][j].conservativeResize(Nw,Nq+1);
-		GwqCell[i][j].col(Nq) = GwqCell[i][j].col(0);
-		
-		G0qCell[i][j].conservativeResize(Nq+1);
-		GwqCell[i][j](Nq) = GwqCell[i][j](0);
+//		if (Q_RANGE_CHOICE == MPI_PPI)
+//		{
+//			MatrixXcd Gwq_tmp = GwqCell[i][j];
+//			Gwq_tmp.leftCols (Nq/2) = GwqCell[i][j].rightCols(Nq/2);
+//			Gwq_tmp.rightCols(Nq/2) = GwqCell[i][j].leftCols (Nq/2);
+//			GwqCell[i][j] = Gwq_tmp;
+//			
+//			VectorXcd G0q_tmp = G0qCell[i][j];
+//			G0q_tmp.head(Nq/2) = G0qCell[i][j].tail(Nq/2);
+//			G0q_tmp.tail(Nq/2) = G0qCell[i][j].head(Nq/2);
+//			G0qCell[i][j] = G0q_tmp;
+//		}
+//		
+//		// repeat last q-point for better plotting
+//		GwqCell[i][j].conservativeResize(Nw,Nq+1);
+//		GwqCell[i][j].col(Nq) = GwqCell[i][j].col(0);
+//		
+//		G0qCell[i][j].conservativeResize(Nq+1);
+//		GwqCell[i][j](Nq) = GwqCell[i][j](0);
 		
 		// Calculate local Green's function
 		if (i==j)
@@ -1219,19 +1213,19 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 FT_allSites (double wshift)
 {
+	IntervalIterator q(qmin,qmax,Nq);
+	ArrayXd qvals = q.get_abscissa();
 	Gtq.resize(Nt,Nq); Gtq.setZero();
 	
 	Stopwatch<> FourierWatch;
 	
 	for (int iq=0; iq<Nq; ++iq)
 	{
-		double qval = 2.*M_PI/Nq * iq;
-		
 		for (int n=0; n<Ncells; ++n)
 		for (int i=0; i<Lcell; ++i)
 		for (int j=0; j<Lcell; ++j)
 		{
-			Gtq.col(iq) += 1./Lcell * GtxCell[i][j].col(n) * exp(-1.i*qval*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qval*double(i-j));
+			Gtq.col(iq) += 1./Lcell * GtxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(Lcell)*double(dcell[n*Lcell])) * exp(-1.i*qvals(iq)*double(i-j));
 		}
 	}
 	
@@ -1295,10 +1289,9 @@ FTloc_tw (const VectorXcd &Gloct_in, const ArrayXd &wvals)
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 double GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-integrate_Glocw (double mu)
+integrate_Glocw (double mu, int Nint)
 {
 	Quadrator<GAUSS_LEGENDRE> Q;
-	int Nint = 200;
 	
 	ArrayXd wabscissa(Nint);
 	for (int i=0; i<Nint; ++i) {wabscissa(i) = Q.abscissa(i,wmin,mu,Nint);}
@@ -1310,10 +1303,9 @@ integrate_Glocw (double mu)
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 double GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-integrate_Glocw_cell (double mu)
+integrate_Glocw_cell (double mu, int Nint)
 {
 	Quadrator<GAUSS_LEGENDRE> Q;
-	int Nint = 200;
 	
 	ArrayXd wabscissa(Nint);
 	for (int i=0; i<Nint; ++i) {wabscissa(i) = Q.abscissa(i,wmin,mu,Nint);}
@@ -1379,6 +1371,24 @@ string GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 xtqw_info() const
 {
 	return xinfo() + "_" + tinfo() + "_" + qinfo() + "_" + winfo();
+}
+
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+print_starttext() const
+{
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
+	{
+		#pragma omp critical
+		{
+			lout << endl << termcolor::colorize << termcolor::bold
+			     << "———————————————————————————————————"
+			     << " GreenPropagator "
+			     << label
+			     << " ———————————————————————————————————"
+			     <<  termcolor::reset << endl << endl;
+		}
+	}
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
@@ -1505,10 +1515,21 @@ save() const
 		if (PRINT) lout << label << " saving Σ[ωqRe], Σ[ωqIm]" << endl;
 		target_wq.save_matrix(MatrixXd(Sigmawq.real()),"ωqRe","Σ");
 		target_wq.save_matrix(MatrixXd(Sigmawq.imag()),"ωqIm","Σ");
+		if (Sigma0q.size() > 0)
+		{
+			if (PRINT) lout << label << " saving Σ[0qRe], Σ[0qIm]" << endl;
+			target_wq.save_matrix(MatrixXd(Sigma0q.real()),"0qRe","Σ");
+			target_wq.save_matrix(MatrixXd(Sigma0q.imag()),"0qIm","Σ");
+		}
 		#else
 		saveMatrix(Sigmawq.real(), label+"_G=ΣωqRe_"+xtqw_info()+".dat", PRINT);
 		saveMatrix(Sigmawq.imag(), label+"_G=ΣωqIm_"+xtqw_info()+".dat", PRINT);
 	//	saveMatrix_cpython(Sigmawq, label+"_G=Σωq_"+xtqw_info()+".dat", PRINT);
+		if (Sigma0q.size() > 0)
+		{
+			saveMatrix(Sigma0q.real(), make_string(label,"_Σ=0qRe_",xtqw_info(),".dat"), PRINT);
+			saveMatrix(Sigma0q.imag(), make_string(label,"_Σ=0qIm_",xtqw_info(),".dat"), PRINT);
+		}
 		#endif
 	}
 	
@@ -1537,10 +1558,21 @@ save() const
 			target_wq.create_group(make_string("Σ",i,j));
 			target_wq.save_matrix(MatrixXd(SigmawqCell[i][j].real()),"ωqRe",make_string("Σ",i,j));
 			target_wq.save_matrix(MatrixXd(SigmawqCell[i][j].imag()),"ωqIm",make_string("Σ",i,j));
+			if (Sigma0qCell.size() > 0)
+			{
+				if (PRINT) lout << label << " saving " << SigmaString << "[0qRe], " << SigmaString << "[0qIm]" << endl;
+				target_wq.save_matrix(MatrixXd(Sigma0qCell[i][j].real()),"0qRe",SigmaString);
+				target_wq.save_matrix(MatrixXd(Sigma0qCell[i][j].imag()),"0qIm",SigmaString);
+			}
 			#else
 			saveMatrix(MatrixXd(SigmawqCell[i][j].real()), make_string(label,"_G=Σ",i,j,"ωqRe_",xtqw_info(),".dat"), PRINT);
 			saveMatrix(MatrixXd(SigmawqCell[i][j].imag()), make_string(label,"_G=Σ",i,j,"ωqIm_",xtqw_info(),".dat"), PRINT);
 		//	saveMatrix_cpython(SigmawqCell, make_string(label,"_G=Σ",i,i,"ωq_",xtqw_info(),".dat"), PRINT);
+			if (Sigma0qCell.size() > 0)
+			{
+				saveMatrix(Sigma0qCell[i][j].real(), make_string(label,"_Σ=0qRe_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+				saveMatrix(Sigma0qCell[i][j].imag(), make_string(label,"_Σ=0qIm_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+			}
 			#endif
 		}
 	}
@@ -1568,18 +1600,24 @@ void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 calc_selfenergy (double (*eps)(double), bool SAVE_G0, double eta)
 {
 	IntervalIterator w(wmin,wmax,Nw);
+	IntervalIterator q(qmin,qmax,Nq);
 	ArrayXd wvals = w.get_abscissa();
-	IntervalIterator q(qmin,qmax,Gwq.cols());
 	ArrayXd qvals = q.get_abscissa();
 	
-	Sigmawq.resize(Nw,Gwq.cols());
+	Sigmawq.resize(Nw,Nq);
+	Sigma0q.resize(Nq);
 //	MatrixXcd G0wq(Nw,Nq);
 	
-	for (int iw=0; iw<wvals.rows(); ++iw)
+	for (int iw=0; iw<Nq; ++iw)
 	for (int iq=0; iq<Nq; ++iq)
 	{
 		Sigmawq(iw,iq) = wvals(iw)-eps(qvals(iq))-pow(Gwq(iw,iq),-1); // Σ(ω,q) = ω-ε(q)-1/G(ω,q)
 //		G0wq(iw,iq) = pow(wvals(iw)-eps(qvals(iq))+1.i*eta,-1); // G₀(ω,q) = 1/(ω-ε(q)+iη)
+	}
+	
+	for (int iq=0; iq<Nq; ++iq)
+	{
+		Sigma0q(iq) = -eps(qvals(iq))-pow(G0q(iq),-1); // Σ(0,q) = -ε(q)-1/G(0,q)
 	}
 }
 
@@ -1588,23 +1626,28 @@ void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 calc_selfenergy_cell (vector<vector<complex<double>(*)(double)>> eps, double eta)
 {
 	IntervalIterator w(wmin,wmax,Nw);
+	IntervalIterator q(qmin,qmax,Nq);
 	ArrayXd wvals = w.get_abscissa();
-	IntervalIterator q(qmin,qmax,GwqCell[0][0].cols());
 	ArrayXd qvals = q.get_abscissa();
 	
 	SigmawqCell.resize(Lcell);
+	Sigma0qCell.resize(Lcell);
 	for (int i=0; i<Lcell; ++i)
 	{
 		SigmawqCell[i].resize(Lcell);
+		Sigma0qCell[i].resize(Lcell);
 		for (int j=0; j<Lcell; ++j)
 		{
 			SigmawqCell[i][j].resize(Nw,GwqCell[0][0].cols());
 			SigmawqCell[i][j].setZero();
+			
+			Sigma0qCell[i][j].resize(G0qCell[0][0].rows());
+			Sigma0qCell[i][j].setZero();
 		}
 	}
 	
-	for (int iw=0; iw<wvals.rows(); ++iw)
-	for (int iq=0; iq<GwqCell[0][0].cols(); ++iq)
+	for (int iw=0; iw<Nq; ++iw)
+	for (int iq=0; iq<Nq; ++iq)
 	{
 		MatrixXcd Gint(Lcell,Lcell);
 		for (int i=0; i<Lcell; ++i)
@@ -1620,7 +1663,24 @@ calc_selfenergy_cell (vector<vector<complex<double>(*)(double)>> eps, double eta
 			complex<double> disp = eps[i][j](qvals(iq));
 			SigmawqCell[i][j](iw,iq) = +wvals(iw)*MatrixXcd::Identity(Lcell,Lcell)(i,j)-disp-Gint.inverse()(i,j);
 		}
+	}
+	
+	for (int iq=0; iq<Nq; ++iq)
+	{
+		MatrixXcd Gint(Lcell,Lcell);
+		for (int i=0; i<Lcell; ++i)
+		for (int j=0; j<Lcell; ++j)
+		{
+			Gint(i,j) = G0qCell[i][j](iq);
+		}
 		
+		for (int i=0; i<Lcell; ++i)
+		for (int j=0; j<Lcell; ++j)
+		{
+			// Σ_ab(0,q) = -ε_ab(q)-G_ab^{-1}(0,q)
+			complex<double> disp = eps[i][j](qvals(iq));
+			Sigma0qCell[i][j](iq) = -disp-Gint.inverse()(i,j);
+		}
 	}
 }
 

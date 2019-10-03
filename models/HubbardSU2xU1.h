@@ -122,7 +122,7 @@ protected:
 // Vz and Vxy are anisotropic isospin-isospin next-nearest neighbour interaction
 const map<string,any> HubbardSU2xU1::defaults = 
 {
-	{"t",1.}, {"tPrime",0.}, {"tRung",1.},
+	{"t",1.}, {"tPrime",0.}, {"tRung",1.}, {"tPrimePrime",0.},
 	{"mu",0.}, {"t0",0.}, 
 	{"U",0.}, {"Uph",0.},
 	{"V",0.}, {"Vext",0.}, {"Vrung",0.},
@@ -158,11 +158,11 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		
-		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)));
+		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), !isfinite(P.get<double>("U",l%Lcell)), !isfinite(P.get<double>("Uph",l%Lcell)));
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
 	
-	set_operators(F, P, Terms);
+	set_operators(F,P,Terms);
 	
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 	this->precalc_TwoSiteData();
@@ -179,10 +179,12 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 	{
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;
+		size_t lp3 = (loc+3)%N_sites;
 		
 		std::size_t orbitals       = F[loc].orbitals();
 		std::size_t next_orbitals  = F[lp1].orbitals();
 		std::size_t nextn_orbitals = F[lp2].orbitals();
+		std::size_t nnextn_orbitals = F[lp3].orbitals();
 		
 		stringstream ss;
 		ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
@@ -555,21 +557,46 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 			
 			if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
 			{
-				for (std::size_t alpha=0; alpha<orbitals; ++alpha)
+				for (std::size_t alfa=0; alfa<orbitals;       ++alfa)
+				for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
 				{
-					for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
-					{
-						SiteOperator<Symmetry,double> c_sign_local = OperatorType::prod(F[loc].c(alpha), F[loc].sign(), {2,-1}).plain<double>();
-						SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alpha), F[loc].sign(), {2,1}).plain<double>();
-						
-						SiteOperator<Symmetry,double> sign_tight = F[(loc+1)%N_sites].sign().plain<double>();
-						
-						SiteOperator<Symmetry,double> c_nextn = F[(loc+2)%N_sites].c(beta).plain<double>();
-						SiteOperator<Symmetry,double> cdag_nextn = F[(loc+2)%N_sites].cdag(beta).plain<double>();
-						
-						Terms.push_nextn(loc, -tPrime(alpha, beta) * std::sqrt(2.), cdag_sign_local, sign_tight, c_nextn);
-						Terms.push_nextn(loc, -tPrime(alpha, beta) * std::sqrt(2.), c_sign_local,    sign_tight, cdag_nextn);
-					}
+					SiteOperator<Symmetry,double> c_sign_local    = OperatorType::prod(F[loc].c(alfa),    F[loc].sign(), {2,-1}).plain<double>();
+					SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,1} ).plain<double>();
+					
+					SiteOperator<Symmetry,double> sign_tight = F[lp1].sign().plain<double>();
+					
+					SiteOperator<Symmetry,double> c_nextn    = F[lp2].c(beta).plain<double>();
+					SiteOperator<Symmetry,double> cdag_nextn = F[lp2].cdag(beta).plain<double>();
+					
+					Terms.push_nextn(loc, -tPrime(alfa,beta)*std::sqrt(2.), cdag_sign_local, sign_tight, c_nextn);
+					Terms.push_nextn(loc, -tPrime(alfa,beta)*std::sqrt(2.), c_sign_local,    sign_tight, cdag_nextn);
+				}
+			}
+		}
+		
+		// Next-next-nearest-neighbour terms: t''
+		if (!P.HAS("tFull"))
+		{
+			param2d tPrimePrime = P.fill_array2d<double>("tPrimePrime", "tPrimePrime_array", {orbitals, nnextn_orbitals}, loc%Lcell);
+			Terms.save_label(loc, tPrimePrime.label);
+			
+			if (loc < N_sites-3 or !P.get<bool>("OPEN_BC"))
+			{
+				vector<SiteOperator<Symmetry,double>> TransOps(2);
+				TransOps[0] = F[lp1].sign().plain<double>();
+				TransOps[1] = F[lp2].sign().plain<double>();
+				
+				for (std::size_t alfa=0; alfa<orbitals;        ++alfa)
+				for (std::size_t beta=0; beta<nnextn_orbitals; ++beta)
+				{
+					SiteOperator<Symmetry,double> c_sign_local    = OperatorType::prod(F[loc].c(alfa),    F[loc].sign(), {2,-1}).plain<double>();
+					SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,1} ).plain<double>();
+					
+					SiteOperator<Symmetry,double> c_nnextn    = F[lp3].c(beta).plain<double>();
+					SiteOperator<Symmetry,double> cdag_nnextn = F[lp3].cdag(beta).plain<double>();
+					
+					Terms.push(3, loc, -tPrimePrime(alfa,beta)*std::sqrt(2.), c_sign_local,    TransOps, c_nnextn);
+					Terms.push(3, loc, -tPrimePrime(alfa,beta)*std::sqrt(2.), cdag_sign_local, TransOps, cdag_nnextn);
 				}
 			}
 		}

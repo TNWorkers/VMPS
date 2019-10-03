@@ -2120,10 +2120,12 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	auto Cshift = V.state.C[N_sites-1];
 	Cshift.clear();
 	Maux.rightSplitStep(N_sites-1, Cshift);
-	if (Symmetry::NON_ABELIAN)
-	{
-		Cshift = 1./sqrt(2.) * Cshift;
-	}
+//	double norm2 = (Cshift.contract(Cshift.adjoint())).trace();
+	Cshift = 1./sqrt((Cshift.contract(Cshift.adjoint())).trace()) * Cshift;
+	
+//	double norm1 = (V.state.C[N_sites-1].contract(V.state.C[N_sites-1].adjoint())).trace();
+//	double norm3 = (Cshift.contract(Cshift.adjoint())).trace();
+//	cout << "norm1=" << norm1 << ", norm2=" << norm2 << ", norm3=" << norm3 << endl;
 	
 //	// test Cshift
 //	cout << Maux.test_ortho() << endl;

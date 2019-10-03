@@ -239,7 +239,7 @@ int main (int argc, char* argv[])
 			g.state.load(wd+"init/"+INIT);
 			lout << g.state.info() << endl;
 			
-			HDF5Interface Reader(wd+"init/"+base+".h5",READ);
+			HDF5Interface Reader(wd+"init/"+base+"_Sym="+Symmetry::name()+".h5",READ);
 			Reader.load_scalar(g.energy,"val","energy");
 			Reader.close();
 			lout << termcolor::blue << "ground state loaded!" << termcolor::reset << endl;
@@ -248,8 +248,8 @@ int main (int argc, char* argv[])
 		{
 			uDMRG.edgeState(H,g,Q);
 			
-			g.state.save(wd+"init/"+base);
-			HDF5Interface Writer(wd+"init/"+base+".h5",REWRITE);
+			g.state.save(wd+"init/"+base+"_Sym="+Symmetry::name());
+			HDF5Interface Writer(wd+"init/"+base+"_Sym="+Symmetry::name()+".h5",REWRITE);
 			Writer.create_group("energy");
 			Writer.save_scalar(g.energy,"val","energy");
 			Writer.close();
@@ -263,10 +263,12 @@ int main (int argc, char* argv[])
 		lout << "ncell=" << ncell.transpose() << ", avg=" << ncell.sum()/L << endl;
 		#ifndef USE_SPINLESS
 		{
+			ArrayXd dcell(L);
 			for (int l=0; l<L; ++l)
 			{
-				lout << "l=" << l << ", d=" << avg(g.state, H.d(l), g.state) << endl;
+				dcell(l) = avg(g.state, H.d(l), g.state);
 			}
+			lout << "dcell=" << dcell.transpose() << ", avg=" << dcell.sum()/L << endl;
 		}
 		#endif
 		
@@ -290,11 +292,15 @@ int main (int argc, char* argv[])
 			{
 				O[0][l] = H_hetero.c<UP>(Lhetero/2+l);
 				O[1][l] = H_hetero.cdag<UP>(Lhetero/2+l);
+//				O[0][l] = H_hetero.Scomp(SP,Lhetero/2+l);
+//				O[1][l] = H_hetero.Sz(Lhetero/2+l);
 			}
 			#elif defined(USE_SU2XU1)
 			{
-				O[0][l] = H_hetero.c(Lhetero/2+l,0,1.);
+				O[0][l] = H_hetero.c(Lhetero/2+l,0);
 				O[1][l] = H_hetero.cdag(Lhetero/2+l,0,1.);
+//				O[0][l] = H_hetero.S(Lhetero/2+l,0);
+//				O[1][l] = H_hetero.Sdag(Lhetero/2+l,0,1.);
 			}
 			#endif
 			O[0][l].transform_base(Q,false,L); // PRINT=false
@@ -315,11 +321,15 @@ int main (int argc, char* argv[])
 			{
 				Ofull[0][l] = H_hetero.c<UP>(l);
 				Ofull[1][l] = H_hetero.cdag<UP>(l);
+//				Ofull[0][l] = H_hetero.Scomp(SP,l);
+//				Ofull[1][l] = H_hetero.Sz(l);
 			}
 			#elif defined(USE_SU2XU1)
 			{
-				Ofull[0][l] = H_hetero.c(l,0,1.);
+				Ofull[0][l] = H_hetero.c(l,0);
 				Ofull[1][l] = H_hetero.cdag(l,0,1.);
+//				Ofull[0][l] = H_hetero.S(l,0);
+//				Ofull[1][l] = H_hetero.Sdag(l,0,1.);
 			}
 			#endif
 			Ofull[0][l].transform_base(Q,false,L); // PRINT=false
@@ -359,6 +369,8 @@ int main (int argc, char* argv[])
 		// GreenPropagator
 		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"PES_"+base,tmax,Nt,wmin,wmax,501,ZERO_2PI,500,GAUSSINT);
 		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"IPE_"+base,tmax,Nt,wmin,wmax,501,ZERO_2PI,500,GAUSSINT);
+//		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"SF1_"+base,tmax,Nt,wmin,wmax,501,ZERO_2PI,500,GAUSSINT);
+//		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"SF2_"+base,tmax,Nt,wmin,wmax,501,ZERO_2PI,500,GAUSSINT);
 		
 		Green[1].set_verbosity(DMRG::VERBOSITY::ON_EXIT);
 		
@@ -425,22 +437,22 @@ int main (int argc, char* argv[])
 			Gin[i][j] += Green[0].get_GtxCell()[i][j] + Green[1].get_GtxCell()[i][j];
 		}
 		
-		Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"A1P_"+base,tmax,Gin,ZERO_2PI,500,GAUSSINT);
-		Gfull.recalc_FTwCell(wmin,wmax,501);
-		Gfull.FT_allSites();
-		
-		IntervalIterator mu(wmin,wmax,101);
-		for (mu=mu.begin(); mu!=mu.end(); ++mu)
-		{
-			double res = spinfac * Gfull.integrate_Glocw_cell(*mu);
-			mu << res;
-		}
-		mu.save(wd+"n(μ)_"+base+".dat");
-		RootFinder R(n_mu,wmin,wmax);
-		lout << "μ=" << R.root() << endl;
-		
-		Gfull.mu = R.root();
-		Gfull.ncell = ncell;
-		Gfull.save();
+//		Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"A1P_"+base,tmax,Gin,ZERO_2PI,500,GAUSSINT);
+//		Gfull.recalc_FTwCell(wmin,wmax,501);
+//		Gfull.FT_allSites();
+//		
+//		IntervalIterator mu(wmin,wmax,101);
+//		for (mu=mu.begin(); mu!=mu.end(); ++mu)
+//		{
+//			double res = spinfac * Gfull.integrate_Glocw_cell(*mu);
+//			mu << res;
+//		}
+//		mu.save(wd+"n(μ)_"+base+".dat");
+//		RootFinder R(n_mu,wmin,wmax);
+//		lout << "μ=" << R.root() << endl;
+//		
+//		Gfull.mu = R.root();
+//		Gfull.ncell = ncell;
+//		Gfull.save();
 	}
 }

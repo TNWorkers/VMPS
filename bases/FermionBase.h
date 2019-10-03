@@ -325,10 +325,10 @@ FermionBase (size_t L_input, bool U_IS_INFINITE)
 		basis[0][1] = 0;
 	}
 	
-	cout << "L_input=" << L_input << ", N_states=" << N_states << endl;
-	cout << "basis:" << endl;
-	for (size_t i=0; i<N_states; i++) {cout << basis[i] << endl;}
-	cout << endl;
+//	cout << "L_input=" << L_input << ", N_states=" << N_states << endl;
+//	cout << "basis:" << endl;
+//	for (size_t i=0; i<N_states; i++) {cout << basis[i] << endl;}
+//	cout << endl;
 }
 
 template<typename Symmetry>

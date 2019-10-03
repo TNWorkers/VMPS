@@ -166,7 +166,7 @@ public:
 	 */
 	void load (string filename);
 #endif //USE_HDF5_STORAGE
-
+	
 	/**
 	 * Determines the maximal bond dimension per site (sum of \p A.rows or \p A.cols over all subspaces).
 	 */
@@ -208,7 +208,7 @@ public:
 	
 	/**Returns the total quantum number of the Umps.*/
 	inline qarray<Nq> Qtarget() const {return Qtot;};
-		
+	
 	void calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,MatrixType> > &N) const;
 	
 	/**
@@ -2305,7 +2305,7 @@ truncate (bool SET_AC_RANDOM)
 	//isometries from the truncated SVD from the center-matrix C
 	vector<Biped<Symmetry,MatrixType> > U(N_sites);
 	vector<Biped<Symmetry,MatrixType> > Vdag(N_sites);
-
+	
 	//decompose C by SVD and write isometries to U and Vdag and the singular (Schmidt) values into C.
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -2320,7 +2320,7 @@ truncate (bool SET_AC_RANDOM)
 			Vdag[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixV().adjoint().topRows(Nret));
 		}
 	}
-
+	
 	//update AL and AR
 	for (size_t l=0; l<N_sites; ++l)
 	{
@@ -2332,7 +2332,7 @@ truncate (bool SET_AC_RANDOM)
 	}
 	update_outbase(GAUGE::L);
 	update_inbase(GAUGE::L);
-
+	
 	//Orthogonalize AL and AR again and safe gauge transformation into L and R. (AL -> L*AL*Linv, AR -> Rinv*AR*R)
 	//L and R need to be multiplied into the center matrix afterwards
 	vector<Biped<Symmetry,MatrixType> > L(N_sites),R(N_sites);
@@ -2346,7 +2346,7 @@ truncate (bool SET_AC_RANDOM)
 	
 	//normalize the state to get rid off small norm changes due to the truncation
 	normalize_C();
-
+	
 	//Update AC so that it has the truncated sizes and sort the A tensors.
 	for (size_t l=0; l<N_sites; l++)
 	{
