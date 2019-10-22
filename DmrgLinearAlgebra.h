@@ -611,7 +611,10 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 {
 	size_t L = Vin.length();
 	auto Qt = Symmetry::reduceSilent(Vin.Qtarget(), O.Qtarget());
-	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qt[0], O.volume(), 100ul);
+	bool TRIVIAL_BOUNDARIES=false;
+	if (Vin.Boundaries.IS_TRIVIAL()){TRIVIAL_BOUNDARIES=true;}
+		
+	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qt[0], O.volume(), 100ul, TRIVIAL_BOUNDARIES);
 	Vout.set_Qmultitarget(Qt);
 	Vout.min_Nsv = Vin.min_Nsv;
 	
