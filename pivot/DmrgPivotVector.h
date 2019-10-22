@@ -1,8 +1,8 @@
 #ifndef DMRGPIVOTVECTOR
 #define DMRGPIVOTVECTOR
 
-
 #include "tensors/DmrgContractions.h" // for contract_AA
+#include "termcolor.hpp"
 //include "numeric_limits.h"
 
 template<typename Symmetry, typename Scalar_>

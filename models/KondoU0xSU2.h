@@ -63,6 +63,7 @@ public:
 	
 	Mpo<Symmetry> Simp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
 	
 	Mpo<Symmetry> SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
@@ -83,17 +84,18 @@ protected:
 const std::map<string,std::any> KondoU0xSU2::defaults =
 {
 	{"t",1.}, {"tRung",0.}, {"tPrime",0.}, {"tPrimePrime",0.},
-	{"J",1.}, {"U",0.}, 
+	{"J",1.}, {"Jz",0.}, {"U",0.}, 
 	{"V",0.}, {"Vrung",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.}, {"Bx",0.}, {"Bxsub",0.}, {"Kx",0.},
 	{"Inext",0.}, {"Iprev",0.}, {"I3next",0.}, {"I3prev",0.}, {"I3loc",0.}, 
-	{"D",2ul}, {"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul},
+	{"D",2ul}, {"CALC_SQUARE",false}, {"CYLINDER",false}, {"Ly",1ul},
+	{"OPEN_BC",true}, {"SEMIOPEN_LEFT",false}, {"SEMIOPEN_RIGHT",false},
 	{"subL",SUB_LATTICE::A}
 };
 
 const map<string,any> KondoU0xSU2::sweep_defaults = 
 {
-	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",15ul}, {"eps_svd",1e-7},
+	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",11ul}, {"eps_svd",1e-7},
 	{"Dincr_abs",5ul}, {"Dincr_per",2ul}, {"Dincr_rel",1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",30ul}, {"min_halfsweeps",10ul},
@@ -137,6 +139,8 @@ KondoU0xSU2 (const size_t &L, const vector<Param> &params)
 	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	set_operators(B,F,P,Terms);
 	
+	this->GOT_SEMIOPEN_LEFT  = P.get<bool>("SEMIOPEN_LEFT");
+	this->GOT_SEMIOPEN_RIGHT = P.get<bool>("SEMIOPEN_RIGHT");
 	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 	this->precalc_TwoSiteData();
 }
@@ -182,6 +186,10 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		// Kondo-J
 		param1d J = P.fill_array1d<double>("J", "Jorb", Forbitals, loc%Lcell);
 		Terms.save_label(loc, J.label);
+		
+		// Kondo-Jz
+		param1d Jz = P.fill_array1d<double>("Jz", "Jzorb", Forbitals, loc%Lcell);
+		Terms.save_label(loc, Jz.label);
 		
 		// t⟂
 		param2d tPerp = P.fill_array2d<double>("tRung", "t", "tPerp", Forbitals, loc%Lcell, P.get<bool>("CYLINDER"));
@@ -243,6 +251,10 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 				KondoHamiltonian += 0.5*J(alfa) * OperatorType::outerprod(B[loc].Scomp(SP,alfa).structured(), F[loc].Sm(alfa), {1});
 				KondoHamiltonian += 0.5*J(alfa) * OperatorType::outerprod(B[loc].Scomp(SM,alfa).structured(), F[loc].Sp(alfa), {1});
 				KondoHamiltonian +=     J(alfa) * OperatorType::outerprod(B[loc].Scomp(SZ,alfa).structured(), F[loc].Sz(alfa), {1});
+			}
+			if (Jz(alfa) != 0.)
+			{
+				KondoHamiltonian += Jz(alfa) * OperatorType::outerprod(B[loc].Scomp(SZ,alfa).structured(), F[loc].Sz(alfa), {1});
 			}
 		}
 		
@@ -698,6 +710,21 @@ Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 	auto Sop = OperatorType::outerprod(B[locx].Id().structured(), F[locx].Scomp(Sa,locy), {1});
 	
 	Mout.setLocal(locx, Sop.plain<double>());
+	return Mout;
+}
+
+Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+n (size_t locx, size_t locy) const
+{
+	assert(locx < this->N_sites);
+	std::stringstream ss;
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	for (std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l); }
+	
+	auto nop = OperatorType::outerprod(B[locx].Id().structured(), F[locx].n(locy), {1});
+	
+	Mout.setLocal(locx, nop.plain<double>());
 	return Mout;
 }
 

@@ -73,7 +73,9 @@ const std::map<string,std::any> HubbardU1xU1::defaults =
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",1.},
 	{"mu",0.}, {"t0",0.}, 
-	{"U",0.}, {"Uph",0.}, {"V",0.}, {"Vrung",0.}, 
+	{"U",0.}, {"Uph",0.},
+	{"V",0.}, {"Vrung",0.},
+	{"Vxy",0.}, {"Vz",0.},
 	{"Bz",0.}, 
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
 	{"X",0.}, {"Xperp",0.},
@@ -159,11 +161,15 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
 		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {orbitals, next_orbitals}, loc%Lcell);
 		param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
 		param2d Xpara = P.fill_array2d<double>("X", "Xpara", {orbitals, next_orbitals}, loc%Lcell);
+		param2d Vxypara = P.fill_array2d<double>("Vxy", "Vxypara", {orbitals, next_orbitals}, loc%Lcell);
+		param2d Vzpara = P.fill_array2d<double>("Vz", "Vzpara", {orbitals, next_orbitals}, loc%Lcell);
 		
 		Terms.save_label(loc, tpara.label);
 		Terms.save_label(loc, Vpara.label);
 		Terms.save_label(loc, Jpara.label);
 		Terms.save_label(loc, Xpara.label);
+		Terms.save_label(loc, Vxypara.label);
+		Terms.save_label(loc, Vzpara.label);
 		
 		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
 		{
@@ -221,6 +227,20 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
 				                                         F[lp1].cdag(DN,beta) * (F[lp1].Id()-2.*F[lp1].n(UP,alfa)));
 				Terms.push_tight(loc, +Xpara(alfa,beta), F[loc].c(DN,alfa)*F[loc].sign(), 
 				                                         F[lp1].cdag(DN,beta) * F[lp1].n(UP,beta));
+				
+				// Vxy, Vz
+				SiteOperator<Symmetry_,double> tz_local = F[loc].Tz(alfa);
+				SiteOperator<Symmetry_,double> tz_tight = F[lp1].Tz(beta);
+				
+				SiteOperator<Symmetry_,double> tp_local = pow(-1,loc) * F[loc].cc      (alfa);
+				SiteOperator<Symmetry_,double> tm_tight = pow(-1,lp1) * F[lp1].cdagcdag(beta);
+				
+				SiteOperator<Symmetry_,double> tm_local = pow(-1,loc) * F[loc].cdagcdag(alfa);
+				SiteOperator<Symmetry_,double> tp_tight = pow(-1,lp1) * F[lp1].cc      (beta);
+				
+				Terms.push_tight(loc, 0.5*Vxypara(alfa,beta), tp_local, tm_tight);
+				Terms.push_tight(loc, 0.5*Vxypara(alfa,beta), tm_local, tp_tight);
+				Terms.push_tight(loc,     Vzpara (alfa,beta), tz_local, tz_tight);
 			}
 		}
 		

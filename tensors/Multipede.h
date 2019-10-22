@@ -193,11 +193,11 @@ typedef typename MatrixType::Scalar Scalar;
 		return Vout;
 	}
 	
+	// deprecated, can be deleted later:
 	/** Shifts \p qin and \p qout by \p Q, \p qmid is unchanged*/
-	void shift_Qin (const qarray<Symmetry::Nq> &Q);
-	
+//	void shift_Qin (const qarray<Symmetry::Nq> &Q);
 	/** Shifts \p qmid and \p qout by \p Q, \p qin is unchanged*/
-	void shift_Qmid (const qarray<Symmetry::Nq> &Q);
+//	void shift_Qmid (const qarray<Symmetry::Nq> &Q);
 	
 	Scalar compare (const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs) const;
 	
@@ -639,47 +639,47 @@ print (const bool &SHOW_MATRICES, const std::size_t &precision) const
 #endif
 }
 
-template<size_t Nlegs, typename Symmetry, typename MatrixType>
-void Multipede<Nlegs,Symmetry,MatrixType>::
-shift_Qin (const qarray<Symmetry::Nq> &Q)
-{
-	assert(Nlegs == 3);
-	
-	auto index_tmp = index;
-	auto block_tmp = block;
-	auto dim_tmp = dim;
-	
-	index.clear();
-	block.clear();
-	dict.clear();
-	dim = 0;
-	
-	for (size_t q=0; q<dim_tmp; ++q)
-	{
-		push_back({index_tmp[q][0]+Q, index_tmp[q][1]+Q, index_tmp[q][2]}, block_tmp[q]);
-	}
-}
+//template<size_t Nlegs, typename Symmetry, typename MatrixType>
+//void Multipede<Nlegs,Symmetry,MatrixType>::
+//shift_Qin (const qarray<Symmetry::Nq> &Q)
+//{
+//	assert(Nlegs == 3);
+//	
+//	auto index_tmp = index;
+//	auto block_tmp = block;
+//	auto dim_tmp = dim;
+//	
+//	index.clear();
+//	block.clear();
+//	dict.clear();
+//	dim = 0;
+//	
+//	for (size_t q=0; q<dim_tmp; ++q)
+//	{
+//		push_back({index_tmp[q][0]+Q, index_tmp[q][1]+Q, index_tmp[q][2]}, block_tmp[q]);
+//	}
+//}
 
-template<size_t Nlegs, typename Symmetry, typename MatrixType>
-void Multipede<Nlegs,Symmetry,MatrixType>::
-shift_Qmid (const qarray<Symmetry::Nq> &Q)
-{
-	assert(Nlegs == 3);
-	
-	auto index_tmp = index;
-	auto block_tmp = block;
-	auto dim_tmp = dim;
-	
-	index.clear();
-	block.clear();
-	dict.clear();
-	dim = 0;
-	
-	for (size_t q=0; q<dim_tmp; ++q)
-	{
-		push_back({index_tmp[q][0], index_tmp[q][1]+Q, index_tmp[q][2]+Q}, block_tmp[q]);
-	}
-}
+//template<size_t Nlegs, typename Symmetry, typename MatrixType>
+//void Multipede<Nlegs,Symmetry,MatrixType>::
+//shift_Qmid (const qarray<Symmetry::Nq> &Q)
+//{
+//	assert(Nlegs == 3);
+//	
+//	auto index_tmp = index;
+//	auto block_tmp = block;
+//	auto dim_tmp = dim;
+//	
+//	index.clear();
+//	block.clear();
+//	dict.clear();
+//	dim = 0;
+//	
+//	for (size_t q=0; q<dim_tmp; ++q)
+//	{
+//		push_back({index_tmp[q][0], index_tmp[q][1]+Q, index_tmp[q][2]+Q}, block_tmp[q]);
+//	}
+//}
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
 typename MatrixType::Scalar Multipede<Nlegs,Symmetry,MatrixType>::

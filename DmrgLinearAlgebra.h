@@ -292,7 +292,7 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	
 	if (USE_BOUNDARY)
 	{
-		B=Vket.get_boundaryTensor(DMRG::DIRECTION::LEFT);
+		B = Vket.get_boundaryTensor(DMRG::DIRECTION::LEFT);
 		assert(O.Qtarget() == Symmetry::qvacuum() and "Can only do avg_hetero with vacuum targets. Try OxV_exact followed by dot instead.");
 	}
 	else
@@ -316,7 +316,14 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 		Bnext.clear();
 		
 //		cout << "l=" << l << ", B.dim=" << B.dim << endl;
-//		cout << "B=" << B.print() << endl << endl;
+//		if (l==0)
+//		{
+//			cout << "B=" << endl << B.print(true) << endl << endl;
+//			
+//			Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
+//			R.setIdentity(1,1,Vket.outBasis(0));
+//			cout << "R.setIdentity(1,1,Vket.outBasis(0))=" << endl << R.print(true) << endl << endl;
+//		}
 	}
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > BR;
@@ -661,8 +668,6 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 //	Vout.Boundaries.R = Rtmp;
 //	cout << termcolor::red << "--------after--------" << termcolor::reset << endl;
 //	cout << Vout.Boundaries.R.print() << endl;
-	
-	
 	
 	for (size_t l=0; l<L; ++l)
 	{

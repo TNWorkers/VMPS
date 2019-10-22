@@ -128,8 +128,11 @@ public:
 	 */
 	OperatorType nh (int orbital=0) const
 	{
-		return 2.*d(orbital)-n(orbital)-Id(orbital);
+		return 2.*d(orbital)-n(orbital)-Id();
 	};
+	
+	OperatorType cc (int orbital=0) const;
+	OperatorType cdagcdag (int orbital=0) const;
 	///\}
 	
 	///\{
@@ -203,6 +206,8 @@ public:
 	 * \right)\f$
 	 */
 	OperatorType iSy (int orbital=0) const;
+	
+	OperatorType Tz (int orbital=0) const;
 	///\}
 	
 	///\{
@@ -293,12 +298,12 @@ FermionBase (size_t L_input, bool U_IS_INFINITE)
 	N_states = pow(locdim,N_orbitals);
 	basis.resize(N_states);
 	
-	vector<int> nUP(4);
-	vector<int> nDN(4);
+	vector<int> nUP(locdim);
+	vector<int> nDN(locdim);
 	nUP[0] = 0; nDN[0] = 0;
 	nUP[1] = 1; nDN[1] = 0;
 	nUP[2] = 0; nDN[2] = 1;
-	nUP[3] = 1; nDN[3] = 1;
+	if (!U_IS_INFINITE) nUP[3] = 1; nDN[3] = 1;
 	
 	NestedLoopIterator Nelly(N_orbitals,locdim);
 	for (Nelly=Nelly.begin(); Nelly!=Nelly.end(); ++Nelly)
@@ -319,7 +324,7 @@ FermionBase (size_t L_input, bool U_IS_INFINITE)
 		basis[0][0] = 0;
 		basis[0][1] = 0;
 	}
-//	
+	
 //	cout << "L_input=" << L_input << ", N_states=" << N_states << endl;
 //	cout << "basis:" << endl;
 //	for (size_t i=0; i<N_states; i++) {cout << basis[i] << endl;}
@@ -397,6 +402,20 @@ d (int orbital) const
 
 template<typename Symmetry>
 SiteOperator<Symmetry,double> FermionBase<Symmetry>::
+cc (int orbital) const
+{
+	return OperatorType(c(DN,orbital).data*c(UP,orbital).data, getQ(UPDN,-2));
+}
+
+template<typename Symmetry>
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
+cdagcdag (int orbital) const
+{
+	return OperatorType(c(DN,orbital).data*c(UP,orbital).data.transpose(), getQ(UPDN,+2));
+}
+
+template<typename Symmetry>
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 Scomp (SPINOP_LABEL Sa, int orbital) const
 {
 	assert(Sa != SY);
@@ -442,6 +461,13 @@ SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 iSy (int orbital) const
 {
 	return OperatorType(0.5*(Sp(orbital).data-Sm(orbital).data), getQ(iSY));
+}
+
+template<typename Symmetry>
+SiteOperator<Symmetry,double> FermionBase<Symmetry>::
+Tz (int orbital) const
+{
+	return 0.5*(n(orbital)-Id());
 }
 
 template<typename Symmetry>

@@ -15,10 +15,12 @@ public:
 		data.resize(tpoints,L-1);
 	}
 	
-	vector<bool> TWO_SITE (int it, const MpsType &Psi, double r=1., vector<int> overrides={});
+	vector<bool> TWO_SITE (int it, const MpsType &Psi, double r=1., vector<size_t> true_overrides={}, vector<size_t> false_overrides={});
 	
-	void save (string filename);
-	void save (int it, string filename);
+	void elongate (size_t Lleft=0, size_t Lright=0);
+	
+	void save (string filename) const;
+	void save (int it, string filename) const;
 	
 private:
 	
@@ -31,7 +33,7 @@ private:
 
 template<typename MpsType>
 vector<bool> EntropyObserver<MpsType>::
-TWO_SITE (int it, const MpsType &Psi, double r, vector<int> overrides)
+TWO_SITE (int it, const MpsType &Psi, double r, vector<size_t> true_overrides, vector<size_t> false_overrides)
 {
 	vector<bool> res(L-1);
 	
@@ -62,11 +64,29 @@ TWO_SITE (int it, const MpsType &Psi, double r, vector<int> overrides)
 		{
 			res[b] = (abs(DeltaSb) > DeltaS)? true:false;
 		}
+		
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
+		{
+			lout << "b=" << b << ", δS(b)=" << DeltaSb << endl;
+		}
 	}
 	
-	for (int ib=0; ib<overrides.size(); ++ib)
+	if (res[0] == true and it>0 and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)
 	{
-		res[overrides[ib]] = true;
+		lout << termcolor::yellow << "Entropy increase at the left edge!" << termcolor::reset << endl;
+	}
+	if (res[L-2] == true and it>0 and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)
+	{
+		lout << termcolor::yellow << "Entropy increase at the right edge!" << termcolor::reset << endl;
+	}
+	
+	for (int ib=0; ib<true_overrides.size(); ++ib)
+	{
+		res[true_overrides[ib]] = true;
+	}
+	for (int ib=0; ib<false_overrides.size(); ++ib)
+	{
+		res[false_overrides[ib]] = false;
 	}
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -90,28 +110,34 @@ TWO_SITE (int it, const MpsType &Psi, double r, vector<int> overrides)
 		lout << " N_steps(2-site)=" << trues << " (" << round(trues*100./(L-1),1) << "%)" << endl;
 	}
 	
-	if (res[0] == true and it>0 and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)
-	{
-		lout << termcolor::yellow << "Entropy increase at the left edge!" << termcolor::reset << endl;
-	}
-	else if (res[L-2] == true and it>0 and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)
-	{
-		lout << termcolor::yellow << "Entropy increase at the right edge!" << termcolor::reset << endl;
-	}
-	
 	return res;
 }
 
 template<typename MpsType>
 void EntropyObserver<MpsType>::
-save (string filename)
+elongate (size_t Lleft, size_t Lright)
+{
+	if (Lleft>0 or Lright>0)
+	{
+		int Lold = L;
+		L += Lleft + Lright;
+		MatrixXd data_new(tpoints,L-1+Lleft+Lright);
+		data_new.setZero();
+		data_new.block(Lleft,0,data.rows(),data.cols()) = data;
+		data = data_new;
+	}
+}
+
+template<typename MpsType>
+void EntropyObserver<MpsType>::
+save (string filename) const
 {
 	saveMatrix(data, filename);
 }
 
 template<typename MpsType>
 void EntropyObserver<MpsType>::
-save (int it, string filename)
+save (int it, string filename) const
 {
 	saveMatrix(data.topRows(it+1), filename);
 }

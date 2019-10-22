@@ -262,50 +262,40 @@ int main (int argc, char* argv[])
 		H_hetero.transform_base(Q,false,L); // PRINT=false
 		H_hetero.precalc_TwoSiteData(true); // FORCE=true
 		
-		// Obra
-		std::array<vector<Mpo<MODEL::Symmetry,double>>,2> Obra;
-		Obra[0].resize(L);
-		Obra[1].resize(L);
+		// O
+		std::array<vector<Mpo<MODEL::Symmetry,double>>,2> O;
+		O[0].resize(L);
+		O[1].resize(L);
 		for (int l=0; l<L; ++l)
 		{
 			#ifdef HEISENBERG
-//			Obra[l] = H_hetero.Scomp(SP,l);
-			Obra[0][l]= H_hetero.S(Lhetero/2+l,0,1.);
+//			O[l] = H_hetero.Scomp(SP,l);
+			O[0][l]= H_hetero.S(Lhetero/2+l,0,1.);
 			#elif defined(FERMIONS)
-			Obra[0][l] = H_hetero.c(Lhetero/2+l,0,1.);
-			Obra[1][l] = H_hetero.cdag(Lhetero/2+l,0,1.);
+			O[0][l] = H_hetero.c(Lhetero/2+l,0,1.);
+			O[1][l] = H_hetero.cdag(Lhetero/2+l,0,1.);
 			#endif
-			Obra[0][l].transform_base(Q,false,L); // PRINT=false
-			Obra[1][l].transform_base(Q,false,L);
+			O[0][l].transform_base(Q,false,L); // PRINT=false
+			O[1][l].transform_base(Q,false,L);
 			
 			cout << "l=" << l << ", loc=" << Lhetero/2+l << endl;
 		}
-		// ObraFull
-		std::array<vector<Mpo<MODEL::Symmetry,double>>,2> ObraFull;
-		ObraFull[0].resize(Lhetero);
-		ObraFull[1].resize(Lhetero);
+		// Ofull
+		std::array<vector<Mpo<MODEL::Symmetry,double>>,2> Ofull;
+		Ofull[0].resize(Lhetero);
+		Ofull[1].resize(Lhetero);
 		for (int l=0; l<Lhetero; ++l)
 		{
 			#ifdef HEISENBERG
-//			ObraFull[l] = H_hetero.Scomp(SP,l);
-			ObraFull[0][l]= H_hetero.S(l,0,1.);
+//			Ofull[l] = H_hetero.Scomp(SP,l);
+			Ofull[0][l]= H_hetero.S(l,0,1.);
 			#elif defined(FERMIONS)
-			ObraFull[0][l] = H_hetero.c(l,0,1.);
-			ObraFull[1][l] = H_hetero.cdag(l,0,1.);
+			Ofull[0][l] = H_hetero.c(l,0,1.);
+			Ofull[1][l] = H_hetero.cdag(l,0,1.);
 			#endif
-			ObraFull[0][l].transform_base(Q,false,L); // PRINT=false
-			ObraFull[1][l].transform_base(Q,false,L);
+			Ofull[0][l].transform_base(Q,false,L); // PRINT=false
+			Ofull[1][l].transform_base(Q,false,L);
 		}
-		
-		#ifdef HEISENBERG
-		Mpo<MODEL::Symmetry,double> Oket = H_hetero.S(x0);
-		#elif defined(FERMIONS)
-		std::array<Mpo<MODEL::Symmetry,double>,2> Oket;
-		Oket[0] = H_hetero.c(x0,0,1.);
-		Oket[1] = H_hetero.cdag(x0,0,1.);
-		#endif
-		Oket[0].transform_base(Q,false,L); // PRINT=false
-		Oket[1].transform_base(Q,false,L);
 		
 		// OxV for all sites
 		Stopwatch<> OxVTimer;
@@ -315,31 +305,25 @@ int main (int argc, char* argv[])
 		OxPhi[0].resize(L);
 		OxPhi[1].resize(L);
 		std::array<vector<Mps<MODEL::Symmetry,double>>,2> OxPhi_tmp;
-		OxPhi_tmp[0] = uDMRG.create_Mps(Ncells, g, H, Obra[0][0], Obra[0], false);
-		OxPhi_tmp[1] = uDMRG.create_Mps(Ncells, g, H, Obra[1][0], Obra[1], false);
+		OxPhi_tmp[0] = uDMRG.create_Mps(Ncells, g, H, O[0][0], O[0], false);
+		OxPhi_tmp[1] = uDMRG.create_Mps(Ncells, g, H, O[1][0], O[1], false);
 		for (int l=0; l<L; ++l)
 		{
 			OxPhi[0][l] = OxPhi_tmp[0][l].template cast<complex<double>>();
 			OxPhi[1][l] = OxPhi_tmp[1][l].template cast<complex<double>>();
 		}
 		// OxPhiFull
-//		std::array<vector<Mps<MODEL::Symmetry,complex<double>>>,2> OxPhiFull;
-//		OxPhiFull[0].resize(Lhetero);
-//		OxPhiFull[1].resize(Lhetero);
-//		std::array<vector<Mps<MODEL::Symmetry,double>>,2> OxPhiFull_tmp;
-//		OxPhiFull_tmp[0] = uDMRG.create_Mps(Ncells, g, H, ObraFull[0][x0], ObraFull[0], false);
-//		OxPhiFull_tmp[1] = uDMRG.create_Mps(Ncells, g, H, ObraFull[1][x0], ObraFull[1], false);
-//		for (int l=0; l<Lhetero; ++l)
-//		{
-//			OxPhiFull[0][l] = OxPhiFull_tmp[0][l].template cast<complex<double>>();
-//			OxPhiFull[1][l] = OxPhiFull_tmp[1][l].template cast<complex<double>>();
-//		}
-		// OxPhi0
-		std::array<Mps<MODEL::Symmetry,complex<double>>,2> OxPhi0;
-		OxPhi0[0] = uDMRG.create_Mps(Ncells, g, H, Oket[0], Oket[0], false).template cast<complex<double>>();
-		OxPhi0[1] = uDMRG.create_Mps(Ncells, g, H, Oket[1], Oket[1], false).template cast<complex<double>>();
-		lout << OxVTimer.info("OxV for all sites") << endl;
-		lout << endl;
+		std::array<vector<Mps<MODEL::Symmetry,complex<double>>>,2> OxPhiFull;
+		OxPhiFull[0].resize(Lhetero);
+		OxPhiFull[1].resize(Lhetero);
+		std::array<vector<Mps<MODEL::Symmetry,double>>,2> OxPhiFull_tmp;
+		OxPhiFull_tmp[0] = uDMRG.create_Mps(Ncells, g, H, Ofull[0][x0], Ofull[0], false);
+		OxPhiFull_tmp[1] = uDMRG.create_Mps(Ncells, g, H, Ofull[1][x0], Ofull[1], false);
+		for (int l=0; l<Lhetero; ++l)
+		{
+			OxPhiFull[0][l] = OxPhiFull_tmp[0][l].template cast<complex<double>>();
+			OxPhiFull[1][l] = OxPhiFull_tmp[1][l].template cast<complex<double>>();
+		}
 		
 		// GreenPropagator
 		#ifdef HEISENBERG
@@ -351,18 +335,6 @@ int main (int argc, char* argv[])
 		#endif
 		
 		Green[0].set_verbosity(DMRG::VERBOSITY::ON_EXIT);
-		
-		// test dot_hetero with shift
-//		for (int DeltaCell=0; DeltaCell<10; ++DeltaCell)
-//		{
-//			cout << "DeltaCell=" << DeltaCell << endl;
-//			double norm = OxPhi0[0].squaredNorm();
-//			cout << "dot=" << dot_hetero(OxPhiFull[0][x0-L*DeltaCell], OxPhi0[0]) / norm << endl;
-//			cout << "dot shift+2=" << dot_hetero(OxPhi0[0], OxPhi0[0], +DeltaCell) / norm << endl;
-//			cout << "dot shift-2=" << dot_hetero(OxPhi0[0], OxPhi0[0], -DeltaCell) / norm << endl;
-//			cout << "norm=" << norm << endl;
-//			cout << endl;
-//		}
 		
 		// set operator to measure
 		vector<Mpo<MODEL::Symmetry,double>> Measure;
@@ -419,7 +391,7 @@ int main (int argc, char* argv[])
 			}
 			else
 			{
-				Green[z].compute(H_hetero, OxPhi[z], OxPhi0[z], Eg, TIME_DIR[z]);
+				Green[z].compute(H_hetero, OxPhiFull[z][Lhetero/2], Eg, TIME_DIR[z]);
 			}
 		}
 		

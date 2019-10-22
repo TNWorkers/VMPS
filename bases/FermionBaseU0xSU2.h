@@ -90,7 +90,9 @@ public:
 	 * \param orbital : orbital index
 	 */
 	Operator nh (std::size_t orbital=0) const;
-
+	
+	Operator n (std::size_t orbital=0) const;
+	
 	///\{
 	/**
 	 * Sz
@@ -199,6 +201,7 @@ private:
 	Operator Id_1s; //identity
 	Operator F_1s; //Fermionic sign
 	Operator nh_1s; //double occupancy
+	Operator n_1s; //double occupancy
 	Operator T_1s; //orbital pseudo spin
 	Operator Sz_1s; //spin z operator
 	Operator Sx_1s; //spin x operator
@@ -251,6 +254,7 @@ FermionBase (std::size_t L_input, SUB_LATTICE subLattice_in)
 	//this is 0.5*(nUP-nDN). Note calling this with a plus sign in between gives the identity operator,
 	//due to the SU2 particle hole symmetry --> no non trivial ordenary occupation operator
 	Sz_1s = 0.5 * (std::sqrt(0.5) * Operator::prod(psidag_1sA(UP),psi_1sA(UP),{1}) - std::sqrt(0.5) * Operator::prod(psidag_1sA(DN),psi_1sA(DN),{1}));
+	n_1s  = 0.5 * (std::sqrt(0.5) * Operator::prod(psidag_1sA(UP),psi_1sA(UP),{1}) + std::sqrt(0.5) * Operator::prod(psidag_1sA(DN),psi_1sA(DN),{1}));
 	
 	Sp_1s = -std::sqrt(0.5) * Operator::prod(psidag_1sA(UP),psi_1sA(DN),{1});
 	Sm_1s = Sp_1s.adjoint();
@@ -422,6 +426,28 @@ nh (std::size_t orbital) const
 		for(std::size_t o=2; o<N_orbitals; o++)
 		{
 			if(orbital == o) { out = Operator::outerprod(out,nh_1s,{1}); }
+			else { out = Operator::outerprod(out,Id_1s,{1}); }
+		}
+		return out;
+	}
+}
+
+SiteOperatorQ<Sym::SU2<Sym::ChargeSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::ChargeSU2> >::
+n (std::size_t orbital) const
+{
+	if(N_orbitals == 1) { return n_1s; }
+	else
+	{
+		Operator out;
+		if(orbital == 0) { out = Operator::outerprod(n_1s,Id_1s,{1}); }
+		else
+		{
+			if( orbital == 1 ) { out = Operator::outerprod(Id_1s,n_1s,{1}); }
+			else { out = Operator::outerprod(Id_1s,Id_1s,{1}); }
+		}
+		for(std::size_t o=2; o<N_orbitals; o++)
+		{
+			if(orbital == o) { out = Operator::outerprod(out,n_1s,{1}); }
 			else { out = Operator::outerprod(out,Id_1s,{1}); }
 		}
 		return out;

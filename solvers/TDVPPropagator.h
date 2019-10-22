@@ -27,12 +27,19 @@ public:
 	
 	void t_step_adaptive (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, const vector<bool> &TWO_STEP_AT, int N_stages=1, double tol_Lanczos=1e-8);
 	
+	inline VectorXd get_deltaEedge() const {VectorXd res(2); res << EvarL, EvarR; return res;}
+	
 private:
 	
 	void t_step_pivot  (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, double tol_Lanczos=1e-8);
-	void t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, double tol_Lanczos=1e-8);
+	void t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, double tol_Lanczos=1e-8, bool TURN_FIRST=true);
+	
+	void test_edge_eigenvector (const PivotVector<Symmetry,TimeScalar> &Asingle);
+	double EvarL, EvarR;
 	
 	vector<PivotMatrix1<Symmetry,TimeScalar,MpoScalar> >  Heff;
+	PivotMatrix1<Symmetry,TimeScalar,MpoScalar> HeffLast;
+	PivotMatrix1<Symmetry,TimeScalar,MpoScalar> HeffFrst;
 	
 	double x (int alg, size_t l, int N_stages);
 	
@@ -42,8 +49,8 @@ private:
 	int pivot;
 	DMRG::DIRECTION::OPTION CURRENT_DIRECTION;
 	
-	void build_L (const Hamiltonian &H, const VectorType &Vinout, size_t loc);
-	void build_R (const Hamiltonian &H, const VectorType &Vinout, size_t loc);
+	void build_L (const Hamiltonian &H, const VectorType &Vinout, int loc);
+	void build_R (const Hamiltonian &H, const VectorType &Vinout, int loc);
 	
 	double dist_max = 0.;
 	double dimK_max = 0.;
@@ -57,7 +64,7 @@ private:
 	double t_2site = 0;
 	double t_ohead = 0; // precalc
 	double t_contr = 0; // contract & sweep
-	double t_tot = 0; // full time step
+	double t_tot   = 0; // full time step
 };
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>
@@ -70,24 +77,26 @@ info() const
 //	ss << "max(dimK)=" << dimK_max << ", ";
 	if (dimK2_log.size() > 0)
 	{
-		ss << "dimK2=" << *min_element(dimK2_log.begin(), dimK2_log.end()) << ".." << *max_element(dimK2_log.begin(), dimK2_log.end()) << ", ";
+		ss << "dimK2=" << *min_element(dimK2_log.begin(), dimK2_log.end()) << "~" << *max_element(dimK2_log.begin(), dimK2_log.end()) << ", ";
 	}
 	if (dimK1_log.size() > 0)
 	{
-		ss << "dimK1=" << *min_element(dimK1_log.begin(), dimK1_log.end()) << ".." << *max_element(dimK1_log.begin(), dimK1_log.end()) << ", ";
+		ss << "dimK1=" << *min_element(dimK1_log.begin(), dimK1_log.end()) << "~" << *max_element(dimK1_log.begin(), dimK1_log.end()) << ", ";
 	}
 	if (dimK0_log.size() > 0)
 	{
-		ss << "dimK0=" << *min_element(dimK0_log.begin(), dimK0_log.end()) << ".." << *max_element(dimK0_log.begin(), dimK0_log.end()) << ", ";
+		ss << "dimK0=" << *min_element(dimK0_log.begin(), dimK0_log.end()) << "~" << *max_element(dimK0_log.begin(), dimK0_log.end()) << ", ";
 	}
 //	ss << "N_stages=" << N_stages_last << ", ";
-	ss << "mem=" << round(memory(GB),3) << "GB, overhead=" << round(overhead(MB),3) << "MB, ";
-	ss << "t[s]=" << t_tot
-	   << ", t0=" << round(t_0site/t_tot*100.,0) << "%"
-	   << ", t1=" << round(t_1site/t_tot*100.) << "%"
-	   << ", t2=" << round(t_2site/t_tot*100.) << "%"
-	   << ", t_ohead=" << round(t_ohead/t_tot*100.) << "%"
-	   << ", t_contr=" << round(t_contr/t_tot*100.) << "%";
+//	ss << "mem=" << round(memory(GB),3) << "GB, ";
+	ss << "δE@edge: L=" << EvarL << ", R=" << EvarR << ", ";
+	ss << "overhead=" << round(overhead(MB),3) << "MB, ";
+	ss << "t[s]=" << t_tot << ", "
+	   << "t0=" << round(t_0site/t_tot*100.,0) << "%, "
+	   << "t1=" << round(t_1site/t_tot*100.) << "%, "
+	   << "t2=" << round(t_2site/t_tot*100.) << "%, "
+	   << "t_ohead=" << round(t_ohead/t_tot*100.) << "%, "
+	   << "t_contr=" << round(t_contr/t_tot*100.) << "%";
 	return ss.str();
 }
 
@@ -469,6 +478,7 @@ t_step_pivot (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt,
 		t_ohead += Woh1.time(SECONDS);
 		
 		PivotVector<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
+		test_edge_eigenvector(Asingle);
 		
 //		cout << "1site at: " << pivot << endl;
 		LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
@@ -487,9 +497,9 @@ t_step_pivot (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt,
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>
 void TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
-t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, double tol_Lanczos)
+t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, double tol_Lanczos, bool TURN_FIRST)
 {
-	turnaround(pivot, N_sites, CURRENT_DIRECTION);
+	if (TURN_FIRST) turnaround(pivot, N_sites, CURRENT_DIRECTION);
 	
 	// 1-site propagation
 	PivotVector<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
@@ -497,6 +507,8 @@ t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, Ti
 	precalc_blockStructure (Heff[pivot].L, Vinout.A[pivot], Heff[pivot].W, Vinout.A[pivot], Heff[pivot].R, 
 	                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 	t_ohead += Woh1.time(SECONDS);
+	
+	test_edge_eigenvector(Asingle);
 	
 //	cout << "1site at: " << pivot << endl;
 	LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
@@ -511,14 +523,43 @@ t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, Ti
 	Vinout.A[pivot] = Asingle.data;
 	
 	// 0-site propagation
-	//if ((l+1)%N_sites != 0)
 	if (BACK)
 	{
 		PivotVector<Symmetry,TimeScalar> Azero;
 		int old_pivot = pivot;
-		(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? Vinout.rightSplitStep(pivot,Azero.data[0]) : Vinout.leftSplitStep(pivot,Azero.data[0]);
+		if (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)
+		{
+//			cout << "split to RIGHT at pivot=" << pivot << endl;
+			Vinout.rightSplitStep(pivot,Azero.data[0]);
+		}
+		else
+		{
+//			cout << "split to LEFT at pivot=" << pivot << endl;
+			Vinout.leftSplitStep(pivot,Azero.data[0]);
+		}
 		pivot = Vinout.get_pivot();
-		(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vinout,pivot) : build_R(H,Vinout,pivot);
+		if (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)
+		{
+			if (old_pivot+1 == N_sites)
+			{
+				build_L(H,Vinout,N_sites);
+			}
+			else
+			{
+				build_L(H,Vinout,pivot);
+			}
+		}
+		else
+		{
+			if (old_pivot-1 == -1)
+			{
+				build_R(H,Vinout,-1);
+			}
+			else
+			{
+				build_R(H,Vinout,pivot);
+			}
+		}
 		
 //		if (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)
 //		{
@@ -531,18 +572,41 @@ t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, Ti
 		LanczosPropagator<PivotMatrix0<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz0(tol_Lanczos);
 		
 		PivotMatrix0<Symmetry,TimeScalar,MpoScalar> Heff0;
-		(CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)?
-		Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot+1].L, Heff[old_pivot].R):
-		Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot].L, Heff[old_pivot-1].R);
+		if (CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)
+		{
+			if (old_pivot+1 == N_sites)
+			{
+				Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(HeffLast.L, Heff[old_pivot].R);
+			}
+			else
+			{
+				Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot+1].L, Heff[old_pivot].R);
+			}
+		}
+		else
+		{
+			if (old_pivot-1 == -1)
+			{
+				Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot].L, HeffFrst.R);
+			}
+			else
+			{
+				Heff0 = PivotMatrix0<Symmetry,TimeScalar,MpoScalar>(Heff[old_pivot].L, Heff[old_pivot-1].R);
+			}
+		}
 		
 		Stopwatch<> W0;
 		Lutz0.t_step(Heff0, Azero, +x*dt.imag()); // 0-site algorithm
+//		cout << Lutz0.info() << endl;
 		t_0site += W0.time(SECONDS);
 		
 		dimK0_log.push_back(Lutz0.get_dimK());
 		if (Lutz0.get_dist() > dist_max) {dist_max = Lutz0.get_dist();}
 		if (Lutz0.get_dimK() > dimK_max) {dimK_max = Lutz0.get_dimK();}
 		
+		if (!TURN_FIRST) turnaround(pivot, N_sites, CURRENT_DIRECTION);
+		
+//		cout << "absorb at pivot=" << pivot << " going " << CURRENT_DIRECTION << endl;
 		Vinout.absorb(pivot, CURRENT_DIRECTION, Azero.data[0]);
 	}
 }
@@ -587,8 +651,19 @@ t_step_adaptive (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, const 
 	}
 	else
 	{
-		t0_step_pivot(false,x(1,0,N_stages),H,Vinout,dt,tol_Lanczos);
-		t0_step_pivot(true,x(1,0,N_stages),H,Vinout,dt,tol_Lanczos);
+		// at N_sites-1 RIGHT
+		// at N_sites-1 LEFT
+//		if (Vinout.Boundaries.IS_TRIVIAL())
+//		{
+			t0_step_pivot(false,x(1,0,N_stages),H,Vinout,dt,tol_Lanczos);
+			t0_step_pivot(true,x(1,0,N_stages),H,Vinout,dt,tol_Lanczos);
+//		}
+//		else
+//		{
+//			t0_step_pivot(true,x(1,0,N_stages),H,Vinout,dt,tol_Lanczos,false);
+////			cout << endl;
+//			t0_step_pivot(true,x(1,0,N_stages),H,Vinout,dt,tol_Lanczos);
+//		}
 	}
 	
 	for (int l=N_sites-3; l>=0; --l)
@@ -605,31 +680,75 @@ t_step_adaptive (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, const 
 	
 	if (!TWO_STEP_AT[0])
 	{
-		t0_step_pivot(false,x(1,0,N_stages),H,Vinout,dt,tol_Lanczos);
+//		if (Vinout.Boundaries.IS_TRIVIAL())
+//		{
+			t0_step_pivot(false,x(1,0,N_stages),H,Vinout,dt,tol_Lanczos);
+//		}
+//		else
+//		{
+//			t0_step_pivot(true,x(1,0,N_stages),H,Vinout,dt,tol_Lanczos,false);
+//		}
 	}
 	
-//	cout << "final pivot=" << pivot << endl;
+//	cout << "final pivot=" << pivot << endl << endl;
 	
 	t_tot = Wtot.time(SECONDS);
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>
-inline void TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
-build_L (const Hamiltonian &H, const VectorType &Vinout, size_t loc)
+void TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
+test_edge_eigenvector (const PivotVector<Symmetry,TimeScalar> &Asingle)
 {
-	if (loc != 0)
+	if (pivot == 0 or pivot == N_sites-1)
 	{
-		contract_L(Heff[loc-1].L, Vinout.A[loc-1], H.W[loc-1], H.IS_HAMILTONIAN(), Vinout.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].L);
+		auto V = Asingle;
+		normalize(V);
+		PivotVector<Symmetry,TimeScalar> HV;
+		HxV(Heff[pivot],V,HV);
+		double res = abs(dot(HV,HV).real()-pow(dot(V,HV).real(),2));
+		if (pivot==0)
+		{
+			EvarL = res;
+		}
+		else
+		{
+			EvarR = res;
+		}
+//		lout << "pivot=" << pivot << ", eigenstate test=" << res << endl;
 	}
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>
 inline void TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
-build_R (const Hamiltonian &H, const VectorType &Vinout, size_t loc)
+build_L (const Hamiltonian &H, const VectorType &Vinout, int loc)
+{
+	if (loc != 0)
+	{
+		if (loc == N_sites)
+		{
+			contract_L(Heff[loc-1].L, Vinout.A[loc-1], H.W[loc-1], H.IS_HAMILTONIAN(), Vinout.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), HeffLast.L);
+		}
+		else
+		{
+			contract_L(Heff[loc-1].L, Vinout.A[loc-1], H.W[loc-1], H.IS_HAMILTONIAN(), Vinout.A[loc-1], H.locBasis(loc-1), H.opBasis(loc-1), Heff[loc].L);
+		}
+	}
+}
+
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>
+inline void TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,VectorType>::
+build_R (const Hamiltonian &H, const VectorType &Vinout, int loc)
 {
 	if (loc != N_sites-1)
 	{
-		contract_R(Heff[loc+1].R, Vinout.A[loc+1], H.W[loc+1], H.IS_HAMILTONIAN(), Vinout.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R);
+		if (loc == -1)
+		{
+			contract_R(Heff[loc+1].R, Vinout.A[loc+1], H.W[loc+1], H.IS_HAMILTONIAN(), Vinout.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), HeffFrst.R);
+		}
+		else
+		{
+			contract_R(Heff[loc+1].R, Vinout.A[loc+1], H.W[loc+1], H.IS_HAMILTONIAN(), Vinout.A[loc+1], H.locBasis(loc+1), H.opBasis(loc+1), Heff[loc].R);
+		}
 	}
 }
 

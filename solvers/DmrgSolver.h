@@ -254,28 +254,102 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	
 	N_sites = H.length();
 	N_phys  = H.volume();
-
+	
 	if (!USER_SET_GLOBPARAM) { GlobParam = H.get_DmrgGlobParam(); }
 	if (!USER_SET_DYNPARAM)  { DynParam  = H.get_DmrgDynParam(); }
+	
+	// set edges
+	Heff.clear();
+	Heff.resize(N_sites);
+	if (Vout.state.Boundaries.IS_TRIVIAL())
+	{
+		Heff[0].L.setVacuum();
+		Heff[N_sites-1].R.setTarget(qarray3<Nq>{Qtot_input, Qtot_input, Symmetry::qvacuum()});
+	}
+	else
+	{
+		Heff[0].L         = Vout.state.get_boundaryTensor(DMRG::DIRECTION::LEFT);
+		Heff[N_sites-1].R = Vout.state.get_boundaryTensor(DMRG::DIRECTION::RIGHT);
+	}
 	
 	Stopwatch<> PrepTimer;
 	if (!USE_STATE)
 	{
 		// resize Vout
+		auto Boundaries_tmp = Vout.state.Boundaries; // save to temporary, otherwise reset in the following constructor
 		Vout.state = Mps<Symmetry,Scalar>(H, GlobParam.Dinit, Qtot_input, GlobParam.Qinit);
 		Vout.state.max_Nsv = GlobParam.Dinit;
 		Vout.state.min_Nsv = DynParam.min_Nsv(0);
 		Vout.state.max_Nrich = DynParam.max_Nrich(0);
+		Vout.state.Boundaries = Boundaries_tmp;
+		
+		Vout.state.update_inbase();
+		Vout.state.update_outbase();
+		Vout.state.calc_Qlimits();
+		
 		Vout.state.setRandom();
+		
+		// adjust corners for IBC
+		if (H.GOT_SEMIOPEN_LEFT or !H.GOT_OPEN_BC)
+		{
+			for (size_t s=0; s<Vout.state.qloc[N_sites-1].size(); ++s)
+			for (size_t q=0; q<Vout.state.A[N_sites-1][s].dim; ++q)
+			{
+				for (size_t r=0; r<Heff[N_sites-1].R.dim; ++r)
+				for (size_t a=0; a<Heff[N_sites-1].R.block[r].shape()[0]; ++a)
+				{
+					if (Heff[N_sites-1].R.block[r][a][0].size() != 0)
+					{
+						if (Vout.state.A[N_sites-1][s].out[q] == Heff[N_sites-1].R.in(r))
+						{
+							Vout.state.A[N_sites-1][s].block[q].resize(Vout.state.A[N_sites-1][s].block[q].rows(),
+							                                           Heff[N_sites-1].R.block[r][a][0].rows());
+							Vout.state.A[N_sites-1][s].block[q].setRandom();
+						}
+					}
+				}
+			}
+			Vout.state.update_inbase();
+			Vout.state.update_outbase();
+		}
+		if (H.GOT_SEMIOPEN_RIGHT or !H.GOT_OPEN_BC)
+		{
+			for (size_t s=0; s<Vout.state.qloc[0].size(); ++s)
+			for (size_t q=0; q<Vout.state.A[0][s].dim; ++q)
+			{
+				for (size_t r=0; r<Heff[0].L.dim; ++r)
+				for (size_t a=0; a<Heff[0].L.block[r].shape()[0]; ++a)
+				{
+					if (Heff[0].L.block[r][a][0].size() != 0)
+					{
+						if (Vout.state.A[0][s].in[q] == Heff[0].L.out(r))
+						{
+							Vout.state.A[0][s].block[q].resize(Heff[0].L.block[r][a][0].cols(),
+							                                   Vout.state.A[0][s].block[q].cols());
+							Vout.state.A[0][s].block[q].setRandom();
+						}
+					}
+				}
+			}
+			Vout.state.update_inbase();
+			Vout.state.update_outbase();
+		}
+		
+		// leads to segfault with local basis:
+//		if (!H.GOT_OPEN_BC)
+//		{
+//			for (int l=0; l<N_sites-1; ++l)
+//			{
+//				Vout.state.A[l] = Vout.state.Boundaries.A[0][l%Vout.state.Boundaries.length()];
+//			}
+//			Vout.state.A[N_sites-1] = Vout.state.Boundaries.A[2][(N_sites-1)%Vout.state.Boundaries.length()];
+//			
+//			Vout.state.update_inbase();
+//			Vout.state.update_outbase();
+//		}
 	}
 //	Vout.state.graph("ginit");
 	Dmax_old = GlobParam.Dinit;
-	
-	// set edges
-	Heff.clear();
-	Heff.resize(N_sites);
-	Heff[0].L.setVacuum();
-	Heff[N_sites-1].R.setTarget(qarray3<Nq>{Qtot_input, Qtot_input, Symmetry::qvacuum()});
 	
 	//if the SweepStatus is default initialized (pivot==-1), one initial sweep from right-to-left and N_halfsweeps = N_sweepsteps = 0,
 	//otherwise prepare for continuing at the given SweepStatus.
@@ -386,11 +460,12 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		}
 		else
 		{
-			assert(Rtmp.dim == 1 and 
-			       Rtmp.block[0][0][0].rows() == 1 and
-			       Rtmp.block[0][0][0].cols() == 1 and
-			       "Result of contraction <ψ|H|ψ> in DmrgSolver::prepare is not a scalar!");
-			Eold = isReal(Rtmp.block[0][0][0](0,0));
+//			assert(Rtmp.dim == 1 and 
+//			       Rtmp.block[0][0][0].rows() == 1 and
+//			       Rtmp.block[0][0][0].cols() == 1 and
+//			       "Result of contraction <ψ|H|ψ> in DmrgSolver::prepare is not a scalar!");
+//			Eold = isReal(Rtmp.block[0][0][0](0,0));
+			Eold = 0;
 		}
 	}
 	else
@@ -411,12 +486,14 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		lout <<                "• initial fluctuation strength  : α_rsvd=";
 		cout << termcolor::underline;
 		lout << Vout.state.alpha_rsvd;
-		cout << termcolor::reset << endl;
+		cout << termcolor::reset;
+		lout << endl;
 		
 		lout << "• initial singular value cutoff : ε_svd=";
 		cout << termcolor::underline;
 		lout << Vout.state.eps_svd;
-		cout << termcolor::reset << endl;
+		cout << termcolor::reset;
+		lout << endl;
 		
 		int i_alpha_switchoff=0;
 		for (int i=0; i<GlobParam.max_halfsweeps; ++i)
@@ -536,7 +613,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	{
 		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
 		
-		switch ( DynParam.iteration(SweepStat.N_halfsweeps) )
+		switch (DynParam.iteration(SweepStat.N_halfsweeps))
 		{
 		case DMRG::ITERATION::ZERO_SITE:
 			iteration_zero(H, Vout, EDGE, t_Lanczos, t_sweep, t_LR, t_overhead); break;
@@ -779,7 +856,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		     << "Lanczos=" << round(t_Lanczos/t_halfsweep*100.,0) << "%"
 		     << ", sweeps=" << round(t_sweep/t_halfsweep*100.,0) << "%"
 		     << ", LR=" << round(t_LR/t_halfsweep*100.,0) << "%"
-			 << ", overhead=" << round(t_overhead/t_halfsweep*100.,0) << "%"
+		     << ", overhead=" << round(t_overhead/t_halfsweep*100.,0) << "%"
 		     << ", err=" << round(t_err/t_halfsweep*100.,0) << "%"
 		     << ")"
 		     << endl;
@@ -806,7 +883,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 iteration_zero (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
-				double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead)
+                double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead)
 {
 	//*********************************************************LanczosStep******************************************************
 	double Ei = Vout.energy;
@@ -821,8 +898,8 @@ iteration_zero (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 	
 	PivotMatrix0<Symmetry,Scalar,Scalar> Heff0;
 	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)?
-		Heff0 = PivotMatrix0<Symmetry,Scalar,Scalar>(Heff[old_pivot+1].L, Heff[old_pivot].R):
-		Heff0 = PivotMatrix0<Symmetry,Scalar,Scalar>(Heff[old_pivot].L, Heff[old_pivot-1].R);
+	 Heff0 = PivotMatrix0<Symmetry,Scalar,Scalar>(Heff[old_pivot+1].L, Heff[old_pivot].R):
+	 Heff0 = PivotMatrix0<Symmetry,Scalar,Scalar>(Heff[old_pivot].L, Heff[old_pivot-1].R);
 	time_overhead += OheadTimer.time();
 	
 	Stopwatch<> LanczosTimer;
@@ -867,15 +944,19 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	
 	Stopwatch<> OheadTimer;
 	Heff[SweepStat.pivot].W = H.W[SweepStat.pivot];
-	precalc_blockStructure (Heff[SweepStat.pivot].L, Vout.state.A[SweepStat.pivot], 
-							Heff[SweepStat.pivot].W, Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].R, 
-							H.locBasis(SweepStat.pivot), H.opBasis(SweepStat.pivot), Heff[SweepStat.pivot].qlhs, Heff[SweepStat.pivot].qrhs,
-							Heff[SweepStat.pivot].factor_cgcs);
+	
+	precalc_blockStructure (Heff[SweepStat.pivot].L, 
+	                        Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].W, Vout.state.A[SweepStat.pivot], 
+	                        Heff[SweepStat.pivot].R, 
+	                        H.locBasis(SweepStat.pivot), H.opBasis(SweepStat.pivot), 
+	                        Heff[SweepStat.pivot].qlhs, Heff[SweepStat.pivot].qrhs, Heff[SweepStat.pivot].factor_cgcs);
 	Heff[SweepStat.pivot].qloc = H.locBasis(SweepStat.pivot);
 	Heff[SweepStat.pivot].qOp = H.opBasis(SweepStat.pivot);
 	
 	Eigenstate<PivotVector<Symmetry,Scalar> > g;
 	g.state = PivotVector<Symmetry,Scalar>(Vout.state.A[SweepStat.pivot]);
+	g.state /= sqrt(dot(g.state,g.state));
+//	cout << "dot PivotVector before=" << dot(g.state,g.state) << endl;
 	time_overhead += OheadTimer.time();
 	
 	Stopwatch<> LanczosTimer;
@@ -892,6 +973,8 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	
 	Vout.energy = g.energy;
 	Vout.state.A[SweepStat.pivot] = g.state.data;
+//	cout << "dot PivotVector after=" << dot(g.state,g.state) << endl;
+//	cout << "loc=" << SweepStat.pivot << "\t" << Lutz.info() << endl;
 	DeltaEopt = Ei-Vout.energy;
 	// LanczosStep(H, Vout, EDGE);
 	time_lanczos += LanczosTimer.time();
@@ -907,8 +990,15 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
 	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
 	time_LR += LRtimer.time();
-		
+	
 	adapt_alpha_rsvd(H,Vout,EDGE);
+	
+	if (!Vout.state.Boundaries.IS_TRIVIAL())
+	{
+		double norm = Vout.state.dot(Vout.state);
+		Vout.state /= sqrt(Vout.state.dot(Vout.state));
+//		cout << Vout.state.test_ortho() << ", old_dot=" << norm << ", dot=" << Vout.state.dot(Vout.state) << endl;
+	}
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -918,23 +1008,23 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 {
 	//*********************************************************LanczosStep******************************************************
 	double Ei = Vout.energy;
-
+	
 	Stopwatch<> OheadTimer;
 	Eigenstate<PivotVector<Symmetry,Scalar> > g;
 	g.state = PivotVector<Symmetry,Scalar>(Vout.state.A[loc1()], Vout.state.locBasis(loc1()), 
 										   Vout.state.A[loc2()], Vout.state.locBasis(loc2()),
 										   Vout.state.QoutTop[loc1()], Vout.state.QoutBot[loc1()]);	
-
+	
 	PivotMatrix2<Symmetry,Scalar,Scalar> Heff2(Heff[loc1()].L, Heff[loc2()].R, 
 											   H.W[loc1()], H.W[loc2()], 
 											   H.locBasis(loc1()), H.locBasis(loc2()), 
 											   H.opBasis (loc1()), H.opBasis (loc2()));
-
+	
 	precalc_blockStructure (Heff2.L, g.state.data, Heff2.W12, Heff2.W34, g.state.data, Heff2.R, 
 	                        H.locBasis(loc1()), H.locBasis(loc2()), H.opBasis(loc1()), H.opBasis(loc2()), 
 	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
 	time_overhead += OheadTimer.time();
-
+	
 	Stopwatch<> LanczosTimer;
 	LanczosSolver<PivotMatrix2<Symmetry,Scalar,Scalar>,PivotVector<Symmetry,Scalar>,Scalar> Lutz(LanczosParam.REORTHO);
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
@@ -1055,6 +1145,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		
 		// sweep
 		halfsweep(H,Vout,EDGE);
+//		Vout.state.graph(make_string("sweep",SweepStat.N_halfsweeps));
 		
 		size_t j = SweepStat.N_halfsweeps;
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit

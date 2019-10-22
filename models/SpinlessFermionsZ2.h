@@ -39,6 +39,8 @@ public:
 	SpinlessFermionsZ2 (const size_t &L, const vector<Param> &params);
 	///@}
 	
+	static qarray<1> singlet (int N) {return qarray<1>{EVEN};};
+	
 	template<typename Symmetry_>
 	static void add_operators (const std::vector<SpinlessFermionBase<Symmetry_> > &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);
 	
