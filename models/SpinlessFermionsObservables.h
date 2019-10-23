@@ -30,6 +30,8 @@ public:
 	///@}
 	
 	///@{
+	/**Is of course zero for spinless fermions, good to have for consistency.*/
+	Mpo<Symmetry> d (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> nn (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
@@ -137,6 +139,13 @@ Mpo<Symmetry> SpinlessFermionsObservables<Symmetry>::
 n (size_t locx, size_t locy) const
 {
 	return make_local("n", locx,locy, F[locx].n(locy), false, true);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> SpinlessFermionsObservables<Symmetry>::
+d (size_t locx, size_t locy) const
+{
+	return make_local("d", locx,locy, F[locx].Zero(), false, true);
 }
 
 template<typename Symmetry>

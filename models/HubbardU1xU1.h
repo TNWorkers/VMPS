@@ -148,7 +148,7 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
 		
 		ArrayXd Bx_array = F[loc].ZeroField();
 		
-		Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U.a, Uph.a, t0.a - mu.a, Bz.a, Bx_array, tperp.a, Vperp.a, Jperp.a));
+		Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U.a, Uph.a, t0.a-mu.a, Bz.a, Bx_array, tperp.a, Vperp.a, Jperp.a));
 		
 		if (isfinite(U.a.sum()))
 		{
@@ -229,18 +229,9 @@ set_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
 				                                         F[lp1].cdag(DN,beta) * F[lp1].n(UP,beta));
 				
 				// Vxy, Vz
-				SiteOperator<Symmetry_,double> tz_local = F[loc].Tz(alfa);
-				SiteOperator<Symmetry_,double> tz_tight = F[lp1].Tz(beta);
-				
-				SiteOperator<Symmetry_,double> tp_local = pow(-1,loc) * F[loc].cc      (alfa);
-				SiteOperator<Symmetry_,double> tm_tight = pow(-1,lp1) * F[lp1].cdagcdag(beta);
-				
-				SiteOperator<Symmetry_,double> tm_local = pow(-1,loc) * F[loc].cdagcdag(alfa);
-				SiteOperator<Symmetry_,double> tp_tight = pow(-1,lp1) * F[lp1].cc      (beta);
-				
-				Terms.push_tight(loc, 0.5*Vxypara(alfa,beta), tp_local, tm_tight);
-				Terms.push_tight(loc, 0.5*Vxypara(alfa,beta), tm_local, tp_tight);
-				Terms.push_tight(loc,     Vzpara (alfa,beta), tz_local, tz_tight);
+				Terms.push_tight(loc, 0.5*Vxypara(alfa,beta)*(-1.), F[loc].cc(alfa),       F[lp1].cdagcdag(beta));
+				Terms.push_tight(loc, 0.5*Vxypara(alfa,beta)*(-1.), F[loc].cdagcdag(alfa), F[lp1].cc(beta));
+				Terms.push_tight(loc,     Vzpara (alfa,beta)      , F[loc].Tz(alfa),       F[lp1].Tz(beta));
 			}
 		}
 		

@@ -1070,7 +1070,12 @@ calc_entropy (size_t loc, bool PRINT)
 		                    Jack.singularValues().head(Nnz).array().square().log()
 		                   ).sum();
 		
-//		lout << "loc=" << loc << ", q=" << q << endl;
+//		lout << "loc=" << loc << ", q=" << q 
+//		     << ", C[loc].in[q]=" << Sym::format<Symmetry>(C[loc].in[q]) 
+//		     << ", Scontrib=" << Scontrib 
+//		     << ", deg=" << Symmetry::degeneracy(C[loc].in[q]) 
+//		     << endl;
+//		
 //		for (int i=0; i<Nnz; ++i)
 //		{
 //			lout << "i=" << i << ", " 

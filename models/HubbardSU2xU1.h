@@ -92,8 +92,11 @@ public:
 	Mpo<Symmetry> TpTm  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> TmTp  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> TdagT (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> Tz    (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Tp    (size_t locx, size_t locy=0, double factor=1.) const;
+	Mpo<Symmetry> Tm    (size_t locx, size_t locy=0, double factor=1.) const;
 	///@}
-
+	
 	Mpo<Symmetry,complex<double> > S_ky    (vector<complex<double> > phases) const;
 	Mpo<Symmetry,complex<double> > Sdag_ky (vector<complex<double> > phases, double factor=sqrt(3.)) const;
 	Mpo<Symmetry,complex<double> > T_ky    (vector<complex<double> > phases) const;
@@ -287,15 +290,13 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 				if (range != 0)
 				{
 					//The sign is hardcoded here.. maybe include this in Geometry class.
-					auto Tp_loc    = pow(-1,loc)*F[loc].cc(0);
-					auto Tm_hop    = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cdagcdag(0);
-					auto Tm_loc    = pow(-1,loc)*F[loc].cdagcdag(0);
-					auto Tp_hop    = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cc(0);
+					auto Tp_loc    = pow(-1,loc) * F[loc].cc(0);
+					auto Tm_hop    = pow(-1,(loc+range)%N_sites) * F[(loc+range)%N_sites].cdagcdag(0);
+					auto Tm_loc    = pow(-1,loc) * F[loc].cdagcdag(0);
+					auto Tp_hop    = pow(-1,(loc+range)%N_sites) * F[(loc+range)%N_sites].cc(0);
 					
-					Terms.push(range, loc, 0.5 * value,
-					           Tp_loc.plain<double>(), TransOps, Tm_hop.plain<double>());
-					Terms.push(range, loc, 0.5 * value,
-					           Tm_loc.plain<double>(), TransOps, Tp_hop.plain<double>());
+					Terms.push(range, loc, 0.5 * value, Tp_loc.plain<double>(), TransOps, Tm_hop.plain<double>());
+					Terms.push(range, loc, 0.5 * value, Tm_loc.plain<double>(), TransOps, Tp_hop.plain<double>());
 				}
 			}
 			
@@ -902,6 +903,24 @@ TdagT (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	}
 	
 	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Tz (size_t locx, size_t locy) const
+{
+	return make_local("Tz", locx,locy, F[locx].Tz(locy), 1., false, true);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Tp (size_t locx, size_t locy, double factor) const
+{
+	return make_local("T+", locx,locy, factor*pow(-1.,locx+locy)*F[locx].cc(locy), 1., false, false);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Tm (size_t locx, size_t locy, double factor) const
+{
+	return make_local("T-", locx,locy, factor*pow(-1.,locx+locy)*F[locx].cdagcdag(locy), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
