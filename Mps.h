@@ -66,7 +66,7 @@ public:
 	 * \param N_phys_input : the volume of the system (normally (chain length) * (chain width))
 	 * \param Nqmax_input : maximal initial number of symmetry blocks per site in the Mps
 	 */
-	Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Nqmax_input);
+	Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Nqmax_input, bool TRIVIAL_BOUNDARIES=true);
 	
 	/** 
 	 * Construct by pulling info from an Mpo.
@@ -689,10 +689,11 @@ Mps()
 
 template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
-Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Qmax_input)
+Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Qmax_input, bool TRIVIAL_BOUNDARIES)
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input)
 {
-	set_open_bc();
+	if (TRIVIAL_BOUNDARIES) {set_open_bc();}
+	else {Boundaries.TRIVIAL_BOUNDARIES = false;}
 	Qmulti = vector<qarray<Nq> >(1,Qtot);
 	outerResize(L_input, qloc_input, Qtot_input, Qmax_input);
 }
@@ -916,14 +917,11 @@ calc_Qlimits()
 		}
 		return out;
 	};
-	
 	QinTop.resize(this->N_sites);
+
 	QinBot.resize(this->N_sites);
-	vector<vector<qarray<Symmetry::Nq> > > QinBotRange(this->N_sites);
-	vector<vector<qarray<Symmetry::Nq> > > QoutBotRange(this->N_sites);
 	QoutTop.resize(this->N_sites);
 	QoutBot.resize(this->N_sites);
-	
 	// If non-trivial boundaries: we have a hetergeneous infinite state, no Qlimits
 	if (!Boundaries.IS_TRIVIAL())
 	{
@@ -939,6 +937,9 @@ calc_Qlimits()
 	}
 	else
 	{
+		vector<vector<qarray<Symmetry::Nq> > > QinBotRange(this->N_sites);
+		vector<vector<qarray<Symmetry::Nq> > > QoutBotRange(this->N_sites);
+
 		QinTop[0] = Symmetry::qvacuum();
 		QinBot[0] = Symmetry::qvacuum();
 		QinBotRange[0] = {Symmetry::qvacuum()};

@@ -29,6 +29,7 @@ public:
 	
 	///@{
 	Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
+	template<SPIN_INDEX sigma> Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> d (size_t locx, size_t locy=0) const;
 	template<SPIN_INDEX sigma> Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> nn (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
@@ -47,7 +48,11 @@ public:
 	Mpo<Symmetry> SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
-	
+
+	/**Jordan-Wigner string on the full length of the chain. Needed for VUMPS + spectral functions.*/
+	Mpo<Symmetry> JordanWignerString() const;
+	///@}
+
 	///@{ not implemented
 //	Mpo<Symmetry> SimpSsubSimpSimp (size_t locx1, SPINOP_LABEL SOP1, size_t locx2, SPINOP_LABEL SOP2, 
 //	                          size_t loc3x, SPINOP_LABEL SOP3, size_t loc4x, SPINOP_LABEL SOP4,
@@ -175,6 +180,23 @@ make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2,
 	return Mout;
 }
 
+template<typename Symmetry>
+Mpo<Symmetry> KondoObservables<Symmetry>::
+JordanWignerString() const
+{
+	stringstream ss;
+	ss << "JordanWignerStringFull";
+	
+	auto Id = kroneckerProduct(B[0].Id(),F[0].Id());
+	
+	Mpo<Symmetry> Mout(F.size(), Symmetry::qvacuum(), ss.str());
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);}
+	
+	Mout.setLocal({0, F.size()-1}, {kroneckerProduct(B[0].Id(),F[0].sign()), kroneckerProduct(B[F.size()-1].Id(),F[F.size()-1].sign())}, kroneckerProduct(B[0].Id(),F[0].sign()));
+	
+	return Mout;
+}
+
 //-------------
 
 template<typename Symmetry>
@@ -202,6 +224,15 @@ Mpo<Symmetry> KondoObservables<Symmetry>::
 n (size_t locx, size_t locy) const
 {
 	return make_local(SUB, "n", locx,locy, F[locx].n(locy), false, true);
+}
+
+template<typename Symmetry>
+template<SPIN_INDEX sigma>
+Mpo<Symmetry> KondoObservables<Symmetry>::
+n (size_t locx, size_t locy) const
+{
+	return make_local(SUB, "n", locx,locy, F[locx].n(sigma,locy), false, true);
+	// FERMIONIC=false, HERMITIAN=true
 }
 
 template<typename Symmetry>
