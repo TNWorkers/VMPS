@@ -83,31 +83,27 @@ template<typename Symmetry_>
 void Hubbard::
 add_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)
 {
-    std::size_t Lcell = P.size();
-    std::size_t N_sites = Terms.size();
-    for(std::size_t loc=0; loc<N_sites; ++loc)
-    {
-        std::size_t orbitals = F[loc].orbitals();
-        
-//        stringstream ss;
-//        ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
-//        Terms.save_label(loc, ss.str());
-    
-        param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
-        Terms.save_label(loc, Bx.label);
-    
-        // Can also implement superconductivity terms c*c & cdag*cdag here
-    
-        ArrayXd  U_array  = F[loc].ZeroField();
-        ArrayXd  Uph_array  = F[loc].ZeroField();
-        ArrayXd  E_array  = F[loc].ZeroField();
-        ArrayXd  Bz_array = F[loc].ZeroField();
-        ArrayXXd tperp_array = F[loc].ZeroHopping();
-        ArrayXXd Vperp_array = F[loc].ZeroHopping();
-        ArrayXXd Jperp_array = F[loc].ZeroHopping();
-    
-        Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U_array, Uph_array, E_array, Bz_array, Bx.a, tperp_array, Vperp_array, Jperp_array));
-    }
+	std::size_t Lcell = P.size();
+	std::size_t N_sites = Terms.size();
+	for(std::size_t loc=0; loc<N_sites; ++loc)
+	{
+		std::size_t orbitals = F[loc].orbitals();
+		
+		param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
+		Terms.save_label(loc, Bx.label);
+		
+		// Can also implement superconductivity terms c*c & cdag*cdag here
+		
+		ArrayXd  U_array  = F[loc].ZeroField();
+		ArrayXd  Uph_array  = F[loc].ZeroField();
+		ArrayXd  E_array  = F[loc].ZeroField();
+		ArrayXd  Bz_array = F[loc].ZeroField();
+		ArrayXXd tperp_array = F[loc].ZeroHopping();
+		ArrayXXd Vperp_array = F[loc].ZeroHopping();
+		ArrayXXd Jperp_array = F[loc].ZeroHopping();
+		
+		Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U_array, Uph_array, E_array, Bz_array, Bx.a, tperp_array, Vperp_array, Jperp_array));
+	}
 }
 
 

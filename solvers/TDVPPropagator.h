@@ -27,7 +27,7 @@ public:
 	
 	void t_step_adaptive (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, const vector<bool> &TWO_STEP_AT, int N_stages=1, double tol_Lanczos=1e-8);
 	
-	inline VectorXd get_deltaEedge() const {VectorXd res(2); res << EvarL, EvarR; return res;}
+	inline VectorXd get_deltaE() const {return deltaE;};
 	
 private:
 	
@@ -35,7 +35,7 @@ private:
 	void t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, double tol_Lanczos=1e-8, bool TURN_FIRST=true);
 	
 	void test_edge_eigenvector (const PivotVector<Symmetry,TimeScalar> &Asingle);
-	double EvarL, EvarR;
+	VectorXd deltaE;
 	
 	vector<PivotMatrix1<Symmetry,TimeScalar,MpoScalar> >  Heff;
 	PivotMatrix1<Symmetry,TimeScalar,MpoScalar> HeffLast;
@@ -89,7 +89,7 @@ info() const
 	}
 //	ss << "N_stages=" << N_stages_last << ", ";
 //	ss << "mem=" << round(memory(GB),3) << "GB, ";
-	ss << "δE@edge: L=" << EvarL << ", R=" << EvarR << ", ";
+	ss << "δE@edge: L=" << deltaE(0) << ", R=" << deltaE(deltaE.rows()-1) << ", ";
 	ss << "overhead=" << round(overhead(MB),3) << "MB, ";
 	ss << "t[s]=" << t_tot << ", "
 	   << "t0=" << round(t_0site/t_tot*100.,0) << "%, "
@@ -168,6 +168,8 @@ set_blocks (const Hamiltonian &H, VectorType &Vinout)
 	}
 	CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
 	pivot = 0;
+	
+	deltaE.resize(N_sites);
 	
 	// initial sweep, left-to-right:
 //	for (size_t l=0; l<N_sites-1; ++l)
@@ -478,12 +480,13 @@ t_step_pivot (double x, const Hamiltonian &H, VectorType &Vinout, TimeScalar dt,
 		t_ohead += Woh1.time(SECONDS);
 		
 		PivotVector<Symmetry,TimeScalar> Asingle(Vinout.A[pivot]);
-		test_edge_eigenvector(Asingle);
+//		test_edge_eigenvector(Asingle);
 		
 //		cout << "1site at: " << pivot << endl;
 		LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 		Stopwatch<> W1;
 		Lutz.t_step(Heff[pivot], Asingle, +x*dt.imag()); // 1-site algorithm
+		deltaE(pivot) = Lutz.get_deltaE();
 //		cout << Lutz.info() << endl;
 		t_1site += W1.time(SECONDS);
 		
@@ -508,13 +511,14 @@ t0_step_pivot (bool BACK, double x, const Hamiltonian &H, VectorType &Vinout, Ti
 	                        H.locBasis(pivot), H.opBasis(pivot), Heff[pivot].qlhs, Heff[pivot].qrhs, Heff[pivot].factor_cgcs);
 	t_ohead += Woh1.time(SECONDS);
 	
-	test_edge_eigenvector(Asingle);
+//	test_edge_eigenvector(Asingle);
 	
 //	cout << "1site at: " << pivot << endl;
 	LanczosPropagator<PivotMatrix1<Symmetry,TimeScalar,MpoScalar>, PivotVector<Symmetry,TimeScalar> > Lutz(tol_Lanczos);
 	
 	Stopwatch<> W1;
 	Lutz.t_step(Heff[pivot], Asingle, -x*dt.imag()); // 1-site algorithm
+	deltaE(pivot) = Lutz.get_deltaE();
 	t_1site += W1.time(SECONDS);
 	
 	dimK1_log.push_back(Lutz.get_dimK());
@@ -706,14 +710,14 @@ test_edge_eigenvector (const PivotVector<Symmetry,TimeScalar> &Asingle)
 		PivotVector<Symmetry,TimeScalar> HV;
 		HxV(Heff[pivot],V,HV);
 		double res = abs(dot(HV,HV).real()-pow(dot(V,HV).real(),2));
-		if (pivot==0)
-		{
-			EvarL = res;
-		}
-		else
-		{
-			EvarR = res;
-		}
+//		if (pivot==0)
+//		{
+//			EvarL = res;
+//		}
+//		else
+//		{
+//			EvarR = res;
+//		}
 //		lout << "pivot=" << pivot << ", eigenstate test=" << res << endl;
 	}
 }

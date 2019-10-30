@@ -47,6 +47,7 @@ public:
 	OperatorType n    (int orbital=0) const;
 	OperatorType sign (int orb1=0, int orb2=0) const;
 	OperatorType Id() const;
+	OperatorType Zero() const;
 	///\}
 	
 	/**Returns an array of size dim() with zeros.*/
@@ -184,6 +185,15 @@ SiteOperator<Symmetry,double> SpinlessFermionBase<Symmetry>::
 Id() const
 {
 	SparseMatrixXd mat = MatrixXd::Identity(N_states,N_states).sparseView();
+	OperatorType Oout(mat,Symmetry::qvacuum());
+	return Oout;
+}
+
+template<typename Symmetry>
+SiteOperator<Symmetry,double> SpinlessFermionBase<Symmetry>::
+Zero() const
+{
+	SparseMatrixXd mat = MatrixXd::Zero(N_states,N_states).sparseView();
 	OperatorType Oout(mat,Symmetry::qvacuum());
 	return Oout;
 }

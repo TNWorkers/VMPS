@@ -411,7 +411,9 @@ template<typename Symmetry>
 SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 cdagcdag (int orbital) const
 {
-	return OperatorType(c(DN,orbital).data*c(UP,orbital).data.transpose(), getQ(UPDN,+2));
+//	return OperatorType(cdag(UP,orbital).data*cdag(DN,orbital).data, getQ(UPDN,+2));
+//	return OperatorType((c(DN,orbital).data*c(UP,orbital).data).transpose(), getQ(UPDN,+2));
+	return OperatorType(cc(orbital).data.transpose(), getQ(UPDN,+2));
 }
 
 template<typename Symmetry>

@@ -171,6 +171,8 @@ public:
 	 */
 	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const vector<OperatorType> &SignOp, bool OPEN_BC=true);
 	
+	void setLocalStag (size_t loc, const OperatorType &Op, const vector<OperatorType> &StagSign, bool OPEN_BC=true);
+	
 	/**
 	 * Set to a sum of of local operators \f$\sum_i f(i) O_i\f$
 	 * \param Op : the local operator in question
@@ -1238,6 +1240,23 @@ setLocal (size_t loc, const OperatorType &Op, const vector<OperatorType> &SignOp
 	LocalSite = loc;
 	auto Gvec = make_localGvec(loc,Op);
 	for (size_t l=0; l<loc; ++l) {Gvec[l](0,0) = SignOp[l];}
+	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
+}
+
+template<typename Symmetry, typename Scalar>
+void Mpo<Symmetry,Scalar>::
+setLocalStag (size_t loc, const OperatorType &Op, const vector<OperatorType> &StagSign, bool OPEN_BC)
+{
+	LocalOp   = Op;
+	LocalSite = loc;
+	auto Gvec = make_localGvec(loc,Op);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		if (l != loc)
+		{
+			Gvec[l](0,0) = StagSign[l];
+		}
+	}
 	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
 }
 

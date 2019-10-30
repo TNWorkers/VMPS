@@ -98,13 +98,13 @@ if args.plot == 'specFull':
 	
 	fig, axs = plt.subplots(1,3)
 	
-#	G1 = h5py.File(filename_wq(set,"PES",L,tmax),'r')
-#	G2 = h5py.File(filename_wq(set,"IPE",L,tmax),'r')
-#	G3 = h5py.File(filename_wq(set,"A1P",L,tmax),'r')
-#	datawq = -1./pi*(np.asarray(G1['G']['ωqIm'])+np.asarray(G2['G']['ωqIm']))
+	G1 = h5py.File(filename_wq(set,"PES",L,tmax),'r')
+	G2 = h5py.File(filename_wq(set,"IPE",L,tmax),'r')
+	G3 = h5py.File(filename_wq(set,"A1P",L,tmax),'r')
+	datawq = -1./pi*(np.asarray(G1['G']['ωqIm'])+np.asarray(G2['G']['ωqIm']))
 	
-	G1 = h5py.File(filename_wq(set,"SF2",L,tmax),'r')
-	datawq = -1./pi*np.asarray(G1['G']['ωqIm'])
+#	G1 = h5py.File(filename_wq(set,"SF2",L,tmax),'r')
+#	datawq = -1./pi*np.asarray(G1['G']['ωqIm'])
 	
 	im1 = axs[0].imshow(datawq, origin='lower', interpolation='none', cmap=cm.inferno, aspect='auto', extent=[0,2*pi,wmin-mu,wmax-mu])
 	axs[0].set_ylabel('$\omega$')

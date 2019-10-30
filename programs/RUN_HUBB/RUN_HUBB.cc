@@ -219,6 +219,8 @@ void fill_OdagO (size_t L, size_t Ly, size_t n, const Eigenstate<MODEL::StateUd>
 		#else
 		if (CALC_S) SdagS[x0][y0][x1][y1](n) = avg(g.state, Hncell.SdagS(i0,L*Ly*n+i1), g.state);
 		if (CALC_T) TdagT[x0][y0][x1][y1](n) = avg(g.state, Hncell.TdagT(i0,L*Ly*n+i1), g.state);
+		#endif
+		#ifdef USING_SO4
 		if (CALC_B) BdagB[x0][y0][x1][y1](n) = avg(g.state, Hncell.B(i0,i0+Ly), Hncell.B(L*Ly*n+i1,L*Ly*n+i1+Ly), g.state)-Bavg(i0)*Bavg(i1);
 		if (CALC_C) CdagC[x0][y0][x1][y1](n) = avg(g.state, Hncell.C(i0,i0+Ly), Hncell.C(L*Ly*n+i1,L*Ly*n+i1+Ly), g.state);
 		#endif
@@ -417,7 +419,7 @@ int main (int argc, char* argv[])
 	GlobParam_foxy.min_iterations = args.get<size_t>("Imin",6ul);
 	GlobParam_foxy.max_iterations = args.get<size_t>("Imax",1000ul);
 	GlobParam_foxy.max_iter_without_expansion = args.get<size_t>("max",30ul);
-	GlobParam_foxy.fullMmaxBreakoff = args.get<size_t>("Chimax",45000ul);
+	GlobParam_foxy.fullMmaxBreakoff = args.get<size_t>("Chimax",25000ul);
 	
 	GlobParam_foxy.tol_eigval = args.get<double>("tol_eigval",1e-6);
 	GlobParam_foxy.tol_var = args.get<double>("tol_var",1e-6);
@@ -550,9 +552,24 @@ int main (int argc, char* argv[])
 		params.push_back({"Vxy",Vxy});
 		params.push_back({"Vz",Vz});
 		params.push_back({"X",X});
+		params.push_back({"J",J});
 		params.push_back({"Uph",U});
+		if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {};
 		Qc2 = {};
+	}
+	else if (std::is_same<MODEL,VMPS::HubbardU1xU1>::value)
+	{
+		// only 1D implemented for U(0)
+		params.push_back({"t",t});
+		params.push_back({"Vxy",Vxy});
+		params.push_back({"Vz",Vz});
+		params.push_back({"X",X});
+		params.push_back({"J",J});
+		params.push_back({"Uph",U});
+		if (VUMPS) {params.push_back({"OPEN_BC",false});}
+		Qc  = {0,N};
+		Qc2 = {0,N};
 	}
 	
 	MODEL H(volume,params);
@@ -1053,6 +1070,7 @@ int main (int argc, char* argv[])
 			                wd+"log/err-var_"+base+".log",
 			                wd+"log/err-state_"+base+".log");
 			Foxy.edgeState(H, g_foxy, Qc, LANCZOS::EDGE::GROUND, USE_STATE);
+			measure_and_save(0);
 		}
 		
 		emin = g_foxy.energy;
