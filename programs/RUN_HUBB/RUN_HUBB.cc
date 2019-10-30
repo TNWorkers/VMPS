@@ -69,6 +69,9 @@ struct Obs
 {
 	Eigen::MatrixXd nh;
 	Eigen::MatrixXd ns;
+	Eigen::MatrixXd tz;
+	Eigen::MatrixXd tx;
+	Eigen::MatrixXd ity;
 	Eigen::MatrixXd nhvar;
 	Eigen::MatrixXd nsvar;
 	Eigen::MatrixXd opBOW;
@@ -104,6 +107,9 @@ struct Obs
 	{
 		nh.resize(Lx,Ly); nh.setZero();
 		ns.resize(Lx,Ly); ns.setZero();
+		tz.resize(Lx,Ly); tz.setZero();
+		tx.resize(Lx,Ly); tx.setZero();
+		ity.resize(Lx,Ly); ity.setZero();
 		nhvar.resize(Lx,Ly); nhvar.setZero();
 		nsvar.resize(Lx,Ly); nsvar.setZero();
 		opBOW.resize(Lx,Ly); opBOW.setZero();
@@ -473,8 +479,10 @@ int main (int argc, char* argv[])
 	}
 	
 	vector<Param> params;
-	#ifdef USING_U0
+    #if  defined(USING_U0)
 	qarray<0> Qc, Qc2;
+    #elif defined (USING_SU2)
+	qarray<1> Qc, Qc2;
 	#else
 	qarray<2> Qc, Qc2;
 	#endif
@@ -512,7 +520,30 @@ int main (int argc, char* argv[])
 		Qc  = {S,N};
 		Qc2 = {S,2*N}; // for 2 unit cells
 	}
-	else if (std::is_same<MODEL,VMPS::Hubbard>::value)
+	else if constexpr (std::is_same<MODEL,VMPS::HubbardSU2>::value)
+    {
+		params.push_back({"tFull",tArray});
+		params.push_back({"Vxyfull",Vxyarray});
+		params.push_back({"Vzfull",Vzarray});
+		params.push_back({"VextFull",VextArray});
+		params.push_back({"Jfull",Jarray});
+		params.push_back({"Xfull",Xarray});
+		if (abs(Vext) > 0.)
+		{
+			params.push_back({"U",U});
+			params.push_back({"Uph",0.});
+			lout << termcolor::blue << "Warning: Setting U instead of particle-hole-symmetric Uph, since Vext is specified!" << termcolor::reset << endl;
+		}
+		else
+		{
+			params.push_back({"Uph",U});
+			params.push_back({"U",0.});
+		}
+		if (VUMPS) {params.push_back({"OPEN_BC",false});}
+		Qc  = {S};
+		Qc2 = {S}; // for 2 unit cells						  
+	}
+	else if constexpr (std::is_same<MODEL,VMPS::Hubbard>::value)
 	{
 		// only 1D implemented for U(0)
 		params.push_back({"t",t});
@@ -876,6 +907,11 @@ int main (int argc, char* argv[])
 					
 					obs.nh(x,y)        = avg(g_foxy.state, H.nh(Geo1cell(x,y)), g_foxy.state);
 					obs.ns(x,y)        = avg(g_foxy.state, H.ns(Geo1cell(x,y)), g_foxy.state);
+					#ifdef USING_SU2
+					obs.tz(x,y)        = avg(g_foxy.state, H.Tz(Geo1cell(x,y)), g_foxy.state);
+					obs.tx(x,y)        = avg(g_foxy.state, H.Tx(Geo1cell(x,y)), g_foxy.state);
+					obs.ity(x,y)        = avg(g_foxy.state, H.iTy(Geo1cell(x,y)), g_foxy.state);
+					#endif
 //					obs.nhvar(x,y)     = avg(g_foxy.state, H.nhsq(Geo1cell(x,y)), g_foxy.state) - pow(obs.nh(x,y),2);
 //					obs.nsvar(x,y)     = avg(g_foxy.state, H.nssq(Geo1cell(x,y)), g_foxy.state) - pow(obs.ns(x,y),2);
 //					lout << "nh=" << obs.nh(x,y) << ", var=" << obs.nhvar(x,y) << ", ns=" << obs.ns(x,y) << ", var=" << obs.nsvar(x,y) << endl;
@@ -954,6 +990,11 @@ int main (int argc, char* argv[])
 				
 				target.save_matrix(obs.nh,"nh",bond.str());
 				target.save_matrix(obs.ns,"ns",bond.str());
+				#ifdef USING_SU2
+				target.save_matrix(obs.tz,"Tz",bond.str());
+				target.save_matrix(obs.tx,"Tx",bond.str());
+				target.save_matrix(obs.ity,"iTy",bond.str());
+				#endif
 //				target.save_matrix(obs.nhvar,"nhvar",bond.str());
 //				target.save_matrix(obs.nsvar,"nsvar",bond.str());
 				target.save_matrix(obs.opBOW,"opBOW",bond.str());
