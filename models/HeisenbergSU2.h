@@ -32,11 +32,12 @@ class HeisenbergSU2 : public Mpo<Sym::SU2<Sym::SpinSU2>,double>, public ParamRet
 {
 public:
 	typedef Sym::SU2<Sym::SpinSU2> Symmetry;
+	MAKE_TYPEDEFS(HeisenbergSU2)
 	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
 	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
 	
-	typedef DmrgSolver<Symmetry,HeisenbergSU2,double>  Solver;
-	typedef VumpsSolver<Symmetry,HeisenbergSU2,double> uSolver;
+//	typedef DmrgSolver<Symmetry,HeisenbergSU2,double>  Solver;
+//	typedef VumpsSolver<Symmetry,HeisenbergSU2,double> uSolver;
 	
 	static qarray<1> singlet() {return qarray<1>{1};};
 	
@@ -103,8 +104,8 @@ const std::map<string,std::any> HeisenbergSU2::sweep_defaults =
 	{"max_alpha",100.}, {"min_alpha",1.e-11}, {"lim_alpha",10ul}, {"eps_svd",1.e-7},
 	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
-	{"max_halfsweeps",20ul}, {"min_halfsweeps",4ul},
-	{"Dinit",5ul}, {"Qinit",10ul}, {"Dlimit",100ul},
+	{"max_halfsweeps",20ul}, {"min_halfsweeps",1ul},
+	{"Dinit",5ul}, {"Qinit",6ul}, {"Dlimit",100ul},
 	{"tol_eigval",1e-7}, {"tol_state",1e-6},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
 };

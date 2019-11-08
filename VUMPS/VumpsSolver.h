@@ -1230,6 +1230,23 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		}
 		Vout.energy = min(eL,eR);
 		
+//		double eR2 = calc_LReigen(VMPS::DIRECTION::RIGHT, 
+//		                          Vout.state.A[GAUGE::L], 
+//		                          Vout.state.A[GAUGE::L], 
+//		                          Vout.state.outBasis(N_sites-1), 
+//		                          Vout.state.outBasis(N_sites-1), 
+//		                          Vout.state.qloc,
+//		                          100ul, 1e-12,
+//		                          &Reigen).energy;
+//		 calc_LReigen(VMPS::DIRECTION::LEFT, 
+//		              Vout.state.A[GAUGE::R], 
+//		              Vout.state.A[GAUGE::R], 
+//		              Vout.state.outBasis(0), 
+//		              Vout.state.outBasis(0), 
+//		              Vout.state.qloc,
+//		              100ul, 1e-12,
+//		              &Leigen).energy;
+		
 		double t_sweep = SweepTimer.time();
 		
 		Stopwatch<> ErrorTimer;
@@ -1764,8 +1781,9 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		}
 		else // dynamical choice: L=1 parallel, L>1 sequential
 		{
-			if (N_sites == 1) { iteration_parallel(H,Vout); }
-			else              { iteration_sequential(H,Vout); }
+//			if (N_sites == 1) { iteration_parallel(H,Vout); }
+//			else              { iteration_sequential(H,Vout); }
+			iteration_sequential(H,Vout);
 		}
 		
 		DynParam.doSomething(N_iterations);

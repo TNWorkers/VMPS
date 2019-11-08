@@ -176,35 +176,79 @@ set_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 		
 		Terms.push_local(loc, 1., B[loc].HeisenbergHamiltonian(Jperp.a, Jperp.a, Bz.a, Bx_array, mu_array, Kz.a, Kx_array, Dyperp_array));
 		
-		// Nearest-neighbour terms: J
-		
-		param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
-		Terms.save_label(loc, Jpara.label);
-		
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (P.HAS("Jfull"))
 		{
-			for (std::size_t alfa=0; alfa < orbitals; ++alfa)
-			for (std::size_t beta=0; beta < next_orbitals; ++beta)
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Jfull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
 			{
-				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), B[loc].Scomp(SP,alfa), B[lp1].Scomp(SM,beta));
-				Terms.push_tight(loc, 0.5*Jpara(alfa,beta), B[loc].Scomp(SM,alfa), B[lp1].Scomp(SP,beta));
-				Terms.push_tight(loc,	 Jpara(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SZ,beta));
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				size_t Ntrans = (range == 0)? 0:range-1;
+				vector<SiteOperator<Symmetry_,double> > TransOps(Ntrans);
+				for (size_t i=0; i<Ntrans; ++i)
+				{
+					TransOps[i] = B[(loc+i+1)%N_sites].Id();
+				}
+				
+				if (range != 0)
+				{
+					auto SP_loc = B[loc].Scomp(SP);
+					auto SM_loc = B[loc].Scomp(SM);
+					auto SZ_loc = B[loc].Scomp(SZ);
+					
+					auto SP_hop = B[(loc+range)%N_sites].Scomp(SP);
+					auto SM_hop = B[(loc+range)%N_sites].Scomp(SM);
+					auto SZ_hop = B[(loc+range)%N_sites].Scomp(SZ);
+					
+					Terms.push(range, loc, 0.5*value, SP_loc, TransOps, SM_hop);
+					Terms.push(range, loc, 0.5*value, SM_loc, TransOps, SP_hop);
+					Terms.push(range, loc, 0.5*value, SZ_loc, TransOps, SZ_hop);
+				}
 			}
+			
+			stringstream ss;
+			ss << "Jᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
+			Terms.save_label(loc, ss.str());
+			continue;
 		}
-		
-		// Next-nearest-neighbour terms: J
-		
-		param2d Jprime = P.fill_array2d<double>("Jprime", "Jprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
-		Terms.save_label(loc, Jprime.label);
-		
-		if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
+		else
 		{
-			for (std::size_t alfa=0; alfa < orbitals; ++alfa)
-			for (std::size_t beta=0; beta < nextn_orbitals; ++beta)
+			// Nearest-neighbour terms: J
+			
+			param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
+			Terms.save_label(loc, Jpara.label);
+			
+			if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
 			{
-				Terms.push_nextn(loc, 0.5*Jprime(alfa,beta), B[loc].Scomp(SP,alfa), B[lp1].Id(), B[lp2].Scomp(SM,beta));
-				Terms.push_nextn(loc, 0.5*Jprime(alfa,beta), B[loc].Scomp(SM,alfa), B[lp1].Id(), B[lp2].Scomp(SP,beta));
-				Terms.push_nextn(loc,	 Jprime(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta));
+				for (std::size_t alfa=0; alfa < orbitals; ++alfa)
+				for (std::size_t beta=0; beta < next_orbitals; ++beta)
+				{
+					Terms.push_tight(loc, 0.5*Jpara(alfa,beta), B[loc].Scomp(SP,alfa), B[lp1].Scomp(SM,beta));
+					Terms.push_tight(loc, 0.5*Jpara(alfa,beta), B[loc].Scomp(SM,alfa), B[lp1].Scomp(SP,beta));
+					Terms.push_tight(loc,     Jpara(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SZ,beta));
+				}
+			}
+			
+			// Next-nearest-neighbour terms: J
+			
+			param2d Jprime = P.fill_array2d<double>("Jprime", "Jprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
+			Terms.save_label(loc, Jprime.label);
+			
+			if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
+			{
+				for (std::size_t alfa=0; alfa < orbitals; ++alfa)
+				for (std::size_t beta=0; beta < nextn_orbitals; ++beta)
+				{
+					Terms.push_nextn(loc, 0.5*Jprime(alfa,beta), B[loc].Scomp(SP,alfa), B[lp1].Id(), B[lp2].Scomp(SM,beta));
+					Terms.push_nextn(loc, 0.5*Jprime(alfa,beta), B[loc].Scomp(SM,alfa), B[lp1].Id(), B[lp2].Scomp(SP,beta));
+					Terms.push_nextn(loc,     Jprime(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta));
+				}
 			}
 		}
 	}

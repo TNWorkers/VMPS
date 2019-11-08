@@ -31,6 +31,8 @@ public:
 	Hubbard() : Mpo() {};
 	Hubbard (const size_t &L, const vector<Param> &params);
 	
+	static qarray<0> singlet (int N) {return qarray<0>{};};
+	
 	template<typename Symmetry_>
 	//static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, size_t loc=0);
 	static void add_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);

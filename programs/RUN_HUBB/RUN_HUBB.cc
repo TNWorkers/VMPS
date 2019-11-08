@@ -26,18 +26,18 @@ using namespace std;
 
 #include "Geometry2D.h" // from TOOLS
 #include "NestedLoopIterator.h" // from TOOLS
+#include "models/ParamCollection.h"
 
 size_t L, Ncells, Ly;
 int volume;
 double t, tRung, U, J, V, Vxy, Vz, Vext, X;
 int fullMmax;
 int M, N, S, T;
-double alpha;
 double str_tol;
 DMRG::VERBOSITY::OPTION VERB;
 double Emin = 0.;
 double emin = 0.;
-bool STRUCTURE, CONTRACTIONS, CALC_TSQ, CALC_BOW, VUMPS;
+bool STRUCTURE, CONTRACTIONS, CALC_TSQ, CALC_BOW, VUMPS, PBC, CALC_TGAP, CALC_SGAP;
 string wd; // working directory
 string base;
 
@@ -355,6 +355,9 @@ int main (int argc, char* argv[])
 	VUMPS = args.get<bool>("VUMPS",true);
 	fullMmax = args.get<int>("fullMmax",0);
 	string INIT = args.get<string>("INIT","");
+	PBC = args.get<bool>("PBC",false);
+	CALC_TGAP = args.get<bool>("CALC_TGAP",false);
+	CALC_SGAP = args.get<bool>("CALC_SGAP",false);
 	
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
@@ -385,6 +388,10 @@ int main (int argc, char* argv[])
 	{
 		base += make_string("_X=",X);
 	}
+	if (PBC)
+	{
+		base += make_string("_BC=PBC");
+	}
 	string obsfile = make_string(wd,"obs/",base,".h5");
 	string statefile = make_string(wd,"state/",base);
 	
@@ -395,7 +402,13 @@ int main (int argc, char* argv[])
 	
 	size_t min_Nsv = args.get<size_t>("min_Nsv",0ul);
 	DynParam_fix.min_Nsv = [min_Nsv] (size_t i) {return min_Nsv;};
-	alpha = args.get<double>("alpha",100.);
+	
+	size_t lim_alpha = args.get<size_t>("lim_alpha",11);
+	double alpha = args.get<double>("alpha",100.);
+	DynParam_fix.max_alpha_rsvd = [lim_alpha, alpha] (size_t i) {return (i<lim_alpha)? alpha:0.;};
+	
+	int max_Nrich = args.get<int>("max_Nrich",-1);
+	DynParam_fix.max_Nrich = [max_Nrich] (size_t i) {return max_Nrich;};
 	
 	GlobParam_fix.Dinit  = args.get<size_t>("Dinit",2ul);
 	GlobParam_fix.Dlimit = args.get<size_t>("Dlimit",200ul);
@@ -461,7 +474,8 @@ int main (int argc, char* argv[])
 	}
 	else
 	{
-		ArrayXXd tFull = Geo1cell.hopping();
+		ArrayXXd tFull;
+		tFull = (PBC)? create_1D_PBC(L):Geo1cell.hopping();
 		tArray    = t * tFull;
 		Varray    = V * tFull;
 		Vxyarray  = Vxy * tFull;
@@ -475,11 +489,7 @@ int main (int argc, char* argv[])
 	}
 	
 	vector<Param> params;
-	#ifdef USING_U0
-	qarray<0> Qc, Qc2;
-	#else
-	qarray<2> Qc, Qc2;
-	#endif
+	qarray<MODEL::Symmetry::Nq> Qc, Qc2, QcT, QcS;
 	if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
 	{
 		params.push_back({"tFull",tArray});
@@ -490,6 +500,8 @@ int main (int argc, char* argv[])
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {S,T};
 		Qc2 = {S,T};
+		QcT = {S,T+2};
+		QcS = {S+2,T};
 	}
 	else if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xU1>::value)
 	{
@@ -513,6 +525,8 @@ int main (int argc, char* argv[])
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {S,N};
 		Qc2 = {S,2*N}; // for 2 unit cells
+		QcT = {S,N-2};
+		QcS = {S+2,N};
 	}
 	else if (std::is_same<MODEL,VMPS::Hubbard>::value)
 	{
@@ -580,6 +594,7 @@ int main (int argc, char* argv[])
 	
 	obs.resize(L,Ly,Ncells);
 	
+	//================= VUMPS =================
 	if (VUMPS)
 	{
 		MODEL::uSolver Foxy(VERB);
@@ -912,6 +927,7 @@ int main (int argc, char* argv[])
 					lout << "S=" << obs.entropy(x,y) << endl;
 					
 					obs.spectrum[x][y] = g_foxy.state.entanglementSpectrumLoc(Geo1cell(x,y));
+					lout << "spec=" << obs.spectrum[x][y].transpose() << endl;
 				}
 				
 				obs.energy = g_foxy.energy;
@@ -1034,7 +1050,7 @@ int main (int argc, char* argv[])
 		
 		emin = g_foxy.energy;
 	}
-	// Fix
+	//================= Fix =================
 	else
 	{
 		MODEL::Solver Fix(VERB);
@@ -1043,12 +1059,42 @@ int main (int argc, char* argv[])
 		Fix.userSetDynParam();
 		Fix.GlobParam = GlobParam_fix;
 		Fix.DynParam = DynParam_fix;
-		Fix.edgeState(H, g_fix, Qc, LANCZOS::EDGE::GROUND);
+		
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			{
+				Fix.edgeState(H, g_fix, Qc, LANCZOS::EDGE::GROUND);
+			}
+			#pragma omp section
+			{
+				if (CALC_TGAP)
+				{
+					MODEL::Solver FixT(DMRG::VERBOSITY::ON_EXIT);
+					auto g_fixT = g_fix;
+					FixT.edgeState(H, g_fixT, QcT, LANCZOS::EDGE::GROUND);
+					obs.energyT = g_fixT.energy/volume;
+				}
+			}
+			#pragma omp section
+			{
+				if (CALC_SGAP)
+				{
+					MODEL::Solver FixS(DMRG::VERBOSITY::ON_EXIT);
+					auto g_fixS = g_fix;
+					FixT.edgeState(H, g_fixS, QcS, LANCZOS::EDGE::GROUND);
+					obs.energyS = g_fixS.energy/volume;
+				}
+			}
+		}
 		
 		Stopwatch<> ObsWatch;
 		
 		obs.energy = g_fix.energy/volume;
 		obs.dedV = avg(g_fix.state, dHdV, g_fix.state)/volume;
+		
+		lout << "Tgap=" << L*(obs.energyT-obs.energy) << endl;
+		lout << "Sgap=" << L*(obs.energyS-obs.energy) << endl;
 		
 		#pragma omp parallel for collapse(2)
 		for (size_t x=0; x<L-1; ++x)
@@ -1105,27 +1151,33 @@ int main (int argc, char* argv[])
 			double CDW = 0.;
 			double SDW = 0.;
 			
-			VectorXd BOWloc(volume-1);
+			int Nbonds = (PBC)? volume:volume-1;
+			VectorXd BOWloc(Nbonds);
 			#pragma omp parallel for
-			for (int i=0; i<volume-1; ++i)
+			for (int i=0; i<Nbonds; ++i)
 			{
 				#ifdef USING_SO4
 				{
-					BOWloc(i) = avg(g_fix.state, H.cdagc(i,i+1), g_fix.state);
+					BOWloc(i) = avg(g_fix.state, H.cdagc(i,(i+1)%L), g_fix.state);
 				}
 				#elif defined(USING_U0)
-					BOWloc(i) = avg(g_fix.state, H.cdagc<UP>(i,i+1), g_fix.state)+
-					            avg(g_fix.state, H.cdagc<DN>(i,i+1), g_fix.state)+
-					            avg(g_fix.state, H.cdagc<UP>(i+1,i), g_fix.state)+
-					            avg(g_fix.state, H.cdagc<DN>(i+1,i), g_fix.state);
+					BOWloc(i) = avg(g_fix.state, H.cdagc<UP>(i,(i+1)%L), g_fix.state)+
+					            avg(g_fix.state, H.cdagc<DN>(i,(i+1)%L), g_fix.state)+
+					            avg(g_fix.state, H.cdagc<UP>((i+1)%L,i), g_fix.state)+
+					            avg(g_fix.state, H.cdagc<DN>((i+1)%L,i), g_fix.state);
 				#else
 				{
-					BOWloc(i) = avg(g_fix.state, H.cdagc(i,i+1), g_fix.state) 
-					           +avg(g_fix.state, H.cdagc(i+1,i), g_fix.state);
+					BOWloc(i) = avg(g_fix.state, H.cdagc(i,(i+1)%L), g_fix.state) 
+					           +avg(g_fix.state, H.cdagc((i+1)%L,i), g_fix.state);
 				}
 				#endif
 			}
-			lout << "BOWloc=" << BOWloc.transpose() << endl;
+			for (int i=0; i<Nbonds-1; ++i)
+			{
+				obs.opBOW(i,0) = BOWloc(i)-BOWloc((i+1)%L);
+			}
+			lout << "BOWloc=" << endl << BOWloc << endl;
+			lout << "obs.opBOW=" << endl << obs.opBOW << endl;
 			
 			#pragma omp parallel for reduction(+:BOW)
 			for (int i=0; i<volume-1; ++i)
@@ -1175,6 +1227,7 @@ int main (int argc, char* argv[])
 		target.create_group(bond.str());
 		
 		target.save_scalar(obs.energy,"energy",bond.str());
+		target.save_scalar(obs.energyT,"energyT",bond.str());
 		target.save_scalar(obs.dedV,"dedV",bond.str());
 		target.save_scalar(g_fix.state.calc_Dmax(),"Dmax",bond.str());
 		target.save_scalar(g_fix.state.calc_Mmax(),"Mmax",bond.str());
@@ -1189,6 +1242,7 @@ int main (int argc, char* argv[])
 		{
 			target.save_matrix(obs.spectrum[x][y],make_string("spectrum_x=",x,"_y=",y),bond.str());
 		}
+		target.save_matrix(obs.opBOW,"opBOW",bond.str());
 		target.save_matrix(obs.finite_entropy,"finite_entropy",bond.str());
 		target.save_scalar(obs.Tsq,"Tsq",bond.str());
 		target.save_scalar(obs.Ssq,"Ssq",bond.str());
@@ -1203,16 +1257,4 @@ int main (int argc, char* argv[])
 	
 	lout << Watch.info("total time") << endl;
 	lout << "emin=" << obs.energy << ", e_empty=" << e_empty() << endl;
-	
-//	size_t Nmax = (VUMPS)? Ncells:1;
-//	Geometry2D GeoNcell(SNAKE,Nmax*L,Ly,1.,true);
-//	for (size_t l=0; l<L*Ly*Nmax; ++l)
-//	{
-//		MODEL Htmp(L*Ly*Nmax+1,{});
-//		
-//		double SdagS = avg(g_foxy.state, Htmp.SdagS(0,l), g_foxy.state);
-//		double TdagT = avg(g_foxy.state, Htmp.TdagT(0,l), g_foxy.state);
-//		
-//		cout << "x=" << GeoNcell(l).first << ", y=" << GeoNcell(l).second << ", <S†S>=" << SdagS << ", <T†T>=" << TdagT << endl;
-//	}
 }

@@ -108,10 +108,10 @@ const map<string,any> HubbardSU2xSU2::defaults =
 
 const map<string,any> HubbardSU2xSU2::sweep_defaults = 
 {
-	{"max_alpha",100.}, {"min_alpha",1e-11}, {"lim_alpha",10ul}, {"eps_svd",1e-7},
+	{"max_alpha",100.}, {"min_alpha",1e-11}, {"lim_alpha",11ul}, {"eps_svd",1e-7},
 	{"Dincr_abs", 2ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
-	{"max_halfsweeps",20ul}, {"min_halfsweeps",6ul},
+	{"max_halfsweeps",30ul}, {"min_halfsweeps",6ul},
 	{"Dinit",4ul}, {"Qinit",10ul}, {"Dlimit",500ul},
 	{"tol_eigval",1e-6}, {"tol_state",1e-5},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}

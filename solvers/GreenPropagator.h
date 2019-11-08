@@ -294,6 +294,7 @@ public:
 	double mu = std::nan("0");
 	
 	void set_tol_DeltaS (double x) {tol_DeltaS = x;};
+	void set_lim_Nsv (size_t x)    {lim_Nsv    = x;};
 	
 private:
 	
@@ -307,6 +308,7 @@ private:
 	double tol_compr = 1e-4; // compression tolerance during time propagation
 	double tol_Lanczos = 1e-6; // 1e-6 seems sufficient; increase to 1e-8 for higher accuracy
 	double tol_DeltaS = 1e-3; // 1e-3 seems sufficient; perhaps 1e-2 is still enough 
+	size_t lim_Nsv = 200ul;
 	bool USE_GAUSSIAN_INTEGRATION = true;
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE;
@@ -437,7 +439,7 @@ propagate (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double
 		
 		if (Psi.get_truncWeight().sum() > 0.5*tol_compr)
 		{
-			Psi.max_Nsv = min(static_cast<size_t>(max(Psi.max_Nsv*1.1, Psi.max_Nsv+1.)),200ul);
+			Psi.max_Nsv = min(static_cast<size_t>(max(Psi.max_Nsv*1.1, Psi.max_Nsv+1.)),lim_Nsv);
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
 				lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi.max_Nsv << termcolor::reset << endl;
@@ -601,7 +603,7 @@ propagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<d
 			
 			if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
 			{
-				Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+1.)),200ul);
+				Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+1.)),lim_Nsv);
 				if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0)
 				{
 					lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
@@ -750,11 +752,15 @@ counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,co
 //			{
 //				cout << "z=" << z << ", i=" << i << ", norm=" << Psi[z][i].squaredNorm() << ", E=" << avg_hetero(Psi[z][i], H_hetero, Psi[z][i], true) << endl;
 //			}
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and i==0 and z==0)
+			{
+				lout << "δE=" << TDVP[z][i].get_deltaE().transpose() << endl;
+			}
 			//---------------------------------------------------------------------------------------------------------------
 			
 			if (Psi[z][i].get_truncWeight().sum() > 0.5*tol_compr)
 			{
-				Psi[z][i].max_Nsv = min(static_cast<size_t>(max(Psi[z][i].max_Nsv*1.1, Psi[z][i].max_Nsv+1.)),200ul);
+				Psi[z][i].max_Nsv = min(static_cast<size_t>(max(Psi[z][i].max_Nsv*1.1, Psi[z][i].max_Nsv+1.)),lim_Nsv);
 				if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0 and z==0)
 				{
 					lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi[z][i].max_Nsv << termcolor::reset << endl;
@@ -804,7 +810,7 @@ counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,co
 			PsiTmp.skim(DMRG::BROOM::SVD);
 			double r = (t.index()==0)? 1.:tsteps(t.index()-1)/tsteps(t.index());
 //			// possible override: always 2-site near excitation centre:
-//			vector<int> overrides = {Lhetero/2-1, Lhetero/2, Lhetero/2+1};
+//			vector<size_t> overrides = {0ul, size_t(Lhetero-2)};
 			TWO_SITE[z][i] = Sobs[z][i].TWO_SITE(t.index(), PsiTmp, r);
 			
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0 and z==0) lout << StepTimer.info("entropy calculation") << endl;
