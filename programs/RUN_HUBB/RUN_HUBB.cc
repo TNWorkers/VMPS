@@ -33,6 +33,7 @@ int volume;
 double t, tRung, U, J, V, Vxy, Vz, Vext, X;
 int fullMmax;
 int M, N, S, T;
+double alpha;
 double str_tol;
 DMRG::VERBOSITY::OPTION VERB;
 double Emin = 0.;
@@ -69,6 +70,9 @@ struct Obs
 {
 	Eigen::MatrixXd nh;
 	Eigen::MatrixXd ns;
+	Eigen::MatrixXd tz;
+	Eigen::MatrixXd tx;
+	Eigen::MatrixXd ity;
 	Eigen::MatrixXd nhvar;
 	Eigen::MatrixXd nsvar;
 	Eigen::MatrixXd opBOW;
@@ -104,6 +108,9 @@ struct Obs
 	{
 		nh.resize(Lx,Ly); nh.setZero();
 		ns.resize(Lx,Ly); ns.setZero();
+		tz.resize(Lx,Ly); tz.setZero();
+		tx.resize(Lx,Ly); tx.setZero();
+		ity.resize(Lx,Ly); ity.setZero();
 		nhvar.resize(Lx,Ly); nhvar.setZero();
 		nsvar.resize(Lx,Ly); nsvar.setZero();
 		opBOW.resize(Lx,Ly); opBOW.setZero();
@@ -908,6 +915,11 @@ int main (int argc, char* argv[])
 					
 					obs.nh(x,y)        = avg(g_foxy.state, H.nh(Geo1cell(x,y)), g_foxy.state);
 					obs.ns(x,y)        = avg(g_foxy.state, H.ns(Geo1cell(x,y)), g_foxy.state);
+					#ifdef USING_SU2
+					obs.tz(x,y)        = avg(g_foxy.state, H.Tz(Geo1cell(x,y)), g_foxy.state);
+					obs.tx(x,y)        = avg(g_foxy.state, H.Tx(Geo1cell(x,y)), g_foxy.state);
+					obs.ity(x,y)        = avg(g_foxy.state, H.iTy(Geo1cell(x,y)), g_foxy.state);
+					#endif
 //					obs.nhvar(x,y)     = avg(g_foxy.state, H.nhsq(Geo1cell(x,y)), g_foxy.state) - pow(obs.nh(x,y),2);
 //					obs.nsvar(x,y)     = avg(g_foxy.state, H.nssq(Geo1cell(x,y)), g_foxy.state) - pow(obs.ns(x,y),2);
 //					lout << "nh=" << obs.nh(x,y) << ", var=" << obs.nhvar(x,y) << ", ns=" << obs.ns(x,y) << ", var=" << obs.nsvar(x,y) << endl;
@@ -987,6 +999,11 @@ int main (int argc, char* argv[])
 				
 				target.save_matrix(obs.nh,"nh",bond.str());
 				target.save_matrix(obs.ns,"ns",bond.str());
+				#ifdef USING_SU2
+				target.save_matrix(obs.tz,"Tz",bond.str());
+				target.save_matrix(obs.tx,"Tx",bond.str());
+				target.save_matrix(obs.ity,"iTy",bond.str());
+				#endif
 //				target.save_matrix(obs.nhvar,"nhvar",bond.str());
 //				target.save_matrix(obs.nsvar,"nsvar",bond.str());
 				target.save_matrix(obs.opBOW,"opBOW",bond.str());
@@ -1257,4 +1274,16 @@ int main (int argc, char* argv[])
 	
 	lout << Watch.info("total time") << endl;
 	lout << "emin=" << obs.energy << ", e_empty=" << e_empty() << endl;
+	
+//	size_t Nmax = (VUMPS)? Ncells:1;
+//	Geometry2D GeoNcell(SNAKE,Nmax*L,Ly,1.,true);
+//	for (size_t l=0; l<L*Ly*Nmax; ++l)
+//	{
+//		MODEL Htmp(L*Ly*Nmax+1,{});
+//		
+//		double SdagS = avg(g_foxy.state, Htmp.SdagS(0,l), g_foxy.state);
+//		double TdagT = avg(g_foxy.state, Htmp.TdagT(0,l), g_foxy.state);
+//		
+//		cout << "x=" << GeoNcell(l).first << ", y=" << GeoNcell(l).second << ", <S†S>=" << SdagS << ", <T†T>=" << TdagT << endl;
+//	}
 }
