@@ -60,7 +60,7 @@ public:
 	//static HamiltonianTermsXd<Symmetry> set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc=0);
 	static void set_operators(const std::vector<FermionBase<Symmetry>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
 	
-	static qarray<2> singlet (int N) {return qarray<2>{1};};
+	static qarray<1> singlet (int N) {return qarray<1>{1};};
 	
 	///@{
 	Mpo<Symmetry> c (size_t locx, size_t locy=0, double factor=1.) const;
@@ -95,7 +95,6 @@ public:
 	Mpo<Symmetry> TzTz  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> TpTm  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> TmTp  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> TdagT (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 
 	Mpo<Symmetry,complex<double> > S_ky    (vector<complex<double> > phases) const;
@@ -661,13 +660,13 @@ Tz (size_t locx, size_t locy) const
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 Tx (size_t locx, size_t locy) const
 {
-	return make_local("Tx", locx,locy, F[locx].Tx(locy), 1., false, true);
+	return make_local("Tx", locx,locy, pow(-1.,locx+locy)*F[locx].Tx(locy), 1., false, true);
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 iTy (size_t locx, size_t locy) const
 {
-	return make_local("iTy", locx,locy, F[locx].iTy(locy), 1., false, true);
+	return make_local("iTy", locx,locy, pow(-1.,locx+locy)*F[locx].iTy(locy), 1., false, true);
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
@@ -880,32 +879,6 @@ SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	assert(locx1<this->N_sites and locx2<this->N_sites);
 	stringstream ss;
 	ss << "S†(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
-	
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
-	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
-	
-	auto Op1 = F[locx1].Sdag(locy1);
-	auto Op2 = F[locx2].S(locy2);
-	
-	if (locx1 == locx2)
-	{
-		auto product = std::sqrt(3.) * OperatorType::prod(Op1, Op2, Symmetry::qvacuum());
-		Mout.setLocal(locx1, product.plain<double>());
-	}
-	else
-	{
-		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.) * Op1).plain<double>(), Op2.plain<double>()});
-	}
-	
-	return Mout;
-}
-
-Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
-TdagT (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	assert(locx1<this->N_sites and locx2<this->N_sites);
-	stringstream ss;
-	ss << "T†(" << locx1 << "," << locy1 << ")" << "T(" << locx2 << "," << locy2 << ")";
 	
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
