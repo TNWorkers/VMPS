@@ -69,6 +69,8 @@ public:
 	Mpo<Symmetry> Tz (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> Tx (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> iTy (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Tp (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Tm (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> d (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> nh (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> ns (size_t locx, size_t locy=0) const;
@@ -290,10 +292,10 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 				if (range != 0)
 				{
 					//The sign is hardcoded here.. maybe include this in Geometry class.
-					auto Tp_loc    = pow(-1,loc)*F[loc].cc(0);
-					auto Tm_hop    = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cdagcdag(0);
-					auto Tm_loc    = pow(-1,loc)*F[loc].cdagcdag(0);
-					auto Tp_hop    = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cc(0);
+					auto Tp_loc = pow(-1,loc)*F[loc].cc(0);
+					auto Tm_hop = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cdagcdag(0);
+					auto Tm_loc = pow(-1,loc)*F[loc].cdagcdag(0);
+					auto Tp_hop = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cc(0);
 					
 					Terms.push(range, loc, 0.5 * value,
 					           Tp_loc.plain<double>(), TransOps, Tm_hop.plain<double>());
@@ -667,6 +669,18 @@ Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 iTy (size_t locx, size_t locy) const
 {
 	return make_local("iTy", locx,locy, pow(-1.,locx+locy)*F[locx].iTy(locy), 1., false, true);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+Tp (size_t locx, size_t locy) const
+{
+	return make_local("Tp", locx,locy, pow(-1.,locx+locy)*F[locx].cc(locy), 1., false, false);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+Tm (size_t locx, size_t locy) const
+{
+	return make_local("Tm", locx,locy, pow(-1.,locx+locy)*F[locx].cdagcdag(locy), 1., false, false);
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::

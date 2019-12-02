@@ -23,25 +23,19 @@ public:
 	
 	///@{
 	Mpo<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
-	Mpo<Symmetry> ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
 	///@}
 	
 	///@{
 	Mpo<Symmetry> Sz (size_t locx, size_t locy=0) const {return Scomp(SZ,locx,locy);};
 	Mpo<Symmetry> Sx (size_t locx, size_t locy=0) const {return Scomp(SX,locx,locy);};
 	Mpo<Symmetry> n  (size_t locx, size_t locy=0) const;
-	Mpo<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2);};
-	Mpo<Symmetry> SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2);};
-	Mpo<Symmetry> SmSp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SM,SP,locx1,locx2,locy1,locy2);};
-	Mpo<Symmetry> SxSx (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SX,SX,locx1,locx2,locy1,locy2);};
+	Mpo<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2,1.);};
+	Mpo<Symmetry> SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2,fac);};
+	Mpo<Symmetry> SmSp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SM,SP,locx1,locx2,locy1,locy2,fac);};
+	Mpo<Symmetry> SxSx (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SX,SX,locx1,locx2,locy1,locy2,fac);};
+		vector<Mpo<Symmetry> > SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
-	
-	// <SvecSvec>
-	// = <SxSx> + <SySy> + <SzSz>
-	// = 0.5*<S+S-> + 0.5*<S-S+> + <SzSz>
-	// = Re<S+S-> + <SzSz> for complex states
-	// = <S+S-> + <SzSz> for real states
-	//template<typename MpsType> double SvecSvecAvg (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	
 protected:
 	
@@ -107,7 +101,7 @@ n (size_t locx, size_t locy) const
 
 template<typename Symmetry>
 Mpo<Symmetry> HeisenbergObservables<Symmetry>::
-ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, double fac) const
 {
 	assert(locx1<B.size() and locx2<B.size() and locy1<B[locx1].dim() and locy2<B[locx2].dim());
 	stringstream ss;
@@ -121,18 +115,19 @@ ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size
 	Mpo<Symmetry> Mout(B.size(), Op1.Q+Op2.Q, ss.str(), HERMITIAN);
 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
-	Mout.setLocal({locx1,locx2}, {Op1,Op2});
+	Mout.setLocal({locx1,locx2}, {fac*Op1,Op2});
 	return Mout;
 }
 
-/*template<typename Symmetry>
-template<typename MpsType>
-double HeisenbergObservables<Symmetry>::
-SvecSvecAvg (const MpsType &Psi, size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+template<typename Symmetry>
+vector<Mpo<Symmetry> >HeisenbergObservables<Symmetry>::
+SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	return isReal(avg(Psi,SzSz(locx1,locx2,locy1,locy2),Psi))+
-	       0.5*(isReal(avg(Psi,SpSm(locx1,locx2,locy1,locy2),Psi))+
-	            isReal(avg(Psi,SmSp(locx1,locx2,locy1,locy2),Psi)));
-}*/
+	vector<Mpo<Symmetry> > out(3);
+	out[0] = SzSz(locx1,locx2,locy1,locy2);
+	out[1] = SpSm(locx1,locx2,locy1,locy2,0.5);
+	out[2] = SmSp(locx1,locx2,locy1,locy2,0.5);
+	return out;
+}
 
 #endif

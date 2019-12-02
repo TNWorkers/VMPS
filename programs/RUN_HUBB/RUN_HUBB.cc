@@ -23,6 +23,8 @@ using namespace std;
 #include "models/HubbardSU2xSU2.h"
 #include "models/HubbardSU2xU1.h"
 #include "models/Hubbard.h"
+#include "models/HubbardSU2.h"
+#include "models/HubbardU1spin.h"
 
 #include "Geometry2D.h" // from TOOLS
 #include "NestedLoopIterator.h" // from TOOLS
@@ -38,7 +40,7 @@ double str_tol;
 DMRG::VERBOSITY::OPTION VERB;
 double Emin = 0.;
 double emin = 0.;
-bool STRUCTURE, CONTRACTIONS, CALC_TSQ, CALC_BOW, VUMPS, PBC, CALC_TGAP, CALC_SGAP;
+bool STRUCTURE, CONTRACTIONS, CALC_TSQ, CALC_BOW, VUMPS, PBC, CALC_TGAP, CALC_SGAP, CALC_CGAP;
 string wd; // working directory
 string base;
 
@@ -73,6 +75,9 @@ struct Obs
 	Eigen::MatrixXd tz;
 	Eigen::MatrixXd tx;
 	Eigen::MatrixXd ity;
+	Eigen::MatrixXd sz;
+	Eigen::MatrixXd sx;
+	Eigen::MatrixXd isy;
 	Eigen::MatrixXd nhvar;
 	Eigen::MatrixXd nsvar;
 	Eigen::MatrixXd opBOW;
@@ -87,9 +92,12 @@ struct Obs
 	
 	double energyS;
 	double energyT;
+	double energyC;
+	// measure energy density in middle of chain only:
 	double ebond;
 	double ebondS;
 	double ebondT;
+	double ebondC;
 	
 	double S_M;
 	double T_M;
@@ -114,6 +122,9 @@ struct Obs
 		tz.resize(Lx,Ly); tz.setZero();
 		tx.resize(Lx,Ly); tx.setZero();
 		ity.resize(Lx,Ly); ity.setZero();
+		sz.resize(Lx,Ly); tz.setZero();
+		sx.resize(Lx,Ly); tx.setZero();
+		isy.resize(Lx,Ly); ity.setZero();
 		nhvar.resize(Lx,Ly); nhvar.setZero();
 		nsvar.resize(Lx,Ly); nsvar.setZero();
 		opBOW.resize(Lx,Ly); opBOW.setZero();
@@ -193,7 +204,7 @@ void fill_OdagO (size_t L, size_t Ly, size_t n, const Eigenstate<MODEL::StateUd>
 	{
 		int i0 = Geo(x0,y0);
 		
-		#ifdef USING_U0
+		#if defined(USING_U0) || defined(USING_U1xU1)
 		Bavg(i0) = avg(g.state, H1cell.cdagc<UP>(i0,i0+Ly), g.state)+
 		           avg(g.state, H1cell.cdagc<DN>(i0,i0+Ly), g.state);
 		#else
@@ -215,17 +226,8 @@ void fill_OdagO (size_t L, size_t Ly, size_t n, const Eigenstate<MODEL::StateUd>
 		int i0 = Geo(x0,y0);
 		int i1 = Geo(x1,y1);
 		
-		#ifdef USING_U0
-		if (CALC_S) SdagS[x0][y0][x1][y1](n) = avg(g.state, Hncell.SpSm(i0,L*Ly*n+i1), g.state)+
-		                                       avg(g.state, Hncell.SzSz(i0,L*Ly*n+i1), g.state);
-		if (CALC_T) TdagT[x0][y0][x1][y1](n) = avg(g.state, Hncell.TpTm(i0,L*Ly*n+i1), g.state)+
-		                                       avg(g.state, Hncell.TzTz(i0,L*Ly*n+i1), g.state);
-		#endif
-		#ifdef USING_SU2
 		if (CALC_S) SdagS[x0][y0][x1][y1](n) = avg(g.state, Hncell.SdagS(i0,L*Ly*n+i1), g.state);
-		if (CALC_T) TdagT[x0][y0][x1][y1](n) = avg(g.state, Hncell.TpTm(i0,L*Ly*n+i1), g.state)+ 
-		                                       avg(g.state, Hncell.TzTz(i0,L*Ly*n+i1), g.state);
-		#endif
+		if (CALC_T) TdagT[x0][y0][x1][y1](n) = avg(g.state, Hncell.TdagT(i0,L*Ly*n+i1), g.state);
 		#ifdef USING_SO4
 		if (CALC_B) BdagB[x0][y0][x1][y1](n) = avg(g.state, Hncell.B(i0,i0+Ly), Hncell.B(L*Ly*n+i1,L*Ly*n+i1+Ly), g.state)-Bavg(i0)*Bavg(i1);
 		if (CALC_C) CdagC[x0][y0][x1][y1](n) = avg(g.state, Hncell.C(i0,i0+Ly), Hncell.C(L*Ly*n+i1,L*Ly*n+i1+Ly), g.state);
@@ -357,7 +359,6 @@ int main (int argc, char* argv[])
 	V = args.get<double>("V",0.);
 	Vxy = args.get<double>("Vxy",V);
 	Vz = args.get<double>("Vz",V);
-	Vext = args.get<double>("Vext",0.);
 	M = args.get<int>("M",0);
 	S = abs(M)+1;
 	STRUCTURE = args.get<bool>("STRUCTURE",false);
@@ -370,6 +371,7 @@ int main (int argc, char* argv[])
 	PBC = args.get<bool>("PBC",false);
 	CALC_TGAP = args.get<bool>("CALC_TGAP",false);
 	CALC_SGAP = args.get<bool>("CALC_SGAP",false);
+	CALC_CGAP = args.get<bool>("CALC_CGAP",false);
 	
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
@@ -377,32 +379,24 @@ int main (int argc, char* argv[])
 	correct_foldername(wd);
 	
 	#ifdef USING_SO4
-//	base = make_string("U=",U,"_V=",V,"_J=",J,"_L=",L,"_Ly=",Ly);
 	base = make_string("L=",L,"_Ly=",Ly,"_t=",t,"_U=",U,"_V=",V,"_J=",J);
-	#elif defined(USING_SU2)
-	base = make_string("L=",L,"_Ly=",Ly,"_t=",t,"_U=",U,"_Vext=",Vext,"_J=",J);
-	#else
-	if (abs(Vext) > 0.)
+	#elif defined(USING_SU2xU1) || defined(USING_U1xU1)
+	if (Vxy==Vz)
 	{
-		if (Vxy==Vz)
-		{
-			base = make_string("L=",L,"_Ly=",Ly,"_t=",t,"_U=",U,"_V=",V,"_J=",J);
-		}
-		else
-		{
-			base = make_string("L=",L,"_Ly=",Ly,"_t=",t,"_U=",U,"_Vxy=",Vxy,"_Vz=",Vz,"_J=",J);
-		}
+		base = make_string("L=",L,"_Ly=",Ly,"_N=",N,"_t=",t,"_U=",U,"_V=",V,"_J=",J);
 	}
 	else
 	{
-		if (Vxy==Vz)
-		{
-			base = make_string("L=",L,"_Ly=",Ly,"_N=",N,"_t=",t,"_U=",U,"_V=",V,"_J=",J);
-		}
-		else
-		{
-			base = make_string("L=",L,"_Ly=",Ly,"_N=",N,"_t=",t,"_U=",U,"_Vxy=",Vxy,"_Vz=",Vz,"_J=",J);
-		}
+		base = make_string("L=",L,"_Ly=",Ly,"_N=",N,"_t=",t,"_U=",U,"_Vxy=",Vxy,"_Vz=",Vz,"_J=",J);
+	}
+	#else
+	if (Vxy==Vz)
+	{
+		base = make_string("L=",L,"_Ly=",Ly,"_t=",t,"_U=",U,"_V=",V,"_J=",J);
+	}
+	else
+	{
+		base = make_string("L=",L,"_Ly=",Ly,"_t=",t,"_U=",U,"_Vxy=",Vxy,"_Vz=",Vz,"_J=",J);
 	}
 	#endif
 	if (X != 0.)
@@ -427,6 +421,8 @@ int main (int argc, char* argv[])
 	size_t lim_alpha = args.get<size_t>("lim_alpha",11);
 	double alpha = args.get<double>("alpha",100.);
 	DynParam_fix.max_alpha_rsvd = [lim_alpha, alpha] (size_t i) {return (i<lim_alpha)? alpha:0.;};
+	
+	int DincrPeriod = args.get<int>("DincrPeriod",6);
 	
 	int max_Nrich = args.get<int>("max_Nrich",-1);
 	DynParam_fix.max_Nrich = [max_Nrich] (size_t i) {return max_Nrich;};
@@ -455,11 +451,7 @@ int main (int argc, char* argv[])
 	GlobParam_foxy.savePeriod = args.get<size_t>("savePeriod",0ul);
 	GlobParam_foxy.saveName = args.get<string>("saveName",statefile);
 	
-	#ifdef USING_SO4
 	lout.set(base+".log",wd+"log");
-	#else
-	lout.set(base+".log",wd+"log");
-	#endif
 	
 	lout << args.info() << endl;
 	lout << "wd=" << wd << endl;
@@ -510,7 +502,7 @@ int main (int argc, char* argv[])
 	}
 	
 	vector<Param> params;
-	qarray<MODEL::Symmetry::Nq> Qc, Qc2, QcT, QcS;
+	qarray<MODEL::Symmetry::Nq> Qc, Qc2, QcT, QcS, QcC;
 	if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xSU2>::value)
 	{
 		params.push_back({"tFull",tArray});
@@ -523,8 +515,10 @@ int main (int argc, char* argv[])
 		Qc2 = {S,T};
 		QcT = {S,T+2};
 		QcS = {S+2,T};
+		QcC = {S+1,T+1};
 	}
-	else if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xU1>::value or std::is_same<MODEL,VMPS::HubbardSU2>::value)
+	else if constexpr (std::is_same<MODEL,VMPS::HubbardSU2xU1>::value or 
+	                   std::is_same<MODEL,VMPS::HubbardSU2>::value)
 	{
 		params.push_back({"tFull",tArray});
 		params.push_back({"Vxyfull",Vxyarray});
@@ -551,6 +545,7 @@ int main (int argc, char* argv[])
 			Qc2 = {S,2*N}; // for 2 unit cells
 			QcT = {S,N-2};
 			QcS = {S+2,N};
+			QcC = {S+1,N-1};
 		}
 		else if constexpr (std::is_same<MODEL,VMPS::HubbardSU2>::value)
 		{
@@ -558,6 +553,7 @@ int main (int argc, char* argv[])
 			Qc2 = {S}; // for 2 unit cells
 			QcT = {S};
 			QcS = {S+2};
+			QcC = {S+1};
 		}
 	}
 	else if (std::is_same<MODEL,VMPS::Hubbard>::value)
@@ -571,11 +567,14 @@ int main (int argc, char* argv[])
 		params.push_back({"Uph",U});
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {};
-		Qc2 = {};
+		Qc2 = {}; // for 2 unit cells
+		QcT = {};
+		QcS = {};
+		QcC = {};
 	}
 	else if (std::is_same<MODEL,VMPS::HubbardU1xU1>::value)
 	{
-		// only 1D implemented for U(0)
+		// only 1D implemented for U1xU1
 		params.push_back({"t",t});
 		params.push_back({"Vxy",Vxy});
 		params.push_back({"Vz",Vz});
@@ -583,8 +582,27 @@ int main (int argc, char* argv[])
 		params.push_back({"J",J});
 		params.push_back({"Uph",U});
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
-		Qc  = {0,N};
-		Qc2 = {0,N};
+		Qc  = {M,N};
+		Qc2 = {M,2*N}; // for 2 unit cells
+		QcT = {M,N-2};
+		QcS = {M+2,N};
+		QcC = {M-1,N-1};
+	}
+	else if (std::is_same<MODEL,VMPS::HubbardU1spin>::value)
+	{
+		// only 1D implemented for U1spin
+		params.push_back({"t",t});
+		params.push_back({"Vxy",Vxy});
+		params.push_back({"Vz",Vz});
+		params.push_back({"X",X});
+		params.push_back({"J",J});
+		params.push_back({"Uph",U});
+		if (VUMPS) {params.push_back({"OPEN_BC",false});}
+		Qc  = {M};
+		Qc2 = {M}; // for 2 unit cells
+		QcT = {M};
+		QcS = {M+2};
+		QcC = {M-1};
 	}
 	
 	MODEL H(volume,params);
@@ -664,7 +682,7 @@ int main (int argc, char* argv[])
 					kxy.push_back(make_pair(M_PI,Ly/2)); // M point (π,π)
 				}
 				
-				#ifndef USING_U0
+				#if not defined(USING_U0) && not defined(USING_U1xU1) && not defined(USING_U1SPIN)
 				if (STRUCTURE)
 				{
 					for (int i=0; i<kxy.size(); ++i)
@@ -739,15 +757,8 @@ int main (int argc, char* argv[])
 								{
 									Sij_cell(x1,x2) += phases_m1[index1] * phases_p2[index2] * 
 									                   avg(g_foxy.state, H.SdagS(index1,index2), g_foxy.state);
-									#ifdef USING_SO4
 									Tij_cell(x1,x2) += phases_m1[index1] * phases_p2[index2] * 
 									                   avg(g_foxy.state, H.TdagT(index1,index2), g_foxy.state);
-									#else
-									Tij_cell(x1,x2) += phases_m1[index1] * phases_p2[index2] * 
-									                   (avg(g_foxy.state, H.TpTm(index1,index2), g_foxy.state)+
-									                    avg(g_foxy.state, H.TzTz(index1,index2), g_foxy.state)
-									                   );
-									#endif
 //									Bij_cell(x1,x2) += phases_m1[index1] * phases_p2[index2] * 
 //									                    avg(
 //									                      g_foxy.state, 
@@ -955,7 +966,7 @@ int main (int argc, char* argv[])
 					obs.nh(x,y)        = avg(g_foxy.state, H.nh(Geo1cell(x,y)), g_foxy.state);
 					obs.ns(x,y)        = avg(g_foxy.state, H.ns(Geo1cell(x,y)), g_foxy.state);
 					lout << "\tnh=" << obs.nh(x,y) << ", ns=" << obs.ns(x,y) << endl;
-					#ifdef USING_SU2
+					#ifndef USING_SO4
 					obs.tz(x,y)        = avg(g_foxy.state, H.Tz(Geo1cell(x,y)), g_foxy.state);
 					obs.tx(x,y)        = avg(g_foxy.state, H.Tx(Geo1cell(x,y)), g_foxy.state);
 					obs.ity(x,y)       = avg(g_foxy.state, H.iTy(Geo1cell(x,y)), g_foxy.state);
@@ -963,19 +974,18 @@ int main (int argc, char* argv[])
 					     << ", T=" << sqrt(pow(obs.tx(x,y),2)-pow(obs.ity(x,y),2)+pow(obs.tz(x,y),2))
 					     << endl;
 					#endif
-//					obs.nhvar(x,y)     = avg(g_foxy.state, H.nhsq(Geo1cell(x,y)), g_foxy.state) - pow(obs.nh(x,y),2);
-//					obs.nsvar(x,y)     = avg(g_foxy.state, H.nssq(Geo1cell(x,y)), g_foxy.state) - pow(obs.ns(x,y),2);
-//					lout << "nh=" << obs.nh(x,y) << ", var=" << obs.nhvar(x,y) << ", ns=" << obs.ns(x,y) << ", var=" << obs.nsvar(x,y) << endl;
 					
-					#ifdef USING_U0
-					obs.opBOW(x,y)     = +avg(g_foxy.state, dHdV.cdagc<UP>(Geo2cell(x,y),  Geo2cell(x+1,y)), g_foxy.state)
-					                     +avg(g_foxy.state, dHdV.cdagc<DN>(Geo2cell(x,y),  Geo2cell(x+1,y)), g_foxy.state)
-					                     -avg(g_foxy.state, dHdV.cdagc<UP>(Geo2cell(x+1,y),Geo2cell(x+2,y)), g_foxy.state)
-					                     -avg(g_foxy.state, dHdV.cdagc<DN>(Geo2cell(x+1,y),Geo2cell(x+2,y)), g_foxy.state);
-					#else
+					#if defined(USING_U0)
+					double sz = avg(g_foxy.state, H.Scomp(SZ,Geo1cell(x,y)), g_foxy.state);
+					double sx = avg(g_foxy.state, H.Scomp(SX,Geo1cell(x,y)), g_foxy.state);
+					double isy = avg(g_foxy.state, H.Scomp(iSY,Geo1cell(x,y)), g_foxy.state);
+					lout << "\tsx=" << sx << ", isy=" << isy << ", sz=" << sz 
+					     << ", S=" << sqrt(pow(sx,2)-pow(isy,2)+pow(sz,2))
+					     << endl;
+					#endif
+					
 					obs.opBOW(x,y)     = +avg(g_foxy.state, dHdV.cdagc(Geo2cell(x,y),  Geo2cell(x+1,y)), g_foxy.state)
 					                     -avg(g_foxy.state, dHdV.cdagc(Geo2cell(x+1,y),Geo2cell(x+2,y)), g_foxy.state);
-					#endif
 					lout << "\topBOW=" << obs.opBOW(x,y) << endl;
 					
 					obs.entropy(x,y)   = g_foxy.state.entropy()(Geo1cell(x,y));
@@ -983,6 +993,15 @@ int main (int argc, char* argv[])
 					
 					obs.spectrum[x][y] = g_foxy.state.entanglementSpectrumLoc(Geo1cell(x,y));
 					lout << "\tspec=" << obs.spectrum[x][y].transpose() << endl;
+				}
+				
+				lout << "ns*nh=" << avg(g_foxy.state, H.ns(0), H.nh(1), g_foxy.state) 
+				                   -avg(g_foxy.state, H.ns(0), g_foxy.state) * avg(g_foxy.state, H.nh(1), g_foxy.state) << endl;
+				for (int d=1; d<2*L; ++d)
+				{
+					lout << "d=" << d << endl;
+					lout << "SdagS=" << avg(g_foxy.state, dHdV.SdagS(0,d), g_foxy.state) << endl;
+					lout << "TdagT=" << avg(g_foxy.state, dHdV.TdagT(0,d), g_foxy.state) << endl;
 				}
 				
 //				lout << "SdagS1=" << avg(g_foxy.state, dHdV.SdagS(0,1), g_foxy.state) << endl;
@@ -1011,33 +1030,13 @@ int main (int argc, char* argv[])
 				for (size_t y=0; y<Ly; ++y)
 				{
 					// horizontal
-					#ifdef USING_SO4
-					{
-						obs.dedV += avg(g_foxy.state, dHdV.TdagT(Geo2cell(x,y),Geo2cell(x+1,y)), g_foxy.state);
-					}
-					#else
-					{
-						obs.dedV += 0.5 * avg(g_foxy.state, dHdV.TpTm(Geo2cell(x,y),Geo2cell(x+1,y)), g_foxy.state);
-						obs.dedV += 0.5 * avg(g_foxy.state, dHdV.TmTp(Geo2cell(x,y),Geo2cell(x+1,y)), g_foxy.state);
-						obs.dedV +=       avg(g_foxy.state, dHdV.TzTz(Geo2cell(x,y),Geo2cell(x+1,y)), g_foxy.state);
-					}
-					#endif
+					obs.dedV += avg(g_foxy.state, dHdV.TdagT(Geo2cell(x,y),Geo2cell(x+1,y)), g_foxy.state);
 					
 					// vertical
 					if (Ly > 1)
 					{
 						double edge_correction = (Ly==2)? 0.5:1.;
-						#ifdef USING_SO4
-						{
-							obs.dedV += edge_correction * avg(g_foxy.state, dHdV.TdagT(Geo2cell(x,y),Geo2cell(x,(y+1)%L)), g_foxy.state);
-						}
-						#else
-						{
-							obs.dedV += edge_correction * 0.5 * avg(g_foxy.state, dHdV.TpTm(Geo2cell(x,y),Geo2cell(x,(y+1)%L)), g_foxy.state);
-							obs.dedV += edge_correction * 0.5 * avg(g_foxy.state, dHdV.TmTp(Geo2cell(x,y),Geo2cell(x,(y+1)%L)), g_foxy.state);
-							obs.dedV += edge_correction *       avg(g_foxy.state, dHdV.TzTz(Geo2cell(x,y),Geo2cell(x,(y+1)%L)), g_foxy.state);
-						}
-						#endif
+						obs.dedV += edge_correction * avg(g_foxy.state, dHdV.TdagT(Geo2cell(x,y),Geo2cell(x,(y+1)%L)), g_foxy.state);
 					}
 				}
 				obs.dedV /= (L*Ly);
@@ -1140,8 +1139,11 @@ int main (int argc, char* argv[])
 		
 		Eigenstate<MODEL::StateXd> g_fixT;
 		Eigenstate<MODEL::StateXd> g_fixS;
+		Eigenstate<MODEL::StateXd> g_fixC;
 		
 		Fix.edgeState(H, g_fix, Qc, LANCZOS::EDGE::GROUND);
+		
+		DynParam_fix.Dincr_per = [DincrPeriod] (size_t i) {return DincrPeriod;};
 		
 		#pragma omp parallel sections
 		{
@@ -1155,9 +1157,9 @@ int main (int argc, char* argv[])
 					FixT.GlobParam = GlobParam_fix;
 					FixT.DynParam = DynParam_fix;
 					#ifdef USING_SO4
-					OxV_exact(H.T(L/2), g_fix.state, g_fixT.state);
+					OxV_exact(H.T(L/2), g_fix.state, g_fixT.state, 1e-4);
 					#else
-					OxV_exact(H.Tz(L/2), g_fix.state, g_fixT.state);
+					OxV_exact(H.Tz(L/2), g_fix.state, g_fixT.state, 1e-4);
 					#endif
 					FixT.edgeState(H, g_fixT, QcT, LANCZOS::EDGE::GROUND, true);
 					obs.energyT = g_fixT.energy/volume;
@@ -1172,9 +1174,31 @@ int main (int argc, char* argv[])
 					FixS.userSetDynParam();
 					FixS.GlobParam = GlobParam_fix;
 					FixS.DynParam = DynParam_fix;
-					OxV_exact(H.S(L/2), g_fix.state, g_fixS.state);
+					#if defined(USING_U0) || defined(USING_U1xU1) || defined(USING_U1SPIN)
+					OxV_exact(H.Sz(L/2), g_fix.state, g_fixS.state, 1e-4);
+					#else
+					OxV_exact(H.S(L/2), g_fix.state, g_fixS.state, 1e-4);
+					#endif
 					FixS.edgeState(H, g_fixS, QcS, LANCZOS::EDGE::GROUND, true);
 					obs.energyS = g_fixS.energy/volume;
+				}
+			}
+			#pragma omp section
+			{
+				if (CALC_CGAP)
+				{
+					MODEL::Solver FixC(VERB);
+					FixC.userSetGlobParam();
+					FixC.userSetDynParam();
+					FixC.GlobParam = GlobParam_fix;
+					FixC.DynParam = DynParam_fix;
+					#if defined(USING_U0) || defined(USING_U1xU1) || defined(USING_U1SPIN)
+					OxV_exact(H.c<UP>(L/2), g_fix.state, g_fixC.state, 1e-4);
+					#else
+					OxV_exact(H.c(L/2), g_fix.state, g_fixC.state, 1e-4);
+					#endif
+					FixC.edgeState(H, g_fixC, QcC, LANCZOS::EDGE::GROUND, true);
+					obs.energyC = g_fixC.energy/volume;
 				}
 			}
 		}
@@ -1184,95 +1208,131 @@ int main (int argc, char* argv[])
 		obs.energy = g_fix.energy/volume;
 		obs.dedV = avg(g_fix.state, dHdV, g_fix.state)/volume;
 		
-		if (CALC_TGAP) lout << "Tgap=" << L*(obs.energyT-obs.energy) << endl;
-		if (CALC_SGAP) lout << "Sgap=" << L*(obs.energyS-obs.energy) << endl;
+		if (CALC_TGAP) lout << "Tgap=" << volume*(obs.energyT-obs.energy) << endl;
+		if (CALC_SGAP) lout << "Sgap=" << volume*(obs.energyS-obs.energy) << endl;
+		if (CALC_CGAP) lout << "Cgap=" << volume*(obs.energyC-obs.energy) << endl;
 		
-//		if (CALC_TGAP)
-//		{
-//			lout << "Tgap1=" << L*(obs.energyT-obs.energy) << endl;
-//			
-//			obs.ebond = 0;
-//			for (int d=-5; d<5; ++d)
-//			{
-//				obs.ebond += -t*    avg(g_fix.state,  H.cdagc(L/2+d,L/2+d+1), g_fix.state)
-//			              +0.5*U*avg(g_fix.state,  H.nh(L/2+d),            g_fix.state)
-//			              +V*    avg(g_fix.state,  H.TdagT(L/2+d,L/2+d+1), g_fix.state)
-//			              +J*    avg(g_fix.state,  H.SdagS(L/2+d,L/2+d+1), g_fix.state);
-//			}
-//			obs.ebond /= 10.;
-//			
-//			obs.ebondT = 0;
-//			for (int d=-5; d<5; ++d)
-//			{
-//				obs.ebondT += -t*    avg(g_fixT.state, H.cdagc(L/2+d,L/2+d+1), g_fixT.state)
-//			              +0.5*U*avg(g_fixT.state, H.nh(L/2+d),            g_fixT.state)
-//			              +V*    avg(g_fixT.state, H.TdagT(L/2+d,L/2+d+1), g_fixT.state)
-//			              +J*    avg(g_fixT.state, H.SdagS(L/2+d,L/2+d+1), g_fixT.state);
-//			}
-//			obs.ebondT /= 10.;
-//			
-////			for (int l=0; l<L-1; ++l)
-////			{
-////				cout << "l=" << l << ", cdagcT=" << avg(g_fixT.state, H.cdagc(l,l+1), g_fixT.state) << endl;
-////			}
-//			
-//			lout << "ebond=" << obs.ebond << ", ebondT=" << obs.ebondT << endl;
-//			lout << "Tgap2=" << L*(obs.ebondT-obs.ebond) << endl;
-//		}
-//		if (CALC_SGAP)
-//		{
-//			lout << "Sgap1=" << L*(obs.energyS-obs.energy) << endl;
-//			
-//			obs.ebond = 0;
-//			for (int d=-5; d<5; ++d)
-//			{
-//				obs.ebond += -t*    avg(g_fix.state,  H.cdagc(L/2-d,L/2-d+1), g_fix.state)
-//			              +0.5*U*avg(g_fix.state,  H.nh(L/2-d),            g_fix.state)
-//			              +V*    avg(g_fix.state,  H.TdagT(L/2-d,L/2-d+1), g_fix.state)
-//			              +J*    avg(g_fix.state,  H.SdagS(L/2-d,L/2-d+1), g_fix.state);
-//			}
-//			obs.ebond /= 10.;
-//			
-//			obs.ebondS = 0;
-//			for (int d=-5; d<5; ++d)
-//			{
-//				obs.ebondS += -t*    avg(g_fixS.state, H.cdagc(L/2-d,L/2-d+1), g_fixS.state)
-//			              +0.5*U*avg(g_fixS.state, H.nh(L/2-d),            g_fixS.state)
-//			              +V*    avg(g_fixS.state, H.TdagT(L/2-d,L/2-d+1), g_fixS.state)
-//			              +J*    avg(g_fixS.state, H.SdagS(L/2-d,L/2-d+1), g_fixS.state);
-//			}
-//			obs.ebondS /= 10.;
-//			
-//			lout << "ebond=" << obs.ebond << ", ebondS=" << obs.ebondS << endl;
-//			lout << "Sgap2=" << L*(obs.ebondS-obs.ebond) << endl;
-//		}
+		for (int d=1; d<=4; ++d)
+		{
+			lout << "d=" << d << endl;
+			lout << "SdagS=" << avg(g_fix.state, H.SdagS(L/2,L/2+d), g_fix.state) << endl;
+			lout << "TdagT=" << avg(g_fix.state, H.TdagT(L/2,L/2+d), g_fix.state) << endl;
+		}
 		
-		lout << "SdagS=" << avg(g_fix.state, H.SdagS(L/2,L/2+1), g_fix.state) << endl;
-		#ifdef USING_SO4
-		lout << "TdagT=" << avg(g_fix.state, H.TdagT(L/2,L/2+1), g_fix.state) << endl;
-		lout << "SdagS*TdagT=" << avg(g_fix.state, H.SdagS(L/2,L/2+1), H.TdagT(L/2+1,L/2+2), g_fix.state) << endl;
-		#else
-		lout << "TpTm=" << avg(g_fix.state, H.TpTm(L/2,L/2+1), g_fix.state) << endl;
-		lout << "TzTz=" << avg(g_fix.state, H.TzTz(L/2,L/2+1), g_fix.state) << endl;
-		lout << "SdagS*TdagT=" 
-		     << avg(g_fix.state, H.SdagS(L/2,L/2+1), H.TpTm(L/2+1,L/2+2), g_fix.state)+
-		        avg(g_fix.state, H.SdagS(L/2,L/2+1), H.TzTz(L/2+1,L/2+2), g_fix.state)
-		     << endl;
-		lout << "S*Tz=" << avg(g_fix.state, H.S(L/2), H.Tz(L/2+1), g_fix.state) << endl;
-		lout << "S*Tx=" << avg(g_fix.state, H.S(L/2), H.Tx(L/2+1), g_fix.state) << endl;
-		lout << "ns*nh=" << avg(g_fix.state, H.ns(L/2), H.nh(L/2+1), g_fix.state) 
-		                   -avg(g_fix.state, H.ns(L/2), g_fix.state)*avg(g_fix.state, H.nh(L/2+1), g_fix.state) << endl;
-		#endif
+		if (CALC_TGAP or CALC_SGAP or CALC_CGAP)
+		{
+			obs.ebond = 0;
+			for (int d=-5; d<5; ++d)
+			{
+				int i = L/2+d; int j = L/2+d+1;
+				obs.ebond += -t * avg(g_fix.state, H.cdagc(i,j), g_fix.state);
+				obs.ebond += +0.5*U * avg(g_fix.state, H.nh(i), g_fix.state);
+				obs.ebond +=  V * avg(g_fix.state, H.TdagT(i,j), g_fix.state);
+				obs.ebond +=  J * avg(g_fix.state, H.SdagS(i,j), g_fix.state);
+			}
+			obs.ebond /= 10.;
+		}
+		if (CALC_TGAP)
+		{
+			obs.ebondT = 0;
+			for (int d=-5; d<5; ++d)
+			{
+				int i = L/2+d; int j = L/2+d+1;
+				obs.ebondT += -t * avg(g_fixT.state, H.cdagc(i,j), g_fixT.state);
+				obs.ebondT += +0.5*U * avg(g_fixT.state, H.nh(i), g_fixT.state);
+				obs.ebondT +=  V * avg(g_fixT.state, H.TdagT(i,j), g_fixT.state);
+				obs.ebondT +=  J * avg(g_fixT.state, H.SdagS(i,j), g_fixT.state);
+			}
+			obs.ebondT /= 10.;
+			
+			lout << "ebond=" << obs.ebond << ", ebondT=" << obs.ebondT << endl;
+			lout << "Tgap_bond=" << L*(obs.ebondT-obs.ebond) << endl;
+		}
+		if (CALC_SGAP)
+		{
+			obs.ebondS = 0;
+			for (int d=-5; d<5; ++d)
+			{
+				int i = L/2+d; int j = L/2+d+1;
+				obs.ebondT += -t * avg(g_fixS.state, H.cdagc(i,j), g_fixS.state);
+				obs.ebondT += +0.5*U * avg(g_fixS.state, H.nh(i), g_fixS.state);
+				obs.ebondT +=  V * avg(g_fixS.state, H.TdagT(i,j), g_fixS.state);
+				obs.ebondT +=  J * avg(g_fixS.state, H.SdagS(i,j), g_fixS.state);
+			}
+			obs.ebondS /= 10.;
+			
+			lout << "ebond=" << obs.ebond << ", ebondS=" << obs.ebondS << endl;
+			lout << "Sgap_bond=" << L*(obs.ebondS-obs.ebond) << endl;
+		}
+		if (CALC_CGAP)
+		{
+			obs.ebondC = 0;
+			for (int d=-5; d<5; ++d)
+			{
+				int i = L/2+d; int j = L/2+d+1;
+				obs.ebondT += -t * avg(g_fixC.state, H.cdagc(i,j), g_fixC.state);
+				obs.ebondT += +0.5*U * avg(g_fixC.state, H.nh(i), g_fixC.state);
+				obs.ebondT +=  V * avg(g_fixC.state, H.TdagT(i,j), g_fixC.state);
+				obs.ebondT +=  J * avg(g_fixC.state, H.SdagS(i,j), g_fixC.state);
+			}
+			obs.ebondC /= 10.;
+			
+			lout << "ebond=" << obs.ebond << ", ebondC=" << obs.ebondC << endl;
+			lout << "Cgap_bond=" << L*(obs.ebondC-obs.ebond) << endl;
+		}
 		
-		#pragma omp parallel for collapse(2)
-		for (size_t x=0; x<L-1; ++x)
+//		lout << "SdagS=" << avg(g_fix.state, H.SdagS(L/2,L/2+1), g_fix.state) << endl;
+//		#ifdef USING_SO4
+//		lout << "TdagT=" << avg(g_fix.state, H.TdagT(L/2,L/2+1), g_fix.state) << endl;
+//		lout << "SdagS*TdagT=" << avg(g_fix.state, H.SdagS(L/2,L/2+1), H.TdagT(L/2+1,L/2+2), g_fix.state) << endl;
+//		#else
+//		lout << "TpTm=" << avg(g_fix.state, H.TpTm(L/2,L/2+1), g_fix.state) << endl;
+//		lout << "TzTz=" << avg(g_fix.state, H.TzTz(L/2,L/2+1), g_fix.state) << endl;
+//		lout << "SdagS*TdagT=" 
+//		     << avg(g_fix.state, H.SdagS(L/2,L/2+1), H.TpTm(L/2+1,L/2+2), g_fix.state)+
+//		        avg(g_fix.state, H.SdagS(L/2,L/2+1), H.TzTz(L/2+1,L/2+2), g_fix.state)
+//		     << endl;
+//		lout << "S*Tz=" << avg(g_fix.state, H.S(L/2), H.Tz(L/2+1), g_fix.state) << endl;
+//		lout << "S*Tx=" << avg(g_fix.state, H.S(L/2), H.Tx(L/2+1), g_fix.state) << endl;
+//		lout << "ns*nh=" << avg(g_fix.state, H.ns(L/2), H.nh(L/2+1), g_fix.state) 
+//		                   -avg(g_fix.state, H.ns(L/2), g_fix.state)*avg(g_fix.state, H.nh(L/2+1), g_fix.state) << endl;
+//		#endif
+		
+//		#pragma omp parallel for collapse(2)
+		for (size_t x=0; x<L; ++x)
 		for (size_t y=0; y<Ly; ++y)
 		{
 			obs.nh(x,y) = avg(g_fix.state, H.nh(Geo1cell(x,y)), g_fix.state);
 			obs.ns(x,y) = avg(g_fix.state, H.ns(Geo1cell(x,y)), g_fix.state);
 //			obs.nhvar(x,y) = avg(g_fix.state, H.nhsq(Geo1cell(x,y)), g_fix.state) - pow(obs.nh(x,y),2);
 //			obs.nsvar(x,y) = avg(g_fix.state, H.nssq(Geo1cell(x,y)), g_fix.state) - pow(obs.ns(x,y),2);
-			obs.spectrum[x][y] = g_fix.state.entanglementSpectrumLoc(Geo1cell(x,y));
+			if (x<L-1)
+			{
+				obs.spectrum[x][y] = g_fix.state.entanglementSpectrumLoc(Geo1cell(x,y));
+//				lout << "spec=" << endl << obs.spectrum[x][y] << endl;
+			}
+			
+			lout << "x,y=" << x << "," << y 
+			     << ", nh=" << obs.nh(x,y) 
+			     << ", ns=" << obs.ns(x,y) 
+//			     << ", n=" << avg(g_fix.state, H.n<UP>(Geo1cell(x,y)), g_fix.state) + avg(g_fix.state, H.n<DN>(Geo1cell(x,y)), g_fix.state)
+//			     << ", d=" << avg(g_fix.state, H.d(Geo1cell(x,y)), g_fix.state)
+			     << endl;
+			
+			#if defined(USING_U0) || defined(USING_U1SPIN)
+			obs.sz(x,y) = avg(g_fix.state, H.Scomp(SZ,Geo1cell(x,y)), g_fix.state);
+			obs.sx(x,y) = avg(g_fix.state, H.Scomp(SX,Geo1cell(x,y)), g_fix.state);
+			obs.isy(x,y) = avg(g_fix.state, H.Scomp(iSY,Geo1cell(x,y)), g_fix.state);
+			double s = sqrt(obs.sz(x,y)*obs.sz(x,y)-obs.isy(x,y)*obs.isy(x,y)+obs.sx(x,y)*obs.sx(x,y));
+			lout << "sz=" << obs.sz(x,y) << ", sx=" << obs.sx(x,y) << ", isy="<< obs.isy(x,y) << ", s=" << s << endl;
+			#endif
+			#if not defined(USING_SO4)
+			obs.tz(x,y) = avg(g_fix.state, H.Tz(Geo1cell(x,y)), g_fix.state);
+			obs.tx(x,y) = avg(g_fix.state, H.Tx(Geo1cell(x,y)), g_fix.state);
+			obs.ity(x,y) = avg(g_fix.state, H.iTy(Geo1cell(x,y)), g_fix.state);
+			double t = sqrt(obs.tz(x,y)*obs.tz(x,y)-obs.ity(x,y)*obs.ity(x,y)+obs.tx(x,y)*obs.tx(x,y));
+			lout << "tz=" << obs.tz(x,y) << ", tx=" << obs.tx(x,y) << ", ity="<< obs.ity(x,y) << ", t=" << t << endl;
+			#endif
 		}
 		
 		for (size_t x=0; x<L-1; ++x)
@@ -1291,23 +1351,8 @@ int main (int argc, char* argv[])
 			for (int j=0; j<=i; ++j)
 			{
 				double symfactor = (i==j)? 1.:2.;
-				#ifdef USING_SO4
-				{
-					Tsq += symfactor * avg(g_fix.state, H.TdagT(i,j), g_fix.state);
-				}
-				#else
-				{
-					Tsq += symfactor * 0.5 * avg(g_fix.state, H.TpTm(i,j), g_fix.state);
-					Tsq += symfactor * 0.5 * avg(g_fix.state, H.TmTp(i,j), g_fix.state);
-					Tsq += symfactor *       avg(g_fix.state, H.TzTz(i,j), g_fix.state);
-				}
-				#endif
-				
-				#ifdef USING_U0
-				Ssq += symfactor * (avg(g_fix.state, H.SpSm(i,j), g_fix.state) + avg(g_fix.state, H.SzSz(i,j), g_fix.state));
-				#else
+				Tsq += symfactor * avg(g_fix.state, H.TdagT(i,j), g_fix.state);
 				Ssq += symfactor * avg(g_fix.state, H.SdagS(i,j), g_fix.state);
-				#endif
 			}
 			obs.Tsq = Tsq;
 			obs.Ssq = Ssq;
@@ -1361,7 +1406,7 @@ int main (int argc, char* argv[])
 					CDW += symfactor * pow(-1.,i+j) * avg(g_fix.state, H.TdagT(i,j), g_fix.state);
 					SDW += symfactor * pow(-1.,i+j) * avg(g_fix.state, H.SdagS(i,j), g_fix.state);
 				}
-				#elif defined(USING_U0)
+				#elif defined(USING_U0) || defined(USING_U1xU1) || defined(USING_U1SPIN)
 				{
 					BOW += 0; // not implemented
 				}
@@ -1388,16 +1433,15 @@ int main (int argc, char* argv[])
 		lout << "ns=" << obs.ns.sum()/volume << endl;
 		lout << "nh=" << obs.nh.sum()/volume << endl;
 		
-		if (std::is_same<MODEL,VMPS::HubbardSU2>::value)
+		#ifdef USING_SU2 || USING_U1SPIN
+		double n = 0.;
+		for (int l=0; l<L; ++l)
 		{
-			double n = 0.;
-			for (int l=0; l<L; ++l)
-			{
-				n += avg(g_fix.state, H.n(l), g_fix.state);
-			}
-			n /= volume;
-			lout << "n=" << n << endl;
+			n += avg(g_fix.state, H.n(l), g_fix.state);
 		}
+		n /= volume;
+		lout << "n=" << n << endl;
+		#endif
 		
 		HDF5Interface target;
 		std::stringstream bond;
@@ -1417,6 +1461,11 @@ int main (int argc, char* argv[])
 			target.save_scalar(obs.energyS,"energyS",bond.str());
 			target.save_scalar(obs.ebondS,"ebondS",bond.str());
 		}
+		if (CALC_CGAP)
+		{
+			target.save_scalar(obs.energyC,"energyC",bond.str());
+			target.save_scalar(obs.ebondC,"ebondC",bond.str());
+		}
 		target.save_scalar(obs.dedV,"dedV",bond.str());
 		target.save_scalar(g_fix.state.calc_Dmax(),"Dmax",bond.str());
 		target.save_scalar(g_fix.state.calc_Mmax(),"Mmax",bond.str());
@@ -1426,6 +1475,12 @@ int main (int argc, char* argv[])
 		
 		target.save_matrix(obs.nh,"nh",bond.str());
 		target.save_matrix(obs.ns,"ns",bond.str());
+		target.save_matrix(obs.sz,"sz",bond.str());
+		target.save_matrix(obs.sx,"sx",bond.str());
+		target.save_matrix(obs.isy,"isy",bond.str());
+		target.save_matrix(obs.tz,"tz",bond.str());
+		target.save_matrix(obs.tx,"tx",bond.str());
+		target.save_matrix(obs.ity,"ity",bond.str());
 		for (size_t x=0; x<L; ++x)
 		for (size_t y=0; y<Ly; ++y)
 		{

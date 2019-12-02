@@ -281,6 +281,21 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
+Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
+            const vector<Mpo<Symmetry,MpoScalar>> &O, 
+            const Mps<Symmetry,Scalar> &Vket, 
+            bool USE_SQUARE = false,  
+            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT)
+{
+	Scalar out = 0;
+	for (int i=0; i<O.size(); ++i)
+	{
+		out += avg(Vbra, O[i], Vket, USE_SQUARE, DIR);
+	}
+	return out;
+}
+
+template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra, 
                    const Mpo<Symmetry,MpoScalar> &O, 
                    const Mps<Symmetry,Scalar> &Vket, 
@@ -620,7 +635,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	auto Qt = Symmetry::reduceSilent(Vin.Qtarget(), O.Qtarget());
 	bool TRIVIAL_BOUNDARIES=false;
 	if (Vin.Boundaries.IS_TRIVIAL()){TRIVIAL_BOUNDARIES=true;}
-		
+	
 	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qt[0], O.volume(), 100ul, TRIVIAL_BOUNDARIES);
 	Vout.set_Qmultitarget(Qt);
 	Vout.min_Nsv = Vin.min_Nsv;
@@ -697,7 +712,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	{
 		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 		Mps<Symmetry,Scalar> Vtmp;
-		Compadre.stateCompress(Vout, Vtmp, Vin.calc_Dmax(), tol_compr, 200);
+		Compadre.stateCompress(Vout, Vtmp, 2ul, tol_compr, 200);
 		
 		Vout = Vtmp;
 		// shouldn't matter, but just to be sure:

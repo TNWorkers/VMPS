@@ -87,6 +87,7 @@ add_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
 {
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = Terms.size();
+	
 	for(std::size_t loc=0; loc<N_sites; ++loc)
 	{
 		std::size_t orbitals = F[loc].orbitals();

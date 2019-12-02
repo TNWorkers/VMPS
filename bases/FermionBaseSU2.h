@@ -324,7 +324,7 @@ FermionBase (std::size_t L_input, bool U_IS_INFINITE, bool UPH_IS_INFINITE)
 			TensorBasis = TensorBasis.combine(basis_1s);
 		}
 	}
-	cout << "Tensor Basis:" << endl << TensorBasis << endl;
+//	cout << "Tensor Basis:" << endl << TensorBasis << endl;
 }
 
 SiteOperatorQ<Sym::SU2<Sym::SpinSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > FermionBase<Sym::SU2<Sym::SpinSU2> >::

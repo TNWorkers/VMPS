@@ -34,10 +34,7 @@ public:
 	Mpo<Symmetry> cc (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> cdagcdag (size_t locx, size_t locy=0) const;
 	template<SPIN_INDEX sigma> Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	
-	Mpo<Symmetry> TpTm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> TmTp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> TzTz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	vector<Mpo<Symmetry> > cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 	///@{
@@ -55,23 +52,25 @@ public:
 	///@}
 	
 	///@{
+	Mpo<Symmetry> Tp (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Tm (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Tx (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> iTy (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Tz (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> TpTm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
+	Mpo<Symmetry> TmTp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
+	Mpo<Symmetry> TzTz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	vector<Mpo<Symmetry> > TdagT (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	///@}
+	
+	///@{
 	Mpo<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
-	Mpo<Symmetry> ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2);};
 	Mpo<Symmetry> Sz (size_t locx, size_t locy=0) const;
-	Mpo<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	///@}
-	
-	///@{
-//	Mpo<Symmetry,complex<double> > doublonPacket (complex<double> (*f)(int)) const;
-//	Mpo<Symmetry,complex<double> > electronPacket (complex<double> (*f)(int)) const;
-//	Mpo<Symmetry,complex<double> > holePacket (complex<double> (*f)(int)) const;
-	///@}
-	
-	///@{
-//	Mpo<Symmetry> triplon (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
-//	Mpo<Symmetry> antitriplon (SPIN_INDEX sigma, size_t locx, size_t locy=0) const;
-//	Mpo<Symmetry> quadruplon (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
+	Mpo<Symmetry> SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2,fac);};
+	Mpo<Symmetry> SmSp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SM,SP,locx1,locx2,locy1,locy2,fac);};
+	Mpo<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2,1.);};
+	vector<Mpo<Symmetry> > SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 protected:
@@ -221,27 +220,13 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 }
 
 template<typename Symmetry>
-Mpo<Symmetry> HubbardObservables<Symmetry>::
-TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+vector<Mpo<Symmetry> > HubbardObservables<Symmetry>::
+cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	stringstream ss;
-	return make_corr("T+","T-", locx1,locx2,locy1,locy2, pow(-1.,locx1+locy1)*F[locx1].cc(locy1), pow(-1.,locx2+locy2)*F[locx2].cdagcdag(locy2), false);
-}
-
-template<typename Symmetry>
-Mpo<Symmetry> HubbardObservables<Symmetry>::
-TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	stringstream ss;
-	return make_corr("T+","T-", locx1,locx2,locy1,locy2, pow(-1.,locx2+locy2)*F[locx1].cdagcdag(locy1), pow(-1.,locx1+locy1)*F[locx2].cc(locy2), false);
-}
-
-template<typename Symmetry>
-Mpo<Symmetry> HubbardObservables<Symmetry>::
-TzTz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	stringstream ss;
-	return make_corr("Tz","Tz", locx1,locx2,locy1,locy2, F[locx1].Tz(locy1), F[locx2].Tz(locy2), true);
+	vector<Mpo<Symmetry> > out(2);
+	out[0] = cdagc<UP>(locx1,locx2,locy1,locy2);
+	out[1] = cdagc<DN>(locx1,locx2,locy1,locy2);
+	return out;
 }
 
 //-------------
@@ -288,10 +273,72 @@ n (size_t locx, size_t locy) const
 
 template<typename Symmetry>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
-n (size_t locx, size_t locy) const
+Tz (size_t locx, size_t locy) const
 {
-	return make_local("n", locx,locy, F[locx].n(locy), false, true);
-	// FERMIONIC=false, HERMITIAN=true
+	return make_local("Tz", locx,locy, 0.5*(F[locx].n(locy)-F[locx].Id()), false, true);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+Tx (size_t locx, size_t locy) const
+{
+	return make_local("Tx", locx,locy, 0.5*pow(-1,locx+locy)*(F[locx].cdagcdag(locy)+F[locx].cc(locy)), false, true);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+iTy (size_t locx, size_t locy) const
+{
+	return make_local("Tx", locx,locy, 0.5*pow(-1,locx+locy)*(F[locx].cdagcdag(locy)-F[locx].cc(locy)), false, true);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+Tm (size_t locx, size_t locy) const
+{
+	return make_local("T-", locx,locy, pow(-1,locx+locy)*F[locx].cdagcdag(locy), false, false);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+Tp (size_t locx, size_t locy) const
+{
+	return make_local("T+", locx,locy, pow(-1,locx+locy)*F[locx].cc(locy), false, false);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double fac) const
+{
+	stringstream ss;
+	return make_corr("T+","T-", locx1,locx2,locy1,locy2, fac*pow(-1.,locx1+locy1)*F[locx1].cc(locy1), pow(-1.,locx2+locy2)*F[locx2].cdagcdag(locy2), false);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double fac) const
+{
+	stringstream ss;
+	return make_corr("T+","T-", locx1,locx2,locy1,locy2, fac*pow(-1.,locx2+locy2)*F[locx1].cdagcdag(locy1), pow(-1.,locx1+locy1)*F[locx2].cc(locy2), false);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+TzTz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss;
+	return make_corr("Tz","Tz", locx1,locx2,locy1,locy2, F[locx1].Tz(locy1), F[locx2].Tz(locy2), true);
+}
+
+template<typename Symmetry>
+vector<Mpo<Symmetry> > HubbardObservables<Symmetry>::
+TdagT (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	vector<Mpo<Symmetry> > out(3);
+	out[0] = TzTz(locx1,locx2,locy1,locy2);
+	out[1] = TpTm(locx1,locx2,locy1,locy2,0.5);
+	out[2] = TmTp(locx1,locx2,locy1,locy2,0.5);
+	return out;
 }
 
 template<typename Symmetry>
@@ -346,12 +393,12 @@ Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 
 template<typename Symmetry>
 Mpo<Symmetry> HubbardObservables<Symmetry>::
-ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, double fac) const
 {
 	stringstream ss1; ss1 << Sa1;
 	stringstream ss2; ss2 << Sa2;
 	bool HERMITIAN = false;
-	return make_corr(ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, F[locx1].Scomp(Sa1,locy1), F[locx2].Scomp(Sa2,locy2), HERMITIAN);
+	return make_corr(ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, fac*F[locx1].Scomp(Sa1,locy1), F[locx2].Scomp(Sa2,locy2), HERMITIAN);
 }
 
 template<typename Symmetry>
@@ -362,10 +409,14 @@ Sz (size_t locx, size_t locy) const
 }
 
 template<typename Symmetry>
-Mpo<Symmetry> HubbardObservables<Symmetry>::
-SzSz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+vector<Mpo<Symmetry> > HubbardObservables<Symmetry>::
+SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2);
+	vector<Mpo<Symmetry> > out(3);
+	out[0] = SzSz(locx1,locx2,locy1,locy2);
+	out[1] = SpSm(locx1,locx2,locy1,locy2,0.5);
+	out[2] = SmSp(locx1,locx2,locy1,locy2,0.5);
+	return out;
 }
 
 #endif
