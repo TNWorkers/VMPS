@@ -696,6 +696,8 @@ Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_in
 	else {Boundaries.TRIVIAL_BOUNDARIES = false;}
 	Qmulti = vector<qarray<Nq> >(1,Qtot);
 	outerResize(L_input, qloc_input, Qtot_input, Qmax_input);
+	update_inbase();
+	update_outbase();
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1270,6 +1272,9 @@ innerResize (size_t Dmax)
 			}
 		}
 	}
+	
+	update_inbase();
+	update_outbase();
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1710,6 +1715,15 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		{
 			// do the glue
 			size_t Nrows = A[loc][svec[0]].block[qvec[0]].rows();
+//			if (Qtot[0] == 5)
+//			{
+//				for (size_t i=0; i<svec.size(); ++i)
+//				{
+//					cout << "loc=" << loc << ", i=" << i << ", A[loc][svec[i]].block[qvec[i]].rows()=" << A[loc][svec[i]].block[qvec[i]].rows() 
+//					     << ", in=" << A[loc][svec[i]].in[qvec[i]] << ", out=" << A[loc][svec[i]].out[qvec[i]] << endl;
+//				}
+//				cout << endl;
+//			}
 			for (size_t i=1; i<svec.size(); ++i) assert(A[loc][svec[i]].block[qvec[i]].rows() == Nrows);
 			size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
 			
@@ -3143,39 +3157,22 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 	}
 	
 	Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > L; 
-	//L.setVacuum();
 	L.setIdentity(inBasis(0), inBasis(0));
 	Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > Lnext;
 	
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
-//		cout << "l=" << l << ", L.dim=" << L.dim << endl;
-//		cout << "L=" << endl;
-//		cout << L.print() << endl;
-//		
-//		cout << "A=" << endl;
-//		for (size_t s=0; s<A[l].size(); ++s)
-//		{
-//			cout << "s=" << s << endl;
-//			cout << A[l][s].print() << endl;
-//		}
-//		
-//		cout << "Aket=" << endl;
-//		for (size_t s=0; s<Vket.A_at(l).size(); ++s)
-//		{
-//			cout << "s=" << s << endl;
-//			cout << Vket.A_at(l)[s].print() << endl;
-//		}
-		
 		contract_L(L, A[l], Vket.A_at(l), qloc[l], Lnext);
 		L.clear();
 		L = Lnext;
 		Lnext.clear();
 	}
 	
-//	Scalar out = L.trace();
-//	return out;
+//	cout << "Qmulti.size()=" << Qmulti.size() << endl;
 	Lnext.setIdentity(outBasis(this->N_sites-1), outBasis(this->N_sites-1));
+	
+//	auto res = L.contract(Lnext);
+//	cout << res.print(false) << endl;
 	
 	return L.contract(Lnext).trace();
 }

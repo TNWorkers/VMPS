@@ -11,6 +11,7 @@
 //include "ParamHandler.h" // from HELPERS
 //include "symmetry/kind_dummies.h"
 #include "ParamReturner.h"
+#include "Geometry2D.h" // from TOOLS
 
 namespace VMPS
 {

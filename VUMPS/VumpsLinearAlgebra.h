@@ -104,7 +104,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 		B = Bnext;
 		Bnext.clear();
 //		cout << "l=" << l << ", B.dim=" << B.dim << endl;
-//		if (l==1)
+//		if (l==O1.length()-1)
 //		{
 //			cout << B.print() << endl;
 //		}
@@ -130,6 +130,23 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	{
 //		cout << "partial val=" << avg(Vbra,O[t],Vket) << endl;
 		out += avg(Vbra,O[t],Vket);
+	}
+	return out;
+}
+
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+Scalar avg (const Umps<Symmetry,Scalar> &Vbra, 
+            const vector<Mpo<Symmetry,MpoScalar> > &O1, 
+            const vector<Mpo<Symmetry,MpoScalar> > &O2, 
+            const Umps<Symmetry,Scalar> &Vket)
+{
+	Scalar out = 0;
+	
+	for (int i=0; i<O1.size(); ++i)
+	for (int j=0; j<O2.size(); ++j)
+	{
+		cout << "partial val=" << avg(Vbra, O1[i], O2[j], Vket) << endl;
+		out += avg(Vbra, O1[i], O2[j], Vket);
 	}
 	return out;
 }

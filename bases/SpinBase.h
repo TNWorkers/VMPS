@@ -7,6 +7,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <unsupported/Eigen/KroneckerProduct>
+#include <unsupported/Eigen/MatrixFunctions>
 /// \endcond
 
 #include "DmrgTypedefs.h" // for SPIN_INDEX, SPINOP_LABEL
@@ -69,6 +70,8 @@ public:
 	OperatorType sign (int orb1=0, int orb2=0) const;
 	
 	OperatorType Id() const;
+	
+	OperatorType beadz() const;
 	
 	/**Returns an array of size dim() with zeros.*/
 	ArrayXd ZeroField() const { return ArrayXd::Zero(N_orbitals); }
@@ -191,6 +194,23 @@ SiteOperator<Symmetry,double> SpinBase<Symmetry>::
 Id() const
 {
 	SparseMatrixXd mat = MatrixXd::Identity(N_states,N_states).sparseView();
+	OperatorType Oout(mat,Symmetry::qvacuum());
+	return Oout;
+}
+
+template<typename Symmetry>
+SiteOperator<Symmetry,double> SpinBase<Symmetry>::
+beadz() const
+{
+	MatrixXd Szdiag = Scomp(SZ,0).data;
+	MatrixXd tmp(D,D); tmp.setZero();
+	
+	for (int i=0; i<D; ++i)
+	{
+		// not sure if true for S>1
+		tmp(i,i) = exp(1.i*M_PI*2./(double(D)-1.) * Szdiag(i,i)).real();
+	}
+	SparseMatrixXd mat = tmp.sparseView();
 	OperatorType Oout(mat,Symmetry::qvacuum());
 	return Oout;
 }

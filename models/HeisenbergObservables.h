@@ -34,7 +34,11 @@ public:
 	Mpo<Symmetry> SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2,fac);};
 	Mpo<Symmetry> SmSp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SM,SP,locx1,locx2,locy1,locy2,fac);};
 	Mpo<Symmetry> SxSx (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SX,SX,locx1,locx2,locy1,locy2,fac);};
-		vector<Mpo<Symmetry> > SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	vector<Mpo<Symmetry> > SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	///@}
+	
+	///@{
+	Mpo<Symmetry> Stringz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 protected:
@@ -116,6 +120,24 @@ ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size
 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
 	Mout.setLocal({locx1,locx2}, {fac*Op1,Op2});
+	return Mout;
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HeisenbergObservables<Symmetry>::
+Stringz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	assert(locx1<B.size() and locx2<B.size() and locy1<B[locx1].dim() and locy2<B[locx2].dim());
+	stringstream ss;
+	ss << "Sz" << "(" << locx1 << "," << locy1 << ")" << "Sz" << "(" << locx2 << "," << locy2 << ")";
+	
+	OperatorType Op1 = B[locx1].Scomp(SZ,locy1);
+	OperatorType Op2 = B[locx2].Scomp(SZ,locy2);
+	
+	Mpo<Symmetry> Mout(B.size(), Op1.Q+Op2.Q, ss.str(), false);
+	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
+	
+	Mout.setLocal({locx1,locx2}, {Op1,Op2}, B[0].beadz());
 	return Mout;
 }
 

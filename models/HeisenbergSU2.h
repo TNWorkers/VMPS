@@ -73,13 +73,13 @@ public:
 	
 	///@{
 	/**Observables.*/
-	Mpo<Symmetry,double> S     (std::size_t locx,  std::size_t locy=0, double factor=1.);
-	Mpo<Symmetry,double> Sdag  (std::size_t locx,  std::size_t locy=0, double factor=sqrt(3.));
-	Mpo<Symmetry,double> SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
+	Mpo<Symmetry,double> S     (std::size_t locx,  std::size_t locy=0, double factor=1.) const;
+	Mpo<Symmetry,double> Sdag  (std::size_t locx,  std::size_t locy=0, double factor=sqrt(3.)) const;
+	Mpo<Symmetry,double> SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0) const;
 	///@}
 	
-	Mpo<Symmetry,complex<double> > S_ky    (const vector<complex<double> > &phases);
-	Mpo<Symmetry,complex<double> > Sdag_ky (const vector<complex<double> > &phases, double factor=sqrt(3.));
+	Mpo<Symmetry,complex<double> > S_ky    (const vector<complex<double> > &phases) const;
+	Mpo<Symmetry,complex<double> > Sdag_ky (const vector<complex<double> > &phases, double factor=sqrt(3.)) const;
 	
 	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an Mps.
 	\returns \p true if valid, \p false if not*/
@@ -133,7 +133,7 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params)
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
-S (std::size_t locx, std::size_t locy, double factor)
+S (std::size_t locx, std::size_t locy, double factor) const
 {
 	assert(locx<this->N_sites);
 	std::stringstream ss;
@@ -149,7 +149,7 @@ S (std::size_t locx, std::size_t locy, double factor)
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
-Sdag (std::size_t locx, std::size_t locy, double factor)
+Sdag (std::size_t locx, std::size_t locy, double factor) const
 {
 	assert(locx<this->N_sites);
 	std::stringstream ss;
@@ -165,7 +165,7 @@ Sdag (std::size_t locx, std::size_t locy, double factor)
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
-SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
+SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2) const
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
 	std::stringstream ss;
@@ -190,7 +190,7 @@ SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HeisenbergSU2::
-S_ky (const vector<complex<double> > &phases)
+S_ky (const vector<complex<double> > &phases) const
 {
 	stringstream ss;
 	ss << "S" << "_ky(";
@@ -223,7 +223,7 @@ S_ky (const vector<complex<double> > &phases)
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HeisenbergSU2::
-Sdag_ky (const vector<complex<double> > &phases, double factor)
+Sdag_ky (const vector<complex<double> > &phases, double factor) const
 {
 	stringstream ss;
 	ss << "S†" << "_ky(";

@@ -616,11 +616,11 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 //		Vout.state.graph("init");
 		Vout.state.max_Nsv = GlobParam.Dlimit;
 		// Vout.state.min_Nsv = DynParam.min_Nsv(0);
-		Vout.state.setRandom();
-		for (size_t l=0; l<N_sites; ++l)
-		{
-			Vout.state.svdDecompose(l);
-		}
+//		Vout.state.setRandom();
+//		for (size_t l=0; l<N_sites; ++l)
+//		{
+//			Vout.state.svdDecompose(l);
+//		}
 	}
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
@@ -1126,7 +1126,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		for (size_t l=0; l<N_sites; ++l)
 		{
 			precalc_blockStructure (HeffA[l].L, Vout.state.A[GAUGE::C][l], HeffA[l].W, Vout.state.A[GAUGE::C][l], HeffA[l].R, 
-				                    H.locBasis(l), H.opBasis(l), HeffA[l].qlhs, HeffA[l].qrhs, HeffA[l].factor_cgcs);
+			                        H.locBasis(l), H.opBasis(l), HeffA[l].qlhs, HeffA[l].qrhs, HeffA[l].factor_cgcs);
 			
 			Eigenstate<PivotVector<Symmetry,Scalar> > gAC;
 			Eigenstate<PivotVector<Symmetry,Scalar> > gC;
@@ -1786,7 +1786,9 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 			iteration_sequential(H,Vout);
 		}
 		
+		FORCE_DO_SOMETHING = true;
 		DynParam.doSomething(N_iterations);
+		FORCE_DO_SOMETHING = false;
 		
 		write_log();
 		#ifdef USE_HDF5_STORAGE

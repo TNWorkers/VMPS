@@ -38,7 +38,7 @@ public:
 	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > Symmetry;
 	MAKE_TYPEDEFS(HubbardSU2xSU2)
 	
-	static qarray<2> singlet (int N) {return qarray<2>{1,1};};
+	static qarray<2> singlet (int N=0) {return qarray<2>{1,1};};
 	
 private:
 	
@@ -66,6 +66,10 @@ public:
 	
 	Mpo<Symmetry> B (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return cdagc(locx1,locx2,locy1,locy2);};
 	Mpo<Symmetry> C (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	
+	Mpo<Symmetry> cc3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> cdagcdag3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> triplet (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	Mpo<Symmetry> S (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> Sdag (size_t locx, size_t locy=0, double factor=sqrt(3.)) const;
@@ -560,6 +564,97 @@ Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU
 C (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	return make_corr("c†", "c", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].c(locy2), {3,1}, 2., PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
+cc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr("c", "c", locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), {3,1}, 2., PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
+cdagcdag3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr("c†", "c†", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), {3,1}, 2., PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
+triplet (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	assert(locx1<this->N_sites and locx2<this->N_sites);
+	stringstream ss;
+	ss << "c†(" << locx1 << "," << locy1 << ")" << "c†(" << locx2 << "," << locy2 << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, {3,0}, ss.str());
+	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	auto cdag1 = F[locx1].cdag(locy1);
+	auto cdag2 = F[locx1+1].cdag(locy1);
+	auto c1 = F[locx2].c(locy1);
+	auto c2 = F[locx2+1].c(locy1);
+	
+	if (locx1 == locx2)
+	{
+		throw;
+//		Mout.setLocal(locx1, sqrt(2.) * OperatorType::prod(cdag1, cdag2, {3,+2}).plain<double>());
+	}
+	else if (locx1<locx2)
+	{
+		Mout.setLocal({locx1, locx1+1, locx2, locx2+1}, 
+		              {sqrt(2.) * OperatorType::prod(cdag1, F[locx1].sign(), cdag1.Q()).plain<double>(), 
+		                          cdag2.plain<double>(),
+		               sqrt(2.) * OperatorType::prod(c1, F[locx2].sign(), c1.Q()).plain<double>(),
+		                          c2.plain<double>()
+		              }
+		             );
+	}
+	else if (locx1>locx2)
+	{
+		throw;
+//		Mout.setLocal({locx2, locx1, locx2, locx2+1}, {sqrt(2.) * OperatorType::prod(cdag2, F[locx2].sign(), cdag2.Q()).plain<double>(), 
+//		                               cdag1.plain<double>()}, 
+//		                               F[0].sign().plain<double>());
+	}
+	for (int l=0; l<N_sites; ++l)
+	{
+		if (l==locx1)
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({2,1},1);
+		}
+		else if (l==locx1+1)
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({2,2},1);
+		}
+		else if (l>locx1+1 and l<locx2)
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({2,2},1);
+		}
+		else if (l==locx2)
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({3,1},1);
+		}
+		else if (l==locx2+1)
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({3,1},1);
+		}
+		else if (l>locx2+1)
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({3,0},1);
+		}
+		else
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({1,1},1);
+		}
+//		cout << "l=" << l << ", qaux=" << qaux[l] << endl;
+	}
+	return Mout;
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::

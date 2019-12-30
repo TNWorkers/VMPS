@@ -34,8 +34,14 @@ public:
 	Mpo<Symmetry> cc (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> cdagcdag (size_t locx, size_t locy=0) const;
 	template<SPIN_INDEX sigma> Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	vector<Mpo<Symmetry> > cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	vector<Mpo<Symmetry>> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> triplet (size_t locx, size_t locy=0) const;
 	///@}
+	
+	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2> Mpo<Symmetry> cdagcdag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	template<SPIN_INDEX sigma1, SPIN_INDEX sigma2> Mpo<Symmetry> cc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	vector<Mpo<Symmetry> > cc3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	vector<Mpo<Symmetry> > cdagcdag3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	///@{
 	Mpo<Symmetry> d (size_t locx, size_t locy=0) const;
@@ -66,12 +72,17 @@ public:
 	///@{
 	Mpo<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
 	Mpo<Symmetry> Sz (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Sp (size_t locx, size_t locy=0) const {return Scomp(SP,locx,locy);};
+	Mpo<Symmetry> Sm (size_t locx, size_t locy=0) const {return Scomp(SM,locx,locy);};
 	Mpo<Symmetry> ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
 	Mpo<Symmetry> SpSm (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SP,SM,locx1,locx2,locy1,locy2,fac);};
 	Mpo<Symmetry> SmSp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const {return ScompScomp(SM,SP,locx1,locx2,locy1,locy2,fac);};
 	Mpo<Symmetry> SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2,1.);};
 	vector<Mpo<Symmetry> > SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
+	
+	Mpo<Symmetry> Stringz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> StringzDimer (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 protected:
 	
@@ -220,13 +231,164 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 }
 
 template<typename Symmetry>
-vector<Mpo<Symmetry> > HubbardObservables<Symmetry>::
+vector<Mpo<Symmetry>> HubbardObservables<Symmetry>::
 cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	vector<Mpo<Symmetry> > out(2);
 	out[0] = cdagc<UP>(locx1,locx2,locy1,locy2);
 	out[1] = cdagc<DN>(locx1,locx2,locy1,locy2);
 	return out;
+}
+
+template<typename Symmetry>
+template<SPIN_INDEX sigma1, SPIN_INDEX sigma2>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+cc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	assert(locx1<F.size() and locx2<F.size() and locx1!=locx2);
+	stringstream ss;
+	ss << "c" << sigma1 << "(" << locx1 << "," << locy1 << "," << ")" 
+	   << "c" << sigma2 << "(" << locx2 << "," << locy2 << "," << ")";
+	
+	auto c1 = F[locx1].c(sigma1,locy1);
+	auto c2 = F[locx2].c(sigma2,locy2);
+	
+	Mpo<Symmetry> Mout(F.size(), c1.Q+c2.Q, ss.str());
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+	
+	if (locx1 == locx2)
+	{
+		throw;
+//		Mout.setLocal(locx1, cdag*c);
+	}
+	else if (locx1<locx2)
+	{
+		Mout.setLocal({locx1, locx2}, {c1*F[locx1].sign(), c2}, F[0].sign());
+	}
+	else if (locx1>locx2)
+	{
+		Mout.setLocal({locx2, locx1}, {c2*F[locx2].sign(), -1.*c1}, F[0].sign());
+	}
+	
+	return Mout;
+}
+
+template<typename Symmetry>
+template<SPIN_INDEX sigma1, SPIN_INDEX sigma2>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+cdagcdag (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	assert(locx1<F.size() and locx2<F.size() and locx1!=locx2);
+	stringstream ss;
+	ss << "c†" << sigma1 << "(" << locx1 << "," << locy1 << "," << ")" 
+	   << "c†" << sigma2 << "(" << locx2 << "," << locy2 << "," << ")";
+	
+	auto cdag1 = F[locx1].cdag(sigma1,locy1);
+	auto cdag2 = F[locx2].cdag(sigma2,locy2);
+	
+	Mpo<Symmetry> Mout(F.size(), cdag1.Q+cdag2.Q, ss.str());
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+	
+	if (locx1 == locx2)
+	{
+		throw;
+//		Mout.setLocal(locx1, cdag*c);
+	}
+	else if (locx1<locx2)
+	{
+		Mout.setLocal({locx1, locx2}, {cdag1*F[locx1].sign(), cdag2}, F[0].sign());
+	}
+	else if (locx1>locx2)
+	{
+		Mout.setLocal({locx2, locx1}, {cdag2*F[locx2].sign(), -1.*cdag1}, F[0].sign());
+	}
+	
+	return Mout;
+}
+
+template<typename Symmetry>
+vector<Mpo<Symmetry>> HubbardObservables<Symmetry>::
+cc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	vector<Mpo<Symmetry> > out(2);
+	out[0] = cc<UP,DN>(locx1,locx2,locy1,locy2);
+	out[1] = cc<DN,UP>(locx1,locx2,locy1,locy2);
+	return out;
+}
+
+template<typename Symmetry>
+vector<Mpo<Symmetry>> HubbardObservables<Symmetry>::
+cdagcdag3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	vector<Mpo<Symmetry> > out(2);
+	out[0] = cdagcdag<DN,UP>(locx1,locx2,locy1,locy2);
+	out[1] = cdagcdag<UP,DN>(locx1,locx2,locy1,locy2);
+	return out;
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+Stringz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	assert(locx1<F.size() and locx2<F.size());
+	stringstream ss;
+	ss << "Sz" << "(" << locx1 << "," << locy1 << "," << ")" 
+	   << "Sz" << "(" << locx2 << "," << locy2 << "," << ")";
+	
+	auto Sz1 = F[locx1].Sz(locy1);
+	auto Sz2 = F[locx2].Sz(locy2);
+	
+	Mpo<Symmetry> Mout(F.size(), Sz1.Q+Sz2.Q, ss.str());
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+	
+	if (locx1 == locx2)
+	{
+		Mout.setLocal(locx1, Sz1*Sz2);
+	}
+	else if (locx1<locx2)
+	{
+		Mout.setLocal({locx1,locx2}, {Sz1,Sz2}, F[0].nh()-F[0].ns());
+//		Mout.setLocal({locx1,locx2}, {F[0].Id(),F[0].Id()}, F[0].nh()-F[0].ns());
+	}
+	else if (locx1>locx2)
+	{
+		throw;
+//		Mout.setLocal({locx2, locx1}, {c*F[locx2].sign(), -1.*cdag}, F[0].sign());
+	}
+	
+	return Mout;
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+StringzDimer (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	assert(locx1<F.size() and locx2<F.size());
+	stringstream ss;
+	ss << "Sz" << "(" << locx1 << "," << locy1 << "," << ")" 
+	   << "Sz" << "(" << locx2 << "," << locy2 << "," << ")";
+	
+	auto Sz1 = F[locx1].Sz(locy1);
+	auto Sz2 = F[locx2].Sz(locy2);
+	
+	Mpo<Symmetry> Mout(F.size(), Sz1.Q+Sz2.Q, ss.str());
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+	
+	if (locx1 == locx2)
+	{
+		throw;
+//		Mout.setLocal(locx1, Sz1*Sz2);
+	}
+	else if (locx1<locx2)
+	{
+		Mout.setLocal({locx1,locx2}, {-pow(-4,(locx2-(locx1-1)-2)/2)*Sz1,Sz2}, F[0].Sz());
+	}
+	else if (locx1>locx2)
+	{
+		throw;
+	}
+	
+	return Mout;
 }
 
 //-------------
@@ -268,6 +430,14 @@ Mpo<Symmetry> HubbardObservables<Symmetry>::
 n (size_t locx, size_t locy) const
 {
 	return make_local("n", locx,locy, F[locx].n(sigma,locy), false, true);
+	// FERMIONIC=false, HERMITIAN=true
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HubbardObservables<Symmetry>::
+n (size_t locx, size_t locy) const
+{
+	return make_local("n", locx,locy, F[locx].n(locy), false, true);
 	// FERMIONIC=false, HERMITIAN=true
 }
 
@@ -319,7 +489,7 @@ Mpo<Symmetry> HubbardObservables<Symmetry>::
 TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double fac) const
 {
 	stringstream ss;
-	return make_corr("T+","T-", locx1,locx2,locy1,locy2, fac*pow(-1.,locx2+locy2)*F[locx1].cdagcdag(locy1), pow(-1.,locx1+locy1)*F[locx2].cc(locy2), false);
+	return make_corr("T-","T+", locx1,locx2,locy1,locy2, fac*pow(-1.,locx2+locy2)*F[locx1].cdagcdag(locy1), pow(-1.,locx1+locy1)*F[locx2].cc(locy2), false);
 }
 
 template<typename Symmetry>
