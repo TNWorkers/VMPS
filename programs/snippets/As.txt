@@ -35,6 +35,10 @@
 			{
 				Qc_set.insert(qarray<2>({M,N-2}));
 			}
+			#elif defined(USING_SU2SPIN)
+			{
+				Qc_set.insert(qarray<1>({D}));
+			}
 			#endif
 		}
 		else if (spec == "APS")
@@ -53,16 +57,26 @@
 			{
 				Qc_set.insert(qarray<2>({M,N+2}));
 			}
+			#elif defined(USING_SU2SPIN)
+			{
+				Qc_set.insert(qarray<1>({D}));
+			}
 			#endif
 		}
 		else if (spec == "PES")
 		{
-			#ifdef USING_SU2
+			#ifdef USING_SU2 || USING_SU2SPIN
 			{
 				A[l] = H.c(l, 0, 1.);
 				Adag[l] = H.cdag(l, 0, sqrt(2.));
+				
+				#ifdef USING_SU2
 				Qc_set.insert(qarray<2>({D+1,N-1}));
 				if (D>1) {Qc_set.insert(qarray<2>({D-1,N-1}));}
+				#else
+				Qc_set.insert(qarray<2>({D+1}));
+				if (D>1) {Qc_set.insert(qarray<1>({D-1}));}
+				#endif
 			}
 			#elif defined(USING_SO4)
 			{
@@ -96,12 +110,18 @@
 		}
 		else if (spec == "IPES")
 		{
-			#ifdef USING_SU2
+			#ifdef USING_SU2) || USING_SU2SPIN
 			{
 				A[l] = H.cdag(l, 0, 1.);
 				Adag[l] = H.c(l, 0, sqrt(2.));
+				
+				#ifdef USING_SU2
 				Qc_set.insert(qarray<2>({D+1,N+1}));
 				if (D>1) {Qc_set.insert(qarray<2>({D-1,N+1}));}
+				#else
+				Qc_set.insert(qarray<2>({D+1}));
+				if (D>1) {Qc_set.insert(qarray<1>({D-1}));}
+				#endif
 			}
 			#elif defined(USING_SO4)
 			{
@@ -145,13 +165,19 @@
 		}
 		else if (spec == "SSF" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
 		{
-			#ifdef USING_SU2
+			#if defined(USING_SU2) || defined(USING_SU2SPIN)
 			{
 				A[l] = H.S(l);
 				Adag[l] = H.Sdag(l, 0, sqrt(3.));
-				Qc_set.insert({D+2,N});
-				if (D>1) {Qc_set.insert({D,N});}
-				if (D>2) {Qc_set.insert({D-2,N});}
+				#ifdef USING_SU2
+				Qc_set.insert({D+2});
+				if (D>1) {Qc_set.insert({D});}
+				if (D>2) {Qc_set.insert({D-2});}
+				#else
+				Qc_set.insert({D+2});
+				if (D>1) {Qc_set.insert({D});}
+				if (D>2) {Qc_set.insert({D-2});}
+				#endif
 			}
 			#elif defined(USING_U1) || defined(USING_U0)
 			{

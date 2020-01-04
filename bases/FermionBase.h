@@ -128,7 +128,7 @@ public:
 	 */
 	OperatorType nh (int orbital=0) const
 	{
-		return 2.*d(orbital)-n(orbital)-Id();
+		return 2.*d(orbital)-n(orbital)+Id();
 	};
 	
 	OperatorType cc (int orbital=0) const;
@@ -404,7 +404,7 @@ template<typename Symmetry>
 SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 cc (int orbital) const
 {
-	return OperatorType(c(DN,orbital).data*c(UP,orbital).data, getQ(UPDN,-2));
+	return OperatorType(c(DN,orbital).data*c(UP,orbital).data, getQ(UPDN,-1)); // gets multiplied by 2 in getQ
 }
 
 template<typename Symmetry>
@@ -413,7 +413,7 @@ cdagcdag (int orbital) const
 {
 //	return OperatorType(cdag(UP,orbital).data*cdag(DN,orbital).data, getQ(UPDN,+2));
 //	return OperatorType((c(DN,orbital).data*c(UP,orbital).data).transpose(), getQ(UPDN,+2));
-	return OperatorType(cc(orbital).data.transpose(), getQ(UPDN,+2));
+	return OperatorType(cc(orbital).data.transpose(), getQ(UPDN,+1));  // gets multiplied by 2 in getQ
 }
 
 template<typename Symmetry>
@@ -696,7 +696,6 @@ getQ (SPIN_INDEX sigma, int Delta) const
 			return out;
 		}
 		else {assert(false and "Ill defined KIND of the used Symmetry.");}
-	
 	}
 	else if constexpr (Symmetry::Nq == 2)
 	{
@@ -754,7 +753,7 @@ getQ (SPINOP_LABEL Sa) const
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) //return magnetization as good quantum number.
 		{
 			typename Symmetry::qType out;
-			if (Sa==SZ) {out = {0,0};}
+			if (Sa==SZ)      {out = {0};}
 			else if (Sa==SP) {out = {+2};}
 			else if (Sa==SM) {out = {-2};}
 			return out;

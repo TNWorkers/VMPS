@@ -347,9 +347,15 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 //			Vout.state.update_inbase();
 //			Vout.state.update_outbase();
 //		}
+		
+		Dmax_old = GlobParam.Dinit;
 	}
+	else
+	{
+		Dmax_old = Vout.state.max_Nsv;
+	}
+	
 //	Vout.state.graph("ginit");
-	Dmax_old = GlobParam.Dinit;
 	
 	//if the SweepStatus is default initialized (pivot==-1), one initial sweep from right-to-left and N_halfsweeps = N_sweepsteps = 0,
 	//otherwise prepare for continuing at the given SweepStatus.

@@ -119,7 +119,7 @@ Array<Scalar,Dynamic,1> matrix_element (int iL,
 }
 
 template<typename Symmetry, typename Scalar>
-ArrayXd dot_green (const Mps<Symmetry,Scalar> &V1, const Mps<Symmetry,Scalar>&V2)
+Array<Scalar,Dynamic,1> dot_green (const Mps<Symmetry,Scalar> &V1, const Mps<Symmetry,Scalar>&V2)
 {
 	assert(V1.length() == V2.length() and V1.locBasis() == V2.locBasis());
 	assert(V1.Qmultitarget().size() == V2.Qmultitarget().size());
@@ -281,6 +281,38 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
+Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
+            const vector<Mpo<Symmetry,MpoScalar>> &O, 
+            const Mps<Symmetry,Scalar> &Vket, 
+            bool USE_SQUARE = false,  
+            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT)
+{
+	Scalar out = 0;
+	for (int i=0; i<O.size(); ++i)
+	{
+		out += avg(Vbra, O[i], Vket, USE_SQUARE, DIR);
+	}
+	return out;
+}
+
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
+            const vector<Mpo<Symmetry,MpoScalar>> &O1,
+            const vector<Mpo<Symmetry,MpoScalar>> &O2,
+            const Mps<Symmetry,Scalar> &Vket, 
+            bool USE_SQUARE = false,  
+            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT)
+{
+	Scalar out = 0;
+	for (int i=0; i<O1.size(); ++i)
+	for (int j=0; j<O2.size(); ++j)
+	{
+		out += avg(Vbra, O1[i], O2[j], Vket, USE_SQUARE, DIR);
+	}
+	return out;
+}
+
+template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra, 
                    const Mpo<Symmetry,MpoScalar> &O, 
                    const Mps<Symmetry,Scalar> &Vket, 
@@ -329,8 +361,6 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > BR;
 	if (USE_BOUNDARY) {BR = Vket.get_boundaryTensor(DMRG::DIRECTION::RIGHT);}
 	else              {BR.setIdentity(O.auxcols(O.length()-1), 1, Vket.outBasis((O.length()-1)));}
-	
-//	BR.shift_Qmid(O.Qtarget()); // deprecated
 	
 	return contract_LR(B,BR);
 }
@@ -618,10 +648,15 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 {
 	size_t L = Vin.length();
 	auto Qt = Symmetry::reduceSilent(Vin.Qtarget(), O.Qtarget());
-	bool TRIVIAL_BOUNDARIES=false;
-	if (Vin.Boundaries.IS_TRIVIAL()){TRIVIAL_BOUNDARIES=true;}
-		
-	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qt[0], O.volume(), 100ul, TRIVIAL_BOUNDARIES);
+	bool TRIVIAL_BOUNDARIES = false;
+	if (Vin.Boundaries.IS_TRIVIAL()) {TRIVIAL_BOUNDARIES = true;}
+	
+//	for (int i=0; i<Qt.size(); ++i)
+//	{
+//		cout << "i=" << i << ", Qt[i]=" << Qt[i] << endl;
+//	}
+	
+	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qt[Qt.size()-1], O.volume(), 100ul, TRIVIAL_BOUNDARIES);
 	Vout.set_Qmultitarget(Qt);
 	Vout.min_Nsv = Vin.min_Nsv;
 	
@@ -669,12 +704,17 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 //	cout << termcolor::red << "--------after--------" << termcolor::reset << endl;
 //	cout << Vout.Boundaries.R.print() << endl;
 	
+	// FORCE_QTOT to create only one final block; 
+	// otherwise crashes when using the result for further calculations (e.g. ground-state sweeping).
+	// Irrelevant for infinite boundary conditions.
 	for (size_t l=0; l<L; ++l)
 	{
+		bool FORCE_QTOT = (l!=L-1 or TRIVIAL_BOUNDARIES==false)? false:true;
 		contract_AW(Vin.A_at(l), Vin.locBasis(l), O.W_at(l), O.opBasis(l),
 		            Vin.inBasis(l) , O.inBasis(l),
 		            Vin.outBasis(l), O.outBasis(l),
-		            Vout.A_at(l));
+		            Vout.A_at(l),
+		            FORCE_QTOT, Vout.Qtarget());
 	}
 	
 	Vout.update_inbase();
@@ -697,20 +737,30 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	{
 		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre(VERBOSITY);
 		Mps<Symmetry,Scalar> Vtmp;
-		Compadre.stateCompress(Vout, Vtmp, Vin.calc_Dmax(), tol_compr, 200);
+		Compadre.stateCompress(Vout, Vtmp, min(Vin.calc_Dmax(),10ul), tol_compr, 200);
+		Vtmp.max_Nsv = Vtmp.calc_Dmax();
 		
-		Vout = Vtmp;
-		// shouldn't matter, but just to be sure:
-		Vout.update_inbase();
-		Vout.update_outbase();
-		Vout.calc_Qlimits(); // Careful: Depends on Qtot!
-		
-		if (VERBOSITY > DMRG::VERBOSITY::SILENT)
+//		lout << "Vtmp.calc_Dmax()=" << Vtmp.calc_Dmax() << endl;
+		if (Vtmp.calc_Dmax() == 0)
 		{
-			compressed_info = Vout.info();
-			Compressor_info = Compadre.info();
-//			lout << "compressed:\t" << Vout.info() << endl;
-//			lout << "\t" << Compadre.info() << endl;
+			lout << termcolor::red << "Warning: OxV compression failed, returning exact result!" << termcolor::reset << endl;
+			Vout.sweep(0,DMRG::BROOM::QR);
+		}
+		else
+		{
+			Vout = Vtmp;
+			// shouldn't matter, but just to be sure:
+			Vout.update_inbase();
+			Vout.update_outbase();
+			Vout.calc_Qlimits(); // Careful: Depends on Qtot!
+			
+			if (VERBOSITY > DMRG::VERBOSITY::SILENT)
+			{
+				compressed_info = Vout.info();
+				Compressor_info = Compadre.info();
+	//			lout << "compressed:\t" << Vout.info() << endl;
+	//			lout << "\t" << Compadre.info() << endl;
+			}
 		}
 	}
 	else

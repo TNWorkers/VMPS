@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-save', action='store_true', default=False)
 parser.add_argument('-set', action='store', default='.')
 parser.add_argument('-plot', action='store', default='specFull')
-parser.add_argument('-spec', action='store', default='A1P')
+parser.add_argument('-spec', action='store', default='SSF')
 args = parser.parse_args()
 
 set = args.set
@@ -37,11 +37,12 @@ plot = args.plot
 mu = 0
 
 Lcell = 2
-L = 20
+Ncells = 20
 tmax = 4
 Nplots = 1
-wmin = -10
-wmax = +10
+L = Lcell*Ncells
+wmin = -5
+wmax = +5
 
 def root(q):
 	return sqrt(2.+2.*cos(q));
@@ -69,8 +70,7 @@ def filename_wq(set,spec,L,tmax):
 	res = set+'/'
 	res += spec
 	res += '_Lcell='+str(Lcell)
-	res += '_t=1'
-	res += '_U=0'
+	res += '_J=0'
 	res += '_L='+str(L)
 	res += '_tmax='+str(tmax)
 	res += '_qmin=0_qmax=2'
@@ -83,7 +83,6 @@ def filename_tx(set,spec,L,tmax):
 	res = set+'/'
 	res += spec
 	res += '_Lcell='+str(Lcell)
-	res += '_t=1'
 	res += '_U=0'
 	res += '_L='+str(L)
 	res += '_tmax='+str(tmax)
@@ -96,57 +95,24 @@ qlabels = ["$0$", "$\\frac{\pi}{2}$", "$\\frac{3\pi}{4}$", "$\pi$", "$\\frac{5\p
 
 if args.plot == 'specFull':
 	
-	fig, axs = plt.subplots(1,3)
+	fig, ax = plt.subplots(1,1)
 	
-	G1 = h5py.File(filename_wq(set,"PES",L,tmax),'r')
-	G2 = h5py.File(filename_wq(set,"IPE",L,tmax),'r')
-	G3 = h5py.File(filename_wq(set,"A1P",L,tmax),'r')
-	datawq = -1./pi*(np.asarray(G1['G']['ωqIm'])+np.asarray(G2['G']['ωqIm']))
+	G0 = h5py.File(filename_wq(set,spec,L,tmax),'r')
+	datawq = -1./pi * np.asarray(G0['G']['ωqIm'])
 	
-#	G1 = h5py.File(filename_wq(set,"SF2",L,tmax),'r')
-#	datawq = -1./pi*np.asarray(G1['G']['ωqIm'])
+	im1 = imshow(datawq, origin='lower', interpolation='none', cmap=cm.terrain, aspect='auto', extent=[0,2*pi,wmin-mu,wmax-mu])
+	ax.set_ylabel('$\omega$')
+	ax.grid()
+	ax.set_xticks(qticks)
+	ax.set_xticklabels(qlabels)
+	fig.colorbar(im1, ax=ax)
 	
-	im1 = axs[0].imshow(datawq, origin='lower', interpolation='none', cmap=cm.inferno, aspect='auto', extent=[0,2*pi,wmin-mu,wmax-mu])
-	axs[0].set_ylabel('$\omega$')
-	axs[0].grid()
-	axs[0].set_xticks(qticks)
-	axs[0].set_xticklabels(qlabels)
-	fig.colorbar(im1, ax=axs[0])
+	Nw = datawq.shape[0]
+	Nq = datawq.shape[1]
+	qaxis = linspace(0, 2*pi, Nq, endpoint=True)
+	waxis = linspace(wmin, wmax, Nw, endpoint=True)
 	
-#	axs[0].plot(qvals,epsFvals, c='g')
-#	
-#	datawq = -1./pi*(np.asarray(G1['G00']['ωqIm'])+np.asarray(G2['G11']['ωqIm']))
-#	axs[1].imshow(datawq, origin='lower', interpolation='none', cmap=cm.inferno, aspect='auto', extent=[0,2*pi,wmin-mu,wmax-mu])
-#	
-#	axs[1].plot(qvals,eps0vals, c='c')
-#	axs[1].plot(qvals,eps1vals, c='b')
-#	
-#	dataQDOS = np.asarray(G3['G']['QDOS'])
-#	axs[2].plot(np.linspace(wmin,wmax,dataQDOS.shape[0],endpoint=True), dataQDOS)
-	
-#elif args.plot == 'QDOS':
-#	
-#	for i,VA in enumerate(VA_list):
-#		for i,VB in enumerate(VB_list):
-#		
-#			A1Pwq = h5py.File(filename_wq(set,'A1P',L,tmax),'r')
-##			PESwq = h5py.File(filename_wq(set,'PES',L,tmax),'r')
-##			IPEwq = h5py.File(filename_wq(set,'IPE',L,tmax),'r')
-##			SSFwq = h5py.File(filename_wq(set,'SSF',L,tmax),'r')
-##			PEStx = h5py.File(filename_tx(set,'PES',L,tmax),'r')
-##			IPEtx = h5py.File(filename_tx(set,'IPE',L,tmax),'r')
-##			SSFtx = h5py.File(filename_tx(set,'SSF',L,tmax),'r')
-#			
-#			QDOS = A1Pwq['G']['QDOS']
-#			waxis = linspace(wmin, wmax, QDOS.shape[0], endpoint=True)
-#			qaxis = linspace(0, 2*pi, L/2+1, endpoint=True)
-#			qaxis_ = linspace(0, 2*pi, L/2, endpoint=False)
-##			mu = A1Pwq['μ'][0]
-#			
-#			plt.plot(waxis, QDOS, label='$U_A='+str(VA)+'$, $U_B='+str(VB)+'$')
-#			plt.legend(fontsize=12)
-#			plt.xlabel("$\omega$")
-#			plt.ylabel("QDOS($\omega$)")
+	plt.plot(qaxis, -2.*np.cos(np.asarray(qaxis)), c='r')
 
 if args.save:
 	

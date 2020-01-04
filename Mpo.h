@@ -363,7 +363,7 @@ public:
 	typedef Mpo<Symmetry>									 Operator;
 	///@}
 	
-protected:
+//protected:
 	
 	/**stored terms of the Hamiltonian*/
 	HamiltonianTerms<Symmetry,Scalar> Terms;
@@ -944,6 +944,8 @@ calc_auxBasis()
 	// 	return qset;
 	// };
 	
+//	lout << "recalc auxBasis " << info() << endl;
+	
 	qaux.clear();
 	qaux.resize(this->N_sites+1);
 	//set aux basis on right end to Qtot.
@@ -963,6 +965,7 @@ calc_auxBasis()
 		{
 			if (auto it=find(qOp[l].begin(), qOp[l].end(), qtmp); it != qOp[l].end())
 			{
+//				lout << "l=" << l << ", pushing: " << qtmp << endl;
 				qauxtmp.push_back(qtmp, Daux(l,0));
 			}
 		}
@@ -1620,7 +1623,7 @@ transform_base (qarray<Symmetry::Nq> Qshift, bool PRINT, int L)
 		}
 	}
 	
-	calc_auxBasis();
+//	calc_auxBasis();
 };
 
 template<typename Symmetry, typename Scalar>

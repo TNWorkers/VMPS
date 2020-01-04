@@ -80,6 +80,10 @@ public:
 	///@}
 	
 	///@{
+	Mpo<Symmetry> triplet (size_t locx1, size_t locx2) const;
+	///@}
+	
+	///@{
 	Mpo<Symmetry> S (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> Sdag (size_t locx, size_t locy=0, double factor=sqrt(3.)) const;
 	///@}
@@ -89,9 +93,9 @@ public:
 	Mpo<Symmetry> nn    (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> TzTz  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> TpTm  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> TmTp  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> TdagT (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> TpTm  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double factor=1.) const;
+	Mpo<Symmetry> TmTp  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double factor=1.) const;
+	vector<Mpo<Symmetry>> TdagT  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> Tz    (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> Tp    (size_t locx, size_t locy=0, double factor=1.) const;
 	Mpo<Symmetry> Tm    (size_t locx, size_t locy=0, double factor=1.) const;
@@ -735,16 +739,107 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	}
 	else if (locx1<locx2)
 	{
-		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), {2,+1}).plain<double>(), 
+		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), cdag.Q()).plain<double>(), //{2,+1}
 		                               c.plain<double>()},
 		                               F[0].sign().plain<double>());
 	}
 	else if (locx1>locx2)
 	{
-		Mout.setLocal({locx2, locx1}, {sqrt(2.) * OperatorType::prod(c, F[locx2].sign(), {2,-1}).plain<double>(), 
+		Mout.setLocal({locx2, locx1}, {sqrt(2.) * OperatorType::prod(c, F[locx2].sign(), c.Q()).plain<double>(), //{2,-1}
 		                               cdag.plain<double>()}, 
 		                               F[0].sign().plain<double>());
 	}
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+triplet (size_t locx1, size_t locx2) const
+{
+	assert(locx1<N_sites and locx2<N_sites);
+	stringstream ss;
+	ss << "c†(" << locx1 << ")" << "c†(" << locx2 << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	auto cdag1 = F[locx1].cdag();
+	auto cdag2 = F[locx1+1].cdag();
+	auto c1 = F[locx2].c();
+	auto c2 = F[locx2+1].c();
+	
+	if (locx1 == locx2)
+	{
+		throw;
+//		Mout.setLocal(locx1, sqrt(2.) * OperatorType::prod(cdag1, cdag2, {3,+2}).plain<double>());
+	}
+	else if (locx1<locx2)
+	{
+		Mout.setLocal({locx1, locx1+1, locx2, locx2+1}, 
+		              {sqrt(2.) * OperatorType::prod(cdag1, F[locx1].sign(), cdag1.Q()).plain<double>(), cdag2.plain<double>(),
+		               sqrt(2.) * OperatorType::prod(c1, F[locx2].sign(), c1.Q()).plain<double>(), c2.plain<double>()
+		              }
+		             );
+	}
+	else if (locx1>locx2)
+	{
+		throw;
+//		Mout.setLocal({locx2, locx1, locx2, locx2+1}, {sqrt(2.) * OperatorType::prod(cdag2, F[locx2].sign(), cdag2.Q()).plain<double>(), 
+//		                               cdag1.plain<double>()}, 
+//		                               F[0].sign().plain<double>());
+	}
+	
+	Mout.qaux.clear();
+	Mout.qaux.resize(N_sites+1);
+	Mout.qaux[0].clear();
+	Mout.qaux[0].push_back({1,0},1);
+	for (int l=1; l<N_sites; ++l)
+	{
+		if (l-1<locx1)
+		{
+			// singlet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({1,0},1);
+		}
+		else if (l-1==locx1)
+		{
+			// cdag: doublet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({2,+1},1);
+		}
+		else if (l-1==locx1+1)
+		{
+			// cdag: triplet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({3,+2},1);
+		}
+		else if (l-1>locx1+1 and l-1<locx2)
+		{
+			// triplet in between
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({3,+2},1);
+		}
+		else if (l-1==locx2)
+		{
+			// c: doublet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({2,+1},1);
+		}
+		else if (l-1==locx2+1)
+		{
+			// c: singlet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({1,0},1);
+		}
+		else if (l-1>locx2+1)
+		{
+			// singlet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({1,0},1);
+		}
+	}
+	Mout.qaux[N_sites].clear();
+	Mout.qaux[N_sites].push_back({1,0},1);
+	
 	return Mout;
 }
 
@@ -804,7 +899,7 @@ TzTz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) const
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
 	stringstream ss;
@@ -813,7 +908,7 @@ TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
-	auto Op1 = pow(-1.,locx1+locy1) * F[locx1].cc(locy1);
+	auto Op1 = factor * pow(-1.,locx1+locy1) * F[locx1].cc(locy1);
 	auto Op2 = pow(-1.,locx2+locy2) * F[locx2].cdagcdag(locy2);
 	
 	if (locx1 == locx2)
@@ -829,7 +924,7 @@ TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) const
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
 	stringstream ss;
@@ -838,7 +933,7 @@ TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
-	auto Op1 = pow(-1.,locx1+locy1) * F[locx1].cdagcdag(locy1);
+	auto Op1 = factor * pow(-1.,locx1+locy1) * F[locx1].cdagcdag(locy1);
 	auto Op2 = pow(-1.,locx2+locy2) * F[locx2].cc(locy2);
 	
 	if (locx1 == locx2)
@@ -853,38 +948,22 @@ TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	return Mout;
 }
 
+vector<Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > > HubbardSU2xU1::
+TdagT (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	vector<Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > > out(3);
+	out[0] = TpTm(locx1,locx2,locy1,locy2,0.5);
+	out[1] = TpTm(locx1,locx2,locy1,locy2,0.5);
+	out[2] = TzTz(locx1,locx2,locy1,locy2);
+	return out;
+}
+
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
 	stringstream ss;
 	ss << "S†(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
-	
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
-	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
-	
-	auto Op1 = F[locx1].Sdag(locy1);
-	auto Op2 = F[locx2].S(locy2);
-	
-	if (locx1 == locx2)
-	{
-		auto product = std::sqrt(3.) * OperatorType::prod(Op1, Op2, Symmetry::qvacuum());
-		Mout.setLocal(locx1, product.plain<double>());
-	}
-	else
-	{
-		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.) * Op1).plain<double>(), Op2.plain<double>()});
-	}
-	
-	return Mout;
-}
-
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-TdagT (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	assert(locx1<this->N_sites and locx2<this->N_sites);
-	stringstream ss;
-	ss << "T†(" << locx1 << "," << locy1 << ")" << "T(" << locx2 << "," << locy2 << ")";
 	
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
