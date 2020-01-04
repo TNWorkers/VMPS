@@ -90,6 +90,8 @@ public:
 	
 	///@{
 	Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> cdagcdag3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> cc3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> nn    (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> TzTz  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
@@ -118,7 +120,10 @@ protected:
 	            size_t locx, size_t locy, 
 	            const OperatorType &Op, 
 	            double factor, bool FERMIONIC, bool HERMITIAN) const;
-
+	Mpo<Symmetry> make_corr  (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
+	                          const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
+	                          double factor, bool FERMIONIC, bool HERMITIAN) const;
+	
 	Mpo<Symmetry,complex<double> >
 	make_FourierYSum (string name, const vector<OperatorType> &Ops, double factor, bool HERMITIAN, const vector<complex<double> > &phases) const;
 	
@@ -636,6 +641,56 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
+           const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
+           double factor, bool FERMIONIC, bool HERMITIAN) const
+{
+	assert(locx1<F.size() and locy1<F[locx1].dim());
+	assert(locx2<F.size() and locy2<F[locx2].dim());
+	
+	stringstream ss;
+	ss << name1 << "(" << locx1 << "," << locy1 << ")"
+	   << name2 << "(" << locx2 << "," << locy2 << ")";
+	
+	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, Qtot, ss.str(), HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	if (FERMIONIC)
+	{
+		if (locx1 == locx2)
+		{
+			//The diagonal element is actually 2*unity by the symmetry. But we may leave this as a check.
+			Mout.setLocal(locx1, factor * OperatorType::prod(Op1,Op2,Qtot).plain<double>());
+		}
+		else if (locx1<locx2)
+		{
+			Mout.setLocal({locx1, locx2}, {factor * OperatorType::prod(Op1, F[locx1].sign(), Op1.Q()).plain<double>(), 
+			                               Op2.plain<double>()}, 
+			                               F[0].sign().plain<double>());
+		}
+		else if (locx1>locx2)
+		{
+			Mout.setLocal({locx2, locx1}, {factor * OperatorType::prod(Op2, F[locx2].sign(), Op2.Q()).plain<double>(), 
+			                               -1. * Op1.plain<double>()}, 
+			                               F[0].sign().plain<double>());
+		}
+	}
+	else
+	{
+		if (locx1 == locx2)
+		{
+			auto product = factor*OperatorType::prod(Op1, Op2, Qtot);
+			Mout.setLocal(locx1, product.plain<double>());
+		}
+		else
+		{
+			Mout.setLocal({locx1, locx2}, {(factor*Op1).plain<double>(), Op2.plain<double>()});
+		}
+	}
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
 n (size_t locx, size_t locy) const
 {
 	return make_local("n", locx,locy, F[locx].n(locy), 1., false, true);
@@ -697,6 +752,22 @@ cdagcdag (size_t locx, size_t locy) const
 	stringstream ss;
 	ss << "c†" << DN << "c†" << UP;
 	return make_local(ss.str(), locx,locy, F[locx].cdagcdag(locy), 1., false, false);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+cdagcdag3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss;
+	ss << "c†" << DN << "c†" << UP;
+	return make_corr("c†", "c†", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), {3,+2}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+cc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss;
+	ss << "c" << DN << "c" << UP;
+	return make_corr("c", "c", locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), {3,-2}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
 }
 
 //Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::

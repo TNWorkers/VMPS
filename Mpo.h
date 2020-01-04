@@ -403,7 +403,7 @@ public:
 	void initialize();
 	
 	/**Calculates the auxiliary basis.*/
-	void calc_auxBasis();
+	void calc_auxBasis(bool MANUAL_SET=false);
 	
 	/**Calculates the W-matrices from given \p HamiltonianTerms. Used to construct Hamiltonians.*/
 	void construct_from_Terms (const HamiltonianTerms<Symmetry,Scalar> &Terms_input,
@@ -904,7 +904,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
-calc_auxBasis()
+calc_auxBasis(bool MANUAL_SET)
 {
 	// auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> std::set<qType>
 	// {
@@ -951,12 +951,12 @@ calc_auxBasis()
 	//set aux basis on right end to Qtot.
 	qaux[this->N_sites].push_back(Qtot,1);//auxdim());
 	qaux[0].push_back(Symmetry::qvacuum(),1);//auxdim());
-	
+
 	for (size_t l=1; l<this->N_sites; ++l)
 	{
 		Qbasis<Symmetry> qauxtmp;
 		auto qtmps = Symmetry::reduceSilent(qaux[l-1].qs(), qOp[l-1], true);
-		
+			
 		// for(size_t k=0; k<qOp[l].size(); ++k)
 		// {
 		// 	qauxtmp.push_back(qOp[l][k],auxdim());
@@ -1003,6 +1003,55 @@ calc_auxBasis()
 		
 		qaux[l] = qauxtmp;
 	}
+	if (MANUAL_SET)
+	{
+		bool APPEARANCE = false;
+		for (size_t l=0; l<=N_sites;l++) { qaux[l].clear(); }
+
+		if ( qOp[0][0] == Symmetry::qvacuum() )
+		{
+			qaux[0].push_back(Symmetry::qvacuum(),1);
+
+			for (size_t l=0; l<N_sites;l++)
+			{
+				if (!APPEARANCE)
+				{
+					if (qOp[l][0] == Symmetry::qvacuum())
+					{
+						qaux[l+1].push_back(Symmetry::qvacuum(),1);
+					}
+					else
+					{
+						qaux[l+1].push_back(qOp[l][0],1);
+						APPEARANCE=true;
+					}
+				}
+				else
+				{
+					qaux[l+1].push_back(Qtot,1);
+				}
+			}
+			// cout << "should be minus " << Qtot << endl;
+			// qaux[1].push_back(Symmetry::qvacuum(),1);
+			// qaux[2].push_back(Symmetry::qvacuum(),1);
+			// qaux[3].push_back({2,-4},1);
+			// qaux[4].push_back(Qtot,1);
+		}
+		else
+		{
+			// cout << "should be plus " << Qtot << endl;															
+			qaux[0].push_back(Symmetry::qvacuum(),1);
+			qaux[1].push_back(qOp[0][0],1);
+			for (size_t l=2; l<=N_sites;l++)
+			{
+				qaux[l].push_back(Qtot,1);
+			}
+			// qaux[2].push_back(Qtot,1);
+			// qaux[3].push_back(Qtot,1);
+			// qaux[4].push_back(Qtot,1);
+		}
+	}
+
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1623,7 +1672,7 @@ transform_base (qarray<Symmetry::Nq> Qshift, bool PRINT, int L)
 		}
 	}
 	
-//	calc_auxBasis();
+	calc_auxBasis();
 };
 
 template<typename Symmetry, typename Scalar>
