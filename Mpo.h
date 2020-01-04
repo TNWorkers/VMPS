@@ -356,7 +356,8 @@ public:
 	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
 	typedef Mps<Symmetry,double>							  StateXd;
 	typedef Umps<Symmetry,double>							 StateUd;
-	typedef Mps<Symmetry,complex<double> >					StateXcd;
+	typedef Mps<Symmetry,complex<double> >	   				StateXcd;
+	typedef Umps<Symmetry,complex<double> >  				 StateUcd;
 	typedef MpsCompressor<Symmetry,double,double>			 CompressorXd;
 	typedef MpsCompressor<Symmetry,complex<double>,double>	CompressorXcd;
 	typedef Mpo<Symmetry>									 Operator;

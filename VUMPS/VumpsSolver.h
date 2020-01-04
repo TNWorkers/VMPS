@@ -515,7 +515,7 @@ calc_errors (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &V
 		epsLRsq[g].resize(N_sites);
 		for (size_t l=0; l<N_sites; ++l)
 		{
-			epsLRsq[g](l) = Vout.state.calc_epsLRsq(g,l);
+			epsLRsq[g](l) = std::real(Vout.state.calc_epsLRsq(g,l));
 		}
 	}
 	err_var_old = err_var;
@@ -1218,14 +1218,14 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 			#endif
 			{
 				Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
-				eL = contract_LR(0, YLlast, Reigen) / H.volume();
+				eL = std::real(contract_LR(0, YLlast, Reigen)) / H.volume(); //static_cast<Scalar>(H.volume());
 			}
 			#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 			#pragma omp section
 			#endif
 			{
 				Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
-				eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
+				eR = std::real(contract_LR(dW-1, Leigen, YRfrst)) / H.volume(); //static_cast<Scalar>(H.volume());
 			}
 		}
 		Vout.energy = min(eL,eR);
@@ -1370,8 +1370,8 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		Lucy(LanczosParam.REORTHO);
 		Lucy.set_dimK(min(LanczosParam.dimK, dim(gCR.state)));
 		Lucy.edgeState(PivotMatrix0(HeffC[l]), gCR, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
-		//ensure phase convention: first element is positive
-		if (gCR.state.data[0].block[0](0,0) < 0.) { gCR.state.data[0] = (-1.) * gCR.state.data[0]; }
+		//ensure phase convention: real part of first element is positive
+		if (std::real(gCR.state.data[0].block[0](0,0)) < 0.) { gCR.state.data[0] = (-1.) * gCR.state.data[0]; }
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -1390,8 +1390,8 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		Luca(LanczosParam.REORTHO);
 		Luca.set_dimK(min(LanczosParam.dimK, dim(gCL.state)));
 		Luca.edgeState(PivotMatrix0(HeffC[lC]), gCL, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
-		//ensure phase convention: first element is positive
-		if (gCL.state.data[0].block[0](0,0) < 0.) { gCL.state.data[0] = (-1.) * gCL.state.data[0]; }
+		//ensure phase convention: real part of first element is positive
+		if (std::real(gCL.state.data[0].block[0](0,0)) < 0.) { gCL.state.data[0] = (-1.) * gCL.state.data[0]; }
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -1415,8 +1415,8 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	// Calculate energies
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
-	eL = contract_LR(0, YLlast, Reigen) / H.volume();
-	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
+	eL = std::real(contract_LR(0, YLlast, Reigen)) / H.volume(); //static_cast<Scalar>(H.volume());
+	eR = std::real(contract_LR(dW-1, Leigen, YRfrst)) / H.volume(); //static_cast<Scalar>(H.volume());
 	
 	Vout.energy = min(eL,eR);
 	
@@ -1476,8 +1476,8 @@ iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	Biped<Symmetry,MatrixType> hL = make_hL(h2site, Vout.state.A[GAUGE::L][0], Vout.state.locBasis(0));
 	
 	// energies
-	eL = (Leigen.contract(hR)).trace();
-	eR = (hL.contract(Reigen)).trace();
+	eL = std::real((Leigen.contract(hR)).trace());
+	eR = std::real((hL.contract(Reigen)).trace());
 	
 	// |H_R) and (H_L|
 	Biped<Symmetry,MatrixType> HL, HR;
@@ -1979,8 +1979,8 @@ calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scal
 	Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc,             NL);
 	Vout.state.calc_N(DMRG::DIRECTION::LEFT,  (loc+1)%N_sites, NR);
 	
-	PivotMatrix2<Symmetry,Scalar> H2(HeffA[loc].L, HeffA[(loc+1)%N_sites].R, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, 
-	                                 H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites));
+	PivotMatrix2 H2(HeffA[loc].L, HeffA[(loc+1)%N_sites].R, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, 
+					H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites));
 	
 	vector<Biped<Symmetry,MatrixType> > AL;
 	vector<Biped<Symmetry,MatrixType> > AR;

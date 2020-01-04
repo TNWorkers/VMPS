@@ -734,10 +734,10 @@ void contract_R (const Biped<Symmetry,MatrixType2> &Rold,
 // 	// }
 // }
 
-template<typename Symmetry, typename Scalar>
+template<typename Symmetry, typename Scalar, typename MpoScalar>
 void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
                      const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-                     const vector<vector<vector<SparseMatrixXd> > > &W, 
+                     const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
                      const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
                      const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
                      const vector<qarray<Symmetry::Nq> > &qloc,
@@ -802,7 +802,7 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 						if (std::abs(factor_cgc*factor_merge) < ::mynumeric_limits<Scalar>::epsilon()) {continue;}
 						
 						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
-						for (SparseMatrixXd::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+						for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
 						{
 							size_t a1 = iW.row();
 							size_t a2 = iW.col();
