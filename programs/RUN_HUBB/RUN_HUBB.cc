@@ -779,6 +779,7 @@ int main (int argc, char* argv[])
 		
 		auto measure_and_save = [&H,&dHdV,&target,&params,&Geo1cell,&Geo2cell,&Foxy,&obsfile,&Qc](size_t j) -> void
 		{
+			if (Foxy.iterations() < 100) {return;}
 			if (Foxy.errVar() < 1e-8 or Foxy.FORCE_DO_SOMETHING == true)
 			{
 				std::stringstream bond;
@@ -1248,8 +1249,10 @@ int main (int argc, char* argv[])
 					MODEL Htmp(calc_length(d+2,L),{{"OPEN_BC",false},{"CALC_SQUARE",false}}); Htmp.transform_base(Qc,false); // PRINT=false
 					
 					obs.triplet1d(d,0) = d;
-//					obs.triplet1d(d,1) = avg(g_foxy.state, Htmp.cdagcdag3(0,1), Htmp.cc3(d,d+1), g_foxy.state);
-					obs.triplet1d(d,1) = avg(g_foxy.state, Htmp.triplet(0,d), g_foxy.state);
+					obs.triplet1d(d,1) = -sqrt(3.)*avg(g_foxy.state, Htmp.cdagcdag3(0,1), Htmp.cc3(d,d+1), g_foxy.state, true);
+					// obs.triplet1d(d,1) = avg(g_foxy.state, Htmp.triplet(0,d), g_foxy.state);
+					// cout << "triplet=" << obs.triplet1d(d,1) << endl;
+					// assert(1!=1);
 				}
 				for (int d=2; d<Ncells1d*L; ++d)
 				{

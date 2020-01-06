@@ -57,15 +57,16 @@ def second(x):
         
 L=int(args.L)
         #Vs = np.arange(-5.9,-5.69,0.01,dtype=float)
-Vs = np.array([-5.6,-5.7,-5.71,-5.72,-5.73,-5.74,-5.75,-5.76,-5.77,-5.78,-5.79,-5.8,-5.9,-6,-6.01,-6.011,-6.012,-6.013,-6.014,-6.015,-6.1])
+Vs = np.array([-5.1,-5.2,-5.3,-5.4,-5.5,-5.6,-5.7,-5.8,-5.9,-6])
 Ts = np.zeros(len(Vs))
 for iV in range(len(Vs)):
         V = Vs[iV]
         filename = ''
         if abs(V - (-6.0)) > 1.e-4:
-                filename = 'obs/L=2_Ly=1_N=2_t=1_U=2_V='+str(V)+'_J=0.h5'
+                filename = 'obs/L=2_Ly=1_N=2_t=0_U=2_V='+str(V)+'_J=0.h5'
         else:
-                filename = 'obs/L=2_Ly=1_N=2_t=1_U=2_V=-6_J=0.h5'
+                filename = 'obs/L=2_Ly=1_N=2_t=0_U=2_V=-6_J=0.h5'
+        print(filename)
         try:
                 f = h5py.File(filename,'r')
         except:
@@ -76,6 +77,7 @@ for iV in range(len(Vs)):
                 Chis.append(int(Chi))
         Chis.sort()
         Chi = str(max(Chis))
+        Chi = '550'
         print('V=',V,'Chi',Chi)
         tz = f[Chi+'/Tz'][0]
         tx = f[Chi+'/Tx'][0]
