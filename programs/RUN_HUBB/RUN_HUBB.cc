@@ -25,6 +25,7 @@ using namespace std;
 #include "models/Hubbard.h"
 #include "models/HubbardSU2.h"
 #include "models/HubbardU1spin.h"
+#include "models/HubbardU1.h"
 
 #include "Geometry2D.h" // from TOOLS
 #include "NestedLoopIterator.h" // from TOOLS
@@ -95,6 +96,8 @@ struct Obs
 	Eigen::MatrixXd stringz1d;
 	Eigen::MatrixXd triplet1d;
 	Eigen::MatrixXd triplet1dreduced;
+	Eigen::MatrixXd singlet1d;
+	Eigen::MatrixXd singlet1dreduced;
 	Eigen::MatrixXd SdagS1d;
 	Eigen::MatrixXd TdagT1d;
 	Eigen::MatrixXd TzTz1d;
@@ -159,6 +162,8 @@ struct Obs
 		stringz1d.resize(Ncells1d*Lx,2); stringz1d.setZero();
 		triplet1d.resize(Ncells1d*Lx+1,2); triplet1d.setZero();
 		triplet1dreduced.resize(Ncells1d*Lx+1,2); triplet1dreduced.setZero();
+		singlet1d.resize(Ncells1d*Lx+1,2); singlet1d.setZero();
+		singlet1dreduced.resize(Ncells1d*Lx+1,2); singlet1dreduced.setZero();
 		SdagS1d.resize(Ncells1d*Lx,2); SdagS1d.setZero();
 		TdagT1d.resize(Ncells1d*Lx,2); TdagT1d.setZero();
 		TzTz1d.resize(Ncells1d*Lx,2); TzTz1d.setZero();
@@ -436,7 +441,7 @@ int main (int argc, char* argv[])
 	N = args.get<int>("N",volume);
 	T = volume-N+1;
 	Ncells = args.get<size_t>("Ncells",80); // maximal amount of unit cells for explicit contractions
-	Ncells1d = args.get<size_t>("Ncells1d",20);
+	Ncells1d = args.get<size_t>("Ncells1d",40);
 	str_tol = args.get<double>("str_tol",1e-3); // SF convergence tolerance with explicit contractions
 	t = args.get<double>("t",1.);
 	tRung = args.get<double>("tRung",t); // tRung != t for testing only
@@ -526,9 +531,9 @@ int main (int argc, char* argv[])
 	GlobParam_fix.savePeriod = args.get<size_t>("savePeriod",0ul);
 	GlobParam_fix.saveName = args.get<string>("saveName",statefile);
 	
-	GlobParam_foxy.Dinit  = args.get<size_t>("Dinit",10ul);
+	GlobParam_foxy.Dinit  = args.get<size_t>("Dinit",20ul);
 	GlobParam_foxy.Dlimit = args.get<size_t>("Dlimit",200ul);
-	GlobParam_foxy.Qinit = args.get<size_t>("Qinit",4ul);
+	GlobParam_foxy.Qinit = args.get<size_t>("Qinit",10ul);
 	GlobParam_foxy.min_iterations = args.get<size_t>("Imin",6ul);
 	GlobParam_foxy.max_iterations = args.get<size_t>("Imax",1000ul);
 	GlobParam_foxy.max_iter_without_expansion = args.get<size_t>("max",30ul);
@@ -699,6 +704,23 @@ int main (int argc, char* argv[])
 		QcS2 = {M+4};
 		QcC = {M-1};
 	}
+	else if (std::is_same<MODEL,VMPS::HubbardU1>::value)
+	{
+		// only 1D implemented for U1charge
+		params.push_back({"t",t});
+		params.push_back({"Vxy",Vxy});
+		params.push_back({"Vz",Vz});
+		params.push_back({"X",X});
+		params.push_back({"J",J});
+		params.push_back({"Uph",U});
+		if (VUMPS) {params.push_back({"OPEN_BC",false});}
+		Qc  = {N};
+		Qc2 = {2*N}; // for 2 unit cells
+		QcT = {N-2};
+		QcS = {N};
+		QcS2 = {N};
+		QcC = {N-1};
+	}
 	
 	MODEL H(volume,params);
 	if (VUMPS) H.transform_base(Qc);
@@ -777,7 +799,7 @@ int main (int argc, char* argv[])
 					kxy.push_back(make_pair(M_PI,Ly/2)); // M point (π,π)
 				}
 				
-				#if not defined(USING_U0) && not defined(USING_U1xU1) && not defined(USING_U1SPIN)
+				#if not defined(USING_U0) && not defined(USING_U1xU1) && not defined(USING_U1SPIN) && not defined(USING_U1)
 				if (STRUCTURE)
 				{
 					for (int i=0; i<kxy.size(); ++i)
@@ -1073,7 +1095,7 @@ int main (int argc, char* argv[])
 					     << ", S=" << sqrt(pow(obs.sx(x,y),2)-pow(obs.isy(x,y),2)+pow(obs.sz(x,y),2))
 					     << endl;
 					
-					#if !defined(USING_SO4) && !defined(USING_SU2xU1) && !defined(USING_U1xU1)
+					#if !defined(USING_SO4) && !defined(USING_SU2xU1) && !defined(USING_U1xU1) && !defined(USING_U1)
 					obs.tx(x,y)        = avg(g_foxy.state, H.Tx(Geo1cell(x,y)), g_foxy.state);
 					obs.ity(x,y)       = avg(g_foxy.state, H.iTy(Geo1cell(x,y)), g_foxy.state);
 					lout << "\tTp=" << avg(g_foxy.state, H.Tp(Geo1cell(x,y)), g_foxy.state) << endl;
@@ -1155,18 +1177,27 @@ int main (int argc, char* argv[])
 				{
 					MODEL Htmp(calc_length(d+2,L),{{"OPEN_BC",false},{"CALC_SQUARE",false}}); Htmp.transform_base(Qc,false); // PRINT=false
 					
+					double val1 = avg(g_foxy.state, Htmp.cdagc<DN>(1,d+1), Htmp.cdagc<UP>(0,d), g_foxy.state);
+					double val2 = avg(g_foxy.state, Htmp.cdagc<UP>(1,d+1), Htmp.cdagc<DN>(0,d), g_foxy.state);
+					double val3 = avg(g_foxy.state, Htmp.cdagc<DN>(1,d),   Htmp.cdagc<UP>(0,d+1), g_foxy.state);
+					double val4 = avg(g_foxy.state, Htmp.cdagc<UP>(1,d),   Htmp.cdagc<DN>(0,d+1), g_foxy.state);
+					
 					obs.triplet1d(d,0) = d;
-					obs.triplet1d(d,1) += avg(g_foxy.state, Htmp.cdagc<DN>(1,d+1), Htmp.cdagc<UP>(0,d), g_foxy.state);
-					obs.triplet1d(d,1) += avg(g_foxy.state, Htmp.cdagc<UP>(1,d+1), Htmp.cdagc<DN>(0,d), g_foxy.state);
-					obs.triplet1d(d,1) -= avg(g_foxy.state, Htmp.cdagc<DN>(1,d),   Htmp.cdagc<UP>(0,d+1), g_foxy.state);
-					obs.triplet1d(d,1) -= avg(g_foxy.state, Htmp.cdagc<UP>(1,d),   Htmp.cdagc<DN>(0,d+1), g_foxy.state);
+					obs.triplet1d(d,1) = val1+val2-val3-val4;
+					
+					obs.singlet1d(d,0) = d;
+					obs.singlet1d(d,1) = val1+val2+val3+val4;
+					
+					double red1 = avg(g_foxy.state, Htmp.cdagc<DN>(1,d+1), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<UP>(0,d), g_foxy.state);
+					double red2 = avg(g_foxy.state, Htmp.cdagc<UP>(1,d+1), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<DN>(0,d), g_foxy.state);
+					double red3 = avg(g_foxy.state, Htmp.cdagc<DN>(1,d), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<UP>(0,d+1), g_foxy.state);
+					double red4 = avg(g_foxy.state, Htmp.cdagc<UP>(1,d), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<DN>(0,d+1), g_foxy.state);
 					
 					obs.triplet1dreduced(d,0) = d;
-					obs.triplet1dreduced(d,1) = obs.triplet1d(d,1);
-					obs.triplet1dreduced(d,1) -= avg(g_foxy.state, Htmp.cdagc<DN>(1,d+1), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<UP>(0,d), g_foxy.state);
-					obs.triplet1dreduced(d,1) -= avg(g_foxy.state, Htmp.cdagc<UP>(1,d+1), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<DN>(0,d), g_foxy.state);
-					obs.triplet1dreduced(d,1) += avg(g_foxy.state, Htmp.cdagc<DN>(1,d), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<UP>(0,d+1), g_foxy.state);
-					obs.triplet1dreduced(d,1) += avg(g_foxy.state, Htmp.cdagc<UP>(1,d), g_foxy.state) * avg(g_foxy.state, Htmp.cdagc<DN>(0,d+1), g_foxy.state);
+					obs.triplet1dreduced(d,1) = obs.triplet1d(d,1)-red1-red2+red3+red4;
+					
+					obs.singlet1dreduced(d,0) = d;
+					obs.singlet1dreduced(d,1) = obs.singlet1d(d,1)-red1-red2-red3-red4;
 					
 //					lout << "partial val1=" << avg(g_foxy.state, Htmp.cdagc<DN>(1,d+1), Htmp.cdagc<UP>(0,d), g_foxy.state) << endl;
 //					lout << "partial val2=" << avg(g_foxy.state, Htmp.cdagcdag<DN,UP>(1,0), Htmp.cc<UP,DN>(d,d+1), g_foxy.state) << endl;
@@ -1186,24 +1217,29 @@ int main (int argc, char* argv[])
 				}
 				for (int d=2; d<Ncells1d*L; ++d)
 				{
-					lout << "triplet d=" << d << ", " << obs.triplet1d(d,1) << ", reduced=" << obs.triplet1dreduced(d,1) << endl;
+					lout << "d=" << d
+					     << ", triplet=" << obs.triplet1d(d,1) 
+					     << ", reduced=" << obs.triplet1dreduced(d,1)
+					     << ", singlet=" << obs.singlet1d(d,1) 
+					     << ", reduced=" << obs.singlet1dreduced(d,1)
+					     << endl;
 				}
 				lout << endl;
 				
-				#pragma omp parallel for
-				for (int d=1; d<Ncells1d*L; ++d)
-				{
-					MODEL Htmp(calc_length(d+1,L),{{"OPEN_BC",false},{"CALC_SQUARE",false}}); Htmp.transform_base(Qc,false); // PRINT=false
-					
-					obs.stringz1d(d,0) = d;
+//				#pragma omp parallel for
+//				for (int d=1; d<Ncells1d*L; ++d)
+//				{
+//					MODEL Htmp(calc_length(d+1,L),{{"OPEN_BC",false},{"CALC_SQUARE",false}}); Htmp.transform_base(Qc,false); // PRINT=false
+//					
+//					obs.stringz1d(d,0) = d;
+////					obs.stringz1d(d,1) = avg(g_foxy.state, Htmp.Stringz(0,d), g_foxy.state);
 //					obs.stringz1d(d,1) = avg(g_foxy.state, Htmp.Stringz(0,d), g_foxy.state);
-					obs.stringz1d(d,1) = avg(g_foxy.state, Htmp.StringzDimer(0,d), g_foxy.state);
-				}
-				for (int d=1; d<Ncells1d*L; ++d)
-				{
-					lout << "string  d=" << d << ", " << obs.stringz1d(d,1) << endl;
-				}
-				lout << endl;
+//				}
+//				for (int d=1; d<Ncells1d*L; ++d)
+//				{
+//					lout << "string  d=" << d << ", " << obs.stringz1d(d,1) << endl;
+//				}
+//				lout << endl;
 				
 				#elif defined(USING_SO4) or defined(USING_SU2xU1)
 				#pragma omp parallel for
@@ -1282,6 +1318,8 @@ int main (int argc, char* argv[])
 				target.save_matrix(obs.stringz1d,"stringz1d",bond.str());
 				target.save_matrix(obs.triplet1d,"triplet1d",bond.str());
 				target.save_matrix(obs.triplet1dreduced,"triplet1dreduced",bond.str());
+				target.save_matrix(obs.singlet1d,"singlet1d",bond.str());
+				target.save_matrix(obs.singlet1dreduced,"singlet1dreduced",bond.str());
 				target.save_matrix(obs.SdagS1d,"SdagS1d",bond.str());
 				target.save_matrix(obs.TdagT1d,"TdagT1d",bond.str());
 				target.save_matrix(obs.TzTz1d,"TzTz1d",bond.str());
@@ -1375,7 +1413,7 @@ int main (int argc, char* argv[])
 		}
 		if (CALC_SGAP)
 		{
-			#if defined(USING_U0) || defined(USING_U1xU1) || defined(USING_U1SPIN)
+			#if defined(USING_U0) || defined(USING_U1xU1) || defined(USING_U1SPIN) || defined(USING_U1)
 			OxV_exact(H.Sp(L/2), g_fix.state, g_fixS.state, 1e-4);
 			#else
 			OxV_exact(H.S(L/2), g_fix.state, g_fixS.state, 1e-4);
@@ -1385,7 +1423,7 @@ int main (int argc, char* argv[])
 		if (CALC_S2GAP)
 		{
 			MODEL::StateXd g_tmp;
-			#if defined(USING_U0) || defined(USING_U1xU1) || defined(USING_U1SPIN)
+			#if defined(USING_U0) || defined(USING_U1xU1) || defined(USING_U1SPIN)|| defined(USING_U1)
 			OxV_exact(H.Sp(L/2), g_fixS.state, g_tmp, 1e-2);
 			g_tmp /= sqrt(dot(g_tmp,g_tmp));
 			OxV_exact(H.Sp(L/2+1), g_tmp, g_fixS2.state, 1e-2);
@@ -1398,7 +1436,7 @@ int main (int argc, char* argv[])
 		}
 		if (CALC_CGAP)
 		{
-			#if defined(USING_U0) || defined(USING_U1xU1) || defined(USING_U1SPIN)
+			#if defined(USING_U0) || defined(USING_U1xU1) || defined(USING_U1SPIN)|| defined(USING_U1)
 			OxV_exact(H.c<UP>(L/2), g_fix.state, g_fixC.state, 1e-4);
 			#else
 			OxV_exact(H.c(L/2), g_fix.state, g_fixC.state, 1e-4);
@@ -1476,8 +1514,8 @@ int main (int argc, char* argv[])
 			double val2 = avg(g_fix.state, H.cdagc<UP>(1,d+1), H.cdagc<DN>(0,d),   g_fix.state);
 			double val3 = avg(g_fix.state, H.cdagc<DN>(1,d),   H.cdagc<UP>(0,d+1), g_fix.state);
 			double val4 = avg(g_fix.state, H.cdagc<UP>(1,d),   H.cdagc<DN>(0,d+1), g_fix.state);
-			triplet = val1 +val2 -val3 -val4;
-			singlet = val1 +val2 +val3 +val4;
+			triplet = val1+val2-val3-val4;
+			singlet = val1+val2+val3+val4;
 			lout << "d=" << d << ", triplet=" << triplet << ", singlet=" << singlet << endl;
 			lout << val1 << ", " << val2 << ", " << val3 << ", " << val4 << endl;
 		}
@@ -1506,7 +1544,8 @@ int main (int argc, char* argv[])
 		{
 			obs.Sdag0Sd_S0(d,0) = d;
 			obs.Sdag0Sd_S0(d,1) = avg(g_fix.state, H.SdagS(0,d), g_fix.state);
-			lout << d << "\t" << obs.Sdag0Sd_S0(d,1) << endl;
+			double TdagTval = avg(g_fix.state, H.TdagT(0,d), g_fix.state);
+			lout << d << "\t" << obs.Sdag0Sd_S0(d,1) << "\t" << TdagTval << endl;
 		}
 		if (CALC_SGAP)
 		{
@@ -1516,6 +1555,15 @@ int main (int argc, char* argv[])
 				obs.Sdag0Sd_S1(d,0) = d;
 				obs.Sdag0Sd_S1(d,1) = avg(g_fixS.state, H.SdagS(0,d), g_fixS.state);
 				lout << d << "\t" << obs.Sdag0Sd_S1(d,1) << endl;
+			}
+			lout << "l, S(l)/Sz(l):" << endl;
+			for (int l=0; l<L; ++l)
+			{
+				#if defined(USING_SU2xU1) || defined(USING_SU2) || defined(USING_SO4)
+				lout << l << "\t" << avg(g_fixS.state, H.S(l), g_fixS.state) << endl;
+				#else
+				lout << l << "\t" << avg(g_fixS.state, H.Sz(l), g_fixS.state) << endl;
+				#endif
 			}
 		}
 		if (CALC_S2GAP)
@@ -1679,7 +1727,7 @@ int main (int argc, char* argv[])
 					CDW += symfactor * pow(-1.,i+j) * avg(g_fix.state, H.TdagT(i,j), g_fix.state);
 					SDW += symfactor * pow(-1.,i+j) * avg(g_fix.state, H.SdagS(i,j), g_fix.state);
 				}
-				#elif defined(USING_U0) || defined(USING_U1xU1) || defined(USING_U1SPIN)
+				#elif defined(USING_U0) || defined(USING_U1xU1) || defined(USING_U1SPIN) || defined(USING_U1)
 				{
 					BOW += 0; // not implemented
 				}

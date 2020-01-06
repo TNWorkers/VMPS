@@ -31,10 +31,12 @@ const std::map<string,std::any> HubbardU1::defaults =
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",1.}, 
 	{"mu",0.}, {"t0",0.}, 
-	{"U",0.},
+	{"U",0.}, {"Uph",0.},
 	{"V",0.}, {"Vrung",0.}, 
+	{"Vxy",0.}, {"Vz",0.},
 	{"Bz",0.}, {"Bx",0.}, 
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
+	{"X",0.}, {"Xperp",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 

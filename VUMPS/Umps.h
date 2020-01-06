@@ -1153,7 +1153,7 @@ calc_entropy (size_t loc, bool PRINT)
 		{
 			lout << termcolor::magenta 
 			     << "S(" << C[loc].in[q] << "," 
-			     << C[loc].out[q] << ")\t=\t" << Scontrib 
+			     << C[loc].out[q] << ")=" << Scontrib 
 			     << ", size=" << C[loc].block[q].rows() << "x" << C[loc].block[q].cols() 
 			     << ", deg=" << Symmetry::degeneracy(C[loc].in[q])
 			     << ", #sv=" << Jack.singularValues().rows()
