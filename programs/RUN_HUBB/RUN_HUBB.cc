@@ -1242,21 +1242,25 @@ int main (int argc, char* argv[])
 //				}
 //				lout << endl;
 				
-				#elif defined(USING_SO4) or defined(USING_SU2xU1)
+				#elif defined(USING_SO4) || defined(USING_SU2xU1) || defined(USING_SU2)
 				#pragma omp parallel for
 				for (int d=2; d<Ncells1d*L; ++d)
 				{
 					MODEL Htmp(calc_length(d+2,L),{{"OPEN_BC",false},{"CALC_SQUARE",false}}); Htmp.transform_base(Qc,false); // PRINT=false
+					cout << Htmp.length() << endl;
 					
 					obs.triplet1d(d,0) = d;
-					obs.triplet1d(d,1) = -sqrt(3.)*avg(g_foxy.state, Htmp.cdagcdag3(0,1), Htmp.cc3(d,d+1), g_foxy.state, true);
+					obs.triplet1d(d,1) = -sqrt(3.)/3*avg(g_foxy.state, Htmp.cdagcdag3(0,1), Htmp.cc3(d,d+1), g_foxy.state, true);
 					// obs.triplet1d(d,1) = avg(g_foxy.state, Htmp.triplet(0,d), g_foxy.state);
 					// cout << "triplet=" << obs.triplet1d(d,1) << endl;
 					// assert(1!=1);
+					
+					obs.singlet1d(d,0) = d;
+					obs.singlet1d(d,1) = -avg(g_foxy.state, Htmp.cdagcdag1(0,1), Htmp.cc1(d,d+1), g_foxy.state, true);
 				}
 				for (int d=2; d<Ncells1d*L; ++d)
 				{
-					lout << "triplet d=" << d << ", " << obs.triplet1d(d,1) << endl;
+					lout << "d=" << d << ", triplet=" << obs.triplet1d(d,1) << ", singlet=" << obs.singlet1d(d,1)  << endl;
 				}
 				#endif
 				
@@ -1526,7 +1530,8 @@ int main (int argc, char* argv[])
 		#if defined(USING_SU2xU1) || defined(USING_SU2)
 		for (int d=2; d<=L-2; ++d)
 		{
-			lout << "d=" << d << ", triplet=" << avg(g_fix.state, H.triplet(0,d), g_fix.state) << endl;
+			//-sqrt(3.)*avg(g_foxy.state, Htmp.cdagcdag3(0,1), Htmp.cc3(d,d+1), g_foxy.state, true)
+			lout << "d=" << d << ", triplet=" << -sqrt(3.)*avg(g_fix.state, H.cdagcdag3(0,1), H.cc3(d,d+1), g_fix.state) << endl;
 		}
 		#endif
 		

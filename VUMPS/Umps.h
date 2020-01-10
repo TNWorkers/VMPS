@@ -18,6 +18,7 @@
 #include "VumpsContractions.h"
 #include "Blocker.h"
 #include "VumpsTransferMatrixSF.h"
+#include "Mps.h"
 
 #ifdef USE_HDF5_STORAGE
 	#include <HDF5Interface.h>
@@ -2673,7 +2674,8 @@ SFpoint (const ArrayXXcd &cellAvg, const vector<Mpo<Symmetry,MpoScalar> > &Oalfa
 	for (size_t j0=0; j0<Lx; ++j0)
 	{
 		// Careful: Must first convert to double and then subtract, since the difference can become negative!
-		res += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk(i0,j0);
+		res += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk(j0,i0);
+		// Attention: order (j0,i0) in argument is correct!
 	}
 	
 	return res;
@@ -2715,7 +2717,8 @@ SF (const ArrayXXcd &cellAvg, const vector<Mpo<Symmetry,MpoScalar> > &Oalfa, con
 		double kval = Sijk[i0][j0](ik,0).real();
 		res(ik,0) = kval;
 		// Careful: Must first convert to double and then subtract, since the difference can become negative!
-		res(ik,1) += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk[i0][j0](ik,1);
+		res(ik,1) += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk[j0][i0](ik,1);
+		// Attention: order [j0][i0] in argument is correct!
 	}
 	
 	return res;

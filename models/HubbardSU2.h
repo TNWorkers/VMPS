@@ -60,7 +60,7 @@ public:
 	//static HamiltonianTermsXd<Symmetry> set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc=0);
 	static void set_operators(const std::vector<FermionBase<Symmetry>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
 	
-	static qarray<1> singlet (int N) {return qarray<1>{1};};
+	static qarray<1> singlet (int N=0) {return qarray<1>{1};};
 	
 	///@{
 	Mpo<Symmetry> c (size_t locx, size_t locy=0, double factor=1.) const;
@@ -76,9 +76,15 @@ public:
 	Mpo<Symmetry> ns (size_t locx, size_t locy=0) const;
 	///@}
 	
+	///@{
 	Mpo<Symmetry> B (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) {return cdagc(locx1,locx2,locy1,locy2);};
 	Mpo<Symmetry> C (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	Mpo<Symmetry> triplet (size_t locx1, size_t locx2) const;
+	Mpo<Symmetry> cdagcdag3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> cc3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> cdagcdag1 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> cc1 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	///@}
 	
 	///@{
 	Mpo<Symmetry> cc (size_t locx, size_t locy=0) const;
@@ -118,7 +124,13 @@ protected:
 	            size_t locx, size_t locy, 
 	            const OperatorType &Op, 
 	            double factor, bool FERMIONIC, bool HERMITIAN) const;
-
+	
+	Mpo<Symmetry>
+	make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
+	           const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
+	           double factor, bool FERMIONIC, bool HERMITIAN) const;
+	
+	
 	Mpo<Symmetry,complex<double> >
 	make_FourierYSum (string name, const vector<OperatorType> &Ops, double factor, bool HERMITIAN, const vector<complex<double> > &phases) const;
 	
@@ -638,6 +650,56 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
+           const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
+           double factor, bool FERMIONIC, bool HERMITIAN) const
+{
+	assert(locx1<F.size() and locy1<F[locx1].dim());
+	assert(locx2<F.size() and locy2<F[locx2].dim());
+	
+	stringstream ss;
+	ss << name1 << "(" << locx1 << "," << locy1 << ")"
+	   << name2 << "(" << locx2 << "," << locy2 << ")";
+	
+	Mpo<Sym::SU2<Sym::SpinSU2> > Mout(N_sites, Qtot, ss.str(), HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	if (FERMIONIC)
+	{
+		if (locx1 == locx2)
+		{
+			//The diagonal element is actually 2*unity by the symmetry. But we may leave this as a check.
+			Mout.setLocal(locx1, factor * OperatorType::prod(Op1,Op2,Qtot).plain<double>());
+		}
+		else if (locx1<locx2)
+		{
+			Mout.setLocal({locx1, locx2}, {factor * OperatorType::prod(Op1, F[locx1].sign(), Op1.Q()).plain<double>(), 
+			                               Op2.plain<double>()}, 
+			                               F[0].sign().plain<double>());
+		}
+		else if (locx1>locx2)
+		{
+			Mout.setLocal({locx2, locx1}, {factor * OperatorType::prod(Op2, F[locx2].sign(), Op2.Q()).plain<double>(), 
+			                               -1. * Op1.plain<double>()}, 
+			                               F[0].sign().plain<double>());
+		}
+	}
+	else
+	{
+		if (locx1 == locx2)
+		{
+			auto product = factor*OperatorType::prod(Op1, Op2, Qtot);
+			Mout.setLocal(locx1, product.plain<double>());
+		}
+		else
+		{
+			Mout.setLocal({locx1, locx2}, {(factor*Op1).plain<double>(), Op2.plain<double>()});
+		}
+	}
+	return Mout;
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 n (size_t locx, size_t locy) const
 {
 	return make_local("n", locx,locy, F[locx].n(locy), 1., false, true);
@@ -923,6 +985,38 @@ SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	}
 	
 	return Mout;
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+cdagcdag3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss;
+	ss << "c†" << DN << "c†" << UP;
+	return make_corr("c†", "c†", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), {3}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+cc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss;
+	ss << "c" << DN << "c" << UP;
+	return make_corr("c", "c", locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), {3}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+cdagcdag1 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss;
+	ss << "c†" << DN << "c†" << UP;
+	return make_corr("c†", "c†", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), {1}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+cc1 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss;
+	ss << "c" << DN << "c" << UP;
+	return make_corr("c", "c", locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), {1}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
