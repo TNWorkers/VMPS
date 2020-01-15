@@ -3,7 +3,7 @@
 
 #include "symmetry/U0.h"
 #include "HubbardU1xU1.h"
-#include "LiebWu.h" // from TOOLS, depends on gsl
+#include "BetheAnsatzIntegrals.h" // from TOOLS, depends on gsl
 
 namespace VMPS
 {
@@ -30,6 +30,8 @@ public:
 	
 	Hubbard() : Mpo() {};
 	Hubbard (const size_t &L, const vector<Param> &params);
+	
+	static qarray<0> singlet (int N) {return qarray<0>{};};
 	
 	template<typename Symmetry_>
 	//static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, size_t loc=0);
@@ -83,31 +85,28 @@ template<typename Symmetry_>
 void Hubbard::
 add_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)
 {
-    std::size_t Lcell = P.size();
-    std::size_t N_sites = Terms.size();
-    for(std::size_t loc=0; loc<N_sites; ++loc)
-    {
-        std::size_t orbitals = F[loc].orbitals();
-        
-//        stringstream ss;
-//        ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
-//        Terms.save_label(loc, ss.str());
-    
-        param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
-        Terms.save_label(loc, Bx.label);
-    
-        // Can also implement superconductivity terms c*c & cdag*cdag here
-    
-        ArrayXd  U_array  = F[loc].ZeroField();
-        ArrayXd  Uph_array  = F[loc].ZeroField();
-        ArrayXd  E_array  = F[loc].ZeroField();
-        ArrayXd  Bz_array = F[loc].ZeroField();
-        ArrayXXd tperp_array = F[loc].ZeroHopping();
-        ArrayXXd Vperp_array = F[loc].ZeroHopping();
-        ArrayXXd Jperp_array = F[loc].ZeroHopping();
-    
-        Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U_array, Uph_array, E_array, Bz_array, Bx.a, tperp_array, Vperp_array, Jperp_array));
-    }
+	std::size_t Lcell = P.size();
+	std::size_t N_sites = Terms.size();
+	
+	for(std::size_t loc=0; loc<N_sites; ++loc)
+	{
+		std::size_t orbitals = F[loc].orbitals();
+		
+		param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
+		Terms.save_label(loc, Bx.label);
+		
+		// Can also implement superconductivity terms c*c & cdag*cdag here
+		
+		ArrayXd  U_array  = F[loc].ZeroField();
+		ArrayXd  Uph_array  = F[loc].ZeroField();
+		ArrayXd  E_array  = F[loc].ZeroField();
+		ArrayXd  Bz_array = F[loc].ZeroField();
+		ArrayXXd tperp_array = F[loc].ZeroHopping();
+		ArrayXXd Vperp_array = F[loc].ZeroHopping();
+		ArrayXXd Jperp_array = F[loc].ZeroHopping();
+		
+		Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U_array, Uph_array, E_array, Bz_array, Bx.a, tperp_array, Vperp_array, Jperp_array));
+	}
 }
 
 
@@ -127,7 +126,7 @@ ref (const vector<Param> &params, double L)
 	// half-filled chain
 	if (isinf(L) and Ly == 1ul and n == 1. and P.ARE_ALL_ZERO<double>({"tPrime","t0","V","Bz","Bx","J","J3site"}))
 	{
-		out.value = LiebWu_e0(U,t);
+		out.value = BetheAnsatz_e0(U,t);
 		out.source = "Elliott H. Lieb, F. Y. Wu, Absence of Mott Transition in an Exact Solution of the Short-Range, One-Band Model in One Dimension, Phys. Rev. Lett. 20, 1445 (1968)";
 		out.method = "num. integration with gsl";
 	}

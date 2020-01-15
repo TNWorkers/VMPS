@@ -21,9 +21,17 @@ calc_LReigen (VMPS::DIRECTION::OPTION DIR,
               const Qbasis<Symmetry> &basisKet, 
               const vector<vector<qarray<Symmetry::Nq> > > &qloc,
               size_t dimK = 100ul,
-              double tol_input = 1e-12)
+              double tol_input = 1e-12,
+              Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > *LReigenTop= NULL)
 {
 	TransferMatrix<Symmetry,Scalar> T(DIR, Abra, Aket, qloc);
+	
+	if (LReigenTop != NULL)
+	{
+		T.TopEigvec = *LReigenTop;
+		T.TopEigval = 1.;
+		T.PROJECT_OUT_TOPEIGVEC = true;
+	}
 	
 	TransferVector<Symmetry,complex<double> > LRtmp;
 	if (DIR == VMPS::DIRECTION::LEFT)

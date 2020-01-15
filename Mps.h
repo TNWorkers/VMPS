@@ -66,7 +66,7 @@ public:
 	 * \param N_phys_input : the volume of the system (normally (chain length) * (chain width))
 	 * \param Nqmax_input : maximal initial number of symmetry blocks per site in the Mps
 	 */
-	Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Nqmax_input);
+	Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Nqmax_input, bool TRIVIAL_BOUNDARIES=true);
 	
 	/** 
 	 * Construct by pulling info from an Mpo.
@@ -689,12 +689,15 @@ Mps()
 
 template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
-Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Qmax_input)
+Mps (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input, int Qmax_input, bool TRIVIAL_BOUNDARIES)
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input)
 {
-	set_open_bc();
+	if (TRIVIAL_BOUNDARIES) {set_open_bc();}
+	else {Boundaries.TRIVIAL_BOUNDARIES = false;}
 	Qmulti = vector<qarray<Nq> >(1,Qtot);
 	outerResize(L_input, qloc_input, Qtot_input, Qmax_input);
+	update_inbase();
+	update_outbase();
 }
 
 template<typename Symmetry, typename Scalar>
@@ -916,14 +919,11 @@ calc_Qlimits()
 		}
 		return out;
 	};
-	
 	QinTop.resize(this->N_sites);
+
 	QinBot.resize(this->N_sites);
-	vector<vector<qarray<Symmetry::Nq> > > QinBotRange(this->N_sites);
-	vector<vector<qarray<Symmetry::Nq> > > QoutBotRange(this->N_sites);
 	QoutTop.resize(this->N_sites);
 	QoutBot.resize(this->N_sites);
-	
 	// If non-trivial boundaries: we have a hetergeneous infinite state, no Qlimits
 	if (!Boundaries.IS_TRIVIAL())
 	{
@@ -939,6 +939,9 @@ calc_Qlimits()
 	}
 	else
 	{
+		vector<vector<qarray<Symmetry::Nq> > > QinBotRange(this->N_sites);
+		vector<vector<qarray<Symmetry::Nq> > > QoutBotRange(this->N_sites);
+
 		QinTop[0] = Symmetry::qvacuum();
 		QinBot[0] = Symmetry::qvacuum();
 		QinBotRange[0] = {Symmetry::qvacuum()};
@@ -1269,6 +1272,9 @@ innerResize (size_t Dmax)
 			}
 		}
 	}
+	
+	update_inbase();
+	update_outbase();
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1709,6 +1715,15 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 		{
 			// do the glue
 			size_t Nrows = A[loc][svec[0]].block[qvec[0]].rows();
+//			if (Qtot[0] == 5)
+//			{
+//				for (size_t i=0; i<svec.size(); ++i)
+//				{
+//					cout << "loc=" << loc << ", i=" << i << ", A[loc][svec[i]].block[qvec[i]].rows()=" << A[loc][svec[i]].block[qvec[i]].rows() 
+//					     << ", in=" << A[loc][svec[i]].in[qvec[i]] << ", out=" << A[loc][svec[i]].out[qvec[i]] << endl;
+//				}
+//				cout << endl;
+//			}
 			for (size_t i=1; i<svec.size(); ++i) assert(A[loc][svec[i]].block[qvec[i]].rows() == Nrows);
 			size_t Ncols = accumulate(Ncolsvec.begin(), Ncolsvec.end(), 0);
 			
@@ -3142,39 +3157,22 @@ dot (const Mps<Symmetry,Scalar> &Vket) const
 	}
 	
 	Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > L; 
-	//L.setVacuum();
 	L.setIdentity(inBasis(0), inBasis(0));
 	Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > Lnext;
 	
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
-//		cout << "l=" << l << ", L.dim=" << L.dim << endl;
-//		cout << "L=" << endl;
-//		cout << L.print() << endl;
-//		
-//		cout << "A=" << endl;
-//		for (size_t s=0; s<A[l].size(); ++s)
-//		{
-//			cout << "s=" << s << endl;
-//			cout << A[l][s].print() << endl;
-//		}
-//		
-//		cout << "Aket=" << endl;
-//		for (size_t s=0; s<Vket.A_at(l).size(); ++s)
-//		{
-//			cout << "s=" << s << endl;
-//			cout << Vket.A_at(l)[s].print() << endl;
-//		}
-		
 		contract_L(L, A[l], Vket.A_at(l), qloc[l], Lnext);
 		L.clear();
 		L = Lnext;
 		Lnext.clear();
 	}
 	
-//	Scalar out = L.trace();
-//	return out;
+//	cout << "Qmulti.size()=" << Qmulti.size() << endl;
 	Lnext.setIdentity(outBasis(this->N_sites-1), outBasis(this->N_sites-1));
+	
+//	auto res = L.contract(Lnext);
+//	cout << res.print(false) << endl;
 	
 	return L.contract(Lnext).trace();
 }

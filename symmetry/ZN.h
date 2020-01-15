@@ -42,7 +42,7 @@ public:
 	inline static std::string name()
 	{
 		stringstream ss;
-		ss << "Z(" << N << ")";
+		ss << "Z" << N;
 		return ss.str();
 	}
 	inline static constexpr std::array<KIND,Nq> kind() { return {Kind::name}; }

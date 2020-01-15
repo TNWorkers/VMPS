@@ -515,7 +515,7 @@ calc_errors (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &V
 		epsLRsq[g].resize(N_sites);
 		for (size_t l=0; l<N_sites; ++l)
 		{
-			epsLRsq[g](l) = Vout.state.calc_epsLRsq(g,l);
+			epsLRsq[g](l) = std::real(Vout.state.calc_epsLRsq(g,l));
 		}
 	}
 	err_var_old = err_var;
@@ -532,7 +532,9 @@ calc_errors (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &V
 		err_state_old = err_state;
 		err_state = 0.;
 		vector<double> norm_NAAN(N_sites);
+		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp parallel for
+		#endif
 		for (size_t l=0; l<N_sites; ++l)
 		{
 			vector<Biped<Symmetry,MatrixType> > NL;
@@ -614,11 +616,11 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 //		Vout.state.graph("init");
 		Vout.state.max_Nsv = GlobParam.Dlimit;
 		// Vout.state.min_Nsv = DynParam.min_Nsv(0);
-		Vout.state.setRandom();
-		for (size_t l=0; l<N_sites; ++l)
-		{
-			Vout.state.svdDecompose(l);
-		}
+//		Vout.state.setRandom();
+//		for (size_t l=0; l<N_sites; ++l)
+//		{
+//			Vout.state.svdDecompose(l);
+//		}
 	}
 	Vout.state.calc_entropy((CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)? true : false);
 	
@@ -897,10 +899,14 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	L.insert(dW-1, IdL);
 	R.insert(0,    IdR);
 	
+	#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 	#pragma omp parallel sections
+	#endif
 	{
 		// Eq. C19
+		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			for (int b=dW-2; b>=0; --b)
 			{
@@ -919,7 +925,9 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 					
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and b == 0)
 					{
+						#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 						#pragma omp critical
+						#endif
 						{
 							cout << "<L[0]|R>=" << contract_LR(0,Ltmp,Reigen) << endl;
 						}
@@ -929,7 +937,9 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 		}
 		
 		// Eq. C20
+		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			for (int a=1; a<dW; ++a)
 			{
@@ -948,7 +958,9 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 					
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and a == dW-1)
 					{
+						#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 						#pragma omp critical
+						#endif
 						{
 							cout << "<L|R[dW-1]>=" << contract_LR(dW-1,Leigen,Rtmp) << endl;
 						}
@@ -1015,9 +1027,13 @@ build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > 
 	          HeffA[0].L, HeffA[N_sites-1].R);
 	
 	// Make environment for each site of the unit cell
+	#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 	#pragma omp parallel sections
+	#endif
 	{
+		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			for (size_t l=1; l<N_sites; ++l)
 			{
@@ -1027,7 +1043,9 @@ build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > 
 				           HeffA[l].L);
 			}
 		}
+		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			for (int l=N_sites-2; l>=0; --l)
 			{
@@ -1082,7 +1100,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		{
 			lout << "performing expansion with " << VUMPS::TWOSITE_A::ALxCxAR << endl;
 		}
-		expand_basis(deltaD, H, Vout, VUMPS::TWOSITE_A::ALxCxAR);//);
+		expand_basis(deltaD, H, Vout, VUMPS::TWOSITE_A::ALxCxAR);
 		t_exp = ExpansionTimer.time();
 		N_iterations_without_expansion = 0;
 	}
@@ -1102,11 +1120,13 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		
 		Stopwatch<> OptimizationTimer;
 		// See Algorithm 4
+		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp parallel for
+		#endif
 		for (size_t l=0; l<N_sites; ++l)
 		{
 			precalc_blockStructure (HeffA[l].L, Vout.state.A[GAUGE::C][l], HeffA[l].W, Vout.state.A[GAUGE::C][l], HeffA[l].R, 
-				                    H.locBasis(l), H.opBasis(l), HeffA[l].qlhs, HeffA[l].qrhs, HeffA[l].factor_cgcs);
+			                        H.locBasis(l), H.opBasis(l), HeffA[l].qlhs, HeffA[l].qrhs, HeffA[l].factor_cgcs);
 			
 			Eigenstate<PivotVector<Symmetry,Scalar> > gAC;
 			Eigenstate<PivotVector<Symmetry,Scalar> > gC;
@@ -1121,14 +1141,18 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 			Lutz.edgeState(HeffA[l], gAC, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
+				#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 				#pragma omp critical
+				#endif
 				{
 					lout << "l=" << l << ", AC" << ", time" << LanczosTimer.info() << ", " << Lutz.info() << endl;
 				}
 			}
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 			{
+				#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 				#pragma omp critical
+				#endif
 				{
 					lout << "e0(AC)=" << setprecision(13) << gAC.energy << ", ratio=" << gAC.energy/Vout.energy << endl;
 				}
@@ -1144,14 +1168,18 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 			
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
+				#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 				#pragma omp critical
+				#endif
 				{
 					lout << "l=" << l << ", C" << ", time" << LanczosTimer.info() << ", " << Lucy.info() << endl;
 				}
 			}
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 			{
+				#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 				#pragma omp critical
+				#endif
 				{
 					lout << "e0(C)=" << setprecision(13) << gC.energy << ", ratio=" << gC.energy/Vout.energy << endl;
 				}
@@ -1181,20 +1209,43 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	//	cout << termcolor::blue << "eL_=" << eL_ << ", eR_=" << eR_ << termcolor::reset << endl;
 		
 		Biped<Symmetry,MatrixType> Reigen, Leigen;
+		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp parallel sections
+		#endif
 		{
+			#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 			#pragma omp section
+			#endif
 			{
 				Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
-				eL = contract_LR(0, YLlast, Reigen) / H.volume();
+				eL = std::real(contract_LR(0, YLlast, Reigen)) / H.volume(); //static_cast<Scalar>(H.volume());
 			}
+			#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 			#pragma omp section
+			#endif
 			{
 				Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
-				eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
+				eR = std::real(contract_LR(dW-1, Leigen, YRfrst)) / H.volume(); //static_cast<Scalar>(H.volume());
 			}
 		}
 		Vout.energy = min(eL,eR);
+		
+//		double eR2 = calc_LReigen(VMPS::DIRECTION::RIGHT, 
+//		                          Vout.state.A[GAUGE::L], 
+//		                          Vout.state.A[GAUGE::L], 
+//		                          Vout.state.outBasis(N_sites-1), 
+//		                          Vout.state.outBasis(N_sites-1), 
+//		                          Vout.state.qloc,
+//		                          100ul, 1e-12,
+//		                          &Reigen).energy;
+//		 calc_LReigen(VMPS::DIRECTION::LEFT, 
+//		              Vout.state.A[GAUGE::R], 
+//		              Vout.state.A[GAUGE::R], 
+//		              Vout.state.outBasis(0), 
+//		              Vout.state.outBasis(0), 
+//		              Vout.state.qloc,
+//		              100ul, 1e-12,
+//		              &Leigen).energy;
 		
 		double t_sweep = SweepTimer.time();
 		
@@ -1336,8 +1387,8 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		Lucy(LanczosParam.REORTHO);
 		Lucy.set_dimK(min(LanczosParam.dimK, dim(gCR.state)));
 		Lucy.edgeState(PivotMatrix0(HeffC[l]), gCR, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
-		//ensure phase convention: first element is positive
-		if (gCR.state.data[0].block[0](0,0) < 0.) { gCR.state.data[0] = (-1.) * gCR.state.data[0]; }
+		//ensure phase convention: real part of first element is positive
+		if (std::real(gCR.state.data[0].block[0](0,0)) < 0.) { gCR.state.data[0] = (-1.) * gCR.state.data[0]; }
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -1356,8 +1407,8 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 		Luca(LanczosParam.REORTHO);
 		Luca.set_dimK(min(LanczosParam.dimK, dim(gCL.state)));
 		Luca.edgeState(PivotMatrix0(HeffC[lC]), gCL, LANCZOS::EDGE::GROUND, tolLanczosEigval,tolLanczosState, false);
-		//ensure phase convention: first element is positive
-		if (gCL.state.data[0].block[0](0,0) < 0.) { gCL.state.data[0] = (-1.) * gCL.state.data[0]; }
+		//ensure phase convention: real part of first element is positive
+		if (std::real(gCL.state.data[0].block[0](0,0)) < 0.) { gCL.state.data[0] = (-1.) * gCL.state.data[0]; }
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -1381,8 +1432,8 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	// Calculate energies
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
-	eL = contract_LR(0, YLlast, Reigen) / H.volume();
-	eR = contract_LR(dW-1, Leigen, YRfrst) / H.volume();
+	eL = std::real(contract_LR(0, YLlast, Reigen)) / H.volume(); //static_cast<Scalar>(H.volume());
+	eR = std::real(contract_LR(dW-1, Leigen, YRfrst)) / H.volume(); //static_cast<Scalar>(H.volume());
 	
 	Vout.energy = min(eL,eR);
 	
@@ -1442,8 +1493,8 @@ iteration_h2site (Eigenstate<Umps<Symmetry,Scalar> > &Vout)
 	Biped<Symmetry,MatrixType> hL = make_hL(h2site, Vout.state.A[GAUGE::L][0], Vout.state.locBasis(0));
 	
 	// energies
-	eL = (Leigen.contract(hR)).trace();
-	eR = (hL.contract(Reigen)).trace();
+	eL = std::real((Leigen.contract(hR)).trace());
+	eR = std::real((hL.contract(Reigen)).trace());
 	
 	// |H_R) and (H_L|
 	Biped<Symmetry,MatrixType> HL, HR;
@@ -1730,11 +1781,14 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 		}
 		else // dynamical choice: L=1 parallel, L>1 sequential
 		{
-			if (N_sites == 1) { iteration_parallel(H,Vout); }
-			else              { iteration_sequential(H,Vout); }
+//			if (N_sites == 1) { iteration_parallel(H,Vout); }
+//			else              { iteration_sequential(H,Vout); }
+			iteration_sequential(H,Vout);
 		}
 		
+		FORCE_DO_SOMETHING = true;
 		DynParam.doSomething(N_iterations);
+		FORCE_DO_SOMETHING = false;
 		
 		write_log();
 		#ifdef USE_HDF5_STORAGE
@@ -1945,8 +1999,8 @@ calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scal
 	Vout.state.calc_N(DMRG::DIRECTION::RIGHT, loc,             NL);
 	Vout.state.calc_N(DMRG::DIRECTION::LEFT,  (loc+1)%N_sites, NR);
 	
-	PivotMatrix2<Symmetry,Scalar> H2(HeffA[loc].L, HeffA[(loc+1)%N_sites].R, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, 
-	                                 H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites));
+	PivotMatrix2 H2(HeffA[loc].L, HeffA[(loc+1)%N_sites].R, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, 
+					H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites));
 	
 	vector<Biped<Symmetry,MatrixType> > AL;
 	vector<Biped<Symmetry,MatrixType> > AR;
@@ -1977,9 +2031,10 @@ calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scal
 		assert(1!=1 and "You inserted an invalid value for enum VUMPS::TWOSITEA::OPTION in calc_B2 from VumpsSolver.");
 	}
 	
+//	Vout.state.graph("test");
 	PivotVector<Symmetry,Scalar> A2C(AL, H.locBasis(loc), 
 	                                 AR, H.locBasis((loc+1)%N_sites), 
-	                                 Vout.state.Qtop(loc), Vout.state.Qbot((loc+1)%N_sites));
+	                                 Vout.state.Qtop(loc), Vout.state.Qbot(loc));
 	
 	precalc_blockStructure (HeffA[loc].L, A2C.data, HeffA[loc].W, HeffA[(loc+1)%N_sites].W, A2C.data, HeffA[(loc+1)%N_sites].R, 
 	                        H.locBasis(loc), H.locBasis((loc+1)%N_sites), H.opBasis(loc), H.opBasis((loc+1)%N_sites), 
@@ -2135,13 +2190,19 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 //	cout << "Cshift[N_sites-1]=" << endl;
 //	cout << Cshift.print(false) << endl << endl;
 	
+	#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 	#pragma omp parallel sections
+	#endif
 	{
+		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			build_L(ALxO, V.state.C[N_sites-1], H.W, H.qloc, H.qOp, L_with_O);
 		}
+		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			build_R(ARxO, Cshift,               H.W, H.qloc, H.qOp, R_with_O);
 		}
@@ -2151,7 +2212,9 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	                                         L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
 	
 	vector<Mps<Symmetry,Scalar>> Mres(Omult.size());
+	#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 	#pragma omp parallel for
+	#endif
 	for (size_t l=0; l<Omult.size(); ++l)
 	{
 		DMRG::VERBOSITY::OPTION VERB = (Omult.size()>4)? DMRG::VERBOSITY::SILENT : DMRG::VERBOSITY::ON_EXIT;
@@ -2203,13 +2266,19 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	Cshift.clear();
 	Maux.rightSplitStep(N_sites-1, Cshift);
 	
+	#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 	#pragma omp parallel sections
+	#endif
 	{
+		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			build_L(ALxO, V.state.C, H.W, H.qloc, H.qOp, L_with_O);
 		}
+		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp section
+		#endif
 		{
 			build_R(ARxO, Cshift,    H.W, H.qloc, H.qOp, R_with_O);
 		}

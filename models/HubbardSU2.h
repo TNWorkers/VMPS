@@ -1,10 +1,8 @@
-#ifndef HUBBARDMODELSU2XU1_H_
-#define HUBBARDMODELSU2XU1_H_
+#ifndef HUBBARDMODELSU2_H_
+#define HUBBARDMODELSU2_H_
 
-#include "symmetry/S1xS2.h"
-#include "symmetry/U1.h"
 #include "symmetry/SU2.h"
-#include "bases/FermionBaseSU2xU1.h"
+#include "bases/FermionBaseSU2.h"
 //include "tensors/SiteOperatorQ.h"
 //include "tensors/SiteOperator.h"
 #include "Mpo.h"
@@ -16,7 +14,7 @@
 namespace VMPS
 {
 
-/** \class HubbardSU2xU1
+/** \class HubbardSU2
   * \ingroup Hubbard
   *
   * \brief Hubbard Model
@@ -36,16 +34,16 @@ namespace VMPS
   * H_{tJ} = +J \sum_{<ij>} (\mathbf{S}_{i} \mathbf{S}_{j} - \frac{1}{4} n_in_j)
   * \f]
   * \note: The term before \f$n_i n_j\f$ is not set and has to be adjusted with \p V
-  * \note Makes use of the spin-SU(2) symmetry and the U(1) charge symmetry.
+  * \note Makes use only of the spin-SU(2) smmetry.
   * \note If the nnn-hopping is positive, the ground state energy is lowered.
   * \warning \f$J>0\f$ is antiferromagnetic
   */
-class HubbardSU2xU1 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > ,double>, public ParamReturner
+class HubbardSU2 : public Mpo<Sym::SU2<Sym::SpinSU2> ,double>, public ParamReturner
 {
 public:
 	
-	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > Symmetry;
-	MAKE_TYPEDEFS(HubbardSU2xU1)
+	typedef Sym::SU2<Sym::SpinSU2> Symmetry;
+	MAKE_TYPEDEFS(HubbardSU2)
 	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
 	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
 	
@@ -56,21 +54,36 @@ private:
 	
 public:
 	
-	HubbardSU2xU1() : Mpo(){};
-	HubbardSU2xU1 (const size_t &L, const vector<Param> &params);
+	HubbardSU2() : Mpo(){};
+	HubbardSU2 (const size_t &L, const vector<Param> &params);
 	
 	//static HamiltonianTermsXd<Symmetry> set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc=0);
 	static void set_operators(const std::vector<FermionBase<Symmetry>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
 	
-	static qarray<2> singlet (int N) {return qarray<2>{1,N};};
+	static qarray<1> singlet (int N=0) {return qarray<1>{1};};
 	
 	///@{
 	Mpo<Symmetry> c (size_t locx, size_t locy=0, double factor=1.) const;
 	Mpo<Symmetry> cdag (size_t locx, size_t locy=0, double factor=sqrt(2.)) const;
 	Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Tz (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Tx (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> iTy (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Tp (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Tm (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> d (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> nh (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> ns (size_t locx, size_t locy=0) const;
+	///@}
+	
+	///@{
+	Mpo<Symmetry> B (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) {return cdagc(locx1,locx2,locy1,locy2);};
+	Mpo<Symmetry> C (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> triplet (size_t locx1, size_t locx2) const;
+	Mpo<Symmetry> cdagcdag3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> cc3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> cdagcdag1 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> cc1 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 	///@{
@@ -80,29 +93,18 @@ public:
 	///@}
 	
 	///@{
-	Mpo<Symmetry> triplet (size_t locx1, size_t locx2) const;
-	///@}
-	
-	///@{
 	Mpo<Symmetry> S (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> Sdag (size_t locx, size_t locy=0, double factor=sqrt(3.)) const;
 	///@}
 	
 	///@{
 	Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> cdagcdag3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> cc3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> cdagcdag1 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> cc1 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> nn    (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> TzTz  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> TpTm  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double factor=1.) const;
 	Mpo<Symmetry> TmTp  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double factor=1.) const;
-	vector<Mpo<Symmetry>> TdagT  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> Tz    (size_t locx, size_t locy=0) const;
-	Mpo<Symmetry> Tp    (size_t locx, size_t locy=0, double factor=1.) const;
-	Mpo<Symmetry> Tm    (size_t locx, size_t locy=0, double factor=1.) const;
+	vector<Mpo<Symmetry> > TdagT (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
 	Mpo<Symmetry,complex<double> > S_ky    (vector<complex<double> > phases) const;
@@ -122,9 +124,12 @@ protected:
 	            size_t locx, size_t locy, 
 	            const OperatorType &Op, 
 	            double factor, bool FERMIONIC, bool HERMITIAN) const;
-	Mpo<Symmetry> make_corr  (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
-	                          const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
-	                          double factor, bool FERMIONIC, bool HERMITIAN) const;
+	
+	Mpo<Symmetry>
+	make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
+	           const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
+	           double factor, bool FERMIONIC, bool HERMITIAN) const;
+	
 	
 	Mpo<Symmetry,complex<double> >
 	make_FourierYSum (string name, const vector<OperatorType> &Ops, double factor, bool HERMITIAN, const vector<complex<double> > &phases) const;
@@ -134,7 +139,7 @@ protected:
 
 // V is standard next-nearest neighbour density interaction
 // Vz and Vxy are anisotropic isospin-isospin next-nearest neighbour interaction
-const map<string,any> HubbardSU2xU1::defaults = 
+const map<string,any> HubbardSU2::defaults = 
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",1.}, {"tPrimePrime",0.},
 	{"mu",0.}, {"t0",0.}, 
@@ -146,7 +151,7 @@ const map<string,any> HubbardSU2xU1::defaults =
 	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
-const map<string,any> HubbardSU2xU1::sweep_defaults = 
+const map<string,any> HubbardSU2::sweep_defaults = 
 {
 	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",11ul}, {"eps_svd",1e-7},
 	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
@@ -157,10 +162,10 @@ const map<string,any> HubbardSU2xU1::sweep_defaults =
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
 };
 
-HubbardSU2xU1::
-HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
- ParamReturner(HubbardSU2xU1::sweep_defaults)
+HubbardSU2::
+HubbardSU2 (const size_t &L, const vector<Param> &params)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
+ ParamReturner(HubbardSU2::sweep_defaults)
 {
 	ParamHandler P(params,defaults);
 	
@@ -182,7 +187,7 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params)
 	this->precalc_TwoSiteData();
 }
 
-void HubbardSU2xU1::
+void HubbardSU2::
 set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
 {
 	std::size_t Lcell = P.size();
@@ -226,8 +231,8 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 				
 				if (range != 0)
 				{
-					SiteOperator<Symmetry,double> c_sign_local = OperatorType::prod(F[loc].c(0), F[loc].sign(), {2,-1}).plain<double>();
-					SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(0), F[loc].sign(), {2,1}).plain<double>();
+					SiteOperator<Symmetry,double> c_sign_local = OperatorType::prod(F[loc].c(0), F[loc].sign(), {2}).plain<double>();
+					SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(0), F[loc].sign(), {2}).plain<double>();
 					SiteOperator<Symmetry,double> c_range = F[(loc+range)%N_sites].c(0).plain<double>();
 					SiteOperator<Symmetry,double> cdag_range = F[(loc+range)%N_sites].cdag(0).plain<double>();
 					
@@ -301,13 +306,15 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 				if (range != 0)
 				{
 					//The sign is hardcoded here.. maybe include this in Geometry class.
-					auto Tp_loc    = pow(-1,loc) * F[loc].cc(0);
-					auto Tm_hop    = pow(-1,(loc+range)%N_sites) * F[(loc+range)%N_sites].cdagcdag(0);
-					auto Tm_loc    = pow(-1,loc) * F[loc].cdagcdag(0);
-					auto Tp_hop    = pow(-1,(loc+range)%N_sites) * F[(loc+range)%N_sites].cc(0);
+					auto Tp_loc = pow(-1,loc)*F[loc].cc(0);
+					auto Tm_hop = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cdagcdag(0);
+					auto Tm_loc = pow(-1,loc)*F[loc].cdagcdag(0);
+					auto Tp_hop = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cc(0);
 					
-					Terms.push(range, loc, 0.5 * value, Tp_loc.plain<double>(), TransOps, Tm_hop.plain<double>());
-					Terms.push(range, loc, 0.5 * value, Tm_loc.plain<double>(), TransOps, Tp_hop.plain<double>());
+					Terms.push(range, loc, 0.5 * value,
+					           Tp_loc.plain<double>(), TransOps, Tm_hop.plain<double>());
+					Terms.push(range, loc, 0.5 * value,
+					           Tm_loc.plain<double>(), TransOps, Tp_hop.plain<double>());
 				}
 			}
 			
@@ -411,27 +418,27 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 					size_t ran = (loc+range)%N_sites;
 					
 					SiteOperator<Symmetry,double> PsiLloc = OperatorType::prod(F[loc].ns(),
-					                                        OperatorType::prod(F[loc].c(), F[loc].sign(), {2,-1}),
-					                                        {2,-1}).plain<double>();
+					                                        OperatorType::prod(F[loc].c(), F[loc].sign(), {2}),
+					                                        {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsiRloc = OperatorType::prod(
-					                                        OperatorType::prod(F[loc].c(), F[loc].sign(), {2,-1}),
+					                                        OperatorType::prod(F[loc].c(), F[loc].sign(), {2}),
 					                                        F[loc].ns(),
-					                                        {2,-1}).plain<double>();
+					                                        {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsiLran = OperatorType::prod(F[ran].ns(), F[ran].c(),
-					                                        {2,-1}).plain<double>();
+					                                        {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsiRran = OperatorType::prod(F[ran].c(), F[ran].ns(),
-					                                        {2,-1}).plain<double>();
+					                                        {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsidagLloc = OperatorType::prod(
-					                                           OperatorType::prod(F[loc].cdag(), F[loc].sign(), {2,1}),
+					                                           OperatorType::prod(F[loc].cdag(), F[loc].sign(), {2}),
 					                                           F[loc].ns(),
-					                                           {2,1}).plain<double>();
+					                                           {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsidagRloc = OperatorType::prod(F[loc].ns(),
-					                                           OperatorType::prod(F[loc].cdag(), F[loc].sign(), {2,1}),
-					                                           {2,1}).plain<double>();
+					                                           OperatorType::prod(F[loc].cdag(), F[loc].sign(), {2}),
+					                                           {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsidagLran = OperatorType::prod(F[ran].cdag(), F[ran].ns(),
-					                                           {2,1}).plain<double>();
+					                                           {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsidagRran = OperatorType::prod(F[ran].ns(), F[ran].cdag(),
-					                                           {2,1}).plain<double>();
+					                                           {2}).plain<double>();
 					
 					//hopping
 					Terms.push(range, loc, -value * std::sqrt(2.), PsidagLloc, TransOps, PsiRran);
@@ -493,8 +500,8 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 				for (std::size_t alfa=0; alfa<orbitals;      ++alfa)
 				for (std::size_t beta=0; beta<next_orbitals; ++beta)
 				{
-					SiteOperator<Symmetry,double> c_sign_local    = OperatorType::prod(F[loc].c(alfa),    F[loc].sign(), {2,-1}).plain<double>();
-					SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,+1}).plain<double>();
+					SiteOperator<Symmetry,double> c_sign_local    = OperatorType::prod(F[loc].c(alfa),    F[loc].sign(), {2}).plain<double>();
+					SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2}).plain<double>();
 					
 					SiteOperator<Symmetry,double> c_tight    = F[lp1].c   (beta).plain<double>();
 					SiteOperator<Symmetry,double> cdag_tight = F[lp1].cdag(beta).plain<double>();
@@ -515,27 +522,27 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 					SiteOperator<Symmetry,double> S_tight    = F[lp1].S   (beta).plain<double>();
 					
 					SiteOperator<Symmetry,double> PsiLloc = OperatorType::prod(F[loc].ns(alfa),
-					                                        OperatorType::prod(F[loc].c(alfa), F[loc].sign(), {2,-1}),
-					                                        {2,-1}).plain<double>();
+					                                        OperatorType::prod(F[loc].c(alfa), F[loc].sign(), {2}),
+					                                        {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsiRloc = OperatorType::prod(
-					                                        OperatorType::prod(F[loc].c(alfa), F[loc].sign(), {2,-1}),
+					                                        OperatorType::prod(F[loc].c(alfa), F[loc].sign(), {2}),
 					                                        F[loc].ns(alfa),
-					                                        {2,-1}).plain<double>();
+					                                        {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsiLlp1 = OperatorType::prod(F[lp1].ns(beta), F[lp1].c(beta),
-					                                        {2,-1}).plain<double>();
+					                                        {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsiRlp1 = OperatorType::prod(F[lp1].c(beta), F[lp1].ns(beta),
-					                                        {2,-1}).plain<double>();
+					                                        {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsidagLloc = OperatorType::prod(
-					                                           OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,1}),
+					                                           OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2}),
 					                                           F[loc].ns(alfa),
-					                                           {2,1}).plain<double>();
+					                                           {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsidagRloc = OperatorType::prod(F[loc].ns(alfa),
-					                                           OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,1}),
-					                                           {2,1}).plain<double>();
+					                                           OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2}),
+					                                           {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsidagLlp1 = OperatorType::prod(F[lp1].cdag(beta), F[lp1].ns(beta),
-					                                           {2,1}).plain<double>();
+					                                           {2}).plain<double>();
 					SiteOperator<Symmetry,double> PsidagRlp1 = OperatorType::prod(F[lp1].ns(beta), F[lp1].cdag(beta),
-					                                           {2,1}).plain<double>();
+					                                           {2}).plain<double>();
 					
 					//hopping
 					Terms.push_tight(loc, -tpara(alfa,beta) * std::sqrt(2.), cdag_sign_local, c_tight);
@@ -572,8 +579,8 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 				for (std::size_t alfa=0; alfa<orbitals;       ++alfa)
 				for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
 				{
-					SiteOperator<Symmetry,double> c_sign_local    = OperatorType::prod(F[loc].c(alfa),    F[loc].sign(), {2,-1}).plain<double>();
-					SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,1} ).plain<double>();
+					SiteOperator<Symmetry,double> c_sign_local    = OperatorType::prod(F[loc].c(alfa),    F[loc].sign(), {2}).plain<double>();
+					SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2} ).plain<double>();
 					
 					SiteOperator<Symmetry,double> sign_tight = F[lp1].sign().plain<double>();
 					
@@ -601,8 +608,8 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 				for (std::size_t alfa=0; alfa<orbitals;        ++alfa)
 				for (std::size_t beta=0; beta<nnextn_orbitals; ++beta)
 				{
-					SiteOperator<Symmetry,double> c_sign_local    = OperatorType::prod(F[loc].c(alfa),    F[loc].sign(), {2,-1}).plain<double>();
-					SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2,1} ).plain<double>();
+					SiteOperator<Symmetry,double> c_sign_local    = OperatorType::prod(F[loc].c(alfa),    F[loc].sign(), {2}).plain<double>();
+					SiteOperator<Symmetry,double> cdag_sign_local = OperatorType::prod(F[loc].cdag(alfa), F[loc].sign(), {2} ).plain<double>();
 					
 					SiteOperator<Symmetry,double> c_nnextn    = F[lp3].c(beta).plain<double>();
 					SiteOperator<Symmetry,double> cdag_nnextn = F[lp3].cdag(beta).plain<double>();
@@ -615,7 +622,7 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 	}
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 make_local (string name, size_t locx, size_t locy, const OperatorType &Op, double factor, bool FERMIONIC, bool HERMITIAN) const
 {
 	assert(locx<F.size() and locy<F[locx].dim());
@@ -624,7 +631,7 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 	if (factor != 1.) ss << ",factor=" << factor;
 	ss << ")";
 	
-	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, Op.Q(), ss.str(), HERMITIAN);
+	Mpo<Sym::SU2<Sym::SpinSU2> > Mout(N_sites, Op.Q(), ss.str(), HERMITIAN);
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
 	if (FERMIONIC)
@@ -642,7 +649,7 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 	return Mout;
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
            const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
            double factor, bool FERMIONIC, bool HERMITIAN) const
@@ -654,7 +661,7 @@ make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1,
 	ss << name1 << "(" << locx1 << "," << locy1 << ")"
 	   << name2 << "(" << locx2 << "," << locy2 << ")";
 	
-	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > Mout(N_sites, Qtot, ss.str(), HERMITIAN);
+	Mpo<Sym::SU2<Sym::SpinSU2> > Mout(N_sites, Qtot, ss.str(), HERMITIAN);
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
 	if (FERMIONIC)
@@ -692,55 +699,85 @@ make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1,
 	return Mout;
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 n (size_t locx, size_t locy) const
 {
 	return make_local("n", locx,locy, F[locx].n(locy), 1., false, true);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 nh (size_t locx, size_t locy) const
 {
 	return make_local("nh", locx,locy, F[locx].nh(locy), 1., false, true);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 ns (size_t locx, size_t locy) const
 {
 	return make_local("ns", locx,locy, F[locx].ns(locy), 1., false, true);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+Tz (size_t locx, size_t locy) const
+{
+	return make_local("Tz", locx,locy, F[locx].Tz(locy), 1., false, true);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+Tx (size_t locx, size_t locy) const
+{
+	return make_local("Tx", locx,locy, pow(-1.,locx+locy)*F[locx].Tx(locy), 1., false, true);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+iTy (size_t locx, size_t locy) const
+{
+	return make_local("iTy", locx,locy, pow(-1.,locx+locy)*F[locx].iTy(locy), 1., false, true);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+Tp (size_t locx, size_t locy) const
+{
+	return make_local("Tp", locx,locy, pow(-1.,locx+locy)*F[locx].cc(locy), 1., false, false);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+Tm (size_t locx, size_t locy) const
+{
+	return make_local("Tm", locx,locy, pow(-1.,locx+locy)*F[locx].cdagcdag(locy), 1., false, false);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 d (size_t locx, size_t locy) const
 {
 	return make_local("d", locx,locy, F[locx].d(locy), 1., false, true);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 c (size_t locx, size_t locy, double factor) const
 {
 	return make_local("c", locx,locy, F[locx].c(locy), factor, true, false);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 cdag (size_t locx, size_t locy, double factor) const
 {
 	return make_local("c†", locx,locy, F[locx].cdag(locy), factor, true, false);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 S (size_t locx, size_t locy) const
 {
 	return make_local("S", locx,locy, F[locx].S(locy), 1., false, false);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 Sdag (size_t locx, size_t locy, double factor) const
 {
 	return make_local("S†", locx,locy, F[locx].Sdag(locy), factor, false, false);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 cc (size_t locx, size_t locy) const
 {
 	stringstream ss;
@@ -748,7 +785,7 @@ cc (size_t locx, size_t locy) const
 	return make_local(ss.str(), locx,locy, F[locx].cc(locy), 1., false, false);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 cdagcdag (size_t locx, size_t locy) const
 {
 	stringstream ss;
@@ -756,39 +793,7 @@ cdagcdag (size_t locx, size_t locy) const
 	return make_local(ss.str(), locx,locy, F[locx].cdagcdag(locy), 1., false, false);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-cdagcdag1 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	stringstream ss;
-	ss << "c†" << DN << "c†" << UP;
-	return make_corr("c†", "c†", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), {1,+2}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
-}
-
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-cc1 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	stringstream ss;
-	ss << "c" << DN << "c" << UP;
-	return make_corr("c", "c", locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), {1,-2}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
-}
-
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-cdagcdag3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	stringstream ss;
-	ss << "c†" << DN << "c†" << UP;
-	return make_corr("c†", "c†", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), {3,+2}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
-}
-
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-cc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	stringstream ss;
-	ss << "c" << DN << "c" << UP;
-	return make_corr("c", "c", locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), {3,-2}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
-}
-
-//Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+//Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 //make_corr (string name1, string name2, 
 //           size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
 //           const OperatorType &Op1, const OperatorType &Op2,
@@ -809,7 +814,7 @@ cc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 //	return Mout;
 //}
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
@@ -828,117 +833,26 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	}
 	else if (locx1<locx2)
 	{
-		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), cdag.Q()).plain<double>(), //{2,+1}
+		Mout.setLocal({locx1, locx2}, {sqrt(2.) * OperatorType::prod(cdag, F[locx1].sign(), {2}).plain<double>(), 
 		                               c.plain<double>()},
 		                               F[0].sign().plain<double>());
 	}
 	else if (locx1>locx2)
 	{
-		Mout.setLocal({locx2, locx1}, {sqrt(2.) * OperatorType::prod(c, F[locx2].sign(), c.Q()).plain<double>(), //{2,-1}
+		Mout.setLocal({locx2, locx1}, {sqrt(2.) * OperatorType::prod(c, F[locx2].sign(), {2}).plain<double>(), 
 		                               cdag.plain<double>()}, 
 		                               F[0].sign().plain<double>());
 	}
 	return Mout;
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-triplet (size_t locx1, size_t locx2) const
-{
-	assert(locx1<N_sites and locx2<N_sites);
-	stringstream ss;
-	ss << "c†(" << locx1 << ")" << "c†(" << locx2 << ")";
-	
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
-	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
-	
-	auto cdag1 = F[locx1].cdag();
-	auto cdag2 = F[locx1+1].cdag();
-	auto c1 = F[locx2].c();
-	auto c2 = F[locx2+1].c();
-	
-	if (locx1 == locx2)
-	{
-		throw;
-//		Mout.setLocal(locx1, sqrt(2.) * OperatorType::prod(cdag1, cdag2, {3,+2}).plain<double>());
-	}
-	else if (locx1<locx2)
-	{
-		Mout.setLocal({locx1, locx1+1, locx2, locx2+1}, 
-		              {sqrt(2.) * OperatorType::prod(cdag1, F[locx1].sign(), cdag1.Q()).plain<double>(), cdag2.plain<double>(),
-		               sqrt(2.) * OperatorType::prod(c1, F[locx2].sign(), c1.Q()).plain<double>(), c2.plain<double>()
-		              }
-		             );
-	}
-	else if (locx1>locx2)
-	{
-		throw;
-//		Mout.setLocal({locx2, locx1, locx2, locx2+1}, {sqrt(2.) * OperatorType::prod(cdag2, F[locx2].sign(), cdag2.Q()).plain<double>(), 
-//		                               cdag1.plain<double>()}, 
-//		                               F[0].sign().plain<double>());
-	}
-	
-	Mout.qaux.clear();
-	Mout.qaux.resize(N_sites+1);
-	Mout.qaux[0].clear();
-	Mout.qaux[0].push_back({1,0},1);
-	for (int l=1; l<N_sites; ++l)
-	{
-		if (l-1<locx1)
-		{
-			// singlet
-			Mout.qaux[l].clear();
-			Mout.qaux[l].push_back({1,0},1);
-		}
-		else if (l-1==locx1)
-		{
-			// cdag: doublet
-			Mout.qaux[l].clear();
-			Mout.qaux[l].push_back({2,+1},1);
-		}
-		else if (l-1==locx1+1)
-		{
-			// cdag: triplet
-			Mout.qaux[l].clear();
-			Mout.qaux[l].push_back({3,+2},1);
-		}
-		else if (l-1>locx1+1 and l-1<locx2)
-		{
-			// triplet in between
-			Mout.qaux[l].clear();
-			Mout.qaux[l].push_back({3,+2},1);
-		}
-		else if (l-1==locx2)
-		{
-			// c: doublet
-			Mout.qaux[l].clear();
-			Mout.qaux[l].push_back({2,+1},1);
-		}
-		else if (l-1==locx2+1)
-		{
-			// c: singlet
-			Mout.qaux[l].clear();
-			Mout.qaux[l].push_back({1,0},1);
-		}
-		else if (l-1>locx2+1)
-		{
-			// singlet
-			Mout.qaux[l].clear();
-			Mout.qaux[l].push_back({1,0},1);
-		}
-	}
-	Mout.qaux[N_sites].clear();
-	Mout.qaux[N_sites].push_back({1,0},1);
-	
-	return Mout;
-}
-
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 dh_excitation (size_t loc) const
 {
 	size_t lp1 = loc+1;
 	
-	OperatorType PsiRloc = OperatorType::prod(OperatorType::prod(F[loc].c(0), F[loc].sign(), {2,-1}), F[loc].ns(0), {2,-1});
-	OperatorType PsidagLlp1 = OperatorType::prod(F[lp1].cdag(0), F[lp1].ns(0),{2,1});
+	OperatorType PsiRloc = OperatorType::prod(OperatorType::prod(F[loc].c(0), F[loc].sign(), {2}), F[loc].ns(0), {2});
+	OperatorType PsidagLlp1 = OperatorType::prod(F[lp1].cdag(0), F[lp1].ns(0),{2});
 	
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), "dh");
 	for(size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((F[l].get_basis()).qloc(),l); }
@@ -948,7 +862,7 @@ dh_excitation (size_t loc) const
 	return Mout;
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 nn (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
@@ -962,7 +876,7 @@ nn (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	return Mout;
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 TzTz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
@@ -987,7 +901,7 @@ TzTz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	return Mout;
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) const
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
@@ -997,7 +911,7 @@ TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) con
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
-	auto Op1 = factor * pow(-1.,locx1+locy1) * F[locx1].cc(locy1);
+	auto Op1 = pow(-1.,locx1+locy1) * F[locx1].cc(locy1);
 	auto Op2 = pow(-1.,locx2+locy2) * F[locx2].cdagcdag(locy2);
 	
 	if (locx1 == locx2)
@@ -1007,12 +921,12 @@ TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) con
 	}
 	else
 	{
-		Mout.setLocal({locx1, locx2}, {Op1.plain<double>(), Op2.plain<double>()});
+		Mout.setLocal({locx1, locx2}, {factor * Op1.plain<double>(), Op2.plain<double>()});
 	}
 	return Mout;
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) const
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
@@ -1022,7 +936,7 @@ TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) con
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
-	auto Op1 = factor * pow(-1.,locx1+locy1) * F[locx1].cdagcdag(locy1);
+	auto Op1 = pow(-1.,locx1+locy1) * F[locx1].cdagcdag(locy1);
 	auto Op2 = pow(-1.,locx2+locy2) * F[locx2].cc(locy2);
 	
 	if (locx1 == locx2)
@@ -1032,22 +946,22 @@ TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) con
 	}
 	else
 	{
-		Mout.setLocal({locx1, locx2}, {Op1.plain<double>(), Op2.plain<double>()});
+		Mout.setLocal({locx1, locx2}, {factor * Op1.plain<double>(), Op2.plain<double>()});
 	}
 	return Mout;
 }
 
-vector<Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > > HubbardSU2xU1::
+vector<Mpo<Sym::SU2<Sym::SpinSU2> > > HubbardSU2::
 TdagT (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	vector<Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > > out(3);
-	out[0] = TpTm(locx1,locx2,locy1,locy2,0.5);
-	out[1] = TpTm(locx1,locx2,locy1,locy2,0.5);
-	out[2] = TzTz(locx1,locx2,locy1,locy2);
+	vector<Mpo<Sym::SU2<Sym::SpinSU2> > > out(3);
+	out[0] = TpTm(locx1, locx2, locy1, locy2, 0.5);
+	out[1] = TmTp(locx1, locx2, locy1, locy2, 0.5);
+	out[2] = TzTz(locx1, locx2, locy1, locy2);
 	return out;
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
@@ -1073,25 +987,138 @@ SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	return Mout;
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-Tz (size_t locx, size_t locy) const
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+cdagcdag3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	return make_local("Tz", locx,locy, F[locx].Tz(locy), 1., false, true);
+	stringstream ss;
+	ss << "c†" << DN << "c†" << UP;
+	return make_corr("c†", "c†", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), {3}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-Tp (size_t locx, size_t locy, double factor) const
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+cc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	return make_local("T+", locx,locy, factor*pow(-1.,locx+locy)*F[locx].cc(locy), 1., false, false);
+	stringstream ss;
+	ss << "c" << DN << "c" << UP;
+	return make_corr("c", "c", locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), {3}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > HubbardSU2xU1::
-Tm (size_t locx, size_t locy, double factor) const
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+cdagcdag1 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	return make_local("T-", locx,locy, factor*pow(-1.,locx+locy)*F[locx].cdagcdag(locy), 1., false, false);
+	stringstream ss;
+	ss << "c†" << DN << "c†" << UP;
+	return make_corr("c†", "c†", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), {1}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+cc1 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss;
+	ss << "c" << DN << "c" << UP;
+	return make_corr("c", "c", locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), {1}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+triplet (size_t locx1, size_t locx2) const
+{
+	assert(locx1<N_sites and locx2<N_sites);
+	stringstream ss;
+	ss << "c†(" << locx1 << ")" << "c†(" << locx2 << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	auto cdag1 = F[locx1].cdag();
+	auto cdag2 = F[locx1+1].cdag();
+	auto c1 = F[locx2].c();
+	auto c2 = F[locx2+1].c();
+	
+	if (locx1 == locx2)
+	{
+		throw;
+//		Mout.setLocal(locx1, sqrt(2.) * OperatorType::prod(cdag1, cdag2, {3,+2}).plain<double>());
+	}
+	else if (locx1<locx2)
+	{
+		Mout.setLocal({locx1, locx1+1, locx2, locx2+1}, 
+		              {sqrt(2.) * OperatorType::prod(cdag1, F[locx1].sign(), cdag1.Q()).plain<double>(), cdag2.plain<double>(),
+		               sqrt(2.) * OperatorType::prod(c1, F[locx2].sign(), c1.Q()).plain<double>(), c2.plain<double>()}
+		             );
+	}
+	else if (locx1>locx2)
+	{
+		throw;
+//		Mout.setLocal({locx2, locx1, locx2, locx2+1}, {sqrt(2.) * OperatorType::prod(cdag2, F[locx2].sign(), cdag2.Q()).plain<double>(), 
+//		                               cdag1.plain<double>()}, 
+//		                               F[0].sign().plain<double>());
+	}
+	
+	Mout.qaux.clear();
+	Mout.qaux.resize(N_sites+1);
+	Mout.qaux[0].clear();
+	Mout.qaux[0].push_back({1},1);
+	for (int l=1; l<N_sites; ++l)
+	{
+		if (l-1<locx1)
+		{
+			// singlet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({1},1);
+		}
+		else if (l-1==locx1)
+		{
+			// cdag: doublet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({2},1);
+		}
+		else if (l-1==locx1+1)
+		{
+			// cdag: triplet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({3},1);
+		}
+		else if (l-1>locx1+1 and l-1<locx2)
+		{
+			// triplet in between
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({3},1);
+		}
+		else if (l-1==locx2)
+		{
+			// c: doublet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({2},1);
+		}
+		else if (l-1==locx2+1)
+		{
+			// c: singlet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({1},1);
+		}
+		else if (l-1>locx2+1)
+		{
+			// singlet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({1},1);
+		}
+	}
+	Mout.qaux[N_sites].clear();
+	Mout.qaux[N_sites].push_back({1},1);
+	
+	return Mout;
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+C (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+{
+	stringstream ss;
+	ss << "c†" << DN << "c†" << UP;
+	return make_local(ss.str(), locx1,locy1, F[locx1].cdagcdag(locy1), 1., false, false);
+	// return make_corr("c†", "c", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].c(locy2), {3,1}, 2., PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HubbardSU2::
 make_FourierYSum (string name, const vector<OperatorType> &Ops, 
                   double factor, bool HERMITIAN, const vector<complex<double> > &phases) const
 {
@@ -1105,7 +1132,7 @@ make_FourierYSum (string name, const vector<OperatorType> &Ops,
 	}
 	
 	// all Ops[l].Q() must match
-	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), HERMITIAN);
+	Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), HERMITIAN);
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
 	vector<complex<double> > phases_x_factor = phases;
@@ -1125,7 +1152,7 @@ make_FourierYSum (string name, const vector<OperatorType> &Ops,
 	return Mout;
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HubbardSU2::
 S_ky (vector<complex<double> > phases) const
 {
 	vector<OperatorType> Ops(N_sites);
@@ -1136,7 +1163,7 @@ S_ky (vector<complex<double> > phases) const
 	return make_FourierYSum("S", Ops, 1., false, phases);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HubbardSU2::
 Sdag_ky (vector<complex<double> > phases, double factor) const
 {
 	vector<OperatorType> Ops(N_sites);
@@ -1147,7 +1174,7 @@ Sdag_ky (vector<complex<double> > phases, double factor) const
 	return make_FourierYSum("S†", Ops, 1., false, phases);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HubbardSU2::
 T_ky (vector<complex<double> > phases) const
 {
 	vector<OperatorType> Ops(N_sites);
@@ -1158,7 +1185,7 @@ T_ky (vector<complex<double> > phases) const
 	return make_FourierYSum("T", Ops, 1., false, phases);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HubbardSU2::
 Tdag_ky (vector<complex<double> > phases, double factor) const
 {
 	vector<OperatorType> Ops(N_sites);
@@ -1169,7 +1196,7 @@ Tdag_ky (vector<complex<double> > phases, double factor) const
 	return make_FourierYSum("T†", Ops, 1., false, phases);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HubbardSU2::
 c_ky (vector<complex<double> > phases, double factor) const
 {
 	vector<OperatorType> Ops(N_sites);
@@ -1180,7 +1207,7 @@ c_ky (vector<complex<double> > phases, double factor) const
 	return make_FourierYSum("c", Ops, 1., false, phases);
 }
 
-Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > HubbardSU2xU1::
+Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HubbardSU2::
 cdag_ky (vector<complex<double> > phases, double factor) const
 {
 	vector<OperatorType> Ops(N_sites);

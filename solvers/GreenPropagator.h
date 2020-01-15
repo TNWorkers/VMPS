@@ -31,6 +31,7 @@ public:
 	
 	GreenPropagator(){};
 	
+	// BASIC CONTRUCTOR
 	/**
 	\param label_input : prefix for saved files (e.g. type of Green's function, Hamiltonian parameters)
 	\param tmax_input : maximal propagation time
@@ -56,8 +57,11 @@ public:
 		set_qlims(Q_RANGE_CHOICE);
 	}
 	
+	// LOADING CONSTRUCTORS FOLLOW:
+	
+	// LOAD: MATRIX, NO CELL
 	/**
-	Reads G(t,x) from file, so that G(ω,q) can be recalculated.
+	Reads G(t,x) from a matrix, so that G(ω,q) can be recalculated.
 	\param label_input : prefix for saved files (e.g. type of Green's function, Hamiltonian parameters)
 	\param Lcell_input : unit cell length
 	\param Ncells_input : number of unit cells
@@ -88,8 +92,9 @@ public:
 		calc_intweights();
 	}
 	
+	// LOAD: MATRIX, CELL
 	/**
-	Reads G(t,x) with unit cell resolution from file, so that G(ω,q) can be recalculated.
+	Reads G(t,x) with unit cell resolution from array input, so that G(ω,q) can be recalculated.
 	\param label_input : prefix for saved files (e.g. type of Green's function)
 	\param tmax_input : maximal propagation time
 	\param Gtx_input : input of complex G(ω,q)
@@ -130,11 +135,121 @@ public:
 		calc_intweights();
 	}
 	
+	// LOAD: HDF5, NO CELL
+	/**
+	Reads G(t,x) with unit cell resolution from file, so that G(ω,q) can be recalculated.
+	\param label_input : prefix for saved files (e.g. type of Green's function)
+	\param Lcell_input : unit cell length
+	\param tmax_input : maximal propagation time
+	\param files : input vector of files, a sum is performed over all data
+	\param Q_RANGE_CHOICE_input : choose the q-range (-π to π, 0 to 2π)
+	\param Nq_input : amount of momentum points (Note: the first point is repeated at the output)
+	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
+	*/
+	GreenPropagator (string label_input, int Lcell_input, double tmax_input, const vector<string> &files, 
+	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, bool GAUSSINT=true)
+	:label(label_input), Lcell(Lcell_input), tmax(tmax_input), USE_GAUSSIAN_INTEGRATION(GAUSSINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
+	{
+		#ifdef GREENPROPAGATOR_USE_HDF5
+		for (const auto &file:files)
+		{
+			MatrixXd MtmpRe, MtmpIm;
+			HDF5Interface Reader(file+".h5",READ);
+			Reader.load_matrix(MtmpRe,"txRe","G");
+			Reader.load_matrix(MtmpIm,"txIm","G");
+			Reader.close();
+			
+			if (Gtx.size() == 0)
+			{
+				Gtx = MtmpRe+1.i*MtmpIm;
+			}
+			else
+			{
+				Gtx += MtmpRe+1.i*MtmpIm;
+			}
+		}
+		#endif
+		
+		Ncells = 1;
+		Nt = Gtx.rows();
+		Nq = Gtx.cols();
+		Lhetero = Lcell;
+		
+		make_xarrays(Lhetero,Lcell,Ncells);
+		set_qlims(Q_RANGE_CHOICE);
+		
+		for (int l=0; l<Lhetero; ++l)
+		{
+			if (xvals[l] == 0) Gloct = Gtx.col(l);
+		}
+		
+		GreenPropagatorCutoff::tmax = tmax;
+		calc_intweights();
+	}
+	
+	// LOAD: HDF5, CELL
+	/**
+	Reads G(t,x) with unit cell resolution from file, so that G(ω,q) can be recalculated.
+	\param label_input : prefix for saved files (e.g. type of Green's function)
+	\param Lcell_input : unit cell length
+	\param Ncells_input : number of unit cells
+	\param tmax_input : maximal propagation time
+	\param files : input vector of files, a sum is performed over all data
+	\param Q_RANGE_CHOICE_input : choose the q-range (-π to π, 0 to 2π)
+	\param Nq_input : amount of momentum points (Note: the first point is repeated at the output)
+	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
+	*/
+	GreenPropagator (string label_input, int Lcell_input, int Ncells_input, double tmax_input, const vector<string> &files, 
+	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, bool GAUSSINT=true)
+	:label(label_input), Lcell(Lcell_input), Ncells(Ncells_input), tmax(tmax_input), USE_GAUSSIAN_INTEGRATION(GAUSSINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
+	{
+		GtxCell.resize(Lcell); for (int i=0; i<Lcell; ++i) {GtxCell[i].resize(Lcell);}
+		#ifdef GREENPROPAGATOR_USE_HDF5
+		for (const auto &file:files)
+		for (int i=0; i<Lcell; ++i)
+		for (int j=0; j<Lcell; ++j)
+		{
+			MatrixXd MtmpRe, MtmpIm;
+			HDF5Interface Reader(file+".h5",READ);
+			Reader.load_matrix(MtmpRe,"txRe",make_string("G",i,j));
+			Reader.load_matrix(MtmpIm,"txIm",make_string("G",i,j));
+			Reader.close();
+			
+			if (GtxCell[i][j].size() == 0)
+			{
+				GtxCell[i][j] = MtmpRe+1.i*MtmpIm;
+			}
+			else
+			{
+				GtxCell[i][j] += MtmpRe+1.i*MtmpIm;
+			}
+		}
+		#endif
+		
+		Nt = GtxCell[0][0].rows();
+		Ncells = GtxCell[0][0].cols();
+		Nq = Nq_input;
+		Lhetero = Ncells*Lcell;
+		
+		make_xarrays(Lhetero,Lcell,Ncells);
+		set_qlims(Q_RANGE_CHOICE);
+		
+		GloctCell.resize(Lcell);
+		for (int i=0; i<Lcell; ++i)
+		for (int n=0; n<Ncells; ++n)
+		{
+			if (dcell[n*Lcell] == 0) GloctCell[i] = GtxCell[i][i].col(n);
+		}
+		
+		GreenPropagatorCutoff::tmax = tmax;
+		calc_intweights();
+	}
+	
 	/**
 	Computes the Green's function G(t,x).
 	\param H_hetero : Hamiltonian of heterogenic section
 	\param OxPhi : vector with all local excitations
-	\param OxPhi0 : starting state to propagate where the local excitation is
+	\param OxPhi0 : starting state where the local excitation is located
 	\param Eg : ground-state energy
 	\param TIME_FORWARDS : For photoemission, set to \p false. For inverse photoemission, set to \p true.
 	*/
@@ -180,7 +295,7 @@ public:
 	}
 	
 	/**Saves the real and imaginary parts of the Green's function into plain text files.*/
-	void save() const;
+	void save (bool IGNORE_CELL=false) const;
 	
 	/**Calculates and saves the selfenergy Σ(ω,q).
 	\param eps : free dispersion
@@ -236,6 +351,9 @@ public:
 	ArrayXd ncell;
 	double mu = std::nan("0");
 	
+	void set_tol_DeltaS (double x) {tol_DeltaS = x;};
+	void set_lim_Nsv (size_t x)    {lim_Nsv    = x;};
+	
 private:
 	
 	string label;
@@ -247,7 +365,8 @@ private:
 	
 	double tol_compr = 1e-4; // compression tolerance during time propagation
 	double tol_Lanczos = 1e-6; // 1e-6 seems sufficient; increase to 1e-8 for higher accuracy
-	double tol_DeltaS = 1e-3; // 1e-3 seems sufficient; switch to homogeneous 2-site for higher accuracy
+	double tol_DeltaS = 1e-3; // 1e-3 seems sufficient; perhaps 1e-2 is still enough 
+	size_t lim_Nsv = 200ul;
 	bool USE_GAUSSIAN_INTEGRATION = true;
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE;
@@ -378,7 +497,7 @@ propagate (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double
 		
 		if (Psi.get_truncWeight().sum() > 0.5*tol_compr)
 		{
-			Psi.max_Nsv = min(static_cast<size_t>(max(Psi.max_Nsv*1.1, Psi.max_Nsv+1.)),200ul);
+			Psi.max_Nsv = min(static_cast<size_t>(max(Psi.max_Nsv*1.1, Psi.max_Nsv+1.)),lim_Nsv);
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
 				lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi.max_Nsv << termcolor::reset << endl;
@@ -389,7 +508,7 @@ propagate (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double
 		{
 			lout << TDVP.info() << endl;
 			lout << Psi.info() << endl;
-			lout << "propagated to: t=" << tval << ", stepsize=" << tsteps(t.index()) << endl;
+			lout << "propagated to: t=" << tval << ", stepsize=" << tsteps(t.index()) << ", step#" << t.index()+1 << "/" << Nt << endl;
 		}
 		
 		// 2. measure
@@ -468,7 +587,7 @@ compute_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<dou
 	{
 		#pragma omp critical
 		{
-			lout << termcolor::blue << label << ": using counterpropagation algorithm, best with " << Lcell*2 << " threads" << termcolor::reset << endl;
+			lout << termcolor::blue << label << ": using counterpropagation algorithm, best with 2*Lcell=" << 2*Lcell << " threads" << termcolor::reset << endl;
 		}
 		counterpropagate_cell(H_hetero, OxPhi, Eg, TIME_FORWARDS);
 	}
@@ -542,7 +661,7 @@ propagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<d
 			
 			if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
 			{
-				Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+1.)),200ul);
+				Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+1.)),lim_Nsv);
 				if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0)
 				{
 					lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
@@ -556,7 +675,7 @@ propagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<d
 		{
 			lout << TDVP[0].info() << endl;
 			lout << Psi[0].info() << endl;
-			lout << "propagated to: t=" << tval << ", stepsize=" << tsteps(t.index()) << endl;
+			lout << "propagated to: t=" << tval << ", stepsize=" << tsteps(t.index()) << ", step#" << t.index()+1 << "/" << Nt << endl;
 		}
 		
 		// 2. measure
@@ -691,11 +810,15 @@ counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,co
 //			{
 //				cout << "z=" << z << ", i=" << i << ", norm=" << Psi[z][i].squaredNorm() << ", E=" << avg_hetero(Psi[z][i], H_hetero, Psi[z][i], true) << endl;
 //			}
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and i==0 and z==0)
+			{
+				lout << "δE=" << TDVP[z][i].get_deltaE().transpose() << endl;
+			}
 			//---------------------------------------------------------------------------------------------------------------
 			
 			if (Psi[z][i].get_truncWeight().sum() > 0.5*tol_compr)
 			{
-				Psi[z][i].max_Nsv = min(static_cast<size_t>(max(Psi[z][i].max_Nsv*1.1, Psi[z][i].max_Nsv+1.)),200ul);
+				Psi[z][i].max_Nsv = min(static_cast<size_t>(max(Psi[z][i].max_Nsv*1.1, Psi[z][i].max_Nsv+1.)),lim_Nsv);
 				if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0 and z==0)
 				{
 					lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi[z][i].max_Nsv << termcolor::reset << endl;
@@ -710,7 +833,9 @@ counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,co
 			lout << TDVP[0][0].info() << endl;
 			lout << Psi[0][0].info() << endl;
 			lout << "propagated to: t=0.5*" << tval << "=" << 0.5*tval 
-			     << ", stepsize=0.5*" << tsteps(t.index()) << "=" << 0.5*tsteps(t.index()) << endl;
+			     << ", stepsize=0.5*" << tsteps(t.index()) << "=" << 0.5*tsteps(t.index())
+			     << ", step#" << t.index()+1 << "/" << Nt
+			     << endl;
 		}
 		
 		// 2. measure
@@ -743,7 +868,7 @@ counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,co
 			PsiTmp.skim(DMRG::BROOM::SVD);
 			double r = (t.index()==0)? 1.:tsteps(t.index()-1)/tsteps(t.index());
 //			// possible override: always 2-site near excitation centre:
-//			vector<int> overrides = {Lhetero/2-1, Lhetero/2, Lhetero/2+1};
+//			vector<size_t> overrides = {0ul, size_t(Lhetero-2)};
 			TWO_SITE[z][i] = Sobs[z][i].TWO_SITE(t.index(), PsiTmp, r);
 			
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0 and z==0) lout << StepTimer.info("entropy calculation") << endl;
@@ -777,6 +902,7 @@ calc_Green (const int &tindex, const complex<double> &phase, const vector<Mps<Sy
 	//variant: Don't use cell shift, OxPhiFull must be of length Lhetero
 	if (Psi.Boundaries.IS_TRIVIAL())
 	{
+		assert(OxPhiFull.size() == Lhetero and "Call set_OxPhiFull with this setup! OxPhi parameter will be ignored.");
 		#pragma omp parallel for
 		for (size_t l=0; l<Lhetero; ++l)
 		{
@@ -962,7 +1088,13 @@ calc_intweights()
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
-			lout << "tmax=" << tmax << ", Nt=" << Nt << endl;
+			lout << "tmax=" << tmax << ", "
+			     << "tpoints=" << Nt << ", "
+			     << "max(tstep)=" << tsteps.maxCoeff() << ", "
+			     << "tol_compr=" << tol_compr << ", "
+			     << "tol_Lanczos=" << tol_Lanczos << ", "
+			     << "tol_DeltaS=" << tol_DeltaS
+			     << endl;
 			lout << Watch.info("integration weights") << endl;
 		}
 		
@@ -977,12 +1109,19 @@ calc_intweights()
 		{
 			double erf2 = 0.995322265018952734162069256367252928610891797040060076738; // Mathematica♥♥♥
 			double integral = 0.25*sqrt(M_PI)*erf2*tmax;
-			lout << termcolor::blue 
-				 << setprecision(14)
-				 << "integration weight test: ∫w(t)dt=" << weights.sum() 
-				 << ", analytical=" << integral 
-				 << ", diff=" << abs(weights.sum()-integral) 
-				 << termcolor::reset << endl;
+			double diff = abs(weights.sum()-integral);
+			#pragma omp critical
+			{
+				if      (diff < 1e-5)                  cout << termcolor::green;
+				else if (diff < 1e-1 and diff >= 1e-5) cout << termcolor::yellow;
+				else                                   cout << termcolor::red;
+				lout << setprecision(14)
+					 << "integration weight test: ∫w(t)dt=" << weights.sum() 
+					 << ", analytical=" << integral 
+					 << ", diff=" << abs(weights.sum()-integral);
+				cout << termcolor::reset;
+				lout << endl;
+			}
 		}
 	}
 	else
@@ -1107,26 +1246,6 @@ FT_tw (double wshift)
 		lout << FourierWatch.info(label+" FT t→ω") << endl;
 	}
 	
-//	if (Q_RANGE_CHOICE == MPI_PPI)
-//	{
-//		MatrixXcd Gwq_tmp = Gwq;
-//		Gwq_tmp.leftCols (Nq/2) = Gwq.rightCols(Nq/2);
-//		Gwq_tmp.rightCols(Nq/2) = Gwq.leftCols (Nq/2);
-//		Gwq = Gwq_tmp;
-//		
-//		VectorXcd G0q_tmp = G0q;
-//		G0q_tmp.head(Nq/2) = G0q.tail(Nq/2);
-//		G0q_tmp.tail(Nq/2) = G0q.head(Nq/2);
-//		G0q = G0q_tmp;
-//	}
-//	
-//	// repeat last q-point for better plotting
-//	Gwq.conservativeResize(Nw,Nq+1);
-//	Gwq.col(Nq) = Gwq.col(0);
-//	
-//	G0q.conservativeResize(Nq+1);
-//	G0q(Nq) = Gwq(0);
-	
 	// Calculate FT of local Green's function
 	Glocw = FTloc_tw(Gloct,wvals);
 }
@@ -1176,26 +1295,6 @@ FTcell_tw (double wshift)
 			G0qCell[i][j] += weights(it) * damping * GtqCell[i][j].row(it);
 		}
 		
-//		if (Q_RANGE_CHOICE == MPI_PPI)
-//		{
-//			MatrixXcd Gwq_tmp = GwqCell[i][j];
-//			Gwq_tmp.leftCols (Nq/2) = GwqCell[i][j].rightCols(Nq/2);
-//			Gwq_tmp.rightCols(Nq/2) = GwqCell[i][j].leftCols (Nq/2);
-//			GwqCell[i][j] = Gwq_tmp;
-//			
-//			VectorXcd G0q_tmp = G0qCell[i][j];
-//			G0q_tmp.head(Nq/2) = G0qCell[i][j].tail(Nq/2);
-//			G0q_tmp.tail(Nq/2) = G0qCell[i][j].head(Nq/2);
-//			G0qCell[i][j] = G0q_tmp;
-//		}
-//		
-//		// repeat last q-point for better plotting
-//		GwqCell[i][j].conservativeResize(Nw,Nq+1);
-//		GwqCell[i][j].col(Nq) = GwqCell[i][j].col(0);
-//		
-//		G0qCell[i][j].conservativeResize(Nq+1);
-//		GwqCell[i][j](Nq) = GwqCell[i][j](0);
-		
 		// Calculate local Green's function
 		if (i==j)
 		{
@@ -1205,7 +1304,7 @@ FTcell_tw (double wshift)
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
-		lout << FourierWatch.info(label+" FT intercell t→ω") << endl;
+		lout << FourierWatch.info(make_string(label+" FT intercell t→ω, ωmin=",wmin,", ωmax=",wmax,", Nω=",Nw)) << endl;
 	}
 }
 
@@ -1393,7 +1492,7 @@ print_starttext() const
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-save() const
+save (bool IGNORE_CELL) const
 {
 	bool PRINT = (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)? true:false;
 	
@@ -1405,7 +1504,14 @@ save() const
 	HDF5Interface target_wq(label+"_"+xtqw_info()+".h5",WRITE);
 	target_tx.create_group("G");
 	target_wq.create_group("G");
-	target_tx.save_matrix(MatrixXd(tvals),"t","");
+	//---
+	target_tx.create_group("tinfo");
+	target_tx.save_matrix(MatrixXd(tvals),"tvals","tinfo");
+	target_tx.save_matrix(MatrixXd(weights),"weights","tinfo");
+	target_tx.save_matrix(MatrixXd(tsteps),"tsteps","tinfo");
+	target_tx.save_scalar(tmax,"tmax","tinfo");
+	//---
+	target_wq.create_group("tinfo");
 	target_wq.save_matrix(MatrixXd(tvals),"t","");
 	#endif
 	
@@ -1451,63 +1557,67 @@ save() const
 		#endif
 	}
 	
-	if (GtxCell.size() > 0 or GwqCell.size() > 0)
+	if (!IGNORE_CELL)
 	{
-		for (int i=0; i<Lcell; ++i)
-		for (int j=0; j<Lcell; ++j)
+		if (GtxCell.size() > 0 or GwqCell.size() > 0)
 		{
-			string Gstring = make_string("G",i,j);
-			#ifdef GREENPROPAGATOR_USE_HDF5
-			if (PRINT) lout << label << " saving " 
-			                << make_string("G",i,j) << "[txRe], " << Gstring << "[txIm] "
-			                << make_string("G",i,j) << "[ωqRe], " << Gstring << "[ωqIm] "
-			                << endl;
-			target_tx.create_group(make_string("G",i,j));
-			target_tx.save_matrix(MatrixXd(GtxCell[i][j].real()),"txRe",Gstring);
-			target_tx.save_matrix(MatrixXd(GtxCell[i][j].imag()),"txIm",Gstring);
-			target_wq.create_group(make_string("G",i,j));
-			target_wq.save_matrix(MatrixXd(GwqCell[i][j].real()),"ωqRe",Gstring);
-			target_wq.save_matrix(MatrixXd(GwqCell[i][j].imag()),"ωqIm",Gstring);
-			if (G0qCell.size() > 0)
+			for (int i=0; i<Lcell; ++i)
+			for (int j=0; j<Lcell; ++j)
 			{
-				if (PRINT) lout << label << " saving " << Gstring << "[0qRe], " << Gstring << "[0qIm]" << endl;
-				target_wq.save_matrix(MatrixXd(G0qCell[i][j].real()),"0qRe",Gstring);
-				target_wq.save_matrix(MatrixXd(G0qCell[i][j].imag()),"0qIm",Gstring);
+				string Gstring = make_string("G",i,j);
+				#ifdef GREENPROPAGATOR_USE_HDF5
+				if (PRINT) lout << label << " saving " 
+					            << make_string("G",i,j) << "[txRe], " << Gstring << "[txIm] "
+					            << make_string("G",i,j) << "[ωqRe], " << Gstring << "[ωqIm] "
+					            << endl;
+				target_tx.create_group(make_string("G",i,j));
+				target_tx.save_matrix(MatrixXd(GtxCell[i][j].real()),"txRe",Gstring);
+				target_tx.save_matrix(MatrixXd(GtxCell[i][j].imag()),"txIm",Gstring);
+				target_wq.create_group(make_string("G",i,j));
+				target_wq.save_matrix(MatrixXd(GwqCell[i][j].real()),"ωqRe",Gstring);
+				target_wq.save_matrix(MatrixXd(GwqCell[i][j].imag()),"ωqIm",Gstring);
+				if (G0qCell.size() > 0)
+				{
+					if (PRINT) lout << label << " saving " << Gstring << "[0qRe], " << Gstring << "[0qIm]" << endl;
+					target_wq.save_matrix(MatrixXd(G0qCell[i][j].real()),"0qRe",Gstring);
+					target_wq.save_matrix(MatrixXd(G0qCell[i][j].imag()),"0qIm",Gstring);
+				}
+				#else
+				saveMatrix(GtxCell[i][j].real(), make_string(label,"_G=txRe_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
+				saveMatrix(GtxCell[i][j].imag(), make_string(label,"_G=txIm_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
+		//		saveMatrix_cpython(GtxCell[i][j], make_string(label,"_G=tx_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
+				saveMatrix(GwqCell[i][j].real(), make_string(label,"_G=ωqRe_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+				saveMatrix(GwqCell[i][j].imag(), make_string(label,"_G=ωqIm_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+		//		saveMatrix_cpython(GwqCell[i][j], make_string(label,"_G=ωq_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT); // BETWEEN_CELLS=true
+				if (G0qCell.size() > 0)
+				{
+					saveMatrix(G0qCell[i][j].real(), make_string(label,"_G=0qRe_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+					saveMatrix(G0qCell[i][j].imag(), make_string(label,"_G=0qIm_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+				}
+				#endif
 			}
-			#else
-			saveMatrix(GtxCell[i][j].real(), make_string(label,"_G=txRe_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
-			saveMatrix(GtxCell[i][j].imag(), make_string(label,"_G=txIm_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
-	//		saveMatrix_cpython(GtxCell[i][j], make_string(label,"_G=tx_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
-			saveMatrix(GwqCell[i][j].real(), make_string(label,"_G=ωqRe_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
-			saveMatrix(GwqCell[i][j].imag(), make_string(label,"_G=ωqIm_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
-	//		saveMatrix_cpython(GwqCell[i][j], make_string(label,"_G=ωq_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT); // BETWEEN_CELLS=true
-			if (G0qCell.size() > 0)
+		}
+		
+		if (GlocwCell.size() > 0 or GloctCell.size() > 0)
+		{
+			for (int i=0; i<Lcell; ++i)
 			{
-				saveMatrix(G0qCell[i][j].real(), make_string(label,"_G=0qRe_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
-				saveMatrix(G0qCell[i][j].imag(), make_string(label,"_G=0qIm_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+				string Gstring = make_string("G",i);
+				#ifdef GREENPROPAGATOR_USE_HDF5
+				if (PRINT) lout << label << " saving " << Gstring << "[QDOS], " << Gstring << "[t0Re], " << Gstring << "[t0Im]" << endl;
+				target_wq.create_group(make_string("G",i));
+				target_wq.save_matrix(MatrixXd(-M_1_PI*GlocwCell[i].imag()),"QDOS",make_string("G",i));
+				target_tx.create_group(make_string("G",i));
+				target_tx.save_matrix(MatrixXd(GloctCell[i].real()),"t0Re",make_string("G",i));
+				target_tx.save_matrix(MatrixXd(GloctCell[i].imag()),"t0Im",make_string("G",i));
+				#else
+				save_xy(wvals, -M_1_PI*GlocwCell[i].imag(), make_string(label,"_G=QDOS_i=",i,"_",xtqw_info(),".dat"), PRINT);
+				save_xy(tvals, GloctCell[i].real(), GloctCell[i].imag(), make_string(label,"_G=t0_i=",i,"_",xt_info(),".dat"), PRINT);
+				#endif
 			}
-			#endif
 		}
 	}
 	
-	if (GlocwCell.size() > 0 or GloctCell.size() > 0)
-	{
-		for (int i=0; i<Lcell; ++i)
-		{
-			string Gstring = make_string("G",i);
-			#ifdef GREENPROPAGATOR_USE_HDF5
-			if (PRINT) lout << label << " saving " << Gstring << "[QDOS], " << Gstring << "[t0Re], " << Gstring << "[t0Im]" << endl;
-			target_wq.create_group(make_string("G",i));
-			target_wq.save_matrix(MatrixXd(-M_1_PI*GlocwCell[i].imag()),"QDOS",make_string("G",i));
-			target_tx.create_group(make_string("G",i));
-			target_tx.save_matrix(MatrixXd(GloctCell[i].real()),"t0Re",make_string("G",i));
-			target_tx.save_matrix(MatrixXd(GloctCell[i].imag()),"t0Im",make_string("G",i));
-			#else
-			save_xy(wvals, -M_1_PI*GlocwCell[i].imag(), make_string(label,"_G=QDOS_i=",i,"_",xtqw_info(),".dat"), PRINT);
-			save_xy(tvals, GloctCell[i].real(), GloctCell[i].imag(), make_string(label,"_G=t0_i=",i,"_",xt_info(),".dat"), PRINT);
-			#endif
-		}
-	}
 	if (Sigmawq.size() > 0)
 	{
 		// Sigma
@@ -1547,33 +1657,36 @@ save() const
 //	}
 	
 	// SigmaCell
-	if (SigmawqCell.size() > 0)
+	if (!IGNORE_CELL)
 	{
-		for (int i=0; i<Lcell; ++i)
-		for (int j=0; j<Lcell; ++j)
+		if (SigmawqCell.size() > 0)
 		{
-			string SigmaString = make_string("Σ",i,j);
-			#ifdef GREENPROPAGATOR_USE_HDF5
-			if (PRINT) lout << label << " saving " << SigmaString << "[ωqRe], " << SigmaString << "[ωqIm]" << endl;
-			target_wq.create_group(make_string("Σ",i,j));
-			target_wq.save_matrix(MatrixXd(SigmawqCell[i][j].real()),"ωqRe",make_string("Σ",i,j));
-			target_wq.save_matrix(MatrixXd(SigmawqCell[i][j].imag()),"ωqIm",make_string("Σ",i,j));
-			if (Sigma0qCell.size() > 0)
+			for (int i=0; i<Lcell; ++i)
+			for (int j=0; j<Lcell; ++j)
 			{
-				if (PRINT) lout << label << " saving " << SigmaString << "[0qRe], " << SigmaString << "[0qIm]" << endl;
-				target_wq.save_matrix(MatrixXd(Sigma0qCell[i][j].real()),"0qRe",SigmaString);
-				target_wq.save_matrix(MatrixXd(Sigma0qCell[i][j].imag()),"0qIm",SigmaString);
+				string SigmaString = make_string("Σ",i,j);
+				#ifdef GREENPROPAGATOR_USE_HDF5
+				if (PRINT) lout << label << " saving " << SigmaString << "[ωqRe], " << SigmaString << "[ωqIm]" << endl;
+				target_wq.create_group(make_string("Σ",i,j));
+				target_wq.save_matrix(MatrixXd(SigmawqCell[i][j].real()),"ωqRe",make_string("Σ",i,j));
+				target_wq.save_matrix(MatrixXd(SigmawqCell[i][j].imag()),"ωqIm",make_string("Σ",i,j));
+				if (Sigma0qCell.size() > 0)
+				{
+					if (PRINT) lout << label << " saving " << SigmaString << "[0qRe], " << SigmaString << "[0qIm]" << endl;
+					target_wq.save_matrix(MatrixXd(Sigma0qCell[i][j].real()),"0qRe",SigmaString);
+					target_wq.save_matrix(MatrixXd(Sigma0qCell[i][j].imag()),"0qIm",SigmaString);
+				}
+				#else
+				saveMatrix(MatrixXd(SigmawqCell[i][j].real()), make_string(label,"_G=Σ",i,j,"ωqRe_",xtqw_info(),".dat"), PRINT);
+				saveMatrix(MatrixXd(SigmawqCell[i][j].imag()), make_string(label,"_G=Σ",i,j,"ωqIm_",xtqw_info(),".dat"), PRINT);
+			//	saveMatrix_cpython(SigmawqCell, make_string(label,"_G=Σ",i,i,"ωq_",xtqw_info(),".dat"), PRINT);
+				if (Sigma0qCell.size() > 0)
+				{
+					saveMatrix(Sigma0qCell[i][j].real(), make_string(label,"_Σ=0qRe_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+					saveMatrix(Sigma0qCell[i][j].imag(), make_string(label,"_Σ=0qIm_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+				}
+				#endif
 			}
-			#else
-			saveMatrix(MatrixXd(SigmawqCell[i][j].real()), make_string(label,"_G=Σ",i,j,"ωqRe_",xtqw_info(),".dat"), PRINT);
-			saveMatrix(MatrixXd(SigmawqCell[i][j].imag()), make_string(label,"_G=Σ",i,j,"ωqIm_",xtqw_info(),".dat"), PRINT);
-		//	saveMatrix_cpython(SigmawqCell, make_string(label,"_G=Σ",i,i,"ωq_",xtqw_info(),".dat"), PRINT);
-			if (Sigma0qCell.size() > 0)
-			{
-				saveMatrix(Sigma0qCell[i][j].real(), make_string(label,"_Σ=0qRe_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
-				saveMatrix(Sigma0qCell[i][j].imag(), make_string(label,"_Σ=0qIm_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
-			}
-			#endif
 		}
 	}
 	
@@ -1625,6 +1738,8 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 calc_selfenergy_cell (vector<vector<complex<double>(*)(double)>> eps, double eta)
 {
+	assert(eps.size() == Lcell);
+	
 	IntervalIterator w(wmin,wmax,Nw);
 	IntervalIterator q(qmin,qmax,Nq);
 	ArrayXd wvals = w.get_abscissa();

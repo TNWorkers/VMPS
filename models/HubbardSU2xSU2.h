@@ -38,6 +38,8 @@ public:
 	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > Symmetry;
 	MAKE_TYPEDEFS(HubbardSU2xSU2)
 	
+	static qarray<2> singlet (int N=0) {return qarray<2>{1,1};};
+	
 private:
 	
 	typedef Eigen::Index Index;
@@ -53,25 +55,29 @@ public:
 	
 	static void set_operators (const std::vector<FermionBase<Symmetry>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
 	
-	Mpo<Symmetry> c (size_t locx, size_t locy=0, double factor=sqrt(2.));
-	Mpo<Symmetry> cdag (size_t locx, size_t locy=0, double factor=sqrt(2.));
+	Mpo<Symmetry> c (size_t locx, size_t locy=0, double factor=sqrt(2.)) const;
+	Mpo<Symmetry> cdag (size_t locx, size_t locy=0, double factor=sqrt(2.)) const;
 	
-	Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
-	Mpo<Symmetry> nh (size_t locx, size_t locy=0);
-	Mpo<Symmetry> ns (size_t locx, size_t locy=0);
-	Mpo<Symmetry> nhsq (size_t locx, size_t locy=0);
-	Mpo<Symmetry> nssq (size_t locx, size_t locy=0);
+	Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> nh (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> ns (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> nhsq (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> nssq (size_t locx, size_t locy=0) const;
 	
-	Mpo<Symmetry> B (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) {return cdagc(locx1,locx2,locy1,locy2);};
-	Mpo<Symmetry> C (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> B (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return cdagc(locx1,locx2,locy1,locy2);};
+	Mpo<Symmetry> C (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
-	Mpo<Symmetry> S (size_t locx, size_t locy=0);
-	Mpo<Symmetry> Sdag (size_t locx, size_t locy=0, double factor=sqrt(3.));
-	Mpo<Symmetry> SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> cc3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> cdagcdag3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> triplet (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
-	Mpo<Symmetry> T (size_t locx, size_t locy=0);
-	Mpo<Symmetry> Tdag (size_t locx, size_t locy=0, double factor=1.);
-	Mpo<Symmetry> TdagT (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
+	Mpo<Symmetry> S (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Sdag (size_t locx, size_t locy=0, double factor=sqrt(3.)) const;
+	Mpo<Symmetry> SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	
+	Mpo<Symmetry> T (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Tdag (size_t locx, size_t locy=0, double factor=1.) const;
+	Mpo<Symmetry> TdagT (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	Mpo<Symmetry,complex<double> > S_ky    (vector<complex<double> > phases) const;
 	Mpo<Symmetry,complex<double> > Sdag_ky (vector<complex<double> > phases, double factor=sqrt(3.)) const;
@@ -106,10 +112,10 @@ const map<string,any> HubbardSU2xSU2::defaults =
 
 const map<string,any> HubbardSU2xSU2::sweep_defaults = 
 {
-	{"max_alpha",100.}, {"min_alpha",1e-11}, {"lim_alpha",10ul}, {"eps_svd",1e-7},
+	{"max_alpha",100.}, {"min_alpha",1e-11}, {"lim_alpha",11ul}, {"eps_svd",1e-7},
 	{"Dincr_abs", 2ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
-	{"max_halfsweeps",20ul}, {"min_halfsweeps",6ul},
+	{"max_halfsweeps",30ul}, {"min_halfsweeps",6ul},
 	{"Dinit",4ul}, {"Qinit",10ul}, {"Dlimit",500ul},
 	{"tol_eigval",1e-6}, {"tol_state",1e-5},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
@@ -537,86 +543,177 @@ make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1,
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-c (size_t locx, size_t locy, double factor)
+c (size_t locx, size_t locy, double factor) const
 {
 	return make_local("c", locx,locy, F[locx].c(locy), factor, true, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-cdag (size_t locx, size_t locy, double factor)
+cdag (size_t locx, size_t locy, double factor) const
 {
 	return make_local("c†", locx,locy, F[locx].cdag(locy), factor, true, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	return make_corr("c†", "c", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].c(locy2), Symmetry::qvacuum(), 2., PROP::FERMIONIC, PROP::HERMITIAN);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-C (size_t locx1, size_t locx2, size_t locy1, size_t locy2)
+C (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
 	return make_corr("c†", "c", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].c(locy2), {3,1}, 2., PROP::FERMIONIC, PROP::HERMITIAN);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-nh (size_t locx, size_t locy)
+cc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr("c", "c", locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), {3,1}, 2., PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
+cdagcdag3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return make_corr("c†", "c†", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), {3,1}, 2., PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
+triplet (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	assert(locx1<this->N_sites and locx2<this->N_sites);
+	stringstream ss;
+	ss << "c†(" << locx1 << "," << locy1 << ")" << "c†(" << locx2 << "," << locy2 << ")";
+	
+	Mpo<Symmetry> Mout(N_sites, {3,0}, ss.str());
+	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	auto cdag1 = F[locx1].cdag(locy1);
+	auto cdag2 = F[locx1+1].cdag(locy1);
+	auto c1 = F[locx2].c(locy1);
+	auto c2 = F[locx2+1].c(locy1);
+	
+	if (locx1 == locx2)
+	{
+		throw;
+//		Mout.setLocal(locx1, sqrt(2.) * OperatorType::prod(cdag1, cdag2, {3,+2}).plain<double>());
+	}
+	else if (locx1<locx2)
+	{
+		Mout.setLocal({locx1, locx1+1, locx2, locx2+1}, 
+		              {sqrt(2.) * OperatorType::prod(cdag1, F[locx1].sign(), cdag1.Q()).plain<double>(), 
+		                          cdag2.plain<double>(),
+		               sqrt(2.) * OperatorType::prod(c1, F[locx2].sign(), c1.Q()).plain<double>(),
+		                          c2.plain<double>()
+		              }
+		             );
+	}
+	else if (locx1>locx2)
+	{
+		throw;
+//		Mout.setLocal({locx2, locx1, locx2, locx2+1}, {sqrt(2.) * OperatorType::prod(cdag2, F[locx2].sign(), cdag2.Q()).plain<double>(), 
+//		                               cdag1.plain<double>()}, 
+//		                               F[0].sign().plain<double>());
+	}
+	for (int l=0; l<N_sites; ++l)
+	{
+		if (l==locx1)
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({2,1},1);
+		}
+		else if (l==locx1+1)
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({2,2},1);
+		}
+		else if (l>locx1+1 and l<locx2)
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({2,2},1);
+		}
+		else if (l==locx2)
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({3,1},1);
+		}
+		else if (l==locx2+1)
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({3,1},1);
+		}
+		else if (l>locx2+1)
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({3,0},1);
+		}
+		else
+		{
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({1,1},1);
+		}
+//		cout << "l=" << l << ", qaux=" << qaux[l] << endl;
+	}
+	return Mout;
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
+nh (size_t locx, size_t locy) const
 {
 	return make_local("nh", locx,locy, F[locx].nh(locy), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-ns (size_t locx, size_t locy)
+ns (size_t locx, size_t locy) const
 {
 	return make_local("ns", locx,locy, F[locx].ns(locy), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-nhsq (size_t locx, size_t locy)
+nhsq (size_t locx, size_t locy) const
 {
 	return make_local("nh^2", locx,locy, OperatorType::prod(F[locx].nh(locy), F[locx].nh(locy), {1,1}), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-nssq (size_t locx, size_t locy)
+nssq (size_t locx, size_t locy) const
 {
 	return make_local("ns^2", locx,locy, OperatorType::prod(F[locx].ns(locy), F[locx].ns(locy), {1,1}), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-S (size_t locx, size_t locy)
+S (size_t locx, size_t locy) const
 {
 	return make_local("S", locx,locy, F[locx].S(locy), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-Sdag (size_t locx, size_t locy, double factor)
+Sdag (size_t locx, size_t locy, double factor) const
 {
 	return make_local("S†", locx,locy, F[locx].Sdag(locy), factor, false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-T (size_t locx, size_t locy)
+T (size_t locx, size_t locy) const
 {
 	return make_local("T", locx,locy, F[locx].T(locy), 1., false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-Tdag (size_t locx, size_t locy, double factor)
+Tdag (size_t locx, size_t locy, double factor) const
 {
 	return make_local("T†", locx,locy, F[locx].Tdag(locy), factor, false, false);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
+SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2) const
 {
 	return make_corr("S†", "S", locx1, locx2, locy1, locy2, F[locx1].Sdag(locy1), F[locx2].S(locy2), 
 	                 Symmetry::qvacuum(), std::sqrt(3.), PROP::NON_FERMIONIC, PROP::HERMITIAN);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-TdagT (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
+TdagT (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2) const
 {
 	return make_corr("T†", "T", locx1, locx2, locy1, locy2, F[locx1].Tdag(locy1), F[locx2].T(locy2), 
 	                 Symmetry::qvacuum(), std::sqrt(3.), PROP::NON_FERMIONIC, PROP::HERMITIAN);

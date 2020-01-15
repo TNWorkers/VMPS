@@ -347,9 +347,15 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 //			Vout.state.update_inbase();
 //			Vout.state.update_outbase();
 //		}
+		
+		Dmax_old = GlobParam.Dinit;
 	}
+	else
+	{
+		Dmax_old = Vout.state.max_Nsv;
+	}
+	
 //	Vout.state.graph("ginit");
-	Dmax_old = GlobParam.Dinit;
 	
 	//if the SweepStatus is default initialized (pivot==-1), one initial sweep from right-to-left and N_halfsweeps = N_sweepsteps = 0,
 	//otherwise prepare for continuing at the given SweepStatus.
@@ -470,7 +476,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	}
 	else
 	{
-		Eold = avg(Vout.state,H,Vout.state);
+		Eold = std::real(avg(Vout.state,H,Vout.state));
 	}
 	Vout.energy = Eold;
 	
@@ -812,7 +818,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		ExPsi *= Vout.energy;
 		HxPsi -= ExPsi;
 		
-		err_state = HxPsi.dot(HxPsi) / this->N_sites;
+		err_state = std::real(HxPsi.dot(HxPsi)) / this->N_sites;
 		double t_tot = HsqTimer.time();
 		
 		if (CHOSEN_VERBOSITY >= 2)
@@ -995,7 +1001,7 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	
 	if (!Vout.state.Boundaries.IS_TRIVIAL())
 	{
-		double norm = Vout.state.dot(Vout.state);
+		double norm = std::real(Vout.state.dot(Vout.state));
 		Vout.state /= sqrt(Vout.state.dot(Vout.state));
 //		cout << Vout.state.test_ortho() << ", old_dot=" << norm << ", dot=" << Vout.state.dot(Vout.state) << endl;
 	}
@@ -1213,7 +1219,7 @@ adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vou
 	Heff[SweepStat.pivot].qOp  = H.opBasis(SweepStat.pivot);
 	HxV(Heff[SweepStat.pivot], Vtmp1, Vtmp2);
 	
-	double DeltaEtrunc = dot(Vtmp1,Vtmp2)-Vout.energy;
+	double DeltaEtrunc = std::real(dot(Vtmp1,Vtmp2))-Vout.energy;
 	
 //	if (DeltaEtrunc < 0.3*DeltaEopt) {Vout.state.alpha_rsvd *= sqrt(10.);}
 //	else                             {Vout.state.alpha_rsvd /= sqrt(10.);}

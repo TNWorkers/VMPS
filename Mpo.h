@@ -171,6 +171,8 @@ public:
 	 */
 	void setLocal (const vector<size_t> &loc, const vector<OperatorType> &Op, const vector<OperatorType> &SignOp, bool OPEN_BC=true);
 	
+	void setLocalStag (size_t loc, const OperatorType &Op, const vector<OperatorType> &StagSign, bool OPEN_BC=true);
+	
 	/**
 	 * Set to a sum of of local operators \f$\sum_i f(i) O_i\f$
 	 * \param Op : the local operator in question
@@ -354,13 +356,14 @@ public:
 	/**Typedef for convenient reference (no need to specify \p Symmetry, \p Scalar all the time).*/
 	typedef Mps<Symmetry,double>							  StateXd;
 	typedef Umps<Symmetry,double>							 StateUd;
-	typedef Mps<Symmetry,complex<double> >					StateXcd;
+	typedef Mps<Symmetry,complex<double> >	   				StateXcd;
+	typedef Umps<Symmetry,complex<double> >  				 StateUcd;
 	typedef MpsCompressor<Symmetry,double,double>			 CompressorXd;
 	typedef MpsCompressor<Symmetry,complex<double>,double>	CompressorXcd;
 	typedef Mpo<Symmetry>									 Operator;
 	///@}
 	
-protected:
+//protected:
 	
 	/**stored terms of the Hamiltonian*/
 	HamiltonianTerms<Symmetry,Scalar> Terms;
@@ -400,7 +403,7 @@ protected:
 	void initialize();
 	
 	/**Calculates the auxiliary basis.*/
-	void calc_auxBasis();
+	void calc_auxBasis(bool MANUAL_SET=false);
 	
 	/**Calculates the W-matrices from given \p HamiltonianTerms. Used to construct Hamiltonians.*/
 	void construct_from_Terms (const HamiltonianTerms<Symmetry,Scalar> &Terms_input,
@@ -901,7 +904,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::
-calc_auxBasis()
+calc_auxBasis(bool MANUAL_SET)
 {
 	// auto calc_qnums_on_segment = [this](int l_frst, int l_last) -> std::set<qType>
 	// {
@@ -941,17 +944,19 @@ calc_auxBasis()
 	// 	return qset;
 	// };
 	
+//	lout << "recalc auxBasis " << info() << endl;
+	
 	qaux.clear();
 	qaux.resize(this->N_sites+1);
 	//set aux basis on right end to Qtot.
 	qaux[this->N_sites].push_back(Qtot,1);//auxdim());
 	qaux[0].push_back(Symmetry::qvacuum(),1);//auxdim());
-	
+
 	for (size_t l=1; l<this->N_sites; ++l)
 	{
 		Qbasis<Symmetry> qauxtmp;
 		auto qtmps = Symmetry::reduceSilent(qaux[l-1].qs(), qOp[l-1], true);
-		
+			
 		// for(size_t k=0; k<qOp[l].size(); ++k)
 		// {
 		// 	qauxtmp.push_back(qOp[l][k],auxdim());
@@ -960,6 +965,7 @@ calc_auxBasis()
 		{
 			if (auto it=find(qOp[l].begin(), qOp[l].end(), qtmp); it != qOp[l].end())
 			{
+//				lout << "l=" << l << ", pushing: " << qtmp << endl;
 				qauxtmp.push_back(qtmp, Daux(l,0));
 			}
 		}
@@ -997,6 +1003,55 @@ calc_auxBasis()
 		
 		qaux[l] = qauxtmp;
 	}
+	if (MANUAL_SET)
+	{
+		bool APPEARANCE = false;
+		for (size_t l=0; l<=N_sites;l++) { qaux[l].clear(); }
+
+		if ( qOp[0][0] == Symmetry::qvacuum() )
+		{
+			qaux[0].push_back(Symmetry::qvacuum(),1);
+
+			for (size_t l=0; l<N_sites;l++)
+			{
+				if (!APPEARANCE)
+				{
+					if (qOp[l][0] == Symmetry::qvacuum())
+					{
+						qaux[l+1].push_back(Symmetry::qvacuum(),1);
+					}
+					else
+					{
+						qaux[l+1].push_back(qOp[l][0],1);
+						APPEARANCE=true;
+					}
+				}
+				else
+				{
+					qaux[l+1].push_back(Qtot,1);
+				}
+			}
+			// cout << "should be minus " << Qtot << endl;
+			// qaux[1].push_back(Symmetry::qvacuum(),1);
+			// qaux[2].push_back(Symmetry::qvacuum(),1);
+			// qaux[3].push_back({2,-4},1);
+			// qaux[4].push_back(Qtot,1);
+		}
+		else
+		{
+			// cout << "should be plus " << Qtot << endl;															
+			qaux[0].push_back(Symmetry::qvacuum(),1);
+			qaux[1].push_back(qOp[0][0],1);
+			for (size_t l=2; l<=N_sites;l++)
+			{
+				qaux[l].push_back(Qtot,1);
+			}
+			// qaux[2].push_back(Qtot,1);
+			// qaux[3].push_back(Qtot,1);
+			// qaux[4].push_back(Qtot,1);
+		}
+	}
+
 }
 
 template<typename Symmetry, typename Scalar>
@@ -1238,6 +1293,23 @@ setLocal (size_t loc, const OperatorType &Op, const vector<OperatorType> &SignOp
 	LocalSite = loc;
 	auto Gvec = make_localGvec(loc,Op);
 	for (size_t l=0; l<loc; ++l) {Gvec[l](0,0) = SignOp[l];}
+	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
+}
+
+template<typename Symmetry, typename Scalar>
+void Mpo<Symmetry,Scalar>::
+setLocalStag (size_t loc, const OperatorType &Op, const vector<OperatorType> &StagSign, bool OPEN_BC)
+{
+	LocalOp   = Op;
+	LocalSite = loc;
+	auto Gvec = make_localGvec(loc,Op);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		if (l != loc)
+		{
+			Gvec[l](0,0) = StagSign[l];
+		}
+	}
 	calc_W_from_Gvec(Gvec, W, Daux, false, OPEN_BC);
 }
 

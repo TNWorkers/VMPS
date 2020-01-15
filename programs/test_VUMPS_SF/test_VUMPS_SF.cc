@@ -36,7 +36,8 @@ using namespace Eigen;
 #include "models/HeisenbergSU2.h"
 //#include "models/HubbardU1xU1.h"
 //#include "models/Hubbard.h"
-//#include "models/HubbardSU2xSU2.h"
+#include "models/HubbardSU2xSU2.h"
+#include "models/HubbardSU2.h"
 //#include "models/HubbardSU2xU1.h"
 //#include "models/KondoSU2xU1.h"
 //#include "models/KondoU1xU1.h"
@@ -55,10 +56,9 @@ size_t D;
 
 vector<vector<vector<vector<ArrayXd> > > > OdagO;
 
-void fill_OdagO_SU2 (const Eigenstate<VMPS::HeisenbergSU2::StateUd> &g)
+template<typename Model>
+void fill_OdagO_SU2 (const Eigenstate<typename Model::StateUd> &g)
 {
-	VMPS::HeisenbergSU2 Htmp(2*N*L*Ly+4,{{"OPEN_BC",false},{"D",D},{"CALC_SQUARE",false}});
-	
 	OdagO.resize(L);
 	for (size_t x0=0; x0<L; ++x0)
 	{
@@ -89,6 +89,7 @@ void fill_OdagO_SU2 (const Eigenstate<VMPS::HeisenbergSU2::StateUd> &g)
 		int i0 = Geo(x0,y0);
 		int i1 = Geo(x1,y1);
 		
+		Model Htmp(L*Ly*n+i1+i0+4,{{"OPEN_BC",false},{"D",D},{"CALC_SQUARE",false}});
 		OdagO[x0][y0][x1][y1](n) = avg(g.state, Htmp.SdagS(i0,L*Ly*n+i1), g.state);
 	}
 }
@@ -133,7 +134,7 @@ complex<double> calc_FT (double kx, int iky)
 		double x0d = x0;
 		double x1d = x1;
 		
-		res += 1./L * exp(-1.i*kx*(x0d-x1d)) * FTintercell(x0,x1);
+		res += 1./L * exp(-1.i*kx*(x0d-x1d)) * FTintercell(x1,x0); // Attention: (x1,x0) in argument is correct!
 	}
 	
 	return res;
@@ -153,6 +154,7 @@ int main (int argc, char* argv[])
 	Bx = args.get<double>("Bx",0.25);
 	Bz = args.get<double>("Bz",0.);
 	U = args.get<double>("U",10.);
+	double V = args.get<double>("V",0.);
 	mu = args.get<double>("mu",0.5*U);
 	N = args.get<int>("N",L);
 	int Nk = args.get<int>("Nk",31); // amount of k-points
@@ -166,8 +168,8 @@ int main (int argc, char* argv[])
 	tol_var = args.get<double>("tol_var",1e-4);
 	tol_state = args.get<double>("tol_state",1.);
 	
-	max_iter = args.get<size_t>("max_iter",10ul);
-	min_iter = args.get<size_t>("min_iter",10ul);
+	max_iter = args.get<size_t>("max_iter",150ul);
+	min_iter = args.get<size_t>("min_iter",50ul);
 	size_t Qinit = args.get<size_t>("Qinit",6);
 	D = args.get<size_t>("D",3);
 	
@@ -361,25 +363,35 @@ int main (int argc, char* argv[])
 		cout << endl << Geo2cell.hopping() << endl << endl;
 		
 		vector<Param> params;
-		params.push_back({"Jfull",Jarray});
+//		params.push_back({"Jfull",Jarray});
+//		params.push_back({"OPEN_BC",false});
+//		params.push_back({"D",D});
+//		params.push_back({"CALC_SQUARE",false});
+		
+		typedef VMPS::HubbardSU2 MODEL;
+		ArrayXXd tArray = 1. * Geo2cell.hopping();
+		ArrayXXd Vxyarray = V * Geo2cell.hopping();
+		ArrayXXd Vzarray  = V * Geo2cell.hopping();
+		params.push_back({"tFull",tArray});
+		params.push_back({"Vxyfull",Vxyarray});
+		params.push_back({"Vzfull",Vzarray});
+		params.push_back({"Uph",U});
 		params.push_back({"OPEN_BC",false});
-		params.push_back({"D",D});
 		params.push_back({"CALC_SQUARE",false});
+		MODEL H(L,params);
+//		MODEL H(L,{{"U",2.},{"Vxy",V},{"Vz",V},{"OPEN_BC",false},{"CALC_SQUARE",false}});
 		
-//		typedef VMPS::HubbardSU2xU1 MODEL;
-//		MODEL H(L,{{"U",20.},{"OPEN_BC",false},{"CALC_SQUARE",false}});
-//		qarray<2> Qc = {1,N};
-		typedef VMPS::HeisenbergSU2 MODEL;
+//		typedef VMPS::HeisenbergSU2 MODEL;
 //		MODEL H(L,{{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"Ly",Ly},{"D",D}});
-		MODEL H(L*Ly,params);
 		
-		qarray<1> Qc = {1};
+		qarray<MODEL::Symmetry::Nq> Qc = MODEL::singlet();
 		H.transform_base(Qc);
 		lout << H.info() << endl;
 		
 		MODEL::uSolver DMRG(VERB);
 		Eigenstate<MODEL::StateUd> g;
 		GlobParams.Qinit = 6;
+		GlobParams.Dinit = 10;
 		DMRG.userSetGlobParam();
 		DMRG.GlobParam = GlobParams;
 		DMRG.edgeState(H, g, Qc);
@@ -479,21 +491,52 @@ int main (int argc, char* argv[])
 			// old 1d:
 //			SF = g.state.SF(Sij_cell, Odag,O, L, 0.,2.*M_PI,Nk, DMRG::VERBOSITY::ON_EXIT);
 			
-			ofstream FilerSF(make_string("SF_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",L,"_Ly=",Ly,"_J=",J,".dat")); 
+			ofstream FilerSF(make_string("SF_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",L,"_Ly=",Ly,".dat")); 
 			for (size_t ik=0; ik<SF.rows(); ++ik)
 			{
 				FilerSF << SF(ik,0).real() << "\t" << SF(ik,1).real() << "\t" << SF(ik,1).imag() << endl;
 			}
 			FilerSF.close();
-			cout << make_string("SF_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",L,"_Ly=",Ly,"_J=",J,".dat") << " saved!" << endl;
+			cout << make_string("SF_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",L,"_Ly=",Ly,".dat") << " saved!" << endl;
 			
 			//-------------
 			
 			N = 20;
 			ArrayXXcd FT(N+1,2);
 			cout << "beginning fill_OdagO_SU2..." << endl;
-			fill_OdagO_SU2(g);
+			fill_OdagO_SU2<MODEL>(g);
 			cout << "fill_OdagO_SU2 done!" << endl;
+			
+			/////////// test 1D with exlicit loop ///////////
+			VectorXd SdagSvec(100);
+			for (int l=0; l<100; ++l)
+			{
+				MODEL Htmp(l+2,{{"OPEN_BC",false},{"D",D},{"CALC_SQUARE",false}});
+				SdagSvec(l) = avg(g.state, Htmp.SdagS(0,l), g.state);
+				lout << "l=" << l << "\t" << SdagSvec(l) << endl;
+			}
+			VectorXcd Skvec(100); Skvec.setZero();
+			int Lcell = 2;
+			for (int ik=0; ik<100; ++ik)
+			{
+				double k = 2.*M_PI/100.*ik;
+				Skvec(ik) = 0;
+				for (int l=-38; l<38; ++l)
+				for (int j=0; j<Lcell; ++j)
+				{
+					Skvec(ik) += 1./Lcell * exp(-1.i*k*(double(l)-double(j))) * SdagSvec(abs(l-j));
+				}
+			}
+			ofstream FilerFTexplicit(make_string("FTexplicit_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",Lcell,"_Ly=",Ly,".dat")); 
+			for (int ik=0; ik<100; ++ik)
+			{
+				double k = 2.*M_PI/100.*ik;
+				FilerFTexplicit << k << "\t" << Skvec(ik).real() << "\t" << Skvec(ik).imag() << "\t" << abs(Skvec(ik)) << endl;
+			}
+			FilerFTexplicit.close();
+			lout << make_string("FTexplicit_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",Lcell,"_Ly=",Ly,".dat") << " saved!" << endl;
+			/////////// test 1D with exlicit loop ///////////
+			
 			
 			#pragma omp parallel for
 			for (size_t ikx=0; ikx<=N; ++ikx)
@@ -511,13 +554,33 @@ int main (int argc, char* argv[])
 				FT(ikx,1) = val_FT;
 			}
 			
-			ofstream FilerFT(make_string("FT_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",L,"_Ly=",Ly,"_J=",J,".dat")); 
+			ofstream FilerFT(make_string("FT_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",L,"_Ly=",Ly,".dat")); 
 			for (size_t ik=0; ik<FT.rows(); ++ik)
 			{
 				FilerFT << FT(ik,0).real() << "\t" << FT(ik,1).real() << "\t" << FT(ik,1).imag() << endl;
 			}
 			FilerFT.close();
-			cout << make_string("FT_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",L,"_Ly=",Ly,"_J=",J,".dat") << " saved!" << endl;
+			cout << make_string("FT_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",L,"_Ly=",Ly,".dat") << " saved!" << endl;
+			
+			/////////// test 1D back transform ///////////
+			lout << endl << "back transform:" << endl;
+			for (int l=0; l<min(FT.rows(),SF.rows()); ++l)
+			{
+				complex<double> resFT = 0;
+				complex<double> resSF = 0;
+				// because k=0 and k=2*pi is repeated
+				for (int ik=0; ik<FT.rows()-1; ++ik)
+				{
+					resFT += exp(+1.i*double(l)*FT(ik,0)) * FT(ik,1);
+				}
+				for (int ik=0; ik<SF.rows()-1; ++ik)
+				{
+					resSF += exp(+1.i*double(l)*SF(ik,0)) * SF(ik,1);
+				}
+				resFT /= FT.rows()-1; 
+				resSF /= SF.rows()-1;
+				cout << "l=" << l << ", from FT=" << resFT.real() << ", from SF=" << resSF.real() << ", exact=" << SdagSvec(l) << endl;
+			}
 		}
 	}
 }
