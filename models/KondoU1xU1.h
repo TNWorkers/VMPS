@@ -53,7 +53,7 @@ public:
 	///@}
 	
 	static qarray<2> singlet (int N) {return qarray<2>{0,N};};
-	static qarray<2> polaron (int L, int N=0) {assert(N%2==0); return qarray<2>{L,N};};
+	static qarray<2> polaron (int L, int N=0) {assert(N%2==0); return qarray<2>{L-N,N};};
 	
 	/**
 	 * \describe_set_operators

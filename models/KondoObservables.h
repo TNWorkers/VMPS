@@ -29,6 +29,7 @@ public:
 	
 	///@{
 	Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
+	template<SPIN_INDEX sigma> Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> d (size_t locx, size_t locy=0) const;
 	template<SPIN_INDEX sigma> Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> nn (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
@@ -202,6 +203,15 @@ Mpo<Symmetry> KondoObservables<Symmetry>::
 n (size_t locx, size_t locy) const
 {
 	return make_local(SUB, "n", locx,locy, F[locx].n(locy), false, true);
+}
+
+template<typename Symmetry>
+template<SPIN_INDEX sigma>
+Mpo<Symmetry> KondoObservables<Symmetry>::
+n (size_t locx, size_t locy) const
+{
+	return make_local(SUB, "n", locx,locy, F[locx].n(sigma,locy), false, true);
+	// FERMIONIC=false, HERMITIAN=true
 }
 
 template<typename Symmetry>
