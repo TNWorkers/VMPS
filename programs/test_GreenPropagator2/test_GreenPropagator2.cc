@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <complex>
+#include <limits>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -17,8 +18,6 @@ using namespace std;
 
 #include "Logger.h"
 Logger lout;
-#include "ArgParser.h"
-
 #include "util/LapackManager.h"
 
 #include "StringStuff.h"
@@ -33,11 +32,6 @@ using namespace Eigen;
 #include "DmrgLinearAlgebra.h"
 #include "solvers/TDVPPropagator.h"
 #include "solvers/EntropyObserver.h"
-#include "models/SpinlessFermionsU1.h"
-#include "models/SpinlessFermionsZ2.h"
-#include "models/SpinlessFermions.h"
-#include "models/HubbardSU2xU1.h"
-#include "models/HubbardU1xU1.h"
 
 #include "IntervalIterator.h"
 #include "Quadrator.h"
@@ -47,90 +41,142 @@ using namespace Eigen;
 #include "solvers/GreenPropagator.h"
 #include "RootFinder.h" // from ALGS
 
-size_t L, Ncells, Lhetero, x0;
+size_t L, Lhetero, Ncells, x0;
 int M, Dtot, N;
-double VA, VB;
-double tp, tA, tB, tx;
+double U, V, Vxy, Vz, J;
+double tAB, tpx, tpxPrime;
 double tmax, dt, tol_compr;
 int Nt;
 size_t Chi, max_iter, min_iter, Qinit, D;
-double tol_eigval, tol_var, tol_state;
-bool GAUSSINT, RELOAD;
-double wmin, wmax;
+double tol_eigval, tol_var, tol_state, tol_oxv;
+bool GAUSSINT;
+double wmin, wmax; int wpoints, qpoints;
 string wd;
+string RELOAD;
+DMRG::VERBOSITY::OPTION VERB;
+vector<string> specs; int Nspec;
 
-// set model here:
-////1.
-//typedef VMPS::SpinlessFermionsU1 MODEL; double spinfac=1.;
-//typedef VMPS::SpinlessFermionsZ2 MODEL; double spinfac=1.;
-//typedef VMPS::SpinlessFermions MODEL; double spinfac=1.;
+//#include "models/HeisenbergSU2.h"
+//typedef VMPS::HeisenbergSU2 MODEL; double spinfac = 1.;
+//#define USE_SU2
+//#include "models/SpinlessFermionsU1.h"
+//typedef VMPS::SpinlessFermionsU1 MODEL; double spinfac = 1.;
 //#define USE_SPINLESS
-////2.
-typedef VMPS::HubbardSU2xU1 MODEL; double spinfac=1.;
-#define USE_SU2XU1
-////3.
-//typedef VMPS::HubbardU1xU1 MODEL; double spinfac=2.;
-//#define USE_U1XU1
+//#include "models/HeisenbergU1.h"
+//typedef VMPS::HeisenbergU1 MODEL; double spinfac = 1.;
+//#define USE_U1
+#include "models/HubbardSU2xSU2.h"
+typedef VMPS::HubbardSU2xSU2 MODEL; double spinfac = 1.;
+#define USE_SO4
 
-typedef MODEL::Symmetry Symmetry;
-
-std::array<GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>>,2> Green;
+vector<GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>>> Green;
 GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>> Gfull;
-
-ArrayXd ncell;
 
 double n_mu (double mu, void*)
 {
-	return spinfac * Gfull.integrate_Glocw_cell(mu) - ncell.sum();
+	return spinfac * Gfull.integrate_Glocw_cell(mu) - 2.;
 }
 
+MODEL::Operator get_Op (const MODEL &H, size_t loc, string spec)
+{
+	MODEL::Operator Res;
+	if (spec == "SSF")
+	{
+		#if defined(USE_SU2) or defined(USE_SO4)
+		{
+			Res = H.S(loc,0);
+		}
+		#else
+		{
+			Res = H.Scomp(SP,loc,0);
+		}
+		#endif
+	}
+	#if defined(USE_SPINLESS) or defined(USE_SO4)
+	else if (spec == "PES")
+	{
+		Res = H.c(loc,0);
+	}
+	else if (spec == "IPE")
+	{
+		Res = H.cdag(loc,0);
+	}
+	#endif
+	return Res;
+}
+
+double calc_wmin (string spec)
+{
+	if (spec == "PES" or spec == "IPE" or spec == "A1P")
+	{
+		return -5.;
+	}
+	else
+	{
+		return wmin;
+	}
+}
+
+double calc_wmax (string spec)
+{
+	if (spec == "PES" or spec == "IPE" or spec == "A1P")
+	{
+		return +5.;
+	}
+	else
+	{
+		return wmax;
+	}
+}
+
+bool TIME_DIR (string spec)
+{
+	return (spec=="PES")? false:true;
+}
+
+/////////////////////////////////
 int main (int argc, char* argv[])
 {
 	omp_set_nested(1);
-	#ifdef _OPENMP
-	lout << "threads=" << omp_get_max_threads() << endl;
-	#else
-	lout << "not parallelized" << endl;
-	#endif
 	
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",2);
-	Ncells = args.get<size_t>("Ncells",10);
+	Ncells = args.get<size_t>("Ncells",30);
 	
 	wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
 	
 	Lhetero = L*Ncells;
 	x0 = Lhetero/2;
-	#ifdef USE_SPINLESS
-	{
-		N = args.get<int>("N",L/2);
-	}
-	#else
-	{
-		N = args.get<int>("N",L);
-	}
-	#endif
+	U = args.get<double>("U",0.);
+	J = args.get<double>("J",1.);
+	U = args.get<double>("U",0.);
+	D = args.get<size_t>("D",3ul);
+	N = args.get<int>("N",L);
+	specs = args.get_list<string>("specs",{"SSF"});
+	Nspec = specs.size();
+	Green.resize(Nspec);
 	GAUSSINT = static_cast<bool>(args.get<int>("GAUSSINT",true));
-	string INIT = args.get<string>("INIT","");
 	
-	RELOAD = static_cast<bool>(args.get<int>("RELOAD",false));
-	wmin = args.get<double>("wmin",-10.);
-	wmax = args.get<double>("wmax",+10.);
-	double wshift = args.get<double>("wshift",0.);
+	RELOAD = args.get<string>("RELOAD","");
+	wmin = args.get<double>("wmin",-5.);
+	wmax = args.get<double>("wmax",45.);
+	wpoints = args.get<int>("wpoints",1001);
+	qpoints = args.get<int>("qpoints",1001);
+	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::ON_EXIT));
 	
 	dt = args.get<double>("dt",0.1);
-	tmax = args.get<double>("tmax",4.);
+	tmax = args.get<double>("tmax",6.);
 	Nt = static_cast<int>(tmax/dt);
-	tol_compr =  args.get<double>("tol_compr",1e-5);
 	
-	Chi = args.get<size_t>("Chi",2);
 	tol_eigval = args.get<double>("tol_eigval",1e-5);
 	tol_var = args.get<double>("tol_var",1e-5);
 	tol_state = args.get<double>("tol_state",1e-4);
 	
-	max_iter = args.get<size_t>("max_iter",50ul);
-	min_iter = args.get<size_t>("min_iter",100ul);
+	min_iter = args.get<size_t>("min_iter",50ul);
+	max_iter = args.get<size_t>("max_iter",150ul);
+	
+	Chi = args.get<size_t>("Chi",4ul);
 	Qinit = args.get<size_t>("Qinit",6ul);
 	
 	VUMPS::CONTROL::GLOB GlobParams;
@@ -144,133 +190,53 @@ int main (int argc, char* argv[])
 	GlobParams.tol_state = tol_state;
 	GlobParams.max_iter_without_expansion = 30ul;
 	
+	string base = make_string("Lcell=",L,"_J=",J);
+	if (RELOAD=="") lout.set(make_string(base,"_Ncells=",Ncells,"_tmax=",tmax,".log"),wd+"log");
+	lout << "Nspec=" << Nspec << endl;
+	
 	lout << args.info() << endl;
-	string base = make_string("Lcell=",L,"_t=1_U=0");
-	if (!RELOAD) lout.set(base+".log",wd+"log");
+	#ifdef _OPENMP
+	lout << "threads=" << omp_get_max_threads() << endl;
+	#else
+	lout << "not parallelized" << endl;
+	#endif
 	
 	// reload:
-	if (RELOAD)
+	if (RELOAD != "")
 	{
-		vector<vector<MatrixXcd>> GinPES(L); for (int i=0; i<L; ++i) {GinPES[i].resize(L);}
-		vector<vector<MatrixXcd>> GinIPE(L); for (int i=0; i<L; ++i) {GinIPE[i].resize(L);}
-		vector<vector<MatrixXcd>> GinA1P(L); for (int i=0; i<L; ++i) {GinA1P[i].resize(L);}
-		for (int i=0; i<L; ++i) 
-		for (int j=0; j<L; ++j)
-		{
-			GinPES[i][j].resize(Nt,Ncells);
-			GinPES[i][j].setZero();
-			GinIPE[i][j].resize(Nt,Ncells);
-			GinIPE[i][j].setZero();
-			GinA1P[i][j].resize(Nt,Ncells);
-			GinA1P[i][j].setZero();
-		}
-		
-		for (int i=0; i<L; ++i)
-		for (int j=0; j<L; ++j)
-		{
-			MatrixXd MtmpRe(Nt,Ncells);
-			MatrixXd MtmpIm(Nt,Ncells);
-			
-			HDF5Interface ReaderPES(wd+"PES_"+base+make_string("_L=",Lhetero,"_tmax=",tmax)+".h5",READ);
-			ReaderPES.load_matrix(MtmpRe,"txRe",make_string("G",i,j));
-			ReaderPES.load_matrix(MtmpIm,"txIm",make_string("G",i,j));
-			ReaderPES.close();
-			
-			GinPES[i][j] += MtmpRe+1.i*MtmpIm;
-			
-			HDF5Interface ReaderIPE(wd+"IPE_"+base+make_string("_L=",Lhetero,"_tmax=",tmax)+".h5",READ);
-			ReaderIPE.load_matrix(MtmpRe,"txRe",make_string("G",i,j));
-			ReaderIPE.load_matrix(MtmpIm,"txIm",make_string("G",i,j));
-			ReaderIPE.close();
-			
-			GinIPE[i][j] += MtmpRe+1.i*MtmpIm;
-			
-			GinA1P[i][j] += GinPES[i][j]+GinIPE[i][j];
-		}
-		
 		GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>> 
-		GrecalcPES = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"PESr_"+base,tmax,GinPES,ZERO_2PI,500,true); // GAUSSINT=true
-		GrecalcPES.recalc_FTwCell(wmin,wmax,501,wshift);
-		GrecalcPES.FT_allSites(wshift);
-		
-		GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>>
-		GrecalcIPE = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"IPEr_"+base,tmax,GinIPE,ZERO_2PI,500,true); // GAUSSINT=true
-		GrecalcIPE.recalc_FTwCell(wmin,wmax,501,wshift);
-		GrecalcIPE.FT_allSites(-wshift);
-		
-		HDF5Interface ReaderPES(wd+"PES_"+base+make_string("_L=",L,"_tmax=",tmax)+".h5",READ);
-		MatrixXd Mtmp;
-		ReaderPES.load_matrix(Mtmp,"ncell");
-		ncell = Mtmp;
-		
-		IntervalIterator mu(wmin,wmax,101);
-		for (mu=mu.begin(); mu!=mu.end(); ++mu)
-		{
-			double res = spinfac * Gfull.integrate_Glocw_cell(*mu);
-			mu << res;
-		}
-		mu.save(wd+"n(μ)_"+base+".dat");
-		RootFinder R(n_mu,wmin,wmax);
-		lout << "μ=" << R.root() << endl;
-		
-		Gfull.ncell = ncell;
-		Gfull.mu = R.root();
-		Gfull.save();
+		Gnew(wd+RELOAD+"_"+base,L,tmax,{wd+RELOAD+"_"+base+make_string("_L=",Lhetero,"_tmax=",tmax)},ZERO_2PI,qpoints,GAUSSINT);
+		Gnew.recalc_FTw(wmin,wmax,wpoints);
+		Gnew.FT_allSites();
+		Gnew.save(true); // IGNORE_CELL=true
 	}
 	else
 	{
-		qarray<MODEL::Symmetry::Nq> Q = MODEL::singlet(N);
+		qarray<MODEL::Symmetry::Nq> Q = MODEL::singlet();
 		
 		vector<Param> params;
 		params.push_back({"CALC_SQUARE",false});
 		params.push_back({"OPEN_BC",false});
-		params.push_back({"U",0.});
+		params.push_back({"t",1.});
+		if (J!=0.)
+		{
+			params.push_back({"J",J});
+			params.push_back({"D",D});
+		}
+		if (U!=0.)
+		{
+			params.push_back({"U",U});
+		}
 		
 		MODEL H(L,params);
 		H.transform_base(Q,true); // PRINT=true
 		lout << H.info() << endl;
 		
-		MODEL::uSolver uDMRG(DMRG::VERBOSITY::ON_EXIT);
+		MODEL::uSolver uDMRG(VERB);
 		Eigenstate<MODEL::StateUd> g;
 		uDMRG.userSetGlobParam();
 		uDMRG.GlobParam = GlobParams;
-		if (INIT != "")
-		{
-			g.state.load(wd+"init/"+INIT);
-			lout << g.state.info() << endl;
-			
-			HDF5Interface Reader(wd+"init/"+base+"_Sym="+Symmetry::name()+".h5",READ);
-			Reader.load_scalar(g.energy,"val","energy");
-			Reader.close();
-			lout << termcolor::blue << "ground state loaded!" << termcolor::reset << endl;
-		}
-		else
-		{
-			uDMRG.edgeState(H,g,Q);
-			
-			g.state.save(wd+"init/"+base+"_Sym="+Symmetry::name());
-			HDF5Interface Writer(wd+"init/"+base+"_Sym="+Symmetry::name()+".h5",REWRITE);
-			Writer.create_group("energy");
-			Writer.save_scalar(g.energy,"val","energy");
-			Writer.close();
-		}
-		
-		ncell.resize(L); ncell.setZero();
-		for (int l=0; l<L; ++l)
-		{
-			ncell(l) = avg(g.state, H.n(l), g.state);
-		}
-		lout << "ncell=" << ncell.transpose() << ", avg=" << ncell.sum()/L << endl;
-		#ifndef USE_SPINLESS
-		{
-			ArrayXd dcell(L);
-			for (int l=0; l<L; ++l)
-			{
-				dcell(l) = avg(g.state, H.d(l), g.state);
-			}
-			lout << "dcell=" << dcell.transpose() << ", avg=" << dcell.sum()/L << endl;
-		}
-		#endif
+		uDMRG.edgeState(H,g,Q);
 		
 		MODEL H_hetero(Lhetero,params);
 		lout << H_hetero.info() << endl;
@@ -278,181 +244,125 @@ int main (int argc, char* argv[])
 		H_hetero.precalc_TwoSiteData(true); // FORCE=true
 		
 		// create vector of O
-		std::array<vector<Mpo<MODEL::Symmetry,double>>,2> O;
-		O[0].resize(L);
-		O[1].resize(L);
-		for (int l=0; l<L; ++l)
+		vector<vector<Mpo<MODEL::Symmetry,double>>> O(Nspec);
+		for (int z=0; z<Nspec; ++z)
 		{
-			#ifdef USE_SPINLESS
+			O[z].resize(L);
+			
+			for (int l=0; l<L; ++l)
 			{
-				O[0][l] = H_hetero.c(Lhetero/2+l);
-				O[1][l] = H_hetero.cdag(Lhetero/2+l);
+				O[z][l] = get_Op(H_hetero,Lhetero/2+l,specs[z]);
+				O[z][l].transform_base(Q,false,L); // PRINT=false
 			}
-			#elif defined(USE_U1XU1)
-			{
-				O[0][l] = H_hetero.c<UP>(Lhetero/2+l);
-				O[1][l] = H_hetero.cdag<UP>(Lhetero/2+l);
-//				O[0][l] = H_hetero.Scomp(SP,Lhetero/2+l);
-//				O[1][l] = H_hetero.Sz(Lhetero/2+l);
-			}
-			#elif defined(USE_SU2XU1)
-			{
-				O[0][l] = H_hetero.c(Lhetero/2+l,0);
-				O[1][l] = H_hetero.cdag(Lhetero/2+l,0,1.);
-//				O[0][l] = H_hetero.S(Lhetero/2+l,0);
-//				O[1][l] = H_hetero.Sdag(Lhetero/2+l,0,1.);
-			}
-			#endif
-			O[0][l].transform_base(Q,false,L); // PRINT=false
-			O[1][l].transform_base(Q,false,L);
-		}
-		// Ofull
-		std::array<vector<Mpo<MODEL::Symmetry,double>>,2> Ofull;
-		Ofull[0].resize(Lhetero);
-		Ofull[1].resize(Lhetero);
-		for (int l=0; l<Lhetero; ++l)
-		{
-			#ifdef USE_SPINLESS
-			{
-				Ofull[0][l] = H_hetero.c(l);
-				Ofull[1][l] = H_hetero.cdag(l);
-			}
-			#elif defined(USE_U1XU1)
-			{
-				Ofull[0][l] = H_hetero.c<UP>(l);
-				Ofull[1][l] = H_hetero.cdag<UP>(l);
-//				Ofull[0][l] = H_hetero.Scomp(SP,l);
-//				Ofull[1][l] = H_hetero.Sz(l);
-			}
-			#elif defined(USE_SU2XU1)
-			{
-				Ofull[0][l] = H_hetero.c(l,0);
-				Ofull[1][l] = H_hetero.cdag(l,0,1.);
-//				Ofull[0][l] = H_hetero.S(l,0);
-//				Ofull[1][l] = H_hetero.Sdag(l,0,1.);
-			}
-			#endif
-			Ofull[0][l].transform_base(Q,false,L); // PRINT=false
-			Ofull[1][l].transform_base(Q,false,L);
 		}
 		
 		// OxV in cell
 		Stopwatch<> OxVTimer;
 		Mps<MODEL::Symmetry,double> Phi = uDMRG.create_Mps(Ncells, g, H, x0, false); // ground state as heterogenic MPS, ADD_ODD_SITE=false
-		//---
-		std::array<vector<Mps<MODEL::Symmetry,complex<double>>>,2> OxPhiCell;
-		OxPhiCell[0].resize(L);
-		OxPhiCell[1].resize(L);
-		std::array<vector<Mps<MODEL::Symmetry,double>>,2> OxPhiCellReal;
-		OxPhiCellReal[0] = uDMRG.create_Mps(Ncells, g, H, O[0][0], O[0], false);
-		OxPhiCellReal[1] = uDMRG.create_Mps(Ncells, g, H, O[1][0], O[1], false);
-		for (int l=0; l<L; ++l)
+		
+		vector<vector<Mps<MODEL::Symmetry,complex<double>>>> OxPhiCell(Nspec);
+		for (int z=0; z<Nspec; ++z)
 		{
-			OxPhiCell[0][l] = OxPhiCellReal[0][l].template cast<complex<double>>();
-			OxPhiCell[1][l] = OxPhiCellReal[1][l].template cast<complex<double>>();
+			OxPhiCell[z].resize(L);
+			auto OxPhiCellReal = uDMRG.create_Mps(Ncells, g, H, O[z][0], O[z], false); // O[z][0] for boundaries, O[z] is multiplied
+			
+			for (int l=0; l<L; ++l)
+			{
+				OxPhiCell[z][l] = OxPhiCellReal[l].template cast<complex<double>>();
+			}
 		}
-		// OxV for all sites
-//		std::array<vector<Mps<MODEL::Symmetry,complex<double>>>,2> OxPhiFull;
-//		OxPhiFull[0].resize(Lhetero);
-//		OxPhiFull[1].resize(Lhetero);
-//		std::array<vector<Mps<MODEL::Symmetry,double>>,2> OxPhiFullReal;
-//		OxPhiFullReal[0] = uDMRG.create_Mps(Ncells, g, H, Ofull[0][x0], Ofull[0], false);
-//		OxPhiFullReal[1] = uDMRG.create_Mps(Ncells, g, H, Ofull[1][x0], Ofull[1], false);
-//		for (int l=0; l<Lhetero; ++l)
-//		{
-//			OxPhiFull[0][l] = OxPhiFullReal[0][l].template cast<complex<double>>();
-//			OxPhiFull[1][l] = OxPhiFullReal[1][l].template cast<complex<double>>();
-//		}
-		//-----------
+		
 		lout << OxVTimer.info("OxV for all sites") << endl;
 		
-		// GreenPropagator
-		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"PES_"+base,tmax,Nt,wmin,wmax,501,ZERO_2PI,500,GAUSSINT);
-		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"IPE_"+base,tmax,Nt,wmin,wmax,501,ZERO_2PI,500,GAUSSINT);
-//		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"SF1_"+base,tmax,Nt,wmin,wmax,501,ZERO_2PI,500,GAUSSINT);
-//		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"SF2_"+base,tmax,Nt,wmin,wmax,501,ZERO_2PI,500,GAUSSINT);
-		
-		Green[1].set_verbosity(DMRG::VERBOSITY::ON_EXIT);
-		
-		// set operator to measure
-		vector<Mpo<MODEL::Symmetry,double>> Measure;
-		Measure.resize(Lhetero);
-		for (int l=0; l<Measure.size(); ++l)
+		for (int z=0; z<Nspec; ++z)
 		{
-			Measure[l] = H_hetero.n(l);
-			Measure[l].transform_base(Q,false,L); // PRINT=false
+			string spec = specs[z];
+			Green[z] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >
+			           (wd+spec+"_"+base,tmax,Nt,calc_wmin(spec),calc_wmax(spec),wpoints,ZERO_2PI,qpoints,GAUSSINT);
+			Green[z].set_verbosity(DMRG::VERBOSITY::ON_EXIT);
 		}
-		Green[0].set_measurement(Measure,4,"n","measure");
-		Green[1].set_measurement(Measure,4,"n","measure");
+		Green[0].set_verbosity(DMRG::VERBOSITY::STEPWISE);
+		
+//		// set operator to measure
+//		vector<Mpo<MODEL::Symmetry,double>> Measure;
+//		Measure.resize(Lhetero);
+//		for (int l=0; l<Measure.size(); ++l)
+//		{
+//			Measure[l] = H_hetero.Sz(l);
+//			Measure[l].transform_base(Q,false,L); // PRINT=false
+//		}
+//		for (int z=0; z<Nspec; ++z) Green[z].set_measurement(Measure,1,"Sz","measure");
 		
 		double Eg = avg_hetero(Phi, H_hetero, Phi, true); // USE_BOUNDARY=true
 		double Eg_ = Lhetero * g.energy;
 		lout << setprecision(14) << "Eg=" << Eg << ", " << Eg_ << ", diff=" << abs(Eg-Eg_) << ", eg=" << g.energy << endl;
 		
-		std::array<bool,2> TIME_DIR;
-		TIME_DIR[0] = false;
-		TIME_DIR[1] = true;
-		
-//		///////////////////////////////////////
-//		MODEL::StateXcd PhiProp = Phi.cast<complex<double>>();
-//		MODEL::StateXcd PhiProp0 = Phi.cast<complex<double>>();
-//		cout << PhiProp.info() << endl;
-//		TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,Mps<MODEL::Symmetry,complex<double>>> TDVP(H_hetero,PhiProp);
-//		double tval = 0.;
-//		for (int j=0; j<12; ++j)
-//		{
-//			TDVP.t_step0(H_hetero, PhiProp, -1.i*0.1);
-//			cout << TDVP.info() << endl;
-//			tval += 0.1;
-//		}
-//		complex<double> phase = PhiProp0.dot(PhiProp);
-//		complex<double> exact = exp(-1.i*Eg*tval);
-//		cout << "phase=" << phase << ", exact=" << exact << ", diff=" << abs(phase-exact) << endl;
-//		///////////////////////////////////////
-		
 		#pragma omp parallel for
-		for (int z=0; z<2; ++z)
+		for (int z=0; z<Nspec; ++z)
 		{
-//			Green[z].set_OxPhiFull(OxPhiFull[z]);
-//			Green[z].compute(H_hetero, OxPhiCell[z], OxPhiFull[z][Lhetero/2], Eg, TIME_DIR[z]); // TIME_FORWARDS=false
-			
-			Green[z].compute_cell(H_hetero, OxPhiCell[z], Eg, TIME_DIR[z], true); // COUNTERPROPAGATE=true
+			string spec = specs[z];
+//			Green[z].set_tol_DeltaS(tol_DeltaS);
+			Green[z].set_lim_Nsv(100ul);
+			Green[z].compute_cell(H_hetero, OxPhiCell[z], Eg, TIME_DIR(spec), true); // COUNTERPROPAGATE=true
 			Green[z].FT_allSites();
-			Green[z].ncell = ncell;
+			Green[z].save(true); // IGNORE_CELL=true
 		}
 		
-		for (int z=0; z<2; ++z) Green[z].save();
-		
-		vector<vector<MatrixXcd>> Gin(L); for (int i=0; i<L; ++i) {Gin[i].resize(L);}
-		for (int i=0; i<L; ++i) 
-		for (int j=0; j<L; ++j)
+		for (int z=0; z<Nspec; ++z)
 		{
-			Gin[i][j].resize(Nt,Ncells);
-			Gin[i][j].setZero();
+			if (specs[z] != "PES" and specs[z] != "IPE")
+			{
+				Green[z].recalc_FTwCell(-1.,5.,wpoints);
+				Green[z].FT_allSites();
+				Green[z].save(true); // IGNORE_CELL=true
+			}
 		}
 		
-		for (int i=0; i<L; ++i)
-		for (int j=0; j<L; ++j)
+		#if defined(USE_SU2xU1) || defined(USE_U0) || defined(USE_SO4)
 		{
-			Gin[i][j] += Green[0].get_GtxCell()[i][j] + Green[1].get_GtxCell()[i][j];
+			auto itPES = find(specs.begin(), specs.end(), "PES");
+			auto itIPE = find(specs.begin(), specs.end(), "IPE");
+			
+			if (itPES != specs.end() and itIPE != specs.end())
+			{
+				lout << "adding PES & IPE..." << endl;
+				int iPES = distance(specs.begin(), itPES);
+				int iIPE = distance(specs.begin(), itIPE);
+				
+				// Add PES+IPE
+				vector<vector<MatrixXcd>> GinA1P(L); for (int i=0; i<L; ++i) {GinA1P[i].resize(L);}
+				for (int i=0; i<L; ++i) 
+				for (int j=0; j<L; ++j)
+				{
+					GinA1P[i][j].resize(Nt,Ncells);
+					GinA1P[i][j].setZero();
+				}
+				
+				for (int i=0; i<L; ++i)
+				for (int j=0; j<L; ++j)
+				{
+					GinA1P[i][j] += Green[iPES].get_GtxCell()[i][j] + Green[iIPE].get_GtxCell()[i][j];
+				}
+				
+				Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"A1P_"+base,tmax,GinA1P,ZERO_2PI,qpoints,GAUSSINT);
+				Gfull.recalc_FTwCell(calc_wmin("A1P"),calc_wmax("A1P"),wpoints);
+				Gfull.FT_allSites();
+				
+				IntervalIterator mu(wmin,wmax,101);
+				for (mu=mu.begin(); mu!=mu.end(); ++mu)
+				{
+					double res = spinfac * Gfull.integrate_Glocw_cell(*mu);
+					mu << res;
+				}
+				mu.save(wd+"n(μ)_"+base+".dat");
+				RootFinder R(n_mu,wmin,wmax);
+				lout << "μ=" << R.root() << endl;
+				
+				Gfull.mu = R.root();
+		//		Gfull.ncell = ncell;
+				Gfull.save(true); // IGNORE_CELL=true
+			}
 		}
-		
-//		Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"A1P_"+base,tmax,Gin,ZERO_2PI,500,GAUSSINT);
-//		Gfull.recalc_FTwCell(wmin,wmax,501);
-//		Gfull.FT_allSites();
-//		
-//		IntervalIterator mu(wmin,wmax,101);
-//		for (mu=mu.begin(); mu!=mu.end(); ++mu)
-//		{
-//			double res = spinfac * Gfull.integrate_Glocw_cell(*mu);
-//			mu << res;
-//		}
-//		mu.save(wd+"n(μ)_"+base+".dat");
-//		RootFinder R(n_mu,wmin,wmax);
-//		lout << "μ=" << R.root() << endl;
-//		
-//		Gfull.mu = R.root();
-//		Gfull.ncell = ncell;
-//		Gfull.save();
+		#endif
 	}
 }

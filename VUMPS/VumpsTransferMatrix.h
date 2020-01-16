@@ -35,6 +35,10 @@ struct TransferMatrix
 	bool SHIFTED = false; // true for solve_linear with 2-site Hamiltonian, code commented out and needs review
 	
 	vector<vector<qarray<Symmetry::Nq> > > qloc;
+	
+	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic>> TopEigvec;
+	Scalar TopEigval;
+	bool PROJECT_OUT_TOPEIGVEC = false;
 };
 
 template<typename Symmetry, typename Scalar>
@@ -188,6 +192,11 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 //			}
 //		}
 //	}
+	
+	if (H.PROJECT_OUT_TOPEIGVEC)
+	{
+		Vout.data.addScale(-(H.TopEigval * H.TopEigvec.template cast<Matrix<Scalar2,Dynamic,Dynamic> >().adjoint().contract(Vin.data).trace()), Vin.data);
+	}
 }
 
 template<typename Symmetry, typename Scalar1, typename Scalar2>

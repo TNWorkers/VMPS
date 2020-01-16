@@ -734,10 +734,10 @@ void contract_R (const Biped<Symmetry,MatrixType2> &Rold,
 // 	// }
 // }
 
-template<typename Symmetry, typename Scalar>
+template<typename Symmetry, typename Scalar, typename MpoScalar>
 void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
                      const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-                     const vector<vector<vector<SparseMatrixXd> > > &W, 
+                     const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W, 
                      const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
                      const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R, 
                      const vector<qarray<Symmetry::Nq> > &qloc,
@@ -802,7 +802,7 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 						if (std::abs(factor_cgc*factor_merge) < ::mynumeric_limits<Scalar>::epsilon()) {continue;}
 						
 						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
-						for (SparseMatrixXd::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+						for (typename SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
 						{
 							size_t a1 = iW.row();
 							size_t a2 = iW.col();
@@ -1320,7 +1320,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 									{
 										auto qleftAuxPs = Symmetry::reduceSilent(qrightAuxP,Symmetry::flip(qOpBot[k2]));
 										for(const auto& qleftAuxP : qleftAuxPs)
-										{											
+										{
 											if(auto it=leftBotQs.find(qleftAuxP) != leftBotQs.end())
 											{
 												factor_merge = Symmetry::coeff_tensorProd(qleftAuxP,qleftAux,new_qmid,
@@ -1669,6 +1669,8 @@ void contract_C (vector<qarray<Symmetry::Nq> > qloc,
 //	}
 //}
 
+// FORCE_QTOT to create only one final block; 
+// otherwise crashes when using the result for further calculations (e.g. ground-state sweeping)
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Ain, 
                   const vector<qarray<Symmetry::Nq> > &qloc,
@@ -1678,7 +1680,9 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
                   const Qbasis<Symmetry> &qauxWl,
                   const Qbasis<Symmetry> &qauxAr,
                   const Qbasis<Symmetry> &qauxWr,
-                  vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aout)
+                  vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Aout,
+                  bool FORCE_QTOT=false,
+                  qarray<Symmetry::Nq> Qtot=Symmetry::qvacuum())
 {
 	for (size_t s=0; s<qloc.size(); ++s)
 	{
@@ -1746,13 +1750,27 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 					qarray2<Symmetry::Nq> cmp = qarray2<Symmetry::Nq>{qmerge_l, qmerge_r}; //auxiliary quantum numbers of Aout
 					auto it = Aout[s1].dict.find(cmp);
 					
-					if (it == Aout[s1].dict.end())
+					if (!FORCE_QTOT)
 					{
-						Aout[s1].push_back(cmp,Mtmp);
+						if (it == Aout[s1].dict.end())
+						{
+							Aout[s1].push_back(cmp,Mtmp);
+						}
+						else
+						{
+							Aout[s1].block[it->second] += Mtmp;
+						}
 					}
 					else
 					{
-						Aout[s1].block[it->second] += Mtmp;
+						if (it == Aout[s1].dict.end() and cmp[1] == Qtot)
+						{
+							Aout[s1].push_back(cmp,Mtmp);
+						}
+						else if (it != Aout[s1].dict.end() and cmp[1] == Qtot)
+						{
+							Aout[s1].block[it->second] += Mtmp;
+						}
 					}
 				}
 			}

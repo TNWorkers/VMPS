@@ -58,7 +58,8 @@ template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg (const Umps<Symmetry,Scalar> &Vbra, 
             const Mpo<Symmetry,MpoScalar> &O1, 
             const Mpo<Symmetry,MpoScalar> &O2, 
-            const Umps<Symmetry,Scalar> &Vket)
+            const Umps<Symmetry,Scalar> &Vket,
+			bool PRINT=false)
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
@@ -73,11 +74,21 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 		qarray<Symmetry::Nq> transformed_Qtot = ::adjustQN<Symmetry>(Vket.Qtarget(),Ncells);
 		Obs1.transform_base(transformed_Qtot,false);
 		Obs2.transform_base(transformed_Qtot,false);
+		if (PRINT)
+		{
+			Obs1.calc_auxBasis(true);
+			Obs2.calc_auxBasis(true);
+		}
 	}
 	else
 	{
 		Obs1.transform_base(Vket.Qtarget(),false);
 		Obs2.transform_base(Vket.Qtarget(),false);
+		if (PRINT)
+		{
+			Obs1.calc_auxBasis(true);
+			Obs2.calc_auxBasis(true);
+		}
 	}
 	
 	auto Vbra_copy = Vbra;
@@ -94,6 +105,16 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	{
 //		GAUGE::OPTION g = (l==O1.length()-1)? GAUGE::C : GAUGE::L;
 		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
+		if (PRINT)
+		{
+			// cout << "l=" << l << endl << B.print() << endl << endl;
+			// cout << Obs1.auxBasis(l+1) << endl << Obs2.auxBasis(l+1) << endl << endl;
+			// cout << Obs1.auxBasis(l) << endl << Obs2.auxBasis(l) << endl << endl;
+			// cout << "Vbra_copy.A_at(g,l%Vket.length())" << endl << Vbra_copy.A_at(g,l%Vket.length())[0].print() << endl << Vbra_copy.A_at(g,l%Vket.length())[1].print() << endl << Vbra_copy.A_at(g,l%Vket.length())[2].print() << endl << endl;
+			// cout << "Vket_copy.A_at(g,l%Vket.length())" << endl << Vket_copy.A_at(g,l%Vket.length())[0].print() << endl << Vket_copy.A_at(g,l%Vket.length())[1].print() << endl << Vket_copy.A_at(g,l%Vket.length())[2].print() << endl << endl;
+
+		}
+
 		contract_R(B,
 		           Vbra_copy.A_at(g,l%Vket.length()), Obs1.W_at(l), Obs2.W_at(l), Vket_copy.A_at(g,l%Vket.length()), 
 		           Obs1.locBasis(l), Obs1.opBasis(l), Obs2.opBasis(l),
@@ -104,7 +125,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 		B = Bnext;
 		Bnext.clear();
 //		cout << "l=" << l << ", B.dim=" << B.dim << endl;
-//		if (l==1)
+//		if (l==O1.length()-1)
 //		{
 //			cout << B.print() << endl;
 //		}
@@ -130,6 +151,23 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	{
 //		cout << "partial val=" << avg(Vbra,O[t],Vket) << endl;
 		out += avg(Vbra,O[t],Vket);
+	}
+	return out;
+}
+
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+Scalar avg (const Umps<Symmetry,Scalar> &Vbra, 
+            const vector<Mpo<Symmetry,MpoScalar> > &O1, 
+            const vector<Mpo<Symmetry,MpoScalar> > &O2, 
+            const Umps<Symmetry,Scalar> &Vket)
+{
+	Scalar out = 0;
+	
+	for (int i=0; i<O1.size(); ++i)
+	for (int j=0; j<O2.size(); ++j)
+	{
+		cout << "partial val=" << avg(Vbra, O1[i], O2[j], Vket) << endl;
+		out += avg(Vbra, O1[i], O2[j], Vket);
 	}
 	return out;
 }

@@ -60,7 +60,7 @@ public:
 	//static HamiltonianTermsXd<Symmetry> set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc=0);
 	static void set_operators(const std::vector<FermionBase<Symmetry>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
 	
-	static qarray<2> singlet (int N) {return qarray<2>{1};};
+	static qarray<1> singlet (int N=0) {return qarray<1>{1};};
 	
 	///@{
 	Mpo<Symmetry> c (size_t locx, size_t locy=0, double factor=1.) const;
@@ -69,14 +69,23 @@ public:
 	Mpo<Symmetry> Tz (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> Tx (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> iTy (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Tp (size_t locx, size_t locy=0) const;
+	Mpo<Symmetry> Tm (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> d (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> nh (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> ns (size_t locx, size_t locy=0) const;
 	///@}
-
+	
+	///@{
 	Mpo<Symmetry> B (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) {return cdagc(locx1,locx2,locy1,locy2);};
 	Mpo<Symmetry> C (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
-
+	Mpo<Symmetry> triplet (size_t locx1, size_t locx2) const;
+	Mpo<Symmetry> cdagcdag3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> cc3 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> cdagcdag1 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> cc1 (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	///@}
+	
 	///@{
 	Mpo<Symmetry> cc (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> cdagcdag (size_t locx, size_t locy=0) const;
@@ -93,11 +102,11 @@ public:
 	Mpo<Symmetry> nn    (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	Mpo<Symmetry> TzTz  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> TpTm  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> TmTp  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> TdagT (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> TpTm  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double factor=1.) const;
+	Mpo<Symmetry> TmTp  (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double factor=1.) const;
+	vector<Mpo<Symmetry> > TdagT (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
-
+	
 	Mpo<Symmetry,complex<double> > S_ky    (vector<complex<double> > phases) const;
 	Mpo<Symmetry,complex<double> > Sdag_ky (vector<complex<double> > phases, double factor=sqrt(3.)) const;
 	Mpo<Symmetry,complex<double> > T_ky    (vector<complex<double> > phases) const;
@@ -115,7 +124,13 @@ protected:
 	            size_t locx, size_t locy, 
 	            const OperatorType &Op, 
 	            double factor, bool FERMIONIC, bool HERMITIAN) const;
-
+	
+	Mpo<Symmetry>
+	make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
+	           const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
+	           double factor, bool FERMIONIC, bool HERMITIAN) const;
+	
+	
 	Mpo<Symmetry,complex<double> >
 	make_FourierYSum (string name, const vector<OperatorType> &Ops, double factor, bool HERMITIAN, const vector<complex<double> > &phases) const;
 	
@@ -291,10 +306,10 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 				if (range != 0)
 				{
 					//The sign is hardcoded here.. maybe include this in Geometry class.
-					auto Tp_loc    = pow(-1,loc)*F[loc].cc(0);
-					auto Tm_hop    = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cdagcdag(0);
-					auto Tm_loc    = pow(-1,loc)*F[loc].cdagcdag(0);
-					auto Tp_hop    = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cc(0);
+					auto Tp_loc = pow(-1,loc)*F[loc].cc(0);
+					auto Tm_hop = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cdagcdag(0);
+					auto Tm_loc = pow(-1,loc)*F[loc].cdagcdag(0);
+					auto Tp_hop = pow(-1,(loc+range)%N_sites)*F[(loc+range)%N_sites].cc(0);
 					
 					Terms.push(range, loc, 0.5 * value,
 					           Tp_loc.plain<double>(), TransOps, Tm_hop.plain<double>());
@@ -635,6 +650,56 @@ make_local (string name, size_t locx, size_t locy, const OperatorType &Op, doubl
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+make_corr (string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2,
+           const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
+           double factor, bool FERMIONIC, bool HERMITIAN) const
+{
+	assert(locx1<F.size() and locy1<F[locx1].dim());
+	assert(locx2<F.size() and locy2<F[locx2].dim());
+	
+	stringstream ss;
+	ss << name1 << "(" << locx1 << "," << locy1 << ")"
+	   << name2 << "(" << locx2 << "," << locy2 << ")";
+	
+	Mpo<Sym::SU2<Sym::SpinSU2> > Mout(N_sites, Qtot, ss.str(), HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	if (FERMIONIC)
+	{
+		if (locx1 == locx2)
+		{
+			//The diagonal element is actually 2*unity by the symmetry. But we may leave this as a check.
+			Mout.setLocal(locx1, factor * OperatorType::prod(Op1,Op2,Qtot).plain<double>());
+		}
+		else if (locx1<locx2)
+		{
+			Mout.setLocal({locx1, locx2}, {factor * OperatorType::prod(Op1, F[locx1].sign(), Op1.Q()).plain<double>(), 
+			                               Op2.plain<double>()}, 
+			                               F[0].sign().plain<double>());
+		}
+		else if (locx1>locx2)
+		{
+			Mout.setLocal({locx2, locx1}, {factor * OperatorType::prod(Op2, F[locx2].sign(), Op2.Q()).plain<double>(), 
+			                               -1. * Op1.plain<double>()}, 
+			                               F[0].sign().plain<double>());
+		}
+	}
+	else
+	{
+		if (locx1 == locx2)
+		{
+			auto product = factor*OperatorType::prod(Op1, Op2, Qtot);
+			Mout.setLocal(locx1, product.plain<double>());
+		}
+		else
+		{
+			Mout.setLocal({locx1, locx2}, {(factor*Op1).plain<double>(), Op2.plain<double>()});
+		}
+	}
+	return Mout;
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 n (size_t locx, size_t locy) const
 {
 	return make_local("n", locx,locy, F[locx].n(locy), 1., false, true);
@@ -661,13 +726,25 @@ Tz (size_t locx, size_t locy) const
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 Tx (size_t locx, size_t locy) const
 {
-	return make_local("Tx", locx,locy, F[locx].Tx(locy), 1., false, true);
+	return make_local("Tx", locx,locy, pow(-1.,locx+locy)*F[locx].Tx(locy), 1., false, true);
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
 iTy (size_t locx, size_t locy) const
 {
-	return make_local("iTy", locx,locy, F[locx].iTy(locy), 1., false, true);
+	return make_local("iTy", locx,locy, pow(-1.,locx+locy)*F[locx].iTy(locy), 1., false, true);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+Tp (size_t locx, size_t locy) const
+{
+	return make_local("Tp", locx,locy, pow(-1.,locx+locy)*F[locx].cc(locy), 1., false, false);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+Tm (size_t locx, size_t locy) const
+{
+	return make_local("Tm", locx,locy, pow(-1.,locx+locy)*F[locx].cdagcdag(locy), 1., false, false);
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
@@ -825,7 +902,7 @@ TzTz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
-TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) const
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
 	stringstream ss;
@@ -844,13 +921,13 @@ TpTm (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	}
 	else
 	{
-		Mout.setLocal({locx1, locx2}, {Op1.plain<double>(), Op2.plain<double>()});
+		Mout.setLocal({locx1, locx2}, {factor * Op1.plain<double>(), Op2.plain<double>()});
 	}
 	return Mout;
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
-TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2, double factor) const
 {
 	assert(locx1<this->N_sites and locx2<this->N_sites);
 	stringstream ss;
@@ -869,9 +946,19 @@ TmTp (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	}
 	else
 	{
-		Mout.setLocal({locx1, locx2}, {Op1.plain<double>(), Op2.plain<double>()});
+		Mout.setLocal({locx1, locx2}, {factor * Op1.plain<double>(), Op2.plain<double>()});
 	}
 	return Mout;
+}
+
+vector<Mpo<Sym::SU2<Sym::SpinSU2> > > HubbardSU2::
+TdagT (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	vector<Mpo<Sym::SU2<Sym::SpinSU2> > > out(3);
+	out[0] = TpTm(locx1, locx2, locy1, locy2, 0.5);
+	out[1] = TmTp(locx1, locx2, locy1, locy2, 0.5);
+	out[2] = TzTz(locx1, locx2, locy1, locy2);
+	return out;
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
@@ -901,27 +988,123 @@ SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
-TdagT (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+cdagcdag3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
-	assert(locx1<this->N_sites and locx2<this->N_sites);
 	stringstream ss;
-	ss << "T†(" << locx1 << "," << locy1 << ")" << "T(" << locx2 << "," << locy2 << ")";
+	ss << "c†" << DN << "c†" << UP;
+	return make_corr("c†", "c†", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), {3}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+cc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss;
+	ss << "c" << DN << "c" << UP;
+	return make_corr("c", "c", locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), {3}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+cdagcdag1 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss;
+	ss << "c†" << DN << "c†" << UP;
+	return make_corr("c†", "c†", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), {1}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+cc1 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	stringstream ss;
+	ss << "c" << DN << "c" << UP;
+	return make_corr("c", "c", locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), {1}, sqrt(2.), PROP::FERMIONIC, PROP::HERMITIAN);
+}
+
+Mpo<Sym::SU2<Sym::SpinSU2> > HubbardSU2::
+triplet (size_t locx1, size_t locx2) const
+{
+	assert(locx1<N_sites and locx2<N_sites);
+	stringstream ss;
+	ss << "c†(" << locx1 << ")" << "c†(" << locx2 << ")";
 	
 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
 	for (size_t l=0; l<this->N_sites; l++) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
 	
-	auto Op1 = F[locx1].Sdag(locy1);
-	auto Op2 = F[locx2].S(locy2);
+	auto cdag1 = F[locx1].cdag();
+	auto cdag2 = F[locx1+1].cdag();
+	auto c1 = F[locx2].c();
+	auto c2 = F[locx2+1].c();
 	
 	if (locx1 == locx2)
 	{
-		auto product = std::sqrt(3.) * OperatorType::prod(Op1, Op2, Symmetry::qvacuum());
-		Mout.setLocal(locx1, product.plain<double>());
+		throw;
+//		Mout.setLocal(locx1, sqrt(2.) * OperatorType::prod(cdag1, cdag2, {3,+2}).plain<double>());
 	}
-	else
+	else if (locx1<locx2)
 	{
-		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.) * Op1).plain<double>(), Op2.plain<double>()});
+		Mout.setLocal({locx1, locx1+1, locx2, locx2+1}, 
+		              {sqrt(2.) * OperatorType::prod(cdag1, F[locx1].sign(), cdag1.Q()).plain<double>(), cdag2.plain<double>(),
+		               sqrt(2.) * OperatorType::prod(c1, F[locx2].sign(), c1.Q()).plain<double>(), c2.plain<double>()}
+		             );
 	}
+	else if (locx1>locx2)
+	{
+		throw;
+//		Mout.setLocal({locx2, locx1, locx2, locx2+1}, {sqrt(2.) * OperatorType::prod(cdag2, F[locx2].sign(), cdag2.Q()).plain<double>(), 
+//		                               cdag1.plain<double>()}, 
+//		                               F[0].sign().plain<double>());
+	}
+	
+	Mout.qaux.clear();
+	Mout.qaux.resize(N_sites+1);
+	Mout.qaux[0].clear();
+	Mout.qaux[0].push_back({1},1);
+	for (int l=1; l<N_sites; ++l)
+	{
+		if (l-1<locx1)
+		{
+			// singlet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({1},1);
+		}
+		else if (l-1==locx1)
+		{
+			// cdag: doublet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({2},1);
+		}
+		else if (l-1==locx1+1)
+		{
+			// cdag: triplet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({3},1);
+		}
+		else if (l-1>locx1+1 and l-1<locx2)
+		{
+			// triplet in between
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({3},1);
+		}
+		else if (l-1==locx2)
+		{
+			// c: doublet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({2},1);
+		}
+		else if (l-1==locx2+1)
+		{
+			// c: singlet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({1},1);
+		}
+		else if (l-1>locx2+1)
+		{
+			// singlet
+			Mout.qaux[l].clear();
+			Mout.qaux[l].push_back({1},1);
+		}
+	}
+	Mout.qaux[N_sites].clear();
+	Mout.qaux[N_sites].push_back({1},1);
 	
 	return Mout;
 }

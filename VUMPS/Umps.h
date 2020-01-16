@@ -18,6 +18,7 @@
 #include "VumpsContractions.h"
 #include "Blocker.h"
 #include "VumpsTransferMatrixSF.h"
+#include "Mps.h"
 
 #ifdef USE_HDF5_STORAGE
 	#include <HDF5Interface.h>
@@ -52,22 +53,22 @@ public:
 	
 	/**Constructs a Umps with fixed bond dimension with the info from the Hamiltonian.*/
 	template<typename Hamiltonian> Umps (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
-
+	
 	/**Constructs a Umps with fixed bond dimension with a uniform given basis.*/
 	Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
-
+	
 	/**Constructs a Umps with fixed bond dimension with a given basis.*/
 	Umps (const vector<vector<qarray<Symmetry::Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
-
-#ifdef USE_HDF5_STORAGE
+	
+	#ifdef USE_HDF5_STORAGE
 	/**
 	 * Construct from an external HDF5 file named <FILENAME>.h5.
 	 * \param filename : The format is fixed to .h5, just enter the name without the format.
 	 * \warning This method requires hdf5. For more information see https://www.hdfgroup.org/.
 	 */
 	Umps (string filename) {load(filename);}
-#endif //USE_HDF5_STORAGE
-
+	#endif //USE_HDF5_STORAGE
+	
 	/**\describe_info*/
 	string info() const;
 	
@@ -92,10 +93,10 @@ public:
 	 * \param V : chain length, local basis and target quantum number will be equal to this umps
 	 */
 	template<typename OtherMatrixType> void resize (const Umps<Symmetry,OtherMatrixType> &V);
-
+	
 	/**Shorthand to resize all the relevant arrays: \p A, \p inbase, \p outbase, \p truncWeight, \p S.*/
 	void resize_arrays();
-
+	
 	/**Calculates \f$A_L\f$ and \f$A_R\f$ from \f$A_C\f$ and \f$C\f$ at site \p loc using SVD (eqs. (19),(20)). 
 	* This is supposed to be optimal, but not accurate.*/
 	void svdDecompose (size_t loc, GAUGE::OPTION gauge = GAUGE::C);
@@ -108,7 +109,7 @@ public:
 	VectorXd entropy() const {return S;};
 	
 	/**Return the full entanglement spectrum, resolved by subspace quantum number.*/
-	inline vector<map<qarray<Nq>,ArrayXd> > entanglementSpectrum() const {return SVspec;};
+	inline vector<map<qarray<Nq>,tuple<ArrayXd,int> > > entanglementSpectrum() const {return SVspec;};
 	
 	/**Return the entanglement spectrum at the site \p loc (values all subspaces merged and sorted).*/
 	ArrayXd entanglementSpectrumLoc (size_t loc) const;
@@ -147,8 +148,8 @@ public:
 	
 	/**Calculates the left and right decomposition error as \f$\epsilon_L=\big|A_C-A_LC\big|^2\f$ and \f$\epsilon_R=\big|A_C-CA_R\big|^2\f$ (eq. (18)).*/
 	Scalar calc_epsLRsq (GAUGE::OPTION gauge, size_t loc) const;
-
-#ifdef USE_HDF5_STORAGE
+	
+	#ifdef USE_HDF5_STORAGE
 	///\{
 	/**
 	 * Save all information of the Umps to the file <FILENAME>.h5.
@@ -165,7 +166,7 @@ public:
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	 */
 	void load (string filename);
-#endif //USE_HDF5_STORAGE
+	#endif //USE_HDF5_STORAGE
 	
 	/**
 	 * Determines the maximal bond dimension per site (sum of \p A.rows or \p A.cols over all subspaces).
@@ -255,20 +256,20 @@ public:
 	/**
 	 * Sorts the A tensors of a specific gauge. If SORT_ALL_GAUGES is true, then obviously all A tensors get sorted.
 	 */
-	void sort_A(size_t loc, GAUGE::OPTION g, bool SORT_ALL_GAUGES=false);
+	void sort_A (size_t loc, GAUGE::OPTION g, bool SORT_ALL_GAUGES=false);
 	
 	/**
 	 * Updates the tensor C with zeros if the auxiallary basis has changed, e.g. after an enrichment process
 	 * \param loc : location of the C tensor for the update.
 	 */
-	void updateC(size_t loc);
+	void updateC (size_t loc);
 	/**
 	 * Updates the tensor AC with zeros if the auxiallary basis has changed, e.g. after an enrichment process
 	 * \param loc : location of the C tensor for the update.
 	 * \param g : Pull information about changed dimension from either A[GAUGE::L] or A[GAUGE::R]. 
 	 * \warning Do not insert \p g = GAUGE::C here.
 	 */
-	void updateAC(size_t loc, GAUGE::OPTION g);
+	void updateAC (size_t loc, GAUGE::OPTION g);
 	
 	/**
 	 * Enlarges the tensors of the Umps with an enrichment tensor \p P and resizes everything necessary with zeros.
@@ -277,7 +278,7 @@ public:
 	 * \param g : The gauge to enrich. L means, we need to update site tensor at loc+1 accordingly. R means updating site loc-1 with zeros.
 	 * \param P : the tensor with the enrichment. It is calculated after Eq. (A31).
 	 */
-	void enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P);
+	void enrich (size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P);
 	
 	/**
 	Calculates the static structure factor between cells according to "Tangent-space methods for uniform matrix product states" (2018), chapter 2.5.
@@ -362,7 +363,7 @@ public:
 	
 	VectorXd S;
 	
-	vector<map<qarray<Nq>,ArrayXd> > SVspec;
+	vector<map<qarray<Nq>,tuple<ArrayXd,int> > > SVspec;
 	
 	/**bases on all ingoing and outgoing legs of the Umps*/
 	vector<Qbasis<Symmetry> > inbase;
@@ -598,144 +599,199 @@ template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
 resize (size_t Dmax_input, size_t Nqmax_input)
 {
-	Dmax = Dmax_input;
-	Nqmax = Nqmax_input;
-	if      (Symmetry::IS_TRIVIAL) {Nqmax = 1;}
-	else if (Symmetry::IS_MODULAR) {Nqmax = min(static_cast<size_t>(Symmetry::MOD_N),Nqmax_input);}
-	
-	resize_arrays();
-	
-	auto take_first_elems = [this] (const vector<qarray<Nq> > &qs) -> vector<qarray<Nq> >
+	if (!Symmetry::NON_ABELIAN)
 	{
-		vector<qarray<Nq> > out = qs;
-		// sort the vector first according to the distance to qvacuum
-		sort(out.begin(),out.end(),[this] (qarray<Nq> q1, qarray<Nq> q2)
-		{
-			VectorXd dist_q1(Nq);
-			VectorXd dist_q2(Nq);
-			for (size_t q=0; q<Nq; q++)
-			{
-				double Delta = 1.; // QinTop[loc][q] - QinBot[loc][q];
-				dist_q1(q) = q1[q] / Delta;
-				dist_q2(q) = q2[q] / Delta;
-			}
-			return (dist_q1.norm() < dist_q2.norm())? true:false;
-		});
-		return out;
-	};
-	
-	vector<set<qarray<Symmetry::Nq> > > qinset(N_sites);
-	vector<set<qarray<Symmetry::Nq> > > qoutset(N_sites);
-	qoutset[N_sites-1].insert(Symmetry::qvacuum());
-	ArrayXi inSize(N_sites); inSize = 0;
-	ArrayXi outSize(N_sites); outSize = 0;
-	
-	while (not((inSize == Nqmax).all() and (outSize == Nqmax).all()))
-	{
-		for (size_t l=0; l<N_sites; ++l)
-		{
-			size_t index = (l==0)? N_sites-1 : (l-1)%N_sites;
-			for (const auto &t:qoutset[index])
-			{
-				if (qinset[l].size() < Nqmax)
-				{
-					qinset[l].insert(t);
-				}
-			}
-			inSize[l] = qinset[l].size();
-			
-			vector<qarray<Symmetry::Nq> > qinvec(qinset[l].size());
-			copy(qinset[l].begin(), qinset[l].end(), qinvec.begin());
-			
-			auto tmp = Symmetry::reduceSilent(qinvec, qloc[l], true);
-			tmp = take_first_elems(tmp);
-			for (const auto &t:tmp)
-			{
-				if (qoutset[l].size() < Nqmax)
-				{
-					qoutset[l].insert(t);
-				}
-			}
-			outSize[l] = qoutset[l].size();
-		}
-	}
-	
-	// symmetrization
-	if (Qtot == Symmetry::qvacuum())
-	{
-		for (size_t l=0; l<N_sites; ++l)
-		{
-			auto qinset_tmp = qinset[l];
-			for (const auto &q:qinset_tmp)
-			{
-				if (auto it=qinset_tmp.find(Symmetry::flip(q)); it==qinset_tmp.end())
-				{
-					qinset[l].insert(Symmetry::flip(q));
-				}
-			}
-			
-			auto qoutset_tmp = qoutset[l];
-			for (const auto &q:qoutset_tmp)
-			{
-				if (auto it=qoutset_tmp.find(Symmetry::flip(q)); it==qoutset_tmp.end())
-				{
-					qoutset[l].insert(Symmetry::flip(q));
-				}
-			}
-		}
-	}
-	
-	MatrixXd Mtmp(Dmax,Dmax); Mtmp.setZero();
-	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		vector<qarray<Symmetry::Nq> > qins(qinset[l].size());
-		copy(qinset[l].begin(), qinset[l].end(), qins.begin());
+		Dmax = Dmax_input;
+		Nqmax = Nqmax_input;
+		if      (Symmetry::IS_TRIVIAL) {Nqmax = 1;}
+		else if (Symmetry::IS_MODULAR) {Nqmax = min(static_cast<size_t>(Symmetry::MOD_N),Nqmax_input);}
 		
-		vector<qarray<Symmetry::Nq> > qouts(qoutset[l].size());
-		copy(qoutset[l].begin(), qoutset[l].end(), qouts.begin());
+		resize_arrays();
 		
-		for (size_t g=0; g<3; ++g)
-		for (size_t s=0; s<qloc[l].size(); ++s)
+		auto take_first_elems = [this] (const vector<qarray<Nq> > &qs) -> vector<qarray<Nq> >
 		{
-			for (const auto &qin:qins)
+			vector<qarray<Nq> > out = qs;
+			// sort the vector first according to the distance to qvacuum
+			sort(out.begin(),out.end(),[this] (qarray<Nq> q1, qarray<Nq> q2)
 			{
-				auto qouts = Symmetry::reduceSilent(qloc[l][s], qin);
-				for (const auto &qout:qouts)
+				VectorXd dist_q1(Nq);
+				VectorXd dist_q2(Nq);
+				for (size_t q=0; q<Nq; q++)
 				{
-					if (auto it=qoutset[l].find(qout); it!=qoutset[l].end())
+					double Delta = 1.; // QinTop[loc][q] - QinBot[loc][q];
+					dist_q1(q) = q1[q] / Delta;
+					dist_q2(q) = q2[q] / Delta;
+				}
+				return (dist_q1.norm() < dist_q2.norm())? true:false;
+			});
+			return out;
+		};
+		
+		vector<set<qarray<Symmetry::Nq> > > qinset(N_sites);
+		vector<set<qarray<Symmetry::Nq> > > qoutset(N_sites);
+		qoutset[N_sites-1].insert(Symmetry::qvacuum());
+		ArrayXi inSize(N_sites); inSize = 0;
+		ArrayXi outSize(N_sites); outSize = 0;
+		
+		while (not((inSize == Nqmax).all() and (outSize == Nqmax).all()))
+		{
+			for (size_t l=0; l<N_sites; ++l)
+			{
+				size_t index = (l==0)? N_sites-1 : (l-1)%N_sites;
+				for (const auto &t:qoutset[index])
+				{
+					if (qinset[l].size() < Nqmax)
 					{
-						qarray2<Symmetry::Nq> qinout = {qin,qout};
-						A[g][l][s].try_push_back(qinout, Mtmp);
+						qinset[l].insert(t);
+					}
+				}
+				inSize[l] = qinset[l].size();
+				
+				vector<qarray<Symmetry::Nq> > qinvec(qinset[l].size());
+				copy(qinset[l].begin(), qinset[l].end(), qinvec.begin());
+				
+				auto tmp = Symmetry::reduceSilent(qinvec, qloc[l], true);
+				tmp = take_first_elems(tmp);
+				for (const auto &t:tmp)
+				{
+					if (qoutset[l].size() < Nqmax)
+					{
+						qoutset[l].insert(t);
+					}
+				}
+				outSize[l] = qoutset[l].size();
+			}
+		}
+		
+		// symmetrization
+		if (Qtot == Symmetry::qvacuum())
+		{
+			for (size_t l=0; l<N_sites; ++l)
+			{
+				auto qinset_tmp = qinset[l];
+				for (const auto &q:qinset_tmp)
+				{
+					if (auto it=qinset_tmp.find(Symmetry::flip(q)); it==qinset_tmp.end())
+					{
+						qinset[l].insert(Symmetry::flip(q));
+					}
+				}
+				
+				auto qoutset_tmp = qoutset[l];
+				for (const auto &q:qoutset_tmp)
+				{
+					if (auto it=qoutset_tmp.find(Symmetry::flip(q)); it==qoutset_tmp.end())
+					{
+						qoutset[l].insert(Symmetry::flip(q));
 					}
 				}
 			}
 		}
+		
+		MatrixXd Mtmp(Dmax,Dmax); Mtmp.setZero();
+		
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			vector<qarray<Symmetry::Nq> > qins(qinset[l].size());
+			copy(qinset[l].begin(), qinset[l].end(), qins.begin());
+			
+			vector<qarray<Symmetry::Nq> > qouts(qoutset[l].size());
+			copy(qoutset[l].begin(), qoutset[l].end(), qouts.begin());
+			
+			for (size_t g=0; g<3; ++g)
+			for (size_t s=0; s<qloc[l].size(); ++s)
+			{
+				for (const auto &qin:qins)
+				{
+					auto qouts = Symmetry::reduceSilent(qloc[l][s], qin);
+					for (const auto &qout:qouts)
+					{
+						if (auto it=qoutset[l].find(qout); it!=qoutset[l].end())
+						{
+							qarray2<Symmetry::Nq> qinout = {qin,qout};
+							A[g][l][s].try_push_back(qinout, Mtmp);
+						}
+					}
+				}
+			}
+		}
+		
+	//	for (size_t g=0; g<3; ++g)
+	//	for (size_t l=0; l<N_sites; ++l)
+	//	for (size_t s=0; s<qloc[l].size(); ++s)
+	//	for (size_t q=0; q<A[g][l][s].dim; ++q)
+	//	{
+	//		A[g][l][s].block[q].resize(Dmax,Dmax);
+	//	}
+		
+		update_inbase();
+		update_outbase();
+		
+		for (size_t l=0; l<N_sites; ++l)
+		for (size_t qout=0; qout<outbase[l].Nq(); ++qout)
+		{
+			C[l].try_push_back(qarray2<Symmetry::Nq>{outbase[l][qout], outbase[l][qout]}, Mtmp);
+		}
+		
+		for (size_t l=0; l<N_sites; ++l)
+		{
+			C[l] = C[l].sorted();
+		}	
+	//	graph("init");
+		
+		setRandom();
+		for (size_t l=0; l<N_sites; ++l) svdDecompose(l);
 	}
-	
-//	for (size_t g=0; g<3; ++g)
-//	for (size_t l=0; l<N_sites; ++l)
-//	for (size_t s=0; s<qloc[l].size(); ++s)
-//	for (size_t q=0; q<A[g][l][s].dim; ++q)
-//	{
-//		A[g][l][s].block[q].resize(Dmax,Dmax);
-//	}
-	
-	update_inbase();
-	update_outbase();
-	
-	for (size_t l=0; l<N_sites; ++l)
-	for (size_t qout=0; qout<outbase[l].Nq(); ++qout)
+	else
 	{
-		C[l].try_push_back(qarray2<Symmetry::Nq>{outbase[l][qout], outbase[l][qout]}, Mtmp);
+		Dmax = Dmax_input;
+		Nqmax = Nqmax_input;
+		resize_arrays();
+		
+		Mps<Symmetry,Scalar> Tmp(N_sites, qloc, Symmetry::qvacuum(), N_sites, Nqmax, true);
+		Tmp.innerResize(Dmax);
+		Tmp.setRandom();
+		
+		A[GAUGE::C] = Tmp.A;
+		A[GAUGE::L] = Tmp.A;
+		A[GAUGE::R] = Tmp.A;
+		
+		for (size_t l=0; l<N_sites; ++l) Tmp.rightSplitStep(l,C[l]);
+		
+		normalize_C();
+		
+		update_inbase(GAUGE::C);
+		update_outbase(GAUGE::C);
+		
+		for (size_t l=0; l<N_sites; ++l) svdDecompose(l,GAUGE::C);
 	}
-	
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		C[l] = C[l].sorted();
-	}	
-//	graph("init");
 }
+
+//template<typename Symmetry, typename Scalar>
+//void Umps<Symmetry,Scalar>::
+//resize (size_t Dmax_input, size_t Nqmax_input)
+//{
+//	Dmax = Dmax_input;
+//	Nqmax = Nqmax_input;
+//	resize_arrays();
+//	
+//	Mps<Symmetry,Scalar> Tmp(N_sites, qloc, Symmetry::qvacuum(), N_sites, Nqmax, true);
+//	Tmp.innerResize(Dmax);
+//	Tmp.setRandom();
+//	
+//	A[GAUGE::C] = Tmp.A;
+//	A[GAUGE::L] = Tmp.A;
+//	A[GAUGE::R] = Tmp.A;
+//	
+//	for (size_t l=0; l<N_sites; ++l) Tmp.rightSplitStep(l,C[l]);
+//	
+//	normalize_C();
+//	
+//	update_inbase(GAUGE::C);
+//	update_outbase(GAUGE::C);
+//	
+//	for (size_t l=0; l<N_sites; ++l) svdDecompose(l,GAUGE::C);
+//}
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
@@ -1087,13 +1143,23 @@ calc_entropy (size_t loc, bool PRINT)
 //		lout << endl;
 		S(loc) += Scontrib;
 		
-		SVspec[loc].insert(pair<qarray<Symmetry::Nq>,ArrayXd>(C[loc].in[q],Jack.singularValues()));
+		SVspec[loc].insert(pair<qarray<Symmetry::Nq>,tuple<ArrayXd,int> >(C[loc].in[q],
+		                                                                  make_tuple(Jack.singularValues(),
+		                                                                             Symmetry::degeneracy(C[loc].in[q])
+		                                                                            )
+		                                                                 )
+		                  );
 		
 		if (PRINT)
 		{
-			lout << termcolor::magenta << "S(" << C[loc].in[q] << "," 
-			     << C[loc].out[q] << ")\t=\t" << Scontrib 
-			     << ", size=" << C[loc].block[q].rows() << "x" << C[loc].block[q].cols() << termcolor::reset << endl;
+			lout << termcolor::magenta 
+			     << "S(" << C[loc].in[q] << "," 
+			     << C[loc].out[q] << ")=" << Scontrib 
+			     << ", size=" << C[loc].block[q].rows() << "x" << C[loc].block[q].cols() 
+			     << ", deg=" << Symmetry::degeneracy(C[loc].in[q])
+			     << ", #sv=" << Jack.singularValues().rows()
+			     << ", svs=" << Jack.singularValues().head(min(20,int(Jack.singularValues().rows()))).transpose()
+			     << termcolor::reset << endl;
 		}
 	}
 	if (PRINT)
@@ -1411,7 +1477,7 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 	if (gauge == GAUGE::L or gauge == GAUGE::C)
 	{
 		ArrayXd truncWeightSub(outbase[loc].Nq()); truncWeightSub.setZero();
-
+		
 		vector<Biped<Symmetry,MatrixType> > Atmp(qloc[loc].size());
 		for (size_t s=0; s<qloc[loc].size(); ++s)
 		{
@@ -1438,7 +1504,7 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 					Nrowsvec.push_back(Atmp[s].block[q].rows());
 				}
 			}
-		
+			
 			// Do the glue
 			size_t Ncols = Atmp[svec[0]].block[qvec[0]].cols();
 			for (size_t i=1; i<svec.size(); ++i) {assert(Atmp[svec[i]].block[qvec[i]].cols() == Ncols);}
@@ -1470,7 +1536,7 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 			// Nret = min(Nret, this->max_Nsv);
 			// cout << "L: Nret=" << Nret << ", full=" << Jack.singularValues().rows() << endl;
 			// truncWeightSub(qout) = Symmetry::degeneracy(outbase[loc][qout]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
-
+			
 			// Update AL
 			stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
@@ -1551,7 +1617,7 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 			// Nret = min(Nret, this->max_Nsv);
 			// cout << "R: Nret=" << Nret << ", full=" << Jack.singularValues().rows() << endl;
 			// truncWeightSub(qin) = Symmetry::degeneracy(inbase[loc][qin]) * SV.tail(SV.rows()-Nret).cwiseAbs2().sum();
-
+			
 			// Update AR
 			stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
@@ -2410,9 +2476,10 @@ entanglementSpectrumLoc (size_t loc) const
 {
 	vector<double> Svals;
 	for (const auto &x : SVspec[loc])
-	for (int i=0; i<x.second.size(); ++i)
+	for (int deg=0; deg<get<1>(x.second); ++deg)
+	for (int i=0; i<get<0>(x.second).size(); ++i)
 	{
-		Svals.push_back(x.second(i));
+		Svals.push_back(get<0>(x.second)(i));
 	}
 	sort(Svals.begin(), Svals.end());
 	reverse(Svals.begin(), Svals.end());
@@ -2607,7 +2674,8 @@ SFpoint (const ArrayXXcd &cellAvg, const vector<Mpo<Symmetry,MpoScalar> > &Oalfa
 	for (size_t j0=0; j0<Lx; ++j0)
 	{
 		// Careful: Must first convert to double and then subtract, since the difference can become negative!
-		res += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk(i0,j0);
+		res += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk(j0,i0);
+		// Attention: order (j0,i0) in argument is correct!
 	}
 	
 	return res;
@@ -2649,7 +2717,8 @@ SF (const ArrayXXcd &cellAvg, const vector<Mpo<Symmetry,MpoScalar> > &Oalfa, con
 		double kval = Sijk[i0][j0](ik,0).real();
 		res(ik,0) = kval;
 		// Careful: Must first convert to double and then subtract, since the difference can become negative!
-		res(ik,1) += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk[i0][j0](ik,1);
+		res(ik,1) += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk[j0][i0](ik,1);
+		// Attention: order [j0][i0] in argument is correct!
 	}
 	
 	return res;

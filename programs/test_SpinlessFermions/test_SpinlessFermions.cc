@@ -15,9 +15,6 @@
 #define EIGEN_DEFAULT_DENSE_INDEX_TYPE int
 #define EIGEN_DEFAULT_INDEX_TYPE int
 
-//Also calculate SU2xSU2, implies no tPrime
-#define SU2XSU2
-
 #include <iostream>
 #include <fstream>
 #include <complex>
@@ -42,6 +39,7 @@ Logger lout;
 #include "solvers/DmrgSolver.h"
 #include "models/SpinlessFermionsU1.h"
 #include "models/SpinlessFermionsZ2.h"
+#include "IntervalIterator.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, bool COLOR=false, int n=14)
@@ -64,11 +62,11 @@ string to_string_prec (Scalar x, bool COLOR=false, int n=14)
 
 size_t L;
 int N;
-double t, tPrime, V, Vprime, Vph;
+double t, tPrime, V, Vprime, Vph, mu;
 
 typedef Sym::U1<Sym::ChargeU1> Symmetry;
 Eigenstate<VMPS::SpinlessFermionsU1::StateXd> g_U1;
-//Eigenstate<VMPS::SpinlessFermionsZ2::StateXd> g_Z2;
+Eigenstate<VMPS::SpinlessFermionsZ2::StateXd> g_Z2;
 Eigenstate<VectorXd> g_ED;
 
 double fRand(double fMin, double fMax)
@@ -87,6 +85,7 @@ int main (int argc, char* argv[])
 	V = args.get<double>("V",0.);
 	Vprime = args.get<double>("Vprime",0.);
 	Vph = args.get<double>("Vph",0.);
+	mu = args.get<double>("mu",0.);
 	
 	DMRG::CONTROL::GLOB GlobParam;
 	DMRG::CONTROL::DYN  DynParam;
@@ -105,25 +104,25 @@ int main (int argc, char* argv[])
 //	
 //	cout << RandomHopping << endl << endl;
 	
-	VMPS::SpinlessFermionsU1 H_U1(L,{{"t",t},{"tPrime",tPrime},{"V",V},{"Vprime",Vprime},{"Vph",Vph}});
-//	VMPS::SpinlessFermionsU1 H_U1(L,{{"tFull",RandomHopping}});
-	lout << H_U1.info() << endl;
-	
-	VMPS::SpinlessFermionsU1::Solver DMRG_U1(DMRG::VERBOSITY::HALFSWEEPWISE);
-	DMRG_U1.edgeState(H_U1, g_U1, {N}, LANCZOS::EDGE::GROUND);
-	g_U1.state.graph("U1");
-	
-	MatrixXd rhoA(L,L);
-	MatrixXd rhoB(L,L);
-	#pragma omp parallel for collapse(2)
-	for (int i=0; i<L; ++i)
-	for (int j=0; j<L; ++j)
-	{
-		rhoA(i,j) = avg(g_U1.state, H_U1.cdagc(i,j), g_U1.state);
-		rhoB(i,j) = avg(g_U1.state, H_U1.cdag(i), H_U1.c(j), g_U1.state);
-	}
-	
-	lout << "(rhoA-rhoB).norm()=" << (rhoA-rhoB).norm() << endl;
+//	VMPS::SpinlessFermionsU1 H_U1(L,{{"t",t},{"tPrime",tPrime},{"V",V},{"Vprime",Vprime},{"Vph",Vph}});
+////	VMPS::SpinlessFermionsU1 H_U1(L,{{"tFull",RandomHopping}});
+//	lout << H_U1.info() << endl;
+//	
+//	VMPS::SpinlessFermionsU1::Solver DMRG_U1(DMRG::VERBOSITY::HALFSWEEPWISE);
+//	DMRG_U1.edgeState(H_U1, g_U1, {N}, LANCZOS::EDGE::GROUND);
+//	g_U1.state.graph("U1");
+//	
+//	MatrixXd rhoA(L,L);
+//	MatrixXd rhoB(L,L);
+//	#pragma omp parallel for collapse(2)
+//	for (int i=0; i<L; ++i)
+//	for (int j=0; j<L; ++j)
+//	{
+//		rhoA(i,j) = avg(g_U1.state, H_U1.cdagc(i,j), g_U1.state);
+//		rhoB(i,j) = avg(g_U1.state, H_U1.cdag(i), H_U1.c(j), g_U1.state);
+//	}
+//	
+//	lout << "(rhoA-rhoB).norm()=" << (rhoA-rhoB).norm() << endl;
 	
 	
 //	InteractionParams params;
@@ -196,9 +195,21 @@ int main (int argc, char* argv[])
 //	
 //	cout << endl << rhoED_free << endl << endl;
 	
-//	VMPS::SpinlessFermionsZ2 H_Z2(L,{{"t",t},{"tPrime",tPrime},{"V",V},{"Vprime",Vprime},{"Vph",Vph},{"Delta",-t}});
-//	lout << H_Z2.info() << endl;
-//	VMPS::SpinlessFermionsZ2::Solver DMRG_Z2(DMRG::VERBOSITY::HALFSWEEPWISE);
-//	DMRG_Z2.edgeState(H_Z2, g_Z2, {0}, LANCZOS::EDGE::GROUND);
+	VMPS::SpinlessFermionsZ2 H_Z2(L,{{"t",t},{"Delta",-t},{"mu",mu}});
+	lout << H_Z2.info() << endl;
+	VMPS::SpinlessFermionsZ2::Solver DMRG_Z2(DMRG::VERBOSITY::HALFSWEEPWISE);
+	DMRG_Z2.edgeState(H_Z2, g_Z2, {0}, LANCZOS::EDGE::GROUND);
+	
+	IntervalIterator lit(1,L-1,L-1);
+	for (lit=lit.begin(); lit!=lit.end(); ++lit)
+	{
+		int d = lit.index()+1;
+		double res = avg(g_Z2.state, H_Z2.cdagc(0,d), g_Z2.state);
+		lit << res;
+		lout << d << "\t" << res << endl;
+	}
+	lit.save(make_string("cdagc_L=",L,"_mu=",mu,".dat"));
+	
+	
 	
 }

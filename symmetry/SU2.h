@@ -49,7 +49,7 @@ public:
 	
 	SU2() {};
 
-	inline static std::string name() { return "SU(2)"; }
+	inline static std::string name() { return "SU2"; }
 	inline static constexpr std::array<KIND,Nq> kind() { return {Kind::name}; }
 	
 	inline static qType qvacuum() { return {1}; }

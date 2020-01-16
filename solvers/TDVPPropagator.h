@@ -97,6 +97,7 @@ info() const
 	   << "t2=" << round(t_2site/t_tot*100.) << "%, "
 	   << "t_ohead=" << round(t_ohead/t_tot*100.) << "%, "
 	   << "t_contr=" << round(t_contr/t_tot*100.) << "%";
+	
 	return ss.str();
 }
 
