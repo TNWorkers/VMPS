@@ -2,7 +2,6 @@
 #define KONDOMODELSU2XU1_H_
 
 //include "ParamHandler.h" // from HELPERS
-#include "ParamReturner.h"
 #include "symmetry/S1xS2.h"
 #include "symmetry/SU2.h"
 #include "symmetry/U1.h"
@@ -11,6 +10,9 @@
 //include "Mpo.h"
 //include "models/HubbardSU2xU1.h"
 #include "models/KondoObservables.h"
+#include "ParamReturner.h"
+
+#include "Geometry2D.h" // from TOOLS
 
 namespace VMPS
 {
@@ -77,9 +79,12 @@ public:
 	Mpo<Symmetry> cc (size_t locx, size_t locy=0);
 	Mpo<Symmetry> cdagcdag (size_t locx, size_t locy=0);
 	///@}
+
 	
 	///@{
 	Mpo<Symmetry> n (size_t locx, size_t locy=0);
+	Mpo<Symmetry> nh (size_t locx, size_t locy=0);
+	Mpo<Symmetry> ns (size_t locx, size_t locy=0);
 	Mpo<Symmetry> d (size_t locx, size_t locy=0);
 	Mpo<Symmetry> cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
 	Mpo<Symmetry> ccdag (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0);
@@ -97,6 +102,8 @@ public:
 	Mpo<Symmetry> Simpdag (size_t locx, size_t locy=0, double factor=sqrt(3.));
 	Mpo<Symmetry> Ssub (size_t locx, size_t locy=0, double factor=1.);
 	Mpo<Symmetry> Ssubdag (size_t locx, size_t locy=0, double factor=sqrt(3.));
+	Mpo<Symmetry,complex<double> > Simp_ky    (vector<complex<double> > phases) const;
+	Mpo<Symmetry,complex<double> > Simpdag_ky (vector<complex<double> > phases, double factor=sqrt(3.)) const;
 	// for compatibility:
 	Mpo<Symmetry> S (size_t locx, size_t locy=0, double factor=1.) {return Simp(locx,locy,factor);};
 	Mpo<Symmetry> Sdag (size_t locx, size_t locy=0, double factor=sqrt(3.)) {return Simpdag(locx,locy,factor);};
@@ -138,6 +145,9 @@ protected:
 	           qarray<Symmetry::Nq> Qtot, 
 	           double factor,
 	           bool BOTH_HERMITIAN);
+
+	Mpo<Symmetry,complex<double> >
+  	make_FourierYSum (string name, const vector<OperatorType> &Ops, double factor, bool HERMITIAN, const vector<complex<double> > &phases) const;
 	
 	vector<FermionBase<Symmetry> > F;
 	vector<SpinBase<Symmetry> > B;
@@ -252,7 +262,49 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		stringstream Slabel;
 		Slabel << "S=" << print_frac_nice(frac(B[loc].get_D()-1,2));
 		Terms.save_label(loc, Slabel.str());
-		
+
+		if (P.HAS("tFull"))
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("tFull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
+				{
+					size_t range = R[loc][h].first;
+					double value = R[loc][h].second;
+				
+					size_t Ntrans = (range == 0)? 0:range-1;
+					vector<SiteOperator<Symmetry,double> > TransOps(Ntrans);
+					for (size_t i=0; i<Ntrans; ++i)
+						{
+							TransOps[i] = OperatorType::outerprod(B[(loc+i+1)%N_sites].Id(), F[(loc+i+1)%N_sites].sign(), {1,0}).plain<double>();
+						}
+				
+					if (range != 0)
+						{
+							int hop = (loc+range)%N_sites;
+					
+							auto sign_loc  = OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0});
+					
+							auto cF_loc    = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(0),    {2,-1}), sign_loc, {2,-1});
+							auto cdagF_loc = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(0), {2,+1}), sign_loc, {2,+1});
+					
+							auto c_hop     = OperatorType::outerprod(B[hop].Id(), F[hop].c(0),    {2,-1});
+							auto cdag_hop  = OperatorType::outerprod(B[hop].Id(), F[hop].cdag(0), {2,+1});
+					
+							Terms.push(range, loc, -value*sqrt(2.), cdagF_loc.plain<double>(), TransOps, c_hop.plain<double>());
+							Terms.push(range, loc, -value*sqrt(2.), cF_loc.plain<double>(),    TransOps, cdag_hop.plain<double>());
+						}
+				}
+			
+			stringstream ss;
+			ss << "tᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
+			Terms.save_label(loc,ss.str());
+		}
+
 		// local terms
 		
 		// Kondo-J
@@ -309,167 +361,127 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			
 			Terms.push_local(loc, 1., KondoHamiltonian.plain<double>());
 		}
-		
+
 		// NN terms
-		
-		// t∥
-		param2d tPara = P.fill_array2d<double>("t", "tPara", {Forbitals, Fnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, tPara.label);
-		
-		// V∥
-		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {Forbitals, Fnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, Vpara.label);
-		
-		// JdirPara∥
-		param2d JdirPara = P.fill_array2d<double>("Jdir", "JdirPara", {Borbitals, Bnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, JdirPara.label);
-		
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (!P.HAS("tFull"))
 		{
-			for (int alfa=0; alfa<Forbitals;      ++alfa)
-			for (int beta=0; beta<Fnext_orbitals; ++beta)
-			{
-				auto cF_loc    = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(alfa),    {2,-1}),
-				                                    OperatorType::outerprod(B[loc].Id(), F[loc].sign(),     {1,0}), {2,-1});
-				auto cdagF_loc = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(alfa), {2,+1}), 
-				                                    OperatorType::outerprod(B[loc].Id(), F[loc].sign(),     {1,0}),{2,+1});
-				
-				Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.),
-				                 cdagF_loc.plain<double>(),
-				                 OperatorType::outerprod(B[lp1].Id(), F[lp1].c(beta), {2,-1}).plain<double>());
-				
-				Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.),
-				                 cF_loc.plain<double>(),
-				                 OperatorType::outerprod(B[lp1].Id(), F[lp1].cdag(beta), {2,+1}).plain<double>());
-				
-				Terms.push_tight(loc, Vpara(alfa,beta),
-				                 OperatorType::outerprod(B[loc].Id(), F[loc].n(alfa), {1,0}).plain<double>(),
-				                 OperatorType::outerprod(B[lp1].Id(), F[lp1].n(beta), {1,0}).plain<double>());
-			}
-			
-			for (int alfa=0; alfa<Borbitals;      ++alfa)
-			for (int beta=0; beta<Bnext_orbitals; ++beta)
-			{
-				auto Sdag_loc = OperatorType::outerprod(B[loc].Sdag(alfa), F[loc].Id(), {3,0});
-				auto S_tight  = OperatorType::outerprod(B[lp1].S(beta),    F[lp1].Id(), {3,0});
-				
-				Terms.push_tight(loc, JdirPara(alfa,beta) * std::sqrt(3.), Sdag_loc.plain<double>(), S_tight.plain<double>());
-			}
-		}
+			// t∥
+			param2d tPara = P.fill_array2d<double>("t", "tPara", {Forbitals, Fnext_orbitals}, loc%Lcell);
+			Terms.save_label(loc, tPara.label);
 		
-		// NN Kondo terms
+			// V∥
+			param2d Vpara = P.fill_array2d<double>("V", "Vpara", {Forbitals, Fnext_orbitals}, loc%Lcell);
+			Terms.save_label(loc, Vpara.label);
 		
-		param2d InextPara = P.fill_array2d<double>("Inext", "InextPara", {Borbitals, Fnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, InextPara.label);
+			// JdirPara∥
+			param2d JdirPara = P.fill_array2d<double>("Jdir", "JdirPara", {Borbitals, Bnext_orbitals}, loc%Lcell);
+			Terms.save_label(loc, JdirPara.label);
 		
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
-		{
-			for (int alfa=0; alfa<Borbitals;      ++alfa)
-			for (int beta=0; beta<Fnext_orbitals; ++beta)
-			{
-				qarray<Symmetry::Nq> qnum1 = (Borbitals==0)?      Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
-				qarray<Symmetry::Nq> qnum2 = (Fnext_orbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
-				
-				Terms.push_tight(loc, sqrt(3.) * InextPara(alfa,beta),
-				                 OperatorType::outerprod(B[loc].Sdag(alfa), F[loc].Id(),    qnum1).plain<double>(),
-				                 OperatorType::outerprod(B[lp1].Id(),       F[lp1].S(beta), qnum2).plain<double>()
-				                );
-			}
-		}
-		
-		param2d IprevPara = P.fill_array2d<double>("Iprev", "IprevPara", {Forbitals, Bnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, IprevPara.label);
-		
-		if (lm1 < N_sites-1 or !P.get<bool>("OPEN_BC"))
-		{
-			for (int alfa=0; alfa<Forbitals;      ++alfa)
-			for (int beta=0; beta<Bnext_orbitals; ++beta)
-			{
-				qarray<Symmetry::Nq> qnum1 = (Forbitals==0)?      Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
-				qarray<Symmetry::Nq> qnum2 = (Bnext_orbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
-				
-				Terms.push_tight(lm1, sqrt(3.) * IprevPara(alfa,beta),
-					             OperatorType::outerprod(B[lm1].Id(),    F[lm1].Sdag(alfa), qnum1).plain<double>(),
-					             OperatorType::outerprod(B[loc].S(beta), F[loc].Id(),       qnum2).plain<double>()
-					            );
-			}
-		}
-		
-		// NNN terms
-		
-		param2d tPrime = P.fill_array2d<double>("tPrime", "tPrime_array", {Forbitals, Fnextn_orbitals}, loc%Lcell);
-		Terms.save_label(loc, tPrime.label);
-		
-		if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
-		{
-			for (std::size_t alfa=0; alfa<Forbitals;       ++alfa)
-			for (std::size_t beta=0; beta<Fnextn_orbitals; ++beta)
-			{
-				qarray<Symmetry::Nq> qnum = (Forbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,-1};
-				
-				auto cF_loc    = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(), qnum),
-				                                    OperatorType::outerprod(B[loc].Id(), F[loc].sign(), Symmetry::qvacuum()), qnum);
-				
-				qnum = (Forbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,+1};
-				auto cdagF_loc = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(), qnum),
-				                                    OperatorType::outerprod(B[loc].Id(), F[loc].sign(), Symmetry::qvacuum()), qnum);
-				
-				qnum = (Forbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,-1};
-				Terms.push_nextn(loc, +tPrime(alfa,beta) * sqrt(2.),
-				                 cdagF_loc.plain<double>(),
-				                 OperatorType::outerprod(B[lp1].Id(), F[lp1].sign(), Symmetry::qvacuum()).plain<double>(),
-				                 OperatorType::outerprod(B[lp2].Id(), F[lp2].c(), qnum).plain<double>()
-				                );
-				
-				qnum = (Forbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,+1};
-				Terms.push_nextn(loc, +tPrime(alfa,beta) * sqrt(2.),
-				                 cF_loc.plain<double>(),
-				                 OperatorType::outerprod(B[lp1].Id(), F[lp1].sign(), Symmetry::qvacuum()).plain<double>(),
-				                 OperatorType::outerprod(B[lp2].Id(), F[lp2].cdag(), qnum).plain<double>()
-				                );
-			}
-		}
-		
-		if (P.HAS("tFull"))
-		{
-			ArrayXXd Full = P.get<Eigen::ArrayXXd>("tFull");
-			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
-			
-			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
-			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
-			
-			for (size_t h=0; h<R[loc].size(); ++h)
-			{
-				size_t range = R[loc][h].first;
-				double value = R[loc][h].second;
-				
-				size_t Ntrans = (range == 0)? 0:range-1;
-				vector<SiteOperator<Symmetry,double> > TransOps(Ntrans);
-				for (size_t i=0; i<Ntrans; ++i)
+			if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
 				{
-					TransOps[i] = OperatorType::outerprod(B[(loc+i+1)%N_sites].Id(), F[(loc+i+1)%N_sites].sign(), {1,0}).plain<double>();
-				}
+					for (int alfa=0; alfa<Forbitals;      ++alfa)
+						for (int beta=0; beta<Fnext_orbitals; ++beta)
+							{
+								auto cF_loc    = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(alfa),    {2,-1}),
+												    OperatorType::outerprod(B[loc].Id(), F[loc].sign(),     {1,0}), {2,-1});
+								auto cdagF_loc = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(alfa), {2,+1}), 
+												    OperatorType::outerprod(B[loc].Id(), F[loc].sign(),     {1,0}),{2,+1});
 				
-				if (range != 0)
-				{
-					int hop = (loc+range)%N_sites;
-					
-					auto sign_loc  = OperatorType::outerprod(B[loc].Id(), F[loc].sign(), {1,0});
-					
-					auto cF_loc    = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(0),    {2,-1}), sign_loc, {2,-1});
-					auto cdagF_loc = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(0), {2,+1}), sign_loc, {2,+1});
-					
-					auto c_hop     = OperatorType::outerprod(B[hop].Id(), F[hop].c(0),    {2,-1});
-					auto cdag_hop  = OperatorType::outerprod(B[hop].Id(), F[hop].cdag(0), {2,+1});
-					
-					Terms.push(range, loc, -value*sqrt(2.), cdagF_loc.plain<double>(), TransOps, c_hop.plain<double>());
-					Terms.push(range, loc, -value*sqrt(2.), cF_loc.plain<double>(),    TransOps, cdag_hop.plain<double>());
-				}
-			}
+								Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.),
+										 cdagF_loc.plain<double>(),
+										 OperatorType::outerprod(B[lp1].Id(), F[lp1].c(beta), {2,-1}).plain<double>());
+				
+								Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.),
+										 cF_loc.plain<double>(),
+										 OperatorType::outerprod(B[lp1].Id(), F[lp1].cdag(beta), {2,+1}).plain<double>());
+				
+								Terms.push_tight(loc, Vpara(alfa,beta),
+										 OperatorType::outerprod(B[loc].Id(), F[loc].n(alfa), {1,0}).plain<double>(),
+										 OperatorType::outerprod(B[lp1].Id(), F[lp1].n(beta), {1,0}).plain<double>());
+							}
 			
-			stringstream ss;
-			ss << "tᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
-			Terms.save_label(loc,ss.str());
+					for (int alfa=0; alfa<Borbitals;      ++alfa)
+						for (int beta=0; beta<Bnext_orbitals; ++beta)
+							{
+								auto Sdag_loc = OperatorType::outerprod(B[loc].Sdag(alfa), F[loc].Id(), {3,0});
+								auto S_tight  = OperatorType::outerprod(B[lp1].S(beta),    F[lp1].Id(), {3,0});
+				
+								Terms.push_tight(loc, JdirPara(alfa,beta) * std::sqrt(3.), Sdag_loc.plain<double>(), S_tight.plain<double>());
+							}
+				}
+		
+			// NN Kondo terms
+		
+			param2d InextPara = P.fill_array2d<double>("Inext", "InextPara", {Borbitals, Fnext_orbitals}, loc%Lcell);
+			Terms.save_label(loc, InextPara.label);
+		
+			if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+				{
+					for (int alfa=0; alfa<Borbitals;      ++alfa)
+						for (int beta=0; beta<Fnext_orbitals; ++beta)
+							{
+								qarray<Symmetry::Nq> qnum1 = (Borbitals==0)?      Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
+								qarray<Symmetry::Nq> qnum2 = (Fnext_orbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
+				
+								Terms.push_tight(loc, sqrt(3.) * InextPara(alfa,beta),
+										 OperatorType::outerprod(B[loc].Sdag(alfa), F[loc].Id(),    qnum1).plain<double>(),
+										 OperatorType::outerprod(B[lp1].Id(),       F[lp1].S(beta), qnum2).plain<double>()
+										 );
+							}
+				}
+		
+			param2d IprevPara = P.fill_array2d<double>("Iprev", "IprevPara", {Forbitals, Bnext_orbitals}, loc%Lcell);
+			Terms.save_label(loc, IprevPara.label);
+		
+			if (lm1 < N_sites-1 or !P.get<bool>("OPEN_BC"))
+				{
+					for (int alfa=0; alfa<Forbitals;      ++alfa)
+						for (int beta=0; beta<Bnext_orbitals; ++beta)
+							{
+								qarray<Symmetry::Nq> qnum1 = (Forbitals==0)?      Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
+								qarray<Symmetry::Nq> qnum2 = (Bnext_orbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{3,0};
+				
+								Terms.push_tight(lm1, sqrt(3.) * IprevPara(alfa,beta),
+										 OperatorType::outerprod(B[lm1].Id(),    F[lm1].Sdag(alfa), qnum1).plain<double>(),
+										 OperatorType::outerprod(B[loc].S(beta), F[loc].Id(),       qnum2).plain<double>()
+										 );
+							}
+				}
+		
+			// NNN terms
+		
+			param2d tPrime = P.fill_array2d<double>("tPrime", "tPrime_array", {Forbitals, Fnextn_orbitals}, loc%Lcell);
+			Terms.save_label(loc, tPrime.label);
+		
+			if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
+				{
+					for (std::size_t alfa=0; alfa<Forbitals;       ++alfa)
+						for (std::size_t beta=0; beta<Fnextn_orbitals; ++beta)
+							{
+								qarray<Symmetry::Nq> qnum = (Forbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,-1};
+				
+								auto cF_loc    = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].c(), qnum),
+												    OperatorType::outerprod(B[loc].Id(), F[loc].sign(), Symmetry::qvacuum()), qnum);
+				
+								qnum = (Forbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,+1};
+								auto cdagF_loc = OperatorType::prod(OperatorType::outerprod(B[loc].Id(), F[loc].cdag(), qnum),
+												    OperatorType::outerprod(B[loc].Id(), F[loc].sign(), Symmetry::qvacuum()), qnum);
+				
+								qnum = (Forbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,-1};
+								Terms.push_nextn(loc, +tPrime(alfa,beta) * sqrt(2.),
+										 cdagF_loc.plain<double>(),
+										 OperatorType::outerprod(B[lp1].Id(), F[lp1].sign(), Symmetry::qvacuum()).plain<double>(),
+										 OperatorType::outerprod(B[lp2].Id(), F[lp2].c(), qnum).plain<double>()
+										 );
+				
+								qnum = (Forbitals==0)? Symmetry::qvacuum() : qarray<Symmetry::Nq>{2,+1};
+								Terms.push_nextn(loc, +tPrime(alfa,beta) * sqrt(2.),
+										 cF_loc.plain<double>(),
+										 OperatorType::outerprod(B[lp1].Id(), F[lp1].sign(), Symmetry::qvacuum()).plain<double>(),
+										 OperatorType::outerprod(B[lp2].Id(), F[lp2].cdag(), qnum).plain<double>()
+										 );
+							}
+				}
 		}
 		
 		if (P.HAS("JdirFull"))
@@ -786,12 +798,58 @@ make_corr (KONDO_SUBSYSTEM SUBSYS,
 	return Mout;
 }
 
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > KondoSU2xU1::
+make_FourierYSum (string name, const vector<OperatorType> &Ops, 
+                  double factor, bool HERMITIAN, const vector<complex<double> > &phases) const
+{
+	stringstream ss;
+	ss << name << "_ky(";
+	for (int l=0; l<phases.size(); ++l)
+	{
+		ss << phases[l];
+		if (l!=phases.size()-1) {ss << ",";}
+		else                    {ss << ")";}
+	}
+	
+	// all Ops[l].Q() must match
+	Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), HERMITIAN);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);}
+	
+	vector<complex<double> > phases_x_factor = phases;
+	for (int l=0; l<phases.size(); ++l)
+	{
+		phases_x_factor[l] = phases[l] * factor;
+	}
+	
+	vector<SiteOperator<Symmetry,complex<double> > > OpsPlain(Ops.size());
+	for (int l=0; l<OpsPlain.size(); ++l)
+	{
+		OpsPlain[l] = Ops[l].plain<double>().cast<complex<double> >();
+	}
+	
+	Mout.setLocalSum(OpsPlain, phases_x_factor);
+	
+	return Mout;
+}
+
 //-----------------------------------------
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
 n (size_t locx, size_t locy)
 {
 	return make_local(SUB, "n", locx,locy, F[locx].n(locy), 1., false, true);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
+nh (size_t locx, size_t locy)
+{
+	return make_local(SUB, "nh", locx,locy, F[locx].nh(locy), 1., false, true);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
+ns (size_t locx, size_t locy)
+{
+	return make_local(SUB, "ns", locx,locy, F[locx].ns(locy), 1., false, true);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
@@ -850,6 +908,29 @@ Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
 Simpdag (size_t locx, size_t locy, double factor)
 {
 	return make_local(IMP, "Simp†", locx,locy, B[locx].Sdag(locy), factor, false, false);
+}
+
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >, complex<double> > KondoSU2xU1::
+Simp_ky (vector<complex<double> > phases) const
+{
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = F[l].S(0);
+	}
+	return make_FourierYSum("S", Ops, 1., false, phases);
+}
+
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> >, complex<double> > KondoSU2xU1::
+Simpdag_ky (vector<complex<double> > phases, double factor) const
+{
+	vector<OperatorType> Ops(N_sites);
+	for (size_t l=0; l<N_sites; ++l)
+	{
+		Ops[l] = F[l].Sdag(0);
+	}
+	return make_FourierYSum("S†", Ops, 1., false, phases);
 }
 
 Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > > KondoSU2xU1::
