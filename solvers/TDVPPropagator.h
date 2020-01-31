@@ -28,6 +28,10 @@ public:
 	void t_step_adaptive (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, const vector<bool> &TWO_STEP_AT, int N_stages=1, double tol_Lanczos=1e-8);
 	
 	inline VectorXd get_deltaE() const {return deltaE;};
+	inline double get_t_tot() const {return t_tot;};
+	inline vector<size_t> get_dimK2_log() const {return dimK2_log;};
+	inline vector<size_t> get_dimK1_log() const {return dimK1_log;};
+	inline vector<size_t> get_dimK0_log() const {return dimK0_log;};
 	
 private:
 	
@@ -36,6 +40,7 @@ private:
 	
 	void test_edge_eigenvector (const PivotVector<Symmetry,TimeScalar> &Asingle);
 	VectorXd deltaE;
+	VectorXd dimKlog;
 	
 	vector<PivotMatrix1<Symmetry,TimeScalar,MpoScalar> >  Heff;
 	PivotMatrix1<Symmetry,TimeScalar,MpoScalar> HeffLast;

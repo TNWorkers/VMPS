@@ -13,6 +13,7 @@ public:
 	:L(L_input), tpoints(tpoints_input), DeltaS(DeltaS_input), CHOSEN_VERBOSITY(VERBOSITY)
 	{
 		data.resize(tpoints,L-1);
+		DeltaSb.resize(tpoints,L-1);
 	}
 	
 	vector<bool> TWO_SITE (int it, const MpsType &Psi, double r=1., vector<size_t> true_overrides={}, vector<size_t> false_overrides={});
@@ -22,6 +23,8 @@ public:
 	void save (string filename) const;
 	void save (int it, string filename) const;
 	
+	MatrixXd get_DeltaSb() const {return DeltaSb;};
+	
 private:
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
@@ -29,6 +32,7 @@ private:
 	size_t tpoints;
 	double DeltaS;
 	MatrixXd data;
+	MatrixXd DeltaSb;
 };
 
 template<typename MpsType>
@@ -41,19 +45,19 @@ TWO_SITE (int it, const MpsType &Psi, double r, vector<size_t> true_overrides, v
 	{
 		data(it,b) = Psi.entropy()(b);
 		
-		double DeltaSb = std::nan("0");
+		DeltaSb(it,b) = std::nan("0");
 		
 		if (it == 1)
 		{
 			// backward derivative using 1 point
-			DeltaSb = (data(it,b)-data(it-1,b))/data(it-1,b);
+			DeltaSb(it,b) = (data(it,b)-data(it-1,b))/data(it-1,b);
 		}
 		else if (it > 1)
 		{
 			// backward derivative using 2 points
 			// 0.5*(1.+r): heuristic correction factor for arbitrary timestep
 			// r=dt(-2)/dt(-1)
-			DeltaSb = 0.5*(-3.*data(it,b)+4.*data(it-1,b)-data(it-2,b)) * 0.5*(1.+r) /data(it-2,b);
+			DeltaSb(it,b) = 0.5*(3.*data(it,b)-4.*data(it-1,b)+data(it-2,b)) * 0.5*(1.+r) /data(it-2,b);
 		}
 		
 		if (it == 0)
@@ -62,12 +66,12 @@ TWO_SITE (int it, const MpsType &Psi, double r, vector<size_t> true_overrides, v
 		}
 		else
 		{
-			res[b] = (abs(DeltaSb) > DeltaS)? true:false;
+			res[b] = (abs(DeltaSb(it,b)) > DeltaS)? true:false;
 		}
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 		{
-			lout << "b=" << b << ", δS(b)=" << DeltaSb << endl;
+			lout << "b=" << b << ", δS(b)=" << DeltaSb(it,b) << endl;
 		}
 	}
 	

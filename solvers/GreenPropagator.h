@@ -4,6 +4,7 @@
 #include "SuperQuadrator.h"
 #include "solvers/TDVPPropagator.h"
 #include "IntervalIterator.h"
+#include "ComplexInterpolGSL.h"
 #ifdef GREENPROPAGATOR_USE_HDF5
 #include "HDF5Interface.h"
 #endif
@@ -15,6 +16,14 @@
 \param ZERO_2PI : from 0 to +2*pi
 */
 enum Q_RANGE {MPI_PPI, ZERO_2PI};
+enum GREEN_INTEGRATION {DIRECT=0, INTERPOL=1};
+
+std::ostream& operator<< (std::ostream& s, GREEN_INTEGRATION GI)
+{
+	if      (GI==DIRECT)   {s << "DIRECT";}
+	else if (GI==INTERPOL) {s << "INTERP";}
+	return s;
+}
 
 /**cutoff function for the time domain*/
 struct GreenPropagatorCutoff
@@ -23,6 +32,45 @@ struct GreenPropagatorCutoff
 	static double gauss (double tval) {return exp(-pow(2.*tval/tmax,2));};
 };
 double GreenPropagatorCutoff::tmax = 20.;
+
+struct GreenPropagatorLog
+{
+	GreenPropagatorLog(){};
+	
+	GreenPropagatorLog (int Nt, int L, string logfolder_input)
+	:logfolder(logfolder_input)
+	{
+		Entropy.resize(Nt,L-1); Entropy.setZero();
+		DeltaS.resize(Nt,L-1); Entropy.setZero();
+		VarE.resize(Nt,L); VarE.setZero();
+		TwoSite.resize(Nt,L-1); TwoSite.setZero();
+		dimK2avg.resize(Nt,1); dimK2avg.setZero();
+		dimK1avg.resize(Nt,1); dimK1avg.setZero();
+		dimK0avg.resize(Nt,1); dimK0avg.setZero();
+		dur_tstep.resize(Nt,1); dur_tstep.setZero();
+		taxis.resize(Nt,1); taxis.setZero();
+	};
+	
+	void save (string label) const
+	{
+		#ifdef GREENPROPAGATOR_USE_HDF5
+		HDF5Interface target(label+".log.h5",WRITE);
+		target.save_matrix(Entropy,"Entropy","");
+		target.save_matrix(DeltaS,"DeltaS","");
+		target.save_matrix(VarE,"VarE","");
+		target.save_matrix(TwoSite,"TwoSite","");
+		target.save_matrix(dimK2avg,"dimK2avg","");
+		target.save_matrix(dimK1avg,"dimK1avg","");
+		target.save_matrix(dimK0avg,"dimK0avg","");
+		target.save_matrix(dur_tstep,"dur_tstep","");
+		target.save_matrix(taxis,"taxis","");
+		target.close();
+		#endif
+	};
+	
+	string logfolder = "./";
+	MatrixXd Entropy, DeltaS, VarE, TwoSite, dimK2avg, dimK1avg, dimK0avg, dur_tstep, taxis;
+};
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 class GreenPropagator
@@ -47,11 +95,11 @@ public:
 	                 double tmax_input, int Nt_input, 
 	                 double wmin_input, double wmax_input, int Nw_input=501,
 	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501,
-	                 bool GAUSSINT=true)
+	                 GREEN_INTEGRATION GREENINT=DIRECT)
 	:label(label_input), tmax(tmax_input), Nt(Nt_input),
 	 wmin(wmin_input), wmax(wmax_input), Nw(Nw_input),
 	 Q_RANGE_CHOICE(Q_RANGE_CHOICE_input), Nq(Nq_input),
-	 USE_GAUSSIAN_INTEGRATION(GAUSSINT)
+	 GREENINT_CHOICE(GREENINT)
 	{
 		GreenPropagatorCutoff::tmax = tmax;
 		set_qlims(Q_RANGE_CHOICE);
@@ -71,13 +119,13 @@ public:
 	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
 	*/
 	GreenPropagator (string label_input, int Lcell_input, int Ncells_input, double tmax_input, const MatrixXcd &Gtx_input, 
-	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, bool GAUSSINT=true)
-	:label(label_input), Lcell(Lcell_input), Ncells(Ncells_input), tmax(tmax_input), USE_GAUSSIAN_INTEGRATION(GAUSSINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
+	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=DIRECT)
+	:label(label_input), Lcell(Lcell_input), Ncells(Ncells_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
 	{
 		Gtx = Gtx_input;
 		
-		Nt = Gtx.rows();
-		Nq = Gtx.cols();
+		Nt = (GREENINT==DIRECT)? Gtx.rows():Gtx.rows()-1;
+		Nq = Nq_input;
 		Lhetero = Lcell*Ncells;
 		
 		make_xarrays(Lhetero,Lcell,Ncells);
@@ -103,8 +151,8 @@ public:
 	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
 	*/
 	GreenPropagator (string label_input, double tmax_input, const vector<vector<MatrixXcd>> &Gtx_input, 
-	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, bool GAUSSINT=true)
-	:label(label_input), tmax(tmax_input), USE_GAUSSIAN_INTEGRATION(GAUSSINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
+	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=DIRECT)
+	:label(label_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
 	{
 		Lcell = Gtx_input.size();
 		
@@ -116,7 +164,7 @@ public:
 			GtxCell[i][j] = Gtx_input[i][j];
 		}
 		
-		Nt = GtxCell[0][0].rows();
+		Nt = (GREENINT==DIRECT)? GtxCell[0][0].rows():GtxCell[0][0].rows()-1;
 		Ncells = GtxCell[0][0].cols();
 		Nq = Nq_input;
 		Lhetero = Ncells*Lcell;
@@ -147,8 +195,8 @@ public:
 	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
 	*/
 	GreenPropagator (string label_input, int Lcell_input, double tmax_input, const vector<string> &files, 
-	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, bool GAUSSINT=true)
-	:label(label_input), Lcell(Lcell_input), tmax(tmax_input), USE_GAUSSIAN_INTEGRATION(GAUSSINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
+	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=DIRECT)
+	:label(label_input), Lcell(Lcell_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
 	{
 		#ifdef GREENPROPAGATOR_USE_HDF5
 		for (const auto &file:files)
@@ -171,8 +219,8 @@ public:
 		#endif
 		
 		Ncells = 1;
-		Nt = Gtx.rows();
-		Nq = Gtx.cols();
+		Nt = (GREENINT==DIRECT)? Gtx.rows():Gtx.rows()-1;
+		Nq = Nq_input;
 		Lhetero = Lcell;
 		
 		make_xarrays(Lhetero,Lcell,Ncells);
@@ -200,8 +248,8 @@ public:
 	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
 	*/
 	GreenPropagator (string label_input, int Lcell_input, int Ncells_input, double tmax_input, const vector<string> &files, 
-	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, bool GAUSSINT=true)
-	:label(label_input), Lcell(Lcell_input), Ncells(Ncells_input), tmax(tmax_input), USE_GAUSSIAN_INTEGRATION(GAUSSINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
+	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=DIRECT)
+	:label(label_input), Lcell(Lcell_input), Ncells(Ncells_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
 	{
 		GtxCell.resize(Lcell); for (int i=0; i<Lcell; ++i) {GtxCell[i].resize(Lcell);}
 		#ifdef GREENPROPAGATOR_USE_HDF5
@@ -226,7 +274,7 @@ public:
 		}
 		#endif
 		
-		Nt = GtxCell[0][0].rows();
+		Nt = (GREENINT==DIRECT)? GtxCell[0][0].rows():GtxCell[0][0].rows()-1;
 		Ncells = GtxCell[0][0].cols();
 		Nq = Nq_input;
 		Lhetero = Ncells*Lcell;
@@ -353,6 +401,8 @@ public:
 	
 	void set_tol_DeltaS (double x) {tol_DeltaS = x;};
 	void set_lim_Nsv (size_t x)    {lim_Nsv    = x;};
+	void set_tol_compr (double x)  {tol_compr  = x;};
+	void set_log (string logfolder_input="./") {SAVE_LOG = true; logfolder = logfolder_input;}
 	
 private:
 	
@@ -364,10 +414,11 @@ private:
 	int Lhetero, Lcell, Ncells;
 	
 	double tol_compr = 1e-4; // compression tolerance during time propagation
-	double tol_Lanczos = 1e-6; // 1e-6 seems sufficient; increase to 1e-8 for higher accuracy
-	double tol_DeltaS = 1e-3; // 1e-3 seems sufficient; perhaps 1e-2 is still enough 
-	size_t lim_Nsv = 200ul;
-	bool USE_GAUSSIAN_INTEGRATION = true;
+	double tol_Lanczos = 1e-7; // 1e-6 seems sufficient; increase to 1e-8 for higher accuracy
+	double tol_DeltaS = 1e-3; // 1e-3 seems good for DIRECT (initially small timesteps); 1e-2 seems good for INTERP (equidistant timesteps)
+	size_t lim_Nsv = 100ul;
+	GREEN_INTEGRATION GREENINT_CHOICE = DIRECT;
+	bool SAVE_LOG = false;
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE;
 	
@@ -421,6 +472,13 @@ private:
 	void measure_wavepacket (const Mps<Symmetry,complex<double>> &Psi, double tval, string info="");
 	int measure_interval;
 	string measure_name, measure_subfolder;
+	
+	GreenPropagatorLog log;
+	string logfolder = "./";
+	void save_log (int i, int tindex, double tval, const Mps<Symmetry,complex<double>> &Psi, 
+	               const TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> &TDVP, 
+	               const EntropyObserver<Mps<Symmetry,complex<double>>> &Sobs, 
+	               const vector<bool> &TWO_SITE);
 };
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
@@ -460,7 +518,7 @@ propagate (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double
 	
 	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVP(H_hetero, Psi);
 	EntropyObserver<Mps<Symmetry,complex<double>>> Sobs(Lhetero, Nt, CHOSEN_VERBOSITY, tol_DeltaS);
-	vector<bool> TWO_SITE = Sobs.TWO_SITE(0,Psi);
+	vector<bool> TWO_SITE;
 	if (CHOSEN_VERBOSITY > DMRG::VERBOSITY::ON_EXIT) lout << endl;
 	
 	Gtx.resize(Nt,Lhetero); Gtx.setZero();
@@ -469,27 +527,19 @@ propagate (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double
 	IntervalIterator t(0.,tmax,Nt);
 	double tval = 0.;
 	
-	// 0.1. measure wavepacket at t=0
+	if (SAVE_LOG) log = GreenPropagatorLog(Nt,Lhetero,logfolder);
+	
+	// measure wavepacket at t=0
 	measure_wavepacket(Psi,0);
 	
-	// 0.2. if no (open) integration weights, calculate G at t=0
-	if (!USE_GAUSSIAN_INTEGRATION)
-	{
-		Stopwatch<> StepTimer;
-		calc_Green(0, -1.i*exp(-1.i*tsign*Eg*tval), OxPhi, Psi);
-		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-		{
-			lout << StepTimer.info("G(t,x) calculation") << endl;
-			lout << endl;
-		}
-	}
-	
 	Stopwatch<> TpropTimer;
+//	int start = (GREENINT_CHOICE==DIRECT)? 0:1;
 	for (t=t.begin(); t!=t.end(); ++t)
 	{
 		Stopwatch<> StepTimer;
 		// 1. propagate
 		//----------------------------------------------------------------------------------------
+		if (tsteps(t.index()) != 0.)
 		TDVP.t_step_adaptive(H_hetero, Psi, 1.i*tsign*tsteps(t.index()), TWO_SITE, 1,tol_Lanczos);
 		//----------------------------------------------------------------------------------------
 		tval = tsteps.head(t.index()+1).sum();
@@ -527,8 +577,18 @@ propagate (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double
 		PsiTmp.eps_svd = 1e-15;
 		PsiTmp.skim(DMRG::BROOM::SVD);
 		double r = (t.index()==0)? 1.:tsteps(t.index()-1)/tsteps(t.index());
-		TWO_SITE = Sobs.TWO_SITE(t.index(), PsiTmp, r);
+		// If INTERPOL is used, G(t=0) is used in the first step and t.index()==1 is the first real propagation step.
+		// Force 2-site here algorithm for better accuracay:
+		vector<size_t> true_overrides;
+		if (GREENINT_CHOICE == INTERPOL and t.index() == 1)
+		{
+			true_overrides.resize(Lhetero-1);
+			iota(true_overrides.begin(), true_overrides.end(), 0);
+		}
+		TWO_SITE = Sobs.TWO_SITE(t.index(), PsiTmp, r, true_overrides);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("entropy calculation") << endl;
+		
+		save_log(0,t.index(),tval,PsiTmp,TDVP,Sobs,TWO_SITE);
 		
 		// final info
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -542,6 +602,41 @@ propagate (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double
 	if (Measure.size() != 0)
 	{
 		measure_wavepacket(Psi,tval);
+	}
+}
+
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+save_log (int i, int tindex, double tval, const Mps<Symmetry,complex<double>> &Psi, const TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> &TDVP, const EntropyObserver<Mps<Symmetry,complex<double>>> &Sobs, const vector<bool> &TWO_SITE)
+{
+	if (SAVE_LOG)
+	{
+		log.Entropy.row(tindex) = Psi.entropy();
+		log.VarE.row(tindex) = TDVP.get_deltaE();
+		for (int l=0; l<TWO_SITE.size(); ++l) log.TwoSite(tindex,l) = int(TWO_SITE[l]);
+		log.DeltaS = Sobs.get_DeltaSb();
+		log.taxis(tindex,0) = tval;
+		log.dur_tstep(tindex,0) = TDVP.get_t_tot();
+		
+		log.dimK2avg(tindex,0) = 0;
+		for (int i=0; i<TDVP.get_dimK2_log().size(); ++i)
+		{
+			log.dimK2avg(tindex,0) += double(TDVP.get_dimK2_log()[i])/TDVP.get_dimK2_log().size();
+		}
+		
+		log.dimK1avg(tindex,0) = 0;
+		for (int i=0; i<TDVP.get_dimK1_log().size(); ++i)
+		{
+			log.dimK1avg(tindex,0) += double(TDVP.get_dimK1_log()[i])/TDVP.get_dimK1_log().size();
+		}
+		
+		log.dimK0avg(tindex,0) = 0;
+		for (int i=0; i<TDVP.get_dimK0_log().size(); ++i)
+		{
+			log.dimK0avg(tindex,0) += double(TDVP.get_dimK0_log()[i])/TDVP.get_dimK0_log().size();
+		}
+		
+		log.save(make_string(label,"_i=",i,"_",xt_info()));
 	}
 }
 
@@ -588,6 +683,9 @@ compute_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<dou
 		#pragma omp critical
 		{
 			lout << termcolor::blue << label << ": using counterpropagation algorithm, best with 2*Lcell=" << 2*Lcell << " threads" << termcolor::reset << endl;
+			#ifdef _OPENMP
+			lout << termcolor::blue << "current OMP threads=" << omp_get_max_threads() << termcolor::reset << endl;
+			#endif
 		}
 		counterpropagate_cell(H_hetero, OxPhi, Eg, TIME_FORWARDS);
 	}
@@ -628,6 +726,8 @@ propagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<d
 	IntervalIterator t(0.,tmax,Nt);
 	double tval = 0.;
 	
+	if (SAVE_LOG) log = GreenPropagatorLog(Nt,Lhetero,logfolder);
+	
 	// 0.1. measure wavepacket at t=0
 	for (int i=0; i<Lcell; ++i)
 	{
@@ -635,7 +735,7 @@ propagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<d
 	}
 	
 	// 0.2. if no (open) integration weights, calculate G at t=0
-	if (!USE_GAUSSIAN_INTEGRATION)
+	if (GREENINT_CHOICE != DIRECT)
 	{
 		Stopwatch<> StepTimer;
 		calc_GreenCell(0, -1.i*exp(-1.i*tsign*Eg*tval), OxPhi, Psi);
@@ -703,6 +803,8 @@ propagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<d
 			double r = (t.index()==0)? 1.:tsteps(t.index()-1)/tsteps(t.index());
 			TWO_SITE[i] = Sobs[i].TWO_SITE(t.index(), PsiTmp, r); // {}, {0ul,size_t(Lhetero)-2ul}
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0) lout << StepTimer.info("entropy calculation") << endl;
+			
+			save_log(i,t.index(),tval,PsiTmp,TDVP[i],Sobs[i],TWO_SITE[i]);
 		}
 		
 		// final info
@@ -773,6 +875,8 @@ counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,co
 	IntervalIterator t(0.,tmax,Nt);
 	double tval = 0.;
 	
+	if (SAVE_LOG) log = GreenPropagatorLog(Nt,Lhetero,logfolder);
+	
 	// 0.1. measure wavepacket at t=0
 	if (Measure.size() != 0)
 	{
@@ -783,7 +887,7 @@ counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,co
 	}
 	
 	// 0.2. if no (open) integration weights, calculate G at t=0
-	if (!USE_GAUSSIAN_INTEGRATION)
+	if (GREENINT_CHOICE != DIRECT)
 	{
 		Stopwatch<> StepTimer;
 		calc_GreenCell(0, -1.i*exp(-1.i*tsign*Eg*tval), Psi);
@@ -872,6 +976,8 @@ counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,co
 			TWO_SITE[z][i] = Sobs[z][i].TWO_SITE(t.index(), PsiTmp, r);
 			
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0 and z==0) lout << StepTimer.info("entropy calculation") << endl;
+			
+			if (z==0) save_log(i,t.index(),0.5*tval,PsiTmp,TDVP[z][i],Sobs[z][i],TWO_SITE[z][i]);
 		}
 		
 		// final info
@@ -913,10 +1019,12 @@ calc_Green (const int &tindex, const complex<double> &phase, const vector<Mps<Sy
 	// variant: Use cell shift
 	else
 	{
+//		cout << "use cell shift, Lhetero=" << Lhetero << ", tindex=" << tindex << endl;
 		#pragma omp parallel for
 		for (size_t l=0; l<Lhetero; ++l)
 		{
 			Gtx(tindex,l) = phase * dot_hetero(OxPhi[icell[l]], Psi, dcell[l]);
+//			cout << "l=" << l << ", icell[l]=" << icell[l] << ", dcell[l]=" << dcell[l] << ", G=" << Gtx(tindex,l) << endl;
 			if (xvals[l] == 0) Gloct(tindex) = Gtx(tindex,l); // save local Green's function
 		}
 	}
@@ -1078,7 +1186,7 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 calc_intweights()
 {
-	if (USE_GAUSSIAN_INTEGRATION)
+	if (GREENINT_CHOICE == DIRECT)
 	{
 		Stopwatch<> Watch;
 		TimeIntegrator = SuperQuadrator<GAUSS_LEGENDRE>(GreenPropagatorCutoff::gauss,0.,tmax,Nt);
@@ -1127,12 +1235,13 @@ calc_intweights()
 	else
 	{
 		double dt = tmax/Nt;
+		Nt += 1;
 		
 		tvals.resize(Nt);
 		for (int i=0; i<Nt; ++i) tvals(i) = i*dt;
 		
 		weights.resize(Nt); weights = 1.;
-		tsteps.resize(Nt); tsteps = dt;
+		tsteps.resize(Nt); tsteps = dt; tsteps(0) = 0;
 	}
 }
 
@@ -1167,7 +1276,7 @@ FT_xq()
 	// Explicit FT
 	for (int iq=0; iq<Nq; ++iq)
 	{
-		for (int ix=0; ix<Lhetero; ++ix)
+		for (int ix=0; ix<Gtx.cols(); ++ix)
 		{
 			Gtq.col(iq) += Gtx.col(ix) * exp(-1.i*qvals(iq)*xvals[ix]);
 		}
@@ -1224,23 +1333,57 @@ FT_tw (double wshift)
 	{
 		double wval = wvals(iw);
 		
+		if (GREENINT_CHOICE == DIRECT)
+		{
+			for (int it=0; it<tvals.rows(); ++it)
+			{
+				double tval = tvals(it);
+				// If Gaussian integration is employed, the damping is already included in the weights
+				Gwq.row(iw) += weights(it) * exp(+1.i*(wval+wshift)*tval) * Gtq.row(it); 
+			}
+		}
+		else if (GREENINT_CHOICE == INTERPOL)
+		{
+			#pragma omp parallel for
+			for (int iq=0; iq<Nq; ++iq)
+			{
+				ComplexInterpol Gtq_interp(tvals);
+				for (int it=0; it<tvals.rows(); ++it)
+				{
+					double tval = tvals(it);
+					complex<double> Gval = exp(+1.i*(wval+wshift)*tval) * exp(-pow(2.*tval/tmax,2)) * Gtq(it,iq);
+					Gtq_interp.insert(it,Gval);
+				}
+				Gwq(iw,iq) += Gtq_interp.integrate();
+			}
+		}
+	}
+	
+	if (GREENINT_CHOICE == DIRECT)
+	{
 		for (int it=0; it<tvals.rows(); ++it)
 		{
 			double tval = tvals(it);
 			// If Gaussian integration is employed, the damping is already included in the weights
-			double damping = (USE_GAUSSIAN_INTEGRATION)? 1.:exp(-pow(2.*tval/tmax,2));
-			
-			Gwq.row(iw) += weights(it) * damping * exp(+1.i*(wval+wshift)*tval) * Gtq.row(it); 
+			G0q += weights(it) * exp(+1.i*wshift*tval) * Gtq.row(it);
 		}
 	}
-	for (int it=0; it<tvals.rows(); ++it)
+	else if (GREENINT_CHOICE == INTERPOL)
 	{
-		double tval = tvals(it);
-		// If Gaussian integration is employed, the damping is already included in the weights
-		double damping = (USE_GAUSSIAN_INTEGRATION)? 1.:exp(-pow(2.*tval/tmax,2));
-		
-		G0q += weights(it) * damping * Gtq.row(it); 
+		#pragma omp parallel for
+		for (int iq=0; iq<Nq; ++iq)
+		{
+			ComplexInterpol Gtq_interp(tvals);
+			for (int it=0; it<tvals.rows(); ++it)
+			{
+				double tval = tvals(it);
+				complex<double> Gval = exp(+1.i*wshift*tval) * exp(-pow(2.*tval/tmax,2)) * Gtq(it,iq);
+				Gtq_interp.insert(it,Gval);
+			}
+			G0q(iq) += Gtq_interp.integrate();
+		}
 	}
+	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
 		lout << FourierWatch.info(label+" FT t→ω") << endl;
@@ -1269,30 +1412,66 @@ FTcell_tw (double wshift)
 		GwqCell[i][j].resize(Nw,Nq); GwqCell[i][j].setZero();
 		
 		// Use normal summation to transform from t to w
-		#pragma omp parallel for
+//		#pragma omp parallel for
 		for (int iw=0; iw<wvals.rows(); ++iw)
 		{
 			double wval = wvals(iw);
 			
-			for (int it=0; it<tvals.rows(); ++it)
+			if (GREENINT_CHOICE == DIRECT)
 			{
-				double tval = tvals(it);
-				// If Gaussian integration is employed, the damping is already included in the weights
-				double damping = (USE_GAUSSIAN_INTEGRATION)? 1.:exp(-pow(2.*tval/tmax,2));
-				
-				GwqCell[i][j].row(iw) += weights(it) * damping * exp(+1.i*(wval+wshift)*tval) * GtqCell[i][j].row(it);
+				for (int it=0; it<tvals.rows(); ++it)
+				{
+					double tval = tvals(it);
+					// If Gaussian integration is employed, the damping is already included in the weights
+	//				double damping = (USE_GAUSSIAN_INTEGRATION)? 1.:exp(-pow(2.*tval/tmax,2));
+					
+					GwqCell[i][j].row(iw) += weights(it) * exp(+1.i*(wval+wshift)*tval) * GtqCell[i][j].row(it);
+				}
+			}
+			else if (GREENINT_CHOICE == INTERPOL)
+			{
+				#pragma omp parallel for
+				for (int iq=0; iq<Nq; ++iq)
+				{
+					ComplexInterpol Gtq_interp(tvals);
+					for (int it=0; it<tvals.rows(); ++it)
+					{
+						double tval = tvals(it);
+						complex<double> Gval = exp(+1.i*(wval+wshift)*tval) * exp(-pow(2.*tval/tmax,2)) * GtqCell[i][j](it,iq);
+						Gtq_interp.insert(it,Gval);
+					}
+					GwqCell[i][j](iw,iq) += Gtq_interp.integrate();
+				}
 			}
 		}
 		
 		G0qCell[i][j].resize(Nq); G0qCell[i][j].setZero();
 		
-		for (int it=0; it<tvals.rows(); ++it)
+		if (GREENINT_CHOICE == DIRECT)
 		{
-			double tval = tvals(it);
-			// If Gaussian integration is employed, the damping is already included in the weights
-			double damping = (USE_GAUSSIAN_INTEGRATION)? 1.:exp(-pow(2.*tval/tmax,2));
-			
-			G0qCell[i][j] += weights(it) * damping * GtqCell[i][j].row(it);
+			for (int it=0; it<tvals.rows(); ++it)
+			{
+				double tval = tvals(it);
+				// If Gaussian integration is employed, the damping is already included in the weights
+	//			double damping = (USE_GAUSSIAN_INTEGRATION)? 1.:exp(-pow(2.*tval/tmax,2));
+				
+				G0qCell[i][j] += weights(it) * GtqCell[i][j].row(it);
+			}
+		}
+		else if (GREENINT_CHOICE == INTERPOL)
+		{
+			#pragma omp parallel for
+			for (int iq=0; iq<Nq; ++iq)
+			{
+				ComplexInterpol Gtq_interp(tvals);
+				for (int it=0; it<tvals.rows(); ++it)
+				{
+					double tval = tvals(it);
+					complex<double> Gval = exp(+1.i*wshift*tval) * exp(-pow(2.*tval/tmax,2)) * GtqCell[i][j](it,iq);
+					Gtq_interp.insert(it,Gval);
+				}
+				G0qCell[i][j](iq) += Gtq_interp.integrate();
+			}
 		}
 		
 		// Calculate local Green's function
@@ -1364,7 +1543,7 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 ArrayXcd GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 FTloc_tw (const VectorXcd &Gloct_in, const ArrayXd &wvals)
 {
-	assert(USE_GAUSSIAN_INTEGRATION);
+//	assert(USE_GAUSSIAN_INTEGRATION);
 	ArrayXcd Glocw_out(wvals.rows()); Glocw_out.setZero();
 	
 	Stopwatch<> FourierWatch;
@@ -1377,9 +1556,9 @@ FTloc_tw (const VectorXcd &Gloct_in, const ArrayXd &wvals)
 		{
 			double tval = tvals(it);
 			// If Gaussian integration is employed, the damping is already included in the weights
-			double damping = (USE_GAUSSIAN_INTEGRATION)? 1.:exp(-pow(2.*tval/tmax,2));
+//			double damping = (USE_GAUSSIAN_INTEGRATION)? 1.:exp(-pow(2.*tval/tmax,2));
 			
-			Glocw_out(iw) += weights(it) * damping * exp(+1.i*wval*tval) * Gloct_in(it);
+			Glocw_out(iw) += weights(it) * exp(+1.i*wval*tval) * Gloct_in(it);
 		}
 	}
 	
@@ -1444,7 +1623,7 @@ string GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 tinfo() const
 {
 	stringstream ss;
-	ss << "tmax=" << tmax;
+	ss << "tmax=" << tmax << "_INT=" << GREENINT_CHOICE;
 	return ss.str();
 }
 
@@ -1693,13 +1872,21 @@ save (bool IGNORE_CELL) const
 	if (ncell.size() > 0)
 	{
 		if (PRINT) lout << label << " saving ncell" << endl;
+		#ifdef GREENPROPAGATOR_USE_HDF5
 		target_wq.save_matrix(MatrixXd(ncell),"ncell");
+		#else
+		saveMatrix(MatrixXd(ncell), "ncell", PRINT);
+		#endif
 	}
 	
 	if (!std::isnan(mu))
 	{
 		if (PRINT) lout << label << " saving μ" << endl;
+		#ifdef GREENPROPAGATOR_USE_HDF5
 		target_wq.save_scalar(mu,"μ");
+		#else
+		saveMatrix(MatrixXd(mu), "μ", PRINT);
+		#endif
 	}
 	
 	#ifdef GREENPROPAGATOR_USE_HDF5

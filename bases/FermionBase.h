@@ -737,11 +737,6 @@ template<typename Symmetry>
 typename Symmetry::qType FermionBase<Symmetry>::
 getQ (SPINOP_LABEL Sa) const
 {
-	if constexpr (!Symmetry::IS_TRIVIAL)
-	{
-		assert(Sa != SX and Sa != iSY);
-	}
-	
 	if constexpr (Symmetry::IS_TRIVIAL) {return {};}
 	else if constexpr (Symmetry::Nq == 1)
 	{
@@ -752,8 +747,10 @@ getQ (SPINOP_LABEL Sa) const
 		}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M) //return magnetization as good quantum number.
 		{
+			assert(Sa != SX and Sa != iSY);
+			
 			typename Symmetry::qType out;
-			if (Sa==SZ)      {out = {0};}
+			if      (Sa==SZ) {out = {0};}
 			else if (Sa==SP) {out = {+2};}
 			else if (Sa==SM) {out = {-2};}
 			return out;
@@ -762,28 +759,30 @@ getQ (SPINOP_LABEL Sa) const
 	}
 	else if constexpr (Symmetry::Nq == 2)
 	{
+		assert(Sa != SX and Sa != iSY);
+		
 		typename Symmetry::qType out;
 		if constexpr (Symmetry::kind()[0] == Sym::KIND::N and Symmetry::kind()[1] == Sym::KIND::M)
 		{
-			if (Sa==SZ) {out = {0,0};}
+			if      (Sa==SZ) {out = {0,0};}
 			else if (Sa==SP) {out = {0,+2};}
 			else if (Sa==SM) {out = {0,-2};}
 		}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::N)
 		{
-			if (Sa==SZ) {out = {0,0};}
+			if      (Sa==SZ) {out = {0,0};}
 			else if (Sa==SP) {out = {+2,0};}
 			else if (Sa==SM) {out = {-2,0};}
 		}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Nup and Symmetry::kind()[1] == Sym::KIND::Ndn)
 		{
-			if (Sa==SZ) {out = {0,0};}
+			if      (Sa==SZ) {out = {0,0};}
 			else if (Sa==SP) {out = {+1,-1};}
 			else if (Sa==SM) {out = {-1,+1};}
 		}
 		else if constexpr (Symmetry::kind()[0] == Sym::KIND::Ndn and Symmetry::kind()[1] == Sym::KIND::Nup)
 		{
-			if (Sa==SZ) {out = {0,0};}
+			if      (Sa==SZ) {out = {0,0};}
 			else if (Sa==SP) {out = {-1,+1};}
 			else if (Sa==SM) {out = {+1,-1};}
 		}

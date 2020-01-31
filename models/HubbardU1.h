@@ -23,6 +23,8 @@ public:
 	HubbardU1 (const size_t &L, const vector<Param> &params);
 	///@}
 	
+	static qarray<1> singlet (int N) {return qarray<1>{N};};
+	
 	/**Default parameters.*/
 	static const std::map<string,std::any> defaults;
 };
