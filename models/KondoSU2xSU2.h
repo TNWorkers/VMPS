@@ -6,6 +6,7 @@
 #include "bases/FermionBaseSU2xSU2.h"
 #include "Mpo.h"
 #include "ParamReturner.h"
+#include "Geometry2D.h" // from TOOLS
 
 namespace VMPS
 {
