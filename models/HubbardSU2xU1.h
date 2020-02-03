@@ -62,7 +62,7 @@ public:
 	//static HamiltonianTermsXd<Symmetry> set_operators (const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, size_t loc=0);
 	static void set_operators(const std::vector<FermionBase<Symmetry>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
 	
-	static qarray<2> singlet (int N) {return qarray<2>{1,N};};
+	static qarray<2> singlet (int N=0) {return qarray<2>{1,N};};
 	
 	///@{
 	Mpo<Symmetry> c (size_t locx, size_t locy=0, double factor=1.) const;

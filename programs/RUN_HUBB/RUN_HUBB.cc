@@ -30,6 +30,7 @@ using namespace std;
 #include "Geometry2D.h" // from TOOLS
 #include "NestedLoopIterator.h" // from TOOLS
 #include "models/ParamCollection.h"
+#include "BetheAnsatzIntegrals.h"
 
 size_t L, Ncells, Ncells1d, Ly;
 int volume;
@@ -106,6 +107,7 @@ struct Obs
 	Eigen::MatrixXd Sdag0Sd_S0;
 	Eigen::MatrixXd Sdag0Sd_S1;
 	Eigen::MatrixXd Sdag0Sd_S2;
+	Eigen::MatrixXd Sloc_S1;
 	
 	double STcorr;
 	
@@ -168,9 +170,10 @@ struct Obs
 		TdagT1d.resize(Ncells1d*Lx,2); TdagT1d.setZero();
 		TzTz1d.resize(Ncells1d*Lx,2); TzTz1d.setZero();
 		TpmTmp1d.resize(Ncells1d*Lx,2); TpmTmp1d.setZero();
-		Sdag0Sd_S0.resize(Lx,2); Sdag0Sd_S0.setZero();
+		Sdag0Sd_S0.resize(Lx,5); Sdag0Sd_S0.setZero();
 		Sdag0Sd_S1.resize(Lx,2); Sdag0Sd_S1.setZero();
 		Sdag0Sd_S2.resize(Lx,2); Sdag0Sd_S2.setZero();
+		Sloc_S1.resize(Lx,Ly); Sloc_S1.setZero();
 		
 		// format:
 		// n x0 y0 x1 y1 value
@@ -1242,7 +1245,7 @@ int main (int argc, char* argv[])
 //				}
 //				lout << endl;
 				
-				#elif defined(USING_SO4) || defined(USING_SU2xU1) || defined(USING_SU2)
+				#elif defined(USING_SU2xU1) || defined(USING_SU2)
 				#pragma omp parallel for
 				for (int d=2; d<Ncells1d*L; ++d)
 				{
@@ -1552,8 +1555,14 @@ int main (int argc, char* argv[])
 		{
 			obs.Sdag0Sd_S0(d,0) = d;
 			obs.Sdag0Sd_S0(d,1) = avg(g_fix.state, H.SdagS(0,d), g_fix.state);
-			double TdagTval = avg(g_fix.state, H.TdagT(0,d), g_fix.state);
-			lout << d << "\t" << obs.Sdag0Sd_S0(d,1) << "\t" << TdagTval << endl;
+			obs.Sdag0Sd_S0(d,2) = avg(g_fix.state, H.TdagT(0,d), g_fix.state);
+			obs.Sdag0Sd_S0(d,3) = avg(g_fix.state, H.ns(0), H.ns(d), g_fix.state);
+			obs.Sdag0Sd_S0(d,4) = avg(g_fix.state, H.nh(0), H.nh(d), g_fix.state);
+			lout << d << "\t" << obs.Sdag0Sd_S0(d,1) 
+			          << "\t" << obs.Sdag0Sd_S0(d,2) 
+			          << "\t" << obs.Sdag0Sd_S0(d,3) 
+			          << "\t" << obs.Sdag0Sd_S0(d,4) 
+			          << endl;
 		}
 		if (CALC_SGAP)
 		{
@@ -1564,14 +1573,16 @@ int main (int argc, char* argv[])
 				obs.Sdag0Sd_S1(d,1) = avg(g_fixS.state, H.SdagS(0,d), g_fixS.state);
 				lout << d << "\t" << obs.Sdag0Sd_S1(d,1) << endl;
 			}
-			lout << "l, S(l)/Sz(l):" << endl;
-			for (int l=0; l<L; ++l)
+			lout << "l, S(l)||Sz(l):" << endl;
+			for (size_t x=0; x<L; ++x)
+			for (size_t y=0; y<Ly; ++y)
 			{
 				#if defined(USING_SU2xU1) || defined(USING_SU2) || defined(USING_SO4)
-				lout << l << "\t" << avg(g_fixS.state, H.S(l), g_fixS.state) << endl;
+				obs.Sloc_S1(x,y) = avg(g_fixS.state, H.S(Geo1cell(x,y)), g_fixS.state);
 				#else
-				lout << l << "\t" << avg(g_fixS.state, H.Sz(l), g_fixS.state) << endl;
+				obs.Sloc_S1(x,y) = avg(g_fixS.state, H.Sz(Geo1cell(x,y)), g_fixS.state);
 				#endif
+				lout << "x,y=" << x << "," << y << "\t" << obs.Sloc_S1(x,y) << endl;
 			}
 		}
 		if (CALC_S2GAP)
@@ -1821,7 +1832,11 @@ int main (int argc, char* argv[])
 		target.save_matrix(obs.tx,"Tx",bond.str());
 		target.save_matrix(obs.ity,"iTy",bond.str());
 		target.save_matrix(obs.Sdag0Sd_S0,"Sdag0Sd_S0",bond.str());
-		if (CALC_SGAP) target.save_matrix(obs.Sdag0Sd_S1,"Sdag0Sd_S1",bond.str());
+		if (CALC_SGAP)
+		{
+			target.save_matrix(obs.Sdag0Sd_S1,"Sdag0Sd_S1",bond.str());
+			target.save_matrix(obs.Sloc_S1,"Sloc_S1",bond.str());
+		}
 		if (CALC_S2GAP) target.save_matrix(obs.Sdag0Sd_S2,"Sdag0Sd_S2",bond.str());
 		for (size_t x=0; x<L; ++x)
 		for (size_t y=0; y<Ly; ++y)

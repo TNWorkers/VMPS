@@ -2105,14 +2105,18 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	vector<vector<Biped<Symmetry,MatrixType> > > ARxO = V.state.A[GAUGE::R];
 	vector<vector<Biped<Symmetry,MatrixType> > > ACxO = V.state.A[GAUGE::C];
 	
+//	cout << O.info() << endl;
 //	cout << "V.state.locBasis(0).size()=" << V.state.locBasis(0).size() << endl;
 //	cout << "O.opBasis(O.length()-1).size()=" << O.opBasis(O.length()-1).size() << endl;
 //	cout << "O.inBasis(O.length()-1).size()=" << O.inBasis(O.length()-1).size() << endl;
 //	cout << "O.outBasis(O.length()-1).size()=" << O.outBasis(O.length()-1).size() << endl;
-	
+//	
 //	cout << "in/outBasis at 0:" << endl;
 //	cout << O.inBasis(0).print() << endl;
 //	cout << O.outBasis(0).print() << endl;
+//	cout << "in/outBasis at 1:" << endl;
+//	cout << O.inBasis(1).print() << endl;
+//	cout << O.outBasis(1).print() << endl;
 //	cout << "in/outBasis at L-1:" << endl;
 //	cout << O.inBasis(O.length()-1).print() << endl;
 //	cout << O.outBasis(O.length()-1).print() << endl;
@@ -2228,6 +2232,10 @@ Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
             const Mpo<Symmetry,Scalar> &O, const Mpo<Symmetry,Scalar> &Omult, bool ADD_ODD_SITE)
 {
+	size_t add = (ADD_ODD_SITE)? 1:0;
+	size_t Lhetero = Ncells * N_sites + add;
+	assert(O.length()%N_sites == 0 and "Please choose a heterogeneous region that is commensurate with the unit cell!");
+	
 	Tripod<Symmetry,MatrixType> L_with_O;
 	Tripod<Symmetry,MatrixType> R_with_O;
 	
@@ -2248,23 +2256,30 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 		
 		inbase.pullData (V.state.A[GAUGE::R][l],0);
 		outbase.pullData(V.state.A[GAUGE::R][l],1);
-		contract_AW(V.state.A[GAUGE::R][l], V.state.locBasis(l), O.W_at(O.length()-2), 
-		            O.opBasis(O.length()-2), inbase, O.inBasis(O.length()-2), outbase, O.outBasis(O.length()-2),
+		contract_AW(V.state.A[GAUGE::R][l], V.state.locBasis(l), O.W_at(O.length()-N_sites+l), 
+		            O.opBasis(O.length()-N_sites+l), inbase, O.inBasis(O.length()-N_sites+l), outbase, O.outBasis(O.length()-N_sites+l),
 		            ARxO[l]);
 		
 		inbase.pullData (V.state.A[GAUGE::C][l],0);
 		outbase.pullData(V.state.A[GAUGE::C][l],1);
-		contract_AW(V.state.A[GAUGE::C][l], V.state.locBasis(l), O.W_at(O.length()-2), 
-		            O.opBasis(O.length()-2), inbase, O.inBasis(O.length()-2), outbase, O.outBasis(O.length()-2),
+		contract_AW(V.state.A[GAUGE::C][l], V.state.locBasis(l), O.W_at(O.length()-N_sites+l), 
+		            O.opBasis(O.length()-N_sites+l), inbase, O.inBasis(O.length()-N_sites+l), outbase, O.outBasis(O.length()-N_sites+l),
 		            ACxO[l]);
 	}
 	
+	// calc Cshift: q-number sectors to the right of perturbation are shifted
 	vector<vector<Biped<Symmetry,MatrixType> > > As(N_sites);
 	for (size_t l=0; l<N_sites; ++l) As[l] = ACxO[l];
-	Mps<Symmetry,Scalar> Maux(N_sites, As, V.state.locBasis(), Symmetry::qvacuum(), N_sites);
-	auto Cshift = V.state.C[0];
+	
+	auto Qt = Symmetry::reduceSilent(V.state.Qtarget(), O.Qtarget());
+	Mps<Symmetry,Scalar> Maux(N_sites, As, V.state.locBasis(), Qt[0], N_sites);
+	Maux.set_Qmultitarget(Qt);
+	Maux.min_Nsv = V.state.min_Nsv;
+	
+	auto Cshift = V.state.C[N_sites-1];
 	Cshift.clear();
 	Maux.rightSplitStep(N_sites-1, Cshift);
+	Cshift = 1./sqrt((Cshift.contract(Cshift.adjoint())).trace()) * Cshift;
 	
 	#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 	#pragma omp parallel sections
@@ -2274,20 +2289,22 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 		#pragma omp section
 		#endif
 		{
-			build_L(ALxO, V.state.C, H.W, H.qloc, H.qOp, L_with_O);
+			build_L(ALxO, V.state.C[N_sites-1], H.W, H.qloc, H.qOp, L_with_O);
 		}
 		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp section
 		#endif
 		{
-			build_R(ARxO, Cshift,    H.W, H.qloc, H.qOp, R_with_O);
+			build_R(ARxO, Cshift,               H.W, H.qloc, H.qOp, R_with_O);
 		}
 	}
 	
-	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.qloc, L_with_O, R_with_O, N_sites*Ncells/2, ADD_ODD_SITE);
-	Mps<Symmetry,Scalar> Mres;
-	OxV_exact(Omult, Mtmp, Mres, 2., DMRG::VERBOSITY::SILENT);
+	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.qloc, 
+	                                         L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
 	
+	Mps<Symmetry,Scalar> Mres;
+	DMRG::VERBOSITY::OPTION VERB = DMRG::VERBOSITY::ON_EXIT;
+	OxV_exact(Omult, Mtmp, Mres, 2., VERB);
 	return Mres;
 };
 

@@ -126,7 +126,7 @@ ref (const vector<Param> &params, double L)
 	// half-filled chain
 	if (isinf(L) and Ly == 1ul and n == 1. and P.ARE_ALL_ZERO<double>({"tPrime","t0","V","Bz","Bx","J","J3site"}))
 	{
-		out.value = BetheAnsatz_e0(U,t);
+		out.value = BetheAnsatz::e0(U,t);
 		out.source = "Elliott H. Lieb, F. Y. Wu, Absence of Mott Transition in an Exact Solution of the Short-Range, One-Band Model in One Dimension, Phys. Rev. Lett. 20, 1445 (1968)";
 		out.method = "num. integration with gsl";
 	}

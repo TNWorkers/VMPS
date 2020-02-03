@@ -38,7 +38,7 @@ using namespace Eigen;
 //#include "VUMPS/UmpsCompressor.h"
 //#include "models/Heisenberg.h"
 //#include "models/HeisenbergU1.h"
-//#include "models/HeisenbergSU2.h"
+#include "models/HeisenbergSU2.h"
 #include "DmrgLinearAlgebra.h"
 #include "solvers/TDVPPropagator.h"
 #include "solvers/EntropyObserver.h"
@@ -63,8 +63,8 @@ bool GAUSSINT, RELOAD, CELL;
 double wmin, wmax;
 
 // set model here:
-#define FERMIONS
-//#define HEISENBERG
+//#define FERMIONS
+#define HEISENBERG
 
 #ifdef HEISENBERG
 typedef VMPS::HeisenbergSU2 MODEL;
@@ -81,11 +81,6 @@ GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>> Gfull;
 double n_mu (double mu, void*)
 {
 	return spinfac * Gfull.integrate_Glocw(mu) - N/L;
-}
-
-double eps1d (double q)
-{
-	return -2.*cos(q);
 }
 
 int main (int argc, char* argv[])
@@ -160,54 +155,54 @@ int main (int argc, char* argv[])
 	// reload:
 	if (RELOAD)
 	{
-		if (CELL)
-		{
-			vector<vector<MatrixXcd>> GinCell(L); for (int i=0; i<L; ++i) {GinCell[i].resize(L);}
-			for (int i=0; i<L; ++i) 
-			for (int j=0; j<L; ++j)
-			{
-				GinCell[i][j].resize(Nt,Ncells);
-				GinCell[i][j].setZero();
-			}
-			
-			for (int i=0; i<L; ++i)
-			for (int j=0; j<L; ++j)
-			{
-				GinCell[i][j] +=     readMatrix(make_string("PES_G=txRe_i=",i,"_j=",j,"_L=",Lhetero,"_tmax=",tmax,".dat"))+
-				                 1.i*readMatrix(make_string("PES_G=txIm_i=",i,"_j=",j,"_L=",Lhetero,"_tmax=",tmax,".dat"))+
-				                     readMatrix(make_string("IPE_G=txRe_i=",i,"_j=",j,"_L=",Lhetero,"_tmax=",tmax,".dat"))+
-				                 1.i*readMatrix(make_string("IPE_G=txIm_i=",i,"_j=",j,"_L=",Lhetero,"_tmax=",tmax,".dat"));
-			}
-			
-			Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("A1P",tmax,GinCell,true,ZERO_2PI); // GAUSSINT=true
-			
-			Gfull.recalc_FTwCell(wmin,wmax,1000);
-			Gfull.FT_allSites();
-			Gfull.diagonalize_and_save_cell();
-		}
-		else
-		{
-			MatrixXcd Gin =      readMatrix(make_string("PES_G=txRe_L=",Lhetero,"_tmax=",tmax,".dat"))+
-				            +1.i*readMatrix(make_string("PES_G=txIm_L=",Lhetero,"_tmax=",tmax,".dat"))+
-				                 readMatrix(make_string("IPE_G=txRe_L=",Lhetero,"_tmax=",tmax,".dat"))+
-				            +1.i*readMatrix(make_string("IPE_G=txIm_L=",Lhetero,"_tmax=",tmax,".dat"));
-			
-			Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("A1P",L,tmax,Gin,true,ZERO_2PI); // GAUSSINT=true
-			
-			Gfull.recalc_FTw(wmin,wmax,1000);
-		}
-		
-		Gfull.save();
-		
-		IntervalIterator mu(wmin,wmax,101);
-		for (mu=mu.begin(); mu!=mu.end(); ++mu)
-		{
-			double res = spinfac * Gfull.integrate_Glocw(*mu);
-			mu << res;
-		}
-		mu.save("n(μ).dat");
-		RootFinder R(n_mu,wmin,wmax);
-		lout << "μ=" << R.root() << endl;
+//		if (CELL)
+//		{
+//			vector<vector<MatrixXcd>> GinCell(L); for (int i=0; i<L; ++i) {GinCell[i].resize(L);}
+//			for (int i=0; i<L; ++i) 
+//			for (int j=0; j<L; ++j)
+//			{
+//				GinCell[i][j].resize(Nt,Ncells);
+//				GinCell[i][j].setZero();
+//			}
+//			
+//			for (int i=0; i<L; ++i)
+//			for (int j=0; j<L; ++j)
+//			{
+//				GinCell[i][j] +=     readMatrix(make_string("PES_G=txRe_i=",i,"_j=",j,"_L=",Lhetero,"_tmax=",tmax,".dat"))+
+//				                 1.i*readMatrix(make_string("PES_G=txIm_i=",i,"_j=",j,"_L=",Lhetero,"_tmax=",tmax,".dat"))+
+//				                     readMatrix(make_string("IPE_G=txRe_i=",i,"_j=",j,"_L=",Lhetero,"_tmax=",tmax,".dat"))+
+//				                 1.i*readMatrix(make_string("IPE_G=txIm_i=",i,"_j=",j,"_L=",Lhetero,"_tmax=",tmax,".dat"));
+//			}
+//			
+//			Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("A1P",tmax,GinCell,true,ZERO_2PI);
+//			
+//			Gfull.recalc_FTwCell(wmin,wmax,1000);
+//			Gfull.FT_allSites();
+//			Gfull.diagonalize_and_save_cell();
+//		}
+//		else
+//		{
+//			MatrixXcd Gin =      readMatrix(make_string("PES_G=txRe_L=",Lhetero,"_tmax=",tmax,".dat"))+
+//				            +1.i*readMatrix(make_string("PES_G=txIm_L=",Lhetero,"_tmax=",tmax,".dat"))+
+//				                 readMatrix(make_string("IPE_G=txRe_L=",Lhetero,"_tmax=",tmax,".dat"))+
+//				            +1.i*readMatrix(make_string("IPE_G=txIm_L=",Lhetero,"_tmax=",tmax,".dat"));
+//			
+//			Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("A1P",L,tmax,Gin,true,ZERO_2PI);
+//			
+//			Gfull.recalc_FTw(wmin,wmax,1000);
+//		}
+//		
+//		Gfull.save();
+//		
+//		IntervalIterator mu(wmin,wmax,101);
+//		for (mu=mu.begin(); mu!=mu.end(); ++mu)
+//		{
+//			double res = spinfac * Gfull.integrate_Glocw(*mu);
+//			mu << res;
+//		}
+//		mu.save("n(μ).dat");
+//		RootFinder R(n_mu,wmin,wmax);
+//		lout << "μ=" << R.root() << endl;
 	}
 	else
 	{
@@ -327,11 +322,11 @@ int main (int argc, char* argv[])
 		
 		// GreenPropagator
 		#ifdef HEISENBERG
-		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("SSF",tmax,Nt,wmin,wmax,1000,tol_compr,GAUSSINT,ZERO_2PI);
-		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("SSF",tmax,Nt,wmin,wmax,1000,tol_compr,GAUSSINT,ZERO_2PI);
+		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("SSF",tmax,Nt,wmin,wmax,501,ZERO_2PI,qpoints,DIRECT);
+		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("SSF",tmax,Nt,wmin,wmax,501,ZERO_2PI,qpoints,DIRECT);
 		#elif defined(FERMIONS) // TIME_FORWARDS=true/false
-		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("PES",tmax,Nt,wmin,wmax,1000,tol_compr,GAUSSINT,ZERO_2PI);
-		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("IPE",tmax,Nt,wmin,wmax,1000,tol_compr,GAUSSINT,ZERO_2PI);
+		Green[0] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("PES",tmax,Nt,wmin,wmax,501,ZERO_2PI,qpoints,DIRECT);
+		Green[1] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >("IPE",tmax,Nt,wmin,wmax,501,ZERO_2PI,qpoints,DIRECT);
 		#endif
 		
 		Green[0].set_verbosity(DMRG::VERBOSITY::ON_EXIT);
