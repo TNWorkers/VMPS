@@ -282,6 +282,8 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		Vout.state.min_Nsv = DynParam.min_Nsv(0);
 		Vout.state.max_Nrich = DynParam.max_Nrich(0);
 		Vout.state.Boundaries = Boundaries_tmp;
+		// If boundaries not pre-set, set them to trivial now:
+		if (Vout.state.Boundaries.IS_TRIVIAL()) Vout.state.Boundaries.set_open_bc(Qtot_input);
 		
 		Vout.state.update_inbase();
 		Vout.state.update_outbase();

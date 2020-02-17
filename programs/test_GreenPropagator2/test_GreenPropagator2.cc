@@ -205,7 +205,7 @@ int main (int argc, char* argv[])
 	if (RELOAD != "")
 	{
 		GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>> 
-		Gnew(wd+RELOAD+"_"+base,L,tmax,{wd+RELOAD+"_"+base+make_string("_L=",Lhetero,"_tmax=",tmax)},ZERO_2PI,qpoints,GAUSSINT);
+		Gnew(wd+RELOAD+"_"+base,L,tmax,{wd+RELOAD+"_"+base+make_string("_L=",Lhetero,"_tmax=",tmax)},ZERO_2PI,qpoints,DIRECT);
 		Gnew.recalc_FTw(wmin,wmax,wpoints);
 		Gnew.FT_allSites();
 		Gnew.save(true); // IGNORE_CELL=true
@@ -278,7 +278,7 @@ int main (int argc, char* argv[])
 		{
 			string spec = specs[z];
 			Green[z] = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >
-			           (wd+spec+"_"+base,tmax,Nt,calc_wmin(spec),calc_wmax(spec),wpoints,ZERO_2PI,qpoints,GAUSSINT);
+			           (wd+spec+"_"+base,tmax,Nt,calc_wmin(spec),calc_wmax(spec),wpoints,ZERO_2PI,qpoints,DIRECT);
 			Green[z].set_verbosity(DMRG::VERBOSITY::ON_EXIT);
 		}
 		Green[0].set_verbosity(DMRG::VERBOSITY::STEPWISE);
@@ -344,7 +344,7 @@ int main (int argc, char* argv[])
 					GinA1P[i][j] += Green[iPES].get_GtxCell()[i][j] + Green[iIPE].get_GtxCell()[i][j];
 				}
 				
-				Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"A1P_"+base,tmax,GinA1P,ZERO_2PI,qpoints,GAUSSINT);
+				Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >(wd+"A1P_"+base,tmax,GinA1P,ZERO_2PI,qpoints,DIRECT);
 				Gfull.recalc_FTwCell(calc_wmin("A1P"),calc_wmax("A1P"),wpoints);
 				Gfull.FT_allSites();
 				

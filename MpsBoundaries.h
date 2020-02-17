@@ -49,6 +49,9 @@ public:
 		Bout.L = L.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
 		Bout.R = R.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
 		
+		Bout.Lsq = Lsq.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
+		Bout.Rsq = Rsq.template cast<Matrix<OtherScalar,Dynamic,Dynamic> >();
+		
 		for (size_t g=0; g<A.size(); ++g)
 		{
 			Bout.A[g].resize(A[g].size());
