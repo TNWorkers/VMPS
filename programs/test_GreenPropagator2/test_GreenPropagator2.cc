@@ -258,13 +258,13 @@ int main (int argc, char* argv[])
 		
 		// OxV in cell
 		Stopwatch<> OxVTimer;
-		Mps<MODEL::Symmetry,double> Phi = uDMRG.create_Mps(Ncells, g, H, x0, false); // ground state as heterogenic MPS, ADD_ODD_SITE=false
+		Mps<MODEL::Symmetry,double> Phi = uDMRG.create_Mps(Ncells, g, H, x0); // ground state as heterogenic MPS
 		
 		vector<vector<Mps<MODEL::Symmetry,complex<double>>>> OxPhiCell(Nspec);
 		for (int z=0; z<Nspec; ++z)
 		{
 			OxPhiCell[z].resize(L);
-			auto OxPhiCellReal = uDMRG.create_Mps(Ncells, g, H, O[z][0], O[z], false); // O[z][0] for boundaries, O[z] is multiplied
+			auto OxPhiCellReal = uDMRG.create_Mps(Ncells, g, H, O[z][0], O[z]); // O[z][0] for boundaries, O[z] is multiplied
 			
 			for (int l=0; l<L; ++l)
 			{

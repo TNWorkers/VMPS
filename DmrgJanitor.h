@@ -98,6 +98,8 @@ public:
 	
 	void set_defaultCutoffs();
 	
+	void set_pivot (int pivot_input) {pivot = pivot_input;};
+	
 protected:
 	
 	///@{

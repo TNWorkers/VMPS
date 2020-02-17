@@ -94,10 +94,8 @@ public:
 	\param V : converged ground state to generate from
 	\param H : Hamiltonian of the VUMPS ground state, needed to recalculate environment
 	\param x0 : Puts \f$A_C\f$ on this site
-	\param ADD_ODD_SITE : if \p true, add one more site in order to have site-oriented inversion symmetry
 	*/
-	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
-	                                 size_t x0, bool ADD_ODD_SITE=false);
+	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, size_t x0);
 	
 	/**
 	Creates an Mps from the VUMPS solution with a heterogeneous section and infinite boundary conditions for a local operator. 
@@ -108,16 +106,15 @@ public:
 	\param H : Hamiltonian of the VUMPS ground state, needed to recalculate environment
 	\param O : Operator to get the boundaries from. Should be local, with the excitation centre away from the boundaries.
 	\param Omult : Operator to multiply the state with
-	\param ADD_ODD_SITE : if \p true, add one more site in order to have site-oriented inversion symmetry
 	*/
 	vector<Mps<Symmetry,Scalar>> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
-	                                         const Mpo<Symmetry,Scalar> &O, const vector<Mpo<Symmetry,Scalar>> &Omult, bool ADD_ODD_SITE=false);
+	                                         const Mpo<Symmetry,Scalar> &O, const vector<Mpo<Symmetry,Scalar>> &Omult);
 	
 	/**
 	Variant of create_Mps without a vector, with a single MPO/MPS.
 	*/
 	Mps<Symmetry,Scalar> create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
-	                                 const Mpo<Symmetry,Scalar> &O, const Mpo<Symmetry,Scalar> &Omult, bool ADD_ODD_SITE=false);
+	                                 const Mpo<Symmetry,Scalar> &O, const Mpo<Symmetry,Scalar> &Omult);
 	
 	void set_boundary (const Umps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool LEFT=false, bool RIGHT=true);
 	
@@ -127,7 +124,7 @@ public:
 	/**Builds environments for each site of the unit cell.*/
 	void build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout);
 	
-private:
+//private:
 	
 	///\{
 	/**Prepares the class, setting up the environments. Used with an explicit 2-site Hamiltonian.*/
@@ -353,7 +350,6 @@ private:
 	\param L : left environment with the Hamiltonian
 	\param R : right environment with the Hamiltonian
 	\param x0 : put the pivot site here
-	\param ADD_ODD_SITE : if \p true, add one more site in order to have site-oriented inversion symmetry
 	*/
 	Mps<Symmetry,Scalar> assemble_Mps (size_t Ncells,
 	                                   const Umps<Symmetry,Scalar> &V,
@@ -362,8 +358,7 @@ private:
 	                                   const vector<vector<qarray<Symmetry::Nq> > > &qloc_input,
 	                                   const Tripod<Symmetry,MatrixType> &L,
 	                                   const Tripod<Symmetry,MatrixType> &R,
-	                                   int x0,
-	                                   bool ADD_ODD_SITE);
+	                                   int x0);
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
@@ -2071,31 +2066,31 @@ calc_B2 (size_t loc, const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scal
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, size_t x0, bool ADD_ODD_SITE)
+create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, size_t x0)
 {
-	size_t add = (ADD_ODD_SITE)? 1:0;
-	size_t Lhetero = Ncells * V.state.length() + add;
+	size_t Lhetero = Ncells * V.state.length();
 	
 	// If ground state loaded from file, need to recalculate environments
 	if (HeffA.size() == 0)
 	{
-		lout << termcolor::blue << "create_Mps: Environments are empty, recalculating!..." << termcolor::reset << endl;
+		lout << termcolor::blue << "create_Mps(Ncells,V,H,x0): Environments are empty, recalculating!..." << termcolor::reset << endl;
 		auto Vtmp = V;
 		prepare(H, Vtmp, V.state.Qtarget(), true); // USE_STATE = true
+		auto VERB_BACKUP = CHOSEN_VERBOSITY; CHOSEN_VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE;
 		build_cellEnv(H,V);
+		CHOSEN_VERBOSITY = VERB_BACKUP;
 	}
 	
 	return assemble_Mps(Ncells, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.qloc, 
-	                    HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, x0, ADD_ODD_SITE);
+	                    HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, x0);
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 vector<Mps<Symmetry,Scalar>> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
-            const Mpo<Symmetry,Scalar> &O, const vector<Mpo<Symmetry,Scalar>> &Omult, bool ADD_ODD_SITE)
+            const Mpo<Symmetry,Scalar> &O, const vector<Mpo<Symmetry,Scalar>> &Omult)
 {
-	size_t add = (ADD_ODD_SITE)? 1:0;
-	size_t Lhetero = Ncells * N_sites + add;
+	size_t Lhetero = Ncells * N_sites;
 	assert(O.length()%N_sites == 0 and "Please choose a heterogeneous region that is commensurate with the unit cell!");
 	
 	Tripod<Symmetry,MatrixType> L_with_O;
@@ -2212,8 +2207,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 		}
 	}
 	
-	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.qloc, 
-	                                         L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
+	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.qloc, L_with_O, R_with_O, O.locality());
 	
 	vector<Mps<Symmetry,Scalar>> Mres(Omult.size());
 	#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
@@ -2230,10 +2224,9 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 Mps<Symmetry,Scalar> VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const MpHamiltonian &H, 
-            const Mpo<Symmetry,Scalar> &O, const Mpo<Symmetry,Scalar> &Omult, bool ADD_ODD_SITE)
+            const Mpo<Symmetry,Scalar> &O, const Mpo<Symmetry,Scalar> &Omult)
 {
-	size_t add = (ADD_ODD_SITE)? 1:0;
-	size_t Lhetero = Ncells * N_sites + add;
+	size_t Lhetero = Ncells * N_sites;
 	assert(O.length()%N_sites == 0 and "Please choose a heterogeneous region that is commensurate with the unit cell!");
 	
 	Tripod<Symmetry,MatrixType> L_with_O;
@@ -2299,8 +2292,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 		}
 	}
 	
-	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.qloc, 
-	                                         L_with_O, R_with_O, O.locality(), ADD_ODD_SITE);
+	Mps<Symmetry,Scalar> Mtmp = assemble_Mps(Ncells, V.state, ALxO, ARxO, V.state.qloc, L_with_O, R_with_O, O.locality());
 	
 	Mps<Symmetry,Scalar> Mres;
 	DMRG::VERBOSITY::OPTION VERB = DMRG::VERBOSITY::ON_EXIT;
@@ -2317,11 +2309,9 @@ assemble_Mps (size_t Ncells,
               const vector<vector<qarray<Symmetry::Nq> > > &qloc_input,
               const Tripod<Symmetry,MatrixType> &L,
               const Tripod<Symmetry,MatrixType> &R,
-              int x0,
-              bool ADD_ODD_SITE)
+              int x0)
 {
-	size_t add = (ADD_ODD_SITE)? 1:0;
-	size_t Lhetero = Ncells * AL.size() + add;
+	size_t Lhetero = Ncells * AL.size();
 	
 	vector<vector<Biped<Symmetry,MatrixType>>> As(Lhetero);
 	// variant 1: put pivot at x0
@@ -2348,6 +2338,7 @@ assemble_Mps (size_t Ncells,
 	}
 	
 	Mps<Symmetry,Scalar> Mout(Lhetero, As, qloc, Symmetry::qvacuum(), Lhetero);
+	Mout.set_pivot(x0);
 	
 	Mout.Boundaries = MpsBoundaries<Symmetry,Scalar>(L,R,AL,AR,qloc_input);
 	

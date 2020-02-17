@@ -63,8 +63,8 @@ public:
 const std::map<string,std::any> KondoU1::defaults = 
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",0.},
-	{"J",1.}, 
-	{"U",0.},
+	{"J",1.}, {"Jdir",0.}, 
+	{"U",0.}, {"Uph",0.},
 	{"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bx",0.}, {"Bzsub",0.}, {"Bxsub",0.}, {"Kz",0.}, {"Kx",0.},

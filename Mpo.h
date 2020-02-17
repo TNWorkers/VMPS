@@ -399,6 +399,8 @@ public:
 	/**Mpo bond dimension*/
 	ArrayXXi Daux;
 	
+	ArrayXXi DauxSq;
+	
 	/**Resizes the relevant containers with \p N_sites.*/
 	void initialize();
 	
@@ -895,8 +897,7 @@ calc_W_from_Gvec (const vector<SuperMatrix<Symmetry,Scalar> > &Gvec,
 				GvecSq[l].set(Daux(l,0)*Daux(l,0), Daux(l,1)*Daux(l,1), Gvec[l].D()); // Non-quadratic!
 				GvecSq[l] = tensor_product(Gvec[l], Gvec[l]);
 			}
-			ArrayXXi Daux_dummy;
-			calc_W_from_Gvec(GvecSq, Wsq, Daux_dummy, qOpSq, false, OPEN_BC); // use false here, otherwise one would also calclate H⁴.
+			calc_W_from_Gvec(GvecSq, Wsq, DauxSq, qOpSq, false, OPEN_BC); // use false here, otherwise one would also calclate H⁴.
 			GOT_SQUARE = true;
 		}
 	}

@@ -59,7 +59,7 @@ void LRxV (const PivotOverlap1<Symmetry,Scalar> &H, const PivotVector<Symmetry,S
 					}
 					else
 					{
-						lout << termcolor::red << "Warning: Mismatching matrix dimensions in LRxV (PivotOverlap1)!" << termcolor::reset << endl;
+						lout << termcolor::red << "Warning: Mismatched matrix dimensions in LRxV (PivotOverlap1)!" << termcolor::reset << endl;
 						print_size(H.L.block[qL],"H.L.block[qL]");
 						print_size(Vin.data[s].block[qAket],"Vin.data[s].block[qAket]");
 						print_size(H.R.block[qR->second],"H.R.block[qR->second]");

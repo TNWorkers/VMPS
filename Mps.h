@@ -469,10 +469,18 @@ public:
 		Boundaries.set_open_bc(Qtot);
 	}
 	
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > get_boundaryTensor (DMRG::DIRECTION::OPTION DIR) const
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > get_boundaryTensor (DMRG::DIRECTION::OPTION DIR, bool USE_SQUARE = false) const
 	{
-		if (DIR == DMRG::DIRECTION::LEFT) {return Boundaries.L;}
-		else                              {return Boundaries.R;}
+		if (USE_SQUARE)
+		{
+			if (DIR == DMRG::DIRECTION::LEFT) {return Boundaries.Lsq;}
+			else                              {return Boundaries.Rsq;}
+		}
+		else
+		{
+			if (DIR == DMRG::DIRECTION::LEFT) {return Boundaries.L;}
+			else                              {return Boundaries.R;}
+		}
 	}
 	
 	void elongate_hetero (size_t Nleft=0, size_t Nright=0)

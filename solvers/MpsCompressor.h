@@ -1270,33 +1270,47 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		lout << "Vin2: " << Vin2.info() << endl;
 	}
 	
-	// prepare edges of LW & RW
+//	// prepare edges of LW & RW
+//	Heff.clear();
+//	Heff.resize(N_sites);
+//	Heff[0].L.setVacuum();
+//	
+////	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin1.Qtarget(), Vout.Qtarget(), Symmetry::qvacuum()});
+//	vector<qarray3<Symmetry::Nq> > Qt;
+//	for (size_t i=0; i<Vin1.Qmultitarget().size(); ++i)
+//	{
+//		Qt.push_back(qarray3<Symmetry::Nq>{Vin1.Qmultitarget()[i], Vout.Qmultitarget()[i], H.Qtarget()});
+//	}
+//	Heff[N_sites-1].R.setTarget(Qt);
+	
 	Heff.clear();
 	Heff.resize(N_sites);
-	Heff[0].L.setVacuum();
-	
-//	Heff[N_sites-1].R.setTarget(qarray3<Symmetry::Nq>{Vin1.Qtarget(), Vout.Qtarget(), Symmetry::qvacuum()});
-	vector<qarray3<Symmetry::Nq> > Qt;
-	for (size_t i=0; i<Vin1.Qmultitarget().size(); ++i)
-	{
-		Qt.push_back(qarray3<Symmetry::Nq>{Vin1.Qmultitarget()[i], Vout.Qmultitarget()[i], H.Qtarget()});
-	}
-	Heff[N_sites-1].R.setTarget(Qt);
+	Heff[0].L         = Vin1.get_boundaryTensor(DMRG::DIRECTION::LEFT);
+	Heff[N_sites-1].R = Vin1.get_boundaryTensor(DMRG::DIRECTION::RIGHT);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		Heff[l].W = H.W[l];
 	}
 	
-	// set L&R edges
+//	// set L&R edges
+//	Env.clear();
+//	Env.resize(N_sites);
+//	Env[N_sites-1].R.setTarget(Vin2.Qmultitarget());
+//	Env[0].L.setVacuum();
+//	for (size_t l=0; l<N_sites; ++l)
+//	{
+//		Env[l].qloc = H.locBasis(l);
+//	}
+	
 	Env.clear();
 	Env.resize(N_sites);
-	Env[N_sites-1].R.setTarget(Vin2.Qmultitarget());
-	Env[0].L.setVacuum();
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		Env[l].qloc = H.locBasis(l);
+		Env[l].qloc = Vin2.locBasis(l);
 	}
+	Env[N_sites-1].R.setIdentity(Vin2.outBasis(N_sites-1), Vout.outBasis(N_sites-1));
+	Env[0].L.setIdentity(Vin2.inBasis(0), Vout.inBasis(0));
 	
 	double avgHsqV1, sqnormV2, overlapV12;
 	sqnormV2 = Vin2.squaredNorm();
@@ -1309,13 +1323,27 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		#pragma omp section
 		#endif
 		{
-			avgHsqV1 = (H.check_SQUARE()==true)? isReal(avg(Vin1,H,Vin1,true)) : isReal(avg(Vin1,H,H,Vin1));
+			if (Vin1.Boundaries.IS_TRIVIAL())
+			{
+				avgHsqV1 = (H.check_SQUARE()==true)? isReal(avg(Vin1,H,Vin1,true)) : isReal(avg(Vin1,H,H,Vin1));
+			}
+			else
+			{
+				avgHsqV1 = avg_hetero(Vin1,H,Vin1,true,true); // USE_BOUNDARY=true, USE_SQUARE=true
+			}
 		}
 		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 		#pragma omp section
 		#endif
 		{
-			overlapV12 = isReal(avg(Vin2,H,Vin1));
+			if (Vin1.Boundaries.IS_TRIVIAL())
+			{
+				overlapV12 = isReal(avg(Vin2,H,Vin1));
+			}
+			else
+			{
+				overlapV12 = isReal(avg_hetero(Vin2,H,Vin1,true)); // USE_BOUNDARY=true
+			}
 		}
 		#ifndef MPSQCOMPRESSOR_DONT_USE_OPENMP
 		#pragma omp section
@@ -1409,12 +1437,14 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-//		cout << "avgHsqV1=" << avgHsqV1 
-//		     << ", Vout.squaredNorm()=" << Vout.squaredNorm() 
-//		     << ", polyB*polyB*sqnormV2=" << polyB*polyB*sqnormV2 
-//		     << ", 2.*polyB*overlapV12=" << 2.*polyB*overlapV12 
-//		     << endl;
+		cout << "avgHsqV1=" << avgHsqV1 
+		     << ", Vout.squaredNorm()=" << Vout.squaredNorm() 
+		     << ", polyB*polyB*sqnormV2=" << polyB*polyB*sqnormV2 
+		     << ", 2.*polyB*overlapV12=" << 2.*polyB*overlapV12 
+		     << endl;
+		double sqdist_ = sqdist;
 		sqdist = abs(avgHsqV1 - Vout.squaredNorm() + polyB*polyB*sqnormV2 - 2.*polyB*overlapV12);
+		lout << "diff=" << abs(sqdist_-sqdist) << endl;
 		assert(!std::isnan(sqdist));
 		
 		if (CHOSEN_VERBOSITY>=2)

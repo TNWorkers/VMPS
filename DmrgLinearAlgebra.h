@@ -324,7 +324,7 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	
 	if (USE_BOUNDARY)
 	{
-		B = Vket.get_boundaryTensor(DMRG::DIRECTION::LEFT);
+		B = Vket.get_boundaryTensor(DMRG::DIRECTION::LEFT, USE_SQUARE);
 		assert(O.Qtarget() == Symmetry::qvacuum() and "Can only do avg_hetero with vacuum targets. Try OxV_exact followed by dot instead.");
 	}
 	else
@@ -336,8 +336,14 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	{
 		if (USE_SQUARE == true)
 		{
-			if constexpr (Symmetry::NON_ABELIAN) { contract_L(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
-			else { contract_L(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
+			if constexpr (Symmetry::NON_ABELIAN)
+			{
+				contract_L(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
+			}
+			else
+			{
+				contract_L(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
+			}
 		}
 		else
 		{
@@ -359,8 +365,14 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	}
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > BR;
-	if (USE_BOUNDARY) {BR = Vket.get_boundaryTensor(DMRG::DIRECTION::RIGHT);}
-	else              {BR.setIdentity(O.auxcols(O.length()-1), 1, Vket.outBasis((O.length()-1)));}
+	if (USE_BOUNDARY)
+	{
+		BR = Vket.get_boundaryTensor(DMRG::DIRECTION::RIGHT, USE_SQUARE);
+	}
+	else
+	{
+		BR.setIdentity(O.auxcols(O.length()-1), 1, Vket.outBasis((O.length()-1)));
+	}
 	
 	return contract_LR(B,BR);
 }

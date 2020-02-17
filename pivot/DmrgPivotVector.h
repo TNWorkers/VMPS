@@ -148,6 +148,10 @@ PivotVector<Symmetry,Scalar_>& PivotVector<Symmetry,Scalar_>::operator+= (const 
 			}
 			else if (data[s].block[q].size() != 0 and Vrhs.data[s].block[q].size() != 0)
 			{
+//				cout << data[s].block[q].rows() << "x" << data[s].block[q].cols() << endl;
+//				cout << Vrhs.data[s].block[q].rows() << "x" << Vrhs.data[s].block[q].cols() << endl;
+//				cout << endl;
+				
 				data[s].block[q] += Vrhs.data[s].block[q];
 			}
 		}
@@ -287,7 +291,7 @@ Scalar_ dot (const PivotVector<Symmetry,Scalar_> &V1, const PivotVector<Symmetry
 			print_size(V1.data[s].block[q],"V1.data[s].block[q]");
 			print_size(V2.data[s].block[q],"V2.data[s].block[q]");
 			cout << endl;
-			cout << termcolor::red << "Mismatching blocks in dot(PivotVector)" << termcolor::reset << endl;
+			cout << termcolor::red << "Mismatched blocks in dot(PivotVector)" << termcolor::reset << endl;
 		}
 		
 		if (V1.data[s].block[q].size() > 0 and 

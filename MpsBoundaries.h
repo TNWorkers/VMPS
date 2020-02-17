@@ -111,6 +111,9 @@ public:
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
 	
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Lsq;
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rsq;
+	
 	std::array<vector<vector<Biped<Symmetry,MatrixType> > >,3> A;
 	
 	vector<vector<qarray<Symmetry::Nq> > > qloc;
