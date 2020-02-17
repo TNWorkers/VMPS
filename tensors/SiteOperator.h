@@ -62,6 +62,8 @@ struct SiteOperator
 	SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > structured();
 	
 	void setIdentity();
+    
+    std::string label = "";
 };
 
 template<typename Symmetry,typename Scalar>
@@ -94,6 +96,9 @@ SiteOperator<Symmetry,Scalar> operator* (const SiteOperator<Symmetry,Scalar> &O1
 	SiteOperator<Symmetry,Scalar> Oout;
 	Oout.data = O1.data * O2.data;
 	Oout.Q = O1.Q+O2.Q;
+    std::stringstream labelstream;
+    labelstream << "(" << O1.label << "*" << O2.label << ")";
+    Oout.label = labelstream.str();
 	return Oout;
 }
 
@@ -104,6 +109,9 @@ SiteOperator<Symmetry,Scalar> operator+ (const SiteOperator<Symmetry,Scalar> &O1
 	SiteOperator<Symmetry,Scalar> Oout;
 	Oout.data = O1.data + O2.data;
 	Oout.Q = O1.Q;
+    std::stringstream labelstream;
+    labelstream << "(" << O1.label << "+" << O2.label << ")";
+    Oout.label = labelstream.str();
 	return Oout;
 }
 
@@ -114,6 +122,9 @@ SiteOperator<Symmetry,Scalar> operator- (const SiteOperator<Symmetry,Scalar> &O1
 	SiteOperator<Symmetry,Scalar> Oout;
 	Oout.data = O1.data - O2.data;
 	Oout.Q = O1.Q;
+    std::stringstream labelstream;
+    labelstream << "(" << O1.label << "-" << O2.label << ")";
+    Oout.label = labelstream.str();
 	return Oout;
 }
 
@@ -123,6 +134,16 @@ SiteOperator<Symmetry,Scalar> operator* (const OtherScalar &x, const SiteOperato
 	SiteOperator<Symmetry,Scalar> Oout;
 	Oout.data = x * O.data;
 	Oout.Q = O.Q;
+    std::stringstream labelstream;
+    if(std::abs(x-1.) > ::mynumeric_limits<double>::epsilon())
+    {
+        labelstream << "(" << x << "*" << O.label << ")";
+    }
+    else
+    {
+        labelstream << O.label;
+    }
+    Oout.label = labelstream.str();
 	return Oout;
 }
 

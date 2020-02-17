@@ -7,6 +7,7 @@
 
 #include "tensors/Qbasis.h"
 #include "tensors/Biped.h"
+#include "numeric_limits.h"
 
 //Forward declaration
 template<typename Symmetry, typename Scalar> struct SiteOperator;
