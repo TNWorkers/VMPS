@@ -87,11 +87,11 @@ Array<Scalar,Dynamic,1> matrix_element (int iL,
 		{
 			if (USE_SQUARE == true)
 			{
-				if constexpr (Symmetry::NON_ABELIAN)
+				/*if constexpr (Symmetry::NON_ABELIAN)
 				{
 					contract_R(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
 				}
-				else
+				else*/
 				{
 					contract_R(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
 				}
@@ -164,8 +164,9 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		{
 			if (USE_SQUARE == true)
 			{
-				if constexpr (Symmetry::NON_ABELIAN) { contract_L(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
-				else { contract_L(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
+				//if constexpr (Symmetry::NON_ABELIAN) { contract_L(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
+				//else
+                { contract_L(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
 			}
 			else
 			{
@@ -192,11 +193,11 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		{
 			if (USE_SQUARE == true)
 			{
-				if constexpr (Symmetry::NON_ABELIAN)
+				/*if constexpr (Symmetry::NON_ABELIAN)
 				{
 					contract_R(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
 				}
-				else
+				else*/
 				{
 					contract_R(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
 				}
@@ -336,11 +337,11 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	{
 		if (USE_SQUARE == true)
 		{
-			if constexpr (Symmetry::NON_ABELIAN)
+			/*if constexpr (Symmetry::NON_ABELIAN)
 			{
 				contract_L(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
 			}
-			else
+			else*/
 			{
 				contract_L(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
 			}
@@ -411,7 +412,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			contract_R(B, 
 			           Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), 
 			           O1.locBasis(l), O1.opBasis(l), O2.opBasis(l),
-			           O1.auxBasis(l+1), O2.auxBasis(l+1), O1.auxBasis(l), O2.auxBasis(l), 
+			           //O1.auxBasis(l+1), O2.auxBasis(l+1), O1.auxBasis(l), O2.auxBasis(l), 
 			           Bnext);
 			B.clear();
 			B = Bnext;

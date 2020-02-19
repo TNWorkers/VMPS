@@ -29,41 +29,45 @@
  * \returns \p true if a match is found, \p false if not
  * \warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.
  */
-template<typename Symmetry, typename MatrixType>
-bool LAWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lmid,
-          size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc,
-          size_t k, vector<qarray<Symmetry::Nq> > qOp,
-          const vector<Biped<Symmetry,MatrixType> > &Abra, 
-          const vector<Biped<Symmetry,MatrixType> > &Aket, 
-          vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > &result,
-          const bool &IS_HAMILTONIAN = false)
+template<typename Symmetry, typename MatrixType, typename MatrixType2>
+bool LAWA (const qarray<Symmetry::Nq> &Lin, const qarray<Symmetry::Nq> &Lout, const qarray<Symmetry::Nq> &Lmid,
+          const qarray<Symmetry::Nq> &qloc1, const qarray<Symmetry::Nq> &qloc2,
+          const qarray<Symmetry::Nq> &qOp,
+          const Biped<Symmetry,MatrixType> &Abra,
+          const Biped<Symmetry,MatrixType> &Aket,
+           const Biped<Symmetry,MatrixType2> &W,
+          vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t,size_t> > &result)
 {
 	bool out = false;
 	result.clear();
 	
-	auto Routs = Symmetry::reduceSilent(Lin,qloc[s1]);
+	auto Routs = Symmetry::reduceSilent(Lin,qloc1);
 	for (const auto &Rout:Routs)
 	{
 		qarray2<Symmetry::Nq> cmp1 = {Lin, Rout};
-		auto qAbra = Abra[s1].dict.find(cmp1);
-		if (qAbra != Abra[s1].dict.end())
+		auto qAbra = Abra.dict.find(cmp1);
+		if (qAbra != Abra.dict.end())
 		{
-			auto Rins = Symmetry::reduceSilent(Lout,qloc[s2]);
+			auto Rins = Symmetry::reduceSilent(Lout,qloc2);
 			for (const auto &Rin:Rins)
 			{
 				qarray2<Symmetry::Nq> cmp2 = {Lout, Rin};
-				auto qAket = Aket[s2].dict.find(cmp2);
-				if (qAket != Aket[s2].dict.end())
+				auto qAket = Aket.dict.find(cmp2);
+				if (qAket != Aket.dict.end())
 				{
-					auto Rmids = Symmetry::reduceSilent(Lmid,qOp[k]);
+					auto Rmids = Symmetry::reduceSilent(Lmid,qOp);
 					for (const auto &Rmid:Rmids)
 					{
-						if (Symmetry::validate(qarray3<Symmetry::Nq>{Rin,Rmid,Rout}))
-						{
-							if (IS_HAMILTONIAN and find(qOp.begin(), qOp.end(), Rmid) == qOp.end()) {continue;}
-							result.push_back(make_tuple(qarray3<Symmetry::Nq>{Rin,Rout,Rmid}, qAbra->second, qAket->second));
-							out = true;
-						}
+                        qarray2<Symmetry::Nq> cmp3 = {Lmid,Rmid};
+                        auto qW = W.dict.find(cmp3);
+                        if (qW != W.dict.end())
+                        {
+                            if (Symmetry::validate(qarray3<Symmetry::Nq>{Rin,Rmid,Rout}))
+                            {
+                                result.push_back(make_tuple(qarray3<Symmetry::Nq>{Rin,Rout,Rmid}, qAbra->second, qAket->second, qW->second));
+                                out = true;
+                            }
+                        }
 					}
 				}
 			}
@@ -72,41 +76,45 @@ bool LAWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry:
 	return out;
 }
 
-template<typename Symmetry, typename MatrixType>
-bool AWAR (qarray<Symmetry::Nq> Rin, qarray<Symmetry::Nq> Rout, qarray<Symmetry::Nq> Rmid,
-          size_t s1, size_t s2, vector<qarray<Symmetry::Nq> > qloc,
-          size_t k, vector<qarray<Symmetry::Nq> > qOp,
-          const vector<Biped<Symmetry,MatrixType> > &Abra, 
-          const vector<Biped<Symmetry,MatrixType> > &Aket, 
-          vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > &result,
-          const bool &IS_HAMILTONIAN = false)
+template<typename Symmetry, typename MatrixType, typename MatrixType2>
+bool AWAR (const qarray<Symmetry::Nq> &Rin, const qarray<Symmetry::Nq> &Rout, const qarray<Symmetry::Nq> &Rmid,
+           const qarray<Symmetry::Nq> &qloc1, const qarray<Symmetry::Nq> &qloc2,
+           const qarray<Symmetry::Nq> &qOp,
+           const Biped<Symmetry,MatrixType> &Abra,
+           const Biped<Symmetry,MatrixType> &Aket,
+           const Biped<Symmetry,MatrixType2> &W,
+           vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t,size_t> > &result)
 {
 	bool out = false;
 	result.clear();
 	
-	auto Lins = Symmetry::reduceSilent(Rout,Symmetry::flip(qloc[s1]));
+	auto Lins = Symmetry::reduceSilent(Rout,Symmetry::flip(qloc1));
 	for (const auto& Lin : Lins)
 	{
 		qarray2<Symmetry::Nq> cmp1 = {Lin, Rout};
-		auto qAbra = Abra[s1].dict.find(cmp1);
-		if (qAbra != Abra[s1].dict.end())
+		auto qAbra = Abra.dict.find(cmp1);
+		if (qAbra != Abra.dict.end())
 		{
-			auto Louts = Symmetry::reduceSilent(Rin,Symmetry::flip(qloc[s2]));
+			auto Louts = Symmetry::reduceSilent(Rin,Symmetry::flip(qloc2));
 			for (const auto &Lout : Louts)
 			{
 				qarray2<Symmetry::Nq> cmp2 = {Lout, Rin};
-				auto qAket = Aket[s2].dict.find(cmp2);
-				if (qAket != Aket[s2].dict.end())
+				auto qAket = Aket.dict.find(cmp2);
+				if (qAket != Aket.dict.end())
 				{
-					auto Lmids = Symmetry::reduceSilent(Rmid,Symmetry::flip(qOp[k]));
+					auto Lmids = Symmetry::reduceSilent(Rmid,Symmetry::flip(qOp));
 					for (const auto &Lmid : Lmids)
 					{
-						if (Symmetry::validate(qarray3<Symmetry::Nq>{Lout,Lmid,Lin}))
-						{
-							if (IS_HAMILTONIAN and find(qOp.begin(), qOp.end(), Lmid) == qOp.end()) {continue;}
-							result.push_back(make_tuple(qarray3<Symmetry::Nq>{Lin,Lout,Lmid}, qAbra->second, qAket->second));
-							out = true;
-						}
+						qarray2<Symmetry::Nq> cmp3 = {Lmid,Rmid};
+                        auto qW = W.dict.find(cmp3);
+                        if (qW != W.dict.end())
+                        {
+                            if (Symmetry::validate(qarray3<Symmetry::Nq>{Lin,Lmid,Lout}))
+                            {
+                                result.push_back(make_tuple(qarray3<Symmetry::Nq>{Lin,Lout,Lmid}, qAbra->second, qAket->second, qW->second));
+                                out = true;
+                            }
+                        }
 					}
 				}
 			}
@@ -187,21 +195,19 @@ bool AAR (qarray<Symmetry::Nq> Rin,
 	return out;
 }
 
-template<typename Symmetry, typename MatrixType>
-bool AAWWAA (const qarray<Symmetry::Nq> &Lin, 
-             const qarray<Symmetry::Nq> &Lout, 
-             const qarray<Symmetry::Nq> &Lmid, 
-             const size_t &k12, 
-             const vector<qarray<Symmetry::Nq> > &qOp12, 
-             const size_t &k34, 
-             const vector<qarray<Symmetry::Nq> > &qOp34,
-             const size_t &s1s3, 
-             const qarray<Symmetry::Nq> &qmerge13, 
-             const size_t &s2s4, 
-             const qarray<Symmetry::Nq> &qmerge24, 
-             const vector<Biped<Symmetry,MatrixType> > &AA13, 
-             const vector<Biped<Symmetry,MatrixType> > &AA24, 
-             vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > &result)
+template<typename Symmetry, typename MatrixType, typename MpoMatrixType>
+bool AAWWAA (const qarray<Symmetry::Nq> &Lin,
+             const qarray<Symmetry::Nq> &Lout,
+             const qarray<Symmetry::Nq> &Lmid,
+             const qarray<Symmetry::Nq> &qOp12,
+             const qarray<Symmetry::Nq> &qOp34,
+             const qarray<Symmetry::Nq> &qmerge13,
+             const qarray<Symmetry::Nq> &qmerge24,
+             const Biped<Symmetry,MatrixType> &AA13,
+             const Biped<Symmetry,MatrixType> &AA24,
+             const Biped<Symmetry,MpoMatrixType> &W12,
+             const Biped<Symmetry,MpoMatrixType> &W34,
+             vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t, size_t, size_t> > &result)
 {
 	bool out = false;
 	result.clear();
@@ -209,44 +215,45 @@ bool AAWWAA (const qarray<Symmetry::Nq> &Lin,
 	auto qRouts = Symmetry::reduceSilent(Lin,  qmerge13);
 	auto qRins  = Symmetry::reduceSilent(Lout, qmerge24);
 	
-	auto qWcandidates = Symmetry::reduceSilent(Lmid, qOp12[k12]);
-	vector<qarray<Symmetry::Nq> > qWs;
-	for (const auto &qW:qWcandidates)
-	{
-//		if (find(qOp12.begin(), qOp12.end(), qW) != qOp12.end())
-		{
-			qWs.push_back(qW);
-		}
-	}
+	auto qWs = Symmetry::reduceSilent(Lmid, qOp12);
 	
 	for (const auto &qRout:qRouts)
 	{
 		qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
-		auto q13 = AA13[s1s3].dict.find(cmp1);
+		auto q13 = AA13.dict.find(cmp1);
 		
-		if (q13 != AA13[s1s3].dict.end())
+		if (q13 != AA13.dict.end())
 		{
 			for (const auto &qRin:qRins)
 			{
 				qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
-				auto q24 = AA24[s2s4].dict.find(cmp2);
+				auto q24 = AA24.dict.find(cmp2);
 				
-				if (q24 != AA24[s2s4].dict.end())
+				if (q24 != AA24.dict.end())
 				{
 					for (const auto &qW:qWs)
 					{
-						auto qRmids = Symmetry::reduceSilent(qW, qOp34[k34]);
-						
-						for (const auto &qRmid:qRmids)
-						{
-							if (Symmetry::validate(qarray3<Symmetry::Nq>{qRin,qRmid,qRout}))
-//							and find(qOp34.begin(), qOp34.end(), qRmid) != qOp34.end())
-							{
-								result.push_back(make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, qW, q13->second, q24->second));
-								out = true;
-							}
-						}
-					}
+                        qarray2<Symmetry::Nq> cmp3 = {Lmid,qW};
+                        auto qW12 = W12.dict.find(cmp3);
+                        if(qW12 != W12.dict.end())
+                        {
+                            auto qRmids = Symmetry::reduceSilent(qW, qOp34);
+                            
+                            for (const auto &qRmid:qRmids)
+                            {
+                                qarray2<Symmetry::Nq> cmp4 = {qW,qRmid};
+                                auto qW34 = W34.dict.find(cmp4);
+                                if(qW34 != W34.dict.end())
+                                {
+                                    if (Symmetry::validate(qarray3<Symmetry::Nq>{qRin,qRmid,qRout}))
+                                    {
+                                        result.push_back(make_tuple(qarray3<Symmetry::Nq>{qRin,qRout,qRmid}, qW, q13->second, q24->second, qW12->second, qW34->second));
+                                        out = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
 				}
 			}
 		}
@@ -376,31 +383,41 @@ bool AAAA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout,
  * \returns \p true if a match is found, \p false if not
  * \warning When using this function to create the left block on the next site, one needs to swap \p Rin and \p Rout.
  */
-template<typename Symmetry, typename MatrixType>
+template<typename Symmetry, typename MatrixType, typename MpoMatrixType>
 bool AWWA (qarray<Symmetry::Nq> Lin, qarray<Symmetry::Nq> Lout, qarray<Symmetry::Nq> Lbot, qarray<Symmetry::Nq> Ltop, 
-          size_t s1, size_t s2, size_t s3, vector<qarray<Symmetry::Nq> > qloc,
-          size_t k1, vector<qarray<Symmetry::Nq> > qOpBot, size_t k2, vector<qarray<Symmetry::Nq> > qOpTop,
-          const vector<Biped<Symmetry,MatrixType> > &Abra, 
-          const vector<Biped<Symmetry,MatrixType> > &Aket, 
-          tuple<qarray4<Symmetry::Nq>,size_t,size_t> &result)
+           qarray<Symmetry::Nq>  qloc1, qarray<Symmetry::Nq>  qloc2, qarray<Symmetry::Nq>  qloc3,
+           qarray<Symmetry::Nq>  qOpBot, qarray<Symmetry::Nq>  qOpTop,
+           const Biped<Symmetry,MatrixType> &Abra,
+          const Biped<Symmetry,MatrixType> &Aket,
+           const Biped<Symmetry,MpoMatrixType> &Wbot,            const Biped<Symmetry,MpoMatrixType> &Wtop,
+          tuple<qarray4<Symmetry::Nq>,size_t,size_t, size_t, size_t> &result)
 {
-	qarray<Symmetry::Nq> qRout = Lin + qloc[s1];
+	qarray<Symmetry::Nq> qRout = Lin + qloc1;
 	qarray2<Symmetry::Nq> cmp1 = {Lin, qRout};
-	auto q1 = Abra[s1].dict.find(cmp1);
+	auto q1 = Abra.dict.find(cmp1);
 	
-	if (q1 != Abra[s1].dict.end())
+	if (q1 != Abra.dict.end())
 	{
-		qarray<Symmetry::Nq> qRin = Lout + qloc[s3];
+		qarray<Symmetry::Nq> qRin = Lout + qloc3;
 		qarray2<Symmetry::Nq> cmp2 = {Lout, qRin};
-		auto q2 = Aket[s3].dict.find(cmp2);
+		auto q2 = Aket.dict.find(cmp2);
 		
-		if (q2 != Aket[s3].dict.end())
+		if (q2 != Aket.dict.end())
 		{
-			qarray<Symmetry::Nq> qRbot = Lbot + qloc[s1] - qloc[s2];
-			qarray<Symmetry::Nq> qRtop = Ltop + qloc[s2] - qloc[s3];
-			
-			result = make_tuple(qarray4<Symmetry::Nq>{qRin,qRout,qRbot,qRtop}, q1->second, q2->second);
-			return true;
+			qarray<Symmetry::Nq> qRbot = Lbot + qloc1 - qloc2;
+			qarray<Symmetry::Nq> qRtop = Ltop + qloc2 - qloc3;
+            qarray2<Symmetry::Nq> cmp3 = {Lbot,qRbot};
+            auto qWbot = Wbot.dict.find(cmp3);
+            if(qWbot != Wbot.dict.end())
+            {
+                qarray2<Symmetry::Nq> cmp4 = {Ltop,qRtop};
+                auto qWtop = Wtop.dict.find(cmp4);
+                if(qWtop != Wtop.dict.end())
+                {
+                    result = make_tuple(qarray4<Symmetry::Nq>{qRin,qRout,qRbot,qRtop}, q1->second, q2->second, qWbot->second, qWtop->second);
+                    return true;
+                }
+            }
 		}
 	}
 	return false;
@@ -467,21 +484,21 @@ void updateInset (const std::vector<std::array<typename Symmetry::qType,3> > &in
 
 /**Prepares a PivotMatrix by filling PivotMatrix::qlhs and PivotMatrix::qrhs with the corresponding subspace indices.
 Uses OpenMP.*/
-template<typename Symmetry, typename Scalar, typename MpoScalar>
+template<typename Symmetry, typename Scalar, typename MpoMatrixType>
 void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > &L, 
                              const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-                             const vector<vector<vector<Eigen::SparseMatrix<MpoScalar> > > > &W, 
+                             const vector<vector<vector<Biped<Symmetry,MpoMatrixType> > > > &W,
                              const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
                              const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > &R, 
                              const vector<qarray<Symmetry::Nq> > &qloc,
                              const vector<qarray<Symmetry::Nq> > &qOp, 
                              vector<std::array<size_t,2> > &qlhs, 
-                             vector<vector<std::array<size_t,5> > > &qrhs,
+                             vector<vector<std::array<size_t,6> > > &qrhs,
                              vector<vector<Scalar> > &factor_cgcs)
 {
 //	Heff.W = W;
 	
-	unordered_map<std::array<size_t,2>, std::pair<vector<std::array<size_t,5> >, vector<Scalar> > > lookup;
+	unordered_map<std::array<size_t,2>, std::pair<vector<std::array<size_t,6> >, vector<Scalar> > > lookup;
 	std::array<typename Symmetry::qType,3> qCheck;
 	Scalar factor_cgc;
 	
@@ -500,8 +517,8 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 		
 		for (size_t qL=0; qL<L.dim; ++qL)
 		{
-			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t> > ix;
-			bool FOUND_MATCH = LAWA(L.in(qL), L.out(qL), L.mid(qL), s1,s2, qloc, k, qOp, Abra, Aket, ix);
+			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t, size_t> > ix;
+			bool FOUND_MATCH = LAWA(L.in(qL),  L.out(qL), L.mid(qL), qloc[s1], qloc[s2], qOp[k], Abra[s1], Aket[s2], W[s1][s2][k], ix);
 			
 			if (FOUND_MATCH == true)
 			{
@@ -514,9 +531,10 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 					if (qR != R.dict.end())
 					{
 						bool ALL_BLOCKS_ARE_EMPTY = true;
-						
-						for (int r=0; r<W[s1][s2][k].outerSize(); ++r)
-						for (typename Eigen::SparseMatrix<MpoScalar>::InnerIterator iW(W[s1][s2][k],r); iW; ++iW)
+                        auto qW = get<3>(ix[n]);
+
+						for (int r=0; r<W[s1][s2][k].block[qW].outerSize(); ++r)
+						for (typename MpoMatrixType::InnerIterator iW(W[s1][s2][k].block[qW],r); iW; ++iW)
 						{
 							if (L.block[qL][iW.row()][0].size() != 0 and 
 							    R.block[qR->second][iW.col()][0].size() != 0)
@@ -540,7 +558,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 							if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 							
 							std::array<size_t,2> key = {s1, get<1>(ix[n])};
-							std::array<size_t,5> val = {s2, get<2>(ix[n]), qL, qR->second, k};
+							std::array<size_t,6> val = {s2, get<2>(ix[n]), qL, qR->second, k, qW};
 							#ifndef DMRG_DONT_USE_OPENMP
 							#pragma omp critical
 							#endif
@@ -572,33 +590,33 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 }
 
 /**Prepares a PivotMatrix2 by filling PivotMatrix::qlhs and PivotMatrix::qrhs with the corresponding subspace indices.*/
-template<typename Symmetry, typename Scalar, typename MpoScalar>
+template<typename Symmetry, typename Scalar, typename MpoMatrixType>
 void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > &L, 
                              const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-                             const vector<vector<vector<Eigen::SparseMatrix<MpoScalar> > > > &W12, 
-                             const vector<vector<vector<Eigen::SparseMatrix<MpoScalar> > > > &W34, 
+                             const vector<vector<vector<Biped<Symmetry,MpoMatrixType> > > > &W12,
+                             const vector<vector<vector<Biped<Symmetry,MpoMatrixType> > > > &W34,
                              const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
                              const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > &R, 
                              const vector<qarray<Symmetry::Nq> > &qloc12,
                              const vector<qarray<Symmetry::Nq> > &qloc34,
                              const vector<qarray<Symmetry::Nq> > &qOp12,
                              const vector<qarray<Symmetry::Nq> > &qOp34,
-                             const vector<TwoSiteData<Symmetry,MpoScalar> > &TSD, 
+                             const vector<TwoSiteData<Symmetry,Scalar> > &TSD,
                              vector<std::array<size_t,2> > &qlhs, 
-                             vector<vector<std::array<size_t,10> > > &qrhs,
+                             vector<vector<std::array<size_t,12> > > &qrhs,
                              vector<vector<Scalar> > &factor_cgcs)
 {
 	unordered_map<std::array<size_t,2>, 
-	              std::pair<vector<std::array<size_t,10> >, vector<Scalar> > > lookup;
+	              std::pair<vector<std::array<size_t,12> >, vector<Scalar> > > lookup;
 	Scalar factor_cgc;
 	for (const auto &tsd:TSD)
 	for (size_t qL=0; qL<L.dim; ++qL)
 	{
-		vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > ixs;
+		vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t, size_t, size_t> > ixs;
 		bool FOUND_MATCH = AAWWAA(L.in(qL), L.out(qL), L.mid(qL), 
-		                          tsd.k12, qOp12, tsd.k34, qOp34,
-		                          tsd.s1s3, tsd.qmerge13, tsd.s2s4, tsd.qmerge24,
-		                          Abra, Aket, ixs);
+		                          qOp12[tsd.k12], qOp34[tsd.k34],
+		                          tsd.qmerge13, tsd.qmerge24,
+		                          Abra[tsd.s1s3], Aket[tsd.s2s4], W12[tsd.s1][tsd.s2][tsd.k12], W34[tsd.s3][tsd.s4][tsd.k34], ixs);
 		
 		if (FOUND_MATCH)
 		{
@@ -608,6 +626,8 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 				auto qW     = get<1>(ix);
 				size_t qA13 = get<2>(ix);
 				size_t qA24 = get<3>(ix);
+                size_t qW12 = get<4>(ix);
+                size_t qW34 = get<5>(ix);
 				
 				// multiplication of Op12, Op34 in the auxiliary space
 				Scalar factor_cgc6 = (Symmetry::NON_ABELIAN)? 
@@ -634,8 +654,8 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 					                     :1.;
 
 					std::array<size_t,2>  key = {static_cast<size_t>(tsd.s1s3), qA13};
-					std::array<size_t,10> val = {static_cast<size_t>(tsd.s2s4), qA24, qL, qR->second, 
-					                             tsd.s1, tsd.s2, tsd.k12, tsd.s3, tsd.s4, tsd.k34};
+					std::array<size_t,12> val = {static_cast<size_t>(tsd.s2s4), qA24, qL, qR->second,
+					                             tsd.s1, tsd.s2, tsd.k12, qW12, tsd.s3, tsd.s4, tsd.k34, qW34};
 					lookup[key].first.push_back(val);
 					lookup[key].second.push_back(factor_cgc6 * tsd.cgc9 * factor_cgcHPsi);
 				}
@@ -660,11 +680,11 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 }
 
 /**Prepares a PivotMatrix2 by filling PivotMatrix::qlhs and PivotMatrix::qrhs with the corresponding subspace indices.*/
-template<typename Symmetry, typename Scalar, typename MpoScalar>
+template<typename Symmetry, typename Scalar, typename MpoMatrixType>
 void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > &L, 
                              const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Abra, 
-                             const vector<vector<vector<Eigen::SparseMatrix<MpoScalar> > > > &W12, 
-                             const vector<vector<vector<Eigen::SparseMatrix<MpoScalar> > > > &W34, 
+                             const vector<vector<vector<Biped<Symmetry,MpoMatrixType> > > > &W12,
+                             const vector<vector<vector<Biped<Symmetry,MpoMatrixType> > > > &W34,
                              const vector<Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > > &Aket, 
                              const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > &R, 
                              const vector<qarray<Symmetry::Nq> > &qloc12,
@@ -672,11 +692,11 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
                              const vector<qarray<Symmetry::Nq> > &qOp12,
                              const vector<qarray<Symmetry::Nq> > &qOp34,
                              vector<std::array<size_t,2> > &qlhs, 
-                             vector<vector<std::array<size_t,10> > > &qrhs,
+                             vector<vector<std::array<size_t,12> > > &qrhs,
                              vector<vector<Scalar> > &factor_cgcs)
 {
 	unordered_map<std::array<size_t,2>, 
-	              std::pair<vector<std::array<size_t,10> >, vector<Scalar> > > lookup;
+	              std::pair<vector<std::array<size_t,12> >, vector<Scalar> > > lookup;
 	
 	auto tensor_basis = Symmetry::tensorProd(qloc12, qloc34);
 	
@@ -736,11 +756,11 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 					
 					for (size_t qL=0; qL<L.dim; ++qL)
 					{
-						vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t> > ixs;
-						bool FOUND_MATCH = AAWWAA(L.in(qL), L.out(qL), L.mid(qL), 
-						                          k12, qOp12, k34, qOp34,
-						                          s1s3, qmerge13, s2s4, qmerge24,
-						                          Abra, Aket, ixs);
+						vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t, size_t, size_t> > ixs;
+						bool FOUND_MATCH = AAWWAA(L.in(qL), L.out(qL), L.mid(qL),
+                                                  qOp12[k12], qOp34[k34],
+                                                  qmerge13, qmerge24,
+                                                  Abra[s1s3], Aket[s2s4], W12[s1][s2][k12], W34[s3][s4][k34], ixs);
 						
 						if (FOUND_MATCH)
 						{
@@ -750,6 +770,8 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 								auto qW     = get<1>(ix);
 								size_t qA13 = get<2>(ix);
 								size_t qA24 = get<3>(ix);
+                                size_t qW12 = get<4>(ix);
+                                size_t qW34 = get<5>(ix);
 								
 								// multiplication of Op12, Op34 in the auxiliary space
 								Scalar factor_cgc6 = (Symmetry::NON_ABELIAN)? 
@@ -778,8 +800,8 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 									                     :1.;
 									
 									std::array<size_t,2>  key = {static_cast<size_t>(s1s3), qA13};
-									std::array<size_t,10> val = {static_cast<size_t>(s2s4), qA24, qL, qR->second, 
-									                             s1, s2, k12, s3, s4, k34};
+									std::array<size_t,12> val = {static_cast<size_t>(s2s4), qA24, qL, qR->second,
+									                             s1, s2, k12, qW12, s3, s4, k34, qW34};
 									lookup[key].first.push_back(val);
 									lookup[key].second.push_back(factor_cgc6 * factor_cgc9 * factor_cgcHPsi);
 								}

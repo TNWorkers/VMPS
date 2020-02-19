@@ -2733,19 +2733,15 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 	{
 		std::vector<Biped<Symmetry,MatrixType> > P(qloc[loc].size());
 		
-		set<qarray<Nq> > Rmid_set;
+		/*set<qarray<Nq> > Rmid_set;
 		for (size_t qR=0; qR<H->R.size(); ++qR)
 		{
 			Rmid_set.insert(H->R.mid(qR));
-		}
+		}*/
 		
-		Qbasis<Symmetry> QbasisR(Rmid_set, H->W[0][0][0].rows());
-		Qbasis<Symmetry> QbasisOp;
-		for (size_t k=0; k<H->qOp.size(); ++k)
-		{
-			QbasisOp.push_back(H->qOp[k],1);
-		}
-		auto QbasisW = QbasisR.add(QbasisOp);
+		//Qbasis<Symmetry> QbasisR(Rmid_set, H->W[0][0][0][0].rows());
+        Qbasis<Symmetry> QbasisW;
+        QbasisW.pullData(H->W,0);
 		auto QbasisP = inbase[loc].combine(QbasisW);
 		
 		// create tensor P
@@ -2783,8 +2779,10 @@ enrich_left (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 
 								if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 								
-								for (int spInd=0; spInd<H->W[s1][s2][k].outerSize(); ++spInd)
-								for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][k],spInd); iW; ++iW)
+                                auto dict_entry = H->W[s1][s2][k].dict.find({qW,H->R.mid(qR)});
+                                if(dict_entry == H->W[s1][s2][k].dict.end()) continue;
+								for (int spInd=0; spInd<H->W[s1][s2][k].block[dict_entry->second].outerSize(); ++spInd)
+								for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][k].block[dict_entry->second],spInd); iW; ++iW)
 								{
 									size_t a = iW.row();
 									size_t b = iW.col();
@@ -2946,19 +2944,16 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 	{
 		std::vector<Biped<Symmetry,MatrixType> > P(qloc[loc].size());
 		
-		set<qarray<Nq> > Lmid_set;
+		/*set<qarray<Nq> > Lmid_set;
 		for (size_t qL=0; qL<H->L.size(); ++qL)
 		{
 			Lmid_set.insert(H->L.mid(qL));
 		}
 		
-		Qbasis<Symmetry> QbasisL(Lmid_set, H->W[0][0][0].cols());
-		Qbasis<Symmetry> QbasisOp;
-		for (size_t k=0; k<H->qOp.size(); ++k)
-		{
-			QbasisOp.push_back(H->qOp[k],1);
-		}
-		auto QbasisW = QbasisL.add(QbasisOp);
+		Qbasis<Symmetry> QbasisL(Lmid_set, H->W[0][0][0].cols());*/
+
+        Qbasis<Symmetry> QbasisW;
+        QbasisW.pullData(H->W, 1);
 		auto QbasisP = outbase[loc].combine(QbasisW);
 		
 		// create tensor P
@@ -2996,8 +2991,10 @@ enrich_right (size_t loc, PivotMatrix1<Symmetry,Scalar,Scalar> *H)
 
 								if (std::abs(factor_cgc) < std::abs(mynumeric_limits<Scalar>::epsilon())) {continue;}
 								
-								for (int spInd=0; spInd<H->W[s1][s2][k].outerSize(); ++spInd)
-								for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][k],spInd); iW; ++iW)
+                                auto dict_entry = H->W[s1][s2][k].dict.find({H->L.mid(qL),qW});
+                                if(dict_entry == H->W[s1][s2][k].dict.end()) continue;
+								for (int spInd=0; spInd<H->W[s1][s2][k].block[dict_entry->second].outerSize(); ++spInd)
+								for (typename SparseMatrix<Scalar>::InnerIterator iW(H->W[s1][s2][k].block[dict_entry->second],spInd); iW; ++iW)
 								{
 									size_t a = iW.row();
 									size_t b = iW.col();

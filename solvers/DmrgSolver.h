@@ -235,7 +235,7 @@ memory (MEMUNIT memunit) const
 		for (size_t s2=0; s2<Heff[l].W[s1].size(); ++s2)
 		for (size_t k=0; k<Heff[l].W[s1][s2].size(); ++k)
 		{
-			res += calc_memory(Heff[l].W[s1][s2][k], memunit);
+			res += Heff[l].W[s1][s2][k].memory(memunit);
 		}
 	}
 	return res;
@@ -292,7 +292,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		Vout.state.setRandom();
 		
 		// adjust corners for IBC
-		if (H.GOT_SEMIOPEN_LEFT or !H.GOT_OPEN_BC)
+		if (H.GOT_SEMIOPEN_LEFT or !H.get_boundary_condition())
 		{
 			for (size_t s=0; s<Vout.state.qloc[N_sites-1].size(); ++s)
 			for (size_t q=0; q<Vout.state.A[N_sites-1][s].dim; ++q)
@@ -314,7 +314,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 			Vout.state.update_inbase();
 			Vout.state.update_outbase();
 		}
-		if (H.GOT_SEMIOPEN_RIGHT or !H.GOT_OPEN_BC)
+		if (H.GOT_SEMIOPEN_RIGHT or !H.get_boundary_condition())
 		{
 			for (size_t s=0; s<Vout.state.qloc[0].size(); ++s)
 			for (size_t q=0; q<Vout.state.A[0][s].dim; ++q)
@@ -468,12 +468,12 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		}
 		else
 		{
-//			assert(Rtmp.dim == 1 and 
-//			       Rtmp.block[0][0][0].rows() == 1 and
-//			       Rtmp.block[0][0][0].cols() == 1 and
-//			       "Result of contraction <ψ|H|ψ> in DmrgSolver::prepare is not a scalar!");
-//			Eold = isReal(Rtmp.block[0][0][0](0,0));
-			Eold = 0;
+			assert(Rtmp.dim == 1 and
+            Rtmp.block[0][0][0].rows() == 1 and
+			       Rtmp.block[0][0][0].cols() == 1 and
+			       "Result of contraction <ψ|H|ψ> in DmrgSolver::prepare is not a scalar!");
+			Eold = isReal(Rtmp.block[0][0][0](0,0));
+			//Eold = 0;
 		}
 	}
 	else

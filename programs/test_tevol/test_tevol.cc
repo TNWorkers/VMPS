@@ -32,8 +32,8 @@ Logger lout;
 //#include "solvers/MpsCompressor.h"
 
 #include "models/HeisenbergSU2.h"
-#include "models/HeisenbergU1XXZ.h"
-#include "models/HeisenbergXYZ.h"
+//include "models/HeisenbergU1XXZ.h"
+//include "models/HeisenbergXYZ.h"
 
 bool CALC_DYNAMICS;
 int M, S;
@@ -86,7 +86,7 @@ int main (int argc, char* argv[])
 	#endif
 	
 	//--------U(1)---------
-	lout << termcolor::red << endl << "--------U(1)---------" << termcolor::reset << endl << endl;
+	/*lout << termcolor::red << endl << "--------U(1)---------" << termcolor::reset << endl << endl;
 	
 	Stopwatch<> Watch_U1;
 	VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly}});
@@ -136,9 +136,12 @@ int main (int argc, char* argv[])
 		if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP_U1.info() << endl << Psi_U1.info() << endl;}
 		t += dt;
 	}
-	FilerU1.close();
+	FilerU1.close();*/
 	
 	// --------SU(2)---------
+    
+    double t = 0;
+    std::string tinfo = "";
 	lout << termcolor::red << endl << "--------SU(2)---------" << termcolor::reset << endl << endl;
 	
 	Stopwatch<> Watch_SU2;
@@ -195,5 +198,5 @@ int main (int argc, char* argv[])
 	}
 	FilerSU2.close();
 	
-	cout << abs(resU1-resSU2) << endl;
+	//cout << abs(resU1-resSU2) << endl;
 }
