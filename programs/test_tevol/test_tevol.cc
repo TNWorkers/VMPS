@@ -32,6 +32,7 @@ Logger lout;
 //#include "solvers/MpsCompressor.h"
 
 #include "models/HeisenbergSU2.h"
+
 //include "models/HeisenbergU1XXZ.h"
 //include "models/HeisenbergXYZ.h"
 

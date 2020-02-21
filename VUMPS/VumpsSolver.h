@@ -167,7 +167,7 @@ public:
 	void build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AL,
 	               const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AR,
 	               const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &C,
-	               const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
+	               const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<Scalar> > > > > > &W, 
 	               const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
 	               const vector<vector<qarray<Symmetry::Nq> > > &qOp,
 	               Tripod<Symmetry,MatrixType> &L,
@@ -175,14 +175,14 @@ public:
 	
 	void build_R (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AR,
 	              const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Cintercell,
-	              const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
+				  const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<Scalar> > > > > > &W, 
 	              const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
 	              const vector<vector<qarray<Symmetry::Nq> > > &qOp,
 	              Tripod<Symmetry,MatrixType> &R);
 	
 	void build_L (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AL,
 	              const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Cintercell,
-	              const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
+				  const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<Scalar> > > > > > &W, 
 	              const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
 	              const vector<vector<qarray<Symmetry::Nq> > > &qOp,
 	              Tripod<Symmetry,MatrixType> &L);
@@ -255,8 +255,12 @@ public:
 	/**stored 2-site Hamiltonian*/
 	TwoSiteHamiltonian h2site;
 	
-	/**bond dimension per subspace, bond dimension per site, Mpo bond dimension*/
-	size_t D, M, dW;
+	/**bond dimension per subspace, bond dimension per site, Mpo bond dimension, Mpo bond dimension in the singlet sector*/
+	size_t D, M, dW, dW_singlet;
+
+	/**Basis order of the Mpo auxiliary basis which leads to a triangular Mpo form. The basis order is computed in MpoTerms and is only stored here.*/
+	vector<pair<qarray<Symmetry::Nq>,size_t> > basis_order;
+	std::unordered_map<pair<qarray<Symmetry::Nq>,size_t>,size_t> basis_order_map;
 	
 	/**left and right error (eq. 18) and old errors from previous half-sweep*/
 	double eL, eR, eoldR, eoldL;
@@ -279,7 +283,7 @@ public:
 	                   const vector<vector<Biped<Symmetry,MatrixType> > > &A, 
 	                   const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Y_LR, 
 	                   const Biped<Symmetry,MatrixType> &LReigen, 
-	                   const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
+	                   const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<Scalar> > > > > > &W, 
 	                   const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
 	                   const vector<vector<qarray<Symmetry::Nq> > > &qOp,
 	                   Scalar LRdotY, 
@@ -601,9 +605,20 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	
 	// effective Hamiltonian
 	D = H.locBasis(0).size();
-	assert(H.auxrows(0) == H.auxcols(N_sites-1) and "You've inserted a strange MPO not consistent with the unit cell");
-	dW = H.auxrows(0);
-	
+	assert(H.inBasis(0) == H.outBasis(N_sites-1) and "You've inserted a strange MPO not consistent with the unit cell");
+	dW = H.inBasis(0).size();
+	cout << "dW=" << dW << endl;
+	dW_singlet = H.inBasis(0).inner_dim(Symmetry::qvacuum());
+	cout << "dW_singlet=" << dW_singlet << endl;
+	//Basis order of the Mpo auxiliary basis which leads to a triangular Mpo form
+	basis_order = H.VUMPS_base_order();
+	cout << "basis_order="; for (const auto b:basis_order) {cout << b.first << "," << b.second << "\t";} cout << endl;
+	for (size_t i=0; i<basis_order.size(); ++i)
+	{
+		basis_order_map.insert({basis_order[i],i});
+	}
+	cout << "basis_order_map=" << endl;
+	for (const auto [key,val]:basis_order_map) {cout << "(" << key.first << "," << key.second << ")" << "->" << val << endl;}
 	// resize Vout
 	if (!USE_STATE)
 	{
@@ -731,8 +746,8 @@ prepare_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout,
 	// general
 	N_sites = 1;
 	N_iterations = 0;
-	assert(H.auxrows(0) == H.auxcols(N_sites-1) and "You insert a strange MPO not consistent with the unit cell");
-	dW = H.auxrows(0);
+	assert(H.inBasis(0) == H.outBasis(N_sites-1) and "You insert a strange MPO not consistent with the unit cell");
+	dW = H.inBasis(0).size();
 	
 	// resize Vout
 	if (!USE_STATE)
@@ -771,7 +786,7 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 build_L (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AL,
          const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Cintercell,
-         const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
+		 const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<Scalar> > > > > > &W, 
          const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
          const vector<vector<qarray<Symmetry::Nq> > > &qOp,
          Tripod<Symmetry,MatrixType> &L)
@@ -791,23 +806,23 @@ build_L (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > >
 	Qbasis<Symmetry> inbase; inbase.pullData(AL[0],0);
 	Qbasis<Symmetry> outbase; outbase.pullData(AL[0],0);
 	
-	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(dW, 1, inbase);
-	L.insert(dW-1,IdL);
+	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(dW_singlet, 1, inbase);
+	L.insert(basis_order[dW-1],IdL);
 	
 	for (int b=dW-2; b>=0; --b)
 	{
-		YL[b] = make_YL(b, L, AL, W, PROP::HAMILTONIAN, AL, qloc, qOp);
+		YL[b] = make_YL(b, L, AL, W, PROP::HAMILTONIAN, AL, qloc, qOp, basis_order_map);
 		
 		if (b > 0)
 		{
-			L.insert(b,YL[b]);
+			L.insert(basis_order[b],YL[b]);
 		}
 		else
 		{
 			Tripod<Symmetry,MatrixType> Ltmp;
-			Tripod<Symmetry,MatrixType> Ltmp_guess; Ltmp_guess.insert(b,Lguess);
-			solve_linear(VMPS::DIRECTION::LEFT, b, AL, YL[b], Reigen, W, qloc, qOp, contract_LR(b,YL[b],Reigen), Ltmp_guess, Ltmp);
-			L.insert(b,Ltmp);
+			Tripod<Symmetry,MatrixType> Ltmp_guess; Ltmp_guess.insert(basis_order[b],Lguess);
+			solve_linear(VMPS::DIRECTION::LEFT, b, AL, YL[b], Reigen, W, qloc, qOp, contract_LR(basis_order[b],YL[b],Reigen), Ltmp_guess, Ltmp);
+			L.insert(basis_order[b],Ltmp);
 		}
 	}
 }
@@ -816,7 +831,7 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 build_R (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AR,
          const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Cintercell,
-         const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
+		 const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<Scalar> > > > > > &W, 
          const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
          const vector<vector<qarray<Symmetry::Nq> > > &qOp,
          Tripod<Symmetry,MatrixType> &R)
@@ -836,23 +851,23 @@ build_R (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > >
 	Qbasis<Symmetry> inbase; inbase.pullData(AR[N_sites-1],1);
 	Qbasis<Symmetry> outbase; outbase.pullData(AR[N_sites-1],1);
 	
-	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW, 1, outbase);
-	R.insert(0,IdR);
+	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW_singlet, 1, outbase);
+	R.insert(basis_order[0],IdR);
 	
 	for (int a=1; a<dW; ++a)
 	{
-		YR[a] = make_YR(a, R, AR, W, PROP::HAMILTONIAN, AR, qloc, qOp);
+		YR[a] = make_YR(a, R, AR, W, PROP::HAMILTONIAN, AR, qloc, qOp, basis_order_map);
 		
 		if (a < dW-1)
 		{
-			R.insert(a,YR[a]);
+			R.insert(basis_order[a],YR[a]);
 		}
 		else
 		{
 			Tripod<Symmetry,MatrixType> Rtmp;
-			Tripod<Symmetry,MatrixType> Rtmp_guess; Rtmp_guess.insert(a,Rguess);
-			solve_linear(VMPS::DIRECTION::RIGHT, a, AR, YR[a], Leigen, W, qloc, qOp, contract_LR(a,Leigen,YR[a]), Rtmp_guess, Rtmp);
-			R.insert(a,Rtmp);
+			Tripod<Symmetry,MatrixType> Rtmp_guess; Rtmp_guess.insert(basis_order[a],Rguess);
+			solve_linear(VMPS::DIRECTION::RIGHT, a, AR, YR[a], Leigen, W, qloc, qOp, contract_LR(basis_order[a],Leigen,YR[a]), Rtmp_guess, Rtmp);
+			R.insert(basis_order[a],Rtmp);
 		}
 	}
 }
@@ -862,7 +877,7 @@ void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AL,
           const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AR,
           const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &C,
-          const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
+          const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<Scalar> > > > > > &W, 
           const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
           const vector<vector<qarray<Symmetry::Nq> > > &qOp,
           Tripod<Symmetry,MatrixType> &L,
@@ -889,11 +904,11 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	Qbasis<Symmetry> outbase;
 	outbase.pullData(AL[0],0);
 	
-	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(dW, 1, inbase);
-	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW, 1, outbase);
-	L.insert(dW-1, IdL);
-	R.insert(0,    IdR);
-	
+	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(dW_singlet, 1, inbase); //Check correct setIdentity.
+	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW_singlet, 1, outbase);
+	L.insert(basis_order[dW-1], IdL);
+	R.insert(basis_order[0],    IdR);
+	// cout << "b=" << dW-1 << endl << L.print(true) << endl;
 	#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 	#pragma omp parallel sections
 	#endif
@@ -905,26 +920,27 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 		{
 			for (int b=dW-2; b>=0; --b)
 			{
-				YL[b] = make_YL(b, L, AL, W, PROP::HAMILTONIAN, AL, qloc, qOp);
-				
+				YL[b] = make_YL(b, L, AL, W, PROP::HAMILTONIAN, AL, qloc, qOp, basis_order_map);
+				// cout << "b=" << b << ", Yl=" << endl << YL[b].print(true) << endl;
 				if (b > 0)
 				{
-					L.insert(b,YL[b]);
+					L.insert(basis_order[b],YL[b]);
 				}
 				else
 				{
 					Tripod<Symmetry,MatrixType> Ltmp;
-					Tripod<Symmetry,MatrixType> Ltmp_guess; Ltmp_guess.insert(b,Lguess);
-					solve_linear(VMPS::DIRECTION::LEFT, b, AL, YL[b], Reigen, W, qloc, qOp, contract_LR(b,YL[b],Reigen), Ltmp_guess, Ltmp);
-					L.insert(b,Ltmp);
-					
+					// cout << "b=" << b << ", blocked=" << basis_order[b].first << "," << basis_order[b].second << endl << Lguess.print() << endl; 
+					Tripod<Symmetry,MatrixType> Ltmp_guess; Ltmp_guess.insert(basis_order[b],Lguess);
+					solve_linear(VMPS::DIRECTION::LEFT, b, AL, YL[b], Reigen, W, qloc, qOp, contract_LR(basis_order[b],YL[b],Reigen), Ltmp_guess, Ltmp);
+					L.insert(basis_order[b],Ltmp);
+					// cout << "b=" << b << endl << L.print(true) << endl;
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and b == 0)
 					{
 						#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 						#pragma omp critical
 						#endif
 						{
-							cout << "<L[0]|R>=" << contract_LR(0,Ltmp,Reigen) << endl;
+							cout << "<L[0]|R>=" << contract_LR(basis_order[0],Ltmp,Reigen) << endl;
 						}
 					}
 				}
@@ -938,18 +954,18 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 		{
 			for (int a=1; a<dW; ++a)
 			{
-				YR[a] = make_YR(a, R, AR, W, PROP::HAMILTONIAN, AR, qloc, qOp);
+				YR[a] = make_YR(a, R, AR, W, PROP::HAMILTONIAN, AR, qloc, qOp, basis_order_map);
 				
 				if (a < dW-1)
 				{
-					R.insert(a,YR[a]);
+					R.insert(basis_order[a],YR[a]);
 				}
 				else
 				{
 					Tripod<Symmetry,MatrixType> Rtmp;
-					Tripod<Symmetry,MatrixType> Rtmp_guess; Rtmp_guess.insert(a,Rguess);
-					solve_linear(VMPS::DIRECTION::RIGHT, a, AR, YR[a], Leigen, W, qloc, qOp, contract_LR(a,Leigen,YR[a]), Rtmp_guess, Rtmp);
-					R.insert(a,Rtmp);
+					Tripod<Symmetry,MatrixType> Rtmp_guess; Rtmp_guess.insert(basis_order[a],Rguess);
+					solve_linear(VMPS::DIRECTION::RIGHT, a, AR, YR[a], Leigen, W, qloc, qOp, contract_LR(basis_order[a],Leigen,YR[a]), Rtmp_guess, Rtmp);
+					R.insert(basis_order[a],Rtmp);
 					
 					if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and a == dW-1)
 					{
@@ -957,7 +973,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 						#pragma omp critical
 						#endif
 						{
-							cout << "<L|R[dW-1]>=" << contract_LR(dW-1,Leigen,Rtmp) << endl;
+							cout << "<L|R[dW-1]>=" << contract_LR(basis_order[dW-1],Leigen,Rtmp) << endl;
 						}
 					}
 				}
@@ -972,6 +988,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	
 	YLlast = YL[0];
 	YRfrst = YR[dW-1];
+	// assert(false);
 	
 //	Tripod<Symmetry,MatrixType> Lcheck;
 //	Tripod<Symmetry,MatrixType> Ltmp1=L;
@@ -1018,9 +1035,9 @@ build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > 
 	
 	// Make environment for the unit cell
 	build_LR (Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::R], Vout.state.C, 
-	          H.W, H.qloc, H.qOp, 
+	          H.W, H.locBasis(), H.opBasis(), 
 	          HeffA[0].L, HeffA[N_sites-1].R);
-	
+
 	// Make environment for each site of the unit cell
 	#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 	#pragma omp parallel sections
@@ -1213,14 +1230,14 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 			#endif
 			{
 				Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
-				eL = std::real(contract_LR(0, YLlast, Reigen)) / H.volume(); //static_cast<Scalar>(H.volume());
+				eL = std::real(contract_LR(basis_order[0], YLlast, Reigen)) / H.volume(); //static_cast<Scalar>(H.volume());
 			}
 			#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 			#pragma omp section
 			#endif
 			{
 				Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
-				eR = std::real(contract_LR(dW-1, Leigen, YRfrst)) / H.volume(); //static_cast<Scalar>(H.volume());
+				eR = std::real(contract_LR(basis_order[dW-1], Leigen, YRfrst)) / H.volume(); //static_cast<Scalar>(H.volume());
 			}
 		}
 		Vout.energy = min(eL,eR);
@@ -1427,8 +1444,8 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	// Calculate energies
 	Biped<Symmetry,MatrixType> Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
 	Biped<Symmetry,MatrixType> Leigen = Vout.state.C[N_sites-1].adjoint().contract(Vout.state.C[N_sites-1]);
-	eL = std::real(contract_LR(0, YLlast, Reigen)) / H.volume(); //static_cast<Scalar>(H.volume());
-	eR = std::real(contract_LR(dW-1, Leigen, YRfrst)) / H.volume(); //static_cast<Scalar>(H.volume());
+	eL = std::real(contract_LR(basis_order[0], YLlast, Reigen)) / H.volume(); //static_cast<Scalar>(H.volume());
+	eR = std::real(contract_LR(basis_order[dW-1], Leigen, YRfrst)) / H.volume(); //static_cast<Scalar>(H.volume());
 	
 	Vout.energy = min(eL,eR);
 	
@@ -1602,9 +1619,9 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 	
 	if (HeffA[0].W.size() == 0)
 	{
-		contract_WW<Symmetry,Scalar> (H.W_at(0), H.locBasis(0), H.opBasis(0), 
-		                              H.W_at(1), H.locBasis(1), H.opBasis(1),
-		                              HeffA[0].W, HeffA[0].qloc, HeffA[0].qOp);
+		// contract_WW<Symmetry,Scalar> (H.W_at(0), H.locBasis(0), H.opBasis(0), 
+		//                               H.W_at(1), H.locBasis(1), H.opBasis(1),
+		//                               HeffA[0].W, HeffA[0].qloc, HeffA[0].qOp);
 	}
 	
 	Eigenstate<PivotVector<Symmetry,Scalar> > g;
@@ -1828,15 +1845,15 @@ solve_linear (VMPS::DIRECTION::OPTION DIR,
               const vector<vector<Biped<Symmetry,MatrixType> > > &A, 
               const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Y_LR, 
               const Biped<Symmetry,MatrixType> &LReigen, 
-              const vector<vector<vector<vector<SparseMatrix<Scalar> > > > > &W, 
+              const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<Scalar> > > > > > &W, 
               const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
               const vector<vector<qarray<Symmetry::Nq> > > &qOp,
               Scalar LRdotY,
               const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LRguess,  
               Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &LRres)
 {
-	MpoTransferMatrix<Symmetry,Scalar> T(DIR, A, A, LReigen, W, qloc, qOp, ab);
-	MpoTransferVector<Symmetry,Scalar> bvec(Y_LR, ab, LRdotY); // right-hand site vector |Y_LR)-e*1
+	MpoTransferMatrix<Symmetry,Scalar> T(DIR, A, A, LReigen, W, qloc, qOp, ab, basis_order_map, basis_order);
+	MpoTransferVector<Symmetry,Scalar> bvec(Y_LR, basis_order[ab], LRdotY); // right-hand site vector |Y_LR)-e*1
 	
 	// Solve linear system
 	GMResSolver<MpoTransferMatrix<Symmetry,Scalar>,MpoTransferVector<Symmetry,Scalar> > Gimli;

@@ -42,7 +42,8 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
                  Tripod<Symmetry,MatrixType2> &Lnew,
                  bool RANDOMIZE = false,
-                 tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0))
+                 tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0),
+				 const std::unordered_map<pair<qarray<Symmetry::Nq>,size_t>,size_t> &basis_order_map = {})
 {
 	typename MpoMatrixType::Scalar factor_cgc;
 	Lnew.clear();
@@ -93,11 +94,11 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
 						
 						// 0 is the Hamiltonian block. Only singlet couplings are neccessary.
 						//if (b == 0 and IS_HAMILTONIAN and quple[2] != Symmetry::qvacuum()) {continue;}
-						
+						// if (MODE == TRIANGULAR) {cout << "before check: fixed_ab=" << fixed_ab << ", a=" << a << ", Lold.mid=" << Lold.mid(qL) << ", basis_number=" << basis_order_map.at(make_pair(Lold.mid(qL),a)) << endl;}
 						if (MODE == FULL or
-						   (MODE == TRIANGULAR and a>fixed_ab) or
-						   (MODE == FIXED_COLS and b==fixed_ab) or
-						   (MODE == FIXED_ROWS and a==fixed_ab)
+							(MODE == TRIANGULAR and basis_order_map.at(make_pair(Lold.mid(qL),a))>fixed_ab) or
+							(MODE == FIXED_COLS and basis_order_map.at(make_pair(quple[2],b))==fixed_ab) or
+							(MODE == FIXED_ROWS and basis_order_map.at(make_pair(Lold.mid(qL),a))==fixed_ab)
 						   )
 						{
 //							if (MODE == FIXED)
@@ -181,7 +182,8 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
                  Tripod<Symmetry,MatrixType2> &Rnew,
                  bool RANDOMIZE = false,
-                 tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0))
+                 tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0),
+				 const std::unordered_map<pair<qarray<Symmetry::Nq>,size_t>,size_t> &basis_order_map = {})
 {
 	typename MpoMatrixType::Scalar factor_cgc;
 	Rnew.clear();
@@ -235,9 +237,9 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
 						//if (a == W[s1][s2][k].block[qW].rows()-1 and IS_HAMILTONIAN and quple[2] != Symmetry::qvacuum()) {continue;}
 						
 						if (MODE == FULL or
-						   (MODE == TRIANGULAR and fixed_ab>b) or
-						   (MODE == FIXED_ROWS and a==fixed_ab) or
-						   (MODE == FIXED_COLS and b==fixed_ab)
+							(MODE == TRIANGULAR and fixed_ab>basis_order_map.at(make_pair(Rold.mid(qR),b))) or
+							(MODE == FIXED_ROWS and basis_order_map.at(make_pair(quple[2],a))==fixed_ab) or
+							(MODE == FIXED_COLS and basis_order_map.at(make_pair(Rold.mid(qR),b))==fixed_ab)
 						   )
 						{
 //							if (MODE == FIXED)
@@ -967,17 +969,16 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 }
 
 template<typename Symmetry, typename Scalar>
-Scalar contract_LR (size_t fixed_b, 
+Scalar contract_LR (pair<qarray<Symmetry::Nq>,size_t> fixed_b, 
                     const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
                     const Biped <Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R)
 {
 	Scalar res = 0;
-	
+	assert(fixed_b.first == Symmetry::qvacuum());
 	for (size_t qL=0; qL<L.dim; ++qL)
 	{
 		// Not necessarily vacuum for the structure factor, so this function cannot be used!
 		assert(L.out(qL) == L.in(qL) and "contract_LR(Tripod,Biped) error!");
-		
 		if (L.mid(qL) == Symmetry::qvacuum())
 		{
 			qarray2<Symmetry::Nq> quple = {L.out(qL), L.in(qL)};
@@ -985,10 +986,10 @@ Scalar contract_LR (size_t fixed_b,
 			
 			if (qR != R.dict.end())
 			{
-				if (L.block[qL][fixed_b][0].size() != 0 and
+				if (L.block[qL][fixed_b.second][0].size() != 0 and
 				    R.block[qR->second].size() != 0)
 				{
-					res += (L.block[qL][fixed_b][0] * R.block[qR->second]).trace() * Symmetry::coeff_dot(L.out(qL));
+					res += (L.block[qL][fixed_b.second][0] * R.block[qR->second]).trace() * Symmetry::coeff_dot(L.out(qL));
 				}
 			}
 		}
@@ -998,12 +999,12 @@ Scalar contract_LR (size_t fixed_b,
 }
 
 template<typename Symmetry, typename Scalar>
-Scalar contract_LR (size_t fixed_a, 
+Scalar contract_LR (pair<qarray<Symmetry::Nq>,size_t> fixed_a, 
                     const Biped <Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
                     const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R)
 {
 	Scalar res = 0;
-	
+	assert(fixed_a.first == Symmetry::qvacuum());
 	for (size_t qR=0; qR<R.dim; ++qR)
 	{
 		// Not necessarily vacuum for the structure factor, so this function cannot be used!
@@ -1016,10 +1017,10 @@ Scalar contract_LR (size_t fixed_a,
 			
 			if (qL != L.dict.end())
 			{
-				if (R.block[qR][fixed_a][0].size() != 0 and
+				if (R.block[qR][fixed_a.second][0].size() != 0 and
 				    L.block[qL->second].size() != 0)
 				{
-					res += (L.block[qL->second] * R.block[qR][fixed_a][0]).trace() * Symmetry::coeff_dot(R.out(qR));
+					res += (L.block[qL->second] * R.block[qR][fixed_a.second][0]).trace() * Symmetry::coeff_dot(R.out(qR));
 				}
 			}
 		}

@@ -541,7 +541,7 @@ public:
      *  @param  PRINT   Shall information on the transformation be printed?
      *  @param  factor  Additional factor to avoid fractions (Size of unit cell)
      */
-    void transform_base(const qType& qShift, const bool PRINT, const std::size_t factor);
+    void transform_base(const qType& qShift, const bool PRINT=false, const int factor=-1);
     
     /**
      *  Precalcs data for two-site calculations
@@ -551,7 +551,7 @@ public:
     /**
      *  @return List of quantum numbers and degeneracy indices of the auxiliar basis connecting both edges of the unit cell. Ordered in such a way that a lower triangular matrix can be achieved.
      */
-    std::vector<std::pair<qType,std::size_t>> VUMPS_base_order();
+    std::vector<std::pair<qType,std::size_t>> VUMPS_base_order() const;
         
     /**
      * Calculates the product of two MPOs.
@@ -1946,9 +1946,10 @@ cast()
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
-transform_base(const qType& qShift, const bool PRINT, const std::size_t factor)
+transform_base(const qType& qShift, const bool PRINT, const int factor)
 {
-    ::transform_base<Symmetry>(qPhys, qShift, PRINT, false, factor); // from symmery/functions.h, BACK=false
+	int length = (factor==-1)? static_cast<int>(qPhys.size()):factor;
+    ::transform_base<Symmetry>(qPhys, qShift, PRINT, false, length); // from symmery/functions.h, BACK=false
     
     std::vector<std::unordered_map<std::array<qType, 2>, std::vector<std::vector<OperatorType>>>> O_new(N_sites);
     std::vector<std::unordered_map<qType, std::size_t>> auxdim_new(N_sites+1);
@@ -1966,8 +1967,8 @@ transform_base(const qType& qShift, const bool PRINT, const std::size_t factor)
         
         for(std::size_t n=0; n<symmetries_to_transform.size(); ++n)
         {
-            qTot[symmetries_to_transform[n]] *= factor;
-            qVac[symmetries_to_transform[n]] *= factor;
+            qTot[symmetries_to_transform[n]] *= length;
+            qVac[symmetries_to_transform[n]] *= length;
         }
 
         for(std::size_t loc=0; loc<N_sites; ++loc)
@@ -1979,8 +1980,8 @@ transform_base(const qType& qShift, const bool PRINT, const std::size_t factor)
                 qType qOut = std::get<1>(qs_key);
                 for(std::size_t n=0; n<symmetries_to_transform.size(); ++n)
                 {
-                        qIn[symmetries_to_transform[n]] *= factor;
-                        qOut[symmetries_to_transform[n]] *= factor;
+                        qIn[symmetries_to_transform[n]] *= length;
+                        qOut[symmetries_to_transform[n]] *= length;
                 }
                 for(std::size_t row=0; row<ops.size(); ++row)
                 {
@@ -1988,7 +1989,7 @@ transform_base(const qType& qShift, const bool PRINT, const std::size_t factor)
                     {
                         for(std::size_t n=0; n<symmetries_to_transform.size(); ++n)
                         {
-                            ops[row][col].Q[n] *= factor;
+                            ops[row][col].Q[n] *= length;
                         }
                     }
                 }
@@ -2003,7 +2004,7 @@ transform_base(const qType& qShift, const bool PRINT, const std::size_t factor)
                 qType q = q_key;
                 for(std::size_t n=0; n<symmetries_to_transform.size(); ++n)
                 {
-                    q[symmetries_to_transform[n]] *= factor;
+                    q[symmetries_to_transform[n]] *= length;
                 }
                 auxdim_new[loc].insert({q,deg});
             }
@@ -2697,7 +2698,7 @@ set_Zero()
 }
 
 template<typename Symmetry, typename Scalar> std::vector<std::pair<typename Symmetry::qType, std::size_t>> MpoTerms<Symmetry,Scalar>::
-VUMPS_base_order()
+VUMPS_base_order() const
 {
     assert(!OPEN_BC);
     std::vector<std::pair<qType, std::size_t>> vout(0);
