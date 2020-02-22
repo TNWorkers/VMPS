@@ -2571,8 +2571,9 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 	}
 	
 	// wrap bmalfa, bpalfa by MpoTransferVector for GMRES
-	MpoTransferVector<Symmetry,complex<Scalar> > bmalfa(bmalfaTripod[N_sites-1].template cast<MatrixXcd >());
-	MpoTransferVector<Symmetry,complex<Scalar> > bpalfa(bpalfaTripod[0].template cast<MatrixXcd>());
+	// Note: the Tripods has only a single qunatum number with inner dimension 1 on their mid leg. We need to pass this information to MpoTransferVector.
+	MpoTransferVector<Symmetry,complex<Scalar> > bmalfa(bmalfaTripod[N_sites-1].template cast<MatrixXcd >(), make_pair(bmalfaTripod[N_sites-1].mid(0),0));
+	MpoTransferVector<Symmetry,complex<Scalar> > bpalfa(bpalfaTripod[0].template cast<MatrixXcd>(), make_pair(bpalfaTripod[0].mid(0),0));
 	
 	// cast bmbeta, bpbeta to complex Tripod for final contraction
 	Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > bmbeta = bmbetaTripod[0].template cast<MatrixXcd >();

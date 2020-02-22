@@ -356,22 +356,24 @@ template<typename Symmetry, typename Scalar> Mpo<Symmetry,Scalar> Mpo<Symmetry,S
 Identity(const std::vector<std::vector<qType>>& qPhys)
 {
     Mpo<Symmetry,Scalar> out(qPhys.size(), Symmetry::qvacuum(), "Id", true, true, false, true);
-    for(std::size_t loc=0; loc<qPhys.site(); ++loc)
+    for(std::size_t loc=0; loc<qPhys.size(); ++loc)
     {
         out.set_qPhys(loc, qPhys[loc]);
     }
     out.set_Identity();
+	return out;
 }
 
 template<typename Symmetry, typename Scalar> Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
 Zero(const std::vector<std::vector<qType>>& qPhys)
 {
     Mpo<Symmetry,Scalar> out(qPhys.size(), Symmetry::qvacuum(), "Zero", true, true, false, true);
-    for(std::size_t loc=0; loc<qPhys.site(); ++loc)
+    for(std::size_t loc=0; loc<qPhys.size(); ++loc)
     {
         out.set_qPhys(loc, qPhys[loc]);
     }
     out.set_Zero();
+	return out;
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -489,7 +491,10 @@ construct_from_pushlist(const PushType<OperatorType,Scalar>& pushlist, const std
     for(std::size_t i=0; i<pushlist.size(); ++i)
     {
         auto& [loc, ops, coupling] = pushlist[i];
-        this->push(loc, ops, coupling);
+		if (coupling !=0 )
+		{
+			this->push(loc, ops, coupling);
+		}
     }
     for(std::size_t loc=0; loc<this->size(); ++loc)
     {

@@ -215,7 +215,7 @@ S_ky (const vector<complex<double> > &phases) const
 	}
 	
 	// all Ops[l].Q() must match
-	Mpo<Symmetry,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), false);
+	Mpo<Symmetry,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), false, false, false, true);
 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
 	
 	vector<SiteOperator<Symmetry,complex<double> > > OpsPlain(Ops.size());
@@ -248,7 +248,7 @@ Sdag_ky (const vector<complex<double> > &phases, double factor) const
 	}
 	
 	// all Ops[l].Q() must match
-	Mpo<Symmetry,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), false);
+	Mpo<Symmetry,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), false, false, false, true);
 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
 	
 	vector<complex<double> > phases_x_factor = phases;

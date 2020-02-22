@@ -30,14 +30,14 @@ using namespace Eigen;
 #include "VUMPS/VumpsLinearAlgebra.h"
 //#include "VUMPS/UmpsCompressor.h"
 //#include "models/Heisenberg.h"
-#include "models/HeisenbergU1.h"
-#include "models/HeisenbergU1XXZ.h"
+// #include "models/HeisenbergU1.h"
+// #include "models/HeisenbergU1XXZ.h"
 //#include "models/HeisenbergXXZ.h"
 #include "models/HeisenbergSU2.h"
 //#include "models/HubbardU1xU1.h"
 //#include "models/Hubbard.h"
-#include "models/HubbardSU2xSU2.h"
-#include "models/HubbardSU2.h"
+// #include "models/HubbardSU2xSU2.h"
+// #include "models/HubbardSU2.h"
 //#include "models/HubbardSU2xU1.h"
 //#include "models/KondoSU2xU1.h"
 //#include "models/KondoU1xU1.h"
@@ -368,7 +368,7 @@ int main (int argc, char* argv[])
 //		params.push_back({"D",D});
 //		params.push_back({"CALC_SQUARE",false});
 		
-		typedef VMPS::HubbardSU2 MODEL;
+		// typedef VMPS::HubbardSU2 MODEL;
 		ArrayXXd tArray = 1. * Geo2cell.hopping();
 		ArrayXXd Vxyarray = V * Geo2cell.hopping();
 		ArrayXXd Vzarray  = V * Geo2cell.hopping();
@@ -378,11 +378,11 @@ int main (int argc, char* argv[])
 		params.push_back({"Uph",U});
 		params.push_back({"OPEN_BC",false});
 		params.push_back({"CALC_SQUARE",false});
-		MODEL H(L,params);
+		// MODEL H(L,params);
 //		MODEL H(L,{{"U",2.},{"Vxy",V},{"Vz",V},{"OPEN_BC",false},{"CALC_SQUARE",false}});
 		
-//		typedef VMPS::HeisenbergSU2 MODEL;
-//		MODEL H(L,{{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"Ly",Ly},{"D",D}});
+		typedef VMPS::HeisenbergSU2 MODEL;
+		MODEL H(L,{{"J",J},{"OPEN_BC",false},{"CALC_SQUARE",false},{"Ly",Ly},{"D",D}});
 		
 		qarray<MODEL::Symmetry::Nq> Qc = MODEL::singlet();
 		H.transform_base(Qc);
@@ -425,7 +425,7 @@ int main (int argc, char* argv[])
 			{
 				vector<complex<double> > phases_p = Geo1cell.FTy_phases(x,iky,0);
 				vector<complex<double> > phases_m = Geo1cell.FTy_phases(x,iky,1);
-				
+
 				O_ky[x]    = H.S_ky   (phases_p);
 				Odag_ky[x] = H.Sdag_ky(phases_m);
 				
@@ -435,7 +435,9 @@ int main (int argc, char* argv[])
 			
 			for (size_t l=0; l<L*Ly; ++l)
 			{
+
 				O[l]    = H.S(l);
+				cout << "Odag:" << endl;
 				Odag[l] = H.Sdag(l);
 				
 				Oavg(l)    = avg(g.state, O[l],    g.state);
