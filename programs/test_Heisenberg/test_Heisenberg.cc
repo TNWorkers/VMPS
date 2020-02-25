@@ -157,7 +157,7 @@ int main (int argc, char* argv[])
 	// SweepParams.push_back({"tol_eigval",tol_eigval});
 	// SweepParams.push_back({"tol_state",tol_state});
 	// SweepParams.push_back({"max_Nrich",max_Nrich});
-	SweepParams.push_back({"CONVTEST",DMRG::CONVTEST::VAR_HSQ});
+	SweepParams.push_back({"CONVTEST",DMRG::CONVTEST::VAR_2SITE});
 	
 	CALC_DYNAMICS = args.get<bool>("CALC_DYN",0);
 	dt = args.get<double>("dt",0.1);
@@ -178,7 +178,7 @@ int main (int argc, char* argv[])
 		lout << endl << "--------U(0)---------" << endl << endl;
 		
 		Stopwatch<> Watch_U0;
-		VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
+		VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",CALC_SQUARE}});
 		lout << H_U0.info() << endl;
 		
 		VMPS::Heisenberg::Solver DMRG_U0(VERB);
@@ -203,7 +203,7 @@ int main (int argc, char* argv[])
 		lout << endl << "--------U(1)---------" << endl << endl;
 		
 		Stopwatch<> Watch_U1;
-		VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly}});
+		VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",CALC_SQUARE}});
 		lout << H_U1.info() << endl;
 		
 		VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
@@ -299,71 +299,11 @@ int main (int argc, char* argv[])
 		
 		Stopwatch<> Watch_SU2;
 		
-		ArrayXXd Jfull;
 		VMPS::HeisenbergSU2 H_SU2;
-		if (RKKY)
-		{
-			stringstream ss;
-			if(PERIODIC) {ss << "periodic-L" << L << "-t1-tP1.h5";}
-			else {ss << "L" << L << "-t1-tP1.h5";}
-			HDF5Interface source(ss.str(),FILE_ACCESS_MODE::READ);
-			MatrixXd Jfull_mat;
-			source.load_matrix(Jfull_mat,"SpinSus");
-			source.close();
-				// cout << "Jfull_mat=" << endl << Jfull_mat << endl;
-			for (size_t i=0; i<Jfull_mat.rows(); i++)
-			for (size_t j=i+1; j<Jfull_mat.rows(); j++)
-			{
-				Jfull_mat(i,j) = Jfull_mat(i,j) + Jfull_mat(j,i);
-				Jfull_mat(j,i) = 0.;
-			}
-			ArrayXXd Jfull = Jfull_mat.array();
-			Jfull *=sigma;
-			
-			if (ED_RKKY)
-			{
-				cout << "L=" << L << endl;
-				assert(L<=16 and "Cannot perform exact diagonalization for L>16.");
-				cout << "L=" << L << endl;
-				SpinBase<Symmetry> B(L);
-				cout << B.get_basis().print() << endl;
-				auto H = B.HeisenbergHamiltonian(Jfull);
-				cout << "Computed Hamiltonian" << endl;
-				std::vector<Symmetry::qType> blocks;
-				blocks.push_back({Dtot});
-				// blocks.push_back({L+1});
-				// blocks.push_back({L-1});
-				EDSolver<SiteOperatorQ<Symmetry,MatrixXd> > John(H,blocks,Eigen::DecompositionOptions::ComputeEigenvectors);
-				// cout << John.eigenvalues().data().print(true) << endl;
-				for (size_t q=0; q<John.eigenvalues().data().size(); q++)
-				{
-					cout << "q=" << John.eigenvalues().data().in[q] << endl;
-					cout << "E=" << endl << John.eigenvalues().data().block[q] << endl << endl;
-				}
-				SpinCorr_SU2.resize(L,L); SpinCorr_SU2.setZero();
-				for(size_t i=0; i<L; i++)
-				for(size_t j=0; j<L; j++)
-				{
-					auto SQ1i = SiteOperatorQ<Symmetry,MatrixXd>::prod(B.S(i), John.groundstate({Dtot}), {3});
-					auto SQ1j = SiteOperatorQ<Symmetry,MatrixXd>::prod(B.S(j), John.groundstate({Dtot}), {3});
-					auto res  = SiteOperatorQ<Symmetry,MatrixXd>::prod(SQ1i.adjoint(), SQ1j, {1});
-					SpinCorr_SU2(i,j) = res.data().block[0](0,0);
-				}
-				cout << "Spin correlations" << endl << sqrt(3.)*SpinCorr_SU2 << endl;
-				assert(1!=1 and "Finished ED for RKKY couplings.");
-			}
-			else
-			{
-				H_SU2 = VMPS::HeisenbergSU2(L,{{"Jfull",Jfull},{"D",D}});
-			}
-		}
-		else
-		{
-			H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"Jprime",Jprime},{"Jrung",Jrung},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",CALC_SQUARE}});
-		}
+		H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",CALC_SQUARE}});
 		
 		lout << H_SU2.info() << endl;
-		H_SU2.precalc_TwoSiteData();
+		// H_SU2.precalc_TwoSiteData();
 		VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
 		DMRG_SU2.userSetGlobParam();
 		DMRG_SU2.userSetDynParam();

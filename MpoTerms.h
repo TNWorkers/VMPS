@@ -738,7 +738,7 @@ push(const std::size_t loc, const std::vector<OperatorType>& opList, const std::
     assert(!FINALIZED and "Terms have already been finalized");
     if(lambda != 0.)
     {
-        save_label(loc, label);
+        // save_label(loc, label);
         std::size_t n = opList.size();
         assert(qList.size() == n+1 and "Amount of quantum numbers does not match amount of operators!");
         assert(qList[0] == Symmetry::qvacuum() and qList[n] == qTot and "Quantum number list does not match the total MPO quantum number!");

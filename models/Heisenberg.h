@@ -45,10 +45,10 @@ public:
 	
 	///@{
 	Heisenberg() : Mpo<Symmetry>(), HeisenbergObservables(), ParamReturner(Heisenberg::sweep_defaults) {};
-	Heisenberg (const size_t &L, const vector<Param> &params);
+	Heisenberg (const size_t &L, const vector<Param> &params, const BC & boundary=BC::OPEN);
 	///@}
-	
-	static void add_operators (const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
+
+	static void add_operators (const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 	
 	static const std::map<string,std::any> defaults;
 	static const std::map<string,std::any> sweep_defaults;
@@ -63,7 +63,7 @@ const std::map<string,std::any> Heisenberg::defaults =
 	{"Kz",0.}, {"Kx",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.}, // Dzialoshinsky-Moriya terms
 	{"t",0.}, {"mu",0.}, {"Delta",0.}, // Kitaev chain terms
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 const std::map<string,std::any> Heisenberg::sweep_defaults = 
@@ -78,46 +78,51 @@ const std::map<string,std::any> Heisenberg::sweep_defaults =
 };
 
 Heisenberg::
-Heisenberg (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
+Heisenberg (const size_t &L, const vector<Param> &params, const BC & boundary)
+	:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
  HeisenbergObservables(L,params,Heisenberg::defaults),
  ParamReturner(Heisenberg::sweep_defaults)
 {
 	ParamHandler P(params,Heisenberg::defaults);
 	size_t Lcell = P.size();
-	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
+	B.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		setLocBasis(B[l].get_basis(),l);
 	}
-	
-	HeisenbergU1::set_operators(B,P,Terms);
-	add_operators(B,P,Terms);
-	
-	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-	this->precalc_TwoSiteData();
-}
 
-void Heisenberg::
-add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
-{
-	std::size_t Lcell = P.size();
-	std::size_t N_sites = Terms.size();
-	
 	if (P.HAS_ANY_OF({"Dy", "Dyperp", "Dyprime"}))
 	{
-		Terms.set_name("Dzyaloshinsky-Moriya");
+		this->set_name("Dzyaloshinsky-Moriya");
 	}
 	else if (P.HAS_ANY_OF({"t", "mu", "Delta"}))
 	{
-		Terms.set_name("KitaevChain");
+		this->set_name("KitaevChain");
 	}
 	else
 	{
-		Terms.set_name("Heisenberg");
+		this->set_name("Heisenberg");
 	}
+
+	PushType<SiteOperator<Symmetry,double>,double> pushlist;
+    std::vector<std::vector<std::string>> labellist;
+	HeisenbergU1::set_operators(B, P, pushlist, labellist, boundary);
+	add_operators(B, P, pushlist, labellist, boundary);
+	
+	this->construct_from_pushlist(pushlist, labellist, Lcell);
+    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+
+	// this->precalc_TwoSiteData();
+}
+
+void Heisenberg::
+add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
+{
+	std::size_t Lcell = P.size();
+	std::size_t N_sites = B.size();
+	if(labellist.size() != N_sites) {labellist.resize(N_sites);}
 	
 	for(std::size_t loc=0; loc<N_sites; ++loc)
 	{
@@ -134,44 +139,43 @@ add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, H
 		param1d Kx = P.fill_array1d<double>("Kx", "Kxorb", orbitals, loc%Lcell);
 		param2d Dyperp = P.fill_array2d<double>("Dyrung", "Dy", "Dyperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		
-		Terms.save_label(loc, Bx.label);
-		Terms.save_label(loc, Kx.label);
-		Terms.save_label(loc, Dyperp.label);
+		labellist[loc].push_back(Bx.label);
+		labellist[loc].push_back(Kx.label);
+		labellist[loc].push_back(Dyperp.label);
 		
 		ArrayXd Bz_array = B[loc].ZeroField();
 		ArrayXd mu_array = B[loc].ZeroField();
 		ArrayXd Kz_array = B[loc].ZeroField();
 		ArrayXXd Jperp_array = B[loc].ZeroHopping();
+
+		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jperp_array, Jperp_array, Bz_array, Bx.a, mu_array, Kz_array, Kx.a, Dyperp.a));
+		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
-		Terms.push_local(loc, 1., B[loc].HeisenbergHamiltonian(Jperp_array, Jperp_array, Bz_array, Bx.a, mu_array, Kz_array, Kx.a, Dyperp.a));
-		
-		// Nearest-neighbour terms: DM=Dzyaloshinsky-Moriya
-		
+		// Nearest-neighbour terms: DM=Dzyaloshinsky-Moriya		
 		param2d Dypara = P.fill_array2d<double>("Dy", "Dypara", {orbitals, next_orbitals}, loc%Lcell);
-		Terms.save_label(loc, Dypara.label);
+		labellist[loc].push_back(Dypara.label);
 		
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (loc < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa<orbitals; alfa++)
 			for (std::size_t beta=0; beta<next_orbitals; ++beta)
 			{
-				Terms.push_tight(loc, +Dypara(alfa,beta), B[loc].Scomp(SX,alfa), B[lp1].Scomp(SZ,beta));
-				Terms.push_tight(loc, -Dypara(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SX,beta));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SX,alfa), B[lp1].Scomp(SZ,beta)), +Dypara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SX,beta)), -Dypara(alfa,beta)));
 			}
 		}
 		
-		// Next-nearest-neighbour terms: DM
-		
+		// Next-nearest-neighbour terms: DM		
 		param2d Dyprime = P.fill_array2d<double>("Dyprime", "Dyprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
-		Terms.save_label(loc, Dyprime.label);
+		labellist[loc].push_back(Dyprime.label);
 		
-		if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
+		if (loc < N_sites-2 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa<orbitals; ++alfa)
 			for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
 			{
-				Terms.push_nextn(loc, +Dypara(alfa,beta), B[loc].Scomp(SX,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta));
-				Terms.push_nextn(loc, -Dypara(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SX,beta));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SX,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta)), +Dyprime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SX,beta)), -Dyprime(alfa,beta)));
 			}
 		}
 	}

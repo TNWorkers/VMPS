@@ -31,8 +31,8 @@ template<typename Symmetry, typename Scalar>
 struct SiteOperator
 {
 	SiteOperator() {};
-	SiteOperator (const Eigen::SparseMatrix<Scalar> &data_input, const typename Symmetry::qType& Q_input)
-	:data(data_input), Q(Q_input)
+	SiteOperator (const Eigen::SparseMatrix<Scalar> &data_input, const typename Symmetry::qType& Q_input, std::string label_input="")
+		:data(data_input), Q(Q_input), label(label_input)
 	{};
 	
 	typename Symmetry::qType Q = Symmetry::qvacuum();

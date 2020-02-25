@@ -1254,10 +1254,6 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  const vector<qarray<Symmetry::Nq> > &qOpBot,
                  const vector<qarray<Symmetry::Nq> > &qOpTop,
-                 //const Qbasis<Symmetry> &baseRightBot,
-                 //const Qbasis<Symmetry> &baseRightTop,
-                 //const Qbasis<Symmetry> &baseLeftBot,
-                 //const Qbasis<Symmetry> &baseLeftTop,
                  Tripod<Symmetry,MatrixType> &Rnew)
 {
 	// cout << baseRightTop << endl << baseLeftTop << endl;
@@ -1483,7 +1479,7 @@ void contract_L (const Multipede<4,Symmetry,MatrixType> &Lold,
 							else
 							{
 								size_t bcols = Wbot[s1][s2][k1].block[qWbot].cols();
-								size_t tcols = Wtop[s2][s3][k2].block[qWbot].cols();
+								size_t tcols = Wtop[s2][s3][k2].block[qWtop].cols();
 								boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[bcols][tcols]);
 								Mtmparray[bc][tc] = Mtmp;
 								Lnew.push_back(quple, Mtmparray);

@@ -37,11 +37,11 @@ public:
 public:
 	
 	HeisenbergU1XXZ() : HeisenbergU1() {};
-	HeisenbergU1XXZ (const size_t &L);
-	HeisenbergU1XXZ (const size_t &L, const vector<Param> &params);
+	HeisenbergU1XXZ (const size_t &L, const BC &boundary=BC::OPEN);
+	HeisenbergU1XXZ (const size_t &L, const vector<Param> &params={}, const BC &boundary = BC::OPEN);
 	
 	template<typename Symmetry_>
-	static void add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);
+	static void add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 	
 	static const std::map<string,std::any> defaults;
 };
@@ -53,25 +53,23 @@ const std::map<string,std::any> HeisenbergU1XXZ::defaults =
 	
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.},
 	{"Bz",0.}, {"Kz",0.},
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, 
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"Ly",1ul}, 
 	
 	// for consistency during inheritance (should not be set for XXZ!):
 	{"J",0.}, {"Jprime",0.}
 };
 
 HeisenbergU1XXZ::
-HeisenbergU1XXZ (const size_t &L)
-:HeisenbergU1(L)
+HeisenbergU1XXZ (const size_t &L, const BC &boundary)
+:HeisenbergU1(L, boundary)
 {}
-
-HeisenbergU1XXZ::
-HeisenbergU1XXZ (const size_t &L, const vector<Param> &params)
-:HeisenbergU1(L)
-{
-	ParamHandler P(params,HeisenbergU1XXZ::defaults);
 	
+HeisenbergU1XXZ::
+HeisenbergU1XXZ (const size_t &L, const vector<Param> &params, const BC &boundary)
+:HeisenbergU1(L, boundary)
+{
+	ParamHandler P(params,HeisenbergU1XXZ::defaults);	
 	size_t Lcell = P.size();
-	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	B.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -81,29 +79,35 @@ HeisenbergU1XXZ (const size_t &L, const vector<Param> &params)
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		setLocBasis(B[l].get_basis(),l);
 	}
-	
-	set_operators(B,P,Terms);
-	add_operators(B,P,Terms);
-	
-	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-	this->precalc_TwoSiteData();
+
+	if (P.HAS_ANY_OF({"Jxy", "Jxypara", "Jxyperp", "Jxyfull"}))
+	{
+		this->set_name("XXZ");
+	}
+	else
+	{
+		this->set_name("Ising");
+	}
+
+	PushType<SiteOperator<Symmetry,double>,double> pushlist;
+    std::vector<std::vector<std::string>> labellist;
+	set_operators(B, P, pushlist, labellist, boundary);
+	add_operators(B, P, pushlist, labellist, boundary);
+
+	this->construct_from_pushlist(pushlist, labellist, Lcell);
+    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+
+	// this->precalc_TwoSiteData();
 }
 
 template<typename Symmetry_>
 void HeisenbergU1XXZ::
-add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)
+add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
 	std::size_t Lcell = P.size();
-	std::size_t N_sites = Terms.size();
-	if (P.HAS_ANY_OF({"Jxy", "Jxypara", "Jxyperp", "Jxyfull"}))
-	{
-		Terms.set_name("XXZ");
-	}
-	else
-	{
-		Terms.set_name("Ising");
-	}
-	
+	std::size_t N_sites = B.size();
+	if(labellist.size() != N_sites) {labellist.resize(N_sites);}
+		
 	for (std::size_t loc=0; loc<N_sites; ++loc)
 	{
 		size_t lp1 = (loc+1)%N_sites;
@@ -120,52 +124,73 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 		// Case, where a full coupling-matrix is provided: Jᵢⱼ
 		if (P.HAS("Jxyfull"))
 		{
-			for (size_t loc2=loc; loc2<N_sites; loc2++)
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Jxyfull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
 			{
-				assert(loc2>=loc);
-				size_t numberTransOps;
-				if (loc2 == loc) {numberTransOps=0;} else {numberTransOps=loc2-loc-1;}
-				vector<SiteOperator<Symmetry_,double> > TransOps(numberTransOps);
-				for (size_t i=0; i<numberTransOps; i++) {TransOps[i] = B[loc+i+1].Id();}
-				
-				if (loc2 == loc)
-				{
-//					SiteOperator<Symmetry,double> Ssqrt = SiteOperatorQ<Symmetry,MatrixXd>::prod(B[loc].Sdag(0),B[loc].S(0),Symmetry::qvacuum()).plain<double>();
-//					Terms.push_local(loc,std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc),Ssqrt);
-				}
-				else
-				{
-					Terms.push(loc2-loc, loc, 0.5*P.get<Eigen::ArrayXXd>("Jxyfull")(loc,loc2), 
-					                          B[loc].Scomp(SP,0), TransOps, B[loc2].Scomp(SM,0));
-					Terms.push(loc2-loc, loc, 0.5*P.get<Eigen::ArrayXXd>("Jxyfull")(loc,loc2), 
-					                          B[loc].Scomp(SM,0), TransOps, B[loc2].Scomp(SP,0));
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+
+				if(range != 0)
+                {
+					vector<SiteOperator<Symmetry_,double> > ops_pm(range+1);
+					vector<SiteOperator<Symmetry_,double> > ops_mp(range+1);
+					
+					ops_pm[0] = B[loc].Scomp(SP);
+					ops_mp[0] = B[loc].Scomp(SM);
+                    for (size_t i=1; i<range; ++i)
+                    {
+						ops_pm[i] = B[(loc+i)%N_sites].Id();
+						ops_mp[i] = B[(loc+i)%N_sites].Id();
+                    }
+					ops_pm[range] = B[(loc+range)%N_sites].Scomp(SM);
+					ops_mp[range] = B[(loc+range)%N_sites].Scomp(SP);
+                        
+					pushlist.push_back(std::make_tuple(loc, ops_pm, 0.5 * value));
+					pushlist.push_back(std::make_tuple(loc, ops_mp, 0.5 * value));
 				}
 			}
-			Terms.save_label(loc, "Jxyᵢⱼ");
+			
+			stringstream ss;
+			ss << "Jxyᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
+			labellist[loc].push_back(ss.str());
 		}
-		
+
 		if (P.HAS("Jzfull"))
 		{
-			for (size_t loc2=loc; loc2<N_sites; loc2++)
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Jzfull");
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t h=0; h<R[loc].size(); ++h)
 			{
-				assert(loc2>=loc);
-				size_t numberTransOps;
-				if (loc2 == loc) {numberTransOps=0;} else {numberTransOps=loc2-loc-1;}
-				vector<SiteOperator<Symmetry_,double> > TransOps(numberTransOps);
-				for (size_t i=0; i<numberTransOps; i++) {TransOps[i] = B[loc+i+1].Id();}
-				
-				if (loc2 == loc)
-				{
-//					SiteOperator<Symmetry,double> Ssqrt = SiteOperatorQ<Symmetry,MatrixXd>::prod(B[loc].Sdag(0),B[loc].S(0),Symmetry::qvacuum()).plain<double>();
-//					Terms.push_local(loc,std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc),Ssqrt);
-				}
-				else
-				{
-					Terms.push(loc2-loc, loc, P.get<Eigen::ArrayXXd>("Jzfull")(loc,loc2), 
-					                          B[loc].Scomp(SZ,0), TransOps, B[loc2].Scomp(SZ,0));
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+
+				if(range != 0)
+                {
+					vector<SiteOperator<Symmetry_,double> > ops_zz(range+1);
+					
+					ops_zz[0] = B[loc].Scomp(SZ);
+                    for (size_t i=1; i<range; ++i)
+                    {
+						ops_zz[i] = B[(loc+i)%N_sites].Id();
+                    }
+					ops_zz[range] = B[(loc+range)%N_sites].Scomp(SZ);
+                        
+					pushlist.push_back(std::make_tuple(loc, ops_zz, value));
 				}
 			}
-			Terms.save_label(loc, "Jzᵢⱼ");
+			
+			stringstream ss;
+			ss << "Jzᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
+			labellist[loc].push_back(ss.str());
 		}
 		
 		if (P.HAS("Jxyfull") or P.HAS("Jzfull")) continue;
@@ -175,8 +200,8 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 		param2d Jxyperp = P.fill_array2d<double>("Jxyrung", "Jxy", "Jxyperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		param2d Jzperp  = P.fill_array2d<double>("Jzrung",  "Jz",  "Jzperp",  orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		
-		Terms.save_label(loc, Jxyperp.label);
-		Terms.save_label(loc, Jzperp.label);
+		labellist[loc].push_back(Jxyperp.label);
+		labellist[loc].push_back(Jzperp.label);
 		
 		ArrayXd Bz_array      = B[loc].ZeroField();
 		ArrayXd Bx_array      = B[loc].ZeroField();
@@ -184,49 +209,50 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 		ArrayXd Kz_array      = B[loc].ZeroField();
 		ArrayXd Kx_array      = B[loc].ZeroField();
 		ArrayXXd Dyperp_array = B[loc].ZeroHopping();
-		
-		Terms.push_local(loc, 1., B[loc].HeisenbergHamiltonian(Jxyperp.a, Jzperp.a, Bz_array, Bx_array, mu_array, Kz_array, Kx_array, Dyperp_array));
+
+		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jxyperp.a, Jzperp.a, Bz_array, Bx_array, mu_array, Kz_array, Kx_array, Dyperp_array));
+		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
 		// Nearest-neighbour terms: J
 		
 		param2d Jxypara = P.fill_array2d<double>("Jxy", "Jxypara", {orbitals, next_orbitals}, loc%Lcell);
 		param2d Jzpara  = P.fill_array2d<double>("Jz",  "Jzpara",  {orbitals, next_orbitals}, loc%Lcell);
 		
-		Terms.save_label(loc, Jxypara.label);
-		Terms.save_label(loc, Jzpara.label);
+		labellist[loc].push_back(Jxypara.label);
+		labellist[loc].push_back(Jzpara.label);
 		
 //		if (!P.HAS("Jxy"))
 //		{
-//			Terms.save_label(loc, "def.Jxy=1.");
+//			labellist[loc].push_back("def.Jxy=1.");
 //		}
 		
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (loc < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa < orbitals; ++alfa)
 			for (std::size_t beta=0; beta < next_orbitals; ++beta)
 			{
-				Terms.push_tight(loc, 0.5*Jxypara(alfa,beta), B[loc].Scomp(SP,alfa), B[lp1].Scomp(SM,beta));
-				Terms.push_tight(loc, 0.5*Jxypara(alfa,beta), B[loc].Scomp(SM,alfa), B[lp1].Scomp(SP,beta));
-				Terms.push_tight(loc,      Jzpara(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SZ,beta));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SP,alfa), B[lp1].Scomp(SM,beta)), 0.5*Jxypara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SM,alfa), B[lp1].Scomp(SP,beta)), 0.5*Jxypara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SZ,beta)),     Jzpara(alfa,beta)));
 			}
 		}
 		
-		// Next-nearest-neighbour terms: J
+		// Next-nearest-neighbour terms: J'
 		
 		param2d Jxyprime = P.fill_array2d<double>("Jxyprime", "Jxyprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
 		param2d Jzprime  = P.fill_array2d<double>("Jzprime",  "Jzprime_array",  {orbitals, nextn_orbitals}, loc%Lcell);
 		
-		Terms.save_label(loc, Jxyprime.label);
-		Terms.save_label(loc, Jzprime.label);
+		labellist[loc].push_back(Jxyprime.label);
+		labellist[loc].push_back(Jzprime.label);
 		
-		if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
+		if (loc < N_sites-2 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa < orbitals; ++alfa)
 			for (std::size_t beta=0; beta < nextn_orbitals; ++beta)
 			{
-				Terms.push_nextn(loc, 0.5*Jxyprime(alfa,beta), B[loc].Scomp(SP,alfa), B[lp1].Id(), B[lp2].Scomp(SM,beta));
-				Terms.push_nextn(loc, 0.5*Jxyprime(alfa,beta), B[loc].Scomp(SM,alfa), B[lp1].Id(), B[lp2].Scomp(SP,beta));
-				Terms.push_nextn(loc,      Jzprime(alfa,beta), B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SP,alfa), B[lp1].Id(), B[lp2].Scomp(SM,beta)), 0.5*Jxyprime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SM,alfa), B[lp1].Id(), B[lp2].Scomp(SP,beta)), 0.5*Jxyprime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta)),     Jzprime(alfa,beta)));
 			}
 		}
 	}

@@ -109,7 +109,7 @@ bool AWAR (const qarray<Symmetry::Nq> &Rin, const qarray<Symmetry::Nq> &Rout, co
                         auto qW = W.dict.find(cmp3);
                         if (qW != W.dict.end())
                         {
-                            if (Symmetry::validate(qarray3<Symmetry::Nq>{Lin,Lmid,Lout}))
+                            if (Symmetry::validate(qarray3<Symmetry::Nq>{Lout,Lmid,Lin}))
                             {
                                 result.push_back(make_tuple(qarray3<Symmetry::Nq>{Lin,Lout,Lmid}, qAbra->second, qAket->second, qW->second));
                                 out = true;
@@ -601,7 +601,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
                              const vector<qarray<Symmetry::Nq> > &qloc34,
                              const vector<qarray<Symmetry::Nq> > &qOp12,
                              const vector<qarray<Symmetry::Nq> > &qOp34,
-                             const vector<TwoSiteData<Symmetry,Scalar> > &TSD,
+                             const vector<TwoSiteData<Symmetry,typename MpoMatrixType::Scalar> > &TSD,
                              vector<std::array<size_t,2> > &qlhs, 
                              vector<vector<std::array<size_t,12> > > &qrhs,
                              vector<vector<Scalar> > &factor_cgcs)

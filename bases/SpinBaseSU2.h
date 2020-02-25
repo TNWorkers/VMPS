@@ -107,12 +107,16 @@ SpinBase (std::size_t L_input, std::size_t D_input)
 	Id_1s = Operator({1},basis_1s);
 	S_1s = Operator({3},basis_1s);
 
+	
 	//create operators for one orbital
 	Id_1s( "spin", "spin" ) = 1.;
+	Id_1s.label() = "id";
 	S_1s( "spin", "spin" ) = std::sqrt(locS*(locS+1.));
+	S_1s.label() = "S";
 	Sdag_1s = S_1s.adjoint();
 	Q_1s = Operator::prod(S_1s,S_1s,{5});
-
+	Q_1s.label() = "Q";
+	
 	//create basis for N_orbitals spin sites
 	if (N_orbitals == 1) { TensorBasis = basis_1s; }
 	else
@@ -145,6 +149,7 @@ S( std::size_t orbital ) const
 			else if(TOGGLE==false) { out = Operator::outerprod(out,Id_1s,{1}); }
 			else if(TOGGLE==true) { out = Operator::outerprod(out,Id_1s,{3}); }
 		}
+		out.label() = "S";
 		return out;
 	}
 }
@@ -163,6 +168,7 @@ Id() const
 	{
 		Operator out = Operator::outerprod(Id_1s,Id_1s,{1});
 		for(std::size_t o=2; o<N_orbitals; o++) { out = Operator::outerprod(out,Id_1s,{1}); }
+		out.label() = "id";
 		return out;
 	}
 }
@@ -171,7 +177,7 @@ SiteOperatorQ<Sym::SU2<Sym::SpinSU2>,Eigen::Matrix<double,Eigen::Dynamic,Eigen::
 HeisenbergHamiltonian (const ArrayXXd &J) const
 {
 	Operator Mout({1},TensorBasis);
-	
+	Mout.label() = "Hloc";
 	for (int i=0; i<N_orbitals; ++i)
 	for (int j=0; j<i; ++j) //N_orbitals
 	{ 

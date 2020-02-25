@@ -23,7 +23,7 @@ public:
 	
 	///\{
 	HeisenbergXXZ() : Mpo<Symmetry>(), ParamReturner(Heisenberg::defaults) {};
-	HeisenbergXXZ (const size_t &L, const vector<Param> &params);
+	HeisenbergXXZ (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
 	///\}
 	
 	static const std::map<string,std::any> defaults;
@@ -37,35 +37,48 @@ const std::map<string,std::any> HeisenbergXXZ::defaults =
 	{"Bz",0.}, {"Bx",0.}, 
 	{"Kz",0.}, {"Kx",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.},
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, 
+	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"Ly",1ul}, 
 	
 	// for consistency during inheritance (should not be set!):
 	{"J",0.}, {"Jprime",0.}
 };
 
 HeisenbergXXZ::
-HeisenbergXXZ (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<0>({}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
+HeisenbergXXZ (const size_t &L, const vector<Param> &params, const BC &boundary)
+:Mpo<Symmetry> (L, qarray<0>({}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
  HeisenbergObservables(L,params,HeisenbergXXZ::defaults),
  ParamReturner(Heisenberg::sweep_defaults)
 {
 	ParamHandler P(params,HeisenbergXXZ::defaults);
-	
 	size_t Lcell = P.size();
-	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
+	B.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		setLocBasis(B[l].get_basis(),l);
 	}
+
+	if (P.HAS_ANY_OF({"Jxy", "Jxypara", "Jxyperp", "Jxyfull"}))
+	{
+		this->set_name("XXZ");
+	}
+	else
+	{
+		this->set_name("Ising");
+	}
+
+	PushType<SiteOperator<Symmetry,double>,double> pushlist;
+    std::vector<std::vector<std::string>> labellist;
 	
-	HeisenbergU1::set_operators(B,P,Terms);
-	Heisenberg::add_operators(B,P,Terms);
-	HeisenbergU1XXZ::add_operators(B,P,Terms);
+	HeisenbergU1::set_operators(B,P,pushlist,labellist,boundary);
+	Heisenberg::add_operators(B,P,pushlist,labellist,boundary);
+	HeisenbergU1XXZ::add_operators(B,P,pushlist,labellist,boundary);
 	
-	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
-	this->precalc_TwoSiteData();
+	this->construct_from_pushlist(pushlist, labellist, Lcell);
+    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+	
+	// this->precalc_TwoSiteData();
 }
 
 } // end namespace VMPS

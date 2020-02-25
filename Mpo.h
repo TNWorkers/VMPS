@@ -55,13 +55,13 @@ public:
 	typedef Matrix<Scalar,Dynamic,Dynamic> MatrixType;
 	typedef Scalar Scalar_;
     
-	Mpo(){};
+	Mpo() : MpoTerms<Symmetry, Scalar>(){};
 	
 	Mpo(size_t L_input);
 	
-	Mpo(std::size_t L_input, qType Qtot_input, std::string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false, bool HAMILTONIAN_input=false, bool OPEN_BC_input=true);
+	Mpo(std::size_t L_input, qType Qtot_input, std::string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false, bool HAMILTONIAN_input=false, BC BC_input=BC::OPEN);
     
-    void construct_from_pushlist(const PushType<OperatorType,Scalar>& pushlist, const std::vector<std::vector<std::string>>& labellist);
+    void construct_from_pushlist(const PushType<OperatorType,Scalar>& pushlist, const std::vector<std::vector<std::string>>& labellist, size_t Lcell);
 	
 	void setLocal(std::size_t loc, const OperatorType& op);
 	
@@ -96,7 +96,9 @@ public:
 	inline std::size_t length() const {return this->size();}
 	
 	inline std::size_t volume() const {return N_phys;}
-	
+
+	template<typename T, typename ... Operator>
+	static std::vector<T> get_N_site_interaction(T const & Op0, Operator const & ... Ops) {std::vector<T> out { {Op0, Ops ...} }; return out;};
 	//inline std::size_t auxrows(std::size_t loc) const {return this->get_qAux()[loc].fullM();}
 	//inline std::size_t auxcols(std::size_t loc) const {return this->get_qAux()[loc+1].fullM();}
     //inline void setOpBasis   (const vector<vector<qType> > &q) {qOp=q;}
@@ -206,8 +208,8 @@ Mpo(std::size_t L_input)
 
 template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar>::
-Mpo (std::size_t L_input, qType Qtot_input, string label_input, bool HERMITIAN_input, bool UNITARY_input, bool HAMILTONIAN_input, bool OPEN_BC_input)
-: MpoTerms<Symmetry, Scalar>(L_input, OPEN_BC_input, Qtot_input), HERMITIAN(HERMITIAN_input), UNITARY(UNITARY_input), HAMILTONIAN(HAMILTONIAN_input){this->set_name(label_input);}
+Mpo (std::size_t L_input, qType Qtot_input, string label_input, bool HERMITIAN_input, bool UNITARY_input, bool HAMILTONIAN_input, BC BC_input)
+: MpoTerms<Symmetry, Scalar>(L_input, static_cast<bool>(BC_input), Qtot_input), HERMITIAN(HERMITIAN_input), UNITARY(UNITARY_input), HAMILTONIAN(HAMILTONIAN_input) {this->set_name(label_input);}
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
 push_width(const std::size_t width, const std::size_t loc, const Scalar lambda, const OperatorType& outOp, const std::vector<OperatorType>& trans, const OperatorType& inOp)
@@ -304,14 +306,10 @@ memory(MEMUNIT memunit) const
                 for (std::size_t t=0; t<this->W[loc][n1][n2].size(); ++t)
                 {
                     res += this->W[loc][n1][n2][t].memory(memunit);
-                    // TODO: Angepasster Code für W=Biped
-                    //res += calc_memory(this->W[loc][n1][n2][t],memunit);
                 }
             }
         }
     }
-
-	
 	return res;
 }
 
@@ -355,7 +353,7 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 template<typename Symmetry, typename Scalar> Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
 Identity(const std::vector<std::vector<qType>>& qPhys)
 {
-    Mpo<Symmetry,Scalar> out(qPhys.size(), Symmetry::qvacuum(), "Id", true, true, false, true);
+    Mpo<Symmetry,Scalar> out(qPhys.size(), Symmetry::qvacuum(), "Id", true, true, false, BC::OPEN);
     for(std::size_t loc=0; loc<qPhys.size(); ++loc)
     {
         out.set_qPhys(loc, qPhys[loc]);
@@ -367,7 +365,7 @@ Identity(const std::vector<std::vector<qType>>& qPhys)
 template<typename Symmetry, typename Scalar> Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
 Zero(const std::vector<std::vector<qType>>& qPhys)
 {
-    Mpo<Symmetry,Scalar> out(qPhys.size(), Symmetry::qvacuum(), "Zero", true, true, false, true);
+    Mpo<Symmetry,Scalar> out(qPhys.size(), Symmetry::qvacuum(), "Zero", true, true, false, BC::OPEN);
     for(std::size_t loc=0; loc<qPhys.size(); ++loc)
     {
         out.set_qPhys(loc, qPhys[loc]);
@@ -382,6 +380,7 @@ generate_label(std::size_t Lcell)
 	std::stringstream ss;
 	ss << this->get_name();
 	std::vector<std::string> info = this->get_info();
+	for (auto entry:info) {cout << entry << endl;}
 	
 	std::map<std::string,std::set<std::size_t> > cells;
 	
@@ -486,12 +485,12 @@ generate_label(std::size_t Lcell)
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
-construct_from_pushlist(const PushType<OperatorType,Scalar>& pushlist, const std::vector<std::vector<std::string>>& labellist)
+construct_from_pushlist(const PushType<OperatorType,Scalar>& pushlist, const std::vector<std::vector<std::string>>& labellist, size_t Lcell)
 {
     for(std::size_t i=0; i<pushlist.size(); ++i)
     {
-        auto& [loc, ops, coupling] = pushlist[i];
-		if (coupling !=0 )
+        const auto& [loc, ops, coupling] = pushlist[i];
+		if ( std::abs(coupling) != 0. )
 		{
 			this->push(loc, ops, coupling);
 		}
@@ -503,6 +502,7 @@ construct_from_pushlist(const PushType<OperatorType,Scalar>& pushlist, const std
             this->save_label(loc, labellist[loc][i]);
         }
     }
+	generate_label(Lcell);
 }
 
 
