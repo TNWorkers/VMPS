@@ -300,7 +300,10 @@ int main (int argc, char* argv[])
 		Stopwatch<> Watch_SU2;
 		
 		VMPS::HeisenbergSU2 H_SU2;
-		H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",CALC_SQUARE}});
+		// H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",CALC_SQUARE}});
+		Geometry2D Geo1cell(Lattice::suqare,SNAKE,1*L,Ly,1.,true); // periodic BC in y = true
+		JArray    = J * Geo2cell.hopping();
+		H_SU2 = VMPS::HeisenbergSU2(L,{{"Jfull",Jarray},{"CALC_SQUARE",CALC_SQUARE}});
 		
 		lout << H_SU2.info() << endl;
 		// H_SU2.precalc_TwoSiteData();

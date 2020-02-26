@@ -97,7 +97,7 @@ HeisenbergU1XXZ (const size_t &L, const vector<Param> &params, const BC &boundar
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
     this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
 
-	// this->precalc_TwoSiteData();
+	this->precalc_TwoSiteData();
 }
 
 template<typename Symmetry_>

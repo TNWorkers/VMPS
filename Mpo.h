@@ -513,7 +513,7 @@ setLocal(std::size_t loc, const OperatorType& op)
 	LocalOp   = op;
 	LocalSite = loc;
     this->push(loc, {op});
-    this->finalize(true, false);
+    this->finalize(PROP::COMPRESS, false);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -533,7 +533,7 @@ setLocal(std::size_t loc, const OperatorType& op, const std::vector<OperatorType
     std::vector<OperatorType> ops = signOps;
     ops.push_back(op);
     this->push(0, ops);
-    this->finalize(true, false);
+    this->finalize(PROP::COMPRESS, false);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -554,7 +554,7 @@ setLocalStag(std::size_t loc, const OperatorType& op, const std::vector<Operator
         }
     }
     this->push(0, ops);
-    this->finalize(true, false);
+    this->finalize(PROP::COMPRESS, false);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -589,7 +589,7 @@ setLocal(const std::vector<std::size_t>& locs, const std::vector<OperatorType>& 
     }
     ops_with_signs.push_back(ops[right]);
     this->push(locs[left], ops_with_signs);
-    this->finalize(true, false);
+    this->finalize(PROP::COMPRESS, false);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -614,7 +614,7 @@ setLocalSum(const OperatorType& op, Scalar (*f)(int))
     {
         this->push(loc, {f(loc)*op});
     }
-    this->finalize(true, false);
+    this->finalize(PROP::COMPRESS, false);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -625,7 +625,7 @@ setLocalSum(const std::vector<OperatorType>& ops, std::vector<Scalar> coeffs)
     {
         this->push(loc, {coeffs[loc]*ops[loc]});
     }
-    this->finalize(true, false);
+    this->finalize(PROP::COMPRESS, false);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -636,7 +636,7 @@ setProductSum(const OperatorType& op1, const OperatorType& op2)
     {
         this->push(loc, {op1, op2});
     }
-    this->finalize(true, false);
+    this->finalize(PROP::COMPRESS, false);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -660,7 +660,7 @@ scale(double factor, double offset)
 	else
 	{
 		this->scale(factor, offset);
-        this->finalize(true, false);
+        this->finalize(PROP::COMPRESS, false);
 	}
 }
 

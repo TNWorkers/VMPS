@@ -94,7 +94,7 @@ protected:
 const std::map<string,std::any> HeisenbergSU2::defaults = 
 {
 	{"J",1.}, {"Jprime",0.}, {"Jprimeprime",0.}, {"Jrung",1.},
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"Ly",1ul}
+	{"D",2ul}, {"CALC_SQUARE",false}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 const std::map<string,std::any> HeisenbergSU2::sweep_defaults = 
@@ -133,6 +133,8 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params, const BC & boundary
     
     this->construct_from_pushlist(pushlist, labellist, Lcell);
     this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+
+	this->precalc_TwoSiteData();
 }
 
 Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
@@ -302,8 +304,8 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Jfull");
 			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
 			
-			if (boundary) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
-			else                                {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
 			
 			for (size_t h=0; h<R[loc].size(); ++h)
 			{
