@@ -87,14 +87,7 @@ Array<Scalar,Dynamic,1> matrix_element (int iL,
 		{
 			if (USE_SQUARE == true)
 			{
-				/*if constexpr (Symmetry::NON_ABELIAN)
-				{
-					contract_R(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
-				}
-				else*/
-				{
-					contract_R(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
-				}
+				contract_R(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
 			}
 			else
 			{
@@ -164,9 +157,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		{
 			if (USE_SQUARE == true)
 			{
-				//if constexpr (Symmetry::NON_ABELIAN) { contract_L(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
-				//else
-                { contract_L(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext); }
+                contract_L(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
 			}
 			else
 			{
@@ -193,14 +184,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		{
 			if (USE_SQUARE == true)
 			{
-				/*if constexpr (Symmetry::NON_ABELIAN)
-				{
-					contract_R(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
-				}
-				else*/
-				{
-					contract_R(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
-				}
+				contract_R(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
 			}
 			else
 			{
@@ -337,14 +321,7 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	{
 		if (USE_SQUARE == true)
 		{
-			/*if constexpr (Symmetry::NON_ABELIAN)
-			{
-				contract_L(B, Vbra.A_at(l), O.Vsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
-			}
-			else*/
-			{
-				contract_L(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
-			}
+			contract_L(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
 		}
 		else
 		{
@@ -399,7 +376,6 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
 		
-//		B.setTarget(qarray3<Symmetry::Nq>{Vket.Qtarget(), Vbra.Qtarget(), Qtarget});
 		vector<qarray3<Symmetry::Nq> > Qt;
 		for (size_t i=0; i<Vket.Qmultitarget().size(); ++i)
 		{
@@ -412,26 +388,15 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			contract_R(B, 
 			           Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), 
 			           O1.locBasis(l), O1.opBasis(l), O2.opBasis(l),
-			           //O1.auxBasis(l+1), O2.auxBasis(l+1), O1.auxBasis(l), O2.auxBasis(l), 
 			           Bnext);
 			B.clear();
 			B = Bnext;
-//			cout << "after l=" << l << ", B.dim=" << B.dim << endl << endl;;
 			Bnext.clear();
 		}
 		
 		if (B.dim == 1)
 		{
 			return B.block[0][0][0].trace();
-			// if (Qtarget == Symmetry::qvacuum())
-			// {
-			// 	#ifdef PRINT_SU2_FACTORS
-			// 	cout << termcolor::bold << termcolor::red << "Global SU2 factor in avg(Bra,O1,O2,Ket) from DmrgLinearAlgebra: " << termcolor::reset
-			// 	     << "√" << Symmetry::coeff_dot(O1.Qtarget()) << " • √" << Symmetry::coeff_dot(O1.Qtarget()) << endl;
-			// 	#endif
-			// 	res *= sqrt(Symmetry::coeff_dot(O1.Qtarget())*Symmetry::coeff_dot(O2.Qtarget())); // scalar product coeff for SU(2)
-			// }
-//			return res;
 		}
 		else
 		{

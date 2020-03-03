@@ -481,7 +481,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		Eold = std::real(avg(Vout.state,H,Vout.state));
 	}
 	Vout.energy = Eold;
-	
+
 	// initial cutoffs
 	Vout.state.eps_svd    = DynParam.eps_svd(0);
 	Vout.state.alpha_rsvd = DynParam.max_alpha_rsvd(0);

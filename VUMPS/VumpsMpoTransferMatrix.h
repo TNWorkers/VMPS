@@ -66,7 +66,7 @@ struct MpoTransferVector
 	
 	// When called for the VUMPS ground state algorithm, ab_input and LRdotY are set.
 	// When called with StructureFactor, they are equal to zero.
-	MpoTransferVector (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &T, const pair<qarray<Symmetry::Nq>,size_t> &ab_input=0, const Scalar &LRdotY=0.)
+	MpoTransferVector (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &T, const pair<qarray<Symmetry::Nq>,size_t> &ab_input, const Scalar &LRdotY=0.)
 	:data(T), ab(ab_input)
 	{
 		if (LRdotY != 0.)

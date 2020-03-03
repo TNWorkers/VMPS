@@ -62,6 +62,9 @@ public:
 
 	/**Returns the quantum numbers of the operators for the different combinations of U1 symmetries.*/
 	typename Symmetry::qType getQ (SPINOP_LABEL Sa) const;
+
+	/**Returns the label of the operators.*/
+	typename std::string label (SPINOP_LABEL Sa) const;
 	
 	OperatorType Scomp (SPINOP_LABEL Sa, int orbital=0) const;
 	
@@ -149,7 +152,7 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 	SparseMatrixXd Ir = MatrixXd::Identity(Nr,Nr).sparseView();
 	SparseMatrixXd Mout = kroneckerProduct(Il,kroneckerProduct(ScompSingleSite(Sa),Ir));
 	
-	return OperatorType(Mout,getQ(Sa));
+	return OperatorType(Mout,getQ(Sa), label(Sa));
 }
 
 template<typename Symmetry>
@@ -167,7 +170,7 @@ n (int orbital) const
 	SparseMatrixXd I  = MatrixXd::Identity(R,R).sparseView();
 	SparseMatrixXd Mout = kroneckerProduct(Il,kroneckerProduct(0.5*I-ScompSingleSite(SZ),Ir));
 	
-	return OperatorType(Mout,getQ(SZ));
+	return OperatorType(Mout,getQ(SZ), "n");
 }
 
 template<typename Symmetry>
@@ -186,7 +189,7 @@ sign (int orb1, int orb2) const
 		Mout = Mout * (2.*Scomp(SZ,i).data);
 	}
 	
-	return OperatorType(Mout,Symmetry::qvacuum());
+	return OperatorType(Mout,Symmetry::qvacuum(), "sign");
 }
 
 template<typename Symmetry>
@@ -194,7 +197,7 @@ SiteOperator<Symmetry,double> SpinBase<Symmetry>::
 Id() const
 {
 	SparseMatrixXd mat = MatrixXd::Identity(N_states,N_states).sparseView();
-	OperatorType Oout(mat,Symmetry::qvacuum());
+	OperatorType Oout(mat,Symmetry::qvacuum(), "id");
 	return Oout;
 }
 
@@ -368,6 +371,20 @@ get_structured_basis() const
 {
 	Qbasis<Symmetry> out;
 	out.push_back(Symmetry::qvacuum(),this->dim());
+	return out;
+}
+
+template<typename Symmetry>
+typename std::string SpinBase<Symmetry>::
+label (SPINOP_LABEL Sa) const
+{
+	std::string out="";
+	if      (Sa==SX)  {out = "Sx";}
+	else if (Sa==SY)  {out = "Sy";}
+	else if (Sa==iSY) {out = "iSy";}
+	else if (Sa==SZ)  {out = "Sz";}
+	else if (Sa==SP)  {out = "S+";}
+	else if (Sa==SM)  {out = "S-";}
 	return out;
 }
 

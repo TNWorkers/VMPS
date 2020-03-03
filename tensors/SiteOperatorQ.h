@@ -45,9 +45,7 @@ compute(const Operator &Op, const std::vector<qType> &blocks, Eigen::Decompositi
 	MatrixType Mtmp,eigva,eigve;
 	for(std::size_t nu=0; nu<Op.data().size(); nu++)
 	{
-		// cout << "before: " << Op.data().in[nu] << endl;
 		if(blocks.size()>0) { if(auto it = std::find(blocks.begin(),blocks.end(),Op.data().in[nu]); it == blocks.end()) {continue;} }
-		// cout << "after: " << Op.data().in[nu] << endl;
 		Mtmp = Op.data().block[nu];
 		Eigen::SelfAdjointEigenSolver<MatrixType> John(Mtmp,opt);
 		eigva = John.eigenvalues();//.asDiagonal();
@@ -117,6 +115,9 @@ public:
 	Qbasis<Symmetry>& basis() {return basis_;}
 	const Qbasis<Symmetry>& basis() const {return basis_;}
 
+	std::string& label() {return label_;}
+	const std::string& label() const {return label_;}
+	
 	MatrixType operator() ( const qType& bra, const qType& ket ) const;
 	MatrixType& operator() ( const qType& bra, const qType& ket );
 
@@ -147,6 +148,8 @@ private:
 	base data_;
 	qType Q_;
 	Qbasis<Symmetry> basis_;
+
+	std::string label_="";
 };
 
 template<typename Symmetry, typename MatrixType_>
@@ -262,6 +265,7 @@ adjoint () const
 		A *= Symmetry::coeff_adjoint(this->data().in[nu],this->data().out[nu],this->Q());
 		out.data().push_back(index,A);
 	}
+	out.label() = this->label() + "†";
 	return out;
 }
 
@@ -310,6 +314,7 @@ plain() const
 //		}
 	out.data = Mtmp.sparseView();
 	out.Q = this->Q();
+	out.label = this->label();
 	return out;
 }
 
