@@ -97,24 +97,20 @@ std::ostream& operator<< (std::ostream& s, SUB_LATTICE sublat)
 	return s;
 }
 
-//enum BC_CHOICE
-//{
-//	RING, /**<Periodic boundary conditions implemented via an MPO with transfer between the first and the last site.*/
-//	HAIRSLIDE, /**<Periodic boundary conditions implemented via chain folding.*/
-//	CYLINDER, /**<Periodic boundary conditions in y-direction by using the full Hilbert space.*/
-//	FLADDER, /**<2-leg ladder flattened to chain with nnn-hopping.*/
-//	CHAIN /**Chain with open boundary conditions for consistency.*/
-//};
+enum BC
+{
+	//PERIODIC=true,
+	OPEN=true,
+	INFINITE=false,
+};
 
-//std::ostream& operator<< (std::ostream& s, BC_CHOICE CHOICE)
-//{
-//	if      (CHOICE==RING)      {s << "RING";}
-//	else if (CHOICE==CYLINDER)  {s << "CYLINDER";}
-//	else if (CHOICE==HAIRSLIDE) {s << "HAIRSLIDE";}
-//	else if (CHOICE==FLADDER)   {s << "FLADDER";}
-//	else if (CHOICE==CHAIN)     {s << "CHAIN";}
-//	return s;
-//}
+std::ostream& operator<< (std::ostream& s, BC boundary)
+{
+	/*if      (boundary==PERIODIC)      {s << "periodic boundaries (finite system)";}
+	else*/ if (boundary==OPEN)  {s << "open boundaries";}
+	else if (boundary==INFINITE) {s << "no boundaries (infinite system)";}
+	return s;
+}
 
 //template<BC_CHOICE CHOICE> struct BC;
 
@@ -191,6 +187,31 @@ std::ostream& operator<< (std::ostream& s, SUB_LATTICE sublat)
 using namespace Eigen;
 typedef SparseMatrix<double,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXd;
 typedef SparseMatrix<std::complex<double>,ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixXcd;
+
+template<typename Operator, typename Scalar>
+struct PushType
+{	
+	std::vector<std::tuple<std::size_t, std::vector<Operator>, Scalar>> data;
+	void push_back(const std::tuple<std::size_t, std::vector<Operator>, Scalar> & elem) { if( std::abs(std::get<2>(elem) ) != 0 ) {data.push_back(elem);}}
+
+	std::tuple<std::size_t, std::vector<Operator>, Scalar> operator[] ( std::size_t i ) const {return data[i];}
+	std::tuple<std::size_t, std::vector<Operator>, Scalar>& operator[] ( std::size_t i ) {return data[i];}
+
+	std::size_t size() const {return data.size();}
+
+	template<typename OtherOperator, typename OtherScalar> PushType<OtherOperator,OtherScalar> cast()
+		{
+			PushType<OtherOperator,OtherScalar> out;
+			for (size_t i=0; i<size(); i++)
+			{
+				std::vector<OtherOperator> otherOps(std::get<1>(data[i]).size());
+				for (size_t j=0; j<std::get<1>(data[i]).size(); j++) {otherOps[j] = std::get<1>(data[i]).at(j).template cast<OtherScalar>();}
+				OtherScalar otherCoupling = static_cast<OtherScalar>(std::get<2>(data[i]));
+				out.push_back(make_tuple(std::get<0>(data[i]), otherOps, otherCoupling));
+			}
+			return out;
+		}
+};
 
 namespace VMPS
 {
@@ -326,7 +347,7 @@ struct DMRG
 			static size_t min_Nsv                    (size_t i) {return DMRG_CONTROL_DEFAULT_MIN_NSV;}
 			static int    max_Nrich                  (size_t i) {return -1;} // -1 = infinity
 			static void   doSomething                (size_t i) {return;} // -1 = infinity
-			static DMRG::ITERATION::OPTION iteration (size_t i) {return DMRG::ITERATION::ONE_SITE;}
+			static DMRG::ITERATION::OPTION iteration (size_t i) {return DMRG::ITERATION::TWO_SITE;}
 			
 			//LANCZOS DEFAULTS
 			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO = LANCZOS::REORTHO::FULL;
@@ -454,7 +475,8 @@ namespace PROP
 	const bool NON_HAMILTONIAN = false;
 	const bool FERMIONIC = true;
 	const bool NON_FERMIONIC = false;
-
+	const bool COMPRESS = true;
+	const bool DONT_COMPRESS = false;
 }
 
 #endif

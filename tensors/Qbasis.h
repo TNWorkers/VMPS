@@ -146,8 +146,11 @@ public:
 	 * Pulls the info from a given MPS site tensor \p A. 
 	 * If \p leg=0 the basis from the incoming leg is pulled. If \p leg=1 from the outgoing.
 	 */
-	template<typename Scalar>
-	void pullData (const vector<Biped<Symmetry,Scalar> >& A, const Eigen::Index& leg);
+	template<typename MatrixType>
+	void pullData (const vector<Biped<Symmetry,MatrixType> >& A, const Eigen::Index& leg);
+    
+    template<typename MatrixType>
+    void pullData (const vector<vector<vector<Biped<Symmetry,MatrixType>>> > &W, const Eigen::Index &leg);
 	
 	void pullData (const std::vector<std::array<qType,3> > &qvec, const std::size_t& leg, const Eigen::Index &inner_dim_in);
 	
@@ -389,9 +392,9 @@ leftAmount(const qType& qnew, const std::array<qType,2>& qold) const
 }
 
 template<typename Symmetry>
-template<typename Scalar>
+template<typename MatrixType>
 void Qbasis<Symmetry>::
-pullData (const vector<Biped<Symmetry,Scalar> > &A, const Eigen::Index &leg)
+pullData (const vector<Biped<Symmetry,MatrixType> > &A, const Eigen::Index &leg)
 {
 	std::unordered_set<qType> unique_controller;
 	for (std::size_t s=0; s<A.size(); s++)
@@ -420,6 +423,42 @@ pullData (const vector<Biped<Symmetry,Scalar> > &A, const Eigen::Index &leg)
 			}
 		}
 	}
+}
+
+template<typename Symmetry>
+template<typename MatrixType>
+void Qbasis<Symmetry>::
+pullData (const vector<vector<vector<Biped<Symmetry,MatrixType>>> > &W, const Eigen::Index &leg)
+{
+    std::unordered_set<qType> unique_controller;
+    for (std::size_t s1=0; s1<W.size(); s1++)
+    for(std::size_t s2=0; s2<W[s1].size(); s2++)
+    for(std::size_t k=0; k<W[s1][s2].size(); k++)
+    for (std::size_t q=0; q<W[s1][s2][k].size(); q++)
+    {
+        if(leg==0)
+        {
+            auto it = unique_controller.find(W[s1][s2][k].in[q]);
+            if( it==unique_controller.end() )
+            {
+                qType q_number = W[s1][s2][k].in[q];
+                Eigen::Index inner_dim = W[s1][s2][k].block[q].rows();
+                push_back(q_number,inner_dim);
+                unique_controller.insert(q_number);
+            }
+        }
+        else if(leg==1)
+        {
+            auto it = unique_controller.find(W[s1][s2][k].out[q]);
+            if( it==unique_controller.end() )
+            {
+                qType q_number = W[s1][s2][k].out[q];
+                Eigen::Index inner_dim = W[s1][s2][k].block[q].cols();
+                push_back(q_number,inner_dim);
+                unique_controller.insert(q_number);
+            }
+        }
+    }
 }
 
 template<typename Symmetry>

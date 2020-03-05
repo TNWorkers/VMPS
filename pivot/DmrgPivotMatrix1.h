@@ -12,10 +12,10 @@ struct PivotMatrix1
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
-	vector<vector<vector<SparseMatrix<MpoScalar> > > > W;
+	vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > > W;
 	
 	vector<std::array<size_t,2> >          qlhs;
-	vector<vector<std::array<size_t,5> > > qrhs;
+	vector<vector<std::array<size_t,6> > > qrhs;
 	vector<vector<Scalar> >                factor_cgcs;
 	
 	vector<qarray<Symmetry::Nq> > qloc;
@@ -89,9 +89,10 @@ void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 			size_t qL = H.qrhs[q][p][2];
 			size_t qR = H.qrhs[q][p][3];
 			size_t k  = H.qrhs[q][p][4];
+            size_t qW = H.qrhs[q][p][5];
 			
-			for (int r=0; r<H.W[s1][s2][k].outerSize(); ++r)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iW(H.W[s1][s2][k],r); iW; ++iW)
+			for (int r=0; r<H.W[s1][s2][k].block[qW].outerSize(); ++r)
+			for (typename Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>::InnerIterator iW(H.W[s1][s2][k].block[qW],r); iW; ++iW)
 			{
 				if (H.L.block[qL][iW.row()][0].size() != 0 and 
 				    H.R.block[qR][iW.col()][0].size() != 0 and

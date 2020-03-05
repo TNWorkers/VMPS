@@ -89,6 +89,19 @@ struct hash<std::tuple<size_t,size_t,size_t,qarray<Nq>,qarray<Nq> > >
 	}
 };
 
+/**Hashes a tuple of indices and quantum numbers using boost's \p hash_combine for the Mpo V-Matrices.*/
+template<size_t Nq>
+struct hash<std::pair<qarray<Nq>,size_t> >
+{
+	inline size_t operator()(const std::pair<qarray<Nq>,size_t> &ix) const
+	{
+		size_t seed = 0;
+		for (size_t q=0; q<Nq; ++q) { boost::hash_combine(seed, get<0>(ix)[q]); }
+		boost::hash_combine(seed, get<1>(ix));
+		return seed;
+	}
+};
+
 /**
  * Hashes a pair of doubles using boost's \p hash_combine.
  * Needed for \ref precalc_blockStructure.

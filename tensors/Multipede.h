@@ -164,7 +164,7 @@ typedef typename MatrixType::Scalar Scalar;
 	 */
 	void push_back (std::initializer_list<qType> qlist, const boost::multi_array<MatrixType,LEGLIMIT> &M);
 	
-	void insert (size_t ab, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs);
+	void insert (std::pair<qType,size_t> ab, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs);
 	///@}
 	
 	///@{
@@ -541,35 +541,37 @@ setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base)
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
 void Multipede<Nlegs,Symmetry,MatrixType>::
-insert (size_t ab, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs)
+insert (std::pair<qType,size_t> ab, const Multipede<Nlegs,Symmetry,MatrixType> &Trhs)
 {
 	static_assert(Nlegs == 3);
 	
 	for (size_t q=0; q<Trhs.dim; ++q)
 	{
-		if (Trhs.block[q][ab][0].size() == 0) {continue;}
+		if (Trhs.mid(q) != ab.first) {continue;}
 		
+		if (Trhs.block[q][ab.second][0].size() == 0) {continue;}
 		qarray3<Symmetry::Nq> quple = {Trhs.in(q), Trhs.out(q), Trhs.mid(q)};
+		
 		auto it = dict.find(quple);
 		if (it != dict.end())
 		{
-			if (block[it->second][ab][0].rows() == Trhs.block[q][ab][0].rows() and
-			    block[it->second][ab][0].cols() == Trhs.block[q][ab][0].cols())
+			if (block[it->second][ab.second][0].rows() == Trhs.block[q][ab.second][0].rows() and
+			    block[it->second][ab.second][0].cols() == Trhs.block[q][ab.second][0].cols())
 			{
 //				cout << termcolor::green << "operator+= in insert" << termcolor::reset << endl;
-				block[it->second][ab][0] += Trhs.block[q][ab][0];
+				block[it->second][ab.second][0] += Trhs.block[q][ab.second][0];
 			}
 			else
 			{
 //				cout << termcolor::blue << "operator= in insert" << termcolor::reset << "\t" << block[it->second][ab][0].rows() << "x" << block[it->second][ab][0].cols() << endl;
-				block[it->second][ab][0] = Trhs.block[q][ab][0];
+				block[it->second][ab.second][0] = Trhs.block[q][ab.second][0];
 			}
 		}
 		else
 		{
 //			cout << termcolor::red << "push_back in insert" << termcolor::reset << endl;
 			boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[Trhs.block[q].shape()[0]][1]);
-			Mtmparray[ab][0] = Trhs.block[q][ab][0];
+			Mtmparray[ab.second][0] = Trhs.block[q][ab.second][0];
 			push_back(quple, Mtmparray);
 		}
 	}

@@ -16,9 +16,9 @@ struct PivotMatrix2
 {
 	PivotMatrix2 (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L_input, 
 	              const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R_input, 
-	              const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W12_input, 
-	              const vector<vector<vector<SparseMatrix<MpoScalar> > > > &W34_input, 
-	              const vector<qarray<Symmetry::Nq> > &qloc12_input, 
+                  const vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > >& W12_input,
+                  const vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > >& W34_input,
+	              const vector<qarray<Symmetry::Nq> > &qloc12_input,
 	              const vector<qarray<Symmetry::Nq> > &qloc34_input, 
 	              const vector<qarray<Symmetry::Nq> > &qOp12_input, 
 	              const vector<qarray<Symmetry::Nq> > &qOp34_input)
@@ -28,16 +28,16 @@ struct PivotMatrix2
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
-	vector<vector<vector<SparseMatrix<MpoScalar> > > > W12;
-	vector<vector<vector<SparseMatrix<MpoScalar> > > > W34;
-	
+    vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > > W12;
+    vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > > W34;
+
 	vector<qarray<Symmetry::Nq> > qloc12;
 	vector<qarray<Symmetry::Nq> > qloc34;
 	vector<qarray<Symmetry::Nq> > qOp12;
 	vector<qarray<Symmetry::Nq> > qOp34;
 	
 	vector<std::array<size_t,2> >           qlhs;
-	vector<vector<std::array<size_t,10> > > qrhs;
+	vector<vector<std::array<size_t,12> > > qrhs;
 	vector<vector<Scalar> >                 factor_cgcs;
 };
 
@@ -70,14 +70,16 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 			size_t s1   = H.qrhs[q][p][4];
 			size_t s2   = H.qrhs[q][p][5];
 			size_t k12  = H.qrhs[q][p][6];
-			size_t s3   = H.qrhs[q][p][7];
-			size_t s4   = H.qrhs[q][p][8];
-			size_t k34  = H.qrhs[q][p][9];
+            size_t qW12 = H.qrhs[q][p][7];
+			size_t s3   = H.qrhs[q][p][8];
+			size_t s4   = H.qrhs[q][p][9];
+			size_t k34  = H.qrhs[q][p][10];
+            size_t qW34 = H.qrhs[q][p][11];
 			
-			for (int r12=0; r12<H.W12[s1][s2][k12].outerSize(); ++r12)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.W12[s1][s2][k12],r12); iW12; ++iW12)
-			for (int r34=0; r34<H.W34[s3][s4][k34].outerSize(); ++r34)
-			for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H.W34[s3][s4][k34],r34); iW34; ++iW34)
+			for (int r12=0; r12<H.W12[s1][s2][k12].block[qW12].outerSize(); ++r12)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.W12[s1][s2][k12].block[qW12],r12); iW12; ++iW12)
+			for (int r34=0; r34<H.W34[s3][s4][k34].block[qW34].outerSize(); ++r34)
+			for (typename SparseMatrix<MpoScalar>::InnerIterator iW34(H.W34[s3][s4][k34].block[qW34],r34); iW34; ++iW34)
 			{
 				if (H.L.block[qL][iW12.row()][0].size() != 0 and 
 				    H.R.block[qR][iW34.col()][0].size() != 0 and

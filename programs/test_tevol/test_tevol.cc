@@ -29,9 +29,10 @@ Logger lout;
 
 #include "solvers/DmrgSolver.h"
 #include "solvers/TDVPPropagator.h"
-//#include "solvers/MpsCompressor.h"
+#include "solvers/MpsCompressor.h"
 
 #include "models/HeisenbergSU2.h"
+
 #include "models/HeisenbergU1XXZ.h"
 #include "models/HeisenbergXYZ.h"
 
@@ -139,6 +140,7 @@ int main (int argc, char* argv[])
 	FilerU1.close();
 	
 	// --------SU(2)---------
+    
 	lout << termcolor::red << endl << "--------SU(2)---------" << termcolor::reset << endl << endl;
 	
 	Stopwatch<> Watch_SU2;
