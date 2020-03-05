@@ -140,6 +140,9 @@ struct Obs
 	
 	vector<vector<Eigen::MatrixXd>> spectrum;
 	
+	double Oinv;
+	double Orot;
+	
 	void resize (size_t Lx, size_t Ly, size_t Lobs)
 	{
 		nh.resize(Lx,Ly); nh.setZero();
@@ -237,7 +240,7 @@ void resize_OdagO (size_t Ncells)
 
 void fill_OdagO (size_t L, size_t Ly, size_t n, const Eigenstate<MODEL::StateUd> &g, bool CALC_S=true, bool CALC_T=true, bool CALC_B=true, bool CALC_C=true)
 {
-	Geometry2D Geo(SNAKE,L,Ly,1.,true);
+	Geometry2D Geo(CHESSBOARD,L,Ly,1.,true);
 	
 	VectorXd Bavg(L*Ly);
 	MODEL H1cell(L*Ly+Ly,{{"OPEN_BC",false},{"CALC_SQUARE",false}});
@@ -286,7 +289,7 @@ void fill_OdagO (size_t L, size_t Ly, size_t n, const Eigenstate<MODEL::StateUd>
 
 void save_OdagO (size_t Ncells)
 {
-	Geometry2D Geo(SNAKE,L,Ly,1.,true);
+	Geometry2D Geo(CHESSBOARD,L,Ly,1.,true);
 	
 	// save to obs
 	NestedLoopIterator Nelly(5,{Ncells,L,Ly,L,Ly});
@@ -341,7 +344,7 @@ void save_OdagO (size_t Ncells)
 complex<double> calc_FT (double kx, int iky, size_t Ncells, const vector<vector<vector<vector<ArrayXd> > > > &OdagO)
 {
 	ArrayXXcd FTintercell(L,L);
-	Geometry2D Geo(SNAKE,L,Ly,1.,true);
+	Geometry2D Geo(CHESSBOARD,L,Ly,1.,true);
 	
 	for (size_t x0=0; x0<L; ++x0)
 	for (size_t x1=0; x1<L; ++x1)
@@ -454,6 +457,9 @@ int main (int argc, char* argv[])
 	V = args.get<double>("V",0.);
 	Vxy = args.get<double>("Vxy",V);
 	Vz = args.get<double>("Vz",V);
+	double t0stag = args.get<double>("t0stag",0.);
+	double F = args.get<double>("F",0.);
+	cout << "F=" << F << endl;
 	if (Vxy==Vz) V = Vxy;
 	M = args.get<int>("M",0);
 	S = abs(M)+1;
@@ -503,6 +509,14 @@ int main (int argc, char* argv[])
 	if (PBC)
 	{
 		base += make_string("_BC=PBC");
+	}
+	if (t0stag != 0.)
+	{
+		base += make_string("_t0stag=",t0stag);
+	}
+	if (F != 0.)
+	{
+		base += make_string("_F=",F);
 	}
 	string obsfile = make_string(wd,"obs/",base,".h5");
 	string statefile = make_string(wd,"state/",base);
@@ -563,8 +577,11 @@ int main (int argc, char* argv[])
 	
 	Stopwatch<> Watch;
 	
-	Geometry2D Geo1cell(SNAKE,1*L,Ly,1.,true); // periodic BC in y = true
-	Geometry2D Geo2cell(SNAKE,2*L,Ly,1.,true);
+	Geometry2D Geo1cell(CHESSBOARD,1*L,Ly,1.,true); // periodic BC in y = true
+	Geometry2D Geo2cell(CHESSBOARD,2*L,Ly,1.,true);
+	
+	cout << "Geo2cell.hopping()=" << endl;
+	cout << Geo2cell.hopping() << endl;
 	
 	// save to temporary, otherwise std::bad_any_cast
 	ArrayXXd tArray, Varray, Vxyarray, Vzarray, Jarray, Xarray, ZeroArray, OneArray, VextArray;
@@ -635,6 +652,8 @@ int main (int argc, char* argv[])
 			params.push_back({"Uph",U});
 			params.push_back({"U",0.});
 		}
+		params.push_back({"t0",+t0stag,0});
+		params.push_back({"t0",-t0stag,1});
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		
 		if constexpr(std::is_same<MODEL,VMPS::HubbardSU2xU1>::value)
@@ -665,6 +684,12 @@ int main (int argc, char* argv[])
 		params.push_back({"X",X});
 		params.push_back({"J",J});
 		params.push_back({"Uph",U});
+		if (t0stag!=0.)
+		{
+			params.push_back({"t0",+t0stag,0});
+			params.push_back({"t0",-t0stag,1});
+		}
+		params.push_back({"F",F});
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {};
 		Qc2 = {}; // for 2 unit cells
@@ -699,6 +724,8 @@ int main (int argc, char* argv[])
 		params.push_back({"X",X});
 		params.push_back({"J",J});
 		params.push_back({"Uph",U});
+		params.push_back({"t0",+t0stag,0});
+		params.push_back({"t0",-t0stag,1});
 		if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {M};
 		Qc2 = {M}; // for 2 unit cells
@@ -1078,6 +1105,25 @@ int main (int argc, char* argv[])
 				
 				if (target.HAS_GROUP(bond.str())) {return;}
 				
+				Mpo<MODEL::Symmetry,complex<double>> Id = Mpo<MODEL::Symmetry,complex<double>>::Identity(g_foxy.state.locBasis());
+				auto domRL1 = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  Id, true, false);
+				auto domLR1 = g_foxy.state.calc_dominant_1symm(GAUGE::L, DMRG::DIRECTION::RIGHT, Id, true, false);
+				
+				auto domRL1y = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  H.Rcomp(SZ,0), false, false);
+				auto domLR1y = g_foxy.state.calc_dominant_1symm(GAUGE::L, DMRG::DIRECTION::RIGHT, H.Rcomp(SZ,0), false, false);
+				
+//				obs.Oinv = domRL1.first.real();
+//				obs.Orot = domRL1y.first.real();
+				
+//				auto domRL1x = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  H.Rcomp(SX,0), false, false);
+//				auto domLR1x = g_foxy.state.calc_dominant_1symm(GAUGE::L, DMRG::DIRECTION::RIGHT, H.Rcomp(SX,0), false, false);
+//				
+//				auto domRL1z = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  H.Rcomp(SZ,0), false, false);
+//				auto domLR1z = g_foxy.state.calc_dominant_1symm(GAUGE::L, DMRG::DIRECTION::RIGHT, H.Rcomp(SZ,0), false, false);
+				
+//				auto domRL2 = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  H.Rcomp(SX,0), H.Rcomp(SZ,0));
+//				auto domLR2 = g_foxy.state.calc_dominant_1symm(GAUGE::L, DMRG::DIRECTION::RIGHT, H.Rcomp(SX,0), H.Rcomp(SZ,0));
+				
 				Stopwatch<> SaveAndMeasure;
 				for (size_t x=0; x<L; ++x)
 				for (size_t y=0; y<Ly; ++y)
@@ -1134,6 +1180,7 @@ int main (int argc, char* argv[])
 					g_foxy.state.calc_entropy(true);
 					obs.spectrum[x][y] = g_foxy.state.entanglementSpectrumLoc(Geo1cell(x,y));
 					lout << "\tspec=" << obs.spectrum[x][y].block(0,0,min(40,int(obs.spectrum[x][y].rows())),1).transpose() << endl;
+					lout << "diff sv0-sv1=" << obs.spectrum[x][y](0,0)-obs.spectrum[x][y](1,0) << endl;
 				}
 				lout << endl;
 				
@@ -1310,6 +1357,8 @@ int main (int argc, char* argv[])
 				target.save_scalar(obs.energy,"energy",bond.str());
 				target.save_scalar(obs.dedV,"dedV",bond.str());
 				target.save_scalar(obs.STcorr,"STcorr",bond.str());
+				target.save_scalar(obs.Oinv,"Oinv",bond.str());
+				target.save_scalar(obs.Orot,"Orot",bond.str());
 				
 				target.save_matrix(obs.nh,"nh",bond.str());
 				target.save_matrix(obs.ns,"ns",bond.str());

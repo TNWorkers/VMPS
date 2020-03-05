@@ -54,6 +54,7 @@ const std::map<string,std::any> Hubbard::defaults =
 	{"J3site",0.},
 	{"Delta",0.},
 	{"X",0.}, {"Xperp",0.},
+	{"F",0.}, {"Fperp",0.},
 	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
 };
 
@@ -95,7 +96,7 @@ add_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
 		param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
 		Terms.save_label(loc, Bx.label);
 		
-		// Can also implement superconductivity terms c*c & cdag*cdag here
+		// Can also implement superconductivity terms c*c+cdag*cdag here
 		
 		ArrayXd  U_array  = F[loc].ZeroField();
 		ArrayXd  Uph_array  = F[loc].ZeroField();
@@ -106,6 +107,11 @@ add_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler 
 		ArrayXXd Jperp_array = F[loc].ZeroHopping();
 		
 		Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U_array, Uph_array, E_array, Bz_array, Bx.a, tperp_array, Vperp_array, Jperp_array));
+		
+		// Fermion parity breaking term c+cdag
+		param1d Fval = P.fill_array1d<double>("F", "Forb", orbitals, loc%Lcell);
+		Terms.save_label(loc, Fval.label);
+		Terms.push_local(loc, 1., F[loc].template FermionParityBreaking<double>(Fval.a));
 	}
 }
 

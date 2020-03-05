@@ -54,6 +54,45 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	return contract_LR(B,IdR);
 }
 
+//template<typename Symmetry, typename MpoScalar, typename Scalar>
+//complex<Scalar> avg (const vector<vector<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic>>>> &Abra,
+//            const Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic>> &L,
+//            const Mpo<Symmetry,MpoScalar> &O, 
+//            const vector<vector<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic>>>> &Aket,
+//            const Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic>> &R)
+//{
+//	Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > Bnext;
+//	Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > B(L);
+//	Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > Blast(R);
+//	size_t Ncells = 1; 
+//	auto Obs = O;
+//	
+////	if (Obs.length() != Aket.size() and Vket.Qtarget() != Symmetry::qvacuum())
+////	{
+////		assert(Obs.length()%Vket.length() == 0); //?
+////		Ncells = static_cast<size_t>(Obs.length()/Vket.length());
+////		qarray<Symmetry::Nq> transformed_Qtot = ::adjustQN<Symmetry>(Vket.Qtarget(),Ncells);
+////		Obs.transform_base(transformed_Qtot,false);
+////	}
+////	else
+////	{
+////		Obs.transform_base(Vket.Qtarget(),false);
+////	}
+//	
+//	for (size_t l=0; l<Obs.length(); ++l)
+//	{
+//		contract_L(B,
+//				   Abra[l%Aket.size()], Obs.W_at(l), O.IS_HAMILTONIAN(),
+//				   Aket[l%Aket.size()], Obs.locBasis(l), Obs.opBasis(l), Bnext);
+//		
+//		B.clear();
+//		B = Bnext;
+//		Bnext.clear();
+//	}
+//	
+//	return contract_LR(B,Blast);
+//}
+
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg (const Umps<Symmetry,Scalar> &Vbra, 
             const Mpo<Symmetry,MpoScalar> &O1, 

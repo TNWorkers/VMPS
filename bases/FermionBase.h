@@ -7,6 +7,7 @@
 
 #include <boost/dynamic_bitset.hpp>
 #include <Eigen/Core>
+#include <unsupported/Eigen/MatrixFunctions>
 /// \endcond
 
 #include "symmetry/kind_dummies.h"
@@ -142,6 +143,8 @@ public:
 	*/
 	OperatorType Scomp (SPINOP_LABEL Sa, int orbital=0) const;
 	
+	SiteOperator<Symmetry,complex<double>> Rcomp (SPINOP_LABEL Sa, int orbital) const;
+	
 	/**
 	 * For \p N_orbitals=1, this is
 	 * \f$s^z = \left(
@@ -263,6 +266,8 @@ public:
 	                    const Array<Scalar,Dynamic,Dynamic> &t, 
 	                    const Array<Scalar,Dynamic,Dynamic> &V, 
 	                    const Array<Scalar,Dynamic,Dynamic> &J) const;
+	
+	template<typename Scalar> SiteOperator<Symmetry,Scalar> FermionParityBreaking (const Array<Scalar,Dynamic,Dynamic> &F) const;
 	
 	/**Returns the local basis.*/
 	vector<qarray<Symmetry::Nq> > get_basis() const;
@@ -431,6 +436,32 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 }
 
 template<typename Symmetry>
+SiteOperator<Symmetry,complex<double>> FermionBase<Symmetry>::
+Rcomp (SPINOP_LABEL Sa, int orbital) const
+{
+	assert(orbital<N_orbitals);
+	
+	MatrixXcd Mtmp;
+	if (Sa==iSY)
+	{
+		Mtmp = 2.*M_PI*MatrixXcd(Scomp(Sa).data);
+	}
+	else
+	{
+		Mtmp = 2.*1.i*M_PI*MatrixXcd(Scomp(Sa).data);
+	}
+	
+	auto Op = Mtmp.exp().sparseView(1.,1e-14); // ref.value, epsilon
+	
+	cout << "Rcomp=" << Mtmp << endl << endl;
+	cout << "Re=" << Mtmp.exp().real() << endl << endl;
+	cout << "Im=" << Mtmp.exp().imag() << endl << endl;
+	cout << "Op=" << Op << endl << endl;
+	
+	return SiteOperator<Symmetry,complex<double>>(Op,getQ(Sa));
+}
+
+template<typename Symmetry>
 SiteOperator<Symmetry,double> FermionBase<Symmetry>::
 Sz (int orbital) const
 {
@@ -593,6 +624,24 @@ HubbardHamiltonian (const Array<Scalar,Dynamic,1> &U,
 		if (Bx(i) != 0.)
 		{
 			Mout += Bx(i) * Sx(i).data.template cast<Scalar>();
+		}
+	}
+	
+	return SiteOperator<Symmetry,Scalar>(Mout,Symmetry::qvacuum());
+}
+
+template<typename Symmetry>
+template<typename Scalar>
+SiteOperator<Symmetry,Scalar> FermionBase<Symmetry>::
+FermionParityBreaking (const Array<Scalar,Dynamic,Dynamic> &F) const
+{
+	SparseMatrix<Scalar> Mout(N_states,N_states);
+	
+	for (int i=0; i<N_orbitals; ++i)
+	{
+		if (F(i) != 0.)
+		{
+			Mout += F(i) * (cdag(UP,i).data + c(UP,i).data + cdag(DN,i).data + c(DN,i).data);
 		}
 	}
 	

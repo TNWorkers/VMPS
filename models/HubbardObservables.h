@@ -71,6 +71,7 @@ public:
 	
 	///@{
 	Mpo<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
+	Mpo<Symmetry,complex<double>> Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> Sz (size_t locx, size_t locy=0) const;
 	Mpo<Symmetry> Sp (size_t locx, size_t locy=0) const {return Scomp(SP,locx,locy);};
 	Mpo<Symmetry> Sm (size_t locx, size_t locy=0) const {return Scomp(SM,locx,locy);};
@@ -559,6 +560,30 @@ Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 	stringstream ss; ss << Sa;
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
 	return make_local(ss.str(), locx,locy, factor*F[locx].Scomp(Sa,locy), false, HERMITIAN);
+}
+
+template<typename Symmetry>
+Mpo<Symmetry,complex<double>> HubbardObservables<Symmetry>::
+Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+{
+	stringstream ss;
+	if (Sa==iSY)
+	{
+		ss << "exp[2π" << Sa << "(" << locx << "," << locy << ")]";
+	}
+	else
+	{
+		ss << "exp[2πi" << Sa << "(" << locx << "," << locy << ")]";
+	}
+	
+	auto Op = F[locx].Rcomp(Sa,locy);
+	
+	Mpo<Symmetry,complex<double>> Mout(F.size(), Op.Q, ss.str(), false);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis(),l);}
+	
+	Mout.setLocal(locx, Op);
+	
+	return Mout;
 }
 
 template<typename Symmetry>

@@ -112,7 +112,7 @@ public:
 	///\}
 	
 	void lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar> &factors, Mps<Symmetry,Scalar> &Vout, 
-	                       size_t Dcutoff_input, double tol=1e-4, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
+	                       Mps<Symmetry,Scalar> Vguess, size_t Dcutoff_input, double tol=1e-4, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
 	
 private:
 	
@@ -625,7 +625,7 @@ build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar> &factors, Mps<Symmetry,Scalar> &Vout, 
-                  size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
+                  Mps<Symmetry,Scalar> Vguess, size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
 {
 	Stopwatch<> Chronos;
 	N_sites = Vin[0].length();
@@ -644,6 +644,7 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 	for (int j=0; j<=i; ++j)
 	{
 		overlapsVin(i,j) = conjIfcomplex(factors[i]) * factors[j] * dot(Vin[i],Vin[j]);
+		cout << "i=" << i << ", j=" << j << ", overlapsVin=" << overlapsVin(i,j) << endl;
 	}
 	overlapsVin.template triangularView<Upper>() = overlapsVin.adjoint();
 	double overlapsVinSum = isReal(overlapsVin.sum());
@@ -664,9 +665,10 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 	}
 	
 	// set initial guess
-	Vout = Vin[0];
-	Vout.innerResize(Dcutoff);
-	Vout.max_Nsv = Dcutoff;
+//	Vout = Vin[0];
+	Vout = Vguess;
+//	Vout.innerResize(Dcutoff);
+//	Vout.max_Nsv = Dcutoff;
 	
 	Mmax = Vout.calc_Mmax();
 	prepSweep(Vin,Vout);
@@ -768,6 +770,7 @@ lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar>
 		
 //		cout << "sqnormVin=" << overlapsVin.sum() << ", Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		sqdist = abs(overlapsVinSum-Vout.squaredNorm());
+		cout << "Vout.squaredNorm()=" << Vout.squaredNorm() << endl;
 		assert(!std::isnan(sqdist));
 		
 		if (CHOSEN_VERBOSITY>=2)

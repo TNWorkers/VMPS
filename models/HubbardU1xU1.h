@@ -59,7 +59,7 @@ public:
 	HubbardU1xU1 (const size_t &L, const vector<Param> &params);
 	///@}
 	
-	static qarray<2> singlet (int N) {return qarray<2>{0,N};};
+	static qarray<2> singlet (int N=0) {return qarray<2>{0,N};};
 	
 	template<typename Symmetry_> 
 	//static HamiltonianTermsXd<Symmetry_> set_operators (const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, size_t loc=0);
@@ -101,7 +101,7 @@ HubbardU1xU1 (const size_t &L, const vector<Param> &params)
 	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
 	set_operators(F,P,Terms);
 	
-	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
+	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
 	this->precalc_TwoSiteData();
 }
 
