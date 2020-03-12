@@ -242,7 +242,14 @@ public:
 	 * \param DIR : LEFT or RIGHT fixed point.
 	 * \note The return values are of type complex<double>. Can we choose them sometimes to be real?
 	 */
-	std::pair<complex<double>, Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > calc_dominant(GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const;
+	std::pair<complex<double>, Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > 
+	calc_dominant_1symm (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, const Mpo<Symmetry,complex<double>> &R, bool TRANSPOSE, bool CONJUGATE) const;
+	
+	std::pair<complex<double>, Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > 
+	calc_dominant_2symm (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, const Mpo<Symmetry,complex<double>> &R1, const Mpo<Symmetry,complex<double>> &R2) const;
+	
+	vector<Eigenstate<Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic>>>>
+	calc_dominant (GAUGE::OPTION g=GAUGE::R, DMRG::DIRECTION::OPTION DIR=DMRG::DIRECTION::RIGHT, int N=2, double tol=1e-15) const;
 	
 	/**
 	 * This functions transforms all quantum numbers in the Umps (Umps::qloc and QN in Umps::A) by \f$q \rightarrow q * N_{cells}\f$.
@@ -1636,6 +1643,94 @@ svdDecompose (size_t loc, GAUGE::OPTION gauge)
 }
 
 template<typename Symmetry, typename Scalar>
+vector<vector<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic>>>>
+apply_symm (const vector<vector<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic>>>> &A, 
+            const Mpo<Symmetry,complex<Scalar>> &R, 
+            const vector<vector<qarray<Symmetry::Nq> > > &qloc,
+            const vector<Qbasis<Symmetry> > &qauxAl,
+            const vector<Qbasis<Symmetry> > &qauxAr,
+            bool TRANSPOSE=false,
+            bool CONJUGATE=false)
+{
+	vector<vector<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic>>>> Ares(A.size());
+	for (int l=0; l<A.size(); ++l) Ares[l].resize(A[l].size());
+	
+	auto Aprep = A;
+	auto qloc_cpy = qloc;
+	auto qauxAl_cpy = qauxAl;
+	auto qauxAr_cpy = qauxAr;
+	
+	if (CONJUGATE and not TRANSPOSE)
+	{
+		for (int l=0; l<A.size(); ++l)
+		for (int s=0; s<A[l].size(); ++s)
+		{
+			Aprep[l][s] = A[l][s].conjugate();
+		}
+	}
+	else if (TRANSPOSE)
+	{
+		int linv = A.size()-1;
+		for (int l=0; l<A.size(); ++l)
+		{
+			for (int s=0; s<A[l].size(); ++s)
+			{
+//				cout << "l=" << l << ", s=" << s << endl;
+				if (CONJUGATE)
+				{
+					Aprep[l][s] = A[linv][s].adjoint();
+				}
+				else
+				{
+					Aprep[l][s] = A[linv][s].transpose();
+//					cout << Aprep[l][s] << endl << endl;
+				}
+			}
+			
+			qloc_cpy[l] = qloc[linv];
+			qauxAl_cpy[l] = qauxAr[linv];
+			qauxAr_cpy[l] = qauxAl[linv];
+			
+			--linv;
+		}
+	}
+	
+	for (size_t l=0; l<A.size(); ++l)
+	{
+		contract_AW(Aprep[l], qloc_cpy[l], R.W_at(0), R.opBasis(0),
+		            qauxAl_cpy[l], R.inBasis(0),
+		            qauxAr_cpy[l], R.outBasis(0),
+		            Ares[l],
+		            false);
+	}
+	
+	return Ares;
+}
+
+//template<typename Symmetry, typename Scalar>
+//vector<vector<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic>>>>
+//spin_rotation (const vector<vector<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic>>>> &A, 
+//               const Mpo<Symmetry> &R, 
+//               const vector<vector<qarray<Symmetry::Nq> > > &qloc,
+//               const vector<Qbasis<Symmetry> > &qauxAl,
+//               const vector<Qbasis<Symmetry> > &qauxAr)
+//{
+//	vector<vector<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic>>>> Ares(A.size());
+//	for (int l=0; l<A.size(); ++l) Ares[l].resize(A[l].size());
+//	
+//	for (size_t l=0; l<A.size(); ++l)
+//	{
+//		contract_AW(A[l], qloc[l], R.W_at(0), R.opBasis(0),
+//		            qauxAl[l], R.inBasis(0),
+//		            qauxAr[l], R.outBasis(0),
+//		            Ares[l],
+//		            false, {});
+//	}
+//	
+//	return Ares;
+//}
+
+template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
 calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &N) const
 {
@@ -1715,7 +1810,7 @@ calc_N (DMRG::DIRECTION::OPTION DIR, size_t loc, vector<Biped<Symmetry,Matrix<Sc
 					MatrixType Mtmp(qcomb.inner_dim(qfull), outbase[loc].inner_dim(outbase[loc][qout]));
 					Mtmp.setZero();
 					Index down=qcomb.leftAmount(qfull,{outbase[loc][qout], Symmetry::flip(qloc[loc][s])});
-
+					
 					size_t source_dim;
 					auto it = qcomb.history.find(qfull);
 					for (size_t i=0; i<(it->second).size(); i++)
@@ -2433,8 +2528,108 @@ truncate (bool SET_AC_RANDOM)
 }
 
 template<typename Symmetry, typename Scalar>
+vector<Eigenstate<Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic>>>> Umps<Symmetry,Scalar>::
+calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, int N, double tol) const
+{
+	assert(N==1 or N==2 and "Can only calculate N=1 or N=2 dominant eigenvectors!");
+	
+	vector<Eigenstate<Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic>>>> res(N);
+	
+	Umps<Symmetry,complex<double> > Compl = this->template cast<complex<double> > ();
+	complex<double> lambda1;
+	
+	TransferMatrix<Symmetry,complex<double> > T;
+//	TransferMatrix<Symmetry,double> Tr;
+	if (DIR == DMRG::DIRECTION::LEFT)
+	{
+		T = TransferMatrix<Symmetry,complex<double> >
+		    (VMPS::DIRECTION::RIGHT, Compl.A[g], Compl.A[g], locBasis());
+//		Tr = TransferMatrix<Symmetry,double>
+//		    (VMPS::DIRECTION::RIGHT, A[g], A[g], locBasis());
+	}
+	else
+	{
+		T = TransferMatrix<Symmetry,complex<double> >
+		    (VMPS::DIRECTION::LEFT, Compl.A[g], Compl.A[g], locBasis());
+//		Tr = TransferMatrix<Symmetry,double>
+//		    (VMPS::DIRECTION::LEFT, A[g], A[g], locBasis());
+	}
+	
+	Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > RandBiped;
+//	Biped<Symmetry,Matrix<double,Dynamic,Dynamic> > RandBipedr;
+	if (DIR == DMRG::DIRECTION::LEFT)
+	{
+		RandBiped.setRandom(inBasis(0), inBasis(0));
+//		RandBipedr.setRandom(inBasis(0), inBasis(0));
+	}
+	else
+	{
+		RandBiped.setRandom(outBasis(N_sites-1), outBasis(N_sites-1));
+//		RandBipedr.setRandom(outBasis(N_sites-1), outBasis(N_sites-1));
+	}
+	RandBiped = 1./RandBiped.norm() * RandBiped;
+//	RandBipedr = 1./RandBipedr.norm() * RandBipedr;
+	TransferVector<Symmetry,complex<double> > x(RandBiped);
+	
+	ArnoldiSolver<TransferMatrix<Symmetry,complex<double> >,TransferVector<Symmetry,complex<double> > > John(T,x,lambda1,tol);
+	lout << "Fixed point: GAUGE=" << g << ", DIR=" << DIR << ": " << John.info()  << endl;
+	//Normalize the Fixed point and try to make it real.
+//	x.data = exp(-1.i*arg(x.data.block[0](0,0))) * (1./x.data.norm()) * x.data;
+	
+	res[0].state = x.data;
+	res[0].energy = lambda1.real();
+	
+	if (abs(lambda1.imag()) > 1e1*tol)
+	{
+		lout << John.info() << endl;
+		lout << termcolor::red << "Non-zero imaginary part of dominant eigenvalue λ=" << lambda1 << ", |λ|=" << abs(lambda1) << termcolor::reset << endl;
+	}
+	
+	lout << "norm1 test=" << x.data.norm() << endl;
+	
+//	LanczosSolver<TransferMatrix<Symmetry,double>,TransferVector<Symmetry,double>,double> Lutz(LANCZOS::REORTHO::FULL);
+//	Eigenstate<TransferVector<Symmetry,double>> z;
+//	z.state = TransferVector<Symmetry,double>(RandBipedr);;
+//	Lutz.edgeState(Tr, z, LANCZOS::EDGE::ROOF, 1e-7,1e-4, false);
+//	
+//	cout << Lutz.info() << endl;
+//	cout << "z.energy=" << z.energy << endl;
+//	lout << "z.norm test=" << z.state.data.norm() << endl;
+	
+	if (N==2)
+	{
+		T.TopEigvec = x.data;
+		T.TopEigval = lambda1;
+		T.PROJECT_OUT_TOPEIGVEC = true;
+		
+		complex<double> lambda2;
+		TransferVector<Symmetry,complex<double> > y(RandBiped);
+		ArnoldiSolver<TransferMatrix<Symmetry,complex<double> >,TransferVector<Symmetry,complex<double> > > Jane(T,y,lambda2,tol);
+		lout << "Fixed point: GAUGE=" << g << ", DIR=" << DIR << ": " << Jane.info()  << endl;
+		
+//		y.data = exp(-1.i*arg(y.data.block[0](0,0))) * (1./y.data.norm()) * y.data;
+		res[1].state = y.data;
+		res[1].energy = lambda2.real();
+		
+		lout << "norm2 test=" << y.data.norm() << endl;
+		lout << "orthogonality test=" << abs(x.data.adjoint().contract(y.data).trace()) << endl;
+		
+		if (abs(lambda2.imag()) > 1e1*tol)
+		{
+			lout << John.info() << endl;
+			lout << termcolor::red << "Non-zero imaginary part of dominant eigenvalue λ=" << lambda2 << ", |λ|=" << abs(lambda2) << termcolor::reset << endl;
+		}
+	}
+	
+	lout << endl;
+	// Note: corr.length ξ=-L/ln(|lambda2|")
+	
+	return res;
+}
+
+template<typename Symmetry, typename Scalar>
 std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > Umps<Symmetry,Scalar>::
-calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const
+calc_dominant_1symm (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, const Mpo<Symmetry,complex<double>> &R, bool TRANSPOSE, bool CONJUGATE) const
 {
 	Umps<Symmetry,complex<double> > Compl = this->template cast<complex<double> > ();
 	complex<double> lambda;
@@ -2442,32 +2637,121 @@ calc_dominant (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR) const
 	TransferMatrix<Symmetry,complex<double> > T;
 	if (DIR == DMRG::DIRECTION::LEFT)
 	{
-		T = TransferMatrix<Symmetry,complex<double> >(GAUGE::R, Compl.A[g], Compl.A[g], Compl.locBasis());
+		// time_reverse(Compl.A[g],R,locBasis(),inBasis(),outBasis())
+		T = TransferMatrix<Symmetry,complex<double> >
+		    (VMPS::DIRECTION::RIGHT, Compl.A[g], apply_symm(Compl.A[g],R,locBasis(),inBasis(),outBasis(),TRANSPOSE,CONJUGATE), locBasis());
 	}
 	else
 	{
-		T = TransferMatrix<Symmetry,complex<double> >(GAUGE::L, Compl.A[g], Compl.A[g], Compl.locBasis());
+		//Compl.A[g]
+		T = TransferMatrix<Symmetry,complex<double> >
+		    (VMPS::DIRECTION::LEFT, Compl.A[g], apply_symm(Compl.A[g],R,locBasis(),inBasis(),outBasis(),TRANSPOSE,CONJUGATE), locBasis());
 	}
 	
 	Biped<Symmetry,Matrix<complex<double>, Dynamic,Dynamic> > RandBiped;
 	if (DIR == DMRG::DIRECTION::LEFT)
 	{
-		RandBiped.setRandom(Compl.inBasis(0), Compl.inBasis(0));
+		RandBiped.setRandom(inBasis(0), inBasis(0));
 	}
 	else
 	{
-		RandBiped.setRandom(Compl.outBasis(N_sites-1), Compl.outBasis(N_sites-1));
+		RandBiped.setRandom(outBasis(N_sites-1), outBasis(N_sites-1));
 	}
 	RandBiped = 1./RandBiped.norm() * RandBiped;
 	TransferVector<Symmetry,complex<double> > x(RandBiped);
 	
 	ArnoldiSolver<TransferMatrix<Symmetry,complex<double> >,TransferVector<Symmetry,complex<double> > > John(T,x,lambda);
 	
-	lout << "fixed point: " << John.info() << endl;
+	lout << "fixed point, gauge=" << g << ", DIR=" << DIR << ": " << John.info()  << endl;
 	//Normalize the Fixed point and try to make it real.
-	x.data[0] = exp(-1i*arg(x.data[0].block[0](0,0))) * (1./x.data[0].norm()) * x.data[0];
+//	x.data = exp(-1.i*arg(x.data.block[0](0,0))) * (1./x.data.norm()) * x.data;
 	
-	return std::make_pair(lambda,x.data[0]);
+	auto U = x.data.adjoint();
+	
+	lout << boolalpha << "TRANSPOSE=" << TRANSPOSE << ", CONJUGATE=" << CONJUGATE << endl;
+	lout << R.info() << endl;
+//	lout << "U.norm()=" << U.norm() << "\t" << U.adjoint().contract(U).trace() << endl;
+	complex<double> O = (U.contract(U.conjugate())).trace();
+	lout << "O raw result: " << O << endl;
+	
+	if (abs(abs(lambda)-1.)>1e-2) O=0.;
+	lout << termcolor::blue << "O=" << O.real() << termcolor::reset << endl << endl;
+	return std::make_pair(O,x.data);
+}
+
+template<typename Symmetry, typename Scalar>
+std::pair<complex<double>,Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic> > > Umps<Symmetry,Scalar>::
+calc_dominant_2symm (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, const Mpo<Symmetry,complex<double>> &R1, const Mpo<Symmetry,complex<double>> &R2) const
+{
+	Umps<Symmetry,complex<double> > Compl = this->template cast<complex<double> > ();
+	complex<double> lambda1, lambda2;
+	
+	TransferMatrix<Symmetry,complex<double> > T1, T2;
+	if (DIR == DMRG::DIRECTION::LEFT)
+	{
+		T1 = TransferMatrix<Symmetry,complex<double> >
+		    (VMPS::DIRECTION::RIGHT, Compl.A[g], apply_symm(Compl.A[g],R1,locBasis(),inBasis(),outBasis()), locBasis());
+		T2 = TransferMatrix<Symmetry,complex<double> >
+		    (VMPS::DIRECTION::RIGHT, Compl.A[g], apply_symm(Compl.A[g],R2,locBasis(),inBasis(),outBasis()), locBasis());
+	}
+	else
+	{
+		//Compl.A[g]
+		T1 = TransferMatrix<Symmetry,complex<double> >
+		    (VMPS::DIRECTION::LEFT, Compl.A[g], apply_symm(Compl.A[g],R1,locBasis(),inBasis(),outBasis()), locBasis());
+		T2 = TransferMatrix<Symmetry,complex<double> >
+		    (VMPS::DIRECTION::LEFT, Compl.A[g], apply_symm(Compl.A[g],R2,locBasis(),inBasis(),outBasis()), locBasis());
+	}
+	
+	Biped<Symmetry,Matrix<complex<double>, Dynamic,Dynamic> > RandBiped;
+	if (DIR == DMRG::DIRECTION::LEFT)
+	{
+		RandBiped.setRandom(inBasis(0), inBasis(0));
+	}
+	else
+	{
+		RandBiped.setRandom(outBasis(N_sites-1), outBasis(N_sites-1));
+	}
+	RandBiped = 1./RandBiped.norm() * RandBiped;
+	
+	TransferVector<Symmetry,complex<double> > x1(RandBiped);
+	TransferVector<Symmetry,complex<double> > x2(RandBiped);
+	
+	ArnoldiSolver<TransferMatrix<Symmetry,complex<double> >,TransferVector<Symmetry,complex<double> > > John, Jane;
+	#pragma omp sections
+	{
+		#pragma omp section
+		{
+			John.calc_dominant(T1,x1,lambda1);
+		}
+		#pragma omp section
+		{
+			Jane.calc_dominant(T2,x2,lambda2);
+		}
+	}
+	
+	lout << "fixed point, gauge=" << g << ", DIR=" << DIR << ": " << John.info()  << endl;
+	lout << "fixed point, gauge=" << g << ", DIR=" << DIR << ": " << Jane.info()  << endl;
+	
+	auto U1 = x1.data.adjoint();
+	auto U2 = x2.data.adjoint();
+	
+	lout << R1.info() << endl;
+	lout << R2.info() << endl;
+//	lout << "U1.norm()=" << U1.norm() << "\t" << U1.adjoint().contract(U1).trace() << "\t" << U1.contract(U1.adjoint()).trace() << endl;
+//	lout << "U2.norm()=" << U2.norm() << "\t" << U2.adjoint().contract(U2).trace() << "\t" << U1.contract(U1.adjoint()).trace() << endl;
+	
+	complex<double> O12 = (U1.contract(U2.contract(U1.adjoint().contract(U2.adjoint())))).trace();
+	O12 *= double(U1.block[0].rows());
+	// Note: Pollmann normalizes U*Udag=Id, tr(U*Udag)=Chi; we normalize U*Udag=1/Chi, tr(U*Udag)=1
+	lout << "O12 raw result=" << O12 << endl;
+	
+	lout << "commut=" << U1.block[0].rows()*(U1.block[0]*U2.block[0]-U2.block[0]*U1.block[0]).norm() << endl;
+	lout << "anticommut=" << U1.block[0].rows()*(U1.block[0]*U2.block[0]+U2.block[0]*U1.block[0]).norm() << endl;
+	
+	if (abs(abs(lambda1)-1.)>1e-2 or abs(abs(lambda2)-1.)>1e-2) O12=0.;
+	lout << termcolor::blue << "O12=" << O12.real() << termcolor::reset << endl << endl;
+	return std::make_pair(O12,x1.data);
 }
 
 template<typename Symmetry, typename Scalar>

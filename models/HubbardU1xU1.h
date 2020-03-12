@@ -59,7 +59,7 @@ public:
 	HubbardU1xU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
 	///@}
 	
-	static qarray<2> singlet (int N) {return qarray<2>{0,N};};
+	static qarray<2> singlet (int N=0) {return qarray<2>{0,N};};
 
 	/**
 	 * \describe_set_operators
@@ -69,7 +69,7 @@ public:
 	 * \param pushlist : All the local operators for the Mpo will be pushed into \p pushlist.
 	 * \param labellist : All the labels for the Mpo will be put into \p labellist. Mpo::generate_label will produce a nice label from the data in labellist.
 	 * \describe_boundary 
-	*/
+	*/	
 	template<typename Symmetry_> 
     static void set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
 							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);

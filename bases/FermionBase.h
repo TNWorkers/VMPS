@@ -5,7 +5,15 @@
 
 #include "tensors/SiteOperatorQ.h"
 #include "sites/FermionSite.h"
-//include "tensors/Qbasis.h"
+#include <boost/dynamic_bitset.hpp>
+#include <Eigen/Core>
+#include <unsupported/Eigen/MatrixFunctions>
+/// \endcond
+
+#include "symmetry/kind_dummies.h"
+#include "DmrgTypedefs.h" // for SPIN_INDEX, SPINOP_LABEL
+#include "tensors/SiteOperator.h"
+#include "DmrgExternal.h" // for posmod
 
 //Note: Don't put a name in this documentation with \class .. because doxygen gets confused with template symbols
 /** 
@@ -140,7 +148,7 @@ public:
 	 */
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),OperatorType>::type S (size_t orbital=0) const;
-	
+		
 	/**
 	 * Orbital spin† 
 	 * \param orbital : orbital index
@@ -176,6 +184,9 @@ public:
 			return out;
 		};
 	///\}
+
+	template<class Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(),SiteOperatorQ<Symmetry,Eigen::MatrixXcd> >::type Rcomp (SPINOP_LABEL Sa, int orbital) const;
 
 	///\{
 	/**
@@ -319,15 +330,6 @@ private:
 
 	//operators defined on zero orbital
 	OperatorType Id_vac, Zero_vac;
-	// Operator Id_1s; //identity
-	// Operator F_1s; //Fermionic sign
-	// Operator c_1s; //annihilation
-	// Operator cdag_1s; //creation
-	// Operator n_1s; //particle number
-	// Operator d_1s; //double occupancy
-	// Operator S_1s; //orbital spin
-	// Operator p_1s; //pairing
-	// Operator pdag_1s; //pairing adjoint
 };
 
 template <typename Symmetry_>
@@ -530,11 +532,34 @@ d (std::size_t orbital) const
 	return make_operator(this->d_1s(), orbital, PROP::NON_FERMIONIC,"d");
 }
 
+template<typename Symmetry>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<complex<double>,Eigen::Dynamic,Eigen::Dynamic> > >::type FermionBase<Symmetry>::
+Rcomp (SPINOP_LABEL Sa, int orbital) const
+{
+	assert(orbital<N_orbitals);
+	SiteOperatorQ<Symmetry_,Eigen::Matrix<complex<double>,Eigen::Dynamic,Eigen::Dynamic> > Oout;
+	if (Sa==iSY)
+	{
+		Oout = 2.*M_PI*Scomp(Sa,orbital).cast<complex<double> >;
+	}
+	else
+	{
+		Oout = 2.*1.i*M_PI*Scomp(Sa,orbital).cast<complex<double> >;
+	}
+	Oout.data() = Oout.data().exp(1.);
+	
+	cout << "Rcomp=" << Oout << endl << endl;
+	// cout << "Re=" << Mtmp.exp().real() << endl << endl;
+	// cout << "Im=" << Mtmp.exp().imag() << endl << endl;
+	// cout << "Op=" << Op << endl << endl;
+	
+	return Oout; //SiteOperator<Symmetry,complex<double>>(Op,getQ(Sa));
+}
+
 template <typename Symmetry_>
 template <typename Dummy>
 typename std::enable_if<Dummy::IS_SPIN_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type FermionBase<Symmetry_>::
 S (std::size_t orbital) const
-{
 	return make_operator(this->S_1s(), orbital, PROP::NON_FERMIONIC,"S");
 }
 
@@ -787,7 +812,55 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &U,
 		{
 			Oout += Jz(i,j) * Sz(i)*Sz(j).template cast<Scalar_>();
 		}
+<<<<<<< HEAD
 		if (Jxy(i,j) != 0.)
+=======
+	}
+	
+	return SiteOperator<Symmetry,Scalar>(Mout,Symmetry::qvacuum());
+}
+
+template<typename Symmetry>
+template<typename Scalar>
+SiteOperator<Symmetry,Scalar> FermionBase<Symmetry>::
+FermionParityBreaking (const Array<Scalar,Dynamic,Dynamic> &F) const
+{
+	SparseMatrix<Scalar> Mout(N_states,N_states);
+	
+	for (int i=0; i<N_orbitals; ++i)
+	{
+		if (F(i) != 0.)
+		{
+			Mout += F(i) * (cdag(UP,i).data + c(UP,i).data + cdag(DN,i).data + c(DN,i).data);
+		}
+	}
+	
+	return SiteOperator<Symmetry,Scalar>(Mout,Symmetry::qvacuum());
+}
+
+template<typename Symmetry>
+double FermionBase<Symmetry>::
+parity (const boost::dynamic_bitset<unsigned char> &b, int i) const
+{
+	double out = 1.;
+	for (int j=0; j<i; ++j)
+	{
+		if (b[j]) {out *= -1.;} // switch sign for every particle found between 0 & i
+	}
+	return out;
+}
+
+template<typename Symmetry>
+qarray<Symmetry::Nq> FermionBase<Symmetry>::
+qNums (size_t index) const
+{
+	int M=0; int N=0;
+	int Nup=0; int Ndn=0;
+	
+	for (size_t i=0; i<2*N_orbitals; i++)
+	{
+		if (basis[index][i])
+>>>>>>> 69dae285c0f7b9f017fe7aade73f5f2bef70c53d
 		{
 			Oout += 0.5*Jxy(i,j) * (Sp(i)*Sm(j) + Sm(i)*Sp(j)).template cast<Scalar_>();
 		}

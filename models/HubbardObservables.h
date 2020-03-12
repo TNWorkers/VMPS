@@ -147,6 +147,9 @@ public:
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type SzSz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SZ,SZ,locx1,locx2,locy1,locy2,1.);};
 	template<typename Dummy = Symmetry>
 	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry, complex<double> > >::type Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
 	///@}
 
 	template<typename Dummy = Symmetry>
@@ -823,6 +826,31 @@ Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 {
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
 	return make_local(locx,locy, F[locx].Scomp(Sa,locy), factor, PROP::BOSONIC, HERMITIAN);
+}
+
+template<typename Symmetry>
+template<typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry>::
+Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+{
+	stringstream ss;
+	if (Sa==iSY)
+	{
+		ss << "exp[2π" << Sa << "(" << locx << "," << locy << ")]";
+	}
+	else
+	{
+		ss << "exp[2πi" << Sa << "(" << locx << "," << locy << ")]";
+	}
+	
+	auto Op = F[locx].Rcomp(Sa,locy);
+	
+	Mpo<Symmetry,complex<double>> Mout(F.size(), Op.Q, ss.str(), false);
+	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
+	
+	Mout.setLocal(locx, Op);
+	
+	return Mout;
 }
 
 template<typename Symmetry>

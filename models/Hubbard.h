@@ -53,7 +53,7 @@ const std::map<string,std::any> Hubbard::defaults =
 	{"J3site",0.},
 	{"Delta",0.},
 	{"X",0.}, {"Xperp",0.},
-	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"Ly",1ul}
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 Hubbard::
@@ -129,7 +129,6 @@ add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
         pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 	}
 }
-
 
 refEnergy Hubbard::
 ref (const vector<Param> &params, double L)

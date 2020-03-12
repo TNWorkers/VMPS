@@ -11,6 +11,8 @@ Operators \f$T_L\f$, \f$T_R\f$ for solving the linear systems eq. 14.
 template<typename Symmetry, typename Scalar>
 struct TransferMatrix
 {
+	TransferMatrix(){};
+	
 	TransferMatrix (VMPS::DIRECTION::OPTION DIR_input)
 	:DIR(DIR_input)
 	{};
@@ -195,7 +197,8 @@ void HxV (const TransferMatrix<Symmetry,Scalar1> &H, const TransferVector<Symmet
 	
 	if (H.PROJECT_OUT_TOPEIGVEC)
 	{
-		Vout.data.addScale(-(H.TopEigval * H.TopEigvec.template cast<Matrix<Scalar2,Dynamic,Dynamic> >().adjoint().contract(Vin.data).trace()), Vin.data);
+		Vout.data.addScale(-(H.TopEigval * H.TopEigvec.template cast<Matrix<Scalar2,Dynamic,Dynamic> >().adjoint().contract(Vin.data).trace()), 
+		                    H.TopEigvec.template cast<Matrix<Scalar2,Dynamic,Dynamic> >());
 	}
 }
 
@@ -297,7 +300,7 @@ TransferVector<Symmetry,Scalar> operator/ (TransferVector<Symmetry,Scalar> V, co
 	return V /= alpha;
 }
 
-template<typename Symmetry, typename Scalar, typename OtherScalar>
+template<typename Symmetry, typename Scalar>
 TransferVector<Symmetry,Scalar> operator+ (const TransferVector<Symmetry,Scalar> &V1, const TransferVector<Symmetry,Scalar> &V2)
 {
 	TransferVector<Symmetry,Scalar> Vout = V1;
@@ -305,7 +308,7 @@ TransferVector<Symmetry,Scalar> operator+ (const TransferVector<Symmetry,Scalar>
 	return Vout;
 }
 
-template<typename Symmetry, typename Scalar, typename OtherScalar>
+template<typename Symmetry, typename Scalar>
 TransferVector<Symmetry,Scalar> operator- (const TransferVector<Symmetry,Scalar> &V1, const TransferVector<Symmetry,Scalar> &V2)
 {
 	TransferVector<Symmetry,Scalar> Vout = V1;
