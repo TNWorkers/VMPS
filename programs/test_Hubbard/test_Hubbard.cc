@@ -2,7 +2,7 @@
 #include "util/LapackManager.h"
 #pragma message("LapackManager")
 #endif
-
+#define LANCZOS_MAX_ITERATIONS 100
 //#define USE_HDF5_STORAGE
 
 // with Eigen:
@@ -45,6 +45,7 @@ Logger lout;
 #include "models/HubbardU1xU1.h"
 #include "models/HubbardU1.h"
 #include "models/HubbardSU2xU1.h"
+#include "models/HubbardSU2.h"
 #ifdef SU2XSU2
 #include "models/HubbardSU2xSU2.h"
 #endif
@@ -81,6 +82,12 @@ complex<double> Ptot (const MatrixXd &densityMatrix, int L)
 	}
 	P /= (L*L);
 	return P;
+}
+
+constexpr double phase(int i)
+{
+	if (i % 2) {return -1.;}
+	return 1.;
 }
 
 size_t L, Ly, Ly2;
@@ -239,18 +246,18 @@ int main (int argc, char* argv[])
 			HubbardModel H_ED(L*Ly,Nup,Ndn,params, BC_DANGLING);
 			lout << H_ED.info() << endl;
 			LanczosSolver<HubbardModel,VectorXd,double> Lutz;
-			Lutz.edgeState(H_ED,g_ED,LANCZOS::EDGE::GROUND);
-			
+			Lutz.edgeState(H_ED,g_ED,LANCZOS::EDGE::GROUND, 1.e-12, 1.e-12);
+			cout << Lutz.info() << endl;
 		//	HubbardModel H_EDm(L*Ly,Nup-1,Ndn,U,BondMatrix.sparseView(), BC_DANGLING);
 			HubbardModel H_EDm(L*Ly,Nup-1,Ndn,params, BC_DANGLING);
 			Eigenstate<VectorXd> g_EDm;
-			Lutz.edgeState(H_EDm,g_EDm,LANCZOS::EDGE::GROUND);
+			Lutz.edgeState(H_EDm,g_EDm,LANCZOS::EDGE::GROUND, 1.e-12, 1.e-12);
 			
 		//	HubbardModel H_EDmm(L*Ly,Nup-1,Ndn-1,U,BondMatrix.sparseView(), BC_DANGLING);
 			HubbardModel H_EDmm(L*Ly,Nup-1,Ndn-1,params, BC_DANGLING);
 			Eigenstate<VectorXd> g_EDmm;
 			Lutz.edgeState(H_EDmm,g_EDmm,LANCZOS::EDGE::GROUND);
-			
+			cout << "ED: E=" << g_ED.energy << endl;
 			for (int l=0; l<L; ++l)
 			{
 				Photo Ph(H_EDm,H_ED,UP,l);
@@ -314,7 +321,7 @@ int main (int argc, char* argv[])
 		}
 		
 		Emin_U0 = g_U0.energy+mu*Ntot;
-		emin_U0 = Emin_U0/V;
+		emin_U0 = Emin_U0/Vol;
 		lout << "correction for mu: E=" << to_string_prec(Emin_U0) << ", E/V=" << to_string_prec(emin_U0) << endl;
 	}
 	
@@ -412,7 +419,7 @@ int main (int argc, char* argv[])
 		
 		Stopwatch<> Watch_SU2;
 		
-		VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly,0},{"Ly",Ly2,1},{"tRung",tRung},{"Vz",Vz},{"Vxy",Vxy}}); //
+		VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly,0},{"Ly",Ly2,1},{"tRung",tRung},{"Vz",Vz},{"Vxy",Vxy}}, BC::OPEN);
 		Vol = H_SU2.volume();
 		Vsq = Vol*Vol;
 		lout << H_SU2.info() << endl;
@@ -492,7 +499,7 @@ int main (int argc, char* argv[])
 		paramsSU2xSU2.push_back({"V",V,1});
 		paramsSU2xSU2.push_back({"Ly",Ly,0});
 		paramsSU2xSU2.push_back({"Ly",Ly,1});
-		VMPS::HubbardSU2xSU2 H_SU2xSU2(L,paramsSU2xSU2);
+		VMPS::HubbardSU2xSU2 H_SU2xSU2(L, paramsSU2xSU2, BC::OPEN);
 		Vol = H_SU2xSU2.volume();
 		Vsq = Vol*Vol;
 		lout << H_SU2xSU2.info() << endl;
@@ -535,7 +542,7 @@ int main (int argc, char* argv[])
 			for (size_t j=0; j<L; ++j)
 			{
 				//factor 1/2 because we have computed cdagc+cdagc
-				densityMatrix_SU2xSU2B(i,j) = 0.5*avg(g_SU2xSU2.state, H_SU2xSU2.cdag(i), H_SU2xSU2.c(j), g_SU2xSU2.state);
+				densityMatrix_SU2xSU2B(i,j) = 0.5*avg(g_SU2xSU2.state, H_SU2xSU2.cdag(i,0,2.), H_SU2xSU2.c(j), g_SU2xSU2.state);
 			}
 			
 			for (size_t i=0; i<L; ++i) 
@@ -575,14 +582,14 @@ int main (int argc, char* argv[])
 		cout << "spin matrix SU(2)⊗U(1) A: " << endl;
 		cout << spin_SU2 << endl << endl;
 		cout << isospin_SU2 << endl << endl;
-		// cout << "density matrix SU(2)⊗U(1) B: " << endl;
-		// cout << densityMatrix_SU2B << endl << endl;
+		cout << "density matrix SU(2)⊗U(1) B: " << endl;
+		cout << densityMatrix_SU2B << endl << endl;
 		
 		cout << "spin matrix SU(2)⊗SU(2) A: " << endl;
 		cout << spin_SU2xSU2 << endl << endl;
 		cout << isospin_SU2xSU2 << endl << endl;
-		// cout << "density matrix SU(2)⊗SU(2) B: " << endl;
-		// cout << densityMatrix_SU2xSU2B << endl << endl;
+		cout << "density matrix SU(2)⊗SU(2) B: " << endl;
+		cout << densityMatrix_SU2xSU2B << endl << endl;
 	}
 	
 	//--------output---------

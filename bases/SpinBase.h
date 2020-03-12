@@ -64,7 +64,7 @@ public:
 	typename Symmetry::qType getQ (SPINOP_LABEL Sa) const;
 
 	/**Returns the label of the operators.*/
-	typename std::string label (SPINOP_LABEL Sa) const;
+	std::string label (SPINOP_LABEL Sa) const;
 	
 	OperatorType Scomp (SPINOP_LABEL Sa, int orbital=0) const;
 	
@@ -267,7 +267,7 @@ HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz,
 		if (Kx(i)!=0.) {Mout += Kx(i) * Scomp(SX,i).data * Scomp(SX,i).data;}
 	}
 	
-	OperatorType Oout(Mout,Symmetry::qvacuum());
+	OperatorType Oout(Mout,Symmetry::qvacuum(), "Hloc");
 	return Oout;
 }
 
@@ -375,7 +375,7 @@ get_structured_basis() const
 }
 
 template<typename Symmetry>
-typename std::string SpinBase<Symmetry>::
+std::string SpinBase<Symmetry>::
 label (SPINOP_LABEL Sa) const
 {
 	std::string out="";

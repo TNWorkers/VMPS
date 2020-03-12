@@ -1179,7 +1179,7 @@ eliminate_linearlyDependent_cols(const std::size_t loc, const qType& qOut)
         for(std::size_t row=0; row<ops.size(); ++row)
         {
             std::unordered_set<qType> unique_control;
-            for(std::size_t col=0; col<ops.size(); ++col)
+            for(std::size_t col=0; col<ops[row].size(); ++col)
             {
 
                 for(const auto& [Q,op] : ops[row][col])
@@ -2097,7 +2097,7 @@ transform_base(const qType& qShift, const bool PRINT, const int factor)
                             OperatorType op_new = op;
                             for(std::size_t n=0; n<symmetries_to_transform.size(); ++n)
                             {
-                                q_new *= length;
+                                q_new = length * q_new;
                                 op_new.Q[n] *= length;
                             }
                             ops_new[row][col].insert({q_new,op_new});

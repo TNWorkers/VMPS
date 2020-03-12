@@ -611,7 +611,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	dW_singlet = H.inBasis(0).inner_dim(Symmetry::qvacuum());
 	cout << "dW_singlet=" << dW_singlet << endl;
 	//Basis order of the Mpo auxiliary basis which leads to a triangular Mpo form
-	basis_order = H.VUMPS_base_order();
+	basis_order = H.base_order_IBC();
 	cout << "basis_order="; for (const auto b:basis_order) {cout << b.first << "," << b.second << "\t";} cout << endl;
 	for (size_t i=0; i<basis_order.size(); ++i)
 	{

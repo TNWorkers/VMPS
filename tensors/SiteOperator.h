@@ -50,6 +50,7 @@ struct SiteOperator
 		SiteOperator<Symmetry,OtherScalar> Oout;
 		Oout.Q = Q;
 		Oout.data = data.template cast<OtherScalar>();
+		Oout.label = label;
 		return Oout;
 	}
 	

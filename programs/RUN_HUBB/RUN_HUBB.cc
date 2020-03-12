@@ -28,6 +28,7 @@ using namespace std;
 #include "models/HubbardU1.h"
 
 #include "Geometry2D.h" // from TOOLS
+#include "Lattice2D.h" // from TOOLS
 #include "NestedLoopIterator.h" // from TOOLS
 #include "models/ParamCollection.h"
 #include "BetheAnsatzIntegrals.h"
@@ -237,7 +238,8 @@ void resize_OdagO (size_t Ncells)
 
 void fill_OdagO (size_t L, size_t Ly, size_t n, const Eigenstate<MODEL::StateUd> &g, bool CALC_S=true, bool CALC_T=true, bool CALC_B=true, bool CALC_C=true)
 {
-	Geometry2D Geo(SNAKE,L,Ly,1.,true);
+	Lattice2D square({L,Ly},{false,true});
+	Geometry2D Geo(square,SNAKE);//,L,Ly,1.,true);
 	
 	VectorXd Bavg(L*Ly);
 	MODEL H1cell(L*Ly+Ly,{{"OPEN_BC",false},{"CALC_SQUARE",false}});
@@ -286,7 +288,8 @@ void fill_OdagO (size_t L, size_t Ly, size_t n, const Eigenstate<MODEL::StateUd>
 
 void save_OdagO (size_t Ncells)
 {
-	Geometry2D Geo(SNAKE,L,Ly,1.,true);
+	Lattice2D square({L,Ly},{false,true});
+	Geometry2D Geo(square,SNAKE);//,L,Ly,1.,true);
 	
 	// save to obs
 	NestedLoopIterator Nelly(5,{Ncells,L,Ly,L,Ly});
@@ -341,7 +344,8 @@ void save_OdagO (size_t Ncells)
 complex<double> calc_FT (double kx, int iky, size_t Ncells, const vector<vector<vector<vector<ArrayXd> > > > &OdagO)
 {
 	ArrayXXcd FTintercell(L,L);
-	Geometry2D Geo(SNAKE,L,Ly,1.,true);
+	Lattice2D square({L,Ly},{false,true});
+	Geometry2D Geo(square,SNAKE);//,L,Ly,1.,true);
 	
 	for (size_t x0=0; x0<L; ++x0)
 	for (size_t x1=0; x1<L; ++x1)
@@ -562,9 +566,11 @@ int main (int argc, char* argv[])
 	lout << "e_empty=" << e_empty() << endl;
 	
 	Stopwatch<> Watch;
-	
-	Geometry2D Geo1cell(SNAKE,1*L,Ly,1.,true); // periodic BC in y = true
-	Geometry2D Geo2cell(SNAKE,2*L,Ly,1.,true);
+
+	Lattice2D square1({1*L,Ly},{false,true});
+	Lattice2D square2({2*L,Ly},{false,true});
+	Geometry2D Geo1cell(square1,SNAKE);//,1*L,Ly,1.,true); // periodic BC in y = true
+	Geometry2D Geo2cell(square2,SNAKE);//,2*L,Ly,1.,true);
 	
 	// save to temporary, otherwise std::bad_any_cast
 	ArrayXXd tArray, Varray, Vxyarray, Vzarray, Jarray, Xarray, ZeroArray, OneArray, VextArray;

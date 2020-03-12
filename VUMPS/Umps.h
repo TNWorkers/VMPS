@@ -2524,8 +2524,8 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 	Stopwatch<> ContractionTimer;
 	
 	Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > Lid; Lid.setIdentity(1,1,inBasis(0));
-	Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > Rid; Rid.setIdentity(1,1,outBasis(N_sites-1));
-	
+	Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > Rid; Rid.setIdentity(1,1,outBasis(N_sites-1),Oalfa.Qtarget());
+	cout << "Rid:" << endl << Rid.print(true) << endl;
 	// term exp(-i*Lcell*k), alfa
 	vector<Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > > bmalfaTripod(N_sites);
 	contract_L(Lid, A[GAUGE::L][0], Oalfa.W_at(0), Oalfa.IS_HAMILTONIAN(), A[GAUGE::C][0], 
@@ -2539,15 +2539,17 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 	
 	// term exp(+i*Lcell*k), alfa
 	vector<Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > > bpalfaTripod(N_sites);
+	cout << "outBasis=" << endl << Oalfa.outBasis(N_sites-1) << endl;
 	contract_R(Rid, A[GAUGE::R][N_sites-1], Oalfa.W_at(N_sites-1), Oalfa.IS_HAMILTONIAN(), A[GAUGE::C][N_sites-1], 
 	           Oalfa.locBasis(N_sites-1), Oalfa.opBasis(N_sites-1), bpalfaTripod[N_sites-1]);
+	cout << "site 1:" << endl << bpalfaTripod[N_sites-1].print(true) << endl;
 	// shift backward in cell
 	for (int l=N_sites-2; l>=0; --l)
 	{
 		contract_R(bpalfaTripod[l+1], A[GAUGE::R][l], Oalfa.W_at(l), Oalfa.IS_HAMILTONIAN(), A[GAUGE::L][l], 
 		           Oalfa.locBasis(l), Oalfa.opBasis(l), bpalfaTripod[l]);
 	}
-	
+	cout << "site 0:" << endl << bpalfaTripod[0].print(true) << endl;
 	// term exp(-i*Lcell*k), beta
 	vector<Tripod<Symmetry,Matrix<MpoScalar,Dynamic,Dynamic> > > bmbetaTripod(N_sites);
 	contract_R(Rid, A[GAUGE::C][N_sites-1], Obeta.W_at(N_sites-1), Obeta.IS_HAMILTONIAN(), A[GAUGE::R][N_sites-1], 
@@ -2572,6 +2574,9 @@ intercellSF (const Mpo<Symmetry,MpoScalar> &Oalfa, const Mpo<Symmetry,MpoScalar>
 	
 	// wrap bmalfa, bpalfa by MpoTransferVector for GMRES
 	// Note: the Tripods has only a single qunatum number with inner dimension 1 on their mid leg. We need to pass this information to MpoTransferVector.
+	cout << "size_p=" << bpalfaTripod[0].size() << endl;
+	cout << "size_m=" << bmalfaTripod[N_sites-1].size() << endl;
+	assert(bpalfaTripod[0].size() > 0);
 	MpoTransferVector<Symmetry,complex<Scalar> > bmalfa(bmalfaTripod[N_sites-1].template cast<MatrixXcd >(), make_pair(bmalfaTripod[N_sites-1].mid(0),0));
 	MpoTransferVector<Symmetry,complex<Scalar> > bpalfa(bpalfaTripod[0].template cast<MatrixXcd>(), make_pair(bpalfaTripod[0].mid(0),0));
 	

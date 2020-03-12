@@ -29,13 +29,12 @@ public:
 	MAKE_TYPEDEFS(Hubbard)
 	
 	Hubbard() : Mpo() {};
-	Hubbard (const size_t &L, const vector<Param> &params);
+	Hubbard (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
 	
 	static qarray<0> singlet (int N) {return qarray<0>{};};
 	
 	template<typename Symmetry_>
-	//static void add_operators (HamiltonianTermsXd<Symmetry_> &Terms, const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, size_t loc=0);
-	static void add_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);
+	static void add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 	
 	static const std::map<string,std::any> defaults;
 	
@@ -45,7 +44,7 @@ public:
 const std::map<string,std::any> Hubbard::defaults = 
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",1.},
-	{"mu",0.}, {"t0",0.}, 
+	{"mu",0.}, {"t0",0.}, {"Fp", 0.},
 	{"U",0.}, {"Uph",0.},
 	{"V",0.}, {"Vrung",0.}, 
 	{"Vxy",0.}, {"Vz",0.},
@@ -54,12 +53,12 @@ const std::map<string,std::any> Hubbard::defaults =
 	{"J3site",0.},
 	{"Delta",0.},
 	{"X",0.}, {"Xperp",0.},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
+	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 Hubbard::
-Hubbard (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
+Hubbard (const size_t &L, const vector<Param> &params, const BC &boundary)
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
  HubbardObservables(L,params,Hubbard::defaults),
  ParamReturner()
 {
@@ -70,42 +69,64 @@ Hubbard (const size_t &L, const vector<Param> &params)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
-		setLocBasis(F[l].get_basis(),l);
+		setLocBasis(F[l].get_basis().qloc(),l);
 	}
+
+	param1d U = P.fill_array1d<double>("U", "Uorb", F[0].orbitals(), 0);
+	if (isfinite(U.a.sum()))
+	{
+		this->set_name("Hubbard");
+	}
+	else if (P.HAS_ANY_OF({"J", "J3site"}))
+	{
+		this->set_name("t-J");
+	}
+	else
+	{
+		this->set_name("U=∞-Hubbard");
+	}
+	PushType<SiteOperator<Symmetry,double>,double> pushlist;
+    std::vector<std::vector<std::string>> labellist;
+	HubbardU1xU1::set_operators(F, P, pushlist, labellist, boundary);
+	add_operators(F, P, pushlist, labellist, boundary);
 	
-	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
-	HubbardU1xU1::set_operators(F,P,Terms);
-	add_operators(F,P,Terms);
-	
-	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	this->construct_from_pushlist(pushlist, labellist, Lcell);
+    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+
 	this->precalc_TwoSiteData();
 }
 
 template<typename Symmetry_>
 void Hubbard::
-add_operators (const std::vector<FermionBase<Symmetry_>> &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)
+add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
 	std::size_t Lcell = P.size();
-	std::size_t N_sites = Terms.size();
+	std::size_t N_sites = F.size();
 	
 	for(std::size_t loc=0; loc<N_sites; ++loc)
 	{
 		std::size_t orbitals = F[loc].orbitals();
 		
 		param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", orbitals, loc%Lcell);
-		Terms.save_label(loc, Bx.label);
-		
+		labellist[loc].push_back(Bx.label);
+
+		param1d Fp = P.fill_array1d<double>("Fp", "Fporb", orbitals, loc%Lcell);
+		labellist[loc].push_back(Fp.label);
+
 		// Can also implement superconductivity terms c*c & cdag*cdag here
 		
-		ArrayXd  U_array  = F[loc].ZeroField();
-		ArrayXd  Uph_array  = F[loc].ZeroField();
-		ArrayXd  E_array  = F[loc].ZeroField();
-		ArrayXd  Bz_array = F[loc].ZeroField();
-		ArrayXXd tperp_array = F[loc].ZeroHopping();
-		ArrayXXd Vperp_array = F[loc].ZeroHopping();
-		ArrayXXd Jperp_array = F[loc].ZeroHopping();
-		
-		Terms.push_local(loc, 1., F[loc].template HubbardHamiltonian<double>(U_array, Uph_array, E_array, Bz_array, Bx.a, tperp_array, Vperp_array, Jperp_array));
+		// ArrayXd  U_array  = F[loc].ZeroField();
+		// ArrayXd  Uph_array  = F[loc].ZeroField();
+		// ArrayXd  E_array  = F[loc].ZeroField();
+		// ArrayXd  Bz_array = F[loc].ZeroField();
+		// ArrayXXd tperp_array = F[loc].ZeroHopping();
+		// ArrayXXd Vperp_array = F[loc].ZeroHopping();
+		// ArrayXXd Jperp_array = F[loc].ZeroHopping();
+
+		auto H_Bx = F[loc].template coupling_Bx<double>(Bx.a);
+		auto H_Fp = F[loc].template coupling_singleFermion<double>(Fp.a);
+		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction((H_Bx+H_Fp).template plain<double>());
+        pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 	}
 }
 

@@ -36,16 +36,25 @@ namespace Sym{
 		static constexpr bool HAS_CGC = false;
 		static constexpr std::size_t Nq=0;
 		static constexpr bool NON_ABELIAN = false;
+		static constexpr bool ABELIAN = true;
 		static constexpr bool IS_TRIVIAL = true;
 		static constexpr bool IS_MODULAR = false;
 		static constexpr int MOD_N = 0;
 
+		static constexpr bool IS_CHARGE_SU2() { return false; }
+		static constexpr bool IS_SPIN_SU2() { return false; }
+
+		static constexpr bool NO_SPIN_SYM() { return true; }
+		static constexpr bool NO_CHARGE_SYM() { return true; }
+		
 		inline static constexpr std::array<KIND,Nq> kind() { return {}; }
 
 		inline static constexpr qType qvacuum() {return {};}
 		inline static qType flip( const qType& q ) { return {}; }
 		inline static int degeneracy( const qType& q ) { return 1; }
 
+		inline static int spinorFactor() { return +1; }
+		
 		inline static std::vector<qType> reduceSilent( const qType& ql, const qType& qr) { return {{}}; }
 		inline static std::vector<qType> reduceSilent( const qType& ql, const qType& qm, const qType& qr) { return {{}}; }
 		inline static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const qType& qr) { return {{}}; }

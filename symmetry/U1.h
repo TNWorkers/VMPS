@@ -30,10 +30,17 @@ public:
 	
 	static constexpr bool HAS_CGC = false;
 	static constexpr bool NON_ABELIAN = false;
+	static constexpr bool ABELIAN = true;
 	static constexpr bool IS_TRIVIAL = false;
 	static constexpr bool IS_MODULAR = false;
 	static constexpr int MOD_N = 0;
 
+	static constexpr bool IS_CHARGE_SU2() { return false; }
+	static constexpr bool IS_SPIN_SU2() { return false; }
+
+	static constexpr bool NO_SPIN_SYM() { if (U1<Kind,Scalar>::kind()[0] != KIND::M and U1<Kind,Scalar>::kind()[0] != KIND::Nup and U1<Kind,Scalar>::kind()[0] != KIND::Ndn) {return true;} return false;}
+	static constexpr bool NO_CHARGE_SYM() { if (U1<Kind,Scalar>::kind()[0] != KIND::N and U1<Kind,Scalar>::kind()[0] != KIND::Nup and U1<Kind,Scalar>::kind()[0] != KIND::Ndn) {return true;} return false;}
+	
 	typedef qarray<Nq> qType;
 
 	U1() {};
@@ -44,7 +51,9 @@ public:
 
 	inline static qType flip( const qType& q ) { return {-q[0]}; }
 	inline static int degeneracy( const qType& q ) { return 1; }
-
+	
+	inline static int spinorFactor() { return +1; }
+	
 	///@{
 	/**
 	 * Calculate the irreps of the tensor product of \p ql and \p qr.

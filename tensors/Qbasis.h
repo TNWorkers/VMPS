@@ -339,7 +339,8 @@ inner_dim(const qType& q) const
 		auto [qVal,num,plain] = elem;
 		if (qVal == q) {return plain.size();}
 	}
-	assert( 1!=1 and "The qType is not in the basis" );
+	return 0;
+	// assert( 1!=1 and "The qType is not in the basis" );
 }
 
 template<typename Symmetry>

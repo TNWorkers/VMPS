@@ -76,8 +76,8 @@ void fill_OdagO_SU2 (const Eigenstate<typename Model::StateUd> &g)
 			}
 		}
 	}
-	
-	Geometry2D Geo(SNAKE,L,Ly,1.,true);
+	Lattice2D Square({L,Ly},{false,true});
+	Geometry2D Geo(Square, SNAKE, 1.);
 	
 	#pragma omp parallel for collapse(5)
 	for (size_t x0=0; x0<L; ++x0)
@@ -97,8 +97,9 @@ void fill_OdagO_SU2 (const Eigenstate<typename Model::StateUd> &g)
 complex<double> calc_FT (double kx, int iky)
 {
 	ArrayXXcd FTintercell(L,L);
-	
-	Geometry2D Geo(SNAKE,L,Ly,1.,true);
+
+	Lattice2D Square({L,Ly},{false,true});
+	Geometry2D Geo(Square, SNAKE, 1.);
 	
 	for (size_t x0=0; x0<L; ++x0)
 	for (size_t x1=0; x1<L; ++x1)
@@ -354,8 +355,11 @@ int main (int argc, char* argv[])
 	
 	if (SU2)
 	{
-		Geometry2D Geo1cell(SNAKE,  L,Ly,1.,true);
-		Geometry2D Geo2cell(SNAKE,2*L,Ly,1.,true);
+		Lattice2D Square1cell({L,Ly},{false,true});
+		Geometry2D Geo1cell(Square1cell, SNAKE, 1.);
+
+		Lattice2D Square2cell({2*L,Ly},{false,true});
+		Geometry2D Geo2cell(Square2cell, SNAKE, 1.);
 		
 		ArrayXXd Jarray = J * Geo2cell.hopping();
 		
@@ -398,8 +402,10 @@ int main (int argc, char* argv[])
 		for (int iky=0; iky<Ly; ++iky)
 //		int iky = Ly/2;
 		{
-			Geometry2D GeoSnake(SNAKE,     L,Ly,1.,true);
-			Geometry2D GeoChess(CHESSBOARD,L,Ly,1.,true);
+			Lattice2D Square({L,Ly},{false,true});
+			Geometry2D GeoSnake(Square, SNAKE, 1.);
+			Geometry2D GeoChess(Square, CHESSBOARD, 1.);
+			
 			for (size_t x=0; x<L; ++x)
 			{
 				auto phasesSnake = GeoSnake.FTy_phases(x,iky,0);

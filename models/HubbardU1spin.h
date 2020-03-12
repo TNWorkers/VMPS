@@ -20,7 +20,7 @@ public:
 	
 	///@{
 	HubbardU1spin() : Mpo(){};
-	HubbardU1spin (const size_t &L, const vector<Param> &params);
+	HubbardU1spin (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
 	///@}
 	
 	static qarray<1> singlet (int N=0) {return qarray<1>{0};};
@@ -39,12 +39,12 @@ const std::map<string,std::any> HubbardU1spin::defaults =
 	{"Bz",0.}, 
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
 	{"X",0.}, {"Xperp",0.},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}
+	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 HubbardU1spin::
-HubbardU1spin (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
+HubbardU1spin (const size_t &L, const vector<Param> &params, const BC &boundary)
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
  HubbardObservables(L,params,HubbardU1spin::defaults),
  ParamReturner()
 {
@@ -58,10 +58,27 @@ HubbardU1spin (const size_t &L, const vector<Param> &params)
 		setLocBasis(F[l].get_basis(),l);
 	}
 	
-	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
-	HubbardU1xU1::set_operators<Symmetry>(F,P,Terms);
+	param1d U = P.fill_array1d<double>("U", "Uorb", F[0].orbitals(), 0);	
+	if (isfinite(U.a.sum()))
+	{
+		this->set_name("Hubbard");
+	}
+	else if (P.HAS_ANY_OF({"J", "J3site"}))
+	{
+		this->set_name("t-J");
+	}
+	else
+	{
+		this->set_name("U=∞-Hubbard");
+	}
 	
-	this->construct_from_Terms(Terms, Lcell, false, P.get<bool>("OPEN_BC"));
+	PushType<SiteOperator<Symmetry,double>,double> pushlist;
+    std::vector<std::vector<std::string>> labellist;
+	HubbardU1xU1::set_operators(F, P, pushlist, labellist, boundary);
+
+	this->construct_from_pushlist(pushlist, labellist, Lcell);
+    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+
 	this->precalc_TwoSiteData();
 }
 

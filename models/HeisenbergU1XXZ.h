@@ -70,7 +70,6 @@ HeisenbergU1XXZ (const size_t &L, const vector<Param> &params, const BC &boundar
 {
 	ParamHandler P(params,HeisenbergU1XXZ::defaults);	
 	size_t Lcell = P.size();
-	B.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{

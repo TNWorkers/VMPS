@@ -47,7 +47,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 		B = Bnext;
 		Bnext.clear();
 	}
-	
+
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdR;
 	IdR.setIdentity(Obs.outBasis(Obs.length()-1).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.outBasis((Obs.length()-1)%Vket.length()));
 	

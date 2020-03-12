@@ -30,9 +30,13 @@ public:
 	
 	static constexpr bool HAS_CGC = false;
 	static constexpr bool NON_ABELIAN = false;
+	static constexpr bool ABELIAN = true;
 	static constexpr bool IS_TRIVIAL = false;
 	static constexpr bool IS_MODULAR = true;
 	static constexpr int MOD_N = N;
+
+	static constexpr bool IS_CHARGE_SU2() { return false; }
+	static constexpr bool IS_SPIN_SU2() { return false; }
 	
 	typedef qarray<Nq> qType;
 	
@@ -49,7 +53,8 @@ public:
 	
 	inline static qType flip( const qType& q ) { return {posmod<N>(-q[0])}; }
 	inline static int degeneracy( const qType& q ) { return 1; }
-	
+
+	inline static int spinorFactor( const qType& q ) { return +1; }
 	///@{
 	/**
 	 * Calculate the irreps of the tensor product of \p ql and \p qr.

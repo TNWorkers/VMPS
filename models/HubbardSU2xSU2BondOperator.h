@@ -23,9 +23,10 @@ private:
 public:
 	
 	HubbardSU2xSU2BondOperator() : Mpo<Symmetry,Scalar>() {};
-	HubbardSU2xSU2BondOperator (const size_t &L, const vector<Param> &params);
-	
-	void set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P, HamiltonianTerms<Symmetry,Scalar> &Terms);
+	HubbardSU2xSU2BondOperator (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
+
+	void set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P,
+							   PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 	
 	static const std::map<string,std::any> defaults;
 	
@@ -38,32 +39,35 @@ template<typename Scalar>
 const std::map<string,std::any> HubbardSU2xSU2BondOperator<Scalar>::defaults = 
 {
 	{"x",0ul}, {"shift",0.}, 
-	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, 
+	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"Ly",1ul}, 
 };
 
 template<typename Scalar>
 HubbardSU2xSU2BondOperator<Scalar>::
-HubbardSU2xSU2BondOperator (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry,Scalar> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::NON_HAMILTONIAN)
+HubbardSU2xSU2BondOperator (const size_t &L, const vector<Param> &params, const BC &boundary)
+:Mpo<Symmetry,Scalar> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::NON_HAMILTONIAN, boundary)
 {
-	ParamHandler P(params,HubbardSU2xSU2BondOperator::defaults);
-	
+	ParamHandler P(params,HubbardSU2xSU2BondOperator::defaults);	
 	size_t Lcell = P.size();
-	HamiltonianTerms<Symmetry,Scalar> Terms(this->N_sites, P.get<bool>("OPEN_BC"));
+	
 	F.resize(this->N_sites);
 	
 	for (size_t l=0; l<this->N_sites; ++l)
 	{
 		this->N_phys += P.get<size_t>("Ly",l%Lcell);
 		
-		F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::A):
-		                    FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell),SUB_LATTICE::B);
+		F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell));
 		this->setLocBasis(F[l].get_basis().qloc(),l);
 	}
-	
-	set_operators(F,P,Terms);
-	
-	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+
+	this->set_name("HubbardSU2xSU2BondOperator");
+
+	PushType<SiteOperator<Symmetry,double>,double> pushlist;
+    std::vector<std::vector<std::string>> labellist;
+    set_operators(F, P, pushlist, labellist, boundary);
+
+	this->construct_from_pushlist(pushlist, labellist, Lcell);
+    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
 }
 
 template<typename Scalar>
@@ -72,7 +76,7 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 {
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = Terms.size();
-	Terms.set_name("HubbardSU2xSU2BondOperator");
+	if(labellist.size() != N_sites) {labellist.resize(N_sites);}
 	
 	param0d x = P.fill_array0d<size_t>("x", "x_", 0);
 	param0d shift = P.fill_array0d<double>("shift", "shift_", 0);
@@ -84,9 +88,10 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 	{
 		if (abs(shift()) > ::mynumeric_limits<double>::epsilon())
 		{
-			Terms.push_local(l, shift()/N_sites, F[x()].Id().plain<double>().cast<Scalar>());
+			auto Hloc = Mpo<Symmetry_,double>::get_N_site_interaction(F[x()].Id().template plain<double>().template cast<Scalar>());
+			pushlist.push_back(std::make_tuple(loc, Hloc, shift()/N_sites));
 		}
-		Terms.save_label(l,ss.str());
+		labellist[loc].push_back(ss.str());
 	}
 	
 //	Terms.push_local(x(), shift(), F[x()].Id().plain<double>().cast<Scalar>());
@@ -97,14 +102,14 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 	
 	for (size_t loc=0; loc<N_sites; ++loc)
 	{
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (loc < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			SiteOperator<Symmetry,Scalar> cdag_sign_loc = OperatorType::prod(F[x()].cdag(0), F[x()].sign(), {2,2}).plain<double>().cast<Scalar>();
 			SiteOperator<Symmetry,Scalar> c_tight       = F[x()+1].c(0).plain<double>().cast<Scalar>();
 			
 			double coupling = (loc==x())? 2.:1e-15;
 			
-			Terms.push_tight(loc, coupling, cdag_sign_loc, c_tight);
+			pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(cdag_sign_loc, c_tight), coupling));
 		}
 	}
 }
