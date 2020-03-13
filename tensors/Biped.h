@@ -186,7 +186,10 @@ public:
 	
 	/**Takes the trace of the Biped. Only useful if this Biped is really a matrix from symmetry perspektive (q_in = q_out in all blocks).*/
 	Scalar trace() const;
-	
+
+	template<typename expScalar>
+	Biped<Symmetry,MatrixType_> exp( const expScalar x ) const;
+		
 	///@{
 	/**
 	 * Adds a new block to the tensor specified by the incoming quantum number \p qin and the outgoing quantum number \p qout.

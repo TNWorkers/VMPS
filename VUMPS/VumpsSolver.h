@@ -606,6 +606,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	// effective Hamiltonian
 	D = H.locBasis(0).size();
 	assert(H.inBasis(0) == H.outBasis(N_sites-1) and "You've inserted a strange MPO not consistent with the unit cell");
+	cout << H.inBasis(0) << endl;
 	dW = H.inBasis(0).size();
 	cout << "dW=" << dW << endl;
 	dW_singlet = H.inBasis(0).inner_dim(Symmetry::qvacuum());
@@ -964,6 +965,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 				{
 					Tripod<Symmetry,MatrixType> Rtmp;
 					Tripod<Symmetry,MatrixType> Rtmp_guess; Rtmp_guess.insert(basis_order[a],Rguess);
+					cout << "a=" << a << endl;
 					solve_linear(VMPS::DIRECTION::RIGHT, a, AR, YR[a], Leigen, W, qloc, qOp, contract_LR(basis_order[a],Leigen,YR[a]), Rtmp_guess, Rtmp);
 					R.insert(basis_order[a],Rtmp);
 					

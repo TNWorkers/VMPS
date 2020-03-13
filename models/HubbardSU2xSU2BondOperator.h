@@ -71,11 +71,11 @@ HubbardSU2xSU2BondOperator (const size_t &L, const vector<Param> &params, const 
 }
 
 template<typename Scalar>
-void HubbardSU2xSU2BondOperator<Scalar>::
-set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P, HamiltonianTerms<Symmetry,Scalar> &Terms)
+void HubbardSU2xSU2BondOperator<Scalar>::set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P,
+														PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
 	std::size_t Lcell = P.size();
-	std::size_t N_sites = Terms.size();
+	std::size_t N_sites = F.size();
 	if(labellist.size() != N_sites) {labellist.resize(N_sites);}
 	
 	param0d x = P.fill_array0d<size_t>("x", "x_", 0);
@@ -88,10 +88,10 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 	{
 		if (abs(shift()) > ::mynumeric_limits<double>::epsilon())
 		{
-			auto Hloc = Mpo<Symmetry_,double>::get_N_site_interaction(F[x()].Id().template plain<double>().template cast<Scalar>());
-			pushlist.push_back(std::make_tuple(loc, Hloc, shift()/N_sites));
+			auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(F[x()].Id().template plain<double>().template cast<Scalar>());
+			pushlist.push_back(std::make_tuple(l, Hloc, shift()/N_sites));
 		}
-		labellist[loc].push_back(ss.str());
+		labellist[l].push_back(ss.str());
 	}
 	
 //	Terms.push_local(x(), shift(), F[x()].Id().plain<double>().cast<Scalar>());
@@ -102,14 +102,15 @@ set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler 
 	
 	for (size_t loc=0; loc<N_sites; ++loc)
 	{
+		auto Gloc = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,loc)));
 		if (loc < N_sites-1 or !static_cast<bool>(boundary))
 		{
-			SiteOperator<Symmetry,Scalar> cdag_sign_loc = OperatorType::prod(F[x()].cdag(0), F[x()].sign(), {2,2}).plain<double>().cast<Scalar>();
-			SiteOperator<Symmetry,Scalar> c_tight       = F[x()+1].c(0).plain<double>().cast<Scalar>();
+			SiteOperator<Symmetry,Scalar> cdag_sign_loc = OperatorType::prod(F[x()].cdag(Gloc,0), F[x()].sign(), {2,2}).template plain<double>().template cast<Scalar>();
+			SiteOperator<Symmetry,Scalar> c_tight       = F[x()+1].c(Gloc,0).template plain<double>().template cast<Scalar>();
 			
 			double coupling = (loc==x())? 2.:1e-15;
 			
-			pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(cdag_sign_loc, c_tight), coupling));
+			pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cdag_sign_loc, c_tight), coupling));
 		}
 	}
 }

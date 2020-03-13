@@ -109,6 +109,10 @@ public:
 	
 	///@{
 	template<typename Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_CHARGE_SU2(), Mpo<Symmetry> >::type T (size_t locx, size_t locy=0, double factor=1.) const;
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_CHARGE_SU2(), Mpo<Symmetry> >::type Tdag (size_t locx, size_t locy=0, double factor=std::sqrt(3.)) const;
+	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_CHARGE_SU2(), Mpo<Symmetry> >::type Tp (size_t locx, size_t locy=0) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_CHARGE_SU2(), Mpo<Symmetry> >::type Tm (size_t locx, size_t locy=0) const;
@@ -129,6 +133,10 @@ public:
 	///@}
 	
 	///@{
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type S (size_t locx, size_t locy=0, double factor=1.) const;
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Sdag (size_t locx, size_t locy=0, double factor=std::sqrt(3.)) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
 	template<typename Dummy = Symmetry>
@@ -158,17 +166,17 @@ public:
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type StringzDimer (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2,Mpo<Symmetry,complex<double> > >::type S_ky    (vector<complex<double> > phases) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,complex<double> > >::type S_ky    (vector<complex<double> > phases) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2,Mpo<Symmetry,complex<double> > >::type Sdag_ky (vector<complex<double> > phases, double factor=sqrt(3.)) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,complex<double> > >::type Sdag_ky (vector<complex<double> > phases, double factor=sqrt(3.)) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_CHARGE_SU2,Mpo<Symmetry,complex<double> > >::type T_ky    (vector<complex<double> > phases) const;
+	typename std::enable_if<Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,complex<double> > >::type T_ky    (vector<complex<double> > phases) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_CHARGE_SU2,Mpo<Symmetry,complex<double> > >::type Tdag_ky (vector<complex<double> > phases, double factor=sqrt(3.)) const;
+	typename std::enable_if<Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,complex<double> > >::type Tdag_ky (vector<complex<double> > phases, double factor=sqrt(3.)) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2 and !Dummy::IS_CHARGE_SU2,Mpo<Symmetry,complex<double> > >::type c_ky    (vector<complex<double> > phases, double factor=1.) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,complex<double> > >::type c_ky    (vector<complex<double> > phases, double factor=1.) const;
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2 and !Dummy::IS_CHARGE_SU2,Mpo<Symmetry,complex<double> > >::type cdag_ky (vector<complex<double> > phases, double factor=sqrt(2.)) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,complex<double> > >::type cdag_ky (vector<complex<double> > phases, double factor=sqrt(2.)) const;
 protected:
 	
 	Mpo<Symmetry> make_local (size_t locx, size_t locy,
@@ -521,7 +529,7 @@ cc3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 					 //Determine Qtot to the spin triplet quantumnumber. 
 					 auto Qtots = Symmetry::reduceSilent(F[locx1].c(locy1).Q(), F[locx2].c(locy2).Q());
 					 typename Symmetry::qType Qtot;
-					 for (const auto Q : Qtots) {if (Q[0] == qarray<1>{3}) {Qtot = Q;}}
+					 for (const auto Q : Qtots) {if (Q[0] == 3) {Qtot = Q;}}
 					 return make_corr(locx1, locx2, locy1, locy2, F[locx1].c(locy1), F[locx2].c(locy2), Qtot, sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
 				 }
 	else
@@ -544,7 +552,7 @@ cdagcdag3 (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 					 //Determine Qtot to the spin triplet quantumnumber. 
 					 auto Qtots = Symmetry::reduceSilent(F[locx1].cdag(locy1).Q(), F[locx2].cdag(locy2).Q());
 					 typename Symmetry::qType Qtot;
-					 for (const auto Q : Qtots) {if (Q[0] == qarray<1>{3}) {Qtot = Q;}}
+					 for (const auto Q : Qtots) {if (Q[0] == 3) {Qtot = Q;}}
 					 return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].cdag(locy2), Qtot, sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
 				 }
 	else
@@ -671,6 +679,22 @@ Mpo<Symmetry> HubbardObservables<Symmetry>::
 n (size_t locx, size_t locy) const
 {
 	return make_local(locx,locy, F[locx].n(locy), 1., PROP::BOSONIC, PROP::HERMITIAN);
+}
+
+template<typename Symmetry>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_CHARGE_SU2(), Mpo<Symmetry> >::type HubbardObservables<Symmetry>::
+T (size_t locx, size_t locy, double factor) const
+{
+	return make_local(locx,locy, F[locx].T(locy), factor, PROP::BOSONIC, PROP::NON_HERMITIAN);
+}
+
+template<typename Symmetry>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_CHARGE_SU2(), Mpo<Symmetry> >::type HubbardObservables<Symmetry>::
+Tdag (size_t locx, size_t locy, double factor) const
+{
+	return make_local(locx,locy, F[locx].Tdag(locy), factor, PROP::BOSONIC, PROP::NON_HERMITIAN);
 }
 
 template<typename Symmetry>
@@ -863,6 +887,22 @@ ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size
 
 template<typename Symmetry>
 template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HubbardObservables<Symmetry>::
+S (size_t locx, size_t locy, double factor) const
+{
+	return make_local(locx,locy, F[locx].S(locy), factor, PROP::BOSONIC, PROP::NON_HERMITIAN);
+}
+
+template<typename Symmetry>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HubbardObservables<Symmetry>::
+Sdag (size_t locx, size_t locy, double factor) const
+{
+	return make_local(locx,locy, F[locx].Sdag(locy), factor, PROP::BOSONIC, PROP::NON_HERMITIAN);
+}
+
+template<typename Symmetry>
+template<typename Dummy>
 typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HubbardObservables<Symmetry>::
 Sz (size_t locx, size_t locy) const
 {
@@ -891,7 +931,7 @@ SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 
 template<typename Symmetry>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_SPIN_SU2,Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry>::
 S_ky (vector<complex<double> > phases) const
 {
 	vector<OperatorType> Ops(F.size());
@@ -904,7 +944,7 @@ S_ky (vector<complex<double> > phases) const
 
 template<typename Symmetry>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_SPIN_SU2,Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry>::
 Sdag_ky (vector<complex<double> > phases, double factor) const
 {
 	vector<OperatorType> Ops(F.size());
@@ -917,7 +957,7 @@ Sdag_ky (vector<complex<double> > phases, double factor) const
 
 template<typename Symmetry>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_CHARGE_SU2,Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry>::
 T_ky (vector<complex<double> > phases) const
 {
 	vector<OperatorType> Ops(F.size());
@@ -930,7 +970,7 @@ T_ky (vector<complex<double> > phases) const
 
 template<typename Symmetry>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_CHARGE_SU2,Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry>::
 Tdag_ky (vector<complex<double> > phases, double factor) const
 {
 	vector<OperatorType> Ops(F.size());
@@ -943,7 +983,7 @@ Tdag_ky (vector<complex<double> > phases, double factor) const
 
 template<typename Symmetry>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_SPIN_SU2 and !Dummy::IS_CHARGE_SU2,Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry>::
 c_ky (vector<complex<double> > phases, double factor) const
 {
 	vector<OperatorType> Ops(F.size());
@@ -956,7 +996,7 @@ c_ky (vector<complex<double> > phases, double factor) const
 
 template<typename Symmetry>
 template<typename Dummy>
-typename std::enable_if<Dummy::IS_SPIN_SU2 and !Dummy::IS_CHARGE_SU2,Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry>::
+typename std::enable_if<Dummy::IS_SPIN_SU2() and !Dummy::IS_CHARGE_SU2(),Mpo<Symmetry,complex<double> > >::type HubbardObservables<Symmetry>::
 cdag_ky (vector<complex<double> > phases, double factor) const
 {
 	vector<OperatorType> Ops(F.size());

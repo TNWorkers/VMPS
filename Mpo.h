@@ -492,6 +492,8 @@ construct_from_pushlist(const PushType<OperatorType,Scalar>& pushlist, const std
         const auto& [loc, ops, coupling] = pushlist[i];
 		if ( std::abs(coupling) != 0. )
 		{
+			cout << "ops.size=" << ops.size() << endl;
+			cout << "push ops: "; for (const auto &op : ops) {cout << op.label << " ";} cout << endl;
 			this->push(loc, ops, coupling);
 		}
     }

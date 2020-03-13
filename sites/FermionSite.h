@@ -1,6 +1,8 @@
 #ifndef FERMIONSITE_H_
 #define FERMIONSITE_H_
 
+#include "symmetry/U0.h"
+
 #include "sites/FermionSiteSU2xU1.h"
 #include "sites/FermionSiteU1xSU2.h"
 #include "sites/FermionSiteSU2xU0.h"

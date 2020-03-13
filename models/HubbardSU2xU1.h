@@ -152,6 +152,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 	
 	for(std::size_t loc=0; loc<N_sites; ++loc)
 	{
+		cout << termcolor::red << "loc=" << loc << termcolor::reset << endl;
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;
 		size_t lp3 = (loc+3)%N_sites;
@@ -184,13 +185,12 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 				
 				if (range != 0)
 				{
-
 					vector<SiteOperator<Symmetry_,double> > ops(range+1);
 					ops[0] = first[j];
-					for (size_t i=0; i<range; ++i)
+					for (size_t i=1; i<range; ++i)
 					{
-						if (FERMIONIC) {ops[i] = F[(loc+i+1)%N_sites].sign().template plain<double>();}
-						else {ops[i] = F[(loc+i+1)%N_sites].Id().template plain<double>();}
+						if (FERMIONIC) {ops[i] = F[(loc+i)%N_sites].sign().template plain<double>();}
+						else {ops[i] = F[(loc+i)%N_sites].Id().template plain<double>();}
 					}
 					ops[range] = last[j][(loc+range)%N_sites];
 					pushlist.push_back(std::make_tuple(loc, ops, factor[j] * value));
@@ -218,7 +218,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			vector<SiteOperator<Symmetry_,double> > first {F[loc].Tz(0).template plain<double>()};
 			vector<SiteOperator<Symmetry_,double> > Tz_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {Tz_ranges[i] = F[i].Tz(0).template plain<double>();}
 			vector<vector<SiteOperator<Symmetry_,double> > > last {Tz_ranges};
-			push_full("VzFull", "Vzᵢⱼ", first, last, {1.}, PROP::BOSONIC);			
+			push_full("Vzfull", "Vzᵢⱼ", first, last, {1.}, PROP::BOSONIC);			
 		}
 		if (P.HAS("Vxyfull"))
 		{
@@ -229,9 +229,9 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			for (size_t i=0; i<N_sites; i++) {auto Gi = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i))); Tp_ranges[i] = F[i].Tp(0,Gi).template plain<double>(); Tm_ranges[i] = F[i].Tm(0,Gi).template plain<double>();}
 			
 			vector<vector<SiteOperator<Symmetry_,double> > > last {Tm_ranges, Tp_ranges};
-			push_full("VxyFull", "Vxyᵢⱼ", first, last, {0.5}, PROP::BOSONIC);			
+			push_full("Vxyfull", "Vxyᵢⱼ", first, last, {0.5}, PROP::BOSONIC);			
 		}
-		if (P.HAS("Vextfull"))
+		if (P.HAS("VextFull"))
 		{
 			vector<SiteOperator<Symmetry_,double> > first {F[loc].n(0).template plain<double>()};
 			vector<SiteOperator<Symmetry_,double> > n_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {n_ranges[i] = F[i].n(0).template plain<double>();}

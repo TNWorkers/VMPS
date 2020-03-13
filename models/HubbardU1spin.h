@@ -55,7 +55,7 @@ HubbardU1spin (const size_t &L, const vector<Param> &params, const BC &boundary)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
-		setLocBasis(F[l].get_basis(),l);
+		setLocBasis(F[l].get_basis().qloc(),l);
 	}
 	
 	param1d U = P.fill_array1d<double>("U", "Uorb", F[0].orbitals(), 0);	
