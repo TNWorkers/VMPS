@@ -40,9 +40,16 @@ public:
 
 	static constexpr bool HAS_CGC = false;
 	static constexpr bool NON_ABELIAN = S1::NON_ABELIAN or S2::NON_ABELIAN;
+	static constexpr bool ABELIAN = S1::ABELIAN and S2::ABELIAN;
 	static constexpr bool IS_TRIVIAL = S1::IS_TRIVIAL and S2::IS_TRIVIAL;
 	static constexpr bool IS_MODULAR = S1::IS_MODULAR and S2::IS_MODULAR;
 	static constexpr int MOD_N = S1::MOD_N * S2::MOD_N;
+
+	static constexpr bool IS_CHARGE_SU2() { return S1::IS_CHARGE_SU2() or S2::IS_CHARGE_SU2(); }
+	static constexpr bool IS_SPIN_SU2() { return S1::IS_SPIN_SU2() or S2::IS_SPIN_SU2(); }
+
+	static constexpr bool NO_SPIN_SYM() { return S1::NO_SPIN_SYM() and S2::NO_SPIN_SYM(); }
+	static constexpr bool NO_CHARGE_SYM() { return S1::NO_CHARGE_SYM() and S2::NO_CHARGE_SYM(); }
 	
 	typedef qarray<Nq> qType;
 	
@@ -51,7 +58,8 @@ public:
 	inline static qType qvacuum() { return {S1::qvacuum()[0],S2::qvacuum()[0]}; }
 	inline static qType flip( const qType& q ) { return {S1::flip({q[0]})[0],S2::flip({q[1]})[0]}; }
 	inline static int degeneracy( const qType& q ) { return S1::degeneracy({q[0]})*S2::degeneracy({q[1]}); }
-	
+
+	inline static int spinorFactor() { return S1::spinorFactor() * S2::spinorFactor(); }
 	///@{
 	/** 
 	 * Calculate the irreps of the tensor product of \p ql and \p qr.

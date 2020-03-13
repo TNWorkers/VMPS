@@ -86,7 +86,7 @@ std::ostream& operator<< (std::ostream& s, Sym::KIND l)
 
 enum PARITY {EVEN=0, ODD=1};
 
-enum SUB_LATTICE {A=0,B=1};
+enum SUB_LATTICE {A=1,B=-1};
 
 enum KONDO_SUBSYSTEM {IMP, SUB, IMPSUB};
 
@@ -475,6 +475,7 @@ namespace PROP
 	const bool NON_HAMILTONIAN = false;
 	const bool FERMIONIC = true;
 	const bool NON_FERMIONIC = false;
+	const bool BOSONIC = false;
 	const bool COMPRESS = true;
 	const bool DONT_COMPRESS = false;
 }

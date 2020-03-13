@@ -47,19 +47,57 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 		B = Bnext;
 		Bnext.clear();
 	}
-	
+
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdR;
 	IdR.setIdentity(Obs.outBasis(Obs.length()-1).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.outBasis((Obs.length()-1)%Vket.length()));
 	
 	return contract_LR(B,IdR);
 }
 
+//template<typename Symmetry, typename MpoScalar, typename Scalar>
+//complex<Scalar> avg (const vector<vector<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic>>>> &Abra,
+//            const Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic>> &L,
+//            const Mpo<Symmetry,MpoScalar> &O, 
+//            const vector<vector<Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic>>>> &Aket,
+//            const Biped<Symmetry,Matrix<complex<double>,Dynamic,Dynamic>> &R)
+//{
+//	Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > Bnext;
+//	Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > B(L);
+//	Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > Blast(R);
+//	size_t Ncells = 1; 
+//	auto Obs = O;
+//	
+////	if (Obs.length() != Aket.size() and Vket.Qtarget() != Symmetry::qvacuum())
+////	{
+////		assert(Obs.length()%Vket.length() == 0); //?
+////		Ncells = static_cast<size_t>(Obs.length()/Vket.length());
+////		qarray<Symmetry::Nq> transformed_Qtot = ::adjustQN<Symmetry>(Vket.Qtarget(),Ncells);
+////		Obs.transform_base(transformed_Qtot,false);
+////	}
+////	else
+////	{
+////		Obs.transform_base(Vket.Qtarget(),false);
+////	}
+//	
+//	for (size_t l=0; l<Obs.length(); ++l)
+//	{
+//		contract_L(B,
+//				   Abra[l%Aket.size()], Obs.W_at(l), O.IS_HAMILTONIAN(),
+//				   Aket[l%Aket.size()], Obs.locBasis(l), Obs.opBasis(l), Bnext);
+//		
+//		B.clear();
+//		B = Bnext;
+//		Bnext.clear();
+//	}
+//	
+//	return contract_LR(B,Blast);
+//}
+
 template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg (const Umps<Symmetry,Scalar> &Vbra, 
             const Mpo<Symmetry,MpoScalar> &O1, 
             const Mpo<Symmetry,MpoScalar> &O2, 
-            const Umps<Symmetry,Scalar> &Vket,
-			bool PRINT=false)
+            const Umps<Symmetry,Scalar> &Vket)
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
@@ -74,21 +112,11 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 		qarray<Symmetry::Nq> transformed_Qtot = ::adjustQN<Symmetry>(Vket.Qtarget(),Ncells);
 		Obs1.transform_base(transformed_Qtot,false);
 		Obs2.transform_base(transformed_Qtot,false);
-		if (PRINT)
-		{
-			Obs1.calc_auxBasis(true);
-			Obs2.calc_auxBasis(true);
-		}
 	}
 	else
 	{
 		Obs1.transform_base(Vket.Qtarget(),false);
 		Obs2.transform_base(Vket.Qtarget(),false);
-		if (PRINT)
-		{
-			Obs1.calc_auxBasis(true);
-			Obs2.calc_auxBasis(true);
-		}
 	}
 	
 	auto Vbra_copy = Vbra;
@@ -99,26 +127,17 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 		Vbra_copy.adjustQN(Ncells);
 		Vket_copy.adjustQN(Ncells);
 	}
-	
-	B.setIdentity(Obs1.auxcols(Obs1.length()-1), 1, Vket_copy.outBasis((Obs1.length()-1)%Vket.length()));
+
+	B.setIdentity(Obs1.outBasis(Obs1.length()-1).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.outBasis((Obs1.length()-1)%Vket.length()));
+
 	for (size_t l=O1.length()-1; l!=-1; --l)
 	{
 //		GAUGE::OPTION g = (l==O1.length()-1)? GAUGE::C : GAUGE::L;
 		GAUGE::OPTION g = (l==0)? GAUGE::C : GAUGE::R;
-		if (PRINT)
-		{
-			// cout << "l=" << l << endl << B.print() << endl << endl;
-			// cout << Obs1.auxBasis(l+1) << endl << Obs2.auxBasis(l+1) << endl << endl;
-			// cout << Obs1.auxBasis(l) << endl << Obs2.auxBasis(l) << endl << endl;
-			// cout << "Vbra_copy.A_at(g,l%Vket.length())" << endl << Vbra_copy.A_at(g,l%Vket.length())[0].print() << endl << Vbra_copy.A_at(g,l%Vket.length())[1].print() << endl << Vbra_copy.A_at(g,l%Vket.length())[2].print() << endl << endl;
-			// cout << "Vket_copy.A_at(g,l%Vket.length())" << endl << Vket_copy.A_at(g,l%Vket.length())[0].print() << endl << Vket_copy.A_at(g,l%Vket.length())[1].print() << endl << Vket_copy.A_at(g,l%Vket.length())[2].print() << endl << endl;
-
-		}
 
 		contract_R(B,
 		           Vbra_copy.A_at(g,l%Vket.length()), Obs1.W_at(l), Obs2.W_at(l), Vket_copy.A_at(g,l%Vket.length()), 
-		           Obs1.locBasis(l), Obs1.opBasis(l), Obs2.opBasis(l),
-		           Obs1.auxBasis(l+1), Obs2.auxBasis(l+1), Obs1.auxBasis(l), Obs2.auxBasis(l), 
+		           Obs1.locBasis(l), Obs1.opBasis(l), Obs2.opBasis(l), 
 		           Bnext);
 		
 		B.clear();
@@ -132,7 +151,7 @@ Scalar avg (const Umps<Symmetry,Scalar> &Vbra,
 	}
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > IdL;
-	IdL.setIdentity(Obs1.auxrows(0), 1, Vket_copy.inBasis(0));
+	IdL.setIdentity(Obs1.inBasis(0).inner_dim(Symmetry::qvacuum()), 1, Vket_copy.inBasis(0));
 	
 //	cout << "res=" << contract_LR(IdL,B) << ", B.dim=" << B.dim << endl;
 	

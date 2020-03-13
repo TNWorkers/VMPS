@@ -74,13 +74,12 @@ const std::map<string,std::any> HeisenbergXYZ::defaults =
 
 HeisenbergXYZ::
 HeisenbergXYZ (const size_t &L, const vector<Param> &params, const BC &boundary)
-	:Mpo<Symmetry,complex<double> > (L, qarray<0>({}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
+:Mpo<Symmetry,complex<double> > (L, qarray<0>({}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
  HeisenbergObservables(L,params,HeisenbergXYZ::defaults),
  ParamReturner(Heisenberg::sweep_defaults)
 {    
     ParamHandler P(params,HeisenbergXYZ::defaults);   
     size_t Lcell = P.size();
-	B.resize(N_sites);
 	
     for (size_t l=0; l<N_sites; ++l)
     {

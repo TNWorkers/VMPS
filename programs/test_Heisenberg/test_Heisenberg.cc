@@ -29,6 +29,9 @@ using namespace std;
 Logger lout;
 #include "ArgParser.h"
 
+#include "Geometry2D.h"
+#include "Lattice2D.h"
+
 #include "solvers/DmrgSolver.h"
 #include "solvers/TDVPPropagator.h"
 #include "solvers/MpsCompressor.h"
@@ -301,9 +304,10 @@ int main (int argc, char* argv[])
 		
 		VMPS::HeisenbergSU2 H_SU2;
 		// H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",CALC_SQUARE}});
-		Geometry2D Geo1cell(Lattice::suqare,SNAKE,1*L,Ly,1.,true); // periodic BC in y = true
-		JArray    = J * Geo2cell.hopping();
-		H_SU2 = VMPS::HeisenbergSU2(L,{{"Jfull",Jarray},{"CALC_SQUARE",CALC_SQUARE}});
+		Lattice2D triag({1*L,Ly},{false,false});// periodic BC in y = true
+		Geometry2D Geo1cell(triag,SNAKE); 
+		ArrayXXd Jarray    = J * Geo1cell.hopping();
+		H_SU2 = VMPS::HeisenbergSU2(L*Ly,{{"Jfull",Jarray},{"CALC_SQUARE",CALC_SQUARE}});
 		
 		lout << H_SU2.info() << endl;
 		// H_SU2.precalc_TwoSiteData();

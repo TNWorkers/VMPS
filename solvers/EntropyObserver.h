@@ -71,7 +71,7 @@ TWO_SITE (int it, const MpsType &Psi, double r, vector<size_t> true_overrides, v
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 		{
-			lout << "b=" << b << ", δS(b)=" << DeltaSb(it,b) << endl;
+			lout << "b=" << b << ", δS(b)=" << DeltaSb(it,b) << ", S=" << data(it,b) << endl;
 		}
 	}
 	

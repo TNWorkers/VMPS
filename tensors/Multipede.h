@@ -132,7 +132,7 @@ typedef typename MatrixType::Scalar Scalar;
 	/***/
 	void setIdentity (size_t Drows, size_t Dcols, size_t amax=1, size_t bmax=1);
 	
-	void setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base);
+	void setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base, const qarray<Symmetry::Nq> &Q=Symmetry::qvacuum());
 	
 	void addScale (const Scalar &factor, const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs);
 	///@}
@@ -520,12 +520,16 @@ setIdentity (size_t Drows, size_t Dcols, size_t amax, size_t bmax)
 
 template<size_t Nlegs, typename Symmetry, typename MatrixType>
 void Multipede<Nlegs,Symmetry,MatrixType>::
-setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base)
+setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base, const qarray<Symmetry::Nq> &Q)
 {
 	static_assert(Nlegs == 3);
+	if (amax == 0 or bmax ==0) {return;}
 	
 	for (size_t q=0; q<base.Nq(); ++q)
 	{
+		qarray3<Symmetry::Nq> quple = {base[q], base[q], Q};
+		if (!Symmetry::triangle(quple)) {continue;}
+		
 		boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[amax][bmax]);
 		for (size_t a=0; a<amax; ++a)
 		for (size_t b=0; b<bmax; ++b)
@@ -534,7 +538,6 @@ setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base)
 			Mtmp.setIdentity();
 			Mtmparray[a][b] = Mtmp;
 		}
-		qarray3<Symmetry::Nq> quple = {base[q], base[q], Symmetry::qvacuum()};
 		push_back(quple, Mtmparray);
 	}
 }

@@ -353,7 +353,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
                 pushlist.push_back(std::make_tuple(loc,ops,std::sqrt(3.)*Jpara(alfa,beta)));
 			}
 		}
-		
+
 		// Next-nearest-neighbour terms: J'
 		
 		param2d Jprime = P.fill_array2d<double>("Jprime", "Jprime_array", {orbitals, next2_orbitals}, loc%Lcell);

@@ -24,6 +24,7 @@ public:
 	///@{
 	Mpo<Symmetry> Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
 	Mpo<Symmetry> ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
+	Mpo<Symmetry,complex<double>> Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
 	///@}
 	
 	///@{
@@ -80,6 +81,30 @@ Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
 	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
 	
 	Mpo<Symmetry> Mout(B.size(), Op.Q, ss.str(), HERMITIAN);
+	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
+	
+	Mout.setLocal(locx,Op);
+	return Mout;
+}
+
+template<typename Symmetry>
+Mpo<Symmetry,complex<double>> HeisenbergObservables<Symmetry>::
+Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+{
+	assert(locx<B.size() and locy<B[locx].dim());
+	stringstream ss;
+	if (Sa==iSY)
+	{
+		ss << "exp[1/S*π*" << Sa << "](" << locx << "," << locy << ")]";
+	}
+	else
+	{
+		ss << "exp[1/S*π*i" << Sa << "](" << locx << "," << locy << ")]";
+	}
+	
+	auto Op = B[locx].Rcomp(Sa,locy);
+	
+	Mpo<Symmetry,complex<double>> Mout(B.size(), Op.Q, ss.str(), false);
 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis(),l);}
 	
 	Mout.setLocal(locx,Op);

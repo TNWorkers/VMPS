@@ -28,6 +28,7 @@ using namespace std;
 #include "models/HubbardU1.h"
 
 #include "Geometry2D.h" // from TOOLS
+#include "Lattice2D.h" // from TOOLS
 #include "NestedLoopIterator.h" // from TOOLS
 #include "models/ParamCollection.h"
 #include "BetheAnsatzIntegrals.h"
@@ -140,6 +141,9 @@ struct Obs
 	
 	vector<vector<Eigen::MatrixXd>> spectrum;
 	
+	double Oinv;
+	double Orot;
+	
 	void resize (size_t Lx, size_t Ly, size_t Lobs)
 	{
 		nh.resize(Lx,Ly); nh.setZero();
@@ -237,10 +241,10 @@ void resize_OdagO (size_t Ncells)
 
 void fill_OdagO (size_t L, size_t Ly, size_t n, const Eigenstate<MODEL::StateUd> &g, bool CALC_S=true, bool CALC_T=true, bool CALC_B=true, bool CALC_C=true)
 {
-	Geometry2D Geo(SNAKE,L,Ly,1.,true);
-	
+	Lattice2D square({L,Ly},{false,true});
+	Geometry2D Geo(square,CHESSBOARD);//,L,Ly,1.,true);	
 	VectorXd Bavg(L*Ly);
-	MODEL H1cell(L*Ly+Ly,{{"OPEN_BC",false},{"CALC_SQUARE",false}});
+	MODEL H1cell(L*Ly+Ly,{{"CALC_SQUARE",false}}, BC::INFINITE);
 	#pragma omp parallel for collapse(2)
 	for (size_t x0=0; x0<L; ++x0)
 	for (size_t y0=0; y0<Ly; ++y0)
@@ -256,7 +260,7 @@ void fill_OdagO (size_t L, size_t Ly, size_t n, const Eigenstate<MODEL::StateUd>
 	}
 	
 	Stopwatch<> CellTimer;
-	MODEL Hncell((n+1)*L*Ly+2*Ly,{{"OPEN_BC",false},{"CALC_SQUARE",false}});
+	MODEL Hncell((n+1)*L*Ly+2*Ly,{{"CALC_SQUARE",false}}, BC::INFINITE);
 	
 	cout << "n=" << n << ", length=" << Hncell.length() << endl;
 	
@@ -286,8 +290,8 @@ void fill_OdagO (size_t L, size_t Ly, size_t n, const Eigenstate<MODEL::StateUd>
 
 void save_OdagO (size_t Ncells)
 {
-	Geometry2D Geo(SNAKE,L,Ly,1.,true);
-	
+	Lattice2D square({L,Ly},{false,true});
+	Geometry2D Geo(square,CHESSBOARD);
 	// save to obs
 	NestedLoopIterator Nelly(5,{Ncells,L,Ly,L,Ly});
 	for (Nelly=Nelly.begin(); Nelly!=Nelly.end(); ++Nelly)
@@ -341,8 +345,8 @@ void save_OdagO (size_t Ncells)
 complex<double> calc_FT (double kx, int iky, size_t Ncells, const vector<vector<vector<vector<ArrayXd> > > > &OdagO)
 {
 	ArrayXXcd FTintercell(L,L);
-	Geometry2D Geo(SNAKE,L,Ly,1.,true);
-	
+	Lattice2D square({L,Ly},{false,true});
+	Geometry2D Geo(square,CHESSBOARD);
 	for (size_t x0=0; x0<L; ++x0)
 	for (size_t x1=0; x1<L; ++x1)
 	{
@@ -454,6 +458,9 @@ int main (int argc, char* argv[])
 	V = args.get<double>("V",0.);
 	Vxy = args.get<double>("Vxy",V);
 	Vz = args.get<double>("Vz",V);
+	double t0stag = args.get<double>("t0stag",0.);
+	double F = args.get<double>("F",0.);
+	cout << "F=" << F << endl;
 	if (Vxy==Vz) V = Vxy;
 	M = args.get<int>("M",0);
 	S = abs(M)+1;
@@ -503,6 +510,14 @@ int main (int argc, char* argv[])
 	if (PBC)
 	{
 		base += make_string("_BC=PBC");
+	}
+	if (t0stag != 0.)
+	{
+		base += make_string("_t0stag=",t0stag);
+	}
+	if (F != 0.)
+	{
+		base += make_string("_F=",F);
 	}
 	string obsfile = make_string(wd,"obs/",base,".h5");
 	string statefile = make_string(wd,"state/",base);
@@ -562,10 +577,11 @@ int main (int argc, char* argv[])
 	lout << "e_empty=" << e_empty() << endl;
 	
 	Stopwatch<> Watch;
-	
-	Geometry2D Geo1cell(SNAKE,1*L,Ly,1.,true); // periodic BC in y = true
-	Geometry2D Geo2cell(SNAKE,2*L,Ly,1.,true);
-	
+
+	Lattice2D square1({1*L,Ly},{false,true});
+	Lattice2D square2({2*L,Ly},{false,true});
+	Geometry2D Geo1cell(square1,CHESSBOARD);//,1*L,Ly,1.,true); // periodic BC in y = true
+	Geometry2D Geo2cell(square2,CHESSBOARD);
 	// save to temporary, otherwise std::bad_any_cast
 	ArrayXXd tArray, Varray, Vxyarray, Vzarray, Jarray, Xarray, ZeroArray, OneArray, VextArray;
 	if (VUMPS)
@@ -607,7 +623,7 @@ int main (int argc, char* argv[])
 		params.push_back({"Jfull",Jarray});
 		params.push_back({"Xfull",Xarray});
 		params.push_back({"U",U});
-		if (VUMPS) {params.push_back({"OPEN_BC",false});}
+		// if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {S,T};
 		Qc2 = {S,T};
 		QcT = {S,T+2};
@@ -635,7 +651,9 @@ int main (int argc, char* argv[])
 			params.push_back({"Uph",U});
 			params.push_back({"U",0.});
 		}
-		if (VUMPS) {params.push_back({"OPEN_BC",false});}
+		params.push_back({"t0",+t0stag,0});
+		params.push_back({"t0",-t0stag,1});
+		// if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		
 		if constexpr(std::is_same<MODEL,VMPS::HubbardSU2xU1>::value)
 		{
@@ -665,7 +683,13 @@ int main (int argc, char* argv[])
 		params.push_back({"X",X});
 		params.push_back({"J",J});
 		params.push_back({"Uph",U});
-		if (VUMPS) {params.push_back({"OPEN_BC",false});}
+		if (t0stag!=0.)
+		{
+			params.push_back({"t0",+t0stag,0});
+			params.push_back({"t0",-t0stag,1});
+		}
+		params.push_back({"F",F});
+		// if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {};
 		Qc2 = {}; // for 2 unit cells
 		QcT = {};
@@ -682,7 +706,7 @@ int main (int argc, char* argv[])
 		params.push_back({"X",X});
 		params.push_back({"J",J});
 		params.push_back({"Uph",U});
-		if (VUMPS) {params.push_back({"OPEN_BC",false});}
+		// if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {M,N};
 		Qc2 = {M,2*N}; // for 2 unit cells
 		QcT = {M,N-2};
@@ -699,7 +723,9 @@ int main (int argc, char* argv[])
 		params.push_back({"X",X});
 		params.push_back({"J",J});
 		params.push_back({"Uph",U});
-		if (VUMPS) {params.push_back({"OPEN_BC",false});}
+		params.push_back({"t0",+t0stag,0});
+		params.push_back({"t0",-t0stag,1});
+		// if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {M};
 		Qc2 = {M}; // for 2 unit cells
 		QcT = {M};
@@ -716,7 +742,7 @@ int main (int argc, char* argv[])
 		params.push_back({"X",X});
 		params.push_back({"J",J});
 		params.push_back({"Uph",U});
-		if (VUMPS) {params.push_back({"OPEN_BC",false});}
+		// if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {N};
 		Qc2 = {2*N}; // for 2 unit cells
 		QcT = {N-2};
@@ -725,7 +751,7 @@ int main (int argc, char* argv[])
 		QcC = {N-1};
 	}
 	
-	MODEL H(volume,params);
+	MODEL H(volume,params,BC::INFINITE);
 	if (VUMPS) H.transform_base(Qc);
 	lout << "•H for ground state:" << endl;
 	lout << H.info() << endl;
@@ -759,7 +785,7 @@ int main (int argc, char* argv[])
 	if (VUMPS)
 	{
 		// For VUMPS: Hamiltonian with two unit cells for contractions across the cell
-		dHdV = MODEL(2*volume,{{"OPEN_BC",false},{"CALC_SQUARE",false}});
+		dHdV = MODEL(2*volume,{{"CALC_SQUARE",false}}, BC::INFINITE);
 		dHdV.transform_base(Qc2,false); // PRINT=false
 	}
 	else
@@ -835,9 +861,11 @@ int main (int argc, char* argv[])
 							
 							Sdag_ky[x] = H.Sdag_ky(phases_m);
 							S_ky[x]    = H.S_ky   (phases_p);
-							
+
+                            #ifdef USING_SO4
 							Tdag_ky[x] = H.Tdag_ky(phases_m);
 							T_ky[x]    = H.T_ky   (phases_p);
+							#endif
 							
 							#ifdef USING_SO4
 							Bdag_ky[x] = VMPS::HubbardSU2xSU2BondOperator<complex<double> >(volume+1,{{"x",x},{"shift",-Bavg(x)}});
@@ -846,9 +874,11 @@ int main (int argc, char* argv[])
 							
 							Sdag_ky[x].transform_base(Qc,false); // PRINT=false
 							S_ky[x].transform_base(Qc,false);
-							
+
+                            #ifdef USING_SO4
 							Tdag_ky[x].transform_base(Qc,false);
 							T_ky[x].transform_base(Qc,false);
+							#endif
 							
 							#ifdef USING_SO4
 							Bdag_ky[x].transform_base(Qc,false);
@@ -1078,6 +1108,26 @@ int main (int argc, char* argv[])
 				
 				if (target.HAS_GROUP(bond.str())) {return;}
 				
+				Mpo<MODEL::Symmetry,complex<double>> Id = Mpo<MODEL::Symmetry,complex<double>>::Identity(g_foxy.state.locBasis());
+				auto domRL1 = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  Id, true, false);
+				auto domLR1 = g_foxy.state.calc_dominant_1symm(GAUGE::L, DMRG::DIRECTION::RIGHT, Id, true, false);
+
+				#ifdef USING_U0
+				auto domRL1y = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  H.Rcomp(SZ,0), false, false);
+				auto domLR1y = g_foxy.state.calc_dominant_1symm(GAUGE::L, DMRG::DIRECTION::RIGHT, H.Rcomp(SZ,0), false, false);
+				#endif
+//				obs.Oinv = domRL1.first.real();
+//				obs.Orot = domRL1y.first.real();
+				
+//				auto domRL1x = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  H.Rcomp(SX,0), false, false);
+//				auto domLR1x = g_foxy.state.calc_dominant_1symm(GAUGE::L, DMRG::DIRECTION::RIGHT, H.Rcomp(SX,0), false, false);
+//				
+//				auto domRL1z = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  H.Rcomp(SZ,0), false, false);
+//				auto domLR1z = g_foxy.state.calc_dominant_1symm(GAUGE::L, DMRG::DIRECTION::RIGHT, H.Rcomp(SZ,0), false, false);
+				
+//				auto domRL2 = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  H.Rcomp(SX,0), H.Rcomp(SZ,0));
+//				auto domLR2 = g_foxy.state.calc_dominant_1symm(GAUGE::L, DMRG::DIRECTION::RIGHT, H.Rcomp(SX,0), H.Rcomp(SZ,0));
+				
 				Stopwatch<> SaveAndMeasure;
 				for (size_t x=0; x<L; ++x)
 				for (size_t y=0; y<Ly; ++y)
@@ -1134,6 +1184,7 @@ int main (int argc, char* argv[])
 					g_foxy.state.calc_entropy(true);
 					obs.spectrum[x][y] = g_foxy.state.entanglementSpectrumLoc(Geo1cell(x,y));
 					lout << "\tspec=" << obs.spectrum[x][y].block(0,0,min(40,int(obs.spectrum[x][y].rows())),1).transpose() << endl;
+					lout << "diff sv0-sv1=" << obs.spectrum[x][y](0,0)-obs.spectrum[x][y](1,0) << endl;
 				}
 				lout << endl;
 				
@@ -1150,7 +1201,7 @@ int main (int argc, char* argv[])
 				#pragma omp parallel for
 				for (int d=1; d<Ncells1d*L; ++d)
 				{
-					MODEL Htmp(calc_length(d+1,L),{{"OPEN_BC",false},{"CALC_SQUARE",false}}); Htmp.transform_base(Qc,false); // PRINT=false
+					MODEL Htmp(calc_length(d+1,L),{{"CALC_SQUARE",false}}, BC::INFINITE); Htmp.transform_base(Qc,false); // PRINT=false
 					
 					obs.SdagS1d(d,0) = d;
 					obs.SdagS1d(d,1) = avg(g_foxy.state, Htmp.SdagS(0,d), g_foxy.state);
@@ -1179,7 +1230,7 @@ int main (int argc, char* argv[])
 				#pragma omp parallel for
 				for (int d=2; d<Ncells1d*L; ++d)
 				{
-					MODEL Htmp(calc_length(d+2,L),{{"OPEN_BC",false},{"CALC_SQUARE",false}}); Htmp.transform_base(Qc,false); // PRINT=false
+					MODEL Htmp(calc_length(d+2,L),{{"CALC_SQUARE",false}}, BC::INFINITE); Htmp.transform_base(Qc,false); // PRINT=false
 					
 					double val1 = avg(g_foxy.state, Htmp.cdagc<DN>(1,d+1), Htmp.cdagc<UP>(0,d), g_foxy.state);
 					double val2 = avg(g_foxy.state, Htmp.cdagc<UP>(1,d+1), Htmp.cdagc<DN>(0,d), g_foxy.state);
@@ -1249,17 +1300,17 @@ int main (int argc, char* argv[])
 				#pragma omp parallel for
 				for (int d=2; d<Ncells1d*L; ++d)
 				{
-					MODEL Htmp(calc_length(d+2,L),{{"OPEN_BC",false},{"CALC_SQUARE",false}}); Htmp.transform_base(Qc,false); // PRINT=false
+					MODEL Htmp(calc_length(d+2,L),{{"CALC_SQUARE",false}}, BC::INFINITE); Htmp.transform_base(Qc,false); // PRINT=false
 					cout << Htmp.length() << endl;
 					
 					obs.triplet1d(d,0) = d;
-					obs.triplet1d(d,1) = -sqrt(3.)/3*avg(g_foxy.state, Htmp.cdagcdag3(0,1), Htmp.cc3(d,d+1), g_foxy.state, true);
+					obs.triplet1d(d,1) = -sqrt(3.)/3*avg(g_foxy.state, Htmp.cdagcdag3(0,1), Htmp.cc3(d,d+1), g_foxy.state);
 					// obs.triplet1d(d,1) = avg(g_foxy.state, Htmp.triplet(0,d), g_foxy.state);
 					// cout << "triplet=" << obs.triplet1d(d,1) << endl;
 					// assert(1!=1);
 					
 					obs.singlet1d(d,0) = d;
-					obs.singlet1d(d,1) = -avg(g_foxy.state, Htmp.cdagcdag1(0,1), Htmp.cc1(d,d+1), g_foxy.state, true);
+					obs.singlet1d(d,1) = -avg(g_foxy.state, Htmp.cdagcdag(0,1), Htmp.cc(d,d+1), g_foxy.state);
 				}
 				for (int d=2; d<Ncells1d*L; ++d)
 				{
@@ -1310,6 +1361,8 @@ int main (int argc, char* argv[])
 				target.save_scalar(obs.energy,"energy",bond.str());
 				target.save_scalar(obs.dedV,"dedV",bond.str());
 				target.save_scalar(obs.STcorr,"STcorr",bond.str());
+				target.save_scalar(obs.Oinv,"Oinv",bond.str());
+				target.save_scalar(obs.Orot,"Orot",bond.str());
 				
 				target.save_matrix(obs.nh,"nh",bond.str());
 				target.save_matrix(obs.ns,"ns",bond.str());

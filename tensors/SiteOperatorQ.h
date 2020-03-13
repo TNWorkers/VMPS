@@ -141,8 +141,24 @@ public:
 
 	SiteOperatorQ<Symmetry,MatrixType_> diagonalize(const std::vector<qType> &blocks={}, Eigen::DecompositionOptions opt=Eigen::DecompositionOptions::EigenvaluesOnly) const;
 
+	typename MatrixType_::Scalar norm() const;
+	
 	template<typename Scalar>
 	SiteOperator<Symmetry,Scalar> plain() const;
+
+	/**Prints the operator.*/
+	std::string print(bool PRINT_BASIS=false) const;
+
+	template<typename OtherScalar>
+	SiteOperatorQ<Symmetry,Eigen::Matrix<OtherScalar, -1, -1 > > cast() const
+	{
+		SiteOperatorQ<Symmetry,Eigen::Matrix<OtherScalar, -1, -1 > > Oout;
+		Oout.Q() = Q();
+		Oout.basis() = basis();
+		Oout.data() = data().template cast<Eigen::Matrix<OtherScalar, -1, -1> >();
+		Oout.label() = label();
+		return Oout;
+	}
 	
 private:
 	base data_;
@@ -250,6 +266,14 @@ diagonalize (const std::vector<qType> &blocks, Eigen::DecompositionOptions opt) 
 		out.data().push_back(this->data().in[nu],this->data().out[nu],res);
 	}
 	return out;
+}
+
+template<typename Symmetry, typename MatrixType_>
+typename MatrixType_::Scalar SiteOperatorQ<Symmetry,MatrixType_>::
+norm () const
+{
+	auto tmp = SiteOperatorQ<Symmetry,MatrixType_>::prod(*this, this->adjoint(), Symmetry::qvacuum());
+	return tmp.data().trace();
 }
 
 template<typename Symmetry, typename MatrixType_>
@@ -403,6 +427,11 @@ prod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetr
 	// 		else { out.data().block[check->second] += A; }
 	// 	}
 	// }
+	stringstream ss;
+	if (O1.label() == O2.label()) { ss << O1.label() << "²"; }
+	else {ss << O1.label() << "*" << O2.label();}
+	
+	out.label() = ss.str();
 
 	return out;
 }
@@ -459,6 +488,9 @@ outerprod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Sy
 			}
 		}
 	}
+	stringstream ss;
+	ss << O1.label() << "⊗" << O2.label();
+	out.label() = ss.str();
 	return out;
 }
 
@@ -476,6 +508,17 @@ SiteOperatorQ<Symmetry,MatrixType_>& SiteOperatorQ<Symmetry,MatrixType_>::operat
 	return *this;
 }
 
+template<typename Symmetry, typename MatrixType_>
+std::string SiteOperatorQ<Symmetry,MatrixType_>::
+print(bool PRINT_BASIS) const
+{
+	std::stringstream out;
+	out << "Operator " << label() << endl;
+	if (PRINT_BASIS) {out << basis() << endl;}
+	out << data().print(true) << endl;
+	return out.str();
+}
+
 template<typename Symmetry,typename MatrixType_>
 SiteOperatorQ<Symmetry,MatrixType_> operator* ( const typename MatrixType_::Scalar& s, const SiteOperatorQ<Symmetry,MatrixType_>& op )
 {
@@ -485,12 +528,25 @@ SiteOperatorQ<Symmetry,MatrixType_> operator* ( const typename MatrixType_::Scal
 }
 
 template<typename Symmetry,typename MatrixType_>
+SiteOperatorQ<Symmetry,MatrixType_> operator* (const SiteOperatorQ<Symmetry,MatrixType_> &O1, const SiteOperatorQ<Symmetry,MatrixType_> &O2)
+{
+	auto Qtots = Symmetry::reduceSilent(O1.Q(), O2.Q());
+	assert(Qtots.size() == 1 and "The operator * for SiteOperatorQ can only be used uf the target quantumnumber is unique. Use SiteOperatorQ::prod() insteat.");
+	auto Oout = SiteOperatorQ<Symmetry,MatrixType_>::prod(O1, O2, Qtots[0]);
+	return Oout;
+}
+
+template<typename Symmetry,typename MatrixType_>
 SiteOperatorQ<Symmetry,MatrixType_> operator+ ( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2 )
 {
 	assert(O1.basis() == O2.basis() and "For addition of SiteOperatorQs the basis needs to be the same.");
 	assert(O1.Q() == O2.Q() and "For addition of SiteOperatorQs the operator quantum number needs to be the same.");
 	SiteOperatorQ<Symmetry,MatrixType_> out(O1.Q(),O1.basis());
 	out.data() = O1.data() + O2.data();
+	stringstream ss;
+	ss << "(" << O1.label() << "+" << O2.label() << ")";
+	out.label() = ss.str();
+
 	return out;
 }
 
@@ -501,7 +557,17 @@ SiteOperatorQ<Symmetry,MatrixType_> operator- ( const SiteOperatorQ<Symmetry,Mat
 	assert(O1.Q() == O2.Q() and "For subtraction of SiteOperatorQs the operator quantum number needs to be the same.");
 	SiteOperatorQ<Symmetry,MatrixType_> out(O1.Q(),O1.basis());
 	out.data() = O1.data() - O2.data();
+	stringstream ss;
+	ss << "(" << O1.label() << "-" << O2.label() << ")";
+	out.label() = ss.str();
 	return out;
+}
+
+template<typename Symmetry,typename MatrixType_>
+std::ostream& operator<<(std::ostream& os, const SiteOperatorQ<Symmetry,MatrixType_> &Op)
+{
+	os << Op.print(false);
+	return os;
 }
 
 #endif

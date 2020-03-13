@@ -606,12 +606,13 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	// effective Hamiltonian
 	D = H.locBasis(0).size();
 	assert(H.inBasis(0) == H.outBasis(N_sites-1) and "You've inserted a strange MPO not consistent with the unit cell");
+	cout << H.inBasis(0) << endl;
 	dW = H.inBasis(0).size();
 	cout << "dW=" << dW << endl;
 	dW_singlet = H.inBasis(0).inner_dim(Symmetry::qvacuum());
 	cout << "dW_singlet=" << dW_singlet << endl;
 	//Basis order of the Mpo auxiliary basis which leads to a triangular Mpo form
-	basis_order = H.VUMPS_base_order();
+	basis_order = H.base_order_IBC();
 	cout << "basis_order="; for (const auto b:basis_order) {cout << b.first << "," << b.second << "\t";} cout << endl;
 	for (size_t i=0; i<basis_order.size(); ++i)
 	{
@@ -964,6 +965,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 				{
 					Tripod<Symmetry,MatrixType> Rtmp;
 					Tripod<Symmetry,MatrixType> Rtmp_guess; Rtmp_guess.insert(basis_order[a],Rguess);
+					cout << "a=" << a << endl;
 					solve_linear(VMPS::DIRECTION::RIGHT, a, AR, YR[a], Leigen, W, qloc, qOp, contract_LR(basis_order[a],Leigen,YR[a]), Rtmp_guess, Rtmp);
 					R.insert(basis_order[a],Rtmp);
 					

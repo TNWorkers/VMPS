@@ -1004,6 +1004,7 @@ Scalar contract_LR (pair<qarray<Symmetry::Nq>,size_t> fixed_a,
                     const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R)
 {
 	Scalar res = 0;
+	cout << "fixed_a.first=" << fixed_a.first << endl;
 	assert(fixed_a.first == Symmetry::qvacuum());
 	for (size_t qR=0; qR<R.dim; ++qR)
 	{

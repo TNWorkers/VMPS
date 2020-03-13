@@ -64,9 +64,11 @@ public:
 	typename Symmetry::qType getQ (SPINOP_LABEL Sa) const;
 
 	/**Returns the label of the operators.*/
-	typename std::string label (SPINOP_LABEL Sa) const;
+	std::string label (SPINOP_LABEL Sa) const;
 	
 	OperatorType Scomp (SPINOP_LABEL Sa, int orbital=0) const;
+	
+	SiteOperator<Symmetry,complex<double>> Rcomp (SPINOP_LABEL Sa, int orbital=0) const;
 	
 	OperatorType n (int orbital=0) const;
 	
@@ -153,6 +155,46 @@ Scomp (SPINOP_LABEL Sa, int orbital) const
 	SparseMatrixXd Mout = kroneckerProduct(Il,kroneckerProduct(ScompSingleSite(Sa),Ir));
 	
 	return OperatorType(Mout,getQ(Sa), label(Sa));
+}
+
+template<typename Symmetry>
+SiteOperator<Symmetry,complex<double> > SpinBase<Symmetry>::
+Rcomp (SPINOP_LABEL Sa, int orbital) const
+{
+	assert(orbital<N_orbitals);
+	
+	size_t R = ScompSingleSite(Sa).rows();
+	size_t Nl = pow(R,orbital);
+	size_t Nr = pow(R,N_orbitals-orbital-1);
+	assert(Nl==1 and Nr==1); // otherwise error inkroneckerProduct...
+	
+	SparseMatrixXd Il = MatrixXd::Identity(Nl,Nl).sparseView();
+	SparseMatrixXd Ir = MatrixXd::Identity(Nr,Nr).sparseView();
+	
+	MatrixXcd Mtmp;
+	if (Sa==iSY)
+	{
+		Mtmp = M_PI*2./(double(D)-1.)*MatrixXcd(ScompSingleSite(Sa));
+	}
+	else
+	{
+		Mtmp = 1.i*M_PI*2./(double(D)-1.)*MatrixXcd(ScompSingleSite(Sa));
+	}
+	
+	auto Op = Mtmp.exp().sparseView(1.,1e-14); // ref.value, epsilon // 
+	
+//	cout << "Rcomp=" << Mtmp << endl << endl;
+//	cout << "Re=" << Mtmp.exp().real() << endl << endl;
+//	cout << "Im=" << Mtmp.exp().imag() << endl << endl;
+//	cout << "Op=" << Op << endl << endl;
+	
+//	cout << Il << endl << endl;
+//	cout << Ir << endl << endl;
+//	SparseMatrixXcd Mout = kroneckerProduct(Il,kroneckerProduct(Op,Ir));
+//	cout << Mout << endl << endl;
+//	cout << "Mout: " << Mout.rows() << "x" << Mout.cols() << endl;
+	
+	return SiteOperator<Symmetry,complex<double>>(Op,getQ(Sa));
 }
 
 template<typename Symmetry>
@@ -267,7 +309,7 @@ HeisenbergHamiltonian (const ArrayXXd &Jxy, const ArrayXXd &Jz,
 		if (Kx(i)!=0.) {Mout += Kx(i) * Scomp(SX,i).data * Scomp(SX,i).data;}
 	}
 	
-	OperatorType Oout(Mout,Symmetry::qvacuum());
+	OperatorType Oout(Mout,Symmetry::qvacuum(), "Hloc");
 	return Oout;
 }
 
@@ -375,7 +417,7 @@ get_structured_basis() const
 }
 
 template<typename Symmetry>
-typename std::string SpinBase<Symmetry>::
+std::string SpinBase<Symmetry>::
 label (SPINOP_LABEL Sa) const
 {
 	std::string out="";

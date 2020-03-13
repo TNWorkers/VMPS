@@ -1242,6 +1242,9 @@ calc_intweights()
 		
 		weights.resize(Nt); weights = 1.;
 		tsteps.resize(Nt); tsteps = dt; tsteps(0) = 0;
+		
+		cout << "CHOICE=INTERP" << endl;
+		cout << "tvals=" << tvals.transpose() << endl;
 	}
 }
 

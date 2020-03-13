@@ -152,7 +152,11 @@ public:
 	 * \p in \f$\to\f$ \p out and vice versa.
 	 */
 	Biped<Symmetry,MatrixType_> adjoint() const;
-
+	
+	Biped<Symmetry,MatrixType_> transpose() const;
+	
+	Biped<Symmetry,MatrixType_> conjugate() const;
+	
 	/**
 	 * This functions transforms all quantum numbers in Biped::in and Biped::out by \f$q \rightarrow q * N_{cells}\f$.
 	 * It is used for avg(Umps V, Mpo O, Umps V) in VumpsLinearAlgebra.h when O.length() > V.length(). 
@@ -182,7 +186,10 @@ public:
 	
 	/**Takes the trace of the Biped. Only useful if this Biped is really a matrix from symmetry perspektive (q_in = q_out in all blocks).*/
 	Scalar trace() const;
-	
+
+	template<typename expScalar>
+	Biped<Symmetry,MatrixType_> exp( const expScalar x ) const;
+		
 	///@{
 	/**
 	 * Adds a new block to the tensor specified by the incoming quantum number \p qin and the outgoing quantum number \p qout.
@@ -582,6 +589,61 @@ adjoint() const
 
 template<typename Symmetry, typename MatrixType_>
 Biped<Symmetry,MatrixType_> Biped<Symmetry,MatrixType_>::
+transpose() const
+{
+	Biped<Symmetry,MatrixType_> Aout;
+	Aout.dim = dim;
+	Aout.in = out;
+	Aout.out = in;
+	
+	// new dict with reversed keys {qin,qout}->{qout,qin}
+	for (auto it=dict.begin(); it!=dict.end(); ++it)
+	{
+		auto qin  = get<0>(it->first);
+		auto qout = get<1>(it->first);
+		Aout.dict.insert({{qout,qin}, it->second});
+	}
+	
+	Aout.block.resize(dim);
+	for (std::size_t q=0; q<dim; ++q)
+	{
+		Aout.block[q] = block[q].transpose();
+	}
+	
+	return Aout;
+}
+
+template<typename Symmetry, typename MatrixType_>
+Biped<Symmetry,MatrixType_> Biped<Symmetry,MatrixType_>::
+conjugate() const
+{
+	Biped<Symmetry,MatrixType_> Aout;
+	Aout.dim = dim;
+	Aout.in = in;
+	Aout.out = out;
+//	Aout.in = out;
+//	Aout.out = in;
+	
+	// new dict with same keys
+	for (auto it=dict.begin(); it!=dict.end(); ++it)
+	{
+		auto qin  = get<0>(it->first);
+		auto qout = get<1>(it->first);
+		Aout.dict.insert({{qin,qout}, it->second});
+//		Aout.dict.insert({{qout,qin}, it->second});
+	}
+	
+	Aout.block.resize(dim);
+	for (std::size_t q=0; q<dim; ++q)
+	{
+		Aout.block[q] = block[q].conjugate();
+	}
+	
+	return Aout;
+}
+
+template<typename Symmetry, typename MatrixType_>
+Biped<Symmetry,MatrixType_> Biped<Symmetry,MatrixType_>::
 adjustQN (const size_t number_cells)
 {
 	Biped<Symmetry,MatrixType_> Aout;
@@ -743,6 +805,24 @@ Biped<Symmetry,MatrixType_> operator* (const Scalar &alpha, const Biped<Symmetry
 // 	Ares += A2;
 // 	return Ares;
 // }
+
+template<typename Symmetry, typename MatrixType_>
+template<typename expScalar>
+Biped<Symmetry,MatrixType_> Biped<Symmetry,MatrixType_>::
+exp( const expScalar x ) const
+{
+	// assert( this->legs[0].getDir() == dir::in and this->legs[1].getDir() == dir::out and "We need a regular matrix for exponentials.");
+	Biped<Symmetry,MatrixType_> Mout;
+
+	for (std::size_t nu=0; nu<size(); nu++)
+	{
+		MatrixType_ A;
+		A = block[nu] * x;
+		MatrixType_ Aexp = A.exp();
+		Mout.push_back(this->in[nu], this->out[nu], Aexp);			
+	}
+	return Mout;
+}
 
 template<typename Symmetry, typename MatrixType_>
 string Biped<Symmetry,MatrixType_>::
