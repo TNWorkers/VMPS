@@ -198,7 +198,8 @@ public:
      *  For convenience, redirects to push(std::size_t loc, std::vector<OperatorType> opList, Scalar lambda)
      */
     void push_nextn(const std::size_t loc, const Scalar lambda, const OperatorType& op1, const OperatorType& trans, const OperatorType& op2);
-
+    
+    static Mpo<Symmetry,Scalar> cast_Terms_to_Mpo(const MpoTerms<Symmetry,Scalar>& input);
 };
 
 template<typename Symmetry, typename Scalar>
@@ -513,7 +514,7 @@ setLocal(std::size_t loc, const OperatorType& op)
 	LocalOp   = op;
 	LocalSite = loc;
     this->push(loc, {op});
-    this->finalize(PROP::COMPRESS, false);
+    this->finalize(PROP::COMPRESS, 1);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -533,7 +534,7 @@ setLocal(std::size_t loc, const OperatorType& op, const std::vector<OperatorType
     std::vector<OperatorType> ops = signOps;
     ops.push_back(op);
     this->push(0, ops);
-    this->finalize(PROP::COMPRESS, false);
+    this->finalize(PROP::COMPRESS, 1);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -554,7 +555,7 @@ setLocalStag(std::size_t loc, const OperatorType& op, const std::vector<Operator
         }
     }
     this->push(0, ops);
-    this->finalize(PROP::COMPRESS, false);
+    this->finalize(PROP::COMPRESS, 1);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -589,7 +590,7 @@ setLocal(const std::vector<std::size_t>& locs, const std::vector<OperatorType>& 
     }
     ops_with_signs.push_back(ops[right]);
     this->push(locs[left], ops_with_signs);
-    this->finalize(PROP::COMPRESS, false);
+    this->finalize(PROP::COMPRESS, 1);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -614,7 +615,7 @@ setLocalSum(const OperatorType& op, Scalar (*f)(int))
     {
         this->push(loc, {f(loc)*op});
     }
-    this->finalize(PROP::COMPRESS, false);
+    this->finalize(PROP::COMPRESS, 1);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -625,7 +626,7 @@ setLocalSum(const std::vector<OperatorType>& ops, std::vector<Scalar> coeffs)
     {
         this->push(loc, {coeffs[loc]*ops[loc]});
     }
-    this->finalize(PROP::COMPRESS, false);
+    this->finalize(PROP::COMPRESS, 1);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -636,7 +637,7 @@ setProductSum(const OperatorType& op1, const OperatorType& op2)
     {
         this->push(loc, {op1, op2});
     }
-    this->finalize(PROP::COMPRESS, false);
+    this->finalize(PROP::COMPRESS, 1);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -660,7 +661,7 @@ scale(double factor, double offset)
 	else
 	{
 		this->scale(factor, offset);
-        this->finalize(PROP::COMPRESS, false);
+        this->finalize(PROP::COMPRESS, 1);
 	}
 }
 
@@ -755,6 +756,15 @@ void compare(const Mpo<Symmetry,Scalar1>& O1, const Mpo<Symmetry,Scalar2>& O2)
         }
 	}
 	lout << std::endl;
+}
+
+template<typename Symmetry, typename Scalar>
+Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
+cast_Terms_to_Mpo(const MpoTerms<Symmetry,Scalar>& input)
+{
+    Mpo<Symmetry,Scalar> output(input.size(), input.get_qTot(), input.label, false, false, false, input.get_boundary_condition());
+    output.reconstruct(input.get_O(), input.get_qAux(), input.get_qPhys(), input.is_finalized(), input.get_boundary_condition(), input.get_qTot());
+    return output;
 }
 
 #endif

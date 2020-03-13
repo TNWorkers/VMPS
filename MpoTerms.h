@@ -1,6 +1,7 @@
 #ifndef DMRG_HAMILTONIAN_TERMS
 #define DMRG_HAMILTONIAN_TERMS
 #define EIGEN_DONT_VECTORIZE
+#define TERMS_VERBOSITY 4
 
 /// \cond
 #include <vector>
@@ -18,7 +19,6 @@ template<typename Symmetry, typename Scalar> class MpoTerms
 {
     typedef SiteOperator<Symmetry,Scalar> OperatorType;
     typedef typename Symmetry::qType qType;
-    //typedef Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> MatrixType;
     typedef Eigen::SparseMatrix<Scalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> MatrixType;
     
 private:
@@ -97,16 +97,31 @@ private:
     std::vector<std::vector<qType>> qPhys;
     
     /**
-     *  Operator bases of the squared MPO
-     *  Index structure: [Lattice Site][Index of quantum number]
+     *  Operator bases of the higher powers
+     *  Index structure: [Power-2][Lattice Site][Index of quantum number]
      */
-    std::vector<std::vector<qType>> qOpSquare;
+    std::vector<std::vector<std::vector<qType>>> qOp_powers;
     
     /**
-     *  MPO bases of the squared MPO.
-     *  Index structure: [Lattice site]
+     *  MPO bases of the higher powers
+     *  Index structure: [Power-2][Lattice site]
      */
-    std::vector<Qbasis<Symmetry>> qAuxSquare;
+    std::vector<std::vector<Qbasis<Symmetry>>> qAux_powers;
+    
+    /**
+     *  Stores the O data type of the currently highest power of the MPO
+     */
+    std::vector<std::unordered_map<std::array<qType, 2>,std::vector<std::vector<std::unordered_map<qType,OperatorType>>>>> O_current_power;
+    
+    /**
+     *  Stores the target quantum number of the currently highest power of the MPO
+     */
+    qType qTot_current_power;
+    
+    /**
+     *  Stores the highest power of the MPO that has been calculated.
+     */
+    std::size_t current_power = 1;
     
     /**
      *  Is qOp up to date?
@@ -124,11 +139,6 @@ private:
     bool GOT_W = false;
     
     /**
-     *  Are squared values up to date?
-     */
-    bool GOT_SQUARE = false;
-    
-    /**
      *  Has qPhys been set at a certrain lattice site?
      *  Index structure: [Lattice Site]
      */
@@ -141,14 +151,38 @@ private:
      *  @param  q    Quantum number
      */
     void increment_auxdim(const std::size_t loc, const qType& q);
+    
+    /**
+     *  Increments the MPO auxiliar basis dimension connecting legt edge and first lattice site by one, also manages allocation of O. Just for open boundary condition, when this cannot be done by increment_auxdim.
+     *  @param  qIn Quantum number
+     */
     void increment_first_auxdim_OBC(const qType& qIn);
+    
+    /**
+     *  Increments the MPO auxiliar basis dimension connectinglast lattice site and right edge by one, also manages allocation of O. Just for open boundary condition, when this cannot be done by increment_auxdim.
+     *  @param  qOut    Quantum number
+     */
     void increment_last_auxdim_OBC(const qType& qOut);
     
+    /**
+     *  Decrements the MPO auxiliar basis dimension by one. Also manages reshaping of O.
+     *  If BC::INFINITE, loc >= N_sites is allowed. In this case, the method decrements qAux[0] and qAux[N_sites] for loc = N_sites
+     *  @param  loc  Lattice site, for BC::OPEN: 0 < loc < N_sites
+     *  @param  q    Quantum number
+     */
     void decrement_auxdim(const std::size_t loc, const qType& q);
+    
+    /**
+     *  Decrements the MPO auxiliar basis dimension connecting legt edge and first lattice site by one, also manages reshaping of O. Just for open boundary condition, when this cannot be done by decrement_auxdim.
+     *  @param  qIn Quantum number
+     */
     void decrement_first_auxdim_OBC(const qType& qIn);
+    
+    /**
+     *  Decrements the MPO auxiliar basis dimension connectinglast lattice site and right edge by one, also manages reshaping of O. Just for open boundary condition, when this cannot be done by decrement_auxdim.
+     *  @param  qOut    Quantum number
+     */
     void decrement_last_auxdim_OBC(const qType& qOut);
-
-
     
     /**
      *  Adds an operator in O
@@ -247,19 +281,9 @@ private:
     void calc_W();
     
     /**
-     *  Sets GOT_QAUX, GOT_QOP, GOT_W and GOT_SQUARE to false. Called whenever something is changed.
+     *  Sets GOT_QAUX, GOT_QOP and GOT_W to false, sets current_power to 1. Called whenever something is changed.
      */
     inline void got_update();
-    
-    /**
-     *  Allows to reconstruct an instance of MpoTerms with preset data.
-     *  @param  O_in            Operators, are copied into O
-     *  @param  qAux_in         Qbasis from which auxdim is calculated
-     *  @param  FINALIZED_IN    Shall this instance be FINALIZED?
-     *  @param  OBC  Shall this instance have open boundary conditions? False for VUMPS
-     *  @param  qTot_in    Total quantum number of the MPO
-     */
-    void reconstruct(const std::vector<std::unordered_map<std::array<qType,2>, std::vector<std::vector<std::unordered_map<qType,OperatorType>>>>>& O_in, const std::vector<Qbasis<Symmetry>>& qAux_in, const std::vector<std::vector<qType>>& qPhys_in, const bool FINALIZED_IN, const BC boundary_condition_in, const qType& qTot_in = Symmetry::qvacuum());
     
      /**
       *  Clears all relevant members and sets the right size for them.
@@ -270,6 +294,26 @@ private:
      *  Compresses the MpoTerms. Needs FINALIZED Terms.
      */
     void compress();
+    
+    /**
+     * Swaps rows and columns after calculating the product of two MPOs for VUMPS. Ensures that the identity operator that connects the vacua at each lattice site appear at position [0|0] and the identity connecting the target quantum number (for VUMPS vacuum) at position [1|1].
+     *  @param  O_out   Operators as created by the prod-method.
+     *  @param  row_qVac    List of the rows of the vacuum identity operators for each lattice site
+     *  @param  col_qVac    List of the columns of the vacuum identity operators for each lattice site
+     *  @param  row_qVac    List of the rows of the target quantum number identity operators for each lattice site
+     *  @param  row_qVac    List of the columns of the target quantum number identity operators for each lattice site
+     */
+    static void prod_swap_IBC(std::vector<std::unordered_map<std::array<qType,2>,std::vector<std::vector<std::unordered_map<qType,OperatorType>>>>>& O_out, std::vector<std::size_t>& row_qVac, std::vector<std::size_t>& col_qVac, std::vector<std::size_t>& row_qTot, std::vector<std::size_t>& col_qTot);
+    
+    /**
+     *  Deletes zero columns at the last lattice site after calculating the product of two MPOs when the combination of twice the target quantum number is not unique.
+     *  @param  O_last  O matrix of the product MPO at last lattice site. Will be truncated.
+     *  @param  qAux_last   Auxiliar basis of the product MPO at last lattice site. Will be truncated..
+     *  @param  qAux_prev   Auxiliar basis of the product MPO at lattice site left to the last one. Will not be modified.
+     *  @param  qTot    Target quantum number of the product MPO.
+     *  @param  col_qTot    Column of the vacuum identity operators for last lattice site
+     */
+    static void prod_delZeroCols_OBC(std::unordered_map<std::array<qType, 2>, std::vector<std::vector<std::unordered_map<qType,OperatorType>>>>& O_last, Qbasis<Symmetry>& qAux_last, Qbasis<Symmetry>& qAux_prev, const qType& qTot, const std::size_t col_qTot);
 
 protected:
     
@@ -280,22 +324,32 @@ protected:
     std::vector<std::vector<std::vector<std::vector<Biped<Symmetry, MatrixType>>>>> W;
     
     /**
-     *  W matrix of the squared MPO
-     *  Index structure: [Lattice site][Upper Hilbert space basis entry][Lower Hilbert space basis entry][Quantum number of operators] Biped: {qIn,qOut} -> Matrix [row][column]
+     *  W matrix of the higher powers
+     *  Index structure: [Power-2][Lattice site][Upper Hilbert space basis entry][Lower Hilbert space basis entry][Quantum number of operators] Biped: {qIn,qOut} -> Matrix [row][column]
      */
-    std::vector<std::vector<std::vector<std::vector<Biped<Symmetry, MatrixType>>>>> Wsquare;
+    std::vector<std::vector<std::vector<std::vector<std::vector<Biped<Symmetry, MatrixType>>>>>> W_powers;
     
     /**
      *  Number of lattice sites (for VUMPS: in the unit cell)
      */
     std::size_t N_sites;
     
+    /**
+     *  Allows to reconstruct an instance of MpoTerms with preset data.
+     *  @param  O_in            Operators, are copied into O
+     *  @param  qAux_in         Qbasis from which auxdim is calculated
+     *  @param  FINALIZED_IN    Shall this instance be FINALIZED?
+     *  @param  boundary_condition_in   Boundary condition
+     *  @param  qTot_in    Total quantum number of the MPO
+     */
+    void reconstruct(const std::vector<std::unordered_map<std::array<qType,2>, std::vector<std::vector<std::unordered_map<qType,OperatorType>>>>>& O_in, const std::vector<Qbasis<Symmetry>>& qAux_in, const std::vector<std::vector<qType>>& qPhys_in, const bool FINALIZED_IN, const BC boundary_condition_in, const qType& qTot_in = Symmetry::qvacuum());
+    
 public:
 
     /**
      *  Constructor for an instance of MpoTerms with fixed lattice size (for VUMPS: of the unit cell)
      *  @param  L   Lattice size
-     *  @param  OBC  Infinite boundary condition. False for VUMPS calculations.
+     *  @param  boundary_condition_in   Boundary condition
      *  @param  qTot_in Total quantum number of the MPO
      */
     MpoTerms(const std::size_t L=1, const BC boundary_condition_in=BC::OPEN, const qType& qTot_in=Symmetry::qvacuum());
@@ -303,7 +357,7 @@ public:
     /**
      *  Same as initialize, but allows to set a new combination of lattice size, total MPO quantum number and boundary condition
      *  @param  L   Lattice size
-     *  @param  OBC  Infinite boundary condition. False for VUMPS calculations.
+     *  @param  boundary_condition_in   Boundary condition
      *  @param  qTot_in Total quantum number of the MPO
      */
     void initialize(const std::size_t L, const BC boundary_condition_in, const qType& qTot_in);
@@ -335,12 +389,18 @@ public:
      *  @param loc      Lattice site
      *  @param label    Information
      */
-    void save_label(const std::size_t loc, const std::string& label);
+    void save_label(const std::size_t loc, const std::string& info_label);
     
     /**
      *  @param label_in    Name to be given to this instance of MpoTerms
      */
     void set_name(const std::string& label_in) {label = label_in;}
+    
+    /**
+     *  @return Name of this instance of MpoTerms
+     */
+    const std::string get_name() const {return label;}
+
     
     /**
      *  @return A vector of formatted strings that contain information about the MpoTerms. Zeroth entry = name.
@@ -371,15 +431,15 @@ public:
      *  Afterwards, operators cannot be pushed anymore.
      *  FINALIZED is set true.
      *  @param  COMPRESS    Shall the Terms be compressed?
-     *  @param  CALC_SQUARE Shall the squared MPO (W matrix, qOp and qAux) be calculated?
+     *  @param  power   All W-matrices, qAux-bases and qOp-bases up to this power of the MPO are being calculated.
      */
-    void finalize(const bool COMPRESS, const bool CALC_SQUARE);
+    void finalize(const bool COMPRESS, const std::size_t power);
         
     /**
-     *  Calculates auxiliar bases, operator bases and the W matrix (if they are not up to date). Possibility to calculate the square of the MPO, filling the auxiliar bases, the operator bases and the W matrix for the squared MPO.
-     *  @param  CALC_SQUARE     Shall the squared MPO be calculated?
+     *  Calculates auxiliar bases, operator bases and the W matrix (if they are not up to date). Possibility to calculate higher powers of the MPO, filling the auxiliar bases, the operator bases and the W matrix for these.
+     *  @param  power   All W-matrices, qAux-bases and qOp-bases up to this power of the MPO are being calculated.
      */
-    void calc(const bool CALC_SQUARE);
+    void calc(const std::size_t power);
     
     /**
      *  @return True, if this instance of MpoTerms has already been finalized.
@@ -412,19 +472,22 @@ public:
     const std::vector<std::vector<qType>>& get_qPhys() const {assert(check_qPhys() and "qPhys has not been set!"); return qPhys;}
    
     /**
-     *  @return  W matrix of squared MPO
+     *  @return  W matrix of a given power of the MPO
+     *  @param  power   Chosen power of the MPO
      */
-    const std::vector<std::vector<std::vector<std::vector<Biped<Symmetry, MatrixType>>>>>& get_Wsquare() const {assert(GOT_SQUARE and "Squared MPO has not been calculated!"); return Wsquare;}
+    const std::vector<std::vector<std::vector<std::vector<Biped<Symmetry, MatrixType>>>>>& get_W_power(std::size_t power) const;
     
     /**
-     *  @return  Auxiliar bases between all lattice sites for the squared MPO
+     *  @return  Auxiliar bases between all lattice sites for a given power of the MPO
+     *  @param  power   Chosen power of the MPO
      */
-    const std::vector<Qbasis<Symmetry>>& get_qAuxSquare() {assert(GOT_SQUARE and "Squared MPO has not been calculated!"); return qAuxSquare;}
+    const std::vector<Qbasis<Symmetry>>& get_qAux_power(std::size_t power) const;
     
     /**
-     *  @return  Bases of local operators for the squared MPO
+     *  @return  Bases of local operators for a given power of the MPO
+     *  @param  power   Chosen power of the MPO
      */
-    const std::vector<std::vector<qType>>& get_qOpSquare() {assert(GOT_SQUARE and "Squared MPO has not been calculated!"); return qOpSquare;}
+    const std::vector<std::vector<qType>>& get_qOp_power(std::size_t power) const;
     
     /**
      *  @return Dimension of local Hilbert space. 0, if dimension has not been set.
@@ -449,22 +512,18 @@ public:
     /**
      *  @return Have all physical bases of local Hilbert spaces been set?
      */
-    bool check_qPhys() const {bool all = true; for(std::size_t loc=0; loc<N_sites; ++loc) if(!GOT_QPHYS[loc]) all = false; return all;}
+    bool check_qPhys() const;
     
     /**
-     *  @return Has the squared MPO been calculated?
+     *  @return Has a given power of the MPO been calculated?
+     *  @param  power   Chosen power of the MPO
      */
-    bool check_SQUARE() const {return GOT_SQUARE;}
+    bool check_power(std::size_t power) const {return (power <= current_power);}
     
     /**
      *  @return Size of the lattice (for VUMPS: unit cell)
      */
     std::size_t size() const {return N_sites;}
-    
-    /**
-     *  @return  Name of this instance
-     */
-    std::string get_name() const {return label;}
     
     /**
      *  A given name for the MpoTerms, such as Heisenberg
@@ -512,44 +571,44 @@ public:
     static MpoTerms<Symmetry,Scalar> sum(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& top);
     
     /**
-     * Swaps rows and columns after calculating the product of two MPOs for VUMPS. Ensures that the identity operator that connects the vacua at each lattice site appear at position [0|0] and the identity connecting the target quantum number (for VUMPS vacuum) at position [1|1].
-     *  @param  O_out   Operators as created by the prod-method.
-     *  @param  row_qVac    List of the rows of the vacuum identity operators for each lattice site
-     *  @param  col_qVac    List of the columns of the vacuum identity operators for each lattice site
-     *  @param  row_qVac    List of the rows of the target quantum number identity operators for each lattice site
-     *  @param  row_qVac    List of the columns of the target quantum number identity operators for each lattice site
-     */
-    static void prod_swap_IBC(std::vector<std::unordered_map<std::array<qType,2>,std::vector<std::vector<std::unordered_map<qType,OperatorType>>>>>& O_out, std::vector<std::size_t>& row_qVac, std::vector<std::size_t>& col_qVac, std::vector<std::size_t>& row_qTot, std::vector<std::size_t>& col_qTot);
-    
-    static void prod_delZeroCols_OBC(std::unordered_map<std::array<qType, 2>, std::vector<std::vector<std::unordered_map<qType,OperatorType>>>>& O_last, Qbasis<Symmetry>& qAux_last, Qbasis<Symmetry>& qAux_prev, const qType& qTot, const std::size_t col_qTot);
-    /**
-     * Creates an identity MPO
-     *
+     *  Creates an identity MPO with bond dimension 1
      */
     void set_Identity();
+    
+    /**
+     *  Creates a zero MPO with bond dimension 1
+     */
     void set_Zero();
     
     const std::vector<std::vector<std::vector<Biped<Symmetry, MatrixType>>>>& W_at(const std::size_t loc) const {return W[loc];}
-    const std::vector<std::vector<std::vector<Biped<Symmetry, MatrixType>>>>& Wsq_at(const std::size_t loc) const {return Wsquare[loc];}
     const std::vector<std::vector<std::vector<std::vector<Biped<Symmetry, MatrixType>>>>>& W_full() const {return W;}
-    const std::vector<qType>& opBasisSq(const std::size_t loc) const {return qOpSquare[loc];}
+    
+    const std::vector<std::vector<qType>>& locBasis() const {return qPhys;}
     const std::vector<qType>& locBasis(const std::size_t loc) const {return qPhys[loc];}
+    
+    const std::vector<Qbasis<Symmetry>>& auxBasis() const {return qAux;}
     const Qbasis<Symmetry>& auxBasis(const std::size_t loc) const {return qAux[loc];}
     const Qbasis<Symmetry>& inBasis(const std::size_t loc) const {return qAux[loc];}
     const Qbasis<Symmetry>& outBasis(const std::size_t loc) const {return qAux[loc+1];}
-    const std::vector<qType>& opBasis(const std::size_t loc) const {return qOp[loc];}
-    const std::vector<std::vector<qType>>& locBasis() const {return qPhys;}
-    const std::vector<Qbasis<Symmetry>>& auxBasis() const {return qAux;}
+
     const std::vector<std::vector<qType>>& opBasis() const {return qOp;}
-    const std::vector<std::vector<qType>>& opBasisSq() const {return qOpSquare;}
+    const std::vector<qType>& opBasis(const std::size_t loc) const {return qOp[loc];}
+    
     const qType& Qtarget() const {return qTot;}
-    void setQtarget (const qType& q) {assert(false and "setQtarget should not be called after the MPO has been initialized.");}
+    
     void setLocBasis(const std::vector<std::vector<qType>>& q) {for(std::size_t loc=0; loc<q.size(); ++loc) set_qPhys(loc, q[loc]);}
     void setLocBasis(const std::vector<qType>& q, std::size_t loc) {set_qPhys(loc, q);}
+    
+    const std::vector<std::vector<std::vector<Biped<Symmetry, MatrixType>>>>& Wsq_at(const std::size_t loc) const {std::cout << "Warning: method Wsq_at(loc) is deprecated" << std::endl; return W_powers[0][loc];}
+    const std::vector<qType>& opBasisSq(const std::size_t loc) const {std::cout << "Warning: method opBasisSq(loc) is deprecated" << std::endl; return qOp_powers[0][loc];}
+    const std::vector<std::vector<qType>>& opBasisSq() const {std::cout << "Warning: method opBasisSq() is deprecated" << std::endl; return qOp_powers[0];}
+    const bool check_SQUARE() const {std::cout << "Warning: method check_SQUARE() is deprecated" << std::endl; return (current_power>=2);}
+
+    void setQtarget(const qType& q) {assert(false and "setQtarget should not be called after the MPO has been initialized.");}
 };
 
 template<typename Symmetry> using MpoTermsXd  = MpoTerms<Symmetry,double>;
-template<typename Symmetry> using MpoTermsXcd = MpoTerms<Symmetry,std::complex<double> >;
+template<typename Symmetry> using MpoTermsXcd = MpoTerms<Symmetry,std::complex<double>>;
 
 template<typename Symmetry, typename Scalar> MpoTerms<Symmetry,Scalar>::
 MpoTerms(const std::size_t L, const BC boundary_condition_in, const qType& qTot_in)
@@ -561,9 +620,12 @@ MpoTerms(const std::size_t L, const BC boundary_condition_in, const qType& qTot_
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 initialize()
 {
+    #if TERMS_VERBOSITY > 0
     std::cout << "Initializing an MPO with L=" << N_sites << ", Boundary condition=" << boundary_condition << " and qTot={" << Sym::format<Symmetry>(qTot) << "}" << std::endl;
+    #endif
     assert(boundary_condition == BC::OPEN or qTot == qVac);
     assert((boundary_condition == BC::OPEN or boundary_condition == BC::INFINITE) and "Not implemented yet!");
+    current_power = 1;
     if(qTot == Symmetry::qvacuum())
     {
         pos_qVac = 0;
@@ -574,14 +636,16 @@ initialize()
         pos_qVac = 0;
         pos_qTot = 0;
     }
-    
+    hilbert_dimension.clear();
     hilbert_dimension.resize(N_sites, 0);
     O.clear();
     O.resize(N_sites);
+    qAux.clear();
     auxdim.clear();
     auxdim.resize(N_sites+1);
     qPhys.clear();
     qPhys.resize(N_sites);
+    GOT_QPHYS.clear();
     GOT_QPHYS.resize(N_sites, false);
     info.clear();
     info.resize(N_sites);
@@ -617,12 +681,15 @@ initialize(const std::size_t L, const BC boundary_condition_in, const qType& qTo
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 reconstruct(const std::vector<std::unordered_map<std::array<qType,2>,std::vector<std::vector<std::unordered_map<qType,OperatorType>>>>>& O_in, const std::vector<Qbasis<Symmetry>>& qAux_in, const std::vector<std::vector<qType>>& qPhys_in, const bool FINALIZED_IN, const BC boundary_condition_in, const qType& qTot_in)
 {
+    #if TERMS_VERBOSITY > 0
+    std::cout << "Reconstructing an MPO with L=" << O_in.size() << ", Boundary condition=" << boundary_condition_in << " and qTot={" << Sym::format<Symmetry>(qTot_in) << "}" << std::endl;
+    #endif
     N_sites = O_in.size();
     boundary_condition = boundary_condition_in;
     qTot = qTot_in;
-    O = O_in;
-    FINALIZED = FINALIZED_IN;
+    qPhys.clear();
     qPhys = qPhys_in;
+    FINALIZED = FINALIZED_IN;
     
     assert(boundary_condition == BC::OPEN or qTot == qVac);
     if(qTot == qVac)
@@ -636,9 +703,14 @@ reconstruct(const std::vector<std::unordered_map<std::array<qType,2>,std::vector
         pos_qTot = 0;
     }
     
-    hilbert_dimension.resize(N_sites);
+    hilbert_dimension.clear();
+    hilbert_dimension.resize(N_sites,0);
+    auxdim.clear();
+    qAux.clear();
     auxdim.resize(N_sites+1);
-    GOT_QPHYS.resize(N_sites, false);
+    GOT_QPHYS.clear();
+    GOT_QPHYS.resize(N_sites,false);
+    info.clear();
     info.resize(N_sites);
     for(std::size_t loc=0; loc<N_sites; ++loc)
     {
@@ -655,10 +727,9 @@ reconstruct(const std::vector<std::unordered_map<std::array<qType,2>,std::vector
             auxdim[loc].insert({q,deg});
         }
     }
-    if(FINALIZED)
-    {
-        calc(false);
-    }
+    O.clear();
+    O = O_in;
+    calc(1);
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
@@ -667,44 +738,53 @@ push(const std::size_t loc, const std::vector<OperatorType>& opList, const std::
     assert(loc < N_sites and "Chosen lattice site out of bounds");
     assert((loc+opList.size() <= N_sites or boundary_condition == BC::INFINITE) and "For finite lattices operators must not exceed lattice size");
     assert(!FINALIZED and "Terms have already been finalized");
-    if(lambda != 0.)
+    std::size_t range = opList.size();
+    assert(qList.size() == range+1 and "Amount of quantum numbers does not match amount of operators!");
+    assert(qList[0] == Symmetry::qvacuum() and qList[range] == qTot and "Quantum number list does not match the total MPO quantum number!");
+    if(std::abs(lambda) < ::mynumeric_limits<double>::epsilon())
     {
-        std::size_t range = opList.size();
-        assert(qList.size() == range+1 and "Amount of quantum numbers does not match amount of operators!");
-        assert(qList[0] == Symmetry::qvacuum() and qList[range] == qTot and "Quantum number list does not match the total MPO quantum number!");
-        for(std::size_t i=0; i<range; ++i)
+        return;
+    }
+    for(std::size_t i=0; i<range; ++i)
+    {
+        assert_hilbert((loc+i)%N_sites, opList[i].data.rows());
+        if(opList[i].data.norm() < ::mynumeric_limits<double>::epsilon())
         {
-            assert_hilbert((loc+i)%N_sites, opList[i].data.rows());
+            return;
         }
-        if(range == 1)
+    }
+    if(range == 1)
+    {
+        #if TERMS_VERBOSITY > 1
+        std::cout << "Local interaction at site " << loc << ": " << lambda << " * " << opList[0].label << std::endl;
+        #endif
+        assert(opList[0].Q == qTot and "Local operator does not match the total MPO quantum number!");
+        add(loc, lambda*opList[0], qVac, qTot, pos_qVac, pos_qTot);
+    }
+    else
+    {
+        #if TERMS_VERBOSITY > 1
+        std::cout << range-1 << ".-neighbour interaction between the sites " << loc << " and " << (loc+range-1)%N_sites << ": " << lambda << " * " << opList[0].label << " ";
+        for(std::size_t n=1; n<range; ++n)
         {
-            std::cout << "Local interaction at site " << loc << ": " << opList[0].label << std::endl;
-            assert(opList[0].Q == qTot and "Local operator does not match the total MPO quantum number!");
-            add(loc, lambda*opList[0], qVac, qTot, pos_qVac, pos_qTot);
+            std::cout << " * " << opList[n].label;
         }
-        else
+        std::cout << std::endl;
+        #endif
+        std::size_t row = pos_qVac;
+        std::size_t col = get_auxdim(loc+1, qList[1]);
+        increment_auxdim((loc+1)%N_sites, qList[1]);
+        add(loc, lambda*opList[0], qVac, qList[1], row, col);
+        for(int i=1; i<range-1; ++i)
         {
-            std::cout << range-1 << ".-neighbour interaction between the sites " << loc << " and " << (loc+range-1)%N_sites << ": " << opList[0].label << " ";
-            for(std::size_t n=1; n<range; ++n)
-            {
-                std::cout << "* " << opList[n].label << " ";
-            }
-            std::cout << std::endl;
-            std::size_t row = pos_qVac;
-            std::size_t col = get_auxdim(loc+1, qList[1]);
-            increment_auxdim((loc+1)%N_sites, qList[1]);
-            add(loc, lambda*opList[0], qVac, qList[1], row, col);
-            for(int i=1; i<range-1; ++i)
-            {
-                row = col;
-                col = get_auxdim(loc+1+i, qList[i+1]);
-                increment_auxdim((loc+1+i)%N_sites, qList[i+1]);
-                add((loc+i)%N_sites, opList[i], qList[i], qList[i+1], row, col);
-            }
             row = col;
-            col = pos_qTot;
-            add((loc+range-1)%N_sites, opList[range-1], qList[range-1], qTot, row, col);
+            col = get_auxdim(loc+1+i, qList[i+1]);
+            increment_auxdim((loc+1+i)%N_sites, qList[i+1]);
+            add((loc+i)%N_sites, opList[i], qList[i], qList[i+1], row, col);
         }
+        row = col;
+        col = pos_qTot;
+        add((loc+range-1)%N_sites, opList[range-1], qList[range-1], qTot, row, col);
     }
 }
 
@@ -736,7 +816,7 @@ push(const std::size_t loc, const std::vector<OperatorType>& opList, const Scala
     Qtree[0].push_back(temp);
     for(std::size_t m=1; m<n; ++m)
     {
-        assert_hilbert(loc+m, opList[m].data.rows());
+        assert_hilbert((loc+m)%N_sites, opList[m].data.rows());
         for(int i=0; i<Qtree[m-1].size(); ++i)
         {
             std::vector<qType> qs = Symmetry::reduceSilent(opList[m].Q, Qtree[m-1][i].current);
@@ -762,15 +842,17 @@ push(const std::size_t loc, const std::vector<OperatorType>& opList, const Scala
                 qList[j+1] = Qtree[n-1][i].history[j];
             }
             qList[n] = qTot;
+            #if TERMS_VERBOSITY > 2
             std::cout << "This branch of quantum numbers leads to the total MPO quantum number: {" << Sym::format<Symmetry>(qList[0]) << "} -> ";
             for(int j=0; j<n-1; ++j)
             {
                 std::cout << "{" << Sym::format<Symmetry>(qList[j+1]) << "} -> ";
             }
             std::cout << "{" << Sym::format<Symmetry>(qList[n]) << "}" << std::endl;
+            #endif
         }
     }
-    assert(count == 1 and "More than one quantum number branch leads to the total MPO quantum number");
+    assert(count == 1 and "Either no or more than one quantum number branch leads to the total MPO quantum number");
     push(loc, opList, qList, lambda);
 }
 
@@ -788,11 +870,12 @@ show() const
             return "No";
         }
     };
-    
+    #if TERMS_VERBOSITY > 0
     std::cout << "\n####################################################################################################" << std::endl;
     std::cout << "Properties of this instance of MpoTerms:\n\tName = " << label << "\n\tSystem with " << N_sites << " lattice sites and " << boundary_condition << ", target quantum number {" << Sym::format<Symmetry>(qTot) << "}" << std::endl;
     std::cout << "\tFinalized? " << format(FINALIZED) << "\n\tqPhys set? " << format(check_qPhys()) << "\n\tqAux calculated? " << format(GOT_QAUX) << std::endl;
-    std::cout << "\tqOp calculated? " << format(GOT_QOP) << "\n\tW matrix calculated? " << format(GOT_W) << "\n\tSquared MPO calculated? " << format(GOT_SQUARE) << std::endl;
+    std::cout << "\tqOp calculated? " << format(GOT_QOP) << "\n\tW matrix calculated? " << format(GOT_W) << "\n\tHighest power of MPO currently calculated? " << current_power << std::endl;
+    #if TERMS_VERBOSITY > 1
     for(std::size_t loc=0; loc<N_sites; ++loc)
     {
         std::cout << "Lattice site: " << loc << std::endl;
@@ -836,11 +919,13 @@ show() const
             }
         }
     }
+    #endif
     std::cout << "####################################################################################################\n" << std::endl;
+    #endif
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
-calc(const bool CALC_SQUARE)
+calc(const std::size_t power)
 {
     if(!GOT_QAUX)
     {
@@ -854,17 +939,33 @@ calc(const bool CALC_SQUARE)
     {
         calc_W();
     }
-    if(CALC_SQUARE and !GOT_SQUARE)
+    if(power > current_power)
     {
-        std::vector<qType> qTot_squares = Symmetry::reduceSilent(qTot,qTot);
-        assert(qTot_squares.size() == 1 and "Target quantum number has to be unique for squaring the MPO.");
-        MpoTerms square = MpoTerms<Symmetry,Scalar>::prod(*this,*this,qTot_squares[0]);
-        square.set_name(label+"-Squared");
-        square.calc(false);
-        Wsquare = square.get_W();
-        qAuxSquare = square.get_qAux();
-        qOpSquare = square.get_qOp();
-        GOT_SQUARE = true;
+        W_powers.resize(power-1);
+        qAux_powers.resize(power-1);
+        qOp_powers.resize(power-1);
+        MpoTerms<Symmetry,Scalar> current;
+        if(current_power > 1)
+        {
+            current.reconstruct(O_current_power, qAux_powers[current_power-2], qPhys, FINALIZED, boundary_condition, qTot_current_power);
+        }
+        else
+        {
+            current = *this;
+        }
+        for(std::size_t n=current_power+1; n<=power; ++n)
+        {
+            std::vector<qType> qTots = Symmetry::reduceSilent(current.get_qTot(),qTot);
+            assert(qTots.size() == 1 and "Target quantum number has to be unique for computing higher powers of the MPO.");
+            current = MpoTerms<Symmetry,Scalar>::prod(current,*this,qTots[0]);
+            current.calc(1);
+            W_powers[n-2] = current.get_W();
+            qAux_powers[n-2] = current.get_qAux();
+            qOp_powers[n-2] = current.get_qOp();
+        }
+        O_current_power = current.get_O();
+        qTot_current_power = current.get_qTot();
+        current_power = power;
     }
 }
 
@@ -963,6 +1064,7 @@ calc_qAux()
     qAux.resize(N_sites+1);
     for(std::size_t loc=0; loc<N_sites+1; ++loc)
     {
+        qAux[loc].clear();
         for(const auto& [q,deg] : auxdim[loc])
         {
             qAux[loc].push_back(q,deg);
@@ -973,7 +1075,7 @@ calc_qAux()
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
-finalize(const bool COMPRESS, const bool CALC_SQUARE)
+finalize(const bool COMPRESS, const std::size_t power)
 {
     assert(!FINALIZED);
     FINALIZED = true;
@@ -1002,7 +1104,7 @@ finalize(const bool COMPRESS, const bool CALC_SQUARE)
     {
         compress();
     }
-    calc(CALC_SQUARE);
+    calc(power);
 }
 
 template<typename Symmetry, typename Scalar> bool MpoTerms<Symmetry,Scalar>::
@@ -1095,16 +1197,20 @@ eliminate_linearlyDependent_rows(const std::size_t loc, const qType& qIn)
         }
         if(zero_row)
         {
-            if(rows == 1)
+            if(rows > 1)
             {
-                std::cout << "O[" << loc << "]({" << Sym::format<Symmetry>(qIn) << "}->...): Row " << row << " is a zero row and the last row in this block. Thus the quantum number is removed from the auxiliar basis to delete the row and the corresponding column at the previous lattice site." << std::endl;
-            }
-            else
-            {
+                #if TERMS_VERBOSITY > 1
                 std::cout << "O[" << loc << "]({" << Sym::format<Symmetry>(qIn) << "}->...): Row " << row << " is a zero row, but not the last row in these blocks. Thus it is deleted." << std::endl;
+                #endif
                 delete_row(loc, qIn, row);
                 delete_col((loc+N_sites-1)%N_sites, qIn, row, SAMESITE);
             }
+            #if TERMS_VERBOSITY > 1
+            else
+            {
+                std::cout << "O[" << loc << "]({" << Sym::format<Symmetry>(qIn) << "}->...): Row " << row << " is a zero row and the last row in this block. Thus the quantum number is removed from the auxiliar basis to delete the row and the corresponding column at the previous lattice site." << std::endl;
+            }
+            #endif
             decrement_auxdim(loc,qIn);
             return true;
         }
@@ -1131,7 +1237,9 @@ eliminate_linearlyDependent_rows(const std::size_t loc, const qType& qIn)
             
             if((tempmat*vec - tempvec).norm() < ::mynumeric_limits<double>::epsilon())
             {
+                #if TERMS_VERBOSITY > 1
                 std::cout << "O[" << loc << "]({" << Sym::format<Symmetry>(qIn) << "}->...): Row " << row_to_delete << " can be written as linear combination of other rows, thus:" << std::endl;
+                #endif
                 delete_row(loc, qIn, row_to_delete);
                 std::unordered_map<qType, std::vector<std::unordered_map<qType,OperatorType>>> deleted_col = delete_col((loc+N_sites-1)%N_sites, qIn, row_to_delete, SAMESITE);
                 decrement_auxdim(loc,qIn);
@@ -1179,9 +1287,8 @@ eliminate_linearlyDependent_cols(const std::size_t loc, const qType& qOut)
         for(std::size_t row=0; row<ops.size(); ++row)
         {
             std::unordered_set<qType> unique_control;
-            for(std::size_t col=0; col<ops.size(); ++col)
+            for(std::size_t col=0; col<ops[row].size(); ++col)
             {
-
                 for(const auto& [Q,op] : ops[row][col])
                 {
                     unique_control.insert(Q);
@@ -1246,16 +1353,20 @@ eliminate_linearlyDependent_cols(const std::size_t loc, const qType& qOut)
         }
         if(zero_col)
         {
-            if(cols == 1)
+            if(cols > 1)
             {
-                std::cout << "O[" << loc << "](...->{" << Sym::format<Symmetry>(qOut) << "}): Column " << col << " is a zero column and the last column in this block. Thus the quantum number is removed from the auxiliar basis to delete the column and the corresponding row at the next lattice site." << std::endl;
-            }
-            else
-            {
+                #if TERMS_VERBOSITY > 1
                 std::cout << "O[" << loc << "](...->{" << Sym::format<Symmetry>(qOut) << "}): Column " << col << " is a zero column, but not the last column in these blocks. Thus it is deleted." << std::endl;
+                #endif
                 delete_col(loc, qOut, col);
                 delete_row((loc+1)%N_sites, qOut, col, SAMESITE);
             }
+            #if TERMS_VERBOSITY > 1
+            else
+            {
+                std::cout << "O[" << loc << "](...->{" << Sym::format<Symmetry>(qOut) << "}): Column " << col << " is a zero column and the last column in this block. Thus the quantum number is removed from the auxiliar basis to delete the column and the corresponding row at the next lattice site." << std::endl;
+            }
+            #endif
             decrement_auxdim((loc+1)%N_sites,qOut);
             return true;
         }
@@ -1282,8 +1393,9 @@ eliminate_linearlyDependent_cols(const std::size_t loc, const qType& qOut)
             
             if((tempmat*vec - tempvec).norm() < ::mynumeric_limits<double>::epsilon())
             {
+                #if TERMS_VERBOSITY > 1
                 std::cout << "O[" << loc << "](...->{" << Sym::format<Symmetry>(qOut) << "}): Column " << col_to_delete << " can be written as linear combination of other columns, thus:" << std::endl;
-                
+                #endif
                 delete_col(loc, qOut, col_to_delete);
                 std::unordered_map<qType, std::vector<std::unordered_map<qType,OperatorType>>> deleted_row = delete_row((loc+1)%N_sites, qOut, col_to_delete, SAMESITE);
                 decrement_auxdim((loc+1)%N_sites,qOut);
@@ -1313,8 +1425,10 @@ template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 compress()
 {
     assert(FINALIZED and "Terms need to be finalized before compression.");
+    #if TERMS_VERBOSITY > 0
     std::cout << "Starting compression of this MPO:" << std::endl;
     show();
+    #endif
     assert(boundary_condition == BC::OPEN or qVac == qTot);
     bool change = true;
     while(change)
@@ -1331,8 +1445,10 @@ compress()
                 if(eliminate_linearlyDependent_rows(loc, qIn))
                 {
                     change = true;
+                    #if TERMS_VERBOSITY > 3
                     std::cout << "Current MPO:" << std::endl;
                     show();
+                    #endif
                     break;
                 }
             }
@@ -1345,21 +1461,27 @@ compress()
                 if(eliminate_linearlyDependent_cols(loc, qOut))
                 {
                     change = true;
+                    #if TERMS_VERBOSITY > 3
                     std::cout << "Current MPO:" << std::endl;
                     show();
+                    #endif
                     break;
                 }
             }
         }
     }
+    #if TERMS_VERBOSITY > 1
     std::cout << "Compressed MPO:" << std::endl;
     show();
+    #endif
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 add_to_row(const std::size_t loc, const qType& qIn, const std::size_t row, const std::unordered_map<qType,std::vector<std::unordered_map<qType,OperatorType>>>& ops, const Scalar factor)
 {
+    #if TERMS_VERBOSITY > 2
     std::cout << "\tO[" << loc << "]({" << Sym::format<Symmetry>(qIn) << "}->...): Add another row scaled by factor " << factor << " to row " << row << std::endl;
+    #endif
     std::size_t rows = get_auxdim(loc, qIn);
     assert(row < rows and "Trying to add to a nonexisting row");
     got_update();
@@ -1393,7 +1515,9 @@ add_to_row(const std::size_t loc, const qType& qIn, const std::size_t row, const
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 add_to_col(const std::size_t loc, const qType& qOut, const std::size_t col, const std::unordered_map<qType, std::vector<std::unordered_map<qType,OperatorType>>>& ops, const Scalar factor)
 {
+    #if TERMS_VERBOSITY > 2
     std::cout << "\tO[" << loc << "](...->{" << Sym::format<Symmetry>(qOut) << "}): Add another column scaled by factor " << factor << " to column " << col << std::endl;
+    #endif
     std::size_t cols = get_auxdim(loc+1, qOut);
     assert(col < cols and "Trying to add to a nonexisting col");
     got_update();
@@ -1427,8 +1551,13 @@ add_to_col(const std::size_t loc, const qType& qOut, const std::size_t col, cons
 template<typename Symmetry, typename Scalar> std::unordered_map<typename Symmetry::qType,std::vector<std::unordered_map<typename Symmetry::qType,SiteOperator<Symmetry,Scalar>>>> MpoTerms<Symmetry,Scalar>::
 delete_row(const std::size_t loc, const qType& qIn, const std::size_t row_to_delete, bool SAMESITE)
 {
+    #if TERMS_VERBOSITY > 2
     std::cout << "\tO[" << loc << "]({" << Sym::format<Symmetry>(qIn) << "}->...): Delete row " << row_to_delete << std::endl;
-    if(SAMESITE) std::cout << "\tPaying attention since a column has been deleted at the same site before" << std::endl;
+    if(SAMESITE)
+    {
+        std::cout << "\tPaying attention since a column has been deleted at the same site before" << std::endl;
+    }
+    #endif
     std::unordered_map<qType, std::vector<std::unordered_map<qType,OperatorType>>> deleted_row;
     std::size_t rows = get_auxdim(loc, qIn);
     assert(row_to_delete < rows and "Trying to delete a nonexisting row");
@@ -1461,8 +1590,13 @@ delete_row(const std::size_t loc, const qType& qIn, const std::size_t row_to_del
 template<typename Symmetry, typename Scalar> std::unordered_map<typename Symmetry::qType,std::vector<std::unordered_map<typename Symmetry::qType,SiteOperator<Symmetry,Scalar>>>> MpoTerms<Symmetry,Scalar>::
 delete_col(const std::size_t loc, const qType& qOut, const std::size_t col_to_delete, bool SAMESITE)
 {
+    #if TERMS_VERBOSITY > 2
     std::cout << "\tO[" << loc << "](...->{" << Sym::format<Symmetry>(qOut) << "}): Delete column " << col_to_delete << std::endl;
-    if(SAMESITE) std::cout << "\tPaying attention since a row has been deleted at the same site before" << std::endl;
+    if(SAMESITE)
+    {
+        std::cout << "\tPaying attention since a row has been deleted at the same site before" << std::endl;
+    }
+    #endif
     std::unordered_map<qType, std::vector<std::unordered_map<qType,OperatorType>>> deleted_col;
     std::size_t cols = get_auxdim(loc+1, qOut);
     assert(col_to_delete < cols and "Trying to delete a nonexisting column");
@@ -1495,7 +1629,9 @@ delete_col(const std::size_t loc, const qType& qOut, const std::size_t col_to_de
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 add(const std::size_t loc, const OperatorType& op, const qType& qIn, const qType& qOut, const std::size_t leftIndex, const std::size_t rightIndex)
 {
+    #if TERMS_VERBOSITY > 2
     std::cout << "O[" << loc << "]({" << Sym::format<Symmetry>(qIn) << "}->{" << Sym::format<Symmetry>(qOut) << "})[" << leftIndex << "|" << rightIndex << "]: New operator " << op.label << ",{" << Sym::format<Symmetry>(op.Q) << "}" << std::endl;
+    #endif
     std::size_t rows = get_auxdim(loc, qIn);
     std::size_t cols = get_auxdim(loc+1, qOut);
     auto it = O[loc].find({qIn, qOut});
@@ -1518,7 +1654,9 @@ add(const std::size_t loc, const OperatorType& op, const qType& qIn, const qType
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 increment_auxdim(const std::size_t loc, const qType& q)
 {
+    #if TERMS_VERBOSITY > 2
     std::cout << "\tqAux[" << (loc+N_sites-1)%N_sites << "->" << loc << "]({" << Sym::format<Symmetry>(q) << "}): ";
+    #endif
     got_update();
     std::unordered_map<qType,OperatorType> empty_op_map;
     if(loc != 0)
@@ -1527,17 +1665,23 @@ increment_auxdim(const std::size_t loc, const qType& q)
         auto it = auxdim[loc].find(q);
         if(it == auxdim[loc].end())
         {
+            #if TERMS_VERBOSITY > 2
             std::cout << "New counter started" << std::endl;
+            #endif
             for(const auto& [qPrev,dimPrev] : auxdim[loc-1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[" << loc-1 << "]({" << Sym::format<Symmetry>(qPrev) << "}->{" << Sym::format<Symmetry>(q) << "}): Block created with one column of operators (number of rows: " << dimPrev << ")" << std::endl;
+                #endif
                 std::vector<std::unordered_map<qType,OperatorType>> temp_col(1,empty_op_map);
                 std::vector<std::vector<std::unordered_map<qType,OperatorType>>> temp_ops(dimPrev,temp_col);
                 O[loc-1].insert({{qPrev,q},temp_ops});
             }
             for(const auto& [qNext,dimNext] : auxdim[loc+1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[" << loc << "]({" << Sym::format<Symmetry>(q) << "}->{" << Sym::format<Symmetry>(qNext) << "}): Block created with one row of operators (number of columns: " << dimNext << ")" << std::endl;
+                #endif
                 std::vector<std::unordered_map<qType,OperatorType>> temp_col(dimNext,empty_op_map);
                 std::vector<std::vector<std::unordered_map<qType,OperatorType>>> temp_ops(1,temp_col);
                 O[loc].insert({{q,qNext},temp_ops});
@@ -1546,10 +1690,14 @@ increment_auxdim(const std::size_t loc, const qType& q)
         }
         else
         {
+            #if TERMS_VERBOSITY > 2
             std::cout << "Counter incremented to " << (it->second)+1 << std::endl;
+            #endif
             for(const auto& [qPrev,dimPrev] : auxdim[loc-1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[" << loc-1 << "]({" << Sym::format<Symmetry>(qPrev) << "}->{" << Sym::format<Symmetry>(q) << "}): Create a new column of operators (number of rows: " << dimPrev << ")" << std::endl;
+                #endif
                 auto it_prev = O[loc-1].find({qPrev,q});
                 assert(it_prev != O[loc-1].end());
                 for(std::size_t row=0; row<dimPrev; ++row)
@@ -1559,7 +1707,9 @@ increment_auxdim(const std::size_t loc, const qType& q)
             }
             for(const auto& [qNext,dimNext] : auxdim[loc+1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[" << loc << "]({" << Sym::format<Symmetry>(q) << "}->{" << Sym::format<Symmetry>(qNext) << "}): Create a new row of operators (number of columns: " << dimNext << ")" << std::endl;
+                #endif
                 auto it_next = O[loc].find({q,qNext});
                 assert(it_next != O[loc].end());
                 std::vector<std::unordered_map<qType,OperatorType>> temp_row(dimNext, empty_op_map);
@@ -1574,17 +1724,23 @@ increment_auxdim(const std::size_t loc, const qType& q)
         auto it = auxdim[0].find(q);
         if(it == auxdim[0].end())
         {
+            #if TERMS_VERBOSITY > 2
             std::cout << "New counter started" << std::endl;
+            #endif
             for(const auto& [qPrev,dimPrev] : auxdim[N_sites-1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[" << N_sites-1 << "]({" << Sym::format<Symmetry>(qPrev) << "}->{" << Sym::format<Symmetry>(q) << "}): Block created with one column of operators (number of rows: " << dimPrev << ")" << std::endl;
+                #endif
                 std::vector<std::unordered_map<qType,OperatorType>> temp_col(1,empty_op_map);
                 std::vector<std::vector<std::unordered_map<qType,OperatorType>>> temp_ops(dimPrev,temp_col);
                 O[N_sites-1].insert({{qPrev,q},temp_ops});
             }
             for(const auto& [qNext,dimNext] : auxdim[1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[0]({" << Sym::format<Symmetry>(q) << "}->{" << Sym::format<Symmetry>(qNext) << "}): Block created with one row of operators (number of columns: " << dimNext << ")" << std::endl;
+                #endif
                 std::vector<std::unordered_map<qType,OperatorType>> temp_col(dimNext,empty_op_map);
                 std::vector<std::vector<std::unordered_map<qType,OperatorType>>> temp_ops(1,temp_col);
                 O[0].insert({{q,qNext},temp_ops});
@@ -1594,10 +1750,14 @@ increment_auxdim(const std::size_t loc, const qType& q)
         }
         else
         {
+            #if TERMS_VERBOSITY > 2
             std::cout << "Counter incremented to " << (it->second)+1 << std::endl;
+            #endif
             for(const auto& [qPrev,dimPrev] : auxdim[N_sites-1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[" << N_sites-1 << "]({" << Sym::format<Symmetry>(qPrev) << "}->{" << Sym::format<Symmetry>(q) << "}): Create a new column of operators (number of rows: " << dimPrev << ")" << std::endl;
+                #endif
                 auto it_prev = O[N_sites-1].find({qPrev,q});
                 assert(it_prev != O[N_sites-1].end());
                 for(std::size_t row=0; row<dimPrev; ++row)
@@ -1607,7 +1767,9 @@ increment_auxdim(const std::size_t loc, const qType& q)
             }
             for(const auto& [qNext,dimNext] : auxdim[1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[0]({" << Sym::format<Symmetry>(q) << "}->{" << Sym::format<Symmetry>(qNext) << "}): Create a new row of operators (number of columns: " << dimNext << ")" << std::endl;
+                #endif
                 auto it_next = O[0].find({q,qNext});
                 assert(it_next != O[0].end());
                 std::vector<std::unordered_map<qType,OperatorType>> temp_row(dimNext, empty_op_map);
@@ -1623,14 +1785,18 @@ increment_auxdim(const std::size_t loc, const qType& q)
             auto it = O[0].find({q,q});
             if(it == O[0].end())
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[0]({" << Sym::format<Symmetry>(q) << "}->{" << Sym::format<Symmetry>(q) << "}): Create a new block of operators with 1 row and 1 column" << std::endl;
+                #endif
                 std::vector<std::unordered_map<qType,OperatorType>> temp_col(1,empty_op_map);
                 std::vector<std::vector<std::unordered_map<qType,OperatorType>>> temp_ops(1,temp_col);
                 O[0].insert({{q,q},temp_ops});
             }
             else
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[0]({" << Sym::format<Symmetry>(q) << "}->{" << Sym::format<Symmetry>(q) << "}): Add the corner operator" << std::endl;
+                #endif
                 (it->second)[(it->second).size()-1].push_back(empty_op_map);
             }
         }
@@ -1641,17 +1807,22 @@ template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 increment_first_auxdim_OBC(const qType& qIn)
 {
     assert(boundary_condition == BC::OPEN);
+    #if TERMS_VERBOSITY > 2
     std::cout << "\tqAux[left edge->0]({" << Sym::format<Symmetry>(qIn) << "}): ";
+    #endif
     got_update();
-    //OperatorType zeroOp = OperatorType(Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Zero(1,1).sparseView(),qVac);
     std::unordered_map<qType,OperatorType> empty_op_map;
     auto it = auxdim[0].find(qIn);
     if(it == auxdim[0].end())
     {
+        #if TERMS_VERBOSITY > 2
         std::cout << "New counter started" << std::endl;
+        #endif
         for(const auto& [qOut,deg] : auxdim[1])
         {
+            #if TERMS_VERBOSITY > 3
             std::cout << "\t\tO[0]({" << Sym::format<Symmetry>(qIn) << "}->{" << Sym::format<Symmetry>(qOut) << "}): Block created with one row of operators (number of columns: " << deg << ")" << std::endl;
+            #endif
             std::vector<std::unordered_map<qType,OperatorType>> temp_col(deg,empty_op_map);
             std::vector<std::vector<std::unordered_map<qType,OperatorType>>> temp_ops(1,temp_col);
             O[0].insert({{qIn,qOut},temp_ops});
@@ -1660,10 +1831,14 @@ increment_first_auxdim_OBC(const qType& qIn)
     }
     else
     {
+        #if TERMS_VERBOSITY > 2
         std::cout << "Counter incremented to " << (it->second)+1 << std::endl;
+        #endif
         for(const auto& [qOut,deg] : auxdim[1])
         {
+            #if TERMS_VERBOSITY > 3
             std::cout << "\t\tO[0]({" << Sym::format<Symmetry>(qIn) << "}->{" << Sym::format<Symmetry>(qOut) << "}): Create a new row of operators (number of columns: " << deg << ")" << std::endl;
+            #endif
             auto it_ops = O[0].find({qIn,qOut});
             assert(it_ops != O[0].end());
             std::vector<std::unordered_map<qType,OperatorType>> temp_row(deg, empty_op_map);
@@ -1677,16 +1852,22 @@ template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 increment_last_auxdim_OBC(const qType& qOut)
 {
     assert(boundary_condition == BC::OPEN);
+    #if TERMS_VERBOSITY > 2
     std::cout << "\tqAux[" << N_sites-1 << "->right edge]({" << Sym::format<Symmetry>(qOut) << "}): ";
+    #endif
     got_update();
     std::unordered_map<qType,OperatorType> empty_op_map;
     auto it = auxdim[N_sites].find(qOut);
     if(it == auxdim[N_sites].end())
     {
+        #if TERMS_VERBOSITY > 2
         std::cout << "New counter started" << std::endl;
+        #endif
         for(const auto& [qIn,deg] : auxdim[N_sites-1])
         {
+            #if TERMS_VERBOSITY > 3
             std::cout << "\t\tO[" << N_sites-1 << "]({" << Sym::format<Symmetry>(qIn) << "}->{" << Sym::format<Symmetry>(qOut) << "}): Block created with one column of operators (number of rows: " << deg << ")" << std::endl;
+            #endif
             std::vector<std::unordered_map<qType,OperatorType>> temp_col(1,empty_op_map);
             std::vector<std::vector<std::unordered_map<qType,OperatorType>>> temp_ops(deg,temp_col);
             O[N_sites-1].insert({{qIn,qOut},temp_ops});
@@ -1695,10 +1876,14 @@ increment_last_auxdim_OBC(const qType& qOut)
     }
     else
     {
+        #if TERMS_VERBOSITY > 2
         std::cout << "Counter incremented to " << (it->second)+1 << std::endl;
+        #endif
         for(const auto& [qIn,deg] : auxdim[N_sites-1])
         {
+            #if TERMS_VERBOSITY > 3
             std::cout << "\t\tO[" << N_sites-1 << "]({" << Sym::format<Symmetry>(qIn) << "}->{" << Sym::format<Symmetry>(qOut) << "}): Create a new column of operators (number of rows: " << deg << ")" << std::endl;
+            #endif
             auto it_ops = O[N_sites-1].find({qIn,qOut});
             assert(it_ops != O[N_sites-1].end());
             for(std::size_t row=0; row<deg; ++row)
@@ -1713,7 +1898,9 @@ increment_last_auxdim_OBC(const qType& qOut)
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 decrement_auxdim(const std::size_t loc, const qType& q)
 {
+    #if TERMS_VERBOSITY > 2
     std::cout << "\tqAux[" << (loc+N_sites-1)%N_sites << "->" << loc << "]({" << Sym::format<Symmetry>(q) << "}): ";
+    #endif
     got_update();
     auto it = auxdim[loc].find(q);
     assert(it != auxdim[loc].end());
@@ -1722,25 +1909,35 @@ decrement_auxdim(const std::size_t loc, const qType& q)
         assert(loc < N_sites);
         if(it->second == 1)
         {
+            #if TERMS_VERBOSITY > 2
             std::cout << "Quantum number deleted" << std::endl;
+            #endif
             for(const auto& [qPrev,dimPrev] : auxdim[loc-1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[" << loc-1 << "]({" << Sym::format<Symmetry>(qPrev) << "}->{" << Sym::format<Symmetry>(q) << "}): Block deleted" << std::endl;
+                #endif
                 O[loc-1].erase({qPrev,q});
             }
             for(const auto& [qNext,dimNext] : auxdim[loc+1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[" << loc << "]({" << Sym::format<Symmetry>(q) << "}->{" << Sym::format<Symmetry>(qNext) << "}): Block deleted" << std::endl;
+                #endif
                 O[loc].erase({q,qNext});
             }
             auxdim[loc].erase(q);
         }
         else
         {
+            #if TERMS_VERBOSITY > 2
             std::cout << "Counter decremented to " << (it->second)-1 << std::endl;
+            #endif
             for(const auto& [qPrev,dimPrev] : auxdim[loc-1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[" << loc-1 << "]({" << Sym::format<Symmetry>(qPrev) << "}->{" << Sym::format<Symmetry>(q) << "}): Delete a column of operators (number of rows: " << dimPrev << ")" << std::endl;
+                #endif
                 auto it_prev = O[loc-1].find({qPrev,q});
                 assert(it_prev != O[loc-1].end());
                 for(std::size_t row=0; row<dimPrev; ++row)
@@ -1750,7 +1947,9 @@ decrement_auxdim(const std::size_t loc, const qType& q)
             }
             for(const auto& [qNext,dimNext] : auxdim[loc+1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[" << loc << "]({" << Sym::format<Symmetry>(q) << "}->{" << Sym::format<Symmetry>(qNext) << "}): Delete a row of operators (number of columns: " << dimNext << ")" << std::endl;
+                #endif
                 auto it_next = O[loc].find({q,qNext});
                 assert(it_next != O[loc].end());
                 (it_next->second).resize((it_next->second).size()-1);
@@ -1763,15 +1962,21 @@ decrement_auxdim(const std::size_t loc, const qType& q)
         assert(boundary_condition == BC::INFINITE);
         if(it->second == 1)
         {
+            #if TERMS_VERBOSITY > 2
             std::cout << "Quantum number deleted" << std::endl;
+            #endif
             for(const auto& [qPrev,dimPrev] : auxdim[N_sites-1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[" << N_sites-1 << "]({" << Sym::format<Symmetry>(qPrev) << "}->{" << Sym::format<Symmetry>(q) << "}): Block deleted" << std::endl;
+                #endif
                 O[N_sites-1].erase({qPrev,q});
             }
             for(const auto& [qNext,dimNext] : auxdim[1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tOperators[0]({" << Sym::format<Symmetry>(q) << "}->{" << Sym::format<Symmetry>(qNext) << "}): Block deleted" << std::endl;
+                #endif
                 O[0].erase({q,qNext});
             }
             auxdim[0].erase(q);
@@ -1779,10 +1984,14 @@ decrement_auxdim(const std::size_t loc, const qType& q)
         }
         else
         {
+            #if TERMS_VERBOSITY > 2
             std::cout << "Counter decremented to " << (it->second)-1 << std::endl;
+            #endif
             for(const auto& [qPrev,dimPrev] : auxdim[N_sites-1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[" << N_sites-1 << "]({" << Sym::format<Symmetry>(qPrev) << "}->{" << Sym::format<Symmetry>(q) << "}): Delete a column of operators (number of rows: " << dimPrev << ")" << std::endl;
+                #endif
                 auto it_prev = O[N_sites-1].find({qPrev,q});
                 assert(it_prev != O[N_sites-1].end());
                 for(std::size_t row=0; row<dimPrev; ++row)
@@ -1792,7 +2001,9 @@ decrement_auxdim(const std::size_t loc, const qType& q)
             }
             for(const auto& [qNext,dimNext] : auxdim[1])
             {
+                #if TERMS_VERBOSITY > 3
                 std::cout << "\t\tO[0]({" << Sym::format<Symmetry>(q) << "}->{" << Sym::format<Symmetry>(qNext) << "}): Delete a row of operators (number of columns: " << dimNext << ")" << std::endl;
+                #endif
                 auto it_next = O[0].find({q,qNext});
                 assert(it_next != O[0].end());
                 (it_next->second).resize((it_next->second).size()-1);
@@ -1810,26 +2021,36 @@ template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 decrement_first_auxdim_OBC(const qType& qIn)
 {
     assert(boundary_condition == BC::OPEN);
+    #if TERMS_VERBOSITY > 2
     std::cout << "\tqAux[left edge->0]({" << Sym::format<Symmetry>(qIn) << "}): ";
+    #endif
     got_update();
     auto it = auxdim[0].find(qIn);
     assert(it != auxdim[0].end());
     if(it->second == 1)
     {
+        #if TERMS_VERBOSITY > 2
         std::cout << "Quantum number deleted" << std::endl;
+        #endif
         for(const auto& [qOut,deg] : auxdim[1])
         {
+            #if TERMS_VERBOSITY > 3
             std::cout << "\t\tO[0]({" << Sym::format<Symmetry>(qIn) << "}->{" << Sym::format<Symmetry>(qOut) << "}): Block deleted" << std::endl;
+            #endif
             O[0].erase({qIn,qOut});
         }
         auxdim[0].erase(qIn);
     }
     else
     {
+        #if TERMS_VERBOSITY > 2
         std::cout << "Counter decremented to " << (it->second)-1 << std::endl;
+        #endif
         for(const auto& [qOut,deg] : auxdim[1])
         {
+            #if TERMS_VERBOSITY > 3
             std::cout << "\t\tO[0]({" << Sym::format<Symmetry>(qIn) << "}->{" << Sym::format<Symmetry>(qOut) << "}): Delete a row of operators (number of columns: " << deg << ")" << std::endl;
+            #endif
             auto it_ops = O[0].find({qIn,qOut});
             assert(it_ops != O[0].end());
             (it_ops->second).resize((it_ops->second).size()-1);
@@ -1842,26 +2063,36 @@ template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 decrement_last_auxdim_OBC(const qType& qOut)
 {
     assert(boundary_condition == BC::OPEN);
+    #if TERMS_VERBOSITY > 2
     std::cout << "\tqAux[" << N_sites-1 << "->right edge]({" << Sym::format<Symmetry>(qOut) << "}): ";
+    #endif
     got_update();
     auto it = auxdim[N_sites].find(qOut);
     assert(it != auxdim[N_sites].end());
     if(it->second == 1)
     {
+        #if TERMS_VERBOSITY > 2
         std::cout << "Quantum number deleted" << std::endl;
+        #endif
         for(const auto& [qIn,deg] : auxdim[N_sites-1])
         {
+            #if TERMS_VERBOSITY > 3
             std::cout << "\t\tO[" << N_sites-1 << "]({" << Sym::format<Symmetry>(qIn) << "}->{" << Sym::format<Symmetry>(qOut) << "}): Block deleted" << std::endl;
+            #endif
             O[N_sites-1].erase({qIn,qOut});
         }
         auxdim[N_sites].erase(qOut);
     }
     else
     {
+        #if TERMS_VERBOSITY > 2
         std::cout << "Counter decremented to " << (it->second)-1 << std::endl;
+        #endif
         for(const auto& [qIn,deg] : auxdim[N_sites-1])
         {
+            #if TERMS_VERBOSITY > 3
             std::cout << "\t\tO[" << N_sites-1 << "]({" << Sym::format<Symmetry>(qIn) << "}->{" << Sym::format<Symmetry>(qOut) << "}): Delete a column of operators (number of rows: " << deg << ")" << std::endl;
+            #endif
             auto it_ops = O[N_sites-1].find({qIn,qOut});
             assert(it_ops != O[N_sites-1].end());
             for(std::size_t row=0; row<deg; ++row)
@@ -1912,12 +2143,12 @@ assert_hilbert(const std::size_t loc, const std::size_t dim)
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
-save_label(const std::size_t loc, const std::string& label)
+save_label(const std::size_t loc, const std::string& info_label)
 {
     assert(loc < N_sites and "Chosen lattice site out of bounds");
-    if(label != "")
+    if(info_label != "")
     {
-        info[loc].push_back(label);
+        info[loc].push_back(info_label);
     }
 }
 
@@ -1963,6 +2194,66 @@ get_info() const
     }
     return res;
 }
+template<typename Symmetry, typename Scalar> const std::vector<std::vector<std::vector<std::vector<Biped<Symmetry, Eigen::SparseMatrix<Scalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>>>>>>& MpoTerms<Symmetry,Scalar>::
+get_W_power(std::size_t power) const
+{
+    assert(power > 0 and "Power has to be at least 1");
+    assert(power <= current_power and "This power of the MPO has not been calculated!");
+    if(power == 1)
+    {
+        return W;
+    }
+    else
+    {
+        return W_powers[power-2];
+    }
+}
+
+template<typename Symmetry, typename Scalar> const std::vector<Qbasis<Symmetry>>& MpoTerms<Symmetry,Scalar>::
+get_qAux_power(std::size_t power) const
+{
+    assert(power > 0 and "Power has to be at least 1");
+    assert(power <= current_power and "This power of the MPO has not been calculated!");
+    if(power == 1)
+    {
+        return qAux;
+    }
+    else
+    {
+        return qAux_powers[power-2];
+    }
+}
+
+
+template<typename Symmetry, typename Scalar> const std::vector<std::vector<typename Symmetry::qType>>& MpoTerms<Symmetry,Scalar>::
+get_qOp_power(std::size_t power) const
+{
+    assert(power > 0 and "Power has to be at least 1");
+    assert(power <= current_power and "This power of the MPO has not been calculated!");
+    if(power == 1)
+    {
+        return qOp;
+    }
+    else
+    {
+        return qOp_powers[power-2];
+    }
+}
+
+template<typename Symmetry, typename Scalar> bool MpoTerms<Symmetry,Scalar>::
+check_qPhys() const
+{
+    bool all = true;
+    for(std::size_t loc=0; loc<N_sites; ++loc)
+    {
+        if(!GOT_QPHYS[loc])
+        {
+            all = false;
+        }
+    }
+    return all;
+}
+
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 scale(const double factor, const double offset)
@@ -2097,8 +2388,8 @@ transform_base(const qType& qShift, const bool PRINT, const int factor)
                             OperatorType op_new = op;
                             for(std::size_t n=0; n<symmetries_to_transform.size(); ++n)
                             {
-                                q_new *= length;
-                                op_new.Q[n] *= length;
+                                q_new[n] *= length;
+                                op_new.Q[n] *= length ;
                             }
                             ops_new[row][col].insert({q_new,op_new});
                         }
@@ -2123,11 +2414,11 @@ transform_base(const qType& qShift, const bool PRINT, const int factor)
         
         O = O_new;
         auxdim = auxdim_new;
+        #if TERMS_VERBOSITY > 0
         std::cout << "Bases have been transformed by {" << Sym::format<Symmetry>(qShift) << "}" << std::endl;
-
-        bool UPDATE_SQUARE = GOT_SQUARE;
+        #endif
         got_update();
-        calc(UPDATE_SQUARE);
+        calc(1);
     }
 }
 
@@ -2211,7 +2502,7 @@ got_update()
     GOT_W = false;
     GOT_QOP = false;
     GOT_QAUX = false;
-    GOT_SQUARE = false;
+    current_power = 1;
 }
 
 template<typename Symmetry, typename Scalar> MpoTerms<Symmetry,Scalar> MpoTerms<Symmetry,Scalar>::
@@ -2221,8 +2512,9 @@ prod(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& t
     typedef SiteOperator<Symmetry, Scalar> OperatorType;
     qType qVac = Symmetry::qvacuum();
     
+    #if TERMS_VERBOSITY > 0
     std::cout << "Starting multiplication of two MPOs " << bottom.get_name() << "*" << top.get_name() << " to quantum number {" << Sym::format<Symmetry>(Qtot) << "}" << std::endl;
-    
+    #endif
     assert(bottom.is_finalized() and top.is_finalized() and "Error: Multiplying non-finalized MPOs");
     assert(bottom.size() == top.size() and "Error: Multiplying two MPOs of different size");
     assert(bottom.get_boundary_condition() == top.get_boundary_condition() and "Error: Multiplying two MPOs with different boundary conditions");
@@ -2291,8 +2583,9 @@ prod(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& t
                 O_out[loc].insert({{Qin,Qout},temp});
             }
         }
-
+        #if TERMS_VERBOSITY > 2
         std::cout << "Lattice site " << loc << ":" << std::endl;
+        #endif
         std::vector<qType> Qins = qAux_out[loc].qs();
         for(const auto& Qin : Qins)
         {
@@ -2309,7 +2602,9 @@ prod(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& t
                     {
                         continue;
                     }
+                    #if TERMS_VERBOSITY > 2
                     std::cout << "\tQin = {" << Sym::format<Symmetry>(Qin) << "} can be reached by {" << Sym::format<Symmetry>(qin_bottom) << "} + {" << Sym::format<Symmetry>(qin_top) << "}" << std::endl;
+                    #endif
                     std::vector<qType> Qouts = qAux_out[loc+1].qs();
                     for(const auto& Qout : Qouts)
                     {
@@ -2330,7 +2625,9 @@ prod(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& t
                                 {
                                     continue;
                                 }
+                                #if TERMS_VERBOSITY > 2
                                 std::cout << "\t\tQout = {" << Sym::format<Symmetry>(Qout) << "} can be reached by {" << Sym::format<Symmetry>(qout_bottom) << "} + {" << Sym::format<Symmetry>(qout_top) << "}" << std::endl;
+                                #endif
                                 auto it_out = O_out[loc].find({Qin, Qout});
                                 auto it_bottom = O_bottom[loc].find({qin_bottom, qout_bottom});
                                 auto it_top = O_top[loc].find({qin_top, qout_top});
@@ -2374,7 +2671,9 @@ prod(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& t
                                                                 continue;
                                                             }
                                                             OperatorType op_out(Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Zero(hilbert_dimension, hilbert_dimension).sparseView(), Qop, op_top.label+"*"+op_bottom.label);
+                                                            #if TERMS_VERBOSITY > 2
                                                             std::cout << "\t\t\tBlock {" << Sym::format<Symmetry>(Qin) << "}->{" << Sym::format<Symmetry>(Qout) << "},\tPosition [" << total_row << "|" << total_col << "], Operator " << op_out.label << ",{" << Sym::format<Symmetry>(Qop) << "}" << std::endl;
+                                                            #endif
                                                             Scalar factor_merge = Symmetry::coeff_tensorProd(qin_bottom, qin_top, Qin, Q_bottom, Q_top, op_out.Q, qout_bottom, qout_top, Qout);
                                                             if(std::abs(factor_merge) < ::mynumeric_limits<double>::epsilon())
                                                             {
@@ -2388,7 +2687,9 @@ prod(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& t
                                                                     {
                                                                         continue;
                                                                     }
-                                                                    //std::cout << "\t\t\tmat(" << n_top << "," << n_bottom << ") = 0";
+                                                                    #if TERMS_VERBOSITY > 3
+                                                                    std::cout << "\t\t\tmat(" << n_top << "," << n_bottom << ") = 0";
+                                                                    #endif
                                                                     
                                                                     Scalar val = 0;
                                                                     for(std::size_t n_middle=0; n_middle<hilbert_dimension; ++n_middle)
@@ -2411,15 +2712,21 @@ prod(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& t
                                                                             continue;
                                                                         }
                                                                         val += op_top.data.coeff(n_top, n_middle)*op_bottom.data.coeff(n_middle, n_bottom) * factor_check * factor_merge;
-                                                                        //std::cout << " + " << op_top.data.coeff(n_top, n_middle) << "*" << op_bottom.data.coeff(n_middle, n_bottom) << "*" << factor_check << "*" << factor_merge;
+                                                                        #if TERMS_VERBOSITY > 3
+                                                                        std::cout << " + " << op_top.data.coeff(n_top, n_middle) << "*" << op_bottom.data.coeff(n_middle, n_bottom) << "*" << factor_check << "*" << factor_merge;
+                                                                        #endif
                                                                     }
                                                                     if(std::abs(val) < ::mynumeric_limits<double>::epsilon())
                                                                     {
-                                                                        //std::cout << " = 0" << std::endl;
+                                                                        #if TERMS_VERBOSITY > 3
+                                                                        std::cout << " = 0" << std::endl;
+                                                                        #endif
                                                                         continue;
                                                                     }
                                                                     op_out.data.coeffRef(n_top, n_bottom) = val;
-                                                                    //std::cout << " = " << val << std::endl;
+                                                                    #if TERMS_VERBOSITY > 3
+                                                                    std::cout << " = " << val << std::endl;
+                                                                    #endif
                                                                 }
                                                             }
                                                             if(op_out.data.norm() > ::mynumeric_limits<double>::epsilon())
@@ -2442,10 +2749,16 @@ prod(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& t
     }
     if(boundary_condition_out == BC::INFINITE)
     {
+        #if TERMS_VERBOSITY > 2
+        std::cout << "Infinite system: Swap rows and columns to ensure identity operators to be at [0|0] and [1|1]" << std::endl;
+        #endif
         prod_swap_IBC(O_out, row_qVac, col_qVac, row_qTot, col_qTot);
     }
     if(boundary_condition_out == BC::OPEN and Qtot != qVac)
     {
+        #if TERMS_VERBOSITY > 2
+        std::cout << "Open system with non-vacuum target quantum number: Delete columns at last lattice site which do not match target quantum number" << std::endl;
+        #endif
         prod_delZeroCols_OBC(O_out[N_sites-1], qAux_out[N_sites], qAux_out[N_sites-1], Qtot, col_qTot[N_sites-1]);
     }
     MpoTerms<Symmetry,Scalar> out(N_sites, boundary_condition_out, Qtot);
@@ -2461,7 +2774,9 @@ sum(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& to
     typedef typename Symmetry::qType qType;
     typedef SiteOperator<Symmetry, Scalar> OperatorType;
     
+    #if TERMS_VERBOSITY > 0
     std::cout << "Starting addition of two MPOs " << bottom.get_name() << "+" << top.get_name() << std::endl;
+    #endif
     
     assert(bottom.is_finalized() and top.is_finalized() and "Error: Adding non-finalized MPOs");
     assert(bottom.size() == top.size() and "Error: Adding two MPOs of different size");
@@ -2531,7 +2846,9 @@ sum(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& to
     
     for(std::size_t loc=0; loc<N_sites; ++loc)
     {
+        #if TERMS_VERBOSITY > 2
         std::cout << "Lattice site " << loc << std::endl;
+        #endif
         std::size_t hilbert_dimension = qPhys[loc].size();
         assert(hilbert_dimension == qPhys_check[loc].size() and "Local Hilbert space dimensions do not match!");
 
@@ -2551,8 +2868,9 @@ sum(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& to
                 {
                     col_start = qAux_top[loc+1].inner_dim(qOut);
                 }
+                #if TERMS_VERBOSITY > 2
                 std::cout << "\tqIn = {" << Sym::format<Symmetry>(qIn) << "} and qOut = {" << Sym::format<Symmetry>(qOut) << "} is a " << rows << "x" << cols << "-matrix:" << std::endl;
-                //std::vector<OperatorType> temp_row(cols, OperatorType(Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Zero(hilbert_dimension, hilbert_dimension).sparseView(),Symmetry::qvacuum()));
+                #endif
                 std::vector<std::unordered_map<qType,OperatorType>> temp_row(cols, empty_op_map);
                 std::vector<std::vector<std::unordered_map<qType,OperatorType>>> O_temp(rows, temp_row);
                 auto it_top = O_top[loc].find({qIn,qOut});
@@ -2562,7 +2880,9 @@ sum(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& to
                     const std::vector<std::vector<std::unordered_map<qType,OperatorType>>>& O_top_temp = it_top->second;
                     std::size_t top_rows = O_top_temp.size();
                     std::size_t top_cols = O_top_temp[0].size();
+                    #if TERMS_VERBOSITY > 2
                     std::cout << "\t\t Block exists in top MPO and is written from [0|0] to [" << top_rows-1 << "|" << top_cols-1 << "]";
+                    #endif
                     for(std::size_t row=0; row<top_rows; ++row)
                     {
                         for(std::size_t col=0; col<top_cols; ++col)
@@ -2571,16 +2891,20 @@ sum(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& to
                         }
                     }
                 }
+                #if TERMS_VERBOSITY > 2
                 else
                 {
                     std::cout << "\t\t Block does not exist in top MPO";
                 }
+                #endif
                 if(it_bottom != O_bottom[loc].end())
                 {
                     const std::vector<std::vector<std::unordered_map<qType,OperatorType>>>& O_bottom_temp = it_bottom->second;
                     std::size_t bottom_rows = O_bottom_temp.size();
                     std::size_t bottom_cols = O_bottom_temp[0].size();
+                    #if TERMS_VERBOSITY > 2
                     std::cout << "\t|\t Block exists in bottom MPO and is written from [" << row_start << "|" << col_start << "] to [" << row_start+bottom_rows-1 << "|" << col_start+bottom_cols-1 << "]" << std::endl;
+                    #endif
                     for(std::size_t row=0; row<bottom_rows; ++row)
                     {
                         for(std::size_t col=0; col<bottom_cols; ++col)
@@ -2589,21 +2913,24 @@ sum(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& to
                         }
                     }
                 }
+                #if TERMS_VERBOSITY > 2
                 else
                 {
                     std::cout << "\t|\t Block does not exist in bottom MPO" << std::endl;
                 }
+                #endif
                 O_out[loc].insert({{qIn,qOut},O_temp});
             }
         }
-        std::cout << "Done: Lattice site " << loc << std::endl;
     }
 
     MpoTerms<Symmetry,Scalar> out(N_sites,boundary_condition_out,Qtot);
     out.reconstruct(O_out, qAux_out, qPhys, true, boundary_condition_out, Qtot);
     if(boundary_condition_out == BC::OPEN)
     {
+        #if TERMS_VERBOSITY > 2
         std::cout << "Open System: Add both rows at first lattice site and both columns at last lattice site" << std::endl;
+        #endif
         out.add_to_row(0, Symmetry::qvacuum(), 0, out.delete_row(0, Symmetry::qvacuum(),1));
         out.decrement_first_auxdim_OBC(Symmetry::qvacuum());
         out.add_to_col(N_sites-1, Qtot, 0, out.delete_col(N_sites-1, Qtot,1));
@@ -2611,7 +2938,9 @@ sum(const MpoTerms<Symmetry,Scalar>& bottom, const MpoTerms<Symmetry,Scalar>& to
     }
     else
     {
+        #if TERMS_VERBOSITY > 2
         std::cout << "Infinite System: Add both incoming operator columns and both outgoing operator rows at each lattice site" << std::endl;
+        #endif
         for(std::size_t loc=0; loc<N_sites; ++loc)
         {
             out.delete_col(loc, Symmetry::qvacuum(), auxdim_bottom_starts[loc+1]);
@@ -2651,6 +2980,7 @@ prod_delZeroCols_OBC(std::unordered_map<std::array<qType, 2>, std::vector<std::v
         }
         O_new.insert({{qIn,qTot},temp});
     }
+    qAux_last.clear();
     qAux_last = qAux_new;
     O_last = O_new;
 }
@@ -2741,6 +3071,7 @@ set_Identity()
     O.resize(N_sites);
     auxdim.clear();
     auxdim.resize(N_sites+1);
+    label = "Id";
     for(std::size_t loc=0; loc<N_sites; ++loc)
     {
         auxdim[loc].insert({qVac,1});
@@ -2754,7 +3085,7 @@ set_Identity()
     }
     auxdim[N_sites].insert({qVac,1});
     FINALIZED = true;
-    calc(false);
+    calc(1);
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
@@ -2765,6 +3096,7 @@ set_Zero()
     O.resize(N_sites);
     auxdim.clear();
     auxdim.resize(N_sites+1);
+    label = "Zero";
     for(std::size_t loc=0; loc<N_sites; ++loc)
     {
         auxdim[loc].insert({qVac,1});
@@ -2778,7 +3110,7 @@ set_Zero()
     }
     auxdim[N_sites].insert({qVac,1});
     FINALIZED = true;
-    calc(false);
+    calc(1);
 }
 
 template<typename Symmetry, typename Scalar> std::vector<std::pair<typename Symmetry::qType, std::size_t>> MpoTerms<Symmetry,Scalar>::
