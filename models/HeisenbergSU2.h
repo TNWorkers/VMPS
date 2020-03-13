@@ -94,7 +94,7 @@ protected:
 const std::map<string,std::any> HeisenbergSU2::defaults = 
 {
 	{"J",1.}, {"Jprime",0.}, {"Jprimeprime",0.}, {"Jrung",1.},
-	{"D",2ul}, {"CALC_SQUARE",false}, {"CYLINDER",false}, {"Ly",1ul}
+	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 const std::map<string,std::any> HeisenbergSU2::sweep_defaults = 
@@ -132,7 +132,7 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params, const BC & boundary
     set_operators(B, P, pushlist, labellist, boundary);
     
     this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 
 	this->precalc_TwoSiteData();
 }

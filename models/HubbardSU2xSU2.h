@@ -69,8 +69,8 @@ public:
     static void set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
 							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 		
-	// Mpo<Symmetry> B (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return cdagc(locx1,locx2,locy1,locy2);};
-	// Mpo<Symmetry> C (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	Mpo<Symmetry> B (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return cdagc(locx1,locx2,locy1,locy2);};
+	Mpo<Symmetry> C (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 		
 	static const map<string,any> defaults;
 	static const map<string,any> sweep_defaults;
@@ -83,7 +83,7 @@ const map<string,any> HubbardSU2xSU2::defaults =
 	{"V",0.}, {"Vrung",0.},
 	{"J",0.}, {"Jrung",0.},
 	{"X",0.}, {"Xrung",0.},
-	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"Ly",1ul}
+	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 const map<string,any> HubbardSU2xSU2::sweep_defaults = 
@@ -120,7 +120,7 @@ HubbardSU2xSU2 (const size_t &L, const vector<Param> &params, const BC &boundary
     set_operators(F, P, pushlist, labellist, boundary);
     
     this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 
 	this->precalc_TwoSiteData();
 }
@@ -174,10 +174,10 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 
 					vector<SiteOperator<Symmetry_,double> > ops(range+1);
 					ops[0] = first[j];
-					for (size_t i=0; i<range; ++i)
+					for (size_t i=1; i<range; ++i)
 					{
-						if (FERMIONIC) {ops[i] = F[(loc+i+1)%N_sites].sign().template plain<double>();}
-						else {ops[i] = F[(loc+i+1)%N_sites].Id().template plain<double>();}
+						if (FERMIONIC) {ops[i] = F[(loc+i)%N_sites].sign().template plain<double>();}
+						else {ops[i] = F[(loc+i)%N_sites].Id().template plain<double>();}
 					}
 					ops[range] = last[j][(loc+range)%N_sites];
 					pushlist.push_back(std::make_tuple(loc, ops, factor[j] * value));
@@ -345,11 +345,12 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 	}
 }
 
-// Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
-// C (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-// {
-// 	return make_corr("c†", "c", locx1, locx2, locy1, locy2, F[locx1].cdag(locy1), F[locx2].c(locy2), {3,1}, 2., PROP::FERMIONIC, PROP::HERMITIAN);
-// }
+Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > > HubbardSU2xSU2::
+C (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+{
+	return Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > >::Identity(this->locBasis());
+	// return make_corr("c†", "c", locx1, locx2, locy1, locy2, F[locx1].cdag(SUB_LATTICE::A,locy1), F[locx2].c(SUB_LATTICE::B,locy2), {3,1}, 2., PROP::FERMIONIC, PROP::HERMITIAN);
+}
 
 } //end namespace VMPS
 #endif

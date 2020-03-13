@@ -3,6 +3,8 @@
 #define DMRG_DONT_USE_OPENMP
 #define EIGEN_DONT_PARALLELIZE
 
+#define TERMS_VERBOSITY 0
+
 using namespace std;
 
 #include "Logger.h"

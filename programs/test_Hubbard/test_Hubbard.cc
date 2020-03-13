@@ -2,9 +2,10 @@
 #include "util/LapackManager.h"
 #pragma message("LapackManager")
 #endif
-#define LANCZOS_MAX_ITERATIONS 100
+//#define LANCZOS_MAX_ITERATIONS 100
 //#define USE_HDF5_STORAGE
 
+#define TERMS_VERBOSITY 0
 // with Eigen:
 #define DMRG_DONT_USE_OPENMP
 //#define MPSQCOMPRESSOR_DONT_USE_OPENMP
@@ -149,6 +150,8 @@ int main (int argc, char* argv[])
 	// for ED:
 	Nup = (N+M)/2;
 	Ndn = (N-M)/2;
+
+	size_t maxPower = args.get<size_t>("maxPower",2);
 	
 	ED = args.get<bool>("ED",false);
 	U0 = args.get<bool>("U0",false);
@@ -295,7 +298,7 @@ int main (int argc, char* argv[])
 		
 		Stopwatch<> Watch_U0;
 		//{"tPara",tParaA,0},{"tPara",tParaB,1}
-		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1}});
+		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1},{"maxPower",maxPower}});
 //		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"Ly",Ly}});
 		Vol = H_U0.volume();
 		Vsq = V*V;
@@ -333,7 +336,7 @@ int main (int argc, char* argv[])
 		Stopwatch<> Watch_U1;
 		
 		//,{"tPara",tParaA,0},{"tPara",tParaB,1}
-		HUBBARD H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1}});
+		HUBBARD H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1},{"maxPower",maxPower}});
 //		VMPS::Hubbard H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
 		Vol = H_U1.volume();
 		Vsq = V*V;
@@ -419,7 +422,7 @@ int main (int argc, char* argv[])
 		
 		Stopwatch<> Watch_SU2;
 		
-		VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly,0},{"Ly",Ly2,1},{"tRung",tRung},{"Vz",Vz},{"Vxy",Vxy}}, BC::OPEN);
+		VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly,0},{"Ly",Ly2,1},{"tRung",tRung},{"Vz",Vz},{"Vxy",Vxy},{"maxPower",maxPower}}, BC::OPEN);
 		Vol = H_SU2.volume();
 		Vsq = Vol*Vol;
 		lout << H_SU2.info() << endl;
@@ -499,6 +502,7 @@ int main (int argc, char* argv[])
 		paramsSU2xSU2.push_back({"V",V,1});
 		paramsSU2xSU2.push_back({"Ly",Ly,0});
 		paramsSU2xSU2.push_back({"Ly",Ly,1});
+		paramsSU2xSU2.push_back({"maxPower",maxPower});
 		VMPS::HubbardSU2xSU2 H_SU2xSU2(L, paramsSU2xSU2, BC::OPEN);
 		Vol = H_SU2xSU2.volume();
 		Vsq = Vol*Vol;

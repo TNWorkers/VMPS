@@ -84,7 +84,7 @@ const std::map<string,std::any> HeisenbergU1::defaults =
 {
 	{"J",1.}, {"Jprime",0.}, {"Jrung",1.},
 	{"Bz",0.}, {"Kz",0.},
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"Ly",1ul}
+	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 const std::map<string,std::any> HeisenbergU1::sweep_defaults = 
@@ -126,7 +126,7 @@ HeisenbergU1 (const size_t &L, const vector<Param> &params, const BC &boundary)
 	set_operators(B, P, pushlist, labellist, boundary);
 
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 
 	this->precalc_TwoSiteData();
 }

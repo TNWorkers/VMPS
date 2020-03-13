@@ -39,7 +39,7 @@ const std::map<string,std::any> HubbardU1::defaults =
 	{"Bz",0.}, {"Bx",0.}, 
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
 	{"X",0.}, {"Xperp",0.},
-	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"Ly",1ul}
+	{"maxPower",2}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 HubbardU1::
@@ -76,7 +76,7 @@ HubbardU1 (const size_t &L, const vector<Param> &params, const BC &boundary)
 	HubbardU1xU1::set_operators(F, P, pushlist, labellist, boundary);
 
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 
 	this->precalc_TwoSiteData();
 }

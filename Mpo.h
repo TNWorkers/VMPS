@@ -257,8 +257,8 @@ info() const
 	
 	ss << "UNITARY=" << boolalpha << UNITARY << ", ";
 	ss << "HERMITIAN=" << boolalpha << HERMITIAN << ", ";
-	ss << "SQUARE=" << boolalpha << this->check_SQUARE() << ", ";
-	ss << "OPEN_BC=" << boolalpha << this->get_boundary_condition() << ", ";
+	ss << "maxPower=" << this->maxPower() << ", ";
+	ss << "BC=" << this->get_boundary_condition() << ", ";
 	ss << "2SITE_DATA=" << boolalpha << GOT_TWO_SITE_DATA << ", ";
 	if(LocalSite != -1)
 	{
@@ -284,10 +284,10 @@ info() const
 	
 		ss << "mem=" << round(memory(GB),3) << "GB";
 	ss << ", sparsity=" << sparsity();
-	if(this->check_SQUARE())
-    {
-        ss << ", sparsity(sq)=" << sparsity(true);
-    }
+	// if(this->check_SQUARE())
+    // {
+    //     ss << ", sparsity(sq)=" << sparsity(true);
+    // }
 	return ss.str();
 }
 
@@ -318,7 +318,7 @@ template<typename Symmetry, typename Scalar>
 double Mpo<Symmetry,Scalar>::
 sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 {
-	if (USE_SQUARE) {assert(this->check_SQUARE());}
+	if (USE_SQUARE) {assert(this->check_power(2ul));}
 	double N_nonZeros = 0.;
 	double N_elements = 0.;
 	double N_matrices = 0.;
@@ -381,7 +381,6 @@ generate_label(std::size_t Lcell)
 	std::stringstream ss;
 	ss << this->get_name();
 	std::vector<std::string> info = this->get_info();
-	for (auto entry:info) {cout << entry << endl;}
 	
 	std::map<std::string,std::set<std::size_t> > cells;
 	
@@ -493,8 +492,6 @@ construct_from_pushlist(const PushType<OperatorType,Scalar>& pushlist, const std
         const auto& [loc, ops, coupling] = pushlist[i];
 		if ( std::abs(coupling) != 0. )
 		{
-			cout << "ops.size=" << ops.size() << endl;
-			cout << "push ops: "; for (const auto &op : ops) {cout << op.label << " ";} cout << endl;
 			this->push(loc, ops, coupling);
 		}
     }

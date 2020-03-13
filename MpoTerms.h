@@ -1,7 +1,10 @@
 #ifndef DMRG_HAMILTONIAN_TERMS
 #define DMRG_HAMILTONIAN_TERMS
 #define EIGEN_DONT_VECTORIZE
+
+#ifndef TERMS_VERBOSITY
 #define TERMS_VERBOSITY 4
+#endif
 
 /// \cond
 #include <vector>
@@ -519,7 +522,12 @@ public:
      *  @param  power   Chosen power of the MPO
      */
     bool check_power(std::size_t power) const {return (power <= current_power);}
-    
+
+	/**
+     *  @return The highest power of the MPO which is currently computed.
+     */
+	std::size_t maxPower() const {return current_power;}
+	
     /**
      *  @return Size of the lattice (for VUMPS: unit cell)
      */

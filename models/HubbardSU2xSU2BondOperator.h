@@ -26,7 +26,7 @@ public:
 	HubbardSU2xSU2BondOperator (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
 
 	void set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P,
-							   PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
+							   PushType<SiteOperator<Symmetry,Scalar>,Scalar>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 	
 	static const std::map<string,std::any> defaults;
 	
@@ -39,7 +39,7 @@ template<typename Scalar>
 const std::map<string,std::any> HubbardSU2xSU2BondOperator<Scalar>::defaults = 
 {
 	{"x",0ul}, {"shift",0.}, 
-	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"Ly",1ul}, 
+	{"maxPower",1ul}, {"CYLINDER",false}, {"Ly",1ul}, 
 };
 
 template<typename Scalar>
@@ -62,17 +62,17 @@ HubbardSU2xSU2BondOperator (const size_t &L, const vector<Param> &params, const 
 
 	this->set_name("HubbardSU2xSU2BondOperator");
 
-	PushType<SiteOperator<Symmetry,double>,double> pushlist;
+	PushType<SiteOperator<Symmetry,Scalar>,Scalar> pushlist;
     std::vector<std::vector<std::string>> labellist;
     set_operators(F, P, pushlist, labellist, boundary);
 
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+    this->finalize(PROP::COMPRESS, P.get<bool>("maxPower"));
 }
 
 template<typename Scalar>
 void HubbardSU2xSU2BondOperator<Scalar>::set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P,
-														PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
+														PushType<SiteOperator<Symmetry,Scalar>,Scalar>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = F.size();
@@ -88,7 +88,7 @@ void HubbardSU2xSU2BondOperator<Scalar>::set_operators (const std::vector<Fermio
 	{
 		if (abs(shift()) > ::mynumeric_limits<double>::epsilon())
 		{
-			auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(F[x()].Id().template plain<double>().template cast<Scalar>());
+			auto Hloc = Mpo<Symmetry,Scalar>::get_N_site_interaction(F[x()].Id().template plain<double>().template cast<Scalar>());
 			pushlist.push_back(std::make_tuple(l, Hloc, shift()/N_sites));
 		}
 		labellist[l].push_back(ss.str());
@@ -110,7 +110,7 @@ void HubbardSU2xSU2BondOperator<Scalar>::set_operators (const std::vector<Fermio
 			
 			double coupling = (loc==x())? 2.:1e-15;
 			
-			pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cdag_sign_loc, c_tight), coupling));
+			pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,Scalar>::get_N_site_interaction(cdag_sign_loc, c_tight), coupling));
 		}
 	}
 }

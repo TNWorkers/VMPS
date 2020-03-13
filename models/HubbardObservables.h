@@ -867,7 +867,7 @@ Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 		ss << "exp[2πi" << Sa << "(" << locx << "," << locy << ")]";
 	}
 	
-	auto Op = F[locx].Rcomp(Sa,locy);
+	auto Op = F[locx].Rcomp(Sa,locy).template plain<complex<double> >();
 	
 	Mpo<Symmetry,complex<double>> Mout(F.size(), Op.Q, ss.str(), false);
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
@@ -1013,6 +1013,6 @@ typename Symmetry::qType HubbardObservables<Symmetry>::getQ_ScompScomp(SPINOP_LA
 	typename Symmetry::qType out;
 	if ( (Sa1 == SZ and Sa2 == SZ) or (Sa1 == SP and Sa2 == SM) or (Sa1 == SM and Sa2 == SP) or (Sa1 == SX or Sa1 == iSY) ) {out = Symmetry::qvacuum();}
 	else {assert(false and "Quantumnumber for the chosen ScompScomp is not computed. Add in HubbardObservables::getQ_ScompScomp");}
-	
+	return out;
 }
 #endif

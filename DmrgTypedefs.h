@@ -99,16 +99,16 @@ std::ostream& operator<< (std::ostream& s, SUB_LATTICE sublat)
 
 enum BC
 {
-	//PERIODIC=true,
+	// PERIODIC=true,
 	OPEN=true,
 	INFINITE=false,
 };
 
 std::ostream& operator<< (std::ostream& s, BC boundary)
 {
-	/*if      (boundary==PERIODIC)      {s << "periodic boundaries (finite system)";}
-	else*/ if (boundary==OPEN)  {s << "open boundaries";}
-	else if (boundary==INFINITE) {s << "no boundaries (infinite system)";}
+	// if      (boundary==BC::PERIODIC) {s << "periodic (finite system)";}
+    if      (boundary==BC::OPEN)     {s << "open";}
+	else if (boundary==BC::INFINITE) {s << "infinite";}
 	return s;
 }
 
@@ -347,7 +347,7 @@ struct DMRG
 			static size_t min_Nsv                    (size_t i) {return DMRG_CONTROL_DEFAULT_MIN_NSV;}
 			static int    max_Nrich                  (size_t i) {return -1;} // -1 = infinity
 			static void   doSomething                (size_t i) {return;} // -1 = infinity
-			static DMRG::ITERATION::OPTION iteration (size_t i) {return DMRG::ITERATION::TWO_SITE;}
+			static DMRG::ITERATION::OPTION iteration (size_t i) {return DMRG::ITERATION::ONE_SITE;}
 			
 			//LANCZOS DEFAULTS
 			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO = LANCZOS::REORTHO::FULL;

@@ -93,7 +93,7 @@ const map<string,any> HubbardSU2xU1::defaults =
 	{"Vz",0.}, {"Vzrung",0.}, {"Vxy",0.}, {"Vxyrung",0.}, 
 	{"J",0.}, {"Jperp",0.},
 	{"X",0.}, {"Xrung",0.},
-	{"CALC_SQUARE",false}, {"CYLINDER",false}, {"Ly",1ul}
+	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 const map<string,any> HubbardSU2xU1::sweep_defaults = 
@@ -137,7 +137,7 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params, const BC &boundary)
     set_operators(F, P, pushlist, labellist, boundary);
     
     this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 
 	this->precalc_TwoSiteData();
 }
@@ -152,7 +152,6 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 	
 	for(std::size_t loc=0; loc<N_sites; ++loc)
 	{
-		cout << termcolor::red << "loc=" << loc << termcolor::reset << endl;
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;
 		size_t lp3 = (loc+3)%N_sites;

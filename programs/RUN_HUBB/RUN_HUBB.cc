@@ -244,7 +244,7 @@ void fill_OdagO (size_t L, size_t Ly, size_t n, const Eigenstate<MODEL::StateUd>
 	Lattice2D square({L,Ly},{false,true});
 	Geometry2D Geo(square,CHESSBOARD);//,L,Ly,1.,true);	
 	VectorXd Bavg(L*Ly);
-	MODEL H1cell(L*Ly+Ly,{{"CALC_SQUARE",false}}, BC::INFINITE);
+	MODEL H1cell(L*Ly+Ly,{{"maxPower",1ul}}, BC::INFINITE);
 	#pragma omp parallel for collapse(2)
 	for (size_t x0=0; x0<L; ++x0)
 	for (size_t y0=0; y0<Ly; ++y0)
@@ -260,7 +260,7 @@ void fill_OdagO (size_t L, size_t Ly, size_t n, const Eigenstate<MODEL::StateUd>
 	}
 	
 	Stopwatch<> CellTimer;
-	MODEL Hncell((n+1)*L*Ly+2*Ly,{{"CALC_SQUARE",false}}, BC::INFINITE);
+	MODEL Hncell((n+1)*L*Ly+2*Ly,{{"maxPower",1ul}}, BC::INFINITE);
 	
 	cout << "n=" << n << ", length=" << Hncell.length() << endl;
 	
@@ -623,6 +623,7 @@ int main (int argc, char* argv[])
 		params.push_back({"Jfull",Jarray});
 		params.push_back({"Xfull",Xarray});
 		params.push_back({"U",U});
+		params.push_back({"maxPower",1ul});
 		// if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {S,T};
 		Qc2 = {S,T};
@@ -683,12 +684,13 @@ int main (int argc, char* argv[])
 		params.push_back({"X",X});
 		params.push_back({"J",J});
 		params.push_back({"Uph",U});
+		params.push_back({"maxPower",1ul});
 		if (t0stag!=0.)
 		{
 			params.push_back({"t0",+t0stag,0});
 			params.push_back({"t0",-t0stag,1});
 		}
-		params.push_back({"F",F});
+		params.push_back({"Fp",F});
 		// if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {};
 		Qc2 = {}; // for 2 unit cells
@@ -706,6 +708,7 @@ int main (int argc, char* argv[])
 		params.push_back({"X",X});
 		params.push_back({"J",J});
 		params.push_back({"Uph",U});
+		params.push_back({"maxPower",1ul});
 		// if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {M,N};
 		Qc2 = {M,2*N}; // for 2 unit cells
@@ -725,6 +728,7 @@ int main (int argc, char* argv[])
 		params.push_back({"Uph",U});
 		params.push_back({"t0",+t0stag,0});
 		params.push_back({"t0",-t0stag,1});
+		params.push_back({"maxPower",1ul});
 		// if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {M};
 		Qc2 = {M}; // for 2 unit cells
@@ -742,6 +746,7 @@ int main (int argc, char* argv[])
 		params.push_back({"X",X});
 		params.push_back({"J",J});
 		params.push_back({"Uph",U});
+		params.push_back({"maxPower",1ul});
 		// if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		Qc  = {N};
 		Qc2 = {2*N}; // for 2 unit cells
@@ -785,7 +790,7 @@ int main (int argc, char* argv[])
 	if (VUMPS)
 	{
 		// For VUMPS: Hamiltonian with two unit cells for contractions across the cell
-		dHdV = MODEL(2*volume,{{"CALC_SQUARE",false}}, BC::INFINITE);
+		dHdV = MODEL(2*volume,{{"maxPower",1ul}}, BC::INFINITE);
 		dHdV.transform_base(Qc2,false); // PRINT=false
 	}
 	else
@@ -808,6 +813,7 @@ int main (int argc, char* argv[])
 		
 		auto measure_and_save = [&H,&dHdV,&target,&params,&Geo1cell,&Geo2cell,&Foxy,&obsfile,&Qc](size_t j) -> void
 		{
+			return;
 			if (Foxy.iterations() < 100) {return;}
 			if (Foxy.errVar() < 1e-8 or Foxy.FORCE_DO_SOMETHING == true)
 			{
@@ -1107,11 +1113,13 @@ int main (int argc, char* argv[])
 				}
 				
 				if (target.HAS_GROUP(bond.str())) {return;}
-				
+
+#ifdef USING_U0
 				Mpo<MODEL::Symmetry,complex<double>> Id = Mpo<MODEL::Symmetry,complex<double>>::Identity(g_foxy.state.locBasis());
 				auto domRL1 = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  Id, true, false);
 				auto domLR1 = g_foxy.state.calc_dominant_1symm(GAUGE::L, DMRG::DIRECTION::RIGHT, Id, true, false);
-
+#endif
+				
 				#ifdef USING_U0
 				auto domRL1y = g_foxy.state.calc_dominant_1symm(GAUGE::R, DMRG::DIRECTION::LEFT,  H.Rcomp(SZ,0), false, false);
 				auto domLR1y = g_foxy.state.calc_dominant_1symm(GAUGE::L, DMRG::DIRECTION::RIGHT, H.Rcomp(SZ,0), false, false);
@@ -1184,7 +1192,10 @@ int main (int argc, char* argv[])
 					g_foxy.state.calc_entropy(true);
 					obs.spectrum[x][y] = g_foxy.state.entanglementSpectrumLoc(Geo1cell(x,y));
 					lout << "\tspec=" << obs.spectrum[x][y].block(0,0,min(40,int(obs.spectrum[x][y].rows())),1).transpose() << endl;
-					lout << "diff sv0-sv1=" << obs.spectrum[x][y](0,0)-obs.spectrum[x][y](1,0) << endl;
+					if (obs.spectrum[x][y].rows() > 1)
+					{
+						lout << "diff sv0-sv1=" << obs.spectrum[x][y](0,0)-obs.spectrum[x][y](1,0) << endl;
+					}
 				}
 				lout << endl;
 				
@@ -1201,7 +1212,7 @@ int main (int argc, char* argv[])
 				#pragma omp parallel for
 				for (int d=1; d<Ncells1d*L; ++d)
 				{
-					MODEL Htmp(calc_length(d+1,L),{{"CALC_SQUARE",false}}, BC::INFINITE); Htmp.transform_base(Qc,false); // PRINT=false
+					MODEL Htmp(calc_length(d+1,L),{{"maxPower",1ul}}, BC::INFINITE); Htmp.transform_base(Qc,false); // PRINT=false
 					
 					obs.SdagS1d(d,0) = d;
 					obs.SdagS1d(d,1) = avg(g_foxy.state, Htmp.SdagS(0,d), g_foxy.state);
@@ -1230,7 +1241,7 @@ int main (int argc, char* argv[])
 				#pragma omp parallel for
 				for (int d=2; d<Ncells1d*L; ++d)
 				{
-					MODEL Htmp(calc_length(d+2,L),{{"CALC_SQUARE",false}}, BC::INFINITE); Htmp.transform_base(Qc,false); // PRINT=false
+					MODEL Htmp(calc_length(d+2,L),{{"maxPower",1ul}}, BC::INFINITE); Htmp.transform_base(Qc,false); // PRINT=false
 					
 					double val1 = avg(g_foxy.state, Htmp.cdagc<DN>(1,d+1), Htmp.cdagc<UP>(0,d), g_foxy.state);
 					double val2 = avg(g_foxy.state, Htmp.cdagc<UP>(1,d+1), Htmp.cdagc<DN>(0,d), g_foxy.state);
@@ -1284,7 +1295,7 @@ int main (int argc, char* argv[])
 //				#pragma omp parallel for
 //				for (int d=1; d<Ncells1d*L; ++d)
 //				{
-//					MODEL Htmp(calc_length(d+1,L),{{"OPEN_BC",false},{"CALC_SQUARE",false}}); Htmp.transform_base(Qc,false); // PRINT=false
+//					MODEL Htmp(calc_length(d+1,L),{{"OPEN_BC",false},{"maxPower",1ul}}); Htmp.transform_base(Qc,false); // PRINT=false
 //					
 //					obs.stringz1d(d,0) = d;
 ////					obs.stringz1d(d,1) = avg(g_foxy.state, Htmp.Stringz(0,d), g_foxy.state);
@@ -1300,7 +1311,7 @@ int main (int argc, char* argv[])
 				#pragma omp parallel for
 				for (int d=2; d<Ncells1d*L; ++d)
 				{
-					MODEL Htmp(calc_length(d+2,L),{{"CALC_SQUARE",false}}, BC::INFINITE); Htmp.transform_base(Qc,false); // PRINT=false
+					MODEL Htmp(calc_length(d+2,L),{{"maxPower",1ul}}, BC::INFINITE); Htmp.transform_base(Qc,false); // PRINT=false
 					cout << Htmp.length() << endl;
 					
 					obs.triplet1d(d,0) = d;
@@ -1321,7 +1332,7 @@ int main (int argc, char* argv[])
 //				#if defined(USING_U0)
 //				for (int d=2; d<10; ++d)
 //				{
-//					MODEL Htmp(calc_length(d+2,L),{{"OPEN_BC",false},{"CALC_SQUARE",false}}); Htmp.transform_base(Qc,false); // PRINT=false
+//					MODEL Htmp(calc_length(d+2,L),{{"OPEN_BC",false},{"maxPower",1ul}}); Htmp.transform_base(Qc,false); // PRINT=false
 //					lout << "triplet d=" << d << ", " << avg(g_foxy.state, Htmp.cdagcdag3(1,0), Htmp.cc3(d,d+1), g_foxy.state) << endl;
 //				}
 //				#endif

@@ -92,8 +92,6 @@ FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE)
 	ident.push_back("dn");
 	basis_1s_.push_back(Q,inner_dim,ident);
 	ident.clear();
-
-	cout << "single site basis" << endl << this->basis_1s_ << endl;
 	
 	Id_1s_ = OperatorType({1},basis_1s_);
 	F_1s_ = OperatorType({1},basis_1s_);
