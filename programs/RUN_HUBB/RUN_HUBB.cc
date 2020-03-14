@@ -814,7 +814,6 @@ int main (int argc, char* argv[])
 		
 		auto measure_and_save = [&H,&dHdV,&target,&params,&Geo1cell,&Geo2cell,&Foxy,&obsfile,&Qc](size_t j) -> void
 		{
-			return;
 			if (Foxy.iterations() < 100) {return;}
 			if (Foxy.errVar() < 1e-8 or Foxy.FORCE_DO_SOMETHING == true)
 			{
@@ -1313,7 +1312,7 @@ int main (int argc, char* argv[])
 				for (int d=2; d<Ncells1d*L; ++d)
 				{
 					MODEL Htmp(calc_length(d+2,L),{{"maxPower",1ul}}, BC::INFINITE); Htmp.transform_base(Qc,false); // PRINT=false
-					cout << Htmp.length() << endl;
+					cout << "Htmp.length()=" << Htmp.length() << endl;
 					
 					obs.triplet1d(d,0) = d;
 					obs.triplet1d(d,1) = -sqrt(3.)/3*avg(g_foxy.state, Htmp.cdagcdag3(0,1), Htmp.cc3(d,d+1), g_foxy.state);
@@ -1322,7 +1321,7 @@ int main (int argc, char* argv[])
 					// assert(1!=1);
 					
 					obs.singlet1d(d,0) = d;
-					obs.singlet1d(d,1) = -avg(g_foxy.state, Htmp.cdagcdag(0,1), Htmp.cc(d,d+1), g_foxy.state);
+					obs.singlet1d(d,1) = 0.;//-avg(g_foxy.state, Htmp.cdagcdag(0,1), Htmp.cc(d,d+1), g_foxy.state);
 				}
 				for (int d=2; d<Ncells1d*L; ++d)
 				{

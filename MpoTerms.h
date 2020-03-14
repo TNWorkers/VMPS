@@ -2396,8 +2396,8 @@ transform_base(const qType& qShift, const bool PRINT, const int factor)
                             OperatorType op_new = op;
                             for(std::size_t n=0; n<symmetries_to_transform.size(); ++n)
                             {
-                                q_new[n] *= length;
-                                op_new.Q[n] *= length ;
+                                q_new[symmetries_to_transform[n]] *= length;
+                                op_new.Q[symmetries_to_transform[n]] *= length ;
                             }
                             ops_new[row][col].insert({q_new,op_new});
                         }
