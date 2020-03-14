@@ -904,7 +904,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	inbase.pullData(AL[0],0);
 	Qbasis<Symmetry> outbase;
 	outbase.pullData(AL[0],0);
-	
+
 	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(dW_singlet, 1, inbase); //Check correct setIdentity.
 	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW_singlet, 1, outbase);
 	L.insert(basis_order[dW-1], IdL);
@@ -1013,8 +1013,11 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	// 	Rtmp1 = Rtmp2;
 	// }
 	// Rcheck = Rtmp2;
+
+	// double Lcomp = L.compare(Lcheck);	
+	// double Rcomp = R.compare(Rcheck);
 	
-	// cout << termcolor::magenta << "CHECK=" << L.compare(Lcheck) << "\t" << R.compare(Rcheck) << termcolor::reset << endl;
+	// cout << termcolor::magenta << "CHECK=" << Lcomp << "\t" << Rcomp << termcolor::reset << endl;
 	// cout << (L-Lcheck).print(true,13) << endl;
 	// cout << (R-Rcheck).print(true,13) << endl;
 }

@@ -197,7 +197,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			}
 			
 			stringstream ss;
-			ss << label << "ⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
+			ss << label << "(" << Geometry2D::hoppingInfo(Full) << ")";
 			labellist[loc].push_back(ss.str());
 		};
 		

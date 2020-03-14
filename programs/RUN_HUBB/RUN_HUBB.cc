@@ -641,6 +641,7 @@ int main (int argc, char* argv[])
 		params.push_back({"VextFull",VextArray});
 		params.push_back({"Jfull",Jarray});
 		params.push_back({"Xfull",Xarray});
+		params.push_back({"maxPower",1ul});
 		if (abs(Vext) > 0.)
 		{
 			params.push_back({"U",U});
@@ -652,8 +653,8 @@ int main (int argc, char* argv[])
 			params.push_back({"Uph",U});
 			params.push_back({"U",0.});
 		}
-		params.push_back({"t0",+t0stag,0});
-		params.push_back({"t0",-t0stag,1});
+		// params.push_back({"t0",+t0stag,0});
+		// params.push_back({"t0",-t0stag,1});
 		// if (VUMPS) {params.push_back({"OPEN_BC",false});}
 		
 		if constexpr(std::is_same<MODEL,VMPS::HubbardSU2xU1>::value)
