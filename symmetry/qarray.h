@@ -10,6 +10,7 @@
 /// \endcond
 
 #include "NestedLoopIterator.h"
+#include "JoinArray.h"
 
 /**
  * Array of quantum numbers corresponding to Abelian or non Abelian symmetries.
@@ -83,6 +84,17 @@ qarray<Nq> operator* (const size_t &alpha, const qarray<Nq> &a)
 		aout[q] = alpha*a[q];
 	}
 	return aout;
+}
+
+/**Join (concatenate) two qarrays.*/
+template<std::size_t Nq1, std::size_t Nq2>
+constexpr qarray<Nq1+Nq2> join(qarray<Nq1> rhs, qarray<Nq2> lhs)
+{
+	//using l_t = typename detail::counter_tuple<LL>::type;
+	auto new_array = thirdparty::join(rhs.data, lhs.data);
+	qarray<Nq1+Nq2> out;
+	out.data = new_array;
+	return out;
 }
 
 template<size_t Nq>

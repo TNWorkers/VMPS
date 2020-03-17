@@ -55,7 +55,7 @@ HeisenbergXXZ (const size_t &L, const vector<Param> &params, const BC &boundary)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
-		setLocBasis(B[l].get_basis(),l);
+		setLocBasis(B[l].get_basis().qloc(),l);
 	}
 
 	if (P.HAS_ANY_OF({"Jxy", "Jxypara", "Jxyperp", "Jxyfull"}))

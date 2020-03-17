@@ -76,7 +76,7 @@ HeisenbergU1XXZ (const size_t &L, const vector<Param> &params, const BC &boundar
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
-		setLocBasis(B[l].get_basis(),l);
+		setLocBasis(B[l].get_basis().qloc(),l);
 	}
 
 	if (P.HAS_ANY_OF({"Jxy", "Jxypara", "Jxyperp", "Jxyfull"}))
@@ -139,15 +139,15 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 					vector<SiteOperator<Symmetry_,double> > ops_pm(range+1);
 					vector<SiteOperator<Symmetry_,double> > ops_mp(range+1);
 					
-					ops_pm[0] = B[loc].Scomp(SP);
-					ops_mp[0] = B[loc].Scomp(SM);
+					ops_pm[0] = B[loc].Scomp(SP).template plain<double>();
+					ops_mp[0] = B[loc].Scomp(SM).template plain<double>();
                     for (size_t i=1; i<range; ++i)
                     {
-						ops_pm[i] = B[(loc+i)%N_sites].Id();
-						ops_mp[i] = B[(loc+i)%N_sites].Id();
+						ops_pm[i] = B[(loc+i)%N_sites].Id().template plain<double>();
+						ops_mp[i] = B[(loc+i)%N_sites].Id().template plain<double>();
                     }
-					ops_pm[range] = B[(loc+range)%N_sites].Scomp(SM);
-					ops_mp[range] = B[(loc+range)%N_sites].Scomp(SP);
+					ops_pm[range] = B[(loc+range)%N_sites].Scomp(SM).template plain<double>();
+					ops_mp[range] = B[(loc+range)%N_sites].Scomp(SP).template plain<double>();
                         
 					pushlist.push_back(std::make_tuple(loc, ops_pm, 0.5 * value));
 					pushlist.push_back(std::make_tuple(loc, ops_mp, 0.5 * value));
@@ -176,12 +176,12 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
                 {
 					vector<SiteOperator<Symmetry_,double> > ops_zz(range+1);
 					
-					ops_zz[0] = B[loc].Scomp(SZ);
+					ops_zz[0] = B[loc].Scomp(SZ).template plain<double>();
                     for (size_t i=1; i<range; ++i)
                     {
-						ops_zz[i] = B[(loc+i)%N_sites].Id();
+						ops_zz[i] = B[(loc+i)%N_sites].Id().template plain<double>();
                     }
-					ops_zz[range] = B[(loc+range)%N_sites].Scomp(SZ);
+					ops_zz[range] = B[(loc+range)%N_sites].Scomp(SZ).template plain<double>();
                         
 					pushlist.push_back(std::make_tuple(loc, ops_zz, value));
 				}
@@ -209,7 +209,7 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 		ArrayXd Kx_array      = B[loc].ZeroField();
 		ArrayXXd Dyperp_array = B[loc].ZeroHopping();
 
-		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jxyperp.a, Jzperp.a, Bz_array, Bx_array, mu_array, Kz_array, Kx_array, Dyperp_array));
+		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jxyperp.a, Jzperp.a, Bz_array, mu_array, Kz_array).template plain<double>());
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
 		// Nearest-neighbour terms: J
@@ -230,9 +230,9 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 			for (std::size_t alfa=0; alfa < orbitals; ++alfa)
 			for (std::size_t beta=0; beta < next_orbitals; ++beta)
 			{
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SP,alfa), B[lp1].Scomp(SM,beta)), 0.5*Jxypara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SM,alfa), B[lp1].Scomp(SP,beta)), 0.5*Jxypara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SZ,beta)),     Jzpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SP,alfa).template plain<double>(), B[lp1].Scomp(SM,beta).template plain<double>()), 0.5*Jxypara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SM,alfa).template plain<double>(), B[lp1].Scomp(SP,beta).template plain<double>()), 0.5*Jxypara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa).template plain<double>(), B[lp1].Scomp(SZ,beta).template plain<double>()),     Jzpara(alfa,beta)));
 			}
 		}
 		
@@ -249,9 +249,9 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 			for (std::size_t alfa=0; alfa < orbitals; ++alfa)
 			for (std::size_t beta=0; beta < nextn_orbitals; ++beta)
 			{
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SP,alfa), B[lp1].Id(), B[lp2].Scomp(SM,beta)), 0.5*Jxyprime(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SM,alfa), B[lp1].Id(), B[lp2].Scomp(SP,beta)), 0.5*Jxyprime(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta)),     Jzprime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SP,alfa).template plain<double>(), B[lp1].Id().template plain<double>(), B[lp2].Scomp(SM,beta).template plain<double>()), 0.5*Jxyprime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SM,alfa).template plain<double>(), B[lp1].Id().template plain<double>(), B[lp2].Scomp(SP,beta).template plain<double>()), 0.5*Jxyprime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa).template plain<double>(), B[lp1].Id().template plain<double>(), B[lp2].Scomp(SZ,beta).template plain<double>()),     Jzprime(alfa,beta)));
 			}
 		}
 	}

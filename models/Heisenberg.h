@@ -89,7 +89,7 @@ Heisenberg (const size_t &L, const vector<Param> &params, const BC & boundary)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
-		setLocBasis(B[l].get_basis(),l);
+		setLocBasis(B[l].get_basis().qloc(),l);
 	}
 
 	if (P.HAS_ANY_OF({"Dy", "Dyperp", "Dyprime"}))
@@ -147,7 +147,7 @@ add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, P
 		ArrayXd Kz_array = B[loc].ZeroField();
 		ArrayXXd Jperp_array = B[loc].ZeroHopping();
 
-		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jperp_array, Jperp_array, Bz_array, Bx.a, mu_array, Kz_array, Kx.a, Dyperp.a));
+		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jperp_array, Jperp_array, Bz_array, Bx.a, mu_array, Kz_array, Kx.a, Dyperp.a).template plain<double>());
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
 		// Nearest-neighbour terms: DM=Dzyaloshinsky-Moriya		
@@ -159,8 +159,8 @@ add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, P
 			for (std::size_t alfa=0; alfa<orbitals; alfa++)
 			for (std::size_t beta=0; beta<next_orbitals; ++beta)
 			{
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SX,alfa), B[lp1].Scomp(SZ,beta)), +Dypara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SX,beta)), -Dypara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SX,alfa).template plain<double>(), B[lp1].Scomp(SZ,beta).template plain<double>()), +Dypara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa).template plain<double>(), B[lp1].Scomp(SX,beta).template plain<double>()), -Dypara(alfa,beta)));
 			}
 		}
 		
@@ -173,8 +173,12 @@ add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, P
 			for (std::size_t alfa=0; alfa<orbitals; ++alfa)
 			for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
 			{
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SX,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta)), +Dyprime(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SX,beta)), -Dyprime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SX,alfa).template plain<double>(),
+																									 B[lp1].Id().template plain<double>(),
+																									 B[lp2].Scomp(SZ,beta).template plain<double>()), +Dyprime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa).template plain<double>(),
+																									 B[lp1].Id().template plain<double>(),
+																									 B[lp2].Scomp(SX,beta).template plain<double>()), -Dyprime(alfa,beta)));
 			}
 		}
 	}

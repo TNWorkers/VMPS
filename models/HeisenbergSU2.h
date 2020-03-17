@@ -1,8 +1,9 @@
 #ifndef STRAWBERRY_HEISENBERGSU2
 #define STRAWBERRY_HEISENBERGSU2
 
+#include "HeisenbergObservables.h"
 #include "symmetry/SU2.h"
-#include "bases/SpinBaseSU2.h"
+#include "bases/SpinBase.h"
 #include "Mpo.h"
 #include "ParamReturner.h"
 #include "Geometry2D.h" // from TOOLS
@@ -25,7 +26,7 @@ namespace VMPS
   * \note The default variable settings can be seen in \p HeisenbergSU2::defaults.
   * \note \f$J>0\f$ is antiferromagnetic
   */
-class HeisenbergSU2 : public Mpo<Sym::SU2<Sym::SpinSU2>,double>, public ParamReturner
+	class HeisenbergSU2 : public Mpo<Sym::SU2<Sym::SpinSU2>,double>, public HeisenbergObservables<Sym::SU2<Sym::SpinSU2> >, public ParamReturner
 {
 public:
 	typedef Sym::SU2<Sym::SpinSU2> Symmetry;
@@ -71,29 +72,26 @@ public:
 	
 	///@{
 	/**Observables.*/
-	Mpo<Symmetry,double> S     (std::size_t locx,  std::size_t locy=0, double factor=1.) const;
-	Mpo<Symmetry,double> Sdag  (std::size_t locx,  std::size_t locy=0, double factor=sqrt(3.)) const;
-	Mpo<Symmetry,double> SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0) const;
-	///@}
+	// Mpo<Symmetry,double> S     (std::size_t locx,  std::size_t locy=0, double factor=1.) const;
+	// Mpo<Symmetry,double> Sdag  (std::size_t locx,  std::size_t locy=0, double factor=sqrt(3.)) const;
+	// Mpo<Symmetry,double> SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0) const;
+	// ///@}
 	
-	Mpo<Symmetry,complex<double> > S_ky    (const vector<complex<double> > &phases) const;
-	Mpo<Symmetry,complex<double> > Sdag_ky (const vector<complex<double> > &phases, double factor=sqrt(3.)) const;
+	// Mpo<Symmetry,complex<double> > S_ky    (const vector<complex<double> > &phases) const;
+	// Mpo<Symmetry,complex<double> > Sdag_ky (const vector<complex<double> > &phases, double factor=sqrt(3.)) const;
 	
 	/**Validates whether a given total quantum number \p qnum is a possible target quantum number for an Mps.
 	\returns \p true if valid, \p false if not*/
 	bool validate (qarray<1> qnum) const;
 	
 	static const std::map<string,std::any> defaults;
-	static const std::map<string,std::any> sweep_defaults;
-	
-protected:
-	
-	vector<SpinBase<Symmetry> > B;
+	static const std::map<string,std::any> sweep_defaults;	
 };
 
 const std::map<string,std::any> HeisenbergSU2::defaults = 
 {
 	{"J",1.}, {"Jprime",0.}, {"Jprimeprime",0.}, {"Jrung",1.},
+	{"R",0.},
 	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
@@ -111,17 +109,15 @@ const std::map<string,std::any> HeisenbergSU2::sweep_defaults =
 HeisenbergSU2::
 HeisenbergSU2 (const size_t &L, const vector<Param> &params, const BC & boundary)
 :Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
+ HeisenbergObservables(L,params,HeisenbergSU2::defaults),
  ParamReturner(HeisenbergSU2::sweep_defaults)
 {
 	ParamHandler P(params,defaults);
-	
 	size_t Lcell = P.size();
-	B.resize(N_sites);
+	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		N_phys += P.get<size_t>("Ly",l%Lcell);
-		
-		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
+		N_phys += P.get<size_t>("Ly",l%Lcell);		
 		setLocBasis(B[l].get_basis().qloc(),l);
 	}
 	
@@ -135,133 +131,6 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params, const BC & boundary
     this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 
 	this->precalc_TwoSiteData();
-}
-
-Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
-S (std::size_t locx, std::size_t locy, double factor) const
-{
-	assert(locx<this->N_sites);
-	std::stringstream ss;
-	ss << "S(" << locx << "," << locy << ",factor=" << factor << ")";
-	
-	SiteOperator Op = factor * B[locx].S(locy).plain<double>();
-	
-	Mpo<Symmetry> Mout(N_sites, Op.Q, ss.str());
-	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
-	
-	Mout.setLocal(locx,Op);
-	return Mout;
-}
-
-Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
-Sdag (std::size_t locx, std::size_t locy, double factor) const
-{
-	assert(locx<this->N_sites);
-	std::stringstream ss;
-	ss << "S†(" << locx << "," << locy << ",factor=" << factor << ")";
-	
-	SiteOperator Op = factor * B[locx].Sdag(locy).plain<double>();
-	
-	Mpo<Symmetry> Mout(N_sites, Op.Q, ss.str());
-	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
-	
-	Mout.setLocal(locx,Op);
-	return Mout;
-}
-
-Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
-SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2) const
-{
-	assert(locx1<this->N_sites and locx2<this->N_sites);
-	std::stringstream ss;
-	ss << "S†(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
-	
-	Mpo<Symmetry> Mout(N_sites,Symmetry::qvacuum(),ss.str());
-	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
-	
-	if (locx1 == locx2)
-	{
-		auto product = std::sqrt(3.)*OperatorType::prod(B[locx1].Sdag(locy1), B[locx2].S(locy2),Symmetry::qvacuum());
-		Mout.setLocal(locx1, product.plain<double>());
-		return Mout;
-	}
-	else
-	{
-		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.)*B[locx1].Sdag(locy1)).plain<double>(), B[locx2].S(locy2).plain<double>()});
-		return Mout;
-	}
-}
-
-Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HeisenbergSU2::
-S_ky (const vector<complex<double> > &phases) const
-{
-	stringstream ss;
-	ss << "S" << "_ky(";
-	for (int l=0; l<phases.size(); ++l)
-	{
-		ss << phases[l];
-		if (l!=phases.size()-1) {ss << ",";}
-		else                    {ss << ")";}
-	}
-	
-	vector<OperatorType> Ops(N_sites);
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Ops[l] = B[l].S(0);
-	}
-	
-	// all Ops[l].Q() must match
-	Mpo<Symmetry,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), false, false, false, BC::OPEN);
-	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
-	
-	vector<SiteOperator<Symmetry,complex<double> > > OpsPlain(Ops.size());
-	for (int l=0; l<OpsPlain.size(); ++l)
-	{
-		OpsPlain[l] = Ops[l].plain<double>().cast<complex<double> >();
-	}
-	
-	Mout.setLocalSum(OpsPlain, phases);
-	
-	return Mout;
-}
-
-Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HeisenbergSU2::
-Sdag_ky (const vector<complex<double> > &phases, double factor) const
-{
-	stringstream ss;
-	ss << "S†" << "_ky(";
-	for (int l=0; l<phases.size(); ++l)
-	{
-		ss << phases[l];
-		if (l!=phases.size()-1) {ss << ",";}
-		else                    {ss << ")";}
-	}
-	
-	vector<OperatorType> Ops(N_sites);
-	for (size_t l=0; l<N_sites; ++l)
-	{
-		Ops[l] = B[l].Sdag(0);
-	}
-	
-	// all Ops[l].Q() must match
-	Mpo<Symmetry,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), false, false, false, BC::OPEN);
-	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
-	
-	vector<complex<double> > phases_x_factor = phases;
-	for (int l=0; l<phases.size(); ++l)
-	{
-		phases_x_factor[l] = phases[l] * factor;
-	}
-	
-	vector<SiteOperator<Symmetry,complex<double> > > OpsPlain(Ops.size());
-	for (int l=0; l<OpsPlain.size(); ++l)
-	{
-		OpsPlain[l] = Ops[l].plain<double>().cast<complex<double> >();
-	}
-	
-	Mout.setLocalSum(OpsPlain, phases_x_factor);
-	
-	return Mout;
 }
 
 bool HeisenbergSU2::
@@ -342,15 +211,19 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 		
 		// Nearest-neighbour terms: J
 		param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next1_orbitals}, loc%Lcell);
+		param2d Rpara = P.fill_array2d<double>("R", "Rpara", {orbitals, next1_orbitals}, loc%Lcell);
 		labellist[loc].push_back(Jpara.label);
-		
+		labellist[loc].push_back(Rpara.label);
+
 		if (loc < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			for(std::size_t alfa=0; alfa<orbitals; ++alfa)
 			for(std::size_t beta=0; beta<next1_orbitals; ++beta)
 			{
-				auto ops = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa).plain<double>(), B[lp1].S(beta).plain<double>());
-                pushlist.push_back(std::make_tuple(loc,ops,std::sqrt(3.)*Jpara(alfa,beta)));
+				auto opsQ = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Qdag(alfa).plain<double>(), B[lp1].Q(beta).plain<double>());
+				auto opsJ = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Sdag(alfa).plain<double>(), B[lp1].S(beta).plain<double>());
+                pushlist.push_back(std::make_tuple(loc,opsJ,std::sqrt(3.)*Jpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc,opsQ,std::sqrt(5.)*Rpara(alfa,beta)));
 			}
 		}
 
@@ -386,6 +259,133 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 		}
 	}
 }
+
+// Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
+// S (std::size_t locx, std::size_t locy, double factor) const
+// {
+// 	assert(locx<this->N_sites);
+// 	std::stringstream ss;
+// 	ss << "S(" << locx << "," << locy << ",factor=" << factor << ")";
+	
+// 	SiteOperator Op = factor * B[locx].S(locy).plain<double>();
+	
+// 	Mpo<Symmetry> Mout(N_sites, Op.Q, ss.str());
+// 	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
+	
+// 	Mout.setLocal(locx,Op);
+// 	return Mout;
+// }
+
+// Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
+// Sdag (std::size_t locx, std::size_t locy, double factor) const
+// {
+// 	assert(locx<this->N_sites);
+// 	std::stringstream ss;
+// 	ss << "S†(" << locx << "," << locy << ",factor=" << factor << ")";
+	
+// 	SiteOperator Op = factor * B[locx].Sdag(locy).plain<double>();
+	
+// 	Mpo<Symmetry> Mout(N_sites, Op.Q, ss.str());
+// 	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
+	
+// 	Mout.setLocal(locx,Op);
+// 	return Mout;
+// }
+
+// Mpo<Sym::SU2<Sym::SpinSU2> > HeisenbergSU2::
+// SdagS (std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2) const
+// {
+// 	assert(locx1<this->N_sites and locx2<this->N_sites);
+// 	std::stringstream ss;
+// 	ss << "S†(" << locx1 << "," << locy1 << ")" << "S(" << locx2 << "," << locy2 << ")";
+	
+// 	Mpo<Symmetry> Mout(N_sites,Symmetry::qvacuum(),ss.str());
+// 	for (std::size_t l=0; l<N_sites; l++) { Mout.setLocBasis(B[l].get_basis().qloc(),l); }
+	
+// 	if (locx1 == locx2)
+// 	{
+// 		auto product = std::sqrt(3.)*OperatorType::prod(B[locx1].Sdag(locy1), B[locx2].S(locy2),Symmetry::qvacuum());
+// 		Mout.setLocal(locx1, product.plain<double>());
+// 		return Mout;
+// 	}
+// 	else
+// 	{
+// 		Mout.setLocal({locx1, locx2}, {(std::sqrt(3.)*B[locx1].Sdag(locy1)).plain<double>(), B[locx2].S(locy2).plain<double>()});
+// 		return Mout;
+// 	}
+// }
+
+// Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HeisenbergSU2::
+// S_ky (const vector<complex<double> > &phases) const
+// {
+// 	stringstream ss;
+// 	ss << "S" << "_ky(";
+// 	for (int l=0; l<phases.size(); ++l)
+// 	{
+// 		ss << phases[l];
+// 		if (l!=phases.size()-1) {ss << ",";}
+// 		else                    {ss << ")";}
+// 	}
+	
+// 	vector<OperatorType> Ops(N_sites);
+// 	for (size_t l=0; l<N_sites; ++l)
+// 	{
+// 		Ops[l] = B[l].S(0);
+// 	}
+	
+// 	// all Ops[l].Q() must match
+// 	Mpo<Symmetry,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), false, false, false, BC::OPEN);
+// 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
+	
+// 	vector<SiteOperator<Symmetry,complex<double> > > OpsPlain(Ops.size());
+// 	for (int l=0; l<OpsPlain.size(); ++l)
+// 	{
+// 		OpsPlain[l] = Ops[l].plain<double>().cast<complex<double> >();
+// 	}
+	
+// 	Mout.setLocalSum(OpsPlain, phases);
+	
+// 	return Mout;
+// }
+
+// Mpo<Sym::SU2<Sym::SpinSU2>,complex<double> > HeisenbergSU2::
+// Sdag_ky (const vector<complex<double> > &phases, double factor) const
+// {
+// 	stringstream ss;
+// 	ss << "S†" << "_ky(";
+// 	for (int l=0; l<phases.size(); ++l)
+// 	{
+// 		ss << phases[l];
+// 		if (l!=phases.size()-1) {ss << ",";}
+// 		else                    {ss << ")";}
+// 	}
+	
+// 	vector<OperatorType> Ops(N_sites);
+// 	for (size_t l=0; l<N_sites; ++l)
+// 	{
+// 		Ops[l] = B[l].Sdag(0);
+// 	}
+	
+// 	// all Ops[l].Q() must match
+// 	Mpo<Symmetry,complex<double> > Mout(N_sites, Ops[0].Q(), ss.str(), false, false, false, BC::OPEN);
+// 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
+	
+// 	vector<complex<double> > phases_x_factor = phases;
+// 	for (int l=0; l<phases.size(); ++l)
+// 	{
+// 		phases_x_factor[l] = phases[l] * factor;
+// 	}
+	
+// 	vector<SiteOperator<Symmetry,complex<double> > > OpsPlain(Ops.size());
+// 	for (int l=0; l<OpsPlain.size(); ++l)
+// 	{
+// 		OpsPlain[l] = Ops[l].plain<double>().cast<complex<double> >();
+// 	}
+	
+// 	Mout.setLocalSum(OpsPlain, phases_x_factor);
+	
+// 	return Mout;
+// }
 
 } //end namespace VMPS
 

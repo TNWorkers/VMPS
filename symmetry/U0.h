@@ -44,6 +44,8 @@ namespace Sym{
 		static constexpr bool IS_CHARGE_SU2() { return false; }
 		static constexpr bool IS_SPIN_SU2() { return false; }
 
+		static constexpr bool IS_SPIN_U1() { return false; }
+
 		static constexpr bool NO_SPIN_SYM() { return true; }
 		static constexpr bool NO_CHARGE_SYM() { return true; }
 		

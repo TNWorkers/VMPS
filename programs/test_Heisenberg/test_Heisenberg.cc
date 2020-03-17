@@ -84,7 +84,7 @@ int M, Dtot;
 double Stot;
 size_t D, D1;
 size_t L, Ly, Ldyn;
-double J, Jprime, Jrung, Jloc, Jtri;
+double J, Jprime, Jrung, Jloc, Jtri, R;
 double alpha;
 double t_U0, t_U1, t_SU2;
 size_t Dinit, Dlimit, Qinit, Imin, Imax;
@@ -115,6 +115,7 @@ int main (int argc, char* argv[])
 	Ly = args.get<size_t>("Ly",1);
 	Ldyn = args.get<size_t>("Ldyn",12);
 	J = args.get<double>("J",1.);
+	R = args.get<double>("R",R);
 	Jrung = args.get<double>("Jrung",J);
 	Jprime = args.get<double>("Jprime",0.);
 	Jloc = args.get<double>("Jloc",0.);
@@ -183,7 +184,7 @@ int main (int argc, char* argv[])
 		lout << endl << "--------U(0)---------" << endl << endl;
 		
 		Stopwatch<> Watch_U0;
-		VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"maxPower",maxPower}});
+		VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"maxPower",maxPower}});
 		lout << H_U0.info() << endl;
 		
 		VMPS::Heisenberg::Solver DMRG_U0(VERB);
@@ -216,7 +217,7 @@ int main (int argc, char* argv[])
 		lout << endl << "--------U(1)---------" << endl << endl;
 		
 		Stopwatch<> Watch_U1;
-		VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"maxPower",maxPower}});
+		VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"maxPower",maxPower}});
 		lout << H_U1.info() << endl;
 		
 		VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
@@ -319,7 +320,7 @@ int main (int argc, char* argv[])
 		Stopwatch<> Watch_SU2;
 		
 		VMPS::HeisenbergSU2 H_SU2;
-		H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"maxPower",maxPower}});
+		H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"R",R},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"maxPower",maxPower}});
 		
 		// Lattice2D triag({1*L,Ly},{false,false});// periodic BC in y = true
 		// Geometry2D Geo1cell(triag,SNAKE); 

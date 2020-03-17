@@ -951,7 +951,7 @@ coupling_XYZspin (const Array<double,Dynamic,Dynamic> &Jx, const Array<double,Dy
 		{
 			Mout += Jx(i,j) * OperatorType::prod(Sx(i), Sx(j), Symmetry::qvacuum()).template cast<Scalar_>();
 		}
-		if (Jx(i,j) != 0.)
+		if (Jy(i,j) != 0.)
 		{
 			Mout += -Jy(i,j) * OperatorType::prod(iSy(i), iSy(j), Symmetry::qvacuum()).template cast<Scalar_>();
 		}

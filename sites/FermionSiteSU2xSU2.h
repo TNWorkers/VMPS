@@ -75,13 +75,13 @@ FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE)
 	basis_1s_.push_back(Q,inner_dim,ident);
 	ident.clear();
 	
-	Id_1s_ = OperatorType({1,1},basis_1s_);
-	F_1s_ = OperatorType({1,1},basis_1s_);
-	cA_1s_ = OperatorType({2,2},basis_1s_);
-	cB_1s_ = OperatorType({2,2},basis_1s_);
-	nh_1s_ = OperatorType({1,1},basis_1s_);
-	T_1s_ = OperatorType({1,3},basis_1s_);
-	S_1s_ = OperatorType({3,1},basis_1s_);
+	Id_1s_ = OperatorType({1,1},basis_1s_,"id");
+	F_1s_ = OperatorType({1,1},basis_1s_,"F");
+	cA_1s_ = OperatorType({2,2},basis_1s_,"c(A)");
+	cB_1s_ = OperatorType({2,2},basis_1s_,"c(B)");
+	nh_1s_ = OperatorType({1,1},basis_1s_,"nh");
+	T_1s_ = OperatorType({1,3},basis_1s_,"T");
+	S_1s_ = OperatorType({3,1},basis_1s_,"S");
 	
 	// create operators one orbitals	
 	if (!UPH_IS_INFINITE) Id_1s_("holon", "holon") = 1.;

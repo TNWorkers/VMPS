@@ -49,6 +49,8 @@ public:
 	static constexpr bool IS_CHARGE_SU2() { if constexpr (SU2<Kind,Scalar>::kind()[0] == KIND::T) {return true;} return false; }
 	static constexpr bool IS_SPIN_SU2() { if constexpr (SU2<Kind,Scalar>::kind()[0] == KIND::S) {return true;} return false; }
 
+	static constexpr bool IS_SPIN_U1() { return false; }
+	
 	static constexpr bool NO_SPIN_SYM() { if (SU2<Kind,Scalar>::kind()[0] != KIND::S) {return true;} return false;}
 	static constexpr bool NO_CHARGE_SYM() { if (SU2<Kind,Scalar>::kind()[0] != KIND::T) {return true;} return false;}
 	

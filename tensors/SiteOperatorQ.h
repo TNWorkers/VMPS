@@ -100,8 +100,8 @@ public:
 	/**Does nothing.*/
 	SiteOperatorQ() {};
 
-	SiteOperatorQ( const qType& Q_in, const Qbasis<Symmetry>& basis_in )
-		: Q_(Q_in),basis_(basis_in) {};
+	SiteOperatorQ( const qType& Q_in, const Qbasis<Symmetry>& basis_in, std::string label_in="" )
+		: Q_(Q_in),basis_(basis_in),label_(label_in) {};
 
 	SiteOperatorQ( const qType& Q_in, const Qbasis<Symmetry>& basis_in, const base& data_in )
 		:Q_(Q_in),basis_(basis_in),data_(data_in) {};

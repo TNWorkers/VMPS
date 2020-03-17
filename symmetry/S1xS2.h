@@ -11,6 +11,8 @@
 #include "DmrgTypedefs.h"
 #include "DmrgExternal.h"
 
+#include "qarray.h"
+
 //include "symmetry/kind_dummies.h"
 //include "symmetry/qarray.h"
 //include "symmetry/U0.h"
@@ -26,40 +28,45 @@ namespace Sym{
  * This class combines two symmetries.
  *
  */
-template<typename S1, typename S2>
+template<typename S1_, typename S2_>
 class S1xS2
 {
 public:
-	typedef typename S1::Scalar_ Scalar;
+	typedef typename S1_::Scalar_ Scalar;
+
+	typedef S1_ S1;
+	typedef S2_ S2;
 	
 	S1xS2() {};
 	
-	static std::string name() { return S1::name()+"⊗"+S2::name(); }
+	static std::string name() { return S1_::name()+"⊗"+S2_::name(); }
 
-	static constexpr std::size_t Nq=S1::Nq+S2::Nq;
+	static constexpr std::size_t Nq=S1_::Nq+S2_::Nq;
 
 	static constexpr bool HAS_CGC = false;
-	static constexpr bool NON_ABELIAN = S1::NON_ABELIAN or S2::NON_ABELIAN;
-	static constexpr bool ABELIAN = S1::ABELIAN and S2::ABELIAN;
-	static constexpr bool IS_TRIVIAL = S1::IS_TRIVIAL and S2::IS_TRIVIAL;
-	static constexpr bool IS_MODULAR = S1::IS_MODULAR and S2::IS_MODULAR;
-	static constexpr int MOD_N = S1::MOD_N * S2::MOD_N;
+	static constexpr bool NON_ABELIAN = S1_::NON_ABELIAN or S2_::NON_ABELIAN;
+	static constexpr bool ABELIAN = S1_::ABELIAN and S2_::ABELIAN;
+	static constexpr bool IS_TRIVIAL = S1_::IS_TRIVIAL and S2_::IS_TRIVIAL;
+	static constexpr bool IS_MODULAR = S1_::IS_MODULAR and S2_::IS_MODULAR;
+	static constexpr int MOD_N = S1_::MOD_N * S2_::MOD_N;
 
-	static constexpr bool IS_CHARGE_SU2() { return S1::IS_CHARGE_SU2() or S2::IS_CHARGE_SU2(); }
-	static constexpr bool IS_SPIN_SU2() { return S1::IS_SPIN_SU2() or S2::IS_SPIN_SU2(); }
+	static constexpr bool IS_CHARGE_SU2() { return S1_::IS_CHARGE_SU2() or S2_::IS_CHARGE_SU2(); }
+	static constexpr bool IS_SPIN_SU2() { return S1_::IS_SPIN_SU2() or S2_::IS_SPIN_SU2(); }
 
-	static constexpr bool NO_SPIN_SYM() { return S1::NO_SPIN_SYM() and S2::NO_SPIN_SYM(); }
-	static constexpr bool NO_CHARGE_SYM() { return S1::NO_CHARGE_SYM() and S2::NO_CHARGE_SYM(); }
+	static constexpr bool IS_SPIN_U1() { return S1_::IS_SPIN_U1() or S2_::IS_SPIN_U1(); }
+	
+	static constexpr bool NO_SPIN_SYM() { return S1_::NO_SPIN_SYM() and S2_::NO_SPIN_SYM(); }
+	static constexpr bool NO_CHARGE_SYM() { return S1_::NO_CHARGE_SYM() and S2_::NO_CHARGE_SYM(); }
 	
 	typedef qarray<Nq> qType;
 	
-	inline static constexpr std::array<KIND,Nq> kind() { return {S1::kind()[0],S2::kind()[0]}; }
+	inline static constexpr std::array<KIND,Nq> kind() { return {S1_::kind()[0],S2_::kind()[0]}; }
 	
-	inline static qType qvacuum() { return {S1::qvacuum()[0],S2::qvacuum()[0]}; }
-	inline static qType flip( const qType& q ) { return {S1::flip({q[0]})[0],S2::flip({q[1]})[0]}; }
-	inline static int degeneracy( const qType& q ) { return S1::degeneracy({q[0]})*S2::degeneracy({q[1]}); }
+	inline static qType qvacuum() { return join(S1_::qvacuum(),S2_::qvacuum()); }
+	inline static qType flip( const qType& q ) { return {S1_::flip({q[0]})[0],S2_::flip({q[1]})[0]}; }
+	inline static int degeneracy( const qType& q ) { return S1_::degeneracy({q[0]})*S2_::degeneracy({q[1]}); }
 
-	inline static int spinorFactor() { return S1::spinorFactor() * S2::spinorFactor(); }
+	inline static int spinorFactor() { return S1_::spinorFactor() * S2_::spinorFactor(); }
 	///@{
 	/** 
 	 * Calculate the irreps of the tensor product of \p ql and \p qr.
@@ -83,7 +90,7 @@ public:
 	 */
 	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool UNIQUE=false);
 	
-	static vector<tuple<qarray<S1::Nq+S2::Nq>,size_t,qarray<S1::Nq+S2::Nq>,size_t,qarray<S1::Nq+S2::Nq> > > tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr );
+	static vector<tuple<qarray<S1_::Nq+S2_::Nq>,size_t,qarray<S1_::Nq+S2_::Nq>,size_t,qarray<S1_::Nq+S2_::Nq> > > tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr );
 	///@}
 
 	///@{
@@ -149,12 +156,12 @@ public:
 
 };
 
-template<typename S1, typename S2>
-std::vector<typename S1xS2<S1,S2>::qType> S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+std::vector<typename S1xS2<S1_,S2_>::qType> S1xS2<S1_,S2_>::
 reduceSilent( const qType& ql, const qType& qr )
 {
-	std::vector<typename S1::qType> firstSym = S1::reduceSilent(qarray<1>{ql[0]},qarray<1>{qr[0]});
-	std::vector<typename S2::qType> secondSym = S2::reduceSilent(qarray<1>{ql[1]},qarray<1>{qr[1]});
+	std::vector<typename S1_::qType> firstSym = S1_::reduceSilent(qarray<1>{ql[0]},qarray<1>{qr[0]});
+	std::vector<typename S2_::qType> secondSym = S2_::reduceSilent(qarray<1>{ql[1]},qarray<1>{qr[1]});
 
 	std::vector<qType> vout;
 	for(const auto& q1:firstSym)
@@ -165,23 +172,23 @@ reduceSilent( const qType& ql, const qType& qr )
 	return vout;
 }
 
-template<typename S1, typename S2>
-std::vector<typename S1xS2<S1,S2>::qType> S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+std::vector<typename S1xS2<S1_,S2_>::qType> S1xS2<S1_,S2_>::
 reduceSilent( const qType& ql, const qType& qm, const qType& qr )
 {
 	return reduceSilent(reduceSilent(ql,qm),qr);
 }
 
-template<typename S1, typename S2>
-std::vector<typename S1xS2<S1,S2>::qType> S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+std::vector<typename S1xS2<S1_,S2_>::qType> S1xS2<S1_,S2_>::
 reduceSilent( const std::vector<qType>& ql, const qType& qr )
 {
 	std::vector<qType> vout;
 
 	for (std::size_t q=0; q<ql.size(); q++)
 	{
-		std::vector<typename S1::qType> firstSym = S1::reduceSilent(qarray<1>{ql[q][0]},qarray<1>{qr[0]});
-		std::vector<typename S2::qType> secondSym = S2::reduceSilent(qarray<1>{ql[q][1]},qarray<1>{qr[1]});
+		std::vector<typename S1_::qType> firstSym = S1_::reduceSilent(qarray<1>{ql[q][0]},qarray<1>{qr[0]});
+		std::vector<typename S2_::qType> secondSym = S2_::reduceSilent(qarray<1>{ql[q][1]},qarray<1>{qr[1]});
 
 		for(const auto& q1:firstSym)
 		for(const auto& q2:secondSym)
@@ -193,8 +200,8 @@ reduceSilent( const std::vector<qType>& ql, const qType& qr )
 	return vout;
 }
 
-template<typename S1, typename S2>
-std::vector<typename S1xS2<S1,S2>::qType> S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+std::vector<typename S1xS2<S1_,S2_>::qType> S1xS2<S1_,S2_>::
 reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool UNIQUE )
 {
 	std::vector<qType> vout;
@@ -203,8 +210,8 @@ reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool U
 	for (std::size_t q=0; q<ql.size(); q++)
 	for (std::size_t p=0; p<qr.size(); p++)
 	{
-		std::vector<typename S1::qType> firstSym  = S1::reduceSilent(qarray<1>{ql[q][0]},qarray<1>{qr[p][0]});
-		std::vector<typename S2::qType> secondSym = S2::reduceSilent(qarray<1>{ql[q][1]},qarray<1>{qr[p][1]});
+		std::vector<typename S1_::qType> firstSym  = S1_::reduceSilent(qarray<1>{ql[q][0]},qarray<1>{qr[p][0]});
+		std::vector<typename S2_::qType> secondSym = S2_::reduceSilent(qarray<1>{ql[q][1]},qarray<1>{qr[p][1]});
 	
 		for(const auto& q1:firstSym)
 		for(const auto& q2:secondSym)
@@ -226,16 +233,16 @@ reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool U
 	return vout;
 }
 
-template<typename S1, typename S2>
-vector<tuple<qarray<S1::Nq+S2::Nq>,size_t,qarray<S1::Nq+S2::Nq>,size_t,qarray<S1::Nq+S2::Nq> > > S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+vector<tuple<qarray<S1_::Nq+S2_::Nq>,size_t,qarray<S1_::Nq+S2_::Nq>,size_t,qarray<S1_::Nq+S2_::Nq> > > S1xS2<S1_,S2_>::
 tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr )
 {
 	vector<tuple<qarray<Nq>,size_t,qarray<Nq>,size_t,qarray<Nq> > > out;
 	for (std::size_t q=0; q<ql.size(); q++)
 	for (std::size_t p=0; p<qr.size(); p++)
 	{
-		std::vector<typename S1::qType> firstSym  = S1::reduceSilent(qarray<1>{ql[q][0]},qarray<1>{qr[p][0]});
-		std::vector<typename S2::qType> secondSym = S2::reduceSilent(qarray<1>{ql[q][1]},qarray<1>{qr[p][1]});
+		std::vector<typename S1_::qType> firstSym  = S1_::reduceSilent(qarray<1>{ql[q][0]},qarray<1>{qr[p][0]});
+		std::vector<typename S2_::qType> secondSym = S2_::reduceSilent(qarray<1>{ql[q][1]},qarray<1>{qr[p][1]});
 		
 		for(const auto& q1:firstSym)
 		for(const auto& q2:secondSym)
@@ -246,194 +253,194 @@ tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr )
 	return out;
 }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_unity()
 {
 	Scalar out = Scalar(1.);
 	return out;
 }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_dot(const qType& q1)
 {
-	Scalar out = S1::coeff_dot({q1[0]})*S2::coeff_dot({q1[1]});
+	Scalar out = S1_::coeff_dot({q1[0]})*S2_::coeff_dot({q1[1]});
 	return out;
 }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_rightOrtho(const qType& q1, const qType& q2)
 {
-	Scalar out = S1::coeff_rightOrtho({q1[0]},{q2[0]})*S2::coeff_rightOrtho({q1[1]},{q2[1]});
+	Scalar out = S1_::coeff_rightOrtho({q1[0]},{q2[0]})*S2_::coeff_rightOrtho({q1[1]},{q2[1]});
 	return out;
 }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_leftSweep(const qType& q1, const qType& q2)
 {
-	Scalar out = S1::coeff_leftSweep({q1[0]},{q2[0]})*S2::coeff_leftSweep({q1[1]},{q2[1]});
+	Scalar out = S1_::coeff_leftSweep({q1[0]},{q2[0]})*S2_::coeff_leftSweep({q1[1]},{q2[1]});
 	return out;
 }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_adjoint(const qType& q1, const qType& q2, const qType& q3)
 {
-	Scalar out = S1::coeff_adjoint({q1[0]},{q2[0]},{q3[0]})*S2::coeff_adjoint({q1[1]},{q2[1]},{q3[1]});
+	Scalar out = S1_::coeff_adjoint({q1[0]},{q2[0]},{q3[0]})*S2_::coeff_adjoint({q1[1]},{q2[1]},{q3[1]});
 	return out;
 }
 
-// template<typename S1, typename S2>
-// typename S1::Scalar S1xS2<S1,S2>::
+// template<typename S1_, typename S2_>
+// typename S1_::Scalar S1xS2<S1_,S2_>::
 // coeff_3j(const qType& q1, const qType& q2, const qType& q3,
 // 		 int        q1_z, int        q2_z,        int q3_z)
 // {
-// 	Scalar out = S1::coeff_3j({q1[0]}, {q2[0]}, {q3[0]}, q1_z, q2_z, q3_z) * S2::coeff_3j({q1[1]}, {q2[1]}, {q3[1]}, q1_z, q2_z, q3_z);
+// 	Scalar out = S1_::coeff_3j({q1[0]}, {q2[0]}, {q3[0]}, q1_z, q2_z, q3_z) * S2_::coeff_3j({q1[1]}, {q2[1]}, {q3[1]}, q1_z, q2_z, q3_z);
 // 	return out;
 // }
 
-// template<typename S1, typename S2>
-// typename S1::Scalar S1xS2<S1,S2>::
+// template<typename S1_, typename S2_>
+// typename S1_::Scalar S1xS2<S1_,S2_>::
 // coeff_CGC(const qType& q1, const qType& q2, const qType& q3,
 // 		  int        q1_z, int        q2_z,        int q3_z)
 // {
-// 	Scalar out = S1::coeff_CGC({q1[0]}, {q2[0]}, {q3[0]}, q1_z, q2_z, q3_z) * S2::coeff_CGC({q1[1]}, {q2[1]}, {q3[1]}, q1_z, q2_z, q3_z);
+// 	Scalar out = S1_::coeff_CGC({q1[0]}, {q2[0]}, {q3[0]}, q1_z, q2_z, q3_z) * S2_::coeff_CGC({q1[1]}, {q2[1]}, {q3[1]}, q1_z, q2_z, q3_z);
 // 	return out;
 // }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_6j(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q4, const qType& q5, const qType& q6)
 {
-	Scalar out=S1::coeff_6j({q1[0]},{q2[0]},{q3[0]},
+	Scalar out=S1_::coeff_6j({q1[0]},{q2[0]},{q3[0]},
 							{q4[0]},{q5[0]},{q6[0]})*
-		       S2::coeff_6j({q1[1]},{q2[1]},{q3[1]},
+		       S2_::coeff_6j({q1[1]},{q2[1]},{q3[1]},
 							{q4[1]},{q5[1]},{q6[1]});
 	return out;
 }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 			const qType& q4, const qType& q5, const qType& q6)
 {
-	Scalar out=S1::coeff_Apair({q1[0]},{q2[0]},{q3[0]},
+	Scalar out=S1_::coeff_Apair({q1[0]},{q2[0]},{q3[0]},
 							   {q4[0]},{q5[0]},{q6[0]})*
-		       S2::coeff_Apair({q1[1]},{q2[1]},{q3[1]},
+		       S2_::coeff_Apair({q1[1]},{q2[1]},{q3[1]},
 							   {q4[1]},{q5[1]},{q6[1]});
 	return out;
 }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 		   const qType& q4, const qType& q5, const qType& q6)
 {
-	Scalar out=S1::coeff_prod({q1[0]},{q2[0]},{q3[0]},
+	Scalar out=S1_::coeff_prod({q1[0]},{q2[0]},{q3[0]},
 							  {q4[0]},{q5[0]},{q6[0]})*
-		       S2::coeff_prod({q1[1]},{q2[1]},{q3[1]},
+		       S2_::coeff_prod({q1[1]},{q2[1]},{q3[1]},
 							  {q4[1]},{q5[1]},{q6[1]});
 	return out;
 }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q4, const qType& q5, const qType& q6,
 		 const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out=S1::coeff_9j({q1[0]},{q2[0]},{q3[0]},
+	Scalar out=S1_::coeff_9j({q1[0]},{q2[0]},{q3[0]},
 							{q4[0]},{q5[0]},{q6[0]},
 							{q7[0]},{q8[0]},{q9[0]})*
-		       S2::coeff_9j({q1[1]},{q2[1]},{q3[1]},
+		       S2_::coeff_9j({q1[1]},{q2[1]},{q3[1]},
 							{q4[1]},{q5[1]},{q6[1]},
 							{q7[1]},{q8[1]},{q9[1]});
 	return out;
 }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_tensorProd(const qType& q1, const qType& q2, const qType& q3,
 			 const qType& q4, const qType& q5, const qType& q6,
 			 const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out=S1::coeff_tensorProd({q1[0]},{q2[0]},{q3[0]},
+	Scalar out=S1_::coeff_tensorProd({q1[0]},{q2[0]},{q3[0]},
 	                            {q4[0]},{q5[0]},{q6[0]},
 	                            {q7[0]},{q8[0]},{q9[0]})*
-		       S2::coeff_tensorProd({q1[1]},{q2[1]},{q3[1]},
+		       S2_::coeff_tensorProd({q1[1]},{q2[1]},{q3[1]},
 	                            {q4[1]},{q5[1]},{q6[1]},
 	                            {q7[1]},{q8[1]},{q9[1]});
 	return out;
 }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_buildL(const qType& q1, const qType& q2, const qType& q3,
 			 const qType& q4, const qType& q5, const qType& q6,
 			 const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out=S1::coeff_buildL({q1[0]},{q2[0]},{q3[0]},
+	Scalar out=S1_::coeff_buildL({q1[0]},{q2[0]},{q3[0]},
 	                            {q4[0]},{q5[0]},{q6[0]},
 	                            {q7[0]},{q8[0]},{q9[0]})*
-		       S2::coeff_buildL({q1[1]},{q2[1]},{q3[1]},
+		       S2_::coeff_buildL({q1[1]},{q2[1]},{q3[1]},
 	                            {q4[1]},{q5[1]},{q6[1]},
 	                            {q7[1]},{q8[1]},{q9[1]});
 	return out;
 }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_buildR(const qType& q1, const qType& q2, const qType& q3,
 			 const qType& q4, const qType& q5, const qType& q6,
 			 const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out=S1::coeff_buildR({q1[0]},{q2[0]},{q3[0]},
+	Scalar out=S1_::coeff_buildR({q1[0]},{q2[0]},{q3[0]},
 	                            {q4[0]},{q5[0]},{q6[0]},
 	                            {q7[0]},{q8[0]},{q9[0]})*
-		       S2::coeff_buildR({q1[1]},{q2[1]},{q3[1]},
+		       S2_::coeff_buildR({q1[1]},{q2[1]},{q3[1]},
 	                            {q4[1]},{q5[1]},{q6[1]},
 	                            {q7[1]},{q8[1]},{q9[1]});
 	return out;
 }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_HPsi(const qType& q1, const qType& q2, const qType& q3,
 		   const qType& q4, const qType& q5, const qType& q6,
 		   const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out=S1::coeff_HPsi({q1[0]},{q2[0]},{q3[0]},
+	Scalar out=S1_::coeff_HPsi({q1[0]},{q2[0]},{q3[0]},
 							  {q4[0]},{q5[0]},{q6[0]},
 							  {q7[0]},{q8[0]},{q9[0]})*
-		       S2::coeff_HPsi({q1[1]},{q2[1]},{q3[1]},
+		       S2_::coeff_HPsi({q1[1]},{q2[1]},{q3[1]},
 							  {q4[1]},{q5[1]},{q6[1]},
 							  {q7[1]},{q8[1]},{q9[1]});
 	return out;
 }
 
-template<typename S1, typename S2>
-typename S1::Scalar_ S1xS2<S1,S2>::
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_AW(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q4, const qType& q5, const qType& q6,
 		 const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out=S1::coeff_AW({q1[0]},{q2[0]},{q3[0]},
+	Scalar out=S1_::coeff_AW({q1[0]},{q2[0]},{q3[0]},
 							{q4[0]},{q5[0]},{q6[0]},
 							{q7[0]},{q8[0]},{q9[0]})*
-		       S2::coeff_AW({q1[1]},{q2[1]},{q3[1]},
+		       S2_::coeff_AW({q1[1]},{q2[1]},{q3[1]},
 							{q4[1]},{q5[1]},{q6[1]},
 							{q7[1]},{q8[1]},{q9[1]});
 	return out;
 }
 
-template<typename S1, typename S2>
+template<typename S1_, typename S2_>
 template<std::size_t M>
-bool S1xS2<S1,S2>::
-compare ( const std::array<S1xS2<S1,S2>::qType,M>& q1, const std::array<S1xS2<S1,S2>::qType,M>& q2 )
+bool S1xS2<S1_,S2_>::
+compare ( const std::array<S1xS2<S1_,S2_>::qType,M>& q1, const std::array<S1xS2<S1_,S2_>::qType,M>& q2 )
 {
 	for (std::size_t m=0; m<M; m++)
 	{
@@ -443,34 +450,34 @@ compare ( const std::array<S1xS2<S1,S2>::qType,M>& q1, const std::array<S1xS2<S1
 	return false;
 }
 
-template<typename S1, typename S2>
-bool S1xS2<S1,S2>::
-triangle ( const std::array<S1xS2<S1,S2>::qType,3>& qs )
+template<typename S1_, typename S2_>
+bool S1xS2<S1_,S2_>::
+triangle ( const std::array<S1xS2<S1_,S2_>::qType,3>& qs )
 {
-	qarray3<S1::Nq> q_frstSym; q_frstSym[0][0] = qs[0][0]; q_frstSym[1][0] = qs[1][0]; q_frstSym[2][0] = qs[2][0];
-	qarray3<S1::Nq> q_secdSym; q_secdSym[0][0] = qs[0][1]; q_secdSym[1][0] = qs[1][1]; q_secdSym[2][0] = qs[2][1];
+	qarray3<S1_::Nq> q_frstSym; q_frstSym[0][0] = qs[0][0]; q_frstSym[1][0] = qs[1][0]; q_frstSym[2][0] = qs[2][0];
+	qarray3<S2_::Nq> q_secdSym; q_secdSym[0][0] = qs[0][1]; q_secdSym[1][0] = qs[1][1]; q_secdSym[2][0] = qs[2][1];
 
-	return (S1::triangle(q_frstSym) and S2::triangle(q_secdSym));
+	return (S1_::triangle(q_frstSym) and S2_::triangle(q_secdSym));
 }
 
-template<typename S1, typename S2>
-bool S1xS2<S1,S2>::
-pair ( const std::array<S1xS2<S1,S2>::qType,2>& qs )
+template<typename S1_, typename S2_>
+bool S1xS2<S1_,S2_>::
+pair ( const std::array<S1xS2<S1_,S2_>::qType,2>& qs )
 {
-	qarray2<S1::Nq> q_frstSym; q_frstSym[0][0] = qs[0][0]; q_frstSym[1][0] = qs[1][0];
-	qarray2<S1::Nq> q_secdSym; q_secdSym[0][0] = qs[0][1]; q_secdSym[1][0] = qs[1][1];
+	qarray2<S1_::Nq> q_frstSym; q_frstSym[0][0] = qs[0][0]; q_frstSym[1][0] = qs[1][0];
+	qarray2<S1_::Nq> q_secdSym; q_secdSym[0][0] = qs[0][1]; q_secdSym[1][0] = qs[1][1];
 
-	return (S1::pair(q_frstSym) and S2::pair(q_secdSym));
+	return (S1_::pair(q_frstSym) and S2_::pair(q_secdSym));
 }
 
-template<typename S1, typename S2>
+template<typename S1_, typename S2_>
 template<std::size_t M>
-bool S1xS2<S1,S2>::
-validate ( const std::array<S1xS2<S1,S2>::qType,M>& qs )
+bool S1xS2<S1_,S2_>::
+validate ( const std::array<S1xS2<S1_,S2_>::qType,M>& qs )
 {
 	if constexpr( M == 1 ) { return true; }
-	else if constexpr( M == 2 ) { return S1xS2<S1,S2>::pair(qs); }
-	else if constexpr( M==3 ) { return S1xS2<S1,S2>::triangle(qs); }
+	else if constexpr( M == 2 ) { return S1xS2<S1_,S2_>::pair(qs); }
+	else if constexpr( M==3 ) { return S1xS2<S1_,S2_>::triangle(qs); }
 	else { cout << "This should not be printed out!" << endl; return true; }
 }
 
