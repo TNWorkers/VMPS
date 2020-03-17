@@ -60,8 +60,9 @@ public:
 	Mpo(size_t L_input);
 	
 	Mpo(std::size_t L_input, qType Qtot_input, std::string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false, bool HAMILTONIAN_input=false, BC BC_input=BC::OPEN);
-    
-    void construct_from_pushlist(const PushType<OperatorType,Scalar>& pushlist, const std::vector<std::vector<std::string>>& labellist, size_t Lcell);
+
+	template<typename CouplScalar>
+    void construct_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, const std::vector<std::vector<std::string>>& labellist, size_t Lcell);
 	
 	void setLocal(std::size_t loc, const OperatorType& op);
 	
@@ -484,8 +485,10 @@ generate_label(std::size_t Lcell)
 	this->set_name(ss.str());
 }
 
-template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
-construct_from_pushlist(const PushType<OperatorType,Scalar>& pushlist, const std::vector<std::vector<std::string>>& labellist, size_t Lcell)
+template<typename Symmetry, typename Scalar>
+template<typename CouplScalar>
+void Mpo<Symmetry,Scalar>::
+construct_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, const std::vector<std::vector<std::string>>& labellist, size_t Lcell)
 {
     for(std::size_t i=0; i<pushlist.size(); ++i)
     {

@@ -228,7 +228,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			for (size_t i=0; i<N_sites; i++) {auto Gi = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i))); Tp_ranges[i] = F[i].Tp(0,Gi).template plain<double>(); Tm_ranges[i] = F[i].Tm(0,Gi).template plain<double>();}
 			
 			vector<vector<SiteOperator<Symmetry_,double> > > last {Tm_ranges, Tp_ranges};
-			push_full("Vxyfull", "Vxyᵢⱼ", first, last, {0.5}, PROP::BOSONIC);			
+			push_full("Vxyfull", "Vxyᵢⱼ", first, last, {0.5,0.5}, PROP::BOSONIC);
 		}
 		if (P.HAS("VextFull"))
 		{
