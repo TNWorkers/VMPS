@@ -125,7 +125,7 @@ add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 
 		auto H_Bx = F[loc].template coupling_Bx<double>(Bx.a);
 		auto H_Fp = F[loc].template coupling_singleFermion<double>(Fp.a);
-		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction((H_Bx+H_Fp).template plain<double>());
+		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction((H_Bx+H_Fp));
         pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 	}
 }

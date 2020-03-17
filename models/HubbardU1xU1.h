@@ -178,7 +178,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		ArrayXd Vz_array = F[loc].ZeroHopping();
 		
 		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(F[loc].template HubbardHamiltonian<double>(U.a, Uph.a, t0.a-mu.a, Bz.a,
-																											tperp.a, Vperp.a, Vzperp.a, Vxyperp.a, Jperp.a, Jperp.a).template plain<double>());
+																											tperp.a, Vperp.a, Vzperp.a, Vxyperp.a, Jperp.a, Jperp.a));
         pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
 		// Nearest-neighbour terms: t, V, J, X
@@ -203,18 +203,18 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			for (std::size_t beta=0; beta<next_orbitals; ++beta)
 			{
 				// t
-                pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(UP,alfa)*F[loc].sign()).template plain<double>(), F[lp1].c(UP,beta).template plain<double>()),    -tpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(DN,alfa)*F[loc].sign()).template plain<double>(), F[lp1].c(DN,beta).template plain<double>()),    -tpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(UP,alfa)   *F[loc].sign()).template plain<double>(), F[lp1].cdag(UP,beta).template plain<double>()), +tpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(DN,alfa)   *F[loc].sign()).template plain<double>(), F[lp1].cdag(DN,beta).template plain<double>()), +tpara(alfa,beta)));
+                pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(UP,alfa)*F[loc].sign()), F[lp1].c(UP,beta)),    -tpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(DN,alfa)*F[loc].sign()), F[lp1].c(DN,beta)),    -tpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(UP,alfa)   *F[loc].sign()), F[lp1].cdag(UP,beta)), +tpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(DN,alfa)   *F[loc].sign()), F[lp1].cdag(DN,beta)), +tpara(alfa,beta)));
 								
 				// V
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].n(alfa).template plain<double>(), F[lp1].n(beta).template plain<double>()), Vpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].n(alfa), F[lp1].n(beta)), Vpara(alfa,beta)));
 				
 				// J
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].Sp(alfa).template plain<double>(), F[lp1].Sm(beta).template plain<double>()), 0.5*Jpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].Sm(alfa).template plain<double>(), F[lp1].Sp(beta).template plain<double>()), 0.5*Jpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].Sz(alfa).template plain<double>(), F[lp1].Sz(beta).template plain<double>()),     Jpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].Sp(alfa), F[lp1].Sm(beta)), 0.5*Jpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].Sm(alfa), F[lp1].Sp(beta)), 0.5*Jpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].Sz(alfa), F[lp1].Sz(beta)),     Jpara(alfa,beta)));
 				
 				// X, uncompressed variant with 12 operators
 //				Terms.push_tight(loc, -Xpara(alfa,beta), F[loc].cdag(UP,alfa)*F[loc].sign() * F[loc].n(DN,alfa), F[lp1].c(UP,beta));
@@ -234,36 +234,36 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 //				Terms.push_tight(loc, -2.*Xpara(alfa,beta), F[loc].c(DN,alfa)*F[loc].sign() * F[loc].n(UP,alfa), F[lp1].cdag(DN,beta) * F[lp1].n(UP,beta));
 				
 				// X, compressed variant with 8 operators
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(UP,alfa)*F[loc].sign() * F[loc].n(DN,alfa)).template plain<double>(),
-																									 (F[lp1].c(UP,beta) * (F[lp1].Id()-2.*F[lp1].n(DN,beta))).template plain<double>()),
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(UP,alfa)*F[loc].sign() * F[loc].n(DN,alfa)),
+																									 (F[lp1].c(UP,beta) * (F[lp1].Id()-2.*F[lp1].n(DN,beta)))),
 												                                                     -Xpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(UP,alfa)*F[loc].sign()).template plain<double>(),
-																									 (F[lp1].c(UP,beta) * F[lp1].n(DN,beta)).template plain<double>()),
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(UP,alfa)*F[loc].sign()),
+																									 (F[lp1].c(UP,beta) * F[lp1].n(DN,beta))),
 												                                                     -Xpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(DN,alfa)*F[loc].sign() * F[loc].n(UP,alfa)).template plain<double>(),
-																									 (F[lp1].c(DN,beta) * (F[lp1].Id()-2.*F[lp1].n(UP,beta))).template plain<double>()),
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(DN,alfa)*F[loc].sign() * F[loc].n(UP,alfa)),
+																									 (F[lp1].c(DN,beta) * (F[lp1].Id()-2.*F[lp1].n(UP,beta)))),
 												                                                     -Xpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(DN,alfa)*F[loc].sign()).template plain<double>(),
-																									 (F[lp1].c(DN,beta) * F[lp1].n(UP,beta)).template plain<double>()),
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(DN,alfa)*F[loc].sign()),
+																									 (F[lp1].c(DN,beta) * F[lp1].n(UP,beta))),
 												                                                     -Xpara(alfa,beta)));
 				
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(UP,alfa)*F[loc].sign() * F[loc].n(DN,alfa)).template plain<double>(),
-																									 (F[lp1].cdag(UP,beta) * (F[lp1].Id()-2.*F[lp1].n(DN,beta))).template plain<double>()),
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(UP,alfa)*F[loc].sign() * F[loc].n(DN,alfa)),
+																									 (F[lp1].cdag(UP,beta) * (F[lp1].Id()-2.*F[lp1].n(DN,beta)))),
 												                                                     +Xpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(UP,alfa)*F[loc].sign()).template plain<double>(),
-																									 (F[lp1].cdag(UP,beta) * F[lp1].n(DN,beta)).template plain<double>()),
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(UP,alfa)*F[loc].sign()),
+																									 (F[lp1].cdag(UP,beta) * F[lp1].n(DN,beta))),
 												                                                     +Xpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(DN,alfa)*F[loc].sign() * F[loc].n(UP,alfa)).template plain<double>(),
-																									 (F[lp1].cdag(DN,beta) * (F[lp1].Id()-2.*F[lp1].n(UP,beta))).template plain<double>()),
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(DN,alfa)*F[loc].sign() * F[loc].n(UP,alfa)),
+																									 (F[lp1].cdag(DN,beta) * (F[lp1].Id()-2.*F[lp1].n(UP,beta)))),
 												                                                     +Xpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(DN,alfa)*F[loc].sign()).template plain<double>(),
-																									 (F[lp1].cdag(DN,beta) * F[lp1].n(UP,beta)).template plain<double>()),
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(DN,alfa)*F[loc].sign()),
+																									 (F[lp1].cdag(DN,beta) * F[lp1].n(UP,beta))),
 												                                                     +Xpara(alfa,beta)));
 								
 				// Vxy, Vz
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].cc(alfa).template plain<double>(), F[lp1].cdagcdag(beta).template plain<double>()), 0.5*Vxypara(alfa,beta)*pow(-1,loc+lp1)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].cdagcdag(alfa).template plain<double>(), F[lp1].cc(beta).template plain<double>()), 0.5*Vxypara(alfa,beta)*pow(-1,loc+lp1)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].Tz(alfa).template plain<double>(), F[lp1].Tz(beta).template plain<double>()),           Vzpara (alfa,beta)));				
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].cc(alfa), F[lp1].cdagcdag(beta)), 0.5*Vxypara(alfa,beta)*pow(-1,loc+lp1)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].cdagcdag(alfa), F[lp1].cc(beta)), 0.5*Vxypara(alfa,beta)*pow(-1,loc+lp1)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(F[loc].Tz(alfa), F[lp1].Tz(beta)),           Vzpara (alfa,beta)));				
 			}
 		}
 		
@@ -276,18 +276,18 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			for (std::size_t alfa=0; alfa<orbitals;       ++alfa)
 			for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
 			{
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(UP,alfa)*F[loc].sign()).template plain<double>(),
-																									 F[lp1].sign().template plain<double>(),
-																									 F[lp2].c(UP,beta).template plain<double>()),    -tPrime(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(DN,alfa)*F[loc].sign()).template plain<double>(),
-																									 F[lp1].sign().template plain<double>(),
-																									 F[lp2].c(DN,beta).template plain<double>()),    -tPrime(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(UP,alfa)   *F[loc].sign()).template plain<double>(),
-																									 F[lp1].sign().template plain<double>(),
-																									 F[lp2].cdag(UP,beta).template plain<double>()), +tPrime(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(DN,alfa)   *F[loc].sign()).template plain<double>(),
-																									 F[lp1].sign().template plain<double>(),
-																									 F[lp2].cdag(DN,beta).template plain<double>()), +tPrime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(UP,alfa)*F[loc].sign()),
+																									 F[lp1].sign(),
+																									 F[lp2].c(UP,beta)),    -tPrime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(DN,alfa)*F[loc].sign()),
+																									 F[lp1].sign(),
+																									 F[lp2].c(DN,beta)),    -tPrime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(UP,alfa)   *F[loc].sign()),
+																									 F[lp1].sign(),
+																									 F[lp2].cdag(UP,beta)), +tPrime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(DN,alfa)   *F[loc].sign()),
+																									 F[lp1].sign(),
+																									 F[lp2].cdag(DN,beta)), +tPrime(alfa,beta)));
 			}
 		}
 		
@@ -317,16 +317,16 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 				SiteOperatorQ<Symmetry_, Eigen::MatrixXd> cdndag_nextn = F[lp2].cdag(DN);
 				
 				// three-site terms without spinflip
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cupdag_sign_local.template plain<double>(), ndn_sign_tight.template plain<double>(), cup_nextn.template plain<double>()),    -0.25*J3site.x));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cdndag_sign_local.template plain<double>(), nup_sign_tight.template plain<double>(), cdn_nextn.template plain<double>()),    -0.25*J3site.x));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cup_sign_local.template plain<double>(), ndn_sign_tight.template plain<double>(), cupdag_nextn.template plain<double>()),    +0.25*J3site.x));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cdn_sign_local.template plain<double>(), nup_sign_tight.template plain<double>(), cdndag_nextn.template plain<double>()),    +0.25*J3site.x));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cupdag_sign_local, ndn_sign_tight, cup_nextn),    -0.25*J3site.x));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cdndag_sign_local, nup_sign_tight, cdn_nextn),    -0.25*J3site.x));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cup_sign_local, ndn_sign_tight, cupdag_nextn),    +0.25*J3site.x));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cdn_sign_local, nup_sign_tight, cdndag_nextn),    +0.25*J3site.x));
 								
 				// three-site terms with spinflip
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cupdag_sign_local.template plain<double>(), Sm_sign_tight.template plain<double>(), cdn_nextn.template plain<double>()),    -0.25*J3site.x));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cdndag_sign_local.template plain<double>(), Sp_sign_tight.template plain<double>(), cup_nextn.template plain<double>()),    -0.25*J3site.x));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cup_sign_local.template plain<double>(), Sp_sign_tight.template plain<double>(), cdndag_nextn.template plain<double>()),    +0.25*J3site.x));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cdn_sign_local.template plain<double>(), Sm_sign_tight.template plain<double>(), cupdag_nextn.template plain<double>()),    +0.25*J3site.x));				
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cupdag_sign_local, Sm_sign_tight, cdn_nextn),    -0.25*J3site.x));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cdndag_sign_local, Sp_sign_tight, cup_nextn),    -0.25*J3site.x));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cup_sign_local, Sp_sign_tight, cdndag_nextn),    +0.25*J3site.x));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(cdn_sign_local, Sm_sign_tight, cupdag_nextn),    +0.25*J3site.x));				
 			}
 		}
 	}	
