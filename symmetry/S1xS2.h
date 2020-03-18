@@ -13,6 +13,8 @@
 
 #include "qarray.h"
 
+#include "JoinArray.h" //from TOOLS
+
 //include "symmetry/kind_dummies.h"
 //include "symmetry/qarray.h"
 //include "symmetry/U0.h"
@@ -60,11 +62,11 @@ public:
 	
 	typedef qarray<Nq> qType;
 	
-	inline static constexpr std::array<KIND,Nq> kind() { return {S1_::kind()[0],S2_::kind()[0]}; }
+	inline static constexpr std::array<KIND,Nq> kind() { return thirdparty::join(S1_::kind(),S2_::kind()); }
 	
 	inline static qType qvacuum() { return join(S1_::qvacuum(),S2_::qvacuum()); }
-	inline static qType flip( const qType& q ) { return {S1_::flip({q[0]})[0],S2_::flip({q[1]})[0]}; }
-	inline static int degeneracy( const qType& q ) { return S1_::degeneracy({q[0]})*S2_::degeneracy({q[1]}); }
+	inline static qType flip( const qType& q ) { auto [ql,qr] = disjoin<S1_::Nq,S2_::Nq>(q); return join(S1_::flip(ql),S2_::flip(qr)); }
+	inline static int degeneracy( const qType& q ) { auto [ql,qr] = disjoin<S1_::Nq,S2_::Nq>(q); return S1_::degeneracy(ql)*S2_::degeneracy(qr); }
 
 	inline static int spinorFactor() { return S1_::spinorFactor() * S2_::spinorFactor(); }
 	///@{
@@ -90,7 +92,7 @@ public:
 	 */
 	static std::vector<qType> reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool UNIQUE=false);
 	
-	static vector<tuple<qarray<S1_::Nq+S2_::Nq>,size_t,qarray<S1_::Nq+S2_::Nq>,size_t,qarray<S1_::Nq+S2_::Nq> > > tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr );
+	static vector<tuple<qarray<Nq>,size_t,qarray<Nq>,size_t,qarray<Nq> > > tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr );
 	///@}
 
 	///@{
@@ -160,14 +162,16 @@ template<typename S1_, typename S2_>
 std::vector<typename S1xS2<S1_,S2_>::qType> S1xS2<S1_,S2_>::
 reduceSilent( const qType& ql, const qType& qr )
 {
-	std::vector<typename S1_::qType> firstSym = S1_::reduceSilent(qarray<1>{ql[0]},qarray<1>{qr[0]});
-	std::vector<typename S2_::qType> secondSym = S2_::reduceSilent(qarray<1>{ql[1]},qarray<1>{qr[1]});
+	auto [ql1,ql2] = disjoin<S1_::Nq,S2_::Nq>(ql);
+	auto [qr1,qr2] = disjoin<S1_::Nq,S2_::Nq>(qr);
+	std::vector<typename S1_::qType> firstSym = S1_::reduceSilent(ql1,qr1);
+	std::vector<typename S2_::qType> secondSym = S2_::reduceSilent(ql2,qr2);
 
 	std::vector<qType> vout;
 	for(const auto& q1:firstSym)
 	for(const auto& q2:secondSym)
 	{
-		vout.push_back({q1[0],q2[0]});	
+		vout.push_back(join(q1,q2));	
 	}
 	return vout;
 }
@@ -187,13 +191,16 @@ reduceSilent( const std::vector<qType>& ql, const qType& qr )
 
 	for (std::size_t q=0; q<ql.size(); q++)
 	{
-		std::vector<typename S1_::qType> firstSym = S1_::reduceSilent(qarray<1>{ql[q][0]},qarray<1>{qr[0]});
-		std::vector<typename S2_::qType> secondSym = S2_::reduceSilent(qarray<1>{ql[q][1]},qarray<1>{qr[1]});
+		auto [ql1,ql2] = disjoin<S1_::Nq,S2_::Nq>(ql[q]);
+		auto [qr1,qr2] = disjoin<S1_::Nq,S2_::Nq>(qr);
+
+		std::vector<typename S1_::qType> firstSym = S1_::reduceSilent(ql1,qr1);
+		std::vector<typename S2_::qType> secondSym = S2_::reduceSilent(ql2,qr2);
 
 		for(const auto& q1:firstSym)
 		for(const auto& q2:secondSym)
 		{
-			vout.push_back({q1[0],q2[0]});	
+			vout.push_back(join(q1,q2));	
 		}
 	}
 
@@ -210,23 +217,25 @@ reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool U
 	for (std::size_t q=0; q<ql.size(); q++)
 	for (std::size_t p=0; p<qr.size(); p++)
 	{
-		std::vector<typename S1_::qType> firstSym  = S1_::reduceSilent(qarray<1>{ql[q][0]},qarray<1>{qr[p][0]});
-		std::vector<typename S2_::qType> secondSym = S2_::reduceSilent(qarray<1>{ql[q][1]},qarray<1>{qr[p][1]});
+		auto [ql1,ql2] = disjoin<S1_::Nq,S2_::Nq>(ql[q]);
+		auto [qr1,qr2] = disjoin<S1_::Nq,S2_::Nq>(qr[p]);
+		std::vector<typename S1_::qType> firstSym = S1_::reduceSilent(ql1,qr1);
+		std::vector<typename S2_::qType> secondSym = S2_::reduceSilent(ql2,qr2);
 	
 		for(const auto& q1:firstSym)
 		for(const auto& q2:secondSym)
 		{
 			if (UNIQUE)
 			{
-				if( auto it = uniqueControl.find({q1[0],q2[0]}) == uniqueControl.end() )
+				if( auto it = uniqueControl.find(join(q1,q2)) == uniqueControl.end() )
 				{
-					uniqueControl.insert({q1[0],q2[0]});
-					vout.push_back({q1[0],q2[0]});
+					uniqueControl.insert(join(q1,q2));
+					vout.push_back(join(q1,q2));
 				}
 			}
 			else
 			{
-				vout.push_back({q1[0],q2[0]});
+				vout.push_back(join(q1,q2));
 			}
 		}
 	}
@@ -234,20 +243,23 @@ reduceSilent( const std::vector<qType>& ql, const std::vector<qType>& qr, bool U
 }
 
 template<typename S1_, typename S2_>
-vector<tuple<qarray<S1_::Nq+S2_::Nq>,size_t,qarray<S1_::Nq+S2_::Nq>,size_t,qarray<S1_::Nq+S2_::Nq> > > S1xS2<S1_,S2_>::
+vector<tuple<qarray<S1xS2<S1_,S2_>::Nq>,size_t,qarray<S1xS2<S1_,S2_>::Nq>,size_t,qarray<S1xS2<S1_,S2_>::Nq> > > S1xS2<S1_,S2_>::
 tensorProd ( const std::vector<qType>& ql, const std::vector<qType>& qr )
 {
 	vector<tuple<qarray<Nq>,size_t,qarray<Nq>,size_t,qarray<Nq> > > out;
 	for (std::size_t q=0; q<ql.size(); q++)
 	for (std::size_t p=0; p<qr.size(); p++)
 	{
-		std::vector<typename S1_::qType> firstSym  = S1_::reduceSilent(qarray<1>{ql[q][0]},qarray<1>{qr[p][0]});
-		std::vector<typename S2_::qType> secondSym = S2_::reduceSilent(qarray<1>{ql[q][1]},qarray<1>{qr[p][1]});
+		auto [ql1,ql2] = disjoin<S1_::Nq,S2_::Nq>(ql[q]);
+		auto [qr1,qr2] = disjoin<S1_::Nq,S2_::Nq>(qr[p]);
+		std::vector<typename S1_::qType> firstSym = S1_::reduceSilent(ql1,qr1);
+		std::vector<typename S2_::qType> secondSym = S2_::reduceSilent(ql2,qr2);
+		
 		
 		for(const auto& q1:firstSym)
 		for(const auto& q2:secondSym)
 		{
-			out.push_back(make_tuple(ql[q], q, qr[p], p, qarray<2>{q1[0],q2[0]}));
+			out.push_back(make_tuple(ql[q], q, qr[p], p, join(q1,q2)));
 		}
 	}
 	return out;
@@ -265,7 +277,8 @@ template<typename S1_, typename S2_>
 typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_dot(const qType& q1)
 {
-	Scalar out = S1_::coeff_dot({q1[0]})*S2_::coeff_dot({q1[1]});
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	Scalar out = S1_::coeff_dot(q1l)*S2_::coeff_dot(q1r);
 	return out;
 }
 
@@ -273,7 +286,9 @@ template<typename S1_, typename S2_>
 typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_rightOrtho(const qType& q1, const qType& q2)
 {
-	Scalar out = S1_::coeff_rightOrtho({q1[0]},{q2[0]})*S2_::coeff_rightOrtho({q1[1]},{q2[1]});
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	Scalar out = S1_::coeff_rightOrtho(q1l,q2l)*S2_::coeff_rightOrtho(q1r,q2r);
 	return out;
 }
 
@@ -281,7 +296,9 @@ template<typename S1_, typename S2_>
 typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_leftSweep(const qType& q1, const qType& q2)
 {
-	Scalar out = S1_::coeff_leftSweep({q1[0]},{q2[0]})*S2_::coeff_leftSweep({q1[1]},{q2[1]});
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	Scalar out = S1_::coeff_leftSweep(q1l,q2l)*S2_::coeff_leftSweep(q1r,q2r);
 	return out;
 }
 
@@ -289,7 +306,10 @@ template<typename S1_, typename S2_>
 typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_adjoint(const qType& q1, const qType& q2, const qType& q3)
 {
-	Scalar out = S1_::coeff_adjoint({q1[0]},{q2[0]},{q3[0]})*S2_::coeff_adjoint({q1[1]},{q2[1]},{q3[1]});
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	Scalar out = S1_::coeff_adjoint(q1l,q2l,q3l)*S2_::coeff_adjoint(q1r,q2r,q3r);
 	return out;
 }
 
@@ -316,10 +336,17 @@ typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_6j(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q4, const qType& q5, const qType& q6)
 {
-	Scalar out=S1_::coeff_6j({q1[0]},{q2[0]},{q3[0]},
-							{q4[0]},{q5[0]},{q6[0]})*
-		       S2_::coeff_6j({q1[1]},{q2[1]},{q3[1]},
-							{q4[1]},{q5[1]},{q6[1]});
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	auto [q4l,q4r] = disjoin<S1_::Nq,S2_::Nq>(q4);
+	auto [q5l,q5r] = disjoin<S1_::Nq,S2_::Nq>(q5);
+	auto [q6l,q6r] = disjoin<S1_::Nq,S2_::Nq>(q6);
+	
+	Scalar out=S1_::coeff_6j(q1l,q2l,q3l,
+		                     q4l,q5l,q6l)*
+		       S2_::coeff_6j(q1r,q2r,q3r,
+							 q4r,q5r,q6r);
 	return out;
 }
 
@@ -328,10 +355,17 @@ typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 			const qType& q4, const qType& q5, const qType& q6)
 {
-	Scalar out=S1_::coeff_Apair({q1[0]},{q2[0]},{q3[0]},
-							   {q4[0]},{q5[0]},{q6[0]})*
-		       S2_::coeff_Apair({q1[1]},{q2[1]},{q3[1]},
-							   {q4[1]},{q5[1]},{q6[1]});
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	auto [q4l,q4r] = disjoin<S1_::Nq,S2_::Nq>(q4);
+	auto [q5l,q5r] = disjoin<S1_::Nq,S2_::Nq>(q5);
+	auto [q6l,q6r] = disjoin<S1_::Nq,S2_::Nq>(q6);
+	
+	Scalar out=S1_::coeff_Apair(q1l,q2l,q3l,
+								q4l,q5l,q6l)*
+		       S2_::coeff_Apair(q1r,q2r,q3r,
+								q4r,q5r,q6r);	
 	return out;
 }
 
@@ -340,10 +374,17 @@ typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 		   const qType& q4, const qType& q5, const qType& q6)
 {
-	Scalar out=S1_::coeff_prod({q1[0]},{q2[0]},{q3[0]},
-							  {q4[0]},{q5[0]},{q6[0]})*
-		       S2_::coeff_prod({q1[1]},{q2[1]},{q3[1]},
-							  {q4[1]},{q5[1]},{q6[1]});
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	auto [q4l,q4r] = disjoin<S1_::Nq,S2_::Nq>(q4);
+	auto [q5l,q5r] = disjoin<S1_::Nq,S2_::Nq>(q5);
+	auto [q6l,q6r] = disjoin<S1_::Nq,S2_::Nq>(q6);
+	
+	Scalar out=S1_::coeff_prod(q1l,q2l,q3l,
+							   q4l,q5l,q6l)*
+		       S2_::coeff_prod(q1r,q2r,q3r,
+							   q4r,q5r,q6r);	
 	return out;
 }
 
@@ -353,12 +394,22 @@ coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q4, const qType& q5, const qType& q6,
 		 const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out=S1_::coeff_9j({q1[0]},{q2[0]},{q3[0]},
-							{q4[0]},{q5[0]},{q6[0]},
-							{q7[0]},{q8[0]},{q9[0]})*
-		       S2_::coeff_9j({q1[1]},{q2[1]},{q3[1]},
-							{q4[1]},{q5[1]},{q6[1]},
-							{q7[1]},{q8[1]},{q9[1]});
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	auto [q4l,q4r] = disjoin<S1_::Nq,S2_::Nq>(q4);
+	auto [q5l,q5r] = disjoin<S1_::Nq,S2_::Nq>(q5);
+	auto [q6l,q6r] = disjoin<S1_::Nq,S2_::Nq>(q6);
+	auto [q7l,q7r] = disjoin<S1_::Nq,S2_::Nq>(q7);
+	auto [q8l,q8r] = disjoin<S1_::Nq,S2_::Nq>(q8);
+	auto [q9l,q9r] = disjoin<S1_::Nq,S2_::Nq>(q9);
+	
+	Scalar out=S1_::coeff_9j(q1l,q2l,q3l,
+							 q4l,q5l,q6l,
+							 q7l,q8l,q9l)*
+		       S2_::coeff_9j(q1r,q2r,q3r,
+							 q4r,q5r,q6r,
+							 q7r,q8r,q9r);
 	return out;
 }
 
@@ -368,12 +419,22 @@ coeff_tensorProd(const qType& q1, const qType& q2, const qType& q3,
 			 const qType& q4, const qType& q5, const qType& q6,
 			 const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out=S1_::coeff_tensorProd({q1[0]},{q2[0]},{q3[0]},
-	                            {q4[0]},{q5[0]},{q6[0]},
-	                            {q7[0]},{q8[0]},{q9[0]})*
-		       S2_::coeff_tensorProd({q1[1]},{q2[1]},{q3[1]},
-	                            {q4[1]},{q5[1]},{q6[1]},
-	                            {q7[1]},{q8[1]},{q9[1]});
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	auto [q4l,q4r] = disjoin<S1_::Nq,S2_::Nq>(q4);
+	auto [q5l,q5r] = disjoin<S1_::Nq,S2_::Nq>(q5);
+	auto [q6l,q6r] = disjoin<S1_::Nq,S2_::Nq>(q6);
+	auto [q7l,q7r] = disjoin<S1_::Nq,S2_::Nq>(q7);
+	auto [q8l,q8r] = disjoin<S1_::Nq,S2_::Nq>(q8);
+	auto [q9l,q9r] = disjoin<S1_::Nq,S2_::Nq>(q9);
+	
+	Scalar out=S1_::coeff_tensorProd(q1l,q2l,q3l,
+									 q4l,q5l,q6l,
+									 q7l,q8l,q9l)*
+		       S2_::coeff_tensorProd(q1r,q2r,q3r,
+									 q4r,q5r,q6r,
+									 q7r,q8r,q9r);
 	return out;
 }
 
@@ -383,12 +444,22 @@ coeff_buildL(const qType& q1, const qType& q2, const qType& q3,
 			 const qType& q4, const qType& q5, const qType& q6,
 			 const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out=S1_::coeff_buildL({q1[0]},{q2[0]},{q3[0]},
-	                            {q4[0]},{q5[0]},{q6[0]},
-	                            {q7[0]},{q8[0]},{q9[0]})*
-		       S2_::coeff_buildL({q1[1]},{q2[1]},{q3[1]},
-	                            {q4[1]},{q5[1]},{q6[1]},
-	                            {q7[1]},{q8[1]},{q9[1]});
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	auto [q4l,q4r] = disjoin<S1_::Nq,S2_::Nq>(q4);
+	auto [q5l,q5r] = disjoin<S1_::Nq,S2_::Nq>(q5);
+	auto [q6l,q6r] = disjoin<S1_::Nq,S2_::Nq>(q6);
+	auto [q7l,q7r] = disjoin<S1_::Nq,S2_::Nq>(q7);
+	auto [q8l,q8r] = disjoin<S1_::Nq,S2_::Nq>(q8);
+	auto [q9l,q9r] = disjoin<S1_::Nq,S2_::Nq>(q9);
+	
+	Scalar out=S1_::coeff_buildL(q1l,q2l,q3l,
+								 q4l,q5l,q6l,
+								 q7l,q8l,q9l)*
+		       S2_::coeff_buildL(q1r,q2r,q3r,
+								 q4r,q5r,q6r,
+								 q7r,q8r,q9r);
 	return out;
 }
 
@@ -398,12 +469,22 @@ coeff_buildR(const qType& q1, const qType& q2, const qType& q3,
 			 const qType& q4, const qType& q5, const qType& q6,
 			 const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out=S1_::coeff_buildR({q1[0]},{q2[0]},{q3[0]},
-	                            {q4[0]},{q5[0]},{q6[0]},
-	                            {q7[0]},{q8[0]},{q9[0]})*
-		       S2_::coeff_buildR({q1[1]},{q2[1]},{q3[1]},
-	                            {q4[1]},{q5[1]},{q6[1]},
-	                            {q7[1]},{q8[1]},{q9[1]});
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	auto [q4l,q4r] = disjoin<S1_::Nq,S2_::Nq>(q4);
+	auto [q5l,q5r] = disjoin<S1_::Nq,S2_::Nq>(q5);
+	auto [q6l,q6r] = disjoin<S1_::Nq,S2_::Nq>(q6);
+	auto [q7l,q7r] = disjoin<S1_::Nq,S2_::Nq>(q7);
+	auto [q8l,q8r] = disjoin<S1_::Nq,S2_::Nq>(q8);
+	auto [q9l,q9r] = disjoin<S1_::Nq,S2_::Nq>(q9);
+	
+	Scalar out=S1_::coeff_buildR(q1l,q2l,q3l,
+								 q4l,q5l,q6l,
+								 q7l,q8l,q9l)*
+		       S2_::coeff_buildR(q1r,q2r,q3r,
+								 q4r,q5r,q6r,
+								 q7r,q8r,q9r);
 	return out;
 }
 
@@ -413,12 +494,22 @@ coeff_HPsi(const qType& q1, const qType& q2, const qType& q3,
 		   const qType& q4, const qType& q5, const qType& q6,
 		   const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out=S1_::coeff_HPsi({q1[0]},{q2[0]},{q3[0]},
-							  {q4[0]},{q5[0]},{q6[0]},
-							  {q7[0]},{q8[0]},{q9[0]})*
-		       S2_::coeff_HPsi({q1[1]},{q2[1]},{q3[1]},
-							  {q4[1]},{q5[1]},{q6[1]},
-							  {q7[1]},{q8[1]},{q9[1]});
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	auto [q4l,q4r] = disjoin<S1_::Nq,S2_::Nq>(q4);
+	auto [q5l,q5r] = disjoin<S1_::Nq,S2_::Nq>(q5);
+	auto [q6l,q6r] = disjoin<S1_::Nq,S2_::Nq>(q6);
+	auto [q7l,q7r] = disjoin<S1_::Nq,S2_::Nq>(q7);
+	auto [q8l,q8r] = disjoin<S1_::Nq,S2_::Nq>(q8);
+	auto [q9l,q9r] = disjoin<S1_::Nq,S2_::Nq>(q9);
+	
+	Scalar out=S1_::coeff_HPsi(q1l,q2l,q3l,
+							   q4l,q5l,q6l,
+							   q7l,q8l,q9l)*
+		       S2_::coeff_HPsi(q1r,q2r,q3r,
+							   q4r,q5r,q6r,
+							   q7r,q8r,q9r);
 	return out;
 }
 
@@ -428,12 +519,22 @@ coeff_AW(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q4, const qType& q5, const qType& q6,
 		 const qType& q7, const qType& q8, const qType& q9)
 {
-	Scalar out=S1_::coeff_AW({q1[0]},{q2[0]},{q3[0]},
-							{q4[0]},{q5[0]},{q6[0]},
-							{q7[0]},{q8[0]},{q9[0]})*
-		       S2_::coeff_AW({q1[1]},{q2[1]},{q3[1]},
-							{q4[1]},{q5[1]},{q6[1]},
-							{q7[1]},{q8[1]},{q9[1]});
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	auto [q4l,q4r] = disjoin<S1_::Nq,S2_::Nq>(q4);
+	auto [q5l,q5r] = disjoin<S1_::Nq,S2_::Nq>(q5);
+	auto [q6l,q6r] = disjoin<S1_::Nq,S2_::Nq>(q6);
+	auto [q7l,q7r] = disjoin<S1_::Nq,S2_::Nq>(q7);
+	auto [q8l,q8r] = disjoin<S1_::Nq,S2_::Nq>(q8);
+	auto [q9l,q9r] = disjoin<S1_::Nq,S2_::Nq>(q9);
+	
+	Scalar out=S1_::coeff_AW(q1l,q2l,q3l,
+							 q4l,q5l,q6l,
+							 q7l,q8l,q9l)*
+		       S2_::coeff_AW(q1r,q2r,q3r,
+							 q4r,q5r,q6r,
+							 q7r,q8r,q9r);
 	return out;
 }
 
@@ -442,21 +543,38 @@ template<std::size_t M>
 bool S1xS2<S1_,S2_>::
 compare ( const std::array<S1xS2<S1_,S2_>::qType,M>& q1, const std::array<S1xS2<S1_,S2_>::qType,M>& q2 )
 {
+	std::array<typename S1_::qType,M> q1l;
+	std::array<typename S1_::qType,M> q2l;
+	std::array<typename S2_::qType,M> q1r;
+	std::array<typename S2_::qType,M> q2r;
+	
 	for (std::size_t m=0; m<M; m++)
 	{
-		if (q1[m][0] > q2[m][0]) { return false; }
-		else if (q1[m][0] < q2[m][0]) {return true; }
+		auto [q1ll,q1rr] = disjoin<S1_::Nq,S2_::Nq>(q1[m]);
+		auto [q2ll,q2rr] = disjoin<S1_::Nq,S2_::Nq>(q2[m]);
+		q1l[m] = q1ll;
+		q2l[m] = q2ll;
+		q1r[m] = q1rr;
+		q2r[m] = q2rr;
 	}
-	return false;
+	bool b1 = S1_::compare(q1l,q2l);
+	if (b1) {return b1;}
+	return S2_::compare(q2r,q2r);
 }
 
 template<typename S1_, typename S2_>
 bool S1xS2<S1_,S2_>::
 triangle ( const std::array<S1xS2<S1_,S2_>::qType,3>& qs )
 {
-	qarray3<S1_::Nq> q_frstSym; q_frstSym[0][0] = qs[0][0]; q_frstSym[1][0] = qs[1][0]; q_frstSym[2][0] = qs[2][0];
-	qarray3<S2_::Nq> q_secdSym; q_secdSym[0][0] = qs[0][1]; q_secdSym[1][0] = qs[1][1]; q_secdSym[2][0] = qs[2][1];
+	qarray3<S1_::Nq> q_frstSym;
+	qarray3<S2_::Nq> q_secdSym;
 
+	for (size_t q=0; q<3; q++)
+	{
+		auto [q1,q2] = disjoin<S1_::Nq,S2_::Nq>(qs[q]);
+		q_frstSym[q] = q1;
+		q_secdSym[q] = q2;
+	}
 	return (S1_::triangle(q_frstSym) and S2_::triangle(q_secdSym));
 }
 
@@ -464,9 +582,15 @@ template<typename S1_, typename S2_>
 bool S1xS2<S1_,S2_>::
 pair ( const std::array<S1xS2<S1_,S2_>::qType,2>& qs )
 {
-	qarray2<S1_::Nq> q_frstSym; q_frstSym[0][0] = qs[0][0]; q_frstSym[1][0] = qs[1][0];
-	qarray2<S1_::Nq> q_secdSym; q_secdSym[0][0] = qs[0][1]; q_secdSym[1][0] = qs[1][1];
+	qarray2<S1_::Nq> q_frstSym;
+	qarray2<S1_::Nq> q_secdSym;
 
+	for (size_t q=0; q<2; q++)
+	{
+		auto [q1,q2] = disjoin<S1_::Nq,S2_::Nq>(qs[q]);
+		q_frstSym[q] = q1;
+		q_secdSym[q] = q2;
+	}
 	return (S1_::pair(q_frstSym) and S2_::pair(q_secdSym));
 }
 

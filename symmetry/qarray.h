@@ -90,11 +90,20 @@ qarray<Nq> operator* (const size_t &alpha, const qarray<Nq> &a)
 template<std::size_t Nq1, std::size_t Nq2>
 constexpr qarray<Nq1+Nq2> join(qarray<Nq1> rhs, qarray<Nq2> lhs)
 {
-	//using l_t = typename detail::counter_tuple<LL>::type;
 	auto new_array = thirdparty::join(rhs.data, lhs.data);
 	qarray<Nq1+Nq2> out;
 	out.data = new_array;
 	return out;
+}
+
+template<std::size_t Nq1, std::size_t Nq2, std::size_t Nql>
+std::pair<qarray<Nq1>, qarray<Nq2> > disjoin(const qarray<Nql>& large_arr)
+{
+	qarray<Nq1> lhs;
+	std::copy(large_arr.data.begin(),large_arr.data.begin()+Nq1,lhs.data.begin());
+	qarray<Nq2> rhs;
+	std::copy(large_arr.data.begin()+Nq1,large_arr.data.end(),rhs.data.begin());
+	return make_pair(lhs,rhs);
 }
 
 template<size_t Nq>
