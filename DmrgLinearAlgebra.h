@@ -355,7 +355,9 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
             const Mpo<Symmetry,MpoScalar> &O1,
             const Mpo<Symmetry,MpoScalar> &O2, 
             const Mps<Symmetry,Scalar> &Vket,
-            typename Symmetry::qType Qtarget = Symmetry::qvacuum())
+            typename Symmetry::qType Qtarget = Symmetry::qvacuum(),
+			size_t usePower1=1,
+			size_t usePower2=1)
 {
 	if constexpr (Symmetry::NON_ABELIAN)
 	{
@@ -372,8 +374,8 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		for (size_t l=O1.length()-1; l!=-1; --l)
 		{
 			contract_R(B, 
-			           Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), 
-			           O1.locBasis(l), O1.opBasis(l), O2.opBasis(l),
+			           Vbra.A_at(l), O1.get_W_power(usePower1)[l], O2.get_W_power(usePower2)[l], Vket.A_at(l), 
+			           O1.locBasis(l), O1.get_qOp_power(usePower1)[l], O2.get_qOp_power(usePower2)[l],
 			           Bnext);
 			B.clear();
 			B = Bnext;

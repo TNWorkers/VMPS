@@ -49,7 +49,7 @@ public:
 	
 	///@{
 	KondoU1xU1 () : Mpo(){};
-	KondoU1xU1 (const size_t &L, const vector<Param> &params);
+	KondoU1xU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
 	///@}
 	
 	static qarray<2> singlet (int N) {return qarray<2>{0,N};};
@@ -58,16 +58,15 @@ public:
 	/**
 	 * \describe_set_operators
 	 *
-	 * \param B : Base class from which the local spin-operators are received
-	 * \param F : Base class from which the local fermion-operators are received
+	 * \param B : Base class from which the local operators are received
 	 * \param P : The parameters
-	 * \param Terms : \p HamiltonianTerms instance
-	 */
+	 * \param pushlist : All the local operators for the Mpo will be pushed into \p pushlist.
+	 * \param labellist : All the labels for the Mpo will be put into \p labellist. Mpo::generate_label will produce a nice label from the data in labellist.
+	 * \describe_boundary 
+	*/
 	template<typename Symmetry_> 
-//	static HamiltonianTermsXd<Symmetry_> set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<Symmetry_> > &F,
-//	                                                    const ParamHandler &P, size_t loc=0);
-	static void set_operators(const std::vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<Symmetry_> > &F,
-	                          const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);
+    static void set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 	
 	/**Validates whether a given \p qnum is a valid combination of \p N and \p M for the given model.
 	\returns \p true if valid, \p false if not*/
@@ -85,7 +84,7 @@ const map<string,any> KondoU1xU1::defaults =
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.},
 	{"Inext",0.}, {"Iprev",0.}, {"I3next",0.}, {"I3prev",0.}, {"I3loc",0.}, 
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, {"LyF",1ul}
+	{"D",2ul}, {"maxPower",1ul}, {"CYLINDER",false}, {"Ly",1ul}, {"LyF",1ul}
 };
 
 const map<string,any> VMPS::KondoU1xU1::sweep_defaults = 
@@ -106,40 +105,35 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
  ParamReturner(KondoU1xU1::sweep_defaults)
 {
 	ParamHandler P(params,defaults);
-	
 	size_t Lcell = P.size();
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("LyF",l%Lcell);
-		setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);
+		setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);
 	}
-	
-//	for (size_t l=0; l<N_sites; ++l)
-//	{
-//		Terms[l] = set_operators(B,F,P,l%Lcell);
-//		
-//		stringstream ss;
-//		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell) << ",LyF=" << P.get<size_t>("LyF",l%Lcell);
-//		Terms[l].info.push_back(ss.str());
-//	}
-	
-	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
-	set_operators(B,F,P,Terms);
+
+	this->set_name("Kondo");
+
+	PushType<SiteOperator<Symmetry,double>,double> pushlist;
+    std::vector<std::vector<std::string>> labellist;
+    set_operators(B, F, P, pushlist, labellist, boundary);
+    
+    this->construct_from_pushlist(pushlist, labellist, Lcell);
+    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
+
+	this->precalc_TwoSiteData();
 	
 	//Workaround for wrong qOp/auxBasis if we have a Kondo_anpacked case
-	bool RESET_Q_OP = false;
-	for (size_t l=0; l<N_sites; l++)
-	{
-		if (P.get<size_t>("LyF",l%Lcell) == 0ul)
-		{
-			RESET_Q_OP = true;
-			break;
-		}
-	}
-	
-	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"), RESET_Q_OP);
-	this->precalc_TwoSiteData();
+	// bool RESET_Q_OP = false;
+	// for (size_t l=0; l<N_sites; l++)
+	// {
+	// 	if (P.get<size_t>("LyF",l%Lcell) == 0ul)
+	// 	{
+	// 		RESET_Q_OP = true;
+	// 		break;
+	// 	}
+	// }	
 }
 
 bool KondoU1xU1::
@@ -160,12 +154,11 @@ validate (qType qnum) const
 
 template<typename Symmetry_>
 void KondoU1xU1::
-set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)
+set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+			   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN)
 {
 	std::size_t Lcell = P.size();
-	std::size_t N_sites = Terms.size();
-	
-	Terms.set_name("Kondo");
+	std::size_t N_sites = B.size();
 	
 	for (std::size_t loc=0; loc<N_sites; ++loc)
 	{
@@ -187,10 +180,46 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		Slabel << "S=" << print_frac_nice(frac(P.get<size_t>("D",loc%Lcell)-1,2));
 		LyLabel << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
 		LyFlabel << "LyF=" << P.get<size_t>("LyF",loc%Lcell);
-		Terms.save_label(loc, Slabel.str());
-		Terms.save_label(loc, LyLabel.str());
-		Terms.save_label(loc, LyFlabel.str());
-		
+		labellist[loc].push_back(Slabel.str());
+		labellist[loc].push_back(LyLabel.str());
+		labellist[loc].push_back(LyFlabel.str());
+
+		auto push_full = [&N_sites, &loc, &F, &P, &pushlist, &labellist, &boundary] (string xxxFull, string label,
+																					 const vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > &first,
+																					 const vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > &last,
+																					 vector<double> factor, bool FERMIONIC) -> void
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>(xxxFull);
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+
+			for (size_t j=0; j<first.size(); j++)
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				if (range != 0)
+				{
+					vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > ops(range+1);
+					ops[0] = first[j];
+					for (size_t i=1; i<range; ++i)
+					{
+						if (FERMIONIC) {ops[i] = F[(loc+i)%N_sites].sign();}
+						else {ops[i] = F[(loc+i)%N_sites].Id();}
+					}
+					ops[range] = last[j][(loc+range)%N_sites];
+					pushlist.push_back(std::make_tuple(loc, ops, factor[j] * value));
+				}
+			}
+			
+			stringstream ss;
+			ss << label << "(" << Geometry2D::hoppingInfo(Full) << ")";
+			labellist[loc].push_back(ss.str());
+		};
+
 		if (P.HAS("tFull"))
 		{
 			for (size_t hop=loc; hop<N_sites; hop++)
@@ -232,7 +261,7 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 						            );
 				}
 			}
-			Terms.save_label(loc, "tᵢⱼ");
+			labellist[loc].push_back("tᵢⱼ");
 		}
 		
 		if (P.HAS("JdirFull"))
@@ -282,47 +311,47 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		
 		// Kondo-J
 		param1d J = P.fill_array1d<double>("J", "Jorb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, J.label);
+		labellist[loc].push_back(J.label);
 		
 		// Hubbard-U
 		param1d U = P.fill_array1d<double>("U", "Uorb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, U.label);
+		labellist[loc].push_back(U.label);
 		
 		// Hubbard-Uph
 		param1d Uph = P.fill_array1d<double>("Uph", "Uphorb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, Uph.label);
+		labellist[loc].push_back(Uph.label);
 		
 		// t⟂
 		param2d tPerp = P.fill_array2d<double>("tRung", "t", "tPerp", Forbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-		Terms.save_label(loc, tPerp.label);
+		labellist[loc].push_back(tPerp.label);
 		
 		// V⟂
 		param2d Vperp = P.fill_array2d<double>("Vrung", "V", "Vperp", Forbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-		Terms.save_label(loc, Vperp.label);
+		labellist[loc].push_back(Vperp.label);
 		
 		// mu
 		param1d mu = P.fill_array1d<double>("mu", "muorb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, mu.label);
+		labellist[loc].push_back(mu.label);
 		
 		// t0
 		param1d t0 = P.fill_array1d<double>("t0", "t0orb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, t0.label);
+		labellist[loc].push_back(t0.label);
 		
 		// Kz anisotropy
 		param1d Kz = P.fill_array1d<double>("Kz", "Kzorb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, Kz.label);
+		labellist[loc].push_back(Kz.label);
 		
 		// Bz substrate
 		param1d Bzsub = P.fill_array1d<double>("Bzsub", "Bzsuborb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, Bzsub.label);
+		labellist[loc].push_back(Bzsub.label);
 		
 		// Bz impurities
 		param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, Bz.label);
+		labellist[loc].push_back(Bz.label);
 		
 		// I3loc
 		param1d I3loc = P.fill_array1d<double>("I3loc", "I3locOrb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, I3loc.label);
+		labellist[loc].push_back(I3loc.label);
 		
 		ArrayXXd Jxyperp  = B[loc].ZeroHopping();
 		ArrayXXd Jzperp   = B[loc].ZeroHopping();
@@ -366,17 +395,17 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		
 		// t∥
 		param2d tPara = P.fill_array2d<double>("t", "tPara", {Forbitals, Fnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, tPara.label);
+		labellist[loc].push_back(tPara.label);
 		
 		// V∥
 		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {Forbitals, Fnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, Vpara.label);
+		labellist[loc].push_back(Vpara.label);
 		
 		// JdirPara∥
 		param2d JdirPara = P.fill_array2d<double>("Jdir", "JdirPara", {Borbitals, Bnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, JdirPara.label);
+		labellist[loc].push_back(JdirPara.label);
 		
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (loc < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa<Forbitals;      ++alfa)
 			for (std::size_t beta=0; beta<Fnext_orbitals; ++beta)
@@ -425,9 +454,9 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		// NN spin exchange terms
 		
 		param2d InextPara = P.fill_array2d<double>("Inext", "InextPara", {Borbitals, Fnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, InextPara.label);
+		labellist[loc].push_back(InextPara.label);
 		
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (loc < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa<Borbitals;      ++alfa)
 			for (std::size_t beta=0; beta<Fnext_orbitals; ++beta)
@@ -448,9 +477,9 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		}
 		
 		param2d IprevPara = P.fill_array2d<double>("Iprev", "IprevPara", {Fprev_orbitals, Borbitals}, loc%Lcell);
-		Terms.save_label(loc, IprevPara.label);
+		labellist[loc].push_back(IprevPara.label);
 		
-		if (lm1 < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (lm1 < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa<Fprev_orbitals;  ++alfa)
 			for (std::size_t beta=0; beta<Borbitals;       ++beta)
@@ -473,9 +502,9 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		// NN 3-orbital spin exchange terms
 		
 		param2d I3nextPara = P.fill_array2d<double>("I3next", "I3nextPara", {Forbitals, Fnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, I3nextPara.label);
+		labellist[loc].push_back(I3nextPara.label);
 		
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (loc < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa<Forbitals;      ++alfa)
 			for (std::size_t beta=0; beta<Fnext_orbitals; ++beta)
@@ -506,9 +535,9 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		}
 		
 		param2d I3prevPara = P.fill_array2d<double>("I3prev", "I3prevPara", {Fprev_orbitals, Forbitals}, loc%Lcell);
-		Terms.save_label(loc, I3prevPara.label);
+		labellist[loc].push_back(I3prevPara.label);
 		
-		if (lm1 < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (lm1 < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa<Fprev_orbitals;  ++alfa)
 			for (std::size_t beta=0; beta<Forbitals;       ++beta)
@@ -541,9 +570,9 @@ set_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		// NNN terms
 		
 		param2d tPrime = P.fill_array2d<double>("tPrime", "tPrime_array", {Forbitals, Fnextn_orbitals}, loc%Lcell);
-		Terms.save_label(loc, tPrime.label);
+		labellist[loc].push_back(tPrime.label);
 		
-		if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
+		if (loc < N_sites-2 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa<Forbitals;       ++alfa)
 			for (std::size_t beta=0; beta<Fnextn_orbitals; ++beta)

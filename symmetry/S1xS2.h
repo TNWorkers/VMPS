@@ -117,13 +117,18 @@ public:
 									 const qType& q4, const qType& q5, const qType& q6);
 	inline static Scalar coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 									const qType& q4, const qType& q5, const qType& q6);
+	inline static Scalar coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
+										const qType& q4, const qType& q5, const qType& q6);
 	
 	inline static Scalar coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6,
 								  const qType& q7, const qType& q8, const qType& q9);
 	inline static Scalar coeff_tensorProd(const qType& q1, const qType& q2, const qType& q3,
-									  const qType& q4, const qType& q5, const qType& q6,
-									  const qType& q7, const qType& q8, const qType& q9);
+										  const qType& q4, const qType& q5, const qType& q6,
+										  const qType& q7, const qType& q8, const qType& q9);
+	inline static Scalar coeff_MPOprod9(const qType& q1, const qType& q2, const qType& q3,
+										const qType& q4, const qType& q5, const qType& q6,
+										const qType& q7, const qType& q8, const qType& q9);
 	inline static Scalar coeff_buildL(const qType& q1, const qType& q2, const qType& q3,
 									  const qType& q4, const qType& q5, const qType& q6,
 									  const qType& q7, const qType& q8, const qType& q9);
@@ -390,6 +395,25 @@ coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 
 template<typename S1_, typename S2_>
 typename S1_::Scalar_ S1xS2<S1_,S2_>::
+coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
+			   const qType& q4, const qType& q5, const qType& q6)
+{
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	auto [q4l,q4r] = disjoin<S1_::Nq,S2_::Nq>(q4);
+	auto [q5l,q5r] = disjoin<S1_::Nq,S2_::Nq>(q5);
+	auto [q6l,q6r] = disjoin<S1_::Nq,S2_::Nq>(q6);
+	
+	Scalar out=S1_::coeff_MPOprod6(q1l,q2l,q3l,
+								   q4l,q5l,q6l)*
+		       S2_::coeff_MPOprod6(q1r,q2r,q3r,
+								   q4r,q5r,q6r);	
+	return out;
+}
+
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
 coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q4, const qType& q5, const qType& q6,
 		 const qType& q7, const qType& q8, const qType& q9)
@@ -435,6 +459,31 @@ coeff_tensorProd(const qType& q1, const qType& q2, const qType& q3,
 		       S2_::coeff_tensorProd(q1r,q2r,q3r,
 									 q4r,q5r,q6r,
 									 q7r,q8r,q9r);
+	return out;
+}
+
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
+coeff_MPOprod9(const qType& q1, const qType& q2, const qType& q3,
+			   const qType& q4, const qType& q5, const qType& q6,
+			   const qType& q7, const qType& q8, const qType& q9)
+{
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	auto [q4l,q4r] = disjoin<S1_::Nq,S2_::Nq>(q4);
+	auto [q5l,q5r] = disjoin<S1_::Nq,S2_::Nq>(q5);
+	auto [q6l,q6r] = disjoin<S1_::Nq,S2_::Nq>(q6);
+	auto [q7l,q7r] = disjoin<S1_::Nq,S2_::Nq>(q7);
+	auto [q8l,q8r] = disjoin<S1_::Nq,S2_::Nq>(q8);
+	auto [q9l,q9r] = disjoin<S1_::Nq,S2_::Nq>(q9);
+	
+	Scalar out=S1_::coeff_MPOprod9(q1l,q2l,q3l,
+								   q4l,q5l,q6l,
+								   q7l,q8l,q9l)*
+		       S2_::coeff_MPOprod9(q1r,q2r,q3r,
+								   q4r,q5r,q6r,
+								   q7r,q8r,q9r);
 	return out;
 }
 
@@ -543,23 +592,30 @@ template<std::size_t M>
 bool S1xS2<S1_,S2_>::
 compare ( const std::array<S1xS2<S1_,S2_>::qType,M>& q1, const std::array<S1xS2<S1_,S2_>::qType,M>& q2 )
 {
-	std::array<typename S1_::qType,M> q1l;
-	std::array<typename S1_::qType,M> q2l;
-	std::array<typename S2_::qType,M> q1r;
-	std::array<typename S2_::qType,M> q2r;
+	 for (std::size_t m=0; m<M; m++)
+        {
+                if (q1[m] > q2[m]) { return false; }
+                else if (q1[m] < q2[m]) {return true; }
+        }
+	 return false;
+
+	// std::array<typename S1_::qType,M> q1l;
+	// std::array<typename S1_::qType,M> q2l;
+	// std::array<typename S2_::qType,M> q1r;
+	// std::array<typename S2_::qType,M> q2r;
 	
-	for (std::size_t m=0; m<M; m++)
-	{
-		auto [q1ll,q1rr] = disjoin<S1_::Nq,S2_::Nq>(q1[m]);
-		auto [q2ll,q2rr] = disjoin<S1_::Nq,S2_::Nq>(q2[m]);
-		q1l[m] = q1ll;
-		q2l[m] = q2ll;
-		q1r[m] = q1rr;
-		q2r[m] = q2rr;
-	}
-	bool b1 = S1_::compare(q1l,q2l);
-	if (b1) {return b1;}
-	return S2_::compare(q2r,q2r);
+	// for (std::size_t m=0; m<M; m++)
+	// {
+	// 	auto [q1ll,q1rr] = disjoin<S1_::Nq,S2_::Nq>(q1[m]);
+	// 	auto [q2ll,q2rr] = disjoin<S1_::Nq,S2_::Nq>(q2[m]);
+	// 	q1l[m] = q1ll;
+	// 	q2l[m] = q2ll;
+	// 	q1r[m] = q1rr;
+	// 	q2r[m] = q2rr;
+	// }
+	// bool b1 = S1_::compare(q1l,q2l);
+	// if (b1) {return b1;}
+	// return S2_::compare(q1r,q2r);
 }
 
 template<typename S1_, typename S2_>

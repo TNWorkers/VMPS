@@ -321,7 +321,7 @@ int main (int argc, char* argv[])
 		
 		VMPS::HeisenbergSU2 H_SU2;
 		H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"R",R},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"maxPower",maxPower}});
-		
+		cout << H_SU2.get_qAux_power(maxPower)[static_cast<size_t>(L/2)] << endl;
 		// Lattice2D triag({1*L,Ly},{false,false});// periodic BC in y = true
 		// Geometry2D Geo1cell(triag,SNAKE); 
 		// ArrayXXd Jarray    = J * Geo1cell.hopping();
@@ -336,12 +336,18 @@ int main (int argc, char* argv[])
 		DMRG_SU2.DynParam = H_SU2.get_DmrgDynParam(SweepParams);
 		DMRG_SU2.edgeState(H_SU2, g_SU2, {Dtot}, LANCZOS::EDGE::GROUND);
 		g_SU2.state.graph("SU2");
-		ArrayXd check(maxPower);
+		ArrayXd check1(maxPower);
+		ArrayXd check2(maxPower);
+		check2(3-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<1>{1},1,2) - std::pow(g_SU2.energy,3);
+		check2(2-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<1>{1},1,1) - std::pow(g_SU2.energy,2);
+		check2(4-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<1>{1},2,2) - std::pow(g_SU2.energy,4);
+		// check2(5-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<1>{1},3,2) - std::pow(g_SU2.energy,5);
 		for (size_t i=1; i<=maxPower;i++)
 		{
-			check(i-1) = avg(g_SU2.state,H_SU2,g_SU2.state,i) - std::pow(g_SU2.energy,i);
+			check1(i-1) = avg(g_SU2.state,H_SU2,g_SU2.state,i) - std::pow(g_SU2.energy,i);
 		}
-		cout << "check=" << check.transpose() << endl;
+		cout << "check1=" << check1.transpose() << endl;
+		cout << "check2=" << check2.transpose() << endl;
 		t_SU2 = Watch_SU2.time();
 		
 		cout << endl << endl << "E0=" << avg(g_SU2.state,H_SU2.SdagS(L/2,L/2+1),g_SU2.state) << endl;

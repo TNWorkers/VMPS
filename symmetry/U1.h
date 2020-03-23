@@ -103,13 +103,18 @@ public:
 									 const qType& q4, const qType& q5, const qType& q6);
 	inline static Scalar coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 									const qType& q4, const qType& q5, const qType& q6);
-
+	static Scalar coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
+								 const qType& q4, const qType& q5, const qType& q6);
+	
 	inline static Scalar coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6,
 								  const qType& q7, const qType& q8, const qType& q9);
 	inline static Scalar coeff_tensorProd(const qType& q1, const qType& q2, const qType& q3,
 										  const qType& q4, const qType& q5, const qType& q6,
 										  const qType& q7, const qType& q8, const qType& q9);
+	inline static Scalar coeff_MPOprod9(const qType& q1, const qType& q2, const qType& q3,
+										const qType& q4, const qType& q5, const qType& q6,
+										const qType& q7, const qType& q8, const qType& q9);
 	inline static Scalar coeff_buildL(const qType& q1, const qType& q2, const qType& q3,
 									  const qType& q4, const qType& q5, const qType& q6,
 									  const qType& q7, const qType& q8, const qType& q9);
@@ -316,6 +321,15 @@ coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 
 template<typename Kind, typename Scalar>
 Scalar U1<Kind,Scalar>::
+coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
+			   const qType& q4, const qType& q5, const qType& q6)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar U1<Kind,Scalar>::
 coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q4, const qType& q5, const qType& q6,
 		 const qType& q7, const qType& q8, const qType& q9)
@@ -359,6 +373,16 @@ Scalar U1<Kind,Scalar>::
 coeff_tensorProd(const qType& q1, const qType& q2, const qType& q3,
 			 const qType& q4, const qType& q5, const qType& q6,
 			 const qType& q7, const qType& q8, const qType& q9)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar U1<Kind,Scalar>::
+coeff_MPOprod9(const qType& q1, const qType& q2, const qType& q3,
+			   const qType& q4, const qType& q5, const qType& q6,
+			   const qType& q7, const qType& q8, const qType& q9)
 {
 	Scalar out = Scalar(1.);
 	return out;

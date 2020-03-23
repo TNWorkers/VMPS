@@ -55,6 +55,7 @@ template<typename Scalar>
 string to_string_prec (Scalar x, bool COLOR=false, int n=14)
 {
 	ostringstream ss;
+	COLOR=false;
 	if (x < 1e-5 and COLOR)
 	{
 		ss << termcolor::colorize << termcolor::green << setprecision(n) << x << termcolor::reset;
@@ -349,7 +350,12 @@ int main (int argc, char* argv[])
 		DMRG_U1.DynParam = DynParam;
 		DMRG_U1.edgeState(H_U1, g_U1, {M,N}, LANCZOS::EDGE::GROUND);
 		g_U1.state.graph("U1");
-		
+		ArrayXd check(maxPower);
+		for (size_t i=1; i<=maxPower;i++)
+		{
+			check(i-1) = avg(g_U1.state,H_U1,g_U1.state,i) - std::pow(g_U1.energy,i);
+		}
+		cout << "check=" << check.transpose() << endl;		
 		t_U1 = Watch_U1.time();
 		
 		if (CORR)
@@ -434,6 +440,17 @@ int main (int argc, char* argv[])
 		DMRG_SU2.DynParam = DynParam;
 		DMRG_SU2.edgeState(H_SU2, g_SU2, {S,N}, LANCZOS::EDGE::GROUND);
 		g_SU2.state.graph("SU2");
+
+		ArrayXd check(maxPower);
+		ArrayXd check2(maxPower);
+		check2(3-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<2>{1,0},1,2) - std::pow(g_SU2.energy,3);
+		check2(2-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<2>{1,0},1,1) - std::pow(g_SU2.energy,2);
+		for (size_t i=1; i<=maxPower;i++)
+		{
+			check(i-1) = avg(g_SU2.state,H_SU2,g_SU2.state,i) - std::pow(g_SU2.energy,i);
+		}
+		cout << "check=" << check.transpose() << endl;
+		cout << "check2=" << check2.transpose() << endl;
 		
 		t_SU2 = Watch_SU2.time();
 		
@@ -516,6 +533,17 @@ int main (int argc, char* argv[])
 		DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {S,Vol-N+1}, LANCZOS::EDGE::GROUND); 
 		//Todo: check Pseudospin quantum number... (1 <==> half filling)
 		g_SU2xSU2.state.graph("SU2xSU2");
+		ArrayXd check(maxPower);
+		ArrayXd check2(maxPower);
+		check2(3-1) = avg(g_SU2xSU2.state,H_SU2xSU2,H_SU2xSU2,g_SU2xSU2.state,qarray<2>{1,1},2,1) - std::pow(g_SU2xSU2.energy,3);
+		check2(2-1) = avg(g_SU2xSU2.state,H_SU2xSU2,H_SU2xSU2,g_SU2xSU2.state,qarray<2>{1,1},1,1) - std::pow(g_SU2xSU2.energy,2);
+		for (size_t i=1; i<=maxPower;i++)
+		{
+			check(i-1) = avg(g_SU2xSU2.state,H_SU2xSU2,g_SU2xSU2.state,i) - std::pow(g_SU2xSU2.energy,i);
+		}
+		cout << "check=" << check.transpose() << endl;
+		cout << "check2=" << check2.transpose() << endl;
+				
 		cout << "vol=" << Vol << ", N=" << N << endl;
 		Emin_SU2xSU2 = g_SU2xSU2.energy-0.5*U*(Vol-N);
 		emin_SU2xSU2 = Emin_SU2xSU2/Vol;
