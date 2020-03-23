@@ -53,7 +53,7 @@ const std::map<string,std::any> Hubbard::defaults =
 	{"J3site",0.},
 	{"Delta",0.},
 	{"X",0.}, {"Xperp",0.},
-	{"CALC_SQUARE",true}, {"CYLINDER",false}, {"Ly",1ul}
+	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 Hubbard::
@@ -91,7 +91,7 @@ Hubbard (const size_t &L, const vector<Param> &params, const BC &boundary)
 	add_operators(F, P, pushlist, labellist, boundary);
 	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 
 	this->precalc_TwoSiteData();
 }
@@ -125,7 +125,7 @@ add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 
 		auto H_Bx = F[loc].template coupling_Bx<double>(Bx.a);
 		auto H_Fp = F[loc].template coupling_singleFermion<double>(Fp.a);
-		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction((H_Bx+H_Fp).template plain<double>());
+		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction((H_Bx+H_Fp));
         pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 	}
 }

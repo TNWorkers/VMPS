@@ -143,7 +143,7 @@ template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
             const Mpo<Symmetry,MpoScalar> &O, 
             const Mps<Symmetry,Scalar> &Vket, 
-            bool USE_SQUARE = false,  
+            size_t power_of_O = 1,  
             DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT)
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
@@ -155,14 +155,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		B.setVacuum();
 		for (size_t l=0; l<O.length(); ++l)
 		{
-			if (USE_SQUARE == true)
-			{
-                contract_L(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
-			}
-			else
-			{
-				contract_L(B, Vbra.A_at(l), O.W_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
-			}
+			contract_L(B, Vbra.A_at(l), O.get_W_power(power_of_O)[l], O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.get_qOp_power(power_of_O)[l], Bnext);
 			B.clear();
 			B = Bnext;
 			Bnext.clear();
@@ -182,14 +175,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 //		for (int l=O.length()-1; l>=0; --l)
 		for (size_t l=O.length()-1; l!=-1; --l)
 		{
-			if (USE_SQUARE == true)
-			{
-				contract_R(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
-			}
-			else
-			{
-				contract_R(B, Vbra.A_at(l), O.W_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
-			}
+			contract_R(B, Vbra.A_at(l), O.get_W_power(power_of_O)[l], O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.get_qOp_power(power_of_O)[l], Bnext);
 			B.clear();
 			B = Bnext;
 			Bnext.clear();
@@ -369,7 +355,9 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
             const Mpo<Symmetry,MpoScalar> &O1,
             const Mpo<Symmetry,MpoScalar> &O2, 
             const Mps<Symmetry,Scalar> &Vket,
-            typename Symmetry::qType Qtarget = Symmetry::qvacuum())
+            typename Symmetry::qType Qtarget = Symmetry::qvacuum(),
+			size_t usePower1=1,
+			size_t usePower2=1)
 {
 	if constexpr (Symmetry::NON_ABELIAN)
 	{
@@ -386,8 +374,8 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		for (size_t l=O1.length()-1; l!=-1; --l)
 		{
 			contract_R(B, 
-			           Vbra.A_at(l), O1.W_at(l), O2.W_at(l), Vket.A_at(l), 
-			           O1.locBasis(l), O1.opBasis(l), O2.opBasis(l),
+			           Vbra.A_at(l), O1.get_W_power(usePower1)[l], O2.get_W_power(usePower2)[l], Vket.A_at(l), 
+			           O1.locBasis(l), O1.get_qOp_power(usePower1)[l], O2.get_qOp_power(usePower2)[l],
 			           Bnext);
 			B.clear();
 			B = Bnext;

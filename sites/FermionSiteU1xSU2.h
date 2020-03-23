@@ -97,17 +97,15 @@ FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE)
 	ident.push_back("dn");
 	basis_1s_.push_back(Q,inner_dim,ident);
 	ident.clear();
-	
-	cout << "single site basis" << endl << this->basis_1s_ << endl;
-	
-	Id_1s_ = OperatorType({0,1},basis_1s_);
-	F_1s_ = OperatorType({0,1},basis_1s_);
-	cupA_1s_ = OperatorType({-1,2},basis_1s_);
-	cupB_1s_ = OperatorType({-1,2},basis_1s_);
-	cdnA_1s_ = OperatorType({+1,2},basis_1s_);
-	cdnB_1s_ = OperatorType({+1,2},basis_1s_);
-	nh_1s_ = OperatorType({0,1},basis_1s_);
-	T_1s_ = OperatorType({0,3},basis_1s_);
+		
+	Id_1s_ = OperatorType({0,1},basis_1s_,"id");
+	F_1s_ = OperatorType({0,1},basis_1s_,"F");
+	cupA_1s_ = OperatorType({-1,2},basis_1s_,"c↑(A)");
+	cupB_1s_ = OperatorType({-1,2},basis_1s_,"c↑(B)");
+	cdnA_1s_ = OperatorType({+1,2},basis_1s_,"c↓(A)");
+	cdnB_1s_ = OperatorType({+1,2},basis_1s_,"c↓(B)");
+	nh_1s_ = OperatorType({0,1},basis_1s_,"nh");
+	T_1s_ = OperatorType({0,3},basis_1s_,"T");
 	
 	// create operators one orbitals	
 	if (!UPH_IS_INFINITE) Id_1s_("holon", "holon") = 1.;

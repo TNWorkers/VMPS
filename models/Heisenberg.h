@@ -63,7 +63,7 @@ const std::map<string,std::any> Heisenberg::defaults =
 	{"Kz",0.}, {"Kx",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.}, // Dzialoshinsky-Moriya terms
 	{"t",0.}, {"mu",0.}, {"Delta",0.}, // Kitaev chain terms
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"Ly",1ul}
+	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 const std::map<string,std::any> Heisenberg::sweep_defaults = 
@@ -89,7 +89,7 @@ Heisenberg (const size_t &L, const vector<Param> &params, const BC & boundary)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
-		setLocBasis(B[l].get_basis(),l);
+		setLocBasis(B[l].get_basis().qloc(),l);
 	}
 
 	if (P.HAS_ANY_OF({"Dy", "Dyperp", "Dyprime"}))
@@ -111,7 +111,7 @@ Heisenberg (const size_t &L, const vector<Param> &params, const BC & boundary)
 	add_operators(B, P, pushlist, labellist, boundary);
 	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 
 	this->precalc_TwoSiteData();
 }
@@ -173,8 +173,12 @@ add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, P
 			for (std::size_t alfa=0; alfa<orbitals; ++alfa)
 			for (std::size_t beta=0; beta<nextn_orbitals; ++beta)
 			{
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SX,alfa), B[lp1].Id(), B[lp2].Scomp(SZ,beta)), +Dyprime(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa), B[lp1].Id(), B[lp2].Scomp(SX,beta)), -Dyprime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SX,alfa),
+																									 B[lp1].Id(),
+																									 B[lp2].Scomp(SZ,beta)), +Dyprime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa),
+																									 B[lp1].Id(),
+																									 B[lp2].Scomp(SX,beta)), -Dyprime(alfa,beta)));
 			}
 		}
 	}

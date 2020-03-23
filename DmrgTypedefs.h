@@ -99,16 +99,16 @@ std::ostream& operator<< (std::ostream& s, SUB_LATTICE sublat)
 
 enum BC
 {
-	//PERIODIC=true,
+	// PERIODIC=true,
 	OPEN=true,
 	INFINITE=false,
 };
 
 std::ostream& operator<< (std::ostream& s, BC boundary)
 {
-	/*if      (boundary==PERIODIC)      {s << "periodic boundaries (finite system)";}
-	else*/ if (boundary==OPEN)  {s << "open boundaries";}
-	else if (boundary==INFINITE) {s << "no boundaries (infinite system)";}
+	// if      (boundary==BC::PERIODIC) {s << "periodic (finite system)";}
+    if      (boundary==BC::OPEN)     {s << "open";}
+	else if (boundary==BC::INFINITE) {s << "infinite";}
 	return s;
 }
 
@@ -192,8 +192,24 @@ template<typename Operator, typename Scalar>
 struct PushType
 {	
 	std::vector<std::tuple<std::size_t, std::vector<Operator>, Scalar>> data;
-	void push_back(const std::tuple<std::size_t, std::vector<Operator>, Scalar> & elem) { if( std::abs(std::get<2>(elem) ) != 0 ) {data.push_back(elem);}}
+	
+	template<typename OtherOperator>
+	void push_back(const std::tuple<std::size_t, std::vector<OtherOperator>, Scalar> & elem)
+		{
+			if( std::abs(std::get<2>(elem) ) != 0 )
+			{
+				std::vector<Operator> plainOps;
+				for (auto & op: std::get<1>(elem)) {plainOps.push_back(op.template plain<typename OtherOperator::Scalar>());}
+				std::tuple<std::size_t, std::vector<Operator>, Scalar> plainElem;
+				std::get<0>(plainElem) = std::get<0>(elem);
+				std::get<1>(plainElem) = plainOps;
+				std::get<2>(plainElem) = std::get<2>(elem);
+				data.push_back(plainElem);
+			}
+		}
 
+	void push_back(const std::tuple<std::size_t, std::vector<Operator>, Scalar> & elem) {if( std::abs(std::get<2>(elem) ) != 0 ) {data.push_back(elem);}}
+	
 	std::tuple<std::size_t, std::vector<Operator>, Scalar> operator[] ( std::size_t i ) const {return data[i];}
 	std::tuple<std::size_t, std::vector<Operator>, Scalar>& operator[] ( std::size_t i ) {return data[i];}
 
@@ -205,9 +221,9 @@ struct PushType
 			for (size_t i=0; i<size(); i++)
 			{
 				std::vector<OtherOperator> otherOps(std::get<1>(data[i]).size());
-				for (size_t j=0; j<std::get<1>(data[i]).size(); j++) {otherOps[j] = std::get<1>(data[i]).at(j).template cast<OtherScalar>();}
-				OtherScalar otherCoupling = static_cast<OtherScalar>(std::get<2>(data[i]));
-				out.push_back(make_tuple(std::get<0>(data[i]), otherOps, otherCoupling));
+				for (size_t j=0; j<std::get<1>(data[i]).size(); j++) {otherOps[j] = std::get<1>(data[i]).at(j).template cast<typename OtherOperator::Scalar>();}
+				// OtherScalar otherCoupling = static_cast<OtherScalar>(std::get<2>(data[i]));
+				out.push_back(make_tuple(std::get<0>(data[i]), otherOps, std::get<2>(data[i])));
 			}
 			return out;
 		}
@@ -347,7 +363,7 @@ struct DMRG
 			static size_t min_Nsv                    (size_t i) {return DMRG_CONTROL_DEFAULT_MIN_NSV;}
 			static int    max_Nrich                  (size_t i) {return -1;} // -1 = infinity
 			static void   doSomething                (size_t i) {return;} // -1 = infinity
-			static DMRG::ITERATION::OPTION iteration (size_t i) {return DMRG::ITERATION::TWO_SITE;}
+			static DMRG::ITERATION::OPTION iteration (size_t i) {return DMRG::ITERATION::ONE_SITE;}
 			
 			//LANCZOS DEFAULTS
 			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO = LANCZOS::REORTHO::FULL;

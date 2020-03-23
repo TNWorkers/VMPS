@@ -53,7 +53,7 @@ const std::map<string,std::any> HeisenbergU1XXZ::defaults =
 	
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.},
 	{"Bz",0.}, {"Kz",0.},
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"Ly",1ul}, 
+	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}, 
 	
 	// for consistency during inheritance (should not be set for XXZ!):
 	{"J",0.}, {"Jprime",0.}
@@ -76,7 +76,7 @@ HeisenbergU1XXZ (const size_t &L, const vector<Param> &params, const BC &boundar
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
-		setLocBasis(B[l].get_basis(),l);
+		setLocBasis(B[l].get_basis().qloc(),l);
 	}
 
 	if (P.HAS_ANY_OF({"Jxy", "Jxypara", "Jxyperp", "Jxyfull"}))
@@ -94,7 +94,7 @@ HeisenbergU1XXZ (const size_t &L, const vector<Param> &params, const BC &boundar
 	add_operators(B, P, pushlist, labellist, boundary);
 
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 
 	this->precalc_TwoSiteData();
 }
@@ -119,81 +119,43 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 //		stringstream ss1, ss2;
 //		ss2 << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
 //		Terms.save_label(loc, ss2.str());
-		
-		// Case, where a full coupling-matrix is provided: Jᵢⱼ
-		if (P.HAS("Jxyfull"))
+
+		auto push_full = [&N_sites, &loc, &B, &P, &pushlist, &labellist, &boundary] (string xxxFull, string label,
+																					 const vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > &first,
+																					 const vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > &last,
+																					 vector<double> factor) -> void
 		{
-			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Jxyfull");
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>(xxxFull);
 			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
 			
 			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
 			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
-			
+
+			for (size_t j=0; j<first.size(); j++)
 			for (size_t h=0; h<R[loc].size(); ++h)
 			{
 				size_t range = R[loc][h].first;
 				double value = R[loc][h].second;
+				
+				if (range != 0)
+				{
 
-				if(range != 0)
-                {
-					vector<SiteOperator<Symmetry_,double> > ops_pm(range+1);
-					vector<SiteOperator<Symmetry_,double> > ops_mp(range+1);
-					
-					ops_pm[0] = B[loc].Scomp(SP);
-					ops_mp[0] = B[loc].Scomp(SM);
-                    for (size_t i=1; i<range; ++i)
-                    {
-						ops_pm[i] = B[(loc+i)%N_sites].Id();
-						ops_mp[i] = B[(loc+i)%N_sites].Id();
-                    }
-					ops_pm[range] = B[(loc+range)%N_sites].Scomp(SM);
-					ops_mp[range] = B[(loc+range)%N_sites].Scomp(SP);
-                        
-					pushlist.push_back(std::make_tuple(loc, ops_pm, 0.5 * value));
-					pushlist.push_back(std::make_tuple(loc, ops_mp, 0.5 * value));
+					vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > ops(range+1);
+					ops[0] = first[j];
+					for (size_t i=1; i<range; ++i)
+					{
+						ops[i] = B[(loc+i)%N_sites].Id();
+					}
+					ops[range] = last[j][(loc+range)%N_sites];
+					pushlist.push_back(std::make_tuple(loc, ops, factor[j] * value));
 				}
 			}
 			
 			stringstream ss;
-			ss << "Jxyᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
+			ss << label << "ⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
 			labellist[loc].push_back(ss.str());
-		}
+		};
 
-		if (P.HAS("Jzfull"))
-		{
-			ArrayXXd Full = P.get<Eigen::ArrayXXd>("Jzfull");
-			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
-			
-			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
-			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
-			
-			for (size_t h=0; h<R[loc].size(); ++h)
-			{
-				size_t range = R[loc][h].first;
-				double value = R[loc][h].second;
-
-				if(range != 0)
-                {
-					vector<SiteOperator<Symmetry_,double> > ops_zz(range+1);
-					
-					ops_zz[0] = B[loc].Scomp(SZ);
-                    for (size_t i=1; i<range; ++i)
-                    {
-						ops_zz[i] = B[(loc+i)%N_sites].Id();
-                    }
-					ops_zz[range] = B[(loc+range)%N_sites].Scomp(SZ);
-                        
-					pushlist.push_back(std::make_tuple(loc, ops_zz, value));
-				}
-			}
-			
-			stringstream ss;
-			ss << "Jzᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
-			labellist[loc].push_back(ss.str());
-		}
-		
-		if (P.HAS("Jxyfull") or P.HAS("Jzfull")) continue;
-		
 		// Local terms: J⟂
 		
 		param2d Jxyperp = P.fill_array2d<double>("Jxyrung", "Jxy", "Jxyperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
@@ -209,9 +171,32 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 		ArrayXd Kx_array      = B[loc].ZeroField();
 		ArrayXXd Dyperp_array = B[loc].ZeroHopping();
 
-		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jxyperp.a, Jzperp.a, Bz_array, Bx_array, mu_array, Kz_array, Kx_array, Dyperp_array));
+		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jxyperp.a, Jzperp.a, Bz_array, mu_array, Kz_array));
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
+
+		// Case, where a full coupling-matrix is provided: Jᵢⱼ
+		if (P.HAS("Jxyfull"))
+		{
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {B[loc].Sp(0), B[loc].Sm(0)};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sp_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sm_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++) {Sp_ranges[i] = B[i].Sp(0); Sm_ranges[i] = B[i].Sm(0);}
+			
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sm_ranges, Sp_ranges};
+			push_full("Jxyfull", "Jxyᵢⱼ", first, last, {0.5,0.5});
+		}
+		if (P.HAS("Jzfull"))
+		{
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {B[loc].Sz(0)};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sz_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++) {Sz_ranges[i] = B[i].Sz(0);}
+			
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sz_ranges};
+			push_full("Jzfull", "Jzᵢⱼ", first, last, {1.0});
+		}
 		
+		if (P.HAS("Jxyfull") or P.HAS("Jzfull")) continue;
+				
 		// Nearest-neighbour terms: J
 		
 		param2d Jxypara = P.fill_array2d<double>("Jxy", "Jxypara", {orbitals, next_orbitals}, loc%Lcell);

@@ -175,7 +175,7 @@ public:
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),OperatorType>::type Scomp (SPINOP_LABEL Sa, int orbital) const
 		{
 			assert(Sa != SY);
-			SiteOperatorQ<Symmetry,Eigen::MatrixXd> out;
+			OperatorType out;
 			if      (Sa==SX)  { out = Sx(orbital); }
 			else if (Sa==iSY) { out = iSy(orbital); }
 			else if (Sa==SZ)  { out = Sz(orbital); }
@@ -541,13 +541,14 @@ Rcomp (SPINOP_LABEL Sa, int orbital) const
 {
 	assert(orbital<N_orbitals);
 	SiteOperatorQ<Symmetry_,Eigen::Matrix<complex<double>,Eigen::Dynamic,Eigen::Dynamic> > Oout;
+	SiteOperatorQ<Symmetry_,Eigen::Matrix<complex<double>,Eigen::Dynamic,Eigen::Dynamic> > Scomp_cmplx = Scomp(Sa,orbital).template cast<complex<double> >();
 	if (Sa==iSY)
 	{
-		Oout = 2.*M_PI*Scomp(Sa,orbital).template cast<complex<double> >;
+		Oout = 2.*M_PI*Scomp_cmplx;
 	}
 	else
 	{
-		Oout = 2.*1.i*M_PI*Scomp(Sa,orbital).template cast<complex<double> >;
+		Oout = 2.*1.i*M_PI*Scomp_cmplx;
 	}
 	Oout.data() = Oout.data().exp(1.);
 	
@@ -950,7 +951,7 @@ coupling_XYZspin (const Array<double,Dynamic,Dynamic> &Jx, const Array<double,Dy
 		{
 			Mout += Jx(i,j) * OperatorType::prod(Sx(i), Sx(j), Symmetry::qvacuum()).template cast<Scalar_>();
 		}
-		if (Jx(i,j) != 0.)
+		if (Jy(i,j) != 0.)
 		{
 			Mout += -Jy(i,j) * OperatorType::prod(iSy(i), iSy(j), Symmetry::qvacuum()).template cast<Scalar_>();
 		}

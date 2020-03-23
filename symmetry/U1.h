@@ -38,6 +38,8 @@ public:
 	static constexpr bool IS_CHARGE_SU2() { return false; }
 	static constexpr bool IS_SPIN_SU2() { return false; }
 
+	static constexpr bool IS_SPIN_U1() { if constexpr (U1<Kind,Scalar>::kind()[0] == KIND::M) {return true;} return false; }
+	
 	static constexpr bool NO_SPIN_SYM() { if (U1<Kind,Scalar>::kind()[0] != KIND::M and U1<Kind,Scalar>::kind()[0] != KIND::Nup and U1<Kind,Scalar>::kind()[0] != KIND::Ndn) {return true;} return false;}
 	static constexpr bool NO_CHARGE_SYM() { if (U1<Kind,Scalar>::kind()[0] != KIND::N and U1<Kind,Scalar>::kind()[0] != KIND::Nup and U1<Kind,Scalar>::kind()[0] != KIND::Ndn) {return true;} return false;}
 	
@@ -101,13 +103,18 @@ public:
 									 const qType& q4, const qType& q5, const qType& q6);
 	inline static Scalar coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 									const qType& q4, const qType& q5, const qType& q6);
-
+	static Scalar coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
+								 const qType& q4, const qType& q5, const qType& q6);
+	
 	inline static Scalar coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6,
 								  const qType& q7, const qType& q8, const qType& q9);
 	inline static Scalar coeff_tensorProd(const qType& q1, const qType& q2, const qType& q3,
 										  const qType& q4, const qType& q5, const qType& q6,
 										  const qType& q7, const qType& q8, const qType& q9);
+	inline static Scalar coeff_MPOprod9(const qType& q1, const qType& q2, const qType& q3,
+										const qType& q4, const qType& q5, const qType& q6,
+										const qType& q7, const qType& q8, const qType& q9);
 	inline static Scalar coeff_buildL(const qType& q1, const qType& q2, const qType& q3,
 									  const qType& q4, const qType& q5, const qType& q6,
 									  const qType& q7, const qType& q8, const qType& q9);
@@ -314,6 +321,15 @@ coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 
 template<typename Kind, typename Scalar>
 Scalar U1<Kind,Scalar>::
+coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
+			   const qType& q4, const qType& q5, const qType& q6)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar U1<Kind,Scalar>::
 coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 		 const qType& q4, const qType& q5, const qType& q6,
 		 const qType& q7, const qType& q8, const qType& q9)
@@ -357,6 +373,16 @@ Scalar U1<Kind,Scalar>::
 coeff_tensorProd(const qType& q1, const qType& q2, const qType& q3,
 			 const qType& q4, const qType& q5, const qType& q6,
 			 const qType& q7, const qType& q8, const qType& q9)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar U1<Kind,Scalar>::
+coeff_MPOprod9(const qType& q1, const qType& q2, const qType& q3,
+			   const qType& q4, const qType& q5, const qType& q6,
+			   const qType& q7, const qType& q8, const qType& q9)
 {
 	Scalar out = Scalar(1.);
 	return out;

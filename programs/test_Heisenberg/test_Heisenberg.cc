@@ -4,6 +4,8 @@
 //#endif
 #include "util/LapackManager.h"
 
+#define TERMS_VERBOSITY 0
+
 #define USE_HDF5_STORAGE
 
 // with Eigen:
@@ -82,7 +84,7 @@ int M, Dtot;
 double Stot;
 size_t D, D1;
 size_t L, Ly, Ldyn;
-double J, Jprime, Jrung, Jloc, Jtri;
+double J, Jprime, Jrung, Jloc, Jtri, R;
 double alpha;
 double t_U0, t_U1, t_SU2;
 size_t Dinit, Dlimit, Qinit, Imin, Imax;
@@ -113,6 +115,7 @@ int main (int argc, char* argv[])
 	Ly = args.get<size_t>("Ly",1);
 	Ldyn = args.get<size_t>("Ldyn",12);
 	J = args.get<double>("J",1.);
+	R = args.get<double>("R",R);
 	Jrung = args.get<double>("Jrung",J);
 	Jprime = args.get<double>("Jprime",0.);
 	Jloc = args.get<double>("Jloc",0.);
@@ -134,7 +137,7 @@ int main (int argc, char* argv[])
 	bool PERIODIC = args.get<bool>("PER",false);
 	bool RKKY = args.get<bool>("RKKY",false);
 	bool ED_RKKY = args.get<bool>("ED",false);
-	bool CALC_SQUARE = args.get<bool>("SQUARE",false);
+	size_t maxPower = args.get<size_t>("maxPower",2ul);
 	
 	eps_svd = args.get<double>("eps_svd",1e-7);
 	alpha = args.get<double>("alpha",1e2);
@@ -160,7 +163,7 @@ int main (int argc, char* argv[])
 	// SweepParams.push_back({"tol_eigval",tol_eigval});
 	// SweepParams.push_back({"tol_state",tol_state});
 	// SweepParams.push_back({"max_Nrich",max_Nrich});
-	SweepParams.push_back({"CONVTEST",DMRG::CONVTEST::VAR_2SITE});
+	SweepParams.push_back({"CONVTEST",DMRG::CONVTEST::VAR_HSQ});
 	
 	CALC_DYNAMICS = args.get<bool>("CALC_DYN",0);
 	dt = args.get<double>("dt",0.1);
@@ -181,14 +184,22 @@ int main (int argc, char* argv[])
 		lout << endl << "--------U(0)---------" << endl << endl;
 		
 		Stopwatch<> Watch_U0;
-		VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",CALC_SQUARE}});
+		VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"maxPower",maxPower}});
 		lout << H_U0.info() << endl;
 		
 		VMPS::Heisenberg::Solver DMRG_U0(VERB);
+		DMRG_U0.userSetGlobParam();
+		DMRG_U0.userSetDynParam();
 		DMRG_U0.GlobParam = H_U0.get_DmrgGlobParam(SweepParams);
 		DMRG_U0.DynParam = H_U0.get_DmrgDynParam(SweepParams);
 		DMRG_U0.edgeState(H_U0, g_U0, {}, LANCZOS::EDGE::GROUND);
-		
+
+		ArrayXd check(maxPower);
+		for (size_t i=1; i<=maxPower;i++)
+		{
+			check(i-1) = avg(g_U0.state,H_U0,g_U0.state,i) - std::pow(g_U0.energy,i);
+		}
+		cout << "check=" << check.transpose() << endl;
 		t_U0 = Watch_U0.time();
 		for (size_t l=0; l<L; ++l)
 		for (size_t lp=0; lp<L; ++lp)
@@ -206,7 +217,7 @@ int main (int argc, char* argv[])
 		lout << endl << "--------U(1)---------" << endl << endl;
 		
 		Stopwatch<> Watch_U1;
-		VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",CALC_SQUARE}});
+		VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"maxPower",maxPower}});
 		lout << H_U1.info() << endl;
 		
 		VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
@@ -216,7 +227,13 @@ int main (int argc, char* argv[])
 		DMRG_U1.DynParam = H_U1.get_DmrgDynParam(SweepParams);
 		DMRG_U1.edgeState(H_U1, g_U1, {M}, LANCZOS::EDGE::GROUND);
 		g_U1.state.graph("U1");
-		
+
+		ArrayXd check(maxPower);
+		for (size_t i=1; i<=maxPower;i++)
+		{
+			check(i-1) = avg(g_U1.state,H_U1,g_U1.state,i) - std::pow(g_U1.energy,i);
+		}
+		cout << "check=" << check.transpose() << endl;
 		t_U1 = Watch_U1.time();
 
 		// SpinCorr_U1.resize(L,L); SpinCorr_U1.setZero();
@@ -303,11 +320,12 @@ int main (int argc, char* argv[])
 		Stopwatch<> Watch_SU2;
 		
 		VMPS::HeisenbergSU2 H_SU2;
-		// H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"Jprime",Jprime},{"D",D,0},{"D",D1,1},{"Ly",Ly},{"CALC_SQUARE",CALC_SQUARE}});
-		Lattice2D triag({1*L,Ly},{false,false});// periodic BC in y = true
-		Geometry2D Geo1cell(triag,SNAKE); 
-		ArrayXXd Jarray    = J * Geo1cell.hopping();
-		H_SU2 = VMPS::HeisenbergSU2(L*Ly,{{"Jfull",Jarray},{"CALC_SQUARE",CALC_SQUARE}});
+		H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"R",R},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"maxPower",maxPower}});
+		cout << H_SU2.get_qAux_power(maxPower)[static_cast<size_t>(L/2)] << endl;
+		// Lattice2D triag({1*L,Ly},{false,false});// periodic BC in y = true
+		// Geometry2D Geo1cell(triag,SNAKE); 
+		// ArrayXXd Jarray    = J * Geo1cell.hopping();
+		// H_SU2 = VMPS::HeisenbergSU2(L*Ly,{{"Jfull",Jarray},{"maxPower",maxPower}});
 		
 		lout << H_SU2.info() << endl;
 		// H_SU2.precalc_TwoSiteData();
@@ -318,10 +336,21 @@ int main (int argc, char* argv[])
 		DMRG_SU2.DynParam = H_SU2.get_DmrgDynParam(SweepParams);
 		DMRG_SU2.edgeState(H_SU2, g_SU2, {Dtot}, LANCZOS::EDGE::GROUND);
 		g_SU2.state.graph("SU2");
-		
+		ArrayXd check1(maxPower);
+		ArrayXd check2(maxPower);
+		check2(3-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<1>{1},1,2) - std::pow(g_SU2.energy,3);
+		check2(2-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<1>{1},1,1) - std::pow(g_SU2.energy,2);
+		check2(4-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<1>{1},2,2) - std::pow(g_SU2.energy,4);
+		// check2(5-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<1>{1},3,2) - std::pow(g_SU2.energy,5);
+		for (size_t i=1; i<=maxPower;i++)
+		{
+			check1(i-1) = avg(g_SU2.state,H_SU2,g_SU2.state,i) - std::pow(g_SU2.energy,i);
+		}
+		cout << "check1=" << check1.transpose() << endl;
+		cout << "check2=" << check2.transpose() << endl;
 		t_SU2 = Watch_SU2.time();
 		
-		cout << "E0=" << avg(g_SU2.state,H_SU2.SdagS(L/2,L/2+1),g_SU2.state) << endl;
+		cout << endl << endl << "E0=" << avg(g_SU2.state,H_SU2.SdagS(L/2,L/2+1),g_SU2.state) << endl;
 		
 		// SpinCorr_SU2.resize(L,L); SpinCorr_SU2.setZero();
 		// for (size_t l=0; l<L; ++l)

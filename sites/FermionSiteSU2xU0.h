@@ -88,11 +88,11 @@ FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE)
 	basis_1s_.push_back(Q,inner_dim,ident);
 	ident.clear();
 	
-	Id_1s_ = OperatorType({1},basis_1s_);
-	F_1s_ = OperatorType({1},basis_1s_);
-	c_1s_ = OperatorType({2},basis_1s_);
-	d_1s_ = OperatorType({1},basis_1s_);
-	S_1s_ = OperatorType({3},basis_1s_);
+	Id_1s_ = OperatorType({1},basis_1s_,"id");
+	F_1s_ = OperatorType({1},basis_1s_,"F");
+	c_1s_ = OperatorType({2},basis_1s_,"c");
+	d_1s_ = OperatorType({1},basis_1s_,"d");
+	S_1s_ = OperatorType({3},basis_1s_,"S");
 	
 	// create operators one orbitals	
 	if (!UPH_IS_INFINITE) Id_1s_("empty", "empty") = 1.;

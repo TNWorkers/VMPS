@@ -1004,7 +1004,6 @@ Scalar contract_LR (pair<qarray<Symmetry::Nq>,size_t> fixed_a,
                     const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R)
 {
 	Scalar res = 0;
-	cout << "fixed_a.first=" << fixed_a.first << endl;
 	assert(fixed_a.first == Symmetry::qvacuum());
 	for (size_t qR=0; qR<R.dim; ++qR)
 	{
@@ -1267,8 +1266,8 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
     baseLeftTop.pullData(Wtop, 0);
     baseRightTop.pullData(Wtop, 1);
     
-	auto TensorBaseRight = baseRightBot.combine(baseRightTop);
-	auto TensorBaseLeft = baseLeftBot.combine(baseLeftTop);
+	auto TensorBaseRight = baseRightTop.combine(baseRightBot);
+	auto TensorBaseLeft = baseLeftTop.combine(baseLeftBot);
 	
 	std::array<typename Symmetry::qType,3> qCheck;
 	
@@ -1287,15 +1286,15 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 		qCheck = {qloc[s2],qOpBot[k2],qloc[s1]};
 		if(!Symmetry::validate(qCheck)) {continue;}
 		
-		auto ks = Symmetry::reduceSilent(qOpTop[k2],qOpBot[k1]);
+		auto ks = Symmetry::reduceSilent(qOpTop[k1],qOpBot[k2]);
 		for(const auto& k : ks)
 		{
 			qCheck = {qloc[s3],k,qloc[s1]};
 			if(!Symmetry::validate(qCheck)) {continue;}
 			
 			// product in physical space:
-			factor_check = Symmetry::coeff_prod(qloc[s1],qOpBot[k2],qloc[s2],
-												qOpTop[k1],qloc[s3],k);
+			factor_check = Symmetry::coeff_MPOprod6(qloc[s1],qOpBot[k2],qloc[s2],
+													qOpTop[k1],qloc[s3],k);
 			if (std::abs(factor_check) < ::mynumeric_limits<double>::epsilon()) { continue; }
 			for (size_t qR=0; qR<Rold.dim; ++qR)
 			{
@@ -1321,7 +1320,7 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 							if (std::abs(factor_cgc) < std::abs(::mynumeric_limits<double>::epsilon())) { continue; }
 							for(const auto& [qrightAux,qrightAuxP] : qrightAuxs)
 							{
-								Eigen::Index left2=TensorBaseRight.leftAmount(Rold.mid(qR),{qrightAuxP, qrightAux});
+								Eigen::Index left2=TensorBaseRight.leftAmount(Rold.mid(qR),{qrightAux, qrightAuxP});
 								auto qleftAuxs = Symmetry::reduceSilent(qrightAux,Symmetry::flip(qOpTop[k1]));
 								for(const auto& qleftAux : qleftAuxs)
 								{
@@ -1336,11 +1335,11 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
                                             if(qWbot != Wbot[s1][s2][k2].dict.end())
 											//if(auto it=leftBotQs.find(qleftAuxP) != leftBotQs.end())
 											{
-												factor_merge = Symmetry::coeff_tensorProd(qleftAuxP,qleftAux,new_qmid,
-																						  qOpBot[k2],qOpTop[k1],k,
-																						  qrightAuxP,qrightAux,Rold.mid(qR));
+												factor_merge = Symmetry::coeff_MPOprod9(qleftAux,qleftAuxP,new_qmid,
+																						qOpTop[k1],qOpBot[k2],k,
+																						qrightAux,qrightAuxP,Rold.mid(qR));
 												if (std::abs(factor_merge) < std::abs(::mynumeric_limits<double>::epsilon())) { continue; }
-												Eigen::Index left1=TensorBaseLeft.leftAmount(new_qmid,{qleftAuxP, qleftAux});
+												Eigen::Index left1=TensorBaseLeft.leftAmount(new_qmid,{qleftAux, qleftAuxP});
 												for (int ktop=0; ktop<Wtop[s2][s3][k1].block[qWtop->second].outerSize(); ++ktop)
 												for (typename MpoMatrixType::InnerIterator iWtop(Wtop[s2][s3][k1].block[qWtop->second],ktop); iWtop; ++iWtop)
 												for (int kbot=0; kbot<Wbot[s1][s2][k2].block[qWbot->second].outerSize(); ++kbot)
@@ -1352,8 +1351,11 @@ void contract_R (const Tripod<Symmetry,MatrixType> &Rold,
 													size_t tc = iWtop.col();
 													typename MpoMatrixType::Scalar Wfactor = iWbot.value() * iWtop.value();
 													
-													size_t a1 = left1+br*Wtop[s2][s3][k1].block[qWtop->second].rows()+tr;
-													size_t a2 = left2+bc*Wtop[s2][s3][k1].block[qWtop->second].cols()+tc;
+													// size_t a1 = left1+br*Wtop[s2][s3][k1].block[qWtop->second].rows()+tr;
+													// size_t a2 = left2+bc*Wtop[s2][s3][k1].block[qWtop->second].cols()+tc;
+
+													size_t a1 = left1+tr*Wbot[s1][s2][k2].block[qWbot->second].rows()+br;
+													size_t a2 = left2+tc*Wbot[s1][s2][k2].block[qWbot->second].cols()+bc;
 													
 													if (Rold.block[qR][a2][0].rows() != 0)
 													{

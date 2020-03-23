@@ -29,23 +29,11 @@ public:
 	template<SPIN_INDEX sigma, class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type c (size_t locx, size_t locy=0, double factor=1.) const;
 
-	// template<SPIN_INDEX sigma, SUB_LATTICE G=A, class Dummy = Symmetry>
-	// typename std::enable_if<Dummy::IS_CHARGE_SU2() and !Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type c (size_t locx, size_t locy=0, double factor=1.) const;
-
-	// template<SUB_LATTICE G=A, class Dummy = Symmetry>
-	// typename std::enable_if<Dummy::IS_CHARGE_SU2() and Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type c (size_t locx, size_t locy=0, double factor=1.) const;
-
 	template<class Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(),Mpo<Symmetry>>::type cdag (size_t locx, size_t locy=0, double factor=std::sqrt(2.)) const;
 
 	template<SPIN_INDEX sigma, class Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type cdag (size_t locx, size_t locy=0, double factor=1.) const;
-
-	// template<SPIN_INDEX sigma, SUB_LATTICE G=A, class Dummy = Symmetry>
-	// typename std::enable_if<Dummy::IS_CHARGE_SU2() and !Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type cdag (size_t locx, size_t locy=0, double factor=std::sqrt(2.)) const;
-
-	// template<SUB_LATTICE G=A, class Dummy = Symmetry>
-	// typename std::enable_if<Dummy::IS_CHARGE_SU2() and Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type cdag (size_t locx, size_t locy=0, double factor=std::sqrt(2.)*std::sqrt(2.)) const;
 	///@}
 	
 	///@{
@@ -59,12 +47,6 @@ public:
 	
 	template<SPIN_INDEX sigma, typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-
-	// template<SPIN_INDEX sigma, SUB_LATTICE G=A, typename Dummy = Symmetry>
-	// typename std::enable_if<Dummy::IS_CHARGE_SU2() and !Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-
-	// template<SUB_LATTICE G=A, typename Dummy = Symmetry>
-	// typename std::enable_if<Dummy::IS_CHARGE_SU2() and Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type cdagc (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	// Mpo<Symmetry> triplet (size_t locx, size_t locy=0) const;
 	///@}
@@ -414,22 +396,6 @@ cdag (size_t locx, size_t locy, double factor) const
 	}
 }
 
-// template<typename Symmetry>
-// template<SPIN_INDEX sigma, SUB_LATTICE G, typename Dummy>
-// typename std::enable_if<Dummy::IS_CHARGE_SU2() and !Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type HubbardObservables<Symmetry>::
-// cdag (size_t locx, size_t locy, double factor) const
-// {
-// 	return make_local(locx,locy, F[locx].cdag(sigma,G,locy), factor, PROP::FERMIONIC);
-// }
-
-// template<typename Symmetry>
-// template<SUB_LATTICE G, typename Dummy>
-// typename std::enable_if<Dummy::IS_CHARGE_SU2() and Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type HubbardObservables<Symmetry>::
-// cdag (size_t locx, size_t locy, double factor) const
-// {
-// 	return make_local(locx,locy, F[locx].cdag(G,locy), factor, PROP::FERMIONIC);
-// }
-
 template<typename Symmetry>
 template<class Dummy>
 typename std::enable_if<!Dummy::IS_CHARGE_SU2(),Mpo<Symmetry> >::type HubbardObservables<Symmetry>::
@@ -486,22 +452,6 @@ cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 		return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma,Gx1y1,locy1), F[locx2].c(sigma,Gx2y2,locy2), Symmetry::qvacuum(), 1., PROP::FERMIONIC, PROP::NON_HERMITIAN);
 	}
 }
-
-// template<typename Symmetry>
-// template<SPIN_INDEX sigma, SUB_LATTICE G, typename Dummy>
-// typename std::enable_if<Dummy::IS_CHARGE_SU2() and !Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type HubbardObservables<Symmetry>::
-// cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-// {
-// 	return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(sigma,G,locy1), F[locx2].c(sigma,G,locy2), Symmetry::qvacuum(), sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
-// }
-
-// template<typename Symmetry>
-// template<SUB_LATTICE G, typename Dummy>
-// typename std::enable_if<Dummy::IS_CHARGE_SU2() and Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type HubbardObservables<Symmetry>::
-// cdagc (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-// {
-// 	return make_corr(locx1, locx2, locy1, locy2, F[locx1].cdag(G,locy1), F[locx2].c(G,locy2), Symmetry::qvacuum(), sqrt(2.)*sqrt(2.), PROP::FERMIONIC, PROP::NON_HERMITIAN);
-// }
 
 template<typename Symmetry>
 template<SPIN_INDEX sigma1, SPIN_INDEX sigma2, typename Dummy>
@@ -867,7 +817,7 @@ Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
 		ss << "exp[2πi" << Sa << "(" << locx << "," << locy << ")]";
 	}
 	
-	auto Op = F[locx].Rcomp(Sa,locy);
+	auto Op = F[locx].Rcomp(Sa,locy).template plain<complex<double> >();
 	
 	Mpo<Symmetry,complex<double>> Mout(F.size(), Op.Q, ss.str(), false);
 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis(F[l].get_basis().qloc(),l);}
@@ -1013,6 +963,6 @@ typename Symmetry::qType HubbardObservables<Symmetry>::getQ_ScompScomp(SPINOP_LA
 	typename Symmetry::qType out;
 	if ( (Sa1 == SZ and Sa2 == SZ) or (Sa1 == SP and Sa2 == SM) or (Sa1 == SM and Sa2 == SP) or (Sa1 == SX or Sa1 == iSY) ) {out = Symmetry::qvacuum();}
 	else {assert(false and "Quantumnumber for the chosen ScompScomp is not computed. Add in HubbardObservables::getQ_ScompScomp");}
-	
+	return out;
 }
 #endif

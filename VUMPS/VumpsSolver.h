@@ -904,7 +904,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	inbase.pullData(AL[0],0);
 	Qbasis<Symmetry> outbase;
 	outbase.pullData(AL[0],0);
-	
+
 	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(dW_singlet, 1, inbase); //Check correct setIdentity.
 	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW_singlet, 1, outbase);
 	L.insert(basis_order[dW-1], IdL);
@@ -965,7 +965,6 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 				{
 					Tripod<Symmetry,MatrixType> Rtmp;
 					Tripod<Symmetry,MatrixType> Rtmp_guess; Rtmp_guess.insert(basis_order[a],Rguess);
-					cout << "a=" << a << endl;
 					solve_linear(VMPS::DIRECTION::RIGHT, a, AR, YR[a], Leigen, W, qloc, qOp, contract_LR(basis_order[a],Leigen,YR[a]), Rtmp_guess, Rtmp);
 					R.insert(basis_order[a],Rtmp);
 					
@@ -990,35 +989,37 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	
 	YLlast = YL[0];
 	YRfrst = YR[dW-1];
-	// assert(false);
 	
-//	Tripod<Symmetry,MatrixType> Lcheck;
-//	Tripod<Symmetry,MatrixType> Ltmp1=L;
-//	
-//	Tripod<Symmetry,MatrixType> Ltmp2;
-//	for(int l=0; l<N_sites; l++)
-//	{
-//		contract_L(Ltmp1, AL[l], W[l], true, AL[l], qloc[l], qOp[l], Ltmp2, false, make_pair(FULL,0));
-//		Ltmp1.clear();
-//		Ltmp1 = Ltmp2;
-//	}
-//	Lcheck = Ltmp2;
-//	
-//	Tripod<Symmetry,MatrixType> Rcheck;
-//	Tripod<Symmetry,MatrixType> Rtmp1=R;
-//	
-//	Tripod<Symmetry,MatrixType> Rtmp2;
-//	for(int l=N_sites-1; l>=0; l--)
-//	{
-//		contract_R(Rtmp1, AR[l], W[l], true, AR[l], qloc[l], qOp[l], Rtmp2, false, make_pair(FULL,0));
-//		Rtmp1.clear();
-//		Rtmp1 = Rtmp2;
-//	}
-//	Rcheck = Rtmp2;
-//	
-//	cout << termcolor::magenta << "CHECK=" << L.compare(Lcheck) << "\t" << R.compare(Rcheck) << termcolor::reset << endl;
-//	cout << (L-Lcheck).print(true,13) << endl;
-//	cout << (R-Rcheck).print(true,13) << endl;
+	// Tripod<Symmetry,MatrixType> Lcheck;
+	// Tripod<Symmetry,MatrixType> Ltmp1=L;
+	
+	// Tripod<Symmetry,MatrixType> Ltmp2;
+	// for(int l=0; l<N_sites; l++)
+	// {
+	// 	contract_L(Ltmp1, AL[l], W[l], true, AL[l], qloc[l], qOp[l], Ltmp2);
+	// 	Ltmp1.clear();
+	// 	Ltmp1 = Ltmp2;
+	// }
+	// Lcheck = Ltmp2;
+	
+	// Tripod<Symmetry,MatrixType> Rcheck;
+	// Tripod<Symmetry,MatrixType> Rtmp1=R;
+	
+	// Tripod<Symmetry,MatrixType> Rtmp2;
+	// for(int l=N_sites-1; l>=0; l--)
+	// {
+	// 	contract_R(Rtmp1, AR[l], W[l], true, AR[l], qloc[l], qOp[l], Rtmp2);
+	// 	Rtmp1.clear();
+	// 	Rtmp1 = Rtmp2;
+	// }
+	// Rcheck = Rtmp2;
+
+	// double Lcomp = L.compare(Lcheck);	
+	// double Rcomp = R.compare(Rcheck);
+	
+	// cout << termcolor::magenta << "CHECK=" << Lcomp << "\t" << Rcomp << termcolor::reset << endl;
+	// cout << (L-Lcheck).print(true,13) << endl;
+	// cout << (R-Rcheck).print(true,13) << endl;
 }
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>

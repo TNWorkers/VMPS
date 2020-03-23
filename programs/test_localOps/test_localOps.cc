@@ -16,7 +16,7 @@ using namespace std;
 #include "symmetry/U1.h"
 #include "symmetry/U0.h"
 #include "symmetry/kind_dummies.h"
-#include "bases/FermionBase.h"
+#include "bases/SpinBase.h"
 
 // #include "models/HubbardU1xU1.h"
 // #include "models/HubbardSU2xU1.h"
@@ -49,32 +49,21 @@ int main (int argc, char* argv[])
 	
 	bool OBSERVABLES = args.get<bool>("OBSERVABLES",true);
 
-	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>, Sym::SU2<Sym::ChargeSU2> >Symmetry;
-	typedef Sym::U1<Sym::ChargeU1> Symmetry2;
-	typedef FermionBase<Symmetry> Base;
+	typedef Sym::S1xS2<Sym::U1<Sym::SpinU1>, Sym::SU2<Sym::SpinSU2> > Symmetry;
+	typedef Sym::S1xS2<Sym::U1<Sym::ChargeU1>,Sym::U1<Sym::SpinU1> > Symmetry2;
+	typedef SpinBase<Symmetry> Base;
 	typedef Base::OperatorType Op;
-	Base F(L);
+	vector<Base> B(2);
+	B[0] = Base(L,D);
+	
+	SpinBase<Symmetry2> B2(L,D);
 
-	FermionBase<Symmetry2> F2(L);
-
-	SPIN_INDEX sigma1=UP;
-	SPIN_INDEX sigma2=DN;
-	SUB_LATTICE G1=A;
-	SUB_LATTICE G2=B;
-	auto anti_com = Op::prod(F.cdag(G1,i), F.cdag(G2,j), Symmetry::qvacuum()) + Op::prod(F.cdag(G2,j), F.cdag(G1,i), Symmetry::qvacuum());
-	auto com = Op::prod(F.cdag(G1,i), F.cdag(G2,j), Symmetry::qvacuum()) - Op::prod(F.cdag(G2,j), F.cdag(G1,i), Symmetry::qvacuum());
-	cout << "anti_com=" << anti_com.norm() << endl;
-	cout << "com=" << com.norm() << endl;
-	// cout << F2.c(DN,0).data().print(true) << endl;
-
-	// cout << F2.n(UP,0).data().print(true) << endl;
-	// cout << F2.n(DN,0).data().print(true) << endl;
-	// cout << F2.n(0).data().print(true) << endl;
-
-	// cout << F.Sz(i) << endl;
-	// cout << F.Sx(i) << endl;
-	// auto Sy = -1i * F.iSy(i).cast<complex<double> >();
-	// cout << Sy << endl;
+	cout << B[0].S() << endl;
+	cout << B[0].Q(0) << endl;
+	cout << B[0].Qdag(0) << endl;
+	cout << B2.Sp() << endl;
+	cout << B2.Sm() << endl;
+	
 	if (OBSERVABLES)
 	{
 		// qarray<2> Q1 = {S,N};

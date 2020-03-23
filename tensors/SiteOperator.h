@@ -27,16 +27,18 @@ template<typename Symmetry, typename MatrixType_> struct Biped;
  * \describe_Scalar
  *
  */
-template<typename Symmetry, typename Scalar>
+template<typename Symmetry, typename Scalar_>
 struct SiteOperator
 {
+	typedef Scalar_ Scalar;
+	
 	SiteOperator() {};
-	SiteOperator (const Eigen::SparseMatrix<Scalar> &data_input, const typename Symmetry::qType& Q_input, std::string label_input="")
+	SiteOperator (const Eigen::SparseMatrix<Scalar_> &data_input, const typename Symmetry::qType& Q_input, std::string label_input="")
 		:data(data_input), Q(Q_input), label(label_input)
 	{};
 	
 	typename Symmetry::qType Q = Symmetry::qvacuum();
-	Eigen::SparseMatrix<Scalar> data;
+	Eigen::SparseMatrix<Scalar_> data;
 	
 	void setZero()
 	{
@@ -54,47 +56,47 @@ struct SiteOperator
 		return Oout;
 	}
 	
-	SiteOperator<Symmetry,Scalar>& operator+= ( const SiteOperator<Symmetry,Scalar>& Op );
-	SiteOperator<Symmetry,Scalar>& operator-= ( const SiteOperator<Symmetry,Scalar>& Op );
+	SiteOperator<Symmetry,Scalar_>& operator+= ( const SiteOperator<Symmetry,Scalar_>& Op );
+	SiteOperator<Symmetry,Scalar_>& operator-= ( const SiteOperator<Symmetry,Scalar_>& Op );
 	
 	/**
 	 * Returns a trivial SiteOperatorQ for an object with has essentialy no symmetry.
 	 */
-	SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > structured();
+	SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar_,Eigen::Dynamic,Eigen::Dynamic> > structured();
 	
 	void setIdentity();
     
     std::string label = "";
 };
 
-template<typename Symmetry,typename Scalar>
-SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > SiteOperator<Symmetry,Scalar>::
+template<typename Symmetry,typename Scalar_>
+SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar_,Eigen::Dynamic,Eigen::Dynamic> > SiteOperator<Symmetry,Scalar_>::
 structured()
 {
 	Qbasis<Symmetry> basis; basis.push_back(Symmetry::qvacuum(),this->data.rows());
-	Biped<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > mat; mat.push_back(Symmetry::qvacuum(),Symmetry::qvacuum(),this->data);
-	SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> > out(Symmetry::qvacuum(),basis,mat);
+	Biped<Symmetry,Eigen::Matrix<Scalar_,Eigen::Dynamic,Eigen::Dynamic> > mat; mat.push_back(Symmetry::qvacuum(),Symmetry::qvacuum(),this->data);
+	SiteOperatorQ<Symmetry,Eigen::Matrix<Scalar_,Eigen::Dynamic,Eigen::Dynamic> > out(Symmetry::qvacuum(),basis,mat);
 	return out;
 }
 
-template<typename Symmetry,typename Scalar>
-SiteOperator<Symmetry,Scalar>& SiteOperator<Symmetry,Scalar>::operator+= ( const SiteOperator<Symmetry,Scalar>& Op )
+template<typename Symmetry,typename Scalar_>
+SiteOperator<Symmetry,Scalar_>& SiteOperator<Symmetry,Scalar_>::operator+= ( const SiteOperator<Symmetry,Scalar_>& Op )
 {
 	*this = *this + Op;
 	return *this;
 }
 
-template<typename Symmetry,typename Scalar>
-SiteOperator<Symmetry,Scalar>& SiteOperator<Symmetry,Scalar>::operator-= ( const SiteOperator<Symmetry,Scalar>& Op )
+template<typename Symmetry,typename Scalar_>
+SiteOperator<Symmetry,Scalar_>& SiteOperator<Symmetry,Scalar_>::operator-= ( const SiteOperator<Symmetry,Scalar_>& Op )
 {
 	*this = *this - Op;
 	return *this;
 }
 
-template<typename Symmetry, typename Scalar>
-SiteOperator<Symmetry,Scalar> operator* (const SiteOperator<Symmetry,Scalar> &O1, const SiteOperator<Symmetry,Scalar> &O2)
+template<typename Symmetry, typename Scalar_>
+SiteOperator<Symmetry,Scalar_> operator* (const SiteOperator<Symmetry,Scalar_> &O1, const SiteOperator<Symmetry,Scalar_> &O2)
 {
-	SiteOperator<Symmetry,Scalar> Oout;
+	SiteOperator<Symmetry,Scalar_> Oout;
 	Oout.data = O1.data * O2.data;
 	Oout.Q = O1.Q+O2.Q;
     std::stringstream labelstream;
@@ -103,11 +105,11 @@ SiteOperator<Symmetry,Scalar> operator* (const SiteOperator<Symmetry,Scalar> &O1
 	return Oout;
 }
 
-template<typename Symmetry, typename Scalar>
-SiteOperator<Symmetry,Scalar> operator+ (const SiteOperator<Symmetry,Scalar> &O1, const SiteOperator<Symmetry,Scalar> &O2)
+template<typename Symmetry, typename Scalar_>
+SiteOperator<Symmetry,Scalar_> operator+ (const SiteOperator<Symmetry,Scalar_> &O1, const SiteOperator<Symmetry,Scalar_> &O2)
 {
 	assert(O1.Q == O2.Q and "For addition of SiteOperators the operator quantum number needs to be the same.");
-	SiteOperator<Symmetry,Scalar> Oout;
+	SiteOperator<Symmetry,Scalar_> Oout;
 	Oout.data = O1.data + O2.data;
 	Oout.Q = O1.Q;
     std::stringstream labelstream;
@@ -116,11 +118,11 @@ SiteOperator<Symmetry,Scalar> operator+ (const SiteOperator<Symmetry,Scalar> &O1
 	return Oout;
 }
 
-template<typename Symmetry, typename Scalar>
-SiteOperator<Symmetry,Scalar> operator- (const SiteOperator<Symmetry,Scalar> &O1, const SiteOperator<Symmetry,Scalar> &O2)
+template<typename Symmetry, typename Scalar_>
+SiteOperator<Symmetry,Scalar_> operator- (const SiteOperator<Symmetry,Scalar_> &O1, const SiteOperator<Symmetry,Scalar_> &O2)
 {
 	assert(O1.Q == O2.Q and "For addition of SiteOperators the operator quantum number needs to be the same.");
-	SiteOperator<Symmetry,Scalar> Oout;
+	SiteOperator<Symmetry,Scalar_> Oout;
 	Oout.data = O1.data - O2.data;
 	Oout.Q = O1.Q;
     std::stringstream labelstream;
@@ -129,10 +131,10 @@ SiteOperator<Symmetry,Scalar> operator- (const SiteOperator<Symmetry,Scalar> &O1
 	return Oout;
 }
 
-template<typename Symmetry, typename Scalar, typename OtherScalar>
-SiteOperator<Symmetry,Scalar> operator* (const OtherScalar &x, const SiteOperator<Symmetry,Scalar> &O)
+template<typename Symmetry, typename Scalar_, typename OtherScalar>
+SiteOperator<Symmetry,Scalar_> operator* (const OtherScalar &x, const SiteOperator<Symmetry,Scalar_> &O)
 {
-	SiteOperator<Symmetry,Scalar> Oout;
+	SiteOperator<Symmetry,Scalar_> Oout;
 	Oout.data = x * O.data;
 	Oout.Q = O.Q;
     std::stringstream labelstream;
@@ -148,17 +150,17 @@ SiteOperator<Symmetry,Scalar> operator* (const OtherScalar &x, const SiteOperato
 	return Oout;
 }
 
-template<typename Symmetry, typename Scalar>
-SiteOperator<Symmetry,Scalar> kroneckerProduct (const SiteOperator<Symmetry,Scalar> &O1, const SiteOperator<Symmetry,Scalar> &O2)
+template<typename Symmetry, typename Scalar_>
+SiteOperator<Symmetry,Scalar_> kroneckerProduct (const SiteOperator<Symmetry,Scalar_> &O1, const SiteOperator<Symmetry,Scalar_> &O2)
 {
-	SiteOperator<Symmetry,Scalar> Oout;
+	SiteOperator<Symmetry,Scalar_> Oout;
 	Oout.data = kroneckerProduct(O1.data,O2.data);
 	Oout.Q = O1.Q+O2.Q;
 	return Oout;
 }
 
-template<typename Symmetry, typename Scalar>
-bool operator== (const SiteOperator<Symmetry,Scalar> &O1, const SiteOperator<Symmetry,Scalar> &O2)
+template<typename Symmetry, typename Scalar_>
+bool operator== (const SiteOperator<Symmetry,Scalar_> &O1, const SiteOperator<Symmetry,Scalar_> &O2)
 {
     if(O1.Q == O2.Q)
     {
@@ -167,28 +169,28 @@ bool operator== (const SiteOperator<Symmetry,Scalar> &O1, const SiteOperator<Sym
     return false;
 }
 
-template<typename Symmetry, typename Scalar>
-SiteOperator<Symmetry, Scalar> operator*(const SiteOperator<Symmetry,Scalar> &op, const Scalar &lambda)
+template<typename Symmetry, typename Scalar_>
+SiteOperator<Symmetry, Scalar_> operator*(const SiteOperator<Symmetry,Scalar_> &op, const Scalar_ &lambda)
 {
     return lambda*op;
 }
 
-template<typename Symmetry, typename Scalar>
-void SiteOperator<Symmetry,Scalar>::
+template<typename Symmetry, typename Scalar_>
+void SiteOperator<Symmetry,Scalar_>::
 setIdentity()
 {
 	Q = Symmetry::qvacuum();
 	data.setIdentity();
 }
 
-template<typename Symmetry, typename Scalar>
-std::vector<SiteOperator<Symmetry,Scalar>> operator*(const std::vector<SiteOperator<Symmetry,Scalar>> &ops, const Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> &mat)
+template<typename Symmetry, typename Scalar_>
+std::vector<SiteOperator<Symmetry,Scalar_>> operator*(const std::vector<SiteOperator<Symmetry,Scalar_>> &ops, const Eigen::Matrix<Scalar_, Eigen::Dynamic, Eigen::Dynamic> &mat)
 {
     assert(ops.size() == mat.rows() and "Dimensions of vector and matrix do not match!");
-    std::vector<SiteOperator<Symmetry, Scalar>> out;
+    std::vector<SiteOperator<Symmetry, Scalar_>> out;
     for(std::size_t j=0; j<mat.cols(); ++j)
     {
-        SiteOperator<Symmetry, Scalar> temp;
+        SiteOperator<Symmetry, Scalar_> temp;
         std::size_t i=0;
         for(; std::abs(mat(i,j)) < ::mynumeric_limits<double>::epsilon() and i<mat.rows()-1; ++i){}
         if(i == mat.rows()-1 and mat.row(i).norm() < ::mynumeric_limits<double>::epsilon())
@@ -212,14 +214,14 @@ std::vector<SiteOperator<Symmetry,Scalar>> operator*(const std::vector<SiteOpera
     return out;
 }
 
-template<typename Symmetry, typename Scalar>
-std::vector<SiteOperator<Symmetry,Scalar>> operator*(const Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> &mat, const std::vector<SiteOperator<Symmetry,Scalar>> &ops)
+template<typename Symmetry, typename Scalar_>
+std::vector<SiteOperator<Symmetry,Scalar_>> operator*(const Eigen::Matrix<Scalar_, Eigen::Dynamic, Eigen::Dynamic> &mat, const std::vector<SiteOperator<Symmetry,Scalar_>> &ops)
 {
     assert(ops.size() == mat.cols() and "Dimensions of matrix and vector do not match!");
-    std::vector<SiteOperator<Symmetry, Scalar>> out;
+    std::vector<SiteOperator<Symmetry, Scalar_>> out;
     for(std::size_t i=0; i<mat.rows(); ++i)
     {
-        SiteOperator<Symmetry, Scalar> temp;
+        SiteOperator<Symmetry, Scalar_> temp;
         std::size_t j=0;
         for(; std::abs(mat(i,j)) < ::mynumeric_limits<double>::epsilon() and j<mat.cols()-1; ++j){}
         if(j == mat.cols()-1 and mat.row(i).norm() < ::mynumeric_limits<double>::epsilon())

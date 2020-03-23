@@ -648,7 +648,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		Stopwatch<> HsqTimer;
 		DMRG::DIRECTION::OPTION DIR = (SweepStat.N_halfsweeps%2==0) ? DMRG::DIRECTION::RIGHT : DMRG::DIRECTION::LEFT;
 		
-		double avgHsq = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true,DIR)) : isReal(avg(Vout.state,H,H,Vout.state));
+		double avgHsq = (H.check_power(2ul)==true)? isReal(avg(Vout.state,H,Vout.state,2,DIR)) : isReal(avg(Vout.state,H,H,Vout.state));
 		err_state = abs(avgHsq-pow(Vout.energy,2))/this->N_sites;
 		
 		t_err += HsqTimer.time();
@@ -795,7 +795,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 //		double err_exact_ = HxPsi.dot(HxPsi) / this->N_sites;
 //		
 //		Stopwatch<> HsqTimer_;
-//		double PsixHxHxPsi = (H.check_SQUARE()==true)? isReal(avg(Vout.state,H,Vout.state,true)) : isReal(avg(Vout.state,H,H,Vout.state));
+//		double PsixHxHxPsi = (H.check_power(2ul)==true)? isReal(avg(Vout.state,H,Vout.state,2)) : isReal(avg(Vout.state,H,H,Vout.state));
 //		double PsixPsi = dot(Vout.state,Vout.state);
 //		double PsixHxPsi = isReal(avg(Vout.state,H,Vout.state));
 //		double err_exact = (PsixHxHxPsi + pow(Vout.energy,2)*PsixPsi - 2.*Vout.energy*PsixHxPsi) / this->N_sites;

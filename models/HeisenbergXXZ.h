@@ -37,7 +37,7 @@ const std::map<string,std::any> HeisenbergXXZ::defaults =
 	{"Bz",0.}, {"Bx",0.}, 
 	{"Kz",0.}, {"Kx",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.},
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"Ly",1ul}, 
+	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}, 
 	
 	// for consistency during inheritance (should not be set!):
 	{"J",0.}, {"Jprime",0.}
@@ -55,7 +55,7 @@ HeisenbergXXZ (const size_t &L, const vector<Param> &params, const BC &boundary)
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
-		setLocBasis(B[l].get_basis(),l);
+		setLocBasis(B[l].get_basis().qloc(),l);
 	}
 
 	if (P.HAS_ANY_OF({"Jxy", "Jxypara", "Jxyperp", "Jxyfull"}))
@@ -75,7 +75,7 @@ HeisenbergXXZ (const size_t &L, const vector<Param> &params, const BC &boundary)
 	HeisenbergU1XXZ::add_operators(B,P,pushlist,labellist,boundary);
 	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 	
 	this->precalc_TwoSiteData();
 }

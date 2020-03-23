@@ -528,7 +528,8 @@ setIdentity (size_t amax, size_t bmax, const Qbasis<Symmetry> &base, const qarra
 	for (size_t q=0; q<base.Nq(); ++q)
 	{
 		qarray3<Symmetry::Nq> quple = {base[q], base[q], Q};
-		if (!Symmetry::triangle(quple)) {continue;}
+		qarray3<Symmetry::Nq> checkquple = {base[q], Q, base[q]};
+		// if (!Symmetry::triangle(checkquple)) {continue;}
 		
 		boost::multi_array<MatrixType,LEGLIMIT> Mtmparray(boost::extents[amax][bmax]);
 		for (size_t a=0; a<amax; ++a)
@@ -695,6 +696,7 @@ compare (const Multipede<Nlegs,Symmetry,MatrixType> &Mrhs) const
 	{
 		qarray3<Symmetry::Nq> quple = {in(q), out(q), mid(q)};
 		auto it = Mrhs.dict.find(quple);
+		if (it == Mrhs.dict.end()) {return std::numeric_limits<typename MatrixType::Scalar>::infinity();}
 		for (size_t a=0; a<block[q].shape()[0]; ++a)
 		{
 			res += (block[q][a][0]-Mrhs.block[it->second][a][0]).norm();

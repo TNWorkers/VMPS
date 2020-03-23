@@ -3,7 +3,7 @@
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
 #define MPSQCOMPRESSOR_DONT_USE_OPENMP
-
+#define TERMS_VERBOSITY 0
 
 #include <iostream>
 #include <fstream>
@@ -236,7 +236,7 @@ int main (int argc, char* argv[])
 	
 	typedef VMPS::HeisenbergU1 HEISENBERG_U1;
 	HEISENBERG_U1 Heis_U1;
-	Heis_U1 = HEISENBERG_U1(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Jprime",Jprime},{"Bz",Bz},{"D",D}},BC::INFINITE);
+	Heis_U1 = HEISENBERG_U1(L,{{"Ly",Ly},{"J",J},{"Jprime",Jprime},{"Bz",Bz},{"D",D}},BC::INFINITE);
 	
 	HEISENBERG_U1 Heis_U1_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",1.2*Jz},{"Jprime",Jprime},{"Bz",Bz},{"D",D}},BC::INFINITE);
 	
@@ -348,7 +348,7 @@ int main (int argc, char* argv[])
 	
 	typedef VMPS::HeisenbergXXZ HEISENBERG0;
 	HEISENBERG0 Heis0;
-	Heis0 = HEISENBERG0(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"Jprime",Jprime},{"Bz",Bz},{"D",D}},BC::INFINITE);
+	Heis0 = HEISENBERG0(L,{{"Ly",Ly},{"J",J},{"Jprime",Jprime},{"Bz",Bz},{"D",D}},BC::INFINITE);
 
 	HEISENBERG0 Heis0_(L,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",1.2*Jz},{"Jprime",Jprime},{"Bz",Bz},{"D",D}},BC::INFINITE);
 	
@@ -406,77 +406,77 @@ int main (int argc, char* argv[])
 	if (CALC_U1)  {cout << "e0(U1) =" << g_U1.energy << ", diff=" << abs(lit.value-g_U1.energy) << endl;}
 	if (CALC_U0)  {cout << "e0(U0) =" << g0.energy << ", diff=" << abs(lit.value-g0.energy) << endl;}
 	
-	// if (CALC_U0)
-	// {
-	// 	cout << "-----U0-----" << endl;
-	// 	print_mag(Heis0,g0);
-	// 	size_t dmax = 10;
-	// 	for (size_t d=1; d<dmax; ++d)
-	// 	{
-	// 		HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
-	// 		double SvecSvec = SvecSvecAvg(g0.state,Htmp,0,d);
-	// 		// if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
-	// 		lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
-	// 	}
+	if (CALC_U0)
+	{
+		cout << "-----U0-----" << endl;
+		print_mag(Heis0,g0);
+		size_t dmax = 10;
+		for (size_t d=1; d<dmax; ++d)
+		{
+			HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"D",D}}, BC::INFINITE);
+			double SvecSvec = SvecSvecAvg(g0.state,Htmp,0,d);
+			// if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
+			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		}
 
-	// 	g0.state.truncate();
-	// 	cout << endl << endl << "after truncation" << endl;
-	// 	cout << g0.state.info() << endl;
-	// 	print_mag(Heis0,g0);
+		g0.state.truncate(false);
+		cout << endl << endl << "after truncation" << endl;
+		cout << g0.state.info() << endl;
+		print_mag(Heis0,g0);
 
-	// 	// print_mag(Heis0,g0);
-	// 	// for (size_t d=1; d<dmax; ++d)
-	// 	// {
-	// 	// 	HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
-	// 	// 	double SvecSvec = SvecSvecAvg(g0.state,Htmp,0,d);
-	// 	// 	// if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
-	// 	// 	lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
-	// 	// }
+		// print_mag(Heis0,g0);
+		// for (size_t d=1; d<dmax; ++d)
+		// {
+		// 	HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
+		// 	double SvecSvec = SvecSvecAvg(g0.state,Htmp,0,d);
+		// 	// if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
+		// 	lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		// }
 
-	// 	// Umps<Sym::U0,complex<double> > g0_compl = g0.state.template cast<complex<double> >();
-	// 	// Umps<Sym::U0,complex<double> > g0_trunc_compl;
-	// 	// UmpsCompressor<Sym::U0,complex<double>, complex<double> > Lana(DMRG::VERBOSITY::HALFSWEEPWISE);
-	// 	// Lana.stateCompress(g0_compl, g0_trunc_compl, 25ul, 1ul, 1.e-5, 50ul);
-	// 	// Umps<Sym::U0,double> g0_trunc = g0_trunc_compl.real();
-	// 	// cout << endl << endl << "after truncation" << endl;
-	// 	// cout << g0_trunc_compl.info() << endl;
+		// Umps<Sym::U0,complex<double> > g0_compl = g0.state.template cast<complex<double> >();
+		// Umps<Sym::U0,complex<double> > g0_trunc_compl;
+		// UmpsCompressor<Sym::U0,complex<double>, complex<double> > Lana(DMRG::VERBOSITY::HALFSWEEPWISE);
+		// Lana.stateCompress(g0_compl, g0_trunc_compl, 25ul, 1ul, 1.e-5, 50ul);
+		// Umps<Sym::U0,double> g0_trunc = g0_trunc_compl.real();
+		// cout << endl << endl << "after truncation" << endl;
+		// cout << g0_trunc_compl.info() << endl;
 		
-	// 	for (size_t d=1; d<dmax; ++d)
-	// 	{
-	// 		HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"OPEN_BC",false},{"D",D}});
-	// 		double SvecSvec = SvecSvecAvg(g0.state,Htmp,0,d);
-	// 		// if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
-	// 		lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
-	// 	}
+		for (size_t d=1; d<dmax; ++d)
+		{
+			HEISENBERG0 Htmp(d+1,{{"Ly",Ly},{"J",J},{"D",D}}, BC::INFINITE);
+			double SvecSvec = SvecSvecAvg(g0.state,Htmp,0,d);
+			// if (d == L) {lout << "l=" << d-1 << ", " << d << ", <SvecSvec>=" << SvecSvecAvg(g0.state,Htmp,d-1,d) << endl;}
+			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		}
 
-	// }
-	// if (CALC_U1)
-	// {
-	// 	cout << endl;
-	// 	cout << "-----U1-----" << endl;
-	// 	print_mag(Heis_U1,g_U1);
-	// 	size_t dmax = 10;
-	// 	for (size_t d=1; d<dmax; ++d)
-	// 	{
-	// 		HEISENBERG_U1 Htmp(d+1,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
-	// 		double SvecSvec = SvecSvecAvg(g_U1.state,Htmp,0,d);
-	// 		lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
-	// 	}
+	}
+	if (CALC_U1)
+	{
+		cout << endl;
+		cout << "-----U1-----" << endl;
+		print_mag(Heis_U1,g_U1);
+		size_t dmax = 10;
+		for (size_t d=1; d<dmax; ++d)
+		{
+			HEISENBERG_U1 Htmp(d+1,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"D",D}}, BC::INFINITE);
+			double SvecSvec = SvecSvecAvg(g_U1.state,Htmp,0,d);
+			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		}
 
-	// 	g_U1.state.truncate();
-	// 	cout << endl << endl << "after truncation" << endl;
-	// 	cout << g_U1.state.info() << endl;
-	// 	print_mag(Heis_U1,g_U1);
+		g_U1.state.truncate(false);
+		cout << endl << endl << "after truncation" << endl;
+		cout << g_U1.state.info() << endl;
+		print_mag(Heis_U1,g_U1);
 
-	// 	for (size_t d=1; d<dmax; ++d)
-	// 	{
-	// 		HEISENBERG_U1 Htmp(d+1,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D}});
-	// 		double SvecSvec = SvecSvecAvg(g_U1.state,Htmp,0,d);
-	// 		lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
-	// 	}
+		for (size_t d=1; d<dmax; ++d)
+		{
+			HEISENBERG_U1 Htmp(d+1,{{"Ly",Ly},{"Jxy",Jxy},{"Jz",Jz},{"D",D}}, BC::INFINITE);
+			double SvecSvec = SvecSvecAvg(g_U1.state,Htmp,0,d);
+			lout << "d=" << d << ", <SvecSvec>=" << SvecSvec << endl;
+		}
 		
-	// 	g_U1.state.graph("g");
-	// }
+		g_U1.state.graph("g");
+	}
 	
 	if (CALC_SU2)
 	{

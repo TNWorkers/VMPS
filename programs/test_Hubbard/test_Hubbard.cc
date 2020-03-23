@@ -2,9 +2,10 @@
 #include "util/LapackManager.h"
 #pragma message("LapackManager")
 #endif
-#define LANCZOS_MAX_ITERATIONS 100
+//#define LANCZOS_MAX_ITERATIONS 100
 //#define USE_HDF5_STORAGE
 
+#define TERMS_VERBOSITY 0
 // with Eigen:
 #define DMRG_DONT_USE_OPENMP
 //#define MPSQCOMPRESSOR_DONT_USE_OPENMP
@@ -54,6 +55,7 @@ template<typename Scalar>
 string to_string_prec (Scalar x, bool COLOR=false, int n=14)
 {
 	ostringstream ss;
+	COLOR=false;
 	if (x < 1e-5 and COLOR)
 	{
 		ss << termcolor::colorize << termcolor::green << setprecision(n) << x << termcolor::reset;
@@ -149,6 +151,8 @@ int main (int argc, char* argv[])
 	// for ED:
 	Nup = (N+M)/2;
 	Ndn = (N-M)/2;
+
+	size_t maxPower = args.get<size_t>("maxPower",2);
 	
 	ED = args.get<bool>("ED",false);
 	U0 = args.get<bool>("U0",false);
@@ -295,7 +299,7 @@ int main (int argc, char* argv[])
 		
 		Stopwatch<> Watch_U0;
 		//{"tPara",tParaA,0},{"tPara",tParaB,1}
-		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1}});
+		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1},{"maxPower",maxPower}});
 //		VMPS::Hubbard H_U0(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"mu",mu},{"Ly",Ly}});
 		Vol = H_U0.volume();
 		Vsq = V*V;
@@ -333,7 +337,7 @@ int main (int argc, char* argv[])
 		Stopwatch<> Watch_U1;
 		
 		//,{"tPara",tParaA,0},{"tPara",tParaB,1}
-		HUBBARD H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1}});
+		HUBBARD H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1},{"maxPower",maxPower}});
 //		VMPS::Hubbard H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
 		Vol = H_U1.volume();
 		Vsq = V*V;
@@ -346,7 +350,12 @@ int main (int argc, char* argv[])
 		DMRG_U1.DynParam = DynParam;
 		DMRG_U1.edgeState(H_U1, g_U1, {M,N}, LANCZOS::EDGE::GROUND);
 		g_U1.state.graph("U1");
-		
+		ArrayXd check(maxPower);
+		for (size_t i=1; i<=maxPower;i++)
+		{
+			check(i-1) = avg(g_U1.state,H_U1,g_U1.state,i) - std::pow(g_U1.energy,i);
+		}
+		cout << "check=" << check.transpose() << endl;		
 		t_U1 = Watch_U1.time();
 		
 		if (CORR)
@@ -419,7 +428,7 @@ int main (int argc, char* argv[])
 		
 		Stopwatch<> Watch_SU2;
 		
-		VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly,0},{"Ly",Ly2,1},{"tRung",tRung},{"Vz",Vz},{"Vxy",Vxy}}, BC::OPEN);
+		VMPS::HubbardSU2xU1 H_SU2(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly,0},{"Ly",Ly2,1},{"tRung",tRung},{"Vz",Vz},{"Vxy",Vxy},{"maxPower",maxPower}}, BC::OPEN);
 		Vol = H_SU2.volume();
 		Vsq = Vol*Vol;
 		lout << H_SU2.info() << endl;
@@ -431,6 +440,17 @@ int main (int argc, char* argv[])
 		DMRG_SU2.DynParam = DynParam;
 		DMRG_SU2.edgeState(H_SU2, g_SU2, {S,N}, LANCZOS::EDGE::GROUND);
 		g_SU2.state.graph("SU2");
+
+		ArrayXd check(maxPower);
+		ArrayXd check2(maxPower);
+		check2(3-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<2>{1,0},1,2) - std::pow(g_SU2.energy,3);
+		check2(2-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<2>{1,0},1,1) - std::pow(g_SU2.energy,2);
+		for (size_t i=1; i<=maxPower;i++)
+		{
+			check(i-1) = avg(g_SU2.state,H_SU2,g_SU2.state,i) - std::pow(g_SU2.energy,i);
+		}
+		cout << "check=" << check.transpose() << endl;
+		cout << "check2=" << check2.transpose() << endl;
 		
 		t_SU2 = Watch_SU2.time();
 		
@@ -499,6 +519,7 @@ int main (int argc, char* argv[])
 		paramsSU2xSU2.push_back({"V",V,1});
 		paramsSU2xSU2.push_back({"Ly",Ly,0});
 		paramsSU2xSU2.push_back({"Ly",Ly,1});
+		paramsSU2xSU2.push_back({"maxPower",maxPower});
 		VMPS::HubbardSU2xSU2 H_SU2xSU2(L, paramsSU2xSU2, BC::OPEN);
 		Vol = H_SU2xSU2.volume();
 		Vsq = Vol*Vol;
@@ -512,6 +533,17 @@ int main (int argc, char* argv[])
 		DMRG_SU2xSU2.edgeState(H_SU2xSU2, g_SU2xSU2, {S,Vol-N+1}, LANCZOS::EDGE::GROUND); 
 		//Todo: check Pseudospin quantum number... (1 <==> half filling)
 		g_SU2xSU2.state.graph("SU2xSU2");
+		ArrayXd check(maxPower);
+		ArrayXd check2(maxPower);
+		check2(3-1) = avg(g_SU2xSU2.state,H_SU2xSU2,H_SU2xSU2,g_SU2xSU2.state,qarray<2>{1,1},2,1) - std::pow(g_SU2xSU2.energy,3);
+		check2(2-1) = avg(g_SU2xSU2.state,H_SU2xSU2,H_SU2xSU2,g_SU2xSU2.state,qarray<2>{1,1},1,1) - std::pow(g_SU2xSU2.energy,2);
+		for (size_t i=1; i<=maxPower;i++)
+		{
+			check(i-1) = avg(g_SU2xSU2.state,H_SU2xSU2,g_SU2xSU2.state,i) - std::pow(g_SU2xSU2.energy,i);
+		}
+		cout << "check=" << check.transpose() << endl;
+		cout << "check2=" << check2.transpose() << endl;
+				
 		cout << "vol=" << Vol << ", N=" << N << endl;
 		Emin_SU2xSU2 = g_SU2xSU2.energy-0.5*U*(Vol-N);
 		emin_SU2xSU2 = Emin_SU2xSU2/Vol;

@@ -49,6 +49,8 @@ public:
 	static constexpr bool IS_CHARGE_SU2() { if constexpr (SU2<Kind,Scalar>::kind()[0] == KIND::T) {return true;} return false; }
 	static constexpr bool IS_SPIN_SU2() { if constexpr (SU2<Kind,Scalar>::kind()[0] == KIND::S) {return true;} return false; }
 
+	static constexpr bool IS_SPIN_U1() { return false; }
+	
 	static constexpr bool NO_SPIN_SYM() { if (SU2<Kind,Scalar>::kind()[0] != KIND::S) {return true;} return false;}
 	static constexpr bool NO_CHARGE_SYM() { if (SU2<Kind,Scalar>::kind()[0] != KIND::T) {return true;} return false;}
 	
@@ -110,6 +112,8 @@ public:
 							  const qType& q4, const qType& q5, const qType& q6);
 	static Scalar coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 							 const qType& q4, const qType& q5, const qType& q6);
+	static Scalar coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
+								 const qType& q4, const qType& q5, const qType& q6);
 	
 	static Scalar coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 						   const qType& q4, const qType& q5, const qType& q6,
@@ -117,6 +121,9 @@ public:
 	static Scalar coeff_tensorProd(const qType& q1, const qType& q2, const qType& q3,
 								   const qType& q4, const qType& q5, const qType& q6,
 								   const qType& q7, const qType& q8, const qType& q9);
+	static Scalar coeff_MPOprod9(const qType& q1, const qType& q2, const qType& q3,
+								 const qType& q4, const qType& q5, const qType& q6,
+								 const qType& q7, const qType& q8, const qType& q9);
 	static Scalar coeff_buildL(const qType& q1, const qType& q2, const qType& q3,
 							   const qType& q4, const qType& q5, const qType& q6,
 							   const qType& q7, const qType& q8, const qType& q9);
@@ -345,8 +352,19 @@ coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 		   const qType& q4, const qType& q5, const qType& q6)
 {	
 	Scalar out = coupling_6j(q1[0],q2[0],q3[0],q4[0],q5[0],q6[0])*
-	std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
+		std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
 		phase<Scalar>((q1[0]+q5[0]+q6[0]-3)/2);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
+			   const qType& q4, const qType& q5, const qType& q6)
+{	
+	Scalar out = coupling_6j(q1[0],q2[0],q3[0],q4[0],q5[0],q6[0])*
+		std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
+		phase<Scalar>((q1[0]+q2[0]+q4[0]+q5[0]-4)/2);
 	return out;
 }
 
@@ -371,6 +389,19 @@ coeff_tensorProd(const qType& q1, const qType& q2, const qType& q3,
 	Scalar out = coupling_9j(q1[0],q2[0],q3[0],
 							 q4[0],q5[0],q6[0],
 							 q7[0],q8[0],q9[0])*
+		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]));
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_MPOprod9(const qType& q1, const qType& q2, const qType& q3,
+			   const qType& q4, const qType& q5, const qType& q6,
+			   const qType& q7, const qType& q8, const qType& q9)
+{
+	Scalar out = coupling_9j(q1[0],q2[0],q3[0],
+							 q4[0],q5[0],q6[0],
+							 q7[0],q8[0],q9[0]) *
 		std::sqrt(static_cast<Scalar>(q7[0]*q8[0]*q3[0]*q6[0]));
 	return out;
 }

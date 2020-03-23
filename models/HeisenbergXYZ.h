@@ -48,7 +48,7 @@ public:
 	///\}
 	
 	template<typename Symmetry_>
-    void add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry_,complex<double>>,complex<double>>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
+    void add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry_,complex<double>>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
     
 	static const std::map<string,std::any> defaults;
 };
@@ -67,7 +67,7 @@ const std::map<string,std::any> HeisenbergXYZ::defaults =
 	{"Bx",0.}, {"By",0.}, {"Bz",0.},
 	{"Kx",0.}, {"Ky",0.}, {"Kz",0.},
 	
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"Ly",1ul},
+	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul},
 	
 	{"J",0.}, {"Jprime",0.}
 };
@@ -84,7 +84,7 @@ HeisenbergXYZ (const size_t &L, const vector<Param> &params, const BC &boundary)
     for (size_t l=0; l<N_sites; ++l)
     {
         N_phys += P.get<size_t>("Ly",l%Lcell);
-        setLocBasis(B[l].get_basis(),l);
+        setLocBasis(B[l].get_basis().qloc(),l);
     }
 
 	if(P.HAS_ANY_OF({"Dx", "Dy", "Dz", "Dxprime", "Dyprime", "Dzprime", "Dxpara", "Dypara", "Dzpara", "Dxperp", "Dzperp"}))
@@ -102,18 +102,18 @@ HeisenbergXYZ (const size_t &L, const vector<Param> &params, const BC &boundary)
     HeisenbergU1::set_operators(B,P,pushlist_aux,labellist,boundary);
     Heisenberg::add_operators(B,P,pushlist_aux,labellist,boundary);
 	
-	PushType<SiteOperator<Symmetry,complex<double>>,complex<double>> pushlist = pushlist_aux.cast<SiteOperator<Symmetry,complex<double>>, complex<double>>();
+	PushType<SiteOperator<Symmetry,complex<double>>,double> pushlist = pushlist_aux.cast<SiteOperator<Symmetry,complex<double>>, double>();
     add_operators(B,P,pushlist,labellist,boundary);
 
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<bool>("CALC_SQUARE"));
+    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 
     this->precalc_TwoSiteData();
 }
     
 template<typename Symmetry_>
 void HeisenbergXYZ::
-add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry_,complex<double>>,complex<double>>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
+add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry_,complex<double>>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
     std::size_t Lcell = P.size();
     std::size_t N_sites = B.size();
@@ -154,7 +154,7 @@ add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, 
         std::array<Eigen::ArrayXd,3>  K_array = {B[loc].ZeroField(), Ky.a, B[loc].ZeroField()};
         std::array<Eigen::ArrayXXd,3> Dperp = {Dxperp.a, B[loc].ZeroHopping(), Dzperp.a};
         
-		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jperp,B_array,K_array,Dperp));
+		auto Hloc = Mpo<Symmetry,complex<double> >::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jperp,B_array,K_array,Dperp));
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 
         // Nearest-neighbour terms: J and DM
@@ -176,21 +176,21 @@ add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, 
             for (std::size_t alpha=0; alpha<orbitals; ++alpha)
             for (std::size_t beta=0; beta<next_orbitals; ++beta)
 			{
-				SiteOperator<Symmetry_,complex<double> > local_Sx = B[loc].Scomp(SX,alpha).template cast<complex<double> >();
-				SiteOperator<Symmetry_,complex<double> > local_Sy = -1.i*B[loc].Scomp(iSY,alpha).template cast<complex<double> >();
-				SiteOperator<Symmetry_,complex<double> > local_Sz = B[loc].Scomp(SZ,alpha).template cast<complex<double> >();
-				SiteOperator<Symmetry_,complex<double> > tight_Sx = B[(loc+1)%N_sites].Scomp(SX,beta).template cast<complex<double> >();
-				SiteOperator<Symmetry_,complex<double> > tight_Sy = -1.i*B[(loc+1)%N_sites].Scomp(iSY,beta).template cast<complex<double> >();
-				SiteOperator<Symmetry_,complex<double> > tight_Sz = B[(loc+1)%N_sites].Scomp(SZ,beta).template cast<complex<double> >();
+				auto local_Sx = B[loc].Scomp(SX,alpha).template cast<complex<double> >();
+				auto local_Sy = -1.i*B[loc].Scomp(iSY,alpha).template cast<complex<double> >();
+				auto local_Sz = B[loc].Scomp(SZ,alpha).template cast<complex<double> >();
+				auto tight_Sx = B[(loc+1)%N_sites].Scomp(SX,beta).template cast<complex<double> >();
+				auto tight_Sy = -1.i*B[(loc+1)%N_sites].Scomp(iSY,beta).template cast<complex<double> >();
+				auto tight_Sz = B[(loc+1)%N_sites].Scomp(SZ,beta).template cast<complex<double> >();
 
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sx, tight_Sx), Jxpara(alpha,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sy, tight_Sy), Jypara(alpha,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sz, tight_Sz), Jzpara(alpha,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sx, tight_Sx), Jxpara(alpha,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sy, tight_Sy), Jypara(alpha,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sz, tight_Sz), Jzpara(alpha,beta)));
 
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sy, tight_Sx), +Dzpara(alpha,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sy, tight_Sz), -Dxpara(alpha,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sz, tight_Sy), +Dxpara(alpha,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sx, tight_Sy), -Dzpara(alpha,beta)));				                    
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sy, tight_Sx), +Dzpara(alpha,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sy, tight_Sz), -Dxpara(alpha,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sz, tight_Sy), +Dxpara(alpha,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sx, tight_Sy), -Dzpara(alpha,beta)));				                    
 			}
 		}
     
@@ -214,22 +214,22 @@ add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, 
 			for(std::size_t alpha=0; alpha<orbitals; ++alpha)
 			for(std::size_t beta=0; beta<nextn_orbitals; ++beta)
 			{
-				SiteOperator<Symmetry_,complex<double> > local_Sx = B[loc].Scomp(SX,alpha).template cast<complex<double> >();
-				SiteOperator<Symmetry_,complex<double> > local_Sy = -1.i*B[loc].Scomp(iSY,alpha).template cast<complex<double> >();
-				SiteOperator<Symmetry_,complex<double> > local_Sz = B[loc].Scomp(SZ,alpha).template cast<complex<double> >();
-				SiteOperator<Symmetry_,complex<double> > tight_Id = B[(loc+1)%N_sites].Id().template cast<complex<double> >();
-				SiteOperator<Symmetry_,complex<double> > nextn_Sx = B[(loc+2)%N_sites].Scomp(SX,beta).template cast<complex<double> >();
-				SiteOperator<Symmetry_,complex<double> > nextn_Sy = -1.i*B[(loc+2)%N_sites].Scomp(iSY,beta).template cast<complex<double> >();
-				SiteOperator<Symmetry_,complex<double> > nextn_Sz = B[(loc+2)%N_sites].Scomp(SZ,beta).template cast<complex<double> >();
+				auto local_Sx = B[loc].Scomp(SX,alpha).template cast<complex<double> >();
+				auto local_Sy = -1.i*B[loc].Scomp(iSY,alpha).template cast<complex<double> >();
+				auto local_Sz = B[loc].Scomp(SZ,alpha).template cast<complex<double> >();
+				auto tight_Id = B[(loc+1)%N_sites].Id().template cast<complex<double> >();
+				auto nextn_Sx = B[(loc+2)%N_sites].Scomp(SX,beta).template cast<complex<double> >();
+				auto nextn_Sy = -1.i*B[(loc+2)%N_sites].Scomp(iSY,beta).template cast<complex<double> >();
+				auto nextn_Sz = B[(loc+2)%N_sites].Scomp(SZ,beta).template cast<complex<double> >();
 
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sx, tight_Id, nextn_Sx), Jxprime(alpha,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sy, tight_Id, nextn_Sy), Jyprime(alpha,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sz, tight_Id, nextn_Sz), Jzprime(alpha,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sx, tight_Id, nextn_Sx), Jxprime(alpha,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sy, tight_Id, nextn_Sy), Jyprime(alpha,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sz, tight_Id, nextn_Sz), Jzprime(alpha,beta)));
 
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sy, tight_Id, nextn_Sx), +Dzprime(alpha,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sy, tight_Id, nextn_Sz), -Dxprime(alpha,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sz, tight_Id, nextn_Sy), +Dxprime(alpha,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(local_Sx, tight_Id, nextn_Sy), -Dzprime(alpha,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sy, tight_Id, nextn_Sx), +Dzprime(alpha,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sy, tight_Id, nextn_Sz), -Dxprime(alpha,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sz, tight_Id, nextn_Sy), +Dxprime(alpha,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,complex<double> >::get_N_site_interaction(local_Sx, tight_Id, nextn_Sy), -Dzprime(alpha,beta)));
 			}
 		}
 	}
