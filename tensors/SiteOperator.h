@@ -52,7 +52,9 @@ struct SiteOperator
 		SiteOperator<Symmetry,OtherScalar> Oout;
 		Oout.Q = Q;
 		Oout.data = data.template cast<OtherScalar>();
+        #ifdef OPLABELS
 		Oout.label = label;
+        #endif
 		return Oout;
 	}
 	
@@ -99,9 +101,11 @@ SiteOperator<Symmetry,Scalar_> operator* (const SiteOperator<Symmetry,Scalar_> &
 	SiteOperator<Symmetry,Scalar_> Oout;
 	Oout.data = O1.data * O2.data;
 	Oout.Q = O1.Q+O2.Q;
+    #ifdef OPLABELS
     std::stringstream labelstream;
     labelstream << "(" << O1.label << "*" << O2.label << ")";
     Oout.label = labelstream.str();
+    #endif
 	return Oout;
 }
 
@@ -112,9 +116,11 @@ SiteOperator<Symmetry,Scalar_> operator+ (const SiteOperator<Symmetry,Scalar_> &
 	SiteOperator<Symmetry,Scalar_> Oout;
 	Oout.data = O1.data + O2.data;
 	Oout.Q = O1.Q;
+    #ifdef OPLABELS
     std::stringstream labelstream;
     labelstream << "(" << O1.label << "+" << O2.label << ")";
     Oout.label = labelstream.str();
+    #endif
 	return Oout;
 }
 
@@ -125,9 +131,11 @@ SiteOperator<Symmetry,Scalar_> operator- (const SiteOperator<Symmetry,Scalar_> &
 	SiteOperator<Symmetry,Scalar_> Oout;
 	Oout.data = O1.data - O2.data;
 	Oout.Q = O1.Q;
+    #ifdef OPLABELS
     std::stringstream labelstream;
     labelstream << "(" << O1.label << "-" << O2.label << ")";
     Oout.label = labelstream.str();
+    #endif
 	return Oout;
 }
 
@@ -137,6 +145,7 @@ SiteOperator<Symmetry,Scalar_> operator* (const OtherScalar &x, const SiteOperat
 	SiteOperator<Symmetry,Scalar_> Oout;
 	Oout.data = x * O.data;
 	Oout.Q = O.Q;
+    #ifdef OPLABELS
     std::stringstream labelstream;
     if(std::abs(x-1.) > ::mynumeric_limits<double>::epsilon())
     {
@@ -147,6 +156,7 @@ SiteOperator<Symmetry,Scalar_> operator* (const OtherScalar &x, const SiteOperat
         labelstream << O.label;
     }
     Oout.label = labelstream.str();
+    #endif
 	return Oout;
 }
 
@@ -183,7 +193,7 @@ setIdentity()
 	data.setIdentity();
 }
 
-template<typename Symmetry, typename Scalar_>
+/*template<typename Symmetry, typename Scalar_>
 std::vector<SiteOperator<Symmetry,Scalar_>> operator*(const std::vector<SiteOperator<Symmetry,Scalar_>> &ops, const Eigen::Matrix<Scalar_, Eigen::Dynamic, Eigen::Dynamic> &mat)
 {
     assert(ops.size() == mat.rows() and "Dimensions of vector and matrix do not match!");
@@ -244,6 +254,6 @@ std::vector<SiteOperator<Symmetry,Scalar_>> operator*(const Eigen::Matrix<Scalar
         out.push_back(temp);
     }
     return out;
-}
+}*/
 
 #endif

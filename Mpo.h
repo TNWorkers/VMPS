@@ -90,9 +90,9 @@ public:
 
 	std::string info() const;
 	
-	double memory(MEMUNIT memunit=GB) const;
+	//double memory(MEMUNIT memunit=GB) const;
 	
-	double sparsity(bool USE_SQUARE=false, bool PER_MATRIX=true) const;
+	//double sparsity(bool USE_SQUARE=false, bool PER_MATRIX=true) const;
 
 	inline std::size_t length() const {return this->size();}
 	
@@ -283,8 +283,8 @@ info() const
 	}
 	ss << " ";
 	
-		ss << "mem=" << round(memory(GB),3) << "GB";
-	ss << ", sparsity=" << sparsity();
+		ss << "mem=" << round(this->memory(GB),3) << "GB";
+	ss << ", sparsity=" << this->sparsity();
 	// if(this->check_SQUARE())
     // {
     //     ss << ", sparsity(sq)=" << sparsity(true);
@@ -292,7 +292,7 @@ info() const
 	return ss.str();
 }
 
-template<typename Symmetry, typename Scalar>
+/*template<typename Symmetry, typename Scalar>
 double Mpo<Symmetry,Scalar>::
 memory(MEMUNIT memunit) const
 {
@@ -313,9 +313,9 @@ memory(MEMUNIT memunit) const
         }
     }
 	return res;
-}
+}*/
 
-template<typename Symmetry, typename Scalar>
+/*template<typename Symmetry, typename Scalar>
 double Mpo<Symmetry,Scalar>::
 sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 {
@@ -328,10 +328,7 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 	{
         std::size_t hd = this->get_hilbert_dimension(loc);
 		N_matrices += hd * hd * this->opBasis(loc).size();
-        
-        // TODO: Angepasster Code für W=Biped
-        
-		/*
+                
 		for (size_t s1=0; s1<qloc[l].size(); ++s1)
 		for (size_t s2=0; s2<qloc[l].size(); ++s2)
 		for (size_t k=0; k<this->qOp[l].size(); ++k)
@@ -345,12 +342,11 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 			// 		this->W[l][s1][s2][k].rows()   * this->W[l][s1][s2][k].cols();
 			// }
 		}
-         */
 	}
 	
 	//return (PER_MATRIX)? N_nonZeros/N_matrices : N_nonZeros/N_elements;
     return 0.;
-}
+}*/
 
 template<typename Symmetry, typename Scalar> Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
 Identity(const std::vector<std::vector<qType>>& qPhys)
