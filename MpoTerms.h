@@ -1373,14 +1373,12 @@ compress(const double tolerance)
     }
     auto [average_auxdim_final,maximum_auxdim_final] = auxdim_infos();
     int compr_rate = (int)std::round(100*(1-average_auxdim_final/average_auxdim_initial));
-	auto curr_prec = std::cout.precision();
-    lout << get_name() << " compression: " << watch.info("time") << ", steps: " << counter << ", rate: " << compr_rate << "%, dWavg: " << std::setprecision(1) << std::fixed
-		 << average_auxdim_initial << " ⇒ " << average_auxdim_final << ", dWmax: "  << maximum_auxdim_initial << " ⇒ " << maximum_auxdim_final << "\n" << std::defaultfloat;
-	std::cout.precision(curr_prec);
     calc(1);
     if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
     {
-        lout << "Compression finished  |  " << watch.info("Time") << "  |  Steps: " << counter << "  |  Rate: " << compr_rate << "% (" << average_auxdim_initial << "->" << average_auxdim_final << ")" << std::endl;
+		auto curr_prec = std::cout.precision();
+        lout << "Compression finished  |  " << watch.info("Time") << "  |  Steps: " << counter << "  |  Rate: " << compr_rate << "% (" << std::setprecision(1) << std::fixed << average_auxdim_initial << " ⇒ " << average_auxdim_final << ")" << ", dWmax: "  << maximum_auxdim_initial << " ⇒ " << maximum_auxdim_final << std::defaultfloat << std::endl;
+		std::cout.precision(curr_prec);
         #if DEBUG_VERBOSITY > 1
         lout << "Compressed MPO:" << std::endl;
         show();
