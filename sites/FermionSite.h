@@ -109,6 +109,8 @@ fill_SiteOps(bool U_IS_INFINITE, bool UPH_IS_INFINITE)
 	if (!UPH_IS_INFINITE) cup_1s_("empty", "up")  = 1.;
 	if (!U_IS_INFINITE and !UPH_IS_INFINITE) cup_1s_("dn", "double") = 1.;
 
+	Eigen::MatrixXd cupmat = Eigen::MatrixXd(cup_1s_.template plain<double>().data);
+	cout << cupmat << endl;
 	if (!UPH_IS_INFINITE) cdn_1s_("empty", "dn")  = 1.;
 	if (!U_IS_INFINITE and !UPH_IS_INFINITE) cdn_1s_("up", "double") = -1.;
 	

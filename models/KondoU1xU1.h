@@ -65,7 +65,7 @@ public:
 	 * \describe_boundary 
 	*/
 	template<typename Symmetry_> 
-    static void set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+    static void set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
 							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 	
 	/**Validates whether a given \p qnum is a valid combination of \p N and \p M for the given model.
@@ -84,7 +84,7 @@ const map<string,any> KondoU1xU1::defaults =
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.},
 	{"Inext",0.}, {"Iprev",0.}, {"I3next",0.}, {"I3prev",0.}, {"I3loc",0.}, 
-	{"D",2ul}, {"maxPower",1ul}, {"CYLINDER",false}, {"Ly",1ul}, {"LyF",1ul}
+	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}, {"LyF",1ul}
 };
 
 const map<string,any> VMPS::KondoU1xU1::sweep_defaults = 
@@ -99,8 +99,8 @@ const map<string,any> VMPS::KondoU1xU1::sweep_defaults =
 };
 
 KondoU1xU1::
-KondoU1xU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0,0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
+KondoU1xU1 (const size_t &L, const vector<Param> &params, const BC &boundary)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0,0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
  KondoObservables(L,params,KondoU1xU1::defaults),
  ParamReturner(KondoU1xU1::sweep_defaults)
 {
@@ -122,18 +122,7 @@ KondoU1xU1 (const size_t &L, const vector<Param> &params)
     this->construct_from_pushlist(pushlist, labellist, Lcell);
     this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 
-	this->precalc_TwoSiteData();
-	
-	//Workaround for wrong qOp/auxBasis if we have a Kondo_anpacked case
-	// bool RESET_Q_OP = false;
-	// for (size_t l=0; l<N_sites; l++)
-	// {
-	// 	if (P.get<size_t>("LyF",l%Lcell) == 0ul)
-	// 	{
-	// 		RESET_Q_OP = true;
-	// 		break;
-	// 	}
-	// }	
+	this->precalc_TwoSiteData();	
 }
 
 bool KondoU1xU1::
@@ -154,11 +143,12 @@ validate (qType qnum) const
 
 template<typename Symmetry_>
 void KondoU1xU1::
-set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
-			   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN)
+set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+			   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = B.size();
+	if(labellist.size() != N_sites) {labellist.resize(N_sites);}
 	
 	for (std::size_t loc=0; loc<N_sites; ++loc)
 	{
@@ -184,10 +174,10 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<
 		labellist[loc].push_back(LyLabel.str());
 		labellist[loc].push_back(LyFlabel.str());
 
-		auto push_full = [&N_sites, &loc, &F, &P, &pushlist, &labellist, &boundary] (string xxxFull, string label,
-																					 const vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > &first,
-																					 const vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > &last,
-																					 vector<double> factor, bool FERMIONIC) -> void
+		auto push_full = [&N_sites, &loc, &B, &F, &P, &pushlist, &labellist, &boundary] (string xxxFull, string label,
+																						 const vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > &first,
+																						 const vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > &last,
+																						 vector<double> factor, bool FERMIONIC) -> void
 		{
 			ArrayXXd Full = P.get<Eigen::ArrayXXd>(xxxFull);
 			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
@@ -207,8 +197,8 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<
 					ops[0] = first[j];
 					for (size_t i=1; i<range; ++i)
 					{
-						if (FERMIONIC) {ops[i] = F[(loc+i)%N_sites].sign();}
-						else {ops[i] = F[(loc+i)%N_sites].Id();}
+						if (FERMIONIC) {ops[i] = kroneckerProduct(B[(loc+i)%N_sites].Id(), F[(loc+i)%N_sites].sign());}
+						else {ops[i] = kroneckerProduct(B[(loc+i)%N_sites].Id(), F[(loc+i)%N_sites].Id());}
 					}
 					ops[range] = last[j][(loc+range)%N_sites];
 					pushlist.push_back(std::make_tuple(loc, ops, factor[j] * value));
@@ -222,89 +212,30 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<
 
 		if (P.HAS("tFull"))
 		{
-			for (size_t hop=loc; hop<N_sites; hop++)
-			{
-				size_t numberTransOps;
-				if (hop == loc) {numberTransOps=0;} else {numberTransOps=hop-loc-1;}
-				vector<SiteOperator<Symmetry_,double> > TransOps(numberTransOps);
-				for (size_t i=0; i<numberTransOps; i++)
-				{
-					TransOps[i] = kroneckerProduct(B[loc+i+1].Id(), F[loc+i+1].sign());
-				}
-				
-				if (hop == loc)
-				{
-//					SiteOperator<Symmetry,double> Ssqrt = SiteOperatorQ<Symmetry,MatrixXd>::prod(B[loc].Sdag(0),B[loc].S(0),Symmetry::qvacuum()).plain<double>();
-//					Terms.push_local(loc,std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc),Ssqrt);
-				}
-				else
-				{
-					Terms.push(hop-loc, loc, -P.get<Eigen::ArrayXXd>("tFull")(loc,hop),
-						             kroneckerProduct(B[loc].Id(), F[loc].cdag(UP,0) * F[loc].sign()),
-						             TransOps,
-						             kroneckerProduct(B[hop].Id(), F[hop].c(UP,0))
-						            );
-					Terms.push(hop-loc, loc, -P.get<Eigen::ArrayXXd>("tFull")(loc,hop),
-						             kroneckerProduct(B[loc].Id(), F[loc].cdag(DN,0) * F[loc].sign()),
-						             TransOps,
-						             kroneckerProduct(B[hop].Id(), F[hop].c(DN,0))
-						            );
-					Terms.push(hop-loc, loc, -P.get<Eigen::ArrayXXd>("tFull")(loc,hop),
-						             kroneckerProduct(B[loc].Id(), -1.*F[loc].c(UP,0) * F[loc].sign()),
-						             TransOps,
-						             kroneckerProduct(B[hop].Id(), F[hop].cdag(UP,0))
-						            );
-					Terms.push(hop-loc, loc, -P.get<Eigen::ArrayXXd>("tFull")(loc,hop),
-						             kroneckerProduct(B[loc].Id(), -1.*F[loc].c(DN,0) * F[loc].sign()),
-						             TransOps,
-						             kroneckerProduct(B[hop].Id(), F[hop].cdag(DN,0))
-						            );
-				}
-			}
-			labellist[loc].push_back("tᵢⱼ");
+			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cup_sign_local = kroneckerProduct(B[loc].Id(),F[loc].c(UP,0) * F[loc].sign());
+			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdn_sign_local = kroneckerProduct(B[loc].Id(),(F[loc].c(UP,0) * F[loc].sign()));
+			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdagup_sign_local = kroneckerProduct(B[loc].Id(),(F[loc].cdag(UP,0) * F[loc].sign()));
+			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdagdn_sign_local = kroneckerProduct(B[loc].Id(),(F[loc].cdag(DN,0) * F[loc].sign()));
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > cup_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {cup_ranges[i] = kroneckerProduct(B[loc].Id(),F[i].c(UP,0));}
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > cdn_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {cdn_ranges[i] = kroneckerProduct(B[loc].Id(),F[i].c(DN,0));}
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > cdagup_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {cdagup_ranges[i] = kroneckerProduct(B[loc].Id(),F[i].cdag(UP,0));}
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > cdagdn_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {cdagdn_ranges[i] = kroneckerProduct(B[loc].Id(),F[i].cdag(DN,0));}
+			
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {cdagup_sign_local,cdagdn_sign_local,cup_sign_local,cdn_sign_local};
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {cup_ranges,cdn_ranges,cdagup_ranges,cdagdn_ranges};
+			push_full("tFull", "tᵢⱼ", first, last, {-1.,-1.,1.,1.}, PROP::FERMIONIC);
 		}
 		
 		if (P.HAS("JdirFull"))
 		{
-			ArrayXXd Full = P.get<Eigen::ArrayXXd>("JdirFull");
-			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {kroneckerProduct(B[loc].Sp(0),F[loc].Id()), kroneckerProduct(B[loc].Sm(0),F[loc].Id()), kroneckerProduct(B[loc].Sz(0),F[loc].Id())};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sp_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sm_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sz_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++) {Sp_ranges[i] = kroneckerProduct(B[i].Sp(0),F[loc].Id()); Sm_ranges[i] = kroneckerProduct(B[i].Sm(0),F[loc].Id()); Sz_ranges[i] = kroneckerProduct(B[i].Sz(0),F[loc].Id());}
 			
-			if (P.get<bool>("OPEN_BC")) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
-			else                        {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
-			
-			for (size_t h=0; h<R[loc].size(); ++h)
-			{
-				size_t range = R[loc][h].first;
-				double value = R[loc][h].second;
-				
-				size_t Ntrans = (range == 0)? 0:range-1;
-				vector<SiteOperator<Symmetry_,double> > TransOps(Ntrans);
-				for (size_t i=0; i<Ntrans; ++i)
-				{
-					TransOps[i] = kroneckerProduct(B[(loc+i+1)%N_sites].Id(), F[(loc+i+1)%N_sites].Id());
-				}
-				
-				if (range != 0)
-				{
-					int hop = (loc+range)%N_sites;
-					
-					auto S_loc = kroneckerProduct(B[loc].Scomp(SP,0), F[loc].Id());
-					auto S_hop = kroneckerProduct(B[hop].Scomp(SM,0), F[hop].Id());
-					Terms.push(range, loc, 0.5*value, S_loc, TransOps, S_hop);
-					
-					S_loc = kroneckerProduct(B[loc].Scomp(SM,0), F[loc].Id());
-					S_hop = kroneckerProduct(B[hop].Scomp(SP,0), F[hop].Id());
-					Terms.push(range, loc, 0.5*value, S_loc, TransOps, S_hop);
-					
-					S_loc = kroneckerProduct(B[loc].Scomp(SZ,0), F[loc].Id());
-					S_hop = kroneckerProduct(B[hop].Scomp(SZ,0), F[hop].Id());
-					Terms.push(range, loc, value, S_loc, TransOps, S_hop);
-				}
-			}
-			
-			stringstream ss;
-			ss << "Jdirᵢⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
-			Terms.save_label(loc,ss.str());
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sm_ranges, Sp_ranges, Sz_ranges};
+			push_full("Jdirfull", "Jdirᵢⱼ", first, last, {0.5,0.5,1.0}, PROP::BOSONIC);
 		}
 		
 		// local terms
@@ -361,11 +292,13 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<
 		ArrayXd  Kxorb    = B[loc].ZeroField();
 		ArrayXXd Dyperp   = B[loc].ZeroHopping();
 		ArrayXXd Jperp    = F[loc].ZeroHopping();
+		ArrayXXd Vxysubperp   = F[loc].ZeroHopping();
+		ArrayXXd Vzsubperp   = F[loc].ZeroHopping();
 		
 		if (Borbitals > 0 and Forbitals > 0)
 		{
-			auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,Bxorb,muorb,Kz.a,Kxorb,Dyperp), F[loc].Id());
-			auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].template HubbardHamiltonian<double>(U.a,Uph.a,t0.a-mu.a,Bzsub.a,Bxsuborb,tPerp.a,Vperp.a,Jperp));
+			auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,muorb,Kz.a), F[loc].Id());
+			auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].template HubbardHamiltonian<double>(U.a,Uph.a,t0.a-mu.a,Bzsub.a,tPerp.a,Vperp.a,Vzsubperp,Vxysubperp,Jperp,Jperp));
 			auto Hloc = Himp + Hsub;
 			
 			for (int alfa=0; alfa<Forbitals; ++alfa)
@@ -388,7 +321,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<
 				}
 			}
 			
-			Terms.push_local(loc, 1., Hloc);
+			pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(Hloc), 1.));
 		}
 		
 		// NN terms
@@ -410,44 +343,35 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<
 			for (std::size_t alfa=0; alfa<Forbitals;      ++alfa)
 			for (std::size_t beta=0; beta<Fnext_orbitals; ++beta)
 			{
-				Terms.push_tight(loc, -tPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), F[loc].cdag(UP,alfa) * F[loc].sign()),
-				                 kroneckerProduct(B[lp1].Id(), F[lp1].c(UP,beta))
-				                );
-				Terms.push_tight(loc, -tPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), F[loc].cdag(DN,alfa) * F[loc].sign()),
-				                 kroneckerProduct(B[lp1].Id(), F[lp1].c(DN,beta))
-				                );
-				Terms.push_tight(loc, -tPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), -1.*F[loc].c(UP,alfa) * F[loc].sign()),
-				                 kroneckerProduct(B[lp1].Id(), F[lp1].cdag(UP,beta))
-				                );
-				Terms.push_tight(loc, -tPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), -1.*F[loc].c(DN,alfa) * F[loc].sign()),
-				                 kroneckerProduct(B[lp1].Id(), F[lp1].cdag(DN,beta))
-				                );
-				
-				Terms.push_tight(loc, Vpara(alfa,beta), 
-				                 kroneckerProduct(B[loc].Id(),F[loc].n(alfa)), 
-				                 kroneckerProduct(B[lp1].Id(),F[lp1].n(beta))
-				                );
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Id(), F[loc].cdag(UP,alfa) * F[loc].sign()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].c(UP,beta))),
+																									  -tPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Id(), F[loc].cdag(DN,alfa) * F[loc].sign()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].c(DN,beta))),
+																									  -tPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Id(), -1.*F[loc].c(UP,alfa) * F[loc].sign()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].cdag(UP,beta))),
+																									  -tPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Id(), -1.*F[loc].c(DN,alfa) * F[loc].sign()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].cdag(DN,beta))),
+																									  -tPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Id(), F[loc].n(alfa) * F[loc].sign()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].n(beta))),
+																									  Vpara(alfa,beta)));
 			}
 			
 			for (int alfa=0; alfa<Borbitals;      ++alfa)
 			for (int beta=0; beta<Bnext_orbitals; ++beta)
 			{
-				Terms.push_tight(loc, 0.5 * JdirPara(alfa,beta), 
-				                 kroneckerProduct(B[loc].Scomp(SP,alfa), F[loc].Id()),
-				                 kroneckerProduct(B[lp1].Scomp(SM,beta), F[lp1].Id())
-				                );
-				Terms.push_tight(loc, 0.5 * JdirPara(alfa,beta), 
-				                 kroneckerProduct(B[loc].Scomp(SM,alfa), F[loc].Id()),
-				                 kroneckerProduct(B[lp1].Scomp(SP,beta), F[lp1].Id())
-				                );
-				Terms.push_tight(loc, JdirPara(alfa,beta), 
-				                 kroneckerProduct(B[loc].Scomp(SZ,alfa), F[loc].Id()),
-				                 kroneckerProduct(B[lp1].Scomp(SZ,beta), F[lp1].Id())
-				                );
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Sp(alfa), F[loc].Id()),
+																									  kroneckerProduct(B[lp1].Sm(beta), F[lp1].Id())),
+												   0.5*JdirPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Sm(alfa), F[loc].Id()),
+																									  kroneckerProduct(B[lp1].Sp(beta), F[lp1].Id())),
+												   0.5*JdirPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Sz(alfa), F[loc].Id()),
+																									  kroneckerProduct(B[lp1].Sz(beta), F[lp1].Id())),
+												   JdirPara(alfa,beta)));			   
 			}
 		}
 		
@@ -461,18 +385,15 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<
 			for (std::size_t alfa=0; alfa<Borbitals;      ++alfa)
 			for (std::size_t beta=0; beta<Fnext_orbitals; ++beta)
 			{
-				Terms.push_tight(loc, 0.5*InextPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Scomp(SP,alfa), F[loc].Id()),
-				                 kroneckerProduct(B[lp1].Id(), F[lp1].Sm(beta))
-				                );
-				Terms.push_tight(loc, 0.5*InextPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Scomp(SM,alfa), F[loc].Id()),
-				                 kroneckerProduct(B[lp1].Id(), F[lp1].Sp(beta))
-				                );
-				Terms.push_tight(loc, InextPara(alfa,beta),
-				                 kroneckerProduct(B[loc].Scomp(SZ,alfa), F[loc].Id()),
-				                 kroneckerProduct(B[lp1].Id(), F[lp1].Sz(beta))
-				                );
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Sp(alfa), F[loc].Id()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].Sm(beta))),
+												   0.5*InextPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Sm(alfa), F[loc].Id()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].Sp(beta))),
+												   0.5*InextPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Sz(alfa), F[loc].Id()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].Sz(beta))),
+												   InextPara(alfa,beta)));
 			}
 		}
 		
@@ -484,18 +405,15 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<
 			for (std::size_t alfa=0; alfa<Fprev_orbitals;  ++alfa)
 			for (std::size_t beta=0; beta<Borbitals;       ++beta)
 			{
-				Terms.push_tight(lm1, 0.5*IprevPara(alfa,beta),
-				                 kroneckerProduct(B[lm1].Id(), F[lm1].Sm(alfa)),
-				                 kroneckerProduct(B[loc].Scomp(SP,beta), F[loc].Id())
-				                );
-				Terms.push_tight(lm1, 0.5*IprevPara(alfa,beta),
-				                 kroneckerProduct(B[lm1].Id(), F[lm1].Sp(alfa)),
-				                 kroneckerProduct(B[loc].Scomp(SM,beta), F[loc].Id())
-				                );
-				Terms.push_tight(lm1, IprevPara(alfa,beta),
-				                 kroneckerProduct(B[lm1].Id(), F[lm1].Sz(alfa)),
-				                 kroneckerProduct(B[loc].Scomp(SZ,beta), F[loc].Id())
-				                );
+				pushlist.push_back(std::make_tuple(lm1, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[lm1].Sp(alfa), F[lm1].Id()),
+																									  kroneckerProduct(B[loc].Id(), F[loc].Sm(beta))),
+												   0.5*IprevPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(lm1, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[lm1].Sm(alfa), F[lm1].Id()),
+																									  kroneckerProduct(B[loc].Id(), F[loc].Sp(beta))),
+												   0.5*IprevPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(lm1, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[lm1].Sz(alfa), F[lm1].Id()),
+																									  kroneckerProduct(B[loc].Id(), F[loc].Sz(beta))),
+												   IprevPara(alfa,beta)));
 			}
 		}
 		
@@ -510,27 +428,21 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<
 			for (std::size_t beta=0; beta<Fnext_orbitals; ++beta)
 			{
 				assert(Borbitals == 1);
-				
-				Terms.push_tight(loc, 0.5*I3nextPara(alfa,beta),
-				                      kroneckerProduct(B[loc].Scomp(SM,0), F[loc].cdag(UP,alfa) * F[loc].sign()),
-				                      kroneckerProduct(B[lp1].Id(), F[lp1].c(DN,beta))
-				                );
-				Terms.push_tight(loc, 0.5*I3nextPara(alfa,beta),
-				                      kroneckerProduct(B[loc].Scomp(SP,0), F[loc].cdag(DN,alfa) * F[loc].sign()),
-				                      kroneckerProduct(B[lp1].Id(), F[lp1].c(UP,beta))
-				                );
-				Terms.push_tight(loc, 0.5*I3nextPara(alfa,beta),
-				                      kroneckerProduct(B[loc].Scomp(SM,0), -1.*F[loc].c(DN,alfa) * F[loc].sign()),
-				                      kroneckerProduct(B[lp1].Id(), F[lp1].cdag(UP,beta))
-				                );
-				Terms.push_tight(loc, 0.5*I3nextPara(alfa,beta),
-				                      kroneckerProduct(B[loc].Scomp(SP,0), -1.*F[loc].c(UP,alfa) * F[loc].sign()),
-				                      kroneckerProduct(B[lp1].Id(), F[lp1].cdag(DN,beta))
-				                );
-				Terms.push_tight(loc, I3nextPara(alfa,beta),
-				                      kroneckerProduct(B[loc].Scomp(SZ,0), F[loc].Id()),
-				                      kroneckerProduct(B[lp1].Id(), F[lp1].Sz(beta))
-				                );
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Sm(0), F[loc].cdag(UP,alfa) * F[loc].sign()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].c(DN,beta))),
+												   0.5*I3nextPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Sp(0), F[loc].cdag(DN,alfa) * F[loc].sign()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].c(UP,beta))),
+												   0.5*I3nextPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Sm(0), -1.*F[loc].c(DN,alfa) * F[loc].sign()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].cdag(UP,beta))),
+												   0.5*I3nextPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Sp(0), -1.*F[loc].c(UP,alfa) * F[loc].sign()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].cdag(DN,beta))),
+												   0.5*I3nextPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Sz(0), F[loc].Id()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].Sz(beta))),
+												   I3nextPara(alfa,beta)));
 			}
 		}
 		
@@ -543,27 +455,21 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<
 			for (std::size_t beta=0; beta<Forbitals;       ++beta)
 			{
 				assert(Borbitals == 1);
-				
-				Terms.push_tight(lm1, 0.5*I3prevPara(alfa,beta),
-				                 kroneckerProduct(B[lm1].Id(), F[lm1].cdag(UP,alfa) * F[lm1].sign()),
-				                 kroneckerProduct(B[loc].Scomp(SM,0), F[loc].c(DN,beta))
-				                );
-				Terms.push_tight(lm1, 0.5*I3prevPara(alfa,beta),
-				                 kroneckerProduct(B[lm1].Id(), F[lm1].cdag(DN,alfa) * F[lm1].sign()),
-				                 kroneckerProduct(B[loc].Scomp(SP,0), F[loc].c(UP,beta))
-				                );
-				Terms.push_tight(lm1, 0.5*I3prevPara(alfa,beta),
-				                 kroneckerProduct(B[lm1].Id(), -1.*F[lm1].c(DN,alfa) * F[lm1].sign()),
-				                 kroneckerProduct(B[loc].Scomp(SM,0), F[loc].cdag(UP,beta))
-				                );
-				Terms.push_tight(lm1, 0.5*I3prevPara(alfa,beta),
-				                 kroneckerProduct(B[lm1].Id(), -1.*F[lm1].c(UP,alfa) * F[lm1].sign()),
-				                 kroneckerProduct(B[loc].Scomp(SP,0), F[loc].cdag(DN,beta))
-				                );
-				Terms.push_tight(lm1, I3prevPara(alfa,beta),
-				                 kroneckerProduct(B[lm1].Id(), F[lm1].Sz(alfa)),
-				                 kroneckerProduct(B[loc].Scomp(SZ,0), F[loc].Id())
-				                );
+				pushlist.push_back(std::make_tuple(lm1, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[lm1].Id(), F[lm1].cdag(UP,alfa) * F[lm1].sign()),
+																									  kroneckerProduct(B[loc].Sm(0), F[loc].c(DN,beta))),
+												   0.5*I3nextPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(lm1, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[lm1].Id(), F[lm1].cdag(DN,alfa) * F[lm1].sign()),
+																									  kroneckerProduct(B[loc].Sp(0), F[loc].c(UP,beta))),
+												   0.5*I3nextPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(lm1, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[lm1].Id(), -1.*F[lm1].c(DN,alfa) * F[lm1].sign()),
+																									  kroneckerProduct(B[lp1].Sm(0), F[lp1].cdag(UP,beta))),
+												   0.5*I3nextPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(lm1, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[lm1].Id(), -1.*F[lm1].c(UP,alfa) * F[lm1].sign()),
+																									  kroneckerProduct(B[loc].Sp(0), F[loc].cdag(DN,beta))),
+												   0.5*I3nextPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(lm1, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[lm1].Id(), F[lm1].Sz(alfa)),
+																									  kroneckerProduct(B[loc].Sz(0), F[loc].Id())),
+												   I3nextPara(alfa,beta)));				
 			}
 		}
 		
@@ -577,26 +483,22 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &B, const std::vector<
 			for (std::size_t alfa=0; alfa<Forbitals;       ++alfa)
 			for (std::size_t beta=0; beta<Fnextn_orbitals; ++beta)
 			{
-				Terms.push_nextn(loc, -tPrime(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), F[loc].cdag(UP,alfa) * F[loc].sign()),
-				                 kroneckerProduct(B[lp1].Id(), F[lp1].sign()),
-				                 kroneckerProduct(B[lp2].Id(), F[lp2].c(UP,beta))
-				                );
-				Terms.push_nextn(loc, -tPrime(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), F[loc].cdag(DN,alfa) * F[loc].sign()),
-				                 kroneckerProduct(B[lp1].Id(), F[lp1].sign()),
-				                 kroneckerProduct(B[lp2].Id(), F[lp2].c(DN,beta))
-				                );
-				Terms.push_nextn(loc, -tPrime(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), -1.*F[loc].c(UP,alfa) * F[loc].sign()),
-				                 kroneckerProduct(B[lp1].Id(), F[lp1].sign()),
-				                 kroneckerProduct(B[lp2].Id(), F[lp2].cdag(UP,beta))
-				                );
-				Terms.push_nextn(loc, -tPrime(alfa,beta),
-				                 kroneckerProduct(B[loc].Id(), -1.*F[loc].c(DN,alfa) * F[loc].sign()),
-				                 kroneckerProduct(B[lp1].Id(), F[lp1].sign()),
-				                 kroneckerProduct(B[lp2].Id(), F[lp2].cdag(DN,beta))
-				                );
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Id(), F[loc].cdag(UP,alfa) * F[loc].sign()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].sign()),
+																									  kroneckerProduct(B[lp2].Id(), F[lp2].c(UP,beta))),
+																									  -tPrime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Id(), F[loc].cdag(DN,alfa) * F[loc].sign()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].sign()),
+																									  kroneckerProduct(B[lp2].Id(), F[lp2].c(DN,beta))),
+																									  -tPrime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Id(), -1.*F[loc].c(UP,alfa) * F[loc].sign()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].sign()),
+																									  kroneckerProduct(B[lp2].Id(), F[lp2].cdag(UP,beta))),
+																									  -tPrime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Id(), -1.*F[loc].c(DN,alfa) * F[loc].sign()),
+																									  kroneckerProduct(B[lp1].Id(), F[lp1].sign()),
+																									  kroneckerProduct(B[lp2].Id(), F[lp2].cdag(DN,beta))),
+																									  -tPrime(alfa,beta)));
 			}
 		}
 	}

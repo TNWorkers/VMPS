@@ -219,6 +219,7 @@ int main (int argc, char* argv[])
 		Stopwatch<> Watch_U1;
 		VMPS::HeisenbergU1 H_U1(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"maxPower",maxPower}});
 		lout << H_U1.info() << endl;
+		cout << H_U1.get_qAux_power(maxPower)[static_cast<size_t>(L/2)] << endl;
 		
 		VMPS::HeisenbergU1::Solver DMRG_U1(VERB);
 		DMRG_U1.userSetGlobParam();
@@ -337,17 +338,11 @@ int main (int argc, char* argv[])
 		DMRG_SU2.edgeState(H_SU2, g_SU2, {Dtot}, LANCZOS::EDGE::GROUND);
 		g_SU2.state.graph("SU2");
 		ArrayXd check1(maxPower);
-		ArrayXd check2(maxPower);
-		check2(3-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<1>{1},1,2) - std::pow(g_SU2.energy,3);
-		check2(2-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<1>{1},1,1) - std::pow(g_SU2.energy,2);
-		check2(4-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<1>{1},2,2) - std::pow(g_SU2.energy,4);
-		// check2(5-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<1>{1},3,2) - std::pow(g_SU2.energy,5);
 		for (size_t i=1; i<=maxPower;i++)
 		{
 			check1(i-1) = avg(g_SU2.state,H_SU2,g_SU2.state,i) - std::pow(g_SU2.energy,i);
 		}
 		cout << "check1=" << check1.transpose() << endl;
-		cout << "check2=" << check2.transpose() << endl;
 		t_SU2 = Watch_SU2.time();
 		
 		cout << endl << endl << "E0=" << avg(g_SU2.state,H_SU2.SdagS(L/2,L/2+1),g_SU2.state) << endl;

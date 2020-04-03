@@ -138,13 +138,22 @@ public:
 													 const qType& target );
 	static SiteOperatorQ<Symmetry,MatrixType_> outerprod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2,
 														  const qType& target );
-
+	static SiteOperatorQ<Symmetry,MatrixType_> outerprod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2)
+		{
+			auto target = Symmetry::reduceSilent(O1.Q(),O2.Q());
+			assert(target.size() == 1 and "Use other outerprod!");
+			return SiteOperatorQ<Symmetry,MatrixType_>::outerprod(O1,O2,target[0]);
+		}
+			
 	SiteOperatorQ<Symmetry,MatrixType_> diagonalize(const std::vector<qType> &blocks={}, Eigen::DecompositionOptions opt=Eigen::DecompositionOptions::EigenvaluesOnly) const;
 
 	typename MatrixType_::Scalar norm() const;
-	
+
 	template<typename Scalar>
 	SiteOperator<Symmetry,Scalar> plain() const;
+	
+	// template<typename Scalar>
+	// SiteOperator<Symmetry,Scalar> fullPlain(int m) const;
 
 	/**Prints the operator.*/
 	std::string print(bool PRINT_BASIS=false) const;
@@ -341,6 +350,41 @@ plain() const
 	out.label = this->label();
 	return out;
 }
+
+// template<typename Symmetry, typename MatrixType_>
+// template<typename Scalar>
+// SiteOperator<Symmetry,Scalar> SiteOperatorQ<Symmetry,MatrixType_>::
+// fullPlain(int m) const
+// {
+// 	SiteOperator<Symmetry,Scalar> out;
+// 	MatrixType_ Mtmp(basis().fullM(), basis().fullM()); Mtmp.setZero();
+// 	for( auto itQ = basis().cbegin(); itQ != basis().cend(); itQ++ )
+// 	{
+// 		auto [qVal,qNum,qPlain] = *itQ;
+// 		for( auto itP = basis().cbegin(); itP != basis().cend(); itP++ )
+// 		{
+// 			auto [pVal,pNum,pPlain] = *itP;
+// 			if( auto it = data().dict.find({{qVal,pVal}}); it != data().dict.end() )
+// 			{
+// 				for (int qm=0; qm<Symmetry::degeneracy(qVal); qm++)
+// 				for (int pm=0; pm<Symmetry::degeneracy(pVal); pm++)
+// 				Mtmp.block(qNum,pNum,qPlain.size(),pPlain.size()) = data().block[it->second];
+// 			}
+// 		}
+// 	}
+// 	if constexpr ( std::is_same<OtherMatrixType,Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> >::value )
+// 		{
+// 			out.data = Mtmp;
+// 		}
+// 	else if constexpr ( std::is_same<OtherMatrixType,Eigen::SparseMatrix<Scalar> >::value )
+// 		{
+// 			out.data = Mtmp.sparseView();
+// 		}
+// 	out.data = Mtmp.sparseView();
+// 	out.Q = this->Q();
+// 	out.label = this->label();
+// 	return out;
+// }
 
 template<typename Symmetry, typename MatrixType_>
 void SiteOperatorQ<Symmetry,MatrixType_>::
@@ -561,6 +605,12 @@ SiteOperatorQ<Symmetry,MatrixType_> operator- ( const SiteOperatorQ<Symmetry,Mat
 	ss << "(" << O1.label() << "-" << O2.label() << ")";
 	out.label() = ss.str();
 	return out;
+}
+
+template<typename Symmetry,typename MatrixType_>
+SiteOperatorQ<Symmetry,MatrixType_> kroneckerProduct( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2)
+{
+	return SiteOperatorQ<Symmetry,MatrixType_>::outerprod(O1,O2);
 }
 
 template<typename Symmetry,typename MatrixType_>

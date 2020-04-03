@@ -42,16 +42,14 @@ public:
 	
 	///@{
 	KondoU1 () : Mpo(){};
-	KondoU1 (const size_t &L, const vector<Param> &params);
+	KondoU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
 	///@}
 	
 	static qarray<1> singlet (int N) {return qarray<1>{N};}; // not a real singlet, but useful for consistency when switching symmetries
 	
 	template<typename Symmetry_>
-	static void add_operators (const vector<SpinBase<Symmetry_> > &B, 
-	                           const vector<FermionBase<Symmetry_> > &F, 
-	                           const ParamHandler &P,
-	                           HamiltonianTermsXd<Symmetry_> &Terms);
+	static void add_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 	
 	/**Validates whether a given \p qnum is a valid combination of \p N and \p M for the given model.
 	\returns \p true if valid, \p false if not*/
@@ -69,41 +67,35 @@ const std::map<string,std::any> KondoU1::defaults =
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bx",0.}, {"Bzsub",0.}, {"Bxsub",0.}, {"Kz",0.}, {"Kx",0.},
 	{"Inext",0.}, {"Iprev",0.}, {"I3next",0.}, {"I3prev",0.}, {"I3loc",0.},
-	{"D",2ul}, {"CALC_SQUARE",true}, {"CYLINDER",false}, {"OPEN_BC",true}, {"Ly",1ul}, {"LyF",1ul}
+	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}, {"LyF",1ul}
 };
 
 KondoU1::
-KondoU1 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
+KondoU1 (const size_t &L, const vector<Param> &params, const BC &boundary)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN,boundary),
  KondoObservables(L,params,defaults),
  ParamReturner()
 {
 	ParamHandler P(params,defaults);
 	
 	size_t Lcell = P.size();
-//	vector<HamiltonianTermsXd<Symmetry> > Terms(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
 		N_phys += P.get<size_t>("Ly",l%Lcell);
-		setLocBasis(Symmetry::reduceSilent(B[l].get_basis(),F[l].get_basis()),l);
+		setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);
 	}
-	
-//	for (size_t l=0; l<N_sites; ++l)
-//	{
-//		Terms[l] = KondoU1xU1::set_operators(B,F,P,l%Lcell);
-//		add_operators(Terms[l],B,F,P,l%Lcell);
-//		
-//		stringstream ss;
-//		ss << "Ly=" << P.get<size_t>("Ly",l%Lcell);
-//		Terms[l].info.push_back(ss.str());
-//	}
-	
-	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
-	KondoU1xU1::set_operators(B,F,P,Terms);
-	add_operators(B,F,P,Terms);
-	
-	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+
+	this->set_name("Transverse-field Kondo");
+
+	PushType<SiteOperator<Symmetry,double>,double> pushlist;
+    std::vector<std::vector<std::string>> labellist;
+	KondoU1xU1::set_operators(B, F, P, pushlist, labellist, boundary);
+	add_operators(B, F, P, pushlist, labellist, boundary);
+
+	this->construct_from_pushlist(pushlist, labellist, Lcell);
+    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
+
 	this->precalc_TwoSiteData();
 }
 
@@ -116,27 +108,26 @@ validate (qType qnum) const
 
 template<typename Symmetry_>
 void KondoU1::
-add_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<Symmetry_> > &F, 
-               const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms)
+add_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
 	std::size_t Lcell = P.size();
-	std::size_t N_sites = Terms.size();
-	
-	Terms.set_name("Transverse-field Kondo");
-	
+	std::size_t N_sites = B.size();
+	if(labellist.size() != N_sites) {labellist.resize(N_sites);}
+		
 	for (std::size_t loc=0; loc<N_sites; ++loc)
 	{
 		// Bx substrate
 		param1d Bxsub = P.fill_array1d<double>("Bxsub", "Bxsuborb", F[loc].orbitals(), loc%Lcell);
-		Terms.save_label(loc, Bxsub.label);
+		labellist[loc].push_back(Bxsub.label);
 		
 		// Bx impurities
 		param1d Bx = P.fill_array1d<double>("Bx", "Bxorb", B[loc].orbitals(), loc%Lcell);
-		Terms.save_label(loc, Bx.label);
+		labellist[loc].push_back(Bx.label);
 		
 		// Kx anisotropy
 		param1d Kx = P.fill_array1d<double>("Kx", "Kxorb", B[loc].orbitals(), loc%Lcell);
-		Terms.save_label(loc, Kx.label);
+		labellist[loc].push_back(Kx.label);
 		
 		ArrayXXd Jxyperp = B[loc].ZeroHopping();
 		ArrayXXd Jzperp  = B[loc].ZeroHopping();
@@ -154,55 +145,11 @@ add_operators (const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<S
 		ArrayXXd Jperp   = F[loc].ZeroHopping();
 		
 		auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bx.a,muorb,Kzorb,Kx.a,Dyperp), F[loc].Id());
-		auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].HubbardHamiltonian(Uorb,Uphorb,Eorb,Bzsuborb,Bxsub.a,tPerp,Vperp,Jperp));
-		
-		Terms.push_local(loc, 1., Himp+Hsub);
+		auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].template coupling_Bx<double>(Bxsub.a));
+
+		pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(Himp+Hsub), 1.));
 	}
 }
-
-//template<typename Symmetry_>
-//void KondoU1::
-//add_operators (HamiltonianTermsXd<Symmetry_> &Terms, 
-//               const vector<SpinBase<Symmetry_> > &B, const vector<FermionBase<Symmetry_> > &F, 
-//               const ParamHandler &P, size_t loc)
-//{
-//	auto save_label = [&Terms] (string label)
-//	{
-//		if (label!="") {Terms.info.push_back(label);}
-//	};
-//	
-//	// Bx substrate
-//	auto [Bxsub,Bxsuborb,Bxsublabel] = P.fill_array1d<double>("Bxsub","Bxsuborb",F[loc].orbitals(),loc);
-//	save_label(Bxsublabel);
-//	
-//	// Bx impurities
-//	auto [Bx,Bxorb,Bxlabel] = P.fill_array1d<double>("Bx","Bxorb",F[loc].orbitals(),loc);
-//	save_label(Bxlabel);
-//	
-//	// Kx anisotropy
-//	auto [Kx,Kxorb,Kxlabel] = P.fill_array1d<double>("Kx","Kxorb",B[loc].orbitals(),loc);
-//	save_label(Kxlabel);
-//	
-//	ArrayXXd Jxyperp = B[loc].ZeroHopping();
-//	ArrayXXd Jzperp  = B[loc].ZeroHopping();
-//	ArrayXd  Bzorb   = B[loc].ZeroField();
-//	ArrayXd  Kzorb   = B[loc].ZeroField();
-//	ArrayXXd Dyperp  = B[loc].ZeroHopping();
-//	
-//	ArrayXd Uorb     = F[loc].ZeroField();
-//	ArrayXd Eorb     = F[loc].ZeroField();
-//	ArrayXd Bzsuborb = F[loc].ZeroField();
-//	ArrayXXd tPerp   = F[loc].ZeroHopping();
-//	ArrayXXd Vperp   = F[loc].ZeroHopping();
-//	ArrayXXd Jperp   = F[loc].ZeroHopping();
-//	
-//	auto Himp = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bzorb,Bxorb,Kzorb,Kxorb,Dyperp), F[loc].Id());
-//	auto Hsub = kroneckerProduct(B[loc].Id(), F[loc].HubbardHamiltonian(Uorb,Eorb,Bzsuborb,Bxsuborb,tPerp,Vperp,Jperp));
-//	
-//	Terms.local.push_back(make_tuple(1.,Himp+Hsub));
-//	
-//	Terms.name = "Transverse-field Kondo";
-//}
 
 };
 

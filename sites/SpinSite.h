@@ -94,8 +94,7 @@ fill_SiteOps()
 	
 	Sp_1s_ = 2.*Sbase;
 	Sm_1s_ = Sp_1s_.adjoint();
-	if (D==1) {Sz_1s_.setIdentity();}
-	else {Sz_1s_ = 0.5 * (Sp_1s_ * Sm_1s_ - Sm_1s_*Sp_1s_);}
+	Sz_1s_ = 0.5 * (Sp_1s_ * Sm_1s_ - Sm_1s_*Sp_1s_);
 
 	F_1s_ = 0.5*Id_1s_ - Sz_1s_;
 	return;
@@ -127,7 +126,7 @@ fill_basis ()
 	else if
 		constexpr (Symmetry::IS_SPIN_U1()) //spin U1
 				  {
-					  typename Symmetry::qType Q; //empty and doubly occupied state
+					  typename Symmetry::qType Q;
 					  Eigen::Index inner_dim;
 					  std::vector<std::string> ident;
 
@@ -141,13 +140,13 @@ fill_basis ()
 					      {
 							  for (size_t q=0; q<Symmetry::Nq; q++)
 							  {
-								  if constexpr(Symmetry::S1::IS_SPIN_U1())
+								  if (Symmetry::kind()[q] == Sym::KIND::M)
 								  {
-									  Q[q] = Symmetry::S2::qvacuum()[0];
+									  Q[q] = Qint;
 								  }
-								  else if constexpr (Symmetry::S2::IS_SPIN_U1())
+								  else
 								  {
-									  Q[q] = Symmetry::S1::qvacuum()[0];
+									  Q[q] = 0;
 								  }
 							  }
 						  }

@@ -176,11 +176,20 @@ public:
 		{
 			assert(Sa != SY);
 			OperatorType out;
-			if      (Sa==SX)  { out = Sx(orbital); }
-			else if (Sa==iSY) { out = iSy(orbital); }
-			else if (Sa==SZ)  { out = Sz(orbital); }
-			else if (Sa==SP)  { out = Sp(orbital); }
-			else if (Sa==SM)  { out = Sm(orbital); }
+			if constexpr (Dummy::NO_SPIN_SYM())
+			{						 
+				if      (Sa==SX)  { out = Sx(orbital); }
+				else if (Sa==iSY) { out = iSy(orbital); }
+				else if (Sa==SZ)  { out = Sz(orbital); }
+				else if (Sa==SP)  { out = Sp(orbital); }
+				else if (Sa==SM)  { out = Sm(orbital); }
+			}
+			else
+			{
+				if (Sa==SZ)  { out = Sz(orbital); }
+				else if (Sa==SP)  { out = Sp(orbital); }
+				else if (Sa==SM)  { out = Sm(orbital); }
+			}
 			return out;
 		};
 	///\}

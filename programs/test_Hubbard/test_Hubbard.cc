@@ -117,6 +117,16 @@ Eigenstate<HUBBARD::StateXd> g_U1;
 Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
 
+ArrayXd cup_U1, cdn_U1;
+ArrayXd c_SU2;
+ArrayXd cdag_U1;
+ArrayXd cdag_SU2;
+
+ArrayXd c_U1e;
+ArrayXd c_SU2e;
+ArrayXd cdag_U1e;
+ArrayXd cdag_SU2e;
+
 MatrixXd densityMatrix_ED;
 VectorXd d_ED, h_ED;
 
@@ -350,6 +360,8 @@ int main (int argc, char* argv[])
 		DMRG_U1.DynParam = DynParam;
 		DMRG_U1.edgeState(H_U1, g_U1, {M,N}, LANCZOS::EDGE::GROUND);
 		g_U1.state.graph("U1");
+		if (g_U1.state.A_at(0)[0].block[0](0,0) < 0) {g_U1.state *= -1.;}
+					
 		ArrayXd check(maxPower);
 		for (size_t i=1; i<=maxPower;i++)
 		{
@@ -360,18 +372,58 @@ int main (int argc, char* argv[])
 		
 		if (CORR)
 		{
-//			Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1m;
-//			DMRG_U1.set_verbosity(DMRG::VERBOSITY::SILENT);
-//			DMRG_U1.edgeState(H_U1, g_U1m, {Nup-1,Ndn}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE, 
-//			                tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha);
-//			lout << "g_U1m.energy=" << g_U1m.energy << endl;
-//		
-//			ArrayXd c_U1(L);
-//			for (int l=0; l<L; ++l)
-//			{
-//				c_U1(l) = avg(g_U1m.state, H_U1.c(UP,l), g_U1.state);
-//				cout << "l=" << l << ", <c>=" << c_U1(l) << endl;
-//			}
+			Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1Mm;
+			DMRG_U1.set_verbosity(DMRG::VERBOSITY::SILENT);
+			DMRG_U1.edgeState(H_U1, g_U1Mm, {M-1,N-1}, LANCZOS::EDGE::GROUND);
+			lout << "g_U1Mm.energy=" << g_U1Mm.energy << endl;
+			if (g_U1Mm.state.A_at(0)[0].block[0](0,0) < 0) {g_U1Mm.state *= -1.;}
+			
+			cup_U1.resize(L);
+			for (int l=0; l<L; ++l)
+			{
+				cup_U1(l) = avg(g_U1Mm.state, H_U1.c<UP>(l), g_U1.state);
+				cout << "l=" << l << ", <cup>=" << cup_U1(l) << endl;
+			}
+
+			Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1Mp;
+			DMRG_U1.set_verbosity(DMRG::VERBOSITY::SILENT);
+			DMRG_U1.edgeState(H_U1, g_U1Mp, {M+1,N-1}, LANCZOS::EDGE::GROUND);
+			lout << "g_U1Mp.energy=" << g_U1Mp.energy << endl;
+			if (g_U1Mm.state.A_at(0)[0].block[0](0,0) < 0) {g_U1Mm.state *= -1.;}
+
+			cdn_U1.resize(L);
+			for (int l=0; l<L; ++l)
+			{
+				cdn_U1(l) = avg(g_U1Mp.state, H_U1.c<DN>(l), g_U1.state);
+				cout << "l=" << l << ", <cdn>=" << cdn_U1(l) << endl;
+			}
+			
+			// cdag_U1.resize(L);
+			// for (int l=0; l<L; ++l)
+			// {
+			// 	cdag_U1(l) = avg(g_U1.state, H_U1.cdag<UP>(l), g_U1m.state);
+			// 	cout << "l=" << l << ", <cdag>=" << cdag_U1(l) << endl;
+			// }
+
+			// Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1me;
+			// DMRG_U1.set_verbosity(DMRG::VERBOSITY::SILENT);
+			// DMRG_U1.edgeState(H_U1, g_U1me, {M-1,N+1}, LANCZOS::EDGE::GROUND);
+			// lout << "g_U1me.energy=" << g_U1me.energy << endl;
+			// if (g_U1me.state.A_at(0)[0].block[0](0,0) < 0) {g_U1me.state *= -1.;}
+			
+			// c_U1e.resize(L);
+			// for (int l=0; l<L; ++l)
+			// {
+			// 	c_U1e(l) = avg(g_U1.state, H_U1.c<DN>(l), g_U1me.state);
+			// 	cout << "l=" << l << ", <ce>=" << c_U1e(l) << endl;
+			// }
+		
+			// cdag_U1e.resize(L);
+			// for (int l=0; l<L; ++l)
+			// {
+			// 	cdag_U1e(l) = avg(g_U1me.state, H_U1.cdag<DN>(l), g_U1.state);
+			// 	cout << "l=" << l << ", <cdage>=" << cdag_U1e(l) << endl;
+			// }
 			
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
@@ -440,34 +492,58 @@ int main (int argc, char* argv[])
 		DMRG_SU2.DynParam = DynParam;
 		DMRG_SU2.edgeState(H_SU2, g_SU2, {S,N}, LANCZOS::EDGE::GROUND);
 		g_SU2.state.graph("SU2");
-
+		if (g_SU2.state.A_at(0)[0].block[0](0,0) < 0) {g_SU2.state *= -1.;}
+			
 		ArrayXd check(maxPower);
-		ArrayXd check2(maxPower);
-		check2(3-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<2>{1,0},1,2) - std::pow(g_SU2.energy,3);
-		check2(2-1) = avg(g_SU2.state,H_SU2,H_SU2,g_SU2.state,qarray<2>{1,0},1,1) - std::pow(g_SU2.energy,2);
 		for (size_t i=1; i<=maxPower;i++)
 		{
 			check(i-1) = avg(g_SU2.state,H_SU2,g_SU2.state,i) - std::pow(g_SU2.energy,i);
 		}
 		cout << "check=" << check.transpose() << endl;
-		cout << "check2=" << check2.transpose() << endl;
 		
 		t_SU2 = Watch_SU2.time();
 		
 		if (CORR)
 		{
-//			Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2m;
-//			DMRG_SU2.set_verbosity(DMRG::VERBOSITY::SILENT);
-//			DMRG_SU2.edgeState(H_SU2, g_SU2m, {abs(Nup-1-Ndn)+1,N-1}, LANCZOS::EDGE::GROUND, DMRG::CONVTEST::VAR_2SITE,
-//				               tol_eigval,tol_state, Dinit,Dlimit,Qinit, Imax,Imin, alpha);
-//			lout << "g_SU2m.energy=" << g_SU2m.energy << endl;
-//			
-//			ArrayXd c_SU2(L);
-//			for (int l=0; l<L; ++l)
-//			{
-//				c_SU2(l) = avg(g_SU2m.state, H_SU2.c(l), g_SU2.state);
-//				cout << "l=" << l << ", <c>=" << c_SU2(l) << "\t" << c_SU2(l)/c_U1(l) << endl;
-//			}
+			Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2m;
+			DMRG_SU2.set_verbosity(DMRG::VERBOSITY::SILENT);
+			DMRG_SU2.edgeState(H_SU2, g_SU2m, {2,N-1}, LANCZOS::EDGE::GROUND);
+			if (g_SU2m.state.A_at(0)[0].block[0](0,0) < 0) {g_SU2m.state *= -1.;}
+			lout << "g_SU2m.energy=" << g_SU2m.energy << endl;
+			
+			c_SU2.resize(L);
+			for (int l=0; l<L; ++l)
+			{
+				c_SU2(l) = avg(g_SU2m.state, H_SU2.c(l,0,1.), g_SU2.state);
+				cout << "l=" << l << ", <c>=" << c_SU2(l) << "\t" << c_SU2(l)/cup_U1(l) << "\t" << c_SU2(l)/cdn_U1(l) << endl;
+			}
+			
+			// cdag_SU2.resize(L);
+			// for (int l=0; l<L; ++l)
+			// {
+			// 	cdag_SU2(l) = avg(g_SU2.state, H_SU2.cdag(l,0,std::sqrt(0.5)), g_SU2m.state);
+			// 	cout << "l=" << l << ", <cdag>=" << cdag_SU2(l) << "\t" << cdag_SU2(l)/cdag_U1(l) << endl;
+			// }
+
+			// Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2me;
+			// DMRG_SU2.set_verbosity(DMRG::VERBOSITY::SILENT);
+			// DMRG_SU2.edgeState(H_SU2, g_SU2me, {abs(Nup-1-Ndn)+1,N+1}, LANCZOS::EDGE::GROUND);
+			// lout << "g_SU2me.energy=" << g_SU2me.energy << endl;
+			// if (g_SU2me.state.A_at(0)[0].block[0](0,0) < 0) {g_SU2me.state *= -1.;}
+			
+			// c_SU2e.resize(L);
+			// for (int l=0; l<L; ++l)
+			// {
+			// 	c_SU2e(l) = avg(g_SU2.state, H_SU2.c(l,0,1.), g_SU2me.state);
+			// 	cout << "l=" << l << ", <ce>=" << c_SU2e(l) << "\t" << c_SU2e(l)/c_U1e(l) << endl;
+			// }
+			
+			// cdag_SU2e.resize(L);
+			// for (int l=0; l<L; ++l)
+			// {
+			// 	cdag_SU2e(l) = avg(g_SU2me.state, H_SU2.cdag(l,0,std::sqrt(0.5)), g_SU2.state);
+			// 	cout << "l=" << l << ", <cdage>=" << cdag_SU2e(l) << "\t" << cdag_SU2e(l)/cdag_U1e(l) << endl;
+			// }
 			
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)

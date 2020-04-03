@@ -144,14 +144,23 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
             const Mpo<Symmetry,MpoScalar> &O, 
             const Mps<Symmetry,Scalar> &Vket, 
             size_t power_of_O = 1,  
-            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT)
+            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::RIGHT)
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
-	
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Id;
+
+	Scalar out=0.;
 	// Note DMRG::DIRECTION::RIGHT now adapted for infinite boundary conditions
 	if (DIR == DMRG::DIRECTION::RIGHT)
 	{
+		vector<qarray3<Symmetry::Nq> > Qt;
+		for (size_t i=0; i<Vket.Qmultitarget().size(); ++i)
+		{
+			Qt.push_back(qarray3<Symmetry::Nq>{Vket.Qmultitarget()[i], Vbra.Qmultitarget()[i], O.Qtarget()});
+		}
+		Id.setTarget(Qt);
+		
 		B.setVacuum();
 		for (size_t l=0; l<O.length(); ++l)
 		{
@@ -160,6 +169,9 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			B = Bnext;
 			Bnext.clear();
 		}
+		// cout << B.print(true) << endl;
+		return B.block[0][0][0](0,0);
+		out = contract_LR(B,Id);
 	}
 	else
 	{
@@ -170,6 +182,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			Qt.push_back(qarray3<Symmetry::Nq>{Vket.Qmultitarget()[i], Vbra.Qmultitarget()[i], O.Qtarget()});
 		}
 		B.setTarget(Qt);
+		Id.setVacuum();
 //		B.setIdentity(1,1,Vket.outBasis(Vket.length()-1));
 		
 //		for (int l=O.length()-1; l>=0; --l)
@@ -180,21 +193,22 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			B = Bnext;
 			Bnext.clear();
 		}
+		out = contract_LR(Id,B);
 	}
-	
-	if (B.dim == 1)
-	{
-		return B.block[0][0][0].trace();
-	}
-	else
-	{
-/*		lout << "Warning: Result of contraction in <φ|O|ψ> has several blocks, returning 0!" << endl;*/
-/*		lout << "MPS in question: " << Vket.info() << endl;*/
-/*		lout << "MPO in question: " << O.info() << endl;*/
-/*		lout << "dim=" << B.dim << endl;*/
-/*		lout << "B=" << B.print(true) << endl;*/
-		return 0;
-	}
+	return out;
+// 	if (B.dim == 1)
+// 	{
+// 		return B.block[0][0][0].trace();
+// 	}
+// 	else
+// 	{
+// /*		lout << "Warning: Result of contraction in <φ|O|ψ> has several blocks, returning 0!" << endl;*/
+// /*		lout << "MPS in question: " << Vket.info() << endl;*/
+// /*		lout << "MPO in question: " << O.info() << endl;*/
+// /*		lout << "dim=" << B.dim << endl;*/
+// /*		lout << "B=" << B.print(true) << endl;*/
+// 		return 0;
+// 	}
 	
 //	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > Lnext;
 //	Tripod<Nq,Matrix<Scalar,Dynamic,Dynamic> > L;
@@ -255,13 +269,13 @@ template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
             const vector<Mpo<Symmetry,MpoScalar>> &O, 
             const Mps<Symmetry,Scalar> &Vket, 
-            bool USE_SQUARE = false,  
+            size_t usePower = 1ul,  
             DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT)
 {
 	Scalar out = 0;
 	for (int i=0; i<O.size(); ++i)
 	{
-		out += avg(Vbra, O[i], Vket, USE_SQUARE, DIR);
+		out += avg(Vbra, O[i], Vket, usePower, DIR);
 	}
 	return out;
 }
@@ -271,14 +285,14 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
             const vector<Mpo<Symmetry,MpoScalar>> &O1,
             const vector<Mpo<Symmetry,MpoScalar>> &O2,
             const Mps<Symmetry,Scalar> &Vket, 
-            bool USE_SQUARE = false,  
-            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT)
+            size_t usePower1 = 1ul,
+			size_t usePower2 = 1ul)
 {
 	Scalar out = 0;
 	for (int i=0; i<O1.size(); ++i)
 	for (int j=0; j<O2.size(); ++j)
 	{
-		out += avg(Vbra, O1[i], O2[j], Vket, USE_SQUARE, DIR);
+		out += avg(Vbra, O1[i], O2[j], Vket, usePower1, usePower2);
 	}
 	return out;
 }
@@ -363,6 +377,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 	{
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
+		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Id;
 		
 		vector<qarray3<Symmetry::Nq> > Qt;
 		for (size_t i=0; i<Vket.Qmultitarget().size(); ++i)
@@ -370,6 +385,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			Qt.push_back(qarray3<Symmetry::Nq>{Vket.Qmultitarget()[i], Vbra.Qmultitarget()[i], Qtarget});
 		}
 		B.setTarget(Qt);
+		Id.setVacuum();
 		
 		for (size_t l=O1.length()-1; l!=-1; --l)
 		{
@@ -381,6 +397,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			B = Bnext;
 			Bnext.clear();
 		}
+		return contract_LR(Id,B);
 		
 		if (B.dim == 1)
 		{

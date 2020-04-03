@@ -1,7 +1,9 @@
 #ifndef DMRG_HAMILTONIAN_TERMS
 #define DMRG_HAMILTONIAN_TERMS
 #define EIGEN_DONT_VECTORIZE
+#ifndef TERMS_VERBOSITY
 #define TERMS_VERBOSITY 1
+#endif
 
 /// \cond
 #include <vector>
@@ -136,7 +138,7 @@ private:
      *  Index structure: [Lattice Site]
      */
     std::vector<bool> GOT_QPHYS;
-    
+
     /**
      *  Increments the MPO auxiliar basis dimension by one. Also manages allocation of O.
      *  If BC::INFINITE, loc >= N_sites is allowed. In this case, the method increments qAux[0] and qAux[N_sites] for loc = N_sites
@@ -326,6 +328,24 @@ private:
      */
     static void prod_delZeroCols_OBC(std::map<std::array<qType, 2>, std::vector<std::vector<std::map<qType,OperatorType>>>>& O_last, Qbasis<Symmetry>& qAux_last, Qbasis<Symmetry>& qAux_prev, const qType& qTot, const std::size_t col_qTot);
 
+	static std::string power_to_string(std::size_t power)
+		{
+			assert(power<10 and "power_to_string has only strings for power < 10.");
+			std::vector<std::string> str_powers(10);
+			str_powers[0] = "⁰";
+			str_powers[1] = "¹";
+			str_powers[2] = "²";
+			str_powers[3] = "³";
+			str_powers[4] = "⁴";
+			str_powers[5] = "⁵";
+			str_powers[6] = "⁶";
+			str_powers[7] = "⁷";
+			str_powers[8] = "⁸";
+			str_powers[9] = "⁹";
+			return str_powers[power];
+		}
+
+	static std::pair<std::string,std::size_t> detect_and_remove_power(const std::string &name_w_power);
 protected:
     
     /**
@@ -958,13 +978,13 @@ show()
         lout << ", not finalized yet";
     }
     lout << std::endl;
-    lout << "Approximate memory usage: " << round(memory(kB),1) << " kB";
+    lout << "Approximate memory usage: " << round(memory(GB),1) << " GB";
     if(GOT_W and GOT_QOP)
     {
         lout << ", sparsity: " << round(sparsity()*100,1) << "%";
     }
     lout << std::endl;
-    auto [average_auxdim, maximum_auxdim] = auxdim_infos();
+    auto [average_auxdim,maximum_auxdim] = auxdim_infos();
     lout << "Calculated bases and data:\n";
     if(GOT_QAUX) lout << "• MPO auxiliar bases (Average bond dimension: " << average_auxdim << ", maximum bond dimension: " << maximum_auxdim << ")" << std::endl;
     if(check_qPhys()) lout << "• Physical bases of local Hilbert spaces" << std::endl;
@@ -1292,9 +1312,12 @@ compress(const double tolerance)
             }
         }
     }
-    auto [average_auxdim_final,maximum_auxdim_final] = auxdim_infos();
+	auto [average_auxdim_final,maximum_auxdim_final] = auxdim_infos();
     int compr_rate = (int)std::round(100*(1-average_auxdim_final/average_auxdim_initial));
-    lout << watch.info("Compression time") << "\tCompression steps: " << counter << "\tCompression rate: " << compr_rate << "%\n";
+	auto curr_prec = std::cout.precision();
+    lout << get_name() << " compression: " << watch.info("time") << ", steps: " << counter << ", rate: " << compr_rate << "%, dWavg: " << std::setprecision(1) << std::fixed
+		 << average_auxdim_initial << " ⇒ " << average_auxdim_final << ", dWmax: "  << maximum_auxdim_initial << " ⇒ " << maximum_auxdim_final << "\n" << std::defaultfloat;
+	std::cout.precision(curr_prec);
     calc(1);
     #if TERMS_VERBOSITY > 0
     lout << "Compressed MPO:" << std::endl;
@@ -2909,9 +2932,41 @@ prod(const MpoTerms<Symmetry,Scalar>& top, const MpoTerms<Symmetry,Scalar>& bott
     }
     MpoTerms<Symmetry,Scalar> out(N_sites, boundary_condition, qTot);
     out.reconstruct(O, qAux, qPhys, true, boundary_condition, qTot);
-    out.set_name(top.get_name()+"*"+bottom.get_name());
+
+	auto [name_top, power_top] = detect_and_remove_power(top.get_name());
+	auto [name_bot, power_bot] = detect_and_remove_power(bottom.get_name());
+	if (name_top == name_bot) {out.set_name(name_top + power_to_string(power_top+power_bot));}
+    else {out.set_name(top.get_name()+"*"+bottom.get_name());}
     out.compress(tolerance);
     return out;
+}
+
+template<typename Symmetry, typename Scalar> std::pair<std::string, std::size_t> MpoTerms<Symmetry,Scalar>::
+detect_and_remove_power(const std::string &name_w_power)
+{
+	std::vector<std::string> str_powers(10);
+	str_powers[0] = "⁰";
+	str_powers[1] = "¹";
+	str_powers[2] = "²";
+	str_powers[3] = "³";
+	str_powers[4] = "⁴";
+	str_powers[5] = "⁵";
+	str_powers[6] = "⁶";
+	str_powers[7] = "⁷";
+	str_powers[8] = "⁸";
+	str_powers[9] = "⁹";
+	
+	std::string name_wo_power = name_w_power;
+	std::size_t power = 1ul;
+	for (std::size_t ip=0; ip<str_powers.size(); ip++)
+	{
+		auto pos = name_wo_power.find(str_powers[ip]);
+		if (pos == std::string::npos) {continue;}
+		name_wo_power.erase(pos,pos+str_powers[ip].size());
+		power = ip;
+		break;		
+	}
+	return std::make_pair(name_wo_power,power);
 }
 
 template<typename Symmetry, typename Scalar> MpoTerms<Symmetry,Scalar> MpoTerms<Symmetry,Scalar>::
@@ -3558,15 +3613,19 @@ sparsity(const std::size_t power, bool PER_MATRIX) const
     assert(power <= current_power);
     assert(GOT_W);
     assert(GOT_QOP);
-    std::size_t nonzero_elements = 0;
-    std::size_t overall_elements = 0;
-    std::size_t matrices = 0;
+	assert(GOT_QAUX);
+    // std::size_t nonzero_elements = 0;
+    // std::size_t overall_elements = 0;
+    // std::size_t matrices = 0;
+	ArrayXd sparsity(N_sites);
     if(power == 1)
     {
         for(std::size_t loc=0; loc<N_sites; ++loc)
         {
             std::size_t hd = hilbert_dimension[loc];
-            matrices += hd*hd*qOp[loc].size();
+			std::size_t W_tensor_size = qAux[loc].size()*qAux[loc+1].size()*hd*hd;
+			std::size_t nonzero_elements = 0;
+            // matrices += hd*hd*qOp[loc].size();
             for(std::size_t m=0; m<hd; ++m)
             {
                 for(std::size_t n=0; n<hd; ++n)
@@ -3576,12 +3635,13 @@ sparsity(const std::size_t power, bool PER_MATRIX) const
                         const std::vector<MatrixType>& mat = W[loc][m][n][t].block;
                         for(std::size_t i=0; i<mat.size(); ++i)
                         {
-                            overall_elements += mat[i].rows() * mat[i].cols();
+                            // overall_elements += mat[i].rows() * mat[i].cols();
                             nonzero_elements += mat[i].nonZeros();
                         }
                     }
                 }
             }
+			sparsity(loc) = static_cast<double>(nonzero_elements) / static_cast<double>(W_tensor_size);
         }
     }
     else
@@ -3589,7 +3649,9 @@ sparsity(const std::size_t power, bool PER_MATRIX) const
         for(std::size_t loc=0; loc<N_sites; ++loc)
         {
             std::size_t hd = hilbert_dimension[loc];
-            matrices += hd*hd*qOp_powers[power-2][loc].size();
+			std::size_t W_tensor_size = get_qAux_power(power)[loc].size()*get_qAux_power(power)[loc+1].size()*hd*hd;
+			std::size_t nonzero_elements = 0;
+            // matrices += hd*hd*qOp_powers[power-2][loc].size();
             for(std::size_t m=0; m<hd; ++m)
             {
                 for(std::size_t n=0; n<hd; ++n)
@@ -3599,24 +3661,27 @@ sparsity(const std::size_t power, bool PER_MATRIX) const
                         const std::vector<MatrixType>& mat = W_powers[power-2][loc][m][n][t].block;
                         for(std::size_t i=0; i<mat.size(); ++i)
                         {
-                            overall_elements += mat[i].rows() * mat[i].cols();
+                            // overall_elements += mat[i].rows() * mat[i].cols();
                             nonzero_elements += mat[i].nonZeros();
                         }
                     }
                 }
             }
+			sparsity(loc) = static_cast<double>(nonzero_elements) / static_cast<double>(W_tensor_size);
         }
     }
+	return sparsity.mean();
     double result;
-    if(PER_MATRIX)
-    {
-        result = (nonzero_elements+0.)/(matrices+0.);
-    }
-    else
-    {
-        result = (nonzero_elements+0.)/(overall_elements+0.);
-    }
-    return result;
+
+    // if(PER_MATRIX)
+    // {
+    //     result = (nonzero_elements+0.)/(matrices+0.);
+    // }
+    // else
+    // {
+    //     result = (nonzero_elements+0.)/(overall_elements+0.);
+    // }
+    // return result;
 }
-    
+
 #endif
