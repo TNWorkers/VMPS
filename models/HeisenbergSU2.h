@@ -113,7 +113,8 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params, const BC & boundary
 	}
 	
     this->set_name("Heisenberg");
-
+	this->set_verbosity(DMRG::VERBOSITY::ON_EXIT);
+	
     PushType<SiteOperator<Symmetry,double>,double> pushlist;
     std::vector<std::vector<std::string>> labellist;
     set_operators(B, P, pushlist, labellist, boundary);

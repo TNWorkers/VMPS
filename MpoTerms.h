@@ -1377,8 +1377,10 @@ compress(const double tolerance)
     if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
     {
 		auto curr_prec = std::cout.precision();
-        lout << "Compression finished  |  " << watch.info("Time") << "  |  Steps: " << counter << "  |  Rate: " << compr_rate << "% (" << std::setprecision(1) << std::fixed << average_auxdim_initial << " ⇒ " << average_auxdim_final << ")" << ", dWmax: "  << maximum_auxdim_initial << " ⇒ " << maximum_auxdim_final << std::defaultfloat << std::endl;
+        lout << this->get_name() << " compression: " << watch.info("time") << "  |  steps: " << counter << "  |  rate: " << compr_rate
+			 << "% (" << std::setprecision(1) << std::fixed << average_auxdim_initial << " ⇒ " << average_auxdim_final << ")" << std::defaultfloat << std::endl;
 		std::cout.precision(curr_prec);
+		//d,dₘₐₓ: 
         #if DEBUG_VERBOSITY > 1
         lout << "Compressed MPO:" << std::endl;
         show();
@@ -2922,8 +2924,8 @@ prod(const MpoTerms<Symmetry,Scalar>& top, const MpoTerms<Symmetry,Scalar>& bott
     typedef SiteOperator<Symmetry, Scalar> OperatorType;
     typedef Eigen::SparseMatrix<Scalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> MatrixType;
     DMRG::VERBOSITY::OPTION VERB = std::max(top.get_verbosity(), bottom.get_verbosity());
-    
-    if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
+
+    if(VERB > DMRG::VERBOSITY::OPTION::ON_EXIT)
     {
         lout << "MPO multiplication of " << top.get_name() << "*" << bottom.get_name() << " to quantum number {" << Sym::format<Symmetry>(qTot) << "}" << std::endl;
     }
@@ -3208,7 +3210,8 @@ prod(const MpoTerms<Symmetry,Scalar>& top, const MpoTerms<Symmetry,Scalar>& bott
     }
     MpoTerms<Symmetry,Scalar> out(N_sites, boundary_condition, qTot);
     out.reconstruct(O, qAux, qPhys, true, boundary_condition, qTot);
-
+	out.set_verbosity(VERB);
+	
 	auto [name_top, power_top] = detect_and_remove_power(top.get_name());
 	auto [name_bot, power_bot] = detect_and_remove_power(bottom.get_name());
 	if (name_top == name_bot) {out.set_name(name_top + power_to_string(power_top+power_bot));}

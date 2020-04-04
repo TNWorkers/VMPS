@@ -4,7 +4,7 @@
 //#endif
 #include "util/LapackManager.h"
 
-#define TERMS_VERBOSITY 0
+#define DEBUG_VERBOSITY 0
 
 #define USE_HDF5_STORAGE
 

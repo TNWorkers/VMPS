@@ -104,9 +104,6 @@ FermionSite(bool U_IS_INFINITE, bool UPH_IS_INFINITE)
 	
 	if (!UPH_IS_INFINITE) c_1s_("empty", "single")  = std::sqrt(2.);
 	if (!U_IS_INFINITE and !UPH_IS_INFINITE) c_1s_("single", "double") = 1.;
-
-	Eigen::MatrixXd cmat = Eigen::MatrixXd(c_1s_.template plain<double>().data);
-	cout << cmat << endl;
 	
 	cdag_1s_ = c_1s_.adjoint();
 	n_1s_ = std::sqrt(2.) * OperatorType::prod(cdag_1s_,c_1s_,{1,0});
