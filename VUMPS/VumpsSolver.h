@@ -2217,13 +2217,13 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 		#pragma omp section
 		#endif
 		{
-			build_L(ALxO, V.state.C[N_sites-1], H.W, H.qloc, H.qOp, L_with_O);
+			build_L(ALxO, V.state.C[N_sites-1], H.W, H.locBasis(), H.opBasis(), L_with_O);
 		}
 		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 		#pragma omp section
 		#endif
 		{
-			build_R(ARxO, Cshift,               H.W, H.qloc, H.qOp, R_with_O);
+			build_R(ARxO, Cshift,               H.W, H.locBasis(), H.opBasis(), R_with_O);
 		}
 	}
 	

@@ -201,14 +201,16 @@ int main (int argc, char* argv[])
 	DMRG_Z2.edgeState(H_Z2, g_Z2, {0}, LANCZOS::EDGE::GROUND);
 	
 	IntervalIterator lit(1,L-1,L-1);
-	for (lit=lit.begin(); lit!=lit.end(); ++lit)
+	for (lit=lit.begin(2); lit!=lit.end(); ++lit)
 	{
 		int d = lit.index()+1;
-		double res = avg(g_Z2.state, H_Z2.cdagc(0,d), g_Z2.state);
-		lit << res;
-		lout << d << "\t" << res << endl;
+		double res1 = avg(g_Z2.state, H_Z2.cdagc(0,d), g_Z2.state);
+		double res2 = avg(g_Z2.state, H_Z2.nn(0,d), g_Z2.state) - avg(g_Z2.state, H_Z2.n(0), g_Z2.state)*avg(g_Z2.state, H_Z2.n(d), g_Z2.state);
+		lit << res1, res2;
+		lout << d << "\t" << res1 << "\t" << res2 << endl;
 	}
-	lit.save(make_string("cdagc_L=",L,"_mu=",mu,".dat"));
+	lit.save(make_string("cdagc_L=",L,"_mu=",mu,".dat"),1);
+	lit.save(make_string("nn_L=",L,"_mu=",mu,".dat"),2);
 	
 	
 	

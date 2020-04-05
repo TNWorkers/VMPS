@@ -314,7 +314,8 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	}
 	else
 	{
-		B.setIdentity(O.auxrows(0), 1, Vket.inBasis(0));
+		//B.setIdentity(O.auxrows(0), 1, Vket.inBasis(0));
+		B.setIdentity(O.auxBasis(0).M(), 1, Vket.inBasis(0));
 	}
 	
 	for (size_t l=0; l<O.length(); ++l)
@@ -349,7 +350,8 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	}
 	else
 	{
-		BR.setIdentity(O.auxcols(O.length()-1), 1, Vket.outBasis((O.length()-1)));
+		//BR.setIdentity(O.auxcols(O.length()-1), 1, Vket.outBasis((O.length()-1)));
+		BR.setIdentity(O.auxBasis(O.length()).M(), 1, Vket.outBasis((O.length()-1)));
 	}
 	
 	return contract_LR(B,BR);
