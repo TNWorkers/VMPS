@@ -3,7 +3,8 @@
 
 #include "symmetry/SU2.h"
 #include "bases/SpinBase.h"
-#include "bases/FermionBaseU0xSU2.h"
+#include "bases/FermionBase.h"
+#include "models/KondoObservables.h"
 #include "Mpo.h"
 //include "ParamHandler.h" // from HELPERS
 #include "ParamReturner.h"
@@ -27,7 +28,9 @@ namespace VMPS
   * \note If the nnn-hopping is positive, the ground state energy is lowered.
   * \warning \f$J<0\f$ is antiferromagnetic
   */
-class KondoU0xSU2 : public Mpo<Sym::SU2<Sym::ChargeSU2>,double>, public ParamReturner
+class KondoU0xSU2 : public Mpo<Sym::SU2<Sym::ChargeSU2>,double>,
+					public KondoObservables<Sym::SU2<Sym::ChargeSU2> >,
+					public ParamReturner
 {
 public:
 	typedef Sym::SU2<Sym::ChargeSU2> Symmetry;
@@ -42,43 +45,43 @@ private:
 public:
 	
 	///@{
-	KondoU0xSU2 (): Mpo(), ParamReturner(KondoU0xSU2::sweep_defaults) {};
-	KondoU0xSU2 (const size_t &L, const vector<Param> &params);
+	KondoU0xSU2 (): Mpo(), KondoObservables(), ParamReturner(KondoU0xSU2::sweep_defaults) {};
+	KondoU0xSU2 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
 	///@}
 	
 	static qarray<1> singlet (int N) {return qarray<1>{1};};
-	
+
 	/**
 	 * \describe_set_operators
 	 *
-	 * \param B : Base class from which the local spin-operators are received
-	 * \param F : Base class from which the local fermion-operators are received
+	 * \param B : Base class from which the local operators are received
 	 * \param P : The parameters
-	 * \param Terms : \p HamiltonianTerms instance
-	 */
-//	static HamiltonianTermsXd<Symmetry> set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F,
-//	                                                    const ParamHandler &P, size_t loc=0);
-	static void set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F,
-	                           const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms);
+	 * \param pushlist : All the local operators for the Mpo will be pushed into \p pushlist.
+	 * \param labellist : All the labels for the Mpo will be put into \p labellist. Mpo::generate_label will produce a nice label from the data in labellist.
+	 * \describe_boundary 
+	*/
+	template<typename Symmetry_> 
+    static void set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 	
-	Mpo<Symmetry> Simp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
-	Mpo<Symmetry> Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
-	Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
+	// Mpo<Symmetry> Simp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	// Mpo<Symmetry> Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
+	// Mpo<Symmetry> n (size_t locx, size_t locy=0) const;
 	
-	Mpo<Symmetry> SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-	Mpo<Symmetry> SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	// Mpo<Symmetry> SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	// Mpo<Symmetry> SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	// Mpo<Symmetry> SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	static const std::map<string,std::any> defaults;
 	static const map<string,any> sweep_defaults;
 	
-protected:
+// protected:
 	
-	Mpo<Symmetry> make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
-	                         const OperatorType &Op1, const OperatorType &Op2, bool BOTH_HERMITIAN=false) const;
+// 	Mpo<Symmetry> make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
+// 	                         const OperatorType &Op1, const OperatorType &Op2, bool BOTH_HERMITIAN=false) const;
 	
-	vector<FermionBase<Symmetry> > F;
-	vector<SpinBase<Symmetry> > B;
+// 	vector<FermionBase<Symmetry> > F;
+// 	vector<SpinBase<Symmetry> > B;
 };
 
 const std::map<string,std::any> KondoU0xSU2::defaults =
@@ -88,9 +91,8 @@ const std::map<string,std::any> KondoU0xSU2::defaults =
 	{"V",0.}, {"Vrung",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.}, {"Bx",0.}, {"Bxsub",0.}, {"Kx",0.},
 	{"Inext",0.}, {"Iprev",0.}, {"I3next",0.}, {"I3prev",0.}, {"I3loc",0.}, 
-	{"D",2ul}, {"CALC_SQUARE",false}, {"CYLINDER",false}, {"Ly",1ul},
-	{"OPEN_BC",true}, {"SEMIOPEN_LEFT",false}, {"SEMIOPEN_RIGHT",false},
-	{"subL",SUB_LATTICE::A}
+	{"D",2ul}, {"maxPower",1ul}, {"CYLINDER",false}, {"Ly",1ul}, {"LyF",1ul},
+	{"SEMIOPEN_LEFT",false}, {"SEMIOPEN_RIGHT",false}
 };
 
 const map<string,any> KondoU0xSU2::sweep_defaults = 
@@ -105,53 +107,42 @@ const map<string,any> KondoU0xSU2::sweep_defaults =
 };
 
 KondoU0xSU2::
-KondoU0xSU2 (const size_t &L, const vector<Param> &params)
-:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN),
+KondoU0xSU2 (const size_t &L, const vector<Param> &params, const BC &boundary)
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
+ KondoObservables(L,params,KondoU0xSU2::defaults),
  ParamReturner(KondoU0xSU2::sweep_defaults)
 {
 	ParamHandler P(params,defaults);
-	
 	size_t Lcell = P.size();
-	B.resize(N_sites);
-	F.resize(N_sites);
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		N_phys += P.get<size_t>("Ly",l%Lcell);
-		
-		
-		if (P.HAS("subL",l%Lcell))
-		{
-//			cout << "l=" << l << ", " << P.get<SUB_LATTICE>("subL",l%Lcell) << endl;
-			F[l] = FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<SUB_LATTICE>("subL",l%Lcell));
-		}
-		else
-		{
-//			cout << "l=" << l << ", " << "make default A/B" << endl;
-			F[l] = (l%2 == 0) ? FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), SUB_LATTICE::A) 
-			                  : FermionBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), SUB_LATTICE::B);
-		}
-		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
-		
-		setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l);
+		N_phys += P.get<size_t>("LyF",l%Lcell);		
+		setLocBasis((B[l].get_basis().combine(F[l].get_basis())).qloc(),l);
 	}
-	
-	HamiltonianTermsXd<Symmetry> Terms(N_sites, P.get<bool>("OPEN_BC"));
-	set_operators(B,F,P,Terms);
-	
 	this->GOT_SEMIOPEN_LEFT  = P.get<bool>("SEMIOPEN_LEFT");
 	this->GOT_SEMIOPEN_RIGHT = P.get<bool>("SEMIOPEN_RIGHT");
-	this->construct_from_Terms(Terms, Lcell, P.get<bool>("CALC_SQUARE"), P.get<bool>("OPEN_BC"));
+	
+	this->set_name("Kondo");
+
+	PushType<SiteOperator<Symmetry,double>,double> pushlist;
+    std::vector<std::vector<std::string>> labellist;
+    set_operators(B, F, P, pushlist, labellist, boundary);
+    
+    this->construct_from_pushlist(pushlist, labellist, Lcell);
+    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
+
 	this->precalc_TwoSiteData();
 }
 
+template<typename Symmetry_>
 void KondoU0xSU2::
-set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Symmetry> > &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry> &Terms)
+set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
 	std::size_t Lcell = P.size();
-	std::size_t N_sites = Terms.size();
-	
-	Terms.set_name("Kondo U(0)⊗SU(2)");
+	std::size_t N_sites = B.size();
+	if(labellist.size() != N_sites) {labellist.resize(N_sites);}
 	
 	for (std::size_t loc=0; loc<N_sites; ++loc)
 	{
@@ -159,6 +150,12 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		size_t lp1 = (loc+1)%N_sites;
 		size_t lp2 = (loc+2)%N_sites;
 		size_t lp3 = (loc+3)%N_sites;
+
+		auto Gloc = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,loc)));
+		auto Glm1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lm1)));
+		auto Glp1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp1)));
+		auto Glp2 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp2)));
+		auto Glp3 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp3)));
 		
 		std::size_t Fprev_orbitals  = F[lm1].orbitals();
 		std::size_t Forbitals       = F[loc].orbitals();
@@ -175,53 +172,107 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		frac S = frac(B[loc].get_D()-1,2);
 		stringstream Slabel;
 		Slabel << "S=" << print_frac_nice(S);
-		Terms.save_label(loc, Slabel.str());
+		labellist[loc].push_back(Slabel.str());
+
+		auto push_full = [&N_sites, &loc, &B, &F, &P, &pushlist, &labellist, &boundary] (string xxxFull, string label,
+																						 const vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > &first,
+																						 const vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > &last,
+																						 vector<double> factor, bool FERMIONIC) -> void
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>(xxxFull);
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+
+			for (size_t j=0; j<first.size(); j++)
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				if (range != 0)
+				{
+					vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > ops(range+1);
+					ops[0] = first[j];
+					for (size_t i=1; i<range; ++i)
+					{
+						if (FERMIONIC) {ops[i] = kroneckerProduct(B[(loc+i)%N_sites].Id(), F[(loc+i)%N_sites].sign());}
+						else {ops[i] = kroneckerProduct(B[(loc+i)%N_sites].Id(), F[(loc+i)%N_sites].Id());}
+					}
+					ops[range] = last[j][(loc+range)%N_sites];
+					pushlist.push_back(std::make_tuple(loc, ops, factor[j] * value));
+				}
+			}
+			
+			stringstream ss;
+			ss << label << "(" << Geometry2D::hoppingInfo(Full) << ")";
+			labellist[loc].push_back(ss.str());
+		};
 		
-		stringstream sublabel;
-		sublabel << "lat=" << F[loc].sublattice();
-		Terms.save_label(loc, sublabel.str());
-		
+		if (P.HAS("tFull"))
+		{
+			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdagup_sign_local = kroneckerProduct(B[loc].Id(),(F[loc].cdag(UP,Gloc,0) * F[loc].sign()));
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > cup_ranges(N_sites);
+			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdagdn_sign_local = kroneckerProduct(B[loc].Id(),(F[loc].cdag(DN,Gloc,0) * F[loc].sign()));
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > cdn_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++)
+			{
+				auto Gi = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i)));
+				cup_ranges[i] = kroneckerProduct(B[loc].Id(),F[i].c(UP,Gi,0));
+			}
+			for (size_t i=0; i<N_sites; i++)
+			{
+				auto Gi = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i)));
+				cdn_ranges[i] = kroneckerProduct(B[loc].Id(),F[i].c(DN,Gi,0));
+			}
+			
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {cdagup_sign_local, cdagdn_sign_local};
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {cup_ranges,cdn_ranges};
+			push_full("tFull", "tᵢⱼ", first, last, {-std::sqrt(2.),- std::sqrt(2.)}, PROP::FERMIONIC);			
+		}
+
 		// local terms
 		
 		// Kondo-J
 		param1d J = P.fill_array1d<double>("J", "Jorb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, J.label);
+		labellist[loc].push_back(J.label);
 		
 		// Kondo-Jz
 		param1d Jz = P.fill_array1d<double>("Jz", "Jzorb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, Jz.label);
+		labellist[loc].push_back(Jz.label);
 		
 		// t⟂
 		param2d tPerp = P.fill_array2d<double>("tRung", "t", "tPerp", Forbitals, loc%Lcell, P.get<bool>("CYLINDER"));
-		Terms.save_label(loc, tPerp.label);
+		labellist[loc].push_back(tPerp.label);
 		
 		// Hubbard-U
 		param1d U = P.fill_array1d<double>("U", "Uorb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, U.label);
+		labellist[loc].push_back(U.label);
 		
 		// Bx substrate
 		param1d Bxsub = P.fill_array1d<double>("Bxsub", "Bxsuborb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, Bxsub.label);
+		labellist[loc].push_back(Bxsub.label);
 		
 		// Bx impurities
 		param1d Bx = P.fill_array1d<double>("Bx","Bxorb", Borbitals, loc%Lcell);
-		Terms.save_label(loc, Bx.label);
+		labellist[loc].push_back(Bx.label);
 		
 		// Kx anisotropy
 		param1d Kx = P.fill_array1d<double>("Kx","Kxorb", Borbitals, loc%Lcell);
-		Terms.save_label(loc, Kx.label);
+		labellist[loc].push_back(Kx.label);
 		
 		// Bz substrate
 		param1d Bzsub = P.fill_array1d<double>("Bzsub", "Bzsuborb", Forbitals, loc%Lcell);
-		Terms.save_label(loc, Bzsub.label);
+		labellist[loc].push_back(Bzsub.label);
 		
 		// Bz impurities
 		param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", Borbitals, loc%Lcell);
-		Terms.save_label(loc, Bz.label);
+		labellist[loc].push_back(Bz.label);
 		
 		// Kz anisotropy
 		param1d Kz = P.fill_array1d<double>("Kz","Kzorb", Borbitals, loc%Lcell);
-		Terms.save_label(loc, Kz.label);
+		labellist[loc].push_back(Kz.label);
 		
 		ArrayXXd muPerp  = B[loc].ZeroHopping();
 		ArrayXXd Jxyperp = B[loc].ZeroHopping();
@@ -229,18 +280,14 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		ArrayXXd DyPerp  = B[loc].ZeroHopping();
 		
 		//set Heisenberg part of Kondo Hamiltonian
-		auto KondoHamiltonian = OperatorType::outerprod(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,Bx.a,muPerp,Kz.a,Kx.a,DyPerp).structured(),
-		                                                F[loc].Id(),
-		                                                {1});
+		auto KondoHamiltonian = kroneckerProduct(B[loc].HeisenbergHamiltonian(Jxyperp,Jzperp,Bz.a,Bx.a,muPerp,Kz.a,Kx.a,DyPerp), F[loc].Id());
 		
 		ArrayXXd Vperp      = F[loc].ZeroHopping();
 		ArrayXXd Jxysubperp = F[loc].ZeroHopping();
 		ArrayXXd Jzsubperp  = F[loc].ZeroHopping();
 		
 		//set Hubbard part of Kondo Hamiltonian
-		KondoHamiltonian += OperatorType::outerprod(B[loc].Id().structured(),
-		                                            F[loc].HubbardHamiltonian(U.a,tPerp.a,Vperp,Jxysubperp,Jzsubperp,Bzsub.a,Bxsub.a),
-		                                            {1});
+		KondoHamiltonian += kroneckerProduct(B[loc].Id(), F[loc].HubbardHamiltonian(U.a,tPerp.a,Vperp,Jzsubperp,Jxysubperp,Bzsub.a,Bxsub.a));
 		
 		//set Kondo part of Hamiltonian
 		for (int alfa=0; alfa<Forbitals; ++alfa)
@@ -248,93 +295,46 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 			if (J(alfa) != 0.)
 			{
 				assert(Borbitals == Forbitals and "Can only do a Kondo ladder with the same amount of spins and fermionic orbitals in y-direction!");
-				KondoHamiltonian += 0.5*J(alfa) * OperatorType::outerprod(B[loc].Scomp(SP,alfa).structured(), F[loc].Sm(alfa), {1});
-				KondoHamiltonian += 0.5*J(alfa) * OperatorType::outerprod(B[loc].Scomp(SM,alfa).structured(), F[loc].Sp(alfa), {1});
-				KondoHamiltonian +=     J(alfa) * OperatorType::outerprod(B[loc].Scomp(SZ,alfa).structured(), F[loc].Sz(alfa), {1});
+				KondoHamiltonian += 0.5*J(alfa) * kroneckerProduct(B[loc].Scomp(SP,alfa), F[loc].Sm(alfa));
+				KondoHamiltonian += 0.5*J(alfa) * kroneckerProduct(B[loc].Scomp(SM,alfa), F[loc].Sp(alfa));
+				KondoHamiltonian +=     J(alfa) * kroneckerProduct(B[loc].Scomp(SZ,alfa), F[loc].Sz(alfa));
 			}
 			if (Jz(alfa) != 0.)
 			{
-				KondoHamiltonian += Jz(alfa) * OperatorType::outerprod(B[loc].Scomp(SZ,alfa).structured(), F[loc].Sz(alfa), {1});
+				KondoHamiltonian += Jz(alfa) * kroneckerProduct(B[loc].Scomp(SZ,alfa), F[loc].Sz(alfa));
 			}
 		}
+		pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(KondoHamiltonian), 1.));
 		
-		Terms.push_local(loc, 1., KondoHamiltonian.plain<double>());
-		
-		// NN terms
-		
-		if (P.HAS("tFull"))
-		{
-			for (size_t hop=loc; hop<N_sites; ++hop)
-			{
-				size_t N_TransOps;
-				if (hop == loc) {N_TransOps=0;} else {N_TransOps=hop-loc-1;}
-				vector<SiteOperator<Symmetry,double> > TransOps(N_TransOps);
-				for (size_t i=0; i<N_TransOps; i++)
-				{
-					TransOps[i] = OperatorType::outerprod(B[loc+i+1].Id().structured(), F[loc+i+1].sign(), {1}).plain<double>();
-				}
-				
-				if (hop == loc)
-				{
-//					SiteOperator<Symmetry,double> Ssqrt = SiteOperatorQ<Symmetry,MatrixXd>::prod(B[loc].Sdag(0),B[loc].S(0),Symmetry::qvacuum()).plain<double>();
-//					Terms.push_local(loc,std::sqrt(3.)*P.get<Eigen::ArrayXXd>("Jfull")(loc,loc),Ssqrt);
-				}
-				else
-				{
-					auto PsiDagUp_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,0), {2});
-					auto PsiDagDn_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,0), {2});
-					auto Sign_loc     = OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(), {1});
-					auto PsiUp_hop    = OperatorType::outerprod(B[hop].Id().structured(), F[hop].psi(UP,0), {2});
-					auto PsiDn_hop    = OperatorType::outerprod(B[hop].Id().structured(), F[hop].psi(DN,0), {2});
-					
-					auto Otmp_loc = OperatorType::prod(PsiDagUp_loc, Sign_loc, {2});
-					
-					Terms.push(hop-loc, loc, -P.get<Eigen::ArrayXXd>("tFull")(loc,hop) * sqrt(2.),
-					           Otmp_loc.plain<double>(), TransOps, PsiUp_hop.plain<double>());
-					
-					Otmp_loc = OperatorType::prod(PsiDagDn_loc, Sign_loc, {2});
-					
-					Terms.push(hop-loc, loc, -P.get<Eigen::ArrayXXd>("tFull")(loc,hop) * sqrt(2.),
-					           Otmp_loc.plain<double>(), TransOps, PsiDn_hop.plain<double>());
-				}
-			}
-			Terms.save_label(loc, "tᵢⱼ");
-		}
+		// NN terms		
 		
 		// V∥
 		param2d Vpara = P.fill_array2d<double>("V", "Vpara", {Forbitals, Fnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, Vpara.label);
+		labellist[loc].push_back(Vpara.label);
 		
 		// t∥
 		if (!P.HAS("tFull"))
 		{
 			param2d tPara = P.fill_array2d<double>("t", "tPara", {Forbitals, Fnext_orbitals}, loc%Lcell);
-			Terms.save_label(loc, tPara.label);
+			labellist[loc].push_back(tPara.label);
 			
-			if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+			if (loc < N_sites-1 or !static_cast<bool>(boundary))
 			{
 				for (int alfa=0; alfa<Forbitals;      ++alfa)
 				for (int beta=0; beta<Fnext_orbitals; ++beta)
 				{
-					auto PsiDagUp_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,alfa), {2});
-					auto PsiDagDn_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,alfa), {2});
-					auto Sign_loc     = OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(), {1});
-					auto PsiUp_lp1    = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].psi(UP,beta), {2});
-					auto PsiDn_lp1    = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].psi(DN,beta), {2});
+					auto PsiDagUp_loc = kroneckerProduct(B[loc].Id(), F[loc].cdag(UP,Gloc,alfa));
+					auto PsiDagDn_loc = kroneckerProduct(B[loc].Id(), F[loc].cdag(DN,Gloc,alfa));
+					auto Sign_loc     = kroneckerProduct(B[loc].Id(), F[loc].sign());
+					auto PsiUp_lp1    = kroneckerProduct(B[lp1].Id(), F[lp1].c(UP,Glp1,beta));
+					auto PsiDn_lp1    = kroneckerProduct(B[lp1].Id(), F[lp1].c(DN,Glp1,beta));
 					
-					auto Otmp_loc = OperatorType::prod(PsiDagUp_loc, Sign_loc, {2});
-					
-					Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.), Otmp_loc.plain<double>(), PsiUp_lp1.plain<double>());
-					
-					if (tPara(alfa,beta) != 0.)
-					{
-						assert(F[loc].sublattice() != F[lp1].sublattice());
-					}
-					
+					auto Otmp_loc = PsiDagUp_loc * Sign_loc;					
+					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(Otmp_loc, PsiUp_lp1), -tPara(alfa,beta) * sqrt(2.)) );
+										
 					//c†DNcDN
-					Otmp_loc = OperatorType::prod(PsiDagDn_loc, Sign_loc, {2});
-					
-					Terms.push_tight(loc, -tPara(alfa,beta) * sqrt(2.), Otmp_loc.plain<double>(), PsiDn_lp1.plain<double>());
+					Otmp_loc = PsiDagDn_loc * Sign_loc;
+					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(Otmp_loc, PsiDn_lp1), -tPara(alfa,beta) * sqrt(2.)) );
 				}
 			}
 		}
@@ -342,179 +342,168 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 		// NN spin exchange terms
 		
 		param2d InextPara = P.fill_array2d<double>("Inext", "InextPara", {Borbitals, Fnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, InextPara.label);
+		labellist[loc].push_back(InextPara.label);
 		
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (loc < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa<Borbitals;      ++alfa)
 			for (std::size_t beta=0; beta<Fnext_orbitals; ++beta)
 			{
-				Terms.push_tight(loc, 0.5*InextPara(alfa,beta),
-				                 OperatorType::outerprod(B[loc].Scomp(SP,alfa).structured(), F[loc].Id(), {1}).plain<double>(),
-				                 OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].Sm(beta), {1}).plain<double>()
-				                );
-				Terms.push_tight(loc, 0.5*InextPara(alfa,beta),
-				                 OperatorType::outerprod(B[loc].Scomp(SM,alfa).structured(), F[loc].Id(), {1}).plain<double>(),
-				                 OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].Sp(beta), {1}).plain<double>()
-				                );
-				Terms.push_tight(loc, InextPara(alfa,beta),
-				                 OperatorType::outerprod(B[loc].Scomp(SZ,alfa).structured(), F[loc].Id(), {1}).plain<double>(),
-				                 OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].Sz(beta), {1}).plain<double>()
-				                );
+				pushlist.push_back(std::make_tuple(loc,
+												   Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Scomp(SP,alfa), F[loc].Id()),
+																								 kroneckerProduct(B[lp1].Id(), F[lp1].Sm(beta))),
+												   0.5*InextPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc,
+												   Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Scomp(SM,alfa), F[loc].Id()),
+																								 kroneckerProduct(B[lp1].Id(), F[lp1].Sp(beta))),
+												   0.5*InextPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc,
+												   Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Scomp(SZ,alfa), F[loc].Id()),
+																								 kroneckerProduct(B[lp1].Id(), F[lp1].Sz(beta))),
+												   InextPara(alfa,beta)));
 			}
 		}
 		
 		param2d IprevPara = P.fill_array2d<double>("Iprev", "IprevPara", {Fprev_orbitals, Borbitals}, loc%Lcell);
-		Terms.save_label(loc, IprevPara.label);
+		labellist[loc].push_back(IprevPara.label);
 		
-		if (lm1 < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (lm1 < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa<Fprev_orbitals;  ++alfa)
 			for (std::size_t beta=0; beta<Borbitals;       ++beta)
 			{
-				Terms.push_tight(lm1, 0.5*IprevPara(alfa,beta),
-				                 OperatorType::outerprod(B[lm1].Id().structured(), F[lm1].Sm(alfa), {1}).plain<double>(),
-				                 OperatorType::outerprod(B[loc].Scomp(SP,beta).structured(), F[loc].Id(), {1}).plain<double>()
-				                );
-				Terms.push_tight(lm1, 0.5*IprevPara(alfa,beta),
-				                 OperatorType::outerprod(B[lm1].Id().structured(), F[lm1].Sp(alfa), {1}).plain<double>(),
-				                 OperatorType::outerprod(B[loc].Scomp(SM,beta).structured(), F[loc].Id(), {1}).plain<double>()
-				                );
-				Terms.push_tight(lm1, IprevPara(alfa,beta),
-				                 OperatorType::outerprod(B[lm1].Id().structured(), F[lm1].Sz(alfa), {1}).plain<double>(),
-				                 OperatorType::outerprod(B[loc].Scomp(SZ,beta).structured(), F[loc].Id(), {1}).plain<double>()
-				                );
+				pushlist.push_back(std::make_tuple(lm1,
+												   Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[lm1].Id(), F[lm1].Sm(alfa)),
+																								 kroneckerProduct(B[loc].Scomp(SP,beta), F[lp1].Id())),
+												   0.5*IprevPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(lm1,
+												   Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[lm1].Id(), F[lm1].Sp(alfa)),
+																								 kroneckerProduct(B[loc].Scomp(SM,beta), F[lp1].Id())),
+												   0.5*IprevPara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(lm1,
+												   Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[lm1].Id(), F[lm1].Sz(alfa)),
+																								 kroneckerProduct(B[loc].Scomp(SZ,beta), F[lp1].Id())),
+												   IprevPara(alfa,beta)));
 			}
 		}
 		
 		// NN 3-orbital spin exchange terms
 		
 		param2d I3nextPara = P.fill_array2d<double>("I3next", "I3nextPara", {Forbitals, Fnext_orbitals}, loc%Lcell);
-		Terms.save_label(loc, I3nextPara.label);
+		labellist[loc].push_back(I3nextPara.label);
 		
-		if (loc < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (loc < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa<Forbitals;      ++alfa)
 			for (std::size_t beta=0; beta<Fnext_orbitals; ++beta)
 			{
 				assert(Borbitals == 1);
 				
-				auto Sm_PsiDagUp_loc = OperatorType::outerprod(B[loc].Scomp(SM,0).structured(), F[loc].psidag(UP,alfa), {2});
-				auto Sp_PsiDagDn_loc = OperatorType::outerprod(B[loc].Scomp(SP,0).structured(), F[loc].psidag(DN,alfa), {2});
-				auto Sign_loc        = OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(), {1});
-				auto PsiUp_lp1       = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].psi(UP,beta), {2});
-				auto PsiDn_lp1       = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].psi(DN,beta), {2});
+				auto Sm_PsiDagUp_loc = kroneckerProduct(B[loc].Scomp(SM,0), F[loc].cdag(UP,Gloc,alfa));
+				auto Sp_PsiDagDn_loc = kroneckerProduct(B[loc].Scomp(SP,0), F[loc].cdag(DN,Gloc,alfa));
+				auto Sign_loc        = kroneckerProduct(B[loc].Id(), F[loc].sign());
+				auto PsiUp_lp1       = kroneckerProduct(B[lp1].Id(), F[lp1].c(UP,Glp1,beta));
+				auto PsiDn_lp1       = kroneckerProduct(B[lp1].Id(), F[lp1].c(DN,Glp1,beta));
 				
-				auto Otmp_loc = OperatorType::prod(Sm_PsiDagUp_loc, Sign_loc, {2});
-				
-				Terms.push_tight(loc, 0.5 * sqrt(2.) * I3nextPara(alfa,beta), Otmp_loc.plain<double>(), PsiDn_lp1.plain<double>());
-				
-				Otmp_loc = OperatorType::prod(Sp_PsiDagDn_loc, Sign_loc, {2});
-				
-				Terms.push_tight(loc, 0.5 * sqrt(2.) * I3nextPara(alfa,beta), Otmp_loc.plain<double>(), PsiUp_lp1.plain<double>());
-				
-				Terms.push_tight(loc, I3nextPara(alfa,beta),
-				                      OperatorType::outerprod(B[loc].Scomp(SZ,0).structured(), F[loc].Id(), {1}).plain<double>(),
-				                      OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].Sz(beta), {1}).plain<double>()
-				                );
+				auto Otmp_loc = Sm_PsiDagUp_loc * Sign_loc;
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(Otmp_loc, PsiDn_lp1),0.5*sqrt(2.)*I3nextPara(alfa,beta)));
+							   				
+				Otmp_loc = Sp_PsiDagDn_loc * Sign_loc;
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(Otmp_loc, PsiUp_lp1),0.5*sqrt(2.)*I3nextPara(alfa,beta)));
+
+				pushlist.push_back(std::make_tuple(loc,
+												   Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[loc].Scomp(SZ,0), F[loc].Id()),
+																								 kroneckerProduct(B[lp1].Id(), F[lp1].Sz(beta))),
+												   I3nextPara(alfa,beta)));
 			}
 		}
 		
 		param2d I3prevPara = P.fill_array2d<double>("I3prev", "I3prevPara", {Fprev_orbitals, Forbitals}, loc%Lcell);
-		Terms.save_label(loc, I3prevPara.label);
+		labellist[loc].push_back(I3prevPara.label);
 		
-		if (lm1 < N_sites-1 or !P.get<bool>("OPEN_BC"))
+		if (lm1 < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa<Fprev_orbitals;  ++alfa)
 			for (std::size_t beta=0; beta<Forbitals;       ++beta)
 			{
 				assert(Borbitals == 1);
 				
-				auto Sm_PsiDagUp_lm1 = OperatorType::outerprod(B[lm1].Scomp(SM,0).structured(), F[lm1].psidag(UP,alfa), {2});
-				auto Sp_PsiDagDn_lm1 = OperatorType::outerprod(B[lm1].Scomp(SP,0).structured(), F[lm1].psidag(DN,alfa), {2});
-				auto Sign_lm1        = OperatorType::outerprod(B[lm1].Id().structured(), F[lm1].sign(), {1});
-				auto PsiUp_loc       = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psi(UP,beta), {2});
-				auto PsiDn_loc       = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psi(DN,beta), {2});
+				auto Sm_PsiDagUp_lm1 = kroneckerProduct(B[lm1].Scomp(SM,0), F[lm1].cdag(UP,Glm1,alfa));
+				auto Sp_PsiDagDn_lm1 = kroneckerProduct(B[lm1].Scomp(SP,0), F[lm1].cdag(DN,Glm1,alfa));
+				auto Sign_lm1        = kroneckerProduct(B[lm1].Id(), F[lm1].sign());
+				auto PsiUp_loc       = kroneckerProduct(B[loc].Id(), F[loc].c(UP,Gloc,beta));
+				auto PsiDn_loc       = kroneckerProduct(B[loc].Id(), F[loc].c(DN,Gloc,beta));
 				
-				auto Otmp_lm1 = OperatorType::prod(Sm_PsiDagUp_lm1, Sign_lm1, {2});
+				auto Otmp_lm1 = Sm_PsiDagUp_lm1 * Sign_lm1;
+				pushlist.push_back(std::make_tuple(lm1, Mpo<Symmetry_,double>::get_N_site_interaction(Otmp_lm1, PsiDn_loc),0.5*sqrt(2.)*I3prevPara(alfa,beta)));
 				
-				Terms.push_tight(lm1, 0.5 * sqrt(2.) * I3nextPara(alfa,beta), Otmp_lm1.plain<double>(), PsiDn_loc.plain<double>());
-				
-				Otmp_lm1 = OperatorType::prod(Sp_PsiDagDn_lm1, Sign_lm1, {2});
-				
-				Terms.push_tight(lm1, 0.5 * sqrt(2.) * I3nextPara(alfa,beta), Otmp_lm1.plain<double>(), PsiUp_loc.plain<double>());
-				
-				Terms.push_tight(lm1, I3nextPara(alfa,beta),
-				                      OperatorType::outerprod(B[lm1].Scomp(SZ,0).structured(), F[lm1].Id(), {1}).plain<double>(),
-				                      OperatorType::outerprod(B[loc].Id().structured(), F[loc].Sz(beta), {1}).plain<double>()
-				                );
+				Otmp_lm1 = Sp_PsiDagDn_lm1 * Sign_lm1;
+				pushlist.push_back(std::make_tuple(lm1, Mpo<Symmetry_,double>::get_N_site_interaction(Otmp_lm1, PsiUp_loc),0.5*sqrt(2.)*I3prevPara(alfa,beta)));
+
+				pushlist.push_back(std::make_tuple(lm1,
+												   Mpo<Symmetry_,double>::get_N_site_interaction(kroneckerProduct(B[lm1].Scomp(SZ,0), F[lm1].Id()),
+																								 kroneckerProduct(B[loc].Id(), F[loc].Sz(beta))),
+												   I3prevPara(alfa,beta)));
 			}
 		}
 		
 		// tPrime
 		if (!P.HAS("tFull") and P.HAS("tPrime",loc%Lcell))
-		{
-			assert(F[loc].sublattice() != F[lp2].sublattice());
-			
+		{			
 			param2d tPrime = P.fill_array2d<double>("tPrime", "tPrime_array", {Forbitals, F3next_orbitals}, loc%Lcell);
-			Terms.save_label(loc, tPrime.label);
+			labellist[loc].push_back(tPrime.label);
 			
-			if (loc < N_sites-2 or !P.get<bool>("OPEN_BC"))
+			if (loc < N_sites-2 or !static_cast<bool>(boundary))
 			{
-				auto Sign_loc     = OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(), {1});
-				auto Sign_lp1     = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].sign(), {1});
-				
-				vector<SiteOperator<Symmetry,double> > TransOps(1);
-				TransOps[0] = Sign_lp1.plain<double>();
-				
+				auto Sign_loc     = kroneckerProduct(B[loc].Id(), F[loc].sign());
+				auto Sign_lp1     = kroneckerProduct(B[lp1].Id(), F[lp1].sign());
+								
 				for (std::size_t alfa=0; alfa<Forbitals;       ++alfa)
 				for (std::size_t beta=0; beta<F3next_orbitals; ++beta)
 				{
-					auto PsiDagUp_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,alfa), {2});
-					auto PsiDagDn_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,alfa), {2});
-					auto PsiUp_lp2    = OperatorType::outerprod(B[lp2].Id().structured(), F[lp2].psi(UP,beta), {2});
-					auto PsiDn_lp2    = OperatorType::outerprod(B[lp2].Id().structured(), F[lp2].psi(DN,beta), {2});
+					auto PsiDagUp_loc = kroneckerProduct(B[loc].Id(), F[loc].cdag(UP,Gloc,alfa));
+					auto PsiDagDn_loc = kroneckerProduct(B[loc].Id(), F[loc].cdag(DN,Gloc,alfa));
+					auto Sign_loc     = kroneckerProduct(B[loc].Id(), F[loc].sign());
+					auto PsiUp_lp2    = kroneckerProduct(B[lp1].Id(), F[lp1].c(UP,Glp2,beta));
+					auto PsiDn_lp2    = kroneckerProduct(B[lp1].Id(), F[lp1].c(DN,Glp2,beta));
 					
-					auto PsiDagUp_loc_signed = OperatorType::prod(PsiDagUp_loc, Sign_loc, {2});
-					auto PsiDagDn_loc_signed = OperatorType::prod(PsiDagDn_loc, Sign_loc, {2});
-					
-					Terms.push(2, loc, -tPrime(alfa,beta)*sqrt(2.), PsiDagUp_loc_signed.plain<double>(), TransOps, PsiUp_lp2.plain<double>());
-					Terms.push(2, loc, -tPrime(alfa,beta)*sqrt(2.), PsiDagDn_loc_signed.plain<double>(), TransOps, PsiDn_lp2.plain<double>());
+					auto Otmp_loc = PsiDagUp_loc * Sign_loc;					
+					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(Otmp_loc, Sign_lp1, PsiUp_lp2), -tPrime(alfa,beta) * sqrt(2.)) );
+										
+					//c†DNcDN
+					Otmp_loc = PsiDagDn_loc * Sign_loc;
+					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(Otmp_loc, Sign_lp1, PsiDn_lp2), -tPrime(alfa,beta) * sqrt(2.)) );
 				}
 			}
 		}
 		
 		// tPrimePrime
 		if (!P.HAS("tFull") and P.HAS("tPrimePrime",loc%Lcell))
-		{
-			assert(F[loc].sublattice() != F[lp3].sublattice());
-			
+		{			
 			param2d tPrimePrime = P.fill_array2d<double>("tPrimePrime", "tPrimePrime_array", {Forbitals, F3next_orbitals}, loc%Lcell);
-			Terms.save_label(loc, tPrimePrime.label);
+			labellist[loc].push_back(tPrimePrime.label);
 			
-			if (loc < N_sites-3 or !P.get<bool>("OPEN_BC"))
+			if (loc < N_sites-3 or !static_cast<bool>(boundary))
 			{
-				auto Sign_loc     = OperatorType::outerprod(B[loc].Id().structured(), F[loc].sign(), {1});
-				auto Sign_lp1     = OperatorType::outerprod(B[lp1].Id().structured(), F[lp1].sign(), {1});
-				auto Sign_lp2     = OperatorType::outerprod(B[lp2].Id().structured(), F[lp2].sign(), {1});
-				
-				vector<SiteOperator<Symmetry,double> > TransOps(2);
-				TransOps[0] = Sign_lp1.plain<double>();
-				TransOps[1] = Sign_lp2.plain<double>();
-				
+				auto Sign_loc     = kroneckerProduct(B[loc].Id(), F[loc].sign());
+				auto Sign_lp1     = kroneckerProduct(B[lp1].Id(), F[lp1].sign());
+				auto Sign_lp2     = kroneckerProduct(B[lp2].Id(), F[lp2].sign());
+								
 				for (std::size_t alfa=0; alfa<Forbitals;       ++alfa)
 				for (std::size_t beta=0; beta<F3next_orbitals; ++beta)
 				{
-					auto PsiDagUp_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(UP,alfa), {2});
-					auto PsiDagDn_loc = OperatorType::outerprod(B[loc].Id().structured(), F[loc].psidag(DN,alfa), {2});
-					auto PsiUp_lp3    = OperatorType::outerprod(B[lp3].Id().structured(), F[lp3].psi(UP,beta), {2});
-					auto PsiDn_lp3    = OperatorType::outerprod(B[lp3].Id().structured(), F[lp3].psi(DN,beta), {2});
+					auto PsiDagUp_loc = kroneckerProduct(B[loc].Id(), F[loc].cdag(UP,Gloc,alfa));
+					auto PsiDagDn_loc = kroneckerProduct(B[loc].Id(), F[loc].cdag(DN,Gloc,alfa));
+					auto Sign_loc     = kroneckerProduct(B[loc].Id(), F[loc].sign());
+					auto PsiUp_lp3    = kroneckerProduct(B[lp1].Id(), F[lp1].c(UP,Glp3,beta));
+					auto PsiDn_lp3    = kroneckerProduct(B[lp1].Id(), F[lp1].c(DN,Glp3,beta));
 					
-					auto PsiDagUp_loc_signed = OperatorType::prod(PsiDagUp_loc, Sign_loc, {2});
-					auto PsiDagDn_loc_signed = OperatorType::prod(PsiDagDn_loc, Sign_loc, {2});
-					
-					Terms.push(3, loc, -tPrimePrime(alfa,beta)*sqrt(2.), PsiDagUp_loc_signed.plain<double>(), TransOps, PsiUp_lp3.plain<double>());
-					Terms.push(3, loc, -tPrimePrime(alfa,beta)*sqrt(2.), PsiDagDn_loc_signed.plain<double>(), TransOps, PsiDn_lp3.plain<double>());
+					auto Otmp_loc = PsiDagUp_loc * Sign_loc;					
+					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(Otmp_loc, Sign_lp1, Sign_lp2, PsiDn_lp3), -tPrimePrime(alfa,beta) * sqrt(2.)));
+										
+					//c†DNcDN
+					Otmp_loc = PsiDagDn_loc * Sign_loc;
+					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(Otmp_loc, Sign_lp1, Sign_lp2, PsiUp_lp3), -tPrimePrime(alfa,beta) * sqrt(2.)));
 				}
 			}
 		}
@@ -683,50 +672,50 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const vector<FermionBase<Sy
 //	return Terms;
 //}
 
-Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
-Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
-{
-	assert(locx < this->N_sites);
-	std::stringstream ss;
+// Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+// Simp (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+// {
+// 	assert(locx < this->N_sites);
+// 	std::stringstream ss;
 	
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
-	for (std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l); }
+// 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+// 	for (std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l); }
 	
-	auto Sop = OperatorType::outerprod(B[locx].Scomp(Sa,locy).structured(), F[locx].Id(), {1});
+// 	auto Sop = OperatorType::outerprod(B[locx].Scomp(Sa,locy).structured(), F[locx].Id(), {1});
 	
-	Mout.setLocal(locx, Sop.plain<double>());
-	return Mout;
-}
+// 	Mout.setLocal(locx, Sop.plain<double>());
+// 	return Mout;
+// }
 
-Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
-Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy) const
-{
-	assert(locx < this->N_sites);
-	std::stringstream ss;
+// Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+// Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy) const
+// {
+// 	assert(locx < this->N_sites);
+// 	std::stringstream ss;
 	
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
-	for (std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l); }
+// 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+// 	for (std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l); }
 	
-	auto Sop = OperatorType::outerprod(B[locx].Id().structured(), F[locx].Scomp(Sa,locy), {1});
+// 	auto Sop = OperatorType::outerprod(B[locx].Id().structured(), F[locx].Scomp(Sa,locy), {1});
 	
-	Mout.setLocal(locx, Sop.plain<double>());
-	return Mout;
-}
+// 	Mout.setLocal(locx, Sop.plain<double>());
+// 	return Mout;
+// }
 
-Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
-n (size_t locx, size_t locy) const
-{
-	assert(locx < this->N_sites);
-	std::stringstream ss;
+// Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+// n (size_t locx, size_t locy) const
+// {
+// 	assert(locx < this->N_sites);
+// 	std::stringstream ss;
 	
-	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
-	for (std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l); }
+// 	Mpo<Symmetry> Mout(N_sites, Symmetry::qvacuum(), ss.str());
+// 	for (std::size_t l=0; l<this->N_sites; l++) { Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l); }
 	
-	auto nop = OperatorType::outerprod(B[locx].Id().structured(), F[locx].n(locy), {1});
+// 	auto nop = OperatorType::outerprod(B[locx].Id().structured(), F[locx].n(locy), {1});
 	
-	Mout.setLocal(locx, nop.plain<double>());
-	return Mout;
-}
+// 	Mout.setLocal(locx, nop.plain<double>());
+// 	return Mout;
+// }
 
 /*Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::*/
 /*SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const*/
@@ -744,78 +733,78 @@ n (size_t locx, size_t locy) const
 /*	return Mout;*/
 /*}*/
 
-Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
-make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2, 
-           size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
-           const OperatorType &Op1, const OperatorType &Op2, 
-           bool BOTH_HERMITIAN) const
-{
-	assert(locx1<F.size() and locx2<F.size() and locy1<F[locx1].dim() and locy2<F[locx2].dim());
-	stringstream ss;
-	ss << name1 << "(" << locx1 << "," << locy1 << ")"
-	   << name2 << "(" << locx2 << "," << locy2 << ")";
+// Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+// make_corr (KONDO_SUBSYSTEM SUBSYS, string name1, string name2, 
+//            size_t locx1, size_t locx2, size_t locy1, size_t locy2, 
+//            const OperatorType &Op1, const OperatorType &Op2, 
+//            bool BOTH_HERMITIAN) const
+// {
+// 	assert(locx1<F.size() and locx2<F.size() and locy1<F[locx1].dim() and locy2<F[locx2].dim());
+// 	stringstream ss;
+// 	ss << name1 << "(" << locx1 << "," << locy1 << ")"
+// 	   << name2 << "(" << locx2 << "," << locy2 << ")";
 	
-	bool HERMITIAN = (BOTH_HERMITIAN and locx1==locx2 and locy1==locy2)? true:false;
+// 	bool HERMITIAN = (BOTH_HERMITIAN and locx1==locx2 and locy1==locy2)? true:false;
 	
-	OperatorType Op1Ext;
-	OperatorType Op2Ext;
+// 	OperatorType Op1Ext;
+// 	OperatorType Op2Ext;
 	
-	Mpo<Symmetry> Mout(F.size(), Symmetry::qvacuum(), ss.str(), HERMITIAN);
-	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l);}
+// 	Mpo<Symmetry> Mout(F.size(), Symmetry::qvacuum(), ss.str(), HERMITIAN);
+// 	for (size_t l=0; l<F.size(); ++l) {Mout.setLocBasis((B[l].get_structured_basis().combine(F[l].get_basis())).qloc(),l);}
 	
-	if (SUBSYS == SUB)
-	{
-		Op1Ext = OperatorType::outerprod(B[locx1].Id().structured(), Op1, {1});
-		Op2Ext = OperatorType::outerprod(B[locx2].Id().structured(), Op2, {1});
-	}
-	else if (SUBSYS == IMP)
-	{
-		Op1Ext = OperatorType::outerprod(Op1, F[locx1].Id(), {1});
-		Op2Ext = OperatorType::outerprod(Op2, F[locx2].Id(), {1});
-	}
-	else if (SUBSYS == IMPSUB and locx1 != locx2)
-	{
-		Op1Ext = OperatorType::outerprod(Op1, F[locx1].Id(), {1});
-		Op2Ext = OperatorType::outerprod(B[locx2].Id().structured(), Op2, {1});
-	}
-	else if (SUBSYS == IMPSUB and locx1 == locx2)
-	{
-		OperatorType OpExt = OperatorType::outerprod(Op1, Op2, {1});
+// 	if (SUBSYS == SUB)
+// 	{
+// 		Op1Ext = OperatorType::outerprod(B[locx1].Id().structured(), Op1, {1});
+// 		Op2Ext = OperatorType::outerprod(B[locx2].Id().structured(), Op2, {1});
+// 	}
+// 	else if (SUBSYS == IMP)
+// 	{
+// 		Op1Ext = OperatorType::outerprod(Op1, F[locx1].Id(), {1});
+// 		Op2Ext = OperatorType::outerprod(Op2, F[locx2].Id(), {1});
+// 	}
+// 	else if (SUBSYS == IMPSUB and locx1 != locx2)
+// 	{
+// 		Op1Ext = OperatorType::outerprod(Op1, F[locx1].Id(), {1});
+// 		Op2Ext = OperatorType::outerprod(B[locx2].Id().structured(), Op2, {1});
+// 	}
+// 	else if (SUBSYS == IMPSUB and locx1 == locx2)
+// 	{
+// 		OperatorType OpExt = OperatorType::outerprod(Op1, Op2, {1});
 		
-		Mout.setLocal(locx1, OpExt.plain<double>());
-		return Mout;
-	}
+// 		Mout.setLocal(locx1, OpExt.plain<double>());
+// 		return Mout;
+// 	}
 	
-	Mout.setLocal({locx1,locx2}, {Op1Ext.plain<double>(),Op2Ext.plain<double>()});
-	return Mout;
-}
+// 	Mout.setLocal({locx1,locx2}, {Op1Ext.plain<double>(),Op2Ext.plain<double>()});
+// 	return Mout;
+// }
 
-Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
-SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	stringstream ss1; ss1 << SOP1 << "imp";
-	stringstream ss2; ss2 << SOP2 << "sub";
+// Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+// SimpSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+// {
+// 	stringstream ss1; ss1 << SOP1 << "imp";
+// 	stringstream ss2; ss2 << SOP2 << "sub";
 	
-	return make_corr(IMPSUB, ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, B[locx1].Scomp(SOP1,locy1).structured(), F[locx2].Scomp(SOP2,locy2));
-}
+// 	return make_corr(IMPSUB, ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, B[locx1].Scomp(SOP1,locy1).structured(), F[locx2].Scomp(SOP2,locy2));
+// }
 
-Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
-SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	stringstream ss1; ss1 << SOP1 << "imp";
-	stringstream ss2; ss2 << SOP2 << "imp";
+// Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+// SimpSimp (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+// {
+// 	stringstream ss1; ss1 << SOP1 << "imp";
+// 	stringstream ss2; ss2 << SOP2 << "imp";
 	
-	return make_corr(IMP, ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, B[locx1].Scomp(SOP1,locy1).structured(), B[locx2].Scomp(SOP2,locy2).structured());
-}
+// 	return make_corr(IMP, ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, B[locx1].Scomp(SOP1,locy1).structured(), B[locx2].Scomp(SOP2,locy2).structured());
+// }
 
-Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
-SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
-{
-	stringstream ss1; ss1 << SOP1 << "sub";
-	stringstream ss2; ss2 << SOP2 << "sub";
+// Mpo<Sym::SU2<Sym::ChargeSU2> > KondoU0xSU2::
+// SsubSsub (SPINOP_LABEL SOP1, SPINOP_LABEL SOP2, size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
+// {
+// 	stringstream ss1; ss1 << SOP1 << "sub";
+// 	stringstream ss2; ss2 << SOP2 << "sub";
 	
-	return make_corr(SUB, ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, F[locx1].Scomp(SOP1,locy1), F[locx2].Scomp(SOP2,locy2));
-}
+// 	return make_corr(SUB, ss1.str(),ss2.str(), locx1,locx2,locy1,locy2, F[locx1].Scomp(SOP1,locy1), F[locx2].Scomp(SOP2,locy2));
+// }
 
 } //end namespace VMPS
 

@@ -61,11 +61,12 @@ public:
 	/**
 	 * \describe_set_operators
 	 *
-	 * \param B : Base class from which the local spin-operators are received
-	 * \param F : Base class from which the local fermion-operators are received
+	 * \param B : Base class from which the local operators are received
 	 * \param P : The parameters
-	 * \param Terms : \p HamiltonianTerms instance
-	 */
+	 * \param pushlist : All the local operators for the Mpo will be pushed into \p pushlist.
+	 * \param labellist : All the labels for the Mpo will be put into \p labellist. Mpo::generate_label will produce a nice label from the data in labellist.
+	 * \describe_boundary 
+	*/
 	template<typename Symmetry_> 
     static void set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
 							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);

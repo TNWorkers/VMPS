@@ -312,6 +312,16 @@ public:
 						const Array<Scalar_,Dynamic,Dynamic> &Vz,
 						const Array<Scalar_,Dynamic,Dynamic> &Vxy, 
 						const Array<Scalar_,Dynamic,Dynamic> &J) const;
+
+	template<typename Scalar_, typename Dummy = Symmetry>
+	typename std::enable_if<Dummy::NO_SPIN_SYM() and Dummy::IS_CHARGE_SU2(),SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> > >::type
+	HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &Uph, 
+						const Array<Scalar_,Dynamic,Dynamic> &t, 
+						const Array<Scalar_,Dynamic,Dynamic> &V,
+						const Array<Scalar_,Dynamic,Dynamic> &Jz,
+						const Array<Scalar_,Dynamic,Dynamic> &Jxy, 
+						const Array<Scalar_,Dynamic,1> &Bz,
+						const Array<Scalar_,Dynamic,1> &Bx) const;
 	
 	template<typename Scalar_, typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::NO_SPIN_SYM(),SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> >>::type coupling_Bx (const Array<double,Dynamic,1> &Bx) const;
@@ -893,6 +903,47 @@ HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &U,
 		if (Eorb(i) != 0.)
 		{
 			Oout += Eorb(i) * n(i).template cast<Scalar_>();
+		}
+	}
+	Oout.label() = "Hloc";
+	return Oout;
+}
+
+template<typename Symmetry_>
+template<typename Scalar_, typename Dummy>
+typename std::enable_if<Dummy::NO_SPIN_SYM() and Dummy::IS_CHARGE_SU2(),SiteOperatorQ<Symmetry_,Eigen::Matrix<Scalar_,-1,-1> > >::type FermionBase<Symmetry_>::
+HubbardHamiltonian (const Array<Scalar_,Dynamic,1> &Uph, 
+					const Array<Scalar_,Dynamic,Dynamic> &t, 
+					const Array<Scalar_,Dynamic,Dynamic> &V,
+					const Array<Scalar_,Dynamic,Dynamic> &Jz,
+					const Array<Scalar_,Dynamic,Dynamic> &Jxy, 
+					const Array<Scalar_,Dynamic,1> &Bz,
+					const Array<Scalar_,Dynamic,1> &Bx) const
+{
+	auto Oout = HubbardHamiltonian<Scalar_>(Uph, t, V, ZeroHopping());
+	
+	for (int i=0; i<N_orbitals; ++i)
+	for (int j=0; j<N_orbitals; ++j)
+	{
+		if (Jz(i,j) != 0.)
+		{
+			Oout += Jz(i,j) * (Sz(i)*Sz(j)).template cast<Scalar_>();
+		}
+		if (Jxy(i,j) != 0.)
+		{
+			Oout += 0.5*Jxy(i,j) * (OperatorType::prod(Sp(i),Sm(j),Symmetry::qvacuum()) + OperatorType::prod(Sm(i),Sp(j),Symmetry::qvacuum())).template cast<Scalar_>();
+		}
+	}
+	
+	for (int i=0; i<N_orbitals; ++i)
+	{
+		if (Bz(i) != 0.)
+		{
+			Oout += -1. * Bz(i) * Sz(i).template cast<Scalar_>();
+		}
+		if (Bx(i) != 0.)
+		{
+			Oout += -1. * Bx(i) * Sx(i).template cast<Scalar_>();
 		}
 	}
 	Oout.label() = "Hloc";

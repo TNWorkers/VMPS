@@ -32,8 +32,8 @@ Logger lout;
 #include "models/KondoU1xU1.h"
 #include "models/KondoU1.h"
 #include "models/KondoSU2xU1.h"
-// #include "models/KondoU0xSU2.h"
-// #include "models/KondoSU2xSU2.h"
+#include "models/KondoU0xSU2.h"
+#include "models/KondoSU2xSU2.h"
 
 template<typename Scalar>
 string to_string_prec (Scalar x, bool COLOR=false, int n=14)
@@ -81,8 +81,8 @@ qarray<2> Qc_U1xU1, Qc_SU2xU1;
 Eigenstate<VMPS::KondoU1::StateXd> g_U1;
 Eigenstate<VMPS::KondoU1xU1::StateXd> g_U1xU1;
 Eigenstate<VMPS::KondoSU2xU1::StateXd> g_SU2xU1;
-Eigenstate<VMPS::KondoU1xU1::StateXd> g_U0xSU2;
-Eigenstate<VMPS::KondoU1xU1::StateXd> g_SO4;
+Eigenstate<VMPS::KondoU0xSU2::StateXd> g_U0xSU2;
+Eigenstate<VMPS::KondoSU2xSU2::StateXd> g_SO4;
 
 int main (int argc, char* argv[])
 {
@@ -323,38 +323,34 @@ int main (int argc, char* argv[])
 	// --------U(0)xSU(2)---------
 	if (U0SU2)
 	{
-// 		lout << endl << termcolor::red << "--------U(0)⊗SU(2)---------" << termcolor::reset << endl << endl;
+		lout << endl << termcolor::red << "--------U(0)⊗SU(2)---------" << termcolor::reset << endl << endl;
 		
-// //		auto params_ = params;
-// //		params_.push_back({"subL",SUB_LATTICE::A,0});
-// //		params_.push_back({"subL",SUB_LATTICE::B,1});
+//		auto params_ = params;
+//		params_.push_back({"subL",SUB_LATTICE::A,0});
+//		params_.push_back({"subL",SUB_LATTICE::B,1});
 		
-// 		Stopwatch<> Watch_U0xSU2;
-// 		VMPS::KondoU0xSU2 H_U0xSU2(L,params);
-// 		lout << H_U0xSU2.info() << endl;
+		Stopwatch<> Watch_U0xSU2;
+		VMPS::KondoU0xSU2 H_U0xSU2(L,params);
+		lout << H_U0xSU2.info() << endl;
 		
-// 		VMPS::KondoU0xSU2::Solver DMRG_U0xSU2(VERB);
-// 		DMRG_U0xSU2.edgeState(H_U0xSU2, g_U0xSU2, {T}, LANCZOS::EDGE::GROUND);
+		VMPS::KondoU0xSU2::Solver DMRG_U0xSU2(VERB);
+		DMRG_U0xSU2.edgeState(H_U0xSU2, g_U0xSU2, {T}, LANCZOS::EDGE::GROUND);
 		
-// 		t_U0xSU2 = Watch_U0xSU2.time();
+		t_U0xSU2 = Watch_U0xSU2.time();
 	}
 	
 	if (SO4)
 	{
-// 		lout << endl << termcolor::red << "--------SU(2)⊗SU(2)---------" << termcolor::reset << endl << endl;
+		lout << endl << termcolor::red << "--------SU(2)⊗SU(2)---------" << termcolor::reset << endl << endl;
+				
+		Stopwatch<> Watch_SO4;
+		VMPS::KondoSU2xSU2 H_SO4(L,params);
+		lout << H_SO4.info() << endl;
 		
-// //		auto params_ = params;
-// //		params_.push_back({"subL",SUB_LATTICE::A,0});
-// //		params_.push_back({"subL",SUB_LATTICE::B,1});
+		VMPS::KondoSU2xSU2::Solver DMRG_SO4(VERB);
+		DMRG_SO4.edgeState(H_SO4, g_SO4, {S,T}, LANCZOS::EDGE::GROUND);
 		
-// 		Stopwatch<> Watch_SO4;
-// 		VMPS::KondoSU2xSU2 H_SO4(L,params);
-// 		lout << H_SO4.info() << endl;
-		
-// 		VMPS::KondoSU2xSU2::Solver DMRG_SO4(VERB);
-// 		DMRG_SO4.edgeState(H_SO4, g_SO4, {S,T}, LANCZOS::EDGE::GROUND);
-		
-// 		t_SO4 = Watch_SO4.time();
+		t_SO4 = Watch_SO4.time();
 	}
 	
 	//-------------correlations-----------------

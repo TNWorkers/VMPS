@@ -373,7 +373,7 @@ int main (int argc, char* argv[])
 		if (CORR)
 		{
 			Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1Mm;
-			DMRG_U1.set_verbosity(DMRG::VERBOSITY::SILENT);
+			DMRG_U1.set_verbosity(DMRG::VERBOSITY::ON_EXIT);
 			DMRG_U1.edgeState(H_U1, g_U1Mm, {M-1,N-1}, LANCZOS::EDGE::GROUND);
 			lout << "g_U1Mm.energy=" << g_U1Mm.energy << endl;
 			if (g_U1Mm.state.A_at(0)[0].block[0](0,0) < 0) {g_U1Mm.state *= -1.;}
@@ -386,7 +386,7 @@ int main (int argc, char* argv[])
 			}
 
 			Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1Mp;
-			DMRG_U1.set_verbosity(DMRG::VERBOSITY::SILENT);
+			DMRG_U1.set_verbosity(DMRG::VERBOSITY::ON_EXIT);
 			DMRG_U1.edgeState(H_U1, g_U1Mp, {M+1,N-1}, LANCZOS::EDGE::GROUND);
 			lout << "g_U1Mp.energy=" << g_U1Mp.energy << endl;
 			if (g_U1Mm.state.A_at(0)[0].block[0](0,0) < 0) {g_U1Mm.state *= -1.;}
@@ -506,7 +506,7 @@ int main (int argc, char* argv[])
 		if (CORR)
 		{
 			Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2m;
-			DMRG_SU2.set_verbosity(DMRG::VERBOSITY::SILENT);
+			DMRG_SU2.set_verbosity(DMRG::VERBOSITY::ON_EXIT);
 			DMRG_SU2.edgeState(H_SU2, g_SU2m, {2,N-1}, LANCZOS::EDGE::GROUND);
 			if (g_SU2m.state.A_at(0)[0].block[0](0,0) < 0) {g_SU2m.state *= -1.;}
 			lout << "g_SU2m.energy=" << g_SU2m.energy << endl;
