@@ -23,7 +23,7 @@ public:
 	
 	///\{
 	HeisenbergXXZ() : Mpo<Symmetry>(), ParamReturner(Heisenberg::defaults) {};
-	HeisenbergXXZ (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
+	HeisenbergXXZ (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///\}
 	
 	static const std::map<string,std::any> defaults;
@@ -44,8 +44,8 @@ const std::map<string,std::any> HeisenbergXXZ::defaults =
 };
 
 HeisenbergXXZ::
-HeisenbergXXZ (const size_t &L, const vector<Param> &params, const BC &boundary)
-:Mpo<Symmetry> (L, qarray<0>({}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
+HeisenbergXXZ (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION &VERB)
+:Mpo<Symmetry> (L, qarray<0>({}), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
  HeisenbergObservables(L,params,HeisenbergXXZ::defaults),
  ParamReturner(Heisenberg::sweep_defaults)
 {

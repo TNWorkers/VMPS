@@ -2,7 +2,7 @@
 #define DMRG_HAMILTONIAN_TERMS
 #define EIGEN_DONT_VECTORIZE
 #ifndef DEBUG_VERBOSITY
-#define DEBUG_VERBOSITY 1
+#define DEBUG_VERBOSITY 0
 #endif
 
 /// \cond
@@ -335,24 +335,20 @@ private:
      */
     static void prod_delZeroCols_OBC(std::map<std::array<qType, 2>, std::vector<std::vector<std::map<qType,OperatorType>>>>& O_last, Qbasis<Symmetry>& qAux_last, Qbasis<Symmetry>& qAux_prev, const qType& qTot, const std::size_t col_qTot);
 
-	static std::string power_to_string(std::size_t power)
-		{
-			assert(power<10 and "power_to_string has only strings for power < 10.");
-			std::vector<std::string> str_powers(10);
-			str_powers[0] = "⁰";
-			str_powers[1] = "¹";
-			str_powers[2] = "²";
-			str_powers[3] = "³";
-			str_powers[4] = "⁴";
-			str_powers[5] = "⁵";
-			str_powers[6] = "⁶";
-			str_powers[7] = "⁷";
-			str_powers[8] = "⁸";
-			str_powers[9] = "⁹";
-			return str_powers[power];
-		}
+    /**
+     *  Converts a number into a superscript for exponentials
+     *  @param  power
+     *  @return Superscript exponential as string
+     */
+    static std::string power_to_string(std::size_t power);
 
-	static std::pair<std::string,std::size_t> detect_and_remove_power(const std::string &name_w_power);
+    /**
+     *  For labelling the powers of an MPO, exponentials in the factors' labels are detected and removed
+     *  @param name_w_power Label of a factor in the product that may contain a superscript exponential
+     *  @return [Base label = first power without superscript,removed power]
+     */
+	static std::pair<std::string,std::size_t> detect_and_remove_power(const std::string& name_w_power);
+    
 protected:
     
     /**
@@ -390,7 +386,7 @@ public:
      *  @param  boundary_condition_in   Boundary condition
      *  @param  qTot_in Total quantum number of the MPO
      */
-    MpoTerms(const std::size_t L=0, const BC boundary_condition_in=BC::OPEN, const qType& qTot_in=Symmetry::qvacuum());
+    MpoTerms(const std::size_t L=0, const BC boundary_condition_in=BC::OPEN, const qType& qTot_in=Symmetry::qvacuum(), const DMRG::VERBOSITY::OPTION& VERB_in = DMRG::VERBOSITY::OPTION::SILENT);
     
     /**
      *  Same as initialize, but allows to set a new combination of lattice size, total MPO quantum number and boundary condition
@@ -700,8 +696,8 @@ template<typename Symmetry> using MpoTermsXd  = MpoTerms<Symmetry,double>;
 template<typename Symmetry> using MpoTermsXcd = MpoTerms<Symmetry,std::complex<double>>;
 
 template<typename Symmetry, typename Scalar> MpoTerms<Symmetry,Scalar>::
-MpoTerms(const std::size_t L, const BC boundary_condition_in, const qType& qTot_in)
-: N_sites(L), boundary_condition(boundary_condition_in), qTot(qTot_in)
+MpoTerms(const std::size_t L, const BC boundary_condition_in, const qType& qTot_in, const DMRG::VERBOSITY::OPTION& VERB_in)
+: N_sites(L), boundary_condition(boundary_condition_in), qTot(qTot_in), VERB(VERB_in)
 {
     if(N_sites>0)
     {
@@ -712,6 +708,7 @@ MpoTerms(const std::size_t L, const BC boundary_condition_in, const qType& qTot_
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 initialize()
 {
+    #if DEBUG_VERBOSITY > 0
     if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
     {
         lout << "Initializing an MPO with L=" << N_sites << ", Boundary condition=" << boundary_condition << " and qTot={" << Sym::format<Symmetry>(qTot) << "}" << std::endl;
@@ -722,6 +719,7 @@ initialize()
         ss << before_verb_set << "Initializing an MPO with L=" << N_sites << ", Boundary condition=" << boundary_condition << " and qTot={" << Sym::format<Symmetry>(qTot) << "}" << std::endl;
         before_verb_set = ss.str();
     }
+    #endif
     assert(boundary_condition == BC::OPEN or qTot == qVac);
     current_power = 1;
     if(qTot == qVac)
@@ -779,6 +777,7 @@ initialize(const std::size_t L, const BC boundary_condition_in, const qType& qTo
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 reconstruct(const std::vector<std::map<std::array<qType,2>,std::vector<std::vector<std::map<qType,OperatorType>>>>>& O_in, const std::vector<Qbasis<Symmetry>>& qAux_in, const std::vector<std::vector<qType>>& qPhys_in, const bool FINALIZED_IN, const BC boundary_condition_in, const qType& qTot_in)
 {
+    #if DEBUG_VERBOSITY > 0
     if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
     {
         lout << "Reconstructing an MPO with L=" << O_in.size() << ", Boundary condition=" << boundary_condition_in << " and qTot={" << Sym::format<Symmetry>(qTot_in) << "}" << std::endl;
@@ -789,6 +788,7 @@ reconstruct(const std::vector<std::map<std::array<qType,2>,std::vector<std::vect
         ss << before_verb_set << "Reconstructing an MPO with L=" << O_in.size() << ", Boundary condition=" << boundary_condition_in << " and qTot={" << Sym::format<Symmetry>(qTot_in) << "}" << std::endl;
         before_verb_set = ss.str();
     }
+    #endif
     N_sites = O_in.size();
     boundary_condition = boundary_condition_in;
     qTot = qTot_in;
@@ -1377,10 +1377,9 @@ compress(const double tolerance)
     if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
     {
 		auto curr_prec = std::cout.precision();
-        lout << this->get_name() << " compression: " << watch.info("time") << "  |  steps: " << counter << "  |  rate: " << compr_rate
-			 << "% (" << std::setprecision(1) << std::fixed << average_auxdim_initial << " ⇒ " << average_auxdim_final << ")" << std::defaultfloat << std::endl;
+        lout    << this->get_name() << " - Compression | " << watch.info("Time") << " | Steps: " << counter << " | Rate: " << compr_rate
+                << "% (" << std::setprecision(1) << std::fixed << average_auxdim_initial << " ⇒ " << average_auxdim_final << ")" << std::defaultfloat << std::endl;
 		std::cout.precision(curr_prec);
-		//d,dₘₐₓ: 
         #if DEBUG_VERBOSITY > 1
         lout << "Compressed MPO:" << std::endl;
         show();
@@ -1389,7 +1388,10 @@ compress(const double tolerance)
     else
     {
         std::stringstream ss;
-        ss << before_verb_set << "Compression finished  |  " << watch.info("Time") << "  |  Steps: " << counter << "  |  Rate: " << compr_rate << "% (" << average_auxdim_initial << "->" << average_auxdim_final << ")" << std::endl;
+        auto curr_prec = std::cout.precision();
+        ss  << before_verb_set << this->get_name() << " - Compression | " << watch.info("Time") << " | Steps: " << counter << " | Rate: " << compr_rate
+            << "% (" << std::setprecision(1) << std::fixed << average_auxdim_initial << " ⇒ " << average_auxdim_final << ")" << std::defaultfloat << std::endl;
+        std::cout.precision(curr_prec);
         before_verb_set = ss.str();
     }
 }
@@ -3208,20 +3210,24 @@ prod(const MpoTerms<Symmetry,Scalar>& top, const MpoTerms<Symmetry,Scalar>& bott
         #endif
         prod_delZeroCols_OBC(O[N_sites-1], qAux[N_sites], qAux[N_sites-1], qTot, col_qTot[N_sites-1]);
     }
-    MpoTerms<Symmetry,Scalar> out(N_sites, boundary_condition, qTot);
+    MpoTerms<Symmetry,Scalar> out(N_sites, boundary_condition, qTot, VERB);
     out.reconstruct(O, qAux, qPhys, true, boundary_condition, qTot);
-	out.set_verbosity(VERB);
-	
 	auto [name_top, power_top] = detect_and_remove_power(top.get_name());
 	auto [name_bot, power_bot] = detect_and_remove_power(bottom.get_name());
-	if (name_top == name_bot) {out.set_name(name_top + power_to_string(power_top+power_bot));}
-    else {out.set_name(top.get_name()+"*"+bottom.get_name());}
+	if(name_top == name_bot)
+    {
+        out.set_name(name_top + power_to_string(power_top+power_bot));
+    }
+    else
+    {
+        out.set_name(top.get_name()+"*"+bottom.get_name());
+    }
     out.compress(tolerance);
     return out;
 }
 
 template<typename Symmetry, typename Scalar> std::pair<std::string, std::size_t> MpoTerms<Symmetry,Scalar>::
-detect_and_remove_power(const std::string &name_w_power)
+detect_and_remove_power(const std::string& name_w_power)
 {
 	std::vector<std::string> str_powers(10);
 	str_powers[0] = "⁰";
@@ -3237,15 +3243,36 @@ detect_and_remove_power(const std::string &name_w_power)
 	
 	std::string name_wo_power = name_w_power;
 	std::size_t power = 1ul;
-	for (std::size_t ip=0; ip<str_powers.size(); ip++)
+	for(std::size_t ip=0; ip<str_powers.size(); ip++)
 	{
 		auto pos = name_wo_power.find(str_powers[ip]);
-		if (pos == std::string::npos) {continue;}
+		if(pos == std::string::npos)
+        {
+            continue;
+        }
 		name_wo_power.erase(pos,pos+str_powers[ip].size());
 		power = ip;
 		break;		
 	}
 	return std::make_pair(name_wo_power,power);
+}
+
+template<typename Symmetry, typename Scalar> std::string MpoTerms<Symmetry,Scalar>::
+power_to_string(std::size_t power)
+{
+    assert(power<10 and "power_to_string has only strings for power < 10.");
+    std::vector<std::string> str_powers(10);
+    str_powers[0] = "⁰";
+    str_powers[1] = "¹";
+    str_powers[2] = "²";
+    str_powers[3] = "³";
+    str_powers[4] = "⁴";
+    str_powers[5] = "⁵";
+    str_powers[6] = "⁶";
+    str_powers[7] = "⁷";
+    str_powers[8] = "⁸";
+    str_powers[9] = "⁹";
+    return str_powers[power];
 }
 
 template<typename Symmetry, typename Scalar> MpoTerms<Symmetry,Scalar> MpoTerms<Symmetry,Scalar>::
@@ -3425,8 +3452,7 @@ sum(const MpoTerms<Symmetry,Scalar>& top, const MpoTerms<Symmetry,Scalar>& botto
         }
     }
 
-    MpoTerms<Symmetry,Scalar> out(N_sites,boundary_condition_out,qTot);
-    out.set_verbosity(VERB);
+    MpoTerms<Symmetry,Scalar> out(N_sites,boundary_condition_out,qTot,VERB);
     out.reconstruct(O_out, qAux_out, qPhys, true, boundary_condition_out,qTot);
     if(boundary_condition_out == BC::OPEN)
     {

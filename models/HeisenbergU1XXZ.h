@@ -37,8 +37,8 @@ public:
 public:
 	
 	HeisenbergU1XXZ() : HeisenbergU1() {};
-	HeisenbergU1XXZ (const size_t &L, const BC &boundary=BC::OPEN);
-	HeisenbergU1XXZ (const size_t &L, const vector<Param> &params={}, const BC &boundary = BC::OPEN);
+	HeisenbergU1XXZ (const size_t &L, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION& VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
+	HeisenbergU1XXZ (const size_t &L, const vector<Param> &params={}, const BC &boundary = BC::OPEN, const DMRG::VERBOSITY::OPTION& VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	
 	template<typename Symmetry_>
 	static void add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
@@ -60,13 +60,13 @@ const std::map<string,std::any> HeisenbergU1XXZ::defaults =
 };
 
 HeisenbergU1XXZ::
-HeisenbergU1XXZ (const size_t &L, const BC &boundary)
-:HeisenbergU1(L, boundary)
+HeisenbergU1XXZ (const size_t &L, const BC &boundary, const DMRG::VERBOSITY::OPTION& VERB)
+:HeisenbergU1(L, boundary, VERB)
 {}
 	
 HeisenbergU1XXZ::
-HeisenbergU1XXZ (const size_t &L, const vector<Param> &params, const BC &boundary)
-:HeisenbergU1(L, boundary)
+HeisenbergU1XXZ (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION& VERB)
+:HeisenbergU1(L, boundary, VERB)
 {
 	ParamHandler P(params,HeisenbergU1XXZ::defaults);	
 	size_t Lcell = P.size();

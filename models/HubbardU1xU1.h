@@ -56,7 +56,7 @@ public:
 	
 	///@{
 	HubbardU1xU1() : Mpo(){};
-	HubbardU1xU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
+	HubbardU1xU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///@}
 	
 	static qarray<2> singlet (int N=0) {return qarray<2>{0,N};};
@@ -92,8 +92,8 @@ const std::map<string,std::any> HubbardU1xU1::defaults =
 };
 
 HubbardU1xU1::
-HubbardU1xU1 (const size_t &L, const vector<Param> &params, const BC &boundary)
-:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
+HubbardU1xU1 (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION &VERB)
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
  HubbardObservables(L,params,HubbardU1xU1::defaults),
  ParamReturner()
 {

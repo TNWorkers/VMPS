@@ -60,7 +60,7 @@ private:
 public:
 	
 	HubbardSU2xU1() : Mpo(){};
-	HubbardSU2xU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
+	HubbardSU2xU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	
 	/**
 	 * \describe_set_operators
@@ -108,8 +108,8 @@ const map<string,any> HubbardSU2xU1::sweep_defaults =
 };
 
 HubbardSU2xU1::
-HubbardSU2xU1 (const size_t &L, const vector<Param> &params, const BC &boundary)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
+HubbardSU2xU1 (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION &VERB)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1,0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
  HubbardObservables(L,params,HubbardSU2xU1::defaults),
  ParamReturner(HubbardSU2xU1::sweep_defaults)
 {

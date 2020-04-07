@@ -29,7 +29,7 @@ public:
 	
 	///@{
 	KondoSU2xSU2 (): Mpo(), KondoObservables(), ParamReturner(KondoSU2xSU2::sweep_defaults) {};
-	KondoSU2xSU2 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
+	KondoSU2xSU2 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///@}
 	
 	static qarray<2> singlet (int N) {return qarray<2>{1,1};};
@@ -72,8 +72,8 @@ const map<string,any> KondoSU2xSU2::sweep_defaults =
 };
 
 KondoSU2xSU2::
-KondoSU2xSU2 (const size_t &L, const vector<Param> &params, const BC &boundary)
-:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
+KondoSU2xSU2 (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION &VERB)
+:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
  KondoObservables(L,params,KondoSU2xSU2::defaults),
  ParamReturner(KondoSU2xSU2::sweep_defaults)
 {

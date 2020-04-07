@@ -59,7 +59,7 @@ private:
 public:
 	
 	HubbardSU2() : Mpo(){};
-	HubbardSU2 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
+	HubbardSU2 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	
     static void add_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P, PushType<SiteOperator<Symmetry,double>,double>& pushlist,
 							   std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
@@ -96,8 +96,8 @@ const map<string,any> HubbardSU2::sweep_defaults =
 };
 
 HubbardSU2::
-HubbardSU2 (const size_t &L, const vector<Param> &params, const BC &boundary)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
+HubbardSU2 (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION &VERB)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
  HubbardObservables(L,params,HubbardSU2::defaults),
  ParamReturner(HubbardSU2::sweep_defaults)
 {

@@ -42,7 +42,7 @@ public:
 	
 	///@{
 	KondoU1 () : Mpo(){};
-	KondoU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
+	KondoU1 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///@}
 	
 	static qarray<1> singlet (int N) {return qarray<1>{N};}; // not a real singlet, but useful for consistency when switching symmetries
@@ -71,8 +71,8 @@ const std::map<string,std::any> KondoU1::defaults =
 };
 
 KondoU1::
-KondoU1 (const size_t &L, const vector<Param> &params, const BC &boundary)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN,boundary),
+KondoU1 (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION &VERB)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
  KondoObservables(L,params,defaults),
  ParamReturner()
 {

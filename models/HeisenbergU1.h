@@ -54,8 +54,8 @@ public:
 	
 	///@{
 	HeisenbergU1() : Mpo<Symmetry>(), ParamReturner(HeisenbergU1::sweep_defaults) {};
-	HeisenbergU1 (const size_t &L, const BC &boundary=BC::OPEN);
-	HeisenbergU1 (const size_t &L, const vector<Param> &params, const BC & boundary=BC::OPEN);
+	HeisenbergU1 (const size_t &L, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
+	HeisenbergU1 (const size_t &L, const vector<Param> &params, const BC & boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///@}
 	
 	/**
@@ -99,15 +99,15 @@ const std::map<string,std::any> HeisenbergU1::sweep_defaults =
 };
 
 HeisenbergU1::
-HeisenbergU1 (const size_t &L, const BC &boundary)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
+HeisenbergU1 (const size_t &L, const BC &boundary, const DMRG::VERBOSITY::OPTION &VERB)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary,VERB),
 HeisenbergObservables(L),
 ParamReturner(HeisenbergU1::sweep_defaults)
 {}
 
 HeisenbergU1::
-HeisenbergU1 (const size_t &L, const vector<Param> &params, const BC &boundary)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
+HeisenbergU1 (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION &VERB)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({0}), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
  HeisenbergObservables(L,params,HeisenbergU1::defaults),
  ParamReturner(HeisenbergU1::sweep_defaults)
 {

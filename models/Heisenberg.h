@@ -45,7 +45,7 @@ public:
 	
 	///@{
 	Heisenberg() : Mpo<Symmetry>(), HeisenbergObservables(), ParamReturner(Heisenberg::sweep_defaults) {};
-	Heisenberg (const size_t &L, const vector<Param> &params, const BC & boundary=BC::OPEN);
+	Heisenberg (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION& VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///@}
 
 	static void add_operators (const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
@@ -78,8 +78,8 @@ const std::map<string,std::any> Heisenberg::sweep_defaults =
 };
 
 Heisenberg::
-Heisenberg (const size_t &L, const vector<Param> &params, const BC & boundary)
-	:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
+Heisenberg (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION &VERB)
+	:Mpo<Symmetry> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
  HeisenbergObservables(L,params,Heisenberg::defaults),
  ParamReturner(Heisenberg::sweep_defaults)
 {

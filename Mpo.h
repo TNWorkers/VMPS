@@ -59,7 +59,7 @@ public:
 	
 	Mpo(size_t L_input);
 	
-	Mpo(std::size_t L_input, qType Qtot_input, std::string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false, bool HAMILTONIAN_input=false, BC BC_input=BC::OPEN);
+	Mpo(std::size_t L_input, qType Qtot_input, std::string label_input="Mpo", bool HERMITIAN_input=false, bool UNITARY_input=false, BC BC_input=BC::OPEN, DMRG::VERBOSITY::OPTION VERB_input=DMRG::VERBOSITY::OPTION::SILENT);
 
 	template<typename CouplScalar>
     void construct_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, const std::vector<std::vector<std::string>>& labellist, size_t Lcell);
@@ -210,8 +210,8 @@ Mpo(std::size_t L_input)
 
 template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar>::
-Mpo (std::size_t L_input, qType Qtot_input, string label_input, bool HERMITIAN_input, bool UNITARY_input, bool HAMILTONIAN_input, BC BC_input)
-: MpoTerms<Symmetry, Scalar>(L_input, BC_input, Qtot_input), HERMITIAN(HERMITIAN_input), UNITARY(UNITARY_input), HAMILTONIAN(HAMILTONIAN_input) {this->set_name(label_input);}
+Mpo (std::size_t L_input, qType Qtot_input, string label_input, bool HERMITIAN_input, bool UNITARY_input, BC BC_input, DMRG::VERBOSITY::OPTION VERB_input)
+: MpoTerms<Symmetry, Scalar>(L_input, BC_input, Qtot_input, VERB_input), HERMITIAN(HERMITIAN_input), UNITARY(UNITARY_input) {this->set_name(label_input);}
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
 push_width(const std::size_t width, const std::size_t loc, const Scalar lambda, const OperatorType& outOp, const std::vector<OperatorType>& trans, const OperatorType& inOp)
@@ -351,7 +351,7 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 template<typename Symmetry, typename Scalar> Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
 Identity(const std::vector<std::vector<qType>>& qPhys)
 {
-    Mpo<Symmetry,Scalar> out(qPhys.size(), Symmetry::qvacuum(), "Id", true, true, false, BC::OPEN);
+    Mpo<Symmetry,Scalar> out(qPhys.size(), Symmetry::qvacuum(), "Id", true, true, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
     for(std::size_t loc=0; loc<qPhys.size(); ++loc)
     {
         out.set_qPhys(loc, qPhys[loc]);
@@ -363,7 +363,7 @@ Identity(const std::vector<std::vector<qType>>& qPhys)
 template<typename Symmetry, typename Scalar> Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
 Zero(const std::vector<std::vector<qType>>& qPhys)
 {
-    Mpo<Symmetry,Scalar> out(qPhys.size(), Symmetry::qvacuum(), "Zero", true, true, false, BC::OPEN);
+    Mpo<Symmetry,Scalar> out(qPhys.size(), Symmetry::qvacuum(), "Zero", true, true, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
     for(std::size_t loc=0; loc<qPhys.size(); ++loc)
     {
         out.set_qPhys(loc, qPhys[loc]);
@@ -561,7 +561,9 @@ setLocal(const std::vector<std::size_t>& locs, const std::vector<OperatorType>& 
 {
     auto Id = ops[0];
     Id.setIdentity();
+    #ifdef OPLABELS
     Id.label = "id";
+    #endif
     setLocal(locs, ops, Id);
 }
 
@@ -645,8 +647,10 @@ scale(double factor, double offset)
 	{
 		auto Id = LocalOp;
 		Id.setIdentity();
+        #ifdef OPLABELS
         Id.label = "id";
-		if(std::abs(factor - 1.0) > ::mynumeric_limits<Scalar>::epsilon())
+        #endif
+        if(std::abs(factor - 1.0) > ::mynumeric_limits<Scalar>::epsilon())
         {
             LocalOp = factor * LocalOp;
         }
@@ -760,7 +764,7 @@ template<typename Symmetry, typename Scalar>
 Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
 cast_Terms_to_Mpo(const MpoTerms<Symmetry,Scalar>& input)
 {
-    Mpo<Symmetry,Scalar> output(input.size(), input.get_qTot(), input.label, false, false, false, input.get_boundary_condition());
+    Mpo<Symmetry,Scalar> output(input.size(), input.get_qTot(), input.label, false, false, input.get_boundary_condition(), input.get_verbosity());
     output.reconstruct(input.get_O(), input.get_qAux(), input.get_qPhys(), input.is_finalized(), input.get_boundary_condition(), input.get_qTot());
     return output;
 }

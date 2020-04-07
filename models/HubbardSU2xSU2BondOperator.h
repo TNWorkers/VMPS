@@ -23,7 +23,7 @@ private:
 public:
 	
 	HubbardSU2xSU2BondOperator() : Mpo<Symmetry,Scalar>() {};
-	HubbardSU2xSU2BondOperator (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN);
+	HubbardSU2xSU2BondOperator (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 
 	void set_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P,
 							   PushType<SiteOperator<Symmetry,Scalar>,Scalar>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
@@ -44,8 +44,8 @@ const std::map<string,std::any> HubbardSU2xSU2BondOperator<Scalar>::defaults =
 
 template<typename Scalar>
 HubbardSU2xSU2BondOperator<Scalar>::
-HubbardSU2xSU2BondOperator (const size_t &L, const vector<Param> &params, const BC &boundary)
-:Mpo<Symmetry,Scalar> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::NON_HAMILTONIAN, boundary)
+HubbardSU2xSU2BondOperator (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION &VERB)
+:Mpo<Symmetry,Scalar> (L, Symmetry::qvacuum(), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB)
 {
 	ParamHandler P(params,HubbardSU2xSU2BondOperator::defaults);	
 	size_t Lcell = P.size();

@@ -55,7 +55,7 @@ public:
 	   \describe_params
 	   \describe_boundary
 	*/
-	HeisenbergSU2 (const size_t &L, const vector<Param> &params={}, const BC & boundary=BC::OPEN);
+	HeisenbergSU2 (const size_t &L, const vector<Param> &params={}, const BC & boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION& VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///\}
 	
 	/**
@@ -98,8 +98,8 @@ const std::map<string,std::any> HeisenbergSU2::sweep_defaults =
 };
 
 HeisenbergSU2::
-HeisenbergSU2 (const size_t &L, const vector<Param> &params, const BC & boundary)
-:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "", PROP::HERMITIAN, PROP::NON_UNITARY, PROP::HAMILTONIAN, boundary),
+HeisenbergSU2 (const size_t &L, const vector<Param> &params, const BC & boundary, const DMRG::VERBOSITY::OPTION &VERB)
+:Mpo<Symmetry> (L, qarray<Symmetry::Nq>({1}), "", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
  HeisenbergObservables(L,params,HeisenbergSU2::defaults),
  ParamReturner(HeisenbergSU2::sweep_defaults)
 {
