@@ -34,10 +34,10 @@ public:
 	static constexpr bool IS_TRIVIAL = false;
 	static constexpr bool IS_MODULAR = false;
 	static constexpr int MOD_N = 0;
-
+	
 	static constexpr bool IS_CHARGE_SU2() { return false; }
 	static constexpr bool IS_SPIN_SU2() { return false; }
-
+	
 	static constexpr bool IS_SPIN_U1() { if constexpr (U1<Kind,Scalar>::kind()[0] == KIND::M) {return true;} return false; }
 	
 	static constexpr bool NO_SPIN_SYM() { if (U1<Kind,Scalar>::kind()[0] != KIND::M and U1<Kind,Scalar>::kind()[0] != KIND::Nup and U1<Kind,Scalar>::kind()[0] != KIND::Ndn) {return true;} return false;}

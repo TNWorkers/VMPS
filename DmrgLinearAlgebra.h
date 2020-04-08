@@ -68,7 +68,7 @@ Array<Scalar,Dynamic,1> matrix_element (int iL,
                                         const Mps<Symmetry,Scalar> &Vbra, 
                                         const Mpo<Symmetry,MpoScalar> &O, 
                                         const Mps<Symmetry,Scalar> &Vket, 
-                                        bool USE_SQUARE = false)
+                                        size_t power_of_O = 1)
 {
 	assert(iL<O.length() and iR<O.length() and iL<iR);
 	
@@ -78,35 +78,36 @@ Array<Scalar,Dynamic,1> matrix_element (int iL,
 	{
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
+		Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Id;
 		
 		vector<qarray3<Symmetry::Nq> > Qt;
 		Qt.push_back(qarray3<Symmetry::Nq>{Vket.Qmultitarget()[i], Vbra.Qmultitarget()[i], O.Qtarget()});
 		B.setTarget(Qt);
+		Id.setVacuum();
 		
 		for (int l=iR; l>=iL; --l)
 		{
-			if (USE_SQUARE == true)
-			{
-				contract_R(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
-			}
-			else
-			{
-				contract_R(B, Vbra.A_at(l), O.W_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
-			}
+			contract_R(B, Vbra.A_at(l), O.get_W_power(power_of_O)[l], O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.get_qOp_power(power_of_O)[l], Bnext);
 			B.clear();
 			B = Bnext;
 			Bnext.clear();
+//			cout << "l=" << l << ", i=" << i << ", B.dim=" << B.dim << endl;
 		}
 		
-		if (B.dim == 1)
-		{
-			res[i] = B.block[0][0][0].trace();
-		}
-		else
-		{
-			res[i] = 0;
-		}
+//		if (B.dim == 1)
+//		{
+//			res[i] = B.block[0][0][0].trace();
+//		}
+//		else
+//		{
+//			res[i] = 0;
+//		}
+		res[i] = contract_LR(Id,B);
 	}
+	
+//	Vbra.graph("Vbra");
+//	Vket.graph("Vket");
+//	cout << "dot_green=" << res.transpose() << endl;
 	
 	return res;
 }
@@ -149,7 +150,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Id;
-
+	
 	Scalar out=0.;
 	// Note DMRG::DIRECTION::RIGHT now adapted for infinite boundary conditions
 	if (DIR == DMRG::DIRECTION::RIGHT)

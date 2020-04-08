@@ -30,9 +30,9 @@ namespace Sym{
 		typedef qarray<0> qType;
 		
 		U0() {};
-
+		
 		static std::string name() { return "noSymmetry"; }
-
+		
 		static constexpr bool HAS_CGC = false;
 		static constexpr std::size_t Nq=0;
 		static constexpr bool NON_ABELIAN = false;

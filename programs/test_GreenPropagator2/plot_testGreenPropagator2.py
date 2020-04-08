@@ -28,13 +28,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-save', action='store_true', default=False)
 parser.add_argument('-set', action='store', default='.')
 parser.add_argument('-plot', action='store', default='specFull')
-parser.add_argument('-spec', action='store', default='SSF')
+parser.add_argument('-spec', action='store', default='A1P')
 parser.add_argument('-model', action='store', default='Hubbard')
+parser.add_argument('-INT', action='store', default='INTERP') # INTERP || DIRECT
 args = parser.parse_args()
 
 set = args.set
 spec = args.spec
 plot = args.plot
+INT = args.INT
 
 if args.model == 'Hubbard':
 	Lcell = 2
@@ -42,7 +44,6 @@ if args.model == 'Hubbard':
 	tmax = 6
 	U = 6
 	sym = 'SU2⊗U1'
-	INT = 'DIRECT' # INTERP || DIRECT
 	L = Lcell*Ncells
 	wmin = -10
 	wmax = +10
@@ -57,7 +58,6 @@ elif args.model == 'Heisenberg':
 	tmax = 6
 	J = 1
 	sym = 'SU2'
-	INT = 'INTERP'
 	L = Lcell*Ncells
 	wmin = 0
 	wmax = 10
@@ -93,6 +93,7 @@ def filename_wq(set,spec,L,tmax,qmin,qmax):
 	res = set+'/'
 	res += spec
 	res += '_Lcell='+str(Lcell)
+	res += '_model='+args.model
 	res += '_sym='+str(sym)
 	if args.model == 'Hubbard':
 		res += '_U='+str(U)
@@ -112,6 +113,7 @@ def filename_tx(set,spec,L,tmax,qmin,qmax):
 	res = set+'/'
 	res += spec
 	res += '_Lcell='+str(Lcell)
+	res += '_model='+args.model
 	res += '_sym='+str(sym)
 	if args.model == 'Hubbard':
 		res += '_U='+str(U)
@@ -129,10 +131,14 @@ if args.plot == 'specFull':
 	fig, ax = plt.subplots(1,1)
 	
 	if args.model == 'Hubbard':
+		
+#		G0 = h5py.File(filename_wq(".","PES",L,tmax,qmin,qmax),'r')
+#		G1 = h5py.File(filename_wq(".","IPE",L,tmax,qmin,qmax),'r')
+#		datawq = -1./pi * np.asarray(G0['G']['ωqIm']) -1./pi * np.asarray(G1['G']['ωqIm'])
+		
 		G0 = h5py.File(filename_wq(".","PES",L,tmax,qmin,qmax),'r')
-		G1 = h5py.File(filename_wq(".","IPE",L,tmax,qmin,qmax),'r')
-		datawq = -1./pi * np.asarray(G0['G']['ωqIm']) -1./pi * np.asarray(G1['G']['ωqIm'])
-		print(G0['G'].keys()) #ωqIm
+		datawq = -1./pi * np.asarray(G0['G']['ωqIm'])
+		
 	elif args.model == 'Heisenberg':
 		G0 = h5py.File(filename_wq(".","SSF",L,tmax,qmin,qmax),'r')
 		datawq = -1./pi * np.asarray(G0['G']['ωqIm'])
@@ -158,7 +164,9 @@ elif args.plot == 'QDOS':
 	if args.model == 'Hubbard':
 		G0 = h5py.File(filename_wq(".","PES",L,tmax,qmin,qmax),'r')
 		G1 = h5py.File(filename_wq(".","IPE",L,tmax,qmin,qmax),'r')
-		dataw = np.asarray(G0['G']['QDOS']) + np.asarray(G1['G']['QDOS'])
+		G2 = h5py.File(filename_wq(".","A1P",L,tmax,qmin,qmax),'r')
+		#dataw = np.asarray(G0['G']['QDOS']) + np.asarray(G1['G']['QDOS'])
+		dataw = np.asarray(G2['G']['QDOS'])
 	elif args.model == 'Heisenberg':
 		G0 = h5py.File(filename_wq(".","SSF",L,tmax,qmin,qmax),'r')
 		dataw = np.asarray(G0['G']['QDOS'])

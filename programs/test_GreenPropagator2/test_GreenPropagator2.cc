@@ -57,33 +57,27 @@ DMRG::VERBOSITY::OPTION VERB;
 vector<string> specs; int Nspec;
 
 //#define USE_HEISENBERG
+//string MODELNAME = "Heisenberg";
 //Q_RANGE QR = ZERO_2PI;
 
 //#include "models/HeisenbergSU2.h"
 //typedef VMPS::HeisenbergSU2 MODEL; double spinfac = 1.;
-//#define USE_SPIN_SU2
 
 //#include "models/HeisenbergU1.h"
 //typedef VMPS::HeisenbergU1 MODEL; double spinfac = 1.;
-//#define USE_SPIN_U1
 
 //#include "models/SpinlessFermionsU1.h"
 //typedef VMPS::SpinlessFermionsU1 MODEL; double spinfac = 1.;
-//#define USE_CHARGE_U1
-//#define USE_SPINLESS
 
 #define USE_HUBBARD
+string MODELNAME = "Hubbard";
 Q_RANGE QR = MPI_PPI;
 
 #include "models/HubbardSU2xU1.h"
 typedef VMPS::HubbardSU2xU1 MODEL; double spinfac = 1.;
-#define USE_SPIN_SU2
-#define USE_CHARGE_ABELIAN
 
 //#include "models/HubbardSU2xSU2.h"
 //typedef VMPS::HubbardSU2xSU2 MODEL; double spinfac = 1.;
-//#define USE_SPIN_SU2
-//#define USE_CHARGE_SU2
 
 vector<GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>>> Green;
 GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>> Gfull;
@@ -94,6 +88,7 @@ double n_mu (double mu, void*)
 }
 
 #include "models/SpectralFunctionHelpers.h"
+#include "gsl_integration.h"
 
 /////////////////////////////////
 int main (int argc, char* argv[])
@@ -101,6 +96,8 @@ int main (int argc, char* argv[])
 	#ifdef _OPENMP
 	omp_set_nested(1);
 	#endif
+	
+	gsl_set_error_handler_off(); lout << "gsl_set_error_handler_off()" << endl;
 	
 	ArgParser args(argc,argv);
 	L = args.get<size_t>("L",2);
@@ -119,7 +116,7 @@ int main (int argc, char* argv[])
 	specs = args.get_list<string>("specs",{"SSF"});
 	Nspec = specs.size();
 	Green.resize(Nspec);
-	INT = static_cast<GREEN_INTEGRATION>(args.get<int>("INT",1)); //0=DIRECT, 1=INTERPOL
+	INT = static_cast<GREEN_INTEGRATION>(args.get<int>("INT",1)); //0=DIRECT, 1=INTERP
 	
 	RELOAD = args.get<string>("RELOAD","");
 	wmin = args.get<double>("wmin",-10.);
@@ -156,7 +153,7 @@ int main (int argc, char* argv[])
 	GlobParams.tol_state = tol_state;
 	GlobParams.max_iter_without_expansion = 30ul;
 	
-	string base = make_string("Lcell=",L,"_sym=",MODEL::Symmetry::name());
+	string base = make_string("Lcell=",L,"_model=",MODELNAME,"_sym=",MODEL::Symmetry::name());
 	#ifdef USE_HEISENBERG
 	base += make_string("_J=",J);
 	#elif defined(USE_HUBBARD)
@@ -232,7 +229,7 @@ int main (int argc, char* argv[])
 			
 			for (int l=0; l<L; ++l)
 			{
-				O[z][l] = VMPS::get_Op(H_hetero,Lhetero/2+l,specs[z]);
+				O[z][l] = VMPS::get_Op<MODEL,MODEL::Symmetry>(H_hetero,Lhetero/2+l,specs[z]);
 				O[z][l].transform_base(Q,false,L); // PRINT=false
 			}
 		}
@@ -316,7 +313,7 @@ int main (int argc, char* argv[])
 			}
 			
 			Gfull = GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double> >
-			(wd+"A1P_"+base,tmax,GinA1P,QR,qpoints,DIRECT);
+			(wd+"A1P_"+base,tmax,GinA1P,QR,qpoints,INT);
 			Gfull.recalc_FTwCell(wmin,wmax,wpoints);
 			Gfull.FT_allSites();
 			
@@ -326,7 +323,7 @@ int main (int argc, char* argv[])
 				double res = spinfac * Gfull.integrate_Glocw(*mu);
 				mu << res;
 			}
-			mu.save(wd+"n(μ)_"+base+".dat");
+			mu.save(make_string(wd,"n(μ)_tmax=",tmax,"_",base,".dat"));
 			RootFinder R(n_mu,wmin,wmax);
 			lout << "μ=" << R.root() << endl;
 			
