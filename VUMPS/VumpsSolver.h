@@ -812,7 +812,7 @@ build_L (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > >
 	
 	for (int b=dW-2; b>=0; --b)
 	{
-		YL[b] = make_YL(b, L, AL, W, PROP::HAMILTONIAN, AL, qloc, qOp, basis_order_map);
+		YL[b] = make_YL(b, L, AL, W, AL, qloc, qOp, basis_order_map);
 		
 		if (b > 0)
 		{
@@ -857,7 +857,7 @@ build_R (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > >
 	
 	for (int a=1; a<dW; ++a)
 	{
-		YR[a] = make_YR(a, R, AR, W, PROP::HAMILTONIAN, AR, qloc, qOp, basis_order_map);
+		YR[a] = make_YR(a, R, AR, W, AR, qloc, qOp, basis_order_map);
 		
 		if (a < dW-1)
 		{
@@ -921,7 +921,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 		{
 			for (int b=dW-2; b>=0; --b)
 			{
-				YL[b] = make_YL(b, L, AL, W, PROP::HAMILTONIAN, AL, qloc, qOp, basis_order_map);
+				YL[b] = make_YL(b, L, AL, W, AL, qloc, qOp, basis_order_map);
 				// cout << "b=" << b << ", Yl=" << endl << YL[b].print(true) << endl;
 				if (b > 0)
 				{
@@ -955,7 +955,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 		{
 			for (int a=1; a<dW; ++a)
 			{
-				YR[a] = make_YR(a, R, AR, W, PROP::HAMILTONIAN, AR, qloc, qOp, basis_order_map);
+				YR[a] = make_YR(a, R, AR, W, AR, qloc, qOp, basis_order_map);
 				
 				if (a < dW-1)
 				{
@@ -1053,7 +1053,7 @@ build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > 
 			for (size_t l=1; l<N_sites; ++l)
 			{
 				contract_L(HeffA[l-1].L, 
-				           Vout.state.A[GAUGE::L][l-1], H.W[l-1], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][l-1], 
+				           Vout.state.A[GAUGE::L][l-1], H.W[l-1], Vout.state.A[GAUGE::L][l-1], 
 				           H.locBasis(l-1), H.opBasis(l-1), 
 				           HeffA[l].L);
 			}
@@ -1065,7 +1065,7 @@ build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > 
 			for (int l=N_sites-2; l>=0; --l)
 			{
 				contract_R(HeffA[l+1].R, 
-				           Vout.state.A[GAUGE::R][l+1], H.W[l+1], PROP::HAMILTONIAN, Vout.state.A[GAUGE::R][l+1], 
+				           Vout.state.A[GAUGE::R][l+1], H.W[l+1], Vout.state.A[GAUGE::R][l+1], 
 				           H.locBasis(l+1), H.opBasis(l+1), 
 				           HeffA[l].R);
 			}
@@ -1702,9 +1702,9 @@ iteration_idmrg (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vou
 	}
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > HeffLtmp, HeffRtmp;
-	contract_L(HeffA[0].L, Vout.state.A[GAUGE::L][0], H.W[0], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][0], H.locBasis(0), H.opBasis(0), HeffLtmp);
+	contract_L(HeffA[0].L, Vout.state.A[GAUGE::L][0], H.W[0], Vout.state.A[GAUGE::L][0], H.locBasis(0), H.opBasis(0), HeffLtmp);
 	HeffA[0].L = HeffLtmp;
-	contract_R(HeffA[0].R, Vout.state.A[GAUGE::R][0], H.W[1], PROP::HAMILTONIAN, Vout.state.A[GAUGE::R][0], H.locBasis(1), H.opBasis(1), HeffRtmp);
+	contract_R(HeffA[0].R, Vout.state.A[GAUGE::R][0], H.W[1], Vout.state.A[GAUGE::R][0], H.locBasis(1), H.opBasis(1), HeffRtmp);
 	HeffA[0].R = HeffRtmp;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
@@ -1958,7 +1958,7 @@ expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps
 	if (option == VUMPS::TWOSITE_A::ALxAC or option == VUMPS::TWOSITE_A::ALxCxAR)
 	{
 		contract_L(HeffA[loc].L, 
-		           Vout.state.A[GAUGE::L][loc], H.W[loc], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][loc], 
+		           Vout.state.A[GAUGE::L][loc], H.W[loc], Vout.state.A[GAUGE::L][loc], 
 		           H.locBasis(loc), H.opBasis(loc), 
 		           HeffA[(loc+1)%N_sites].L);
 	}
@@ -1976,7 +1976,7 @@ expand_basis (size_t loc, size_t DeltaD, const MpHamiltonian &H, Eigenstate<Umps
 	if (option == VUMPS::TWOSITE_A::ACxAR or option == VUMPS::TWOSITE_A::ALxCxAR)
 	{
 		contract_R(HeffA[(loc+1)%N_sites].R,
-		           Vout.state.A[GAUGE::R][(loc+1)%N_sites], H.W[(loc+1)%N_sites], PROP::HAMILTONIAN, Vout.state.A[GAUGE::R][(loc+1)%N_sites], 
+		           Vout.state.A[GAUGE::R][(loc+1)%N_sites], H.W[(loc+1)%N_sites], Vout.state.A[GAUGE::R][(loc+1)%N_sites], 
 		           H.locBasis((loc+1)%N_sites), H.opBasis((loc+1)%N_sites), 
 		           HeffA[loc].R);
 	}
@@ -2473,7 +2473,7 @@ set_boundary (const Umps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool
 // 		if (option == VUMPS::TWOSITE_A::ALxAC or option == VUMPS::TWOSITE_A::ALxCxAR)
 // 		{
 // 			contract_L(HeffA[loc].L, 
-// 					   Vout.state.A[GAUGE::L][loc], H.W[loc], PROP::HAMILTONIAN, Vout.state.A[GAUGE::L][loc], 
+// 					   Vout.state.A[GAUGE::L][loc], H.W[loc], Vout.state.A[GAUGE::L][loc], 
 // 					   H.locBasis(loc), H.opBasis(loc), 
 // 					   HeffA[(loc+1)%N_sites].L);
 // 		}
@@ -2492,7 +2492,7 @@ set_boundary (const Umps<Symmetry,Scalar> &Vin, Mps<Symmetry,Scalar> &Vout, bool
 // 		if (option == VUMPS::TWOSITE_A::ACxAR or option == VUMPS::TWOSITE_A::ALxCxAR)
 // 		{
 // 			contract_R(HeffA[(loc+1)%N_sites].R,
-// 					   Vout.state.A[GAUGE::R][(loc+1)%N_sites], H.W[(loc+1)%N_sites], PROP::HAMILTONIAN, Vout.state.A[GAUGE::R][(loc+1)%N_sites], 
+// 					   Vout.state.A[GAUGE::R][(loc+1)%N_sites], H.W[(loc+1)%N_sites], Vout.state.A[GAUGE::R][(loc+1)%N_sites], 
 // 					   H.locBasis((loc+1)%N_sites), H.opBasis((loc+1)%N_sites), 
 // 					   HeffA[loc].R);
 // 		}

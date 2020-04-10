@@ -695,7 +695,8 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	// Irrelevant for infinite boundary conditions.
 	for (size_t l=0; l<L; ++l)
 	{
-		bool FORCE_QTOT = (l!=L-1 or TRIVIAL_BOUNDARIES==false)? false:true;
+//		bool FORCE_QTOT = (l!=L-1 or TRIVIAL_BOUNDARIES==false)? false:true;
+		bool FORCE_QTOT = false;
 		contract_AW(Vin.A_at(l), Vin.locBasis(l), O.W_at(l), O.opBasis(l),
 		            Vin.inBasis(l) , O.inBasis(l),
 		            Vin.outBasis(l), O.outBasis(l),

@@ -301,26 +301,31 @@ public:
 	
 	/**
 	Computes the Green's function G(t,x).
-	\param H_hetero : Hamiltonian of heterogenic section
+	\param H : Hamiltonian of heterogenic section
 	\param OxPhi : vector with all local excitations
 	\param OxPhi0 : starting state where the local excitation is located
 	\param Eg : ground-state energy
 	\param TIME_FORWARDS : For photoemission, set to \p false. For inverse photoemission, set to \p true.
 	*/
-	void compute (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>> &OxPhi, Mps<Symmetry,complex<double>> &OxPhi0, 
+	void compute (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, Mps<Symmetry,complex<double>> &OxPhi0, 
 	              double Eg, bool TIME_FORWARDS = true);
 	
 	/**
 	Computes the Green's function G(t,x) using counterpropagations forward and backward in time on the unit cell.
 	Optimal when run with 2*Lcell threads.
-	\param H_hetero : Hamiltonian of heterogenic section
+	\param H : Hamiltonian of heterogenic section
 	\param OxPhi : vector with all local excitations
 	\param Eg : ground-state energy
 	\param TIME_FORWARDS : For photoemission, set to \p false. For inverse photoemission, set to \p true.
 	\param COUNTERPROPAGATE : If \p true, use the more efficient propagations forwards and backwards in time (not for finite MPS)
 	*/
-	void compute_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, 
+	void compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, 
 	                   bool TIME_FORWARDS = true, bool COUNTERPROPAGATE = true);
+	
+	void compute_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, const Mps<Symmetry,complex<double>> &Phi, 
+	                      Mps<Symmetry,complex<double>> &OxPhi0, bool TIME_FORWARDS);
+	void compute_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, const Mps<Symmetry,complex<double>> &Phi, 
+	                           vector<Mps<Symmetry,complex<double>>> &OxPhi0, bool TIME_FORWARDS);
 	
 	/**
 	Recalculates the t→ω Fourier transform for a different ω-range
@@ -424,6 +429,7 @@ private:
 	double tmax, wmin, wmax, qmin, qmax;
 	Q_RANGE Q_RANGE_CHOICE = MPI_PPI;
 	int Lhetero, Lcell, Ncells;
+	int dLphys = 1;
 	
 	double tol_compr = 1e-4; // compression tolerance during time propagation
 	double tol_Lanczos = 1e-7; // 1e-6 seems sufficient; increase to 1e-8 for higher accuracy
@@ -469,14 +475,23 @@ private:
 	void calc_GreenCell (const int &tindex, const complex<double> &phase, 
 	                     const std::array<vector<Mps<Symmetry,complex<double>>>,2> &Psi);
 	
+	void calc_Green_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Ox, 
+	                         const Mps<Symmetry,complex<double>> &Phi, const Mps<Symmetry,complex<double>> &Psi);
+	void calc_GreenCell_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Ox, const vector<Mps<Symmetry,complex<double>>> &Psi);
+	
 	void calc_intweights();
-	void make_xarrays (int Lhetero_input, int Lcell_input, int Ncells_input);
+	void make_xarrays (int Lhetero_input, int Lcell_input, int Ncells_input, bool PRINT=false);
 	void set_qlims (Q_RANGE CHOICE);
 	
-	void propagate (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>> &OxPhi, Mps<Symmetry,complex<double>> &OxPhi0, 
+	void propagate (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, Mps<Symmetry,complex<double>> &OxPhi0, 
 	                double Eg, bool TIME_FORWARDS);
-	void propagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS=true);
-	void counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS=true);
+	void propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS=true);
+	void counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS=true);
+	
+	void propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, Mps<Symmetry,complex<double>> Phi, 
+	                        Mps<Symmetry,complex<double>> &OxPhi0, bool TIME_FORWARDS);
+	void propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, Mps<Symmetry,complex<double>> Phi, 
+	                             vector<Mps<Symmetry,complex<double>>> &OxPhi0, bool TIME_FORWARDS);
 	
 	void FT_xq (const MatrixXcd &Gtx, MatrixXcd &Gtq);
 	void FTcell_xq();
@@ -499,13 +514,13 @@ private:
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-compute (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>> &OxPhi,
+compute (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi,
          Mps<Symmetry,complex<double>> &OxPhi0, double Eg, bool TIME_FORWARDS)
 {
 	print_starttext();
 	
 	Lcell = max(OxPhi0.Boundaries.length(),1ul);
-	Lhetero = H_hetero.length();
+	Lhetero = H.length();
 	Ncells = Lhetero/Lcell;
 //	cout << "Lcell=" << Lcell << ", Lhetero=" << Lhetero << ", Ncells=" << Ncells << endl;
 	
@@ -517,7 +532,7 @@ compute (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>
 	make_xarrays(Lhetero,Lcell,Ncells);
 	calc_intweights();
 	
-	propagate(H_hetero, OxPhi, OxPhi0, Eg, TIME_FORWARDS);
+	propagate(H, OxPhi, OxPhi0, Eg, TIME_FORWARDS);
 	
 	if (NQ == 0)
 	{
@@ -540,7 +555,7 @@ compute (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-propagate (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>> &OxPhi, Mps<Symmetry,complex<double>> &OxPhi0, double Eg, bool TIME_FORWARDS)
+propagate (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, Mps<Symmetry,complex<double>> &OxPhi0, double Eg, bool TIME_FORWARDS)
 {
 	double tsign = (TIME_FORWARDS==true)? -1.:+1.;
 	
@@ -548,7 +563,7 @@ propagate (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double
 	Psi.eps_svd = tol_compr;
 	Psi.max_Nsv = max(Psi.calc_Dmax(),20ul);
 	
-	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVP(H_hetero, Psi);
+	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVP(H, Psi);
 	EntropyObserver<Mps<Symmetry,complex<double>>> Sobs(Lhetero, Nt, CHOSEN_VERBOSITY, tol_DeltaS);
 	vector<bool> TWO_SITE = Sobs.TWO_SITE(0, Psi, 1.);
 	if (CHOSEN_VERBOSITY > DMRG::VERBOSITY::ON_EXIT) lout << endl;
@@ -573,14 +588,13 @@ propagate (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double
 	measure_wavepacket(Psi,0);
 	
 	Stopwatch<> TpropTimer;
-//	int start = (GREENINT_CHOICE==DIRECT)? 0:1;
 	for (t=t.begin(); t!=t.end(); ++t)
 	{
 		Stopwatch<> StepTimer;
 		// 1. propagate
 		//----------------------------------------------------------------------------------------
 		if (tsteps(t.index()) != 0.)
-		TDVP.t_step_adaptive(H_hetero, Psi, 1.i*tsign*tsteps(t.index()), TWO_SITE, 1,tol_Lanczos);
+		TDVP.t_step_adaptive(H, Psi, 1.i*tsign*tsteps(t.index()), TWO_SITE, 1,tol_Lanczos);
 		//----------------------------------------------------------------------------------------
 		tval = tsteps.head(t.index()+1).sum();
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("time step") << endl;
@@ -605,6 +619,7 @@ propagate (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double
 		// 2.1. Green's function
 		calc_Green(t.index(), -1.i*exp(-1.i*tsign*Eg*tval), OxPhi, Psi);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("G(t,x) calculation") << endl;
+		
 		// 2.2. measure wavepacket at t
 		if (Measure.size() != 0)
 		{
@@ -647,47 +662,210 @@ propagate (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-save_log (int i, int tindex, double tval, const Mps<Symmetry,complex<double>> &Psi, const TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> &TDVP, const EntropyObserver<Mps<Symmetry,complex<double>>> &Sobs, const vector<bool> &TWO_SITE)
+compute_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, const Mps<Symmetry,complex<double>> &Phi, 
+                 Mps<Symmetry,complex<double>> &OxPhi0, bool TIME_FORWARDS)
 {
-	if (SAVE_LOG)
+	print_starttext();
+	assert(H.volume()/H.length()==1 or H.volume()/H.length()==2);
+	
+	Lcell = max(OxPhi0.Boundaries.length(),1ul);
+	dLphys = (H.volume()/H.length()==2)? 1:2;
+	Lhetero = (dLphys==1)? H.length():H.length()/2;
+	Ncells = Lhetero/Lcell;
+//	cout << "Lcell=" << Lcell << ", Lhetero=" << Lhetero << ", Ncells=" << Ncells << ", dLphys=" << dLphys << endl;
+	
+	if (Q_RANGE_CHOICE == MPI_PPI) assert(Lhetero%2 == 0 and "Please use an even number of sites in the heterogenic region!");
+	assert(Lhetero%Lcell == 0 and "The heterogenic region is not commensurable with the length of the unit cell!");
+	
+	if (Q_RANGE_CHOICE == MPI_PPI) assert(Ncells%2 == 0 and "Please use an even number of unit cells!");
+	
+	make_xarrays(Lhetero,Lcell,Ncells);
+	calc_intweights();
+	
+	propagate_thermal(H, Ox, Phi, OxPhi0, TIME_FORWARDS);
+	
+	if (NQ == 0)
 	{
-		log.Entropy.row(tindex) = Psi.entropy();
-		log.VarE.row(tindex) = TDVP.get_deltaE();
-		for (int l=0; l<TWO_SITE.size(); ++l) log.TwoSite(tindex,l) = int(TWO_SITE[l]);
-		log.DeltaS = Sobs.get_DeltaSb();
-		log.taxis(tindex,0) = tval;
-		log.dur_tstep(tindex,0) = TDVP.get_t_tot();
-		
-		log.dimK2avg(tindex,0) = 0;
-		for (int i=0; i<TDVP.get_dimK2_log().size(); ++i)
+		FT_xq(Gtx,Gtq);
+		FT_tw(Gtq,Gwq,G0q,Glocw);
+	}
+	else
+	{
+		for (int iQ=0; iQ<NQ; ++iQ)
 		{
-			log.dimK2avg(tindex,0) += double(TDVP.get_dimK2_log()[i])/TDVP.get_dimK2_log().size();
+			GtqQmulti.resize(NQ);
+			FT_xq(GtxQmulti[iQ],GtqQmulti[iQ]);
+			GwqQmulti.resize(NQ);
+			G0qQmulti.resize(NQ);
+			GlocwQmulti.resize(NQ);
+			FT_tw(GtqQmulti[iQ],GwqQmulti[iQ],G0qQmulti[iQ],GlocwQmulti[iQ]);
 		}
-		
-		log.dimK1avg(tindex,0) = 0;
-		for (int i=0; i<TDVP.get_dimK1_log().size(); ++i)
-		{
-			log.dimK1avg(tindex,0) += double(TDVP.get_dimK1_log()[i])/TDVP.get_dimK1_log().size();
-		}
-		
-		log.dimK0avg(tindex,0) = 0;
-		for (int i=0; i<TDVP.get_dimK0_log().size(); ++i)
-		{
-			log.dimK0avg(tindex,0) += double(TDVP.get_dimK0_log()[i])/TDVP.get_dimK0_log().size();
-		}
-		
-		log.save(make_string(label,"_i=",i,"_",xt_info()));
 	}
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-compute_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS, bool COUNTERPROPAGATE)
+propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, Mps<Symmetry,complex<double>> Phi, 
+                   Mps<Symmetry,complex<double>> &OxPhi0, bool TIME_FORWARDS)
+{
+	double tsign = (TIME_FORWARDS==true)? -1.:+1.;
+	
+	Mps<Symmetry,complex<double>> Psi = OxPhi0;
+	Psi.eps_svd = tol_compr;
+	Psi.max_Nsv = max(Psi.calc_Dmax(),20ul);
+	
+	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVPket(H,Psi);
+	EntropyObserver<Mps<Symmetry,complex<double>>> SobsKet(H.length(), Nt, CHOSEN_VERBOSITY, tol_DeltaS);
+	vector<bool> TWO_SITE_KET = SobsKet.TWO_SITE(0, Psi, 1.);
+	
+	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVPbra(H,Phi);
+	EntropyObserver<Mps<Symmetry,complex<double>>> SobsBra(H.length(), Nt, CHOSEN_VERBOSITY, tol_DeltaS);
+	vector<bool> TWO_SITE_BRA = SobsBra.TWO_SITE(0, Phi, 1.);
+	
+	if (CHOSEN_VERBOSITY > DMRG::VERBOSITY::ON_EXIT) lout << endl;
+	
+	Gtx.resize(Nt,Lhetero); Gtx.setZero();
+	Gloct.resize(Nt); Gloct.setZero();
+	
+	if (NQ>0)
+	{
+		GtxQmulti.resize(NQ);
+		for (int i=0; i<NQ; ++i) {GtxQmulti[i].resize(Nt,Lhetero); GtxQmulti[i].setZero();}
+		GloctQmulti.resize(NQ);
+		for (int i=0; i<NQ; ++i) {GloctQmulti[i].resize(Nt); GloctQmulti[i].setZero();}
+	}
+	
+	IntervalIterator t(0.,tmax,Nt);
+	double tval = 0.;
+	
+	if (SAVE_LOG) log = GreenPropagatorLog(Nt,Lhetero,logfolder);
+	
+	// measure wavepacket at t=0
+	measure_wavepacket(Psi,0);
+	
+	Stopwatch<> TpropTimer;
+//	int start = (GREENINT_CHOICE==DIRECT)? 0:1;
+	for (t=t.begin(); t!=t.end(); ++t)
+	{
+		Stopwatch<> StepTimer;
+		// 1. propagate
+		//----------------------------------------------------------------------------------------
+		if (tsteps(t.index()) != 0.)
+		{
+			#pragma omp parallel sections
+			{
+				#pragma omp section
+				{
+					TDVPket.t_step_adaptive(H, Psi, 1.i*tsign*tsteps(t.index()), TWO_SITE_KET, 1,tol_Lanczos);
+				}
+				#pragma omp section
+				{
+					// Note: time direction will flipped via taking the adjoint
+					TDVPbra.t_step_adaptive(H, Phi, 1.i*tsign*tsteps(t.index()), TWO_SITE_BRA, 1,tol_Lanczos);
+				}
+			}
+		}
+		//----------------------------------------------------------------------------------------
+		tval = tsteps.head(t.index()+1).sum();
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("time step") << endl;
+		
+		// 2.1 increase bond dimension of Psi
+		if (Psi.get_truncWeight().sum() > 0.5*tol_compr)
+		{
+			Psi.max_Nsv = min(static_cast<size_t>(max(Psi.max_Nsv*1.1, Psi.max_Nsv+1.)),lim_Nsv);
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+			{
+				lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi.max_Nsv << termcolor::reset << endl;
+			}
+		}
+		
+		// 2.2 increase bond dimension of Phi
+		if (Phi.get_truncWeight().sum() > 0.5*tol_compr)
+		{
+			Phi.max_Nsv = min(static_cast<size_t>(max(Phi.max_Nsv*1.1, Phi.max_Nsv+1.)),lim_Nsv);
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+			{
+				lout << termcolor::yellow << "Setting Phi.max_Nsv to " << Phi.max_Nsv << termcolor::reset << endl;
+			}
+		}
+		
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			lout << "KET: " << TDVPket.info() << endl;
+			lout << "KET: " << Psi.info() << endl;
+			lout << "BRA: " << TDVPbra.info() << endl;
+			lout << "BRA: " << Phi.info() << endl;
+			lout << "propagated to: t=" << tval << ", stepsize=" << tsteps(t.index()) << ", step#" << t.index()+1 << "/" << Nt << endl;
+		}
+		
+		// 3. measure
+		// 3.1. Green's function
+		calc_Green_thermal(t.index(), Ox, Phi, Psi);
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("G(t,x) calculation") << endl;
+		
+		// 3.2. measure wavepacket at t
+		if (Measure.size() != 0)
+		{
+			if ((t.index()-1)%measure_interval == 0 and t.index() > 1) measure_wavepacket(Psi,tval);
+		}
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("wavepacket measurement") << endl;
+		
+		// 4.1. check entropy increase of Psi
+		auto PsiTmp = Psi;
+		PsiTmp.eps_svd = 1e-15;
+		PsiTmp.skim(DMRG::BROOM::SVD);
+		double r = (t.index()==0)? 1.:tsteps(t.index()-1)/tsteps(t.index());
+		// If INTERP is used, G(t=0) is used in the first step and t.index()==1 is the first real propagation step.
+		// Force 2-site here algorithm for better accuracay:
+		vector<size_t> true_overrides_ket;
+		if (GREENINT_CHOICE == INTERP and t.index() == 1)
+		{
+			true_overrides_ket.resize(H.length()-1);
+			iota(true_overrides_ket.begin(), true_overrides_ket.end(), 0);
+		}
+		TWO_SITE_KET = SobsKet.TWO_SITE(t.index(), PsiTmp, r, true_overrides_ket);
+		
+		// 4.1. check entropy increase of Phi
+		auto PhiTmp = Phi;
+		PhiTmp.eps_svd = 1e-15;
+		PhiTmp.skim(DMRG::BROOM::SVD);
+		r = (t.index()==0)? 1.:tsteps(t.index()-1)/tsteps(t.index());
+		// If INTERP is used, G(t=0) is used in the first step and t.index()==1 is the first real propagation step.
+		// Force 2-site here algorithm for better accuracay:
+		vector<size_t> true_overrides_bra;
+		if (GREENINT_CHOICE == INTERP and t.index() == 1)
+		{
+			true_overrides_bra.resize(H.length()-1);
+			iota(true_overrides_bra.begin(), true_overrides_bra.end(), 0);
+		}
+		TWO_SITE_BRA = SobsBra.TWO_SITE(t.index(), PhiTmp, r, true_overrides_bra);
+		
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("entropy calculation") << endl;
+		save_log(0,t.index(),tval,PsiTmp,TDVPket,SobsKet,TWO_SITE_KET);
+		
+		// final info
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			lout << TpropTimer.info("total running time",false) << endl;
+			lout << endl;
+		}
+	}
+	
+	// measure wavepacket at t=t_end
+	if (Measure.size() != 0)
+	{
+		measure_wavepacket(Psi,tval);
+	}
+}
+
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS, bool COUNTERPROPAGATE)
 {
 	print_starttext();
 	
 	Lcell = OxPhi.size();
-	Lhetero = H_hetero.length();
+	Lhetero = H.length();
 	Ncells = Lhetero/Lcell;
 	
 	assert(Lhetero%Lcell == 0);
@@ -716,7 +894,7 @@ compute_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<dou
 	
 	if (OxPhi[0].Boundaries.IS_TRIVIAL() or COUNTERPROPAGATE == false)
 	{
-		propagate_cell(H_hetero, OxPhi, Eg, TIME_FORWARDS);
+		propagate_cell(H, OxPhi, Eg, TIME_FORWARDS);
 	}
 	else
 	{
@@ -727,7 +905,7 @@ compute_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<dou
 			lout << termcolor::blue << "current OMP threads=" << omp_get_max_threads() << termcolor::reset << endl;
 			#endif
 		}
-		counterpropagate_cell(H_hetero, OxPhi, Eg, TIME_FORWARDS);
+		counterpropagate_cell(H, OxPhi, Eg, TIME_FORWARDS);
 	}
 	
 	FTcell_xq();
@@ -736,7 +914,7 @@ compute_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<dou
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-propagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS)
+propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS)
 {
 	double tsign = (TIME_FORWARDS==true)? -1.:+1.;
 	
@@ -751,7 +929,7 @@ propagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<d
 	vector<TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>> TDVP(Lcell);
 	for (int i=0; i<Lcell; ++i)
 	{
-		TDVP[i] = TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>(H_hetero, Psi[i]);
+		TDVP[i] = TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>(H, Psi[i]);
 	}
 	vector<EntropyObserver<Mps<Symmetry,complex<double>>>> Sobs(Lcell);
 	vector<vector<bool>> TWO_SITE(Lcell);
@@ -796,7 +974,7 @@ propagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<d
 		for (int i=0; i<Lcell; ++i)
 		{
 			//-------------------------------------------------------------------------------------------------
-			TDVP[i].t_step_adaptive(H_hetero, Psi[i], 1.i*tsign*tsteps(t.index()), TWO_SITE[i], 1,tol_Lanczos);
+			TDVP[i].t_step_adaptive(H, Psi[i], 1.i*tsign*tsteps(t.index()), TWO_SITE[i], 1,tol_Lanczos);
 			//-------------------------------------------------------------------------------------------------
 			
 			if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
@@ -868,7 +1046,7 @@ propagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<d
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS)
+counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, bool TIME_FORWARDS)
 {
 	double tsign = (TIME_FORWARDS==true)? -1.:+1.;
 	std::array<double,2> zfac;
@@ -893,7 +1071,7 @@ counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,co
 		TDVP[z].resize(Lcell);
 		for (int i=0; i<Lcell; ++i)
 		{
-			TDVP[z][i] = TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>(H_hetero, Psi[z][i]);
+			TDVP[z][i] = TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>(H, Psi[z][i]);
 		}
 	}
 	std::array<vector<EntropyObserver<Mps<Symmetry,complex<double>>>>,2> Sobs;
@@ -949,10 +1127,10 @@ counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,co
 		for (int i=0; i<Lcell; ++i)
 		{
 			//---------------------------------------------------------------------------------------------------------------
-			TDVP[z][i].t_step_adaptive(H_hetero, Psi[z][i], 0.5*1.i*zfac[z]*tsign*tsteps(t.index()), TWO_SITE[z][i], 1,tol_Lanczos);
+			TDVP[z][i].t_step_adaptive(H, Psi[z][i], 0.5*1.i*zfac[z]*tsign*tsteps(t.index()), TWO_SITE[z][i], 1,tol_Lanczos);
 //			#pragma omp critical
 //			{
-//				cout << "z=" << z << ", i=" << i << ", norm=" << Psi[z][i].squaredNorm() << ", E=" << avg_hetero(Psi[z][i], H_hetero, Psi[z][i], true) << endl;
+//				cout << "z=" << z << ", i=" << i << ", norm=" << Psi[z][i].squaredNorm() << ", E=" << avg_hetero(Psi[z][i], H, Psi[z][i], true) << endl;
 //			}
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and i==0 and z==0)
 			{
@@ -1041,6 +1219,186 @@ counterpropagate_cell (const Hamiltonian &H_hetero, const vector<Mps<Symmetry,co
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+compute_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, const Mps<Symmetry,complex<double>> &Phi, 
+                      vector<Mps<Symmetry,complex<double>>> &OxPhi0, bool TIME_FORWARDS)
+{
+	print_starttext();
+	assert(H.volume()/H.length()==1 or H.volume()/H.length()==2);
+	
+	Lcell = OxPhi0.size();
+	dLphys = (H.volume()/H.length()==2)? 1:2;
+	Lhetero = (dLphys==1)? H.length():H.length()/2;
+	Ncells = Lhetero/Lcell;
+//	cout << "Lcell=" << Lcell << ", Lhetero=" << Lhetero << ", Ncells=" << Ncells << ", dLphys=" << dLphys << endl;
+	
+	assert(Lhetero%Lcell == 0);
+	
+	calc_intweights();
+	make_xarrays(Lhetero,Lcell,Ncells);
+	
+	GtxCell.resize(Lcell);
+	for (int i=0; i<Lcell; ++i)
+	{
+		GtxCell[i].resize(Lcell);
+	}
+	for (int i=0; i<Lcell; ++i)
+	for (int j=0; j<Lcell; ++j)
+	{
+		GtxCell[i][j].resize(Nt,Ncells);
+		GtxCell[i][j].setZero();
+	}
+	
+	GloctCell.resize(Lcell);
+	for (int i=0; i<Lcell; ++i)
+	{
+		GloctCell[i].resize(Nt);
+		GloctCell[i].setZero();
+	}
+	
+	propagate_thermal_cell(H, Ox, Phi, OxPhi0, TIME_FORWARDS);
+	
+	FTcell_xq();
+	FTcell_tw();
+}
+
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, Mps<Symmetry,complex<double>> Phi, 
+                        vector<Mps<Symmetry,complex<double>>> &OxPhi0, bool TIME_FORWARDS)
+{
+	double tsign = (TIME_FORWARDS==true)? -1.:+1.;
+	
+	vector<Mps<Symmetry,complex<double>>> Psi(Lcell+1);
+	for (int i=0; i<Lcell+1; ++i)
+	{
+		Psi[i] = (i==Lcell)? Phi : OxPhi0[i]; // Phi = Psi[Lcell]
+		Psi[i].eps_svd = tol_compr;
+		Psi[i].max_Nsv = max(Psi[i].calc_Dmax(),20ul);
+	}
+	
+	vector<TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>> TDVP(Lcell+1);
+	for (int i=0; i<Lcell+1; ++i)
+	{
+		TDVP[i] = TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>(H,Psi[i]);
+	}
+	vector<EntropyObserver<Mps<Symmetry,complex<double>>>> Sobs(Lcell+1);
+	vector<vector<bool>> TWO_SITE(Lcell+1);
+	for (int i=0; i<Lcell+1; ++i)
+	{
+		DMRG::VERBOSITY::OPTION VERB = (i==0)? CHOSEN_VERBOSITY:DMRG::VERBOSITY::SILENT;
+		Sobs[i] = EntropyObserver<Mps<Symmetry,complex<double>>>(H.length(), Nt, VERB, tol_DeltaS);
+		TWO_SITE[i] = Sobs[i].TWO_SITE(0, Psi[i], 1.); // {}, {0ul,size_t(Lhetero)-2ul}
+	}
+	if (CHOSEN_VERBOSITY > DMRG::VERBOSITY::ON_EXIT) lout << endl;
+	
+	IntervalIterator t(0.,tmax,Nt);
+	double tval = 0.;
+	
+	if (SAVE_LOG) log = GreenPropagatorLog(Nt,Lhetero,logfolder);
+	
+	// 0.1. measure wavepacket at t=0
+	for (int i=0; i<Lcell; ++i)
+	{
+		measure_wavepacket(Psi[i],0,make_string("i=",i,"_"));
+	}
+	
+	// 0.2. if no (open) integration weights, calculate G at t=0
+	if (GREENINT_CHOICE != DIRECT)
+	{
+		Stopwatch<> StepTimer;
+		calc_GreenCell_thermal(0, Ox, Psi); // Phi = Psi[Lcell]
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			lout << StepTimer.info("G(t,x) calculation") << endl;
+			lout << endl;
+		}
+	}
+	
+	Stopwatch<> TpropTimer;
+	for (t=t.begin(); t!=t.end(); ++t)
+	{
+		Stopwatch<> StepTimer;
+		
+		// 1. propagate
+		#pragma omp parallel for
+		for (int i=0; i<Lcell+1; ++i)
+		{
+			//-------------------------------------------------------------------------------------------------
+			TDVP[i].t_step_adaptive(H, Psi[i], 1.i*tsign*tsteps(t.index()), TWO_SITE[i], 1,tol_Lanczos);
+			//-------------------------------------------------------------------------------------------------
+			
+			if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
+			{
+				Psi[i].max_Nsv = min(static_cast<size_t>(max(Psi[i].max_Nsv*1.1, Psi[i].max_Nsv+1.)),lim_Nsv);
+				if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0)
+				{
+					lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi[i].max_Nsv << termcolor::reset << endl;
+				}
+			}
+		}
+		tval = tsteps.head(t.index()+1).sum();
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("time step") << endl;
+		
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			lout << "KET: " << TDVP[0].info() << endl;
+			lout << "KET: " << Psi[0].info() << endl;
+			lout << "BRA: " << TDVP[Lcell].info() << endl;
+			lout << "BRA: " << Psi[Lcell].info() << endl;
+			lout << "propagated to: t=" << tval << ", stepsize=" << tsteps(t.index()) << ", step#" << t.index()+1 << "/" << Nt << endl;
+		}
+		
+		// 2. measure
+		// 2.1. Green's function
+		calc_GreenCell_thermal(t.index(), Ox, Psi);
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("G(t,x) calculation") << endl;
+		// 2.2. measure wavepacket at t
+		if (Measure.size() != 0)
+		{
+			#pragma omp parallel for
+			for (int i=0; i<Lcell; ++i)
+			{
+				if ((t.index()-1)%measure_interval == 0 and t.index() > 1) measure_wavepacket(Psi[i],tval,make_string("i=",i,"_"));
+			}
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("wavepacket measurement") << endl;
+		}
+		
+		// 3. check entropy increase
+		#pragma omp parallel for
+		for (int i=0; i<Lcell+1; ++i)
+		{
+			auto PsiTmp = Psi[i];
+			PsiTmp.eps_svd = 1e-15;
+			PsiTmp.skim(DMRG::BROOM::SVD);
+			double r = (t.index()==0)? 1.:tsteps(t.index()-1)/tsteps(t.index());
+			TWO_SITE[i] = Sobs[i].TWO_SITE(t.index(), PsiTmp, r); // {}, {0ul,size_t(Lhetero)-2ul}
+			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0)
+			lout << StepTimer.info("entropy calculation") << endl;
+			
+			save_log(i,t.index(),tval,PsiTmp,TDVP[i],Sobs[i],TWO_SITE[i]);
+		}
+		
+		// final info
+		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+		{
+			lout << TpropTimer.info("total running time",false) << endl;
+			lout << endl;
+		}
+	}
+	
+	// measure wavepacket at t=t_end
+	if (Measure.size() != 0)
+	{
+		#pragma omp parallel for
+		for (int i=0; i<Lcell; ++i)
+		{
+			measure_wavepacket(Psi[i],tval,make_string("i=",i,"_"));
+		}
+	}
+}
+
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 calc_Green (const int &tindex, const complex<double> &phase, const vector<Mps<Symmetry,complex<double>>> &OxPhi, const Mps<Symmetry,complex<double>> &Psi)
 {
 //	MatrixXcd Gtx_(Gtx.rows(),Gtx.cols());
@@ -1106,6 +1464,30 @@ calc_Green (const int &tindex, const complex<double> &phase, const vector<Mps<Sy
 //		cout << "l=" << l << ", " << Gtx(tindex,l) << ", " << Gtx_(tindex,l) << ", diff=" << abs(Gtx(tindex,l)-Gtx_(tindex,l)) << endl;
 //	}
 //	cout << termcolor::blue << "total diff = " << (Gtx.row(tindex)-Gtx_.row(tindex)).norm() << termcolor::reset << endl;
+}
+
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+calc_Green_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Ox, 
+                    const Mps<Symmetry,complex<double>> &Phi, const Mps<Symmetry,complex<double>> &Psi)
+{
+	assert(Psi.Boundaries.IS_TRIVIAL());
+	
+	#pragma omp parallel for
+	for (size_t l=0; l<Lhetero; ++l)
+	{
+		Mps<Symmetry,complex<double>> OxPhi;
+		OxV_exact(Ox[l], Phi, OxPhi, 2., DMRG::VERBOSITY::SILENT);
+		Gtx(tindex,l) = -1.i*dot(OxPhi,Psi);
+	}
+	
+	for (size_t l=0; l<Lhetero; ++l)
+	{
+		if (xvals[l] == 0)
+		{
+			Gloct(tindex) = Gtx(tindex,l); // save local Green's function
+		}
+	}
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
@@ -1179,6 +1561,42 @@ calc_GreenCell (const int &tindex, const complex<double> &phase,
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+calc_GreenCell_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Ox, const vector<Mps<Symmetry,complex<double>>> &Psi)
+{
+	for (size_t i=0; i<Lcell+1; ++i) assert(Psi[i].Boundaries.IS_TRIVIAL());
+	
+	#pragma omp parallel for collapse(3)
+	for (size_t n=0; n<Ncells; ++n)
+	for (size_t i=0; i<Lcell; ++i)
+	for (size_t j=0; j<Lcell; ++j)
+	{
+//		GtxCell[i][j](tindex,n) = dot(OxPhiFull[n*Lcell+i], Psi[j]);
+		
+//		MODEL::StateXcd OxPhi;
+//		OxV_exact(VMPS::get_Op<MODEL,MODEL::Symmetry>(H,2*(n*Lcell+i),specs[z]), Phi, OxPhi, 2., DMRG::VERBOSITY::SILENT);
+//		Gtx[i][j](it,n) = -1.i*dot(OxPhi,Psi[j]);
+		
+//		#pragma omp critical
+//		{
+//			cout << "n=" << n << ", i=" << i << ", j=" << j << ", Psi.size()=" << Psi.size() << ", (n*Lcell+i)=" << dLphys*(n*Lcell+i) << ", " << Ox.size() << endl;
+//		}
+		Mps<Symmetry,complex<double>> OxPhi;
+		OxV_exact(Ox[n*Lcell+i], Psi[Lcell], OxPhi, 2., DMRG::VERBOSITY::SILENT); // Phi = Psi[Lcell]
+		GtxCell[i][j](tindex,n) = -1.i*dot(OxPhi,Psi[j]);
+	}
+	
+	for (size_t i=0; i<Lcell; ++i)
+	for (size_t n=0; n<Ncells; ++n)
+	{
+		if (dcell[n*Lcell] == 0) 
+		{
+			GloctCell[i](tindex) = GtxCell[i][i](tindex,n); // save local Green's function
+		}
+	}
+}
+
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 measure_wavepacket (const Mps<Symmetry,complex<double>> &Psi, double tval, string info)
 {
 	if (Measure.size() != 0)
@@ -1205,7 +1623,7 @@ measure_wavepacket (const Mps<Symmetry,complex<double>> &Psi, double tval, strin
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-make_xarrays (int Lhetero_input, int Lcell_input, int Ncells_input)
+make_xarrays (int Lhetero_input, int Lcell_input, int Ncells_input, bool PRINT)
 {
 	xinds.resize(Lhetero_input);
 	xvals.resize(Lhetero_input);
@@ -1213,7 +1631,7 @@ make_xarrays (int Lhetero_input, int Lcell_input, int Ncells_input)
 	iota(begin(xinds),end(xinds),0);
 	
 	int x0 = Lhetero_input/2; // first site of central unit cell
-//	cout << "make_xarrays: x0=" << x0 << endl;
+	if (PRINT and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT) lout << "make_xarrays: x0=" << x0 << endl;
 	
 	for (int ix=0; ix<xinds.size(); ++ix)
 	{
@@ -1232,10 +1650,11 @@ make_xarrays (int Lhetero_input, int Lcell_input, int Ncells_input)
 		dcell[i] -= x0/Lcell_input;
 	}
 	
-//	for (int i=0; i<Lhetero; ++i)
-//	{
-//		cout << "i=" << xinds[i] << ", x=" << xvals[i] << ", icell=" << icell[i] << ", dcell=" << dcell[i] << endl;
-//	}
+	if (PRINT and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)
+	for (int i=0; i<Lhetero; ++i)
+	{
+		lout << "i=" << xinds[i] << ", x=" << xvals[i] << ", icell=" << icell[i] << ", dcell=" << dcell[i] << endl;
+	}
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
@@ -1251,6 +1670,41 @@ set_qlims (Q_RANGE CHOICE)
 	{
 		qmin = 0.;
 		qmax = 2.*M_PI;
+	}
+}
+
+template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
+void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
+save_log (int i, int tindex, double tval, const Mps<Symmetry,complex<double>> &Psi, const TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> &TDVP, const EntropyObserver<Mps<Symmetry,complex<double>>> &Sobs, const vector<bool> &TWO_SITE)
+{
+	if (SAVE_LOG)
+	{
+		log.Entropy.row(tindex) = Psi.entropy();
+		log.VarE.row(tindex) = TDVP.get_deltaE();
+		for (int l=0; l<TWO_SITE.size(); ++l) log.TwoSite(tindex,l) = int(TWO_SITE[l]);
+		log.DeltaS = Sobs.get_DeltaSb();
+		log.taxis(tindex,0) = tval;
+		log.dur_tstep(tindex,0) = TDVP.get_t_tot();
+		
+		log.dimK2avg(tindex,0) = 0;
+		for (int i=0; i<TDVP.get_dimK2_log().size(); ++i)
+		{
+			log.dimK2avg(tindex,0) += double(TDVP.get_dimK2_log()[i])/TDVP.get_dimK2_log().size();
+		}
+		
+		log.dimK1avg(tindex,0) = 0;
+		for (int i=0; i<TDVP.get_dimK1_log().size(); ++i)
+		{
+			log.dimK1avg(tindex,0) += double(TDVP.get_dimK1_log()[i])/TDVP.get_dimK1_log().size();
+		}
+		
+		log.dimK0avg(tindex,0) = 0;
+		for (int i=0; i<TDVP.get_dimK0_log().size(); ++i)
+		{
+			log.dimK0avg(tindex,0) += double(TDVP.get_dimK0_log()[i])/TDVP.get_dimK0_log().size();
+		}
+		
+		log.save(make_string(label,"_i=",i,"_",xt_info()));
 	}
 }
 
@@ -1736,6 +2190,7 @@ xinfo() const
 {
 	stringstream ss;
 	ss << "L=" << Lhetero;
+	if (dLphys==2) ss << "_dLphys=" << dLphys;
 	return ss.str();
 }
 
