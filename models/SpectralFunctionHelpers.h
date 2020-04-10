@@ -4,7 +4,7 @@
 namespace VMPS
 {
 
-template<typename MODEL>
+template<typename MODEL, typename Symmetry>
 typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec)
 {
 	typename MODEL::Operator Res;
@@ -12,142 +12,142 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec)
 	// spin structure factor
 	if (spec == "SSF")
 	{
-		#if defined(USE_SPIN_SU2)
+		if constexpr (Symmetry::IS_SPIN_SU2())
 		{
 			Res = H.S(loc,0,1.);
 		}
-		#elif defined(USE_SPIN_ABELIAN)
+		else
 		{
 			Res = H.Scomp(SP,loc,0);
 		}
-		#else
-		{
-			throw;
-		}
-		#endif
 	}
 	else if (spec == "SSZ")
 	{
-		#if defined(USE_SPIN_ABELIAN)
+		if constexpr (!Symmetry::IS_SPIN_SU2())
 		{
 			Res = H.Scomp(SZ,loc,0);
 		}
-		#else
+		else
 		{
 			throw;
 		}
-		#endif
 	}
 	// photemission
-	else if (spec == "PES")
+	else if (spec == "PES" or spec == "PESUP")
 	{
-		cout << "spec=" << spec << endl;
-		#if defined(USE_SPIN_SU2) || defined(USE_SPINLESS)
+		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 		{
 			Res = H.c(loc,0,1.);
 		}
-		#elif defined(USE_SPIN_ABELIAN)
+		else
 		{
-			Res = H.c<UP>(loc,0);
+			Res = H.template c<UP>(loc,0);
 		}
-		#else
+	}
+	else if (spec == "PESDN")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 		{
-			throw;
+			Res = H.c(loc,0,1.);
 		}
-		#endif
+		else
+		{
+			Res = H.template c<DN>(loc,0);
+		}
 	}
 	// inverse photoemission
-	else if (spec == "IPE")
+	else if (spec == "IPE" or spec == "IPEUP")
 	{
-		#if defined(USE_SPIN_SU2) || defined(USE_SPINLESS)
+		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 		{
 			Res = H.cdag(loc,0,1.);
 		}
-		#elif defined(USE_SPIN_ABELIAN)
+		else
 		{
-			Res = H.cdag<UP>(loc,0);
+			Res = H.template cdag<UP>(loc,0,1.);
 		}
-		#else
+	}
+	else if (spec == "IPEDN")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 		{
-			throw;
+			Res = H.cdag(loc,0,1.);
 		}
-		#endif
+		else
+		{
+			Res = H.template cdag<DN>(loc,0,1.);
+		}
 	}
 	// charge structure factor
 	else if (spec == "CSF")
 	{
-		#if defined(USE_CHARGE_ABELIAN) || defined(USE_SPINLESS)
+		if constexpr (!Symmetry::IS_CHARGE_SU2())
 		{
 			Res = H.n(loc,0);
 		}
-		#else
+		else
 		{
 			throw;
 		}
-		#endif
 	}
 	// Auger electron spectroscopy
 	else if (spec == "AES")
 	{
-		#if defined(USE_CHARGE_ABELIAN)
+		if constexpr (!Symmetry::IS_CHARGE_SU2())
 		{
 			Res = H.cc(loc,0);
 		}
-		#else
+		else
 		{
 			throw;
 		}
-		#endif
 	}
 	// Appearance potential spectroscopy
 	else if (spec == "APS")
 	{
-		#if defined(USE_CHARGE_ABELIAN)
+		if constexpr (!Symmetry::IS_CHARGE_SU2())
 		{
 			Res = H.cdagcdag(loc,0);
 		}
-		#else
+		else
 		{
 			throw;
 		}
-		#endif
 	}
 	// pseudospin structure factor
 	else if (spec == "PSF")
 	{
-		#if defined(USE_CHARGE_ABELIAN) && defined(USE_SPIN_ABELIAN)
+		if constexpr (Symmetry::IS_CHARGE_SU2())
 		{
 			Res = H.T(loc,0);
 		}
-		#elif defined(USE_CHARGE_ABELIAN)
+		else
 		{
 			Res = H.Tp(loc,0);
 		}
-		#else
-		{
-			throw;
-		}
-		#endif
 	}
 	// pseudospin structure factor: z-component
 	else if (spec == "PSZ")
 	{
-		#if defined(USE_CHARGE_ABELIAN)
+		if constexpr (!Symmetry::IS_CHARGE_SU2())
 		{
 			Res = H.Tz(loc,0);
 		}
-		#else
+		else
 		{
 			throw;
 		}
-		#endif
+	}
+	else
+	{
+		throw;
 	}
 	return Res;
 }
 
 bool TIME_DIR (std::string spec)
 {
-	return (spec=="PES" or spec=="AES")? false:true;
+	return (spec=="PES" or spec=="PESUP" or spec=="PESDN" or spec=="AES")? false:true;
 }
 
 } // namespace VMPS

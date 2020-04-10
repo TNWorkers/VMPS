@@ -623,6 +623,8 @@ public:
 	
 	/**Calculate quantum number bounds.*/
 	void calc_Qlimits();
+	/**Set quantum number bounds to +-infinity.*/
+	void set_Qlimits_to_inf();
 	
 	/**Update the bases in case new blocks have appeared or old ones have disappeared*/
 	void update_inbase (size_t loc);
@@ -822,191 +824,222 @@ template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
 calc_Qlimits()
 {
-	auto lowest_q = [] (const vector<qarray<Nq> > &qs) -> qarray<Nq>
+	// workaround for empty band
+	bool NEED_WORKAROUND = false;
+	for (int q=0; q<Symmetry::Nq; ++q)
 	{
-		qarray<Nq> out;
-		array<vector<int>,Nq> tmp;
-		for (size_t q=0; q<Nq; q++)
+		if (Symmetry::kind()[q] == Sym::KIND::N and Qtot[q] == 0)
 		{
-			tmp[q].resize(qs.size());
-			for (size_t i=0; i<qs.size(); i++)
-			{
-				tmp[q][i] = qs[i][q];
-			}
-		}
-		for (size_t q=0; q<Nq; q++)
-		{
-			sort(tmp[q].begin(),tmp[q].end());
-			out[q] = tmp[q][0];
-		}
-		return out;
-	};
-	
-	// For spins: calculate maximal S across the chain
-	size_t Smax = 1;
-	if (!Symmetry::IS_TRIVIAL)
-	{
-		for (size_t l=0; l<this->N_sites; ++l)
-		for (size_t s=0; s<qloc[l].size(); ++s)
-		{
-			if (ceil(0.5*(qloc[l][s][0]-1.)) > Smax) {Smax = ceil(0.5*(qloc[l][s][0]-1.));}
+			NEED_WORKAROUND = true;
 		}
 	}
-//	cout << "Smax=" << Smax << endl;
 	
-	auto lowest_qs = [Smax] (const vector<qarray<Nq> > &qs) -> vector<qarray<Nq> >
+	if (NEED_WORKAROUND)
 	{
-		if (Symmetry::IS_TRIVIAL)
-		{
-			vector<qarray<Nq> > out(1);
-			out[0] = Symmetry::qvacuum();
-			return out;
-		}
-		
-//		cout << "in:" << endl;
-//		for (size_t i=0; i<qs.size(); ++i)
-//		{
-//			cout << qs[i] << ", ";
-//		}
-//		cout << endl;
-		
-		// sort for every q and remove duplicates
-		array<vector<int>,Nq> tmp;
-		for (size_t q=0; q<Nq; q++)
-		{
-			tmp[q].resize(qs.size());
-			for (size_t i=0; i<qs.size(); i++)
-			{
-				tmp[q][i] = qs[i][q];
-			}
-			sort(tmp[q].begin(),tmp[q].end());
-			tmp[q].erase(unique(tmp[q].begin(), tmp[q].end()), tmp[q].end());
-		}
-		
-		// Can have different resulting sizes depending on q...
-		Array<size_t,Dynamic,1> tmp_sizes(Nq);
-		for (size_t q=0; q<Nq; q++)
-		{
-			tmp_sizes(q) = tmp[q].size();
-		}
-//		cout << "sizes=" << tmp_sizes.transpose() << endl;
-		vector<qarray<Nq> > out(min(Smax+1, tmp_sizes.minCoeff()));
-		
-		for (size_t q=0; q<Nq; q++)
-		for (size_t i=0; i<min(Smax+1,tmp[q].size()); ++i)
-		{
-			out[i][q] = tmp[q][i];
-		}
-		
-//		cout << "out:" << endl;
-//		for (size_t i=0; i<out.size(); ++i)
-//		{
-//			cout << out[i] << ", ";
-//		}
-//		cout << endl;
-		
-		return out;
-	};
-	
-	auto highest_q = [] (const vector<qarray<Nq> > &qs) -> qarray<Nq>
-	{
-		qarray<Nq> out;
-		array<vector<int>,Nq> tmp;
-		for (size_t q=0; q<Nq; q++)
-		{
-			tmp[q].resize(qs.size());
-			for (size_t i=0; i<qs.size(); i++)
-			{
-				tmp[q][i] = qs[i][q];
-			}
-		}
-		for (size_t q=0; q<Nq; q++)
-		{
-			sort(tmp[q].begin(),tmp[q].end());
-			out[q] = tmp[q][qs.size()-1];
-		}
-		return out;
-	};
-	QinTop.resize(this->N_sites);
-
-	QinBot.resize(this->N_sites);
-	QoutTop.resize(this->N_sites);
-	QoutBot.resize(this->N_sites);
-	// If non-trivial boundaries: we have a hetergeneous infinite state, no Qlimits
-	if (!Boundaries.IS_TRIVIAL())
-	{
-//		cout << termcolor::red << "Boundaries.IS_TRIVIAL()==false, infinite limits" << termcolor::reset << endl;
-		for (size_t l=0; l<this->N_sites; ++l)
-		for (size_t q=0; q<Nq; q++)
-		{
-			QinTop[l][q]  = std::numeric_limits<int>::max();
-			QinBot[l][q]  = std::numeric_limits<int>::min();
-			QoutTop[l][q] = std::numeric_limits<int>::max();
-			QoutBot[l][q] = std::numeric_limits<int>::min();
-		}
+		set_Qlimits_to_inf();
 	}
 	else
 	{
-		vector<vector<qarray<Symmetry::Nq> > > QinBotRange(this->N_sites);
-		vector<vector<qarray<Symmetry::Nq> > > QoutBotRange(this->N_sites);
+		auto lowest_q = [] (const vector<qarray<Nq> > &qs) -> qarray<Nq>
+		{
+			qarray<Nq> out;
+			array<vector<int>,Nq> tmp;
+			for (size_t q=0; q<Nq; q++)
+			{
+				tmp[q].resize(qs.size());
+				for (size_t i=0; i<qs.size(); i++)
+				{
+					tmp[q][i] = qs[i][q];
+				}
+			}
+			for (size_t q=0; q<Nq; q++)
+			{
+				sort(tmp[q].begin(),tmp[q].end());
+				out[q] = tmp[q][0];
+			}
+			return out;
+		};
+		
+		// For spins: calculate maximal S across the chain
+		size_t Smax = 1;
+		if (!Symmetry::IS_TRIVIAL)
+		{
+			for (size_t l=0; l<this->N_sites; ++l)
+			for (size_t s=0; s<qloc[l].size(); ++s)
+			{
+				if (ceil(0.5*(qloc[l][s][0]-1.)) > Smax) {Smax = ceil(0.5*(qloc[l][s][0]-1.));}
+			}
+		}
+	//	cout << "Smax=" << Smax << endl;
+		
+		auto lowest_qs = [Smax] (const vector<qarray<Nq> > &qs) -> vector<qarray<Nq> >
+		{
+			if (Symmetry::IS_TRIVIAL)
+			{
+				vector<qarray<Nq> > out(1);
+				out[0] = Symmetry::qvacuum();
+				return out;
+			}
+			
+	//		cout << "in:" << endl;
+	//		for (size_t i=0; i<qs.size(); ++i)
+	//		{
+	//			cout << qs[i] << ", ";
+	//		}
+	//		cout << endl;
+			
+			// sort for every q and remove duplicates
+			array<vector<int>,Nq> tmp;
+			for (size_t q=0; q<Nq; q++)
+			{
+				tmp[q].resize(qs.size());
+				for (size_t i=0; i<qs.size(); i++)
+				{
+					tmp[q][i] = qs[i][q];
+				}
+				sort(tmp[q].begin(),tmp[q].end());
+				tmp[q].erase(unique(tmp[q].begin(), tmp[q].end()), tmp[q].end());
+			}
+			
+			// Can have different resulting sizes depending on q...
+			Array<size_t,Dynamic,1> tmp_sizes(Nq);
+			for (size_t q=0; q<Nq; q++)
+			{
+				tmp_sizes(q) = tmp[q].size();
+			}
+	//		cout << "sizes=" << tmp_sizes.transpose() << endl;
+			vector<qarray<Nq> > out(min(Smax+1, tmp_sizes.minCoeff()));
+			
+			for (size_t q=0; q<Nq; q++)
+			for (size_t i=0; i<min(Smax+1,tmp[q].size()); ++i)
+			{
+				out[i][q] = tmp[q][i];
+			}
+			
+	//		cout << "out:" << endl;
+	//		for (size_t i=0; i<out.size(); ++i)
+	//		{
+	//			cout << out[i] << ", ";
+	//		}
+	//		cout << endl;
+			
+			return out;
+		};
+		
+		auto highest_q = [] (const vector<qarray<Nq> > &qs) -> qarray<Nq>
+		{
+			qarray<Nq> out;
+			array<vector<int>,Nq> tmp;
+			for (size_t q=0; q<Nq; q++)
+			{
+				tmp[q].resize(qs.size());
+				for (size_t i=0; i<qs.size(); i++)
+				{
+					tmp[q][i] = qs[i][q];
+				}
+			}
+			for (size_t q=0; q<Nq; q++)
+			{
+				sort(tmp[q].begin(),tmp[q].end());
+				out[q] = tmp[q][qs.size()-1];
+			}
+			return out;
+		};
+		
+		QinTop.resize(this->N_sites);
+		QinBot.resize(this->N_sites);
+		QoutTop.resize(this->N_sites);
+		QoutBot.resize(this->N_sites);
+		
+		// If non-trivial boundaries: we have a heterogeneous infinite state, no Qlimits
+		if (!Boundaries.IS_TRIVIAL())
+		{
+	//		cout << termcolor::red << "Boundaries.IS_TRIVIAL()==false, infinite limits" << termcolor::reset << endl;
+			set_Qlimits_to_inf();
+		}
+		else
+		{
+			vector<vector<qarray<Symmetry::Nq> > > QinBotRange(this->N_sites);
+			vector<vector<qarray<Symmetry::Nq> > > QoutBotRange(this->N_sites);
+			
+			QinTop[0] = Symmetry::qvacuum();
+			QinBot[0] = Symmetry::qvacuum();
+			QinBotRange[0] = {Symmetry::qvacuum()};
+			
+			for (size_t l=1; l<this->N_sites; ++l)
+			{
+				auto new_tops = Symmetry::reduceSilent(qloc[l-1], QinTop[l-1]);
+				auto new_bots = Symmetry::reduceSilent(qloc[l-1], QinBotRange[l-1], true);
+		//		cout << "l=" << l << ", new_bots.size()=" << new_bots.size() << endl;
+				
+				QinTop[l] = highest_q(new_tops);
+				QinBot[l] = lowest_q(new_bots);
+				QinBotRange[l] = lowest_qs(new_bots);
+		//		cout << "l=" << l << ", QinBotRange.size()=" << QinBotRange.size() << endl;
+			}
+			
+			QoutTop[this->N_sites-1] = *max_element(Qmulti.begin(), Qmulti.end());
+			QoutBot[this->N_sites-1] = *min_element(Qmulti.begin(), Qmulti.end());
+			QoutBotRange[this->N_sites-1] = Qmulti; //{Qtot};
+			
+			for (int l=this->N_sites-2; l>=0; --l)
+			{
+				vector<qarray<Symmetry::Nq> > qlocflip;
+				for (size_t q=0; q<qloc[l+1].size(); ++q)
+				{
+					qlocflip.push_back(Symmetry::flip(qloc[l+1][q]));
+				}
+				auto new_tops = Symmetry::reduceSilent(qlocflip, QoutTop[l+1]);
+				auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBotRange[l+1]);
+				
+				QoutTop[l] = highest_q(new_tops);
+				QoutBot[l] = lowest_q(new_bots);
+				QoutBotRange[l] = lowest_qs(new_bots);
+			}
+			
+			for (size_t l=0; l<this->N_sites; ++l)
+			{
+				if (l!=0)
+				{
+					for (size_t q=0; q<Nq; q++)
+					{
+						QinTop[l][q] = min(QinTop[l][q], QoutTop[l-1][q]);
+						QinBot[l][q] = max(QinBot[l][q], QoutBot[l-1][q]);
+					}
+				}
+				if (l!=this->N_sites-1)
+				{
+					for (size_t q=0; q<Nq; q++)
+					{
+						QoutTop[l][q] = min(QoutTop[l][q], QinTop[l+1][q]);
+						QoutBot[l][q] = max(QoutBot[l][q], QinBot[l+1][q]);
+					}
+				}
+				
+//				cout << "l=" << l 
+//					 << ", QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] 
+//					 << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] 
+//					 << endl;
+			}
+		}
+	}
+}
 
-		QinTop[0] = Symmetry::qvacuum();
-		QinBot[0] = Symmetry::qvacuum();
-		QinBotRange[0] = {Symmetry::qvacuum()};
-		for (size_t l=1; l<this->N_sites; ++l)
-		{
-			auto new_tops = Symmetry::reduceSilent(qloc[l-1], QinTop[l-1]);
-			auto new_bots = Symmetry::reduceSilent(qloc[l-1], QinBotRange[l-1], true);
-	//		cout << "l=" << l << ", new_bots.size()=" << new_bots.size() << endl;
-			
-			QinTop[l] = highest_q(new_tops);
-			QinBot[l] = lowest_q(new_bots);
-			QinBotRange[l] = lowest_qs(new_bots);
-	//		cout << "l=" << l << ", QinBotRange.size()=" << QinBotRange.size() << endl;
-		}
-		
-		QoutTop[this->N_sites-1] = *max_element(Qmulti.begin(), Qmulti.end());
-		QoutBot[this->N_sites-1] = *min_element(Qmulti.begin(), Qmulti.end());
-		QoutBotRange[this->N_sites-1] = Qmulti; //{Qtot};
-		for (int l=this->N_sites-2; l>=0; --l)
-		{
-			vector<qarray<Symmetry::Nq> > qlocflip;
-			for (size_t q=0; q<qloc[l+1].size(); ++q)
-			{
-				qlocflip.push_back(Symmetry::flip(qloc[l+1][q]));
-			}
-			auto new_tops = Symmetry::reduceSilent(qlocflip, QoutTop[l+1]);
-			auto new_bots = Symmetry::reduceSilent(qlocflip, QoutBotRange[l+1]);
-			
-			QoutTop[l] = highest_q(new_tops);
-			QoutBot[l] = lowest_q(new_bots);
-			QoutBotRange[l] = lowest_qs(new_bots);
-		}
-		
-		for (size_t l=0; l<this->N_sites; ++l)
-		{
-			if (l!=0)
-			{
-				for (size_t q=0; q<Nq; q++)
-				{
-					QinTop[l][q] = min(QinTop[l][q], QoutTop[l-1][q]);
-					QinBot[l][q]  = max(QinBot[l][q], QoutBot[l-1][q]);
-				}
-			}
-			if (l!=this->N_sites-1)
-			{
-				for (size_t q=0; q<Nq; q++)
-				{
-					QoutTop[l][q] = min(QoutTop[l][q], QinTop[l+1][q]);
-					QoutBot[l][q]  = max(QoutBot[l][q], QinBot[l+1][q]);
-				}
-			}
-			
-	//		cout << "l=" << l 
-	//		     << ", QinTop[l]=" << QinTop[l] << ", QinBot[l]=" << QinBot[l] 
-	//		     << ", QoutTop[l]=" << QoutTop[l] << ", QoutBot[l]=" << QoutBot[l] 
-	//		     << endl;
-		}
+template<typename Symmetry, typename Scalar>
+void Mps<Symmetry,Scalar>::set_Qlimits_to_inf()
+{
+	QinTop.resize(this->N_sites);
+	QinBot.resize(this->N_sites);
+	QoutTop.resize(this->N_sites);
+	QoutBot.resize(this->N_sites);
+	
+	for (size_t l=0; l<this->N_sites; ++l)
+	for (size_t q=0; q<Nq; q++)
+	{
+		QinTop[l][q]  = std::numeric_limits<int>::max();
+		QinBot[l][q]  = std::numeric_limits<int>::min();
+		QoutTop[l][q] = std::numeric_limits<int>::max();
+		QoutBot[l][q] = std::numeric_limits<int>::min();
 	}
 }
 
@@ -1070,6 +1103,7 @@ outerResize (size_t L_input, vector<vector<qarray<Nq> > > qloc_input, qarray<Nq>
 			array<bool,Nq> WITHIN_RANGE;
 			for (size_t q=0; q<Nq; ++q)
 			{
+//				cout << "l=" << l << ", q=" << q << ", QinTop[l][q]=" << QinTop[l][q] << ", QinBot[l][q]=" << QinBot[l][q] << ", candidate[q]=" << candidate[q] << endl;
 				WITHIN_RANGE[q] = (candidate[q] <= QinTop[l][q] and candidate[q] >= QinBot[l][q]);
 			}
 			if (all_of(WITHIN_RANGE.begin(), WITHIN_RANGE.end(), [] (bool x) {return x;}))

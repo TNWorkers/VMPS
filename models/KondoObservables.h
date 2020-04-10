@@ -121,8 +121,15 @@ public:
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Simp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Ssub (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
+	
 	template<typename Dummy = Symmetry>
-	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const {return Simp(SZ,locx,locy,factor);}
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type S ( size_t locx, size_t locy=0, double factor=1.) const
+	{return Simp(locx,locy,factor);};
+	
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const 
+	{return Simp(SZ,locx,locy,factor);}
+	
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Sz (size_t locx, size_t locy=0) const {return Simp(SZ,locx,locy,1.);}
 	template<typename Dummy = Symmetry>

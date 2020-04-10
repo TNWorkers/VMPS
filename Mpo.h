@@ -108,7 +108,6 @@ public:
     //inline void setOpBasis   (const vector<vector<qType> > &q) {qOp=q;}
     //inline void setOpBasisSq (const vector<vector<qType> > &qOpSq_in) {qOpSq=qOpSq_in;}
     //inline const unordered_map<tuple<size_t,size_t,size_t,qarray<Symmetry::Nq>,qarray<Symmetry::Nq> >,SparseMatrix<Scalar> > &Vsq_at (size_t loc) const {return Vsq[loc];};
-
 	
 	inline int locality() const {return LocalSite;}
 	inline void set_locality(std::size_t LocalSite_input) {LocalSite = LocalSite_input;}

@@ -42,19 +42,19 @@ public:
 	S1xS2() {};
 	
 	static std::string name() { return S1_::name()+"⊗"+S2_::name(); }
-
+	
 	static constexpr std::size_t Nq=S1_::Nq+S2_::Nq;
-
+	
 	static constexpr bool HAS_CGC = false;
 	static constexpr bool NON_ABELIAN = S1_::NON_ABELIAN or S2_::NON_ABELIAN;
 	static constexpr bool ABELIAN = S1_::ABELIAN and S2_::ABELIAN;
 	static constexpr bool IS_TRIVIAL = S1_::IS_TRIVIAL and S2_::IS_TRIVIAL;
 	static constexpr bool IS_MODULAR = S1_::IS_MODULAR and S2_::IS_MODULAR;
 	static constexpr int MOD_N = S1_::MOD_N * S2_::MOD_N;
-
+	
 	static constexpr bool IS_CHARGE_SU2() { return S1_::IS_CHARGE_SU2() or S2_::IS_CHARGE_SU2(); }
 	static constexpr bool IS_SPIN_SU2() { return S1_::IS_SPIN_SU2() or S2_::IS_SPIN_SU2(); }
-
+	
 	static constexpr bool IS_SPIN_U1() { return S1_::IS_SPIN_U1() or S2_::IS_SPIN_U1(); }
 	
 	static constexpr bool NO_SPIN_SYM() { return S1_::NO_SPIN_SYM() and S2_::NO_SPIN_SYM(); }
