@@ -63,6 +63,9 @@ public:
 
 	template<typename CouplScalar>
     void construct_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, const std::vector<std::vector<std::string>>& labellist, size_t Lcell);
+    
+    template<typename CouplScalar>
+    void calc_reversedData_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, double tolerance=::mynumeric_limits<double>::epsilon());
 	
 	void setLocal(std::size_t loc, const OperatorType& op);
 	
@@ -502,6 +505,58 @@ construct_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, cons
         }
     }
 	generate_label(Lcell);
+}
+
+template<typename Symmetry, typename Scalar>
+template<typename CouplScalar>
+void Mpo<Symmetry,Scalar>::
+calc_reversedData_from_pushlist(const PushType<OperatorType,CouplScalar>& pushlist, double tolerance)
+{
+    Mpo<Symmetry,Scalar> mpo_rev(this->N_sites, this->get_qTot(), "Reversed(temp)", true, true, this->get_boundary_condition(), DMRG::VERBOSITY::OPTION::SILENT);
+    for(std::size_t loc=0; loc<this->N_sites; ++loc)
+    {
+        mpo_rev.set_qPhys(loc, this->qPhys[this->N_sites-1-loc]);
+    }
+    for(std::size_t i=0; i<pushlist.size(); ++i)
+    {
+        const auto& [loc, ops, coupling] = pushlist[i];
+        std::size_t range = ops.size();
+        std::size_t loc_rev = this->N_sites-loc-range;
+        std::vector<OperatorType> ops_rev(range);
+        for(std::size_t j=0; j<range; ++j)
+        {
+            ops_rev[j] = ops[range-1-j];
+        }
+        if ( std::abs(coupling) != 0. )
+        {
+            mpo_rev.push(loc_rev, ops_rev, coupling);
+        }
+    }
+    mpo_rev.finalize(PROP::COMPRESS, 1, tolerance);
+    this->reversed.qAux.resize(this->N_sites+1);
+    this->reversed.W.resize(this->N_sites);
+    for(std::size_t loc=0; loc<this->N_sites; ++loc)
+    {
+        this->reversed.qAux[loc] = mpo_rev.qAux[this->N_sites-loc];
+        auto Wloc = mpo_rev.W[this->N_sites-loc-1];
+        decltype(Wloc) Wloc_rev;
+        Wloc_rev.resize(Wloc.size());
+        for(std::size_t m=0; m<Wloc.size(); ++m)
+        {
+            Wloc_rev[m].resize(Wloc[m].size());
+            for(std::size_t n=0; n<Wloc[m].size(); ++n)
+            {
+                Wloc_rev[m][n].resize(Wloc[m][n].size());
+                for(std::size_t t=0; t<Wloc[m][n].size(); ++t)
+                {
+                    Wloc_rev[m][n][t] = Wloc[m][n][t].transpose();
+                }
+            }
+        }
+        this->reversed.W[loc] = Wloc_rev;
+    }
+    this->reversed.qAux[this->N_sites] = mpo_rev.qAux[0];
+    this->reversed.SET = true;
 }
 
 

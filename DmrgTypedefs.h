@@ -487,8 +487,6 @@ namespace PROP
 	const bool NON_HERMITIAN = false;
 	const bool UNITARY = true;
 	const bool NON_UNITARY = false;
-	const bool HAMILTONIAN = true;
-	const bool NON_HAMILTONIAN = false;
 	const bool FERMIONIC = true;
 	const bool NON_FERMIONIC = false;
 	const bool BOSONIC = false;

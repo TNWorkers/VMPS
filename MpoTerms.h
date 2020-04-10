@@ -84,42 +84,15 @@ private:
     bool FINALIZED = false;
     
     /**
-    *  Set true if nothing shall be logged
-    */
-    //bool SILENT = false;
+     *  Verbosity of the MpoTerms. If greater than SILENT, information will be printed via Logger.
+     */
     DMRG::VERBOSITY::OPTION VERB = DMRG::VERBOSITY::OPTION::SILENT;
+    
+    /**
+     *  String that stores relevant information tduring construction hat would have been logged. Is printed via Logger when verbosity is set to a value greater than SILENT.
+     */
     std::string before_verb_set;
-    
-    /**
-     *  Local operator bases.
-     *  Index structure: [Lattice Site][Index of quantum number]
-     */
-    std::vector<std::vector<qType>> qOp;
-    
-    /**
-     *  MPO bases. After calculation this encodes the same information as auxdim, but in a convenient way.
-     *  Index structure: [Lattice site]
-     */
-    std::vector<Qbasis<Symmetry>> qAux;
-    
-    /**
-     *  Bases of local Hilbert spaces.
-     *  Index structure: [Lattice Site][Index of quantum number]
-     */
-    std::vector<std::vector<qType>> qPhys;
-    
-    /**
-     *  Operator bases of the higher powers
-     *  Index structure: [Power-2][Lattice Site][Index of quantum number]
-     */
-    std::vector<std::vector<std::vector<qType>>> qOp_powers;
-    
-    /**
-     *  MPO bases of the higher powers
-     *  Index structure: [Power-2][Lattice site]
-     */
-    std::vector<std::vector<Qbasis<Symmetry>>> qAux_powers;
-    
+
     /**
      *  Stores the highest power of the MPO that has been calculated.
      */
@@ -349,13 +322,51 @@ private:
      */
 	static std::pair<std::string,std::size_t> detect_and_remove_power(const std::string& name_w_power);
     
+    /**
+     * Generates the branch of MPO auxiliar bases quantum numbers that connects qVac and qTot with respect to a given list of local operators.
+     * It is asserted that the quantum number branch is unique.
+     * @param   opList  List of local operators
+     * @return List of corresponding quantum numbers for push-methods.
+     */
+    std::vector<qType> calc_qList(const std::vector<OperatorType>& opList);
+    
 protected:
+    
+    /**
+     *  Local operator bases.
+     *  Index structure: [Lattice Site][Index of quantum number]
+     */
+    std::vector<std::vector<qType>> qOp;
+    
+    /**
+     *  MPO bases. After calculation this encodes the same information as auxdim, but in a convenient way.
+     *  Index structure: [Lattice site]
+     */
+    std::vector<Qbasis<Symmetry>> qAux;
+    
+    /**
+     *  Bases of local Hilbert spaces.
+     *  Index structure: [Lattice Site][Index of quantum number]
+     */
+    std::vector<std::vector<qType>> qPhys;
     
     /**
      *  W matrix that stores the MPO in a convenient way.
      *  Index structure: [Lattice site][Upper Hilbert space basis entry][Lower Hilbert space basis entry][Quantum number of operators] Biped: {qIn,qOut} -> Matrix [row][column]
      */
     std::vector<std::vector<std::vector<std::vector<Biped<Symmetry, MatrixType>>>>> W;
+    
+    /**
+     *  Operator bases of the higher powers
+     *  Index structure: [Power-2][Lattice Site][Index of quantum number]
+     */
+    std::vector<std::vector<std::vector<qType>>> qOp_powers;
+    
+    /**
+     *  MPO bases of the higher powers
+     *  Index structure: [Power-2][Lattice site]
+     */
+    std::vector<std::vector<Qbasis<Symmetry>>> qAux_powers;
     
     /**
      *  W matrix of the higher powers
@@ -367,6 +378,15 @@ protected:
      *  Number of lattice sites (for VUMPS: in the unit cell)
      */
     std::size_t N_sites;
+    
+    struct reversedData
+    {
+        std::vector<std::vector<std::vector<std::vector<Biped<Symmetry, MatrixType>>>>> W;
+        std::vector<Qbasis<Symmetry>> qAux;
+        bool SET = false;
+    };
+    
+    reversedData reversed;
     
     /**
      *  Allows to reconstruct an instance of MpoTerms with preset data.
@@ -399,29 +419,20 @@ public:
     /**
      *  Pushes an interaction into this instance of MpoTerms.
      *  @param  loc     Lattice site where the interaction starts
-     *  @param  opList  Vector of operators that make up the interaction. opList[i] acts on lattice site loc+i
-     *  @param  qList   Vector of quantum numbers. qList[i] is left from lattice site loc+i, qList[i+1] is right from it
+     *  @param  opList  List of operators that make up the interaction. opList[i] acts on lattice site loc+i
+     *  @param  qList   List of quantum numbers. qList[i] is left from lattice site loc+i, qList[i+1] is right from it
      *  @param  lambda  Scalar factor for the interaction
      */
     void push(const std::size_t loc, const std::vector<OperatorType>& opList, const std::vector<qType>& qList, const Scalar lambda = 1.0);
     
     /**
-     *  Pushes an interaction into this instance of MpoTerms, but with reversed order of lattice sites. Needed, when get_reversed_data() shall be called afterwards.
-     *  @param  loc     Lattice site where the interaction starts
-     *  @param  opList  Vector of operators that make up the interaction. opList[i] acts on lattice site loc+i
-     *  @param  qList   Vector of quantum numbers. qList[i] is left from lattice site loc+i, qList[i+1] is right from it
-     *  @param  lambda  Scalar factor for the interaction
-    */
-    void push_reverse(const std::size_t loc, const std::vector<OperatorType>& opList, const std::vector<qType>& qList, const Scalar lambda = 1.0);
-    
-    /**
-     *  Generates the quantum number list and then calls push(std::size_t loc, const std::vector<OperatorType>& opList, const std::vector<qType>& qList, Scalar lambda = 1.0).
-     *  If more than one quantum number branch leads to the vacuum, for each quantum number branch an interaction is pushed.
+     *  Push method without explicit quantum number list.
+     *  Calls the method calc_qList and then redirects to push with that quantum number list.
      *  @param  loc     Lattice site where the interaction starts
      *  @param  opList  Vector of operators that make up the interaction. opList[i] acts on lattice site loc+i
      *  @param  lambda  Scalar factor for the interaction
      */
-    void push(const std::size_t loc, const std::vector<OperatorType>& opList, const Scalar lambda = 1.0, const bool reverse=false);
+    void push(const std::size_t loc, const std::vector<OperatorType>& opList, const Scalar lambda = 1.0) {push(loc, opList, calc_qList(opList), lambda);}
     
     /**
      *  Prints information about the current state of operators and MPO auxiliar basis.
@@ -639,13 +650,7 @@ public:
      *  @return Sum of both MPOs.
      */
     static MpoTerms<Symmetry,Scalar> sum(const MpoTerms<Symmetry,Scalar>& top, const MpoTerms<Symmetry,Scalar>& bottom, const double tolerance=::mynumeric_limits<double>::epsilon());
-    
-    /**
-     * Calculates relevant data for reversed order of lattice sites. Does not change the actual order for the respective instance.
-     *  @return Tuple of W, qAux, qOp, qPhys
-     */
-    std::tuple<std::vector<std::vector<std::vector<std::vector<Biped<Symmetry,Eigen::SparseMatrix<Scalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>>>>>>, std::vector<Qbasis<Symmetry>>, std::vector<std::vector<typename Symmetry::qType>>, std::vector<std::vector<typename Symmetry::qType>>> get_reversed_data() const;
-    
+
     /**
      *  Creates an identity MPO with bond dimension 1
      */
@@ -656,10 +661,15 @@ public:
      */
     void set_Zero();
     
-    //bool is_silent() const {return SILENT;}
-    //void set_silent() {SILENT = true;}
-    
+    /**
+     *  Sets verbosity for these MpoTerms. If greater than SILENT, information will be printed via Logger
+     *  @param  VERB_in Chosen verbosity
+     */
     void set_verbosity(const DMRG::VERBOSITY::OPTION VERB_in);
+    
+    /**
+     *  @return Verbosity of these MpoTerms.
+     */
     DMRG::VERBOSITY::OPTION get_verbosity() const {return VERB;}
     
     
@@ -850,23 +860,6 @@ set_verbosity(const DMRG::VERBOSITY::OPTION VERB_in)
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
-push_reverse(const std::size_t loc, const std::vector<OperatorType>& opList, const std::vector<qType>& qList, const Scalar lambda)
-{
-    std::size_t range = opList.size();
-    assert(qList.size() == range+1 and "Amount of quantum numbers does not match amount of operators!");
-    std::vector<OperatorType> opList_reverse(range);
-    std::vector<qType> qList_reverse(range+1);
-    std::size_t loc_reverse = N_sites - loc;
-    for(std::size_t n=0; n<range; ++n)
-    {
-        opList_reverse[n] = opList[range-n];
-        qList_reverse[n] = qList[range+1-n];
-    }
-    qList_reverse[range] = qList[0];
-    push(loc_reverse,opList_reverse,qList_reverse,lambda);
-}
-
-template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 push(const std::size_t loc, const std::vector<OperatorType>& opList, const std::vector<qType>& qList, const Scalar lambda)
 {
     assert(loc < N_sites and "Chosen lattice site out of bounds");
@@ -935,8 +928,8 @@ push(const std::size_t loc, const std::vector<OperatorType>& opList, const std::
     }
 }
 
-template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
-push(const std::size_t loc, const std::vector<OperatorType>& opList, const Scalar lambda, const bool reverse)
+template<typename Symmetry, typename Scalar> std::vector<typename Symmetry::qType> MpoTerms<Symmetry,Scalar>::
+calc_qList(const std::vector<OperatorType>& opList)
 {
     struct qBranch
     {
@@ -957,13 +950,12 @@ push(const std::size_t loc, const std::vector<OperatorType>& opList, const Scala
         }
     };
 
-    std::size_t n = opList.size();
-    std::vector<std::vector<qBranch>> Qtree(n);
+    std::size_t range = opList.size();
+    std::vector<std::vector<qBranch>> Qtree(range);
     qBranch temp{opList[0].Q, {}};
     Qtree[0].push_back(temp);
-    for(std::size_t m=1; m<n; ++m)
+    for(std::size_t m=1; m<range; ++m)
     {
-        assert_hilbert((loc+m)%N_sites, opList[m].data.rows());
         for(int i=0; i<Qtree[m-1].size(); ++i)
         {
             std::vector<qType> qs = Symmetry::reduceSilent(opList[m].Q, Qtree[m-1][i].current);
@@ -976,41 +968,34 @@ push(const std::size_t loc, const std::vector<OperatorType>& opList, const Scala
         }
     }
     
-    std::vector<qType> qList(n+1);
+    std::vector<qType> qList(range+1);
     qList[0] = qVac;
     int count = 0;
-    for(int i=0; i<Qtree[n-1].size(); ++i)
+    for(int i=0; i<Qtree[range-1].size(); ++i)
     {
-        if(Qtree[n-1][i].current == qTot)
+        if(Qtree[range-1][i].current == qTot)
         {
             ++count;
-            for(int j=0; j<n-1; ++j)
+            for(int j=0; j<range-1; ++j)
             {
-                qList[j+1] = Qtree[n-1][i].history[j];
+                qList[j+1] = Qtree[range-1][i].history[j];
             }
-            qList[n] = qTot;
+            qList[range] = qTot;
             #if DEBUG_VERBOSITY > 1
             if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
             {
                 lout << "This branch of quantum numbers leads to the total MPO quantum number: {" << Sym::format<Symmetry>(qList[0]) << "} -> ";
-                for(int j=0; j<n-1; ++j)
+                for(int j=0; j<range-1; ++j)
                 {
                     lout << "{" << Sym::format<Symmetry>(qList[j+1]) << "} -> ";
                 }
-                lout << "{" << Sym::format<Symmetry>(qList[n]) << "}" << std::endl;
+                lout << "{" << Sym::format<Symmetry>(qList[range]) << "}" << std::endl;
             }
             #endif
         }
     }
     assert(count == 1 and "Either no or more than one quantum number branch leads to the total MPO quantum number");
-    if(reverse)
-    {
-        push_reverse(loc, opList, qList, lambda);
-    }
-    else
-    {
-        push(loc, opList, qList, lambda);
-    }
+    return qList;
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
@@ -1037,6 +1022,7 @@ show()
     if(GOT_QOP) lout << "• Local operator bases" << std::endl;
     if(GOT_W) lout << "• W matrix" << std::endl;
     if(current_power > 1) lout << "• All of the previous for all powers of the MPO up to " << current_power << std::endl;
+    if(reversed.SET) lout << "• Reversed W matrix and auxiliar bases" << std::endl;
     #if DEBUG_VERBOSITY > 0
     for(std::size_t loc=0; loc<N_sites; ++loc)
     {
@@ -3685,28 +3671,6 @@ base_order_IBC() const
     vout.insert(vout.end(), vout_temp.begin(), vout_temp.end());
     vout.push_back({qVac, pos_qVac});
     return vout;
-}
-
-template<typename Symmetry, typename Scalar>
-std::tuple<std::vector<std::vector<std::vector<std::vector<Biped<Symmetry, Eigen::SparseMatrix<Scalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>>>>>>, std::vector<Qbasis<Symmetry>>, std::vector<std::vector<typename Symmetry::qType>>, std::vector<std::vector<typename Symmetry::qType>>>
-MpoTerms<Symmetry,Scalar>::
-get_reversed_data() const
-{
-    assert(GOT_W and GOT_QAUX and GOT_QOP and check_qPhys());
-    std::vector<std::vector<std::vector<std::vector<Biped<Symmetry, MatrixType>>>>> W_reverse(N_sites);
-    std::vector<Qbasis<Symmetry>> qAux_reverse(N_sites+1);
-    std::vector<std::vector<qType>> qOp_reverse(N_sites);
-    std::vector<std::vector<qType>> qPhys_reverse(N_sites);
-
-    for(std::size_t loc=0; loc<N_sites; ++loc)
-    {
-        W_reverse[loc] = W[N_sites-1-loc];
-        qAux_reverse[loc] = qAux[N_sites-loc];
-        qOp_reverse[loc] = qOp[N_sites-1-loc];
-        qPhys_reverse[loc] = qPhys[N_sites-1-loc];
-    }
-    qAux_reverse[N_sites] = qAux_reverse[0];
-    return std::make_tuple(W_reverse,qAux_reverse,qOp_reverse,qPhys_reverse);
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
