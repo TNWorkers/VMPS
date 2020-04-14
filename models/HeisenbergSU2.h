@@ -55,7 +55,7 @@ public:
 	   \describe_params
 	   \describe_boundary
 	*/
-	HeisenbergSU2 (const size_t &L, const vector<Param> &params={}, const BC & boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION& VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
+	HeisenbergSU2 (const size_t &L, const vector<Param> &params={}, const BC & boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION& VERB=DMRG::VERBOSITY::ON_EXIT);
 	///\}
 	
 	/**
@@ -113,7 +113,7 @@ HeisenbergSU2 (const size_t &L, const vector<Param> &params, const BC & boundary
 	}
 	
     this->set_name("Heisenberg");
-	this->set_verbosity(DMRG::VERBOSITY::ON_EXIT);
+	this->set_verbosity(VERB);
 	
     PushType<SiteOperator<Symmetry,double>,double> pushlist;
     std::vector<std::vector<std::string>> labellist;

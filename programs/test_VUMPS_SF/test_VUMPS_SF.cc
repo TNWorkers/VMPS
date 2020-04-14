@@ -34,14 +34,14 @@ using namespace Eigen;
 #include "models/HeisenbergU1XXZ.h"
 #include "models/HeisenbergXXZ.h"
 #include "models/HeisenbergSU2.h"
-//#include "models/HubbardU1xU1.h"
-//#include "models/Hubbard.h"
-// #include "models/HubbardSU2xSU2.h"
-// #include "models/HubbardSU2.h"
-//#include "models/HubbardSU2xU1.h"
-//#include "models/KondoSU2xU1.h"
-//#include "models/KondoU1xU1.h"
-//#include "models/KondoU0xSU2.h"
+#include "models/HubbardU1xU1.h"
+#include "models/Hubbard.h"
+#include "models/HubbardSU2xSU2.h"
+#include "models/HubbardSU2.h"
+#include "models/HubbardSU2xU1.h"
+#include "models/KondoSU2xU1.h"
+#include "models/KondoU1xU1.h"
+#include "models/KondoU0xSU2.h"
 
 double Jxy, Jz, J, Jprime, tPrime, Bx, Bz;
 double U, mu;
@@ -89,7 +89,7 @@ void fill_OdagO_SU2 (const Eigenstate<typename Model::StateUd> &g)
 		int i0 = Geo(x0,y0);
 		int i1 = Geo(x1,y1);
 		
-		Model Htmp(L*Ly*n+i1+i0+4,{{"OPEN_BC",false},{"D",D},{"CALC_SQUARE",false}});
+		Model Htmp(L*Ly*n+i1+i0+4,{{"D",D},{"maxPower",1ul}},BC::OPEN,DMRG::VERBOSITY::SILENT);
 		OdagO[x0][y0][x1][y1](n) = avg(g.state, Htmp.SdagS(i0,L*Ly*n+i1), g.state);
 	}
 }
@@ -205,152 +205,152 @@ int main (int argc, char* argv[])
 	
 	if (U1)
 	{
-		// typedef VMPS::HeisenbergU1XXZ MODEL;
-		// MODEL H(L,{{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D},{"Ly",Ly}});
-		// qarray<1> Qc = {0};
+		typedef VMPS::HeisenbergU1XXZ MODEL;
+		MODEL H(L,{{"Jxy",Jxy},{"Jz",Jz},{"D",D},{"Ly",Ly}}, BC::INFINITE);
+		qarray<1> Qc = {0};
 		// typedef VMPS::HeisenbergXXZ MODEL;
-		// MODEL H(L,{{"Bx",Bx},{"Jz",Jz},{"OPEN_BC",false}});
-		// lout << H.info() << endl;
+		// MODEL H(L,{{"Bx",Bx},{"Jz",Jz}},BC::INFINITE);
+		lout << H.info() << endl;
 		
-		// MODEL::uSolver DMRG(VERB);
-		// Eigenstate<MODEL::StateUd> g;
-		// DMRG.userSetGlobParam();
-		// DMRG.GlobParam = GlobParams;
-		// DMRG.edgeState(H, g, Qc);
+		MODEL::uSolver DMRG(VERB);
+		Eigenstate<MODEL::StateUd> g;
+		DMRG.userSetGlobParam();
+		DMRG.GlobParam = GlobParams;
+		DMRG.edgeState(H, g, Qc);
 		
-		// ArrayXcd SF(Nk); SF=0;
+		ArrayXcd SF(Nk); SF=0;
 		
-		// vector<Mpo<MODEL::Symmetry> > O(L); 
-		// vector<Mpo<MODEL::Symmetry> > Odag(L);
+		vector<Mpo<MODEL::Symmetry> > O(L); 
+		vector<Mpo<MODEL::Symmetry> > Odag(L);
 		
-		// ArrayXd Oavg(L);
-		// ArrayXd Odagavg(L);
+		ArrayXd Oavg(L);
+		ArrayXd Odagavg(L);
 		
-		// for (size_t l=0; l<L; ++l)
-		// {
-		// 	O[l]    = H.Scomp(SM,l);
-		// 	Odag[l] = H.Scomp(SP,l);
-		// 	O[l]    = H.Scomp(SZ,l);
-		// 	Odag[l] = H.Scomp(SZ,l);
-		// }
+		for (size_t l=0; l<L; ++l)
+		{
+			// O[l]    = H.Scomp(SM,l);
+			// Odag[l] = H.Scomp(SP,l);
+			O[l]    = H.Scomp(SZ,l);
+			Odag[l] = H.Scomp(SZ,l);
+		}
 		
-		// for (size_t l=0; l<L; ++l)
-		// {
-		// 	Oavg(l)    = avg(g.state, O[l],    g.state);
-		// 	Odagavg(l) = avg(g.state, Odag[l], g.state);
+		for (size_t l=0; l<L; ++l)
+		{
+			Oavg(l)    = avg(g.state, O[l],    g.state);
+			Odagavg(l) = avg(g.state, Odag[l], g.state);
 			
-		// 	O[l].scale(1.,-Oavg(l));
-		// 	Odag[l].scale(1.,-Odagavg(l));
+			O[l].scale(1.,-Oavg(l));
+			Odag[l].scale(1.,-Odagavg(l));
 			
-		// 	O[l].transform_base(Qc);
-		// 	Odag[l].transform_base(Qc);
+			O[l].transform_base(Qc);
+			Odag[l].transform_base(Qc);
 			
-		// 	cout << "l=" << l << endl;
-		// 	cout << "<O>="    << avg(g.state, O[l],    g.state) << ", shifted by " << Oavg(l)    << endl;
-		// 	cout << "<Odag>=" << avg(g.state, Odag[l], g.state) << ", shifted by " << Odagavg(l) << endl;
-		// }
+			cout << "l=" << l << endl;
+			cout << "<O>="    << avg(g.state, O[l],    g.state) << ", shifted by " << Oavg(l)    << endl;
+			cout << "<Odag>=" << avg(g.state, Odag[l], g.state) << ", shifted by " << Odagavg(l) << endl;
+		}
 		
-		// SF += g.state.structure_factor(Odag[i0], O[j0], 0., 2.*M_PI, Nk, DMRG::VERBOSITY::STEPWISE);
+		SF += g.state.intercellSF(Odag[i0], O[j0], 1ul, 0., 2.*M_PI, Nk, DMRG::VERBOSITY::ON_EXIT);
 		                              
-		// ofstream Filer(make_string("SF_Sym=",MODEL::Symmetry::name(),"_L=",L,"_i0=",i0,"_j0=",j0,".dat"));
-		// for (int ik=0; ik<SF.rows(); ++ik)
-		// {
-		// 	Filer << ik*2.*M_PI/(SF.rows()-1) << "\t" << SF(ik).real() << "\t" << SF(ik).imag() << endl;
-		// }
-		// Filer.close();
-		// lout << make_string("SF_Sym=",MODEL::Symmetry::name(),"_L=",L,"_i0=",i0,"_j0=",j0,".dat") << " saved!" << endl;
+		ofstream Filer(make_string("SF_Sym=",MODEL::Symmetry::name(),"_L=",L,"_i0=",i0,"_j0=",j0,".dat"));
+		for (int ik=0; ik<SF.rows(); ++ik)
+		{
+			Filer << ik*2.*M_PI/(SF.rows()-1) << "\t" << SF(ik).real() << "\t" << SF(ik).imag() << endl;
+		}
+		Filer.close();
+		lout << make_string("SF_Sym=",MODEL::Symmetry::name(),"_L=",L,"_i0=",i0,"_j0=",j0,".dat") << " saved!" << endl;
 		
-		// N = 100; // Ncell (number of unit cells), L=Lcell (size of unit cell)
+		N = 100; // Ncell (number of unit cells), L=Lcell (size of unit cell)
 		
-		// double a00 = avg(g.state, H.SmSp(0,0), g.state) - Odagavg(0)*Oavg(1);
-		// double a01 = avg(g.state, H.SmSp(0,1), g.state) - Odagavg(0)*Oavg(1);
+		// double a00 = avg(g.state, H.SzSz(0,0), g.state) - Odagavg(0)*Oavg(1);
+		// double a01 = avg(g.state, H.SzSz(0,1), g.state) - Odagavg(0)*Oavg(1);
 		// cout << a00 << "\t" << a01 << endl;
 		// cout << avg(g.state, H.SmSp(0,1), g.state) << endl;
 		// cout << avg(g.state, H.SmSp(1,0), g.state) << endl;
 		
 		// cout << "k=0" << endl;
-		// double c00 = g.state.structure_factor_point(Odag[0], O[0], 0., DMRG::VERBOSITY::SILENT).real();
-		// double c01 = g.state.structure_factor_point(Odag[0], O[1], 0., DMRG::VERBOSITY::SILENT).real();
+		// double c00 = g.state.intercellSFpoint(Odag[0], O[0], 1, 0., DMRG::VERBOSITY::SILENT).real();
+		// double c01 = g.state.intercellSFpoint(Odag[0], O[1], 1, 0., DMRG::VERBOSITY::SILENT).real();
 		// cout << c00 << "\t" << c01 << endl;
 		// cout << "sum=" << 2.*(c00+c01+a00+a01) << endl;
 		
 		// cout << "k=pi" << endl;
-		// double d00 = g.state.structure_factor_point(Odag[0], O[0], M_PI, DMRG::VERBOSITY::SILENT).real();
-		// double d01 = g.state.structure_factor_point(Odag[0], O[1], M_PI, DMRG::VERBOSITY::SILENT).real();
+		// double d00 = g.state.intercellSFpoint(Odag[0], O[0], 1, M_PI, DMRG::VERBOSITY::SILENT).real();
+		// double d01 = g.state.intercellSFpoint(Odag[0], O[1], 1, M_PI, DMRG::VERBOSITY::SILENT).real();
 		// cout << d00 << "\t" << d01 << endl;
 		// cout << "staggered sum=" << 2.*(d00-d01+a00-a01) << endl;
 		
-		// MODEL Htmp(L*N+4,{{"Jxy",Jxy},{"Jz",Jz},{"OPEN_BC",false},{"D",D},{"Ly",Ly}}); // ,{"Bx",Bx}
-		// ArrayXd OdagO_R(N); OdagO_R=0;
-		// #pragma omp parallel for
-		// for (size_t n=0; n<N; ++n)
-		// {
-		// 	size_t l = L*n;
-		// 	OdagO_R(n) = avg(g.state, Htmp.SmSp(i0,j0+l), g.state) - Odagavg(i0%L)*Oavg((j0+l)%L);
-		// }
+		MODEL Htmp(L*N+4,{{"Jxy",Jxy},{"Jz",Jz},{"D",D},{"Ly",Ly}}, BC::OPEN, DMRG::VERBOSITY::SILENT); // ,{"Bx",Bx}
+		ArrayXd OdagO_R(N); OdagO_R=0;
+		#pragma omp parallel for
+		for (size_t n=0; n<N; ++n)
+		{
+			size_t l = L*n;
+			OdagO_R(n) = avg(g.state, Htmp.SzSz(i0,j0+l), g.state) - Odagavg(i0%L)*Oavg((j0+l)%L);
+		}
 		
-		// ArrayXd OdagO_L(N); OdagO_L=0;
-		// #pragma omp parallel for
-		// for (size_t n=1; n<N; ++n)
-		// {
-		// 	size_t l = L*n;
-		// 	OdagO_L(n) = avg(g.state, Htmp.SmSp(i0+l,j0), g.state) - Odagavg((i0+l)%L)*Oavg(j0%L);
-		// }
+		ArrayXd OdagO_L(N); OdagO_L=0;
+		#pragma omp parallel for
+		for (size_t n=1; n<N; ++n)
+		{
+			size_t l = L*n;
+			OdagO_L(n) = avg(g.state, Htmp.SzSz(i0+l,j0), g.state) - Odagavg((i0+l)%L)*Oavg(j0%L);
+		}
 		
-		// ArrayXcd Sk(2*N);
+		ArrayXcd Sk(2*N);
 		
-		// for (size_t ik=0; ik<2*N; ++ik)
-		// {
-		// 	Sk(ik) = 0;
-		// 	double k = ik * 2.*M_PI/(2*N);
-		// 	for (size_t n=1; n<N; ++n)
-		// 	{
-		// 		Sk(ik) += OdagO_R(n) * exp(-1.i*k*static_cast<double>(n));
-		// 		Sk(ik) += OdagO_L(n) * exp(+1.i*k*static_cast<double>(n));
-		// 	}
-		// }
+		for (size_t ik=0; ik<2*N; ++ik)
+		{
+			Sk(ik) = 0;
+			double k = ik * 2.*M_PI/(2*N);
+			for (size_t n=1; n<N; ++n)
+			{
+				Sk(ik) += OdagO_R(n) * exp(-1.i*k*static_cast<double>(n));
+				Sk(ik) += OdagO_L(n) * exp(+1.i*k*static_cast<double>(n));
+			}
+		}
 		
-		// ofstream FilerFT(make_string("FT_Sym=",MODEL::Symmetry::name(),"_L=",L,"_Ly=",Ly,"_i0=",i0,"_j0=",j0,".dat"));
-		// for (size_t i=0; i<2*N; i++)
-		// {
-		// 	double k = i * 2.*M_PI/(2*N);
-		// 	FilerFT << k << "\t" << Sk(i).real() << "\t" << Sk(i).imag() << endl;
-		// }
-		// FilerFT.close();
+		ofstream FilerFT(make_string("FT_Sym=",MODEL::Symmetry::name(),"_L=",L,"_Ly=",Ly,"_i0=",i0,"_j0=",j0,".dat"));
+		for (size_t i=0; i<2*N; i++)
+		{
+			double k = i * 2.*M_PI/(2*N);
+			FilerFT << k << "\t" << Sk(i).real() << "\t" << Sk(i).imag() << endl;
+		}
+		FilerFT.close();
 		
-		// lout << make_string("FT_Sym=",MODEL::Symmetry::name(),"_L=",L,"_Ly=",Ly,"_i0=",i0,"_j0=",j0,".dat") << " saved!" << endl;
+		lout << make_string("FT_Sym=",MODEL::Symmetry::name(),"_L=",L,"_Ly=",Ly,"_i0=",i0,"_j0=",j0,".dat") << " saved!" << endl;
 		
-		// ArrayXd OdagO_R(L*N); OdagO_R=0;
-		// ArrayXd OdagO_L(L*N); OdagO_L=0;
-		// #pragma omp parallel for
-		// for (size_t l=0; l<N*L; ++l)
-		// {
-		// 	OdagO_R(l) = avg(g.state, Htmp.SmSp(0,l), g.state) - Odagavg(0)*Oavg(l%L);
-		// 	OdagO_L(l) = avg(g.state, Htmp.SmSp(l,0), g.state) - Odagavg(l%L)*Oavg(0);
-		// 	cout << "l=" << l << "\t" << OdagO_R(l) << "\t" << OdagO_L(l) << endl;
-		// }
+		OdagO_R.resize(L*N); OdagO_R=0;
+		OdagO_L.resize(L*N); OdagO_L=0;
+		#pragma omp parallel for
+		for (size_t l=0; l<N*L; ++l)
+		{
+			OdagO_R(l) = avg(g.state, Htmp.SzSz(0,l), g.state) - Odagavg(0)*Oavg(l%L);
+			OdagO_L(l) = avg(g.state, Htmp.SzSz(l,0), g.state) - Odagavg(l%L)*Oavg(0);
+			cout << "l=" << l << "\t" << OdagO_R(l) << "\t" << OdagO_L(l) << endl;
+		}
 		
-		// ArrayXcd Ok(N*L);
+		ArrayXcd Ok(N*L);
 		
-		// for (size_t ik=0; ik<N*L; ++ik)
-		// {
-		// 	Ok(ik) = 0;
-		// 	double k = ik * 2.*M_PI/(N*L);
-		// 	for (size_t l=0; l<N*L; ++l)
-		// 	{
-		// 		Ok(ik) += OdagO_R(l) * exp(-1.i*k*static_cast<double>(l));
-		// 		Ok(ik) += OdagO_L(l) * exp(+1.i*k*static_cast<double>(l));
-		// 	}
+		for (size_t ik=0; ik<N*L; ++ik)
+		{
+			Ok(ik) = 0;
+			double k = ik * 2.*M_PI/(N*L);
+			for (size_t l=0; l<N*L; ++l)
+			{
+				Ok(ik) += OdagO_R(l) * exp(-1.i*k*static_cast<double>(l));
+				Ok(ik) += OdagO_L(l) * exp(+1.i*k*static_cast<double>(l));
+			}
 			
-		// 	if (abs(k) < 1e-14)
-		// 	{
-		// 		cout << "k=0: " << Ok(ik) << endl;
-		// 	}
-		// 	else if (abs(k-M_PI) < 1e-14)
-		// 	{
-		// 		cout << "k=pi: " << Ok(ik) << endl;
-		// 	}
-		// }
+			if (abs(k) < 1e-14)
+			{
+				cout << "k=0: " << Ok(ik) << endl;
+			}
+			else if (abs(k-M_PI) < 1e-14)
+			{
+				cout << "k=pi: " << Ok(ik) << endl;
+			}
+		}
 	}
 	
 	if (SU2)
@@ -385,7 +385,7 @@ int main (int argc, char* argv[])
 //		MODEL H(L,{{"U",2.},{"Vxy",V},{"Vz",V},{"OPEN_BC",false},{"CALC_SQUARE",false}});
 		
 		typedef VMPS::HeisenbergSU2 MODEL;
-		MODEL H(L,{{"J",J},{"CALC_SQUARE",false},{"Ly",Ly},{"D",D}},BC::INFINITE);
+		MODEL H(L*Ly,{{"Jfull",Jarray},{"maxPower",2ul},{"Ly",Ly},{"D",D}},BC::INFINITE);
 		
 		qarray<MODEL::Symmetry::Nq> Qc = MODEL::singlet();
 		H.transform_base(Qc);
@@ -442,7 +442,6 @@ int main (int argc, char* argv[])
 			{
 
 				O[l]    = H.S(l);
-				cout << "Odag:" << endl;
 				Odag[l] = H.Sdag(l);
 				
 				Oavg(l)    = avg(g.state, O[l],    g.state);
@@ -493,7 +492,7 @@ int main (int argc, char* argv[])
 //			}
 			
 			// new 2d:
-			SF = g.state.SF(Sij_cell, Odag_ky,O_ky, L, 0.,2.*M_PI,Nk, DMRG::VERBOSITY::ON_EXIT);
+			SF = g.state.SF(Sij_cell, Odag_ky, O_ky, L, 0.,2.*M_PI,Nk, DMRG::VERBOSITY::ON_EXIT);
 			
 			// old 1d:
 //			SF = g.state.SF(Sij_cell, Odag,O, L, 0.,2.*M_PI,Nk, DMRG::VERBOSITY::ON_EXIT);
@@ -518,7 +517,7 @@ int main (int argc, char* argv[])
 			VectorXd SdagSvec(100);
 			for (int l=0; l<100; ++l)
 			{
-				MODEL Htmp(l+2,{{"D",D},{"CALC_SQUARE",false}},BC::OPEN);
+				MODEL Htmp(l+2,{{"D",D},{"maxPower",1ul}},BC::OPEN, DMRG::VERBOSITY::SILENT);
 				SdagSvec(l) = avg(g.state, Htmp.SdagS(0,l), g.state);
 				lout << "l=" << l << "\t" << SdagSvec(l) << endl;
 			}
@@ -564,7 +563,7 @@ int main (int argc, char* argv[])
 			ofstream FilerFT(make_string("FT_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",L,"_Ly=",Ly,".dat")); 
 			for (size_t ik=0; ik<FT.rows(); ++ik)
 			{
-				FilerFT << FT(ik,0).real() << "\t" << FT(ik,1).real() << "\t" << FT(ik,1).imag() << endl;
+				FilerFT << FT(ik,0).real() << "\t" << 2*FT(ik,1).real() << "\t" << FT(ik,1).imag() << endl;
 			}
 			FilerFT.close();
 			cout << make_string("FT_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",L,"_Ly=",Ly,".dat") << " saved!" << endl;

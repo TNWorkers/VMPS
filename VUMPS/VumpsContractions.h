@@ -229,7 +229,6 @@ Tripod<Symmetry,MatrixType> make_YL (size_t b,
                                      const Tripod<Symmetry,MatrixType> &Lold, 
                                      const vector<vector<Biped<Symmetry,MatrixType> > > &Abra, 
                                      const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<MpoScalar> > > > > > &W, 
-                                     const bool IS_HAMILTONIAN, 
                                      const vector<vector<Biped<Symmetry,MatrixType> > > &Aket, 
                                      const vector<vector<qarray<Symmetry::Nq> > > &qloc,
                                      const vector<vector<qarray<Symmetry::Nq> > > &qOp,
@@ -242,15 +241,15 @@ Tripod<Symmetry,MatrixType> make_YL (size_t b,
 	{
 		if (l==Lcell-1)
 		{
-			contract_L(L, Abra[l], W[l], IS_HAMILTONIAN, Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(FIXED_COLS,b), basis_order_map);
+			contract_L(L, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(FIXED_COLS,b), basis_order_map);
 		}
 		else if (l==0)
 		{
-			contract_L(L, Abra[l], W[l], IS_HAMILTONIAN, Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(TRIANGULAR,b), basis_order_map);
+			contract_L(L, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(TRIANGULAR,b), basis_order_map);
 		}
 		else
 		{
-			contract_L(L, Abra[l], W[l], IS_HAMILTONIAN, Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(FULL,0), basis_order_map);
+			contract_L(L, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Lnext, false, make_pair(FULL,0), basis_order_map);
 		}
 		L.clear();
 		L = Lnext;
@@ -265,7 +264,6 @@ Tripod<Symmetry,MatrixType> make_YR (size_t a,
                                      const Tripod<Symmetry,MatrixType> &Rold,
                                      const vector<vector<Biped<Symmetry,MatrixType> > > &Abra, 
                                      const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<MpoScalar> > > > > > &W, 
-                                     const bool &IS_HAMILTONIAN, 
                                      const vector<vector<Biped<Symmetry,MatrixType> > > &Aket, 
                                      const vector<vector<qarray<Symmetry::Nq> > > &qloc,
                                      const vector<vector<qarray<Symmetry::Nq> > > &qOp,
@@ -278,15 +276,15 @@ Tripod<Symmetry,MatrixType> make_YR (size_t a,
 	{
 		if (l==0)
 		{
-			contract_R(R, Abra[l], W[l], IS_HAMILTONIAN, Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(FIXED_ROWS,a), basis_order_map);
+			contract_R(R, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(FIXED_ROWS,a), basis_order_map);
 		}
 		else if (l==Lcell-1)
 		{
-			contract_R(R, Abra[l], W[l], IS_HAMILTONIAN, Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(TRIANGULAR,a), basis_order_map);
+			contract_R(R, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(TRIANGULAR,a), basis_order_map);
 		}
 		else
 		{
-			contract_R(R, Abra[l], W[l], IS_HAMILTONIAN, Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(FULL,0), basis_order_map);
+			contract_R(R, Abra[l], W[l], Aket[l], qloc[l], qOp[l], Rnext, false, make_pair(FULL,0), basis_order_map);
 		}
 		R.clear();
 		R = Rnext;

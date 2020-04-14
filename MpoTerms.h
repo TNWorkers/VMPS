@@ -330,7 +330,7 @@ private:
      */
     std::vector<qType> calc_qList(const std::vector<OperatorType>& opList);
     
-protected:
+public:
     
     /**
      *  Local operator bases.
@@ -654,7 +654,7 @@ public:
     /**
      *  Creates an identity MPO with bond dimension 1
      */
-    void set_Identity();
+    void set_Identity(const typename Symmetry::qType& Q=Symmetry::qvacuum());
     
     /**
      *  Creates a zero MPO with bond dimension 1
@@ -2676,7 +2676,7 @@ scale(const double factor, const double offset)
                             std::map<qType,OperatorType>& existing_ops = (it->second)[row][col];
                             for(auto& [q,op] : existing_ops)
                             {
-                                op *= factor;
+                                op = factor*op;
                             }
                         }
                     }
@@ -3584,7 +3584,7 @@ prod_swap_IBC(std::vector<std::map<std::array<qType, 2>, std::vector<std::vector
     }
 }
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
-set_Identity()
+set_Identity(const typename Symmetry::qType& Q)
 {
     got_update();
     O.clear();
@@ -3594,18 +3594,18 @@ set_Identity()
     label = "Id";
     for(std::size_t loc=0; loc<N_sites; ++loc)
     {
-        auxdim[loc].insert({qVac,1});
+        auxdim[loc].insert({Q,1});
         std::map<qType,OperatorType> op_map;
-        OperatorType op = OperatorType(Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Identity(qPhys[loc].size(),qPhys[loc].size()).sparseView(),qVac);
+        OperatorType op = OperatorType(Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic>::Identity(qPhys[loc].size(),qPhys[loc].size()).sparseView(),Symmetry::qvacuum());
         #ifdef OPLABELS
         op.label = "id";
         #endif
-        op_map.insert({qVac,op});
+        op_map.insert({Symmetry::qvacuum(),op});
         std::vector<std::map<qType,OperatorType>> temp(1,op_map);
         std::vector<std::vector<std::map<qType,OperatorType>>> Oloc(1,temp);
-        O[loc].insert({{qVac,qVac},Oloc});
+        O[loc].insert({{Q,Q},Oloc});
     }
-    auxdim[N_sites].insert({qVac,1});
+    auxdim[N_sites].insert({Q,1});
     FINALIZED = true;
     calc(1);
 }

@@ -87,7 +87,7 @@ Array<Scalar,Dynamic,1> matrix_element (int iL,
 		
 		for (int l=iR; l>=iL; --l)
 		{
-			contract_R(B, Vbra.A_at(l), O.get_W_power(power_of_O)[l], O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.get_qOp_power(power_of_O)[l], Bnext);
+			contract_R(B, Vbra.A_at(l), O.get_W_power(power_of_O)[l], Vket.A_at(l), O.locBasis(l), O.get_qOp_power(power_of_O)[l], Bnext);
 			B.clear();
 			B = Bnext;
 			Bnext.clear();
@@ -165,7 +165,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		B.setVacuum();
 		for (size_t l=0; l<O.length(); ++l)
 		{
-			contract_L(B, Vbra.A_at(l), O.get_W_power(power_of_O)[l], O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.get_qOp_power(power_of_O)[l], Bnext);
+			contract_L(B, Vbra.A_at(l), O.get_W_power(power_of_O)[l], Vket.A_at(l), O.locBasis(l), O.get_qOp_power(power_of_O)[l], Bnext);
 			B.clear();
 			B = Bnext;
 			Bnext.clear();
@@ -189,7 +189,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 //		for (int l=O.length()-1; l>=0; --l)
 		for (size_t l=O.length()-1; l!=-1; --l)
 		{
-			contract_R(B, Vbra.A_at(l), O.get_W_power(power_of_O)[l], O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.get_qOp_power(power_of_O)[l], Bnext);
+			contract_R(B, Vbra.A_at(l), O.get_W_power(power_of_O)[l], Vket.A_at(l), O.locBasis(l), O.get_qOp_power(power_of_O)[l], Bnext);
 			B.clear();
 			B = Bnext;
 			Bnext.clear();
@@ -323,11 +323,11 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	{
 		if (USE_SQUARE == true)
 		{
-			contract_L(B, Vbra.A_at(l), O.Wsq_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
+			contract_L(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
 		}
 		else
 		{
-			contract_L(B, Vbra.A_at(l), O.W_at(l), O.IS_HAMILTONIAN(), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
+			contract_L(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
 		}
 		B.clear();
 		B = Bnext;
