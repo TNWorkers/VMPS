@@ -87,7 +87,7 @@ public:
 	
 	void setProductSum(const OperatorType& op1, const OperatorType& op2);
 	
-	void scale(double factor=1., double offset=0.);
+	// void scale(double factor=1., double offset=0.);
 		
 	void precalc_TwoSiteData(bool FORCE=false);
 
@@ -114,7 +114,7 @@ public:
 	inline OperatorType localOperator() const {return LocalOp;}
 	inline void set_localOperator (OperatorType LocalOp_input) {LocalOp = LocalOp_input;}
 	
-    static Mpo<Symmetry,Scalar> Identity(const std::vector<std::vector<qType>>& qPhys);
+    static Mpo<Symmetry,Scalar> Identity(const std::vector<std::vector<qType>>& qPhys, const qType& Q=Symmetry::qvacuum());
     static Mpo<Symmetry,Scalar> Zero(const std::vector<std::vector<qType>>& qPhys);
 	
 	inline bool IS_UNITARY() const {return UNITARY;};
@@ -351,14 +351,14 @@ sparsity (bool USE_SQUARE, bool PER_MATRIX) const
 }*/
 
 template<typename Symmetry, typename Scalar> Mpo<Symmetry,Scalar> Mpo<Symmetry,Scalar>::
-Identity(const std::vector<std::vector<qType>>& qPhys)
+Identity(const std::vector<std::vector<qType>>& qPhys, const typename Symmetry::qType& Q)
 {
     Mpo<Symmetry,Scalar> out(qPhys.size(), Symmetry::qvacuum(), "Id", true, true, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
     for(std::size_t loc=0; loc<qPhys.size(); ++loc)
     {
         out.set_qPhys(loc, qPhys[loc]);
     }
-    out.set_Identity();
+    out.set_Identity(Q);
 	return out;
 }
 
@@ -565,8 +565,13 @@ setLocal(std::size_t loc, const OperatorType& op)
     assert(this->check_qPhys() and "Physical bases have to be set before");
 	LocalOp   = op;
 	LocalSite = loc;
-    this->push(loc, {op});
-    this->finalize(PROP::COMPRESS, 1);
+	PushType<SiteOperator<Symmetry,Scalar>,Scalar> pushlist;
+	auto Ops = Mpo<Symmetry,Scalar>::get_N_site_interaction(op);
+	pushlist.push_back(std::make_tuple(loc, Ops, 1.));
+	std::vector<std::vector<std::string>> labellist(this->N_sites);
+	this->construct_from_pushlist(pushlist, labellist, 1);
+	this->finalize(PROP::COMPRESS, 1);
+	this->calc_reversedData_from_pushlist(pushlist);	
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -676,11 +681,17 @@ template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
 setLocalSum(const std::vector<OperatorType>& ops, std::vector<Scalar> coeffs)
 {
     assert(this->check_qPhys() and "Physical bases have to be set before");
+	PushType<SiteOperator<Symmetry,Scalar>,Scalar> pushlist;
     for (std::size_t loc=0; loc<this->size(); ++loc)
     {
-        this->push(loc, {coeffs[loc]*ops[loc]});
+		auto Ops = Mpo<Symmetry,Scalar>::get_N_site_interaction(coeffs[loc]*ops[loc]);
+		pushlist.push_back(std::make_tuple(loc, Ops, 1.));
+        // this->push(loc, {coeffs[loc]*ops[loc]});
     }
-    this->finalize(PROP::COMPRESS, 1);
+	std::vector<std::vector<std::string>> labellist(this->N_sites);
+	this->construct_from_pushlist(pushlist, labellist, 1);
+	this->finalize(PROP::COMPRESS, 1);
+	this->calc_reversedData_from_pushlist(pushlist);
 }
 
 template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
@@ -694,32 +705,32 @@ setProductSum(const OperatorType& op1, const OperatorType& op2)
     this->finalize(PROP::COMPRESS, 1);
 }
 
-template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
-scale(double factor, double offset)
-{
-	if (LocalSite != -1)
-	{
-		auto Id = LocalOp;
-		Id.setIdentity();
-        #ifdef OPLABELS
-        Id.label = "id";
-        #endif
-        if(std::abs(factor - 1.0) > ::mynumeric_limits<Scalar>::epsilon())
-        {
-            LocalOp = factor * LocalOp;
-        }
-		if(std::abs(offset) > ::mynumeric_limits<Scalar>::epsilon())
-        {
-            LocalOp += offset * Id;
-        }
-		setLocal(LocalSite, LocalOp, this->get_boundary_condition());
-	}
-	else
-	{
-		this->scale(factor, offset);
-        this->finalize(PROP::COMPRESS, 1);
-	}
-}
+// template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
+// scale(double factor, double offset)
+// {
+// 	// if (LocalSite != -1)
+// 	// {
+// 	// 	auto Id = LocalOp;
+// 	// 	Id.setIdentity();
+//     //     #ifdef OPLABELS
+//     //     Id.label = "id";
+//     //     #endif
+//     //     if(std::abs(factor - 1.0) > ::mynumeric_limits<Scalar>::epsilon())
+//     //     {
+//     //         LocalOp = factor * LocalOp;
+//     //     }
+// 	// 	if(std::abs(offset) > ::mynumeric_limits<Scalar>::epsilon())
+//     //     {
+//     //         LocalOp += offset * Id;
+//     //     }
+// 	// 	setLocal(LocalSite, LocalOp);
+// 	// }
+// 	// else
+// 	{
+// 		this->scale(factor, offset);
+//         this->finalize(PROP::COMPRESS, 1);
+// 	}
+// }
 
 template<typename Symmetry, typename Scalar>
 void Mpo<Symmetry,Scalar>::

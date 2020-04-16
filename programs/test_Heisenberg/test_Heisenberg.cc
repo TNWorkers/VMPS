@@ -84,7 +84,7 @@ int M, Dtot;
 double Stot;
 size_t D, D1;
 size_t L, Ly, Ldyn;
-double J, Jprime, Jrung, Jloc, Jtri, R;
+double J, Jx, Jy, Jz, Jprime, Jrung, Jloc, Jtri, R, Bz;
 double alpha;
 double t_U0, t_U1, t_SU2;
 size_t Dinit, Dlimit, Qinit, Imin, Imax;
@@ -96,7 +96,7 @@ bool U0, U1, SU2;
 
 double E_U0_compressor=0., E_U0_zipper=0.;
 MatrixXd SpinCorr_U0;
-Eigenstate<VMPS::Heisenberg::StateXd>    g_U0;
+Eigenstate<VMPS::HeisenbergXYZ::StateXcd> g_U0;
 Eigenstate<VMPS::HeisenbergU1::StateXd>  g_U1;
 Eigenstate<VMPS::HeisenbergSU2::StateXd> g_SU2;
 
@@ -115,6 +115,10 @@ int main (int argc, char* argv[])
 	Ly = args.get<size_t>("Ly",1);
 	Ldyn = args.get<size_t>("Ldyn",12);
 	J = args.get<double>("J",1.);
+	Jx = args.get<double>("Jx",J);
+	Jy = args.get<double>("Jy",J);
+	Jz = args.get<double>("Jz",J);
+	Bz = args.get<double>("Bz",0.);
 	R = args.get<double>("R",R);
 	Jrung = args.get<double>("Jrung",J);
 	Jprime = args.get<double>("Jprime",0.);
@@ -184,10 +188,10 @@ int main (int argc, char* argv[])
 		lout << endl << "--------U(0)---------" << endl << endl;
 		
 		Stopwatch<> Watch_U0;
-		VMPS::Heisenberg H_U0(L,{{"J",J},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"maxPower",maxPower}});
+		VMPS::HeisenbergXYZ H_U0(L,{{"Jx",Jx},{"Jy",Jy},{"Jz",Jz},{"Bz",Bz},{"D",D},{"Ly",Ly},{"maxPower",maxPower}});
 		lout << H_U0.info() << endl;
 		
-		VMPS::Heisenberg::Solver DMRG_U0(VERB);
+		VMPS::HeisenbergXYZ::Solver DMRG_U0(VERB);
 		DMRG_U0.userSetGlobParam();
 		DMRG_U0.userSetDynParam();
 		DMRG_U0.GlobParam = H_U0.get_DmrgGlobParam(SweepParams);
@@ -197,7 +201,7 @@ int main (int argc, char* argv[])
 		ArrayXd check(maxPower);
 		for (size_t i=1; i<=maxPower;i++)
 		{
-			check(i-1) = avg(g_U0.state,H_U0,g_U0.state,i) - std::pow(g_U0.energy,i);
+			check(i-1) = std::real(avg(g_U0.state,H_U0,g_U0.state,i)) - std::pow(g_U0.energy,i);
 		}
 		cout << "check=" << check.transpose() << endl;
 		t_U0 = Watch_U0.time();

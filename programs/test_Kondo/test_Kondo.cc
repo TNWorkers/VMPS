@@ -316,7 +316,7 @@ int main (int argc, char* argv[])
 			for (size_t i=0; i<L; i++)
 			for (size_t j=0; j<L; j++)
 			{
-				densityMatrixB_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdag(i,0,sqrt(2.)), H_SU2xU1.c(j,0,1.), g_SU2xU1.state);
+				densityMatrixB_SU2xU1(i,j) = avg(g_SU2xU1.state, H_SU2xU1.cdag(i,0,-sqrt(2.)), H_SU2xU1.c(j,0,1.), g_SU2xU1.state);
 			}
 		}
 	}

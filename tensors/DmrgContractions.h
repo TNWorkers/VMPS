@@ -19,7 +19,6 @@ enum CONTRACT_LR_MODE {FULL, TRIANGULAR, FIXED_ROWS, FIXED_COLS};
  * \param Lold
  * \param Abra
  * \param W
- * \param IS_HAMILTONIAN : If the Mpo is a Hamiltonian, the calculation can be optimized
  * \param Aket
  * \param qloc : local basis
  * \param qOp : operator basis
@@ -36,7 +35,6 @@ template<typename Symmetry, typename MatrixType, typename MatrixType2, typename 
 void contract_L (const Tripod<Symmetry,MatrixType2> &Lold, 
                  const vector<Biped<Symmetry,MatrixType> > &Abra, 
                  const vector<vector<vector<Biped<Symmetry,MpoMatrixType> > > > &W,
-                 const bool &IS_HAMILTONIAN,
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  const vector<qarray<Symmetry::Nq> > &qOp, 
@@ -159,7 +157,6 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
  * \param Rold
  * \param Abra
  * \param W
- * \param IS_HAMILTONIAN : If the Mpo is a Hamiltonian, the calculation can be optimized
  * \param Aket
  * \param qloc : local basis
  * \param qOp : operator basis
@@ -176,7 +173,6 @@ template<typename Symmetry, typename MatrixType, typename MatrixType2, typename 
 void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
                  const vector<Biped<Symmetry,MatrixType> > &Abra, 
                  const vector<vector<vector<Biped<Symmetry,MpoMatrixType> > > > &W,
-                 const bool &IS_HAMILTONIAN,
                  const vector<Biped<Symmetry,MatrixType> > &Aket, 
                  const vector<qarray<Symmetry::Nq> > &qloc,
                  const vector<qarray<Symmetry::Nq> > &qOp, 

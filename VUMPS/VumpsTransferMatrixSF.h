@@ -14,11 +14,12 @@ struct TransferMatrixSF
 	                  const Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > &Leigen_input, 
 	                  const Biped<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > &Reigen_input, 
 	                  const vector<vector<qarray<Symmetry::Nq> > > &qloc_input,
-	                  double k_input)
+	                  double k_input,
+					  const typename Symmetry::qType& Q = Symmetry::qvacuum())
 	:DIR(DIR_input), Abra(Abra_input), Aket(Aket_input), 
 	 qloc(qloc_input), k(k_input)
 	{
-		Id = Mpo<Symmetry,Scalar>::Identity(qloc);
+		Id = Mpo<Symmetry,Scalar>::Identity(qloc, Q);
 		Leigen = Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> >(Leigen_input);
 		Reigen = Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> >(Reigen_input);
 	}
@@ -55,9 +56,7 @@ void HxV (const TransferMatrixSF<Symmetry,Scalar> &H, const MpoTransferVector<Sy
 		Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > R = Vin.data;
 		for (int l=Lcell-1; l>=0; --l)
 		{
-			// The identity can be regarded as a Hamiltonian, but HAMILTONIAN ist still forced to false 
-			// because there can be a mid quantum number carried through the contraction.
-			contract_R(R, H.Abra[l], H.Id.W_at(l), false, H.Aket[l], H.qloc[l], H.Id.opBasis(l), Rnext);
+			contract_R(R, H.Abra[l], H.Id.W_at(l), H.Aket[l], H.qloc[l], H.Id.opBasis(l), Rnext);
 			R.clear();
 			R = Rnext;
 			Rnext.clear();
@@ -71,7 +70,7 @@ void HxV (const TransferMatrixSF<Symmetry,Scalar> &H, const MpoTransferVector<Sy
 		Tripod<Symmetry,Matrix<complex<Scalar>,Dynamic,Dynamic> > L = Vin.data;
 		for (size_t l=0; l<Lcell; ++l)
 		{
-			contract_L(L, H.Abra[l], H.Id.W_at(l), false, H.Aket[l], H.qloc[l], H.Id.opBasis(l), Lnext);
+			contract_L(L, H.Abra[l], H.Id.W_at(l), H.Aket[l], H.qloc[l], H.Id.opBasis(l), Lnext);
 			L.clear();
 			L = Lnext;
 			Lnext.clear();
@@ -103,6 +102,7 @@ void HxV (const TransferMatrixSF<Symmetry,Scalar> &H, const MpoTransferVector<Sy
 		Vout.data.addScale(-exp(-1.i*H.k), TxV.template cast<Matrix<complex<Scalar>,Dynamic,Dynamic> >());
 		// add <Vin|R>*exp(-i*k)*<L|
 		complex<Scalar> VdotR = contract_LR(Vin.data, H.Reigen);
+		if (std::abs(VdotR) > 0.) {cout << termcolor::red << "VdotR>0" << termcolor::reset << endl;}
 		Vout.data.addScale(+exp(-1.i*H.k)*VdotR, H.Leigen);
 	}
 }
