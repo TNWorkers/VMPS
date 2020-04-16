@@ -439,7 +439,8 @@ int main (int argc, char* argv[])
 				                         avg(g_U1.state, H_U1.cdag<DN>(i), H_U1.c<DN>(j), g_U1.state);
 			}
 			
-//			lout << "P U(1): " << Ptot(densityMatrix_U1,L) << "\t" << Ptot(densityMatrix_U1B,L) << endl;
+			cout << endl << densityMatrix_U1A << endl << endl;
+			cout << endl << densityMatrix_U1B << endl << endl;
 			
 			for (size_t i=0; i<L; ++i) 
 			{
@@ -569,6 +570,9 @@ int main (int argc, char* argv[])
 				                   0.5*(avg(g_SU2.state, H_SU2.TpTm(i,j), g_SU2.state) + 
 				                        avg(g_SU2.state, H_SU2.TmTp(i,j), g_SU2.state));
 			}
+			
+			cout << endl << densityMatrix_SU2A << endl << endl;
+			cout << endl << densityMatrix_SU2B << endl << endl;
 			
 			cout << "(densityMatrix_SU2A-densityMatrix_SU2B).norm()=" << (densityMatrix_SU2A-densityMatrix_SU2B).norm() << endl;
 			

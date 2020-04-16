@@ -107,74 +107,10 @@ enum BC
 std::ostream& operator<< (std::ostream& s, BC boundary)
 {
 	// if      (boundary==BC::PERIODIC) {s << "periodic (finite system)";}
-    if      (boundary==BC::OPEN)     {s << "open";}
+	if      (boundary==BC::OPEN)     {s << "open";}
 	else if (boundary==BC::INFINITE) {s << "infinite";}
 	return s;
 }
-
-//template<BC_CHOICE CHOICE> struct BC;
-
-//template<>
-//struct BC<HAIRSLIDE>
-//{
-//	BC (size_t Lx_input)
-//	:Lx(Lx_input/2), Ly(2), CHOICE(HAIRSLIDE)
-//	{
-//		assert(Lx_input%2==0 and "L must be even for rings because of folding!");
-//	}
-//	
-//	BC_CHOICE CHOICE;
-//	size_t Lx;
-//	size_t Ly;
-//};
-
-//template<>
-//struct BC<RING>
-//{
-//	BC (size_t Lx_input)
-//	:Lx(Lx_input), Ly(1), CHOICE(RING)
-//	{}
-//	
-//	BC_CHOICE CHOICE;
-//	size_t Lx;
-//	size_t Ly;
-//};
-
-//template<>
-//struct BC<CYLINDER>
-//{
-//	BC (size_t Lx_input, size_t Ly_input)
-//	:Lx(Lx_input), Ly(Ly_input), CHOICE(CYLINDER)
-//	{}
-//	
-//	BC_CHOICE CHOICE;
-//	size_t Lx;
-//	size_t Ly;
-//};
-
-//template<>
-//struct BC<FLADDER>
-//{
-//	BC (size_t Lx_input)
-//	:Lx(2*Lx_input), Ly(1), CHOICE(FLADDER)
-//	{}
-//	
-//	BC_CHOICE CHOICE;
-//	size_t Lx;
-//	size_t Ly;
-//};
-
-//template<>
-//struct BC<CHAIN>
-//{
-//	BC (size_t Lx_input)
-//	:Lx(Lx_input), Ly(1), CHOICE(CHAIN)
-//	{}
-//	
-//	BC_CHOICE CHOICE;
-//	size_t Lx;
-//	size_t Ly;
-//};
 
 /// \cond
 #include <Eigen/Dense>

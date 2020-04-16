@@ -57,6 +57,9 @@ public:
 	 * \param H : Non-local information for DMRG::BROOM::RDM and DMRG::BROOM::RICH_SVD enters thorugh here.
 	 */
 	void skim (DMRG::BROOM::OPTION TOOL, PivotMatrixType *H = NULL);
+	
+	/** Like skim, but sets eps_svd temporarily to 0.*/
+	void entropy_skim();
 	///@}
 	
 	///@{
@@ -166,6 +169,25 @@ skim (DMRG::BROOM::OPTION TOOL, PivotMatrixType *H)
 	{
 		skim(DMRG::DIRECTION::LEFT,TOOL,H);
 	}
+}
+
+template<typename PivotMatrixType>
+void DmrgJanitor<PivotMatrixType>::
+entropy_skim()
+{
+	double eps_svd_bak = eps_svd;
+	eps_svd = 0.;
+	
+	if (pivot == 0)
+	{
+		skim(DMRG::DIRECTION::RIGHT,DMRG::BROOM::SVD,NULL);
+	}
+	else
+	{
+		skim(DMRG::DIRECTION::LEFT,DMRG::BROOM::SVD,NULL);
+	}
+	
+	eps_svd = eps_svd_bak;
 }
 
 template<typename PivotMatrixType>

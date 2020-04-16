@@ -469,7 +469,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		else
 		{
 			assert(Rtmp.dim == 1 and
-            Rtmp.block[0][0][0].rows() == 1 and
+			Rtmp.block[0][0][0].rows() == 1 and
 			       Rtmp.block[0][0][0].cols() == 1 and
 			       "Result of contraction <ψ|H|ψ> in DmrgSolver::prepare is not a scalar!");
 			Eold = isReal(Rtmp.block[0][0][0](0,0));
@@ -481,7 +481,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		Eold = std::real(avg(Vout.state,H,Vout.state));
 	}
 	Vout.energy = Eold;
-
+	
 	// initial cutoffs
 	Vout.state.eps_svd    = DynParam.eps_svd(0);
 	Vout.state.alpha_rsvd = DynParam.max_alpha_rsvd(0);

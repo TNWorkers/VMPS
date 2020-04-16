@@ -191,7 +191,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 			}
 			
 			stringstream ss;
-			ss << label << "ⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
+			ss << label << "(" << Geometry2D::hoppingInfo(Full) << ")";
 			labellist[loc].push_back(ss.str());
 		};
 
@@ -202,7 +202,7 @@ set_operators (const vector<SpinBase<Symmetry> > &B, const ParamHandler &P, Push
 		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jperp.a));
         pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 
-		// Case where a full coupling matrix is provided: Jᵢⱼ (all the code below this funtion will be skipped then.)
+		// Case where a full coupling matrix is providedf: Jᵢⱼ (all the code below this funtion will be skipped then.)
 		if (P.HAS("Jfull"))
 		{
 			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > first {B[loc].Sdag(0)};

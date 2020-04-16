@@ -5,7 +5,7 @@ namespace VMPS
 {
 
 template<typename MODEL, typename Symmetry>
-typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec)
+typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec, double factor=1.)
 {
 	typename MODEL::Operator Res;
 	
@@ -14,11 +14,22 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec)
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2())
 		{
-			Res = H.S(loc,0,1.);
+			Res = H.S(loc,0,factor);
 		}
 		else
 		{
 			Res = H.Scomp(SP,loc,0);
+		}
+	}
+	else if (spec == "SDAGSF")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2())
+		{
+			Res = H.Sdag(loc,0,factor);
+		}
+		else
+		{
+			Res = H.Scomp(SM,loc,0);
 		}
 	}
 	else if (spec == "SSZ")
@@ -37,7 +48,7 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec)
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 		{
-			Res = H.c(loc,0,1.);
+			Res = H.c(loc,0,factor);
 		}
 		else
 		{
@@ -48,7 +59,7 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec)
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 		{
-			Res = H.c(loc,0,1.);
+			Res = H.c(loc,0,factor);
 		}
 		else
 		{
@@ -60,22 +71,22 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec)
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 		{
-			Res = H.cdag(loc,0,1.);
+			Res = H.cdag(loc,0,factor);
 		}
 		else
 		{
-			Res = H.template cdag<UP>(loc,0,1.);
+			Res = H.template cdag<UP>(loc,0,factor);
 		}
 	}
 	else if (spec == "IPEDN")
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 		{
-			Res = H.cdag(loc,0,1.);
+			Res = H.cdag(loc,0,factor);
 		}
 		else
 		{
-			Res = H.template cdag<DN>(loc,0,1.);
+			Res = H.template cdag<DN>(loc,0,factor);
 		}
 	}
 	// charge structure factor
@@ -126,6 +137,18 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec)
 			Res = H.Tp(loc,0);
 		}
 	}
+	// pseudospin structure factor
+	else if (spec == "PDAGSF")
+	{
+		if constexpr (Symmetry::IS_CHARGE_SU2())
+		{
+			Res = H.Tdag(loc,0);
+		}
+		else
+		{
+			Res = H.Tm(loc,0);
+		}
+	}
 	// pseudospin structure factor: z-component
 	else if (spec == "PSZ")
 	{
@@ -148,6 +171,25 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec)
 bool TIME_DIR (std::string spec)
 {
 	return (spec=="PES" or spec=="PESUP" or spec=="PESDN" or spec=="AES")? false:true;
+}
+
+string DAG (std::string spec)
+{
+	string res;
+	if (spec == "PES")        res = "IPE";
+	if (spec == "PESUP")      res = "IPEUP";
+	if (spec == "PESDN")      res = "IPEDN";
+	else if (spec == "SSF")   res = "SDAGSF";
+	else if (spec == "SSZ")   res = "SSZ";
+	else if (spec == "IPE")   res = "PES";
+	else if (spec == "IPEUP") res = "PESUP";
+	else if (spec == "IPEDN") res = "PESDN";
+	else if (spec == "AES")   res = "APS";
+	else if (spec == "APS")   res = "AES";
+	else if (spec == "CSF")   res = "CSF";
+	else if (spec == "PSZ")   res = "PSZ";
+	else if (spec == "PSF")   res = "PDAGSF";
+	return res;
 }
 
 } // namespace VMPS

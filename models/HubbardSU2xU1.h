@@ -175,7 +175,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			
 			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
 			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
-
+			
 			for (size_t j=0; j<first.size(); j++)
 			for (size_t h=0; h<R[loc].size(); ++h)
 			{
@@ -211,7 +211,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {cdag_sign_local,c_sign_local};
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {c_ranges,cdag_ranges};
 			push_full("tFull", "tᵢⱼ", first, last, {-std::sqrt(2.), -std::sqrt(2.)}, PROP::FERMIONIC);			
-		}		
+		}
 		if (P.HAS("Vzfull"))
 		{
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {F[loc].Tz(0)};
@@ -251,10 +251,10 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > PsiLran(N_sites); for(size_t i=0; i<N_sites; i++) {PsiLran[i] = (F[i].ns() * F[i].c());}
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > PsiRran(N_sites); for(size_t i=0; i<N_sites; i++) {PsiRran[i] = (F[i].c() * F[i].ns());}
-
+			
 			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsidagLloc = ((F[loc].cdag() * F[loc].sign()) * F[loc].ns());
 			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsidagRloc = ((F[loc].ns() * F[loc].cdag()) * F[loc].sign());
-
+			
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > PsidagLran(N_sites); for(size_t i=0; i<N_sites; i++) {PsidagLran[i] = (F[i].cdag() * F[i].ns());}
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > PsidagRran(N_sites); for(size_t i=0; i<N_sites; i++) {PsidagRran[i] = (F[i].ns() * F[i].cdag());}
 			
@@ -285,9 +285,11 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		labellist[loc].push_back(Vzperp.label);
 		labellist[loc].push_back(Vxyperp.label);
 		labellist[loc].push_back(Jperp.label);
-
-		auto Hloc = Mpo<Symmetry_,double>::get_N_site_interaction(F[loc].template HubbardHamiltonian<double>(U.a, Uph.a, t0.a-mu.a,
-																											tperp.a, Vperp.a, Vzperp.a, Vxyperp.a, Jperp.a));
+		
+		auto Hloc = Mpo<Symmetry_,double>::get_N_site_interaction
+		(
+			F[loc].template HubbardHamiltonian<double>(U.a, Uph.a, t0.a-mu.a, tperp.a, Vperp.a, Vzperp.a, Vxyperp.a, Jperp.a)
+		);
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
 		// Nearest-neighbour terms: t, V, J
@@ -387,9 +389,13 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 					
 					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> c_nextn    = F[lp2].c(beta);
 					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdag_nextn = F[lp2].cdag(beta);
-
-					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(cdag_sign_local, sign_tight, c_nextn), -std::sqrt(2.)*tPrime(alfa,beta)));
-					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(c_sign_local, sign_tight, cdag_nextn), -std::sqrt(2.)*tPrime(alfa,beta)));
+					
+					pushlist.push_back(std::make_tuple(loc, 
+					                   Mpo<Symmetry_,double>::get_N_site_interaction(cdag_sign_local, sign_tight, c_nextn), 
+					                   -std::sqrt(2.)*tPrime(alfa,beta)));
+					pushlist.push_back(std::make_tuple(loc, 
+					                   Mpo<Symmetry_,double>::get_N_site_interaction(c_sign_local, sign_tight, cdag_nextn), 
+					                   -std::sqrt(2.)*tPrime(alfa,beta)));
 				}
 			}
 		}
@@ -413,9 +419,13 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 					
 					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> c_nnextn    = F[lp3].c(beta);
 					SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdag_nnextn = F[lp3].cdag(beta);
-
-					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(cdag_sign_local, sign_tight, sign_nextn, c_nnextn), -std::sqrt(2.)*tPrimePrime(alfa,beta)));
-					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(c_sign_local, sign_tight, sign_nextn, cdag_nnextn), -std::sqrt(2.)*tPrimePrime(alfa,beta)));					
+					
+					pushlist.push_back(std::make_tuple(loc, 
+					                   Mpo<Symmetry_,double>::get_N_site_interaction(cdag_sign_local, sign_tight, sign_nextn, c_nnextn), 
+					                   -std::sqrt(2.)*tPrimePrime(alfa,beta)));
+					pushlist.push_back(std::make_tuple(loc, 
+					                   Mpo<Symmetry_,double>::get_N_site_interaction(c_sign_local, sign_tight, sign_nextn, cdag_nnextn), 
+					                   -std::sqrt(2.)*tPrimePrime(alfa,beta)));
 				}
 			}
 		}

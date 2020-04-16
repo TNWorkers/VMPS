@@ -23,6 +23,195 @@ ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0.)
 	return res;
 }
 
+// reference: PRB 93, 165406 (2016), Appendix C
+ArrayXXd hopping_fullerene (int L=60, double t=1.)
+{
+	ArrayXXd res(L,L); res.setZero();
+	
+	if (L== 60)
+	{
+		res(0,4) = t;
+		res(3,4) = t;
+		res(2,3) = t;
+		res(1,2) = t;
+		res(0,1) = t;
+		
+		res(0,8) = t;
+		res(4,5) = t;
+		res(3,17) = t;
+		res(2,14) = t;
+		res(1,11) = t;
+		
+		res(7,8) = t;
+		res(6,7) = t;
+		res(5,6) = t;
+		res(5,19) = t;
+		res(18,19) = t;
+		res(17,18) = t;
+		res(16,17) = t;
+		res(15,16) = t;
+		res(14,15) = t;
+		res(13,14) = t;
+		res(12,13) = t;
+		res(11,12) = t;
+		res(10,11) = t;
+		res(9,10) = t;
+		res(8,9) = t;
+		
+		res(7,22) = t;
+		res(6,21) = t;
+		res(19,20) = t;
+		res(18,29) = t;
+		res(16,28) = t;
+		res(15,27) = t;
+		res(13,26) = t;
+		res(12,25) = t;
+		res(10,24) = t;
+		res(9,23) = t;
+		
+		res(22,33) = t;
+		res(32,33) = t;
+		res(21,32) = t;
+		res(20,21) = t;
+		res(20,31) = t;
+		res(30,31) = t;
+		res(29,30) = t;
+		res(28,29) = t;
+		res(28,39) = t;
+		res(38,39) = t;
+		res(27,38) = t;
+		res(26,27) = t;
+		res(26,37) = t;
+		res(36,37) = t;
+		res(25,36) = t;
+		res(24,25) = t;
+		res(24,35) = t;
+		res(34,35) = t;
+		res(23,34) = t;
+		res(22,23) = t;
+		
+		res(33,46) = t;
+		res(32,44) = t;
+		res(31,43) = t;
+		res(30,41) = t;
+		res(39,40) = t;
+		res(38,53) = t;
+		res(37,52) = t;
+		res(36,50) = t;
+		res(35,49) = t;
+		res(34,47) = t;
+		
+		res(45,46) = t;
+		res(44,45) = t;
+		res(43,44) = t;
+		res(42,43) = t;
+		res(41,42) = t;
+		res(40,41) = t;
+		res(40,54) = t;
+		res(53,54) = t;
+		res(52,53) = t;
+		res(51,52) = t;
+		res(50,51) = t;
+		res(49,50) = t;
+		res(48,49) = t;
+		res(47,48) = t;
+		res(46,47) = t;
+		
+		res(45,57) = t;
+		res(42,56) = t;
+		res(54,55) = t;
+		res(51,59) = t;
+		res(48,58) = t;
+		res(56,57) = t;
+		res(55,56) = t;
+		res(55,59) = t;
+		res(58,59) = t;
+		res(57,58) = t;
+	}
+	// reference: https://www.qmul.ac.uk/sbcs/iupac/fullerene2/311.html
+	// also in: Phys. Rev. B 72, 064453 (2005)
+	else if (L == 20)
+	{
+		res(11,12) = t;
+		res(12,13) = t;
+		res(13,14) = t;
+		res(5,14) = t;
+		res(5,6) = t;
+		res(6,7) = t;
+		res(7,8) = t;
+		res(8,9) = t;
+		res(9,10) = t;
+		res(10,11) = t;
+		
+		res(0,1) = t;
+		res(1,2) = t;
+		res(2,3) = t;
+		res(3,4) = t;
+		res(0,4) = t;
+		
+		res(2,11) = t;
+		res(3,13) = t;
+		res(4,5) = t;
+		res(0,7) = t;
+		res(1,9) = t;
+		res(2,11) = t;
+		
+		res(15,16) = t;
+		res(16,17) = t;
+		res(17,18) = t;
+		res(18,19) = t;
+		res(15,19) = t;
+		
+		res(12,19) = t;
+		res(14,15) = t;
+		res(6,16) = t;
+		res(8,17) = t;
+		res(10,18) = t;
+	}
+	// reference: Phys. Rev. B 72, 064453 (2005)
+	else if (L == 12)
+	{
+		res(0,1) = t;
+		res(1,2) = t;
+		res(0,2) = t;
+		
+		res(1,5) = t;
+		res(2,5) = t;
+		res(2,6) = t;
+		res(2,3) = t;
+		res(0,3) = t;
+		res(0,7) = t;
+		res(0,4) = t;
+		res(1,4) = t;
+		res(1,8) = t;
+		
+		res(4,8) = t;
+		res(5,8) = t;
+		res(5,6) = t;
+		res(3,6) = t;
+		res(3,7) = t;
+		res(4,7) = t;
+		
+		res(8,10) = t;
+		res(5,10) = t;
+		res(6,10) = t;
+		res(6,11) = t;
+		res(3,11) = t;
+		res(7,11) = t;
+		res(7,9) = t;
+		res(4,9) = t;
+		res(9,8) = t;
+		
+		res(9,10) = t;
+		res(10,11) = t;
+		res(9,11) = t;
+	}
+	
+	res += res.transpose().eval();
+	
+	return res;
+}
+
 void push_back_KondoUnpacked (vector<Param> &params, size_t L, double J, double t, size_t D, bool START_WITH_SPIN=true)
 {
 	int SPIN_PARITY = (START_WITH_SPIN==true)? 0:1;

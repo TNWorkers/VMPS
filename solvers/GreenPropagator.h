@@ -16,7 +16,7 @@
 \param MPI_PPI : from -pi to +pi
 \param ZERO_2PI : from 0 to +2*pi
 */
-enum Q_RANGE {MPI_PPI, ZERO_2PI};
+enum Q_RANGE {MPI_PPI=0, ZERO_2PI=1};
 enum GREEN_INTEGRATION {DIRECT=0, INTERP=1};
 
 std::ostream& operator<< (std::ostream& s, GREEN_INTEGRATION GI)
@@ -322,9 +322,9 @@ public:
 	void compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPhi, double Eg, 
 	                   bool TIME_FORWARDS = true, bool COUNTERPROPAGATE = true);
 	
-	void compute_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, const Mps<Symmetry,complex<double>> &Phi, 
+	void compute_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Odag, const Mps<Symmetry,complex<double>> &Phi, 
 	                      Mps<Symmetry,complex<double>> &OxPhi0, bool TIME_FORWARDS);
-	void compute_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, const Mps<Symmetry,complex<double>> &Phi, 
+	void compute_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Odag, const Mps<Symmetry,complex<double>> &Phi, 
 	                           vector<Mps<Symmetry,complex<double>>> &OxPhi0, bool TIME_FORWARDS);
 	
 	/**
@@ -628,9 +628,7 @@ propagate (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &Ox
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("wavepacket measurement") << endl;
 		
 		// 3. check entropy increase
-		auto PsiTmp = Psi;
-		PsiTmp.eps_svd = 1e-15;
-		PsiTmp.skim(DMRG::BROOM::SVD);
+		auto PsiTmp = Psi; PsiTmp.entropy_skim();
 		double r = (t.index()==0)? 1.:tsteps(t.index()-1)/tsteps(t.index());
 		// If INTERP is used, G(t=0) is used in the first step and t.index()==1 is the first real propagation step.
 		// Force 2-site here algorithm for better accuracay:
@@ -662,7 +660,7 @@ propagate (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &Ox
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-compute_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, const Mps<Symmetry,complex<double>> &Phi, 
+compute_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Odag, const Mps<Symmetry,complex<double>> &Phi, 
                  Mps<Symmetry,complex<double>> &OxPhi0, bool TIME_FORWARDS)
 {
 	print_starttext();
@@ -682,7 +680,7 @@ compute_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox
 	make_xarrays(Lhetero,Lcell,Ncells);
 	calc_intweights();
 	
-	propagate_thermal(H, Ox, Phi, OxPhi0, TIME_FORWARDS);
+	propagate_thermal(H, Odag, Phi, OxPhi0, TIME_FORWARDS);
 	
 	if (NQ == 0)
 	{
@@ -705,7 +703,7 @@ compute_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, Mps<Symmetry,complex<double>> Phi, 
+propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Odag, Mps<Symmetry,complex<double>> Phi, 
                    Mps<Symmetry,complex<double>> &OxPhi0, bool TIME_FORWARDS)
 {
 	double tsign = (TIME_FORWARDS==true)? -1.:+1.;
@@ -800,7 +798,7 @@ propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &
 		
 		// 3. measure
 		// 3.1. Green's function
-		calc_Green_thermal(t.index(), Ox, Phi, Psi);
+		calc_Green_thermal(t.index(), Odag, Phi, Psi);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("G(t,x) calculation") << endl;
 		
 		// 3.2. measure wavepacket at t
@@ -811,9 +809,7 @@ propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("wavepacket measurement") << endl;
 		
 		// 4.1. check entropy increase of Psi
-		auto PsiTmp = Psi;
-		PsiTmp.eps_svd = 1e-15;
-		PsiTmp.skim(DMRG::BROOM::SVD);
+		auto PsiTmp = Psi; PsiTmp.entropy_skim();
 		double r = (t.index()==0)? 1.:tsteps(t.index()-1)/tsteps(t.index());
 		// If INTERP is used, G(t=0) is used in the first step and t.index()==1 is the first real propagation step.
 		// Force 2-site here algorithm for better accuracay:
@@ -826,9 +822,7 @@ propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &
 		TWO_SITE_KET = SobsKet.TWO_SITE(t.index(), PsiTmp, r, true_overrides_ket);
 		
 		// 4.1. check entropy increase of Phi
-		auto PhiTmp = Phi;
-		PhiTmp.eps_svd = 1e-15;
-		PhiTmp.skim(DMRG::BROOM::SVD);
+		auto PhiTmp = Phi; PhiTmp.entropy_skim();
 		r = (t.index()==0)? 1.:tsteps(t.index()-1)/tsteps(t.index());
 		// If INTERP is used, G(t=0) is used in the first step and t.index()==1 is the first real propagation step.
 		// Force 2-site here algorithm for better accuracay:
@@ -973,9 +967,12 @@ propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>
 		#pragma omp parallel for
 		for (int i=0; i<Lcell; ++i)
 		{
-			//-------------------------------------------------------------------------------------------------
-			TDVP[i].t_step_adaptive(H, Psi[i], 1.i*tsign*tsteps(t.index()), TWO_SITE[i], 1,tol_Lanczos);
-			//-------------------------------------------------------------------------------------------------
+			if (tsteps(t.index()) != 0.)
+			{
+				//-------------------------------------------------------------------------------------------------
+				TDVP[i].t_step_adaptive(H, Psi[i], 1.i*tsign*tsteps(t.index()), TWO_SITE[i], 1,tol_Lanczos);
+				//-------------------------------------------------------------------------------------------------
+			}
 			
 			if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
 			{
@@ -1015,9 +1012,7 @@ propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>
 		#pragma omp parallel for
 		for (int i=0; i<Lcell; ++i)
 		{
-			auto PsiTmp = Psi[i];
-			PsiTmp.eps_svd = 1e-15;
-			PsiTmp.skim(DMRG::BROOM::SVD);
+			auto PsiTmp = Psi[i]; PsiTmp.entropy_skim();
 			double r = (t.index()==0)? 1.:tsteps(t.index()-1)/tsteps(t.index());
 			TWO_SITE[i] = Sobs[i].TWO_SITE(t.index(), PsiTmp, r); // {}, {0ul,size_t(Lhetero)-2ul}
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0) lout << StepTimer.info("entropy calculation") << endl;
@@ -1126,15 +1121,18 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 		for (int z=0; z<2; ++z)
 		for (int i=0; i<Lcell; ++i)
 		{
-			//---------------------------------------------------------------------------------------------------------------
-			TDVP[z][i].t_step_adaptive(H, Psi[z][i], 0.5*1.i*zfac[z]*tsign*tsteps(t.index()), TWO_SITE[z][i], 1,tol_Lanczos);
-//			#pragma omp critical
-//			{
-//				cout << "z=" << z << ", i=" << i << ", norm=" << Psi[z][i].squaredNorm() << ", E=" << avg_hetero(Psi[z][i], H, Psi[z][i], true) << endl;
-//			}
-			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and i==0 and z==0)
+			if (tsteps(t.index()) != 0.)
 			{
-				lout << "δE=" << TDVP[z][i].get_deltaE().transpose() << endl;
+				//---------------------------------------------------------------------------------------------------------------
+				TDVP[z][i].t_step_adaptive(H, Psi[z][i], 0.5*1.i*zfac[z]*tsign*tsteps(t.index()), TWO_SITE[z][i], 1,tol_Lanczos);
+	//			#pragma omp critical
+	//			{
+	//				cout << "z=" << z << ", i=" << i << ", norm=" << Psi[z][i].squaredNorm() << ", E=" << avg_hetero(Psi[z][i], H, Psi[z][i], true) << endl;
+	//			}
+				if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and i==0 and z==0)
+				{
+					lout << "δE=" << TDVP[z][i].get_deltaE().transpose() << endl;
+				}
 			}
 			//---------------------------------------------------------------------------------------------------------------
 			
@@ -1185,9 +1183,7 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 		for (int z=0; z<2; ++z)
 		for (int i=0; i<Lcell; ++i)
 		{
-			auto PsiTmp = Psi[z][i];
-			PsiTmp.eps_svd = 1e-15;
-			PsiTmp.skim(DMRG::BROOM::SVD);
+			auto PsiTmp = Psi[z][i]; PsiTmp.entropy_skim();
 			double r = (t.index()==0)? 1.:tsteps(t.index()-1)/tsteps(t.index());
 //			// possible override: always 2-site near excitation centre:
 //			vector<size_t> overrides = {0ul, size_t(Lhetero-2)};
@@ -1219,7 +1215,7 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-compute_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, const Mps<Symmetry,complex<double>> &Phi, 
+compute_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Odag, const Mps<Symmetry,complex<double>> &Phi, 
                       vector<Mps<Symmetry,complex<double>>> &OxPhi0, bool TIME_FORWARDS)
 {
 	print_starttext();
@@ -1255,7 +1251,7 @@ compute_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>
 		GloctCell[i].setZero();
 	}
 	
-	propagate_thermal_cell(H, Ox, Phi, OxPhi0, TIME_FORWARDS);
+	propagate_thermal_cell(H, Odag, Phi, OxPhi0, TIME_FORWARDS);
 	
 	FTcell_xq();
 	FTcell_tw();
@@ -1263,7 +1259,7 @@ compute_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Ox, Mps<Symmetry,complex<double>> Phi, 
+propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Odag, Mps<Symmetry,complex<double>> Phi, 
                         vector<Mps<Symmetry,complex<double>>> &OxPhi0, bool TIME_FORWARDS)
 {
 	double tsign = (TIME_FORWARDS==true)? -1.:+1.;
@@ -1281,6 +1277,11 @@ propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScala
 	{
 		TDVP[i] = TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>(H,Psi[i]);
 	}
+//	vector<TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>> TDVPa(Lcell+1);
+//	for (int i=0; i<Lcell+1; ++i)
+//	{
+//		TDVPa[i] = TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>(Ha,Psi[i]);
+//	}
 	vector<EntropyObserver<Mps<Symmetry,complex<double>>>> Sobs(Lcell+1);
 	vector<vector<bool>> TWO_SITE(Lcell+1);
 	for (int i=0; i<Lcell+1; ++i)
@@ -1306,7 +1307,7 @@ propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScala
 	if (GREENINT_CHOICE != DIRECT)
 	{
 		Stopwatch<> StepTimer;
-		calc_GreenCell_thermal(0, Ox, Psi); // Phi = Psi[Lcell]
+		calc_GreenCell_thermal(0, Odag, Psi);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
 			lout << StepTimer.info("G(t,x) calculation") << endl;
@@ -1324,7 +1325,10 @@ propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScala
 		for (int i=0; i<Lcell+1; ++i)
 		{
 			//-------------------------------------------------------------------------------------------------
-			TDVP[i].t_step_adaptive(H, Psi[i], 1.i*tsign*tsteps(t.index()), TWO_SITE[i], 1,tol_Lanczos);
+			if (tsteps(t.index()) != 0.)
+			{
+				TDVP[i].t_step_adaptive(H, Psi[i], 1.i*tsign*tsteps(t.index()), TWO_SITE[i], 1,tol_Lanczos);
+			}
 			//-------------------------------------------------------------------------------------------------
 			
 			if (Psi[i].get_truncWeight().sum() > 0.5*tol_compr)
@@ -1345,12 +1349,14 @@ propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScala
 			lout << "KET: " << Psi[0].info() << endl;
 			lout << "BRA: " << TDVP[Lcell].info() << endl;
 			lout << "BRA: " << Psi[Lcell].info() << endl;
-			lout << "propagated to: t=" << tval << ", stepsize=" << tsteps(t.index()) << ", step#" << t.index()+1 << "/" << Nt << endl;
+			lout << termcolor::blue 
+			     << "propagated to: t=" << tval << ", stepsize=" << tsteps(t.index()) << ", step#" << t.index()+1 << "/" << Nt 
+			     << termcolor::reset << endl;
 		}
 		
 		// 2. measure
 		// 2.1. Green's function
-		calc_GreenCell_thermal(t.index(), Ox, Psi);
+		calc_GreenCell_thermal(t.index(), Odag, Psi);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("G(t,x) calculation") << endl;
 		// 2.2. measure wavepacket at t
 		if (Measure.size() != 0)
@@ -1367,9 +1373,7 @@ propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScala
 		#pragma omp parallel for
 		for (int i=0; i<Lcell+1; ++i)
 		{
-			auto PsiTmp = Psi[i];
-			PsiTmp.eps_svd = 1e-15;
-			PsiTmp.skim(DMRG::BROOM::SVD);
+			auto PsiTmp = Psi[i]; PsiTmp.entropy_skim();
 			double r = (t.index()==0)? 1.:tsteps(t.index()-1)/tsteps(t.index());
 			TWO_SITE[i] = Sobs[i].TWO_SITE(t.index(), PsiTmp, r); // {}, {0ul,size_t(Lhetero)-2ul}
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and i==0)
@@ -1468,7 +1472,7 @@ calc_Green (const int &tindex, const complex<double> &phase, const vector<Mps<Sy
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-calc_Green_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Ox, 
+calc_Green_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Odag, 
                     const Mps<Symmetry,complex<double>> &Phi, const Mps<Symmetry,complex<double>> &Psi)
 {
 	assert(Psi.Boundaries.IS_TRIVIAL());
@@ -1476,9 +1480,16 @@ calc_Green_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Ox
 	#pragma omp parallel for
 	for (size_t l=0; l<Lhetero; ++l)
 	{
-		Mps<Symmetry,complex<double>> OxPhi;
-		OxV_exact(Ox[l], Phi, OxPhi, 2., DMRG::VERBOSITY::SILENT);
-		Gtx(tindex,l) = -1.i*dot(OxPhi,Psi);
+//		Mps<Symmetry,complex<double>> OxPhi;
+//		OxV_exact(Ox[l], Phi, OxPhi, 2., DMRG::VERBOSITY::SILENT);
+//		Gtx(tindex,l) = -1.i*dot(OxPhi,Psi);
+		
+		Gtx(tindex,l) = -1.i * avg(Phi, Odag[l], Psi);
+		
+//		#pragma omp critial
+//		{
+//			lout << "G1=" << conj(avg(Psi, Ox[l], Phi)) << ", G2=" << dot(OxPhi,Psi) << endl;
+//		}
 	}
 	
 	for (size_t l=0; l<Lhetero; ++l)
@@ -1561,7 +1572,7 @@ calc_GreenCell (const int &tindex, const complex<double> &phase,
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-calc_GreenCell_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Ox, const vector<Mps<Symmetry,complex<double>>> &Psi)
+calc_GreenCell_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Odag, const vector<Mps<Symmetry,complex<double>>> &Psi)
 {
 	for (size_t i=0; i<Lcell+1; ++i) assert(Psi[i].Boundaries.IS_TRIVIAL());
 	
@@ -1570,19 +1581,16 @@ calc_GreenCell_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>>
 	for (size_t i=0; i<Lcell; ++i)
 	for (size_t j=0; j<Lcell; ++j)
 	{
-//		GtxCell[i][j](tindex,n) = dot(OxPhiFull[n*Lcell+i], Psi[j]);
+//		Mps<Symmetry,complex<double>> OxPhi;
+//		OxV_exact(Ox[n*Lcell+i], Psi[Lcell], OxPhi, 2., DMRG::VERBOSITY::SILENT); // Phi = Psi[Lcell]
+//		GtxCell[i][j](tindex,n) = -1.i*dot(OxPhi,Psi[j]);
 		
-//		MODEL::StateXcd OxPhi;
-//		OxV_exact(VMPS::get_Op<MODEL,MODEL::Symmetry>(H,2*(n*Lcell+i),specs[z]), Phi, OxPhi, 2., DMRG::VERBOSITY::SILENT);
-//		Gtx[i][j](it,n) = -1.i*dot(OxPhi,Psi[j]);
+		GtxCell[i][j](tindex,n) = -1.i * avg(Psi[Lcell], Odag[n*Lcell+i], Psi[j]); // Phi = Psi[Lcell]
 		
-//		#pragma omp critical
+//		#pragma omp critial
 //		{
-//			cout << "n=" << n << ", i=" << i << ", j=" << j << ", Psi.size()=" << Psi.size() << ", (n*Lcell+i)=" << dLphys*(n*Lcell+i) << ", " << Ox.size() << endl;
+//			lout << "G1=" << conj(avg(Psi[j], Ox[n*Lcell+i], Psi[Lcell])) << ", G2=" << dot(OxPhi,Psi[j]) << endl;
 //		}
-		Mps<Symmetry,complex<double>> OxPhi;
-		OxV_exact(Ox[n*Lcell+i], Psi[Lcell], OxPhi, 2., DMRG::VERBOSITY::SILENT); // Phi = Psi[Lcell]
-		GtxCell[i][j](tindex,n) = -1.i*dot(OxPhi,Psi[j]);
 	}
 	
 	for (size_t i=0; i<Lcell; ++i)
@@ -1752,7 +1760,8 @@ calc_intweights()
 				lout << setprecision(14)
 					 << "integration weight test: ∫w(t)dt=" << weights.sum() 
 					 << ", analytical=" << integral 
-					 << ", diff=" << abs(weights.sum()-integral);
+					 << ", diff=" << abs(weights.sum()-integral)
+					 << setprecision(6);
 				cout << termcolor::reset;
 				lout << endl;
 			}

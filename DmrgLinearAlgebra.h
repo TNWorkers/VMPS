@@ -645,6 +645,7 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 	Vout = Mps<Symmetry,Scalar>(L, Vin.locBasis(), Qt[Qt.size()-1], O.volume(), 100ul, TRIVIAL_BOUNDARIES);
 	Vout.set_Qmultitarget(Qt);
 	Vout.min_Nsv = Vin.min_Nsv;
+	Vout.N_phys = Vin.N_phys;
 	
 	if (Vin.Boundaries.IS_TRIVIAL())
 	{
@@ -655,48 +656,12 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 		Vout.Boundaries = Vin.Boundaries;
 	}
 	
-//	for (size_t l=0; l<Vout.Boundaries.A[1].size(); ++l)
-//	for (size_t s=0; s<Vout.Boundaries.A[1][l].size(); ++s)
-//	{
-//		Vout.Boundaries.A[1][l][s].shift_Qin(Qt[0]); // only shift AR, as the quantum number propagates to the right
-//	}
-	
-	// alternative to shift_Qin of Biped, O.W_at(L-1) must be identity
-//	for (size_t l=0; l<Vout.Boundaries.A[1].size(); ++l)
-//	{
-//		Qbasis<Symmetry> inBasis;  inBasis. pullData(Vin.Boundaries.A[1][l],0);
-//		Qbasis<Symmetry> outBasis; outBasis.pullData(Vin.Boundaries.A[1][l],1);
-//		
-//		contract_AW(Vin.Boundaries.A[1][l], Vin.Boundaries.qloc[l], O.W_at(L-1), O.opBasis(L-1),
-//		            inBasis , O.inBasis(L-1),
-//		            outBasis, O.outBasis(L-1),
-//		            Vout.Boundaries.A[1][l]);
-//	}
-	
-//	Vout.Boundaries.R.shift_Qin(Qt[0]);
-//	cout << "OxV_exact shift by: Qt[0]=" << Qt[0] << endl;
-	
-//	// alternative to shift_Qin of Tripod, doesn't work
-//	cout << termcolor::red << "--------before--------" << termcolor::reset << endl;
-//	cout << Vout.Boundaries.R.print() << endl;
-//	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Rtmp;
-//	int i = Vout.Boundaries.index;
-//	cout << "Vout.Boundaries.qloc[1].size()=" << Vout.Boundaries.qloc[1].size() << endl;
-//	cout << "Vout.Boundaries.qOp.size()=" << Vin.Boundaries.qOp.size() << endl;
-//	cout << "Vout.Boundaries.qOp[1].size()=" << Vout.Boundaries.qOp[1].size() << endl;
-//	contract_L(Vout.Boundaries.R, Vout.Boundaries.A[1][1], Vout.Boundaries.W[1], false, Vout.Boundaries.A[1][1], 
-//	           Vout.Boundaries.qloc[1], Vout.Boundaries.qOp[1], Rtmp);
-//	Vout.Boundaries.R = Rtmp;
-//	cout << termcolor::red << "--------after--------" << termcolor::reset << endl;
-//	cout << Vout.Boundaries.R.print() << endl;
-	
 	// FORCE_QTOT to create only one final block; 
 	// otherwise crashes when using the result for further calculations (e.g. ground-state sweeping).
 	// Irrelevant for infinite boundary conditions.
 	for (size_t l=0; l<L; ++l)
 	{
-//		bool FORCE_QTOT = (l!=L-1 or TRIVIAL_BOUNDARIES==false)? false:true;
-		bool FORCE_QTOT = false;
+		bool FORCE_QTOT = (l!=L-1 or TRIVIAL_BOUNDARIES==false)? false:true;
 		contract_AW(Vin.A_at(l), Vin.locBasis(l), O.W_at(l), O.opBasis(l),
 		            Vin.inBasis(l) , O.inBasis(l),
 		            Vin.outBasis(l), O.outBasis(l),
@@ -768,10 +733,11 @@ void OxV_exact (const Mpo<Symmetry,MpoScalar> &O, const Mps<Symmetry,Scalar> &Vi
 			lout << endl;
 			lout << termcolor::bold << "OxV_exact" << termcolor::reset << endl;
 			lout << "input:\t" << input_info << endl;
+			lout << "oper.:\t" << O.info() << endl;
 			lout << "exact:\t" << exact_info << endl;
 			if (tol_compr < 1.)
 			{
-				lout << "compressed:\t" << compressed_info << endl;
+				lout << "compr.:\t" << compressed_info << endl;
 				lout << "\t" << Compressor_info << endl;
 			}
 			else

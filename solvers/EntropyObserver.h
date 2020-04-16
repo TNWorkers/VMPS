@@ -71,18 +71,18 @@ TWO_SITE (int it, const MpsType &Psi, double r, vector<size_t> true_overrides, v
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 		{
-			lout << "b=" << b << ", δS(b)=" << DeltaSb(it,b) << ", S=" << data(it,b) << endl;
+			lout << "b=" << b << ", δS(b)/S=" << DeltaSb(it,b) << ", S=" << data(it,b) << endl;
 		}
 	}
 	
-	if (res[0] == true and it>0 and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)
-	{
-		lout << termcolor::yellow << "Entropy increase at the left edge!" << termcolor::reset << endl;
-	}
-	if (res[L-2] == true and it>0 and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)
-	{
-		lout << termcolor::yellow << "Entropy increase at the right edge!" << termcolor::reset << endl;
-	}
+//	if (res[0] == true and it>0 and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)
+//	{
+//		lout << termcolor::yellow << "Entropy increase at the left edge!" << termcolor::reset << endl;
+//	}
+//	if (res[L-2] == true and it>0 and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)
+//	{
+//		lout << termcolor::yellow << "Entropy increase at the right edge!" << termcolor::reset << endl;
+//	}
 	
 	for (int ib=0; ib<true_overrides.size(); ++ib)
 	{
