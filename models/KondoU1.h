@@ -46,7 +46,7 @@ public:
 	///@}
 	
 	static qarray<1> singlet (int N) {return qarray<1>{N};}; // not a real singlet, but useful for consistency when switching symmetries
-	static MODEL_FAMILY FAMILY = KONDO;
+	static constexpr MODEL_FAMILY FAMILY = KONDO;
 	
 	template<typename Symmetry_>
 	static void add_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,

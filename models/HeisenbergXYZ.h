@@ -53,7 +53,7 @@ public:
 	                    PushType<SiteOperator<Symmetry_,complex<double>>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, 
 	                    const BC boundary=BC::OPEN);
 	
-	static const std::map<string,std::any> defaults;
+	static constexpr const std::map<string,std::any> defaults;
 };
 
 const std::map<string,std::any> HeisenbergXYZ::defaults = 

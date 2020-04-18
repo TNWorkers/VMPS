@@ -33,7 +33,7 @@ public:
 	///@}
 	
 	static qarray<2> singlet (int N) {return qarray<2>{1,1};};
-	static MODEL_FAMILY FAMILY = KONDO;
+	static constexpr MODEL_FAMILY FAMILY = KONDO;
 	
 	/**
 	 * \describe_set_operators

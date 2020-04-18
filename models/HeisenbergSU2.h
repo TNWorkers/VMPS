@@ -34,7 +34,8 @@ public:
 	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
 	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
 	
-	static qarray<1> singlet() {return qarray<1>{1};};
+	static qarray<1> singlet(int N=0) {return qarray<1>{1};};
+	static constexpr MODEL_FAMILY FAMILY = HEISENBERG;
 	
 private:
 	

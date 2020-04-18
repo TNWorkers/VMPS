@@ -72,11 +72,12 @@ public:
 	 * \describe_boundary 
 	*/
 	template<typename Symmetry_> 
-    static void set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
-							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
+	static void set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+	                           PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, 
+	                           const BC boundary=BC::OPEN);
 	
 	static qarray<2> singlet (int N=0) {return qarray<2>{1,N};};
-	
+	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
 	
 	static const map<string,any> defaults;
 	static const map<string,any> sweep_defaults;

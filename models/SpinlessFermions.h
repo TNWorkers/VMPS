@@ -41,7 +41,7 @@ public:
 	///@}
 	
 	static qarray<0> singlet (int N) {return qarray<0>{};};
-	static MODEL_FAMILY FAMILY = SPINLESS;
+	static constexpr MODEL_FAMILY FAMILY = SPINLESS;
 	
 	template<typename Symmetry_>
 	static void add_operators (const std::vector<SpinlessFermionBase<Symmetry_> > &B, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);

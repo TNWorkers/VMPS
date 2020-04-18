@@ -27,7 +27,7 @@ public:
 	HeisenbergXXZ (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///\}
 	
-	static const std::map<string,std::any> defaults;
+	static constexpr const std::map<string,std::any> defaults;
 };
 
 const std::map<string,std::any> HeisenbergXXZ::defaults = 

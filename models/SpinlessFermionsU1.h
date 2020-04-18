@@ -27,7 +27,7 @@ public:
 	static void set_operators (const std::vector<SpinlessFermionBase<Symmetry_> > &F, const ParamHandler &P, HamiltonianTermsXd<Symmetry_> &Terms);
 	
 	static qarray<1> singlet (int N) {return qarray<1>{N};};
-	static MODEL_FAMILY FAMILY = SPINLESS;
+	static constexpr MODEL_FAMILY FAMILY = SPINLESS;
 	
 	static const std::map<string,std::any> defaults;
 	static const std::map<string,std::any> sweep_defaults;

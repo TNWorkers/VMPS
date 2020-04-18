@@ -60,7 +60,7 @@ public:
 	///@}
 	
 	static qarray<2> singlet (int N=0) {return qarray<2>{0,N};};
-	static MODEL_FAMILY FAMILY = HUBBARD;
+	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
 	
 	/**
 	 * \describe_set_operators

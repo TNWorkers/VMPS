@@ -57,7 +57,7 @@ public:
 	
 	static qarray<2> singlet (int N) {return qarray<2>{1,N};};
 	static qarray<2> polaron (int L, int N=0) {return qarray<2>{L-N+1,N};};
-	static MODEL_FAMILY FAMILY = KONDO;
+	static constexpr MODEL_FAMILY FAMILY = KONDO;
 	
 	/**
 	 * \describe_set_operators

@@ -37,7 +37,7 @@ public:
 	MAKE_TYPEDEFS(Heisenberg)
 	
 	static qarray<0> singlet(int N=0) {return qarray<0>{};};
-	static MODEL_FAMILY FAMILY = HEISENBERG;
+	static constexpr MODEL_FAMILY FAMILY = HEISENBERG;
 	
 private:
 	typedef typename Symmetry::qType qType;

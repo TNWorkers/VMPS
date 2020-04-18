@@ -65,7 +65,7 @@ public:
 	                           std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 	
 	static qarray<1> singlet (int N=0) {return qarray<1>{1};};
-	static MODEL_FAMILY FAMILY = HUBBARD;
+	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
 	
 	static const map<string,any> defaults;
 	static const map<string,any> sweep_defaults;

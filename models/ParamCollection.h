@@ -147,16 +147,43 @@ ArrayXXd hopping_fullerene (int L=60, double t=1.)
 	// also in: Phys. Rev. B 72, 064453 (2005)
 	else if (L == 20)
 	{
-		res(11,12) = t;
-		res(12,13) = t;
-		res(13,14) = t;
-		res(5,14) = t;
-		res(5,6) = t;
-		res(6,7) = t;
-		res(7,8) = t;
-		res(8,9) = t;
-		res(9,10) = t;
-		res(10,11) = t;
+//		res(11,12) = t;
+//		res(12,13) = t;
+//		res(13,14) = t;
+//		res(5,14) = t;
+//		res(5,6) = t;
+//		res(6,7) = t;
+//		res(7,8) = t;
+//		res(8,9) = t;
+//		res(9,10) = t;
+//		res(10,11) = t;
+//		
+//		res(0,1) = t;
+//		res(1,2) = t;
+//		res(2,3) = t;
+//		res(3,4) = t;
+//		res(0,4) = t;
+//		
+//		res(2,11) = t;
+//		res(3,13) = t;
+//		res(4,5) = t;
+//		res(0,7) = t;
+//		res(1,9) = t;
+//		res(2,11) = t;
+//		
+//		res(15,16) = t;
+//		res(16,17) = t;
+//		res(17,18) = t;
+//		res(18,19) = t;
+//		res(15,19) = t;
+//		
+//		res(12,19) = t;
+//		res(14,15) = t;
+//		res(6,16) = t;
+//		res(8,17) = t;
+//		res(10,18) = t;
+		
+		// better numbering (inwards spiral):
 		
 		res(0,1) = t;
 		res(1,2) = t;
@@ -164,58 +191,107 @@ ArrayXXd hopping_fullerene (int L=60, double t=1.)
 		res(3,4) = t;
 		res(0,4) = t;
 		
-		res(2,11) = t;
-		res(3,13) = t;
-		res(4,5) = t;
 		res(0,7) = t;
 		res(1,9) = t;
 		res(2,11) = t;
+		res(3,13) = t;
+		res(4,5) = t;
+		
+		res(5,6) = t;
+		res(6,7) = t;
+		res(7,8) = t;
+		res(8,9) = t;
+		res(9,10) = t;
+		res(10,11) = t;
+		res(11,12) = t;
+		res(12,13) = t;
+		res(13,14) = t;
+		res(5,14) = t;
+		
+		res(6,16) = t;
+		res(8,17) = t;
+		res(10,18) = t;
+		res(12,19) = t;
+		res(14,15) = t;
 		
 		res(15,16) = t;
 		res(16,17) = t;
 		res(17,18) = t;
 		res(18,19) = t;
 		res(15,19) = t;
-		
-		res(12,19) = t;
-		res(14,15) = t;
-		res(6,16) = t;
-		res(8,17) = t;
-		res(10,18) = t;
 	}
 	// reference: Phys. Rev. B 72, 064453 (2005)
 	else if (L == 12)
 	{
+//		res(0,1) = t;
+//		res(1,2) = t;
+//		res(0,2) = t;
+//		
+//		res(1,5) = t;
+//		res(2,5) = t;
+//		res(2,6) = t;
+//		res(2,3) = t;
+//		res(0,3) = t;
+//		res(0,7) = t;
+//		res(0,4) = t;
+//		res(1,4) = t;
+//		res(1,8) = t;
+//		
+//		res(4,8) = t;
+//		res(5,8) = t;
+//		res(5,6) = t;
+//		res(3,6) = t;
+//		res(3,7) = t;
+//		res(4,7) = t;
+//		
+//		res(8,10) = t;
+//		res(5,10) = t;
+//		res(6,10) = t;
+//		res(6,11) = t;
+//		res(3,11) = t;
+//		res(7,11) = t;
+//		res(7,9) = t;
+//		res(4,9) = t;
+//		res(9,8) = t;
+//		
+//		res(9,10) = t;
+//		res(10,11) = t;
+//		res(9,11) = t;
+		
+		// better numbering (inwards spiral):
+		
 		res(0,1) = t;
 		res(1,2) = t;
 		res(0,2) = t;
 		
-		res(1,5) = t;
-		res(2,5) = t;
-		res(2,6) = t;
-		res(2,3) = t;
 		res(0,3) = t;
-		res(0,7) = t;
 		res(0,4) = t;
-		res(1,4) = t;
-		res(1,8) = t;
+		res(0,5) = t;
 		
-		res(4,8) = t;
-		res(5,8) = t;
+		res(1,5) = t;
+		res(1,6) = t;
+		res(1,7) = t;
+		
+		res(2,3) = t;
+		res(2,7) = t;
+		res(2,8) = t;
+		
+		res(3,4) = t;
+		res(4,5) = t;
 		res(5,6) = t;
-		res(3,6) = t;
-		res(3,7) = t;
-		res(4,7) = t;
+		res(6,7) = t;
+		res(7,8) = t;
+		res(3,8) = t;
 		
-		res(8,10) = t;
+		res(3,9) = t;
+		res(4,9) = t;
+		res(4,10) = t;
 		res(5,10) = t;
 		res(6,10) = t;
 		res(6,11) = t;
-		res(3,11) = t;
 		res(7,11) = t;
-		res(7,9) = t;
-		res(4,9) = t;
-		res(9,8) = t;
+		res(8,11) = t;
+		res(8,9) = t;
 		
 		res(9,10) = t;
 		res(10,11) = t;
