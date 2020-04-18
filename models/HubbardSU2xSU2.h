@@ -66,9 +66,13 @@ public:
 	 * \describe_boundary 
 	*/
 	template<typename Symmetry_> 
-    static void set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
-							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
-		
+	static void set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+	                           PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, 
+	                           const BC boundary=BC::OPEN);
+	
+	static qarray<2> singlet (int N=0) {return qarray<1>{1,1};};
+	static MODEL_FAMILY FAMILY = HUBBARD;
+	
 	Mpo<Symmetry> B (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return cdagc(locx1,locx2,locy1,locy2);};
 	Mpo<Symmetry> C (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 		

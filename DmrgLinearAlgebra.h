@@ -144,7 +144,7 @@ template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
             const Mpo<Symmetry,MpoScalar> &O, 
             const Mps<Symmetry,Scalar> &Vket, 
-            size_t power_of_O = 1,  
+            size_t power_of_O = 1ul,  
             DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::RIGHT)
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
@@ -171,7 +171,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			Bnext.clear();
 		}
 		// cout << B.print(true) << endl;
-		return B.block[0][0][0](0,0);
+//		return B.block[0][0][0](0,0);
 		out = contract_LR(B,Id);
 	}
 	else
@@ -197,6 +197,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 		out = contract_LR(Id,B);
 	}
 	return out;
+	
 // 	if (B.dim == 1)
 // 	{
 // 		return B.block[0][0][0].trace();
@@ -287,7 +288,7 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
             const vector<Mpo<Symmetry,MpoScalar>> &O2,
             const Mps<Symmetry,Scalar> &Vket, 
             size_t usePower1 = 1ul,
-			size_t usePower2 = 1ul)
+            size_t usePower2 = 1ul)
 {
 	Scalar out = 0;
 	for (int i=0; i<O1.size(); ++i)
@@ -303,14 +304,14 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
                    const Mpo<Symmetry,MpoScalar> &O, 
                    const Mps<Symmetry,Scalar> &Vket, 
                    bool USE_BOUNDARY = false, 
-                   bool USE_SQUARE = false)
+                   size_t usePower=1ul)
 {
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Bnext;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > B;
 	
 	if (USE_BOUNDARY)
 	{
-		B = Vket.get_boundaryTensor(DMRG::DIRECTION::LEFT, USE_SQUARE);
+		B = Vket.get_boundaryTensor(DMRG::DIRECTION::LEFT, usePower);
 		assert(O.Qtarget() == Symmetry::qvacuum() and "Can only do avg_hetero with vacuum targets. Try OxV_exact followed by dot instead.");
 	}
 	else
@@ -321,14 +322,17 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	
 	for (size_t l=0; l<O.length(); ++l)
 	{
-		if (USE_SQUARE == true)
-		{
-			contract_L(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
-		}
-		else
-		{
-			contract_L(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
-		}
+//		if (USE_SQUARE == true)
+//		{
+//			contract_L(B, Vbra.A_at(l), O.Wsq_at(l), Vket.A_at(l), O.locBasis(l), O.opBasisSq(l), Bnext);
+//		}
+//		else
+//		{
+//			contract_L(B, Vbra.A_at(l), O.W_at(l), Vket.A_at(l), O.locBasis(l), O.opBasis(l), Bnext);
+//		}
+		
+		contract_L(B, Vbra.A_at(l), O.get_W_power(usePower)[l], Vket.A_at(l), O.locBasis(l), O.get_qOp_power(usePower)[l], Bnext);
+		
 		B.clear();
 		B = Bnext;
 		Bnext.clear();
@@ -347,7 +351,7 @@ Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra,
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > BR;
 	if (USE_BOUNDARY)
 	{
-		BR = Vket.get_boundaryTensor(DMRG::DIRECTION::RIGHT, USE_SQUARE);
+		BR = Vket.get_boundaryTensor(DMRG::DIRECTION::RIGHT, usePower);
 	}
 	else
 	{

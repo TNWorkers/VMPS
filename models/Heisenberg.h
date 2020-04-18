@@ -36,7 +36,8 @@ public:
 	typedef Sym::U0 Symmetry;
 	MAKE_TYPEDEFS(Heisenberg)
 	
-	static qarray<0> singlet() {return qarray<0>{};};
+	static qarray<0> singlet(int N=0) {return qarray<0>{};};
+	static MODEL_FAMILY FAMILY = HEISENBERG;
 	
 private:
 	typedef typename Symmetry::qType qType;
@@ -47,8 +48,10 @@ public:
 	Heisenberg() : Mpo<Symmetry>(), HeisenbergObservables(), ParamReturner(Heisenberg::sweep_defaults) {};
 	Heisenberg (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION& VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///@}
-
-	static void add_operators (const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
+	
+	static void add_operators (const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, 
+	                           PushType<SiteOperator<Symmetry,double>,double>& pushlist, 
+	                           std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 	
 	static const std::map<string,std::any> defaults;
 	static const std::map<string,std::any> sweep_defaults;

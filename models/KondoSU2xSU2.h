@@ -33,7 +33,8 @@ public:
 	///@}
 	
 	static qarray<2> singlet (int N) {return qarray<2>{1,1};};
-		
+	static MODEL_FAMILY FAMILY = KONDO;
+	
 	/**
 	 * \describe_set_operators
 	 *
@@ -44,8 +45,9 @@ public:
 	 * \describe_boundary 
 	*/
 	template<typename Symmetry_> 
-    static void set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
-							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
+	static void set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+	                           PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, 
+	                           const BC boundary=BC::OPEN);
 	
 	static const std::map<string,std::any> defaults;
 	static const map<string,any> sweep_defaults;	

@@ -122,7 +122,7 @@ public:
 	void prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarray<Symmetry::Nq> Qtot, bool USE_STATE=false);
 	
 	/**Builds environments for each site of the unit cell.*/
-	void build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout);
+	void build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t power=1);
 	
 //private:
 	
@@ -787,7 +787,7 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 build_L (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AL,
          const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Cintercell,
-		 const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<Scalar> > > > > > &W, 
+         const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<Scalar> > > > > > &W, 
          const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
          const vector<vector<qarray<Symmetry::Nq> > > &qOp,
          Tripod<Symmetry,MatrixType> &L)
@@ -832,7 +832,7 @@ template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
 build_R (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &AR,
          const Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Cintercell,
-		 const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<Scalar> > > > > > &W, 
+         const vector<vector<vector<vector<Biped<Symmetry,SparseMatrix<Scalar> > > > > > &W, 
          const vector<vector<qarray<Symmetry::Nq> > > &qloc, 
          const vector<vector<qarray<Symmetry::Nq> > > &qOp,
          Tripod<Symmetry,MatrixType> &R)
@@ -904,7 +904,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	inbase.pullData(AL[0],0);
 	Qbasis<Symmetry> outbase;
 	outbase.pullData(AL[0],0);
-
+	
 	Tripod<Symmetry,MatrixType> IdL; IdL.setIdentity(dW_singlet, 1, inbase); //Check correct setIdentity.
 	Tripod<Symmetry,MatrixType> IdR; IdR.setIdentity(dW_singlet, 1, outbase);
 	L.insert(basis_order[dW-1], IdL);
@@ -1014,7 +1014,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 	// }
 	// Rcheck = Rtmp2;
 
-	// double Lcomp = L.compare(Lcheck);	
+	// double Lcomp = L.compare(Lcheck);
 	// double Rcomp = R.compare(Rcheck);
 	
 	// cout << termcolor::magenta << "CHECK=" << Lcomp << "\t" << Rcomp << termcolor::reset << endl;
@@ -1024,7 +1024,7 @@ build_LR (const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > 
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void VumpsSolver<Symmetry,MpHamiltonian,Scalar>::
-build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout)
+build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > &Vout, size_t power)
 {
 	// With a unit cell, Heff is a vector for each site
 	HeffC.clear();
@@ -1032,15 +1032,20 @@ build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > 
 	
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		HeffA[l].W = H.W[l];
-		HeffC[l].W = H.W[l];
+//		HeffA[l].W = H.W[l];
+//		HeffC[l].W = H.W[l];
+		HeffA[l].W = H.get_W_power(power)[l];
+		HeffC[l].W = H.get_W_power(power)[l];
 	}
 	
 	// Make environment for the unit cell
+//	build_LR (Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::R], Vout.state.C, 
+//	          H.W, H.locBasis(), H.opBasis(), 
+//	          HeffA[0].L, HeffA[N_sites-1].R);
 	build_LR (Vout.state.A[GAUGE::L], Vout.state.A[GAUGE::R], Vout.state.C, 
-	          H.W, H.locBasis(), H.opBasis(), 
+	          H.get_W_power(power), H.locBasis(), H.get_qOp_power(power), 
 	          HeffA[0].L, HeffA[N_sites-1].R);
-
+	
 	// Make environment for each site of the unit cell
 	#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
 	#pragma omp parallel sections
@@ -1052,9 +1057,13 @@ build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > 
 		{
 			for (size_t l=1; l<N_sites; ++l)
 			{
+//				contract_L(HeffA[l-1].L, 
+//				           Vout.state.A[GAUGE::L][l-1], H.W[l-1], Vout.state.A[GAUGE::L][l-1], 
+//				           H.locBasis(l-1), H.opBasis(l-1), 
+//				           HeffA[l].L);
 				contract_L(HeffA[l-1].L, 
-				           Vout.state.A[GAUGE::L][l-1], H.W[l-1], Vout.state.A[GAUGE::L][l-1], 
-				           H.locBasis(l-1), H.opBasis(l-1), 
+				           Vout.state.A[GAUGE::L][l-1], H.get_W_power(power)[l-1], Vout.state.A[GAUGE::L][l-1], 
+				           H.locBasis(l-1), H.get_qOp_power(power)[l-1], 
 				           HeffA[l].L);
 			}
 		}
@@ -1064,9 +1073,13 @@ build_cellEnv (const MpHamiltonian &H, const Eigenstate<Umps<Symmetry,Scalar> > 
 		{
 			for (int l=N_sites-2; l>=0; --l)
 			{
+//				contract_R(HeffA[l+1].R, 
+//				           Vout.state.A[GAUGE::R][l+1], H.W[l+1], Vout.state.A[GAUGE::R][l+1], 
+//				           H.locBasis(l+1), H.opBasis(l+1), 
+//				           HeffA[l].R);
 				contract_R(HeffA[l+1].R, 
-				           Vout.state.A[GAUGE::R][l+1], H.W[l+1], Vout.state.A[GAUGE::R][l+1], 
-				           H.locBasis(l+1), H.opBasis(l+1), 
+				           Vout.state.A[GAUGE::R][l+1], H.get_W_power(power)[l+1], Vout.state.A[GAUGE::R][l+1], 
+				           H.locBasis(l+1), H.get_qOp_power(power)[l+1], 
 				           HeffA[l].R);
 			}
 		}
@@ -2101,8 +2114,14 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 		CHOSEN_VERBOSITY = VERB_BACKUP;
 	}
 	
-	return assemble_Mps(Ncells, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.qloc, 
-	                    HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, x0);
+	Mps<Symmetry,Scalar> res = assemble_Mps(Ncells, V.state, V.state.A[GAUGE::L], V.state.A[GAUGE::R], V.state.qloc, 
+	                                        HeffA[0].L, HeffA[(Lhetero-1)%N_sites].R, x0);
+	
+	// build environment for square:
+//	build_cellEnv(H,V,2ul);
+//	res.Boundaries.Lsq = HeffA[0].L;
+//	res.Boundaries.Rsq = HeffA[0].R;
+	return res;
 };
 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>

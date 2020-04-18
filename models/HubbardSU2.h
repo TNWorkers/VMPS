@@ -61,10 +61,11 @@ public:
 	HubbardSU2() : Mpo(){};
 	HubbardSU2 (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	
-    static void add_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P, PushType<SiteOperator<Symmetry,double>,double>& pushlist,
-							   std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
+	static void add_operators (const std::vector<FermionBase<Symmetry> > &F, const ParamHandler &P, PushType<SiteOperator<Symmetry,double>,double>& pushlist,
+	                           std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
 	
 	static qarray<1> singlet (int N=0) {return qarray<1>{1};};
+	static MODEL_FAMILY FAMILY = HUBBARD;
 	
 	static const map<string,any> defaults;
 	static const map<string,any> sweep_defaults;

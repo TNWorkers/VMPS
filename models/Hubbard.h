@@ -32,9 +32,12 @@ public:
 	Hubbard (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	
 	static qarray<0> singlet (int N) {return qarray<0>{};};
+	static MODEL_FAMILY FAMILY = HUBBARD;
 	
 	template<typename Symmetry_>
-	static void add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
+	static void add_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P, 
+	                           PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, 
+	                           const BC boundary=BC::OPEN);
 	
 	static const std::map<string,std::any> defaults;
 	

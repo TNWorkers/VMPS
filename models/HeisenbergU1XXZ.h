@@ -32,7 +32,8 @@ public:
 	typedef Sym::U1<Sym::SpinU1> Symmetry;
 	MAKE_TYPEDEFS(HeisenbergU1XXZ)
 	
-	static qarray<1> singlet() {return qarray<1>{0};};
+	static qarray<1> singlet(int N=0) {return qarray<1>{0};};
+	static MODEL_FAMILY FAMILY = HEISENBERG;
 	
 public:
 	
@@ -41,7 +42,9 @@ public:
 	HeisenbergU1XXZ (const size_t &L, const vector<Param> &params={}, const BC &boundary = BC::OPEN, const DMRG::VERBOSITY::OPTION& VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	
 	template<typename Symmetry_>
-	static void add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
+	static void add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, 
+	                           PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, 
+	                           const BC boundary=BC::OPEN);
 	
 	static const std::map<string,std::any> defaults;
 };

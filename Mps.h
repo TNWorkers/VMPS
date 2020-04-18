@@ -469,17 +469,21 @@ public:
 		Boundaries.set_open_bc(Qtot);
 	}
 	
-	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > get_boundaryTensor (DMRG::DIRECTION::OPTION DIR, bool USE_SQUARE = false) const
+	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > get_boundaryTensor (DMRG::DIRECTION::OPTION DIR, size_t usePower=1ul) const
 	{
-		if (USE_SQUARE)
+		if (usePower == 2ul)
 		{
 			if (DIR == DMRG::DIRECTION::LEFT) {return Boundaries.Lsq;}
 			else                              {return Boundaries.Rsq;}
 		}
-		else
+		else if (usePower == 1ul)
 		{
 			if (DIR == DMRG::DIRECTION::LEFT) {return Boundaries.L;}
 			else                              {return Boundaries.R;}
+		}
+		else
+		{
+			throw;
 		}
 	}
 	
@@ -951,7 +955,7 @@ calc_Qlimits()
 		QoutTop.resize(this->N_sites);
 		QoutBot.resize(this->N_sites);
 		
-		// If non-trivial boundaries: we have a heterogeneous infinite state, no Qlimits
+		// If non-trivial boundaries: we have an infinite state with a heterogeneous section, no Qlimits
 		if (!Boundaries.IS_TRIVIAL())
 		{
 	//		cout << termcolor::red << "Boundaries.IS_TRIVIAL()==false, infinite limits" << termcolor::reset << endl;

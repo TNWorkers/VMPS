@@ -38,7 +38,8 @@ public:
 private:
 	typedef typename Symmetry::qType qType;
 	
-	static qarray<0> singlet() {return qarray<0>{};};
+	static qarray<0> singlet(int N=0) {return qarray<0>{};};
+	static MODEL_FAMILY FAMILY = HEISENBERG;
 	
 public:
 	
@@ -48,8 +49,10 @@ public:
 	///\}
 	
 	template<typename Symmetry_>
-    void add_operators(const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, PushType<SiteOperator<Symmetry_,complex<double>>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
-    
+	void add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P, 
+	                    PushType<SiteOperator<Symmetry_,complex<double>>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, 
+	                    const BC boundary=BC::OPEN);
+	
 	static const std::map<string,std::any> defaults;
 };
 

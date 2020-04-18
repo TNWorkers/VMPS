@@ -24,6 +24,7 @@ public:
 	///@}
 	
 	static qarray<1> singlet (int N=0) {return qarray<1>{0};};
+	static MODEL_FAMILY FAMILY = HUBBARD;
 	
 	/**Default parameters.*/
 	static const std::map<string,std::any> defaults;

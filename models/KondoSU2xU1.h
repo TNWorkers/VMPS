@@ -57,6 +57,7 @@ public:
 	
 	static qarray<2> singlet (int N) {return qarray<2>{1,N};};
 	static qarray<2> polaron (int L, int N=0) {return qarray<2>{L-N+1,N};};
+	static MODEL_FAMILY FAMILY = KONDO;
 	
 	/**
 	 * \describe_set_operators
@@ -68,8 +69,9 @@ public:
 	 * \describe_boundary 
 	*/
 	template<typename Symmetry_> 
-    static void set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
-							   PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary=BC::OPEN);
+	static void set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler &P,
+	                           PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, 
+	                           const BC boundary=BC::OPEN);
 	
 	/**Validates whether a given \p qnum is a valid combination of \p N and \p M for the given model.
 	\returns \p true if valid, \p false if not*/

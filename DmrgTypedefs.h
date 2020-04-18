@@ -65,6 +65,17 @@ std::ostream& operator<< (std::ostream& s, SPINOP_LABEL Sa)
 	return s;
 }
 
+enum MODEL_FAMILY {HEISENBERG, HUBBARD, KONDO, SPINLESS};
+
+std::ostream& operator<< (std::ostream& s, MODEL_FAMILY mf)
+{
+	if      (mf==HEISENBERG) {s << "HEISENBERG";}
+	else if (mf==HUBBARD)    {s << "HUBBARD";}
+	else if (mf==KONDO)      {s << "KONDO";}
+	else if (mf==SPINLESS)   {s << "SPINLESS";}
+	return s;
+}
+
 #ifndef KIND_ENUM
 #define KIND_ENUM
 namespace Sym{

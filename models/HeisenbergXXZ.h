@@ -13,7 +13,8 @@ public:
 	typedef Sym::U0 Symmetry;
 	MAKE_TYPEDEFS(HeisenbergXXZ)
 	
-	static qarray<0> singlet() {return qarray<0>{};};
+	static qarray<0> singlet(int N=0) {return qarray<0>{};};
+	static MODEL_FAMILY FAMILY = HEISENBERG;
 	
 private:
 	

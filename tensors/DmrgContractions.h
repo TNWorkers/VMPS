@@ -1037,6 +1037,11 @@ Scalar contract_LR (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 		
 		if (qR != R.dict.end())
 		{
+			if (L.block[qL].shape()[0] != R.block[qR->second].shape()[0])
+			{
+				cout << "L.block[qL].shape()[0]=" << L.block[qL].shape()[0] << endl;
+				cout << "R.block[qR->second].shape()[0]=" << R.block[qR->second].shape()[0] << endl;
+			}
 			assert(L.block[qL].shape()[0] == R.block[qR->second].shape()[0]);
 			
 			for (size_t a=0; a<L.block[qL].shape()[0]; ++a)

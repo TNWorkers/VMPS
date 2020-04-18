@@ -80,30 +80,6 @@ public:
 			}
 		}
 		
-//		Bout.qOp = qOp;
-//		
-//		Bout.W.resize(W.size());
-//		for (int i1=0; i1<W.size(); ++i1)
-//		{
-//			Bout.W[i1].resize(W[i1].size());
-//			for (int i2=0; i2<W[i1].size(); ++i2)
-//			{
-//				Bout.W[i1][i2].resize(W[i1][i2].size());
-//				for (int i3=0; i3<W[i1][i2].size(); ++i3)
-//				{
-//					Bout.W[i1][i2][i3].resize(W[i1][i2][i3].size());
-//				}
-//			}
-//		}
-//		
-//		for (int i1=0; i1<W.size(); ++i1)
-//		for (int i2=0; i2<W[i1].size(); ++i2)
-//		for (int i3=0; i3<W[i1][i2].size(); ++i3)
-//		for (int i4=0; i4<W[i1][i2][i3].size(); ++i4)
-//		{
-//			Bout.W[i1][i2][i3][i4] = W[i1][i2][i3][i4].template cast<OtherScalar>();
-//		}
-		
 		return Bout;
 	}
 	

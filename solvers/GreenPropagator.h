@@ -1720,25 +1720,14 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 calc_intweights()
 {
+	Stopwatch<> Watch;
+	
 	if (GREENINT_CHOICE == DIRECT)
 	{
-		Stopwatch<> Watch;
 		TimeIntegrator = SuperQuadrator<GAUSS_LEGENDRE>(GreenPropagatorGlobal::gauss,0.,tmax,Nt);
 		tvals   = TimeIntegrator.get_abscissa();
 		weights = TimeIntegrator.get_weights();
 		tsteps  = TimeIntegrator.get_steps();
-		
-		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
-		{
-			lout << "tmax=" << tmax << ", "
-			     << "tpoints=" << Nt << ", "
-			     << "max(tstep)=" << tsteps.maxCoeff() << ", "
-			     << "tol_compr=" << tol_compr << ", "
-			     << "tol_Lanczos=" << tol_Lanczos << ", "
-			     << "tol_DeltaS=" << tol_DeltaS
-			     << endl;
-			lout << Watch.info("integration weights") << endl;
-		}
 		
 //		ofstream Filer(make_string("weights_",tinfo(),".dat"));
 //		for (int i=0; i<Nt; ++i)
@@ -1777,6 +1766,18 @@ calc_intweights()
 		
 		weights.resize(Nt); weights = 1.;
 		tsteps.resize(Nt); tsteps = dt; tsteps(0) = 0;
+	}
+	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
+	{
+		lout << "tmax=" << tmax << ", "
+		     << "tpoints=" << Nt << ", "
+		     << "max(tstep)=" << tsteps.maxCoeff() << ", "
+		     << "tol_compr=" << tol_compr << ", "
+		     << "tol_Lanczos=" << tol_Lanczos << ", "
+		     << "tol_DeltaS=" << tol_DeltaS
+		     << endl;
+		lout << Watch.info("integration weights") << endl;
 	}
 }
 
@@ -2270,215 +2271,215 @@ template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename T
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
 save (bool IGNORE_CELL) const
 {
-	bool PRINT = (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)? true:false;
-	
-	IntervalIterator w(wmin,wmax,Nw);
-	ArrayXd wvals = w.get_abscissa();
-	
-	#ifdef GREENPROPAGATOR_USE_HDF5
-	lout << "tx-file: " << label+"_"+xt_info()+".h5" << endl;
-	lout << "ωq-file: " << label+"_"+xtqw_info()+".h5" << endl;
-	HDF5Interface target_tx(label+"_"+xt_info()+".h5",WRITE);
-	HDF5Interface target_wq(label+"_"+xtqw_info()+".h5",WRITE);
-	target_tx.create_group("G");
-	target_wq.create_group("G");
-	if (NQ>0)
+	#pragma omp critical
 	{
-		for (int iQ=0; iQ<NQ; ++iQ)
-		{
-			stringstream ss; ss << ".Q" << iQ;
-			target_tx.create_group("G"); target_tx.create_group("G"+ss.str());
-			target_wq.create_group("G"); target_wq.create_group("G"+ss.str());
-		}
-	}
-	//---
-	target_tx.create_group("tinfo");
-	target_tx.save_matrix(MatrixXd(tvals),"tvals","tinfo");
-	target_tx.save_matrix(MatrixXd(weights),"weights","tinfo");
-	target_tx.save_matrix(MatrixXd(tsteps),"tsteps","tinfo");
-	target_tx.save_scalar(tmax,"tmax","tinfo");
-	//---
-	target_wq.create_group("tinfo");
-	target_wq.save_matrix(MatrixXd(tvals),"t","");
-	#endif
-	
-	if (Gtx.size() > 0 or Gwq.size() > 0)
-	{
+		bool PRINT = (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)? true:false;
+		
+		IntervalIterator w(wmin,wmax,Nw);
+		ArrayXd wvals = w.get_abscissa();
+		
 		#ifdef GREENPROPAGATOR_USE_HDF5
-		if (PRINT) lout << label << " saving G[txRe], G[txIm], G[ωqRe], G[ωqIm]" << endl;
-		target_tx.save_matrix(MatrixXd(Gtx.real()),"txRe","G");
-		target_tx.save_matrix(MatrixXd(Gtx.imag()),"txIm","G");
-		target_wq.save_matrix(MatrixXd(Gwq.real()),"ωqRe","G");
-		target_wq.save_matrix(MatrixXd(Gwq.imag()),"ωqIm","G");
-		if (G0q.size() > 0)
+		lout << "tx-file: " << label+"_"+xt_info()+".h5" << endl;
+		lout << "ωq-file: " << label+"_"+xtqw_info()+".h5" << endl;
+		HDF5Interface target_tx(label+"_"+xt_info()+".h5",WRITE);
+		HDF5Interface target_wq(label+"_"+xtqw_info()+".h5",WRITE);
+		target_tx.create_group("G");
+		target_wq.create_group("G");
+		if (NQ>0)
 		{
-			if (PRINT) lout << label << " saving G[0qRe], G[0qIm]" << endl;
-			target_wq.save_matrix(MatrixXd(G0q.real()),"0qRe","G");
-			target_wq.save_matrix(MatrixXd(G0q.imag()),"0qIm","G");
-		}
-		#else
-		saveMatrix(Gtx.real(), label+"_G=txRe_"+xt_info()+".dat", PRINT);
-		saveMatrix(Gtx.imag(), label+"_G=txIm_"+xt_info()+".dat", PRINT);
-		saveMatrix(Gwq.real(), label+"_G=ωqRe_"+xtqw_info()+".dat", PRINT);
-		saveMatrix(Gwq.imag(), label+"_G=ωqIm_"+xtqw_info()+".dat", PRINT);
-		if (G0q.size() > 0)
-		{
-			saveMatrix(G0q.real(), make_string(label,"_G=0qRe_",xtqw_info(),".dat"), PRINT);
-			saveMatrix(G0q.imag(), make_string(label,"_G=0qIm_",xtqw_info(),".dat"), PRINT);
-		}
-		#endif
-	}
-	
-	if (GtxQmulti.size() > 0 or GwqQmulti.size() > 0)
-	{
-		for (int iQ=0; iQ<NQ; ++iQ)
-		{
-			stringstream ss; ss << ".Q" << iQ;
-			
-			#ifdef GREENPROPAGATOR_USE_HDF5
-			if (PRINT) lout << label << " saving G[txRe], G[txIm], G[ωqRe], G[ωqIm], iQ=" << iQ << endl;
-			target_tx.save_matrix(MatrixXd(GtxQmulti[iQ].real()),"txRe","G"+ss.str());
-			target_tx.save_matrix(MatrixXd(GtxQmulti[iQ].imag()),"txIm","G"+ss.str());
-			target_wq.save_matrix(MatrixXd(GwqQmulti[iQ].real()),"ωqRe","G"+ss.str());
-			target_wq.save_matrix(MatrixXd(GwqQmulti[iQ].imag()),"ωqIm","G"+ss.str());
-			if (G0qQmulti[iQ].size() > 0)
+			for (int iQ=0; iQ<NQ; ++iQ)
 			{
-				if (PRINT) lout << label << " saving G[0qRe], G[0qIm], iQ=" << iQ << endl;
-				target_wq.save_matrix(MatrixXd(G0qQmulti[iQ].real()),"0qRe","G"+ss.str());
-				target_wq.save_matrix(MatrixXd(G0qQmulti[iQ].imag()),"0qIm","G"+ss.str());
+				stringstream ss; ss << ".Q" << iQ;
+				target_tx.create_group("G"); target_tx.create_group("G"+ss.str());
+				target_wq.create_group("G"); target_wq.create_group("G"+ss.str());
+			}
+		}
+		//---
+		target_tx.create_group("tinfo");
+		target_tx.save_matrix(MatrixXd(tvals),"tvals","tinfo");
+		target_tx.save_matrix(MatrixXd(weights),"weights","tinfo");
+		target_tx.save_matrix(MatrixXd(tsteps),"tsteps","tinfo");
+		target_tx.save_scalar(tmax,"tmax","tinfo");
+		//---
+		target_wq.create_group("tinfo");
+		target_wq.save_matrix(MatrixXd(tvals),"t","");
+		#endif
+		
+		if (Gtx.size() > 0 or Gwq.size() > 0)
+		{
+			#ifdef GREENPROPAGATOR_USE_HDF5
+			if (PRINT) lout << label << " saving G[txRe], G[txIm], G[ωqRe], G[ωqIm]" << endl;
+			target_tx.save_matrix(MatrixXd(Gtx.real()),"txRe","G");
+			target_tx.save_matrix(MatrixXd(Gtx.imag()),"txIm","G");
+			target_wq.save_matrix(MatrixXd(Gwq.real()),"ωqRe","G");
+			target_wq.save_matrix(MatrixXd(Gwq.imag()),"ωqIm","G");
+			if (G0q.size() > 0)
+			{
+				if (PRINT) lout << label << " saving G[0qRe], G[0qIm]" << endl;
+				target_wq.save_matrix(MatrixXd(G0q.real()),"0qRe","G");
+				target_wq.save_matrix(MatrixXd(G0q.imag()),"0qIm","G");
 			}
 			#else
-			saveMatrix(GtxQmulti[iQ].real(), label+"_G=txRe_"+xt_info()+ss.str()+".dat", PRINT);
-			saveMatrix(GtxQmulti[iQ].imag(), label+"_G=txIm_"+xt_info()+ss.str()+".dat", PRINT);
-			saveMatrix(GwqQmulti[iQ].real(), label+"_G=ωqRe_"+xtqw_info()+ss.str()+".dat", PRINT);
-			saveMatrix(GwqQmulti[iQ].imag(), label+"_G=ωqIm_"+xtqw_info()+ss.str()+".dat", PRINT);
-			if (G0qQmulti[iQ].size() > 0)
+			saveMatrix(Gtx.real(), label+"_G=txRe_"+xt_info()+".dat", PRINT);
+			saveMatrix(Gtx.imag(), label+"_G=txIm_"+xt_info()+".dat", PRINT);
+			saveMatrix(Gwq.real(), label+"_G=ωqRe_"+xtqw_info()+".dat", PRINT);
+			saveMatrix(Gwq.imag(), label+"_G=ωqIm_"+xtqw_info()+".dat", PRINT);
+			if (G0q.size() > 0)
 			{
-				saveMatrix(G0qQmulti[iQ].real(), make_string(label,"_G=0qRe_",xtqw_info(),ss.str(),".dat"), PRINT);
-				saveMatrix(G0qQmulti[iQ].imag(), make_string(label,"_G=0qIm_",xtqw_info(),ss.str(),".dat"), PRINT);
+				saveMatrix(G0q.real(), make_string(label,"_G=0qRe_",xtqw_info(),".dat"), PRINT);
+				saveMatrix(G0q.imag(), make_string(label,"_G=0qIm_",xtqw_info(),".dat"), PRINT);
 			}
 			#endif
 		}
-	}
-	
-	if (Glocw.size() > 0 or Gloct.size() > 0)
-	{
-		#ifdef GREENPROPAGATOR_USE_HDF5
-		if (PRINT) lout << label << " saving G[QDOS], G[t0Re], G[t0Im]" << endl;
-		target_wq.save_matrix(MatrixXd(-M_1_PI*Glocw.imag()),"QDOS","G");
-		target_tx.save_matrix(MatrixXd(Gloct.real()),"t0Re","G");
-		target_tx.save_matrix(MatrixXd(Gloct.imag()),"t0Im","G");
-		#else
-		save_xy(wvals, -M_1_PI*Glocw.imag(), label+"_G=QDOS_"+xt_info()+".dat", PRINT);
-		save_xy(tvals, Gloct.real(), Gloct.imag(), make_string(label,"_G=t0_",xt_info(),".dat"), PRINT);
-		#endif
-	}
-	
-	if (GlocwQmulti.size() > 0 or GloctQmulti.size() > 0)
-	{
-		for (int iQ=0; iQ<NQ; ++iQ)
+		
+		if (GtxQmulti.size() > 0 or GwqQmulti.size() > 0)
 		{
-			stringstream ss; ss << ".Q" << iQ;
-			
-			#ifdef GREENPROPAGATOR_USE_HDF5
-			if (PRINT) lout << label << " saving G[QDOS], G[t0Re], G[t0Im], iQ=" << iQ << endl;
-			target_wq.save_matrix(MatrixXd(-M_1_PI*GlocwQmulti[iQ].imag()),"QDOS","G"+ss.str());
-			target_tx.save_matrix(MatrixXd(GloctQmulti[iQ].real()),"t0Re","G"+ss.str());
-			target_tx.save_matrix(MatrixXd(GloctQmulti[iQ].imag()),"t0Im","G"+ss.str());
-			#else
-			save_xy(wvals, -M_1_PI*GlocwQmulti[iQ].imag(), label+"_G=QDOS_"+xt_info()+ss.str()+".dat", PRINT);
-			save_xy(tvals, GloctQmulti[iQ].real(), GloctQmulti[iQ].imag(), make_string(label,"_G=t0_",xt_info(),ss.str(),".dat"), PRINT);
-			#endif
-		}
-	}
-	
-	if (!IGNORE_CELL)
-	{
-		if (GtxCell.size() > 0 or GwqCell.size() > 0)
-		{
-			for (int i=0; i<Lcell; ++i)
-			for (int j=0; j<Lcell; ++j)
+			for (int iQ=0; iQ<NQ; ++iQ)
 			{
-				string Gstring = make_string("G",i,j);
+				stringstream ss; ss << ".Q" << iQ;
+				
 				#ifdef GREENPROPAGATOR_USE_HDF5
-				if (PRINT) lout << label << " saving " 
-					            << make_string("G",i,j) << "[txRe], " << Gstring << "[txIm] "
-					            << make_string("G",i,j) << "[ωqRe], " << Gstring << "[ωqIm] "
-					            << endl;
-				target_tx.create_group(make_string("G",i,j));
-				target_tx.save_matrix(MatrixXd(GtxCell[i][j].real()),"txRe",Gstring);
-				target_tx.save_matrix(MatrixXd(GtxCell[i][j].imag()),"txIm",Gstring);
-				target_wq.create_group(make_string("G",i,j));
-				target_wq.save_matrix(MatrixXd(GwqCell[i][j].real()),"ωqRe",Gstring);
-				target_wq.save_matrix(MatrixXd(GwqCell[i][j].imag()),"ωqIm",Gstring);
-				if (G0qCell.size() > 0)
+				if (PRINT) lout << label << " saving G[txRe], G[txIm], G[ωqRe], G[ωqIm], iQ=" << iQ << endl;
+				target_tx.save_matrix(MatrixXd(GtxQmulti[iQ].real()),"txRe","G"+ss.str());
+				target_tx.save_matrix(MatrixXd(GtxQmulti[iQ].imag()),"txIm","G"+ss.str());
+				target_wq.save_matrix(MatrixXd(GwqQmulti[iQ].real()),"ωqRe","G"+ss.str());
+				target_wq.save_matrix(MatrixXd(GwqQmulti[iQ].imag()),"ωqIm","G"+ss.str());
+				if (G0qQmulti[iQ].size() > 0)
 				{
-					if (PRINT) lout << label << " saving " << Gstring << "[0qRe], " << Gstring << "[0qIm]" << endl;
-					target_wq.save_matrix(MatrixXd(G0qCell[i][j].real()),"0qRe",Gstring);
-					target_wq.save_matrix(MatrixXd(G0qCell[i][j].imag()),"0qIm",Gstring);
+					if (PRINT) lout << label << " saving G[0qRe], G[0qIm], iQ=" << iQ << endl;
+					target_wq.save_matrix(MatrixXd(G0qQmulti[iQ].real()),"0qRe","G"+ss.str());
+					target_wq.save_matrix(MatrixXd(G0qQmulti[iQ].imag()),"0qIm","G"+ss.str());
 				}
 				#else
-				saveMatrix(GtxCell[i][j].real(), make_string(label,"_G=txRe_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
-				saveMatrix(GtxCell[i][j].imag(), make_string(label,"_G=txIm_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
-				saveMatrix(GwqCell[i][j].real(), make_string(label,"_G=ωqRe_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
-				saveMatrix(GwqCell[i][j].imag(), make_string(label,"_G=ωqIm_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
-				if (G0qCell.size() > 0)
+				saveMatrix(GtxQmulti[iQ].real(), label+"_G=txRe_"+xt_info()+ss.str()+".dat", PRINT);
+				saveMatrix(GtxQmulti[iQ].imag(), label+"_G=txIm_"+xt_info()+ss.str()+".dat", PRINT);
+				saveMatrix(GwqQmulti[iQ].real(), label+"_G=ωqRe_"+xtqw_info()+ss.str()+".dat", PRINT);
+				saveMatrix(GwqQmulti[iQ].imag(), label+"_G=ωqIm_"+xtqw_info()+ss.str()+".dat", PRINT);
+				if (G0qQmulti[iQ].size() > 0)
 				{
-					saveMatrix(G0qCell[i][j].real(), make_string(label,"_G=0qRe_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
-					saveMatrix(G0qCell[i][j].imag(), make_string(label,"_G=0qIm_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+					saveMatrix(G0qQmulti[iQ].real(), make_string(label,"_G=0qRe_",xtqw_info(),ss.str(),".dat"), PRINT);
+					saveMatrix(G0qQmulti[iQ].imag(), make_string(label,"_G=0qIm_",xtqw_info(),ss.str(),".dat"), PRINT);
 				}
 				#endif
 			}
 		}
 		
-		if (GlocwCell.size() > 0 or GloctCell.size() > 0)
+		if (Glocw.size() > 0 or Gloct.size() > 0)
 		{
-			for (int i=0; i<Lcell; ++i)
+			#ifdef GREENPROPAGATOR_USE_HDF5
+			if (PRINT) lout << label << " saving G[QDOS], G[t0Re], G[t0Im]" << endl;
+			target_wq.save_matrix(MatrixXd(-M_1_PI*Glocw.imag()),"QDOS","G");
+			target_tx.save_matrix(MatrixXd(Gloct.real()),"t0Re","G");
+			target_tx.save_matrix(MatrixXd(Gloct.imag()),"t0Im","G");
+			#else
+			save_xy(wvals, -M_1_PI*Glocw.imag(), label+"_G=QDOS_"+xt_info()+".dat", PRINT);
+			save_xy(tvals, Gloct.real(), Gloct.imag(), make_string(label,"_G=t0_",xt_info(),".dat"), PRINT);
+			#endif
+		}
+		
+		if (GlocwQmulti.size() > 0 or GloctQmulti.size() > 0)
+		{
+			for (int iQ=0; iQ<NQ; ++iQ)
 			{
-				string Gstring = make_string("G",i);
+				stringstream ss; ss << ".Q" << iQ;
+				
 				#ifdef GREENPROPAGATOR_USE_HDF5
-				if (PRINT) lout << label << " saving " << Gstring << "[QDOS], " << Gstring << "[t0Re], " << Gstring << "[t0Im]" << endl;
-				target_wq.create_group(make_string("G",i));
-				target_wq.save_matrix(MatrixXd(-M_1_PI*GlocwCell[i].imag()),"QDOS",make_string("G",i));
-				target_tx.create_group(make_string("G",i));
-				target_tx.save_matrix(MatrixXd(GloctCell[i].real()),"t0Re",make_string("G",i));
-				target_tx.save_matrix(MatrixXd(GloctCell[i].imag()),"t0Im",make_string("G",i));
+				if (PRINT) lout << label << " saving G[QDOS], G[t0Re], G[t0Im], iQ=" << iQ << endl;
+				target_wq.save_matrix(MatrixXd(-M_1_PI*GlocwQmulti[iQ].imag()),"QDOS","G"+ss.str());
+				target_tx.save_matrix(MatrixXd(GloctQmulti[iQ].real()),"t0Re","G"+ss.str());
+				target_tx.save_matrix(MatrixXd(GloctQmulti[iQ].imag()),"t0Im","G"+ss.str());
 				#else
-				save_xy(wvals, -M_1_PI*GlocwCell[i].imag(), make_string(label,"_G=QDOS_i=",i,"_",xtqw_info(),".dat"), PRINT);
-				save_xy(tvals, GloctCell[i].real(), GloctCell[i].imag(), make_string(label,"_G=t0_i=",i,"_",xt_info(),".dat"), PRINT);
+				save_xy(wvals, -M_1_PI*GlocwQmulti[iQ].imag(), label+"_G=QDOS_"+xt_info()+ss.str()+".dat", PRINT);
+				save_xy(tvals, GloctQmulti[iQ].real(), GloctQmulti[iQ].imag(), make_string(label,"_G=t0_",xt_info(),ss.str(),".dat"), PRINT);
 				#endif
 			}
 		}
-	}
-	
-	if (Sigmawq.size() > 0)
-	{
-		// Sigma
-		#ifdef GREENPROPAGATOR_USE_HDF5
-		if (PRINT) lout << label << " saving Σ[ωqRe], Σ[ωqIm]" << endl;
-		target_wq.save_matrix(MatrixXd(Sigmawq.real()),"ωqRe","Σ");
-		target_wq.save_matrix(MatrixXd(Sigmawq.imag()),"ωqIm","Σ");
-		if (Sigma0q.size() > 0)
+		
+		if (!IGNORE_CELL)
 		{
-			if (PRINT) lout << label << " saving Σ[0qRe], Σ[0qIm]" << endl;
-			target_wq.save_matrix(MatrixXd(Sigma0q.real()),"0qRe","Σ");
-			target_wq.save_matrix(MatrixXd(Sigma0q.imag()),"0qIm","Σ");
+			if (GtxCell.size() > 0 or GwqCell.size() > 0)
+			{
+				for (int i=0; i<Lcell; ++i)
+				for (int j=0; j<Lcell; ++j)
+				{
+					string Gstring = make_string("G",i,j);
+					#ifdef GREENPROPAGATOR_USE_HDF5
+					if (PRINT) lout << label << " saving " 
+							        << make_string("G",i,j) << "[txRe], " << Gstring << "[txIm] "
+							        << make_string("G",i,j) << "[ωqRe], " << Gstring << "[ωqIm] "
+							        << endl;
+					target_tx.create_group(make_string("G",i,j));
+					target_tx.save_matrix(MatrixXd(GtxCell[i][j].real()),"txRe",Gstring);
+					target_tx.save_matrix(MatrixXd(GtxCell[i][j].imag()),"txIm",Gstring);
+					target_wq.create_group(make_string("G",i,j));
+					target_wq.save_matrix(MatrixXd(GwqCell[i][j].real()),"ωqRe",Gstring);
+					target_wq.save_matrix(MatrixXd(GwqCell[i][j].imag()),"ωqIm",Gstring);
+					if (G0qCell.size() > 0)
+					{
+						if (PRINT) lout << label << " saving " << Gstring << "[0qRe], " << Gstring << "[0qIm]" << endl;
+						target_wq.save_matrix(MatrixXd(G0qCell[i][j].real()),"0qRe",Gstring);
+						target_wq.save_matrix(MatrixXd(G0qCell[i][j].imag()),"0qIm",Gstring);
+					}
+					#else
+					saveMatrix(GtxCell[i][j].real(), make_string(label,"_G=txRe_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
+					saveMatrix(GtxCell[i][j].imag(), make_string(label,"_G=txIm_i=",i,"_j=",j,"_",xt_info(),".dat"), PRINT);
+					saveMatrix(GwqCell[i][j].real(), make_string(label,"_G=ωqRe_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+					saveMatrix(GwqCell[i][j].imag(), make_string(label,"_G=ωqIm_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+					if (G0qCell.size() > 0)
+					{
+						saveMatrix(G0qCell[i][j].real(), make_string(label,"_G=0qRe_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+						saveMatrix(G0qCell[i][j].imag(), make_string(label,"_G=0qIm_i=",i,"_j=",j,"_",xtqw_info(),".dat"), PRINT);
+					}
+					#endif
+				}
+			}
+			
+			if (GlocwCell.size() > 0 or GloctCell.size() > 0)
+			{
+				for (int i=0; i<Lcell; ++i)
+				{
+					string Gstring = make_string("G",i);
+					#ifdef GREENPROPAGATOR_USE_HDF5
+					if (PRINT) lout << label << " saving " << Gstring << "[QDOS], " << Gstring << "[t0Re], " << Gstring << "[t0Im]" << endl;
+					target_wq.create_group(make_string("G",i));
+					target_wq.save_matrix(MatrixXd(-M_1_PI*GlocwCell[i].imag()),"QDOS",make_string("G",i));
+					target_tx.create_group(make_string("G",i));
+					target_tx.save_matrix(MatrixXd(GloctCell[i].real()),"t0Re",make_string("G",i));
+					target_tx.save_matrix(MatrixXd(GloctCell[i].imag()),"t0Im",make_string("G",i));
+					#else
+					save_xy(wvals, -M_1_PI*GlocwCell[i].imag(), make_string(label,"_G=QDOS_i=",i,"_",xtqw_info(),".dat"), PRINT);
+					save_xy(tvals, GloctCell[i].real(), GloctCell[i].imag(), make_string(label,"_G=t0_i=",i,"_",xt_info(),".dat"), PRINT);
+					#endif
+				}
+			}
 		}
-		#else
-		saveMatrix(Sigmawq.real(), label+"_G=ΣωqRe_"+xtqw_info()+".dat", PRINT);
-		saveMatrix(Sigmawq.imag(), label+"_G=ΣωqIm_"+xtqw_info()+".dat", PRINT);
-		if (Sigma0q.size() > 0)
+		
+		if (Sigmawq.size() > 0)
 		{
-			saveMatrix(Sigma0q.real(), make_string(label,"_Σ=0qRe_",xtqw_info(),".dat"), PRINT);
-			saveMatrix(Sigma0q.imag(), make_string(label,"_Σ=0qIm_",xtqw_info(),".dat"), PRINT);
+			// Sigma
+			#ifdef GREENPROPAGATOR_USE_HDF5
+			if (PRINT) lout << label << " saving Σ[ωqRe], Σ[ωqIm]" << endl;
+			target_wq.save_matrix(MatrixXd(Sigmawq.real()),"ωqRe","Σ");
+			target_wq.save_matrix(MatrixXd(Sigmawq.imag()),"ωqIm","Σ");
+			if (Sigma0q.size() > 0)
+			{
+				if (PRINT) lout << label << " saving Σ[0qRe], Σ[0qIm]" << endl;
+				target_wq.save_matrix(MatrixXd(Sigma0q.real()),"0qRe","Σ");
+				target_wq.save_matrix(MatrixXd(Sigma0q.imag()),"0qIm","Σ");
+			}
+			#else
+			saveMatrix(Sigmawq.real(), label+"_G=ΣωqRe_"+xtqw_info()+".dat", PRINT);
+			saveMatrix(Sigmawq.imag(), label+"_G=ΣωqIm_"+xtqw_info()+".dat", PRINT);
+			if (Sigma0q.size() > 0)
+			{
+				saveMatrix(Sigma0q.real(), make_string(label,"_Σ=0qRe_",xtqw_info(),".dat"), PRINT);
+				saveMatrix(Sigma0q.imag(), make_string(label,"_Σ=0qIm_",xtqw_info(),".dat"), PRINT);
+			}
+			#endif
 		}
-		#endif
-	}
-	
-	// SigmaCell
-	if (!IGNORE_CELL)
-	{
-		if (SigmawqCell.size() > 0)
+		
+		// SigmaCell
+		if (!IGNORE_CELL and SigmawqCell.size() > 0)
 		{
 			for (int i=0; i<Lcell; ++i)
 			for (int j=0; j<Lcell; ++j)
@@ -2506,32 +2507,32 @@ save (bool IGNORE_CELL) const
 				#endif
 			}
 		}
-	}
-	
-	if (ncell.size() > 0)
-	{
-		if (PRINT) lout << label << " saving ncell" << endl;
+		
+		if (ncell.size() > 0)
+		{
+			if (PRINT) lout << label << " saving ncell" << endl;
+			#ifdef GREENPROPAGATOR_USE_HDF5
+			target_wq.save_matrix(MatrixXd(ncell),"ncell");
+			#else
+			saveMatrix(MatrixXd(ncell), "ncell", PRINT);
+			#endif
+		}
+		
+		if (!std::isnan(mu))
+		{
+			if (PRINT) lout << label << " saving μ" << endl;
+			#ifdef GREENPROPAGATOR_USE_HDF5
+			target_wq.save_scalar(mu,"μ");
+			#else
+			saveMatrix(MatrixXd(mu), "μ", PRINT);
+			#endif
+		}
+		
 		#ifdef GREENPROPAGATOR_USE_HDF5
-		target_wq.save_matrix(MatrixXd(ncell),"ncell");
-		#else
-		saveMatrix(MatrixXd(ncell), "ncell", PRINT);
+		target_tx.close();
+		target_wq.close();
 		#endif
 	}
-	
-	if (!std::isnan(mu))
-	{
-		if (PRINT) lout << label << " saving μ" << endl;
-		#ifdef GREENPROPAGATOR_USE_HDF5
-		target_wq.save_scalar(mu,"μ");
-		#else
-		saveMatrix(MatrixXd(mu), "μ", PRINT);
-		#endif
-	}
-	
-	#ifdef GREENPROPAGATOR_USE_HDF5
-	target_tx.close();
-	target_wq.close();
-	#endif
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
