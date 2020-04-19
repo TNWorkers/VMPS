@@ -173,20 +173,20 @@ int main (int argc, char* argv[])
 	//	beta0_params.push_back({"J",1.,0});
 	//	beta0_params.push_back({"J",0.,1});
 	//	beta0_params.push_back({"maxPower",2ul});
-	//	MODEL H_beta0(size_t(2*L),beta0_params);
-	//	lout << H_beta0.info() << endl;
+	//	MODEL H0(size_t(2*L),beta0_params);
+	//	lout << H0.info() << endl;
 		
 		vector<Param> beta0_params;
 		beta0_params.push_back({"Ly",2ul});
 		beta0_params.push_back({"Jrung",1.});
 		beta0_params.push_back({"J",0.});
 		beta0_params.push_back({"maxPower",1ul});
-		MODEL H_beta0(size_t(L),beta0_params);
-		lout << H_beta0.info() << endl;
+		MODEL H0(size_t(L),beta0_params);
+		lout << H0.info() << endl;
 		
 		Eigenstate<MODEL::StateXd> g;
 		MODEL::Solver DMRG(VERB);
-		DMRG.edgeState(H_beta0, g, MODEL::singlet(), LANCZOS::EDGE::GROUND, false);
+		DMRG.edgeState(H0, g, MODEL::singlet(), LANCZOS::EDGE::GROUND, false);
 		lout << endl;
 		
 	//	vector<Param> beta_params;
@@ -199,8 +199,8 @@ int main (int argc, char* argv[])
 	//	hopping_ext += create_1D_OBC(2*L,1e-7); // to avoid decoupling bug
 	//	beta_params.push_back({"Jfull",hopping_ext});
 	//	beta_params.push_back({"maxPower",2ul});
-	//	MODEL H_beta(size_t(2*L),beta_params);
-	//	lout << H_beta.info() << endl;
+	//	MODEL H(size_t(2*L),beta_params);
+	//	lout << H.info() << endl;
 		
 		vector<Param> beta_params;
 		beta_params.push_back({"Jfull",hopping});
@@ -208,46 +208,53 @@ int main (int argc, char* argv[])
 		beta_params.push_back({"maxPower",1ul});
 		beta_params.push_back({"J",0.});
 		beta_params.push_back({"Jrung",0.});
-		MODEL H_beta(size_t(L),beta_params);
-		lout << H_beta.info() << endl;
+		MODEL H(size_t(L),beta_params);
+		lout << H.info() << endl;
 		
 		auto PsiT = g.state;
-		PsiT.eps_svd = 1e-4;
+		PsiT.eps_svd = 1e-5;
 		PsiT.min_Nsv = 0ul;
 		PsiT.max_Nsv = 100ul;
-		TDVPPropagator<MODEL,MODEL::Symmetry,double,double,MODEL::StateXd> TDVPT(H_beta,PsiT);
+		TDVPPropagator<MODEL,MODEL::Symmetry,double,double,MODEL::StateXd> TDVPT(H,PsiT);
 		
-		ofstream Filer1(make_string(wd,"e_L=",L,"_dβ=",dbeta,".dat"));
-		ofstream Filer2(make_string(wd,"C_L=",L,"_dβ=",dbeta,".dat"));
+		vector<MODEL::Operator> Sdagtot(L);
+		vector<MODEL::Operator> Stot(L);
+		for (int i=0; i<L; ++i)
+		{
+			Sdagtot[i] = H.Sdag(i);
+			Stot[i] = H.S(i);
+		}
+		
+		ofstream Filer(make_string(wd,"thermodyn_L=",L,"_dβ=",dbeta,".dat"));
+		Filer << "#C\te\tChi" << endl;
 		double beta = 0.;
 		for (int i=0; i<Nbeta; ++i)
 		{
 			Stopwatch<> betaStepper;
 			if (PsiT.calc_Dmax() == 100ul)
 			{
-				TDVPT.t_step0(H_beta, PsiT, -0.5*dbeta, 1, 1e-8);
+				TDVPT.t_step0(H, PsiT, -0.5*dbeta, 1, 1e-8);
 			}
 			else
 			{
-				TDVPT.t_step(H_beta, PsiT, -0.5*dbeta, 1, 1e-8);
+				TDVPT.t_step(H, PsiT, -0.5*dbeta, 1, 1e-8);
 			}
 			PsiT /= sqrt(dot(PsiT,PsiT));
 			beta = (i+1)*dbeta;
 			lout << TDVPT.info() << endl;
 			lout << setprecision(16) << PsiT.info() << setprecision(6) << endl;
-			double e = avg(PsiT,H_beta,PsiT)/L;
-			double C = beta*beta*(avg(PsiT,H_beta,H_beta,PsiT)-pow(avg(PsiT,H_beta,PsiT),2))/N;
+			double C = beta*beta*(avg(PsiT,H,H,PsiT)-pow(avg(PsiT,H,PsiT),2))/L; // specific heat
+			double e = avg(PsiT,H,PsiT)/L; // inner energy density
+			double chi = beta*(avg(PsiT,Sdagtot,Stot,PsiT))/L; // pow(avg(PsiT,Stot,PsiT),2)=0 // uniform magnetic susceptibility
 			
 			auto PsiTtmp = PsiT; PsiTtmp.entropy_skim();
 			lout << "S=" << PsiTtmp.entropy().transpose() << endl;
 			
-			lout << "β=" << beta << ", T=" << 1./beta << ", e=" << e << ", C=" << C << endl;
-			Filer1 << 1./beta << "\t" << e << endl;
-			Filer2 << 1./beta << "\t" << C << endl;
+			lout << "β=" << beta << ", T=" << 1./beta << ", e=" << e << ", C=" << C << ", chi=" << chi << endl;
+			Filer << 1./beta << "\t" << C << "\t" << e << "\t" << chi << endl;
 			lout << betaStepper.info("βstep") << endl;
 			lout << endl;
 		}
-		Filer1.close();
-		Filer2.close();
+		Filer.close();
 	}
 }

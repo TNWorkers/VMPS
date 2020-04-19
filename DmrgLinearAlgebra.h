@@ -268,38 +268,6 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 }
 
 template<typename Symmetry, typename MpoScalar, typename Scalar>
-Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
-            const vector<Mpo<Symmetry,MpoScalar>> &O, 
-            const Mps<Symmetry,Scalar> &Vket, 
-            size_t usePower = 1ul,  
-            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT)
-{
-	Scalar out = 0;
-	for (int i=0; i<O.size(); ++i)
-	{
-		out += avg(Vbra, O[i], Vket, usePower, DIR);
-	}
-	return out;
-}
-
-template<typename Symmetry, typename MpoScalar, typename Scalar>
-Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
-            const vector<Mpo<Symmetry,MpoScalar>> &O1,
-            const vector<Mpo<Symmetry,MpoScalar>> &O2,
-            const Mps<Symmetry,Scalar> &Vket, 
-            size_t usePower1 = 1ul,
-            size_t usePower2 = 1ul)
-{
-	Scalar out = 0;
-	for (int i=0; i<O1.size(); ++i)
-	for (int j=0; j<O2.size(); ++j)
-	{
-		out += avg(Vbra, O1[i], O2[j], Vket, usePower1, usePower2);
-	}
-	return out;
-}
-
-template<typename Symmetry, typename MpoScalar, typename Scalar>
 Scalar avg_hetero (const Mps<Symmetry,Scalar> &Vbra, 
                    const Mpo<Symmetry,MpoScalar> &O, 
                    const Mps<Symmetry,Scalar> &Vket, 
@@ -448,6 +416,39 @@ Scalar avg (const Mps<Symmetry,Scalar> &Vbra,
 			return 0;
 		}
 	}
+}
+
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
+            const vector<Mpo<Symmetry,MpoScalar>> &O, 
+            const Mps<Symmetry,Scalar> &Vket, 
+            size_t usePower = 1ul,  
+            DMRG::DIRECTION::OPTION DIR = DMRG::DIRECTION::LEFT)
+{
+	Scalar out = 0;
+	for (int i=0; i<O.size(); ++i)
+	{
+		out += avg(Vbra, O[i], Vket, usePower, DIR);
+	}
+	return out;
+}
+
+template<typename Symmetry, typename MpoScalar, typename Scalar>
+Scalar avg (const Mps<Symmetry,Scalar> &Vbra, 
+            const vector<Mpo<Symmetry,MpoScalar>> &O1,
+            const vector<Mpo<Symmetry,MpoScalar>> &O2,
+            const Mps<Symmetry,Scalar> &Vket, 
+            typename Symmetry::qType Qtarget = Symmetry::qvacuum(),
+            size_t usePower1 = 1ul,
+            size_t usePower2 = 1ul)
+{
+	Scalar out = 0;
+	for (int i=0; i<O1.size(); ++i)
+	for (int j=0; j<O2.size(); ++j)
+	{
+		out += avg(Vbra, O1[i], O2[j], Vket, Qtarget, usePower1, usePower2);
+	}
+	return out;
 }
 
 /**
