@@ -465,7 +465,7 @@ public:
      *  @param factor   The factor to scale the interactions with
      *  @param offset   The factor all local identity operators are multiplied by
      */
-    void scale(const double factor, const double offset=0.);
+    void scale(const double factor, const double offset=0., const double tolerance=::mynumeric_limits<double>::epsilon());
     
     /**
      *  @return Cast instance of MpoTerms with another scalar type
@@ -2655,9 +2655,8 @@ check_qPhys() const
     return all;
 }
 
-
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
-scale(const double factor, const double offset)
+scale(const double factor, const double offset, const double tolerance)
 {
     if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
     {
@@ -2687,17 +2686,57 @@ scale(const double factor, const double offset)
 
     if (std::abs(offset) > ::mynumeric_limits<double>::epsilon())
     {
-        for(std::size_t loc=0; loc<N_sites; ++loc)
+        if(boundary_condition == BC::OPEN)
         {
-            std::size_t hd = hilbert_dimension[loc];
-            if(hd > 0)
+            assert(qTot == qVac and "For adding an offset, the MPO needs to be a singlet.");
+            for(std::size_t loc=0; loc<N_sites-1; ++loc)
             {
+                increment_auxdim(loc+1, qVac);
+                auto it = O[loc].find({qVac,qVac});
+                assert(it != O[loc].end());
+                std::map<qType,OperatorType>& existing_ops = (it->second)[get_auxdim(loc,qVac)-1][get_auxdim(loc+1,qVac)-1];
                 SiteOperator<Symmetry,Scalar> Id;
-                Id.data = Matrix<Scalar,Dynamic,Dynamic>::Identity(hd,hd).sparseView();
+                Id.data = Matrix<Scalar,Dynamic,Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView();
                 #ifdef OPLABELS
                 Id.label = "id";
                 #endif
-                push(loc, {Id}, offset);
+                existing_ops.insert({qVac,offset*Id});
+                std::cout << "Inserting scaled identity at lattice site " << loc << ", {" << Sym::format<Symmetry>(qVac) << "}->{" << Sym::format<Symmetry>(qVac) << "}, [" << get_auxdim(loc,qVac)-1 << "][" << get_auxdim(loc+1,qVac)-1 << "]" << std::endl;
+            }
+            auto it = O[N_sites-1].find({qVac,qVac});
+            assert(it != O[N_sites-1].end());
+            std::map<qType,OperatorType>& existing_ops = (it->second)[get_auxdim(N_sites-1,qVac)-1][get_auxdim(N_sites,qVac)-1];
+            SiteOperator<Symmetry,Scalar> Id;
+            Id.data = Matrix<Scalar,Dynamic,Dynamic>::Identity(hilbert_dimension[N_sites-1],hilbert_dimension[N_sites-1]).sparseView();
+            #ifdef OPLABELS
+            Id.label = "id";
+            #endif
+            existing_ops.insert({qVac,offset*Id});
+            std::cout << "Inserting scaled identity at lattice site " << N_sites-1 << ", {" << Sym::format<Symmetry>(qVac) << "}->{" << Sym::format<Symmetry>(qVac) << "}, [" << get_auxdim(N_sites-1,qVac)-1 << "][" << get_auxdim(N_sites,qVac)-1 << "]" << std::endl;
+            compress(tolerance);
+        }
+        else if(boundary_condition == BC::INFINITE)
+        {
+            got_update();
+            for(std::size_t loc=0; loc<N_sites; ++loc)
+            {
+                auto it = O[loc].find({qVac,qVac});
+                assert(it != O[loc].end());
+                std::map<qType,OperatorType>& existing_ops = (it->second)[pos_qVac][pos_qTot];
+                SiteOperator<Symmetry,Scalar> Id;
+                Id.data = Matrix<Scalar,Dynamic,Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView();
+                #ifdef OPLABELS
+                Id.label = "id";
+                #endif
+                auto op_it = existing_ops.find(qVac);
+                if(op_it == existing_ops.end())
+                {
+                    existing_ops.insert({qVac,offset*Id});
+                }
+                else
+                {
+                    (op_it->second) = (op_it->second) + offset*Id;
+                }
             }
         }
     }
