@@ -615,7 +615,7 @@ public:
     /**
      *  @return List of quantum numbers and degeneracy indices of the auxiliar basis connecting both edges of the unit cell. Ordered in such a way that a lower triangular matrix can be achieved.
      */
-    std::vector<std::pair<qType,std::size_t>> base_order_IBC() const;
+    std::vector<std::pair<qType,std::size_t>> base_order_IBC(const std::size_t power=0) const;
     
     /**
      *  Calculates the approximate amount of memory needed for this MPO
@@ -2701,7 +2701,6 @@ scale(const double factor, const double offset, const double tolerance)
                 Id.label = "id";
                 #endif
                 existing_ops.insert({qVac,offset*Id});
-                std::cout << "Inserting scaled identity at lattice site " << loc << ", {" << Sym::format<Symmetry>(qVac) << "}->{" << Sym::format<Symmetry>(qVac) << "}, [" << get_auxdim(loc,qVac)-1 << "][" << get_auxdim(loc+1,qVac)-1 << "]" << std::endl;
             }
             auto it = O[N_sites-1].find({qVac,qVac});
             assert(it != O[N_sites-1].end());
@@ -2712,7 +2711,6 @@ scale(const double factor, const double offset, const double tolerance)
             Id.label = "id";
             #endif
             existing_ops.insert({qVac,offset*Id});
-            std::cout << "Inserting scaled identity at lattice site " << N_sites-1 << ", {" << Sym::format<Symmetry>(qVac) << "}->{" << Sym::format<Symmetry>(qVac) << "}, [" << get_auxdim(N_sites-1,qVac)-1 << "][" << get_auxdim(N_sites,qVac)-1 << "]" << std::endl;
             compress(tolerance);
         }
         else if(boundary_condition == BC::INFINITE)
@@ -3677,17 +3675,21 @@ set_Zero()
 }
 
 template<typename Symmetry, typename Scalar> std::vector<std::pair<typename Symmetry::qType, std::size_t>> MpoTerms<Symmetry,Scalar>::
-base_order_IBC() const
+base_order_IBC(const std::size_t power) const
 {
     assert(boundary_condition == BC::INFINITE);
+    assert(power > 0 and power <= current_power);
+    const std::vector<Qbasis<Symmetry>>& qAux_ = (power == 1) ? qAux : qAux_powers[power-2];
+    const std::vector<std::vector<std::vector<std::vector<Biped<Symmetry,MatrixType>>>>>& W_ = (power == 1) ? W : W_powers[power-2];
     std::vector<std::pair<qType, std::size_t>> vout(0);
     std::vector<std::pair<qType, std::size_t>> vout_temp(0);
-    vout.push_back({qTot, pos_qTot});
-    for(const auto& [qIn, rows] : auxdim[0])
+    std::size_t hd = hilbert_dimension[0];
+    vout.push_back({qVac, pos_qTot});
+    for(std::size_t i=0; i<qAux_[0].data_.size(); ++i)
     {
-        auto it = O[0].find({qIn, qTot});
-        assert(it != O[0].end());
-        for(std::size_t row=0; row<rows; row++)
+        qType qIn = std::get<0>(qAux_[0].data_[i]);
+        std::size_t dim = std::get<2>(qAux_[0].data_[i]).size();
+        for(std::size_t row=0; row<dim; row++)
         {
             if(qIn == qVac and row == pos_qVac)
             {
@@ -3697,7 +3699,26 @@ base_order_IBC() const
             {
                 continue;
             }
-            if((it->second)[row][pos_qTot].size() > 0)
+            bool isZeroOp = true;
+            for(std::size_t m=0; m<hd; ++m)
+            {
+                for(std::size_t n=0; n<hd; ++n)
+                {
+                    for(std::size_t t=0; t<W_[0][m][n].size(); ++t)
+                    {
+                        auto it = W_[0][m][n][t].dict.find({qIn,qVac});
+                        MatrixType& mat = W_[0][m][n][t].block[it->second];
+                        if(std::abs(mat.coeff(row,pos_qTot) > ::mynumeric_limits<double>::epsilon()))
+                        {
+                            isZeroOp = false;
+                            break;
+                        }
+                    }
+                    if(!isZeroOp) break;
+                }
+                if(!isZeroOp) break;
+            }
+            if(!isZeroOp)
             {
                 vout.push_back({qIn,row});
             }
