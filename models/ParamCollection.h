@@ -29,8 +29,6 @@ ArrayXXd create_1D_OBC (size_t L, double lambda1=1., double lambda2=0.)
 	
 	res.matrix().diagonal<1>().setConstant(lambda1);
 	res.matrix().diagonal<-1>().setConstant(lambda1);
-	res(0,L-1) = lambda1;
-	res(L-1,0) = lambda1;
 	
 	res.matrix().diagonal<2>().setConstant(lambda2);
 	res.matrix().diagonal<-2>().setConstant(lambda2);
@@ -45,103 +43,154 @@ ArrayXXd hopping_fullerene (int L=60, double t=1.)
 	
 	if (L== 60)
 	{
+//		res(0,4) = t;
+//		res(3,4) = t;
+//		res(2,3) = t;
+//		res(1,2) = t;
+//		res(0,1) = t;
+//		
+//		res(0,8) = t;
+//		res(4,5) = t;
+//		res(3,17) = t;
+//		res(2,14) = t;
+//		res(1,11) = t;
+//		
+//		res(7,8) = t;
+//		res(6,7) = t;
+//		res(5,6) = t;
+//		res(5,19) = t;
+//		res(18,19) = t;
+//		res(17,18) = t;
+//		res(16,17) = t;
+//		res(15,16) = t;
+//		res(14,15) = t;
+//		res(13,14) = t;
+//		res(12,13) = t;
+//		res(11,12) = t;
+//		res(10,11) = t;
+//		res(9,10) = t;
+//		res(8,9) = t;
+//		
+//		res(7,22) = t;
+//		res(6,21) = t;
+//		res(19,20) = t;
+//		res(18,29) = t;
+//		res(16,28) = t;
+//		res(15,27) = t;
+//		res(13,26) = t;
+//		res(12,25) = t;
+//		res(10,24) = t;
+//		res(9,23) = t;
+//		
+//		res(22,33) = t;
+//		res(32,33) = t;
+//		res(21,32) = t;
+//		res(20,21) = t;
+//		res(20,31) = t;
+//		res(30,31) = t;
+//		res(29,30) = t;
+//		res(28,29) = t;
+//		res(28,39) = t;
+//		res(38,39) = t;
+//		res(27,38) = t;
+//		res(26,27) = t;
+//		res(26,37) = t;
+//		res(36,37) = t;
+//		res(25,36) = t;
+//		res(24,25) = t;
+//		res(24,35) = t;
+//		res(34,35) = t;
+//		res(23,34) = t;
+//		res(22,23) = t;
+//		
+//		res(33,46) = t;
+//		res(32,44) = t;
+//		res(31,43) = t;
+//		res(30,41) = t;
+//		res(39,40) = t;
+//		res(38,53) = t;
+//		res(37,52) = t;
+//		res(36,50) = t;
+//		res(35,49) = t;
+//		res(34,47) = t;
+//		
+//		res(45,46) = t;
+//		res(44,45) = t;
+//		res(43,44) = t;
+//		res(42,43) = t;
+//		res(41,42) = t;
+//		res(40,41) = t;
+//		res(40,54) = t;
+//		res(53,54) = t;
+//		res(52,53) = t;
+//		res(51,52) = t;
+//		res(50,51) = t;
+//		res(49,50) = t;
+//		res(48,49) = t;
+//		res(47,48) = t;
+//		res(46,47) = t;
+//		
+//		res(45,57) = t;
+//		res(42,56) = t;
+//		res(54,55) = t;
+//		res(51,59) = t;
+//		res(48,58) = t;
+//		res(56,57) = t;
+//		res(55,56) = t;
+//		res(55,59) = t;
+//		res(58,59) = t;
+//		res(57,58) = t;
+		
+		// maybe better numbering (inwards spiral):
+		
+		for (int i=0; i<=3; ++i) res(i,i+1) = t;
 		res(0,4) = t;
-		res(3,4) = t;
-		res(2,3) = t;
-		res(1,2) = t;
-		res(0,1) = t;
 		
 		res(0,8) = t;
-		res(4,5) = t;
-		res(3,17) = t;
-		res(2,14) = t;
 		res(1,11) = t;
+		res(2,14) = t;
+		res(3,17) = t;
+		res(4,5) = t;
 		
-		res(7,8) = t;
-		res(6,7) = t;
-		res(5,6) = t;
+		for (int i=5; i<=18; ++i) res(i,i+1) = t;
 		res(5,19) = t;
-		res(18,19) = t;
-		res(17,18) = t;
-		res(16,17) = t;
-		res(15,16) = t;
-		res(14,15) = t;
-		res(13,14) = t;
-		res(12,13) = t;
-		res(11,12) = t;
-		res(10,11) = t;
-		res(9,10) = t;
-		res(8,9) = t;
 		
-		res(7,22) = t;
-		res(6,21) = t;
+		res(7,24) = t;
+		res(9,25) = t;
+		res(10,28) = t;
+		res(12,29) = t;
+		res(13,32) = t;
+		res(15,33) = t;
+		res(16,36) = t;
+		res(18,37) = t;
 		res(19,20) = t;
-		res(18,29) = t;
-		res(16,28) = t;
-		res(15,27) = t;
-		res(13,26) = t;
-		res(12,25) = t;
-		res(10,24) = t;
-		res(9,23) = t;
+		res(6,21) = t;
 		
-		res(22,33) = t;
-		res(32,33) = t;
-		res(21,32) = t;
-		res(20,21) = t;
-		res(20,31) = t;
-		res(30,31) = t;
-		res(29,30) = t;
-		res(28,29) = t;
-		res(28,39) = t;
-		res(38,39) = t;
-		res(27,38) = t;
-		res(26,27) = t;
-		res(26,37) = t;
-		res(36,37) = t;
-		res(25,36) = t;
-		res(24,25) = t;
-		res(24,35) = t;
-		res(34,35) = t;
-		res(23,34) = t;
-		res(22,23) = t;
+		for (int i=20; i<=38; ++i) res(i,i+1) = t;
+		res(20,39) = t;
 		
-		res(33,46) = t;
-		res(32,44) = t;
-		res(31,43) = t;
-		res(30,41) = t;
-		res(39,40) = t;
+		res(26,44) = t;
+		res(27,46) = t;
+		res(30,47) = t;
+		res(31,49) = t;
+		res(34,50) = t;
+		res(35,52) = t;
 		res(38,53) = t;
-		res(37,52) = t;
-		res(36,50) = t;
-		res(35,49) = t;
-		res(34,47) = t;
+		res(39,40) = t;
+		res(22,41) = t;
+		res(23,43) = t;
 		
-		res(45,46) = t;
-		res(44,45) = t;
-		res(43,44) = t;
-		res(42,43) = t;
-		res(41,42) = t;
-		res(40,41) = t;
+		for (int i=40; i<=54; ++i) res(i,i+1) = t;
 		res(40,54) = t;
-		res(53,54) = t;
-		res(52,53) = t;
-		res(51,52) = t;
-		res(50,51) = t;
-		res(49,50) = t;
-		res(48,49) = t;
-		res(47,48) = t;
-		res(46,47) = t;
 		
 		res(45,57) = t;
-		res(42,56) = t;
-		res(54,55) = t;
-		res(51,59) = t;
 		res(48,58) = t;
-		res(56,57) = t;
-		res(55,56) = t;
+		res(51,59) = t;
+		res(54,55) = t;
+		res(42,56) = t;
+		
+		for (int i=55; i<=58; ++i) res(i,i+1) = t;
 		res(55,59) = t;
-		res(58,59) = t;
-		res(57,58) = t;
 	}
 	// reference: https://www.qmul.ac.uk/sbcs/iupac/fullerene2/311.html
 	// also in: Phys. Rev. B 72, 064453 (2005)
@@ -300,6 +349,51 @@ ArrayXXd hopping_fullerene (int L=60, double t=1.)
 	
 	res += res.transpose().eval();
 	
+	return res;
+}
+
+// Calculates distance matrix from adjacency matrix of a graph
+// The distance matrix has 1 for nearest neighbours, 2 for next-nearest neighbours etc.
+ArrayXXi calc_distanceMatrix (ArrayXXd adjacencyMatrix)
+{
+	int L = adjacencyMatrix.rows();
+	assert(adjacencyMatrix.cols() == L);
+	
+	ArrayXXi dist0(L,L); dist0 = 0;
+	dist0.matrix().diagonal().setConstant(1);
+	
+	ArrayXXi dist1(L,L); dist1 = 0;
+	for (int i=0; i<L; ++i)
+	for (int j=0; j<L; ++j)
+	{
+		if (abs(adjacencyMatrix(i,j)) > 0.)
+		{
+			dist1(i,j) = 1;
+		}
+	}
+	
+	ArrayXXi next = dist1;
+	
+	// each entry is a matrix with 1 for the given distance, 0 otherwise
+	vector<ArrayXXi> dist;
+	dist.push_back(dist0);
+	dist.push_back(dist1);
+	
+	while (next.sum() != 0)
+	{
+		// calculate d-th power of adjacency matrix
+		next = next.matrix()*dist1.matrix();
+		
+		// remove already known distances (multiply array-wise with 0)
+		for (int d=0; d<dist.size(); ++d) next = next*(1-dist[d]);
+		// set non-zero entries to 1
+		for (int i=0; i<L; ++i) for (int j=0; j<L; ++j) if (next(i,j)>0) next(i,j) = 1;
+		
+		dist.push_back(next);
+	}
+	
+	ArrayXXi res(L,L); res = 0;
+	for (int d=0; d<dist.size(); ++d) res = res+d*dist[d];
 	return res;
 }
 

@@ -46,7 +46,11 @@ public:
 	typename std::enable_if<Dummy::NO_SPIN_SYM(), Mpo<Symmetry> >::type SxSx (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return ScompScomp(SX,SX,locx1,locx2,locy1,locy2,1.);};
 	template<typename Dummy = Symmetry>
 	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
-
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Stot (size_t locy1=0, double factor=1., int dLphys=1) const;
+	template<typename Dummy = Symmetry>
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Sdagtot (size_t locy1=0, double factor=std::sqrt(3.), int dLphys=1) const;
+	
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Q (size_t locx, size_t locy=0, double factor=1.) const;
 	template<typename Dummy = Symmetry>
@@ -88,6 +92,7 @@ protected:
 	                          const OperatorType &Op,
 							  double factor =1.,
 	                          bool HERMITIAN=false) const;
+	Mpo<Symmetry> make_localSum (const vector<OperatorType> &Op, vector<double> factor, bool HERMITIAN) const;
 	Mpo<Symmetry> make_corr  (size_t locx1, size_t locx2, size_t locy1, size_t locy2,
 	                          const OperatorType &Op1, const OperatorType &Op2, qarray<Symmetry::Nq> Qtot,
 	                          double factor, bool HERMITIAN) const;
@@ -135,6 +140,27 @@ make_local (size_t locx, size_t locy, const OperatorType &Op, double factor, boo
 	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
 	
 	Mout.setLocal(locx, (factor * Op).template plain<double>());
+	
+	return Mout;
+}
+
+template<typename Symmetry>
+Mpo<Symmetry> HeisenbergObservables<Symmetry>::
+make_localSum (const vector<OperatorType> &Op, vector<double> factor, bool HERMITIAN) const
+{
+	assert(Op.size()==B.size() and factor.size()==B.size());
+	stringstream ss;
+	ss << Op[0].label() << "localSum";
+	
+	Mpo<Symmetry> Mout(B.size(), Op[0].Q(), ss.str(), HERMITIAN);
+	for (size_t l=0; l<B.size(); ++l) {Mout.setLocBasis(B[l].get_basis().qloc(),l);}
+	
+	vector<SiteOperator<Symmetry,double>> Op_plain;
+	for (int i=0; i<Op.size(); ++i)
+	{
+		Op_plain.push_back(Op[i].template plain<double>());
+	}
+	Mout.setLocalSum(Op_plain, factor);
 	
 	return Mout;
 }
@@ -286,6 +312,44 @@ typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergO
 Sz (size_t locx, size_t locy) const
 {
 	return Scomp(SZ,locx,locy);
+}
+
+template<typename Symmetry>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+Stot (size_t locy, double factor, int dLphys) const
+{
+	vector<OperatorType> Ops(B.size());
+	vector<double> factors(B.size());
+	for (int l=0; l<B.size(); ++l)
+	{
+		Ops[l] = B[l].S(locy);
+		factors[l] = 0.;
+	}
+	for (int l=0; l<B.size(); l+=dLphys)
+	{
+		factors[l] = factor;
+	}
+	return make_localSum(Ops, factors, PROP::NON_HERMITIAN);
+}
+
+template<typename Symmetry>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type HeisenbergObservables<Symmetry>::
+Sdagtot (size_t locy, double factor, int dLphys) const
+{
+	vector<OperatorType> Ops(B.size());
+	vector<double> factors(B.size());
+	for (int l=0; l<B.size(); ++l)
+	{
+		Ops[l] = B[l].Sdag(locy);
+		factors[l] = 0.;
+	}
+	for (int l=0; l<B.size(); l+=dLphys)
+	{
+		factors[l] = factor;
+	}
+	return make_localSum(Ops, factors, PROP::NON_HERMITIAN);
 }
 
 template<typename Symmetry>

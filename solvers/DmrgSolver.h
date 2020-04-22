@@ -1158,8 +1158,8 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		size_t j = SweepStat.N_halfsweeps;
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
 		Vout.state.eps_svd = DynParam.eps_svd(j);
-		if (j%DynParam.Dincr_per(j) == 0 and 
-		    (totalTruncWeight >= Vout.state.eps_svd or err_state > 10.*GlobParam.tol_state))
+		if (j%DynParam.Dincr_per(j) == 0)
+		//and (totalTruncWeight >= Vout.state.eps_svd or err_state > 10.*GlobParam.tol_state)
 		{
 			// increase by Dincr_abs for small Dmax and by Dincr_rel for large Dmax(e.g. add 10% of current Dmax)
 			size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Dincr_rel(j) * Vout.state.max_Nsv), 

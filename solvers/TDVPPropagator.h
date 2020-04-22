@@ -247,7 +247,7 @@ t_step (const Hamiltonian &H, VectorType &Vinout, TimeScalar dt, int N_stages, d
 		// 2-site propagation
 		size_t loc1 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot : pivot-1;
 		size_t loc2 = (CURRENT_DIRECTION==DMRG::DIRECTION::RIGHT)? pivot+1 : pivot;
-//		lout << "2site between: " << loc1 << "," << loc2 << ", pivot=" << pivot << endl;
+//		cout << "2site between: " << loc1 << "," << loc2 << ", pivot=" << pivot << endl;
 		
 		Stopwatch<> Wc;
 		PivotVector<Symmetry,TimeScalar> Apair(Vinout.A[loc1], Vinout.locBasis(loc1),
