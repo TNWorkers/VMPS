@@ -3,26 +3,6 @@
 
 #include "ParamHandler.h"
 
-// Simple generation of periodic boundary conditions with NN and NNN coupling
-ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0.)
-{
-	ArrayXXd res(L,L); res.setZero();
-	
-	res.matrix().diagonal<1>().setConstant(lambda1);
-	res.matrix().diagonal<-1>().setConstant(lambda1);
-	res(0,L-1) = lambda1;
-	res(L-1,0) = lambda1;
-	
-	res.matrix().diagonal<2>().setConstant(lambda2);
-	res.matrix().diagonal<-2>().setConstant(lambda2);
-	res(0,L-2) = lambda2;
-	res(L-2,0) = lambda2;
-	res(1,L-1) = lambda2;
-	res(L-1,1) = lambda2;
-	
-	return res;
-}
-
 ArrayXXd create_1D_OBC (size_t L, double lambda1=1., double lambda2=0.)
 {
 	ArrayXXd res(L,L); res.setZero();
@@ -32,6 +12,22 @@ ArrayXXd create_1D_OBC (size_t L, double lambda1=1., double lambda2=0.)
 	
 	res.matrix().diagonal<2>().setConstant(lambda2);
 	res.matrix().diagonal<-2>().setConstant(lambda2);
+	
+	return res;
+}
+
+// Simple generation of periodic boundary conditions with NN and NNN coupling
+ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0.)
+{
+	ArrayXXd res = create_1D_OBC(L,lambda1,lambda2);
+	
+	res(0,L-1) = lambda1;
+	res(L-1,0) = lambda1;
+	
+	res(0,L-2) = lambda2;
+	res(L-2,0) = lambda2;
+	res(1,L-1) = lambda2;
+	res(L-1,1) = lambda2;
 	
 	return res;
 }

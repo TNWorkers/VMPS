@@ -29,13 +29,16 @@ using namespace Eigen;
 #include "DmrgLinearAlgebra.h"
 #include "models/ParamCollection.h"
 
-//#include "models/HubbardSU2xU1.h"
-//typedef VMPS::HubbardSU2xU1 MODEL;
-
 #include "models/HeisenbergSU2.h"
 typedef VMPS::HeisenbergSU2 MODEL;
 // L=12 exact E0/L=-0.51566, SdagS=-0.20626
 // L=20 exact E0/L=-0.48611, SdagS=-0.32407
+
+#include "models/DoubleHeisenbergSU2.h"
+typedef VMPS::DoubleHeisenbergSU2 MODELC;
+
+//#include "models/DoubleHeisenbergU1.h"
+//typedef VMPS::DoubleHeisenbergU1 MODELC;
 
 #include "solvers/TDVPPropagator.h"
 
@@ -55,7 +58,7 @@ int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
 	int L = args.get<int>("L",60);
-	assert(L==12 or L==20 or L==60);
+	assert(L==6 or L==12 or L==20 or L==60);
 	double t = args.get<double>("t",1.);
 	double U = args.get<double>("U",0.);
 	int N = args.get<int>("N",L);
@@ -64,13 +67,15 @@ int main (int argc, char* argv[])
 	size_t maxPower = args.get<size_t>("maxPower",1ul);
 	
 	bool BETAPROP = static_cast<bool>(args.get<int>("BETAPROP",0));
+	bool CANONICAL = static_cast<bool>(args.get<int>("CANONICAL",0));
+	bool CALC_C = static_cast<bool>(args.get<int>("CALC_C",1));
 	double dbeta = args.get<double>("dbeta",0.1);
 	double betamax = args.get<double>("betamax",20.);
 	int Nbeta = static_cast<int>(betamax/dbeta);
 	double tol_beta_compr = args.get<double>("tol_beta_compr",1e-5);
 	size_t Dbetalimit = args.get<size_t>("Dbetalimit",100ul);
 	bool CALC_CHI = static_cast<bool>(args.get<int>("CALC_CHI",1));
-	size_t Ly = args.get<size_t>("Ly",1ul);
+	size_t Ly = args.get<size_t>("Ly",2ul);
 	int dLphys = (Ly==2ul)? 1:2;
 	int N_stages = args.get<int>("N_stages",1);
 	
@@ -199,27 +204,164 @@ int main (int argc, char* argv[])
 				CorrFiler << d << "\t" << mean << "\t" << stdev << endl;
 			}
 		}
-		
-//		MODEL Hchi;
-//		vector<Param> chi_params;
-//		ArrayXXd all_connected(L,L); all_connected=1.; all_connected.matrix().diagonal().setZero();
-//		cout << "all_connected=" << endl << all_connected << endl;
-//		chi_params.push_back({"Jfull",all_connected});
-//		chi_params.push_back({"maxPower",1ul});
-//		chi_params.push_back({"Ly",1ul});
-//		chi_params.push_back({"J",0.});
-//		chi_params.push_back({"Jrung",0.});
-//		Hchi = MODEL(size_t(L),chi_params);
-//		cout << "avg(g.state,Hchi,g.state)=" << 2.*avg(g.state,Hchi,g.state)+0.75*L << endl;
-//		
-//		double res_ = 0.;
-//		for (int i=0; i<L; ++i)
-//		for (int j=0; j<L; ++j)
-//		{
-//			res_ += avg(g.state, H.SdagS(i,j), g.state);
-//		}
-//		cout << res_ << endl;
 	}
+	//-------canonical-------
+	else if (BETAPROP and CANONICAL)
+	{
+		assert(MODEL::FAMILY == HEISENBERG);
+		
+		vector<Param> beta0_params;
+		MODELC H0;
+		ArrayXXd AllConnected(L,L); AllConnected=-1.; AllConnected.matrix().diagonal().setZero();
+		beta0_params.push_back({"Kfull",AllConnected});
+		beta0_params.push_back({"maxPower",2ul});
+		H0 = MODELC(L,beta0_params);
+		lout << H0.info() << endl;
+		
+		Eigenstate<MODELC::StateXd> g;
+		MODELC::Solver DMRG(VERB);
+		DMRG.edgeState(H0, g, MODELC::singlet(), LANCZOS::EDGE::GROUND, false);
+		
+		// test entanglement
+		MatrixXd SdagSphys_Tinf(L,L); SdagSphys_Tinf.setZero();
+		MatrixXd SdagSancl_Tinf(L,L); SdagSancl_Tinf.setZero();
+		#pragma omp parallel for collapse(2)
+		for (int j=0; j<L; ++j)
+		for (int i=0; i<L; ++i)
+		{
+			SdagSphys_Tinf(i,j) = avg(g.state, H0.SdagS<0>(i,j), g.state);
+			SdagSancl_Tinf(i,j) = avg(g.state, H0.SdagS<1>(i,j), g.state);
+		}
+		lout << "entanglement test physical spins:" << endl;
+		lout << SdagSphys_Tinf << endl << endl;
+		lout << "entanglement test ancillary spins:" << endl;
+		lout << SdagSancl_Tinf << endl << endl;
+		
+		vector<Param> beta_params;
+		if (CALC_C)
+		{
+			beta_params.push_back({"maxPower",(L==60)?1ul:2ul});
+		}
+		else
+		{
+			beta_params.push_back({"maxPower",1ul});
+		}
+		MODELC H;
+		if (L==6)
+		{
+			beta_params.push_back({"J",1.});
+		}
+		else
+		{
+			beta_params.push_back({"Jfull",hopping});
+		}
+		H = MODELC(size_t(L),beta_params);
+		lout << H.info() << endl;
+		lout << endl;
+		
+		auto PsiT = g.state;
+		PsiT.max_Nsv = Dbetalimit;
+		TDVPPropagator<MODELC,MODELC::Symmetry,double,double,MODELC::StateXd> TDVPT(H,PsiT);
+		
+		ofstream Filer(make_string(wd,"thermodynC_",base,".dat"));
+		Filer << "#T\tc\te\tchi" << endl;
+		double beta = 0.;
+		vector<double> cvec;
+		vector<double> evec;
+		vector<double> chivec;
+		auto PsiTprev = PsiT;
+		
+		for (int i=0; i<Nbeta+1; ++i)
+		{
+			Stopwatch<> FullTimer;
+			
+			#pragma omp parallel sections
+			{
+				#pragma omp section
+				{
+					if (i!=Nbeta)
+					{
+						Stopwatch<> Stepper;
+//						if (i==0)
+//						{
+//							PsiT.eps_svd = 0.;
+//							PsiT.min_Nsv = 1ul;
+//						}
+//						else
+//						{
+							PsiT.eps_svd = tol_beta_compr;
+							PsiT.min_Nsv = 0ul;
+//						}
+						
+						if (PsiT.calc_Dmax() == Dbetalimit and i*dbeta>1.)
+						{
+							PsiT.eps_svd = 0.1*tol_beta_compr;
+							TDVPT.t_step0(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
+						}
+						else
+						{
+							TDVPT.t_step(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
+						}
+						PsiT /= sqrt(dot(PsiT,PsiT));
+						lout << "propagated to: β=" << (i+1)*dbeta << endl;
+						lout << TDVPT.info() << endl;
+						lout << setprecision(16) << PsiT.info() << setprecision(6) << endl;
+						lout << Stepper.info("βstep") << endl;
+					}
+				}
+				#pragma omp section
+				{
+					if (i>0)
+					{
+						double beta = i*dbeta;
+						Stopwatch<> Stepper;
+						//---------inner energy density---------
+						double E = avg(PsiTprev,H,PsiTprev);
+						double e = E/L;
+						evec.push_back(e);
+						lout << Stepper.info("e") << endl;
+						//---------specific heat---------
+						double c = std::nan("c");
+						if (CALC_C)
+						{
+							c = (L==60)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
+						                 beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+						}
+						cvec.push_back(c);
+						lout << Stepper.info("c") << endl;
+						//---------uniform magnetic susceptibility---------
+						double chi = beta*avg(PsiTprev,H.Sdagtot<0>(0,sqrt(3.)),H.Stot<0>(0,1.),PsiTprev)/L;
+						chivec.push_back(chi);
+						//---------
+						lout << Stepper.info("chi") << endl;
+					}
+				}
+			}
+			
+			PsiTprev = PsiT;
+			
+			// entropy
+			auto PsiTtmp = PsiT; PsiTtmp.entropy_skim(); lout << "S=" << PsiTtmp.entropy().transpose() << endl;
+			
+			if (i>0)
+			{
+				lout << termcolor::blue 
+				     << "β=" << i*dbeta << ", T=" << 1./(i*dbeta) 
+				     << ", e=" << evec[i-1] 
+				     << ", c=" << cvec[i-1] 
+				     << ", χ=" << chivec[i-1] 
+				     << termcolor::reset
+				     << endl;
+				Filer << 1./(i*dbeta) << "\t" << cvec[i-1] << "\t" << evec[i-1] << "\t" << chivec[i-1] << endl;
+			}
+			
+			lout << FullTimer.info("total") << endl;
+			lout << endl;
+		}
+		
+		Filer.close();
+	}
+	//-------grand canonical-------
 	else
 	{
 		assert(MODEL::FAMILY == HEISENBERG);
@@ -273,7 +415,14 @@ int main (int argc, char* argv[])
 		
 		vector<Param> beta_params;
 		beta_params.push_back({"Ly",Ly});
-		beta_params.push_back({"maxPower",(L==60)?1ul:2ul});
+		if (CALC_C)
+		{
+			beta_params.push_back({"maxPower",(L==60)?1ul:2ul});
+		}
+		else
+		{
+			beta_params.push_back({"maxPower",1ul});
+		}
 		beta_params.push_back({"J",0.});
 		beta_params.push_back({"Jrung",0.});
 		MODEL H;
@@ -297,27 +446,11 @@ int main (int argc, char* argv[])
 		lout << H.info() << endl;
 		lout << endl;
 		
-//		MODEL Hchi;
-//		if (CALC_CHI)
-//		{
-//			lout << endl;
-//			vector<Param> chi_params;
-//			ArrayXXd all_connected(L,L); all_connected=1.; all_connected.matrix().diagonal().setZero();
-//	//		cout << "all_connected=" << endl << all_connected << endl;
-//			chi_params.push_back({"Jfull",all_connected});
-//			chi_params.push_back({"maxPower",1ul});
-//			chi_params.push_back({"Ly",2ul});
-//			chi_params.push_back({"J",0.});
-//			chi_params.push_back({"Jrung",0.});
-//			Hchi = MODEL(size_t(L),chi_params);
-//			lout << "all connected " << Hchi.info() << endl;
-//		}
-		
 		auto PsiT = g.state;
 		PsiT.max_Nsv = Dbetalimit;
 		TDVPPropagator<MODEL,MODEL::Symmetry,double,double,MODEL::StateXd> TDVPT(H,PsiT);
 		
-		ofstream Filer(make_string(wd,"thermodyn_",base,".dat"));
+		ofstream Filer(make_string(wd,"thermodynGC_",base,".dat"));
 		Filer << "#T\tc\te\tchi" << endl;
 		double beta = 0.;
 		vector<double> cvec;
@@ -363,7 +496,6 @@ int main (int argc, char* argv[])
 						lout << Stepper.info("βstep") << endl;
 					}
 				}
-				//---------specific heat---------
 				#pragma omp section
 				{
 					if (i>0)
@@ -376,8 +508,12 @@ int main (int argc, char* argv[])
 						evec.push_back(e);
 						lout << Stepper.info("e") << endl;
 						//---------specific heat---------
-						double c = (L==60)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
+						double c = std::nan("c");
+						if (CALC_C)
+						{
+							c = (L==60)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
 						                    beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+						}
 						cvec.push_back(c);
 						lout << Stepper.info("c") << endl;
 						//---------uniform magnetic susceptibility---------
@@ -387,14 +523,14 @@ int main (int argc, char* argv[])
 			//			for (int i=0; i<L; ++i)
 			//			for (int j=0; j<L; ++j)
 			//			{
-			//				double res = avg(PsiT,H.SdagS(i,j),PsiT);
-			//				chi_ += res; // note: pow(avg(PsiT,S(i),PsiT),2)=0
+			//				double res = avg(PsiTprev,H.SdagS(i,j),PsiTprev);
+			//				chi_ += res; // note: pow(avg(PsiTprev,S(i),PsiTprev),2)=0
 			//			}
 			//			chi_ *= beta/L;
 						// fast way:
 			//			if (CALC_CHI)
 			//			{
-			//				chi = beta*(2.*avg(PsiT,Hchi,PsiT)/L+0.75); // S(S+1)=0.75: diagonal contribution
+			//				chi = beta*(2.*avg(PsiTprev,Hchi,PsiTprev)/L+0.75); // S(S+1)=0.75: diagonal contribution
 			//			}
 						// best way:
 						chi = beta*avg(PsiTprev,H.Sdagtot(0,sqrt(3.),dLphys),H.Stot(0,1.,dLphys),PsiTprev)/L;

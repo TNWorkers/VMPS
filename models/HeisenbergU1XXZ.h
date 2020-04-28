@@ -155,7 +155,7 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 			}
 			
 			stringstream ss;
-			ss << label << "ⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
+			ss << label << "(" << Geometry2D::hoppingInfo(Full) << ")";
 			labellist[loc].push_back(ss.str());
 		};
 
@@ -199,7 +199,7 @@ add_operators (const std::vector<SpinBase<Symmetry_>> &B, const ParamHandler &P,
 		}
 		
 		if (P.HAS("Jxyfull") or P.HAS("Jzfull")) continue;
-				
+		
 		// Nearest-neighbour terms: J
 		
 		param2d Jxypara = P.fill_array2d<double>("Jxy", "Jxypara", {orbitals, next_orbitals}, loc%Lcell);

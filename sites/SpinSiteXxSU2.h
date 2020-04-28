@@ -11,10 +11,10 @@
 
 #include "tensors/SiteOperatorQ.h"
 
-template <typename Symmetry> class SpinSite;
+template <typename Symmetry, size_t order> class SpinSite;
 
 template <typename OtherSym>
-class SpinSite<Sym::S1xS2<OtherSym, Sym::SU2<Sym::SpinSU2> > >
+class SpinSite<Sym::S1xS2<OtherSym, Sym::SU2<Sym::SpinSU2> >, 1ul>
 {
 	typedef double Scalar;
 	typedef typename Sym::S1xS2<OtherSym, Sym::SU2<Sym::SpinSU2> > Symmetry;
@@ -42,7 +42,7 @@ protected:
 };
 
 template<typename OtherSym>
-SpinSite<Sym::S1xS2<OtherSym, Sym::SU2<Sym::SpinSU2>> >::
+SpinSite<Sym::S1xS2<OtherSym, Sym::SU2<Sym::SpinSU2> >, 1ul>::
 SpinSite(std::size_t D_input)
 :D(D_input)
 {

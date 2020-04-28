@@ -41,8 +41,6 @@ public:
 	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > Symmetry;
 	MAKE_TYPEDEFS(HubbardSU2xSU2)
 	
-	static qarray<2> singlet (int N=0) {return qarray<2>{1,1};};
-	
 private:
 	
 	typedef Eigen::Index Index;
@@ -70,7 +68,7 @@ public:
 	                           PushType<SiteOperator<Symmetry_,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, 
 	                           const BC boundary=BC::OPEN);
 	
-	static qarray<2> singlet (int N=0) {return qarray<1>{1,1};};
+	static qarray<2> singlet (int N=0) {return qarray<2>{1,1};};
 	static constexpr MODEL_FAMILY FAMILY = HUBBARD;
 	
 	Mpo<Symmetry> B (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return cdagc(locx1,locx2,locy1,locy2);};
@@ -166,7 +164,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			
 			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
 			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
-
+			
 			for (size_t j=0; j<first.size(); j++)
 			for (size_t h=0; h<R[loc].size(); ++h)
 			{
@@ -189,10 +187,10 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			}
 			
 			stringstream ss;
-			ss << label << "ⱼ(" << Geometry2D::hoppingInfo(Full) << ")";
+			ss << label << "(" << Geometry2D::hoppingInfo(Full) << ")";
 			labellist[loc].push_back(ss.str());
 		};
-				
+		
 		if (P.HAS("tFull"))
 		{
 			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> cdag_sign_local = (F[loc].cdag(Gloc,0) * F[loc].sign());
@@ -229,7 +227,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {PsidagLloc,PsidagRloc};
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {PsiRran,PsiLran};
-			push_full("Xfull", "Xᵢⱼ", first, last, {-std::sqrt(2.) * std::sqrt(2.), -std::sqrt(2.) * std::sqrt(2.)}, PROP::FERMIONIC);			
+			push_full("Xfull", "Xᵢⱼ", first, last, {-std::sqrt(2.) * std::sqrt(2.), -std::sqrt(2.) * std::sqrt(2.)}, PROP::FERMIONIC);
 		}
 		
 		// Local terms: Hubbard-U, t⟂, V⟂, J⟂

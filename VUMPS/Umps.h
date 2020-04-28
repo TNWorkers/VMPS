@@ -605,8 +605,8 @@ template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
 resize (size_t Dmax_input, size_t Nqmax_input)
 {
-	if (!Symmetry::NON_ABELIAN)
-	{
+//	if (!Symmetry::NON_ABELIAN)
+//	{
 		Dmax = Dmax_input;
 		Nqmax = Nqmax_input;
 		if      (Symmetry::IS_TRIVIAL) {Nqmax = 1;}
@@ -747,30 +747,30 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 		
 		setRandom();
 		for (size_t l=0; l<N_sites; ++l) svdDecompose(l);
-	}
-	else
-	{
-		Dmax = Dmax_input;
-		Nqmax = Nqmax_input;
-		resize_arrays();
-		
-		Mps<Symmetry,Scalar> Tmp(N_sites, qloc, Symmetry::qvacuum(), N_sites, Nqmax, true);
-		Tmp.innerResize(Dmax);
-		Tmp.setRandom();
-		
-		A[GAUGE::C] = Tmp.A;
-		A[GAUGE::L] = Tmp.A;
-		A[GAUGE::R] = Tmp.A;
-		
-		for (size_t l=0; l<N_sites; ++l) Tmp.rightSplitStep(l,C[l]);
-		
-		normalize_C();
-		
-		update_inbase(GAUGE::C);
-		update_outbase(GAUGE::C);
-		
-		for (size_t l=0; l<N_sites; ++l) svdDecompose(l,GAUGE::C);
-	}
+//	}
+//	else
+//	{
+//		Dmax = Dmax_input;
+//		Nqmax = Nqmax_input;
+//		resize_arrays();
+//		
+//		Mps<Symmetry,Scalar> Tmp(N_sites, qloc, Symmetry::qvacuum(), N_sites, Nqmax, true);
+//		Tmp.innerResize(Dmax);
+//		Tmp.setRandom();
+//		
+//		A[GAUGE::C] = Tmp.A;
+//		A[GAUGE::L] = Tmp.A;
+//		A[GAUGE::R] = Tmp.A;
+//		
+//		for (size_t l=0; l<N_sites; ++l) Tmp.rightSplitStep(l,C[l]);
+//		
+//		normalize_C();
+//		
+//		update_inbase(GAUGE::C);
+//		update_outbase(GAUGE::C);
+//		
+//		for (size_t l=0; l<N_sites; ++l) svdDecompose(l,GAUGE::C);
+//	}
 }
 
 //template<typename Symmetry, typename Scalar>

@@ -9,27 +9,32 @@ namespace Sym{
 	{
 		static const KIND name=KIND::S;
 	};
-
+	
+	struct AltSpinSU2
+	{
+		static const KIND name=KIND::Salt;
+	};
+	
 	struct SpinU1
 	{
 		static const KIND name=KIND::M;
 	};
-
+	
 	struct ChargeSU2
 	{
 		static const KIND name=KIND::T;
 	};
-
+	
 	struct ChargeU1
 	{
 		static const KIND name=KIND::N;
 	};
-
+	
 	struct ChargeUp
 	{
 		static const KIND name=KIND::Nup;
 	};
-
+	
 	struct ChargeDn
 	{
 		static const KIND name=KIND::Ndn;

@@ -170,6 +170,8 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec, d
 
 bool TIME_DIR (std::string spec)
 {
+	// true=forwards in time
+	// false=backwards in time
 	return (spec=="PES" or spec=="PESUP" or spec=="PESDN" or spec=="AES")? false:true;
 }
 
