@@ -102,7 +102,6 @@ void HxV (const TransferMatrixSF<Symmetry,Scalar> &H, const MpoTransferVector<Sy
 		Vout.data.addScale(-exp(-1.i*H.k), TxV.template cast<Matrix<complex<Scalar>,Dynamic,Dynamic> >());
 		// add <Vin|R>*exp(-i*k)*<L|
 		complex<Scalar> VdotR = contract_LR(Vin.data, H.Reigen);
-		if (std::abs(VdotR) > 0.) {cout << termcolor::red << "VdotR>0" << termcolor::reset << endl;}
 		Vout.data.addScale(+exp(-1.i*H.k)*VdotR, H.Leigen);
 	}
 }

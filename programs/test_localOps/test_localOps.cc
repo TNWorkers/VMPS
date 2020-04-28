@@ -29,7 +29,8 @@ using namespace std;
 
 size_t L;
 double U, J, tPrime;
-int S,Sc,M,N,Nup,Ndn,D;
+int S,Sc,M,N,Nup,Ndn;
+size_t D;
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
@@ -37,7 +38,8 @@ int main (int argc, char* argv[])
 	size_t i = args.get<int>("i",0);
 	size_t j = args.get<int>("j",0);
 	N = args.get<int>("N",4);
-	J = args.get<double>("J",-1.);
+	J = args.get<double>("J",1.);
+	double Jk = args.get<double>("Jk",1.);
 	tPrime = args.get<double>("tPrime",0.);
 	U = args.get<double>("U",0.);
 	S = args.get<int>("S",1);
@@ -45,24 +47,20 @@ int main (int argc, char* argv[])
 	Sc = args.get<int>("Sc",1);
 	Nup = args.get<int>("Nup",L/2);
 	Ndn = args.get<int>("Ndn",L/2);
-	D = args.get<int>("D",1);
+	D = args.get<size_t>("D",2);
 	
 	bool OBSERVABLES = args.get<bool>("OBSERVABLES",true);
 
-	typedef Sym::S1xS2<Sym::U1<Sym::SpinU1>, Sym::SU2<Sym::SpinSU2> > Symmetry;
+	typedef Sym::U0 Symmetry;
 	typedef Sym::S1xS2<Sym::U1<Sym::ChargeU1>,Sym::U1<Sym::SpinU1> > Symmetry2;
 	typedef SpinBase<Symmetry> Base;
 	typedef Base::OperatorType Op;
-	vector<Base> B(2);
-	B[0] = Base(L,D);
-	
-	SpinBase<Symmetry2> B2(L,D);
-
-	cout << B[0].S() << endl;
-	cout << B[0].Q(0) << endl;
-	cout << B[0].Qdag(0) << endl;
-	cout << B2.Sp() << endl;
-	cout << B2.Sm() << endl;
+	Base B(L,D);
+	ArrayXXd Jarr; Jarr.resize(L,L); Jarr.setZero(); Jarr(0,1)=Jk; Jarr(1,2)=J; Jarr(2,3)=Jk;
+	auto H = B.HeisenbergHamiltonian(Jarr);
+	cout << H.data().print(true) << endl;
+	EDSolver<Op> John(H,{},Eigen::DecompositionOptions::ComputeEigenvectors);
+	cout << "gse=" << endl << John.eigenvalues().data().print(true) << endl;
 	
 	if (OBSERVABLES)
 	{

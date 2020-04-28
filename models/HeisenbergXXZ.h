@@ -14,7 +14,7 @@ public:
 	MAKE_TYPEDEFS(HeisenbergXXZ)
 	
 	static qarray<0> singlet(int N=0) {return qarray<0>{};};
-	static MODEL_FAMILY FAMILY = HEISENBERG;
+	static constexpr MODEL_FAMILY FAMILY = HEISENBERG;
 	
 private:
 	
@@ -27,7 +27,7 @@ public:
 	HeisenbergXXZ (const size_t &L, const vector<Param> &params, const BC &boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION &VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
 	///\}
 	
-	static constexpr const std::map<string,std::any> defaults;
+	static const std::map<string,std::any> defaults;
 };
 
 const std::map<string,std::any> HeisenbergXXZ::defaults = 
