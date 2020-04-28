@@ -708,24 +708,24 @@ setProductSum(const OperatorType& op1, const OperatorType& op2)
 // template<typename Symmetry, typename Scalar> void Mpo<Symmetry,Scalar>::
 // scale(double factor, double offset)
 // {
-// 	// if (LocalSite != -1)
-// 	// {
-// 	// 	auto Id = LocalOp;
-// 	// 	Id.setIdentity();
-//     //     #ifdef OPLABELS
-//     //     Id.label = "id";
-//     //     #endif
-//     //     if(std::abs(factor - 1.0) > ::mynumeric_limits<Scalar>::epsilon())
-//     //     {
-//     //         LocalOp = factor * LocalOp;
-//     //     }
-// 	// 	if(std::abs(offset) > ::mynumeric_limits<Scalar>::epsilon())
-//     //     {
-//     //         LocalOp += offset * Id;
-//     //     }
-// 	// 	setLocal(LocalSite, LocalOp);
-// 	// }
-// 	// else
+// 	if (LocalSite != -1)
+// 	{
+// 		auto Id = LocalOp;
+// 		Id.setIdentity();
+//         #ifdef OPLABELS
+//         Id.label = "id";
+//         #endif
+//         if(std::abs(factor - 1.0) > ::mynumeric_limits<Scalar>::epsilon())
+//         {
+//             LocalOp = factor * LocalOp;
+//         }
+// 		if(std::abs(offset) > ::mynumeric_limits<Scalar>::epsilon())
+//         {
+//             LocalOp += offset * Id;
+//         }
+// 		setLocal(LocalSite, LocalOp);
+// 	}
+// 	else
 // 	{
 // 		this->scale(factor, offset);
 //         this->finalize(PROP::COMPRESS, 1);

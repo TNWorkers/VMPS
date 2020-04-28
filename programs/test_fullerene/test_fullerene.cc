@@ -78,6 +78,7 @@ int main (int argc, char* argv[])
 	size_t Ly = args.get<size_t>("Ly",2ul);
 	int dLphys = (Ly==2ul)? 1:2;
 	int N_stages = args.get<int>("N_stages",1);
+	string LOAD = args.get<string>("LOAD","");
 	
 	string wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
@@ -173,12 +174,21 @@ int main (int argc, char* argv[])
 		DMRG.userSetDynParam();
 		DMRG.GlobParam = GlobParam;
 		DMRG.DynParam = DynParam;
-		DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+//		if (LOAD!="")
+//		{
+//			g.state.load(LOAD);
+//			DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND, true);
+//		}
+//		else
+//		{
+//			DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+//		}
 		
 		lout << "varE=" << abs(avg(g.state,H,H,g.state)-pow(g.energy,2))/L << endl;
 		
 		if constexpr (MODEL::FAMILY == HEISENBERG)
 		{
+			g.state.load(LOAD);
 			ofstream CorrFiler(make_string(wd,"SdagS_",base,".dat"));
 			CorrFiler << "#d\tSdagS\tstdev" << endl;
 			auto distanceMatrix = calc_distanceMatrix(hopping);

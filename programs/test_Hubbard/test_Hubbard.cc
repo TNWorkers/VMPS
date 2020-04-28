@@ -555,9 +555,13 @@ int main (int argc, char* argv[])
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{
-				densityMatrix_SU2B(i,j) = avg(g_SU2.state, H_SU2.cdag(i,0,-sqrt(2.)), H_SU2.c(j), g_SU2.state);
+				cout << "beginning cdagc" << endl;
+				auto cdagc = MpoTerms<VMPS::HubbardSU2xU1::Symmetry,double>::prod(H_SU2.cdag(i,0,-sqrt(2.)), H_SU2.c(j), {1,0});
+				
+				densityMatrix_SU2B(i,j) = avg(g_SU2.state, cdagc, g_SU2.state);
+				// densityMatrix_SU2B(i,j) = avg(g_SU2.state, H_SU2.cdag(i,0,-sqrt(2.)), H_SU2.c(j), g_SU2.state);
 			}
-			
+			assert(false);
 			for (size_t i=0; i<L; ++i) 
 			for (size_t j=0; j<L; ++j)
 			{

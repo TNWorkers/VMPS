@@ -39,7 +39,7 @@ private:
 	typedef typename Symmetry::qType qType;
 	
 	static qarray<0> singlet(int N=0) {return qarray<0>{};};
-	static MODEL_FAMILY FAMILY = HEISENBERG;
+	static constexpr MODEL_FAMILY FAMILY = HEISENBERG;
 	
 public:
 	
@@ -53,7 +53,7 @@ public:
 	                    PushType<SiteOperator<Symmetry_,complex<double>>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, 
 	                    const BC boundary=BC::OPEN);
 	
-	static constexpr const std::map<string,std::any> defaults;
+	static const std::map<string,std::any> defaults;
 };
 
 const std::map<string,std::any> HeisenbergXYZ::defaults = 

@@ -465,7 +465,7 @@ public:
      *  @param factor   The factor to scale the interactions with
      *  @param offset   The factor all local identity operators are multiplied by
      */
-    void scale(const double factor, const double offset=0., const double tolerance=::mynumeric_limits<double>::epsilon());
+    void scale(const double factor, const double offset=0., const double tolerance=1.e-14);
     
     /**
      *  @return Cast instance of MpoTerms with another scalar type
@@ -615,7 +615,7 @@ public:
     /**
      *  @return List of quantum numbers and degeneracy indices of the auxiliar basis connecting both edges of the unit cell. Ordered in such a way that a lower triangular matrix can be achieved.
      */
-    std::vector<std::pair<qType,std::size_t>> base_order_IBC(const std::size_t power=0) const;
+    std::vector<std::pair<qType,std::size_t>> base_order_IBC(const std::size_t power=1) const;
     
     /**
      *  Calculates the approximate amount of memory needed for this MPO
@@ -3707,7 +3707,8 @@ base_order_IBC(const std::size_t power) const
                     for(std::size_t t=0; t<W_[0][m][n].size(); ++t)
                     {
                         auto it = W_[0][m][n][t].dict.find({qIn,qVac});
-                        MatrixType& mat = W_[0][m][n][t].block[it->second];
+						if (it == W_[0][m][n][t].dict.end()) {continue;}
+                        const MatrixType& mat = W_[0][m][n][t].block[it->second];
                         if(std::abs(mat.coeff(row,pos_qTot) > ::mynumeric_limits<double>::epsilon()))
                         {
                             isZeroOp = false;
