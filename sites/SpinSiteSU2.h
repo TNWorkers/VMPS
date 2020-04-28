@@ -11,10 +11,10 @@
 
 #include "tensors/SiteOperatorQ.h"
 
-template <typename Symmetry> class SpinSite;
+template <typename Symmetry, size_t order> class SpinSite;
 
 template <>
-class SpinSite<Sym::SU2<Sym::SpinSU2> >
+class SpinSite<Sym::SU2<Sym::SpinSU2>,0ul>
 {
 	typedef double Scalar;
 	typedef Sym::SU2<Sym::SpinSU2> Symmetry;
@@ -41,7 +41,7 @@ protected:
 	OperatorType Q_1s_; //quadrupole moment
 };
 
-SpinSite<Sym::SU2<Sym::SpinSU2> >::
+SpinSite<Sym::SU2<Sym::SpinSU2>,0ul>::
 SpinSite(std::size_t D_input)
 :D(D_input)
 {

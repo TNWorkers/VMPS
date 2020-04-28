@@ -79,13 +79,14 @@ std::ostream& operator<< (std::ostream& s, MODEL_FAMILY mf)
 #ifndef KIND_ENUM
 #define KIND_ENUM
 namespace Sym{
-	enum KIND {S,T,N,M,Nup,Ndn,Z2};
+	enum KIND {S,Salt,T,N,M,Nup,Ndn,Z2};
 }
 #endif
 
 std::ostream& operator<< (std::ostream& s, Sym::KIND l)
 {
 	if      (l==Sym::KIND::S)   {s << "S";}
+	if      (l==Sym::KIND::Salt){s << "Salt";}
 	else if (l==Sym::KIND::T)   {s << "T";}
 	else if (l==Sym::KIND::N)   {s << "N";}
 	else if (l==Sym::KIND::M)   {s << "M";}

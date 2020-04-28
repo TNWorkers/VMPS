@@ -25,7 +25,7 @@ namespace Sym
 		std::stringstream ss;
 		for (int q=0; q<Symmetry::Nq; ++q)
 		{
-			if (Symmetry::kind()[q] == KIND::S or Symmetry::kind()[q] == KIND::T)
+			if (Symmetry::kind()[q] == KIND::S or Symmetry::kind()[q] == KIND::Salt or Symmetry::kind()[q] == KIND::T)
 			{
 				ss << print_frac_nice(boost::rational<int>(qnum[q]-1,2));
 			}
@@ -161,7 +161,7 @@ void transform_base (vector<vector<qarray<Symmetry::Nq> > > &qloc, qarray<Symmet
 				if (PRINT) lout << "qloc: " << qloc[l][i] << endl;
 				for (size_t q=0; q<Symmetry::Nq; ++q)
 				{
-					if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non Abelian symmetries
+					if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::Salt and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non Abelian symmetries
 					{
 						if (BACK) // back transform
 						{
@@ -197,7 +197,7 @@ qarray<Symmetry::Nq> adjustQN (const qarray<Symmetry::Nq> &qin, const size_t num
 	qarray<Symmetry::Nq> out;
 	for (size_t q=0; q<Symmetry::Nq; ++q)
 	{
-		if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non-Abelian symmetries
+		if (Symmetry::kind()[q] != Sym::KIND::S and Symmetry::kind()[q] != Sym::KIND::Salt and Symmetry::kind()[q] != Sym::KIND::T) //Do not transform the base for non-Abelian symmetries
 		{
 			if (BACK)
 			{

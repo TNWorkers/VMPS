@@ -11,7 +11,7 @@
 #include "sites/SpinSiteSU2.h"
 #include "sites/SpinSiteSU2xX.h"
 
-template <typename Symmetry_>
+template <typename Symmetry_, size_t order=0ul>
 class SpinSite
 {
 	typedef double Scalar;
@@ -35,50 +35,50 @@ public:
 protected:
 	std::size_t D;
 	
-	void fill_basis ();
-	void fill_SiteOps ();
+	void fill_basis();
+	void fill_SiteOps();
 
 	/**Returns the quantum numbers of the operators for the different combinations of U1 symmetries.*/
 	typename Symmetry_::qType getQ (SPINOP_LABEL Sa) const;
-		
+	
 	Qbasis<Symmetry> basis_1s_;
-
+	
 	OperatorType Id_1s_; //identity
 	OperatorType F_1s_; //Fermionic sign
 	
 	OperatorType n_1s_; //particle number
-
+	
 	OperatorType Sz_1s_; //orbital spin
 	OperatorType Sp_1s_; //orbital spin
 	OperatorType Sm_1s_; //orbital spin	
 };
 
-template<typename Symmetry_>
-SpinSite<Symmetry_>::
+template<typename Symmetry_, size_t order>
+SpinSite<Symmetry_,order>::
 SpinSite(std::size_t D_input)
 :D(D_input)
 {
-	//create basis for one Fermionic Site
+	//create basis for one spin site
 	fill_basis();
-
+	
 	// cout << "single site basis" << endl << this->basis_1s_ << endl;
 	fill_SiteOps();
 }
 
-template <typename Symmetry_>
-void SpinSite<Symmetry_>::
+template<typename Symmetry_, size_t order>
+void SpinSite<Symmetry_,order>::
 fill_SiteOps()
 {
-   	Id_1s_  = OperatorType(Symmetry::qvacuum(),basis_1s_);
+	Id_1s_  = OperatorType(Symmetry::qvacuum(),basis_1s_);
 	Id_1s_.setIdentity();
-
-	F_1s_   = OperatorType(Symmetry::qvacuum(),basis_1s_);
-	Sz_1s_  = OperatorType(getQ(SZ),basis_1s_);
-	Sp_1s_  = OperatorType(getQ(SP),basis_1s_);
-	Sm_1s_  = OperatorType(getQ(SM),basis_1s_);
-
+	
+	F_1s_  = OperatorType(Symmetry::qvacuum(),basis_1s_);
+	Sz_1s_ = OperatorType(getQ(SZ),basis_1s_);
+	Sp_1s_ = OperatorType(getQ(SP),basis_1s_);
+	Sm_1s_ = OperatorType(getQ(SM),basis_1s_);
+	
 	OperatorType Sbase  = OperatorType(getQ(SP),basis_1s_);
-
+	
 	double S = 0.5*(D-1);
 	size_t Sx2 = D-1;
 	
@@ -95,76 +95,68 @@ fill_SiteOps()
 	Sp_1s_ = 2.*Sbase;
 	Sm_1s_ = Sp_1s_.adjoint();
 	Sz_1s_ = 0.5 * (Sp_1s_ * Sm_1s_ - Sm_1s_*Sp_1s_);
-
+	
 	F_1s_ = 0.5*Id_1s_ - Sz_1s_;
 	return;
 }
 
-template<typename Symmetry_>
-void SpinSite<Symmetry_>::
-fill_basis ()
+template<typename Symmetry_, size_t order>
+void SpinSite<Symmetry_,order>::
+fill_basis()
 {
-	if
-		constexpr (Symmetry::NO_SPIN_SYM()) //U0
-				  {
-					  typename Symmetry::qType Q=Symmetry::qvacuum();
-					  Eigen::Index inner_dim=D;
-					  std::vector<std::string> ident;
-
-					  assert(D >= 1);
-					  double S = 0.5*(D-1);
-					  size_t Sx2 = D-1;
-					  for (size_t i=0; i<D; ++i)
-					  {
-						  int Qint = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
-						  inner_dim=1;
-						  stringstream ss; ss << Qint;
-						  ident.push_back(ss.str());
-					  }
-					  basis_1s_.push_back(Q,inner_dim,ident);
-				  }
-	else if
-		constexpr (Symmetry::IS_SPIN_U1()) //spin U1
-				  {
-					  typename Symmetry::qType Q;
-					  Eigen::Index inner_dim;
-					  std::vector<std::string> ident;
-
-					  assert(D >= 1);
-					  double S = 0.5*(D-1);
-					  size_t Sx2 = D-1;
-					  for (size_t i=0; i<D; ++i)
-					  {
-						  int Qint = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
-						  if constexpr (Symmetry::Nq>1)
-					      {
-							  for (size_t q=0; q<Symmetry::Nq; q++)
-							  {
-								  if (Symmetry::kind()[q] == Sym::KIND::M)
-								  {
-									  Q[q] = Qint;
-								  }
-								  else
-								  {
-									  Q[q] = 0;
-								  }
-							  }
-						  }
-						  else
-						  {
-							  Q[0] = Qint;
-						  }
-						  inner_dim=1;
-						  stringstream ss; ss << Qint;
-						  ident.push_back(ss.str());
-						  basis_1s_.push_back(Q, inner_dim, ident);
-						  ident.clear();
-					  }					  
-				  }
+	if constexpr (Symmetry::NO_SPIN_SYM()) //U0
+	{
+		typename Symmetry::qType Q=Symmetry::qvacuum();
+		Eigen::Index inner_dim=D;
+		std::vector<std::string> ident;
+		
+		assert(D >= 1);
+		double S = 0.5*(D-1);
+		size_t Sx2 = D-1;
+		for (size_t i=0; i<D; ++i)
+		{
+			int Qint = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
+			inner_dim=1;
+			stringstream ss; ss << Qint;
+			ident.push_back(ss.str());
+		}
+		basis_1s_.push_back(Q,inner_dim,ident);
+	}
+	else if constexpr (Symmetry::IS_SPIN_U1()) //spin U1
+	{
+		typename Symmetry::qType Q;
+		Eigen::Index inner_dim;
+		std::vector<std::string> ident;
+		
+		assert(D >= 1);
+		double S = 0.5*(D-1);
+		size_t Sx2 = D-1;
+		
+		for (size_t i=0; i<D; ++i)
+		{
+			int Qint = -static_cast<int>(Sx2) + 2*static_cast<int>(i);
+			if constexpr (Symmetry::Nq>1)
+			{
+				for (size_t q=0; q<Symmetry::Nq; q++)
+				{
+					Q[q] = (Symmetry::kind()[q] == Sym::KIND::M and q==order)? Qint:0;
+				}
+			}
+			else
+			{
+				Q[0] = Qint;
+			}
+			inner_dim=1;
+			stringstream ss; ss << Qint;
+			ident.push_back(ss.str());
+			basis_1s_.push_back(Q, inner_dim, ident);
+			ident.clear();
+		}
+	}
 }
 
-template<typename Symmetry_>
-typename Symmetry_::qType SpinSite<Symmetry_>::
+template<typename Symmetry_, size_t order>
+typename Symmetry_::qType SpinSite<Symmetry_,order>::
 getQ (SPINOP_LABEL Sa) const
 {
 	if constexpr (Symmetry::NO_SPIN_SYM()) {return Symmetry::qvacuum();}
@@ -216,6 +208,22 @@ getQ (SPINOP_LABEL Sa) const
 			else if (Sa==SP) {out = {-1,+1};}
 			else if (Sa==SM) {out = {+1,-1};}
 		}
+		else if constexpr (Symmetry::kind()[0] == Sym::KIND::M and Symmetry::kind()[1] == Sym::KIND::M)
+		{
+			if (order == 0ul)
+			{
+				if      (Sa==SZ) {out = {0,0};}
+				else if (Sa==SP) {out = {+2,0};}
+				else if (Sa==SM) {out = {-2,0};}
+			}
+			else
+			{
+				if      (Sa==SZ) {out = {0,0};}
+				else if (Sa==SP) {out = {0,+2};}
+				else if (Sa==SM) {out = {0,-2};}
+			}
+		}
+//		cout << "order=" << order << ", Sa=" << Sa << ", out=" << out << endl;
 		return out;
 	}
 	static_assert("You inserted a Symmetry which can not be handled by FermionBase.");
