@@ -40,11 +40,7 @@ class HubbardSU2xSU2 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym
 public:
 	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::SU2<Sym::ChargeSU2> > Symmetry;
 	MAKE_TYPEDEFS(HubbardSU2xSU2)
-<<<<<<< HEAD
-	
-=======
-		
->>>>>>> 39a56b41473c59ae1735b23a5970eed074f4db13
+    
 private:
 	
 	typedef Eigen::Index Index;

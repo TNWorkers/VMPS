@@ -214,7 +214,7 @@ void KondoNecklaceSU2::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub
         if((Jprime.a != 0.).any())
         {
             labellist[loc].push_back(Jprime.label);
-            if(loc < N_sites-2 or boundary == BC::INFINITE)
+            if((N_sites > 1 and loc < N_sites-2) or boundary == BC::INFINITE)
             {
                 for(int alpha=0; alpha<orbitals; ++alpha)
                 {
@@ -440,7 +440,7 @@ bool KondoNecklaceSU2::validate(qType qnum)
 Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
 Stot()
 {
-    Mpo<Symmetry> Mout(this->N_sites, {3}, "S_tot", DMRG::VERBOSITY::OPTION::SILENT);
+    Mpo<Symmetry> Mout(this->N_sites, {3}, "S_tot", false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
     for(std::size_t loc=0; loc<this->N_sites; ++loc)
     {
         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
@@ -466,7 +466,7 @@ Simp(std::size_t locx, std::size_t locy)
         ss << "," << locy;
     }
     ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), DMRG::VERBOSITY::OPTION::SILENT);
+    Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
     for(std::size_t loc=0; loc<this->N_sites; ++loc)
     {
         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
@@ -488,7 +488,7 @@ Ssub(std::size_t locx, std::size_t locy)
         ss << "," << locy;
     }
     ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), DMRG::VERBOSITY::OPTION::SILENT);
+    Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
     for(std::size_t loc=0; loc<this->N_sites; ++loc)
     {
         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
@@ -510,7 +510,7 @@ Simpdag(std::size_t locx, std::size_t locy)
         ss << "," << locy;
     }
     ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), DMRG::VERBOSITY::OPTION::SILENT);
+    Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
     for(std::size_t loc=0; loc<this->N_sites; ++loc)
     {
         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
@@ -532,7 +532,7 @@ Ssubdag(std::size_t locx, std::size_t locy)
         ss << "," << locy;
     }
     ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), DMRG::VERBOSITY::OPTION::SILENT);
+    Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
     for(std::size_t loc=0; loc<this->N_sites; ++loc)
     {
         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
@@ -561,7 +561,7 @@ SimpdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t
         ss << "," << locy2;
     }
     ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), DMRG::VERBOSITY::OPTION::SILENT);
+    Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), true, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
     for(std::size_t loc=0; loc<this->N_sites; ++loc)
     {
         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
@@ -628,7 +628,7 @@ SsubdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t
         ss << "," << locy2;
     }
     ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), DMRG::VERBOSITY::OPTION::SILENT);
+    Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), true, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
     for(std::size_t loc=0; loc<this->N_sites; ++loc)
     {
         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
@@ -695,7 +695,7 @@ SsubdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t
         ss << "," << locy2;
     }
     ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), DMRG::VERBOSITY::OPTION::SILENT);
+    Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
     for(std::size_t loc=0; loc<this->N_sites; ++loc)
     {
         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
@@ -762,7 +762,7 @@ SimpdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t
         ss << "," << locy2;
     }
     ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), DMRG::VERBOSITY::OPTION::SILENT);
+    Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
     for(std::size_t loc=0; loc<this->N_sites; ++loc)
     {
         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());

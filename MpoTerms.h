@@ -2658,6 +2658,7 @@ check_qPhys() const
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
 scale(const double factor, const double offset, const double tolerance)
 {
+    got_update();
     if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
     {
         for(std::size_t loc=0; loc<N_sites; ++loc)
@@ -2684,11 +2685,12 @@ scale(const double factor, const double offset, const double tolerance)
         }
     }
 
-    if (std::abs(offset) > ::mynumeric_limits<double>::epsilon())
+    if(std::abs(offset) > tolerance)
     {
         if(boundary_condition == BC::OPEN)
         {
             assert(qTot == qVac and "For adding an offset, the MPO needs to be a singlet.");
+            assert(get_auxdim(0,qVac) == 1 and get_auxdim(N_sites,qVac) == 1 and "Ill-formed auxiliar basis for open boundary condition");
             for(std::size_t loc=0; loc<N_sites-1; ++loc)
             {
                 increment_auxdim(loc+1, qVac);
@@ -2710,12 +2712,19 @@ scale(const double factor, const double offset, const double tolerance)
             #ifdef OPLABELS
             Id.label = "id";
             #endif
-            existing_ops.insert({qVac,offset*Id});
+            auto itQ = existing_ops.find(qVac);
+            if(itQ == existing_ops.end())
+            {
+                existing_ops.insert({qVac,offset*Id});
+            }
+            else
+            {
+                (itQ->second) += offset*Id;
+            }
             compress(tolerance);
         }
         else if(boundary_condition == BC::INFINITE)
         {
-            got_update();
             for(std::size_t loc=0; loc<N_sites; ++loc)
             {
                 auto it = O[loc].find({qVac,qVac});
@@ -2738,6 +2747,7 @@ scale(const double factor, const double offset, const double tolerance)
             }
         }
     }
+    calc(1);
 }
 
 template<typename Symmetry, typename Scalar> template<typename OtherScalar> MpoTerms<Symmetry, OtherScalar> MpoTerms<Symmetry,Scalar>::
@@ -3707,9 +3717,7 @@ base_order_IBC(const std::size_t power) const
                     for(std::size_t t=0; t<W_[0][m][n].size(); ++t)
                     {
                         auto it = W_[0][m][n][t].dict.find({qIn,qVac});
-						if (it == W_[0][m][n][t].dict.end()) {continue;}
-                        const MatrixType& mat = W_[0][m][n][t].block[it->second];
-                        if(std::abs(mat.coeff(row,pos_qTot) > ::mynumeric_limits<double>::epsilon()))
+                        if(it != W_[0][m][n][t].dict.end() and std::abs(W_[0][m][n][t].block[it->second].coeff(row,pos_qTot) > ::mynumeric_limits<double>::epsilon()))
                         {
                             isZeroOp = false;
                             break;
