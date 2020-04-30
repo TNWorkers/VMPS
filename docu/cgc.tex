@@ -522,14 +522,108 @@ for the product of two $A$-tensors is called \textsc{coeff\_Apair}
 in the implementation. Notice, that this is different to \textsc{coeff\_prod} (Eq. \eqref{eq:coeff_prod}).
 This is because of our convention for the $A$-tensors.
 \subsection{MPO product}
-Multiplying two MPOs means the product in the auxiliary space and the tensor product in the
-physical space. Since our convention for the auxiliary indices is the same as for the MPS,
-the coefficient for the product in the auxiliary space is exactly \textsc{coeff\_Apair}.
-The tensor product in the physical space is identical to \textsc{coeff\_tensorProd}
-(which is not included in the doc yet)
-since the convention for the physical part of the MPO is $C^{\sigma_2,k\rightarrow\sigma_1}_{m_{\sigma_2},m_k\rightarrow m_{\sigma_1}}$
-which is as for normal tensor operators (Eq. \eqref{eq:wigner-eckart-def}).
-The total coefficient is simply the product of both.
+The product of two MPOs can be done in auxiliary space or in the
+physical space. For the product in the physical space, the CGC
+structure is as follows\footnote{$k_{23}$ is the operator which acts
+  first on the ket, afterwards $k_{12}$ is applied.}:
+\begin{equation}
+  \begin{split}
+  \sum_{m_K}C^{A,K\rightarrow A^\prime}_{m_A,m_{K}\rightarrow
+    m_{A^\prime}}C^{\sigma_3,K\rightarrow
+    \sigma_1}_{m_{\sigma_3},m_{K}\rightarrow m_{\sigma_1}}&=\\
+  &\sum_{m_{a},m_{b},m_{a^\prime},m_{b^\prime}} C^{a,b\rightarrow A}_{{m_a,m_{b}}\rightarrow m_{A}}C^{a^\prime,b^\prime\rightarrow A^\prime}_{m_{a^\prime},m_{b^\prime}\rightarrow m_{A^\prime}}\\
+  &\sum_{m_{k_{12}}}C^{a,k_{12}\rightarrow
+    a^\prime}_{m_a,m_{k_{12}}\rightarrow
+    m_{a^\prime}}C^{\sigma_2,k_{12}\rightarrow
+    \sigma_1}_{m_{\sigma_2},m_{k_{12}}\rightarrow m_{\sigma_1}}\\
+  &\sum_{m_{k_{23}}}C^{b,k_{23}\rightarrow b^\prime}_{m_b,m_{k_{23}}\rightarrow m_{b^\prime}}C^{\sigma_3,k_{23}\rightarrow \sigma_2}_{m_{\sigma_3},m_{k_{23}}\rightarrow m_{\sigma_2}}
+  \end{split}
+\end{equation}
+One can invert the left side of this equation by multiplying with two
+contracted CGCs with fixed $\tilde{K}$:
+\begin{equation}
+  \sum_{m_K}\sum_{m_{A},m_{A^\prime},m_{\sigma_3},m_{\sigma_1}}C^{A,\tilde{K}\rightarrow
+    A^\prime}_{m_A,m_{\tilde{K}}\rightarrow m_{A^\prime}}C^{\sigma_3,\tilde{K}\rightarrow\sigma_1}_{m_{\sigma_3},m_{\tilde{K}}\rightarrow
+    m_{\sigma_1}}
+  C^{A,K\rightarrow
+    A^\prime}_{m_A,m_{K}\rightarrow m_{A^\prime}}C^{\sigma_3,K\rightarrow\sigma_1}_{m_{\sigma_3},m_{K}\rightarrow
+    m_{\sigma_1}}  
+\end{equation}
+Now, one can bring $K$ and $\tilde{K}$ at the third position of the
+CGCs. This gives the factor $\sqrt{\frac{2X+1}{2K+1}}$ and switches
+the sign of the $m$ quantum number of the second and third position.
+The resulting contraction is proportional to
+$\delta_{K,\tilde{K}}\delta_{m_K,m_{\tilde{K}}}$ with a constant
+factor $\frac{(2A^\prime+1)(2\sigma_1+1)}{(2K+1)^2}$.
+Inverting the factor and doing the same multiplication of CGCs on the
+right side, one arrives at:
+\begin{equation}
+  \begin{split}
+  \delta_{K,\tilde{K}}\delta_{m_K,m_{\tilde{K}}}&=
+  \frac{(2K+1)^2}{(2A^\prime+1)(2\sigma_1+1)}\\
+  &\sum_{m_{A},m_{A^\prime},m_{\sigma_3},m_{\sigma_1}}C^{A,K\rightarrow
+    A^\prime}_{m_A,m_{K}\rightarrow m_{A^\prime}}C^{\sigma_3,K\rightarrow\sigma_1}_{m_{\sigma_3},m_{K}\rightarrow
+    m_{\sigma_1}}\\
+  &\sum_{m_{a},m_{b},m_{a^\prime},m_{b^\prime}} C^{a,b\rightarrow A}_{{m_a,m_{b}}\rightarrow m_{A}}C^{a^\prime,b^\prime\rightarrow A^\prime}_{m_{a^\prime},m_{b^\prime}\rightarrow m_{A^\prime}}\\
+  &\sum_{m_{k_{12}}}C^{a,k_{12}\rightarrow
+    a^\prime}_{m_a,m_{k_{12}}\rightarrow
+    m_{a^\prime}}C^{\sigma_2,k_{12}\rightarrow
+    \sigma_1}_{m_{\sigma_2},m_{k_{12}}\rightarrow m_{\sigma_1}}\\
+  &\sum_{m_{k_{23}}}C^{b,k_{23}\rightarrow b^\prime}_{m_b,m_{k_{23}}\rightarrow m_{b^\prime}}C^{\sigma_3,k_{23}\rightarrow \sigma_2}_{m_{\sigma_3},m_{k_{23}}\rightarrow m_{\sigma_2}}
+  \end{split}
+\end{equation}
+One is left with a contraction of eight CGCs which gives a $12-j$
+symbol. Fortunately, the $12j$ symbol decomposes in this case in a
+product of a $9j$ symbol and a $6j$ symbol. The decomposition can be
+achieved by multiplying with
+\begin{equation}
+1=\sum_{m_{k_{12}^\prime},m_{k_{23}^\prime}}\sum_{Q,m_{Q}}C^{k_{12},k_{23}\rightarrow Q}_{m_{k_{12}},m_{k_{23}}\rightarrow m_{Q}}C^{k_{12},k_{23}\rightarrow Q}_{m_{k_{12}^\prime},m_{m_{k_{12}^\prime}}\rightarrow m_{Q}}
+\end{equation}
+After properly sorting the 10 CGCs  one arrives at \footnote{Note the sum over
+$Q$ is dropped. It is an outersum over a $j$ quantum number (not an
+$m$ quantum number but of course one has to keep it in mind)}:
+\begin{equation}
+  \begin{split}
+  \delta_{K,\tilde{K}}\delta_{m_K,m_{\tilde{K}}}&=
+  \frac{(2K+1)^2}{(2A^\prime+1)(2\sigma_1+1)}\sum_{m_Q}\\
+  &\sum_{m_{A},m_{A^\prime},m_{a},m_{a^\prime},m_{b},m_{b^\prime},m_{k_{12}},m_{k_{23}}}\\
+  &C^{A,K\rightarrow
+    A^\prime}_{m_A,m_{K}\rightarrow
+    m_{A^\prime}}C^{k_{12},k_{23}\rightarrow
+    Q}_{m_{k_{12}},m_{k_{23}}\rightarrow m_{Q}}\\
+  &C^{a,k_{12}\rightarrow
+    a^\prime}_{m_a,m_{k_{12}}\rightarrow m_{a^\prime}}C^{b,k_{23}\rightarrow b^\prime}_{m_b,m_{k_{23}}\rightarrow m_{b^\prime}}\\
+  & C^{a,b\rightarrow
+    A}_{{m_a,m_{b}}\rightarrow m_{A}}C^{a^\prime,b^\prime\rightarrow
+    A^\prime}_{m_{a^\prime},m_{b^\prime}\rightarrow
+    m_{A^\prime}}\\
+   &\sum_{m_{\sigma_1},m_{\sigma_2},m_{\sigma_3},m_{k_{12}^\prime},m_{k_{23}^\prime}}\\
+   &C^{\sigma_3,K\rightarrow\sigma_1}_{m_{\sigma_3},m_{K}\rightarrow
+    m_{\sigma_1}}C^{k_{12},k_{23}\rightarrow Q}_{m_{k_{12}^\prime},m_{m_{k_{12}^\prime}}\rightarrow m_{Q}}\\
+  &C^{\sigma_2,k_{12}\rightarrow
+    \sigma_1}_{m_{\sigma_2},m_{k_{12}^\prime}\rightarrow m_{\sigma_1}}C^{\sigma_3,k_{23}\rightarrow \sigma_2}_{m_{\sigma_3},k_{23}^\prime\rightarrow m_{\sigma_2}}
+  \end{split}
+\end{equation}
+The first six CGC are proportional to a $9j$ box symbol (Eq. \ref{eq:recoupling-four}). The factor is
+$\frac{2A^\prime+1}{2K+1}$.
+The last four CGC are proportional to a $6j$ box symbol
+(Eq. \ref{eq:recoupling-three}). The factor is
+$\frac{2\sigma_1+1}{2K+1}$. This kills the factor in front of the 10
+CGCs so that the final result reads:
+\begin{equation}
+    \delta_{K,\tilde{K}}\delta_{m_K,m_{\tilde{K}}}=
+    \begin{bmatrix}
+    \sigma_3 & k_{23} & \sigma_2 \\
+    k_{12} & \sigma_3 & K
+  \end{bmatrix}
+  \begin{bmatrix}
+    a & b & A \\
+    k_{12} & k_{23} & K \\
+    a^\prime & b^\prime &A^\prime
+  \end{bmatrix}
+\end{equation}
+The first coefficient is called \textsc{coeff\_MPOprod6}, the second
+is called \textsc{coeff\_MPOprod9}.
 \subsection{MPO times MPS}
 For this operation, the structure is completely identical to the action of the effective Hamiltonian.
 This is due to our definition of the CGC structure of the environment.
