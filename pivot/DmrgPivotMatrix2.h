@@ -16,8 +16,8 @@ struct PivotMatrix2
 {
 	PivotMatrix2 (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L_input, 
 	              const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &R_input, 
-                  const vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > >& W12_input,
-                  const vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > >& W34_input,
+	              const vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > >& W12_input,
+	              const vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > >& W34_input,
 	              const vector<qarray<Symmetry::Nq> > &qloc12_input,
 	              const vector<qarray<Symmetry::Nq> > &qloc34_input, 
 	              const vector<qarray<Symmetry::Nq> > &qOp12_input, 
@@ -28,9 +28,9 @@ struct PivotMatrix2
 	
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > L;
 	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > R;
-    vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > > W12;
-    vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > > W34;
-
+	vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > > W12;
+	vector<vector<vector<Biped<Symmetry,Eigen::SparseMatrix<MpoScalar,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE>> > > > W34;
+	
 	vector<qarray<Symmetry::Nq> > qloc12;
 	vector<qarray<Symmetry::Nq> > qloc34;
 	vector<qarray<Symmetry::Nq> > qOp12;
@@ -53,7 +53,8 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 {
 	for (size_t i=0; i<Vout.data.size(); ++i) {Vout.data[i].setZero();}
 	
-	#ifndef DMRG_DONT_USE_OPENMP
+//	cout << "2site H.qlhs.size()=" << H.qlhs.size() << endl;
+	#ifdef DMRG_PIVOT2_PARALLELIZE
 	#pragma omp parallel for schedule(dynamic)
 	#endif
 	for (size_t q=0; q<H.qlhs.size(); ++q)
@@ -70,11 +71,11 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 			size_t s1   = H.qrhs[q][p][4];
 			size_t s2   = H.qrhs[q][p][5];
 			size_t k12  = H.qrhs[q][p][6];
-            size_t qW12 = H.qrhs[q][p][7];
+			size_t qW12 = H.qrhs[q][p][7];
 			size_t s3   = H.qrhs[q][p][8];
 			size_t s4   = H.qrhs[q][p][9];
 			size_t k34  = H.qrhs[q][p][10];
-            size_t qW34 = H.qrhs[q][p][11];
+			size_t qW34 = H.qrhs[q][p][11];
 			
 			for (int r12=0; r12<H.W12[s1][s2][k12].block[qW12].outerSize(); ++r12)
 			for (typename SparseMatrix<MpoScalar>::InnerIterator iW12(H.W12[s1][s2][k12].block[qW12],r12); iW12; ++iW12)

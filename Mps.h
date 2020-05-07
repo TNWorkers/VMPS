@@ -1545,13 +1545,13 @@ load (string filename)
 		source.load_scalar(this->Qtot[q],ss.str(),"Qtot");
 	}
 	source.load_scalar(QmultiSize,"QmultiSize");
-	cout << "QmultiSize=" << QmultiSize << endl;
+//	cout << "QmultiSize=" << QmultiSize << endl;
 	this->Qmulti.resize(QmultiSize);
 	for (size_t i=0; i<QmultiSize; i++)
 	for (size_t q=0; q<Nq; q++)
 	{
 		stringstream ss; ss << "q=" << q << ",i=" << i;
-		cout << "q=" << q << ", i=" << i << endl;
+//		cout << "q=" << q << ", i=" << i << endl;
 		source.load_scalar(this->Qmulti[i][q],ss.str(),"Qmulti");
 	}
 	source.load_scalar(this->eps_svd,eps_svdLabel);

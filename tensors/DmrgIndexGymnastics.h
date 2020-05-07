@@ -608,9 +608,15 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 {
 	unordered_map<std::array<size_t,2>, 
 	              std::pair<vector<std::array<size_t,12> >, vector<Scalar> > > lookup;
-	Scalar factor_cgc;
-	for (const auto &tsd:TSD)
+	
+//	vector<unordered_map<std::array<size_t,2>, 
+//	                     std::pair<vector<std::array<size_t,12> >, vector<Scalar> > > > lookups(L.dim);
+//	
+//	#ifdef DMRG_PRECALCBLOCKTSD_PARALLELIZE
+//	#pragma omp parallel for
+//	#endif
 	for (size_t qL=0; qL<L.dim; ++qL)
+	for (const auto &tsd:TSD)
 	{
 		vector<tuple<qarray3<Symmetry::Nq>,qarray<Symmetry::Nq>,size_t,size_t, size_t, size_t> > ixs;
 		bool FOUND_MATCH = AAWWAA(L.in(qL), L.out(qL), L.mid(qL), 
@@ -626,8 +632,8 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 				auto qW     = get<1>(ix);
 				size_t qA13 = get<2>(ix);
 				size_t qA24 = get<3>(ix);
-                size_t qW12 = get<4>(ix);
-                size_t qW34 = get<5>(ix);
+				size_t qW12 = get<4>(ix);
+				size_t qW34 = get<5>(ix);
 				
 				// multiplication of Op12, Op34 in the auxiliary space
 				Scalar factor_cgc6 = (Symmetry::NON_ABELIAN)? 
@@ -652,16 +658,26 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 					                     L.mid(qL), tsd.qOp, R.mid(qR->second),
 					                     Abra[tsd.s1s3].in[qA13], tsd.qmerge13, Abra[tsd.s1s3].out[qA13])
 					                     :1.;
-
+					
 					std::array<size_t,2>  key = {static_cast<size_t>(tsd.s1s3), qA13};
 					std::array<size_t,12> val = {static_cast<size_t>(tsd.s2s4), qA24, qL, qR->second,
 					                             tsd.s1, tsd.s2, tsd.k12, qW12, tsd.s3, tsd.s4, tsd.k34, qW34};
+//					lookups[qL][key].first.push_back(val);
+//					lookups[qL][key].second.push_back(factor_cgc6 * tsd.cgc9 * factor_cgcHPsi);
 					lookup[key].first.push_back(val);
 					lookup[key].second.push_back(factor_cgc6 * tsd.cgc9 * factor_cgcHPsi);
 				}
 			}
 		}
 	}
+	
+//	for (size_t qL=0; qL<L.dim; ++qL)
+//	{
+//		for (auto it=lookups[qL].begin(); it!=lookups[qL].end(); ++it)
+//		{
+//			lookup[it->first] = it->second;
+//		}
+//	}
 	
 	qlhs.clear();
 	qrhs.clear();

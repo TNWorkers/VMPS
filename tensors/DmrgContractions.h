@@ -41,17 +41,20 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
                  Tripod<Symmetry,MatrixType2> &Lnew,
                  bool RANDOMIZE = false,
                  tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0),
-				 const std::unordered_map<pair<qarray<Symmetry::Nq>,size_t>,size_t> &basis_order_map = {})
+                 const std::unordered_map<pair<qarray<Symmetry::Nq>,size_t>,size_t> &basis_order_map = {})
 {
-	typename MpoMatrixType::Scalar factor_cgc;
 	Lnew.clear();
 	Lnew.setZero();
 	auto [MODE,fixed_ab] = MODE_input;
 	
+	#ifdef DMRG_CONTRACTLANDR_PARALLELIZE
+	#pragma omp parallel for collapse(3) schedule(dynamic)
+	#endif
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t k=0; k<qOp.size(); ++k)
 	{
+		typename MpoMatrixType::Scalar factor_cgc;
 		if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc[s2], qOp[k], qloc[s1]})) {continue;}
 		
 		for (size_t qL=0; qL<Lold.dim; ++qL)
@@ -67,7 +70,7 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
 					swap(quple[0], quple[1]);
 					size_t qAbra = get<1>(ix[n]);
 					size_t qAket = get<2>(ix[n]);
-                    size_t qW = get<3>(ix[n]);
+					size_t qW = get<3>(ix[n]);
 					
 					if (Aket[s2].block[qAket].size() == 0) {continue;}
 					if (Abra[s1].block[qAbra].size() == 0) {continue;}
@@ -122,24 +125,27 @@ void contract_L (const Tripod<Symmetry,MatrixType2> &Lold,
 									                 Mtmp);
 								}
 								
-								auto it = Lnew.dict.find(quple);
-								if (it != Lnew.dict.end())
+								#pragma omp critical
 								{
-									if (Lnew.block[it->second][b][0].rows() != Mtmp.rows() or 
-										Lnew.block[it->second][b][0].cols() != Mtmp.cols())
+									auto it = Lnew.dict.find(quple);
+									if (it != Lnew.dict.end())
 									{
-										Lnew.block[it->second][b][0] = Mtmp;
+										if (Lnew.block[it->second][b][0].rows() != Mtmp.rows() or 
+											Lnew.block[it->second][b][0].cols() != Mtmp.cols())
+										{
+											Lnew.block[it->second][b][0] = Mtmp;
+										}
+										else
+										{
+											Lnew.block[it->second][b][0] += Mtmp;
+										}
 									}
 									else
 									{
-										Lnew.block[it->second][b][0] += Mtmp;
+										boost::multi_array<MatrixType2,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].block[qW].cols()][1]);
+										Mtmpvec[b][0] = Mtmp;
+										Lnew.push_back(quple, Mtmpvec);
 									}
-								}
-								else
-								{
-									boost::multi_array<MatrixType2,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].block[qW].cols()][1]);
-									Mtmpvec[b][0] = Mtmp;
-									Lnew.push_back(quple, Mtmpvec);
 								}
 							}
 						}
@@ -179,25 +185,28 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
                  Tripod<Symmetry,MatrixType2> &Rnew,
                  bool RANDOMIZE = false,
                  tuple<CONTRACT_LR_MODE,size_t> MODE_input = make_pair(FULL,0),
-				 const std::unordered_map<pair<qarray<Symmetry::Nq>,size_t>,size_t> &basis_order_map = {})
+                 const std::unordered_map<pair<qarray<Symmetry::Nq>,size_t>,size_t> &basis_order_map = {})
 {
-	typename MpoMatrixType::Scalar factor_cgc;
 	Rnew.clear();
 	Rnew.setZero();
 	auto [MODE,fixed_ab] = MODE_input;
 	
+	#ifdef DMRG_CONTRACTLANDR_PARALLELIZE
+	#pragma omp parallel for collapse(3) schedule(dynamic)
+	#endif
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t k=0; k<qOp.size(); ++k)
 	{
+		typename MpoMatrixType::Scalar factor_cgc;
 		if (!Symmetry::validate(qarray3<Symmetry::Nq>{qloc[s2], qOp[k], qloc[s1]})) {continue;}
 		
 		for (size_t qR=0; qR<Rold.dim; ++qR)
 		{
 			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t,size_t> > ix;
 			//bool FOUND_MATCH = AWAR(Rold.in(qR), Rold.out(qR), Rold.mid(qR), s1, s2, qloc, k, qOp, Abra, Aket, ix, IS_HAMILTONIAN);
-            bool FOUND_MATCH = AWAR(Rold.in(qR), Rold.out(qR), Rold.mid(qR), qloc[s1], qloc[s2], qOp[k], Abra[s1], Aket[s2], W[s1][s2][k], ix);
-
+			bool FOUND_MATCH = AWAR(Rold.in(qR), Rold.out(qR), Rold.mid(qR), qloc[s1], qloc[s2], qOp[k], Abra[s1], Aket[s2], W[s1][s2][k], ix);
+			
 			if (FOUND_MATCH)
 			{
 				for(size_t n=0; n<ix.size(); n++ )
@@ -206,7 +215,7 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
 					swap(quple[0], quple[1]);
 					size_t qAbra = get<1>(ix[n]);
 					size_t qAket = get<2>(ix[n]);
-                    size_t qW = get<3>(ix[n]);
+					size_t qW = get<3>(ix[n]);
 					
 					if (Aket[s2].block[qAket].size() == 0) {continue;}
 					if (Abra[s1].block[qAbra].size() == 0) {continue;}
@@ -236,7 +245,7 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
 							(MODE == TRIANGULAR and fixed_ab>basis_order_map.at(make_pair(Rold.mid(qR),b))) or
 							(MODE == FIXED_ROWS and basis_order_map.at(make_pair(quple[2],a))==fixed_ab) or
 							(MODE == FIXED_COLS and basis_order_map.at(make_pair(Rold.mid(qR),b))==fixed_ab)
-						   )
+							)
 						{
 //							if (MODE == FIXED)
 //							{
@@ -261,24 +270,27 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
 									                 Mtmp);
 								}
 								
-								auto it = Rnew.dict.find(quple);
-								if (it != Rnew.dict.end())
+								#pragma omp critical
 								{
-									if (Rnew.block[it->second][a][0].rows() != Mtmp.rows() or 
-										Rnew.block[it->second][a][0].cols() != Mtmp.cols())
+									auto it = Rnew.dict.find(quple);
+									if (it != Rnew.dict.end())
 									{
-										Rnew.block[it->second][a][0] = Mtmp;
+										if (Rnew.block[it->second][a][0].rows() != Mtmp.rows() or 
+											Rnew.block[it->second][a][0].cols() != Mtmp.cols())
+										{
+											Rnew.block[it->second][a][0] = Mtmp;
+										}
+										else
+										{
+											Rnew.block[it->second][a][0] += Mtmp;
+										}
 									}
 									else
 									{
-										Rnew.block[it->second][a][0] += Mtmp;
+										boost::multi_array<MatrixType2,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].block[qW].rows()][1]);
+										Mtmpvec[a][0] = Mtmp;
+										Rnew.push_back(quple, Mtmpvec);
 									}
-								}
-								else
-								{
-									boost::multi_array<MatrixType2,LEGLIMIT> Mtmpvec(boost::extents[W[s1][s2][k].block[qW].rows()][1]);
-									Mtmpvec[a][0] = Mtmp;
-									Rnew.push_back(quple, Mtmpvec);
 								}
 							}
 						}
@@ -746,21 +758,24 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
                      Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &Tout,
                      DMRG::DIRECTION::OPTION DIR)
 {
-	std::array<typename Symmetry::qType,3> qCheck;
-	Scalar factor_cgc, factor_merge;
-	
+	#ifdef DMRG_PARALLELIZE_GRALF
+	#pragma omp parallel for collapse(3) schedule(dynamic)
+	#endif
 	for (size_t s1=0; s1<qloc.size(); ++s1)
 	for (size_t s2=0; s2<qloc.size(); ++s2)
 	for (size_t k=0; k<qOp.size(); ++k)
 	{
+		std::array<typename Symmetry::qType,3> qCheck;
+		Scalar factor_cgc, factor_merge;
+		
 		qCheck = {qloc[s2],qOp[k],qloc[s1]};
 		if(!Symmetry::validate(qCheck)) {continue;}
 		
 		for (size_t qL=0; qL<L.dim; ++qL)
 		{
 			vector<tuple<qarray3<Symmetry::Nq>,size_t,size_t, size_t> > ix;
-            bool FOUND_MATCH = LAWA(L.in(qL),  L.out(qL), L.mid(qL), qloc[s1], qloc[s2], qOp[k], Abra[s1], Aket[s2], W[s1][s2][k], ix);
-
+			bool FOUND_MATCH = LAWA(L.in(qL),  L.out(qL), L.mid(qL), qloc[s1], qloc[s2], qOp[k], Abra[s1], Aket[s2], W[s1][s2][k], ix);
+			
 			if (FOUND_MATCH == true)
 			{
 				for(size_t n=0; n<ix.size(); n++ )
@@ -773,7 +788,7 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 						swap(quple[0], quple[1]);
 						size_t qAbra = get<1>(ix[n]);
 						size_t qAket = get<2>(ix[n]);
-                        size_t qW = get<3>(ix[n]);
+						size_t qW = get<3>(ix[n]);
 						if (Aket[s2].block[qAket].size() == 0) {continue;}
 						if (Abra[s1].block[qAbra].size() == 0) {continue;}
 						if constexpr (Symmetry::NON_ABELIAN)
@@ -783,7 +798,7 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 								factor_cgc = Symmetry::coeff_buildL(Aket[s2].in[qAket], qloc[s2], Aket[s2].out[qAket],
 																	L.mid(qL)         , qOp[k]  , quple[2],
 																	Abra[s1].in[qAbra], qloc[s1], Abra[s1].out[qAbra]);
-
+								
 								factor_merge = Symmetry::coeff_rightOrtho(Abra[s1].out[qAbra],
 																		  Aket[s2].out[qAket]);
 							}
@@ -843,22 +858,25 @@ void contract_GRALF (const Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &L,
 								{
 									qTout = {Aket[s2].in[qAket], Aket[s2].in[qAket]};
 								}
-								auto it = Tout.dict.find(qTout);
-								if (it != Tout.dict.end())
+								#pragma omp critical
 								{
-									if (Tout.block[it->second].rows() != Mtmp.rows() or 
-										Tout.block[it->second].cols() != Mtmp.cols())
+									auto it = Tout.dict.find(qTout);
+									if (it != Tout.dict.end())
 									{
-										Tout.block[it->second] = Mtmp;
+										if (Tout.block[it->second].rows() != Mtmp.rows() or 
+											Tout.block[it->second].cols() != Mtmp.cols())
+										{
+											Tout.block[it->second] = Mtmp;
+										}
+										else
+										{
+											Tout.block[it->second] += Mtmp;
+										}
 									}
 									else
 									{
-										Tout.block[it->second] += Mtmp;
+										Tout.push_back(qTout,Mtmp);
 									}
-								}
-								else
-								{
-									Tout.push_back(qTout,Mtmp);
 								}
 							}
 						}
@@ -1862,6 +1880,9 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 		}
 	}
 	
+	#ifdef DMRG_CONTRACTAA_PARALLELIZE
+	#pragma omp parallel for collapse(2) schedule(dynamic)
+	#endif
 	for (size_t s1=0; s1<qloc1.size(); ++s1)
 	for (size_t s2=0; s2<qloc2.size(); ++s2)
 	{
@@ -1895,23 +1916,26 @@ void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 							
 							if (Mtmp.size() != 0)
 							{
-								qarray2<Symmetry::Nq> qupleApair = {A1[s1].in[q1], A2[s2].out[q2->second]};
-								
-								auto qApair = Apair[s1s2].dict.find(qupleApair);
-								
-								if (qApair != Apair[s1s2].dict.end() and 
-								    Apair[s1s2].block[qApair->second].size() == Mtmp.size())
+								#pragma omp critical
 								{
-									Apair[s1s2].block[qApair->second] += Mtmp;
-								}
-								else if (qApair != Apair[s1s2].dict.end() and 
-									     Apair[s1s2].block[qApair->second].size() == 0)
-								{
-									Apair[s1s2].block[qApair->second] = Mtmp;
-								}
-								else
-								{
-									Apair[s1s2].push_back(qupleApair, Mtmp);
+									qarray2<Symmetry::Nq> qupleApair = {A1[s1].in[q1], A2[s2].out[q2->second]};
+									
+									auto qApair = Apair[s1s2].dict.find(qupleApair);
+									
+									if (qApair != Apair[s1s2].dict.end() and 
+										Apair[s1s2].block[qApair->second].size() == Mtmp.size())
+									{
+										Apair[s1s2].block[qApair->second] += Mtmp;
+									}
+									else if (qApair != Apair[s1s2].dict.end() and 
+											 Apair[s1s2].block[qApair->second].size() == 0)
+									{
+										Apair[s1s2].block[qApair->second] = Mtmp;
+									}
+									else
+									{
+										Apair[s1s2].push_back(qupleApair, Mtmp);
+									}
 								}
 							}
 						}
@@ -2014,8 +2038,8 @@ void split_AA (DMRG::DIRECTION::OPTION DIR, const vector<Biped<Symmetry,Matrix<S
 	
 	auto tensor_basis = Symmetry::tensorProd(qloc_l, qloc_r);
 	
-	#ifndef DMRG_DONT_USE_OPENMP
-	#pragma omp parallel for
+	#ifdef DMRG_SPLITAA_PARALLELIZE
+	#pragma omp parallel for schedule(dynamic)
 	#endif
 	for (size_t qmid=0; qmid<midset.size(); ++qmid)
 	{
@@ -2050,8 +2074,7 @@ void split_AA (DMRG::DIRECTION::OPTION DIR, const vector<Biped<Symmetry,Matrix<S
 							                                          qloc_r[s3], Apair[s1s3].out[q13], qmerge);
 							if (DIR==DMRG::DIRECTION::LEFT)
 							{
-								factor_cgc *= Symmetry::coeff_leftSweep(Apair[s1s3].out[q13],
-																		midset[qmid]);
+								factor_cgc *= Symmetry::coeff_leftSweep(Apair[s1s3].out[q13],midset[qmid]);
 							}
 							
 							cgcmap[make_tuple(s1,Apair[s1s3].in[q13],s3,Apair[s1s3].out[q13])].push_back(factor_cgc);
@@ -2219,58 +2242,61 @@ void split_AA (DMRG::DIRECTION::OPTION DIR, const vector<Biped<Symmetry,Matrix<S
 			}
 			
 			// update Al
-			istitch = 0;
-			for (size_t i=0; i<get_s1.size(); ++i)
+			#pragma omp critical
 			{
-				size_t s1 = get_s1[i];
-				size_t Nrows = get_Nrows[i];
+				istitch = 0;
+				for (size_t i=0; i<get_s1.size(); ++i)
+				{
+					size_t s1 = get_s1[i];
+					size_t Nrows = get_Nrows[i];
+					
+					qarray2<Symmetry::Nq> quple = {get_ql[i], midset[qmid]};
+					auto q = Al[s1].dict.find(quple);
+					if (q != Al[s1].dict.end())
+					{
+						Al[s1].block[q->second] += Aleft.block(istitch,0, Nrows,Nret);
+					}
+					else
+					{
+						Al[s1].push_back(get_ql[i], midset[qmid], Aleft.block(istitch,0, Nrows,Nret));
+					}
+					istitch += Nrows;
+				}
 				
-				qarray2<Symmetry::Nq> quple = {get_ql[i], midset[qmid]};
-				auto q = Al[s1].dict.find(quple);
-				if (q != Al[s1].dict.end())
+				// update Ar
+				jstitch = 0;
+				for (size_t i=0; i<get_s3.size(); ++i)
 				{
-					Al[s1].block[q->second] += Aleft.block(istitch,0, Nrows,Nret);
+					size_t s3 = get_s3[i];
+					size_t Ncols = get_Ncols[i];
+					
+					qarray2<Symmetry::Nq> quple = {midset[qmid], get_qr[i]};
+					auto q = Ar[s3].dict.find(quple);
+					Scalar factor_cgc3 = (DIR==DMRG::DIRECTION::LEFT)? Symmetry::coeff_leftSweep(midset[qmid],
+																								 get_qr[i]):1.;
+					if (q != Ar[s3].dict.end())
+					{
+						Ar[s3].block[q->second] += factor_cgc3 * Aright.block(0,jstitch, Nret,Ncols);
+					}
+					else
+					{
+						Ar[s3].push_back(midset[qmid], get_qr[i], factor_cgc3 * Aright.block(0,jstitch, Nret,Ncols));
+					}
+					jstitch += Ncols;
 				}
-				else
-				{
-					Al[s1].push_back(get_ql[i], midset[qmid], Aleft.block(istitch,0, Nrows,Nret));
-				}
-				istitch += Nrows;
-			}
-			
-			// update Ar
-			jstitch = 0;
-			for (size_t i=0; i<get_s3.size(); ++i)
-			{
-				size_t s3 = get_s3[i];
-				size_t Ncols = get_Ncols[i];
 				
-				qarray2<Symmetry::Nq> quple = {midset[qmid], get_qr[i]};
-				auto q = Ar[s3].dict.find(quple);
-				Scalar factor_cgc3 = (DIR==DMRG::DIRECTION::LEFT)? Symmetry::coeff_leftSweep(midset[qmid],
-																							 get_qr[i]):1.;
-				if (q != Ar[s3].dict.end())
+				if (SEPARATE_SV)
 				{
-					Ar[s3].block[q->second] += factor_cgc3 * Aright.block(0,jstitch, Nret,Ncols);
-				}
-				else
-				{
-					Ar[s3].push_back(midset[qmid], get_qr[i], factor_cgc3 * Aright.block(0,jstitch, Nret,Ncols));
-				}
-				jstitch += Ncols;
-			}
-			
-			if (SEPARATE_SV)
-			{
-				qarray2<Symmetry::Nq> quple = {midset[qmid], midset[qmid]};
-				auto q = C.dict.find(quple);
-				if (q != C.dict.end())
-				{
-					C.block[q->second] += Cmatrix;
-				}
-				else
-				{
-					C.push_back(midset[qmid], midset[qmid], Cmatrix);
+					qarray2<Symmetry::Nq> quple = {midset[qmid], midset[qmid]};
+					auto q = C.dict.find(quple);
+					if (q != C.dict.end())
+					{
+						C.block[q->second] += Cmatrix;
+					}
+					else
+					{
+						C.push_back(midset[qmid], midset[qmid], Cmatrix);
+					}
 				}
 			}
 		}

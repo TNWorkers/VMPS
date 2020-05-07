@@ -74,7 +74,8 @@ void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 {
 	for (size_t s=0; s<Vout.data.size(); ++s) {Vout.data[s].setZero();}
 	
-	#ifndef DMRG_DONT_USE_OPENMP
+//	cout << "1site H.qlhs.size()=" << H.qlhs.size() << endl;
+	#ifdef DMRG_PIVOT1_PARALLELIZE
 	#pragma omp parallel for schedule(dynamic)
 	#endif
 	for (size_t q=0; q<H.qlhs.size(); ++q)
