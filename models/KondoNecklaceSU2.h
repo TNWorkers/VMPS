@@ -1,5 +1,5 @@
-#ifndef KONDONECKLACE
-#define KONDONECKLAGE
+#ifndef KONDONECKLACESU2_H_
+#define KONDONECKLACESU2_H_
 
 #define OPLABELS
 
@@ -11,6 +11,7 @@
 #include "bases/SpinBase.h"
 #include "Mpo.h"
 #include "ParamReturner.h"
+#include "Geometry2D.h" // from TOOLS
 
 namespace VMPS
 {
@@ -49,7 +50,7 @@ public:
      *  @param L        Lattice size
      *  @param params   Vector of parameters for the construction of the model
      */
-    KondoNecklaceSU2(const std::size_t L, const std::vector<Param>& params={}, const BC boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::OPTION::ON_EXIT);
+    KondoNecklaceSU2(const std::size_t L, const std::vector<Param>& params={}, const BC boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT);
 
 
     /**
@@ -59,7 +60,8 @@ public:
      *  @param P        A ParamHandler that stores all parameter values
      *  @param Terms    An instance of HamiltonianTerms with respective Symmetry that is filled
      */
-    static void set_operators(const std::vector<SpinBase<Symmetry>>& Bsub, const std::vector<SpinBase<Symmetry>>& Bimp, const ParamHandler& P, PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary);
+    static void set_operators(const std::vector<SpinBase<Symmetry>>& Bsub, const std::vector<SpinBase<Symmetry>>& Bimp, const ParamHandler& P,
+							  PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary);
 
     /**
      *  Default values for model parameters, such as Heisenberg and Kondo couplings
@@ -132,7 +134,8 @@ KondoNecklaceSU2::KondoNecklaceSU2(const std::size_t L, const std::vector<Param>
     this->precalc_TwoSiteData();
 }
     
-void KondoNecklaceSU2::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub, const std::vector<SpinBase<Symmetry>>& Bimp, const ParamHandler &P, PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
+void KondoNecklaceSU2::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub, const std::vector<SpinBase<Symmetry>>& Bimp, const ParamHandler &P,
+									 PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
     std::size_t Lcell = P.size();
     std::size_t N_sites = Bsub.size();
@@ -166,7 +169,7 @@ void KondoNecklaceSU2::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub
                 pushlist.push_back(std::make_tuple(loc, ops, lambda));
             }
         }
-        
+				
         // Local terms: J_perp
         param2d Jperp = P.fill_array2d<double>("Jrung", "Jperp", "Jperp_array", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
         if((Jperp.a != 0.).any())
@@ -184,7 +187,51 @@ void KondoNecklaceSU2::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub
             }
         }
 
-        
+		auto push_full = [&N_sites, &loc, &Bimp, &Bsub, &P, &pushlist, &labellist, &boundary] (string xxxFull, string label,
+																						 const vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > &first,
+																						 const vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > &last,
+																						 vector<double> factor) -> void
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>(xxxFull);
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+
+			for (size_t j=0; j<first.size(); j++)
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				if (range != 0)
+				{
+					vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > ops(range+1);
+					ops[0] = first[j];
+					for (size_t i=1; i<range; ++i)
+					{
+						ops[i] = kroneckerProduct(Bsub[(loc+i)%N_sites].Id(), Bimp[(loc+i)%N_sites].Id());
+					}
+					ops[range] = last[j][(loc+range)%N_sites];
+					pushlist.push_back(std::make_tuple(loc, ops, factor[j] * value));
+				}
+			}
+			
+			stringstream ss;
+			ss << label << "(" << Geometry2D::hoppingInfo(Full) << ")";
+			labellist[loc].push_back(ss.str());
+		};
+
+		// Case where a full coupling matrix is providedf: Jᵢⱼ (all the code below this funtion will be skipped then.)
+		if (P.HAS("Jfull"))
+		{
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > first {kroneckerProduct(Bsub[loc].Sdag(0),Bimp[loc].Id())};
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > S_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {S_ranges[i] = kroneckerProduct(Bsub[i].S(0),Bimp[i].Id());}
+			vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > last {S_ranges};
+			push_full("Jfull", "Jᵢⱼ", first, last, {std::sqrt(3.)});
+			continue;
+		}
+
         // Nearest-neighbour terms: J
         
         param2d Jpara = P.fill_array2d<double>("Jpara", "Jpara_array", {orbitals, next_orbitals}, loc%Lcell);

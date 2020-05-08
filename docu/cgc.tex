@@ -532,11 +532,11 @@ structure is as follows\footnote{$k_{23}$ is the operator which acts
     m_{A^\prime}}C^{\sigma_3,K\rightarrow
     \sigma_1}_{m_{\sigma_3},m_{K}\rightarrow m_{\sigma_1}}&=\\
   &\sum_{m_{a},m_{b},m_{a^\prime},m_{b^\prime}} C^{a,b\rightarrow A}_{{m_a,m_{b}}\rightarrow m_{A}}C^{a^\prime,b^\prime\rightarrow A^\prime}_{m_{a^\prime},m_{b^\prime}\rightarrow m_{A^\prime}}\\
-  &\sum_{m_{k_{12}}}C^{a,k_{12}\rightarrow
-    a^\prime}_{m_a,m_{k_{12}}\rightarrow
-    m_{a^\prime}}C^{\sigma_2,k_{12}\rightarrow
+  &\sum_{m_{k_{12}}}C^{b,k_{12}\rightarrow
+    b^\prime}_{m_b,m_{k_{12}}\rightarrow
+    m_{b^\prime}}C^{\sigma_2,k_{12}\rightarrow
     \sigma_1}_{m_{\sigma_2},m_{k_{12}}\rightarrow m_{\sigma_1}}\\
-  &\sum_{m_{k_{23}}}C^{b,k_{23}\rightarrow b^\prime}_{m_b,m_{k_{23}}\rightarrow m_{b^\prime}}C^{\sigma_3,k_{23}\rightarrow \sigma_2}_{m_{\sigma_3},m_{k_{23}}\rightarrow m_{\sigma_2}}
+  &\sum_{m_{k_{23}}}C^{a,k_{23}\rightarrow a^\prime}_{m_a,m_{k_{23}}\rightarrow m_{a^\prime}}C^{\sigma_3,k_{23}\rightarrow \sigma_2}_{m_{\sigma_3},m_{k_{23}}\rightarrow m_{\sigma_2}}
   \end{split}
 \end{equation}
 One can invert the left side of this equation by multiplying with two
@@ -565,11 +565,11 @@ right side, one arrives at:
     A^\prime}_{m_A,m_{K}\rightarrow m_{A^\prime}}C^{\sigma_3,K\rightarrow\sigma_1}_{m_{\sigma_3},m_{K}\rightarrow
     m_{\sigma_1}}\\
   &\sum_{m_{a},m_{b},m_{a^\prime},m_{b^\prime}} C^{a,b\rightarrow A}_{{m_a,m_{b}}\rightarrow m_{A}}C^{a^\prime,b^\prime\rightarrow A^\prime}_{m_{a^\prime},m_{b^\prime}\rightarrow m_{A^\prime}}\\
-  &\sum_{m_{k_{12}}}C^{a,k_{12}\rightarrow
-    a^\prime}_{m_a,m_{k_{12}}\rightarrow
-    m_{a^\prime}}C^{\sigma_2,k_{12}\rightarrow
+  &\sum_{m_{k_{12}}}C^{b,k_{12}\rightarrow
+    b^\prime}_{m_b,m_{k_{12}}\rightarrow
+    m_{b^\prime}}C^{\sigma_2,k_{12}\rightarrow
     \sigma_1}_{m_{\sigma_2},m_{k_{12}}\rightarrow m_{\sigma_1}}\\
-  &\sum_{m_{k_{23}}}C^{b,k_{23}\rightarrow b^\prime}_{m_b,m_{k_{23}}\rightarrow m_{b^\prime}}C^{\sigma_3,k_{23}\rightarrow \sigma_2}_{m_{\sigma_3},m_{k_{23}}\rightarrow m_{\sigma_2}}
+  &\sum_{m_{k_{23}}}C^{a,k_{23}\rightarrow a^\prime}_{m_a,m_{k_{23}}\rightarrow m_{a^\prime}}C^{\sigma_3,k_{23}\rightarrow \sigma_2}_{m_{\sigma_3},m_{k_{23}}\rightarrow m_{\sigma_2}}
   \end{split}
 \end{equation}
 One is left with a contraction of eight CGCs which gives a $12-j$
@@ -577,7 +577,7 @@ symbol. Fortunately, the $12j$ symbol decomposes in this case in a
 product of a $9j$ symbol and a $6j$ symbol. The decomposition can be
 achieved by multiplying with
 \begin{equation}
-1=\sum_{m_{k_{12}^\prime},m_{k_{23}^\prime}}\sum_{Q,m_{Q}}C^{k_{12},k_{23}\rightarrow Q}_{m_{k_{12}},m_{k_{23}}\rightarrow m_{Q}}C^{k_{12},k_{23}\rightarrow Q}_{m_{k_{12}^\prime},m_{m_{k_{12}^\prime}}\rightarrow m_{Q}}
+1=\sum_{m_{k_{23}^\prime},m_{k_{12}^\prime}}\sum_{Q,m_{Q}}C^{k_{23},k_{12}\rightarrow Q}_{m_{k_{23}},m_{k_{12}}\rightarrow m_{Q}}C^{k_{23},k_{12}\rightarrow Q}_{m_{k_{23}^\prime},m_{m_{k_{12}^\prime}}\rightarrow m_{Q}}
 \end{equation}
 After properly sorting the 10 CGCs  one arrives at \footnote{Note the sum over
 $Q$ is dropped. It is an outersum over a $j$ quantum number (not an
@@ -587,25 +587,29 @@ $m$ quantum number but of course one has to keep it in mind)}:
   \delta_{K,\tilde{K}}\delta_{m_K,m_{\tilde{K}}}&=
   \frac{(2K+1)^2}{(2A^\prime+1)(2\sigma_1+1)}\sum_{m_Q}\\
   &\sum_{m_{A},m_{A^\prime},m_{a},m_{a^\prime},m_{b},m_{b^\prime},m_{k_{12}},m_{k_{23}}}\\
-  &C^{A,K\rightarrow
-    A^\prime}_{m_A,m_{K}\rightarrow
-    m_{A^\prime}}C^{k_{12},k_{23}\rightarrow
-    Q}_{m_{k_{12}},m_{k_{23}}\rightarrow m_{Q}}\\
-  &C^{a,k_{12}\rightarrow
-    a^\prime}_{m_a,m_{k_{12}}\rightarrow m_{a^\prime}}C^{b,k_{23}\rightarrow b^\prime}_{m_b,m_{k_{23}}\rightarrow m_{b^\prime}}\\
-  & C^{a,b\rightarrow
+  &C^{a,b\rightarrow
     A}_{{m_a,m_{b}}\rightarrow m_{A}}C^{a^\prime,b^\prime\rightarrow
     A^\prime}_{m_{a^\prime},m_{b^\prime}\rightarrow
+    m_{A^\prime}}C^{A,K\rightarrow
+    A^\prime}_{m_A,m_{K}\rightarrow
     m_{A^\prime}}\\
+  &C^{a,k_{23}\rightarrow a^\prime}_{m_a,m_{k_{23}}\rightarrow m_{a^\prime}}C^{b,k_{12}\rightarrow
+    b^\prime}_{m_b,m_{k_{12}}\rightarrow m_{b^\prime}}C^{k_{23},k_{12}\rightarrow
+    Q}_{m_{k_{23}},m_{k_{12}}\rightarrow m_{Q}}\\
    &\sum_{m_{\sigma_1},m_{\sigma_2},m_{\sigma_3},m_{k_{12}^\prime},m_{k_{23}^\prime}}\\
+   &C^{\sigma_3,k_{23}\rightarrow \sigma_2}_{m_{\sigma_3},k_{23}^\prime\rightarrow m_{\sigma_2}}C^{\sigma_2,k_{12}\rightarrow
+    \sigma_1}_{m_{\sigma_2},m_{k_{12}^\prime}\rightarrow m_{\sigma_1}}\\
    &C^{\sigma_3,K\rightarrow\sigma_1}_{m_{\sigma_3},m_{K}\rightarrow
-    m_{\sigma_1}}C^{k_{12},k_{23}\rightarrow Q}_{m_{k_{12}^\prime},m_{m_{k_{12}^\prime}}\rightarrow m_{Q}}\\
-  &C^{\sigma_2,k_{12}\rightarrow
-    \sigma_1}_{m_{\sigma_2},m_{k_{12}^\prime}\rightarrow m_{\sigma_1}}C^{\sigma_3,k_{23}\rightarrow \sigma_2}_{m_{\sigma_3},k_{23}^\prime\rightarrow m_{\sigma_2}}
+    m_{\sigma_1}}C^{k_{23},k_{12}\rightarrow Q}_{m_{k_{23}^\prime},m_{m_{k_{12}^\prime}}\rightarrow m_{Q}}
   \end{split}
 \end{equation}
 The first six CGC are proportional to a $9j$ box symbol (Eq. \ref{eq:recoupling-four}). The factor is
 $\frac{2A^\prime+1}{2K+1}$.
+To see this:
+\begin{itemize}
+\item switch $k_{12}$ and $b^\prime$ in middle CGC of second row.
+\item switch $K$ and $A^\prime$ in third CGC of first row.
+\end{itemize}
 The last four CGC are proportional to a $6j$ box symbol
 (Eq. \ref{eq:recoupling-three}). The factor is
 $\frac{2\sigma_1+1}{2K+1}$. This kills the factor in front of the 10
@@ -618,7 +622,7 @@ CGCs so that the final result reads:
   \end{bmatrix}
   \begin{bmatrix}
     a & b & A \\
-    k_{12} & k_{23} & K \\
+    k_{23} & k_{12} & K \\
     a^\prime & b^\prime &A^\prime
   \end{bmatrix}
 \end{equation}
