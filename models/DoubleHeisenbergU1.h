@@ -154,27 +154,40 @@ set_operators (const std::vector<SpinBase<Symmetry_,0ul>> &B0, const std::vector
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first
 			{
 				OperatorType::outerprod(B0[loc].Sp(0), B1[loc].Sm(0)),
-				OperatorType::outerprod(B0[loc].Sm(0), B1[loc].Sp(0))
+				OperatorType::outerprod(B0[loc].Sm(0), B1[loc].Sp(0)),
+//				OperatorType::outerprod(B0[loc].Sz(0), B1[loc].Sz(0))
 			};
-			
-//			auto Op = OperatorType::outerprod(B0[loc].Sp(0), B1[loc].Sm(0));
-//			cout << "Q=" << B0[loc].Sp(0).Q() << ", " << B1[loc].Sm(0).Q() << ", tot=" << Op.Q() << endl;
-//			
-//			Op = OperatorType::outerprod(B0[loc].Sm(0), B1[loc].Sp(0));
-//			cout << "Q=" << B0[loc].Sm(0).Q() << ", " << B1[loc].Sp(0).Q() << ", tot=" << Op.Q() << endl;
 			
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > S1_ranges(N_sites);
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > S2_ranges(N_sites);
+//			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > S3_ranges(N_sites);
 			for (size_t i=0; i<N_sites; i++)
 			{
 				S1_ranges[i] = OperatorType::outerprod(B0[i].Sm(0), B1[i].Sp(0));
 				S2_ranges[i] = OperatorType::outerprod(B0[i].Sp(0), B1[i].Sm(0));
+//				S3_ranges[i] = OperatorType::outerprod(B0[i].Sz(0), B1[i].Sz(0));
 			}
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {S1_ranges, S2_ranges};
-			push_full("Kfull", "Kᵢⱼ", first, last, {1.,1.});
+			push_full("Kfull", "Kᵢⱼ", first, last, {0.5,0.5});
 		}
 		
-		if (P.HAS("Jfull"))
+//		if (P.HAS("Kzfull"))
+//		{
+//			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first
+//			{
+//				OperatorType::outerprod(B0[loc].Sz(0), B1[loc].Sz(0)),
+//			};
+//			
+//			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > S_ranges(N_sites);
+//			for (size_t i=0; i<N_sites; i++)
+//			{
+//				S1_ranges[i] = OperatorType::outerprod(B0[i].Sz(0), B1[i].Sz(0));
+//			}
+//			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {S1_ranges, S2_ranges};
+//			push_full("Kfull", "Kᵢⱼ", first, last, {1.});
+//		}
+		
+		if (P.HAS("J1full"))
 		{
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first
 			{
@@ -195,7 +208,31 @@ set_operators (const std::vector<SpinBase<Symmetry_,0ul>> &B0, const std::vector
 			
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sm_ranges, Sp_ranges, Sz_ranges};
 			
-			push_full("Jfull", "Jᵢⱼ", first, last, {0.5,0.5,1.0});
+			push_full("J1full", "J1ᵢⱼ", first, last, {0.5,0.5,1.0});
+		}
+		
+		if (P.HAS("J2full"))
+		{
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first
+			{
+				OperatorType::outerprod(B0[loc].Id(), B1[loc].Sp(0)),
+				OperatorType::outerprod(B0[loc].Id(), B1[loc].Sm(0)),
+				OperatorType::outerprod(B0[loc].Id(), B1[loc].Sz(0))
+			};
+			
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sp_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sm_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sz_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++)
+			{
+				Sp_ranges[i] = OperatorType::outerprod(B0[i].Id(), B1[i].Sp(0));
+				Sm_ranges[i] = OperatorType::outerprod(B0[i].Id(), B1[i].Sm(0));
+				Sz_ranges[i] = OperatorType::outerprod(B0[i].Id(), B1[i].Sz(0));
+			}
+			
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sm_ranges, Sp_ranges, Sz_ranges};
+			
+			push_full("J2full", "J2ᵢⱼ", first, last, {0.5,0.5,1.0});
 		}
 	}
 }

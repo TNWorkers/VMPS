@@ -87,7 +87,16 @@ public:
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type Stringz (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
 	
+	typename Symmetry::qType getQ_ScompScomp(SPINOP_LABEL Sa1, SPINOP_LABEL Sa2)
+	{
+		typename Symmetry::qType out;
+		if ( (Sa1 == SZ and Sa2 == SZ) or (Sa1 == SP and Sa2 == SM) or (Sa1 == SM and Sa2 == SP) or (Sa1 == SX or Sa1 == iSY) ) {out = Symmetry::qvacuum();}
+		else {assert(false and "Quantumnumber for the chosen ScompScomp is not computed. Add in HubbardObservables::getQ_ScompScomp");}
+		return out;
+	}
+	
 protected:
+	
 	Mpo<Symmetry> make_local (size_t locx, size_t locy,
 	                          const OperatorType &Op,
 							  double factor =1.,
@@ -99,8 +108,6 @@ protected:
 
 	Mpo<Symmetry,complex<double> >
 	make_FourierYSum (string name, const vector<OperatorType> &Ops, double factor, bool HERMITIAN, const vector<complex<double> > &phases) const;
-	
-	typename Symmetry::qType getQ_ScompScomp(SPINOP_LABEL Sa1, SPINOP_LABEL Sa2) const;
 	
 	vector<SpinBase<Symmetry> > B;
 };
@@ -365,7 +372,7 @@ SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	else
 	{
 		vector<Mpo<Symmetry> > out(3);
-		out[0] = SzSz(locx1,locx2,locy1,locy2);
+		out[0] = SzSz(locx1,locx2,locy1,locy2,1.0);
 		out[1] = SpSm(locx1,locx2,locy1,locy2,0.5);
 		out[2] = SmSp(locx1,locx2,locy1,locy2,0.5);
 		return out;
@@ -430,15 +437,6 @@ Stringz (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	}
 	
 	return Mout;
-}
-
-template<typename Symmetry>
-typename Symmetry::qType HeisenbergObservables<Symmetry>::getQ_ScompScomp(SPINOP_LABEL Sa1, SPINOP_LABEL Sa2) const
-{
-	typename Symmetry::qType out;
-	if ( (Sa1 == SZ and Sa2 == SZ) or (Sa1 == SP and Sa2 == SM) or (Sa1 == SM and Sa2 == SP) or (Sa1 == SX or Sa1 == iSY) ) {out = Symmetry::qvacuum();}
-	else {assert(false and "Quantumnumber for the chosen ScompScomp is not computed. Add in HubbardObservables::getQ_ScompScomp");}
-	return out;
 }
 
 // template<typename Symmetry>

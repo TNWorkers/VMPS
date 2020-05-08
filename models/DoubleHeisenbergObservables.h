@@ -22,20 +22,32 @@ public:
 	
 	///@{
 	template<size_t order = 0ul, typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type S (size_t locx, size_t locy=0, double factor=1.) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type 
+		S (size_t locx, size_t locy=0, double factor=1.) const;
 	
 	template<size_t order = 0ul, typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Sdag (size_t locx, size_t locy=0, double factor=std::sqrt(3.)) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type 
+		Sdag (size_t locx, size_t locy=0, double factor=std::sqrt(3.)) const;
 	
 	template<size_t order = 0ul, typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Stot (size_t locy=0, double factor=1.) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type 
+		Stot (size_t locy=0, double factor=1.) const;
 	
 	template<size_t order = 0ul, typename Dummy = Symmetry>
-	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Sdagtot (size_t locy=0, double factor=1.) const;
+	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type 
+		Sdagtot (size_t locy=0, double factor=1.) const;
 	
 	template<size_t order = 0ul, typename Dummy = Symmetry>
 	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type 
-	SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+		SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	
+	template<size_t order = 0ul, typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type 
+		Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0, double factor=1.) const;
+	
+	template<size_t order = 0ul, typename Dummy = Symmetry>
+	typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type 
+		ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0, double fac=1.) const;
 	///@}
 	
 protected:
@@ -202,6 +214,31 @@ Sdag (size_t locx, size_t locy, double factor) const
 
 template<typename Symmetry>
 template<size_t order, typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type DoubleHeisenbergObservables<Symmetry>::
+Scomp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
+{
+	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
+	return (order==0ul)? 
+		make_local(locx,locy, kroneckerProduct(B0[locx].Scomp(Sa,locy), B1[locx].Id()), factor, HERMITIAN):
+		make_local(locx,locy, kroneckerProduct(B0[locx].Id(), B1[locx].Scomp(Sa,locy)), factor, HERMITIAN);
+}
+
+template<typename Symmetry>
+template<size_t order, typename Dummy>
+typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type DoubleHeisenbergObservables<Symmetry>::
+ScompScomp (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, double fac) const
+{
+	return (order==0ul)? 
+		make_corr<order>(locx1,locx2,locy1,locy2, 
+		                 B0[locx1].Scomp(Sa1,locy1), B0[locx2].Scomp(Sa2,locy2),
+		                 Symmetry::qvacuum(), fac, PROP::HERMITIAN):
+		make_corr<order>(locx1,locx2,locy1,locy2, 
+		                 B1[locx1].Scomp(Sa1,locy1), B1[locx2].Scomp(Sa2,locy2), 
+		                 Symmetry::qvacuum(), fac, PROP::HERMITIAN);
+}
+
+template<typename Symmetry>
+template<size_t order, typename Dummy>
 typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type DoubleHeisenbergObservables<Symmetry>::
 SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
@@ -211,14 +248,14 @@ SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 			make_corr<order>(locx1, locx2, locy1, locy2, B0[locx1].Sdag(locy1), B0[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), PROP::HERMITIAN):
 			make_corr<order>(locx1, locx2, locy1, locy2, B1[locx1].Sdag(locy1), B1[locx2].S(locy2), Symmetry::qvacuum(), sqrt(3.), PROP::HERMITIAN);
 	}
-//	else
-//	{
-//		vector<Mpo<Symmetry> > out(3);
-//		out[0] = SzSz(locx1,locx2,locy1,locy2);
-//		out[1] = SpSm(locx1,locx2,locy1,locy2,0.5);
-//		out[2] = SmSp(locx1,locx2,locy1,locy2,0.5);
-//		return out;
-//	}
+	else
+	{
+		vector<Mpo<Symmetry> > out(3);
+		out[0] = ScompScomp<order>(SZ,SZ,locx1,locx2,locy1,locy2,1.0);
+		out[1] = ScompScomp<order>(SP,SM,locx1,locx2,locy1,locy2,0.5);
+		out[2] = ScompScomp<order>(SM,SP,locx1,locx2,locy1,locy2,0.5);
+		return out;
+	}
 }
 
 template<typename Symmetry>

@@ -129,6 +129,9 @@ PivotVector<Symmetry,Scalar_>& PivotVector<Symmetry,Scalar_>::operator+= (const 
 //	}
 //	return *this;
 	
+	#ifdef DMRG_PIVOTVECTOR_PARALLELIZE
+	#pragma omp parallel for schedule(dynamic)
+	#endif
 	for (size_t s=0; s<data.size(); s++)
 	for (size_t q=0; q<data[s].dim; ++q)
 	{
@@ -177,6 +180,9 @@ operator-= (const PivotVector<Symmetry,Scalar_> &Vrhs)
 //	}
 //	return *this;
 	
+	#ifdef DMRG_PIVOTVECTOR_PARALLELIZE
+	#pragma omp parallel for schedule(dynamic)
+	#endif
 	for (size_t s=0; s<data.size(); s++)
 	for (size_t q=0; q<data[s].dim; ++q)
 	{
@@ -213,6 +219,9 @@ template<typename OtherScalar>
 PivotVector<Symmetry,Scalar_>& PivotVector<Symmetry,Scalar_>::
 operator*= (const OtherScalar &alpha)
 {
+	#ifdef DMRG_PIVOTVECTOR_PARALLELIZE
+	#pragma omp parallel for schedule(dynamic)
+	#endif
 	for (size_t s=0; s<data.size(); ++s)
 	for (size_t q=0; q<data[s].dim; ++q)
 	{
@@ -226,6 +235,9 @@ template<typename OtherScalar>
 PivotVector<Symmetry,Scalar_>& PivotVector<Symmetry,Scalar_>::
 operator/= (const OtherScalar &alpha)
 {
+	#ifdef DMRG_PIVOTVECTOR_PARALLELIZE
+	#pragma omp parallel for schedule(dynamic)
+	#endif
 	for (size_t s=0; s<data.size(); ++s)
 	for (size_t q=0; q<data[s].dim; ++q)
 	{
@@ -280,19 +292,22 @@ Scalar_ dot (const PivotVector<Symmetry,Scalar_> &V1, const PivotVector<Symmetry
 {
 //	cout << "sizes in dot: " << V1.data.size() << ", " << V2.data.size() << endl;
 	Scalar_ res = 0;
+	#ifdef DMRG_PIVOTVECTOR_PARALLELIZE
+	#pragma omp parallel for schedule(dynamic) reduction(+:res)
+	#endif
 	for (size_t s=0; s<V2.data.size(); ++s)
 	for (size_t q=0; q<V2.data[s].dim; ++q)
 	{
-		if (V1.data[s].in[q] != V2.data[s].in[q] or V1.data[s].out[q] != V2.data[s].out[q])
-		{
-			cout << "s=" << s << ", q=" << q << endl;
-			cout << "V1 inout=" << V1.data[s].in[q] << ", " << V1.data[s].out[q] << endl;
-			cout << "V2 inout=" << V2.data[s].in[q] << ", " << V2.data[s].out[q] << endl;
-			print_size(V1.data[s].block[q],"V1.data[s].block[q]");
-			print_size(V2.data[s].block[q],"V2.data[s].block[q]");
-			cout << endl;
-			cout << termcolor::red << "Mismatched blocks in dot(PivotVector)" << termcolor::reset << endl;
-		}
+//		if (V1.data[s].in[q] != V2.data[s].in[q] or V1.data[s].out[q] != V2.data[s].out[q])
+//		{
+//			cout << "s=" << s << ", q=" << q << endl;
+//			cout << "V1 inout=" << V1.data[s].in[q] << ", " << V1.data[s].out[q] << endl;
+//			cout << "V2 inout=" << V2.data[s].in[q] << ", " << V2.data[s].out[q] << endl;
+//			print_size(V1.data[s].block[q],"V1.data[s].block[q]");
+//			print_size(V2.data[s].block[q],"V2.data[s].block[q]");
+//			cout << endl;
+//			cout << termcolor::red << "Mismatched blocks in dot(PivotVector)" << termcolor::reset << endl;
+//		}
 		
 		if (V1.data[s].block[q].size() > 0 and 
 		    V2.data[s].block[q].size() > 0)

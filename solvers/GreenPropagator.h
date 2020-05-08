@@ -3,6 +3,7 @@
 
 #include "SuperQuadrator.h"
 #include "solvers/TDVPPropagator.h"
+#include "solvers/EntropyObserver.h"
 #include "IntervalIterator.h"
 #include "ComplexInterpolGSL.h"
 #ifdef GREENPROPAGATOR_USE_HDF5
@@ -109,6 +110,7 @@ public:
 	{
 		GreenPropagatorGlobal::tmax = tmax;
 		set_qlims(Q_RANGE_CHOICE);
+		calc_intweights();
 	}
 	
 	// LOADING CONSTRUCTORS FOLLOW:
@@ -397,6 +399,8 @@ public:
 	*/
 	void FT_allSites (double wshift=0.);
 	
+	ArrayXcd FTloc_tw (const VectorXcd &Gloct, const ArrayXd &wvals);
+	
 	inline void set_OxPhiFull (const vector<Mps<Symmetry,complex<double>>> &OxPhiFull_input) {OxPhiFull = OxPhiFull_input;}
 	
 	inline void set_Qmulti (int NQ_input)
@@ -497,7 +501,6 @@ private:
 	void FTcell_xq();
 	void FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw, double wshift=0.);
 	void FTcell_tw (double wshift=0.);
-	ArrayXcd FTloc_tw (const VectorXcd &Gloct, const ArrayXd &wvals);
 	
 	vector<Mpo<Symmetry,MpoScalar>> Measure;
 	void measure_wavepacket (const Mps<Symmetry,complex<double>> &Psi, double tval, string info="");
@@ -1411,7 +1414,6 @@ calc_Green (const int &tindex, const complex<double> &phase, const vector<Mps<Sy
 	if (Psi.Boundaries.IS_TRIVIAL())
 	{
 		assert(OxPhiFull.size() == Lhetero and "Call set_OxPhiFull with this setup! OxPhi parameter will be ignored.");
-		// SU(2) Qmultitarget
 		if (NQ == 0)
 		{
 			#pragma omp parallel for
@@ -1420,6 +1422,7 @@ calc_Green (const int &tindex, const complex<double> &phase, const vector<Mps<Sy
 				Gtx(tindex,l) = phase * dot(OxPhiFull[l], Psi);
 			}
 		}
+		// SU(2) Qmultitarget
 		else
 		{
 			#pragma omp parallel for
@@ -1558,6 +1561,10 @@ calc_GreenCell (const int &tindex, const complex<double> &phase,
 	for (size_t n=0; n<Ncells; ++n)
 	{
 		GtxCell[i][j](tindex,n) = phase * dot_hetero(Psi[1][i], Psi[0][j], dcell[n*Lcell]);
+//		#pragma omp critical
+//		{
+//			cout << "i=" << i << ", j=" << j << ", n=" << n << ", dcell=" << dcell[n*Lcell] << ", G=" << GtxCell[i][j](tindex,n) << endl;
+//		}
 	}
 	
 	for (size_t i=0; i<Lcell; ++i)

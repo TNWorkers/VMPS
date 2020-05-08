@@ -158,13 +158,22 @@ set_operators (const std::vector<SpinBase<Symmetry_,0ul>> &B0, const std::vector
 			push_full("Kfull", "Kᵢⱼ", first, last, {3.});
 		}
 		
-		if (P.HAS("Jfull"))
+		if (P.HAS("J1full"))
 		{
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {kroneckerProduct(B0[loc].Sdag(0), B1[loc].Id())};
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > S_ranges(N_sites); for (size_t i=0; i<N_sites; i++) 
 			{S_ranges[i] = kroneckerProduct(B0[i].S(0), B1[i].Id());}
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {S_ranges};
-			push_full("Jfull", "Jᵢⱼ", first, last, {std::sqrt(3.)});
+			push_full("J1full", "J1ᵢⱼ", first, last, {std::sqrt(3.)});
+		}
+		
+		if (P.HAS("J2full"))
+		{
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {kroneckerProduct(B0[loc].Id(), B1[loc].Sdag(0))};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > S_ranges(N_sites); for (size_t i=0; i<N_sites; i++) 
+			{S_ranges[i] = kroneckerProduct(B0[i].Id(), B1[i].S(0));}
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {S_ranges};
+			push_full("J2full", "J2ᵢⱼ", first, last, {std::sqrt(3.)});
 		}
 	}
 }

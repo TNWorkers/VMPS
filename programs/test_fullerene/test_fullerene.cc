@@ -1,8 +1,23 @@
-#define LANCZOS_MAX_ITERATIONS 1e2
+#ifdef BLAS
+#include "util/LapackManager.h"
+#pragma message("LapackManager")
+#endif
+
+//#define LANCZOS_MAX_ITERATIONS 1e2
 
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
 #define MPSQCOMPRESSOR_DONT_USE_OPENMP
+
+#define DMRG_CONTRACTLANDR_PARALLELIZE
+#define DMRG_PARALLELIZE_GRALF
+
+#define DMRG_PIVOT2_PARALLELIZE
+#define DMRG_PIVOT1_PARALLELIZE
+#define DMRG_SPLITAA_PARALLELIZE
+#define DMRG_CONTRACTAA_PARALLELIZE
+//#define DMRG_PIVOTVECTOR_PARALLELIZE // problem with omp and complex scalar
+#define DMRG_PRECALCBLOCKTSD_PARALLELIZE
 
 #include <iostream>
 #include <fstream>
@@ -28,19 +43,23 @@ using namespace Eigen;
 #include "solvers/DmrgSolver.h"
 #include "DmrgLinearAlgebra.h"
 #include "models/ParamCollection.h"
+#include "EigenFiles.h"
+#include "solvers/TDVPPropagator.h"
+#include "solvers/GreenPropagator.h"
 
 #include "models/HeisenbergSU2.h"
 typedef VMPS::HeisenbergSU2 MODEL;
 // L=12 exact E0/L=-0.51566, SdagS=-0.20626
 // L=20 exact E0/L=-0.48611, SdagS=-0.32407
 
-#include "models/DoubleHeisenbergSU2.h"
-typedef VMPS::DoubleHeisenbergSU2 MODELC;
+//#include "models/DoubleHeisenbergSU2xU0.h"
+//typedef VMPS::DoubleHeisenbergSU2xU0 MODELC;
 
 //#include "models/DoubleHeisenbergU1.h"
 //typedef VMPS::DoubleHeisenbergU1 MODELC;
 
-#include "solvers/TDVPPropagator.h"
+#include "models/DoubleHeisenbergSU2.h"
+typedef VMPS::DoubleHeisenbergSU2 MODELC;
 
 ArrayXXd permute_random (const ArrayXXd &A)
 {
@@ -66,19 +85,30 @@ int main (int argc, char* argv[])
 	size_t D = args.get<size_t>("D",2ul);
 	size_t maxPower = args.get<size_t>("maxPower",1ul);
 	
-	bool BETAPROP = static_cast<bool>(args.get<int>("BETAPROP",0));
-	bool CANONICAL = static_cast<bool>(args.get<int>("CANONICAL",0));
-	bool CALC_C = static_cast<bool>(args.get<int>("CALC_C",1));
+	bool BETAPROP = args.get<bool>("BETAPROP",false);
+	bool CANONICAL = args.get<bool>("CANONICAL",false);
+	bool CALC_C = args.get<bool>("CALC_C",false);
+	bool CALC_CHI = args.get<bool>("CALC_CHI",true);
 	double dbeta = args.get<double>("dbeta",0.1);
 	double betamax = args.get<double>("betamax",20.);
 	int Nbeta = static_cast<int>(betamax/dbeta);
 	double tol_beta_compr = args.get<double>("tol_beta_compr",1e-5);
 	size_t Dbetalimit = args.get<size_t>("Dbetalimit",100ul);
-	bool CALC_CHI = static_cast<bool>(args.get<int>("CALC_CHI",1));
 	size_t Ly = args.get<size_t>("Ly",2ul);
 	int dLphys = (Ly==2ul)? 1:2;
 	int N_stages = args.get<int>("N_stages",1);
+	
 	string LOAD = args.get<string>("LOAD","");
+	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
+	bool CALC_GS = args.get<int>("CALC_GS",true);
+	bool CALC_VAR = args.get<int>("CALC_VAR",true);
+	
+	bool CALC_DOS = args.get<int>("CALC_DOS",false);
+	double dt = args.get<double>("dt",0.1);
+	double tmax = args.get<double>("tmax",5.);
+	int Nt = static_cast<int>(tmax/dt);
+	size_t Dtlimit = args.get<size_t>("Dtlimit",100ul);
+	double tol_t_compr = args.get<double>("tol_t_compr",1e-4);
 	
 	string wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
@@ -91,6 +121,10 @@ int main (int argc, char* argv[])
 	else
 	{
 		base = make_string("L=",L,"_D=",D,"_S=",S);
+	}
+	if (CALC_DOS)
+	{
+		base += make_string("_dt=",dt,"_tmax=",tmax,"_tol=",tol_t_compr);
 	}
 	if (BETAPROP)
 	{
@@ -107,6 +141,7 @@ int main (int argc, char* argv[])
 	GlobParam.Dinit = args.get<size_t>("Dinit",2ul);
 	GlobParam.Qinit = args.get<size_t>("Qinit",6ul);
 	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
+	GlobParam.CALC_S_ON_EXIT = false;
 	
 	// dyn. params
 	DMRG::CONTROL::DYN  DynParam;
@@ -174,44 +209,147 @@ int main (int argc, char* argv[])
 		DMRG.userSetDynParam();
 		DMRG.GlobParam = GlobParam;
 		DMRG.DynParam = DynParam;
-//		if (LOAD!="")
-//		{
-//			g.state.load(LOAD);
-//			DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND, true);
-//		}
-//		else
-//		{
-//			DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
-//		}
+		if (LOAD!="")
+		{
+			g.state.load(LOAD);
+			lout << "loaded: " << g.state.info() << endl;
+			if (CALC_GS)
+			{
+				DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND, true);
+			}
+		}
+		else
+		{
+			DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+		}
 		
-		lout << "varE=" << abs(avg(g.state,H,H,g.state)-pow(g.energy,2))/L << endl;
+		if (CALC_VAR)
+		{
+			Stopwatch<> Timer;
+			lout << endl;
+			lout << "varE=" << abs(avg(g.state,H,H,g.state)-pow(g.energy,2))/L << endl;
+			lout << Timer.info("varE") << endl;
+		}
 		
 		if constexpr (MODEL::FAMILY == HEISENBERG)
 		{
-			g.state.load(LOAD);
-			ofstream CorrFiler(make_string(wd,"SdagS_",base,".dat"));
-			CorrFiler << "#d\tSdagS\tstdev" << endl;
-			auto distanceMatrix = calc_distanceMatrix(hopping);
-			lout << "nearest-neighbour correlations:" << endl;
-			for (int d=1; d<=distanceMatrix.maxCoeff(); ++d)
+			if (CALC_CORR)
 			{
-				vector<double> SdagS_bonds_;
-				for (int j=0; j<L; ++j)
-				for (int i=0; i<j; ++i)
+				if (S>0)
 				{
-					if (distanceMatrix(i,j) == d)
+					ofstream SFiler(make_string(wd,"S_",base,".dat"));
+					for (int l=0; l<L; ++l)
 					{
-						double res = avg(g.state, H.SdagS(i,j), g.state);
-						lout << "i=" << i << ", j=" << j << ", d=" << d << ", SdagS=" << res << endl;
-						SdagS_bonds_.push_back(res);
+						double res = avg(g.state, H.S(l), g.state);
+						SFiler << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
+						lout << l << "\t" << res << endl;
 					}
+					SFiler.close();
 				}
-				ArrayXd SdagS_bonds = Map<ArrayXd,Unaligned>(SdagS_bonds_.data(), SdagS_bonds_.size());
-				double mean = SdagS_bonds.sum()/SdagS_bonds.rows();
-				double var = (SdagS_bonds-mean).pow(2).sum()/SdagS_bonds.rows();
-				double stdev = sqrt(var);
-				lout << "d=" << d << ", SdagS mean=" << mean << ", var=" << var << ", stdev=" << stdev << endl;
-				CorrFiler << d << "\t" << mean << "\t" << stdev << endl;
+				
+				auto distanceMatrix = calc_distanceMatrix(hopping);
+				
+				ofstream CorrFilerAll(make_string(wd,"SdagS_",base,"_d=all",".dat"));
+				CorrFilerAll << "#i\tj\tSdagS" << endl;
+				
+				Stopwatch<> Timer;
+				for (int d=1; d<=distanceMatrix.maxCoeff(); ++d)
+				{
+					lout << "correlations at distance d=" << d << endl;
+					ofstream CorrFiler(make_string(wd,"SdagS_",base,"_d=",d,".dat"));
+					CorrFiler << "#i\tj\td\tSdagS" << endl;
+					
+	//				vector<double> SdagS_bonds_;
+					#pragma omp parallel for
+					for (int j=0; j<L; ++j)
+					for (int i=0; i<j; ++i)
+					{
+						if (distanceMatrix(i,j) == d)
+						{
+							double val = avg(g.state, H.SdagS(i,j), g.state);
+							
+	//						SdagS_bonds_.push_back(res);
+							#pragma omp critical
+							{
+								lout << setprecision(16) << "i=" << i << ", j=" << j << ", d=" << d << ", SdagS=" << val << setprecision(6) << endl;
+								CorrFiler << setprecision(16) << i << "\t" << j << "\t" << val << setprecision(6) << endl;
+								CorrFilerAll << setprecision(16) << i << "\t" << j << "\t" << d << "\t" << val << setprecision(6) << endl;
+							}
+						}
+					}
+					
+	//				ArrayXd SdagS_bonds = Map<ArrayXd,Unaligned>(SdagS_bonds_.data(), SdagS_bonds_.size());
+	//				double mean = SdagS_bonds.sum()/SdagS_bonds.rows();
+	//				double var = (SdagS_bonds-mean).pow(2).sum()/SdagS_bonds.rows();
+	//				double stdev = sqrt(var);
+	//				lout << "d=" << d << ", SdagS mean=" << mean << ", var=" << var << ", stdev=" << stdev << endl;
+	//				CorrFiler << d << "\t" << mean << "\t" << stdev << endl;
+					
+					CorrFiler.close();
+					lout << Timer.info(make_string("d=",d)) << endl;
+				}
+				CorrFilerAll.close();
+			}
+			
+			//----density of states----
+			if (CALC_DOS)
+			{
+				MODEL::StateXd Tmp;
+				OxV_exact(H.S(0), g.state, Tmp); // 2., DMRG::VERBOSITY::ON_EXIT
+				MODEL::StateXcd Psi = Tmp.cast<complex<double> >();
+				auto Phi = g.state.cast<complex<double> >();
+				
+				Psi.eps_svd = tol_t_compr;
+				
+				TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,MODEL::StateXcd> TDVPt(H,Psi);
+				MatrixXd Gloct(Nt+1,3);
+				VectorXcd Gloctv(Nt);
+				complex<double> res = -1.i * avg(Phi, H.Sdag(0), Psi);
+				Gloct(0,0) = 0;
+				Gloct(0,1) = res.real();
+				Gloct(0,2) = res.imag();
+				Gloctv(0) = res;
+				string filet = "Gloct_"+base+".dat";
+				string filew = "DOS_"+base+".dat";
+				
+				for (int i=0; i<Nt; ++i)
+				{
+					Stopwatch<> Stepper;
+					TDVPt.t_step(H, Psi, -1.i*dt);
+					lout << Stepper.info("t-step") << endl;
+					
+					if (Psi.get_truncWeight().sum() > 0.5*tol_t_compr)
+					{
+						Psi.max_Nsv = min(static_cast<size_t>(max(Psi.max_Nsv*1.1, Psi.max_Nsv+1.)),Dtlimit);
+						lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi.max_Nsv << termcolor::reset << endl;
+					}
+					
+					lout << TDVPt.info() << endl;
+					lout << Psi.info() << endl;
+					
+					double tval = (i+1)*dt;
+					complex<double> phase = -1.i*exp(1.i*g.energy*tval);
+					complex<double> res = phase * avg(Phi, H.Sdag(0), Psi);
+					Gloct(i+1,0) = i+1;
+					Gloct(i+1,1) = res.real();
+					Gloct(i+1,2) = res.imag();
+					Gloctv(i) = res;
+					saveMatrix(Gloct,filet,false);
+					lout << "propagated to t=" << tval << endl;
+					lout << endl;
+				}
+				
+				GreenPropagatorGlobal::tmax = tmax;
+				GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>> Green(filew, tmax, Nt, -5., +10., 501, MPI_PPI, 501, INTERP);
+				Green.set_verbosity(DMRG::VERBOSITY::HALFSWEEPWISE);
+				IntervalIterator w(-5.,10.,501);
+				ArrayXd wvals = w.get_abscissa();
+				ArrayXcd DOS = Green.FTloc_tw(VectorXcd(Gloct.col(1)+1.i*Gloct.col(2)), wvals);
+				for (w=w.begin(); w!=w.end(); ++w)
+				{
+					w << -M_1_PI * DOS(w.index()).imag();
+				}
+				w.save(filew);
 			}
 		}
 	}
@@ -256,16 +394,8 @@ int main (int argc, char* argv[])
 		{
 			beta_params.push_back({"maxPower",1ul});
 		}
-		MODELC H;
-		if (L==6)
-		{
-			beta_params.push_back({"J",1.});
-		}
-		else
-		{
-			beta_params.push_back({"Jfull",hopping});
-		}
-		H = MODELC(size_t(L),beta_params);
+		beta_params.push_back({"J1full",hopping});
+		MODELC H(size_t(L),beta_params);
 		lout << H.info() << endl;
 		lout << endl;
 		
@@ -472,9 +602,9 @@ int main (int argc, char* argv[])
 		{
 			Stopwatch<> FullTimer;
 			
-			#pragma omp parallel sections
+//			#pragma omp parallel sections
 			{
-				#pragma omp section
+//				#pragma omp section
 				{
 					if (i!=Nbeta)
 					{
@@ -490,23 +620,32 @@ int main (int argc, char* argv[])
 							PsiT.min_Nsv = 0ul;
 						}
 						
-						if (PsiT.calc_Dmax() == Dbetalimit and i*dbeta>1.)
-						{
-							PsiT.eps_svd = 0.1*tol_beta_compr;
-							TDVPT.t_step0(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
-						}
-						else
+//						if (PsiT.calc_Dmax() == Dbetalimit and i*dbeta>1.)
+//						{
+//							PsiT.eps_svd = 0.1*tol_beta_compr;
+//							TDVPT.t_step0(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
+//						}
+//						else
 						{
 							TDVPT.t_step(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
 						}
 						PsiT /= sqrt(dot(PsiT,PsiT));
 						lout << "propagated to: β=" << (i+1)*dbeta << endl;
+						if ((i+1)%10 == 0)
+						{
+//							#pragma omp critial
+							{
+								string filename = make_string(wd,"state_β=",(i+1)*dbeta,"_",base,".dat");
+								lout << termcolor::green << "saving state to: " << filename << termcolor::reset << endl;
+								PsiT.save(filename);
+							}
+						}
 						lout << TDVPT.info() << endl;
 						lout << setprecision(16) << PsiT.info() << setprecision(6) << endl;
 						lout << Stepper.info("βstep") << endl;
 					}
 				}
-				#pragma omp section
+//				#pragma omp section
 				{
 					if (i>0)
 					{
@@ -522,7 +661,7 @@ int main (int argc, char* argv[])
 						if (CALC_C)
 						{
 							c = (L==60)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
-						                    beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+						                 beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
 						}
 						cvec.push_back(c);
 						lout << Stepper.info("c") << endl;
@@ -554,7 +693,9 @@ int main (int argc, char* argv[])
 			PsiTprev = PsiT;
 			
 			// entropy
+			Stopwatch<> EntropyWatch;
 			auto PsiTtmp = PsiT; PsiTtmp.entropy_skim(); lout << "S=" << PsiTtmp.entropy().transpose() << endl;
+			lout << EntropyWatch.info("entropy") << endl;
 			
 			if (i>0)
 			{
