@@ -6,7 +6,7 @@
 #include<map>
 #include<string>
 
-
+#include "KondoNecklaceObservables.h"
 #include "symmetry/SU2.h"
 #include "bases/SpinBase.h"
 #include "Mpo.h"
@@ -16,7 +16,7 @@
 namespace VMPS
 {
 
-class KondoNecklaceSU2 : public Mpo<Sym::SU2<Sym::SpinSU2>,double>, public ParamReturner
+	class KondoNecklaceSU2 : public Mpo<Sym::SU2<Sym::SpinSU2>,double>, public KondoNecklaceObservables<Sym::SU2<Sym::SpinSU2> >, public ParamReturner
 {
 public:
     typedef Sym::SU2<Sym::SpinSU2> Symmetry;
@@ -28,16 +28,6 @@ private:
     typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
     typedef Eigen::SparseMatrix<double,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixType;
     typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
-
-    /**
-     *  Local bases for the spins in the substrate
-     */
-    std::vector<SpinBase<Symmetry> > Bsub;
-
-    /**
-     *  Local bases for the impurity spins
-     */
-    std::vector<SpinBase<Symmetry> > Bimp;
     
 public:
     /**
@@ -78,15 +68,16 @@ public:
      */
     bool validate(qType qnum);
 
-    Mpo<Sym::SU2<Sym::SpinSU2>> Simp(std::size_t locx, std::size_t locy=0);
-    Mpo<Sym::SU2<Sym::SpinSU2>> Simpdag(std::size_t locx, std::size_t locy=0);
-    Mpo<Sym::SU2<Sym::SpinSU2>> SimpdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
-    Mpo<Sym::SU2<Sym::SpinSU2>> Ssub(std::size_t locx, std::size_t locy=0);
-    Mpo<Sym::SU2<Sym::SpinSU2>> Ssubdag(std::size_t locx, std::size_t locy=0);
-    Mpo<Sym::SU2<Sym::SpinSU2>> SsubdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
-    Mpo<Sym::SU2<Sym::SpinSU2>> SsubdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
-    Mpo<Sym::SU2<Sym::SpinSU2>> SimpdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
-    Mpo<Sym::SU2<Sym::SpinSU2>> Stot();
+    // Mpo<Sym::SU2<Sym::SpinSU2>> Simp(std::size_t locx, std::size_t locy=0);
+    // Mpo<Sym::SU2<Sym::SpinSU2>> Simpdag(std::size_t locx, std::size_t locy=0);
+    // Mpo<Sym::SU2<Sym::SpinSU2>> SimpdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
+	// Mpo<Sym::SU2<Sym::SpinSU2>> SdagS(std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0) {return SimpdagSimp(locx1,locx2,locy1,locy2);}
+    // Mpo<Sym::SU2<Sym::SpinSU2>> Ssub(std::size_t locx, std::size_t locy=0);
+    // Mpo<Sym::SU2<Sym::SpinSU2>> Ssubdag(std::size_t locx, std::size_t locy=0);
+    // Mpo<Sym::SU2<Sym::SpinSU2>> SsubdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
+    // Mpo<Sym::SU2<Sym::SpinSU2>> SsubdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
+    // Mpo<Sym::SU2<Sym::SpinSU2>> SimpdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
+    // Mpo<Sym::SU2<Sym::SpinSU2>> Stot();
 };
 
 const std::map<string,std::any> KondoNecklaceSU2::defaults = 
@@ -108,7 +99,9 @@ const std::map<string,std::any> KondoNecklaceSU2::sweep_defaults =
 };
 
 KondoNecklaceSU2::KondoNecklaceSU2(const std::size_t L, const std::vector<Param>& params, const BC boundary, const DMRG::VERBOSITY::OPTION VERB)
-: Mpo<Symmetry>(L, Symmetry::qvacuum(), "KondoNecklaceSU2", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB), ParamReturner(KondoNecklaceSU2::sweep_defaults)
+: Mpo<Symmetry>(L, Symmetry::qvacuum(), "KondoNecklaceSU2", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
+  KondoNecklaceObservables<Symmetry>(L,params,KondoNecklaceSU2::defaults),
+  ParamReturner(KondoNecklaceSU2::sweep_defaults)
 {
 	ParamHandler P(params,defaults);
     this->set_verbosity(VERB);
@@ -118,9 +111,6 @@ KondoNecklaceSU2::KondoNecklaceSU2(const std::size_t L, const std::vector<Param>
 	for (size_t loc=0; loc<N_sites; ++loc)
 	{
 		N_phys += P.get<size_t>("Ly",loc%Lcell);
-		Bsub[loc] = SpinBase<Symmetry>(P.get<size_t>("Ly",loc%Lcell), P.get<size_t>("Dsub",loc%Lcell));
-		Bimp[loc] = SpinBase<Symmetry>(P.get<size_t>("Ly",loc%Lcell), P.get<size_t>("Dimp",loc%Lcell));
-
 		setLocBasis((Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc(),loc);
 	}
 
@@ -484,391 +474,391 @@ bool KondoNecklaceSU2::validate(qType qnum)
     return it!=reachable[N_sites-1].end();
 }
     
-Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
-Stot()
-{
-    Mpo<Symmetry> Mout(this->N_sites, {3}, "S_tot", false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
-    for(std::size_t loc=0; loc<this->N_sites; ++loc)
-    {
-        Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
-        for(std::size_t alpha=0; alpha<Bsub[loc].orbitals(); ++alpha)
-        {
-            Mout.push(loc, {OperatorType::outerprod(Bsub[loc].S(alpha), Bimp[loc].Id(), {3}).plain<double>()});
-            Mout.push(loc, {OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].S(alpha), {3}).plain<double>()});
-        }
-    }
-    Mout.finalize();
-    return Mout;
-}
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
+// Stot()
+// {
+//     Mpo<Symmetry> Mout(this->N_sites, {3}, "S_tot", false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
+//     for(std::size_t loc=0; loc<this->N_sites; ++loc)
+//     {
+//         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
+//         for(std::size_t alpha=0; alpha<Bsub[loc].orbitals(); ++alpha)
+//         {
+//             Mout.push(loc, {OperatorType::outerprod(Bsub[loc].S(alpha), Bimp[loc].Id(), {3}).plain<double>()});
+//             Mout.push(loc, {OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].S(alpha), {3}).plain<double>()});
+//         }
+//     }
+//     Mout.finalize();
+//     return Mout;
+// }
     
-Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
-Simp(std::size_t locx, std::size_t locy)
-{
-    assert(locx<this->N_sites);
-    assert(locy<Bimp[locx].orbitals());
-    std::stringstream ss;
-    ss << "S_imp(" << locx;
-    if(Bimp[locx].orbitals() > 1)
-    {
-        ss << "," << locy;
-    }
-    ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
-    for(std::size_t loc=0; loc<this->N_sites; ++loc)
-    {
-        Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
-    }
-    Mout.push(locx, {OperatorType::outerprod(Bsub[locx].Id(), Bimp[locx].S(locy), {3}).plain<double>()});
-    Mout.finalize();
-    return Mout;
-}
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
+// Simp(std::size_t locx, std::size_t locy)
+// {
+//     assert(locx<this->N_sites);
+//     assert(locy<Bimp[locx].orbitals());
+//     std::stringstream ss;
+//     ss << "S_imp(" << locx;
+//     if(Bimp[locx].orbitals() > 1)
+//     {
+//         ss << "," << locy;
+//     }
+//     ss << ")";
+//     Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
+//     for(std::size_t loc=0; loc<this->N_sites; ++loc)
+//     {
+//         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
+//     }
+//     Mout.push(locx, {OperatorType::outerprod(Bsub[locx].Id(), Bimp[locx].S(locy), {3}).plain<double>()});
+//     Mout.finalize();
+//     return Mout;
+// }
 
-Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
-Ssub(std::size_t locx, std::size_t locy)
-{
-    assert(locx<this->N_sites);
-    assert(locy<Bsub[locx].orbitals());
-    std::stringstream ss;
-    ss << "S_sub(" << locx;
-    if(Bsub[locx].orbitals() > 1)
-    {
-        ss << "," << locy;
-    }
-    ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
-    for(std::size_t loc=0; loc<this->N_sites; ++loc)
-    {
-        Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
-    }
-    Mout.push(locx, {OperatorType::outerprod(Bsub[locx].S(locy), Bimp[locx].Id(), {3}).plain<double>()});
-    Mout.finalize();
-    return Mout;
-}
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
+// Ssub(std::size_t locx, std::size_t locy)
+// {
+//     assert(locx<this->N_sites);
+//     assert(locy<Bsub[locx].orbitals());
+//     std::stringstream ss;
+//     ss << "S_sub(" << locx;
+//     if(Bsub[locx].orbitals() > 1)
+//     {
+//         ss << "," << locy;
+//     }
+//     ss << ")";
+//     Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
+//     for(std::size_t loc=0; loc<this->N_sites; ++loc)
+//     {
+//         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
+//     }
+//     Mout.push(locx, {OperatorType::outerprod(Bsub[locx].S(locy), Bimp[locx].Id(), {3}).plain<double>()});
+//     Mout.finalize();
+//     return Mout;
+// }
 
-Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
-Simpdag(std::size_t locx, std::size_t locy)
-{
-    assert(locx<this->N_sites);
-    assert(locy<Bimp[locx].orbitals());
-    std::stringstream ss;
-    ss << "S_imp†(" << locx;
-    if(Bimp[locx].orbitals() > 1)
-    {
-        ss << "," << locy;
-    }
-    ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
-    for(std::size_t loc=0; loc<this->N_sites; ++loc)
-    {
-        Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
-    }
-    Mout.push(locx, {OperatorType::outerprod(Bsub[locx].Id(), Bimp[locx].Sdag(locy), {3}).plain<double>()});
-    Mout.finalize();
-    return Mout;
-}
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
+// Simpdag(std::size_t locx, std::size_t locy)
+// {
+//     assert(locx<this->N_sites);
+//     assert(locy<Bimp[locx].orbitals());
+//     std::stringstream ss;
+//     ss << "S_imp†(" << locx;
+//     if(Bimp[locx].orbitals() > 1)
+//     {
+//         ss << "," << locy;
+//     }
+//     ss << ")";
+//     Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
+//     for(std::size_t loc=0; loc<this->N_sites; ++loc)
+//     {
+//         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
+//     }
+//     Mout.push(locx, {OperatorType::outerprod(Bsub[locx].Id(), Bimp[locx].Sdag(locy), {3}).plain<double>()});
+//     Mout.finalize();
+//     return Mout;
+// }
 
-Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
-Ssubdag(std::size_t locx, std::size_t locy)
-{
-    assert(locx<this->N_sites);
-    assert(locy<Bsub[locx].orbitals());
-    std::stringstream ss;
-    ss << "S_sub†(" << locx;
-    if(Bsub[locx].orbitals() > 1)
-    {
-        ss << "," << locy;
-    }
-    ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
-    for(std::size_t loc=0; loc<this->N_sites; ++loc)
-    {
-        Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
-    }
-    Mout.push(locx, {OperatorType::outerprod(Bsub[locx].Sdag(locy), Bimp[locx].Id(), {3}).plain<double>()});
-    Mout.finalize();
-    return Mout;
-}
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
+// Ssubdag(std::size_t locx, std::size_t locy)
+// {
+//     assert(locx<this->N_sites);
+//     assert(locy<Bsub[locx].orbitals());
+//     std::stringstream ss;
+//     ss << "S_sub†(" << locx;
+//     if(Bsub[locx].orbitals() > 1)
+//     {
+//         ss << "," << locy;
+//     }
+//     ss << ")";
+//     Mpo<Symmetry> Mout(N_sites, {3}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
+//     for(std::size_t loc=0; loc<this->N_sites; ++loc)
+//     {
+//         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
+//     }
+//     Mout.push(locx, {OperatorType::outerprod(Bsub[locx].Sdag(locy), Bimp[locx].Id(), {3}).plain<double>()});
+//     Mout.finalize();
+//     return Mout;
+// }
 
-Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
-SimpdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
-{
-    assert(locx1<this->N_sites);
-    assert(locy1<Bimp[locx1].orbitals());
-    assert(locx2<this->N_sites);
-    assert(locy2<Bimp[locx2].orbitals());
-    std::stringstream ss;
-    ss << "S_imp†(" << locx1;
-    if(Bimp[locx1].orbitals() > 1)
-    {
-        ss << "," << locy1;
-    }
-    ss << ")*S_imp(" << locx2;
-    if(Bimp[locx2].orbitals() > 1)
-    {
-        ss << "," << locy2;
-    }
-    ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), true, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
-    for(std::size_t loc=0; loc<this->N_sites; ++loc)
-    {
-        Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
-    }
-    std::vector<SiteOperator<Symmetry,double>> ops;
-    if(locx1 == locx2)
-    {
-        ops.push_back(OperatorType::outerprod(Bsub[locx1].Id(), OperatorType::prod(Bimp[locx1].Sdag(locy1), Bimp[locx1].S(locy2), {1}), {1}).plain<double>());
-        Mout.push(locx1, ops, {1});
-    }
-    else if(locx1 < locx2)
-    {
-        ops.push_back(OperatorType::outerprod(Bsub[locx1].Id(), Bimp[locx1].Sdag(locy1), {3}).plain<double>());
-        for(std::size_t loc=locx1+1; loc<locx2; ++loc)
-        {
-            ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
-        }
-        ops.push_back(OperatorType::outerprod(Bsub[locx2].Id(), Bimp[locx2].S(locy2), {3}).plain<double>());
-        Mout.push(locx1, ops, {1});
-    }
-    else
-    {
-        std::stringstream ss2;
-        ss2 << "S_imp(" << locx2;
-        if(Bimp[locx2].orbitals() > 1)
-        {
-            ss2 << "," << locy2;
-        }
-        ss2 << ")*S_imp†(" << locx1;
-        if(Bimp[locx1].orbitals() > 1)
-        {
-            ss2 << "," << locy1;
-        }
-        ss2 << ")";
-        Mout.set_name(ss2.str());
-        ops.push_back(OperatorType::outerprod(Bsub[locx2].Id(), Bimp[locx2].S(locy2), {3}).plain<double>());
-        for(std::size_t loc=locx2+1; loc<locx1; ++loc)
-        {
-            ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
-        }
-        ops.push_back(OperatorType::outerprod(Bsub[locx1].Id(), Bimp[locx1].Sdag(locy1), {3}).plain<double>());
-        Mout.push(locx2, ops, {1});
-    }
-    Mout.finalize();
-    return Mout;
-}
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
+// SimpdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
+// {
+//     assert(locx1<this->N_sites);
+//     assert(locy1<Bimp[locx1].orbitals());
+//     assert(locx2<this->N_sites);
+//     assert(locy2<Bimp[locx2].orbitals());
+//     std::stringstream ss;
+//     ss << "S_imp†(" << locx1;
+//     if(Bimp[locx1].orbitals() > 1)
+//     {
+//         ss << "," << locy1;
+//     }
+//     ss << ")*S_imp(" << locx2;
+//     if(Bimp[locx2].orbitals() > 1)
+//     {
+//         ss << "," << locy2;
+//     }
+//     ss << ")";
+//     Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), true, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
+//     for(std::size_t loc=0; loc<this->N_sites; ++loc)
+//     {
+//         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
+//     }
+//     std::vector<SiteOperator<Symmetry,double>> ops;
+//     if(locx1 == locx2)
+//     {
+//         ops.push_back(OperatorType::outerprod(Bsub[locx1].Id(), OperatorType::prod(Bimp[locx1].Sdag(locy1), Bimp[locx1].S(locy2), {1}), {1}).plain<double>());
+//         Mout.push(locx1, ops, {1});
+//     }
+//     else if(locx1 < locx2)
+//     {
+//         ops.push_back(OperatorType::outerprod(Bsub[locx1].Id(), Bimp[locx1].Sdag(locy1), {3}).plain<double>());
+//         for(std::size_t loc=locx1+1; loc<locx2; ++loc)
+//         {
+//             ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
+//         }
+//         ops.push_back(OperatorType::outerprod(Bsub[locx2].Id(), Bimp[locx2].S(locy2), {3}).plain<double>());
+//         Mout.push(locx1, ops, {1});
+//     }
+//     else
+//     {
+//         std::stringstream ss2;
+//         ss2 << "S_imp(" << locx2;
+//         if(Bimp[locx2].orbitals() > 1)
+//         {
+//             ss2 << "," << locy2;
+//         }
+//         ss2 << ")*S_imp†(" << locx1;
+//         if(Bimp[locx1].orbitals() > 1)
+//         {
+//             ss2 << "," << locy1;
+//         }
+//         ss2 << ")";
+//         Mout.set_name(ss2.str());
+//         ops.push_back(OperatorType::outerprod(Bsub[locx2].Id(), Bimp[locx2].S(locy2), {3}).plain<double>());
+//         for(std::size_t loc=locx2+1; loc<locx1; ++loc)
+//         {
+//             ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
+//         }
+//         ops.push_back(OperatorType::outerprod(Bsub[locx1].Id(), Bimp[locx1].Sdag(locy1), {3}).plain<double>());
+//         Mout.push(locx2, ops, {1});
+//     }
+//     Mout.finalize();
+//     return Mout;
+// }
 
-Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
-SsubdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
-{
-    assert(locx1<this->N_sites);
-    assert(locy1<Bsub[locx1].orbitals());
-    assert(locx2<this->N_sites);
-    assert(locy2<Bsub[locx2].orbitals());
-    std::stringstream ss;
-    ss << "S_sub†(" << locx1;
-    if(Bimp[locx1].orbitals() > 1)
-    {
-        ss << "," << locy1;
-    }
-    ss << ")*S_sub(" << locx2;
-    if(Bimp[locx2].orbitals() > 1)
-    {
-        ss << "," << locy2;
-    }
-    ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), true, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
-    for(std::size_t loc=0; loc<this->N_sites; ++loc)
-    {
-        Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
-    }
-    std::vector<SiteOperator<Symmetry,double>> ops;
-    if(locx1 == locx2)
-    {
-        ops.push_back(OperatorType::outerprod(OperatorType::prod(Bsub[locx1].Sdag(locy1),Bsub[locx1].S(locy2),{1}), Bimp[locx1].Id(), {1}).plain<double>());
-        Mout.push(locx1, ops, {1});
-    }
-    else if(locx1 < locx2)
-    {
-        ops.push_back(OperatorType::outerprod(Bsub[locx1].Sdag(locy1), Bimp[locx1].Id(), {3}).plain<double>());
-        for(std::size_t loc=locx1+1; loc<locx2; ++loc)
-        {
-            ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
-        }
-        ops.push_back(OperatorType::outerprod(Bsub[locx2].S(locy2), Bimp[locx2].Id(), {3}).plain<double>());
-        Mout.push(locx1, ops, {1});
-    }
-    else
-    {
-        std::stringstream ss2;
-        ss2 << "S_sub(" << locx2;
-        if(Bimp[locx2].orbitals() > 1)
-        {
-            ss2 << "," << locy2;
-        }
-        ss2 << ")*S_sub†(" << locx1;
-        if(Bimp[locx1].orbitals() > 1)
-        {
-            ss2 << "," << locy1;
-        }
-        ss2 << ")";
-        Mout.set_name(ss2.str());
-        ops.push_back(OperatorType::outerprod(Bsub[locx2].S(locy2), Bimp[locx2].Id(), {3}).plain<double>());
-        for(std::size_t loc=locx2+1; loc<locx1; ++loc)
-        {
-            ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
-        }
-        ops.push_back(OperatorType::outerprod(Bsub[locx1].Sdag(locy1), Bimp[locx1].Id(), {3}).plain<double>());
-        Mout.push(locx2, ops, {1});
-    }
-    Mout.finalize();
-    return Mout;
-}
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
+// SsubdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
+// {
+//     assert(locx1<this->N_sites);
+//     assert(locy1<Bsub[locx1].orbitals());
+//     assert(locx2<this->N_sites);
+//     assert(locy2<Bsub[locx2].orbitals());
+//     std::stringstream ss;
+//     ss << "S_sub†(" << locx1;
+//     if(Bimp[locx1].orbitals() > 1)
+//     {
+//         ss << "," << locy1;
+//     }
+//     ss << ")*S_sub(" << locx2;
+//     if(Bimp[locx2].orbitals() > 1)
+//     {
+//         ss << "," << locy2;
+//     }
+//     ss << ")";
+//     Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), true, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
+//     for(std::size_t loc=0; loc<this->N_sites; ++loc)
+//     {
+//         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
+//     }
+//     std::vector<SiteOperator<Symmetry,double>> ops;
+//     if(locx1 == locx2)
+//     {
+//         ops.push_back(OperatorType::outerprod(OperatorType::prod(Bsub[locx1].Sdag(locy1),Bsub[locx1].S(locy2),{1}), Bimp[locx1].Id(), {1}).plain<double>());
+//         Mout.push(locx1, ops, {1});
+//     }
+//     else if(locx1 < locx2)
+//     {
+//         ops.push_back(OperatorType::outerprod(Bsub[locx1].Sdag(locy1), Bimp[locx1].Id(), {3}).plain<double>());
+//         for(std::size_t loc=locx1+1; loc<locx2; ++loc)
+//         {
+//             ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
+//         }
+//         ops.push_back(OperatorType::outerprod(Bsub[locx2].S(locy2), Bimp[locx2].Id(), {3}).plain<double>());
+//         Mout.push(locx1, ops, {1});
+//     }
+//     else
+//     {
+//         std::stringstream ss2;
+//         ss2 << "S_sub(" << locx2;
+//         if(Bimp[locx2].orbitals() > 1)
+//         {
+//             ss2 << "," << locy2;
+//         }
+//         ss2 << ")*S_sub†(" << locx1;
+//         if(Bimp[locx1].orbitals() > 1)
+//         {
+//             ss2 << "," << locy1;
+//         }
+//         ss2 << ")";
+//         Mout.set_name(ss2.str());
+//         ops.push_back(OperatorType::outerprod(Bsub[locx2].S(locy2), Bimp[locx2].Id(), {3}).plain<double>());
+//         for(std::size_t loc=locx2+1; loc<locx1; ++loc)
+//         {
+//             ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
+//         }
+//         ops.push_back(OperatorType::outerprod(Bsub[locx1].Sdag(locy1), Bimp[locx1].Id(), {3}).plain<double>());
+//         Mout.push(locx2, ops, {1});
+//     }
+//     Mout.finalize();
+//     return Mout;
+// }
 
-Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
-SsubdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
-{
-    assert(locx1<this->N_sites);
-    assert(locy1<Bsub[locx1].orbitals());
-    assert(locx2<this->N_sites);
-    assert(locy2<Bimp[locx2].orbitals());
-    std::stringstream ss;
-    ss << "S_sub†(" << locx1;
-    if(Bimp[locx1].orbitals() > 1)
-    {
-        ss << "," << locy1;
-    }
-    ss << ")*S_imp(" << locx2;
-    if(Bimp[locx2].orbitals() > 1)
-    {
-        ss << "," << locy2;
-    }
-    ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
-    for(std::size_t loc=0; loc<this->N_sites; ++loc)
-    {
-        Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
-    }
-    std::vector<SiteOperator<Symmetry,double>> ops;
-    if(locx1 == locx2)
-    {
-        ops.push_back(OperatorType::outerprod(Bsub[locx1].Sdag(locy1), Bimp[locx1].S(locy2), {1}).plain<double>());
-        Mout.push(locx1, ops, {1});
-    }
-    else if(locx1 < locx2)
-    {
-        ops.push_back(OperatorType::outerprod(Bsub[locx1].Sdag(locy1), Bimp[locx1].Id(), {3}).plain<double>());
-        for(std::size_t loc=locx1+1; loc<locx2; ++loc)
-        {
-            ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
-        }
-        ops.push_back(OperatorType::outerprod(Bsub[locx2].Id(), Bimp[locx2].S(locy2), {3}).plain<double>());
-        Mout.push(locx1, ops, {1});
-    }
-    else
-    {
-        std::stringstream ss2;
-        ss2 << "S_imp(" << locx2;
-        if(Bimp[locx2].orbitals() > 1)
-        {
-            ss2 << "," << locy2;
-        }
-        ss2 << ")*S_sub†(" << locx1;
-        if(Bimp[locx1].orbitals() > 1)
-        {
-            ss2 << "," << locy1;
-        }
-        ss2 << ")";
-        Mout.set_name(ss2.str());
-        ops.push_back(OperatorType::outerprod(Bsub[locx2].Id(), Bimp[locx2].S(locy2), {3}).plain<double>());
-        for(std::size_t loc=locx2+1; loc<locx1; ++loc)
-        {
-            ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
-        }
-        ops.push_back(OperatorType::outerprod(Bsub[locx1].Sdag(locy1), Bimp[locx1].Id(), {3}).plain<double>());
-        Mout.push(locx2, ops, {1});
-    }
-    Mout.finalize();
-    return Mout;
-}
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
+// SsubdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
+// {
+//     assert(locx1<this->N_sites);
+//     assert(locy1<Bsub[locx1].orbitals());
+//     assert(locx2<this->N_sites);
+//     assert(locy2<Bimp[locx2].orbitals());
+//     std::stringstream ss;
+//     ss << "S_sub†(" << locx1;
+//     if(Bimp[locx1].orbitals() > 1)
+//     {
+//         ss << "," << locy1;
+//     }
+//     ss << ")*S_imp(" << locx2;
+//     if(Bimp[locx2].orbitals() > 1)
+//     {
+//         ss << "," << locy2;
+//     }
+//     ss << ")";
+//     Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
+//     for(std::size_t loc=0; loc<this->N_sites; ++loc)
+//     {
+//         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
+//     }
+//     std::vector<SiteOperator<Symmetry,double>> ops;
+//     if(locx1 == locx2)
+//     {
+//         ops.push_back(OperatorType::outerprod(Bsub[locx1].Sdag(locy1), Bimp[locx1].S(locy2), {1}).plain<double>());
+//         Mout.push(locx1, ops, {1});
+//     }
+//     else if(locx1 < locx2)
+//     {
+//         ops.push_back(OperatorType::outerprod(Bsub[locx1].Sdag(locy1), Bimp[locx1].Id(), {3}).plain<double>());
+//         for(std::size_t loc=locx1+1; loc<locx2; ++loc)
+//         {
+//             ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
+//         }
+//         ops.push_back(OperatorType::outerprod(Bsub[locx2].Id(), Bimp[locx2].S(locy2), {3}).plain<double>());
+//         Mout.push(locx1, ops, {1});
+//     }
+//     else
+//     {
+//         std::stringstream ss2;
+//         ss2 << "S_imp(" << locx2;
+//         if(Bimp[locx2].orbitals() > 1)
+//         {
+//             ss2 << "," << locy2;
+//         }
+//         ss2 << ")*S_sub†(" << locx1;
+//         if(Bimp[locx1].orbitals() > 1)
+//         {
+//             ss2 << "," << locy1;
+//         }
+//         ss2 << ")";
+//         Mout.set_name(ss2.str());
+//         ops.push_back(OperatorType::outerprod(Bsub[locx2].Id(), Bimp[locx2].S(locy2), {3}).plain<double>());
+//         for(std::size_t loc=locx2+1; loc<locx1; ++loc)
+//         {
+//             ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
+//         }
+//         ops.push_back(OperatorType::outerprod(Bsub[locx1].Sdag(locy1), Bimp[locx1].Id(), {3}).plain<double>());
+//         Mout.push(locx2, ops, {1});
+//     }
+//     Mout.finalize();
+//     return Mout;
+// }
 
-Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
-SimpdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
-{
-    assert(locx1<this->N_sites);
-    assert(locy1<Bimp[locx1].orbitals());
-    assert(locx2<this->N_sites);
-    assert(locy2<Bsub[locx2].orbitals());
-    std::stringstream ss;
-    ss << "S_imp†(" << locx1;
-    if(Bimp[locx1].orbitals() > 1)
-    {
-        ss << "," << locy1;
-    }
-    ss << ")*S_sub(" << locx2;
-    if(Bimp[locx2].orbitals() > 1)
-    {
-        ss << "," << locy2;
-    }
-    ss << ")";
-    Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
-    for(std::size_t loc=0; loc<this->N_sites; ++loc)
-    {
-        Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
-    }
-    std::vector<SiteOperator<Symmetry,double>> ops;
-    if(locx1 == locx2)
-    {
-        std::stringstream ss2;
-        ss2 << "S_sub(" << locx2;
-        if(Bimp[locx2].orbitals() > 1)
-        {
-            ss2 << "," << locy2;
-        }
-        ss2 << ")*S_imp†(" << locx1;
-        if(Bimp[locx1].orbitals() > 1)
-        {
-            ss2 << "," << locy1;
-        }
-        ss2 << ")";
-        Mout.set_name(ss2.str());
-        ops.push_back(OperatorType::outerprod(Bsub[locx1].S(locy2), Bimp[locx1].S(locy1), {1}).plain<double>());
-        Mout.push(locx1, ops, {1});
-    }
-    else if(locx1 < locx2)
-    {
-        ops.push_back(OperatorType::outerprod(Bsub[locx1].Id(), Bimp[locx1].Sdag(locy1), {3}).plain<double>());
-        for(std::size_t loc=locx1+1; loc<locx2; ++loc)
-        {
-            ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
-        }
-        ops.push_back(OperatorType::outerprod(Bsub[locx2].S(locy2), Bimp[locx2].Id(), {3}).plain<double>());
-        Mout.push(locx1, ops, {1});
-    }
-    else
-    {
-        std::stringstream ss2;
-        ss2 << "S_sub(" << locx2;
-        if(Bimp[locx2].orbitals() > 1)
-        {
-            ss2 << "," << locy2;
-        }
-        ss2 << ")*S_imp†(" << locx1;
-        if(Bimp[locx1].orbitals() > 1)
-        {
-            ss2 << "," << locy1;
-        }
-        ss2 << ")";
-        Mout.set_name(ss2.str());
-        ops.push_back(OperatorType::outerprod(Bsub[locx2].S(locy2), Bimp[locx2].Id(), {3}).plain<double>());
-        for(std::size_t loc=locx2+1; loc<locx1; ++loc)
-        {
-            ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
-        }
-        ops.push_back(OperatorType::outerprod(Bsub[locx1].Id(), Bimp[locx1].Sdag(locy1), {3}).plain<double>());
-        Mout.push(locx2, ops, {1});
-    }
-    Mout.finalize();
-    return Mout;
-}
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceSU2::
+// SimpdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
+// {
+//     assert(locx1<this->N_sites);
+//     assert(locy1<Bimp[locx1].orbitals());
+//     assert(locx2<this->N_sites);
+//     assert(locy2<Bsub[locx2].orbitals());
+//     std::stringstream ss;
+//     ss << "S_imp†(" << locx1;
+//     if(Bimp[locx1].orbitals() > 1)
+//     {
+//         ss << "," << locy1;
+//     }
+//     ss << ")*S_sub(" << locx2;
+//     if(Bimp[locx2].orbitals() > 1)
+//     {
+//         ss << "," << locy2;
+//     }
+//     ss << ")";
+//     Mpo<Symmetry> Mout(N_sites, {1}, ss.str(), false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
+//     for(std::size_t loc=0; loc<this->N_sites; ++loc)
+//     {
+//         Mout.set_qPhys(loc, (Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc());
+//     }
+//     std::vector<SiteOperator<Symmetry,double>> ops;
+//     if(locx1 == locx2)
+//     {
+//         std::stringstream ss2;
+//         ss2 << "S_sub(" << locx2;
+//         if(Bimp[locx2].orbitals() > 1)
+//         {
+//             ss2 << "," << locy2;
+//         }
+//         ss2 << ")*S_imp†(" << locx1;
+//         if(Bimp[locx1].orbitals() > 1)
+//         {
+//             ss2 << "," << locy1;
+//         }
+//         ss2 << ")";
+//         Mout.set_name(ss2.str());
+//         ops.push_back(OperatorType::outerprod(Bsub[locx1].S(locy2), Bimp[locx1].S(locy1), {1}).plain<double>());
+//         Mout.push(locx1, ops, {1});
+//     }
+//     else if(locx1 < locx2)
+//     {
+//         ops.push_back(OperatorType::outerprod(Bsub[locx1].Id(), Bimp[locx1].Sdag(locy1), {3}).plain<double>());
+//         for(std::size_t loc=locx1+1; loc<locx2; ++loc)
+//         {
+//             ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
+//         }
+//         ops.push_back(OperatorType::outerprod(Bsub[locx2].S(locy2), Bimp[locx2].Id(), {3}).plain<double>());
+//         Mout.push(locx1, ops, {1});
+//     }
+//     else
+//     {
+//         std::stringstream ss2;
+//         ss2 << "S_sub(" << locx2;
+//         if(Bimp[locx2].orbitals() > 1)
+//         {
+//             ss2 << "," << locy2;
+//         }
+//         ss2 << ")*S_imp†(" << locx1;
+//         if(Bimp[locx1].orbitals() > 1)
+//         {
+//             ss2 << "," << locy1;
+//         }
+//         ss2 << ")";
+//         Mout.set_name(ss2.str());
+//         ops.push_back(OperatorType::outerprod(Bsub[locx2].S(locy2), Bimp[locx2].Id(), {3}).plain<double>());
+//         for(std::size_t loc=locx2+1; loc<locx1; ++loc)
+//         {
+//             ops.push_back(OperatorType::outerprod(Bsub[loc].Id(), Bimp[loc].Id(), {1}).plain<double>());
+//         }
+//         ops.push_back(OperatorType::outerprod(Bsub[locx1].Id(), Bimp[locx1].Sdag(locy1), {3}).plain<double>());
+//         Mout.push(locx2, ops, {1});
+//     }
+//     Mout.finalize();
+//     return Mout;
+// }
 
 } // end namespace VMPS
 

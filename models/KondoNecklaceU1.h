@@ -6,8 +6,8 @@
 #include<map>
 #include<string>
 
-
-#include "symmetry/SU2.h"
+#include "KondoNecklaceObservables.h"
+#include "symmetry/U1.h"
 #include "bases/SpinBase.h"
 #include "Mpo.h"
 #include "ParamReturner.h"
@@ -16,7 +16,7 @@
 namespace VMPS
 {
 
-class KondoNecklaceU1 : public Mpo<Sym::U1<Sym::SpinU1>,double>, public ParamReturner
+	class KondoNecklaceU1 : public Mpo<Sym::U1<Sym::SpinU1>,double>, public KondoNecklaceObservables<Sym::U1<Sym::SpinU1> >, public ParamReturner
 {
 public:
     typedef Sym::U1<Sym::SpinU1> Symmetry;
@@ -28,16 +28,6 @@ private:
     typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
     typedef Eigen::SparseMatrix<double,Eigen::ColMajor,EIGEN_DEFAULT_SPARSE_INDEX_TYPE> SparseMatrixType;
     typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
-
-    /**
-     *  Local bases for the spins in the substrate
-     */
-    std::vector<SpinBase<Symmetry> > Bsub;
-
-    /**
-     *  Local bases for the impurity spins
-     */
-    std::vector<SpinBase<Symmetry> > Bimp;
     
 public:
     /**
@@ -77,21 +67,6 @@ public:
      *  Checks whether a quantum number D = 2S+1 can be reached by any combination of substrate and impurity spins and thereby validates this quantum number
      */
     bool validate(qType qnum);
-
-    Mpo<Sym::U1<Sym::SpinU1>> Scompimp(SPINOP_LABEL Sa, std::size_t locx, std::size_t locy=0, double factor=1.) const;
-	Mpo<Sym::U1<Sym::SpinU1>> Scompsub(SPINOP_LABEL Sa, std::size_t locx, std::size_t locy=0, double factor=1.) const;
-    // Mpo<Sym::SU2<Sym::SpinSU2>> SimpdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
-    // Mpo<Sym::SU2<Sym::SpinSU2>> Ssub(std::size_t locx, std::size_t locy=0);
-    // Mpo<Sym::SU2<Sym::SpinSU2>> Ssubdag(std::size_t locx, std::size_t locy=0);
-    // Mpo<Sym::SU2<Sym::SpinSU2>> SsubdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
-    // Mpo<Sym::SU2<Sym::SpinSU2>> SsubdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
-    // Mpo<Sym::SU2<Sym::SpinSU2>> SimpdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1=0, std::size_t locy2=0);
-    // Mpo<Sym::SU2<Sym::SpinSU2>> Stot();
-
-	Mpo<Symmetry> make_local (KONDO_SUBSYSTEM SUBSYS, size_t locx, size_t locy,
-							  const OperatorType &Op,
-							  double factor =1.,
-	                          bool HERMITIAN=false) const;
 };
 
 const std::map<string,std::any> KondoNecklaceU1::defaults = 
@@ -113,7 +88,9 @@ const std::map<string,std::any> KondoNecklaceU1::sweep_defaults =
 };
 
 KondoNecklaceU1::KondoNecklaceU1(const std::size_t L, const std::vector<Param>& params, const BC boundary, const DMRG::VERBOSITY::OPTION VERB)
-: Mpo<Symmetry>(L, Symmetry::qvacuum(), "KondoNecklaceU1", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB), ParamReturner(KondoNecklaceU1::sweep_defaults)
+: Mpo<Symmetry>(L, Symmetry::qvacuum(), "KondoNecklaceU1", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
+  KondoNecklaceObservables<Symmetry>(L,params,KondoNecklaceU1::defaults),
+  ParamReturner(KondoNecklaceU1::sweep_defaults)
 {
 	ParamHandler P(params,defaults);
     this->set_verbosity(VERB);
@@ -123,9 +100,6 @@ KondoNecklaceU1::KondoNecklaceU1(const std::size_t L, const std::vector<Param>& 
 	for (size_t loc=0; loc<N_sites; ++loc)
 	{
 		N_phys += P.get<size_t>("Ly",loc%Lcell);
-		Bsub[loc] = SpinBase<Symmetry>(P.get<size_t>("Ly",loc%Lcell), P.get<size_t>("Dsub",loc%Lcell));
-		Bimp[loc] = SpinBase<Symmetry>(P.get<size_t>("Ly",loc%Lcell), P.get<size_t>("Dimp",loc%Lcell));
-
 		setLocBasis((Bsub[loc].get_basis().combine(Bimp[loc].get_basis())).qloc(),loc);
 	}
 
@@ -441,46 +415,6 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
     }
 }
 
-Mpo<Sym::U1<Sym::SpinU1> > KondoNecklaceU1::
-make_local (KONDO_SUBSYSTEM SUBSYS, size_t locx, size_t locy, const OperatorType &Op, double factor, bool HERMITIAN) const
-{
-	assert(locx<Bimp.size() and locy<Bimp[locx].dim());
-	assert(SUBSYS != IMPSUB);
-	stringstream ss;
-	ss << Op.label() << "(" << locx << "," << locy;
-	if (factor != 1.) ss << ",factor=" << factor;
-	ss << ")";
-	
-	Mpo<Symmetry> Mout(Bimp.size(), Op.Q(), ss.str(), HERMITIAN);
-	for (size_t l=0; l<Bimp.size(); ++l) {Mout.setLocBasis(Bsub[l].get_basis().combine(Bimp[l].get_basis()).qloc(),l);}
-
-	OperatorType OpExt;
-	if (SUBSYS == SUB)
-	{
-		OpExt   = kroneckerProduct(Op, Bimp[locx].Id());
-	}
-	else if (SUBSYS == IMP)
-	{
-		OpExt = kroneckerProduct(Bsub[locx].Id(), Op);
-	}
-
-	Mout.setLocal(locx, (factor * OpExt).template plain<double>());
-	return Mout;
-}
-
-Mpo<Sym::U1<Sym::SpinU1> > KondoNecklaceU1::
-Scompimp (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
-{
-	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
-	return make_local(IMP,locx,locy, Bimp[locx].Scomp(Sa,locy), factor, HERMITIAN);
-}
-
-Mpo<Sym::U1<Sym::SpinU1> > KondoNecklaceU1::
-Scompsub (SPINOP_LABEL Sa, size_t locx, size_t locy, double factor) const
-{
-	bool HERMITIAN = (Sa==SX or Sa==SZ)? true:false;
-	return make_local(SUB,locx,locy, Bsub[locx].Scomp(Sa,locy), factor, HERMITIAN);
-}
 // bool KondoNecklaceU1::validate(qType qnum)
 // {
 //     auto add = [](std::set<std::size_t>& left, std::set<std::size_t>& right) -> void
