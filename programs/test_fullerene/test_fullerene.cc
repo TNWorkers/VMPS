@@ -45,7 +45,12 @@ using namespace Eigen;
 #include "models/ParamCollection.h"
 #include "EigenFiles.h"
 #include "solvers/TDVPPropagator.h"
-#include "solvers/GreenPropagator.h"
+//#include "solvers/GreenPropagator.h"
+#include <boost/math/quadrature/ooura_fourier_integrals.hpp>
+#include "InterpolGSL.h"
+#include "IntervalIterator.h"
+using boost::math::quadrature::ooura_fourier_sin;
+using boost::math::quadrature::ooura_fourier_cos;
 
 #include "models/HeisenbergSU2.h"
 typedef VMPS::HeisenbergSU2 MODEL;
@@ -72,12 +77,28 @@ ArrayXXd permute_random (const ArrayXXd &A)
 	return A_p.array();
 }
 
+vector<pair<int,int>> bond_indices (int d, const ArrayXXi &distanceMatrix)
+{
+	vector<pair<int,int>> res;
+	int L = distanceMatrix.rows();
+	
+	for (int j=0; j<L; ++j)
+	for (int i=0; i<j; ++i)
+	{
+		if (distanceMatrix(i,j) == d)
+		{
+			res.push_back(make_pair(i,j));
+		}
+	}
+	return res;
+}
+
 /////////////////////////////////
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
 	int L = args.get<int>("L",60);
-	assert(L==6 or L==12 or L==20 or L==60);
+//	assert(L==6 or L==12 or L==20 or L==60);
 	double t = args.get<double>("t",1.);
 	double U = args.get<double>("U",0.);
 	int N = args.get<int>("N",L);
@@ -102,13 +123,16 @@ int main (int argc, char* argv[])
 	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
 	bool CALC_GS = args.get<int>("CALC_GS",true);
 	bool CALC_VAR = args.get<int>("CALC_VAR",true);
+	int dmax = args.get<int>("dmax",3);
+	int dmin = args.get<int>("dmin",1);
 	
 	bool CALC_DOS = args.get<int>("CALC_DOS",false);
-	double dt = args.get<double>("dt",0.1);
+	double dt = args.get<double>("dt",0.05);
 	double tmax = args.get<double>("tmax",5.);
 	int Nt = static_cast<int>(tmax/dt);
-	size_t Dtlimit = args.get<size_t>("Dtlimit",100ul);
+	size_t Dtlimit = args.get<size_t>("Dtlimit",150ul);
 	double tol_t_compr = args.get<double>("tol_t_compr",1e-4);
+	int x0 = args.get<int>("x0",0);
 	
 	string wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
@@ -158,19 +182,34 @@ int main (int argc, char* argv[])
 	double alpha = args.get<double>("alpha",100.);
 	DynParam.max_alpha_rsvd = [lim_alpha, alpha] (size_t i) {return (i<lim_alpha)? alpha:0.;};
 	
-	GlobParam.savePeriod = Dincr_per;
+	GlobParam.savePeriod = args.get<size_t>("savePeriod",0);
 	GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_",base);
 	
 	lout << args.info() << endl;
 	#ifdef _OPENMP
+	omp_set_nested(1);
 	lout << "threads=" << omp_get_max_threads() << endl;
 	#else
 	lout << "not parallelized" << endl;
 	#endif
 	
-	ArrayXXd hopping = hopping_fullerene(L);
+	ArrayXXd hopping;
+	if (L!=12 and L!=20 and L!=60)
+	{
+		hopping = create_1D_PBC(L); // Heisenberg ring for testing
+	}
+	else
+	{
+		hopping = hopping_fullerene(L);
+	}
 	lout << "adjacency:" << endl << hopping << endl << endl;
-	lout << "distances:" << endl << calc_distanceMatrix(hopping) << endl << endl;
+	auto distanceMatrix = calc_distanceMatrix(hopping);
+	lout << "distances:" << endl << distanceMatrix << endl << endl;
+	for (int d=1; d<=distanceMatrix.maxCoeff(); ++d)
+	{
+		lout << "d=" << d << ", #bonds=" << bond_indices(d,distanceMatrix).size() << endl;
+	}
+	lout << endl;
 	
 	// free fermions
 	SelfAdjointEigenSolver<MatrixXd> Eugen(-1.*hopping.matrix());
@@ -223,14 +262,6 @@ int main (int argc, char* argv[])
 			DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
 		}
 		
-		if (CALC_VAR)
-		{
-			Stopwatch<> Timer;
-			lout << endl;
-			lout << "varE=" << abs(avg(g.state,H,H,g.state)-pow(g.energy,2))/L << endl;
-			lout << Timer.info("varE") << endl;
-		}
-		
 		if constexpr (MODEL::FAMILY == HEISENBERG)
 		{
 			if (CALC_CORR)
@@ -238,52 +269,45 @@ int main (int argc, char* argv[])
 				if (S>0)
 				{
 					ofstream SFiler(make_string(wd,"S_",base,".dat"));
+					#pragma omp parallel for
 					for (int l=0; l<L; ++l)
 					{
 						double res = avg(g.state, H.S(l), g.state);
-						SFiler << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
-						lout << l << "\t" << res << endl;
+						#pragma omp critical
+						{
+							SFiler << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
+							lout << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
+						}
 					}
 					SFiler.close();
 				}
-				
-				auto distanceMatrix = calc_distanceMatrix(hopping);
 				
 				ofstream CorrFilerAll(make_string(wd,"SdagS_",base,"_d=all",".dat"));
 				CorrFilerAll << "#i\tj\tSdagS" << endl;
 				
 				Stopwatch<> Timer;
-				for (int d=1; d<=distanceMatrix.maxCoeff(); ++d)
+				for (int d=dmin; d<=min(distanceMatrix.maxCoeff(),dmax); ++d)
 				{
 					lout << "correlations at distance d=" << d << endl;
 					ofstream CorrFiler(make_string(wd,"SdagS_",base,"_d=",d,".dat"));
 					CorrFiler << "#i\tj\td\tSdagS" << endl;
 					
-	//				vector<double> SdagS_bonds_;
+					vector<pair<int,int>> indices = bond_indices(d,distanceMatrix);
+					
 					#pragma omp parallel for
-					for (int j=0; j<L; ++j)
-					for (int i=0; i<j; ++i)
+					for (int k=0; k<indices.size(); ++k)
 					{
-						if (distanceMatrix(i,j) == d)
+						int i = indices[k].first;
+						int j = indices[k].second;
+						double val = avg(g.state, H.SdagS(i,j), g.state);
+						
+						#pragma omp critical
 						{
-							double val = avg(g.state, H.SdagS(i,j), g.state);
-							
-	//						SdagS_bonds_.push_back(res);
-							#pragma omp critical
-							{
-								lout << setprecision(16) << "i=" << i << ", j=" << j << ", d=" << d << ", SdagS=" << val << setprecision(6) << endl;
-								CorrFiler << setprecision(16) << i << "\t" << j << "\t" << val << setprecision(6) << endl;
-								CorrFilerAll << setprecision(16) << i << "\t" << j << "\t" << d << "\t" << val << setprecision(6) << endl;
-							}
+							lout << setprecision(16) << "i=" << i << ", j=" << j << ", d=" << d << ", SdagS=" << val << setprecision(6) << endl;
+							CorrFiler << setprecision(16) << i << "\t" << j << "\t" << val << setprecision(6) << endl;
+							CorrFilerAll << setprecision(16) << i << "\t" << j << "\t" << d << "\t" << val << setprecision(6) << endl;
 						}
 					}
-					
-	//				ArrayXd SdagS_bonds = Map<ArrayXd,Unaligned>(SdagS_bonds_.data(), SdagS_bonds_.size());
-	//				double mean = SdagS_bonds.sum()/SdagS_bonds.rows();
-	//				double var = (SdagS_bonds-mean).pow(2).sum()/SdagS_bonds.rows();
-	//				double stdev = sqrt(var);
-	//				lout << "d=" << d << ", SdagS mean=" << mean << ", var=" << var << ", stdev=" << stdev << endl;
-	//				CorrFiler << d << "\t" << mean << "\t" << stdev << endl;
 					
 					CorrFiler.close();
 					lout << Timer.info(make_string("d=",d)) << endl;
@@ -291,65 +315,144 @@ int main (int argc, char* argv[])
 				CorrFilerAll.close();
 			}
 			
+			if (CALC_VAR)
+			{
+				Stopwatch<> Timer;
+				lout << endl;
+				double E = (LOAD!="")? avg(g.state,H,g.state):g.energy;
+				lout << "E=" << E << endl;
+				lout << Timer.info("E") << endl;
+				
+				lout << "varE=" << abs(avg(g.state,H,H,g.state)-pow(E,2))/L << endl;
+				lout << Timer.info("varE") << endl;
+				
+//				auto HmE = H;
+//				HmE.scale(1.,-E);
+//				lout << "varE scaled=" << abs(avg(g.state,HmE,HmE,g.state))/L << endl;
+//				lout << Timer.info("varE scaled") << endl;
+			}
+			
 			//----density of states----
 			if (CALC_DOS)
 			{
+				std::array<double,2> tsign = {1.,-1.};
+				std::array<string,2> tlabel = {"forwards","back"};
+				
 				MODEL::StateXd Tmp;
-				OxV_exact(H.S(0), g.state, Tmp); // 2., DMRG::VERBOSITY::ON_EXIT
-				MODEL::StateXcd Psi = Tmp.cast<complex<double> >();
+				Stopwatch<> Stepper;
+				OxV_exact(H.S(x0), g.state, Tmp, 2., DMRG::VERBOSITY::ON_EXIT);
+				lout << Stepper.info("OxV") << endl;
+				std::array<MODEL::StateXcd,2> Psi;
+				for (int t=0; t<2; ++t) Psi[t] = Tmp.cast<complex<double> >();
 				auto Phi = g.state.cast<complex<double> >();
 				
-				Psi.eps_svd = tol_t_compr;
+				for (int t=0; t<2; ++t)
+				{
+					Psi[t].eps_svd = tol_t_compr;
+					Psi[t].max_Nsv = Tmp.calc_Dmax();
+				}
 				
-				TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,MODEL::StateXcd> TDVPt(H,Psi);
-				MatrixXd Gloct(Nt+1,3);
-				VectorXcd Gloctv(Nt);
-				complex<double> res = -1.i * avg(Phi, H.Sdag(0), Psi);
+				std::array<TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,MODEL::StateXcd>,2> TDVPt;
+				for (int t=0; t<2; ++t)
+				{
+					TDVPt[t] = TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,MODEL::StateXcd>(H,Psi[t]);
+				}
+				MatrixXd Gloct(Nt+1,3); Gloct.setZero();
+				complex<double> res = -1.i * dot(Psi[1],Psi[0]);
 				Gloct(0,0) = 0;
 				Gloct(0,1) = res.real();
 				Gloct(0,2) = res.imag();
-				Gloctv(0) = res;
-				string filet = "Gloct_"+base+".dat";
-				string filew = "DOS_"+base+".dat";
+				string filet = wd+"Gloct_"+base+".dat";
+				string filew = wd+"DOS_"+base+".dat";
 				
 				for (int i=0; i<Nt; ++i)
 				{
 					Stopwatch<> Stepper;
-					TDVPt.t_step(H, Psi, -1.i*dt);
-					lout << Stepper.info("t-step") << endl;
 					
-					if (Psi.get_truncWeight().sum() > 0.5*tol_t_compr)
+					#pragma omp parallel for
+					for (int t=0; t<2; ++t)
 					{
-						Psi.max_Nsv = min(static_cast<size_t>(max(Psi.max_Nsv*1.1, Psi.max_Nsv+1.)),Dtlimit);
-						lout << termcolor::yellow << "Setting Psi.max_Nsv to " << Psi.max_Nsv << termcolor::reset << endl;
+						TDVPt[t].t_step(H, Psi[t], -0.5*1.i*tsign[t]*dt);
+						
+						if (Psi[t].get_truncWeight().sum() > 0.5*tol_t_compr)
+						{
+							Psi[t].max_Nsv = min(static_cast<size_t>(max(Psi[t].max_Nsv*1.1, Psi[t].max_Nsv+1.)),Dtlimit);
+							#pragma omp critical
+							{
+								lout << termcolor::yellow << "Setting Psi["<<t<<"].max_Nsv to " << Psi[t].max_Nsv << termcolor::reset << endl;
+							}
+						}
+						
+						#pragma omp critical
+						{
+							lout << tlabel[t] << ":" << endl;
+							lout << "\t" << TDVPt[t].info() << endl;
+							lout << "\t" << Psi[t].info() << endl;
+						}
 					}
 					
-					lout << TDVPt.info() << endl;
-					lout << Psi.info() << endl;
+					lout << Stepper.info("t-step") << endl;
 					
 					double tval = (i+1)*dt;
 					complex<double> phase = -1.i*exp(1.i*g.energy*tval);
-					complex<double> res = phase * avg(Phi, H.Sdag(0), Psi);
-					Gloct(i+1,0) = i+1;
+					complex<double> res = phase * dot(Psi[1],Psi[0]);
+					Gloct(i+1,0) = tval;
 					Gloct(i+1,1) = res.real();
 					Gloct(i+1,2) = res.imag();
-					Gloctv(i) = res;
 					saveMatrix(Gloct,filet,false);
 					lout << "propagated to t=" << tval << endl;
 					lout << endl;
 				}
 				
-				GreenPropagatorGlobal::tmax = tmax;
-				GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>> Green(filew, tmax, Nt, -5., +10., 501, MPI_PPI, 501, INTERP);
-				Green.set_verbosity(DMRG::VERBOSITY::HALFSWEEPWISE);
+//				GreenPropagatorGlobal::tmax = tmax;
+//				GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>> Green(filew, tmax, Nt, -5., +10., 501, MPI_PPI, 501, INTERP);
+//				Green.set_verbosity(DMRG::VERBOSITY::HALFSWEEPWISE);
+//				IntervalIterator w(-5.,10.,501);
+//				ArrayXd wvals = w.get_abscissa();
+//				ArrayXcd DOS = Green.FTloc_tw(VectorXcd(Gloct.col(1)+1.i*Gloct.col(2)), wvals);
+//				for (w=w.begin(); w!=w.end(); ++w)
+//				{
+//					w << -M_1_PI * DOS(w.index()).imag();
+//				}
+//				w.save(filew);
+				
+				VectorXd tvals(Nt+1); for (int i=0; i<Nt+1; ++i) tvals(i) = i*dt;
+				cout << tvals.transpose() << endl;
+				ooura_fourier_sin<double> OouraSin = ooura_fourier_sin<double>();
+				ooura_fourier_cos<double> OouraCos = ooura_fourier_cos<double>();
+				Interpol<GSL> Gloct_interpRe(tvals);
+				Interpol<GSL> Gloct_interpIm(tvals);
+				for (int it=0; it<tvals.rows(); ++it)
+				{
+					Gloct_interpRe.insert(it,Gloct(it,1));
+					Gloct_interpIm.insert(it,Gloct(it,2));
+				}
+				Gloct_interpRe.set_splines();
+				Gloct_interpIm.set_splines();
+				auto fRe = [&Gloct_interpRe, &tmax](double t) {return (t<=tmax)? Gloct_interpRe(t)*exp(-pow(2.*t/tmax,2)):0.;};
+				auto fIm = [&Gloct_interpIm, &tmax](double t) {return (t<=tmax)? Gloct_interpIm(t)*exp(-pow(2.*t/tmax,2)):0.;};
+				
+				double resReSin, resImCos;
 				IntervalIterator w(-5.,10.,501);
-				ArrayXd wvals = w.get_abscissa();
-				ArrayXcd DOS = Green.FTloc_tw(VectorXcd(Gloct.col(1)+1.i*Gloct.col(2)), wvals);
 				for (w=w.begin(); w!=w.end(); ++w)
 				{
-					w << -M_1_PI * DOS(w.index()).imag();
+					double wval = *w;
+					double Glocw;
+					if (abs(wval) < 1e-10)
+					{
+						Glocw = Gloct_interpIm.integrate();
+					}
+					else
+					{
+						resReSin = OouraSin.integrate(fRe,wval).first;
+						resImCos = OouraCos.integrate(fIm,wval).first;
+						Glocw = resReSin+resImCos;
+					}
+					w << -M_1_PI * Glocw;
 				}
 				w.save(filew);
+				Gloct_interpRe.kill_splines();
+				Gloct_interpIm.kill_splines();
 			}
 		}
 	}
