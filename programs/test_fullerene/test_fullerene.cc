@@ -404,6 +404,24 @@ int main (int argc, char* argv[])
 					lout << endl;
 				}
 				
+				for (int t=0; t<2; ++t)
+				{
+					cout << "t=" << t << endl;
+					string filename = make_string(wd,"state_t=",Nt*dt,"_tdir=",t,"_",base,".dat");
+					lout << termcolor::green << "saving state to: " << filename << termcolor::reset << endl;
+					Psi[t].save(filename);
+				}
+				
+				// test for save:
+//				for (int t=0; t<2; ++t)
+//				{
+//					string filename = make_string(wd,"state_t=",Nt*dt,"_tdir=",t,"_",base,".dat");
+//					cout << "loading: " << filename << endl;
+//					MODEL::StateXcd test;
+//					test.load(filename);
+//					cout << test.info() << endl;
+//				}
+				
 //				GreenPropagatorGlobal::tmax = tmax;
 //				GreenPropagator<MODEL,MODEL::Symmetry,double,complex<double>> Green(filew, tmax, Nt, -5., +10., 501, MPI_PPI, 501, INTERP);
 //				Green.set_verbosity(DMRG::VERBOSITY::HALFSWEEPWISE);
@@ -417,7 +435,7 @@ int main (int argc, char* argv[])
 //				w.save(filew);
 				
 				VectorXd tvals(Nt+1); for (int i=0; i<Nt+1; ++i) tvals(i) = i*dt;
-				cout << tvals.transpose() << endl;
+//				cout << tvals.transpose() << endl;
 				ooura_fourier_sin<double> OouraSin = ooura_fourier_sin<double>();
 				ooura_fourier_cos<double> OouraCos = ooura_fourier_cos<double>();
 				Interpol<GSL> Gloct_interpRe(tvals);
@@ -446,9 +464,9 @@ int main (int argc, char* argv[])
 					{
 						resReSin = OouraSin.integrate(fRe,wval).first;
 						resImCos = OouraCos.integrate(fIm,wval).first;
-						Glocw = resReSin+resImCos;
+						Glocw = -M_1_PI * (resReSin+resImCos);
 					}
-					w << -M_1_PI * Glocw;
+					w << Glocw;
 				}
 				w.save(filew);
 				Gloct_interpRe.kill_splines();

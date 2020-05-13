@@ -1520,7 +1520,17 @@ save (string filename, string info)
 			stringstream ss;
 			ss << l << "_" << s << "_" << "(" << A[l][s].in[q] << "," << A[l][s].out[q] << ")";
 			label = ss.str();
-			target.save_matrix(A[l][s].block[q],label,"mps");
+			if constexpr (std::is_same<Scalar,complex<double>>::value)
+			{
+				MatrixXd Re = A[l][s].block[q].real();
+				MatrixXd Im = A[l][s].block[q].imag();
+				target.save_matrix(Re,label+"Re","mps");
+				target.save_matrix(Im,label+"Im","mps");
+			}
+			else
+			{
+				target.save_matrix(A[l][s].block[q],label,"mps");
+			}
 		}
 	}
 	target.close();
@@ -1601,7 +1611,17 @@ load (string filename)
 			ss << l << "_" << s << "_" << "(" << qin << "," << qout << ")";
 			label = ss.str();
 			MatrixType mat;
-			source.load_matrix(mat, label, "mps");
+			if constexpr (std::is_same<Scalar,complex<double>>::value)
+			{
+				MatrixXd Re, Im;
+				source.load_matrix(Re, label+"Re", "mps");
+				source.load_matrix(Im, label+"Im", "mps");
+				mat = Re+1.i*Im;
+			}
+			else
+			{
+				source.load_matrix(mat, label, "mps");
+			}
 			A[l][s].push_back(qin,qout,mat);
 		}
 	}
