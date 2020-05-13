@@ -433,7 +433,7 @@ int main (int argc, char* argv[])
 				auto fIm = [&Gloct_interpIm, &tmax](double t) {return (t<=tmax)? Gloct_interpIm(t)*exp(-pow(2.*t/tmax,2)):0.;};
 				
 				double resReSin, resImCos;
-				IntervalIterator w(-5.,10.,501);
+				IntervalIterator w(-5.,10.,1001);
 				for (w=w.begin(); w!=w.end(); ++w)
 				{
 					double wval = *w;
@@ -589,13 +589,15 @@ int main (int argc, char* argv[])
 			if (i>0)
 			{
 				lout << termcolor::blue 
+				     << setprecision(16)
 				     << "β=" << i*dbeta << ", T=" << 1./(i*dbeta) 
 				     << ", e=" << evec[i-1] 
 				     << ", c=" << cvec[i-1] 
 				     << ", χ=" << chivec[i-1] 
 				     << termcolor::reset
+				     << setprecision(6)
 				     << endl;
-				Filer << 1./(i*dbeta) << "\t" << cvec[i-1] << "\t" << evec[i-1] << "\t" << chivec[i-1] << endl;
+				Filer << setprecision(16) << 1./(i*dbeta) << "\t" << cvec[i-1] << "\t" << evec[i-1] << "\t" << chivec[i-1] << setprecision(6) << endl;
 			}
 			
 			lout << FullTimer.info("total") << endl;
@@ -803,13 +805,15 @@ int main (int argc, char* argv[])
 			if (i>0)
 			{
 				lout << termcolor::blue 
+				     << setprecision(16)
 				     << "β=" << i*dbeta << ", T=" << 1./(i*dbeta) 
 				     << ", e=" << evec[i-1] 
 				     << ", c=" << cvec[i-1] 
 				     << ", χ=" << chivec[i-1] 
 				     << termcolor::reset
+				     << setprecision(6)
 				     << endl;
-				Filer << 1./(i*dbeta) << "\t" << cvec[i-1] << "\t" << evec[i-1] << "\t" << chivec[i-1] << endl;
+				Filer << setprecision(16) << 1./(i*dbeta) << "\t" << cvec[i-1] << "\t" << evec[i-1] << "\t" << chivec[i-1] << setprecision(6) << endl;
 			}
 			
 			lout << FullTimer.info("total") << endl;
