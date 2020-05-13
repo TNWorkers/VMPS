@@ -10,7 +10,7 @@ namespace Sym
 	// Crazy that this enum needs to be here, because it is also in DmrgTypedefs.h. But without this, it doesn't compile...
 	#ifndef KIND_ENUM
 	#define KIND_ENUM
-	enum KIND {S,T,N,M,Nup,Ndn,Z2};
+	enum KIND {S,Salt,T,N,M,Nup,Ndn,Z2};
 	#endif
 	
 	/**

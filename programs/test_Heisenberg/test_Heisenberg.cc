@@ -31,9 +31,6 @@ using namespace std;
 Logger lout;
 #include "ArgParser.h"
 
-#include "Geometry2D.h"
-#include "Lattice2D.h"
-
 #include "solvers/DmrgSolver.h"
 #include "solvers/TDVPPropagator.h"
 #include "solvers/MpsCompressor.h"
@@ -105,6 +102,7 @@ double E_U1_zipper=0;
 MatrixXd SpinCorr_U1,SpinCorr_U1B;
 
 MatrixXd SpinCorr_SU2, SpinCorr_SU2B;
+MatrixXcd FTSpinCorr_SU2;
 
 int main (int argc, char* argv[])
 {
@@ -137,7 +135,7 @@ int main (int argc, char* argv[])
 	U0 = args.get<bool>("U0",false);
 	U1 = args.get<bool>("U1",true);
 	SU2 = args.get<bool>("SU2",true);
-
+	
 	bool PERIODIC = args.get<bool>("PER",false);
 	bool RKKY = args.get<bool>("RKKY",false);
 	bool ED_RKKY = args.get<bool>("ED",false);
@@ -327,13 +325,8 @@ int main (int argc, char* argv[])
 		VMPS::HeisenbergSU2 H_SU2;
 		H_SU2 = VMPS::HeisenbergSU2(L,{{"J",J},{"R",R},{"Jprime",Jprime},{"D",D},{"Ly",Ly},{"maxPower",maxPower}});
 		cout << H_SU2.get_qAux_power(maxPower)[static_cast<size_t>(L/2)] << endl;
-		// Lattice2D triag({1*L,Ly},{false,false});// periodic BC in y = true
-		// Geometry2D Geo1cell(triag,SNAKE); 
-		// ArrayXXd Jarray    = J * Geo1cell.hopping();
-		// H_SU2 = VMPS::HeisenbergSU2(L*Ly,{{"Jfull",Jarray},{"maxPower",maxPower}});
 		
 		lout << H_SU2.info() << endl;
-		// H_SU2.precalc_TwoSiteData();
 		VMPS::HeisenbergSU2::Solver DMRG_SU2(VERB);
 		DMRG_SU2.userSetGlobParam();
 		DMRG_SU2.userSetDynParam();
@@ -348,8 +341,6 @@ int main (int argc, char* argv[])
 		}
 		cout << "check1=" << check1.transpose() << endl;
 		t_SU2 = Watch_SU2.time();
-		
-		cout << endl << endl << "E0=" << avg(g_SU2.state,H_SU2.SdagS(L/2,L/2+1),g_SU2.state) << endl;
 		
 		// SpinCorr_SU2.resize(L,L); SpinCorr_SU2.setZero();
 		// for (size_t l=0; l<L; ++l)

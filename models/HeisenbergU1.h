@@ -3,9 +3,9 @@
 
 //include <array>
 
-#include "models/HeisenbergObservables.h"
 //include "Mpo.h"
 #include "symmetry/U1.h"
+#include "models/HeisenbergObservables.h"
 //include "bases/SpinBase.h"
 //include "DmrgExternal.h"
 //include "ParamHandler.h" // from HELPERS
@@ -229,6 +229,7 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 			
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sm_ranges, Sp_ranges, Sz_ranges};
 			push_full("Jfull", "Jᵢⱼ", first, last, {0.5,0.5,1.0});
+			continue;
 		}
 
 		// Nearest-neighbour terms: J	

@@ -1,8 +1,8 @@
 #ifndef STRAWBERRY_HEISENBERGSU2
 #define STRAWBERRY_HEISENBERGSU2
 
-#include "HeisenbergObservables.h"
 #include "symmetry/SU2.h"
+#include "HeisenbergObservables.h"
 #include "bases/SpinBase.h"
 #include "Mpo.h"
 #include "ParamReturner.h"

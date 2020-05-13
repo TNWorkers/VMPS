@@ -372,7 +372,7 @@ SdagS (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 	else
 	{
 		vector<Mpo<Symmetry> > out(3);
-		out[0] = SzSz(locx1,locx2,locy1,locy2,1.0);
+		out[0] = SzSz(locx1,locx2,locy1,locy2);
 		out[1] = SpSm(locx1,locx2,locy1,locy2,0.5);
 		out[2] = SmSp(locx1,locx2,locy1,locy2,0.5);
 		return out;

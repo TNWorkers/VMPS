@@ -518,33 +518,33 @@ int main (int argc, char* argv[])
 			cout << "fill_OdagO_SU2 done!" << endl;
 			
 			/////////// test 1D with exlicit loop ///////////
-			// VectorXd SdagSvec(100);
-			// for (int l=0; l<100; ++l)
-			// {
-			// 	MODEL Htmp(l+2,{{"D",D},{"maxPower",1ul}},BC::OPEN, DMRG::VERBOSITY::SILENT);
-			// 	SdagSvec(l) = avg(g.state, Htmp.SdagS(0,l), g.state);
-			// 	lout << "l=" << l << "\t" << SdagSvec(l) << endl;
-			// }
-			// VectorXcd Skvec(100); Skvec.setZero();
-			// int Lcell = 2;
-			// for (int ik=0; ik<100; ++ik)
-			// {
-			// 	double k = 2.*M_PI/100.*ik;
-			// 	Skvec(ik) = 0;
-			// 	for (int l=-38; l<38; ++l)
-			// 	for (int j=0; j<Lcell; ++j)
-			// 	{
-			// 		Skvec(ik) += 1./Lcell * exp(-1.i*k*(double(l)-double(j))) * SdagSvec(abs(l-j));
-			// 	}
-			// }
-			// ofstream FilerFTexplicit(make_string("FTexplicit_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",Lcell,"_Ly=",Ly,".dat")); 
-			// for (int ik=0; ik<100; ++ik)
-			// {
-			// 	double k = 2.*M_PI/100.*ik;
-			// 	FilerFTexplicit << k << "\t" << Skvec(ik).real() << "\t" << Skvec(ik).imag() << "\t" << abs(Skvec(ik)) << endl;
-			// }
-			// FilerFTexplicit.close();
-			// lout << make_string("FTexplicit_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",Lcell,"_Ly=",Ly,".dat") << " saved!" << endl;
+			VectorXd SdagSvec(100);
+			for (int l=0; l<100; ++l)
+			{
+				MODEL Htmp(l+2,{{"D",D},{"maxPower",1ul}},BC::OPEN, DMRG::VERBOSITY::SILENT);
+				SdagSvec(l) = avg(g.state, Htmp.SdagS(0,l), g.state);
+				lout << "l=" << l << "\t" << SdagSvec(l) << endl;
+			}
+			VectorXcd Skvec(100); Skvec.setZero();
+			int Lcell = 2;
+			for (int ik=0; ik<100; ++ik)
+			{
+				double k = 2.*M_PI/100.*ik;
+				Skvec(ik) = 0;
+				for (int l=-38; l<38; ++l)
+				for (int j=0; j<Lcell; ++j)
+				{
+					Skvec(ik) += 1./Lcell * exp(-1.i*k*(double(l)-double(j))) * SdagSvec(abs(l-j));
+				}
+			}
+			ofstream FilerFTexplicit(make_string("FTexplicit_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",Lcell,"_Ly=",Ly,".dat")); 
+			for (int ik=0; ik<100; ++ik)
+			{
+				double k = 2.*M_PI/100.*ik;
+				FilerFTexplicit << k << "\t" << Skvec(ik).real() << "\t" << Skvec(ik).imag() << "\t" << abs(Skvec(ik)) << endl;
+			}
+			FilerFTexplicit.close();
+			lout << make_string("FTexplicit_Sym=",MODEL::Symmetry::name(),"_iky=",iky,"_L=",Lcell,"_Ly=",Ly,".dat") << " saved!" << endl;
 			/////////// test 1D with exlicit loop ///////////
 			
 			
