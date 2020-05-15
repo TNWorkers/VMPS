@@ -204,7 +204,23 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
 			vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > last {Sz_ranges};
 			push_full("Jzfull", "Jzᵢⱼ", first, last, {1.});
 		}
-		if (P.HAS("Jzfull") or P.HAS("Jxyfull")) {continue;}
+		if (P.HAS("Ixyfull"))
+		{
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > first {kroneckerProduct(Bsub[loc].Id(),Bimp[loc].Scomp(SP,0)),
+																	kroneckerProduct(Bsub[loc].Id(),Bimp[loc].Scomp(SM,0))};
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > Sm_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {Sm_ranges[i] = kroneckerProduct(Bsub[i].Id(),Bimp[i].Scomp(SM,0));}
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > Sp_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {Sp_ranges[i] = kroneckerProduct(Bsub[i].Id(),Bimp[i].Scomp(SP,0));}
+			vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > last {Sm_ranges,Sp_ranges};
+			push_full("Ixyfull", "Ixyᵢⱼ", first, last, {0.5,0.5});
+		}
+		if (P.HAS("Izfull"))
+		{
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > first {kroneckerProduct(Bsub[loc].Id(),Bimp[loc].Scomp(SZ,0))};
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > Sz_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {Sz_ranges[i] = kroneckerProduct(Bsub[i].Id(),Bimp[i].Scomp(SZ,0));}
+			vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > last {Sz_ranges};
+			push_full("Izfull", "Izᵢⱼ", first, last, {1.});
+		}
+		if (P.HAS("Jzfull") or P.HAS("Jxyfull") or P.HAS("Izfull") or P.HAS("Ixyfull")) {continue;}
 		
 
         // Nearest-neighbour terms: J

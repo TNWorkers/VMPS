@@ -112,8 +112,11 @@ int main (int argc, char* argv[])
 	lout << "not parallelized" << endl;
 	#endif
 
-	Lattice2D lat({Lx,Ly},{PERIODIC_X,PERIODIC_Y},lattice);
-	Geometry2D Geo(lat,SNAKE); 
+	Lattice2D lat({Lx,Ly},{PERIODIC_X,PERIODIC_Y},lattice, 2ul);
+	vector<double> coupl;
+	coupl.push_back(1.); //nn coupling
+	if (Jprime != 0.) {coupl.push_back(1.);} //nnn coupling
+	Geometry2D Geo(lat,SNAKE,coupl); 
 	
 	Stopwatch<> Watch;
 	MODEL H;
@@ -121,7 +124,9 @@ int main (int argc, char* argv[])
 
 	if constexpr( MODEL::FAMILY == HEISENBERG)
 	{
-		ArrayXXd Jarray = J * Geo.hopping();
+		ArrayXXd Jarray = J * Geo.hopping(1);
+		if (Jprime != 0.) {Jarray += Jprime * Geo.hopping(2);}
+		cout << Jarray << endl;
 		H = MODEL(Lx*Ly,{{"Jfull",Jarray},{"maxPower",maxPower}});
         #if defined(USING_U0)
 		Qc = {};

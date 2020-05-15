@@ -49,6 +49,7 @@ public:
 	DMRG::CONTROL::LANCZOS LanczosParam;
 
 	inline void set_verbosity (DMRG::VERBOSITY::OPTION VERBOSITY) {CHOSEN_VERBOSITY = VERBOSITY;};
+	inline DMRG::VERBOSITY::OPTION get_verbosity () const {return CHOSEN_VERBOSITY;};
 	
 	void prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	              qarray<Nq> Qtot_input, bool USE_STATE=false);

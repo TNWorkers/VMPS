@@ -219,9 +219,15 @@ void KondoNecklaceSU2::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub
 			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > S_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {S_ranges[i] = kroneckerProduct(Bsub[i].S(0),Bimp[i].Id());}
 			vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > last {S_ranges};
 			push_full("Jfull", "Jᵢⱼ", first, last, {std::sqrt(3.)});
-			continue;
 		}
-
+		if (P.HAS("Ifull"))
+		{
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > first {kroneckerProduct(Bsub[loc].Id(),Bimp[loc].Sdag(0))};
+			vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > S_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {S_ranges[i] = kroneckerProduct(Bsub[i].Id(),Bimp[i].S(0));}
+			vector<vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > > last {S_ranges};
+			push_full("Ifull", "Iᵢⱼ", first, last, {std::sqrt(3.)});
+		}
+		if (P.HAS("Jfull") or P.HAS("Ifull")) {continue;}
         // Nearest-neighbour terms: J
         
         param2d Jpara = P.fill_array2d<double>("Jpara", "Jpara_array", {orbitals, next_orbitals}, loc%Lcell);
