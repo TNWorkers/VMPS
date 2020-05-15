@@ -40,12 +40,14 @@ struct GreenPropagatorGlobal
 {
 	static double tmax;
 	static double gauss (double tval) {return exp(-pow(2.*tval/tmax,2));};
+	static double loretz (double tval) {return exp(-tval/tmax);}; // not tested
 	
 //	static complex<double> interpolate (double tval) {return GlobalInterpol.evaluate(tval);};
 };
 double GreenPropagatorGlobal::tmax = 20.;
 
-VectorXcd FT_interpol (const VectorXd &tvals, const VectorXcd &fvals, double wmin, double wmax, int wpoints)
+/**Continuous Fourier transform using GSL interpolation*/
+VectorXcd FT_interpol (const VectorXd &tvals, const VectorXcd &fvals, bool USE_QAWO, double wmin, double wmax, int wpoints)
 {
 	VectorXcd res(wpoints);
 	
@@ -58,11 +60,24 @@ VectorXcd FT_interpol (const VectorXd &tvals, const VectorXcd &fvals, double wmi
 		for (int it=0; it<tvals.rows(); ++it)
 		{
 			double tval = tvals(it);
-			complex<double> Gval = exp(+1.i*wval*tval) * fvals(it);
+			complex<double> Gval = (USE_QAWO)? fvals(it) : exp(+1.i*wval*tval) * fvals(it);
 			Interp.insert(it,Gval);
 		}
+		Interp.set_splines();
 		
-		res(w.index()) = Interp.integrate();
+		if (USE_QAWO)
+		{
+			gsl_function_pp FpRe([=](double t)->double{return Interp.quick_evaluateRe(t);});
+			gsl_function_pp FpIm([=](double t)->double{return Interp.quick_evaluateIm(t);});
+			gsl_function * FRe = static_cast<gsl_function*>(&FpRe);
+			gsl_function * FIm = static_cast<gsl_function*>(&FpIm);
+			
+			res(w.index()) = fouriergrate(*FRe, *FIm, tvals(0),tvals(tvals.rows()-1), 1e-5,1e-5, wval);
+		}
+		else
+		{
+			res(w.index()) = Interp.integrate();
+		}
 		Interp.kill_splines();
 	}
 	return res;
@@ -130,7 +145,7 @@ public:
 	                 double tmax_input, int Nt_input, 
 	                 double wmin_input, double wmax_input, int Nw_input=501,
 	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501,
-	                 GREEN_INTEGRATION GREENINT=DIRECT)
+	                 GREEN_INTEGRATION GREENINT=OOURA)
 	:label(label_input), tmax(tmax_input), Nt(Nt_input),
 	 wmin(wmin_input), wmax(wmax_input), Nw(Nw_input),
 	 Q_RANGE_CHOICE(Q_RANGE_CHOICE_input), Nq(Nq_input),
@@ -155,7 +170,7 @@ public:
 	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
 	*/
 	GreenPropagator (string label_input, int Lcell_input, int Ncells_input, double tmax_input, const MatrixXcd &Gtx_input, 
-	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=DIRECT)
+	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=OOURA)
 	:label(label_input), Lcell(Lcell_input), Ncells(Ncells_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
 	{
 		Gtx = Gtx_input;
@@ -187,7 +202,7 @@ public:
 	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
 	*/
 	GreenPropagator (string label_input, double tmax_input, const vector<vector<MatrixXcd>> &Gtx_input, 
-	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=DIRECT)
+	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=OOURA)
 	:label(label_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
 	{
 		Lcell = Gtx_input.size();
@@ -231,7 +246,7 @@ public:
 	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
 	*/
 	GreenPropagator (string label_input, int Lcell_input, double tmax_input, const vector<string> &files, 
-	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=DIRECT)
+	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=OOURA)
 	:label(label_input), Lcell(Lcell_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
 	{
 		#ifdef GREENPROPAGATOR_USE_HDF5
@@ -284,7 +299,7 @@ public:
 	\param GAUSSINT : if \p true, compute Gaussian integration weights for the cutoff function
 	*/
 	GreenPropagator (string label_input, int Lcell_input, int Ncells_input, double tmax_input, const vector<string> &files, 
-	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=DIRECT)
+	                 Q_RANGE Q_RANGE_CHOICE_input=MPI_PPI, int Nq_input=501, GREEN_INTEGRATION GREENINT=OOURA)
 	:label(label_input), Lcell(Lcell_input), Ncells(Ncells_input), tmax(tmax_input), GREENINT_CHOICE(GREENINT), Q_RANGE_CHOICE(Q_RANGE_CHOICE_input)
 	{
 		GtxCell.resize(Lcell); for (int i=0; i<Lcell; ++i) {GtxCell[i].resize(Lcell);}
@@ -449,6 +464,8 @@ public:
 	void set_tol_compr (double x)  {tol_compr  = x;};
 	void set_h_ooura (double x)    {h_ooura  = x;};
 	void set_log (string logfolder_input="./") {SAVE_LOG = true; logfolder = logfolder_input;}
+	void set_dLphys (int x) {dLphys = x;};
+	bool USE_QAWO = false;
 	
 private:
 	
@@ -663,7 +680,7 @@ propagate (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &Ox
 		// If INTERP is used, G(t=0) is used in the first step and t.index()==1 is the first real propagation step.
 		// Force 2-site here algorithm for better accuracay:
 		vector<size_t> true_overrides;
-		if (GREENINT_CHOICE == INTERP and t.index() == 1)
+		if (GREENINT_CHOICE != DIRECT and t.index() == 1)
 		{
 			true_overrides.resize(Lhetero-1);
 			iota(true_overrides.begin(), true_overrides.end(), 0);
@@ -772,7 +789,6 @@ propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &
 	measure_wavepacket(Psi,0);
 	
 	Stopwatch<> TpropTimer;
-//	int start = (GREENINT_CHOICE==DIRECT)? 0:1;
 	for (t=t.begin(); t!=t.end(); ++t)
 	{
 		Stopwatch<> StepTimer;
@@ -844,7 +860,7 @@ propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &
 		// If INTERP is used, G(t=0) is used in the first step and t.index()==1 is the first real propagation step.
 		// Force 2-site here algorithm for better accuracay:
 		vector<size_t> true_overrides_ket;
-		if (GREENINT_CHOICE == INTERP and t.index() == 1)
+		if (GREENINT_CHOICE != DIRECT and t.index() == 1)
 		{
 			true_overrides_ket.resize(H.length()-1);
 			iota(true_overrides_ket.begin(), true_overrides_ket.end(), 0);
@@ -857,7 +873,7 @@ propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &
 		// If INTERP is used, G(t=0) is used in the first step and t.index()==1 is the first real propagation step.
 		// Force 2-site here algorithm for better accuracay:
 		vector<size_t> true_overrides_bra;
-		if (GREENINT_CHOICE == INTERP and t.index() == 1)
+		if (GREENINT_CHOICE != DIRECT and t.index() == 1)
 		{
 			true_overrides_bra.resize(H.length()-1);
 			iota(true_overrides_bra.begin(), true_overrides_bra.end(), 0);
@@ -1810,14 +1826,14 @@ calc_intweights()
 	{
 		#pragma omp critical
 		{
-			lout << "tmax=" << tmax << ", "
-				 << "tpoints=" << Nt << ", "
-				 << "max(tstep)=" << tsteps.maxCoeff() << ", "
-				 << "tol_compr=" << tol_compr << ", "
-				 << "tol_Lanczos=" << tol_Lanczos << ", "
-				 << "tol_DeltaS=" << tol_DeltaS << ", "
-				 << "INT=" << GREENINT_CHOICE
-				 << endl;
+			lout << "tmax=" << tmax
+				 << ", tpoints=" << Nt
+				 << ", max(tstep)=" << tsteps.maxCoeff()
+				 << ", tol_compr=" << tol_compr
+				 << ", tol_Lanczos=" << tol_Lanczos
+				 << ", tol_DeltaS=" << tol_DeltaS
+				 << ", INT=" << GREENINT_CHOICE;
+			lout << endl;
 			lout << Watch.info("integration weights") << endl;
 		}
 	}
@@ -1978,7 +1994,7 @@ FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw)
 		{
 			VectorXcd fvals = Gtq.col(iq);
 			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
-			Gwq.col(iq) = ::FT_interpol(tvals,fvals,wmin,wmax,Nw);
+			Gwq.col(iq) = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);
 		}
 	}
 	else if (GREENINT_CHOICE == OOURA)
@@ -2019,7 +2035,9 @@ FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw)
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
-		lout << FourierWatch.info(label+" FT t→ω (const q)") << endl;
+		lout << FourierWatch.info(label+" FT t→ω (const q)");
+		if (GREENINT_CHOICE == INTERP) lout << boolalpha << ", USE_QAWO=" << USE_QAWO;
+		lout << endl;
 	}
 	
 	// Calculate FT of local Green's function
@@ -2076,7 +2094,7 @@ FTxx_tw (const MatrixXcd &Gtx, MatrixXcd &Gwx, VectorXcd &G0x, VectorXcd &Glocw)
 		{
 			VectorXcd fvals = Gtx.col(ix);
 			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
-			Gwx.col(ix) = ::FT_interpol(tvals,fvals,wmin,wmax,Nw);
+			Gwx.col(ix) = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);
 		}
 	}
 	else if (GREENINT_CHOICE == OOURA)
@@ -2117,7 +2135,9 @@ FTxx_tw (const MatrixXcd &Gtx, MatrixXcd &Gwx, VectorXcd &G0x, VectorXcd &Glocw)
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
-		lout << FourierWatch.info(label+" FT t→ω (const x)") << endl;
+		lout << FourierWatch.info(label+" FT t→ω (const x)");
+		if (GREENINT_CHOICE == INTERP) lout << boolalpha << ", USE_QAWO=" << USE_QAWO;
+		lout << endl;
 	}
 	
 	// Calculate FT of local Green's function
@@ -2206,7 +2226,7 @@ FTcell_tw()
 			{
 				VectorXcd fvals = GtqCell[i][j].col(iq);
 				for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
-				GwqCell[i][j].col(iq) = ::FT_interpol(tvals,fvals,wmin,wmax,Nw);
+				GwqCell[i][j].col(iq) = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);
 			}
 		}
 		else if (GREENINT_CHOICE == OOURA)
@@ -2256,7 +2276,9 @@ FTcell_tw()
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
-		lout << FourierWatch.info(make_string(label+" FT intercell t→ω (const q), ωmin=",wmin,", ωmax=",wmax,", Nω=",Nw)) << endl;
+		lout << FourierWatch.info(make_string(label+" FT intercell t→ω (const q), ωmin=",wmin,", ωmax=",wmax,", Nω=",Nw));
+		if (GREENINT_CHOICE == INTERP) lout << boolalpha << ", USE_QAWO=" << USE_QAWO;
+		lout << endl;
 	}
 }
 
@@ -2317,7 +2339,7 @@ FTcellxx_tw()
 			{
 				VectorXcd fvals = GtxCell[i][j].col(ix);
 				for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
-				GwxCell[i][j].col(ix) = ::FT_interpol(tvals,fvals,wmin,wmax,Nw);
+				GwxCell[i][j].col(ix) = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);
 			}
 		}
 		else if (GREENINT_CHOICE == OOURA)
@@ -2367,7 +2389,9 @@ FTcellxx_tw()
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::ON_EXIT)
 	{
-		lout << FourierWatch.info(make_string(label+" FT intercell t→ω (const x), ωmin=",wmin,", ωmax=",wmax,", Nω=",Nw)) << endl;
+		lout << FourierWatch.info(make_string(label+" FT intercell t→ω (const x), ωmin=",wmin,", ωmax=",wmax,", Nω=",Nw));
+		if (GREENINT_CHOICE == INTERP) lout << boolalpha << ", USE_QAWO=" << USE_QAWO;
+		lout << endl;
 	}
 }
 
@@ -2413,7 +2437,7 @@ FTloc_tw (const VectorXcd &Gloct_in, const ArrayXd &wvals)
 		
 		VectorXcd fvals = Gloct_in;
 		for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
-		Glocw_out = ::FT_interpol(tvals,fvals,wmin,wmax,Nw);
+		Glocw_out = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);
 	}
 	else if (GREENINT_CHOICE == OOURA)
 	{
@@ -2454,7 +2478,9 @@ FT_allSites (bool TW_FIRST_XQ_SECOND)
 		
 		Glocw = GlocwCell[0];
 		
-		lout << FourierWatch.info(label+" FT all sites x→q (const ω)") << endl;
+		lout << FourierWatch.info(label+" FT all sites x→q (const ω)");
+		if (GREENINT_CHOICE == INTERP) lout << boolalpha << ", USE_QAWO=" << USE_QAWO;
+		lout << endl;
 	}
 	else
 	{

@@ -182,6 +182,9 @@ int main (int argc, char* argv[])
 	double alpha = args.get<double>("alpha",100.);
 	DynParam.max_alpha_rsvd = [lim_alpha, alpha] (size_t i) {return (i<lim_alpha)? alpha:0.;};
 	
+	DMRG::ITERATION::OPTION it = static_cast<DMRG::ITERATION::OPTION>(args.get<size_t>("iteration",1ul));
+	DynParam.iteration = [it] (size_t i) {return it;};
+	
 	GlobParam.savePeriod = args.get<size_t>("savePeriod",0);
 	GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_",base);
 	
@@ -202,6 +205,7 @@ int main (int argc, char* argv[])
 	{
 		hopping = hopping_fullerene(L);
 	}
+	lout << hopping.sum() << endl;
 	lout << "adjacency:" << endl << hopping << endl << endl;
 	auto distanceMatrix = calc_distanceMatrix(hopping);
 	lout << "distances:" << endl << distanceMatrix << endl << endl;
@@ -272,7 +276,7 @@ int main (int argc, char* argv[])
 					#pragma omp parallel for
 					for (int l=0; l<L; ++l)
 					{
-						double res = avg(g.state, H.S(l), g.state);
+						double res = avg(g.state, H.S(l), g.state) / sqrt(S*(S+1.));
 						#pragma omp critical
 						{
 							SFiler << setprecision(16) << l << "\t" << res << setprecision(6) << endl;

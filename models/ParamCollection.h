@@ -173,7 +173,7 @@ ArrayXXd hopping_fullerene (int L=60, double lambda1=1., double lambda2=1.)
 			res(23,24) = lambda2; //12
 			res(25,26) = lambda2; //13
 			res(27,28) = lambda2; //14
-			res(28,30) = lambda2; //15
+			res(29,30) = lambda2; //15
 			res(31,32) = lambda2; //16
 			res(33,34) = lambda2; //17
 			res(35,36) = lambda2; //18

@@ -273,9 +273,9 @@ struct DMRG
 	{
 		enum OPTION
 		{
-			ZERO_SITE, /**<Zero site algorithm (center matrix formalism)*/
-			ONE_SITE,  /**<One site algorithm (Ac is optimized)*/
-			TWO_SITE   /**<Two site algorithm (Very surprising)*/
+			ZERO_SITE=0, /**<Zero site algorithm (center matrix formalism)*/
+			ONE_SITE=1,  /**<One site algorithm (Ac is optimized)*/
+			TWO_SITE=2   /**<Two site algorithm (Very surprising)*/
 		};
 	};
 	

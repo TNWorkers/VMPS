@@ -576,6 +576,12 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		cout << termcolor::reset;
 		lout << endl;
 		
+		lout << "• initial algorithm: ";
+		cout << termcolor::underline;
+		lout << DynParam.iteration(0);
+		cout << termcolor::reset;
+		lout << endl;
+		
 		lout << "• calculate entropy on exit: " << boolalpha;
 		cout << termcolor::underline;
 		lout << GlobParam.CALC_S_ON_EXIT;
