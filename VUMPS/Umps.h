@@ -2987,7 +2987,7 @@ SF (const ArrayXXcd &cellAvg, const vector<Mpo<Symmetry,MpoScalar> > &Oalfa, con
 	for (size_t i0=0; i0<Lx; ++i0)
 	for (size_t j0=0; j0<Lx; ++j0)
 	{
-		Sijk[i0][j0] = intercellSF(Oalfa[i0],Obeta[j0], Lx, kmin,kmax,kpoints, VERB);
+		Sijk[i0][j0] = intercellSF(Oalfa[i0],Obeta[j0],Lx,kmin,kmax,kpoints,VERB);
 		Sijk[i0][j0].col(1) += cellAvg(i0,j0);
 	}
 	
@@ -3000,7 +3000,7 @@ SF (const ArrayXXcd &cellAvg, const vector<Mpo<Symmetry,MpoScalar> > &Oalfa, con
 		double kval = Sijk[i0][j0](ik,0).real();
 		res(ik,0) = kval;
 		// Careful: Must first convert to double and then subtract, since the difference can become negative!
-		res(ik,1) += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk[j0][i0](ik,1);
+		res(ik,1) += 1./static_cast<double>(Lx) * exp(-1.i*kval*(static_cast<double>(i0)-static_cast<double>(j0))) * Sijk[i0][j0](ik,1);
 		// Attention: order [j0][i0] in argument is correct!
 	}
 	

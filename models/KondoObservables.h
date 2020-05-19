@@ -83,6 +83,7 @@ public:
 	typename std::enable_if<!Dummy::IS_SPIN_SU2(),Mpo<Symmetry> >::type nn (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	
 	Mpo<Symmetry> nn (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
+	
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<!Dummy::IS_CHARGE_SU2(),Mpo<Symmetry> >::type hh (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	///@}
@@ -145,7 +146,13 @@ public:
 	template<typename Dummy = Symmetry>
 	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type SimpSsub (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const;
 	template<typename Dummy = Symmetry>
-	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return SimpSimp(locx1,locx2,locy1,locy2);}	
+	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type SdagS (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return SimpSimp(locx1,locx2,locy1,locy2);}
+	template<typename Dummy = Symmetry>
+	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type SimpdagSimp (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return SimpSimp(locx1,locx2,locy1,locy2);}
+	template<typename Dummy = Symmetry>
+	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type SsubdagSsub (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return SsubSsub(locx1,locx2,locy1,locy2);}
+	template<typename Dummy = Symmetry>
+	typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type SimpdagSsub (size_t locx1, size_t locx2, size_t locy1=0, size_t locy2=0) const {return SimpSsub(locx1,locx2,locy1,locy2);}
 	// template<typename Dummy = Symmetry>
 	// typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry, complex<double> > >::type Rcomp (SPINOP_LABEL Sa, size_t locx, size_t locy=0) const;
 	///@}

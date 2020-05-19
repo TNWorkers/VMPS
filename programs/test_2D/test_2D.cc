@@ -61,7 +61,7 @@ int main (int argc, char* argv[])
 	size_t min_Nsv = args.get<size_t>("min_Nsv",0ul);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
 	
-	LatticeType lattice = static_cast<LatticeType>(args.get<int>("lattice",0)); //0 SQUARE, 1 TRIANG
+	LatticeType lattice = static_cast<LatticeType>(args.get<int>("lattice",0)); //0 SQUARE, 1 TRIANG_XC, 2 TRIANG_YC
 	
 	bool PERIODIC_Y = args.get<bool>("PER_Y",false);
 	bool PERIODIC_X = args.get<bool>("PER_X",false);
@@ -112,10 +112,12 @@ int main (int argc, char* argv[])
 	lout << "not parallelized" << endl;
 	#endif
 
-	Lattice2D lat({Lx,Ly},{PERIODIC_X,PERIODIC_Y},lattice, 2ul);
 	vector<double> coupl;
+	size_t furthest_hopping=1ul;
 	coupl.push_back(1.); //nn coupling
-	if (Jprime != 0.) {coupl.push_back(1.);} //nnn coupling
+	if (Jprime != 0.) {coupl.push_back(1.); furthest_hopping++;} //nnn coupling
+
+	Lattice2D lat({Lx,Ly},{PERIODIC_X,PERIODIC_Y},lattice, furthest_hopping);
 	Geometry2D Geo(lat,SNAKE,coupl); 
 	
 	Stopwatch<> Watch;

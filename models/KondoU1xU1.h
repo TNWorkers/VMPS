@@ -1,7 +1,6 @@
 #ifndef STRAWBERRY_KONDOMODEL
 #define STRAWBERRY_KONDOMODEL
 
-#include "models/KondoObservables.h"
 //include "bases/FermionBase.h"
 //include "bases/SpinBase.h"
 #include "symmetry/S1xS2.h"
@@ -9,6 +8,7 @@
 //include "Mpo.h"
 //include "ParamHandler.h" // from TOOLS
 #include "ParamReturner.h"
+#include "models/KondoObservables.h"
 
 namespace VMPS
 {
@@ -41,6 +41,7 @@ class KondoU1xU1 : public Mpo<Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::Charg
 public:
 	typedef Sym::S1xS2<Sym::U1<Sym::SpinU1>,Sym::U1<Sym::ChargeU1> > Symmetry;
 	MAKE_TYPEDEFS(KondoU1xU1)
+	static constexpr MODEL_FAMILY FAMILY = KONDO;
 	
 private:
 	typedef typename Symmetry::qType qType;
@@ -54,7 +55,6 @@ public:
 	
 	static qarray<2> singlet (int N) {return qarray<2>{0,N};};
 	static qarray<2> polaron (int L, int N=0) {assert(N%2==0); return qarray<2>{L-N,N};};
-	static constexpr MODEL_FAMILY FAMILY = KONDO;
 	
 	/**
 	 * \describe_set_operators
@@ -80,7 +80,7 @@ public:
 const map<string,any> KondoU1xU1::defaults =
 {
 	{"t",1.}, {"tPrime",0.}, {"tRung",0.},
-	{"J",1.}, {"Jdir",0.},
+	{"Jxy",1.}, {"Jz",1.}, {"Jdir",0.},
 	{"U",0.}, {"Uph",0.}, {"V",0.}, {"Vrung",0.}, 
 	{"mu",0.}, {"t0",0.},
 	{"Bz",0.}, {"Bzsub",0.}, {"Kz",0.},
@@ -227,23 +227,34 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<Fer
 			push_full("tFull", "tᵢⱼ", first, last, {-1.,-1.,1.,1.}, PROP::FERMIONIC);
 		}
 		
-		if (P.HAS("JdirFull"))
+		if (P.HAS("JdirxyFull"))
 		{
-			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {kroneckerProduct(B[loc].Sp(0),F[loc].Id()), kroneckerProduct(B[loc].Sm(0),F[loc].Id()), kroneckerProduct(B[loc].Sz(0),F[loc].Id())};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {kroneckerProduct(B[loc].Sp(0),F[loc].Id()), kroneckerProduct(B[loc].Sm(0),F[loc].Id())};
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sp_ranges(N_sites);
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sm_ranges(N_sites);
-			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sz_ranges(N_sites);
-			for (size_t i=0; i<N_sites; i++) {Sp_ranges[i] = kroneckerProduct(B[i].Sp(0),F[loc].Id()); Sm_ranges[i] = kroneckerProduct(B[i].Sm(0),F[loc].Id()); Sz_ranges[i] = kroneckerProduct(B[i].Sz(0),F[loc].Id());}
+			for (size_t i=0; i<N_sites; i++) {Sp_ranges[i] = kroneckerProduct(B[i].Sp(0),F[loc].Id()); Sm_ranges[i] = kroneckerProduct(B[i].Sm(0),F[loc].Id());}
 			
-			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sm_ranges, Sp_ranges, Sz_ranges};
-			push_full("Jdirfull", "Jdirᵢⱼ", first, last, {0.5,0.5,1.0}, PROP::BOSONIC);
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sm_ranges, Sp_ranges};
+			push_full("Jdirxyfull", "Jdirxyᵢⱼ", first, last, {0.5,0.5}, PROP::BOSONIC);
 		}
-		
+
+		if (P.HAS("JdirzFull"))
+		{
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {kroneckerProduct(B[loc].Sz(0),F[loc].Id())};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sz_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++) {Sz_ranges[i] = kroneckerProduct(B[i].Sz(0),F[loc].Id());}
+			
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sz_ranges};
+			push_full("Jdirzfull", "Jdirzᵢⱼ", first, last, {1.0}, PROP::BOSONIC);
+		}
 		// local terms
 		
 		// Kondo-J
-		param1d J = P.fill_array1d<double>("J", "Jorb", Forbitals, loc%Lcell);
-		labellist[loc].push_back(J.label);
+		param1d Jxy = P.fill_array1d<double>("Jxy", "Jorbxy", Forbitals, loc%Lcell);
+		labellist[loc].push_back(Jxy.label);
+
+		param1d Jz = P.fill_array1d<double>("Jz", "Jorbz", Forbitals, loc%Lcell);
+		labellist[loc].push_back(Jz.label);
 		
 		// Hubbard-U
 		param1d U = P.fill_array1d<double>("U", "Uorb", Forbitals, loc%Lcell);
@@ -304,12 +315,16 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const std::vector<Fer
 			
 			for (int alfa=0; alfa<Forbitals; ++alfa)
 			{
-				if (J(alfa) != 0.)
+				if (Jxy(alfa) != 0.)
 				{
 					assert(Forbitals == Borbitals and "Can only do a Kondo ladder with the same amount of spins and fermionic orbitals in y-direction!");
-					Hloc += 0.5*J(alfa) * kroneckerProduct(B[loc].Scomp(SP,alfa), F[loc].Sm(alfa));
-					Hloc += 0.5*J(alfa) * kroneckerProduct(B[loc].Scomp(SM,alfa), F[loc].Sp(alfa));
-					Hloc +=     J(alfa) * kroneckerProduct(B[loc].Scomp(SZ,alfa), F[loc].Sz(alfa));
+					Hloc += 0.5*Jxy(alfa) * kroneckerProduct(B[loc].Scomp(SP,alfa), F[loc].Sm(alfa));
+					Hloc += 0.5*Jxy(alfa) * kroneckerProduct(B[loc].Scomp(SM,alfa), F[loc].Sp(alfa));
+				}
+				if (Jz(alfa) != 0.)
+				{
+					assert(Forbitals == Borbitals and "Can only do a Kondo ladder with the same amount of spins and fermionic orbitals in y-direction!");
+					Hloc +=      Jz(alfa) * kroneckerProduct(B[loc].Scomp(SZ,alfa), F[loc].Sz(alfa));
 				}
 			}
 			

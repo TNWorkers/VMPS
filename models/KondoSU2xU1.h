@@ -41,6 +41,7 @@ class KondoSU2xU1 : public Mpo<Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::Ch
 public:
 	typedef Sym::S1xS2<Sym::SU2<Sym::SpinSU2>,Sym::U1<Sym::ChargeU1> > Symmetry;
 	MAKE_TYPEDEFS(KondoSU2xU1)
+	static constexpr MODEL_FAMILY FAMILY = KONDO;
 	
 private:
 	typedef Eigen::Index Index;
@@ -57,7 +58,6 @@ public:
 	
 	static qarray<2> singlet (int N) {return qarray<2>{1,N};};
 	static qarray<2> polaron (int L, int N=0) {return qarray<2>{L-N+1,N};};
-	static constexpr MODEL_FAMILY FAMILY = KONDO;
 	
 	/**
 	 * \describe_set_operators

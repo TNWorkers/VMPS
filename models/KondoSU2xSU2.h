@@ -1,12 +1,14 @@
 #ifndef KONDOMODEL_SU2XSU2_H_
 #define KONDOMODEL_SU2XSU2_H_
 
+#include "symmetry/S1xS2.h"
+#include "symmetry/SU2.h"
 #include "bases/SpinBase.h"
 #include "bases/FermionBase.h"
 #include "Mpo.h"
-#include "models/KondoObservables.h"
 #include "ParamReturner.h"
 #include "Geometry2D.h" // from TOOLS
+#include "models/KondoObservables.h"
 
 namespace VMPS
 {
@@ -20,6 +22,7 @@ public:
 	typedef SiteOperatorQ<Symmetry,MatrixType> OperatorType;
 	typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> MatrixType;
 	MAKE_TYPEDEFS(KondoSU2xSU2)
+	static constexpr MODEL_FAMILY FAMILY = MODEL_FAMILY::KONDO;
 	
 private:
 	typedef Eigen::Index Index;
@@ -33,7 +36,6 @@ public:
 	///@}
 	
 	static qarray<2> singlet (int N) {return qarray<2>{1,1};};
-	static constexpr MODEL_FAMILY FAMILY = KONDO;
 	
 	/**
 	 * \describe_set_operators
