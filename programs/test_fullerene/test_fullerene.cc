@@ -77,6 +77,7 @@ ArrayXXd permute_random (const ArrayXXd &A)
 	return A_p.array();
 }
 
+// returns i,j coordinates of bond indices at distance d
 vector<pair<int,int>> bond_indices (int d, const ArrayXXi &distanceMatrix)
 {
 	vector<pair<int,int>> res;
@@ -93,6 +94,9 @@ vector<pair<int,int>> bond_indices (int d, const ArrayXXi &distanceMatrix)
 	return res;
 }
 
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
+
 /////////////////////////////////
 int main (int argc, char* argv[])
 {
@@ -107,14 +111,17 @@ int main (int argc, char* argv[])
 	size_t maxPower = args.get<size_t>("maxPower",1ul);
 	
 	bool BETAPROP = args.get<bool>("BETAPROP",false);
+	bool BETA1STEP = args.get<bool>("BETA1STEP",false);
 	bool CANONICAL = args.get<bool>("CANONICAL",false);
 	bool CALC_C = args.get<bool>("CALC_C",false);
 	bool CALC_CHI = args.get<bool>("CALC_CHI",true);
 	double dbeta = args.get<double>("dbeta",0.1);
 	double betamax = args.get<double>("betamax",20.);
+	double betainit = 0.;
+	double s_betainit = args.get<double>("s_betainit",log(2));
 	int Nbeta = static_cast<int>(betamax/dbeta);
 	double tol_beta_compr = args.get<double>("tol_beta_compr",1e-5);
-	size_t Dbetalimit = args.get<size_t>("Dbetalimit",100ul);
+	size_t Dlim = args.get<size_t>("Dlim",100ul);
 	size_t Ly = args.get<size_t>("Ly",2ul);
 	int dLphys = (Ly==2ul)? 1:2;
 	int N_stages = args.get<int>("N_stages",1);
@@ -137,6 +144,38 @@ int main (int argc, char* argv[])
 	string wd = args.get<string>("wd","./");
 	if (wd.back() != '/') {wd += "/";}
 	
+	// overwrite beta params in case of LOAD
+	if (LOAD!="" and BETAPROP==true)
+	{
+		vector<string> parsed_params;
+		boost::split(parsed_params, LOAD, [](char c){return c == '_';});
+		for (int i=0; i<parsed_params.size(); ++i)
+		{
+			vector<string> parsed_vals;
+			boost::split(parsed_vals, parsed_params[i], [](char c){return c == '=';});
+			for (int j=0; j<parsed_vals.size(); ++j)
+			{
+				if (parsed_vals[j] == "β")
+				{
+					betainit = boost::lexical_cast<double>(parsed_vals[j+1]);
+				}
+				else if (parsed_vals[j] == "dβ")
+				{
+					dbeta = boost::lexical_cast<double>(parsed_vals[j+1]);
+				}
+				else if (parsed_vals[j] == "Dlim")
+				{
+					Dlim = boost::lexical_cast<int>(parsed_vals[j+1]);
+				}
+				else if (parsed_vals[j] == "tol")
+				{
+					tol_beta_compr = boost::lexical_cast<double>(parsed_vals[j+1]);
+				}
+			}
+		}
+		Nbeta = static_cast<int>((betamax-betainit)/dbeta)-1;
+	}
+	
 	string base;
 	if constexpr (MODEL::FAMILY == HUBBARD)
 	{
@@ -152,7 +191,7 @@ int main (int argc, char* argv[])
 	}
 	if (BETAPROP)
 	{
-		base += make_string("_Ly=",Ly,"_dbeta=",dbeta,"_tol=",tol_beta_compr,"_Dlim=",Dbetalimit);
+		base += make_string("_Ly=",Ly,"_dbeta=",dbeta,"_tol=",tol_beta_compr,"_Dlim=",Dlim);
 	}
 	lout.set(base+".log",wd+"log");
 	
@@ -199,21 +238,23 @@ int main (int argc, char* argv[])
 	ArrayXXd hopping;
 	if (L!=12 and L!=20 and L!=60)
 	{
-		hopping = create_1D_PBC(L); // Heisenberg ring for testing
+		hopping = create_1D_OBC(L); // Heisenberg ring for testing
 	}
 	else
 	{
 		hopping = hopping_fullerene(L);
 	}
-	lout << hopping.sum() << endl;
-	lout << "adjacency:" << endl << hopping << endl << endl;
 	auto distanceMatrix = calc_distanceMatrix(hopping);
-	lout << "distances:" << endl << distanceMatrix << endl << endl;
-	for (int d=1; d<=distanceMatrix.maxCoeff(); ++d)
+	if (!BETAPROP)
 	{
-		lout << "d=" << d << ", #bonds=" << bond_indices(d,distanceMatrix).size() << endl;
+		lout << "adjacency:" << endl << hopping << endl << endl;
+		lout << "distances:" << endl << distanceMatrix << endl << endl;
+		for (int d=1; d<=distanceMatrix.maxCoeff(); ++d)
+		{
+			lout << "d=" << d << ", #bonds=" << bond_indices(d,distanceMatrix).size() << endl;
+		}
+		lout << endl;
 	}
-	lout << endl;
 	
 	// free fermions
 	SelfAdjointEigenSolver<MatrixXd> Eugen(-1.*hopping.matrix());
@@ -222,7 +263,7 @@ int main (int argc, char* argv[])
 	lout << "orbital energies occupied:" << endl << occ.transpose()  << endl;
 	lout << "orbital energies unoccupied:" << endl << unocc.transpose()  << endl << endl;
 	double E0 = 2.*occ.sum();
-	lout << setprecision(16) << "non-interacting: E0=" << E0 << ", E0/L=" << E0/L << setprecision(6) << endl << endl;
+	lout << setprecision(16) << "non-interacting fermions: E0=" << E0 << ", E0/L=" << E0/L << setprecision(6) << endl << endl;
 	
 	//---------groundstate---------
 	if (!BETAPROP)
@@ -324,10 +365,10 @@ int main (int argc, char* argv[])
 				Stopwatch<> Timer;
 				lout << endl;
 				double E = (LOAD!="")? avg(g.state,H,g.state):g.energy;
-				lout << "E=" << E << endl;
+				lout << setprecision(16) << "E=" << E << setprecision(6) << endl;
 				lout << Timer.info("E") << endl;
 				
-				lout << "varE=" << abs(avg(g.state,H,H,g.state)-pow(E,2))/L << endl;
+				lout << setprecision(16) << "varE=" << abs(avg(g.state,H,H,g.state)-pow(E,2))/L << setprecision(6) << endl;
 				lout << Timer.info("varE") << endl;
 				
 //				auto HmE = H;
@@ -411,7 +452,7 @@ int main (int argc, char* argv[])
 				for (int t=0; t<2; ++t)
 				{
 					cout << "t=" << t << endl;
-					string filename = make_string(wd,"state_t=",Nt*dt,"_tdir=",t,"_",base,".dat");
+					string filename = make_string(wd,"state_t=",Nt*dt,"_tdir=",t,"_",base);
 					lout << termcolor::green << "saving state to: " << filename << termcolor::reset << endl;
 					Psi[t].save(filename);
 				}
@@ -460,7 +501,7 @@ int main (int argc, char* argv[])
 				{
 					double wval = *w;
 					double Glocw;
-					if (abs(wval) < 1e-10)
+					if (wval == 0.)
 					{
 						Glocw = Gloct_interpIm.integrate();
 					}
@@ -481,205 +522,224 @@ int main (int argc, char* argv[])
 	//-------canonical-------
 	else if (BETAPROP and CANONICAL)
 	{
-		assert(MODEL::FAMILY == HEISENBERG);
-		
-		vector<Param> beta0_params;
-		MODELC H0;
-		ArrayXXd AllConnected(L,L); AllConnected=-1.; AllConnected.matrix().diagonal().setZero();
-		beta0_params.push_back({"Kfull",AllConnected});
-		beta0_params.push_back({"maxPower",2ul});
-		H0 = MODELC(L,beta0_params);
-		lout << H0.info() << endl;
-		
-		Eigenstate<MODELC::StateXd> g;
-		MODELC::Solver DMRG(VERB);
-		DMRG.edgeState(H0, g, MODELC::singlet(), LANCZOS::EDGE::GROUND, false);
-		
-		// test entanglement
-		MatrixXd SdagSphys_Tinf(L,L); SdagSphys_Tinf.setZero();
-		MatrixXd SdagSancl_Tinf(L,L); SdagSancl_Tinf.setZero();
-		#pragma omp parallel for collapse(2)
-		for (int j=0; j<L; ++j)
-		for (int i=0; i<L; ++i)
-		{
-			SdagSphys_Tinf(i,j) = avg(g.state, H0.SdagS<0>(i,j), g.state);
-			SdagSancl_Tinf(i,j) = avg(g.state, H0.SdagS<1>(i,j), g.state);
-		}
-		lout << "entanglement test physical spins:" << endl;
-		lout << SdagSphys_Tinf << endl << endl;
-		lout << "entanglement test ancillary spins:" << endl;
-		lout << SdagSancl_Tinf << endl << endl;
-		
-		vector<Param> beta_params;
-		if (CALC_C)
-		{
-			beta_params.push_back({"maxPower",(L==60)?1ul:2ul});
-		}
-		else
-		{
-			beta_params.push_back({"maxPower",1ul});
-		}
-		beta_params.push_back({"J1full",hopping});
-		MODELC H(size_t(L),beta_params);
-		lout << H.info() << endl;
-		lout << endl;
-		
-		auto PsiT = g.state;
-		PsiT.max_Nsv = Dbetalimit;
-		TDVPPropagator<MODELC,MODELC::Symmetry,double,double,MODELC::StateXd> TDVPT(H,PsiT);
-		
-		ofstream Filer(make_string(wd,"thermodynC_",base,".dat"));
-		Filer << "#T\tc\te\tchi" << endl;
-		double beta = 0.;
-		vector<double> cvec;
-		vector<double> evec;
-		vector<double> chivec;
-		auto PsiTprev = PsiT;
-		
-		for (int i=0; i<Nbeta+1; ++i)
-		{
-			Stopwatch<> FullTimer;
-			
-			#pragma omp parallel sections
-			{
-				#pragma omp section
-				{
-					if (i!=Nbeta)
-					{
-						Stopwatch<> Stepper;
-//						if (i==0)
+//		assert(MODEL::FAMILY == HEISENBERG);
+//		
+//		vector<Param> beta0_params;
+//		MODELC H0;
+//		ArrayXXd AllConnected(L,L); AllConnected=-1.; AllConnected.matrix().diagonal().setZero();
+//		beta0_params.push_back({"Kfull",AllConnected});
+//		beta0_params.push_back({"maxPower",2ul});
+//		H0 = MODELC(L,beta0_params);
+//		lout << H0.info() << endl;
+//		
+//		Eigenstate<MODELC::StateXd> g;
+//		MODELC::Solver DMRG(VERB);
+//		DMRG.edgeState(H0, g, MODELC::singlet(), LANCZOS::EDGE::GROUND, false);
+//		
+//		// test entanglement
+//		MatrixXd SdagSphys_Tinf(L,L); SdagSphys_Tinf.setZero();
+//		MatrixXd SdagSancl_Tinf(L,L); SdagSancl_Tinf.setZero();
+//		#pragma omp parallel for collapse(2)
+//		for (int j=0; j<L; ++j)
+//		for (int i=0; i<L; ++i)
+//		{
+//			SdagSphys_Tinf(i,j) = avg(g.state, H0.SdagS<0>(i,j), g.state);
+//			SdagSancl_Tinf(i,j) = avg(g.state, H0.SdagS<1>(i,j), g.state);
+//		}
+//		lout << "entanglement test physical spins:" << endl;
+//		lout << SdagSphys_Tinf << endl << endl;
+//		lout << "entanglement test ancillary spins:" << endl;
+//		lout << SdagSancl_Tinf << endl << endl;
+//		
+//		vector<Param> beta_params;
+//		if (CALC_C)
+//		{
+//			beta_params.push_back({"maxPower",(L==60)?1ul:2ul});
+//		}
+//		else
+//		{
+//			beta_params.push_back({"maxPower",1ul});
+//		}
+//		beta_params.push_back({"J1full",hopping});
+//		MODELC H(size_t(L),beta_params);
+//		lout << H.info() << endl;
+//		lout << endl;
+//		
+//		auto PsiT = g.state;
+//		PsiT.max_Nsv = Dlim;
+//		TDVPPropagator<MODELC,MODELC::Symmetry,double,double,MODELC::StateXd> TDVPT(H,PsiT);
+//		
+//		ofstream Filer(make_string(wd,"thermodynC_",base,".dat"));
+//		Filer << "#T\tc\te\tchi" << endl;
+//		double beta = 0.;
+//		vector<double> cvec;
+//		vector<double> evec;
+//		vector<double> chivec;
+//		auto PsiTprev = PsiT;
+//		
+//		for (int i=0; i<Nbeta+1; ++i)
+//		{
+//			Stopwatch<> FullTimer;
+//			
+//			#pragma omp parallel sections
+//			{
+//				#pragma omp section
+//				{
+//					if (i!=Nbeta)
+//					{
+//						Stopwatch<> Stepper;
+////						if (i==0)
+////						{
+////							PsiT.eps_svd = 0.;
+////							PsiT.min_Nsv = 1ul;
+////						}
+////						else
+////						{
+//							PsiT.eps_svd = tol_beta_compr;
+//							PsiT.min_Nsv = 0ul;
+////						}
+//						
+//						if (PsiT.calc_Dmax() == Dlim and i*dbeta>1.)
 //						{
-//							PsiT.eps_svd = 0.;
-//							PsiT.min_Nsv = 1ul;
+//							PsiT.eps_svd = 0.1*tol_beta_compr;
+//							TDVPT.t_step0(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
 //						}
 //						else
 //						{
-							PsiT.eps_svd = tol_beta_compr;
-							PsiT.min_Nsv = 0ul;
+//							TDVPT.t_step(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
 //						}
-						
-						if (PsiT.calc_Dmax() == Dbetalimit and i*dbeta>1.)
-						{
-							PsiT.eps_svd = 0.1*tol_beta_compr;
-							TDVPT.t_step0(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
-						}
-						else
-						{
-							TDVPT.t_step(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
-						}
-						PsiT /= sqrt(dot(PsiT,PsiT));
-						lout << "propagated to: β=" << (i+1)*dbeta << endl;
-						lout << TDVPT.info() << endl;
-						lout << setprecision(16) << PsiT.info() << setprecision(6) << endl;
-						lout << Stepper.info("βstep") << endl;
-					}
-				}
-				#pragma omp section
-				{
-					if (i>0)
-					{
-						double beta = i*dbeta;
-						Stopwatch<> Stepper;
-						//---------inner energy density---------
-						double E = avg(PsiTprev,H,PsiTprev);
-						double e = E/L;
-						evec.push_back(e);
-						lout << Stepper.info("e") << endl;
-						//---------specific heat---------
-						double c = std::nan("c");
-						if (CALC_C)
-						{
-							c = (L==60)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
-						                 beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
-						}
-						cvec.push_back(c);
-						lout << Stepper.info("c") << endl;
-						//---------uniform magnetic susceptibility---------
-						double chi = beta*avg(PsiTprev,H.Sdagtot<0>(0,sqrt(3.)),H.Stot<0>(0,1.),PsiTprev)/L;
-						chivec.push_back(chi);
-						//---------
-						lout << Stepper.info("chi") << endl;
-					}
-				}
-			}
-			
-			PsiTprev = PsiT;
-			
-			// entropy
-			auto PsiTtmp = PsiT; PsiTtmp.entropy_skim(); lout << "S=" << PsiTtmp.entropy().transpose() << endl;
-			
-			if (i>0)
-			{
-				lout << termcolor::blue 
-				     << setprecision(16)
-				     << "β=" << i*dbeta << ", T=" << 1./(i*dbeta) 
-				     << ", e=" << evec[i-1] 
-				     << ", c=" << cvec[i-1] 
-				     << ", χ=" << chivec[i-1] 
-				     << termcolor::reset
-				     << setprecision(6)
-				     << endl;
-				Filer << setprecision(16) << 1./(i*dbeta) << "\t" << cvec[i-1] << "\t" << evec[i-1] << "\t" << chivec[i-1] << setprecision(6) << endl;
-			}
-			
-			lout << FullTimer.info("total") << endl;
-			lout << endl;
-		}
-		
-		Filer.close();
+//						PsiT /= sqrt(dot(PsiT,PsiT));
+//						lout << "propagated to: β=" << (i+1)*dbeta << endl;
+//						lout << TDVPT.info() << endl;
+//						lout << setprecision(16) << PsiT.info() << setprecision(6) << endl;
+//						lout << Stepper.info("βstep") << endl;
+//					}
+//				}
+//				#pragma omp section
+//				{
+//					if (i>0)
+//					{
+//						double beta = i*dbeta;
+//						Stopwatch<> Stepper;
+//						//---------inner energy density---------
+//						double E = avg(PsiTprev,H,PsiTprev);
+//						double e = E/L;
+//						evec.push_back(e);
+//						lout << Stepper.info("e") << endl;
+//						//---------specific heat---------
+//						double c = std::nan("c");
+//						if (CALC_C)
+//						{
+//							c = (L==60)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
+//						                 beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+//						}
+//						cvec.push_back(c);
+//						lout << Stepper.info("c") << endl;
+//						//---------uniform magnetic susceptibility---------
+//						double chi = beta*avg(PsiTprev,H.Sdagtot<0>(0,sqrt(3.)),H.Stot<0>(0,1.),PsiTprev)/L;
+//						chivec.push_back(chi);
+//						//---------
+//						lout << Stepper.info("chi") << endl;
+//					}
+//				}
+//			}
+//			
+//			PsiTprev = PsiT;
+//			
+//			// entropy
+//			auto PsiTtmp = PsiT; PsiTtmp.entropy_skim(); lout << "S=" << PsiTtmp.entropy().transpose() << endl;
+//			
+//			if (i>0)
+//			{
+//				lout << termcolor::blue 
+//				     << setprecision(16)
+//				     << "β=" << i*dbeta << ", T=" << 1./(i*dbeta) 
+//				     << ", e=" << evec[i-1] 
+//				     << ", c=" << cvec[i-1] 
+//				     << ", χ=" << chivec[i-1] 
+//				     << termcolor::reset
+//				     << setprecision(6)
+//				     << endl;
+//				Filer << setprecision(16) << 1./(i*dbeta) << "\t" << cvec[i-1] << "\t" << evec[i-1] << "\t" << chivec[i-1] << setprecision(6) << endl;
+//			}
+//			
+//			lout << FullTimer.info("total") << endl;
+//			lout << endl;
+//		}
+//		
+//		Filer.close();
 	}
 	//-------grand canonical-------
 	else
 	{
 		assert(MODEL::FAMILY == HEISENBERG);
 		
-		vector<Param> beta0_params;
-		beta0_params.push_back({"Ly",Ly});
-		beta0_params.push_back({"maxPower",1ul});
-		MODEL H0;
-		if (Ly==1)
+		MODEL::StateXd PsiT;
+		
+		if (LOAD != "")
 		{
-			beta0_params.push_back({"J",1.,0});
-			beta0_params.push_back({"J",0.,1});
-			H0 = MODEL(size_t(2*L),beta0_params);
+			PsiT.load(LOAD);
+			lout << "loaded: " << PsiT.info() << endl;
+			lout << termcolor::blue << "continuing β-propagation at β=" << betainit << " with: " 
+			     << "dβ=" << dbeta << ", "
+			     << "Dlim=" << Dlim << ", "
+			     << "tol=" << tol_beta_compr << ", "
+			     << boolalpha << "BETA1STEP=" << BETA1STEP
+			     << termcolor::reset << endl;
 		}
 		else
 		{
-			beta0_params.push_back({"Jrung",1.});
-			beta0_params.push_back({"J",0.});
-			H0 = MODEL(size_t(L),beta0_params);
-		}
-		lout << H0.info() << endl;
-		
-		Eigenstate<MODEL::StateXd> g;
-		MODEL::Solver DMRG(DMRG::VERBOSITY::ON_EXIT);
-		DMRG.edgeState(H0, g, MODEL::singlet(), LANCZOS::EDGE::GROUND, false);
-		
-		// Zero hopping may cause problems. Restart until the correct product state is reached.
-		if (Ly==1)
-		{
-			vector<bool> ENTROPY_CHECK;
-			for (int l=1; l<2*L-1; l+=2) ENTROPY_CHECK.push_back(abs(g.state.entropy()(l))<1e-10);
-			bool ALL = all_of(ENTROPY_CHECK.begin(), ENTROPY_CHECK.end(), [](const bool v){return v;});
-			
-			while (ALL == false)
+			vector<Param> beta0_params;
+			beta0_params.push_back({"Ly",Ly});
+			beta0_params.push_back({"maxPower",1ul});
+			MODEL H0;
+			if (Ly==1)
 			{
-				lout << termcolor::yellow << "restarting..." << termcolor::reset << endl;
-				DMRG.edgeState(H0, g, MODEL::singlet(), LANCZOS::EDGE::GROUND, false);
-				ENTROPY_CHECK.clear();
-				for (int l=1; l<2*L-1; l+=2) ENTROPY_CHECK.push_back(abs(g.state.entropy()(l))<1e-10);
-				for (int l=1; l<2*L-1; l+=2)
-				{
-					bool TEST = abs(g.state.entropy()(l))<1e-10;
-//					lout << "l=" << l << ", S=" << abs(g.state.entropy()(l)) << "\t" << boolalpha << TEST << endl;
-				}
-				ALL = all_of(ENTROPY_CHECK.begin(), ENTROPY_CHECK.end(), [](const bool v){return v;});
-//				lout << boolalpha << "ALL=" << ALL << endl;
+				beta0_params.push_back({"J",1.,0});
+				beta0_params.push_back({"J",0.,1});
+				H0 = MODEL(size_t(2*L),beta0_params);
 			}
+			else
+			{
+				beta0_params.push_back({"Jrung",1.});
+				beta0_params.push_back({"J",0.});
+				H0 = MODEL(size_t(L),beta0_params);
+			}
+			lout << H0.info() << endl;
+			
+			Eigenstate<MODEL::StateXd> g;
+			MODEL::Solver DMRG(DMRG::VERBOSITY::ON_EXIT);
+			DMRG.edgeState(H0, g, MODEL::singlet(), LANCZOS::EDGE::GROUND, false);
+			
+			// Zero hopping may cause problems. Restart until the correct product state is reached.
+			if (Ly==1)
+			{
+				vector<bool> ENTROPY_CHECK;
+				for (int l=1; l<2*L-1; l+=2) ENTROPY_CHECK.push_back(abs(g.state.entropy()(l))<1e-10);
+				bool ALL = all_of(ENTROPY_CHECK.begin(), ENTROPY_CHECK.end(), [](const bool v){return v;});
+				
+				while (ALL == false)
+				{
+					lout << termcolor::yellow << "restarting..." << termcolor::reset << endl;
+					DMRG.edgeState(H0, g, MODEL::singlet(), LANCZOS::EDGE::GROUND, false);
+					ENTROPY_CHECK.clear();
+					for (int l=1; l<2*L-1; l+=2) ENTROPY_CHECK.push_back(abs(g.state.entropy()(l))<1e-10);
+					for (int l=1; l<2*L-1; l+=2)
+					{
+						bool TEST = abs(g.state.entropy()(l))<1e-10;
+	//					lout << "l=" << l << ", S=" << abs(g.state.entropy()(l)) << "\t" << boolalpha << TEST << endl;
+					}
+					ALL = all_of(ENTROPY_CHECK.begin(), ENTROPY_CHECK.end(), [](const bool v){return v;});
+	//				lout << boolalpha << "ALL=" << ALL << endl;
+				}
+			}
+			
+			PsiT = g.state;
+			
+			lout << endl;
 		}
 		
-		lout << endl;
-		
+		// construct H
 		vector<Param> beta_params;
 		beta_params.push_back({"Ly",Ly});
 		if (CALC_C)
@@ -713,20 +773,29 @@ int main (int argc, char* argv[])
 		lout << H.info() << endl;
 		lout << endl;
 		
-		auto PsiT = g.state;
-		PsiT.max_Nsv = Dbetalimit;
+		PsiT.max_Nsv = Dlim;
+		if (LOAD!="") lout << "preparing TDVP..." << endl;
 		TDVPPropagator<MODEL,MODEL::Symmetry,double,double,MODEL::StateXd> TDVPT(H,PsiT);
 		
 		ofstream Filer(make_string(wd,"thermodynGC_",base,".dat"));
-		Filer << "#T\tc\te\tchi" << endl;
+		Filer << "#T\tc\te\tchi\ts" << endl;
 		double beta = 0.;
 		vector<double> cvec;
 		vector<double> evec;
 		vector<double> chivec;
+		vector<double> svec;
+		vector<double> lnZvec;
 		auto PsiTprev = PsiT;
+		
+//		double Z = 1.;
+//		double Zprev = Z;
+//		cout << "Z=" << Z << endl;
+//		auto PsiZ = PsiT;
+//		TDVPPropagator<MODEL,MODEL::Symmetry,double,double,MODEL::StateXd> TDVPZ(H,PsiZ);
 		
 		for (int i=0; i<Nbeta+1; ++i)
 		{
+//			cout << "i=" << i << ", betainit=" << betainit << ", dbeta=" << dbeta << ", betainit+(i+1)*dbeta=" << betainit+(i+1)*dbeta << endl;
 			Stopwatch<> FullTimer;
 			
 //			#pragma omp parallel sections
@@ -736,7 +805,7 @@ int main (int argc, char* argv[])
 					if (i!=Nbeta)
 					{
 						Stopwatch<> Stepper;
-						if (i==0)
+						if (i==0 and betainit==0.)
 						{
 							PsiT.eps_svd = 0.;
 							PsiT.min_Nsv = 1ul;
@@ -747,22 +816,30 @@ int main (int argc, char* argv[])
 							PsiT.min_Nsv = 0ul;
 						}
 						
-//						if (PsiT.calc_Dmax() == Dbetalimit and i*dbeta>1.)
-//						{
+//						if (PsiT.calc_Dmax() == Dlim and i*dbeta>1.)
+						if (BETA1STEP)
+						{
 //							PsiT.eps_svd = 0.1*tol_beta_compr;
-//							TDVPT.t_step0(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
-//						}
-//						else
+							TDVPT.t_step0(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
+						}
+						else
 						{
 							TDVPT.t_step(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
 						}
-						PsiT /= sqrt(dot(PsiT,PsiT));
-						lout << "propagated to: β=" << (i+1)*dbeta << endl;
+						double norm = dot(PsiT,PsiT);
+						lnZvec.push_back(log(norm));
+						PsiT /= sqrt(norm);
+						
+//						TDVPZ.t_step(H, PsiZ, -0.5*dbeta, N_stages, 1e-8);
+//						Z = dot(PsiZ,PsiZ);
+//						lout << "Z=" << Z << endl;
+						
+						lout << "propagated to: β=" << betainit+(i+1)*dbeta << endl;
 						if ((i+1)%10 == 0)
 						{
 //							#pragma omp critial
 							{
-								string filename = make_string(wd,"state_β=",(i+1)*dbeta,"_",base,".dat");
+								string filename = make_string(wd,"state_β=",betainit+(i+1)*dbeta,"_",base);
 								lout << termcolor::green << "saving state to: " << filename << termcolor::reset << endl;
 								PsiT.save(filename);
 							}
@@ -776,13 +853,15 @@ int main (int argc, char* argv[])
 				{
 					if (i>0)
 					{
-						double beta = i*dbeta;
+						double beta = betainit+i*dbeta;
 						Stopwatch<> Stepper;
+						
 						//---------inner energy density---------
 						double E = avg(PsiTprev,H,PsiTprev);
 						double e = E/L;
 						evec.push_back(e);
 						lout << Stepper.info("e") << endl;
+						
 						//---------specific heat---------
 						double c = std::nan("c");
 						if (CALC_C)
@@ -792,6 +871,7 @@ int main (int argc, char* argv[])
 						}
 						cvec.push_back(c);
 						lout << Stepper.info("c") << endl;
+						
 						//---------uniform magnetic susceptibility---------
 						double chi;
 						// slow way:
@@ -811,6 +891,12 @@ int main (int argc, char* argv[])
 						// best way:
 						chi = beta*avg(PsiTprev,H.Sdagtot(0,sqrt(3.),dLphys),H.Stot(0,1.,dLphys),PsiTprev)/L;
 						chivec.push_back(chi);
+						
+						//---------thermal entropy---------
+						int Nsum = (i<Nbeta)? lnZvec.size()-1:lnZvec.size();
+						VectorXd tmp = VectorXd::Map(lnZvec.data(), Nsum);
+						double s = s_betainit + tmp.sum()/L + beta*e;
+						svec.push_back(s);
 						//---------
 						lout << Stepper.info("chi") << endl;
 					}
@@ -818,6 +904,7 @@ int main (int argc, char* argv[])
 			}
 			
 			PsiTprev = PsiT;
+//			Zprev = Z;
 			
 			// entropy
 			Stopwatch<> EntropyWatch;
@@ -826,16 +913,24 @@ int main (int argc, char* argv[])
 			
 			if (i>0)
 			{
+				double beta = betainit+i*dbeta;
 				lout << termcolor::blue 
 				     << setprecision(16)
-				     << "β=" << i*dbeta << ", T=" << 1./(i*dbeta) 
+				     << "β=" << beta << ", T=" << 1./beta
 				     << ", e=" << evec[i-1] 
 				     << ", c=" << cvec[i-1] 
 				     << ", χ=" << chivec[i-1] 
+				     << ", s=" << svec[i-1] 
 				     << termcolor::reset
 				     << setprecision(6)
 				     << endl;
-				Filer << setprecision(16) << 1./(i*dbeta) << "\t" << cvec[i-1] << "\t" << evec[i-1] << "\t" << chivec[i-1] << setprecision(6) << endl;
+				Filer << setprecision(16) 
+				      << 1./beta << "\t" 
+				      << cvec[i-1] << "\t" 
+				      << evec[i-1] << "\t" 
+				      << chivec[i-1] << "\t" 
+				      << svec[i-1] 
+				      << setprecision(6) << endl;
 			}
 			
 			lout << FullTimer.info("total") << endl;
