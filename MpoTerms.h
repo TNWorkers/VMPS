@@ -2702,7 +2702,15 @@ scale(const double factor, const double offset, const double tolerance)
                 #ifdef OPLABELS
                 Id.label = "id";
                 #endif
-                existing_ops.insert({qVac,offset*Id});
+                auto itQ = existing_ops.find(qVac);
+                if(itQ == existing_ops.end())
+                {
+                    existing_ops.insert({qVac,offset*Id});
+                }
+                else
+                {
+                    (itQ->second) += offset*Id;
+                }
             }
             auto it = O[N_sites-1].find({qVac,qVac});
             assert(it != O[N_sites-1].end());
