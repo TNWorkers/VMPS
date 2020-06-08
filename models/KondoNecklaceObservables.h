@@ -267,7 +267,7 @@ template<typename Dummy>
 typename std::enable_if<!Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type KondoNecklaceObservables<Symmetry>::
 SsubSsub (SPINOP_LABEL Sa1, SPINOP_LABEL Sa2, size_t locx1, size_t locx2, size_t locy1, size_t locy2, double fac) const
 {
-	return make_corr(IMP,locx1,locx2,locy1,locy2, Bsub[locx1].Scomp(Sa1,locy1), Bsub[locx2].Scomp(Sa2,locy2), getQ_ScompScomp(Sa1,Sa2), fac, PROP::HERMITIAN);
+	return make_corr(SUB,locx1,locx2,locy1,locy2, Bsub[locx1].Scomp(Sa1,locy1), Bsub[locx2].Scomp(Sa2,locy2), getQ_ScompScomp(Sa1,Sa2), fac, PROP::HERMITIAN);
 }
 
 template<typename Symmetry>
