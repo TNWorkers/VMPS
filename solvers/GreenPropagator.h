@@ -577,7 +577,7 @@ compute (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &OxPh
 	if (Q_RANGE_CHOICE == MPI_PPI) assert(Ncells%2 == 0 and "Please use an even number of unit cells!");
 	
 	make_xarrays(Lhetero,Lcell,Ncells);
-	calc_intweights();
+//	calc_intweights();
 	
 	propagate(H, OxPhi, OxPhi0, Eg, TIME_FORWARDS);
 	
@@ -725,7 +725,7 @@ compute_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &Od
 	if (Q_RANGE_CHOICE == MPI_PPI) assert(Ncells%2 == 0 and "Please use an even number of unit cells!");
 	
 	make_xarrays(Lhetero,Lcell,Ncells);
-	calc_intweights();
+//	calc_intweights();
 	
 	propagate_thermal(H, Odag, Phi, OxPhi0, TIME_FORWARDS);
 	
@@ -910,7 +910,7 @@ compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> 
 	
 	assert(Lhetero%Lcell == 0);
 	
-	calc_intweights();
+//	calc_intweights();
 	make_xarrays(Lhetero,Lcell,Ncells);
 	
 	GtxCell.resize(Lcell);
@@ -1277,7 +1277,7 @@ compute_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>
 	
 	assert(Lhetero%Lcell == 0);
 	
-	calc_intweights();
+//	calc_intweights();
 	make_xarrays(Lhetero,Lcell,Ncells);
 	
 	GtxCell.resize(Lcell);

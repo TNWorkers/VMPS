@@ -3,8 +3,6 @@
 #pragma message("LapackManager")
 #endif
 
-//#define LANCZOS_MAX_ITERATIONS 1e2
-
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
 #define MPSQCOMPRESSOR_DONT_USE_OPENMP
@@ -110,6 +108,8 @@ int main (int argc, char* argv[])
 	size_t D = args.get<size_t>("D",2ul);
 	size_t maxPower = args.get<size_t>("maxPower",1ul);
 	
+	bool PRINT_HOPPING = args.get<bool>("PRINT_HOPPING",false);
+	
 	bool BETAPROP = args.get<bool>("BETAPROP",false);
 	bool BETA1STEP = args.get<bool>("BETA1STEP",false);
 	bool CANONICAL = args.get<bool>("CANONICAL",false);
@@ -119,7 +119,6 @@ int main (int argc, char* argv[])
 	double betamax = args.get<double>("betamax",20.);
 	double betainit = 0.;
 	double s_betainit = args.get<double>("s_betainit",log(2));
-	int Nbeta = static_cast<int>(betamax/dbeta);
 	double tol_beta_compr = args.get<double>("tol_beta_compr",1e-5);
 	size_t Dlim = args.get<size_t>("Dlim",100ul);
 	size_t Ly = args.get<size_t>("Ly",2ul);
@@ -173,7 +172,6 @@ int main (int argc, char* argv[])
 				}
 			}
 		}
-		Nbeta = static_cast<int>((betamax-betainit)/dbeta)-1;
 	}
 	
 	string base;
@@ -205,6 +203,7 @@ int main (int argc, char* argv[])
 	GlobParam.Qinit = args.get<size_t>("Qinit",6ul);
 	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
 	GlobParam.CALC_S_ON_EXIT = false;
+	GlobParam.Dlimit = args.get<size_t>("Dlimit",1000ul); // for groundstate
 	
 	// dyn. params
 	DMRG::CONTROL::DYN  DynParam;
@@ -217,12 +216,12 @@ int main (int argc, char* argv[])
 	size_t Dincr_abs = args.get<size_t>("Dincr_abs",6ul);
 	DynParam.Dincr_abs = [Dincr_abs] (size_t i) {return Dincr_abs;};
 	
+	size_t lim2site = args.get<size_t>("lim2site",30ul);
+	DynParam.iteration = [lim2site] (size_t i) {return (i<lim2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
+	
 	size_t lim_alpha = args.get<size_t>("lim_alpha",0.8*GlobParam.max_halfsweeps);
 	double alpha = args.get<double>("alpha",100.);
 	DynParam.max_alpha_rsvd = [lim_alpha, alpha] (size_t i) {return (i<lim_alpha)? alpha:0.;};
-	
-	DMRG::ITERATION::OPTION it = static_cast<DMRG::ITERATION::OPTION>(args.get<size_t>("iteration",1ul));
-	DynParam.iteration = [it] (size_t i) {return it;};
 	
 	GlobParam.savePeriod = args.get<size_t>("savePeriod",0);
 	GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_",base);
@@ -245,7 +244,7 @@ int main (int argc, char* argv[])
 		hopping = hopping_fullerene(L);
 	}
 	auto distanceMatrix = calc_distanceMatrix(hopping);
-	if (!BETAPROP)
+	if (PRINT_HOPPING)
 	{
 		lout << "adjacency:" << endl << hopping << endl << endl;
 		lout << "distances:" << endl << distanceMatrix << endl << endl;
@@ -371,8 +370,12 @@ int main (int argc, char* argv[])
 				lout << setprecision(16) << "varE=" << abs(avg(g.state,H,H,g.state)-pow(E,2))/L << setprecision(6) << endl;
 				lout << Timer.info("varE") << endl;
 				
-//				auto HmE = H;
-//				HmE.scale(1.,-E);
+				auto HmE = H;
+				double factor = args.get<double>("factor",1.);
+				double offset = args.get<double>("offset",0.);
+				HmE.scale(factor,offset);
+				lout << "scale test: " << avg(g.state,HmE,g.state) << "\t" << factor*E+offset << "\t" << pow(factor,L)*E+pow(offset,L) << endl;
+//				HmE.scale(1.,-E/pow(2.^L));
 //				lout << "varE scaled=" << abs(avg(g.state,HmE,HmE,g.state))/L << endl;
 //				lout << Timer.info("varE scaled") << endl;
 			}
@@ -451,7 +454,7 @@ int main (int argc, char* argv[])
 				
 				for (int t=0; t<2; ++t)
 				{
-					cout << "t=" << t << endl;
+					lout << "t=" << t << endl;
 					string filename = make_string(wd,"state_t=",Nt*dt,"_tdir=",t,"_",base);
 					lout << termcolor::green << "saving state to: " << filename << termcolor::reset << endl;
 					Psi[t].save(filename);
@@ -779,7 +782,6 @@ int main (int argc, char* argv[])
 		
 		ofstream Filer(make_string(wd,"thermodynGC_",base,".dat"));
 		Filer << "#T\tc\te\tchi\ts" << endl;
-		double beta = 0.;
 		vector<double> cvec;
 		vector<double> evec;
 		vector<double> chivec;
@@ -787,133 +789,148 @@ int main (int argc, char* argv[])
 		vector<double> lnZvec;
 		auto PsiTprev = PsiT;
 		
-//		double Z = 1.;
-//		double Zprev = Z;
-//		cout << "Z=" << Z << endl;
-//		auto PsiZ = PsiT;
-//		TDVPPropagator<MODEL,MODEL::Symmetry,double,double,MODEL::StateXd> TDVPZ(H,PsiZ);
+		vector<double> betasteps;
+		vector<double> betavals;
 		
-		for (int i=0; i<Nbeta+1; ++i)
+		if (betainit == 0.)
 		{
-//			cout << "i=" << i << ", betainit=" << betainit << ", dbeta=" << dbeta << ", betainit+(i+1)*dbeta=" << betainit+(i+1)*dbeta << endl;
+			betasteps.push_back(0.01);
+			betavals.push_back(0.01);
+//			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			
+			for (int i=1; i<20; ++i)
+			{
+				betasteps.push_back(0.01);
+				double beta_last = betavals[betavals.size()-1];
+				betavals.push_back(beta_last+0.01);
+//				cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			}
+		}
+		while (betavals[betavals.size()-1] < betamax)
+		{
+			betasteps.push_back(dbeta);
+			double beta_last = betavals[betavals.size()-1];
+			betavals.push_back(beta_last+dbeta);
+//			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+		}
+//		betavals.pop_back();
+//		betasteps.pop_back();
+		
+//		for (int i=0; i<betasteps.size(); ++i)
+//		{
+//			cout << "betaval=" << betavals[i] << ", betastep=" << betasteps[i] << endl;
+//		}
+		
+		ArrayXd beta_savepoints(99);
+		for (int i=0; i<beta_savepoints.rows(); ++i)
+		{
+			beta_savepoints(i) = i+1;
+		}
+		
+		for (int i=0; i<betasteps.size()+1; ++i)
+		{
 			Stopwatch<> FullTimer;
 			
-//			#pragma omp parallel sections
+			if (i!=betasteps.size())
 			{
-//				#pragma omp section
+				double beta = betavals[i];
+				Stopwatch<> Stepper;
+				
+				if (beta < 0.2)
 				{
-					if (i!=Nbeta)
-					{
-						Stopwatch<> Stepper;
-						if (i==0 and betainit==0.)
-						{
-							PsiT.eps_svd = 0.;
-							PsiT.min_Nsv = 1ul;
-						}
-						else
-						{
-							PsiT.eps_svd = tol_beta_compr;
-							PsiT.min_Nsv = 0ul;
-						}
-						
-//						if (PsiT.calc_Dmax() == Dlim and i*dbeta>1.)
-						if (BETA1STEP)
-						{
-//							PsiT.eps_svd = 0.1*tol_beta_compr;
-							TDVPT.t_step0(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
-						}
-						else
-						{
-							TDVPT.t_step(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
-						}
-						double norm = dot(PsiT,PsiT);
-						lnZvec.push_back(log(norm));
-						PsiT /= sqrt(norm);
-						
-//						TDVPZ.t_step(H, PsiZ, -0.5*dbeta, N_stages, 1e-8);
-//						Z = dot(PsiZ,PsiZ);
-//						lout << "Z=" << Z << endl;
-						
-						lout << "propagated to: β=" << betainit+(i+1)*dbeta << endl;
-						if ((i+1)%10 == 0)
-						{
-//							#pragma omp critial
-							{
-								string filename = make_string(wd,"state_β=",betainit+(i+1)*dbeta,"_",base);
-								lout << termcolor::green << "saving state to: " << filename << termcolor::reset << endl;
-								PsiT.save(filename);
-							}
-						}
-						lout << TDVPT.info() << endl;
-						lout << setprecision(16) << PsiT.info() << setprecision(6) << endl;
-						lout << Stepper.info("βstep") << endl;
-					}
+					PsiT.eps_svd = 1e-9;
+					PsiT.min_Nsv = 1ul;
 				}
-//				#pragma omp section
+				else
 				{
-					if (i>0)
-					{
-						double beta = betainit+i*dbeta;
-						Stopwatch<> Stepper;
-						
-						//---------inner energy density---------
-						double E = avg(PsiTprev,H,PsiTprev);
-						double e = E/L;
-						evec.push_back(e);
-						lout << Stepper.info("e") << endl;
-						
-						//---------specific heat---------
-						double c = std::nan("c");
-						if (CALC_C)
-						{
-							c = (L==60)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
-						                 beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
-						}
-						cvec.push_back(c);
-						lout << Stepper.info("c") << endl;
-						
-						//---------uniform magnetic susceptibility---------
-						double chi;
-						// slow way:
-			//			double chi_ = 0.;
-			//			for (int i=0; i<L; ++i)
-			//			for (int j=0; j<L; ++j)
-			//			{
-			//				double res = avg(PsiTprev,H.SdagS(i,j),PsiTprev);
-			//				chi_ += res; // note: pow(avg(PsiTprev,S(i),PsiTprev),2)=0
-			//			}
-			//			chi_ *= beta/L;
-						// fast way:
-			//			if (CALC_CHI)
-			//			{
-			//				chi = beta*(2.*avg(PsiTprev,Hchi,PsiTprev)/L+0.75); // S(S+1)=0.75: diagonal contribution
-			//			}
-						// best way:
-						chi = beta*avg(PsiTprev,H.Sdagtot(0,sqrt(3.),dLphys),H.Stot(0,1.,dLphys),PsiTprev)/L;
-						chivec.push_back(chi);
-						
-						//---------thermal entropy---------
-						int Nsum = (i<Nbeta)? lnZvec.size()-1:lnZvec.size();
-						VectorXd tmp = VectorXd::Map(lnZvec.data(), Nsum);
-						double s = s_betainit + tmp.sum()/L + beta*e;
-						svec.push_back(s);
-						//---------
-						lout << Stepper.info("chi") << endl;
-					}
+					PsiT.eps_svd = tol_beta_compr;
+					PsiT.min_Nsv = 0ul;
 				}
+				
+				if (BETA1STEP)
+				{
+					TDVPT.t_step0(H, PsiT, -0.5*betasteps[i], N_stages, 1e-8);
+				}
+				else
+				{
+					TDVPT.t_step(H, PsiT, -0.5*betasteps[i], N_stages, 1e-8);
+				}
+				double norm = dot(PsiT,PsiT);
+				lnZvec.push_back(log(norm));
+				PsiT /= sqrt(norm);
+				
+				lout << "propagated to: β=" << beta << endl;
+				
+				if (((beta_savepoints-beta).abs() < 1e-10).any())
+				{
+					string filename = make_string(wd,"state_β=",beta,"_",base);
+					lout << termcolor::green << "saving state to: " << filename << termcolor::reset << endl;
+					PsiT.save(filename);
+				}
+				lout << TDVPT.info() << endl;
+				lout << setprecision(16) << PsiT.info() << setprecision(6) << endl;
+				lout << Stepper.info("βstep") << endl;
+			}
+			if (i>0)
+			{
+				double beta = betavals[i-1];
+				Stopwatch<> Stepper;
+				
+				//---------inner energy density---------
+				double E = avg(PsiTprev,H,PsiTprev);
+				double e = E/L;
+				evec.push_back(e);
+				lout << Stepper.info("e") << endl;
+				
+				//---------specific heat---------
+				double c = std::nan("c");
+				if (CALC_C)
+				{
+					c = (L==60)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
+				                 beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+				}
+				cvec.push_back(c);
+				lout << Stepper.info("c") << endl;
+				
+				//---------uniform magnetic susceptibility---------
+				double chi;
+				// slow way:
+	//			double chi_ = 0.;
+	//			for (int i=0; i<L; ++i)
+	//			for (int j=0; j<L; ++j)
+	//			{
+	//				double res = avg(PsiTprev,H.SdagS(i,j),PsiTprev);
+	//				chi_ += res; // note: pow(avg(PsiTprev,S(i),PsiTprev),2)=0
+	//			}
+	//			chi_ *= beta/L;
+				// fast way:
+	//			if (CALC_CHI)
+	//			{
+	//				chi = beta*(2.*avg(PsiTprev,Hchi,PsiTprev)/L+0.75); // S(S+1)=0.75: diagonal contribution
+	//			}
+				// best way:
+				chi = beta*avg(PsiTprev,H.Sdagtot(0,sqrt(3.),dLphys),H.Stot(0,1.,dLphys),PsiTprev)/L;
+				chivec.push_back(chi);
+				
+				//---------thermal entropy---------
+				int Nsum = (i<betasteps.size())? lnZvec.size()-1:lnZvec.size();
+				VectorXd tmp = VectorXd::Map(lnZvec.data(), Nsum);
+				double s = s_betainit + tmp.sum()/L + beta*e;
+				svec.push_back(s);
+				//---------
+				lout << Stepper.info("chi") << endl;
 			}
 			
 			PsiTprev = PsiT;
-//			Zprev = Z;
 			
-			// entropy
-			Stopwatch<> EntropyWatch;
-			auto PsiTtmp = PsiT; PsiTtmp.entropy_skim(); lout << "S=" << PsiTtmp.entropy().transpose() << endl;
-			lout << EntropyWatch.info("entropy") << endl;
+			// entanglement entropy
+//			Stopwatch<> EntropyWatch;
+//			auto PsiTtmp = PsiT; PsiTtmp.entropy_skim(); lout << "S=" << PsiTtmp.entropy().transpose() << endl;
+//			lout << EntropyWatch.info("entropy") << endl;
 			
 			if (i>0)
 			{
-				double beta = betainit+i*dbeta;
+				double beta = betavals[i-1];
 				lout << termcolor::blue 
 				     << setprecision(16)
 				     << "β=" << beta << ", T=" << 1./beta

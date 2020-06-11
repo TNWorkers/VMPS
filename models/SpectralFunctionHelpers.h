@@ -150,7 +150,7 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec, d
 		}
 	}
 	// pseudospin structure factor: z-component
-	else if (spec == "PSZ")
+	else if (spec == "PSZ" or spec == "IPZ")
 	{
 		if constexpr (!Symmetry::IS_CHARGE_SU2())
 		{
@@ -172,7 +172,7 @@ bool TIME_DIR (std::string spec)
 {
 	// true=forwards in time
 	// false=backwards in time
-	return (spec=="PES" or spec=="PESUP" or spec=="PESDN" or spec=="AES")? false:true;
+	return (spec=="PES" or spec=="PESUP" or spec=="PESDN" or spec=="AES" or spec=="IPZ" or spec=="SDAGSF" or spec=="PDAGSF")? false:true;
 }
 
 string DAG (std::string spec)
@@ -190,6 +190,7 @@ string DAG (std::string spec)
 	else if (spec == "APS")   res = "AES";
 	else if (spec == "CSF")   res = "CSF";
 	else if (spec == "PSZ")   res = "PSZ";
+	else if (spec == "IPZ")   res = "IPZ";
 	else if (spec == "PSF")   res = "PDAGSF";
 	return res;
 }
