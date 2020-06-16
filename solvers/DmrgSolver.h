@@ -369,7 +369,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		SweepStat.N_sweepsteps = SweepStat.N_halfsweeps = 0;
 		for (size_t l=N_sites-1; l>0; --l)
 		{
-			Vout.state.setRandom(l); //avoid overflow for large chains.
+			if (!USE_STATE) {Vout.state.setRandom(l);} //avoid overflow for large chains. dont set random for loaded states
 			Vout.state.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
 			build_R(H,Vout,l-1);
 		}
