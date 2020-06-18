@@ -5,17 +5,17 @@
 
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
-#define MPSQCOMPRESSOR_DONT_USE_OPENMP
 
-#define DMRG_CONTRACTLANDR_PARALLELIZE
-#define DMRG_PARALLELIZE_GRALF
+//#define DMRG_CONTRACTLANDR_PARALLELIZE
+//#define DMRG_PARALLELIZE_GRALF
 
-#define DMRG_PIVOT2_PARALLELIZE
-#define DMRG_PIVOT1_PARALLELIZE
-#define DMRG_SPLITAA_PARALLELIZE
-#define DMRG_CONTRACTAA_PARALLELIZE
-//#define DMRG_PIVOTVECTOR_PARALLELIZE // problem with omp and complex scalar
-#define DMRG_PRECALCBLOCKTSD_PARALLELIZE
+//#define EIGEN_DONT_PARALLELIZE
+//#define DMRG_PIVOT2_PARALLELIZE
+//#define DMRG_PIVOT1_PARALLELIZE
+//#define DMRG_SPLITAA_PARALLELIZE
+//#define DMRG_CONTRACTAA_PARALLELIZE
+////#define DMRG_PIVOTVECTOR_PARALLELIZE // problem with omp and complex scalar
+//#define DMRG_PRECALCBLOCKTSD_PARALLELIZE
 
 #include <iostream>
 #include <fstream>
@@ -116,8 +116,9 @@ int main (int argc, char* argv[])
 	bool CALC_C = args.get<bool>("CALC_C",false);
 	bool CALC_CHI = args.get<bool>("CALC_CHI",true);
 	double dbeta = args.get<double>("dbeta",0.1);
-	double betamax = args.get<double>("betamax",20.);
+	double betamax = args.get<double>("betamax",50.);
 	double betainit = 0.;
+	double betaswitch = args.get<double>("betaswitch",10.);
 	double s_betainit = args.get<double>("s_betainit",log(2));
 	double tol_beta_compr = args.get<double>("tol_beta_compr",1e-5);
 	size_t Dlim = args.get<size_t>("Dlim",100ul);
@@ -313,11 +314,11 @@ int main (int argc, char* argv[])
 				if (S>0)
 				{
 					ofstream SFiler(make_string(wd,"S_",base,".dat"));
-					#pragma omp parallel for
+//					#pragma omp parallel for
 					for (int l=0; l<L; ++l)
 					{
 						double res = avg(g.state, H.S(l), g.state) / sqrt(S*(S+1.));
-						#pragma omp critical
+//						#pragma omp critical
 						{
 							SFiler << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
 							lout << setprecision(16) << l << "\t" << res << setprecision(6) << endl;
@@ -338,14 +339,14 @@ int main (int argc, char* argv[])
 					
 					vector<pair<int,int>> indices = bond_indices(d,distanceMatrix);
 					
-					#pragma omp parallel for
+//					#pragma omp parallel for
 					for (int k=0; k<indices.size(); ++k)
 					{
 						int i = indices[k].first;
 						int j = indices[k].second;
 						double val = avg(g.state, H.SdagS(i,j), g.state);
 						
-						#pragma omp critical
+//						#pragma omp critical
 						{
 							lout << setprecision(16) << "i=" << i << ", j=" << j << ", d=" << d << ", SdagS=" << val << setprecision(6) << endl;
 							CorrFiler << setprecision(16) << i << "\t" << j << "\t" << val << setprecision(6) << endl;
@@ -417,7 +418,7 @@ int main (int argc, char* argv[])
 				{
 					Stopwatch<> Stepper;
 					
-					#pragma omp parallel for
+//					#pragma omp parallel for
 					for (int t=0; t<2; ++t)
 					{
 						TDVPt[t].t_step(H, Psi[t], -0.5*1.i*tsign[t]*dt);
@@ -425,13 +426,13 @@ int main (int argc, char* argv[])
 						if (Psi[t].get_truncWeight().sum() > 0.5*tol_t_compr)
 						{
 							Psi[t].max_Nsv = min(static_cast<size_t>(max(Psi[t].max_Nsv*1.1, Psi[t].max_Nsv+1.)),Dtlimit);
-							#pragma omp critical
+//							#pragma omp critical
 							{
 								lout << termcolor::yellow << "Setting Psi["<<t<<"].max_Nsv to " << Psi[t].max_Nsv << termcolor::reset << endl;
 							}
 						}
 						
-						#pragma omp critical
+//						#pragma omp critical
 						{
 							lout << tlabel[t] << ":" << endl;
 							lout << "\t" << TDVPt[t].info() << endl;
@@ -821,15 +822,19 @@ int main (int argc, char* argv[])
 //			cout << "betaval=" << betavals[i] << ", betastep=" << betasteps[i] << endl;
 //		}
 		
-		ArrayXd beta_savepoints(99);
-		for (int i=0; i<beta_savepoints.rows(); ++i)
-		{
-			beta_savepoints(i) = i+1;
-		}
+//		ArrayXd beta_savepoints(99);
+//		for (int i=0; i<beta_savepoints.rows(); ++i)
+//		{
+//			beta_savepoints(i) = i+1;
+//		}
+		vector<double> std_beta_savepoints = {1,2,3,4,5,6,7,8,9,10,25,50};
+		ArrayXd beta_savepoints = ArrayXd::Map(std_beta_savepoints.data(), std_beta_savepoints.size());
+		
+		Stopwatch<> FullTimer;
 		
 		for (int i=0; i<betasteps.size()+1; ++i)
 		{
-			Stopwatch<> FullTimer;
+			Stopwatch<> FullStepTimer;
 			
 			if (i!=betasteps.size())
 			{
@@ -847,7 +852,7 @@ int main (int argc, char* argv[])
 					PsiT.min_Nsv = 0ul;
 				}
 				
-				if (BETA1STEP)
+				if (BETA1STEP or beta>=betaswitch)
 				{
 					TDVPT.t_step0(H, PsiT, -0.5*betasteps[i], N_stages, 1e-8);
 				}
@@ -911,6 +916,7 @@ int main (int argc, char* argv[])
 				// best way:
 				chi = beta*avg(PsiTprev,H.Sdagtot(0,sqrt(3.),dLphys),H.Stot(0,1.,dLphys),PsiTprev)/L;
 				chivec.push_back(chi);
+				lout << Stepper.info("chi") << endl;
 				
 				//---------thermal entropy---------
 				int Nsum = (i<betasteps.size())? lnZvec.size()-1:lnZvec.size();
@@ -918,7 +924,7 @@ int main (int argc, char* argv[])
 				double s = s_betainit + tmp.sum()/L + beta*e;
 				svec.push_back(s);
 				//---------
-				lout << Stepper.info("chi") << endl;
+				lout << Stepper.info("s") << endl;
 			}
 			
 			PsiTprev = PsiT;
@@ -950,8 +956,10 @@ int main (int argc, char* argv[])
 				      << setprecision(6) << endl;
 			}
 			
-			lout << FullTimer.info("total") << endl;
+			lout << FullStepTimer.info("full step") << endl;
 			lout << endl;
+			
+			lout << FullTimer.info("total") << endl;
 		}
 		
 		Filer.close();
