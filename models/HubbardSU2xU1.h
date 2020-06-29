@@ -165,7 +165,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		stringstream ss;
 		ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
 		labellist[loc].push_back(ss.str());
-
+		
 		auto push_full = [&N_sites, &loc, &F, &P, &pushlist, &labellist, &boundary] (string xxxFull, string label,
 																					 const vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > &first,
 																					 const vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > &last,
@@ -226,25 +226,38 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {F[loc].Tp(0,Gloc), F[loc].Tm(0,Gloc)};
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Tp_ranges(N_sites);
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Tm_ranges(N_sites);
-			for (size_t i=0; i<N_sites; i++) {auto Gi = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i))); Tp_ranges[i] = F[i].Tp(0,Gi); Tm_ranges[i] = F[i].Tm(0,Gi);}
+			for (size_t i=0; i<N_sites; i++)
+			{auto Gi = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i))); Tp_ranges[i] = F[i].Tp(0,Gi); Tm_ranges[i] = F[i].Tm(0,Gi);}
 			
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Tm_ranges, Tp_ranges};
 			push_full("Vxyfull", "Vxyᵢⱼ", first, last, {0.5,0.5}, PROP::BOSONIC);
+		}
+		if (P.HAS("Gfull"))
+		{
+			auto Gloc = static_cast<SUB_LATTICE>(1);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {F[loc].Tp(0,Gloc), F[loc].Tm(0,Gloc)};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Tp_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Tm_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++)
+			{auto Gi = static_cast<SUB_LATTICE>(1); Tp_ranges[i] = F[i].Tp(0,Gi); Tm_ranges[i] = F[i].Tm(0,Gi);}
+			
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Tm_ranges, Tp_ranges};
+			push_full("Gfull", "Gᵢⱼ", first, last, {1.,1.}, PROP::BOSONIC);
 		}
 		if (P.HAS("VextFull"))
 		{
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {F[loc].n(0)};
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > n_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {n_ranges[i] = F[i].n(0);}
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {n_ranges};
-			push_full("VextFull", "Vextᵢⱼ", first, last, {1.}, PROP::BOSONIC);			
+			push_full("VextFull", "Vextᵢⱼ", first, last, {1.}, PROP::BOSONIC);
 		}
 		if (P.HAS("Jfull"))
 		{
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {F[loc].Sdag(0)};
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > S_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {S_ranges[i] = F[i].S(0);}
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {S_ranges};
-			push_full("Jfull", "Jᵢⱼ", first, last, {std::sqrt(3.)}, PROP::BOSONIC);			
-		}		
+			push_full("Jfull", "Jᵢⱼ", first, last, {std::sqrt(3.)}, PROP::BOSONIC);
+		}
 		if (P.HAS("Xfull"))
 		{
 			SiteOperatorQ<Symmetry_,Eigen::MatrixXd> PsiLloc = ((F[loc].ns() * F[loc].c()) * F[loc].sign());
@@ -258,7 +271,6 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > PsidagLran(N_sites); for(size_t i=0; i<N_sites; i++) {PsidagLran[i] = (F[i].cdag() * F[i].ns());}
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > PsidagRran(N_sites); for(size_t i=0; i<N_sites; i++) {PsidagRran[i] = (F[i].ns() * F[i].cdag());}
-			
 			
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {PsidagLloc,PsidagRloc,PsiLloc,PsiRloc};
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {PsiRran,PsiLran,PsidagRran,PsidagLran};
