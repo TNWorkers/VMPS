@@ -257,13 +257,16 @@ int main (int argc, char* argv[])
 	}
 	
 	// free fermions
-	SelfAdjointEigenSolver<MatrixXd> Eugen(-1.*hopping.matrix());
-	VectorXd occ = Eugen.eigenvalues().head(N/2);
-	VectorXd unocc = Eugen.eigenvalues().tail(L-N/2);
-	lout << "orbital energies occupied:" << endl << occ.transpose()  << endl;
-	lout << "orbital energies unoccupied:" << endl << unocc.transpose()  << endl << endl;
-	double E0 = 2.*occ.sum();
-	lout << setprecision(16) << "non-interacting fermions: E0=" << E0 << ", E0/L=" << E0/L << setprecision(6) << endl << endl;
+	if constexpr (MODEL::FAMILY == HUBBARD)
+	{
+		SelfAdjointEigenSolver<MatrixXd> Eugen(-1.*hopping.matrix());
+		VectorXd occ = Eugen.eigenvalues().head(N/2);
+		VectorXd unocc = Eugen.eigenvalues().tail(L-N/2);
+		lout << "orbital energies occupied:" << endl << occ.transpose()  << endl;
+		lout << "orbital energies unoccupied:" << endl << unocc.transpose()  << endl << endl;
+		double E0 = 2.*occ.sum();
+		lout << setprecision(16) << "non-interacting fermions: E0=" << E0 << ", E0/L=" << E0/L << setprecision(6) << endl << endl;
+	}
 	
 	//---------groundstate---------
 	if (!BETAPROP)
@@ -780,6 +783,7 @@ int main (int argc, char* argv[])
 		PsiT.max_Nsv = Dlim;
 		if (LOAD!="") lout << "preparing TDVP..." << endl;
 		TDVPPropagator<MODEL,MODEL::Symmetry,double,double,MODEL::StateXd> TDVPT(H,PsiT);
+		lout << PsiT.info() << endl;
 		
 		ofstream Filer(make_string(wd,"thermodynGC_",base,".dat"));
 		Filer << "#T\tc\te\tchi\ts" << endl;
@@ -807,12 +811,18 @@ int main (int argc, char* argv[])
 //				cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 			}
 		}
+		else
+		{
+			assert(betainit>=0.2);
+			betavals.push_back(betainit);
+			betasteps.push_back(0.1);
+		}
 		while (betavals[betavals.size()-1] < betamax)
 		{
 			betasteps.push_back(dbeta);
 			double beta_last = betavals[betavals.size()-1];
 			betavals.push_back(beta_last+dbeta);
-//			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 		}
 //		betavals.pop_back();
 //		betasteps.pop_back();
