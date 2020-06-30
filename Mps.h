@@ -20,7 +20,7 @@
 #include "MpsBoundaries.h"
 
 // Forward Declaration
-template<typename Symmetry, typename Scalar> class Mpo;
+ template<typename Symmetry, typename Scalar> class Mpo;
 
 /**
  * Matrix Product State with conserved quantum numbers (Abelian and non abelian symmetries).
