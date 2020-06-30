@@ -39,8 +39,9 @@ std::ostream& operator<< (std::ostream& s, GREEN_INTEGRATION GI)
 struct GreenPropagatorGlobal
 {
 	static double tmax;
+	static double damping (double tval) {return lorentz(tval);};
 	static double gauss (double tval) {return exp(-pow(2.*tval/tmax,2));};
-	static double loretz (double tval) {return exp(-tval/tmax);}; // not tested
+	static double lorentz (double tval) {return exp(-4.*tval/tmax);}; // not tested
 	
 //	static complex<double> interpolate (double tval) {return GlobalInterpol.evaluate(tval);};
 };
@@ -757,7 +758,7 @@ propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &
 	
 	Mps<Symmetry,complex<double>> Psi = OxPhi0;
 	Psi.eps_svd = tol_compr;
-	Psi.max_Nsv = max(Psi.calc_Dmax(),20ul);
+	Psi.max_Nsv = max(Psi.calc_Dmax(),min(100ul,lim_Nsv));
 	
 	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVPket(H,Psi);
 	EntropyObserver<Mps<Symmetry,complex<double>>> SobsKet(H.length(), Nt, CHOSEN_VERBOSITY, tol_DeltaS);
@@ -1319,7 +1320,7 @@ propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScala
 	{
 		Psi[i] = (i==Lcell)? Phi : OxPhi0[i]; // Phi = Psi[Lcell]
 		Psi[i].eps_svd = tol_compr;
-		Psi[i].max_Nsv = max(Psi[i].calc_Dmax(),20ul);
+		Psi[i].max_Nsv = max(Psi[i].calc_Dmax(),min(100ul,lim_Nsv));
 	}
 	
 	vector<TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>> TDVP(Lcell+1);
@@ -1778,7 +1779,7 @@ calc_intweights()
 	
 	if (GREENINT_CHOICE == DIRECT)
 	{
-		TimeIntegrator = SuperQuadrator<GAUSS_LEGENDRE>(GreenPropagatorGlobal::gauss,0.,tmax,Nt);
+		TimeIntegrator = SuperQuadrator<GAUSS_LEGENDRE>(GreenPropagatorGlobal::damping,0.,tmax,Nt);
 		tvals   = TimeIntegrator.get_abscissa();
 		weights = TimeIntegrator.get_weights();
 		tsteps  = TimeIntegrator.get_steps();
@@ -1982,7 +1983,7 @@ FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw)
 //				for (int it=0; it<tvals.rows(); ++it)
 //				{
 //					double tval = tvals(it);
-//					complex<double> Gval = exp(+1.i*wval*tval) * GreenPropagatorGlobal::gauss(tval) * Gtq(it,iq);
+//					complex<double> Gval = exp(+1.i*wval*tval) * GreenPropagatorGlobal::damping(tval) * Gtq(it,iq);
 //					Gtq_interp.insert(it,Gval);
 //				}
 //				Gwq(iw,iq) += Gtq_interp.integrate();
@@ -1993,7 +1994,7 @@ FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw)
 		for (int iq=0; iq<Nq; ++iq)
 		{
 			VectorXcd fvals = Gtq.col(iq);
-			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
+			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
 			Gwq.col(iq) = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);
 		}
 	}
@@ -2003,7 +2004,7 @@ FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw)
 		for (int iq=0; iq<Nq; ++iq)
 		{
 			VectorXcd fvals = Gtq.col(iq);
-			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
+			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
 			Gwq.col(iq) = Ooura::FT(tvals,fvals,h_ooura,wmin,wmax,Nw);
 		}
 	}
@@ -2025,7 +2026,7 @@ FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw)
 			for (int it=0; it<tvals.rows(); ++it)
 			{
 				double tval = tvals(it);
-				complex<double> Gval = GreenPropagatorGlobal::gauss(tval) * Gtq(it,iq);
+				complex<double> Gval = GreenPropagatorGlobal::damping(tval) * Gtq(it,iq);
 				Gtq_interp.insert(it,Gval);
 			}
 			G0q(iq) += Gtq_interp.integrate();
@@ -2082,7 +2083,7 @@ FTxx_tw (const MatrixXcd &Gtx, MatrixXcd &Gwx, VectorXcd &G0x, VectorXcd &Glocw)
 //				for (int it=0; it<tvals.rows(); ++it)
 //				{
 //					double tval = tvals(it);
-//					complex<double> Gval = exp(+1.i*wval*tval) * GreenPropagatorGlobal::gauss(tval) * Gtx(it,ix);
+//					complex<double> Gval = exp(+1.i*wval*tval) * GreenPropagatorGlobal::damping(tval) * Gtx(it,ix);
 //					Gtx_interp.insert(it,Gval);
 //				}
 //				Gwq(iw,ix) += Gtx_interp.integrate();
@@ -2093,7 +2094,7 @@ FTxx_tw (const MatrixXcd &Gtx, MatrixXcd &Gwx, VectorXcd &G0x, VectorXcd &Glocw)
 		for (int ix=0; ix<Nx; ++ix)
 		{
 			VectorXcd fvals = Gtx.col(ix);
-			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
+			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
 			Gwx.col(ix) = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);
 		}
 	}
@@ -2103,7 +2104,7 @@ FTxx_tw (const MatrixXcd &Gtx, MatrixXcd &Gwx, VectorXcd &G0x, VectorXcd &Glocw)
 		for (int ix=0; ix<Nx; ++ix)
 		{
 			VectorXcd fvals = Gtx.col(ix);
-			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
+			for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
 			Gwx.col(ix) = Ooura::FT(tvals,fvals,h_ooura,wmin,wmax,Nw);
 		}
 	}
@@ -2125,7 +2126,7 @@ FTxx_tw (const MatrixXcd &Gtx, MatrixXcd &Gwx, VectorXcd &G0x, VectorXcd &Glocw)
 			for (int it=0; it<tvals.rows(); ++it)
 			{
 				double tval = tvals(it);
-				complex<double> Gval = GreenPropagatorGlobal::gauss(tval) * Gtq(it,ix);
+				complex<double> Gval = GreenPropagatorGlobal::damping(tval) * Gtq(it,ix);
 				Gtx_interp.insert(it,Gval);
 			}
 			G0x(ix) += Gtx_interp.integrate();
@@ -2214,7 +2215,7 @@ FTcell_tw()
 //					for (int it=0; it<tvals.rows(); ++it)
 //					{
 //						double tval = tvals(it);
-//						complex<double> Gval = GreenPropagatorGlobal::gauss(tval) * GtqCell[i][j](it,iq);
+//						complex<double> Gval = GreenPropagatorGlobal::damping(tval) * GtqCell[i][j](it,iq);
 //						Gtq_interp.insert(it,Gval);
 //					}
 //					GwqCell[i][j](iw,iq) += Gtq_interp.integrate();
@@ -2225,7 +2226,7 @@ FTcell_tw()
 			for (int iq=0; iq<Nq; ++iq)
 			{
 				VectorXcd fvals = GtqCell[i][j].col(iq);
-				for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
+				for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
 				GwqCell[i][j].col(iq) = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);
 			}
 		}
@@ -2235,7 +2236,7 @@ FTcell_tw()
 			for (int iq=0; iq<Nq; ++iq)
 			{
 				VectorXcd fvals = GtqCell[i][j].col(iq);
-				for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
+				for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
 				GwqCell[i][j].col(iq) = Ooura::FT(tvals,fvals,h_ooura,wmin,wmax,Nw);
 			}
 		}
@@ -2259,7 +2260,7 @@ FTcell_tw()
 				for (int it=0; it<tvals.rows(); ++it)
 				{
 					double tval = tvals(it);
-					complex<double> Gval = GreenPropagatorGlobal::gauss(tval)* GtqCell[i][j](it,iq);
+					complex<double> Gval = GreenPropagatorGlobal::damping(tval)* GtqCell[i][j](it,iq);
 					Gtq_interp.insert(it,Gval);
 				}
 				G0qCell[i][j](iq) += Gtq_interp.integrate();
@@ -2327,7 +2328,7 @@ FTcellxx_tw()
 //					for (int it=0; it<tvals.rows(); ++it)
 //					{
 //						double tval = tvals(it);
-//						complex<double> Gval = GreenPropagatorGlobal::gauss(tval) * GtxCell[i][j](it,ix);
+//						complex<double> Gval = GreenPropagatorGlobal::damping(tval) * GtxCell[i][j](it,ix);
 //						Gtx_interp.insert(it,Gval);
 //					}
 //					GwxCell[i][j](iw,ix) += Gtx_interp.integrate();
@@ -2338,7 +2339,7 @@ FTcellxx_tw()
 			for (int ix=0; ix<Nx; ++ix)
 			{
 				VectorXcd fvals = GtxCell[i][j].col(ix);
-				for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
+				for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
 				GwxCell[i][j].col(ix) = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);
 			}
 		}
@@ -2348,7 +2349,7 @@ FTcellxx_tw()
 			for (int ix=0; ix<Nx; ++ix)
 			{
 				VectorXcd fvals = GtxCell[i][j].col(ix);
-				for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
+				for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
 				GwxCell[i][j].col(ix) = Ooura::FT(tvals,fvals,h_ooura,wmin,wmax,Nw);
 			}
 		}
@@ -2372,7 +2373,7 @@ FTcellxx_tw()
 				for (int it=0; it<tvals.rows(); ++it)
 				{
 					double tval = tvals(it);
-					complex<double> Gval = GreenPropagatorGlobal::gauss(tval)* GtxCell[i][j](it,ix);
+					complex<double> Gval = GreenPropagatorGlobal::damping(tval)* GtxCell[i][j](it,ix);
 					Gtx_interp.insert(it,Gval);
 				}
 				G0xCell[i][j](ix) += Gtx_interp.integrate();
@@ -2436,13 +2437,13 @@ FTloc_tw (const VectorXcd &Gloct_in, const ArrayXd &wvals)
 //		}
 		
 		VectorXcd fvals = Gloct_in;
-		for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
+		for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
 		Glocw_out = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);
 	}
 	else if (GREENINT_CHOICE == OOURA)
 	{
 		VectorXcd fvals = Gloct_in;
-		for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::gauss(tvals(it));
+		for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
 		Glocw_out = Ooura::FT(tvals,fvals,h_ooura,wmin,wmax,Nw);
 	}
 	
