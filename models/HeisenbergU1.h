@@ -164,7 +164,7 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 		ss2 << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
 		labellist[loc].push_back(ss1.str());
 		labellist[loc].push_back(ss2.str());
-
+		
 		auto push_full = [&N_sites, &loc, &B, &P, &pushlist, &labellist, &boundary] (string xxxFull, string label,
 																					 const vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > &first,
 																					 const vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > &last,
@@ -175,7 +175,7 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 			
 			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
 			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
-
+			
 			for (size_t j=0; j<first.size(); j++)
 			for (size_t h=0; h<R[loc].size(); ++h)
 			{
@@ -184,7 +184,6 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 				
 				if (range != 0)
 				{
-
 					vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > ops(range+1);
 					ops[0] = first[j];
 					for (size_t i=1; i<range; ++i)
@@ -200,7 +199,7 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 			ss << label << "(" << Geometry2D::hoppingInfo(Full) << ")";
 			labellist[loc].push_back(ss.str());
 		};
-				
+		
 		// Local terms: B, K and J⟂
 		
 		param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", orbitals, loc%Lcell);
@@ -217,7 +216,7 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 		Eigen::ArrayXXd Dyperp_array = B[loc].ZeroHopping();
 		
 		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jperp.a, Jperp.a, Bz.a, mu_array, Kz.a));
-        pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
+		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
 		if (P.HAS("Jfull"))
 		{
@@ -231,27 +230,29 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 			push_full("Jfull", "Jᵢⱼ", first, last, {0.5,0.5,1.0});
 			continue;
 		}
-
-		// Nearest-neighbour terms: J	
+		
+		// Nearest-neighbour terms: J
 		param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
 		labellist[loc].push_back(Jpara.label);
-			
+		
 		if (loc < N_sites-1 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa < orbitals; ++alfa)
 			for (std::size_t beta=0; beta < next_orbitals; ++beta)
 			{
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SP,alfa), B[lp1].Scomp(SM,beta)), 0.5*Jpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SM,alfa), B[lp1].Scomp(SP,beta)), 0.5*Jpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SZ,beta)),     Jpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, 
+				                   Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SP,alfa), B[lp1].Scomp(SM,beta)), 0.5*Jpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, 
+				                   Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SM,alfa), B[lp1].Scomp(SP,beta)), 0.5*Jpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, 
+				                   Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SZ,beta)),     Jpara(alfa,beta)));
 			}
 		}
-			
+		
 		// Next-nearest-neighbour terms: J
-			
 		param2d Jprime = P.fill_array2d<double>("Jprime", "Jprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
 		labellist[loc].push_back(Jprime.label);
-			
+		
 		if (loc < N_sites-2 or !static_cast<bool>(boundary))
 		{
 			for (std::size_t alfa=0; alfa < orbitals; ++alfa)

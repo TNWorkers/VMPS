@@ -1,8 +1,7 @@
-//#ifdef BLAS
-//#include "util/LapackManager.h"
-//#pragma message("LapackManager")
-//#endif
+#ifdef BLAS
 #include "util/LapackManager.h"
+#pragma message("LapackManager")
+#endif
 
 #define DEBUG_VERBOSITY 0
 

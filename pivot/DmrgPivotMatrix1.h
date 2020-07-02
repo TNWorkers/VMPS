@@ -135,32 +135,18 @@ void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 //	}
 	
 	// project out unwanted states (e.g. to get lower spectrum)
-	// warning: not implemented for SU(2)!
 	for (size_t n=0; n<H.A0.size(); ++n)
 	{
-		Scalar overlap = 0;
+		Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > Ptmp;
+		contract_L(H.PL[n].adjoint(), H.A0[n], Vin.data, H.qloc, Ptmp);
+		Scalar overlap = H.PR[n].adjoint().contract(Ptmp).trace();
+		// Note: Adjoints needed because we need <E0|Psi>, not <Psi|E0>
+		cout << "overlap=" << overlap << endl;
 		
 		for (size_t s=0; s<Vout.data.size(); ++s)
 		{
-			overlap += (H.PL[n].adjoint() * Vin.data[s] * H.PR[n].adjoint() * H.A0[n][s].adjoint()).block[0].trace();
-		}
-		
-		for (size_t s=0; s<Vout.data.size(); ++s)
-		for (size_t qPL=0; qPL<H.PL[n].dim; ++qPL)
-		for (size_t qPR=0; qPR<H.PR[n].dim; ++qPR)
-		{
-			qarray2<Symmetry::Nq> qupleA = {H.PL[n].in[qPL], H.PR[n].out[qPR]};
-			auto qA = Vout.data[s].dict.find(qupleA);
-		
-			qarray2<Symmetry::Nq> qupleA0 = {H.PL[n].out[qPL], H.PR[n].in[qPR]};
-			auto qA0 = H.A0[n][s].dict.find(qupleA0);
-		
-			if (H.PL[n].out[qPL] + H.qloc[s] == H.PR[n].in[qPR] and
-				qA0 != H.A0[n][s].dict.end() and
-				qA != Vout.data[s].dict.end())
-			{
-				Vout.data[s].block[qA->second] += overlap * H.Epenalty * H.PL[n].block[qPL] * H.A0[n][s].block[qA0->second] * H.PR[n].block[qPR];
-			}
+			Vout.data[s] += overlap * H.Epenalty * H.PL[n] * H.A0[n][s] * H.PR[n];
+			cout << Vout.data[s].print() << endl;
 		}
 	}
 }

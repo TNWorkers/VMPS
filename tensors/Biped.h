@@ -184,7 +184,7 @@ public:
 	Biped<Symmetry,MatrixType_> contract(const Biped<Symmetry,MatrixType_> &A, const contract::MODE MODE = contract::MODE::UNITY) const;
 	///@}
 	
-	/**Takes the trace of the Biped. Only useful if this Biped is really a matrix from symmetry perspektive (q_in = q_out in all blocks).*/
+	/**Takes the trace of the Biped. Only useful if this Biped is really a matrix from symmetry perspective (q_in = q_out in all blocks).*/
 	Scalar trace() const;
 
 	template<typename expScalar>

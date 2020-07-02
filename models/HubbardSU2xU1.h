@@ -232,18 +232,6 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Tm_ranges, Tp_ranges};
 			push_full("Vxyfull", "Vxyᵢⱼ", first, last, {0.5,0.5}, PROP::BOSONIC);
 		}
-		if (P.HAS("Gfull"))
-		{
-			auto Gloc = static_cast<SUB_LATTICE>(1);
-			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {F[loc].Tp(0,Gloc), F[loc].Tm(0,Gloc)};
-			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Tp_ranges(N_sites);
-			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Tm_ranges(N_sites);
-			for (size_t i=0; i<N_sites; i++)
-			{auto Gi = static_cast<SUB_LATTICE>(1); Tp_ranges[i] = F[i].Tp(0,Gi); Tm_ranges[i] = F[i].Tm(0,Gi);}
-			
-			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Tm_ranges, Tp_ranges};
-			push_full("Gfull", "Gᵢⱼ", first, last, {1.,1.}, PROP::BOSONIC);
-		}
 		if (P.HAS("VextFull"))
 		{
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {F[loc].n(0)};

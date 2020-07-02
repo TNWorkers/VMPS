@@ -12,7 +12,6 @@
 #include "LanczosSolver.h" // from ALGS
 #include "Stopwatch.h" // from TOOLS
 
-
 #include "Mps.h"
 #include "DmrgLinearAlgebra.h" // for avg()
 #include "pivot/DmrgPivotMatrix0.h"
@@ -83,7 +82,7 @@ public:
 	 * \note This algorithm is quite slow for challenging problems.
 	 */	
 	void iteration_two  (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
-						 double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead);
+	                     double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead);
 	///\}
 
 	/**Returns the current error of the eigenvalue while the sweep process.*/
@@ -437,27 +436,14 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	}
 	
 	// build environments for projected-out states
+	// convention: Psi0 ist ket, current Psi is bra
 	for (size_t n=0; n<Psi0.size(); ++n)
 	{
 		Heff[0].PL[n].setVacuum();
-		for (size_t l=1; l<N_sites; ++l)
-		{
-			Heff[l].PL[n] = Vout.state.A[l-1][0].adjoint() * Heff[l-1].PL[n] * Psi0[n].A[l-1][0];
-			for (size_t s=1; s<Vout.state.locBasis(l-1).size(); ++s)
-			{
-				Heff[l].PL[n] += Vout.state.A[l-1][s].adjoint() * Heff[l-1].PL[n] * Psi0[n].A[l-1][s];
-			}
-		}
+		for (size_t l=1; l<N_sites; ++l) build_PL(H,Vout,l);
 		
 		Heff[N_sites-1].PR[n].setTarget(Vout.state.Qtot);
-		for (int l=N_sites-2; l>=0; --l)
-		{
-			Heff[l].PR[n] = Psi0[n].A[l+1][0] * Heff[l+1].PR[n] * Vout.state.A[l+1][0].adjoint();
-			for (size_t s=1; s<Vout.state.locBasis(l+1).size(); ++s)
-			{
-				Heff[l].PR[n] += Psi0[n].A[l+1][s] * Heff[l+1].PR[n] * Vout.state.A[l+1][s].adjoint();
-			}
-		}
+		for (int l=N_sites-2; l>=0; --l) build_PR(H,Vout,l);
 	}
 	
 	// initial energy
@@ -473,8 +459,8 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		{
 			assert(Rtmp.dim == 1 and
 			Rtmp.block[0][0][0].rows() == 1 and
-			       Rtmp.block[0][0][0].cols() == 1 and
-			       "Result of contraction <ψ|H|ψ> in DmrgSolver::prepare is not a scalar!");
+			Rtmp.block[0][0][0].cols() == 1 and
+			"Result of contraction <ψ|H|ψ> in DmrgSolver::prepare is not a scalar!");
 			Eold = isReal(Rtmp.block[0][0][0](0,0));
 			//Eold = 0;
 		}
@@ -1024,7 +1010,7 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 template<typename Symmetry, typename MpHamiltonian, typename Scalar>
 void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
-			   double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead)
+               double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead)
 {
 	//*********************************************************LanczosStep******************************************************
 	double Ei = Vout.energy;
@@ -1032,17 +1018,30 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	Stopwatch<> OheadTimer;
 	Eigenstate<PivotVector<Symmetry,Scalar> > g;
 	g.state = PivotVector<Symmetry,Scalar>(Vout.state.A[loc1()], Vout.state.locBasis(loc1()), 
-										   Vout.state.A[loc2()], Vout.state.locBasis(loc2()),
-										   Vout.state.QoutTop[loc1()], Vout.state.QoutBot[loc1()]);	
+	                                       Vout.state.A[loc2()], Vout.state.locBasis(loc2()),
+	                                       Vout.state.QoutTop[loc1()], Vout.state.QoutBot[loc1()]);
 	
 	PivotMatrix2<Symmetry,Scalar,Scalar> Heff2(Heff[loc1()].L, Heff[loc2()].R, 
-											   H.W[loc1()], H.W[loc2()], 
-											   H.locBasis(loc1()), H.locBasis(loc2()), 
-											   H.opBasis (loc1()), H.opBasis (loc2()));
+	                                           H.W[loc1()], H.W[loc2()], 
+	                                           H.locBasis(loc1()), H.locBasis(loc2()), 
+	                                           H.opBasis (loc1()), H.opBasis (loc2()));
 	
 	precalc_blockStructure (Heff2.L, g.state.data, Heff2.W12, Heff2.W34, g.state.data, Heff2.R, 
 	                        H.locBasis(loc1()), H.locBasis(loc2()), H.opBasis(loc1()), H.opBasis(loc2()), 
 	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
+	
+	Heff2.Epenalty = Epenalty;
+	Heff2.PL.resize(Psi0.size());
+	Heff2.PR.resize(Psi0.size());
+	Heff2.A0.resize(Psi0.size());
+	for (int n=0; n<Psi0.size(); ++n)
+	{
+		Heff2.PL[n] = Heff[loc1()].PL[n];
+		Heff2.PR[n] = Heff[loc2()].PR[n];
+		Heff2.A0[n] = PivotVector<Symmetry,Scalar>(Psi0[n].A[loc1()], Psi0[n].locBasis(loc1()), 
+		                                           Psi0[n].A[loc2()], Psi0[n].locBasis(loc2()),
+		                                           Psi0[n].QoutTop[loc1()], Psi0[n].QoutBot[loc1()]).data;
+	}
 	time_overhead += OheadTimer.time();
 	
 	Stopwatch<> LanczosTimer;
@@ -1064,7 +1063,7 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	{
 		g.state.data[s] = g.state.data[s].cleaned();
 	}
-
+	
 	DeltaEopt = Ei-Vout.energy;
 	//**************************************************************************************************************************
 	
@@ -1073,7 +1072,7 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	Stopwatch<> SweepTimer;
 	Vout.state.sweepStep2(SweepStat.CURRENT_DIRECTION, loc1(), g.state.data);
 	time_sweep += SweepTimer.time();
-
+	
 	Stopwatch<> LRtimer;
 	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
 	(SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
@@ -1331,12 +1330,7 @@ build_PL (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 {
 	for (size_t n=0; n<Psi0.size(); ++n)
 	{
-		Heff[loc].PL[n] = Vout.state.A[loc-1][0].adjoint() * Heff[loc-1].PL[n] * Psi0[n].A[loc-1][0];
-		
-		for (size_t s=1; s<Vout.state.locBasis(loc-1).size(); ++s)
-		{
-			Heff[loc].PL[n] += Vout.state.A[loc-1][s].adjoint() * Heff[loc-1].PL[n] * Psi0[n].A[loc-1][s];
-		}
+		contract_L(Heff[loc-1].PL[n], Vout.state.A[loc-1], Psi0[n].A[loc-1], H.locBasis(loc-1), Heff[loc].PL[n]);
 	}
 }
 
@@ -1346,12 +1340,7 @@ build_PR (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 {
 	for (size_t n=0; n<Psi0.size(); ++n)
 	{
-		Heff[loc].PR[n] = Psi0[n].A[loc+1][0] * Heff[loc+1].PR[n] * Vout.state.A[loc+1][0].adjoint();
-		
-		for (size_t s=1; s<Vout.state.locBasis(loc+1).size(); ++s)
-		{
-			Heff[loc].PR[n] += Psi0[n].A[loc+1][s] * Heff[loc+1].PR[n] * Vout.state.A[loc+1][s].adjoint();
-		}
+		contract_R(Heff[loc+1].PR[n], Vout.state.A[loc+1], Psi0[n].A[loc+1], H.locBasis(loc+1),Heff[loc].PR[n]);
 	}
 }
 

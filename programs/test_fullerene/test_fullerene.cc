@@ -34,11 +34,8 @@ Logger lout;
 #include "StringStuff.h"
 #include "Stopwatch.h"
 
-#include <Eigen/Core>
-using namespace Eigen;
-#include <unsupported/Eigen/FFT>
-
 #include "solvers/DmrgSolver.h"
+#include "solvers/MpsCompressor.h"
 #include "DmrgLinearAlgebra.h"
 #include "models/ParamCollection.h"
 #include "EigenFiles.h"
@@ -61,8 +58,8 @@ typedef VMPS::HeisenbergSU2 MODEL;
 //#include "models/DoubleHeisenbergU1.h"
 //typedef VMPS::DoubleHeisenbergU1 MODELC;
 
-#include "models/DoubleHeisenbergSU2.h"
-typedef VMPS::DoubleHeisenbergSU2 MODELC;
+//#include "models/DoubleHeisenbergSU2.h"
+//typedef VMPS::DoubleHeisenbergSU2 MODELC;
 
 ArrayXXd permute_random (const ArrayXXd &A)
 {
@@ -100,7 +97,6 @@ int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
 	int L = args.get<int>("L",60);
-//	assert(L==6 or L==12 or L==20 or L==60);
 	double t = args.get<double>("t",1.);
 	double U = args.get<double>("U",0.);
 	int N = args.get<int>("N",L);
@@ -129,6 +125,7 @@ int main (int argc, char* argv[])
 	string LOAD = args.get<string>("LOAD","");
 	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
 	bool CALC_GS = args.get<int>("CALC_GS",true);
+	bool CALC_NEUTRAL_GAP = args.get<bool>("CALC_NEUTRAL_GAP",false);
 	bool CALC_VAR = args.get<int>("CALC_VAR",true);
 	int dmax = args.get<int>("dmax",3);
 	int dmin = args.get<int>("dmin",1);
@@ -277,14 +274,14 @@ int main (int argc, char* argv[])
 		{
 			params.push_back({"U",U});
 			params.push_back({"tFull",hopping});
-			Q = {int(2*S+1),N};
 		}
 		else
 		{
 			params.push_back({"Jfull",hopping});
 			params.push_back({"D",D});
-			Q = {int(2*S+1)};
 		}
+		Q = MODEL::singlet(N);
+		lout << "Q=" << Q << endl;
 		params.push_back({"maxPower",maxPower});
 		
 		MODEL H(size_t(L),params);
@@ -310,6 +307,62 @@ int main (int argc, char* argv[])
 			DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
 		}
 		
+		if (CALC_NEUTRAL_GAP)
+		{
+			Eigenstate<MODEL::StateXd> excited1;
+			MODEL::Solver DMRG2(VERB);
+			DMRG2.userSetGlobParam();
+			DMRG2.userSetDynParam();
+			DMRG2.GlobParam = GlobParam;
+			DMRG2.DynParam = DynParam;
+			DMRG2.push_back(g.state);
+			DMRG2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND);
+			lout << "excited.energy1=" << setprecision(16) << excited1.energy << endl;
+			double overlap = dot(g.state,excited1.state);
+			
+			double SdagS = 0;
+			for (int i=0; i<L; ++i)
+			for (int j=0; j<L; ++j)
+			{
+				SdagS += avg(excited1.state, H.SdagS(i,j), excited1.state);
+			}
+			lout << "SdagS=" << SdagS << endl;
+			
+//			excited1.state /= sqrt(dot(excited1.state,excited1.state));
+			
+//			lout << "dot(0,0)=" << dot(g.state,g.state) << endl;
+//			lout << "dot(0,1)=" << dot(g.state,excited1.state) << endl;
+//			lout << "dot(1,1)=" << dot(excited1.state,excited1.state) << endl;
+//			
+////			lout << "E=" << avg(excited1.state, H, excited1.state) << endl;
+//			
+//			MpsCompressor<MODEL::Symmetry,double,double> Compi(VERB);
+//			Eigenstate<MODEL::StateXd> excited1better;
+//			Compi.lincomboCompress({excited1.state, g.state}, {1.,-overlap}, excited1better.state, excited1.state, 100);
+//			lout << "avg(excited1better.state, H, excited1better.state)=" << avg(excited1better.state, H, excited1better.state) << endl;
+//			
+//			lout << "dot(0,0)=" << dot(g.state,g.state) << endl;
+//			lout << "dot(0,1)=" << dot(g.state,excited1better.state) << endl;
+//			lout << "dot(1,1)=" << dot(excited1better.state,excited1better.state) << endl;
+//			
+//			MODEL::Solver DMRG3(VERB);
+//			DMRG3.userSetGlobParam();
+//			DMRG3.userSetDynParam();
+//			DMRG3.GlobParam = GlobParam;
+//			DMRG3.DynParam = DynParam;
+//			DMRG3.push_back(g.state);
+//			DMRG3.edgeState(H, excited1better, Q, LANCZOS::EDGE::GROUND, true);
+			
+//			Eigenstate<MODEL::StateXd> excited2;
+//			DMRG.push_back(excited1.state);
+//			DMRG.edgeState(H, excited2, Q, LANCZOS::EDGE::GROUND);
+//			lout << "excited.energy2=" << setprecision(16) << excited1.energy << endl;
+//			
+//			Eigenstate<MODEL::StateXd> excited3;
+//			DMRG.push_back(excited2.state);
+//			DMRG.edgeState(H, excited3, Q, LANCZOS::EDGE::GROUND);
+//			lout << "excited.energy3=" << setprecision(16) << excited1.energy << endl;
+		}
 		if constexpr (MODEL::FAMILY == HEISENBERG)
 		{
 			if (CALC_CORR)
@@ -353,7 +406,9 @@ int main (int argc, char* argv[])
 						{
 							lout << setprecision(16) << "i=" << i << ", j=" << j << ", d=" << d << ", SdagS=" << val << setprecision(6) << endl;
 							CorrFiler << setprecision(16) << i << "\t" << j << "\t" << val << setprecision(6) << endl;
+							CorrFiler.flush();
 							CorrFilerAll << setprecision(16) << i << "\t" << j << "\t" << d << "\t" << val << setprecision(6) << endl;
+							CorrFilerAll.flush();
 						}
 					}
 					
@@ -374,14 +429,11 @@ int main (int argc, char* argv[])
 				lout << setprecision(16) << "varE=" << abs(avg(g.state,H,H,g.state)-pow(E,2))/L << setprecision(6) << endl;
 				lout << Timer.info("varE") << endl;
 				
-				auto HmE = H;
-				double factor = args.get<double>("factor",1.);
-				double offset = args.get<double>("offset",0.);
-				HmE.scale(factor,offset);
-				lout << "scale test: " << avg(g.state,HmE,g.state) << "\t" << factor*E+offset << "\t" << pow(factor,L)*E+pow(offset,L) << endl;
-//				HmE.scale(1.,-E/pow(2.^L));
-//				lout << "varE scaled=" << abs(avg(g.state,HmE,HmE,g.state))/L << endl;
-//				lout << Timer.info("varE scaled") << endl;
+//				auto HmE = H;
+//				double factor = args.get<double>("factor",1.);
+//				double offset = args.get<double>("offset",0.);
+//				HmE.scale(factor,offset);
+//				lout << "scale test: " << avg(g.state,HmE,g.state) << "\t" << factor*E+offset << "\t" << pow(factor,L)*E+pow(offset,L) << endl;
 			}
 			
 			//----density of states----
@@ -824,6 +876,7 @@ int main (int argc, char* argv[])
 			betavals.push_back(beta_last+dbeta);
 			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 		}
+		cout << endl;
 //		betavals.pop_back();
 //		betasteps.pop_back();
 		
@@ -964,6 +1017,7 @@ int main (int argc, char* argv[])
 				      << chivec[i-1] << "\t" 
 				      << svec[i-1] 
 				      << setprecision(6) << endl;
+				Filer.flush();
 			}
 			
 			lout << FullStepTimer.info("full step") << endl;

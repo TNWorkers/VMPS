@@ -112,7 +112,7 @@ public:
 	///\}
 	
 	void lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar> &factors, Mps<Symmetry,Scalar> &Vout, 
-	                       Mps<Symmetry,Scalar> Vguess, size_t Dcutoff_input, double tol=1e-4, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
+	                       const Mps<Symmetry,Scalar> &Vguess, size_t Dcutoff_input, double tol=1e-4, size_t max_halfsweeps=40, size_t min_halfsweeps=1);
 	
 private:
 	
@@ -625,7 +625,7 @@ build_R (size_t loc, const Mps<Symmetry,Scalar> &Vbra, const Mps<Symmetry,Scalar
 template<typename Symmetry, typename Scalar, typename MpoScalar>
 void MpsCompressor<Symmetry,Scalar,MpoScalar>::
 lincomboCompress (const vector<Mps<Symmetry,Scalar> > &Vin, const vector<Scalar> &factors, Mps<Symmetry,Scalar> &Vout, 
-                  Mps<Symmetry,Scalar> Vguess, size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
+                  const Mps<Symmetry,Scalar> &Vguess, size_t Dcutoff_input, double tol_input, size_t max_halfsweeps, size_t min_halfsweeps)
 {
 	Stopwatch<> Chronos;
 	N_sites = Vin[0].length();

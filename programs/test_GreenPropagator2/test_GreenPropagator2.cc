@@ -1,3 +1,8 @@
+#ifdef BLAS
+#include "util/LapackManager.h"
+#pragma message("LapackManager")
+#endif
+
 #define LANCZOS_MAX_ITERATIONS 1e2
 
 #define USE_HDF5_STORAGE
@@ -18,7 +23,6 @@ using namespace std;
 
 #include "Logger.h"
 Logger lout;
-#include "util/LapackManager.h"
 
 #include "StringStuff.h"
 #include "Stopwatch.h"
