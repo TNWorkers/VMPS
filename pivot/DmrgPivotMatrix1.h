@@ -24,7 +24,7 @@ struct PivotMatrix1
 	// stuff for excited states
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PL; // PL[n]
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PR; // PL[n]
-	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0; // A0[n][s]
+	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0proj; // A0proj[n][s]
 	double Epenalty = 0;
 	
 	template<typename OtherScalar>
@@ -135,18 +135,26 @@ void OxV (const PivotMatrix1<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 //	}
 	
 	// project out unwanted states (e.g. to get lower spectrum)
-	for (size_t n=0; n<H.A0.size(); ++n)
+	for (size_t n=0; n<H.A0proj.size(); ++n)
 	{
-		Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > Ptmp;
-		contract_L(H.PL[n].adjoint(), H.A0[n], Vin.data, H.qloc, Ptmp);
-		Scalar overlap = H.PR[n].adjoint().contract(Ptmp).trace();
-		// Note: Adjoints needed because we need <E0|Psi>, not <Psi|E0>
-		cout << "overlap=" << overlap << endl;
-		
-		for (size_t s=0; s<Vout.data.size(); ++s)
+		Scalar overlap = 0;
+		for (size_t s=0; s<H.A0proj[n].size(); ++s)
 		{
-			Vout.data[s] += overlap * H.Epenalty * H.PL[n] * H.A0[n][s] * H.PR[n];
-			cout << Vout.data[s].print() << endl;
+			// Note: Adjoint needed because we need <E0|Psi>, not <Psi|E0>
+			overlap += H.A0proj[n][s].adjoint().contract(Vin.data[s]).trace();
+		}
+//		cout << "overlap=" << overlap << endl;
+		
+		for (size_t s=0; s<H.A0proj[n].size(); ++s)
+		for (size_t q=0; q<H.A0proj[n][s].dim; ++q)
+		{
+			qarray2<Symmetry::Nq> cmp = {H.A0proj[n][s].in[q], H.A0proj[n][s].out[q]};
+			auto qA = Vout.data[s].dict.find(cmp);
+//			assert(qA != Vout.data[s].dict.end() and "Error in HxV(PivotMatrix1,PivotVector): projected block not found!");
+			if (qA != Vout.data[s].dict.end() and H.A0proj[n][s].block[q].size() != 0)
+			{
+				Vout.data[s].block[qA->second] += H.Epenalty * overlap * H.A0proj[n][s].block[q];
+			}
 		}
 	}
 }

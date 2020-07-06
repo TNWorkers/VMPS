@@ -40,7 +40,7 @@ struct PivotMatrix2
 	// stuff for excited states
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PL; // PL[n]
 	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > PR; // PL[n]
-	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0; // A0[n][s]
+	vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0proj; // A0proj[n][s]
 	double Epenalty = 0;
 	
 	vector<std::array<size_t,2> >           qlhs;
@@ -122,34 +122,27 @@ void OxV (const PivotMatrix2<Symmetry,Scalar,MpoScalar> &H, const PivotVector<Sy
 	}
 	
 	// project out unwanted states (e.g. to get lower spectrum)
-	for (size_t n=0; n<H.A0.size(); ++n)
+	for (size_t n=0; n<H.A0proj.size(); ++n)
 	{
-		//----variant 1:----
-//		auto tensor_basis = Symmetry::tensorProd(H.qloc12,H.qloc34);
-//		vector<qarray<Symmetry::Nq> > qloc(tensor_basis.size());
-//		for (int q=0; q<tensor_basis.size(); ++q)
-//		{
-//			qloc[q] = get<4>(tensor_basis[q]);
-//		}
-//		// Note: Adjoints needed because we need <E0|Psi>, not <Psi|E0>
-//		Biped<Symmetry,Eigen::Matrix<Scalar,Dynamic,Dynamic> > Ptmp;
-//		contract_L(H.PL[n].adjoint(), H.A0[n], Vin.data, qloc, Ptmp);
-//		cout << "contract_L done!" << endl;
-//		Scalar overlap = Ptmp.contract(H.PR[n].adjoint()).trace();
-		
-		//----variant 2:----
-		PivotOverlap2<Symmetry,Scalar> Env2(H.PL[n].adjoint(), H.PR[n].adjoint(), H.qloc12, H.qloc34);
-		PivotVector<Symmetry,Scalar> PivotPVP = Vin; PivotPVP.setZero();
-		LRxV(Env2, Vin, PivotPVP);
-		PivotVector<Symmetry,Scalar> PivotA0(H.A0[n]);
-		for (size_t s=0; s<PivotPVP.data.size(); ++s) PivotPVP.data[s] = PivotPVP.data[s].cleaned();
-		for (size_t s=0; s<PivotA0.data.size(); ++s) PivotA0.data[s] = PivotA0.data[s].cleaned();
-		Scalar overlap = dot(PivotA0,PivotPVP);
-		
-		for (size_t s=0; s<Vout.data.size(); ++s)
+		Scalar overlap = 0;
+		for (size_t s=0; s<H.A0proj[n].size(); ++s)
 		{
-			Vout.data[s] += overlap * H.Epenalty * H.PL[n] * H.A0[n][s] * H.PR[n];
-			Vout.data[s] = Vout.data[s].cleaned();
+			// Note: Adjoint needed because we need <E0|Psi>, not <Psi|E0>
+			overlap += H.A0proj[n][s].adjoint().contract(Vin.data[s]).trace();
+		}
+//		cout << "overlap=" << overlap << endl;
+		
+		for (size_t s=0; s<H.A0proj[n].size(); ++s)
+		for (size_t q=0; q<H.A0proj[n][s].dim; ++q)
+		{
+			qarray2<Symmetry::Nq> cmp = {H.A0proj[n][s].in[q], H.A0proj[n][s].out[q]};
+			auto qA = Vout.data[s].dict.find(cmp);
+//			assert(qA != Vout.data[s].dict.end() and "Error in HxV(PivotMatrix1,PivotVector): projected block not found!");
+			
+			if (qA != Vout.data[s].dict.end() and H.A0proj[n][s].block[q].size() != 0)
+			{
+				Vout.data[s].block[qA->second] += H.Epenalty * overlap * H.A0proj[n][s].block[q];
+			}
 		}
 	}
 }

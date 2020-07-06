@@ -1295,6 +1295,8 @@ compress(const double tolerance)
         return false;
     };
     std::size_t counter = 0;
+//    int iup = 0;
+//    ofstream Filer(make_string("compr_L=",N_sites,".dat"));
     while(any_update(updated_bond))
     {
         bool change = false;
@@ -1356,7 +1358,12 @@ compress(const double tolerance)
                 updated_bond[loc] = false;
             }
         }
+        auto [average_auxdim_final,maximum_auxdim_final] = auxdim_infos();
+//        Filer << iup << "\t" << average_auxdim_final/average_auxdim_initial << endl;
+//        cout << "iup=" << iup << " compression=" << average_auxdim_final/average_auxdim_initial << endl;
+//        ++iup;
     }
+//    Filer.close();
     auto [average_auxdim_final,maximum_auxdim_final] = auxdim_infos();
     int compr_rate = (int)std::round(100*(1-average_auxdim_final/average_auxdim_initial));
     calc(1);

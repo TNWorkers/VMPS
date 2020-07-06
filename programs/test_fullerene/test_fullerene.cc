@@ -189,7 +189,6 @@ int main (int argc, char* argv[])
 	{
 		base += make_string("_Ly=",Ly,"_dbeta=",dbeta,"_tol=",tol_beta_compr,"_Dlim=",Dlim);
 	}
-	lout.set(base+".log",wd+"log");
 	
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
 	
@@ -197,11 +196,14 @@ int main (int argc, char* argv[])
 	DMRG::CONTROL::GLOB GlobParam;
 	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",1ul);
 	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",100ul);
-	GlobParam.Dinit = args.get<size_t>("Dinit",2ul);
+	GlobParam.Dinit = args.get<size_t>("Dinit",100ul);
 	GlobParam.Qinit = args.get<size_t>("Qinit",6ul);
 	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
 	GlobParam.CALC_S_ON_EXIT = false;
 	GlobParam.Dlimit = args.get<size_t>("Dlimit",1000ul); // for groundstate
+	if (!BETAPROP) base += make_string("_Dlimit=",GlobParam.Dlimit);
+	
+	lout.set(base+".log",wd+"log");
 	
 	// dyn. params
 	DMRG::CONTROL::DYN  DynParam;
@@ -309,6 +311,7 @@ int main (int argc, char* argv[])
 		
 		if (CALC_NEUTRAL_GAP)
 		{
+			GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_excited_",base);
 			Eigenstate<MODEL::StateXd> excited1;
 			MODEL::Solver DMRG2(VERB);
 			DMRG2.userSetGlobParam();
@@ -317,51 +320,8 @@ int main (int argc, char* argv[])
 			DMRG2.DynParam = DynParam;
 			DMRG2.push_back(g.state);
 			DMRG2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND);
-			lout << "excited.energy1=" << setprecision(16) << excited1.energy << endl;
+			lout << "excited1.energy=" << setprecision(16) << excited1.energy << endl;
 			double overlap = dot(g.state,excited1.state);
-			
-			double SdagS = 0;
-			for (int i=0; i<L; ++i)
-			for (int j=0; j<L; ++j)
-			{
-				SdagS += avg(excited1.state, H.SdagS(i,j), excited1.state);
-			}
-			lout << "SdagS=" << SdagS << endl;
-			
-//			excited1.state /= sqrt(dot(excited1.state,excited1.state));
-			
-//			lout << "dot(0,0)=" << dot(g.state,g.state) << endl;
-//			lout << "dot(0,1)=" << dot(g.state,excited1.state) << endl;
-//			lout << "dot(1,1)=" << dot(excited1.state,excited1.state) << endl;
-//			
-////			lout << "E=" << avg(excited1.state, H, excited1.state) << endl;
-//			
-//			MpsCompressor<MODEL::Symmetry,double,double> Compi(VERB);
-//			Eigenstate<MODEL::StateXd> excited1better;
-//			Compi.lincomboCompress({excited1.state, g.state}, {1.,-overlap}, excited1better.state, excited1.state, 100);
-//			lout << "avg(excited1better.state, H, excited1better.state)=" << avg(excited1better.state, H, excited1better.state) << endl;
-//			
-//			lout << "dot(0,0)=" << dot(g.state,g.state) << endl;
-//			lout << "dot(0,1)=" << dot(g.state,excited1better.state) << endl;
-//			lout << "dot(1,1)=" << dot(excited1better.state,excited1better.state) << endl;
-//			
-//			MODEL::Solver DMRG3(VERB);
-//			DMRG3.userSetGlobParam();
-//			DMRG3.userSetDynParam();
-//			DMRG3.GlobParam = GlobParam;
-//			DMRG3.DynParam = DynParam;
-//			DMRG3.push_back(g.state);
-//			DMRG3.edgeState(H, excited1better, Q, LANCZOS::EDGE::GROUND, true);
-			
-//			Eigenstate<MODEL::StateXd> excited2;
-//			DMRG.push_back(excited1.state);
-//			DMRG.edgeState(H, excited2, Q, LANCZOS::EDGE::GROUND);
-//			lout << "excited.energy2=" << setprecision(16) << excited1.energy << endl;
-//			
-//			Eigenstate<MODEL::StateXd> excited3;
-//			DMRG.push_back(excited2.state);
-//			DMRG.edgeState(H, excited3, Q, LANCZOS::EDGE::GROUND);
-//			lout << "excited.energy3=" << setprecision(16) << excited1.energy << endl;
 		}
 		if constexpr (MODEL::FAMILY == HEISENBERG)
 		{
@@ -851,8 +811,8 @@ int main (int argc, char* argv[])
 		
 		if (betainit == 0.)
 		{
-			betasteps.push_back(0.01);
 			betavals.push_back(0.01);
+			betasteps.push_back(0.01);
 //			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 			
 			for (int i=1; i<20; ++i)
@@ -866,17 +826,19 @@ int main (int argc, char* argv[])
 		else
 		{
 			assert(betainit>=0.2);
-			betavals.push_back(betainit);
-			betasteps.push_back(0.1);
+			betavals.push_back(betainit+dbeta);
+			betasteps.push_back(dbeta);
+			lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 		}
+		
 		while (betavals[betavals.size()-1] < betamax)
 		{
 			betasteps.push_back(dbeta);
 			double beta_last = betavals[betavals.size()-1];
 			betavals.push_back(beta_last+dbeta);
-			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 		}
-		cout << endl;
+		lout << endl;
 //		betavals.pop_back();
 //		betasteps.pop_back();
 		
