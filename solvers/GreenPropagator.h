@@ -1,11 +1,15 @@
 #ifndef GREEN_PROPAGATOR
 #define GREEN_PROPAGATOR
 
+#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 #include "SuperQuadrator.h"
+#endif
+
 #include "solvers/TDVPPropagator.h"
 #include "solvers/EntropyObserver.h"
 #include "IntervalIterator.h"
 #include "ComplexInterpolGSL.h"
+
 #ifdef GREENPROPAGATOR_USE_HDF5
 #include "HDF5Interface.h"
 #endif
@@ -13,10 +17,6 @@
 #include <unsupported/Eigen/FFT>
 #include "gsl_integration.h" // from TOOLS
 #include "ooura_integration.h" // from TOOLS
-
-#include <boost/math/quadrature/ooura_fourier_integrals.hpp>
-using boost::math::quadrature::ooura_fourier_sin;
-using boost::math::quadrature::ooura_fourier_cos;
 
 /**Range of k-values:
 \param MPI_PPI : from -pi to +pi
@@ -33,17 +33,15 @@ std::ostream& operator<< (std::ostream& s, GREEN_INTEGRATION GI)
 	return s;
 }
 
-//ComplexInterpol GlobalInterpol;
-
 /**cutoff function for the time domain*/
 struct GreenPropagatorGlobal
 {
 	static double tmax;
-	static double damping (double tval) {return lorentz(tval);};
-	static double gauss (double tval) {return exp(-pow(2.*tval/tmax,2));};
-	static double lorentz (double tval) {return exp(-4.*tval/tmax);}; // not tested
 	
-//	static complex<double> interpolate (double tval) {return GlobalInterpol.evaluate(tval);};
+	static double damping (double tval) {return lorentz(tval);};
+	
+	static double gauss (double tval) {return exp(-pow(2.*tval/tmax,2));};
+	static double lorentz (double tval) {return exp(-4.*tval/tmax);};
 };
 double GreenPropagatorGlobal::tmax = 20.;
 
@@ -152,6 +150,9 @@ public:
 	 Q_RANGE_CHOICE(Q_RANGE_CHOICE_input), Nq(Nq_input),
 	 GREENINT_CHOICE(GREENINT)
 	{
+		#ifndef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
+		assert(GREENINT!=DIRECT);
+		#endif
 		GreenPropagatorGlobal::tmax = tmax;
 		set_qlims(Q_RANGE_CHOICE);
 		calc_intweights();
@@ -176,7 +177,12 @@ public:
 	{
 		Gtx = Gtx_input;
 		
+		#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 		Nt = (GREENINT==DIRECT)? Gtx.rows():Gtx.rows()-1;
+		#else
+		assert(GREENINT!=DIRECT);
+		Nt = Gtx.rows()-1;
+		#endif
 		Nq = Nq_input;
 		Lhetero = Lcell*Ncells;
 		
@@ -216,7 +222,12 @@ public:
 			GtxCell[i][j] = Gtx_input[i][j];
 		}
 		
+		#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 		Nt = (GREENINT==DIRECT)? GtxCell[0][0].rows():GtxCell[0][0].rows()-1;
+		#else
+		assert(GREENINT!=DIRECT);
+		Nt = GtxCell[0][0].rows()-1;
+		#endif
 		Ncells = GtxCell[0][0].cols();
 		Nq = Nq_input;
 		Lhetero = Ncells*Lcell;
@@ -271,7 +282,12 @@ public:
 		#endif
 		
 		Ncells = 1;
+		#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 		Nt = (GREENINT==DIRECT)? Gtx.rows():Gtx.rows()-1;
+		#else
+		assert(GREENINT!=DIRECT);
+		Nt = Gtx.rows()-1;
+		#endif
 		Nq = Nq_input;
 		Lhetero = Lcell;
 		
@@ -326,7 +342,12 @@ public:
 		}
 		#endif
 		
+		#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 		Nt = (GREENINT==DIRECT)? GtxCell[0][0].rows():GtxCell[0][0].rows()-1;
+		#else
+		assert(GREENINT!=DIRECT);
+		Nt = GtxCell[0][0].rows()-1;
+		#endif
 		Ncells = GtxCell[0][0].cols();
 		Nq = Nq_input;
 		Lhetero = Ncells*Lcell;
@@ -484,7 +505,7 @@ private:
 	double tol_DeltaS = 1e-3; // 1e-3 seems good for DIRECT (initially small timesteps); 1e-2 seems good for INTERP (equidistant timesteps)
 	size_t lim_Nsv = 100ul;
 	double h_ooura = 0.001; // stepsize for Ooura integration if GREENINT_CHOICE == OOURA; smaller = more accurate & slower
-	GREEN_INTEGRATION GREENINT_CHOICE = DIRECT;
+	GREEN_INTEGRATION GREENINT_CHOICE = OOURA;
 	bool SAVE_LOG = false;
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE;
@@ -1777,6 +1798,7 @@ calc_intweights()
 {
 	Stopwatch<> Watch;
 	
+	#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 	if (GREENINT_CHOICE == DIRECT)
 	{
 		TimeIntegrator = SuperQuadrator<GAUSS_LEGENDRE>(GreenPropagatorGlobal::damping,0.,tmax,Nt);
@@ -1812,6 +1834,7 @@ calc_intweights()
 		}
 	}
 	else
+	#endif
 	{
 		double dt = tmax/Nt;
 		Nt += 1;
@@ -2073,23 +2096,6 @@ FTxx_tw (const MatrixXcd &Gtx, MatrixXcd &Gwx, VectorXcd &G0x, VectorXcd &Glocw)
 	}
 	else if (GREENINT_CHOICE == INTERP)
 	{
-//		for (int iw=0; iw<wvals.rows(); ++iw)
-//		{
-//			double wval = wvals(iw);
-//			
-//			for (int ix=0; ix<Nx; ++ix)
-//			{
-//				ComplexInterpol Gtx_interp(tvals);
-//				for (int it=0; it<tvals.rows(); ++it)
-//				{
-//					double tval = tvals(it);
-//					complex<double> Gval = exp(+1.i*wval*tval) * GreenPropagatorGlobal::damping(tval) * Gtx(it,ix);
-//					Gtx_interp.insert(it,Gval);
-//				}
-//				Gwq(iw,ix) += Gtx_interp.integrate();
-//				Gtx_interp.kill_splines();
-//			}
-//		}
 		#pragma omp parallel for
 		for (int ix=0; ix<Nx; ++ix)
 		{
@@ -2205,23 +2211,6 @@ FTcell_tw()
 		}
 		else if (GREENINT_CHOICE == INTERP)
 		{
-//			for (int iw=0; iw<wvals.rows(); ++iw)
-//			{
-//				double wval = wvals(iw);
-//				
-//				for (int iq=0; iq<Nq; ++iq)
-//				{
-//					ComplexInterpol Gtq_interp(tvals);
-//					for (int it=0; it<tvals.rows(); ++it)
-//					{
-//						double tval = tvals(it);
-//						complex<double> Gval = GreenPropagatorGlobal::damping(tval) * GtqCell[i][j](it,iq);
-//						Gtq_interp.insert(it,Gval);
-//					}
-//					GwqCell[i][j](iw,iq) += Gtq_interp.integrate();
-//					Gtq_interp.kill_splines();
-//				}
-//			}
 			#pragma omp parallel for
 			for (int iq=0; iq<Nq; ++iq)
 			{
@@ -2318,23 +2307,6 @@ FTcellxx_tw()
 		}
 		else if (GREENINT_CHOICE == INTERP)
 		{
-//			for (int iw=0; iw<wvals.rows(); ++iw)
-//			{
-//				double wval = wvals(iw);
-//				
-//				for (int ix=0; ix<Nx; ++ix)
-//				{
-//					ComplexInterpol Gtx_interp(tvals);
-//					for (int it=0; it<tvals.rows(); ++it)
-//					{
-//						double tval = tvals(it);
-//						complex<double> Gval = GreenPropagatorGlobal::damping(tval) * GtxCell[i][j](it,ix);
-//						Gtx_interp.insert(it,Gval);
-//					}
-//					GwxCell[i][j](iw,ix) += Gtx_interp.integrate();
-//					Gtx_interp.kill_splines();
-//				}
-//			}
 			#pragma omp parallel for
 			for (int ix=0; ix<Nx; ++ix)
 			{
@@ -2421,21 +2393,6 @@ FTloc_tw (const VectorXcd &Gloct_in, const ArrayXd &wvals)
 	}
 	else if (GREENINT_CHOICE == INTERP)
 	{
-//		for (int iw=0; iw<wvals.rows(); ++iw)
-//		{
-//			double wval = wvals(iw);
-//			
-//			ComplexInterpol Gtq_interp(tvals);
-//			for (int it=0; it<tvals.rows(); ++it)
-//			{
-//				double tval = tvals(it);
-//				complex<double> Gval = exp(+1.i*wval*tval) * exp(-pow(2.*tval/tmax,2)) * Gloct_in(it);
-//				Gtq_interp.insert(it,Gval);
-//			}
-//			Glocw_out(iw) += Gtq_interp.integrate();
-//			Gtq_interp.kill_splines();
-//		}
-		
 		VectorXcd fvals = Gloct_in;
 		for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
 		Glocw_out = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);

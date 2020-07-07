@@ -314,6 +314,8 @@ int main (int argc, char* argv[])
 			GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_excited_",base);
 			Eigenstate<MODEL::StateXd> excited1;
 			MODEL::Solver DMRG2(VERB);
+			DMRG2.Epenalty = args.get<double>("Epenalty",0.5);
+			lout << "Epenalty=" << DMRG2.Epenalty << endl;
 			DMRG2.userSetGlobParam();
 			DMRG2.userSetDynParam();
 			DMRG2.GlobParam = GlobParam;

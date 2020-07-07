@@ -107,6 +107,9 @@ public:
 	void load (string filename);
 	#endif
 	
+	/**Energy penalty for projected-out states.*/
+	double Epenalty = 10.;
+	
 private:
 	
 	size_t N_sites, N_phys;
@@ -155,9 +158,6 @@ private:
 	
 	/**Projected-out states to find the edge of the spectrum.*/
 	vector<Mps<Symmetry,Scalar> > Psi0;
-	
-	/**Energy penalty for projected-out states.*/
-	double Epenalty = 10.;
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
 };
