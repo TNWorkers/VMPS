@@ -427,11 +427,6 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 			Heff[l].Epenalty = Epenalty;
 			Heff[l].PL.resize(Psi0.size());
 			Heff[l].PR.resize(Psi0.size());
-//			Heff[l].A0.resize(Psi0.size());
-//			for (size_t n=0; n<Psi0.size(); ++n)
-//			{
-//				Heff[l].A0[n] = Psi0[n].A[l];
-//			}
 		}
 	}
 	
@@ -1006,6 +1001,18 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
 	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
 	
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and Psi0.size() > 0)
+	{
+		for (int n=0; n<Psi0.size(); ++n)
+		{
+			Scalar overlap = 0;
+			for (size_t s=0; s<Heff[SweepStat.pivot].A0proj[n].size(); ++s)
+			{
+				overlap += Heff[SweepStat.pivot].A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
+			}
+			lout << "n=" << n << ", overlap=" << overlap << endl;
+		}
+	}
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << "loc=" << SweepStat.pivot << "\t" << Lutz.info() << endl;
@@ -1124,7 +1131,19 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	Lutz.edgeState(Heff2, g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
 	time_lanczos += LanczosTimer.time();
 	
-	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and Psi0.size() > 0)
+	{
+		for (int n=0; n<Psi0.size(); ++n)
+		{
+			Scalar overlap = 0;
+			for (size_t s=0; s<Heff2.A0proj[n].size(); ++s)
+			{
+				overlap += Heff2.A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
+			}
+			lout << "n=" << n << ", overlap=" << overlap << endl;
+		}
+	}
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << "loc=" << SweepStat.pivot << "\t" << Lutz.info() << endl;
 		lout << Vout.state.test_ortho() << ", " << g.energy << endl;

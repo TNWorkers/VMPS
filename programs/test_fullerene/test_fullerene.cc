@@ -123,6 +123,7 @@ int main (int argc, char* argv[])
 	int N_stages = args.get<int>("N_stages",1);
 	
 	string LOAD = args.get<string>("LOAD","");
+	string LOAD2 = args.get<string>("LOAD2","");
 	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
 	bool CALC_GS = args.get<int>("CALC_GS",true);
 	bool CALC_NEUTRAL_GAP = args.get<bool>("CALC_NEUTRAL_GAP",false);
@@ -299,6 +300,14 @@ int main (int argc, char* argv[])
 		{
 			g.state.load(LOAD);
 			lout << "loaded: " << g.state.info() << endl;
+			
+			if (LOAD2!="")
+			{
+				Eigenstate<MODEL::StateXd> g2;
+				g2.state.load(LOAD2);
+				lout << "overlap=" << g.state.dot(g2.state) << endl;
+			}
+			
 			if (CALC_GS)
 			{
 				DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND, true);
@@ -314,7 +323,7 @@ int main (int argc, char* argv[])
 			GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_excited_",base);
 			Eigenstate<MODEL::StateXd> excited1;
 			MODEL::Solver DMRG2(VERB);
-			DMRG2.Epenalty = args.get<double>("Epenalty",0.5);
+			DMRG2.Epenalty = args.get<double>("Epenalty",1.);
 			lout << "Epenalty=" << DMRG2.Epenalty << endl;
 			DMRG2.userSetGlobParam();
 			DMRG2.userSetDynParam();
@@ -324,6 +333,7 @@ int main (int argc, char* argv[])
 			DMRG2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND);
 			lout << "excited1.energy=" << setprecision(16) << excited1.energy << endl;
 			double overlap = dot(g.state,excited1.state);
+			lout << "overlap=" << overlap << endl;
 		}
 		if constexpr (MODEL::FAMILY == HEISENBERG)
 		{
