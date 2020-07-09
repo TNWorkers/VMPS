@@ -365,6 +365,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	//otherwise prepare for continuing at the given SweepStatus.
 	if (SweepStat.pivot == -1)
 	{
+                if (Vout.state.get_pivot() != -1 and Vout.state.get_pivot() != N_sites-1) {Vout.state.sweep(N_sites-1,DMRG::BROOM::QR);}
 		SweepStat.N_sweepsteps = SweepStat.N_halfsweeps = 0;
 		for (size_t l=N_sites-1; l>0; --l)
 		{
@@ -478,9 +479,10 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	if (CHOSEN_VERBOSITY>=2)
 	{
 		lout << PrepTimer.info("• initial state & sweep") << endl;
-		lout <<                "• initial energy        : E₀=" << Eold << endl;
-		lout <<                "• initial state         : " << Vout.state.info() << endl;
-		lout <<                "• initial fluctuation strength  : α_rsvd=";
+		size_t standard_precision = cout.precision();
+		lout << std::setprecision(13) << "• initial energy        : E₀=" << Eold << std::setprecision(standard_precision) << endl;
+		lout <<                          "• initial state         : " << Vout.state.info() << endl;
+		lout <<                          "• initial fluctuation strength  : α_rsvd=";
 		cout << termcolor::underline;
 		lout << Vout.state.alpha_rsvd;
 		cout << termcolor::reset;
