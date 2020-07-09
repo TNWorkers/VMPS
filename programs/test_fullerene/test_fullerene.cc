@@ -306,6 +306,14 @@ int main (int argc, char* argv[])
 				Eigenstate<MODEL::StateXd> g2;
 				g2.state.load(LOAD2);
 				lout << "overlap=" << g.state.dot(g2.state) << endl;
+				
+				MatrixXd Hlow(2,2);
+				Hlow(0,0) = avg(g.state, H, g.state);
+				Hlow(1,1) = avg(g2.state, H, g2.state);
+				Hlow(0,1) = avg(g.state, H, g2.state);
+				Hlow(1,0) = avg(g2.state, H, g.state);
+				SelfAdjointEigenSolver<MatrixXd> Eugen(Hlow);
+				cout << "eigenvalues of <n|H|m>=" << endl << Eugen.eigenvalues() << endl;
 			}
 			
 			if (CALC_GS)
@@ -323,16 +331,43 @@ int main (int argc, char* argv[])
 			GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_excited_",base);
 			Eigenstate<MODEL::StateXd> excited1;
 			MODEL::Solver DMRG2(VERB);
-			DMRG2.Epenalty = args.get<double>("Epenalty",1.);
+			DMRG2.Epenalty = args.get<double>("Epenalty",10000.);
 			lout << "Epenalty=" << DMRG2.Epenalty << endl;
 			DMRG2.userSetGlobParam();
 			DMRG2.userSetDynParam();
 			DMRG2.GlobParam = GlobParam;
 			DMRG2.DynParam = DynParam;
 			DMRG2.push_back(g.state);
-			DMRG2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND);
-			lout << "excited1.energy=" << setprecision(16) << excited1.energy << endl;
+			
+//			g.state.sweep(0,DMRG::BROOM::QR);
+//			Eigenstate<MODEL::StateXd> init;
+//			init.state = g.state;
+//			init.state.setRandom();
+//			init.state.sweep(0,DMRG::BROOM::QR);
+//			init.state /= sqrt(dot(init.state,init.state));
+//			MpsCompressor<MODEL::Symmetry,double,double> Compi(VERB);
+//			double overlap = dot(g.state,init.state);
+//			lout << "initial overlap=" << overlap << endl;
+//			if (abs(overlap) > 1e-8)
+//			{
+//				Compi.lincomboCompress({init.state, g.state}, {1.,-overlap}, excited1.state, g.state, g.state.calc_Dmax(), 1e-15);
+//				lout << "overlap after compression=" << dot(g.state,excited1.state);
+//			}
+//			else
+//			{
+//				excited1 = init;
+//			}
+			
+			excited1.state = g.state;
+			excited1.state.setRandom();
+			excited1.state.sweep(0,DMRG::BROOM::QR);
+			excited1.state /= sqrt(dot(excited1.state,excited1.state));
+			excited1.state.eps_svd = 1e-8;
 			double overlap = dot(g.state,excited1.state);
+			lout << "initial overlap=" << overlap << endl;
+			DMRG2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND, true);
+			lout << "excited1.energy=" << setprecision(16) << excited1.energy << endl;
+			overlap = dot(g.state,excited1.state);
 			lout << "overlap=" << overlap << endl;
 		}
 		if constexpr (MODEL::FAMILY == HEISENBERG)

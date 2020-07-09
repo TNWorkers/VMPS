@@ -158,6 +158,7 @@ private:
 	
 	/**Projected-out states to find the edge of the spectrum.*/
 	vector<Mps<Symmetry,Scalar> > Psi0;
+	double E0;
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
 };
@@ -428,6 +429,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 			Heff[l].PL.resize(Psi0.size());
 			Heff[l].PR.resize(Psi0.size());
 		}
+		E0 = avg(Psi0[0], H, Psi0[0]);
 	}
 	
 	// build environments for projected-out states
@@ -1001,16 +1003,24 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
 	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
 	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and Psi0.size() > 0)
+	if (Psi0.size() > 0)
 	{
-		for (int n=0; n<Psi0.size(); ++n)
+		// STEPWISE: print always, HALFSWEEPWISE: print after every halfsweep
+		if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE or
+		    CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and 
+				((loc1()==0 and SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT) or 
+				 (loc2()==N_sites-1) and SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::LEFT)
+		   )
 		{
-			Scalar overlap = 0;
-			for (size_t s=0; s<Heff[SweepStat.pivot].A0proj[n].size(); ++s)
+			for (int n=0; n<Psi0.size(); ++n)
 			{
-				overlap += Heff[SweepStat.pivot].A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
+				Scalar overlap = 0;
+				for (size_t s=0; s<Heff[SweepStat.pivot].A0proj[n].size(); ++s)
+				{
+					overlap += Heff[SweepStat.pivot].A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
+				}
+				lout << "pivot=" << SweepStat.pivot << ", n=" << n << ", overlap=" << overlap << ", gap=" << g.energy-E0 << endl;
 			}
-			lout << "n=" << n << ", overlap=" << overlap << endl;
 		}
 	}
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
@@ -1131,16 +1141,24 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	Lutz.edgeState(Heff2, g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
 	time_lanczos += LanczosTimer.time();
 	
-	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and Psi0.size() > 0)
+	if (Psi0.size() > 0)
 	{
-		for (int n=0; n<Psi0.size(); ++n)
+		// STEPWISE: print always, HALFSWEEPWISE: print after every halfsweep
+		if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE or
+		    CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and 
+				((loc1()==0 and SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT) or 
+				 (loc2()==N_sites-1) and SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::LEFT)
+		   )
 		{
-			Scalar overlap = 0;
-			for (size_t s=0; s<Heff2.A0proj[n].size(); ++s)
+			for (int n=0; n<Psi0.size(); ++n)
 			{
-				overlap += Heff2.A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
+				Scalar overlap = 0;
+				for (size_t s=0; s<Heff2.A0proj[n].size(); ++s)
+				{
+					overlap += Heff2.A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
+				}
+				lout << "bond=" << loc1() << "-" << loc2() << ", n=" << n << ", overlap=" << overlap << ", gap=" << g.energy-E0 << endl;
 			}
-			lout << "n=" << n << ", overlap=" << overlap << endl;
 		}
 	}
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
