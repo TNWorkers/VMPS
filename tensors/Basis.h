@@ -26,6 +26,7 @@ public:
 	};
 
 	Eigen::Index size() const {return data_.size();}
+	
 	void push_back( const std::string& ident) {
 		curr_dim++;
 		data_.push_back(std::make_tuple(ident,curr_dim));

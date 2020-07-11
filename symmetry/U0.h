@@ -83,6 +83,7 @@ namespace Sym{
 		inline static double coeff_dot(const qType& q1) { return 1.; }
 		inline static double coeff_rightOrtho(const qType& q1, const qType& q2) { return 1.; }
 		inline static double coeff_leftSweep(const qType& q1, const qType& q2) { return 1.; }
+		inline static double coeff_swapPhase(const qType& q1, const qType& q2) { return 1.; }
 
 		inline static double coeff_adjoint(const qType& q1, const qType& q2, const qType& q3) { return 1.; }
 
@@ -90,11 +91,14 @@ namespace Sym{
 									  const qType& q4, const qType& q5, const qType& q6) { return 1.; }
 		inline static double coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 										 const qType& q4, const qType& q5, const qType& q6) { return 1.; }
+		inline static double coeff_splitAA(const qType& q1, const qType& q2, const qType& q3,
+										   const qType& q4, const qType& q5, const qType& q6) { return 1.; }
 		inline static double coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 										const qType& q4, const qType& q5, const qType& q6) { return 1.; }
-
 		inline static double coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
 											const qType& q4, const qType& q5, const qType& q6) { return 1.; }
+		inline static double coeff_twoSiteGate(const qType& q1, const qType& q2, const qType& q3,
+											   const qType& q4, const qType& q5, const qType& q6) { return 1.; }
 		
 		inline static double coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 									  const qType& q4, const qType& q5, const qType& q6,

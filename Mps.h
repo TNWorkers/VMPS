@@ -20,7 +20,8 @@
 #include "MpsBoundaries.h"
 
 // Forward Declaration
- template<typename Symmetry, typename Scalar> class Mpo;
+template<typename Symmetry, typename Scalar> class Mpo;
+template<typename Symmetry, typename Scalar> class TwoSiteGate;
 
 /**
  * Matrix Product State with conserved quantum numbers (Abelian and non abelian symmetries).
@@ -303,6 +304,11 @@ public:
 	 * Performs \f$ \mathrel{/}= \alpha\f$. Applies it to the pivot site (if non-orthogonal, to the first site).
 	 */
 	template<typename OtherScalar> Mps<Symmetry,Scalar>& operator/= (const OtherScalar &alpha);
+
+	/**
+	 * Act with a two-site gate on the MPS at sites \p l and \p l+1.
+	 */
+	void applyGate (const TwoSiteGate<Symmetry,Scalar> &gate, size_t l, DMRG::DIRECTION::OPTION DIR);
 	
 	/**
 	 * Casts the matrices from \p Scalar to \p OtherScalar.
@@ -3387,6 +3393,63 @@ Mps<Symmetry,OtherScalar> operator/ (const Mps<Symmetry,Scalar> &Vin, const Othe
 	Mps<Symmetry,OtherScalar> Vout = Vin.template cast<OtherScalar>();
 	Vout /= alpha;
 	return Vout;
+}
+
+template<typename Symmetry, typename Scalar>
+void Mps<Symmetry,Scalar>::
+applyGate(const TwoSiteGate<Symmetry,Scalar> &gate, size_t l, DMRG::DIRECTION::OPTION DIR)
+{
+	assert(l < this->N_sites-1 and "Can not apply a gate because l is too large.");
+	assert(qloc[l] == gate.leftBasis().qloc() and "Mismatching basis at left site from gate.");
+	assert(qloc[l+1] == gate.rightBasis().qloc() and "Mismatching basis at right site from gate.");
+	
+	auto Bmid = gate.midBasis();
+	auto qmid = Bmid.qloc();
+
+	//Apply the gate and get the two-site Atensor Apair.
+	vector<Biped<Symmetry,MatrixType> > Apair(qmid.size());
+	for (size_t s1=0;  s1<qloc[l].size();  s1++)
+	for (size_t s2=0;  s2<qloc[l+1].size();  s2++)
+	for (size_t k=0;    k<qmid.size();   k++)
+	for (size_t s1p=0; s1p<qloc[l].size(); s1p++)
+	for (size_t s2p=0; s2p<qloc[l+1].size(); s2p++)
+	{
+		if (!Symmetry::triangle(qarray3<Symmetry::Nq>{qloc[l][s1],qloc[l+1][s2],qmid[k]})) {continue;}
+		if (!Symmetry::triangle(qarray3<Symmetry::Nq>{qloc[l][s1p],qloc[l+1][s2p],qmid[k]})) {continue;}
+		for (size_t ql=0; ql<A[l][s1p].size(); ql++)
+		{
+			auto qms = Symmetry::reduceSilent(A[l][s1p].in[ql],qloc[l][s1p]);
+			for (const auto &qm : qms)
+			{
+				auto qrs = Symmetry::reduceSilent(qm,qloc[l+1][s2p]);
+				for (const auto &qr : qrs)
+				{
+					auto it_qr = A[l+1][s2p].dict.find({qm,qr});
+					if ( it_qr == A[l+1][s2p].dict.end()) {continue;}
+					MatrixType Mtmp(A[l][s1p].block[ql].rows(),A[l+1][s2p].block[it_qr->second].cols());
+					Scalar factor_cgc = Symmetry::coeff_twoSiteGate(A[l][s1p].in[ql], qloc[l][s1p], qm,
+																	qloc[l+1][s2p]  , qr          , qmid[k]);
+					if (abs(factor_cgc) < ::mynumeric_limits<double>::epsilon()) {continue;}
+					// cout << "l=" << l << ", s1p=" << s1p << ", ql=" << ql << ", s2p=" << s2p << "qr=" << it_qr->second << endl;
+					// print_size(A[l][s1p].block[ql], "A[l][s1p].block[ql]");
+					// print_size(A[l+1][s2p].block[it_qr->second], "A[l+1][s2p].block[it_qr->second]");
+					Mtmp =  factor_cgc * gate.data[s1][s2][s1][s2p][k] * A[l][s1p].block[ql]*A[l+1][s2p].block[it_qr->second];
+					auto it_pair = Apair[k].dict.find({A[l][s1p].in[ql],qr});
+					if (it_pair == Apair[k].dict.end())
+					{
+						Apair[k].push_back(A[l][s1p].in[ql],qr,Mtmp);
+					}
+					else
+					{
+						Apair[k].block[it_pair->second] += Mtmp;
+					}
+				}
+			}
+		}
+	}
+	
+	//Decompose the two-site Atensor Apair
+	split_AA2(DIR, qmid, Apair, qloc[l], A[l], qloc[l+1], A[l+1], QoutTop[l], QoutBot[l], this->eps_svd, this->min_Nsv, this->max_Nsv);
 }
 
 template<typename Symmetry, typename Scalar>

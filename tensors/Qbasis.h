@@ -153,6 +153,8 @@ public:
     void pullData (const vector<vector<vector<Biped<Symmetry,MatrixType>>> > &W, const Eigen::Index &leg);
 	
 	void pullData (const std::vector<std::array<qType,3> > &qvec, const std::size_t& leg, const Eigen::Index &inner_dim_in);
+
+	void pullData (const std::vector<qarray<Symmetry::Nq> > &qs);
 	
 	/**
 	 * Returns the tensor product basis, already properly sorted with respect to the resulting irreps.
@@ -193,6 +195,8 @@ public:
 		std::array<qType,2> source;
 	};
 
+	//vector with entry: {Quantumnumber (QN), state number of the first plain state for this QN, all plain states for this QN in a Basis object.}
+	//[{q1,0,plain_q1}, {q2,dim(plain_q1),plain_q2}, {q3,dim(plain_q1+plain_q1),plain_q3}, ..., {qi, sum_j^(i-1)dim(plain_qj), plain_qi}]
 	std::vector<std::tuple<qType,Eigen::Index,Basis> > data_;
 	Eigen::Index curr_dim=0;
 	std::unordered_map<qType,std::vector<fuseData> > history;
@@ -478,6 +482,26 @@ pullData (const std::vector<std::array<qType,3> > &qvec, const std::size_t &leg,
 			unique_controller.insert(q_number);			
 		}
 	}
+}
+
+template<typename Symmetry>
+void Qbasis<Symmetry>::
+pullData (const std::vector<qarray<Symmetry::Nq> > &qs)
+{
+	std::unordered_map<qType,size_t> qmap;
+	for (std::size_t s=0; s<qs.size(); s++)
+	{
+		auto it = qmap.find(qs[s]);
+		if( it==qmap.end() )
+		{
+			qmap[qs[s]] = 1;
+		}
+		else
+		{
+			qmap[qs[s]]++;
+		}
+	}
+	for (const auto &[q,dim]:qmap) {push_back(q,dim);}
 }
 
 template<typename Symmetry>

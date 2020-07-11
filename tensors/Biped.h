@@ -167,6 +167,9 @@ public:
 	Biped<Symmetry,MatrixType_> adjustQN (const size_t number_cells);
 
 	void cholesky(Biped<Symmetry,MatrixType> &res) const;
+
+	template<typename EpsScalar>
+	tuple<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> > truncateSVD(size_t maxKeep, EpsScalar eps_svd, bool PRESERVE_MULTIPLETS=true) const;
 	
 	/**
 	 * Adds another tensor to the current one. 
@@ -672,6 +675,85 @@ cholesky(Biped<Symmetry,MatrixType> &res) const
 		res.block[q] = Jim.matrixL();
 	}
 	return;
+}
+
+template<typename Symmetry, typename MatrixType_>
+template<typename EpsScalar>
+tuple<Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_> > Biped<Symmetry,MatrixType_>::
+truncateSVD(size_t maxKeep, EpsScalar eps_svd, bool PRESERVE_MULTIPLETS) const
+{
+	Biped<Symmetry,MatrixType_> U,Vdag,Sigma;
+	Biped<Symmetry,MatrixType_> trunc_U,trunc_Vdag,trunc_Sigma;
+	vector<pair<typename Symmetry::qType, Scalar> > allSV;
+	for (size_t q=0; q<dim; ++q)
+	{
+		#ifdef DONT_USE_BDCSVD
+		JacobiSVD<MatrixType> Jack; // standard SVD
+		#else
+		BDCSVD<MatrixType> Jack; // "Divide and conquer" SVD (only available in Eigen)
+		#endif
+		
+		Jack.compute(block[q], ComputeThinU|ComputeThinV);
+		for (size_t i=0; i<Jack.singularValues().size(); i++) {allSV.push_back(make_pair(in[q],Jack.singularValues()(i)));}
+		// for (const auto& s:Jack.singularValues()) {allSV.push_back(make_pair(in[q],s));}
+
+		U.push_back(in[q], out[q], Jack.matrixU());
+		Sigma.push_back(in[q], out[q], Jack.singularValues().asDiagonal());
+		Vdag.push_back(in[q], out[q], Jack.matrixV().adjoint());
+	}
+	size_t numberOfStates = allSV.size();
+	std::sort(allSV.begin(),allSV.end(),[](const pair<typename Symmetry::qType, Scalar> &sv1, const pair<typename Symmetry::qType, Scalar> &sv2) {return sv1.second > sv2.second;});
+	allSV.resize(maxKeep);
+	
+	// std::erase_if(allSV, [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv < eps_svd); }); c++-20 version
+	
+	allSV.erase(std::remove_if(allSV.begin(), allSV.end(), [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv.second < eps_svd); }), allSV.end());
+
+	cout << "saving sv for expansion to file, #sv=" << allSV.size() << endl;
+	ofstream Filer("sv_expand");
+	size_t index=0;
+	for (const auto & [q,sv]: allSV)
+	{
+		Filer << index << "\t" << sv << endl;
+		index++;
+	}
+	Filer.close();
+		
+	if (PRESERVE_MULTIPLETS)
+	{
+		//cutLastMultiplet(allSV);
+		int endOfMultiplet=-1;
+		for (int i=allSV.size()-1; i>0; i--)
+		{
+			EpsScalar rel_diff = 2*(allSV[i-1].second-allSV[i].second)/(allSV[i-1].second+allSV[i].second);
+			cout << "i-1=" << i-1 << ", rel_diff=" << rel_diff << endl;
+			if (rel_diff > 1.) {endOfMultiplet = i-1; break;}
+		}
+		if (endOfMultiplet != -1 and endOfMultiplet>10)
+		{
+			cout << "Cutting of the last " << allSV.size()-endOfMultiplet << " singular values to preserve the multiplet" << endl;
+			allSV.resize(endOfMultiplet);
+		}
+	}
+	
+	cout << "Adding " << allSV.size() << " states from " << numberOfStates << " states" << endl;
+	map<typename Symmetry::qType, vector<Scalar> > qn_orderedSV;
+	for (const auto &[q,s]:allSV )
+	{
+		qn_orderedSV[q].push_back(s);
+	}
+	for (const auto & [q,vec_sv]: qn_orderedSV)
+	{
+		size_t Nret = vec_sv.size();
+		cout << "q=" << q << ", Nret=" << Nret << endl;
+		auto itSigma = Sigma.dict.find({q,q});
+		trunc_Sigma.push_back(q,q,Sigma.block[itSigma->second].diagonal().head(Nret).asDiagonal());
+		auto itU = U.dict.find({q,q});
+		trunc_U.push_back(q, q, U.block[itU->second].leftCols(Nret));
+		auto itVdag = Vdag.dict.find({q,q});
+		trunc_Vdag.push_back(q, q, Vdag.block[itVdag->second].topRows(Nret));
+	}
+	return make_tuple(trunc_U,trunc_Sigma,trunc_Vdag);
 }
 
 template<typename Symmetry, typename MatrixType_>

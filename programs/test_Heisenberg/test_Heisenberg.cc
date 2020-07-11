@@ -129,7 +129,8 @@ int main (int argc, char* argv[])
 	Stot = (Dtot-1.)/2.;
 	size_t min_Nsv = args.get<size_t>("min_Nsv",0ul);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
-	
+
+	size_t full_Mmax = args.get<double>("full_Mmax",0);
 	double sigma = args.get<double>("sigma",1.);
 	U0 = args.get<bool>("U0",false);
 	U1 = args.get<bool>("U1",true);
@@ -160,6 +161,7 @@ int main (int argc, char* argv[])
 	SweepParams.push_back({"Dinit",Dinit});
 	SweepParams.push_back({"Qinit",Qinit});
 	SweepParams.push_back({"min_Nsv",min_Nsv});
+	SweepParams.push_back({"savePeriod",4ul});
 	// SweepParams.push_back({"Dlimit",Dlimit});
 	// SweepParams.push_back({"tol_eigval",tol_eigval});
 	// SweepParams.push_back({"tol_state",tol_state});
@@ -331,7 +333,13 @@ int main (int argc, char* argv[])
 		DMRG_SU2.userSetDynParam();
 		DMRG_SU2.GlobParam = H_SU2.get_DmrgGlobParam(SweepParams);
 		DMRG_SU2.DynParam = H_SU2.get_DmrgDynParam(SweepParams);
-		DMRG_SU2.edgeState(H_SU2, g_SU2, {Dtot}, LANCZOS::EDGE::GROUND);
+		bool USE_STATE=false;
+		if (full_Mmax != 0)
+		{
+			g_SU2.state.load(make_string("MpsBackup_fullMmax=",full_Mmax));
+			USE_STATE=true;
+		}
+		DMRG_SU2.edgeState(H_SU2, g_SU2, {Dtot}, LANCZOS::EDGE::GROUND,USE_STATE);
 		g_SU2.state.graph("SU2");
 		ArrayXd check1(maxPower);
 		for (size_t i=1; i<=maxPower;i++)

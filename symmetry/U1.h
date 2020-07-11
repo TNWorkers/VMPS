@@ -89,7 +89,8 @@ public:
 	inline static Scalar coeff_dot(const qType& q1);
 	inline static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
 	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2);
-
+	inline static Scalar coeff_swapPhase(const qType& q1, const qType& q2);
+	
 	inline static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
 
 	inline static Scalar coeff_3j(const qType& q1, const qType& q2, const qType& q3,
@@ -101,10 +102,14 @@ public:
 								  const qType& q4, const qType& q5, const qType& q6);
 	inline static Scalar coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 									 const qType& q4, const qType& q5, const qType& q6);
+	static Scalar coeff_splitAA(const qType& q1, const qType& q2, const qType& q3,
+								const qType& q4, const qType& q5, const qType& q6);
 	inline static Scalar coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 									const qType& q4, const qType& q5, const qType& q6);
 	static Scalar coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
 								 const qType& q4, const qType& q5, const qType& q6);
+	static Scalar coeff_twoSiteGate(const qType& q1, const qType& q2, const qType& q3,
+									const qType& q4, const qType& q5, const qType& q6);
 	
 	inline static Scalar coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6,
@@ -265,6 +270,14 @@ coeff_leftSweep(const qType& q1, const qType& q2)
 
 template<typename Kind, typename Scalar>
 Scalar U1<Kind,Scalar>::
+coeff_swapPhase(const qType& q1, const qType& q2)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar U1<Kind,Scalar>::
 coeff_adjoint(const qType& q1, const qType& q2, const qType& q3)
 {
 	Scalar out = Scalar(1.);
@@ -312,6 +325,15 @@ coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 
 template<typename Kind, typename Scalar>
 Scalar U1<Kind,Scalar>::
+coeff_splitAA(const qType& q1, const qType& q2, const qType& q3,
+			  const qType& q4, const qType& q5, const qType& q6)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar U1<Kind,Scalar>::
 coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 		   const qType& q4, const qType& q5, const qType& q6)
 {
@@ -323,6 +345,15 @@ template<typename Kind, typename Scalar>
 Scalar U1<Kind,Scalar>::
 coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
 			   const qType& q4, const qType& q5, const qType& q6)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar U1<Kind,Scalar>::
+coeff_twoSiteGate(const qType& q1, const qType& q2, const qType& q3,
+				  const qType& q4, const qType& q5, const qType& q6)
 {
 	Scalar out = Scalar(1.);
 	return out;

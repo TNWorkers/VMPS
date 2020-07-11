@@ -103,7 +103,8 @@ public:
 	inline static Scalar coeff_dot(const qType& q1);
 	inline static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
 	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2);
-
+	inline static Scalar coeff_swapPhase(const qType& q1, const qType& q2);
+	
 	inline static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
 
 	static Scalar coeff_3j(const qType& q1, const qType& q2, const qType& q3,
@@ -304,6 +305,16 @@ coeff_leftSweep(const qType& q1, const qType& q2)
 	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
 	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
 	Scalar out = S1_::coeff_leftSweep(q1l,q2l)*S2_::coeff_leftSweep(q1r,q2r);
+	return out;
+}
+
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
+coeff_swapPhase(const qType& q1, const qType& q2)
+{
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	Scalar out = S1_::coeff_swapPhase(q1l,q2l)*S2_::coeff_swapPhase(q1r,q2r);
 	return out;
 }
 
