@@ -22,6 +22,8 @@ public:
 	//
 	void setSwapGate(bool FERMIONIC=false);
 
+	void setIdentity();
+	
 	Qbasis<Symmetry> midBasis() const {return Bmid;}
 	Qbasis<Symmetry> leftBasis() const {return B1;}
 	Qbasis<Symmetry> rightBasis() const {return B2;}
@@ -52,7 +54,7 @@ TwoSiteGate (const Qbasis<Symmetry> &s1, const Qbasis<Symmetry> &s2)
 	Bmid = B1.combine(B2);
 	qloc1 = B1.qloc();
 	qloc2 = B2.qloc();
-	qmid = Bmid.qloc(); 
+	qmid = Bmid.qs(); 
 	resize();
 }
 
@@ -93,6 +95,24 @@ setSwapGate(bool FERMIONIC)
 		if (s1 == s2p and s2 == s1p)
 		{
 			data[s1][s2][s1p][s2p][k] = Symmetry::coeff_swapPhase(qloc1[s1],qloc2[s2])*Scalar(1.);
+		}
+		else {data[s1][s2][s1p][s2p][k] = Scalar(0.);}
+	}
+}
+
+template<typename Symmetry, typename Scalar>
+void TwoSiteGate<Symmetry,Scalar>::
+setIdentity()
+{
+	for (size_t s1=0;  s1<qloc1.size();  s1++)
+	for (size_t s2=0;  s2<qloc2.size();  s2++)
+	for (size_t s1p=0; s1p<qloc1.size(); s1p++)
+	for (size_t s2p=0; s2p<qloc2.size(); s2p++)
+	for (size_t k=0;    k<qmid.size();   k++)
+	{
+		if (s1 == s1p and s2 == s2p)
+		{
+			data[s1][s2][s1p][s2p][k] = Scalar(1.);
 		}
 		else {data[s1][s2][s1p][s2p][k] = Scalar(0.);}
 	}

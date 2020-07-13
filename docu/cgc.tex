@@ -521,6 +521,123 @@ The recoupl coeff is related to the $6j$-symbol and this coefficient
 for the product of two $A$-tensors is called \textsc{coeff\_Apair}
 in the implementation. Notice, that this is different to \textsc{coeff\_prod} (Eq. \eqref{eq:coeff_prod}).
 This is because of our convention for the $A$-tensors.
+\subsection{MPS split}
+In order to split the two-site MPS into two single-site MPSs, one
+needs to combine indices $i$ and $\sigma_1$ to $I$ and $j$ and $\sigma_2$ to $J$
+to obtain a matrix $A_{IJ}$ which can be splitted by some matrix
+decomposition (SVD, QR,...). Note that the combination of $j$ and
+$\sigma_2$ requires the reversal (flip) of the index $\sigma_2$ so that both
+point in the same direction. The coefficient for the rehaping process
+can be computed as follows:
+\begin{equation}
+  \begin{split}
+    \delta_{IJ}\delta_{m_Im_J}&=
+    \sum_{m_{\sigma_1},m_{\sigma_2}, m_{\sigma_2^\prime},m_{i},m_j,m_{\sigma}}\\
+    &C^{i,\sigma\rightarrow j}_{m_{i},m_{\sigma}\rightarrow m_{j}}
+    C^{\sigma_1\sigma_2\rightarrow\sigma}_{m_{\sigma_1}m_{\sigma_2}\rightarrow m_{\sigma}}\\
+    &C^{i,\sigma_1\rightarrow I}_{m_i,m_{\sigma_1}\rightarrow m_{I}}
+    C^{j,\sigma_2\rightarrow J}_{m_j,m_{\sigma_2^\prime}\rightarrow m_{J}}\delta_{m_{\sigma_2}-m_{\sigma_2^\prime}}(-1)^{(\sigma_2+m_{\sigma_2^\prime})}
+  \end{split}
+\end{equation}
+Here the kronecker-$\delta$ and the phase is related to the reversal
+of the index $\sigma_2$ when it is combined with $j$.
+Summing over $m_{\sigma_2}^\prime$ leads to:
+\begin{equation}
+  \begin{split}
+    \delta_{IJ}\delta_{m_Im_J}&=
+    \sum_{m_{\sigma_1},m_{\sigma_2},m_{i},m_j,m_{\sigma}}\\
+    &C^{i,\sigma\rightarrow j}_{m_{i},m_{\sigma}\rightarrow m_{j}}
+    C^{\sigma_1\sigma_2\rightarrow\sigma}_{m_{\sigma_1}m_{\sigma_2}\rightarrow m_{\sigma}}\\
+    &C^{i,\sigma_1\rightarrow I}_{m_i,m_{\sigma_1}\rightarrow m_{I}}
+    C^{j,\sigma_2\rightarrow J}_{m_j,-m_{\sigma_2}\rightarrow m_{J}}(-1)^{(\sigma_2-m_{\sigma_2})}
+  \end{split}
+\end{equation}
+Now, one has to interchange $\sigma_1$ and $\sigma$ in the upper right
+CGC to get:
+\begin{equation}
+  \begin{split}
+    \delta_{IJ}\delta_{m_Im_J}&=
+    \sum_{m_{\sigma_1},m_{\sigma_2},m_{i},m_j,m_{\sigma}}\\
+    &C^{i,\sigma\rightarrow j}_{m_{i},m_{\sigma}\rightarrow m_{j}}
+    C^{\sigma\sigma_2\rightarrow\sigma_1}_{-m_{\sigma}m_{\sigma_2}\rightarrow -m_{\sigma_1}}(-1)^{(\sigma_2+m_{\sigma_2})}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}\\
+    &C^{i,\sigma_1\rightarrow I}_{m_i,m_{\sigma_1}\rightarrow m_{I}}
+    C^{j,\sigma_2\rightarrow J}_{m_j,-m_{\sigma_2}\rightarrow m_{J}}(-1)^{(\sigma_2-m_{\sigma_2})}
+  \end{split}
+\end{equation}
+After reversing the sign of all $m$-quantum numbers in the upper right
+CGC one gets a $6j$ box-symbol:
+\begin{equation}
+  \begin{split}
+    \delta_{IJ}\delta_{m_Im_J}&=
+    \sum_{m_{\sigma_1},m_{\sigma_2},m_{i},m_j,m_{\sigma}}\\
+    &C^{i,\sigma\rightarrow j}_{m_{i},m_{\sigma}\rightarrow m_{j}}
+    C^{\sigma\sigma_2\rightarrow\sigma_1}_{+m_{\sigma}-m_{\sigma_2}\rightarrow +m_{\sigma_1}}(-1)^{(2\sigma_2)+\sigma+\sigma_2-\sigma_1}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}\\
+    &C^{i,\sigma_1\rightarrow I}_{m_i,m_{\sigma_1}\rightarrow m_{I}}
+    C^{j,\sigma_2\rightarrow J}_{m_j,-m_{\sigma_2}\rightarrow m_{J}}\\
+    &=(-1)^{(2\sigma_2)+\sigma+\sigma_2-\sigma_1}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}
+    \begin{bmatrix}
+      i & \sigma & j \\
+      \sigma_2 & I & \sigma_1
+    \end{bmatrix}\delta_{IJ}\delta_{m_Im_J}
+  \end{split}
+\end{equation}
+Converting the box-symbol to a $6j$-symbol leads to:
+\begin{equation}
+  \begin{split}
+    &(-1)^{(2\sigma_2)+\sigma+\sigma_2-\sigma_1}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}
+    \begin{bmatrix}
+      i & \sigma & j \\
+      \sigma_2 & I & \sigma_1
+    \end{bmatrix}\delta_{IJ}\delta_{m_Im_J}\\
+    &=(-1)^{(2\sigma_2)+\sigma+\sigma_2-\sigma_1}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}\sqrt{(2j+1)(2\sigma_1+1)}(-1)^{i+\sigma+\sigma_2+I}\\
+    &\begin{Bmatrix}
+      i & \sigma & j \\
+      \sigma_2 & I & \sigma_1
+    \end{Bmatrix}\delta_{IJ}\delta_{m_Im_J}
+  \end{split}
+\end{equation}
+After evaluating the sign, the final result is:
+\begin{equation}
+  \begin{split}
+    &(-1)^{(2\sigma_2)+\sigma_1+i+I}\sqrt{(2\sigma+1)(2j+1)}
+    \begin{Bmatrix}
+      i & j & \sigma \\
+      \sigma_2 & \sigma_1 & I
+    \end{Bmatrix}\delta_{IJ}\delta_{m_Im_J}
+  \end{split}
+\end{equation}
+The coefficient is called \textsc{coeff\_splitAA} in the
+implementation.
+
+After the matrix decomposition $A_{IJ}=Q_{IK}R_{KJ}$ (or
+$A_{IJ}=U_{IK}\Sigma_{KK}V_{KJ}$) one needs to reshape the left part
+to $A(l)$ and the right part to $A(l+1)$. For the latter one needs
+again a CGC (similar to the one from the leftSweepStep). The
+coefficient is:
+\begin{equation}
+  \begin{split}
+    &\sum_{m_{\sigma_2^\prime}}C^{j,\sigma_2\rightarrow
+      J}_{m_j,m_{\sigma_2^\prime}\rightarrow
+      m_{J}}\delta_{m_{\sigma_2}-m_{\sigma_2^\prime}}(-1)^{(\sigma_2-m_{\sigma_2^\prime})}\\
+    &=C^{j,\sigma_2\rightarrow
+      J}_{m_j,-m_{\sigma_2}\rightarrow
+      m_{J}}(-1)^{(\sigma_2+m_{\sigma_2})}
+  \end{split}
+\end{equation}
+To get the correct CGC for our $A$-tensors, one has to interchange $J$
+and $j$:
+\begin{equation}
+  \begin{split}
+    &C^{J,\sigma_2\rightarrow
+      j}_{-m_J,-m_{\sigma_2}\rightarrow
+      -m_{j}}(-1)^{(\sigma_2+m_{\sigma_2})}(-1)^{(\sigma_2+m_{\sigma_2})}\sqrt{\frac{2J+1}{2j+1}}\\
+    &=C^{J,\sigma_2\rightarrow
+      j}_{m_J,m_{\sigma_2}\rightarrow
+      m_{j}}(-1)^{(J+\sigma_2-j)}\sqrt{\frac{2J+1}{2j+1}}
+  \end{split}
+\end{equation}
+The coefficient is also called \textsc{coeff\_splitAA} in the
+implementation (but of course its a different overload).
 \subsection{MPO product}
 The product of two MPOs can be done in auxiliary space or in the
 physical space. For the product in the physical space, the CGC

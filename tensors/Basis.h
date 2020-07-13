@@ -18,6 +18,7 @@ public:
 			data_.push_back(entry);
 			count++;
 		}
+		curr_dim += dim;
 	};
 
 	Basis(Eigen::Index dim) {
@@ -28,8 +29,16 @@ public:
 	Eigen::Index size() const {return data_.size();}
 	
 	void push_back( const std::string& ident) {
-		curr_dim++;
 		data_.push_back(std::make_tuple(ident,curr_dim));
+		curr_dim++;
+	};
+
+	void push_back( const std::vector<std::string> &idents) {
+		for (const auto &ident:idents)
+		{
+			data_.push_back(std::make_tuple(ident,curr_dim));
+			curr_dim++;
+		}
 	};
 
 	bool find( std::string ident_in ) {

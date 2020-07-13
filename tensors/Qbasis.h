@@ -154,7 +154,7 @@ public:
 	
 	void pullData (const std::vector<std::array<qType,3> > &qvec, const std::size_t& leg, const Eigen::Index &inner_dim_in);
 
-	void pullData (const std::vector<qarray<Symmetry::Nq> > &qs);
+	void pullData (const std::vector<qarray<Symmetry::Nq> > &qs, bool ORDERED=false);
 	
 	/**
 	 * Returns the tensor product basis, already properly sorted with respect to the resulting irreps.
@@ -222,9 +222,22 @@ template<typename Symmetry>
 void Qbasis<Symmetry>::
 push_back(const qType& q_number, const Eigen::Index& inner_dim, const std::vector<std::string>& idents)
 {
-	Basis plain_basis(idents,inner_dim);
-	auto entry = std::make_tuple(q_number,curr_dim,plain_basis);
-	data_.push_back(entry);
+	//search if the quantum number is already in the Qbasis.
+	auto it = std::find_if(data_.begin(), data_.end(), [&q_number] (const tuple<qType,Eigen::Index,Basis> &entry) {return std::get<0>(entry) == q_number;});
+	if (it == data_.end()) //insert quantum number if it is not there
+	{
+		Basis plain_basis(idents,inner_dim);
+		auto entry = std::make_tuple(q_number,curr_dim,plain_basis);
+		data_.push_back(entry);
+	}
+	else //append to quantumnumber if it is there
+	{
+		std::get<2>(*it).push_back(idents);
+		for (auto loop=it++; loop==data_.end(); loop++)
+		{
+			std::get<1>(*loop) += inner_dim;
+		}
+	}
 	curr_dim += inner_dim;
 }
 
@@ -319,7 +332,8 @@ inner_num(const Eigen::Index& outer_num) const
 			auto [ident,inner_num] = elem;
 			if (check == num+inner_num) { return inner_num; }
 		}
-	}	
+	}
+	assert(false and "Something went wrong in Qbasis::inner_num");
 }
 
 template<typename Symmetry>
@@ -486,8 +500,16 @@ pullData (const std::vector<std::array<qType,3> > &qvec, const std::size_t &leg,
 
 template<typename Symmetry>
 void Qbasis<Symmetry>::
-pullData (const std::vector<qarray<Symmetry::Nq> > &qs)
+pullData (const std::vector<qarray<Symmetry::Nq> > &qs, bool ORDERED)
 {
+	if (ORDERED)
+	{
+		for (const auto & q : qs)
+		{
+			push_back(q,1);
+		}
+		return;
+	}
 	std::unordered_map<qType,size_t> qmap;
 	for (std::size_t s=0; s<qs.size(); s++)
 	{

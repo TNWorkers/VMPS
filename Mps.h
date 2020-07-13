@@ -3402,12 +3402,14 @@ applyGate(const TwoSiteGate<Symmetry,Scalar> &gate, size_t l, DMRG::DIRECTION::O
 	assert(l < this->N_sites-1 and "Can not apply a gate because l is too large.");
 	assert(qloc[l] == gate.leftBasis().qloc() and "Mismatching basis at left site from gate.");
 	assert(qloc[l+1] == gate.rightBasis().qloc() and "Mismatching basis at right site from gate.");
-	
-	auto Bmid = gate.midBasis();
-	auto qmid = Bmid.qloc();
+
+	auto locBasis_l = gate.leftBasis();
+	auto locBasis_r = gate.rightBasis();
+	auto locBasis_m = gate.midBasis();
+	auto qmid = locBasis_m.qs();
 
 	//Apply the gate and get the two-site Atensor Apair.
-	vector<Biped<Symmetry,MatrixType> > Apair(qmid.size());
+	vector<Biped<Symmetry,MatrixType> > Apair(locBasis_m.size());
 	for (size_t s1=0;  s1<qloc[l].size();  s1++)
 	for (size_t s2=0;  s2<qloc[l+1].size();  s2++)
 	for (size_t k=0;    k<qmid.size();   k++)
@@ -3433,23 +3435,25 @@ applyGate(const TwoSiteGate<Symmetry,Scalar> &gate, size_t l, DMRG::DIRECTION::O
 					// cout << "l=" << l << ", s1p=" << s1p << ", ql=" << ql << ", s2p=" << s2p << "qr=" << it_qr->second << endl;
 					// print_size(A[l][s1p].block[ql], "A[l][s1p].block[ql]");
 					// print_size(A[l+1][s2p].block[it_qr->second], "A[l+1][s2p].block[it_qr->second]");
-					Mtmp =  factor_cgc * gate.data[s1][s2][s1][s2p][k] * A[l][s1p].block[ql]*A[l+1][s2p].block[it_qr->second];
-					auto it_pair = Apair[k].dict.find({A[l][s1p].in[ql],qr});
-					if (it_pair == Apair[k].dict.end())
+					
+					Mtmp = factor_cgc * gate.data[s1][s2][s1p][s2p][k] * A[l][s1p].block[ql]*A[l+1][s2p].block[it_qr->second];
+					size_t s1ps2p = locBasis_m.leftAmount(qmid[k],{qloc[l][s1],qloc[l+1][s2]}) + locBasis_l.inner_num(s1) + locBasis_r.inner_num(s2)*locBasis_l.inner_dim(qloc[l][s1]);
+					auto it_pair = Apair[s1ps2p].dict.find({A[l][s1p].in[ql],qr});
+					if (it_pair == Apair[s1ps2p].dict.end())
 					{
-						Apair[k].push_back(A[l][s1p].in[ql],qr,Mtmp);
+						Apair[s1ps2p].push_back(A[l][s1p].in[ql],qr,Mtmp);
 					}
 					else
 					{
-						Apair[k].block[it_pair->second] += Mtmp;
+						Apair[s1ps2p].block[it_pair->second] += Mtmp;
 					}
 				}
 			}
 		}
 	}
-	
+	// for (size_t k=0; k<locBasis_m.size(); k++) {cout << "k=" << k << endl << Apair[k].print(true) << endl;}
 	//Decompose the two-site Atensor Apair
-	split_AA2(DIR, qmid, Apair, qloc[l], A[l], qloc[l+1], A[l+1], QoutTop[l], QoutBot[l], this->eps_svd, this->min_Nsv, this->max_Nsv);
+	split_AA2(DIR, locBasis_m, Apair, qloc[l], A[l], qloc[l+1], A[l+1], QoutTop[l], QoutBot[l], this->eps_svd, this->min_Nsv, this->max_Nsv);
 }
 
 template<typename Symmetry, typename Scalar>
