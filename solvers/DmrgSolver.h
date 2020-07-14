@@ -430,7 +430,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 			Heff[l].PL.resize(Psi0.size());
 			Heff[l].PR.resize(Psi0.size());
 		}
-		E0 = avg(Psi0[0], H, Psi0[0]);
+		E0 = isReal(avg(Psi0[0], H, Psi0[0]));
 	}
 	
 	// build environments for projected-out states
