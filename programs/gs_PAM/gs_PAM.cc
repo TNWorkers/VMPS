@@ -28,6 +28,10 @@ Logger lout;
 
 #include "models/HubbardSU2xU1.h"
 typedef VMPS::HubbardSU2xU1 MODEL;
+#include "models/PeierlsHubbardSU2xU1.h"
+typedef VMPS::PeierlsHubbardSU2xU1 MODELC;
+
+#include "IntervalIterator.h"
 
 ArrayXXd create_hopping (int L, double tfc, double tcc, double tff, double tx, double ty)
 {
@@ -90,48 +94,77 @@ int main (int argc, char* argv[])
 	GlobParams.tol_state = args.get<double>("tol_state",1e-4);
 	GlobParams.max_iter_without_expansion = 30ul;
 	
-	// Parameter des Modells
-	vector<Param> params;
-	if (Ly==1)
+//	// Parameter des Modells
+//	vector<Param> params;
+//	if (Ly==1)
+//	{
+//		// Ungerade Plaetze sollen f-Plaetze mit U sein:
+//		params.push_back({"U",0.,0});
+//		params.push_back({"U",U,1});
+//		
+//		// Hopping
+//		ArrayXXd t2cell = create_hopping(L,tfc,tcc,tff,tx,ty);
+//		lout << "hopping:" << endl << t2cell << endl;
+//		
+//		params.push_back({"tFull",t2cell});
+//		params.push_back({"maxPower",1ul}); // hoechste Potenz von H
+//	}
+//	
+//	// Aufbau des Modells
+//	MODEL H(L,params,BC::INFINITE);
+//	H.transform_base(Q,false); // PRINT=false
+//	H.precalc_TwoSiteData(true); // FORCE=true
+//	lout << H.info() << endl;
+	
+	// Test von komplexem Hopping
+	// Referenz:
+	// "Persistent current of a Hubbard ring threaded with a magnetic flux", Yu & Fowler (1991)
+	IntervalIterator phi(-M_PI,M_PI,51);
+	vector<double> Uvals = {20., 40., 200.};
+	for (const auto& Uval:Uvals)
 	{
-		// Ungerade Plaetze sollen f-Plaetze mit U sein:
-		params.push_back({"U",0.,0});
-		params.push_back({"U",U,1});
-		
-		// Hopping
-		ArrayXXd t2cell = create_hopping(L,tfc,tcc,tff,tx,ty);
-		lout << "hopping:" << endl << t2cell << endl;
-		
-		params.push_back({"tFull",t2cell});
-		params.push_back({"maxPower",1ul}); // hoechste Potenz von H
-	}
-	
-	// Aufbau des Modells
-	MODEL H(L,params,BC::INFINITE);
-	H.transform_base(Q,false); // PRINT=false
-	H.precalc_TwoSiteData(true); // FORCE=true
-	lout << H.info() << endl;
-	
-	// Grundzustand fuer unendliches System
-	Eigenstate<MODEL::StateUd> g;
-	
-	// VUMPS-Solver
-	MODEL::uSolver Salvator(VERB);
-	Salvator.userSetGlobParam();
-	Salvator.GlobParam = GlobParams;
-	Salvator.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
-	
-	// Besetzungszahlen
-	for (int l=0; l<L; ++l)
-	{
-		lout << "l=" << l << ", n=" << avg(g.state, H.n(l), g.state) << endl;
-	}
-	// fc Spin-Spin-Korrelationen
-	if (Ly==1)
-	{
-		for (int l=0; l<L; l=l+2)
+		for (phi=phi.begin(); phi!=phi.end(); ++phi)
 		{
-			lout << "l=" << l << "," << l+1 << ", SdagS=" << avg(g.state, H.SdagS(l,l+1), g.state) << endl;
+			lout << "phi/pi=" << *phi*M_1_PI << endl;
+			double A = *phi/L;
+			ArrayXXcd tcomplex(8,8); tcomplex.setZero();
+			tcomplex.matrix().diagonal<1>().setConstant(exp(-1.i*A));
+			tcomplex.matrix().diagonal<-1>().setConstant(exp(+1.i*A));
+			tcomplex(0,7) = exp(+1.i*A);
+			tcomplex(7,0) = exp(-1.i*A);
+			
+//			cout << tcomplex << endl << endl;
+			MODELC Hc(8,{{"tFull",tcomplex},{"U",Uval}});
+			lout << Hc.info() << endl;
+			Eigenstate<MODELC::StateXcd> gc;
+			
+			DmrgSolver<MODELC::Symmetry,MODELC,complex<double>> DMRGc(VERB);
+			DMRGc.edgeState(Hc, gc, {1,4}, LANCZOS::EDGE::GROUND);
+			phi << gc.energy;
 		}
+		phi.save(make_string("E(Φ)_U=",Uval,".dat"));
 	}
+	
+//	// Grundzustand fuer unendliches System
+//	Eigenstate<MODEL::StateUd> g;
+//	
+//	// VUMPS-Solver
+//	MODEL::uSolver Salvator(VERB);
+//	Salvator.userSetGlobParam();
+//	Salvator.GlobParam = GlobParams;
+//	Salvator.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+//	
+//	// Besetzungszahlen
+//	for (int l=0; l<L; ++l)
+//	{
+//		lout << "l=" << l << ", n=" << avg(g.state, H.n(l), g.state) << endl;
+//	}
+//	// fc Spin-Spin-Korrelationen
+//	if (Ly==1)
+//	{
+//		for (int l=0; l<L; l=l+2)
+//		{
+//			lout << "l=" << l << "," << l+1 << ", SdagS=" << avg(g.state, H.SdagS(l,l+1), g.state) << endl;
+//		}
+//	}
 }

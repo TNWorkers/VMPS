@@ -127,6 +127,7 @@ int main (int argc, char* argv[])
 	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
 	bool CALC_GS = args.get<int>("CALC_GS",true);
 	bool CALC_NEUTRAL_GAP = args.get<bool>("CALC_NEUTRAL_GAP",false);
+	double Epenalty = args.get<double>("Epenalty",10.);
 	bool CALC_VAR = args.get<int>("CALC_VAR",true);
 	int dmax = args.get<int>("dmax",3);
 	int dmin = args.get<int>("dmin",1);
@@ -190,6 +191,7 @@ int main (int argc, char* argv[])
 	{
 		base += make_string("_Ly=",Ly,"_dbeta=",dbeta,"_tol=",tol_beta_compr,"_Dlim=",Dlim);
 	}
+	if (CALC_NEUTRAL_GAP) base += make_string("_Epenalty=",Epenalty);
 	
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
 	
@@ -313,7 +315,7 @@ int main (int argc, char* argv[])
 				Hlow(0,1) = avg(g.state, H, g2.state);
 				Hlow(1,0) = avg(g2.state, H, g.state);
 				SelfAdjointEigenSolver<MatrixXd> Eugen(Hlow);
-				cout << "eigenvalues of <n|H|m>=" << endl << Eugen.eigenvalues() << endl;
+				cout << "eigenvalues of <n|H|m>=" << endl << setprecision(16) << Eugen.eigenvalues() << endl;
 			}
 			
 			if (CALC_GS)
@@ -331,7 +333,7 @@ int main (int argc, char* argv[])
 			GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_excited_",base);
 			Eigenstate<MODEL::StateXd> excited1;
 			MODEL::Solver DMRG2(VERB);
-			DMRG2.Epenalty = args.get<double>("Epenalty",10000.);
+			DMRG2.Epenalty = Epenalty;
 			lout << "Epenalty=" << DMRG2.Epenalty << endl;
 			DMRG2.userSetGlobParam();
 			DMRG2.userSetDynParam();
