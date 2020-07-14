@@ -29,13 +29,19 @@ public:
 	Qbasis<Symmetry> rightBasis() const {return B2;}
 	
 //private:
-	//data[s1][s2][s1_p][s2_p][k]
+	//data[s1][s2][s1_p][s2_p][k]:
 	//
-	//   s1p  s2p
-	//    |    |
-	//    ******
-	//    |    |
-	//   s1   s2
+	//   s1p  s2p          s1p  s2p
+	//    |    |            \   /
+	//    ^    ^             \ /
+	//    |    |              ^
+	//    ******              |
+	//    *gate*     CGC:     k
+	//    ******              ^
+	//    |    |              |
+	//    ^    ^             / \
+	//    |    |            /   \
+	//   s1   s2          s1     s2
 	//
 	vector<vector<vector<vector<vector<Scalar> > > > > data;
 	Qbasis<Symmetry> B1, B2, Bmid;
@@ -50,11 +56,11 @@ TwoSiteGate<Symmetry,Scalar>::
 TwoSiteGate (const Qbasis<Symmetry> &s1, const Qbasis<Symmetry> &s2)
 	: B1(s1),B2(s2)
 {
-	//mid is the combined basis from B1 and B2.
+	//Bmid is the combined basis from B1 and B2.
 	Bmid = B1.combine(B2);
 	qloc1 = B1.qloc();
 	qloc2 = B2.qloc();
-	qmid = Bmid.qs(); 
+	qmid = Bmid.qs();
 	resize();
 }
 
@@ -86,6 +92,7 @@ template<typename Symmetry, typename Scalar>
 void TwoSiteGate<Symmetry,Scalar>::
 setSwapGate(bool FERMIONIC)
 {
+	assert(!FERMIONIC and "Fermionic sqap gates are not yet implemented.");
 	for (size_t s1=0;  s1<qloc1.size();  s1++)
 	for (size_t s2=0;  s2<qloc2.size();  s2++)
 	for (size_t s1p=0; s1p<qloc1.size(); s1p++)

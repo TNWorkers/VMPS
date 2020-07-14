@@ -1803,10 +1803,15 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 			size_t stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
 			{
+				// Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]]*
+				// 	                                        Symmetry::coeff_leftSweep(
+				// 	                                         A[loc][svec[i]].out[qvec[i]],
+				// 	                                         A[loc][svec[i]].in[qvec[i]]);
 				Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]]*
-					                                        Symmetry::coeff_leftSweep(
+					                                        Symmetry::coeff_leftSweep2(
 					                                         A[loc][svec[i]].out[qvec[i]],
-					                                         A[loc][svec[i]].in[qvec[i]]);
+					                                         A[loc][svec[i]].in[qvec[i]],
+															 qloc[loc][svec[i]]);
 				stitch += Ncolsvec[i];
 			}
 			
@@ -1863,17 +1868,27 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 					
 					if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 					{
+						// Mtmp = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])*
+						// 		                         Symmetry::coeff_leftSweep(
+						// 		                          A[loc][svec[i]].in[qvec[i]],
+						// 		                          A[loc][svec[i]].out[qvec[i]]);
 						Mtmp = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])*
-								                         Symmetry::coeff_leftSweep(
+								                         Symmetry::coeff_leftSweep3(
 								                          A[loc][svec[i]].in[qvec[i]],
-								                          A[loc][svec[i]].out[qvec[i]]);
+								                          A[loc][svec[i]].out[qvec[i]],
+														  qloc[loc][svec[i]]);
 					}
 					else if (TOOL == DMRG::BROOM::QR)
 					{
-						Mtmp = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i])*
-								                         Symmetry::coeff_leftSweep(
+						// Mtmp = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i])*
+						// 		                         Symmetry::coeff_leftSweep(
+						// 		                          A[loc][svec[i]].in[qvec[i]],
+						// 		                          A[loc][svec[i]].out[qvec[i]]);
+						Mtmp = Qmatrix.block(0,stitch, Nret,Ncolsvec[i])*
+								                         Symmetry::coeff_leftSweep3(
 								                          A[loc][svec[i]].in[qvec[i]],
-								                          A[loc][svec[i]].out[qvec[i]]);
+								                          A[loc][svec[i]].out[qvec[i]],
+														  qloc[loc][svec[i]]);
 					}
 					
 					if (Mtmp.size() != 0)
@@ -2448,6 +2463,13 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 	         QoutTop[loc], QoutBot[loc],
 	         Cdump, false, truncWeight(loc), entropy,
 	         this->eps_svd, this->min_Nsv, this->max_Nsv);
+	// Qbasis<Symmetry> basis_loc; basis_loc.pullData(qloc[loc],true);
+	// Qbasis<Symmetry> basis_lp1; basis_lp1.pullData(qloc[loc+1],true);
+	// auto basis_combined = basis_loc.combine(bass_lp1);
+	// split_AA2(DIR, basis_combined, Apair, qloc[loc], A[loc], qloc[loc+1], A[loc+1],
+	//          QoutTop[loc], QoutBot[loc],
+	//          Cdump, false, truncWeight(loc), entropy,
+	//          this->eps_svd, this->min_Nsv, this->max_Nsv);
 	update_outbase(loc);
 	update_inbase(loc+1);
 	
@@ -3418,11 +3440,13 @@ applyGate(const TwoSiteGate<Symmetry,Scalar> &gate, size_t l, DMRG::DIRECTION::O
 	{
 		if (!Symmetry::triangle(qarray3<Symmetry::Nq>{qloc[l][s1],qloc[l+1][s2],qmid[k]})) {continue;}
 		if (!Symmetry::triangle(qarray3<Symmetry::Nq>{qloc[l][s1p],qloc[l+1][s2p],qmid[k]})) {continue;}
+		if (gate.data[s1][s2][s1p][s2p][k] == 0.) {continue;}
 		for (size_t ql=0; ql<A[l][s1p].size(); ql++)
 		{
-			auto qms = Symmetry::reduceSilent(A[l][s1p].in[ql],qloc[l][s1p]);
-			for (const auto &qm : qms)
-			{
+			// auto qms = Symmetry::reduceSilent(A[l][s1p].in[ql],qloc[l][s1p]);
+			// for (const auto &qm : qms)
+			// {
+			    typename Symmetry::qType qm = A[l][s1p].out[ql];
 				auto qrs = Symmetry::reduceSilent(qm,qloc[l+1][s2p]);
 				for (const auto &qr : qrs)
 				{
@@ -3436,24 +3460,27 @@ applyGate(const TwoSiteGate<Symmetry,Scalar> &gate, size_t l, DMRG::DIRECTION::O
 					// print_size(A[l][s1p].block[ql], "A[l][s1p].block[ql]");
 					// print_size(A[l+1][s2p].block[it_qr->second], "A[l+1][s2p].block[it_qr->second]");
 					
-					Mtmp = factor_cgc * gate.data[s1][s2][s1p][s2p][k] * A[l][s1p].block[ql]*A[l+1][s2p].block[it_qr->second];
-					size_t s1ps2p = locBasis_m.leftAmount(qmid[k],{qloc[l][s1],qloc[l+1][s2]}) + locBasis_l.inner_num(s1) + locBasis_r.inner_num(s2)*locBasis_l.inner_dim(qloc[l][s1]);
-					auto it_pair = Apair[s1ps2p].dict.find({A[l][s1p].in[ql],qr});
-					if (it_pair == Apair[s1ps2p].dict.end())
+					Mtmp = factor_cgc * gate.data[s1][s2][s1p][s2p][k] * A[l][s1p].block[ql] * A[l+1][s2p].block[it_qr->second];
+					size_t s1s2 = locBasis_m.outer_num(qmid[k]) + locBasis_m.leftAmount(qmid[k],{qloc[l][s1],qloc[l+1][s2]}) + locBasis_l.inner_num(s1) + locBasis_r.inner_num(s2)*locBasis_l.inner_dim(qloc[l][s1]);
+					auto it_pair = Apair[s1s2].dict.find({A[l][s1p].in[ql],qr});
+					if (it_pair == Apair[s1s2].dict.end())
 					{
-						Apair[s1ps2p].push_back(A[l][s1p].in[ql],qr,Mtmp);
+						Apair[s1s2].push_back(A[l][s1p].in[ql],qr,Mtmp);
 					}
 					else
 					{
-						Apair[s1ps2p].block[it_pair->second] += Mtmp;
+						Apair[s1s2].block[it_pair->second] += Mtmp;
 					}
 				}
-			}
+			// }
 		}
 	}
-	// for (size_t k=0; k<locBasis_m.size(); k++) {cout << "k=" << k << endl << Apair[k].print(true) << endl;}
+	// for (size_t k=0; k<locBasis_m.size(); k++) {cout << "k=" << k << ", qK=" << locBasis_m.find(k) << endl << Apair[k].print(true) << endl;}
 	//Decompose the two-site Atensor Apair
 	split_AA2(DIR, locBasis_m, Apair, qloc[l], A[l], qloc[l+1], A[l+1], QoutTop[l], QoutBot[l], this->eps_svd, this->min_Nsv, this->max_Nsv);
+	if (DIR == DMRG::DIRECTION::RIGHT) {this->pivot = l+1;}
+	else {this->pivot = l;}
+//	split_AA(DIR, Apair, qloc[l], A[l], qloc[l+1], A[l+1], QoutTop[l], QoutBot[l], this->eps_svd, this->min_Nsv, this->max_Nsv);
 }
 
 template<typename Symmetry, typename Scalar>

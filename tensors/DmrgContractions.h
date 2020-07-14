@@ -1819,6 +1819,64 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 }
 
 template<typename Symmetry, typename Scalar>
+void contract_AA2 (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
+				   const vector<qarray<Symmetry::Nq> > &qloc1, 
+				   const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
+				   const vector<qarray<Symmetry::Nq> > &qloc2, 
+				   vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair, 
+				   bool DRY = false)
+{
+	Qbasis<Symmetry> locBasis1; locBasis1.pullData(qloc1,true);
+	Qbasis<Symmetry> locBasis2; locBasis2.pullData(qloc2,true);
+	auto locBasis = locBasis1.combine(locBasis2);
+	
+	Apair.resize(locBasis.size());
+	for (size_t s1=0;  s1<qloc1.size();  s1++)
+	for (size_t s2=0;  s2<qloc2.size();  s2++)
+	{
+		auto q_s1s2s = Symmetry::reduceSilent(qloc1[s1],qloc2[s2]);
+		for (const auto &q_s1s2: q_s1s2s)
+		{
+			size_t s1s2 = locBasis.outer_num(q_s1s2) + locBasis.leftAmount(q_s1s2,{qloc1[s1],qloc2[s2]}) + locBasis1.inner_num(s1) + locBasis2.inner_num(s2)*locBasis1.inner_dim(qloc1[s1]);
+			for (size_t q1=0; q1<A1[s1].size(); q1++)
+			{
+			    typename Symmetry::qType qm = A1[s1].out[q1];
+				auto q2s = Symmetry::reduceSilent(qm,qloc2[s2]);
+				for (const auto &q2 : q2s)
+				{
+					auto it_q2 = A2[s2].dict.find({qm,q2});
+					if ( it_q2 == A2[s2].dict.end()) {continue;}
+					Eigen::Matrix<Scalar,-1,-1> Mtmp(A1[s1].block[q1].rows(),A2[s2].block[it_q2->second].cols());
+					Mtmp.setZero();
+					Scalar factor_cgc = Symmetry::coeff_twoSiteGate(A1[s1].in[q1], qloc1[s1], qm,
+																	qloc2[s2]    , q2       , q_s1s2);
+					if (abs(factor_cgc) < ::mynumeric_limits<double>::epsilon()) {continue;}
+					// cout << "ql=" << A1[s1].in[q1] << ", s1=" << qloc1[s1] << ", qm=" << qm << ", s2=" << qloc2[s2] << ", q2=" << q2 << ", s1s2=" << q_s1s2 << endl;
+					// cout << "factor_cgc=" << factor_cgc << endl;
+					// cout << "l=" << l << ", s1p=" << s1p << ", ql=" << ql << ", s2p=" << s2p << "qr=" << it_qr->second << endl;
+					// print_size(A[l][s1p].block[ql], "A[l][s1p].block[ql]");
+					// print_size(A[l+1][s2p].block[it_qr->second], "A[l+1][s2p].block[it_qr->second]");
+					if (!DRY)
+					{
+						Mtmp = factor_cgc * A1[s1].block[q1] * A2[s2].block[it_q2->second];
+					}
+					// cout << ", qmid[k]=" << q_s1s2 << ", s1s2=" << s1s2 << ", q_s1s2=" << locBasis.find(s1s2) << endl;
+					auto it_pair = Apair[s1s2].dict.find({A1[s1].in[q1],q2});
+					if (it_pair == Apair[s1s2].dict.end())
+					{
+						Apair[s1s2].push_back(A1[s1].in[q1],q2,Mtmp);
+					}
+					else
+					{
+						Apair[s1s2].block[it_pair->second] += Mtmp;
+					}
+				}
+			}
+		}
+	}
+}
+
+template<typename Symmetry, typename Scalar>
 void contract_AA (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
                   const vector<qarray<Symmetry::Nq> > &qloc1, 
                   const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
@@ -2384,7 +2442,8 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 		auto q_slsrs = Symmetry::reduceSilent(qloc_l[sl],qloc_r[sr]);
 		for (const auto &q_slsr:q_slsrs)
 		{
-			size_t s = locBasis.leftAmount(q_slsr,{qloc_l[sl],qloc_r[sr]}) + locBasis_l.inner_num(sl) + locBasis_r.inner_num(sr)*locBasis_l.inner_dim(qloc_l[sl]);
+			size_t s = locBasis.outer_num(q_slsr) + locBasis.leftAmount(q_slsr,{qloc_l[sl],qloc_r[sr]}) + locBasis_l.inner_num(sl) + locBasis_r.inner_num(sr)*locBasis_l.inner_dim(qloc_l[sl]);
+			assert(locBasis.find(s) == q_slsr);
 			// if (!Symmetry::triangle(qarray3<Symmetry::Nq>{qloc_l[sl],qloc_r[sr],qloc[s]})) {continue;}
 			for (size_t q=0; q<Apair[s].size(); q++)
 			{
@@ -2399,6 +2458,8 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 					Scalar factor_cgc = Symmetry::coeff_splitAA(Apair[s].in[q], Apair[s].out[q], q_slsr,
 																qloc_r[sr]    , qloc_l[sl]     , Ql);
 					if (abs(factor_cgc) < ::mynumeric_limits<double>::epsilon()) {continue;}
+					// cout << "ql=" << Apair[s].in[q] << ", qr=" << Apair[s].out[q] << ", slsr=" << q_slsr << ", sr=" << qloc_r[sr] << ", sl=" << qloc_l[sl] << ", Ql=" << Ql <<  endl;
+					// cout << "factor_cgc=" << factor_cgc << endl;
 					Eigen::Matrix<Scalar,-1,-1> Mtmp(leftTot.inner_dim(Ql),rightTot.inner_dim(Qr));
 					Mtmp.setZero();
 					Index plain_left1 = leftBasis.inner_dim(Apair[s].in[q])*locBasis_l.inner_num(sl);
@@ -2406,7 +2467,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 					Index plain_left2 = rightBasis.inner_dim(Apair[s].out[q])*locBasis_r.inner_num(sr);
 					array<qarray<Symmetry::Nq>,2> source = {Apair[s].out[q],  Symmetry::flip(qloc_r[sr])};
 					Index left2 = rightTot.leftAmount(Qr,source) + plain_left2;
-					Mtmp.block(left1, left2, Apair[s].block[q].rows(), Apair[s].block[q].cols()) += Apair[s].block[q];
+					Mtmp.block(left1, left2, Apair[s].block[q].rows(), Apair[s].block[q].cols()) += factor_cgc*Apair[s].block[q];
 					auto it_Aclump = Aclump.dict.find({Ql,Qr});
 					if (it_Aclump == Aclump.dict.end())
 					{
@@ -2421,7 +2482,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 		}
 	}
 	// cout << "Aclump:" << endl << Aclump.print(true) << endl;
-	auto [U,Sigma,Vdag] = Aclump.truncateSVD(max_Nsv,eps_svd);
+	auto [U,Sigma,Vdag] = Aclump.truncateSVD(max_Nsv,eps_svd,false);
 	// cout << "U,Sigma,Vdag:" << endl << U.print(true) << endl << Sigma.print(true) << endl << Vdag.print(true) << endl;
 	Biped<Symmetry,Eigen::Matrix<Scalar,-1,-1> > left,right;
 	if (DIR == DMRG::DIRECTION::RIGHT)
@@ -2488,7 +2549,8 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 			array<qarray<Symmetry::Nq>,2> source = {qr,  Symmetry::flip(qloc_r[s2])};
 			Index left2 = rightTot.leftAmount (Qr,source) + rightBasis.inner_dim(qr)*locBasis_r.inner_num(s2);
 			Mtmp = Symmetry::coeff_splitAA(Qr,qr,qloc_r[s2])*right.block[it_right->second].block(0, left2, right.block[it_right->second].rows(), rightBasis.inner_dim(qr));
-			
+			// cout << "Qr=" << Qr << ", qr=" << qr << ", sr=" << qloc_r[s2] << endl;
+			// cout << "factor_cgc=" << Symmetry::coeff_splitAA(Qr,qr,qloc_r[s2]) << endl;
 			auto it_A = Ar[s2].dict.find({Qr,qr});
 			if (it_A == Al[s2].dict.end())
 			{

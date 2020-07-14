@@ -249,7 +249,7 @@ and to the subtitution $m_1$ to $-m_1$ and $m_2$ to $-m_2$ in the CGC at the rig
 The sign $(-1)^{k-m}$ cancels and after reverting all signs of the CGC at the right, the two
 CGC are identical. Reverting all signs give another sign $(-1)^{j_1+k-j_2}$ so that the corresponding coeff reads:
 \begin{equation}
-  \Braket{j_1||O^{\dagger[k]}||j_2} = (-1)^{j_1+k-j_2}\sqrt{\frac{2j_2+1}{2j_1+1}}(-1)^{k-m}\Braket{j_2||O^{[k]}||j_1}^*
+  \Braket{j_1||O^{\dagger[k]}||j_2} = (-1)^{j_1+k-j_2}\sqrt{\frac{2j_2+1}{2j_1+1}}\Braket{j_2||O^{[k]}||j_1}^*
 \end{equation}
 The corresponding coefficient is called \textsc{coeff\_adjoint} in the implementation.
 Notice that $O^{\dagger^\dagger[k]}=(-1)^{2k}O^{[k]}$.
@@ -536,7 +536,7 @@ can be computed as follows:
     &C^{i,\sigma\rightarrow j}_{m_{i},m_{\sigma}\rightarrow m_{j}}
     C^{\sigma_1\sigma_2\rightarrow\sigma}_{m_{\sigma_1}m_{\sigma_2}\rightarrow m_{\sigma}}\\
     &C^{i,\sigma_1\rightarrow I}_{m_i,m_{\sigma_1}\rightarrow m_{I}}
-    C^{j,\sigma_2\rightarrow J}_{m_j,m_{\sigma_2^\prime}\rightarrow m_{J}}\delta_{m_{\sigma_2}-m_{\sigma_2^\prime}}(-1)^{(\sigma_2+m_{\sigma_2^\prime})}
+    C^{j,\sigma_2\rightarrow J}_{m_j,m_{\sigma_2^\prime}\rightarrow m_{J}}\delta_{m_{\sigma_2}-m_{\sigma_2^\prime}}(-1)^{(\sigma_2-m_{\sigma_2^\prime})}
   \end{split}
 \end{equation}
 Here the kronecker-$\delta$ and the phase is related to the reversal
@@ -549,7 +549,7 @@ Summing over $m_{\sigma_2}^\prime$ leads to:
     &C^{i,\sigma\rightarrow j}_{m_{i},m_{\sigma}\rightarrow m_{j}}
     C^{\sigma_1\sigma_2\rightarrow\sigma}_{m_{\sigma_1}m_{\sigma_2}\rightarrow m_{\sigma}}\\
     &C^{i,\sigma_1\rightarrow I}_{m_i,m_{\sigma_1}\rightarrow m_{I}}
-    C^{j,\sigma_2\rightarrow J}_{m_j,-m_{\sigma_2}\rightarrow m_{J}}(-1)^{(\sigma_2-m_{\sigma_2})}
+    C^{j,\sigma_2\rightarrow J}_{m_j,-m_{\sigma_2}\rightarrow m_{J}}(-1)^{(\sigma_2+m_{\sigma_2})}
   \end{split}
 \end{equation}
 Now, one has to interchange $\sigma_1$ and $\sigma$ in the upper right
@@ -561,7 +561,7 @@ CGC to get:
     &C^{i,\sigma\rightarrow j}_{m_{i},m_{\sigma}\rightarrow m_{j}}
     C^{\sigma\sigma_2\rightarrow\sigma_1}_{-m_{\sigma}m_{\sigma_2}\rightarrow -m_{\sigma_1}}(-1)^{(\sigma_2+m_{\sigma_2})}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}\\
     &C^{i,\sigma_1\rightarrow I}_{m_i,m_{\sigma_1}\rightarrow m_{I}}
-    C^{j,\sigma_2\rightarrow J}_{m_j,-m_{\sigma_2}\rightarrow m_{J}}(-1)^{(\sigma_2-m_{\sigma_2})}
+    C^{j,\sigma_2\rightarrow J}_{m_j,-m_{\sigma_2}\rightarrow m_{J}}(-1)^{(\sigma_2+m_{\sigma_2})}
   \end{split}
 \end{equation}
 After reversing the sign of all $m$-quantum numbers in the upper right
@@ -571,10 +571,10 @@ CGC one gets a $6j$ box-symbol:
     \delta_{IJ}\delta_{m_Im_J}&=
     \sum_{m_{\sigma_1},m_{\sigma_2},m_{i},m_j,m_{\sigma}}\\
     &C^{i,\sigma\rightarrow j}_{m_{i},m_{\sigma}\rightarrow m_{j}}
-    C^{\sigma\sigma_2\rightarrow\sigma_1}_{+m_{\sigma}-m_{\sigma_2}\rightarrow +m_{\sigma_1}}(-1)^{(2\sigma_2)+\sigma+\sigma_2-\sigma_1}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}\\
+    C^{\sigma\sigma_2\rightarrow\sigma_1}_{+m_{\sigma}-m_{\sigma_2}\rightarrow +m_{\sigma_1}}(-1)^{\sigma+\sigma_2-\sigma_1}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}\\
     &C^{i,\sigma_1\rightarrow I}_{m_i,m_{\sigma_1}\rightarrow m_{I}}
     C^{j,\sigma_2\rightarrow J}_{m_j,-m_{\sigma_2}\rightarrow m_{J}}\\
-    &=(-1)^{(2\sigma_2)+\sigma+\sigma_2-\sigma_1}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}
+    &=(-1)^{\sigma+\sigma_2-\sigma_1}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}
     \begin{bmatrix}
       i & \sigma & j \\
       \sigma_2 & I & \sigma_1
@@ -584,12 +584,12 @@ CGC one gets a $6j$ box-symbol:
 Converting the box-symbol to a $6j$-symbol leads to:
 \begin{equation}
   \begin{split}
-    &(-1)^{(2\sigma_2)+\sigma+\sigma_2-\sigma_1}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}
+    &(-1)^{\sigma+\sigma_2-\sigma_1}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}
     \begin{bmatrix}
       i & \sigma & j \\
       \sigma_2 & I & \sigma_1
     \end{bmatrix}\delta_{IJ}\delta_{m_Im_J}\\
-    &=(-1)^{(2\sigma_2)+\sigma+\sigma_2-\sigma_1}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}\sqrt{(2j+1)(2\sigma_1+1)}(-1)^{i+\sigma+\sigma_2+I}\\
+    &=(-1)^{\sigma+\sigma_2-\sigma_1}\sqrt{\frac{2\sigma+1}{2\sigma_1+1}}\sqrt{(2j+1)(2\sigma_1+1)}(-1)^{i+\sigma+\sigma_2+I}\\
     &\begin{Bmatrix}
       i & \sigma & j \\
       \sigma_2 & I & \sigma_1
@@ -599,7 +599,7 @@ Converting the box-symbol to a $6j$-symbol leads to:
 After evaluating the sign, the final result is:
 \begin{equation}
   \begin{split}
-    &(-1)^{(2\sigma_2)+\sigma_1+i+I}\sqrt{(2\sigma+1)(2j+1)}
+    &(-1)^{\sigma_1+i+I}\sqrt{(2\sigma+1)(2j+1)}
     \begin{Bmatrix}
       i & j & \sigma \\
       \sigma_2 & \sigma_1 & I
@@ -630,10 +630,10 @@ and $j$:
   \begin{split}
     &C^{J,\sigma_2\rightarrow
       j}_{-m_J,-m_{\sigma_2}\rightarrow
-      -m_{j}}(-1)^{(\sigma_2+m_{\sigma_2})}(-1)^{(\sigma_2+m_{\sigma_2})}\sqrt{\frac{2J+1}{2j+1}}\\
+      -m_{j}}(-1)^{(\sigma_2-m_{\sigma_2})}(-1)^{(\sigma_2+m_{\sigma_2})}\sqrt{\frac{2J+1}{2j+1}}\\
     &=C^{J,\sigma_2\rightarrow
       j}_{m_J,m_{\sigma_2}\rightarrow
-      m_{j}}(-1)^{(J+\sigma_2-j)}\sqrt{\frac{2J+1}{2j+1}}
+      m_{j}}(-1)^{(J-\sigma_2-j)}\sqrt{\frac{2J+1}{2j+1}}
   \end{split}
 \end{equation}
 The coefficient is also called \textsc{coeff\_splitAA} in the

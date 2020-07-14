@@ -101,7 +101,9 @@ public:
 	static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
 	static Scalar coeff_leftSweep(const qType& q1, const qType& q2);
 	static Scalar coeff_swapPhase(const qType& q1, const qType& q2);
-	
+
+	static Scalar coeff_leftSweep2(const qType& q1, const qType& q2, const qType& q3);
+	static Scalar coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3);
 	static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
 	static Scalar coeff_splitAA(const qType& q1, const qType& q2, const qType& q3);
 	static Scalar coeff_3j(const qType& q1, const qType& q2, const qType& q3,
@@ -300,6 +302,24 @@ coeff_leftSweep(const qType& q1, const qType& q2)
 
 template<typename Kind, typename Scalar>
 Scalar SU2<Kind,Scalar>::
+coeff_leftSweep2(const qType& q1, const qType& q2, const qType& q3)
+{
+	Scalar out = phase<Scalar>((q1[0]-q2[0]+q3[0]-1) / 2) *
+		std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]));
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3)
+{
+	Scalar out = phase<Scalar>((q1[0]-q2[0]-q3[0]-1) / 2) *
+		std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]));
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_swapPhase(const qType& q1, const qType& q2)
 {
 	Scalar out = phase<Scalar>((q1[0]+q2[0]-2) /2);
@@ -319,8 +339,9 @@ template<typename Kind, typename Scalar>
 Scalar SU2<Kind,Scalar>::
 coeff_splitAA(const qType& q1, const qType& q2, const qType& q3)
 {
-	Scalar out = phase<Scalar>((q1[0]-q2[0]+q3[0]-3) / 2) *
+	Scalar out = phase<Scalar>((q1[0]-q2[0]-q3[0]-3) / 2) *
 		std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]));
+	// Scalar out = std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]));
 	return out;
 }
 
@@ -377,7 +398,7 @@ coeff_splitAA(const qType& q1, const qType& q2, const qType& q3,
 {	
 	Scalar out = coupling_6j(q1[0],q2[0],q3[0],q4[0],q5[0],q6[0])*
 		std::sqrt(static_cast<Scalar>(q2[0]*q3[0]))
-		*phase<Scalar>((q1[0]+2*q4[0]+q5[0]+q6[0]-5)/2);
+		*phase<Scalar>((q1[0]+q5[0]+q6[0]-3)/2);
 	return out;
 }
 
