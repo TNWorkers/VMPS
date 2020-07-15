@@ -735,7 +735,7 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, bool PRESERVE_MULTIPLETS) const
 		}
 	}
 	
-	cout << "Adding " << allSV.size() << " states from " << numberOfStates << " states" << endl;
+	// cout << "Adding " << allSV.size() << " states from " << numberOfStates << " states" << endl;
 	map<typename Symmetry::qType, vector<Scalar> > qn_orderedSV;
 	for (const auto &[q,s]:allSV )
 	{
@@ -744,7 +744,7 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, bool PRESERVE_MULTIPLETS) const
 	for (const auto & [q,vec_sv]: qn_orderedSV)
 	{
 		size_t Nret = vec_sv.size();
-		cout << "q=" << q << ", Nret=" << Nret << endl;
+		// cout << "q=" << q << ", Nret=" << Nret << endl;
 		auto itSigma = Sigma.dict.find({q,q});
 		trunc_Sigma.push_back(q,q,Sigma.block[itSigma->second].diagonal().head(Nret).asDiagonal());
 		auto itU = U.dict.find({q,q});

@@ -3425,6 +3425,7 @@ applyGate(const TwoSiteGate<Symmetry,Scalar> &gate, size_t l, DMRG::DIRECTION::O
 	assert(qloc[l] == gate.leftBasis().qloc() and "Mismatching basis at left site from gate.");
 	assert(qloc[l+1] == gate.rightBasis().qloc() and "Mismatching basis at right site from gate.");
 
+	cout << termcolor::red << "Interchanging sites " << l << "<==>" << l+1 << termcolor::reset << endl;
 	auto locBasis_l = gate.leftBasis();
 	auto locBasis_r = gate.rightBasis();
 	auto locBasis_m = gate.midBasis();
