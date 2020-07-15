@@ -3733,7 +3733,8 @@ base_order_IBC(const std::size_t power) const
                     for(std::size_t t=0; t<W_[0][m][n].size(); ++t)
                     {
                         auto it = W_[0][m][n][t].dict.find({qIn,qVac});
-                        if(it != W_[0][m][n][t].dict.end() and std::abs(W_[0][m][n][t].block[it->second].coeff(row,pos_qTot) > ::mynumeric_limits<double>::epsilon()))
+                        if(it != W_[0][m][n][t].dict.end() and 
+                           std::abs(W_[0][m][n][t].block[it->second].coeff(row,pos_qTot)) > ::mynumeric_limits<double>::epsilon())
                         {
                             isZeroOp = false;
                             break;

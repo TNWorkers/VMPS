@@ -58,7 +58,7 @@ HeisenbergXXZ (const size_t &L, const vector<Param> &params, const BC &boundary,
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		setLocBasis(B[l].get_basis().qloc(),l);
 	}
-
+	
 	if (P.HAS_ANY_OF({"Jxy", "Jxypara", "Jxyperp", "Jxyfull"}))
 	{
 		this->set_name("XXZ");
@@ -67,16 +67,16 @@ HeisenbergXXZ (const size_t &L, const vector<Param> &params, const BC &boundary,
 	{
 		this->set_name("Ising");
 	}
-
+	
 	PushType<SiteOperator<Symmetry,double>,double> pushlist;
-    std::vector<std::vector<std::string>> labellist;
+	std::vector<std::vector<std::string>> labellist;
 	
 	HeisenbergU1::set_operators(B,P,pushlist,labellist,boundary);
 	Heisenberg::add_operators(B,P,pushlist,labellist,boundary);
 	HeisenbergU1XXZ::add_operators(B,P,pushlist,labellist,boundary);
 	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
+	this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
 	
 	this->precalc_TwoSiteData();
 }

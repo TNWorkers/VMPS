@@ -84,6 +84,9 @@ public:
 const std::map<string,std::any> HeisenbergU1::defaults = 
 {
 	{"J",1.}, {"Jprime",0.}, {"Jrung",1.},
+	{"Jxy",0.}, {"Jxyprime",0.}, {"Jxyrung",0.},
+	{"Jz",0.}, {"Jzprime",0.}, {"Jzrung",0.},
+	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.},
 	{"Bz",0.}, {"Kz",0.},
 	{"D",2ul}, {"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
@@ -120,15 +123,27 @@ HeisenbergU1 (const size_t &L, const vector<Param> &params, const BC &boundary, 
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		setLocBasis(B[l].get_basis().qloc(),l);
 	}
-    this->set_name("Heisenberg");
-
+	
+	if (P.HAS_ANY_OF({"Jxy", "Jxypara", "Jxyperp", "Jxyfull"}))
+	{
+		this->set_name("XXZ");
+	}
+	else if (P.HAS_ANY_OF({"Jz", "Jzpara", "Jzperp", "Jzfull"}))
+	{
+		this->set_name("Ising");
+	}
+	else
+	{
+		this->set_name("Heisenberg");
+	}
+	
 	PushType<SiteOperator<Symmetry,double>,double> pushlist;
-    std::vector<std::vector<std::string>> labellist;
+	std::vector<std::vector<std::string>> labellist;
 	set_operators(B, P, pushlist, labellist, boundary);
-
+	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
-
+	this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
+	
 	this->precalc_TwoSiteData();
 }
 
@@ -148,7 +163,8 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 {
 	std::size_t Lcell = P.size();
 	std::size_t N_sites = B.size();
-	if(labellist.size() != N_sites) {labellist.resize(N_sites);}
+	
+	if (labellist.size() != N_sites) {labellist.resize(N_sites);}
 	
 	for (std::size_t loc=0; loc<N_sites; ++loc)
 	{
@@ -165,10 +181,11 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 		labellist[loc].push_back(ss1.str());
 		labellist[loc].push_back(ss2.str());
 		
-		auto push_full = [&N_sites, &loc, &B, &P, &pushlist, &labellist, &boundary] (string xxxFull, string label,
-																					 const vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > &first,
-																					 const vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > &last,
-																					 vector<double> factor) -> void
+		auto push_full = [&N_sites, &loc, &B, &P, &pushlist, &labellist, &boundary] 
+		(string xxxFull, string label,
+		 const vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > &first,
+		 const vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > &last,
+		 vector<double> factor) -> void
 		{
 			ArrayXXd Full = P.get<Eigen::ArrayXXd>(xxxFull);
 			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
@@ -205,19 +222,36 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 		param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", orbitals, loc%Lcell);
 		param1d Kz = P.fill_array1d<double>("Kz", "Kzorb", orbitals, loc%Lcell);
 		param2d Jperp = P.fill_array2d<double>("Jrung", "J", "Jperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		param2d Jxyperp = P.fill_array2d<double>("Jxyrung", "Jxy", "Jxyperp", orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
+		param2d Jzperp  = P.fill_array2d<double>("Jzrung",  "Jz",  "Jzperp",  orbitals, loc%Lcell, P.get<bool>("CYLINDER"));
 		
 		labellist[loc].push_back(Bz.label);
 		labellist[loc].push_back(Kz.label);
 		labellist[loc].push_back(Jperp.label);
+		labellist[loc].push_back(Jxyperp.label);
+		labellist[loc].push_back(Jzperp.label);
 		
 		Eigen::ArrayXd Bx_array = B[loc].ZeroField();
 		Eigen::ArrayXd mu_array = B[loc].ZeroField();
 		Eigen::ArrayXd Kx_array = B[loc].ZeroField();
 		Eigen::ArrayXXd Dyperp_array = B[loc].ZeroHopping();
 		
-		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jperp.a, Jperp.a, Bz.a, mu_array, Kz.a));
+		auto sum_array = [] (const ArrayXXd& a1, const ArrayXXd& a2)
+		{
+			ArrayXXd res(a1.rows(), a1.cols());
+			for (int i=0; i<a1.rows(); ++i)
+			for (int j=0; j<a1.rows(); ++j)
+			{
+				res(i,j) = a1(i,j) + a2(i,j);
+			}
+			return res;
+		};
+		
+		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(
+		            B[loc].HeisenbergHamiltonian(sum_array(Jperp.a,Jxyperp.a), sum_array(Jperp.a,Jzperp.a), Bz.a, mu_array, Kz.a));
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
+		// Full J-matrices
 		if (P.HAS("Jfull"))
 		{
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {B[loc].Sp(0), B[loc].Sm(0), B[loc].Sz(0)};
@@ -228,11 +262,35 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 			
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sm_ranges, Sp_ranges, Sz_ranges};
 			push_full("Jfull", "Jᵢⱼ", first, last, {0.5,0.5,1.0});
-			continue;
+		}
+		if (P.HAS("Jxyfull"))
+		{
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {B[loc].Sp(0), B[loc].Sm(0)};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sp_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sm_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++) {Sp_ranges[i] = B[i].Sp(0); Sm_ranges[i] = B[i].Sm(0);}
+			
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sm_ranges, Sp_ranges};
+			push_full("Jxyfull", "Jxyᵢⱼ", first, last, {0.5,0.5});
+		}
+		if (P.HAS("Jzfull"))
+		{
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {B[loc].Sz(0)};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Sz_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++) {Sz_ranges[i] = B[i].Sz(0);}
+			
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Sz_ranges};
+			push_full("Jzfull", "Jzᵢⱼ", first, last, {1.0});
 		}
 		
-		// Nearest-neighbour terms: J
+		if (P.HAS("Jfull") or P.HAS("Jxyfull") or P.HAS("Jzfull")) continue;
+		
+		// Nearest-neighbour terms: Jxy, Jz, J
+		param2d Jxypara = P.fill_array2d<double>("Jxy", "Jxypara", {orbitals, next_orbitals}, loc%Lcell);
+		param2d Jzpara  = P.fill_array2d<double>("Jz",  "Jzpara",  {orbitals, next_orbitals}, loc%Lcell);
 		param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
+		labellist[loc].push_back(Jxypara.label);
+		labellist[loc].push_back(Jzpara.label);
 		labellist[loc].push_back(Jpara.label);
 		
 		if (loc < N_sites-1 or !static_cast<bool>(boundary))
@@ -240,17 +298,24 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 			for (std::size_t alfa=0; alfa < orbitals; ++alfa)
 			for (std::size_t beta=0; beta < next_orbitals; ++beta)
 			{
-				pushlist.push_back(std::make_tuple(loc, 
-				                   Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SP,alfa), B[lp1].Scomp(SM,beta)), 0.5*Jpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, 
-				                   Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SM,alfa), B[lp1].Scomp(SP,beta)), 0.5*Jpara(alfa,beta)));
-				pushlist.push_back(std::make_tuple(loc, 
-				                   Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa), B[lp1].Scomp(SZ,beta)),     Jpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SP,alfa),
+				                                                                                     B[lp1].Scomp(SM,beta)),
+				                                                                                     0.5*Jxypara(alfa,beta)+0.5*Jpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SM,alfa),
+				                                                                                     B[lp1].Scomp(SP,beta)),
+				                                                                                     0.5*Jxypara(alfa,beta)+0.5*Jpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa),
+				                                                                                     B[lp1].Scomp(SZ,beta)),
+				                                                                                     Jzpara(alfa,beta)+Jpara(alfa,beta)));
 			}
 		}
 		
-		// Next-nearest-neighbour terms: J
+		// Next-nearest-neighbour terms: Jxy, Jz, J
+		param2d Jxyprime = P.fill_array2d<double>("Jxyprime", "Jxyprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
+		param2d Jzprime  = P.fill_array2d<double>("Jzprime",  "Jzprime_array",  {orbitals, nextn_orbitals}, loc%Lcell);
 		param2d Jprime = P.fill_array2d<double>("Jprime", "Jprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
+		labellist[loc].push_back(Jxyprime.label);
+		labellist[loc].push_back(Jzprime.label);
 		labellist[loc].push_back(Jprime.label);
 		
 		if (loc < N_sites-2 or !static_cast<bool>(boundary))
@@ -258,15 +323,18 @@ set_operators (const std::vector<SpinBase<Symmetry_> > &B, const ParamHandler &P
 			for (std::size_t alfa=0; alfa < orbitals; ++alfa)
 			for (std::size_t beta=0; beta < nextn_orbitals; ++beta)
 			{
-				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SP,alfa),
-																									 B[lp1].Id(),
-																									 B[lp2].Scomp(SM,beta)), 0.5*Jprime(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc,Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SP,alfa),
+				                                                                                    B[lp1].Id(),
+				                                                                                    B[lp2].Scomp(SM,beta)),
+				                                                                                    0.5*Jxyprime(alfa,beta)+0.5*Jprime(alfa,beta)));
 				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SM,alfa),
-																									 B[lp1].Id(),
-																									 B[lp2].Scomp(SP,beta)), 0.5*Jprime(alfa,beta)));
+				                                                                                     B[lp1].Id(),
+				                                                                                     B[lp2].Scomp(SP,beta)),
+				                                                                                     0.5*Jxyprime(alfa,beta)+0.5*Jprime(alfa,beta)));
 				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(B[loc].Scomp(SZ,alfa),
-																									 B[lp1].Id(),
-																									 B[lp2].Scomp(SZ,beta)),     Jprime(alfa,beta)));
+				                                                                                     B[lp1].Id(),
+				                                                                                     B[lp2].Scomp(SZ,beta)),
+				                                                                                     Jzprime(alfa,beta)+Jprime(alfa,beta)));
 			}
 		}
 	}

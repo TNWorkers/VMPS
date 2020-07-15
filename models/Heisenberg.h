@@ -62,6 +62,8 @@ public:
 const std::map<string,std::any> Heisenberg::defaults = 
 {
 	{"J",1.}, {"Jprime",0.}, {"Jrung",1.},
+	{"Jxy",0.}, {"Jxyprime",0.}, {"Jxyrung",0.},
+	{"Jz",0.}, {"Jzprime",0.}, {"Jzrung",0.},
 	{"Bz",0.}, {"Bx",0.},
 	{"Kz",0.}, {"Kx",0.},
 	{"Dy",0.}, {"Dyprime",0.}, {"Dyrung",0.}, // Dzialoshinsky-Moriya terms
@@ -94,7 +96,7 @@ Heisenberg (const size_t &L, const vector<Param> &params, const BC &boundary, co
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		setLocBasis(B[l].get_basis().qloc(),l);
 	}
-
+	
 	if (P.HAS_ANY_OF({"Dy", "Dyperp", "Dyprime"}))
 	{
 		this->set_name("Dzyaloshinsky-Moriya");
@@ -107,15 +109,15 @@ Heisenberg (const size_t &L, const vector<Param> &params, const BC &boundary, co
 	{
 		this->set_name("Heisenberg");
 	}
-
+	
 	PushType<SiteOperator<Symmetry,double>,double> pushlist;
-    std::vector<std::vector<std::string>> labellist;
+	std::vector<std::vector<std::string>> labellist;
 	HeisenbergU1::set_operators(B, P, pushlist, labellist, boundary);
 	add_operators(B, P, pushlist, labellist, boundary);
 	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
-
+	this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
+	
 	this->precalc_TwoSiteData();
 }
 
@@ -150,10 +152,11 @@ add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, P
 		ArrayXd Kz_array = B[loc].ZeroField();
 		ArrayXXd Jperp_array = B[loc].ZeroHopping();
 
-		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(B[loc].HeisenbergHamiltonian(Jperp_array, Jperp_array, Bz_array, Bx.a, mu_array, Kz_array, Kx.a, Dyperp.a));
+		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(
+		            B[loc].HeisenbergHamiltonian(Jperp_array, Jperp_array, Bz_array, Bx.a, mu_array, Kz_array, Kx.a, Dyperp.a));
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
-		// Nearest-neighbour terms: DM=Dzyaloshinsky-Moriya		
+		// Nearest-neighbour terms: DM=Dzyaloshinsky-Moriya
 		param2d Dypara = P.fill_array2d<double>("Dy", "Dypara", {orbitals, next_orbitals}, loc%Lcell);
 		labellist[loc].push_back(Dypara.label);
 		
@@ -167,7 +170,7 @@ add_operators(const std::vector<SpinBase<Symmetry>> &B, const ParamHandler &P, P
 			}
 		}
 		
-		// Next-nearest-neighbour terms: DM		
+		// Next-nearest-neighbour terms: DM
 		param2d Dyprime = P.fill_array2d<double>("Dyprime", "Dyprime_array", {orbitals, nextn_orbitals}, loc%Lcell);
 		labellist[loc].push_back(Dyprime.label);
 		
