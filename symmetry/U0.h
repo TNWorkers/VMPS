@@ -83,9 +83,12 @@ namespace Sym{
 		inline static double coeff_dot(const qType& q1) { return 1.; }
 		inline static double coeff_rightOrtho(const qType& q1, const qType& q2) { return 1.; }
 		inline static double coeff_leftSweep(const qType& q1, const qType& q2) { return 1.; }
+		inline static double coeff_leftSweep2(const qType& q1, const qType& q2, const qType& q3) { return 1.; }
+		inline static double coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3) { return 1.; }
 		inline static double coeff_swapPhase(const qType& q1, const qType& q2) { return 1.; }
 
 		inline static double coeff_adjoint(const qType& q1, const qType& q2, const qType& q3) { return 1.; }
+		inline static double coeff_splitAA(const qType& q1, const qType& q2, const qType& q3) { return 1.; }
 
 		inline static double coeff_6j(const qType& q1, const qType& q2, const qType& q3,
 									  const qType& q4, const qType& q5, const qType& q6) { return 1.; }

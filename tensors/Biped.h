@@ -705,19 +705,18 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, bool PRESERVE_MULTIPLETS) const
 	std::sort(allSV.begin(),allSV.end(),[](const pair<typename Symmetry::qType, Scalar> &sv1, const pair<typename Symmetry::qType, Scalar> &sv2) {return sv1.second > sv2.second;});
 	allSV.resize(maxKeep);
 	
-	// std::erase_if(allSV, [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv < eps_svd); }); c++-20 version
-	
+	// std::erase_if(allSV, [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv < eps_svd); }); c++-20 version	
 	allSV.erase(std::remove_if(allSV.begin(), allSV.end(), [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv.second < eps_svd); }), allSV.end());
 
-	cout << "saving sv for expansion to file, #sv=" << allSV.size() << endl;
-	ofstream Filer("sv_expand");
-	size_t index=0;
-	for (const auto & [q,sv]: allSV)
-	{
-		Filer << index << "\t" << sv << endl;
-		index++;
-	}
-	Filer.close();
+	// cout << "saving sv for expansion to file, #sv=" << allSV.size() << endl;
+	// ofstream Filer("sv_expand");
+	// size_t index=0;
+	// for (const auto & [q,sv]: allSV)
+	// {
+	// 	Filer << index << "\t" << sv << endl;
+	// 	index++;
+	// }
+	// Filer.close();
 		
 	if (PRESERVE_MULTIPLETS)
 	{

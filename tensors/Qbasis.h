@@ -128,9 +128,12 @@ public:
 	
 	Eigen::Index inner_dim( const Eigen::Index& num_in ) const;
 	Eigen::Index inner_dim( const qType& q ) const;
+
+	Eigen::Index outer_num( const qType& q ) const;
 	
 	Eigen::Index leftAmount( const qType& qnew, const std::array<qType,2>& qold ) const;
 	Eigen::Index rightAmount( const qType& qnew, const std::array<qType,2>& qold ) const;
+	// Eigen::Index outer_num( const qType& qnew, const std::array<qType,2>& qold ) const;
 	
 	///\{
 	/**Insert the \p state into the basis.*/
@@ -297,13 +300,14 @@ template<typename Symmetry>
 typename Symmetry::qType Qbasis<Symmetry>::
 find(const Eigen::Index& num_in ) const
 {
-	assert( num_in < size() and "The number larger than the size of this basis." );
+	assert( num_in < size() and "The number is larger than the size of this basis." );
 	Eigen::Index check = num_in;
 	for (const auto& q : data_)
 	{
 		auto [qVal,num,basis] = q;
 		if (check < num+basis.size()) { return qVal; }
 	}
+	assert(false and "Something went wrong in Qbasis::find(Eigen::Index num_in)");
 }
 
 template<typename Symmetry>
@@ -363,6 +367,19 @@ inner_dim(const qType& q) const
 
 template<typename Symmetry>
 Eigen::Index Qbasis<Symmetry>::
+outer_num(const qType& q) const
+{
+	for(const auto& elem : data_)
+	{
+		auto [qVal,num,plain] = elem;
+		if (qVal == q) {return num;}
+	}
+	return 0;
+	// assert( 1!=1 and "The qType is not in the basis" );
+}
+
+template<typename Symmetry>
+Eigen::Index Qbasis<Symmetry>::
 inner_dim(const Eigen::Index& num_in) const
 {
 	for(const auto& elem : data_)
@@ -409,6 +426,25 @@ leftAmount(const qType& qnew, const std::array<qType,2>& qold) const
 	}
 	return out;
 }
+
+// template<typename Symmetry>
+// Eigen::Index Qbasis<Symmetry>::
+// outer_num(const qType& qnew, const std::array<qType,2>& qold) const
+// {
+// 	assert( history.size() == data_.size() and "The history for this basis is not defined properly");
+
+// 	auto it = history.find(qnew);
+// 	assert( it != history.end() and "The history for this basis is not defined properly");
+
+// 	Eigen::Index out=0;
+// 	bool SCHALTER=false;
+// 	for( const auto& i: it->second )
+// 	{
+// 		if(i.source != qold and SCHALTER==false) { out+=i.dim; }
+// 		if(i.source == qold) { break; }// SCHALTER = true;
+// 	}
+// 	return out;
+// }
 
 template<typename Symmetry>
 template<typename MatrixType>

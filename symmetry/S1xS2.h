@@ -106,6 +106,9 @@ public:
 	inline static Scalar coeff_swapPhase(const qType& q1, const qType& q2);
 	
 	inline static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
+	static Scalar coeff_splitAA(const qType& q1, const qType& q2, const qType& q3);
+	inline static Scalar coeff_leftSweep2(const qType& q1, const qType& q2, const qType& q3);
+	inline static Scalar coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3);
 
 	static Scalar coeff_3j(const qType& q1, const qType& q2, const qType& q3,
 						   int        q1_z, int        q2_z,        int q3_z) {return 1.;}
@@ -116,10 +119,14 @@ public:
 								  const qType& q4, const qType& q5, const qType& q6);
 	inline static Scalar coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 									 const qType& q4, const qType& q5, const qType& q6);
+	static Scalar coeff_splitAA(const qType& q1, const qType& q2, const qType& q3,
+								const qType& q4, const qType& q5, const qType& q6);
 	inline static Scalar coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 									const qType& q4, const qType& q5, const qType& q6);
 	inline static Scalar coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
 										const qType& q4, const qType& q5, const qType& q6);
+	static Scalar coeff_twoSiteGate(const qType& q1, const qType& q2, const qType& q3,
+									const qType& q4, const qType& q5, const qType& q6);
 	
 	inline static Scalar coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 								  const qType& q4, const qType& q5, const qType& q6,
@@ -329,6 +336,38 @@ coeff_adjoint(const qType& q1, const qType& q2, const qType& q3)
 	return out;
 }
 
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
+coeff_splitAA(const qType& q1, const qType& q2, const qType& q3)
+{
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	Scalar out = S1_::coeff_splitAA(q1l,q2l,q3l)*S2_::coeff_splitAA(q1r,q2r,q3r);
+	return out;
+}
+
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
+coeff_leftSweep2(const qType& q1, const qType& q2, const qType& q3)
+{
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	Scalar out = S1_::coeff_leftSweep2(q1l,q2l,q3l)*S2_::coeff_leftSweep2(q1r,q2r,q3r);
+	return out;
+}
+
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
+coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3)
+{
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	Scalar out = S1_::coeff_leftSweep3(q1l,q2l,q3l)*S2_::coeff_leftSweep3(q1r,q2r,q3r);
+	return out;
+}
 // template<typename S1_, typename S2_>
 // typename S1_::Scalar S1xS2<S1_,S2_>::
 // coeff_3j(const qType& q1, const qType& q2, const qType& q3,
@@ -382,6 +421,25 @@ coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 								q4l,q5l,q6l)*
 		       S2_::coeff_Apair(q1r,q2r,q3r,
 								q4r,q5r,q6r);	
+	return out;
+}
+
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
+coeff_splitAA(const qType& q1, const qType& q2, const qType& q3,
+			  const qType& q4, const qType& q5, const qType& q6)
+{
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	auto [q4l,q4r] = disjoin<S1_::Nq,S2_::Nq>(q4);
+	auto [q5l,q5r] = disjoin<S1_::Nq,S2_::Nq>(q5);
+	auto [q6l,q6r] = disjoin<S1_::Nq,S2_::Nq>(q6);
+	
+	Scalar out=S1_::coeff_splitAA(q1l,q2l,q3l,
+								  q4l,q5l,q6l)*
+		       S2_::coeff_splitAA(q1r,q2r,q3r,
+								  q4r,q5r,q6r);	
 	return out;
 }
 

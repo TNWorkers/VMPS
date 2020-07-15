@@ -89,6 +89,8 @@ public:
 	inline static Scalar coeff_dot(const qType& q1);
 	inline static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
 	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2);
+	inline static double coeff_leftSweep2(const qType& q1, const qType& q2, const qType& q3) { return 1.; }
+	inline static double coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3) { return 1.; }
 	inline static Scalar coeff_swapPhase(const qType& q1, const qType& q2);
 	
 	inline static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
