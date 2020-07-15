@@ -2482,7 +2482,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 		}
 	}
 	// cout << "Aclump:" << endl << Aclump.print(true) << endl;
-	auto [U,Sigma,Vdag] = Aclump.truncateSVD(max_Nsv,eps_svd,false);
+	auto [U,Sigma,Vdag] = Aclump.truncateSVD(max_Nsv,eps_svd,truncWeight,false);
 	// cout << "U,Sigma,Vdag:" << endl << U.print(true) << endl << Sigma.print(true) << endl << Vdag.print(true) << endl;
 	Biped<Symmetry,Eigen::Matrix<Scalar,-1,-1> > left,right;
 	if (DIR == DMRG::DIRECTION::RIGHT)

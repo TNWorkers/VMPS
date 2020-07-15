@@ -88,9 +88,10 @@ public:
 	inline static Scalar coeff_dot(const qType& q1);
 	inline static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
 	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2);
-	inline static Scalar coeff_swapPhase(const qType& q1, const qType& q2);
 	
-	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3);
+	inline static Scalar coeff_swapPhase(const qType& q1, const qType& q2, const qType& q3);
+	inline static Scalar coeff_leftSweep2(const qType& q1, const qType& q2, const qType& q3);
+	inline static Scalar coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3);
 	inline static Scalar coeff_sign(const qType& q1, const qType& q2, const qType& q3);
 	inline static Scalar coeff_sign2(const qType& q1, const qType& q2, const qType& q3) {return 1.;};
 	inline static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
@@ -248,7 +249,7 @@ coeff_rightOrtho(const qType& q1, const qType& q2)
 
 template<typename Kind, int N, typename Scalar>
 Scalar ZN<Kind,N,Scalar>::
-coeff_swapPhase(const qType& q1, const qType& q2)
+coeff_swapPhase(const qType& q1, const qType& q2, const qType& q3)
 {
 	Scalar out = Scalar(1.);
 	return out;
@@ -256,7 +257,15 @@ coeff_swapPhase(const qType& q1, const qType& q2)
 
 template<typename Kind, int N, typename Scalar>
 Scalar ZN<Kind,N,Scalar>::
-coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3)
+coeff_leftSweep2(const qType& q1, const qType& q2, const qType& q3)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, int N, typename Scalar>
+Scalar ZN<Kind,N,Scalar>::
+coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3)
 {
 	Scalar out = Scalar(1.);
 	return out;

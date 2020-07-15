@@ -169,7 +169,7 @@ public:
 	void cholesky(Biped<Symmetry,MatrixType> &res) const;
 
 	template<typename EpsScalar>
-	tuple<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> > truncateSVD(size_t maxKeep, EpsScalar eps_svd, bool PRESERVE_MULTIPLETS=true) const;
+	tuple<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> > truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERVE_MULTIPLETS=true) const;
 	
 	/**
 	 * Adds another tensor to the current one. 
@@ -680,8 +680,9 @@ cholesky(Biped<Symmetry,MatrixType> &res) const
 template<typename Symmetry, typename MatrixType_>
 template<typename EpsScalar>
 tuple<Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_> > Biped<Symmetry,MatrixType_>::
-truncateSVD(size_t maxKeep, EpsScalar eps_svd, bool PRESERVE_MULTIPLETS) const
+truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERVE_MULTIPLETS) const
 {
+	truncWeight=0;
 	Biped<Symmetry,MatrixType_> U,Vdag,Sigma;
 	Biped<Symmetry,MatrixType_> trunc_U,trunc_Vdag,trunc_Sigma;
 	vector<pair<typename Symmetry::qType, Scalar> > allSV;
@@ -703,10 +704,13 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, bool PRESERVE_MULTIPLETS) const
 	}
 	size_t numberOfStates = allSV.size();
 	std::sort(allSV.begin(),allSV.end(),[](const pair<typename Symmetry::qType, Scalar> &sv1, const pair<typename Symmetry::qType, Scalar> &sv2) {return sv1.second > sv2.second;});
-	allSV.resize(maxKeep);
-	
+	for (size_t i=maxKeep; i<allSV.size(); i++)
+	{
+		truncWeight += Symmetry::degeneracy(allSV[i].first) * std::pow(std::abs(allSV[i].second),2.);
+	}
+	allSV.resize(min(maxKeep,numberOfStates));
 	// std::erase_if(allSV, [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv < eps_svd); }); c++-20 version	
-	allSV.erase(std::remove_if(allSV.begin(), allSV.end(), [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv.second < eps_svd); }), allSV.end());
+	// allSV.erase(std::remove_if(allSV.begin(), allSV.end(), [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv.second < eps_svd); }), allSV.end());
 
 	// cout << "saving sv for expansion to file, #sv=" << allSV.size() << endl;
 	// ofstream Filer("sv_expand");
@@ -735,7 +739,7 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, bool PRESERVE_MULTIPLETS) const
 		}
 	}
 	
-	// cout << "Adding " << allSV.size() << " states from " << numberOfStates << " states" << endl;
+	cout << "Adding " << allSV.size() << " states from " << numberOfStates << " states" << endl;
 	map<typename Symmetry::qType, vector<Scalar> > qn_orderedSV;
 	for (const auto &[q,s]:allSV )
 	{

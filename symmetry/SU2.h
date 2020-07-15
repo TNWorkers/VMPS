@@ -100,8 +100,8 @@ public:
 	
 	static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
 	static Scalar coeff_leftSweep(const qType& q1, const qType& q2);
-	static Scalar coeff_swapPhase(const qType& q1, const qType& q2);
-
+	
+	static Scalar coeff_swapPhase(const qType& q1, const qType& q2, const qType& q3);
 	static Scalar coeff_leftSweep2(const qType& q1, const qType& q2, const qType& q3);
 	static Scalar coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3);
 	static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
@@ -320,9 +320,9 @@ coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3)
 
 template<typename Kind, typename Scalar>
 Scalar SU2<Kind,Scalar>::
-coeff_swapPhase(const qType& q1, const qType& q2)
+coeff_swapPhase(const qType& q1, const qType& q2, const qType& q3)
 {
-	Scalar out = phase<Scalar>((q1[0]+q2[0]-2) /2);
+	Scalar out = phase<Scalar>((q1[0]+q2[0]-q3[0]-3) /2);
 	return out;
 }
 

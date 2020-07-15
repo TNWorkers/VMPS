@@ -17,19 +17,35 @@ ArrayXXd create_1D_OBC (size_t L, double lambda1=1., double lambda2=0.)
 }
 
 // Simple generation of periodic boundary conditions with NN and NNN coupling
-ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0.)
+// If COMPRESSED=true, the ring is flattened so that adjacent sites are as close together as possible
+ArrayXXd create_1D_PBC (size_t L, double lambda1=1., double lambda2=0., bool COMPRESSED=false)
 {
-	ArrayXXd res = create_1D_OBC(L,lambda1,lambda2);
+	if (!COMPRESSED)
+	{
+		ArrayXXd res = create_1D_OBC(L,lambda1,lambda2);
 	
-	res(0,L-1) = lambda1;
-	res(L-1,0) = lambda1;
+		res(0,L-1) = lambda1;
+		res(L-1,0) = lambda1;
 	
-	res(0,L-2) = lambda2;
-	res(L-2,0) = lambda2;
-	res(1,L-1) = lambda2;
-	res(L-1,1) = lambda2;
+		res(0,L-2) = lambda2;
+		res(L-2,0) = lambda2;
+		res(1,L-1) = lambda2;
+		res(L-1,1) = lambda2;
 	
-	return res;
+		return res;
+	}
+	else
+	{
+		ArrayXXd res(L,L); res.setZero();
+		res(0,1) = lambda1; res(1,0) = lambda1;
+		res(L-2,L-1) = lambda1; res(L-1,L-2) = lambda1;
+		for (size_t l=0; l<L-2; l++)
+		{
+			res(l,l+2) = lambda1;
+			res(l+2,l) = lambda1;
+		}
+		return res;
+	}
 }
 
 // reference: PRB 93, 165406 (2016), Appendix C

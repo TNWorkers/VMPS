@@ -92,16 +92,20 @@ template<typename Symmetry, typename Scalar>
 void TwoSiteGate<Symmetry,Scalar>::
 setSwapGate(bool FERMIONIC)
 {
-	assert(!FERMIONIC and "Fermionic sqap gates are not yet implemented.");
+	assert(!FERMIONIC and "Fermionic swap gates are not yet implemented.");
 	for (size_t s1=0;  s1<qloc1.size();  s1++)
 	for (size_t s2=0;  s2<qloc2.size();  s2++)
 	for (size_t s1p=0; s1p<qloc1.size(); s1p++)
 	for (size_t s2p=0; s2p<qloc2.size(); s2p++)
 	for (size_t k=0;    k<qmid.size();   k++)
 	{
+		if (!Symmetry::triangle({qloc1[s1],qloc2[s2],qmid[k]})) {continue;}
+		if (!Symmetry::triangle({qloc1[s1p],qloc2[s2p],qmid[k]})) {continue;}
 		if (s1 == s2p and s2 == s1p)
 		{
-			data[s1][s2][s1p][s2p][k] = Symmetry::coeff_swapPhase(qloc1[s1],qloc2[s2])*Scalar(1.);
+			// cout << "s1=" << s1 << "," << qloc1[s1] << ", s2p=" << s2p << "," << qloc2[s2p] << ", s2=" << s2 << "," << qloc2[s2] << ", s1p=" << s1p << "," << qloc1[s1p] << ", k=" << k << "," << qmid[k] << endl;
+			// cout << "CGC phase=" << Symmetry::coeff_swapPhase(qloc1[s1],qloc2[s2],qmid[k]) << endl;
+			data[s1][s2][s1p][s2p][k] = Symmetry::coeff_swapPhase(qloc1[s1],qloc2[s2],qmid[k])*Scalar(1.);
 		}
 		else {data[s1][s2][s1p][s2p][k] = Scalar(0.);}
 	}
