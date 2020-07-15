@@ -1276,6 +1276,173 @@ compress(const double tolerance)
     #endif
     Stopwatch<> watch;
     auto [average_auxdim_initial,maximum_auxdim_initial] = auxdim_infos();
+    std::vector<std::size_t> bonds_to_check;
+    for(std::size_t bond=1; bond<N_sites; bond+=2ul)
+    {
+        bonds_to_check.push_back(bond);
+    }
+    if(boundary_condition == BC::INFINITE and N_sites%2 == 1)
+    {
+        bonds_to_check.push_back(N_sites);
+    }
+    std::size_t counter = 0;
+    while(!bonds_to_check.empty())
+    {
+        counter++;
+        std::vector<bool> next_bonds_to_check(N_sites,false);
+        #pragma omp parallel for shared(next_bonds_to_check)
+        for(std::size_t i=0; i<bonds_to_check.size(); ++i)
+        {
+            std::size_t loc = bonds_to_check[i];
+            std::vector<qType> qs;
+            for(const auto &[q,deg] : auxdim[loc])
+            {
+                qs.push_back(q);
+            }
+            for(std::size_t j=0; j<qs.size(); ++j)
+            {
+                qType& q = qs[j];
+                if(eliminate_linearlyDependent_cols(loc-1,q,tolerance))
+                {
+                    if(loc != 1ul)
+                    {
+                        next_bonds_to_check[loc-1] = true;
+                    }
+                    if(loc != N_sites-1)
+                    {
+                        next_bonds_to_check[loc+1] = true;
+                    }
+                    if(boundary_condition == BC::INFINITE and (loc == 1ul or loc == N_sites-1))
+                    {
+                        next_bonds_to_check[0] = true;
+                    }
+                    while(eliminate_linearlyDependent_cols(loc-1,q,tolerance));
+                    #if DEBUG_VERBOSITY > 2
+                    if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
+                    {
+                        lout << "Current MPO:" << std::endl;
+                        show();
+                    }
+                    #endif
+                }
+                #if DEBUG_VERBOSITY > 1
+                else
+                {
+                    lout << "O[" << loc-1 << "](...->{" << Sym::format<Symmetry>(q) << "}): No linear dependent columns detected!" << std::endl;
+                }
+                #endif
+                if(eliminate_linearlyDependent_rows(loc%N_sites,q,tolerance))
+                {
+                    if(loc != 1ul)
+                    {
+                        next_bonds_to_check[loc-1] = true;
+                    }
+                    if(loc != N_sites-1)
+                    {
+                        next_bonds_to_check[loc+1] = true;
+                    }
+                    if(boundary_condition == BC::INFINITE and (loc == 1ul or loc == N_sites-1))
+                    {
+                        next_bonds_to_check[0] = true;
+                    }
+                    while(eliminate_linearlyDependent_rows(loc%N_sites,q,tolerance));
+                    #if DEBUG_VERBOSITY > 2
+                    if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
+                    {
+                        lout << "Current MPO:" << std::endl;
+                        show();
+                    }
+                    #endif
+                }
+                #if DEBUG_VERBOSITY > 1
+                else
+                {
+                    lout << "O[" << loc%N_sites << "]({" << Sym::format<Symmetry>(q) << "}->...): No linear dependent rows detected!" << std::endl;
+                }
+                #endif
+            }
+        }
+        
+        std::set<std::size_t> unique_control;
+        if(counter == 1)
+        {
+            for(std::size_t bond=2; bond<N_sites; bond+=2ul)
+            {
+                unique_control.insert(bond);
+            }
+            if(boundary_condition == BC::INFINITE and N_sites%2 == 0)
+            {
+                unique_control.insert(N_sites);
+            }
+        }
+        for(std::size_t bond=1; bond<=N_sites; ++bond)
+        {
+            if(next_bonds_to_check[bond%N_sites])
+            {
+                unique_control.insert(bond);
+            }
+        }
+        bonds_to_check.resize(0);
+        for(std::set<std::size_t>::iterator it = unique_control.begin(); it != unique_control.end(); ++it)
+        {
+            bonds_to_check.push_back(*it);
+        }
+    }
+    
+    for(std::size_t bond=1; bond<N_sites; ++bond)
+    {
+        for(const auto& [q,deg] : auxdim[bond])
+        {
+            if(eliminate_linearlyDependent_cols(bond-1,q,tolerance))
+            {
+                lout << "Error: LinDepCol ...->{" << Sym::format<Symmetry>(q) << "} at lattice site " << bond-1 << std::endl;
+            }
+            if(eliminate_linearlyDependent_rows(bond,q,tolerance))
+            {
+                lout << "Error: LinDepRow {" << Sym::format<Symmetry>(q) << "}->... at lattice site " << bond << std::endl;
+            }
+        }
+    }
+    
+    
+    
+    auto [average_auxdim_final,maximum_auxdim_final] = auxdim_infos();
+    int compr_rate = (int)std::round(100*(1-average_auxdim_final/average_auxdim_initial));
+    calc(1);
+    if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
+    {
+        auto curr_prec = std::cout.precision();
+        lout    << this->get_name() << " - Compression | " << watch.info("Time") << " | Steps: " << counter << " | Rate: " << compr_rate
+                << "% (" << std::setprecision(1) << std::fixed << average_auxdim_initial << " ⇒ " << average_auxdim_final << ")" << std::defaultfloat << std::endl;
+        std::cout.precision(curr_prec);
+        #if DEBUG_VERBOSITY > 1
+        lout << "Compressed MPO:" << std::endl;
+        show();
+        #endif
+    }
+    else
+    {
+        std::stringstream ss;
+        auto curr_prec = std::cout.precision();
+        ss  << before_verb_set << this->get_name() << " - Compression | " << watch.info("Time") << " | Steps: " << counter << " | Rate: " << compr_rate
+            << "% (" << std::setprecision(1) << std::fixed << average_auxdim_initial << " ⇒ " << average_auxdim_final << ")" << std::defaultfloat << std::endl;
+        std::cout.precision(curr_prec);
+        before_verb_set = ss.str();
+    }
+}
+
+/*template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
+compress(const double tolerance)
+{
+    assert(FINALIZED and "Terms need to be finalized before compression.");
+    #if DEBUG_VERBOSITY > 0
+    if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
+    {
+        lout << "Starting compression of the MPO" << std::endl;
+    }
+    #endif
+    Stopwatch<> watch;
+    auto [average_auxdim_initial,maximum_auxdim_initial] = auxdim_infos();
     std::vector<bool> updated_bond(N_sites,true);
     std::size_t minimum_bond = 0;
     if(boundary_condition == BC::OPEN)
@@ -1387,11 +1554,16 @@ compress(const double tolerance)
         std::cout.precision(curr_prec);
         before_verb_set = ss.str();
     }
-}
+}*/
 
 template<typename Symmetry, typename Scalar> bool MpoTerms<Symmetry,Scalar>::
 eliminate_linearlyDependent_rows(const std::size_t loc, const qType &qIn, const double tolerance)
 {
+    std::size_t rows = get_auxdim(loc, qIn);
+    if(rows == 0)
+    {
+        return false;
+    }
     bool SAMESITE = false;
     if(N_sites == 1 and boundary_condition == BC::INFINITE)
     {
@@ -1426,8 +1598,6 @@ eliminate_linearlyDependent_rows(const std::size_t loc, const qType &qIn, const 
         }
         opQs.insert({std::get<1>(qs), opQs_fixed_qOut});
     }
-
-    std::size_t rows = get_auxdim(loc, qIn);
     std::size_t rows_eff = rows;
     std::size_t skipcount = 0;
     if(boundary_condition == BC::INFINITE and qIn == qVac)
@@ -1456,8 +1626,15 @@ eliminate_linearlyDependent_rows(const std::size_t loc, const qType &qIn, const 
                 for(std::size_t n=0; n<(it_qs->second)[col].size(); ++n)
                 {
                     qType &opQ = (it_qs->second)[col][n];
-                    Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> opMat = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>::Zero(hd,hd);
                     auto it_op = ops.find(opQ);
+                    if(it_op != ops.end() and (it_op->second).data.norm() > tolerance)
+                    {
+                        zero_row = false;
+                        Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> opmat((it_op->second).data);
+                        mat.block(row-skipcount, hd*hd*count, 1, hd*hd) = Eigen::Map<Eigen::Matrix<Scalar, 1, Eigen::Dynamic>>(opmat.data(), hd*hd);
+                    }
+                    count++;
+                    /*Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> opMat = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>::Zero(hd,hd);
                     if(it_op != ops.end())
                     {
                         opMat = (it_op->second).data;
@@ -1473,7 +1650,7 @@ eliminate_linearlyDependent_rows(const std::size_t loc, const qType &qIn, const 
                             mat(row-skipcount, count) = opMat(i,j);
                             count++;
                         }
-                    }
+                    }*/
                 }
             }
         }
@@ -1558,6 +1735,11 @@ eliminate_linearlyDependent_rows(const std::size_t loc, const qType &qIn, const 
 template<typename Symmetry, typename Scalar> bool MpoTerms<Symmetry,Scalar>::
 eliminate_linearlyDependent_cols(const std::size_t loc, const qType &qOut, const double tolerance)
 {
+    std::size_t cols = get_auxdim(loc+1, qOut);
+    if(cols == 0)
+    {
+        return false;
+    }
     bool SAMESITE = false;
     if(N_sites == 1 and boundary_condition == BC::INFINITE)
     {
@@ -1592,7 +1774,6 @@ eliminate_linearlyDependent_cols(const std::size_t loc, const qType &qOut, const
         opQs.insert({std::get<0>(qs), opQs_fixed_qIn});
     }
     
-    std::size_t cols = get_auxdim(loc+1, qOut);
     std::size_t cols_eff = cols;
     std::size_t skipcount = 0;
     if(boundary_condition == BC::INFINITE and qOut == qVac)
@@ -1621,8 +1802,15 @@ eliminate_linearlyDependent_cols(const std::size_t loc, const qType &qOut, const
                 for(std::size_t n=0; n<(it_qs->second)[row].size(); ++n)
                 {
                     qType &opQ = (it_qs->second)[row][n];
-                    Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> opMat = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>::Zero(hd,hd);
                     auto it_op = ops.find(opQ);
+                    if(it_op != ops.end() and (it_op->second).data.norm() > tolerance)
+                    {
+                        zero_col = false;
+                        Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> opmat((it_op->second).data);
+                        mat.block(hd*hd*count, col-skipcount, hd*hd, 1) = Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic,1>>(opmat.data(), hd*hd);
+                    }
+                    count++;
+                    /*Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> opMat = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>::Zero(hd,hd);
                     if(it_op != ops.end())
                     {
                         opMat = (it_op->second).data;
@@ -1638,7 +1826,7 @@ eliminate_linearlyDependent_cols(const std::size_t loc, const qType &qOut, const
                             mat(count, col-skipcount) = opMat(i,j);
                             count++;
                         }
-                    }
+                    }*/
                 }
             }
         }
@@ -3733,7 +3921,7 @@ base_order_IBC(const std::size_t power) const
                     for(std::size_t t=0; t<W_[0][m][n].size(); ++t)
                     {
                         auto it = W_[0][m][n][t].dict.find({qIn,qVac});
-                        if(it != W_[0][m][n][t].dict.end() and 
+                        if(it != W_[0][m][n][t].dict.end() and
                            std::abs(W_[0][m][n][t].block[it->second].coeff(row,pos_qTot)) > ::mynumeric_limits<double>::epsilon())
                         {
                             isZeroOp = false;

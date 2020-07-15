@@ -296,6 +296,22 @@ Simpdag (size_t locx, size_t locy, double factor) const
 
 template<typename Symmetry>
 template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type KondoNecklaceObservables<Symmetry>::
+Ssub(size_t locx, size_t locy, double factor) const
+{
+    return make_local(SUB,locx,locy, Bsub[locx].S(locy), factor, PROP::NON_HERMITIAN);
+}
+
+template<typename Symmetry>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type KondoNecklaceObservables<Symmetry>::
+Ssubdag (size_t locx, size_t locy, double factor) const
+{
+    return make_local(SUB,locx,locy, Bsub[locx].Sdag(locy), factor, PROP::NON_HERMITIAN);
+}
+
+template<typename Symmetry>
+template<typename Dummy>
 typename std::conditional<Dummy::IS_SPIN_SU2(), Mpo<Symmetry>, vector<Mpo<Symmetry> > >::type KondoNecklaceObservables<Symmetry>::
 SimpdagSimp (size_t locx1, size_t locx2, size_t locy1, size_t locy2) const
 {
