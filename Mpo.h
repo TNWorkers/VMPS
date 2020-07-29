@@ -99,7 +99,7 @@ public:
 
 	inline std::size_t length() const {return this->size();}
 	
-	inline std::size_t volume() const {return N_phys;}
+	inline std::size_t volume() const {return this->N_phys;}
 
 	template<typename T, typename ... Operator>
 	static std::vector<T> get_N_site_interaction(T const & Op0, Operator const & ... Ops) {std::vector<T> out { {Op0, Ops ...} }; return out;};
@@ -148,7 +148,7 @@ public:
 	OperatorType LocalOp;
 	int LocalSite = -1;
 		
-	std::size_t N_phys = 0;
+	//std::size_t N_phys = 0;
 	
 	//void initialize();
 	
@@ -253,8 +253,8 @@ info() const
 {
 	std::stringstream ss;
 	ss << termcolor::colorize << termcolor::bold << this->get_name() << termcolor::reset << "→ L=" << this->size();
-	if(N_phys > this->size()){
-        ss << ",V=" << N_phys;
+	if(this->N_phys > this->size()){
+        ss << ",V=" << this->N_phys;
     }
 	ss << ", " << Symmetry::name() << ", ";
 	
