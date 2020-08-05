@@ -2169,14 +2169,17 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 		            O.opBasis(l), inbase, O.inBasis(l), outbase, O.outBasis(l),
 		            ALxO[l]);
 //		cout << "ALxO done!" << endl;
-		
+		inbase.clear();
+		outbase.clear();
 		inbase.pullData (V.state.A[GAUGE::R][l],0);
 		outbase.pullData(V.state.A[GAUGE::R][l],1);
 		contract_AW(V.state.A[GAUGE::R][l], V.state.locBasis(l), O.W_at(O.length()-N_sites+l), 
 		            O.opBasis(O.length()-N_sites+l), inbase, O.inBasis(O.length()-N_sites+l), outbase, O.outBasis(O.length()-N_sites+l),
 		            ARxO[l]);
 //		cout << "ARxO done!" << endl;
-		
+
+		inbase.clear();
+		outbase.clear();
 		inbase.pullData (V.state.A[GAUGE::C][l],0);
 		outbase.pullData(V.state.A[GAUGE::C][l],1);
 		contract_AW(V.state.A[GAUGE::C][l], V.state.locBasis(l), O.W_at(O.length()-N_sites+l), 

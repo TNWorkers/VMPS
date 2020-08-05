@@ -36,7 +36,6 @@ Logger lout;
 
 #include "models/HeisenbergSU2.h"
 #include "models/HeisenbergU1.h"
-#include "models/HeisenbergU1XXZ.h"
 #include "models/Heisenberg.h"
 #include "models/HeisenbergXYZ.h"
 #include "HDF5Interface.h"
@@ -58,21 +57,6 @@ string to_string_prec (Scalar x, bool COLOR=false, int n=14)
 		ss << setprecision(n) << x;
 	}
 	return ss.str();
-}
-
-VMPS::HeisenbergU1XXZ::StateXcd Neel (const VMPS::HeisenbergU1XXZ &H)
-{
-	vector<qarray<1> > Neel_config(H.length());
-	for (int l=0; l<H.length(); l+=2)
-	{
-		Neel_config[l]   = qarray<1>{+1};
-		Neel_config[l+1] = qarray<1>{-1};
-	}
-	
-	VMPS::HeisenbergU1XXZ::StateXcd Psi; 
-	Psi.setProductState(H,Neel_config);
-	
-	return Psi;
 }
 
 bool CALC_DYNAMICS;
@@ -289,28 +273,28 @@ int main (int argc, char* argv[])
 			
 			for (const auto& Jz:Jz_list)
 			{
-				VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
-				VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
-				TDVPPropagator<VMPS::HeisenbergU1XXZ,Sym::U1<Sym::SpinU1>,double,complex<double>,VMPS::HeisenbergU1XXZ::StateXcd> TDVP(H_U1t,Psi);
+				// VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
+				// VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
+				// TDVPPropagator<VMPS::HeisenbergU1XXZ,Sym::U1<Sym::SpinU1>,double,complex<double>,VMPS::HeisenbergU1XXZ::StateXcd> TDVP(H_U1t,Psi);
 			
-				double t = 0;
-				ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
-				for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
-				{
-					double res = 0;
-					for (int l=0; l<Ldyn; ++l)
-					{
-						res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
-					}
-					res /= Ldyn;
-					if (VERB != DMRG::VERBOSITY::SILENT) {lout << "t=" << t << ", <Sz>=" << res << endl;}
-					Filer << t << "\t" << res << endl;
+				// double t = 0;
+				// ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
+				// for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
+				// {
+				// 	double res = 0;
+				// 	for (int l=0; l<Ldyn; ++l)
+				// 	{
+				// 		res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
+				// 	}
+				// 	res /= Ldyn;
+				// 	if (VERB != DMRG::VERBOSITY::SILENT) {lout << "t=" << t << ", <Sz>=" << res << endl;}
+				// 	Filer << t << "\t" << res << endl;
 				
-					TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
-					if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
-					t += dt;
-				}
-				Filer.close();
+				// 	TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
+				// 	if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
+				// 	t += dt;
+				// }
+				// Filer.close();
 			}
 		}
 	}
