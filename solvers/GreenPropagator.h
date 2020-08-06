@@ -3,6 +3,8 @@
 
 #ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 #include "SuperQuadrator.h"
+#else
+#include "Quadrator.h"
 #endif
 
 #include "solvers/TDVPPropagator.h"
@@ -510,7 +512,9 @@ private:
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE;
 	
+	#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 	SuperQuadrator<GAUSS_LEGENDRE> TimeIntegrator;
+	#endif
 	
 	ArrayXd tvals, weights, tsteps;
 	bool TIME_FORWARDS;
@@ -1480,9 +1484,10 @@ calc_Green (const int &tindex, const complex<double> &phase, const vector<Mps<Sy
 //	MatrixXcd Gtx_(Gtx.rows(),Gtx.cols());
 	
 	//variant: Don't use cell shift, OxPhiFull must be of length Lhetero
-	if (Psi.Boundaries.IS_TRIVIAL())
+//	if (Psi.Boundaries.IS_TRIVIAL())
+	if (OxPhiFull.size() > 0)
 	{
-		assert(OxPhiFull.size() == Lhetero and "Call set_OxPhiFull with this setup! OxPhi parameter will be ignored.");
+//		assert(OxPhiFull.size() == Lhetero and "Call set_OxPhiFull with this setup! OxPhi parameter will be ignored.");
 		if (NQ == 0)
 		{
 			#pragma omp parallel for
@@ -1580,7 +1585,8 @@ calc_GreenCell (const int &tindex, const complex<double> &phase,
                 const vector<Mps<Symmetry,complex<double>>> &Psi)
 {
 	//variant: Don't use cell shift, OxPhiFull must be of length Lhetero
-	if (Psi[0].Boundaries.IS_TRIVIAL())
+//	if (Psi[0].Boundaries.IS_TRIVIAL())
+	if (OxPhiFull.size() > 0)
 	{
 		#pragma omp parallel for collapse(3)
 		for (size_t n=0; n<Ncells; ++n)
@@ -2814,7 +2820,7 @@ save (bool IGNORE_CELL) const
 			#ifdef GREENPROPAGATOR_USE_HDF5
 			target_wq.save_scalar(mu,"μ");
 			#else
-			saveMatrix(MatrixXd(mu), "μ", PRINT);
+//			saveMatrix(MatrixXd(mu), "μ", PRINT);
 			#endif
 		}
 		

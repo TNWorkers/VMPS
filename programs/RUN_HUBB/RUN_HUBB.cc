@@ -702,7 +702,7 @@ int main (int argc, char* argv[])
 	}
 	else if (std::is_same<MODEL,VMPS::HubbardU1xU1>::value)
 	{
-		// only 1D implemented for U1xU1
+		// only 1D implemented for U1
 		params.push_back({"t",t});
 		params.push_back({"Vxy",Vxy});
 		params.push_back({"Vz",Vz});
@@ -757,7 +757,7 @@ int main (int argc, char* argv[])
 		QcC = {N-1};
 	}
 	
-	MODEL H(volume,params,BC::INFINITE);
+	MODEL H(volume,params,(VUMPS)?BC::INFINITE:BC::OPEN);
 	if (VUMPS) H.transform_base(Qc);
 	lout << "•H for ground state:" << endl;
 	lout << H.info() << endl;
@@ -791,7 +791,7 @@ int main (int argc, char* argv[])
 	if (VUMPS)
 	{
 		// For VUMPS: Hamiltonian with two unit cells for contractions across the cell
-		dHdV = MODEL(2*volume,{{"maxPower",1ul}}, BC::INFINITE);
+		dHdV = MODEL(2*volume,{{"maxPower",1ul}}, (VUMPS)?BC::INFINITE:BC::OPEN);
 		dHdV.transform_base(Qc2,false); // PRINT=false
 	}
 	else
@@ -1149,12 +1149,12 @@ int main (int argc, char* argv[])
 					#if !defined(USING_SO4) && !defined(USING_SU2xU1) && !defined(USING_SU2)
 					obs.sz(x,y)        = avg(g_foxy.state, H.Scomp(SZ,Geo1cell(x,y)), g_foxy.state);
 					#endif
-					#if defined(USING_U0)
+					#if defined(USING_U0) || defined(USING_U1)
 					obs.sx(x,y)        = avg(g_foxy.state, H.Scomp(SX,Geo1cell(x,y)), g_foxy.state);
 					obs.isy(x,y)       = avg(g_foxy.state, H.Scomp(iSY,Geo1cell(x,y)), g_foxy.state);
 					#endif
 					lout << "\tSx=" << obs.sx(x,y) << ", iSy=" << obs.isy(x,y) << ", Sz=" << obs.sz(x,y) 
-					     << ", S=" << sqrt(pow(obs.sx(x,y),2)-pow(obs.isy(x,y),2)+pow(obs.sz(x,y),2))
+					     << ", Stot=" << sqrt(pow(obs.sx(x,y),2)-pow(obs.isy(x,y),2)+pow(obs.sz(x,y),2))
 					     << endl;
 					
 					#if !defined(USING_SO4) && !defined(USING_SU2xU1) && !defined(USING_U1xU1) && !defined(USING_U1)
@@ -1725,16 +1725,16 @@ int main (int argc, char* argv[])
 			#if !defined(USING_SO4) && !defined(USING_SU2xU1) && !defined(USING_SU2)
 			obs.sz(x,y) = avg(g_fix.state, H.Scomp(SZ,Geo1cell(x,y)), g_fix.state);
 			#endif
-			#if defined(USING_U0)
+			#if defined(USING_U0) || defined(USING_U1)
 			obs.sx(x,y) = avg(g_fix.state, H.Scomp(SX,Geo1cell(x,y)), g_fix.state);
 			obs.isy(x,y) = avg(g_fix.state, H.Scomp(iSY,Geo1cell(x,y)), g_fix.state);
 			#endif
 			double s = sqrt(obs.sz(x,y)*obs.sz(x,y)-obs.isy(x,y)*obs.isy(x,y)+obs.sx(x,y)*obs.sx(x,y));
 			#if !defined(USING_SO4) && !defined(USING_SU2xU1)
-			lout << "sz=" << obs.sz(x,y) << ", sx=" << obs.sx(x,y) << ", isy="<< obs.isy(x,y) << ", s=" << s << endl;
+			lout << "sz=" << obs.sz(x,y) << ", sx=" << obs.sx(x,y) << ", isy="<< obs.isy(x,y) << ", stot=" << s << endl;
 			#endif
 			
-			#if !defined(USING_SO4) && !defined(USING_SU2xU1) && !defined(USING_U1xU1)
+			#if !defined(USING_SO4) && !defined(USING_SU2xU1) && !defined(USING_U1xU1) && !defined(USING_U1)
 			obs.tz(x,y) = avg(g_fix.state, H.Tz(Geo1cell(x,y)), g_fix.state);
 			obs.tx(x,y) = avg(g_fix.state, H.Tx(Geo1cell(x,y)), g_fix.state);
 			obs.ity(x,y) = avg(g_fix.state, H.iTy(Geo1cell(x,y)), g_fix.state);

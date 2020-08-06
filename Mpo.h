@@ -268,24 +268,31 @@ info() const
 		ss << "locality=" << LocalSite << ", ";
 	}
 	
-    auto qAux = this->get_qAux();
-    std::vector<int> dAux(this->size()+1);
-    dAux[0] = this->auxBasis(0).fullM();
-	std::set<std::pair<int,int> > dAux_set;
-	for (std::size_t loc=0; loc<this->size(); ++loc)
+	auto print_qaux = [this,&ss] (int power) -> void
 	{
-        dAux[loc+1] = this->auxBasis(loc+1).fullM();
-		dAux_set.insert(std::make_pair(dAux[loc],dAux[loc+1]));
-	}
-	ss << "dAux=";
-	for (const auto& dAux_pair : dAux_set)
-	{
-		ss << dAux_pair.first << "x" << dAux_pair.second;
-		ss << ",";
-	}
-	ss << " ";
+		auto qAux = this->get_qAux_power(power);
+		std::vector<int> dAux(this->size()+1);
+//		dAux[0] = this->auxBasis(0).fullM();
+		dAux[0] = qAux[0].fullM();
+		std::set<std::pair<int,int> > dAux_set;
+		for (std::size_t loc=0; loc<this->size(); ++loc)
+		{
+//			dAux[loc+1] = this->auxBasis(loc+1).fullM();
+			dAux[loc+1] = qAux[loc+1].fullM();
+			dAux_set.insert(std::make_pair(dAux[loc],dAux[loc+1]));
+		}
+		ss << "dAux" << power << "=";
+		for (const auto& dAux_pair : dAux_set)
+		{
+			ss << dAux_pair.first << "x" << dAux_pair.second;
+			ss << ",";
+		}
+		ss << " ";
+	};
 	
-		ss << "mem=" << round(this->memory(GB),3) << "GB";
+	for (int power=1; power<=this->maxPower(); ++power) print_qaux(power);
+	
+	ss << "mem=" << round(this->memory(GB),3) << "GB";
 	ss << ", sparsity=" << this->sparsity();
 	// if(this->check_SQUARE())
     // {

@@ -4,10 +4,10 @@
 namespace VMPS
 {
 
-template<typename MODEL, typename Symmetry>
-typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec, double factor=1.)
+template<typename MODEL, typename Symmetry, typename Scalar=double>
+Mpo<Symmetry,Scalar> get_Op (const MODEL &H, size_t loc, std::string spec, double factor=1.)
 {
-	typename MODEL::Operator Res;
+	Mpo<Symmetry,Scalar> Res;
 	
 	// spin structure factor
 	if (spec == "SSF")

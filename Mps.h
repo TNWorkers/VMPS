@@ -86,7 +86,7 @@ public:
 	 * \param Qtot_input : target quantum number
 	 * \param N_phys_input : the volume of the system (normally (chain length) * (chain width))
 	 */
-	Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
+	Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixType> > > &As,
 	     const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
 	
 	#ifdef USE_HDF5_STORAGE
@@ -748,7 +748,7 @@ Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, size_t Nqmax_inpu
 
 template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
-Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
+Mps (size_t L_input, const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &As,
      const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input)
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input), A(As)
 {
@@ -1486,7 +1486,7 @@ save (string filename, string info)
 		target.save_scalar(this->Qmulti[i][q],ss.str(),"Qmulti");
 	}
 	target.save_scalar(this->calc_Dmax(),DmaxLabel);
-	target.save_scalar(this->calc_Nqmax(),NqmaxLabel);	
+	target.save_scalar(this->calc_Nqmax(),NqmaxLabel);
 	target.save_scalar(this->min_Nsv,"min_Nsv");
 	target.save_scalar(this->max_Nsv,"max_Nsv");
 	target.save_scalar(this->eps_svd,eps_svdLabel);

@@ -40,7 +40,7 @@ const std::map<string,std::any> HubbardU1::defaults =
 	{"Bz",0.}, {"Bx",0.}, 
 	{"J",0.}, {"Jperp",0.}, {"J3site",0.},
 	{"X",0.}, {"Xperp",0.},
-	{"maxPower",2}, {"CYLINDER",false}, {"Ly",1ul}
+	{"maxPower",2ul}, {"CYLINDER",false}, {"Ly",1ul}
 };
 
 HubbardU1::
@@ -57,7 +57,7 @@ HubbardU1 (const size_t &L, const vector<Param> &params, const BC &boundary, con
 		N_phys += P.get<size_t>("Ly",l%Lcell);
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
-
+	
 	param1d U = P.fill_array1d<double>("U", "Uorb", F[0].orbitals(), 0);	
 	if (isfinite(U.a.sum()))
 	{
@@ -73,12 +73,12 @@ HubbardU1 (const size_t &L, const vector<Param> &params, const BC &boundary, con
 	}
 	
 	PushType<SiteOperator<Symmetry,double>,double> pushlist;
-    std::vector<std::vector<std::string>> labellist;
+	std::vector<std::vector<std::string>> labellist;
 	HubbardU1xU1::set_operators(F, P, pushlist, labellist, boundary);
-
+	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
-
+	this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
+	
 	this->precalc_TwoSiteData();
 }
 

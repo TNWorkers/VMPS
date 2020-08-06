@@ -240,7 +240,7 @@ int main (int argc, char* argv[])
 	ArrayXXd hopping;
 	if (L!=12 and L!=20 and L!=60)
 	{
-		hopping = create_1D_OBC(L); // Heisenberg ring for testing
+		hopping = create_1D_PBC(L); // Heisenberg ring for testing
 	}
 	else
 	{
@@ -435,7 +435,14 @@ int main (int argc, char* argv[])
 				lout << setprecision(16) << "E=" << E << setprecision(6) << endl;
 				lout << Timer.info("E") << endl;
 				
-				lout << setprecision(16) << "varE=" << abs(avg(g.state,H,H,g.state)-pow(E,2))/L << setprecision(6) << endl;
+				if (maxPower == 1)
+				{
+					lout << setprecision(16) << "varE=" << abs(avg(g.state,H,H,g.state)-pow(E,2))/L << setprecision(6) << endl;
+				}
+				else
+				{
+					lout << setprecision(16) << "varE=" << abs(avg(g.state,H,g.state,2)-pow(E,2))/L << setprecision(6) << endl;
+				}
 				lout << Timer.info("varE") << endl;
 				
 //				auto HmE = H;
@@ -810,14 +817,6 @@ int main (int argc, char* argv[])
 		// construct H
 		vector<Param> beta_params;
 		beta_params.push_back({"Ly",Ly});
-		if (CALC_C)
-		{
-			beta_params.push_back({"maxPower",(L==60)?1ul:2ul});
-		}
-		else
-		{
-			beta_params.push_back({"maxPower",1ul});
-		}
 		beta_params.push_back({"J",0.});
 		beta_params.push_back({"Jrung",0.});
 		MODEL H;
@@ -965,8 +964,8 @@ int main (int argc, char* argv[])
 				double c = std::nan("c");
 				if (CALC_C)
 				{
-					c = (L==60)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
-				                 beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+					c = (maxPower==1)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
+				                       beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
 				}
 				cvec.push_back(c);
 				lout << Stepper.info("c") << endl;
@@ -1032,9 +1031,8 @@ int main (int argc, char* argv[])
 			}
 			
 			lout << FullStepTimer.info("full step") << endl;
+			lout << FullTimer.info("total",false) << endl;
 			lout << endl;
-			
-			lout << FullTimer.info("total") << endl;
 		}
 		
 		Filer.close();
