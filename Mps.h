@@ -1803,15 +1803,15 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 			size_t stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
 			{
-				// Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]]*
-				// 	                                        Symmetry::coeff_leftSweep(
-				// 	                                         A[loc][svec[i]].out[qvec[i]],
-				// 	                                         A[loc][svec[i]].in[qvec[i]]);
-				Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]]*
-					                                        Symmetry::coeff_leftSweep2(
-					                                         A[loc][svec[i]].out[qvec[i]],
-					                                         A[loc][svec[i]].in[qvec[i]],
-															 qloc[loc][svec[i]]);
+				 Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]]*
+				 	                                        Symmetry::coeff_leftSweep(
+				 	                                         A[loc][svec[i]].out[qvec[i]],
+				 	                                         A[loc][svec[i]].in[qvec[i]]);
+//				Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]]*
+//					                                        Symmetry::coeff_leftSweep2(
+//					                                         A[loc][svec[i]].out[qvec[i]],
+//					                                         A[loc][svec[i]].in[qvec[i]],
+//															 qloc[loc][svec[i]]);
 				stitch += Ncolsvec[i];
 			}
 			
@@ -1868,27 +1868,27 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 					
 					if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 					{
-						// Mtmp = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])*
-						// 		                         Symmetry::coeff_leftSweep(
-						// 		                          A[loc][svec[i]].in[qvec[i]],
-						// 		                          A[loc][svec[i]].out[qvec[i]]);
-						Mtmp = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])*
-								                         Symmetry::coeff_leftSweep3(
-								                          A[loc][svec[i]].in[qvec[i]],
-								                          A[loc][svec[i]].out[qvec[i]],
-														  qloc[loc][svec[i]]);
+						 Mtmp = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])*
+						 		                         Symmetry::coeff_leftSweep(
+						 		                          A[loc][svec[i]].in[qvec[i]],
+						 		                          A[loc][svec[i]].out[qvec[i]]);
+//						Mtmp = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])*
+//								                         Symmetry::coeff_leftSweep3(
+//								                          A[loc][svec[i]].in[qvec[i]],
+//								                          A[loc][svec[i]].out[qvec[i]],
+//								                          qloc[loc][svec[i]]);
 					}
 					else if (TOOL == DMRG::BROOM::QR)
 					{
-						// Mtmp = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i])*
-						// 		                         Symmetry::coeff_leftSweep(
-						// 		                          A[loc][svec[i]].in[qvec[i]],
-						// 		                          A[loc][svec[i]].out[qvec[i]]);
-						Mtmp = Qmatrix.block(0,stitch, Nret,Ncolsvec[i])*
-								                         Symmetry::coeff_leftSweep3(
-								                          A[loc][svec[i]].in[qvec[i]],
-								                          A[loc][svec[i]].out[qvec[i]],
-														  qloc[loc][svec[i]]);
+						 Mtmp = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i])*
+						 		                         Symmetry::coeff_leftSweep(
+						 		                          A[loc][svec[i]].in[qvec[i]],
+						 		                          A[loc][svec[i]].out[qvec[i]]);
+//						Mtmp = Qmatrix.block(0,stitch, Nret,Ncolsvec[i])*
+//								                         Symmetry::coeff_leftSweep3(
+//								                          A[loc][svec[i]].in[qvec[i]],
+//								                          A[loc][svec[i]].out[qvec[i]],
+//								                          qloc[loc][svec[i]]);
 					}
 					
 					if (Mtmp.size() != 0)

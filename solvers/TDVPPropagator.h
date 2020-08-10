@@ -166,14 +166,28 @@ set_blocks (const Hamiltonian &H, VectorType &Vinout)
 		Heff[l].W = H.W[l];
 	}
 	
+	//----- workaround sign bug >>>>>
+	auto Vtmp = Vinout;
+	//<<<<< workaround sign bug -----
+	
 	// initial sweep, right-to-left:
 	for (size_t l=N_sites-1; l>0; --l)
 	{
 		Vinout.sweepStep(DMRG::DIRECTION::LEFT, l, DMRG::BROOM::QR);
 		build_R(H,Vinout,l-1);
+//		cout << "l=" << l << ", dot=" << Vtmp.dot(Vinout) << endl;
 	}
 	CURRENT_DIRECTION = DMRG::DIRECTION::RIGHT;
 	pivot = 0;
+	
+	//----- workaround sign bug >>>>>
+	double overlap = isReal(Vtmp.dot(Vinout));
+	if (GSL_SIGN(overlap) == -1)
+	{
+		Vinout *= -1.;
+		lout << termcolor::yellow << "dot=" << overlap << ", minus overlap, compensating..." << termcolor::reset << endl;
+	}
+	//<<<<< workaround sign bug -----
 	
 	deltaE.resize(N_sites);
 	

@@ -57,10 +57,10 @@ U = args.U
 tfc = 1
 tcc = 0
 tff = 0
-Retx = 1
-Imtx = 0
-Rety = 0
-Imty = 0
+Retx = 2
+Imtx = 2
+Rety = 1
+Imty = 1
 
 dt = args.dt
 tolDeltaS = args.tol
@@ -80,6 +80,51 @@ wmax = +10
 
 qticks = [0, pi/2, pi, 3*pi/2, 2*pi]
 qlabels = ['$0$', '$\\frac{\pi}{2}$', '$\pi$', '$\\frac{3\pi}{2}$', '$2\pi$']
+
+def H00(k):
+	return -2.*tcc*cos(k)
+
+def H11(k):
+	return -2.*tff*cos(k)
+
+def H01(k):
+	return -tfc-(Retx+1.j*Imtx)*exp(+1.j*k)-(Rety+1.j*Imty)*exp(-1.j*k)
+
+tau0 = np.matrix([[1.+0.j, 0.+0.j], [0.+0.j, 1.+0.j]])
+tau1 = np.matrix([[0.+0.j, 1.+0.j], [1.+0.j, 0.+0.j]])
+tau2 = np.matrix([[0.+0.j, 0.-1.j], [0.+1.j, 0.+0.j]])
+tau3 = np.matrix([[1.+0.j, 0.+0.j], [0.+0.j, -1.+0.j]])
+
+def analytical_disp():
+	
+	kaxis = linspace(0, 2*pi, 101, endpoint=True)
+	disp1 = np.zeros((101,1))
+	disp2 = np.zeros((101,1))
+	
+	for ik,k in enumerate(kaxis):
+		
+		Heff = np.matrix([[H00(k), H01(k)], [conj(H01(k)), H11(k)]])
+		
+		c0 = 0.5*np.trace(tau0*Heff)
+		c1 = 0.5*np.trace(tau1*Heff)
+		c2 = 0.5*np.trace(tau2*Heff)
+		c3 = 0.5*np.trace(tau3*Heff)
+		b1 = real(c1)
+		d1 = imag(c1)
+		b2 = real(c2)
+		d2 = imag(c2)
+		b3 = real(c3)
+		d3 = imag(c3)
+		
+		bnorm = b1*b1+b2*b2+b3*b3
+		dnorm = d1*d1+d2*d2+d3*d3
+		bddot = b1*d1+b2*d2+b3*d3
+		
+		disp1[ik] = real(c0 + sqrt(bnorm-dnorm+2.j*bddot))
+		disp2[ik] = real(c0 - sqrt(bnorm-dnorm+2.j*bddot))
+		
+	return kaxis, disp1, disp2
+
 
 def filename_wq(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,U,tmax,wmin,wmax):
 	res = set+'/'
@@ -147,6 +192,10 @@ if args.plot == 'cell':
 	axis_shenanigans(ax)
 	
 	plotname = spec+'cell_T=0'+'_U='+str(U)+'_tmax='+str(tmax)
+	
+	kaxis, disp1, disp2 = analytical_disp()
+	ax.plot(kaxis, disp1, c='r')
+	ax.plot(kaxis, disp2, c='r')
 
 if args.save:
 	

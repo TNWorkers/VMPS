@@ -60,7 +60,7 @@ Array<Scalar,Dynamic,Dynamic> create_hopping (int L, Scalar tfc, Scalar tcc, Sca
 		res(2*l,   2*l+2) = tcc;
 		res(2*l+1, 2*l+3) = tff;
 		res(2*l+1, 2*l+2) = tx;
-		res(2*l,   2*l+3) = ty;
+		res(2*l,   2*l+3) = conj(ty);
 	}
 	
 	res.matrix() += res.matrix().adjoint().eval();
@@ -83,7 +83,7 @@ int main (int argc, char* argv[])
 	size_t Ly = args.get<size_t>("Ly",1); // Ly=1: entpackt, Ly=2: Supersites
 	int Lphys = (Ly==1)? 2:1;
 	assert(Ly==1 and "Only Ly=1 implemented");
-	size_t L = args.get<size_t>("L",4); // Groesse der Einheitszelle
+	size_t L = args.get<size_t>("L",2); // Groesse der Einheitszelle
 	int N = args.get<int>("N",L); // Teilchenzahl
 	int Ncells = args.get<int>("Ncells",8); // Anzahl der Einheitszellen fuer Spektralfunktion
 	int Lhetero = L*Ncells;
@@ -106,7 +106,7 @@ int main (int argc, char* argv[])
 	string specstring = "";
 	int Nspec = specs.size();
 	size_t Dlim = args.get<size_t>("Dlim",100ul);
-	double dt = args.get<double>("dt",0.1);
+	double dt = args.get<double>("dt",(L==2)?0.2:0.1);
 	double tol_DeltaS = args.get<double>("tol_DeltaS",1e-2);
 	double tmax = args.get<double>("tmax",4.);
 	double tol_compr = args.get<double>("tol_compr",1e-4);
@@ -149,11 +149,11 @@ int main (int argc, char* argv[])
 		params.push_back({"U",0.,0});
 		params.push_back({"U",U,1});
 		
-		// Hopping
+//		// Hopping
 		ArrayXXcd t2cell = create_hopping(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
 		lout << "hopping:" << endl << t2cell << endl;
-		
 		params.push_back({"tFull",t2cell});
+		
 		params.push_back({"maxPower",1ul}); // hoechste Potenz von H
 	}
 	
@@ -246,9 +246,11 @@ int main (int argc, char* argv[])
 		// Ungerade Plaetze sollen f-Plaetze mit U sein:
 		params_hetero.push_back({"U",0.,0});
 		params_hetero.push_back({"U",U,1});
+		
 		// Hopping
 		ArrayXXcd tLhetero = create_hopping(2*Lhetero,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
 		params_hetero.push_back({"tFull",tLhetero});
+		
 		params_hetero.push_back({"maxPower",1ul}); // hoechste Potenz von H
 	}
 	MODELC H_hetero(Lhetero,params_hetero,BC::INFINITE);
@@ -273,7 +275,6 @@ int main (int argc, char* argv[])
 	// Phi
 	Stopwatch<> OxVTimer;
 	Mps<MODELC::Symmetry,complex<double>> Phi = uDMRG.create_Mps(Ncells, g, H, x0); // ground state as heterogenic MPS
-	cout << "Phi done!" << endl;
 	
 	// OxPhiCell
 	vector<vector<Mps<MODELC::Symmetry,complex<double>>>> OxPhiCell(Nspec);
@@ -283,24 +284,27 @@ int main (int argc, char* argv[])
 		OxPhiCell[z] = uDMRG.create_Mps(Ncells, g, H, O[z][0], O[z]); // O[z][0] for boundaries, O[z] is multiplied
 	}
 	
-	// Ofull
 	vector<vector<Mpo<MODEL::Symmetry,complex<double>>>> Ofull(Nspec);
-	for (int z=0; z<Nspec; ++z)
-	{
-		Ofull[z].resize(Lhetero);
-		for (int l=0; l<Lhetero; ++l)
-		{
-			Ofull[z][l] = VMPS::get_Op<MODELC,MODELC::Symmetry,complex<double>>(H_hetero,l,specs[z]);
-			Ofull[z][l].transform_base(Q,false,L); // PRINT=false
-		}
-	}
-	
-	// OxPhiFull
 	vector<vector<Mps<MODELC::Symmetry,complex<double>>>> OxPhiFull(Nspec);
-	for (int z=0; z<Nspec; ++z)
+	if (L>2)
 	{
-		OxPhiFull[z].resize(Lhetero);
-		OxPhiFull[z] = uDMRG.create_Mps(Ncells, g, H, O[z][0], Ofull[z]); // O[z][0] for boundaries, O[z] is multiplied
+		// Ofull
+		for (int z=0; z<Nspec; ++z)
+		{
+			Ofull[z].resize(Lhetero);
+			for (int l=0; l<Lhetero; ++l)
+			{
+				Ofull[z][l] = VMPS::get_Op<MODELC,MODELC::Symmetry,complex<double>>(H_hetero,l,specs[z]);
+				Ofull[z][l].transform_base(Q,false,L); // PRINT=false
+			}
+		}
+		
+		// OxPhiFull
+		for (int z=0; z<Nspec; ++z)
+		{
+			OxPhiFull[z].resize(Lhetero);
+			OxPhiFull[z] = uDMRG.create_Mps(Ncells, g, H, Ofull[z][Lhetero/2], Ofull[z]); // Ofull[z][Lhetero/2] for boundaries, O[z] is multiplied
+		}
 	}
 	
 	// GreenPropagator
@@ -316,7 +320,7 @@ int main (int argc, char* argv[])
 	
 	// Energie des heterogenen Teils
 	double Eg = isReal(avg_hetero(Phi, H_hetero, Phi, true)); // USE_BOUNDARY=true
-	lout << setprecision(14) << "Eg=" << Eg << ", eg=" << g.energy << endl;
+	lout << setprecision(14) << "Eg=" << Eg << ", eg=" << g.energy << ", egfree=" << 2.*occ.sum()/Lfinite << endl;
 	
 	// Propagation
 	#pragma omp parallel for
@@ -325,9 +329,15 @@ int main (int argc, char* argv[])
 		string spec = specs[z];
 		Green[z].set_tol_DeltaS(tol_DeltaS);
 		Green[z].set_lim_Nsv(Dlim);
-//		Green[z].set_dLphys(Lphys);
-		Green[z].set_OxPhiFull(OxPhiFull[z]);
-		Green[z].compute_cell(H_hetero, OxPhiCell[z], Eg, VMPS::TIME_DIR(spec), false); // COUNTERPROPAGATE=false
+		if (L>2)
+		{
+			Green[z].set_OxPhiFull(OxPhiFull[z]);
+			Green[z].compute_cell(H_hetero, OxPhiCell[z], Eg, VMPS::TIME_DIR(spec), false); // COUNTERPROPAGATE=false
+		}
+		else
+		{
+			Green[z].compute_cell(H_hetero, OxPhiCell[z], Eg, VMPS::TIME_DIR(spec), true); // COUNTERPROPAGATE=true
+		}
 //		Green[z].FT_allSites();
 		Green[z].save(false); // IGNORE_CELL=false
 	}

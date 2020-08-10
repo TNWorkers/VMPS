@@ -404,7 +404,7 @@ public:
 	*/
 	void recalc_FTw (double wmin_new, double wmax_new, int Nw_new=1000);
 	
-	void recalc_FTwCell (double wmin_new, double wmax_new, int Nw_new=1000);
+	void recalc_FTwCell (double wmin_new, double wmax_new, int Nw_new=1000, bool TRANSPOSE=false);
 	
 	/**
 	Set a Hermitian operator to be measured in the time-propagated state for testing purposes.
@@ -567,7 +567,7 @@ private:
 	void FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw);
 	void FTcell_tw();
 	
-	void FTcellww_xq();
+	void FTcellww_xq (bool TRANSPOSE = false);
 	void FTcellxx_tw();
 	void FTww_xq (const MatrixXcd &Gwx, const MatrixXcd &G0x, MatrixXcd &Gwq, VectorXcd &G0q);
 	void FTxx_tw (const MatrixXcd &Gtx, MatrixXcd &Gwx, VectorXcd &G0x, VectorXcd &Glocw);
@@ -977,7 +977,7 @@ compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> 
 //	FTcell_xq();
 //	FTcell_tw();
 	FTcellxx_tw();
-	FTcellww_xq();
+	FTcellww_xq((TIME_FORWARDS)?false:true);
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
@@ -999,6 +999,7 @@ propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>
 	{
 		TDVP[i] = TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>(H, Psi[i]);
 	}
+	
 	vector<EntropyObserver<Mps<Symmetry,complex<double>>>> Sobs(Lcell);
 	vector<vector<bool>> TWO_SITE(Lcell);
 	for (int i=0; i<Lcell; ++i)
@@ -1330,7 +1331,7 @@ compute_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>
 //	FTcell_xq();
 //	FTcell_tw();
 	FTcellxx_tw();
-	FTcellww_xq();
+	FTcellww_xq((TIME_FORWARDS)?false:true);
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
@@ -1578,9 +1579,11 @@ calc_Green_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Od
 	}
 }
 
+// used in propagate
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-calc_GreenCell (const int &tindex, const complex<double> &phase, 
+calc_GreenCell (const int &tindex,
+                const complex<double> &phase, 
                 const vector<Mps<Symmetry,complex<double>>> &OxPhi,
                 const vector<Mps<Symmetry,complex<double>>> &Psi)
 {
@@ -1625,17 +1628,20 @@ calc_GreenCell (const int &tindex, const complex<double> &phase,
 	}
 }
 
+// used in counterpropagate
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-calc_GreenCell (const int &tindex, const complex<double> &phase, 
+calc_GreenCell (const int &tindex,
+                const complex<double> &phase, 
                 const std::array<vector<Mps<Symmetry,complex<double>>>,2> &Psi)
 {
-	#pragma omp parallel for collapse(3)
+//	#pragma omp parallel for collapse(3)
 	for (size_t i=0; i<Lcell; ++i)
 	for (size_t j=0; j<Lcell; ++j)
 	for (size_t n=0; n<Ncells; ++n)
 	{
 		GtxCell[i][j](tindex,n) = phase * dot_hetero(Psi[1][i], Psi[0][j], dcell[n*Lcell]);
+//		cout << "phase=" << phase << ", dot="  << dot_hetero(Psi[1][i], Psi[0][j], dcell[n*Lcell]) << endl;
 //		#pragma omp critical
 //		{
 //			cout << "i=" << i << ", j=" << j << ", n=" << n << ", dcell=" << dcell[n*Lcell] << ", G=" << GtxCell[i][j](tindex,n) << endl;
@@ -1942,7 +1948,7 @@ FTcell_xq()
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-FTcellww_xq()
+FTcellww_xq (bool TRANSPOSE)
 {
 	IntervalIterator q(qmin,qmax,Nq);
 	ArrayXd qvals = q.get_abscissa();
@@ -1964,8 +1970,16 @@ FTcellww_xq()
 		for (int iq=0; iq<Nq; ++iq)
 		for (int n=0; n<Ncells; ++n)
 		{
-			GwqCell[i][j].col(iq) += GwxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
-			G0qCell[i][j](iq) += G0xCell[i][j](n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
+			if (TRANSPOSE)
+			{
+				GwqCell[i][j].col(iq) += GwxCell[j][i].col(n) * exp(+1.i*qvals(iq)*double(dcell[n*Lcell]));
+				G0qCell[i][j](iq) += G0xCell[j][i](n) * exp(+1.i*qvals(iq)*double(dcell[n*Lcell]));
+			}
+			else
+			{
+				GwqCell[i][j].col(iq) += GwxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
+				G0qCell[i][j](iq) += G0xCell[i][j](n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
+			}
 		}
 	}
 	
@@ -2500,7 +2514,7 @@ recalc_FTw (double wmin_new, double wmax_new, int Nw_new)
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-recalc_FTwCell (double wmin_new, double wmax_new, int Nw_new)
+recalc_FTwCell (double wmin_new, double wmax_new, int Nw_new, bool TRANSPOSE)
 {
 	wmin = wmin_new;
 	wmax = wmax_new;
@@ -2509,7 +2523,7 @@ recalc_FTwCell (double wmin_new, double wmax_new, int Nw_new)
 //	FTcell_xq();
 //	FTcell_tw();
 	FTcellxx_tw();
-	FTcellww_xq();
+	FTcellww_xq(TRANSPOSE);
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
