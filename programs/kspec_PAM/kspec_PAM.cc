@@ -38,35 +38,9 @@ typedef VMPS::PeierlsHubbardSU2xU1 MODELC;
 #include "solvers/GreenPropagator.h"
 #include "models/SpectralFunctionHelpers.h"
 #include "DmrgLinearAlgebra.h"
+#include "models/ParamCollection.h"
 
 vector<GreenPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>>> Green;
-
-template<typename Scalar>
-Array<Scalar,Dynamic,Dynamic> create_hopping (int L, Scalar tfc, Scalar tcc, Scalar tff, Scalar tx, Scalar ty)
-{
-	Array<Scalar,Dynamic,Dynamic> t1site(2,2); t1site = 0;
-	t1site(0,1) = tfc;
-	
-	// L: Anzahl der physikalischen fc-Sites
-	Array<Scalar,Dynamic,Dynamic> res(2*L,2*L); res = 0;
-	
-	for (int l=0; l<L; ++l)
-	{
-		res.block(2*l,2*l, 2,2) = t1site;
-	}
-	
-	for (int l=0; l<L-1; ++l)
-	{
-		res(2*l,   2*l+2) = tcc;
-		res(2*l+1, 2*l+3) = tff;
-		res(2*l+1, 2*l+2) = tx;
-		res(2*l,   2*l+3) = conj(ty);
-	}
-	
-	res.matrix() += res.matrix().adjoint().eval();
-	
-	return res;
-}
 
 int main (int argc, char* argv[])
 {
@@ -85,7 +59,7 @@ int main (int argc, char* argv[])
 	assert(Ly==1 and "Only Ly=1 implemented");
 	size_t L = args.get<size_t>("L",2); // Groesse der Einheitszelle
 	int N = args.get<int>("N",L); // Teilchenzahl
-	int Ncells = args.get<int>("Ncells",8); // Anzahl der Einheitszellen fuer Spektralfunktion
+	int Ncells = args.get<int>("Ncells",16); // Anzahl der Einheitszellen fuer Spektralfunktion
 	int Lhetero = L*Ncells;
 	int x0 = Lhetero/2;
 	qarray<MODEL::Symmetry::Nq> Q = MODEL::singlet(N); // Quantenzahl des Grundzustandes
@@ -150,7 +124,7 @@ int main (int argc, char* argv[])
 		params.push_back({"U",U,1});
 		
 //		// Hopping
-		ArrayXXcd t2cell = create_hopping(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
+		ArrayXXcd t2cell = hopping_PAM(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
 		lout << "hopping:" << endl << t2cell << endl;
 		params.push_back({"tFull",t2cell});
 		
@@ -196,7 +170,7 @@ int main (int argc, char* argv[])
 	Eigenstate<MODELC::StateUcd> g;
 	
 	int Lfinite = args.get<int>("Lfinite",200);
-	auto Hfree = create_hopping(Lfinite/2,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
+	auto Hfree = hopping_PAM(Lfinite/2,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
 	SelfAdjointEigenSolver<MatrixXcd> Eugen(Hfree.matrix());
 	VectorXd occ = Eugen.eigenvalues().head(Lfinite/2);
 	VectorXd unocc = Eugen.eigenvalues().tail(Lfinite/2);
@@ -248,7 +222,7 @@ int main (int argc, char* argv[])
 		params_hetero.push_back({"U",U,1});
 		
 		// Hopping
-		ArrayXXcd tLhetero = create_hopping(2*Lhetero,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
+		ArrayXXcd tLhetero = hopping_PAM(2*Lhetero,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
 		params_hetero.push_back({"tFull",tLhetero});
 		
 		params_hetero.push_back({"maxPower",1ul}); // hoechste Potenz von H

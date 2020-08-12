@@ -2839,6 +2839,7 @@ scale(const double factor, const double offset, const std::size_t power, const d
     got_update();
     if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
     {
+//    	lout << termcolor::blue << "SCALING" << ", std::abs(factor-1.)=" << std::abs(factor-1.) << termcolor::reset << endl;
         bool sign_factor = (factor < 0. ? true : false);
         double factor_per_site = std::pow(std::abs(factor), 1./(1.*N_sites));
         for(std::size_t loc=0; loc<N_sites; ++loc)
@@ -2988,7 +2989,10 @@ scale(const double factor, const double offset, const std::size_t power, const d
             }
         }
     }
-    calc(calc_to_power);
+    if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon() or std::abs(offset) > tolerance)
+    {
+    	calc(calc_to_power);
+    }
 }
 
 template<typename Symmetry, typename Scalar> template<typename OtherScalar> MpoTerms<Symmetry, OtherScalar> MpoTerms<Symmetry,Scalar>::

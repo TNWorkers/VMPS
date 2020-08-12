@@ -2051,10 +2051,20 @@ save (string filename, string info)
 				target.save_scalar((A[g][l][s].in[q])[p],in.str(),"As");
 				target.save_scalar((A[g][l][s].out[q])[p],out.str(),"As");
 			}
-			stringstream ss;			
+			stringstream ss;
 			ss << g << "_" << l << "_" << s << "_" << "(" << A[g][l][s].in[q] << "," << A[g][l][s].out[q] << ")";
 			label = ss.str();
-			target.save_matrix(A[g][l][s].block[q],label,"As");
+			if constexpr (std::is_same<Scalar,complex<double>>::value)
+			{
+				MatrixXd Re = A[g][l][s].block[q].real();
+				MatrixXd Im = A[g][l][s].block[q].imag();
+				target.save_matrix(Re,label+"Re","As");
+				target.save_matrix(Im,label+"Im","As");
+			}
+			else
+			{
+				target.save_matrix(A[g][l][s].block[q],label,"As");
+			}
 		}
 	}
 	
@@ -2070,10 +2080,20 @@ save (string filename, string info)
 				stringstream in; in << "l=" << l << ",q=" << q << ",p=" << p;
 				target.save_scalar((C[l].in[q])[p],in.str(),"Cs");
 			}
-			stringstream ss;			
+			stringstream ss;
 			ss << l << "_"  << "(" << C[l].in[q] << ")";
 			label = ss.str();
-			target.save_matrix(C[l].block[q],label,"Cs");			
+			if constexpr (std::is_same<Scalar,complex<double>>::value)
+			{
+				MatrixXd Re = C[l].block[q].real();
+				MatrixXd Im = C[l].block[q].imag();
+				target.save_matrix(Re,label+"Re","Cs");
+				target.save_matrix(Re,label+"Im","Cs");
+			}
+			else
+			{
+				target.save_matrix(C[l].block[q],label,"Cs");
+			}
 		}
 	}
 	target.close();
@@ -2139,11 +2159,21 @@ load (string filename)
 			ss << g << "_" << l << "_" << s << "_" << "(" << qin << "," << qout << ")";
 			label = ss.str();
 			MatrixType mat;
-			source.load_matrix(mat, label, "As");
+			if constexpr (std::is_same<Scalar,complex<double>>::value)
+			{
+				MatrixXd Re, Im;
+				source.load_matrix(Re, label+"Re", "As");
+				source.load_matrix(Im, label+"Im", "As");
+				mat = Re+1.i*Im;
+			}
+			else
+			{
+				source.load_matrix(mat, label, "As");
+			}
 			A[g][l][s].push_back(qin,qout,mat);
 		}
 	}
-
+	
 	//load the C-matrices
 	label.clear();
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -2163,7 +2193,17 @@ load (string filename)
 			ss << l << "_" << "(" << qVal << ")";
 			label = ss.str();
 			MatrixType mat;
-			source.load_matrix(mat, label, "Cs");
+			if constexpr (std::is_same<Scalar,complex<double>>::value)
+			{
+				MatrixXd Re, Im;
+				source.load_matrix(Re, label+"Re", "Cs");
+				source.load_matrix(Im, label+"Im", "Cs");
+				mat = Re+1.i*Im;
+			}
+			else
+			{
+				source.load_matrix(mat, label, "Cs");
+			}
 			C[l].push_back(qVal,qVal,mat);
 		}
 	}

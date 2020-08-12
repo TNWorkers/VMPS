@@ -577,7 +577,7 @@ int main (int argc, char* argv[])
 	lout << "e_empty=" << e_empty() << endl;
 	
 	Stopwatch<> Watch;
-
+	
 	Lattice2D square1({1*L,Ly},{false,true});
 	Lattice2D square2({2*L,Ly},{false,true});
 	Geometry2D Geo1cell(square1,CHESSBOARD);//,1*L,Ly,1.,true); // periodic BC in y = true

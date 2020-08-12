@@ -7,6 +7,8 @@
 #include "pivot/DmrgPivotMatrix0.h"
 #include "pivot/DmrgPivotMatrix2.h"
 //include "tensors/DmrgContractions.h"
+#include "DmrgJanitor.h" // for turnaround
+#include <gsl/gsl_math.h> // for GSL_SIGN
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar, typename VectorType>
 class TDVPPropagator
