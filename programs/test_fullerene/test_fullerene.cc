@@ -877,6 +877,11 @@ int main (int argc, char* argv[])
 			betavals.push_back(betainit+dbeta);
 			betasteps.push_back(dbeta);
 			lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			
+			// This makes: s_betainit = log(2) + accumulated ln(Z)
+			// From here additional contributions in ln(Z) are added; and beta*e is added at each step
+			double e = avg(PsiT,H,PsiT)/L;
+			s_betainit -= betainit*e;
 		}
 		
 		while (betavals[betavals.size()-1] < betamax)
@@ -995,6 +1000,7 @@ int main (int argc, char* argv[])
 				int Nsum = (i<betasteps.size())? lnZvec.size()-1:lnZvec.size();
 				VectorXd tmp = VectorXd::Map(lnZvec.data(), Nsum);
 				double s = s_betainit + tmp.sum()/L + beta*e;
+				cout << "s_betainit=" << s_betainit << ", tmp.sum()/L=" << tmp.sum()/L << ", beta*e=" << beta*e << ", total=" << s << endl;
 				svec.push_back(s);
 				//---------
 				lout << Stepper.info("s") << endl;
