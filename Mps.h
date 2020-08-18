@@ -136,7 +136,7 @@ public:
 	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	 */
-	void load (string filename double &energy=NULL);
+	void load (string filename, double &energy=NULL);
 	#endif //USE_HDF5_STORAGE
 	
 	/**
@@ -1555,7 +1555,7 @@ load (string filename, double &energy)
 	size_t QmultiSize;
 	
 	//load the scalars
-	source.load_scalar(energy,"energy")
+	source.load_scalar(energy,"energy");
 	source.load_scalar(this->N_sites,"L");
 	source.load_scalar(this->N_phys,"Nphys");
 	for (size_t q=0; q<Nq; q++)
