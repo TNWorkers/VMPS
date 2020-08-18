@@ -2109,8 +2109,10 @@ load (string filename, double &energy)
 	HDF5Interface source(filename, READ);
 	
 	//load the scalars
-	source.load_scalar(energy,"energy");
-	
+	if (source.CHECK("energy"))
+	{
+		source.load_scalar(energy,"energy");
+	}
 	source.load_scalar(this->N_sites,"L");
 	for (size_t q=0; q<Nq; q++)
 	{

@@ -300,13 +300,13 @@ int main (int argc, char* argv[])
 		DMRG.DynParam = DynParam;
 		if (LOAD!="")
 		{
-			g.state.load(LOAD);
+			g.state.load(LOAD,g.energy);
 			lout << "loaded: " << g.state.info() << endl;
 			
 			if (LOAD2!="")
 			{
 				Eigenstate<MODEL::StateXd> g2;
-				g2.state.load(LOAD2);
+				g2.state.load(LOAD2,g2.energy);
 				lout << "overlap=" << g.state.dot(g2.state) << endl;
 				
 				MatrixXd Hlow(2,2);
@@ -753,7 +753,8 @@ int main (int argc, char* argv[])
 		
 		if (LOAD != "")
 		{
-			PsiT.load(LOAD);
+			double tmp;
+			PsiT.load(LOAD,tmp);
 			lout << "loaded: " << PsiT.info() << endl;
 			lout << termcolor::blue << "continuing β-propagation at β=" << betainit << " with: " 
 			     << "dβ=" << dbeta << ", "
@@ -819,6 +820,7 @@ int main (int argc, char* argv[])
 		beta_params.push_back({"Ly",Ly});
 		beta_params.push_back({"J",0.});
 		beta_params.push_back({"Jrung",0.});
+		beta_params.push_back({"maxPower",maxPower});
 		MODEL H;
 		if (Ly==1)
 		{

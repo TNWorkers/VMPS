@@ -1555,7 +1555,10 @@ load (string filename, double &energy)
 	size_t QmultiSize;
 	
 	//load the scalars
-	source.load_scalar(energy,"energy");
+	if (source.CHECK("energy"))
+	{
+		source.load_scalar(energy,"energy");
+	}
 	source.load_scalar(this->N_sites,"L");
 	source.load_scalar(this->N_phys,"Nphys");
 	for (size_t q=0; q<Nq; q++)
