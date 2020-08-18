@@ -3,6 +3,7 @@
 #pragma message("LapackManager")
 #endif
 
+#define USE_OLD_COMPRESSION
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
 #define GREENPROPAGATOR_USE_HDF5
@@ -74,7 +75,7 @@ int main (int argc, char* argv[])
 	double Imty = args.get<double>("Imty",0.); // Im Hybridisierung c(i)f(i+1)
 	
 	bool SAVE_GS = args.get<double>("SAVE_GS",false);
-	string LOAD_GS = args.get<string>("LOAD_GS","");
+	bool LOAD_GS = args.get<bool>("LOAD_GS",false);
 	
 	vector<string> specs = args.get_list<string>("specs",{"PES","IPE"}); // welche Spektren? PES:Photoemission, IPE:inv. Photoemission
 	string specstring = "";
@@ -179,10 +180,9 @@ int main (int argc, char* argv[])
 	
 	// VUMPS-Solver
 	MODELC::uSolver uDMRG(VERB);
-	if (LOAD_GS!="")
+	if (LOAD_GS)
 	{
-		g.state.load(LOAD_GS);
-		g.energy = isReal(avg(g.state, H, g.state));
+		g.state.load("gs_"+base,g.energy);
 		lout << "loaded: " << g.state.info() << endl;
 	}
 	else
@@ -193,7 +193,8 @@ int main (int argc, char* argv[])
 		uDMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
 		if (SAVE_GS)
 		{
-			g.state.save(base);
+			lout << "saving groundstate..." << endl;
+			g.state.save("gs_"+base, "PAM groundstate", g.energy);
 		}
 	}
 	

@@ -129,14 +129,14 @@ public:
 	 * \warning This method requires hdf5. For more information see https://www.hdfgroup.org/.
 	 * \note For the filename you should use the info string of the currently used Mpo.
 	 */
-	void save (string filename,string info="none");
+	void save (string filename, string info="none", double energy=0);
 	
 	/**
 	 * Reads all information of the Mps from the file <FILENAME>.h5.
 	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	 */
-	void load (string filename);
+	void load (string filename double &energy=NULL);
 	#endif //USE_HDF5_STORAGE
 	
 	/**
@@ -1453,7 +1453,7 @@ canonize (DMRG::DIRECTION::OPTION DIR)
 #ifdef USE_HDF5_STORAGE
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-save (string filename, string info)
+save (string filename, string info, double energy)
 {
 	assert(Boundaries.IS_TRIVIAL());
 	
@@ -1471,6 +1471,7 @@ save (string filename, string info)
 	string add_infoLabel = "add_info";
 	
 	//save scalar values
+	target.save_scalar(energy,"energy");
 	target.save_scalar(this->N_sites,"L");
 	target.save_scalar(this->N_phys,"Nphys");
 	for (size_t q=0; q<Nq; q++)
@@ -1544,7 +1545,7 @@ save (string filename, string info)
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-load (string filename)
+load (string filename, double &energy)
 {
 	filename+=".h5";
 	HDF5Interface source(filename, READ);
@@ -1552,7 +1553,9 @@ load (string filename)
 	string eps_svdLabel = "eps_svd";
 	string alpha_rsvdLabel = "alpha_rsvd";
 	size_t QmultiSize;
+	
 	//load the scalars
+	source.load_scalar(energy,"energy")
 	source.load_scalar(this->N_sites,"L");
 	source.load_scalar(this->N_phys,"Nphys");
 	for (size_t q=0; q<Nq; q++)
