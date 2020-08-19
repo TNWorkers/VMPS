@@ -279,13 +279,14 @@ int main (int argc, char* argv[])
 		{
 			params.push_back({"U",U});
 			params.push_back({"tFull",hopping});
+			Q = {2*S+1,N};
 		}
 		else
 		{
 			params.push_back({"Jfull",hopping});
 			params.push_back({"D",D});
+			Q = {2*S+1};
 		}
-		Q = MODEL::singlet(N);
 		lout << "Q=" << Q << endl;
 		params.push_back({"maxPower",maxPower});
 		
@@ -753,8 +754,7 @@ int main (int argc, char* argv[])
 		
 		if (LOAD != "")
 		{
-			double tmp;
-			PsiT.load(LOAD,tmp);
+			PsiT.load(LOAD);
 			lout << "loaded: " << PsiT.info() << endl;
 			lout << termcolor::blue << "continuing β-propagation at β=" << betainit << " with: " 
 			     << "dβ=" << dbeta << ", "
@@ -915,6 +915,7 @@ int main (int argc, char* argv[])
 		for (int i=0; i<betasteps.size()+1; ++i)
 		{
 			Stopwatch<> FullStepTimer;
+			lout << "i=" << i << endl;
 			
 			if (i!=betasteps.size())
 			{
