@@ -461,7 +461,7 @@ public:
 	inline vector<map<qarray<Nq>,ArrayXd> > entanglementSpectrum() const {return SVspec;};
 	
 	/**Return the entanglement spectrum at the site \p loc (values all subspaces merged and sorted).*/
-	ArrayXd entanglementSpectrumLoc (size_t loc) const;
+	std::pair<vector<qarray<Symmetry::Nq> >, ArrayXd> entanglementSpectrumLoc (size_t loc) const;
 	///\}
 	
 //	Tripod<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > BoundaryL;
@@ -4178,24 +4178,26 @@ test_ortho (double tol) const
 }
 
 template<typename Symmetry, typename Scalar>
-ArrayXd Mps<Symmetry,Scalar>::
+std::pair<vector<qarray<Symmetry::Nq> >, ArrayXd> Mps<Symmetry,Scalar>::
 entanglementSpectrumLoc (size_t loc) const
 {
-	vector<double> Svals;
+	vector<pair<qarray<Nq>, double> > Svals;
 	for (const auto &x : SVspec[loc])
 	for (int i=0; i<x.second.size(); ++i)
 	{
-		Svals.push_back(x.second(i));
+		Svals.push_back(std::make_pair(x.first,x.second(i)));
 	}
-	sort(Svals.begin(), Svals.end());
-	reverse(Svals.begin(), Svals.end());
+	sort(Svals.begin(), Svals.end(), [] (const pair<qarray<Nq>, double> &p1, const pair<qarray<Nq>, double> &p2) { return p2.second < p1.second;});
+	// reverse(Svals.begin(), Svals.end());
 	
-	ArrayXd out(Svals.size());
+	ArrayXd Sout(Svals.size());
+	vector<qarray<Nq> > Qout(Svals.size());
 	for (int i=0; i<Svals.size(); ++i)
 	{
-		out(i) = Svals[i];
+		Sout(i) = Svals[i].second;
+		Qout[i] = Svals[i].first;
 	}
-	return out;
+	return std::make_pair(Qout,Sout);
 }
 
 template<typename Symmetry, typename Scalar>
