@@ -21,7 +21,7 @@
 		
 		if (spec == "AES")
 		{
-			#ifdef USING_SU2 || USING_U1
+			#if defined(USING_SU2) || defined(USING_U1)
 			{
 				A[l] = H.cc(l);
 				Adag[l] = H.cdagcdag(l);
@@ -43,7 +43,7 @@
 		}
 		else if (spec == "APS")
 		{
-			#ifdef USING_SU2 || USING_U1
+			#if defined(USING_SU2) || defined(USING_U1)
 			{
 				A[l] = H.cdagcdag(l);
 				Adag[l] = H.cc(l);
@@ -65,7 +65,7 @@
 		}
 		else if (spec == "PES")
 		{
-			#ifdef USING_SU2 || USING_SU2SPIN
+			#if defined(USING_SU2) || defined(USING_SU2SPIN)
 			{
 				A[l] = H.c(l, 0, 1.);
 				Adag[l] = H.cdag(l, 0, sqrt(2.));
@@ -110,7 +110,7 @@
 		}
 		else if (spec == "IPES")
 		{
-			#ifdef USING_SU2) || USING_SU2SPIN
+			#if defined(USING_SU2) || defined(USING_SU2SPIN)
 			{
 				A[l] = H.cdag(l, 0, 1.);
 				Adag[l] = H.c(l, 0, sqrt(2.));
@@ -155,7 +155,7 @@
 		}
 		else if (spec == "CSF")
 		{
-			#ifdef USING_SU2 || USING_U1
+			#if defined(USING_SU2) || defined(USING_U1)
 			{
 				A[l] = H.n(l);
 				Adag[l] = A[l];

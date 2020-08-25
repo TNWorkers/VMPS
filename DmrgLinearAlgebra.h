@@ -463,10 +463,17 @@ void HxV (const Mpo<Symmetry,MpoScalar> &H, const Mps<Symmetry,Scalar> &Vin, Mps
 {
 	Stopwatch<> Chronos;
 	
-	MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre((VERBOSE)?
+	if (Vin.calc_Dmax() <= 4)
+	{
+		OxV_exact(H, Vin, Vout, 2., (VERBOSE)?DMRG::VERBOSITY::HALFSWEEPWISE:DMRG::VERBOSITY::SILENT);
+	}
+	else
+	{
+		MpsCompressor<Symmetry,Scalar,MpoScalar> Compadre((VERBOSE)?
 	                                                  DMRG::VERBOSITY::HALFSWEEPWISE
 	                                                  :DMRG::VERBOSITY::SILENT);
-	Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax(), 1e-4);
+		Compadre.prodCompress(H, H, Vin, Vout, Vin.Qtarget(), Vin.calc_Dmax(), 1e-4);
+	}
 	
 ////	double tol_compr = (Vin.calc_Nqavg() <= 4.)? 1.:1e-7;
 //	double tol_compr = 1e-7;

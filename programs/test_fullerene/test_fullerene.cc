@@ -240,7 +240,7 @@ int main (int argc, char* argv[])
 	ArrayXXd hopping;
 	if (L!=12 and L!=20 and L!=60)
 	{
-		hopping = create_1D_OBC(L); // Heisenberg ring for testing
+		hopping = create_1D_PBC(L); // Heisenberg ring for testing
 	}
 	else
 	{
@@ -279,13 +279,14 @@ int main (int argc, char* argv[])
 		{
 			params.push_back({"U",U});
 			params.push_back({"tFull",hopping});
+			Q = {2*S+1,N};
 		}
 		else
 		{
 			params.push_back({"Jfull",hopping});
 			params.push_back({"D",D});
+			Q = {2*S+1};
 		}
-		Q = MODEL::singlet(N);
 		lout << "Q=" << Q << endl;
 		params.push_back({"maxPower",maxPower});
 		
@@ -300,13 +301,13 @@ int main (int argc, char* argv[])
 		DMRG.DynParam = DynParam;
 		if (LOAD!="")
 		{
-			g.state.load(LOAD);
+			g.state.load(LOAD,g.energy);
 			lout << "loaded: " << g.state.info() << endl;
 			
 			if (LOAD2!="")
 			{
 				Eigenstate<MODEL::StateXd> g2;
-				g2.state.load(LOAD2);
+				g2.state.load(LOAD2,g2.energy);
 				lout << "overlap=" << g.state.dot(g2.state) << endl;
 				
 				MatrixXd Hlow(2,2);
@@ -435,7 +436,14 @@ int main (int argc, char* argv[])
 				lout << setprecision(16) << "E=" << E << setprecision(6) << endl;
 				lout << Timer.info("E") << endl;
 				
-				lout << setprecision(16) << "varE=" << abs(avg(g.state,H,H,g.state)-pow(E,2))/L << setprecision(6) << endl;
+				if (maxPower == 1)
+				{
+					lout << setprecision(16) << "varE=" << abs(avg(g.state,H,H,g.state)-pow(E,2))/L << setprecision(6) << endl;
+				}
+				else
+				{
+					lout << setprecision(16) << "varE=" << abs(avg(g.state,H,g.state,2)-pow(E,2))/L << setprecision(6) << endl;
+				}
 				lout << Timer.info("varE") << endl;
 				
 //				auto HmE = H;
@@ -810,16 +818,9 @@ int main (int argc, char* argv[])
 		// construct H
 		vector<Param> beta_params;
 		beta_params.push_back({"Ly",Ly});
-		if (CALC_C)
-		{
-			beta_params.push_back({"maxPower",(L==60)?1ul:2ul});
-		}
-		else
-		{
-			beta_params.push_back({"maxPower",1ul});
-		}
 		beta_params.push_back({"J",0.});
 		beta_params.push_back({"Jrung",0.});
+		beta_params.push_back({"maxPower",maxPower});
 		MODEL H;
 		if (Ly==1)
 		{
@@ -878,6 +879,11 @@ int main (int argc, char* argv[])
 			betavals.push_back(betainit+dbeta);
 			betasteps.push_back(dbeta);
 			lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			
+			// This makes: s_betainit = log(2) + accumulated ln(Z)
+			// From here additional contributions in ln(Z) are added; and beta*e is added at each step
+			double e = avg(PsiT,H,PsiT)/L;
+			s_betainit -= betainit*e;
 		}
 		
 		while (betavals[betavals.size()-1] < betamax)
@@ -909,6 +915,7 @@ int main (int argc, char* argv[])
 		for (int i=0; i<betasteps.size()+1; ++i)
 		{
 			Stopwatch<> FullStepTimer;
+			lout << "i=" << i << endl;
 			
 			if (i!=betasteps.size())
 			{
@@ -965,8 +972,8 @@ int main (int argc, char* argv[])
 				double c = std::nan("c");
 				if (CALC_C)
 				{
-					c = (L==60)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
-				                 beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+					c = (maxPower==1)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
+				                       beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
 				}
 				cvec.push_back(c);
 				lout << Stepper.info("c") << endl;
@@ -996,6 +1003,7 @@ int main (int argc, char* argv[])
 				int Nsum = (i<betasteps.size())? lnZvec.size()-1:lnZvec.size();
 				VectorXd tmp = VectorXd::Map(lnZvec.data(), Nsum);
 				double s = s_betainit + tmp.sum()/L + beta*e;
+				cout << "s_betainit=" << s_betainit << ", tmp.sum()/L=" << tmp.sum()/L << ", beta*e=" << beta*e << ", total=" << s << endl;
 				svec.push_back(s);
 				//---------
 				lout << Stepper.info("s") << endl;
@@ -1032,9 +1040,8 @@ int main (int argc, char* argv[])
 			}
 			
 			lout << FullStepTimer.info("full step") << endl;
+			lout << FullTimer.info("total",false) << endl;
 			lout << endl;
-			
-			lout << FullTimer.info("total") << endl;
 		}
 		
 		Filer.close();

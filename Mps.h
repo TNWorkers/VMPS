@@ -13,6 +13,7 @@
 
 #ifdef USE_HDF5_STORAGE
 	#include <HDF5Interface.h>
+	static double dump_Mps; // dump variable if energy value not saved
 #endif
 
 #include "pivot/DmrgPivotMatrix1.h"
@@ -86,7 +87,7 @@ public:
 	 * \param Qtot_input : target quantum number
 	 * \param N_phys_input : the volume of the system (normally (chain length) * (chain width))
 	 */
-	Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
+	Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixType> > > &As,
 	     const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input);
 	
 	#ifdef USE_HDF5_STORAGE
@@ -129,14 +130,14 @@ public:
 	 * \warning This method requires hdf5. For more information see https://www.hdfgroup.org/.
 	 * \note For the filename you should use the info string of the currently used Mpo.
 	 */
-	void save (string filename,string info="none");
+	void save (string filename, string info="none", double energy=std::nan("1"));
 	
 	/**
 	 * Reads all information of the Mps from the file <FILENAME>.h5.
 	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	 */
-	void load (string filename);
+	void load (string filename, double &energy=dump_Mps);
 	#endif //USE_HDF5_STORAGE
 	
 	/**
@@ -748,7 +749,7 @@ Mps (const Hamiltonian &H, size_t Dmax, qarray<Nq> Qtot_input, size_t Nqmax_inpu
 
 template<typename Symmetry, typename Scalar>
 Mps<Symmetry,Scalar>::
-Mps (size_t L_input, const vector<vector<Biped<Symmetry,MatrixXd> > > &As,
+Mps (size_t L_input, const vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > &As,
      const vector<vector<qarray<Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t N_phys_input)
 :DmrgJanitor<PivotMatrix1<Symmetry,Scalar,Scalar> >(L_input), qloc(qloc_input), Qtot(Qtot_input), N_phys(N_phys_input), A(As)
 {
@@ -1453,7 +1454,7 @@ canonize (DMRG::DIRECTION::OPTION DIR)
 #ifdef USE_HDF5_STORAGE
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-save (string filename, string info)
+save (string filename, string info, double energy)
 {
 	assert(Boundaries.IS_TRIVIAL());
 	
@@ -1470,7 +1471,11 @@ save (string filename, string info)
 	string alpha_rsvdLabel = "alpha_rsvd";
 	string add_infoLabel = "add_info";
 	
-	//save scalar values
+	// save scalar values
+	if (!isnan(energy))
+	{
+		target.save_scalar(energy,"energy");
+	}
 	target.save_scalar(this->N_sites,"L");
 	target.save_scalar(this->N_phys,"Nphys");
 	for (size_t q=0; q<Nq; q++)
@@ -1486,7 +1491,7 @@ save (string filename, string info)
 		target.save_scalar(this->Qmulti[i][q],ss.str(),"Qmulti");
 	}
 	target.save_scalar(this->calc_Dmax(),DmaxLabel);
-	target.save_scalar(this->calc_Nqmax(),NqmaxLabel);	
+	target.save_scalar(this->calc_Nqmax(),NqmaxLabel);
 	target.save_scalar(this->min_Nsv,"min_Nsv");
 	target.save_scalar(this->max_Nsv,"max_Nsv");
 	target.save_scalar(this->eps_svd,eps_svdLabel);
@@ -1544,7 +1549,7 @@ save (string filename, string info)
 
 template<typename Symmetry, typename Scalar>
 void Mps<Symmetry,Scalar>::
-load (string filename)
+load (string filename, double &energy)
 {
 	filename+=".h5";
 	HDF5Interface source(filename, READ);
@@ -1552,7 +1557,12 @@ load (string filename)
 	string eps_svdLabel = "eps_svd";
 	string alpha_rsvdLabel = "alpha_rsvd";
 	size_t QmultiSize;
+	
 	//load the scalars
+	if (source.CHECK("energy"))
+	{
+		source.load_scalar(energy,"energy");
+	}
 	source.load_scalar(this->N_sites,"L");
 	source.load_scalar(this->N_phys,"Nphys");
 	for (size_t q=0; q<Nq; q++)
@@ -1803,15 +1813,15 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 			size_t stitch = 0;
 			for (size_t i=0; i<svec.size(); ++i)
 			{
-				// Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]]*
-				// 	                                        Symmetry::coeff_leftSweep(
-				// 	                                         A[loc][svec[i]].out[qvec[i]],
-				// 	                                         A[loc][svec[i]].in[qvec[i]]);
-				Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]]*
-					                                        Symmetry::coeff_leftSweep2(
-					                                         A[loc][svec[i]].out[qvec[i]],
-					                                         A[loc][svec[i]].in[qvec[i]],
-															 qloc[loc][svec[i]]);
+				 Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]]*
+				 	                                        Symmetry::coeff_leftSweep(
+				 	                                         A[loc][svec[i]].out[qvec[i]],
+				 	                                         A[loc][svec[i]].in[qvec[i]]);
+//				Aclump.block(0,stitch, Nrows,Ncolsvec[i]) = A[loc][svec[i]].block[qvec[i]]*
+//					                                        Symmetry::coeff_leftSweep2(
+//					                                         A[loc][svec[i]].out[qvec[i]],
+//					                                         A[loc][svec[i]].in[qvec[i]],
+//															 qloc[loc][svec[i]]);
 				stitch += Ncolsvec[i];
 			}
 			
@@ -1868,27 +1878,27 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 					
 					if (TOOL == DMRG::BROOM::SVD or TOOL == DMRG::BROOM::BRUTAL_SVD or TOOL == DMRG::BROOM::RICH_SVD)
 					{
-						// Mtmp = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])*
-						// 		                         Symmetry::coeff_leftSweep(
-						// 		                          A[loc][svec[i]].in[qvec[i]],
-						// 		                          A[loc][svec[i]].out[qvec[i]]);
-						Mtmp = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])*
-								                         Symmetry::coeff_leftSweep3(
-								                          A[loc][svec[i]].in[qvec[i]],
-								                          A[loc][svec[i]].out[qvec[i]],
-														  qloc[loc][svec[i]]);
+						 Mtmp = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])*
+						 		                         Symmetry::coeff_leftSweep(
+						 		                          A[loc][svec[i]].in[qvec[i]],
+						 		                          A[loc][svec[i]].out[qvec[i]]);
+//						Mtmp = Jack.matrixV().adjoint().block(0,stitch, Nret,Ncolsvec[i])*
+//								                         Symmetry::coeff_leftSweep3(
+//								                          A[loc][svec[i]].in[qvec[i]],
+//								                          A[loc][svec[i]].out[qvec[i]],
+//								                          qloc[loc][svec[i]]);
 					}
 					else if (TOOL == DMRG::BROOM::QR)
 					{
-						// Mtmp = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i])*
-						// 		                         Symmetry::coeff_leftSweep(
-						// 		                          A[loc][svec[i]].in[qvec[i]],
-						// 		                          A[loc][svec[i]].out[qvec[i]]);
-						Mtmp = Qmatrix.block(0,stitch, Nret,Ncolsvec[i])*
-								                         Symmetry::coeff_leftSweep3(
-								                          A[loc][svec[i]].in[qvec[i]],
-								                          A[loc][svec[i]].out[qvec[i]],
-														  qloc[loc][svec[i]]);
+						 Mtmp = Qmatrix.block(0,stitch, Nrows,Ncolsvec[i])*
+						 		                         Symmetry::coeff_leftSweep(
+						 		                          A[loc][svec[i]].in[qvec[i]],
+						 		                          A[loc][svec[i]].out[qvec[i]]);
+//						Mtmp = Qmatrix.block(0,stitch, Nret,Ncolsvec[i])*
+//								                         Symmetry::coeff_leftSweep3(
+//								                          A[loc][svec[i]].in[qvec[i]],
+//								                          A[loc][svec[i]].out[qvec[i]],
+//								                          qloc[loc][svec[i]]);
 					}
 					
 					if (Mtmp.size() != 0)

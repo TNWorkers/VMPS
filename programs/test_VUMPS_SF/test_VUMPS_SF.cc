@@ -211,7 +211,7 @@ int main (int argc, char* argv[])
 		typedef VMPS::HeisenbergXXZ MODEL;
 		MODEL H(L,{{"Bx",Bx},{"Jz",Jz},{"D",D},{"maxPower",1ul}},BC::INFINITE);
 		qarray<0> Qc = {};
-
+		
 		lout << H.info() << endl;
 		
 		MODEL::uSolver DMRG(VERB);

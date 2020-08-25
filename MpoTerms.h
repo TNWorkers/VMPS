@@ -480,7 +480,7 @@ public:
      *  @param factor   The factor to scale the interactions with
      *  @param offset   The factor all local identity operators are multiplied by
      */
-    void scale(const double factor, const double offset=0., const double tolerance=1.e-14);
+    void scale(const double factor, const double offset=0., const std::size_t power=0ul, const double tolerance=1.e-14);
     
     /**
      *  @return Cast instance of MpoTerms with another scalar type
@@ -620,7 +620,7 @@ public:
      *  @param  PRINT   Shall information on the transformation be printed?
      *  @param  factor  Additional factor to avoid fractions (Size of unit cell)
      */
-    void transform_base(const qType &qShift, const bool PRINT=false, const int factor=-1);
+    void transform_base(const qType &qShift, const bool PRINT=false, const int factor=-1, const std::size_t powre=0ul);
     
     /**
      *  Precalcs data for two-site calculations
@@ -1138,7 +1138,6 @@ calc(const std::size_t power)
         std::vector<qType> qTots = Symmetry::reduceSilent(current.get_qTot(),qTot);
         assert(qTots.size() == 1 and "Target quantum number has to be unique for computing higher powers of the MPO.");
         current = MpoTerms<Symmetry,Scalar>::prod(current,*this,qTots[0]);
-        current.calc(1);
         W_powers[n-2] = current.get_W();
         qAux_powers[n-2] = current.get_qAux();
         qOp_powers[n-2] = current.get_qOp();
@@ -1396,7 +1395,6 @@ compress(const double tolerance)
     }
     auto [average_auxdim_final,maximum_auxdim_final] = auxdim_infos();
     int compr_rate = (int)std::round(100*(1-average_auxdim_final/average_auxdim_initial));
-    calc(1);
     std::stringstream ss;
     auto curr_prec = std::cout.precision();
     ss << this->get_name() << " - Compression | " << watch.info("Time") << " | Steps: " << counter << " | Rate: " << compr_rate
@@ -1443,11 +1441,19 @@ compress(const double tolerance)
     while(!bonds_to_check.empty())
     {
         counter++;
-        std::vector<bool> next_bonds_to_check(N_sites,false);
+        std::size_t threads = 1;
+        #ifdef _OPENMP
+        threads = omp_get_max_threads();
+        #endif
+        std::vector<std::vector<std::size_t>> next_bonds_to_check(threads);
         std::size_t lindep_checks_temp = 0ul;
         #pragma omp parallel for shared(next_bonds_to_check) reduction(+ : lindep_checks_temp)
         for(std::size_t i=0; i<bonds_to_check.size(); ++i)
         {
+            std::size_t thread_id = 0;
+            #ifdef _OPENMP
+            thread_id = omp_get_thread_num();
+            #endif
             std::size_t loc = bonds_to_check[i];
             std::vector<qType> qs;
             for(const auto &[q,deg] : auxdim[loc])
@@ -1462,15 +1468,15 @@ compress(const double tolerance)
                 {
                     if(loc != 1ul)
                     {
-                        next_bonds_to_check[loc-1] = true;
+                        next_bonds_to_check[thread_id].push_back(loc-1);
                     }
                     if(loc != N_sites-1)
                     {
-                        next_bonds_to_check[loc+1] = true;
+                        next_bonds_to_check[thread_id].push_back(loc+1);
                     }
                     if(boundary_condition == BC::INFINITE and (loc == 1ul or loc == N_sites-1))
                     {
-                        next_bonds_to_check[0] = true;
+                        next_bonds_to_check[thread_id].push_back(0);
                     }
                     lindep_checks_temp++;
                     while(eliminate_linearlyDependent_cols(loc-1,q,tolerance)) {lindep_checks_temp++;}
@@ -1486,15 +1492,15 @@ compress(const double tolerance)
                 {
                     if(loc != 1ul)
                     {
-                        next_bonds_to_check[loc-1] = true;
+                        next_bonds_to_check[thread_id].push_back(loc-1);
                     }
                     if(loc != N_sites-1)
                     {
-                        next_bonds_to_check[loc+1] = true;
+                        next_bonds_to_check[thread_id].push_back(loc+1);
                     }
                     if(boundary_condition == BC::INFINITE and (loc == 1ul or loc == N_sites-1))
                     {
-                        next_bonds_to_check[0] = true;
+                        next_bonds_to_check[thread_id].push_back(0);
                     }
                     lindep_checks_temp++;
                     while(eliminate_linearlyDependent_rows(loc%N_sites,q,tolerance)) {lindep_checks_temp++;}
@@ -1529,11 +1535,11 @@ compress(const double tolerance)
                 unique_control.insert(N_sites);
             }
         }
-        for(std::size_t bond=1; bond<=N_sites; ++bond)
+        for(std::size_t thread_id=0; thread_id<threads; ++thread_id)
         {
-            if(next_bonds_to_check[bond%N_sites])
+            for(std::size_t i=0; i<next_bonds_to_check[thread_id].size(); ++i)
             {
-                unique_control.insert(bond);
+                unique_control.insert(next_bonds_to_check[thread_id][i] != 0 ? next_bonds_to_check[thread_id][i] : N_sites);
             }
         }
         bonds_to_check.resize(0);
@@ -1545,7 +1551,6 @@ compress(const double tolerance)
     
     auto [average_auxdim_final,maximum_auxdim_final] = auxdim_infos();
     int compr_rate = (int)std::round(100*(1-average_auxdim_final/average_auxdim_initial));
-    calc(1);
     std::stringstream ss;
     auto curr_prec = std::cout.precision();
     ss << this->get_name() << " - Compression | " << watch.info("Time") << " | Steps: " << counter << " | Rate: " << compr_rate
@@ -2828,12 +2833,15 @@ check_qPhys() const
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
-scale(const double factor, const double offset, const double tolerance)
+scale(const double factor, const double offset, const std::size_t power, const double tolerance)
 {
+    std::size_t calc_to_power = (power != 0 ? power : current_power);
     got_update();
     if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon())
     {
-        double factor_per_site = pow(factor, 1./(1.*N_sites));
+//    	lout << termcolor::blue << "SCALING" << ", std::abs(factor-1.)=" << std::abs(factor-1.) << termcolor::reset << endl;
+        bool sign_factor = (factor < 0. ? true : false);
+        double factor_per_site = std::pow(std::abs(factor), 1./(1.*N_sites));
         for(std::size_t loc=0; loc<N_sites; ++loc)
         {
             for(const auto &[qIn, rows] : auxdim[loc])
@@ -2849,7 +2857,55 @@ scale(const double factor, const double offset, const double tolerance)
                             std::map<qType,OperatorType> &existing_ops = (it->second)[row][col];
                             for(auto &[q,op] : existing_ops)
                             {
-                                op = factor_per_site*op;
+                                 op = factor_per_site*op;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if(sign_factor)
+        {
+            if(boundary_condition == BC::INFINITE or status == MPO_STATUS::ALTERABLE)
+            {
+                for(std::size_t loc=0; loc<N_sites; ++loc)
+                {
+                    for(const auto &[qOut, cols] : auxdim[loc+1])
+                    {
+                        auto it = O[loc].find({qVac,qOut});
+                        assert(it != O[loc].end());
+                        for(std::size_t col=0; col<cols; ++col)
+                        {
+                            if(col == pos_qVac)
+                            {
+                                continue;
+                            }
+                            std::map<qType,OperatorType> &existing_ops = (it->second)[pos_qVac][col];
+                            for(auto &[q,op] : existing_ops)
+                            {
+                                op = -1.*op;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for(const auto &[qIn,rows] : auxdim[0])
+                {
+                    for(const auto &[qOut,cols] : auxdim[1])
+                    {
+                        auto it = O[0].find({qIn,qOut});
+                        assert(it != O[0].end());
+                        for(std::size_t row=0; row<rows; ++row)
+                        {
+                            for(std::size_t col=0; col<cols; ++col)
+                            {
+                                std::map<qType,OperatorType> &existing_ops = (it->second)[row][col];
+                                for(auto &[q,op] : existing_ops)
+                                {
+                                    op = -1.*op;
+                                }
                             }
                         }
                     }
@@ -2859,7 +2915,8 @@ scale(const double factor, const double offset, const double tolerance)
     }
     if(std::abs(offset) > tolerance)
     {
-        double offset_per_site = pow(offset, 1./(1.*N_sites));
+        bool sign_offset = (offset < 0. ? true : false);
+        double offset_per_site = std::pow(std::abs(offset), 1./(1.*N_sites));
         if(boundary_condition == BC::OPEN)
         {
             assert(qTot == qVac and "For adding an offset, the MPO needs to be a singlet.");
@@ -2872,6 +2929,10 @@ scale(const double factor, const double offset, const double tolerance)
                 std::map<qType,OperatorType> &existing_ops = (it->second)[get_auxdim(loc,qVac)-1][get_auxdim(loc+1,qVac)-1];
                 SiteOperator<Symmetry,Scalar> Id;
                 Id.data = Matrix<Scalar,Dynamic,Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView();
+                if(loc == 0 and sign_offset)
+                {
+                    Id.data *= -1.;
+                }
                 #ifdef OPLABELS
                 Id.label = "id";
                 #endif
@@ -2928,7 +2989,10 @@ scale(const double factor, const double offset, const double tolerance)
             }
         }
     }
-    calc(1);
+    if (std::abs(factor-1.) > ::mynumeric_limits<double>::epsilon() or std::abs(offset) > tolerance)
+    {
+    	calc(calc_to_power);
+    }
 }
 
 template<typename Symmetry, typename Scalar> template<typename OtherScalar> MpoTerms<Symmetry, OtherScalar> MpoTerms<Symmetry,Scalar>::
@@ -2969,8 +3033,9 @@ cast()
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
-transform_base(const qType &qShift, const bool PRINT, const int factor)
+transform_base(const qType &qShift, const bool PRINT, const int factor, const std::size_t power)
 {
+    std::size_t calc_to_power = (power != 0ul ? power : current_power);
 	int length = (factor==-1)? static_cast<int>(qPhys.size()):factor;
     ::transform_base<Symmetry>(qPhys, qShift, PRINT, false, length); // from symmery/functions.h, BACK=false
     
@@ -3046,7 +3111,7 @@ transform_base(const qType &qShift, const bool PRINT, const int factor)
         O = O_new;
         auxdim = auxdim_new;
         got_update();
-        calc(1);
+        calc(calc_to_power);
     }
 }
 
@@ -3437,6 +3502,7 @@ prod(const MpoTerms<Symmetry,Scalar> &top, const MpoTerms<Symmetry,Scalar> &bott
         out.set_name(top.get_name()+"*"+bottom.get_name());
     }
     out.compress(tolerance);
+    out.calc(1);
     return out;
 }
 
@@ -3704,6 +3770,7 @@ sum(const MpoTerms<Symmetry,Scalar> &top, const MpoTerms<Symmetry,Scalar> &botto
 	}
     out.set_name(top.get_name()+"+"+bottom.get_name());
     out.compress(tolerance);
+    out.calc(1);
     return out;
 }
 

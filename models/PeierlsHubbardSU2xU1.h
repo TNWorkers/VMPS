@@ -162,7 +162,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 						else {ops[i] = F[(loc+i)%N_sites].Id().template cast<complex<double>>();}
 					}
 					ops[range] = last[j][(loc+range)%N_sites];
-					complex<double> total_value =  factor[j] * value;
+					complex<double> total_value = factor[j] * value;
 					if (CONJ[j]) total_value = conj(total_value);
 					pushlist.push_back(std::make_tuple(loc, ops, total_value));
 				}
@@ -273,39 +273,39 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		pushlist.push_back(std::make_tuple(loc, Hloc, 1.+0.i));
 		
 		// Nearest-neighbour terms: t, V, J
-//		if (!P.HAS("tFull") and !P.HAS("Vzfull") and !P.HAS("Vxyfull") and !P.HAS("Jfull") and !P.HAS("Xfull"))
-//		{
-//			param2d tpara = P.fill_array2d<double>("t", "tPara", {orbitals, next_orbitals}, loc%Lcell);
+		if (!P.HAS("tFull") and !P.HAS("Vzfull") and !P.HAS("Vxyfull") and !P.HAS("Jfull") and !P.HAS("Xfull"))
+		{
+			param2d tpara = P.fill_array2d<complex<double>>("t", "tPara", {orbitals, next_orbitals}, loc%Lcell);
 //			param2d Vpara = P.fill_array2d<double>("V", "Vpara", {orbitals, next_orbitals}, loc%Lcell);
 //			param2d Vzpara = P.fill_array2d<double>("Vz", "Vzpara", {orbitals, next_orbitals}, loc%Lcell);
 //			param2d Vxypara = P.fill_array2d<double>("Vxy", "Vxypara", {orbitals, next_orbitals}, loc%Lcell);
 //			param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
 //			param2d Xpara = P.fill_array2d<double>("X", "Xpara", {orbitals, next_orbitals}, loc%Lcell);
-//			
-//			labellist[loc].push_back(tpara.label);
+			
+			labellist[loc].push_back(tpara.label);
 //			labellist[loc].push_back(Vpara.label);
 //			labellist[loc].push_back(Vzpara.label);
 //			labellist[loc].push_back(Vxypara.label);
 //			labellist[loc].push_back(Jpara.label);
 //			labellist[loc].push_back(Xpara.label);
-//			
-//			if (loc < N_sites-1 or !static_cast<bool>(boundary))
-//			{
-//				for (std::size_t alfa=0; alfa<orbitals;      ++alfa)
-//				for (std::size_t beta=0; beta<next_orbitals; ++beta)
-//				{
-//					SiteOperatorQ<Symmetry_,MatrixType> c_sign_local    = (F[loc].c(alfa) *    F[loc].sign());
-//					SiteOperatorQ<Symmetry_,MatrixType> cdag_sign_local = (F[loc].cdag(alfa) * F[loc].sign());
-//					
-//					SiteOperatorQ<Symmetry_,MatrixType> c_tight    = F[lp1].c   (beta);
-//					SiteOperatorQ<Symmetry_,MatrixType> cdag_tight = F[lp1].cdag(beta);
-//					
+			
+			if (loc < N_sites-1 or !static_cast<bool>(boundary))
+			{
+				for (std::size_t alfa=0; alfa<orbitals;      ++alfa)
+				for (std::size_t beta=0; beta<next_orbitals; ++beta)
+				{
+					SiteOperatorQ<Symmetry_,MatrixType> c_sign_local    = (F[loc].c(alfa) *    F[loc].sign()).template cast<complex<double>>();;
+					SiteOperatorQ<Symmetry_,MatrixType> cdag_sign_local = (F[loc].cdag(alfa) * F[loc].sign()).template cast<complex<double>>();;
+					
+					SiteOperatorQ<Symmetry_,MatrixType> c_tight    = F[lp1].c   (beta).template cast<complex<double>>();;
+					SiteOperatorQ<Symmetry_,MatrixType> cdag_tight = F[lp1].cdag(beta).template cast<complex<double>>();;
+					
 //					SiteOperatorQ<Symmetry_,MatrixType> n_local = F[loc].n(alfa);
 //					SiteOperatorQ<Symmetry_,MatrixType> n_tight = F[lp1].n(beta);
 //					
 //					SiteOperatorQ<Symmetry_,MatrixType> tz_local = F[loc].Tz(alfa);
 //					SiteOperatorQ<Symmetry_,MatrixType> tz_tight = F[lp1].Tz(beta);
-
+//					
 //					auto Gloc = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,loc)));
 //					auto Glp1 = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,lp1)));
 //					SiteOperatorQ<Symmetry_,MatrixType> tp_local = F[loc].Tp(alfa,Gloc);
@@ -325,11 +325,13 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 //					SiteOperatorQ<Symmetry_,MatrixType> PsidagRloc = ((F[loc].ns(alfa) * F[loc].cdag(alfa)) * F[loc].sign());
 //					SiteOperatorQ<Symmetry_,MatrixType> PsidagLlp1 = (F[lp1].cdag(beta) * F[lp1].ns(beta));
 //					SiteOperatorQ<Symmetry_,MatrixType> PsidagRlp1 = (F[lp1].ns(beta) * F[lp1].cdag(beta));
-//					
-//					//hopping
-//					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(cdag_sign_local, c_tight), -std::sqrt(2.)*tpara(alfa,beta)));
-//					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(c_sign_local, cdag_tight), -std::sqrt(2.)*tpara(alfa,beta)));
-//					
+					
+					//hopping
+					pushlist.push_back(std::make_tuple(loc, 
+					 Mpo<Symmetry_,complex<double>>::get_N_site_interaction(cdag_sign_local, c_tight), -std::sqrt(2.)*tpara(alfa,beta)));
+					pushlist.push_back(std::make_tuple(loc, 
+					 Mpo<Symmetry_,complex<double>>::get_N_site_interaction(c_sign_local, cdag_tight), -std::sqrt(2.)*tpara(alfa,beta)));
+					
 //					//density-density interaction
 //					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(n_local, n_tight), Vpara(alfa,beta)));
 //					
@@ -346,9 +348,9 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 //					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(PsidagRloc, PsiLlp1), -std::sqrt(2.)*Xpara(alfa,beta)));
 //					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(PsiLloc, PsidagRlp1), -std::sqrt(2.)*Xpara(alfa,beta)));
 //					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(PsiRloc, PsidagLlp1), -std::sqrt(2.)*Xpara(alfa,beta)));
-//				}
-//			}
-//		}
+				}
+			}
+		}
 		
 //		// Next-nearest-neighbour terms: t'
 //		if (!P.HAS("tFull"))

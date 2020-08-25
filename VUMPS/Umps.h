@@ -21,6 +21,7 @@
 
 #ifdef USE_HDF5_STORAGE
 	#include <HDF5Interface.h>
+	static double dump_Vumps; // dump variable if energy value not saved
 #endif
 //include "PolychromaticConsole.h" // from TOOLS
 //include "tensors/Biped.h"
@@ -157,14 +158,14 @@ public:
 	 * \warning This method requires hdf5. For more information see https://www.hdfgroup.org/.
 	 * \note For the filename you should use the info string of the currently used Mpo.
 	 */
-	void save (string filename,string info="none");
+	void save (string filename, string info="none", double energy=std::nan("1"));
 	
 	/**
 	 * Reads all information of the Mps from the file <FILENAME>.h5.
 	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	 */
-	void load (string filename);
+	void load (string filename, double &energy=dump_Vumps);
 	#endif //USE_HDF5_STORAGE
 	
 	/**
@@ -1996,7 +1997,7 @@ adjustQN (const size_t number_cells)
 #ifdef USE_HDF5_STORAGE
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-save (string filename, string info)
+save (string filename, string info, double energy)
 {
 	filename+=".h5";
 	HDF5Interface target(filename, WRITE);
@@ -2007,6 +2008,11 @@ save (string filename, string info)
 	
 	string add_infoLabel = "add_info";
 	
+	if (!isnan(energy))
+	{
+		target.save_scalar(energy,"energy");
+	}
+	
 	//save scalar values
 	target.save_scalar(this->N_sites,"L");
 	for (size_t q=0; q<Nq; q++)
@@ -2015,7 +2021,7 @@ save (string filename, string info)
 		target.save_scalar(this->Qtot[q],ss.str(),"Qtot");
 	}
 	target.save_scalar(this->calc_Dmax(),"Dmax");
-	target.save_scalar(this->calc_Nqmax(),"Nqmax");	
+	target.save_scalar(this->calc_Nqmax(),"Nqmax");
 	target.save_scalar(this->min_Nsv,"min_Nsv");
 	target.save_scalar(this->max_Nsv,"max_Nsv");
 	target.save_scalar(this->eps_svd,"eps_svd");
@@ -2051,10 +2057,20 @@ save (string filename, string info)
 				target.save_scalar((A[g][l][s].in[q])[p],in.str(),"As");
 				target.save_scalar((A[g][l][s].out[q])[p],out.str(),"As");
 			}
-			stringstream ss;			
+			stringstream ss;
 			ss << g << "_" << l << "_" << s << "_" << "(" << A[g][l][s].in[q] << "," << A[g][l][s].out[q] << ")";
 			label = ss.str();
-			target.save_matrix(A[g][l][s].block[q],label,"As");
+			if constexpr (std::is_same<Scalar,complex<double>>::value)
+			{
+				MatrixXd Re = A[g][l][s].block[q].real();
+				MatrixXd Im = A[g][l][s].block[q].imag();
+				target.save_matrix(Re,label+"Re","As");
+				target.save_matrix(Im,label+"Im","As");
+			}
+			else
+			{
+				target.save_matrix(A[g][l][s].block[q],label,"As");
+			}
 		}
 	}
 	
@@ -2070,10 +2086,20 @@ save (string filename, string info)
 				stringstream in; in << "l=" << l << ",q=" << q << ",p=" << p;
 				target.save_scalar((C[l].in[q])[p],in.str(),"Cs");
 			}
-			stringstream ss;			
+			stringstream ss;
 			ss << l << "_"  << "(" << C[l].in[q] << ")";
 			label = ss.str();
-			target.save_matrix(C[l].block[q],label,"Cs");			
+			if constexpr (std::is_same<Scalar,complex<double>>::value)
+			{
+				MatrixXd Re = C[l].block[q].real();
+				MatrixXd Im = C[l].block[q].imag();
+				target.save_matrix(Re,label+"Re","Cs");
+				target.save_matrix(Re,label+"Im","Cs");
+			}
+			else
+			{
+				target.save_matrix(C[l].block[q],label,"Cs");
+			}
 		}
 	}
 	target.close();
@@ -2081,12 +2107,16 @@ save (string filename, string info)
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-load (string filename)
+load (string filename, double &energy)
 {
 	filename+=".h5";
 	HDF5Interface source(filename, READ);
 	
 	//load the scalars
+	if (source.CHECK("energy"))
+	{
+		source.load_scalar(energy,"energy");
+	}
 	source.load_scalar(this->N_sites,"L");
 	for (size_t q=0; q<Nq; q++)
 	{
@@ -2096,7 +2126,7 @@ load (string filename)
 	source.load_scalar(this->eps_svd,"eps_svd");
 	source.load_scalar(this->min_Nsv,"min_Nsv");
 	source.load_scalar(this->max_Nsv,"max_Nsv");
-
+	
 	//load qloc
 	qloc.resize(this->N_sites);
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -2139,11 +2169,21 @@ load (string filename)
 			ss << g << "_" << l << "_" << s << "_" << "(" << qin << "," << qout << ")";
 			label = ss.str();
 			MatrixType mat;
-			source.load_matrix(mat, label, "As");
+			if constexpr (std::is_same<Scalar,complex<double>>::value)
+			{
+				MatrixXd Re, Im;
+				source.load_matrix(Re, label+"Re", "As");
+				source.load_matrix(Im, label+"Im", "As");
+				mat = Re+1.i*Im;
+			}
+			else
+			{
+				source.load_matrix(mat, label, "As");
+			}
 			A[g][l][s].push_back(qin,qout,mat);
 		}
 	}
-
+	
 	//load the C-matrices
 	label.clear();
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -2163,7 +2203,17 @@ load (string filename)
 			ss << l << "_" << "(" << qVal << ")";
 			label = ss.str();
 			MatrixType mat;
-			source.load_matrix(mat, label, "Cs");
+			if constexpr (std::is_same<Scalar,complex<double>>::value)
+			{
+				MatrixXd Re, Im;
+				source.load_matrix(Re, label+"Re", "Cs");
+				source.load_matrix(Im, label+"Im", "Cs");
+				mat = Re+1.i*Im;
+			}
+			else
+			{
+				source.load_matrix(mat, label, "Cs");
+			}
 			C[l].push_back(qVal,qVal,mat);
 		}
 	}

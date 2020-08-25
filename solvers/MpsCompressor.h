@@ -13,6 +13,10 @@
 #define DMRG_POLYCOMPRESS_MAX 32
 #endif
 
+#ifndef DMRG_POLYCOMPRESS_INCREMENT
+#define DMRG_POLYCOMPRESS_INCREMENT 1
+#endif 
+
 /// \cond
 #include "termcolor.hpp" //from https://github.com/ikalnytskyi/termcolor
 /// \endcond
@@ -986,7 +990,7 @@ prodCompress (const MpOperator &H, const MpOperator &Hdag, const Mps<Symmetry,Sc
 			{
 				if (H.IS_HERMITIAN())
 				{
-					avgHsqVin = (H.check_SQUARE()==true)? isReal(avg(Vin,H,Vin,true)) : isReal(avg(Vin,H,H,Vin));
+					avgHsqVin = (H.maxPower()>=2)? isReal(avg(Vin,H,Vin,2)) : isReal(avg(Vin,H,H,Vin));
 				}
 				else
 				{
@@ -1328,7 +1332,7 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		{
 			if (Vin1.Boundaries.IS_TRIVIAL())
 			{
-				avgHsqV1 = (H.check_SQUARE()==true)? isReal(avg(Vin1,H,Vin1,true)) : isReal(avg(Vin1,H,H,Vin1));
+				avgHsqV1 = (H.maxPower()>=2)? isReal(avg(Vin1,H,Vin1,2)) : isReal(avg(Vin1,H,H,Vin1));
 			}
 			else
 			{
@@ -1440,14 +1444,14 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		halfSweepRange = N_sites-1;
 		++N_halfsweeps;
 		
-		cout << "avgHsqV1=" << avgHsqV1 
-		     << ", Vout.squaredNorm()=" << Vout.squaredNorm() 
-		     << ", polyB*polyB*sqnormV2=" << polyB*polyB*sqnormV2 
-		     << ", 2.*polyB*overlapV12=" << 2.*polyB*overlapV12 
-		     << endl;
+//		cout << "avgHsqV1=" << avgHsqV1 
+//		     << ", Vout.squaredNorm()=" << Vout.squaredNorm() 
+//		     << ", polyB*polyB*sqnormV2=" << polyB*polyB*sqnormV2 
+//		     << ", 2.*polyB*overlapV12=" << 2.*polyB*overlapV12 
+//		     << endl;
 		double sqdist_ = sqdist;
 		sqdist = abs(avgHsqV1 - Vout.squaredNorm() + polyB*polyB*sqnormV2 - 2.*polyB*overlapV12);
-		lout << "diff=" << abs(sqdist_-sqdist) << endl;
+//		lout << "diff=" << abs(sqdist_-sqdist) << endl;
 		assert(!std::isnan(sqdist));
 		
 		if (CHOSEN_VERBOSITY>=2)
@@ -1466,11 +1470,11 @@ polyCompress (const MpOperator &H, const Mps<Symmetry,Scalar> &Vin1, double poly
 		    N_halfsweeps != max_halfsweeps and
 		    sqdist > tol)
 		{
-			Vout.max_Nsv += 1;
+			Vout.max_Nsv += DMRG_POLYCOMPRESS_INCREMENT;
 			Dcutoff_new = Vout.max_Nsv;
 			if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 			{
-				lout << "resize: " << Vout.max_Nsv-1 << "→" << Vout.max_Nsv << endl;
+				lout << "resize: " << Vout.max_Nsv-DMRG_POLYCOMPRESS_INCREMENT << "→" << Vout.max_Nsv << endl;
 			}
 		}
 		
