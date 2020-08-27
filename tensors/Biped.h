@@ -6,8 +6,9 @@
 #include <unordered_set>
 /// \endcond
 
+#include "termcolor.hpp" // from TOOLS
+
 #include "macros.h" // from TOOLS
-#include "PolychromaticConsole.h" // from TOOLS
 #include "MemCalc.h" // from TOOLS
 #include "RandomVector.h"
 
@@ -710,7 +711,7 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERV
 	}
 	allSV.resize(min(maxKeep,numberOfStates));
 	// std::erase_if(allSV, [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv < eps_svd); }); c++-20 version	
-	// allSV.erase(std::remove_if(allSV.begin(), allSV.end(), [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv.second < eps_svd); }), allSV.end());
+	allSV.erase(std::remove_if(allSV.begin(), allSV.end(), [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv.second < eps_svd); }), allSV.end());
 
 	// cout << "saving sv for expansion to file, #sv=" << allSV.size() << endl;
 	// ofstream Filer("sv_expand");
@@ -729,17 +730,16 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERV
 		for (int i=allSV.size()-1; i>0; i--)
 		{
 			EpsScalar rel_diff = 2*(allSV[i-1].second-allSV[i].second)/(allSV[i-1].second+allSV[i].second);
-			cout << "i-1=" << i-1 << ", rel_diff=" << rel_diff << endl;
-			if (rel_diff > 1.) {endOfMultiplet = i-1; break;}
+			if (rel_diff > 0.1) {endOfMultiplet = i; break;}
 		}
-		if (endOfMultiplet != -1 and endOfMultiplet>10)
+		if (endOfMultiplet != -1)
 		{
-			cout << "Cutting of the last " << allSV.size()-endOfMultiplet << " singular values to preserve the multiplet" << endl;
+			cout << termcolor::red << "Cutting of the last " << allSV.size()-endOfMultiplet << " singular values to preserve the multiplet" << termcolor::reset << endl;
 			allSV.resize(endOfMultiplet);
 		}
 	}
 	
-	cout << "Adding " << allSV.size() << " states from " << numberOfStates << " states" << endl;
+	//cout << "Adding " << allSV.size() << " states from " << numberOfStates << " states" << endl;
 	map<typename Symmetry::qType, vector<Scalar> > qn_orderedSV;
 	for (const auto &[q,s]:allSV )
 	{
@@ -987,12 +987,11 @@ print ( const bool SHOW_MATRICES, const std::size_t precision ) const
 
 	if (SHOW_MATRICES)
 	{
-		out_string << TCOLOR(GREEN) << "\e[4mA-tensors:\e[0m" << std::endl;
+		out_string << termcolor::blue << termcolor::underline << "A-tensors:" << termcolor::reset << std::endl;
 		for (std::size_t nu=0; nu<dim; nu++)
 		{
-			out_string << TCOLOR(GREEN) << "ν=" << nu << std::endl << std::setprecision(precision) << std::fixed << block[nu] << std::endl;
+			out_string << termcolor::blue << "ν=" << nu << termcolor::reset << std::endl << std::setprecision(precision) << std::fixed << termcolor::green << block[nu] << termcolor::reset << std::endl;
 		}
-		out_string << TCOLOR(BLACK) << std::endl;
 	}
 	return out_string.str();
 #else

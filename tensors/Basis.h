@@ -11,6 +11,9 @@
 class Basis
 {
 public:
+	/**Does nothing.*/
+	Basis() {};
+	
 	Basis(std::vector<std::string> idents, Eigen::Index dim) {
 		Eigen::Index count = 0;
 		for(const auto& ident : idents) {
@@ -49,6 +52,9 @@ public:
 		for(const auto& elem : data_) {auto [ident,num] = elem; if (ident == ident_in) {return num;}}
 		return std::numeric_limits<Eigen::Index>::max();
 	}
+
+	/**Adds to bases together.*/
+	Basis add (const Basis& other) const;
 	
 	std::vector<std::tuple<std::string,Eigen::Index> >::iterator begin() { return data_.begin(); }
 	std::vector<std::tuple<std::string,Eigen::Index> >::iterator end() { return data_.end(); }
@@ -62,4 +68,19 @@ private:
 	Eigen::Index curr_dim = 0;
 };
 
+Basis Basis::
+add( const Basis& other ) const
+{
+	Basis out;
+	
+	for (const auto &[ident,num] : data_)
+	{
+		out.push_back(ident);
+	}
+	for (const auto &[ident,num] : other.data_)
+	{
+		out.push_back(ident);
+	}
+	return out;
+}
 #endif

@@ -143,7 +143,7 @@ public:
 	///\}
 	
 	/**Completely clear the basis.*/
-	void clear() {data_.clear(); history.clear();}
+	void clear() {data_.clear(); history.clear(); curr_dim=0;}
 	
 	/**
 	 * Pulls the info from a given MPS site tensor \p A. 
@@ -190,6 +190,8 @@ public:
 	
 	/**Swaps with another Qbasis.*/
 	void swap (Qbasis<Symmetry> &other) { this->data.swap(other.data()); }
+
+	void sort ();
 	
 //private:
 	struct fuseData
@@ -199,7 +201,7 @@ public:
 	};
 
 	//vector with entry: {Quantumnumber (QN), state number of the first plain state for this QN, all plain states for this QN in a Basis object.}
-	//[{q1,0,plain_q1}, {q2,dim(plain_q1),plain_q2}, {q3,dim(plain_q1+plain_q1),plain_q3}, ..., {qi, sum_j^(i-1)dim(plain_qj), plain_qi}]
+	//[{q1,0,plain_q1}, {q2,dim(plain_q1),plain_q2}, {q3,dim(plain_q1)+dim(plain_q2),plain_q3}, ..., {qi, sum_j^(i-1)dim(plain_qj), plain_qi}]
 	std::vector<std::tuple<qType,Eigen::Index,Basis> > data_;
 	Eigen::Index curr_dim=0;
 	std::unordered_map<qType,std::vector<fuseData> > history;
@@ -374,8 +376,8 @@ outer_num(const qType& q) const
 		auto [qVal,num,plain] = elem;
 		if (qVal == q) {return num;}
 	}
-	return 0;
-	// assert( 1!=1 and "The qType is not in the basis" );
+	// return 0;
+	assert( 1!=1 and "The qType is not in the basis" );
 }
 
 template<typename Symmetry>
@@ -563,6 +565,38 @@ pullData (const std::vector<qarray<Symmetry::Nq> > &qs, bool ORDERED)
 }
 
 template<typename Symmetry>
+void Qbasis<Symmetry>::
+sort ()
+{
+
+	std::vector<std::size_t> index_sort(data_.size());
+	std::iota(index_sort.begin(),index_sort.end(),0);
+	std::sort (index_sort.begin(), index_sort.end(),
+			   [&] (std::size_t n1, std::size_t n2)
+				   {
+					   qarray<Symmetry::Nq> q1 = std::get<0>(data_[n1]);
+					   qarray<Symmetry::Nq> q2 = std::get<0>(data_[n2]);
+					   return Symmetry::compare(std::array{q1},std::array{q2});
+				   }
+		);
+	auto new_data_ = data_;
+	for (std::size_t i=0; i<data_.size(); i++)
+	{
+		new_data_[i] = data_[index_sort[i]];
+	}
+	std::get<1>(new_data_[0]) = 0;
+	for (std::size_t i=1; i<data_.size(); i++)
+	{
+		std::get<1>(new_data_[i]) = 0;
+		for (std::size_t j=0; j<i; j++)
+		{
+			std::get<1>(new_data_[i]) += std::get<2>(new_data_[j]).size();
+		}
+	}
+	data_ = new_data_;
+}
+	
+template<typename Symmetry>
 bool Qbasis<Symmetry>::
 operator==( const Qbasis<Symmetry>& other ) const
 {
@@ -573,25 +607,31 @@ template<typename Symmetry>
 Qbasis<Symmetry> Qbasis<Symmetry>::
 add( const Qbasis<Symmetry>& other ) const
 {
+	// cout << termcolor::red << termcolor::bold << "Using function Qbasis::add" << termcolor::reset << endl;
 	std::unordered_set<qType> uniqueController;
 	Qbasis out;
-	for(const auto& elem1 : this->data_)
+	for(const auto& [q1,num1,plain1] : this->data_)
 	{
-		auto [q1,num1,plain1] = elem1;
-		for(const auto& elem2 : other.data_)
+		auto it_other = std::find_if(other.data_.begin(), other.data_.end(), [q1] (std::tuple<qType,Eigen::Index,Basis> entry) { return std::get<0>(entry) == q1; });
+		if (it_other != other.data_.end())
 		{
-			auto [q2,num2,plain2] = elem2;
-			auto qs = Symmetry::reduceSilent(q1,q2);
-			for (const auto& q: qs)
-			{
-				if(auto it=uniqueController.find(q); it==uniqueController.end())
-				{
-					uniqueController.insert(q);
-					out.push_back(q,plain1.size());
-				}
-			}
+			out.push_back(q1,plain1.add(std::get<2>(*it_other)).size());
+		}
+		else
+		{
+			out.push_back(q1,plain1.size());
 		}
 	}
+	
+	for(const auto& [q2,num2,plain2] : other.data_)
+	{
+		auto it_this = std::find_if(data_.begin(), data_.end(), [q2] (std::tuple<qType,Eigen::Index,Basis> entry) { return std::get<0>(entry) == q2; });
+		if (it_this == data_.end())
+		{
+			out.push_back(q2,plain2.size());
+		}
+	}
+	out.sort();
 	return out;
 }
 
@@ -612,7 +652,7 @@ Qbasis<Symmetry> Qbasis<Symmetry>::
 combine( const Qbasis<Symmetry>& other, bool FLIP) const
 {
 	Qbasis out;
-	//build the history of the combination. Data is relevant for MultipedeQ contractions which includ a fuse of two leg.
+	//build the history of the combination. Data is relevant for MultipedeQ contractions which include a fuse of two leg.
 	for(const auto& elem1 : this->data_)
 	{
 		auto [q1,num1,plain1] = elem1;
@@ -685,6 +725,7 @@ combine( const Qbasis<Symmetry>& other, bool FLIP) const
 		for(const auto& i: it->second) { inner_dim+=i.dim; }
 		out.push_back(it->first,inner_dim);
 	}
+	out.sort();
 	return out;
 }
 
@@ -697,15 +738,18 @@ print() const
 	TextTable t( '-', '|', '+' );
 	t.add("Q");
 	t.add("Dim(Q)");
-	// t.add("Idents");
+	t.add("1. #");
 	t.endOfRow();
 	for(const auto& entry : data_)
 	{
 		auto [q_Phys,curr_num,plain] = entry;
 		std::stringstream ss, tt, uu;
 		ss << Sym::format<Symmetry>(q_Phys);
+		
 		//ss << q_Phys;
 		tt << plain.size();
+
+		uu << curr_num;
 		// uu << "(";
 		// if( idents.size() > 0 )
 		// {
@@ -714,7 +758,7 @@ print() const
 		// uu << ")";
 		t.add(ss.str());
 		t.add(tt.str());
-		// t.add(uu.str());
+		t.add(uu.str());
 		t.endOfRow();
 	}
 	out << t;

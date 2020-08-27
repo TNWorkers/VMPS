@@ -21,7 +21,6 @@
 
 #ifdef USE_HDF5_STORAGE
 	#include <HDF5Interface.h>
-	static double dump_Vumps; // dump variable if energy value not saved
 #endif
 //include "PolychromaticConsole.h" // from TOOLS
 //include "tensors/Biped.h"
@@ -52,13 +51,13 @@ public:
 	Umps<Symmetry,Scalar>(){};
 	
 	/**Constructs a Umps with fixed bond dimension with the info from the Hamiltonian.*/
-	template<typename Hamiltonian> Umps (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
+	template<typename Hamiltonian> Umps (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t L_input, size_t Mmax, size_t Nqmax, bool INIT_TO_HALF_INTEGER_SPIN);
 	
 	/**Constructs a Umps with fixed bond dimension with a uniform given basis.*/
-	Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
+	Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Mmax, size_t Nqmax, bool INIT_TO_HALF_INTEGER_SPIN);
 	
 	/**Constructs a Umps with fixed bond dimension with a given basis.*/
-	Umps (const vector<vector<qarray<Symmetry::Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax);
+	Umps (const vector<vector<qarray<Symmetry::Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Mmax, size_t Nqmax, bool INIT_TO_HALF_INTEGER_SPIN);
 	
 	#ifdef USE_HDF5_STORAGE
 	/**
@@ -85,7 +84,7 @@ public:
 	void normalize_C();
 	
 	/**Resizes the bond dimension to \p Dmax and sets \p Nqmax blocks per site.*/
-	void resize (size_t Dmax_input, size_t Nqmax_input);
+	void resize (size_t Mmax_input, size_t Nqmax_input, bool INIT_TO_HALF_INTEGER_SPIN);
 
 	/**
 	 * Determines all subspace quantum numbers and resizes the containers for the blocks. Memory for the matrices remains uninitiated. 
@@ -112,7 +111,7 @@ public:
 	inline vector<map<qarray<Nq>,tuple<ArrayXd,int> > > entanglementSpectrum() const {return SVspec;};
 	
 	/**Return the entanglement spectrum at the site \p loc (values all subspaces merged and sorted).*/
-	ArrayXd entanglementSpectrumLoc (size_t loc) const;
+	std::pair<vector<qarray<Symmetry::Nq> >, ArrayXd> entanglementSpectrumLoc (size_t loc) const;
 	
 	/**
 	 * Casts the matrices from \p Scalar to \p OtherScalar.
@@ -158,14 +157,14 @@ public:
 	 * \warning This method requires hdf5. For more information see https://www.hdfgroup.org/.
 	 * \note For the filename you should use the info string of the currently used Mpo.
 	 */
-	void save (string filename, string info="none", double energy=std::nan("1"));
+	void save (string filename,string info="none");
 	
 	/**
 	 * Reads all information of the Mps from the file <FILENAME>.h5.
 	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	 */
-	void load (string filename, double &energy=dump_Vumps);
+	void load (string filename);
 	#endif //USE_HDF5_STORAGE
 	
 	/**
@@ -340,7 +339,7 @@ public:
 	
 	/**parameter*/
 	size_t N_sites;
-	size_t Dmax, Nqmax;
+	size_t Mmax, Nqmax;
 	double eps_svd = 1e-13;
 	size_t max_Nsv=100000ul, min_Nsv=1ul;
 	int max_Nrich;
@@ -407,32 +406,32 @@ info() const
 template<typename Symmetry, typename Scalar>
 template<typename Hamiltonian>
 Umps<Symmetry,Scalar>::
-Umps (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax)
+Umps (const Hamiltonian &H, qarray<Nq> Qtot_input, size_t L_input, size_t Mmax, size_t Nqmax, bool INIT_TO_HALF_INTEGER_SPIN)
 :N_sites(L_input), Qtot(Qtot_input)
 {
 	qloc = H.locBasis();
-	resize(Dmax,Nqmax);
+	resize(Mmax,Nqmax,INIT_TO_HALF_INTEGER_SPIN);
 }
 
 template<typename Symmetry, typename Scalar>
 Umps<Symmetry,Scalar>::
-Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax)
+Umps (const vector<qarray<Symmetry::Nq> > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Mmax, size_t Nqmax, bool INIT_TO_HALF_INTEGER_SPIN)
 :N_sites(L_input), Qtot(Qtot_input)
 {
 	qloc.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l) {qloc[l] = qloc_input;}
-	resize(Dmax,Nqmax);
+	resize(Mmax,Nqmax,INIT_TO_HALF_INTEGER_SPIN);
 	::transform_base<Symmetry>(qloc,Qtot); // from symmetry/functions.h
 }
 
 template<typename Symmetry, typename Scalar>
 Umps<Symmetry,Scalar>::
-Umps (const vector<vector<qarray<Symmetry::Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Dmax, size_t Nqmax)
+Umps (const vector<vector<qarray<Symmetry::Nq> > > &qloc_input, qarray<Nq> Qtot_input, size_t L_input, size_t Mmax, size_t Nqmax, bool INIT_TO_HALF_INTEGER_SPIN)
 :N_sites(L_input), Qtot(Qtot_input)
 {
 	qloc.resize(N_sites);
 	for (size_t l=0; l<N_sites; ++l) {qloc[l] = qloc_input[l];}
-	resize(Dmax,Nqmax);
+	resize(Mmax,Nqmax,INIT_TO_HALF_INTEGER_SPIN);
 	::transform_base<Symmetry>(qloc,Qtot); // from symmetry/functions.h
 }
 
@@ -604,11 +603,11 @@ resize (const Umps<Symmetry,OtherMatrixType> &V)
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-resize (size_t Dmax_input, size_t Nqmax_input)
+resize (size_t Mmax_input, size_t Nqmax_input, bool INIT_TO_HALF_INTEGER_SPIN)
 {
 //	if (!Symmetry::NON_ABELIAN)
 //	{
-		Dmax = Dmax_input;
+		Mmax = Mmax_input;
 		Nqmax = Nqmax_input;
 		if      (Symmetry::IS_TRIVIAL) {Nqmax = 1;}
 		else if (Symmetry::IS_MODULAR) {Nqmax = min(static_cast<size_t>(Symmetry::MOD_N),Nqmax_input);}
@@ -636,7 +635,14 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 		
 		vector<set<qarray<Symmetry::Nq> > > qinset(N_sites);
 		vector<set<qarray<Symmetry::Nq> > > qoutset(N_sites);
-		qoutset[N_sites-1].insert(Symmetry::qvacuum());
+		if (INIT_TO_HALF_INTEGER_SPIN)
+		{
+			for (const auto & q:Symmetry::lowest_qs()) { qoutset[N_sites-1].insert(q); }
+		}
+		else
+		{
+			qoutset[N_sites-1].insert(Symmetry::qvacuum());
+		}
 		ArrayXi inSize(N_sites); inSize = 0;
 		ArrayXi outSize(N_sites); outSize = 0;
 		
@@ -694,9 +700,7 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 				}
 			}
 		}
-		
-		MatrixXd Mtmp(Dmax,Dmax); Mtmp.setZero();
-		
+
 		for (size_t l=0; l<N_sites; ++l)
 		{
 			vector<qarray<Symmetry::Nq> > qins(qinset[l].size());
@@ -704,6 +708,19 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 			
 			vector<qarray<Symmetry::Nq> > qouts(qoutset[l].size());
 			copy(qoutset[l].begin(), qoutset[l].end(), qouts.begin());
+
+			size_t Dmax_in = Mmax / qins.size();
+			size_t Dmax_in_remainder = Mmax%qins.size();
+			size_t Dmax_out = Mmax / qouts.size();
+			size_t Dmax_out_remainder = Mmax%qouts.size();
+			
+			assert(Dmax_in*qins.size()+Dmax_in_remainder == Mmax and "Strange thing in Umps::resize");
+			assert(Dmax_out*qouts.size()+Dmax_out_remainder == Mmax and "Strange thing in Umps::resize");
+			
+			MatrixXd Mtmpqq(Dmax_in,Dmax_out); Mtmpqq.setZero();
+			MatrixXd Mtmp0q(Dmax_in+Dmax_in_remainder,Dmax_out); Mtmp0q.setZero();
+			MatrixXd Mtmpq0(Dmax_in,Dmax_out+Dmax_out_remainder); Mtmpq0.setZero();
+			MatrixXd Mtmp00(Dmax_in+Dmax_in_remainder,Dmax_out+Dmax_out_remainder); Mtmp00.setZero();
 			
 			for (size_t g=0; g<3; ++g)
 			for (size_t s=0; s<qloc[l].size(); ++s)
@@ -716,7 +733,10 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 						if (auto it=qoutset[l].find(qout); it!=qoutset[l].end())
 						{
 							qarray2<Symmetry::Nq> qinout = {qin,qout};
-							A[g][l][s].try_push_back(qinout, Mtmp);
+							if (qin != Symmetry::qvacuum() and qout != Symmetry::qvacuum() ) {A[g][l][s].try_push_back(qinout, Mtmpqq);}
+							else if (qin != Symmetry::qvacuum() and qout == Symmetry::qvacuum() ) {A[g][l][s].try_push_back(qinout, Mtmpq0);}
+							else if (qin == Symmetry::qvacuum() and qout != Symmetry::qvacuum() ) {A[g][l][s].try_push_back(qinout, Mtmp0q);}
+							else if (qin == Symmetry::qvacuum() and qout == Symmetry::qvacuum() ) {A[g][l][s].try_push_back(qinout, Mtmp00);}
 						}
 					}
 				}
@@ -735,9 +755,18 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 		update_outbase();
 		
 		for (size_t l=0; l<N_sites; ++l)
-		for (size_t qout=0; qout<outbase[l].Nq(); ++qout)
 		{
-			C[l].try_push_back(qarray2<Symmetry::Nq>{outbase[l][qout], outbase[l][qout]}, Mtmp);
+			size_t Dmax = Mmax / outbase[l].Nq();
+			size_t Dmax_remainder = Mmax%outbase[l].Nq();
+			assert(Dmax*outbase[l].Nq()+Dmax_remainder == Mmax and "Strange thing in Umps::resize");
+			
+			MatrixXd Mtmpqq(Dmax,Dmax); Mtmpqq.setZero();
+			MatrixXd Mtmp00(Dmax+Dmax_remainder,Dmax+Dmax_remainder); Mtmp00.setZero();
+			for (size_t qout=0; qout<outbase[l].Nq(); ++qout)
+			{
+				if (outbase[l][qout] != Symmetry::qvacuum()) {C[l].try_push_back(qarray2<Symmetry::Nq>{outbase[l][qout], outbase[l][qout]}, Mtmpqq);}
+				else if (outbase[l][qout] == Symmetry::qvacuum()) {C[l].try_push_back(qarray2<Symmetry::Nq>{outbase[l][qout], outbase[l][qout]}, Mtmp00);}
+			}
 		}
 		
 		for (size_t l=0; l<N_sites; ++l)
@@ -747,7 +776,7 @@ resize (size_t Dmax_input, size_t Nqmax_input)
 	//	graph("init");
 		
 		setRandom();
-		for (size_t l=0; l<N_sites; ++l) svdDecompose(l);
+		// for (size_t l=0; l<N_sites; ++l) svdDecompose(l);
 //	}
 //	else
 //	{
@@ -818,11 +847,11 @@ setRandom()
 	for (size_t l=0; l<N_sites; ++l)
 	for (size_t q=0; q<C[l].dim; ++q)
 	{
-		for (size_t a1=0; a1<C[l].block[0].rows(); ++a1)
+		for (size_t a1=0; a1<C[l].block[q].rows(); ++a1)
 //		for (size_t a2=0; a2<C[l].block[0].cols(); ++a2)
 		for (size_t a2=0; a2<=a1; ++a2)
 		{
-			C[l].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
+			C[l].block[q](a1,a2) = threadSafeRandUniform<Scalar,double>(-1.,1.);
 			C[l].block[q](a2,a1) = C[l].block[q](a1,a2);
 		}
 	}
@@ -833,11 +862,11 @@ setRandom()
 	for (size_t s=0; s<qloc[l].size(); ++s)
 	for (size_t q=0; q<A[GAUGE::C][l][s].dim; ++q)
 	for (size_t a1=0; a1<A[GAUGE::C][l][s].block[q].rows(); ++a1)
-//	for (size_t a2=0; a2<A[GAUGE::C][l][s].block[q].cols(); ++a2)
-	for (size_t a2=0; a2<=a1; ++a2)
+	for (size_t a2=0; a2<A[GAUGE::C][l][s].block[q].cols(); ++a2)
+	// for (size_t a2=0; a2<=a1; ++a2)
 	{
-		A[GAUGE::C][l][s].block[q](a1,a2) = threadSafeRandUniform<Scalar>(-1.,1.);
-		A[GAUGE::C][l][s].block[q](a2,a1) = A[GAUGE::C][l][s].block[q](a1,a2);
+		A[GAUGE::C][l][s].block[q](a1,a2) = threadSafeRandUniform<Scalar,double>(-1.,1.);
+		// A[GAUGE::C][l][s].block[q](a2,a1) = A[GAUGE::C][l][s].block[q](a1,a2);
 	}
 	
 	for (size_t l=0; l<N_sites; ++l)
@@ -1042,30 +1071,30 @@ test_ortho (double tol) const
 		// interpret result
 		if (all_of(A_CHECK.begin(),A_CHECK.end(),[](bool x){return x;}))
 		{
-			sout << TCOLOR(RED);
+			sout << termcolor::red;
 			sout << normal_token[0]; // A
 		}
 		else
 		{
 			// assert(1!=1 and "AL is wrong");
-			sout << TCOLOR(GREEN);
+			sout << termcolor::green;
 			sout << normal_token[2]; // M
 		}
 		
 		if (all_of(B_CHECK.begin(),B_CHECK.end(),[](bool x){return x;}))
 		{
-			sout << TCOLOR(BLUE);
+			sout << termcolor::blue;
 			sout << normal_token[1]; // B
 		}
 		else
 		{
 			// assert(1!=1 and "AR is wrong");
-			sout << TCOLOR(GREEN);
+			sout << termcolor::green;
 			sout << normal_token[2]; // M
 		}
 	}
 	
-	sout << TCOLOR(BLACK);
+	sout << termcolor::reset;
 	sout << ", norm=" << norm.transpose();
 	return sout.str();
 }
@@ -1150,12 +1179,7 @@ calc_entropy (size_t loc, bool PRINT)
 //		lout << endl;
 		S(loc) += Scontrib;
 		
-		SVspec[loc].insert(pair<qarray<Symmetry::Nq>,tuple<ArrayXd,int> >(C[loc].in[q],
-		                                                                  make_tuple(Jack.singularValues(),
-		                                                                             Symmetry::degeneracy(C[loc].in[q])
-		                                                                            )
-		                                                                 )
-		                  );
+		SVspec[loc].insert(pair<qarray<Symmetry::Nq>,tuple<ArrayXd,int> >(C[loc].in[q], make_tuple(Jack.singularValues(), Symmetry::degeneracy(C[loc].in[q]))));
 		
 		if (PRINT)
 		{
@@ -1173,6 +1197,7 @@ calc_entropy (size_t loc, bool PRINT)
 	{
 		lout << endl;
 	}
+
 //	lout << termcolor::blue << "S=" << S << termcolor::reset << endl;
 }
 
@@ -1318,7 +1343,7 @@ polarDecompose (size_t loc, GAUGE::OPTION gauge)
 	for (size_t s=0; s<qloc[loc].size(); ++s)
 	for (size_t q=0; q<A[GAUGE::C][loc][s].dim; ++q)
 	{
-		std::array<qarray3<Symmetry::Nq>,3> quple;
+		std::array<qarray2<Symmetry::Nq>,3> quple;
 		for (size_t g=0; g<3; ++g)
 		{
 			quple[g] = {A[g][loc][s].in[q], A[g][loc][s].out[q]};
@@ -1326,6 +1351,10 @@ polarDecompose (size_t loc, GAUGE::OPTION gauge)
 		
 		for (size_t g=1; g<3; ++g)
 		{
+			if (quple[0] != quple[g])
+			{
+				cout << "g=" << g << ", quple[0]=(" << quple[0][0] << "," << quple[0][1] << ")" << ", quple[g]=(" << quple[g][0] << "," << quple[g][1] << ")" << endl;
+			}
 			assert(quple[0] == quple[g]);
 		}
 	}
@@ -1997,7 +2026,7 @@ adjustQN (const size_t number_cells)
 #ifdef USE_HDF5_STORAGE
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-save (string filename, string info, double energy)
+save (string filename, string info)
 {
 	filename+=".h5";
 	HDF5Interface target(filename, WRITE);
@@ -2008,11 +2037,6 @@ save (string filename, string info, double energy)
 	
 	string add_infoLabel = "add_info";
 	
-	if (!isnan(energy))
-	{
-		target.save_scalar(energy,"energy");
-	}
-	
 	//save scalar values
 	target.save_scalar(this->N_sites,"L");
 	for (size_t q=0; q<Nq; q++)
@@ -2021,7 +2045,7 @@ save (string filename, string info, double energy)
 		target.save_scalar(this->Qtot[q],ss.str(),"Qtot");
 	}
 	target.save_scalar(this->calc_Dmax(),"Dmax");
-	target.save_scalar(this->calc_Nqmax(),"Nqmax");
+	target.save_scalar(this->calc_Nqmax(),"Nqmax");	
 	target.save_scalar(this->min_Nsv,"min_Nsv");
 	target.save_scalar(this->max_Nsv,"max_Nsv");
 	target.save_scalar(this->eps_svd,"eps_svd");
@@ -2057,20 +2081,10 @@ save (string filename, string info, double energy)
 				target.save_scalar((A[g][l][s].in[q])[p],in.str(),"As");
 				target.save_scalar((A[g][l][s].out[q])[p],out.str(),"As");
 			}
-			stringstream ss;
+			stringstream ss;			
 			ss << g << "_" << l << "_" << s << "_" << "(" << A[g][l][s].in[q] << "," << A[g][l][s].out[q] << ")";
 			label = ss.str();
-			if constexpr (std::is_same<Scalar,complex<double>>::value)
-			{
-				MatrixXd Re = A[g][l][s].block[q].real();
-				MatrixXd Im = A[g][l][s].block[q].imag();
-				target.save_matrix(Re,label+"Re","As");
-				target.save_matrix(Im,label+"Im","As");
-			}
-			else
-			{
-				target.save_matrix(A[g][l][s].block[q],label,"As");
-			}
+			target.save_matrix(A[g][l][s].block[q],label,"As");
 		}
 	}
 	
@@ -2086,20 +2100,10 @@ save (string filename, string info, double energy)
 				stringstream in; in << "l=" << l << ",q=" << q << ",p=" << p;
 				target.save_scalar((C[l].in[q])[p],in.str(),"Cs");
 			}
-			stringstream ss;
+			stringstream ss;			
 			ss << l << "_"  << "(" << C[l].in[q] << ")";
 			label = ss.str();
-			if constexpr (std::is_same<Scalar,complex<double>>::value)
-			{
-				MatrixXd Re = C[l].block[q].real();
-				MatrixXd Im = C[l].block[q].imag();
-				target.save_matrix(Re,label+"Re","Cs");
-				target.save_matrix(Re,label+"Im","Cs");
-			}
-			else
-			{
-				target.save_matrix(C[l].block[q],label,"Cs");
-			}
+			target.save_matrix(C[l].block[q],label,"Cs");			
 		}
 	}
 	target.close();
@@ -2107,16 +2111,12 @@ save (string filename, string info, double energy)
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-load (string filename, double &energy)
+load (string filename)
 {
 	filename+=".h5";
 	HDF5Interface source(filename, READ);
 	
 	//load the scalars
-	if (source.CHECK("energy"))
-	{
-		source.load_scalar(energy,"energy");
-	}
 	source.load_scalar(this->N_sites,"L");
 	for (size_t q=0; q<Nq; q++)
 	{
@@ -2126,7 +2126,7 @@ load (string filename, double &energy)
 	source.load_scalar(this->eps_svd,"eps_svd");
 	source.load_scalar(this->min_Nsv,"min_Nsv");
 	source.load_scalar(this->max_Nsv,"max_Nsv");
-	
+
 	//load qloc
 	qloc.resize(this->N_sites);
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -2169,21 +2169,11 @@ load (string filename, double &energy)
 			ss << g << "_" << l << "_" << s << "_" << "(" << qin << "," << qout << ")";
 			label = ss.str();
 			MatrixType mat;
-			if constexpr (std::is_same<Scalar,complex<double>>::value)
-			{
-				MatrixXd Re, Im;
-				source.load_matrix(Re, label+"Re", "As");
-				source.load_matrix(Im, label+"Im", "As");
-				mat = Re+1.i*Im;
-			}
-			else
-			{
-				source.load_matrix(mat, label, "As");
-			}
+			source.load_matrix(mat, label, "As");
 			A[g][l][s].push_back(qin,qout,mat);
 		}
 	}
-	
+
 	//load the C-matrices
 	label.clear();
 	for (size_t l=0; l<this->N_sites; ++l)
@@ -2203,17 +2193,7 @@ load (string filename, double &energy)
 			ss << l << "_" << "(" << qVal << ")";
 			label = ss.str();
 			MatrixType mat;
-			if constexpr (std::is_same<Scalar,complex<double>>::value)
-			{
-				MatrixXd Re, Im;
-				source.load_matrix(Re, label+"Re", "Cs");
-				source.load_matrix(Im, label+"Im", "Cs");
-				mat = Re+1.i*Im;
-			}
-			else
-			{
-				source.load_matrix(mat, label, "Cs");
-			}
+			source.load_matrix(mat, label, "Cs");
 			C[l].push_back(qVal,qVal,mat);
 		}
 	}
@@ -2304,38 +2284,137 @@ updateAC(size_t loc, GAUGE::OPTION g)
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P)
+enrich (size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P)
 {
+	auto Pcopy = P;
 	size_t loc1,loc2;
 	if (g == GAUGE::L) {loc1 = loc; loc2 = (loc+1)%N_sites;}
 	else if (g == GAUGE::R) {loc1 = (loc+1)%N_sites; loc2 = loc;}
+
+	Qbasis<Symmetry> base_P; if (g == GAUGE::L) {base_P.pullData(P,1);} else if (g == GAUGE::R) {base_P.pullData(P,0);}
+	
+	Qbasis<Symmetry> expanded_base; if (g == GAUGE::L) {expanded_base=outBasis(loc1).add(base_P);} else if (g == GAUGE::R) {expanded_base=inBasis(loc1).add(base_P);}
+	// cout << "new basis states for the expansion" << endl << expanded_base << endl;
+
+	if (g == GAUGE::L  and loc1 != loc2)
+	{
+		for (const auto & [qin, num_in, plain_in] : inBasis(loc1))
+		for (size_t s=0; s<locBasis(loc1).size(); ++s)
+		{
+			bool QIN_IS_IN_P=false;
+			for (size_t qP=0; qP<Pcopy[s].size(); ++qP)
+			{
+				if (Pcopy[s].in[qP] == qin)
+				{
+					if (Pcopy[s].block[qP].rows() != plain_in.size()) //A[g][loc1][s].block[qA->second].rows()
+					{
+						addBottom(Eigen::Matrix<Scalar,-1,-1>::Zero(plain_in.size() - Pcopy[s].block[qP].rows(),Pcopy[s].block[qP].cols()), Pcopy[s].block[qP]);
+					}
+					QIN_IS_IN_P=true;
+				}
+			}
+			if (QIN_IS_IN_P == false)
+			{
+				auto qouts = Symmetry::reduceSilent(qin, locBasis(loc1)[s]);
+				for (const auto &qout : qouts)
+				{
+					if (!base_P.find(qout)) {continue;}
+					Pcopy[s].push_back(qin,qout,Eigen::Matrix<Scalar,-1,-1>::Zero(plain_in.size(),base_P.inner_dim(qout)));
+				}
+			}
+		}
+	}
+	else if (g == GAUGE::R and loc1 != loc2)
+	{
+		for (const auto & [qout, num_out, plain_out] : outBasis(loc1))
+		for (size_t s=0; s<locBasis(loc1).size(); ++s)
+		{
+			bool QOUT_IS_IN_P=false;
+			for (size_t qP=0; qP<Pcopy[s].size(); ++qP)
+			{
+				if (Pcopy[s].out[qP] == qout)
+				{
+					if (Pcopy[s].block[qP].cols() != plain_out.size())
+					{
+						addRight(Eigen::Matrix<Scalar,-1,-1>::Zero(Pcopy[s].block[qP].rows(), plain_out.size() - Pcopy[s].block[qP].cols()), Pcopy[s].block[qP]);
+					}
+					QOUT_IS_IN_P=true;
+				}
+			}
+			if (QOUT_IS_IN_P == false)
+			{
+				auto qins = Symmetry::reduceSilent(qout, Symmetry::flip(locBasis(loc1)[s]));
+				for (const auto &qin : qins)
+				{
+					if (!base_P.find(qin)) {continue;}
+					Pcopy[s].push_back(qin,qout,Eigen::Matrix<Scalar,-1,-1>::Zero(base_P.inner_dim(qin),plain_out.size()));
+				}
+			}
+		}
+	}
 	
 	for (size_t s=0; s<locBasis(loc1).size(); ++s)
-	for (size_t qP=0; qP<P[s].size(); ++qP)
+	for (size_t qP=0; qP<Pcopy[s].size(); ++qP)
 	{
-		qarray2<Symmetry::Nq> quple = {P[s].in[qP], P[s].out[qP]};
+		qarray2<Symmetry::Nq> quple = {Pcopy[s].in[qP], Pcopy[s].out[qP]};
 		auto qA = A[g][loc1][s].dict.find(quple);
 		
 		if (qA != A[g][loc1][s].dict.end())
 		{
-			if (g == GAUGE::L) {addRight(P[s].block[qP], A[g][loc1][s].block[qA->second]);}
-			else if (g == GAUGE::R) {addBottom(P[s].block[qP], A[g][loc1][s].block[qA->second]);}			
+			if (g == GAUGE::L)
+			{
+				addRight(Pcopy[s].block[qP], A[g][loc1][s].block[qA->second]);
+			}
+			else if (g == GAUGE::R)
+			{
+				addBottom(Pcopy[s].block[qP], A[g][loc1][s].block[qA->second]);
+			}
 		}
 		else
 		{
-			A[g][loc1][s].push_back(quple, P[s].block[qP]);
+			if (g == GAUGE::L)
+			{
+				if (Pcopy[s].block[qP].rows() != inBasis(loc1).inner_dim(quple[0]))
+				{
+					addBottom(Eigen::Matrix<Scalar,-1,-1>::Zero(inBasis(loc1).inner_dim(quple[0])-Pcopy[s].block[qP].rows(),Pcopy[s].block[qP].cols()),Pcopy[s].block[qP]);
+				}
+			}
+			if (g == GAUGE::R)
+			{
+				if (Pcopy[s].block[qP].cols() != outBasis(loc1).inner_dim(quple[1]))
+				{
+					addRight(Eigen::Matrix<Scalar,-1,-1>::Zero(Pcopy[s].block[qP].rows(),outBasis(loc1).inner_dim(quple[1])-Pcopy[s].block[qP].cols()),Pcopy[s].block[qP]);
+				}
+			}
+			A[g][loc1][s].push_back(quple, Pcopy[s].block[qP]);
 		}
 	}
 
-	// update the inleg from AL at site loc2 with zeros
-	Qbasis<Symmetry> ExpandedBasis;
-	if (g == GAUGE::L) {ExpandedBasis.pullData(P,1);}
-	else if (g == GAUGE::R) {ExpandedBasis.pullData(P,0);}
+	//resize blocks which was not present in P with zeros.
+	for (size_t s=0; s<A[g][loc1].size(); s++)
+	for (size_t qA=0; qA<A[g][loc1][s].size(); qA++)
+	{
+		if (g == GAUGE::L)
+		{
+			if (A[g][loc1][s].block[qA].cols() != expanded_base.inner_dim(A[g][loc1][s].out[qA]))
+			{
+				addRight(Eigen::Matrix<Scalar,-1,-1>::Zero(A[g][loc1][s].block[qA].rows(), expanded_base.inner_dim(A[g][loc1][s].out[qA]) - A[g][loc1][s].block[qA].cols()), A[g][loc1][s].block[qA]);
+			}
+		}
+		else if (g == GAUGE::R)
+		{
+			if (A[g][loc1][s].block[qA].rows() != expanded_base.inner_dim(A[g][loc1][s].in[qA]))
+			{
+				addBottom(Eigen::Matrix<Scalar,-1,-1>::Zero(expanded_base.inner_dim(A[g][loc1][s].in[qA]) - A[g][loc1][s].block[qA].rows(), A[g][loc1][s].block[qA].cols()), A[g][loc1][s].block[qA]);
+			}
+		}
+	}
 	
+	// update the inleg from AL (outleg from AR) at site loc2 with zeros	
 	update_inbase(loc1,g);
 	update_outbase(loc1,g);
 		
-	for (const auto &[qval,qdim,plain]:ExpandedBasis)
+	for (const auto &[qval,qdim,plain]:base_P)
 	for (size_t s=0; s<locBasis(loc2).size(); ++s)
 	{
 		std::vector<qarray<Symmetry::Nq> > qins_outs;
@@ -2359,30 +2438,48 @@ enrich(size_t loc, GAUGE::OPTION g, const vector<Biped<Symmetry,MatrixType> > &P
 			{
 				if (g == GAUGE::L)
 				{
-					MatrixType Mtmp(ExpandedBasis.inner_dim(qval), 
-									A[g][loc2][s].block[it->second].cols());
-					Mtmp.setZero();
-					addBottom(Mtmp, A[g][loc2][s].block[it->second]);
+					if (A[g][loc2][s].block[it->second].rows() != expanded_base.inner_dim(quple[0]))
+					{
+						addBottom(Eigen::Matrix<Scalar,-1,-1>::Zero(base_P.inner_dim(qval),A[g][loc2][s].block[it->second].cols()), A[g][loc2][s].block[it->second]);
+					}
 				}
 				else if (g == GAUGE::R)
 				{
-					MatrixType Mtmp(A[g][loc2][s].block[it->second].rows(),
-									ExpandedBasis.inner_dim(qval));
-					Mtmp.setZero();
-					addRight(Mtmp, A[g][loc2][s].block[it->second]);
+					if (A[g][loc2][s].block[it->second].cols() != expanded_base.inner_dim(quple[1]))
+					{
+						addRight(Eigen::Matrix<Scalar,-1,-1>::Zero(A[g][loc2][s].block[it->second].rows(),base_P.inner_dim(qval)), A[g][loc2][s].block[it->second]);
+					}
 				}
 			}
 			else
 			{
 				MatrixType Mtmp;
-				if (g == GAUGE::L)      {Mtmp.resize(ExpandedBasis.inner_dim(qval), outBasis(loc2).inner_dim(qin_out));}
-				else if (g == GAUGE::R) {Mtmp.resize(inBasis(loc2).inner_dim(qin_out), ExpandedBasis.inner_dim(qval));}
+				if (g == GAUGE::L)      {Mtmp.resize(base_P.inner_dim(qval), outBasis(loc2).inner_dim(qin_out));}
+				else if (g == GAUGE::R) {Mtmp.resize(inBasis(loc2).inner_dim(qin_out), base_P.inner_dim(qval));}
 				Mtmp.setZero();
 				A[g][loc2][s].push_back(quple, Mtmp);
 			}
 		}
 	}
-
+	//resize blocks which was not present in P with zeros.
+	// for (size_t s=0; s<A[g][loc2].size(); s++)
+	// for (size_t qA=0; qA<A[g][loc2][s].size(); qA++)
+	// {
+	// 	if (g == GAUGE::R)
+	// 	{
+	// 		if (A[g][loc2][s].block[qA].cols() != expanded_base.inner_dim(A[g][loc2][s].out[qA]))
+	// 		{
+	// 			addRight(Eigen::Matrix<Scalar,-1,-1>::Zero(A[g][loc2][s].block[qA].rows(), expanded_base.inner_dim(A[g][loc2][s].out[qA]) - A[g][loc2][s].block[qA].cols()), A[g][loc2][s].block[qA]);
+	// 		}
+	// 	}
+	// 	else if (g == GAUGE::L)
+	// 	{
+	// 		if (A[g][loc2][s].block[qA].rows() != expanded_base.inner_dim(A[g][loc2][s].in[qA]))
+	// 		{
+	// 			addBottom(Eigen::Matrix<Scalar,-1,-1>::Zero(expanded_base.inner_dim(A[g][loc2][s].in[qA]) - A[g][loc2][s].block[qA].rows(), A[g][loc2][s].block[qA].cols()), A[g][loc2][s].block[qA]);
+	// 		}
+	// 	}
+	// }
 }
 
 template<typename Symmetry, typename Scalar>
@@ -2445,7 +2542,7 @@ orthogonalize_right (GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_R)
 		// cout << "iteration number=" << i << ", err=" << err << endl << endl;
 	}
 	G_R = Rprev;
-	cout << "iteration number=" << i << ", err=" << err << endl << endl;
+	lout << "Orhtogonalize right: iteration number=" << i << ", err=" << err << endl << endl;
 
 	A[g] = A_ortho;
 }
@@ -2510,7 +2607,7 @@ orthogonalize_left(GAUGE::OPTION g, vector<Biped<Symmetry,MatrixType> > &G_L)
 	}
 	G_L = Lprev;
 	A[g] = A_ortho;
-	cout << "iteration number=" << i << ", err=" << err << endl << endl;
+	lout << "Orthogonalize left: iteration number=" << i << ", err=" << err << endl << endl;
 }
 
 template<typename Symmetry, typename Scalar>
@@ -2518,22 +2615,20 @@ void Umps<Symmetry,Scalar>::
 truncate (bool SET_AC_RANDOM)
 {
 	//isometries from the truncated SVD from the center-matrix C
+	
 	vector<Biped<Symmetry,MatrixType> > U(N_sites);
 	vector<Biped<Symmetry,MatrixType> > Vdag(N_sites);
 	
 	//decompose C by SVD and write isometries to U and Vdag and the singular (Schmidt) values into C.
 	for (size_t l=0; l<N_sites; ++l)
 	{
-		cout << "**********************l=" << l << "*************************" << endl;
-		for (size_t q=0; q<C[l].dim; ++q)
-		{
-			JacobiSVD<MatrixType> Jack(C[l].block[q], ComputeFullU|ComputeFullV);
-			size_t Nret = (Jack.singularValues().array() > eps_svd).count();
-			cout << "q=" << C[l].in[q] << ", Nret=" << Nret  << " states from " << Jack.singularValues().rows() << endl;
-			C[l].block[q] = Jack.singularValues().head(Nret).asDiagonal();
-			U[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixU().leftCols(Nret));
-			Vdag[l].push_back(C[l].in[q], C[l].out[q], Jack.matrixV().adjoint().topRows(Nret));
-		}
+		// cout << "**********************l=" << l << "*************************" << endl;
+		// cout << C[l].print(false) << endl;
+		double trunc=0.;
+		auto [trunc_U,Sigma,trunc_Vdag] = C[l].truncateSVD(max_Nsv,eps_svd,trunc,true); //true: PRESERVE_MULTIPLETS
+		U[l] = trunc_U;
+		Vdag[l] = trunc_Vdag;
+		C[l] = Sigma;
 	}
 	
 	//update AL and AR
@@ -2804,25 +2899,25 @@ calc_dominant_2symm (GAUGE::OPTION g, DMRG::DIRECTION::OPTION DIR, const Mpo<Sym
 }
 
 template<typename Symmetry, typename Scalar>
-ArrayXd Umps<Symmetry,Scalar>::
+std::pair<vector<qarray<Symmetry::Nq> >, ArrayXd> Umps<Symmetry,Scalar>::
 entanglementSpectrumLoc (size_t loc) const
-{
-	vector<double> Svals;
+{	
+	vector<pair<qarray<Nq>, double> > Svals;
 	for (const auto &x : SVspec[loc])
-	for (int deg=0; deg<get<1>(x.second); ++deg)
-	for (int i=0; i<get<0>(x.second).size(); ++i)
+		for (int i=0; i<std::get<0>(x.second).size(); ++i)
 	{
-		Svals.push_back(get<0>(x.second)(i));
+		Svals.push_back(std::make_pair(x.first,std::get<0>(x.second)(i)));
 	}
-	sort(Svals.begin(), Svals.end());
-	reverse(Svals.begin(), Svals.end());
+	sort(Svals.begin(), Svals.end(), [] (const pair<qarray<Nq>, double> &p1, const pair<qarray<Nq>, double> &p2) { return p2.second < p1.second;});
 	
-	ArrayXd out(Svals.size());
+	ArrayXd Sout(Svals.size());
+	vector<qarray<Nq> > Qout(Svals.size());
 	for (int i=0; i<Svals.size(); ++i)
 	{
-		out(i) = Svals[i];
-	}
-	return out;
+		Sout(i) = Svals[i].second;
+		Qout[i] = Svals[i].first;
+	}	
+	return std::make_pair(Qout,Sout);
 }
 
 template<typename Symmetry, typename Scalar>

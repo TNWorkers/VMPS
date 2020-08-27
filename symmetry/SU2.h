@@ -61,7 +61,9 @@ public:
 	inline static std::string name() { return "SU2"; }
 	inline static constexpr std::array<KIND,Nq> kind() { return {Kind::name}; }
 	
-	inline static qType qvacuum() { return {1}; }
+	inline static constexpr qType qvacuum() { return {1}; }
+	inline static constexpr std::array<qType,1> lowest_qs() { return std::array<qType,1> {{ qarray<1>(std::array<int,1>{{2}}) }}; }
+	
 	inline static qType flip( const qType& q ) { return q; }
 	inline static int degeneracy( const qType& q ) { return q[0]; }
 

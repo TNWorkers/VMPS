@@ -64,7 +64,20 @@ public:
 	
 	inline static constexpr std::array<KIND,Nq> kind() { return thirdparty::join(S1_::kind(),S2_::kind()); }
 	
-	inline static qType qvacuum() { return join(S1_::qvacuum(),S2_::qvacuum()); }
+	inline static constexpr qType qvacuum() { return join(S1_::qvacuum(),S2_::qvacuum()); }
+	inline static constexpr std::array<qType,S1::lowest_qs().size()*S2::lowest_qs().size()> lowest_qs()
+	{
+		std::array<qType,S1::lowest_qs().size()*S2::lowest_qs().size()> out;
+		size_t index = 0;
+		for (const auto &q1 : S1::lowest_qs())
+		for (const auto &q2 : S2::lowest_qs())
+		{
+			out[index] = join(q1,q2);
+			index++;
+		}
+		return out;
+	}
+	
 	inline static qType flip( const qType& q ) { auto [ql,qr] = disjoin<S1_::Nq,S2_::Nq>(q); return join(S1_::flip(ql),S2_::flip(qr)); }
 	inline static int degeneracy( const qType& q ) { auto [ql,qr] = disjoin<S1_::Nq,S2_::Nq>(q); return S1_::degeneracy(ql)*S2_::degeneracy(qr); }
 
@@ -479,6 +492,25 @@ coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
 								   q4l,q5l,q6l)*
 		       S2_::coeff_MPOprod6(q1r,q2r,q3r,
 								   q4r,q5r,q6r);	
+	return out;
+}
+
+template<typename S1_, typename S2_>
+typename S1_::Scalar_ S1xS2<S1_,S2_>::
+coeff_twoSiteGate(const qType& q1, const qType& q2, const qType& q3,
+				  const qType& q4, const qType& q5, const qType& q6)
+{
+	auto [q1l,q1r] = disjoin<S1_::Nq,S2_::Nq>(q1);
+	auto [q2l,q2r] = disjoin<S1_::Nq,S2_::Nq>(q2);
+	auto [q3l,q3r] = disjoin<S1_::Nq,S2_::Nq>(q3);
+	auto [q4l,q4r] = disjoin<S1_::Nq,S2_::Nq>(q4);
+	auto [q5l,q5r] = disjoin<S1_::Nq,S2_::Nq>(q5);
+	auto [q6l,q6r] = disjoin<S1_::Nq,S2_::Nq>(q6);
+	
+	Scalar out=S1_::coeff_twoSiteGate(q1l,q2l,q3l,
+									  q4l,q5l,q6l)*
+		       S2_::coeff_twoSiteGate(q1r,q2r,q3r,
+									  q4r,q5r,q6r);	
 	return out;
 }
 

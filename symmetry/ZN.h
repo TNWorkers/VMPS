@@ -42,7 +42,9 @@ public:
 	
 	ZN() {};
 	
-	inline static qType qvacuum() { return {0}; }
+	inline static constexpr qType qvacuum() { return {0}; }
+	inline static constexpr std::array<qType,2> lowest_qs()	{ return std::array<qType,1> {{ qarray<1>(std::array<int,1>{{1}}), qarray<1>(std::array<int,1>{{N-1}}) }}; }
+	
 	inline static std::string name()
 	{
 		stringstream ss;

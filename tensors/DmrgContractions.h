@@ -1819,6 +1819,43 @@ void contract_AW (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > >
 }
 
 template<typename Symmetry, typename Scalar>
+vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > extend_A (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A, const vector<qarray<Symmetry::Nq> > &qloc)
+{
+	vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > Aout(A.size());
+	Qbasis<Symmetry> in; in.pullData(A,0);
+	Qbasis<Symmetry> out; out.pullData(A,1);
+	Qbasis<Symmetry> loc; loc.pullData(qloc,true);
+	for (size_t s=0; s<qloc.size(); s++)
+	for (const auto & [qin,num,plain] : in)
+	{
+		auto qouts = Symmetry::reduceSilent(qin,qloc[s]);
+		for (const auto & qout:qouts)
+		{
+			if (!out.find(qout)) {continue;}
+			qarray2<Symmetry::Nq> cmp{qin,qout};
+			auto it_A = A[s].dict.find(cmp);
+			if (it_A != A[s].dict.end())
+			{
+				Aout[s].push_back(qin,qout,A[s].block[it_A->second]);
+			}
+			else
+			{
+				Matrix<Scalar,Dynamic,Dynamic> Mtmp(in.inner_dim(qin), out.inner_dim(qout)); Mtmp.setZero();
+				Aout[s].push_back(qin,qout,Mtmp);
+			}
+		}
+	}
+	return Aout;
+}
+
+template<typename Symmetry, typename Scalar>
+void extend_A (vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A, const vector<qarray<Symmetry::Nq> > &qloc)
+{
+	const auto copy = A;
+	A = extend_A(copy,qloc);
+}
+
+template<typename Symmetry, typename Scalar>
 void contract_AA2 (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A1, 
 				   const vector<qarray<Symmetry::Nq> > &qloc1, 
 				   const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &A2, 
@@ -2482,7 +2519,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 		}
 	}
 	// cout << "Aclump:" << endl << Aclump.print(true) << endl;
-	auto [U,Sigma,Vdag] = Aclump.truncateSVD(max_Nsv,eps_svd,truncWeight,false);
+	auto [U,Sigma,Vdag] = Aclump.truncateSVD(max_Nsv,eps_svd,truncWeight,false); //false: DONT PRESERVE MULTIPLETS
 	// cout << "U,Sigma,Vdag:" << endl << U.print(true) << endl << Sigma.print(true) << endl << Vdag.print(true) << endl;
 	Biped<Symmetry,Eigen::Matrix<Scalar,-1,-1> > left,right;
 	if (DIR == DMRG::DIRECTION::RIGHT)

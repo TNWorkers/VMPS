@@ -4110,7 +4110,7 @@ template<typename Symmetry, typename Scalar>
 string Mps<Symmetry,Scalar>::
 test_ortho (double tol) const
 {
-	string sout = "";
+	stringstream sout;
 	std::array<string,4> normal_token  = {"A","B","M","X"};
 	std::array<string,4> special_token = {"\e[4mA\e[0m","\e[4mB\e[0m","\e[4mM\e[0m","\e[4mX\e[0m"};
 	
@@ -4164,27 +4164,27 @@ test_ortho (double tol) const
 		if (all_of(A_CHECK.begin(),A_CHECK.end(),[](bool x){return x;}) and 
 		    all_of(B_CHECK.begin(),B_CHECK.end(),[](bool x){return x;}))
 		{
-			sout += TCOLOR(MAGENTA);
-			sout += (l==this->pivot) ? special_token[3] : normal_token[3]; // X
+			sout << termcolor::magenta;
+			sout << (l==this->pivot) ? special_token[3] : normal_token[3]; // X
 		}
 		else if (all_of(A_CHECK.begin(),A_CHECK.end(),[](bool x){return x;}))
 		{
-			sout += TCOLOR(RED);
-			sout += (l==this->pivot) ? special_token[0] : normal_token[0]; // A
+			sout << termcolor::red;
+			sout << (l==this->pivot) ? special_token[0] : normal_token[0]; // A
 		}
 		else if (all_of(B_CHECK.begin(),B_CHECK.end(),[](bool x){return x;}))
 		{
-			sout += TCOLOR(BLUE);
-			sout += (l==this->pivot) ? special_token[1] : normal_token[1]; // B
+			sout << termcolor::blue;
+			sout << (l==this->pivot) ? special_token[1] : normal_token[1]; // B
 		}
 		else
 		{
-			sout += TCOLOR(GREEN);
-			sout += (l==this->pivot) ? special_token[2] : normal_token[2]; // M
+			sout << termcolor::green;
+			sout << (l==this->pivot) ? special_token[2] : normal_token[2]; // M
 		}
 	}
-	sout += TCOLOR(BLACK);
-	return sout;
+	sout << termcolor::reset;
+	return sout.str();
 }
 
 template<typename Symmetry, typename Scalar>

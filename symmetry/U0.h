@@ -52,6 +52,8 @@ namespace Sym{
 		inline static constexpr std::array<KIND,Nq> kind() { return {}; }
 
 		inline static constexpr qType qvacuum() {return {};}
+		inline static constexpr std::array<qType,1> lowest_qs() { return std::array<qType,1> {{ qarray<0>(std::array<int,0>{{}}) }}; }
+
 		inline static qType flip( const qType& q ) { return {}; }
 		inline static int degeneracy( const qType& q ) { return 1; }
 
