@@ -708,9 +708,10 @@ resize (size_t Mmax_input, size_t Nqmax_input, bool INIT_TO_HALF_INTEGER_SPIN)
 			
 			vector<qarray<Symmetry::Nq> > qouts(qoutset[l].size());
 			copy(qoutset[l].begin(), qoutset[l].end(), qouts.begin());
-
+			assert(Mmax >= qins.size() and "Choose a greater Minit to have at least one state per QN block.");
 			size_t Dmax_in = Mmax / qins.size();
 			size_t Dmax_in_remainder = Mmax%qins.size();
+			assert(Mmax >= qouts.size() and "Choose a greater Minit to have at least one state per QN block.");
 			size_t Dmax_out = Mmax / qouts.size();
 			size_t Dmax_out_remainder = Mmax%qouts.size();
 			

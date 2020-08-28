@@ -1470,7 +1470,7 @@ compress(const double tolerance)
                     {
                         next_bonds_to_check[thread_id].push_back(loc-1);
                     }
-                    if(loc != N_sites-1)
+                    if(loc < N_sites-1)
                     {
                         next_bonds_to_check[thread_id].push_back(loc+1);
                     }

@@ -238,7 +238,7 @@ public:
 	bool USER_SET_LANCZOSPARAM = false;
 	
 	/**keeping track of iterations*/
-	size_t N_iterations, N_iterations_without_expansion;
+	size_t N_iterations=0ul, N_iterations_without_expansion=0ul;
 	
 	/**errors*/
 	double err_eigval, err_eigval_old, err_var, err_var_old, err_state=std::nan("1"), err_state_old=std::nan("1");
@@ -1111,7 +1111,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	{
 		Stopwatch<> ExpansionTimer;
 		size_t current_M = Vout.state.calc_Mmax();
-		size_t deltaM = min(max(static_cast<size_t>(DynParam.Mincr_rel(N_iterations) * current_M-current_M), DynParam.Mincr_abs(N_iterations)),
+		size_t deltaM = min(max(static_cast<size_t>((DynParam.Mincr_rel(N_iterations)-1) * current_M), DynParam.Mincr_abs(N_iterations)),
 		                    DynParam.max_deltaM(N_iterations));
 		cout << "Nsv=" << current_M << ", rel=" << static_cast<size_t>(DynParam.Mincr_rel(N_iterations) * current_M-current_M) << ", abs=" << DynParam.Mincr_abs(N_iterations) << ", lim=" << DynParam.max_deltaM(N_iterations) << ", deltaM=" << deltaM << endl;
 
@@ -1352,16 +1352,18 @@ iteration_sequential (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> >
 	    N_iterations_without_expansion > GlobParam.max_iter_without_expansion
 	   )
 	{
+		//make sure to perform at least one measurement before expanding the basis
+		FORCE_DO_SOMETHING = true;
+		cout << "Performing a measurement for N_iterations=" << N_iterations << endl;
+		DynParam.doSomething(N_iterations);
+		FORCE_DO_SOMETHING = false;
+
 		Stopwatch<> ExpansionTimer;
 		size_t current_M = Vout.state.calc_Mmax();
 		size_t deltaM = min(max(static_cast<size_t>(DynParam.Mincr_rel(N_iterations) * current_M-current_M), DynParam.Mincr_abs(N_iterations)),
 		                    DynParam.max_deltaM(N_iterations));
 		cout << "Nsv=" << current_M << ", rel=" << static_cast<size_t>(DynParam.Mincr_rel(N_iterations) * current_M-current_M) << ", abs=" << DynParam.Mincr_abs(N_iterations) << ", lim=" << DynParam.max_deltaM(N_iterations) << ", deltaM=" << deltaM << endl;
 
-		//make sure to perform at least one measurement before expanding the basis
-		FORCE_DO_SOMETHING = true;
-		DynParam.doSomething(N_iterations);
-		FORCE_DO_SOMETHING = false;
 		if (Vout.state.calc_Mmax()+deltaM >= GlobParam.Mlimit) {deltaM = GlobParam.Mlimit-Vout.state.calc_Mmax();}
 		else if (Vout.state.calc_Mmax() == GlobParam.Mlimit) {deltaM=0ul;}
 		else if (Vout.state.calc_Mmax() > GlobParam.Mlimit) {assert(false and "Exceeded Mlimit.");}
@@ -1809,9 +1811,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qar
 			iteration_sequential(H,Vout);
 		}
 		
-		FORCE_DO_SOMETHING = true;
 		DynParam.doSomething(N_iterations);
-		FORCE_DO_SOMETHING = false;
 		
 		write_log();
 		#ifdef USE_HDF5_STORAGE
