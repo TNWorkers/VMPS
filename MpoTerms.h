@@ -294,7 +294,7 @@ private:
      *  Calculates the average MPO bond dimension and the maximum MPO bond dimension
      *  @return  [Average,Maximum]
      */
-    inline std::tuple<double,std::size_t> auxdim_infos() const;
+    inline std::tuple<std::size_t,std::size_t,std::size_t,std::size_t> auxdim_infos() const;
     
     /**
      * Swaps rows and columns after calculating the product of two MPOs for VUMPS. Ensures that the identity operator that connects the vacua at each lattice site appear at position [0|0] and the identity connecting the target quantum number (for VUMPS vacuum) at position [1|1].
@@ -1047,9 +1047,17 @@ show()
         lout << ", sparsity: " << round(sparsity()*100,1) << "%";
     }
     lout << std::endl;
-    auto [average_auxdim, maximum_auxdim] = auxdim_infos();
+    auto [total_auxdim, maximum_local_auxdim, total_full_auxdim, maximum_local_full_auxdim] = auxdim_infos();
     lout << "Calculated bases and data:\n";
-    if(GOT_QAUX) lout << "• MPO auxiliar bases (Average bond dimension: " << average_auxdim << ", maximum bond dimension: " << maximum_auxdim << ")" << std::endl;
+    if(GOT_QAUX)
+    {
+        lout << "• MPO auxiliar bases (Average bond dimension: " << (total_auxdim*1.0)/N_sites << " (max. " << maximum_local_auxdim << ")";
+        if(Symmetry::NON_ABELIAN)
+        {
+            lout << ", average full bond dimension: " << (total_full_auxdim*1.0)/N_sites << " (max. " << maximum_local_full_auxdim << ")";
+        }
+        lout << ")" << std::endl;
+    }
     if(check_qPhys()) lout << "• Physical bases of local Hilbert spaces" << std::endl;
     if(GOT_QOP) lout << "• Local operator bases" << std::endl;
     if(GOT_W) lout << "• W matrix" << std::endl;
@@ -1308,7 +1316,7 @@ compress(const double tolerance)
     }
     #endif
     Stopwatch<> watch;
-    auto [average_auxdim_initial,maximum_auxdim_initial] = auxdim_infos();
+    auto [total_auxdim_initial, maximum_local_auxdim_initial, total_full_auxdim_initial, maximum_local_full_auxdim_initial] = auxdim_infos();
     std::vector<bool> updated_bond(N_sites,true);
     std::size_t minimum_bond = 0;
     if(boundary_condition == BC::OPEN)
@@ -1391,16 +1399,13 @@ compress(const double tolerance)
                 updated_bond[loc] = false;
             }
         }
-        auto [average_auxdim_final,maximum_auxdim_final] = auxdim_infos();
     }
-    auto [average_auxdim_final,maximum_auxdim_final] = auxdim_infos();
-    int compr_rate = (int)std::round(100*(1-average_auxdim_final/average_auxdim_initial));
+    auto [total_auxdim_final, maximum_local_auxdim_final, total_full_auxdim_final, maximum_local_full_auxdim_final] = auxdim_infos();
+    int compr_rate = (int)std::round(100.-(100.*total_auxdim_final)/(1.0*total_auxdim_initial));
     std::stringstream ss;
     auto curr_prec = std::cout.precision();
-    ss << this->get_name() << " - Compression | " << watch.info("Time") << " | Steps: " << counter << " | Rate: " << compr_rate
-        << "% (" << std::setprecision(1) << std::fixed << average_auxdim_initial << " ⇒ " << average_auxdim_final << ")" << std::defaultfloat << std::endl;
+    ss << this->get_name() << " - Compression (Old alg.) | " << watch.info("Time") << " | Steps: " << counter << " | Rate: " << compr_rate << "% (" << std::setprecision(1) << std::fixed << (total_auxdim_initial*1.0)/N_sites << " ⇒ " << (total_auxdim_final*1.0)/N_sites << ") | Linear dependence checks: " << lindep_checks << std::defaultfloat << std::endl;
     std::cout.precision(curr_prec);
-    ss << "Old compress algorithm -- Total number of linear dependency checks: " << lindep_checks << std::endl;
     if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
     {
         lout << ss.str();
@@ -1427,7 +1432,7 @@ compress(const double tolerance)
     }
     #endif
     Stopwatch<> watch;
-    auto [average_auxdim_initial,maximum_auxdim_initial] = auxdim_infos();
+    auto [total_auxdim_initial, maximum_local_auxdim_initial, total_full_auxdim_initial, maximum_local_full_auxdim_initial] = auxdim_infos();
     std::vector<std::size_t> bonds_to_check;
     for(std::size_t bond=1; bond<N_sites; bond+=2ul)
     {
@@ -1438,13 +1443,13 @@ compress(const double tolerance)
         bonds_to_check.push_back(N_sites);
     }
     std::size_t counter = 0;
+    std::size_t threads = 1;
+    #ifdef _OPENMP
+    threads = omp_get_max_threads();
+    #endif
     while(!bonds_to_check.empty())
     {
         counter++;
-        std::size_t threads = 1;
-        #ifdef _OPENMP
-        threads = omp_get_max_threads();
-        #endif
         std::vector<std::vector<std::size_t>> next_bonds_to_check(threads);
         std::size_t lindep_checks_temp = 0ul;
         #pragma omp parallel for shared(next_bonds_to_check) reduction(+ : lindep_checks_temp)
@@ -1549,14 +1554,12 @@ compress(const double tolerance)
         }
     }
     
-    auto [average_auxdim_final,maximum_auxdim_final] = auxdim_infos();
-    int compr_rate = (int)std::round(100*(1-average_auxdim_final/average_auxdim_initial));
+    auto [total_auxdim_final, maximum_local_auxdim_final, total_full_auxdim_final, maximum_local_full_auxdim_final] = auxdim_infos();
+    int compr_rate = (int)std::round(100.-(100.*total_auxdim_final)/(1.0*total_auxdim_initial));
     std::stringstream ss;
     auto curr_prec = std::cout.precision();
-    ss << this->get_name() << " - Compression | " << watch.info("Time") << " | Steps: " << counter << " | Rate: " << compr_rate
-    << "% (" << std::setprecision(1) << std::fixed << average_auxdim_initial << " ⇒ " << average_auxdim_final << ")" << std::defaultfloat << std::endl;
+    ss << this->get_name() << " - Compression (New alg., threads: " << threads << ") | " << watch.info("Time") << " | Steps: " << counter << " | Rate: " << compr_rate << "% (" << std::setprecision(1) << std::fixed << (total_auxdim_initial*1.0)/N_sites << " ⇒ " << (total_auxdim_final*1.0)/N_sites << ") | Linear dependence checks: " << lindep_checks << std::defaultfloat << std::endl;
     std::cout.precision(curr_prec);
-    ss << "New compress algorithm -- Total number of linear dependency checks: " << lindep_checks << std::endl;
     if(VERB != DMRG::VERBOSITY::OPTION::SILENT)
     {
         lout << ss.str();
@@ -3124,9 +3127,9 @@ calc_TwoSiteData() const
     {
 		Qbasis<Symmetry> loc12; loc12.pullData(qPhys[loc]);
 		Qbasis<Symmetry> loc34; loc34.pullData(qPhys[loc+1]);
-		Qbasis<Symmetry> tensor_basis = loc12.combine(loc34);
+		//Qbasis<Symmetry> tensor_basis = loc12.combine(loc34);
 		
-        // auto tensor_basis = Symmetry::tensorProd(qPhys[loc], qPhys[loc+1]);
+        auto tensor_basis = Symmetry::tensorProd(qPhys[loc], qPhys[loc+1]);
         for(std::size_t n_lefttop=0; n_lefttop<qPhys[loc].size(); ++n_lefttop)
         {
             for(std::size_t n_leftbottom=0; n_leftbottom<qPhys[loc].size(); ++n_leftbottom)
@@ -3163,14 +3166,14 @@ calc_TwoSiteData() const
                                     {
                                         for(const auto &qPhys_bottom : qPhys_bottoms)
                                         {
-                                            // auto qTensor_top = make_tuple(qPhys[loc][n_lefttop], n_lefttop, qPhys[loc+1][n_righttop], n_righttop, qPhys_top);
-                                            // std::size_t n_top = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qTensor_top));
-											std::size_t n_top = tensor_basis.outer_num(qPhys_top) + tensor_basis.leftAmount(qPhys_top,{qPhys[loc][n_lefttop],qPhys[loc+1][n_righttop]}) +
+                                            auto qTensor_top = make_tuple(qPhys[loc][n_lefttop], n_lefttop, qPhys[loc+1][n_righttop], n_righttop, qPhys_top);
+                                            std::size_t n_top = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qTensor_top));
+											//std::size_t n_top = tensor_basis.outer_num(qPhys_top) + tensor_basis.leftAmount(qPhys_top,{qPhys[loc][n_lefttop],qPhys[loc+1][n_righttop]}) +
 												loc12.inner_num(n_lefttop) + loc34.inner_num(n_righttop)*loc12.inner_dim(qPhys[loc][n_lefttop]);
 											
-                                            // auto qTensor_bottom = make_tuple(qPhys[loc][n_leftbottom], n_leftbottom, qPhys[loc+1][n_rightbottom], n_rightbottom, qPhys_bottom);
-                                            // std::size_t n_bottom = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qTensor_bottom));
-											std::size_t n_bottom = tensor_basis.outer_num(qPhys_bottom) + tensor_basis.leftAmount(qPhys_bottom,{qPhys[loc][n_leftbottom],qPhys[loc+1][n_rightbottom]}) +
+                                            auto qTensor_bottom = make_tuple(qPhys[loc][n_leftbottom], n_leftbottom, qPhys[loc+1][n_rightbottom], n_rightbottom, qPhys_bottom);
+                                            std::size_t n_bottom = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qTensor_bottom));
+											//std::size_t n_bottom = tensor_basis.outer_num(qPhys_bottom) + tensor_basis.leftAmount(qPhys_bottom,{qPhys[loc][n_leftbottom],qPhys[loc+1][n_rightbottom]}) +
 												loc12.inner_num(n_leftbottom) + loc34.inner_num(n_rightbottom)*loc12.inner_dim(qPhys[loc][n_leftbottom]);
 											
                                             Scalar factor_cgc = 1.;
@@ -4066,43 +4069,34 @@ clear_opLabels()
     }
 }
 
-template<typename Symmetry, typename Scalar> std::tuple<double,std::size_t> MpoTerms<Symmetry,Scalar>::
+template<typename Symmetry, typename Scalar> std::tuple<std::size_t,std::size_t,std::size_t,std::size_t> MpoTerms<Symmetry,Scalar>::
 auxdim_infos() const
 {
-    std::size_t maximum_auxdim = 0;
-    double average_auxdim = 0;
-    if(N_sites > 1)
+    std::size_t total_auxdim = 0;
+    std::size_t maximum_local_auxdim = 0;
+    std::size_t total_full_auxdim = 0;
+    std::size_t maximum_local_full_auxdim = 0;
+    for(std::size_t bond=0; bond<N_sites; ++bond)
     {
-        std::size_t minimum_bond = 0;
-        if(boundary_condition == BC::OPEN)
+        std::size_t local_auxdim = 0;
+        std::size_t local_full_auxdim = 0;
+        for(const auto &[q,deg] : auxdim[bond])
         {
-            minimum_bond = 1;
+            local_auxdim += deg;
+            local_full_auxdim += deg * Symmetry::degeneracy(q);
         }
-        std::size_t sum_auxdim = 0;
-        for(std::size_t loc=minimum_bond; loc<N_sites; ++loc)
+        total_auxdim += local_auxdim;
+        total_full_auxdim += local_full_auxdim;
+        if(local_auxdim > maximum_local_auxdim)
         {
-            std::size_t local_auxdim = 0;
-            for(const auto &[q,deg] : auxdim[loc])
-            {
-                local_auxdim += deg;
-            }
-            sum_auxdim += local_auxdim;
-            if(local_auxdim > maximum_auxdim)
-            {
-                maximum_auxdim = local_auxdim;
-            }
+            maximum_local_auxdim = local_auxdim;
         }
-        average_auxdim = (sum_auxdim*1.0) / (N_sites - minimum_bond * 1.0);
+        if(local_full_auxdim > maximum_local_full_auxdim)
+        {
+            maximum_local_full_auxdim = local_full_auxdim;
+        }
     }
-    else
-    {
-        for(const auto &[q,deg] : auxdim[0])
-        {
-            maximum_auxdim += deg;
-        }
-        average_auxdim = maximum_auxdim*1.0;
-    }
-    return std::make_tuple(average_auxdim,maximum_auxdim);
+    return std::make_tuple(total_auxdim,maximum_local_auxdim,total_full_auxdim,maximum_local_full_auxdim);
 }
 
 template<typename Symmetry, typename Scalar> double MpoTerms<Symmetry,Scalar>::

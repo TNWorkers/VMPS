@@ -716,8 +716,8 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 
 	Qbasis<Symmetry> loc12; loc12.pullData(qloc12);
 	Qbasis<Symmetry> loc34; loc34.pullData(qloc34);
-	Qbasis<Symmetry> tensor_basis = loc12.combine(loc34);
-	// auto tensor_basis = Symmetry::tensorProd(qloc12, qloc34);
+	//Qbasis<Symmetry> tensor_basis = loc12.combine(loc34);
+    auto tensor_basis = Symmetry::tensorProd(qloc12, qloc34);
 	
 	for (size_t s1=0; s1<qloc12.size(); ++s1)
 	for (size_t s2=0; s2<qloc12.size(); ++s2)
@@ -760,13 +760,13 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 				for (const auto &qmerge24:qmerges24)
 				{
 					
-					// auto qtensor13 = make_tuple(qloc12[s1], s1, qloc34[s3], s3, qmerge13);
-					// auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
-					size_t s1s3 = tensor_basis.outer_num(qmerge13) + tensor_basis.leftAmount(qmerge13,{qloc12[s1],qloc34[s3]}) + loc12.inner_num(s1) + loc34.inner_num(s3)*loc12.inner_dim(qloc12[s1]);
+                    auto qtensor13 = make_tuple(qloc12[s1], s1, qloc34[s3], s3, qmerge13);
+					auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
+					//size_t s1s3 = tensor_basis.outer_num(qmerge13) + tensor_basis.leftAmount(qmerge13,{qloc12[s1],qloc34[s3]}) + loc12.inner_num(s1) + loc34.inner_num(s3)*loc12.inner_dim(qloc12[s1]);
 					
-					// auto qtensor24 = make_tuple(qloc12[s2], s2, qloc34[s4], s4, qmerge24);
-					// auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
-					size_t s2s4 = tensor_basis.outer_num(qmerge24) + tensor_basis.leftAmount(qmerge24,{qloc12[s2],qloc34[s4]}) + loc12.inner_num(s2) + loc34.inner_num(s4)*loc12.inner_dim(qloc12[s2]);
+					auto qtensor24 = make_tuple(qloc12[s2], s2, qloc34[s4], s4, qmerge24);
+					auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
+					//size_t s2s4 = tensor_basis.outer_num(qmerge24) + tensor_basis.leftAmount(qmerge24,{qloc12[s2],qloc34[s4]}) + loc12.inner_num(s2) + loc34.inner_num(s4)*loc12.inner_dim(qloc12[s2]);
 					
 					// tensor product of the MPO operators in the physical space
 					Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
