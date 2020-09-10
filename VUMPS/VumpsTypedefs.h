@@ -65,7 +65,7 @@ struct VUMPS
 			
 			//DYN DEFAULTS
 			static size_t max_deltaM          (size_t i) {return (i<1800)? 100ul:0ul;} // Maximum expansion by 100 and turn off expansion completely after 1800 iterations
-			static size_t Mincr_abs           (size_t i) {return 50ul;} // increase M by at least Dincr_abs
+			static size_t Mincr_abs           (size_t i) {return 50ul;} // increase M by at least Mincr_abs
 			static double Mincr_rel           (size_t i) {return 1.04;} // increase M by at least 4%
 			static void   doSomething         (size_t i) {return;}
 			static UMPS_ALG::OPTION iteration (size_t i) {return UMPS_ALG::PARALLEL;}

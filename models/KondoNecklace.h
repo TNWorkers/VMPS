@@ -1,5 +1,5 @@
-#ifndef KONDONECKLACEU1_H_
-#define KONDONECKLACEU1_H_
+#ifndef KONDONECKLACE_H_
+#define KONDONECKLACE_H_
 
 //#define OPLABELS
 
@@ -7,7 +7,7 @@
 #include<string>
 
 #include "KondoNecklaceObservables.h"
-#include "symmetry/U1.h"
+#include "symmetry/U0.h"
 #include "bases/SpinBase.h"
 #include "Mpo.h"
 #include "ParamReturner.h"
@@ -16,11 +16,11 @@
 namespace VMPS
 {
 
-	class KondoNecklaceU1 : public Mpo<Sym::U1<Sym::SpinU1>,double>, public KondoNecklaceObservables<Sym::U1<Sym::SpinU1> >, public ParamReturner
+class KondoNecklace : public Mpo<Sym::U0,double>, public KondoNecklaceObservables<Sym::U0>, public ParamReturner
 {
 public:
-    typedef Sym::U1<Sym::SpinU1> Symmetry;
-    MAKE_TYPEDEFS(KondoNecklaceU1)
+    typedef Sym::U0 Symmetry;
+    MAKE_TYPEDEFS(KondoNecklace)
     static constexpr MODEL_FAMILY FAMILY = HEISENBERG;
     
 private:
@@ -33,14 +33,14 @@ public:
     /**
      *  Empty constructor, constructs Terms for a lattice of size 0
      */
-    KondoNecklaceU1() : Mpo<Symmetry>(), ParamReturner(KondoNecklaceU1::sweep_defaults) {};
+    KondoNecklace() : Mpo<Symmetry>(), ParamReturner(KondoNecklace::sweep_defaults) {};
 
     /**
      *  Constructor
      *  @param L        Lattice size
      *  @param params   Vector of parameters for the construction of the model
      */
-    KondoNecklaceU1(const std::size_t L, const std::vector<Param>& params={}, const BC boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT);
+    KondoNecklace(const std::size_t L, const std::vector<Param>& params={}, const BC boundary=BC::OPEN, const DMRG::VERBOSITY::OPTION VERB=DMRG::VERBOSITY::ON_EXIT);
 
 
     /**
@@ -69,14 +69,14 @@ public:
     bool validate(qType qnum);
 };
 
-const std::map<string,std::any> KondoNecklaceU1::defaults = 
+const std::map<string,std::any> KondoNecklace::defaults = 
 {
 	{"Jlocxy",1.}, {"Jlocz",1.}, {"Jparaxy",1.}, {"Jparaz",1.}, {"Jperpxy",0.}, {"Jperpz",0.}, {"Jprimexy",1.}, {"Jprimez",1.},
 	{"Dimp",2ul}, {"Dsub",2ul}, {"Ly",1ul},
 	{"maxPower",2ul}, {"CYLINDER",false}
 };
 
-const std::map<string,std::any> KondoNecklaceU1::sweep_defaults = 
+const std::map<string,std::any> KondoNecklace::sweep_defaults = 
 {
 	{"max_alpha",100.}, {"min_alpha",1e-11}, {"lim_alpha",12ul}, {"eps_svd",1e-7},
 	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
@@ -87,10 +87,10 @@ const std::map<string,std::any> KondoNecklaceU1::sweep_defaults =
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_HSQ}
 };
 
-KondoNecklaceU1::KondoNecklaceU1(const std::size_t L, const std::vector<Param>& params, const BC boundary, const DMRG::VERBOSITY::OPTION VERB)
-: Mpo<Symmetry>(L, Symmetry::qvacuum(), "KondoNecklaceU1", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
-  KondoNecklaceObservables<Symmetry>(L,params,KondoNecklaceU1::defaults),
-  ParamReturner(KondoNecklaceU1::sweep_defaults)
+KondoNecklace::KondoNecklace(const std::size_t L, const std::vector<Param>& params, const BC boundary, const DMRG::VERBOSITY::OPTION VERB)
+: Mpo<Symmetry>(L, Symmetry::qvacuum(), "KondoNecklace", PROP::HERMITIAN, PROP::NON_UNITARY, boundary, VERB),
+  KondoNecklaceObservables<Symmetry>(L,params,KondoNecklace::defaults),
+  ParamReturner(KondoNecklace::sweep_defaults)
 {
 	ParamHandler P(params,defaults);
     this->set_verbosity(VERB);
@@ -113,7 +113,7 @@ KondoNecklaceU1::KondoNecklaceU1(const std::size_t L, const std::vector<Param>& 
     this->precalc_TwoSiteData();
 }
     
-void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub, const std::vector<SpinBase<Symmetry>>& Bimp, const ParamHandler &P,
+void KondoNecklace::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub, const std::vector<SpinBase<Symmetry>>& Bimp, const ParamHandler &P,
 									 PushType<SiteOperator<Symmetry,double>,double>& pushlist, std::vector<std::vector<std::string>>& labellist, const BC boundary)
 {
     std::size_t Lcell = P.size();
@@ -431,7 +431,7 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
     }
 }
 
-// bool KondoNecklaceU1::validate(qType qnum)
+// bool KondoNecklace::validate(qType qnum)
 // {
 //     auto add = [](std::set<std::size_t>& left, std::set<std::size_t>& right) -> void
 //     {
@@ -475,7 +475,7 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
 //     return it!=reachable[N_sites-1].end();
 // }
     
-// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceU1::
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklace::
 // Stot()
 // {
 //     Mpo<Symmetry> Mout(this->N_sites, {3}, "S_tot", false, false, BC::OPEN, DMRG::VERBOSITY::OPTION::SILENT);
@@ -492,7 +492,7 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
 //     return Mout;
 // }
     
-// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceU1::
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklace::
 // Simp(std::size_t locx, std::size_t locy)
 // {
 //     assert(locx<this->N_sites);
@@ -514,7 +514,7 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
 //     return Mout;
 // }
 
-// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceU1::
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklace::
 // Ssub(std::size_t locx, std::size_t locy)
 // {
 //     assert(locx<this->N_sites);
@@ -536,7 +536,7 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
 //     return Mout;
 // }
 
-// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceU1::
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklace::
 // Simpdag(std::size_t locx, std::size_t locy)
 // {
 //     assert(locx<this->N_sites);
@@ -558,7 +558,7 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
 //     return Mout;
 // }
 
-// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceU1::
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklace::
 // Ssubdag(std::size_t locx, std::size_t locy)
 // {
 //     assert(locx<this->N_sites);
@@ -580,7 +580,7 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
 //     return Mout;
 // }
 
-// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceU1::
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklace::
 // SimpdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 // {
 //     assert(locx1<this->N_sites);
@@ -647,7 +647,7 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
 //     return Mout;
 // }
 
-// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceU1::
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklace::
 // SsubdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 // {
 //     assert(locx1<this->N_sites);
@@ -714,7 +714,7 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
 //     return Mout;
 // }
 
-// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceU1::
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklace::
 // SsubdagSimp(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 // {
 //     assert(locx1<this->N_sites);
@@ -781,7 +781,7 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
 //     return Mout;
 // }
 
-// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklaceU1::
+// Mpo<Sym::SU2<Sym::SpinSU2>> KondoNecklace::
 // SimpdagSsub(std::size_t locx1, std::size_t locx2, std::size_t locy1, std::size_t locy2)
 // {
 //     assert(locx1<this->N_sites);
