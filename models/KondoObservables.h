@@ -116,6 +116,8 @@ public:
 	///@{
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Simp (size_t locx, size_t locy=0, double factor=1.) const;
+    template<typename Dummy = Symmetry>
+    typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Ssub (size_t locx, size_t locy=0, double factor=1.) const;
 	template<typename Dummy = Symmetry>
 	typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type Simpdag (size_t locx, size_t locy=0, double factor=std::sqrt(3.)) const;
 	template<typename Dummy = Symmetry>
@@ -948,7 +950,15 @@ template<typename Dummy>
 typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type KondoObservables<Symmetry>::
 Simp (size_t locx, size_t locy, double factor) const
 {
-	return make_local(IMP,locx,locy, F[locx].S(locy), factor, PROP::BOSONIC, PROP::NON_HERMITIAN);
+	return make_local(IMP,locx,locy, B[locx].S(locy), factor, PROP::BOSONIC, PROP::NON_HERMITIAN);
+}
+
+template<typename Symmetry>
+template<typename Dummy>
+typename std::enable_if<Dummy::IS_SPIN_SU2(), Mpo<Symmetry> >::type KondoObservables<Symmetry>::
+Ssub (size_t locx, size_t locy, double factor) const
+{
+    return make_local(SUB,locx,locy, F[locx].S(locy), factor, PROP::NON_FERMIONIC, PROP::NON_HERMITIAN);
 }
 
 template<typename Symmetry>

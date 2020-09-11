@@ -717,7 +717,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 	Qbasis<Symmetry> loc12; loc12.pullData(qloc12);
 	Qbasis<Symmetry> loc34; loc34.pullData(qloc34);
 	Qbasis<Symmetry> tensor_basis = loc12.combine(loc34);
-	// auto tensor_basis = Symmetry::tensorProd(qloc12, qloc34);
+    // auto tensor_basis = Symmetry::tensorProd(qloc12, qloc34);
 	
 	for (size_t s1=0; s1<qloc12.size(); ++s1)
 	for (size_t s2=0; s2<qloc12.size(); ++s2)
@@ -768,6 +768,7 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 					// auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
 					// size_t s2s4 = tensor_basis.outer_num(qmerge24) + tensor_basis.leftAmount(qmerge24,{qloc12[s2],qloc34[s4]}) + loc12.inner_num(s2) + loc34.inner_num(s4)*loc12.inner_dim(qloc12[s2]);
 					size_t s2s4 = tensor_basis.outer_num(qmerge24) + tensor_basis.leftOffset(qmerge24,{qloc12[s2],qloc34[s4]},{loc12.inner_num(s2),loc34.inner_num(s4)});
+					
 					// tensor product of the MPO operators in the physical space
 					Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
 					Symmetry::coeff_tensorProd(qloc12[s2], qloc34[s4], qmerge24,
