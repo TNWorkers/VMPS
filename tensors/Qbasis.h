@@ -131,7 +131,8 @@ public:
 
 	Eigen::Index outer_num( const qType& q ) const;
 	
-	Eigen::Index leftAmount( const qType& qnew, const std::array<qType,2>& qold ) const;
+	Eigen::Index leftAmount( const qType& qnew, const std::array<qType,2>& qold ) const; 
+	Eigen::Index leftOffset( const qType& qnew, const std::array<qType,2>& qold, const std::array<Eigen::Index,2>& plain_old ) const;
 	Eigen::Index rightAmount( const qType& qnew, const std::array<qType,2>& qold ) const;
 	// Eigen::Index outer_num( const qType& qnew, const std::array<qType,2>& qold ) const;
 	
@@ -192,12 +193,13 @@ public:
 	void swap (Qbasis<Symmetry> &other) { this->data.swap(other.data()); }
 
 	void sort ();
-	
+
 //private:
 	struct fuseData
 	{
 		Eigen::Index dim;
 		std::array<qType,2> source;
+		Basis::fuseData plainHistory;
 	};
 
 	//vector with entry: {Quantumnumber (QN), state number of the first plain state for this QN, all plain states for this QN in a Basis object.}
@@ -429,6 +431,32 @@ leftAmount(const qType& qnew, const std::array<qType,2>& qold) const
 	return out;
 }
 
+template<typename Symmetry>
+Eigen::Index Qbasis<Symmetry>::
+leftOffset(const qType& qnew, const std::array<qType,2>& qold, const std::array<Eigen::Index,2>& plain_old) const
+{
+	assert( history.size() == data_.size() and "The history for this basis is not defined properly");
+
+	auto it = history.find(qnew);
+	assert( it != history.end() and "The history for this basis is not defined properly");
+
+	Eigen::Index out=0;
+
+	for( const auto& i: it->second )
+	{
+		if(i.source != qold) { out+=i.dim; }
+		if(i.source == qold)
+		{
+			for (size_t j=0; j<i.plainHistory.dim1*i.plainHistory.dim2; j++)
+			{
+				if(i.plainHistory.source(j) != plain_old) { out+=1; }
+				if(i.plainHistory.source(j) == plain_old) { break; }
+			}
+			break;
+		}
+	}
+	return out;
+}
 // template<typename Symmetry>
 // Eigen::Index Qbasis<Symmetry>::
 // outer_num(const qType& qnew, const std::array<qType,2>& qold) const
@@ -649,7 +677,7 @@ setHistoryEntry( const qType &Qval, const qType &Q1, const qType &Q2, Eigen::Ind
 
 template<typename Symmetry>
 Qbasis<Symmetry> Qbasis<Symmetry>::
-combine( const Qbasis<Symmetry>& other, bool FLIP) const
+combine (const Qbasis<Symmetry>& other, bool FLIP) const
 {
 	Qbasis out;
 	//build the history of the combination. Data is relevant for MultipedeQ contractions which include a fuse of two leg.
@@ -663,6 +691,7 @@ combine( const Qbasis<Symmetry>& other, bool FLIP) const
 			{
 				q2 = Symmetry::flip(q2);
 			}
+			auto plain = plain1.combine(plain2);
 			auto qVec = Symmetry::reduceSilent(q1,q2);
 			for (const auto& q: qVec)
 			{
@@ -673,6 +702,15 @@ combine( const Qbasis<Symmetry>& other, bool FLIP) const
 					fuseData entry;
 					entry.source = {q1,q2};
 					entry.dim = plain1.size() * plain2.size();
+					// std::vector<Basis::fuseData> plainHistory(entry.dim);
+					// for (Eigen::Index i=0; i<plain1.size(); i++)
+					// for (Eigen::Index j=0; j<plain2.size(); j++)
+					// {
+					// 	Basis::fuseData plain_entry = {{i,j}};
+					// 	// plainHistory[i+plain1.size()*j] = plain_entry;
+					// 	plainHistory[j+plain2.size()*i] = plain_entry;
+					// }
+					entry.plainHistory = plain.history;
 					history_.push_back(entry);
 					out.history.insert(std::make_pair(q,history_));
 				}
@@ -692,6 +730,15 @@ combine( const Qbasis<Symmetry>& other, bool FLIP) const
 						fuseData entry;
 						entry.source = {q1,q2};
 						entry.dim = plain1.size() * plain2.size();
+						// std::vector<Basis::fuseData> plainHistory(entry.dim);
+						// for (Eigen::Index i=0; i<plain1.size(); i++)
+						// for (Eigen::Index j=0; j<plain2.size(); j++)
+						// {
+						// 	Basis::fuseData plain_entry = {{i,j}};
+						// 	// plainHistory[i+plain1.size()*j] = plain_entry;
+						// 	plainHistory[j+plain2.size()*i] = plain_entry;
+						// }
+						entry.plainHistory = plain.history;
 						(it->second).push_back(entry);
 					}
 				}
@@ -722,7 +769,23 @@ combine( const Qbasis<Symmetry>& other, bool FLIP) const
 	for ( auto it=out.history.begin(); it!=out.history.end(); it++ )
 	{
 		Eigen::Index inner_dim = 0;
-		for(const auto& i: it->second) { inner_dim+=i.dim; }
+		std::vector<string> idents;
+		for(const auto& i: it->second)
+		{
+			// qType q1 = i.source[0];
+			// qType q2 = i.source[1];
+			// for (Eigen::Index plain=0; plain<i.plainHistory.size(); plain++)
+			// {
+			// 	Eigen::Index plain1 = i.plainHistory[plain].source[0];
+			// 	Eigen::Index plain2 = i.plainHistory[plain].source[1];
+			// 	auto pos_1 = std::find_if(this->data_.begin(), this->data_.end(), [q1](auto t) {return std::get<0>(t) == q1;});
+			// 	auto pos_2 = std::find_if(other.data_.begin(), other.data_.end(), [q2](auto t) {return std::get<0>(t) == q2;});
+			// 	std::string label1 = std::get<0>(std::get<2>(*pos_1).data_[plain1]);
+			// 	std::string label2 = std::get<0>(std::get<2>(*pos_2).data_[plain2]);
+			// 	idents.push_back(label1+"⊗"+label2);
+			// }
+			inner_dim+=i.dim;
+		}
 		out.push_back(it->first,inner_dim);
 	}
 	out.sort();
@@ -738,7 +801,7 @@ print() const
 	TextTable t( '-', '|', '+' );
 	t.add("Q");
 	t.add("Dim(Q)");
-	t.add("1. #");
+	t.add("idents");
 	t.endOfRow();
 	for(const auto& entry : data_)
 	{
@@ -749,13 +812,18 @@ print() const
 		//ss << q_Phys;
 		tt << plain.size();
 
-		uu << curr_num;
-		// uu << "(";
-		// if( idents.size() > 0 )
-		// {
-		// 	for(const auto& inner : plain) { (j<idents[i].size()-1) ? uu << idents[i][j] << ", " : uu << idents[i][j]; }
-		// }
-		// uu << ")";
+		// uu << curr_num;
+		uu << "(";
+		for (auto it = plain.cbegin(); it != plain.cend(); it++)
+		// for (const auto & [ident, num] : plain)
+		{
+			auto [ident,num] = *it;
+			if (std::distance(it,plain.cend()) == 1)
+				uu << ident << "(" << num << ")";
+			else
+				uu << ident << "(" << num << ")" << ", ";
+		}
+		uu << ")";
 		t.add(ss.str());
 		t.add(tt.str());
 		t.add(uu.str());
@@ -779,6 +847,12 @@ printHistory() const
 		for(const auto& i: it->second)
 		{
 			out << i.source[0] << "," << i.source[1] << "\t→\t" << it->first << ": dim=" << i.dim << std::endl;
+			assert(i.dim == i.plainHistory.dim1*i.plainHistory.dim2);
+			for (std::size_t j=0; j<i.dim; j++)
+			{
+				out << "j=" << j << " results from(" << i.plainHistory.source(j)[0] << "," << i.plainHistory.source(j)[1] << ")" << std::endl;
+			}
+			out << std::endl;
 		}
 		out << std::endl;
 	}

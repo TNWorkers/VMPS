@@ -762,12 +762,12 @@ void precalc_blockStructure (const Tripod<Symmetry,Eigen::Matrix<Scalar,Dynamic,
 					
 					// auto qtensor13 = make_tuple(qloc12[s1], s1, qloc34[s3], s3, qmerge13);
 					// auto s1s3 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor13));
-					size_t s1s3 = tensor_basis.outer_num(qmerge13) + tensor_basis.leftAmount(qmerge13,{qloc12[s1],qloc34[s3]}) + loc12.inner_num(s1) + loc34.inner_num(s3)*loc12.inner_dim(qloc12[s1]);
-					
+					// size_t s1s3 = tensor_basis.outer_num(qmerge13) + tensor_basis.leftAmount(qmerge13,{qloc12[s1],qloc34[s3]}) + loc12.inner_num(s1) + loc34.inner_num(s3)*loc12.inner_dim(qloc12[s1]);
+					size_t s1s3 = tensor_basis.outer_num(qmerge13) + tensor_basis.leftOffset(qmerge13,{qloc12[s1],qloc34[s3]},{loc12.inner_num(s1),loc34.inner_num(s3)});
 					// auto qtensor24 = make_tuple(qloc12[s2], s2, qloc34[s4], s4, qmerge24);
 					// auto s2s4 = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qtensor24));
-					size_t s2s4 = tensor_basis.outer_num(qmerge24) + tensor_basis.leftAmount(qmerge24,{qloc12[s2],qloc34[s4]}) + loc12.inner_num(s2) + loc34.inner_num(s4)*loc12.inner_dim(qloc12[s2]);
-					
+					// size_t s2s4 = tensor_basis.outer_num(qmerge24) + tensor_basis.leftAmount(qmerge24,{qloc12[s2],qloc34[s4]}) + loc12.inner_num(s2) + loc34.inner_num(s4)*loc12.inner_dim(qloc12[s2]);
+					size_t s2s4 = tensor_basis.outer_num(qmerge24) + tensor_basis.leftOffset(qmerge24,{qloc12[s2],qloc34[s4]},{loc12.inner_num(s2),loc34.inner_num(s4)});
 					// tensor product of the MPO operators in the physical space
 					Scalar factor_cgc9 = (Symmetry::NON_ABELIAN)? 
 					Symmetry::coeff_tensorProd(qloc12[s2], qloc34[s4], qmerge24,

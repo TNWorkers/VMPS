@@ -170,7 +170,19 @@ public:
 	void cholesky(Biped<Symmetry,MatrixType> &res) const;
 
 	template<typename EpsScalar>
-	tuple<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> > truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERVE_MULTIPLETS=true) const;
+	tuple<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> >
+	truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS=true, bool RETURN_SPEC=true) const;
+
+	template<typename EpsScalar>
+	tuple<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> > truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERVE_MULTIPLETS=true) const
+		{
+			double S_dumb;
+			map<qarray<Symmetry::Nq>,ArrayXd> SVspec_dumb;
+			return truncateSVD(maxKeep, eps_svd, truncWeight, S_dumb, SVspec_dumb, PRESERVE_MULTIPLETS, false); //false: Dont return singular value spectrum
+		}
+
+	pair<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> >
+	QR(bool RETURN_LQ=false, bool MAKE_UNIQUE=false) const;
 	
 	/**
 	 * Adds another tensor to the current one. 
@@ -681,8 +693,9 @@ cholesky(Biped<Symmetry,MatrixType> &res) const
 template<typename Symmetry, typename MatrixType_>
 template<typename EpsScalar>
 tuple<Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_>, Biped<Symmetry,MatrixType_> > Biped<Symmetry,MatrixType_>::
-truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERVE_MULTIPLETS) const
+truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entropy, map<qarray<Symmetry::Nq>,ArrayXd> &SVspec, bool PRESERVE_MULTIPLETS, bool RETURN_SPEC) const
 {
+	entropy=0.;
 	truncWeight=0;
 	Biped<Symmetry,MatrixType_> U,Vdag,Sigma;
 	Biped<Symmetry,MatrixType_> trunc_U,trunc_Vdag,trunc_Sigma;
@@ -707,7 +720,7 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERV
 	std::sort(allSV.begin(),allSV.end(),[](const pair<typename Symmetry::qType, Scalar> &sv1, const pair<typename Symmetry::qType, Scalar> &sv2) {return sv1.second > sv2.second;});
 	for (size_t i=maxKeep; i<allSV.size(); i++)
 	{
-		truncWeight += Symmetry::degeneracy(allSV[i].first) * std::pow(std::abs(allSV[i].second),2.);
+			truncWeight += Symmetry::degeneracy(allSV[i].first) * std::pow(std::abs(allSV[i].second),2.);
 	}
 	allSV.resize(min(maxKeep,numberOfStates));
 	// std::erase_if(allSV, [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv < eps_svd); }); c++-20 version	
@@ -744,6 +757,7 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERV
 	for (const auto &[q,s]:allSV )
 	{
 		qn_orderedSV[q].push_back(s);
+		entropy += -Symmetry::degeneracy(q) * s*s * std::log(s*s);
 	}
 	for (const auto & [q,vec_sv]: qn_orderedSV)
 	{
@@ -751,12 +765,51 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, bool PRESERV
 		// cout << "q=" << q << ", Nret=" << Nret << endl;
 		auto itSigma = Sigma.dict.find({q,q});
 		trunc_Sigma.push_back(q,q,Sigma.block[itSigma->second].diagonal().head(Nret).asDiagonal());
+		if (RETURN_SPEC)
+		{
+			SVspec.insert(make_pair(q, Sigma.block[itSigma->second].diagonal().head(Nret)));
+		}
 		auto itU = U.dict.find({q,q});
 		trunc_U.push_back(q, q, U.block[itU->second].leftCols(Nret));
 		auto itVdag = Vdag.dict.find({q,q});
 		trunc_Vdag.push_back(q, q, Vdag.block[itVdag->second].topRows(Nret));
 	}
 	return make_tuple(trunc_U,trunc_Sigma,trunc_Vdag);
+}
+
+template<typename Symmetry, typename MatrixType_>
+pair<Biped<Symmetry,MatrixType_>,Biped<Symmetry,MatrixType_> > Biped<Symmetry,MatrixType_>::
+QR(bool RETURN_LQ, bool MAKE_UNIQUE) const
+{
+	Biped<Symmetry,MatrixType> Q,R;
+	for (size_t q=0; q<dim; ++q)
+	{
+		HouseholderQR<MatrixType> Quirinus;
+		Quirinus.compute(block[q]);
+
+		MatrixType Qmat, Rmat;
+		if (RETURN_LQ)
+		{
+			Qmat = (Quirinus.householderQ() * MatrixType::Identity(block[q].rows(),block[q].cols())).adjoint();
+			Rmat = (MatrixType::Identity(block[q].cols(),block[q].rows()) * Quirinus.matrixQR().template triangularView<Upper>()).adjoint();
+		}
+		else
+		{
+			Qmat = Quirinus.householderQ() * MatrixType::Identity(block[q].rows(),block[q].cols());
+			Rmat = MatrixType::Identity(block[q].cols(),block[q].rows()) * Quirinus.matrixQR().template triangularView<Upper>();
+		}
+		if (MAKE_UNIQUE)
+		{
+			//make the QR decomposition unique by enforcing the diagonal of R to be positive.
+			DiagonalMatrix<Scalar,Dynamic> Sign = Rmat.diagonal().cwiseSign().matrix().asDiagonal();
+			Rmat = Sign*Rmat;
+			Qmat = Qmat*Sign;
+		}
+
+		Q.push_back(in[q], out[q], Qmat);
+		R.push_back(in[q], out[q], Rmat);
+	}
+	return make_pair(Q,R);
 }
 
 template<typename Symmetry, typename MatrixType_>

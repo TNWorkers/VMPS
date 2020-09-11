@@ -90,10 +90,10 @@ const std::map<string,std::any> HeisenbergSU2::defaults =
 const std::map<string,std::any> HeisenbergSU2::sweep_defaults = 
 {
 	{"max_alpha",100.}, {"min_alpha",1.e-11}, {"lim_alpha",10ul}, {"eps_svd",1.e-7},
-	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
+	{"Mincr_abs", 50ul}, {"Mincr_per", 2ul}, {"Mincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",50ul}, {"min_halfsweeps",20ul},
-	{"Dinit",5ul}, {"Qinit",6ul}, {"Dlimit",100ul},
+	{"Minit",1ul}, {"Qinit",1ul}, {"Mlimit",1000ul},
 	{"tol_eigval",1e-7}, {"tol_state",1e-6},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_HSQ}
 };

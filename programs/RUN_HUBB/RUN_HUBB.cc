@@ -10,9 +10,7 @@
 #include <fstream>
 #include <complex>
 #include <variant>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+
 using namespace std;
 
 #include "ArgParser.h"
@@ -534,14 +532,14 @@ int main (int argc, char* argv[])
 	double alpha = args.get<double>("alpha",100.);
 	DynParam_fix.max_alpha_rsvd = [lim_alpha, alpha] (size_t i) {return (i<lim_alpha)? alpha:0.;};
 	
-	int DincrPeriod = args.get<int>("DincrPeriod",6);
+	int MincrPeriod = args.get<int>("MincrPeriod",6);
 	
 	int max_Nrich = args.get<int>("max_Nrich",-1);
 	DynParam_fix.max_Nrich = [max_Nrich] (size_t i) {return max_Nrich;};
 	
-	GlobParam_fix.Dinit  = args.get<size_t>("Dinit",2ul);
-	GlobParam_fix.Dlimit = args.get<size_t>("Dlimit",200ul);
-	GlobParam_fix.Qinit = args.get<size_t>("Qinit",10ul);
+	GlobParam_fix.Minit  = args.get<size_t>("Dinit",1ul);
+	GlobParam_fix.Mlimit = args.get<size_t>("Dlimit",1000ul);
+	GlobParam_fix.Qinit = args.get<size_t>("Qinit",1ul);
 	GlobParam_fix.min_halfsweeps = args.get<size_t>("Imin",1);
 	GlobParam_fix.max_halfsweeps = args.get<size_t>("Imax",22);
 	GlobParam_fix.tol_eigval = args.get<double>("tol_eigval",1e-6);
@@ -549,19 +547,28 @@ int main (int argc, char* argv[])
 	GlobParam_fix.savePeriod = args.get<size_t>("savePeriod",0ul);
 	GlobParam_fix.saveName = args.get<string>("saveName",statefile);
 	
-	GlobParam_foxy.Dinit  = args.get<size_t>("Dinit",20ul);
-	GlobParam_foxy.Dlimit = args.get<size_t>("Dlimit",200ul);
+	GlobParam_foxy.Minit  = args.get<size_t>("Minit",20ul);
+	GlobParam_foxy.Mlimit = args.get<size_t>("Mlimit",200ul);
 	GlobParam_foxy.Qinit = args.get<size_t>("Qinit",10ul);
 	GlobParam_foxy.min_iterations = args.get<size_t>("Imin",6ul);
 	GlobParam_foxy.max_iterations = args.get<size_t>("Imax",1000ul);
 	GlobParam_foxy.max_iter_without_expansion = args.get<size_t>("max",30ul);
-	GlobParam_foxy.fullMmaxBreakoff = args.get<size_t>("Chimax",25000ul);
 	
 	GlobParam_foxy.tol_eigval = args.get<double>("tol_eigval",1e-6);
 	GlobParam_foxy.tol_var = args.get<double>("tol_var",1e-6);
 	GlobParam_foxy.tol_state = args.get<double>("tol_state",1e-5);
 	GlobParam_foxy.savePeriod = args.get<size_t>("savePeriod",0ul);
 	GlobParam_foxy.saveName = args.get<string>("saveName",statefile);
+
+	size_t limExpansion = args.get<size_t>("limExpansion",5000ul);
+	size_t max_DeltaM = args.get<size_t>("max_DeltaM",100ul);
+	DynParam_foxy.max_deltaM = [limExpansion,max_DeltaM] (size_t i) {return (i<limExpansion)? max_DeltaM:0ul;;};
+	size_t Mabs = args.get<size_t>("Mabs",100ul);
+	DynParam_foxy.Mincr_abs = [Mabs] (size_t i) {return Mabs;};
+	double Mrel = args.get<double>("Mrel",1.1l);
+	DynParam_foxy.Mincr_rel = [Mrel] (size_t i) {return Mrel;};
+	UMPS_ALG::OPTION iteration = static_cast<UMPS_ALG::OPTION>(args.get<int>("iteration",0)); //0: parallel, 1: sequential
+	DynParam_foxy.iteration = [iteration] (size_t i) {return iteration;};
 	
 	lout.set(base+".log",wd+"log");
 	
@@ -1190,7 +1197,7 @@ int main (int argc, char* argv[])
 					lout << "\tS=" << obs.entropy(x,y) << endl;
 					
 					g_foxy.state.calc_entropy(true);
-					obs.spectrum[x][y] = g_foxy.state.entanglementSpectrumLoc(Geo1cell(x,y));
+					obs.spectrum[x][y] = g_foxy.state.entanglementSpectrumLoc(Geo1cell(x,y)).second;
 					lout << "\tspec=" << obs.spectrum[x][y].block(0,0,min(40,int(obs.spectrum[x][y].rows())),1).transpose() << endl;
 					if (obs.spectrum[x][y].rows() > 1)
 					{
@@ -1446,7 +1453,6 @@ int main (int argc, char* argv[])
 			Foxy.GlobParam = GlobParam_foxy;
 			Foxy.DynParam = DynParam_foxy;
 			Foxy.DynParam.doSomething = measure_and_save;
-			Foxy.DynParam.iteration = [](size_t i) -> UMPS_ALG::OPTION {return UMPS_ALG::PARALLEL;};
 			Foxy.set_log(1, wd+"log/e0_"+base+".log",
 			                wd+"log/err-eigval_"+base+".log",
 			                wd+"log/err-var_"+base+".log",
@@ -1474,7 +1480,7 @@ int main (int argc, char* argv[])
 		
 		Fix.edgeState(H, g_fix, Qc, LANCZOS::EDGE::GROUND);
 		
-		DynParam_fix.Dincr_per = [DincrPeriod] (size_t i) {return DincrPeriod;};
+		DynParam_fix.Mincr_per = [MincrPeriod] (size_t i) {return MincrPeriod;};
 		
 		if (CALC_TGAP)
 		{
@@ -1709,7 +1715,7 @@ int main (int argc, char* argv[])
 			
 			if (x<L-1)
 			{
-				obs.spectrum[x][y] = g_fix.state.entanglementSpectrumLoc(Geo1cell(x,y));
+				obs.spectrum[x][y] = g_fix.state.entanglementSpectrumLoc(Geo1cell(x,y)).second;
 			}
 			
 			lout << "x,y=" << x << "," << y << endl;

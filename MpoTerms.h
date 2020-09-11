@@ -3165,14 +3165,16 @@ calc_TwoSiteData() const
                                         {
                                             // auto qTensor_top = make_tuple(qPhys[loc][n_lefttop], n_lefttop, qPhys[loc+1][n_righttop], n_righttop, qPhys_top);
                                             // std::size_t n_top = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qTensor_top));
-											std::size_t n_top = tensor_basis.outer_num(qPhys_top) + tensor_basis.leftAmount(qPhys_top,{qPhys[loc][n_lefttop],qPhys[loc+1][n_righttop]}) +
-												loc12.inner_num(n_lefttop) + loc34.inner_num(n_righttop)*loc12.inner_dim(qPhys[loc][n_lefttop]);
-											
+											// std::size_t n_top = tensor_basis.outer_num(qPhys_top) + tensor_basis.leftAmount(qPhys_top,{qPhys[loc][n_lefttop],qPhys[loc+1][n_righttop]}) +
+											// 	loc12.inner_num(n_lefttop) + loc34.inner_num(n_righttop)*loc12.inner_dim(qPhys[loc][n_lefttop]);
+											size_t n_top = tensor_basis.outer_num(qPhys_top) + tensor_basis.leftOffset(qPhys_top,{qPhys[loc][n_lefttop],qPhys[loc+1][n_righttop]},
+																													   {loc12.inner_num(n_lefttop),loc34.inner_num(n_righttop)});
                                             // auto qTensor_bottom = make_tuple(qPhys[loc][n_leftbottom], n_leftbottom, qPhys[loc+1][n_rightbottom], n_rightbottom, qPhys_bottom);
                                             // std::size_t n_bottom = distance(tensor_basis.begin(), find(tensor_basis.begin(), tensor_basis.end(), qTensor_bottom));
-											std::size_t n_bottom = tensor_basis.outer_num(qPhys_bottom) + tensor_basis.leftAmount(qPhys_bottom,{qPhys[loc][n_leftbottom],qPhys[loc+1][n_rightbottom]}) +
-												loc12.inner_num(n_leftbottom) + loc34.inner_num(n_rightbottom)*loc12.inner_dim(qPhys[loc][n_leftbottom]);
-											
+											// std::size_t n_bottom = tensor_basis.outer_num(qPhys_bottom) + tensor_basis.leftAmount(qPhys_bottom,{qPhys[loc][n_leftbottom],qPhys[loc+1][n_rightbottom]}) +
+											// 	loc12.inner_num(n_leftbottom) + loc34.inner_num(n_rightbottom)*loc12.inner_dim(qPhys[loc][n_leftbottom]);
+											size_t n_bottom = tensor_basis.outer_num(qPhys_bottom) + tensor_basis.leftOffset(qPhys_bottom,{qPhys[loc][n_leftbottom],qPhys[loc+1][n_rightbottom]},
+																															 {loc12.inner_num(n_leftbottom),loc34.inner_num(n_rightbottom)});
                                             Scalar factor_cgc = 1.;
                                             if(Symmetry::NON_ABELIAN)
                                             {

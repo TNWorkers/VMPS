@@ -162,7 +162,37 @@ int main (int argc, char* argv[])
 			params.push_back({"D",1ul,l});
 		}
 	}
+
+	DMRG::CONTROL::GLOB GlobParam;
+	DMRG::CONTROL::DYN  DynParam;
 	
+	GlobParam.Minit  = args.get<size_t>("Minit",2ul);
+	GlobParam.Mlimit = args.get<size_t>("Mlimit",200ul);
+	GlobParam.Qinit = args.get<size_t>("Qinit",10ul);
+	GlobParam.min_halfsweeps = args.get<size_t>("Imin",1);
+	GlobParam.max_halfsweeps = args.get<size_t>("Imax",22);
+	GlobParam.tol_eigval = args.get<double>("tol_eigval",1e-6);
+	GlobParam.tol_state = args.get<double>("tol_state",1e-5);
+	GlobParam.savePeriod = args.get<size_t>("savePeriod",0ul);
+
+	size_t min_Nsv = args.get<size_t>("min_Nsv",0ul);
+	DynParam.min_Nsv = [min_Nsv] (size_t i) {return min_Nsv;};
+	double alpha = args.get<double>("alpha",1e2);
+	size_t limalpha = args.get<size_t>("limalpha",30);
+	DynParam.max_alpha_rsvd = [alpha,limalpha] (size_t i) {return (i<limalpha)? alpha:0;};
+	DynParam.min_alpha_rsvd = [alpha,limalpha] (size_t i) {return (i<limalpha)? 0.01*alpha:0;};
+	double eps_svd = args.get<double>("eps_svd",1e-7);
+	DynParam.eps_svd = [eps_svd] (size_t i) {return eps_svd;};
+	size_t max_Nrich = args.get<int>("max_Nrich",-1);
+	DynParam.max_Nrich = [max_Nrich] (size_t i) {return max_Nrich;};
+	size_t Mincr_abs = args.get<size_t>("Mincr_abs",20);
+	size_t Mincr_per = args.get<size_t>("Mincr_per",4);
+	double Mincr_rel = args.get<double>("Mincr_rel",1.1);
+	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
+	DynParam.Mincr_per = [Mincr_per] (size_t i) {return Mincr_per;};
+	DynParam.Mincr_rel = [Mincr_rel] (size_t i) {return Mincr_rel;};
+	size_t lim_two_site_iter = args.get<size_t>("lim2site",10);
+	DynParam.iteration = [lim_two_site_iter] (size_t i) {return (i<lim_two_site_iter)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
 //	for (size_t l=1; l<L; ++l)
 //	{
 //		params.push_back({"D",1ul,l});
@@ -271,8 +301,11 @@ int main (int argc, char* argv[])
 //		assert(H_SU2xU1.validate({S,N}) and "Bad total quantum number of the MPS.");
 		
 		VMPS::KondoSU2xU1::Solver DMRG_SU2xU1(VERB);
+		DMRG_SU2xU1.userSetGlobParam();
+		DMRG_SU2xU1.userSetDynParam();
+		DMRG_SU2xU1.GlobParam = GlobParam;
+		DMRG_SU2xU1.DynParam = DynParam;
 		DMRG_SU2xU1.edgeState(H_SU2xU1, g_SU2xU1, {S,N}, LANCZOS::EDGE::GROUND);
-		
 		t_SU2xU1 = Watch_SU2xU1.time();
 		
 		if (CORR)

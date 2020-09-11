@@ -1874,7 +1874,9 @@ void contract_AA2 (const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > 
 		auto q_s1s2s = Symmetry::reduceSilent(qloc1[s1],qloc2[s2]);
 		for (const auto &q_s1s2: q_s1s2s)
 		{
-			size_t s1s2 = locBasis.outer_num(q_s1s2) + locBasis.leftAmount(q_s1s2,{qloc1[s1],qloc2[s2]}) + locBasis1.inner_num(s1) + locBasis2.inner_num(s2)*locBasis1.inner_dim(qloc1[s1]);
+			//get the number of the basis state with QN q_s1s2 which results from state (s1 with QN qloc1[s1] of locBasis1) and (s2 with QN qloc2[s2] of locBasis2)
+			size_t s1s2 = locBasis.outer_num(q_s1s2) + locBasis.leftOffset(q_s1s2,{qloc1[s1],qloc2[s2]},{locBasis1.inner_num(s1),locBasis2.inner_num(s2)});
+			// size_t s1s2 = locBasis.outer_num(q_s1s2) + locBasis.leftAmount(q_s1s2,{qloc1[s1],qloc2[s2]}) + locBasis1.inner_num(s1) + locBasis2.inner_num(s2)*locBasis1.inner_dim(qloc1[s1]);
 			for (size_t q1=0; q1<A1[s1].size(); q1++)
 			{
 			    typename Symmetry::qType qm = A1[s1].out[q1];
@@ -2439,8 +2441,10 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 			  Cdump, false, truncDump, Sdump, eps_svd,min_Nsv,max_Nsv);
 }
 
-// --ooo-- = 
-//   | |   
+//                 M
+// --ooooo-- = --o---o--
+//   |   |       |   |
+//M is the possibly enlarged basis
 template<typename Symmetry, typename Scalar>
 void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, const vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Apair,
 				const vector<qarray<Symmetry::Nq> >& qloc_l, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Al,
@@ -2460,7 +2464,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 	// cout << "right" << endl << locBasis_r << endl;
 	Qbasis<Symmetry> leftTot = leftBasis.combine(locBasis_l);
 	// cout << "combined Basis left:" << endl << leftTot << endl;
-	Qbasis<Symmetry> rightTot = rightBasis.combine(locBasis_r,true);
+	Qbasis<Symmetry> rightTot = rightBasis.combine(locBasis_r,true); //true means flip locBasis_r before the combination
 	// cout << "combined Basis right:" << endl << rightTot << endl;
 	
 	for (size_t s=0; s<qloc_l.size(); ++s)
@@ -2479,7 +2483,9 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 		auto q_slsrs = Symmetry::reduceSilent(qloc_l[sl],qloc_r[sr]);
 		for (const auto &q_slsr:q_slsrs)
 		{
-			size_t s = locBasis.outer_num(q_slsr) + locBasis.leftAmount(q_slsr,{qloc_l[sl],qloc_r[sr]}) + locBasis_l.inner_num(sl) + locBasis_r.inner_num(sr)*locBasis_l.inner_dim(qloc_l[sl]);
+			//get the number of the basis state with QN q_slsr which results from state (sl with QN qloc_l[sl] of locBasis_l) and (sr with QN qloc_r[sr] of locBasis_r)
+			size_t s = locBasis.outer_num(q_slsr) + locBasis.leftOffset(q_slsr,{qloc_l[sl],qloc_r[sr]},{locBasis_l.inner_num(sl),locBasis_r.inner_num(sr)});
+			// size_t s = locBasis.outer_num(q_slsr) + locBasis.leftAmount(q_slsr,{qloc_l[sl],qloc_r[sr]}) + locBasis_l.inner_num(sl) + locBasis_r.inner_num(sr)*locBasis_l.inner_dim(qloc_l[sl]);
 			assert(locBasis.find(s) == q_slsr);
 			// if (!Symmetry::triangle(qarray3<Symmetry::Nq>{qloc_l[sl],qloc_r[sr],qloc[s]})) {continue;}
 			for (size_t q=0; q<Apair[s].size(); q++)
@@ -2499,11 +2505,14 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 					// cout << "factor_cgc=" << factor_cgc << endl;
 					Eigen::Matrix<Scalar,-1,-1> Mtmp(leftTot.inner_dim(Ql),rightTot.inner_dim(Qr));
 					Mtmp.setZero();
-					Index plain_left1 = leftBasis.inner_dim(Apair[s].in[q])*locBasis_l.inner_num(sl);
-					Index left1 = leftTot.leftAmount(Ql,{Apair[s].in[q],  qloc_l[sl]}) + plain_left1;
-					Index plain_left2 = rightBasis.inner_dim(Apair[s].out[q])*locBasis_r.inner_num(sr);
+					// Index plain_left1 = leftBasis.inner_dim(Apair[s].in[q])*locBasis_l.inner_num(sl);
+					// Index left1 = leftTot.leftAmount(Ql,{Apair[s].in[q],  qloc_l[sl]}) + plain_left1;
+					Index left1 = leftTot.leftOffset(Ql, {Apair[s].in[q], qloc_l[sl]}, {0, locBasis_l.inner_num(sl)});
+
 					array<qarray<Symmetry::Nq>,2> source = {Apair[s].out[q],  Symmetry::flip(qloc_r[sr])};
-					Index left2 = rightTot.leftAmount(Qr,source) + plain_left2;
+					// Index plain_left2 = rightBasis.inner_dim(Apair[s].out[q])*locBasis_r.inner_num(sr);
+					// Index left2 = rightTot.leftAmount(Qr,source) + plain_left2;
+					Index left2 = rightTot.leftOffset(Qr, source, {0, locBasis_r.inner_num(sr)});
 					Mtmp.block(left1, left2, Apair[s].block[q].rows(), Apair[s].block[q].cols()) += factor_cgc*Apair[s].block[q];
 					auto it_Aclump = Aclump.dict.find({Ql,Qr});
 					if (it_Aclump == Aclump.dict.end())
@@ -2549,6 +2558,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 		}
 	}
 
+	//reshape left back and write result to Al
 	for (const auto &[ql, dim_l, plain] : leftBasis)
 	for (size_t s1=0; s1<qloc_l.size(); s1++)
 	{
@@ -2559,7 +2569,8 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 			if (it_left == left.dict.end()) {continue;}
 			if (Ql > qtop or Ql < qbot) {continue;}
 			Eigen::Matrix<Scalar,-1,-1> Mtmp(leftBasis.inner_dim(ql),left.block[it_left->second].cols());
-			Index left1 = leftTot.leftAmount (Ql,{ql,  qloc_l[s1]}) + leftBasis.inner_dim(ql)*locBasis_l.inner_num(s1);
+			// Index left1 = leftTot.leftAmount (Ql,{ql,  qloc_l[s1]}) + leftBasis.inner_dim(ql)*locBasis_l.inner_num(s1);
+			Index left1 = leftTot.leftOffset (Ql,{ql,  qloc_l[s1]}, {0, locBasis_l.inner_num(s1)});
 			Mtmp = left.block[it_left->second].block(left1, 0, leftBasis.inner_dim(ql), left.block[it_left->second].cols());
 			auto it_A = Al[s1].dict.find({ql,Ql});
 			if (it_A == Al[s1].dict.end())
@@ -2573,6 +2584,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 		}
 	}
 
+	//reshape right back and write result to Al
 	for (const auto &[qr, dim_r, plain] : rightBasis)
 	for (size_t s2=0; s2<qloc_r.size(); s2++)
 	{
@@ -2584,7 +2596,8 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 			if (Qr > qtop or Qr < qbot) {continue;}
 			Eigen::Matrix<Scalar,-1,-1> Mtmp(right.block[it_right->second].rows(),rightBasis.inner_dim(qr));
 			array<qarray<Symmetry::Nq>,2> source = {qr,  Symmetry::flip(qloc_r[s2])};
-			Index left2 = rightTot.leftAmount (Qr,source) + rightBasis.inner_dim(qr)*locBasis_r.inner_num(s2);
+			// Index left2 = rightTot.leftAmount (Qr,source) + rightBasis.inner_dim(qr)*locBasis_r.inner_num(s2);
+			Index left2 = rightTot.leftOffset (Qr, source, {0, locBasis_r.inner_num(s2)});
 			Mtmp = Symmetry::coeff_splitAA(Qr,qr,qloc_r[s2])*right.block[it_right->second].block(0, left2, right.block[it_right->second].rows(), rightBasis.inner_dim(qr));
 			// cout << "Qr=" << Qr << ", qr=" << qr << ", sr=" << qloc_r[s2] << endl;
 			// cout << "factor_cgc=" << Symmetry::coeff_splitAA(Qr,qr,qloc_r[s2]) << endl;

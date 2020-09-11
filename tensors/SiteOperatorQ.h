@@ -64,7 +64,7 @@ template<typename Operator>
 Operator EDSolver<Operator>::
 groundstate( qType Q ) const
 {
-	assert(COMPUTED and "First diagonlize the Operator before accessing the groundstate!");
+	assert(COMPUTED and "First diagonalize the operator before accessing the groundstate!");
 	auto all_gs = eigenvectors();
 	Operator out(all_gs.Q(),all_gs.basis());
 	auto it = all_gs.data().dict.find({Q,Q});
@@ -133,6 +133,7 @@ public:
 
 	void setZero();
 	void setIdentity();
+	void setRandom();
 	
 	static SiteOperatorQ<Symmetry,MatrixType_> prod( const SiteOperatorQ<Symmetry,MatrixType_>& O1, const SiteOperatorQ<Symmetry,MatrixType_>& O2,
 													 const qType& target );
@@ -220,7 +221,7 @@ operator() ( const std::string& bra, const std::string& ket )
 			{
 				return data_.block[it->second](i,j);
 			}
-				else if constexpr ( std::is_same<MatrixType_,Eigen::SparseMatrix<Scalar> >::value )
+		else if constexpr ( std::is_same<MatrixType_,Eigen::SparseMatrix<Scalar> >::value )
 			{
 				return data_.block[it->second].coeffRef(i,j);
 			}
@@ -403,6 +404,16 @@ setIdentity()
 	for(const auto& q : basis().qloc())
 	{
 		(*this)(q,q).setIdentity();
+	}
+}
+
+template<typename Symmetry, typename MatrixType_>
+void SiteOperatorQ<Symmetry,MatrixType_>::
+setRandom()
+{
+	for(const auto& q : basis().qloc())
+	{
+		(*this)(q,q).setRandom();
 	}
 }
 
@@ -616,7 +627,7 @@ SiteOperatorQ<Symmetry,MatrixType_> kroneckerProduct( const SiteOperatorQ<Symmet
 template<typename Symmetry,typename MatrixType_>
 std::ostream& operator<<(std::ostream& os, const SiteOperatorQ<Symmetry,MatrixType_> &Op)
 {
-	os << Op.print(false);
+	os << Op.print(true);
 	return os;
 }
 

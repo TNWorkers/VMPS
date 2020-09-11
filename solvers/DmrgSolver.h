@@ -116,7 +116,7 @@ private:
 	size_t N_sites, N_phys;
 	size_t Dmax, Mmax, Nqmax;
 	double totalTruncWeight;
-	size_t Dmax_old;
+	size_t Mmax_old;
 	double err_eigval, err_state;
 	
 	vector<PivotMatrix1<Symmetry,Scalar,Scalar> > Heff; // Scalar = MpoScalar for ground state
@@ -203,6 +203,7 @@ save (string filename) const
 	target.save_scalar(SweepStat.N_sweepsteps,"N_sweepsteps");
 	target.save_scalar(static_cast<int>(SweepStat.CURRENT_DIRECTION),"direction");
 	target.save_scalar(Dmax,"D");
+	target.save_scalar(Mmax,"M");
 	target.save_scalar(err_eigval,"errorE");
 	target.save_scalar(err_state,"errorS");
 }
@@ -279,8 +280,8 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	{
 		// resize Vout
 		auto Boundaries_tmp = Vout.state.Boundaries; // save to temporary, otherwise reset in the following constructor
-		Vout.state = Mps<Symmetry,Scalar>(H, GlobParam.Dinit, Qtot_input, GlobParam.Qinit);
-		Vout.state.max_Nsv = GlobParam.Dinit;
+		Vout.state = Mps<Symmetry,Scalar>(H, GlobParam.Minit, Qtot_input, GlobParam.Qinit);
+		Vout.state.max_Nsv = GlobParam.Minit;
 		Vout.state.min_Nsv = DynParam.min_Nsv(0);
 		Vout.state.max_Nrich = DynParam.max_Nrich(0);
 		Vout.state.Boundaries = Boundaries_tmp;
@@ -353,12 +354,12 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 //			Vout.state.update_outbase();
 //		}
 		
-		Dmax_old = GlobParam.Dinit;
+		Mmax_old = GlobParam.Minit;
 	}
 	else
 	{
-		Vout.state.max_Nsv = Vout.state.calc_Dmax();
-		Dmax_old = Vout.state.max_Nsv;
+		Vout.state.max_Nsv = Vout.state.calc_Mmax();
+		Mmax_old = Vout.state.max_Nsv;
 	}
 	
 //	Vout.state.graph("ginit");
@@ -367,7 +368,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	//otherwise prepare for continuing at the given SweepStatus.
 	if (SweepStat.pivot == -1)
 	{
-                if (Vout.state.get_pivot() != -1 and Vout.state.get_pivot() != N_sites-1) {Vout.state.sweep(N_sites-1,DMRG::BROOM::QR);}
+		if (Vout.state.get_pivot() != -1 and Vout.state.get_pivot() != N_sites-1) {Vout.state.sweep(N_sites-1,DMRG::BROOM::QR);}
 		SweepStat.N_sweepsteps = SweepStat.N_halfsweeps = 0;
 		for (size_t l=N_sites-1; l>0; --l)
 		{
@@ -520,15 +521,15 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		}
 		lout << "• initial bond dim. increase by ";
 		cout << termcolor::underline;
-		lout << static_cast<int>((DynParam.Dincr_rel(0)-1.)*100.) << "%";
+		lout << static_cast<int>((DynParam.Mincr_rel(0)-1.)*100.) << "%";
 		cout << termcolor::reset;
 		lout << " and at least by ";
 		cout << termcolor::underline;
-		lout << DynParam.Dincr_abs(0);
+		lout << DynParam.Mincr_abs(0);
 		cout << termcolor::reset;
 		lout << " every ";
 		cout << termcolor::underline;
-		lout << DynParam.Dincr_per(0);
+		lout << DynParam.Mincr_per(0);
 		cout << termcolor::reset;
 		lout << " half-sweeps" << endl;
 		
@@ -1248,8 +1249,24 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 			// lout << setprecision(2) << "S=" << Vout.state.entropy().transpose() << setprecision(standard_precision) << endl;
 		}
 	}
-	
-	Vout.state.set_defaultCutoffs();
+
+	size_t l_start = N_sites%2 == 0 ? N_sites/2ul : (N_sites+1ul)/2ul;
+
+	for (size_t l=l_start; l<=l_start+1; l++)
+	{
+		auto [qs,svs] = Vout.state.entanglementSpectrumLoc(l);
+		ofstream Filer(make_string("sv_final_",l,".dat"));
+		size_t index=0;
+		for (size_t i=0; i<svs.size(); i++)
+		{
+			for (size_t deg=0; deg<Symmetry::degeneracy(qs[i]); deg++)
+			{
+				Filer << index << "\t"  << qs[i] << "\t" << svs[i] << endl;
+				index++;
+			}
+		}
+		Filer.close();
+	}
 	
 	if (Vout.state.calc_Nqavg() <= 1.5 and !Symmetry::IS_TRIVIAL and Vout.state.min_Nsv == 0)
 	{
@@ -1284,24 +1301,24 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 //		Vout.state.graph(make_string("sweep",SweepStat.N_halfsweeps));
 		
 		size_t j = SweepStat.N_halfsweeps;
-		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
+		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Mlimit
 		Vout.state.eps_svd = DynParam.eps_svd(j);
-		if (j%DynParam.Dincr_per(j) == 0)
+		if (j%DynParam.Mincr_per(j) == 0)
 		//and (totalTruncWeight >= Vout.state.eps_svd or err_state > 10.*GlobParam.tol_state)
 		{
-			// increase by Dincr_abs for small Dmax and by Dincr_rel for large Dmax(e.g. add 10% of current Dmax)
-			size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Dincr_rel(j) * Vout.state.max_Nsv), 
-			                                             Vout.state.max_Nsv + DynParam.Dincr_abs(j));
-			// do not increase beyond Dlimit
-			Vout.state.max_Nsv = min(max_Nsv_new, GlobParam.Dlimit);
+			// increase by Mincr_abs for small Mmax and by Mincr_rel for large Mmax(e.g. add 10% of current Mmax)
+			size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Mincr_rel(j) * Vout.state.max_Nsv), 
+			                                             Vout.state.max_Nsv + DynParam.Mincr_abs(j));
+			// do not increase beyond Mlimit
+			Vout.state.max_Nsv = min(max_Nsv_new, GlobParam.Mlimit);
 		}
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
-			if (Vout.state.max_Nsv != Dmax_old)
+			if (Vout.state.max_Nsv != Mmax_old)
 			{
-				lout << "Dmax=" << Dmax_old << "→" << Vout.state.max_Nsv << endl;
-				Dmax_old = Vout.state.max_Nsv;
+				lout << "Mmax=" << Mmax_old << "→" << Vout.state.max_Nsv << endl;
+				Mmax_old = Vout.state.max_Nsv;
 			}
 			lout << endl;
 		}

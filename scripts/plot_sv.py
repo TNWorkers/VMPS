@@ -1,11 +1,22 @@
+import os
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 
-L=2
+parser = argparse.ArgumentParser(description='Plot the singular values of the MPS')
+parser.add_argument('-dir', type=str, default='.', dest='dir', help='The directory where the singular values are stored. Files have to be named as sv_final_<N>.dat.')
 
-for l in list(range(L)):
+args = parser.parse_args()
+
+print('Plot files in directory',args.dir)
+nums=[]
+for f in os.listdir(args.dir):
+    if f.find('sv_final_') != -1:
+        nums.append(int(f[len('sv_final_'):f.find('.dat')]))
+
+for l in nums:
     fig, (ax1, ax2) = plt.subplots(2, 1)
-    name = 'sv_final_' + str(l) + '.dat'
+    name = args.dir + '/sv_final_' + str(l) + '.dat'
     sv_file = open(name,'r')
     index_ = []
     qs_ = []
@@ -17,11 +28,8 @@ for l in list(range(L)):
         i=i+1
         ind,q,sv = line.strip().split("\t")
         index_.append(int(ind))
-        
-        if q == '()':
-            qval = 0
-        else:
-            qval = int(q)
+        qval = q
+            
         qs_.append(qval)
         svs_.append(float(sv))
 
@@ -35,7 +43,6 @@ for l in list(range(L)):
             index_dict_[qval] = [int(ind)]
 
     index = np.array(index_,dtype=int)
-    qs = np.array(qs_,dtype=int)
     svs = np.array(svs_,dtype=float)
     
     sv_dict = {}
@@ -44,12 +51,15 @@ for l in list(range(L)):
     index_dict = {}
     for k, v in index_dict_.items():
         index_dict[k] = np.array(v)
-        
+
+    pos=0.
     for k, v in sv_dict.items():
-        ax1.plot(index_dict[k],sv_dict[k],'+',label='q='+str(k))
-        ax2.bar(float(k), - np.sum(np.square(sv_dict[k]) * np.log(np.square(sv_dict[k]))) )
+        ax1.plot(index_dict[k],sv_dict[k],'+',label='q='+k)
+        ax2.bar(pos, - np.sum(np.square(sv_dict[k]) * np.log(np.square(sv_dict[k]))) )
+        pos += 1
         
-    ax1.legend()
+    ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+       ncol=6, mode="expand", borderaxespad=0.)
     ax1.set_yscale('log')
     ax1.set_ylabel('sv')
     ax1.set_xlabel('#')
