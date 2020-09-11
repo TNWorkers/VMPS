@@ -2437,8 +2437,9 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 {
 	Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > Cdump;
 	double truncDump, Sdump;
+	map<qarray<Symmetry::Nq>,ArrayXd> SVspec_dumb;
 	split_AA2(DIR, locBasis, Apair, qloc_l, Al, qloc_r, Ar, qtop, qbot,
-			  Cdump, false, truncDump, Sdump, eps_svd,min_Nsv,max_Nsv);
+			  Cdump, false, truncDump, Sdump, SVspec_dumb, eps_svd,min_Nsv,max_Nsv);
 }
 
 //                 M
@@ -2450,7 +2451,8 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 				const vector<qarray<Symmetry::Nq> >& qloc_l, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Al,
 				const vector<qarray<Symmetry::Nq> >& qloc_r, vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > &Ar,
 				const qarray<Symmetry::Nq>& qtop, const qarray<Symmetry::Nq>& qbot,
-				Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C, bool SEPARATE_SV, double &truncWeight, double &S, double eps_svd, size_t min_Nsv, size_t max_Nsv)
+				Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > &C, bool SEPARATE_SV, double &truncWeight, double &S, map<qarray<Symmetry::Nq>,ArrayXd> &SVspec,
+				double eps_svd, size_t min_Nsv, size_t max_Nsv)
 {
 	truncWeight=0.;
 	S=0;
@@ -2528,7 +2530,7 @@ void split_AA2 (DMRG::DIRECTION::OPTION DIR, const Qbasis<Symmetry>& locBasis, c
 		}
 	}
 	// cout << "Aclump:" << endl << Aclump.print(true) << endl;
-	auto [U,Sigma,Vdag] = Aclump.truncateSVD(max_Nsv,eps_svd,truncWeight,false); //false: DONT PRESERVE MULTIPLETS
+	auto [U,Sigma,Vdag] = Aclump.truncateSVD(max_Nsv,eps_svd,truncWeight,S,SVspec,false,false); //false: DONT PRESERVE MULTIPLETS
 	// cout << "U,Sigma,Vdag:" << endl << U.print(true) << endl << Sigma.print(true) << endl << Vdag.print(true) << endl;
 	Biped<Symmetry,Eigen::Matrix<Scalar,-1,-1> > left,right;
 	if (DIR == DMRG::DIRECTION::RIGHT)

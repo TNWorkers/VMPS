@@ -2600,15 +2600,16 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 {
 	Biped<Symmetry,MatrixType> Cdump;
 	double entropy;
+	map<qarray<Nq>,ArrayXd> SV;
 	
 	Qbasis<Symmetry> qloc_l, qloc_r;
 	qloc_l.pullData(locBasis(loc)); qloc_r.pullData(locBasis((loc+1)));
 	auto combined_basis = qloc_l.combine(qloc_r);
 	
 	split_AA2(DIR, combined_basis, Apair, qloc[loc], A[loc], qloc[loc+1], A[loc+1],
-	         QoutTop[loc], QoutBot[loc],
-	         Cdump, false, truncWeight(loc), entropy,
-	         this->eps_svd, this->min_Nsv, this->max_Nsv);
+			  QoutTop[loc], QoutBot[loc],
+			  Cdump, false, truncWeight(loc), entropy, SV,
+			  this->eps_svd, this->min_Nsv, this->max_Nsv);
 	
 	// split_AA(DIR, Apair, qloc[loc], A[loc], qloc[loc+1], A[loc+1],
 	//          QoutTop[loc], QoutBot[loc],
@@ -2631,6 +2632,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 		if (bond != -1)
 		{
 			S(loc) = entropy;
+			SVspec[loc] = SV;
 		}
 	}
 	else
@@ -2639,6 +2641,7 @@ sweepStep2 (DMRG::DIRECTION::OPTION DIR, size_t loc, const vector<Biped<Symmetry
 		if (bond != -1)
 		{
 			S(loc-1) = entropy;
+			SVspec[loc-1] = SV;
 		}
 	}
 }
