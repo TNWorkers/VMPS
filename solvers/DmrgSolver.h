@@ -479,7 +479,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	{
 		lout << PrepTimer.info("• initial state & sweep") << endl;
 		size_t standard_precision = cout.precision();
-		lout << std::setprecision(13) << "• initial energy        : E₀=" << Eold << std::setprecision(standard_precision) << endl;
+		lout << std::setprecision(15) << "• initial energy        : E₀=" << Eold << std::setprecision(standard_precision) << endl;
 		lout <<                          "• initial state         : " << Vout.state.info() << endl;
 		lout <<                          "• initial fluctuation strength  : α_rsvd=";
 		cout << termcolor::underline;
@@ -846,11 +846,11 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		size_t standard_precision = cout.precision();
 		if (EDGE == LANCZOS::EDGE::GROUND)
 		{
-			lout << "E₀=" << setprecision(13) << Vout.energy << ", E₀/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
+			lout << "E₀=" << setprecision(15) << Vout.energy << ", E₀/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
 		}
 		else
 		{
-			lout << "Eₘₐₓ=" << setprecision(13) << Vout.energy << ", Eₘₐₓ/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
+			lout << "Eₘₐₓ=" << setprecision(15) << Vout.energy << ", Eₘₐₓ/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
 		}
 		lout << errorCalcInfo.str();
 		lout << Vout.state.info() << endl;
@@ -1235,7 +1235,7 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 	{
 		size_t standard_precision = cout.precision();
 		string Eedge = (EDGE == LANCZOS::EDGE::GROUND)? "Emin" : "Emax";
-		lout << termcolor::bold << Eedge << "=" << setprecision(13) << Vout.energy << ", "
+		lout << termcolor::bold << Eedge << "=" << setprecision(15) << Vout.energy << ", "
 			 << Eedge << "/L=" << Vout.energy/N_phys << setprecision(standard_precision) << termcolor::reset << endl;
 		lout << eigeninfo() << endl;
 		lout << Vout.state.info() << endl;

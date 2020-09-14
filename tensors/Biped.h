@@ -699,7 +699,7 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entr
 	truncWeight=0;
 	Biped<Symmetry,MatrixType_> U,Vdag,Sigma;
 	Biped<Symmetry,MatrixType_> trunc_U,trunc_Vdag,trunc_Sigma;
-	vector<pair<typename Symmetry::qType, Scalar> > allSV;
+	vector<pair<typename Symmetry::qType, double> > allSV;
 	for (size_t q=0; q<dim; ++q)
 	{
 		#ifdef DONT_USE_BDCSVD
@@ -709,7 +709,7 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entr
 		#endif
 		
 		Jack.compute(block[q], ComputeThinU|ComputeThinV);
-		for (size_t i=0; i<Jack.singularValues().size(); i++) {allSV.push_back(make_pair(in[q],Jack.singularValues()(i)));}
+		for (size_t i=0; i<Jack.singularValues().size(); i++) {allSV.push_back(make_pair(in[q],std::real(Jack.singularValues()(i))));}
 		// for (const auto& s:Jack.singularValues()) {allSV.push_back(make_pair(in[q],s));}
 
 		U.push_back(in[q], out[q], Jack.matrixU());
@@ -717,14 +717,14 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entr
 		Vdag.push_back(in[q], out[q], Jack.matrixV().adjoint());
 	}
 	size_t numberOfStates = allSV.size();
-	std::sort(allSV.begin(),allSV.end(),[](const pair<typename Symmetry::qType, Scalar> &sv1, const pair<typename Symmetry::qType, Scalar> &sv2) {return sv1.second > sv2.second;});
+	std::sort(allSV.begin(),allSV.end(),[](const pair<typename Symmetry::qType, double> &sv1, const pair<typename Symmetry::qType, double> &sv2) {return sv1.second > sv2.second;});
 	for (size_t i=maxKeep; i<allSV.size(); i++)
 	{
 			truncWeight += Symmetry::degeneracy(allSV[i].first) * std::pow(std::abs(allSV[i].second),2.);
 	}
 	allSV.resize(min(maxKeep,numberOfStates));
 	// std::erase_if(allSV, [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv < eps_svd); }); c++-20 version	
-	allSV.erase(std::remove_if(allSV.begin(), allSV.end(), [eps_svd](const pair<typename Symmetry::qType, Scalar> &sv) { return (sv.second < eps_svd); }), allSV.end());
+	allSV.erase(std::remove_if(allSV.begin(), allSV.end(), [eps_svd](const pair<typename Symmetry::qType, double> &sv) { return (sv.second < eps_svd); }), allSV.end());
 
 	// cout << "saving sv for expansion to file, #sv=" << allSV.size() << endl;
 	// ofstream Filer("sv_expand");
@@ -767,7 +767,7 @@ truncateSVD(size_t maxKeep, EpsScalar eps_svd, double &truncWeight, double &entr
 		trunc_Sigma.push_back(q,q,Sigma.block[itSigma->second].diagonal().head(Nret).asDiagonal());
 		if (RETURN_SPEC)
 		{
-			SVspec.insert(make_pair(q, Sigma.block[itSigma->second].diagonal().head(Nret)));
+			SVspec.insert(make_pair(q, Sigma.block[itSigma->second].diagonal().head(Nret).real()));
 		}
 		auto itU = U.dict.find({q,q});
 		trunc_U.push_back(q, q, U.block[itU->second].leftCols(Nret));

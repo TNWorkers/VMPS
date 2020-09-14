@@ -199,12 +199,12 @@ int main (int argc, char* argv[])
 	DMRG::CONTROL::GLOB GlobParam;
 	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",1ul);
 	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",100ul);
-	GlobParam.Dinit = args.get<size_t>("Dinit",100ul);
-	GlobParam.Qinit = args.get<size_t>("Qinit",6ul);
+	GlobParam.Minit = args.get<size_t>("Minit",1ul);
+	GlobParam.Qinit = args.get<size_t>("Qinit",1ul);
 	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
 	GlobParam.CALC_S_ON_EXIT = false;
-	GlobParam.Dlimit = args.get<size_t>("Dlimit",1000ul); // for groundstate
-	if (!BETAPROP) base += make_string("_Dlimit=",GlobParam.Dlimit);
+	GlobParam.Mlimit = args.get<size_t>("Dlimit",10000ul); // for groundstate
+	if (!BETAPROP) base += make_string("_Mlimit=",GlobParam.Mlimit);
 	
 	lout.set(base+".log",wd+"log");
 	
@@ -213,11 +213,11 @@ int main (int argc, char* argv[])
 	int max_Nrich = args.get<int>("max_Nrich",-1);
 	DynParam.max_Nrich = [max_Nrich] (size_t i) {return max_Nrich;};
 	
-	size_t Dincr_per = args.get<size_t>("Dincr_per",4ul);
-	DynParam.Dincr_per = [Dincr_per] (size_t i) {return Dincr_per;};
+	size_t Mincr_per = args.get<size_t>("Mincr_per",4ul);
+	DynParam.Mincr_per = [Mincr_per] (size_t i) {return Mincr_per;};
 	
-	size_t Dincr_abs = args.get<size_t>("Dincr_abs",6ul);
-	DynParam.Dincr_abs = [Dincr_abs] (size_t i) {return Dincr_abs;};
+	size_t Mincr_abs = args.get<size_t>("Dincr_abs",50ul);
+	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
 	size_t lim2site = args.get<size_t>("lim2site",30ul);
 	DynParam.iteration = [lim2site] (size_t i) {return (i<lim2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
