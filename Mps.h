@@ -692,7 +692,7 @@ info() const
 	if (this->N_sites > 1)
 	{
 		S.maxCoeff(&lSmax);
-		if (!std::isnan(S(lSmax)))
+		if (!std::isnan(S(lSmax)) and S(lSmax) > 0)
 		{
 			ss << "Smax(l=" << lSmax << ")=" << S(lSmax) << ", ";
 		}
@@ -1353,13 +1353,13 @@ innerResize (size_t Mmax)
 				}
 				else if (Qin == Symmetry::qvacuum() and Qout != Symmetry::qvacuum())
 				{
-					Drow_lim = Dmax_in;
-					Dcol_lim = Dmax_out+Dmax_out_remainder;
+					Drow_lim = Dmax_in+Dmax_in_remainder;
+					Dcol_lim = Dmax_out;
 				}
 				else if (Qin != Symmetry::qvacuum() and Qout == Symmetry::qvacuum())
 				{
-					Drow_lim = Dmax_in+Dmax_in_remainder;
-					Dcol_lim = Dmax_out;
+					Drow_lim = Dmax_in;
+					Dcol_lim = Dmax_out+Dmax_out_remainder;
 				}
 				else
 				{
@@ -1807,7 +1807,6 @@ leftSweepStep (size_t loc, DMRG::BROOM::OPTION TOOL, PivotMatrix1<Symmetry,Scala
 	{
 		enrich_left(loc,H);
 	}
-	
 	ArrayXd truncWeightSub(inbase[loc].Nq()); truncWeightSub.setZero();
 	ArrayXd entropySub(inbase[loc].Nq()); entropySub.setZero();
 	if (loc != 0) {SVspec[loc-1].clear();}
@@ -4468,7 +4467,7 @@ ostream &operator<< (ostream& os, const Mps<Symmetry,Scalar> &V)
 		for (size_t s=0; s<V.locBasis(l).size(); ++s)
 		{
 			os << "l=" << l << "\ts=" << Sym::format<Symmetry>(V.locBasis(l)[s]) << endl;
-			os << V.A_at(l)[s].print(true); //V.A_at(l)[s].formatted();
+			os << V.A_at(l)[s].print(false); //V.A_at(l)[s].formatted();
 			os << endl;
 		}
 		os << setfill('-') << setw(80) << "-" << setfill(' ');
