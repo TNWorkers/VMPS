@@ -110,7 +110,7 @@ public:
 	
 	/**Energy penalty for projected-out states.*/
 	double Epenalty = 10.;
-	
+        
 private:
 	
 	size_t N_sites, N_phys;
@@ -124,7 +124,7 @@ private:
 	double Eold;
 	
 	double DeltaEopt;
-	double max_alpha_rsvd;
+	double max_alpha_rsvd, min_alpha_rsvd;
 
 	bool USER_SET_GLOBPARAM    = false;
 	bool USER_SET_DYNPARAM     = false;
@@ -612,7 +612,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	{
 		sweep_to_edge(H,Vout,true); // build_LR = true
 	}
-	
+        
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
 		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
@@ -1288,8 +1288,12 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and SweepStat.N_halfsweeps < GlobParam.max_halfsweeps) or
 	       SweepStat.N_halfsweeps < GlobParam.min_halfsweeps)
 	{
+                // Set limits for alpha for the upcoming halfsweep
+                min_alpha_rsvd = DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps);
+                max_alpha_rsvd = DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps);
+                
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and 
-		    DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps) == 0. and
+		    max_alpha_rsvd == 0. and
 		    MESSAGE_ALPHA == false)
 		{
 			lout << "α_rsvd is turned off now!" << endl << endl;
@@ -1297,10 +1301,13 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		}
 		
 		// sweep
-		halfsweep(H,Vout,EDGE);
+		halfsweep(H,Vout,EDGE); //SweepStat.N_halfsweeps gets incremented by 1!
 //		Vout.state.graph(make_string("sweep",SweepStat.N_halfsweeps));
 		
 		size_t j = SweepStat.N_halfsweeps;
+
+                DynParam.doSomething(j);
+
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Mlimit
 		Vout.state.eps_svd = DynParam.eps_svd(j);
 		if (j%DynParam.Mincr_per(j) == 0)
@@ -1322,9 +1329,7 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 			}
 			lout << endl;
 		}
-		
-		DynParam.doSomething(j);
-		
+				
 		#ifdef USE_HDF5_STORAGE
 		if (GlobParam.savePeriod != 0 and j%GlobParam.savePeriod == 0)
 		{
@@ -1427,10 +1432,12 @@ adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vou
 	f = max(0.1,min(2.,f)); // limit between [0.1,2]
 	Vout.state.alpha_rsvd *= f;
 	// limit between [min_alpha_rsvd,max_alpha_rsvd]:
-	double alpha_min = min(DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps), 
-	                       DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps)); // for the accidental case alpha_min > alpha_max
-	Vout.state.alpha_rsvd = max(alpha_min, min(DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps), Vout.state.alpha_rsvd));
-	
+	// double alpha_min = min(DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps), 
+	//                        DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps)); // for the accidental case alpha_min > alpha_max
+	// Vout.state.alpha_rsvd = max(alpha_min, min(DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps), Vout.state.alpha_rsvd));
+        double alpha_min = min(min_alpha_rsvd, max_alpha_rsvd); // for the accidental case alpha_min > alpha_max
+	Vout.state.alpha_rsvd = max(alpha_min, min(max_alpha_rsvd, Vout.state.alpha_rsvd));
+        
 //	cout << "ΔEopt=" << DeltaEopt << ", ΔEtrunc=" << DeltaEtrunc << ", f=" << f << ", alpha=" << Vout.state.alpha_rsvd << endl;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
