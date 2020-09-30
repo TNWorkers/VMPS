@@ -452,7 +452,7 @@ public:
     /**
      *  Prints information about the current state of operators and MPO auxiliar basis.
      */
-    void show();
+    void show() const;
     
     /**
      *  @param loc      Lattice site
@@ -1024,7 +1024,7 @@ calc_qList(const std::vector<OperatorType> &opList)
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
-show()
+show() const
 {
     lout << "####################################################################################################" << std::endl;
     lout << "Name: " << label << std::endl;
@@ -1061,7 +1061,7 @@ show()
     if(check_qPhys()) lout << "• Physical bases of local Hilbert spaces" << std::endl;
     if(GOT_QOP) lout << "• Local operator bases" << std::endl;
     if(GOT_W) lout << "• W matrix" << std::endl;
-    if(current_power > 1) lout << "• All of the previous for all powers of the MPO up to " << current_power << std::endl;
+    if(current_power > 1) lout << "• All of the previous up to " << current_power << ". power of the MPO" << std::endl;
     if(reversed.SET) lout << "• Reversed W matrix and auxiliar bases" << std::endl;
     #if DEBUG_VERBOSITY > 0
     for(std::size_t loc=0; loc<N_sites; ++loc)
@@ -1103,9 +1103,9 @@ show()
                         for(const auto &[Q,op] : ops[row][col])
                         {
                             #ifdef OPLABELS
-                            lout << "\t" << op.label << " ({" << Sym::format<Symmetry>(Q) << "}) ";
+                            lout << "\t" << op.label << " ({" << Sym::format<Symmetry>(Q) << "}) norm=" << op.data.norm();
                             #else
-                            lout << "\t ({" << Sym::format<Symmetry>(Q) << "}) ";
+                            lout << "\t ({" << Sym::format<Symmetry>(Q) << "}) norm=" << op.data.norm();
                             #endif
                         }
                         lout << std::endl;
@@ -1479,9 +1479,9 @@ compress(const double tolerance)
                     {
                         next_bonds_to_check[thread_id].push_back(loc+1);
                     }
-                    if(boundary_condition == BC::INFINITE and (loc == 1ul or loc == N_sites-1))
+                    if(boundary_condition == BC::INFINITE and (loc <= 1ul or loc >= N_sites-1))
                     {
-                        next_bonds_to_check[thread_id].push_back(0);
+                        next_bonds_to_check[thread_id].push_back(N_sites);
                     }
                     lindep_checks_temp++;
                     while(eliminate_linearlyDependent_cols(loc-1,q,tolerance)) {lindep_checks_temp++;}
@@ -1499,13 +1499,13 @@ compress(const double tolerance)
                     {
                         next_bonds_to_check[thread_id].push_back(loc-1);
                     }
-                    if(loc != N_sites-1)
+                    if(loc < N_sites-1)
                     {
                         next_bonds_to_check[thread_id].push_back(loc+1);
                     }
-                    if(boundary_condition == BC::INFINITE and (loc == 1ul or loc == N_sites-1))
+                    if(boundary_condition == BC::INFINITE and (loc <= 1ul or loc >= N_sites-1))
                     {
-                        next_bonds_to_check[thread_id].push_back(0);
+                        next_bonds_to_check[thread_id].push_back(N_sites);
                     }
                     lindep_checks_temp++;
                     while(eliminate_linearlyDependent_rows(loc%N_sites,q,tolerance)) {lindep_checks_temp++;}
@@ -4001,6 +4001,13 @@ base_order_IBC(const std::size_t power) const
     }
     vout.insert(vout.end(), vout_temp.begin(), vout_temp.end());
     vout.push_back({qVac, pos_qVac});
+    #if DERBUG_VERBOSITY > 0
+    lout << "Base order for VUMPS:" << std::endl;
+    for(std::size_t i=0; i<vout.size(); ++i)
+    {
+        lout << "\t#" << i << ": {" << Sym::format<Symmetry>(std::get<0>(vout[i])) << "}[" << std::get<1>(vout[i]) << "]" << std::endl;
+    }
+    #endif
     return vout;
 }
 
