@@ -1,6 +1,10 @@
 #ifndef VANILLA_VUMPSSOLVER
 #define VANILLA_VUMPSSOLVER
 
+#ifndef LINEARSOLVER_DIMK
+#define LINEARSOLVER_DIMK 500
+#endif
+
 /// \cond
 //#include "unsupported/Eigen/IterativeSolvers"
 #include "termcolor.hpp"
@@ -617,7 +621,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &Vout, qarra
 	{
 		basis_order_map.insert({basis_order[i],i});
 	}
-
+	
 	// resize Vout
 	if (!USE_STATE)
 	{
@@ -1884,7 +1888,7 @@ solve_linear (VMPS::DIRECTION::OPTION DIR,
 	// Solve linear system
 	GMResSolver<MpoTransferMatrix<Symmetry,Scalar>,MpoTransferVector<Symmetry,Scalar> > Gimli;
 	
-	Gimli.set_dimK(min(500ul,dim(bvec)));
+	Gimli.set_dimK(min(static_cast<size_t>(LINEARSOLVER_DIMK),dim(bvec)));
 	MpoTransferVector<Symmetry,Scalar> LRres_tmp;
 	Gimli.solve_linear(T, bvec, LRres_tmp, 1e-14, true);
 	LRres = LRres_tmp.data;
@@ -1918,7 +1922,7 @@ solve_linear (VMPS::DIRECTION::OPTION DIR,
 	// Solve linear system
 	GMResSolver<TransferMatrix<Symmetry,Scalar>,TransferVector<Symmetry,Scalar> > Gimli;
 	
-	Gimli.set_dimK(min(100ul,dim(bvec)));
+	Gimli.set_dimK(min(static_cast<size_t>(LINEARSOLVER_DIMK),dim(bvec)));
 	TransferVector<Symmetry,Scalar> LRres_tmp;
 	Gimli.solve_linear(T,bvec,LRres_tmp);
 	LRres = LRres_tmp.data;
@@ -2230,6 +2234,7 @@ create_Mps (size_t Ncells, const Eigenstate<Umps<Symmetry,Scalar> > &V, const Mp
 	Mps<Symmetry,Scalar> Maux(N_sites, As, V.state.locBasis(), Qt[0], N_sites);
 	Maux.set_Qmultitarget(Qt);
 	Maux.min_Nsv = V.state.min_Nsv;
+	
 	
 	auto Cshift = V.state.C[N_sites-1];
 	Cshift.clear();

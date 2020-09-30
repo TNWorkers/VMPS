@@ -157,14 +157,14 @@ public:
 	 * \warning This method requires hdf5. For more information see https://www.hdfgroup.org/.
 	 * \note For the filename you should use the info string of the currently used Mpo.
 	 */
-	void save (string filename,string info="none");
+	void save (string filename, string info="none", double energy=std::nan("1"));
 	
 	/**
 	 * Reads all information of the Mps from the file <FILENAME>.h5.
 	 * \param filename : the format is fixed to .h5. Just enter the name without the format.
 	 * \warning This method requires hdf5. For more information visit https://www.hdfgroup.org/.
 	 */
-	void load (string filename);
+	void load (string filename, double &energy=dump_Mps);
 	#endif //USE_HDF5_STORAGE
 	
 	/**
@@ -2027,7 +2027,7 @@ adjustQN (const size_t number_cells)
 #ifdef USE_HDF5_STORAGE
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-save (string filename, string info)
+save (string filename, string info, double energy)
 {
 	filename+=".h5";
 	HDF5Interface target(filename, WRITE);
@@ -2039,6 +2039,10 @@ save (string filename, string info)
 	string add_infoLabel = "add_info";
 	
 	//save scalar values
+	if (!isnan(energy))
+	{
+		target.save_scalar(energy,"energy");
+	}
 	target.save_scalar(this->N_sites,"L");
 	for (size_t q=0; q<Nq; q++)
 	{
@@ -2112,12 +2116,16 @@ save (string filename, string info)
 
 template<typename Symmetry, typename Scalar>
 void Umps<Symmetry,Scalar>::
-load (string filename)
+load (string filename, double &energy)
 {
 	filename+=".h5";
 	HDF5Interface source(filename, READ);
 	
 	//load the scalars
+	if (source.CHECK("energy"))
+	{
+		source.load_scalar(energy,"energy");
+	}
 	source.load_scalar(this->N_sites,"L");
 	for (size_t q=0; q<Nq; q++)
 	{

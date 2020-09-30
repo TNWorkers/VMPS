@@ -99,6 +99,7 @@ int main (int argc, char* argv[])
 	int L = args.get<int>("L",60);
 	double t = args.get<double>("t",1.);
 	double U = args.get<double>("U",0.);
+	double J = args.get<double>("J",1.);
 	int N = args.get<int>("N",L);
 	int S = args.get<int>("S",0);
 	size_t D = args.get<size_t>("D",2ul);
@@ -240,11 +241,11 @@ int main (int argc, char* argv[])
 	ArrayXXd hopping;
 	if (L!=12 and L!=20 and L!=60)
 	{
-		hopping = create_1D_PBC(L); // Heisenberg ring for testing
+		hopping = J*create_1D_OBC(L); // Heisenberg ring for testing
 	}
 	else
 	{
-		hopping = hopping_fullerene(L);
+		hopping = J*hopping_fullerene(L);
 	}
 	auto distanceMatrix = calc_distanceMatrix(hopping);
 	if (PRINT_HOPPING)

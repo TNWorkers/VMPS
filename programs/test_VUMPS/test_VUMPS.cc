@@ -1,4 +1,7 @@
-#define LANCZOS_MAX_ITERATIONS 1e2
+#ifdef BLAS
+#include "util/LapackManager.h"
+#pragma message("LapackManager")
+#endif
 
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
@@ -20,8 +23,6 @@ using namespace std;
 Logger lout;
 #include "ArgParser.h"
 
-#include "util/LapackManager.h"
-
 #include "StringStuff.h"
 #include "Stopwatch.h"
 
@@ -35,7 +36,7 @@ using namespace Eigen;
 
 #include "VUMPS/VumpsSolver.h"
 #include "VUMPS/VumpsLinearAlgebra.h"
-#include "VUMPS/UmpsCompressor.h"
+//#include "VUMPS/UmpsCompressor.h"
 #include "models/Heisenberg.h"
 #include "models/HeisenbergU1.h"
 #include "models/HeisenbergSU2.h"

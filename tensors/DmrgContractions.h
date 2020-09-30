@@ -1034,6 +1034,8 @@ Scalar contract_LR (pair<qarray<Symmetry::Nq>,size_t> fixed_a,
 				if (R.block[qR][fixed_a.second][0].size() != 0 and
 				    L.block[qL->second].size() != 0)
 				{
+//					print_size(L.block[qL->second],"L.block[qL->second]");
+//					print_size(R.block[qR][fixed_a.second][0],"R.block[qR][fixed_a.second][0]");
 					res += (L.block[qL->second] * R.block[qR][fixed_a.second][0]).trace() * Symmetry::coeff_dot(R.out(qR));
 				}
 			}

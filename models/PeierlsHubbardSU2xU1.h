@@ -276,14 +276,14 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		if (!P.HAS("tFull") and !P.HAS("Vzfull") and !P.HAS("Vxyfull") and !P.HAS("Jfull") and !P.HAS("Xfull"))
 		{
 			param2d tpara = P.fill_array2d<complex<double>>("t", "tPara", {orbitals, next_orbitals}, loc%Lcell);
-//			param2d Vpara = P.fill_array2d<double>("V", "Vpara", {orbitals, next_orbitals}, loc%Lcell);
+			param2d Vpara = P.fill_array2d<double>("V", "Vpara", {orbitals, next_orbitals}, loc%Lcell);
 //			param2d Vzpara = P.fill_array2d<double>("Vz", "Vzpara", {orbitals, next_orbitals}, loc%Lcell);
 //			param2d Vxypara = P.fill_array2d<double>("Vxy", "Vxypara", {orbitals, next_orbitals}, loc%Lcell);
 //			param2d Jpara = P.fill_array2d<double>("J", "Jpara", {orbitals, next_orbitals}, loc%Lcell);
 //			param2d Xpara = P.fill_array2d<double>("X", "Xpara", {orbitals, next_orbitals}, loc%Lcell);
 			
 			labellist[loc].push_back(tpara.label);
-//			labellist[loc].push_back(Vpara.label);
+			labellist[loc].push_back(Vpara.label);
 //			labellist[loc].push_back(Vzpara.label);
 //			labellist[loc].push_back(Vxypara.label);
 //			labellist[loc].push_back(Jpara.label);
@@ -294,14 +294,14 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 				for (std::size_t alfa=0; alfa<orbitals;      ++alfa)
 				for (std::size_t beta=0; beta<next_orbitals; ++beta)
 				{
-					SiteOperatorQ<Symmetry_,MatrixType> c_sign_local    = (F[loc].c(alfa) *    F[loc].sign()).template cast<complex<double>>();;
-					SiteOperatorQ<Symmetry_,MatrixType> cdag_sign_local = (F[loc].cdag(alfa) * F[loc].sign()).template cast<complex<double>>();;
+					SiteOperatorQ<Symmetry_,MatrixType> c_sign_local    = (F[loc].c(alfa) *    F[loc].sign()).template cast<complex<double>>();
+					SiteOperatorQ<Symmetry_,MatrixType> cdag_sign_local = (F[loc].cdag(alfa) * F[loc].sign()).template cast<complex<double>>();
 					
-					SiteOperatorQ<Symmetry_,MatrixType> c_tight    = F[lp1].c   (beta).template cast<complex<double>>();;
-					SiteOperatorQ<Symmetry_,MatrixType> cdag_tight = F[lp1].cdag(beta).template cast<complex<double>>();;
+					SiteOperatorQ<Symmetry_,MatrixType> c_tight    = F[lp1].c   (beta).template cast<complex<double>>();
+					SiteOperatorQ<Symmetry_,MatrixType> cdag_tight = F[lp1].cdag(beta).template cast<complex<double>>();
 					
-//					SiteOperatorQ<Symmetry_,MatrixType> n_local = F[loc].n(alfa);
-//					SiteOperatorQ<Symmetry_,MatrixType> n_tight = F[lp1].n(beta);
+					SiteOperatorQ<Symmetry_,MatrixType> n_local = F[loc].n(alfa).template cast<complex<double>>();
+					SiteOperatorQ<Symmetry_,MatrixType> n_tight = F[lp1].n(beta).template cast<complex<double>>();
 //					
 //					SiteOperatorQ<Symmetry_,MatrixType> tz_local = F[loc].Tz(alfa);
 //					SiteOperatorQ<Symmetry_,MatrixType> tz_tight = F[lp1].Tz(beta);
@@ -333,7 +333,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 					 Mpo<Symmetry_,complex<double>>::get_N_site_interaction(c_sign_local, cdag_tight), -std::sqrt(2.)*tpara(alfa,beta)));
 					
 //					//density-density interaction
-//					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(n_local, n_tight), Vpara(alfa,beta)));
+					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,complex<double>>::get_N_site_interaction(n_local, n_tight), complex<double>(Vpara(alfa,beta),0.)));
 //					
 //					//isospin-isospin interaction
 //					pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry_,double>::get_N_site_interaction(tp_local, tm_tight), 0.5*Vxypara(alfa,beta)));

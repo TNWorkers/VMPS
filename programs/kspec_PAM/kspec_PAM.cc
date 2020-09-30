@@ -3,10 +3,11 @@
 #pragma message("LapackManager")
 #endif
 
-#define USE_OLD_COMPRESSION
+//#define USE_OLD_COMPRESSION
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
 #define GREENPROPAGATOR_USE_HDF5
+#define LINEARSOLVER_DIMK 100
 
 #include <iostream>
 #include <fstream>
@@ -43,6 +44,17 @@ typedef VMPS::PeierlsHubbardSU2xU1 MODELC;
 
 vector<GreenPropagator<MODELC,MODELC::Symmetry,complex<double>,complex<double>>> Green;
 
+MatrixXcd onsite (int L, double Eevn, double Eodd)
+{
+	MatrixXcd res(L,L); res.setZero();
+	for (int i=0; i<L; i+=2)
+	{
+		res(i,i) = Eevn;
+		res(i+1,i+1) = Eodd;
+	}
+	return res;
+}
+
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
@@ -66,6 +78,7 @@ int main (int argc, char* argv[])
 	qarray<MODEL::Symmetry::Nq> Q = MODEL::singlet(N); // Quantenzahl des Grundzustandes
 	lout << "Q=" << Q << endl;
 	double U = args.get<double>("U",8.); // U auf den f-Plaetzen
+	double V = args.get<double>("V",0.); // V*nf*nc
 	double tfc = args.get<double>("tfc",1.); // Hybridisierung fc
 	double tcc = args.get<double>("tcc",1.); // Hopping fc
 	double tff = args.get<double>("tff",0.); // Hopping ff
@@ -73,6 +86,8 @@ int main (int argc, char* argv[])
 	double Imtx = args.get<double>("Imtx",1.); // Im Hybridisierung f(i)c(i+1)
 	double Rety = args.get<double>("Rety",0.); // Re Hybridisierung c(i)f(i+1)
 	double Imty = args.get<double>("Imty",0.); // Im Hybridisierung c(i)f(i+1)
+	double Ec = args.get<double>("Ec",0.); // onsite-Energie fuer c
+	double Ef = args.get<double>("Ef",-10.); // onsite-Energie fuer f
 	
 	bool SAVE_GS = args.get<double>("SAVE_GS",false);
 	bool LOAD_GS = args.get<bool>("LOAD_GS",false);
@@ -107,10 +122,10 @@ int main (int argc, char* argv[])
 	// Parameter fuer den Grundzustand:
 	VUMPS::CONTROL::GLOB GlobParams;
 	GlobParams.min_iterations = args.get<size_t>("min_iterations",50ul);
-	GlobParams.max_iterations = args.get<size_t>("max_iterations",100ul);
-	GlobParams.Dinit = args.get<size_t>("Dinit",2ul);
-	GlobParams.Dlimit = GlobParams.Dinit;
-	GlobParams.Qinit = args.get<size_t>("Qinit",6ul);
+	GlobParams.max_iterations = args.get<size_t>("max_iterations",200ul);
+	GlobParams.Minit = args.get<size_t>("Minit",2ul);
+	GlobParams.Mlimit = args.get<size_t>("Mlimit",500ul);
+	GlobParams.Qinit = args.get<size_t>("Qinit",2ul);
 	GlobParams.tol_eigval = args.get<double>("tol_eigval",1e-5);
 	GlobParams.tol_var = args.get<double>("tol_var",1e-5);
 	GlobParams.tol_state = args.get<double>("tol_state",1e-4);
@@ -124,11 +139,18 @@ int main (int argc, char* argv[])
 		params.push_back({"U",0.,0});
 		params.push_back({"U",U,1});
 		
+//		ArrayXXd Vmatrix = hopping_PAM(L,1.+0.i,0,0,0,0).real(); // 
+		params.push_back({"V",V,0});
+		params.push_back({"V",0.,1});
+		
+		params.push_back({"t0",Ec,0});
+		params.push_back({"t0",Ef,1});
+		
 //		// Hopping
 		ArrayXXcd t2cell = hopping_PAM(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
 		lout << "hopping:" << endl << t2cell << endl;
-		params.push_back({"tFull",t2cell});
 		
+		params.push_back({"tFull",t2cell});
 		params.push_back({"maxPower",1ul}); // hoechste Potenz von H
 	}
 	
@@ -170,9 +192,9 @@ int main (int argc, char* argv[])
 	// Grundzustand fuer unendliches System
 	Eigenstate<MODELC::StateUcd> g;
 	
-	int Lfinite = args.get<int>("Lfinite",200);
+	int Lfinite = args.get<int>("Lfinite",1000);
 	auto Hfree = hopping_PAM(Lfinite/2,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
-	SelfAdjointEigenSolver<MatrixXcd> Eugen(Hfree.matrix());
+	SelfAdjointEigenSolver<MatrixXcd> Eugen(Hfree.matrix()+onsite(Lfinite,Ec,Ef));
 	VectorXd occ = Eugen.eigenvalues().head(Lfinite/2);
 	VectorXd unocc = Eugen.eigenvalues().tail(Lfinite/2);
 	double e0free = 2.*occ.sum()/Lfinite;
