@@ -1028,7 +1028,7 @@ print ( const bool SHOW_MATRICES, const std::size_t precision ) const
 	{
 		std::stringstream ss,tt,uu;
 		ss << nu;
-		tt << "(" << in[nu] << "," << out[nu] << ")";
+		tt << "(" << Sym::format<Symmetry>(in[nu]) << "," << Sym::format<Symmetry>(out[nu]) << ")";
 		uu << block[nu].rows() << "x" << block[nu].cols();
 		t.add(ss.str());
 		t.add(tt.str());
