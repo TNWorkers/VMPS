@@ -1,5 +1,5 @@
 - Programmaufruf:
-./kspec_PAM.out -L=2 -N=2 -Ncells=16 -U=8 -tfc=1 -tcc=1 -tff=0 -Retx=0 -Imtx=1 -Rety=0 -Imty=0
+./kspec_PAM.out -L=2 -N=2 -Ncells=16 -U=4 -V=0 -tfc=0.5 -tcc=1 -tff=0 -Retx=0 -Imtx=0.5 -Rety=0 -Imty=0 -Ef=-2 -Ec=0
 und so weiter mit gewuenschten Parametern
 
 - Modellparameter:
@@ -7,6 +7,7 @@ L: Groesse der Einheitszelle (default:2, f-site und c-site)
 N: Teilchenzahl pro Einheitsztelle (default:2, Halbfuellung). Viertelfuellung waere z.B. L=4 und N=2
 Ncells: Anzahl der Einheitszellen fuer den inhomogenen Bereich der Anregung. Totale Systemgroesse: L*Ncells
 U: Hubbard-U fuer die f-sites
+V: Hubbard-U fuer die nf*nc Wechselwirkung
 tfc: relle Hybridisierung zwischen f und c
 tcc: reelles Hopping im c-Band
 tff: reelles Hopping im f-Band
@@ -14,15 +15,17 @@ Retx: Hybridiserung f(i)c(i+1), Realteil
 Imtx: Hybridiserung f(i)c(i+1), Imaginaerteil
 Rety: Hybridiserung c(i)f(i+1), Realteil
 Imty: Hybridiserung c(i)f(i+1), Imaginaerteil
+Ef: onsite-Energie fuer f-sites
+Ec: onsite-Energie fuer c-sites
 
 - Weitere Parameter:
 SAVE_GS: Bei 1 wird der Grundzustand in HDF5 gespeichert
 LOAD_GS: Bei 1 wird der Grundzustand aus HDF5 geladen
-specs: Liste der Spektren (default:PES,IPE, Photoemission und inverse Photoemission)
+specs: Liste der Spektren (default:HSF,PES,IPE; Erklaerung: PES,IPE:Photoemission, inverse Photoemission; HSF:cdag*f und fdag*c)
 
 - Parameter fuer die Propagation:
 tmax: maximale Propagationszeit, bestimmt die Aufloesung, sollte konsistent mit L*Ncells gewaehlt werden (siehe Tabelle unten)
-Dlim: Limit der Bonddimension (default:100)
+Mlim: Limit der Bonddimension (default:500)
 dt: Zeitschritt (default:0.2 bei L=2, sonst 0.1)
 tol_DeltaS: Toleranz des Entropiewachstums fuer den Zweiplatzalgorithmus (default:1e-2, fuer hoehere Genauigkeit: 1e-3)
 tol_compr: Abschnitt der Singulaerwerte (default:1e-4)

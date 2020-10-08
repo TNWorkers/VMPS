@@ -59,23 +59,24 @@ int main (int argc, char* argv[])
 	int N = args.get<int>("N",L); // Teilchenzahl
 	qarray<MODEL::Symmetry::Nq> Q = MODEL::singlet(N); // Quantenzahl des Grundzustandes
 	lout << "Q=" << Q << endl;
-	double U = args.get<double>("U",8.); // U auf den f-Plaetzen
+	double U = args.get<double>("U",4.); // U auf den f-Plaetzen
 	double V = args.get<double>("V",0.); // V*nf*nc
-	double tfc = args.get<double>("tfc",1.); // Hybridisierung fc
+	double tfc = args.get<double>("tfc",0.5); // Hybridisierung fc
 	double tcc = args.get<double>("tcc",1.); // Hopping fc
 	double tff = args.get<double>("tff",0.); // Hopping ff
 	double Retx = args.get<double>("Retx",0.); // Re Hybridisierung f(i)c(i+1)
-	double Imtx = args.get<double>("Imtx",1.); // Im Hybridisierung f(i)c(i+1)
+	double Imtx = args.get<double>("Imtx",0.5); // Im Hybridisierung f(i)c(i+1)
 	double Rety = args.get<double>("Rety",0.); // Re Hybridisierung c(i)f(i+1)
 	double Imty = args.get<double>("Imty",0.); // Im Hybridisierung c(i)f(i+1)
 	double Ec = args.get<double>("Ec",0.); // onsite-Energie fuer c
-	double Ef = args.get<double>("Ef",-10.); // onsite-Energie fuer f
+	double Ef = args.get<double>("Ef",-2.); // onsite-Energie fuer f
 	
 	// Steuert die Menge der Ausgaben
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
 	
 	string wd = args.get<string>("wd","./"); correct_foldername(wd); // Arbeitsvereichnis
-	string base = make_string("L=",L,"_N=",N,"_U=",U,"_tfc=",tfc,"_tcc=",tcc,"_tff=",tff,"_tx=",Retx,Imtx,"_ty=",Rety,Imty); // Dateiname
+	string param_base = make_string("tfc=",tfc,"_tcc=",tcc,"_tff=",tff,"_tx=",Retx,",",Imtx,"_ty=",Rety,",",Imty,"_Ef|c=",Ef,"|",Ec,"_U=",U,"_V=",V); // Dateiname
+	string base = make_string("L=",L,"_N=",N,"_",param_base); // Dateiname
 	lout << base << endl;
 	lout.set(base+".log",wd+"log"); // Log-Datei im Unterordner log
 	

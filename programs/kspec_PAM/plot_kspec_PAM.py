@@ -36,15 +36,16 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-save', action='store_true', default=False)
 parser.add_argument('-set', action='store', default='.')
 parser.add_argument('-plot', action='store', default='cell')
-parser.add_argument('-spec', action='store', default='A1P')
+parser.add_argument('-spec', action='store', default='HSF')
 parser.add_argument('-L', action='store', type=int, default=32)
-parser.add_argument('-U', action='store', type=int, default=0)
+parser.add_argument('-U', action='store', type=int, default=4)
+parser.add_argument('-V', action='store', type=int, default=0)
 parser.add_argument('-Ly', action='store', type=int, default=1)
 parser.add_argument('-tol', action='store', type=float, default=0.01)
 parser.add_argument('-dt', action='store', type=float, default=0.1)
 parser.add_argument('-tmax', action='store', type=int, default=4)
 parser.add_argument('-INT', action='store', default='OOURA')
-parser.add_argument('-index', action='store', type=int, default=0)
+parser.add_argument('-index', action='store', type=int, default=2)
 args = parser.parse_args()
 
 set = args.set
@@ -54,13 +55,16 @@ INT = args.INT
 index = args.index
 
 U = args.U
-tfc = 1
-tcc = 0
+V = args.V
+tfc = 0.5
+tcc = 1
 tff = 0
-Retx = 2
-Imtx = 2
-Rety = 1
-Imty = 1
+Retx = 0
+Imtx = 0.5
+Rety = 0
+Imty = 0
+Ec = 0
+Ef = -2
 
 dt = args.dt
 tolDeltaS = args.tol
@@ -71,8 +75,8 @@ L = args.L
 long_spec = {'A1P':'one-particle', 'PES':'photoemission', 'IPE':'inv. photoemission', 'SSF':'spin', 'PSZ':'charge'}
 
 def calc_ylim(UA,spec):
-	ylim0 = {'A1P':-10, 'PES':-10, 'IPE':-10}
-	ylim1 = {'A1P':+10, 'PES':+10, 'IPE':+10}
+	ylim0 = {'A1P':-10, 'PES':-10, 'IPE':-10, 'HSF':-10}
+	ylim1 = {'A1P':+10, 'PES':+10, 'IPE':+10, 'HSF':+10}
 	return ylim0[spec], ylim1[spec]
 
 wmin = -10
@@ -126,16 +130,17 @@ def analytical_disp():
 	return kaxis, disp1, disp2
 
 
-def filename_wq(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,U,tmax,wmin,wmax):
+def filename_wq(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax):
 	res = set+'/'
 	res += spec
-#	PES_L=4_N=4_U=0_tfc=1_tcc=1_tff=0_tx=01_ty=00_L=32_dLphys=2_tmax=4_INT=OOURA_qmin=0_qmax=2_wmin=-10_wmax=10
 	res += '_tfc='+str(tfc)
 	res += '_tcc='+str(tcc)
 	res += '_tff='+str(tff)
 	res += '_tx='+str(Retx)+","+str(Imtx)
 	res += '_ty='+str(Rety)+","+str(Imty)
+	res += '_Efc='+str(Ef)+","+str(Ec)
 	res += '_U='+str(U)
+	res += '_V='+str(V)
 #	res += '_dt='+str(dt)
 #	res += '_tolΔS='+str(tolDeltaS)
 	res += '_L='+str(L)
@@ -153,15 +158,15 @@ def open_Gwq (spec,index):
 	Gstr = 'G'+str(index)+str(index)
 	
 	if spec == 'A1P':
-		G = h5py.File(filename_wq(set,'PES',L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,U,tmax,wmin,wmax),'r')
+		G = h5py.File(filename_wq(set,'PES',L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax),'r')
 	else:
-		G = h5py.File(filename_wq(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,U,tmax,wmin,wmax),'r')
+		G = h5py.File(filename_wq(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax),'r')
 	
 	reswq  = np.asarray(G[Gstr]['ωqRe'])+1.j*np.asarray(G[Gstr]['ωqIm'])
 	
 	if spec == 'A1P':
 		
-		G = h5py.File(filename_wq(set,'IPE',L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,U,tmax,wmin,wmax),'r')
+		G = h5py.File(filename_wq(set,'IPE',L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax),'r')
 		
 		reswq += np.asarray(G[Gstr]['ωqRe'])+1.j*np.asarray(G[Gstr]['ωqIm'])
 	
@@ -182,7 +187,10 @@ def axis_shenanigans(ax, XLABEL=True, YLABEL=True):
 
 if args.plot == 'cell':
 	
-	datawq = -1./pi* imag(open_Gwq(spec,0)) -1./pi* imag(open_Gwq(spec,1))
+	if index>1:
+		datawq = -1./pi* imag(open_Gwq(spec,0)) -1./pi* imag(open_Gwq(spec,1))
+	else:
+		datawq = -1./pi* imag(open_Gwq(spec,index))
 	
 	fig, ax = plt.subplots()
 	

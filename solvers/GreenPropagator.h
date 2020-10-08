@@ -505,7 +505,7 @@ private:
 	double tol_compr = 1e-4; // compression tolerance during time propagation
 	double tol_Lanczos = 1e-7; // 1e-6 seems sufficient; increase to 1e-8 for higher accuracy
 	double tol_DeltaS = 1e-3; // 1e-3 seems good for DIRECT (initially small timesteps); 1e-2 seems good for INTERP (equidistant timesteps)
-	size_t lim_Nsv = 100ul;
+	size_t lim_Nsv = 500ul;
 	double h_ooura = 0.001; // stepsize for Ooura integration if GREENINT_CHOICE == OOURA; smaller = more accurate & slower
 	GREEN_INTEGRATION GREENINT_CHOICE = OOURA;
 	bool SAVE_LOG = false;
@@ -634,7 +634,7 @@ propagate (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &Ox
 	
 	Mps<Symmetry,complex<double>> Psi = OxPhi0;
 	Psi.eps_svd = tol_compr;
-	Psi.max_Nsv = max(Psi.calc_Dmax(),20ul);
+	Psi.max_Nsv = max(Psi.calc_Mmax(),500ul);
 	
 	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVP(H, Psi);
 	EntropyObserver<Mps<Symmetry,complex<double>>> Sobs(Lhetero, Nt, CHOSEN_VERBOSITY, tol_DeltaS);
@@ -783,7 +783,7 @@ propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &
 	
 	Mps<Symmetry,complex<double>> Psi = OxPhi0;
 	Psi.eps_svd = tol_compr;
-	Psi.max_Nsv = max(Psi.calc_Dmax(),min(100ul,lim_Nsv));
+	Psi.max_Nsv = max(Psi.calc_Mmax(),min(500ul,lim_Nsv));
 	
 	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVPket(H,Psi);
 	EntropyObserver<Mps<Symmetry,complex<double>>> SobsKet(H.length(), Nt, CHOSEN_VERBOSITY, tol_DeltaS);
@@ -991,7 +991,7 @@ propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>
 	{
 		Psi[i] = OxPhi[i];
 		Psi[i].eps_svd = tol_compr;
-		Psi[i].max_Nsv = max(Psi[i].calc_Dmax(),20ul);
+		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),500ul);
 	}
 	
 	vector<TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>> TDVP(Lcell);
@@ -1131,7 +1131,7 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 		{
 			Psi[z][i] = OxPhi[i];
 			Psi[z][i].eps_svd = tol_compr;
-			Psi[z][i].max_Nsv = max(Psi[z][i].calc_Dmax(),20ul);
+			Psi[z][i].max_Nsv = max(Psi[z][i].calc_Mmax(),500ul);
 		}
 	}
 	
@@ -1346,7 +1346,7 @@ propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScala
 	{
 		Psi[i] = (i==Lcell)? Phi : OxPhi0[i]; // Phi = Psi[Lcell]
 		Psi[i].eps_svd = tol_compr;
-		Psi[i].max_Nsv = max(Psi[i].calc_Dmax(),min(100ul,lim_Nsv));
+		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),min(500ul,lim_Nsv));
 	}
 	
 	vector<TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>> TDVP(Lcell+1);

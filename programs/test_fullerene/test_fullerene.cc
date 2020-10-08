@@ -354,7 +354,7 @@ int main (int argc, char* argv[])
 //			lout << "initial overlap=" << overlap << endl;
 //			if (abs(overlap) > 1e-8)
 //			{
-//				Compi.lincomboCompress({init.state, g.state}, {1.,-overlap}, excited1.state, g.state, g.state.calc_Dmax(), 1e-15);
+//				Compi.lincomboCompress({init.state, g.state}, {1.,-overlap}, excited1.state, g.state, g.state.calc_Mmax(), 1e-15);
 //				lout << "overlap after compression=" << dot(g.state,excited1.state);
 //			}
 //			else
@@ -471,7 +471,7 @@ int main (int argc, char* argv[])
 				for (int t=0; t<2; ++t)
 				{
 					Psi[t].eps_svd = tol_t_compr;
-					Psi[t].max_Nsv = Tmp.calc_Dmax();
+					Psi[t].max_Nsv = Tmp.calc_Mmax();
 				}
 				
 				std::array<TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,MODEL::StateXcd>,2> TDVPt;
@@ -676,7 +676,7 @@ int main (int argc, char* argv[])
 //							PsiT.min_Nsv = 0ul;
 ////						}
 //						
-//						if (PsiT.calc_Dmax() == Dlim and i*dbeta>1.)
+//						if (PsiT.calc_Mmax() == Mlim and i*dbeta>1.)
 //						{
 //							PsiT.eps_svd = 0.1*tol_beta_compr;
 //							TDVPT.t_step0(H, PsiT, -0.5*dbeta, N_stages, 1e-8);

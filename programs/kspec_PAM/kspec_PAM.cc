@@ -7,7 +7,7 @@
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
 #define GREENPROPAGATOR_USE_HDF5
-#define LINEARSOLVER_DIMK 100
+//#define LINEARSOLVER_DIMK 100
 
 #include <iostream>
 #include <fstream>
@@ -69,7 +69,7 @@ int main (int argc, char* argv[])
 	
 	size_t Ly = args.get<size_t>("Ly",1); // Ly=1: entpackt, Ly=2: Supersites
 	int Lphys = (Ly==1)? 2:1;
-	assert(Ly==1 and "Only Ly=1 implemented");
+	assert(Ly==1 and "Only Ly=1 implemented so far");
 	size_t L = args.get<size_t>("L",2); // Groesse der Einheitszelle
 	int N = args.get<int>("N",L); // Teilchenzahl
 	int Ncells = args.get<int>("Ncells",16); // Anzahl der Einheitszellen fuer Spektralfunktion
@@ -77,25 +77,25 @@ int main (int argc, char* argv[])
 	int x0 = Lhetero/2;
 	qarray<MODEL::Symmetry::Nq> Q = MODEL::singlet(N); // Quantenzahl des Grundzustandes
 	lout << "Q=" << Q << endl;
-	double U = args.get<double>("U",8.); // U auf den f-Plaetzen
-	double V = args.get<double>("V",0.); // V*nf*nc
-	double tfc = args.get<double>("tfc",1.); // Hybridisierung fc
+	double U = args.get<double>("U",4.); // U auf den f-Plaetzen
+	double V = args.get<double>("V",0.); // V*nc*nf
+	double tfc = args.get<double>("tfc",0.5); // Hybridisierung fc
 	double tcc = args.get<double>("tcc",1.); // Hopping fc
 	double tff = args.get<double>("tff",0.); // Hopping ff
 	double Retx = args.get<double>("Retx",0.); // Re Hybridisierung f(i)c(i+1)
-	double Imtx = args.get<double>("Imtx",1.); // Im Hybridisierung f(i)c(i+1)
+	double Imtx = args.get<double>("Imtx",0.5); // Im Hybridisierung f(i)c(i+1)
 	double Rety = args.get<double>("Rety",0.); // Re Hybridisierung c(i)f(i+1)
 	double Imty = args.get<double>("Imty",0.); // Im Hybridisierung c(i)f(i+1)
 	double Ec = args.get<double>("Ec",0.); // onsite-Energie fuer c
-	double Ef = args.get<double>("Ef",-10.); // onsite-Energie fuer f
+	double Ef = args.get<double>("Ef",-2.); // onsite-Energie fuer f
 	
 	bool SAVE_GS = args.get<double>("SAVE_GS",false);
 	bool LOAD_GS = args.get<bool>("LOAD_GS",false);
 	
-	vector<string> specs = args.get_list<string>("specs",{"PES","IPE"}); // welche Spektren? PES:Photoemission, IPE:inv. Photoemission
+	vector<string> specs = args.get_list<string>("specs",{"HSF","PES","IPE"}); // welche Spektren? PES:Photoemission, IPE:inv. Photoemission, HSF: Hybridisierung, IHSF: inverse Hybridisierung
 	string specstring = "";
 	int Nspec = specs.size();
-	size_t Dlim = args.get<size_t>("Dlim",100ul);
+	size_t Mlim = args.get<size_t>("Mlim",500ul); // Bonddimension fuer Dynamik
 	double dt = args.get<double>("dt",(L==2)?0.2:0.1);
 	double tol_DeltaS = args.get<double>("tol_DeltaS",1e-2);
 	double tmax = args.get<double>("tmax",4.);
@@ -114,44 +114,49 @@ int main (int argc, char* argv[])
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
 	
 	string wd = args.get<string>("wd","./"); correct_foldername(wd); // Arbeitsvereichnis
-	string base = make_string("L=",L,"_N=",N,"_tfc=",tfc,"_tcc=",tcc,"_tff=",tff,"_tx=",Retx,",",Imtx,"_ty=",Rety,",",Imty,"_U=",U); // Dateiname
-	string param_base = make_string("tfc=",tfc,"_tcc=",tcc,"_tff=",tff,"_tx=",Retx,",",Imtx,"_ty=",Rety,",",Imty,"_U=",U); // Dateiname
+	string param_base = make_string("tfc=",tfc,"_tcc=",tcc,"_tff=",tff,"_tx=",Retx,",",Imtx,"_ty=",Rety,",",Imty,"_Efc=",Ef,",",Ec,"_U=",U,"_V=",V); // Dateiname
+	string base = make_string("L=",L,"_N=",N,"_",param_base); // Dateiname
 	lout << base << endl;
 	lout.set(base+".log",wd+"log"); // Log-Datei im Unterordner log
 	
 	// Parameter fuer den Grundzustand:
 	VUMPS::CONTROL::GLOB GlobParams;
 	GlobParams.min_iterations = args.get<size_t>("min_iterations",50ul);
-	GlobParams.max_iterations = args.get<size_t>("max_iterations",200ul);
-	GlobParams.Minit = args.get<size_t>("Minit",2ul);
+	GlobParams.max_iterations = args.get<size_t>("max_iterations",150ul);
+	GlobParams.Minit = args.get<size_t>("Minit",10ul);
 	GlobParams.Mlimit = args.get<size_t>("Mlimit",500ul);
-	GlobParams.Qinit = args.get<size_t>("Qinit",2ul);
+	GlobParams.Qinit = args.get<size_t>("Qinit",10ul);
 	GlobParams.tol_eigval = args.get<double>("tol_eigval",1e-5);
 	GlobParams.tol_var = args.get<double>("tol_var",1e-5);
 	GlobParams.tol_state = args.get<double>("tol_state",1e-4);
-	GlobParams.max_iter_without_expansion = 30ul;
+	GlobParams.max_iter_without_expansion = 20ul;
+	
+	// Gemeinsame Parameter bei unendlichen und offenen Randbedingungen
+	vector<Param> params_common;
 	
 	// Parameter des Modells
 	vector<Param> params;
 	if (Ly==1)
 	{
 		// Ungerade Plaetze sollen f-Plaetze mit U sein:
-		params.push_back({"U",0.,0});
-		params.push_back({"U",U,1});
+		params_common.push_back({"U",0.,0});
+		params_common.push_back({"U",U,1});
 		
 //		ArrayXXd Vmatrix = hopping_PAM(L,1.+0.i,0,0,0,0).real(); // 
-		params.push_back({"V",V,0});
-		params.push_back({"V",0.,1});
+		params_common.push_back({"V",V,0});
+		params_common.push_back({"V",0.,1});
 		
-		params.push_back({"t0",Ec,0});
-		params.push_back({"t0",Ef,1});
+		params_common.push_back({"t0",Ec,0});
+		params_common.push_back({"t0",Ef,1});
 		
-//		// Hopping
+		params_common.push_back({"maxPower",1ul}); // hoechste Potenz von H
+		
+		params = params_common;
+		
+		// Hopping
 		ArrayXXcd t2cell = hopping_PAM(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
 		lout << "hopping:" << endl << t2cell << endl;
-		
 		params.push_back({"tFull",t2cell});
-		params.push_back({"maxPower",1ul}); // hoechste Potenz von H
 	}
 	
 	// Aufbau des Modells
@@ -160,7 +165,7 @@ int main (int argc, char* argv[])
 	H.precalc_TwoSiteData(true); // FORCE=true
 	lout << H.info() << endl;
 	
-//	// Test von komplexem Hopping
+//	// Test vom komplexen Hopping
 //	// Referenz:
 //	// "Persistent current of a Hubbard ring threaded with a magnetic flux", Yu & Fowler (1991)
 //	IntervalIterator phi(-M_PI,M_PI,51);
@@ -209,7 +214,6 @@ int main (int argc, char* argv[])
 	}
 	else
 	{
-	//	VumpsSolver<MODELC::Symmetry,MODELC,complex<double>> uDMRG(VERB);
 		uDMRG.userSetGlobParam();
 		uDMRG.GlobParam = GlobParams;
 		uDMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
@@ -232,28 +236,48 @@ int main (int argc, char* argv[])
 	{
 		for (int l=0; l<L; l=l+2)
 		{
-			lout << "l=" << l << "," << l+1 << ", SdagS=" << isReal(avg(g.state, H.SdagS(l,l+1), g.state)) << endl;
+			lout << "l=" << l << "," << l+1 << ": SdagS=" << isReal(avg(g.state, H.SdagS(l,l+1), g.state)) << endl;
 		}
 	}
 	
 	// =============== GREENSFUNKTION ===============
-	vector<Param> params_hetero;
+	vector<Param> params_hetero = params_common;
 	if (Ly==1)
 	{
-		// Ungerade Plaetze sollen f-Plaetze mit U sein:
-		params_hetero.push_back({"U",0.,0});
-		params_hetero.push_back({"U",U,1});
-		
 		// Hopping
 		ArrayXXcd tLhetero = hopping_PAM(2*Lhetero,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
 		params_hetero.push_back({"tFull",tLhetero});
-		
-		params_hetero.push_back({"maxPower",1ul}); // hoechste Potenz von H
 	}
 	MODELC H_hetero(Lhetero,params_hetero,BC::INFINITE);
 	lout << H_hetero.info() << endl;
 	H_hetero.transform_base(Q,false,L); // PRINT=false
 	H_hetero.precalc_TwoSiteData(true); // FORCE=true
+	
+	vector<vector<double>> Oshift(Nspec);
+	for (int z=0; z<Nspec; ++z)
+	{
+		Oshift[z].resize(Lphys);
+		for (int l=0; l<Lphys; ++l)
+		{
+			lout << "l=" << l << endl;
+			if (specs[z] == "CSF")
+			{
+				lout << "n(l)=" << avg(g.state, H.n(l), g.state) << endl;
+				Oshift[z][l] = isReal(avg(g.state, H.n(l), g.state));
+			}
+			else if (specs[z] == "HSF")
+			{
+				MODELC Haux(2*L, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
+				lout << "cdagc(l,l+1)=" << avg(g.state, Haux.cdagc(l,l+1), g.state) << endl;
+				Oshift[z][l] = isReal(avg(g.state, Haux.cdagc(l,l+1), g.state));
+			}
+			else
+			{
+				Oshift[z][l] = 0.;
+			}
+			lout << "spec=" << specs[z] << ", l=" << l << ", Oshift=" << Oshift[z][l] << endl;
+		}
+	}
 	
 	// create vector of O
 	vector<vector<Mpo<MODELC::Symmetry,complex<double>>>> O(Nspec);
@@ -263,6 +287,7 @@ int main (int argc, char* argv[])
 		for (int l=0; l<Lphys; ++l)
 		{
 			O[z][l] = VMPS::get_Op<MODELC,MODELC::Symmetry,complex<double>>(H_hetero,Lhetero/2+l,specs[z]);
+			O[z][l].scale(1.,-Oshift[z][l]);
 			O[z][l].transform_base(Q,false,L); // PRINT=false
 			// l=0: c-electrons
 			// l=1: f-electrons
@@ -292,6 +317,7 @@ int main (int argc, char* argv[])
 			for (int l=0; l<Lhetero; ++l)
 			{
 				Ofull[z][l] = VMPS::get_Op<MODELC,MODELC::Symmetry,complex<double>>(H_hetero,l,specs[z]);
+				Ofull[z][l].scale(1.,-Oshift[z][l]);
 				Ofull[z][l].transform_base(Q,false,L); // PRINT=false
 			}
 		}
@@ -325,7 +351,7 @@ int main (int argc, char* argv[])
 	{
 		string spec = specs[z];
 		Green[z].set_tol_DeltaS(tol_DeltaS);
-		Green[z].set_lim_Nsv(Dlim);
+		Green[z].set_lim_Nsv(Mlim);
 		if (L>2)
 		{
 			Green[z].set_OxPhiFull(OxPhiFull[z]);
