@@ -89,7 +89,7 @@ int main (int argc, char* argv[])
 	double Ec = args.get<double>("Ec",0.); // onsite-Energie fuer c
 	double Ef = args.get<double>("Ef",-2.); // onsite-Energie fuer f
 	
-	bool SAVE_GS = args.get<double>("SAVE_GS",false);
+	bool SAVE_GS = args.get<bool>("SAVE_GS",false);
 	bool LOAD_GS = args.get<bool>("LOAD_GS",false);
 	
 	vector<string> specs = args.get_list<string>("specs",{"HSF","PES","IPE"}); // welche Spektren? PES:Photoemission, IPE:inv. Photoemission, HSF: Hybridisierung, IHSF: inverse Hybridisierung

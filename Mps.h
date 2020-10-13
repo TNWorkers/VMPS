@@ -4307,22 +4307,22 @@ test_ortho (double tol) const
 		    all_of(B_CHECK.begin(),B_CHECK.end(),[](bool x){return x;}))
 		{
 			sout << termcolor::magenta;
-			sout << (l==this->pivot) ? special_token[3] : normal_token[3]; // X
+			sout << ((l==this->pivot) ? special_token[3] : normal_token[3]); // X
 		}
 		else if (all_of(A_CHECK.begin(),A_CHECK.end(),[](bool x){return x;}))
 		{
 			sout << termcolor::red;
-			sout << (l==this->pivot) ? special_token[0] : normal_token[0]; // A
+			sout << ((l==this->pivot) ? special_token[0] : normal_token[0]); // A
 		}
 		else if (all_of(B_CHECK.begin(),B_CHECK.end(),[](bool x){return x;}))
 		{
 			sout << termcolor::blue;
-			sout << (l==this->pivot) ? special_token[1] : normal_token[1]; // B
+			sout << ((l==this->pivot) ? special_token[1] : normal_token[1]); // B
 		}
 		else
 		{
 			sout << termcolor::green;
-			sout << (l==this->pivot) ? special_token[2] : normal_token[2]; // M
+			sout << ((l==this->pivot) ? special_token[2] : normal_token[2]); // M
 		}
 	}
 	sout << termcolor::reset;

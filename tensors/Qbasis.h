@@ -640,7 +640,8 @@ add( const Qbasis<Symmetry>& other ) const
 	Qbasis out;
 	for(const auto& [q1,num1,plain1] : this->data_)
 	{
-		auto it_other = std::find_if(other.data_.begin(), other.data_.end(), [q1] (std::tuple<qType,Eigen::Index,Basis> entry) { return std::get<0>(entry) == q1; });
+		auto qtmp = q1;
+		auto it_other = std::find_if(other.data_.begin(), other.data_.end(), [qtmp] (std::tuple<qType,Eigen::Index,Basis> entry) { return std::get<0>(entry) == qtmp; });
 		if (it_other != other.data_.end())
 		{
 			out.push_back(q1,plain1.add(std::get<2>(*it_other)).size());
@@ -653,7 +654,8 @@ add( const Qbasis<Symmetry>& other ) const
 	
 	for(const auto& [q2,num2,plain2] : other.data_)
 	{
-		auto it_this = std::find_if(data_.begin(), data_.end(), [q2] (std::tuple<qType,Eigen::Index,Basis> entry) { return std::get<0>(entry) == q2; });
+		auto qtmp = q2;
+		auto it_this = std::find_if(data_.begin(), data_.end(), [qtmp] (std::tuple<qType,Eigen::Index,Basis> entry) { return std::get<0>(entry) == qtmp; });
 		if (it_this == data_.end())
 		{
 			out.push_back(q2,plain2.size());

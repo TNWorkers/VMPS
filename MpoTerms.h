@@ -4603,7 +4603,7 @@ load(std::string filename)
                                 Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> Imag;
                                 source.load_matrix(Real,ss_mat.str()+",Re","W"+powerstring);
                                 source.load_matrix(Imag,ss_mat.str()+",Im","W"+powerstring);
-                                bip.push_back(qAuxVec_[loc][entries(i,0)],qAuxVec_[loc+1][entries(i,1)],(Real+std::complex(0,1.)*Imag).sparseView());
+                                bip.push_back(qAuxVec_[loc][entries(i,0)],qAuxVec_[loc+1][entries(i,1)],(Real+1.i*Imag).sparseView());
                             }
                             else
                             {

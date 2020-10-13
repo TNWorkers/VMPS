@@ -1245,27 +1245,33 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 			// size_t standard_precision = cout.precision();
 			PlotParams p;
 			p.label = "Entropy";
-			TerminalPlot::plot(Vout.state.entropy(),p);
+			if (Vout.state.entropy().rows() > 1)
+			{
+				TerminalPlot::plot(Vout.state.entropy(),p);
+			}
 			// lout << setprecision(2) << "S=" << Vout.state.entropy().transpose() << setprecision(standard_precision) << endl;
 		}
 	}
-
-	size_t l_start = N_sites%2 == 0 ? N_sites/2ul : (N_sites+1ul)/2ul;
-
-	for (size_t l=l_start; l<=l_start+1; l++)
+	
+	if (N_sites>4)
 	{
-		auto [qs,svs] = Vout.state.entanglementSpectrumLoc(l);
-		ofstream Filer(make_string("sv_final_",l,".dat"));
-		size_t index=0;
-		for (size_t i=0; i<svs.size(); i++)
+		size_t l_start = N_sites%2 == 0 ? N_sites/2ul : (N_sites+1ul)/2ul;
+		
+		for (size_t l=l_start; l<=l_start+1; l++)
 		{
-			for (size_t deg=0; deg<Symmetry::degeneracy(qs[i]); deg++)
+			auto [qs,svs] = Vout.state.entanglementSpectrumLoc(l);
+			ofstream Filer(make_string("sv_final_",l,".dat"));
+			size_t index=0;
+			for (size_t i=0; i<svs.size(); i++)
 			{
-				Filer << index << "\t"  << qs[i] << "\t" << svs[i] << endl;
-				index++;
+				for (size_t deg=0; deg<Symmetry::degeneracy(qs[i]); deg++)
+				{
+					Filer << index << "\t"  << qs[i] << "\t" << svs[i] << endl;
+					index++;
+				}
 			}
+			Filer.close();
 		}
-		Filer.close();
 	}
 	
 	if (Vout.state.calc_Nqavg() <= 1.5 and !Symmetry::IS_TRIVIAL and Vout.state.min_Nsv == 0)
