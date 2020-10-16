@@ -35,7 +35,7 @@ rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
 parser = argparse.ArgumentParser()
 parser.add_argument('-save', action='store_true', default=False)
 parser.add_argument('-set', action='store', default='.')
-parser.add_argument('-plot', action='store', default='cell')
+parser.add_argument('-plot', action='store', default='freq') # freq, time
 parser.add_argument('-spec', action='store', default='HSF')
 parser.add_argument('-L', action='store', type=int, default=32)
 parser.add_argument('-U', action='store', type=int, default=4)
@@ -56,11 +56,11 @@ index = args.index
 
 U = args.U
 V = args.V
-tfc = 0.5
+tfc = 1
 tcc = 1
 tff = 0
 Retx = 0
-Imtx = 0.5
+Imtx = 0
 Rety = 0
 Imty = 0
 Ec = 0
@@ -72,12 +72,12 @@ tmax = args.tmax
 
 L = args.L
 
-long_spec = {'A1P':'one-particle', 'PES':'photoemission', 'IPE':'inv. photoemission', 'SSF':'spin', 'PSZ':'charge'}
+long_spec = {'A1P':'one-particle', 'PES':'photoemission', 'IPE':'inv. photoemission', 'SSF':'spin', 'PSZ':'charge', 'CSF':'charge', 'HSF':'hybridization'}
 
-def calc_ylim(UA,spec):
-	ylim0 = {'A1P':-10, 'PES':-10, 'IPE':-10, 'HSF':-10}
-	ylim1 = {'A1P':+10, 'PES':+10, 'IPE':+10, 'HSF':+10}
-	return ylim0[spec], ylim1[spec]
+#def calc_ylim(UA,spec):
+#	ylim0 = {'A1P':-10, 'PES':-10, 'IPE':-10, 'HSF':-10, 'CSF':-10, 'PSZ':-10}
+#	ylim1 = {'A1P':+10, 'PES':+10, 'IPE':+10, 'HSF':+10, 'CSF':+10, 'PSZ':+10}
+#	return ylim0[spec], ylim1[spec]
 
 wmin = -10
 wmax = +10
@@ -86,10 +86,10 @@ qticks = [0, pi/2, pi, 3*pi/2, 2*pi]
 qlabels = ['$0$', '$\\frac{\pi}{2}$', '$\pi$', '$\\frac{3\pi}{2}$', '$2\pi$']
 
 def H00(k):
-	return -2.*tcc*cos(k)
+	return Ec-2.*tcc*cos(k)
 
 def H11(k):
-	return -2.*tff*cos(k)
+	return Ef-2.*tff*cos(k)
 
 def H01(k):
 	return -tfc-(Retx+1.j*Imtx)*exp(+1.j*k)-(Rety+1.j*Imty)*exp(-1.j*k)
@@ -129,6 +129,23 @@ def analytical_disp():
 		
 	return kaxis, disp1, disp2
 
+def analytical_2p():
+	
+	kaxis, disp1, disp2 = analytical_disp()
+	
+	kvals = []
+	Evals = []
+	
+	for k1,epsk1 in zip(kaxis,disp1):
+		for k2,epsk2 in zip(kaxis,disp2):
+		
+			ktot = (k1+k2)%(2*pi)
+			epstot = abs(epsk1)+abs(epsk2)
+			
+			kvals.append(ktot)
+			Evals.append(epstot)
+	
+	return kvals, Evals
 
 def filename_wq(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax):
 	res = set+'/'
@@ -153,6 +170,24 @@ def filename_wq(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,w
 	print(res)
 	return res
 
+def filename_tx(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax):
+	res = set+'/'
+	res += spec
+	res += '_tfc='+str(tfc)
+	res += '_tcc='+str(tcc)
+	res += '_tff='+str(tff)
+	res += '_tx='+str(Retx)+","+str(Imtx)
+	res += '_ty='+str(Rety)+","+str(Imty)
+	res += '_Efc='+str(Ef)+","+str(Ec)
+	res += '_U='+str(U)
+	res += '_V='+str(V)
+	res += '_L='+str(L)
+	res += '_tmax='+str(tmax)
+	res += '_INT='+INT
+	res += '.h5'
+	print(res)
+	return res
+
 def open_Gwq (spec,index):
 	
 	Gstr = 'G'+str(index)+str(index)
@@ -162,19 +197,28 @@ def open_Gwq (spec,index):
 	else:
 		G = h5py.File(filename_wq(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax),'r')
 	
-	reswq  = np.asarray(G[Gstr]['ωqRe'])+1.j*np.asarray(G[Gstr]['ωqIm'])
+	res  = np.asarray(G[Gstr]['ωqRe'])+1.j*np.asarray(G[Gstr]['ωqIm'])
 	
 	if spec == 'A1P':
 		
 		G = h5py.File(filename_wq(set,'IPE',L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax,wmin,wmax),'r')
 		
-		reswq += np.asarray(G[Gstr]['ωqRe'])+1.j*np.asarray(G[Gstr]['ωqIm'])
+		res += np.asarray(G[Gstr]['ωqRe'])+1.j*np.asarray(G[Gstr]['ωqIm'])
 	
-	return reswq
+	return res
+
+def open_Gtx (spec,index):
+	
+	Gstr = 'G'+str(index)+str(index)
+	G = h5py.File(filename_tx(set,spec,L,tfc,tcc,tff,Retx,Imtx,Rety,Imty,Ef,Ec,U,V,tmax),'r')
+	res  = np.asarray(G[Gstr]['txRe'])+1.j*np.asarray(G[Gstr]['txIm'])
+#	if spec == 'PSZ':
+#		res *= 2.
+	return res
 
 def axis_shenanigans(ax, XLABEL=True, YLABEL=True):
 	
-	ylim0, ylim1 = calc_ylim(U,spec)
+	ylim0, ylim1 = wmin, wmax #calc_ylim(U,spec)
 	ax.set_ylim(ylim0,ylim1)
 	ax.set_xlim(0,2*pi)
 	if XLABEL:
@@ -185,25 +229,54 @@ def axis_shenanigans(ax, XLABEL=True, YLABEL=True):
 	ax.set_xticklabels(qlabels)
 	ax.grid(alpha=0.5)
 
-if args.plot == 'cell':
+if args.plot == 'freq':
 	
 	if index>1:
-		datawq = -1./pi* imag(open_Gwq(spec,0)) -1./pi* imag(open_Gwq(spec,1))
+		data = -1./pi* imag(open_Gwq(spec,0)) -1./pi* imag(open_Gwq(spec,1))
 	else:
-		datawq = -1./pi* imag(open_Gwq(spec,index))
+		data = -1./pi* imag(open_Gwq(spec,index))
 	
 	fig, ax = plt.subplots()
-	
-	im = ax.imshow(datawq, origin='lower', interpolation='none', cmap=cm.terrain, aspect='auto', extent=[0,2*pi,wmin,wmax])
+	im = ax.imshow(data, origin='lower', interpolation='none', cmap=cm.terrain, aspect='auto', extent=[0,2*pi,wmin,wmax])
 	fig.colorbar(im)
-	
 	axis_shenanigans(ax)
 	
 	plotname = spec+'cell_T=0'+'_U='+str(U)+'_tmax='+str(tmax)
 	
-	kaxis, disp1, disp2 = analytical_disp()
-	ax.plot(kaxis, disp1, c='r')
-	ax.plot(kaxis, disp2, c='r')
+	if spec == 'A1P' or spec == 'PES' or spec == 'IPE':
+		kaxis, disp1, disp2 = analytical_disp()
+		ax.plot(kaxis, disp1, c='r')
+		ax.plot(kaxis, disp2, c='r')
+	else:
+		kvals, Evals = analytical_2p()
+#		ax.scatter(kvals, np.asarray(Evals), c='r', s=0.1)
+
+elif args.plot == 'time':
+	
+	if index>1:
+		data = open_Gtx(spec,0) + open_Gtx(spec,1)
+	else:
+		data = open_Gtx(spec,index)
+	
+	fig, axs = plt.subplots(1, 2)
+	im = axs[0].imshow(real(data), vmin=-0.05, vmax=0.05, origin='lower', interpolation='none', cmap=cm.gnuplot, aspect='auto', extent=[0,2*pi,0,tmax])
+	im = axs[1].imshow(imag(data), vmin=-0.05, vmax=0.05, origin='lower', interpolation='none', cmap=cm.gnuplot, aspect='auto', extent=[0,2*pi,0,tmax])
+	fig.colorbar(im)
+	plt.title(spec)
+#	axis_shenanigans(ax)
+
+elif args.plot == 'tslice':
+	
+	if index>1:
+		data = open_Gtx(spec,0) + open_Gtx(spec,1)
+	else:
+		data = open_Gtx(spec,index)
+	
+	fig, ax = plt.subplots()
+	plt.plot(real(data[4,:]), marker='.')
+	plt.plot(imag(data[4,:]), marker='.')
+	plt.title(spec)
+#	axis_shenanigans(ax)
 
 if args.save:
 	

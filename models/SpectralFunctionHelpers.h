@@ -90,7 +90,7 @@ Mpo<Symmetry,Scalar> get_Op (const MODEL &H, size_t loc, std::string spec, doubl
 		}
 	}
 	// charge structure factor
-	else if (spec == "CSF")
+	else if (spec == "CSF" or spec == "ICSF")
 	{
 		if constexpr (!Symmetry::IS_CHARGE_SU2())
 		{
@@ -214,7 +214,7 @@ bool TIME_DIR (std::string spec)
 {
 	// true=forwards in time
 	// false=backwards in time
-	return (spec=="PES" or spec=="PESUP" or spec=="PESDN" or spec=="AES" or spec=="IPZ" or spec=="SDAGSF" or spec=="PDAGSF")? false:true;
+	return (spec=="PES" or spec=="PESUP" or spec=="PESDN" or spec=="AES" or spec=="IPZ" or spec=="ICSF" or spec=="SDAGSF" or spec=="PDAGSF")? false:true;
 }
 
 string DAG (std::string spec)
@@ -231,11 +231,12 @@ string DAG (std::string spec)
 	else if (spec == "AES")   res = "APS";
 	else if (spec == "APS")   res = "AES";
 	else if (spec == "CSF")   res = "CSF";
+	else if (spec == "ICSF")   res = "ICSF";
 	else if (spec == "PSZ")   res = "PSZ";
 	else if (spec == "IPZ")   res = "IPZ";
 	else if (spec == "PSF")   res = "PDAGSF";
 	else if (spec == "HSF")   res = "IHSF";
-	else if (spec == "IHSF")  res = "HSF";
+	else if (spec == "IHS")   res = "HSF";
 	return res;
 }
 

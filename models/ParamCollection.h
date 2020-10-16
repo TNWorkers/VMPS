@@ -580,6 +580,9 @@ vector<Param> Tinf_params_fermions (size_t Ly)
 	return res;
 }
 
+inline double conjIfImag (double x) {return x;}
+inline std::complex<double> conjIfImag (std::complex<double> x) {return conj(x);}
+
 template<typename Scalar>
 Array<Scalar,Dynamic,Dynamic> hopping_PAM (int L, Scalar tfc, Scalar tcc, Scalar tff, Scalar tx, Scalar ty)
 {
@@ -599,7 +602,7 @@ Array<Scalar,Dynamic,Dynamic> hopping_PAM (int L, Scalar tfc, Scalar tcc, Scalar
 		res(2*l,   2*l+2) = tcc;
 		res(2*l+1, 2*l+3) = tff;
 		res(2*l+1, 2*l+2) = tx;
-		res(2*l,   2*l+3) = conj(ty);
+		res(2*l,   2*l+3) = conjIfImag(ty);
 	}
 	
 	res.matrix() += res.matrix().adjoint().eval();

@@ -69,11 +69,24 @@ TWO_SITE (int it, const MpsType &Psi, double r, vector<size_t> true_overrides, v
 			res[b] = (abs(DeltaSb(it,b)) > DeltaS)? true:false;
 		}
 		
+		#ifndef TIME_PROP_USE_TERMPLOT
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 		{
-			lout << "b=" << b << ", δS(b)/S=" << DeltaSb(it,b) << ", S=" << data(it,b) << endl;
+			std::streamsize ss = std::cout.precision();
+			lout << setprecision(4) << "b=" << b << ", δS(b)/S=" << DeltaSb(it,b) << ", S=" << data(it,b) << setprecision(ss) << endl;
 		}
+		#endif
 	}
+	
+	#ifdef TIME_PROP_USE_TERMPLOT
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE and it>0)
+	{
+		PlotParams p;
+		p.label = "δS(b)/S";
+		ArrayXd plotrow = DeltaSb.row(it);
+		if (!isnan(plotrow(0))) TerminalPlot::plot(plotrow,p);
+	}
+	#endif
 	
 //	if (res[0] == true and it>0 and CHOSEN_VERBOSITY > DMRG::VERBOSITY::SILENT)
 //	{

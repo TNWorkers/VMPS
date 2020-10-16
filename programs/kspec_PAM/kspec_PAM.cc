@@ -6,8 +6,10 @@
 //#define USE_OLD_COMPRESSION
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
+#define VUMPS_SOLVER_DONT_USE_OPENMP
 #define GREENPROPAGATOR_USE_HDF5
 //#define LINEARSOLVER_DIMK 100
+//#define TIME_PROP_USE_TERMPLOT
 
 #include <iostream>
 #include <fstream>
@@ -36,6 +38,11 @@ Logger lout;
 typedef VMPS::HubbardSU2xU1 MODEL;
 #include "models/PeierlsHubbardSU2xU1.h"
 typedef VMPS::PeierlsHubbardSU2xU1 MODELC;
+
+#ifdef TIME_PROP_USE_TERMPLOT
+#include "plot.hpp"
+#include "TerminalPlot.h"
+#endif
 
 #include "solvers/GreenPropagator.h"
 #include "models/SpectralFunctionHelpers.h"
@@ -92,7 +99,7 @@ int main (int argc, char* argv[])
 	bool SAVE_GS = args.get<bool>("SAVE_GS",false);
 	bool LOAD_GS = args.get<bool>("LOAD_GS",false);
 	
-	vector<string> specs = args.get_list<string>("specs",{"HSF","PES","IPE"}); // welche Spektren? PES:Photoemission, IPE:inv. Photoemission, HSF: Hybridisierung, IHSF: inverse Hybridisierung
+	vector<string> specs = args.get_list<string>("specs",{"HSF","CSF","PES","IPE"}); // welche Spektren? PES:Photoemission, IPE:inv. Photoemission, HSF: Hybridisierung, IHSF: inverse Hybridisierung
 	string specstring = "";
 	int Nspec = specs.size();
 	size_t Mlim = args.get<size_t>("Mlim",500ul); // Bonddimension fuer Dynamik
@@ -121,7 +128,7 @@ int main (int argc, char* argv[])
 	
 	// Parameter fuer den Grundzustand:
 	VUMPS::CONTROL::GLOB GlobParams;
-	GlobParams.min_iterations = args.get<size_t>("min_iterations",50ul);
+	GlobParams.min_iterations = args.get<size_t>("min_iterations",100ul);
 	GlobParams.max_iterations = args.get<size_t>("max_iterations",150ul);
 	GlobParams.Minit = args.get<size_t>("Minit",10ul);
 	GlobParams.Mlimit = args.get<size_t>("Mlimit",500ul);
@@ -253,44 +260,39 @@ int main (int argc, char* argv[])
 	H_hetero.transform_base(Q,false,L); // PRINT=false
 	H_hetero.precalc_TwoSiteData(true); // FORCE=true
 	
+	lout << endl;
+	
+	// shift values O→O-<O>
 	vector<vector<double>> Oshift(Nspec);
 	for (int z=0; z<Nspec; ++z)
 	{
 		Oshift[z].resize(Lphys);
 		for (int l=0; l<Lphys; ++l)
 		{
+			complex<double> val;
 			lout << "l=" << l << endl;
 			if (specs[z] == "CSF")
 			{
-				lout << "n(l)=" << avg(g.state, H.n(l), g.state) << endl;
-				Oshift[z][l] = isReal(avg(g.state, H.n(l), g.state));
+				val = avg(g.state, H.n(l), g.state);
+				lout << "n(l)=" << val << endl;
+				Oshift[z][l] = val.real();
 			}
 			else if (specs[z] == "HSF")
 			{
 				MODELC Haux(2*L, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
-				lout << "cdagc(l,l+1)=" << avg(g.state, Haux.cdagc(l,l+1), g.state) << endl;
-				Oshift[z][l] = isReal(avg(g.state, Haux.cdagc(l,l+1), g.state));
+				val = avg(g.state, Haux.cdagc(l,l+1), g.state);
+				lout << "cdagc(l,l+1)=" << val << endl;
+				Oshift[z][l] = val.real();
 			}
 			else
 			{
 				Oshift[z][l] = 0.;
 			}
+			if (abs(val.imag()) > 1e-10)
+			{
+				lout << termcolor::red << "Warning: non-zero imaginary part!" << termcolor::reset << endl;
+			}
 			lout << "spec=" << specs[z] << ", l=" << l << ", Oshift=" << Oshift[z][l] << endl;
-		}
-	}
-	
-	// create vector of O
-	vector<vector<Mpo<MODELC::Symmetry,complex<double>>>> O(Nspec);
-	for (int z=0; z<Nspec; ++z)
-	{
-		O[z].resize(Lphys);
-		for (int l=0; l<Lphys; ++l)
-		{
-			O[z][l] = VMPS::get_Op<MODELC,MODELC::Symmetry,complex<double>>(H_hetero,Lhetero/2+l,specs[z]);
-			O[z][l].scale(1.,-Oshift[z][l]);
-			O[z][l].transform_base(Q,false,L); // PRINT=false
-			// l=0: c-electrons
-			// l=1: f-electrons
 		}
 	}
 	
@@ -298,14 +300,35 @@ int main (int argc, char* argv[])
 	Stopwatch<> OxVTimer;
 	Mps<MODELC::Symmetry,complex<double>> Phi = uDMRG.create_Mps(Ncells, g, H, x0); // ground state as heterogenic MPS
 	
-	// OxPhiCell
+	// O and OxPhiCell for counterpropagate
+	vector<vector<Mpo<MODELC::Symmetry,complex<double>>>> O(Nspec);
+	vector<vector<Mpo<MODELC::Symmetry,complex<double>>>> Odag(Nspec);
+	for (int z=0; z<Nspec; ++z)
+	{
+		O[z].resize(Lphys);
+		for (int l=0; l<Lphys; ++l)
+		{
+			O[z][l] = VMPS::get_Op<MODELC,MODELC::Symmetry,complex<double>>(H_hetero, Lhetero/2+l, specs[z]);
+			if (specs[z] != "PES" and specs[z] != "IPE" and specs[z] != "PSZ")
+			{
+				O[z][l].scale(1.,-Oshift[z][l]);
+			}
+			O[z][l].transform_base(Q,false,L); // PRINT=false
+			cout << O[z][l].info() << endl;
+			cout << "avg(g.state, O[z][l], g.state)=" << avg(g.state, O[z][l], g.state) << endl;
+			// l=0: c-electrons
+			// l=1: f-electrons
+		}
+	}
+	
 	vector<vector<Mps<MODELC::Symmetry,complex<double>>>> OxPhiCell(Nspec);
 	for (int z=0; z<Nspec; ++z)
 	{
 		OxPhiCell[z].resize(Lphys);
-		OxPhiCell[z] = uDMRG.create_Mps(Ncells, g, H, O[z][0], O[z]); // O[z][0] for boundaries, O[z] is multiplied
+		OxPhiCell[z] = uDMRG.create_Mps(Ncells, g, H, O[z][0], O[z]); // O[z][0] for boundaries, O[z] is multiplied (vector in cell size)
 	}
 	
+	// Ofull and OxPhiFull for simple propagate
 	vector<vector<Mpo<MODEL::Symmetry,complex<double>>>> Ofull(Nspec);
 	vector<vector<Mps<MODELC::Symmetry,complex<double>>>> OxPhiFull(Nspec);
 	if (L>2)
@@ -317,7 +340,10 @@ int main (int argc, char* argv[])
 			for (int l=0; l<Lhetero; ++l)
 			{
 				Ofull[z][l] = VMPS::get_Op<MODELC,MODELC::Symmetry,complex<double>>(H_hetero,l,specs[z]);
-				Ofull[z][l].scale(1.,-Oshift[z][l]);
+				if (specs[z] != "PES" and specs[z] != "IPE" and specs[z] != "PSZ")
+				{
+					Ofull[z][l].scale(1.,-Oshift[z][l]);
+				}
 				Ofull[z][l].transform_base(Q,false,L); // PRINT=false
 			}
 		}

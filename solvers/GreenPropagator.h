@@ -1178,6 +1178,7 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 	if (GREENINT_CHOICE != DIRECT)
 	{
 		Stopwatch<> StepTimer;
+//		lout << termcolor::blue << "phase=" << -1.i*exp(-1.i*tsign*Eg*tval) << termcolor::reset << endl;
 		calc_GreenCell(0, -1.i*exp(-1.i*tsign*Eg*tval), Psi);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -1236,6 +1237,7 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 		// 2. measure
 		// 2.1. Green's function
 		//----------------------------------------------------------
+//		lout << termcolor::blue << "phase=" << -1.i*exp(-1.i*tsign*Eg*tval) << termcolor::reset << endl;
 		calc_GreenCell(t.index(), -1.i*exp(-1.i*tsign*Eg*tval), Psi);
 		//----------------------------------------------------------
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("G(t,x) calculation") << endl;
@@ -1635,16 +1637,16 @@ calc_GreenCell (const int &tindex,
                 const complex<double> &phase, 
                 const std::array<vector<Mps<Symmetry,complex<double>>>,2> &Psi)
 {
+//	cout << "phase=" << phase << endl;
 //	#pragma omp parallel for collapse(3)
 	for (size_t i=0; i<Lcell; ++i)
 	for (size_t j=0; j<Lcell; ++j)
 	for (size_t n=0; n<Ncells; ++n)
 	{
 		GtxCell[i][j](tindex,n) = phase * dot_hetero(Psi[1][i], Psi[0][j], dcell[n*Lcell]);
-//		cout << "phase=" << phase << ", dot="  << dot_hetero(Psi[1][i], Psi[0][j], dcell[n*Lcell]) << endl;
 //		#pragma omp critical
 //		{
-//			cout << "i=" << i << ", j=" << j << ", n=" << n << ", dcell=" << dcell[n*Lcell] << ", G=" << GtxCell[i][j](tindex,n) << endl;
+//			cout << "i=" << i << ", j=" << j << ", n=" << n << ", dcell=" << dcell[n*Lcell] << ", dot=" << dot_hetero(Psi[1][i], Psi[0][j], dcell[n*Lcell]) << ", G=" << GtxCell[i][j](tindex,n) << endl;
 //		}
 	}
 	

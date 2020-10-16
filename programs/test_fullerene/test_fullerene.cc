@@ -130,7 +130,7 @@ int main (int argc, char* argv[])
 	bool CALC_NEUTRAL_GAP = args.get<bool>("CALC_NEUTRAL_GAP",false);
 	double Epenalty = args.get<double>("Epenalty",10.);
 	bool CALC_VAR = args.get<int>("CALC_VAR",true);
-	int dmax = args.get<int>("dmax",3);
+	int dmax = args.get<int>("dmax",9);
 	int dmin = args.get<int>("dmin",1);
 	
 	bool CALC_DOS = args.get<int>("CALC_DOS",false);

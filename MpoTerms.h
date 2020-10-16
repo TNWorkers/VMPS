@@ -2919,6 +2919,7 @@ scale(const double factor, const double offset, const std::size_t power, const d
     if(std::abs(offset) > tolerance)
     {
         bool sign_offset = (offset < 0. ? true : false);
+        cout << boolalpha << "sign_offset=" << sign_offset << endl;
         double offset_per_site = std::pow(std::abs(offset), 1./(1.*N_sites));
         if(boundary_condition == BC::OPEN)
         {
@@ -2932,7 +2933,7 @@ scale(const double factor, const double offset, const std::size_t power, const d
                 std::map<qType,OperatorType> &existing_ops = (it->second)[get_auxdim(loc,qVac)-1][get_auxdim(loc+1,qVac)-1];
                 SiteOperator<Symmetry,Scalar> Id;
                 Id.data = Matrix<Scalar,Dynamic,Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView();
-                if(loc == 0 and sign_offset)
+                if(loc == N_sites/2 and sign_offset) // Muss fuer Spektralfunktionen in der Mitte sein, sonst Phasenshift um pi
                 {
                     Id.data *= -1.;
                 }
