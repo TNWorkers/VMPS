@@ -27,6 +27,12 @@ from mpl_toolkits.axes_grid1.colorbar import colorbar
 #sys.path.insert(0, '../PYSNIP')
 #import StringStuff
 
+def round(x):
+	if x==int(x):
+		return int(x)
+	else:
+		return x
+
 rc('text',usetex=True)
 rc('font',**{'family':'sans-serif','sans-serif':['DejaVu Sans']})
 rc('font',size=10)
@@ -36,16 +42,29 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-save', action='store_true', default=False)
 parser.add_argument('-set', action='store', default='.')
 parser.add_argument('-plot', action='store', default='freq') # freq, time
-parser.add_argument('-spec', action='store', default='HSF')
+parser.add_argument('-spec', action='store', default='A1P')
 parser.add_argument('-L', action='store', type=int, default=32)
-parser.add_argument('-U', action='store', type=int, default=4)
-parser.add_argument('-V', action='store', type=int, default=0)
 parser.add_argument('-Ly', action='store', type=int, default=1)
 parser.add_argument('-tol', action='store', type=float, default=0.01)
 parser.add_argument('-dt', action='store', type=float, default=0.1)
 parser.add_argument('-tmax', action='store', type=int, default=4)
 parser.add_argument('-INT', action='store', default='OOURA')
 parser.add_argument('-index', action='store', type=int, default=2)
+
+parser.add_argument('-U', action='store', type=int, default=4)
+parser.add_argument('-V', action='store', type=int, default=0)
+
+parser.add_argument('-Ef', action='store', type=float, default=-2)
+parser.add_argument('-Ec', action='store', type=float, default=0)
+
+parser.add_argument('-tfc', action='store', type=float, default=0.5)
+parser.add_argument('-tcc', action='store', type=float, default=1)
+parser.add_argument('-tff', action='store', type=float, default=0)
+parser.add_argument('-Retx', action='store', type=float, default=0)
+parser.add_argument('-Imtx', action='store', type=float, default=0.5)
+parser.add_argument('-Rety', action='store', type=float, default=0)
+parser.add_argument('-Imty', action='store', type=float, default=0)
+
 args = parser.parse_args()
 
 set = args.set
@@ -54,17 +73,17 @@ plot = args.plot
 INT = args.INT
 index = args.index
 
-U = args.U
-V = args.V
-tfc = 1
-tcc = 1
-tff = 0
-Retx = 0
-Imtx = 0
-Rety = 0
-Imty = 0
-Ec = 0
-Ef = -2
+U = round(args.U)
+V = round(args.V)
+tfc = round(args.tfc)
+tcc = round(args.tcc)
+tff = round(args.tff)
+Retx = round(args.Retx)
+Imtx = round(args.Imtx)
+Rety = round(args.Rety)
+Imty = round(args.Imty)
+Ec = round(args.Ec)
+Ef = round(args.Ef)
 
 dt = args.dt
 tolDeltaS = args.tol
