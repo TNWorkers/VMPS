@@ -71,7 +71,9 @@ public:
 
 const std::map<string,std::any> KondoNecklaceU1::defaults = 
 {
-	{"Jlocxy",1.}, {"Jlocz",1.}, {"Jparaxy",1.}, {"Jparaz",1.}, {"Jperpxy",0.}, {"Jperpz",0.}, {"Jprimexy",1.}, {"Jprimez",1.},
+	{"Jlocxy",1.}, {"Jlocz",1.}, 
+	{"Jparaxy",1.}, {"Jparaz",1.}, {"Jperpxy",0.}, {"Jperpz",0.}, {"Jprimexy",1.}, {"Jprimez",1.},
+	{"Bz",0.}, {"Bzsub",0.},
 	{"Dimp",2ul}, {"Dsub",2ul}, {"Ly",1ul},
 	{"maxPower",2ul}, {"CYLINDER",false}
 };
@@ -134,6 +136,17 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
         labellist[loc].push_back(ss2.str());
         labellist[loc].push_back(ss3.str());
 
+		// Bz substrate
+		param1d Bzsub = P.fill_array1d<double>("Bzsub", "Bzsuborb", orbitals, loc%Lcell);
+		labellist[loc].push_back(Bzsub.label);
+		
+		// Bz impurities
+		param1d Bz = P.fill_array1d<double>("Bz", "Bzorb", orbitals, loc%Lcell);
+		labellist[loc].push_back(Bz.label);
+
+		auto Himp = kroneckerProduct(Bsub[loc].Id(),Bimp[loc].HeisenbergHamiltonian(Bimp[loc].ZeroHopping(),Bimp[loc].ZeroHopping(),Bz.a,Bimp[loc].ZeroField(),Bimp[loc].ZeroField()));
+		auto Hsub = kroneckerProduct(Bsub[loc].HeisenbergHamiltonian(Bsub[loc].ZeroHopping(),Bsub[loc].ZeroHopping(),Bzsub.a,Bsub[loc].ZeroField(),Bsub[loc].ZeroField()),Bimp[loc].Id());
+		auto Hloc = Himp + Hsub;
         
         // Local Terms: J_Kondo
         param1d Jlocxy = P.fill_array1d<double>("Jlocxy", "Jlocxy_array", orbitals, loc%Lcell);
@@ -144,13 +157,12 @@ void KondoNecklaceU1::set_operators(const std::vector<SpinBase<Symmetry>>& Bsub,
 			labellist[loc].push_back(Jlocz.label);
             for(int alpha=0; alpha<orbitals; ++alpha)
             {
-                std::vector<OperatorType> ops(1);
-				ops[0] = 0.5*Jlocxy(alpha) * kroneckerProduct(Bsub[loc].Scomp(SP,alpha), Bimp[loc].Scomp(SM,alpha));
-				ops[0] += 0.5*Jlocxy(alpha) * kroneckerProduct(Bsub[loc].Scomp(SM,alpha), Bimp[loc].Scomp(SP,alpha));
-				ops[0] +=     Jlocz(alpha)  * kroneckerProduct(Bsub[loc].Scomp(SZ,alpha), Bimp[loc].Scomp(SZ,alpha));
-                pushlist.push_back(std::make_tuple(loc, ops, 1.));
+				Hloc += 0.5*Jlocxy(alpha) * kroneckerProduct(Bsub[loc].Scomp(SP,alpha), Bimp[loc].Scomp(SM,alpha));
+				Hloc += 0.5*Jlocxy(alpha) * kroneckerProduct(Bsub[loc].Scomp(SM,alpha), Bimp[loc].Scomp(SP,alpha));
+				Hloc +=     Jlocz(alpha)  * kroneckerProduct(Bsub[loc].Scomp(SZ,alpha), Bimp[loc].Scomp(SZ,alpha));
             }
         }
+		pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction(Hloc), 1.));
 				
 		auto push_full = [&N_sites, &loc, &Bimp, &Bsub, &P, &pushlist, &labellist, &boundary] (string xxxFull, string label,
 																						 const vector<SiteOperatorQ<Symmetry,Eigen::MatrixXd> > &first,
