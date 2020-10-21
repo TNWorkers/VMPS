@@ -49,31 +49,31 @@ struct VUMPS
 		{
 			//GLOB DEFAULTS
 			constexpr static size_t min_iterations             = 1;
-			constexpr static size_t max_iterations             = 300;
+			constexpr static size_t max_iterations             = 1000;
 			constexpr static size_t min_iter_without_expansion = 10;
-			constexpr static size_t max_iter_without_expansion = 50;
-			constexpr static double tol_eigval                 = 1e-8;
+			constexpr static size_t max_iter_without_expansion = 100;
+			constexpr static double tol_eigval                 = 1e-13;
 			constexpr static double tol_state                  = 1e-7;
-			constexpr static double tol_var                    = 1e-7;
-			constexpr static size_t Dinit                      = 4;
-			constexpr static size_t Dlimit                     = 500;
+			constexpr static double tol_var                    = 1e-13;
+			constexpr static size_t Minit                      = 10;
+			constexpr static size_t Mlimit                     = 2000;
 			constexpr static size_t Qinit                      = 4;
 			constexpr static size_t savePeriod                 = 0;
-			constexpr static size_t fullMmaxBreakoff           = 1e5;
-			constexpr static char saveName[] = "UmpsBackup";
+			constexpr static size_t truncatePeriod             = std::numeric_limits<size_t>::max();
+			constexpr static bool   INIT_TO_HALF_INTEGER_QN    = false;
+			constexpr static char   saveName[]                 = "UmpsBackup";
 			
 			//DYN DEFAULTS
-			static size_t max_deltaD          (size_t i) {return (i<1800)? 100ul:0ul;} // Maximum expansion by 100 and turn off expansion completely after 1800 iterations
-			static size_t Dincr_abs           (size_t i) {return 2ul;} // increase D by at least Dincr_abs
-			static double Dincr_rel           (size_t i) {return 1.04;} // increase D by at least 4%
-			static size_t Dincr_per           (size_t i) {return 10ul;} // increase D every 10 iterations
+			static size_t max_deltaM          (size_t i) {return (i<1800)? 100ul:0ul;} // Maximum expansion by 100 and turn off expansion completely after 1800 iterations
+			static size_t Mincr_abs           (size_t i) {return 50ul;} // increase M by at least Mincr_abs
+			static double Mincr_rel           (size_t i) {return 1.04;} // increase M by at least 4%
 			static void   doSomething         (size_t i) {return;}
 			static UMPS_ALG::OPTION iteration (size_t i) {return UMPS_ALG::PARALLEL;}
 			
 			//LANCZOS DEFAULTS
 			constexpr static ::LANCZOS::REORTHO::OPTION REORTHO           = LANCZOS::REORTHO::FULL;
-			constexpr static double eps_eigval                            = 1.e-7;
-			constexpr static double eps_coeff                             = 1.e-4;
+			constexpr static double eps_eigval                            = 1.e-14;
+			constexpr static double eps_coeff                             = 1.e-14;
 			constexpr static size_t dimK                                  = 200ul;
 		};
 		
@@ -86,20 +86,20 @@ struct VUMPS
 			double tol_eigval                 = CONTROL::DEFAULT::tol_eigval;
 			double tol_var                    = CONTROL::DEFAULT::tol_var;
 			double tol_state                  = CONTROL::DEFAULT::tol_state;
-			size_t Dinit                      = CONTROL::DEFAULT::Dinit;
-			size_t Dlimit                     = CONTROL::DEFAULT::Dlimit;
+			size_t Minit                      = CONTROL::DEFAULT::Minit;
+			size_t Mlimit                     = CONTROL::DEFAULT::Mlimit;
 			size_t Qinit                      = CONTROL::DEFAULT::Qinit;
 			size_t savePeriod                 = CONTROL::DEFAULT::savePeriod;
-			size_t fullMmaxBreakoff           = CONTROL::DEFAULT::fullMmaxBreakoff;
+			size_t truncatePeriod             = CONTROL::DEFAULT::truncatePeriod;
+			bool   INIT_TO_HALF_INTEGER_QN    = CONTROL::DEFAULT::INIT_TO_HALF_INTEGER_QN;
 			std::string saveName              = std::string(CONTROL::DEFAULT::saveName);
 		};
 		
 		struct DYN
 		{
-			function<size_t(size_t)> max_deltaD          = CONTROL::DEFAULT::max_deltaD;
-			function<size_t(size_t)> Dincr_abs           = CONTROL::DEFAULT::Dincr_abs;
-			function<double(size_t)> Dincr_rel           = CONTROL::DEFAULT::Dincr_rel;
-			function<size_t(size_t)> Dincr_per           = CONTROL::DEFAULT::Dincr_per;
+			function<size_t(size_t)> max_deltaM          = CONTROL::DEFAULT::max_deltaM;
+			function<size_t(size_t)> Mincr_abs           = CONTROL::DEFAULT::Mincr_abs;
+			function<double(size_t)> Mincr_rel           = CONTROL::DEFAULT::Mincr_rel;
 			// function<double(size_t)> eps_svd             = CONTROL::DEFAULT::eps_svd;
 			function<void(size_t)>   doSomething         = CONTROL::DEFAULT::doSomething;
 			function<size_t(size_t)> iteration           = CONTROL::DEFAULT::iteration;

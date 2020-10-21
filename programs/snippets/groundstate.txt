@@ -47,9 +47,9 @@
 				DMRG.userSetGlobParam();
 				DMRG.userSetDynParam();
 				
-				DMRG.LanczosParam.tol_state = 1e-3;
-				DMRG.userSetLanczosParam();
-				lout << endl << "Note: DMRG.LanczosParam.tol_state=" << DMRG.LanczosParam.tol_state << endl;
+//				DMRG.LanczosParam.tol_state = 1e-3;
+//				DMRG.userSetLanczosParam();
+//				lout << endl << "Note: DMRG.LanczosParam.tol_state=" << DMRG.LanczosParam.tol_state << endl;
 				
 				DMRG.edgeState(H, g, Qc[i], LANCZOS::EDGE::GROUND);
 				ginfo << gChronos.info(make_string("ground state ",Qc[i])) << endl;
@@ -83,13 +83,14 @@
 				DMRG.edgeState(H, r, Qc[i], LANCZOS::EDGE::ROOF);
 				
 				rinfo << rChronos.info(make_string("roof state ",Qc[i])) << endl;
+				Eminmax(1,i) = r.energy;
+				
 				if (DMRG.get_errState() > 10.*DMRG.GlobParam.tol_state)
 				{
-//					Emaxs(i) = 2.*r.energy;
-					lout << termcolor::red << "Warning: Bad convergence of roof state!" << endl;
+					Eminmax(1,i) *= 1.1;
+					lout << termcolor::red << "Warning: Bad convergence of roof state!" << termcolor::reset << endl;
 				}
 				
-				Eminmax(1,i) = r.energy;
 				rinfo << DMRG.info() << endl;
 				
 				if (DMRG.get_errState() < DMRG.GlobParam.tol_state)
@@ -110,12 +111,12 @@
 	lout << termcolor::bold << "E0=" << E0 << ", Emin=" << Emin << ", Emax=" << Emax << termcolor::reset << endl << endl;
 	
 	// save energies
-	if (!filesystem::exists(wd+"energies/"+EminmaxFile) and 
-	    CONVERGED1 == true and 
-	    CONVERGED2 == true and 
-	    CONVERGED3 == true)
-	{
-		saveMatrix(Eminmax, wd+"energies/"+EminmaxFile);
-		lout << wd+"energies/"+EminmaxFile " saved!" << endl;
-	}
+//	if (!filesystem::exists(wd+"energies/"+EminmaxFile) and 
+//	    CONVERGED1 == true and 
+//	    CONVERGED2 == true and 
+//	    CONVERGED3 == true)
+//	{
+//		saveMatrix(Eminmax, wd+"energies/"+EminmaxFile);
+//		lout << wd+"energies/"+EminmaxFile << " saved!" << endl;
+//	}
 	//--------------</ground state>---------------

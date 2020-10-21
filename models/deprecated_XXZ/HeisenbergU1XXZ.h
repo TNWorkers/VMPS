@@ -66,7 +66,7 @@ HeisenbergU1XXZ::
 HeisenbergU1XXZ (const size_t &L, const BC &boundary, const DMRG::VERBOSITY::OPTION& VERB)
 :HeisenbergU1(L, boundary, VERB)
 {}
-	
+
 HeisenbergU1XXZ::
 HeisenbergU1XXZ (const size_t &L, const vector<Param> &params, const BC &boundary, const DMRG::VERBOSITY::OPTION& VERB)
 :HeisenbergU1(L, boundary, VERB)
@@ -81,7 +81,7 @@ HeisenbergU1XXZ (const size_t &L, const vector<Param> &params, const BC &boundar
 		B[l] = SpinBase<Symmetry>(P.get<size_t>("Ly",l%Lcell), P.get<size_t>("D",l%Lcell));
 		setLocBasis(B[l].get_basis().qloc(),l);
 	}
-
+	
 	if (P.HAS_ANY_OF({"Jxy", "Jxypara", "Jxyperp", "Jxyfull"}))
 	{
 		this->set_name("XXZ");
@@ -90,15 +90,15 @@ HeisenbergU1XXZ (const size_t &L, const vector<Param> &params, const BC &boundar
 	{
 		this->set_name("Ising");
 	}
-
+	
 	PushType<SiteOperator<Symmetry,double>,double> pushlist;
-    std::vector<std::vector<std::string>> labellist;
+	std::vector<std::vector<std::string>> labellist;
 	set_operators(B, P, pushlist, labellist, boundary);
 	add_operators(B, P, pushlist, labellist, boundary);
-
+	
 	this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
-
+	this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
+	
 	this->precalc_TwoSiteData();
 }
 

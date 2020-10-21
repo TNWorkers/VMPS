@@ -100,10 +100,10 @@ const map<string,any> HubbardSU2xU1::defaults =
 const map<string,any> HubbardSU2xU1::sweep_defaults = 
 {
 	{"max_alpha",100.}, {"min_alpha",1.}, {"lim_alpha",11ul}, {"eps_svd",1e-7},
-	{"Dincr_abs", 4ul}, {"Dincr_per", 2ul}, {"Dincr_rel", 1.1},
+	{"Mincr_abs", 50ul}, {"Mincr_per", 2ul}, {"Mincr_rel", 1.1},
 	{"min_Nsv",0ul}, {"max_Nrich",-1},
 	{"max_halfsweeps",24ul}, {"min_halfsweeps",1ul},
-	{"Dinit",8ul}, {"Qinit",10ul}, {"Dlimit",500ul},
+	{"Minit",2ul}, {"Qinit",2ul}, {"Mlimit",1000ul},
 	{"tol_eigval",1e-7}, {"tol_state",1e-6},
 	{"savePeriod",0ul}, {"CALC_S_ON_EXIT", true}, {"CONVTEST", DMRG::CONVTEST::VAR_2SITE}
 };
@@ -218,7 +218,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {F[loc].Tz(0)};
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Tz_ranges(N_sites); for (size_t i=0; i<N_sites; i++) {Tz_ranges[i] = F[i].Tz(0);}
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Tz_ranges};
-			push_full("Vzfull", "Vzᵢⱼ", first, last, {1.}, PROP::BOSONIC);			
+			push_full("Vzfull", "Vzᵢⱼ", first, last, {1.}, PROP::BOSONIC);
 		}
 		if (P.HAS("Vxyfull"))
 		{

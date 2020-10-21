@@ -135,7 +135,7 @@ set_defaultCutoffs()
 	eps_svd    = DMRG::CONTROL::DEFAULT::eps_svd(0);
 	alpha_rsvd = DMRG::CONTROL::DEFAULT::max_alpha_rsvd(0);
 	min_Nsv    = DMRG::CONTROL::DEFAULT::min_Nsv(0);
-	max_Nsv    = DMRG::CONTROL::DEFAULT::Dlimit;
+	max_Nsv    = DMRG::CONTROL::DEFAULT::Mlimit;
 	max_Nrich  = DMRG::CONTROL::DEFAULT::max_Nrich(0);
 }
 

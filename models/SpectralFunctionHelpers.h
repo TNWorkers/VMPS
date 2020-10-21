@@ -4,39 +4,39 @@
 namespace VMPS
 {
 
-template<typename MODEL, typename Symmetry>
-typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec, double factor=1.)
+template<typename MODEL, typename Symmetry, typename Scalar=double>
+Mpo<Symmetry,Scalar> get_Op (const MODEL &H, size_t loc, std::string spec, double factor=1., size_t locy=0)
 {
-	typename MODEL::Operator Res;
+	Mpo<Symmetry,Scalar> Res;
 	
 	// spin structure factor
 	if (spec == "SSF")
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2())
 		{
-			Res = H.S(loc,0,factor);
+			Res = H.S(loc,locy,factor);
 		}
 		else
 		{
-			Res = H.Scomp(SP,loc,0);
+			Res = H.Scomp(SP,loc,locy);
 		}
 	}
 	else if (spec == "SDAGSF")
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2())
 		{
-			Res = H.Sdag(loc,0,factor);
+			Res = H.Sdag(loc,locy,factor);
 		}
 		else
 		{
-			Res = H.Scomp(SM,loc,0);
+			Res = H.Scomp(SM,loc,locy);
 		}
 	}
 	else if (spec == "SSZ")
 	{
 		if constexpr (!Symmetry::IS_SPIN_SU2())
 		{
-			Res = H.Scomp(SZ,loc,0);
+			Res = H.Scomp(SZ,loc,locy);
 		}
 		else
 		{
@@ -48,22 +48,22 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec, d
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 		{
-			Res = H.c(loc,0,factor);
+			Res = H.c(loc,locy,factor);
 		}
 		else
 		{
-			Res = H.template c<UP>(loc,0);
+			Res = H.template c<UP>(loc,locy);
 		}
 	}
 	else if (spec == "PESDN")
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 		{
-			Res = H.c(loc,0,factor);
+			Res = H.c(loc,locy,factor);
 		}
 		else
 		{
-			Res = H.template c<DN>(loc,0);
+			Res = H.template c<DN>(loc,locy);
 		}
 	}
 	// inverse photoemission
@@ -71,30 +71,30 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec, d
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 		{
-			Res = H.cdag(loc,0,factor);
+			Res = H.cdag(loc,locy,factor);
 		}
 		else
 		{
-			Res = H.template cdag<UP>(loc,0,factor);
+			Res = H.template cdag<UP>(loc,locy,factor);
 		}
 	}
 	else if (spec == "IPEDN")
 	{
 		if constexpr (Symmetry::IS_SPIN_SU2()) // or spinless
 		{
-			Res = H.cdag(loc,0,factor);
+			Res = H.cdag(loc,locy,factor);
 		}
 		else
 		{
-			Res = H.template cdag<DN>(loc,0,factor);
+			Res = H.template cdag<DN>(loc,locy,factor);
 		}
 	}
 	// charge structure factor
-	else if (spec == "CSF")
+	else if (spec == "CSF" or spec == "ICSF")
 	{
 		if constexpr (!Symmetry::IS_CHARGE_SU2())
 		{
-			Res = H.n(loc,0);
+			Res = H.n(loc,locy);
 		}
 		else
 		{
@@ -106,7 +106,7 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec, d
 	{
 		if constexpr (!Symmetry::IS_CHARGE_SU2())
 		{
-			Res = H.cc(loc,0);
+			Res = H.cc(loc,locy);
 		}
 		else
 		{
@@ -118,7 +118,7 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec, d
 	{
 		if constexpr (!Symmetry::IS_CHARGE_SU2())
 		{
-			Res = H.cdagcdag(loc,0);
+			Res = H.cdagcdag(loc,locy);
 		}
 		else
 		{
@@ -130,11 +130,11 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec, d
 	{
 		if constexpr (Symmetry::IS_CHARGE_SU2())
 		{
-			Res = H.T(loc,0);
+			Res = H.T(loc,locy);
 		}
 		else
 		{
-			Res = H.Tp(loc,0);
+			Res = H.Tp(loc,locy);
 		}
 	}
 	// pseudospin structure factor
@@ -142,11 +142,11 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec, d
 	{
 		if constexpr (Symmetry::IS_CHARGE_SU2())
 		{
-			Res = H.Tdag(loc,0);
+			Res = H.Tdag(loc,locy);
 		}
 		else
 		{
-			Res = H.Tm(loc,0);
+			Res = H.Tm(loc,locy);
 		}
 	}
 	// pseudospin structure factor: z-component
@@ -154,7 +154,47 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec, d
 	{
 		if constexpr (!Symmetry::IS_CHARGE_SU2())
 		{
-			Res = H.Tz(loc,0);
+			Res = H.Tz(loc,locy);
+		}
+		else
+		{
+			throw;
+		}
+	}
+	// hybridization structure factor
+	else if (spec == "HSF")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2())
+		{
+			if (loc<H.length()-1)
+			{
+				Res = H.cdagc(loc,loc+1,0,0);
+			}
+			else
+			{
+				lout << termcolor::yellow << "HSF operator hit right edge! Returning zero." << termcolor::reset << endl;
+				Res = MODEL::Zero(H.qPhys);
+			}
+		}
+		else
+		{
+			throw;
+		}
+	}
+	// inverse hybridization structure factor
+	else if (spec == "IHSF")
+	{
+		if constexpr (Symmetry::IS_SPIN_SU2())
+		{
+			if (loc<H.length()-1)
+			{
+				Res = H.cdagc(loc+1,loc,0,0);
+			}
+			else
+			{
+				lout << termcolor::yellow << "IHSF operator hit right edge! Returning zero." << termcolor::reset << endl;
+				Res = MODEL::Zero(H.qPhys);
+			}
 		}
 		else
 		{
@@ -165,6 +205,8 @@ typename MODEL::Operator get_Op (const MODEL &H, size_t loc, std::string spec, d
 	{
 		throw;
 	}
+	
+	Res.set_locality(loc);
 	return Res;
 }
 
@@ -172,7 +214,7 @@ bool TIME_DIR (std::string spec)
 {
 	// true=forwards in time
 	// false=backwards in time
-	return (spec=="PES" or spec=="PESUP" or spec=="PESDN" or spec=="AES" or spec=="IPZ" or spec=="SDAGSF" or spec=="PDAGSF")? false:true;
+	return (spec=="PES" or spec=="PESUP" or spec=="PESDN" or spec=="AES" or spec=="IPZ" or spec=="ICSF" or spec=="SDAGSF" or spec=="PDAGSF")? false:true;
 }
 
 string DAG (std::string spec)
@@ -189,9 +231,12 @@ string DAG (std::string spec)
 	else if (spec == "AES")   res = "APS";
 	else if (spec == "APS")   res = "AES";
 	else if (spec == "CSF")   res = "CSF";
+	else if (spec == "ICSF")   res = "ICSF";
 	else if (spec == "PSZ")   res = "PSZ";
 	else if (spec == "IPZ")   res = "IPZ";
 	else if (spec == "PSF")   res = "PDAGSF";
+	else if (spec == "HSF")   res = "IHSF";
+	else if (spec == "IHS")   res = "HSF";
 	return res;
 }
 

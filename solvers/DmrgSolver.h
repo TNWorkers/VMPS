@@ -11,6 +11,7 @@
 
 #include "LanczosSolver.h" // from ALGS
 #include "Stopwatch.h" // from TOOLS
+#include "TerminalPlot.h"
 
 #include "Mps.h"
 #include "DmrgLinearAlgebra.h" // for avg()
@@ -67,20 +68,20 @@ public:
 	 * \warning No subspace expansion scheme is included. -> bad convergence.
 	 */
 	void iteration_zero (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
-						 double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead);
+	                     double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead);
 	/**
 	 * Performs an 1-site iteration, 
 	 * e.g. solves the effective eigenvalue problem of the 1-site effective Hamiltonian and updates therewith the A-tensors directly.
 	 * \note Standard iteration. Best tested and suited with an expansion scheme to enlarge the bond dimension.
 	 */
 	void iteration_one  (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
-						 double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead);
+	                     double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead);
 	/**
 	 * Performs an 2-site iteration, 
 	 * e.g. solves the effective eigenvalue problem of the 2-site effective Hamiltonian and updates therewith the two-site wavefunction.
 	 * \note Bond dimension gets enlarged automatically. The truncated weight is a good convergence measure here and can also be used for extrapolations.
 	 * \note This algorithm is quite slow for challenging problems.
-	 */	
+	 */
 	void iteration_two  (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE,
 	                     double &time_lanczos, double &time_sweep, double &time_LR, double &time_overhead);
 	///\}
@@ -107,12 +108,15 @@ public:
 	void load (string filename);
 	#endif
 	
+	/**Energy penalty for projected-out states.*/
+	double Epenalty = 10.;
+        
 private:
 	
 	size_t N_sites, N_phys;
 	size_t Dmax, Mmax, Nqmax;
 	double totalTruncWeight;
-	size_t Dmax_old;
+	size_t Mmax_old;
 	double err_eigval, err_state;
 	
 	vector<PivotMatrix1<Symmetry,Scalar,Scalar> > Heff; // Scalar = MpoScalar for ground state
@@ -120,7 +124,7 @@ private:
 	double Eold;
 	
 	double DeltaEopt;
-	double max_alpha_rsvd;
+	double max_alpha_rsvd, min_alpha_rsvd;
 
 	bool USER_SET_GLOBPARAM    = false;
 	bool USER_SET_DYNPARAM     = false;
@@ -155,9 +159,7 @@ private:
 	
 	/**Projected-out states to find the edge of the spectrum.*/
 	vector<Mps<Symmetry,Scalar> > Psi0;
-	
-	/**Energy penalty for projected-out states.*/
-	double Epenalty = 10.;
+	double E0;
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY;
 };
@@ -201,6 +203,7 @@ save (string filename) const
 	target.save_scalar(SweepStat.N_sweepsteps,"N_sweepsteps");
 	target.save_scalar(static_cast<int>(SweepStat.CURRENT_DIRECTION),"direction");
 	target.save_scalar(Dmax,"D");
+	target.save_scalar(Mmax,"M");
 	target.save_scalar(err_eigval,"errorE");
 	target.save_scalar(err_state,"errorS");
 }
@@ -277,8 +280,8 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	{
 		// resize Vout
 		auto Boundaries_tmp = Vout.state.Boundaries; // save to temporary, otherwise reset in the following constructor
-		Vout.state = Mps<Symmetry,Scalar>(H, GlobParam.Dinit, Qtot_input, GlobParam.Qinit);
-		Vout.state.max_Nsv = GlobParam.Dinit;
+		Vout.state = Mps<Symmetry,Scalar>(H, GlobParam.Minit, Qtot_input, GlobParam.Qinit);
+		Vout.state.max_Nsv = GlobParam.Minit;
 		Vout.state.min_Nsv = DynParam.min_Nsv(0);
 		Vout.state.max_Nrich = DynParam.max_Nrich(0);
 		Vout.state.Boundaries = Boundaries_tmp;
@@ -351,12 +354,12 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 //			Vout.state.update_outbase();
 //		}
 		
-		Dmax_old = GlobParam.Dinit;
+		Mmax_old = GlobParam.Minit;
 	}
 	else
 	{
-		Vout.state.max_Nsv = Vout.state.calc_Dmax();
-		Dmax_old = Vout.state.max_Nsv;
+		Vout.state.max_Nsv = Vout.state.calc_Mmax();
+		Mmax_old = Vout.state.max_Nsv;
 	}
 	
 //	Vout.state.graph("ginit");
@@ -365,6 +368,7 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	//otherwise prepare for continuing at the given SweepStatus.
 	if (SweepStat.pivot == -1)
 	{
+		if (Vout.state.get_pivot() != -1 and Vout.state.get_pivot() != N_sites-1) {Vout.state.sweep(N_sites-1,DMRG::BROOM::QR);}
 		SweepStat.N_sweepsteps = SweepStat.N_halfsweeps = 0;
 		for (size_t l=N_sites-1; l>0; --l)
 		{
@@ -427,12 +431,8 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 			Heff[l].Epenalty = Epenalty;
 			Heff[l].PL.resize(Psi0.size());
 			Heff[l].PR.resize(Psi0.size());
-			Heff[l].A0.resize(Psi0.size());
-			for (size_t n=0; n<Psi0.size(); ++n)
-			{
-				Heff[l].A0[n] = Psi0[n].A[l];
-			}
 		}
+		E0 = isReal(avg(Psi0[0], H, Psi0[0]));
 	}
 	
 	// build environments for projected-out states
@@ -478,9 +478,10 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 	if (CHOSEN_VERBOSITY>=2)
 	{
 		lout << PrepTimer.info("• initial state & sweep") << endl;
-		lout <<                "• initial energy        : E₀=" << Eold << endl;
-		lout <<                "• initial state         : " << Vout.state.info() << endl;
-		lout <<                "• initial fluctuation strength  : α_rsvd=";
+		size_t standard_precision = cout.precision();
+		lout << std::setprecision(15) << "• initial energy        : E₀=" << Eold << std::setprecision(standard_precision) << endl;
+		lout <<                          "• initial state         : " << Vout.state.info() << endl;
+		lout <<                          "• initial fluctuation strength  : α_rsvd=";
 		cout << termcolor::underline;
 		lout << Vout.state.alpha_rsvd;
 		cout << termcolor::reset;
@@ -520,15 +521,15 @@ prepare (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarray
 		}
 		lout << "• initial bond dim. increase by ";
 		cout << termcolor::underline;
-		lout << static_cast<int>((DynParam.Dincr_rel(0)-1.)*100.) << "%";
+		lout << static_cast<int>((DynParam.Mincr_rel(0)-1.)*100.) << "%";
 		cout << termcolor::reset;
 		lout << " and at least by ";
 		cout << termcolor::underline;
-		lout << DynParam.Dincr_abs(0);
+		lout << DynParam.Mincr_abs(0);
 		cout << termcolor::reset;
 		lout << " every ";
 		cout << termcolor::underline;
-		lout << DynParam.Dincr_per(0);
+		lout << DynParam.Mincr_per(0);
 		cout << termcolor::reset;
 		lout << " half-sweeps" << endl;
 		
@@ -611,7 +612,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	{
 		sweep_to_edge(H,Vout,true); // build_LR = true
 	}
-	
+        
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
 		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
@@ -845,11 +846,11 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 		size_t standard_precision = cout.precision();
 		if (EDGE == LANCZOS::EDGE::GROUND)
 		{
-			lout << "E₀=" << setprecision(13) << Vout.energy << ", E₀/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
+			lout << "E₀=" << setprecision(15) << Vout.energy << ", E₀/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
 		}
 		else
 		{
-			lout << "Eₘₐₓ=" << setprecision(13) << Vout.energy << ", Eₘₐₓ/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
+			lout << "Eₘₐₓ=" << setprecision(15) << Vout.energy << ", Eₘₐₓ/L=" << Vout.energy/N_phys << setprecision(standard_precision) << endl;
 		}
 		lout << errorCalcInfo.str();
 		lout << Vout.state.info() << endl;
@@ -935,7 +936,7 @@ iteration_zero (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 	// (SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_L(H,Vout,++SweepStat.pivot) : build_R(H,Vout,--SweepStat.pivot);
 	// (SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT)? build_PL(H,Vout,SweepStat.pivot)  : build_PR(H,Vout,SweepStat.pivot);
 	// time_LR += LRtimer.time();
-		
+	
 	adapt_alpha_rsvd(H,Vout,EDGE);
 }
 
@@ -949,6 +950,41 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	
 	Stopwatch<> OheadTimer;
 	Heff[SweepStat.pivot].W = H.W[SweepStat.pivot];
+	
+	// contract environment for excited states
+	if (Psi0.size() > 0)
+	{
+		Heff[SweepStat.pivot].A0proj.resize(Psi0.size());
+		for (int n=0; n<Psi0.size(); ++n)
+		{
+			Heff[SweepStat.pivot].A0proj[n].resize(Psi0[n].A[SweepStat.pivot].size());
+		}
+		
+		for (int n=0; n<Psi0.size(); ++n)
+		{
+			PivotOverlap1 PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
+			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(Psi0[n].A[SweepStat.pivot]);
+			PivotVector<Symmetry,Scalar> Aout;
+			LRxV(PO,Ain,Aout);
+			Heff[SweepStat.pivot].A0proj[n] = Aout.data;
+			
+			// push new blocks of result as zero matrices into A
+//			for (int s=0; s<Psi0[n].A[SweepStat.pivot].size(); ++s)
+//			for (int q=0; q<Heff[SweepStat.pivot].A0proj[n][s].dim; ++q)
+//			{
+//				qarray2<Symmetry::Nq> cmp = {Heff[SweepStat.pivot].A0proj[n][s].in[q], Heff[SweepStat.pivot].A0proj[n][s].out[q]};
+//				auto qA = Vout.state.A[SweepStat.pivot][s].dict.find(cmp);
+//				if (qA == Vout.state.A[SweepStat.pivot][s].dict.end())
+//				{
+//					Matrix<Scalar,Dynamic,Dynamic> ZeroBlock(Heff[SweepStat.pivot].A0proj[n][s].block[q].rows(),
+//					                                         Heff[SweepStat.pivot].A0proj[n][s].block[q].cols());
+//					ZeroBlock.setZero();
+//					Vout.state.A[SweepStat.pivot][s].push_back(cmp,ZeroBlock);
+//					cout << "new block pushed: q=" << cmp[0] << ", " << cmp[1] << endl;
+//				}
+//			}
+		}
+	}
 	
 	precalc_blockStructure (Heff[SweepStat.pivot].L, 
 	                        Vout.state.A[SweepStat.pivot], Heff[SweepStat.pivot].W, Vout.state.A[SweepStat.pivot], 
@@ -971,6 +1007,26 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
 	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
 	
+	if (Psi0.size() > 0)
+	{
+		// STEPWISE: print always, HALFSWEEPWISE: print after every halfsweep
+		if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE or
+		    CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and 
+				((loc1()==0 and SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT) or 
+				 (loc2()==N_sites-1) and SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::LEFT)
+		   )
+		{
+			for (int n=0; n<Psi0.size(); ++n)
+			{
+				Scalar overlap = 0;
+				for (size_t s=0; s<Heff[SweepStat.pivot].A0proj[n].size(); ++s)
+				{
+					overlap += Heff[SweepStat.pivot].A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
+				}
+				lout << "pivot=" << SweepStat.pivot << ", n=" << n << ", overlap=" << overlap << ", gap=" << g.energy-E0 << endl;
+			}
+		}
+	}
 	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << "loc=" << SweepStat.pivot << "\t" << Lutz.info() << endl;
@@ -1026,22 +1082,59 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	                                           H.locBasis(loc1()), H.locBasis(loc2()), 
 	                                           H.opBasis (loc1()), H.opBasis (loc2()));
 	
+	if (Psi0.size() > 0)
+	{
+		Heff2.Epenalty = Epenalty;
+		Heff2.PL.resize(Psi0.size());
+		Heff2.PR.resize(Psi0.size());
+		for (int n=0; n<Psi0.size(); ++n)
+		{
+			Heff2.PL[n] = Heff[loc1()].PL[n];
+			Heff2.PR[n] = Heff[loc2()].PR[n];
+		}
+		
+		// contract A0pair
+		vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0pair(Psi0.size());
+		for (int n=0; n<Psi0.size(); ++n)
+		{
+			contract_AA(Psi0[n].A[loc1()], Psi0[n].locBasis(loc1()), 
+			            Psi0[n].A[loc2()], Psi0[n].locBasis(loc2()), 
+			            Psi0[n].QoutTop[loc1()], Psi0[n].QoutBot[loc1()], A0pair[n]);
+		}
+		
+		Heff2.A0proj.resize(Psi0.size());
+		for (int n=0; n<Psi0.size(); ++n) Heff2.A0proj[n].resize(A0pair[n].size());
+		
+		for (int n=0; n<Psi0.size(); ++n)
+		{
+			PivotOverlap2 PO(Heff[loc1()].PL[n], Heff[loc2()].PR[n], Psi0[n].locBasis(loc1()), Psi0[n].locBasis(loc2()));
+			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(A0pair[n]);
+			PivotVector<Symmetry,Scalar> Aout;
+			LRxV(PO,Ain,Aout);
+			for (int s=0; s<Aout.data.size(); ++s) Aout.data[s] = Aout.data[s].cleaned();
+			Heff2.A0proj[n] = Aout.data;
+			
+			// push new blocks of result as zero matrices into A
+//			for (int s=0; s<Heff2.A0proj[n].size(); ++s)
+//			for (int q=0; q<Heff2.A0proj[n][s].dim; ++q)
+//			{
+//				qarray2<Symmetry::Nq> cmp = {Heff2.A0proj[n][s].in[q], Heff2.A0proj[n][s].out[q]};
+//				auto qA = g.state.data[s].dict.find(cmp);
+//				if (qA == g.state.data[s].dict.end())
+//				{
+//					Matrix<Scalar,Dynamic,Dynamic> ZeroBlock(Heff2.A0proj[n][s].block[q].rows(),
+//					                                         Heff2.A0proj[n][s].block[q].cols());
+//					ZeroBlock.setZero();
+//					g.state.data[s].push_back(cmp,ZeroBlock);
+//					cout << "new block pushed: q=" << cmp[0] << ", " << cmp[1] << endl;
+//				}
+//			}
+		}
+	}
+	
 	precalc_blockStructure (Heff2.L, g.state.data, Heff2.W12, Heff2.W34, g.state.data, Heff2.R, 
 	                        H.locBasis(loc1()), H.locBasis(loc2()), H.opBasis(loc1()), H.opBasis(loc2()), 
 	                        Heff2.qlhs, Heff2.qrhs, Heff2.factor_cgcs);
-	
-	Heff2.Epenalty = Epenalty;
-	Heff2.PL.resize(Psi0.size());
-	Heff2.PR.resize(Psi0.size());
-	Heff2.A0.resize(Psi0.size());
-	for (int n=0; n<Psi0.size(); ++n)
-	{
-		Heff2.PL[n] = Heff[loc1()].PL[n];
-		Heff2.PR[n] = Heff[loc2()].PR[n];
-		Heff2.A0[n] = PivotVector<Symmetry,Scalar>(Psi0[n].A[loc1()], Psi0[n].locBasis(loc1()), 
-		                                           Psi0[n].A[loc2()], Psi0[n].locBasis(loc2()),
-		                                           Psi0[n].QoutTop[loc1()], Psi0[n].QoutBot[loc1()]).data;
-	}
 	time_overhead += OheadTimer.time();
 	
 	Stopwatch<> LanczosTimer;
@@ -1052,7 +1145,27 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	Lutz.edgeState(Heff2, g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
 	time_lanczos += LanczosTimer.time();
 	
-	if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE)
+	if (Psi0.size() > 0)
+	{
+		// STEPWISE: print always, HALFSWEEPWISE: print after every halfsweep
+		if (CHOSEN_VERBOSITY == DMRG::VERBOSITY::STEPWISE or
+		    CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and 
+				((loc1()==0 and SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::RIGHT) or 
+				 (loc2()==N_sites-1) and SweepStat.CURRENT_DIRECTION == DMRG::DIRECTION::LEFT)
+		   )
+		{
+			for (int n=0; n<Psi0.size(); ++n)
+			{
+				Scalar overlap = 0;
+				for (size_t s=0; s<Heff2.A0proj[n].size(); ++s)
+				{
+					overlap += Heff2.A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
+				}
+				lout << "bond=" << loc1() << "-" << loc2() << ", n=" << n << ", overlap=" << overlap << ", gap=" << g.energy-E0 << endl;
+			}
+		}
+	}
+	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
 	{
 		lout << "loc=" << SweepStat.pivot << "\t" << Lutz.info() << endl;
 		lout << Vout.state.test_ortho() << ", " << g.energy << endl;
@@ -1122,19 +1235,44 @@ cleanup (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZO
 	{
 		size_t standard_precision = cout.precision();
 		string Eedge = (EDGE == LANCZOS::EDGE::GROUND)? "Emin" : "Emax";
-		lout << termcolor::bold << Eedge << "=" << setprecision(13) << Vout.energy << ", "
+		lout << termcolor::bold << Eedge << "=" << setprecision(15) << Vout.energy << ", "
 			 << Eedge << "/L=" << Vout.energy/N_phys << setprecision(standard_precision) << termcolor::reset << endl;
 		lout << eigeninfo() << endl;
 		lout << Vout.state.info() << endl;
 		
 		if (GlobParam.CALC_S_ON_EXIT)
 		{
-			size_t standard_precision = cout.precision();
-			lout << setprecision(2) << "S=" << Vout.state.entropy().transpose() << setprecision(standard_precision) << endl;
+			// size_t standard_precision = cout.precision();
+			PlotParams p;
+			p.label = "Entropy";
+			if (Vout.state.entropy().rows() > 1)
+			{
+				TerminalPlot::plot(Vout.state.entropy(),p);
+			}
+			// lout << setprecision(2) << "S=" << Vout.state.entropy().transpose() << setprecision(standard_precision) << endl;
 		}
 	}
 	
-	Vout.state.set_defaultCutoffs();
+	if (N_sites>4)
+	{
+		size_t l_start = N_sites%2 == 0 ? N_sites/2ul : (N_sites+1ul)/2ul;
+		
+		for (size_t l=l_start; l<=l_start+1; l++)
+		{
+			auto [qs,svs] = Vout.state.entanglementSpectrumLoc(l);
+			ofstream Filer(make_string("sv_final_",l,".dat"));
+			size_t index=0;
+			for (size_t i=0; i<svs.size(); i++)
+			{
+				for (size_t deg=0; deg<Symmetry::degeneracy(qs[i]); deg++)
+				{
+					Filer << index << "\t"  << qs[i] << "\t" << svs[i] << endl;
+					index++;
+				}
+			}
+			Filer.close();
+		}
+	}
 	
 	if (Vout.state.calc_Nqavg() <= 1.5 and !Symmetry::IS_TRIVIAL and Vout.state.min_Nsv == 0)
 	{
@@ -1156,8 +1294,12 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and SweepStat.N_halfsweeps < GlobParam.max_halfsweeps) or
 	       SweepStat.N_halfsweeps < GlobParam.min_halfsweeps)
 	{
+                // Set limits for alpha for the upcoming halfsweep
+                min_alpha_rsvd = DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps);
+                max_alpha_rsvd = DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps);
+                
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and 
-		    DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps) == 0. and
+		    max_alpha_rsvd == 0. and
 		    MESSAGE_ALPHA == false)
 		{
 			lout << "α_rsvd is turned off now!" << endl << endl;
@@ -1165,34 +1307,35 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 		}
 		
 		// sweep
-		halfsweep(H,Vout,EDGE);
+		halfsweep(H,Vout,EDGE); //SweepStat.N_halfsweeps gets incremented by 1!
 //		Vout.state.graph(make_string("sweep",SweepStat.N_halfsweeps));
 		
 		size_t j = SweepStat.N_halfsweeps;
-		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Dlimit
+
+                DynParam.doSomething(j);
+
+		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Mlimit
 		Vout.state.eps_svd = DynParam.eps_svd(j);
-		if (j%DynParam.Dincr_per(j) == 0)
+		if (j%DynParam.Mincr_per(j) == 0)
 		//and (totalTruncWeight >= Vout.state.eps_svd or err_state > 10.*GlobParam.tol_state)
 		{
-			// increase by Dincr_abs for small Dmax and by Dincr_rel for large Dmax(e.g. add 10% of current Dmax)
-			size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Dincr_rel(j) * Vout.state.max_Nsv), 
-			                                             Vout.state.max_Nsv + DynParam.Dincr_abs(j));
-			// do not increase beyond Dlimit
-			Vout.state.max_Nsv = min(max_Nsv_new, GlobParam.Dlimit);
+			// increase by Mincr_abs for small Mmax and by Mincr_rel for large Mmax(e.g. add 10% of current Mmax)
+			size_t max_Nsv_new = max(static_cast<size_t>(DynParam.Mincr_rel(j) * Vout.state.max_Nsv), 
+			                                             Vout.state.max_Nsv + DynParam.Mincr_abs(j));
+			// do not increase beyond Mlimit
+			Vout.state.max_Nsv = min(max_Nsv_new, GlobParam.Mlimit);
 		}
 		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
-			if (Vout.state.max_Nsv != Dmax_old)
+			if (Vout.state.max_Nsv != Mmax_old)
 			{
-				lout << "Dmax=" << Dmax_old << "→" << Vout.state.max_Nsv << endl;
-				Dmax_old = Vout.state.max_Nsv;
+				lout << "Mmax=" << Mmax_old << "→" << Vout.state.max_Nsv << endl;
+				Mmax_old = Vout.state.max_Nsv;
 			}
 			lout << endl;
 		}
-		
-		DynParam.doSomething(j);
-		
+				
 		#ifdef USE_HDF5_STORAGE
 		if (GlobParam.savePeriod != 0 and j%GlobParam.savePeriod == 0)
 		{
@@ -1223,6 +1366,39 @@ void DmrgSolver<Symmetry,MpHamiltonian,Scalar>::
 adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANCZOS::EDGE::OPTION EDGE)
 {
 	// adapt alpha
+	if (Psi0.size() > 0)
+	{
+		Heff[SweepStat.pivot].A0proj.resize(Psi0.size());
+		for (int n=0; n<Psi0.size(); ++n)
+		{
+			Heff[SweepStat.pivot].A0proj[n].resize(Psi0[n].A[SweepStat.pivot].size());
+		}
+		
+		for (int n=0; n<Psi0.size(); ++n)
+		for (int s=0; s<Psi0[n].A[SweepStat.pivot].size(); ++s)
+		{
+			PivotOverlap1 PO(Heff[SweepStat.pivot].PL[n], Heff[SweepStat.pivot].PR[n], Psi0[n].locBasis(SweepStat.pivot));
+			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(Psi0[n].A[SweepStat.pivot]);
+			PivotVector<Symmetry,Scalar> Aout;
+			LRxV(PO,Ain,Aout);
+			Heff[SweepStat.pivot].A0proj[n] = Aout.data;
+			
+			// push new blocks of result as zero matrices into A
+//			for (int q=0; q<Heff[SweepStat.pivot].A0proj[n][s].dim; ++q)
+//			{
+//				qarray2<Symmetry::Nq> cmp = {Heff[SweepStat.pivot].A0proj[n][s].in[q], Heff[SweepStat.pivot].A0proj[n][s].out[q]};
+//				auto qA = Vout.state.A[SweepStat.pivot][s].dict.find(cmp);
+//				if (qA == Vout.state.A[SweepStat.pivot][s].dict.end())
+//				{
+//					Matrix<Scalar,Dynamic,Dynamic> ZeroBlock(Heff[SweepStat.pivot].A0proj[n][s].block[q].rows(),
+//					                                         Heff[SweepStat.pivot].A0proj[n][s].block[q].cols());
+//					ZeroBlock.setZero();
+//					Vout.state.A[SweepStat.pivot][s].push_back(cmp,ZeroBlock);
+//				}
+//			}
+		}
+	}
+	
 	PivotVector<Symmetry,Scalar> Vtmp1(Vout.state.A[SweepStat.pivot]);
 	PivotVector<Symmetry,Scalar> Vtmp2;
 	Heff[SweepStat.pivot].W = H.W[SweepStat.pivot];
@@ -1262,10 +1438,12 @@ adapt_alpha_rsvd (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vou
 	f = max(0.1,min(2.,f)); // limit between [0.1,2]
 	Vout.state.alpha_rsvd *= f;
 	// limit between [min_alpha_rsvd,max_alpha_rsvd]:
-	double alpha_min = min(DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps), 
-	                       DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps)); // for the accidental case alpha_min > alpha_max
-	Vout.state.alpha_rsvd = max(alpha_min, min(DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps), Vout.state.alpha_rsvd));
-	
+	// double alpha_min = min(DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps), 
+	//                        DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps)); // for the accidental case alpha_min > alpha_max
+	// Vout.state.alpha_rsvd = max(alpha_min, min(DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps), Vout.state.alpha_rsvd));
+        double alpha_min = min(min_alpha_rsvd, max_alpha_rsvd); // for the accidental case alpha_min > alpha_max
+	Vout.state.alpha_rsvd = max(alpha_min, min(max_alpha_rsvd, Vout.state.alpha_rsvd));
+        
 //	cout << "ΔEopt=" << DeltaEopt << ", ΔEtrunc=" << DeltaEtrunc << ", f=" << f << ", alpha=" << Vout.state.alpha_rsvd << endl;
 	
 	if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::STEPWISE)
@@ -1331,6 +1509,7 @@ build_PL (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 	for (size_t n=0; n<Psi0.size(); ++n)
 	{
 		contract_L(Heff[loc-1].PL[n], Vout.state.A[loc-1], Psi0[n].A[loc-1], H.locBasis(loc-1), Heff[loc].PL[n]);
+//		Heff[loc].PL[n] = Heff[loc].PL[n].cleaned();
 	}
 }
 
@@ -1340,7 +1519,8 @@ build_PR (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 {
 	for (size_t n=0; n<Psi0.size(); ++n)
 	{
-		contract_R(Heff[loc+1].PR[n], Vout.state.A[loc+1], Psi0[n].A[loc+1], H.locBasis(loc+1),Heff[loc].PR[n]);
+		contract_R(Heff[loc+1].PR[n], Vout.state.A[loc+1], Psi0[n].A[loc+1], H.locBasis(loc+1), Heff[loc].PR[n]);
+//		Heff[loc].PR[n] = Heff[loc].PR[n].cleaned();
 	}
 }
 

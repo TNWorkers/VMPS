@@ -25,7 +25,11 @@ template<size_t Nq>
 struct qarray
 {
 	/**Constructs with zeros.*/
-	constexpr qarray() {for (size_t q=0; q<Nq; ++q) {data[q] = 0;}};
+	constexpr qarray() {for (size_t q=0; q<Nq; ++q) {data[q] = 0;}};	
+
+        /**Constructs with an input array.*/
+	constexpr qarray(const std::array<int,Nq> &in) : data(in) {};
+	
 	/**Constructs with an \p initializer_list.*/
 	qarray (std::initializer_list<int> a) {copy(a.begin(), a.end(), data.data());}
 	

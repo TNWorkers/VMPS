@@ -42,7 +42,9 @@ public:
 	
 	ZN() {};
 	
-	inline static qType qvacuum() { return {0}; }
+	inline static constexpr qType qvacuum() { return {0}; }
+	inline static constexpr std::array<qType,2> lowest_qs()	{ return std::array<qType,1> {{ qarray<1>(std::array<int,1>{{1}}), qarray<1>(std::array<int,1>{{N-1}}) }}; }
+	
 	inline static std::string name()
 	{
 		stringstream ss;
@@ -89,7 +91,9 @@ public:
 	inline static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
 	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2);
 	
-	inline static Scalar coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3);
+	inline static Scalar coeff_swapPhase(const qType& q1, const qType& q2, const qType& q3);
+	inline static Scalar coeff_leftSweep2(const qType& q1, const qType& q2, const qType& q3);
+	inline static Scalar coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3);
 	inline static Scalar coeff_sign(const qType& q1, const qType& q2, const qType& q3);
 	inline static Scalar coeff_sign2(const qType& q1, const qType& q2, const qType& q3) {return 1.;};
 	inline static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
@@ -247,7 +251,23 @@ coeff_rightOrtho(const qType& q1, const qType& q2)
 
 template<typename Kind, int N, typename Scalar>
 Scalar ZN<Kind,N,Scalar>::
-coeff_leftSweep(const qType& q1, const qType& q2, const qType& q3)
+coeff_swapPhase(const qType& q1, const qType& q2, const qType& q3)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, int N, typename Scalar>
+Scalar ZN<Kind,N,Scalar>::
+coeff_leftSweep2(const qType& q1, const qType& q2, const qType& q3)
+{
+	Scalar out = Scalar(1.);
+	return out;
+}
+
+template<typename Kind, int N, typename Scalar>
+Scalar ZN<Kind,N,Scalar>::
+coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3)
 {
 	Scalar out = Scalar(1.);
 	return out;

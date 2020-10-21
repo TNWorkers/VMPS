@@ -112,8 +112,7 @@ bool ED, U0, U1, SU2, SO4, CORR, PRINT;
 
 Eigenstate<VectorXd> g_ED;
 Eigenstate<VMPS::Hubbard::StateXd> g_U0;
-typedef VMPS::HubbardU1xU1 HUBBARD;
-Eigenstate<HUBBARD::StateXd> g_U1;
+Eigenstate<VMPS::HubbardU1xU1::StateXd> g_U1;
 Eigenstate<VMPS::HubbardSU2xU1::StateXd> g_SU2;
 Eigenstate<VMPS::HubbardSU2xSU2::StateXd> g_SU2xSU2;
 
@@ -347,13 +346,13 @@ int main (int argc, char* argv[])
 		Stopwatch<> Watch_U1;
 		
 		//,{"tPara",tParaA,0},{"tPara",tParaB,1}
-		HUBBARD H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1},{"maxPower",maxPower}});
+		VMPS::HubbardU1xU1 H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"tRung",tRung},{"Ly",Ly,0},{"Ly",Ly2,1},{"maxPower",maxPower}});
 //		VMPS::Hubbard H_U1(L,{{"t",t},{"tPrime",tPrime},{"U",U},{"Ly",Ly}});
 		Vol = H_U1.volume();
 		Vsq = V*V;
 		lout << H_U1.info() << endl;
 		
-		HUBBARD::Solver DMRG_U1(VERB);
+		VMPS::HubbardU1xU1::Solver DMRG_U1(VERB);
 		DMRG_U1.userSetGlobParam();
 		DMRG_U1.userSetDynParam();
 		DMRG_U1.GlobParam = GlobParam;
@@ -449,19 +448,19 @@ int main (int argc, char* argv[])
 		}
 		
 		//////////
-//		HUBBARD::StateXd cPhi;
+//		VMPS::HubbardU1xU1::StateXd cPhi;
 //		auto C1 = H_U1.c<UP>(L/2);
 //		OxV_exact(C1, g_U1.state, cPhi, 2., DMRG::VERBOSITY::SILENT);
 //		
-//		HUBBARD::StateXd cdagPhi;
+//		VMPS::HubbardU1xU1::StateXd cdagPhi;
 //		auto C2 = H_U1.c<UP>(L/2);
 //		OxV_exact(C2, g_U1.state, cdagPhi, 2., DMRG::VERBOSITY::SILENT);
 //		
-//		HUBBARD::StateXd aPhi;
+//		VMPS::HubbardU1xU1::StateXd aPhi;
 //		auto A1 = H_U1.a<UP>(L/2);
 //		OxV_exact(A1, g_U1.state, aPhi, 2., DMRG::VERBOSITY::SILENT);
 //		
-//		HUBBARD::StateXd adagPhi;
+//		VMPS::HubbardU1xU1::StateXd adagPhi;
 //		auto A2 = H_U1.a<UP>(L/2);
 //		OxV_exact(A2, g_U1.state, adagPhi, 2., DMRG::VERBOSITY::SILENT);
 //		
@@ -558,7 +557,8 @@ int main (int argc, char* argv[])
 				cout << "beginning cdagc" << endl;
 				auto cdagc = MpoTerms<VMPS::HubbardSU2xU1::Symmetry,double>::prod(H_SU2.cdag(i,0,-sqrt(2.)), H_SU2.c(j), {1,0});
 				
-				densityMatrix_SU2B(i,j) = avg(g_SU2.state, cdagc, g_SU2.state);
+				// Doesn't compile:
+//				densityMatrix_SU2B(i,j) = avg(g_SU2.state, cdagc, g_SU2.state);
 				// densityMatrix_SU2B(i,j) = avg(g_SU2.state, H_SU2.cdag(i,0,-sqrt(2.)), H_SU2.c(j), g_SU2.state);
 			}
 			assert(false);

@@ -42,9 +42,9 @@ get_DmrgGlobParam (const vector<Param> &params) const
 	ParamHandler P(params,defaults);
 	out.min_halfsweeps = P.get<size_t>("min_halfsweeps");
 	out.max_halfsweeps = P.get<size_t>("max_halfsweeps");
-	out.Dinit          = P.get<size_t>("Dinit");
+	out.Minit          = P.get<size_t>("Minit");
 	out.Qinit          = P.get<size_t>("Qinit");
-	out.Dlimit         = P.get<size_t>("Dlimit");
+	out.Mlimit         = P.get<size_t>("Mlimit");
 	out.tol_eigval     = P.get<double>("tol_eigval");
 	out.tol_state      = P.get<double>("tol_state");
 	out.savePeriod     = P.get<size_t>("savePeriod");
@@ -71,14 +71,14 @@ get_DmrgDynParam (const vector<Param> &params) const
 	tmp1               = P.get<double>("eps_svd");
 	out.eps_svd        = [tmp1] (size_t i) {return tmp1;};
 	
-	size_t tmp2        = P.get<size_t>("Dincr_abs");
-	out.Dincr_abs      = [tmp2] (size_t i) {return tmp2;};
+	size_t tmp2        = P.get<size_t>("Mincr_abs");
+	out.Mincr_abs      = [tmp2] (size_t i) {return tmp2;};
 	
-	tmp2               = P.get<size_t>("Dincr_per");
-	out.Dincr_per      = [tmp2] (size_t i) {return tmp2;};
+	tmp2               = P.get<size_t>("Mincr_per");
+	out.Mincr_per      = [tmp2] (size_t i) {return tmp2;};
 	
-	tmp1               = P.get<double>("Dincr_rel");
-	out.Dincr_rel      = [tmp1] (size_t i) {return tmp1;};
+	tmp1               = P.get<double>("Mincr_rel");
+	out.Mincr_rel      = [tmp1] (size_t i) {return tmp1;};
 	
 	tmp2               = P.get<size_t>("min_Nsv");
 	out.min_Nsv        = [tmp2] (size_t i) {return tmp2;};
@@ -100,9 +100,9 @@ get_VumpsGlobParam (const vector<Param> &params) const
 	ParamHandler P(params,defaults);
 	out.min_iterations = P.get<size_t>("min_iterations");
 	out.max_iterations = P.get<size_t>("max_iterations");
-	out.Dinit          = P.get<size_t>("Dinit");
+	out.Minit          = P.get<size_t>("Minit");
 	out.Qinit          = P.get<size_t>("Qinit");
-	out.Dlimit         = P.get<size_t>("Dlimit");
+	out.Mlimit         = P.get<size_t>("Mlimit");
 	out.tol_eigval     = P.get<double>("tol_eigval");
 	out.tol_var        = P.get<double>("tol_var");
 	out.tol_state      = P.get<double>("tol_state");
@@ -118,18 +118,15 @@ get_VumpsDynParam (const vector<Param> &params) const
 	
 	ParamHandler P(params,defaults);
 	
-	size_t tmp1        = P.get<double>("max_deltaD");
-	size_t lim         = P.get<size_t>("lim_deltaD");
-	out.max_deltaD     = [tmp1,lim] (size_t i) {return (i<lim)? tmp1:0.;};
+	size_t tmp1        = P.get<double>("max_deltaM");
+	size_t lim         = P.get<size_t>("lim_deltaM");
+	out.max_deltaM     = [tmp1,lim] (size_t i) {return (i<lim)? tmp1:0.;};
 		
-	size_t tmp2        = P.get<size_t>("Dincr_abs");
-	out.Dincr_abs      = [tmp2] (size_t i) {return tmp2;};
-	
-	tmp2               = P.get<size_t>("Dincr_per");
-	out.Dincr_per      = [tmp2] (size_t i) {return tmp2;};
-	
-	tmp1               = P.get<double>("Dincr_rel");
-	out.Dincr_rel      = [tmp1] (size_t i) {return tmp1;};	
+	size_t tmp2        = P.get<size_t>("Mincr_abs");
+	out.Mincr_abs      = [tmp2] (size_t i) {return tmp2;};
+		
+	tmp1               = P.get<double>("Mincr_rel");
+	out.Mincr_rel      = [tmp1] (size_t i) {return tmp1;};	
 	
 	return out;
 }

@@ -156,7 +156,8 @@ reblock_left(const Biped<Symmetry,MatrixType> &B)
 	for (size_t qout=0; qout<outbase.Nq(); ++qout)
 	{
 		auto it = B.dict.find({outbase[qout], outbase[qout]});
-		assert(it != B.dict.end());
+		if (it == B.dict.end()) {continue;}
+		// assert(it != B.dict.end());
 		size_t qB = it->second;
 
 		// determine how many A's to glue together
@@ -197,7 +198,7 @@ reblock_right(const Biped<Symmetry,MatrixType> &B)
 	for (size_t qin=0; qin<inbase.Nq(); ++qin)
 	{
 		auto it = B.dict.find({inbase[qin], inbase[qin]});
-		assert(it != B.dict.end());
+		if (it == B.dict.end()) {continue;}
 		size_t qB = it->second;
 		
 		// determine how many A's to glue together

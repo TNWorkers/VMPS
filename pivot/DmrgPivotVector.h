@@ -35,10 +35,16 @@ struct PivotVector
 	             const vector<Biped<Symmetry,Matrix<Scalar_,Dynamic,Dynamic> > > &A34,
 	             const vector<qarray<Symmetry::Nq> > &qloc34,
 	             const qarray<Symmetry::Nq> &Qtop, 
-                 const qarray<Symmetry::Nq> &Qbot, 
-                 bool DRY = false)
+	             const qarray<Symmetry::Nq> &Qbot, 
+	             bool DRY = false)
 	{
-		contract_AA(A12, qloc12, A34, qloc34, Qtop, Qbot, data, DRY);
+//		contract_AA(A12, qloc12, A34, qloc34, Qtop, Qbot, data, DRY);
+		contract_AA2(A12, qloc12, A34, qloc34, data, DRY);
+		
+		Qbasis<Symmetry> loc12; loc12.pullData(qloc12,true);
+		Qbasis<Symmetry> loc34; loc34.pullData(qloc34,true);
+		auto loc = loc12.combine(loc34);
+		extend_A(data, loc.qloc());
 	}
 	
 	/**Set blocks as in Vrhs, but do not resize the matrices*/

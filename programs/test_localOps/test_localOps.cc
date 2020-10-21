@@ -50,20 +50,79 @@ int main (int argc, char* argv[])
 	D = args.get<size_t>("D",2);
 	
 	bool OBSERVABLES = args.get<bool>("OBSERVABLES",true);
+	bool PERIODIC = args.get<bool>("PERIODIC",false);
 
+#if defined(USING_SU2)
+	typedef Sym::SU2<Sym::SpinSU2> Symmetry;
+#elif defined(USING_U1)
+	typedef Sym::U1<Sym::SpinU1> Symmetry;
+#else
 	typedef Sym::U0 Symmetry;
+#endif
+	
 	typedef Sym::S1xS2<Sym::U1<Sym::ChargeU1>,Sym::U1<Sym::SpinU1> > Symmetry2;
 	typedef SpinBase<Symmetry> Base;
 	typedef Base::OperatorType Op;
 	Base B(L,D);
-	ArrayXXd Jarr; Jarr.resize(L,L); Jarr.setZero(); Jarr(0,1)=Jk; Jarr(1,2)=J; Jarr(2,3)=Jk;
+	ArrayXXd Jarr; Jarr.resize(L,L); Jarr.setZero();
+	Jarr.matrix().template diagonal<1>().setConstant(0.5*J);
+	Jarr.matrix().template diagonal<-1>() = Jarr.matrix().template diagonal<1>();
+	if (PERIODIC and L > 2)
+	{
+		Jarr(0,L-1) = 0.5*J;
+		Jarr(L-1,0) = 0.5*J;
+	}
 	auto H = B.HeisenbergHamiltonian(Jarr);
-	cout << H.data().print(true) << endl;
 	EDSolver<Op> John(H,{},Eigen::DecompositionOptions::ComputeEigenvectors);
 	cout << "gse=" << endl << John.eigenvalues().data().print(true) << endl;
 	
 	if (OBSERVABLES)
 	{
+		qarray<Symmetry::Nq> Q1;
+#if defined(USING_SU2)
+		Q1 = {S};
+#elif defined(USING_U1)
+		Q1 = {M};
+#else
+		Q1 = {};
+#endif
+		Eigen::ArrayXXd SdagS(L,L); SdagS.setZero();
+		for(size_t i=0; i<L; i++)
+		for(size_t j=0; j<L; j++)
+		{
+#if defined(USING_SU2)
+			auto SG = Op::prod(B.S(i), John.groundstate(Q1), {3});
+			auto SSG = Op::prod(B.Sdag(j), SG, {1});
+			auto res = Op::prod(John.groundstate(Q1), SSG, {1});
+			SdagS(i,j) = sqrt(3.)*res.data().block[0](0,0);
+#elif defined(USING_U1)
+			auto SzG = Op::prod(B.Sz(i), John.groundstate(Q1), {0});
+			auto SzSzG = Op::prod(B.Sz(j), SzG, {0});
+			auto resSzSz = Op::prod(John.groundstate(Q1), SzSzG, {0});
+			auto SpG = Op::prod(B.Sp(i), John.groundstate(Q1), {2});
+			auto SmSpG = Op::prod(B.Sm(j), SpG, {0});
+			auto resSmSp = Op::prod(John.groundstate(Q1), SmSpG, {0});
+			auto SmG = Op::prod(B.Sm(i), John.groundstate(Q1), {-2});
+			auto SpSmG = Op::prod(B.Sp(j), SmG, {0});
+			auto resSpSm = Op::prod(John.groundstate(Q1), SpSmG, {0});
+			SdagS(i,j) = resSzSz.data().block[0](0,0) + 0.5*(resSpSm.data().block[0](0,0) + resSmSp.data().block[0](0,0));
+#else
+			auto SzG = Op::prod(B.Sz(i), John.groundstate(Q1), {});
+			auto SzSzG = Op::prod(B.Sz(j), SzG, {});
+			auto resSzSz = Op::prod(John.groundstate(Q1), SzSzG, {});
+			
+			auto SpG = Op::prod(B.Sp(i), John.groundstate(Q1), {});
+			auto SmSpG = Op::prod(B.Sm(j), SpG, {});
+			auto resSmSp = Op::prod(John.groundstate(Q1), SmSpG, {});
+			
+			auto SmG = Op::prod(B.Sm(i), John.groundstate(Q1), {});
+			auto SpSmG = Op::prod(B.Sp(j), SmG, {});
+			auto resSpSm = Op::prod(John.groundstate(Q1), SpSmG, {});
+			SdagS(i,j) = resSzSz.data().block[0](0,0) + 0.5*(resSpSm.data().block[0](0,0) + resSmSp.data().block[0](0,0));
+#endif
+		}
+		cout << "nearest neighbour spin correlations:" << endl << SdagS.matrix().template diagonal<1>() << endl;
+		cout << "edge-edge spin correlations: " << SdagS(0,L-1) << endl;
 		// qarray<2> Q1 = {S,N};
 
 		// auto H = F.HubbardHamiltonian(U);

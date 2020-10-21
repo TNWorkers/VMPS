@@ -1,11 +1,17 @@
 #ifndef GREEN_PROPAGATOR
 #define GREEN_PROPAGATOR
 
+#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 #include "SuperQuadrator.h"
+#else
+#include "Quadrator.h"
+#endif
+
 #include "solvers/TDVPPropagator.h"
 #include "solvers/EntropyObserver.h"
 #include "IntervalIterator.h"
 #include "ComplexInterpolGSL.h"
+
 #ifdef GREENPROPAGATOR_USE_HDF5
 #include "HDF5Interface.h"
 #endif
@@ -13,10 +19,6 @@
 #include <unsupported/Eigen/FFT>
 #include "gsl_integration.h" // from TOOLS
 #include "ooura_integration.h" // from TOOLS
-
-#include <boost/math/quadrature/ooura_fourier_integrals.hpp>
-using boost::math::quadrature::ooura_fourier_sin;
-using boost::math::quadrature::ooura_fourier_cos;
 
 /**Range of k-values:
 \param MPI_PPI : from -pi to +pi
@@ -33,17 +35,15 @@ std::ostream& operator<< (std::ostream& s, GREEN_INTEGRATION GI)
 	return s;
 }
 
-//ComplexInterpol GlobalInterpol;
-
 /**cutoff function for the time domain*/
 struct GreenPropagatorGlobal
 {
 	static double tmax;
-	static double damping (double tval) {return lorentz(tval);};
-	static double gauss (double tval) {return exp(-pow(2.*tval/tmax,2));};
-	static double lorentz (double tval) {return exp(-4.*tval/tmax);}; // not tested
 	
-//	static complex<double> interpolate (double tval) {return GlobalInterpol.evaluate(tval);};
+	static double damping (double tval) {return lorentz(tval);};
+	
+	static double gauss (double tval) {return exp(-pow(2.*tval/tmax,2));};
+	static double lorentz (double tval) {return exp(-4.*tval/tmax);};
 };
 double GreenPropagatorGlobal::tmax = 20.;
 
@@ -152,6 +152,9 @@ public:
 	 Q_RANGE_CHOICE(Q_RANGE_CHOICE_input), Nq(Nq_input),
 	 GREENINT_CHOICE(GREENINT)
 	{
+		#ifndef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
+		assert(GREENINT!=DIRECT);
+		#endif
 		GreenPropagatorGlobal::tmax = tmax;
 		set_qlims(Q_RANGE_CHOICE);
 		calc_intweights();
@@ -176,7 +179,12 @@ public:
 	{
 		Gtx = Gtx_input;
 		
+		#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 		Nt = (GREENINT==DIRECT)? Gtx.rows():Gtx.rows()-1;
+		#else
+		assert(GREENINT!=DIRECT);
+		Nt = Gtx.rows()-1;
+		#endif
 		Nq = Nq_input;
 		Lhetero = Lcell*Ncells;
 		
@@ -216,7 +224,12 @@ public:
 			GtxCell[i][j] = Gtx_input[i][j];
 		}
 		
+		#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 		Nt = (GREENINT==DIRECT)? GtxCell[0][0].rows():GtxCell[0][0].rows()-1;
+		#else
+		assert(GREENINT!=DIRECT);
+		Nt = GtxCell[0][0].rows()-1;
+		#endif
 		Ncells = GtxCell[0][0].cols();
 		Nq = Nq_input;
 		Lhetero = Ncells*Lcell;
@@ -271,7 +284,12 @@ public:
 		#endif
 		
 		Ncells = 1;
+		#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 		Nt = (GREENINT==DIRECT)? Gtx.rows():Gtx.rows()-1;
+		#else
+		assert(GREENINT!=DIRECT);
+		Nt = Gtx.rows()-1;
+		#endif
 		Nq = Nq_input;
 		Lhetero = Lcell;
 		
@@ -326,7 +344,12 @@ public:
 		}
 		#endif
 		
+		#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 		Nt = (GREENINT==DIRECT)? GtxCell[0][0].rows():GtxCell[0][0].rows()-1;
+		#else
+		assert(GREENINT!=DIRECT);
+		Nt = GtxCell[0][0].rows()-1;
+		#endif
 		Ncells = GtxCell[0][0].cols();
 		Nq = Nq_input;
 		Lhetero = Ncells*Lcell;
@@ -381,7 +404,7 @@ public:
 	*/
 	void recalc_FTw (double wmin_new, double wmax_new, int Nw_new=1000);
 	
-	void recalc_FTwCell (double wmin_new, double wmax_new, int Nw_new=1000);
+	void recalc_FTwCell (double wmin_new, double wmax_new, int Nw_new=1000, bool TRANSPOSE=false);
 	
 	/**
 	Set a Hermitian operator to be measured in the time-propagated state for testing purposes.
@@ -482,14 +505,16 @@ private:
 	double tol_compr = 1e-4; // compression tolerance during time propagation
 	double tol_Lanczos = 1e-7; // 1e-6 seems sufficient; increase to 1e-8 for higher accuracy
 	double tol_DeltaS = 1e-3; // 1e-3 seems good for DIRECT (initially small timesteps); 1e-2 seems good for INTERP (equidistant timesteps)
-	size_t lim_Nsv = 100ul;
+	size_t lim_Nsv = 500ul;
 	double h_ooura = 0.001; // stepsize for Ooura integration if GREENINT_CHOICE == OOURA; smaller = more accurate & slower
-	GREEN_INTEGRATION GREENINT_CHOICE = DIRECT;
+	GREEN_INTEGRATION GREENINT_CHOICE = OOURA;
 	bool SAVE_LOG = false;
 	
 	DMRG::VERBOSITY::OPTION CHOSEN_VERBOSITY = DMRG::VERBOSITY::HALFSWEEPWISE;
 	
+	#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 	SuperQuadrator<GAUSS_LEGENDRE> TimeIntegrator;
+	#endif
 	
 	ArrayXd tvals, weights, tsteps;
 	bool TIME_FORWARDS;
@@ -542,7 +567,7 @@ private:
 	void FT_tw (const MatrixXcd &Gtq, MatrixXcd &Gwq, VectorXcd &G0q, VectorXcd &Glocw);
 	void FTcell_tw();
 	
-	void FTcellww_xq();
+	void FTcellww_xq (bool TRANSPOSE = false);
 	void FTcellxx_tw();
 	void FTww_xq (const MatrixXcd &Gwx, const MatrixXcd &G0x, MatrixXcd &Gwq, VectorXcd &G0q);
 	void FTxx_tw (const MatrixXcd &Gtx, MatrixXcd &Gwx, VectorXcd &G0x, VectorXcd &Glocw);
@@ -609,7 +634,7 @@ propagate (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> &Ox
 	
 	Mps<Symmetry,complex<double>> Psi = OxPhi0;
 	Psi.eps_svd = tol_compr;
-	Psi.max_Nsv = max(Psi.calc_Dmax(),20ul);
+	Psi.max_Nsv = max(Psi.calc_Mmax(),500ul);
 	
 	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVP(H, Psi);
 	EntropyObserver<Mps<Symmetry,complex<double>>> Sobs(Lhetero, Nt, CHOSEN_VERBOSITY, tol_DeltaS);
@@ -758,7 +783,7 @@ propagate_thermal (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>> &
 	
 	Mps<Symmetry,complex<double>> Psi = OxPhi0;
 	Psi.eps_svd = tol_compr;
-	Psi.max_Nsv = max(Psi.calc_Dmax(),min(100ul,lim_Nsv));
+	Psi.max_Nsv = max(Psi.calc_Mmax(),min(500ul,lim_Nsv));
 	
 	TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>> TDVPket(H,Psi);
 	EntropyObserver<Mps<Symmetry,complex<double>>> SobsKet(H.length(), Nt, CHOSEN_VERBOSITY, tol_DeltaS);
@@ -952,7 +977,7 @@ compute_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>> 
 //	FTcell_xq();
 //	FTcell_tw();
 	FTcellxx_tw();
-	FTcellww_xq();
+	FTcellww_xq((TIME_FORWARDS)?false:true);
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
@@ -966,7 +991,7 @@ propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>
 	{
 		Psi[i] = OxPhi[i];
 		Psi[i].eps_svd = tol_compr;
-		Psi[i].max_Nsv = max(Psi[i].calc_Dmax(),20ul);
+		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),500ul);
 	}
 	
 	vector<TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>> TDVP(Lcell);
@@ -974,6 +999,7 @@ propagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<double>>
 	{
 		TDVP[i] = TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>(H, Psi[i]);
 	}
+	
 	vector<EntropyObserver<Mps<Symmetry,complex<double>>>> Sobs(Lcell);
 	vector<vector<bool>> TWO_SITE(Lcell);
 	for (int i=0; i<Lcell; ++i)
@@ -1105,7 +1131,7 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 		{
 			Psi[z][i] = OxPhi[i];
 			Psi[z][i].eps_svd = tol_compr;
-			Psi[z][i].max_Nsv = max(Psi[z][i].calc_Dmax(),20ul);
+			Psi[z][i].max_Nsv = max(Psi[z][i].calc_Mmax(),500ul);
 		}
 	}
 	
@@ -1152,6 +1178,7 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 	if (GREENINT_CHOICE != DIRECT)
 	{
 		Stopwatch<> StepTimer;
+//		lout << termcolor::blue << "phase=" << -1.i*exp(-1.i*tsign*Eg*tval) << termcolor::reset << endl;
 		calc_GreenCell(0, -1.i*exp(-1.i*tsign*Eg*tval), Psi);
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE)
 		{
@@ -1210,6 +1237,7 @@ counterpropagate_cell (const Hamiltonian &H, const vector<Mps<Symmetry,complex<d
 		// 2. measure
 		// 2.1. Green's function
 		//----------------------------------------------------------
+//		lout << termcolor::blue << "phase=" << -1.i*exp(-1.i*tsign*Eg*tval) << termcolor::reset << endl;
 		calc_GreenCell(t.index(), -1.i*exp(-1.i*tsign*Eg*tval), Psi);
 		//----------------------------------------------------------
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE) lout << StepTimer.info("G(t,x) calculation") << endl;
@@ -1305,7 +1333,7 @@ compute_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScalar>
 //	FTcell_xq();
 //	FTcell_tw();
 	FTcellxx_tw();
-	FTcellww_xq();
+	FTcellww_xq((TIME_FORWARDS)?false:true);
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
@@ -1320,7 +1348,7 @@ propagate_thermal_cell (const Hamiltonian &H, const vector<Mpo<Symmetry,MpoScala
 	{
 		Psi[i] = (i==Lcell)? Phi : OxPhi0[i]; // Phi = Psi[Lcell]
 		Psi[i].eps_svd = tol_compr;
-		Psi[i].max_Nsv = max(Psi[i].calc_Dmax(),min(100ul,lim_Nsv));
+		Psi[i].max_Nsv = max(Psi[i].calc_Mmax(),min(500ul,lim_Nsv));
 	}
 	
 	vector<TDVPPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar,Mps<Symmetry,complex<double>>>> TDVP(Lcell+1);
@@ -1459,9 +1487,10 @@ calc_Green (const int &tindex, const complex<double> &phase, const vector<Mps<Sy
 //	MatrixXcd Gtx_(Gtx.rows(),Gtx.cols());
 	
 	//variant: Don't use cell shift, OxPhiFull must be of length Lhetero
-	if (Psi.Boundaries.IS_TRIVIAL())
+//	if (Psi.Boundaries.IS_TRIVIAL())
+	if (OxPhiFull.size() > 0)
 	{
-		assert(OxPhiFull.size() == Lhetero and "Call set_OxPhiFull with this setup! OxPhi parameter will be ignored.");
+//		assert(OxPhiFull.size() == Lhetero and "Call set_OxPhiFull with this setup! OxPhi parameter will be ignored.");
 		if (NQ == 0)
 		{
 			#pragma omp parallel for
@@ -1552,14 +1581,17 @@ calc_Green_thermal (const int &tindex, const vector<Mpo<Symmetry,MpoScalar>> &Od
 	}
 }
 
+// used in propagate
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-calc_GreenCell (const int &tindex, const complex<double> &phase, 
+calc_GreenCell (const int &tindex,
+                const complex<double> &phase, 
                 const vector<Mps<Symmetry,complex<double>>> &OxPhi,
                 const vector<Mps<Symmetry,complex<double>>> &Psi)
 {
 	//variant: Don't use cell shift, OxPhiFull must be of length Lhetero
-	if (Psi[0].Boundaries.IS_TRIVIAL())
+//	if (Psi[0].Boundaries.IS_TRIVIAL())
+	if (OxPhiFull.size() > 0)
 	{
 		#pragma omp parallel for collapse(3)
 		for (size_t n=0; n<Ncells; ++n)
@@ -1598,12 +1630,15 @@ calc_GreenCell (const int &tindex, const complex<double> &phase,
 	}
 }
 
+// used in counterpropagate
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-calc_GreenCell (const int &tindex, const complex<double> &phase, 
+calc_GreenCell (const int &tindex,
+                const complex<double> &phase, 
                 const std::array<vector<Mps<Symmetry,complex<double>>>,2> &Psi)
 {
-	#pragma omp parallel for collapse(3)
+//	cout << "phase=" << phase << endl;
+//	#pragma omp parallel for collapse(3)
 	for (size_t i=0; i<Lcell; ++i)
 	for (size_t j=0; j<Lcell; ++j)
 	for (size_t n=0; n<Ncells; ++n)
@@ -1611,7 +1646,7 @@ calc_GreenCell (const int &tindex, const complex<double> &phase,
 		GtxCell[i][j](tindex,n) = phase * dot_hetero(Psi[1][i], Psi[0][j], dcell[n*Lcell]);
 //		#pragma omp critical
 //		{
-//			cout << "i=" << i << ", j=" << j << ", n=" << n << ", dcell=" << dcell[n*Lcell] << ", G=" << GtxCell[i][j](tindex,n) << endl;
+//			cout << "i=" << i << ", j=" << j << ", n=" << n << ", dcell=" << dcell[n*Lcell] << ", dot=" << dot_hetero(Psi[1][i], Psi[0][j], dcell[n*Lcell]) << ", G=" << GtxCell[i][j](tindex,n) << endl;
 //		}
 	}
 	
@@ -1777,6 +1812,7 @@ calc_intweights()
 {
 	Stopwatch<> Watch;
 	
+	#ifdef GREENPROPAGATOR_USE_GAUSSIAN_QUADRATURE
 	if (GREENINT_CHOICE == DIRECT)
 	{
 		TimeIntegrator = SuperQuadrator<GAUSS_LEGENDRE>(GreenPropagatorGlobal::damping,0.,tmax,Nt);
@@ -1812,6 +1848,7 @@ calc_intweights()
 		}
 	}
 	else
+	#endif
 	{
 		double dt = tmax/Nt;
 		Nt += 1;
@@ -1913,7 +1950,7 @@ FTcell_xq()
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-FTcellww_xq()
+FTcellww_xq (bool TRANSPOSE)
 {
 	IntervalIterator q(qmin,qmax,Nq);
 	ArrayXd qvals = q.get_abscissa();
@@ -1935,8 +1972,16 @@ FTcellww_xq()
 		for (int iq=0; iq<Nq; ++iq)
 		for (int n=0; n<Ncells; ++n)
 		{
-			GwqCell[i][j].col(iq) += GwxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
-			G0qCell[i][j](iq) += G0xCell[i][j](n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
+			if (TRANSPOSE)
+			{
+				GwqCell[i][j].col(iq) += GwxCell[j][i].col(n) * exp(+1.i*qvals(iq)*double(dcell[n*Lcell]));
+				G0qCell[i][j](iq) += G0xCell[j][i](n) * exp(+1.i*qvals(iq)*double(dcell[n*Lcell]));
+			}
+			else
+			{
+				GwqCell[i][j].col(iq) += GwxCell[i][j].col(n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
+				G0qCell[i][j](iq) += G0xCell[i][j](n) * exp(-1.i*qvals(iq)*double(dcell[n*Lcell]));
+			}
 		}
 	}
 	
@@ -2073,23 +2118,6 @@ FTxx_tw (const MatrixXcd &Gtx, MatrixXcd &Gwx, VectorXcd &G0x, VectorXcd &Glocw)
 	}
 	else if (GREENINT_CHOICE == INTERP)
 	{
-//		for (int iw=0; iw<wvals.rows(); ++iw)
-//		{
-//			double wval = wvals(iw);
-//			
-//			for (int ix=0; ix<Nx; ++ix)
-//			{
-//				ComplexInterpol Gtx_interp(tvals);
-//				for (int it=0; it<tvals.rows(); ++it)
-//				{
-//					double tval = tvals(it);
-//					complex<double> Gval = exp(+1.i*wval*tval) * GreenPropagatorGlobal::damping(tval) * Gtx(it,ix);
-//					Gtx_interp.insert(it,Gval);
-//				}
-//				Gwq(iw,ix) += Gtx_interp.integrate();
-//				Gtx_interp.kill_splines();
-//			}
-//		}
 		#pragma omp parallel for
 		for (int ix=0; ix<Nx; ++ix)
 		{
@@ -2205,23 +2233,6 @@ FTcell_tw()
 		}
 		else if (GREENINT_CHOICE == INTERP)
 		{
-//			for (int iw=0; iw<wvals.rows(); ++iw)
-//			{
-//				double wval = wvals(iw);
-//				
-//				for (int iq=0; iq<Nq; ++iq)
-//				{
-//					ComplexInterpol Gtq_interp(tvals);
-//					for (int it=0; it<tvals.rows(); ++it)
-//					{
-//						double tval = tvals(it);
-//						complex<double> Gval = GreenPropagatorGlobal::damping(tval) * GtqCell[i][j](it,iq);
-//						Gtq_interp.insert(it,Gval);
-//					}
-//					GwqCell[i][j](iw,iq) += Gtq_interp.integrate();
-//					Gtq_interp.kill_splines();
-//				}
-//			}
 			#pragma omp parallel for
 			for (int iq=0; iq<Nq; ++iq)
 			{
@@ -2318,23 +2329,6 @@ FTcellxx_tw()
 		}
 		else if (GREENINT_CHOICE == INTERP)
 		{
-//			for (int iw=0; iw<wvals.rows(); ++iw)
-//			{
-//				double wval = wvals(iw);
-//				
-//				for (int ix=0; ix<Nx; ++ix)
-//				{
-//					ComplexInterpol Gtx_interp(tvals);
-//					for (int it=0; it<tvals.rows(); ++it)
-//					{
-//						double tval = tvals(it);
-//						complex<double> Gval = GreenPropagatorGlobal::damping(tval) * GtxCell[i][j](it,ix);
-//						Gtx_interp.insert(it,Gval);
-//					}
-//					GwxCell[i][j](iw,ix) += Gtx_interp.integrate();
-//					Gtx_interp.kill_splines();
-//				}
-//			}
 			#pragma omp parallel for
 			for (int ix=0; ix<Nx; ++ix)
 			{
@@ -2421,21 +2415,6 @@ FTloc_tw (const VectorXcd &Gloct_in, const ArrayXd &wvals)
 	}
 	else if (GREENINT_CHOICE == INTERP)
 	{
-//		for (int iw=0; iw<wvals.rows(); ++iw)
-//		{
-//			double wval = wvals(iw);
-//			
-//			ComplexInterpol Gtq_interp(tvals);
-//			for (int it=0; it<tvals.rows(); ++it)
-//			{
-//				double tval = tvals(it);
-//				complex<double> Gval = exp(+1.i*wval*tval) * exp(-pow(2.*tval/tmax,2)) * Gloct_in(it);
-//				Gtq_interp.insert(it,Gval);
-//			}
-//			Glocw_out(iw) += Gtq_interp.integrate();
-//			Gtq_interp.kill_splines();
-//		}
-		
 		VectorXcd fvals = Gloct_in;
 		for (int it=0; it<tvals.rows(); ++it) fvals(it) *= GreenPropagatorGlobal::damping(tvals(it));
 		Glocw_out = ::FT_interpol(tvals,fvals,USE_QAWO,wmin,wmax,Nw);
@@ -2537,7 +2516,7 @@ recalc_FTw (double wmin_new, double wmax_new, int Nw_new)
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
 void GreenPropagator<Hamiltonian,Symmetry,MpoScalar,TimeScalar>::
-recalc_FTwCell (double wmin_new, double wmax_new, int Nw_new)
+recalc_FTwCell (double wmin_new, double wmax_new, int Nw_new, bool TRANSPOSE)
 {
 	wmin = wmin_new;
 	wmax = wmax_new;
@@ -2546,7 +2525,7 @@ recalc_FTwCell (double wmin_new, double wmax_new, int Nw_new)
 //	FTcell_xq();
 //	FTcell_tw();
 	FTcellxx_tw();
-	FTcellww_xq();
+	FTcellww_xq(TRANSPOSE);
 }
 
 template<typename Hamiltonian, typename Symmetry, typename MpoScalar, typename TimeScalar>
@@ -2857,7 +2836,7 @@ save (bool IGNORE_CELL) const
 			#ifdef GREENPROPAGATOR_USE_HDF5
 			target_wq.save_scalar(mu,"μ");
 			#else
-			saveMatrix(MatrixXd(mu), "μ", PRINT);
+//			saveMatrix(MatrixXd(mu), "μ", PRINT);
 			#endif
 		}
 		

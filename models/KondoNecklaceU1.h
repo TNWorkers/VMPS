@@ -1,7 +1,7 @@
 #ifndef KONDONECKLACEU1_H_
 #define KONDONECKLACEU1_H_
 
-#define OPLABELS
+//#define OPLABELS
 
 #include<map>
 #include<string>

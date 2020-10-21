@@ -29,3 +29,4 @@ Makefile
 *.3j
 *.6j
 *.9j
+*.synctex.gz

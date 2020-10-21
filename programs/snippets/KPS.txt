@@ -6,9 +6,9 @@
 	{
 		spillage = 4.*dE[0];
 	}
-	else if ((spec == "AES" and N==L) or (spec == "APS" and N==0)) // full and empty band for AES/APS
+	else if ((spec == "AES" and N==2*L*Ly) or (spec == "APS" and N==0)) // full and empty band for AES/APS
 	{
-		spillage = 2.*dE[0];
+		spillage = 8.*dE[0];
 	}
 	else if (spec == "SSF" or spec == "SSFX" or spec == "SSFY" or spec == "SSFZ" or spec == "SSFP" or spec == "SSFM")
 	{
@@ -18,7 +18,7 @@
 	vector<OrthPolyGreen<MODEL,MODEL::StateXd,ArrayXd,CHEBYSHEV> > KPS(i0_list.size());
 	for (int ii0=0; ii0<i0_list.size(); ++ii0)
 	{
-		bool VERBOSE = (i0_list[ii0]==L/2)? true:false; // print out the most difficult case i0=L/2
+		bool VERBOSE = (i0_list[ii0]==L/2 or i0_list.size()==1)? true:false; // print out the most difficult case i0=L/2
 		KPS[ii0] = OrthPolyGreen<MODEL,MODEL::StateXd,ArrayXd,CHEBYSHEV>(Emin-spillage, Emax+spillage, VERBOSE);
 	}
 	
@@ -28,7 +28,9 @@
 		
 		for (size_t i=0; i<dE.size(); ++i)
 		{
-			Msave.push_back((Emax-Emin+2.*spillage)/dE[i]);
+			int Mval = (Emax-Emin+2.*spillage)/dE[i];
+			if (USE_IDENTITIES and Mval%2==1) Mval += 1;
+			Msave.push_back(Mval);
 			lout << "dE=" << dE[i] << " => M=" << Msave[Msave.size()-1] << endl;
 		}
 		lout << endl;

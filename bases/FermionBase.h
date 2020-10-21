@@ -688,7 +688,9 @@ template <typename Dummy>
 typename std::enable_if<!Dummy::IS_CHARGE_SU2(), SiteOperatorQ<Symmetry_,Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> > >::type FermionBase<Symmetry_>::
 Tz (std::size_t orbital) const
 {
-	return 0.5*(n(orbital)-Id());
+	OperatorType out = 0.5*(n(orbital)-Id());
+	out.label() = "Tz=1/2*(n-Id)";
+	return out;
 }
 
 template <typename Symmetry_>

@@ -628,17 +628,16 @@ print (const bool &SHOW_MATRICES, const std::size_t &precision) const
 	
 	if (SHOW_MATRICES)
 	{
-		out << TCOLOR(BLUE) << "\e[4mA-tensors:\e[0m" << std::endl;
+		out << termcolor::blue << termcolor::underline << "A-tensors:" << termcolor::reset << std::endl;
 		for (std::size_t nu=0; nu<dim; nu++)
 		{
-			out << TCOLOR(BLUE) << "ν=" << nu << std::endl;
+			out << termcolor::blue << "ν=" << nu << std::endl;
 			for (std::size_t q=0; q<block[nu].shape()[0]; q++)
 			{
 				if(block[nu][q][0].size() == 0) {continue;}
-				out << TCOLOR(GREEN) << "q=" << q << endl << std::setprecision(precision) << std::fixed << block[nu][q][0] << std::endl;
+				out << termcolor::green << "q=" << q << endl << std::setprecision(precision) << std::fixed << block[nu][q][0] << std::endl;
 			}
 		}
-		out << TCOLOR(BLACK) << std::endl;
 	}
 	
 	return out.str();

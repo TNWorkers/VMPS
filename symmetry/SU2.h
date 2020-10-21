@@ -61,7 +61,9 @@ public:
 	inline static std::string name() { return "SU2"; }
 	inline static constexpr std::array<KIND,Nq> kind() { return {Kind::name}; }
 	
-	inline static qType qvacuum() { return {1}; }
+	inline static constexpr qType qvacuum() { return {1}; }
+	inline static constexpr std::array<qType,1> lowest_qs() { return std::array<qType,1> {{ qarray<1>(std::array<int,1>{{2}}) }}; }
+	
 	inline static qType flip( const qType& q ) { return q; }
 	inline static int degeneracy( const qType& q ) { return q[0]; }
 
@@ -95,12 +97,17 @@ public:
 	 * Various coeffecients, all resulting from contractions or traces of the Clebsch-Gordon coefficients.
 	 */
 	inline static Scalar coeff_unity();
+	
 	static Scalar coeff_dot(const qType& q1);
+	
 	static Scalar coeff_rightOrtho(const qType& q1, const qType& q2);
 	static Scalar coeff_leftSweep(const qType& q1, const qType& q2);
-
+	
+	static Scalar coeff_swapPhase(const qType& q1, const qType& q2, const qType& q3);
+	static Scalar coeff_leftSweep2(const qType& q1, const qType& q2, const qType& q3);
+	static Scalar coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3);
 	static Scalar coeff_adjoint(const qType& q1, const qType& q2, const qType& q3);
-
+	static Scalar coeff_splitAA(const qType& q1, const qType& q2, const qType& q3);
 	static Scalar coeff_3j(const qType& q1, const qType& q2, const qType& q3,
 						   int        q1_z, int        q2_z,        int q3_z);
 	static Scalar coeff_CGC(const qType& q1, const qType& q2, const qType& q3,
@@ -110,10 +117,14 @@ public:
 						   const qType& q4, const qType& q5, const qType& q6);
 	static Scalar coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 							  const qType& q4, const qType& q5, const qType& q6);
+	static Scalar coeff_splitAA(const qType& q1, const qType& q2, const qType& q3,
+								const qType& q4, const qType& q5, const qType& q6);
 	static Scalar coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 							 const qType& q4, const qType& q5, const qType& q6);
 	static Scalar coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
 								 const qType& q4, const qType& q5, const qType& q6);
+	static Scalar coeff_twoSiteGate(const qType& q1, const qType& q2, const qType& q3,
+									const qType& q4, const qType& q5, const qType& q6);
 	
 	static Scalar coeff_9j(const qType& q1, const qType& q2, const qType& q3,
 						   const qType& q4, const qType& q5, const qType& q6,
@@ -293,10 +304,46 @@ coeff_leftSweep(const qType& q1, const qType& q2)
 
 template<typename Kind, typename Scalar>
 Scalar SU2<Kind,Scalar>::
+coeff_leftSweep2(const qType& q1, const qType& q2, const qType& q3)
+{
+	Scalar out = phase<Scalar>((q1[0]-q2[0]+q3[0]-1) / 2) *
+		std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]));
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_leftSweep3(const qType& q1, const qType& q2, const qType& q3)
+{
+	Scalar out = phase<Scalar>((q1[0]-q2[0]-q3[0]-1) / 2) *
+		std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]));
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_swapPhase(const qType& q1, const qType& q2, const qType& q3)
+{
+	Scalar out = phase<Scalar>((q1[0]+q2[0]-q3[0]-3) /2);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_adjoint(const qType& q1, const qType& q2, const qType& q3)
 {
 	Scalar out = phase<Scalar>((q3[0]+q1[0]-q2[0]-1) / 2) *
 		std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]));
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_splitAA(const qType& q1, const qType& q2, const qType& q3)
+{
+	Scalar out = phase<Scalar>((q1[0]-q2[0]-q3[0]-3) / 2) *
+		std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]));
+	// Scalar out = std::sqrt(static_cast<Scalar>(q1[0])) / std::sqrt(static_cast<Scalar>(q2[0]));
 	return out;
 }
 
@@ -348,6 +395,17 @@ coeff_Apair(const qType& q1, const qType& q2, const qType& q3,
 
 template<typename Kind, typename Scalar>
 Scalar SU2<Kind,Scalar>::
+coeff_splitAA(const qType& q1, const qType& q2, const qType& q3,
+			  const qType& q4, const qType& q5, const qType& q6)
+{	
+	Scalar out = coupling_6j(q1[0],q2[0],q3[0],q4[0],q5[0],q6[0])*
+		std::sqrt(static_cast<Scalar>(q2[0]*q3[0]))
+		*phase<Scalar>((q1[0]+q5[0]+q6[0]-3)/2);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
 coeff_prod(const qType& q1, const qType& q2, const qType& q3,
 		   const qType& q4, const qType& q5, const qType& q6)
 {	
@@ -365,6 +423,17 @@ coeff_MPOprod6(const qType& q1, const qType& q2, const qType& q3,
 	Scalar out = coupling_6j(q1[0],q2[0],q3[0],q4[0],q5[0],q6[0])*
 		std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))*
 		phase<Scalar>((q1[0]+q2[0]+q4[0]+q5[0]-4)/2);
+	return out;
+}
+
+template<typename Kind, typename Scalar>
+Scalar SU2<Kind,Scalar>::
+coeff_twoSiteGate(const qType& q1, const qType& q2, const qType& q3,
+			   const qType& q4, const qType& q5, const qType& q6)
+{
+	Scalar out = coupling_6j(q1[0],q2[0],q3[0],q4[0],q5[0],q6[0])*
+		std::sqrt(static_cast<Scalar>(q3[0]*q6[0]))
+		*phase<Scalar>((q1[0]+q2[0]+q4[0]+q5[0]-4)/2);
 	return out;
 }
 

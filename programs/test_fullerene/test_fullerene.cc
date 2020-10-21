@@ -99,6 +99,7 @@ int main (int argc, char* argv[])
 	int L = args.get<int>("L",60);
 	double t = args.get<double>("t",1.);
 	double U = args.get<double>("U",0.);
+	double J = args.get<double>("J",1.);
 	int N = args.get<int>("N",L);
 	int S = args.get<int>("S",0);
 	size_t D = args.get<size_t>("D",2ul);
@@ -123,11 +124,13 @@ int main (int argc, char* argv[])
 	int N_stages = args.get<int>("N_stages",1);
 	
 	string LOAD = args.get<string>("LOAD","");
+	string LOAD2 = args.get<string>("LOAD2","");
 	bool CALC_CORR = args.get<bool>("CALC_CORR",true);
 	bool CALC_GS = args.get<int>("CALC_GS",true);
 	bool CALC_NEUTRAL_GAP = args.get<bool>("CALC_NEUTRAL_GAP",false);
+	double Epenalty = args.get<double>("Epenalty",10.);
 	bool CALC_VAR = args.get<int>("CALC_VAR",true);
-	int dmax = args.get<int>("dmax",3);
+	int dmax = args.get<int>("dmax",9);
 	int dmin = args.get<int>("dmin",1);
 	
 	bool CALC_DOS = args.get<int>("CALC_DOS",false);
@@ -189,7 +192,7 @@ int main (int argc, char* argv[])
 	{
 		base += make_string("_Ly=",Ly,"_dbeta=",dbeta,"_tol=",tol_beta_compr,"_Dlim=",Dlim);
 	}
-	lout.set(base+".log",wd+"log");
+	if (CALC_NEUTRAL_GAP) base += make_string("_Epenalty=",Epenalty);
 	
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
 	
@@ -197,22 +200,25 @@ int main (int argc, char* argv[])
 	DMRG::CONTROL::GLOB GlobParam;
 	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",1ul);
 	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",100ul);
-	GlobParam.Dinit = args.get<size_t>("Dinit",2ul);
-	GlobParam.Qinit = args.get<size_t>("Qinit",6ul);
+	GlobParam.Minit = args.get<size_t>("Minit",1ul);
+	GlobParam.Qinit = args.get<size_t>("Qinit",1ul);
 	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
 	GlobParam.CALC_S_ON_EXIT = false;
-	GlobParam.Dlimit = args.get<size_t>("Dlimit",1000ul); // for groundstate
+	GlobParam.Mlimit = args.get<size_t>("Dlimit",10000ul); // for groundstate
+	if (!BETAPROP) base += make_string("_Mlimit=",GlobParam.Mlimit);
+	
+	lout.set(base+".log",wd+"log");
 	
 	// dyn. params
 	DMRG::CONTROL::DYN  DynParam;
 	int max_Nrich = args.get<int>("max_Nrich",-1);
 	DynParam.max_Nrich = [max_Nrich] (size_t i) {return max_Nrich;};
 	
-	size_t Dincr_per = args.get<size_t>("Dincr_per",4ul);
-	DynParam.Dincr_per = [Dincr_per] (size_t i) {return Dincr_per;};
+	size_t Mincr_per = args.get<size_t>("Mincr_per",4ul);
+	DynParam.Mincr_per = [Mincr_per] (size_t i) {return Mincr_per;};
 	
-	size_t Dincr_abs = args.get<size_t>("Dincr_abs",6ul);
-	DynParam.Dincr_abs = [Dincr_abs] (size_t i) {return Dincr_abs;};
+	size_t Mincr_abs = args.get<size_t>("Dincr_abs",50ul);
+	DynParam.Mincr_abs = [Mincr_abs] (size_t i) {return Mincr_abs;};
 	
 	size_t lim2site = args.get<size_t>("lim2site",30ul);
 	DynParam.iteration = [lim2site] (size_t i) {return (i<lim2site)? DMRG::ITERATION::TWO_SITE : DMRG::ITERATION::ONE_SITE;};
@@ -235,11 +241,11 @@ int main (int argc, char* argv[])
 	ArrayXXd hopping;
 	if (L!=12 and L!=20 and L!=60)
 	{
-		hopping = create_1D_OBC(L); // Heisenberg ring for testing
+		hopping = J*create_1D_OBC(L); // Heisenberg ring for testing
 	}
 	else
 	{
-		hopping = hopping_fullerene(L);
+		hopping = J*hopping_fullerene(L);
 	}
 	auto distanceMatrix = calc_distanceMatrix(hopping);
 	if (PRINT_HOPPING)
@@ -274,13 +280,14 @@ int main (int argc, char* argv[])
 		{
 			params.push_back({"U",U});
 			params.push_back({"tFull",hopping});
+			Q = {2*S+1,N};
 		}
 		else
 		{
 			params.push_back({"Jfull",hopping});
 			params.push_back({"D",D});
+			Q = {2*S+1};
 		}
-		Q = MODEL::singlet(N);
 		lout << "Q=" << Q << endl;
 		params.push_back({"maxPower",maxPower});
 		
@@ -295,8 +302,24 @@ int main (int argc, char* argv[])
 		DMRG.DynParam = DynParam;
 		if (LOAD!="")
 		{
-			g.state.load(LOAD);
+			g.state.load(LOAD,g.energy);
 			lout << "loaded: " << g.state.info() << endl;
+			
+			if (LOAD2!="")
+			{
+				Eigenstate<MODEL::StateXd> g2;
+				g2.state.load(LOAD2,g2.energy);
+				lout << "overlap=" << g.state.dot(g2.state) << endl;
+				
+				MatrixXd Hlow(2,2);
+				Hlow(0,0) = avg(g.state, H, g.state);
+				Hlow(1,1) = avg(g2.state, H, g2.state);
+				Hlow(0,1) = avg(g.state, H, g2.state);
+				Hlow(1,0) = avg(g2.state, H, g.state);
+				SelfAdjointEigenSolver<MatrixXd> Eugen(Hlow);
+				cout << "eigenvalues of <n|H|m>=" << endl << setprecision(16) << Eugen.eigenvalues() << endl;
+			}
+			
 			if (CALC_GS)
 			{
 				DMRG.edgeState(H, g, Q, LANCZOS::EDGE::GROUND, true);
@@ -309,59 +332,47 @@ int main (int argc, char* argv[])
 		
 		if (CALC_NEUTRAL_GAP)
 		{
+			GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_excited_",base);
 			Eigenstate<MODEL::StateXd> excited1;
 			MODEL::Solver DMRG2(VERB);
+			DMRG2.Epenalty = Epenalty;
+			lout << "Epenalty=" << DMRG2.Epenalty << endl;
 			DMRG2.userSetGlobParam();
 			DMRG2.userSetDynParam();
 			DMRG2.GlobParam = GlobParam;
 			DMRG2.DynParam = DynParam;
 			DMRG2.push_back(g.state);
-			DMRG2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND);
-			lout << "excited.energy1=" << setprecision(16) << excited1.energy << endl;
-			double overlap = dot(g.state,excited1.state);
 			
-			double SdagS = 0;
-			for (int i=0; i<L; ++i)
-			for (int j=0; j<L; ++j)
-			{
-				SdagS += avg(excited1.state, H.SdagS(i,j), excited1.state);
-			}
-			lout << "SdagS=" << SdagS << endl;
-			
-//			excited1.state /= sqrt(dot(excited1.state,excited1.state));
-			
-//			lout << "dot(0,0)=" << dot(g.state,g.state) << endl;
-//			lout << "dot(0,1)=" << dot(g.state,excited1.state) << endl;
-//			lout << "dot(1,1)=" << dot(excited1.state,excited1.state) << endl;
-//			
-////			lout << "E=" << avg(excited1.state, H, excited1.state) << endl;
-//			
+//			g.state.sweep(0,DMRG::BROOM::QR);
+//			Eigenstate<MODEL::StateXd> init;
+//			init.state = g.state;
+//			init.state.setRandom();
+//			init.state.sweep(0,DMRG::BROOM::QR);
+//			init.state /= sqrt(dot(init.state,init.state));
 //			MpsCompressor<MODEL::Symmetry,double,double> Compi(VERB);
-//			Eigenstate<MODEL::StateXd> excited1better;
-//			Compi.lincomboCompress({excited1.state, g.state}, {1.,-overlap}, excited1better.state, excited1.state, 100);
-//			lout << "avg(excited1better.state, H, excited1better.state)=" << avg(excited1better.state, H, excited1better.state) << endl;
-//			
-//			lout << "dot(0,0)=" << dot(g.state,g.state) << endl;
-//			lout << "dot(0,1)=" << dot(g.state,excited1better.state) << endl;
-//			lout << "dot(1,1)=" << dot(excited1better.state,excited1better.state) << endl;
-//			
-//			MODEL::Solver DMRG3(VERB);
-//			DMRG3.userSetGlobParam();
-//			DMRG3.userSetDynParam();
-//			DMRG3.GlobParam = GlobParam;
-//			DMRG3.DynParam = DynParam;
-//			DMRG3.push_back(g.state);
-//			DMRG3.edgeState(H, excited1better, Q, LANCZOS::EDGE::GROUND, true);
+//			double overlap = dot(g.state,init.state);
+//			lout << "initial overlap=" << overlap << endl;
+//			if (abs(overlap) > 1e-8)
+//			{
+//				Compi.lincomboCompress({init.state, g.state}, {1.,-overlap}, excited1.state, g.state, g.state.calc_Mmax(), 1e-15);
+//				lout << "overlap after compression=" << dot(g.state,excited1.state);
+//			}
+//			else
+//			{
+//				excited1 = init;
+//			}
 			
-//			Eigenstate<MODEL::StateXd> excited2;
-//			DMRG.push_back(excited1.state);
-//			DMRG.edgeState(H, excited2, Q, LANCZOS::EDGE::GROUND);
-//			lout << "excited.energy2=" << setprecision(16) << excited1.energy << endl;
-//			
-//			Eigenstate<MODEL::StateXd> excited3;
-//			DMRG.push_back(excited2.state);
-//			DMRG.edgeState(H, excited3, Q, LANCZOS::EDGE::GROUND);
-//			lout << "excited.energy3=" << setprecision(16) << excited1.energy << endl;
+			excited1.state = g.state;
+			excited1.state.setRandom();
+			excited1.state.sweep(0,DMRG::BROOM::QR);
+			excited1.state /= sqrt(dot(excited1.state,excited1.state));
+			excited1.state.eps_svd = 1e-8;
+			double overlap = dot(g.state,excited1.state);
+			lout << "initial overlap=" << overlap << endl;
+			DMRG2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND, true);
+			lout << "excited1.energy=" << setprecision(16) << excited1.energy << endl;
+			overlap = dot(g.state,excited1.state);
+			lout << "overlap=" << overlap << endl;
 		}
 		if constexpr (MODEL::FAMILY == HEISENBERG)
 		{
@@ -426,7 +437,14 @@ int main (int argc, char* argv[])
 				lout << setprecision(16) << "E=" << E << setprecision(6) << endl;
 				lout << Timer.info("E") << endl;
 				
-				lout << setprecision(16) << "varE=" << abs(avg(g.state,H,H,g.state)-pow(E,2))/L << setprecision(6) << endl;
+				if (maxPower == 1)
+				{
+					lout << setprecision(16) << "varE=" << abs(avg(g.state,H,H,g.state)-pow(E,2))/L << setprecision(6) << endl;
+				}
+				else
+				{
+					lout << setprecision(16) << "varE=" << abs(avg(g.state,H,g.state,2)-pow(E,2))/L << setprecision(6) << endl;
+				}
 				lout << Timer.info("varE") << endl;
 				
 //				auto HmE = H;
@@ -453,7 +471,7 @@ int main (int argc, char* argv[])
 				for (int t=0; t<2; ++t)
 				{
 					Psi[t].eps_svd = tol_t_compr;
-					Psi[t].max_Nsv = Tmp.calc_Dmax();
+					Psi[t].max_Nsv = Tmp.calc_Mmax();
 				}
 				
 				std::array<TDVPPropagator<MODEL,MODEL::Symmetry,double,complex<double>,MODEL::StateXcd>,2> TDVPt;
@@ -658,7 +676,7 @@ int main (int argc, char* argv[])
 //							PsiT.min_Nsv = 0ul;
 ////						}
 //						
-//						if (PsiT.calc_Dmax() == Dlim and i*dbeta>1.)
+//						if (PsiT.calc_Mmax() == Mlim and i*dbeta>1.)
 //						{
 //							PsiT.eps_svd = 0.1*tol_beta_compr;
 //							TDVPT.t_step0(H, PsiT, -0.5*dbeta, N_stages, 1e-8);
@@ -801,16 +819,9 @@ int main (int argc, char* argv[])
 		// construct H
 		vector<Param> beta_params;
 		beta_params.push_back({"Ly",Ly});
-		if (CALC_C)
-		{
-			beta_params.push_back({"maxPower",(L==60)?1ul:2ul});
-		}
-		else
-		{
-			beta_params.push_back({"maxPower",1ul});
-		}
 		beta_params.push_back({"J",0.});
 		beta_params.push_back({"Jrung",0.});
+		beta_params.push_back({"maxPower",maxPower});
 		MODEL H;
 		if (Ly==1)
 		{
@@ -851,8 +862,8 @@ int main (int argc, char* argv[])
 		
 		if (betainit == 0.)
 		{
-			betasteps.push_back(0.01);
 			betavals.push_back(0.01);
+			betasteps.push_back(0.01);
 //			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 			
 			for (int i=1; i<20; ++i)
@@ -866,17 +877,24 @@ int main (int argc, char* argv[])
 		else
 		{
 			assert(betainit>=0.2);
-			betavals.push_back(betainit);
-			betasteps.push_back(0.1);
+			betavals.push_back(betainit+dbeta);
+			betasteps.push_back(dbeta);
+			lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			
+			// This makes: s_betainit = log(2) + accumulated ln(Z)
+			// From here additional contributions in ln(Z) are added; and beta*e is added at each step
+			double e = avg(PsiT,H,PsiT)/L;
+			s_betainit -= betainit*e;
 		}
+		
 		while (betavals[betavals.size()-1] < betamax)
 		{
 			betasteps.push_back(dbeta);
 			double beta_last = betavals[betavals.size()-1];
 			betavals.push_back(beta_last+dbeta);
-			cout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
+			lout << "betaval=" << betavals[betavals.size()-1] << ", betastep=" << betasteps[betasteps.size()-1] << endl;
 		}
-		cout << endl;
+		lout << endl;
 //		betavals.pop_back();
 //		betasteps.pop_back();
 		
@@ -898,6 +916,7 @@ int main (int argc, char* argv[])
 		for (int i=0; i<betasteps.size()+1; ++i)
 		{
 			Stopwatch<> FullStepTimer;
+			lout << "i=" << i << endl;
 			
 			if (i!=betasteps.size())
 			{
@@ -954,8 +973,8 @@ int main (int argc, char* argv[])
 				double c = std::nan("c");
 				if (CALC_C)
 				{
-					c = (L==60)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
-				                 beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
+					c = (maxPower==1)? beta*beta*(avg(PsiTprev,H,H,PsiTprev  )-pow(E,2))/L:
+				                       beta*beta*(avg(PsiTprev,H,PsiTprev,2ul)-pow(E,2))/L;
 				}
 				cvec.push_back(c);
 				lout << Stepper.info("c") << endl;
@@ -985,6 +1004,7 @@ int main (int argc, char* argv[])
 				int Nsum = (i<betasteps.size())? lnZvec.size()-1:lnZvec.size();
 				VectorXd tmp = VectorXd::Map(lnZvec.data(), Nsum);
 				double s = s_betainit + tmp.sum()/L + beta*e;
+				cout << "s_betainit=" << s_betainit << ", tmp.sum()/L=" << tmp.sum()/L << ", beta*e=" << beta*e << ", total=" << s << endl;
 				svec.push_back(s);
 				//---------
 				lout << Stepper.info("s") << endl;
@@ -1021,9 +1041,8 @@ int main (int argc, char* argv[])
 			}
 			
 			lout << FullStepTimer.info("full step") << endl;
+			lout << FullTimer.info("total",false) << endl;
 			lout << endl;
-			
-			lout << FullTimer.info("total") << endl;
 		}
 		
 		Filer.close();

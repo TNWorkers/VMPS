@@ -36,7 +36,6 @@ Logger lout;
 
 #include "models/HeisenbergSU2.h"
 #include "models/HeisenbergU1.h"
-#include "models/HeisenbergU1XXZ.h"
 #include "models/Heisenberg.h"
 #include "models/HeisenbergXYZ.h"
 #include "HDF5Interface.h"
@@ -60,21 +59,6 @@ string to_string_prec (Scalar x, bool COLOR=false, int n=14)
 	return ss.str();
 }
 
-VMPS::HeisenbergU1XXZ::StateXcd Neel (const VMPS::HeisenbergU1XXZ &H)
-{
-	vector<qarray<1> > Neel_config(H.length());
-	for (int l=0; l<H.length(); l+=2)
-	{
-		Neel_config[l]   = qarray<1>{+1};
-		Neel_config[l+1] = qarray<1>{-1};
-	}
-	
-	VMPS::HeisenbergU1XXZ::StateXcd Psi; 
-	Psi.setProductState(H,Neel_config);
-	
-	return Psi;
-}
-
 bool CALC_DYNAMICS;
 int M, Dtot;
 double Stot;
@@ -83,7 +67,7 @@ size_t L, Ly, Ldyn;
 double J, Jx, Jy, Jz, Jprime, Jrung, Jloc, Jtri, R, Bz;
 double alpha;
 double t_U0, t_U1, t_SU2;
-size_t Dinit, Dlimit, Qinit, Imin, Imax;
+size_t Minit, Mlimit, Qinit, Imin, Imax;
 int max_Nrich;
 double tol_eigval, tol_state, eps_svd;
 double dt, tmax;
@@ -92,7 +76,7 @@ bool U0, U1, SU2;
 
 double E_U0_compressor=0., E_U0_zipper=0.;
 MatrixXd SpinCorr_U0;
-Eigenstate<VMPS::HeisenbergXYZ::StateXcd> g_U0;
+Eigenstate<VMPS::Heisenberg::StateXd> g_U0;
 Eigenstate<VMPS::HeisenbergU1::StateXd>  g_U1;
 Eigenstate<VMPS::HeisenbergSU2::StateXd> g_SU2;
 
@@ -129,7 +113,8 @@ int main (int argc, char* argv[])
 	Stot = (Dtot-1.)/2.;
 	size_t min_Nsv = args.get<size_t>("min_Nsv",0ul);
 	VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",2));
-	
+
+	size_t full_Mmax = args.get<double>("full_Mmax",0);
 	double sigma = args.get<double>("sigma",1.);
 	U0 = args.get<bool>("U0",false);
 	U1 = args.get<bool>("U1",true);
@@ -143,9 +128,9 @@ int main (int argc, char* argv[])
 	eps_svd = args.get<double>("eps_svd",1e-7);
 	alpha = args.get<double>("alpha",1e2);
 	
-	Dinit  = args.get<size_t>("Dinit",2ul);
-	Dlimit = args.get<size_t>("Dmax",100ul);
-	Qinit  = args.get<size_t>("Qinit",7ul);
+	Minit  = args.get<size_t>("Minit",1ul);
+	Mlimit = args.get<size_t>("Mmax",500ul);
+	Qinit  = args.get<size_t>("Qinit",1ul);
 	Imin   = args.get<size_t>("Imin",2ul);
 	Imax   = args.get<size_t>("Imax",50ul);
 	tol_eigval = args.get<double>("tol_eigval",1e-7);
@@ -154,13 +139,14 @@ int main (int argc, char* argv[])
 	
 	vector<Param> SweepParams;
 	// SweepParams.push_back({"max_alpha",alpha});
-	// SweepParams.push_back({"eps_svd",eps_svd});
+	SweepParams.push_back({"eps_svd",eps_svd});
 	SweepParams.push_back({"max_halfsweeps",Imax});
 	SweepParams.push_back({"min_halfsweeps",Imin});
-	SweepParams.push_back({"Dinit",Dinit});
+	SweepParams.push_back({"Minit",Minit});
 	SweepParams.push_back({"Qinit",Qinit});
 	SweepParams.push_back({"min_Nsv",min_Nsv});
-	// SweepParams.push_back({"Dlimit",Dlimit});
+	SweepParams.push_back({"savePeriod",4ul});
+	SweepParams.push_back({"Mlimit",Mlimit});
 	// SweepParams.push_back({"tol_eigval",tol_eigval});
 	// SweepParams.push_back({"tol_state",tol_state});
 	// SweepParams.push_back({"max_Nrich",max_Nrich});
@@ -185,10 +171,10 @@ int main (int argc, char* argv[])
 		lout << endl << "--------U(0)---------" << endl << endl;
 		
 		Stopwatch<> Watch_U0;
-		VMPS::HeisenbergXYZ H_U0(L,{{"Jx",Jx},{"Jy",Jy},{"Jz",Jz},{"Bz",Bz},{"D",D},{"Ly",Ly},{"maxPower",maxPower}});
+		VMPS::Heisenberg H_U0(L,{{"J",J},{"Bz",Bz},{"D",D},{"Ly",Ly},{"maxPower",maxPower}});
 		lout << H_U0.info() << endl;
 		
-		VMPS::HeisenbergXYZ::Solver DMRG_U0(VERB);
+		VMPS::Heisenberg::Solver DMRG_U0(VERB);
 		DMRG_U0.userSetGlobParam();
 		DMRG_U0.userSetDynParam();
 		DMRG_U0.GlobParam = H_U0.get_DmrgGlobParam(SweepParams);
@@ -287,28 +273,28 @@ int main (int argc, char* argv[])
 			
 			for (const auto& Jz:Jz_list)
 			{
-				VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
-				VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
-				TDVPPropagator<VMPS::HeisenbergU1XXZ,Sym::U1<Sym::SpinU1>,double,complex<double>,VMPS::HeisenbergU1XXZ::StateXcd> TDVP(H_U1t,Psi);
+				// VMPS::HeisenbergU1XXZ H_U1t(Ldyn,{{"Jxy",J},{"Jz",Jz},{"D",D}});
+				// VMPS::HeisenbergU1XXZ::StateXcd Psi = Neel(H_U1t);
+				// TDVPPropagator<VMPS::HeisenbergU1XXZ,Sym::U1<Sym::SpinU1>,double,complex<double>,VMPS::HeisenbergU1XXZ::StateXcd> TDVP(H_U1t,Psi);
 			
-				double t = 0;
-				ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
-				for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
-				{
-					double res = 0;
-					for (int l=0; l<Ldyn; ++l)
-					{
-						res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
-					}
-					res /= Ldyn;
-					if (VERB != DMRG::VERBOSITY::SILENT) {lout << "t=" << t << ", <Sz>=" << res << endl;}
-					Filer << t << "\t" << res << endl;
+				// double t = 0;
+				// ofstream Filer(make_string("Mstag_Jxy=",J,"_Jz=",Jz,".dat"));
+				// for (int i=0; i<=static_cast<int>(tmax/dt); ++i)
+				// {
+				// 	double res = 0;
+				// 	for (int l=0; l<Ldyn; ++l)
+				// 	{
+				// 		res += pow(-1.,l) * isReal(avg(Psi, H_U1t.Sz(l), Psi));
+				// 	}
+				// 	res /= Ldyn;
+				// 	if (VERB != DMRG::VERBOSITY::SILENT) {lout << "t=" << t << ", <Sz>=" << res << endl;}
+				// 	Filer << t << "\t" << res << endl;
 				
-					TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
-					if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
-					t += dt;
-				}
-				Filer.close();
+				// 	TDVP.t_step(H_U1t,Psi, -1.i*dt, 1,1e-8);
+				// 	if (VERB != DMRG::VERBOSITY::SILENT) {lout << TDVP.info() << endl << Psi.info() << endl;}
+				// 	t += dt;
+				// }
+				// Filer.close();
 			}
 		}
 	}
@@ -331,7 +317,13 @@ int main (int argc, char* argv[])
 		DMRG_SU2.userSetDynParam();
 		DMRG_SU2.GlobParam = H_SU2.get_DmrgGlobParam(SweepParams);
 		DMRG_SU2.DynParam = H_SU2.get_DmrgDynParam(SweepParams);
-		DMRG_SU2.edgeState(H_SU2, g_SU2, {Dtot}, LANCZOS::EDGE::GROUND);
+		bool USE_STATE=false;
+		if (full_Mmax != 0)
+		{
+			g_SU2.state.load(make_string("MpsBackup_fullMmax=",full_Mmax));
+			USE_STATE=true;
+		}
+		DMRG_SU2.edgeState(H_SU2, g_SU2, {Dtot}, LANCZOS::EDGE::GROUND,USE_STATE);
 		g_SU2.state.graph("SU2");
 		ArrayXd check1(maxPower);
 		for (size_t i=1; i<=maxPower;i++)

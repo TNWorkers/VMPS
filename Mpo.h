@@ -99,7 +99,7 @@ public:
 
 	inline std::size_t length() const {return this->size();}
 	
-	inline std::size_t volume() const {return N_phys;}
+	inline std::size_t volume() const {return this->N_phys;}
 
 	template<typename T, typename ... Operator>
 	static std::vector<T> get_N_site_interaction(T const & Op0, Operator const & ... Ops) {std::vector<T> out { {Op0, Ops ...} }; return out;};
@@ -148,7 +148,7 @@ public:
 	OperatorType LocalOp;
 	int LocalSite = -1;
 		
-	std::size_t N_phys = 0;
+	//std::size_t N_phys = 0;
 	
 	//void initialize();
 	
@@ -253,8 +253,8 @@ info() const
 {
 	std::stringstream ss;
 	ss << termcolor::colorize << termcolor::bold << this->get_name() << termcolor::reset << "→ L=" << this->size();
-	if(N_phys > this->size()){
-        ss << ",V=" << N_phys;
+	if(this->N_phys > this->size()){
+        ss << ",V=" << this->N_phys;
     }
 	ss << ", " << Symmetry::name() << ", ";
 	
@@ -268,24 +268,31 @@ info() const
 		ss << "locality=" << LocalSite << ", ";
 	}
 	
-    auto qAux = this->get_qAux();
-    std::vector<int> dAux(this->size()+1);
-    dAux[0] = this->auxBasis(0).fullM();
-	std::set<std::pair<int,int> > dAux_set;
-	for (std::size_t loc=0; loc<this->size(); ++loc)
+	auto print_qaux = [this,&ss] (int power) -> void
 	{
-        dAux[loc+1] = this->auxBasis(loc+1).fullM();
-		dAux_set.insert(std::make_pair(dAux[loc],dAux[loc+1]));
-	}
-	ss << "dAux=";
-	for (const auto& dAux_pair : dAux_set)
-	{
-		ss << dAux_pair.first << "x" << dAux_pair.second;
-		ss << ",";
-	}
-	ss << " ";
+		auto qAux = this->get_qAux_power(power);
+		std::vector<int> dAux(this->size()+1);
+//		dAux[0] = this->auxBasis(0).fullM();
+		dAux[0] = qAux[0].fullM();
+		std::set<std::pair<int,int> > dAux_set;
+		for (std::size_t loc=0; loc<this->size(); ++loc)
+		{
+//			dAux[loc+1] = this->auxBasis(loc+1).fullM();
+			dAux[loc+1] = qAux[loc+1].fullM();
+			dAux_set.insert(std::make_pair(dAux[loc],dAux[loc+1]));
+		}
+		ss << "dAux" << power << "=";
+		for (const auto& dAux_pair : dAux_set)
+		{
+			ss << dAux_pair.first << "x" << dAux_pair.second;
+			ss << ",";
+		}
+		ss << " ";
+	};
 	
-		ss << "mem=" << round(this->memory(GB),3) << "GB";
+	for (int power=1; power<=this->maxPower(); ++power) print_qaux(power);
+	
+	ss << "mem=" << round(this->memory(GB),3) << "GB";
 	ss << ", sparsity=" << this->sparsity();
 	// if(this->check_SQUARE())
     // {

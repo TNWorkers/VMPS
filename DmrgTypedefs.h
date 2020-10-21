@@ -289,9 +289,9 @@ struct DMRG
 			constexpr static size_t max_halfsweeps = 20;
 			constexpr static double tol_eigval = 1e-6;
 			constexpr static double tol_state = 1e-5;
-			constexpr static size_t Dinit = 5;
-			constexpr static size_t Dlimit = 500;
-			constexpr static size_t Qinit = 10;
+			constexpr static size_t Minit = 1;
+			constexpr static size_t Mlimit = 1000;
+			constexpr static size_t Qinit = 1;
 			constexpr static size_t savePeriod = 0;
 			constexpr static char saveName[] = "MpsBackup";
 			constexpr static DMRG::CONVTEST::OPTION CONVTEST = DMRG::CONVTEST::VAR_2SITE;
@@ -305,9 +305,9 @@ struct DMRG
 			static double max_alpha_rsvd             (size_t i) {return (i<11)? 1e2:0;}
 			static double min_alpha_rsvd             (size_t i) {return (i<11)? 1e-11:0;}
 			static double eps_svd                    (size_t i) {return 1e-7;}
-			static size_t Dincr_abs                  (size_t i) {return 4;} // increase D by at least Dincr_abs
-			static double Dincr_rel                  (size_t i) {return 1.1;} // increase D by at least 10%
-			static size_t Dincr_per                  (size_t i) {return 2;} // increase D every 2 half-sweeps
+			static size_t Mincr_abs                  (size_t i) {return 20;} // increase M by at least Dincr_abs
+			static double Mincr_rel                  (size_t i) {return 1.1;} // increase M by at least 10%
+			static size_t Mincr_per                  (size_t i) {return 2;} // increase M every 2 half-sweeps
 			static size_t min_Nsv                    (size_t i) {return DMRG_CONTROL_DEFAULT_MIN_NSV;}
 			static int    max_Nrich                  (size_t i) {return -1;} // -1 = infinity
 			static void   doSomething                (size_t i) {return;} // -1 = infinity
@@ -326,8 +326,8 @@ struct DMRG
 			size_t max_halfsweeps           = CONTROL::DEFAULT::max_halfsweeps;
 			double tol_eigval               = CONTROL::DEFAULT::tol_eigval;
 			double tol_state                = CONTROL::DEFAULT::tol_state;
-			size_t Dinit                    = CONTROL::DEFAULT::Dinit;
-			size_t Dlimit                   = CONTROL::DEFAULT::Dlimit;
+			size_t Minit                    = CONTROL::DEFAULT::Minit;
+			size_t Mlimit                   = CONTROL::DEFAULT::Mlimit;
 			size_t Qinit                    = CONTROL::DEFAULT::Qinit;
 			size_t savePeriod               = CONTROL::DEFAULT::savePeriod;
 			std::string saveName            = std::string(CONTROL::DEFAULT::saveName);
@@ -340,9 +340,9 @@ struct DMRG
 			function<double(size_t)> max_alpha_rsvd             = CONTROL::DEFAULT::max_alpha_rsvd;
 			function<double(size_t)> min_alpha_rsvd             = CONTROL::DEFAULT::min_alpha_rsvd;
 			function<double(size_t)> eps_svd                    = CONTROL::DEFAULT::eps_svd;
-			function<size_t(size_t)> Dincr_abs                  = CONTROL::DEFAULT::Dincr_abs;
-			function<double(size_t)> Dincr_rel                  = CONTROL::DEFAULT::Dincr_rel;
-			function<size_t(size_t)> Dincr_per                  = CONTROL::DEFAULT::Dincr_per;
+			function<size_t(size_t)> Mincr_abs                  = CONTROL::DEFAULT::Mincr_abs;
+			function<double(size_t)> Mincr_rel                  = CONTROL::DEFAULT::Mincr_rel;
+			function<size_t(size_t)> Mincr_per                  = CONTROL::DEFAULT::Mincr_per;
 			function<size_t(size_t)> min_Nsv                    = CONTROL::DEFAULT::min_Nsv;
 			function<int(size_t)> max_Nrich                     = CONTROL::DEFAULT::max_Nrich;
 			function<void(size_t)> doSomething                  = CONTROL::DEFAULT::doSomething;
