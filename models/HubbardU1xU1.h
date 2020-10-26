@@ -8,6 +8,7 @@
 //include "ParamHandler.h" // from HELPERS
 #include "models/HubbardObservables.h"
 #include "ParamReturner.h"
+#include "Geometry2D.h" // from TOOLS
 
 namespace VMPS
 {
@@ -153,6 +154,59 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		ss << "Ly=" << P.get<size_t>("Ly",loc%Lcell);
 		labellist[loc].push_back(ss.str());
 		
+		auto push_full = [&N_sites, &loc, &F, &P, &pushlist, &labellist, &boundary] (string xxxFull, string label,
+																					 const vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > &first,
+																					 const vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > &last,
+																					 vector<double> factor, bool FERMIONIC) -> void
+		{
+			ArrayXXd Full = P.get<Eigen::ArrayXXd>(xxxFull);
+			vector<vector<std::pair<size_t,double> > > R = Geometry2D::rangeFormat(Full);
+			
+			if (static_cast<bool>(boundary)) {assert(R.size() ==   N_sites and "Use an (N_sites)x(N_sites) hopping matrix for open BC!");}
+			else                             {assert(R.size() >= 2*N_sites and "Use at least a (2*N_sites)x(N_sites) hopping matrix for infinite BC!");}
+			
+			for (size_t j=0; j<first.size(); j++)
+			for (size_t h=0; h<R[loc].size(); ++h)
+			{
+				size_t range = R[loc][h].first;
+				double value = R[loc][h].second;
+				
+				if (range != 0)
+				{
+					vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > ops(range+1);
+					ops[0] = first[j];
+					for (size_t i=1; i<range; ++i)
+					{
+						if (FERMIONIC) {ops[i] = F[(loc+i)%N_sites].sign();}
+						else {ops[i] = F[(loc+i)%N_sites].Id();}
+					}
+					ops[range] = last[j][(loc+range)%N_sites];
+					pushlist.push_back(std::make_tuple(loc, ops, factor[j] * value));
+				}
+			}
+			
+			stringstream ss;
+			ss << label << "(" << Geometry2D::hoppingInfo(Full) << ")";
+			labellist[loc].push_back(ss.str());
+		};
+		
+		if (P.HAS("Vxyfull"))
+		{
+			auto Gloc = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,loc)));
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {F[loc].Tp(0,Gloc), F[loc].Tm(0,Gloc)};
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Tp_ranges(N_sites);
+			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > Tm_ranges(N_sites);
+			for (size_t i=0; i<N_sites; i++)
+			{
+				auto Gi = static_cast<SUB_LATTICE>(static_cast<int>(pow(-1,i)));
+				Tp_ranges[i] = F[i].Tp(0,Gi);
+				Tm_ranges[i] = F[i].Tm(0,Gi);
+			}
+			
+			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {Tm_ranges, Tp_ranges};
+			push_full("Vxyfull", "Vxyᵢⱼ", first, last, {0.5,0.5}, PROP::BOSONIC);
+		}
+		
 		// local terms: U, t0, μ, Bz, t⟂, V⟂, J⟂, X⟂
 		
 		param1d U = P.fill_array1d<double>("U", "Uorb", orbitals, loc%Lcell);
@@ -179,8 +233,8 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 		ArrayXd Vz_array = F[loc].ZeroHopping();
 		
 		auto Hloc = Mpo<Symmetry,double>::get_N_site_interaction(F[loc].template HubbardHamiltonian<double>(U.a, Uph.a, t0.a-mu.a, Bz.a,
-																											tperp.a, Vperp.a, Vzperp.a, Vxyperp.a, Jperp.a, Jperp.a));
-        pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
+		                                                                                                    tperp.a, Vperp.a, Vzperp.a, Vxyperp.a, Jperp.a, Jperp.a));
+		pushlist.push_back(std::make_tuple(loc, Hloc, 1.));
 		
 		// Nearest-neighbour terms: t, V, J, X
 		
@@ -204,7 +258,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			for (std::size_t beta=0; beta<next_orbitals; ++beta)
 			{
 				// t
-                pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(UP,alfa)*F[loc].sign()), F[lp1].c(UP,beta)),    -tpara(alfa,beta)));
+				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(UP,alfa)*F[loc].sign()), F[lp1].c(UP,beta)),    -tpara(alfa,beta)));
 				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].cdag(DN,alfa)*F[loc].sign()), F[lp1].c(DN,beta)),    -tpara(alfa,beta)));
 				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(UP,alfa)   *F[loc].sign()), F[lp1].cdag(UP,beta)), +tpara(alfa,beta)));
 				pushlist.push_back(std::make_tuple(loc, Mpo<Symmetry,double>::get_N_site_interaction((F[loc].c(DN,alfa)   *F[loc].sign()), F[lp1].cdag(DN,beta)), +tpara(alfa,beta)));

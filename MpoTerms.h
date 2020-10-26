@@ -480,7 +480,7 @@ public:
      *  @param factor   The factor to scale the interactions with
      *  @param offset   The factor all local identity operators are multiplied by
      */
-    void scale(const double factor, const double offset=0., const std::size_t power=0ul, const double tolerance=1.e-14);
+    void scale(const double factor, const Scalar offset=0., const std::size_t power=0ul, const double tolerance=1.e-14);
     
     /**
      *  @return Cast instance of MpoTerms with another scalar type
@@ -2836,7 +2836,7 @@ check_qPhys() const
 }
 
 template<typename Symmetry, typename Scalar> void MpoTerms<Symmetry,Scalar>::
-scale(const double factor, const double offset, const std::size_t power, const double tolerance)
+scale(const double factor, const Scalar offset, const std::size_t power, const double tolerance)
 {
     std::size_t calc_to_power = (power != 0 ? power : current_power);
     got_update();
@@ -2918,8 +2918,8 @@ scale(const double factor, const double offset, const std::size_t power, const d
     }
     if(std::abs(offset) > tolerance)
     {
-        bool sign_offset = (offset < 0. ? true : false);
-        cout << boolalpha << "sign_offset=" << sign_offset << endl;
+        //bool sign_offset = (offset < 0. ? true : false);
+        //cout << boolalpha << "sign_offset=" << sign_offset << endl;
         double offset_per_site = std::pow(std::abs(offset), 1./(1.*N_sites));
         if(boundary_condition == BC::OPEN)
         {
@@ -2933,9 +2933,16 @@ scale(const double factor, const double offset, const std::size_t power, const d
                 std::map<qType,OperatorType> &existing_ops = (it->second)[get_auxdim(loc,qVac)-1][get_auxdim(loc+1,qVac)-1];
                 SiteOperator<Symmetry,Scalar> Id;
                 Id.data = Matrix<Scalar,Dynamic,Dynamic>::Identity(hilbert_dimension[loc],hilbert_dimension[loc]).sparseView();
-                if(loc == N_sites/2 and sign_offset) // Muss fuer Spektralfunktionen in der Mitte sein, sonst Phasenshift um pi
+                if(loc == N_sites/2) // Muss fuer Spektralfunktionen in der Mitte sein, sonst Phasenshift um pi
                 {
-                    Id.data *= -1.;
+                	if constexpr(std::is_same<Scalar,complex<double>>::value)
+                	{
+                    	Id.data *= exp(1.i*std::arg(offset));
+                    }
+                    else
+                    {
+                    	Id.data *= (offset<0.)? -1.:+1.;
+                    }
                 }
                 #ifdef OPLABELS
                 Id.label = "id";

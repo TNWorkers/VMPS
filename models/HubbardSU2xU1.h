@@ -122,7 +122,7 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params, const BC &boundary,
 		N_phys += P.get<size_t>("Ly",l%Lcell);		
 		setLocBasis(F[l].get_basis().qloc(),l);
 	}
-
+	
 	param1d U = P.fill_array1d<double>("U", "Uorb", F[0].orbitals(), 0);
 	if (isfinite(U.a.sum()))
 	{
@@ -132,14 +132,14 @@ HubbardSU2xU1 (const size_t &L, const vector<Param> &params, const BC &boundary,
 	{
 		this->set_name("U=∞-Hubbard");
 	}
-
+	
 	PushType<SiteOperator<Symmetry,double>,double> pushlist;
-    std::vector<std::vector<std::string>> labellist;
-    set_operators(F, P, pushlist, labellist, boundary);
-    
-    this->construct_from_pushlist(pushlist, labellist, Lcell);
-    this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
-
+	std::vector<std::vector<std::string>> labellist;
+	set_operators(F, P, pushlist, labellist, boundary);
+	
+	this->construct_from_pushlist(pushlist, labellist, Lcell);
+	this->finalize(PROP::COMPRESS, P.get<size_t>("maxPower"));
+	
 	this->precalc_TwoSiteData();
 }
 
@@ -211,7 +211,7 @@ set_operators (const std::vector<FermionBase<Symmetry_> > &F, const ParamHandler
 			
 			vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > first {cdag_sign_local,c_sign_local};
 			vector<vector<SiteOperatorQ<Symmetry_,Eigen::MatrixXd> > > last {c_ranges,cdag_ranges};
-			push_full("tFull", "tᵢⱼ", first, last, {-std::sqrt(2.), -std::sqrt(2.)}, PROP::FERMIONIC);			
+			push_full("tFull", "tᵢⱼ", first, last, {-std::sqrt(2.), -std::sqrt(2.)}, PROP::FERMIONIC);
 		}
 		if (P.HAS("Vzfull"))
 		{

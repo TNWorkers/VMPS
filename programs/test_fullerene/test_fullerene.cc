@@ -200,8 +200,8 @@ int main (int argc, char* argv[])
 	DMRG::CONTROL::GLOB GlobParam;
 	GlobParam.min_halfsweeps = args.get<size_t>("min_halfsweeps",1ul);
 	GlobParam.max_halfsweeps = args.get<size_t>("max_halfsweeps",100ul);
-	GlobParam.Minit = args.get<size_t>("Minit",1ul);
-	GlobParam.Qinit = args.get<size_t>("Qinit",1ul);
+	GlobParam.Minit = args.get<size_t>("Minit",2ul);
+	GlobParam.Qinit = args.get<size_t>("Qinit",2ul);
 	GlobParam.CONVTEST = DMRG::CONVTEST::VAR_2SITE; // DMRG::CONVTEST::VAR_HSQ
 	GlobParam.CALC_S_ON_EXIT = false;
 	GlobParam.Mlimit = args.get<size_t>("Dlimit",10000ul); // for groundstate
@@ -239,7 +239,7 @@ int main (int argc, char* argv[])
 	#endif
 	
 	ArrayXXd hopping;
-	if (L!=12 and L!=20 and L!=60)
+	if (L!=12 and L!=20 and L!=30 and L!=40 and L!=60)
 	{
 		hopping = J*create_1D_OBC(L); // Heisenberg ring for testing
 	}
@@ -332,6 +332,7 @@ int main (int argc, char* argv[])
 		
 		if (CALC_NEUTRAL_GAP)
 		{
+			lout << "CALC_NEUTRAL_GAP" << endl;
 			GlobParam.saveName = make_string(wd,MODEL::FAMILY,"_excited_",base);
 			Eigenstate<MODEL::StateXd> excited1;
 			MODEL::Solver DMRG2(VERB);

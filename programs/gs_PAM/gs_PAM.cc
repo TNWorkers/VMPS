@@ -7,7 +7,7 @@
 #define USE_HDF5_STORAGE
 #define DMRG_DONT_USE_OPENMP
 #define LINEARSOLVER_DIMK 100
-#define DEBUG_VERBOSITY 3
+//#define DEBUG_VERBOSITY 3
 
 #include <iostream>
 #include <fstream>
@@ -70,12 +70,13 @@ int main (int argc, char* argv[])
 	double Imty = args.get<double>("Imty",0.); // Im Hybridisierung c(i)f(i+1)
 	double Ec = args.get<double>("Ec",0.); // onsite-Energie fuer c
 	double Ef = args.get<double>("Ef",-2.); // onsite-Energie fuer f
+	bool CALC_NEUTRAL_GAP = args.get<bool>("CALC_NEUTRAL_GAP",false);
 	
 	// Steuert die Menge der Ausgaben
 	DMRG::VERBOSITY::OPTION VERB = static_cast<DMRG::VERBOSITY::OPTION>(args.get<int>("VERB",DMRG::VERBOSITY::HALFSWEEPWISE));
 	
 	string wd = args.get<string>("wd","./"); correct_foldername(wd); // Arbeitsvereichnis
-	string param_base = make_string("tfc=",tfc,"_tcc=",tcc,"_tff=",tff,"_tx=",Retx,",",Imtx,"_ty=",Rety,",",Imty,"_Ef|c=",Ef,"|",Ec,"_U=",U,"_V=",V); // Dateiname
+	string param_base = make_string("tfc=",tfc,"_tcc=",tcc,"_tff=",tff,"_tx=",Retx,",",Imtx,"_ty=",Rety,",",Imty,"_Efc=",Ef,",",Ec,"_U=",U,"_V=",V); // Dateiname
 	string base = make_string("L=",L,"_N=",N,"_",param_base); // Dateiname
 	lout << base << endl;
 	lout.set(base+".log",wd+"log"); // Log-Datei im Unterordner log
@@ -92,34 +93,40 @@ int main (int argc, char* argv[])
 	GlobParams.tol_state = args.get<double>("tol_state",1e-4);
 	GlobParams.max_iter_without_expansion = 30ul;
 	
+	// Gemeinsame Parameter bei unendlichen und offenen Randbedingungen
+	vector<Param> params_common;
+	
 	// Parameter des Modells
-	vector<Param> params;
+	vector<Param> params_IBC;
+	vector<Param> params_OBC;
 	if (Ly==1)
 	{
 		// Ungerade Plaetze sollen f-Plaetze mit U sein:
-		params.push_back({"U",0.,0});
-		params.push_back({"U",U,1});
+		params_common.push_back({"U",0.,0});
+		params_common.push_back({"U",U,1});
 		
-		params.push_back({"V",V,0});
-		params.push_back({"V",0.,1});
+		params_common.push_back({"V",V,0});
+		params_common.push_back({"V",0.,1});
 		
-		params.push_back({"t0",Ec,0});
-		params.push_back({"t0",Ef,1});
+		params_common.push_back({"t0",Ec,0});
+		params_common.push_back({"t0",Ef,1});
+		
+		params_IBC = params_common;
 		
 		// Hopping
-//		ArrayXXcd t2cell = create_hopping(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
 		ArrayXXcd t2cell = hopping_PAM(L,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
-		lout << "hopping:" << endl << t2cell << endl;
+		if (L<=4)
+		{
+			lout << "hopping:" << endl << t2cell << endl;
+		}
+		params_IBC.push_back({"tFull",t2cell});
+		params_IBC.push_back({"maxPower",1ul}); // hoechste Potenz von H
 		
-		params.push_back({"tFull",t2cell});
-		params.push_back({"maxPower",1ul}); // hoechste Potenz von H
+		params_OBC = params_common;
+		ArrayXXcd tOBC = hopping_PAM(L/2,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
+		params_OBC.push_back({"tFull",tOBC});
+		params_OBC.push_back({"maxPower",2ul}); // hoechste Potenz von H
 	}
-	
-	// Aufbau des Modells
-	MODELC H(L,params,BC::INFINITE);
-	H.transform_base(Q,false); // PRINT=false
-	H.precalc_TwoSiteData(true); // FORCE=true
-	lout << H.info() << endl;
 	
 //	// Test von komplexem Hopping
 //	// Referenz:
@@ -150,9 +157,6 @@ int main (int argc, char* argv[])
 //		phi.save(make_string("E(Φ)_U=",Uval,".dat"));
 //	}
 	
-	// Grundzustand fuer unendliches System
-	Eigenstate<MODELC::StateUcd> g;
-	
 	int Lfinite = args.get<int>("Lfinite",1000);
 	auto Hfree = hopping_PAM(Lfinite/2,tfc+0.i,tcc+0.i,tff+0.i,Retx+1.i*Imtx,Rety+1.i*Imty);
 	SelfAdjointEigenSolver<MatrixXcd> Eugen(Hfree.matrix()+onsite(Lfinite,Ec,Ef));
@@ -161,25 +165,88 @@ int main (int argc, char* argv[])
 	double e0free = 2.*occ.sum()/Lfinite;
 	lout << setprecision(16) << "e0free/(L="<<Lfinite<<",half-filling)=" << e0free << endl;
 	
-	// VUMPS-Solver
-	MODELC::uSolver Salvator(VERB);
-	Salvator.userSetGlobParam();
-	Salvator.GlobParam = GlobParams;
-	Salvator.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
-	
-	lout << setprecision(16) << "g.energy=" << g.energy << ", e0free=" << e0free << endl;
-	
-	// Besetzungszahlen
-	for (int l=0; l<L; ++l)
+	if (CALC_NEUTRAL_GAP)
 	{
-		lout << "l=" << l << ", n=" << isReal(avg(g.state, H.n(l), g.state)) << endl;
+		// Grundzustand fuer unendliches System
+		Eigenstate<MODELC::StateXcd> g;
+		
+		MODELC H(L,params_OBC,BC::OPEN);
+		lout << H.info() << endl;
+		
+		MODELC::Solver Salvator(VERB);
+		
+		DMRG::CONTROL::GLOB GlobParamsOBC;
+		GlobParamsOBC.min_halfsweeps = 30;
+		GlobParamsOBC.max_halfsweeps = 60;
+		GlobParamsOBC.CONVTEST = DMRG::CONVTEST::VAR_HSQ;
+		
+		DMRG::CONTROL::DYN DynParamsOBC;
+		size_t lim2site = args.get<size_t>("lim2site",30ul);
+		DynParamsOBC.iteration = [lim2site] (size_t i) {return DMRG::ITERATION::ONE_SITE;};
+		
+		Salvator.userSetGlobParam();
+		Salvator.GlobParam = GlobParamsOBC;
+		Salvator.userSetDynParam();
+		Salvator.DynParam = DynParamsOBC;
+		
+		Salvator.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+		
+		MODELC::Solver Salvator2(VERB);
+		Salvator2.userSetGlobParam();
+		Salvator2.GlobParam = GlobParamsOBC;
+		Salvator2.userSetDynParam();
+		Salvator2.DynParam = DynParamsOBC;
+		
+		Salvator2.push_back(g.state);
+		
+		Eigenstate<MODEL::StateXcd> excited1;
+		excited1.state = g.state;
+		excited1.state.setRandom();
+		excited1.state.sweep(0,DMRG::BROOM::QR);
+		excited1.state /= sqrt(dot(excited1.state,excited1.state));
+		excited1.state.eps_svd = 1e-8;
+		Salvator2.Epenalty = args.get<double>("Epenalty",1e4);
+		
+		double overlap = abs(dot(g.state,excited1.state));
+		lout << "initial overlap=" << overlap << endl;
+		Salvator2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND, true);
+		lout << "excited1.energy=" << setprecision(16) << excited1.energy << endl;
+		overlap = abs(dot(g.state,excited1.state));
+		lout << "overlap=" << overlap << endl;
+		
+		lout << "L=" << L << "\t" << setprecision(16) << g.energy << "\t" << excited1.energy << ", gap=" << excited1.energy-g.energy << setprecision(6) << endl;
 	}
-	// fc Spin-Spin-Korrelationen
-	if (Ly==1)
+	else
 	{
-		for (int l=0; l<L; l=l+2)
+		// Grundzustand fuer unendliches System
+		Eigenstate<MODELC::StateUcd> g;
+		
+		// Aufbau des Modells
+		MODELC H(L,params_IBC,BC::INFINITE);
+		H.transform_base(Q,false); // PRINT=false
+		H.precalc_TwoSiteData(true); // FORCE=true
+		lout << H.info() << endl;
+		
+		// VUMPS-Solver
+		MODELC::uSolver Salvator(VERB);
+		Salvator.userSetGlobParam();
+		Salvator.GlobParam = GlobParams;
+		Salvator.edgeState(H, g, Q, LANCZOS::EDGE::GROUND);
+		
+		lout << setprecision(16) << "g.energy=" << g.energy << ", e0free=" << e0free << endl;
+		
+		// Besetzungszahlen
+		for (int l=0; l<L; ++l)
 		{
-			lout << "l=" << l << "," << l+1 << ", SdagS=" << isReal(avg(g.state, H.SdagS(l,l+1), g.state)) << endl;
+			lout << "l=" << l << ", n=" << isReal(avg(g.state, H.n(l), g.state)) << endl;
+		}
+		// fc Spin-Spin-Korrelationen
+		if (Ly==1)
+		{
+			for (int l=0; l<L; l=l+2)
+			{
+				lout << "l=" << l << "," << l+1 << ", SdagS=" << isReal(avg(g.state, H.SdagS(l,l+1), g.state)) << endl;
+			}
 		}
 	}
 }

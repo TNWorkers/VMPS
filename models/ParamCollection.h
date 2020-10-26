@@ -378,6 +378,75 @@ ArrayXXd hopping_fullerene (int L=60, double lambda1=1., double lambda2=1.)
 		res(10,11) = lambda1;
 		res(9,11) = lambda1;
 	}
+	else if (L==40)
+	{
+		for (int i=0; i<=3; ++i) res(i,i+1) = lambda1;
+		res(0,4) = lambda1;
+		
+		res(0,8) = lambda1;
+		res(1,11) = lambda1;
+		res(2,14) = lambda1;
+		res(3,17) = lambda1;
+		res(4,5) = lambda1;
+		
+		for (int i=5; i<=18; ++i) res(i,i+1) = lambda1;
+		res(5,19) = lambda1;
+		
+		res(6,21) = lambda1;
+		res(7,23) = lambda1;
+		res(9,24) = lambda1;
+		res(10,26) = lambda1;
+		res(12,27) = lambda1;
+		res(13,29) = lambda1;
+		res(15,30) = lambda1;
+		res(16,32) = lambda1;
+		res(18,33) = lambda1;
+		res(19,20) = lambda1;
+		
+		for (int i=20; i<=33; ++i) res(i,i+1) = lambda1;
+		res(20,34) = lambda1;
+		
+		res(22,36) = lambda1;
+		res(25,37) = lambda1;
+		res(28,38) = lambda1;
+		res(31,39) = lambda1;
+		res(34,35) = lambda1;
+		
+		for (int i=35; i<=38; ++i) res(i,i+1) = lambda1;
+		res(35,39) = lambda1;
+	}
+	else if (L==30)
+	{
+		for (int i=0; i<=3; ++i) res(i,i+1) = lambda1;
+		res(0,4) = lambda1;
+		
+		res(0,7) = lambda1;
+		res(1,9) = lambda1;
+		res(2,11) = lambda1;
+		res(3,13) = lambda1;
+		res(4,5) = lambda1;
+		
+		for (int i=5; i<=13; ++i) res(i,i+1) = lambda1;
+		res(5,14) = lambda1;
+		
+		res(6,17) = lambda1;
+		res(8,19) = lambda1;
+		res(10,21) = lambda1;
+		res(12,23) = lambda1;
+		res(14,15) = lambda1;
+		
+		for (int i=15; i<=23; ++i) res(i,i+1) = lambda1;
+		res(15,24) = lambda1;
+		
+		res(16,26) = lambda1;
+		res(18,27) = lambda1;
+		res(20,28) = lambda1;
+		res(22,29) = lambda1;
+		res(24,25) = lambda1;
+		
+		for (int i=25; i<=28; ++i) res(i,i+1) = lambda1;
+		res(25,29) = lambda1;
+	}
 	
 	res += res.transpose().eval();
 	

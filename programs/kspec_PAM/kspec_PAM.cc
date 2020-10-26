@@ -75,9 +75,9 @@ int main (int argc, char* argv[])
 	#endif
 	
 	size_t Ly = args.get<size_t>("Ly",1); // Ly=1: entpackt, Ly=2: Supersites
-	int Lphys = (Ly==1)? 2:1;
 	assert(Ly==1 and "Only Ly=1 implemented so far");
 	size_t L = args.get<size_t>("L",2); // Groesse der Einheitszelle
+	int Lphys = (Ly==1)? L:L/2;
 	int N = args.get<int>("N",L); // Teilchenzahl
 	int Ncells = args.get<int>("Ncells",16); // Anzahl der Einheitszellen fuer Spektralfunktion
 	int Lhetero = L*Ncells;
@@ -231,7 +231,7 @@ int main (int argc, char* argv[])
 		}
 	}
 	
-	lout << setprecision(16) << "g.energy=" << g.energy << ", e0free=" << e0free << endl;
+	lout << setprecision(16) << "g.energy=" << g.energy << ", e0free=" << e0free << setprecision(6) << endl;
 	
 	// Besetzungszahlen
 	for (int l=0; l<L; ++l)
@@ -263,36 +263,31 @@ int main (int argc, char* argv[])
 	lout << endl;
 	
 	// shift values O→O-<O>
-	vector<vector<double>> Oshift(Nspec);
+	vector<vector<complex<double>>> Oshift(Nspec);
 	for (int z=0; z<Nspec; ++z)
 	{
 		Oshift[z].resize(Lphys);
 		for (int l=0; l<Lphys; ++l)
 		{
 			complex<double> val;
-			lout << "l=" << l << endl;
 			if (specs[z] == "CSF")
 			{
 				val = avg(g.state, H.n(l), g.state);
-				lout << "n(l)=" << val << endl;
-				Oshift[z][l] = val.real();
+				lout << "l=" << l << ", <n(l)>=" << val << endl;
+				Oshift[z][l] = val;
 			}
 			else if (specs[z] == "HSF")
 			{
 				MODELC Haux(2*L, {{"maxPower",1ul}}, BC::INFINITE, DMRG::VERBOSITY::SILENT);
 				val = avg(g.state, Haux.cdagc(l,l+1), g.state);
-				lout << "cdagc(l,l+1)=" << val << endl;
-				Oshift[z][l] = val.real();
+				lout << "l=" << l << ", <cdagc(l,l+1)>=" << val << endl;
+				Oshift[z][l] = val;
 			}
 			else
 			{
 				Oshift[z][l] = 0.;
 			}
-			if (abs(val.imag()) > 1e-10)
-			{
-				lout << termcolor::red << "Warning: non-zero imaginary part!" << termcolor::reset << endl;
-			}
-			lout << "spec=" << specs[z] << ", l=" << l << ", Oshift=" << Oshift[z][l] << endl;
+			//lout << "spec=" << specs[z] << ", l=" << l << ", Oshift=" << Oshift[z][l] << endl;
 		}
 	}
 	
@@ -315,7 +310,7 @@ int main (int argc, char* argv[])
 			}
 			O[z][l].transform_base(Q,false,L); // PRINT=false
 			cout << O[z][l].info() << endl;
-			cout << "avg(g.state, O[z][l], g.state)=" << avg(g.state, O[z][l], g.state) << endl;
+			cout << termcolor::yellow << "avg(g.state, O[z][l], g.state)=" << avg(g.state, O[z][l], g.state) << termcolor::reset << endl;
 			// l=0: c-electrons
 			// l=1: f-electrons
 		}

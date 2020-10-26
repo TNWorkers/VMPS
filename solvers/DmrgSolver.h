@@ -1023,7 +1023,7 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 				{
 					overlap += Heff[SweepStat.pivot].A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
 				}
-				lout << "pivot=" << SweepStat.pivot << ", n=" << n << ", overlap=" << overlap << ", gap=" << g.energy-E0 << endl;
+				lout << "pivot=" << SweepStat.pivot << ", n=" << n << ", |overlap|=" << std::abs(overlap) << ", gap=" << g.energy-E0 << endl;
 			}
 		}
 	}
@@ -1097,9 +1097,16 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 		vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0pair(Psi0.size());
 		for (int n=0; n<Psi0.size(); ++n)
 		{
-			contract_AA(Psi0[n].A[loc1()], Psi0[n].locBasis(loc1()), 
-			            Psi0[n].A[loc2()], Psi0[n].locBasis(loc2()), 
-			            Psi0[n].QoutTop[loc1()], Psi0[n].QoutBot[loc1()], A0pair[n]);
+//			contract_AA(Psi0[n].A[loc1()], Psi0[n].locBasis(loc1()), 
+//			            Psi0[n].A[loc2()], Psi0[n].locBasis(loc2()), 
+//			            Psi0[n].QoutTop[loc1()], Psi0[n].QoutBot[loc1()], A0pair[n]);
+			contract_AA2(Psi0[n].A[loc1()], Psi0[n].locBasis(loc1()), 
+			             Psi0[n].A[loc2()], Psi0[n].locBasis(loc2()), 
+			             A0pair[n]);
+//			Qbasis<Symmetry> loc12; loc12.pullData(Psi0[n].locBasis(loc1()),true);
+//			Qbasis<Symmetry> loc34; loc34.pullData(Psi0[n].locBasis(loc2()),true);
+//			auto loc = loc12.combine(loc34);
+//			extend_A(A0pair[n], loc.qloc());
 		}
 		
 		Heff2.A0proj.resize(Psi0.size());
@@ -1161,7 +1168,7 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 				{
 					overlap += Heff2.A0proj[n][s].adjoint().contract(g.state.data[s]).trace();
 				}
-				lout << "bond=" << loc1() << "-" << loc2() << ", n=" << n << ", overlap=" << overlap << ", gap=" << g.energy-E0 << endl;
+				lout << "bond=" << loc1() << "-" << loc2() << ", n=" << n << ", |overlap|=" << std::abs(overlap) << ", gap=" << g.energy-E0 << endl;
 			}
 		}
 	}
