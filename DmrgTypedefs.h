@@ -371,7 +371,7 @@ std::ostream& operator<< (std::ostream& s, DMRG::VERBOSITY::OPTION VERB)
 std::ostream& operator<< (std::ostream& s, DMRG::CONVTEST::OPTION TEST)
 {
 	if      (TEST==DMRG::CONVTEST::VAR_2SITE) {s << "2-site variance";}
-	else if (TEST==DMRG::CONVTEST::VAR_HSQ)   {s << "|<H^2>-<H>^2|/L";}
+	else if (TEST==DMRG::CONVTEST::VAR_HSQ)   {s << "|<H²>-<H>²|/L";}
 	else if (TEST==DMRG::CONVTEST::NORM_TEST) {s << "norm comparison";}
 	else if (TEST==DMRG::CONVTEST::VAR_FULL)  {s << "‖H|Ψ>-E|Ψ>‖/L";}
 	return s;

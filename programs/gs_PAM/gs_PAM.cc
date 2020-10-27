@@ -176,15 +176,16 @@ int main (int argc, char* argv[])
 		MODELC::Solver Salvator(VERB);
 		
 		DMRG::CONTROL::GLOB GlobParamsOBC;
-		GlobParamsOBC.min_halfsweeps = args.get<size_t>("min_halfsweeps",30ul);
-		GlobParamsOBC.max_halfsweeps = args.get<size_t>("max_halfsweeps",60ul);
-		GlobParams.Minit = args.get<size_t>("Minit",10ul);
-		GlobParams.Qinit = args.get<size_t>("Qinit",10ul);
+		GlobParamsOBC.min_halfsweeps = args.get<size_t>("min_halfsweeps",10ul);
+		GlobParamsOBC.max_halfsweeps = args.get<size_t>("max_halfsweeps",20ul);
+		GlobParams.Minit = args.get<size_t>("Minit",2ul);
+		GlobParams.Qinit = args.get<size_t>("Qinit",2ul);
 		GlobParamsOBC.CONVTEST = DMRG::CONVTEST::VAR_HSQ;
 		
 		DMRG::CONTROL::DYN DynParamsOBC;
-		size_t lim2site = args.get<size_t>("lim2site",30ul);
-		DynParamsOBC.iteration = [lim2site] (size_t i) {return DMRG::ITERATION::ONE_SITE;};
+//		size_t lim2site = args.get<size_t>("lim2site",30ul);
+		DMRG::ITERATION::OPTION ITALG = static_cast<DMRG::ITERATION::OPTION>(args.get<int>("ITALG",2));
+		DynParamsOBC.iteration = [ITALG] (size_t i) {return ITALG;}; // [lim2site]
 		
 		Salvator.userSetGlobParam();
 		Salvator.GlobParam = GlobParamsOBC;

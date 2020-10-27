@@ -612,7 +612,7 @@ halfsweep (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, LANC
 	{
 		sweep_to_edge(H,Vout,true); // build_LR = true
 	}
-        
+	
 	for (size_t j=1; j<=halfsweepRange; ++j)
 	{
 		turnaround(SweepStat.pivot, N_sites, SweepStat.CURRENT_DIRECTION);
@@ -968,8 +968,6 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 			LRxV(PO,Ain,Aout);
 			Heff[SweepStat.pivot].A0proj[n] = Aout.data;
 		}
-		
-		cout << "fill environments at SweepStat.pivot=" << SweepStat.pivot << endl;
 	}
 	
 	precalc_blockStructure (Heff[SweepStat.pivot].L, 
@@ -992,7 +990,6 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	Lutz.set_efficiency(LANCZOS::EFFICIENCY::TIME);
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
 	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
-	cout << "optimized at SweepStat.pivot=" << SweepStat.pivot << endl;
 	
 	if (Psi0.size() > 0)
 	{
@@ -1272,10 +1269,10 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 	while (((err_eigval >= GlobParam.tol_eigval or err_state >= GlobParam.tol_state) and SweepStat.N_halfsweeps < GlobParam.max_halfsweeps) or
 	       SweepStat.N_halfsweeps < GlobParam.min_halfsweeps)
 	{
-                // Set limits for alpha for the upcoming halfsweep
-                min_alpha_rsvd = DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps);
-                max_alpha_rsvd = DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps);
-                
+		// Set limits for alpha for the upcoming halfsweep
+		min_alpha_rsvd = DynParam.min_alpha_rsvd(SweepStat.N_halfsweeps);
+		max_alpha_rsvd = DynParam.max_alpha_rsvd(SweepStat.N_halfsweeps);
+		
 		if (CHOSEN_VERBOSITY >= DMRG::VERBOSITY::HALFSWEEPWISE and 
 		    max_alpha_rsvd == 0. and
 		    MESSAGE_ALPHA == false)
@@ -1289,9 +1286,9 @@ edgeState (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, qarr
 //		Vout.state.graph(make_string("sweep",SweepStat.N_halfsweeps));
 		
 		size_t j = SweepStat.N_halfsweeps;
-
-                DynParam.doSomething(j);
-
+		
+		DynParam.doSomething(j);
+		
 		// If truncated weight too large, increase upper limit per subspace by 10%, but at least by dimqlocAvg, overall never larger than Mlimit
 		Vout.state.eps_svd = DynParam.eps_svd(j);
 		if (j%DynParam.Mincr_per(j) == 0)
@@ -1486,8 +1483,8 @@ build_PL (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 {
 	for (size_t n=0; n<Psi0.size(); ++n)
 	{
-		cout << "BUILDING LEFT ENVIRONMENT AT loc=" << loc << endl;
-		contract_L(Heff[loc-1].PL[n], Vout.state.A[loc-1], Psi0[n].A[loc-1], H.locBasis(loc-1), Heff[loc].PL[n]);
+//		cout << "BUILDING LEFT ENVIRONMENT AT loc=" << loc << endl;
+		contract_L(Heff[loc-1].PL[n], Vout.state.A[loc-1], Psi0[n].A[loc-1], H.locBasis(loc-1), Heff[loc].PL[n], false, true);
 		Heff[loc].PL[n] = Heff[loc].PL[n].cleaned();
 	}
 }
@@ -1498,8 +1495,8 @@ build_PR (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 {
 	for (size_t n=0; n<Psi0.size(); ++n)
 	{
-		cout << "BUILDING RIGHT ENVIRONMENT AT loc=" << loc << endl;
-		contract_R(Heff[loc+1].PR[n], Vout.state.A[loc+1], Psi0[n].A[loc+1], H.locBasis(loc+1), Heff[loc].PR[n]);
+//		cout << "BUILDING RIGHT ENVIRONMENT AT loc=" << loc << endl;
+		contract_R(Heff[loc+1].PR[n], Vout.state.A[loc+1], Psi0[n].A[loc+1], H.locBasis(loc+1), Heff[loc].PR[n], false, true);
 		Heff[loc].PR[n] = Heff[loc].PR[n].cleaned();
 	}
 }
