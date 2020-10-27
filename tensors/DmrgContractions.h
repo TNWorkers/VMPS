@@ -263,6 +263,14 @@ void contract_R (const Tripod<Symmetry,MatrixType2> &Rold,
 								}
 								else
 								{
+//									if (Aket[s2].block[qAket].cols() != Rold.block[qR][b][0].rows() or
+//									   Rold.block[qR][b][0].cols() != Abra[s1].block[qAbra].adjoint().rows())
+//									{
+//										print_size(Aket[s2].block[qAket],"Aket[s2].block[qAket]");
+//										print_size(Rold.block[qR][b][0],"Rold.block[qR][b][0]");
+//										print_size(Abra[s1].block[qAbra].adjoint(),"Abra[s1].block[qAbra].adjoint()");
+//									}
+								
 									optimal_multiply(factor_cgc * iW.value(),
 									                 Aket[s2].block[qAket],
 									                 Rold.block[qR][b][0],

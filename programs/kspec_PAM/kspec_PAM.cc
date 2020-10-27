@@ -62,6 +62,8 @@ MatrixXcd onsite (int L, double Eevn, double Eodd)
 	return res;
 }
 
+size_t L;
+
 int main (int argc, char* argv[])
 {
 	ArgParser args(argc,argv);
@@ -76,12 +78,14 @@ int main (int argc, char* argv[])
 	
 	size_t Ly = args.get<size_t>("Ly",1); // Ly=1: entpackt, Ly=2: Supersites
 	assert(Ly==1 and "Only Ly=1 implemented so far");
-	size_t L = args.get<size_t>("L",2); // Groesse der Einheitszelle
-	int Lphys = (Ly==1)? L:L/2;
+	L = args.get<size_t>("L",2); // Groesse der Einheitszelle
+	size_t Lphys = (Ly==1)? L:L/2;
 	int N = args.get<int>("N",L); // Teilchenzahl
 	int Ncells = args.get<int>("Ncells",16); // Anzahl der Einheitszellen fuer Spektralfunktion
 	int Lhetero = L*Ncells;
 	int x0 = Lhetero/2;
+	lout << "L=" << L << ", Ly=" << Ly << ", Lphys=" << Lphys << ", Ncells=" << Ncells << ", Lhetero=" << Lhetero << ", x0=" << x0 << endl;
+	
 	qarray<MODEL::Symmetry::Nq> Q = MODEL::singlet(N); // Quantenzahl des Grundzustandes
 	lout << "Q=" << Q << endl;
 	double U = args.get<double>("U",4.); // U auf den f-Plaetzen
@@ -102,6 +106,7 @@ int main (int argc, char* argv[])
 	vector<string> specs = args.get_list<string>("specs",{"HSF","CSF","PES","IPE"}); // welche Spektren? PES:Photoemission, IPE:inv. Photoemission, HSF: Hybridisierung, IHSF: inverse Hybridisierung
 	string specstring = "";
 	int Nspec = specs.size();
+	Green.resize(Nspec);
 	size_t Mlim = args.get<size_t>("Mlim",500ul); // Bonddimension fuer Dynamik
 	double dt = args.get<double>("dt",(L==2)?0.2:0.1);
 	double tol_DeltaS = args.get<double>("tol_DeltaS",1e-2);
@@ -132,7 +137,7 @@ int main (int argc, char* argv[])
 	GlobParams.max_iterations = args.get<size_t>("max_iterations",150ul);
 	GlobParams.Minit = args.get<size_t>("Minit",10ul);
 	GlobParams.Mlimit = args.get<size_t>("Mlimit",500ul);
-	GlobParams.Qinit = args.get<size_t>("Qinit",10ul);
+	GlobParams.Qinit = args.get<size_t>("Qinit",2ul);
 	GlobParams.tol_eigval = args.get<double>("tol_eigval",1e-5);
 	GlobParams.tol_var = args.get<double>("tol_var",1e-5);
 	GlobParams.tol_state = args.get<double>("tol_state",1e-4);
@@ -169,7 +174,7 @@ int main (int argc, char* argv[])
 	// Aufbau des Modells
 	MODELC H(L,params,BC::INFINITE);
 	H.transform_base(Q,false); // PRINT=false
-	H.precalc_TwoSiteData(true); // FORCE=true
+//	H.precalc_TwoSiteData(true); // FORCE=true
 	lout << H.info() << endl;
 	
 //	// Test vom komplexen Hopping
@@ -291,19 +296,14 @@ int main (int argc, char* argv[])
 		}
 	}
 	
-	// Phi
-	Stopwatch<> OxVTimer;
-	Mps<MODELC::Symmetry,complex<double>> Phi = uDMRG.create_Mps(Ncells, g, H, x0); // ground state as heterogenic MPS
-	
 	// O and OxPhiCell for counterpropagate
 	vector<vector<Mpo<MODELC::Symmetry,complex<double>>>> O(Nspec);
-	vector<vector<Mpo<MODELC::Symmetry,complex<double>>>> Odag(Nspec);
 	for (int z=0; z<Nspec; ++z)
 	{
 		O[z].resize(Lphys);
 		for (int l=0; l<Lphys; ++l)
 		{
-			O[z][l] = VMPS::get_Op<MODELC,MODELC::Symmetry,complex<double>>(H_hetero, Lhetero/2+l, specs[z]);
+			O[z][l] = VMPS::get_Op<MODELC,MODELC::Symmetry,complex<double>>(H_hetero, x0+l, specs[z]);
 			if (specs[z] != "PES" and specs[z] != "IPE" and specs[z] != "PSZ")
 			{
 				O[z][l].scale(1.,-Oshift[z][l]);
@@ -315,6 +315,10 @@ int main (int argc, char* argv[])
 			// l=1: f-electrons
 		}
 	}
+	
+	// Phi
+	Stopwatch<> OxVTimer;
+	Mps<MODELC::Symmetry,complex<double>> Phi = uDMRG.create_Mps(Ncells, g, H, x0); // ground state as heterogenic MPS
 	
 	vector<vector<Mps<MODELC::Symmetry,complex<double>>>> OxPhiCell(Nspec);
 	for (int z=0; z<Nspec; ++z)
@@ -347,7 +351,7 @@ int main (int argc, char* argv[])
 		for (int z=0; z<Nspec; ++z)
 		{
 			OxPhiFull[z].resize(Lhetero);
-			OxPhiFull[z] = uDMRG.create_Mps(Ncells, g, H, Ofull[z][Lhetero/2], Ofull[z]); // Ofull[z][Lhetero/2] for boundaries, O[z] is multiplied
+			OxPhiFull[z] = uDMRG.create_Mps(Ncells, g, H, Ofull[z][x0], Ofull[z]); // Ofull[z][x0] for boundaries, Ofull[z] is multiplied
 		}
 	}
 	
@@ -364,7 +368,7 @@ int main (int argc, char* argv[])
 	
 	// Energie des heterogenen Teils
 	double Eg = isReal(avg_hetero(Phi, H_hetero, Phi, true)); // USE_BOUNDARY=true
-	lout << setprecision(14) << "Eg=" << Eg << ", eg=" << g.energy << ", egfree=" << 2.*occ.sum()/Lfinite << endl;
+	lout << setprecision(16) << "Eg=" << Eg << ", eg=" << g.energy << ", egfree=" << 2.*occ.sum()/Lfinite << setprecision(6) << endl;
 	
 	// Propagation
 	#pragma omp parallel for

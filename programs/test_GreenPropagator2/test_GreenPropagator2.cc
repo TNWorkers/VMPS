@@ -120,7 +120,7 @@ int main (int argc, char* argv[])
 	specs = args.get_list<string>("specs",{"SSF"});
 	Nspec = specs.size();
 	Green.resize(Nspec);
-	INT = static_cast<GREEN_INTEGRATION>(args.get<int>("INT",1)); //0=DIRECT, 1=INTERP
+	INT = static_cast<GREEN_INTEGRATION>(args.get<int>("INT",2)); //0=DIRECT, 1=INTERP, OOURA=2
 	
 	RELOAD = args.get<string>("RELOAD","");
 	wmin = args.get<double>("wmin",-10.);
@@ -136,25 +136,15 @@ int main (int argc, char* argv[])
 	tmax = args.get<double>("tmax",6.);
 	Nt = static_cast<int>(tmax/dt);
 	
-	tol_eigval = args.get<double>("tol_eigval",1e-5);
-	tol_var = args.get<double>("tol_var",1e-5);
-	tol_state = args.get<double>("tol_state",1e-4);
-	
-	min_iter = args.get<size_t>("min_iter",50ul);
-	max_iter = args.get<size_t>("max_iter",150ul);
-	
-	Chi = args.get<size_t>("Chi",4ul);
-	Qinit = args.get<size_t>("Qinit",6ul);
-	
 	VUMPS::CONTROL::GLOB GlobParams;
-	GlobParams.min_iterations = min_iter;
-	GlobParams.max_iterations = max_iter;
-	GlobParams.Dinit = Chi;
-	GlobParams.Dlimit = Chi;
-	GlobParams.Qinit = Qinit;
-	GlobParams.tol_eigval = tol_eigval;
-	GlobParams.tol_var = tol_var;
-	GlobParams.tol_state = tol_state;
+	GlobParams.min_iterations = args.get<size_t>("min_iter",50ul);
+	GlobParams.max_iterations = args.get<size_t>("max_iter",150ul);
+	GlobParams.Minit = args.get<size_t>("Minit",4ul);
+	GlobParams.Mlimit = 500ul;
+	GlobParams.Qinit = args.get<size_t>("Qinit",6ul);
+	GlobParams.tol_eigval = args.get<double>("tol_eigval",1e-5);
+	GlobParams.tol_var = args.get<double>("tol_var",1e-5);
+	GlobParams.tol_state = args.get<double>("tol_state",1e-4);
 	GlobParams.max_iter_without_expansion = 30ul;
 	
 	string base = make_string("Lcell=",L,"_model=",MODELNAME,"_sym=",MODEL::Symmetry::name());
@@ -193,8 +183,6 @@ int main (int argc, char* argv[])
 		#endif
 		
 		vector<Param> params;
-		params.push_back({"CALC_SQUARE",false});
-		params.push_back({"OPEN_BC",false});
 		params.push_back({"t",1.});
 		#ifdef USE_HEISENBERG
 		if (J!=0.)
@@ -233,14 +221,16 @@ int main (int argc, char* argv[])
 			
 			for (int l=0; l<L; ++l)
 			{
-				O[z][l] = VMPS::get_Op<MODEL,MODEL::Symmetry>(H_hetero,Lhetero/2+l,specs[z]);
+				O[z][l] = VMPS::get_Op<MODEL,MODEL::Symmetry>(H_hetero,x0+l,specs[z]);
 				O[z][l].transform_base(Q,false,L); // PRINT=false
+				cout << O[z][l].info() << endl;
 			}
 		}
 		
 		// OxV in cell
-		Stopwatch<> OxVTimer;
+//		Stopwatch<> OxVTimer;
 		Mps<MODEL::Symmetry,double> Phi = uDMRG.create_Mps(Ncells, g, H, x0); // ground state as heterogenic MPS
+		lout << Phi.info() << endl;
 		
 		vector<vector<Mps<MODEL::Symmetry,complex<double>>>> OxPhiCell(Nspec);
 		for (int z=0; z<Nspec; ++z)
@@ -254,7 +244,7 @@ int main (int argc, char* argv[])
 			}
 		}
 		
-		lout << OxVTimer.info("OxV for all sites") << endl;
+//		lout << OxVTimer.info("OxV for all sites") << endl;
 		
 		for (int z=0; z<Nspec; ++z)
 		{

@@ -967,23 +967,9 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 			PivotVector<Symmetry,Scalar> Aout;
 			LRxV(PO,Ain,Aout);
 			Heff[SweepStat.pivot].A0proj[n] = Aout.data;
-			
-			// push new blocks of result as zero matrices into A
-//			for (int s=0; s<Psi0[n].A[SweepStat.pivot].size(); ++s)
-//			for (int q=0; q<Heff[SweepStat.pivot].A0proj[n][s].dim; ++q)
-//			{
-//				qarray2<Symmetry::Nq> cmp = {Heff[SweepStat.pivot].A0proj[n][s].in[q], Heff[SweepStat.pivot].A0proj[n][s].out[q]};
-//				auto qA = Vout.state.A[SweepStat.pivot][s].dict.find(cmp);
-//				if (qA == Vout.state.A[SweepStat.pivot][s].dict.end())
-//				{
-//					Matrix<Scalar,Dynamic,Dynamic> ZeroBlock(Heff[SweepStat.pivot].A0proj[n][s].block[q].rows(),
-//					                                         Heff[SweepStat.pivot].A0proj[n][s].block[q].cols());
-//					ZeroBlock.setZero();
-//					Vout.state.A[SweepStat.pivot][s].push_back(cmp,ZeroBlock);
-//					cout << "new block pushed: q=" << cmp[0] << ", " << cmp[1] << endl;
-//				}
-//			}
 		}
+		
+		cout << "fill environments at SweepStat.pivot=" << SweepStat.pivot << endl;
 	}
 	
 	precalc_blockStructure (Heff[SweepStat.pivot].L, 
@@ -1006,6 +992,7 @@ iteration_one (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	Lutz.set_efficiency(LANCZOS::EFFICIENCY::TIME);
 	Lutz.set_dimK(min(LanczosParam.dimK, dim(g.state)));
 	Lutz.edgeState(Heff[SweepStat.pivot],g, EDGE, LanczosParam.tol_eigval, LanczosParam.tol_state, false);
+	cout << "optimized at SweepStat.pivot=" << SweepStat.pivot << endl;
 	
 	if (Psi0.size() > 0)
 	{
@@ -1085,13 +1072,13 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 	if (Psi0.size() > 0)
 	{
 		Heff2.Epenalty = Epenalty;
-		Heff2.PL.resize(Psi0.size());
-		Heff2.PR.resize(Psi0.size());
-		for (int n=0; n<Psi0.size(); ++n)
-		{
-			Heff2.PL[n] = Heff[loc1()].PL[n];
-			Heff2.PR[n] = Heff[loc2()].PR[n];
-		}
+//		Heff2.PL.resize(Psi0.size());
+//		Heff2.PR.resize(Psi0.size());
+//		for (int n=0; n<Psi0.size(); ++n)
+//		{
+//			Heff2.PL[n] = Heff[loc1()].PL[n];
+//			Heff2.PR[n] = Heff[loc2()].PR[n];
+//		}
 		
 		// contract A0pair
 		vector<vector<Biped<Symmetry,Matrix<Scalar,Dynamic,Dynamic> > > > A0pair(Psi0.size());
@@ -1118,24 +1105,8 @@ iteration_two (const MpHamiltonian &H, Eigenstate<Mps<Symmetry,Scalar> > &Vout, 
 			PivotVector<Symmetry,Scalar> Ain = PivotVector<Symmetry,Scalar>(A0pair[n]);
 			PivotVector<Symmetry,Scalar> Aout;
 			LRxV(PO,Ain,Aout);
-			for (int s=0; s<Aout.data.size(); ++s) Aout.data[s] = Aout.data[s].cleaned();
+//			for (int s=0; s<Aout.data.size(); ++s) Aout.data[s] = Aout.data[s].cleaned();
 			Heff2.A0proj[n] = Aout.data;
-			
-			// push new blocks of result as zero matrices into A
-//			for (int s=0; s<Heff2.A0proj[n].size(); ++s)
-//			for (int q=0; q<Heff2.A0proj[n][s].dim; ++q)
-//			{
-//				qarray2<Symmetry::Nq> cmp = {Heff2.A0proj[n][s].in[q], Heff2.A0proj[n][s].out[q]};
-//				auto qA = g.state.data[s].dict.find(cmp);
-//				if (qA == g.state.data[s].dict.end())
-//				{
-//					Matrix<Scalar,Dynamic,Dynamic> ZeroBlock(Heff2.A0proj[n][s].block[q].rows(),
-//					                                         Heff2.A0proj[n][s].block[q].cols());
-//					ZeroBlock.setZero();
-//					g.state.data[s].push_back(cmp,ZeroBlock);
-//					cout << "new block pushed: q=" << cmp[0] << ", " << cmp[1] << endl;
-//				}
-//			}
 		}
 	}
 	
@@ -1515,8 +1486,9 @@ build_PL (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 {
 	for (size_t n=0; n<Psi0.size(); ++n)
 	{
+		cout << "BUILDING LEFT ENVIRONMENT AT loc=" << loc << endl;
 		contract_L(Heff[loc-1].PL[n], Vout.state.A[loc-1], Psi0[n].A[loc-1], H.locBasis(loc-1), Heff[loc].PL[n]);
-//		Heff[loc].PL[n] = Heff[loc].PL[n].cleaned();
+		Heff[loc].PL[n] = Heff[loc].PL[n].cleaned();
 	}
 }
 
@@ -1526,8 +1498,9 @@ build_PR (const MpHamiltonian &H, const Eigenstate<Mps<Symmetry,Scalar> > &Vout,
 {
 	for (size_t n=0; n<Psi0.size(); ++n)
 	{
+		cout << "BUILDING RIGHT ENVIRONMENT AT loc=" << loc << endl;
 		contract_R(Heff[loc+1].PR[n], Vout.state.A[loc+1], Psi0[n].A[loc+1], H.locBasis(loc+1), Heff[loc].PR[n]);
-//		Heff[loc].PR[n] = Heff[loc].PR[n].cleaned();
+		Heff[loc].PR[n] = Heff[loc].PR[n].cleaned();
 	}
 }
 

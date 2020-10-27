@@ -1244,11 +1244,10 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 	#endif
 	{
 		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
-	    #pragma omp section
+		#pragma omp section
 		#endif
 		{
 			Reigen = Vout.state.C[N_sites-1].contract(Vout.state.C[N_sites-1].adjoint());
-			cout << "eL=" << std::real(contract_LR(basis_order[0], YLlast, Reigen)) << endl;
 			eL = std::real(contract_LR(basis_order[0], YLlast, Reigen)) / H.volume(); //static_cast<Scalar>(H.volume());
 		}
 		#ifndef VUMPS_SOLVER_DONT_USE_OPENMP
@@ -1260,6 +1259,7 @@ iteration_parallel (const MpHamiltonian &H, Eigenstate<Umps<Symmetry,Scalar> > &
 		}
 	}
 	Vout.energy = min(eL,eR);
+	lout << "e=" << Vout.energy << endl;
 		
 //		double eR2 = calc_LReigen(VMPS::DIRECTION::RIGHT, 
 //		                          Vout.state.A[GAUGE::L], 

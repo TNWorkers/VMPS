@@ -176,8 +176,10 @@ int main (int argc, char* argv[])
 		MODELC::Solver Salvator(VERB);
 		
 		DMRG::CONTROL::GLOB GlobParamsOBC;
-		GlobParamsOBC.min_halfsweeps = 30;
-		GlobParamsOBC.max_halfsweeps = 60;
+		GlobParamsOBC.min_halfsweeps = args.get<size_t>("min_halfsweeps",30ul);
+		GlobParamsOBC.max_halfsweeps = args.get<size_t>("max_halfsweeps",60ul);
+		GlobParams.Minit = args.get<size_t>("Minit",10ul);
+		GlobParams.Qinit = args.get<size_t>("Qinit",10ul);
 		GlobParamsOBC.CONVTEST = DMRG::CONVTEST::VAR_HSQ;
 		
 		DMRG::CONTROL::DYN DynParamsOBC;
@@ -196,6 +198,7 @@ int main (int argc, char* argv[])
 		Salvator2.GlobParam = GlobParamsOBC;
 		Salvator2.userSetDynParam();
 		Salvator2.DynParam = DynParamsOBC;
+		Salvator2.Epenalty = args.get<double>("Epenalty",1e4);
 		
 		Salvator2.push_back(g.state);
 		
@@ -205,16 +208,15 @@ int main (int argc, char* argv[])
 		excited1.state.sweep(0,DMRG::BROOM::QR);
 		excited1.state /= sqrt(dot(excited1.state,excited1.state));
 		excited1.state.eps_svd = 1e-8;
-		Salvator2.Epenalty = args.get<double>("Epenalty",1e4);
 		
 		double overlap = abs(dot(g.state,excited1.state));
 		lout << "initial overlap=" << overlap << endl;
 		Salvator2.edgeState(H, excited1, Q, LANCZOS::EDGE::GROUND, true);
-		lout << "excited1.energy=" << setprecision(16) << excited1.energy << endl;
+		lout << "excited1.energy=" << setprecision(16) << excited1.energy << setprecision(6) << endl;
 		overlap = abs(dot(g.state,excited1.state));
 		lout << "overlap=" << overlap << endl;
 		
-		lout << "L=" << L << "\t" << setprecision(16) << g.energy << "\t" << excited1.energy << ", gap=" << excited1.energy-g.energy << setprecision(6) << endl;
+		lout << termcolor::blue << "L=" << L << "\t" << setprecision(16) << g.energy << "\t" << excited1.energy << ", gap=" << excited1.energy-g.energy << setprecision(6) << termcolor::reset << endl;
 	}
 	else
 	{
